@@ -1,0 +1,5 @@
+@import "../basic.css";
+
+html[data-theme="light"] {
+    --pst-color-primary: rgb(0 26 130);
+}

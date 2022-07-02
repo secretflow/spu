@@ -1,0 +1,67 @@
+# Copyright 2021 Ant Group Co., Ltd.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+load("//bazel:spu.bzl", "spu_cc_library", "spu_cc_test")
+
+package(default_visibility = ["//visibility:public"])
+
+spu_cc_library(
+    name = "ecdh_oprf",
+    srcs = ["ecdh_oprf.cc"],
+    hdrs = ["ecdh_oprf.h"],
+    # Openssl::libcrypto requires `dlopen`...
+    linkopts = ["-ldl"],
+    deps = [
+        "//spu/psi/cryptor:ecc_cryptor",
+        "@com_github_openssl_openssl//:openssl",
+        "@com_google_absl//absl/types:span",
+        "@yasl//yasl/base:byte_container_view",
+        "@yasl//yasl/base:exception",
+        "@yasl//yasl/utils:parallel",
+    ],
+)
+
+spu_cc_library(
+    name = "basic_ecdh_oprf",
+    srcs = ["basic_ecdh_oprf.cc"],
+    hdrs = ["basic_ecdh_oprf.h"],
+    deps = [
+        ":ecdh_oprf",
+        "//spu/psi/cryptor:ecc_utils",
+        "//spu/psi/cryptor:sm2_cryptor",
+        "@com_github_microsoft_fourqlib//:fourqlib",
+        "@com_google_absl//absl/types:span",
+        "@yasl//yasl/base:exception",
+        "@yasl//yasl/crypto:blake3_hash",
+        "@yasl//yasl/crypto:hash_util",
+        "@yasl//yasl/utils:parallel",
+    ],
+)
+
+spu_cc_library(
+    name = "ecdh_oprf_selector",
+    srcs = ["ecdh_oprf_selector.cc"],
+    hdrs = ["ecdh_oprf_selector.h"],
+    deps = [
+        ":basic_ecdh_oprf",
+    ],
+)
+
+spu_cc_test(
+    name = "basic_ecdh_oprf_test",
+    srcs = ["basic_ecdh_oprf_test.cc"],
+    deps = [
+        ":ecdh_oprf_selector",
+    ],
+)

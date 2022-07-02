@@ -1,0 +1,286 @@
+# Copyright 2021 Ant Group Co., Ltd.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+load("//bazel:spu.bzl", "spu_cc_binary", "spu_cc_library", "spu_cc_test")
+
+package(default_visibility = ["//visibility:public"])
+
+spu_cc_library(
+    name = "hal",
+    hdrs = ["hal.h"],
+    deps = [
+        ":constants",
+        ":debug",
+        ":fxp",
+        ":integer",
+        ":polymorphic",
+        ":random",
+        ":shape_ops",
+        ":type_cast",
+        ":value",
+    ],
+)
+
+spu_cc_library(
+    name = "value",
+    srcs = ["value.cc"],
+    hdrs = ["value.h"],
+    deps = [
+        "//spu/core:ndarray_ref",
+        "//spu/core:shape_util",
+        "@yasl//yasl/base:exception",
+    ],
+)
+
+spu_cc_test(
+    name = "value_test",
+    srcs = ["value_test.cc"],
+    deps = [
+        ":value",
+    ],
+)
+
+spu_cc_library(
+    name = "context",
+    srcs = ["context.cc"],
+    hdrs = ["context.h"],
+    deps = [
+        ":value",  # FIXME: each module depends on value
+        "//spu/core",
+        "//spu/core:profile",
+        "//spu/mpc:factory",
+        "@yasl//yasl/link",
+    ],
+)
+
+spu_cc_library(
+    name = "public_intrinsic",
+    srcs = ["public_intrinsic.cc"],
+    hdrs = ["public_intrinsic.h"],
+    deps = [
+        ":context",
+    ],
+)
+
+spu_cc_library(
+    name = "prot_wrapper",
+    srcs = ["prot_wrapper.cc"],
+    hdrs = ["prot_wrapper.h"],
+    deps = [
+        ":context",
+    ],
+)
+
+spu_cc_library(
+    name = "ring",
+    srcs = ["ring.cc"],
+    hdrs = ["ring.h"],
+    deps = [
+        ":constants",  # Strange
+        ":context",
+        ":prot_wrapper",
+        ":shape_ops",
+    ],
+)
+
+spu_cc_library(
+    name = "integer",
+    srcs = ["integer.cc"],
+    hdrs = ["integer.h"],
+    deps = [
+        ":prot_wrapper",
+        ":ring",
+    ],
+)
+
+spu_cc_test(
+    name = "integer_test",
+    srcs = ["integer_test.cc"],
+    deps = [
+        ":constants",
+        ":integer",
+        ":test_util",
+    ],
+)
+
+spu_cc_library(
+    name = "fxp",
+    srcs = ["fxp.cc"],
+    hdrs = ["fxp.h"],
+    deps = [
+        ":constants",
+        ":integer",
+        ":public_intrinsic",
+        ":shape_ops",
+        ":type_cast",
+        "@com_google_absl//absl/numeric:bits",
+    ],
+)
+
+spu_cc_test(
+    name = "fxp_test",
+    srcs = ["fxp_test.cc"],
+    deps = [
+        ":fxp",
+        ":test_util",
+    ],
+)
+
+spu_cc_library(
+    name = "constants",
+    srcs = ["constants.cc"],
+    hdrs = ["constants.h"],
+    deps = [
+        ":context",
+        ":prot_wrapper",
+        ":shape_ops",
+    ],
+)
+
+spu_cc_test(
+    name = "constants_test",
+    srcs = ["constants_test.cc"],
+    deps = [
+        ":constants",
+        ":test_util",
+    ],
+)
+
+spu_cc_library(
+    name = "test_util",
+    srcs = ["test_util.cc"],
+    hdrs = ["test_util.h"],
+    deps = [
+        ":constants",
+        ":context",
+        "@com_google_googletest//:gtest",
+    ],
+)
+
+spu_cc_library(
+    name = "debug",
+    srcs = ["debug.cc"],
+    hdrs = ["debug.h"],
+    deps = [
+        ":test_util",
+        ":type_cast",
+        "@yasl//yasl/base:exception",
+    ],
+)
+
+spu_cc_library(
+    name = "polymorphic",
+    srcs = ["polymorphic.cc"],
+    hdrs = ["polymorphic.h"],
+    deps = [
+        ":fxp",
+        ":integer",
+        ":permute_util",
+        ":shape_ops",
+        ":type_cast",
+        "//spu/core:vectorize",
+        "@yasl//yasl/base:exception",
+    ],
+)
+
+spu_cc_test(
+    name = "polymorphic_test",
+    srcs = ["polymorphic_test.cc"],
+    deps = [
+        ":context",
+        ":polymorphic",
+        ":test_util",
+        "//spu/mpc/util:linalg",
+    ],
+)
+
+spu_cc_test(
+    name = "array_element_wise_test",
+    srcs = ["array_element_wise_test.cc"],
+    deps = [
+        ":context",
+        ":polymorphic",
+        ":test_util",
+    ],
+)
+
+spu_cc_library(
+    name = "type_cast",
+    srcs = ["type_cast.cc"],
+    hdrs = ["type_cast.h"],
+    deps = [
+        ":random",
+        ":ring",
+        "@yasl//yasl/base:exception",
+    ],
+)
+
+spu_cc_test(
+    name = "type_cast_test",
+    srcs = ["type_cast_test.cc"],
+    deps = [
+        ":test_util",
+        ":type_cast",
+    ],
+)
+
+spu_cc_library(
+    name = "random",
+    srcs = ["random.cc"],
+    hdrs = ["random.h"],
+    deps = [
+        ":context",
+        ":test_util",
+        "@yasl//yasl/base:exception",
+    ],
+)
+
+spu_cc_library(
+    name = "shape_ops",
+    srcs = ["shape_ops.cc"],
+    hdrs = ["shape_ops.h"],
+    deps = [
+        ":context",
+        "//spu/core:vectorize",
+        "@yasl//yasl/base:exception",
+    ],
+)
+
+spu_cc_test(
+    name = "shape_ops_test",
+    srcs = ["shape_ops_test.cc"],
+    deps = [
+        ":shape_ops",
+        ":test_util",
+    ],
+)
+
+spu_cc_library(
+    name = "permute_util",
+    srcs = ["permute_util.cc"],
+    hdrs = ["permute_util.h"],
+    deps = [
+        ":context",
+        ":shape_ops",
+    ],
+)
+
+spu_cc_test(
+    name = "permute_util_test",
+    srcs = ["permute_util_test.cc"],
+    deps = [
+        ":permute_util",
+        ":test_util",
+    ],
+)

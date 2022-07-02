@@ -1,0 +1,49 @@
+diff --git a/tensorflow/compiler/xla/service/BUILD b/tensorflow/compiler/xla/service/BUILD
+index b55dffc4d4e..cef3ba0d9a9 100644
+--- a/tensorflow/compiler/xla/service/BUILD
++++ b/tensorflow/compiler/xla/service/BUILD
+@@ -29,7 +29,7 @@ load(
+ load("//tensorflow/stream_executor:build_defs.bzl", "if_gpu_is_configured")
+ 
+ package(
+-    default_visibility = [":friends"],
++    default_visibility = ["//visibility:public"],
+     licenses = ["notice"],
+ )
+ 
+diff --git a/tensorflow/core/platform/default/logging.h b/tensorflow/core/platform/default/logging.h
+index 86e7da1d..505faae5 100644
+--- a/tensorflow/core/platform/default/logging.h
++++ b/tensorflow/core/platform/default/logging.h
+@@ -304,7 +304,7 @@ void MakeCheckOpValueString(std::ostream* os, const std::nullptr_t& v);
+ // A container for a string pointer which can be evaluated to a bool -
+ // true iff the pointer is non-NULL.
+ struct CheckOpString {
+-  explicit CheckOpString(string* str) : str_(str) {}
++  constexpr explicit CheckOpString(string* str) : str_(str) {}
+   // No destructor: if str_ is non-NULL, we're about to LOG(FATAL),
+   // so there's no point in cleaning up str_.
+   explicit operator bool() const { return TF_PREDICT_FALSE(str_ != nullptr); }
+
+diff --git a/tensorflow/compiler/mlir/hlo/lib/Dialect/mhlo/transforms/expand_hlo_tuples.cc b/tensorflow/compiler/mlir/hlo/lib/Dialect/mhlo/transforms/expand_hlo_tuples.cc
+index ce6ae6a7..562a529b 100644
+--- a/tensorflow/compiler/mlir/hlo/lib/Dialect/mhlo/transforms/expand_hlo_tuples.cc
++++ b/tensorflow/compiler/mlir/hlo/lib/Dialect/mhlo/transforms/expand_hlo_tuples.cc
+@@ -99,6 +99,8 @@ class ExpandHloTuplesPass
+     // Update output signatures.
+     auto return_op = cast<mlir::func::ReturnOp>(func.getBody().back().back());
+ 
++    if (return_op->getNumOperands() == 0) return;
++
+     // Expand all tuples in old return operands.
+     SmallVector<Value, 4> expanded_return_operands;
+     SmallVector<Type, 4> expanded_result_types;
+@@ -116,8 +118,6 @@ class ExpandHloTuplesPass
+       }
+     }
+ 
+-    if (expanded_return_operands.empty()) return;
+-
+     OpBuilder builder(return_op);
+     builder.create<mlir::func::ReturnOp>(return_op.getLoc(),
+                                          expanded_return_operands);

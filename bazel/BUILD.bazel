@@ -1,0 +1,16 @@
+package(default_visibility = ["//visibility:public"])
+
+config_setting(
+    name = "spu_build_as_release",
+    values = {"compilation_mode": "opt"},
+)
+
+config_setting(
+    name = "spu_build_as_debug",
+    values = {"compilation_mode": "dbg"},
+)
+
+config_setting(
+    name = "spu_build_as_fast",
+    values = {"compilation_mode": "fastbuild"},
+)

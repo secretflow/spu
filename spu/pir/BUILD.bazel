@@ -1,0 +1,72 @@
+load("//bazel:spu.bzl", "spu_cc_binary", "spu_cc_library", "spu_cc_test")
+
+package(default_visibility = ["//visibility:public"])
+
+spu_cc_library(
+    name = "seal_pir",
+    srcs = ["seal_pir.cc"],
+    hdrs = ["seal_pir.h"],
+    linkopts = [
+        "-ldl",
+        "-lm",
+    ],
+    deps = [
+        ":seal_pir_utils",
+        ":serializable_cc_proto",
+        "@com_github_microsoft_seal//:seal",
+        "@com_github_openssl_openssl//:openssl",
+        "@yasl//yasl/base:byte_container_view",
+        "@yasl//yasl/base:exception",
+        "@yasl//yasl/link",
+        "@yasl//yasl/utils:parallel",
+    ],
+)
+
+spu_cc_library(
+    name = "seal_pir_utils",
+    srcs = ["seal_pir_utils.cc"],
+    hdrs = ["seal_pir_utils.h"],
+    deps = [
+        "@com_github_microsoft_seal//:seal",
+        "@yasl//yasl/base:exception",
+    ],
+)
+
+spu_cc_library(
+    name = "seal_mpir",
+    srcs = ["seal_mpir.cc"],
+    hdrs = ["seal_mpir.h"],
+    deps = [
+        ":seal_pir",
+        "//spu/psi/core:cuckoo_index",
+        "@yasl//yasl/crypto:symmetric_crypto",
+    ],
+)
+
+proto_library(
+    name = "serializable_proto",
+    srcs = ["serializable.proto"],
+)
+
+cc_proto_library(
+    name = "serializable_cc_proto",
+    deps = [":serializable_proto"],
+)
+
+spu_cc_test(
+    name = "seal_pir_test",
+    srcs = ["seal_pir_test.cc"],
+    deps = [
+        ":seal_pir",
+    ],
+)
+
+spu_cc_test(
+    name = "seal_mpir_test",
+    srcs = ["seal_mpir_test.cc"],
+    deps = [
+        ":seal_mpir",
+        "//spu/psi/cryptor:sodium_curve25519_cryptor",
+        "@com_google_absl//absl/strings",
+    ],
+)

@@ -1,0 +1,93 @@
+# Copyright 2021 Ant Group Co., Ltd.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+load("@com_github_grpc_grpc//bazel:python_rules.bzl", "py_proto_library")
+load("@rules_proto//proto:defs.bzl", "proto_library")
+load("@rules_cc//cc:defs.bzl", "cc_proto_library")
+load("@rules_python//python:packaging.bzl", "py_package", "py_wheel")
+load("//bazel:spu.bzl", "spu_version_file")
+
+package(default_visibility = ["//visibility:public"])
+
+SPU_VERSION = "v0.1.0-beta"
+
+proto_library(
+    name = "spu_proto",
+    srcs = ["spu.proto"],
+)
+
+cc_proto_library(
+    name = "spu_cc_proto",
+    deps = [":spu_proto"],
+)
+
+py_proto_library(
+    name = "spu_py_proto",
+    deps = [":spu_proto"],
+)
+
+py_library(
+    name = "init",
+    srcs = [
+        "__init__.py",
+        ":version_file",
+    ],
+)
+
+py_package(
+    name = "_lib_deps",
+    deps = [
+        "//spu/binding:api",
+    ],
+)
+
+spu_version_file(
+    name = "version_file",
+    filename = "version.py",
+    version = SPU_VERSION,
+)
+
+py_wheel(
+    name = "spu_wheel",
+    author = "secretflow",
+    distribution = "spu",
+    license = "Apache 2.0",
+    platform = select({
+        "@bazel_tools//src/conditions:darwin": "macosx_10_16_x86_64",
+        "//conditions:default": "manylinux_2_17_x86_64",
+    }),
+    python_requires = "==3.8.*",
+    python_tag = "cp38",
+    requires = [
+        "grpcio==1.47.0",
+        "numpy==1.22.3",
+        "protobuf==3.19.4",
+        "six==1.16.0",
+        "jax==0.3.7",
+        "jaxlib==0.3.7",
+        "absl-py==1.0.0",
+        "cloudpickle==2.0.0",
+    ],
+    version = SPU_VERSION,
+    deps = [
+        ":_lib_deps",
+        ":init",
+        ":spu_py_proto",
+        "//spu/binding:api",
+        "//spu/binding/util:distributed",
+        "//spu/binding/util:distributed_py_proto",
+        "//spu/binding/util:distributed_py_proto_grpc",
+        "//spu/binding/util:simulation",
+    ],
+)

@@ -1,0 +1,16 @@
+myst-parser
+rstcheck
+sphinx
+nbsphinx
+sphinx-autobuild
+pydata-sphinx-theme
+sphinx-markdown-parser
+sphinxcontrib-actdiag
+sphinxcontrib-blockdiag
+sphinxcontrib-mermaid
+sphinxcontrib-nwdiag
+sphinxcontrib-seqdiag
+sphinx-markdown-tables
+pytablewriter
+linkify-it-py
+spu

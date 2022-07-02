@@ -1,0 +1,136 @@
+# Copyright 2021 Ant Group Co., Ltd.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+load("//bazel:spu.bzl", "spu_cc_binary", "spu_cc_library", "spu_cc_test")
+
+package(default_visibility = ["//visibility:public"])
+
+spu_cc_library(
+    name = "circuits",
+    hdrs = ["circuits.h"],
+    deps = [
+        "//spu/core:vectorize",
+        "@com_google_absl//absl/numeric:bits",
+    ],
+)
+
+spu_cc_test(
+    name = "circuits_test",
+    srcs = ["circuits_test.cc"],
+    deps = [
+        ":circuits",
+    ],
+)
+
+spu_cc_library(
+    name = "communicator",
+    srcs = ["communicator.cc"],
+    hdrs = ["communicator.h"],
+    deps = [
+        ":ring_ops",
+        "//spu/mpc:object",
+        "@com_github_xtensor_xtensor//:xtensor",  # TODO: remove me.
+        "@com_google_absl//absl/types:span",
+        "@yasl//yasl/link",
+    ],
+)
+
+spu_cc_test(
+    name = "communicator_test",
+    srcs = ["communicator_test.cc"],
+    deps = [
+        ":communicator",
+        ":simulate",
+    ],
+)
+
+spu_cc_library(
+    name = "simulate",
+    hdrs = ["simulate.h"],
+    deps = [
+        "@yasl//yasl/link",
+    ],
+)
+
+spu_cc_library(
+    name = "cexpr",
+    srcs = ["cexpr.cc"],
+    hdrs = ["cexpr.h"],
+    deps = [
+        "//spu/core",
+    ],
+)
+
+spu_cc_test(
+    name = "cexpr_test",
+    srcs = ["cexpr_test.cc"],
+    deps = [
+        ":cexpr",
+    ],
+)
+
+spu_cc_library(
+    name = "ring_ops",
+    srcs = ["ring_ops.cc"],
+    hdrs = ["ring_ops.h"],
+    deps = [
+        ":linalg",
+        "//spu/core",
+        "@yasl//yasl/crypto:pseudo_random_generator",
+        "@yasl//yasl/utils:parallel",
+    ],
+)
+
+spu_cc_test(
+    name = "ring_ops_test",
+    srcs = ["ring_ops_test.cc"],
+    deps = [
+        ":ring_ops",
+    ],
+)
+
+spu_cc_binary(
+    name = "ring_ops_bench",
+    srcs = ["ring_ops_bench.cc"],
+    deps = [
+        ":ring_ops",
+        "@com_github_google_benchmark//:benchmark",
+    ],
+)
+
+spu_cc_library(
+    name = "linalg",
+    hdrs = ["linalg.h"],
+    deps = [
+        "@yasl//yasl/utils:parallel",
+    ],
+)
+
+spu_cc_test(
+    name = "linalg_test",
+    srcs = ["linalg_test.cc"],
+    deps = [
+        ":linalg",
+    ],
+)
+
+spu_cc_library(
+    name = "seal_help",
+    srcs = ["seal_help.cc"],
+    hdrs = ["seal_help.h"],
+    deps = [
+        "//spu/core",
+        "@com_github_microsoft_seal//:seal",
+    ],
+)

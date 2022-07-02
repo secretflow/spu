@@ -1,0 +1,134 @@
+# Copyright 2021 Ant Group Co., Ltd.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+load("@pybind11_bazel//:build_defs.bzl", "pybind_extension")
+load("@rules_python//python:defs.bzl", "py_binary", "py_library", "py_test")
+
+package(default_visibility = ["//visibility:public"])
+
+py_library(
+    name = "jnp_testbase",
+    srcs = ["jnp_testbase.py"],
+    deps = [
+        "//spu/binding:api",
+        "//spu/binding/util:simulation",
+    ],
+)
+
+py_test(
+    name = "jnp_aby3_r128_test",
+    srcs = ["jnp_aby3_r128_test.py"],
+    deps = [
+        ":jnp_testbase",
+    ],
+)
+
+py_test(
+    name = "jnp_aby3_r64_test",
+    srcs = ["jnp_aby3_r64_test.py"],
+    deps = [
+        ":jnp_testbase",
+    ],
+)
+
+py_test(
+    name = "jnp_cheetah_r64_test",
+    srcs = ["jnp_cheetah_r64_test.py"],
+    deps = [
+        ":jnp_testbase",
+    ],
+)
+
+py_test(
+    name = "jnp_semi2k_r128_test",
+    srcs = ["jnp_semi2k_r128_test.py"],
+    deps = [
+        ":jnp_testbase",
+    ],
+)
+
+py_test(
+    name = "jnp_semi2k_r64_test",
+    srcs = ["jnp_semi2k_r64_test.py"],
+    deps = [
+        ":jnp_testbase",
+    ],
+)
+
+py_binary(
+    name = "jnp_debug",
+    srcs = ["jnp_debug.py"],
+    deps = [
+        "//spu/binding:api",
+        "//spu/binding/util:simulation",
+    ],
+)
+
+py_test(
+    name = "spu_compiler_test",
+    srcs = ["spu_compiler_test.py"],
+    data = [
+        "//spu/binding/tests/data:hlo_example",
+    ],
+    deps = [
+        "//spu/binding:api",
+        "//spu/binding/util:simulation",
+    ],
+)
+
+py_test(
+    name = "jax_sanity_test",
+    srcs = ["jax_sanity_test.py"],
+    deps = [
+        ":jnp_testbase",
+    ],
+)
+
+py_test(
+    name = "spu_runtime_test",
+    srcs = ["spu_runtime_test.py"],
+    deps = [
+        "//spu/binding:api",
+        "//spu/binding/util:simulation",
+    ],
+)
+
+py_test(
+    name = "spu_io_test",
+    srcs = ["spu_io_test.py"],
+    deps = [
+        "//spu/binding:api",
+        "//spu/binding/util:simulation",
+    ],
+)
+
+py_test(
+    name = "link_test",
+    srcs = ["link_test.py"],
+    deps = [
+        "//spu/binding:api",
+    ],
+)
+
+py_test(
+    name = "psi_test",
+    srcs = ["psi_test.py"],
+    data = [
+        "//spu/binding/tests/data",
+    ],
+    deps = [
+        "//spu/binding:api",
+        "//spu/binding/util:simulation",
+    ],
+)

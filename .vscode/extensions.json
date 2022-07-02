@@ -1,0 +1,13 @@
+{
+    "recommendations": [
+        "BazelBuild.vscode-bazel",
+        "eamodio.gitlens",
+        "matepek.vscode-catch2-test-adapter",
+        "ms-python.python",
+        "ms-vscode.cpptools",
+        "jgclark.vscode-todo-highlight",
+        "ms-vscode-remote.remote-ssh",
+        "zxh404.vscode-proto3",
+        "llvm-vs-code-extensions.vscode-clangd",
+    ]
+}

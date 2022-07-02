@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:xl="http://www.w3.org/1999/xlink" xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="592.532 524.448 287.968 339.052" width="287.968" height="339.052">
+  <defs>
+    <marker orient="auto" overflow="visible" markerUnits="strokeWidth" id="FilledArrow_Marker" stroke-linejoin="miter" stroke-miterlimit="10" viewBox="-1 -4 10 8" markerWidth="10" markerHeight="8" color="black">
+      <g>
+        <path d="M 8 0 L 0 -3 L 0 3 Z" fill="currentColor" stroke="currentColor" stroke-width="1"/>
+      </g>
+    </marker>
+  </defs>
+  <g id="API_Levels" fill="none" stroke-dasharray="none" stroke-opacity="1" fill-opacity="1" stroke="none">
+    <title>API Levels</title>
+    <rect fill="white" x="592.532" y="524.448" width="287.968" height="339.052"/>
+    <g id="API_Levels_Layer_1">
+      <title>Layer 1</title>
+      <g id="Group_30">
+        <title>SPU</title>
+        <g id="Graphic_5">
+          <title>CPP API</title>
+          <rect x="647.4127" y="737" width="175.17467" height="29" fill="white"/>
+          <rect x="647.4127" y="737" width="175.17467" height="29" stroke="gray" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+          <text transform="translate(652.4127 742.276)" fill="black">
+            <tspan font-family="Helvetica Neue" font-size="16" fill="black" x="52.547334" y="15">C++ API</tspan>
+          </text>
+        </g>
+        <g id="Graphic_3">
+          <title>XLA IR</title>
+          <rect x="647.4127" y="634" width="175.17467" height="29" fill="white"/>
+          <rect x="647.4127" y="634" width="175.17467" height="29" stroke="gray" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+          <text transform="translate(652.4127 639.276)" fill="black">
+            <tspan font-family="Helvetica Neue" font-size="16" fill="black" x="58.291334" y="15">XLA IR</tspan>
+          </text>
+        </g>
+        <g id="Graphic_4">
+          <title>SPU IR</title>
+          <rect x="647.4127" y="685.5" width="175.17467" height="29" fill="white"/>
+          <rect x="647.4127" y="685.5" width="175.17467" height="29" stroke="gray" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+          <text transform="translate(652.4127 690.776)" fill="black">
+            <tspan font-family="Helvetica Neue" font-size="16" fill="black" x="56.667334" y="15">SPU IR</tspan>
+          </text>
+        </g>
+        <g id="Group_9">
+          <title>Py API</title>
+          <g id="Graphic_8">
+            <title>Rectangle</title>
+            <rect x="593.032" y="536" width="286.968" height="68" fill="white"/>
+            <rect x="593.032" y="536" width="286.968" height="68" stroke="gray" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+          </g>
+          <g id="Graphic_11">
+            <title>Title</title>
+            <rect x="602" y="524.448" width="103.648" height="28.447998" fill="white"/>
+            <text transform="translate(607 529.448)" fill="black">
+              <tspan font-family="Helvetica Neue" font-size="16" fill="black" x="5186962e-19" y="15">Frontend API</tspan>
+            </text>
+          </g>
+          <g id="Graphic_6">
+            <rect x="700" y="561" width="70" height="29" fill="white"/>
+            <rect x="700" y="561" width="70" height="29" stroke="gray" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+            <text transform="translate(705 566.276)" fill="black">
+              <tspan font-family="Helvetica Neue" font-size="16" fill="black" x="15.776" y="15">JAX</tspan>
+            </text>
+          </g>
+          <g id="Graphic_7">
+            <rect x="782" y="561" width="89" height="29" fill="white"/>
+            <rect x="782" y="561" width="89" height="29" stroke="gray" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+            <text transform="translate(787 566.276)" fill="black">
+              <tspan font-family="Helvetica Neue" font-size="16" fill="black" x="10.756" y="15">PyTorch</tspan>
+            </text>
+          </g>
+          <g id="Graphic_2">
+            <rect x="602" y="561" width="89" height="29" fill="white"/>
+            <rect x="602" y="561" width="89" height="29" stroke="gray" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+            <text transform="translate(607 566.276)" fill="black">
+              <tspan font-family="Helvetica Neue" font-size="16" fill="black" x=".996" y="15">Tensorflow</tspan>
+            </text>
+          </g>
+        </g>
+        <g id="Group_16">
+          <title>Py API</title>
+          <g id="Graphic_21">
+            <title>Rectangle</title>
+            <rect x="593.032" y="795.448" width="286.968" height="67.552" fill="white"/>
+            <rect x="593.032" y="795.448" width="286.968" height="67.552" stroke="gray" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+          </g>
+          <g id="Graphic_20">
+            <title>Title</title>
+            <rect x="603.16266" y="784" width="106.32" height="28.447998" fill="white"/>
+            <text transform="translate(608.16266 789)" fill="black">
+              <tspan font-family="Helvetica Neue" font-size="16" fill="black" x="0" y="15">SPU Runtime</tspan>
+            </text>
+          </g>
+          <g id="Graphic_19">
+            <rect x="702.6627" y="820.448" width="70" height="29" fill="white"/>
+            <rect x="702.6627" y="820.448" width="70" height="29" stroke="gray" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+            <text transform="translate(707.6627 825.724)" fill="black">
+              <tspan font-family="Helvetica Neue" font-size="16" fill="black" x="3.32" y="15">Semi2k</tspan>
+            </text>
+          </g>
+          <g id="Graphic_18">
+            <rect x="795.3253" y="820.448" width="76.83734" height="29" fill="white"/>
+            <rect x="795.3253" y="820.448" width="76.83734" height="29" stroke="gray" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+            <text transform="translate(800.3253 825.724)" fill="black">
+              <tspan font-family="Helvetica Neue" font-size="16" fill="black" x="3.338667" y="15">Cheetah</tspan>
+            </text>
+          </g>
+          <g id="Graphic_17">
+            <rect x="603.16266" y="820.448" width="76.83734" height="29" fill="white"/>
+            <rect x="603.16266" y="820.448" width="76.83734" height="29" stroke="gray" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+            <text transform="translate(608.1627 825.724)" fill="black">
+              <tspan font-family="Helvetica Neue" font-size="16" fill="black" x="13.122667" y="15">ABY3</tspan>
+            </text>
+          </g>
+        </g>
+        <g id="Line_22">
+          <line x1="664.0788" y1="590" x2="709.7841" y2="627.70045" marker-end="url(#FilledArrow_Marker)" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+        </g>
+        <g id="Line_23">
+          <line x1="735" y1="590" x2="735" y2="624.1" marker-end="url(#FilledArrow_Marker)" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+        </g>
+        <g id="Line_24">
+          <line x1="808.3253" y1="590" x2="760.9135" y2="627.82584" marker-end="url(#FilledArrow_Marker)" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+        </g>
+        <g id="Line_25">
+          <line x1="735" y1="663" x2="735" y2="675.6" marker-end="url(#FilledArrow_Marker)" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+        </g>
+        <g id="Line_26">
+          <line x1="735" y1="714.5" x2="735" y2="727.1" marker-end="url(#FilledArrow_Marker)" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+        </g>
+        <g id="Line_28">
+          <line x1="735.2828" y1="766" x2="735.6641" y2="785.5499" marker-end="url(#FilledArrow_Marker)" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+        </g>
+      </g>
+    </g>
+  </g>
+</svg>

@@ -1,0 +1,16 @@
+# Use LLVM style for compiler related code
+BasedOnStyle: LLVM
+AlwaysBreakTemplateDeclarations: Yes
+
+IncludeBlocks: Regroup
+IncludeCategories:
+  - Regex:           '^<.*\.h>'
+    Priority:        1
+  - Regex:           '^<.*'
+    Priority:        2
+  - Regex:           '.*\.pb\.h"$'
+    Priority:        5
+  - Regex:           '^"spu.*'
+    Priority:        4
+  - Regex:           '^".*'
+    Priority:        3
