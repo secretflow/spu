@@ -1,0 +1,140 @@
+# Copyright 2021 Ant Group Co., Ltd.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+load("//bazel:spu.bzl", "spu_cc_library", "spu_cc_test")
+
+package(default_visibility = ["//visibility:public"])
+
+spu_cc_library(
+    name = "semi2k",
+    deps = [
+        ":io",
+        ":protocol",
+    ],
+)
+
+spu_cc_library(
+    name = "object",
+    hdrs = ["object.h"],
+    deps = [
+        "//spu/mpc/beaver:beaver_tfp",
+        "//spu/mpc/common:prg_state",
+    ],
+)
+
+spu_cc_library(
+    name = "boolean",
+    srcs = ["boolean.cc"],
+    hdrs = ["boolean.h"],
+    deps = [
+        ":object",
+        ":type",
+        "//spu/mpc:interfaces",
+        "//spu/mpc:kernel",
+        "//spu/mpc/util:communicator",
+    ],
+)
+
+spu_cc_library(
+    name = "conversion",
+    srcs = ["conversion.cc"],
+    hdrs = ["conversion.h"],
+    deps = [
+        ":object",
+        ":type",
+        "//spu/core:vectorize",
+        "//spu/mpc:interfaces",
+        "//spu/mpc:kernel",
+        "//spu/mpc/util:circuits",
+        "//spu/mpc/util:communicator",
+    ],
+)
+
+spu_cc_library(
+    name = "arithmetic",
+    srcs = ["arithmetic.cc"],
+    hdrs = ["arithmetic.h"],
+    deps = [
+        ":object",
+        ":type",
+        "//spu/core:vectorize",
+        "//spu/mpc:interfaces",
+        "//spu/mpc:kernel",
+        "//spu/mpc/util:circuits",
+        "//spu/mpc/util:communicator",
+        "//spu/mpc/util:ring_ops",
+    ],
+)
+
+spu_cc_library(
+    name = "protocol",
+    srcs = ["protocol.cc"],
+    hdrs = ["protocol.h"],
+    deps = [
+        ":arithmetic",
+        ":boolean",
+        ":conversion",
+        ":object",
+        "//spu/mpc/common:abprotocol",
+        "//spu/mpc/common:prg_state",
+    ],
+)
+
+spu_cc_test(
+    name = "protocol_test",
+    srcs = ["protocol_test.cc"],
+    deps = [
+        ":protocol",
+        "//spu/mpc:compute_test",
+        "//spu/mpc/common:abprotocol_test",
+    ],
+)
+
+spu_cc_library(
+    name = "io",
+    srcs = ["io.cc"],
+    hdrs = ["io.h"],
+    deps = [
+        ":type",
+        "//spu/mpc:io_interface",
+        "//spu/mpc/util:ring_ops",
+    ],
+)
+
+spu_cc_test(
+    name = "io_test",
+    srcs = ["io_test.cc"],
+    deps = [
+        ":io",
+        "//spu/mpc:io_test",
+    ],
+)
+
+spu_cc_library(
+    name = "type",
+    srcs = ["type.cc"],
+    hdrs = ["type.h"],
+    deps = [
+        "//spu/core:type",
+        "//spu/mpc/common:pub2k",
+    ],
+)
+
+spu_cc_test(
+    name = "type_test",
+    srcs = ["type_test.cc"],
+    deps = [
+        ":type",
+    ],
+)

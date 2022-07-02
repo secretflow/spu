@@ -1,0 +1,31 @@
+syntax = "proto3";
+
+package spu.pir;
+
+message PlaintextsProto {
+  repeated bytes data = 1;
+}
+
+message CiphertextsProto {
+  repeated bytes ciphers = 1;
+}
+
+message SealPirQueryProto {
+  int32 query_size = 1;
+  int32 start_pos = 2;
+  repeated CiphertextsProto query_cipher = 3;
+}
+
+message SealPirAnswerProto {
+  int32 query_size = 1;
+  int32 start_pos = 2;
+  CiphertextsProto answer = 3;
+}
+
+message SealMultiPirQueryProto {
+  repeated SealPirQueryProto querys = 1;
+}
+
+message SealMultiPirAnswerProto {
+  repeated SealPirAnswerProto answers = 1;
+}

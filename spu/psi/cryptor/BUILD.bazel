@@ -1,0 +1,125 @@
+# Copyright 2021 Ant Group Co., Ltd.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+load("//bazel:spu.bzl", "spu_cc_library", "spu_cc_test")
+
+package(default_visibility = ["//visibility:public"])
+
+spu_cc_library(
+    name = "ecc_cryptor",
+    srcs = ["ecc_cryptor.cc"],
+    hdrs = ["ecc_cryptor.h"],
+    deps = [
+        "@com_google_absl//absl/types:span",
+        "@yasl//yasl/crypto:hash_util",
+    ],
+)
+
+spu_cc_library(
+    name = "sodium_curve25519_cryptor",
+    srcs = ["sodium_curve25519_cryptor.cc"],
+    hdrs = ["sodium_curve25519_cryptor.h"],
+    deps = [
+        ":ecc_cryptor",
+        "@com_github_libsodium//:libsodium",
+        "@com_github_openssl_openssl//:openssl",
+        "@yasl//yasl/base:exception",
+        "@yasl//yasl/crypto:hash_util",
+        "@yasl//yasl/link",
+        "@yasl//yasl/utils:parallel",
+    ],
+)
+
+spu_cc_library(
+    name = "ipp_ecc_cryptor",
+    srcs = ["ipp_ecc_cryptor.cc"],
+    hdrs = ["ipp_ecc_cryptor.h"],
+    target_compatible_with = [
+        "@platforms//cpu:x86_64",
+    ],
+    deps = [
+        ":ecc_cryptor",
+        "@com_github_intel_ipp//:ipp",
+        "@com_github_openssl_openssl//:openssl",
+        "@yasl//yasl/base:exception",
+        "@yasl//yasl/utils:parallel",
+    ],
+)
+
+spu_cc_library(
+    name = "fourq_cryptor",
+    srcs = ["fourq_cryptor.cc"],
+    hdrs = ["fourq_cryptor.h"],
+    deps = [
+        ":ecc_cryptor",
+        "@com_github_microsoft_fourqlib//:fourqlib",
+        "@com_github_openssl_openssl//:openssl",
+        "@yasl//yasl/base:exception",
+        "@yasl//yasl/utils:parallel",
+    ],
+)
+
+spu_cc_library(
+    name = "cryptor_selector",
+    srcs = ["cryptor_selector.cc"],
+    hdrs = ["cryptor_selector.h"],
+    deps = [
+        ":fourq_cryptor",
+        ":sm2_cryptor",
+        ":sodium_curve25519_cryptor",
+    ] + select({
+        "@platforms//cpu:x86_64": [
+            ":ipp_ecc_cryptor",
+            "@com_github_google_cpu_features//:cpu_features",
+        ],
+        "//conditions:default": [],
+    }),
+)
+
+spu_cc_library(
+    name = "ecc_utils",
+    hdrs = ["ecc_utils.h"],
+    # Openssl::libcrypto requires `dlopen`...
+    linkopts = ["-ldl"],
+    deps = [
+        "@com_github_openssl_openssl//:openssl",
+        "@yasl//yasl/base:exception",
+        "@yasl//yasl/crypto:hash_util",
+    ],
+)
+
+spu_cc_library(
+    name = "sm2_cryptor",
+    srcs = ["sm2_cryptor.cc"],
+    hdrs = ["sm2_cryptor.h"],
+    deps = [
+        ":ecc_cryptor",
+        ":ecc_utils",
+        "@com_github_openssl_openssl//:openssl",
+        "@yasl//yasl/base:exception",
+        "@yasl//yasl/crypto:hash_util",
+        "@yasl//yasl/crypto:pseudo_random_generator",
+        "@yasl//yasl/utils:parallel",
+    ],
+)
+
+spu_cc_test(
+    name = "sm2_cryptor_test",
+    srcs = ["sm2_cryptor_test.cc"],
+    deps = [
+        ":sm2_cryptor",
+        "@yasl//yasl/crypto:hash_util",
+        "@yasl//yasl/crypto:utils",
+    ],
+)

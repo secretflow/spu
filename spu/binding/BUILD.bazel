@@ -1,0 +1,43 @@
+# Copyright 2021 Ant Group Co., Ltd.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+load("@pybind11_bazel//:build_defs.bzl", "pybind_extension")
+load("@rules_python//python:defs.bzl", "py_binary", "py_library", "py_test")
+
+package(default_visibility = ["//visibility:public"])
+
+pybind_extension(
+    name = "_lib",
+    srcs = ["_lib.cc"],
+    deps = [
+        "//spu/compiler:compile",
+        "//spu/compiler/common:compilation_context",
+        "//spu/device:io",
+        "//spu/device:pphlo_executor",
+        "//spu/psi",
+        "//spu/psi/core:ecdh_psi",
+        "@yasl//yasl/link",
+    ],
+)
+
+py_library(
+    name = "api",
+    srcs = ["api.py"],
+    data = [
+        ":_lib.so",
+    ],
+    deps = [
+        "//spu:spu_py_proto",
+    ],
+)

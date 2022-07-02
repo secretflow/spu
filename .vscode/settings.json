@@ -1,0 +1,40 @@
+{
+    "C_Cpp.intelliSenseEngine": "Disabled",
+    "C_Cpp.autocomplete": "Disabled",
+    "clangd.arguments": [
+        "--header-insertion=never"
+    ],
+    "testMate.cpp.discovery.testListCaching": true,
+    "testMate.cpp.test.parallelExecutionOfExecutableLimit": 8,
+    "testMate.cpp.test.advancedExecutables": [
+        {
+            "pattern": "bazel-bin/**/*{_test}",
+            "cwd": "${workspaceFolder}",
+            "gtest": {
+                "testGrouping": {
+                    "groupBySource": {
+                        "label": "${sourceRelPath[1:]}"
+                    }
+                }
+            }
+        }
+    ],
+    "files.watcherExclude": {
+        "**/.git/**": true,
+        "**/.cache/**": true,
+        "**/bazel-*/**": true,
+        "**/external/**": true
+    },
+    "bazel.enableCodeLens": true,
+    "editor.formatOnSave": true,
+    "editor.bracketPairColorization.enabled": true,
+    "editor.guides.bracketPairs": "active",
+    "[dockerfile]": {
+        "editor.quickSuggestions": {
+            "strings": true
+        },
+        "editor.formatOnSave": false,
+    },
+    "python.formatting.provider": "black",
+    "esbonio.sphinx.confDir": ""
+}

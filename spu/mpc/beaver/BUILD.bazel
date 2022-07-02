@@ -1,0 +1,189 @@
+# Copyright 2021 Ant Group Co., Ltd.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+load("//bazel:spu.bzl", "spu_cc_library", "spu_cc_test")
+
+package(default_visibility = ["//visibility:public"])
+
+spu_cc_library(
+    name = "beaver",
+    hdrs = ["beaver.h"],
+    deps = [
+        "//spu/core:array_ref",
+        "//spu/core:type_util",
+    ],
+)
+
+spu_cc_library(
+    name = "beaver_test",
+    testonly = 1,
+    srcs = ["beaver_test.cc"],
+    hdrs = ["beaver_test.h"],
+    deps = [
+        ":beaver",
+        "//spu/mpc/util:ring_ops",
+        "//spu/mpc/util:simulate",
+        "@com_google_googletest//:gtest",
+    ],
+    alwayslink = True,
+)
+
+spu_cc_library(
+    name = "beaver_ref",
+    srcs = ["beaver_ref.cc"],
+    hdrs = ["beaver_ref.h"],
+    deps = [
+        ":beaver",
+        "//spu/mpc/util:ring_ops",
+    ],
+)
+
+spu_cc_test(
+    name = "beaver_ref_test",
+    srcs = ["beaver_ref_test.cc"],
+    deps = [
+        ":beaver_ref",
+        ":beaver_test",
+    ],
+)
+
+spu_cc_library(
+    name = "prg_tensor",
+    hdrs = ["prg_tensor.h"],
+    deps = [
+        "//spu/core:array_ref",
+        "//spu/mpc/util:ring_ops",
+        "@yasl//yasl/crypto:pseudo_random_generator",
+    ],
+)
+
+spu_cc_library(
+    name = "trusted_party",
+    srcs = ["trusted_party.cc"],
+    hdrs = ["trusted_party.h"],
+    deps = [
+        ":prg_tensor",
+        "//spu/core:type_util",
+        "//spu/mpc/util:ring_ops",
+    ],
+)
+
+spu_cc_library(
+    name = "beaver_tfp",
+    srcs = ["beaver_tfp.cc"],
+    hdrs = ["beaver_tfp.h"],
+    deps = [
+        ":beaver",
+        ":trusted_party",
+        "//spu/mpc/util:ring_ops",
+        "@yasl//yasl/link",
+        "@yasl//yasl/utils:serialize",
+    ],
+)
+
+spu_cc_test(
+    name = "beaver_tfp_test",
+    srcs = ["beaver_tfp_test.cc"],
+    deps = [
+        ":beaver_test",
+        ":beaver_tfp",
+    ],
+)
+
+spu_cc_library(
+    name = "beaver_cheetah",
+    srcs = ["beaver_cheetah.cc"],
+    hdrs = ["beaver_cheetah.h"],
+    copts = [
+        "-march=native",
+    ],  #emp-tools release build needs these flags
+    deps = [
+        ":beaver",
+        ":beaver_he",
+        "//spu/crypto/ot/silent:primitives",
+        "//spu/mpc/util:ring_ops",
+        "@yasl//yasl/link",
+    ],
+)
+
+spu_cc_library(
+    name = "beaver_he",
+    srcs = ["beaver_he.cc"],
+    hdrs = ["beaver_he.h"],
+    deps = [
+        ":beaver",
+        ":cheetah_he",
+        ":prg_tensor",
+        "//spu/mpc/util:ring_ops",
+        "//spu/mpc/util:seal_help",
+        "@com_github_microsoft_seal//:seal",
+        "@yasl//yasl/link",
+        "@yasl//yasl/utils:parallel",
+    ],
+)
+
+spu_cc_test(
+    name = "beaver_he_test",
+    srcs = ["beaver_he_test.cc"],
+    deps = [
+        ":beaver_he",
+        ":beaver_test",
+    ],
+)
+
+spu_cc_test(
+    name = "beaver_cheetah_test",
+    size = "large",
+    srcs = ["beaver_cheetah_test.cc"],
+    copts = [
+        "-march=native",
+    ],  #emp-tools release build needs these flags
+    deps = [
+        ":beaver_cheetah",
+        ":beaver_he",
+        ":beaver_test",
+    ],
+)
+
+spu_cc_library(
+    name = "cheetah_he",
+    srcs = [
+        "matvec.cc",
+        "matvec_helper.cc",
+        "modswitch_helper.cc",
+    ],
+    hdrs = [
+        "matvec.h",
+        "matvec_helper.h",
+        "modswitch_helper.h",
+    ],
+    deps = [
+        "//spu/core:array_ref",
+        "//spu/core:xt_helper",
+        "//spu/mpc/util:ring_ops",
+        "//spu/mpc/util:seal_help",
+        "@com_github_microsoft_seal//:seal",
+        "@yasl//yasl/base:int128",
+        "@yasl//yasl/utils:parallel",
+    ],
+)
+
+spu_cc_test(
+    name = "matvec_test",
+    srcs = ["matvec_test.cc"],
+    deps = [
+        ":cheetah_he",
+        "@com_github_xtensor_xtensor//:xtensor",
+    ],
+)

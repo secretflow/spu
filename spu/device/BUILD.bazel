@@ -1,0 +1,176 @@
+# Copyright 2021 Ant Group Co., Ltd.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+load("//bazel:spu.bzl", "spu_cc_binary", "spu_cc_library", "spu_cc_test")
+load("@rules_proto//proto:defs.bzl", "proto_library")
+load("@rules_cc//cc:defs.bzl", "cc_proto_library")
+
+package(default_visibility = ["//visibility:public"])
+
+spu_cc_library(
+    name = "device",
+    deps = [
+        ":frame",
+        ":io",
+    ],
+)
+
+proto_library(
+    name = "device_proto",
+    srcs = ["device.proto"],
+    deps = [
+        "//spu:spu_proto",
+    ],
+)
+
+cc_proto_library(
+    name = "device_cc_proto",
+    deps = [":device_proto"],
+)
+
+spu_cc_library(
+    name = "io",
+    srcs = ["io.cc"],
+    hdrs = ["io.h"],
+    deps = [
+        ":device_cc_proto",
+        ":symbol_table",
+        "//spu:spu_cc_proto",
+        "//spu/core:xt_helper",
+        "//spu/hal:constants",
+        "//spu/hal:context",
+        "//spu/hal:value",
+        "//spu/mpc:factory",
+    ],
+)
+
+spu_cc_test(
+    name = "io_test",
+    srcs = ["io_test.cc"],
+    deps = [
+        ":io",
+        "//spu/mpc/util:simulate",
+    ],
+)
+
+spu_cc_library(
+    name = "frame",
+    srcs = ["frame.cc"],
+    hdrs = ["frame.h"],
+    deps = [
+        ":pphlo_type_checker",
+        "//spu/dialect:pphlo_dialect",
+        "//spu/hal:value",
+        "@llvm-project//mlir:IR",
+        "@yasl//yasl/base:exception",
+    ],
+)
+
+spu_cc_library(
+    name = "executor",
+    srcs = ["executor.cc"],
+    hdrs = ["executor.h"],
+    deps = [
+        ":symbol_table",
+        "//spu:spu_cc_proto",
+        "//spu/hal:context",
+        "//spu/hal:polymorphic",
+        "//spu/hal:value",
+    ],
+)
+
+spu_cc_library(
+    name = "pphlo_executor",
+    srcs = ["pphlo_executor.cc"],
+    hdrs = ["pphlo_executor.h"],
+    deps = [
+        ":executor",
+        ":frame",
+        "//spu/dialect:pphlo_dialect",
+        "//spu/hal",
+        "@llvm-project//mlir:Parser",
+        "@yasl//yasl/utils:thread_pool",
+    ],
+)
+
+spu_cc_test(
+    name = "pphlo_executor_test",
+    srcs = ["pphlo_executor_test.cc"],
+    deps = [
+        ":io",
+        ":pphlo_executor",
+        ":test_utils",
+    ],
+)
+
+spu_cc_binary(
+    name = "pphlo_executor_bench",
+    testonly = True,
+    srcs = ["pphlo_executor_bench.cc"],
+    data = [
+        "//spu/compiler/test_data:pphlo_asms",
+    ],
+    deps = [
+        ":pphlo_executor",
+        "//spu/device:test_utils",
+        "@com_github_google_benchmark//:benchmark",
+    ],
+)
+
+spu_cc_library(
+    name = "test_utils",
+    testonly = True,
+    hdrs = ["test_utils.h"],
+    deps = [
+        ":io",
+        ":symbol_table",
+        "//spu:spu_cc_proto",
+        "//spu/core:array_ref",
+        "//spu/mpc/util:simulate",
+    ],
+)
+
+spu_cc_library(
+    name = "symbol_table",
+    srcs = ["symbol_table.cc"],
+    hdrs = ["symbol_table.h"],
+    deps = [
+        ":device_cc_proto",
+        "//spu/core:xt_helper",
+        "//spu/hal:value",
+    ],
+)
+
+spu_cc_library(
+    name = "pphlo_type_checker",
+    srcs = ["pphlo_type_checker.cc"],
+    hdrs = ["pphlo_type_checker.h"],
+    deps = [
+        "//spu/dialect:pphlo_dialect",
+        "//spu/hal:value",
+        "@llvm-project//mlir:IR",
+        "@yasl//yasl/base:exception",
+    ],
+)
+
+spu_cc_binary(
+    name = "pphlo_executor_debug_runner",
+    testonly = True,
+    srcs = ["pphlo_executor_debug_runner.cc"],
+    deps = [
+        ":pphlo_executor",
+        ":test_utils",
+        "@llvm-project//llvm:Support",
+    ],
+)

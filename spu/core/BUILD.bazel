@@ -1,0 +1,198 @@
+# Copyright 2021 Ant Group Co., Ltd.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+load("//bazel:spu.bzl", "spu_cc_library", "spu_cc_test")
+
+package(default_visibility = ["//visibility:public"])
+
+spu_cc_library(
+    name = "core",
+    deps = [
+        ":array_ref",
+        ":encoding",
+        ":ndarray_ref",
+        ":profile",
+        ":shape_util",
+        ":type",
+        ":type_util",
+        ":xt_helper",
+        "@yasl//yasl/base:buffer",
+    ],
+)
+
+spu_cc_library(
+    name = "profile",
+    srcs = ["profile.cc"],
+    hdrs = ["profile.h"],
+    deps = [
+        "@yasl//yasl/base:exception",
+        "@yasl//yasl/utils:scope_guard",
+    ],
+)
+
+spu_cc_test(
+    name = "profile_test",
+    srcs = ["profile_test.cc"],
+    deps = [
+        ":profile",
+        "@yasl//yasl/base:exception",
+    ],
+)
+
+spu_cc_library(
+    name = "type_util",
+    srcs = ["type_util.cc"],
+    hdrs = ["type_util.h"],
+    deps = [
+        "//spu:spu_cc_proto",
+        "@com_google_absl//absl/types:span",
+        "@yasl//yasl/base:exception",
+        "@yasl//yasl/base:int128",
+    ],
+)
+
+spu_cc_library(
+    name = "encoding",
+    srcs = ["encoding.cc"],
+    hdrs = ["encoding.h"],
+    deps = [
+        ":array_ref",
+        ":ndarray_ref",
+        ":xt_helper",
+        "@yasl//yasl/crypto:pseudo_random_generator",
+    ],
+)
+
+spu_cc_test(
+    name = "encoding_test",
+    srcs = ["encoding_test.cc"],
+    deps = [
+        ":encoding",
+        ":xt_helper",
+    ],
+)
+
+spu_cc_library(
+    name = "shape_util",
+    srcs = ["shape_util.cc"],
+    hdrs = ["shape_util.h"],
+    deps = [
+        ":type_util",
+    ],
+)
+
+spu_cc_test(
+    name = "shape_util_test",
+    srcs = ["shape_util_test.cc"],
+    deps = [
+        ":shape_util",
+    ],
+)
+
+spu_cc_library(
+    name = "type",
+    srcs = ["type.cc"],
+    hdrs = ["type.h"],
+    deps = [
+        ":type_util",
+        "@yasl//yasl/base:exception",
+    ],
+)
+
+spu_cc_test(
+    name = "type_test",
+    srcs = ["type_test.cc"],
+    deps = [
+        ":type",
+    ],
+)
+
+spu_cc_library(
+    name = "array_ref",
+    srcs = ["array_ref.cc"],
+    hdrs = ["array_ref.h"],
+    deps = [
+        ":shape_util",
+        ":type",
+        ":vectorize",
+        "@yasl//yasl/base:buffer",
+        "@yasl//yasl/base:exception",
+    ],
+)
+
+spu_cc_test(
+    name = "array_ref_test",
+    srcs = ["array_ref_test.cc"],
+    deps = [
+        ":array_ref",
+    ],
+)
+
+spu_cc_library(
+    name = "ndarray_ref",
+    srcs = ["ndarray_ref.cc"],
+    hdrs = ["ndarray_ref.h"],
+    deps = [
+        ":array_ref",
+        ":shape_util",
+        ":type",
+        "@yasl//yasl/base:buffer",
+        "@yasl//yasl/base:exception",
+    ],
+)
+
+spu_cc_test(
+    name = "ndarray_ref_test",
+    srcs = ["ndarray_ref_test.cc"],
+    deps = [
+        ":ndarray_ref",
+    ],
+)
+
+spu_cc_library(
+    name = "xt_helper",
+    srcs = ["xt_helper.cc"],
+    hdrs = ["xt_helper.h"],
+    deps = [
+        ":array_ref",
+        ":ndarray_ref",
+        "@com_github_xtensor_xtensor//:xtensor",
+        "@yasl//yasl/crypto:pseudo_random_generator",
+    ],
+)
+
+spu_cc_test(
+    name = "xt_helper_test",
+    srcs = ["xt_helper_test.cc"],
+    deps = [
+        ":xt_helper",
+    ],
+)
+
+spu_cc_library(
+    name = "vectorize",
+    hdrs = ["vectorize.h"],
+    deps = [
+        "@com_google_absl//absl/types:span",
+        "@yasl//yasl/base:exception",
+    ],
+)
+
+spu_cc_test(
+    name = "vectorize_test",
+    srcs = ["vectorize_test.cc"],
+    deps = [
+        ":vectorize",
+    ],
+)

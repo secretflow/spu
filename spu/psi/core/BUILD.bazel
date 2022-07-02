@@ -1,0 +1,195 @@
+# Copyright 2021 Ant Group Co., Ltd.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+load("//bazel:spu.bzl", "spu_cc_binary", "spu_cc_library", "spu_cc_test")
+load("@rules_proto//proto:defs.bzl", "proto_library")
+load("@rules_cc//cc:defs.bzl", "cc_proto_library")
+
+package(default_visibility = ["//visibility:public"])
+
+spu_cc_library(
+    name = "ecdh_psi",
+    srcs = ["ecdh_psi.cc"],
+    hdrs = ["ecdh_psi.h"],
+    deps = [
+        ":serializable_cc_proto",
+        "//spu/psi/cryptor:cryptor_selector",
+        "//spu/psi/provider",
+        "//spu/psi/store",
+        "@com_google_absl//absl/strings",
+        "@yasl//yasl/link",
+        "@yasl//yasl/utils:parallel",
+    ],
+)
+
+spu_cc_test(
+    name = "ecdh_psi_test",
+    srcs = ["ecdh_psi_test.cc"],
+    deps = [
+        ":ecdh_psi",
+    ],
+)
+
+spu_cc_binary(
+    name = "ecdh_psi_bench",
+    srcs = ["ecdh_psi_bench.cc"],
+    deps = [
+        ":ecdh_psi",
+        "@com_github_google_benchmark//:benchmark",
+    ],
+)
+
+spu_cc_library(
+    name = "cuckoo_index",
+    srcs = ["cuckoo_index.cc"],
+    hdrs = ["cuckoo_index.h"],
+    linkopts = ["-lm"],
+    deps = [
+        "@com_google_absl//absl/types:span",
+        "@yasl//yasl/base:exception",
+        "@yasl//yasl/base:int128",
+    ],
+)
+
+spu_cc_test(
+    name = "cuckoo_index_test",
+    srcs = ["cuckoo_index_test.cc"],
+    deps = [
+        ":cuckoo_index",
+        "@yasl//yasl/crypto:symmetric_crypto",
+    ],
+)
+
+spu_cc_library(
+    name = "kkrt_psi",
+    srcs = ["kkrt_psi.cc"],
+    hdrs = ["kkrt_psi.h"],
+    deps = [
+        ":cuckoo_index",
+        ":serializable_cc_proto",
+        ":throttle_control_link",
+        ":utils",
+        "@com_google_absl//absl/strings",
+        "@yasl//yasl/crypto:hash_util",
+        "@yasl//yasl/link",
+        "@yasl//yasl/mpctools/ot:base_ot",
+        "@yasl//yasl/mpctools/ot:iknp_ot_extension",
+        "@yasl//yasl/mpctools/ot:kkrt_ot_extension",
+        "@yasl//yasl/utils:rand",
+    ],
+)
+
+spu_cc_test(
+    name = "kkrt_psi_test",
+    srcs = ["kkrt_psi_test.cc"],
+    deps = [
+        ":kkrt_psi",
+        "@yasl//yasl/crypto:hash_util",
+    ],
+)
+
+spu_cc_library(
+    name = "ecdh_oprf_psi",
+    srcs = ["ecdh_oprf_psi.cc"],
+    hdrs = ["ecdh_oprf_psi.h"],
+    deps = [
+        ":ecdh_psi",
+        ":serializable_cc_proto",
+        "//spu/psi/cryptor/ecdh_oprf:ecdh_oprf_selector",
+        "//spu/psi/provider",
+        "//spu/psi/store",
+        "@com_google_absl//absl/strings",
+        "@yasl//yasl/link",
+        "@yasl//yasl/utils:parallel",
+    ],
+)
+
+spu_cc_test(
+    name = "ecdh_oprf_psi_test",
+    srcs = ["ecdh_oprf_psi_test.cc"],
+    deps = [
+        ":ecdh_oprf_psi",
+    ],
+)
+
+spu_cc_library(
+    name = "throttle_control_link",
+    srcs = ["throttle_control_link.cc"],
+    hdrs = ["throttle_control_link.h"],
+    deps = [
+        ":utils",
+        "@yasl//yasl/link",
+    ],
+)
+
+spu_cc_test(
+    name = "throttle_control_link_test",
+    srcs = ["throttle_control_link_test.cc"],
+    deps = [
+        ":throttle_control_link",
+    ],
+)
+
+spu_cc_library(
+    name = "ecdh_psi_mparty",
+    srcs = ["ecdh_psi_mparty.cc"],
+    hdrs = ["ecdh_psi_mparty.h"],
+    deps = [
+        ":ecdh_psi",
+    ],
+)
+
+spu_cc_test(
+    name = "ecdh_psi_mparty_test",
+    srcs = ["ecdh_psi_mparty_test.cc"],
+    deps = [
+        ":ecdh_psi_mparty",
+    ],
+)
+
+spu_cc_library(
+    name = "ecdh_psi_3party",
+    srcs = ["ecdh_psi_3party.cc"],
+    hdrs = ["ecdh_psi_3party.h"],
+    deps = [
+        ":ecdh_psi_mparty",
+    ],
+)
+
+spu_cc_test(
+    name = "ecdh_psi_3party_test",
+    srcs = ["ecdh_psi_3party_test.cc"],
+    deps = [
+        ":ecdh_psi_3party",
+    ],
+)
+
+spu_cc_library(
+    name = "utils",
+    hdrs = ["utils.h"],
+    deps = [
+        ":serializable_cc_proto",
+        "@yasl//yasl/base:buffer",
+    ],
+)
+
+proto_library(
+    name = "serializable_proto",
+    srcs = ["serializable.proto"],
+)
+
+cc_proto_library(
+    name = "serializable_cc_proto",
+    deps = [":serializable_proto"],
+)

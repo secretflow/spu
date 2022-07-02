@@ -1,0 +1,152 @@
+diff --git a/emp-ot/ferret/ferret_cot.hpp b/emp-ot/ferret/ferret_cot.hpp
+index 3798998..055932b 100644
+--- a/emp-ot/ferret/ferret_cot.hpp
++++ b/emp-ot/ferret/ferret_cot.hpp
+@@ -137,12 +137,14 @@ void FerretCOT<T>::setup(std::string pre_file) {
+ 		OTPre<T> pre_ot_ini(ios[0], mpcot_ini.tree_height-1, mpcot_ini.tree_n);
+ 		LpnF2<T, 10> lpn(party, n_pre, k_pre, pool, io, pool->size());
+ 
+-		block pre_data_ini[k_pre+mpcot_ini.consist_check_cot_num];
++		block *pre_data_ini = new block[k_pre+mpcot_ini.consist_check_cot_num];
+ 		memset(this->ot_pre_data, 0, n_pre*16);
+ 
+ 		base_cot->cot_gen(&pre_ot_ini, pre_ot_ini.n);
+ 		base_cot->cot_gen(pre_data_ini, k_pre+mpcot_ini.consist_check_cot_num);
+ 		extend(ot_pre_data, &mpcot_ini, &pre_ot_ini, &lpn, pre_data_ini);
++
++        delete []pre_data_ini;
+ 	}
+ 
+ 	fut.get();
+diff --git a/emp-ot/ferret/mpcot_reg.h b/emp-ot/ferret/mpcot_reg.h
+index 6659aa7..6b01601 100644
+--- a/emp-ot/ferret/mpcot_reg.h
++++ b/emp-ot/ferret/mpcot_reg.h
+@@ -123,6 +123,10 @@ public:
+ 		for(int i = start; i < end; ++i)
+ 			exec_f2k_sender(senders[i], ot, sparse_vector+i*leave_n, 
+ 					ios[threads - 1], i);
++
++        for (int i = 0; i < threads; i++)
++            ios[i]->flush();
++
+ 		for (auto & f : fut) f.get();
+ 	}
+ 
+@@ -152,7 +156,7 @@ public:
+ 			block *ggm_tree_mem, IO *io, int i) {
+ 		sender->compute(ggm_tree_mem, Delta_f2k);
+ 		sender->template send_f2k<OTPre<IO>>(ot, io, i);
+-		io->flush();
++		//io->flush();
+ 		if(is_malicious)
+ 			sender->consistency_check_msg_gen(consist_check_VW+i);
+ 	}
+diff --git a/emp-ot/ferret/preot.h b/emp-ot/ferret/preot.h
+index 0ac7641..a0ae2d3 100644
+--- a/emp-ot/ferret/preot.h
++++ b/emp-ot/ferret/preot.h
+@@ -10,10 +10,6 @@ class OTPre { public:
+ 	block * pre_data = nullptr;
+ 	bool * bits = nullptr;
+ 	int n;
+-	vector<block*> pointers;
+-	vector<const bool*> choices;
+-	vector<const block*> pointers0;
+-	vector<const block*> pointers1;
+ 
+ 	CCRH ccrh;
+ 	int length, count;
+diff --git a/emp-ot/ferret/twokeyprp.h b/emp-ot/ferret/twokeyprp.h
+index fd6236d..c2361a3 100644
+--- a/emp-ot/ferret/twokeyprp.h
++++ b/emp-ot/ferret/twokeyprp.h
+@@ -9,8 +9,8 @@ class TwoKeyPRP { public:
+ 	emp::AES_KEY aes_key[2];
+ 
+ 	TwoKeyPRP(block seed0, block seed1) {
+-		AES_set_encrypt_key((const block)seed0, aes_key);
+-		AES_set_encrypt_key((const block)seed1, &aes_key[1]);
++		AES_set_encrypt_key(seed0, aes_key);
++		AES_set_encrypt_key(seed1, &aes_key[1]);
+ 	}
+ 
+ 	void node_expand_1to2(block *children, block parent) {
+
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index fa06fd7..faf9802 100755
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -12,5 +12,8 @@ include_directories(${EMP-TOOL_INCLUDE_DIRS})
+ install(FILES cmake/emp-ot-config.cmake DESTINATION cmake/)
+ install(DIRECTORY emp-ot DESTINATION include/)
+ 
+-ENABLE_TESTING()
+-ADD_SUBDIRECTORY(test)
++option(ENABLE_TESTS "Enable tests" OFF)
++if (${ENABLE_TESTS})
++    ENABLE_TESTING()
++    ADD_SUBDIRECTORY(test)
++endif()
+
+diff --git a/emp-ot/ferret/twokeyprp.h b/emp-ot/ferret/twokeyprp.h
+index fd6236d..76e1f89 100644
+--- a/emp-ot/ferret/twokeyprp.h
++++ b/emp-ot/ferret/twokeyprp.h
+@@ -4,6 +4,10 @@
+ #include "emp-tool/emp-tool.h"
+ using namespace emp;
+ 
++#ifdef __aarch64__
++#include "emp-tool/utils/sse2neon.h"
++#endif
++
+ //kappa->2kappa PRG, implemented as G(k) = PRF_seed0(k)\xor k || PRF_seed1(k)\xor k
+ class TwoKeyPRP { public:
+ 	emp::AES_KEY aes_key[2];
+@@ -35,8 +39,10 @@ class TwoKeyPRP { public:
+ 		children[0] = children[0] ^ tmp[0];
+ 	}
+ 
++#if defined (__x86_64__) || defined (__aarch64__)
+ #ifdef __x86_64__
+ 	__attribute__((target("aes,sse2")))
++#endif
+ 	inline void permute_block_4blks(block *blks) {
+ 		blks[0] = _mm_xor_si128(blks[0], aes_key[0].rd_key[0]);
+ 		blks[1] = _mm_xor_si128(blks[1], aes_key[1].rd_key[0]);
+@@ -54,7 +60,9 @@ class TwoKeyPRP { public:
+ 		blks[3] = _mm_aesenclast_si128(blks[3], aes_key[1].rd_key[aes_key[1].rounds]);
+ 	}
+ 
++#ifdef __x86_64__
+ 	__attribute__((target("aes,sse2")))
++#endif
+ 	inline void permute_block_2blks(block *blks) {
+ 		blks[0] = _mm_xor_si128(blks[0], aes_key[0].rd_key[0]);
+ 		blks[1] = _mm_xor_si128(blks[1], aes_key[1].rd_key[0]);
+@@ -65,24 +73,6 @@ class TwoKeyPRP { public:
+ 		blks[0] = _mm_aesenclast_si128(blks[0], aes_key[0].rd_key[aes_key[0].rounds]);
+ 		blks[1] = _mm_aesenclast_si128(blks[1], aes_key[1].rd_key[aes_key[1].rounds]);
+ 	}
+-#elif __aarch64__
+-	inline void permute_block_4blks(block *_blks) {
+-		uint8x16_t * blks = (uint8x16_t*)(_blks);
+-		for (unsigned int i = 0; i < 10; ++i) {
+-			blks[0] = vaesmcq_u8(vaeseq_u8(blks[0], vreinterpretq_u8_m128i(aes_key[0].rd_key[i])));
+-			blks[2] = vaesmcq_u8(vaeseq_u8(blks[2], vreinterpretq_u8_m128i(aes_key[0].rd_key[i])));
+-			blks[1] = vaesmcq_u8(vaeseq_u8(blks[1], vreinterpretq_u8_m128i(aes_key[1].rd_key[i])));
+-			blks[3] = vaesmcq_u8(vaeseq_u8(blks[3], vreinterpretq_u8_m128i(aes_key[1].rd_key[i])));
+-		}
+-	}
+-
+-	inline void permute_block_2blks(block *_blks) {
+-		uint8x16_t * blks = (uint8x16_t*)(_blks);
+-		for (unsigned int i = 0; i < 10; ++i) {
+-			blks[0] = vaesmcq_u8(vaeseq_u8(blks[2], vreinterpretq_u8_m128i(aes_key[0].rd_key[i])));
+-			blks[1] = vaesmcq_u8(vaeseq_u8(blks[1], vreinterpretq_u8_m128i(aes_key[1].rd_key[i])));
+-		}
+-	}
+ #endif
+ };
+ #endif

@@ -1,0 +1,98 @@
+# Copyright 2021 Ant Group Co., Ltd.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+load("//bazel:spu.bzl", "spu_cc_library")
+
+package(default_visibility = ["//visibility:public"])
+
+spu_cc_library(
+    name = "io_interface",
+    hdrs = ["io_interface.h"],
+    deps = [
+        "//spu/core:array_ref",
+        "//spu/core:type",
+    ],
+)
+
+spu_cc_library(
+    name = "io_test",
+    testonly = 1,
+    srcs = ["io_test.cc"],
+    hdrs = ["io_test.h"],
+    deps = [
+        ":io_interface",
+        "//spu/mpc/util:ring_ops",
+        "//spu/mpc/util:simulate",
+        "@com_google_googletest//:gtest",
+    ],
+    alwayslink = True,
+)
+
+spu_cc_library(
+    name = "factory",
+    srcs = ["factory.cc"],
+    hdrs = ["factory.h"],
+    deps = [
+        "//spu:spu_cc_proto",
+        "//spu/mpc/aby3",
+        "//spu/mpc/cheetah",
+        "//spu/mpc/ref2k",
+        "//spu/mpc/semi2k",
+    ],
+)
+
+spu_cc_library(
+    name = "kernel",
+    srcs = ["kernel.cc"],
+    hdrs = ["kernel.h"],
+    deps = [
+        "//spu/core:array_ref",
+        "//spu/core:type",
+        "//spu/mpc/util:cexpr",
+    ],
+)
+
+spu_cc_library(
+    name = "object",
+    srcs = ["object.cc"],
+    hdrs = ["object.h"],
+    deps = [
+        ":kernel",
+        "//spu/core:profile",
+    ],
+)
+
+spu_cc_library(
+    name = "interfaces",
+    srcs = ["interfaces.cc"],
+    hdrs = ["interfaces.h"],
+    deps = [
+        ":object",
+    ],
+)
+
+spu_cc_library(
+    name = "compute_test",
+    testonly = 1,
+    srcs = ["compute_test.cc"],
+    hdrs = ["compute_test.h"],
+    deps = [
+        ":interfaces",
+        ":object",
+        "//spu/mpc/util:communicator",
+        "//spu/mpc/util:simulate",
+        "@com_google_googletest//:gtest",
+    ],
+    alwayslink = True,
+)
