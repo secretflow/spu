@@ -34,7 +34,7 @@ docker exec -it spu-gcc11-anolis-dev-$(whoami) bash
 #### Linux
 
 ```sh
-Install gcc>=11.2, cmake>=3.18, ninja, nasm>=2.15, python==3.8, bazel==4.2
+Install gcc>=11.2, cmake>=3.18, ninja, nasm>=2.15, python==3.8, bazel==5.1.1
 
 python3 -m pip install -r docker/requirements.txt
 ```
