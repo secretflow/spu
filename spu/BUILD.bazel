@@ -20,7 +20,7 @@ load("//bazel:spu.bzl", "spu_version_file")
 
 package(default_visibility = ["//visibility:public"])
 
-SPU_VERSION = "v0.1.0-beta"
+SPU_VERSION = "0.1.0.beta"
 
 proto_library(
     name = "spu_proto",
@@ -60,6 +60,7 @@ spu_version_file(
 
 py_wheel(
     name = "spu_wheel",
+    abi = "cp38",
     author = "secretflow",
     distribution = "spu",
     license = "Apache 2.0",
