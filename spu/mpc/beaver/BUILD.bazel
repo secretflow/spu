@@ -105,9 +105,14 @@ spu_cc_library(
     name = "beaver_cheetah",
     srcs = ["beaver_cheetah.cc"],
     hdrs = ["beaver_cheetah.h"],
-    copts = [
-        "-march=native",
-    ],  #emp-tools release build needs these flags
+    copts = select({
+        "@bazel_tools//src/conditions:darwin_arm64": [
+            "-mcpu=apple-m1",
+        ],
+        "//conditions:default": [
+            "-march=native",
+        ],
+    }),  #emp-tools release build needs these flags
     deps = [
         ":beaver",
         ":beaver_he",
@@ -146,9 +151,14 @@ spu_cc_test(
     name = "beaver_cheetah_test",
     size = "large",
     srcs = ["beaver_cheetah_test.cc"],
-    copts = [
-        "-march=native",
-    ],  #emp-tools release build needs these flags
+    copts = select({
+        "@bazel_tools//src/conditions:darwin_arm64": [
+            "-mcpu=apple-m1",
+        ],
+        "//conditions:default": [
+            "-march=native",
+        ],
+    }),  #emp-tools release build needs these flags
     deps = [
         ":beaver_cheetah",
         ":beaver_he",
