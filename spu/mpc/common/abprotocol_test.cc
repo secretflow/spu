@@ -227,7 +227,12 @@ TEST_P(ArithmeticTest, LShiftA) {
     auto p0 = rand_p(obj.get(), field, kNumel);
     auto b0 = p2a(obj.get(), p0);
 
-    for (auto bits : kShiftBits) { /* WHEN */
+    for (auto bits : kShiftBits) {
+      if (bits >= b0.elsize() * 8) {
+        // Shift more than elsize is a UB
+        continue;
+      }
+      /* WHEN */
       auto prev = obj->getState<Communicator>()->getStats();
       auto tmp = lshift_a(obj.get(), b0, bits);
       auto cost = obj->getState<Communicator>()->getStats() - prev;
@@ -405,6 +410,10 @@ TEST_BOOLEAN_BINARY_OP(xor)
       auto b0 = p2b(obj.get(), p0);                                       \
                                                                           \
       for (auto bits : kShiftBits) {                                      \
+        if (bits >= b0.elsize() * 8) {                                    \
+          continue;                                                       \
+        }                                                                 \
+        SPDLOG_INFO("shift bits = {}, elsize = {}", bits, b0.elsize());   \
         /* WHEN */                                                        \
         auto prev = obj->getState<Communicator>()->getStats();            \
         auto tmp = OP##_b(obj.get(), b0, bits);                           \
