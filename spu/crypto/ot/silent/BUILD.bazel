@@ -12,9 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("//bazel:spu.bzl", "spu_cc_binary", "spu_cc_library", "spu_cc_test")
+load("//bazel:spu.bzl", "spu_cc_library", "spu_cc_test")
 
 package(default_visibility = ["//visibility:public"])
+
+EMP_COPT_FLAGS = select({
+    "@platforms//cpu:aarch64": ["-O3"],
+    "//conditions:default": ["-march=native"],
+})
 
 spu_cc_library(
     name = "primitives",
@@ -41,7 +46,7 @@ spu_cc_library(
 spu_cc_test(
     name = "cheetah_io_test",
     srcs = ["cheetah_io_test.cc"],
-    copts = ["-O3"],
+    copts = EMP_COPT_FLAGS,
     deps = [
         "cheetah_io",
     ],
@@ -61,7 +66,7 @@ spu_cc_library(
         "silent_ot_pack.h",
         "utils.h",
     ],
-    copts = ["-O3"],
+    copts = EMP_COPT_FLAGS,
     deps = [
         "cheetah_io",
         "@com_github_emptoolkit_emp_ot//:emp-ot",
@@ -78,7 +83,7 @@ spu_cc_library(
 spu_cc_test(
     name = "silent_ot_test",
     srcs = ["silent_ot_test.cc"],
-    copts = ["-O3"],
+    copts = EMP_COPT_FLAGS,
     deps = [
         "silent_ot",
     ],
@@ -88,7 +93,7 @@ spu_cc_library(
     name = "nonlinear_protocols",
     srcs = ["nonlinear_protocols.cc"],
     hdrs = ["nonlinear_protocols.h"],
-    copts = ["-O3"],
+    copts = EMP_COPT_FLAGS,
     deps = [
         "silent_ot",
     ],

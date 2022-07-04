@@ -16,7 +16,10 @@ load("//bazel:spu.bzl", "spu_cc_library", "spu_cc_test")
 
 package(default_visibility = ["//visibility:public"])
 
-EMP_COPT_FLAGS = ["-O3"]  #emp-tools release build needs these flags
+EMP_COPT_FLAGS = select({
+    "@platforms//cpu:aarch64": ["-O3"],
+    "//conditions:default": ["-march=native"],
+})
 
 spu_cc_library(
     name = "cheetah",

@@ -16,6 +16,11 @@ load("//bazel:spu.bzl", "spu_cc_library", "spu_cc_test")
 
 package(default_visibility = ["//visibility:public"])
 
+EMP_COPT_FLAGS = select({
+    "@platforms//cpu:aarch64": ["-O3"],
+    "//conditions:default": ["-march=native"],
+})
+
 spu_cc_library(
     name = "beaver",
     hdrs = ["beaver.h"],
@@ -105,7 +110,7 @@ spu_cc_library(
     name = "beaver_cheetah",
     srcs = ["beaver_cheetah.cc"],
     hdrs = ["beaver_cheetah.h"],
-    copts = ["-O3"],  #emp-tools release build needs these flags
+    copts = EMP_COPT_FLAGS,
     deps = [
         ":beaver",
         ":beaver_he",
@@ -144,7 +149,7 @@ spu_cc_test(
     name = "beaver_cheetah_test",
     size = "large",
     srcs = ["beaver_cheetah_test.cc"],
-    copts = ["-O3"],  #emp-tools release build needs these flags
+    copts = EMP_COPT_FLAGS,
     deps = [
         ":beaver_cheetah",
         ":beaver_he",

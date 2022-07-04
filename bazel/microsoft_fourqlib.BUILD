@@ -15,10 +15,7 @@ make(
             "AVX2=TRUE",
             "ASM=FALSE",
         ],
-        "@bazel_tools//src/conditions:linux_aarch64": [
-            "ARCH=ARM64",
-        ],
-        "@bazel_tools//src/conditions:darwin_arm64": [
+        "@platforms//cpu:aarch64": [
             "ARCH=ARM64",
         ],
         "//conditions:default": [
