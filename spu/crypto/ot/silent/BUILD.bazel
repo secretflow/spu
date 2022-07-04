@@ -41,14 +41,7 @@ spu_cc_library(
 spu_cc_test(
     name = "cheetah_io_test",
     srcs = ["cheetah_io_test.cc"],
-    copts = select({
-        "@bazel_tools//src/conditions:darwin_arm64": [
-            "-mcpu=apple-m1",
-        ],
-        "//conditions:default": [
-            "-march=native",
-        ],
-    }),
+    copts = ["-O3"],
     deps = [
         "cheetah_io",
     ],
@@ -68,14 +61,7 @@ spu_cc_library(
         "silent_ot_pack.h",
         "utils.h",
     ],
-    copts = select({
-        "@bazel_tools//src/conditions:darwin_arm64": [
-            "-mcpu=apple-m1",
-        ],
-        "//conditions:default": [
-            "-march=native",
-        ],
-    }),
+    copts = ["-O3"],
     deps = [
         "cheetah_io",
         "@com_github_emptoolkit_emp_ot//:emp-ot",
@@ -92,14 +78,7 @@ spu_cc_library(
 spu_cc_test(
     name = "silent_ot_test",
     srcs = ["silent_ot_test.cc"],
-    copts = select({
-        "@bazel_tools//src/conditions:darwin_arm64": [
-            "-mcpu=apple-m1",
-        ],
-        "//conditions:default": [
-            "-march=native",
-        ],
-    }),
+    copts = ["-O3"],
     deps = [
         "silent_ot",
     ],
@@ -109,14 +88,7 @@ spu_cc_library(
     name = "nonlinear_protocols",
     srcs = ["nonlinear_protocols.cc"],
     hdrs = ["nonlinear_protocols.h"],
-    copts = select({
-        "@bazel_tools//src/conditions:darwin_arm64": [
-            "-mcpu=apple-m1",
-        ],
-        "//conditions:default": [
-            "-march=native",
-        ],
-    }),
+    copts = ["-O3"],
     deps = [
         "silent_ot",
     ],
