@@ -1,6 +1,5 @@
 FROM openanolis/anolisos:8.4-x86_64
 
-
 # GCC version
 ARG DEVTOOLSET_VERSION=11
 
