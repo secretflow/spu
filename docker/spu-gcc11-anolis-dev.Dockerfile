@@ -46,8 +46,8 @@ RUN python3 -m pip install --requirement /tmp/requirements.txt
 
 # install bazel 
 RUN yum install -y java-11-openjdk-devel.x86_64
-RUN wget https://github.com/bazelbuild/bazel/releases/download/5.1.1/bazel-5.1.1-installer-linux-x86_64.sh \
-    && chmod +x ./bazel-5.1.1-installer-linux-x86_64.sh && ./bazel-5.1.1-installer-linux-x86_64.sh
+RUN wget https://github.com/bazelbuild/bazel/releases/download/5.2.0/bazel-5.2.0-installer-linux-x86_64.sh \
+    && chmod +x ./bazel-5.2.0-installer-linux-x86_64.sh && ./bazel-5.2.0-installer-linux-x86_64.sh
 
 RUN echo -e "\
 [CentOSAppStream] \n\
