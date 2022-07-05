@@ -99,14 +99,18 @@ enum ProtocolKind {
   // Hence, it should only be selected for debugging purposes.
   REF2K = 1;
 
-  // A semi-honest multi-party protocol. This protocol requires a trusted third party to generate the offline correlated randoms.
-  // Currently, Secretflow by default ship this protocol with a trusted first party. Hence, it should only be used for debugging purposes.
+  // A semi-honest multi-party protocol. This protocol requires a trusted third
+  // party to generate the offline correlated randoms. Currently, SecretFlow by
+  // default ship this protocol with a trusted first party. Hence, it should
+  // only be used for debugging purposes.
   SEMI2K = 2;
 
-  // A honest majority 3PC-protocol. Secretflow provides the semi-honest implementation without Yao.
+  // A honest majority 3PC-protocol. SecretFlow provides the semi-honest
+  // implementation without Yao.
   ABY3 = 3;
 
-  // The famous [Cheetah](https://eprint.iacr.org/2022/207) protocol, a very fast 2PC protocol.
+  // The famous [Cheetah](https://eprint.iacr.org/2022/207) protocol, a very
+  // fast 2PC protocol.
   CHEETAH = 4;
 }
 
