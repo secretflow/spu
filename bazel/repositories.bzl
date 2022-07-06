@@ -29,7 +29,7 @@ def spu_deps():
     maybe(
         git_repository,
         name = "yasl",
-        commit = "3a828f3d41153afaff6021558df9db7740ae06db",
+        commit = "5ee0e3346597cf6118b4a0f09205a97f535355b7",
         recursive_init_submodules = True,
         remote = "{}/yasl.git".format(SECRETFLOW_GIT),
     )

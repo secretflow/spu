@@ -7,7 +7,7 @@ index 7b6fd07..7687e05 100644
  endif
  
 -ADDITIONAL_SETTINGS=-fwrapv -fomit-frame-pointer -march=native
-+ADDITIONAL_SETTINGS=-fwrapv -fomit-frame-pointer -march=native -fPIC
++ADDITIONAL_SETTINGS=-fwrapv -fomit-frame-pointer -O3 -fPIC
  ifeq "$(EXTENDED_SET)" "FALSE"
      ADDITIONAL_SETTINGS=
  endif

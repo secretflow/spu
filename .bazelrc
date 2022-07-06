@@ -18,7 +18,7 @@ test --test_timeout=1800
 build:macos --features=-supports_dynamic_linker
 build:macos --cxxopt -Wno-deprecated-enum-enum-conversion
 build:macos --cxxopt -Wno-deprecated-anon-enum-enum-conversion
-build:macos --copt -mmacosx-version-min=11.0
+build:macos --macos_minimum_os=11.0
 
 build:asan --strip=never
 build:asan --copt -fno-sanitize-recover=all

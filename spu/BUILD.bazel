@@ -65,7 +65,8 @@ py_wheel(
     distribution = "spu",
     license = "Apache 2.0",
     platform = select({
-        "@bazel_tools//src/conditions:darwin": "macosx_10_16_x86_64",
+        "@bazel_tools//src/conditions:darwin_x86_64": "macosx_11_0_x86_64",
+        "@bazel_tools//src/conditions:darwin_arm64": "macosx_11_0_arm64",
         "//conditions:default": "manylinux_2_17_x86_64",
     }),
     python_requires = "==3.8.*",

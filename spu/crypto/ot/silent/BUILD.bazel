@@ -12,7 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("//bazel:spu.bzl", "spu_cc_binary", "spu_cc_library", "spu_cc_test")
+load("//bazel:spu.bzl", "spu_cc_library", "spu_cc_test")
+load("@yasl//bazel:yasl.bzl", "EMP_COPT_FLAGS")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -41,9 +42,7 @@ spu_cc_library(
 spu_cc_test(
     name = "cheetah_io_test",
     srcs = ["cheetah_io_test.cc"],
-    copts = [
-        "-march=native",
-    ],
+    copts = EMP_COPT_FLAGS,
     deps = [
         "cheetah_io",
     ],
@@ -63,19 +62,14 @@ spu_cc_library(
         "silent_ot_pack.h",
         "utils.h",
     ],
-    copts = [
-        "-march=native",
-    ],
+    copts = EMP_COPT_FLAGS,
     deps = [
         "cheetah_io",
         "@com_github_emptoolkit_emp_ot//:emp-ot",
         "@com_github_emptoolkit_emp_tool//:emp-tool",
         "@yasl//yasl/link",
     ] + select({
-        "@bazel_tools//src/conditions:darwin_arm64": [
-            "@com_github_dltcollab_sse2neon//:sse2neon",
-        ],
-        "@bazel_tools//src/conditions:linux_aarch64": [
+        "@platforms//cpu:aarch64": [
             "@com_github_dltcollab_sse2neon//:sse2neon",
         ],
         "//conditions:default": [],
@@ -85,9 +79,7 @@ spu_cc_library(
 spu_cc_test(
     name = "silent_ot_test",
     srcs = ["silent_ot_test.cc"],
-    copts = [
-        "-march=native",
-    ],
+    copts = EMP_COPT_FLAGS,
     deps = [
         "silent_ot",
     ],
@@ -97,9 +89,7 @@ spu_cc_library(
     name = "nonlinear_protocols",
     srcs = ["nonlinear_protocols.cc"],
     hdrs = ["nonlinear_protocols.h"],
-    copts = [
-        "-march=native",
-    ],
+    copts = EMP_COPT_FLAGS,
     deps = [
         "silent_ot",
     ],
