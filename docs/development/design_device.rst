@@ -2,7 +2,7 @@ Design: generic device
 ======================
 
 .. warning::
-   This is a design draft for using SPU from secretflow, not an accurate document for SPU itself. It could be treated as a reference to integrate SPU from other system.
+   This is a design draft for using SPU from SecretFlow, not an accurate document for SPU itself. It could be treated as a reference to integrate SPU from other system.
 
 Overview
 --------
@@ -22,7 +22,7 @@ Concept
 
 **Computation** or DAG, is a form to to represent logic function, with *node* as operator and *edge* as data.
 
-**Secreflow**, is a framework could schedule a *Computation* to a list of *Device*, with respect that:
+**SecretFlow**, is a framework could schedule a *Computation* to a list of *Device*, with respect that:
 
 - **Securely data transferred** across devices, unless client explicitly make a unsafe transfer.
 - Each op runs on exactly on one device, **there is no cross-device function**.
@@ -105,7 +105,7 @@ In the right configuration, there are 2 *HE device*, both resides on Alice, but 
 Device and Node
 ---------------
 
-A device is composed by one or more nodes, this section covers the common used device/node pattern in secretflow.
+A device is composed by one or more nodes, this section covers the common used device/node pattern in SecretFlow.
 
 For CPU and MPC, it's easy.
 

@@ -1,10 +1,10 @@
 # SPU: Secure Processing Unit
 
-SPU (Secure Processing Unit) aims to be a `provable`, `measurable` secure computation device, which provides computation ability while keep your private data protected.
+SPU (Secure Processing Unit) aims to be a `provable`, `measurable` secure computation device, which provides computation ability while keeping your private data protected.
 
 ## Project status
 
-Currently, we mainly focus on the `provable` security. It contains a secure runtime that evaluates [XLA](https://www.tensorflow.org/xla/operation_semantics)-like tensor operations, which use [MPC](https://en.wikipedia.org/wiki/Secure_multi-party_computation) as the underline evaluation engine to protect privacy information.
+Currently, we mainly focus on `provable` security. It contains a secure runtime that evaluates [XLA](https://www.tensorflow.org/xla/operation_semantics)-like tensor operations, which use [MPC](https://en.wikipedia.org/wiki/Secure_multi-party_computation) as the underline evaluation engine to protect privacy information.
 
 ## Contents
 - [Documentation](https://secretflow.readthedocs.io)
@@ -34,7 +34,7 @@ docker exec -it spu-gcc11-anolis-dev-$(whoami) bash
 #### Linux
 
 ```sh
-Install gcc>=11.2, cmake>=3.18, ninja, nasm>=2.15, python==3.8, bazel==4.2
+Install gcc>=11.2, cmake>=3.18, ninja, nasm>=2.15, python==3.8, bazel==5.1.1
 
 python3 -m pip install -r docker/requirements.txt
 ```
@@ -92,9 +92,9 @@ cd docs & make html  # html docs will be in docs/_build/html
 
 > How can I use SPU?
 
-SPU could be treated as a programmable device, it's not designed to be used directly. Normally we use secretflow framework, which use SPU as the underline secure computing device. 
+SPU could be treated as a programmable device, it's not designed to be used directly. Normally we use SecretFlow framework, which use SPU as the underline secure computing device.
 
-SPU python pakcage also contains a simple distributed module to demo SPU usage, but it's **NOT designed for production** due to system security and performace concerns, please **DO NOT** use it directly in production.
+SPU python package also contains a simple distributed module to demo SPU usage, but it's **NOT designed for production** due to system security and performance concerns, please **DO NOT** use it directly in production.
 
 ## Acknowledgement
 

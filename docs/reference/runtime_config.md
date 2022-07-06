@@ -202,8 +202,8 @@ The protocol kind.
 | ---- | ------ | ----------- |
 | PROT_INVALID | 0 | Invalid protocol. |
 | REF2K | 1 | The reference implementation in `ring^2k`, note: this 'protocol' only behave-like a fixed point secure protocol without any security guarantee. Hence, it should only be selected for debugging purposes. |
-| SEMI2K | 2 | A semi-honest multi-party protocol. This protocol requires a trusted third party to generate the offline correlated randoms. Currently, Secretflow by default ship this protocol with a trusted first party. Hence, it should only be used for debugging purposes. |
-| ABY3 | 3 | A honest majority 3PC-protocol. Secretflow provides the semi-honest implementation without Yao. |
+| SEMI2K | 2 | A semi-honest multi-party protocol. This protocol requires a trusted third party to generate the offline correlated randoms. Currently, SecretFlow by default ship this protocol with a trusted first party. Hence, it should only be used for debugging purposes. |
+| ABY3 | 3 | A honest majority 3PC-protocol. SecretFlow provides the semi-honest implementation without Yao. |
 | CHEETAH | 4 | The famous [Cheetah](https://eprint.iacr.org/2022/207) protocol, a very fast 2PC protocol. |
 
 

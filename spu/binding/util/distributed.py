@@ -58,7 +58,7 @@ from spu.spu_pb2 import ExecutableProto, IrProto, RuntimeConfig, ValueProto
 This module is used as a simple scheduler to demonstrate SPU usage.
 It's not designed for production both for performance and security reasons.
 
-To use SPU in production, please consider secretflow instead.
+To use SPU in production, please consider SecretFlow instead.
 """
 
 
