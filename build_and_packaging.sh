@@ -11,7 +11,7 @@ function build_spu(){
         --cap-add=NET_ADMIN \
         --privileged=true \
         --entrypoint "./build_wheel_entrypoint.sh" \
-        registry.hub.docker.com/secretflow/spu-gcc11-centos7-build:latest
+        registry.hub.docker.com/secretflow/spu-gcc11-anolis-dev:latest
 
     (($? != 0)) && { echo -e "${RED}Build exited with non-zero.${NC}"; exit 1; }
 
