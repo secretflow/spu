@@ -2,7 +2,7 @@ load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 load("@bazel_tools//tools/build_defs/repo:utils.bzl", "maybe")
 load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
 
-# SECRETFLOW_GIT = "https://github.com/anakinxc"
+SECRETFLOW_GIT = "https://github.com/secretflow"
 
 def spu_deps():
     _bazel_platform()
@@ -29,9 +29,9 @@ def spu_deps():
     maybe(
         git_repository,
         name = "yasl",
-        commit = "fac0fe151dd2f44f5ceec90c43b05178242b4989",
+        commit = "cea3e6c63327fe0d96154f86fc891f9beadfa83f",
         recursive_init_submodules = True,
-        remote = "https://github.com/anakinxc/yasl.git",
+        remote = "{}/yasl.git".format(SECRETFLOW_GIT),
     )
 
 def _bazel_platform():
