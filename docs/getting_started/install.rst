@@ -1,32 +1,46 @@
 Installing SPU
 ==============
 
-.. note::
-  To make your life easier, please use `official Docker image <https://github.com/secretflow/spu#docker>`_.
+Environment
+-----------
+
+On Linux
+~~~~~~~~
 
 SPU has been tested with the following settings:
 
-- CentOS Linux 7 or later
+- Anolis OS 8.4 or later
 - python3.8
-- 16c64g
+- 8c16g
 
-We have conducted some successful preliminary testings on macOS Monterey 12.4 with Intel processors, Apple Silicon is unsupported yet.
+On MacOS
+~~~~~~~~
+
+We have conducted some successful preliminary testings on macOS Monterey 12.4 with Intel processors and Apple Silicon.
+
+However, we don't recommend you to run SPU with Apple Silicon for performance issues.
+
+Docker Image
+~~~~~~~~~~~~
+
+Please check `official Docker image <https://github.com/secretflow/spu#docker>`_.
 
 
-Download a Package
-----------------------
+Binaries
+--------
 
-You could install SPU via the official pip package:
+You could install SPU via the `official PyPI package <https://pypi.org/project/spu/>`_:
 
 .. code-block:: bash
   
   pip install spu
 
 
+From Source
+-----------
 
-Build from Source
------------------
+If you couldn't use recommended environment above, you have to build SPU from source.
 
-Please check `README.md <https://github.com/secretflow/spu#build>`_ with `official Docker image <https://github.com/secretflow/spu#docker>`_.
+For details, please check `README.md <https://github.com/secretflow/spu#build>`_.
 
 
