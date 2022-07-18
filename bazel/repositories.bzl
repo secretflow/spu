@@ -135,22 +135,19 @@ def _rule_python():
     maybe(
         http_archive,
         name = "rules_python",
-        sha256 = "9fcf91dbcc31fde6d1edb15f117246d912c33c36f44cf681976bd886538deba6",
-        strip_prefix = "rules_python-0.8.0",
+        sha256 = "a3a6e99f497be089f81ec082882e40246bfd435f52f4e82f37e89449b04573f6",
+        strip_prefix = "rules_python-0.10.2",
         urls = [
-            "https://github.com/bazelbuild/rules_python/archive/refs/tags/0.8.0.tar.gz",
+            "https://github.com/bazelbuild/rules_python/archive/refs/tags/0.10.2.tar.gz",
         ],
     )
 
 def _rules_foreign_cc():
-    maybe(
-        http_archive,
+    http_archive(
         name = "rules_foreign_cc",
-        sha256 = "bcd0c5f46a49b85b384906daae41d277b3dc0ff27c7c752cc51e43048a58ec83",
-        strip_prefix = "rules_foreign_cc-0.7.1",
-        urls = [
-            "https://github.com/bazelbuild/rules_foreign_cc/archive/0.7.1.tar.gz",
-        ],
+        sha256 = "6041f1374ff32ba711564374ad8e007aef77f71561a7ce784123b9b4b88614fc",
+        strip_prefix = "rules_foreign_cc-0.8.0",
+        url = "https://github.com/bazelbuild/rules_foreign_cc/archive/0.8.0.tar.gz",
     )
 
 def _com_github_tensorflow():

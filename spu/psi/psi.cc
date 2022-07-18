@@ -18,11 +18,11 @@ namespace spu::psi {
 
 std::shared_ptr<PsiExecutorBase> BuildPsiExecutor(const std::any& opts) {
   std::shared_ptr<PsiExecutorBase> executor;
-  if (opts.type() == typeid(LegacyPsiOptions)) {
+  try {
     auto op = std::any_cast<LegacyPsiOptions>(opts);
     executor.reset(new LegacyPsiExecutor(op));
-  } else {
-    YASL_THROW("unknow opts type {}", opts.type().name());
+  } catch (const std::bad_any_cast& e) {
+    YASL_THROW("{} opts type {}", e.what(), opts.type().name());
   }
 
   return executor;
