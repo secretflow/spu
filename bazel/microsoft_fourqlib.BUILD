@@ -9,7 +9,7 @@ filegroup(
 
 make(
     name = "fourqlib",
-    args = select({
+    args = ["-j 4"] + select({
         "@bazel_tools//src/conditions:darwin_x86_64": [
             "ARCH=x64",
             "AVX2=TRUE",
@@ -43,5 +43,5 @@ make(
     lib_source = ":all_srcs",
     out_static_libs = ["libfourq.a"],
     targets = ["install"],
-    tool_prefix = "export BUILD_TMPDIR=$BUILD_TMPDIR/FourQ_64bit_and_portable &&",
+    tool_prefix = "export BUILD_TMPDIR=$$BUILD_TMPDIR/FourQ_64bit_and_portable &&",
 )
