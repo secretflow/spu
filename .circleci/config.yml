@@ -16,10 +16,10 @@ jobs:
     steps:
       - checkout
       - run:
-          name: "Say hello"
-          command: "bazel test //spu/... --config=asan --ui_event_filters=-info,-debug,-warning --jobs=8 --test_timeout=180 --test_output=errors"
+          name: "bazel test"
+          command: "bazel test //spu/... --ui_event_filters=-info,-debug,-warning --jobs=8 --test_timeout=1800 --test_output=errors"
       - store_test_results:
-          path: bazel-testlogs
+          path: ./bazel-testlogs
 
 # Invoke jobs via workflows
 # See: https://circleci.com/docs/2.0/configuration-reference/#workflows
