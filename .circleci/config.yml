@@ -17,7 +17,7 @@ jobs:
       - checkout
       - run:
           name: "Say hello"
-          command: "bazel test //spu/... --config=asan --ui_event_filters=-info,-debug,-warning --jobs=8 --test_timeout=1800 --test_output=errors"
+          command: "bazel test //spu/... --config=asan --ui_event_filters=-info,-debug,-warning --jobs=8 --test_timeout=180 --test_output=errors"
       - store_test_results:
           path: bazel-testlogs
 
