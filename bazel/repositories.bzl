@@ -28,7 +28,7 @@ def spu_deps():
     maybe(
         git_repository,
         name = "yasl",
-        commit = "b50ed242ec17a28bff3274e5e6d152183d04ed8f",
+        commit = "dc3fbcd66ec4f417fa053fc44be0d1eaeaef05a5",
         remote = "{}/yasl.git".format(SECRETFLOW_GIT),
     )
 

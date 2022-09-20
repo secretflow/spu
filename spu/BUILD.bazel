@@ -20,7 +20,7 @@ load("//bazel:spu.bzl", "spu_version_file")
 
 package(default_visibility = ["//visibility:public"])
 
-SPU_VERSION = "0.2.4b0"
+SPU_VERSION = "0.2.4b1"
 
 proto_library(
     name = "spu_proto",
@@ -72,7 +72,7 @@ py_wheel(
     python_requires = "==3.8.*",
     python_tag = "cp38",
     requires = [
-        "grpcio>=1.42.0",
+        "grpcio>=1.42.0,!=1.48.0",
         "numpy==1.22.3",
         "protobuf==3.19.4",
         "six==1.16.0",
@@ -81,6 +81,7 @@ py_wheel(
         "absl-py==1.0.0",
         "cloudpickle==2.0.0",
         "multiprocess==0.70.12.2",
+        "cachetools",
     ],
     version = SPU_VERSION,
     deps = [
