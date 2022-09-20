@@ -77,4 +77,6 @@ Value f_exp2(HalContext* ctx, const Value& x);
 
 Value f_tanh(HalContext* ctx, const Value& x);
 
+Value f_sqrt_inv(HalContext* ctx, const Value& x);
+
 }  // namespace spu::hal

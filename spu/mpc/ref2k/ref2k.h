@@ -25,13 +25,14 @@ class Ref2kIo final : public BaseIo {
  public:
   using BaseIo::BaseIo;
 
-  std::vector<ArrayRef> toShares(const ArrayRef& raw,
-                                 Visibility vis) const override;
+  std::vector<ArrayRef> toShares(const ArrayRef& raw, Visibility vis,
+                                 int owner_rank) const override;
 
   ArrayRef fromShares(const std::vector<ArrayRef>& shares) const override;
 };
 
 std::unique_ptr<Object> makeRef2kProtocol(
+    const RuntimeConfig& conf,
     const std::shared_ptr<yasl::link::Context>& lctx);
 
 std::unique_ptr<Ref2kIo> makeRef2kIo(FieldType field, size_t npc);

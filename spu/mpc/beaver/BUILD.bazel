@@ -109,35 +109,13 @@ spu_cc_library(
     copts = EMP_COPT_FLAGS,
     deps = [
         ":beaver",
-        ":beaver_he",
-        "//spu/crypto/ot/silent:primitives",
-        "//spu/mpc/util:ring_ops",
-        "@yasl//yasl/link",
-    ],
-)
-
-spu_cc_library(
-    name = "beaver_he",
-    srcs = ["beaver_he.cc"],
-    hdrs = ["beaver_he.h"],
-    deps = [
-        ":beaver",
-        ":cheetah_he",
         ":prg_tensor",
+        "//spu/crypto/ot/silent:primitives",
+        "//spu/mpc/beaver/cheetah:cheetah_he",
         "//spu/mpc/util:ring_ops",
-        "//spu/mpc/util:seal_help",
         "@com_github_microsoft_seal//:seal",
         "@yasl//yasl/link",
         "@yasl//yasl/utils:parallel",
-    ],
-)
-
-spu_cc_test(
-    name = "beaver_he_test",
-    srcs = ["beaver_he_test.cc"],
-    deps = [
-        ":beaver_he",
-        ":beaver_test",
     ],
 )
 
@@ -148,39 +126,6 @@ spu_cc_test(
     copts = EMP_COPT_FLAGS,
     deps = [
         ":beaver_cheetah",
-        ":beaver_he",
         ":beaver_test",
-    ],
-)
-
-spu_cc_library(
-    name = "cheetah_he",
-    srcs = [
-        "matvec.cc",
-        "matvec_helper.cc",
-        "modswitch_helper.cc",
-    ],
-    hdrs = [
-        "matvec.h",
-        "matvec_helper.h",
-        "modswitch_helper.h",
-    ],
-    deps = [
-        "//spu/core:array_ref",
-        "//spu/core:xt_helper",
-        "//spu/mpc/util:ring_ops",
-        "//spu/mpc/util:seal_help",
-        "@com_github_microsoft_seal//:seal",
-        "@yasl//yasl/base:int128",
-        "@yasl//yasl/utils:parallel",
-    ],
-)
-
-spu_cc_test(
-    name = "matvec_test",
-    srcs = ["matvec_test.cc"],
-    deps = [
-        ":cheetah_he",
-        "@com_github_xtensor_xtensor//:xtensor",
     ],
 )

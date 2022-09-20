@@ -1,4 +1,4 @@
-# Copyright 2021 Ant Group Co., Ltd.
+# Copyright 2022 Ant Group Co., Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,20 +13,28 @@
 # limitations under the License.
 
 load("//bazel:spu.bzl", "spu_cc_binary", "spu_cc_library", "spu_cc_test")
-load("@rules_proto//proto:defs.bzl", "proto_library")
-load("@rules_cc//cc:defs.bzl", "cc_proto_library")
 
 package(default_visibility = ["//visibility:public"])
+
+spu_cc_library(
+    name = "communication",
+    srcs = ["communication.cc"],
+    hdrs = ["communication.h"],
+    deps = [
+        "//spu/psi/utils:serialize",
+        "@yasl//yasl/link",
+    ],
+)
 
 spu_cc_library(
     name = "ecdh_psi",
     srcs = ["ecdh_psi.cc"],
     hdrs = ["ecdh_psi.h"],
     deps = [
-        ":serializable_cc_proto",
+        ":communication",
         "//spu/psi/cryptor:cryptor_selector",
-        "//spu/psi/provider",
-        "//spu/psi/store",
+        "//spu/psi/utils:batch_provider",
+        "//spu/psi/utils:cipher_store",
         "@com_google_absl//absl/strings",
         "@yasl//yasl/link",
         "@yasl//yasl/utils:parallel",
@@ -38,6 +46,7 @@ spu_cc_test(
     srcs = ["ecdh_psi_test.cc"],
     deps = [
         ":ecdh_psi",
+        "//spu/psi/utils:test_utils",
     ],
 )
 
@@ -46,7 +55,35 @@ spu_cc_binary(
     srcs = ["ecdh_psi_bench.cc"],
     deps = [
         ":ecdh_psi",
-        "@com_github_google_benchmark//:benchmark",
+        "@com_github_google_benchmark//:benchmark_main",
+    ],
+)
+
+spu_cc_library(
+    name = "ecdh_3pc_psi",
+    srcs = ["ecdh_3pc_psi.cc"],
+    hdrs = ["ecdh_3pc_psi.h"],
+    deps = [
+        ":ecdh_psi",
+    ],
+)
+
+spu_cc_test(
+    name = "ecdh_3pc_psi_test",
+    srcs = ["ecdh_3pc_psi_test.cc"],
+    deps = [
+        ":ecdh_3pc_psi",
+        "//spu/psi/utils:test_utils",
+    ],
+)
+
+spu_cc_binary(
+    name = "ecdh_3pc_psi_bench",
+    srcs = ["ecdh_3pc_psi_bench.cc"],
+    deps = [
+        ":ecdh_3pc_psi",
+        "//spu/psi/utils:test_utils",
+        "@com_github_google_benchmark//:benchmark_main",
     ],
 )
 
@@ -76,10 +113,9 @@ spu_cc_library(
     srcs = ["kkrt_psi.cc"],
     hdrs = ["kkrt_psi.h"],
     deps = [
+        ":communication",
         ":cuckoo_index",
-        ":serializable_cc_proto",
-        ":throttle_control_link",
-        ":utils",
+        "//spu/psi/utils:serialize",
         "@com_google_absl//absl/strings",
         "@yasl//yasl/crypto:hash_util",
         "@yasl//yasl/link",
@@ -99,16 +135,24 @@ spu_cc_test(
     ],
 )
 
+spu_cc_binary(
+    name = "kkrt_psi_bench",
+    srcs = ["kkrt_psi_bench.cc"],
+    deps = [
+        ":kkrt_psi",
+        "@com_github_google_benchmark//:benchmark_main",
+    ],
+)
+
 spu_cc_library(
     name = "ecdh_oprf_psi",
     srcs = ["ecdh_oprf_psi.cc"],
     hdrs = ["ecdh_oprf_psi.h"],
     deps = [
-        ":ecdh_psi",
-        ":serializable_cc_proto",
-        "//spu/psi/cryptor/ecdh_oprf:ecdh_oprf_selector",
-        "//spu/psi/provider",
-        "//spu/psi/store",
+        ":communication",
+        "//spu/psi/core/ecdh_oprf:ecdh_oprf_selector",
+        "//spu/psi/utils:batch_provider",
+        "//spu/psi/utils:cipher_store",
         "@com_google_absl//absl/strings",
         "@yasl//yasl/link",
         "@yasl//yasl/utils:parallel",
@@ -120,76 +164,62 @@ spu_cc_test(
     srcs = ["ecdh_oprf_psi_test.cc"],
     deps = [
         ":ecdh_oprf_psi",
+        "@yasl//yasl/crypto:pseudo_random_generator",
+        "@yasl//yasl/utils:rand",
     ],
 )
 
 spu_cc_library(
-    name = "throttle_control_link",
-    srcs = ["throttle_control_link.cc"],
-    hdrs = ["throttle_control_link.h"],
+    name = "mini_psi",
+    srcs = ["mini_psi.cc"],
+    hdrs = ["mini_psi.h"],
+    copts = select({
+        "@bazel_tools//src/conditions:darwin": [],
+        "//conditions:default": ["-fopenmp"],
+    }),
+    defines = ["CURVE25519_DONNA"] + select({
+        "@bazel_tools//src/conditions:darwin": ["USE_LIBDISPATCH"],
+        "//conditions:default": [],
+    }),
+    # TODO : libgomp.a is gcc only flag.
+    linkopts = select({
+        "@bazel_tools//src/conditions:darwin": [],
+        "//conditions:default": ["-l:libgomp.a"],
+    }),
+    # for libgomp.a has no -fPIC
+    linkstatic = True,
     deps = [
-        ":utils",
+        ":communication",
+        ":cuckoo_index",
+        "//spu/psi/core/polynomial",
+        "//spu/psi/utils:batch_provider",
+        "//spu/psi/utils:serialize",
+        "//spu/psi/utils:test_utils",
+        "@com_github_floodyberry_curve25519_donna//:curve25519_donna",
+        "@com_google_absl//absl/strings",
+        "@com_google_googletest//:gtest",
+        "@yasl//yasl/crypto:hash_util",
+        "@yasl//yasl/crypto:pseudo_random_generator",
         "@yasl//yasl/link",
+        "@yasl//yasl/utils:parallel",
     ],
 )
 
 spu_cc_test(
-    name = "throttle_control_link_test",
-    srcs = ["throttle_control_link_test.cc"],
+    name = "mini_psi_test",
+    srcs = ["mini_psi_test.cc"],
     deps = [
-        ":throttle_control_link",
+        ":mini_psi",
     ],
 )
 
-spu_cc_library(
-    name = "ecdh_psi_mparty",
-    srcs = ["ecdh_psi_mparty.cc"],
-    hdrs = ["ecdh_psi_mparty.h"],
+spu_cc_binary(
+    name = "mini_psi_demo",
+    srcs = ["mini_psi_demo.cc"],
     deps = [
         ":ecdh_psi",
+        ":kkrt_psi",
+        ":mini_psi",
+        "@llvm-project//llvm:Support",
     ],
-)
-
-spu_cc_test(
-    name = "ecdh_psi_mparty_test",
-    srcs = ["ecdh_psi_mparty_test.cc"],
-    deps = [
-        ":ecdh_psi_mparty",
-    ],
-)
-
-spu_cc_library(
-    name = "ecdh_psi_3party",
-    srcs = ["ecdh_psi_3party.cc"],
-    hdrs = ["ecdh_psi_3party.h"],
-    deps = [
-        ":ecdh_psi_mparty",
-    ],
-)
-
-spu_cc_test(
-    name = "ecdh_psi_3party_test",
-    srcs = ["ecdh_psi_3party_test.cc"],
-    deps = [
-        ":ecdh_psi_3party",
-    ],
-)
-
-spu_cc_library(
-    name = "utils",
-    hdrs = ["utils.h"],
-    deps = [
-        ":serializable_cc_proto",
-        "@yasl//yasl/base:buffer",
-    ],
-)
-
-proto_library(
-    name = "serializable_proto",
-    srcs = ["serializable.proto"],
-)
-
-cc_proto_library(
-    name = "serializable_cc_proto",
-    deps = [":serializable_proto"],
 )

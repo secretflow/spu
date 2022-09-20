@@ -17,7 +17,6 @@
 #include "mlir/IR/BuiltinTypes.h"
 #include "yasl/base/exception.h"
 
-#include "spu/device/pphlo_type_checker.h"
 #include "spu/dialect/pphlo_types.h"
 
 namespace spu::device {
@@ -51,8 +50,8 @@ const hal::Value *Frame::getValue(::mlir::Value operand) const {
     }
   }
   // If type checker is enabled, do it at getter time
-  if ((val != nullptr) && with_type_checker_) {
-    checkType(operand.getType().dyn_cast<::mlir::RankedTensorType>(), *val);
+  if ((val != nullptr) && type_checker_) {
+    type_checker_->check(operand.getType(), *val);
   }
 
   return val;

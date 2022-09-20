@@ -1,4 +1,4 @@
-// Copyright 2021 Ant Group Co., Ltd.
+// Copyright 2022 Ant Group Co., Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -24,11 +24,11 @@
 #include "yasl/crypto/pseudo_random_generator.h"
 #include "yasl/crypto/utils.h"
 
-namespace spu {
+namespace spu::psi {
 
 struct TestParams {
   size_t items_size;
-  CurveType type = CurveType::CurveSm2;
+  CurveType type = CurveType::CURVE_SM2;
 };
 
 class Sm2CryptorTest : public ::testing::TestWithParam<TestParams> {};
@@ -96,10 +96,10 @@ INSTANTIATE_TEST_SUITE_P(
     Works_Instances, Sm2CryptorTest,
     testing::Values(TestParams{1}, TestParams{10}, TestParams{50},
                     TestParams{100},
-                    // CurveSecp256k1
-                    TestParams{1, CurveType::CurveSecp256k1},
-                    TestParams{10, CurveType::CurveSecp256k1},
-                    TestParams{50, CurveType::CurveSecp256k1},
-                    TestParams{100, CurveType::CurveSecp256k1}));
+                    // CURVE_SECP256K1
+                    TestParams{1, CurveType::CURVE_SECP256K1},
+                    TestParams{10, CurveType::CURVE_SECP256K1},
+                    TestParams{50, CurveType::CURVE_SECP256K1},
+                    TestParams{100, CurveType::CURVE_SECP256K1}));
 
-}  // namespace spu
+}  // namespace spu::psi

@@ -1,4 +1,4 @@
-// Copyright 2021 Ant Group Co., Ltd.
+// Copyright 2022 Ant Group Co., Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,18 +14,20 @@
 
 #pragma once
 
+#include <memory>
+#include <string>
+#include <vector>
+
 #include "absl/types/span.h"
 #include "openssl/bn.h"
 #include "openssl/ec.h"
 #include "yasl/crypto/hash_util.h"
 #include "yasl/utils/parallel.h"
 
-namespace spu {
+namespace spu::psi {
 
-namespace {
 inline constexpr size_t kEcPointCompressLength = 33;
 inline constexpr size_t kEc256KeyLength = 32;
-}  // namespace
 
 // Deletes a BN_CTX.
 struct BnCtxDeleter {
@@ -58,9 +60,11 @@ using ECPointPtr = std::unique_ptr<EC_POINT, ECPointDeleter>;
 struct BigNumSt {
   BigNumSt() : bn_ptr(BN_new()) {}
 
-  BigNumSt(absl::string_view bytes) : bn_ptr(BN_new()) { FromBytes(bytes); }
+  explicit BigNumSt(absl::string_view bytes) : bn_ptr(BN_new()) {
+    FromBytes(bytes);
+  }
 
-  BigNumSt(absl::Span<const uint8_t> bytes) : bn_ptr(BN_new()) {
+  explicit BigNumSt(absl::Span<const uint8_t> bytes) : bn_ptr(BN_new()) {
     FromBytes(bytes);
   }
 
@@ -71,7 +75,8 @@ struct BigNumSt {
   std::string ToBytes() {
     std::string bytes(kEc256KeyLength, '\0');
 
-    BN_bn2binpad(bn_ptr.get(), (uint8_t*)bytes.data(), kEc256KeyLength);
+    BN_bn2binpad(bn_ptr.get(), reinterpret_cast<uint8_t*>(bytes.data()),
+                 kEc256KeyLength);
 
     return bytes;
   }
@@ -116,10 +121,10 @@ struct BigNumSt {
 };
 
 struct EcGroupSt {
-  EcGroupSt(int ec_group_nid = NID_sm2)
+  explicit EcGroupSt(int ec_group_nid = NID_sm2)
       : EcGroupSt(EC_GROUP_new_by_curve_name(ec_group_nid)) {}
 
-  EcGroupSt(EC_GROUP* group) : group_ptr(group) {
+  explicit EcGroupSt(EC_GROUP* group) : group_ptr(group) {
     BnCtxPtr bn_ctx(yasl::CheckNotNull(BN_CTX_new()));
 
     YASL_ENFORCE(EC_GROUP_get_curve(group_ptr.get(), bn_p.get(), bn_a.get(),
@@ -144,7 +149,7 @@ struct EcGroupSt {
 inline constexpr size_t kHashToCurveCounterGuard = 100;
 
 struct EcPointSt {
-  EcPointSt(const EcGroupSt& group)
+  explicit EcPointSt(const EcGroupSt& group)
       : group_ref(group), point_ptr(EC_POINT_new(group_ref.get())) {}
 
   //
@@ -210,10 +215,10 @@ struct EcPointSt {
                  kEcPointCompressLength);
 
     std::vector<uint8_t> point_compress_bytes(length);
-    length = EC_POINT_point2oct(group_ref.get(), point_ptr.get(),
-                                POINT_CONVERSION_COMPRESSED,
-                                (uint8_t*)point_compress_bytes.data(),
-                                point_compress_bytes.size(), bn_ctx.get());
+    length = EC_POINT_point2oct(
+        group_ref.get(), point_ptr.get(), POINT_CONVERSION_COMPRESSED,
+        reinterpret_cast<uint8_t*>(point_compress_bytes.data()),
+        point_compress_bytes.size(), bn_ctx.get());
 
     std::memcpy(bytes.data(), point_compress_bytes.data(), bytes.size());
 
@@ -223,9 +228,9 @@ struct EcPointSt {
   EcPointSt PointMul(const EcGroupSt& ec_group, const BigNumSt& bn_sk) {
     BnCtxPtr bn_ctx(yasl::CheckNotNull(BN_CTX_new()));
     EcPointSt ec_point(ec_group);
-    YASL_ENFORCE_EQ(EC_POINT_mul(ec_group.get(), ec_point.get(), NULL,
-                                 point_ptr.get(), bn_sk.get(), bn_ctx.get()),
-                    1);
+    int ret = EC_POINT_mul(ec_group.get(), ec_point.get(), NULL,
+                           point_ptr.get(), bn_sk.get(), bn_ctx.get());
+    YASL_ENFORCE(ret == 1);
 
     return ec_point;
   }
@@ -233,9 +238,11 @@ struct EcPointSt {
   static EcPointSt BasePointMul(const EcGroupSt& group, const BigNumSt& bn_sk) {
     BnCtxPtr bn_ctx(yasl::CheckNotNull(BN_CTX_new()));
     EcPointSt ec_point(group);
-    YASL_ENFORCE_EQ(EC_POINT_mul(group.get(), ec_point.get(), bn_sk.get(), NULL,
-                                 NULL, bn_ctx.get()),
-                    1);
+
+    int ret = EC_POINT_mul(group.get(), ec_point.get(), bn_sk.get(), NULL, NULL,
+                           bn_ctx.get());
+
+    YASL_ENFORCE(ret == 1);
 
     return ec_point;
   }
@@ -245,4 +252,4 @@ struct EcPointSt {
   ECPointPtr point_ptr;
 };
 
-}  // namespace spu
+}  // namespace spu::psi

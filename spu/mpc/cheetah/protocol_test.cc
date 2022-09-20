@@ -14,36 +14,53 @@
 
 #include "spu/mpc/cheetah/protocol.h"
 
+#include "spu/mpc/api_test.h"
 #include "spu/mpc/common/abprotocol_test.h"
-#include "spu/mpc/compute_test.h"
 
 namespace spu::mpc::test {
+namespace {
+
+RuntimeConfig makeConfig(FieldType field) {
+  RuntimeConfig conf;
+  conf.set_field(field);
+  return conf;
+}
+
+}  // namespace
 
 INSTANTIATE_TEST_SUITE_P(
-    CheetahComputeTest, ComputeTest,
-    testing::Combine(testing::Values(makeCheetahProtocol),  //
-                     testing::Values(2),                    //
-                     testing::Values(FieldType::FM32, FieldType::FM64)),
-    [](const testing::TestParamInfo<ComputeTest::ParamType>& p) {
-      return fmt::format("{}x{}", std::get<1>(p.param), std::get<2>(p.param));
+    Cheetah, ApiTest,
+    testing::Combine(testing::Values(makeCheetahProtocol),           //
+                     testing::Values(makeConfig(FieldType::FM32),    //
+                                     makeConfig(FieldType::FM64),    //
+                                     makeConfig(FieldType::FM128)),  //
+                     testing::Values(2)),                            //
+    [](const testing::TestParamInfo<ApiTest::ParamType>& p) {
+      return fmt::format("{}x{}", std::get<1>(p.param).field(),
+                         std::get<2>(p.param));
     });
 
 INSTANTIATE_TEST_SUITE_P(
-    CheetahArithmeticTest, ArithmeticTest,
-    testing::Combine(testing::Values(makeCheetahProtocol),  //
-                     testing::Values(2),                    //
-                     testing::Values(FieldType::FM32, FieldType::FM64)),
+    Cheetah, ArithmeticTest,
+    testing::Combine(testing::Values(makeCheetahProtocol),          //
+                     testing::Values(makeConfig(FieldType::FM32),   //
+                                     makeConfig(FieldType::FM64)),  //
+                     testing::Values(2)),                           //
     [](const testing::TestParamInfo<ArithmeticTest::ParamType>& p) {
-      return fmt::format("{}x{}", std::get<1>(p.param), std::get<2>(p.param));
+      return fmt::format("{}x{}", std::get<1>(p.param).field(),
+                         std::get<2>(p.param));
     });
 
 INSTANTIATE_TEST_SUITE_P(
-    CheetahBooleanTest, BooleanTest,
-    testing::Combine(testing::Values(makeCheetahProtocol),  //
-                     testing::Values(2),                    //
-                     testing::Values(FieldType::FM32, FieldType::FM64)),
+    Cheetah, BooleanTest,
+    testing::Combine(testing::Values(makeCheetahProtocol),           //
+                     testing::Values(makeConfig(FieldType::FM32),    //
+                                     makeConfig(FieldType::FM64),    //
+                                     makeConfig(FieldType::FM128)),  //
+                     testing::Values(2)),                            //
     [](const testing::TestParamInfo<BooleanTest::ParamType>& p) {
-      return fmt::format("{}x{}", std::get<1>(p.param), std::get<2>(p.param));
+      return fmt::format("{}x{}", std::get<1>(p.param).field(),
+                         std::get<2>(p.param));
     });
 
 GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(ConversionTest);

@@ -43,9 +43,6 @@ typedef spu::mpc::semi2k::MatMulAP MatMulAP;
 
 typedef spu::mpc::semi2k::LShiftA LShiftA;
 
-// typedef spu::mpc::semi2k::MulAA MulAA;
-// typedef spu::mpc::semi2k::MatMulAA MatMulAA;
-
 class TruncPrA : public TruncPrAKernel {
  private:
   bool heuristic = true;

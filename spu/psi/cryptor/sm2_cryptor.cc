@@ -1,4 +1,4 @@
-// Copyright 2021 Ant Group Co., Ltd.
+// Copyright 2022 Ant Group Co., Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 
 #include "spu/psi/cryptor/ecc_utils.h"
 
-namespace spu {
+namespace spu::psi {
 
 void Sm2Cryptor::EccMask(absl::Span<const char> batch_points,
                          absl::Span<char> dest_points) const {
@@ -52,7 +52,8 @@ void Sm2Cryptor::EccMask(absl::Span<const char> batch_points,
 
     EcPointSt ec_point2 = ec_point.PointMul(ec_group, bn_sk);
 
-    ec_point2.ToBytes(absl::MakeSpan((uint8_t*)out.data(), out.size()));
+    ec_point2.ToBytes(
+        absl::MakeSpan(reinterpret_cast<uint8_t*>(out.data()), out.size()));
   };
 
   absl::Span<const Item> input(
@@ -84,4 +85,4 @@ std::vector<uint8_t> Sm2Cryptor::HashToCurve(
   return out;
 }
 
-}  // namespace spu
+}  // namespace spu::psi

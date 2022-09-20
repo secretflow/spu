@@ -50,4 +50,32 @@ TEST_P(IoTest, MakeSecretAndReconstruct) {
   EXPECT_TRUE(ring_all_equal(raw, result));
 }
 
+TEST_P(IoTest, MakeSecretAndReconstructWithInvalidOwnerRank) {
+  const auto create_io = std::get<0>(GetParam());
+  const size_t npc = std::get<1>(GetParam());
+  const FieldType field = std::get<2>(GetParam());
+
+  auto io = create_io(field, npc);
+
+  auto raw = ring_rand(field, kNumel);
+  auto shares = io->toShares(raw, VIS_SECRET, -1);
+  auto result = io->fromShares(shares);
+
+  EXPECT_TRUE(ring_all_equal(raw, result));
+}
+
+TEST_P(IoTest, MakeSecretAndReconstructWithValidOwnerRank) {
+  const auto create_io = std::get<0>(GetParam());
+  const size_t npc = std::get<1>(GetParam());
+  const FieldType field = std::get<2>(GetParam());
+
+  auto io = create_io(field, npc);
+
+  auto raw = ring_rand(field, kNumel);
+  auto shares = io->toShares(raw, VIS_SECRET, 0);
+  auto result = io->fromShares(shares);
+
+  EXPECT_TRUE(ring_all_equal(raw, result));
+}
+
 }  // namespace spu::mpc

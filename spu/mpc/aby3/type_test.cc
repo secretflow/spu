@@ -38,34 +38,17 @@ TEST(AShrTy, Simple) {
 
 TEST(BShrTy, Simple) {
   Type ty = makeType<BShrTy>();
-  // aby3::BShr constructor with field.
-  {
-    Type ty = makeType<BShrTy>(FM128);
-    EXPECT_EQ(ty.size(), 16 * 2);
-
-    EXPECT_TRUE(ty.isa<Secret>());
-    EXPECT_TRUE(ty.isa<Ring2k>());
-    EXPECT_FALSE(ty.isa<Public>());
-    EXPECT_FALSE(ty.isa<AShare>());
-    EXPECT_TRUE(ty.isa<BShare>());
-
-    EXPECT_EQ(ty.toString(), "aby3.BShr<FM128,128>");
-
-    EXPECT_EQ(Type::fromString(ty.toString()), ty);
-  }
-
   // aby3::BShr constructor with field and nbits.
   {
-    Type ty = makeType<BShrTy>(FM128, 7);
-    EXPECT_EQ(ty.size(), 16 * 2);
+    Type ty = makeType<BShrTy>(PT_U8, 7);
+    EXPECT_EQ(ty.size(), SizeOf(PT_U8) * 2);
 
     EXPECT_TRUE(ty.isa<Secret>());
-    EXPECT_TRUE(ty.isa<Ring2k>());
     EXPECT_FALSE(ty.isa<Public>());
     EXPECT_FALSE(ty.isa<AShare>());
     EXPECT_TRUE(ty.isa<BShare>());
 
-    EXPECT_EQ(ty.toString(), "aby3.BShr<FM128,7>");
+    EXPECT_EQ(ty.toString(), "aby3.BShr<PT_U8,7>");
 
     EXPECT_EQ(Type::fromString(ty.toString()), ty);
 
@@ -73,12 +56,11 @@ TEST(BShrTy, Simple) {
     Type cty = ty;
     EXPECT_EQ(cty, ty);
     EXPECT_TRUE(cty.isa<Secret>());
-    EXPECT_TRUE(cty.isa<Ring2k>());
     EXPECT_FALSE(cty.isa<Public>());
     EXPECT_FALSE(cty.isa<AShare>());
     EXPECT_TRUE(cty.isa<BShare>());
 
-    EXPECT_EQ(cty.toString(), "aby3.BShr<FM128,7>");
+    EXPECT_EQ(cty.toString(), "aby3.BShr<PT_U8,7>");
   }
 }
 

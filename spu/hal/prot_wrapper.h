@@ -20,6 +20,8 @@
 namespace spu::hal {
 
 // !!please read [README.md] for api naming conventions.
+Type _common_type_s(HalContext* ctx, const Type& a, const Type& b);
+Value _cast_type_s(HalContext* ctx, const Value& x, const Type& to);
 
 Value _p2s(HalContext* ctx, const Value& x);
 Value _s2p(HalContext* ctx, const Value& x);

@@ -15,13 +15,12 @@
 #pragma once
 
 #include <map>
-#include <vector>
 #include <memory>
+#include <vector>
 
 #include "spdlog/spdlog.h"
-
-#include "yasl/crypto/symmetric_crypto.h"
 #include "yasl/base/exception.h"
+#include "yasl/crypto/symmetric_crypto.h"
 #include "yasl/utils/parallel.h"
 
 #include "spu/pir/seal_pir.h"
@@ -70,7 +69,7 @@ class MultiQuery {
     uint128_t plaintext = yasl::MakeUint128(0, index);
 
     // aes(x) xor x
-    return crypto_->Encrypt(plaintext)^plaintext;
+    return crypto_->Encrypt(plaintext) ^ plaintext;
   }
 
   MultiQueryOptions query_options_;

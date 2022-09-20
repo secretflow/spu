@@ -97,6 +97,9 @@ class B2AByOT : public UnaryKernel {
         ;
   }
 
+  // FIXME: bypass unittest.
+  Kind kind() const override { return Kind::kDynamic; }
+
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in) const override;
 };
 

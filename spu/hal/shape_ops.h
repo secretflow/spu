@@ -14,6 +14,8 @@
 
 #pragma once
 
+#include <cstdint>
+
 #include "spu/hal/context.h"
 #include "spu/hal/value.h"
 
@@ -38,6 +40,8 @@ struct element_t_s {
 #define DISPATCH_ALL_ELSIZE(SIZE, ...)                         \
   [&] {                                                        \
     switch (SIZE) {                                            \
+      __CASE_SIZE(1, __VA_ARGS__)                              \
+      __CASE_SIZE(2, __VA_ARGS__)                              \
       __CASE_SIZE(4, __VA_ARGS__)                              \
       __CASE_SIZE(8, __VA_ARGS__)                              \
       __CASE_SIZE(16, __VA_ARGS__)                             \
@@ -51,21 +55,14 @@ struct element_t_s {
 // @param in, the input
 // @param to_shape, the target shape
 Value broadcast_to(HalContext* ctx, const Value& in,
-                   const std::vector<int64_t>& to_shape,
-                   const std::vector<size_t>& in_dims = {});
-
-/// the concatenate function
-// @param first, the first param
-// @param second, the second param
-// @param axis, the axis
-Value concatenate(HalContext* ctx, absl::Span<const Value> values,
-                  const size_t& axis);
+                   absl::Span<const int64_t> to_shape,
+                   absl::Span<const int64_t> in_dims = {});
 
 /// the reshape function
 // @param in, the input
 // @param to_shape, the target shape
 Value reshape(HalContext* ctx, const Value& in,
-              const std::vector<int64_t>& to_shape);
+              absl::Span<const int64_t> to_shape);
 
 /// the slice function
 // @param input, the param
@@ -80,13 +77,13 @@ Value slice(HalContext* ctx, const Value& input,
 /// the transpose function
 // @param in, the param
 Value transpose(HalContext* ctx, const Value& in,
-                std::vector<int64_t> permutation = {});
+                absl::Span<const int64_t> permutation = {});
 
 //// the reverse function
 // @param in, the param
 // @param dimensions, dimensions to reverse
 Value reverse(HalContext* ctx, const Value& in,
-              const std::vector<size_t>& dimensions);
+              absl::Span<const int64_t> dimensions);
 
 //// the pad function
 // @param in, the param
@@ -98,8 +95,13 @@ Value reverse(HalContext* ctx, const Value& in,
 // @interior_padding, the amount of padding added between any two elements in
 // each dimension
 Value pad(HalContext* ctx, const Value& in, const Value& padding_value,
-          const std::vector<int64_t>& edge_padding_low,
-          const std::vector<int64_t>& edge_padding_high,
-          const std::vector<int64_t>& interior_padding);
+          absl::Span<const int64_t> edge_padding_low,
+          absl::Span<const int64_t> edge_padding_high,
+          absl::Span<const int64_t> interior_padding);
+
+/// Expand a scalar into to_shape.
+/// Compare with broadcast, expand actually reallocates and assign memory
+Value expand(HalContext* ctx, const Value& in,
+             absl::Span<const int64_t> to_shape);
 
 }  // namespace spu::hal

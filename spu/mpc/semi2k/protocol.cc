@@ -27,6 +27,7 @@
 namespace spu::mpc {
 
 std::unique_ptr<Object> makeSemi2kProtocol(
+    const RuntimeConfig& conf,
     const std::shared_ptr<yasl::link::Context>& lctx) {
   semi2k::registerTypes();
 
@@ -42,27 +43,7 @@ std::unique_ptr<Object> makeSemi2kProtocol(
   regPub2kKernels(obj.get());
 
   // register compute kernels
-  obj->addState<ABProtState>();
-  obj->regKernel<ABProtP2S>();
-  obj->regKernel<ABProtS2P>();
-  obj->regKernel<ABProtNotS>();
-  obj->regKernel<ABProtAddSP>();
-  obj->regKernel<ABProtAddSS>();
-  obj->regKernel<ABProtMulSP>();
-  obj->regKernel<ABProtMulSS>();
-  obj->regKernel<ABProtMatMulSP>();
-  obj->regKernel<ABProtMatMulSS>();
-  obj->regKernel<ABProtAndSP>();
-  obj->regKernel<ABProtAndSS>();
-  obj->regKernel<ABProtXorSP>();
-  obj->regKernel<ABProtXorSS>();
-  obj->regKernel<ABProtEqzS>();
-  obj->regKernel<ABProtLShiftS>();
-  obj->regKernel<ABProtRShiftS>();
-  obj->regKernel<ABProtARShiftS>();
-  obj->regKernel<ABProtTruncPrS>();
-  obj->regKernel<ABProtBitrevS>();
-  obj->regKernel<ABProtMsbS>();
+  regABKernels(obj.get());
 
   // register arithmetic & binary kernels
   obj->addState<Semi2kState>(lctx);
@@ -79,6 +60,8 @@ std::unique_ptr<Object> makeSemi2kProtocol(
   obj->regKernel<semi2k::LShiftA>();
   obj->regKernel<semi2k::TruncPrA>();
 
+  obj->regKernel<semi2k::CommonTypeB>();
+  obj->regKernel<semi2k::CastTypeB>();
   obj->regKernel<semi2k::ZeroB>();
   obj->regKernel<semi2k::B2P>();
   obj->regKernel<semi2k::P2B>();

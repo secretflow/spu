@@ -32,7 +32,8 @@ class Factory final {
   // @param kind, the protocol kind.
   // @param lctx, the inter party link context.
   static std::unique_ptr<Object> CreateCompute(
-      ProtocolKind kind, const std::shared_ptr<yasl::link::Context>& lctx);
+      const RuntimeConfig& conf,
+      const std::shared_ptr<yasl::link::Context>& lctx);
 
   // Create a io context.
   //
@@ -41,8 +42,8 @@ class Factory final {
   // @param npc, number of parties.
   //
   // Note: IO does not require a link context, especially for out-sourcing mode.
-  static std::unique_ptr<IoInterface> CreateIO(ProtocolKind kind,
-                                               FieldType field, size_t npc);
+  static std::unique_ptr<IoInterface> CreateIO(const RuntimeConfig& conf,
+                                               size_t npc);
 };
 
 }  // namespace spu::mpc

@@ -58,17 +58,18 @@ ArrayRef encodeToRing(const ArrayRef& src, FieldType field, size_t fxp_bits,
   if (pt_type == PT_F32 || pt_type == PT_F64) {
     DISPATCH_FLOAT_PT_TYPES(pt_type, "_", [&]() {
       DISPATCH_ALL_FIELDS(field, "_", [&]() {
-        using Float = _PtTypeT;
-        ring2k_t* dst_ptr = &dst.at<ring2k_t>(0);
+        using Float = ScalarT;
+        using T = std::make_signed_t<ring2k_t>;
+        T* dst_ptr = &dst.at<T>(0);
         Float const* src_ptr = &src.at<Float>(0);
 
         // Reference: https://eprint.iacr.org/2019/599.pdf
         // To make `msb based comparison` work, the safe range is
         // [-2^(k-2), 2^(k-2))
-        const size_t k = sizeof(ring2k_t) * 8;
-        const ring2k_t kScale = ring2k_t(1) << fxp_bits;
-        const ring2k_t kFxpLower = -(ring2k_t)std::pow(2, k - 2);
-        const ring2k_t kFxpUpper = (ring2k_t)std::pow(2, k - 2) - 1;
+        const size_t k = sizeof(T) * 8;
+        const T kScale = T(1) << fxp_bits;
+        const T kFxpLower = -(T)std::pow(2, k - 2);
+        const T kFxpUpper = (T)std::pow(2, k - 2) - 1;
         const Float kFlpUpper = static_cast<Float>(kFxpUpper) / kScale;
         const Float kFlpLower = static_cast<Float>(kFxpLower) / kScale;
 
@@ -84,7 +85,7 @@ ArrayRef encodeToRing(const ArrayRef& src, FieldType field, size_t fxp_bits,
           } else if (*src_ptr <= kFlpLower) {
             *dst_ptr = kFxpLower;
           } else {
-            *dst_ptr = static_cast<ring2k_t>(*src_ptr * kScale);
+            *dst_ptr = static_cast<T>(*src_ptr * kScale);
           }
 
           src_ptr += src.stride();
@@ -98,16 +99,17 @@ ArrayRef encodeToRing(const ArrayRef& src, FieldType field, size_t fxp_bits,
     // handle integer & boolean
     DISPATCH_INT_PT_TYPES(pt_type, "_", [&]() {
       DISPATCH_ALL_FIELDS(field, "_", [&]() {
-        using Integer = _PtTypeT;
+        using Integer = ScalarT;
         YASL_ENFORCE(sizeof(ring2k_t) >= sizeof(Integer),
                      "integer encoding failed, ring={} could not represent {}",
                      field, pt_type);
 
+        using T = std::make_signed_t<ring2k_t>;
         // TODO: encoding integer in range [-2^(k-2),2^(k-2))
-        ring2k_t* dst_ptr = &dst.at<ring2k_t>(0);
+        T* dst_ptr = &dst.at<T>(0);
         Integer const* src_ptr = &src.at<Integer>(0);
         for (size_t idx = 0; idx < numel; idx++) {
-          *dst_ptr = static_cast<ring2k_t>(*src_ptr);
+          *dst_ptr = static_cast<T>(*src_ptr);
           src_ptr += src.stride();
           dst_ptr += dst.stride();
         }
@@ -144,11 +146,12 @@ ArrayRef decodeFromRing(const ArrayRef& src, DataType in_dtype, size_t fxp_bits,
 
   DISPATCH_ALL_FIELDS(field, "field", [&]() {
     DISPATCH_ALL_PT_TYPES(pt_type, "pt_type", [&]() {
-      ring2k_t const* src_ptr = &src.at<ring2k_t>(0);
-      _PtTypeT* dst_ptr = &dst.at<_PtTypeT>(0);
+      using T = std::make_signed_t<ring2k_t>;
+      T const* src_ptr = &src.at<T>(0);
+      ScalarT* dst_ptr = &dst.at<ScalarT>(0);
 
       if (in_dtype == DT_I1) {
-        constexpr bool kSanity = std::is_same_v<_PtTypeT, bool>;
+        constexpr bool kSanity = std::is_same_v<ScalarT, bool>;
         YASL_ENFORCE(kSanity);
         for (size_t idx = 0; idx < numel; idx++) {
           *dst_ptr = !((*src_ptr & 0x1) == 0);
@@ -156,15 +159,15 @@ ArrayRef decodeFromRing(const ArrayRef& src, DataType in_dtype, size_t fxp_bits,
           dst_ptr += dst.stride();
         }
       } else if (in_dtype == DT_FXP) {
-        const ring2k_t kScale = ring2k_t(1) << fxp_bits;
+        const T kScale = T(1) << fxp_bits;
         for (size_t idx = 0; idx < numel; idx++) {
-          *dst_ptr = static_cast<_PtTypeT>(*src_ptr) / kScale;
+          *dst_ptr = static_cast<ScalarT>(*src_ptr) / kScale;
           src_ptr += src.stride();
           dst_ptr += dst.stride();
         }
       } else {
         for (size_t idx = 0; idx < numel; idx++) {
-          *dst_ptr = static_cast<_PtTypeT>(*src_ptr);
+          *dst_ptr = static_cast<ScalarT>(*src_ptr);
           src_ptr += src.stride();
           dst_ptr += dst.stride();
         }

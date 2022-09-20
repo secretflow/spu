@@ -52,4 +52,31 @@ TEST(LinalgTest, MatMulStrides) {
   EXPECT_EQ(C, expected);
 }
 
+TEST(LinalgTest, Select) {
+  std::vector<float> A = {1,  2,  3,    //
+                          5,  6,  7,    //
+                          9,  10, 11,   //
+                          13, 14, 15};  // 4x3
+
+  std::vector<float> B = {10,  20,  30,    //
+                          50,  60,  70,    //
+                          90,  100, 110,   //
+                          130, 140, 150};  // 4x3
+  std::vector<float> C(12);
+
+  std::vector<uint8_t> cond = {true,  false, false,  //
+                               true,  true,  true,   //
+                               false, false, false,  //
+                               false, true,  true};
+
+  select(12, &cond[0], A.data(), 1, B.data(), 1, C.data(), 1);
+
+  std::vector<float> expected = {1,   20,  30,   //
+                                 5,   6,   7,    //
+                                 90,  100, 110,  //
+                                 130, 14,  15};
+
+  EXPECT_EQ(C, expected);
+}
+
 }  // namespace spu::mpc::linalg

@@ -23,6 +23,7 @@ py_binary(
         "//examples/data",
     ],
     deps = [
+        "//spu/binding:psi",
         "//spu/binding/util:distributed",
     ],
 )

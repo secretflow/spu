@@ -20,7 +20,7 @@
 #include "yasl/link/link.h"
 
 #include "spu/core/shape_util.h"  // calcNumel
-#include "spu/mpc/interfaces.h"
+#include "spu/mpc/api.h"
 #include "spu/mpc/object.h"
 #include "spu/mpc/util/communicator.h"
 #include "spu/mpc/util/ring_ops.h"
@@ -35,6 +35,7 @@ constexpr size_t kShiftBit = 2;
 }  // namespace
 
 using CreateComputeFn = std::function<std::unique_ptr<Object>(
+    const RuntimeConfig& conf,
     const std::shared_ptr<yasl::link::Context>& lctx)>;
 
 class ComputeBench : public benchmark::Fixture {
@@ -80,9 +81,11 @@ uint32_t ComputeBench::bench_npc = 0;
       state.PauseTiming();                                                 \
       const size_t npc = bench_npc;                                        \
       const auto field = static_cast<spu::FieldType>(state.range(0));      \
+      RuntimeConfig conf;                                                  \
+      conf.set_field(field);                                               \
                                                                            \
       util::simulate(npc, [&](std::shared_ptr<yasl::link::Context> lctx) { \
-        auto obj = bench_factory(lctx);                                    \
+        auto obj = bench_factory(conf, lctx);                              \
         auto* comm = obj->getState<Communicator>();                        \
                                                                            \
         /* GIVEN */                                                        \
@@ -104,9 +107,11 @@ uint32_t ComputeBench::bench_npc = 0;
       state.PauseTiming();                                                 \
       const size_t npc = bench_npc;                                        \
       const auto field = static_cast<spu::FieldType>(state.range(0));      \
+      RuntimeConfig conf;                                                  \
+      conf.set_field(field);                                               \
                                                                            \
       util::simulate(npc, [&](std::shared_ptr<yasl::link::Context> lctx) { \
-        auto obj = bench_factory(lctx);                                    \
+        auto obj = bench_factory(conf, lctx);                              \
         auto* comm = obj->getState<Communicator>();                        \
                                                                            \
         /* GIVEN */                                                        \
@@ -136,9 +141,11 @@ BM_DEFINE_BINARY_OP(xor)
       state.PauseTiming();                                                 \
       const size_t npc = bench_npc;                                        \
       const auto field = static_cast<spu::FieldType>(state.range(0));      \
+      RuntimeConfig conf;                                                  \
+      conf.set_field(field);                                               \
                                                                            \
       util::simulate(npc, [&](std::shared_ptr<yasl::link::Context> lctx) { \
-        auto obj = bench_factory(lctx);                                    \
+        auto obj = bench_factory(conf, lctx);                              \
         auto* comm = obj->getState<Communicator>();                        \
                                                                            \
         /* GIVEN */                                                        \
@@ -158,9 +165,11 @@ BM_DEFINE_BINARY_OP(xor)
       state.PauseTiming();                                                 \
       const size_t npc = bench_npc;                                        \
       const auto field = static_cast<spu::FieldType>(state.range(0));      \
+      RuntimeConfig conf;                                                  \
+      conf.set_field(field);                                               \
                                                                            \
       util::simulate(npc, [&](std::shared_ptr<yasl::link::Context> lctx) { \
-        auto obj = bench_factory(lctx);                                    \
+        auto obj = bench_factory(conf, lctx);                              \
         auto* comm = obj->getState<Communicator>();                        \
                                                                            \
         /* GIVEN */                                                        \
@@ -185,9 +194,11 @@ BM_DEFINE_UNARY_OP(not )
       state.PauseTiming();                                                 \
       const size_t npc = bench_npc;                                        \
       const auto field = static_cast<spu::FieldType>(state.range(0));      \
+      RuntimeConfig conf;                                                  \
+      conf.set_field(field);                                               \
                                                                            \
       util::simulate(npc, [&](std::shared_ptr<yasl::link::Context> lctx) { \
-        auto obj = bench_factory(lctx);                                    \
+        auto obj = bench_factory(conf, lctx);                              \
         auto* comm = obj->getState<Communicator>();                        \
                                                                            \
         /* GIVEN */                                                        \
@@ -207,9 +218,11 @@ BM_DEFINE_UNARY_OP(not )
       state.PauseTiming();                                                 \
       const size_t npc = bench_npc;                                        \
       const auto field = static_cast<spu::FieldType>(state.range(0));      \
+      RuntimeConfig conf;                                                  \
+      conf.set_field(field);                                               \
                                                                            \
       util::simulate(npc, [&](std::shared_ptr<yasl::link::Context> lctx) { \
-        auto obj = bench_factory(lctx);                                    \
+        auto obj = bench_factory(conf, lctx);                              \
         auto* comm = obj->getState<Communicator>();                        \
                                                                            \
         /* GIVEN */                                                        \
@@ -235,12 +248,14 @@ SPU_BM_DEFINE_F(ComputeBench, truncpr_s)
     state.PauseTiming();
     const size_t npc = bench_npc;
     const auto field = static_cast<spu::FieldType>(state.range(0));
+    RuntimeConfig conf;
+    conf.set_field(field);
 
     auto p0 = ring_rand_range(field, kNumel, /*min*/ 0,
                               /*max*/ 10000);
 
     util::simulate(npc, [&](std::shared_ptr<yasl::link::Context> lctx) {
-      auto obj = bench_factory(lctx);
+      auto obj = bench_factory(conf, lctx);
       auto* comm = obj->getState<Communicator>();
 
       const size_t bits = 2;
@@ -257,6 +272,8 @@ SPU_BM_DEFINE_F(ComputeBench, mmul_ss)
     state.PauseTiming();
     const size_t npc = bench_npc;
     const auto field = static_cast<spu::FieldType>(state.range(0));
+    RuntimeConfig conf;
+    conf.set_field(field);
 
     const int64_t M = 3;
     const int64_t K = 4;
@@ -265,7 +282,7 @@ SPU_BM_DEFINE_F(ComputeBench, mmul_ss)
     const std::vector<int64_t> shape_B{K, N};
 
     util::simulate(npc, [&](std::shared_ptr<yasl::link::Context> lctx) {
-      auto obj = bench_factory(lctx);
+      auto obj = bench_factory(conf, lctx);
       auto* comm = obj->getState<Communicator>();
 
       /* GIVEN */
@@ -286,6 +303,8 @@ SPU_BM_DEFINE_F(ComputeBench, mmul_sp)
     state.PauseTiming();
     const size_t npc = bench_npc;
     const auto field = static_cast<spu::FieldType>(state.range(0));
+    RuntimeConfig conf;
+    conf.set_field(field);
 
     const int64_t M = 3;
     const int64_t K = 4;
@@ -294,7 +313,7 @@ SPU_BM_DEFINE_F(ComputeBench, mmul_sp)
     const std::vector<int64_t> shape_B{K, N};
 
     util::simulate(npc, [&](std::shared_ptr<yasl::link::Context> lctx) {
-      auto obj = bench_factory(lctx);
+      auto obj = bench_factory(conf, lctx);
       auto* comm = obj->getState<Communicator>();
 
       /* GIVEN */
@@ -314,9 +333,11 @@ SPU_BM_DEFINE_F(ComputeBench, p2s)
     state.PauseTiming();
     const size_t npc = bench_npc;
     const auto field = static_cast<spu::FieldType>(state.range(0));
+    RuntimeConfig conf;
+    conf.set_field(field);
 
     util::simulate(npc, [&](std::shared_ptr<yasl::link::Context> lctx) {
-      auto obj = bench_factory(lctx);
+      auto obj = bench_factory(conf, lctx);
       auto* comm = obj->getState<Communicator>();
 
       /* GIVEN */
@@ -334,9 +355,11 @@ SPU_BM_DEFINE_F(ComputeBench, s2p)
     state.PauseTiming();
     const size_t npc = bench_npc;
     const auto field = static_cast<spu::FieldType>(state.range(0));
+    RuntimeConfig conf;
+    conf.set_field(field);
 
     util::simulate(npc, [&](std::shared_ptr<yasl::link::Context> lctx) {
-      auto obj = bench_factory(lctx);
+      auto obj = bench_factory(conf, lctx);
       auto* comm = obj->getState<Communicator>();
 
       /* GIVEN */

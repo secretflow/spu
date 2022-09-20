@@ -17,6 +17,11 @@ load("@rules_python//python:defs.bzl", "py_library")
 package(default_visibility = ["//visibility:public"])
 
 py_library(
+    name = "appr_sigmoid",
+    srcs = ["appr_sigmoid.py"],
+)
+
+py_library(
     name = "dataset_utils",
     srcs = ["dataset_utils.py"],
 )

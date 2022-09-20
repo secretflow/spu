@@ -131,15 +131,19 @@ int64_t flattenIndex(absl::Span<const int64_t> indices,
   return linear_idx;
 }
 
-std::vector<int64_t> unflattenIndex(int64_t index,
-                                    absl::Span<const int64_t> shape) {
-  std::vector<int64_t> indices(shape.size(), 0);
-
-  for (int64_t idx = indices.size() - 1; idx >= 0; --idx) {
-    indices[idx] = index % shape[idx];
+void unflattenIndex(int64_t index, absl::Span<const int64_t> shape,
+                    std::vector<int64_t> &unflattened) {
+  for (int64_t idx = unflattened.size() - 1; idx >= 0; --idx) {
+    unflattened[idx] = index % shape[idx];
     index /= shape[idx];
   }
-  return indices;
+}
+
+std::vector<int64_t> unflattenIndex(int64_t index,
+                                    absl::Span<const int64_t> shape) {
+  std::vector<int64_t> ret(shape.size());
+  unflattenIndex(index, shape, ret);
+  return ret;
 }
 
 }  // namespace spu

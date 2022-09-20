@@ -9,6 +9,24 @@
 ## staging
 > please add your unrelease change here.
 
+## 20220905
+- [SPU] 0.2.4 release
+- [bugfix] Fix Tensorflow example
+- [miscs] Performance improvements
+
+## 20220822
+- [SPU] 0.2.1 release
+- [Feature] Add compiler cache
+- [Feature] Support bc22-pcg psi
+- [API] Refactor psi api
+- [miscs] Various performance improvements
+
+## 20220727
+- [SPU] 0.1.1 release
+- [API] Added rsqrt support
+- [bugfix] Fixed some crashes and wrong answers
+
+
 ## 20220527
 - [SPU] 0.1.0 release
 - [API] Add exp/log approximation configurations.

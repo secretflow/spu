@@ -20,6 +20,7 @@ spu_cc_library(
     name = "hal",
     hdrs = ["hal.h"],
     deps = [
+        ":concat",
         ":constants",
         ":debug",
         ":fxp",
@@ -90,7 +91,6 @@ spu_cc_library(
         ":constants",  # Strange
         ":context",
         ":prot_wrapper",
-        ":shape_ops",
     ],
 )
 
@@ -262,6 +262,28 @@ spu_cc_test(
     srcs = ["shape_ops_test.cc"],
     deps = [
         ":shape_ops",
+        ":test_util",
+    ],
+)
+
+spu_cc_library(
+    name = "concat",
+    srcs = ["concat.cc"],
+    hdrs = ["concat.h"],
+    deps = [
+        ":context",
+        ":ring",
+        "//spu/core:shape_util",
+        "//spu/core:vectorize",
+        "@yasl//yasl/base:exception",
+    ],
+)
+
+spu_cc_test(
+    name = "concat_test",
+    srcs = ["concat_test.cc"],
+    deps = [
+        ":concat",
         ":test_util",
     ],
 )

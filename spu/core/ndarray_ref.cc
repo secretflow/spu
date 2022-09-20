@@ -18,6 +18,7 @@
 
 #include "fmt/format.h"
 #include "fmt/ostream.h"
+#include "yasl/utils/parallel.h"
 
 #include "spu/core/shape_util.h"
 
@@ -58,14 +59,11 @@ NdArrayRef::NdArrayRef(std::shared_ptr<yasl::Buffer> buf, Type eltype,
       eltype_(std::move(eltype)),
       shape_(std::move(shape)),
       strides_(std::move(strides)),
-      offset_(offset) {
-  YASL_ENFORCE(calcNumel(shape_) * static_cast<int64_t>(eltype_.size()) <=
-               buf_->size());
-}
+      offset_(offset) {}
 
 // constructor, view buf as a compact buffer with given shape.
 NdArrayRef::NdArrayRef(std::shared_ptr<yasl::Buffer> buf, Type eltype,
-                       std::vector<int64_t> shape)
+                       absl::Span<const int64_t> shape)
     : NdArrayRef(std::move(buf),             // buf
                  eltype,                     // eltype
                  shape,                      // shape
@@ -74,7 +72,7 @@ NdArrayRef::NdArrayRef(std::shared_ptr<yasl::Buffer> buf, Type eltype,
       ) {}
 
 // constructor, create a new buffer of elements and ref to it.
-NdArrayRef::NdArrayRef(Type eltype, std::vector<int64_t> shape)
+NdArrayRef::NdArrayRef(Type eltype, absl::Span<const int64_t> shape)
     : NdArrayRef(std::make_shared<yasl::Buffer>(calcNumel(shape) *
                                                 eltype.size()),  // buf
                  eltype,                                         // eltype
@@ -115,14 +113,18 @@ bool NdArrayRef::isCompact() const {
 NdArrayRef NdArrayRef::clone() const {
   NdArrayRef res(eltype(), shape());
 
-  std::vector<int64_t> indices(shape().size(), 0);
+  auto* ret_ptr = static_cast<std::byte*>(res.data());
+  auto elsize = res.elsize();
 
-  do {
-    const auto* frm = &at(indices);
-    auto* dst = &res.at(indices);
-
-    std::memcpy(dst, frm, elsize());
-  } while (bumpIndices<int64_t>(shape(), absl::MakeSpan(indices)));
+  yasl::parallel_for(0, numel(), 2048, [&](int64_t begin, int64_t end) {
+    std::vector<int64_t> indices(shape().size(), 0);
+    unflattenIndex(begin, shape(), indices);
+    for (int64_t idx = begin; idx < end; ++idx) {
+      const auto* frm = &at(indices);
+      bumpIndices<int64_t>(shape(), absl::MakeSpan(indices));
+      std::memcpy(ret_ptr + idx * elsize, frm, elsize);
+    }
+  });
 
   return res;
 }
@@ -153,6 +155,12 @@ ArrayRef flatten(const NdArrayRef& ndarr) {
   // modify inplace.
   auto compact = ndarr.clone();
   return {compact.buf(), ndarr.eltype(), ndarr.numel(), 1, compact.offset()};
+}
+
+std::ostream& operator<<(std::ostream& out, const NdArrayRef& v) {
+  out << fmt::format("NdArrayRef<{}x{}>", fmt::join(v.shape(), "x"),
+                     v.eltype().toString());
+  return out;
 }
 
 }  // namespace spu

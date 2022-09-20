@@ -128,6 +128,7 @@ spu_cc_library(
         ":vectorize",
         "@yasl//yasl/base:buffer",
         "@yasl//yasl/base:exception",
+        "@yasl//yasl/utils:parallel",
     ],
 )
 

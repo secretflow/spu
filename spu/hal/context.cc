@@ -22,7 +22,7 @@ HalContext::HalContext(RuntimeConfig config,
                        std::shared_ptr<yasl::link::Context> lctx)
     : rt_config_(config),
       lctx_(lctx),
-      prot_(mpc::Factory::CreateCompute(config.protocol(), lctx)),
+      prot_(mpc::Factory::CreateCompute(config, lctx)),
       rand_engine_(config.public_random_seed()) {
   setTracingEnabled(rt_config_.enable_action_trace());
   prot()->setTracingEnabled(rt_config_.enable_action_trace());

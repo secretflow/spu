@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("//bazel:spu.bzl", "spu_cc_test")
 load("//bazel:glob_lit_test.bzl", "glob_lit_tests")
 
 glob_lit_tests(
@@ -29,18 +28,5 @@ filegroup(
         "lit.cfg",
         "//spu/compiler/tools:mlir-pphlo-opt",
         "@llvm-project//llvm:FileCheck",
-    ],
-)
-
-spu_cc_test(
-    name = "end_to_end_test",
-    srcs = ["end_to_end_test.cc"],
-    data = [
-        "//spu/compiler/test_data:pphlo_asms",
-        "//spu/compiler/test_data:xla_dumps",
-    ],
-    tags = ["no-remote-cache"],
-    deps = [
-        "//spu/compiler:compile",
     ],
 )

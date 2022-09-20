@@ -1,4 +1,4 @@
-// Copyright 2021 Ant Group Co., Ltd.
+// Copyright 2022 Ant Group Co., Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -23,9 +23,10 @@
 #include "yasl/base/byte_container_view.h"
 #include "yasl/link/link.h"
 
-#include "spu/psi/core/ecdh_psi.h"
-#include "spu/psi/cryptor/ecdh_oprf/ecdh_oprf.h"
-#include "spu/psi/cryptor/ecdh_oprf/ecdh_oprf_selector.h"
+#include "spu/psi/core/ecdh_oprf/ecdh_oprf.h"
+#include "spu/psi/core/ecdh_oprf/ecdh_oprf_selector.h"
+#include "spu/psi/utils/batch_provider.h"
+#include "spu/psi/utils/cipher_store.h"
 
 // basic ecdh-oprf based psi
 // reference:
@@ -57,11 +58,11 @@
 // =======================================================
 //                                           Intersection
 //
-namespace spu {
-namespace psi {
+namespace spu::psi {
 
 // send queque capacity
 inline constexpr size_t kQueueCapacity = 32;
+inline constexpr size_t kEcdhOprfPsiBatchSize = 4096;
 
 struct EcdhOprfPsiOptions {
   // Provides the link for server's evaluated data.
@@ -75,13 +76,13 @@ struct EcdhOprfPsiOptions {
 
   // curve_type
   //    FourQ/SM2/Secp256k1
-  CurveType curve_type = CurveType::CurveFourQ;
+  CurveType curve_type = CurveType::CURVE_FOURQ;
 
   // batch_size
   //     batch read from IBatchProvider
   //     batch compute oprf blind/evaluate
   //     batch send and read
-  size_t batch_size = kEcdhPsiBatchSize;
+  size_t batch_size = kEcdhOprfPsiBatchSize;
 
   // windows_size
   //  control send speed, avoid send buffer overflow
@@ -90,7 +91,7 @@ struct EcdhOprfPsiOptions {
 
 class EcdhOprfPsiServer {
  public:
-  EcdhOprfPsiServer(EcdhOprfPsiOptions options)
+  explicit EcdhOprfPsiServer(EcdhOprfPsiOptions options)
       : options_(options),
         oprf_server_(
             CreateEcdhOprfServer(options.oprf_type, options.curve_type)) {}
@@ -107,15 +108,16 @@ class EcdhOprfPsiServer {
    * @param batch_provider input data batch provider
    * @param cipher_store   masked data store
    */
-  void FullEvaluate(std::shared_ptr<IBatchProvider> batch_provider,
-                    std::shared_ptr<ICipherStore> cipher_store);
+  void FullEvaluate(const std::shared_ptr<IBatchProvider>& batch_provider,
+                    const std::shared_ptr<ICipherStore>& cipher_store);
 
   /**
    * @brief send masked data
    *
    * @param batch_provider masked data batch provider
    */
-  void SendFinalEvaluatedItems(std::shared_ptr<IBatchProvider> batch_provider);
+  void SendFinalEvaluatedItems(
+      const std::shared_ptr<IBatchProvider>& batch_provider);
 
   /**
    * @brief
@@ -140,7 +142,7 @@ class EcdhOprfPsiServer {
 
 class EcdhOprfPsiClient {
  public:
-  EcdhOprfPsiClient(EcdhOprfPsiOptions options) : options_(options) {
+  explicit EcdhOprfPsiClient(EcdhOprfPsiOptions options) : options_(options) {
     std::shared_ptr<IEcdhOprfClient> oprf_client =
         CreateEcdhOprfClient(options.oprf_type, options.curve_type);
     compare_length_ = oprf_client->GetCompareLength();
@@ -152,14 +154,15 @@ class EcdhOprfPsiClient {
    *
    * @param cipher_store store server's masked data to peer results
    */
-  void RecvFinalEvaluatedItems(std::shared_ptr<ICipherStore> cipher_store);
+  void RecvFinalEvaluatedItems(
+      const std::shared_ptr<ICipherStore>& cipher_store);
 
   /**
    * @brief blind input data and send to server
    *
    * @param batch_provider input data batch provider
    */
-  void SendBlindedItems(std::shared_ptr<IBatchProvider> batch_provider);
+  void SendBlindedItems(const std::shared_ptr<IBatchProvider>& batch_provider);
 
   /**
    * @brief recv evaluated data, do Finalize and store to cipher_store
@@ -167,8 +170,8 @@ class EcdhOprfPsiClient {
    * @param batch_provider  input data batch provider
    * @param cipher_store    store finalized data to self results
    */
-  void RecvEvaluatedItems(std::shared_ptr<IBatchProvider> batch_provider,
-                          std::shared_ptr<ICipherStore> cipher_store);
+  void RecvEvaluatedItems(const std::shared_ptr<IBatchProvider>& batch_provider,
+                          const std::shared_ptr<ICipherStore>& cipher_store);
 
  private:
   EcdhOprfPsiOptions options_;
@@ -181,5 +184,5 @@ class EcdhOprfPsiClient {
   size_t compare_length_;
   size_t ec_point_length_;
 };
-}  // namespace psi
-}  // namespace spu
+
+}  // namespace spu::psi

@@ -104,6 +104,18 @@ def PPHLO_SqrtOp
   }];
 }
 
+def PPHLO_RsqrtOp
+    : PPHLO_UnaryElementwiseOp<"rsqrt", [NoSideEffect], PPHLO_FpTensor> {
+  let summary = "Reciprocal of square-root operator";
+  let description = [{
+    Returns `rsqrt(operand)` element-wise.
+
+    See
+    https://www.tensorflow.org/xla/operation_semantics#element-wise_unary_functions.
+  }];
+}
+
+
 def PPHLO_TanhOp
     : PPHLO_UnaryElementwiseOp<"tanh", [NoSideEffect], PPHLO_FpTensor> {
   let summary = "Tanh operator";
@@ -299,6 +311,17 @@ def PPHLO_AddOp
 def PPHLO_MulOp
     : PPHLO_BinaryElementwiseOp<"multiply", [Commutative, NoSideEffect]> {
   let summary = "Multiplication operator";
+  let description = [{
+    Returns `lhs * rhs` element-wise.
+    
+    See
+    https://www.tensorflow.org/xla/operation_semantics#element-wise_binary_arithmetic_operations.
+  }];
+}
+
+def PPHLO_MixedMulOp
+    : PPHLO_BinaryElementwiseOp<"mixed_multiply", [Commutative, NoSideEffect]> {
+  let summary = "Mixed type multiplication operator";
   let description = [{
     Returns `lhs * rhs` element-wise.
     
@@ -570,6 +593,18 @@ def PPHLO_ConcatenateOp
 
 def PPHLO_DotOp : PPHLO_Op<"dot", [NoSideEffect]> {
   let summary = "Dot operator";
+  let description = [{
+    Performs dot products between vectors, vector/matrix and matrix/matrix
+    multiplication.
+
+    See https://www.tensorflow.org/xla/operation_semantics#dot.
+  }];
+  let arguments = (ins PPHLO_Tensor : $lhs, PPHLO_Tensor : $rhs);
+  let results = (outs PPHLO_Tensor);
+}
+
+def PPHLO_MixedDotOp : PPHLO_Op<"mixed_dot", [NoSideEffect]> {
+  let summary = "Mixed type dot operator";
   let description = [{
     Performs dot products between vectors, vector/matrix and matrix/matrix
     multiplication.

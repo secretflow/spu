@@ -139,13 +139,10 @@ OutputIt vectorize(InputIt a_first, InputIt a_last, InputIt b_first,
   using T = typename std::iterator_traits<InputIt>::value_type;
   using PackInfo = typename SimdTrait<T>::PackInfo;
 
-  PackInfo a_pi;
-  PackInfo b_pi;
+  PackInfo a_pi{};
+  PackInfo b_pi{};
   const T& a_joined = SimdTrait<T>::pack(a_first, a_last, a_pi);
   const T& b_joined = SimdTrait<T>::pack(b_first, b_last, b_pi);
-
-  YASL_ENFORCE(a_pi == b_pi, "join info mis-match, a_pi={}, b_pi={}",
-               a_pi.size(), b_pi.at(2));
 
   return SimdTrait<T>::unpack(op(a_joined, b_joined), result, a_pi);
 }

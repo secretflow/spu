@@ -18,6 +18,8 @@ from typing import List
 
 import spu.spu_pb2 as spu_pb2
 
+from cachetools import LRUCache, cached
+
 from . import _lib
 
 
@@ -73,6 +75,10 @@ class Runtime(object):
         """
         self._vm.DelVar(name)
 
+    def clear(self) -> None:
+        """Delete all SPU values."""
+        self._vm.Clear()
+
 
 class Io(object):
     """The SPU IO interface."""
@@ -87,18 +93,19 @@ class Io(object):
         self._io = _lib.IoWrapper(world_size, config.SerializeToString())
 
     def make_shares(
-        self, x: 'np.ndarray', vtype: spu_pb2.Visibility
+        self, x: 'np.ndarray', vtype: spu_pb2.Visibility, owner_rank: int = -1
     ) -> List[spu_pb2.ValueProto]:
         """Convert from NumPy array to list of SPU value(s).
 
         Args:
             x (np.ndarray): input.
             vtype (Visibility): visibility.
+            owner_rank (int): the index of the trusted piece. if >= 0, colocation optimization may be applied.
 
         Returns:
             [ValueProto]: output.
         """
-        str_shares = self._io.MakeShares(x, vtype)
+        str_shares = self._io.MakeShares(x, vtype, owner_rank)
         rets = []
         for str_share in str_shares:
             value_share = spu_pb2.ValueProto()
@@ -119,15 +126,21 @@ class Io(object):
         return self._io.Reconstruct(str_shares)
 
 
-def compile(src: spu_pb2.IrProto) -> spu_pb2.IrProto:
-    """Compile from XLA HLO to SPU HLO."""
+@cached(cache=LRUCache(maxsize=128))
+def _spu_compilation(xla: str, json_meta: str):
+    return _lib.compile(xla, json_meta, "")
+
+
+def compile(xla: str, vis: List[spu_pb2.Visibility]) -> str:
+    """Compile from XLA to SPU bytecode.
+
+    Args:
+        xla (str): XLA protobuf binary format.
+        vtype (Visibility): Visbilities .
+
+    Returns:
+        [ValueProto]: output.
+    """
     from google.protobuf.json_format import MessageToJson
 
-    if src.ir_type == spu_pb2.IrType.IR_XLA_HLO:
-        mlir = _lib.compile(src.code, MessageToJson(src.meta), "")
-        mlir_proto = spu_pb2.IrProto()
-        mlir_proto.code = mlir
-        mlir_proto.ir_type = spu_pb2.IrType.IR_MLIR_SPU
-        return mlir_proto
-    else:
-        raise NameError("Unknown ir type")
+    return _spu_compilation(xla, MessageToJson(spu_pb2.XlaMeta(inputs=vis)))

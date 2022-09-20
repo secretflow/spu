@@ -23,6 +23,7 @@ py_library(
     name = "simulation",
     srcs = ["simulation.py"],
     deps = [
+        ":frontend",
         "//spu/binding:api",
     ],
 )
@@ -53,6 +54,7 @@ py_library(
     deps = [
         ":distributed_py_proto",
         ":distributed_py_proto_grpc",
+        ":frontend",
         "//spu:spu_py_proto",
         "//spu/binding:api",
     ],
@@ -63,5 +65,21 @@ py_test(
     srcs = ["distributed_test.py"],
     deps = [
         ":distributed",
+    ],
+)
+
+py_library(
+    name = "frontend",
+    srcs = ["frontend.py"],
+    deps = [
+        "//spu/binding:api",
+    ],
+)
+
+py_test(
+    name = "frontend_test",
+    srcs = ["frontend_test.py"],
+    deps = [
+        ":frontend",
     ],
 )

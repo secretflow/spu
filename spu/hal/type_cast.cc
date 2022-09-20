@@ -22,20 +22,11 @@
 namespace spu::hal {
 namespace {
 
-Value _expand_boolean(HalContext* ctx, const Value& x) {
-  if (getWidth(x.dtype()) != 1) {
-    return x;
-  }
-  const size_t bit_width = SizeOf(x.storage_type().as<Ring2k>()->field()) * 8;
-  const size_t length = bit_width - getWidth(x.dtype());
-  return _rshift(ctx, _lshift(ctx, x, length), length);
-}
-
 Value int2fxp(HalContext* ctx, const Value& x) {
   SPU_TRACE_HAL(ctx, x);
   YASL_ENFORCE(x.isInt(), "expect integer, got {}", x.dtype());
 
-  return _lshift(ctx, _expand_boolean(ctx, x), ctx->getFxpBits()).asFxp();
+  return _lshift(ctx, x, ctx->getFxpBits()).asFxp();
 }
 
 // Casting fxp to integer.
@@ -92,7 +83,7 @@ Value dtype_cast(HalContext* ctx, const Value& in, DataType to_type) {
       // can directly set to the new dtype for now.
       // once we start to optimize according to bit length, we may involve
       // carry-out calculation here.
-      return Value(_expand_boolean(ctx, in).data(), to_type);
+      return Value(in.data(), to_type);
     } else {
       YASL_ENFORCE(isFixedPoint(to_type));
       return int2fxp(ctx, in);

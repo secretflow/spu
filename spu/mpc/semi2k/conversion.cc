@@ -22,8 +22,8 @@
 #include "spu/core/profile.h"
 #include "spu/core/vectorize.h"
 #include "spu/core/xt_helper.h"
+#include "spu/mpc/common/abprotocol.h"
 #include "spu/mpc/common/prg_state.h"
-#include "spu/mpc/interfaces.h"
 #include "spu/mpc/semi2k/object.h"
 #include "spu/mpc/semi2k/type.h"
 #include "spu/mpc/util/circuits.h"
@@ -36,24 +36,10 @@ ArrayRef AddBB::proc(KernelEvalContext* ctx, const ArrayRef& x,
                      const ArrayRef& y) const {
   SPU_PROFILE_TRACE_KERNEL(ctx, x, y);
 
-  CircuitBasicBlock<ArrayRef> cbb;
-  {
-    cbb.num_bits = x.elsize() * 8;
-    cbb._xor = [&](ArrayRef const& lhs, ArrayRef const& rhs) -> ArrayRef {
-      return xor_bb(ctx->caller(), lhs, rhs);
-    };
-    cbb._and = [&](ArrayRef const& lhs, ArrayRef const& rhs) -> ArrayRef {
-      return and_bb(ctx->caller(), lhs, rhs);
-    };
-    cbb.lshift = [&](ArrayRef const& in, size_t bits) -> ArrayRef {
-      return lshift_b(ctx->caller(), in, bits);
-    };
-    cbb.rshift = [&](ArrayRef const& in, size_t bits) -> ArrayRef {
-      return rshift_b(ctx->caller(), in, bits);
-    };
-  }
-
-  return KoggleStoneAdder<ArrayRef>(x, y, cbb);
+  const auto field = x.eltype().as<Ring2k>()->field();
+  const size_t nbits = SizeOf(field) * 8;
+  auto cbb = makeABProtBasicBlock(ctx->caller());
+  return koggle_stone<ArrayRef>(cbb, x, y, nbits);
 }
 
 ArrayRef A2B::proc(KernelEvalContext* ctx, const ArrayRef& x) const {

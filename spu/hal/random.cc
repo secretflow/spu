@@ -25,7 +25,7 @@
 namespace spu::hal {
 
 Value rng_uniform(HalContext* ctx, const Value& a, const Value& b,
-                  const std::vector<int64_t>& to_shape) {
+                  absl::Span<const int64_t> to_shape) {
   SPU_TRACE_HAL(ctx, a, b, to_shape);
   YASL_ENFORCE(a.isPublic() && b.isPublic());
   YASL_ENFORCE(a.dtype() == b.dtype());

@@ -21,28 +21,9 @@
 
 #include "spdlog/spdlog.h"
 
+#include "spu/hal/context.h"
+
 namespace spu::device {
-namespace {
-
-class Timer {
-  using TimePoint = decltype(std::chrono::high_resolution_clock::now());
-  TimePoint start_;
-
-public:
-  explicit Timer() { reset(); }
-
-  void reset() { start_ = std::chrono::high_resolution_clock::now(); }
-
-  double count() {
-    auto end = std::chrono::high_resolution_clock::now();
-    auto dur =
-        std::chrono::duration_cast<std::chrono::duration<double>>(end - start_);
-
-    return dur.count();
-  }
-};
-
-} // namespace
 
 void Executor::runWithEnv(const ExecutableProto &exec, SymbolTable *env) {
   // setup global states.
@@ -51,6 +32,8 @@ void Executor::runWithEnv(const ExecutableProto &exec, SymbolTable *env) {
   //
   const bool isRefHal = hctx_->lctx() == nullptr;
   const size_t rank = isRefHal ? 0 : hctx_->lctx()->Rank();
+
+  module_name_ = exec.name();
 
   Timer timer;
   Timer stage_timer;
@@ -63,18 +46,21 @@ void Executor::runWithEnv(const ExecutableProto &exec, SymbolTable *env) {
     inputs.emplace_back(env->getVar(sym_name));
   }
 
-  const double input_time = stage_timer.count();
+  const auto input_time = stage_timer.count();
 
   // TODO: rename this flag, enable_executable_dump?
   if (rt_config.enable_processor_dump()) {
     // Naming convention for dumped files must align with debug runner.
-    std::filesystem::path dump_folder = rt_config.processor_dump_dir();
+    std::filesystem::path dump_folder(rt_config.processor_dump_dir());
+    dump_folder /= exec.name();
+
+    std::filesystem::create_directories(dump_folder);
 
     // dump executable.
-    {
-      auto fname =
-          fmt::format("{}/exec_{}_{}.txt", dump_folder, exec.name(), rank);
-      std::ofstream ir_file(fname, std::ios::binary);
+    if (rank == 0) {
+      auto fname = dump_folder / std::string("exec.txt");
+      SPDLOG_INFO("Dump exec to {}", fname);
+      std::ofstream ir_file(fname, std::ios::binary | std::ios::out);
       ir_file << exec.SerializeAsString();
     }
 
@@ -82,9 +68,10 @@ void Executor::runWithEnv(const ExecutableProto &exec, SymbolTable *env) {
     {
       size_t var_counter = 0;
       for (const auto &val : inputs) {
-        auto fname = fmt::format("{}/processor{}{}.txt", dump_folder, rank,
-                                 var_counter++);
-        std::ofstream inputs_file(fname, std::ios::binary);
+        auto fname =
+            dump_folder / fmt::format("data_{}_{}.txt", rank, var_counter++);
+        SPDLOG_INFO("Dump data to {}", fname);
+        std::ofstream inputs_file(fname, std::ios::binary | std::ios::out);
         inputs_file << val.toProto().SerializeAsString();
       }
     }
@@ -93,7 +80,7 @@ void Executor::runWithEnv(const ExecutableProto &exec, SymbolTable *env) {
   // Profile: before execution stamp
   stage_timer.reset();
   auto outputs = run(exec.code(), inputs);
-  const double exec_time = stage_timer.count();
+  const auto exec_time = stage_timer.count();
 
   // sync output to environment.
   stage_timer.reset();
@@ -101,7 +88,7 @@ void Executor::runWithEnv(const ExecutableProto &exec, SymbolTable *env) {
     const std::string &sym_name = exec.output_names(idx);
     env->setVar(sym_name, outputs[idx]);
   }
-  auto output_time = stage_timer.count();
+  const auto output_time = stage_timer.count();
 
   // Collect time profile data
   auto total_time = timer.count();
@@ -109,9 +96,10 @@ void Executor::runWithEnv(const ExecutableProto &exec, SymbolTable *env) {
   // Only one party prints for multi-threading simulation
   if (hctx_->rt_config().enable_pphlo_profile()) {
     SPDLOG_INFO(
-        "[Profiling] SPU execution completed, input processing took {}s, "
+        "[Profiling] SPU execution {} completed, input processing took {}s, "
         "execution took {}s, output processing took {}s, total time {}s.",
-        input_time, exec_time, output_time, total_time);
+        module_name_, input_time.count(), exec_time.count(),
+        output_time.count(), total_time.count());
     SPDLOG_INFO("Detailed pphlo profiling data:");
     const auto &records = getProfileRecords();
     for (const auto &[name, record] : records) {

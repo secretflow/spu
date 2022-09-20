@@ -21,7 +21,6 @@ package(
 spu_cc_binary(
     name = "main",
     srcs = ["main.cc"],
-    tags = ["no-remote-cache"],
     deps = [
         ":compile",
     ],

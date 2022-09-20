@@ -34,7 +34,7 @@ void dbg_print(HalContext* ctx, const Value& v) {
       YASL_THROW("unsupport dtype={}", v.dtype());
     }
     if ((ctx->lctx() && ctx->lctx()->Rank() == 0) || ctx->lctx() == nullptr) {
-      SPDLOG_INFO(ss.str());
+      SPDLOG_INFO("dbg_print {}", ss.str());
     }
   } else if (v.isSecret()) {
     dbg_print(ctx, reveal(ctx, v));

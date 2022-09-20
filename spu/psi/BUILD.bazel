@@ -1,4 +1,4 @@
-# Copyright 2021 Ant Group Co., Ltd.
+# Copyright 2022 Ant Group Co., Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,15 +12,70 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("//bazel:spu.bzl", "spu_cc_library")
+load("@com_github_grpc_grpc//bazel:python_rules.bzl", "py_proto_library")
+load("//bazel:spu.bzl", "spu_cc_library", "spu_cc_test")
+load("@rules_proto//proto:defs.bzl", "proto_library")
+load("@rules_cc//cc:defs.bzl", "cc_proto_library")
 
 package(default_visibility = ["//visibility:public"])
 
+proto_library(
+    name = "psi_proto",
+    srcs = ["psi.proto"],
+)
+
+cc_proto_library(
+    name = "psi_cc_proto",
+    deps = [":psi_proto"],
+)
+
+py_proto_library(
+    name = "psi_py_proto",
+    deps = [":psi_proto"],
+)
+
 spu_cc_library(
-    name = "psi",
-    srcs = ["psi.cc"],
-    hdrs = ["psi.h"],
+    name = "memory_psi",
+    srcs = ["memory_psi.cc"],
+    hdrs = [
+        "memory_psi.h",
+    ],
     deps = [
-        "//spu/psi/executor:legacy_psi_executor",
+        ":psi_cc_proto",
+        "//spu/psi/operator",
+        "//spu/psi/utils",
+    ],
+)
+
+spu_cc_test(
+    name = "memory_psi_test",
+    srcs = ["memory_psi_test.cc"],
+    deps = [
+        ":memory_psi",
+        "//spu/psi/utils:test_utils",
+    ],
+)
+
+spu_cc_library(
+    name = "bucket_psi",
+    srcs = ["bucket_psi.cc"],
+    hdrs = [
+        "bucket_psi.h",
+    ],
+    deps = [
+        ":memory_psi",
+        ":psi_cc_proto",
+        "//spu/psi/utils:batch_provider",
+        "//spu/psi/utils:cipher_store",
+        "//spu/psi/utils:csv_checker",
+        "//spu/psi/utils:csv_header_analyzer",
+    ],
+)
+
+spu_cc_test(
+    name = "bucket_psi_test",
+    srcs = ["bucket_psi_test.cc"],
+    deps = [
+        ":bucket_psi",
     ],
 )

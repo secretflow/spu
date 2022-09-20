@@ -28,6 +28,7 @@ ArrayRef ring_rand_range(FieldType field, size_t size, int32_t min,
                          int32_t max);
 
 ArrayRef ring_zeros(FieldType field, size_t size);
+ArrayRef ring_zeros_packed(FieldType field, size_t size);
 
 ArrayRef ring_ones(FieldType field, size_t size);
 
@@ -79,12 +80,22 @@ ArrayRef ring_sum(absl::Span<ArrayRef const> arrs);
 
 bool ring_all_equal(const ArrayRef& x, const ArrayRef& y, size_t abs_err = 0);
 
-std::vector<bool> ring_as_bool(const ArrayRef& x);
+// Note: here we use uint8_t instead of bool because most of the time the casted
+// boolean will participate in arithmetic computation in the future.
+std::vector<uint8_t> ring_cast_boolean(const ArrayRef& x);
+
+// x & bits[low, high)
+ArrayRef ring_bitmask(const ArrayRef& x, size_t low, size_t high);
+void ring_bitmask_(ArrayRef& x, size_t low, size_t high);
 
 ArrayRef ring_select(const std::vector<uint8_t>& c, const ArrayRef& x,
                      const ArrayRef& y);
 
 // random additive splits.
-std::vector<ArrayRef> ring_rand_splits(const ArrayRef& arr, size_t num_splits);
+std::vector<ArrayRef> ring_rand_additive_splits(const ArrayRef& arr,
+                                                size_t num_splits);
+// random boolean splits.
+std::vector<ArrayRef> ring_rand_boolean_splits(const ArrayRef& arr,
+                                               size_t num_splits);
 
 }  // namespace spu::mpc

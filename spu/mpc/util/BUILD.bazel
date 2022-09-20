@@ -17,11 +17,19 @@ load("//bazel:spu.bzl", "spu_cc_binary", "spu_cc_library", "spu_cc_test")
 package(default_visibility = ["//visibility:public"])
 
 spu_cc_library(
+    name = "bit_utils",
+    hdrs = ["bit_utils.h"],
+    deps = [
+        "@com_google_absl//absl/numeric:bits",
+    ],
+)
+
+spu_cc_library(
     name = "circuits",
     hdrs = ["circuits.h"],
     deps = [
+        ":bit_utils",
         "//spu/core:vectorize",
-        "@com_google_absl//absl/numeric:bits",
     ],
 )
 
@@ -30,6 +38,7 @@ spu_cc_test(
     srcs = ["circuits_test.cc"],
     deps = [
         ":circuits",
+        "@yasl//yasl/base:int128",
     ],
 )
 
@@ -40,8 +49,6 @@ spu_cc_library(
     deps = [
         ":ring_ops",
         "//spu/mpc:object",
-        "@com_github_xtensor_xtensor//:xtensor",  # TODO: remove me.
-        "@com_google_absl//absl/types:span",
         "@yasl//yasl/link",
     ],
 )
@@ -89,6 +96,7 @@ spu_cc_library(
         "//spu/core",
         "@yasl//yasl/crypto:pseudo_random_generator",
         "@yasl//yasl/utils:parallel",
+        "@yasl//yasl/utils:rand",
     ],
 )
 
@@ -111,8 +119,11 @@ spu_cc_binary(
 
 spu_cc_library(
     name = "linalg",
+    srcs = ["linalg.cc"],
     hdrs = ["linalg.h"],
     deps = [
+        "@com_github_eigenteam_eigen//:eigen3",
+        "@llvm-project//llvm:Support",
         "@yasl//yasl/utils:parallel",
     ],
 )

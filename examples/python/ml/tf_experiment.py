@@ -16,13 +16,21 @@
 # Linear regression using GradientTape
 # based on https://sanjayasubedi.com.np/deeplearning/tensorflow-2-linear-regression-from-scratch/
 
+import argparse
+import json
+
 import numpy as np
 import tensorflow as tf
 from sklearn import metrics
+import spu.binding.util.distributed as ppd
 
-# This example is to show tf program could be converted to XLA IR.
+# This example is to show tf program could be converted to XLA IR and run by SPU.
+# Start nodes.
+# > bazel run -c opt //examples/python/utils:nodectl -- up
+#
 # Run this example script.
 # > bazel run //examples/python/ml:tf_experiment
+# This example is tf counterpart to //examples/python/ml:jax_lr
 
 
 def sigmoid(x):
@@ -111,19 +119,68 @@ class LogitRegression:
 
         return self.w
 
+    # NOTE(junfeng): at this moment, SPU doesn't support stateful computations with TF frontend,
+    # so self.w is removed and tf.Variable is replaced accordingly.
+    def fit_manual_grad_no_captures(self, x1, x2, label):
+        feature = tf.concat((x1, x2), axis=1)
+        w = tf.constant(np.zeros([feature.shape[1]], dtype=np.float64))
 
-def load_dataset():
+        remainder = feature.shape[0] % self.n_iters
+
+        xs = tf.split(
+            feature[
+                :-remainder,
+            ],
+            self.n_iters,
+            axis=0,
+        )
+        ys = tf.split(
+            label[
+                :-remainder,
+            ],
+            self.n_iters,
+            axis=0,
+        )
+
+        for _ in range(self.n_epochs):
+            for (x, y) in zip(xs, ys):
+                pred = predict(x, w)
+                err = pred - y
+                dw = tf.linalg.matvec(tf.transpose(x), err)
+                w -= dw * self.step_size
+
+        return w
+
+
+def breast_cancer(
+    col_slicer=slice(None, None, None),
+    train: bool = True,
+    *,
+    normalize: bool = True,
+):
     from sklearn.datasets import load_breast_cancer
+    from sklearn.model_selection import train_test_split
 
     ds = load_breast_cancer()
     x, y = ds['data'], ds['target']
 
-    def normalize(data):
-        return (data - np.min(data)) / (np.max(data) - np.min(data))
-
-    x = normalize(x)
+    # only difference to dsutil.breast_cancer
     y = y.astype(dtype=np.float64)
-    return x, y
+
+    if normalize:
+        x = (x - np.min(x)) / (np.max(x) - np.min(x))
+    x_train, x_test, y_train, y_test = train_test_split(
+        x, y, test_size=0.2, random_state=42
+    )
+
+    if train:
+        x_ = x_train
+        y_ = y_train
+    else:
+        x_ = x_test
+        y_ = y_test
+    x_ = x_[:, col_slicer]
+    return x_, y_
 
 
 def compile_to_xla(fn, *args, **kwargs):
@@ -131,8 +188,6 @@ def compile_to_xla(fn, *args, **kwargs):
     This method demostrate the method to run tf function on spu via tf->xla->spu path.
     It's not supported on SPU yet.
     """
-    convert_method = lambda shape, dtype: tf.convert_to_tensor(np.zeros(shape, dtype))
-
     tf_fn = tf.function(fn, jit_compile=True, experimental_relax_shapes=True)
     xla = tf_fn.experimental_get_compiler_ir(*args, **kwargs)(
         stage="hlo",  # "hlo_serialized"
@@ -142,8 +197,18 @@ def compile_to_xla(fn, *args, **kwargs):
     return xla, cf
 
 
-def run():
-    x, y = load_dataset()
+parser = argparse.ArgumentParser(description='distributed driver.')
+parser.add_argument("-c", "--config", default="examples/python/conf/3pc.json")
+args = parser.parse_args()
+
+with open(args.config, 'r') as file:
+    conf = json.load(file)
+
+ppd.init(conf["nodes"], conf["devices"], framework=ppd.Framework.EXP_TF)
+
+
+def tf_to_xla():
+    x, y = breast_cancer()
     x1, x2 = x[:, :15], x[:, 15:]
 
     print("\n--- direct run ---")
@@ -166,13 +231,39 @@ def run():
     print(f"xla: {xla}")
     print(f"cf: {cf}")
 
-    # print(LogitRegression().fit_manual_grad(x1, x2, y))
-    # w = tf.function(
-    #     tf.autograph.experimental.do_not_convert(LogitRegression().fit_manual_grad),
-    #     jit_compile=True,
-    #     experimental_relax_shapes=True,
-    # )(x1, x2, y).numpy()
+
+def run_fit_manual_grad_cpu():
+    print('Run on CPU\n------\n')
+    x, y = breast_cancer()
+    x1, x2 = x[:, :15], x[:, 15:]
+    params = LogitRegression().fit_manual_grad(x1, x2, y)
+
+    x_test, y_test = breast_cancer(slice(None, None, None), False)
+    auc = metrics.roc_auc_score(y_test, predict(x_test, params))
+    print(f"AUC(cpu)={auc}")
+
+
+def run_fit_manual_grad_spu():
+    print('Run on SPU\n------\n')
+    x1, y = ppd.device("P1")(breast_cancer)(slice(None, 15), True)
+    x2, _ = ppd.device("P2")(breast_cancer)(slice(15, None), True)
+
+    print(x1, x2, y)
+
+    W = ppd.device('SPU')(LogitRegression().fit_manual_grad_no_captures)(x1, x2, y)
+
+    W_r = ppd.get(W)
+    print(W_r)
+    x_test, y_test = breast_cancer(slice(None, None, None), False)
+
+    print(
+        "AUC(spu)={}".format(
+            metrics.roc_auc_score(y_test, predict(x_test, W_r.astype(dtype=np.float64)))
+        )
+    )
 
 
 if __name__ == '__main__':
-    run()
+    tf_to_xla()
+    run_fit_manual_grad_cpu()
+    run_fit_manual_grad_spu()

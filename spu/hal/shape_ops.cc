@@ -14,10 +14,17 @@
 
 #include "spu/hal/shape_ops.h"
 
+#include <algorithm>
+#include <cstddef>
+#include <cstdint>
+#include <cstring>
+#include <vector>
+
 #include "xtensor/xeval.hpp"
 #include "xtensor/xmanipulation.hpp"
 #include "xtensor/xstrides.hpp"
 #include "yasl/base/exception.h"
+#include "yasl/utils/parallel.h"
 
 #include "spu/core/ndarray_ref.h"
 #include "spu/core/vectorize.h"
@@ -28,10 +35,10 @@ namespace spu::hal {
 namespace {
 
 std::vector<int64_t> deducePadShape(
-    const std::vector<int64_t>& input_shape,
-    const std::vector<int64_t>& edge_padding_low,
-    const std::vector<int64_t>& edge_padding_high,
-    const std::vector<int64_t>& interior_padding) {
+    absl::Span<const int64_t> input_shape,
+    absl::Span<const int64_t> edge_padding_low,
+    absl::Span<const int64_t> edge_padding_high,
+    absl::Span<const int64_t> interior_padding) {
   std::vector<int64_t> dims;
   YASL_ENFORCE(edge_padding_low.size() == input_shape.size());
   YASL_ENFORCE(edge_padding_high.size() == input_shape.size());
@@ -45,99 +52,46 @@ std::vector<int64_t> deducePadShape(
   return dims;
 }
 
-// Adapted from:
-// https://github.com/xtensor-stack/xtensor/blob/78aaac39143caa78da7c5c0734ccef957535f0c0/include/xtensor/xoperation.hpp#L877-L900
-template <xt::layout_type L = XTENSOR_DEFAULT_TRAVERSAL, class T>
-inline auto AllIndices(const T& arr) {
-  const auto& shape = arr.shape();
-  using index_type = xt::xindex_type_t<typename T::shape_type>;
-  using size_type = typename T::size_type;
-
-  auto idx = xtl::make_sequence<index_type>(arr.dimension(), 0);
-  std::vector<index_type> indices;
-
-  size_type total_size = xt::compute_size(shape);
-  for (size_type i = 0; i < total_size;
-       i++, xt::detail::next_idx<L>(shape, idx)) {
-    indices.push_back(idx);
-  }
-  return indices;
-}
-
 }  // namespace
 
 Value transpose(HalContext* ctx, const Value& in,
-                std::vector<int64_t> permutation) {
+                absl::Span<const int64_t> permutation) {
   SPU_TRACE_HAL(ctx, in);
 
+  std::vector<int64_t> perm(in.shape().size());
   if (permutation.empty()) {
-    permutation.resize(in.data().ndim());
-    std::iota(permutation.begin(), permutation.end(), 0);
-    std::reverse(permutation.begin(), permutation.end());
-  }
-
-  // TODO(jint) dont touch membuf, manipulate strides for transpose.
-  return DISPATCH_ALL_ELSIZE(in.elsize(), [&]() -> Value {
-    const auto& out =
-        xt::eval(xt::transpose(xt_adapt<element_t>(in.data()), permutation));
-
-    // TODO(jint) double-check xt strides convention.
-    auto buf = std::make_shared<yasl::Buffer>(out.data(), out.size() * _kSize);
-    return Value(
-        {std::move(buf), in.storage_type(), out.shape(), out.strides(), 0},
-        in.dtype());
-  });
-}
-
-Value concatenate(HalContext* ctx, absl::Span<const Value> values,
-                  const size_t& axis) {
-  SPU_TRACE_HAL(ctx, axis);
-
-  // Enforce all types are the same
-  YASL_ENFORCE(
-      std::all_of(values.begin() + 1, values.end(), [&](const Value& v) {
-        return v.storage_type() == values.begin()->storage_type();
-      }));
-
-  // Enforce axis
-  YASL_ENFORCE(std::all_of(values.begin(), values.end(), [&](const Value& v) {
-    return static_cast<size_t>(axis) < v.shape().size() ||
-           (v.shape().empty() && axis == 0);
-  }));
-
-  // Sanity shape
-  for (size_t d = 0; d < values.front().shape().size(); ++d) {
-    if (d == axis) {
-      continue;
+    for (size_t i = 0; i < perm.size(); ++i) {
+      perm[i] = static_cast<int64_t>(in.shape().size()) - 1 - i;
     }
-    YASL_ENFORCE(
-        std::all_of(values.begin() + 1, values.end(), [&](const Value& v) {
-          return v.shape()[d] == values.front().shape()[d];
-        }));
+  } else {
+    std::vector<int64_t> reverse_permutation(in.shape().size(), -1);
+    YASL_ENFORCE(permutation.size() == in.shape().size(),
+                 "axes don't match array");
+
+    for (size_t i = 0; i < permutation.size(); i++) {
+      auto axis = permutation[i];
+      YASL_ENFORCE(reverse_permutation[axis] == -1,
+                   "repeated axis in transpose");
+      reverse_permutation[axis] = i;
+      perm[i] = axis;
+    }
   }
 
-  std::vector<int64_t> result_shape = values.front().shape();
-  for (auto iter = values.begin() + 1; iter != values.end(); ++iter) {
-    result_shape[axis] += iter->shape()[axis];
+  std::vector<int64_t> ret_shape(in.shape().size());
+  std::vector<int64_t> ret_strides(in.strides().size());
+
+  for (size_t i = 0; i < in.shape().size(); i++) {
+    ret_shape[i] = in.shape()[perm[i]];
+    ret_strides[i] = in.strides()[perm[i]];
   }
 
-  // Preallocate output buffer
-  Value result({values.front().storage_type(), result_shape},
-               values.front().dtype());
-
-  int64_t b_dimension_offset = 0;
-  for (const auto& v : values) {
-    std::vector<int64_t> from_indicies(result_shape.size(), 0);
-    std::vector<int64_t> to_indicies(result_shape.size(), 0);
-    do {
-      to_indicies = from_indicies;
-      to_indicies[axis] += b_dimension_offset;
-      result.copyElementFrom(v, from_indicies, to_indicies);
-    } while (bumpIndices<int64_t>(v.shape(), absl::MakeSpan(from_indicies)));
-    b_dimension_offset += v.shape()[axis];
-  }
-
-  return result;
+  // compact clone is a rather expensive memory operation.
+  // To prevent transposed value being cloned multiple times in later ops, clone
+  // the value here.
+  auto transposed = NdArrayRef{in.data().buf(), in.storage_type(), ret_shape,
+                               ret_strides, in.data().offset()}
+                        .clone();
+  return Value(transposed, in.dtype());
 }
 
 Value slice(HalContext* ctx, const Value& in,
@@ -150,71 +104,147 @@ Value slice(HalContext* ctx, const Value& in,
   YASL_ENFORCE(in.shape().size() == end_indices.size());
   YASL_ENFORCE(strides.empty() || (in.shape().size() == strides.size()));
 
-  xt::xstrided_slice_vector sv;
+  std::vector<int64_t> new_shape(in.shape().size(), 0);
+  std::vector<int64_t> new_strides(in.strides());
   for (size_t idx = 0; idx < in.shape().size(); ++idx) {
-    sv.push_back(xt::range(start_indices[idx], end_indices[idx],
-                           strides.empty() ? 1 : strides[idx]));
+    YASL_ENFORCE(end_indices[idx] <= in.shape()[idx],
+                 "Slice end at axis {} = {} is larger than input shape {}", idx,
+                 end_indices[idx], in.shape()[idx]);
+    new_shape[idx] = end_indices[idx] - start_indices[idx];
+    if (!strides.empty()) {
+      auto n = new_shape[idx] / strides[idx];
+      auto q = new_shape[idx] % strides[idx];
+      new_shape[idx] = n + static_cast<int64_t>(q != 0);
+      new_strides[idx] *= strides[idx];
+    }
   }
 
-  return DISPATCH_ALL_ELSIZE(in.elsize(), [&]() -> Value {
-    const auto& out = xt::strided_view(xt_adapt<element_t>(in.data()), sv);
+  return Value(
+      NdArrayRef(
+          in.data().buf(), in.storage_type(), new_shape, new_strides,
+          &in.data().at(start_indices) - in.data().buf()->data<std::byte>()),
+      in.dtype());
+}
 
-    return Value(NdArrayRef(in.data().buf(), in.storage_type(), out.shape(),
-                            out.strides(), out.data_offset() * in.elsize()),
-                 in.dtype());
-  });
+// Reference:
+// https://github.com/numpy/numpy/blob/c652fcbd9c7d651780ea56f078c8609932822cf7/numpy/core/src/multiarray/shape.c#L371
+bool attempt_nocopy_reshape(const Value& old,
+                            absl::Span<const int64_t> new_shape,
+                            std::vector<int64_t>& new_strides) {
+  size_t oldnd;
+  std::vector<int64_t> olddims(old.shape().size());
+  std::vector<int64_t> oldstrides(old.strides().size());
+  size_t oi;
+  size_t oj;
+  size_t ok;
+  size_t ni;
+  size_t nj;
+  size_t nk;
+
+  oldnd = 0;
+  /*
+   * Remove axes with dimension 1 from the old array. They have no effect
+   * but would need special cases since their strides do not matter.
+   */
+  for (oi = 0; oi < old.shape().size(); oi++) {
+    if (old.shape()[oi] != 1) {
+      olddims[oldnd] = old.shape()[oi];
+      oldstrides[oldnd] = old.strides()[oi];
+      oldnd++;
+    }
+  }
+
+  /* oi to oj and ni to nj give the axis ranges currently worked with */
+  oi = 0;
+  oj = 1;
+  ni = 0;
+  nj = 1;
+  while (ni < new_shape.size() && oi < oldnd) {
+    auto np = new_shape[ni];
+    auto op = olddims[oi];
+
+    while (np != op) {
+      if (np < op) {
+        /* Misses trailing 1s, these are handled later */
+        np *= new_shape[nj++];
+      } else {
+        op *= olddims[oj++];
+      }
+    }
+
+    /* Check whether the original axes can be combined */
+    for (ok = oi; ok < oj - 1; ok++) {
+      if (oldstrides[ok] != olddims[ok + 1] * oldstrides[ok + 1]) {
+        /* not contiguous enough */
+        return false;
+      }
+    }
+
+    /* Calculate new strides for all axes currently worked with */
+    new_strides[nj - 1] = oldstrides[oj - 1];
+    for (nk = nj - 1; nk > ni; nk--) {
+      new_strides[nk - 1] = new_strides[nk] * new_shape[nk];
+    }
+
+    ni = nj++;
+    oi = oj++;
+  }
+
+  return true;
 }
 
 Value reshape(HalContext* ctx, const Value& in,
-              const std::vector<int64_t>& to_shape) {
+              absl::Span<const int64_t> to_shape) {
   SPU_TRACE_HAL(ctx, in, to_shape);
 
-  YASL_ENFORCE(calcNumel(in.shape()) == calcNumel(to_shape),
-               "reshape, numel mismatch, lhs={}, rhs={}", in.shape(), to_shape);
-
-  // TODO(jint) dont touch membuf, manipulate strides for transpose.
-  return DISPATCH_ALL_ELSIZE(in.elsize(), [&]() -> Value {
-    const auto& out =
-        xt::eval(xt::reshape_view(xt_adapt<element_t>(in.data()), to_shape));
-
-    auto buf = std::make_shared<yasl::Buffer>(out.data(), out.size() * _kSize);
-    return Value(
-        {std::move(buf), in.storage_type(), out.shape(), out.strides(), 0},
-        in.dtype());
-  });
-}
-
-Value broadcast_to(HalContext* ctx, const Value& in,
-                   const std::vector<int64_t>& to_shape,
-                   const std::vector<size_t>& in_dims) {
-  SPU_TRACE_HAL(ctx, in, to_shape);
-
+  // Nothing to reshape
   if (in.shape() == to_shape) {
     return in;
   }
 
-  Value operand;
-  if (!in_dims.empty() && (in.shape().size() != to_shape.size())) {
-    // Needs a reshape
-    std::vector<int64_t> reshape_to(to_shape.size(), 1);
-    for (size_t idx = 0; idx < in_dims.size(); ++idx) {
-      reshape_to[in_dims[idx]] = in.shape()[idx];
-    }
-    operand = hal::reshape(ctx, in, reshape_to);
-  } else {
-    operand = in;
+  YASL_ENFORCE(calcNumel(in.shape()) == calcNumel(to_shape),
+               "reshape, numel mismatch, lhs={}, rhs={}", in.shape(), to_shape);
+
+  std::vector<int64_t> new_strides(to_shape.size(), 0);
+  if (attempt_nocopy_reshape(in, to_shape, new_strides)) {
+    return Value({in.data().buf(), in.storage_type(), to_shape, new_strides,
+                  in.data().offset()},
+                 in.dtype());
   }
 
-  return DISPATCH_ALL_ELSIZE(in.elsize(), [&]() -> Value {
-    NdArrayRef ret(in.data().eltype(), to_shape);
-    xt_mutable_adapt<element_t>(ret) =
-        xt::eval(xt::broadcast(xt_adapt<element_t>(operand.data()), to_shape));
-    return Value(ret, in.dtype());
-  });
+  auto compact_clone = in.data().clone();
+  return Value({compact_clone.buf(), in.storage_type(), to_shape}, in.dtype());
+}
+
+Value broadcast_to(HalContext* ctx, const Value& in,
+                   absl::Span<const int64_t> to_shape,
+                   absl::Span<const int64_t> in_dims) {
+  SPU_TRACE_HAL(ctx, in, to_shape);
+
+  if (in.numel() == calcNumel(to_shape)) {
+    return reshape(ctx, in, to_shape);
+  }
+
+  std::vector<int64_t> new_strides(to_shape.size(), 0);
+
+  if (!in_dims.empty()) {
+    for (size_t idx = 0; idx < in_dims.size(); ++idx) {
+      new_strides[in_dims[idx]] = in.strides()[idx];
+    }
+  } else {
+    for (size_t idx = 0; idx < in.strides().size(); ++idx) {
+      new_strides.at(new_strides.size() - 1 - idx) =
+          in.strides().at(in.strides().size() - 1 - idx);
+    }
+  }
+
+  return Value(NdArrayRef(in.data().buf(), in.data().eltype(), to_shape,
+                          new_strides, in.data().offset()),
+               in.dtype());
 }
 
 Value reverse(HalContext* ctx, const Value& in,
-              const std::vector<size_t>& dimensions) {
+              absl::Span<const int64_t> dimensions) {
   SPU_TRACE_HAL(ctx, in, dimensions);
   return DISPATCH_ALL_ELSIZE(in.elsize(), [&]() -> Value {
     xt::xarray<element_t> expr = xt_adapt<element_t>(in.data());
@@ -230,76 +260,69 @@ Value reverse(HalContext* ctx, const Value& in,
 }
 
 Value pad(HalContext* ctx, const Value& in, const Value& padding_value,
-          const std::vector<int64_t>& edge_padding_low,
-          const std::vector<int64_t>& edge_padding_high,
-          const std::vector<int64_t>& interior_padding) {
+          absl::Span<const int64_t> edge_padding_low,
+          absl::Span<const int64_t> edge_padding_high,
+          absl::Span<const int64_t> interior_padding) {
   YASL_ENFORCE(in.storage_type() == padding_value.storage_type());
-  Value result =
-      broadcast_to(ctx, padding_value,
-                   deducePadShape(in.shape(), edge_padding_low,
-                                  edge_padding_high, interior_padding));
+  Value result = expand(ctx, padding_value,
+                        deducePadShape(in.shape(), edge_padding_low,
+                                       edge_padding_high, interior_padding));
 
   const auto& result_shape = result.shape();
   const auto& input_shape = in.shape();
 
-  const int64_t rank = input_shape.size();
+  auto elsize = result.elsize();
 
-  std::vector<int64_t> result_base(result_shape.size(), 0);
-  std::vector<int64_t> input_base(input_shape.size(), 0);
+  yasl::parallel_for(0, in.numel(), 1024, [&](int64_t begin, int64_t end) {
+    std::vector<int64_t> unflatten(input_shape.size());
+    unflattenIndex(begin, input_shape, unflatten);
 
-  std::vector<int64_t> result_incr(result_shape.size(), 1);
-  std::vector<int64_t> input_incr(input_shape.size(), 1);
+    std::vector<int64_t> target_index(result_shape.size());
+    for (int64_t idx = begin; idx < end; ++idx) {
+      bool valid = true;
+      for (size_t i = 0; i < unflatten.size(); ++i) {
+        // Interior padding occurs logically before edge padding, so in the case
+        // of negative edge padding elements are removed from the
+        // interior-padded operand.
+        target_index[i] =
+            edge_padding_low[i] + unflatten[i] * (interior_padding[i] + 1);
 
-  std::vector<int64_t> result_count = result_shape;
-  std::vector<int64_t> input_count = input_shape;
-
-  for (int64_t idx = 0; idx < rank; ++idx) {
-    const auto padding_low = edge_padding_low[idx];
-    const auto padding_high = edge_padding_high[idx];
-    const auto in_padding = interior_padding[idx];
-    if (padding_low < 0) {
-      input_base[idx] =
-          std::ceil(-padding_low / static_cast<float>(1 + in_padding));
-      result_base[idx] = (-padding_low % (1 + in_padding));
-    } else {
-      result_base[idx] += padding_low;
-    }
-    if (padding_high < 0) {
-      input_count[idx] -=
-          std::ceil(-padding_high / static_cast<float>(1 + in_padding));
-      result_count[idx] -= (-padding_high % (1 + in_padding));
-    } else {
-      result_count[idx] += padding_high;
-    }
-    // interior padding cannot be negative
-    result_incr[idx] += in_padding;
-  }
-
-  int64_t n = -1;
-  std::vector<int64_t> input_index(input_base.begin(), input_base.end());
-  std::vector<int64_t> result_index(result_base.begin(), result_base.end());
-
-  auto copy_element = [&](absl::Span<const int64_t> result_index,
-                          absl::Span<const int64_t> input_index) {
-    result.copyElementFrom(in, input_index, result_index);
-  };
-
-  while (n < rank) {
-    copy_element(result_index, input_index);
-    // Increments dimensions in minor to major order.
-    for (n = 0; n < rank; ++n) {
-      input_index[n] += input_incr[n];
-      result_index[n] += result_incr[n];
-      if ((input_index[n] < input_base[n] + input_count[n]) &&
-          (result_index[n] < result_base[n] + result_count[n])) {
-        break;
+        // Account for negative low and high padding: skip assignment if the
+        // any target index is out of range.
+        if (!(target_index[i] >= 0 && target_index[i] < result_shape[i])) {
+          valid = false;
+          break;
+        }
       }
-      input_index[n] = input_base[n];
-      result_index[n] = result_base[n];
+      if (valid) {
+        result.copyElementFrom(in, unflatten, target_index, elsize);
+      }
+      bumpIndices<int64_t>(in.shape(), absl::MakeSpan(unflatten));
     }
-  }
+  });
 
   return result;
+}
+
+Value expand(HalContext* ctx, const Value& in,
+             absl::Span<const int64_t> to_shape) {
+  YASL_ENFORCE(in.numel() == 1, "Only support expanding scalar");
+  Value ret({in.data().eltype(), to_shape}, in.dtype());
+  // compute number of elements need to copy
+  size_t numel = ret.numel();
+  size_t num_bytes = numel * in.elsize();
+  size_t bytes_copied = in.elsize();
+
+  // Copy first element
+  std::memcpy(ret.data().data(), in.data().data(), in.elsize());
+
+  while (bytes_copied != num_bytes) {
+    size_t copy_size = std::min(bytes_copied, num_bytes - bytes_copied);
+    std::memcpy(static_cast<char*>(ret.data().data()) + bytes_copied,
+                ret.data().data(), copy_size);
+    bytes_copied += copy_size;
+  }
+  return ret;
 }
 
 }  // namespace spu::hal

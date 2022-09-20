@@ -61,7 +61,7 @@ TEST(ConstantsTest, Constant) {
     xt::xarray<float> raw{{1.0f, 2.0f}};
     Value x = constant(&ctx, raw, {6, 2});
     EXPECT_THAT(x.shape(), testing::ElementsAre(6, 2));
-    EXPECT_THAT(x.strides(), testing::ElementsAre(2, 1));
+    EXPECT_THAT(x.strides(), testing::ElementsAre(0, 1));
     EXPECT_EQ(x.numel(), 12);
     EXPECT_TRUE(x.isPublic());
     EXPECT_TRUE(x.isFxp());

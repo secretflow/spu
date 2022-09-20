@@ -36,7 +36,7 @@ class Object : public ProfilingContext {
   std::map<std::string_view, std::unique_ptr<State>> states_;
 
  public:
-  virtual ~Object() = default;
+  ~Object() override = default;
 
   void regKernel(std::string_view name, std::unique_ptr<Kernel> kernel);
 
@@ -81,27 +81,28 @@ class Object : public ProfilingContext {
     return names;
   }
 
-  ArrayRef callImpl(Kernel* kernel, KernelEvalContext* ctx) {
+  template <typename Ret = ArrayRef>
+  Ret callImpl(Kernel* kernel, KernelEvalContext* ctx) {
     kernel->evaluate(ctx);
-    return ctx->stealOutput();
+    return ctx->stealOutput<Ret>();
   }
 
-  template <typename First, typename... Args>
-  ArrayRef callImpl(Kernel* kernel, KernelEvalContext* ctx, First&& head,
-                    Args&&... tail) {
+  template <typename Ret = ArrayRef, typename First, typename... Args>
+  Ret callImpl(Kernel* kernel, KernelEvalContext* ctx, First&& head,
+               Args&&... tail) {
     ctx->bindParam(std::forward<First>(head));
     if constexpr (sizeof...(Args) == 0) {
-      return callImpl(kernel, ctx);
+      return callImpl<Ret>(kernel, ctx);
     } else {
-      return callImpl(kernel, ctx, std::forward<Args>(tail)...);
+      return callImpl<Ret>(kernel, ctx, std::forward<Args>(tail)...);
     }
   }
 
-  template <typename... Args>
-  ArrayRef call(std::string_view name, Args&&... args) {
+  template <typename Ret = ArrayRef, typename... Args>
+  Ret call(std::string_view name, Args&&... args) {
     Kernel* kernel = getKernel(name);
     KernelEvalContext ctx(this);
-    return callImpl(kernel, &ctx, std::forward<Args>(args)...);
+    return callImpl<Ret>(kernel, &ctx, std::forward<Args>(args)...);
   }
 };
 

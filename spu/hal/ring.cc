@@ -16,13 +16,37 @@
 
 #include <array>
 
-#include "xtensor/xoperation.hpp"
-
 #include "spu/hal/constants.h"
 #include "spu/hal/prot_wrapper.h"
 #include "spu/hal/shape_ops.h"
 
 namespace spu::hal {
+
+Type _common_type(HalContext* ctx, const Type& a, const Type& b) {
+  if (a.isa<Secret>() && b.isa<Secret>()) {
+    return _common_type_s(ctx, a, b);
+  } else if (a.isa<Secret>()) {
+    return a;
+  } else if (b.isa<Secret>()) {
+    return b;
+  } else {
+    YASL_ENFORCE(a.isa<Public>() && b.isa<Public>());
+    return a;
+  }
+}
+
+Value _cast_type(HalContext* ctx, const Value& x, const Type& to) {
+  if (x.isPublic() && to.isa<Public>()) {
+    return x;
+  } else if (x.isPublic() && to.isa<Secret>()) {
+    // FIXME: casting to BShare semantic is wrong.
+    return _p2s(ctx, x);
+  } else if (x.isSecret() && to.isa<Secret>()) {
+    return _cast_type_s(ctx, x, to);
+  } else {
+    YASL_THROW("show not be here x={}, to={}", x, to);
+  }
+}
 
 #define IMPL_UNARY_OP(Name, FnP, FnS)                        \
   Value Name(HalContext* ctx, const Value& in) {             \
@@ -171,7 +195,10 @@ Value _popcount(HalContext* ctx, const Value& x) {
   SPU_TRACE_HAL(ctx, x);
 
   Value ret = constant(ctx, 0, x.shape());
-  const size_t bit_width = SizeOf(x.storage_type().as<Ring2k>()->field()) * 8;
+  // TODO:
+  // 1. x's dtype may not be set at the moment.
+  // 2. x's stype could be dynamic, especial for variadic boolean shares.
+  const size_t bit_width = SizeOf(ctx->rt_config().field()) * 8;
   const auto one = constant(ctx, 1, x.shape());
 
   for (size_t idx = 0; idx < bit_width; idx++) {

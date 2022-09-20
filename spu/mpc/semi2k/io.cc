@@ -20,8 +20,8 @@
 
 namespace spu::mpc::semi2k {
 
-std::vector<ArrayRef> Semi2kIo::toShares(const ArrayRef& raw,
-                                         Visibility vis) const {
+std::vector<ArrayRef> Semi2kIo::toShares(const ArrayRef& raw, Visibility vis,
+                                         int owner_rank) const {
   YASL_ENFORCE(raw.eltype().isa<RingTy>(), "expected RingTy, got {}",
                raw.eltype());
   const auto field = raw.eltype().as<Ring2k>()->field();
@@ -33,11 +33,26 @@ std::vector<ArrayRef> Semi2kIo::toShares(const ArrayRef& raw,
     return std::vector<ArrayRef>(world_size_, share);
   } else if (vis == VIS_SECRET) {
     // by default, make as arithmetic share.
-    const auto splits = ring_rand_splits(raw, world_size_);
     std::vector<ArrayRef> shares;
-    const auto ty = makeType<semi2k::AShrTy>(field);
-    for (const auto& split : splits) {
-      shares.emplace_back(split.as(ty));
+    const auto ty = makeType<semi2k::AShrTy>(field, owner_rank);
+
+    if (owner_rank >= 0 && owner_rank < static_cast<int>(world_size_)) {
+      // colocation optimization
+      for (auto i = 0; i < static_cast<int>(world_size_); i++) {
+        if (i == owner_rank) {
+          shares.emplace_back(raw.as(ty));
+        } else {
+          // if compression for [0, 0, ..., 0] is enabled at seriaization level
+          // we can directly use ring_zeros here.
+          shares.emplace_back(ring_zeros_packed(field, raw.numel()).as(ty));
+        }
+      }
+    } else {
+      // no colocation optmization
+      const auto splits = ring_rand_additive_splits(raw, world_size_);
+      for (const auto& split : splits) {
+        shares.emplace_back(split.as(ty));
+      }
     }
     return shares;
   }
@@ -51,8 +66,12 @@ ArrayRef Semi2kIo::fromShares(const std::vector<ArrayRef>& shares) const {
   if (eltype.isa<Public>()) {
     return shares[0].as(makeType<RingTy>(field));
   } else if (eltype.isa<Secret>()) {
-    ArrayRef res = ring_zeros(field, shares.at(0).numel());
+    ArrayRef res = ring_zeros(field, shares[0].numel());
+
     for (const auto& share : shares) {
+      // Currently, only packed zeros are not compact, this is for colocation
+      // optimization
+      if (!share.isCompact()) continue;
       if (eltype.isa<AShare>()) {
         ring_add_(res, share);
       } else if (eltype.isa<BShare>()) {

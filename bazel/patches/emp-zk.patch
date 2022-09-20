@@ -1,0 +1,33 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 3a533d2..31baa67 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -17,5 +17,12 @@ install(DIRECTORY emp-zk DESTINATION include/)
+ install(FILES cmake/emp-zk-config.cmake DESTINATION cmake/)
+ install(TARGETS ${NAME} DESTINATION lib)
+ 
+-ENABLE_TESTING()
+-ADD_SUBDIRECTORY(test)
++# ENABLE_TESTING()
++# ADD_SUBDIRECTORY(test)
++
++# add enable testing option, default OFF
++option(ENABLE_TESTS "Enable tests" OFF)
++if (${ENABLE_TESTS})
++    ENABLE_TESTING()
++    ADD_SUBDIRECTORY(test)
++endif()
+diff --git a/emp-zk/emp-vole/vole_triple.h b/emp-zk/emp-vole/vole_triple.h
+index f299669..fb4ccac 100644
+--- a/emp-zk/emp-vole/vole_triple.h
++++ b/emp-zk/emp-vole/vole_triple.h
+@@ -58,6 +58,7 @@ public:
+ 		if(mpfss != nullptr) delete mpfss;
+ 		if(vole_triples != nullptr) delete[] vole_triples;
+ 		if(vole_x != nullptr) delete[] vole_x;
++		if(cot != nullptr) delete cot;
+ 	}
+ 
+ 	void set_param() {
+
+

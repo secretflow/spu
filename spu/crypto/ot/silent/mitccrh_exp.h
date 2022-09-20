@@ -35,7 +35,7 @@ namespace spu {
  * key i encrypts 2^i blocks
  */
 template <int numKeys>
-static inline void ParaEncExp(block* blks, AES_KEY* keys) {
+static inline void ParaEncExp(block* blks, emp::AES_KEY* keys) {
   block* first = blks;
   for (int i = 0; i < numKeys; ++i) {
     block K = keys[i].rd_key[0];
@@ -77,7 +77,7 @@ static inline void ParaEncExp(block* blks, AES_KEY* keys) {
 template <int BatchSize = 8>
 class MITCCRHExp {
  public:
-  AES_KEY scheduled_key[BatchSize];
+  emp::AES_KEY scheduled_key[BatchSize];
   block keys[BatchSize];
 
   /**

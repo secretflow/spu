@@ -14,49 +14,66 @@
 
 #include "spu/mpc/semi2k/protocol.h"
 
+#include "spu/mpc/api_test.h"
 #include "spu/mpc/common/abprotocol_test.h"
-#include "spu/mpc/compute_test.h"
 
 namespace spu::mpc::test {
+namespace {
+
+RuntimeConfig makeConfig(FieldType field) {
+  RuntimeConfig conf;
+  conf.set_field(field);
+  return conf;
+}
+
+}  // namespace
 
 INSTANTIATE_TEST_SUITE_P(
-    Semi2kComputeTest, ComputeTest,
-    testing::Combine(testing::Values(makeSemi2kProtocol),  //
-                     testing::Values(2, 3, 5),             //
-                     testing::Values(FieldType::FM32, FieldType::FM64,
-                                     FieldType::FM128)),
-    [](const testing::TestParamInfo<ComputeTest::ParamType>& p) {
-      return fmt::format("{}x{}", std::get<1>(p.param), std::get<2>(p.param));
+    Semi2k, ApiTest,
+    testing::Combine(testing::Values(makeSemi2kProtocol),            //
+                     testing::Values(makeConfig(FieldType::FM32),    //
+                                     makeConfig(FieldType::FM64),    //
+                                     makeConfig(FieldType::FM128)),  //
+                     testing::Values(2, 3, 5)),                      //
+    [](const testing::TestParamInfo<ApiTest::ParamType>& p) {
+      return fmt::format("{}x{}", std::get<1>(p.param).field(),
+                         std::get<2>(p.param));
     });
 
 INSTANTIATE_TEST_SUITE_P(
-    Semi2kArithmeticTest, ArithmeticTest,
-    testing::Combine(testing::Values(makeSemi2kProtocol),  //
-                     testing::Values(2, 3, 5),             //
-                     testing::Values(FieldType::FM32, FieldType::FM64,
-                                     FieldType::FM128)),
+    Semi2k, ArithmeticTest,
+    testing::Combine(testing::Values(makeSemi2kProtocol),            //
+                     testing::Values(makeConfig(FieldType::FM32),    //
+                                     makeConfig(FieldType::FM64),    //
+                                     makeConfig(FieldType::FM128)),  //
+                     testing::Values(2, 3, 5)),                      //
     [](const testing::TestParamInfo<ArithmeticTest::ParamType>& p) {
-      return fmt::format("{}x{}", std::get<1>(p.param), std::get<2>(p.param));
+      return fmt::format("{}x{}", std::get<1>(p.param).field(),
+                         std::get<2>(p.param));
     });
 
 INSTANTIATE_TEST_SUITE_P(
-    Semi2kBooleanTest, BooleanTest,
-    testing::Combine(testing::Values(makeSemi2kProtocol),  //
-                     testing::Values(2, 3, 5),             //
-                     testing::Values(FieldType::FM32, FieldType::FM64,
-                                     FieldType::FM128)),
+    Semi2k, BooleanTest,
+    testing::Combine(testing::Values(makeSemi2kProtocol),            //
+                     testing::Values(makeConfig(FieldType::FM32),    //
+                                     makeConfig(FieldType::FM64),    //
+                                     makeConfig(FieldType::FM128)),  //
+                     testing::Values(2, 3, 5)),                      //
     [](const testing::TestParamInfo<BooleanTest::ParamType>& p) {
-      return fmt::format("{}x{}", std::get<1>(p.param), std::get<2>(p.param));
+      return fmt::format("{}x{}", std::get<1>(p.param).field(),
+                         std::get<2>(p.param));
     });
 
 INSTANTIATE_TEST_SUITE_P(
-    Semi2kBooleanTest, ConversionTest,
-    testing::Combine(testing::Values(makeSemi2kProtocol),  //
-                     testing::Values(2, 3, 5),             //
-                     testing::Values(FieldType::FM32, FieldType::FM64,
-                                     FieldType::FM128)),
+    Semi2k, ConversionTest,
+    testing::Combine(testing::Values(makeSemi2kProtocol),            //
+                     testing::Values(makeConfig(FieldType::FM32),    //
+                                     makeConfig(FieldType::FM64),    //
+                                     makeConfig(FieldType::FM128)),  //
+                     testing::Values(2, 3, 5)),                      //
     [](const testing::TestParamInfo<BooleanTest::ParamType>& p) {
-      return fmt::format("{}x{}", std::get<1>(p.param), std::get<2>(p.param));
+      return fmt::format("{}x{}", std::get<1>(p.param).field(),
+                         std::get<2>(p.param));
     });
 
 }  // namespace spu::mpc::test

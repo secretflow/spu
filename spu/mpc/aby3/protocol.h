@@ -21,6 +21,7 @@
 namespace spu::mpc {
 
 std::unique_ptr<Object> makeAby3Protocol(
+    const RuntimeConfig& conf,
     const std::shared_ptr<yasl::link::Context>& lctx);
 
 }  // namespace spu::mpc

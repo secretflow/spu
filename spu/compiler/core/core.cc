@@ -47,6 +47,9 @@ void Core::buildPipeline(mlir::PassManager *pm) {
     auto &optPM = pm->nest<mlir::func::FuncOp>();
     optPM.addPass(mlir::pphlo::createDecomposeComparisonPass());
     optPM.addPass(mlir::pphlo::createDecomposeSqrtPass());
+    optPM.addPass(mlir::pphlo::createDecomposeMinMaxPass());
+    optPM.addPass(mlir::pphlo::createReduceTruncationPass());
+    optPM.addPass(mlir::pphlo::createLowerMixedTypeOpPass());
   }
   {
     auto &optPM = pm->nest<mlir::func::FuncOp>();

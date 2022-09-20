@@ -194,4 +194,8 @@ Value exp2(HalContext* ctx, const Value& x);
 // @param in, the input value
 Value tanh(HalContext* ctx, const Value& x);
 
+/// element-wise reciprocal of square root operation, i.e. x - > 1.0 / sqrt(x)
+// @param in, the input value
+Value sqrt_inv(HalContext* ctx, const Value& x);
+
 }  // namespace spu::hal

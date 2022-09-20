@@ -23,8 +23,8 @@
 #include "llvm/Support/CommandLine.h"
 #include "spdlog/spdlog.h"
 
+#include "spu/mpc/api.h"
 #include "spu/mpc/factory.h"
-#include "spu/mpc/interfaces.h"
 #include "spu/mpc/object.h"
 #include "spu/mpc/util/communicator.h"
 #include "spu/mpc/util/simulate.h"
@@ -48,9 +48,12 @@ internal::SingleComplexityReport dumpComplexityReport(
   // print header
   fmt::print("{:<15}, {:<20}, {:<20}\n", "name", "latency", "comm");
 
+  RuntimeConfig rt_conf;
+  rt_conf.set_protocol(protocol);
+
   util::simulate(
       party_cnt, [&](const std::shared_ptr<yasl::link::Context>& lctx) -> void {
-        auto prot = Factory::CreateCompute(protocol, lctx);
+        auto prot = Factory::CreateCompute(rt_conf, lctx);
         if (lctx->Rank() != 0) {
           return;
         }

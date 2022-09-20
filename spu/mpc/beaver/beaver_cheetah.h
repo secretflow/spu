@@ -18,24 +18,46 @@
 
 #include "spu/crypto/ot/silent/primitives.h"
 #include "spu/mpc/beaver/beaver.h"
-#include "spu/mpc/beaver/beaver_he.h"
 
 namespace spu::mpc {
 
+namespace cheetah {
+class MulAA;
+}  // namespace cheetah
+
 // Cheetah beaver implementation.
+// BeaverCheetah = AMul(BeaverHE) + And(OT)
 class BeaverCheetah : public Beaver {
  protected:
-  std::shared_ptr<yasl::link::Context> lctx_;
+  // Implementation for Mul
+  // Ref: Rathee et al. "Improved Multiplication Triple Generation over Rings
+  // via RLWE-based AHE"
+  //  https://eprint.iacr.org/2019/577.pdf
+  struct MulImpl;
+  // Implementation for Dot using MatVec
+  // Ref: Huang et al. "Cheetah: Lean and Fast Secure Two-Party Deep Neural
+  // Network Inference"
+  //  https://eprint.iacr.org/2022/207.pdf
+  struct DotImpl;
 
-  std::shared_ptr<spu::CheetahPrimitives> cheetah_ot_primitives_{nullptr};
+  std::shared_ptr<MulImpl> mul_impl_;
 
-  std::shared_ptr<BeaverHE> cheetah_he_primitives_{nullptr};
+  std::shared_ptr<DotImpl> dot_impl_;
+
+  std::shared_ptr<spu::CheetahPrimitives> ot_primitives_{nullptr};
+
+  friend class cheetah::MulAA;
+  ArrayRef MulAShr(const ArrayRef& shr, yasl::link::Context* conn,
+                   bool evaluator);
 
  public:
   BeaverCheetah(std::shared_ptr<yasl::link::Context> lctx);
 
-  void set_primitives(
-      std::shared_ptr<spu::CheetahPrimitives> cheetah_primitives);
+  const spu::CheetahPrimitives* OTPrimitives() const {
+    return ot_primitives_.get();
+  }
+
+  spu::CheetahPrimitives* OTPrimitives() { return ot_primitives_.get(); }
 
   Beaver::Triple Mul(FieldType field, size_t size) override;
 

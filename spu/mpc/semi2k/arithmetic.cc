@@ -16,9 +16,9 @@
 
 #include "spu/core/profile.h"
 #include "spu/core/vectorize.h"
+#include "spu/mpc/common/abprotocol.h"  // zero_a
 #include "spu/mpc/common/prg_state.h"
 #include "spu/mpc/common/pub2k.h"
-#include "spu/mpc/interfaces.h"
 #include "spu/mpc/semi2k/object.h"
 #include "spu/mpc/semi2k/type.h"
 #include "spu/mpc/util/communicator.h"

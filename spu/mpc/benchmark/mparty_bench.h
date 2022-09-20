@@ -20,7 +20,7 @@
 #include "yasl/link/link.h"
 
 #include "spu/core/shape_util.h"  // calcNumel
-#include "spu/mpc/interfaces.h"
+#include "spu/mpc/api.h"
 #include "spu/mpc/object.h"
 #include "spu/mpc/util/communicator.h"
 #include "spu/mpc/util/ring_ops.h"
@@ -31,6 +31,7 @@ void BenchmarkPrint(uint32_t rank, std::vector<std::string>& parties,
                     uint32_t numel, uint32_t shiftbit) {}
 
 using CreateComputeFn = std::function<std::unique_ptr<Object>(
+    const RuntimeConfig& conf,
     const std::shared_ptr<yasl::link::Context>& lctx)>;
 
 class ComputeBench : public benchmark::Fixture {
@@ -73,9 +74,11 @@ CreateComputeFn ComputeBench::bench_factory = {};
   (benchmark::State & state) {                                        \
     for (auto _ : state) {                                            \
       state.PauseTiming();                                            \
-      auto obj = bench_factory(bench_lctx);                           \
-      auto comm = obj->getState<Communicator>();                      \
       const auto field = static_cast<spu::FieldType>(state.range(0)); \
+      RuntimeConfig conf;                                             \
+      conf.set_field(field);                                          \
+      auto obj = bench_factory(conf, bench_lctx);                     \
+      auto comm = obj->getState<Communicator>();                      \
       {                                                               \
         /* GIVEN */                                                   \
         auto p0 = rand_p(obj.get(), field, bench_numel);              \
@@ -95,8 +98,10 @@ CreateComputeFn ComputeBench::bench_factory = {};
     for (auto _ : state) {                                            \
       state.PauseTiming();                                            \
       const auto field = static_cast<spu::FieldType>(state.range(0)); \
+      RuntimeConfig conf;                                             \
+      conf.set_field(field);                                          \
       {                                                               \
-        auto obj = bench_factory(bench_lctx);                         \
+        auto obj = bench_factory(conf, bench_lctx);                   \
         auto comm = obj->getState<Communicator>();                    \
                                                                       \
         /* GIVEN */                                                   \
@@ -125,8 +130,10 @@ SPU_BM_DEFINE_BINARY_OP(xor)
     for (auto _ : state) {                                            \
       state.PauseTiming();                                            \
       const auto field = static_cast<spu::FieldType>(state.range(0)); \
+      RuntimeConfig conf;                                             \
+      conf.set_field(field);                                          \
       {                                                               \
-        auto obj = bench_factory(bench_lctx);                         \
+        auto obj = bench_factory(conf, bench_lctx);                   \
         auto comm = obj->getState<Communicator>();                    \
                                                                       \
         /* GIVEN */                                                   \
@@ -145,8 +152,10 @@ SPU_BM_DEFINE_BINARY_OP(xor)
     for (auto _ : state) {                                            \
       state.PauseTiming();                                            \
       const auto field = static_cast<spu::FieldType>(state.range(0)); \
+      RuntimeConfig conf;                                             \
+      conf.set_field(field);                                          \
       {                                                               \
-        auto obj = bench_factory(bench_lctx);                         \
+        auto obj = bench_factory(conf, bench_lctx);                   \
         auto comm = obj->getState<Communicator>();                    \
                                                                       \
         /* GIVEN */                                                   \
@@ -170,8 +179,10 @@ SPU_BM_DEFINE_UNARY_OP(not )
     for (auto _ : state) {                                            \
       state.PauseTiming();                                            \
       const auto field = static_cast<spu::FieldType>(state.range(0)); \
+      RuntimeConfig conf;                                             \
+      conf.set_field(field);                                          \
       {                                                               \
-        auto obj = bench_factory(bench_lctx);                         \
+        auto obj = bench_factory(conf, bench_lctx);                   \
         auto comm = obj->getState<Communicator>();                    \
                                                                       \
         /* GIVEN */                                                   \
@@ -190,8 +201,10 @@ SPU_BM_DEFINE_UNARY_OP(not )
     for (auto _ : state) {                                            \
       state.PauseTiming();                                            \
       const auto field = static_cast<spu::FieldType>(state.range(0)); \
+      RuntimeConfig conf;                                             \
+      conf.set_field(field);                                          \
       {                                                               \
-        auto obj = bench_factory(bench_lctx);                         \
+        auto obj = bench_factory(conf, bench_lctx);                   \
         auto comm = obj->getState<Communicator>();                    \
                                                                       \
         /* GIVEN */                                                   \
@@ -216,11 +229,13 @@ SPU_BM_DEFINE_F(ComputeBench, truncpr_s)
   for (auto _ : state) {
     state.PauseTiming();
     const auto field = static_cast<spu::FieldType>(state.range(0));
+    RuntimeConfig conf;
+    conf.set_field(field);
 
     auto p0 = ring_rand_range(field, bench_numel, /*min*/ 0,
                               /*max*/ 10000);
     {
-      auto obj = bench_factory(bench_lctx);
+      auto obj = bench_factory(conf, bench_lctx);
       auto* comm = obj->getState<Communicator>();
 
       const size_t bits = 2;
@@ -236,6 +251,8 @@ SPU_BM_DEFINE_F(ComputeBench, mmul_ss)
   for (auto _ : state) {
     state.PauseTiming();
     const auto field = static_cast<spu::FieldType>(state.range(0));
+    RuntimeConfig conf;
+    conf.set_field(field);
 
     const int64_t M = 3;
     const int64_t K = 4;
@@ -244,7 +261,7 @@ SPU_BM_DEFINE_F(ComputeBench, mmul_ss)
     const std::vector<int64_t> shape_B{K, N};
 
     {
-      auto obj = bench_factory(bench_lctx);
+      auto obj = bench_factory(conf, bench_lctx);
       auto* comm = obj->getState<Communicator>();
 
       /* GIVEN */
@@ -264,6 +281,8 @@ SPU_BM_DEFINE_F(ComputeBench, mmul_sp)
   for (auto _ : state) {
     state.PauseTiming();
     const auto field = static_cast<spu::FieldType>(state.range(0));
+    RuntimeConfig conf;
+    conf.set_field(field);
 
     const int64_t M = 3;
     const int64_t K = 4;
@@ -272,7 +291,7 @@ SPU_BM_DEFINE_F(ComputeBench, mmul_sp)
     const std::vector<int64_t> shape_B{K, N};
 
     {
-      auto obj = bench_factory(bench_lctx);
+      auto obj = bench_factory(conf, bench_lctx);
       auto* comm = obj->getState<Communicator>();
 
       /* GIVEN */
@@ -291,9 +310,11 @@ SPU_BM_DEFINE_F(ComputeBench, p2s)
   for (auto _ : state) {
     state.PauseTiming();
     const auto field = static_cast<spu::FieldType>(state.range(0));
+    RuntimeConfig conf;
+    conf.set_field(field);
 
     {
-      auto obj = bench_factory(bench_lctx);
+      auto obj = bench_factory(conf, bench_lctx);
       auto* comm = obj->getState<Communicator>();
 
       /* GIVEN */
@@ -310,9 +331,11 @@ SPU_BM_DEFINE_F(ComputeBench, s2p)
   for (auto _ : state) {
     state.PauseTiming();
     const auto field = static_cast<spu::FieldType>(state.range(0));
+    RuntimeConfig conf;
+    conf.set_field(field);
 
     {
-      auto obj = bench_factory(bench_lctx);
+      auto obj = bench_factory(conf, bench_lctx);
       auto* comm = obj->getState<Communicator>();
 
       /* GIVEN */

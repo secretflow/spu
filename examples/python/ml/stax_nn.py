@@ -157,11 +157,11 @@ def train_secureml(run_on_spu: bool = False):
     )
     end = time.perf_counter()
 
-    print(f"train(cpu) elapsed time: {end - start:0.4f} seconds")
+    env = 'spu' if run_on_spu else 'cpu'
+    print(f"train({env}) elapsed time: {end - start:0.4f} seconds")
     test_x, test_y = test_ds['image'], test_ds['label']
     predict_y = predict_fun(params, test_x)
-
-    print(f'accuracy(cpu): {accuracy_score(np.argmax(predict_y, axis=1),test_y)}')
+    print(f'accuracy({env}): {accuracy_score(np.argmax(predict_y, axis=1),test_y)}')
 
 
 def train_minionn(run_on_spu: bool = False):
@@ -189,11 +189,11 @@ def train_minionn(run_on_spu: bool = False):
     )
     end = time.perf_counter()
 
-    print(f"train(cpu) elapsed time: {end - start:0.4f} seconds")
+    env = 'spu' if run_on_spu else 'cpu'
+    print(f"train({env}) elapsed time: {end - start:0.4f} seconds")
     test_x, test_y = test_ds['image'], test_ds['label']
     predict_y = predict_fun(params, test_x)
-
-    print(f'accuracy(cpu): {accuracy_score(np.argmax(predict_y, axis=1),test_y)}')
+    print(f'accuracy({env}): {accuracy_score(np.argmax(predict_y, axis=1),test_y)}')
 
 
 def train_lenet(run_on_spu: bool = False):
@@ -221,11 +221,11 @@ def train_lenet(run_on_spu: bool = False):
     )
     end = time.perf_counter()
 
-    print(f"train(cpu) elapsed time: {end - start:0.4f} seconds")
+    env = 'spu' if run_on_spu else 'cpu'
+    print(f"train({env}) elapsed time: {end - start:0.4f} seconds")
     test_x, test_y = test_ds['image'], test_ds['label']
     predict_y = predict_fun(params, test_x)
-
-    print(f'accuracy(cpu): {accuracy_score(np.argmax(predict_y, axis=1),test_y)}')
+    print(f'accuracy({env}): {accuracy_score(np.argmax(predict_y, axis=1),test_y)}')
 
 
 def train_chamelon(run_on_spu: bool = False):
@@ -253,11 +253,11 @@ def train_chamelon(run_on_spu: bool = False):
     )
     end = time.perf_counter()
 
-    print(f"train(cpu) elapsed time: {end - start:0.4f} seconds")
+    env = 'spu' if run_on_spu else 'cpu'
+    print(f"train({env}) elapsed time: {end - start:0.4f} seconds")
     test_x, test_y = test_ds['image'], test_ds['label']
     predict_y = predict_fun(params, test_x)
-
-    print(f'accuracy(cpu): {accuracy_score(np.argmax(predict_y, axis=1),test_y)}')
+    print(f'accuracy({env}): {accuracy_score(np.argmax(predict_y, axis=1),test_y)}')
 
 
 """

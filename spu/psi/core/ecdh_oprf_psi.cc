@@ -1,4 +1,4 @@
-// Copyright 2021 Ant Group Co., Ltd.
+// Copyright 2022 Ant Group Co., Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,18 +15,19 @@
 #include "spu/psi/core/ecdh_oprf_psi.h"
 
 #include <future>
+#include <utility>
 
 #include "yasl/utils/parallel.h"
 #include "yasl/utils/serialize.h"
 
+#include "spu/psi/core/communication.h"
 #include "spu/psi/cryptor/ecc_utils.h"
 
-namespace spu {
-namespace psi {
+namespace spu::psi {
 
 void EcdhOprfPsiServer::FullEvaluate(
-    std::shared_ptr<IBatchProvider> batch_provider,
-    std::shared_ptr<ICipherStore> cipher_store) {
+    const std::shared_ptr<IBatchProvider>& batch_provider,
+    const std::shared_ptr<ICipherStore>& cipher_store) {
   size_t batch_count = 0;
   while (true) {
     auto items = batch_provider->ReadNextBatch(options_.batch_size);
@@ -43,13 +44,13 @@ void EcdhOprfPsiServer::FullEvaluate(
 }
 
 void EcdhOprfPsiServer::SendFinalEvaluatedItems(
-    std::shared_ptr<IBatchProvider> batch_provider) {
+    const std::shared_ptr<IBatchProvider>& batch_provider) {
   size_t batch_count = 0;
 
   size_t compare_length = oprf_server_->GetCompareLength();
 
   while (true) {
-    details::EcdhBatch batch;
+    PsiDataBatch batch;
     auto items = batch_provider->ReadNextBatch(options_.batch_size);
     batch.is_last_batch = items.empty();
 
@@ -86,10 +87,10 @@ void EcdhOprfPsiServer::RecvBlindAndSendEvaluate() {
 
   while (true) {
     const auto tag = fmt::format("EcdhOprfPSI:BlindItems:{}", batch_count);
-    details::EcdhBatch blinded_batch = details::EcdhBatch::Deserialize(
+    PsiDataBatch blinded_batch = PsiDataBatch::Deserialize(
         options_.link1->Recv(options_.link1->NextRank(), tag));
 
-    details::EcdhBatch evaluated_batch;
+    PsiDataBatch evaluated_batch;
     evaluated_batch.is_last_batch = blinded_batch.is_last_batch;
 
     const auto tag_send =
@@ -132,12 +133,12 @@ void EcdhOprfPsiServer::RecvBlindAndSendEvaluate() {
 }
 
 void EcdhOprfPsiClient::RecvFinalEvaluatedItems(
-    std::shared_ptr<ICipherStore> cipher_store) {
+    const std::shared_ptr<ICipherStore>& cipher_store) {
   size_t batch_count = 0;
   while (true) {
     const auto tag =
         fmt::format("EcdhOprfPSI:FinalEvaluatedItems:{}", batch_count);
-    details::EcdhBatch masked_batch = details::EcdhBatch::Deserialize(
+    PsiDataBatch masked_batch = PsiDataBatch::Deserialize(
         options_.link0->Recv(options_.link0->NextRank(), tag));
     // Fetch y^b.
 
@@ -159,13 +160,13 @@ void EcdhOprfPsiClient::RecvFinalEvaluatedItems(
 }
 
 void EcdhOprfPsiClient::SendBlindedItems(
-    std::shared_ptr<IBatchProvider> batch_provider) {
+    const std::shared_ptr<IBatchProvider>& batch_provider) {
   size_t batch_count = 0;
 
   while (true) {
     auto items = batch_provider->ReadNextBatch(options_.batch_size);
 
-    details::EcdhBatch blinded_batch;
+    PsiDataBatch blinded_batch;
     blinded_batch.is_last_batch = items.empty();
 
     const auto tag = fmt::format("EcdhOprfPSI:BlindItems:{}", batch_count);
@@ -219,13 +220,13 @@ void EcdhOprfPsiClient::SendBlindedItems(
 }
 
 void EcdhOprfPsiClient::RecvEvaluatedItems(
-    std::shared_ptr<IBatchProvider> batch_provider,
-    std::shared_ptr<ICipherStore> cipher_store) {
+    const std::shared_ptr<IBatchProvider>& batch_provider,
+    const std::shared_ptr<ICipherStore>& cipher_store) {
   size_t batch_count = 0;
   while (true) {
     ;
     const auto tag = fmt::format("EcdhOprfPSI:EvaluatedItems:{}", batch_count);
-    details::EcdhBatch masked_batch = details::EcdhBatch::Deserialize(
+    PsiDataBatch masked_batch = PsiDataBatch::Deserialize(
         options_.link1->Recv(options_.link1->NextRank(), tag));
     // Fetch evaluate y^rs.
 
@@ -281,5 +282,4 @@ void EcdhOprfPsiClient::RecvEvaluatedItems(
   }
 }
 
-}  // namespace psi
-}  // namespace spu
+}  // namespace spu::psi

@@ -24,6 +24,7 @@ import numpy as np
 
 import spu.binding._lib.link as link
 import spu.binding.api as ppapi
+import spu.binding.util.frontend as spu_fe
 import spu.spu_pb2 as spu_pb2
 
 
@@ -59,7 +60,7 @@ class Simulator(object):
         # config.enable_type_checker = True
         return cls(wsize, config)
 
-    def __call__(self, text, num_returns, *flat_args):
+    def __call__(self, executable, *flat_args):
         flat_args = [np.array(jnp.array(x)) for x in flat_args]
         params = [
             self.io.make_shares(x, spu_pb2.Visibility.VIS_SECRET) for x in flat_args
@@ -80,27 +81,15 @@ class Simulator(object):
                 rank_config.enable_pphlo_profile = False
             rt = ppapi.Runtime(lctx, rank_config)
 
-            # mock input, output names.
-            input_names = [f'in{idx}' for idx in range(len(params))]
-            output_names = [f'out{idx}' for idx in range(num_returns)]
-
-            # make an spu executable.
-            executable = spu_pb2.ExecutableProto(
-                name='test',
-                input_names=input_names,
-                output_names=output_names,
-                code=text.encode('utf-8'),
-            )
-
             # do infeed.
             for idx, param in enumerate(params):
-                rt.set_var(input_names[idx], param[rank])
+                rt.set_var(executable.input_names[idx], param[rank])
 
             # run
             rt.run(executable)
 
             # do outfeed
-            return [rt.get_var(name) for name in output_names]
+            return [rt.get_var(name) for name in executable.output_names]
 
         jobs = [
             PropagatingThread(target=wrapper, args=(rank,))
@@ -136,35 +125,27 @@ def sim_jax(
     """
 
     def wrapper(*args, **kwargs):
-        xla, out_shape = jax.xla_computation(
-            fun, backend="interpreter", return_shape=True, static_argnums=static_argnums
-        )(*args, **kwargs)
-
-        # copy from jax.xla_computation to make args aligned.
-        f = lu.wrap_init(fun)
         f, dyn_args = japi_util.argnums_partial_except(
-            f, static_argnums, args, allow_invalid=False
+            fun, static_argnums, args, allow_invalid=False
         )
         args_flat, _ = jax.tree_util.tree_flatten((dyn_args, kwargs))
-        # end copy from jax.xla_computation
 
-        # compile xla to pphlo
-        xla_ir = spu_pb2.IrProto(
-            ir_type=spu_pb2.IrType.IR_XLA_HLO,
-            code=xla.as_serialized_hlo_module_proto(),
-            meta=spu_pb2.XlaMeta(
-                inputs=[spu_pb2.Visibility.VIS_SECRET] * len(args_flat)
-            ),
+        in_names = [f'in{idx}' for idx in range(len(args_flat))]
+        in_vis = [spu_pb2.Visibility.VIS_SECRET] * len(args_flat)
+
+        def outputNameGen(out_flat):
+            return [f'out{idx}' for idx in range(len(out_flat))]
+
+        executable, output = spu_fe.compile(
+            spu_fe.Kind.JAX, f, dyn_args, kwargs, in_names, in_vis, outputNameGen
         )
-        pphlo_ir = ppapi.compile(xla_ir)
 
-        wrapper.xla = xla.as_hlo_text()
-        wrapper.pphlo = pphlo_ir.code.decode("utf-8")
+        wrapper.pphlo = executable.code.decode("utf-8")
 
-        # simulate it.
-        _, out_tree = jax.tree_util.tree_flatten(out_shape)
-        out_flat = sim(wrapper.pphlo, out_tree.num_leaves, *args_flat)
+        out_flat = sim(executable, *args_flat)
 
-        return jax.tree_util.tree_unflatten(out_tree, out_flat)
+        _, output_tree = jax.tree_util.tree_flatten(output)
+
+        return jax.tree_util.tree_unflatten(output_tree, out_flat)
 
     return wrapper

@@ -14,6 +14,7 @@
 
 #include "spu/hal/fxp.h"
 
+#include <algorithm>
 #include <cmath>
 
 #include "absl/numeric/bits.h"
@@ -59,18 +60,14 @@ Value f_polynomial(HalContext* ctx, const Value& x,
 //
 Value prefix_or(HalContext* ctx, const Value& x) {
   auto b0 = _xor(ctx, x, constant(ctx, 0, x.shape()));  // nop, cast to bshr.
-  const size_t bit_width = SizeOf(x.storage_type().as<Ring2k>()->field()) * 8;
-  for (size_t idx = 0; idx < absl::bit_width(bit_width); idx++) {
+  const size_t bit_width = SizeOf(ctx->getField()) * 8;
+  for (size_t idx = 0; idx < absl::bit_width(bit_width) - 1; idx++) {
     const size_t offset = 1UL << idx;
     auto b1 = _rshift(ctx, b0, offset);
     b0 = _or(ctx, b0, b1);
   }
   return b0;
 }
-
-}  // namespace
-
-namespace detail {
 
 // Extract the most significant bit. see
 // https://docs.oracle.com/javase/7/docs/api/java/lang/Integer.html#highestOneBit(int)
@@ -79,6 +76,19 @@ Value highestOneBit(HalContext* ctx, const Value& x) {
   auto y1 = _rshift(ctx, y, 1);
   return _xor(ctx, y, y1);
 }
+
+// FIXME:
+// Use range propatation instead of directly set.
+// or expose bit_decompose as mpc level api.
+void hintNumberOfBits(const Value& a, size_t nbits) {
+  if (a.storage_type().isa<BShare>()) {
+    const_cast<Type&>(a.storage_type()).as<BShare>()->setNbits(nbits);
+  }
+}
+
+}  // namespace
+
+namespace detail {
 
 // Reference:
 //   Charpter 3.4 Division @ Secure Computation With Fixed Point Number
@@ -117,6 +127,7 @@ Value div_goldschmidt(HalContext* ctx, const Value& a, const Value& b) {
   // factor = 2^{2f-m} = 2^{f-m} * 2^f, the fixed point repr of 2^{f-m}
   const size_t num_fxp_bits = ctx->getFxpBits();
   auto factor = _bitrev(ctx, b_msb, 0, 2 * num_fxp_bits).asFxp();
+  hintNumberOfBits(factor, 2 * num_fxp_bits);
 
   // compute normalize x_abs, [0.5, 1)
   auto c = f_mul(ctx, b_abs, factor);
@@ -144,19 +155,13 @@ Value div_goldschmidt(HalContext* ctx, const Value& a, const Value& b) {
   return _mul(ctx, r, b_sign).asFxp();
 }
 
-// NOTE(junfeng): we have a seperate reciprocal_goldschmidt is to avoid
-// unnecessary f_mul for y initiation in div_goldschmidt.
-Value reciprocal_goldschmidt(HalContext* ctx, const Value& b) {
-  SPU_TRACE_HAL(ctx, b);
-
-  auto b_sign = _sign(ctx, b);
-  auto b_abs = _mul(ctx, b_sign, b).asFxp();
-
+Value reciprocal_goldschmidt_positive(HalContext* ctx, const Value& b_abs) {
   auto b_msb = highestOneBit(ctx, b_abs);
 
   // factor = 2^{2f-m} = 2^{f-m} * 2^f, the fixed point repr of 2^{f-m}
   const size_t num_fxp_bits = ctx->getFxpBits();
   auto factor = _bitrev(ctx, b_msb, 0, 2 * num_fxp_bits).asFxp();
+  hintNumberOfBits(factor, 2 * num_fxp_bits);
 
   // compute normalize x_abs, [0.5, 1)
   auto c = f_mul(ctx, b_abs, factor);
@@ -181,7 +186,18 @@ Value reciprocal_goldschmidt(HalContext* ctx, const Value& b) {
     e = f_square(ctx, e);
   }
 
-  return _mul(ctx, r, b_sign).asFxp();
+  return r;
+}
+
+// NOTE(junfeng): we have a seperate reciprocal_goldschmidt is to avoid
+// unnecessary f_mul for y initiation in div_goldschmidt.
+Value reciprocal_goldschmidt(HalContext* ctx, const Value& b) {
+  SPU_TRACE_HAL(ctx, b);
+
+  auto b_sign = _sign(ctx, b);
+  auto b_abs = _mul(ctx, b_sign, b).asFxp();
+
+  return _mul(ctx, reciprocal_goldschmidt_positive(ctx, b_abs), b_sign).asFxp();
 }
 
 // Pade approximation fo x belongs to [0.5, 1]:
@@ -190,17 +206,15 @@ Value reciprocal_goldschmidt(HalContext* ctx, const Value& b) {
 //          + x * -0.88626599391 * 10
 //          + x^2 * 0.610585199015 * 10
 //          + x^3 * 0.481147460989 * 10
-// q2524(x) = -0.353553425277 * 10
+// q2524(x) = 0.353553425277
 //          + x * 0.454517087629 * 10
 //          + x^2 * 0.642784209029 * 10
 //          + x^3 * 0.1 *10
 // log2(x) = p2524(x) / q2524(x)
 //
 Value log2_pade_approx_for_normalized(HalContext* ctx, const Value& x) {
-  const auto x_2 = f_square(ctx, x);
-  const auto x_3 = f_mul(ctx, x_2, x);
-
-  const auto k1 = constant(ctx, 1.0f, x.shape());
+  const auto x2 = f_square(ctx, x);
+  const auto x3 = f_mul(ctx, x2, x);
 
   const auto p0 = constant(ctx, -0.205466671951 * 10, x.shape());
   const auto p1 = constant(ctx, -0.88626599391 * 10, x.shape());
@@ -212,17 +226,15 @@ Value log2_pade_approx_for_normalized(HalContext* ctx, const Value& x) {
   const auto q2 = constant(ctx, 0.642784209029 * 10, x.shape());
   const auto q3 = constant(ctx, 0.1 * 10, x.shape());
 
-  const auto p2524 =
-      _trunc(ctx, _add(ctx, _mul(ctx, p0, k1),
-                       _add(ctx, _mul(ctx, x, p1),
-                            _add(ctx, _mul(ctx, x_2, p2), _mul(ctx, x_3, p3)))))
-          .asFxp();
+  auto p2524 = _mul(ctx, x, p1);
+  p2524 = _add(ctx, p2524, _mul(ctx, x2, p2));
+  p2524 = _add(ctx, p2524, _mul(ctx, x3, p3));
+  p2524 = _add(ctx, _trunc(ctx, p2524), p0).asFxp();
 
-  const auto q2524 =
-      _trunc(ctx, _add(ctx, _mul(ctx, q0, k1),
-                       _add(ctx, _mul(ctx, x, q1),
-                            _add(ctx, _mul(ctx, x_2, q2), _mul(ctx, x_3, q3)))))
-          .asFxp();
+  auto q2524 = _mul(ctx, x, q1);
+  q2524 = _add(ctx, q2524, _mul(ctx, x2, q2));
+  q2524 = _add(ctx, q2524, _mul(ctx, x3, q3));
+  q2524 = _add(ctx, _trunc(ctx, q2524), q0).asFxp();
 
   return div_goldschmidt(ctx, p2524, q2524);
 }
@@ -241,6 +253,7 @@ Value log2_pade_approx(HalContext* ctx, const Value& x) {
   // let x = x_norm * factor, where x in [0.5, 1.0)
   auto msb = highestOneBit(ctx, x);
   auto factor = _bitrev(ctx, msb, 0, 2 * num_fxp_bits).asFxp();
+  hintNumberOfBits(factor, 2 * num_fxp_bits);
   auto norm = f_mul(ctx, x, factor);
 
   // log2(x) = log2(x_norm * factor)
@@ -316,62 +329,75 @@ Value exp_taylor_series(HalContext* ctx, const Value& x) {
 //             + x^5 * 0.133273035928143 / 100
 Value exp2_pade_approx_for_positive_pure_decimal(HalContext* ctx,
                                                  const Value& x) {
-  auto x_2 = f_mul(ctx, x, x);
-  auto x_3 = f_mul(ctx, x, x_2);
-  auto x_4 = f_mul(ctx, x, x_3);
-  auto x_5 = f_mul(ctx, x, x_4);
+  auto x2 = f_mul(ctx, x, x);
+  auto x3 = f_mul(ctx, x, x2);
+  auto x4 = f_mul(ctx, x, x3);
+  auto x5 = f_mul(ctx, x, x4);
 
-  auto tmp1 = f_add(ctx, constant(ctx, 0.100000007744302 * 10, x.shape()),
-                    f_mul(ctx, constant(ctx, 0.693147180426163, x.shape()), x));
-  auto tmp2 =
-      f_add(ctx, f_mul(ctx, constant(ctx, 0.240226510710170, x.shape()), x_2),
-            f_mul(ctx, constant(ctx, 0.555040686204663 / 10, x.shape()), x_3));
-  auto tmp3 = f_add(
-      ctx, f_mul(ctx, constant(ctx, 0.961834122588046 / 100, x.shape()), x_4),
-      f_mul(ctx, constant(ctx, 0.133273035928143 / 100, x.shape()), x_5));
+  const auto p0 = constant(ctx, 0.100000007744302 * 10, x.shape());
+  const auto p1 = constant(ctx, 0.693147180426163, x.shape());
+  const auto p2 = constant(ctx, 0.240226510710170, x.shape());
+  const auto p3 = constant(ctx, 0.555040686204663 / 10, x.shape());
+  const auto p4 = constant(ctx, 0.961834122588046 / 100, x.shape());
+  const auto p5 = constant(ctx, 0.133273035928143 / 100, x.shape());
 
-  return f_add(ctx, tmp1, f_add(ctx, tmp2, tmp3));
+  auto res = _mul(ctx, x, p1);
+  res = _add(ctx, res, _mul(ctx, x2, p2));
+  res = _add(ctx, res, _mul(ctx, x3, p3));
+  res = _add(ctx, res, _mul(ctx, x4, p4));
+  res = _add(ctx, res, _mul(ctx, x5, p5));
+
+  return _add(ctx, _trunc(ctx, res), p0).asFxp();
 }
 
 // Refer to
 // Chapter 5 Exponentiation and Logarithms
 // Benchmarking Privacy Preserving Scientific Operations
 // https://www.esat.kuleuven.be/cosic/publications/article-3013.pdf
+// NOTE(junfeng): The valid integer bits of x is 5. Otherwise, the output is
+// incorrect.
 Value exp2_pade_approx(HalContext* ctx, const Value& x) {
   const size_t fbits = ctx->getFxpBits();
+  const auto k1 = constant(ctx, 1U, x.shape());
+  const auto k0 = constant(ctx, 0U, x.shape());
+  const auto k2 = constant(ctx, 2U, x.shape());
+  // TODO(junfeng): Make int_bits configurable.
+  const size_t int_bits = 5;
+  const size_t bit_width = SizeOf(ctx->getField()) * 8;
 
-  auto x_sign = _sign(ctx, x);
-  auto x_abs = _mul(ctx, x_sign, x);
-  auto x_abs_trunc = _arshift(ctx, x_abs, fbits);
-  auto x_abs_integer = _lshift(ctx, x_abs_trunc, fbits);
-  auto x_abs_fraction = _sub(ctx, x_abs, x_abs_integer).asFxp();
+  const auto x_msb = _msb(ctx, x);
+  auto x_integer = _trunc(ctx, x, fbits);
+  auto x_fraction = _sub(ctx, x, _lshift(ctx, x_integer, fbits)).asFxp();
+  auto ret = exp2_pade_approx_for_positive_pure_decimal(ctx, x_fraction);
 
-  auto ret = exp2_pade_approx_for_positive_pure_decimal(ctx, x_abs_fraction);
-  auto ret_msb = _msb(ctx, x);
-
-  const size_t bit_width = SizeOf(x.storage_type().as<Ring2k>()->field()) * 8;
-  const auto one_int = constant(ctx, 1U, x.shape());
-  const auto one_float = constant(ctx, 1.0, x.shape());
-
-  for (size_t idx = 0; idx < bit_width - fbits - 1; idx++) {
-    auto a = _and(ctx, _rshift(ctx, x_abs_trunc, idx), one_int);
-    ret = f_mul(
-        ctx, ret,
-        f_add(ctx,
-              _mul(ctx, a,
-                   constant(ctx, std::pow(2, std::pow(2, idx)), x.shape()))
-                  .asFxp(),
-              f_sub(ctx, one_float, _lshift(ctx, a, fbits).asFxp())));
+  for (size_t idx = 0; idx < int_bits; idx++) {
+    auto a = _and(ctx, _rshift(ctx, x_integer, idx), k1);
+    hintNumberOfBits(a, 1);
+    a = _mul(ctx, k1, a);  // noop, to ashare
+    const auto K = 1U << std::min(1UL << idx, bit_width - 2);
+    ret = _mul(ctx, ret,
+               _add(ctx, _mul(ctx, a, constant(ctx, K, x.shape())),
+                    _sub(ctx, k1, a)))
+              .asFxp();
   }
 
-  auto ret_reciprocal = f_reciprocal(ctx, ret);
+  // If we could ensure the integer bits of x is 5.
+  // we have x, -x, -x_hat. x_hat is 2's complement of -x.
+  // Then,
+  //             x + (x_hat) = 32
+  //            (x_hat) - 32 = -x
+  //  exp2(x_hat) / exp2(32) = exp(-x)
+  //  so exp(-x) = exp2(x_hat) / exp2(32)
+  auto ret_reciprocal = _trunc(ctx, ret, std::pow(2, int_bits)).asFxp();
 
+  // ret + msb * (reciprocal - ret)
   return f_add(ctx, ret,
-               _mul(ctx, ret_msb, f_sub(ctx, ret_reciprocal, ret)).asFxp());
+               _mul(ctx, x_msb, f_sub(ctx, ret_reciprocal, ret)).asFxp());
 }
 
 Value exp_pade_approx(HalContext* ctx, const Value& x) {
-  return f_exp2(ctx, f_mul(ctx, x, constant(ctx, log2(exp(1)), x.shape())));
+  return f_exp2(
+      ctx, f_mul(ctx, x, constant(ctx, std::log2(std::exp(1)), x.shape())));
 }
 
 // Refer to
@@ -401,7 +427,7 @@ Value tanh_pade_approx(HalContext* ctx, const Value& x) {
 
 Value f_square(HalContext* ctx, const Value& x) {
   SPU_TRACE_HAL(ctx, x);
-  SPU_PROFILE_OP(ctx, x);
+  SPU_PROFILE_END_OP(ctx, x);
 
   YASL_ENFORCE(x.isFxp());
   // TODO(jint) optimize me.
@@ -411,7 +437,7 @@ Value f_square(HalContext* ctx, const Value& x) {
 
 Value f_exp(HalContext* ctx, const Value& x) {
   SPU_TRACE_HAL(ctx, x);
-  SPU_PROFILE_OP(ctx, x);
+  SPU_PROFILE_END_OP(ctx, x);
 
   YASL_ENFORCE(x.isFxp());
 
@@ -419,7 +445,6 @@ Value f_exp(HalContext* ctx, const Value& x) {
     return f_exp_p(ctx, x);
   }
 
-  // FIXME: use Pade may cause sslr example failure.
   switch (ctx->rt_config().fxp_exp_mode()) {
     case RuntimeConfig::EXP_DEFAULT:
     case RuntimeConfig::EXP_TAYLOR:
@@ -434,7 +459,7 @@ Value f_exp(HalContext* ctx, const Value& x) {
 
 Value f_negate(HalContext* ctx, const Value& x) {
   SPU_TRACE_HAL(ctx, x);
-  SPU_PROFILE_OP(ctx, x);
+  SPU_PROFILE_END_OP(ctx, x);
 
   YASL_ENFORCE(x.isFxp());
   return _negate(ctx, x).asFxp();
@@ -442,7 +467,7 @@ Value f_negate(HalContext* ctx, const Value& x) {
 
 Value f_abs(HalContext* ctx, const Value& x) {
   SPU_TRACE_HAL(ctx, x);
-  SPU_PROFILE_OP(ctx, x);
+  SPU_PROFILE_END_OP(ctx, x);
 
   YASL_ENFORCE(x.isFxp());
   const Value sign = _sign(ctx, x);
@@ -452,7 +477,7 @@ Value f_abs(HalContext* ctx, const Value& x) {
 
 Value f_reciprocal(HalContext* ctx, const Value& x) {
   SPU_TRACE_HAL(ctx, x);
-  SPU_PROFILE_OP(ctx, x);
+  SPU_PROFILE_END_OP(ctx, x);
 
   YASL_ENFORCE(x.isFxp());
   if (x.isPublic()) {
@@ -464,7 +489,7 @@ Value f_reciprocal(HalContext* ctx, const Value& x) {
 
 Value f_add(HalContext* ctx, const Value& x, const Value& y) {
   SPU_TRACE_HAL(ctx, x, y);
-  SPU_PROFILE_OP(ctx, x, y);
+  SPU_PROFILE_END_OP(ctx, x, y);
 
   YASL_ENFORCE(x.isFxp());
   YASL_ENFORCE(y.isFxp());
@@ -474,7 +499,7 @@ Value f_add(HalContext* ctx, const Value& x, const Value& y) {
 
 Value f_sub(HalContext* ctx, const Value& x, const Value& y) {
   SPU_TRACE_HAL(ctx, x, y);
-  SPU_PROFILE_OP(ctx, x, y);
+  SPU_PROFILE_END_OP(ctx, x, y);
 
   YASL_ENFORCE(x.isFxp());
   YASL_ENFORCE(y.isFxp());
@@ -483,7 +508,7 @@ Value f_sub(HalContext* ctx, const Value& x, const Value& y) {
 
 Value f_mul(HalContext* ctx, const Value& x, const Value& y) {
   SPU_TRACE_HAL(ctx, x, y);
-  SPU_PROFILE_OP(ctx, x, y);
+  SPU_PROFILE_END_OP(ctx, x, y);
 
   YASL_ENFORCE(x.isFxp());
   YASL_ENFORCE(y.isFxp());
@@ -493,7 +518,7 @@ Value f_mul(HalContext* ctx, const Value& x, const Value& y) {
 
 Value f_mmul(HalContext* ctx, const Value& x, const Value& y) {
   SPU_TRACE_HAL(ctx, x, y);
-  SPU_PROFILE_OP(ctx, x, y);
+  SPU_PROFILE_END_OP(ctx, x, y);
 
   YASL_ENFORCE(x.isFxp());
   YASL_ENFORCE(y.isFxp());
@@ -503,7 +528,7 @@ Value f_mmul(HalContext* ctx, const Value& x, const Value& y) {
 
 Value f_div(HalContext* ctx, const Value& x, const Value& y) {
   SPU_TRACE_HAL(ctx, x, y);
-  SPU_PROFILE_OP(ctx, x, y);
+  SPU_PROFILE_END_OP(ctx, x, y);
 
   YASL_ENFORCE(x.isFxp());
   YASL_ENFORCE(y.isFxp());
@@ -517,7 +542,7 @@ Value f_div(HalContext* ctx, const Value& x, const Value& y) {
 
 Value f_equal(HalContext* ctx, const Value& x, const Value& y) {
   SPU_TRACE_HAL(ctx, x, y);
-  SPU_PROFILE_OP(ctx, x, y);
+  SPU_PROFILE_END_OP(ctx, x, y);
 
   YASL_ENFORCE(x.isFxp());
   YASL_ENFORCE(y.isFxp());
@@ -527,7 +552,7 @@ Value f_equal(HalContext* ctx, const Value& x, const Value& y) {
 
 Value f_less(HalContext* ctx, const Value& x, const Value& y) {
   SPU_TRACE_HAL(ctx, x, y);
-  SPU_PROFILE_OP(ctx, x, y);
+  SPU_PROFILE_END_OP(ctx, x, y);
 
   YASL_ENFORCE(x.isFxp());
   YASL_ENFORCE(y.isFxp());
@@ -537,7 +562,7 @@ Value f_less(HalContext* ctx, const Value& x, const Value& y) {
 
 Value f_log(HalContext* ctx, const Value& x) {
   SPU_TRACE_HAL(ctx, x);
-  SPU_PROFILE_OP(ctx, x);
+  SPU_PROFILE_END_OP(ctx, x);
 
   YASL_ENFORCE(x.isFxp());
 
@@ -560,7 +585,7 @@ Value f_log(HalContext* ctx, const Value& x) {
 
 Value f_log1p(HalContext* ctx, const Value& x) {
   SPU_TRACE_HAL(ctx, x);
-  SPU_PROFILE_OP(ctx, x);
+  SPU_PROFILE_END_OP(ctx, x);
 
   YASL_ENFORCE(x.isFxp());
 
@@ -569,7 +594,7 @@ Value f_log1p(HalContext* ctx, const Value& x) {
 
 Value f_floor(HalContext* ctx, const Value& x) {
   SPU_TRACE_HAL(ctx, x);
-  SPU_PROFILE_OP(ctx, x);
+  SPU_PROFILE_END_OP(ctx, x);
 
   YASL_ENFORCE(x.isFxp());
 
@@ -579,7 +604,7 @@ Value f_floor(HalContext* ctx, const Value& x) {
 
 Value f_ceil(HalContext* ctx, const Value& x) {
   SPU_TRACE_HAL(ctx, x);
-  SPU_PROFILE_OP(ctx, x);
+  SPU_PROFILE_END_OP(ctx, x);
 
   YASL_ENFORCE(x.isFxp());
 
@@ -593,7 +618,7 @@ Value f_ceil(HalContext* ctx, const Value& x) {
 
 Value f_log2(HalContext* ctx, const Value& x) {
   SPU_TRACE_HAL(ctx, x);
-  SPU_PROFILE_OP(ctx, x);
+  SPU_PROFILE_END_OP(ctx, x);
 
   YASL_ENFORCE(x.isFxp());
 
@@ -602,16 +627,91 @@ Value f_log2(HalContext* ctx, const Value& x) {
 
 Value f_exp2(HalContext* ctx, const Value& x) {
   SPU_TRACE_HAL(ctx, x);
-  SPU_PROFILE_OP(ctx, x);
+  SPU_PROFILE_END_OP(ctx, x);
 
   return detail::exp2_pade_approx(ctx, x);
 }
 
 Value f_tanh(HalContext* ctx, const Value& x) {
   SPU_TRACE_HAL(ctx, x);
-  SPU_PROFILE_OP(ctx, x);
+  SPU_PROFILE_END_OP(ctx, x);
 
   return detail::tanh_pade_approx(ctx, x);
+}
+
+// Reference:
+//  1. https://dl.acm.org/doi/10.1145/3411501.3419427
+// Main idea:
+//  1. convert x to u * 2^(e + 1) while u belongs to [0.25, 0.5).
+//  2. get a nice approximation for u part.
+//  3. get the compensation for 2^(e + 1) part.
+//  4. multiple two parts and get the result.
+Value f_sqrt_inv(HalContext* ctx, const Value& x) {
+  SPU_TRACE_HAL(ctx, x);
+  SPU_PROFILE_END_OP(ctx, x);
+
+  const size_t k = SizeOf(ctx->getField()) * 8;
+  const size_t f = ctx->getFxpBits();
+  const auto k1 = constant(ctx, 1U, x.shape());
+
+  // let e = NP2(x)
+  //   , z = 2^(e+f)
+  auto z = _lshift(ctx, highestOneBit(ctx, x), 1);
+
+  // let u in [0.25, 0.5)
+  auto z_rev = _bitrev(ctx, z, 0, 2 * f);
+  hintNumberOfBits(z_rev, 2 * f);
+  auto u = _trunc(ctx, _mul(ctx, x, z_rev)).asFxp();
+
+  // let sqrt_inv(u) = 4.7979 * u^2 - 5.9417 * u + 3.1855
+  std::vector<Value> coeffs = {constant(ctx, -5.9417, x.shape()),
+                               constant(ctx, 4.7979, x.shape())};
+  auto r = f_add(ctx, f_polynomial(ctx, u, coeffs),
+                 constant(ctx, 3.1855, x.shape()));
+
+  // let a = 2^((e+f)/2), that is a[i] = 1 for i = (e+f)/2 else 0
+  // let b = lsb(e+f)
+  auto a = constant(ctx, 0U, x.shape());
+  auto b = constant(ctx, 0U, x.shape());
+  for (size_t i = 0; i < k / 2; i++) {
+    auto z_2i = _rshift(ctx, z, 2 * i);
+    auto z_2i1 = _rshift(ctx, z, 2 * i + 1);
+    // a[i] = z[2*i] ^ z[2*i+1]
+    auto a_i = _and(ctx, _xor(ctx, z_2i, z_2i1), k1);
+    a = _xor(ctx, a, _lshift(ctx, a_i, i));
+
+    // b ^= z[2*i]
+    b = _xor(ctx, b, z_2i);
+  }
+  b = _and(ctx, b, k1);
+  hintNumberOfBits(b, 1);
+  auto a_rev = _bitrev(ctx, a, 0, (f / 2) * 2);
+  hintNumberOfBits(a_rev, (f / 2) * 2);
+
+  // do compensation
+  // Note:
+  //   https://arxiv.org/pdf/2107.00501.pdf
+  // - the magic number c0 & c1 seems to be wrong.
+  // - the LSB algorithm is correct and used in this implementation.
+  //
+  // The following constant is deduced exactly from:
+  //   https://dl.acm.org/doi/10.1145/3411501.3419427
+  Value c0;
+  Value c1;
+  if (f % 2 == 1) {
+    c0 = constant(ctx, 1 << ((f + 3) / 2), x.shape());  // f+e even
+    c1 = _trunc(ctx, constant(ctx, (1 << (f / 2 + 1)) * std::sqrt(2),
+                              x.shape()));  // f+e odd
+  } else {
+    c0 = _trunc(ctx, constant(ctx, (1 << (f / 2)) * std::sqrt(2),
+                              x.shape()));        // f+e even
+    c1 = constant(ctx, 1 << (f / 2), x.shape());  // f+e odd
+  }
+
+  // let comp = 2^(-(e-1)/2) = mux(b, c1, c0) * a_rev
+  auto comp = _mul(ctx, _mux(ctx, b, c0, c1), a_rev);
+
+  return _trunc(ctx, _mul(ctx, r, comp)).asFxp();
 }
 
 }  // namespace spu::hal

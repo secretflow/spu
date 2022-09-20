@@ -22,7 +22,7 @@
 #include "spdlog/spdlog.h"
 
 #include "spu/device/io.h"
-#include "spu/device/pphlo_executor.h"
+#include "spu/device/pphlo/executor.h"
 
 // This example demostrates the basic compute functionality of spu vm.
 void constant_add(spu::device::Executor* executor) {
@@ -90,7 +90,7 @@ int main(int argc, char** argv) {
   llvm::cl::ParseCommandLineOptions(argc, argv);
 
   auto hctx = MakeHalContext();
-  spu::device::PPHloExecutor executor(hctx.get());
+  spu::device::pphlo::PPHloExecutor executor(hctx.get());
 
   parameters(&executor);
 

@@ -44,7 +44,7 @@ Count: Total = 4, fully supported = 2
 | `popcnt`       | not                         |
 | `real`         | not                         |
 | `round_nearest_afz`| not                     |
-| `rsqrt`        | not                         |
+| `rsqrt`        | fully                       |
 | `sign`         | not                         |
 | `sine`         | not                         |
 | `sqrt`         | fully                       |

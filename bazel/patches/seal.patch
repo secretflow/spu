@@ -1,17 +1,3 @@
-diff --git a/native/src/seal/keygenerator.cpp b/native/src/seal/keygenerator.cpp
-index 3eafd37..1d4df8d 100644
---- a/native/src/seal/keygenerator.cpp
-+++ b/native/src/seal/keygenerator.cpp
-@@ -171,7 +171,7 @@ namespace seal
-         auto &context_data = *context_.key_context_data();
-         if (!context_data.qualifiers().using_batching)
-         {
--            throw logic_error("encryption parameters do not support batching");
-+            // throw logic_error("encryption parameters do not support batching");
-         }
-
-         auto &parms = context_data.parms();
-
 diff --git a/native/src/seal/serializable.h b/native/src/seal/serializable.h
 index a940190..e490b30 100644
 --- a/native/src/seal/serializable.h

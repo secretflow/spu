@@ -1,4 +1,4 @@
-// Copyright 2021 Ant Group Co., Ltd.
+// Copyright 2022 Ant Group Co., Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,8 +18,8 @@
 
 #include "spu/psi/cryptor/ecc_cryptor.h"
 
-namespace spu {
+namespace spu::psi {
 
 std::unique_ptr<IEccCryptor> CreateEccCryptor(CurveType type);
 
-}  // namespace spu
+}  // namespace spu::psi

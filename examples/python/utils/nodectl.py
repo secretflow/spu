@@ -14,8 +14,7 @@
 
 import argparse
 import json
-import logging
-import multiprocessing
+import multiprocess
 import sys
 
 import grpc
@@ -44,17 +43,12 @@ if __name__ == '__main__':
     nodes_def = conf["nodes"]
     devices_def = conf["devices"]
 
-    logging.basicConfig(
-        stream=sys.stdout,
-        level=logging.INFO,
-        format='[%(asctime)s] [%(processName)s] %(message)s',
-    )
     if args.command == 'start':
         ppd.RPC.serve(args.node_id, nodes_def)
     elif args.command == 'up':
         workers = []
         for node_id in nodes_def.keys():
-            worker = multiprocessing.Process(
+            worker = multiprocess.Process(
                 target=ppd.RPC.serve, args=(node_id, nodes_def)
             )
             worker.start()

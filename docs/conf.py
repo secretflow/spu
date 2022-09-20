@@ -1,3 +1,18 @@
+# Copyright 2022 Ant Group Co., Ltd.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+
 # Configuration file for the Sphinx documentation builder.
 #
 # This file only contains a selection of the most common options. For a full
@@ -65,8 +80,6 @@ exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 # a list of builtin themes.
 #
 html_theme = 'pydata_sphinx_theme'
-# html_theme_options = {'page_width': 'max-content'}
-# html_theme = 'classic'
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
@@ -79,19 +92,11 @@ autodoc_member_order = 'groupwise'
 # Enable TODO
 todo_include_todos = True
 
-# config blockdiag
-
 # global variables
 extlinks = {
     'spu_doc_host': ('https://spu.readthedocs.io/zh/latest', 'doc '),
     'spu_code_host': ('https://github.com/secretflow', 'code '),
 }
-
-font_file = '/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf'
-if os.path.isfile(font_file):
-    blockdiag_fontpath = font_file
-    seqdiag_fontpath = font_file
-
 
 html_favicon = '_static/favicon.ico'
 
@@ -112,7 +117,13 @@ html_theme_options = {
     ],
     "external_links": [
         {"name": "SecretFlow", "url": "https://secretflow.readthedocs.io/"},
+        {"name": "HEU", "url": "https://heu.readthedocs.io/"},
     ],
+    "logo": {
+        "text": "SPU",
+        "image_light": "logo-light.png",
+        "image_dark": "logo-dark.png",
+    },
 }
 
 myst_enable_extensions = [
@@ -133,8 +144,6 @@ myst_enable_extensions = [
 
 suppress_warnings = ["myst.header"]
 
-# myst_heading_anchors = 3
-# myst_commonmark_only = True
 myst_gfm_only = True
 myst_heading_anchors = 1
 myst_title_to_header = True
@@ -144,7 +153,6 @@ def setup(app):
     app.add_config_value(
         'recommonmark_config',
         {
-            # 'url_resolver': lambda url: github_doc_root + url,
             'auto_toc_tree_section': 'Contents',
         },
         True,

@@ -1,4 +1,4 @@
-// Copyright 2021 Ant Group Co., Ltd.
+// Copyright 2022 Ant Group Co., Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,30 +15,24 @@
 #pragma once
 
 #include <random>
+#include <vector>
 
+#include "openssl/evp.h"
 #include "yasl/base/exception.h"
-#include "yasl/crypto/pseudo_random_generator.h"
 
 #include "spu/psi/cryptor/ecc_cryptor.h"
 
-namespace spu {
+namespace spu::psi {
 class Sm2Cryptor : public IEccCryptor {
  public:
-  explicit Sm2Cryptor(CurveType type = CurveType::CurveSm2) {
-    std::random_device rd;
-    yasl::PseudoRandomGenerator<uint64_t> prg(rd());
-
-    prg.Fill(absl::MakeSpan(&private_key_[0], kEccKeySize));
-
-    ec_group_nid_ = GetEcGroupId(type);
-  }
+  explicit Sm2Cryptor(CurveType type = CurveType::CURVE_SM2)
+      : ec_group_nid_(GetEcGroupId(type)) {}
 
   explicit Sm2Cryptor(absl::Span<const uint8_t> key,
-                      CurveType type = CurveType::CurveSm2)
-      : curve_type_(type) {
+                      CurveType type = CurveType::CURVE_SM2)
+      : curve_type_(type), ec_group_nid_(GetEcGroupId(type)) {
     YASL_ENFORCE(key.size() == kEccKeySize);
     std::memcpy(private_key_, key.data(), key.size());
-    ec_group_nid_ = GetEcGroupId(type);
   }
 
   ~Sm2Cryptor() override { OPENSSL_cleanse(&private_key_[0], kEccKeySize); }
@@ -54,9 +48,9 @@ class Sm2Cryptor : public IEccCryptor {
 
   static int GetEcGroupId(CurveType type) {
     switch (type) {
-      case CurveType::CurveSecp256k1:
+      case CurveType::CURVE_SECP256K1:
         return NID_secp256k1;
-      case CurveType::CurveSm2:
+      case CurveType::CURVE_SM2:
         return NID_sm2;
       default:
         YASL_THROW("wron curve type:{}", static_cast<int>(type));
@@ -65,8 +59,8 @@ class Sm2Cryptor : public IEccCryptor {
   }
 
  private:
-  CurveType curve_type_ = CurveType::CurveSm2;
+  CurveType curve_type_ = CurveType::CURVE_SM2;
   int ec_group_nid_ = NID_sm2;
 };
 
-}  // namespace spu
+}  // namespace spu::psi

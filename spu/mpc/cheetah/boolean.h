@@ -25,6 +25,10 @@ using util::K;
 using util::Log;
 using util::N;
 
+typedef spu::mpc::semi2k::CommonTypeB CommonTypeB;
+
+typedef spu::mpc::semi2k::CastTypeB CastTypeB;
+
 typedef spu::mpc::semi2k::ZeroB ZeroB;
 
 typedef spu::mpc::semi2k::B2P B2P;

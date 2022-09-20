@@ -1,0 +1,135 @@
+# Copyright 2022 Ant Group Co., Ltd.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+load("//bazel:spu.bzl", "spu_cc_binary", "spu_cc_library", "spu_cc_test")
+
+package(default_visibility = ["//visibility:public"])
+
+spu_cc_library(
+    name = "executor",
+    srcs = ["executor.cc"],
+    hdrs = ["executor.h"],
+    deps = [
+        ":region_executor",
+        ":type_checker",
+        "//spu/device:executor",
+        "//spu/device:frame",
+        "//spu/dialect:pphlo_dialect",
+        "@llvm-project//mlir:Parser",
+    ],
+)
+
+spu_cc_library(
+    name = "kernels",
+    srcs = glob(["kernels/*.cc"]),
+    hdrs = glob(["kernels/*.h"]),
+    visibility = ["//visibility:private"],
+    deps = [
+        "//spu/hal",
+    ],
+)
+
+spu_cc_library(
+    name = "region_executor",
+    srcs = [
+        "region_executor.cc",
+    ],
+    hdrs = [
+        "region_executor.h",
+    ],
+    deps = [
+        ":kernels",
+        ":type_checker",
+        ":xla_verifier",
+        "//spu/device:frame",
+        "//spu/device:profiler",
+        "//spu/dialect:pphlo_dialect",
+    ],
+)
+
+spu_cc_test(
+    name = "executor_test",
+    srcs = ["executor_test.cc"],
+    deps = [
+        ":executor",
+        "//spu/device:io",
+        "//spu/device:test_utils",
+    ],
+)
+
+spu_cc_library(
+    name = "type_checker",
+    srcs = ["type_checker.cc"],
+    hdrs = ["type_checker.h"],
+    deps = [
+        "//spu/device:type_checker",
+        "//spu/dialect:pphlo_dialect",
+        "//spu/hal:value",
+        "@llvm-project//mlir:IR",
+        "@yasl//yasl/base:exception",
+    ],
+)
+
+spu_cc_binary(
+    name = "executor_bench",
+    testonly = True,
+    srcs = ["executor_bench.cc"],
+    data = [
+        "//spu/compiler/test_data:pphlo_asms",
+    ],
+    deps = [
+        ":executor",
+        "//spu/device:test_utils",
+        "@com_github_google_benchmark//:benchmark",
+    ],
+)
+
+spu_cc_binary(
+    name = "executor_debug_runner",
+    testonly = True,
+    srcs = ["executor_debug_runner.cc"],
+    deps = [
+        ":executor",
+        "//spu/device:test_utils",
+        "@llvm-project//llvm:Support",
+    ],
+)
+
+spu_cc_library(
+    name = "xla_verifier",
+    srcs = ["xla_verifier.cc"],
+    hdrs = ["xla_verifier.h"],
+    copts = [
+        # TF headers have lots of warnings, disable warning-as-error for this compilation unit
+        "-Wno-error",
+    ],
+    deps = [
+        ":kernels",
+        "//spu/dialect:pphlo_dialect",
+        "//spu/hal:context",
+        "//spu/hal:value",
+        "@org_tensorflow//tensorflow/compiler/xla/service:hlo_evaluator",
+    ],
+)
+
+spu_cc_test(
+    name = "xla_verifier_test",
+    srcs = ["xla_verifier_test.cc"],
+    deps = [
+        ":xla_verifier",
+        "//spu/device:test_utils",
+        "//spu/mpc/util:simulate",
+        "@llvm-project//mlir:Parser",
+    ],
+)

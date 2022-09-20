@@ -41,6 +41,41 @@ void registerTypes() {
       flag, []() { TypeContext::getTypeContext()->addTypes<Ref2kSecrTy>(); });
 }
 
+class Ref2kCommonTypeS : public Kernel {
+ public:
+  static constexpr char kBindName[] = "common_type_s";
+
+  Kind kind() const override { return Kind::kDynamic; }
+
+  void evaluate(EvalContext* ctx) const override {
+    const Type& lhs = ctx->getParam<Type>(0);
+    const Type& rhs = ctx->getParam<Type>(1);
+
+    SPU_TRACE_KERNEL(ctx, lhs, rhs);
+    YASL_ENFORCE(lhs.isa<Ref2kSecrTy>(), "invalid type, got={}", lhs);
+    YASL_ENFORCE(rhs.isa<Ref2kSecrTy>(), "invalid type, got={}", rhs);
+    ctx->setOutput(lhs);
+  }
+};
+
+class Ref2kCastTypeS : public Kernel {
+ public:
+  static constexpr char kBindName[] = "cast_type_s";
+
+  Kind kind() const override { return Kind::kDynamic; }
+
+  void evaluate(EvalContext* ctx) const override {
+    const auto& in = ctx->getParam<ArrayRef>(0);
+    const auto& to_type = ctx->getParam<Type>(1);
+
+    SPU_TRACE_KERNEL(ctx, in, to_type);
+    YASL_ENFORCE(in.eltype() == to_type,
+                 "semi2k always use same bshare type, lhs={}, rhs={}",
+                 in.eltype(), to_type);
+    ctx->setOutput(in);
+  }
+};
+
 class Ref2kP2S : public UnaryKernel {
  public:
   static constexpr char kBindName[] = "p2s";
@@ -355,6 +390,7 @@ class Ref2kMsbS : public UnaryKernel {
 }  // namespace
 
 std::unique_ptr<Object> makeRef2kProtocol(
+    const RuntimeConfig& conf,
     const std::shared_ptr<yasl::link::Context>& lctx) {
   registerTypes();
 
@@ -367,6 +403,8 @@ std::unique_ptr<Object> makeRef2kProtocol(
   regPub2kKernels(obj.get());
 
   // register compute kernels
+  obj->regKernel<Ref2kCommonTypeS>();
+  obj->regKernel<Ref2kCastTypeS>();
   obj->regKernel<Ref2kP2S>();
   obj->regKernel<Ref2kS2P>();
   obj->regKernel<Ref2kNotS>();
@@ -391,8 +429,8 @@ std::unique_ptr<Object> makeRef2kProtocol(
   return obj;
 }
 
-std::vector<ArrayRef> Ref2kIo::toShares(const ArrayRef& raw,
-                                        Visibility vis) const {
+std::vector<ArrayRef> Ref2kIo::toShares(const ArrayRef& raw, Visibility vis,
+                                        int owner_rank) const {
   YASL_ENFORCE(raw.eltype().isa<RingTy>(), "expected RingTy, got {}",
                raw.eltype());
   const auto field = raw.eltype().as<Ring2k>()->field();

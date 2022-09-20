@@ -35,7 +35,7 @@ spu_cc_binary(
     ],
     deps = [
         ":utils",
-        "//spu/mpc:interfaces",
+        "//spu/mpc:api",
         "//spu/mpc:object",
         "//spu/mpc/util:communicator",
         "//spu/mpc/util:simulate",
@@ -52,7 +52,7 @@ spu_cc_binary(
     ],
     deps = [
         ":utils",
-        "//spu/mpc:interfaces",
+        "//spu/mpc:api",
         "//spu/mpc:object",
         "//spu/mpc/util:communicator",
         "@com_github_fmtlib_fmt//:fmtlib",

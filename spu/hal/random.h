@@ -24,6 +24,6 @@ namespace spu::hal {
 // @param b, upper limit (exclude)
 // @param to_shape, the target shape
 Value rng_uniform(HalContext* ctx, const Value& a, const Value& b,
-                  const std::vector<int64_t>& to_shape);
+                  absl::Span<const int64_t> to_shape);
 
 }  // namespace spu::hal

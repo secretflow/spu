@@ -148,6 +148,7 @@ struct PtBufferView {
 std::ostream& operator<<(std::ostream& out, PtBufferView v);
 
 // Make a ndarray from a plaintext buffer.
+// TODO: rename this function.
 NdArrayRef xt_to_ndarray(PtBufferView bv);
 
 // Make a NdArrayRef from an xt expression.
@@ -158,7 +159,8 @@ NdArrayRef xt_to_ndarray(const xt::xexpression<E>& e) {
   auto&& ee = xt::eval(e.derived_cast());
 
   const Type eltype = makePtType<T>();
-  auto arr = NdArrayRef(eltype, {ee.shape().begin(), ee.shape().end()});
+  auto arr = NdArrayRef(
+      eltype, std::vector<int64_t>(ee.shape().begin(), ee.shape().end()));
   xt_mutable_adapt<T>(arr) = ee;
 
   return arr;

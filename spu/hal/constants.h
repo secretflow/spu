@@ -29,6 +29,9 @@ namespace spu::hal {
 Value constant(HalContext* ctx, PtBufferView bv,
                absl::Span<const int64_t> shape = {});
 
+Value zeros(HalContext* ctx, Visibility vis, DataType dtype,
+            absl::Span<const int64_t> shape = {});
+
 // Deprecated:
 //
 // Warn: this is ANTI-PATTERN, it will not make a `true secret`, but a

@@ -34,8 +34,15 @@ class IoInterface {
   //
   // This function deos NOT handle encoding stuffs, it's the upper layer(hal)'s
   // resposibility to encode to it to ring.
-  virtual std::vector<ArrayRef> toShares(const ArrayRef& raw,
-                                         Visibility vis) const = 0;
+  virtual std::vector<ArrayRef> toShares(const ArrayRef& raw, Visibility vis,
+                                         int owner_rank = -1) const = 0;
+
+  // Make a secret from a bit array, if the element type is large than one bit,
+  // only the lsb is considered.
+  //
+  // @param raw, with type as PtType.
+  virtual std::vector<ArrayRef> makeBitSecret(const ArrayRef& raw) const = 0;
+  virtual bool hasBitSecretSupport() const = 0;
 
   // Reconstruct shares into a RingTy value.
   //
@@ -53,6 +60,11 @@ class BaseIo : public IoInterface {
  public:
   explicit BaseIo(FieldType field, size_t world_size)
       : field_(field), world_size_(world_size) {}
+
+  std::vector<ArrayRef> makeBitSecret(const ArrayRef& raw) const override {
+    YASL_THROW("should not be here");
+  }
+  bool hasBitSecretSupport() const override { return false; }
 };
 
 }  // namespace spu::mpc

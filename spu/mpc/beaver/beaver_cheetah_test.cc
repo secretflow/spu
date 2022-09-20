@@ -27,11 +27,12 @@ INSTANTIATE_TEST_SUITE_P(
               std::make_shared<CheetahPrimitives>(lctx);
           std::unique_ptr<BeaverCheetah> beaver =
               std::make_unique<BeaverCheetah>(lctx);
-          beaver->set_primitives(primitives);
           return beaver;
         }),
-        testing::Values(2), testing::Values(FieldType::FM32, FieldType::FM64),
-        testing::Values(1)),  // max beaver diff,
+        testing::Values(2),  // parties
+        testing::Values(FieldType::FM32, FieldType::FM64, FieldType::FM128),  //
+        testing::Values(1)  // max beaver diff,
+        ),
     [](const testing::TestParamInfo<BeaverTest::ParamType>& p) {
       return fmt::format("{}x{}", std::get<1>(p.param), std::get<2>(p.param));
     });

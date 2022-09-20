@@ -20,15 +20,18 @@
 namespace spu::mpc::test {
 
 using CreateObjectFn = std::function<std::unique_ptr<Object>(
+    const RuntimeConfig& conf,
     const std::shared_ptr<yasl::link::Context>& lctx)>;
 
 class ArithmeticTest : public ::testing::TestWithParam<
-                           std::tuple<CreateObjectFn, size_t, FieldType>> {};
+                           std::tuple<CreateObjectFn, RuntimeConfig, size_t>> {
+};
 
 class BooleanTest : public ::testing::TestWithParam<
-                        std::tuple<CreateObjectFn, size_t, FieldType>> {};
+                        std::tuple<CreateObjectFn, RuntimeConfig, size_t>> {};
 
 class ConversionTest : public ::testing::TestWithParam<
-                           std::tuple<CreateObjectFn, size_t, FieldType>> {};
+                           std::tuple<CreateObjectFn, RuntimeConfig, size_t>> {
+};
 
 }  // namespace spu::mpc::test

@@ -83,24 +83,22 @@ std::pair<ArrayRef, ArrayRef> PrgState::genPrssPair(FieldType field,
   uint64_t new_counter = prss_counter_;
   if (!ignore_first) {
     new_counter =
-        yasl::FillAesRandom(self_seed_, 0, prss_counter_,
-                            absl::MakeSpan(static_cast<char*>(r_self.data()),
-                                           r_self.buf()->size()));
+        yasl::FillPseudoRandom(kAesType, self_seed_, 0, prss_counter_,
+                               absl::MakeSpan(static_cast<char*>(r_self.data()),
+                                              r_self.buf()->size()));
   }
   if (!ignore_second) {
     new_counter =
-        yasl::FillAesRandom(next_seed_, 0, prss_counter_,
-                            absl::MakeSpan(static_cast<char*>(r_next.data()),
-                                           r_next.buf()->size()));
+        yasl::FillPseudoRandom(kAesType, next_seed_, 0, prss_counter_,
+                               absl::MakeSpan(static_cast<char*>(r_next.data()),
+                                              r_next.buf()->size()));
   }
 
   if (new_counter == prss_counter_) {
     // both part ignored, dummy run to update counter...
-    // TODO: improve perf
-    new_counter =
-        yasl::FillAesRandom(next_seed_, 0, prss_counter_,
-                            absl::MakeSpan(static_cast<char*>(r_next.data()),
-                                           r_next.buf()->size()));
+    new_counter = yasl::DummyUpdateRandomCount(
+        prss_counter_, absl::MakeSpan(static_cast<char*>(r_next.data()),
+                                      r_next.buf()->size()));
   }
 
   prss_counter_ = new_counter;
@@ -109,8 +107,8 @@ std::pair<ArrayRef, ArrayRef> PrgState::genPrssPair(FieldType field,
 
 ArrayRef PrgState::genPriv(FieldType field, size_t numel) {
   ArrayRef res(makeType<RingTy>(field), numel);
-  priv_counter_ = yasl::FillAesRandom(
-      priv_seed_, 0, priv_counter_,
+  priv_counter_ = yasl::FillPseudoRandom(
+      kAesType, priv_seed_, 0, priv_counter_,
       absl::MakeSpan(static_cast<char*>(res.data()), res.buf()->size()));
 
   return res;
@@ -118,8 +116,8 @@ ArrayRef PrgState::genPriv(FieldType field, size_t numel) {
 
 ArrayRef PrgState::genPubl(FieldType field, size_t numel) {
   ArrayRef res(makeType<RingTy>(field), numel);
-  pub_counter_ = yasl::FillAesRandom(
-      pub_seed_, 0, pub_counter_,
+  pub_counter_ = yasl::FillPseudoRandom(
+      kAesType, pub_seed_, 0, pub_counter_,
       absl::MakeSpan(static_cast<char*>(res.data()), res.buf()->size()));
 
   return res;

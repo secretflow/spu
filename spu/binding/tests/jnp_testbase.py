@@ -219,16 +219,15 @@ REDUCER_RECORDS = [
     # REC("nansum", 1, number_dtypes, all_shapes, jtu.rand_some_nan), # UnSupport
 ]
 
-# TODO: testme
 REDUCER_INITIAL_RECORDS = [
     REC("prod", 1, all_dtypes, all_shapes, jtu.rand_small_positive),
     REC("sum", 1, all_dtypes, all_shapes, rand_default),
     REC("max", 1, all_dtypes, all_shapes, rand_default),
     REC("min", 1, all_dtypes, all_shapes, rand_default),
-    # REC("nanprod", 1, float_dtypes, all_shapes, jtu.rand_small_positive), # UnSupport
-    # REC("nansum", 1, float_dtypes, all_shapes, rand_default), # UnSupport
-    # REC("nanmax", 1, float_dtypes, all_shapes, rand_default), # UnSupport
-    # REC("nanmin", 1, float_dtypes, all_shapes, rand_default), # UnSupport
+    REC("nanprod", 1, float_dtypes, all_shapes, jtu.rand_small_positive),
+    REC("nansum", 1, float_dtypes, all_shapes, rand_default),
+    REC("nanmax", 1, float_dtypes, all_shapes, rand_default),
+    REC("nanmin", 1, float_dtypes, all_shapes, rand_default),
 ]
 
 SHIFT_RECORDS = [
@@ -236,19 +235,17 @@ SHIFT_RECORDS = [
     REC("right_shift", 1, int_dtypes, all_shapes, jtu.rand_int),
 ]
 
-# TODO: testme
 REDUCER_WHERE_NO_INITIAL_RECORDS = [
     REC("all", 1, bool_dtypes, all_shapes, jtu.rand_some_zero),
     REC("any", 1, bool_dtypes, all_shapes, jtu.rand_some_zero),
     REC("mean", 1, all_dtypes, all_shapes, rand_default),
     REC("var", 1, all_dtypes, all_shapes, rand_default),
     REC("std", 1, all_dtypes, all_shapes, rand_default),
-    # REC("nanmean", 1, float_dtypes, all_shapes, rand_default), # UnSupport
-    # REC("nanvar", 1, float_dtypes, all_shapes, rand_default), # UnSupport
-    # REC("nanstd", 1, float_dtypes, all_shapes, rand_default), # UnSupport
+    REC("nanmean", 1, float_dtypes, all_shapes, rand_default),
+    REC("nanvar", 1, float_dtypes, all_shapes, rand_default),
+    REC("nanstd", 1, float_dtypes, all_shapes, rand_default),
 ]
 
-# TODO: testme
 REDUCER_NO_DTYPE_RECORDS = [
     REC("all", 1, all_dtypes, all_shapes, jtu.rand_some_zero),
     REC("any", 1, all_dtypes, all_shapes, jtu.rand_some_zero),

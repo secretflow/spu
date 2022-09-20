@@ -556,10 +556,9 @@ void NonlinearProtocols::msb(uint8_t *msb_x, const T *x, int32_t size,
   if (bw_x <= 0) {
     bw_x = max_bw;
   }
-  assert(bw_x <= max_bw);
+  YASL_ENFORCE_LE(bw_x, max_bw);
   int32_t shift = bw_x - 1;
-  YASL_ENFORCE_LE(shift, 63);
-  uint64_t shift_mask = (1ULL << shift) - 1;
+  T shift_mask = (static_cast<T>(1) << shift) - 1;
 
   std::vector<T> tmp_x(size);
   std::vector<uint8_t> msb_xb(size);

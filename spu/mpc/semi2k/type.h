@@ -24,8 +24,10 @@ class AShrTy : public TypeImpl<AShrTy, RingTy, Secret, AShare> {
  public:
   using Base::Base;
   static std::string_view getStaticId() { return "semi2k.AShr"; }
-
-  explicit AShrTy(FieldType field) { field_ = field; }
+  explicit AShrTy(FieldType field, int owner_rank = -1) {
+    field_ = field;
+    owner_ = owner_rank;
+  }
 };
 
 class BShrTy : public TypeImpl<BShrTy, RingTy, Secret, BShare> {

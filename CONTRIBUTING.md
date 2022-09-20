@@ -1,4 +1,4 @@
-# Contributing
+# Contribution guidelines
 
 ## Contributor License Agreement
 
@@ -30,6 +30,90 @@ The compiler portion of the project follows [MLIR style](https://mlir.llvm.org/g
 * Git commit message should be meaningful, we suggest imperative [keywords](https://github.com/joelparkerhenderson/git_commit_message#summary-keywords).
 * Developer must write unit-test (line coverage must be greater than 80%), tests should be deterministic.
 * Read awesome [Abseil Tips](https://abseil.io/tips/)
+
+## Build
+
+### Prerequisite
+
+#### Docker
+```sh
+## start container
+docker run -d -it --name spu-gcc11-anolis-dev-$(whoami) \
+         --mount type=bind,source="$(pwd)",target=/home/admin/dev/ \
+         -w /home/admin/dev \
+         --cap-add=SYS_PTRACE --security-opt seccomp=unconfined \
+         --cap-add=NET_ADMIN \
+         --privileged=true \
+         secretflow/secretflow-gcc11-anolis-dev:latest
+
+# attach to build container
+docker exec -it spu-gcc11-anolis-dev-$(whoami) bash
+```
+
+#### Linux
+
+```sh
+Install gcc>=11.2, cmake>=3.18, ninja, nasm>=2.15, python==3.8, bazel==5.1.1
+
+python3 -m pip install -r requirements.txt
+```
+
+#### macOS
+
+```sh
+# macOS >= 11, Xcode >=13.0
+
+# Install Xcode
+https://apps.apple.com/us/app/xcode/id497799835?mt=12
+
+# Select Xcode toolchain version
+sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+
+# Install homebrew
+https://brew.sh/
+
+# Install dependencies
+brew install bazel cmake ninja nasm
+
+# Extra setup step for Apple Silicon users
+conda install grpcio
+
+# Install python dependencies
+pip install -r requirements.txt
+```
+
+### Build & UnitTest
+
+``` sh
+
+# build as debug
+bazel build //... -c dbg
+
+# build as release
+bazel build //... -c opt
+
+# test
+bazel test //...
+
+# [optional] build & test with ASAN or UBSAN, for macOS users please use configs with macOS prefix
+bazel test //... --config=[macos-]asan
+bazel test //... --config=[macos-]ubsan
+```
+
+### Bazel build options
+
+- `--define gperf=on` enable gperf
+- `--define tracelog=on` enable link trace log.
+
+### Build docs
+
+```sh
+# prerequisite
+pip install -U docs/requirements.txt
+
+cd docs & make html  # html docs will be in docs/_build/html
+```
+
 
 ## Release cycle
 

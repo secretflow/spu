@@ -912,6 +912,60 @@ Effects: MemoryEffects::Effect{}
 | :----: | ----------- |
 &laquo;unnamed&raquo; | statically shaped tensor of PPHlo public type or PPHlo secret type values
 
+### `pphlo.mixed_dot` (::mlir::pphlo::MixedDotOp)
+
+Mixed type dot operator
+
+Performs dot products between vectors, vector/matrix and matrix/matrix
+multiplication.
+
+See https://www.tensorflow.org/xla/operation_semantics#dot.
+
+Interfaces: NoSideEffect (MemoryEffectOpInterface)
+
+Effects: MemoryEffects::Effect{}
+
+#### Operands:
+
+| Operand | Description |
+| :-----: | ----------- |
+| `lhs` | statically shaped tensor of PPHlo public type or PPHlo secret type values
+| `rhs` | statically shaped tensor of PPHlo public type or PPHlo secret type values
+
+#### Results:
+
+| Result | Description |
+| :----: | ----------- |
+&laquo;unnamed&raquo; | statically shaped tensor of PPHlo public type or PPHlo secret type values
+
+### `pphlo.mixed_multiply` (::mlir::pphlo::MixedMulOp)
+
+Mixed type multiplication operator
+
+Returns `lhs * rhs` element-wise.
+
+See
+https://www.tensorflow.org/xla/operation_semantics#element-wise_binary_arithmetic_operations.
+
+Traits: Commutative, Elementwise, SameOperandsAndResultShape
+
+Interfaces: NoSideEffect (MemoryEffectOpInterface)
+
+Effects: MemoryEffects::Effect{}
+
+#### Operands:
+
+| Operand | Description |
+| :-----: | ----------- |
+| `lhs` | statically shaped tensor of PPHlo public type or PPHlo secret type values
+| `rhs` | statically shaped tensor of PPHlo public type or PPHlo secret type values
+
+#### Results:
+
+| Result | Description |
+| :----: | ----------- |
+&laquo;unnamed&raquo; | statically shaped tensor of PPHlo public type or PPHlo secret type values
+
 ### `pphlo.multiply` (::mlir::pphlo::MulOp)
 
 Multiplication operator
@@ -1301,6 +1355,33 @@ Traits: SameOperandsAndResultElementType
 | Result | Description |
 | :----: | ----------- |
 &laquo;unnamed&raquo; | statically shaped tensor of PPHlo public type or PPHlo secret type values
+
+### `pphlo.rsqrt` (::mlir::pphlo::RsqrtOp)
+
+Reciprocal of square-root operator
+
+Returns `rsqrt(operand)` element-wise.
+
+See
+https://www.tensorflow.org/xla/operation_semantics#element-wise_unary_functions.
+
+Traits: Elementwise, SameOperandsAndResultShape
+
+Interfaces: NoSideEffect (MemoryEffectOpInterface)
+
+Effects: MemoryEffects::Effect{}
+
+#### Operands:
+
+| Operand | Description |
+| :-----: | ----------- |
+| `operand` | statically shaped tensor of public floating-point type or secret floating-point type values
+
+#### Results:
+
+| Result | Description |
+| :----: | ----------- |
+&laquo;unnamed&raquo; | statically shaped tensor of public floating-point type or secret floating-point type values
 
 ### `pphlo.select_and_scatter` (::mlir::pphlo::SelectAndScatterOp)
 

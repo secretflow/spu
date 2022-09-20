@@ -19,30 +19,29 @@ import unittest
 import numpy as np
 import numpy.testing as npt
 
-import spu.binding.api as ppapi
+import spu.binding.util.frontend as spu_fe
 import spu.spu_pb2 as spu_pb2
 
 
 class UnitTests(unittest.TestCase):
     def test_compile_pb(self):
-        # Load data from file
-        xla = os.path.join(os.getcwd(), "spu/binding/tests/data", "hlo_example.hlo.pb")
-        with open(xla, "rb") as f:
-            # Build a compile proto
-            proto = spu_pb2.IrProto()
-            proto.ir_type = spu_pb2.IrType.IR_XLA_HLO
-            proto.meta.inputs.append(spu_pb2.Visibility.VIS_SECRET)
-            proto.code = f.read()
+        def test():
+            return 1
 
-            # compile
-            result = ppapi.compile(proto)
+        result, *_ = spu_fe.compile(
+            spu_fe.Kind.JAX,
+            test,
+            list(),
+            dict(),
+            [],
+            [],
+            lambda _: ["out1"],
+        )
 
-            # inspect compiled result
-            self.assertEqual(result.ir_type, spu_pb2.IrType.IR_MLIR_SPU)
-
-            ir = result.code.decode("utf-8")
-            self.assertIn("@main", ir)
-            self.assertIn("pphlo", ir)
+        # inspect compiled result
+        ir = result.code.decode("utf-8")
+        self.assertIn("@main", ir)
+        self.assertIn("pphlo", ir)
 
 
 if __name__ == '__main__':

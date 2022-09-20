@@ -48,5 +48,14 @@ std::unique_ptr<OperationPass<func::FuncOp>> createCategorizeReducePass();
 // Lower UnrealizedConversionCastOp
 std::unique_ptr<OperationPass<func::FuncOp>> createLowerConversionCastPass();
 
+// Lower min/max
+std::unique_ptr<OperationPass<func::FuncOp>> createDecomposeMinMaxPass();
+
+// Reduce truncation
+std::unique_ptr<OperationPass<func::FuncOp>> createReduceTruncationPass();
+
+// Lower mixed-type op
+std::unique_ptr<OperationPass<func::FuncOp>> createLowerMixedTypeOpPass();
+
 } // namespace pphlo
 } // namespace mlir

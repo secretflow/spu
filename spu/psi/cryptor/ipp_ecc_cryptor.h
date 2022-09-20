@@ -1,4 +1,4 @@
-// Copyright 2021 Ant Group Co., Ltd.
+// Copyright 2022 Ant Group Co., Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,7 +20,7 @@
 
 #include "spu/psi/cryptor/ecc_cryptor.h"
 
-namespace spu {
+namespace spu::psi {
 
 class IppEccCryptor : public IEccCryptor {
  public:
@@ -28,10 +28,10 @@ class IppEccCryptor : public IEccCryptor {
 
   ~IppEccCryptor() override = default;
 
-  CurveType GetCurveType() const override { return CurveType::Curve25519; }
+  CurveType GetCurveType() const override { return CurveType::CURVE_25519; }
 
   void EccMask(absl::Span<const char> batch_points,
                absl::Span<char> dest_points) const override;
 };
 
-}  // namespace spu
+}  // namespace spu::psi

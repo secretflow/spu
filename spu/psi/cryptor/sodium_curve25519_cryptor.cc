@@ -1,4 +1,4 @@
-// Copyright 2021 Ant Group Co., Ltd.
+// Copyright 2022 Ant Group Co., Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@ extern "C" {
 #include "yasl/crypto/hash_util.h"
 #include "yasl/utils/parallel.h"
 
-namespace spu {
+namespace spu::psi {
 
 void SodiumCurve25519Cryptor::EccMask(absl::Span<const char> batch_points,
                                       absl::Span<char> dest_points) const {
@@ -54,26 +54,21 @@ void SodiumCurve25519Cryptor::EccMask(absl::Span<const char> batch_points,
 }
 
 std::vector<uint8_t> SodiumCurve25519Cryptor::KeyExchange(
-      const std::shared_ptr<yasl::link::Context> &link_ctx){
+    const std::shared_ptr<yasl::link::Context>& link_ctx) {
   std::array<uint8_t, kEccKeySize> self_public_key;
-
   crypto_scalarmult_curve25519_base(self_public_key.data(), this->private_key_);
-
   yasl::Buffer self_pubkey_buf(self_public_key.data(), self_public_key.size());
-
   link_ctx->SendAsync(link_ctx->NextRank(), self_pubkey_buf,
                       fmt::format("send rank-{} public key", link_ctx->Rank()));
-
   yasl::Buffer peer_pubkey_buf = link_ctx->Recv(
       link_ctx->NextRank(),
       fmt::format("recv rank-{} public key", link_ctx->NextRank()));
-
   std::vector<uint8_t> dh_key(kEccKeySize);
-  YASL_ENFORCE(0 == crypto_scalarmult_curve25519(dh_key.data(), this->private_key_,
-                   (const unsigned char*)peer_pubkey_buf.data()));
-
+  YASL_ENFORCE(0 == crypto_scalarmult_curve25519(
+                        dh_key.data(), this->private_key_,
+                        (const unsigned char*)peer_pubkey_buf.data()));
   std::vector<uint8_t> shared_key = yasl::crypto::Blake3(dh_key);
   return shared_key;
 }
 
-}  // namespace spu
+}  // namespace spu::psi

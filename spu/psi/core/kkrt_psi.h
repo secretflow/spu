@@ -1,4 +1,4 @@
-// Copyright 2021 Ant Group Co., Ltd.
+// Copyright 2022 Ant Group Co., Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <algorithm>
 #include <functional>
 #include <memory>
 #include <string>
@@ -32,7 +33,6 @@
 // PSZ18 Scalable private set intersection based on ot extension
 // https://eprint.iacr.org/2016/930.pdf
 //
-
 namespace spu::psi {
 
 struct KkrtPsiOptions {

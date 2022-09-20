@@ -1,4 +1,4 @@
-// Copyright 2021 Ant Group Co., Ltd.
+// Copyright 2022 Ant Group Co., Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -22,8 +22,8 @@
 
 #include "spu/psi/core/ecdh_psi.h"
 #include "spu/psi/cryptor/cryptor_selector.h"
-#include "spu/psi/provider/batch_provider_impl.h"
-#include "spu/psi/store/cipher_store_impl.h"
+#include "spu/psi/utils/batch_provider.h"
+#include "spu/psi/utils/cipher_store.h"
 
 namespace {
 
@@ -35,13 +35,13 @@ std::vector<std::string> CreateRangeItems(size_t begin, size_t size) {
   return ret;
 }
 
-std::optional<spu::CurveType> GetOverrideCurveType() {
+std::optional<spu::psi::CurveType> GetOverrideCurveType() {
   if (const auto* env = std::getenv("OVERRIDE_CURVE")) {
     if (std::strcmp(env, "25519") == 0) {
-      return spu::CurveType::Curve25519;
+      return spu::psi::CurveType::CURVE_25519;
     }
     if (std::strcmp(env, "FOURQ") == 0) {
-      return spu::CurveType::CurveFourQ;
+      return spu::psi::CurveType::CURVE_FOURQ;
     }
   }
   return {};
@@ -60,34 +60,10 @@ static void BM_EcdhPsi(benchmark::State& state) {
     auto proc = [](std::shared_ptr<yasl::link::Context> ctx,
                    const std::vector<std::string>& items,
                    size_t target_rank) -> std::vector<std::string> {
-      spu::psi::PsiOptions options;
-      auto memory_store = std::make_shared<spu::psi::MemoryCipherStore>();
-      {
-        const auto curve = GetOverrideCurveType();
-        options.ecc_cryptor = spu::CreateEccCryptor(
-            curve.has_value() ? *curve : spu::CurveType::Curve25519);
-        options.batch_provider =
-            std::make_shared<spu::psi::MemoryBatchProvider>(items);
-        options.cipher_store = memory_store;
-        options.link_ctx = ctx;
-        options.target_rank = target_rank;
-        options.ecc_cryptor = CreateEccCryptor(spu::CurveType::Curve25519);
-      }
-
-      spu::psi::RunEcdhPsi(options);
-
-      std::vector<std::string> ret;
-      std::vector<std::string> peer_results(memory_store->peer_results());
-      std::sort(peer_results.begin(), peer_results.end());
-      const auto& self_results = memory_store->self_results();
-      for (uint32_t index = 0; index < self_results.size(); index++) {
-        if (std::binary_search(peer_results.begin(), peer_results.end(),
-                               self_results[index])) {
-          YASL_ENFORCE(index < items.size());
-          ret.push_back(items[index]);
-        }
-      }
-      return ret;
+      const auto curve = GetOverrideCurveType();
+      return spu::psi::RunEcdhPsi(
+          ctx, items, target_rank,
+          curve.has_value() ? *curve : spu::psi::CurveType::CURVE_25519);
     };
 
     state.ResumeTiming();
