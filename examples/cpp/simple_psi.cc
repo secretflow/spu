@@ -14,19 +14,19 @@
 
 // clang-format off
 // To run the example, start two terminals:
-// > bazel run //examples/cpp:simple_psi -- -rank 0 -protocol ecdh -in_path examples/data/psi_1.csv -field_names id -out_path /tmp/p1.out 
-// > bazel run //examples/cpp:simple_psi -- -rank 1 -protocol ecdh -in_path examples/data/psi_2.csv -field_names id -out_path /tmp/p2.out
+// > bazel run //examples/cpp:simple_psi -- -rank 0 -protocol 1 -in_path examples/data/psi_1.csv -field_names id -out_path /tmp/p1.out 
+// > bazel run //examples/cpp:simple_psi -- -rank 1 -protocol 1 -in_path examples/data/psi_2.csv -field_names id -out_path /tmp/p2.out
 // clang-format on
 
 #include "absl/strings/str_split.h"
 #include "examples/cpp/utils.h"
 #include "spdlog/spdlog.h"
 
-#include "spu/psi/psi.h"
+#include "spu/psi/bucket_psi.h"
 
-llvm::cl::opt<std::string> ProtocolOpt(
-    "protocol", llvm::cl::init("ecdh"),
-    llvm::cl::desc("select psi protocol ecdh/kkrt"));
+llvm::cl::opt<int> ProtocolOpt(
+    "protocol", llvm::cl::init(1),
+    llvm::cl::desc("select psi protocol, see `spu/psi/psi.proto`"));
 
 llvm::cl::opt<std::string> InPathOpt("in_path", llvm::cl::init("data.csv"),
                                      llvm::cl::desc("psi data in file path "));
@@ -40,41 +40,43 @@ llvm::cl::opt<std::string> OutPathOpt("out_path", llvm::cl::init(""),
 llvm::cl::opt<bool> ShouldSortOpt("should_sort", llvm::cl::init(false),
                                   llvm::cl::desc("whether sort psi result"));
 
-llvm::cl::opt<uint32_t> NumBinsOpt("num_bins", llvm::cl::init(0),
-                                   llvm::cl::desc("number of bins"));
+llvm::cl::opt<bool> PrecheckOpt(
+    "precheck_input", llvm::cl::init(false),
+    llvm::cl::desc("whether precheck input dataset"));
+
+llvm::cl::opt<int> BucketSizeOpt("bucket_size", llvm::cl::init(1 << 20),
+                                 llvm::cl::desc("hash bucket size"));
 
 int main(int argc, char** argv) {
   llvm::cl::ParseCommandLineOptions(argc, argv);
 
   auto hctx = MakeHalContext();
 
-  spu::psi::LegacyPsiOptions psi_options;
+  auto field_list = absl::StrSplit(FieldNamesOpt.getValue(), ',');
 
-  psi_options.base_options.link_ctx = hctx->lctx();
-  psi_options.base_options.in_path = InPathOpt.getValue();
-  psi_options.base_options.field_names =
-      absl::StrSplit(FieldNamesOpt.getValue(), ',');
-  psi_options.base_options.out_path = OutPathOpt.getValue();
-  psi_options.base_options.should_sort = ShouldSortOpt.getValue();
+  spu::psi::BucketPsiConfig config;
+  config.mutable_input_params()->set_path(InPathOpt.getValue());
+  config.mutable_input_params()->mutable_select_fields()->Add(
+      field_list.begin(), field_list.end());
+  config.mutable_input_params()->set_precheck(PrecheckOpt.getValue());
+  config.mutable_output_params()->set_path(OutPathOpt.getValue());
+  config.mutable_output_params()->set_need_sort(ShouldSortOpt.getValue());
+  config.set_psi_type(static_cast<spu::psi::PsiType>(ProtocolOpt.getValue()));
 
-  psi_options.psi_protocol = ProtocolOpt.getValue();
-  psi_options.num_bins = NumBinsOpt.getValue();
+  // one-way PSI, just one party get result
+  config.set_broadcast_result(false);
+  config.set_bucket_size(BucketSizeOpt.getValue());
 
-  if (psi_options.psi_protocol == spu::psi::kPsiProtocolKkrt) {
-    psi_options.broadcast_result = false;
+  try {
+    spu::psi::BucketPsi bucket_psi(config, hctx->lctx());
+    auto report = bucket_psi.Run();
+
+    SPDLOG_INFO("original_count:{} intersection_count:{}",
+                report.original_count(), report.intersection_count());
+  } catch (const std::exception& e) {
+    SPDLOG_ERROR("run psi failed: {}", e.what());
+    return -1;
   }
-
-  std::shared_ptr<spu::psi::PsiExecutorBase> psi_executor =
-      spu::psi::BuildPsiExecutor(psi_options);
-
-  spu::psi::PsiReport psi_report;
-
-  psi_executor->Init();
-
-  psi_executor->Run(&psi_report);
-
-  SPDLOG_INFO("original_count:{} intersection_count:{}",
-              psi_report.original_count, psi_report.intersection_count);
 
   return 0;
 }

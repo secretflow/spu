@@ -25,6 +25,24 @@ using util::K;
 using util::Log;
 using util::N;
 
+class CommonTypeB : public Kernel {
+ public:
+  static constexpr char kBindName[] = "common_type_b";
+
+  Kind kind() const override { return Kind::kDynamic; }
+
+  void evaluate(EvalContext* ctx) const override;
+};
+
+class CastTypeB : public Kernel {
+ public:
+  static constexpr char kBindName[] = "cast_type_b";
+
+  Kind kind() const override { return Kind::kDynamic; }
+
+  void evaluate(EvalContext* ctx) const override;
+};
+
 class ZeroB : public Kernel {
  public:
   static constexpr char kBindName[] = "zero_b";

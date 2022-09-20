@@ -22,15 +22,30 @@ namespace spu::device {
 
 IoClient::IoClient(size_t world_size, RuntimeConfig config)
     : world_size_(world_size), config_(std::move(config)) {
-  base_io_ =
-      mpc::Factory::CreateIO(config_.protocol(), config_.field(), world_size_);
+  base_io_ = mpc::Factory::CreateIO(config_, world_size_);
 }
 
-std::vector<hal::Value> IoClient::makeShares(PtBufferView bv,
-                                             Visibility vtype) {
+std::vector<hal::Value> IoClient::makeShares(PtBufferView bv, Visibility vtype,
+                                             int owner_rank) {
   // FIXME(jint), this should be in the io context.
   const size_t fxp_bits = getDefaultFxpBits(config_);
   YASL_ENFORCE(fxp_bits != 0, "fxp should never be zero, please check default");
+
+  if (bv.pt_type == PT_BOOL && vtype == VIS_SECRET &&
+      base_io_->hasBitSecretSupport()) {
+    // handle boolean type encoding.
+    NdArrayRef arr = xt_to_ndarray(bv);
+
+    auto flat_shares = base_io_->makeBitSecret(flatten(arr));
+
+    YASL_ENFORCE(flat_shares.size() == world_size_);
+    std::vector<hal::Value> result;
+    result.reserve(world_size_);
+    for (const auto &flat_share : flat_shares) {
+      result.emplace_back(unflatten(flat_share, arr.shape()), DataType::DT_I1);
+    }
+    return result;
+  }
 
   // encode to ring.
   DataType dtype;
@@ -166,13 +181,13 @@ void ColocatedIo::sync() {
   // Intuition, if the input-provider is colocated with runtime, we can send
   // less information to other hosts. i.e.
   //
-  // For additive share, we can let the data owner's share as origin value, and
-  // other parties as zero.
+  // For additive share, we can let the data owner's share as origin value,
+  // and other parties as zero.
   //   P0  P1  P2
   //   x   0   0
   //
-  // For replicated share from P0, we can let x3 to be zero, and send x1, x2 to
-  // P2, P1 respectively, the communication will be halved.
+  // For replicated share from P0, we can let x3 to be zero, and send x1, x2
+  // to P2, P1 respectively, the communication will be halved.
   //   P0  P1  P2
   //   x1      x1
   //   x2  x2

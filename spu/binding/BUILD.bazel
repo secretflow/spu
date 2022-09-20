@@ -13,20 +13,38 @@
 # limitations under the License.
 
 load("@pybind11_bazel//:build_defs.bzl", "pybind_extension")
-load("@rules_python//python:defs.bzl", "py_binary", "py_library", "py_test")
+load("@rules_python//python:defs.bzl", "py_library")
 
 package(default_visibility = ["//visibility:public"])
+
+exports_files(
+    [
+        "exported_symbols.lds",
+        "version_script.lds",
+    ],
+    visibility = ["//visibility:private"],
+)
 
 pybind_extension(
     name = "_lib",
     srcs = ["_lib.cc"],
+    linkopts = select({
+        "@bazel_tools//src/conditions:darwin": [
+            "-Wl,-exported_symbols_list,$(location //spu/binding:exported_symbols.lds)",
+        ],
+        "//conditions:default": [
+            "-Wl,--version-script,$(location //spu/binding:version_script.lds)",
+        ],
+    }),
     deps = [
+        ":exported_symbols.lds",
+        ":version_script.lds",
         "//spu/compiler:compile",
         "//spu/compiler/common:compilation_context",
         "//spu/device:io",
-        "//spu/device:pphlo_executor",
-        "//spu/psi",
-        "//spu/psi/core:ecdh_psi",
+        "//spu/device/pphlo:executor",
+        "//spu/psi:bucket_psi",
+        "//spu/psi:memory_psi",
         "@yasl//yasl/link",
     ],
 )
@@ -39,5 +57,16 @@ py_library(
     ],
     deps = [
         "//spu:spu_py_proto",
+    ],
+)
+
+py_library(
+    name = "psi",
+    srcs = ["psi.py"],
+    data = [
+        ":_lib.so",
+    ],
+    deps = [
+        "//spu/psi:psi_py_proto",
     ],
 )

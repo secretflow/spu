@@ -26,7 +26,6 @@ using util::Log;
 using util::N;
 
 #define ENABLE_MASK_DURING_ABY3_P2A
-
 class A2P : public UnaryKernel {
  public:
   static constexpr char kBindName[] = "a2p";
@@ -138,6 +137,18 @@ class MulAA : public BinaryKernel {
                 const ArrayRef& rhs) const override;
 };
 
+class MulA1B : public BinaryKernel {
+ public:
+  static constexpr char kBindName[] = "mul_a1b";
+
+  CExpr latency() const override { return Const(2); }
+
+  CExpr comm() const override { return 8 * K(); }
+
+  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& lhs,
+                const ArrayRef& rhs) const override;
+};
+
 ////////////////////////////////////////////////////////////////////
 // matmul family
 ////////////////////////////////////////////////////////////////////
@@ -214,6 +225,27 @@ class TruncPrAPrecise : public TruncPrAKernel {
                 size_t bits) const override;
 
   bool isPrecise() const override { return true; }
+};
+
+class MsbA : public UnaryKernel {
+ public:
+  static constexpr char kBindName[] = "msb_a";
+
+  util::CExpr latency() const override {
+    // 1 * carry_out : log(k) + 1
+    // 1 * rotate: 1
+    return Log(K()) + 1 + 1;
+  }
+
+  util::CExpr comm() const override {
+    // 1 * carry_out: k + 2 * k
+    // 1 * rotate: k
+    return K() * 4;
+  }
+
+  float getCommTolerance() const override { return 0.2; }
+
+  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& x) const override;
 };
 
 }  // namespace spu::mpc::aby3

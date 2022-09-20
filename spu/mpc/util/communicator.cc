@@ -33,16 +33,16 @@ ArrayRef Communicator::allReduce(ReduceOp op, const ArrayRef& in,
                                  std::string_view tag) {
   const auto buf = in.getOrCreateCompactBuf();
 
-  std::vector<yasl::Buffer> all_str = yasl::link::AllGather(lctx_, *buf, tag);
+  std::vector<yasl::Buffer> bufs = yasl::link::AllGather(lctx_, *buf, tag);
 
-  YASL_ENFORCE(all_str.size() == getWorldSize());
+  YASL_ENFORCE(bufs.size() == getWorldSize());
   ArrayRef res = in.clone();
-  for (size_t idx = 0; idx < all_str.size(); idx++) {
+  for (size_t idx = 0; idx < bufs.size(); idx++) {
     if (idx == getRank()) {
       continue;
     }
 
-    auto arr = ArrayRef(stealBuffer(std::move(all_str[idx])), in.eltype(),
+    auto arr = ArrayRef(stealBuffer(std::move(bufs[idx])), in.eltype(),
                         in.numel(), kStride, kOffset);
     if (op == ReduceOp::ADD) {
       ring_add_(res, arr);
@@ -61,26 +61,27 @@ ArrayRef Communicator::allReduce(ReduceOp op, const ArrayRef& in,
 
 ArrayRef Communicator::reduce(ReduceOp op, const ArrayRef& in, size_t root,
                               std::string_view tag) {
+  YASL_ENFORCE(root < lctx_->WorldSize());
   const auto buf = in.getOrCreateCompactBuf();
 
-  std::vector<yasl::Buffer> all_str =
-      yasl::link::Gather(lctx_, *buf, root, tag);
+  std::vector<yasl::Buffer> bufs = yasl::link::Gather(lctx_, *buf, root, tag);
 
-  YASL_ENFORCE(all_str.size() == getWorldSize());
   ArrayRef res = in.clone();
-  for (size_t idx = 0; idx < all_str.size(); idx++) {
-    if (idx == getRank()) {
-      continue;
-    }
+  if (getRank() == root) {
+    for (size_t idx = 0; idx < bufs.size(); idx++) {
+      if (idx == getRank()) {
+        continue;
+      }
 
-    auto arr = ArrayRef(stealBuffer(std::move(all_str[idx])), in.eltype(),
-                        in.numel(), kStride, kOffset);
-    if (op == ReduceOp::ADD) {
-      ring_add_(res, arr);
-    } else if (op == ReduceOp::XOR) {
-      ring_xor_(res, arr);
-    } else {
-      YASL_THROW("unsupported reduce op={}", static_cast<int>(op));
+      auto arr = ArrayRef(stealBuffer(std::move(bufs[idx])), in.eltype(),
+                          in.numel(), kStride, kOffset);
+      if (op == ReduceOp::ADD) {
+        ring_add_(res, arr);
+      } else if (op == ReduceOp::XOR) {
+        ring_xor_(res, arr);
+      } else {
+        YASL_THROW("unsupported reduce op={}", static_cast<int>(op));
+      }
     }
   }
 
@@ -93,7 +94,6 @@ ArrayRef Communicator::reduce(ReduceOp op, const ArrayRef& in, size_t root,
 ArrayRef Communicator::rotate(const ArrayRef& in, std::string_view tag) {
   const auto buf = in.getOrCreateCompactBuf();
 
-  // NOTE: need to ensure link->SendAsync is a secure P2P channel
   lctx_->SendAsync(lctx_->PrevRank(), *buf, tag);
 
   auto res_buf = lctx_->Recv(lctx_->NextRank(), tag);
@@ -109,7 +109,6 @@ void Communicator::sendAsync(size_t dst_rank, const ArrayRef& in,
                              std::string_view tag) {
   const auto buf = in.getOrCreateCompactBuf();
 
-  // NOTE: need to ensure link->SendAsync is a secure P2P channel
   lctx_->SendAsync(dst_rank, *buf, tag);
 }
 

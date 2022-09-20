@@ -26,6 +26,10 @@
 
 namespace spu::hal {
 
+Type _common_type(HalContext* ctx, const Type& a, const Type& b);
+
+Value _cast_type(HalContext* ctx, const Value& x, const Type& to);
+
 Value _negate(HalContext* ctx, const Value& x);
 
 // Return 1 when x >= 0 else -1.

@@ -1,4 +1,4 @@
-// Copyright 2021 Ant Group Co., Ltd.
+// Copyright 2022 Ant Group Co., Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,14 +18,17 @@
 #include <iostream>
 
 #include "gtest/gtest.h"
+#include "spdlog/spdlog.h"
 #include "yasl/base/exception.h"
 #include "yasl/link/test_util.h"
+
+#include "spu/psi/utils/test_utils.h"
 
 struct TestParams {
   std::vector<std::string> items_a;
   std::vector<std::string> items_b;
   size_t target_rank;
-  spu::CurveType curve_type = spu::CurveType::Curve25519;
+  spu::psi::CurveType curve_type = spu::psi::CurveType::CURVE_25519;
 };
 
 namespace std {
@@ -38,17 +41,6 @@ std::ostream& operator<<(std::ostream& out, const TestParams& params) {
 }  // namespace std
 
 namespace spu::psi {
-
-std::vector<std::string> GetIntersection(const TestParams& params) {
-  std::set<std::string> set(params.items_a.begin(), params.items_a.end());
-  std::vector<std::string> ret;
-  for (const auto& s : params.items_b) {
-    if (set.count(s) != 0) {
-      ret.push_back(s);
-    }
-  }
-  return ret;
-}
 
 TEST(EcdhPsiTestFailed, TargetRankMismatched) {
   for (std::pair<size_t, size_t> ranks : std::vector<std::pair<size_t, size_t>>{
@@ -71,8 +63,8 @@ TEST(EcdhPsiTestFailed, TargetRankMismatched) {
 }
 
 TEST(EcdhPsiTestFailed, CurveTypeMismatched) {
-  std::pair<CurveType, CurveType> curves = {CurveType::CurveFourQ,
-                                            CurveType::Curve25519};
+  std::pair<CurveType, CurveType> curves = {CurveType::CURVE_FOURQ,
+                                            CurveType::CURVE_25519};
 
   auto ctxs = yasl::link::test::SetupWorld(2);
   auto proc = [&](std::shared_ptr<yasl::link::Context> ctx,
@@ -109,7 +101,7 @@ TEST_P(EcdhPsiTest, Works) {
   auto results_a = fa.get();
   auto results_b = fb.get();
 
-  auto intersection = GetIntersection(params);
+  auto intersection = test::GetIntersection(params.items_a, params.items_b);
   if (params.target_rank == yasl::link::kAllRank || params.target_rank == 0) {
     EXPECT_EQ(results_a, intersection);
   } else {
@@ -120,14 +112,6 @@ TEST_P(EcdhPsiTest, Works) {
   } else {
     EXPECT_TRUE(results_b.empty());
   }
-}
-
-std::vector<std::string> CreateRangeItems(size_t begin, size_t size) {
-  std::vector<std::string> ret;
-  for (size_t i = 0; i < size; i++) {
-    ret.push_back(std::to_string(begin + i));
-  }
-  return ret;
 }
 
 INSTANTIATE_TEST_SUITE_P(
@@ -149,35 +133,42 @@ INSTANTIATE_TEST_SUITE_P(
         TestParams{{"a"}, {}, 0},                     //
         TestParams{{"a"}, {}, 1},                     //
         // less than one batch
-        TestParams{CreateRangeItems(0, 4095), CreateRangeItems(1, 4095),
-                   yasl::link::kAllRank},                                     //
-        TestParams{CreateRangeItems(0, 4095), CreateRangeItems(1, 4095), 0},  //
-        TestParams{CreateRangeItems(0, 4095), CreateRangeItems(1, 4095), 1},  //
+        TestParams{test::CreateRangeItems(0, 4095),
+                   test::CreateRangeItems(1, 4095), yasl::link::kAllRank},  //
+        TestParams{test::CreateRangeItems(0, 4095),
+                   test::CreateRangeItems(1, 4095), 0},  //
+        TestParams{test::CreateRangeItems(0, 4095),
+                   test::CreateRangeItems(1, 4095), 1},  //
         // exactly one batch
-        TestParams{CreateRangeItems(0, 4096), CreateRangeItems(1, 4096),
-                   yasl::link::kAllRank},                                     //
-        TestParams{CreateRangeItems(0, 4096), CreateRangeItems(1, 4096), 0},  //
-        TestParams{CreateRangeItems(0, 4096), CreateRangeItems(1, 4096), 1},  //
+        TestParams{test::CreateRangeItems(0, 4096),
+                   test::CreateRangeItems(1, 4096), yasl::link::kAllRank},  //
+        TestParams{test::CreateRangeItems(0, 4096),
+                   test::CreateRangeItems(1, 4096), 0},  //
+        TestParams{test::CreateRangeItems(0, 4096),
+                   test::CreateRangeItems(1, 4096), 1},  //
         // more than one batch
-        TestParams{CreateRangeItems(0, 40961), CreateRangeItems(5, 40961),
-                   yasl::link::kAllRank},  //
-        TestParams{CreateRangeItems(0, 40961), CreateRangeItems(5, 40961),
-                   0},  //
-        TestParams{CreateRangeItems(0, 40961), CreateRangeItems(5, 40961),
-                   1},  //
+        TestParams{test::CreateRangeItems(0, 40961),
+                   test::CreateRangeItems(5, 40961), yasl::link::kAllRank},  //
+        TestParams{test::CreateRangeItems(0, 40961),
+                   test::CreateRangeItems(5, 40961), 0},  //
+        TestParams{test::CreateRangeItems(0, 40961),
+                   test::CreateRangeItems(5, 40961), 1},  //
         //
         TestParams{{}, {}, yasl::link::kAllRank},  //
         TestParams{{}, {}, 0},                     //
         TestParams{{}, {}, 1},                     //
         // test sm2
-        TestParams{CreateRangeItems(0, 4096), CreateRangeItems(1, 4095),
-                   yasl::link::kAllRank, spu::CurveType::CurveSm2},  //
+        TestParams{test::CreateRangeItems(0, 4096),
+                   test::CreateRangeItems(1, 4095), yasl::link::kAllRank,
+                   spu::psi::CurveType::CURVE_SM2},  //
         // exactly one batch
-        TestParams{CreateRangeItems(0, 4096), CreateRangeItems(1, 4096),
-                   yasl::link::kAllRank, spu::CurveType::CurveSecp256k1},  //
+        TestParams{test::CreateRangeItems(0, 4096),
+                   test::CreateRangeItems(1, 4096), yasl::link::kAllRank,
+                   spu::psi::CurveType::CURVE_SECP256K1},  //
         // more than one batch
-        TestParams{CreateRangeItems(0, 4096), CreateRangeItems(1, 4096),
-                   yasl::link::kAllRank, spu::CurveType::CurveFourQ}  //
+        TestParams{test::CreateRangeItems(0, 4096),
+                   test::CreateRangeItems(1, 4096), yasl::link::kAllRank,
+                   spu::psi::CurveType::CURVE_FOURQ}  //
         ));
 
 }  // namespace spu::psi

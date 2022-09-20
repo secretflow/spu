@@ -13,7 +13,7 @@
 # limitations under the License.
 
 
-import multiprocessing
+import multiprocess
 import os
 import re
 import sys
@@ -41,10 +41,10 @@ class UnitTests(unittest.TestCase):
 
             self.assertEqual(res, ['hello', 'world'])
 
-        # launch with multiprocessing
+        # launch with multiprocess
         jobs = [
-            multiprocessing.Process(target=proc, args=(0,)),
-            multiprocessing.Process(target=proc, args=(1,)),
+            multiprocess.Process(target=proc, args=(0,)),
+            multiprocess.Process(target=proc, args=(1,)),
         ]
         [job.start() for job in jobs]
         [job.join() for job in jobs]

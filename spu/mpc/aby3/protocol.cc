@@ -27,10 +27,13 @@
 namespace spu::mpc {
 
 std::unique_ptr<Object> makeAby3Protocol(
+    const RuntimeConfig& conf,
     const std::shared_ptr<yasl::link::Context>& lctx) {
   aby3::registerTypes();
 
   auto obj = std::make_unique<Object>();
+
+  obj->addState<aby3::Aby3State>(conf.field());
 
   // add communicator
   obj->addState<Communicator>(lctx);
@@ -41,28 +44,8 @@ std::unique_ptr<Object> makeAby3Protocol(
   // register public kernels.
   regPub2kKernels(obj.get());
 
-  // register compute kernels
-  obj->addState<ABProtState>();
-  obj->regKernel<ABProtP2S>();
-  obj->regKernel<ABProtS2P>();
-  obj->regKernel<ABProtNotS>();
-  obj->regKernel<ABProtAddSP>();
-  obj->regKernel<ABProtAddSS>();
-  obj->regKernel<ABProtMulSP>();
-  obj->regKernel<ABProtMulSS>();
-  obj->regKernel<ABProtMatMulSP>();
-  obj->regKernel<ABProtMatMulSS>();
-  obj->regKernel<ABProtAndSP>();
-  obj->regKernel<ABProtAndSS>();
-  obj->regKernel<ABProtXorSP>();
-  obj->regKernel<ABProtXorSS>();
-  obj->regKernel<ABProtEqzS>();
-  obj->regKernel<ABProtLShiftS>();
-  obj->regKernel<ABProtRShiftS>();
-  obj->regKernel<ABProtARShiftS>();
-  obj->regKernel<ABProtTruncPrS>();
-  obj->regKernel<ABProtBitrevS>();
-  obj->regKernel<ABProtMsbS>();
+  // register api kernels
+  regABKernels(obj.get());
 
   // register arithmetic & binary kernels
   obj->regKernel<aby3::P2A>();
@@ -72,6 +55,8 @@ std::unique_ptr<Object> makeAby3Protocol(
   obj->regKernel<aby3::AddAA>();
   obj->regKernel<aby3::MulAP>();
   obj->regKernel<aby3::MulAA>();
+  // FIXME: temp disable MulA1B method.
+  // obj->regKernel<aby3::MulA1B>();
   obj->regKernel<aby3::MatMulAP>();
   obj->regKernel<aby3::MatMulAA>();
   obj->regKernel<aby3::LShiftA>();
@@ -83,11 +68,19 @@ std::unique_ptr<Object> makeAby3Protocol(
   obj->regKernel<aby3::TruncPrA>();
 #endif
 
+  // TODO: although msb has less network communication, it involves a lot of
+  // local computations. For small data, (a2b+shift) is still faster.
+  // We may add some strategy according to network condition and dataset.
+  obj->regKernel<aby3::MsbA>();
+
+  obj->regKernel<aby3::CommonTypeB>();
+  obj->regKernel<aby3::CastTypeB>();
   obj->regKernel<aby3::B2P>();
   obj->regKernel<aby3::P2B>();
   obj->regKernel<aby3::AddBB>();
   obj->regKernel<aby3::A2B>();
   obj->regKernel<aby3::B2AByOT>();
+  // obj->regKernel<aby3::B2A>();
   obj->regKernel<aby3::AndBP>();
   obj->regKernel<aby3::AndBB>();
   obj->regKernel<aby3::XorBP>();

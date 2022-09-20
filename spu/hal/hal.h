@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include "spu/hal/concat.h"
 #include "spu/hal/constants.h"
 #include "spu/hal/debug.h"
 #include "spu/hal/polymorphic.h"

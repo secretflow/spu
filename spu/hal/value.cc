@@ -14,6 +14,9 @@
 
 #include "spu/hal/value.h"
 
+#include <algorithm>
+#include <cstdint>
+
 #include "fmt/format.h"
 #include "fmt/ostream.h"
 #include "yasl/base/exception.h"
@@ -56,17 +59,21 @@ Value& Value::setDtype(DataType new_dtype, bool force) {
   return *this;
 }
 
-void Value::copyElementFrom(const Value& v, absl::Span<const int64_t> input_idx,
-                            absl::Span<const int64_t> output_idx) {
-  YASL_ENFORCE(v.dtype() == dtype(), "dtype mismatch, from={}, to={}",
-               v.dtype(), dtype());
-  YASL_ENFORCE(v.storage_type() == storage_type(),
-               "storage_type mismatch, from={}, to={}", v.storage_type(),
-               storage_type());
-  YASL_ENFORCE(v.vtype() == vtype(), "vtype mismatch, from={}, to={}",
-               v.vtype(), vtype());
+// #define SANITY_ELEWRITE
 
-  memcpy(&data_.at(output_idx), &v.data_.at(input_idx), data_.elsize());
+void Value::copyElementFrom(const Value& v, absl::Span<const int64_t> input_idx,
+                            absl::Span<const int64_t> output_idx,
+                            int64_t elsize) {
+#ifdef SANITY_ELEWRITE
+  for (size_t idx = 0; idx < shape().size(); ++idx) {
+    if (shape()[idx] != 1) {
+      YASL_ENFORCE(strides()[idx] != 0,
+                   "Copy into a broadcast value is not safe");
+    }
+  }
+#endif
+  memcpy(&data_.at(output_idx), &v.data_.at(input_idx),
+         elsize == -1 ? data_.elsize() : elsize);
 }
 
 Value Value::getElementAt(absl::Span<const int64_t> index) const {

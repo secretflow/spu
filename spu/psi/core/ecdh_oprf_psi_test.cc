@@ -1,4 +1,4 @@
-// Copyright 2021 Ant Group Co., Ltd.
+// Copyright 2022 Ant Group Co., Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,9 +14,11 @@
 
 #include "spu/psi/core/ecdh_oprf_psi.h"
 
+#include <algorithm>
 #include <future>
 #include <iostream>
 #include <random>
+#include <set>
 #include <vector>
 
 #include "absl/strings/escaping.h"
@@ -26,13 +28,13 @@
 #include "yasl/base/exception.h"
 #include "yasl/crypto/pseudo_random_generator.h"
 #include "yasl/link/test_util.h"
+#include "yasl/utils/rand.h"
 
-#include "spu/psi/cryptor/ecdh_oprf/ecdh_oprf_selector.h"
-#include "spu/psi/provider/batch_provider_impl.h"
-#include "spu/psi/store/cipher_store_impl.h"
+#include "spu/psi/core/ecdh_oprf/ecdh_oprf_selector.h"
+#include "spu/psi/utils/batch_provider.h"
+#include "spu/psi/utils/cipher_store.h"
 
-namespace spu {
-
+namespace spu::psi {
 namespace {
 std::vector<std::string> GetIntersection(
     absl::Span<const std::string> items_a,
@@ -47,9 +49,10 @@ std::vector<std::string> GetIntersection(
   return ret;
 }
 }  // namespace
+
 struct TestParams {
   size_t items_size;
-  CurveType curve_type = CurveType::CurveFourQ;
+  CurveType curve_type = CurveType::CURVE_FOURQ;
 };
 
 class BasicEcdhOprfTest : public ::testing::TestWithParam<TestParams> {};
@@ -57,8 +60,8 @@ class BasicEcdhOprfTest : public ::testing::TestWithParam<TestParams> {};
 TEST_P(BasicEcdhOprfTest, Works) {
   auto params = GetParam();
   auto ctxs = yasl::link::test::SetupWorld(2);
-  std::random_device rd;
-  yasl::PseudoRandomGenerator<uint64_t> prg(rd());
+
+  yasl::PseudoRandomGenerator<uint64_t> prg(yasl::DrbgRandSeed());
 
   std::vector<std::string> items_a_vec(params.items_size);
   std::vector<std::string> items_b_vec(params.items_size);
@@ -87,14 +90,14 @@ TEST_P(BasicEcdhOprfTest, Works) {
   client_options.link1 = ctxs[1]->Spawn();
   client_options.curve_type = params.curve_type;
 
-  // todo spu not support now
+  // todo psi not support now
   // server_options.link0->SetThrottleWindowSize(server_options.window_size);
   // client_options.link0->SetThrottleWindowSize(server_options.window_size);
 
-  std::shared_ptr<psi::EcdhOprfPsiServer> dh_oprf_psi_server_offline =
-      std::make_shared<psi::EcdhOprfPsiServer>(server_options);
-  std::shared_ptr<psi::EcdhOprfPsiClient> dh_oprf_psi_client_offline =
-      std::make_shared<psi::EcdhOprfPsiClient>(client_options);
+  std::shared_ptr<EcdhOprfPsiServer> dh_oprf_psi_server_offline =
+      std::make_shared<EcdhOprfPsiServer>(server_options);
+  std::shared_ptr<EcdhOprfPsiClient> dh_oprf_psi_client_offline =
+      std::make_shared<EcdhOprfPsiClient>(client_options);
 
   //
   // save server side private key for online use
@@ -103,13 +106,13 @@ TEST_P(BasicEcdhOprfTest, Works) {
       dh_oprf_psi_server_offline->GetPrivateKey();
 
   // server input
-  std::shared_ptr<spu::psi::IBatchProvider> batch_provider_server =
-      std::make_shared<spu::psi::MemoryBatchProvider>(items_a_vec);
+  std::shared_ptr<IBatchProvider> batch_provider_server =
+      std::make_shared<MemoryBatchProvider>(items_a_vec);
 
   // server output
-  auto memory_store_server = std::make_shared<spu::psi::MemoryCipherStore>();
+  auto memory_store_server = std::make_shared<MemoryCipherStore>();
   // client output
-  auto memory_store_client = std::make_shared<spu::psi::MemoryCipherStore>();
+  auto memory_store_client = std::make_shared<MemoryCipherStore>();
 
   //
   // offline phase:  FullEvaluate server's data and store
@@ -122,7 +125,7 @@ TEST_P(BasicEcdhOprfTest, Works) {
   //
   // shuffle server side FullEvaluated data
   //
-  std::mt19937 rng(rd());
+  std::mt19937 rng(yasl::DrbgRandSeed());
   std::shuffle(server_evaluate_items.begin(), server_evaluate_items.end(), rng);
 
   //
@@ -132,8 +135,8 @@ TEST_P(BasicEcdhOprfTest, Works) {
     std::vector<std::string> &server_stored_items =
         memory_store_server->self_results();
 
-    std::shared_ptr<spu::psi::IBatchProvider> batch_server_evaluate_items =
-        std::make_shared<spu::psi::MemoryBatchProvider>(server_stored_items);
+    std::shared_ptr<IBatchProvider> batch_server_evaluate_items =
+        std::make_shared<MemoryBatchProvider>(server_stored_items);
 
     return dh_oprf_psi_server_offline->SendFinalEvaluatedItems(
         batch_server_evaluate_items);
@@ -160,26 +163,25 @@ TEST_P(BasicEcdhOprfTest, Works) {
   */
 
   // online server, load private key saved by offline phase
-  std::shared_ptr<psi::EcdhOprfPsiServer> dh_oprf_psi_server_online =
-      std::make_shared<psi::EcdhOprfPsiServer>(server_options,
-                                               server_private_key);
+  std::shared_ptr<EcdhOprfPsiServer> dh_oprf_psi_server_online =
+      std::make_shared<EcdhOprfPsiServer>(server_options, server_private_key);
 
-  std::shared_ptr<psi::EcdhOprfPsiClient> dh_oprf_psi_client_online =
-      std::make_shared<psi::EcdhOprfPsiClient>(client_options);
+  std::shared_ptr<EcdhOprfPsiClient> dh_oprf_psi_client_online =
+      std::make_shared<EcdhOprfPsiClient>(client_options);
 
   std::future<void> f_sever_recv_blind = std::async(
       [&] { dh_oprf_psi_server_online->RecvBlindAndSendEvaluate(); });
 
   std::future<void> f_client_send_blind = std::async([&] {
-    std::shared_ptr<spu::psi::IBatchProvider> batch_provider_client =
-        std::make_shared<spu::psi::MemoryBatchProvider>(items_b_vec);
+    std::shared_ptr<IBatchProvider> batch_provider_client =
+        std::make_shared<MemoryBatchProvider>(items_b_vec);
 
     dh_oprf_psi_client_online->SendBlindedItems(batch_provider_client);
   });
 
   std::future<void> f_client_recv_evaluate = std::async([&] {
-    std::shared_ptr<spu::psi::IBatchProvider> batch_provider_client =
-        std::make_shared<spu::psi::MemoryBatchProvider>(items_b_vec);
+    std::shared_ptr<IBatchProvider> batch_provider_client =
+        std::make_shared<MemoryBatchProvider>(items_b_vec);
 
     dh_oprf_psi_client_online->RecvEvaluatedItems(batch_provider_client,
                                                   memory_store_client);
@@ -218,16 +220,16 @@ TEST_P(BasicEcdhOprfTest, Works) {
 INSTANTIATE_TEST_SUITE_P(
     Works_Instances, BasicEcdhOprfTest,
     testing::Values(
-        // CurveFourQ
+        // CURVE_FOURQ
         TestParams{1},      //
         TestParams{10},     //
         TestParams{50},     //
         TestParams{4095},   // less than one batch
         TestParams{4096},   // exactly one batch
         TestParams{10000},  // more than one batch
-        // CurveSm2
-        TestParams{1000, CurveType::CurveSm2},  // more than one batch
+        // CURVE_SM2
+        TestParams{1000, CurveType::CURVE_SM2},  // more than one batch
         // Curve256k1
-        TestParams{1000, CurveType::CurveSecp256k1}  // more than one batch
+        TestParams{1000, CurveType::CURVE_SECP256K1}  // more than one batch
         ));
-}  // namespace spu
+}  // namespace spu::psi

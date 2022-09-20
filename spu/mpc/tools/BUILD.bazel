@@ -33,7 +33,6 @@ cc_proto_library(
 spu_cc_binary(
     name = "complexity",
     srcs = ["complexity.cc"],
-    tags = ["no-remote-cache"],
     deps = [
         ":complexity_cc_proto",
         "//spu/mpc:factory",

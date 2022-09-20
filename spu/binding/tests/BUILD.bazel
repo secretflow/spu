@@ -78,11 +78,9 @@ py_binary(
 py_test(
     name = "spu_compiler_test",
     srcs = ["spu_compiler_test.py"],
-    data = [
-        "//spu/binding/tests/data:hlo_example",
-    ],
     deps = [
         "//spu/binding:api",
+        "//spu/binding/util:frontend",
         "//spu/binding/util:simulation",
     ],
 )
@@ -128,7 +126,7 @@ py_test(
         "//spu/binding/tests/data",
     ],
     deps = [
-        "//spu/binding:api",
+        "//spu/binding:psi",
         "//spu/binding/util:simulation",
     ],
 )

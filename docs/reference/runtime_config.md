@@ -6,7 +6,6 @@
 
 - Messages
     - [ExecutableProto](#executableproto)
-    - [IrProto](#irproto)
     - [RuntimeConfig](#runtimeconfig)
     - [ShapeProto](#shapeproto)
     - [ValueProto](#valueproto)
@@ -17,7 +16,6 @@
 - Enums
     - [DataType](#datatype)
     - [FieldType](#fieldtype)
-    - [IrType](#irtype)
     - [ProtocolKind](#protocolkind)
     - [PtType](#pttype)
     - [RuntimeConfig.ExpMode](#runtimeconfigexpmode)
@@ -61,19 +59,6 @@ The executable format accepted by SPU runtime.
 | input_names | [repeated string](#string) | The input names. |
 | output_names | [repeated string](#string) | The output names. |
 | code | [ bytes](#bytes) | The bytecode of the program, with format IR_MLIR_SPU. |
- <!-- end Fields -->
- <!-- end HasFields -->
-
-
-### IrProto
-The immediate representation proto.
-
-
-| Field | Type | Description |
-| ----- | ---- | ----------- |
-| ir_type | [ IrType](#irtype) | The IR type. |
-| code | [ bytes](#bytes) | Code format is defined by IrType. |
-| meta | [ XlaMeta](#xlameta) | Only meaningful for IR_XLA_HLO |
  <!-- end Fields -->
  <!-- end HasFields -->
 
@@ -135,7 +120,7 @@ The spu Value proto, used for spu value serialization.
 
 
 ### XlaMeta
-
+Internal representation used by compiler
 
 
 | Field | Type | Description |
@@ -179,18 +164,6 @@ The secure evaluation is based on some algebraic structure (ring or field),
 | FM32 | 1 | Ring 2^32 |
 | FM64 | 2 | Ring 2^64 |
 | FM128 | 3 | Ring 2^128 |
-
-
-
-
-### IrType
-The immediate representation type.
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| IR_INVALID | 0 | none |
-| IR_XLA_HLO | 1 | IR_XLA_HLO means the code part of IrProto is XLA protobuf binary format. See https://www.tensorflow.org/xla/architecture for details. |
-| IR_MLIR_SPU | 2 | IR_MLIR_SPU means the code part of IrProto is pphlo MLIR text format. See spu/dialect/pphlo_dialect.td for details. |
 
 
 

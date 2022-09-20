@@ -13,15 +13,17 @@
 # limitations under the License.
 
 
-import multiprocessing
+import sys
 import unittest
 
 import jax.numpy as jnp
+import multiprocess
 import numpy as np
 import numpy.testing as npt
+import tensorflow as tf
 
-from spu import spu_pb2
 import spu.binding.util.distributed as ppd
+from spu import spu_pb2
 
 TEST_NODES_DEF = {
     "node:0": "127.0.0.1:10227",
@@ -78,7 +80,7 @@ class UnitTests(unittest.TestCase):
     def setUpClass(cls):
         cls.workers = []
         for node_id in TEST_NODES_DEF.keys():
-            worker = multiprocessing.Process(
+            worker = multiprocess.Process(
                 target=ppd.RPC.serve, args=(node_id, TEST_NODES_DEF)
             )
             worker.start()
@@ -145,7 +147,7 @@ class UnitTests(unittest.TestCase):
         self.assertTrue(u.device is ppd.current().devices["P3"])
         npt.assert_equal(ppd.get(u), np.array([3, 6]))
 
-    def test_basic_spu(self):
+    def test_basic_spu_jax(self):
         a = ppd.device("SPU")(no_in_one_out)()
         self.assertTrue(isinstance(a, ppd.SPU.Object))
         self.assertEqual(a.vtype, spu_pb2.VIS_PUBLIC)
@@ -213,6 +215,73 @@ class UnitTests(unittest.TestCase):
         text = ppd.device("SPU")(jnp.add).dump_pphlo(a, x)
         self.assertIn('pphlo.add', text)
 
+    def test_basic_spu_tf(self):
+        ppd._FRAMEWORK = ppd.Framework.EXP_TF
+        a = ppd.device("SPU")(no_in_one_out)()
+        self.assertTrue(isinstance(a, ppd.SPU.Object))
+        self.assertEqual(a.vtype, spu_pb2.VIS_PUBLIC)
+        npt.assert_equal(ppd.get(a), np.array([1, 2]))
+
+        # no in, two out
+        a, b = ppd.device("SPU")(no_in_two_out)()
+        self.assertTrue(isinstance(a, ppd.SPU.Object))
+        self.assertTrue(isinstance(b, ppd.SPU.Object))
+        self.assertEqual(a.vtype, spu_pb2.VIS_PUBLIC)
+        self.assertEqual(b.vtype, spu_pb2.VIS_PUBLIC)
+        npt.assert_equal(ppd.get(a), np.array([1, 2]))
+        npt.assert_equal(ppd.get(b), np.array([3.0, 4.0]))
+
+        # no in, list out
+        l = ppd.device("SPU")(no_in_list_out)()
+        self.assertEqual(len(l), 2)
+        self.assertTrue(isinstance(l[0], ppd.SPU.Object))
+        self.assertTrue(isinstance(l[1], ppd.SPU.Object))
+        self.assertEqual(l[0].vtype, spu_pb2.VIS_PUBLIC)
+        self.assertEqual(l[1].vtype, spu_pb2.VIS_PUBLIC)
+        npt.assert_equal(ppd.get(l[0]), np.array([1, 2]))
+        npt.assert_equal(ppd.get(l[1]), np.array([3.0, 4.0]))
+
+        # no in, dict out
+        d = ppd.device("SPU")(no_in_dict_out)()
+        self.assertTrue(isinstance(d["first"], ppd.SPU.Object))
+        self.assertTrue(isinstance(d["second"], ppd.SPU.Object))
+        self.assertEqual(d["first"].vtype, spu_pb2.VIS_PUBLIC)
+        self.assertEqual(d["second"].vtype, spu_pb2.VIS_PUBLIC)
+        npt.assert_equal(ppd.get(d["first"]), np.array([1, 2]))
+        npt.assert_equal(ppd.get(d["second"]), np.array([3.0, 4.0]))
+
+        # immediate input from driver
+        e = ppd.device("SPU")(tf.add)(np.array([1, 2]), np.array([3, 4]))
+        self.assertTrue(isinstance(e, ppd.SPU.Object))
+        self.assertEqual(e.vtype, spu_pb2.VIS_PUBLIC)
+        npt.assert_equal(ppd.get(e), np.array([4, 6]))
+
+        # reuse inputs from SPU
+        c = ppd.device("SPU")(tf.add)(a, a)
+        self.assertTrue(isinstance(c, ppd.SPU.Object))
+        self.assertEqual(c.vtype, spu_pb2.VIS_PUBLIC)
+        self.assertTrue(c.device is ppd.current().devices["SPU"])
+        npt.assert_equal(ppd.get(c), np.array([2, 4]))
+
+        # reuse a from SPU, x from pyu
+        x = ppd.device("P1")(no_in_one_out)()
+        c = ppd.device("SPU")(tf.add)(a, x)
+        self.assertTrue(isinstance(c, ppd.SPU.Object))
+        self.assertEqual(c.vtype, spu_pb2.VIS_SECRET)
+        self.assertTrue(c.device is ppd.current().devices["SPU"])
+        npt.assert_equal(ppd.get(c), np.array([2, 4]))
+
+
+def suite():
+    suite = unittest.TestSuite()
+    suite.addTest(UnitTests('test_basic_pyu'))
+    suite.addTest(UnitTests('test_basic_spu_jax'))
+    suite.addTest(UnitTests('test_dump_pphlo'))
+    suite.addTest(UnitTests('test_basic_spu_tf'))
+    return suite
+
 
 if __name__ == '__main__':
-    unittest.main()
+    runner = unittest.TextTestRunner(failfast=True)
+    ret = not runner.run(suite()).wasSuccessful()
+    sys.exit(ret)

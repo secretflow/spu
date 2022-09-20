@@ -1,4 +1,4 @@
-// Copyright 2021 Ant Group Co., Ltd.
+// Copyright 2022 Ant Group Co., Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,21 +17,18 @@
 #include <array>
 #include <cstring>
 #include <memory>
+#include <string>
 #include <string_view>
+#include <vector>
 
 #include "absl/types/span.h"
 #include "openssl/crypto.h"
 #include "openssl/rand.h"
 #include "yasl/base/exception.h"
 
-namespace spu {
+#include "spu/psi/psi.pb.h"
 
-enum class CurveType {
-  Curve25519,
-  CurveFourQ,
-  CurveSm2,
-  CurveSecp256k1,
-};
+namespace spu::psi {
 
 inline constexpr int kEccKeySize = 32;
 
@@ -69,4 +66,16 @@ class IEccCryptor {
   uint8_t private_key_[kEccKeySize];
 };
 
-}  // namespace spu
+std::vector<std::string> Mask(const std::shared_ptr<IEccCryptor>& cryptor,
+                              const std::vector<std::string>& items);
+
+std::vector<std::string> Mask(const std::shared_ptr<IEccCryptor>& cryptor,
+                              const std::vector<absl::string_view>& items);
+
+std::string HashInput(const std::shared_ptr<IEccCryptor>& cryptor,
+                      const std::string& item);
+
+std::vector<std::string> HashInputs(const std::shared_ptr<IEccCryptor>& cryptor,
+                                    const std::vector<std::string>& items);
+
+}  // namespace spu::psi

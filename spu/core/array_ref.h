@@ -23,6 +23,12 @@
 #include "spu/core/vectorize.h"
 
 namespace spu {
+namespace detail {
+
+void strided_copy(int64_t numel, int64_t elsize, void* dst, int64_t dstride,
+                  void const* src, int64_t sstride);
+
+}
 
 // ArrayRef is a reference type which represent an strided array of objects.
 class ArrayRef {
@@ -64,7 +70,7 @@ class ArrayRef {
   Type& eltype() { return eltype_; }
 
   // https://numpy.org/doc/stable/user/basics.indexing.html#slicing-and-striding
-  ArrayRef slice(int64_t start, int64_t stop, int64_t stride = 1);
+  ArrayRef slice(int64_t start, int64_t stop, int64_t stride = 1) const;
 
   std::shared_ptr<yasl::Buffer> buf() const { return buf_; }
 
@@ -125,9 +131,8 @@ struct SimdTrait<ArrayRef> {
     ArrayRef result(first->eltype(), total_numel);
     size_t res_idx = 0;
     for (; first != last; ++first) {
-      for (int64_t idx = 0; idx < first->numel(); idx++) {
-        memcpy(&result.at(res_idx + idx), &first->at(idx), ty.size());
-      }
+      detail::strided_copy(first->numel(), ty.size(), &result.at(res_idx),
+                           result.stride(), &first->at(0), first->stride());
       pi.push_back(first->numel());
       res_idx += first->numel();
     }
@@ -151,6 +156,65 @@ struct SimdTrait<ArrayRef> {
 
     return result;
   }
+};
+
+ArrayRef makeConstantArrayRef(Type eltype, size_t numel);
+
+// A strided array view type.
+template <typename T>
+class ArrayView {
+  T* const data_;
+  int64_t const stride_;
+  int64_t const numel_;
+
+ public:
+  // TODO: we explicit discard const correctness due to the complexity.
+  explicit ArrayView(const ArrayRef& arr)
+      : data_(const_cast<T*>(&arr.at<T>(0))),
+        stride_(arr.stride()),
+        numel_(arr.numel()) {}
+
+  int64_t numel() const { return numel_; }
+
+  bool isCompact() const { return stride_ == 1; }
+
+  ArrayRef clone() const {
+    ArrayRef res(makePtType<T>(), numel_);
+    detail::strided_copy(numel_, sizeof(T), res.data(), res.stride(), data_,
+                         stride_);
+    return res;
+  }
+
+  T* data() { return data_; }
+
+  T& operator[](size_t idx) { return *(data_ + idx * stride_); }
+
+  T const& operator[](size_t idx) const { return *(data_ + idx * stride_); }
+};
+
+// A vector like container which buffer could be stealed.
+template <typename T>
+class Array {
+  T* const data_;
+  int64_t const numel_;
+
+ public:
+  // TODO: we explicit discard const correctness due to the complexity.
+  explicit Array(yasl::Buffer&& buf)
+      : data_(buf.data()), numel_(buf.size() / sizeof(T)) {
+    YASL_ENFORCE(buf.size() % sizeof(T) == 0);
+    buf.release();
+  }
+
+  ~Array() { delete[] data_; }
+
+  int64_t numel() const { return numel_; }
+
+  T* data() { return data_; }
+
+  T& operator[](size_t idx) { return *(data_ + idx); }
+
+  T const& operator[](size_t idx) const { return *(data_ + idx); }
 };
 
 }  // namespace spu

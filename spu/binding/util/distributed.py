@@ -17,11 +17,15 @@ from __future__ import annotations
 import concurrent.futures
 import json
 import logging
+import os
+import io
+import pathlib
 import sys
 import traceback
 import uuid
-from functools import partial, wraps
+import multiprocess
 from collections import Counter
+from functools import partial, wraps
 from typing import (
     Any,
     Callable,
@@ -35,7 +39,8 @@ from typing import (
     Union,
 )
 
-import cloudpickle as pickle
+import cloudpickle
+import pickle
 import grpc
 import jax
 import numpy as np
@@ -46,13 +51,18 @@ from jax.tree_util import tree_flatten, tree_map, tree_unflatten
 
 import spu.binding._lib.link as liblink
 from spu.binding.api import Io, Runtime, compile
+import spu.binding.util.frontend as spu_fe
 from spu.binding.util.distributed_pb2 import RunRequest, RunResponse
 from spu.binding.util.distributed_pb2_grpc import (
     NodeServiceServicer,
     NodeServiceStub,
     add_NodeServiceServicer_to_server,
 )
-from spu.spu_pb2 import ExecutableProto, IrProto, RuntimeConfig, ValueProto
+from spu.spu_pb2 import ExecutableProto, RuntimeConfig, ValueProto
+from enum import Enum
+from termcolor import colored
+import tensorflow as tf
+import tensorflow.experimental.numpy as tnp
 
 """
 This module is used as a simple scheduler to demonstrate SPU usage.
@@ -61,9 +71,86 @@ It's not designed for production both for performance and security reasons.
 To use SPU in production, please consider SecretFlow instead.
 """
 
+_pickle_whitelist = None
+# whitelist config file absolute path.
+PPU_SPU_PICKLE_WHITELIST_CONFIG_PATH = os.environ.get(
+    "PPU_SPU_PICKLE_WHITELIST_CONFIG_PATH", None
+)
+# example config file: a json dump of
+# {
+#     "pickle_whitelist": {
+#         "numpy.core.numeric": ["*"],
+#         "numpy": ["dtype"],
+#     }
+# }
+
+PPU_SPU_ENABLE_ATLS = os.environ.get("PPU_SPU_ENABLE_ATLS", False)
+# user can choose to enable ALTS https://grpc.io/docs/languages/python/alts/
+
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+syslog = logging.StreamHandler()
+formatter = logging.Formatter('[%(asctime)s] [%(processNameCorrected)s] %(message)s')
+syslog.setFormatter(formatter)
+logger.addHandler(syslog)
+logger.propagate = False
+
+
+class RestrictedUnpickler(pickle.Unpickler):
+    def find_class(self, module, name):
+        if _pickle_whitelist is None or (
+            module in _pickle_whitelist
+            and (_pickle_whitelist[module] is None or name in _pickle_whitelist[module])
+        ):
+            return super().find_class(module, name)
+
+        # Forbid everything else.
+        raise pickle.UnpicklingError("global '%s.%s' is forbidden" % (module, name))
+
+
+def restricted_loads(
+    serialized_data,
+    *,
+    fix_imports=True,
+    encoding="ASCII",
+    errors="strict",
+    buffers=None,
+):
+    if isinstance(serialized_data, str):
+        raise TypeError("Can't load pickle from unicode string")
+    file = io.BytesIO(serialized_data)
+    return RestrictedUnpickler(
+        file, fix_imports=fix_imports, buffers=buffers, encoding=encoding, errors=errors
+    ).load()
+
+
+def patch_pickle_for_security():
+    global _pickle_whitelist
+    whitelist_path = PPU_SPU_PICKLE_WHITELIST_CONFIG_PATH
+    if whitelist_path is None:
+        return
+
+    _pickle_whitelist = json.load(open(whitelist_path, "rt")).get(
+        "pickle_whitelist", None
+    )
+    if _pickle_whitelist is None:
+        return
+
+    if "*" in _pickle_whitelist:
+        _pickle_whitelist = None
+    for module, attr_list in _pickle_whitelist.items():
+        if "*" in attr_list:
+            _pickle_whitelist[module] = None
+    pickle.loads = restricted_loads
+
+
+patch_pickle_for_security()
+
 
 class ObjectRef:
     # Use a static random id to solve pickle+isinstance issue.
+    # Warning: this is only a demo, do not use in production code base.
     KLASS_ID = '3fae14a7-66d6-48d6-b2c8-867a7b78af6e'
 
     def __init__(self, uuid: str, origin_nodeid: str):
@@ -99,7 +186,13 @@ class RPC:
 
     @classmethod
     def makeStub(cls, addr):
-        return NodeServiceStub(grpc.insecure_channel(addr, options=RPC.OPTIONS))
+        if PPU_SPU_ENABLE_ATLS:
+            channel_creds = grpc.alts_channel_credentials()
+            return NodeServiceStub(
+                grpc.secure_channel(addr, channel_creds, options=RPC.OPTIONS)
+            )
+        else:
+            return NodeServiceStub(grpc.insecure_channel(addr, options=RPC.OPTIONS))
 
     @classmethod
     def serve(cls, node_id: str, nodes_def: Dict[str, str]):
@@ -107,8 +200,15 @@ class RPC:
             concurrent.futures.ThreadPoolExecutor(max_workers=10), options=RPC.OPTIONS
         )
         add_NodeServiceServicer_to_server(NodeServicer(node_id, nodes_def), server)
-        logging.info(f"Starting grpc server at {nodes_def[node_id]}")
-        server.add_insecure_port(nodes_def[node_id])
+        global logger
+        processNameFix = {'processNameCorrected': multiprocess.current_process().name}
+        logger = logging.LoggerAdapter(logger, processNameFix)
+        logger.info(f"Starting grpc server at {nodes_def[node_id]}")
+        if PPU_SPU_ENABLE_ATLS:
+            server_creds = grpc.alts_server_credentials()
+            server.add_secure_port(nodes_def[node_id], server_creds)
+        else:
+            server.add_insecure_port(nodes_def[node_id])
         server.start()
         server.wait_for_termination()
 
@@ -135,11 +235,12 @@ class NodeClient:
         tree_map(_check, (args, kwargs))
 
     def _call(self, stub_method, fn, *args, **kwargs):
-        payload = pickle.dumps((fn, args, kwargs))
+        payload = cloudpickle.dumps((fn, args, kwargs))
         rsp_gen = stub_method(
             RunRequest(data=split) for split in split_message(payload)
         )
         rsp_data = rebuild_messages(rsp_itr.data for rsp_itr in rsp_gen)
+        # Warning: this is only a demo, do not use in production
         result = pickle.loads(rsp_data)
         if isinstance(result, Exception):
             raise Exception("remote exception", result)
@@ -163,7 +264,30 @@ class NodeClient:
         # use uuid directly to prevent server fetch object ref.
         return self._call(self._stub.RunReturn, builtin_fetch_object, ref.uuid)
 
+    def save(self, refs: List[ObjectRef], filename: str):
+        def builtin_save_object(server, ref_ids: List[str], filename: str):
+            pathlib.Path(filename).parent.absolute().mkdir(parents=True, exist_ok=True)
+            with open(filename, "wb") as f:
+                data = []
+                for ref_id in ref_ids:
+                    data.append(server._globals[ObjectRef(ref_id, server.node_id)])
 
+                pickle.dump(data, f)
+
+        ref_ids = [ref.uuid for ref in refs]
+        return self._call(self._stub.RunReturn, builtin_save_object, ref_ids, filename)
+
+    def load(self, filename: str):
+        def builtin_load_object(server, filename: str):
+            with open(filename, "rb") as f:
+                # Warning: this is only a demo, do not use in production.
+                objs = pickle.load(f)
+                return objs
+
+        return self._call(self._stub.Run, builtin_load_object, filename)
+
+
+# Warning: this is only a demo on how to use SPU utilities.
 class NodeServicer(NodeServiceServicer):
     def __init__(self, node_id: str, nodes_def: Dict[str, str]):
         self.node_id = node_id
@@ -180,32 +304,34 @@ class NodeServicer(NodeServiceServicer):
 
     def RunReturn(self, req_itr, ctx):
         payload = rebuild_messages(itr.data for itr in req_itr)
+        # Warning: this is only a demo, do not use in production.
         (fn, args, kwargs) = pickle.loads(payload)
-        logging.info(f"RunR: {fn.__name__} at {self.node_id}")
+        logger.info(f"RunR: {fn.__name__} at {self.node_id}")
         try:
             args, kwargs = tree_map(lambda obj: self._get_object(obj), (args, kwargs))
             result = fn(self, *args, **kwargs)
-            response = pickle.dumps(result)
+            response = cloudpickle.dumps(result)
         except Exception as e:
             stack_info = traceback.format_exc()
-            logging.info(stack_info)
-            response = pickle.dumps(Exception(stack_info))
+            logger.info(stack_info)
+            response = cloudpickle.dumps(Exception(stack_info))
         for split in split_message(response):
             yield RunResponse(data=split)
 
     def Run(self, req_itr, ctx):
         payload = rebuild_messages(itr.data for itr in req_itr)
+        # Warning: this is only a demo, do not use in production.
         (fn, args, kwargs) = pickle.loads(payload)
-        logging.info(f"Run : {fn.__name__} at {self.node_id}")
+        logger.info(f"Run : {fn.__name__} at {self.node_id}")
         try:
             args, kwargs = tree_map(lambda obj: self._get_object(obj), (args, kwargs))
             ret_objs = fn(self, *args, **kwargs)
             ret_refs = tree_map(lambda obj: self._add_object(obj), ret_objs)
-            response = pickle.dumps(ret_refs)
+            response = cloudpickle.dumps(ret_refs)
         except Exception:
             stack_info = traceback.format_exc()
-            logging.info(stack_info)
-            response = pickle.dumps(Exception(stack_info))
+            logger.info(stack_info)
+            response = cloudpickle.dumps(Exception(stack_info))
         for split in split_message(response):
             yield RunResponse(data=split)
 
@@ -294,9 +420,9 @@ class Device:
         self.host = host
         self.name = name
 
-    def __call__(self, fn: Callable):
+    def __call__(self, fn: Callable, *comp_args, **comp_kwargs):
         """Device as a decorator, convert a pyfunc to a device function"""
-        return self.compile(fn)
+        return self.compile(fn, *comp_args, **comp_kwargs)
 
     def _place_arguments(self, *args, **kwargs):
         # place arguments onto this device.
@@ -343,6 +469,11 @@ class PYU(Device):
 
         def __del__(self):
             self.device._dec_objref(self.ref)
+
+        @property
+        def shape(self):
+            ref_shape = self.device(lambda x: x.shape)(self)
+            return [self.device.get(r) for r in ref_shape]
 
     class Function(Device.Function):
         device: PYU  # PEP-526
@@ -404,7 +535,7 @@ def builtin_spu_init(
     server, name: str, my_rank: int, addrs: List[str], spu_config_str: str
 ):
     if f"{name}-rt" in server._locals:
-        logging.info(f"spu-runtime ({name}) already exist, reuse it")
+        logger.info(f"spu-runtime ({name}) already exist, reuse it")
         return
     desc = liblink.Desc()
     desc.recv_timeout_ms = 100 * 1000  # 100 seconds
@@ -419,7 +550,7 @@ def builtin_spu_init(
         spu_config.enable_pphlo_profile = False
     server._locals[f"{name}-rt"] = Runtime(link, spu_config)
     server._locals[f"{name}-io"] = Io(len(addrs), spu_config)
-    logging.info(f"spu-runtime ({name}) initialized")
+    logger.info(f"spu-runtime ({name}) initialized")
 
 
 def builtin_fetch_meta(server, vals: List[ValueWrapper]):
@@ -429,47 +560,33 @@ def builtin_fetch_meta(server, vals: List[ValueWrapper]):
 def builtin_spu_run(
     server,
     device_name: str,
-    fn_name: str,
-    pphlo_str: str,
+    exec_str: str,
     args_flat: List[Union[ObjectRef, Any]],
-    num_returns: int,
 ):
     from spu.spu_pb2 import Visibility
 
     rt = server._locals[f"{device_name}-rt"]
     io = server._locals[f"{device_name}-io"]
 
-    spu_ir = IrProto()
-    spu_ir.ParseFromString(pphlo_str)
-
-    # mock input, output names.
-    in_names = [f'{id(fn_name)}-in{idx}' for idx in range(len(args_flat))]
-    out_names = [f'{id(fn_name)}-out{idx}' for idx in range(num_returns)]
-
-    # make an spu executable.
-    executable = ExecutableProto(
-        name=fn_name,
-        input_names=in_names,
-        output_names=out_names,
-        code=spu_ir.code,
-    )
+    spu_exec = ExecutableProto()
+    spu_exec.ParseFromString(exec_str)
 
     # do infeed.
     for idx, arg in enumerate(args_flat):
         if isinstance(arg, ValueWrapper):
             v = ValueProto()
             v.ParseFromString(arg.value_str)
-            rt.set_var(in_names[idx], v)
+            rt.set_var(spu_exec.input_names[idx], v)
         else:
             arg = np.asarray(jax.numpy.asarray(arg))
             fst, *_ = io.make_shares(arg, Visibility.VIS_PUBLIC)
-            rt.set_var(in_names[idx], fst)
+            rt.set_var(spu_exec.input_names[idx], fst)
 
     # run
-    rt.run(executable)
+    rt.run(spu_exec)
 
     # do outfeed
-    ret_protos = [rt.get_var(name) for name in out_names]
+    ret_protos = [rt.get_var(name) for name in spu_exec.output_names]
     rets = [
         ValueWrapper(
             shape_spu_to_np(proto.shape),
@@ -481,13 +598,29 @@ def builtin_spu_run(
     ]
 
     # cleanup
-    for name in in_names + out_names:
+    for name in spu_exec.input_names:
+        rt.del_var(name)
+
+    for name in spu_exec.output_names:
         rt.del_var(name)
 
     return rets
 
 
 from spu import spu_pb2
+
+
+class SPUObjectMetadata:
+    def __init__(
+        self,
+        shape: Sequence[int],
+        dtype: np.dtype,
+        vtype: spu_pb2.Visibility,
+    ) -> None:
+
+        self.dtype = dtype
+        self.shape = shape
+        self.vtype = vtype
 
 
 class SPU(Device):
@@ -506,10 +639,8 @@ class SPU(Device):
             assert all(isObjectRef(ref) for ref in refs)
             # note: the refs could also be located on the node which does not host SPU.
             self.refs = refs
-
             for ref in refs:
                 self.device._inc_objref(ref)
-
             self.dtype = dtype
             self.shape = shape
             self.vtype = vtype
@@ -529,10 +660,9 @@ class SPU(Device):
             args, kwargs = self.device._place_arguments(*args, **kwargs)
 
             # now, all object are either PyObject or SPU.DeviceObject
-            pphlo_ir, args_flat, out_shape = self._compile_jax_func(
+            executable, args_flat, out_tree = self._compile_jax_func(
                 self.pyfunc, self.static_argnums, *args, **kwargs
             )
-            _, out_tree = jax.tree_util.tree_flatten(out_shape)
 
             def get_share_ref(idx, obj):
                 return obj.refs[idx] if isinstance(obj, SPU.Object) else obj
@@ -544,12 +674,10 @@ class SPU(Device):
                     futures.append(
                         executor.submit(
                             self.device.node_clients[idx].run,
-                            wraps(self.pyfunc)(builtin_spu_run),
+                            wraps(self.pyfunc, assigned=('__name__'))(builtin_spu_run),
                             self.device.name,
-                            repr(self.pyfunc),
-                            pphlo_ir.SerializeToString(),
+                            executable.SerializeToString(),
                             idx_args_flat,
-                            out_tree.num_leaves,
                         )
                     )
             results = [future.result() for future in futures]
@@ -567,10 +695,10 @@ class SPU(Device):
 
         def dump_pphlo(self, *args, **kwargs):
             args, kwargs = self.device._place_arguments(*args, **kwargs)
-            pphlo_ir, *_ = self._compile_jax_func(
+            executable, *_ = self._compile_jax_func(
                 self.pyfunc, self.static_argnums, *args, **kwargs
             )
-            return pphlo_ir.code.decode('utf-8')
+            return executable.code.decode('utf-8')
 
         def _compile_jax_func(self, fn, static_argnums, *args, **kwargs):
             def mock_parameters(obj: Union[SPU.Object, np.ndarray]):
@@ -580,37 +708,119 @@ class SPU(Device):
                     assert not isinstance(obj, Device.Object)
                     return obj
 
+            fn_name = repr(fn)
+
             mock_args, mock_kwargs = tree_map(mock_parameters, (args, kwargs))
-            xc, out_shape = jax.xla_computation(
-                fn,
-                backend="interpreter",
-                return_shape=True,
-                static_argnums=static_argnums,
-            )(*mock_args, **mock_kwargs)
 
             ## code copied from jax.xla_computation to make args aligned.
             _, dyn_args = japi_util.argnums_partial_except(
                 lu.wrap_init(fn), static_argnums, args, allow_invalid=False
             )
             args_flat, _ = jax.tree_util.tree_flatten((dyn_args, kwargs))
-            # end copy from jax.xla_computation
 
-            from spu.spu_pb2 import IrType, Visibility, XlaMeta
+            in_vis = [
+                arg.vtype if isinstance(arg, SPU.Object) else spu_pb2.VIS_PUBLIC
+                for arg in args_flat
+            ]
+            in_names = [f'{id(fn_name)}-in{idx}' for idx in range(len(args_flat))]
 
-            # compile xla to pphlo
-            xla_ir = IrProto(
-                ir_type=IrType.IR_XLA_HLO,
-                code=xc.as_serialized_hlo_module_proto(),
-                meta=XlaMeta(
-                    inputs=[
-                        arg.vtype if isinstance(arg, SPU.Object) else spu_pb2.VIS_PUBLIC
-                        for arg in args_flat
-                    ]
-                ),
+            def outputNameGen(out_flat: List):
+                return [f'{id(fn_name)}-out{idx}' for idx in range(len(out_flat))]
+
+            executable, output = spu_fe.compile(
+                spu_fe.Kind.JAX,
+                fn,
+                mock_args,
+                mock_kwargs,
+                in_names,
+                in_vis,
+                outputNameGen,
+                static_argnums=static_argnums,
             )
-            pphlo_ir = compile(xla_ir)
 
-            return pphlo_ir, args_flat, out_shape
+            _, output_tree = jax.tree_util.tree_flatten(output)
+            return executable, args_flat, output_tree
+
+    class TensorFlowFunction(Device.Function):
+        device: SPU
+
+        def __init__(self, device: Device, pyfunc: Callable):
+            super().__init__(device, pyfunc)
+
+        def __call__(self, *args, **kwargs):
+            args, kwargs = self.device._place_arguments(*args, **kwargs)
+
+            # now, all object are either PyObject or SPU.DeviceObject
+            pphlo_ir, args_flat, structured_outputs = self._compile_tf_func(
+                self.pyfunc, *args, **kwargs
+            )
+
+            def get_share_ref(idx, obj):
+                return obj.refs[idx] if isinstance(obj, SPU.Object) else obj
+
+            futures = []
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                for idx, _ in enumerate(self.device.node_clients):
+                    idx_args_flat = [get_share_ref(idx, arg) for arg in args_flat]
+                    futures.append(
+                        executor.submit(
+                            self.device.node_clients[idx].run,
+                            wraps(self.pyfunc, assigned=('__name__'))(builtin_spu_run),
+                            self.device.name,
+                            pphlo_ir.SerializeToString(),
+                            idx_args_flat,
+                        )
+                    )
+            results = [future.result() for future in futures]
+
+            # fetch the result metas, since all nodes are symmetric, query node[0] is enough.
+            metas = self.device.node_clients[0].run_return(
+                builtin_fetch_meta, results[0]
+            )
+
+            ret_flat = [
+                SPU.Object(self.device, share_refs, *meta)
+                for share_refs, meta in zip(zip(*results), metas)
+            ]
+
+            # FIXME(junfeng): check input-output alias.
+            return tf.nest.pack_sequence_as(
+                structured_outputs, ret_flat, expand_composites=True
+            )
+
+        def _compile_tf_func(self, fn, *args, **kwargs):
+            def mock_parameters(obj: Union[SPU.Object, np.ndarray]):
+                if isinstance(obj, SPU.Object):
+                    return np.zeros(shape=obj.shape, dtype=obj.dtype)
+                else:
+                    assert not isinstance(obj, Device.Object)
+                    return obj
+
+            mock_args, mock_kwargs = tree_map(mock_parameters, (args, kwargs))
+
+            args_flat = tf.nest.flatten((args, kwargs), expand_composites=True)
+
+            fn_name = fn.__name__
+
+            in_vis = [
+                arg.vtype if isinstance(arg, SPU.Object) else spu_pb2.VIS_PUBLIC
+                for arg in args_flat
+            ]
+            in_names = [f'{id(fn_name)}-in{idx}' for idx in range(len(args_flat))]
+
+            def outputNameGen(out_flat: List):
+                return [f'{id(fn_name)}-out{idx}' for idx in range(len(out_flat))]
+
+            executable, output_tree = spu_fe.compile(
+                spu_fe.Kind.Tensorflow,
+                fn,
+                mock_args,
+                mock_kwargs,
+                in_names,
+                in_vis,
+                outputNameGen,
+            )
+            return executable, args_flat, output_tree
 
     def __init__(
         self,
@@ -619,6 +829,7 @@ class SPU(Device):
         node_clients: List[NodeClient],
         internal_addrs: List[str],
         runtime_config: Dict,
+        experimental_data_folder: List[str],
     ):
         super().__init__(host, name)
         self.node_clients = node_clients
@@ -643,6 +854,7 @@ class SPU(Device):
                 for idx, _ in enumerate(node_clients)
             ]
         results = [future.result() for future in futures]
+        self.experimental_data_folder = experimental_data_folder
 
     def __repr__(self):
         hosts = [nc.addr for nc in self.node_clients]
@@ -653,7 +865,12 @@ class SPU(Device):
         return f"name: {self.name}\nhosted by: {hosts}\ninternal addrs: {self.internal_addrs}\n{self.runtime_config}"
 
     def compile(self, fn: Callable, static_argnums=()) -> Callable:
-        return SPU.JaxFunction(self, fn, static_argnums)
+        if _FRAMEWORK == Framework.EXP_TF:
+            return SPU.TensorFlowFunction(self, fn)
+        elif _FRAMEWORK == Framework.JAX:
+            return SPU.JaxFunction(self, fn, static_argnums)
+        else:
+            raise Exception("unsupported frontend framework.")
 
     def get(self, obj: SPU.Object):
         value_wrappers = [nc.get(ref) for nc, ref in zip(self.node_clients, obj.refs)]
@@ -664,6 +881,42 @@ class SPU(Device):
             protos.append(proto)
         io = Io(len(self.internal_addrs), self.runtime_config)
         return io.reconstruct(protos)
+
+    def save(self, spu_objects: List[SPU.Object], filename: str):
+        assert (
+            self.experimental_data_folder
+        ), "experimental_data_folder has not been provided."
+
+        refs_for_spu_objects = [obj.refs for obj in spu_objects]
+        transposed = list(zip(*refs_for_spu_objects))
+        refs_list = [list(sublist) for sublist in transposed]
+
+        for nc, refs, folder in zip(
+            self.node_clients, refs_list, self.experimental_data_folder
+        ):
+            nc.save(refs, os.path.join(folder, filename))
+
+    def load(
+        self, spu_object_metatdata: List[SPUObjectMetadata], filename: str
+    ) -> List[SPU.Object]:
+        assert (
+            self.experimental_data_folder
+        ), "experimental_data_folder has not been provided."
+        refs_list = [[] for _ in range(len(self.node_clients))]
+        for i, nc, folder in zip(
+            range(len(self.node_clients)),
+            self.node_clients,
+            self.experimental_data_folder,
+        ):
+            refs_list[i].extend(nc.load(os.path.join(folder, filename)))
+
+        transposed = list(zip(*refs_list))
+        refs_for_spu_objects = [list(sublist) for sublist in transposed]
+
+        return [
+            SPU.Object(self, refs, meta.shape, meta.dtype, meta.vtype)
+            for refs, meta in zip(refs_for_spu_objects, spu_object_metatdata)
+        ]
 
 
 class HostContext:
@@ -689,10 +942,12 @@ class HostContext:
                     [self.node_clients[node_id] for node_id in config["node_ids"]],
                     config["spu_internal_addrs"],
                     config["runtime_config"],
+                    config["experimental_data_folder"]
+                    if "experimental_data_folder" in config
+                    else None,
                 )
             else:
                 raise Exception("unknown kind {}".format(detail["kind"]))
-
         self._objrefs = Counter()
         self._dead_refs: List[ObjectRef] = []
 
@@ -741,13 +996,30 @@ class HostContext:
             pass
 
 
+class Framework(Enum):
+    JAX = 1
+    EXP_TF = 2
+
+
 _CONTEXT: HostContext
+_FRAMEWORK: Framework
 
 
-def init(nodes_def, devices_def):
+def init(nodes_def, devices_def, framework=Framework.JAX):
     """Init a multi-device layout on a given cluster."""
     global _CONTEXT
     _CONTEXT = HostContext(nodes_def, devices_def)
+
+    global _FRAMEWORK
+    _FRAMEWORK = framework
+
+    if framework == Framework.EXP_TF:
+        print(
+            colored(
+                "You are using TensorFlow as frontend framework, which is experimental.",
+                "yellow",
+            )
+        )
 
 
 def current():
@@ -768,6 +1040,48 @@ def get(args):
         for arg in args_flat
     ]
     return tree_unflatten(tree, out_flat)
+
+
+def save(args, filename=f'spu-{uuid.uuid4()}.txt'):
+    args_flat, tree = jax.tree_util.tree_flatten(args)
+    spu_objects = []
+    parsed_arg = []
+    for arg in args_flat:
+        if isinstance(arg, SPU.Object):
+            spu_objects.append(arg)
+            parsed_arg.append(SPUObjectMetadata(arg.shape, arg.dtype, arg.vtype))
+        elif isinstance(arg, PYU.Object):
+            raise Exception("PYU object is unsupported.")
+        else:
+            parsed_arg.append(arg)
+
+    if spu_objects:
+        device('SPU').save(spu_objects, filename)
+
+    return {
+        'spu_object': tree_unflatten(tree, parsed_arg),
+        'experimental_filename': filename,
+    }
+
+
+def load(meta):
+    spu = device('SPU')
+    args_flat, tree = jax.tree_util.tree_flatten(meta['spu_object'])
+    spu_objects = spu.load(
+        filter(lambda x: isinstance(x, SPUObjectMetadata), args_flat),
+        meta['experimental_filename'],
+    )
+
+    origin_arg = []
+    idx = 0
+    for arg in args_flat:
+        if isinstance(arg, SPUObjectMetadata):
+            origin_arg.append(spu_objects[idx])
+            idx += 1
+        else:
+            origin_arg.append(arg)
+
+    return tree_unflatten(tree, origin_arg)
 
 
 from spu.spu_pb2 import Visibility
@@ -803,29 +1117,40 @@ def SPU2PYU(to: PYU, obj: SPU.Object):
 
 def PYU2SPU(to: SPU, obj: PYU.Object, vtype=Visibility.VIS_SECRET):
     # make shares on PYU, and tell SPU the object refs.
-    def make_shares(wsize: int, spu_config_str: str, x: np.ndarray):
+    def make_shares(
+        wsize: int, spu_config_str: str, x: np.ndarray, owner_rank: int = -1
+    ):
         spu_config = RuntimeConfig()
         spu_config.ParseFromString(spu_config_str)
         spu_io = Io(wsize, spu_config)
 
-        # > x = np.array([1, 2])     # x.dtype = int64
-        # > y = jnp.array([1, 2])    # y.dtype = int32
-        # JAX(0.2.28) treats np.int64 as int32 at compilation time.
-        # So we have to infeed int64 as in32 accordingly.
-        x = np.asarray(jax.numpy.asarray(x))
+        if _FRAMEWORK == Framework.JAX:
+            # > x = np.array([1, 2])     # x.dtype = int64
+            # > y = jnp.array([1, 2])    # y.dtype = int32
+            # JAX(0.2.28) treats np.int64 as int32 at compilation time.
+            # So we have to infeed int64 as in32 accordingly.
+            x = np.asarray(jax.numpy.asarray(x))
+        elif _FRAMEWORK == Framework.EXP_TF:
+            x = np.asarray(tnp.asarray(x))
+        else:
+            raise Exception("unsupported frontend framework.")
 
-        shares = spu_io.make_shares(x, vtype)
+        shares = spu_io.make_shares(x, vtype, owner_rank)
         return tuple(
             ValueWrapper(x.shape, x.dtype, vtype, share.SerializeToString())
             for share in shares
         )
 
+    owner_rank = -1
+    for index, node_client in enumerate(to.node_clients):
+        if node_client.node_id == obj.device.node_client.node_id:
+            owner_rank = index
     share_objs = obj.device(make_shares)(
-        len(to.node_clients),
-        to.runtime_config.SerializeToString(),
-        obj,
+        len(to.node_clients), to.runtime_config.SerializeToString(), obj, owner_rank
     )
-    metas = obj.device.node_client.run_return(builtin_fetch_meta, [share_objs[0].ref])
+    metas = obj.device.node_client.run_return(
+        builtin_fetch_meta, [share_objs[owner_rank].ref]
+    )
     return SPU.Object(to, [obj.ref for obj in share_objs], *metas[0])
 
 
@@ -844,7 +1169,6 @@ Device.TRANS_KERNELS = {
 }
 
 # Sample definitions
-
 SAMPLE_NODES_DEF = {
     "node:0": "127.0.0.1:9327",
     "node:1": "127.0.0.1:9328",
@@ -868,6 +1192,11 @@ SAMPLE_DEVICES_DEF = {
                 "enable_pphlo_profile": True,
                 # "enable_pphlo_trace": True,
             },
+            "experimental_data_folder": [
+                "/tmp/spu_data_0/",
+                "/tmp/spu_data_1/",
+                "/tmp/spu_data_2/",
+            ],
         },
     },
     "P1": {"kind": "PYU", "config": {"node_id": "node:0"}},
@@ -895,21 +1224,12 @@ if __name__ == '__main__':
         nodes_def = SAMPLE_NODES_DEF
         devices_def = SAMPLE_DEVICES_DEF
 
-    logging.basicConfig(
-        stream=sys.stdout,
-        level=logging.INFO,
-        format='[%(asctime)s] [%(processName)s] %(message)s',
-    )
     if args.command == 'start':
         RPC.serve(args.node_id, nodes_def)
     elif args.command == 'up':
-        import multiprocessing
-
         workers = []
         for node_id in nodes_def.keys():
-            worker = multiprocessing.Process(
-                target=RPC.serve, args=(node_id, nodes_def)
-            )
+            worker = multiprocess.Process(target=RPC.serve, args=(node_id, nodes_def))
             worker.start()
             workers.append(worker)
 

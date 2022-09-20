@@ -55,7 +55,10 @@ spu_cc_library(
     srcs = ["abprotocol.cc"],
     hdrs = ["abprotocol.h"],
     deps = [
+        ":pub2k",
+        "//spu/mpc:api",
         "//spu/mpc:object",
+        "//spu/mpc/util:circuits",
     ],
 )
 
@@ -65,8 +68,8 @@ spu_cc_library(
     srcs = ["abprotocol_test.cc"],
     hdrs = ["abprotocol_test.h"],
     deps = [
+        ":abprotocol",
         ":pub2k",
-        "//spu/mpc:interfaces",
         "//spu/mpc:object",
         "//spu/mpc/util:communicator",
         "//spu/mpc/util:simulate",

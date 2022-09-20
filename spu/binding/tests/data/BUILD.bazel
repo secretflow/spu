@@ -22,10 +22,3 @@ filegroup(
         "carol.csv",
     ],
 )
-
-filegroup(
-    name = "hlo_example",
-    data = [
-        "hlo_example.hlo.pb",
-    ],
-)

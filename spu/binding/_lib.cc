@@ -23,11 +23,12 @@
 #include "spu/compiler/compile.h"
 #include "spu/core/type_util.h"
 #include "spu/device/io.h"
-#include "spu/device/pphlo_executor.h"
+#include "spu/device/pphlo/executor.h"
 #include "spu/hal/context.h"
 #include "spu/hal/value.h"
+#include "spu/psi/bucket_psi.h"
 #include "spu/psi/core/ecdh_psi.h"
-#include "spu/psi/psi.h"
+#include "spu/psi/memory_psi.h"
 
 namespace py = pybind11;
 
@@ -71,6 +72,7 @@ void BindLink(py::module& m) {
                      &ContextDesc::brpc_channel_protocol)
       .def_readwrite("brpc_channel_connection_type",
                      &ContextDesc::brpc_channel_connection_type)
+      .def_readwrite("throttle_window_size", &ContextDesc::throttle_window_size)
       .def(
           "add_party",
           [](ContextDesc& desc, std::string id, std::string host) {
@@ -195,7 +197,7 @@ class RuntimeWrapper {
     spu::ExecutableProto exec;
     YASL_ENFORCE(exec.ParseFromString(exec_pb));
 
-    spu::device::PPHloExecutor executor(hctx_.get());
+    spu::device::pphlo::PPHloExecutor executor(hctx_.get());
     executor.runWithEnv(exec, &env_);
   }
 
@@ -210,6 +212,8 @@ class RuntimeWrapper {
   }
 
   void DelVar(const std::string& name) { env_.delVar(name); }
+
+  void Clear() { env_.clear(); }
 };
 
 #define FOR_PY_FORMATS(FN) \
@@ -284,8 +288,9 @@ class IoWrapper {
     ptr_ = std::make_unique<spu::device::IoClient>(world_size, config);
   }
 
-  std::vector<py::bytes> MakeShares(const py::array& arr, int visibility) {
-    // When working with Python, do a sataic size check, this has no runtime
+  std::vector<py::bytes> MakeShares(const py::array& arr, int visibility,
+                                    int owner_rank = -1) {
+    // When working with Python, do a static size check, this has no runtime
     // cost
     SizeCheck();
 
@@ -298,7 +303,8 @@ class IoWrapper {
         ByteToElementStrides(binfo.strides.begin(), binfo.strides.end(),
                              binfo.itemsize));
 
-    auto shares = ptr_->makeShares(view, spu::Visibility(visibility));
+    auto shares =
+        ptr_->makeShares(view, spu::Visibility(visibility), owner_rank);
     std::vector<py::bytes> serialized(shares.size());
     for (size_t idx = 0; idx < shares.size(); ++idx) {
       std::string s;
@@ -345,83 +351,28 @@ void BindLibs(py::module& m) {
                   )pbdoc";
 
   m.def(
-      "ecdh_psi",
+      "mem_psi",
       [](const std::shared_ptr<yasl::link::Context>& lctx,
-         const std::vector<std::string>& items,
-         int64_t rank) -> std::vector<std::string> {
-        // Sanity rank
-        size_t target_rank = rank;
-        if (rank == -1) {
-          target_rank = yasl::link::kAllRank;
-        } else if (rank < -1) {
-          YASL_THROW("rank should be >= -1, got {}", rank);
-        }
-        return psi::RunEcdhPsi(lctx, items, target_rank);
+         const std::string& config_pb,
+         const std::vector<std::string>& items) -> std::vector<std::string> {
+        psi::MemoryPsiConfig config;
+        YASL_ENFORCE(config.ParseFromString(config_pb));
+
+        psi::MemoryPsi psi(config, lctx);
+        return psi.Run(items);
       },
       NO_GIL);
 
-  m.def(
-      "ecdh_3pc_psi",
-      [](const std::shared_ptr<yasl::link::Context>& lctx,
-         const std::vector<std::string>& selected_fields,
-         const std::string& input_path, const std::string& output_path,
-         bool should_sort, psi::PsiReport* report) -> void {
-        psi::LegacyPsiOptions psi_opts;
-        psi_opts.base_options.link_ctx = lctx;
-        psi_opts.base_options.field_names = selected_fields;
-        psi_opts.base_options.in_path = input_path;
-        psi_opts.base_options.out_path = output_path;
-        psi_opts.base_options.should_sort = should_sort;
-        psi_opts.psi_protocol = psi::kPsiProtocolEcdh;
+  m.def("bucket_psi",
+        [](const std::shared_ptr<yasl::link::Context>& lctx,
+           const std::string& config_pb) -> py::bytes {
+          psi::BucketPsiConfig config;
+          YASL_ENFORCE(config.ParseFromString(config_pb));
 
-        auto executor = psi::BuildPsiExecutor(psi_opts);
-        executor->Init();
-        executor->Run(report);
-      },
-      NO_GIL);
-
-  m.def(
-      "kkrt_2pc_psi",
-      [](const std::shared_ptr<yasl::link::Context>& lctx,
-         const std::vector<std::string>& selected_fields,
-         const std::string& input_path, const std::string& output_path,
-         bool should_sort, psi::PsiReport* report,
-         bool broadcast_result) -> void {
-        psi::LegacyPsiOptions psi_opts;
-        psi_opts.base_options.link_ctx = lctx;
-        psi_opts.base_options.field_names = selected_fields;
-        psi_opts.base_options.in_path = input_path;
-        psi_opts.base_options.out_path = output_path;
-        psi_opts.base_options.should_sort = should_sort;
-        psi_opts.psi_protocol = psi::kPsiProtocolKkrt;
-        psi_opts.broadcast_result = broadcast_result;
-
-        auto executor = psi::BuildPsiExecutor(psi_opts);
-        executor->Init();
-        executor->Run(report);
-      },
-      NO_GIL);
-
-  m.def(
-      "ecdh_2pc_psi",
-      [](const std::shared_ptr<yasl::link::Context>& lctx,
-         const std::vector<std::string>& selected_fields,
-         const std::string& input_path, const std::string& output_path,
-         size_t num_bins, bool should_sort, psi::PsiReport* report) -> void {
-        psi::LegacyPsiOptions psi_opts;
-        psi_opts.base_options.link_ctx = lctx;
-        psi_opts.base_options.field_names = selected_fields;
-        psi_opts.base_options.in_path = input_path;
-        psi_opts.base_options.out_path = output_path;
-        psi_opts.base_options.should_sort = should_sort;
-        psi_opts.num_bins = num_bins;
-        psi_opts.psi_protocol = psi::kPsiProtocolEcdh2PC;
-
-        auto executor = psi::BuildPsiExecutor(psi_opts);
-        executor->Init();
-        executor->Run(report);
-      },
-      NO_GIL);
+          psi::BucketPsi psi(config, lctx);
+          auto r = psi.Run();
+          return r.SerializeAsString();
+        });
 }
 
 PYBIND11_MODULE(_lib, m) {
@@ -459,7 +410,6 @@ PYBIND11_MODULE(_lib, m) {
       .def("Reconstruct", &IoWrapper::reconstruct);
 
   // bind compiler.
-  // TODO: use type compile :: IrProto -> IrProto
   m.def(
       "compile",
       [](const py::bytes& hlo_text, const std::string& input_visbility_map,
@@ -487,11 +437,6 @@ PYBIND11_MODULE(_lib, m) {
 
   py::module libs_m = m.def_submodule("libs");
   BindLibs(libs_m);
-
-  py::class_<psi::PsiReport>(libs_m, "PsiReport")
-      .def(py::init())
-      .def_readwrite("intersection_count", &psi::PsiReport::intersection_count)
-      .def_readwrite("original_count", &psi::PsiReport::original_count);
 }
 
 }  // namespace spu

@@ -26,6 +26,28 @@ using util::K;
 using util::Log;
 using util::N;
 
+class CommonTypeB : public Kernel {
+ public:
+  static constexpr char kBindName[] = "common_type_b";
+
+  CExpr latency() const override { return Const(0); }
+
+  CExpr comm() const override { return Const(0); }
+
+  void evaluate(EvalContext* ctx) const override;
+};
+
+class CastTypeB : public Kernel {
+ public:
+  static constexpr char kBindName[] = "cast_type_b";
+
+  CExpr latency() const override { return Const(0); }
+
+  CExpr comm() const override { return Const(0); }
+
+  void evaluate(EvalContext* ctx) const override;
+};
+
 class B2P : public UnaryKernel {
  public:
   static constexpr char kBindName[] = "b2p";

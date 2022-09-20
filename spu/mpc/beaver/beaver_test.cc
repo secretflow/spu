@@ -27,7 +27,7 @@ TEST_P(BeaverTest, Mul_large) {
   const auto factory = std::get<0>(GetParam());
   const size_t kWorldSize = std::get<1>(GetParam());
   const FieldType kField = std::get<2>(GetParam());
-  const long kMaxDiff = std::get<3>(GetParam());
+  const int64_t kMaxDiff = std::get<3>(GetParam());
   const size_t kNumel = 10000;
 
   std::vector<Beaver::Triple> triples;
@@ -52,23 +52,23 @@ TEST_P(BeaverTest, Mul_large) {
     ring_add_(sum_c, c);
   }
 
-  if (kMaxDiff > 0) {
-    auto diff = ring_sub(ring_mul(sum_a, sum_b), sum_c);
-    DISPATCH_ALL_FIELDS(kField, "_", [&]() {
-      auto xdiff = xt_adapt<ring2k_t>(diff);
-      EXPECT_LE(xt::amax(xdiff)(), kMaxDiff);
-      EXPECT_GE(xt::amin(xdiff)(), -kMaxDiff);
-    });
-  } else {
-    EXPECT_EQ(ring_mul(sum_a, sum_b), sum_c) << sum_a << sum_b << sum_c;
-  }
+  DISPATCH_ALL_FIELDS(kField, "_", [&]() {
+    auto _a = ArrayView<ring2k_t>(sum_a);
+    auto _b = ArrayView<ring2k_t>(sum_b);
+    auto _c = ArrayView<ring2k_t>(sum_c);
+    for (auto idx = 0; idx < sum_a.numel(); idx++) {
+      auto t = _a[idx] * _b[idx];
+      auto err = t > _c[idx] ? t - _c[idx] : _c[idx] - t;
+      EXPECT_LE(err, kMaxDiff);
+    }
+  });
 }
 
 TEST_P(BeaverTest, Mul) {
   const auto factory = std::get<0>(GetParam());
   const size_t kWorldSize = std::get<1>(GetParam());
   const FieldType kField = std::get<2>(GetParam());
-  const long kMaxDiff = std::get<3>(GetParam());
+  const int64_t kMaxDiff = std::get<3>(GetParam());
   const size_t kNumel = 7;
 
   std::vector<Beaver::Triple> triples;
@@ -93,16 +93,16 @@ TEST_P(BeaverTest, Mul) {
     ring_add_(sum_c, c);
   }
 
-  if (kMaxDiff > 0) {
-    auto diff = ring_sub(ring_mul(sum_a, sum_b), sum_c);
-    DISPATCH_ALL_FIELDS(kField, "_", [&]() {
-      auto xdiff = xt_adapt<ring2k_t>(diff);
-      EXPECT_LE(xt::amax(xdiff)(), kMaxDiff);
-      EXPECT_GE(xt::amin(xdiff)(), -kMaxDiff);
-    });
-  } else {
-    EXPECT_EQ(ring_mul(sum_a, sum_b), sum_c) << sum_a << sum_b << sum_c;
-  }
+  DISPATCH_ALL_FIELDS(kField, "_", [&]() {
+    auto _a = ArrayView<ring2k_t>(sum_a);
+    auto _b = ArrayView<ring2k_t>(sum_b);
+    auto _c = ArrayView<ring2k_t>(sum_c);
+    for (auto idx = 0; idx < sum_a.numel(); idx++) {
+      auto t = _a[idx] * _b[idx];
+      auto err = t > _c[idx] ? t - _c[idx] : _c[idx] - t;
+      EXPECT_LE(err, kMaxDiff);
+    }
+  });
 }
 
 TEST_P(BeaverTest, And) {
@@ -140,12 +140,11 @@ TEST_P(BeaverTest, Dot) {
   const auto factory = std::get<0>(GetParam());
   const size_t kWorldSize = std::get<1>(GetParam());
   const FieldType kField = std::get<2>(GetParam());
-  const long kMaxDiff = std::get<3>(GetParam());
-
-  // case M > N
-  const size_t M = 8;
-  const size_t N = 1;
-  const size_t K = 4096;
+  const int64_t kMaxDiff = std::get<3>(GetParam());
+  // M > N
+  const size_t M = 17;
+  const size_t N = 8;
+  const size_t K = 1024;
 
   std::vector<Beaver::Triple> triples;
   triples.resize(kWorldSize);
@@ -170,28 +169,26 @@ TEST_P(BeaverTest, Dot) {
     ring_add_(sum_c, c);
   }
 
-  if (kMaxDiff > 0) {
-    auto diff = ring_sub(ring_mmul(sum_a, sum_b, M, N, K), sum_c);
-    DISPATCH_ALL_FIELDS(kField, "_", [&]() {
-      auto xdiff = xt_adapt<ring2k_t>(diff);
-      EXPECT_LE(xt::amax(xdiff)(), kMaxDiff);
-      EXPECT_GE(xt::amin(xdiff)(), -kMaxDiff);
-    });
-  } else {
-    EXPECT_EQ(ring_mmul(sum_a, sum_b, M, N, K), sum_c)
-        << sum_a << sum_b << sum_c;
-  }
+  auto res = ring_mmul(sum_a, sum_b, M, N, K);
+  DISPATCH_ALL_FIELDS(kField, "_", [&]() {
+    auto _r = ArrayView<ring2k_t>(res);
+    auto _c = ArrayView<ring2k_t>(sum_c);
+    for (auto idx = 0; idx < _r.numel(); idx++) {
+      auto err = _r[idx] > _c[idx] ? _r[idx] - _c[idx] : _c[idx] - _r[idx];
+      EXPECT_LE(err, kMaxDiff);
+    }
+  });
 }
 
 TEST_P(BeaverTest, Dot_large) {
   const auto factory = std::get<0>(GetParam());
   const size_t kWorldSize = std::get<1>(GetParam());
   const FieldType kField = std::get<2>(GetParam());
-  const long kMaxDiff = std::get<3>(GetParam());
-  // case: M < N
-  const size_t M = 2;
-  const size_t N = 8192;
-  const size_t K = 256;
+  const int64_t kMaxDiff = std::get<3>(GetParam());
+  // M < N
+  const size_t M = 11;
+  const size_t N = 20;
+  const size_t K = 1023;
 
   std::vector<Beaver::Triple> triples;
   triples.resize(kWorldSize);
@@ -216,17 +213,15 @@ TEST_P(BeaverTest, Dot_large) {
     ring_add_(sum_c, c);
   }
 
-  if (kMaxDiff > 0) {
-    auto diff = ring_sub(ring_mmul(sum_a, sum_b, M, N, K), sum_c);
-    DISPATCH_ALL_FIELDS(kField, "_", [&]() {
-      auto xdiff = xt_adapt<ring2k_t>(diff);
-      EXPECT_LE(xt::amax(xdiff)(), kMaxDiff);
-      EXPECT_GE(xt::amin(xdiff)(), -kMaxDiff);
-    });
-  } else {
-    EXPECT_EQ(ring_mmul(sum_a, sum_b, M, N, K), sum_c)
-        << sum_a << sum_b << sum_c;
-  }
+  auto res = ring_mmul(sum_a, sum_b, M, N, K);
+  DISPATCH_ALL_FIELDS(kField, "_", [&]() {
+    auto _r = ArrayView<ring2k_t>(res);
+    auto _c = ArrayView<ring2k_t>(sum_c);
+    for (auto idx = 0; idx < _r.numel(); idx++) {
+      auto err = _r[idx] > _c[idx] ? _r[idx] - _c[idx] : _c[idx] - _r[idx];
+      EXPECT_LE(err, kMaxDiff);
+    }
+  });
 }
 
 TEST_P(BeaverTest, Trunc) {

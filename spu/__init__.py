@@ -25,10 +25,9 @@ from spu.spu_pb2 import (
     ShapeProto,
     RuntimeConfig,
     ExecutableProto,
-    XlaMeta,
-    IrProto,
-    IrType,
 )
 
 from .binding.api import Io, Runtime, compile
 from .binding import util
+
+from .binding import psi

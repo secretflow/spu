@@ -45,3 +45,21 @@ def LowerConversionCast : Pass<"lower-conversion-cast", "func::FuncOp"> {
   let constructor = "createLowerConversionCastPass()";
   let dependentDialects = ["pphlo::PPHloDialect"];
 }
+
+def DecomposeMinMax : Pass<"decompose-minmax", "func::FuncOp"> {
+  let summary = "Decompose min/max into select with greater/less ops.";
+  let constructor = "createDecomposeMinMaxPass()";
+  let dependentDialects = ["pphlo::PPHloDialect"];
+}
+
+def ReduceTrunc : Pass<"reduce-truncation", "func::FuncOp"> {
+  let summary = "Reduce number of truncation by reassociate ops.";
+  let constructor = "createReduceTruncationPass()";
+  let dependentDialects = ["pphlo::PPHloDialect"];
+}
+
+def LowerMixedTypeOp : Pass<"lower-mixed-type-op", "func::FuncOp"> {
+  let summary = "Lower into mixed-type dot/mul to help reduce number of trunctions";
+  let constructor = "createLowerMixedTypeOpPass()";
+  let dependentDialects = ["pphlo::PPHloDialect"];
+}

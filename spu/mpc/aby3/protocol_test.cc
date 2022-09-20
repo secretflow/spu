@@ -14,49 +14,66 @@
 
 #include "spu/mpc/aby3/protocol.h"
 
+#include "spu/mpc/api_test.h"
 #include "spu/mpc/common/abprotocol_test.h"
-#include "spu/mpc/compute_test.h"
 
 namespace spu::mpc::test {
+namespace {
+
+RuntimeConfig makeConfig(FieldType field) {
+  RuntimeConfig conf;
+  conf.set_field(field);
+  return conf;
+}
+
+}  // namespace
 
 INSTANTIATE_TEST_SUITE_P(
-    Aby3ProtocolTest, ComputeTest,
-    testing::Combine(testing::Values(makeAby3Protocol),  //
-                     testing::Values(3),                 //
-                     testing::Values(FieldType::FM32, FieldType::FM64,
-                                     FieldType::FM128)),
-    [](const testing::TestParamInfo<ComputeTest::ParamType>& p) {
-      return fmt::format("{}x{}", std::get<1>(p.param), std::get<2>(p.param));
+    Aby3, ApiTest,
+    testing::Combine(testing::Values(makeAby3Protocol),              //
+                     testing::Values(makeConfig(FieldType::FM32),    //
+                                     makeConfig(FieldType::FM64),    //
+                                     makeConfig(FieldType::FM128)),  //
+                     testing::Values(3)),                            //
+    [](const testing::TestParamInfo<ApiTest::ParamType>& p) {
+      return fmt::format("{}x{}", std::get<1>(p.param).field(),
+                         std::get<2>(p.param));
     });
 
 INSTANTIATE_TEST_SUITE_P(
-    Aby3ArithmeticTest, ArithmeticTest,
-    testing::Combine(testing::Values(makeAby3Protocol),  //
-                     testing::Values(3),                 //
-                     testing::Values(FieldType::FM32, FieldType::FM64,
-                                     FieldType::FM128)),
+    Aby3, ArithmeticTest,
+    testing::Combine(testing::Values(makeAby3Protocol),              //
+                     testing::Values(makeConfig(FieldType::FM32),    //
+                                     makeConfig(FieldType::FM64),    //
+                                     makeConfig(FieldType::FM128)),  //
+                     testing::Values(3)),                            //
     [](const testing::TestParamInfo<ArithmeticTest::ParamType>& p) {
-      return fmt::format("{}x{}", std::get<1>(p.param), std::get<2>(p.param));
+      return fmt::format("{}x{}", std::get<1>(p.param).field(),
+                         std::get<2>(p.param));
     });
 
 INSTANTIATE_TEST_SUITE_P(
-    Aby3BooleanTest, BooleanTest,
-    testing::Combine(testing::Values(makeAby3Protocol),  //
-                     testing::Values(3),                 //
-                     testing::Values(FieldType::FM32, FieldType::FM64,
-                                     FieldType::FM128)),
+    Aby3, BooleanTest,
+    testing::Combine(testing::Values(makeAby3Protocol),              //
+                     testing::Values(makeConfig(FieldType::FM32),    //
+                                     makeConfig(FieldType::FM64),    //
+                                     makeConfig(FieldType::FM128)),  //
+                     testing::Values(3)),                            //
     [](const testing::TestParamInfo<BooleanTest::ParamType>& p) {
-      return fmt::format("{}x{}", std::get<1>(p.param), std::get<2>(p.param));
+      return fmt::format("{}x{}", std::get<1>(p.param).field(),
+                         std::get<2>(p.param));
     });
 
 INSTANTIATE_TEST_SUITE_P(
-    Aby3BooleanTest, ConversionTest,
-    testing::Combine(testing::Values(makeAby3Protocol),  //
-                     testing::Values(3),                 //
-                     testing::Values(FieldType::FM32, FieldType::FM64,
-                                     FieldType::FM128)),
+    Aby3, ConversionTest,
+    testing::Combine(testing::Values(makeAby3Protocol),              //
+                     testing::Values(makeConfig(FieldType::FM32),    //
+                                     makeConfig(FieldType::FM64),    //
+                                     makeConfig(FieldType::FM128)),  //
+                     testing::Values(3)),                            //
     [](const testing::TestParamInfo<BooleanTest::ParamType>& p) {
-      return fmt::format("{}x{}", std::get<1>(p.param), std::get<2>(p.param));
+      return fmt::format("{}x{}", std::get<1>(p.param).field(),
+                         std::get<2>(p.param));
     });
 
 }  // namespace spu::mpc::test

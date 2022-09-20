@@ -14,213 +14,62 @@
 
 #pragma once
 
+#include "spu/mpc/api.h"
 #include "spu/mpc/object.h"
+#include "spu/mpc/util/circuits.h"
 
 namespace spu::mpc {
 
-class ABProtState : public State {
- public:
-  static constexpr char kBindName[] = "ABProtState";
+ArrayRef a2p(Object* ctx, const ArrayRef&);
+ArrayRef p2a(Object* ctx, const ArrayRef&);
 
-  bool lazy_ab = true;
-};
+ArrayRef zero_a(Object* ctx, FieldType, size_t);
 
-class ABProtP2S : public UnaryKernel {
- public:
-  static constexpr char kBindName[] = "p2s";
-  Kind kind() const override { return Kind::kDynamic; }
+ArrayRef not_a(Object* ctx, const ArrayRef&);
+ArrayRef msb_a(Object* ctx, const ArrayRef&);
 
-  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in) const override;
-};
+ArrayRef add_ap(Object* ctx, const ArrayRef&, const ArrayRef&);
+ArrayRef add_aa(Object* ctx, const ArrayRef&, const ArrayRef&);
 
-class ABProtS2P : public UnaryKernel {
- public:
-  static constexpr char kBindName[] = "s2p";
+ArrayRef mul_ap(Object* ctx, const ArrayRef&, const ArrayRef&);
+ArrayRef mul_aa(Object* ctx, const ArrayRef&, const ArrayRef&);
+ArrayRef mul_a1b(Object* ctx, const ArrayRef&, const ArrayRef&);
 
-  Kind kind() const override { return Kind::kDynamic; }
+ArrayRef lshift_a(Object* ctx, const ArrayRef&, size_t);
+ArrayRef truncpr_a(Object* ctx, const ArrayRef&, size_t);
 
-  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in) const override;
-};
+ArrayRef mmul_ap(Object* ctx, const ArrayRef&, const ArrayRef&, size_t, size_t,
+                 size_t);
+ArrayRef mmul_aa(Object* ctx, const ArrayRef&, const ArrayRef&, size_t, size_t,
+                 size_t);
 
-class ABProtNotS : public UnaryKernel {
- public:
-  static constexpr char kBindName[] = "not_s";
+ArrayRef zero_b(Object* ctx, FieldType, size_t);
 
-  Kind kind() const override { return Kind::kDynamic; }
+Type common_type_b(Object* ctx, const Type& a, const Type& b);
+ArrayRef cast_type_b(Object* ctx, const ArrayRef& a, const Type& to_type);
 
-  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in) const override;
-};
+ArrayRef b2p(Object* ctx, const ArrayRef&);
+ArrayRef p2b(Object* ctx, const ArrayRef&);
 
-class ABProtAddSP : public BinaryKernel {
- public:
-  static constexpr char kBindName[] = "add_sp";
+ArrayRef a2b(Object* ctx, const ArrayRef&);
+ArrayRef b2a(Object* ctx, const ArrayRef&);
 
-  Kind kind() const override { return Kind::kDynamic; }
+ArrayRef and_bp(Object* ctx, const ArrayRef&, const ArrayRef&);
+ArrayRef and_bb(Object* ctx, const ArrayRef&, const ArrayRef&);
 
-  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& lhs,
-                const ArrayRef& rhs) const override;
-};
+ArrayRef xor_bp(Object* ctx, const ArrayRef&, const ArrayRef&);
+ArrayRef xor_bb(Object* ctx, const ArrayRef&, const ArrayRef&);
 
-class ABProtAddSS : public BinaryKernel {
- public:
-  static constexpr char kBindName[] = "add_ss";
+ArrayRef lshift_b(Object* ctx, const ArrayRef&, size_t);
+ArrayRef rshift_b(Object* ctx, const ArrayRef&, size_t);
+ArrayRef arshift_b(Object* ctx, const ArrayRef&, size_t);
 
-  Kind kind() const override { return Kind::kDynamic; }
+ArrayRef bitrev_b(Object* ctx, const ArrayRef&, size_t, size_t);
 
-  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& lhs,
-                const ArrayRef& rhs) const override;
-};
+ArrayRef add_bb(Object* ctx, const ArrayRef&, const ArrayRef&);
 
-class ABProtMulSP : public BinaryKernel {
- public:
-  static constexpr char kBindName[] = "mul_sp";
+void regABKernels(Object* obj);
 
-  Kind kind() const override { return Kind::kDynamic; }
-
-  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& lhs,
-                const ArrayRef& rhs) const override;
-};
-
-class ABProtMulSS : public BinaryKernel {
- public:
-  static constexpr char kBindName[] = "mul_ss";
-
-  Kind kind() const override { return Kind::kDynamic; }
-
-  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& lhs,
-                const ArrayRef& rhs) const override;
-};
-
-class ABProtMatMulSP : public MatmulKernel {
- public:
-  static constexpr char kBindName[] = "mmul_sp";
-
-  Kind kind() const override { return Kind::kDynamic; }
-
-  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& A, const ArrayRef& B,
-                size_t M, size_t N, size_t K) const override;
-};
-
-class ABProtMatMulSS : public MatmulKernel {
- public:
-  static constexpr char kBindName[] = "mmul_ss";
-
-  Kind kind() const override { return Kind::kDynamic; }
-
-  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& A, const ArrayRef& B,
-                size_t M, size_t N, size_t K) const override;
-};
-
-class ABProtAndSP : public BinaryKernel {
- public:
-  static constexpr char kBindName[] = "and_sp";
-
-  Kind kind() const override { return Kind::kDynamic; }
-
-  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& lhs,
-                const ArrayRef& rhs) const override;
-};
-
-class ABProtAndSS : public BinaryKernel {
- public:
-  static constexpr char kBindName[] = "and_ss";
-
-  Kind kind() const override { return Kind::kDynamic; }
-
-  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& lhs,
-                const ArrayRef& rhs) const override;
-};
-
-class ABProtXorSP : public BinaryKernel {
- public:
-  static constexpr char kBindName[] = "xor_sp";
-
-  Kind kind() const override { return Kind::kDynamic; }
-
-  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& lhs,
-                const ArrayRef& rhs) const override;
-};
-
-class ABProtXorSS : public BinaryKernel {
- public:
-  static constexpr char kBindName[] = "xor_ss";
-
-  Kind kind() const override { return Kind::kDynamic; }
-
-  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& lhs,
-                const ArrayRef& rhs) const override;
-};
-
-class ABProtEqzS : public UnaryKernel {
- public:
-  static constexpr char kBindName[] = "eqz_s";
-
-  Kind kind() const override { return Kind::kDynamic; }
-
-  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in) const override;
-};
-
-class ABProtLShiftS : public ShiftKernel {
- public:
-  static constexpr char kBindName[] = "lshift_s";
-
-  Kind kind() const override { return Kind::kDynamic; }
-
-  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in,
-                size_t bits) const override;
-};
-
-class ABProtRShiftS : public ShiftKernel {
- public:
-  static constexpr char kBindName[] = "rshift_s";
-
-  Kind kind() const override { return Kind::kDynamic; }
-
-  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in,
-                size_t bits) const override;
-};
-
-class ABProtARShiftS : public ShiftKernel {
- public:
-  static constexpr char kBindName[] = "arshift_s";
-
-  Kind kind() const override { return Kind::kDynamic; }
-
-  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in,
-                size_t bits) const override;
-};
-
-class ABProtTruncPrS : public ShiftKernel {
- public:
-  static constexpr char kBindName[] = "truncpr_s";
-
-  Kind kind() const override { return Kind::kDynamic; }
-
-  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in,
-                size_t bits) const override;
-};
-
-class ABProtBitrevS : public Kernel {
- public:
-  static constexpr char kBindName[] = "bitrev_s";
-
-  Kind kind() const override { return Kind::kDynamic; }
-
-  void evaluate(EvalContext* ctx) const override {
-    ctx->setOutput(proc(ctx, ctx->getParam<ArrayRef>(0),
-                        ctx->getParam<size_t>(1), ctx->getParam<size_t>(2)));
-  }
-  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in, size_t start,
-                size_t end) const;
-};
-
-class ABProtMsbS : public UnaryKernel {
- public:
-  static constexpr char kBindName[] = "msb_s";
-
-  Kind kind() const override { return Kind::kDynamic; }
-
-  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in) const override;
-};
+CircuitBasicBlock<ArrayRef> makeABProtBasicBlock(Object* ctx);
 
 }  // namespace spu::mpc

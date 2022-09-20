@@ -14,26 +14,17 @@
 
 #pragma once
 
+#include <array>
 #include <functional>
 #include <iostream>
 
 #include "absl/numeric/bits.h"
 
 #include "spu/core/vectorize.h"
+#include "spu/mpc/util/bit_utils.h"
 
 namespace spu::mpc {
-namespace details {
 
-// TODO(jint): general utility
-template <class T>
-struct dependent_false : std::false_type {};
-
-}  // namespace details
-
-// multi-bit circuit basic block
-//
-// with LShift/RShift, we can build any constant input, plus xor/and, we
-// can build any complicate circuits.
 template <typename T>
 struct CircuitBasicBlock {
   // multi-bit xor. i.e. 0010 xor 1010 -> 1000
@@ -42,171 +33,243 @@ struct CircuitBasicBlock {
   // multi-bit and. i.e. 0010 xor 1010 -> 0010
   using And = std::function<T(T const&, T const&)>;
 
-  // (logic) left shift
+  // (logical) left shift
   using LShift = std::function<T(T const&, size_t)>;
 
-  // (logic) right shift
+  // (logical) right shift
   using RShift = std::function<T(T const&, size_t)>;
 
-  // TODO(jint) uint64_t is not good idea?
-  using InitLike = std::function<T(T const& x, uint64_t init)>;
+  // Init a constant.
+  using InitLike = std::function<T(T const&, uint64_t hi, uint64_t lo)>;
 
-  size_t num_bits = 0;
+  // Set number of bits.
+  using SetNBits = std::function<void(T&, size_t)>;
+
   Xor _xor = nullptr;
   And _and = nullptr;
   LShift lshift = nullptr;
   RShift rshift = nullptr;
   InitLike init_like = nullptr;
+  SetNBits set_nbits = nullptr;
 };
 
+// Parallel Prefix Graph: Koggle Stone.
+// We write prefix element as P, G, where:
+//  (G0, P0) = (g0, p0)
+//  (Gi, Pi) = (gi, pi) o (Gi-1, Pi-1)
+// The `o` here is:
+//  (G0, P0) o (G1, P1) = (G0 ^ (P0 & G1), P0 & P1)
+//
+// Latency log(k) + 1
 template <typename T>
-CircuitBasicBlock<T> DefaultCircuitBasicBlock() {
-  if constexpr (std::is_integral_v<T>) {
-    CircuitBasicBlock<T> cbb;
-    cbb.num_bits = sizeof(T) * 8;
-    cbb.init_like = [](T const&, uint64_t x) -> T { return static_cast<T>(x); };
-    cbb._xor = [](T const& lhs, T const& rhs) -> T { return lhs ^ rhs; };
-    cbb._and = [](T const& lhs, T const& rhs) -> T { return lhs & rhs; };
-    cbb.lshift = [](T const& x, size_t bits) -> T { return x << bits; };
-    cbb.rshift = [](T const& x, size_t bits) -> T { return x >> bits; };
-    return cbb;
-  } else {
-    static_assert(details::dependent_false<T>::value,
-                  "Not implemented for circuit basic block.");
+T koggle_stone(const CircuitBasicBlock<T>& ctx, T const& lhs, T const& rhs,
+               size_t nbits) {
+  // Generate p & g.
+  auto P = ctx._xor(lhs, rhs);
+  auto G = ctx._and(lhs, rhs);
+  for (int idx = 0; idx < log2Ceil(nbits); ++idx) {
+    const size_t offset = 1UL << idx;
+    auto G1 = ctx.lshift(G, offset);
+    auto P1 = ctx.lshift(P, offset);
+
+    // P1 = P & P1
+    // G1 = G ^ (P & G1)
+    if constexpr (hasSimdTrait<T>::value) {
+      std::vector<T> res = vectorize({P, P}, {P1, G1}, ctx._and);
+      P = std::move(res[0]);
+      G = ctx._xor(G, std::move(res[1]));
+    } else {
+      auto tmp = ctx._and(P, G1);
+      P = ctx._and(P, P1);
+      G = ctx._xor(G, tmp);
+    }
   }
+
+  // out = (G << 1) ^ p0
+  auto C = ctx.lshift(G, 1);
+  return ctx._xor(ctx._xor(lhs, rhs), C);
 }
 
-/// Reference:
-///  PPA (Parallel Prefix Adder)
-///  http://users.encs.concordia.ca/~asim/COEN_6501/Lecture_Notes/Parallel%20prefix%20adders%20presentation.pdf
-///
-/// Why KoggleStone:
-///  - easy to implement.
-///
-/// Analysis:
-///  AND Gates: 1 + log(k) (additional 1 for `g` generation)
 template <typename T>
-T KoggleStoneAdder(
-    const T& lhs, const T& rhs,
-    const CircuitBasicBlock<T>& bb = DefaultCircuitBasicBlock<T>()) {
+T sklansky(const CircuitBasicBlock<T>& ctx, T const& lhs, T const& rhs,
+           size_t nbits) {
+  constexpr std::array<std::array<uint64_t, 2>, 7> kKeepMasks = {{
+      // hi, lo
+      {0x5555555555555555, 0x5555555555555555},
+      {0x3333333333333333, 0x3333333333333333},
+      {0x0F0F0F0F0F0F0F0F, 0x0F0F0F0F0F0F0F0F},
+      {0x00FF00FF00FF00FF, 0x00FF00FF00FF00FF},
+      {0x0000FFFF0000FFFF, 0x0000FFFF0000FFFF},
+      {0x00000000FFFFFFFF, 0x00000000FFFFFFFF},
+      {0x0000000000000000, 0xFFFFFFFFFFFFFFFF},
+  }};
+
+  constexpr std::array<std::array<uint64_t, 2>, 7> kSelMask = {{
+      // hi, lo
+      {0x5555555555555555, 0x5555555555555555},
+      {0x2222222222222222, 0x2222222222222222},
+      {0x0808080808080808, 0x0808080808080808},
+      {0x0080008000800080, 0x0080008000800080},
+      {0x0000800000008000, 0x0000800000008000},
+      {0x0000000080000000, 0x0000000080000000},
+      {0x0000000000000000, 0x8000000000000000},
+  }};
+
   // Generate p & g.
-  T p = bb._xor(lhs, rhs);
-  T g = bb._and(lhs, rhs);
+  auto P = ctx._xor(lhs, rhs);
+  auto G = ctx._and(lhs, rhs);
+  for (int idx = 0; idx < log2Ceil(nbits); ++idx) {
+    const auto s_mask = ctx.init_like(G, kSelMask[idx][0], kSelMask[idx][1]);
+    auto G1 = ctx.lshift(ctx._and(G, s_mask), 1);
+    auto P1 = ctx.lshift(ctx._and(P, s_mask), 1);
 
-  // Parallel Prefix Graph: Koggle Stone.
-  // We write prefix element as P, G, where:
-  //  (G0, P0) = (g0, p0)
-  //  (Gi, Pi) = (gi, pi) o (Gi-1, Pi-1)
-  // The `o` here is:
-  //  (G0, P0) o (G1, P1) = (G0 ^ (P0 & G1), P0 & P1)
-  //
-  // We can perform AND vectorization for above two AND:
-  T G0 = g;
-  T P0 = p;
-  for (int idx = 0; idx < static_cast<int>(absl::bit_width(bb.num_bits)) - 1;
-       ++idx) {
-    const size_t offset = 1UL << idx;
-
-    // G1 = G << offset
-    // P1 = P << offset
-    T G1 = bb.lshift(G0, offset);
-    T P1 = bb.lshift(P0, offset);
-
-    // In the Kogge-Stone graph, we need to keep the lowest |offset| P, G
-    // unmodified.
-    //
-    //// P0 = P0 & P1
-    //// G0 = G0 ^ (P0 & G1)
-    if constexpr (hasSimdTrait<T>::value) {
-      std::vector<T> res = vectorize({P0, P0}, {P1, G1}, bb._and);
-      P0 = std::move(res[0]);
-      G1 = std::move(res[1]);
-    } else {
-      G1 = bb._and(P0, G1);
-      P0 = bb._and(P0, P1);
+    for (int j = 0; j < idx; j++) {
+      G1 = ctx._xor(G1, ctx.lshift(G1, 1 << j));
+      P1 = ctx._xor(P1, ctx.lshift(P1, 1 << j));
     }
 
-    G0 = bb._xor(G1, G0);
+    const auto k_mask =
+        ctx.init_like(G, kKeepMasks[idx][0], kKeepMasks[idx][1]);
+    P1 = ctx._xor(P1, k_mask);
+
+    // P = P & P1
+    // G = G ^ (P & G1)
+    if constexpr (hasSimdTrait<T>::value) {
+      std::vector<T> res = vectorize({P, P}, {P1, G1}, ctx._and);
+      P = std::move(res[0]);
+      G = ctx._xor(G, std::move(res[1]));
+    } else {
+      auto tmp = ctx._and(P, G1);
+      P = ctx._and(P, P1);
+      G = ctx._xor(G, tmp);
+    }
   }
 
-  // Carry = G0
-  // C = Carry << 1;
-  // out = C ^ P
-  T C = bb.lshift(G0, 1);
-  return bb._xor(p, C);
+  // out = (G0 << 1) ^ p0
+  auto C = ctx.lshift(G, 1);
+  return ctx._xor(ctx._xor(lhs, rhs), C);
 }
 
-// Calculate the carry-out bit of the sum of two elements.
-// Output m elements, with each element n bit number, where:
-//   c = carry(x + y)
-//
-// The basic idea is to apply the CarryOutL circuit described in [1] on a m*n
-// bit vector, with the following assumptions.
-// - CPU could always do n-bit SIMD.
-// - m element may not be continuous (it's strided).
-//
-//    b7 b6 b5 b4 b3 b2 b1 b0
+template <typename T>
+T odd_even_split(const CircuitBasicBlock<T>& ctx, const T& v, size_t nbits) {
+  // algorithm:
+  //
+  //      0101010101010101
+  // swap  ^^  ^^  ^^  ^^
+  //      0011001100110011
+  // swap   ^^^^    ^^^^
+  //      0000111100001111
+  // swap     ^^^^^^^^
+  //      0000000011111111
+
+  constexpr std::array<std::array<uint64_t, 2>, 6> kSwapMasks = {{
+      // hi, lo
+      {0x2222222222222222, 0x2222222222222222},  // 4bit
+      {0x0C0C0C0C0C0C0C0C, 0x0C0C0C0C0C0C0C0C},  // 8bit
+      {0x00F000F000F000F0, 0x00F000F000F000F0},  // 16bit
+      {0x0000FF000000FF00, 0x0000FF000000FF00},  // 32bit
+      {0x00000000FFFF0000, 0x00000000FFFF0000},  // 64bit
+      {0x0000000000000000, 0xFFFFFFFF00000000},  // 128bit
+  }};
+  constexpr std::array<std::array<uint64_t, 2>, 6> kKeepMasks = {{
+      {0x9999999999999999, 0x9999999999999999},  // 4bit
+      {0xC3C3C3C3C3C3C3C3, 0xC3C3C3C3C3C3C3C3},  // 8bit
+      {0xF00FF00FF00FF00F, 0xF00FF00FF00FF00F},  // 16bit
+      {0xFF0000FFFF0000FF, 0xFF0000FFFF0000FF},  // 32bit
+      {0xFFFF00000000FFFF, 0xFFFF00000000FFFF},  // 64bit
+      {0xFFFFFFFF00000000, 0x00000000FFFFFFFF},  // 128bit
+  }};
+
+  // let r = v
+  T r = ctx.lshift(v, 0);
+  for (int idx = 0; idx + 1 < log2Ceil(nbits); ++idx) {
+    // r = (r & keep) ^ ((r >> i) & move) ^ ((r & move) << i)
+    const auto keep = ctx.init_like(r, kKeepMasks[idx][0], kKeepMasks[idx][1]);
+    const auto move = ctx.init_like(r, kSwapMasks[idx][0], kSwapMasks[idx][1]);
+
+    r = ctx._xor(ctx._and(r, keep),
+                 ctx._xor(ctx._and(ctx.rshift(r, 1 << idx), move),
+                          ctx.lshift(ctx._and(r, move), 1 << idx)));
+  }
+
+  if (!absl::has_single_bit(nbits)) {
+    // handle non 2^k bits case.
+    T mask = ctx.init_like(r, 0, (1ULL << (nbits / 2)) - 1);
+    r = ctx._xor(ctx.lshift(ctx.rshift(r, 1 << log2Floor(nbits)), nbits / 2),
+                 ctx._and(r, mask));
+  }
+
+  return r;
+}
+
+//    7  6  5  4  3  2  1  0
 //    |_/   |_/   |_/   |_/
+//    |____/      |____/
+//    |__________/
+//
+//    6  5  5  4  3  2  1
+//    |_/   |_/   |_/   |
 //    |____/      |____/
 //    |__________/
 //
 // # Reference
 // [1](https://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.220.9499&rep=rep1&type=pdf)
 // CarryOutL
-// [2](https://users.encs.concordia.ca/~asim/COEN_6501/Lecture_Notes/Parallel%20prefix%20adders%20presentation.pdf)
-// J. Sklansky – conditional adder
 template <typename T>
-T CarryOut(const T& lhs, const T& rhs,
-           const CircuitBasicBlock<T>& bb = DefaultCircuitBasicBlock<T>()) {
-  auto compress = [&](const T& in, size_t nbits) -> T {
-    // out[i] = in[i*2]
-    T out = bb.init_like(in, 0);
-    const T kOne = bb.init_like(in, 1);
-    // TODO: use log(nbits) method.
-    for (size_t i = 0; i < nbits / 2; i++) {
-      // (in >> (2*i)) << i
-      T tmp = bb.lshift(bb._and(bb.rshift(in, 2 * i), kOne), i);
-      out = bb._xor(out, tmp);
-    }
-    return out;
+T carry_out(const CircuitBasicBlock<T>& ctx, const T& x, const T& y,
+            size_t nbits) {
+  YASL_ENFORCE(nbits != 0, "carry out with 0 is meaningless");
+  // split even and odd bits. e.g.
+  //   xAyBzCwD -> [xyzw, ABCD]
+  auto bit_split = [&](T const& in, size_t kk) -> std::tuple<T, T> {
+    YASL_ENFORCE(kk % 2 == 0 && kk <= 128);
+    const size_t hk = kk / 2;
+
+    auto perm = odd_even_split(ctx, in, kk);
+    T mask = (hk == 64) ? ctx.init_like(perm, 0, ~0x0ULL)
+                        : ctx.init_like(perm, 0, (1ULL << (hk)) - 1);
+    T t0 = ctx._and(perm, mask);
+    T t1 = ctx._and(ctx.rshift(perm, hk), mask);
+    ctx.set_nbits(t0, hk);
+    ctx.set_nbits(t1, hk);
+    return std::make_tuple(t0, t1);
   };
 
   // init P & G
-  T P0 = bb._xor(lhs, rhs);
-  T G0 = bb._and(lhs, rhs);
+  auto P = ctx._xor(x, y);
+  auto G = ctx._and(x, y);
 
-  for (size_t idx = 0; idx < absl::bit_width(bb.num_bits) - 1; ++idx) {
-    // TODO: we should split odd/even bits instead of shift.
-    // In current implementation, communication is doubled.
-    T P1 = bb.rshift(P0, 1);
-    T G1 = bb.rshift(G0, 1);
+  if (nbits == 1) {
+    return ctx._and(G, ctx.init_like(G, 0, 1));
+  }
+
+  // Use koggle stone layout.
+  size_t k = nbits;
+  while (k > 1) {
+    if (k % 2 != 0) {
+      k += 1;
+      P = ctx.lshift(P, 1);
+      G = ctx.lshift(G, 1);
+    }
+    auto [P0, P1] = bit_split(P, k);
+    auto [G0, G1] = bit_split(G, k);
 
     // Calculate next-level of P, G
     //   P = P1 & P0
     //   G = G1 | (P1 & G0)
     //     = G1 ^ (P1 & G0)
     if constexpr (hasSimdTrait<T>::value) {
-      std::vector<T> v = vectorize({P0, G0}, {P1, P1}, bb._and);
-      P0 = std::move(v[0]);
-      G0 = bb._xor(G1, v[1]);
+      std::vector<T> v = vectorize({P0, G0}, {P1, P1}, ctx._and);
+      P = std::move(v[0]);
+      G = ctx._xor(G1, std::move(v[1]));
     } else {
-      P0 = bb._and(P1, P0);
-      G0 = bb._xor(G1, bb._and(P1, G0));
+      P = ctx._and(P1, P0);
+      G = ctx._xor(G1, ctx._and(P1, G0));
     }
-
-    // Compress it.
-    //    a7 a6 a5 a4 a3 a2 a1 a0
-    //     \_|   \_|   \_|   \_|
-    //       a6    a4    a2    a0
-    //
-    //                a6 a4 a2 a0
-    G0 = compress(G0, bb.num_bits >> idx);
-    P0 = compress(P0, bb.num_bits >> idx);
-
-    // TODO: set the new bitwidth.
+    k >>= 1;
   }
 
-  return G0;
+  return G;
 }
 
 }  // namespace spu::mpc

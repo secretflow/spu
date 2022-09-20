@@ -145,6 +145,17 @@ Value logical_not(HalContext* ctx, const Value& x) {
   SPU_TRACE_HLO(ctx, x);
 
   auto ones = constant(ctx, true, x.shape());
+
+  // TODO: we should NOT dispatch according to AShr/BShr trait here.
+  // But we did have a chance to optimize it.
+  // if (x.storage_type().isa<BShare>()) {
+  //   // not + lshift + rshift, not communication.
+  //   return (~x) << (k-1) >> (k-1);
+  //} else {
+  //   // b2a + add_ap
+  //   return i_sub(ctx, ones, ctx);
+  //}
+
   return i_sub(ctx, ones, x);
 }
 
@@ -209,7 +220,25 @@ Value abs(HalContext* ctx, const Value& x) {
 Value exp(HalContext* ctx, const Value& a) {
   SPU_TRACE_HLO(ctx, a);
 
-  return f_exp(ctx, dtype_cast(ctx, a, DT_FXP));
+  switch (ctx->rt_config().fxp_exp_mode()) {
+    case RuntimeConfig::EXP_DEFAULT:
+    case RuntimeConfig::EXP_TAYLOR:
+      return f_exp(ctx, dtype_cast(ctx, a, DT_FXP));
+    case RuntimeConfig::EXP_PADE: {
+      // The valid input for exp_pade_approx is [-exp_input_limit,
+      // exp_input_limit].
+      // TODO(junfeng): We should merge clamp into exp_pade_approx to save msb
+      // ops.
+      const float exp_input_limit = 32 / std::log2(std::exp(1));
+      const auto x = clamp(ctx, constant(ctx, -exp_input_limit, a.shape()),
+                           dtype_cast(ctx, a, DT_FXP),
+                           constant(ctx, exp_input_limit, a.shape()));
+      return f_exp(ctx, x);
+    }
+    default:
+      YASL_THROW("unexpected exp approxmation method {}",
+                 ctx->rt_config().fxp_exp_mode());
+  }
 }
 
 Value select(HalContext* ctx, const Value& pred, const Value& a,
@@ -223,7 +252,7 @@ Value select(HalContext* ctx, const Value& pred, const Value& a,
   // To ensure pred is {0, 1} on integer range, we have to promote pred to an
   // actual integer here. Otherwise, when we use pred to do computation the
   // result will be wrong
-  return _mux(ctx, dtype_cast(ctx, pred, DT_I64), a, b).setDtype(a.dtype());
+  return _mux(ctx, pred, a, b).setDtype(a.dtype());
 }
 
 Value bitwise_and(HalContext* ctx, const Value& x, const Value& y) {
@@ -427,6 +456,12 @@ Value tanh(HalContext* ctx, const Value& x) {
   SPU_TRACE_HLO(ctx, x);
 
   return f_tanh(ctx, dtype_cast(ctx, x, DT_FXP));
+}
+
+Value sqrt_inv(HalContext* ctx, const Value& x) {
+  SPU_TRACE_HLO(ctx, x);
+
+  return f_sqrt_inv(ctx, dtype_cast(ctx, x, DT_FXP));
 }
 
 }  // namespace spu::hal

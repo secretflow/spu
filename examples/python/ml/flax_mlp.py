@@ -63,9 +63,7 @@ def loss_func(params, x, y):
     return mse(y, pred)
 
 
-def train_auto_grad(x, y, n_batch=10, n_epochs=10, step_size=0.001):
-    model = MLP(FEATURES)
-    params = model.init(jax.random.PRNGKey(1), jnp.ones((n_batch, FEATURES[0])))
+def train_auto_grad(x, y, params, n_batch=10, n_epochs=10, step_size=0.01):
     xs = jnp.array_split(x, len(x) / n_batch, axis=0)
     ys = jnp.array_split(y, len(y) / n_batch, axis=0)
 
@@ -82,10 +80,16 @@ def train_auto_grad(x, y, n_batch=10, n_epochs=10, step_size=0.001):
     return params
 
 
+# Model init is purely public and run on SPU leads to significant accuracy loss, thus hoist out and run in python
+def model_init(n_batch=10):
+    model = MLP(FEATURES)
+    return model.init(jax.random.PRNGKey(1), jnp.ones((n_batch, FEATURES[0])))
+
+
 def run_on_cpu():
     x_train, y_train = dsutil.breast_cancer(slice(None, None, None), True)
-    train_auto_grad_jit = jax.jit(train_auto_grad)
-    params = train_auto_grad_jit(x_train, y_train)
+    params = model_init()
+    params = jax.jit(train_auto_grad)(x_train, y_train, params)
 
     x_test, y_test = dsutil.breast_cancer(slice(None, None, None), False)
     y_predict = predict(params, x_test)
@@ -101,21 +105,53 @@ with open(args.config, 'r') as file:
 
 ppd.init(conf["nodes"], conf["devices"])
 
+import cloudpickle as pickle
+import tempfile
+
 
 def run_on_spu():
     @ppd.device("SPU")
-    def main(x1, x2, y):
+    def main(x1, x2, y, params):
         x = jnp.concatenate((x1, x2), axis=1)
-        return train_auto_grad(x, y)
+        return train_auto_grad(x, y, params)
 
     x1, y = ppd.device("P1")(dsutil.breast_cancer)(slice(None, 15), True)
     x2, _ = ppd.device("P2")(dsutil.breast_cancer)(slice(15, None), True)
-    params = main(x1, x2, y)
-    params = ppd.get(params)
+
+    params = model_init()
+    params = main(x1, x2, y, params)
+    params_r = ppd.get(params)
 
     x_test, y_test = dsutil.breast_cancer(slice(None, None, None), False)
-    y_predict = predict(params, x_test)
+    y_predict = predict(params_r, x_test)
     print("AUC(spu)={}".format(metrics.roc_auc_score(y_test, y_predict)))
+
+    return params
+
+
+def save_and_load_model():
+    # 1. run with spu
+    params = run_on_spu()
+
+    # 2. save metadata and spu objects.
+    meta = ppd.save(params)
+
+    spu_model_file = tempfile.NamedTemporaryFile()
+    spu_model_file_name = spu_model_file.name
+    with open(spu_model_file_name, "wb") as f:
+        pickle.dump(meta, f)
+
+    # 3. load metadata and spu objects.
+    with open(spu_model_file_name, "rb") as f:
+        meta_ = pickle.load(f)
+    params_ = ppd.load(meta_)
+    params_r = ppd.get(params_)
+
+    x_test, y_test = dsutil.breast_cancer(slice(None, None, None), False)
+    y_predict = predict(params_r, x_test)
+    print(
+        "AUC(save_and_load_model)={}".format(metrics.roc_auc_score(y_test, y_predict))
+    )
 
 
 if __name__ == '__main__':
@@ -123,3 +159,4 @@ if __name__ == '__main__':
     run_on_cpu()
     print('\n------\nRun on SPU')
     run_on_spu()
+    save_and_load_model()

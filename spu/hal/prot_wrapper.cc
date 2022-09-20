@@ -24,7 +24,7 @@
 #include "spu/core/ndarray_ref.h"
 #include "spu/core/shape_util.h"
 #include "spu/core/type_util.h"
-#include "spu/mpc/interfaces.h"
+#include "spu/mpc/api.h"
 
 namespace spu::hal {
 namespace {
@@ -108,6 +108,19 @@ std::tuple<int64_t, int64_t, int64_t> deduceMmulArgs(
         mpc::NAME(ctx->prot(), flattenValue(x), flattenValue(y), m, n, k); \
     return unflattenValue(ret, {m, n});                                    \
   }
+
+Type _common_type_s(HalContext* ctx, const Type& a, const Type& b) {
+  SPU_TRACE_HAL(ctx, a, b);
+  ctx->prot()->setTracingDepth(ctx->getTracingDepth());
+  return mpc::common_type_s(ctx->prot(), a, b);
+}
+
+Value _cast_type_s(HalContext* ctx, const Value& in, const Type& to) {
+  SPU_TRACE_HAL(ctx, in, to);
+  ctx->prot()->setTracingDepth(ctx->getTracingDepth());
+  auto ret = mpc::cast_type_s(ctx->prot(), flattenValue(in), to);
+  return unflattenValue(ret, in.shape());
+}
 
 MAP_UNARY_OP(p2s)
 MAP_UNARY_OP(s2p)

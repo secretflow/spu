@@ -15,9 +15,9 @@
 #include "spu/mpc/semi2k/boolean.h"
 
 #include "spu/core/profile.h"
+#include "spu/mpc/common/abprotocol.h"  // zero_b
 #include "spu/mpc/common/prg_state.h"
 #include "spu/mpc/common/pub2k.h"
-#include "spu/mpc/interfaces.h"
 #include "spu/mpc/kernel.h"
 #include "spu/mpc/semi2k/object.h"
 #include "spu/mpc/semi2k/type.h"
@@ -41,6 +41,31 @@ ArrayRef makeBShare(const ArrayRef& r, FieldType field,
 }
 
 }  // namespace
+
+void CommonTypeB::evaluate(EvalContext* ctx) const {
+  const Type& lhs = ctx->getParam<Type>(0);
+  const Type& rhs = ctx->getParam<Type>(1);
+
+  SPU_TRACE_KERNEL(ctx, lhs, rhs);
+
+  YASL_ENFORCE(lhs == rhs, "semi2k always use same bshare type, lhs={}, rhs={}",
+               lhs, rhs);
+
+  ctx->setOutput(lhs);
+}
+
+void CastTypeB::evaluate(EvalContext* ctx) const {
+  const auto& in = ctx->getParam<ArrayRef>(0);
+  const auto& to_type = ctx->getParam<Type>(1);
+
+  SPU_TRACE_KERNEL(ctx, in, to_type);
+
+  YASL_ENFORCE(in.eltype() == to_type,
+               "semi2k always use same bshare type, lhs={}, rhs={}",
+               in.eltype(), to_type);
+
+  ctx->setOutput(in);
+}
 
 ArrayRef ZeroB::proc(KernelEvalContext* ctx, FieldType field,
                      size_t size) const {

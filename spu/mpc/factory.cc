@@ -29,44 +29,45 @@
 namespace spu::mpc {
 
 std::unique_ptr<Object> Factory::CreateCompute(
-    ProtocolKind kind, const std::shared_ptr<yasl::link::Context>& lctx) {
-  switch (kind) {
+    const RuntimeConfig& conf,
+    const std::shared_ptr<yasl::link::Context>& lctx) {
+  switch (conf.protocol()) {
     case ProtocolKind::REF2K: {
-      return makeRef2kProtocol(lctx);
+      return makeRef2kProtocol(conf, lctx);
     }
     case ProtocolKind::SEMI2K: {
-      return makeSemi2kProtocol(lctx);
+      return makeSemi2kProtocol(conf, lctx);
     }
     case ProtocolKind::ABY3: {
-      return makeAby3Protocol(lctx);
+      return makeAby3Protocol(conf, lctx);
     }
     case ProtocolKind::CHEETAH: {
-      return makeCheetahProtocol(lctx);
+      return makeCheetahProtocol(conf, lctx);
     }
     default: {
-      YASL_THROW("Invalid protocol kind {}", kind);
+      YASL_THROW("Invalid protocol kind {}", conf.protocol());
     }
   }
   return nullptr;
 }
 
-std::unique_ptr<IoInterface> Factory::CreateIO(ProtocolKind kind,
-                                               FieldType field, size_t npc) {
-  switch (kind) {
+std::unique_ptr<IoInterface> Factory::CreateIO(const RuntimeConfig& conf,
+                                               size_t npc) {
+  switch (conf.protocol()) {
     case ProtocolKind::REF2K: {
-      return makeRef2kIo(field, npc);
+      return makeRef2kIo(conf.field(), npc);
     }
     case ProtocolKind::SEMI2K: {
-      return semi2k::makeSemi2kIo(field, npc);
+      return semi2k::makeSemi2kIo(conf.field(), npc);
     }
     case ProtocolKind::ABY3: {
-      return aby3::makeAby3Io(field, npc);
+      return aby3::makeAby3Io(conf.field(), npc);
     }
     case ProtocolKind::CHEETAH: {
-      return cheetah::makeCheetahIo(field, npc);
+      return cheetah::makeCheetahIo(conf.field(), npc);
     }
     default: {
-      YASL_THROW("Invalid protocol kind {}", kind);
+      YASL_THROW("Invalid protocol kind {}", conf.protocol());
     }
   }
   return nullptr;

@@ -40,8 +40,8 @@ spu_cc_library(
     deps = [
         ":object",
         ":type",
-        "//spu/mpc:interfaces",
         "//spu/mpc:kernel",
+        "//spu/mpc/common:abprotocol",
         "//spu/mpc/util:communicator",
     ],
 )
@@ -54,8 +54,8 @@ spu_cc_library(
         ":object",
         ":type",
         "//spu/core:vectorize",
-        "//spu/mpc:interfaces",
         "//spu/mpc:kernel",
+        "//spu/mpc/common:abprotocol",
         "//spu/mpc/util:circuits",
         "//spu/mpc/util:communicator",
     ],
@@ -69,8 +69,8 @@ spu_cc_library(
         ":object",
         ":type",
         "//spu/core:vectorize",
-        "//spu/mpc:interfaces",
         "//spu/mpc:kernel",
+        "//spu/mpc/common:abprotocol",
         "//spu/mpc/util:circuits",
         "//spu/mpc/util:communicator",
         "//spu/mpc/util:ring_ops",
@@ -96,7 +96,7 @@ spu_cc_test(
     srcs = ["protocol_test.cc"],
     deps = [
         ":protocol",
-        "//spu/mpc:compute_test",
+        "//spu/mpc:api_test",
         "//spu/mpc/common:abprotocol_test",
     ],
 )

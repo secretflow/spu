@@ -70,7 +70,8 @@ class Value final {
 
   /// Element-wise accessor, it's kind of anti-pattern.
   void copyElementFrom(const Value& v, absl::Span<const int64_t> input_idx,
-                       absl::Span<const int64_t> output_idx);
+                       absl::Span<const int64_t> output_idx,
+                       int64_t elsize = -1);
 
   Value getElementAt(absl::Span<const int64_t> index) const;
 

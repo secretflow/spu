@@ -50,7 +50,7 @@ spu_cc_binary(
     deps = [
         ":utils",
         "//spu/device:io",
-        "//spu/device:pphlo_executor",
+        "//spu/device/pphlo:executor",
         "@llvm-project//llvm:Support",
     ],
 )
@@ -75,7 +75,18 @@ spu_cc_binary(
     deps = [
         ":utils",
         "//spu/device:io",
-        "//spu/psi",
+        "//spu/psi:bucket_psi",
+        "@llvm-project//llvm:Support",
+    ],
+)
+
+spu_cc_binary(
+    name = "simple_dp_psi",
+    srcs = ["simple_dp_psi.cc"],
+    deps = [
+        ":utils",
+        "//spu/device:io",
+        "//spu/psi/core/dp_psi",
         "@llvm-project//llvm:Support",
     ],
 )

@@ -14,27 +14,39 @@
 
 #include "spu/mpc/ref2k/ref2k.h"
 
-#include "spu/mpc/compute_test.h"
+#include "spu/mpc/api_test.h"
 #include "spu/mpc/io_test.h"
 
 namespace spu::mpc::test {
+namespace {
+
+RuntimeConfig makeConfig(FieldType field) {
+  RuntimeConfig conf;
+  conf.set_field(field);
+  return conf;
+}
+
+}  // namespace
 
 INSTANTIATE_TEST_SUITE_P(
-    Ref2kComputeTest, ComputeTest,
-    testing::Combine(testing::Values(makeRef2kProtocol),  //
-                     testing::Values(2, 3, 5),            //
-                     testing::Values(FieldType::FM32, FieldType::FM64,
-                                     FieldType::FM128)),
-    [](const testing::TestParamInfo<ComputeTest::ParamType>& p) {
-      return fmt::format("{}x{}", std::get<1>(p.param), std::get<2>(p.param));
+    Ref2kApiTest, ApiTest,
+    testing::Combine(testing::Values(makeRef2kProtocol),             //
+                     testing::Values(makeConfig(FieldType::FM32),    //
+                                     makeConfig(FieldType::FM64),    //
+                                     makeConfig(FieldType::FM128)),  //
+                     testing::Values(2, 3, 5)),                      //
+    [](const testing::TestParamInfo<ApiTest::ParamType>& p) {
+      return fmt::format("{}x{}", std::get<1>(p.param).field(),
+                         std::get<2>(p.param));
     });
 
 INSTANTIATE_TEST_SUITE_P(
     Ref2kIoTest, IoTest,
-    testing::Combine(testing::Values(makeRef2kIo),  //
-                     testing::Values(2, 3, 5),      //
-                     testing::Values(FieldType::FM32, FieldType::FM64,
-                                     FieldType::FM128)),
+    testing::Combine(testing::Values(makeRef2kIo),        //
+                     testing::Values(2, 3, 5),            //
+                     testing::Values(FieldType::FM32,     //
+                                     FieldType::FM64,     //
+                                     FieldType::FM128)),  //
     [](const testing::TestParamInfo<IoTest::ParamType>& p) {
       return fmt::format("{}x{}", std::get<1>(p.param), std::get<2>(p.param));
     });

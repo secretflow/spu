@@ -105,7 +105,8 @@ void runHloPasses(xla::HloModule *module) {
         /*allow_mixed_precision=*/false);
 
     AlgebraicSimplifierOptions options;
-    options.set_enable_dot_strength_reduction(true);
+    options.set_enable_dot_strength_reduction(false);
+    options.set_enable_dot_to_multiply_rewrite(false);
     pipeline.AddPass<AlgebraicSimplifier>(options);
     pipeline.AddPass<SortSimplifier>();
     pipeline.AddPass<HloDCE>();

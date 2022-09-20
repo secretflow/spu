@@ -225,36 +225,6 @@ public:
   }
 };
 
-// TODO: Add a rsqrt op if we have cases that can benefit from fused op.
-class RSqrtOpConverter : public OpConversionPattern<mhlo::RsqrtOp> {
-private:
-  const ValueVisibilityMap &vis_;
-
-public:
-  RSqrtOpConverter(TypeConverter &type_converter, MLIRContext *context,
-                   const ValueVisibilityMap &vis)
-      : OpConversionPattern<mhlo::RsqrtOp>(type_converter, context), vis_(vis) {
-  }
-
-  LogicalResult
-  matchAndRewrite(mhlo::RsqrtOp op, mhlo::RsqrtOpAdaptor adaptor,
-                  ConversionPatternRewriter &rewriter) const override {
-    auto result_vis = vis_.getValueVisibility(op.getResult());
-
-    Type resultType = HloToPPHloTypeConverter::getTypeWithVisibility(
-        this->getTypeConverter()->convertType(op.getType()), result_vis);
-
-    OpBuilder builder(op);
-
-    auto r = builder.create<pphlo::SqrtOp>(op->getLoc(), resultType,
-                                           adaptor.getOperands());
-
-    rewriter.replaceOpWithNewOp<pphlo::ReciprocalOp>(op, resultType, r);
-
-    return success();
-  }
-};
-
 class ReturnOpConverter : public OpConversionPattern<::mlir::func::ReturnOp> {
 public:
   ReturnOpConverter(TypeConverter &type_converter, MLIRContext *context,
@@ -1041,7 +1011,7 @@ private:
 
     patterns.insert<
         FuncOpConverter, ReturnOpConverter, HloCompToPPHloOpConverter,
-        RSqrtOpConverter, ReduceOpConverter<mhlo::ReduceOp>,
+        ReduceOpConverter<mhlo::ReduceOp>,
         ReduceOpConverter<mhlo::ReduceWindowOp>, WhileOpConverter,
         IfOpConverter, HloToPPHloOpConverter<mhlo::AbsOp>,
         HloToPPHloOpConverter<mhlo::AddOp>, HloToPPHloOpConverter<mhlo::AndOp>,
@@ -1078,8 +1048,9 @@ private:
         HloToPPHloOpConverter<mhlo::ShiftRightLogicalOp>,
         HloToPPHloOpConverter<mhlo::SliceOp>,
         HloToPPHloOpConverter<mhlo::SortOp>,
-        HloToPPHloOpConverter<mhlo::SqrtOp>, HloToPPHloOpConverter<mhlo::SubOp>,
-        HloToPPHloOpConverter<mhlo::TanhOp>,
+        HloToPPHloOpConverter<mhlo::SqrtOp>,
+        HloToPPHloOpConverter<mhlo::RsqrtOp>,
+        HloToPPHloOpConverter<mhlo::SubOp>, HloToPPHloOpConverter<mhlo::TanhOp>,
         HloToPPHloOpConverter<mhlo::TransposeOp>,
         HloToPPHloOpConverter<mhlo::XorOp>>(converter, context, vis_map);
   }
@@ -1121,8 +1092,6 @@ public:
     parseVisibilityString();
 
     auto &context = getContext();
-
-    context.getTypeUniquer();
 
     RewritePatternSet patterns(&context);
     ConversionTarget target(context);

@@ -571,6 +571,24 @@ TYPED_TEST(MathUnaryTest, Tanh) {
       << z;
 }
 
+TYPED_TEST(MathUnaryTest, SqrtInv) {
+  using IN_DT = typename std::tuple_element<0, TypeParam>::type;
+  using IN_VT = typename std::tuple_element<1, TypeParam>::type;
+  using RES_DT = float;
+
+  // GIVEN
+  xt::xarray<IN_DT> x = test::xt_random<IN_DT>({5, 6}, 0, 20000);
+  xt::xarray<float> expected_y = 1.0f / xt::sqrt(x);
+
+  // WHAT
+  auto y = test::evalUnaryOp<RES_DT>(IN_VT(), sqrt_inv, x);
+
+  // THEN
+  EXPECT_TRUE(xt::allclose(expected_y, y, 0.01, 0.001))
+      << expected_y << std::endl
+      << y;
+}
+
 TEST(MathTest, Select) {
   // GIVEN
   xt::xarray<int32_t> p =

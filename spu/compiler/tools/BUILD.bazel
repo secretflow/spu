@@ -23,14 +23,12 @@ spu_cc_binary(
     srcs = [
         "mlir-pphlo-opt.cc",
     ],
-    tags = ["no-remote-cache"],
     deps = [
         "//spu/compiler/passes:all_passes",
         "@llvm-project//llvm:Support",
         "@llvm-project//mlir:IR",
         "@llvm-project//mlir:MlirOptLib",
         "@llvm-project//mlir:Pass",
-        "@llvm-project//mlir:mlir-opt",
         "@org_tensorflow//tensorflow/compiler/mlir/hlo",
         "@org_tensorflow//tensorflow/compiler/mlir/hlo:all_passes",
     ],

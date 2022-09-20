@@ -6,6 +6,8 @@ spu_deps()
 
 #
 # yasl
+# Warning: SPU relies on yasl to bring in common 3p libraries.
+#          Please make sure yasl_deps are called right after spu_deps.
 #
 load("@yasl//bazel:repositories.bzl", "yasl_deps")
 
@@ -55,7 +57,7 @@ load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
 # https://github.com/hedronvision/bazel-compile-commands-extractor
 git_repository(
     name = "hedron_compile_commands",
-    commit = "30149bdadf7b1d0b0367592bfb4864318202765d",
+    commit = "57046dba8d60f819887ea81933ed90f8e23a458a",
     remote = "https://github.com/hedronvision/bazel-compile-commands-extractor.git",
     shallow_since = "1644967664 -0800",
 )

@@ -1,4 +1,4 @@
-// Copyright 2021 Ant Group Co., Ltd.
+// Copyright 2022 Ant Group Co., Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -24,7 +24,7 @@ extern "C" {
 #include "yasl/crypto/hash_util.h"
 #include "yasl/utils/parallel.h"
 
-namespace spu {
+namespace spu::psi {
 
 void FourQEccCryptor::EccMask(absl::Span<const char> batch_points,
                               absl::Span<char> dest_points) const {
@@ -73,4 +73,4 @@ std::vector<uint8_t> FourQEccCryptor::HashToCurve(
   return ret;
 }
 
-}  // namespace spu
+}  // namespace spu::psi

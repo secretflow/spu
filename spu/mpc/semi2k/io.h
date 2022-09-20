@@ -22,8 +22,10 @@ class Semi2kIo : public BaseIo {
  public:
   using BaseIo::BaseIo;
 
-  std::vector<ArrayRef> toShares(const ArrayRef& raw,
-                                 Visibility vis) const override;
+  // when owner rank is valid (0 <= owner_rank < world_size), colocation
+  // optization may be applied
+  std::vector<ArrayRef> toShares(const ArrayRef& raw, Visibility vis,
+                                 int owner_rank) const override;
 
   ArrayRef fromShares(const std::vector<ArrayRef>& shares) const override;
 };

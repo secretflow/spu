@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("//bazel:spu.bzl", "spu_cc_binary", "spu_cc_library", "spu_cc_test")
+load("//bazel:spu.bzl", "spu_cc_library", "spu_cc_test")
 load("@rules_proto//proto:defs.bzl", "proto_library")
 load("@rules_cc//cc:defs.bzl", "cc_proto_library")
 
@@ -69,7 +69,7 @@ spu_cc_library(
     srcs = ["frame.cc"],
     hdrs = ["frame.h"],
     deps = [
-        ":pphlo_type_checker",
+        ":type_checker",
         "//spu/dialect:pphlo_dialect",
         "//spu/hal:value",
         "@llvm-project//mlir:IR",
@@ -82,49 +82,12 @@ spu_cc_library(
     srcs = ["executor.cc"],
     hdrs = ["executor.h"],
     deps = [
+        ":profiler",
         ":symbol_table",
         "//spu:spu_cc_proto",
         "//spu/hal:context",
         "//spu/hal:polymorphic",
         "//spu/hal:value",
-    ],
-)
-
-spu_cc_library(
-    name = "pphlo_executor",
-    srcs = ["pphlo_executor.cc"],
-    hdrs = ["pphlo_executor.h"],
-    deps = [
-        ":executor",
-        ":frame",
-        "//spu/dialect:pphlo_dialect",
-        "//spu/hal",
-        "@llvm-project//mlir:Parser",
-        "@yasl//yasl/utils:thread_pool",
-    ],
-)
-
-spu_cc_test(
-    name = "pphlo_executor_test",
-    srcs = ["pphlo_executor_test.cc"],
-    deps = [
-        ":io",
-        ":pphlo_executor",
-        ":test_utils",
-    ],
-)
-
-spu_cc_binary(
-    name = "pphlo_executor_bench",
-    testonly = True,
-    srcs = ["pphlo_executor_bench.cc"],
-    data = [
-        "//spu/compiler/test_data:pphlo_asms",
-    ],
-    deps = [
-        ":pphlo_executor",
-        "//spu/device:test_utils",
-        "@com_github_google_benchmark//:benchmark",
     ],
 )
 
@@ -153,24 +116,16 @@ spu_cc_library(
 )
 
 spu_cc_library(
-    name = "pphlo_type_checker",
-    srcs = ["pphlo_type_checker.cc"],
-    hdrs = ["pphlo_type_checker.h"],
+    name = "type_checker",
+    srcs = ["type_checker.cc"],
+    hdrs = ["type_checker.h"],
     deps = [
-        "//spu/dialect:pphlo_dialect",
         "//spu/hal:value",
         "@llvm-project//mlir:IR",
-        "@yasl//yasl/base:exception",
     ],
 )
 
-spu_cc_binary(
-    name = "pphlo_executor_debug_runner",
-    testonly = True,
-    srcs = ["pphlo_executor_debug_runner.cc"],
-    deps = [
-        ":pphlo_executor",
-        ":test_utils",
-        "@llvm-project//llvm:Support",
-    ],
+spu_cc_library(
+    name = "profiler",
+    hdrs = ["profiler.h"],
 )

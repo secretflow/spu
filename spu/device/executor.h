@@ -14,26 +14,19 @@
 
 #pragma once
 
-#include <chrono>
 #include <memory>
-#include <unordered_map>
 
+#include "spu/device/profiler.h"
 #include "spu/device/symbol_table.h"
-#include "spu/hal/context.h"
 #include "spu/hal/value.h"
 
 #include "spu/spu.pb.h"
 
+namespace spu {
+class HalContext;
+}
+
 namespace spu::device {
-
-struct OpExecutionRecord {
-  // total number of executation.
-  size_t count = 0;
-  // total elapsed time.
-  std::chrono::duration<double> time = {};
-};
-
-using OpExecutionRecords = std::unordered_map<std::string, OpExecutionRecord>;
 
 // The executor interface, an executor evaluates a texted code with given
 // inputs, and produce expected outputs.
@@ -42,10 +35,13 @@ protected:
   HalContext *hctx_ = nullptr;
 
   // Profiling thingy
-  OpExecutionRecords op_profile_records_;
+  std::shared_ptr<Profiler> op_profiler_;
+
+  std::string module_name_ = "unnamed";
 
 public:
-  explicit Executor(HalContext *hctx) : hctx_(hctx){};
+  explicit Executor(HalContext *hctx)
+      : hctx_(hctx), op_profiler_(std::make_shared<Profiler>()){};
 
   virtual ~Executor() = default;
 
@@ -58,8 +54,9 @@ public:
   run(const std::string &code, const std::vector<hal::Value> &inputs) = 0;
 
   /// Return the op profiling records.
-  const OpExecutionRecords &getProfileRecords() const {
-    return op_profile_records_;
+  const Profiler::ExecutionRecordsT &getProfileRecords() const {
+    // op_profiler_ cannot be nullptr
+    return op_profiler_->getRecords();
   }
 
   /// Evaluate an spu executable with given environment.

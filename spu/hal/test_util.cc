@@ -19,7 +19,7 @@ namespace spu::hal::test {
 HalContext makeRefHalContext(RuntimeConfig config) {
   // Note: we are testing the encoding and approxmation method, not the protocol
   // itself, so ref2k is enough.
-  config.set_enable_action_trace(true);
+  config.set_enable_action_trace(false);
   HalContext ctx(config,  //
                  nullptr  // link context.
   );

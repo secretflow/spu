@@ -126,6 +126,36 @@ def run_on_cpu():
     )
 
 
+SPU_OBJECT_META_PATH = "/tmp/driver_spu_jax_lr_object.txt"
+
+import cloudpickle as pickle
+
+
+def save_and_load_model():
+    # 1. run with spu
+    W, b = run_on_spu()
+
+    # 2. save metadata and spu objects.
+    meta = ppd.save((W, b))
+    with open(SPU_OBJECT_META_PATH, "wb") as f:
+        pickle.dump(meta, f)
+
+    # 3. load metadata and spu objects.
+    with open(SPU_OBJECT_META_PATH, "rb") as f:
+        meta_ = pickle.load(f)
+    W_, b_ = ppd.load(meta_)
+
+    W_r, b_r = ppd.get(W_), ppd.get(b_)
+    print(W_r, b_r)
+
+    x_test, y_test = dsutil.breast_cancer(slice(None, None, None), False)
+    print(
+        "AUC(save_and_load_model)={}".format(
+            metrics.roc_auc_score(y_test, predict(x_test, W_r, b_r))
+        )
+    )
+
+
 def run_on_spu():
     @ppd.device("SPU")
     def train(x1, x2, y):
@@ -145,9 +175,12 @@ def run_on_spu():
         "AUC(spu)={}".format(metrics.roc_auc_score(y_test, predict(x_test, W_r, b_r)))
     )
 
+    return W, b
+
 
 if __name__ == "__main__":
     print('Run on CPU\n------\n')
     run_on_cpu()
     print('Run on SPU\n------\n')
     run_on_spu()
+    save_and_load_model()

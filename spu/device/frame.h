@@ -20,6 +20,7 @@
 #include "llvm/ADT/DenseMap.h"
 #include "mlir/IR/Value.h"
 
+#include "spu/device/type_checker.h"
 #include "spu/hal/value.h"
 
 namespace spu::device {
@@ -32,7 +33,7 @@ class Frame final {
     llvm::DenseMap<mlir::Value, hal::Value> values_;
   };
 
-  bool with_type_checker_{false};
+  std::shared_ptr<TypeChecker> type_checker_;
   std::deque<RegionDataSegment> segments_;
 
 public:
@@ -43,7 +44,9 @@ public:
   void enterRegion() { segments_.emplace_back(); }
   void leaveRegion() { segments_.pop_back(); }
 
-  void setTypeCheker(bool aVal) { with_type_checker_ = aVal; }
+  void setTypeCheker(std::shared_ptr<TypeChecker> checker) {
+    type_checker_ = std::move(checker);
+  }
 
   bool hasValue(::mlir::Value operand) const;
 

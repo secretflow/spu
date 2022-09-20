@@ -16,6 +16,7 @@
 
 #include "gtest/gtest.h"
 
+#include "spu/mpc/util/ring_ops.h"
 #include "spu/mpc/util/simulate.h"
 
 namespace spu::mpc {
@@ -27,77 +28,80 @@ class CommTest
 TEST_P(CommTest, AllReduce) {
   const Rank kWorldSize = std::get<0>(GetParam());
   const FieldType kField = std::get<1>(GetParam());
-  const std::vector<int64_t> kShape = {3, 4};
+  const int64_t kNumel = 1000;
+
+  std::vector<ArrayRef> xs(kWorldSize);
+  ArrayRef sum_x = ring_zeros(kField, kNumel);
+  ArrayRef xor_x = ring_zeros(kField, kNumel);
+  for (size_t idx = 0; idx < kWorldSize; idx++) {
+    xs[idx] = ring_rand(kField, kNumel);
+    ring_add_(sum_x, xs[idx]);
+    ring_xor_(xor_x, xs[idx]);
+  }
 
   util::simulate(kWorldSize, [&](std::shared_ptr<yasl::link::Context> lctx) {
     Communicator com(lctx);
-    DISPATCH_ALL_FIELDS(kField, "CommTest.AllReduce", [&]() {
-      using tensor_t = xt::xarray<ring2k_t>;
+    // WHEN
+    auto sum_r = com.allReduce(ReduceOp::ADD, xs[com.getRank()], "_");
+    auto xor_r = com.allReduce(ReduceOp::XOR, xs[com.getRank()], "_");
 
-      // GIVEN
-      const tensor_t a = xt::ones<ring2k_t>(kShape);
-
-      // WHEN
-      tensor_t add_a = com.allReduce(ReduceOp::ADD, a, _kName);
-      tensor_t xor_a = com.allReduce(ReduceOp::XOR, a, _kName);
-
-      // THEN
-      EXPECT_EQ(add_a, xt::ones<ring2k_t>(kShape) * kWorldSize);
-      EXPECT_EQ(xor_a, kWorldSize % 2 == 0 ? xt::zeros<ring2k_t>(kShape)
-                                           : xt::ones<ring2k_t>(kShape));
-    });
+    // THEN
+    EXPECT_TRUE(ring_all_equal(sum_r, sum_x));
+    EXPECT_TRUE(ring_all_equal(xor_r, xor_x));
   });
 }
 
 TEST_P(CommTest, Reduce) {
   const Rank kWorldSize = std::get<0>(GetParam());
   const FieldType kField = std::get<1>(GetParam());
-  const std::vector<int64_t> kShape = {3, 4};
+  const int64_t kNumel = 1000;
+
+  std::vector<ArrayRef> xs(kWorldSize);
+  ArrayRef sum_x = ring_zeros(kField, kNumel);
+  ArrayRef xor_x = ring_zeros(kField, kNumel);
+  for (size_t idx = 0; idx < kWorldSize; idx++) {
+    xs[idx] = ring_rand(kField, kNumel);
+    ring_add_(sum_x, xs[idx]);
+    ring_xor_(xor_x, xs[idx]);
+  }
 
   util::simulate(kWorldSize, [&](std::shared_ptr<yasl::link::Context> lctx) {
     Communicator com(lctx);
-    DISPATCH_ALL_FIELDS(kField, "CommTest.Reduce", [&]() {
-      using tensor_t = xt::xarray<ring2k_t>;
 
-      // GIVEN
-      const tensor_t a = xt::ones<ring2k_t>(kShape);
-
+    for (size_t root = 0; root < kWorldSize; root++) {
       // WHEN
-      tensor_t add_a = com.reduce(ReduceOp::ADD, a, 0, _kName);
-      tensor_t xor_a = com.reduce(ReduceOp::XOR, a, 0, _kName);
+      auto sum_r = com.reduce(ReduceOp::ADD, xs[com.getRank()], root, "_");
+      auto xor_r = com.reduce(ReduceOp::XOR, xs[com.getRank()], root, "_");
 
       // THEN
-      if (lctx->Rank() == 0) {
-        EXPECT_EQ(add_a, xt::ones<ring2k_t>(kShape) * kWorldSize);
-        EXPECT_EQ(xor_a, kWorldSize % 2 == 0 ? xt::zeros<ring2k_t>(kShape)
-                                             : xt::ones<ring2k_t>(kShape));
+      if (com.getRank() == root) {
+        EXPECT_TRUE(ring_all_equal(sum_r, sum_x));
+        EXPECT_TRUE(ring_all_equal(xor_r, xor_x));
       } else {
-        EXPECT_EQ(add_a, xt::zeros<ring2k_t>(kShape));
-        EXPECT_EQ(xor_a, xt::zeros<ring2k_t>(kShape));
+        EXPECT_TRUE(ring_all_equal(sum_r, xs[com.getRank()]));
+        EXPECT_TRUE(ring_all_equal(xor_r, xs[com.getRank()]));
       }
-    });
+    }
   });
 }
 
 TEST_P(CommTest, Rotate) {
   const Rank kWorldSize = std::get<0>(GetParam());
   const FieldType kField = std::get<1>(GetParam());
-  const std::vector<int64_t> kShape = {3, 4};
+  const int64_t kNumel = 1000;
+
+  std::vector<ArrayRef> xs(kWorldSize);
+  for (size_t idx = 0; idx < kWorldSize; idx++) {
+    xs[idx] = ring_rand(kField, kNumel);
+  }
 
   util::simulate(kWorldSize, [&](std::shared_ptr<yasl::link::Context> lctx) {
     Communicator com(lctx);
-    DISPATCH_ALL_FIELDS(kField, "CommTest.Reduce", [&]() {
-      using tensor_t = xt::xarray<ring2k_t>;
+    // WHEN
+    auto r = com.rotate(xs[com.getRank()], "_");
 
-      // GIVEN
-      const tensor_t a = xt::ones<ring2k_t>(kShape) * lctx->Rank();
-
-      // WHEN
-      tensor_t rotate_a = com.rotate(a, _kName);
-
-      // THEN
-      EXPECT_EQ(rotate_a, xt::ones<ring2k_t>(kShape) * lctx->NextRank());
-    });
+    // THEN
+    EXPECT_TRUE(ring_all_equal(r, xs[(com.getRank() + 1) % kWorldSize]));
   });
 }
 

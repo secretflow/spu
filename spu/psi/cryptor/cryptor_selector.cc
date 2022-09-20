@@ -1,4 +1,4 @@
-// Copyright 2021 Ant Group Co., Ltd.
+// Copyright 2022 Ant Group Co., Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -28,7 +28,7 @@
 #include "spu/psi/cryptor/ipp_ecc_cryptor.h"
 #endif
 
-namespace spu {
+namespace spu::psi {
 
 namespace {
 
@@ -64,37 +64,39 @@ std::unique_ptr<IEccCryptor> GetFourQCryptor() {
 #endif
   return {};
 }
-
 }  // namespace
 
 std::unique_ptr<IEccCryptor> CreateEccCryptor(CurveType type) {
   std::unique_ptr<IEccCryptor> cryptor;
   switch (type) {
-    case CurveType::Curve25519: {
+    case CurveType::CURVE_25519: {
       cryptor = GetIppCryptor();
       if (cryptor == nullptr) {
         cryptor = GetSodiumCryptor();
       }
       break;
     }
-    case CurveType::CurveFourQ: {
+    case CurveType::CURVE_FOURQ: {
       cryptor = GetFourQCryptor();
       YASL_ENFORCE(cryptor != nullptr, "FourQ requires AVX2 instruction");
       break;
     }
-    case CurveType::CurveSm2: {
+    case CurveType::CURVE_SM2: {
       SPDLOG_INFO("Using SM2");
       cryptor = std::make_unique<Sm2Cryptor>(type);
       break;
     }
-    case CurveType::CurveSecp256k1: {
+    case CurveType::CURVE_SECP256K1: {
       SPDLOG_INFO("Using Secp256k1");
       cryptor = std::make_unique<Sm2Cryptor>(type);
       break;
+    }
+    default: {
+      YASL_THROW("Invaild curve type: {}", type);
     }
   }
   YASL_ENFORCE(cryptor != nullptr, "Cryptor should not be nullptr");
   return cryptor;
 }
 
-}  // namespace spu
+}  // namespace spu::psi

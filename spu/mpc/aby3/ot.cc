@@ -25,12 +25,17 @@ inline bool inFrontOf(size_t a, size_t b) { return (a + 1) % 3 == b; }
 }  // namespace
 
 Ot3::Ot3(FieldType field, int64_t numel, const RoleRanks& roles,
-         Communicator* comm, PrgState* prg_state)
+         Communicator* comm, PrgState* prg_state, bool reentrancy)
     : field_(field),
       numel_(numel),
       roles_(roles),
       comm_(comm),
-      prg_state_(prg_state) {}
+      prg_state_(prg_state),
+      reentrancy_(reentrancy) {
+  if (!reentrancy_) {
+    masks_ = genMasks();
+  }
+}
 
 std::pair<ArrayRef, ArrayRef> Ot3::genMasks() {
   ArrayRef w0, w1, _;
@@ -69,8 +74,15 @@ void Ot3::send(ArrayRef m0, ArrayRef m1) {
   YASL_ENFORCE(m1.numel() == numel_);
 
   // generate masks
-  ArrayRef w0, w1;
-  std::tie(w0, w1) = genMasks();
+  ArrayRef w0;
+  ArrayRef w1;
+  if (!reentrancy_) {
+    YASL_ENFORCE(masks_.has_value(), "this OT instance can only use once.");
+    std::tie(w0, w1) = masks_.value();
+    masks_.reset();
+  } else {
+    std::tie(w0, w1) = genMasks();
+  }
   YASL_ENFORCE(w0.numel() == numel_);
   YASL_ENFORCE(w1.numel() == numel_);
 
@@ -87,23 +99,26 @@ ArrayRef Ot3::recv(const std::vector<uint8_t>& choices) {
   YASL_ENFORCE(comm_->getRank() == roles_.receiver);
   YASL_ENFORCE(choices.size() == static_cast<size_t>(numel_));
 
-  // consume prss to keep state synced.
-  genMasks();
-
   const auto ty = makeType<RingTy>(field_);
+
+  if (!reentrancy_) {
+    YASL_ENFORCE(masks_.has_value(), "this OT instance can only use once.");
+    masks_.reset();
+  } else {
+    genMasks();
+  }
 
   // get masked messages from sender.
   auto m0 = comm_->recv(roles_.sender, ty, "m0");
   auto m1 = comm_->recv(roles_.sender, ty, "m1");
+  auto mc = ring_select(choices, m0, m1);
   // get chosen masks
   auto wc = comm_->recv(roles_.helper, ty, "wc");
 
   YASL_ENFORCE(m0.numel() == static_cast<int64_t>(choices.size()));
 
   // reconstruct mc
-  ring_xor_(m0, wc);
-  ring_xor_(m1, wc);
-  ArrayRef mc = ring_select(choices, m0, m1);
+  ring_xor_(mc, wc);
 
   return mc;
 }
@@ -116,7 +131,13 @@ void Ot3::help(const std::vector<uint8_t>& choices) {
   // generate masks, same as sender
   ArrayRef w0;
   ArrayRef w1;
-  std::tie(w0, w1) = genMasks();
+  if (!reentrancy_) {
+    YASL_ENFORCE(masks_.has_value(), "this OT instance can only use once.");
+    std::tie(w0, w1) = masks_.value();
+    masks_.reset();
+  } else {
+    std::tie(w0, w1) = genMasks();
+  }
   YASL_ENFORCE(w0.numel() == numel_);
   YASL_ENFORCE(w1.numel() == numel_);
 

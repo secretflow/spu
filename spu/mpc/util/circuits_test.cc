@@ -16,16 +16,38 @@
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
+#include "yasl/base/int128.h"
 
 namespace spu::mpc {
 namespace {
 
-template <typename C>
+template <typename T, std::enable_if_t<std::is_integral_v<T>, int> = 0>
+CircuitBasicBlock<T> makeScalarCBB() {
+  CircuitBasicBlock<T> cbb;
+  cbb._xor = [](T const& lhs, T const& rhs) -> T { return lhs ^ rhs; };
+  cbb._and = [](T const& lhs, T const& rhs) -> T { return lhs & rhs; };
+  cbb.lshift = [](T const& x, size_t bits) -> T { return x << bits; };
+  cbb.rshift = [](T const& x, size_t bits) -> T { return x >> bits; };
+  cbb.init_like = [](T const&, uint64_t hi, uint64_t lo) -> T {
+    if constexpr (std::is_same_v<T, uint128_t>) {
+      return yasl::MakeUint128(hi, lo);
+    } else {
+      return static_cast<T>(lo);
+    }
+  };
+  cbb.set_nbits = [](T& x, size_t nbits) {};
+  return cbb;
+}
+
+template <typename C, typename T = typename C::value_type>
 CircuitBasicBlock<C> makeVectorCBB() {
   CircuitBasicBlock<C> cbb;
-  cbb.num_bits = sizeof(typename C::value_type) * 8;
-  cbb.init_like = [](C const& in, uint64_t init) -> C {
-    return C(in.size(), init);
+  cbb.init_like = [](C const& in, uint64_t hi, uint64_t lo) -> C {
+    if constexpr (std::is_same_v<T, uint128_t>) {
+      return C(in.size(), yasl::MakeUint128(hi, lo));
+    } else {
+      return C(in.size(), lo);
+    }
   };
   cbb._xor = [](C const& lhs, C const& rhs) -> C {
     C res;
@@ -51,98 +73,160 @@ CircuitBasicBlock<C> makeVectorCBB() {
                    [&](const auto& e) { return e >> bits; });
     return res;
   };
+  cbb.set_nbits = [](C& x, size_t nbits) -> void {};
   return cbb;
 }
 
 }  // namespace
 
+std::vector<std::vector<uint32_t>> kU32Add = {
+    {0xFFFFFFFFU, 0x00000000U, 0xFFFFFFFFU},  //
+    {0xFFFFFFFFU, 0x00000001U, 0x00000000U},  //
+    {0xFFFFFFFFU, 0x00010000U, 0x0000FFFFU},  //
+    {0xFFFFFFFFU, 0x10000000U, 0x0FFFFFFFU},  //
+    {0xFFFFFFFFU, 0xFFFFFFFFU, 0xFFFFFFFEU},  //
+    {0xFFFF0000U, 0x0000FFFFU, 0xFFFFFFFFU},  //
+    {0x0000FFFFU, 0xFFFF0000U, 0xFFFFFFFFU},  //
+    {0x0000FFFFU, 0xFFFF0001U, 0x00000000U},  //
+    {0x0100FFFFU, 0xFFFF0000U, 0x00FFFFFFU},  //
+    {0x0F0F0F0FU, 0xF0F0F0F0U, 0xFFFFFFFFU},  //
+    {0xF0F0F0F0U, 0x0F0F0F0FU, 0xFFFFFFFFU},  //
+};
+
 TEST(KoggleStoneAdder, Scalar) {
-  EXPECT_EQ(KoggleStoneAdder(42, 17), 42 + 17);
-  EXPECT_EQ(KoggleStoneAdder(0xFFFFFFFFU, 0x00000000U), 0xFFFFFFFFU);
-  EXPECT_EQ(KoggleStoneAdder(0xFFFFFFFFU, 0x00000001U), 0x00000000U);
-  EXPECT_EQ(KoggleStoneAdder(0xFFFFFFFFU, 0x00010000U), 0x0000FFFFU);
-  EXPECT_EQ(KoggleStoneAdder(0xFFFFFFFFU, 0x10000000U), 0x0FFFFFFFU);
-  EXPECT_EQ(KoggleStoneAdder(0xFFFFFFFFU, 0xFFFFFFFFU), 0xFFFFFFFEU);
-  EXPECT_EQ(KoggleStoneAdder(0xFFFF0000U, 0x0000FFFFU), 0xFFFFFFFFU);
-  EXPECT_EQ(KoggleStoneAdder(0x0000FFFFU, 0xFFFF0000U), 0xFFFFFFFFU);
-  EXPECT_EQ(KoggleStoneAdder(0x0000FFFFU, 0xFFFF0001U), 0x00000000U);
-  EXPECT_EQ(KoggleStoneAdder(0x0100FFFFU, 0xFFFF0000U), 0x00FFFFFFU);
-  EXPECT_EQ(KoggleStoneAdder(0x0F0F0F0FU, 0xF0F0F0F0U), 0xFFFFFFFFU);
-  EXPECT_EQ(KoggleStoneAdder(0xF0F0F0F0U, 0x0F0F0F0FU), 0xFFFFFFFFU);
+  using T = uint32_t;
+  const auto cbb = makeScalarCBB<T>();
+  const size_t nbits = sizeof(T) * 8;
+
+  for (auto item : kU32Add) {
+    EXPECT_EQ(koggle_stone(cbb, item[0], item[1], nbits), item[0] + item[1]);
+  }
 }
 
 TEST(KoggleStoneAdder, Vectorized) {
-  std::vector<std::tuple<uint32_t, uint32_t, uint32_t>> cases = {
-      {0xFFFFFFFFU, 0x00000000U, 0xFFFFFFFFU},  //
-      {0xFFFFFFFFU, 0x00000001U, 0x00000000U},  //
-      {0xFFFFFFFFU, 0x00010000U, 0x0000FFFFU},  //
-      {0xFFFFFFFFU, 0x10000000U, 0x0FFFFFFFU},  //
-      {0xFFFFFFFFU, 0xFFFFFFFFU, 0xFFFFFFFEU},  //
-      {0xFFFF0000U, 0x0000FFFFU, 0xFFFFFFFFU},  //
-      {0x0000FFFFU, 0xFFFF0000U, 0xFFFFFFFFU},  //
-      {0x0000FFFFU, 0xFFFF0001U, 0x00000000U},  //
-      {0x0100FFFFU, 0xFFFF0000U, 0x00FFFFFFU},  //
-      {0x0F0F0F0FU, 0xF0F0F0F0U, 0xFFFFFFFFU},  //
-      {0xF0F0F0F0U, 0x0F0F0F0FU, 0xFFFFFFFFU},  //
-  };
+  using T = uint32_t;
+  const size_t nbits = sizeof(T) * 8;
+  using VT = std::vector<T>;
 
-  using Vector = std::vector<uint32_t>;
-  Vector lhs, rhs, ans;
-  std::transform(cases.begin(), cases.end(), std::back_inserter(lhs),
-                 [](auto const& t) { return std::get<0>(t); });
-  std::transform(cases.begin(), cases.end(), std::back_inserter(rhs),
-                 [](auto const& t) { return std::get<1>(t); });
-  std::transform(cases.begin(), cases.end(), std::back_inserter(ans),
-                 [](auto const& t) { return std::get<2>(t); });
+  std::vector<VT> args(3);
+  for (auto item : kU32Add) {
+    for (size_t idx = 0; idx < 3; idx++) {
+      args[idx].push_back(item[idx]);
+    }
+  }
 
-  Vector res = KoggleStoneAdder(lhs, rhs, makeVectorCBB<Vector>());
-  EXPECT_THAT(res, testing::ElementsAreArray(ans.begin(), ans.end()));
+  auto cbb = makeVectorCBB<VT>();
+  auto r0 = koggle_stone(cbb, args[0], args[1], nbits);
+  EXPECT_THAT(r0, testing::ElementsAreArray(args[2].begin(), args[2].end()));
 }
 
-TEST(CarryOut, Scalar) {
-  EXPECT_EQ(CarryOut(0xFFFFFFFFU, 0x00000000U), 0);
-  EXPECT_EQ(CarryOut(0xFFFFFFFFU, 0x00000001U), 1);
-  EXPECT_EQ(CarryOut(0xFFFFFFFFU, 0x00010000U), 1);
-  EXPECT_EQ(CarryOut(0xFFFFFFFFU, 0x10000000U), 1);
-  EXPECT_EQ(CarryOut(0xFFFFFFFFU, 0xFFFFFFFFU), 1);
-  EXPECT_EQ(CarryOut(0xFFFF0000U, 0x0000FFFFU), 0);
-  EXPECT_EQ(CarryOut(0x0000FFFFU, 0xFFFF0000U), 0);
-  EXPECT_EQ(CarryOut(0x0000FFFFU, 0xFFFF0001U), 1);
-  EXPECT_EQ(CarryOut(0x0100FFFFU, 0xFFFF0000U), 1);
-  EXPECT_EQ(CarryOut(0x0F0F0F0FU, 0xF0F0F0F0U), 0);
-  EXPECT_EQ(CarryOut(0xF0F0F0F0U, 0x0F0F0F0FU), 0);
-  EXPECT_EQ(CarryOut(0xF0F0F0F1U, 0x0F0F0F0FU), 1);
-  EXPECT_EQ(CarryOut(0xF0F1F0F0U, 0x0F0F0F0FU), 1);
+TEST(SklanskyAdder, Scalar) {
+  using T = uint32_t;
+  const auto cbb = makeScalarCBB<T>();
+  const size_t nbits = sizeof(T) * 8;
+
+  for (auto item : kU32Add) {
+    EXPECT_EQ(sklansky(cbb, item[0], item[1], nbits), item[2]);
+  }
 }
 
-TEST(CarryOut, Vectorized) {
-  std::vector<std::tuple<uint32_t, uint32_t, uint32_t>> cases = {
-      {0xFFFFFFFF, 0x00000000, 0},  //
-      {0xFFFFFFFF, 0x00000001, 1},  //
-      {0xFFFFFFFF, 0x00010000, 1},  //
-      {0xFFFFFFFF, 0x10000000, 1},  //
-      {0xFFFFFFFF, 0xFFFFFFFF, 1},  //
-      {0xFFFF0000, 0x0000FFFF, 0},  //
-      {0x0000FFFF, 0xFFFF0000, 0},  //
-      {0x0000FFFF, 0xFFFF0001, 1},  //
-      {0x0100FFFF, 0xFFFF0000, 1},  //
-      {0x0F0F0F0F, 0xF0F0F0F0, 0},  //
-      {0xF0F0F0F0, 0x0F0F0F0F, 0},  //
-      {0xF0F0F0F1, 0x0F0F0F0F, 1},  //
-      {0xF0F1F0F0, 0x0F0F0F0F, 1},  //
-  };
+TEST(SklanskyAdder, Vectorized) {
+  using T = uint32_t;
+  const size_t nbits = sizeof(T) * 8;
+  using VT = std::vector<T>;
 
-  using Vector = std::vector<uint32_t>;
-  Vector lhs, rhs, ans;
-  std::transform(cases.begin(), cases.end(), std::back_inserter(lhs),
-                 [](auto const& t) { return std::get<0>(t); });
-  std::transform(cases.begin(), cases.end(), std::back_inserter(rhs),
-                 [](auto const& t) { return std::get<1>(t); });
-  std::transform(cases.begin(), cases.end(), std::back_inserter(ans),
-                 [](auto const& t) { return std::get<2>(t); });
+  std::vector<VT> args(3);
+  for (auto item : kU32Add) {
+    for (size_t idx = 0; idx < 3; idx++) {
+      args[idx].push_back(item[idx]);
+    }
+  }
 
-  Vector res = CarryOut(lhs, rhs, makeVectorCBB<Vector>());
-  EXPECT_THAT(res, testing::ElementsAreArray(ans.begin(), ans.end()));
+  auto cbb = makeVectorCBB<VT>();
+  auto r1 = sklansky(cbb, args[0], args[1], nbits);
+  EXPECT_THAT(r1, testing::ElementsAreArray(args[2].begin(), args[2].end()));
+}
+
+TEST(UtilTest, Works) {
+  using T = uint32_t;
+  const auto cbb = makeScalarCBB<T>();
+
+  ASSERT_EQ(odd_even_split(cbb, 0xAAAAAAAAU, 32), 0xFFFF0000U);
+  ASSERT_EQ(odd_even_split(cbb, 0xAAAAAAAAU, 16), 0xFF00FF00U);
+  ASSERT_EQ(odd_even_split(cbb, 0x0000AAAAU, 16), 0x0000FF00U);
+  ASSERT_EQ(odd_even_split(cbb, 0x00000AAAU, 12), 0x00000FC0U);
+  ASSERT_EQ(odd_even_split(cbb, 0x000000AAU, 8L), 0x000000F0U);
+  ASSERT_EQ(odd_even_split(cbb, 0x0000002AU, 6L), 0x00000038U);
+  ASSERT_EQ(odd_even_split(cbb, 0x00000015U, 6L), 0x00000007U);
+  ASSERT_EQ(odd_even_split(cbb, 0x0000000AU, 4L), 0x0000000CU);
+  ASSERT_EQ(odd_even_split(cbb, 0x00000002U, 2L), 0x00000002U);
+  ASSERT_EQ(odd_even_split(cbb, 0x00000001U, 2L), 0x00000001U);
+  ASSERT_EQ(odd_even_split(cbb, 0x000002AAU, 10), 0x000003E0U);
+  ASSERT_EQ(odd_even_split(cbb, 0x55555555U, 32), 0x0000FFFFU);
+}
+
+std::vector<std::vector<uint32_t>> kU32Carry = {
+    {0xFFFFFFFFU, 0x00000000U, 0, 0xFFFFFFFFU},  //
+    {0xFFFFFFFFU, 0x00000001U, 1, 0x00000000U},  //
+    {0xFFFFFFFFU, 0x00010000U, 1, 0x0000FFFFU},  //
+    {0xFFFFFFFFU, 0x10000000U, 1, 0x0FFFFFFFU},  //
+    {0xFFFFFFFFU, 0xFFFFFFFFU, 1, 0xFFFFFFFEU},  //
+    {0xFFFF0000U, 0x0000FFFFU, 0, 0xFFFFFFFFU},  //
+    {0x0000FFFFU, 0xFFFF0000U, 0, 0xFFFFFFFFU},  //
+    {0x0000FFFFU, 0xFFFF0001U, 1, 0x00000000U},  //
+    {0x0100FFFFU, 0xFFFF0000U, 1, 0x00FFFFFFU},  //
+    {0x0F0F0F0FU, 0xF0F0F0F0U, 0, 0xFFFFFFFFU},  //
+    {0xF0F0F0F0U, 0x0F0F0F0FU, 0, 0xFFFFFFFFU},  //
+    {0xF0F0F0F1U, 0x0F0F0F0FU, 1, 0x00000001U},  //
+    {0xF0F1F0F0U, 0x0F0F0F0FU, 1, 0x00010000U},  //
+
+};
+
+TEST(CarryOutTest, Scalar) {
+  using T = uint32_t;
+  const auto cbb = makeScalarCBB<T>();
+  const size_t nbits = sizeof(T) * 8;
+
+  for (auto item : kU32Carry) {
+    const auto x = item[0];
+    const auto y = item[1];
+    for (size_t k = 1; k < nbits; k++) {
+      EXPECT_EQ(carry_out(cbb, x, y, k), ((((x + y) ^ (x ^ y)) >> k) & 1))
+          << k << std::hex << " " << x << " " << y;
+    }
+    ASSERT_EQ(carry_out(cbb, x, y, nbits), item[2])
+        << std::hex << x << " " << y;
+  }
+}
+
+TEST(CarryOutTest, Vectorized) {
+  using T = uint32_t;
+  const size_t nbits = sizeof(T) * 8;
+  using VT = std::vector<T>;
+
+  std::vector<VT> args(3);
+  for (auto item : kU32Carry) {
+    for (size_t idx = 0; idx < 3; idx++) {
+      args[idx].push_back(item[idx]);
+    }
+  }
+
+  auto cbb = makeVectorCBB<VT>();
+  auto r0 = carry_out(cbb, args[0], args[1], nbits);
+  EXPECT_THAT(r0, testing::ElementsAreArray(args[2].begin(), args[2].end()));
+
+  for (size_t k = 1; k < nbits; k++) {
+    VT expected;
+    for (size_t idx = 0; idx < args[0].size(); idx++) {
+      const auto x = args[0][idx];
+      const auto y = args[1][idx];
+      auto c_xy = (((x + y) ^ (x ^ y)) >> k) & 1;
+      expected.push_back(c_xy);
+    }
+    auto ck = carry_out(cbb, args[0], args[1], k);
+    EXPECT_THAT(ck,
+                testing::ElementsAreArray(expected.begin(), expected.end()));
+  }
 }
 
 }  // namespace spu::mpc

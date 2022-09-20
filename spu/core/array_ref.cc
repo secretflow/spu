@@ -18,8 +18,29 @@
 
 #include "fmt/format.h"
 #include "fmt/ostream.h"
+#include "yasl/utils/parallel.h"
 
 namespace spu {
+namespace detail {
+
+void strided_copy(int64_t numel, int64_t elsize, void* dst, int64_t dstride,
+                  void const* src, int64_t sstride) {
+  const char* src_itr = static_cast<const char*>(src);
+  char* dst_itr = static_cast<char*>(dst);
+
+  if (dstride == elsize && sstride == elsize) {
+    std::memcpy(dst_itr, src_itr, elsize * numel);
+  } else {
+    yasl::parallel_for(0, numel, 4096, [&](int64_t begin, int64_t end) {
+      for (int64_t idx = begin; idx < end; ++idx) {
+        std::memcpy(&dst_itr[idx * dstride * elsize],
+                    &src_itr[idx * sstride * elsize], elsize);
+      }
+    });
+  }
+}
+
+}  // namespace detail
 
 ArrayRef::ArrayRef(std::shared_ptr<yasl::Buffer> buf, Type eltype,
                    int64_t numel, int64_t stride, int64_t offset)
@@ -29,7 +50,16 @@ ArrayRef::ArrayRef(std::shared_ptr<yasl::Buffer> buf, Type eltype,
       stride_(stride),
       offset_(offset) {
   // sanity check.
-  YASL_ENFORCE(offset + stride * numel <= buf_->size());
+  if (numel != 0) {
+    const auto elsize = static_cast<int64_t>(eltype_.size());
+    const auto bufsize = buf_->size();
+    YASL_ENFORCE(offset >= 0 && offset + elsize <= bufsize);
+    YASL_ENFORCE(
+        (offset + stride * (numel - 1) >= 0) &&
+            (offset + stride * (numel - 1) + elsize <= bufsize),
+        "sanity failed, eltype={}, offset={}, stride={}, numel={}, buf.size={}",
+        eltype_, offset, stride, numel, bufsize);
+  }
 }
 
 ArrayRef::ArrayRef(Type eltype, size_t numel)
@@ -40,11 +70,19 @@ ArrayRef::ArrayRef(Type eltype, size_t numel)
                0        // offset
       ) {}
 
+ArrayRef makeConstantArrayRef(Type eltype, size_t numel) {
+  return ArrayRef(std::make_shared<yasl::Buffer>(eltype.size()),
+                  eltype,  // eltype
+                  numel,   // numel
+                  0,       // stride,
+                  0        // offset
+  );
+}
+
 bool ArrayRef::isCompact() const { return stride_ == 1; }
 
 std::shared_ptr<yasl::Buffer> ArrayRef::getOrCreateCompactBuf() const {
-  if (isCompact()) {
-    // iff stride_ != 0, should we return the original buffer?
+  if (isCompact() && offset_ == 0) {
     return buf();
   }
   return clone().buf();
@@ -53,13 +91,8 @@ std::shared_ptr<yasl::Buffer> ArrayRef::getOrCreateCompactBuf() const {
 ArrayRef ArrayRef::clone() const {
   ArrayRef res(eltype(), numel());
 
-  for (int64_t idx = 0; idx < numel(); idx++) {
-    const auto* frm = &at(idx);
-    auto* dst = &res.at(idx);
-
-    std::memcpy(dst, frm, elsize());
-  }
-
+  detail::strided_copy(numel(), elsize(), res.data(), res.stride(), data(),
+                       stride());
   return res;
 }
 
@@ -73,7 +106,7 @@ ArrayRef ArrayRef::as(const Type& new_ty, bool force) const {
   return {buf(), new_ty, numel(), stride(), offset()};
 }
 
-ArrayRef ArrayRef::slice(int64_t start, int64_t stop, int64_t stride) {
+ArrayRef ArrayRef::slice(int64_t start, int64_t stop, int64_t stride) const {
   // From
   // https://numpy.org/doc/stable/user/basics.indexing.html#slicing-and-striding
   //

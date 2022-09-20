@@ -30,19 +30,10 @@
     }                                                                 \
   } while (false)
 
-#define DISPATCH_FM3264(FIELD, NAME, ...)                            \
-  [&] {                                                              \
-    switch (FIELD) {                                                 \
-      __CASE_FIELD(spu::FieldType::FM32, NAME, __VA_ARGS__)          \
-      __CASE_FIELD(spu::FieldType::FM64, NAME, __VA_ARGS__)          \
-      default:                                                       \
-        YASL_THROW("{} not implemented for field={}", #NAME, FIELD); \
-    }                                                                \
-  }()
-
 namespace seal {
 class Ciphertext;
-}
+class Plaintext;
+}  // namespace seal
 
 namespace spu::mpc {
 #include "absl/numeric/bits.h"
@@ -56,11 +47,13 @@ inline uint64_t Next2Pow(uint64_t a) { return absl::bit_ceil(a); }
 
 template <class SEALObj>
 yasl::Buffer EncodeSEALObject(const SEALObj &obj) {
-  // TODO(juhou): direct encode into yasl::Buffer
-  std::stringstream ss;
-  obj.save(ss);
-  const auto str = ss.str();
-  return {str};
+  size_t nbytes = obj.save_size();
+  yasl::Buffer out;
+  out.resize(nbytes);
+  // NOTE(juhou): compr_sze <= nbytes due to the compression in SEAL
+  size_t compr_sze = obj.save(out.data<seal::seal_byte>(), nbytes);
+  out.resize(compr_sze);
+  return out;
 }
 
 template <class SEALObj>
@@ -113,7 +106,7 @@ void DecodeSEALObjects(const std::vector<yasl::Buffer> &buf_view,
     for (size_t idx = 0, c = 0; idx < obj_count; idx += stride, ++c) {
       for (size_t offset = 0; offset < stride; ++offset) {
         DecodeSEALObject(buf_view[idx + offset], contexts[c],
-                         out->at(idx + offset), skip_sanity_check);
+                         out->data() + idx + offset, skip_sanity_check);
       }
     }
   }
@@ -123,5 +116,9 @@ void DecodeSEALObjects(const std::vector<yasl::Buffer> &buf_view,
 // NOTE: after truncation, further homomorphic operation is meaningless.
 void TruncateBFVForDecryption(seal::Ciphertext &ct,
                               const seal::SEALContext &context);
+
+void NttInplace(seal::Plaintext &pt, const seal::SEALContext &context);
+
+void InvNttInplace(seal::Plaintext &pt, const seal::SEALContext &context);
 
 }  // namespace spu::mpc

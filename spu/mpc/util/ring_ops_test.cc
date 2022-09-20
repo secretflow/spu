@@ -182,4 +182,60 @@ TEST_P(RingArrayRefTest, ReverseBit) {
   }
 }
 
+TEST_P(RingArrayRefTest, RingBitMask) {
+  const FieldType field = std::get<0>(GetParam());
+  const int64_t numel = std::get<1>(GetParam());
+  const int64_t stride = std::get<2>(GetParam());
+  const Type ty = makeType<RingTy>(field);
+
+  {
+    // GIVEN
+    const ArrayRef x = makeRandomArray(field, numel, stride);
+    const size_t step = SizeOf(field) * 8 / 4;
+
+    // WHEN
+    auto y0 = ring_bitmask(x, step * 0, step * 1);
+    auto y1 = ring_bitmask(x, step * 1, step * 2);
+    auto y2 = ring_bitmask(x, step * 2, step * 3);
+    auto y3 = ring_bitmask(x, step * 3, step * 4);
+
+    // and to zero
+    auto z = ring_and(y0, y1);
+    ring_and_(z, y2);
+    ring_and_(z, y3);
+
+    // sum to original
+    auto s = ring_sum({y0, y1, y2, y3});
+
+    // THEN
+    EXPECT_TRUE(ring_all_equal(s, x));
+    EXPECT_TRUE(ring_all_equal(z, ring_zeros(field, numel)));
+  }
+  {
+    // GIVEN
+    const ArrayRef x = makeRandomArray(field, numel, stride);
+    const size_t step = SizeOf(field) * 8 / 4;
+
+    // WHEN
+    auto y0 = x.clone();
+    auto y1 = x.clone();
+    auto y2 = x.clone();
+    auto y3 = x.clone();
+    ring_bitmask_(y0, step * 0, step * 1);
+    ring_bitmask_(y1, step * 1, step * 2);
+    ring_bitmask_(y2, step * 2, step * 3);
+    ring_bitmask_(y3, step * 3, step * 4);
+
+    auto z = ring_and(y0, y1);
+    ring_and_(z, y2);
+    ring_and_(z, y3);
+
+    auto s = ring_sum({y0, y1, y2, y3});
+
+    // THEN
+    EXPECT_TRUE(ring_all_equal(s, x));
+    EXPECT_TRUE(ring_all_equal(z, ring_zeros(field, numel)));
+  }
+}
+
 }  // namespace spu::mpc

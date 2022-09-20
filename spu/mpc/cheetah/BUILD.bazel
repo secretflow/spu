@@ -91,10 +91,11 @@ spu_cc_library(
 
 spu_cc_test(
     name = "protocol_test",
+    size = "large",
     srcs = ["protocol_test.cc"],
     deps = [
         ":protocol",
-        "//spu/mpc:compute_test",
+        "//spu/mpc:api_test",
         "//spu/mpc/common:abprotocol_test",
     ],
 )
@@ -110,15 +111,6 @@ spu_cc_library(
     ],
 )
 
-#spu_cc_test(
-#    name = "io_test",
-#    srcs = ["io_test.cc"],
-#    deps = [
-#        ":io",
-#        "//spu/mpc:io_test",
-#    ],
-#)
-
 spu_cc_library(
     name = "type",
     deps = [
@@ -130,11 +122,3 @@ spu_cc_library(
     name = "utils",
     hdrs = ["utils.h"],
 )
-
-#spu_cc_test(
-#name = "type_test",
-#srcs = ["type_test.cc"],
-#deps = [
-#":type",
-#],
-#)

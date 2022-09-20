@@ -20,14 +20,8 @@
 #include <type_traits>
 #include <utility>
 
-#include "absl/types/span.h"
-#include "spdlog/spdlog.h"
-#include "xtensor/xadapt.hpp"
-#include "xtensor/xarray.hpp"
-#include "xtensor/xexpression.hpp"
 #include "yasl/base/buffer.h"
 #include "yasl/base/exception.h"
-#include "yasl/base/int128.h"
 #include "yasl/link/link.h"
 
 #include "spu/mpc/object.h"
@@ -36,60 +30,6 @@
 // protocols.
 
 namespace spu::mpc {
-namespace detail {
-
-template <class E>
-yasl::Buffer SerializeXtensor(const xt::xexpression<E>& x) {
-  using storage_t = typename E::value_type;
-  auto&& xx = xt::eval(x.derived_cast());
-  return {reinterpret_cast<char const*>(xx.data()),
-          xx.size() * sizeof(storage_t)};
-}
-
-template <typename T, typename ST,
-          std::enable_if_t<std::is_trivially_copyable_v<T>, int> = 0>
-xt::xarray<T> BuildXtensor(const ST& shape, yasl::Buffer&& buf) {
-  const int64_t numel =
-      std::accumulate(shape.begin(), shape.end(), 1, std::multiplies<>());
-
-  YASL_ENFORCE(buf.size() == numel * (int64_t)sizeof(T),
-               "expected buf=({}x{}), got={}", numel, sizeof(T), buf.size());
-
-  // TLDR:
-  // when T = __int128, gcc will try to optimize assignment with XMM
-  // registers, which expects 16 bytes alignment.
-  //
-  // for example: [here](https://godbolt.org/z/K43Meo7Yz)
-  // ```cpp
-  // int proc(__int128*x, __int128*y) {
-  //   for (int i = 0; i < 10; i ++) {
-  //     y[i] = x[i];
-  //   }
-  // }
-  // ```
-  //
-  // with `-O1` or higher, will generate
-  // ```assembly
-  // movdqa xmm0,XMMWORD PTR [rdi+rax*1]
-  // movaps XMMWORD PTR [rsi+rax*1],xmm0
-  // ```
-  //
-  // while MOVDQA expects 16 bytes aligment (for __int128), or it will raise a
-  // SEGMENT fault.
-  //
-  // see
-  // [MOVDQA](https://mudongliang.github.io/x86/html/file_module_x86_id_183.html)
-  // for more details.
-  //
-  YASL_ENFORCE(reinterpret_cast<std::uintptr_t>(buf.data()) % 16 == 0,
-               "Expect buffer to be 16B aligned");
-
-  size_t size = buf.size() / sizeof(T);
-  return xt::adapt(static_cast<T*>(buf.release()), size,
-                   xt::acquire_ownership(), shape);
-}
-
-}  // namespace detail
 
 enum class ReduceOp {
   INVALID = 0,
@@ -97,9 +37,9 @@ enum class ReduceOp {
   XOR = 2,
 };
 
-// yasl::link::algorithms does not make assumption on data types, (it works on
-// buffer), which means it's hard to write algorithms which depends on data
-// arithmetics, such like reduce/allreduce.
+// yasl::link does not make assumption on data types, (it works on buffer),
+// which means it's hard to write algorithms which depends on data arithmetics
+// like reduce/allreduce.
 //
 // In mpc module, we have concrete data type definition, so we can fill this
 // gap.
@@ -141,89 +81,57 @@ class Communicator : public State {
 
   size_t getRank() const { return lctx_->Rank(); }
 
-  // All reduce
   ArrayRef allReduce(ReduceOp op, const ArrayRef& in, std::string_view tag);
-  template <typename E, typename T = typename E::value_type>
-  xt::xarray<T> allReduce(ReduceOp op, const xt::xexpression<E>& in,
-                          std::string_view tag);
 
-  // Reduce
   ArrayRef reduce(ReduceOp op, const ArrayRef& in, size_t root,
                   std::string_view tag);
-  template <typename E, typename T = typename E::value_type>
-  xt::xarray<T> reduce(ReduceOp op, const xt::xexpression<E>& in, Rank root,
-                       std::string_view tag);
 
-  // Rotate
   ArrayRef rotate(const ArrayRef& in, std::string_view tag);
-  template <typename E, typename T = typename E::value_type>
-  xt::xarray<T> rotate(const xt::xexpression<E>& in, std::string_view tag);
 
-  // SendAsync
   void sendAsync(size_t dst_rank, const ArrayRef& in, std::string_view tag);
 
-  // Receive
   ArrayRef recv(size_t src_rank, Type eltype, std::string_view tag);
+
+  template <typename T>
+  std::vector<T> rotate(absl::Span<T const> in, std::string_view tag);
+
+  template <typename T>
+  void sendAsync(size_t dst_rank, absl::Span<T const> in, std::string_view tag);
+
+  template <typename T>
+  std::vector<T> recv(size_t src_rank, std::string_view tag);
 };
 
-template <typename E, typename T>
-xt::xarray<T> Communicator::allReduce(ReduceOp op, const xt::xexpression<E>& in,
-                                      std::string_view tag) {
-  auto all_buf =
-      yasl::link::AllGather(lctx_, detail::SerializeXtensor(in), tag);
-
-  const auto& in_x = in.derived_cast();
-
-  xt::xarray<T> res = xt::zeros_like(in);
-  for (auto& buf : all_buf) {
-    if (op == ReduceOp::ADD) {
-      res += detail::BuildXtensor<T>(in_x.shape(), std::move(buf));
-    } else if (op == ReduceOp::XOR) {
-      res ^= detail::BuildXtensor<T>(in_x.shape(), std::move(buf));
-    } else {
-      YASL_THROW("unsupported reduce op={}", static_cast<int>(op));
-    }
-  }
-
-  // TODO: count comm & latency
-
-  return res;
-}
-
-template <typename E, typename T>
-xt::xarray<T> Communicator::reduce(ReduceOp op, const xt::xexpression<E>& in,
-                                   Rank root, std::string_view tag) {
-  YASL_ENFORCE(root < lctx_->WorldSize());
-
-  const auto& in_x = in.derived_cast();
-
-  auto all_buf =
-      yasl::link::Gather(lctx_, detail::SerializeXtensor(in), root, tag);
-
-  xt::xarray<T> res = xt::zeros_like(in);
-  for (auto& buf : all_buf) {
-    if (op == ReduceOp::ADD) {
-      res += detail::BuildXtensor<T>(in_x.shape(), std::move(buf));
-    } else if (op == ReduceOp::XOR) {
-      res ^= detail::BuildXtensor<T>(in_x.shape(), std::move(buf));
-    } else {
-      YASL_THROW("unsupported reduce op={}", static_cast<int>(op));
-    }
-  }
-
-  // TODO: count comm & latency
-  return res;
-}
-
-template <typename E, typename T>
-xt::xarray<T> Communicator::rotate(const xt::xexpression<E>& in,
-                                   std::string_view tag) {
-  const auto& in_x = in.derived_cast();
-
-  lctx_->SendAsync(lctx_->PrevRank(), detail::SerializeXtensor(in_x), tag);
-
+template <typename T>
+std::vector<T> Communicator::rotate(absl::Span<T const> in,
+                                    std::string_view tag) {
+  yasl::ByteContainerView bv(reinterpret_cast<uint8_t const*>(in.data()),
+                             sizeof(T) * in.size());
+  lctx_->SendAsync(lctx_->PrevRank(), bv, tag);
   auto buf = lctx_->Recv(lctx_->NextRank(), tag);
-  return detail::BuildXtensor<T>(in_x.shape(), std::move(buf));
+
+  stats_.latency += 1;
+  stats_.comm += in.size() * sizeof(T);
+
+  YASL_ENFORCE(buf.size() == static_cast<int64_t>(sizeof(T) * in.size()));
+  return std::vector<T>(buf.data<T>(), buf.data<T>() + in.size());
+}
+
+template <typename T>
+void Communicator::sendAsync(size_t dst_rank, absl::Span<T const> in,
+                             std::string_view tag) {
+  yasl::ByteContainerView bv(reinterpret_cast<uint8_t const*>(in.data()),
+                             sizeof(T) * in.size());
+  lctx_->SendAsync(dst_rank, bv, tag);
+}
+
+template <typename T>
+std::vector<T> Communicator::recv(size_t src_rank, std::string_view tag) {
+  auto buf = lctx_->Recv(src_rank, tag);
+  YASL_ENFORCE(buf.size() % sizeof(T) == 0);
+  auto numel = buf.size() / sizeof(T);
+  // TODO: use a container which memory could be stealed.
+  return std::vector<T>(buf.data<T>(), buf.data<T>() + numel);
 }
 
 }  // namespace spu::mpc

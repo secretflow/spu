@@ -130,13 +130,7 @@ TEST(FxpTest, ExponentialTaylorSeries) {
 TEST(FxpTest, ExponentialPade) {
   HalContext ctx = test::makeRefHalContext();
 
-  // GIVEN
-  xt::xarray<float> x{
-      // -12.5, fail
-      -12.0, -11.0, -9.9, -6.7, -3.0, -1.0, -0.5, 0.5,  1.0,  1.5,
-      1.7,   2.1,   6.7,  8.0,  10.5, 12.5, 14.3, 16.7, 18.0,
-      // 19.0, fail
-  };
+  xt::xarray<float> x = xt::linspace<float>(-22., 22., 4000);
 
   Value a = const_secret(&ctx, x);
   Value c = detail::exp_pade_approx(&ctx, a);
@@ -376,6 +370,45 @@ TEST(FxpTest, Tanh) {
     auto y = test::dump_public_as<float>(&ctx, _s2p(&ctx, c).asFxp());
     EXPECT_TRUE(xt::allclose(xt::tanh(x), y, 0.01, 0.001))
         << xt::tanh(x) << std::endl
+        << y;
+  }
+}
+
+TEST(FxpTest, SqrtInv) {
+  // GIVEN
+  xt::xarray<float> x{0.36, 1.25, 2.5, 32, 123, 234.75, 556.6, 12142};
+  xt::xarray<float> expected_y = 1.0f / xt::sqrt(x);
+
+  // fxp_fraction_bits = 18(default value for FM64)
+  {
+    HalContext ctx = test::makeRefHalContext();
+
+    Value a = const_secret(&ctx, x);
+    Value c = f_sqrt_inv(&ctx, a);
+    EXPECT_EQ(c.dtype(), DT_FXP);
+
+    auto y = test::dump_public_as<float>(&ctx, _s2p(&ctx, c).asFxp());
+    EXPECT_TRUE(xt::allclose(expected_y, y, 0.01, 0.001))
+        << expected_y << std::endl
+        << y;
+  }
+
+  // fxp_fraction_bits = 17
+  {
+    RuntimeConfig config;
+    config.set_protocol(ProtocolKind::REF2K);
+    config.set_field(FieldType::FM64);
+    config.set_sigmoid_mode(RuntimeConfig::SIGMOID_REAL);
+    config.set_fxp_fraction_bits(17);
+    HalContext ctx = test::makeRefHalContext(config);
+
+    Value a = const_secret(&ctx, x);
+    Value c = f_sqrt_inv(&ctx, a);
+    EXPECT_EQ(c.dtype(), DT_FXP);
+
+    auto y = test::dump_public_as<float>(&ctx, _s2p(&ctx, c).asFxp());
+    EXPECT_TRUE(xt::allclose(expected_y, y, 0.01, 0.001))
+        << expected_y << std::endl
         << y;
   }
 }

@@ -42,7 +42,10 @@ func @main(%arg0: tensor<2x2x!pphlo.sec<i32>>) -> (tensor<2x2x!pphlo.sec<i32>>) 
     "pphlo.dbg_print"(%1) : (tensor<2x2x!pphlo.sec<i32>>) -> ()
     return %1 : tensor<2x2x!pphlo.sec<i32>>
 }"""
-        sim(code, 1, x)
+        executable = spu_pb2.ExecutableProto(
+            name="test", input_names=["in0"], output_names=["out0"], code=code.encode()
+        )
+        sim(executable, x)
 
     def test_raise(self):
         wsize = 3
@@ -63,9 +66,15 @@ func @main(%arg0: tensor<2x3x!pphlo.sec<i32>>, %arg1: tensor<12x13x!pphlo.sec<i3
     %0 = "pphlo.dot"(%arg0, %arg1) : (tensor<2x3x!pphlo.sec<i32>>, tensor<12x13x!pphlo.sec<i32>>) -> tensor<2x2x!pphlo.sec<i32>>
     return %0 : tensor<2x2x!pphlo.sec<i32>>
 }"""
+        executable = spu_pb2.ExecutableProto(
+            name="test",
+            input_names=["in0", "in1"],
+            output_names=["out0"],
+            code=code.encode(),
+        )
 
         with self.assertRaisesRegex(RuntimeError, "stacktrace:.*"):
-            sim(code, 1, x, y)
+            sim(executable, x, y)
 
 
 if __name__ == '__main__':

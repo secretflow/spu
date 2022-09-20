@@ -87,13 +87,11 @@ std::ostream& operator<<(std::ostream& os, const DataType& dtype);
   FOREACH_FLOAT_PT_TYPES(FN)
 
 // Helper macros to enumerate all py types.
-#define __CASE_PT_TYPE(PT_TYPE, NAME, ...)                       \
-  case (PT_TYPE): {                                              \
-    /* inject `_kPtType` & `_kName` for the continuation call */ \
-    [[maybe_unused]] constexpr spu::PtType _kPtType = PT_TYPE;   \
-    [[maybe_unused]] constexpr std::string_view _kName = NAME;   \
-    using _PtTypeT = EnumToPtType<_kPtType>::type;               \
-    return __VA_ARGS__();                                        \
+#define __CASE_PT_TYPE(PT_TYPE, NAME, ...)                     \
+  case (PT_TYPE): {                                            \
+    [[maybe_unused]] constexpr std::string_view _kName = NAME; \
+    using ScalarT = EnumToPtType<PT_TYPE>::type;               \
+    return __VA_ARGS__();                                      \
   }
 
 #define DISPATCH_FLOAT_PT_TYPES(PT_TYPE, NAME, ...)                      \
@@ -101,6 +99,19 @@ std::ostream& operator<<(std::ostream& os, const DataType& dtype);
     switch (PT_TYPE) {                                                   \
       __CASE_PT_TYPE(spu::PT_F32, NAME, __VA_ARGS__)                     \
       __CASE_PT_TYPE(spu::PT_F64, NAME, __VA_ARGS__)                     \
+      default:                                                           \
+        YASL_THROW("{} not implemented for pt_type={}", #NAME, PT_TYPE); \
+    }                                                                    \
+  }()
+
+#define DISPATCH_UINT_PT_TYPES(PT_TYPE, NAME, ...)                       \
+  [&] {                                                                  \
+    switch (PT_TYPE) {                                                   \
+      __CASE_PT_TYPE(spu::PT_U8, NAME, __VA_ARGS__)                      \
+      __CASE_PT_TYPE(spu::PT_U16, NAME, __VA_ARGS__)                     \
+      __CASE_PT_TYPE(spu::PT_U32, NAME, __VA_ARGS__)                     \
+      __CASE_PT_TYPE(spu::PT_U64, NAME, __VA_ARGS__)                     \
+      __CASE_PT_TYPE(spu::PT_U128, NAME, __VA_ARGS__)                    \
       default:                                                           \
         YASL_THROW("{} not implemented for pt_type={}", #NAME, PT_TYPE); \
     }                                                                    \
@@ -174,9 +185,9 @@ std::ostream& operator<<(std::ostream& os, ProtocolKind protocol);
 // Field 2k types, TODO(jint) support Zq
 //////////////////////////////////////////////////////////////
 #define FIELD_TO_STORAGE_MAP(FN) \
-  FN(FM32, PT_I32)               \
-  FN(FM64, PT_I64)               \
-  FN(FM128, PT_I128)
+  FN(FM32, PT_U32)               \
+  FN(FM64, PT_U64)               \
+  FN(FM128, PT_U128)
 
 template <FieldType ft>
 struct Ring2kTrait {};

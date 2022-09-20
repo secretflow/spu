@@ -74,21 +74,21 @@ spu_cc_library(
 )
 
 spu_cc_library(
-    name = "interfaces",
-    srcs = ["interfaces.cc"],
-    hdrs = ["interfaces.h"],
+    name = "api",
+    srcs = ["api.cc"],
+    hdrs = ["api.h"],
     deps = [
         ":object",
     ],
 )
 
 spu_cc_library(
-    name = "compute_test",
+    name = "api_test",
     testonly = 1,
-    srcs = ["compute_test.cc"],
-    hdrs = ["compute_test.h"],
+    srcs = ["api_test.cc"],
+    hdrs = ["api_test.h"],
     deps = [
-        ":interfaces",
+        ":api",
         ":object",
         "//spu/mpc/util:communicator",
         "//spu/mpc/util:simulate",

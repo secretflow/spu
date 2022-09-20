@@ -19,9 +19,11 @@
 #include <cstring>
 #include <random>
 
+#include "Eigen/Core"
 #include "absl/types/span.h"
 #include "yasl/crypto/pseudo_random_generator.h"
 #include "yasl/utils/parallel.h"
+#include "yasl/utils/rand.h"
 
 #include "spu/core/array_ref.h"
 #include "spu/mpc/util/linalg.h"
@@ -31,28 +33,6 @@ namespace spu::mpc {
 namespace {
 
 constexpr char kModule[] = "RingOps";
-
-void strided_copy(int64_t numel, int64_t elsize, void* dst, int64_t dstride,
-                  void const* src, int64_t sstride) {
-  // WARN: the following method does not work
-  // due to https://github.com/xtensor-stack/xtensor/issues/2330
-  // return DISPATCH_ALL_FIELDS(field, kModule, [&]() {
-  //  auto _x = xt_mutable_adapt<ring2k_t>(x);
-  //  const auto& _y = xt_adapt<ring2k_t>(y);
-  //  _x = _y;
-  //});
-
-  const char* src_itr = static_cast<const char*>(src);
-  char* dst_itr = static_cast<char*>(dst);
-
-  yasl::parallel_for(0, numel, PFOR_GRAIN_SIZE,
-                     [&](int64_t begin, int64_t end) {
-                       for (int64_t idx = begin; idx < end; ++idx) {
-                         std::memcpy(&dst_itr[idx * dstride * elsize],
-                                     &src_itr[idx * sstride * elsize], elsize);
-                       }
-                     });
-}
 
 #define YASL_ENFORCE_RING(x)                                         \
   YASL_ENFORCE(x.eltype().isa<Ring2k>(), "expect ring type, got={}", \
@@ -65,119 +45,73 @@ void strided_copy(int64_t numel, int64_t elsize, void* dst, int64_t dstride,
   YASL_ENFORCE(lhs.numel() == rhs.numel(), "numel mismatch, lhs={}, rhs={}", \
                lhs.numel(), rhs.numel());
 
-#define DEF_UNARY_RING_OP(NAME, COP)                                   \
-  void NAME##_impl(ArrayRef& ret, const ArrayRef& x) {                 \
-    ENFORCE_EQ_ELSIZE_AND_NUMEL(ret, x);                               \
-    const auto field = x.eltype().as<Ring2k>()->field();               \
-    const int64_t numel = ret.numel();                                 \
-    return DISPATCH_ALL_FIELDS(field, kModule, [&]() {                 \
-      const auto* x_itr = &x.at<ring2k_t>(0);                          \
-      const int64_t x_stride = x.stride();                             \
-      auto* z_itr = &ret.at<ring2k_t>(0);                              \
-      const int64_t z_stride = ret.stride();                           \
-      yasl::parallel_for(                                              \
-          0, numel, PFOR_GRAIN_SIZE, [&](int64_t begin, int64_t end) { \
-            for (int64_t idx = begin; idx < end; ++idx) {              \
-              z_itr[idx * z_stride] = COP x_itr[idx * x_stride];       \
-            }                                                          \
-          });                                                          \
-    });                                                                \
+#define DEF_UNARY_RING_OP_EIGEN(NAME, FNAME)                              \
+  void NAME##_impl(ArrayRef& ret, const ArrayRef& x) {                    \
+    ENFORCE_EQ_ELSIZE_AND_NUMEL(ret, x);                                  \
+    const auto field = x.eltype().as<Ring2k>()->field();                  \
+    const int64_t numel = ret.numel();                                    \
+    return DISPATCH_ALL_FIELDS(field, kModule, [&]() {                    \
+      using T = std::make_signed_t<ring2k_t>;                             \
+      FNAME(numel, &x.at<T>(0), x.stride(), &ret.at<T>(0), ret.stride()); \
+    });                                                                   \
   }
 
-#define DEF_BINARY_RING_OP(NAME, COP)                                     \
+#define DEF_BINARY_RING_OP_EIGEN(NAME, FNAME)                             \
   void NAME##_impl(ArrayRef& ret, const ArrayRef& x, const ArrayRef& y) { \
     ENFORCE_EQ_ELSIZE_AND_NUMEL(ret, x);                                  \
     ENFORCE_EQ_ELSIZE_AND_NUMEL(ret, y);                                  \
     const auto field = x.eltype().as<Ring2k>()->field();                  \
     const int64_t numel = ret.numel();                                    \
     return DISPATCH_ALL_FIELDS(field, kModule, [&]() {                    \
-      const auto* x_itr = &x.at<ring2k_t>(0);                             \
-      const int64_t x_stride = x.stride();                                \
-      const auto* y_itr = &y.at<ring2k_t>(0);                             \
-      const int64_t y_stride = y.stride();                                \
-      auto* z_itr = &ret.at<ring2k_t>(0);                                 \
-      const int64_t z_stride = ret.stride();                              \
-                                                                          \
-      yasl::parallel_for(                                                 \
-          0, numel, PFOR_GRAIN_SIZE, [&](int64_t begin, int64_t end) {    \
-            for (int64_t idx = begin; idx < end; ++idx) {                 \
-              z_itr[idx * z_stride] =                                     \
-                  x_itr[idx * x_stride] COP y_itr[idx * y_stride];        \
-            }                                                             \
-          });                                                             \
+      FNAME(numel, &x.at<ring2k_t>(0), x.stride(), &y.at<ring2k_t>(0),    \
+            y.stride(), &ret.at<ring2k_t>(0), ret.stride());              \
     });                                                                   \
   }
 
-DEF_UNARY_RING_OP(ring_not, ~);
-DEF_UNARY_RING_OP(ring_neg, -);
+DEF_UNARY_RING_OP_EIGEN(ring_not, linalg::bitwise_not);
+DEF_UNARY_RING_OP_EIGEN(ring_neg, linalg::negate);
 
-DEF_BINARY_RING_OP(ring_add, +);
-DEF_BINARY_RING_OP(ring_sub, -);
-DEF_BINARY_RING_OP(ring_mul, *);
-DEF_BINARY_RING_OP(ring_and, &);
-DEF_BINARY_RING_OP(ring_xor, ^);
-DEF_BINARY_RING_OP(ring_equal, ==);
+DEF_BINARY_RING_OP_EIGEN(ring_add, linalg::add)
+DEF_BINARY_RING_OP_EIGEN(ring_sub, linalg::sub)
+DEF_BINARY_RING_OP_EIGEN(ring_mul, linalg::mul)
+DEF_BINARY_RING_OP_EIGEN(ring_equal, linalg::equal)
+
+DEF_BINARY_RING_OP_EIGEN(ring_and, linalg::bitwise_and);
+DEF_BINARY_RING_OP_EIGEN(ring_xor, linalg::bitwise_xor);
 
 void ring_arshift_impl(ArrayRef& ret, const ArrayRef& x, size_t bits) {
   ENFORCE_EQ_ELSIZE_AND_NUMEL(ret, x);
+  const auto numel = ret.numel();
   const auto field = x.eltype().as<Ring2k>()->field();
   return DISPATCH_ALL_FIELDS(field, kModule, [&]() {
     // According to K&R 2nd edition the results are implementation-dependent for
     // right shifts of signed values, but "usually" its arithmetic right shift.
     using S = std::make_signed<ring2k_t>::type;
 
-    const auto* x_itr = &x.at<S>(0);
-    const int64_t x_stride = x.stride();
-    auto* z_itr = &ret.at<S>(0);
-    const int64_t z_stride = ret.stride();
-    const auto numel = ret.numel();
-
-    yasl::parallel_for(
-        0, numel, PFOR_GRAIN_SIZE, [&](int64_t begin, int64_t end) {
-          for (int64_t idx = begin; idx < end; ++idx) {
-            z_itr[idx * z_stride] = x_itr[idx * x_stride] >> bits;
-          }
-        });
+    linalg::rshift(numel, &x.at<S>(0), x.stride(), &ret.at<S>(0), ret.stride(),
+                   bits);
   });
 }
 
 void ring_rshift_impl(ArrayRef& ret, const ArrayRef& x, size_t bits) {
   ENFORCE_EQ_ELSIZE_AND_NUMEL(ret, x);
+  const auto numel = ret.numel();
   const auto field = x.eltype().as<Ring2k>()->field();
   return DISPATCH_ALL_FIELDS(field, kModule, [&]() {
-    using U = std::make_unsigned<ring2k_t>::type;
+    using U = ring2k_t;
 
-    const auto* x_itr = &x.at<U>(0);
-    const int64_t x_stride = x.stride();
-    auto* z_itr = &ret.at<U>(0);
-    const int64_t z_stride = ret.stride();
-    const auto numel = ret.numel();
-
-    yasl::parallel_for(
-        0, numel, PFOR_GRAIN_SIZE, [&](int64_t begin, int64_t end) {
-          for (int64_t idx = begin; idx < end; ++idx) {
-            z_itr[idx * z_stride] = x_itr[idx * x_stride] >> bits;
-          }
-        });
+    linalg::rshift(numel, &x.at<U>(0), x.stride(), &ret.at<U>(0), ret.stride(),
+                   bits);
   });
 }
 
 void ring_lshift_impl(ArrayRef& ret, const ArrayRef& x, size_t bits) {
   ENFORCE_EQ_ELSIZE_AND_NUMEL(ret, x);
+  const auto numel = ret.numel();
   const auto field = x.eltype().as<Ring2k>()->field();
   return DISPATCH_ALL_FIELDS(field, kModule, [&]() {
-    const auto* x_itr = &x.at<ring2k_t>(0);
-    const int64_t x_stride = x.stride();
-    auto* z_itr = &ret.at<ring2k_t>(0);
-    const int64_t z_stride = ret.stride();
-    const auto numel = ret.numel();
-
-    yasl::parallel_for(
-        0, numel, PFOR_GRAIN_SIZE, [&](int64_t begin, int64_t end) {
-          for (int64_t idx = begin; idx < numel; ++idx) {
-            z_itr[idx * z_stride] = x_itr[idx * x_stride] << bits;
-          }
-        });
+    linalg::lshift(numel, &x.at<ring2k_t>(0), x.stride(), &ret.at<ring2k_t>(0),
+                   ret.stride(), bits);
   });
 }
 
@@ -186,8 +120,11 @@ void ring_bitrev_impl(ArrayRef& ret, const ArrayRef& x, size_t start,
   ENFORCE_EQ_ELSIZE_AND_NUMEL(ret, x);
 
   const auto field = x.eltype().as<Ring2k>()->field();
+  const auto numel = ret.numel();
+
   return DISPATCH_ALL_FIELDS(field, kModule, [&]() {
-    using U = typename std::make_unsigned<ring2k_t>::type;
+    using U = ring2k_t;
+
     // optimize: use faster reverse method.
     auto bitrev_fn = [&](U in) -> U {
       U tmp = 0U;
@@ -201,18 +138,28 @@ void ring_bitrev_impl(ArrayRef& ret, const ArrayRef& x, size_t start,
       return (in & ~mask) | tmp;
     };
 
-    const auto* x_itr = &x.at<U>(0);
-    const int64_t x_stride = x.stride();
-    auto* z_itr = &ret.at<U>(0);
-    const int64_t z_stride = ret.stride();
-    const auto numel = ret.numel();
+    linalg::unaryWithOp(numel, &x.at<U>(0), x.stride(), &ret.at<U>(0),
+                        ret.stride(), bitrev_fn);
+  });
+}
 
-    yasl::parallel_for(
-        0, numel, PFOR_GRAIN_SIZE, [&](int64_t start_idx, int64_t end_idx) {
-          for (int64_t idx = start_idx; idx < end_idx; ++idx) {
-            z_itr[idx * z_stride] = bitrev_fn(x_itr[idx * x_stride]);
-          }
-        });
+void ring_bitmask_impl(ArrayRef& ret, const ArrayRef& x, size_t low,
+                       size_t high) {
+  ENFORCE_EQ_ELSIZE_AND_NUMEL(ret, x);
+
+  const auto field = x.eltype().as<Ring2k>()->field();
+  const auto numel = ret.numel();
+
+  YASL_ENFORCE(low < high && high <= SizeOf(field) * 8);
+
+  return DISPATCH_ALL_FIELDS(field, kModule, [&]() {
+    using U = ring2k_t;
+    U mask = (((U)1U << (high - low)) - 1) << low;
+
+    auto mark_fn = [&](U el) { return el & mask; };
+
+    linalg::unaryWithOp(numel, &x.at<U>(0), x.stride(), &ret.at<U>(0),
+                        ret.stride(), mark_fn);
   });
 }
 
@@ -224,17 +171,18 @@ void ring_print(const ArrayRef& x, std::string_view name) {
 
   const auto field = x.eltype().as<Ring2k>()->field();
   DISPATCH_ALL_FIELDS(field, kModule, [&]() {
-    using U = std::make_unsigned<ring2k_t>::type;
+    using U = ring2k_t;
 
-    const U* x_itr = &x.at<U>(0);
-    const int64_t x_stride = x.stride();
+    auto x_eigen = Eigen::Map<const Eigen::ArrayX<U>, 0,
+                              Eigen::InnerStride<Eigen::Dynamic>>(
+        &x.at<U>(0), x.numel(), Eigen::InnerStride<Eigen::Dynamic>(x.stride()));
 
     fmt::print("{} = {{", name);
     for (int64_t idx = 0; idx < x.numel(); idx++) {
       if (idx != 0) {
-        fmt::print(", {0:X}", x_itr[idx * x_stride]);
+        fmt::print(", {0:X}", x_eigen[idx]);
       } else {
-        fmt::print("{0:X}", x_itr[idx * x_stride]);
+        fmt::print("{0:X}", x_eigen[idx]);
       }
     }
     fmt::print("}}\n");
@@ -242,17 +190,14 @@ void ring_print(const ArrayRef& x, std::string_view name) {
 }
 
 ArrayRef ring_rand(FieldType field, size_t size) {
-  std::random_device rd;
-  std::mt19937_64 gen(rd());
-  std::uniform_int_distribution<uint64_t> dis;
-  uint64_t cnt = dis(gen);
-  return ring_rand(field, size, 0, &cnt);
+  uint64_t cnt = 0;
+  return ring_rand(field, size, yasl::RandSeed(), &cnt);
 }
 
 ArrayRef ring_rand(FieldType field, size_t size, uint128_t prg_seed,
                    uint64_t* prg_counter) {
   constexpr yasl::SymmetricCrypto::CryptoType kCryptoType =
-      yasl::SymmetricCrypto::CryptoType::AES128_ECB;
+      yasl::SymmetricCrypto::CryptoType::AES128_CTR;
   constexpr uint128_t kAesInitialVector = 0U;
 
   ArrayRef res(makeType<RingTy>(field), size);
@@ -273,11 +218,13 @@ ArrayRef ring_rand_range(FieldType field, size_t size, int32_t min,
 
   DISPATCH_ALL_FIELDS(field, kModule, [&]() {
     YASL_ENFORCE(sizeof(ring2k_t) >= sizeof(int32_t));
-    auto* x_itr = &x.at<ring2k_t>(0);
-    const auto x_stride = x.stride();
+    auto x_eigen = Eigen::Map<Eigen::ArrayX<ring2k_t>, 0,
+                              Eigen::InnerStride<Eigen::Dynamic>>(
+        &x.at<ring2k_t>(0), x.numel(),
+        Eigen::InnerStride<Eigen::Dynamic>(x.stride()));
 
     for (auto idx = 0; idx < x.numel(); idx++) {
-      x_itr[idx * x_stride] = static_cast<ring2k_t>(dis(gen));
+      x_eigen[idx] = static_cast<ring2k_t>(dis(gen));
     }
   });
 
@@ -286,42 +233,40 @@ ArrayRef ring_rand_range(FieldType field, size_t size, int32_t min,
 
 void ring_assign(ArrayRef& x, const ArrayRef& y) {
   YASL_ENFORCE_RING(x);
-  YASL_ENFORCE(x.numel() == y.numel());
-  YASL_ENFORCE(x.elsize() == y.elsize());
+  ENFORCE_EQ_ELSIZE_AND_NUMEL(x, y);
 
-  const int64_t elsize = x.elsize();
-  const int64_t numel = x.numel();
-  strided_copy(numel, elsize, x.data(), x.stride(), y.data(), y.stride());
+  const auto numel = x.numel();
 
-  // WARN: the following method does not work
-  // due to https://github.com/xtensor-stack/xtensor/issues/2330
-  // return DISPATCH_ALL_FIELDS(field, kModule, [&]() {
-  //  auto _x = xt_mutable_adapt<ring2k_t>(x);
-  //  const auto& _y = xt_adapt<ring2k_t>(y);
-  //  _x = _y;
-  //});
+  const auto field = x.eltype().as<Ring2k>()->field();
+  return DISPATCH_ALL_FIELDS(field, kModule, [&]() {
+    linalg::assign(numel, &y.at<ring2k_t>(0), y.stride(), &x.at<ring2k_t>(0),
+                   x.stride());
+  });
 }
 
 ArrayRef ring_zeros(FieldType field, size_t size) {
-  // TODO(jint) zero strides.
-  ArrayRef res(makeType<RingTy>(field), size);
-  std::memset(res.data(), 0, res.buf()->size());
-  return res;
+  return DISPATCH_ALL_FIELDS(field, kModule, [&]() {
+    ArrayRef ret(makeType<RingTy>(field), size);
+    linalg::setConstantValue(ret.numel(), &ret.at<ring2k_t>(0), ret.stride(),
+                             ring2k_t(0));
+    return ret;
+  });
+}
+
+ArrayRef ring_zeros_packed(FieldType field, size_t size) {
+  return DISPATCH_ALL_FIELDS(field, kModule, [&]() {
+    auto ty = makeType<RingTy>(field);
+    ArrayRef ret = makeConstantArrayRef(ty, size);
+    std::memset(ret.data(), ring2k_t(0), ty.size());
+    return ret;
+  });
 }
 
 ArrayRef ring_ones(FieldType field, size_t size) {
-  ArrayRef res = ring_zeros(field, size);
-
   return DISPATCH_ALL_FIELDS(field, kModule, [&]() {
     ArrayRef ret(makeType<RingTy>(field), size);
-    auto* x_itr = &ret.at<ring2k_t>(0);
-    const int64_t x_stride = ret.stride();
-
-    yasl::parallel_for(0, size, PFOR_GRAIN_SIZE, [&](size_t begin, size_t end) {
-      for (size_t idx = begin; idx < end; ++idx) {
-        x_itr[idx * x_stride] = 1;
-      }
-    });
+    linalg::setConstantValue(ret.numel(), &ret.at<ring2k_t>(0), ret.stride(),
+                             ring2k_t(1));
     return ret;
   });
 }
@@ -329,11 +274,12 @@ ArrayRef ring_ones(FieldType field, size_t size) {
 ArrayRef ring_randbit(FieldType field, size_t size) {
   return DISPATCH_ALL_FIELDS(field, kModule, [&]() {
     ArrayRef ret(makeType<RingTy>(field), size);
-    auto* x_itr = &ret.at<ring2k_t>(0);
-    const int64_t x_stride = ret.stride();
-    auto engine = std::default_random_engine(std::random_device{}());
+    auto x_eigen = Eigen::Map<Eigen::VectorX<ring2k_t>, 0,
+                              Eigen::InnerStride<Eigen::Dynamic>>(
+        &ret.at<ring2k_t>(0), ret.numel(),
+        Eigen::InnerStride<Eigen::Dynamic>(ret.stride()));
     for (size_t idx = 0; idx < size; idx++) {
-      x_itr[idx * x_stride] = engine() & 0x1;
+      x_eigen[idx] = rand() & 0x1;
     }
     return ret;
   });
@@ -467,6 +413,16 @@ void ring_bitrev_(ArrayRef& x, size_t start, size_t end) {
   ring_bitrev_impl(x, x, start, end);
 }
 
+ArrayRef ring_bitmask(const ArrayRef& x, size_t low, size_t high) {
+  ArrayRef ret(x.eltype(), x.numel());
+  ring_bitmask_impl(ret, x, low, high);
+  return ret;
+}
+
+void ring_bitmask_(ArrayRef& x, size_t low, size_t high) {
+  ring_bitmask_impl(x, x, low, high);
+}
+
 ArrayRef ring_sum(absl::Span<ArrayRef const> arrs) {
   YASL_ENFORCE(!arrs.empty(), "expected non empty, got size={}", arrs.size());
 
@@ -488,15 +444,19 @@ bool ring_all_equal(const ArrayRef& x, const ArrayRef& y, size_t abs_err) {
 
   const auto field = x.eltype().as<Ring2k>()->field();
   return DISPATCH_ALL_FIELDS(field, "_", [&]() {
-    const auto* x_itr = &x.at<ring2k_t>(0);
-    const int64_t x_stride = x.stride();
-    auto* y_itr = &y.at<ring2k_t>(0);
-    const int64_t y_stride = y.stride();
+    using T = std::make_signed_t<ring2k_t>;
+
+    auto x_eigen = Eigen::Map<const Eigen::VectorX<T>, 0,
+                              Eigen::InnerStride<Eigen::Dynamic>>(
+        &x.at<T>(0), x.numel(), Eigen::InnerStride<Eigen::Dynamic>(x.stride()));
+    auto y_eigen = Eigen::Map<const Eigen::VectorX<T>, 0,
+                              Eigen::InnerStride<Eigen::Dynamic>>(
+        &y.at<T>(0), y.numel(), Eigen::InnerStride<Eigen::Dynamic>(y.stride()));
     for (int64_t idx = 0; idx < x.numel(); idx++) {
-      auto x_el = x_itr[idx * x_stride];
-      auto y_el = y_itr[idx * y_stride];
-      if (std::abs(y_el - x_el) > static_cast<ring2k_t>(abs_err)) {
-        fmt::print("error: {0:X} {1:X}\n", x_el, y_el);
+      auto x_el = x_eigen[idx];
+      auto y_el = y_eigen[idx];
+      if (std::abs(x_el - y_el) > static_cast<T>(abs_err)) {
+        fmt::print("error: {0:X} {1:X} abs_err: {2:X}\n", x_el, y_el, abs_err);
         return false;
       }
     }
@@ -504,22 +464,22 @@ bool ring_all_equal(const ArrayRef& x, const ArrayRef& y, size_t abs_err) {
   });
 }
 
-std::vector<bool> ring_as_bool(const ArrayRef& x) {
+std::vector<uint8_t> ring_cast_boolean(const ArrayRef& x) {
   YASL_ENFORCE_RING(x);
   const auto field = x.eltype().as<Ring2k>()->field();
 
-  std::vector<bool> res(x.numel());
-
-  // Assign boolean vector in a parallel fashion is not safe, so this loop
-  // cannot parallelized
+  std::vector<uint8_t> res(x.numel());
   DISPATCH_ALL_FIELDS(field, kModule, [&]() {
-    const auto* x_itr = &x.at<ring2k_t>(0);
-    const int64_t x_stride = x.stride();
-    for (int64_t idx = 0; idx < x.numel(); idx++) {
-      auto x_el = x_itr[idx * x_stride];
-      YASL_ENFORCE(x_el == 0 || x_el == 1);
-      res[idx] = (x_el == 1);
-    }
+    auto x_eigen = Eigen::Map<const Eigen::VectorX<ring2k_t>, 0,
+                              Eigen::InnerStride<Eigen::Dynamic>>(
+        &x.at<ring2k_t>(0), x.numel(),
+        Eigen::InnerStride<Eigen::Dynamic>(x.stride()));
+    yasl::parallel_for(0, x.numel(), PFOR_GRAIN_SIZE,
+                       [&](size_t start, size_t end) {
+                         for (size_t i = start; i < end; i++) {
+                           res[i] = static_cast<uint8_t>(x_eigen[i] & 0x1);
+                         }
+                       });
   });
 
   return res;
@@ -533,42 +493,45 @@ ArrayRef ring_select(const std::vector<uint8_t>& c, const ArrayRef& x,
 
   const auto field = x.eltype().as<Ring2k>()->field();
   ArrayRef z(x.eltype(), x.numel());
+  const int64_t numel = c.size();
 
   DISPATCH_ALL_FIELDS(field, kModule, [&]() {
-    const ring2k_t* x_ptr = &x.at<ring2k_t>(0);
-    const ring2k_t* y_ptr = &y.at<ring2k_t>(0);
-    ring2k_t* z_ptr = &z.at<ring2k_t>(0);
-
-    const auto x_stride = x.stride();
-    const auto y_stride = y.stride();
-    const auto z_stride = z.stride();
-    const auto numel = c.size();
-
-    yasl::parallel_for(
-        0, numel, PFOR_GRAIN_SIZE, [&](int64_t begin, int64_t end) {
-          for (int64_t i = begin; i < end; i++) {
-            z_ptr[i * z_stride] =
-                (c[i] ? y_ptr[i * y_stride] : x_ptr[i * x_stride]);
-          }
-        });
+    linalg::select(numel, c.data(), &y.at<ring2k_t>(0), y.stride(),
+                   &x.at<ring2k_t>(0), x.stride(), &z.at<ring2k_t>(0),
+                   z.stride());
   });
 
   return z;
 }
 
-std::vector<ArrayRef> ring_rand_splits(const ArrayRef& arr, size_t num_splits) {
-  YASL_ENFORCE(num_splits > 1, "num split be greater than 1 ", num_splits);
-
+std::vector<ArrayRef> ring_rand_additive_splits(const ArrayRef& arr,
+                                                size_t num_splits) {
   const auto field = arr.eltype().as<Ring2k>()->field();
+  YASL_ENFORCE(num_splits > 1, "num split {} be greater than 1 ", num_splits);
 
-  std::vector<ArrayRef> splits;
-  for (size_t idx = 0; idx < num_splits; idx++) {
-    splits.push_back(ring_rand(field, arr.numel()));
+  std::vector<ArrayRef> splits(num_splits);
+  splits[0] = arr.clone();
+
+  for (size_t idx = 1; idx < num_splits; idx++) {
+    splits[idx] = ring_rand(field, arr.numel());
+    ring_sub_(splits[0], splits[idx]);
   }
 
-  // fix the first random splits.
-  ArrayRef s = ring_sum(splits);
-  splits[0] = ring_add(splits[0], ring_sub(arr, s));
+  return splits;
+}
+
+std::vector<ArrayRef> ring_rand_boolean_splits(const ArrayRef& arr,
+                                               size_t num_splits) {
+  const auto field = arr.eltype().as<Ring2k>()->field();
+  YASL_ENFORCE(num_splits > 1, "num split {} be greater than 1 ", num_splits);
+
+  std::vector<ArrayRef> splits(num_splits);
+  splits[0] = arr.clone();
+
+  for (size_t idx = 1; idx < num_splits; idx++) {
+    splits[idx] = ring_rand(field, arr.numel());
+    ring_xor_(splits[0], splits[idx]);
+  }
 
   return splits;
 }

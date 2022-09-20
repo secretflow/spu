@@ -79,30 +79,6 @@ TYPED_TEST(ShapeOpsUnaryTest, TransposeWithPermutation) {
       << z;
 }
 
-TYPED_TEST(ShapeOpsUnaryTest, Concatenate) {
-  using IN_DT = typename std::tuple_element<0, TypeParam>::type;
-  using IN_VT = typename std::tuple_element<1, TypeParam>::type;
-  using RES_DT = typename std::tuple_element<2, TypeParam>::type;
-
-  // GIVEN
-  xt::xarray<IN_DT> x = test::xt_random<IN_DT>({1, 5});
-  xt::xarray<IN_DT> y = test::xt_random<IN_DT>({1, 5});
-
-  auto concat_wrapper = [](HalContext* ctx, const Value& lhs,
-                           const Value& rhs) {
-    return concatenate(ctx, {lhs, rhs}, 0);
-  };
-  // WHAT
-  auto z = test::evalBinaryOp<RES_DT>(IN_VT(), IN_VT(), concat_wrapper, x, y);
-
-  // THEN
-  EXPECT_TRUE(
-      xt::allclose(xt::concatenate(xt::xtuple(x, y), 0), z, 0.01, 0.001))
-      << x << std::endl
-      << y << std::endl
-      << z;
-}
-
 TYPED_TEST(ShapeOpsUnaryTest, BroadcastTo) {
   using IN_DT = typename std::tuple_element<0, TypeParam>::type;
   using IN_VT = typename std::tuple_element<1, TypeParam>::type;
@@ -177,6 +153,23 @@ TEST(SliceTest, Slice) {
             std::vector<int64_t>({2, 2}));
 
   EXPECT_EQ(xt::view(x, xt::range(2, 4), xt::range(1, 3)), z);
+}
+
+TEST(SliceTest, SliceStride) {
+  // GIVEN
+  xt::xarray<int32_t> x = {0, 1, 2, 3};
+  using P_VT = public_v::type;
+
+  auto slice_wrapper = [](HalContext* ctx, const Value& in) {
+    return slice(ctx, in, {0}, {4}, {3});
+  };
+  auto z = test::evalUnaryOp<int64_t>(P_VT(), slice_wrapper, x);
+
+  EXPECT_EQ(std::vector<int64_t>(z.shape().begin(), z.shape().end()),
+            std::vector<int64_t>({2}));
+  xt::xarray<int64_t> expected = {0, 3};
+
+  EXPECT_EQ(z, expected);
 }
 
 TEST(ReshapeTest, Reshape) {

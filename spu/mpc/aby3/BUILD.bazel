@@ -33,7 +33,6 @@ spu_cc_library(
         ":boolean",
         ":conversion",
         ":value",
-        "//spu/mpc/common:abprotocol",
     ],
 )
 
@@ -42,7 +41,7 @@ spu_cc_test(
     srcs = ["protocol_test.cc"],
     deps = [
         ":protocol",
-        "//spu/mpc:compute_test",
+        "//spu/mpc:api_test",
         "//spu/mpc/common:abprotocol_test",
     ],
 )
@@ -52,9 +51,12 @@ spu_cc_library(
     srcs = ["arithmetic.cc"],
     hdrs = ["arithmetic.h"],
     deps = [
+        ":ot",
         ":type",
         ":value",
+        "//spu/mpc/common:abprotocol",
         "//spu/mpc/common:prg_state",
+        "//spu/mpc/util:circuits",
         "//spu/mpc/util:communicator",
     ],
 )
@@ -66,7 +68,7 @@ spu_cc_library(
     deps = [
         ":type",
         ":value",
-        "//spu/mpc:interfaces",
+        "//spu/mpc/common:abprotocol",
         "//spu/mpc/common:prg_state",
         "//spu/mpc/util:communicator",
     ],
@@ -79,7 +81,7 @@ spu_cc_library(
     deps = [
         ":ot",
         ":value",
-        "//spu/mpc:interfaces",
+        "//spu/mpc/common:abprotocol",
         "//spu/mpc/common:prg_state",
         "//spu/mpc/util:circuits",
         "//spu/mpc/util:communicator",

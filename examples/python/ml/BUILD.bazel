@@ -19,11 +19,29 @@ package(default_visibility = ["//visibility:public"])
 py_binary(
     name = "tf_experiment",
     srcs = ["tf_experiment.py"],
+    data = [
+        "//examples/python/conf",
+    ],
+    deps = [
+        "//spu/binding/util:distributed",
+    ],
 )
 
 py_binary(
     name = "jax_lr",
     srcs = ["jax_lr.py"],
+    data = [
+        "//examples/python/conf",
+    ],
+    deps = [
+        "//examples/python/utils:dataset_utils",
+        "//spu/binding/util:distributed",
+    ],
+)
+
+py_binary(
+    name = "jax_svm",
+    srcs = ["jax_svm.py"],
     data = [
         "//examples/python/conf",
     ],
@@ -67,6 +85,30 @@ py_binary(
     ],
     deps = [
         "//examples/python/utils:dataset_utils",
+        "//spu/binding/util:distributed",
+    ],
+)
+
+py_binary(
+    name = "ss_lr",
+    srcs = ["ss_lr.py"],
+    data = [
+        "//examples/python/conf",
+    ],
+    deps = [
+        "//examples/python/utils:appr_sigmoid",
+        "//spu/binding/util:distributed",
+    ],
+)
+
+py_binary(
+    name = "ss_xgb",
+    srcs = ["ss_xgb.py"],
+    data = [
+        "//examples/python/conf",
+    ],
+    deps = [
+        "//examples/python/utils:appr_sigmoid",
         "//spu/binding/util:distributed",
     ],
 )

@@ -16,10 +16,9 @@
 
 #include "spu/core/profile.h"
 #include "spu/core/vectorize.h"
+#include "spu/mpc/api.h"
 #include "spu/mpc/cheetah/object.h"
 #include "spu/mpc/cheetah/utils.h"
-#include "spu/mpc/common/prg_state.h"
-#include "spu/mpc/interfaces.h"
 #include "spu/mpc/semi2k/type.h"
 #include "spu/mpc/util/circuits.h"
 #include "spu/mpc/util/communicator.h"
@@ -30,7 +29,8 @@ namespace spu::mpc::cheetah {
 ArrayRef B2A::proc(KernelEvalContext* ctx, const ArrayRef& x) const {
   SPU_PROFILE_TRACE_KERNEL(ctx, x);
 
-  auto* primitives = ctx->caller()->getState<CheetahState>()->primitives();
+  auto primitives =
+      ctx->caller()->getState<CheetahState>()->beaver()->OTPrimitives();
   auto shareType = x.eltype().as<semi2k::BShrTy>();
   const auto field = x.eltype().as<Ring2k>()->field();
   size_t size = x.numel();
@@ -38,23 +38,24 @@ ArrayRef B2A::proc(KernelEvalContext* ctx, const ArrayRef& x) const {
 
   if (shareType->nbits() == 1) {
     DISPATCH_ALL_FIELDS(field, kBindName, [&]() {
-      using U = typename std::make_unsigned<ring2k_t>::type;
-      auto x_ptr = x.getOrCreateCompactBuf()->data<U>();
-      auto y_ptr = y.getOrCreateCompactBuf()->data<U>();
+      using U = ring2k_t;
+      auto x_buf = x.getOrCreateCompactBuf();
+      auto y_buf = y.getOrCreateCompactBuf();
       yasl::Buffer buf(size);
-      cast(buf.data<uint8_t>(), x_ptr, size);
+      cast(buf.data<uint8_t>(), x_buf->data<U>(), size);
 
-      primitives->nonlinear()->b2a(y_ptr, buf.data<uint8_t>(), size,
+      primitives->nonlinear()->b2a(y_buf->data<U>(), buf.data<uint8_t>(), size,
                                    sizeof(U) * 8);
       primitives->nonlinear()->flush();
     });
   } else {
     DISPATCH_ALL_FIELDS(field, kBindName, [&]() {
-      using U = typename std::make_unsigned<ring2k_t>::type;
-      auto x_ptr = x.getOrCreateCompactBuf()->data<U>();
-      auto y_ptr = y.getOrCreateCompactBuf()->data<U>();
+      using U = ring2k_t;
+      auto x_buf = x.getOrCreateCompactBuf();
+      auto y_buf = y.getOrCreateCompactBuf();
 
-      primitives->nonlinear()->b2a_full(y_ptr, x_ptr, size, shareType->nbits());
+      primitives->nonlinear()->b2a_full(y_buf->data<U>(), x_buf->data<U>(),
+                                        size, shareType->nbits());
       primitives->nonlinear()->flush();
     });
   }

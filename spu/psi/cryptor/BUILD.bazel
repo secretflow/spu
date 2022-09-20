@@ -1,4 +1,4 @@
-# Copyright 2021 Ant Group Co., Ltd.
+# Copyright 2022 Ant Group Co., Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -21,8 +21,10 @@ spu_cc_library(
     srcs = ["ecc_cryptor.cc"],
     hdrs = ["ecc_cryptor.h"],
     deps = [
+        "//spu/psi:psi_cc_proto",
         "@com_google_absl//absl/types:span",
         "@yasl//yasl/crypto:hash_util",
+        "@yasl//yasl/utils:parallel",
     ],
 )
 
@@ -108,8 +110,6 @@ spu_cc_library(
         ":ecc_utils",
         "@com_github_openssl_openssl//:openssl",
         "@yasl//yasl/base:exception",
-        "@yasl//yasl/crypto:hash_util",
-        "@yasl//yasl/crypto:pseudo_random_generator",
         "@yasl//yasl/utils:parallel",
     ],
 )

@@ -120,7 +120,7 @@ class BShare {
   // But for boolean circuit, number of bits is has critical performance impact,
   // so we record number of bit here to hint MPC protocol for perf improvement.
   //
-  // This member represent the number of valid bits for a multi-bits storage,
+  // This member represents the number of valid bits for a multi-bits storage,
   // the least significant of nbit_ are valid.
   size_t nbits_ = 0;
 
@@ -128,6 +128,8 @@ class BShare {
   virtual ~BShare() = default;
 
   size_t nbits() const { return nbits_; }
+
+  void setNbits(size_t nbits) { nbits_ = nbits; }
 };
 
 ////////////////////////////////////////////////////////////////////////////
@@ -337,15 +339,6 @@ class RingTy : public TypeImpl<RingTy, TypeObject, Ring2k> {
     YASL_ENFORCE(derived_other);
     return field() == derived_other->field();
   }
-};
-
-class Ref2kSecrTy : public TypeImpl<Ref2kSecrTy, RingTy, Secret> {
-  using Base = TypeImpl<Ref2kSecrTy, RingTy, Secret>;
-
- public:
-  using Base::Base;
-  static std::string_view getStaticId() { return "ref2k.Sec"; }
-  explicit Ref2kSecrTy(FieldType field) { field_ = field; }
 };
 
 class TypeContext {

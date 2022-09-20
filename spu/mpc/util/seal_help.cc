@@ -15,6 +15,8 @@
 #include "spu/mpc/util/seal_help.h"
 
 #include "seal/ciphertext.h"
+#include "seal/plaintext.h"
+#include "seal/util/ntt.h"
 #include "yasl/base/exception.h"
 
 namespace spu::mpc {
@@ -64,6 +66,42 @@ void TruncateBFVForDecryption(seal::Ciphertext &ct,
   const uint64_t mask1 = make_bits_mask(n_delta_bits - n_var_bits);
   std::transform(ct.data(1), ct.data(1) + poly_n, ct.data(1),
                  [mask1](uint64_t u) { return u & mask1; });
+}
+
+void NttInplace(seal::Plaintext &pt, const seal::SEALContext &context) {
+  using namespace seal::util;
+  YASL_ENFORCE(context.parameters_set());
+  auto cntxt_data = context.get_context_data(pt.parms_id());
+  YASL_ENFORCE(cntxt_data != nullptr);
+
+  auto L = cntxt_data->parms().coeff_modulus().size();
+  YASL_ENFORCE(pt.coeff_count() % L == 0);
+
+  auto ntt_tables = cntxt_data->small_ntt_tables();
+  size_t n = pt.coeff_count() / L;
+  auto pt_ptr = pt.data();
+  for (size_t l = 0; l < L; ++l) {
+    ntt_negacyclic_harvey(pt_ptr, ntt_tables[l]);
+    pt_ptr += n;
+  }
+}
+
+void InvNttInplace(seal::Plaintext &pt, const seal::SEALContext &context) {
+  using namespace seal::util;
+  YASL_ENFORCE(context.parameters_set());
+  auto cntxt_data = context.get_context_data(pt.parms_id());
+  YASL_ENFORCE(cntxt_data != nullptr);
+
+  auto L = cntxt_data->parms().coeff_modulus().size();
+  YASL_ENFORCE(pt.coeff_count() % L == 0);
+
+  auto ntt_tables = cntxt_data->small_ntt_tables();
+  size_t n = pt.coeff_count() / L;
+  auto pt_ptr = pt.data();
+  for (size_t l = 0; l < L; ++l) {
+    inverse_ntt_negacyclic_harvey(pt_ptr, ntt_tables[l]);
+    pt_ptr += n;
+  }
 }
 
 }  // namespace spu::mpc

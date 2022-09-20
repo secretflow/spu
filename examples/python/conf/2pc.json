@@ -8,7 +8,14 @@
         "SPU": {
             "kind": "SPU",
             "config": {
-                "node_ids": ["node:0", "node:1"],
+                "node_ids": [
+                    "node:0",
+                    "node:1"
+                ],
+                "experimental_data_folder": [
+                    "/tmp/spu_data_0/",
+                    "/tmp/spu_data_1/"
+                ],
                 "spu_internal_addrs": [
                     "127.0.0.1:9330",
                     "127.0.0.1:9331"

@@ -16,8 +16,6 @@
 
 #include "spu/core/profile.h"
 #include "spu/mpc/cheetah/object.h"
-#include "spu/mpc/common/prg_state.h"
-#include "spu/mpc/interfaces.h"
 #include "spu/mpc/kernel.h"
 #include "spu/mpc/semi2k/type.h"
 #include "spu/mpc/util/communicator.h"

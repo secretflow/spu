@@ -94,7 +94,7 @@ TEST_P(SealMultiPirTest, Works) {
   auto ctxs = yasl::link::test::SetupWorld(2);
 
   // use dh keyexchange get shared oracle seed
-  SodiumCurve25519Cryptor c25519_cryptor0, c25519_cryptor1;
+  psi::SodiumCurve25519Cryptor c25519_cryptor0, c25519_cryptor1;
 
   std::future<std::vector<uint8_t>> ke_func_server =
       std::async([&] { return c25519_cryptor0.KeyExchange(ctxs[0]); });

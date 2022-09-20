@@ -34,7 +34,7 @@ spu_cc_test(
     srcs = ["ref2k_test.cc"],
     deps = [
         ":ref2k",
-        "//spu/mpc:compute_test",
+        "//spu/mpc:api_test",
         "//spu/mpc:io_test",
     ],
 )

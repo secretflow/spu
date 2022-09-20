@@ -1,4 +1,4 @@
-// Copyright 2021 Ant Group Co., Ltd.
+// Copyright 2022 Ant Group Co., Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,18 +21,18 @@
 
 #include "spu/psi/cryptor/ecc_cryptor.h"
 
-namespace spu {
+namespace spu::psi {
 
 //
 // avx2 asm code reference:
 // https://eprint.iacr.org/2015/943.pdf
-// Sandy2x: New Curve25519 Speed Records
+// Sandy2x: New Curve_25519 Speed Records
 // Table1 Performance results compare with “floodyberry” [7].
 //
 // fix Side Channel Attack in
 // https://eprint.iacr.org/2017/806
 // May the Fourth Be With You: A Microarchitectural Side Channel Attack on
-// Several Real-World Applications of Curve25519
+// Several Real-World Applications of Curve_25519
 // The vulnerability has been assigned CVE-2017-0379
 //
 class SodiumCurve25519Cryptor : public IEccCryptor {
@@ -50,7 +50,7 @@ class SodiumCurve25519Cryptor : public IEccCryptor {
 
   ~SodiumCurve25519Cryptor() override = default;
 
-  CurveType GetCurveType() const override { return CurveType::Curve25519; }
+  CurveType GetCurveType() const override { return CurveType::CURVE_25519; }
 
   void EccMask(absl::Span<const char> batch_points,
                absl::Span<char> dest_points) const override;
@@ -59,4 +59,4 @@ class SodiumCurve25519Cryptor : public IEccCryptor {
       const std::shared_ptr<yasl::link::Context> &link_ctx);
 };
 
-}  // namespace spu
+}  // namespace spu::psi

@@ -37,13 +37,56 @@ namespace spu::mpc::aby3 {
 //   real(x) is the first share piece.
 //   imag(x) is the second share piece.
 
+ArrayRef getShare(const ArrayRef& in, int64_t share_idx);
+
 ArrayRef getFirstShare(const ArrayRef& in);
 
 ArrayRef getSecondShare(const ArrayRef& in);
 
-ArrayRef makeAShare(const ArrayRef& s1, const ArrayRef& s2, FieldType field);
+ArrayRef makeAShare(const ArrayRef& s1, const ArrayRef& s2, FieldType field,
+                    int owner_rank = -1);
 
-ArrayRef makeBShare(const ArrayRef& s1, const ArrayRef& s2, FieldType field,
-                    size_t nbits = std::numeric_limits<size_t>::max());
+// TODO: drop me
+ArrayRef makeBShare(const ArrayRef& s1, const ArrayRef& s2, size_t nbits);
+
+PtType calcBShareBacktype(size_t nbits);
+
+template <typename T>
+size_t maxBitWidth(ArrayView<T> av) {
+  size_t res = 0;
+  if constexpr (sizeof(T) == 16) {
+    // TODO: absl::bit_width can not handle int128
+    return 128;
+  } else {
+    for (auto idx = 0; idx < av.numel(); idx++) {
+      res = std::max(res, static_cast<size_t>(absl::bit_width(av[idx])));
+    }
+  }
+  return res;
+}
+
+ArrayRef getShare(const ArrayRef& in, int64_t share_idx);
+
+template <typename T>
+std::vector<T> getShareAs(const ArrayRef& in, size_t share_idx) {
+  YASL_ENFORCE(in.stride() != 0);
+  YASL_ENFORCE(share_idx == 0 || share_idx == 1);
+
+  ArrayRef share = getShare(in, share_idx);
+  YASL_ENFORCE(share.elsize() == sizeof(T));
+
+  std::vector<T> res(in.numel());
+  DISPATCH_UINT_PT_TYPES(share.eltype().as<PtTy>()->pt_type(), "_", [&]() {
+    ArrayView<ScalarT> _share(share);
+
+    for (auto idx = 0; idx < in.numel(); idx++) {
+      res[idx] = _share[idx];
+    }
+  });
+
+  return res;
+}
+
+#define PFOR_GRAIN_SIZE 8192
 
 }  // namespace spu::mpc::aby3

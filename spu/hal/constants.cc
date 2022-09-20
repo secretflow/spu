@@ -51,12 +51,12 @@ Value constant(HalContext* ctx, PtBufferView bv,
 
   // Same calcNumel but shape is different, do a reshape
   if (calcNumel(bv.shape) == calcNumel(shape)) {
-    return reshape(ctx, make_pub2k(ctx, bv), {shape.begin(), shape.end()});
+    return reshape(ctx, make_pub2k(ctx, bv), shape);
   }
 
   // Other, do a broadcast, let broadcast handles the sanity check
   YASL_ENFORCE(calcNumel(bv.shape) <= calcNumel(shape));
-  return broadcast_to(ctx, make_pub2k(ctx, bv), {shape.begin(), shape.end()});
+  return broadcast_to(ctx, make_pub2k(ctx, bv), shape);
 }
 
 Value const_secret(HalContext* ctx, PtBufferView bv,
@@ -85,6 +85,62 @@ Value make_value(HalContext* ctx, Visibility vtype, PtBufferView bv) {
       return const_secret(ctx, bv);
     default:
       YASL_THROW("not support vtype={}", vtype);
+  }
+}
+
+hal::Value zeros(HalContext* ctx, Visibility vis, DataType dtype,
+                 absl::Span<const int64_t> shape) {
+  hal::Value scalar;
+  switch (dtype) {
+    case DT_I1: {
+      scalar = hal::make_value(ctx, vis, false);
+      break;
+    }
+    case DT_I8: {
+      scalar = hal::make_value(ctx, vis, static_cast<std::int8_t>(0));
+      break;
+    }
+    case DT_U8: {
+      scalar = hal::make_value(ctx, vis, static_cast<std::uint8_t>(0));
+      break;
+    }
+    case DT_I16: {
+      scalar = hal::make_value(ctx, vis, static_cast<std::int16_t>(0));
+      break;
+    }
+    case DT_U16: {
+      scalar = hal::make_value(ctx, vis, static_cast<std::uint16_t>(0));
+      break;
+    }
+    case DT_I32: {
+      scalar = hal::make_value(ctx, vis, static_cast<std::int32_t>(0));
+      break;
+    }
+    case DT_U32: {
+      scalar = hal::make_value(ctx, vis, static_cast<std::uint32_t>(0));
+      break;
+    }
+    case DT_I64: {
+      scalar = hal::make_value(ctx, vis, static_cast<std::int64_t>(0));
+      break;
+    }
+    case DT_U64: {
+      scalar = hal::make_value(ctx, vis, static_cast<std::uint64_t>(0));
+      break;
+    }
+    case DT_FXP: {
+      scalar = hal::make_value(ctx, vis, 0.0F);
+      break;
+    }
+    default: {
+      YASL_THROW("Should not hit, dtype = {}", dtype);
+    }
+  }
+
+  if (shape.empty()) {
+    return scalar;
+  } else {
+    return hal::expand(ctx, scalar, shape);
   }
 }
 

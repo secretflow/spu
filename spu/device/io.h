@@ -105,7 +105,9 @@ public:
   explicit IoClient(size_t world_size, RuntimeConfig config);
 
   // Make shares from plaintext buffer view.
-  std::vector<hal::Value> makeShares(PtBufferView bv, Visibility vtype);
+  // Valid owner must be >= 0, and -1 indicates outsourcing model.
+  std::vector<hal::Value> makeShares(PtBufferView bv, Visibility vtype,
+                                     int owner_rank = -1);
 
   // Combine shares to a plaintext ndarray.
   NdArrayRef combineShares(absl::Span<hal::Value const> values);

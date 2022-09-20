@@ -14,6 +14,8 @@
 
 #pragma once
 
+#include <optional>
+
 #include "yasl/link/link.h"
 
 #include "spu/core/array_ref.h"
@@ -47,11 +49,24 @@ class Ot3 {
   PrgState* const prg_state_;
 
   //
+  bool reentrancy_;
+  std::optional<std::pair<ArrayRef, ArrayRef>> masks_;
   std::pair<ArrayRef, ArrayRef> genMasks();
 
  public:
+  // reentrancy == true, gen marks by prg_state inside send/recv/help function.
+  // and ot instance can used repeatedly.
+  // reentrancy == false, gen marks by prg_state inside constructor.
+  // and ot instance can only use once.
+
+  // if we need running multiple OT in parallel, send/recv/help may calls in
+  // different orders, counter inside prg_state will lost sync.
+  // add reentrancy option to walk around this case.
+  // FIXME: need PrgState::spawn & Communicator::spawn to replace reentrancy
+  // option.
+
   explicit Ot3(FieldType field, int64_t numel, const RoleRanks& roles,
-               Communicator* comm, PrgState* prg_state);
+               Communicator* comm, PrgState* prg_state, bool reentrancy = true);
 
   void send(ArrayRef m0, ArrayRef m1);
 

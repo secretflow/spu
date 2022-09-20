@@ -39,20 +39,13 @@ Value permute(HalContext* ctx, const Value& x, size_t axis,
 
   const auto& x_data = x.data();
   if (dimension == 1) {
-    return DISPATCH_ALL_ELSIZE(x_data.elsize(), [&]() -> Value {
-      NdArrayRef result(x_data.eltype(), x.shape());
+    Value result({x_data.eltype(), x.shape()}, x.dtype());
 
-      auto ret = xt_mutable_adapt<element_t>(result);
+    for (int64_t i = 0; i < x.numel(); i++) {
+      result.copyElementFrom(x, {(int64_t)dpermutation(i)}, {i});
+    }
 
-      for (int64_t i = 0; i < ret.shape()[0]; i++) {
-        std::memcpy(
-            ret.data() + i,
-            static_cast<const element_t*>(x_data.data()) + dpermutation(i),
-            sizeof(element_t));
-      }
-
-      return Value(result, x.dtype());
-    });
+    return result;
   }
 
   if (axis < dimension - 1) {
@@ -63,7 +56,7 @@ Value permute(HalContext* ctx, const Value& x, size_t axis,
 
     auto permutation_t = xt::eval(xt::transpose(dpermutation, perm));
 
-    auto x_data = x.data();
+    const auto& x_data = x.data();
     return DISPATCH_ALL_ELSIZE(x_data.elsize(), [&]() -> Value {
       auto x_t = xt::eval(xt::transpose(xt_adapt<element_t>(x_data), perm));
       std::vector<int64_t> ret_shape{x_t.shape().begin(), x_t.shape().end()};
@@ -90,7 +83,8 @@ Value permute(HalContext* ctx, const Value& x, size_t axis,
       }
 
       return transpose(ctx, Value(ret, x.dtype()),
-                       {reverse_perm.begin(), reverse_perm.end()});
+                       absl::MakeSpan((const int64_t*)reverse_perm.data(),
+                                      reverse_perm.size()));
     });
   }
 

@@ -34,6 +34,9 @@ std::vector<int64_t> makeCompactStrides(absl::Span<const int64_t> shape);
 int64_t flattenIndex(absl::Span<const int64_t> indices,
                      absl::Span<const int64_t> shape);
 
+void unflattenIndex(int64_t index, absl::Span<const int64_t> shape,
+                    std::vector<int64_t> &unflattened);
+
 std::vector<int64_t> unflattenIndex(int64_t index,
                                     absl::Span<const int64_t> shape);
 

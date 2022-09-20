@@ -17,6 +17,7 @@
 #include <memory>
 #include <vector>
 
+#include "absl/types/span.h"
 #include "yasl/base/buffer.h"
 
 #include "spu/core/array_ref.h"
@@ -60,10 +61,10 @@ class NdArrayRef {
 
   // constructor, view buf as a compact buffer with given shape.
   NdArrayRef(std::shared_ptr<yasl::Buffer> buf, Type eltype,
-             std::vector<int64_t> shape);
+             absl::Span<const int64_t> shape);
 
   // constructor, create a new buffer of elements and ref to it.
-  NdArrayRef(Type eltype, std::vector<int64_t> shape);
+  NdArrayRef(Type eltype, absl::Span<const int64_t> shape);
 
   // convenient constructor to accept shape/strides from xtensor.
   template <typename ShapeT, typename StridesT>

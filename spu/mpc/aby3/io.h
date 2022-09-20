@@ -22,10 +22,13 @@ class Aby3Io final : public BaseIo {
  public:
   using BaseIo::BaseIo;
 
-  std::vector<ArrayRef> toShares(const ArrayRef& raw,
-                                 Visibility vis) const override;
+  std::vector<ArrayRef> toShares(const ArrayRef& raw, Visibility vis,
+                                 int owner_rank) const override;
 
   ArrayRef fromShares(const std::vector<ArrayRef>& shares) const override;
+
+  std::vector<ArrayRef> makeBitSecret(const ArrayRef& raw) const override;
+  bool hasBitSecretSupport() const override { return true; }
 };
 
 std::unique_ptr<Aby3Io> makeAby3Io(FieldType type, size_t npc);

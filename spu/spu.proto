@@ -265,34 +265,11 @@ message RuntimeConfig {
 // Compiler relate definition
 //////////////////////////////////////////////////////////////////////////
 
-// The immediate representation type.
-enum IrType {
-  IR_INVALID = 0;
-
-  // IR_XLA_HLO means the code part of IrProto is XLA protobuf binary format.
-  // See https://www.tensorflow.org/xla/architecture for details.
-  IR_XLA_HLO = 1;
-
-  // IR_MLIR_SPU means the code part of IrProto is pphlo MLIR text format.
-  // See spu/dialect/pphlo_dialect.td for details.
-  IR_MLIR_SPU = 2;
-}
-
+// Internal representation used by compiler
 message XlaMeta {
   repeated Visibility inputs = 1;
 }
 
-// The immediate representation proto.
-message IrProto {
-  // The IR type.
-  IrType ir_type = 1;
-
-  // Code format is defined by IrType.
-  bytes code = 2;
-
-  // Only meaningful for IR_XLA_HLO
-  XlaMeta meta = 3;
-}
 
 // The executable format accepted by SPU runtime.
 //
