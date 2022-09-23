@@ -12,11 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# Build example
+# > bazel build -c opt //examples/python/...
+#
 # Start nodes.
-# > bazel run -c opt //examples/python/utils:nodectl -- up
+# > bazel-bin/examples/python/utils/nodectl up
 #
 # Run this example script.
-# > bazel run //examples/python/ml:ss_xgb
+# > bazel-bin/examples/python/ml/ss_lr
 
 import argparse
 import json
@@ -241,7 +244,7 @@ with open(args.config, 'r') as file:
 
 ppd.init(conf["nodes"], conf["devices"])
 
-MOCK_DS = True
+MOCK_DS = False
 MOCK_ROWS = 500000
 MOCK_COLS = 100
 
