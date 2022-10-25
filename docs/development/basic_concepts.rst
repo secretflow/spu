@@ -58,7 +58,7 @@ API level
 With the above programming model, the next question is **which language is supported**? SPU provides multi-level API, from upper to lower:
 
 - **Frontend API** (like TensorFlow/JAX), SPU compiles them to SPU IR before the run.
-- **SPU IR**, an Immediate Representation format defined by SPU, which is not quite readable but easier for computers to understand.
+- **SPU IR**, an Intermediate Representation format defined by SPU, which is not quite readable but easier for computers to understand.
 - **C++ API**, which could directly access the underline MPC protocols.
 
 The API hierarchy looks like:
