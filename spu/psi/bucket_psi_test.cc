@@ -108,6 +108,7 @@ TEST_P(StreamTaskPsiTest, Works) {
     config.set_broadcast_result(true);
     // set small bucket size for test
     config.set_bucket_size(3);
+    config.set_curve_type(CurveType::CURVE_25519);
 
     BucketPsi ctx(config, lctxs[idx]);
     return ctx.Run();
@@ -153,6 +154,7 @@ TEST_P(StreamTaskPsiTest, BroadcastFalse) {
     config.set_broadcast_result(false);
     // set min bucket size for test
     config.set_bucket_size(1);
+    config.set_curve_type(CurveType::CURVE_25519);
 
     BucketPsi ctx(config, lctxs[idx]);
     return ctx.Run();
@@ -412,6 +414,7 @@ TEST_P(BucketTaskPsiTestFailedTest, FailedWorks) {
   config.set_psi_type(params.psi_protocol);
   config.set_receiver_rank(params.receiver_rank);
   config.set_broadcast_result(true);
+  config.set_curve_type(CurveType::CURVE_25519);
 
   ASSERT_ANY_THROW(BucketPsi ctx(config, lctxs[0]));
 }

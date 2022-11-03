@@ -74,16 +74,17 @@ class MatVecTest : public ::testing::TestWithParam<
   void SetUp() override {
     field_ = std::get<0>(GetParam());
 
+    // NOTE(juhou) same parameters in beaver/beaver_cheetah.cc
     std::vector<int> modulus_bits;
     switch (field_) {
       case FieldType::FM32:
-        modulus_bits = {55, 39, 20};
+        modulus_bits = {55, 39};
         break;
       case FieldType::FM64:
-        modulus_bits = {55, 55, 48, 20};
+        modulus_bits = {55, 55, 48};
         break;
       case FieldType::FM128:
-        modulus_bits = {59, 59, 59, 59, 50, 20};
+        modulus_bits = {59, 59, 59, 59, 50};
         break;
       default:
         YASL_THROW("Not support field type {}", field_);
@@ -94,11 +95,10 @@ class MatVecTest : public ::testing::TestWithParam<
     parms.set_poly_modulus_degree(poly_deg);
     auto modulus = seal::CoeffModulus::Create(poly_deg, modulus_bits);
     parms.set_coeff_modulus(modulus);
+    parms.set_use_special_prime(false);
 
     context_ = std::make_shared<seal::SEALContext>(parms, true,
                                                    seal::sec_level_type::none);
-    modulus.pop_back();
-    parms.set_coeff_modulus(modulus);
     seal::SEALContext ms_context(parms, false, seal::sec_level_type::none);
 
     uint32_t bitlen = FieldBitLen(field_);

@@ -108,14 +108,14 @@ class AddBB : public BinaryKernel {
   static constexpr char kBindName[] = "add_bb";
 
   CExpr latency() const override {
-    // Cost from other gates (from KoggleStoneAdder):
+    // Cost from other gates (from KoggeStoneAdder):
     // 1 * AddBB    : 1
     // logk * AndBB : 2logk (if vectorize, logk)
     return Log(K()) + Const(1);
   }
 
   CExpr comm() const override {
-    // Cost from other gates (from KoggleStoneAdder):
+    // Cost from other gates (from KoggeStoneAdder):
     // 1 * AddBB    : k
     // logk * AndBB : logk * 2k
     return Log(K()) * K() * 2 + K();

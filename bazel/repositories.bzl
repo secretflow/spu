@@ -4,6 +4,8 @@ load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
 
 SECRETFLOW_GIT = "https://github.com/secretflow"
 
+YASL_COMMIT_ID = "8515e871f402056bff074121100fa20ddc8853ba"
+
 def spu_deps():
     _bazel_platform()
     _com_github_xtensor_xtensor()
@@ -28,8 +30,21 @@ def spu_deps():
     maybe(
         git_repository,
         name = "yasl",
-        commit = "dc3fbcd66ec4f417fa053fc44be0d1eaeaef05a5",
+        commit = YASL_COMMIT_ID,
         remote = "{}/yasl.git".format(SECRETFLOW_GIT),
+    )
+
+    # Add homebrew openmp for macOS, somehow..homebrew installs to different location on Apple Silcon/Intel macs.. so we need two rules here
+    native.new_local_repository(
+        name = "local_homebrew_x64",
+        build_file = "@spulib//bazel:local_openmp_macos.BUILD",
+        path = "/usr/local/",
+    )
+
+    native.new_local_repository(
+        name = "local_homebrew_arm64",
+        build_file = "@spulib//bazel:local_openmp_macos.BUILD",
+        path = "/opt/homebrew/",
     )
 
 def _bazel_platform():
@@ -94,20 +109,8 @@ def _com_github_xtensor_xtl():
     )
 
 def _com_github_tensorflow():
-    TFRT_COMMIT = "093ed77f7d50f75b376f40a71ea86e08cedb8b80"
-    TFRT_SHA256 = "fce593c95eb508092c4a1752130868b6d2eae0fd4a5363b9d96195fd85b7cfec"
-    maybe(
-        http_archive,
-        name = "tf_runtime",
-        sha256 = TFRT_SHA256,
-        strip_prefix = "runtime-{commit}".format(commit = TFRT_COMMIT),
-        urls = [
-            "http://mirror.tensorflow.org/github.com/tensorflow/runtime/archive/{commit}.tar.gz".format(commit = TFRT_COMMIT),
-            "https://github.com/tensorflow/runtime/archive/{commit}.tar.gz".format(commit = TFRT_COMMIT),
-        ],
-    )
-    LLVM_COMMIT = "1cb299165c859533e22f2ed05eb2abd5071544df"
-    LLVM_SHA256 = "5a19ab6de4b0089fff456c0bc406b37ba5f95c76026e6bec294ec28dc28e4cb9"
+    LLVM_COMMIT = "0538e5431afdb1fa05bdcedf70ee502ccfcd112a"
+    LLVM_SHA256 = "01f168b1a8798e652a04f1faecc3d3c631ff12828b89c65503f39b0a0d6ad048"
     maybe(
         http_archive,
         name = "llvm-raw",
@@ -132,14 +135,14 @@ def _com_github_tensorflow():
     maybe(
         http_archive,
         name = "org_tensorflow",
-        sha256 = "8087cb0c529f04a4bfe480e49925cd64a904ad16d8ec66b98e2aacdfd53c80ff",
-        strip_prefix = "tensorflow-2.9.0",
+        sha256 = "b5a1bb04c84b6fe1538377e5a1f649bb5d5f0b2e3625a3c526ff3a8af88633e8",
+        strip_prefix = "tensorflow-2.10.0",
         patch_args = ["-p1"],
         # Fix mlir package visibility
         patches = ["@spulib//bazel:patches/tensorflow.patch"],
         type = ".tar.gz",
         urls = [
-            "https://github.com/tensorflow/tensorflow/archive/refs/tags/v2.9.0.tar.gz",
+            "https://github.com/tensorflow/tensorflow/archive/refs/tags/v2.10.0.tar.gz",
         ],
     )
 

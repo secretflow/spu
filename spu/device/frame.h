@@ -21,7 +21,7 @@
 #include "mlir/IR/Value.h"
 
 #include "spu/device/type_checker.h"
-#include "spu/hal/value.h"
+#include "spu/kernel/value.h"
 
 namespace spu::device {
 
@@ -30,7 +30,7 @@ class ModuleRunner;
 // This class represents a call frame.
 class Frame final {
   struct RegionDataSegment {
-    llvm::DenseMap<mlir::Value, hal::Value> values_;
+    llvm::DenseMap<mlir::Value, spu::Value> values_;
   };
 
   std::shared_ptr<TypeChecker> type_checker_;
@@ -50,11 +50,11 @@ public:
 
   bool hasValue(::mlir::Value operand) const;
 
-  void addValue(::mlir::Value operand, const hal::Value &val);
-  void addValue(::mlir::Value operand, hal::Value &&val);
+  void addValue(::mlir::Value operand, const spu::Value &val);
+  void addValue(::mlir::Value operand, spu::Value &&val);
 
   void releaseValue(::mlir::Value operand);
-  const hal::Value *getValue(::mlir::Value operand) const;
+  const spu::Value *getValue(::mlir::Value operand) const;
 };
 
 } // namespace spu::device

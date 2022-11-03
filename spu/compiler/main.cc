@@ -52,7 +52,7 @@ int main(int argc, char **argv) {
     context->setInputVisibilityString(InputVisibility.getValue());
   }
 
-  auto ret = spu::compiler::compile(context.get(), in_xla);
+  auto ret = spu::compiler::compile(context.get(), in_xla, "hlo");
 
   if (OutputFilename.empty()) {
     std::cout << ret << std::endl;

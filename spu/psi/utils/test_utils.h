@@ -14,12 +14,18 @@
 
 #pragma once
 
+#include <optional>
+#include <set>
 #include <string>
 #include <vector>
 
+#include "yasl/crypto/hash_util.h"
+
+#include "spu/psi/psi.pb.h"
+
 namespace spu::psi::test {
 
-std::vector<std::string> CreateRangeItems(size_t begin, size_t size) {
+inline std::vector<std::string> CreateRangeItems(size_t begin, size_t size) {
   std::vector<std::string> ret;
   for (size_t i = 0; i < size; i++) {
     ret.push_back(std::to_string(begin + i));
@@ -27,7 +33,7 @@ std::vector<std::string> CreateRangeItems(size_t begin, size_t size) {
   return ret;
 }
 
-std::vector<std::string> GetIntersection(
+inline std::vector<std::string> GetIntersection(
     const std::vector<std::string> &items_a,
     const std::vector<std::string> &items_b) {
   std::set<std::string> set(items_a.begin(), items_a.end());
@@ -38,6 +44,26 @@ std::vector<std::string> GetIntersection(
     }
   }
   return ret;
+}
+
+inline std::vector<uint128_t> CreateItemHashes(size_t begin, size_t size) {
+  std::vector<uint128_t> ret;
+  for (size_t i = 0; i < size; i++) {
+    ret.push_back(yasl::crypto::Blake3_128(std::to_string(begin + i)));
+  }
+  return ret;
+}
+
+inline std::optional<CurveType> GetOverrideCurveType() {
+  if (const auto *env = std::getenv("OVERRIDE_CURVE")) {
+    if (std::strcmp(env, "25519") == 0) {
+      return CurveType::CURVE_25519;
+    }
+    if (std::strcmp(env, "FOURQ") == 0) {
+      return CurveType::CURVE_FOURQ;
+    }
+  }
+  return {};
 }
 
 }  // namespace spu::psi::test

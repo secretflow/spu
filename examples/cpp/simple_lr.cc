@@ -30,42 +30,41 @@
 #include "xtensor/xview.hpp"
 
 #include "spu/device/io.h"
-#include "spu/hal/hal.h"
-#include "spu/hal/test_util.h"
-#include "spu/hal/type_cast.h"
+#include "spu/kernel/hal/hal.h"
+#include "spu/kernel/hal/test_util.h"
+#include "spu/kernel/hal/type_cast.h"
 
-spu::hal::Value train_step(spu::HalContext* ctx, const spu::hal::Value& x,
-                           const spu::hal::Value& y, const spu::hal::Value& w) {
+using namespace spu::kernel;
+
+spu::Value train_step(spu::HalContext* ctx, const spu::Value& x,
+                      const spu::Value& y, const spu::Value& w) {
   // Padding x
-  auto padding = spu::hal::constant(ctx, 1.0F, {x.shape()[0], 1});
-  auto padded_x =
-      spu::hal::concatenate(ctx, {x, spu::hal::p2s(ctx, padding)}, 1);
-  auto pred = spu::hal::logistic(ctx, spu::hal::matmul(ctx, padded_x, w));
+  auto padding = hal::constant(ctx, 1.0F, {x.shape()[0], 1});
+  auto padded_x = hal::concatenate(ctx, {x, hal::p2s(ctx, padding)}, 1);
+  auto pred = hal::logistic(ctx, hal::matmul(ctx, padded_x, w));
 
   SPDLOG_DEBUG("[SSLR] Err = Pred - Y");
-  auto err = spu::hal::sub(ctx, pred, y);
+  auto err = hal::sub(ctx, pred, y);
 
   SPDLOG_DEBUG("[SSLR] Grad = X.t * Err");
-  auto grad = spu::hal::matmul(ctx, spu::hal::transpose(ctx, padded_x), err);
+  auto grad = hal::matmul(ctx, hal::transpose(ctx, padded_x), err);
 
   SPDLOG_DEBUG("[SSLR] Step = LR / B * Grad");
-  auto lr = spu::hal::constant(ctx, 0.0001F);
-  auto msize = spu::hal::constant(ctx, static_cast<float>(y.shape()[0]));
-  auto p1 = spu::hal::mul(ctx, lr, spu::hal::reciprocal(ctx, msize));
-  auto step =
-      spu::hal::mul(ctx, spu::hal::broadcast_to(ctx, p1, grad.shape()), grad);
+  auto lr = hal::constant(ctx, 0.0001F);
+  auto msize = hal::constant(ctx, static_cast<float>(y.shape()[0]));
+  auto p1 = hal::mul(ctx, lr, hal::reciprocal(ctx, msize));
+  auto step = hal::mul(ctx, hal::broadcast_to(ctx, p1, grad.shape()), grad);
 
   SPDLOG_DEBUG("[SSLR] W = W - Step");
-  auto new_w = spu::hal::sub(ctx, w, step);
+  auto new_w = hal::sub(ctx, w, step);
 
   return new_w;
 }
 
-spu::hal::Value train(spu::HalContext* ctx, const spu::hal::Value& x,
-                      const spu::hal::Value& y, size_t num_epoch,
-                      size_t bsize) {
+spu::Value train(spu::HalContext* ctx, const spu::Value& x, const spu::Value& y,
+                 size_t num_epoch, size_t bsize) {
   const size_t num_iter = x.shape()[0] / bsize;
-  auto w = spu::hal::constant(ctx, 0.0F, {x.shape()[1] + 1, 1});
+  auto w = hal::constant(ctx, 0.0F, {x.shape()[1] + 1, 1});
 
   // Run train loop
   for (size_t epoch = 0; epoch < num_epoch; ++epoch) {
@@ -76,10 +75,10 @@ spu::hal::Value train(spu::HalContext* ctx, const spu::hal::Value& x,
       const int64_t rows_end = rows_beg + bsize;
 
       const auto x_slice =
-          spu::hal::slice(ctx, x, {rows_beg, 0}, {rows_end, x.shape()[1]}, {});
+          hal::slice(ctx, x, {rows_beg, 0}, {rows_end, x.shape()[1]}, {});
 
       const auto y_slice =
-          spu::hal::slice(ctx, y, {rows_beg, 0}, {rows_end, y.shape()[1]}, {});
+          hal::slice(ctx, y, {rows_beg, 0}, {rows_end, y.shape()[1]}, {});
 
       w = train_step(ctx, x_slice, y_slice, w);
     }
@@ -88,12 +87,11 @@ spu::hal::Value train(spu::HalContext* ctx, const spu::hal::Value& x,
   return w;
 }
 
-spu::hal::Value inference(spu::HalContext* ctx, const spu::hal::Value& x,
-                          const spu::hal::Value& weight) {
-  auto padding = spu::hal::constant(ctx, 1.0F, {x.shape()[0], 1});
-  auto padded_x =
-      spu::hal::concatenate(ctx, {x, spu::hal::p2s(ctx, padding)}, 1);
-  return spu::hal::matmul(ctx, padded_x, weight);
+spu::Value inference(spu::HalContext* ctx, const spu::Value& x,
+                     const spu::Value& weight) {
+  auto padding = hal::constant(ctx, 1.0F, {x.shape()[0], 1});
+  auto padded_x = hal::concatenate(ctx, {x, hal::p2s(ctx, padding)}, 1);
+  return hal::matmul(ctx, padded_x, weight);
 }
 
 float SSE(const xt::xarray<float>& y_true, const xt::xarray<float>& y_pred) {
@@ -126,9 +124,9 @@ llvm::cl::opt<uint32_t> BatchSize("batch_size", llvm::cl::init(21),
 llvm::cl::opt<uint32_t> NumEpoch("num_epoch", llvm::cl::init(1),
                                  llvm::cl::desc("number of epoch"));
 
-std::pair<spu::hal::Value, spu::hal::Value> infeed(spu::HalContext* hctx,
-                                                   const xt::xarray<float>& ds,
-                                                   bool self_has_label) {
+std::pair<spu::Value, spu::Value> infeed(spu::HalContext* hctx,
+                                         const xt::xarray<float>& ds,
+                                         bool self_has_label) {
   spu::device::ColocatedIo cio(hctx);
   if (self_has_label) {
     // the last column is label.
@@ -147,8 +145,8 @@ std::pair<spu::hal::Value, spu::hal::Value> infeed(spu::HalContext* hctx,
   auto x = cio.deviceGetVar("x-0");
   // Concatnate all slices
   for (size_t idx = 1; idx < cio.getWorldSize(); ++idx) {
-    x = spu::hal::concatenate(
-        hctx, {x, cio.deviceGetVar(fmt::format("x-{}", idx))}, 1);
+    x = hal::concatenate(hctx, {x, cio.deviceGetVar(fmt::format("x-{}", idx))},
+                         1);
   }
   auto y = cio.deviceGetVar("label");
 
@@ -177,10 +175,10 @@ int main(int argc, char** argv) {
 
   const auto scores = inference(hctx.get(), x, w);
 
-  xt::xarray<float> revealed_labels = spu::hal::test::dump_public_as<float>(
-      hctx.get(), spu::hal::reveal(hctx.get(), y));
-  xt::xarray<float> revealed_scores = spu::hal::test::dump_public_as<float>(
-      hctx.get(), spu::hal::reveal(hctx.get(), scores));
+  xt::xarray<float> revealed_labels =
+      hal::test::dump_public_as<float>(hctx.get(), hal::reveal(hctx.get(), y));
+  xt::xarray<float> revealed_scores = hal::test::dump_public_as<float>(
+      hctx.get(), hal::reveal(hctx.get(), scores));
 
   auto mse = MSE(revealed_labels, revealed_scores);
   std::cout << "MSE = " << mse << "\n";

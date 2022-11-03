@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+import os
 from typing import List
 
 import spu.spu_pb2 as spu_pb2
@@ -127,15 +128,17 @@ class Io(object):
 
 
 @cached(cache=LRUCache(maxsize=128))
-def _spu_compilation(xla: str, json_meta: str):
-    return _lib.compile(xla, json_meta, "")
+def _spu_compilation(ir_text: str, ir_type: str, json_meta: str):
+    pp_dir = os.getenv('SPU_IR_DUMP_DIR')
+    return _lib.compile(ir_text, ir_type, json_meta, pp_dir or "")
 
 
-def compile(xla: str, vis: List[spu_pb2.Visibility]) -> str:
-    """Compile from XLA to SPU bytecode.
+def compile(ir_text: str, ir_type: str, vis: List[spu_pb2.Visibility]) -> str:
+    """Compile from textual HLO/MHLO IR to SPU bytecode.
 
     Args:
-        xla (str): XLA protobuf binary format.
+        ir_text (str): textual HLO/MHLO IR protobuf binary format.
+        ir_type (str): "hlo" or "mhlo".
         vtype (Visibility): Visbilities .
 
     Returns:
@@ -143,4 +146,7 @@ def compile(xla: str, vis: List[spu_pb2.Visibility]) -> str:
     """
     from google.protobuf.json_format import MessageToJson
 
-    return _spu_compilation(xla, MessageToJson(spu_pb2.XlaMeta(inputs=vis)))
+    # todo: rename XlaMeta to IrMeta?
+    return _spu_compilation(
+        ir_text, ir_type, MessageToJson(spu_pb2.XlaMeta(inputs=vis))
+    )

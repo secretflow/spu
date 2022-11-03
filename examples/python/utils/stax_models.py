@@ -217,10 +217,10 @@ def chamelon():
 # Network B
 def minionn():
     nn_init, nn_apply = stax.serial(
-        Conv(out_chan=16, filter_shape=(5, 5), strides=(1, 1), padding='same'),
+        Conv(out_chan=16, filter_shape=(5, 5), strides=(1, 1), padding='valid'),
         Relu,
         MaxPool(window_shape=(2, 2)),
-        Conv(out_chan=16, filter_shape=(5, 5), strides=(1, 1), padding='same'),
+        Conv(out_chan=16, filter_shape=(5, 5), strides=(1, 1), padding='valid'),
         Relu,
         MaxPool(window_shape=(2, 2)),
         Flatten,

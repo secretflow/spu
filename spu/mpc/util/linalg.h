@@ -16,82 +16,46 @@
 
 #include <cstddef>
 
-#define EIGEN_USE_THREADS
-#include "unsupported/Eigen/CXX11/Tensor"
+#include "spdlog/spdlog.h"
+#include "yasl/base/exception.h"
+
+#include "spu/core/parallel_utils.h"
+
+#define EIGEN_HAS_OPENMP
+#include "Eigen/Core"
 
 namespace spu::mpc::linalg {
 
-Eigen::ThreadPoolDevice* getEigenThreadPoolDevice();
+namespace detail {
 
-#define EIGEN_BINARY_FCN(NAME, OP)                                           \
-  template <typename T>                                                      \
-  void NAME(int64_t numel, const T* A, int64_t stride_A, const T* B,         \
-            int64_t stride_B, T* C, int64_t stride_C) {                      \
-    Eigen::TensorMap<Eigen::Tensor<const T, 1, Eigen::RowMajor>,             \
-                     Eigen::Unaligned>                                       \
-    a(A, numel* stride_A);                                                   \
-    Eigen::TensorMap<Eigen::Tensor<const T, 1, Eigen::RowMajor>,             \
-                     Eigen::Unaligned>                                       \
-    b(B, numel* stride_B);                                                   \
-    Eigen::TensorMap<Eigen::Tensor<T, 1, Eigen::RowMajor>, Eigen::Unaligned> \
-    c(C, numel* stride_C);                                                   \
-    c.stride(Eigen::array<Eigen::DenseIndex, 1>{stride_C})                   \
-        .device(*getEigenThreadPoolDevice()) =                               \
-        a.stride(Eigen::array<Eigen::DenseIndex, 1>{stride_A})               \
-            OP b.stride(Eigen::array<Eigen::DenseIndex, 1>{stride_B});       \
+void setEigenParallelLevel(int64_t expected_threads);
+
+}  // namespace detail
+
+#define EIGEN_BINARY_FCN(NAME, OP)                                   \
+  template <typename T>                                              \
+  void NAME(int64_t numel, const T* A, int64_t stride_A, const T* B, \
+            int64_t stride_B, T* C, int64_t stride_C) {              \
+    pforeach(0, numel, [&](int64_t idx) {                            \
+      C[idx * stride_C] = A[idx * stride_A] OP B[idx * stride_B];    \
+    });                                                              \
   }
 
 EIGEN_BINARY_FCN(mul, *)
 EIGEN_BINARY_FCN(add, +)
 EIGEN_BINARY_FCN(sub, -)
+EIGEN_BINARY_FCN(equal, ==)
+EIGEN_BINARY_FCN(bitwise_and, &)
+EIGEN_BINARY_FCN(bitwise_xor, ^)
 
 #undef EIGEN_BINARY_FCN
-
-#define EIGEN_BINARY_FCN_WITH_OP(NAME, OP)                                   \
-  template <typename T>                                                      \
-  void NAME(int64_t numel, const T* A, int64_t stride_A, const T* B,         \
-            int64_t stride_B, T* C, int64_t stride_C) {                      \
-    Eigen::TensorMap<Eigen::Tensor<const T, 1, Eigen::RowMajor>,             \
-                     Eigen::Unaligned>                                       \
-    a(A, numel* stride_A);                                                   \
-    Eigen::TensorMap<Eigen::Tensor<const T, 1, Eigen::RowMajor>,             \
-                     Eigen::Unaligned>                                       \
-    b(B, numel* stride_B);                                                   \
-    Eigen::TensorMap<Eigen::Tensor<T, 1, Eigen::RowMajor>, Eigen::Unaligned> \
-    c(C, numel* stride_C);                                                   \
-                                                                             \
-    auto op = [](const T& lhs, const T& rhs) {                               \
-      return static_cast<T>(lhs OP rhs);                                     \
-    };                                                                       \
-                                                                             \
-    c.stride(Eigen::array<Eigen::DenseIndex, 1>{stride_C})                   \
-        .device(*getEigenThreadPoolDevice()) =                               \
-        a.stride(Eigen::array<Eigen::DenseIndex, 1>{stride_A})               \
-            .binaryExpr(                                                     \
-                b.stride(Eigen::array<Eigen::DenseIndex, 1>{stride_B}), op); \
-  }
-
-EIGEN_BINARY_FCN_WITH_OP(equal, ==)
-EIGEN_BINARY_FCN_WITH_OP(bitwise_and, &)
-EIGEN_BINARY_FCN_WITH_OP(bitwise_xor, ^)
-
-#undef EIGEN_BINARY_FCN_WITH_OP
 
 #define EIGEN_UNARY_FCN_WITH_OP(NAME, OP)                                     \
   template <typename T>                                                       \
   void NAME(int64_t numel, const T* A, int64_t stride_A, T* C,                \
             int64_t stride_C) {                                               \
-    Eigen::TensorMap<Eigen::Tensor<const T, 1, Eigen::RowMajor>,              \
-                     Eigen::Unaligned>                                        \
-    a(A, numel* stride_A);                                                    \
-    Eigen::TensorMap<Eigen::Tensor<T, 1, Eigen::RowMajor>, Eigen::Unaligned>  \
-    c(C, numel* stride_C);                                                    \
-                                                                              \
-    auto op = [](const T& in) { return OP in; };                              \
-                                                                              \
-    c.stride(Eigen::array<Eigen::DenseIndex, 1>{stride_C})                    \
-        .device(*getEigenThreadPoolDevice()) =                                \
-        a.stride(Eigen::array<Eigen::DenseIndex, 1>{stride_A}).unaryExpr(op); \
+    pforeach(0, numel,                                                        \
+             [&](int64_t idx) { C[idx * stride_C] = OP A[idx * stride_A]; }); \
   }
 
 EIGEN_UNARY_FCN_WITH_OP(bitwise_not, ~)
@@ -99,21 +63,13 @@ EIGEN_UNARY_FCN_WITH_OP(negate, -)
 
 #undef EIGEN_UNARY_FCN_WITH_OP
 
-#define EIGEN_SHIFT_FCN_WITH_OP(NAME, OP)                                     \
-  template <typename T>                                                       \
-  void NAME(int64_t numel, const T* A, int64_t stride_A, T* C,                \
-            int64_t stride_C, int64_t bits) {                                 \
-    Eigen::TensorMap<Eigen::Tensor<const T, 1, Eigen::RowMajor>,              \
-                     Eigen::Unaligned>                                        \
-    a(A, numel* stride_A);                                                    \
-    Eigen::TensorMap<Eigen::Tensor<T, 1, Eigen::RowMajor>, Eigen::Unaligned>  \
-    c(C, numel* stride_C);                                                    \
-                                                                              \
-    auto op = [&](const T& in) { return in OP bits; };                        \
-                                                                              \
-    c.stride(Eigen::array<Eigen::DenseIndex, 1>{stride_C})                    \
-        .device(*getEigenThreadPoolDevice()) =                                \
-        a.stride(Eigen::array<Eigen::DenseIndex, 1>{stride_A}).unaryExpr(op); \
+#define EIGEN_SHIFT_FCN_WITH_OP(NAME, OP)                      \
+  template <typename T>                                        \
+  void NAME(int64_t numel, const T* A, int64_t stride_A, T* C, \
+            int64_t stride_C, int64_t bits) {                  \
+    pforeach(0, numel, [&](int64_t idx) {                      \
+      C[idx * stride_C] = A[idx * stride_A] OP bits;           \
+    });                                                        \
   }
 
 EIGEN_SHIFT_FCN_WITH_OP(rshift, >>)
@@ -124,55 +80,34 @@ EIGEN_SHIFT_FCN_WITH_OP(lshift, <<)
 template <typename T, typename OP>
 void unaryWithOp(int64_t numel, const T* A, int64_t stride_A, T* C,
                  int64_t stride_C, const OP& op) {
-  Eigen::TensorMap<Eigen::Tensor<const T, 1, Eigen::RowMajor>, Eigen::Unaligned>
-      a(A, numel * stride_A);
-  Eigen::TensorMap<Eigen::Tensor<T, 1, Eigen::RowMajor>, Eigen::Unaligned> c(
-      C, numel * stride_C);
-
-  c.stride(Eigen::array<Eigen::DenseIndex, 1>{stride_C})
-      .device(*getEigenThreadPoolDevice()) =
-      a.stride(Eigen::array<Eigen::DenseIndex, 1>{stride_A}).unaryExpr(op);
+  pforeach(0, numel, [&](int64_t idx) {  //
+    C[idx * stride_C] = op(A[idx * stride_A]);
+  });
 }
 
 template <typename T>
 void assign(int64_t numel, const T* A, int64_t stride_A, T* C,
             int64_t stride_C) {
-  Eigen::TensorMap<Eigen::Tensor<const T, 1, Eigen::RowMajor>, Eigen::Unaligned>
-      a(A, numel * stride_A);
-  Eigen::TensorMap<Eigen::Tensor<T, 1, Eigen::RowMajor>, Eigen::Unaligned> c(
-      C, numel * stride_C);
-  c.stride(Eigen::array<Eigen::DenseIndex, 1>{stride_C})
-      .device(*getEigenThreadPoolDevice()) =
-      a.stride(Eigen::array<Eigen::DenseIndex, 1>{stride_A});
+  pforeach(0, numel, [&](int64_t idx) {  //
+    C[idx * stride_C] = A[idx * stride_A];
+  });
 }
 
 template <typename T>
 void setConstantValue(int64_t numel, T* A, int64_t stride_A, T value) {
-  Eigen::TensorMap<Eigen::Tensor<T, 1, Eigen::RowMajor>, Eigen::Unaligned> a(
-      A, numel * stride_A);
-  a.stride(Eigen::array<Eigen::DenseIndex, 1>{stride_A})
-      .setConstant(value)
-      .device(*getEigenThreadPoolDevice());
+  pforeach(0, numel, [&](int64_t idx) {  //
+    A[idx * stride_A] = value;
+  });
 }
 
 template <typename T>
 void select(int64_t numel, const uint8_t* cond, const T* on_true,
             int64_t on_true_stride, const T* on_false, int64_t on_false_stride,
             T* ret, int64_t ret_stride) {
-  Eigen::TensorMap<Eigen::Tensor<const bool, 1, Eigen::RowMajor>,
-                   Eigen::Unaligned>
-      a(reinterpret_cast<const bool*>(cond), numel);
-  Eigen::TensorMap<Eigen::Tensor<const T, 1, Eigen::RowMajor>, Eigen::Unaligned>
-      t(on_true, numel * on_true_stride);
-  Eigen::TensorMap<Eigen::Tensor<const T, 1, Eigen::RowMajor>, Eigen::Unaligned>
-      f(on_false, numel * on_false_stride);
-  Eigen::TensorMap<Eigen::Tensor<T, 1, Eigen::RowMajor>, Eigen::Unaligned> r(
-      ret, numel * ret_stride);
-
-  r.stride(Eigen::array<Eigen::DenseIndex, 1>{ret_stride})
-      .device(*getEigenThreadPoolDevice()) =
-      a.select(t.stride(Eigen::array<Eigen::DenseIndex, 1>{on_true_stride}),
-               f.stride(Eigen::array<Eigen::DenseIndex, 1>{on_false_stride}));
+  pforeach(0, numel, [&](int64_t idx) {
+    ret[idx * ret_stride] = (cond[idx] ? on_true[idx * on_true_stride]
+                                       : on_false[idx * on_false_stride]);
+  });
 }
 
 /**
@@ -196,34 +131,49 @@ template <typename T>
 void matmul(int64_t M, int64_t N, int64_t K, const T* A, int64_t LDA,
             int64_t IDA, const T* B, int64_t LDB, int64_t IDB, T* C,
             int64_t LDC, int64_t IDC) {
-  int64_t unstrided_lhs_cols = K * IDA;
-  int64_t normalized_lda = LDA / unstrided_lhs_cols;
-  int64_t unstrided_lhs_rows = M * normalized_lda;
+  using StrideT = Eigen::Stride<Eigen::Dynamic, Eigen::Dynamic>;
+  using MapMatrixConstT = Eigen::Map<
+      const Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>,
+      Eigen::Unaligned, StrideT>;
+  using MapMatrixT = Eigen::Map<
+      Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>,
+      Eigen::Unaligned, StrideT>;
 
-  int64_t unstrided_rhs_cols = N * IDB;
-  int64_t normalized_ldb = LDB / unstrided_rhs_cols;
-  int64_t unstrided_rhs_rows = K * normalized_ldb;
+  MapMatrixConstT a(A, M, K, StrideT(LDA, IDA));
+  MapMatrixConstT b(B, K, N, StrideT(LDB, IDB));
+  MapMatrixT c(C, M, N, StrideT(LDC, IDC));
 
-  int64_t unstrided_ret_cols = N * IDC;
-  int64_t normalized_ldc = LDC / unstrided_ret_cols;
-  int64_t unstrided_ret_rows = M * normalized_ldc;
+  if (M == 1) {
+    // GEMV case 1*K * K*N -> 1*N
+    auto work_load_size = computeTaskSize(N);
+    yasl::parallel_for(0, N, work_load_size, [&](int64_t begin, int64_t end) {
+      auto block_size = end - begin;
+      c.block(0, begin, 1, block_size) =
+          a.row(0) * b.block(0, begin, K, block_size);
+    });
+    return;
+  } else if (N == 1) {
+    // GEMV case M*K * K*1 -> M*1
+    auto work_load_size = computeTaskSize(M);
+    yasl::parallel_for(0, M, work_load_size, [&](int64_t begin, int64_t end) {
+      auto block_size = end - begin;
+      c.block(begin, 0, block_size, 1) =
+          a.block(begin, 0, block_size, K) * b.col(0);
+    });
+    return;
+  }
 
-  Eigen::TensorMap<Eigen::Tensor<const T, 2, Eigen::RowMajor>, Eigen::Unaligned>
-      a(A, unstrided_lhs_rows, unstrided_lhs_cols);
-  Eigen::TensorMap<Eigen::Tensor<const T, 2, Eigen::RowMajor>, Eigen::Unaligned>
-      b(B, unstrided_rhs_rows, unstrided_rhs_cols);
-  Eigen::TensorMap<Eigen::Tensor<T, 2, Eigen::RowMajor>, Eigen::Unaligned> c(
-      C, unstrided_ret_rows, unstrided_ret_cols);
+  // If we don't limit # threads, eigen may overloading omp tasks (especially
+  // under relative small tasks, MLP for example)
+  //
+  // FIXME: Investigate what can happen once we support ILP
+  //        The performance is extremely bad when multi-process all tries to use
+  //        num_cores.
+  // auto expected_num_threads = std::max((M * K + kMinTaskSize) / kMinTaskSize,
+  //                                     (N * K + kMinTaskSize) / kMinTaskSize);
+  detail::setEigenParallelLevel(2);
 
-  using DimPair = typename Eigen::Tensor<T, 2>::DimensionPair;
-  const Eigen::array<DimPair, 1> dims({DimPair(1, 0)});
-
-  c.stride(Eigen::array<Eigen::DenseIndex, 2>{normalized_ldc, IDC})
-      .device(*getEigenThreadPoolDevice()) =
-      a.stride(Eigen::array<Eigen::DenseIndex, 2>{normalized_lda, IDA})
-          .contract(
-              b.stride(Eigen::array<Eigen::DenseIndex, 2>{normalized_ldb, IDB}),
-              dims);
+  c.noalias() = a * b;
 }
 
 }  // namespace spu::mpc::linalg

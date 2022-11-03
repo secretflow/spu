@@ -8,6 +8,12 @@
 
 ## staging
 > please add your unrelease change here.
+- [API] Add IR type for frontend compilation
+- [Feature] Support SignOp, Expm1Op, DotGeneralOp
+- [bugfix] Relax iota type constraint
+- [bugfix] Fix type inference for whileOp/dynamicUpdateSliceOp
+- [bugfix] Relax clamp type constraint
+- [Feature] Improve convolution performance
 
 ## 20220905
 - [SPU] 0.2.4 release

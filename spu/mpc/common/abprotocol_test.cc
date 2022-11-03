@@ -51,6 +51,7 @@ bool verifyCost(Kernel* kernel, std::string_view name, FieldType field,
                expectedComm, realComm);
     succeed = false;
   }
+
   if (latency->eval(field, npc) != cost.latency) {
     fmt::print("Failed: {} latency mismatch, expected={}, got={}\n", name,
                latency->eval(field, npc), cost.latency);

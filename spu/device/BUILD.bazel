@@ -48,9 +48,9 @@ spu_cc_library(
         ":symbol_table",
         "//spu:spu_cc_proto",
         "//spu/core:xt_helper",
-        "//spu/hal:constants",
-        "//spu/hal:context",
-        "//spu/hal:value",
+        "//spu/kernel:context",
+        "//spu/kernel:value",
+        "//spu/kernel/hal:constants",
         "//spu/mpc:factory",
     ],
 )
@@ -71,7 +71,7 @@ spu_cc_library(
     deps = [
         ":type_checker",
         "//spu/dialect:pphlo_dialect",
-        "//spu/hal:value",
+        "//spu/kernel:value",
         "@llvm-project//mlir:IR",
         "@yasl//yasl/base:exception",
     ],
@@ -85,9 +85,9 @@ spu_cc_library(
         ":profiler",
         ":symbol_table",
         "//spu:spu_cc_proto",
-        "//spu/hal:context",
-        "//spu/hal:polymorphic",
-        "//spu/hal:value",
+        "//spu/kernel:context",
+        "//spu/kernel:value",
+        "//spu/kernel/hal:polymorphic",
     ],
 )
 
@@ -111,7 +111,7 @@ spu_cc_library(
     deps = [
         ":device_cc_proto",
         "//spu/core:xt_helper",
-        "//spu/hal:value",
+        "//spu/kernel:value",
     ],
 )
 
@@ -120,7 +120,7 @@ spu_cc_library(
     srcs = ["type_checker.cc"],
     hdrs = ["type_checker.h"],
     deps = [
-        "//spu/hal:value",
+        "//spu/kernel:value",
         "@llvm-project//mlir:IR",
     ],
 )

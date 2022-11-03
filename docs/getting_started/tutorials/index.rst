@@ -2,7 +2,7 @@ Tutorials
 =========
 
 .. note::
-   We will add more tutorials here! At this moment, please check `examples <https://github.com/secretflow/spu/tree/beta/examples>`_ folder of source code on you own.
+   We will add more tutorials here! At this moment, please check `examples <https://github.com/secretflow/spu/tree/main/examples>`_ folder of source code on you own.
 
 
 .. toctree::

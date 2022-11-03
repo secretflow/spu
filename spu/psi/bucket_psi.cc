@@ -192,7 +192,10 @@ std::vector<uint64_t> BucketPsi::RunPsi(uint64_t self_items_count) {
 
   if (config_.psi_type() == PsiType::ECDH_PSI_2PC) {
     EcdhPsiOptions psi_options;
-    psi_options.ecc_cryptor = CreateEccCryptor(CurveType::CURVE_25519);
+    if (config_.curve_type() == CurveType::CURVE_INVALID_TYPE) {
+      YASL_THROW("Unsupported curve type");
+    }
+    psi_options.ecc_cryptor = CreateEccCryptor(config_.curve_type());
     psi_options.link_ctx = lctx_;
     psi_options.target_rank = static_cast<size_t>(config_.receiver_rank());
     if (config_.broadcast_result()) {

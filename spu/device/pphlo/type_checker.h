@@ -21,7 +21,7 @@ namespace spu::device {
 class PPHloTypeChecker : public TypeChecker {
 public:
   ~PPHloTypeChecker() override = default;
-  void check(::mlir::Type type, const hal::Value &v) const override;
+  void check(::mlir::Type type, const spu::Value &v) const override;
 };
 
 } // namespace spu::device

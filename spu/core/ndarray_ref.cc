@@ -18,26 +18,12 @@
 
 #include "fmt/format.h"
 #include "fmt/ostream.h"
-#include "yasl/utils/parallel.h"
 
+#include "spu/core/parallel_utils.h"
 #include "spu/core/shape_util.h"
 
 namespace spu {
 namespace detail {
-
-int64_t flattenOffset(absl::Span<const int64_t> indices,
-                      absl::Span<const int64_t> strides) {
-  int64_t offset = 0;
-  for (int64_t idx = indices.size() - 1; idx >= 0; --idx) {
-    offset += indices[idx] * strides[idx];
-  }
-  return offset;
-}
-
-int64_t unflattenOffset(int64_t linear_offset,
-                        absl::Span<const int64_t> strides) {
-  YASL_THROW("TODO");
-}
 
 size_t calcFlattenOffset(absl::Span<const int64_t> indices,
                          absl::Span<const int64_t> shape,
@@ -46,7 +32,11 @@ size_t calcFlattenOffset(absl::Span<const int64_t> indices,
     return calcFlattenOffset(indices, shape, makeCompactStrides(shape));
   }
 
-  return flattenOffset(indices, strides);
+  int64_t offset = 0;
+  for (int64_t idx = indices.size() - 1; idx >= 0; --idx) {
+    offset += indices[idx] * strides[idx];
+  }
+  return offset;
 }
 
 }  // namespace detail
@@ -117,8 +107,7 @@ NdArrayRef NdArrayRef::clone() const {
   auto elsize = res.elsize();
 
   yasl::parallel_for(0, numel(), 2048, [&](int64_t begin, int64_t end) {
-    std::vector<int64_t> indices(shape().size(), 0);
-    unflattenIndex(begin, shape(), indices);
+    std::vector<int64_t> indices = unflattenIndex(begin, shape());
     for (int64_t idx = begin; idx < end; ++idx) {
       const auto* frm = &at(indices);
       bumpIndices<int64_t>(shape(), absl::MakeSpan(indices));

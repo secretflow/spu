@@ -16,11 +16,11 @@
 
 namespace spu::device {
 
-void SymbolTable::setVar(const std::string &name, const hal::Value &val) {
+void SymbolTable::setVar(const std::string &name, const spu::Value &val) {
   data_[name] = val;
 }
 
-hal::Value SymbolTable::getVar(const std::string &name) const {
+spu::Value SymbolTable::getVar(const std::string &name) const {
   const auto itr = data_.find(name);
   YASL_ENFORCE(itr != data_.end(), "symbol {} not found", name);
   return itr->second;
@@ -45,7 +45,7 @@ SymbolTableProto SymbolTable::toProto() const {
 SymbolTable SymbolTable::fromProto(const SymbolTableProto &proto) {
   SymbolTable st;
   for (const auto &[name, value_proto] : proto.symbols()) {
-    st.setVar(name, hal::Value::fromProto(value_proto));
+    st.setVar(name, spu::Value::fromProto(value_proto));
   }
   return st;
 }

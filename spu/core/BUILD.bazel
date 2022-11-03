@@ -69,8 +69,10 @@ spu_cc_library(
     deps = [
         ":array_ref",
         ":ndarray_ref",
+        ":parallel_utils",
         ":xt_helper",
         "@yasl//yasl/crypto:pseudo_random_generator",
+        "@yasl//yasl/utils:parallel",
     ],
 )
 
@@ -88,7 +90,7 @@ spu_cc_library(
     srcs = ["shape_util.cc"],
     hdrs = ["shape_util.h"],
     deps = [
-        ":type_util",
+        "@yasl//yasl/base:exception",
     ],
 )
 
@@ -123,12 +125,11 @@ spu_cc_library(
     srcs = ["array_ref.cc"],
     hdrs = ["array_ref.h"],
     deps = [
-        ":shape_util",
+        ":parallel_utils",
         ":type",
         ":vectorize",
         "@yasl//yasl/base:buffer",
         "@yasl//yasl/base:exception",
-        "@yasl//yasl/utils:parallel",
     ],
 )
 
@@ -146,6 +147,7 @@ spu_cc_library(
     hdrs = ["ndarray_ref.h"],
     deps = [
         ":array_ref",
+        ":parallel_utils",
         ":shape_util",
         ":type",
         "@yasl//yasl/base:buffer",
@@ -168,6 +170,7 @@ spu_cc_library(
     deps = [
         ":array_ref",
         ":ndarray_ref",
+        ":shape_util",
         "@com_github_xtensor_xtensor//:xtensor",
         "@yasl//yasl/crypto:pseudo_random_generator",
     ],
@@ -195,5 +198,15 @@ spu_cc_test(
     srcs = ["vectorize_test.cc"],
     deps = [
         ":vectorize",
+    ],
+)
+
+spu_cc_library(
+    name = "parallel_utils",
+    srcs = ["parallel_utils.cc"],
+    hdrs = ["parallel_utils.h"],
+    deps = [
+        "@llvm-project//llvm:Support",
+        "@yasl//yasl/utils:parallel",
     ],
 )

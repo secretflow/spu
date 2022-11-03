@@ -17,21 +17,27 @@
 #include <string>
 #include <unordered_map>
 
-#include "spu/hal/value.h"
+#include "spu/kernel/value.h"
 
 #include "spu/device/device.pb.h"
 
 namespace spu::device {
 
 class SymbolTable {
-  std::unordered_map<std::string, hal::Value> data_;
+  std::unordered_map<std::string, spu::Value> data_;
 
 public:
-  void setVar(const std::string &name, const hal::Value &val);
-  hal::Value getVar(const std::string &name) const;
+  void setVar(const std::string &name, const spu::Value &val);
+  spu::Value getVar(const std::string &name) const;
   bool hasVar(const std::string &name) const;
   void delVar(const std::string &name);
   void clear();
+
+  auto begin() const { return data_.begin(); }
+  auto end() const { return data_.end(); }
+
+  auto begin() { return data_.begin(); }
+  auto end() { return data_.end(); }
 
   SymbolTableProto toProto() const;
   static SymbolTable fromProto(const SymbolTableProto &proto);

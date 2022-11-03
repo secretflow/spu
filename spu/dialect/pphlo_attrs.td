@@ -26,16 +26,15 @@ def PPHloDim : ArrayRefParameter<"int64_t", "Dimension">;
 def GatherDimensionNumbers : AttrDef<PPHlo_Dialect, "GatherDimensionNumbers"> {
   let mnemonic = "gather";
   let summary = "Attribute that models the dimension information for gather";
-  let parameters = (ins PPHloDim
-                    : $offsetDims, PPHloDim
-                    : $collapsedSliceDims, PPHloDim
-                    : $startIndexMap, "int64_t"
-                    : $indexVectorDim);
+  let parameters = (ins 
+              PPHloDim: $offsetDims, 
+              PPHloDim: $collapsedSliceDims, 
+              PPHloDim: $startIndexMap, 
+              "int64_t": $indexVectorDim);
   let hasCustomAssemblyFormat = 1;
 }
 
 def ConvDimensionNumbers : AttrDef<PPHlo_Dialect, "ConvDimensionNumbers"> {
-  let cppNamespace = "::mlir::pphlo";
   let mnemonic = "conv";
   let summary = "Structure of dimension information for conv op";
   let parameters = (ins
@@ -48,6 +47,18 @@ def ConvDimensionNumbers : AttrDef<PPHlo_Dialect, "ConvDimensionNumbers"> {
     "int64_t":$outputBatchDimension,
     "int64_t":$outputFeatureDimension,
     PPHloDim:$outputSpatialDimensions
+  );
+  let hasCustomAssemblyFormat = 1;
+}
+
+def DotDimensionNumbers : AttrDef<PPHlo_Dialect, "DotDimensionNumbers"> {
+  let mnemonic = "dot";
+  let summary = "Attribute that models the dimension information for dot.";
+  let parameters = (ins
+      PPHloDim:$lhsBatchingDimensions,
+      PPHloDim:$rhsBatchingDimensions,
+      PPHloDim:$lhsContractingDimensions,
+      PPHloDim:$rhsContractingDimensions
   );
   let hasCustomAssemblyFormat = 1;
 }

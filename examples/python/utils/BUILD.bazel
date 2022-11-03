@@ -38,6 +38,11 @@ py_library(
     srcs = ["stax_models.py"],
 )
 
+py_library(
+    name = "optimizers",
+    srcs = ["optimizers.py"],
+)
+
 py_binary(
     name = "nodectl",
     srcs = ["nodectl.py"],

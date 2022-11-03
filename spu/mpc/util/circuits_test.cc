@@ -93,17 +93,17 @@ std::vector<std::vector<uint32_t>> kU32Add = {
     {0xF0F0F0F0U, 0x0F0F0F0FU, 0xFFFFFFFFU},  //
 };
 
-TEST(KoggleStoneAdder, Scalar) {
+TEST(KoggeStoneAdder, Scalar) {
   using T = uint32_t;
   const auto cbb = makeScalarCBB<T>();
   const size_t nbits = sizeof(T) * 8;
 
   for (auto item : kU32Add) {
-    EXPECT_EQ(koggle_stone(cbb, item[0], item[1], nbits), item[0] + item[1]);
+    EXPECT_EQ(kogge_stone(cbb, item[0], item[1], nbits), item[0] + item[1]);
   }
 }
 
-TEST(KoggleStoneAdder, Vectorized) {
+TEST(KoggeStoneAdder, Vectorized) {
   using T = uint32_t;
   const size_t nbits = sizeof(T) * 8;
   using VT = std::vector<T>;
@@ -116,7 +116,7 @@ TEST(KoggleStoneAdder, Vectorized) {
   }
 
   auto cbb = makeVectorCBB<VT>();
-  auto r0 = koggle_stone(cbb, args[0], args[1], nbits);
+  auto r0 = kogge_stone(cbb, args[0], args[1], nbits);
   EXPECT_THAT(r0, testing::ElementsAreArray(args[2].begin(), args[2].end()));
 }
 

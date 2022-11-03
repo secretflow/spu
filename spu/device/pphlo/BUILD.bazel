@@ -31,16 +31,6 @@ spu_cc_library(
 )
 
 spu_cc_library(
-    name = "kernels",
-    srcs = glob(["kernels/*.cc"]),
-    hdrs = glob(["kernels/*.h"]),
-    visibility = ["//visibility:private"],
-    deps = [
-        "//spu/hal",
-    ],
-)
-
-spu_cc_library(
     name = "region_executor",
     srcs = [
         "region_executor.cc",
@@ -49,12 +39,12 @@ spu_cc_library(
         "region_executor.h",
     ],
     deps = [
-        ":kernels",
         ":type_checker",
         ":xla_verifier",
         "//spu/device:frame",
         "//spu/device:profiler",
         "//spu/dialect:pphlo_dialect",
+        "//spu/kernel/hlo",
     ],
 )
 
@@ -63,6 +53,7 @@ spu_cc_test(
     srcs = ["executor_test.cc"],
     deps = [
         ":executor",
+        "//spu/compiler:compile",
         "//spu/device:io",
         "//spu/device:test_utils",
     ],
@@ -75,23 +66,9 @@ spu_cc_library(
     deps = [
         "//spu/device:type_checker",
         "//spu/dialect:pphlo_dialect",
-        "//spu/hal:value",
+        "//spu/kernel:value",
         "@llvm-project//mlir:IR",
         "@yasl//yasl/base:exception",
-    ],
-)
-
-spu_cc_binary(
-    name = "executor_bench",
-    testonly = True,
-    srcs = ["executor_bench.cc"],
-    data = [
-        "//spu/compiler/test_data:pphlo_asms",
-    ],
-    deps = [
-        ":executor",
-        "//spu/device:test_utils",
-        "@com_github_google_benchmark//:benchmark",
     ],
 )
 
@@ -115,10 +92,10 @@ spu_cc_library(
         "-Wno-error",
     ],
     deps = [
-        ":kernels",
         "//spu/dialect:pphlo_dialect",
-        "//spu/hal:context",
-        "//spu/hal:value",
+        "//spu/kernel:context",
+        "//spu/kernel:value",
+        "//spu/kernel/hlo",
         "@org_tensorflow//tensorflow/compiler/xla/service:hlo_evaluator",
     ],
 )

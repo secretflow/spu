@@ -14,6 +14,7 @@
 
 #include "gtest/gtest.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"
+#include "mlir/IR/BuiltinOps.h"
 #include "mlir/Parser/Parser.h"
 #include "xtensor/xarray.hpp"
 
@@ -52,9 +53,9 @@ void runner(const OpFcn &f, absl::Span<const xt::xarray<InT>> inputs,
         verifier.setMismatchHandler(failed);
         auto *table = io_->GetSymbolTable(lctx->Rank());
 
-        std::vector<hal::Value> in(inputs.size());
-        std::vector<hal::Value> pout(positives.size());
-        std::vector<hal::Value> nout(negatives.size());
+        std::vector<spu::Value> in(inputs.size());
+        std::vector<spu::Value> pout(positives.size());
+        std::vector<spu::Value> nout(negatives.size());
         for (size_t idx = 0; idx < in.size(); ++idx) {
           in[idx] = table->getVar(fmt::format("in{}", idx));
         }
@@ -149,7 +150,7 @@ TEST(Verify, Add) {
 
 TEST(Verify, Sub) {
   runner<int32_t, int32_t>(
-      [] { return mlir::pphlo::SubOp{}; },
+      [] { return mlir::pphlo::SubtractOp{}; },
       {xt::xarray<int32_t>{1, 2, 3, 4}, xt::xarray<int32_t>{5, 6, 7, 8}},
       {xt::xarray<int32_t>{-4, -4, -4, -4}}, {xt::xarray<int32_t>{1, 2, 2, 1}});
 }
@@ -294,53 +295,9 @@ TEST(Verify, Clamp) {
       {xt::xarray<int32_t>{5, 2, 3, 5}}, {xt::xarray<int32_t>{1, 1, 1, 1}});
 }
 
-TEST(Verify, Conv) {
-  std::string mlir = R"(
-func @main(%arg0: tensor<1x1x4x4x!pphlo.sec<f32>>, %arg1: tensor<1x1x2x2x!pphlo.sec<f32>>) -> (tensor<1x1x4x4x!pphlo.sec<f32>>) {
-    %0 = pphlo.convolution(%arg0, %arg1) dim_numbers = [b, f, 0, 1]x[o, i, 0, 1]->[b, f, 0, 1], window = {stride = [1, 1], pad = [[0, 1], [0, 1]], lhs_dilate = [1, 1], rhs_dilate = [1, 1]} {batch_group_count = 1 : i64, feature_group_count = 1 : i64} : (tensor<1x1x4x4x!pphlo.sec<f32>>, tensor<1x1x2x2x!pphlo.sec<f32>>) -> tensor<1x1x4x4x!pphlo.sec<f32>>
-    return %0 : tensor<1x1x4x4x!pphlo.sec<f32>>
-})";
-
-  mlir::DialectRegistry registry;
-  registry.insert<mlir::pphlo::PPHloDialect, mlir::func::FuncDialect>();
-  auto mlir_ctx = std::make_unique<mlir::MLIRContext>(registry);
-
-  auto moduleOpRef =
-      mlir::parseSourceString<mlir::ModuleOp>(mlir, mlir_ctx.get());
-
-  auto entry_function = moduleOpRef->lookupSymbol<mlir::FuncOp>("main");
-  runner<float, float>(
-      [&] {
-        return mlir::dyn_cast<mlir::pphlo::ConvOp>(
-            entry_function.getBody().front().front());
-      },
-      {xt::xarray<float>{{{
-           {1, 2, 3, 4},
-           {5, 6, 7, 8},
-           {9, 10, 11, 12},
-           {13, 14, 15, 16},
-       }}},
-       xt::xarray<float>{{{
-           {5, 6},
-           {7, 8},
-       }}}},
-      {xt::xarray<float>{{{
-          {100, 126, 152, 76},
-          {204, 230, 256, 124},
-          {308, 334, 360, 172},
-          {149, 160, 171, 80},
-      }}}},
-      {xt::xarray<float>{{{
-          {0, 0, 0, 0},
-          {0, 0, 0, 0},
-          {0, 0, 0, 0},
-          {0, 0, 0, 0},
-      }}}});
-}
-
 TEST(Verify, DynamicSlice) {
   std::string mlir = R"(
-func @main(%arg0: tensor<5x!pphlo.pub<i32>>, %arg1: tensor<!pphlo.pub<i32>>) -> tensor<2x!pphlo.pub<i32>> {
+func.func @main(%arg0: tensor<5x!pphlo.pub<i32>>, %arg1: tensor<!pphlo.pub<i32>>) -> tensor<2x!pphlo.pub<i32>> {
   %0 = "pphlo.dynamic-slice"(%arg0, %arg1) {slice_sizes = dense<2> : tensor<i64>} : (tensor<5x!pphlo.pub<i32>>, tensor<!pphlo.pub<i32>>) -> tensor<2x!pphlo.pub<i32>>
   return %0 : tensor<2x!pphlo.pub<i32>>
 })";
@@ -352,7 +309,7 @@ func @main(%arg0: tensor<5x!pphlo.pub<i32>>, %arg1: tensor<!pphlo.pub<i32>>) -> 
   auto moduleOpRef =
       mlir::parseSourceString<mlir::ModuleOp>(mlir, mlir_ctx.get());
 
-  auto entry_function = moduleOpRef->lookupSymbol<mlir::FuncOp>("main");
+  auto entry_function = moduleOpRef->lookupSymbol<mlir::func::FuncOp>("main");
   runner<int32_t, int32_t>(
       [&] {
         return mlir::dyn_cast<mlir::pphlo::DynamicSliceOp>(
@@ -368,32 +325,6 @@ TEST(Verify, DynamicUpdateSlice) {
                             xt::xarray<int32_t>{5, 6}, xt::xarray<int32_t>{2}},
                            {xt::xarray<int32_t>{0, 1, 5, 6, 4}},
                            {xt::xarray<int32_t>{1, 1, 1, 1, 1}});
-}
-
-TEST(Verify, Gather) {
-  std::string mlir = R"(
-func @main(%arg0: tensor<3x3x!pphlo.pub<i32>>, %arg1: tensor<2x!pphlo.pub<i32>>) -> (tensor<2x3x!pphlo.pub<i32>>) {
-    %0 = "pphlo.gather"(%arg0, %arg1) {dimension_numbers = #pphlo.gather<offset_dims = [1], collapsed_slice_dims = [0], start_index_map = [0], index_vector_dim = 1>, indices_are_sorted = false, slice_sizes = dense<[1, 3]> : tensor<2xi64>} : (tensor<3x3x!pphlo.pub<i32>>, tensor<2x!pphlo.pub<i32>>) -> tensor<2x3x!pphlo.pub<i32>>
-    return %0 : tensor<2x3x!pphlo.pub<i32>>
-})";
-
-  mlir::DialectRegistry registry;
-  registry.insert<mlir::pphlo::PPHloDialect, mlir::func::FuncDialect>();
-  auto mlir_ctx = std::make_unique<mlir::MLIRContext>(registry);
-
-  auto moduleOpRef =
-      mlir::parseSourceString<mlir::ModuleOp>(mlir, mlir_ctx.get());
-
-  auto entry_function = moduleOpRef->lookupSymbol<mlir::FuncOp>("main");
-  runner<int32_t, int32_t>(
-      [&] {
-        return mlir::dyn_cast<mlir::pphlo::GatherOp>(
-            entry_function.getBody().front().front());
-      },
-      {xt::xarray<int32_t>{{1, 2, 3}, {4, 5, 6}, {7, 8, 9}},
-       xt::xarray<int32_t>{0, 2}},
-      {xt::xarray<int32_t>{{1, 2, 3}, {7, 8, 9}}},
-      {xt::xarray<int32_t>{{1, 1, 1}, {1, 1, 1}}});
 }
 
 } // namespace spu::device::pphlo

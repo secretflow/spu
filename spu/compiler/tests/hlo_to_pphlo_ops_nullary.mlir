@@ -1,6 +1,6 @@
 // RUN: mlir-pphlo-opt --hlo-legalize-to-pphlo --split-input-file %s | FileCheck %s
 
-func @main() -> (tensor<2x2xi1>) {
+func.func @main() -> (tensor<2x2xi1>) {
     // CHECK: "pphlo.constant"() {value = dense<true> : tensor<2x2xi1>} : () -> tensor<2x2x!pphlo.pub<i1>>
     %0 = mhlo.constant dense<true> : tensor<2x2xi1>
     // CHECK: "pphlo.constant"() {value = dense<1> : tensor<2x2xi8>} : () -> tensor<2x2x!pphlo.pub<i8>> 

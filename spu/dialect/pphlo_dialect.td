@@ -39,11 +39,17 @@ def PPHlo_Dialect : Dialect {
   }];
   let name = "pphlo";
   let cppNamespace = "::mlir::pphlo";
+  let emitAccessorPrefix = kEmitAccessorPrefix_Raw;
+  let useDefaultAttributePrinterParser = 0;
+  let useDefaultTypePrinterParser = 0;
   let extraClassDeclaration = [{
     Attribute parseAttribute(DialectAsmParser & parser, Type type)
         const override;
     void printAttribute(Attribute, DialectAsmPrinter &) const override;
+    Type parseType(DialectAsmParser &parser) const override;
+    void printType(Type type, DialectAsmPrinter &os) const override;
   }];
+
 }
 
 #endif  // SPU_DIALECT_PPHLO_DIALECT

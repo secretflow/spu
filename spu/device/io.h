@@ -20,8 +20,8 @@
 
 #include "spu/core/xt_helper.h"
 #include "spu/device/symbol_table.h"
-#include "spu/hal/context.h"
-#include "spu/hal/value.h"
+#include "spu/kernel/context.h"
+#include "spu/kernel/value.h"
 #include "spu/mpc/io_interface.h"
 
 namespace spu::device {
@@ -106,11 +106,11 @@ public:
 
   // Make shares from plaintext buffer view.
   // Valid owner must be >= 0, and -1 indicates outsourcing model.
-  std::vector<hal::Value> makeShares(PtBufferView bv, Visibility vtype,
+  std::vector<spu::Value> makeShares(PtBufferView bv, Visibility vtype,
                                      int owner_rank = -1);
 
   // Combine shares to a plaintext ndarray.
-  NdArrayRef combineShares(absl::Span<hal::Value const> values);
+  NdArrayRef combineShares(absl::Span<spu::Value const> values);
 };
 
 class ColocatedIo {
@@ -148,10 +148,10 @@ public:
   SymbolTable &deviceSymbols() { return symbols_; }
 
   //
-  void deviceSetVar(const std::string &name, const hal::Value &var);
+  void deviceSetVar(const std::string &name, const spu::Value &var);
 
   //
-  hal::Value deviceGetVar(const std::string &name) const;
+  spu::Value deviceGetVar(const std::string &name) const;
 
   //
   bool deviceHasVar(const std::string &name) const;

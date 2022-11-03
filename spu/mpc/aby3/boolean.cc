@@ -16,14 +16,12 @@
 
 #include <algorithm>
 
-#include "yasl/utils/parallel.h"
-
+#include "spu/core/parallel_utils.h"
 #include "spu/core/profile.h"
 #include "spu/mpc/aby3/type.h"
 #include "spu/mpc/aby3/value.h"
 #include "spu/mpc/common/prg_state.h"
 #include "spu/mpc/common/pub2k.h"
-#include "spu/mpc/util/bit_utils.h"
 #include "spu/mpc/util/communicator.h"
 
 namespace spu::mpc::aby3 {
@@ -57,10 +55,10 @@ void CastTypeB::evaluate(EvalContext* ctx) const {
       auto _in = ArrayView<std::array<InT, 2>>(in);
       auto _out = ArrayView<std::array<OutT, 2>>(out);
 
-      for (auto idx = 0; idx < in.numel(); idx++) {
+      pforeach(0, in.numel(), [&](int64_t idx) {
         _out[idx][0] = static_cast<OutT>(_in[idx][0]);
         _out[idx][1] = static_cast<OutT>(_in[idx][1]);
-      }
+      });
     });
   });
 
@@ -88,9 +86,9 @@ ArrayRef B2P::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
       auto x2 = getShareAs<BShrT>(in, 1);
       auto x3 = comm->rotate<BShrT>(x2, "b2p");  // comm => 1, k
 
-      for (auto idx = 0; idx < in.numel(); idx++) {
+      pforeach(0, in.numel(), [&](int64_t idx) {
         _out[idx] = static_cast<PShrT>(_in[idx][0] ^ _in[idx][1] ^ x3[idx]);
-      }
+      });
 
       return out;
     });
@@ -114,7 +112,7 @@ ArrayRef P2B::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
       ArrayRef out(makeType<BShrTy>(btype, nbits), in.numel());
       auto _out = ArrayView<std::array<BShrT, 2>>(out);
 
-      for (int64_t idx = 0; idx < in.numel(); idx++) {
+      pforeach(0, in.numel(), [&](int64_t idx) {
         if (comm->getRank() == 0) {
           _out[idx][0] = static_cast<BShrT>(_in[idx]);
           _out[idx][1] = 0u;
@@ -125,7 +123,7 @@ ArrayRef P2B::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
           _out[idx][0] = 0u;
           _out[idx][1] = static_cast<BShrT>(_in[idx]);
         }
-      }
+      });
       return out;
     });
   });
@@ -154,10 +152,11 @@ ArrayRef AndBP::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
 
         ArrayRef out(makeType<BShrTy>(out_btype, out_nbits), lhs.numel());
         auto _out = ArrayView<std::array<OutT, 2>>(out);
-        for (int64_t idx = 0; idx < lhs.numel(); idx++) {
+        pforeach(0, lhs.numel(), [&](int64_t idx) {
           _out[idx][0] = _lhs[idx][0] & _rhs[idx];
           _out[idx][1] = _lhs[idx][1] & _rhs[idx];
-        }
+        });
+
         return out;
       });
     });
@@ -194,19 +193,19 @@ ArrayRef AndBB::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
         prg_state->fillPrssPair(absl::MakeSpan(r0), absl::MakeSpan(r1));
 
         // z1 = (x1 & y1) ^ (x1 & y2) ^ (x2 & y1) ^ (r0 ^ r1);
-        for (int64_t idx = 0; idx < lhs.numel(); idx++) {
+        pforeach(0, lhs.numel(), [&](int64_t idx) {
           r0[idx] = (_lhs[idx][0] & _rhs[idx][0]) ^
                     (_lhs[idx][0] & _rhs[idx][1]) ^
                     (_lhs[idx][1] & _rhs[idx][0]) ^ (r0[idx] ^ r1[idx]);
-        }
+        });
 
         r1 = comm->rotate<OutT>(r0, "andbb");  // comm => 1, k
-                                               //
+
         auto _out = ArrayView<std::array<OutT, 2>>(out);
-        for (int64_t idx = 0; idx < lhs.numel(); idx++) {
+        pforeach(0, lhs.numel(), [&](int64_t idx) {
           _out[idx][0] = r0[idx];
           _out[idx][1] = r1[idx];
-        }
+        });
         return out;
       });
     });
@@ -237,10 +236,10 @@ ArrayRef XorBP::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
         using OutT = ScalarT;
 
         auto _out = ArrayView<std::array<OutT, 2>>(out);
-        for (int64_t idx = 0; idx < lhs.numel(); idx++) {
+        pforeach(0, lhs.numel(), [&](int64_t idx) {
           _out[idx][0] = _lhs[idx][0] ^ _rhs[idx];
           _out[idx][1] = _lhs[idx][1] ^ _rhs[idx];
-        }
+        });
         return out;
       });
     });
@@ -271,10 +270,10 @@ ArrayRef XorBB::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
         ArrayRef out(makeType<BShrTy>(out_btype, out_nbits), lhs.numel());
         auto _out = ArrayView<std::array<OutT, 2>>(out);
 
-        for (int64_t idx = 0; idx < lhs.numel(); idx++) {
+        pforeach(0, lhs.numel(), [&](int64_t idx) {
           _out[idx][0] = _lhs[idx][0] ^ _rhs[idx][0];
           _out[idx][1] = _lhs[idx][1] ^ _rhs[idx][1];
-        }
+        });
         return out;
       });
     });
@@ -303,10 +302,10 @@ ArrayRef LShiftB::proc(KernelEvalContext* ctx, const ArrayRef& in,
       auto _in = ArrayView<std::array<InT, 2>>(in);
       auto _out = ArrayView<std::array<OutT, 2>>(out);
 
-      for (auto idx = 0; idx < in.numel(); idx++) {
+      pforeach(0, in.numel(), [&](int64_t idx) {
         _out[idx][0] = static_cast<OutT>(_in[idx][0]) << bits;
         _out[idx][1] = static_cast<OutT>(_in[idx][1]) << bits;
-      }
+      });
 
       return out;
     });
@@ -335,10 +334,10 @@ ArrayRef RShiftB::proc(KernelEvalContext* ctx, const ArrayRef& in,
       auto _in = ArrayView<std::array<InT, 2>>(in);
       auto _out = ArrayView<std::array<OutT, 2>>(out);
 
-      for (auto idx = 0; idx < in.numel(); idx++) {
+      pforeach(0, in.numel(), [&](int64_t idx) {
         _out[idx][0] = static_cast<OutT>(_in[idx][0] >> bits);
         _out[idx][1] = static_cast<OutT>(_in[idx][1] >> bits);
-      }
+      });
 
       return out;
     });
@@ -366,10 +365,10 @@ ArrayRef ARShiftB::proc(KernelEvalContext* ctx, const ArrayRef& in,
     auto _in = ArrayView<std::array<T, 2>>(in);
     auto _out = ArrayView<std::array<T, 2>>(out);
 
-    for (auto idx = 0; idx < in.numel(); idx++) {
+    pforeach(0, in.numel(), [&](int64_t idx) {
       _out[idx][0] = _in[idx][0] >> bits;
       _out[idx][1] = _in[idx][1] >> bits;
-    }
+    });
 
     return out;
   });
@@ -408,10 +407,10 @@ ArrayRef BitrevB::proc(KernelEvalContext* ctx, const ArrayRef& in, size_t start,
         return (el & ~mask) | tmp;
       };
 
-      for (auto idx = 0; idx < in.numel(); idx++) {
+      pforeach(0, in.numel(), [&](int64_t idx) {
         _out[idx][0] = bitrev_fn(static_cast<OutT>(_in[idx][0]));
         _out[idx][1] = bitrev_fn(static_cast<OutT>(_in[idx][1]));
-      }
+      });
 
       return out;
     });

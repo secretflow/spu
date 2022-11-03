@@ -1,0 +1,201 @@
+# Copyright 2022 Ant Group Co., Ltd.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+load("//bazel:spu.bzl", "spu_cc_binary", "spu_cc_library", "spu_cc_test")
+
+package(default_visibility = ["//visibility:public"])
+
+spu_cc_library(
+    name = "hlo",
+    deps = [
+        ":basic_binary",
+        ":basic_ternary",
+        ":basic_unary",
+        ":casting",
+        ":const",
+        ":control_flow",
+        ":convolution",
+        ":dynamic_slice",
+        ":gather",
+        ":geometrical",
+        ":rand",
+        ":reduce",
+        ":select_and_scatter",
+        ":shift",
+        ":sort",
+    ],
+)
+
+spu_cc_library(
+    name = "basic_binary",
+    srcs = ["basic_binary.cc"],
+    hdrs = ["basic_binary.h"],
+    deps = [
+        ":utils",
+        "//spu/kernel/hal",
+    ],
+)
+
+spu_cc_library(
+    name = "basic_ternary",
+    srcs = ["basic_ternary.cc"],
+    hdrs = ["basic_ternary.h"],
+    deps = [
+        ":utils",
+        "//spu/kernel/hal",
+    ],
+)
+
+spu_cc_library(
+    name = "basic_unary",
+    srcs = ["basic_unary.cc"],
+    hdrs = ["basic_unary.h"],
+    deps = [
+        ":utils",
+        "//spu/kernel/hal",
+    ],
+)
+
+spu_cc_library(
+    name = "casting",
+    srcs = ["casting.cc"],
+    hdrs = ["casting.h"],
+    deps = [
+        ":utils",
+        "//spu/kernel/hal",
+    ],
+)
+
+spu_cc_library(
+    name = "const",
+    srcs = ["const.cc"],
+    hdrs = ["const.h"],
+    deps = [
+        ":casting",
+        ":utils",
+        "//spu/kernel/hal",
+    ],
+)
+
+spu_cc_library(
+    name = "control_flow",
+    # srcs = ["control_flow.cc"],
+    hdrs = ["control_flow.h"],
+    deps = [
+        ":utils",
+        "//spu/kernel/hal",
+    ],
+)
+
+spu_cc_library(
+    name = "convolution",
+    srcs = ["convolution.cc"],
+    hdrs = ["convolution.h"],
+    deps = [
+        ":utils",
+        "//spu/kernel/hal",
+    ],
+)
+
+spu_cc_library(
+    name = "dynamic_slice",
+    srcs = ["dynamic_slice.cc"],
+    hdrs = ["dynamic_slice.h"],
+    deps = [
+        ":utils",
+        "//spu/kernel/hal",
+    ],
+)
+
+spu_cc_library(
+    name = "gather",
+    srcs = ["gather.cc"],
+    hdrs = ["gather.h"],
+    deps = [
+        ":utils",
+        "//spu/kernel/hal",
+    ],
+)
+
+spu_cc_library(
+    name = "geometrical",
+    srcs = ["geometrical.cc"],
+    hdrs = ["geometrical.h"],
+    deps = [
+        ":utils",
+        "//spu/kernel/hal",
+    ],
+)
+
+spu_cc_library(
+    name = "rand",
+    srcs = ["rand.cc"],
+    hdrs = ["rand.h"],
+    deps = [
+        ":utils",
+        "//spu/kernel/hal",
+    ],
+)
+
+spu_cc_library(
+    name = "reduce",
+    srcs = ["reduce.cc"],
+    hdrs = ["reduce.h"],
+    deps = [
+        ":geometrical",
+        ":utils",
+        "//spu/kernel/hal",
+    ],
+)
+
+spu_cc_library(
+    name = "select_and_scatter",
+    srcs = ["select_and_scatter.cc"],
+    hdrs = ["select_and_scatter.h"],
+    deps = [
+        ":const",
+        ":reduce",
+        ":utils",
+        "//spu/kernel/hal",
+    ],
+)
+
+spu_cc_library(
+    name = "shift",
+    srcs = ["shift.cc"],
+    hdrs = ["shift.h"],
+    deps = [
+        ":utils",
+        "//spu/kernel/hal",
+    ],
+)
+
+spu_cc_library(
+    name = "sort",
+    # srcs = ["sort.cc"],
+    hdrs = ["sort.h"],
+    deps = [
+        ":utils",
+        "//spu/kernel/hal",
+    ],
+)
+
+spu_cc_library(
+    name = "utils",
+    srcs = ["utils.cc"],
+    hdrs = ["utils.h"],
+    deps = [
+        "//spu/kernel/hal",
+    ],
+)

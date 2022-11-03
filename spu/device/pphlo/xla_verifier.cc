@@ -19,10 +19,10 @@
 #include "tensorflow/compiler/xla/literal_util.h"
 #include "tensorflow/compiler/xla/service/hlo_evaluator.h"
 
-#include "spu/device/pphlo/kernels/utils.h"
 #include "spu/dialect/pphlo_ops.h"
-#include "spu/hal/constants.h"
-#include "spu/hal/type_cast.h"
+#include "spu/kernel/hal/constants.h"
+#include "spu/kernel/hal/type_cast.h"
+#include "spu/kernel/hlo/utils.h"
 
 namespace spu::device::pphlo {
 namespace {
@@ -38,26 +38,38 @@ convertDenseIntElementAttr(const mlir::DenseIntElementsAttr &attr) {
   return ret;
 }
 
-xla::Shape buildXLAShape(PtTy type, absl::Span<const int64_t> shape) {
-
-#define CASE_(SPU_T, XLA_T)                                                    \
-  case SPU_T:                                                                  \
-    return xla::ShapeUtil::MakeShape(XLA_T, shape);
+xla::PrimitiveType getXlaType(PtTy type) {
   switch (type.pt_type()) {
-    CASE_(spu::PtType::PT_BOOL, xla::PRED)
-    CASE_(spu::PtType::PT_I8, xla::S8)
-    CASE_(spu::PtType::PT_U8, xla::U8)
-    CASE_(spu::PtType::PT_I16, xla::S16)
-    CASE_(spu::PtType::PT_U16, xla::U16)
-    CASE_(spu::PtType::PT_I32, xla::S32)
-    CASE_(spu::PtType::PT_U32, xla::U32)
-    CASE_(spu::PtType::PT_I64, xla::S64)
-    CASE_(spu::PtType::PT_U64, xla::U64)
-    CASE_(spu::PtType::PT_F32, xla::F32)
-    CASE_(spu::PtType::PT_F64, xla::F64)
+  case spu::PtType::PT_BOOL:
+    return xla::PRED;
+  case spu::PtType::PT_I8:
+    return xla::S8;
+  case spu::PtType::PT_U8:
+    return xla::U8;
+  case spu::PtType::PT_I16:
+    return xla::S16;
+  case spu::PtType::PT_U16:
+    return xla::U16;
+  case spu::PtType::PT_I32:
+    return xla::S32;
+  case spu::PtType::PT_U32:
+    return xla::U32;
+  case spu::PtType::PT_I64:
+    return xla::S64;
+  case spu::PtType::PT_U64:
+    return xla::U64;
+  case spu::PtType::PT_F32:
+    return xla::F32;
+  case spu::PtType::PT_F64:
+    return xla::F64;
   default:
     YASL_THROW("Unhandled type {}", type.toString());
   }
+  return xla::PrimitiveType::PRIMITIVE_TYPE_INVALID;
+}
+
+xla::Shape buildXLAShape(PtTy type, absl::Span<const int64_t> shape) {
+  return xla::ShapeUtil::MakeShape(getXlaType(type), shape);
 } // namespace
 
 #define ALL_POSSIBLE_PTTYPES(FN)                                               \
@@ -73,16 +85,17 @@ xla::Shape buildXLAShape(PtTy type, absl::Span<const int64_t> shape) {
   FN(PT_F32, float, F32)                                                       \
   FN(PT_F64, double, F64)
 
-xla::Literal convertToXlaLiteral(HalContext *ctx, const hal::Value &v) {
-  auto arr = hal::dump_public(ctx, v);
+xla::Literal convertToXlaLiteral(HalContext *ctx, const spu::Value &v) {
+  auto arr = kernel::hal::dump_public(ctx, v);
   auto xla_shape = buildXLAShape(*arr.eltype().as<PtTy>(), arr.shape());
   xla::Literal ret = xla::Literal::CreateFromShape(xla_shape);
 
 #define CASE(NAME, TYPE, _)                                                    \
   case NAME: {                                                                 \
-    forEachIndex(arr.shape(), [&](absl::Span<const int64_t> output_index) {    \
-      ret.Set(output_index, arr.at<TYPE>(output_index));                       \
-    });                                                                        \
+    spu::kernel::forEachIndex(                                                 \
+        arr.shape(), [&](absl::Span<const int64_t> output_index) {             \
+          ret.Set(output_index, arr.at<TYPE>(output_index));                   \
+        });                                                                    \
     break;                                                                     \
   }
 
@@ -103,8 +116,8 @@ xla::Literal createConstXlaLiteral(T v, const xla::Shape &shape) {
   return scalar.Broadcast(shape, {}).ValueOrDie();
 }
 
-xla::Literal xlaOnes(HalContext *ctx, const hal::Value &base) {
-  auto arr = hal::dump_public(ctx, base);
+xla::Literal xlaOnes(HalContext *ctx, const spu::Value &base) {
+  auto arr = kernel::hal::dump_public(ctx, base);
 #define CASE(NAME, TYPE, _)                                                    \
   case NAME: {                                                                 \
     return createConstXlaLiteral(                                              \
@@ -123,9 +136,11 @@ xla::Literal xlaOnes(HalContext *ctx, const hal::Value &base) {
 
 bool verifyEqual(const xla::Literal &xla_ret, const NdArrayRef &expected) {
   bool pass = true;
+  auto numel = expected.numel();
+  size_t mismatch = 0;
 #define CASE(NAME, TYPE, _)                                                    \
   case NAME: {                                                                 \
-    forEachIndex(                                                              \
+    spu::kernel::forEachIndex(                                                 \
         expected.shape(), [&](absl::Span<const int64_t> output_index) {        \
           auto xla_value = xla_ret.Get<TYPE>(output_index);                    \
           auto spu_value = expected.at<TYPE>(output_index);                    \
@@ -140,6 +155,7 @@ bool verifyEqual(const xla::Literal &xla_ret, const NdArrayRef &expected) {
                 "Equal check failed at ({}), xla_value = {}, spu_value= {}",   \
                 fmt::join(output_index, ","), xla_value, spu_value);           \
             pass = false;                                                      \
+            ++mismatch;                                                        \
           }                                                                    \
         });                                                                    \
     break;                                                                     \
@@ -152,25 +168,28 @@ bool verifyEqual(const xla::Literal &xla_ret, const NdArrayRef &expected) {
     YASL_THROW("unexpected type={}", expected.eltype());
   }
 
+  SPDLOG_INFO("Answer has {} elements, {} mismatch found", numel, mismatch);
   return pass;
 #undef CASE
 }
 
 bool verifyEqual(HalContext *ctx, const xla::Literal &xla_ret,
-                 const hal::Value &expected) {
-  auto arr = hal::dump_public(ctx, expected);
+                 const spu::Value &expected) {
+  auto arr = kernel::hal::dump_public(ctx, expected);
   return verifyEqual(xla_ret, arr);
 }
 
 } // namespace
 
 #define SIMPLE_UNARY_VERIFY_IMPL(OpName, XlaOpCode)                            \
-  void XlaVerifier::verify(OpName, absl::Span<const hal::Value> operand,       \
-                           absl::Span<const hal::Value> expected) {            \
-    hal::Value p_operand =                                                     \
-        operand[0].isPublic() ? operand[0] : hal::reveal(ctx_, operand[0]);    \
-    hal::Value p_expected =                                                    \
-        expected[0].isPublic() ? expected[0] : hal::reveal(ctx_, expected[0]); \
+  void XlaVerifier::verify(OpName, absl::Span<const spu::Value> operand,       \
+                           absl::Span<const spu::Value> expected) {            \
+    spu::Value p_operand = operand[0].isPublic()                               \
+                               ? operand[0]                                    \
+                               : kernel::hal::reveal(ctx_, operand[0]);        \
+    spu::Value p_expected = expected[0].isPublic()                             \
+                                ? expected[0]                                  \
+                                : kernel::hal::reveal(ctx_, expected[0]);      \
     xla::HloEvaluator eval;                                                    \
     auto ret = eval.EvaluateElementwiseUnaryOp(                                \
                        XlaOpCode, convertToXlaLiteral(ctx_, p_operand))        \
@@ -188,18 +207,22 @@ SIMPLE_UNARY_VERIFY_IMPL(mlir::pphlo::LogisticOp, xla::HloOpcode::kLogistic)
 SIMPLE_UNARY_VERIFY_IMPL(mlir::pphlo::TanhOp, xla::HloOpcode::kTanh)
 SIMPLE_UNARY_VERIFY_IMPL(mlir::pphlo::NotOp, xla::HloOpcode::kNot)
 SIMPLE_UNARY_VERIFY_IMPL(mlir::pphlo::ExpOp, xla::HloOpcode::kExp)
+SIMPLE_UNARY_VERIFY_IMPL(mlir::pphlo::Expm1Op, xla::HloOpcode::kExpm1)
 SIMPLE_UNARY_VERIFY_IMPL(mlir::pphlo::SqrtOp, xla::HloOpcode::kSqrt)
 SIMPLE_UNARY_VERIFY_IMPL(mlir::pphlo::RsqrtOp, xla::HloOpcode::kRsqrt)
+SIMPLE_UNARY_VERIFY_IMPL(mlir::pphlo::SignOp, xla::HloOpcode::kSign)
 
 #undef SIMPLE_UNARY_VERIFY_IMPL
 
 void XlaVerifier::verify(mlir::pphlo::ReciprocalOp,
-                         absl::Span<const hal::Value> operand,
-                         absl::Span<const hal::Value> expected) {
-  hal::Value p_operand =
-      operand[0].isPublic() ? operand[0] : hal::reveal(ctx_, operand[0]);
-  hal::Value p_expected =
-      expected[0].isPublic() ? expected[0] : hal::reveal(ctx_, expected[0]);
+                         absl::Span<const spu::Value> operand,
+                         absl::Span<const spu::Value> expected) {
+  spu::Value p_operand = operand[0].isPublic()
+                             ? operand[0]
+                             : kernel::hal::reveal(ctx_, operand[0]);
+  spu::Value p_expected = expected[0].isPublic()
+                              ? expected[0]
+                              : kernel::hal::reveal(ctx_, expected[0]);
   xla::HloEvaluator eval;
   auto ret = eval.EvaluateElementwiseBinaryOp(
                      xla::HloOpcode::kDivide, xlaOnes(ctx_, p_operand),
@@ -209,14 +232,17 @@ void XlaVerifier::verify(mlir::pphlo::ReciprocalOp,
 }
 
 #define SIMPLE_BINARY_VERIFY_IMPL(OpName, XlaOpCode)                           \
-  void XlaVerifier::verify(OpName, absl::Span<const hal::Value> operands,      \
-                           absl::Span<const hal::Value> expected) {            \
-    hal::Value p_lhs =                                                         \
-        operands[0].isPublic() ? operands[0] : hal::reveal(ctx_, operands[0]); \
-    hal::Value p_rhs =                                                         \
-        operands[1].isPublic() ? operands[1] : hal::reveal(ctx_, operands[1]); \
-    hal::Value p_expected =                                                    \
-        expected[0].isPublic() ? expected[0] : hal::reveal(ctx_, expected[0]); \
+  void XlaVerifier::verify(OpName, absl::Span<const spu::Value> operands,      \
+                           absl::Span<const spu::Value> expected) {            \
+    spu::Value p_lhs = operands[0].isPublic()                                  \
+                           ? operands[0]                                       \
+                           : kernel::hal::reveal(ctx_, operands[0]);           \
+    spu::Value p_rhs = operands[1].isPublic()                                  \
+                           ? operands[1]                                       \
+                           : kernel::hal::reveal(ctx_, operands[1]);           \
+    spu::Value p_expected = expected[0].isPublic()                             \
+                                ? expected[0]                                  \
+                                : kernel::hal::reveal(ctx_, expected[0]);      \
     xla::HloEvaluator eval;                                                    \
     auto ret = eval.EvaluateElementwiseBinaryOp(                               \
                        XlaOpCode, convertToXlaLiteral(ctx_, p_lhs),            \
@@ -226,7 +252,7 @@ void XlaVerifier::verify(mlir::pphlo::ReciprocalOp,
   }
 
 SIMPLE_BINARY_VERIFY_IMPL(mlir::pphlo::AddOp, xla::HloOpcode::kAdd)
-SIMPLE_BINARY_VERIFY_IMPL(mlir::pphlo::SubOp, xla::HloOpcode::kSubtract)
+SIMPLE_BINARY_VERIFY_IMPL(mlir::pphlo::SubtractOp, xla::HloOpcode::kSubtract)
 SIMPLE_BINARY_VERIFY_IMPL(mlir::pphlo::MulOp, xla::HloOpcode::kMultiply)
 SIMPLE_BINARY_VERIFY_IMPL(mlir::pphlo::PowOp, xla::HloOpcode::kPower)
 SIMPLE_BINARY_VERIFY_IMPL(mlir::pphlo::MaxOp, xla::HloOpcode::kMaximum)
@@ -246,14 +272,17 @@ SIMPLE_BINARY_VERIFY_IMPL(mlir::pphlo::ShiftRightLogicalOp,
 #undef SIMPLE_BINARY_VERIFY_IMPL
 
 #define COMPARISON_VERIFY_IMPL(OpName, CompDir)                                \
-  void XlaVerifier::verify(OpName, absl::Span<const hal::Value> operands,      \
-                           absl::Span<const hal::Value> expected) {            \
-    hal::Value p_lhs =                                                         \
-        operands[0].isPublic() ? operands[0] : hal::reveal(ctx_, operands[0]); \
-    hal::Value p_rhs =                                                         \
-        operands[1].isPublic() ? operands[1] : hal::reveal(ctx_, operands[1]); \
-    hal::Value p_expected =                                                    \
-        expected[0].isPublic() ? expected[0] : hal::reveal(ctx_, expected[0]); \
+  void XlaVerifier::verify(OpName, absl::Span<const spu::Value> operands,      \
+                           absl::Span<const spu::Value> expected) {            \
+    spu::Value p_lhs = operands[0].isPublic()                                  \
+                           ? operands[0]                                       \
+                           : kernel::hal::reveal(ctx_, operands[0]);           \
+    spu::Value p_rhs = operands[1].isPublic()                                  \
+                           ? operands[1]                                       \
+                           : kernel::hal::reveal(ctx_, operands[1]);           \
+    spu::Value p_expected = expected[0].isPublic()                             \
+                                ? expected[0]                                  \
+                                : kernel::hal::reveal(ctx_, expected[0]);      \
     xla::HloEvaluator eval;                                                    \
     auto ret = eval.EvaluateElementwiseCompareOp(                              \
                        CompDir, convertToXlaLiteral(ctx_, p_lhs),              \
@@ -273,14 +302,17 @@ COMPARISON_VERIFY_IMPL(mlir::pphlo::GreaterEqualOp,
 #undef COMPARISON_VERIFY_IMPL
 
 void XlaVerifier::verify(mlir::pphlo::DotOp,
-                         absl::Span<const hal::Value> operands,
-                         absl::Span<const hal::Value> expected) {
-  hal::Value p_lhs =
-      operands[0].isPublic() ? operands[0] : hal::reveal(ctx_, operands[0]);
-  hal::Value p_rhs =
-      operands[1].isPublic() ? operands[1] : hal::reveal(ctx_, operands[1]);
-  hal::Value p_expected =
-      expected[0].isPublic() ? expected[0] : hal::reveal(ctx_, expected[0]);
+                         absl::Span<const spu::Value> operands,
+                         absl::Span<const spu::Value> expected) {
+  spu::Value p_lhs = operands[0].isPublic()
+                         ? operands[0]
+                         : kernel::hal::reveal(ctx_, operands[0]);
+  spu::Value p_rhs = operands[1].isPublic()
+                         ? operands[1]
+                         : kernel::hal::reveal(ctx_, operands[1]);
+  spu::Value p_expected = expected[0].isPublic()
+                              ? expected[0]
+                              : kernel::hal::reveal(ctx_, expected[0]);
   xla::HloEvaluator eval;
   xla::DotDimensionNumbers dnums;
   dnums.add_lhs_contracting_dimensions(p_lhs.shape().size() == 1 ? 0 : 1);
@@ -292,17 +324,60 @@ void XlaVerifier::verify(mlir::pphlo::DotOp,
   mismatch_handler_(verifyEqual(ctx_, ret, p_expected));
 }
 
+void XlaVerifier::verify(mlir::pphlo::DotGeneralOp op,
+                         absl::Span<const spu::Value> operands,
+                         absl::Span<const spu::Value> expected) {
+  spu::Value p_lhs = operands[0].isPublic()
+                         ? operands[0]
+                         : kernel::hal::reveal(ctx_, operands[0]);
+  spu::Value p_rhs = operands[1].isPublic()
+                         ? operands[1]
+                         : kernel::hal::reveal(ctx_, operands[1]);
+  spu::Value p_expected = expected[0].isPublic()
+                              ? expected[0]
+                              : kernel::hal::reveal(ctx_, expected[0]);
+  xla::HloEvaluator eval;
+  xla::DotDimensionNumbers dnums;
+
+  for (auto d : op.dot_dimension_numbers().getLhsBatchingDimensions()) {
+    dnums.add_lhs_batch_dimensions(d);
+  }
+
+  for (auto d : op.dot_dimension_numbers().getLhsContractingDimensions()) {
+    dnums.add_lhs_contracting_dimensions(d);
+  }
+
+  for (auto d : op.dot_dimension_numbers().getRhsBatchingDimensions()) {
+    dnums.add_rhs_batch_dimensions(d);
+  }
+
+  for (auto d : op.dot_dimension_numbers().getRhsContractingDimensions()) {
+    dnums.add_rhs_contracting_dimensions(d);
+  }
+
+  auto ret = eval.EvaluateDotOp(dnums, xla::PrecisionConfig::default_instance(),
+                                convertToXlaLiteral(ctx_, p_lhs),
+                                convertToXlaLiteral(ctx_, p_rhs))
+                 .ValueOrDie();
+
+  mismatch_handler_(verifyEqual(ctx_, ret, p_expected));
+}
+
 void XlaVerifier::verify(mlir::pphlo::SelectOp,
-                         absl::Span<const hal::Value> operands,
-                         absl::Span<const hal::Value> expected) {
-  hal::Value p_pred =
-      operands[0].isPublic() ? operands[0] : hal::reveal(ctx_, operands[0]);
-  hal::Value p_on_true =
-      operands[1].isPublic() ? operands[1] : hal::reveal(ctx_, operands[1]);
-  hal::Value p_on_false =
-      operands[2].isPublic() ? operands[2] : hal::reveal(ctx_, operands[2]);
-  hal::Value p_expected =
-      expected[0].isPublic() ? expected[0] : hal::reveal(ctx_, expected[0]);
+                         absl::Span<const spu::Value> operands,
+                         absl::Span<const spu::Value> expected) {
+  spu::Value p_pred = operands[0].isPublic()
+                          ? operands[0]
+                          : kernel::hal::reveal(ctx_, operands[0]);
+  spu::Value p_on_true = operands[1].isPublic()
+                             ? operands[1]
+                             : kernel::hal::reveal(ctx_, operands[1]);
+  spu::Value p_on_false = operands[2].isPublic()
+                              ? operands[2]
+                              : kernel::hal::reveal(ctx_, operands[2]);
+  spu::Value p_expected = expected[0].isPublic()
+                              ? expected[0]
+                              : kernel::hal::reveal(ctx_, expected[0]);
   xla::HloEvaluator eval;
   auto ret = eval.EvaluateElementwiseTernaryOp(
                      xla::HloOpcode::kSelect, convertToXlaLiteral(ctx_, p_pred),
@@ -313,16 +388,20 @@ void XlaVerifier::verify(mlir::pphlo::SelectOp,
 }
 
 void XlaVerifier::verify(mlir::pphlo::ClampOp,
-                         absl::Span<const hal::Value> operands,
-                         absl::Span<const hal::Value> expected) {
-  hal::Value p_min =
-      operands[0].isPublic() ? operands[0] : hal::reveal(ctx_, operands[0]);
-  hal::Value p_operand =
-      operands[1].isPublic() ? operands[1] : hal::reveal(ctx_, operands[1]);
-  hal::Value p_max =
-      operands[2].isPublic() ? operands[2] : hal::reveal(ctx_, operands[2]);
-  hal::Value p_expected =
-      expected[0].isPublic() ? expected[0] : hal::reveal(ctx_, expected[0]);
+                         absl::Span<const spu::Value> operands,
+                         absl::Span<const spu::Value> expected) {
+  spu::Value p_min = operands[0].isPublic()
+                         ? operands[0]
+                         : kernel::hal::reveal(ctx_, operands[0]);
+  spu::Value p_operand = operands[1].isPublic()
+                             ? operands[1]
+                             : kernel::hal::reveal(ctx_, operands[1]);
+  spu::Value p_max = operands[2].isPublic()
+                         ? operands[2]
+                         : kernel::hal::reveal(ctx_, operands[2]);
+  spu::Value p_expected = expected[0].isPublic()
+                              ? expected[0]
+                              : kernel::hal::reveal(ctx_, expected[0]);
   xla::HloEvaluator eval;
   auto ret = eval.EvaluateElementwiseTernaryOp(
                      xla::HloOpcode::kClamp, convertToXlaLiteral(ctx_, p_min),
@@ -332,15 +411,18 @@ void XlaVerifier::verify(mlir::pphlo::ClampOp,
   mismatch_handler_(verifyEqual(ctx_, ret, p_expected));
 }
 
-void XlaVerifier::verify(mlir::pphlo::ConvOp op,
-                         absl::Span<const hal::Value> operands,
-                         absl::Span<const hal::Value> expected) {
-  hal::Value p_lhs =
-      operands[0].isPublic() ? operands[0] : hal::reveal(ctx_, operands[0]);
-  hal::Value p_rhs =
-      operands[1].isPublic() ? operands[1] : hal::reveal(ctx_, operands[1]);
-  hal::Value p_expected =
-      expected[0].isPublic() ? expected[0] : hal::reveal(ctx_, expected[0]);
+void XlaVerifier::verify(mlir::pphlo::ConvolutionOp op,
+                         absl::Span<const spu::Value> operands,
+                         absl::Span<const spu::Value> expected) {
+  spu::Value p_lhs = operands[0].isPublic()
+                         ? operands[0]
+                         : kernel::hal::reveal(ctx_, operands[0]);
+  spu::Value p_rhs = operands[1].isPublic()
+                         ? operands[1]
+                         : kernel::hal::reveal(ctx_, operands[1]);
+  spu::Value p_expected = expected[0].isPublic()
+                              ? expected[0]
+                              : kernel::hal::reveal(ctx_, expected[0]);
   auto lhs_instr =
       xla::HloInstruction::CreateConstant(convertToXlaLiteral(ctx_, p_lhs));
   auto rhs_instr =
@@ -357,18 +439,10 @@ void XlaVerifier::verify(mlir::pphlo::ConvOp op,
     w->set_stride(op.window_strides().hasValue()
                       ? op.window_strides()->getValues<int64_t>()[idx]
                       : 1);
-    w->set_base_dilation(op.lhs_dilation().hasValue()
-                             ? op.lhs_dilation()->getValues<int64_t>()[idx]
-                             : 1);
-    w->set_window_dilation(op.rhs_dilation().hasValue()
-                               ? op.rhs_dilation()->getValues<int64_t>()[idx]
-                               : 1);
-    w->set_padding_low(op.padding().hasValue()
-                           ? op.padding()->getValues<int64_t>()[2 * idx]
-                           : 0);
-    w->set_padding_high(op.padding().hasValue()
-                            ? op.padding()->getValues<int64_t>()[2 * idx + 1]
-                            : 0);
+    w->set_base_dilation(1);
+    w->set_window_dilation(1);
+    w->set_padding_low(0);
+    w->set_padding_high(0);
     w->set_window_reversal(false);
   }
 
@@ -399,7 +473,7 @@ void XlaVerifier::verify(mlir::pphlo::ConvOp op,
     dnums.add_output_spatial_dimensions(v);
   }
 
-  const auto expected_arr = hal::dump_public(ctx_, p_expected);
+  const auto expected_arr = kernel::hal::dump_public(ctx_, p_expected);
   auto cloned_instruction = xla::HloInstruction::CreateConvolve(
       buildXLAShape(*expected_arr.eltype().as<PtTy>(), p_expected.shape()),
       lhs_instr.get(), rhs_instr.get(), op.feature_group_count(),
@@ -413,20 +487,22 @@ void XlaVerifier::verify(mlir::pphlo::ConvOp op,
 }
 
 void XlaVerifier::verify(mlir::pphlo::DynamicSliceOp op,
-                         absl::Span<const hal::Value> operands,
-                         absl::Span<const hal::Value> expected) {
-  hal::Value p_operand =
-      operands[0].isPublic() ? operands[0] : hal::reveal(ctx_, operands[0]);
-  std::vector<hal::Value> p_start_indicies(operands.size() - 1);
+                         absl::Span<const spu::Value> operands,
+                         absl::Span<const spu::Value> expected) {
+  spu::Value p_operand = operands[0].isPublic()
+                             ? operands[0]
+                             : kernel::hal::reveal(ctx_, operands[0]);
+  std::vector<spu::Value> p_start_indicies(operands.size() - 1);
 
   for (size_t idx = 1; idx < operands.size(); ++idx) {
     p_start_indicies[idx - 1] = operands[idx].isPublic()
                                     ? operands[idx]
-                                    : hal::reveal(ctx_, operands[idx]);
+                                    : kernel::hal::reveal(ctx_, operands[idx]);
   }
 
-  hal::Value p_expected =
-      expected[0].isPublic() ? expected[0] : hal::reveal(ctx_, expected[0]);
+  spu::Value p_expected = expected[0].isPublic()
+                              ? expected[0]
+                              : kernel::hal::reveal(ctx_, expected[0]);
 
   auto operand_instr =
       xla::HloInstruction::CreateConstant(convertToXlaLiteral(ctx_, p_operand));
@@ -438,7 +514,7 @@ void XlaVerifier::verify(mlir::pphlo::DynamicSliceOp op,
     start_indicies_instrs_ptr.emplace_back(start_indicies_instrs.back().get());
   }
 
-  const auto expected_arr = hal::dump_public(ctx_, p_expected);
+  const auto expected_arr = kernel::hal::dump_public(ctx_, p_expected);
   auto cloned_instruction = xla::HloInstruction::CreateDynamicSlice(
       buildXLAShape(*expected_arr.eltype().as<PtTy>(), p_expected.shape()),
       operand_instr.get(), start_indicies_instrs_ptr,
@@ -452,22 +528,25 @@ void XlaVerifier::verify(mlir::pphlo::DynamicSliceOp op,
 }
 
 void XlaVerifier::verify(mlir::pphlo::DynamicUpdateSliceOp,
-                         absl::Span<const hal::Value> operands,
-                         absl::Span<const hal::Value> expected) {
-  hal::Value p_operand =
-      operands[0].isPublic() ? operands[0] : hal::reveal(ctx_, operands[0]);
-  hal::Value p_update =
-      operands[1].isPublic() ? operands[1] : hal::reveal(ctx_, operands[1]);
+                         absl::Span<const spu::Value> operands,
+                         absl::Span<const spu::Value> expected) {
+  spu::Value p_operand = operands[0].isPublic()
+                             ? operands[0]
+                             : kernel::hal::reveal(ctx_, operands[0]);
+  spu::Value p_update = operands[1].isPublic()
+                            ? operands[1]
+                            : kernel::hal::reveal(ctx_, operands[1]);
 
-  std::vector<hal::Value> p_start_indicies(operands.size() - 2);
+  std::vector<spu::Value> p_start_indicies(operands.size() - 2);
   for (size_t idx = 2; idx < operands.size(); ++idx) {
     p_start_indicies[idx - 2] = operands[idx].isPublic()
                                     ? operands[idx]
-                                    : hal::reveal(ctx_, operands[idx]);
+                                    : kernel::hal::reveal(ctx_, operands[idx]);
   }
 
-  hal::Value p_expected =
-      expected[0].isPublic() ? expected[0] : hal::reveal(ctx_, expected[0]);
+  spu::Value p_expected = expected[0].isPublic()
+                              ? expected[0]
+                              : kernel::hal::reveal(ctx_, expected[0]);
 
   auto operand_instr =
       xla::HloInstruction::CreateConstant(convertToXlaLiteral(ctx_, p_operand));
@@ -481,7 +560,7 @@ void XlaVerifier::verify(mlir::pphlo::DynamicUpdateSliceOp,
     start_indicies_instrs_ptr.emplace_back(start_indicies_instrs.back().get());
   }
 
-  const auto expected_arr = hal::dump_public(ctx_, p_expected);
+  const auto expected_arr = kernel::hal::dump_public(ctx_, p_expected);
   auto cloned_instruction = xla::HloInstruction::CreateDynamicUpdateSlice(
       buildXLAShape(*expected_arr.eltype().as<PtTy>(), p_expected.shape()),
       operand_instr.get(), update_instr.get(), start_indicies_instrs_ptr);
@@ -493,15 +572,18 @@ void XlaVerifier::verify(mlir::pphlo::DynamicUpdateSliceOp,
 }
 
 void XlaVerifier::verify(mlir::pphlo::GatherOp op,
-                         absl::Span<const hal::Value> operands,
-                         absl::Span<const hal::Value> expected) {
-  hal::Value p_operand =
-      operands[0].isPublic() ? operands[0] : hal::reveal(ctx_, operands[0]);
-  hal::Value p_start_indicies =
-      operands[1].isPublic() ? operands[1] : hal::reveal(ctx_, operands[1]);
+                         absl::Span<const spu::Value> operands,
+                         absl::Span<const spu::Value> expected) {
+  spu::Value p_operand = operands[0].isPublic()
+                             ? operands[0]
+                             : kernel::hal::reveal(ctx_, operands[0]);
+  spu::Value p_start_indicies = operands[1].isPublic()
+                                    ? operands[1]
+                                    : kernel::hal::reveal(ctx_, operands[1]);
 
-  hal::Value p_expected =
-      expected[0].isPublic() ? expected[0] : hal::reveal(ctx_, expected[0]);
+  spu::Value p_expected = expected[0].isPublic()
+                              ? expected[0]
+                              : kernel::hal::reveal(ctx_, expected[0]);
 
   xla::GatherDimensionNumbers dnums;
   for (const auto &o : op.dimension_numbers().getOffsetDims()) {
@@ -520,7 +602,7 @@ void XlaVerifier::verify(mlir::pphlo::GatherOp op,
   auto start_indicies_instr = xla::HloInstruction::CreateConstant(
       convertToXlaLiteral(ctx_, p_start_indicies));
 
-  const auto expected_arr = hal::dump_public(ctx_, p_expected);
+  const auto expected_arr = kernel::hal::dump_public(ctx_, p_expected);
   auto cloned_instruction = xla::HloInstruction::CreateGather(
       buildXLAShape(*expected_arr.eltype().as<PtTy>(), p_expected.shape()),
       operand_instr.get(), start_indicies_instr.get(), dnums,
@@ -535,16 +617,18 @@ void XlaVerifier::verify(mlir::pphlo::GatherOp op,
 }
 
 void XlaVerifier::verify(mlir::pphlo::ReshapeOp op,
-                         absl::Span<const hal::Value> operands,
-                         absl::Span<const hal::Value> expected) {
-  hal::Value p_operand =
-      operands[0].isPublic() ? operands[0] : hal::reveal(ctx_, operands[0]);
-  hal::Value p_expected =
-      expected[0].isPublic() ? expected[0] : hal::reveal(ctx_, expected[0]);
+                         absl::Span<const spu::Value> operands,
+                         absl::Span<const spu::Value> expected) {
+  spu::Value p_operand = operands[0].isPublic()
+                             ? operands[0]
+                             : kernel::hal::reveal(ctx_, operands[0]);
+  spu::Value p_expected = expected[0].isPublic()
+                              ? expected[0]
+                              : kernel::hal::reveal(ctx_, expected[0]);
   auto operand_instr =
       xla::HloInstruction::CreateConstant(convertToXlaLiteral(ctx_, p_operand));
 
-  const auto expected_arr = hal::dump_public(ctx_, p_expected);
+  const auto expected_arr = kernel::hal::dump_public(ctx_, p_expected);
   auto cloned_instruction = xla::HloInstruction::CreateReshape(
       buildXLAShape(*expected_arr.eltype().as<PtTy>(), p_expected.shape()),
       operand_instr.get());
@@ -555,16 +639,18 @@ void XlaVerifier::verify(mlir::pphlo::ReshapeOp op,
 }
 
 void XlaVerifier::verify(mlir::pphlo::BroadcastOp op,
-                         absl::Span<const hal::Value> operands,
-                         absl::Span<const hal::Value> expected) {
-  hal::Value p_operand =
-      operands[0].isPublic() ? operands[0] : hal::reveal(ctx_, operands[0]);
-  hal::Value p_expected =
-      expected[0].isPublic() ? expected[0] : hal::reveal(ctx_, expected[0]);
+                         absl::Span<const spu::Value> operands,
+                         absl::Span<const spu::Value> expected) {
+  spu::Value p_operand = operands[0].isPublic()
+                             ? operands[0]
+                             : kernel::hal::reveal(ctx_, operands[0]);
+  spu::Value p_expected = expected[0].isPublic()
+                              ? expected[0]
+                              : kernel::hal::reveal(ctx_, expected[0]);
   auto operand_instr =
       xla::HloInstruction::CreateConstant(convertToXlaLiteral(ctx_, p_operand));
 
-  const auto expected_arr = hal::dump_public(ctx_, p_expected);
+  const auto expected_arr = kernel::hal::dump_public(ctx_, p_expected);
 
   auto cloned_instruction = xla::HloInstruction::CreateBroadcast(
       buildXLAShape(*expected_arr.eltype().as<PtTy>(), p_expected.shape()),
@@ -577,16 +663,18 @@ void XlaVerifier::verify(mlir::pphlo::BroadcastOp op,
 }
 
 void XlaVerifier::verify(mlir::pphlo::TransposeOp op,
-                         absl::Span<const hal::Value> operands,
-                         absl::Span<const hal::Value> expected) {
-  hal::Value p_operand =
-      operands[0].isPublic() ? operands[0] : hal::reveal(ctx_, operands[0]);
-  hal::Value p_expected =
-      expected[0].isPublic() ? expected[0] : hal::reveal(ctx_, expected[0]);
+                         absl::Span<const spu::Value> operands,
+                         absl::Span<const spu::Value> expected) {
+  spu::Value p_operand = operands[0].isPublic()
+                             ? operands[0]
+                             : kernel::hal::reveal(ctx_, operands[0]);
+  spu::Value p_expected = expected[0].isPublic()
+                              ? expected[0]
+                              : kernel::hal::reveal(ctx_, expected[0]);
   auto operand_instr =
       xla::HloInstruction::CreateConstant(convertToXlaLiteral(ctx_, p_operand));
 
-  const auto expected_arr = hal::dump_public(ctx_, p_expected);
+  const auto expected_arr = kernel::hal::dump_public(ctx_, p_expected);
 
   auto cloned_instruction = xla::HloInstruction::CreateTranspose(
       buildXLAShape(*expected_arr.eltype().as<PtTy>(), p_expected.shape()),
@@ -598,11 +686,12 @@ void XlaVerifier::verify(mlir::pphlo::TransposeOp op,
 }
 
 void XlaVerifier::verify(mlir::pphlo::IotaOp op,
-                         absl::Span<const hal::Value> operands,
-                         absl::Span<const hal::Value> expected) {
-  hal::Value p_expected =
-      expected[0].isPublic() ? expected[0] : hal::reveal(ctx_, expected[0]);
-  const auto expected_arr = hal::dump_public(ctx_, p_expected);
+                         absl::Span<const spu::Value> operands,
+                         absl::Span<const spu::Value> expected) {
+  spu::Value p_expected = expected[0].isPublic()
+                              ? expected[0]
+                              : kernel::hal::reveal(ctx_, expected[0]);
+  const auto expected_arr = kernel::hal::dump_public(ctx_, p_expected);
 
   auto cloned_instruction = xla::HloInstruction::CreateIota(
       buildXLAShape(*expected_arr.eltype().as<PtTy>(), p_expected.shape()),
@@ -614,16 +703,18 @@ void XlaVerifier::verify(mlir::pphlo::IotaOp op,
 }
 
 void XlaVerifier::verify(mlir::pphlo::SliceOp op,
-                         absl::Span<const hal::Value> operands,
-                         absl::Span<const hal::Value> expected) {
-  hal::Value p_operand =
-      operands[0].isPublic() ? operands[0] : hal::reveal(ctx_, operands[0]);
-  hal::Value p_expected =
-      expected[0].isPublic() ? expected[0] : hal::reveal(ctx_, expected[0]);
+                         absl::Span<const spu::Value> operands,
+                         absl::Span<const spu::Value> expected) {
+  spu::Value p_operand = operands[0].isPublic()
+                             ? operands[0]
+                             : kernel::hal::reveal(ctx_, operands[0]);
+  spu::Value p_expected = expected[0].isPublic()
+                              ? expected[0]
+                              : kernel::hal::reveal(ctx_, expected[0]);
   auto operand_instr =
       xla::HloInstruction::CreateConstant(convertToXlaLiteral(ctx_, p_operand));
 
-  const auto expected_arr = hal::dump_public(ctx_, p_expected);
+  const auto expected_arr = kernel::hal::dump_public(ctx_, p_expected);
 
   auto cloned_instruction = xla::HloInstruction::CreateSlice(
       buildXLAShape(*expected_arr.eltype().as<PtTy>(), p_expected.shape()),
@@ -637,24 +728,25 @@ void XlaVerifier::verify(mlir::pphlo::SliceOp op,
 }
 
 void XlaVerifier::verify(mlir::pphlo::ConcatenateOp op,
-                         absl::Span<const hal::Value> operands,
-                         absl::Span<const hal::Value> expected) {
-  hal::Value p_expected =
-      expected[0].isPublic() ? expected[0] : hal::reveal(ctx_, expected[0]);
+                         absl::Span<const spu::Value> operands,
+                         absl::Span<const spu::Value> expected) {
+  spu::Value p_expected = expected[0].isPublic()
+                              ? expected[0]
+                              : kernel::hal::reveal(ctx_, expected[0]);
 
   std::vector<std::unique_ptr<xla::HloInstruction>> operand_instrs(
       operands.size());
   std::vector<xla::HloInstruction *> ops(operand_instrs.size());
   for (size_t idx = 0; idx < operands.size(); ++idx) {
-    hal::Value p_operand = operands[idx].isPublic()
+    spu::Value p_operand = operands[idx].isPublic()
                                ? operands[idx]
-                               : hal::reveal(ctx_, operands[idx]);
+                               : kernel::hal::reveal(ctx_, operands[idx]);
     operand_instrs[idx] = xla::HloInstruction::CreateConstant(
         convertToXlaLiteral(ctx_, p_operand));
     ops[idx] = operand_instrs[idx].get();
   }
 
-  const auto expected_arr = hal::dump_public(ctx_, p_expected);
+  const auto expected_arr = kernel::hal::dump_public(ctx_, p_expected);
 
   auto cloned_instruction = xla::HloInstruction::CreateConcatenate(
       buildXLAShape(*expected_arr.eltype().as<PtTy>(), p_expected.shape()), ops,
@@ -665,39 +757,97 @@ void XlaVerifier::verify(mlir::pphlo::ConcatenateOp op,
   mismatch_handler_(verifyEqual(ctx_, result.ValueOrDie(), p_expected));
 }
 
+void XlaVerifier::verify(mlir::pphlo::PadOp op,
+                         absl::Span<const spu::Value> operands,
+                         absl::Span<const spu::Value> expected) {
+  spu::Value p_operand = operands[0].isPublic()
+                             ? operands[0]
+                             : kernel::hal::reveal(ctx_, operands[0]);
+  spu::Value p_pad_value = operands[1].isPublic()
+                               ? operands[1]
+                               : kernel::hal::reveal(ctx_, operands[1]);
+  spu::Value p_expected = expected[0].isPublic()
+                              ? expected[0]
+                              : kernel::hal::reveal(ctx_, expected[0]);
+
+  auto operand_instr =
+      xla::HloInstruction::CreateConstant(convertToXlaLiteral(ctx_, p_operand));
+  auto pad_value_instr = xla::HloInstruction::CreateConstant(
+      convertToXlaLiteral(ctx_, p_pad_value));
+
+  const auto expected_arr = kernel::hal::dump_public(ctx_, p_expected);
+
+  xla::PaddingConfig config;
+  for (int64_t i = 0; i < op.edge_padding_low().size(); ++i) {
+    auto *dims = config.add_dimensions();
+    dims->set_edge_padding_low(op.edge_padding_low().getValues<int64_t>()[i]);
+    dims->set_edge_padding_high(op.edge_padding_high().getValues<int64_t>()[i]);
+    dims->set_interior_padding(op.interior_padding().getValues<int64_t>()[i]);
+  }
+
+  auto cloned_instruction = xla::HloInstruction::CreatePad(
+      buildXLAShape(*expected_arr.eltype().as<PtTy>(), p_expected.shape()),
+      operand_instr.get(), pad_value_instr.get(), config);
+
+  xla::HloEvaluator eval;
+  auto result = eval.Evaluate(cloned_instruction.get());
+  mismatch_handler_(verifyEqual(ctx_, result.ValueOrDie(), p_expected));
+}
+
 void XlaVerifier::verify(mlir::pphlo::BitcastConvertOp op,
-                         absl::Span<const hal::Value> operands,
-                         absl::Span<const hal::Value> expected) {
+                         absl::Span<const spu::Value> operands,
+                         absl::Span<const spu::Value> expected) {
   // Nothing to verify
+  SPDLOG_INFO("No verification method implemented");
 }
 
 void XlaVerifier::verify(mlir::pphlo::ConvertOp op,
-                         absl::Span<const hal::Value> operands,
-                         absl::Span<const hal::Value> expected) {
-  // Nothing to verify
+                         absl::Span<const spu::Value> operands,
+                         absl::Span<const spu::Value> expected) {
+  mlir::pphlo::TypeTools typetools;
+  auto in_vis = typetools.getTypeVisibility(op.operand().getType());
+  auto ret_vis = typetools.getTypeVisibility(op->getResultTypes()[0]);
+
+  if (in_vis != ret_vis) {
+    SPDLOG_INFO("Visibility cast, nothing to verify");
+    return;
+  }
+
+  spu::Value p_operand = operands[0].isPublic()
+                             ? operands[0]
+                             : kernel::hal::reveal(ctx_, operands[0]);
+  spu::Value p_expected = expected[0].isPublic()
+                              ? expected[0]
+                              : kernel::hal::reveal(ctx_, expected[0]);
+
+  auto operand_xla = convertToXlaLiteral(ctx_, p_operand);
+
+  const auto expected_arr = kernel::hal::dump_public(ctx_, p_expected);
+
+  auto converted =
+      operand_xla.Convert(getXlaType(*expected_arr.eltype().as<PtTy>()));
+  mismatch_handler_(verifyEqual(ctx_, converted.ValueOrDie(), p_expected));
 }
 
 void XlaVerifier::verify(mlir::pphlo::ReduceOp op,
-                         absl::Span<const hal::Value> operands,
-                         absl::Span<const hal::Value> expected) {
+                         absl::Span<const spu::Value> operands,
+                         absl::Span<const spu::Value> expected) {
   // Nothing to verify
+  SPDLOG_INFO("No verification method implemented");
 }
 
 #define UNIMPL_VERIFIER(OpName)                                                \
   void XlaVerifier::verify(OpName op, \ 
-                         absl::Span<const hal::Value> operands, \ 
-                         absl::Span<const hal::Value> expected) {                                       \
+                         absl::Span<const spu::Value> operands, \ 
+                         absl::Span<const spu::Value> expected) {                                       \
     YASL_THROW("TBD");                                                         \
   }
 
 UNIMPL_VERIFIER(mlir::pphlo::SelectAndScatterOp)
-UNIMPL_VERIFIER(mlir::pphlo::PadOp)
 UNIMPL_VERIFIER(mlir::pphlo::ReverseOp)
 
 UNIMPL_VERIFIER(mlir::pphlo::ReduceWindowOp)
 
 UNIMPL_VERIFIER(mlir::pphlo::SortOp)
-UNIMPL_VERIFIER(mlir::pphlo::MixedDotOp)
-UNIMPL_VERIFIER(mlir::pphlo::MixedMulOp)
 
 } // namespace spu::device::pphlo

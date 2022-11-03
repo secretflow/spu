@@ -15,16 +15,18 @@
 from __future__ import annotations
 
 import concurrent.futures
+import io
 import json
 import logging
 import os
-import io
 import pathlib
+import pickle
 import sys
 import traceback
 import uuid
 import multiprocess
 from collections import Counter
+from enum import Enum
 from functools import partial, wraps
 from typing import (
     Any,
@@ -40,7 +42,6 @@ from typing import (
 )
 
 import cloudpickle
-import pickle
 import grpc
 import jax
 import numpy as np
@@ -48,10 +49,11 @@ from google.protobuf import json_format
 from jax import linear_util as lu
 from jax._src import api_util as japi_util
 from jax.tree_util import tree_flatten, tree_map, tree_unflatten
+from termcolor import colored
 
 import spu.binding._lib.link as liblink
-from spu.binding.api import Io, Runtime, compile
 import spu.binding.util.frontend as spu_fe
+from spu.binding.api import Io, Runtime, compile
 from spu.binding.util.distributed_pb2 import RunRequest, RunResponse
 from spu.binding.util.distributed_pb2_grpc import (
     NodeServiceServicer,
@@ -59,10 +61,6 @@ from spu.binding.util.distributed_pb2_grpc import (
     add_NodeServiceServicer_to_server,
 )
 from spu.spu_pb2 import ExecutableProto, RuntimeConfig, ValueProto
-from enum import Enum
-from termcolor import colored
-import tensorflow as tf
-import tensorflow.experimental.numpy as tnp
 
 """
 This module is used as a simple scheduler to demonstrate SPU usage.
@@ -784,6 +782,8 @@ class SPU(Device):
             ]
 
             # FIXME(junfeng): check input-output alias.
+            import tensorflow as tf
+
             return tf.nest.pack_sequence_as(
                 structured_outputs, ret_flat, expand_composites=True
             )
@@ -797,6 +797,8 @@ class SPU(Device):
                     return obj
 
             mock_args, mock_kwargs = tree_map(mock_parameters, (args, kwargs))
+
+            import tensorflow as tf
 
             args_flat = tf.nest.flatten((args, kwargs), expand_composites=True)
 
@@ -813,6 +815,89 @@ class SPU(Device):
 
             executable, output_tree = spu_fe.compile(
                 spu_fe.Kind.Tensorflow,
+                fn,
+                mock_args,
+                mock_kwargs,
+                in_names,
+                in_vis,
+                outputNameGen,
+            )
+            return executable, args_flat, output_tree
+
+    class TorchFunction(Device.Function):
+        device: SPU
+
+        def __init__(self, device: Device, pyfunc: Callable):
+            super().__init__(device, pyfunc)
+
+        def __call__(self, *args, **kwargs):
+            args, kwargs = self.device._place_arguments(*args, **kwargs)
+
+            # now, all object are either PyObject or SPU.DeviceObject
+            executable, args_flat, out_tree = self._compile_torch_func(
+                self.pyfunc, *args, **kwargs
+            )
+
+            def get_share_ref(idx, obj):
+                return obj.refs[idx] if isinstance(obj, SPU.Object) else obj
+
+            futures = []
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                for idx, _ in enumerate(self.device.node_clients):
+                    idx_args_flat = [get_share_ref(idx, arg) for arg in args_flat]
+                    futures.append(
+                        executor.submit(
+                            self.device.node_clients[idx].run,
+                            wraps(self.pyfunc, assigned=('__name__'))(builtin_spu_run),
+                            self.device.name,
+                            executable.SerializeToString(),
+                            idx_args_flat,
+                        )
+                    )
+            results = [future.result() for future in futures]
+
+            # fetch the result metas, since all nodes are symmetric, query node[0] is enough.
+            metas = self.device.node_clients[0].run_return(
+                builtin_fetch_meta, results[0]
+            )
+
+            ret_flat = [
+                SPU.Object(self.device, share_refs, *meta)
+                for share_refs, meta in zip(zip(*results), metas)
+            ]
+
+            return tree_unflatten(out_tree, ret_flat)
+
+        def dump_pphlo(self, *args, **kwargs):
+            args, kwargs = self.device._place_arguments(*args, **kwargs)
+            executable, *_ = self._compile_torch_func(self.pyfunc, *args, **kwargs)
+            return executable.code.decode('utf-8')
+
+        def _compile_torch_func(self, fn, *args, **kwargs):
+            def mock_parameters(obj: Union[SPU.Object, np.ndarray]):
+                if isinstance(obj, SPU.Object):
+                    return np.zeros(shape=obj.shape, dtype=obj.dtype)
+                else:
+                    assert not isinstance(obj, Device.Object)
+                    return obj
+
+            mock_args, mock_kwargs = tree_map(mock_parameters, (args, kwargs))
+
+            args_flat, _ = jax.tree_util.tree_flatten((args, kwargs))
+
+            fn_name = repr(fn)
+
+            in_vis = [
+                arg.vtype if isinstance(arg, SPU.Object) else spu_pb2.VIS_PUBLIC
+                for arg in args_flat
+            ]
+            in_names = [f'{id(fn_name)}-in{idx}' for idx in range(len(args_flat))]
+
+            def outputNameGen(out_flat: List):
+                return [f'{id(fn_name)}-out{idx}' for idx in range(len(out_flat))]
+
+            executable, output_tree = spu_fe.compile(
+                spu_fe.Kind.Torch,
                 fn,
                 mock_args,
                 mock_kwargs,
@@ -869,6 +954,8 @@ class SPU(Device):
             return SPU.TensorFlowFunction(self, fn)
         elif _FRAMEWORK == Framework.JAX:
             return SPU.JaxFunction(self, fn, static_argnums)
+        elif _FRAMEWORK == Framework.EXP_TORCH:
+            return SPU.TorchFunction(self, fn)
         else:
             raise Exception("unsupported frontend framework.")
 
@@ -999,6 +1086,7 @@ class HostContext:
 class Framework(Enum):
     JAX = 1
     EXP_TF = 2
+    EXP_TORCH = 3
 
 
 _CONTEXT: HostContext
@@ -1017,6 +1105,13 @@ def init(nodes_def, devices_def, framework=Framework.JAX):
         print(
             colored(
                 "You are using TensorFlow as frontend framework, which is experimental.",
+                "yellow",
+            )
+        )
+    if framework == Framework.EXP_TORCH:
+        print(
+            colored(
+                "You are using PyTorch as frontend framework, which is experimental.",
                 "yellow",
             )
         )
@@ -1130,8 +1225,8 @@ def PYU2SPU(to: SPU, obj: PYU.Object, vtype=Visibility.VIS_SECRET):
             # JAX(0.2.28) treats np.int64 as int32 at compilation time.
             # So we have to infeed int64 as in32 accordingly.
             x = np.asarray(jax.numpy.asarray(x))
-        elif _FRAMEWORK == Framework.EXP_TF:
-            x = np.asarray(tnp.asarray(x))
+        elif _FRAMEWORK in [Framework.EXP_TF, Framework.EXP_TORCH]:
+            pass
         else:
             raise Exception("unsupported frontend framework.")
 

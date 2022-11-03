@@ -14,6 +14,11 @@
 
 #include "spu/core/encoding.h"
 
+#include <cstdint>
+#include <type_traits>
+
+#include "spu/core/parallel_utils.h"
+
 namespace spu {
 
 DataType getEncodeType(PtType pt_type) {
@@ -55,6 +60,9 @@ ArrayRef encodeToRing(const ArrayRef& src, FieldType field, size_t fxp_bits,
     *out_dtype = getEncodeType(pt_type);
   }
 
+  auto src_stride = src.stride();
+  auto dst_stride = dst.stride();
+
   if (pt_type == PT_F32 || pt_type == PT_F64) {
     DISPATCH_FLOAT_PT_TYPES(pt_type, "_", [&]() {
       DISPATCH_ALL_FIELDS(field, "_", [&]() {
@@ -73,27 +81,23 @@ ArrayRef encodeToRing(const ArrayRef& src, FieldType field, size_t fxp_bits,
         const Float kFlpUpper = static_cast<Float>(kFxpUpper) / kScale;
         const Float kFlpLower = static_cast<Float>(kFxpLower) / kScale;
 
-        // std::cout << kFlpUpper << " " << kFlpLower << std::endl;
-
-        for (size_t idx = 0; idx < numel; idx++) {
-          if (std::isnan(*src_ptr)) {
+        pforeach(0, numel, [&](int64_t idx) {
+          auto src_value = src_ptr[idx * src_stride];
+          if (std::isnan(src_value)) {
             // see numpy.nan_to_num
-            // note(jint) I dont know why nan could be encoded as zero..
-            *dst_ptr = 0;
-          } else if (*src_ptr >= kFlpUpper) {
-            *dst_ptr = kFxpUpper;
-          } else if (*src_ptr <= kFlpLower) {
-            *dst_ptr = kFxpLower;
+            // note(jint) I dont know why nan could be
+            // encoded as zero..
+            dst_ptr[idx * dst_stride] = 0;
+          } else if (src_value >= kFlpUpper) {
+            dst_ptr[idx * dst_stride] = kFxpUpper;
+          } else if (src_value <= kFlpLower) {
+            dst_ptr[idx * dst_stride] = kFxpLower;
           } else {
-            *dst_ptr = static_cast<T>(*src_ptr * kScale);
+            dst_ptr[idx * dst_stride] = static_cast<T>(src_value * kScale);
           }
-
-          src_ptr += src.stride();
-          dst_ptr += dst.stride();
-        }
+        });
       });
     });
-
     return dst;
   } else {
     // handle integer & boolean
@@ -108,11 +112,9 @@ ArrayRef encodeToRing(const ArrayRef& src, FieldType field, size_t fxp_bits,
         // TODO: encoding integer in range [-2^(k-2),2^(k-2))
         T* dst_ptr = &dst.at<T>(0);
         Integer const* src_ptr = &src.at<Integer>(0);
-        for (size_t idx = 0; idx < numel; idx++) {
-          *dst_ptr = static_cast<T>(*src_ptr);
-          src_ptr += src.stride();
-          dst_ptr += dst.stride();
-        }
+        pforeach(0, numel, [&](int64_t idx) {
+          dst_ptr[idx * dst_stride] = static_cast<T>(src_ptr[idx * src_stride]);
+        });
       });
     });
 
@@ -138,11 +140,14 @@ ArrayRef decodeFromRing(const ArrayRef& src, DataType in_dtype, size_t fxp_bits,
   YASL_ENFORCE(src_type.isa<RingTy>(), "source must be ring_type, got={}",
                src_type);
 
-  if (out_pt_type) {
+  if (out_pt_type != nullptr) {
     *out_pt_type = pt_type;
   }
 
   ArrayRef dst(makePtType(pt_type), src.numel());
+
+  auto src_stride = src.stride();
+  auto dst_stride = dst.stride();
 
   DISPATCH_ALL_FIELDS(field, "field", [&]() {
     DISPATCH_ALL_PT_TYPES(pt_type, "pt_type", [&]() {
@@ -153,24 +158,20 @@ ArrayRef decodeFromRing(const ArrayRef& src, DataType in_dtype, size_t fxp_bits,
       if (in_dtype == DT_I1) {
         constexpr bool kSanity = std::is_same_v<ScalarT, bool>;
         YASL_ENFORCE(kSanity);
-        for (size_t idx = 0; idx < numel; idx++) {
-          *dst_ptr = !((*src_ptr & 0x1) == 0);
-          src_ptr += src.stride();
-          dst_ptr += dst.stride();
-        }
+        pforeach(0, numel, [&](int64_t idx) {
+          dst_ptr[idx * dst_stride] = !((src_ptr[idx * src_stride] & 0x1) == 0);
+        });
       } else if (in_dtype == DT_FXP) {
         const T kScale = T(1) << fxp_bits;
-        for (size_t idx = 0; idx < numel; idx++) {
-          *dst_ptr = static_cast<ScalarT>(*src_ptr) / kScale;
-          src_ptr += src.stride();
-          dst_ptr += dst.stride();
-        }
+        pforeach(0, numel, [&](int64_t idx) {
+          dst_ptr[idx * dst_stride] =
+              static_cast<ScalarT>(src_ptr[idx * src_stride]) / kScale;
+        });
       } else {
-        for (size_t idx = 0; idx < numel; idx++) {
-          *dst_ptr = static_cast<ScalarT>(*src_ptr);
-          src_ptr += src.stride();
-          dst_ptr += dst.stride();
-        }
+        pforeach(0, numel, [&](int64_t idx) {
+          dst_ptr[idx * dst_stride] =
+              static_cast<ScalarT>(src_ptr[idx * src_stride]);
+        });
       }
     });
   });

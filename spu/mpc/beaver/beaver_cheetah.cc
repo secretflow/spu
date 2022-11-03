@@ -136,7 +136,8 @@ struct BeaverCheetah::MulImpl : public EnablePRNG {
     std::vector<int> modulus_bits;
     // NOTE(juhou): 109bit should be enough for one multiplication under the
     // `kSmallPrimeBitLen`
-    modulus_bits = {60, 49, /*dummy*/ 30};
+    modulus_bits = {60, 49};
+    parms.set_use_special_prime(false);
     parms.set_poly_modulus_degree(poly_deg);
     parms.set_coeff_modulus(seal::CoeffModulus::Create(poly_deg, modulus_bits));
     return parms;
@@ -775,18 +776,19 @@ struct BeaverCheetah::DotImpl : public EnablePRNG {
     std::vector<int> modulus_bits;
     if (ring_bitlen <= 32) {
       poly_deg = 4096;
-      modulus_bits = {55, 39, /*dummy*/ 20};
+      modulus_bits = {55, 39};
     } else if (ring_bitlen <= 64) {
       poly_deg = 8192;
-      modulus_bits = {55, 55, 48, /*dummy*/ 20};
+      modulus_bits = {55, 55, 48};
     } else {
       poly_deg = 16384;
-      modulus_bits = {59, 59, 59, 59, 50, /*dummy*/ 20};
+      modulus_bits = {59, 59, 59, 59, 50};
     }
 
     auto scheme_type = seal::scheme_type::ckks;
     auto parms = seal::EncryptionParameters(scheme_type);
 
+    parms.set_use_special_prime(false);
     parms.set_poly_modulus_degree(poly_deg);
     parms.set_coeff_modulus(seal::CoeffModulus::Create(poly_deg, modulus_bits));
     return parms;
@@ -897,7 +899,9 @@ void BeaverCheetah::DotImpl::LazyInit(size_t field_bitlen) {
   DecodeSEALObject(pk_buf, *this_context, pair_public_key.get());
 
   auto modulus = parms.coeff_modulus();
-  modulus.pop_back();  // drop the dummy
+  if (parms.use_special_prime()) {
+    modulus.pop_back();
+  }
   parms.set_coeff_modulus(modulus);
   seal::SEALContext ms_context(parms, false, seal::sec_level_type::none);
 

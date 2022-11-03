@@ -39,7 +39,7 @@ ArrayRef AddBB::proc(KernelEvalContext* ctx, const ArrayRef& x,
   const auto field = x.eltype().as<Ring2k>()->field();
   const size_t nbits = SizeOf(field) * 8;
   auto cbb = makeABProtBasicBlock(ctx->caller());
-  return koggle_stone<ArrayRef>(cbb, x, y, nbits);
+  return kogge_stone<ArrayRef>(cbb, x, y, nbits);
 }
 
 ArrayRef A2B::proc(KernelEvalContext* ctx, const ArrayRef& x) const {

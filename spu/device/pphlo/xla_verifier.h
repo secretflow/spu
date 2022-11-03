@@ -17,8 +17,8 @@
 #include "spu/dialect/pphlo_dialect.h"
 #include "spu/dialect/pphlo_ops.h"
 #include "spu/dialect/pphlo_types.h"
-#include "spu/hal/context.h"
-#include "spu/hal/value.h"
+#include "spu/kernel/context.h"
+#include "spu/kernel/value.h"
 
 namespace spu::device::pphlo {
 
@@ -36,8 +36,8 @@ public:
   }
 
 #define VERIFY_DECL(OpName)                                                    \
-  void verify(mlir::pphlo::OpName, absl::Span<const hal::Value> operands,      \
-              absl::Span<const hal::Value> expected);
+  void verify(mlir::pphlo::OpName, absl::Span<const spu::Value> operands,      \
+              absl::Span<const spu::Value> expected);
 
   // Simple unary
   VERIFY_DECL(AbsOp)
@@ -51,11 +51,13 @@ public:
   VERIFY_DECL(TanhOp)
   VERIFY_DECL(NotOp)
   VERIFY_DECL(ExpOp)
+  VERIFY_DECL(Expm1Op)
   VERIFY_DECL(RsqrtOp)
+  VERIFY_DECL(SignOp)
 
   // Simple binary
   VERIFY_DECL(AddOp)
-  VERIFY_DECL(SubOp)
+  VERIFY_DECL(SubtractOp)
   VERIFY_DECL(MulOp)
   VERIFY_DECL(PowOp)
   VERIFY_DECL(MaxOp)
@@ -66,9 +68,8 @@ public:
   VERIFY_DECL(DivOp)
   VERIFY_DECL(RemOp)
   VERIFY_DECL(DotOp)
+  VERIFY_DECL(DotGeneralOp)
   VERIFY_DECL(SqrtOp)
-  VERIFY_DECL(MixedDotOp)
-  VERIFY_DECL(MixedMulOp)
 
   // Comparison
   VERIFY_DECL(EqualOp)
@@ -87,7 +88,7 @@ public:
   VERIFY_DECL(ConvertOp)
 
   // Conv
-  VERIFY_DECL(ConvOp)
+  VERIFY_DECL(ConvolutionOp)
 
   // Slice and update slice
   VERIFY_DECL(DynamicSliceOp)
@@ -127,14 +128,15 @@ public:
 
 // Other (no verify)
 #define NO_VERIFY_DEFN(OpName)                                                 \
-  void verify(mlir::pphlo::OpName, absl::Span<const hal::Value>,               \
-              absl::Span<const hal::Value>) {}
+  void verify(mlir::pphlo::OpName, absl::Span<const spu::Value>,               \
+              absl::Span<const spu::Value>) {}
   NO_VERIFY_DEFN(DbgPrintOp)
   NO_VERIFY_DEFN(IfOp)
   NO_VERIFY_DEFN(WhileOp)
   NO_VERIFY_DEFN(ReturnOp)
-  NO_VERIFY_DEFN(RngUniformOp)
-  NO_VERIFY_DEFN(ConstOp)
+  NO_VERIFY_DEFN(RngOp)
+  NO_VERIFY_DEFN(ConstantOp)
+  NO_VERIFY_DEFN(MaxPoolScatterOp)
 
 #undef NO_VERIFY_DEFN
 };

@@ -29,7 +29,7 @@ namespace detail {
 // This function assumes row major
 size_t calcFlattenOffset(absl::Span<const int64_t> indices,
                          absl::Span<const int64_t> shape,
-                         absl::Span<const int64_t> strides = {});
+                         absl::Span<const int64_t> strides);
 
 }  // namespace detail
 

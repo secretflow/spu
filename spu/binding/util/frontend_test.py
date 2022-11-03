@@ -40,7 +40,7 @@ class UnitTests(unittest.TestCase):
         self.assertEqual(
             executable.code,
             b"module @xla_computation_add.0 {\n"
-            b"  func @main(%arg0: tensor<2x!pphlo.pub<i32>>,"
+            b"  func.func @main(%arg0: tensor<2x!pphlo.pub<i32>>,"
             b" %arg1: tensor<2x!pphlo.pub<i32>>) -> tensor<2x!pphlo.pub<i32>> {\n"
             b"    %0 = \"pphlo.add\"(%arg0, %arg1) : (tensor<2x!pphlo.pub<i32>>,"
             b" tensor<2x!pphlo.pub<i32>>) -> tensor<2x!pphlo.pub<i32>>\n"
@@ -65,7 +65,7 @@ class UnitTests(unittest.TestCase):
         self.assertEqual(
             executable.code,
             b"module @a_inference_add_9__.9 {\n"
-            b"  func @main(%arg0: tensor<2x!pphlo.pub<i64>>,"
+            b"  func.func @main(%arg0: tensor<2x!pphlo.pub<i64>>,"
             b" %arg1: tensor<2x!pphlo.pub<i64>>) -> tensor<2x!pphlo.pub<i64>> {\n"
             b"    %0 = \"pphlo.add\"(%arg0, %arg1) : (tensor<2x!pphlo.pub<i64>>,"
             b" tensor<2x!pphlo.pub<i64>>) -> tensor<2x!pphlo.pub<i64>>\n"

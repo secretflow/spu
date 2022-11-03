@@ -44,7 +44,7 @@ class PPHLO_Op<string mnemonic, list<Trait> traits>
 // pphlo nullary op definitions.
 //===----------------------------------------------------------------------===//
 
-def PPHLO_ConstOp : PPHLO_Op<"constant", [ConstantLike, NoSideEffect]> {
+def PPHLO_ConstantOp : PPHLO_Op<"constant", [ConstantLike, NoSideEffect]> {
   let summary = "Constant operator";
   let description = [{Create a constant value.}];
   let arguments = (ins ElementsAttr : $value);
@@ -63,7 +63,7 @@ def PPHLO_IotaOp : PPHLO_Op<"iota", [NoSideEffect]> {
   }];
   let arguments = (ins I64Attr : $iota_dimension);
 
-  let results = (outs PPHLO_IntTensor : $output);
+  let results = (outs PPHLO_Tensor : $output);
 }
 
 //===----------------------------------------------------------------------===//
@@ -115,7 +115,6 @@ def PPHLO_RsqrtOp
   }];
 }
 
-
 def PPHLO_TanhOp
     : PPHLO_UnaryElementwiseOp<"tanh", [NoSideEffect], PPHLO_FpTensor> {
   let summary = "Tanh operator";
@@ -144,6 +143,17 @@ def PPHLO_ExpOp
   let summary = "Exponential operator";
   let description = [{
     Returns `e ^ (operand)` element-wise.
+
+    See
+    https://www.tensorflow.org/xla/operation_semantics#element-wise_unary_functions.
+  }];
+}
+
+def PPHLO_Expm1Op: PPHLO_UnaryElementwiseOp<"exponential_minus_one",
+    [NoSideEffect], PPHLO_FpTensor> {
+  let summary = "Exponential minus one operator";
+  let description = [{
+    Returns `e^(operand) - 1` element-wise.
 
     See
     https://www.tensorflow.org/xla/operation_semantics#element-wise_unary_functions.
@@ -244,6 +254,24 @@ def PPHLO_NotOp
   }];
 }
 
+def PPHLO_SignOp
+    : PPHLO_UnaryElementwiseOp<"sign", [NoSideEffect, SameOperandsAndResultType],
+                               PPHLO_Tensor> {
+  let summary = "Sign operator";
+  let description = [{
+    Returns `sign(operand)` element-wise, where
+
+    ```
+    sign(x) = -1  : x < 0
+            = 0   : x = 0
+            = 1   : x > 0
+    ```
+
+    See
+    https://www.tensorflow.org/xla/operation_semantics#element-wise_unary_functions.
+  }];
+}
+
 //===----------------------------------------------------------------------===//
 // pphlo binary elementwise op definitions.
 //===----------------------------------------------------------------------===//
@@ -255,7 +283,7 @@ class PPHLO_BinaryElementwiseOp<string mnemonic, list<Trait> traits>
   let results = (outs PPHLO_Tensor);
 }
 
-def PPHLO_SubOp : PPHLO_BinaryElementwiseOp<"subtract", [NoSideEffect]> {
+def PPHLO_SubtractOp : PPHLO_BinaryElementwiseOp<"subtract", [NoSideEffect]> {
   let summary = "Subtraction operator";
   let description = [{
     Returns `lhs - rhs` element-wise.
@@ -311,17 +339,6 @@ def PPHLO_AddOp
 def PPHLO_MulOp
     : PPHLO_BinaryElementwiseOp<"multiply", [Commutative, NoSideEffect]> {
   let summary = "Multiplication operator";
-  let description = [{
-    Returns `lhs * rhs` element-wise.
-    
-    See
-    https://www.tensorflow.org/xla/operation_semantics#element-wise_binary_arithmetic_operations.
-  }];
-}
-
-def PPHLO_MixedMulOp
-    : PPHLO_BinaryElementwiseOp<"mixed_multiply", [Commutative, NoSideEffect]> {
-  let summary = "Mixed type multiplication operator";
   let description = [{
     Returns `lhs * rhs` element-wise.
     
@@ -440,8 +457,6 @@ def PPHLO_EqualOp
   }];
   let arguments = (ins PPHLO_Tensor : $lhs, PPHLO_Tensor : $rhs);
   let results = (outs PPHLO_IntTensor);
-
-  let builders = [OpBuilder<(ins "Value" : $lhs, "Value" : $rhs)>];
 }
 
 def PPHLO_NotEqualOp
@@ -456,8 +471,6 @@ def PPHLO_NotEqualOp
   }];
   let arguments = (ins PPHLO_Tensor : $lhs, PPHLO_Tensor : $rhs);
   let results = (outs PPHLO_IntTensor);
-
-  let builders = [OpBuilder<(ins "Value" : $lhs, "Value" : $rhs)>];
 }
 
 def PPHLO_GreaterEqualOp
@@ -472,8 +485,6 @@ def PPHLO_GreaterEqualOp
   }];
   let arguments = (ins PPHLO_Tensor : $lhs, PPHLO_Tensor : $rhs);
   let results = (outs PPHLO_IntTensor);
-
-  let builders = [OpBuilder<(ins "Value" : $lhs, "Value" : $rhs)>];
 }
 
 def PPHLO_GreaterOp
@@ -483,8 +494,6 @@ def PPHLO_GreaterOp
   let description = [{elementwise `lhs` > `rhs`.}];
   let arguments = (ins PPHLO_Tensor : $lhs, PPHLO_Tensor : $rhs);
   let results = (outs PPHLO_IntTensor);
-
-  let builders = [OpBuilder<(ins "Value" : $lhs, "Value" : $rhs)>];
 }
 
 def PPHLO_LessEqualOp
@@ -494,8 +503,6 @@ def PPHLO_LessEqualOp
   let description = [{elementwise `lhs` <= `rhs`.}];
   let arguments = (ins PPHLO_Tensor : $lhs, PPHLO_Tensor : $rhs);
   let results = (outs PPHLO_IntTensor);
-
-  let builders = [OpBuilder<(ins "Value" : $lhs, "Value" : $rhs)>];
 }
 
 def PPHLO_LessOp
@@ -510,15 +517,13 @@ def PPHLO_LessOp
   }];
   let arguments = (ins PPHLO_Tensor : $lhs, PPHLO_Tensor : $rhs);
   let results = (outs PPHLO_IntTensor);
-
-  let builders = [OpBuilder<(ins "Value" : $lhs, "Value" : $rhs)>];
 }
 
 //===----------------------------------------------------------------------===//
 // pphlo RNG op definitions.
 //===----------------------------------------------------------------------===//
-def PPHLO_RngUniformOp
-    : PPHLO_Op<"rng_uniform", [SameOperandsAndResultElementType]> {
+def PPHLO_RngOp
+    : PPHLO_Op<"rng", [SameOperandsAndResultElementType]> {
   let summary = "RNG with uniform distribution.";
   let description = [{
     Constructs an output of a given shape with random numbers generated
@@ -603,20 +608,26 @@ def PPHLO_DotOp : PPHLO_Op<"dot", [NoSideEffect]> {
   let results = (outs PPHLO_Tensor);
 }
 
-def PPHLO_MixedDotOp : PPHLO_Op<"mixed_dot", [NoSideEffect]> {
-  let summary = "Mixed type dot operator";
+def PPHLO_DotGeneralOp: PPHLO_Op<"dot_general", [NoSideEffect]> {
+  let summary = "General Dot operator";
   let description = [{
-    Performs dot products between vectors, vector/matrix and matrix/matrix
-    multiplication.
+    Performs general dot products between vectors, vector/matrix and
+    matrix/matrix multiplication.
 
-    See https://www.tensorflow.org/xla/operation_semantics#dot.
+    See https://www.tensorflow.org/xla/operation_semantics#dotgeneral.
   }];
-  let arguments = (ins PPHLO_Tensor : $lhs, PPHLO_Tensor : $rhs);
+  let arguments = (ins
+    PPHLO_Tensor:$lhs,
+    PPHLO_Tensor:$rhs,
+    DotDimensionNumbers:$dot_dimension_numbers
+  );
+
   let results = (outs PPHLO_Tensor);
+  let hasCanonicalizer = 1;
 }
 
 def PPHLO_SelectOp
-    : PPHLO_Op<"select", [NoSideEffect, SameOperandsAndResultShape]> {
+    : PPHLO_Op<"select", [NoSideEffect, SameVariadicOperandSize]> {
   let summary = "Select operator";
   let description = [{
     Constructs an output tensor from the elements of `on_true` and `on_false`
@@ -626,12 +637,23 @@ def PPHLO_SelectOp
 
     See https://www.tensorflow.org/xla/operation_semantics#select.
   }];
-  let arguments = (ins PPHLO_IntTensor
-                   : $pred, PPHLO_Tensor
-                   : $on_true, PPHLO_Tensor
-                   : $on_false);
+  let arguments = (ins 
+                  PPHLO_IntTensor: $pred, 
+                  Variadic<PPHLO_Tensor>: $on_true, 
+                  Variadic<PPHLO_Tensor>: $on_false);
 
-  let results = (outs PPHLO_Tensor);
+  let results = (outs Variadic<PPHLO_Tensor>);
+
+  // Builder for non-variadic version of the operation.
+  let builders = [
+    OpBuilder<(ins "Type":$result_type, "Value":$pred,
+      "Value":$on_true,
+      "Value":$on_false),
+    [{
+      build($_builder, $_state, TypeRange(result_type), pred,
+            ValueRange(on_true), ValueRange(on_false));
+    }]>
+  ];
 }
 
 def PPHLO_SelectAndScatterOp: PPHLO_Op<"select_and_scatter",
@@ -651,12 +673,32 @@ def PPHLO_SelectAndScatterOp: PPHLO_Op<"select_and_scatter",
     PPHLO_Tensor:$operand,
     PPHLO_Tensor:$source,
     PPHLO_Tensor:$init_value,
-    OptionalAttr<I64ElementsAttr>:$window_dimensions,
+    I64ElementsAttr:$window_dimensions,
     OptionalAttr<I64ElementsAttr>:$window_strides,
     OptionalAttr<I64ElementsAttr>:$padding
   );
 
   let regions = (region SizedRegion<1>:$select, SizedRegion<1>:$scatter);
+
+  let results = (outs PPHLO_Tensor);
+}
+
+def PPHLO_MaxPoolScatterOp: PPHLO_Op<"maxpool_scatter", [NoSideEffect]> {
+  let summary = "MaxPool Scatter operator";
+  let description = [{
+    Generates a result which is the value of the input array `operand`,
+    with several slices (at indices specified by `scatter_indices`)
+    updated with the values in `updates` using `update_computation`.
+
+    See https://www.tensorflow.org/xla/operation_semantics#scatter.
+  }];
+  let arguments = (ins
+    PPHLO_IntTensor:$scatter_indices,
+    PPHLO_Tensor:$update,
+    OptionalAttr<I64ElementsAttr>:$window_dimensions,
+    OptionalAttr<I64ElementsAttr>:$window_strides,
+    OptionalAttr<I64ElementsAttr>:$padding
+  );
 
   let results = (outs PPHLO_Tensor);
 }
@@ -700,8 +742,8 @@ def PPHLO_ReduceWindowOp : PPHLO_Op<"reduce_window", [
   }];
 
   let arguments = (ins
-    PPHLO_Tensor:$inputs,
-    PPHLO_Tensor:$init_values,
+    Variadic<PPHLO_Tensor>:$inputs,
+    Variadic<PPHLO_Tensor>:$init_values,
     I64ElementsAttr:$window_dimensions,
     // If strides or dilations attributes are missing then the default value is
     // one for each of the input dimensions. Similarly, padding values are zero
@@ -709,10 +751,14 @@ def PPHLO_ReduceWindowOp : PPHLO_Op<"reduce_window", [
     OptionalAttr<I64ElementsAttr>:$window_strides,
     OptionalAttr<I64ElementsAttr>:$base_dilations,
     OptionalAttr<I64ElementsAttr>:$window_dilations,
-    OptionalAttr<I64ElementsAttr>:$padding
+    OptionalAttr<I64ElementsAttr>:$padding,
+    // These are two special attributes for argmax reduce window
+    // Do not set unless you know what these means
+    DefaultValuedAttr<BoolAttr, "false">:$last_operand_is_window_mask,
+    DefaultValuedAttr<BoolAttr, "false">:$ignore_init_value
   );
 
-  let results = (outs PPHLO_Tensor);
+  let results = (outs Variadic<PPHLO_Tensor>);
 
   let regions = (region SizedRegion<1> : $body);
 }
@@ -766,7 +812,7 @@ def PPHLO_DbgPrintOp : PPHLO_Op<"dbg_print", []> {
 }
 
 def PPHLO_ClampOp
-    : PPHLO_Op<"clamp", [NoSideEffect, SameOperandsAndResultElementType]> {
+    : PPHLO_Op<"clamp", [NoSideEffect, SameOperandsAndResultShape]> {
   let summary = "Clamp operator";
   let description = [{
     Clamps an operand to within the range between a minimum and maximum value.
@@ -797,7 +843,7 @@ def PPHLO_BitcastConvertOp : PPHLO_Op<"bitcast_convert", [NoSideEffect]> {
     See https://www.tensorflow.org/xla/operation_semantics#bitcastconverttype.
   }];
 
-  let arguments = (ins PPHLO_Tensor : $operand, I64Attr : $elsize);
+  let arguments = (ins PPHLO_Tensor : $operand);
   let results = (outs PPHLO_Tensor);
 }
 
@@ -837,10 +883,12 @@ def PPHLO_ReverseOp
   let arguments = (ins PPHLO_Tensor : $operand, I64ElementsAttr : $dimensions);
 
   let results = (outs PPHLO_Tensor);
+
+  let hasFolder = 1;
 }
 
 def HLO_PadOp
-    : PPHLO_Op<"pad", [NoSideEffect, SameOperandsAndResultElementType]> {
+    : PPHLO_Op<"pad", [NoSideEffect, SameOperandsAndResultElementType, InferTensorType]> {
   let summary = "Pad operator";
   let description = [{
     Pads the edges of `operand` with the `padding_value` and according to
@@ -882,19 +930,13 @@ def ConvolutionAttributes {
   dag attributes = (ins
     // Default value: one for each of the spatial dimension.
     OptionalAttr<I64ElementsAttr>:$window_strides,
-    // Default value: zero for each of the spatial dimension.
-    OptionalAttr<I64ElementsAttr>:$padding,
-    // Default value: one for each of the spatial dimension.
-    OptionalAttr<I64ElementsAttr>:$lhs_dilation,
-    // Default value: one for each of the spatial dimension.
-    OptionalAttr<I64ElementsAttr>:$rhs_dilation,
     ConvDimensionNumbers:$dimension_numbers,
     I64Attr:$feature_group_count,
     I64Attr:$batch_group_count
   );
 }
 
-def PPHLO_ConvOp : PPHLO_Op<"convolution", [NoSideEffect]> {
+def PPHLO_ConvolutionOp : PPHLO_Op<"convolution", [NoSideEffect]> {
   let summary = "Convolution operator";
   let description = [{
     Computes a convolution of the kind used in neural networks.
@@ -912,14 +954,14 @@ def PPHLO_ConvOp : PPHLO_Op<"convolution", [NoSideEffect]> {
   let assemblyFormat = [{
     `(`operands`)`
        `dim_numbers` `=` custom<ConvolutionDimensions>($dimension_numbers) `,`
-       `window` `=` `{` custom<WindowAttributes>($window_strides, $padding,
-                                                 $lhs_dilation, $rhs_dilation) `}`
+       `window` `=` `{` custom<WindowAttributes>($window_strides) `}`
        attr-dict `:` functional-type(operands, results)
   }];
+
+  let hasCanonicalizer = 1;
 }
 
-def PPHLO_DynamicSliceOp: PPHLO_Op<"dynamic-slice",
-      [NoSideEffect, AllElementTypesMatch<["operand", "result"]>]> {
+def PPHLO_DynamicSliceOp: PPHLO_Op<"dynamic-slice", [NoSideEffect]> {
   let summary = "Dynamic Slice operator";
   let description = [{
     Extracts a sub-array from the input array at dynamic start_indices.
@@ -936,8 +978,7 @@ def PPHLO_DynamicSliceOp: PPHLO_Op<"dynamic-slice",
 }
 
 def PPHLO_DynamicUpdateSliceOp: PPHLO_Op<"dynamic-update-slice",
-      [NoSideEffect, AllElementTypesMatch<["operand", "update", "result"]>,
-       AllShapesMatch<["operand", "result"]>]> {
+      [NoSideEffect, AllShapesMatch<["operand", "result"]>]> {
   let summary = "Dynamic Update Slice operator";
   let description = [{
     DynamicUpdateSlice generates a result which is the value of the input array
@@ -957,8 +998,7 @@ def PPHLO_DynamicUpdateSliceOp: PPHLO_Op<"dynamic-update-slice",
 // pphlo control flow op definitions.
 //===----------------------------------------------------------------------===//
 def PPHLO_WhileOp : PPHLO_Op<"while", [
-  RecursiveSideEffects, PPHLO_PairwiseSameOperandAndResultType,
-  SingleBlockImplicitTerminator<"ReturnOp">
+  RecursiveSideEffects, PPHLO_PairwiseSameOperandAndResultType, SingleBlockImplicitTerminator<"ReturnOp">
 ]> {
   let summary = "While operator";
   let description = [{

@@ -19,6 +19,7 @@
 #include "mlir/IR/Value.h"
 
 #include "spu/compiler/passes/value_visibility_map.h"
+#include "spu/dialect/pphlo_types.h"
 
 namespace mlir::pphlo {
 
@@ -33,12 +34,63 @@ public:
   void inferOperation(Operation &op);
 
 private:
-  void inferReduce(Operation &op);
-  void inferReduceWindow(Operation &op);
   void inferWhile(Operation &op);
   void inferIf(Operation &op);
   void inferSort(Operation &op);
   void inferSelectAndScatter(Operation &op);
+
+  template <class T>
+  void inferReduce(Operation &op) {
+    auto reduceOp = llvm::dyn_cast<T>(op);
+
+    size_t num_results = op.getNumResults();
+    std::vector<Visibility> input_vis;
+    for (size_t idx = 0; idx < num_results; ++idx) {
+      auto inputVis = ValueVis_.getValueVisibility(reduceOp.operands()[idx]);
+      auto initVis = ValueVis_.getValueVisibility(reduceOp.init_values()[idx]);
+
+      auto promoted_vis = TypeTools::inferResultVisibility({inputVis, initVis});
+      input_vis.emplace_back(promoted_vis);
+
+      ValueVis_.setValueVisibility(reduceOp.body().getArgument(idx),
+                                   promoted_vis);
+      ValueVis_.setValueVisibility(
+          reduceOp.body().getArgument(num_results + idx), promoted_vis);
+    }
+
+    // ret0 = reduce(init0, val0)
+    // Push inputs to body region
+    inferRegion(reduceOp.body());
+
+    // Get body return
+    bool reinfer = false;
+    auto *terminator = reduceOp.body().back().getTerminator();
+    YASL_ENFORCE(terminator &&
+                 terminator->getNumOperands() == reduceOp->getNumResults());
+    std::vector<Visibility> ret_vis;
+    for (size_t idx = 0; idx < reduceOp->getNumResults(); ++idx) {
+      auto resultVis =
+          ValueVis_.getValueVisibility(terminator->getOperand(idx));
+      ValueVis_.setValueVisibility(reduceOp->getResult(idx), resultVis);
+      ret_vis.emplace_back(resultVis);
+      if (resultVis != input_vis[idx]) {
+        reinfer = true;
+      }
+    }
+
+    if (reinfer) {
+      for (size_t idx = 0; idx < num_results; ++idx) {
+        ValueVis_.setValueVisibility(reduceOp.body().getArgument(idx),
+                                     ret_vis[idx]);
+        ValueVis_.setValueVisibility(
+            reduceOp.body().getArgument(num_results + idx), ret_vis[idx]);
+      }
+
+      // ret0 = reduce(init0, val0)
+      // Push inputs to body region
+      inferRegion(reduceOp.body());
+    }
+  }
 
   ValueVisibilityMap &ValueVis_;
 };

@@ -73,6 +73,7 @@ class UnitTests(unittest.TestCase):
                     path=input_path, select_fields=selected_fields
                 ),
                 output_params=psi.OuputParams(path=output_path, need_sort=True),
+                curve_type=psi.CurveType.CURVE_25519,
             )
             report = psi.bucket_psi(lctx, config)
 

@@ -27,20 +27,20 @@ void Frame::releaseValue(::mlir::Value operand) {
   segments_.back().values_.erase(operand);
 }
 
-void Frame::addValue(::mlir::Value operand, hal::Value &&val) {
+void Frame::addValue(::mlir::Value operand, spu::Value &&val) {
   YASL_ENFORCE(!segments_.empty(),
                "Need at least one activate segment running");
   segments_.back().values_[operand] = std::move(val);
 }
 
-void Frame::addValue(::mlir::Value operand, const hal::Value &val) {
+void Frame::addValue(::mlir::Value operand, const spu::Value &val) {
   YASL_ENFORCE(!segments_.empty(),
                "Need at least one activate segment running");
   segments_.back().values_[operand] = val;
 }
 
-const hal::Value *Frame::getValue(::mlir::Value operand) const {
-  const hal::Value *val = nullptr;
+const spu::Value *Frame::getValue(::mlir::Value operand) const {
+  const spu::Value *val = nullptr;
   YASL_ENFORCE(!segments_.empty());
   for (auto siter = segments_.rbegin(); siter != segments_.rend(); ++siter) {
     auto iter = siter->values_.find(operand);

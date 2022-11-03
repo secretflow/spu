@@ -14,7 +14,9 @@ This is a high level overview of how the repository is laid out. Some major fold
     - [crypto/](spu/crypto/): Crytographic primitives used in mpc protocols, say oblivious transfer.
     - [device/](spu/device/): SPU device `Runtime`.It consists of IO(infeed, outfeed), symbol tables(storage) and the IR executor.
     - [dialect/](spu/dialect/): Internal MPC specific IR used by SPU.
-    - [hal/](spu/hal/): Hardware adapt layer implements crypto independent core logics, say the fixed point related abstractions and some non-linear APIs. It could be viewed as a builtin library in addition to the SPU VM.
+    - [kernel/](spu/kernel/): SPU runtime kernels.
+        * [hlo/](spu/kernel/hlo/): High level operators, which matches the definition of pphlo.
+        * [hal/](spu/kernel/hal/): Hardware adapt layer implements crypto independent core logics, say the fixed point related abstractions and some non-linear APIs. It could be viewed as a builtin library in addition to the SPU VM.
     - [mpc/](spu/mpc/): Various mpc protocols. This folder defines the [standard interface](spu/mpc/interfaces.h) different mpc protocols need to conform.
         * [aby3/](spu/mpc/aby3/): The semi-honest variant of ABY3 protocol. Currently only `Arithmetic` and `Boolean` are implemented.
         * [cheetah/](spu/mpc/cheetah/): An excellent semi-honest 2PC protocol implemented by [Alibaba-Gemini-Lab](https://alibaba-gemini-lab.github.io/).

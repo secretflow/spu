@@ -53,20 +53,23 @@ struct CircuitBasicBlock {
   SetNBits set_nbits = nullptr;
 };
 
-// Parallel Prefix Graph: Koggle Stone.
-// We write prefix element as P, G, where:
+// Parallel Prefix Graph: Kogge Stone.
+//
+// P stands for propogate, G stands for generate, where:
 //  (G0, P0) = (g0, p0)
 //  (Gi, Pi) = (gi, pi) o (Gi-1, Pi-1)
+//
 // The `o` here is:
 //  (G0, P0) o (G1, P1) = (G0 ^ (P0 & G1), P0 & P1)
 //
 // Latency log(k) + 1
 template <typename T>
-T koggle_stone(const CircuitBasicBlock<T>& ctx, T const& lhs, T const& rhs,
-               size_t nbits) {
+T kogge_stone(const CircuitBasicBlock<T>& ctx, T const& lhs, T const& rhs,
+              size_t nbits) {
   // Generate p & g.
   auto P = ctx._xor(lhs, rhs);
   auto G = ctx._and(lhs, rhs);
+
   for (int idx = 0; idx < log2Ceil(nbits); ++idx) {
     const size_t offset = 1UL << idx;
     auto G1 = ctx.lshift(G, offset);
@@ -243,7 +246,7 @@ T carry_out(const CircuitBasicBlock<T>& ctx, const T& x, const T& y,
     return ctx._and(G, ctx.init_like(G, 0, 1));
   }
 
-  // Use koggle stone layout.
+  // Use kogge stone layout.
   size_t k = nbits;
   while (k > 1) {
     if (k % 2 != 0) {

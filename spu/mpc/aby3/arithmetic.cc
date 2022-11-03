@@ -17,7 +17,6 @@
 #include <future>
 
 #include "spdlog/spdlog.h"
-#include "yasl/utils/parallel.h"
 
 #include "spu/core/profile.h"
 #include "spu/mpc/aby3/ot.h"
@@ -28,12 +27,11 @@
 #include "spu/mpc/common/pub2k.h"
 #include "spu/mpc/util/circuits.h"
 #include "spu/mpc/util/communicator.h"
+#include "spu/mpc/util/linalg.h"
 #include "spu/mpc/util/ring_ops.h"
 
 namespace spu::mpc::aby3 {
 namespace {
-
-constexpr int64_t GRAIN_SIZE = 8192;
 
 std::vector<ArrayRef> a1b_offline(size_t sender, const ArrayRef& a,
                                   FieldType field, size_t self_rank,
@@ -92,14 +90,16 @@ ArrayRef A2P::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
     auto _out = ArrayView<PShrT>(out);
 
     std::vector<AShrT> x2(in.numel());
-    for (auto idx = 0; idx < in.numel(); idx++) {
+
+    pforeach(0, in.numel(), [&](int64_t idx) {  //
       x2[idx] = _in[idx][1];
-    }
+    });
+
     auto x3 = comm->rotate<AShrT>(x2, "a2p");  // comm => 1, k
 
-    for (auto idx = 0; idx < in.numel(); idx++) {
+    pforeach(0, in.numel(), [&](int64_t idx) {
       _out[idx] = _in[idx][0] + _in[idx][1] + x3[idx];
-    }
+    });
 
     return out;
   });
@@ -114,6 +114,8 @@ ArrayRef P2A::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
   const auto* in_ty = in.eltype().as<Ring2k>();
   const auto field = in_ty->field();
 
+  auto rank = comm->getRank();
+
   return DISPATCH_ALL_FIELDS(field, "_", [&]() {
     using AShrT = ring2k_t;
     using PShrT = ring2k_t;
@@ -122,10 +124,10 @@ ArrayRef P2A::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
     auto _in = ArrayView<PShrT>(in);
     auto _out = ArrayView<std::array<AShrT, 2>>(out);
 
-    for (int64_t idx = 0; idx < in.numel(); idx++) {
-      _out[idx][0] = comm->getRank() == 0 ? _in[idx] : 0;
-      _out[idx][1] = comm->getRank() == 2 ? _in[idx] : 0;
-    }
+    pforeach(0, in.numel(), [&](int64_t idx) {
+      _out[idx][0] = rank == 0 ? _in[idx] : 0;
+      _out[idx][1] = rank == 2 ? _in[idx] : 0;
+    });
 
 // for debug purpose, randomize the inputs to avoid corner cases.
 #ifdef ENABLE_MASK_DURING_ABY3_P2A
@@ -156,6 +158,8 @@ ArrayRef NotA::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
   const auto* in_ty = in.eltype().as<AShrTy>();
   const auto field = in_ty->field();
 
+  auto rank = comm->getRank();
+
   return DISPATCH_ALL_FIELDS(field, "_", [&]() {
     using S = std::make_unsigned_t<ring2k_t>;
 
@@ -165,15 +169,15 @@ ArrayRef NotA::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
 
     // neg(x) = not(x) + 1
     // not(x) = neg(x) - 1
-    for (auto idx = 0; idx < in.numel(); idx++) {
+    pforeach(0, in.numel(), [&](int64_t idx) {
       _out[idx][0] = -_in[idx][0];
       _out[idx][1] = -_in[idx][1];
-      if (comm->getRank() == 0) {
+      if (rank == 0) {
         _out[idx][1] -= 1;
-      } else if (comm->getRank() == 1) {
+      } else if (rank == 1) {
         _out[idx][0] -= 1;
       }
-    }
+    });
 
     return out;
   });
@@ -193,6 +197,8 @@ ArrayRef AddAP::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
   YASL_ENFORCE(lhs_ty->field() == rhs_ty->field());
   const auto field = lhs_ty->field();
 
+  auto rank = comm->getRank();
+
   return DISPATCH_ALL_FIELDS(field, "_", [&]() {
     using U = ring2k_t;
 
@@ -202,12 +208,12 @@ ArrayRef AddAP::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
     auto _rhs = ArrayView<U>(rhs);
     auto _out = ArrayView<std::array<U, 2>>(out);
 
-    for (int64_t idx = 0; idx < lhs.numel(); idx++) {
+    pforeach(0, lhs.numel(), [&](int64_t idx) {
       _out[idx][0] = _lhs[idx][0];
       _out[idx][1] = _lhs[idx][1];
-      if (comm->getRank() == 0) _out[idx][1] += _rhs[idx];
-      if (comm->getRank() == 1) _out[idx][0] += _rhs[idx];
-    }
+      if (rank == 0) _out[idx][1] += _rhs[idx];
+      if (rank == 1) _out[idx][0] += _rhs[idx];
+    });
     return out;
   });
 }
@@ -231,10 +237,10 @@ ArrayRef AddAA::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
     auto _rhs = ArrayView<std::array<U, 2>>(rhs);
     auto _out = ArrayView<std::array<U, 2>>(out);
 
-    for (int64_t idx = 0; idx < lhs.numel(); idx++) {
+    pforeach(0, lhs.numel(), [&](int64_t idx) {
       _out[idx][0] = _lhs[idx][0] + _rhs[idx][0];
       _out[idx][1] = _lhs[idx][1] + _rhs[idx][1];
-    }
+    });
     return out;
   });
 }
@@ -261,10 +267,10 @@ ArrayRef MulAP::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
     auto _rhs = ArrayView<U>(rhs);
     auto _out = ArrayView<std::array<U, 2>>(out);
 
-    for (int64_t idx = 0; idx < lhs.numel(); idx++) {
+    pforeach(0, lhs.numel(), [&](int64_t idx) {
       _out[idx][0] = _lhs[idx][0] * _rhs[idx];
       _out[idx][1] = _lhs[idx][1] * _rhs[idx];
-    }
+    });
     return out;
   });
 }
@@ -288,21 +294,22 @@ ArrayRef MulAA::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
     auto _rhs = ArrayView<std::array<U, 2>>(rhs);
 
     // z1 = (x1 * y1) + (x1 * y2) + (x2 * y1) + (r0 - r1);
-    for (int64_t idx = 0; idx < lhs.numel(); idx++) {
+    pforeach(0, lhs.numel(), [&](int64_t idx) {
       r0[idx] = (_lhs[idx][0] * _rhs[idx][0]) +  //
                 (_lhs[idx][0] * _rhs[idx][1]) +  //
                 (_lhs[idx][1] * _rhs[idx][0]) +  //
                 (r0[idx] - r1[idx]);
-    }
+    });
 
     r1 = comm->rotate<U>(r0, "mulaa");  // comm => 1, k
 
     ArrayRef out(makeType<AShrTy>(field), lhs.numel());
     auto _out = ArrayView<std::array<U, 2>>(out);
-    for (int64_t idx = 0; idx < lhs.numel(); idx++) {
+
+    pforeach(0, lhs.numel(), [&](int64_t idx) {
       _out[idx][0] = r0[idx];
       _out[idx][1] = r1[idx];
-    }
+    });
 
     return out;
   });
@@ -434,13 +441,19 @@ ArrayRef MatMulAP::proc(KernelEvalContext* ctx, const ArrayRef& x,
   SPU_PROFILE_TRACE_KERNEL(ctx, x, y);
 
   const auto field = x.eltype().as<Ring2k>()->field();
+
+  ArrayRef z(makeType<AShrTy>(field), M * N);
+
   auto x1 = getFirstShare(x);
   auto x2 = getSecondShare(x);
 
-  auto z1 = ring_mmul(x1, y, M, N, K);
-  auto z2 = ring_mmul(x2, y, M, N, K);
+  auto z1 = getFirstShare(z);
+  auto z2 = getSecondShare(z);
 
-  return makeAShare(z1, z2, field);
+  ring_mmul_(z1, x1, y, M, N, K);
+  ring_mmul_(z2, x2, y, M, N, K);
+
+  return z;
 }
 
 ArrayRef MatMulAA::proc(KernelEvalContext* ctx, const ArrayRef& x,
@@ -468,8 +481,7 @@ ArrayRef MatMulAA::proc(KernelEvalContext* ctx, const ArrayRef& x,
   auto t0 = std::async(ring_mmul, x1, y1, M, N, K);  //
   auto t1 = std::async(ring_mmul, x1, y2, M, N, K);  //
   auto t2 = std::async(ring_mmul, x2, y1, M, N, K);
-  auto z1 = ring_sum({t0.get(), t1.get(), t2.get()});
-  ring_add_(z1, r.get());
+  auto z1 = ring_sum({t0.get(), t1.get(), t2.get(), r.get()});
 
   auto z2 = comm->rotate(z1, kBindName);  // comm => 1, k
 
@@ -490,10 +502,10 @@ ArrayRef LShiftA::proc(KernelEvalContext* ctx, const ArrayRef& in,
     auto _in = ArrayView<std::array<U, 2>>(in);
     auto _out = ArrayView<std::array<U, 2>>(out);
 
-    for (auto idx = 0; idx < in.numel(); idx++) {
+    pforeach(0, in.numel(), [&](int64_t idx) {
       _out[idx][0] = _in[idx][0] << bits;
       _out[idx][1] = _in[idx][1] << bits;
-    }
+    });
 
     return out;
   });
@@ -555,11 +567,11 @@ std::vector<T> openWith(Communicator* comm, size_t peer_rank,
   auto peer = comm->recv<T>(peer_rank, "_");
   YASL_ENFORCE(peer.size() == in.size());
   std::vector<T> out(in.size());
-  yasl::parallel_for(0, in.size(), GRAIN_SIZE, [&](int64_t beg, int64_t end) {
-    for (int64_t idx = beg; idx < end; ++idx) {
-      out[idx] = in[idx] + peer[idx];
-    }
+
+  pforeach(0, in.size(), [&](int64_t idx) {  //
+    out[idx] = in[idx] + peer[idx];
   });
+
   return out;
 }
 
@@ -597,20 +609,18 @@ ArrayRef TruncPrAPrecise::proc(KernelEvalContext* ctx, const ArrayRef& in,
         prg_state->fillPrssPair(absl::MakeSpan(r), {}, false, true);
 
         std::vector<U> x_plus_r(numel);
-        yasl::parallel_for(0, numel, GRAIN_SIZE, [&](int64_t beg, int64_t end) {
-          for (int64_t idx = beg; idx < end; ++idx) {
-            // convert to 2-outof-2 share.
-            auto x = _in[idx][0] + _in[idx][1];
+        pforeach(0, numel, [&](int64_t idx) {
+          // convert to 2-outof-2 share.
+          auto x = _in[idx][0] + _in[idx][1];
 
-            // handle negative number.
-            // assume secret x in [-2^(k-2), 2^(k-2)), by
-            // adding 2^(k-2) x' = x + 2^(k-2) in [0,
-            // 2^(k-1)), with msb(x') == 0
-            x += U(1) << (k - 2);
+          // handle negative number.
+          // assume secret x in [-2^(k-2), 2^(k-2)), by
+          // adding 2^(k-2) x' = x + 2^(k-2) in [0,
+          // 2^(k-1)), with msb(x') == 0
+          x += U(1) << (k - 2);
 
-            // mask it with ra
-            x_plus_r[idx] = x + r[idx];
-          }
+          // mask it with ra
+          x_plus_r[idx] = x + r[idx];
         });
 
         // open c = <x> + <r>
@@ -624,44 +634,38 @@ ArrayRef TruncPrAPrecise::proc(KernelEvalContext* ctx, const ArrayRef& in,
         auto rc = absl::MakeSpan(cr).subspan(numel, numel);
 
         std::vector<U> y2(numel);  // the 2-out-of-2 truncation result
-        yasl::parallel_for(0, numel, GRAIN_SIZE, [&](int64_t beg, int64_t end) {
-          for (int64_t idx = beg; idx < end; ++idx) {
-            // c_hat = c/2^m mod 2^(k-m-1) = (c << 1) >> (1+m)
-            auto c_hat = (c[idx] << 1) >> (1 + bits);
+        pforeach(0, numel, [&](int64_t idx) {
+          // c_hat = c/2^m mod 2^(k-m-1) = (c << 1) >> (1+m)
+          auto c_hat = (c[idx] << 1) >> (1 + bits);
 
-            // <b> = <rb> ^ c{k-1} = <rb> + c{k-1} - 2*c{k-1}*<rb>
-            // note: <rb> is a randbit (in r^2k)
-            const auto ck_1 = c[idx] >> (k - 1);
-            auto b = rb[idx] + ck_1 - 2 * ck_1 * rb[idx];
+          // <b> = <rb> ^ c{k-1} = <rb> + c{k-1} - 2*c{k-1}*<rb>
+          // note: <rb> is a randbit (in r^2k)
+          const auto ck_1 = c[idx] >> (k - 1);
+          auto b = rb[idx] + ck_1 - 2 * ck_1 * rb[idx];
 
-            // y = c_hat - <rc> + <b> * 2^(k-m-1)
-            auto y = c_hat - rc[idx] + (b << (k - 1 - bits));
+          // y = c_hat - <rc> + <b> * 2^(k-m-1)
+          auto y = c_hat - rc[idx] + (b << (k - 1 - bits));
 
-            // re-encode negative numbers.
-            // from https://eprint.iacr.org/2020/338.pdf, section 5.1
-            // y' = y - 2^(k-2-m)
-            y2[idx] = y - (U(1) << (k - 2 - bits));
-          }
+          // re-encode negative numbers.
+          // from https://eprint.iacr.org/2020/338.pdf, section 5.1
+          // y' = y - 2^(k-2-m)
+          y2[idx] = y - (U(1) << (k - 2 - bits));
         });
 
         //
         std::vector<U> y1(numel);
         prg_state->fillPrssPair(absl::MakeSpan(y1), {}, false, true);
-        yasl::parallel_for(0, numel, GRAIN_SIZE, [&](int64_t beg, int64_t end) {
-          for (int64_t idx = beg; idx < end; ++idx) {
-            y2[idx] -= y1[idx];
-          }
+        pforeach(0, numel, [&](int64_t idx) {  //
+          y2[idx] -= y1[idx];
         });
 
         comm->sendAsync<U>(1, y2, "2to3");
         auto tmp = comm->recv<U>(1, "2to3");
 
         // rebuild the final result.
-        yasl::parallel_for(0, numel, GRAIN_SIZE, [&](int64_t beg, int64_t end) {
-          for (int64_t idx = beg; idx < end; ++idx) {
-            _out[idx][0] = y1[idx];
-            _out[idx][1] = y2[idx] + tmp[idx];
-          }
+        pforeach(0, numel, [&](int64_t idx) {
+          _out[idx][0] = y1[idx];
+          _out[idx][1] = y2[idx] + tmp[idx];
         });
         break;
       }
@@ -670,11 +674,9 @@ ArrayRef TruncPrAPrecise::proc(KernelEvalContext* ctx, const ArrayRef& in,
         prg_state->fillPrssPair({}, absl::MakeSpan(r), true, false);
 
         std::vector<U> x_plus_r(numel);
-        yasl::parallel_for(0, numel, GRAIN_SIZE, [&](int64_t beg, int64_t end) {
-          for (int64_t idx = beg; idx < end; ++idx) {
-            // let t as 2-out-of-2 share, mask it with ra.
-            x_plus_r[idx] = _in[idx][1] + r[idx];
-          }
+        pforeach(0, numel, [&](int64_t idx) {
+          // let t as 2-out-of-2 share, mask it with ra.
+          x_plus_r[idx] = _in[idx][1] + r[idx];
         });
 
         // open c = <x> + <r>
@@ -688,34 +690,28 @@ ArrayRef TruncPrAPrecise::proc(KernelEvalContext* ctx, const ArrayRef& in,
         auto rc = absl::MakeSpan(cr).subspan(numel, numel);
 
         std::vector<U> y2(numel);  // the 2-out-of-2 truncation result
-        yasl::parallel_for(0, numel, GRAIN_SIZE, [&](int64_t beg, int64_t end) {
-          for (int64_t idx = beg; idx < end; ++idx) {
-            // <b> = <rb> ^ c{k-1} = <rb> + c{k-1} - 2*c{k-1}*<rb>
-            // note: <rb> is a randbit (in r^2k)
-            const auto ck_1 = c[idx] >> (k - 1);
-            auto b = rb[idx] + 0 - 2 * ck_1 * rb[idx];
+        pforeach(0, numel, [&](int64_t idx) {
+          // <b> = <rb> ^ c{k-1} = <rb> + c{k-1} - 2*c{k-1}*<rb>
+          // note: <rb> is a randbit (in r^2k)
+          const auto ck_1 = c[idx] >> (k - 1);
+          auto b = rb[idx] + 0 - 2 * ck_1 * rb[idx];
 
-            // y = c_hat - <rc> + <b> * 2^(k-m-1)
-            y2[idx] = 0 - rc[idx] + (b << (k - 1 - bits));
-          }
+          // y = c_hat - <rc> + <b> * 2^(k-m-1)
+          y2[idx] = 0 - rc[idx] + (b << (k - 1 - bits));
         });
 
         std::vector<U> y3(numel);
         prg_state->fillPrssPair({}, absl::MakeSpan(y3), true, false);
-        yasl::parallel_for(0, numel, GRAIN_SIZE, [&](int64_t beg, int64_t end) {
-          for (int64_t idx = beg; idx < end; ++idx) {
-            y2[idx] -= y3[idx];
-          }
+        pforeach(0, numel, [&](int64_t idx) {  //
+          y2[idx] -= y3[idx];
         });
         comm->sendAsync<U>(0, y2, "2to3");
         auto tmp = comm->recv<U>(0, "2to3");
 
         // rebuild the final result.
-        yasl::parallel_for(0, numel, GRAIN_SIZE, [&](int64_t beg, int64_t end) {
-          for (int64_t idx = beg; idx < end; ++idx) {
-            _out[idx][0] = y2[idx] + tmp[idx];
-            _out[idx][1] = y3[idx];
-          }
+        pforeach(0, numel, [&](int64_t idx) {
+          _out[idx][0] = y2[idx] + tmp[idx];
+          _out[idx][1] = y3[idx];
         });
         break;
       }
@@ -732,22 +728,20 @@ ArrayRef TruncPrAPrecise::proc(KernelEvalContext* ctx, const ArrayRef& in,
         auto rc1 = absl::MakeSpan(cr1).subspan(numel, numel);
 
         prg_state->fillPriv(absl::MakeSpan(cr0));
-        yasl::parallel_for(0, numel, GRAIN_SIZE, [&](int64_t beg, int64_t end) {
-          for (int64_t idx = beg; idx < end; ++idx) {
-            // let <rb> = <rc> = 0
-            rb1[idx] = -rb0[idx];
-            rc1[idx] = -rc0[idx];
+        pforeach(0, numel, [&](int64_t idx) {
+          // let <rb> = <rc> = 0
+          rb1[idx] = -rb0[idx];
+          rc1[idx] = -rc0[idx];
 
-            auto r = r0[idx] + r1[idx];
+          auto r = r0[idx] + r1[idx];
 
-            // <rb> = r{k-1}
-            rb0[idx] += r >> (k - 1);
+          // <rb> = r{k-1}
+          rb0[idx] += r >> (k - 1);
 
-            // rc = sum(r{i-m} << (i-m)) for i in range(m,
-            // k-2)
-            //    = (r<<1)>>(m+1)
-            rc0[idx] += (r << 1) >> (bits + 1);
-          }
+          // rc = sum(r{i-m} << (i-m)) for i in range(m,
+          // k-2)
+          //    = (r<<1)>>(m+1)
+          rc0[idx] += (r << 1) >> (bits + 1);
         });
 
         comm->sendAsync<U>(0, cr0, "cr0");
@@ -756,11 +750,9 @@ ArrayRef TruncPrAPrecise::proc(KernelEvalContext* ctx, const ArrayRef& in,
         std::vector<U> y3(numel);
         std::vector<U> y1(numel);
         prg_state->fillPrssPair(absl::MakeSpan(y3), absl::MakeSpan(y1));
-        yasl::parallel_for(0, numel, GRAIN_SIZE, [&](int64_t beg, int64_t end) {
-          for (int64_t idx = beg; idx < end; ++idx) {
-            _out[idx][0] = y3[idx];
-            _out[idx][1] = y1[idx];
-          }
+        pforeach(0, numel, [&](int64_t idx) {
+          _out[idx][0] = y3[idx];
+          _out[idx][1] = y1[idx];
         });
         break;
       }
@@ -773,7 +765,6 @@ ArrayRef TruncPrAPrecise::proc(KernelEvalContext* ctx, const ArrayRef& in,
 }
 
 namespace {
-
 // split even and odd bits. e.g.
 //   xAyBzCwD -> (xyzw, ABCD)
 std::pair<ArrayRef, ArrayRef> bit_split(const ArrayRef& in) {
@@ -811,7 +802,7 @@ std::pair<ArrayRef, ArrayRef> bit_split(const ArrayRef& in) {
       auto _lo = ArrayView<std::array<OutT, 2>>(lo);
       auto _hi = ArrayView<std::array<OutT, 2>>(hi);
 
-      for (int64_t idx = 0; idx < in.numel(); idx++) {
+      pforeach(0, in.numel(), [&](int64_t idx) {
         InT r0 = _in[idx][0];
         InT r1 = _in[idx][1];
         // algorithm:
@@ -835,7 +826,7 @@ std::pair<ArrayRef, ArrayRef> bit_split(const ArrayRef& in) {
         _hi[idx][0] = static_cast<OutT>(r0 >> (in_nbits / 2)) & mask;
         _lo[idx][1] = static_cast<OutT>(r1) & mask;
         _hi[idx][1] = static_cast<OutT>(r1 >> (in_nbits / 2)) & mask;
-      }
+      });
     });
   });
 
@@ -849,7 +840,7 @@ ArrayRef carry_out(Object* ctx, const ArrayRef& x, const ArrayRef& y,
   auto P = xor_bb(ctx, x, y);
   auto G = and_bb(ctx, x, y);
 
-  // Use koggle stone layout.
+  // Use kogge stone layout.
   while (k > 1) {
     if (k % 2 != 0) {
       k += 1;
@@ -878,7 +869,7 @@ ArrayRef carry_out(Object* ctx, const ArrayRef& x, const ArrayRef& y,
 }  // namespace
 
 ArrayRef MsbA::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
-  SPU_PROFILE_TRACE_KERNEL(ctx, in);
+  SPU_PROFILE_END_TRACE_KERNEL(ctx, in);
 
   const auto field = in.eltype().as<AShrTy>()->field();
   const auto numel = in.numel();
@@ -887,14 +878,16 @@ ArrayRef MsbA::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
 
   // First construct 2 boolean shares.
   // Let
-  //   in = [(x0, x1), (x1, x2), (x2, x0)] as input.
+  //   X = [(x0, x1), (x1, x2), (x2, x0)] as input.
   //   Z = (z0, z1, z2) as boolean zero share.
   //
-  // Construct
-  //   M = [((x0+x1)^z0, z1) (z1, z2), (z2, (x0+x1)^z0)]
-  //   N = [(0, 0), (0, x2), (x2, 0)]
-  // Then
-  //   Y = PPA(M, N) as the output.
+  // Construct M, N as boolean shares,
+  //   M = [((x0+x1)^z0, z1), (z1, z2), (z2, (x0+x1)^z0)]
+  //   N = [(0,          0),  (0,  x2), (x2, 0         )]
+  //
+  // That
+  //  M + N = (x0+x1)^z0^z1^z2 + x2
+  //        = x0 + x1 + x2 = X
   const Type bshr_type =
       makeType<BShrTy>(GetStorageType(field), SizeOf(field) * 8);
   ArrayRef m(bshr_type, in.numel());
@@ -910,20 +903,21 @@ ArrayRef MsbA::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
     std::vector<U> r1(numel);
     prg_state->fillPrssPair(absl::MakeSpan(r0), absl::MakeSpan(r1));
 
-    for (auto idx = 0; idx < in.numel(); idx++) {
+    pforeach(0, in.numel(), [&](int64_t idx) {
       r0[idx] = r0[idx] ^ r1[idx];
       if (comm->getRank() == 0) {
         r0[idx] ^= (_in[idx][0] + _in[idx][1]);
       }
-    }
+    });
 
     r1 = comm->rotate<U>(r0, "m");
-    for (auto idx = 0; idx < in.numel(); idx++) {
+
+    pforeach(0, in.numel(), [&](int64_t idx) {
       _m[idx][0] = r0[idx];
       _m[idx][1] = r1[idx];
       _n[idx][0] = comm->getRank() == 2 ? _in[idx][0] : 0;
       _n[idx][1] = comm->getRank() == 1 ? _in[idx][1] : 0;
-    }
+    });
   });
 
   // Compute the k-1'th carry bit.

@@ -15,9 +15,121 @@
 #include "spu/core/profile.h"
 
 #include <atomic>
+#include <cstdlib>
+#include <cstring>
+#include <fstream>
 #include <mutex>
+#include <string>
+#include <string_view>
+#include <vector>
+
+#include "absl/strings/ascii.h"
+#include "absl/strings/numbers.h"
+#include "absl/strings/str_split.h"
+#include "yasl/base/exception.h"
+
+#ifdef __APPLE__
+#include <mach/mach.h>
+#endif
 
 namespace spu {
+
+namespace {
+
+#ifdef __linux__
+
+std::string ReadProcSelfStatusByKey(const std::string& key) {
+  std::string ret;
+  std::ifstream self_status("/proc/self/status");
+  std::string line;
+  while (std::getline(self_status, line)) {
+    std::vector<absl::string_view> fields =
+        absl::StrSplit(line, absl::ByChar(':'));
+    if (fields.size() == 2 && key == absl::StripAsciiWhitespace(fields[0])) {
+      ret = absl::StripAsciiWhitespace(fields[1]);
+    }
+  }
+  return ret;
+}
+
+float ReadVMxFromProcSelfStatus(const std::string& key) {
+  const std::string str_usage = ReadProcSelfStatusByKey(key);
+  std::vector<absl::string_view> fields =
+      absl::StrSplit(str_usage, absl::ByChar(' '));
+  if (fields.size() == 2) {
+    size_t ret = 0;
+    if (!absl::SimpleAtoi(fields[0], &ret)) {
+      return -1;
+    }
+    return static_cast<float>(ret) / 1024 / 1024;
+  }
+  return -1;
+}
+
+float GetPeakMemUsage() { return ReadVMxFromProcSelfStatus("VmHWM"); }
+
+float GetCurrentMemUsage() { return ReadVMxFromProcSelfStatus("VmRSS"); }
+
+#elif defined(__APPLE__)
+
+float GetCurrentMemUsage() {
+  struct mach_task_basic_info t_info;
+  mach_msg_type_number_t t_info_count = MACH_TASK_BASIC_INFO_COUNT;
+
+  auto ret = task_info(mach_task_self(), MACH_TASK_BASIC_INFO,
+                       reinterpret_cast<task_info_t>(&t_info), &t_info_count);
+
+  if (KERN_SUCCESS != ret || MACH_TASK_BASIC_INFO_COUNT != t_info_count) {
+    return -1;
+  }
+  return static_cast<float>(t_info.resident_size) / 1024 / 1024;
+}
+
+float GetPeakMemUsage() {
+  struct mach_task_basic_info t_info;
+  mach_msg_type_number_t t_info_count = MACH_TASK_BASIC_INFO_COUNT;
+
+  auto ret = task_info(mach_task_self(), MACH_TASK_BASIC_INFO,
+                       reinterpret_cast<task_info_t>(&t_info), &t_info_count);
+
+  if (KERN_SUCCESS != ret || MACH_TASK_BASIC_INFO_COUNT != t_info_count) {
+    return -1;
+  }
+  return static_cast<float>(t_info.resident_size_max) / 1024 / 1024;
+}
+
+#endif
+
+}  // namespace
+
+void MemProfilingGuard::enable(int i, std::string_view m, std::string_view n) {
+  indent_ = i * 2;
+  module_ = m;
+  name_ = n;
+  start_peak_ = GetPeakMemUsage();
+  enable_ = true;
+  spuTraceLog()->info("{}{}.{}: before peak {:.2f}GB, current {:.2f}GB",
+                      std::string(indent_, ' '), module_, name_, start_peak_,
+                      GetCurrentMemUsage());
+}
+
+MemProfilingGuard::~MemProfilingGuard() {
+  if (!enable_) {
+    return;
+  }
+  auto p = GetPeakMemUsage();
+  auto increase = p - start_peak_;
+  if (increase >= 0.01) {
+    spuTraceLog()->info(
+        "{}{}.{}: peak {:.2f}GB, increase {:.2f}GB, current {:.2f}GB",
+        std::string(indent_, ' '), module_, name_, p, increase,
+        GetCurrentMemUsage());
+  } else {
+    spuTraceLog()->info("{}{}.{}: peak {:.2f}GB, current {:.2f}GB",
+                        std::string(indent_, ' '), module_, name_, p,
+                        GetCurrentMemUsage());
+  }
+}
 
 void ProfilingContext::addRecord(ActionRecord&& record) {
   if (profiling_enabled_) {

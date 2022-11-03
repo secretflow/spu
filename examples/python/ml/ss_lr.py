@@ -12,22 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Build example
-# > bazel build -c opt //examples/python/...
-#
 # Start nodes.
-# > bazel-bin/examples/python/utils/nodectl up
+# > bazel run -c opt //examples/python/utils:nodectl -- up
 #
 # Run this example script.
-# > bazel-bin/examples/python/ml/ss_lr
+# > bazel run //examples/python/ml:ss_lr
 
 import argparse
 import json
 import time
 import logging
 from enum import Enum
-from sklearn.metrics import roc_auc_score
-from typing import Any, Dict, List, Tuple, Union
+from sklearn.metrics import roc_auc_score, explained_variance_score
+from typing import Dict, List
+
+import examples.python.utils.dataset_utils as dsutil
 
 import jax.numpy as jnp
 import numpy as np
@@ -237,48 +236,31 @@ class SSLR:
 
 parser = argparse.ArgumentParser(description='distributed driver.')
 parser.add_argument("-c", "--config", default="examples/python/conf/3pc.json")
+parser.add_argument(
+    "-d",
+    "--dataset_config",
+    default="examples/python/conf/ds_mock_regression_basic.json",
+)
 args = parser.parse_args()
 
 with open(args.config, 'r') as file:
     conf = json.load(file)
 
+with open(args.dataset_config, "r") as f:
+    dataset_config = json.load(f)
+
 ppd.init(conf["nodes"], conf["devices"])
 
-MOCK_DS = False
-MOCK_ROWS = 500000
-MOCK_COLS = 100
-
-
-def load_feature_r1():
-    if MOCK_DS:
-        x = np.random.rand(MOCK_ROWS, MOCK_COLS)
-        y = np.random.randint(1, size=(MOCK_ROWS,))
-        return x, y
-    else:
-        from sklearn.datasets import load_breast_cancer
-
-        ds = load_breast_cancer()
-        x, y = ds['data'], ds['target']
-        x = (x - np.min(x)) / (np.max(x) - np.min(x))
-        return x[:, :15], y
-
-
-def load_feature_r2():
-    if MOCK_DS:
-        x = np.random.rand(MOCK_ROWS, MOCK_COLS)
-        return x
-    else:
-        from sklearn.datasets import load_breast_cancer
-
-        ds = load_breast_cancer()
-        x = ds['data']
-        x = (x - np.min(x)) / (np.max(x) - np.min(x))  # normalize
-        return x[:, 15:]
-
+REGTYPE = None
 
 if __name__ == '__main__':
-    x1, y = ppd.device("P1")(load_feature_r1)()
-    x2 = ppd.device("P2")(load_feature_r2)()
+    if dataset_config["problem_type"] == "regression":
+        REGTYPE = RegType.Linear.value
+    elif dataset_config["problem_type"] == "classification":
+        REGTYPE = RegType.Logistic.value
+    x1, x2, y = dsutil.load_dataset_by_config(dataset_config)
+    x1, y = ppd.device("P1")(dsutil.load_feature_r1)(x1, y)
+    x2 = ppd.device("P2")(dsutil.load_feature_r2)(x2)
 
     xs = [x1, x2]
 
@@ -290,14 +272,19 @@ if __name__ == '__main__':
         epochs=10,
         learning_rate=0.1,
         batch_size=1024,
-        reg_type='logistic',
+        reg_type=REGTYPE,
         penalty='None',
         l2_norm=0.0,
     )
     print(f"train time {time.time()- start}")
 
     start = time.time()
-    yhat = ppd.get(sslr.predict(xs=xs, w=model, reg_type='logistic'))
+    yhat = ppd.get(sslr.predict(xs=xs, w=model, reg_type=REGTYPE))
     print(f"predict time {time.time()- start}")
 
-    print(f"auc {roc_auc_score(ppd.get(y), ppd.get(yhat))}")
+    if REGTYPE == RegType.Linear.value:
+        print(
+            f"explained variance score {explained_variance_score(ppd.get(y), ppd.get(yhat))}"
+        )
+    else:
+        print(f"auc {roc_auc_score(ppd.get(y), ppd.get(yhat))}")

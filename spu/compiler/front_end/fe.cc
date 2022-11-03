@@ -14,9 +14,11 @@
 
 #include "spu/compiler/front_end/fe.h"
 
+#include "mlir-hlo/Dialect/mhlo/IR/hlo_ops.h"
 #include "mlir-hlo/Dialect/mhlo/transforms/passes.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"
 #include "mlir/IR/BuiltinOps.h"
+#include "mlir/Parser/Parser.h"
 #include "mlir/Pass/Pass.h"
 #include "mlir/Pass/PassManager.h"
 #include "mlir/Transforms/Passes.h"
@@ -30,13 +32,23 @@
 namespace spu::compiler {
 
 FE::FE(CompilationContext *ctx) : ctx_(ctx) {
-  ctx_->getMLIRContext()->loadDialect<mlir::pphlo::PPHloDialect>();
+  ctx_->getMLIRContext()
+      ->loadDialect<mlir::pphlo::PPHloDialect, mlir::mhlo::MhloDialect,
+                    mlir::func::FuncDialect>();
 }
 
-mlir::OwningOpRef<mlir::ModuleOp> FE::doit(const std::string &input) {
-  // Import hlo
-  HloImporter importer(ctx_);
-  auto module = importer.parseXlaModuleFromString(input);
+mlir::OwningOpRef<mlir::ModuleOp> FE::doit(const std::string &input,
+                                           const std::string &type) {
+  mlir::OwningOpRef<mlir::ModuleOp> module;
+  if (type == "hlo") { // Import hlo
+    HloImporter importer(ctx_);
+    module = importer.parseXlaModuleFromString(input);
+  } else if (type == "mhlo") { // Import mhlo
+    module =
+        mlir::parseSourceString<mlir::ModuleOp>(input, ctx_->getMLIRContext());
+  } else {
+    YASL_THROW("Unsupported input IR type");
+  }
 
   // Run pipeline
   mlir::PassManager pm(ctx_->getMLIRContext());
@@ -57,7 +69,7 @@ void FE::buildFrontEndPipeline(mlir::PassManager *pm) {
   {
     // mhlo side
     pm->addPass(mlir::createInlinerPass());
-    pm->addPass(mlir::mhlo::CreateExpandHloTuplesPass());
+    pm->addPass(mlir::mhlo::createExpandHloTuplesPass());
     auto &optPM = pm->nest<mlir::func::FuncOp>();
     optPM.addPass(mlir::mhlo::createLegalizeEinsumToDotGeneralPass());
     optPM.addPass(mlir::mhlo::createLegalizeGeneralDotPass());

@@ -106,14 +106,6 @@ gentbl_cc_library(
             ["-gen-attrdef-defs"],
             "pphlo_attrs.cc.inc",
         ),
-        (
-            ["-gen-struct-attr-decls"],
-            "pphlo_struct_attrs.h.inc",
-        ),
-        (
-            ["-gen-struct-attr-defs"],
-            "pphlo_struct_attrs.cc.inc",
-        ),
     ],
     tblgen = "@llvm-project//mlir:mlir-tblgen",
     td_file = "pphlo_attrs.td",

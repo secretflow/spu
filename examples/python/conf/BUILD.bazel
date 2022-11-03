@@ -19,5 +19,7 @@ filegroup(
     srcs = [
         "2pc.json",
         "3pc.json",
+        "ds_breast_cancer_basic.json",
+        "ds_mock_regression_basic.json",
     ],
 )

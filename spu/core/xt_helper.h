@@ -137,6 +137,7 @@ struct PtBufferView {
         shape(xarr.shape().begin(), xarr.shape().end()),
         strides({xarr.strides().begin(), xarr.strides().end()}) {}
 
+  // FIXME(jint): make it work when T = bool
   template <typename T, std::enable_if_t<std::is_arithmetic_v<T>, bool> = true>
   /* implicit */ PtBufferView(const std::vector<T>& xarr)
       : ptr(static_cast<void const*>(xarr.data())),
