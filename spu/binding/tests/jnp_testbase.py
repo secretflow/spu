@@ -14,12 +14,9 @@
 
 
 import collections
-import inspect
 import itertools
-import unittest
 from enum import Enum
 from functools import partial
-from typing import Callable
 
 import jax.numpy as jnp
 import numpy as np
@@ -150,7 +147,7 @@ COMPOUND_OP_RECORDS = [
     # REC("divide", 2, number_dtypes, all_shapes, jtu.rand_nonzero),  # FIXME
     # REC("divmod", 2, int_dtypes + float_dtypes, all_shapes, jtu.rand_nonzero), # FIXME
     # REC("exp2", 1, number_dtypes, all_shapes, rand_default), # FIXME
-    # REC("expm1", 1, number_dtypes, all_shapes, jtu.rand_small_positive), # FIXME
+    REC("expm1", 1, number_dtypes, all_shapes, jtu.rand_small_positive),
     REC("fix", 1, float_dtypes, all_shapes, rand_default),
     REC("fix", 1, int_dtypes, all_shapes, rand_default),
     # REC("floor_divide", 2, number_dtypes, all_shapes, jtu.rand_nonzero), # FIXME
@@ -188,7 +185,7 @@ COMPOUND_OP_RECORDS = [
     # REC("modf", 1, int_dtypes, all_shapes, rand_default), #FIXME
     # REC("rint", 1, float_dtypes, all_shapes, jtu.rand_some_inf_and_nan), # FIXME
     # REC("rint", 1, int_dtypes, all_shapes, rand_default), # FIXME
-    # REC("sign", 1, number_dtypes, all_shapes, jtu.rand_some_inf_and_nan), # FIXME
+    REC("sign", 1, number_dtypes, all_shapes, jtu.rand_default),
     # REC("copysign", 2, number_dtypes, all_shapes, jtu.rand_some_inf_and_nan), # FIXME
     # REC("sinc", 1, number_dtypes, all_shapes, rand_default), # FIXME
     REC("square", 1, number_dtypes, all_shapes, rand_default),
@@ -381,5 +378,24 @@ class JnpTests:
                 jnp_out,
                 err_msg="{} faild.\nlhs = {}, rhs = {}\nspu = {}\njnp = {}".format(
                     name, *args, rhs, spu_out, jnp_out
+                ),
+            )
+
+        def test_gather(self):
+            jnp_fn = lambda x, indices: jnp.take(x, indices)
+            # FIXME: This test is just to verify gather lowering works as expected
+            # Remove this config once we support secret indexing
+            self._sim.rt_config.reveal_secret_indicies = True
+            spu_fn = sim_jax(self._sim, jnp_fn)
+            x_rng = jtu.rand_int(self._rng, low=0, high=32)
+            indices_rng = jtu.rand_int(self._rng, low=0, high=9)
+            args = [x_rng((10,), np.int32), indices_rng((3,), np.int32)]
+            jnp_out = jnp_fn(*args)
+            spu_out = spu_fn(*args)
+            npt.assert_equal(
+                spu_out,
+                jnp_out,
+                err_msg="take faild.\nx = {}, indices = {}\nspu = {}\njnp = {}".format(
+                    args[0], args[1], spu_out, jnp_out
                 ),
             )

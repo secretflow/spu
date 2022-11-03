@@ -25,8 +25,8 @@
 #include "spu/device/pphlo/executor.h"
 #include "spu/device/symbol_table.h"
 #include "spu/device/test_utils.h"
-#include "spu/hal/debug.h"
-#include "spu/hal/value.h"
+#include "spu/kernel/hal/debug.h"
+#include "spu/kernel/value.h"
 #include "spu/mpc/util/simulate.h"
 
 llvm::cl::opt<std::string>
@@ -122,7 +122,7 @@ int main(int argc, char **argv) {
 
     spu::ValueProto vp;
     YASL_ENFORCE(vp.ParseFromIstream(&stream));
-    auto v = spu::hal::Value::fromProto(vp);
+    auto v = spu::Value::fromProto(vp);
     SPDLOG_INFO("Read input {} {} for processor {} from {}, v = {}",
                 var_counter, exec.input_names(var_counter),
                 hctx->lctx()->Rank(), data_file.c_str(), v);

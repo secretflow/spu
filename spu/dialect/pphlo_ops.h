@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include "mlir/Interfaces/InferTypeOpInterface.h"
 #include "mlir/Interfaces/SideEffectInterfaces.h"
 
 namespace mlir::pphlo::OpTrait {

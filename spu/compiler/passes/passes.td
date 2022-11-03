@@ -34,12 +34,6 @@ def DecomposeComparison : Pass<"decompose-comparison", "func::FuncOp"> {
   let dependentDialects = ["pphlo::PPHloDialect"];
 }
 
-def DecomposeSqrt : Pass<"decompose-sqrt", "func::FuncOp"> {
-  let summary = "Decompose sqrt into basic ops.";
-  let constructor = "createDecomposeSqrtPass()";
-  let dependentDialects = ["pphlo::PPHloDialect"];
-}
-
 def LowerConversionCast : Pass<"lower-conversion-cast", "func::FuncOp"> {
   let summary = "Lower UnrealizedConversionCastOp created during dialect conversion.";
   let constructor = "createLowerConversionCastPass()";
@@ -61,5 +55,11 @@ def ReduceTrunc : Pass<"reduce-truncation", "func::FuncOp"> {
 def LowerMixedTypeOp : Pass<"lower-mixed-type-op", "func::FuncOp"> {
   let summary = "Lower into mixed-type dot/mul to help reduce number of trunctions";
   let constructor = "createLowerMixedTypeOpPass()";
+  let dependentDialects = ["pphlo::PPHloDialect"];
+}
+
+def OptimizeMaxPooling: Pass<"optimize-maxpool", "func::FuncOp"> {
+  let summary = "Optimize performance of select and scatter";
+  let constructor = "createOptimizeMaxPoolingPass()";
   let dependentDialects = ["pphlo::PPHloDialect"];
 }

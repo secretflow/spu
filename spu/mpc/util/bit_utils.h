@@ -18,11 +18,11 @@
 
 namespace spu::mpc {
 
-inline int log2Floor(uint64_t n) {
+inline constexpr int log2Floor(uint64_t n) {
   return (n <= 1) ? 0 : (63 - absl::countl_zero(n));
 }
 
-inline int log2Ceil(uint64_t n) {
+inline constexpr int log2Ceil(uint64_t n) {
   return (n <= 1) ? 0 : (64 - absl::countl_zero(n - 1));
 }
 

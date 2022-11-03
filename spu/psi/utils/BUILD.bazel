@@ -123,7 +123,13 @@ spu_cc_library(
 
 spu_cc_library(
     name = "test_utils",
-    hdrs = ["test_utils.h"],
+    hdrs = [
+        "test_utils.h",
+    ],
+    deps = [
+        "//spu/psi:psi_cc_proto",
+        "@yasl//yasl/crypto:hash_util",
+    ],
 )
 
 spu_cc_library(

@@ -18,7 +18,8 @@
 
 #include "fmt/format.h"
 #include "fmt/ostream.h"
-#include "yasl/utils/parallel.h"
+
+#include "spu/core/parallel_utils.h"
 
 namespace spu {
 namespace detail {
@@ -28,14 +29,14 @@ void strided_copy(int64_t numel, int64_t elsize, void* dst, int64_t dstride,
   const char* src_itr = static_cast<const char*>(src);
   char* dst_itr = static_cast<char*>(dst);
 
-  if (dstride == elsize && sstride == elsize) {
+  if (dstride == 1 && sstride == 1) {
     std::memcpy(dst_itr, src_itr, elsize * numel);
   } else {
-    yasl::parallel_for(0, numel, 4096, [&](int64_t begin, int64_t end) {
-      for (int64_t idx = begin; idx < end; ++idx) {
-        std::memcpy(&dst_itr[idx * dstride * elsize],
-                    &src_itr[idx * sstride * elsize], elsize);
-      }
+    dstride *= elsize;
+    sstride *= elsize;
+
+    pforeach(0, numel, [&](int64_t idx) {
+      std::memcpy(&dst_itr[idx * dstride], &src_itr[idx * sstride], elsize);
     });
   }
 }

@@ -63,13 +63,13 @@ class RLWE2LWETest : public testing::TestWithParam<FieldType> {
     std::vector<int> modulus_bits;
     switch (field_) {
       case FieldType::FM32:
-        modulus_bits = {50, 39, 20};
+        modulus_bits = {40, 24 + 5};
         break;
       case FieldType::FM64:
-        modulus_bits = {55, 55, 48, 20};
+        modulus_bits = {45, 45, 38 + 5};
         break;
       case FieldType::FM128:
-        modulus_bits = {59, 59, 59, 59, 50, 20};
+        modulus_bits = {55, 55, 55, 55, 36 + 5};
         break;
       default:
         YASL_THROW("Not support field type {}", field_);
@@ -79,11 +79,10 @@ class RLWE2LWETest : public testing::TestWithParam<FieldType> {
     parms.set_poly_modulus_degree(poly_deg);
     auto modulus = seal::CoeffModulus::Create(poly_deg, modulus_bits);
     parms.set_coeff_modulus(modulus);
+    parms.set_use_special_prime(false);
 
     context_ = std::make_shared<seal::SEALContext>(parms, true,
                                                    seal::sec_level_type::none);
-    modulus.pop_back();
-    parms.set_coeff_modulus(modulus);
     ms_context_ = std::make_shared<seal::SEALContext>(
         parms, false, seal::sec_level_type::none);
     uint32_t bitlen = FieldBitLen(field_);

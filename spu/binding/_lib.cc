@@ -24,8 +24,8 @@
 #include "spu/core/type_util.h"
 #include "spu/device/io.h"
 #include "spu/device/pphlo/executor.h"
-#include "spu/hal/context.h"
-#include "spu/hal/value.h"
+#include "spu/kernel/context.h"
+#include "spu/kernel/value.h"
 #include "spu/psi/bucket_psi.h"
 #include "spu/psi/core/ecdh_psi.h"
 #include "spu/psi/memory_psi.h"
@@ -178,6 +178,7 @@ void BindLink(py::module& m) {
 }
 
 // Wrap Processor, it's workaround for protobuf pybind11/protoc conflict.
+
 class RuntimeWrapper {
   std::unique_ptr<spu::HalContext> hctx_;
 
@@ -197,21 +198,44 @@ class RuntimeWrapper {
     spu::ExecutableProto exec;
     YASL_ENFORCE(exec.ParseFromString(exec_pb));
 
+    MemProfilingGuard mem_guard;
+    if (hctx_->getTracingEnabled()) {
+      mem_guard.enable(0, "spu", exec.name());
+    }
+
     spu::device::pphlo::PPHloExecutor executor(hctx_.get());
     executor.runWithEnv(exec, &env_);
   }
 
   void SetVar(const std::string& name, const py::bytes& value) {
+    MemProfilingGuard mem_guard;
+    if (hctx_->getTracingEnabled()) {
+      mem_guard.enable(0, "set", name);
+    }
+
     ValueProto proto;
     YASL_ENFORCE(proto.ParseFromString(value));
-    env_.setVar(name, hal::Value::fromProto(proto));
+
+    env_.setVar(name, spu::Value::fromProto(proto));
   }
 
   py::bytes GetVar(const std::string& name) const {
+    MemProfilingGuard mem_guard;
+    if (hctx_->getTracingEnabled()) {
+      mem_guard.enable(0, "get", name);
+    }
+
     return env_.getVar(name).toProto().SerializeAsString();
   }
 
-  void DelVar(const std::string& name) { env_.delVar(name); }
+  void DelVar(const std::string& name) {
+    MemProfilingGuard mem_guard;
+    if (hctx_->getTracingEnabled()) {
+      mem_guard.enable(0, "del", name);
+    }
+
+    env_.delVar(name);
+  }
 
   void Clear() { env_.clear(); }
 };
@@ -316,12 +340,12 @@ class IoWrapper {
   }
 
   py::array reconstruct(const std::vector<std::string>& vals) {
-    std::vector<spu::hal::Value> shares;
+    std::vector<spu::Value> shares;
     YASL_ENFORCE(vals.size() > 0);
     for (const auto& val_str : vals) {
       spu::ValueProto vp;
       YASL_ENFORCE(vp.ParseFromString(val_str));
-      shares.push_back(spu::hal::Value::fromProto(vp));
+      shares.push_back(spu::Value::fromProto(vp));
     }
 
     // sanity
@@ -412,8 +436,8 @@ PYBIND11_MODULE(_lib, m) {
   // bind compiler.
   m.def(
       "compile",
-      [](const py::bytes& hlo_text, const std::string& input_visbility_map,
-         const std::string& dump_path) {
+      [](const py::bytes& ir_text, const std::string& ir_type,
+         const std::string& input_visbility_map, const std::string& dump_path) {
         py::scoped_ostream_redirect stream(
             std::cout,                                 // std::ostream&
             py::module_::import("sys").attr("stdout")  // Python output
@@ -426,10 +450,10 @@ PYBIND11_MODULE(_lib, m) {
           ctx.enablePrettyPrintWithDir(dump_path);
         }
 
-        return py::bytes(spu::compiler::compile(&ctx, hlo_text));
+        return py::bytes(spu::compiler::compile(&ctx, ir_text, ir_type));
       },
-      "spu compile.", py::arg("hlo_text"), py::arg("vis_map"),
-      py::arg("dump_path"));
+      "spu compile.", py::arg("ir_text"), py::arg("ir_type"),
+      py::arg("vis_map"), py::arg("dump_path"));
 
   // bind spu libs.
   py::module link_m = m.def_submodule("link");

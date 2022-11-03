@@ -24,6 +24,15 @@ spu_cc_library(
     ],
 )
 
+spu_cc_test(
+    name = "bit_utils_test",
+    srcs = ["bit_utils_test.cc"],
+    deps = [
+        ":bit_utils",
+        "@yasl//yasl/base:int128",
+    ],
+)
+
 spu_cc_library(
     name = "circuits",
     hdrs = ["circuits.h"],
@@ -121,11 +130,19 @@ spu_cc_library(
     name = "linalg",
     srcs = ["linalg.cc"],
     hdrs = ["linalg.h"],
+    linkopts = select({
+        "@bazel_tools//src/conditions:darwin": [],
+        "//conditions:default": ["-fopenmp"],
+    }),
     deps = [
         "@com_github_eigenteam_eigen//:eigen3",
-        "@llvm-project//llvm:Support",
         "@yasl//yasl/utils:parallel",
-    ],
+        "//spu/core:parallel_utils",
+    ] + select({
+        "@bazel_tools//src/conditions:darwin_x86_64": ["@local_homebrew_x64//:openmp"],
+        "@bazel_tools//src/conditions:darwin_arm64": ["@local_homebrew_arm64//:openmp"],
+        "//conditions:default": [],
+    }),
 )
 
 spu_cc_test(

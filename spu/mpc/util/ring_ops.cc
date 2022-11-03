@@ -325,8 +325,8 @@ ArrayRef ring_mul(const ArrayRef& x, const ArrayRef& y) {
 
 void ring_mul_(ArrayRef& x, const ArrayRef& y) { ring_mul_impl(x, x, y); }
 
-ArrayRef ring_mmul(const ArrayRef& lhs, const ArrayRef& rhs, size_t M, size_t N,
-                   size_t K) {
+void ring_mmul_(ArrayRef& z, const ArrayRef& lhs, const ArrayRef& rhs, size_t M,
+                size_t N, size_t K) {
   YASL_ENFORCE(lhs.eltype().isa<Ring2k>(), "lhs not ring, got={}",
                lhs.eltype());
   YASL_ENFORCE(rhs.eltype().isa<Ring2k>(), "rhs not ring, got={}",
@@ -336,23 +336,28 @@ ArrayRef ring_mmul(const ArrayRef& lhs, const ArrayRef& rhs, size_t M, size_t N,
 
   const auto field = lhs.eltype().as<Ring2k>()->field();
   return DISPATCH_ALL_FIELDS(field, kModule, [&]() {
-    ArrayRef ret(lhs.eltype(), M * N);
     const auto& lhs_strides = lhs.stride();
     const auto lhs_stride_scale = lhs.elsize() / sizeof(ring2k_t);
     const auto& rhs_strides = rhs.stride();
     const auto rhs_stride_scale = rhs.elsize() / sizeof(ring2k_t);
-    const auto& ret_strides = ret.stride();
-    const auto ret_stride_scale = ret.elsize() / sizeof(ring2k_t);
+    const auto& ret_strides = z.stride();
+    const auto ret_stride_scale = z.elsize() / sizeof(ring2k_t);
 
     linalg::matmul(
         M, N, K, static_cast<const ring2k_t*>(lhs.data()),
         lhs_stride_scale * K * lhs_strides, lhs_stride_scale * lhs_strides,
         static_cast<const ring2k_t*>(rhs.data()),
         rhs_stride_scale * N * rhs_strides, rhs_stride_scale * rhs_strides,
-        static_cast<ring2k_t*>(ret.data()), ret_stride_scale * N * ret_strides,
+        static_cast<ring2k_t*>(z.data()), ret_stride_scale * N * ret_strides,
         ret_stride_scale * ret_strides);
-    return ret;
   });
+}
+
+ArrayRef ring_mmul(const ArrayRef& lhs, const ArrayRef& rhs, size_t M, size_t N,
+                   size_t K) {
+  ArrayRef ret(lhs.eltype(), M * N);
+  ring_mmul_(ret, lhs, rhs, M, N, K);
+  return ret;
 }
 
 ArrayRef ring_and(const ArrayRef& x, const ArrayRef& y) {

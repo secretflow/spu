@@ -17,6 +17,7 @@
 #ifndef SPU_DIALECT_PPHLO_BASE_ENUMS
 #define SPU_DIALECT_PPHLO_BASE_ENUMS
 
+include "mlir/IR/EnumAttr.td"
 include "mlir/IR/OpBase.td"
 
 //===----------------------------------------------------------------------===//

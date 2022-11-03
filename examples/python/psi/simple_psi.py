@@ -62,6 +62,7 @@ def main(_):
         ),
         output_params=psi.OuputParams(path=FLAGS.out_path, need_sort=FLAGS.output_sort),
         bucket_size=FLAGS.bucket_size,
+        curve_type=psi.CurveType.CURVE_25519,
     )
     report = psi.bucket_psi(setup_link(FLAGS.rank), config)
     print(

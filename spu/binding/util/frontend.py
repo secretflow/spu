@@ -11,11 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 
-from typing import List, Callable, Dict
-from cachetools import LRUCache, cached
-
-from enum import Enum
 import functools
+from enum import Enum
+from typing import Callable, Dict, List
+
+from cachetools import LRUCache, cached
 
 import spu.binding.api as spuapi
 import spu.spu_pb2 as spu_pb2
@@ -46,6 +46,7 @@ def _jax_compilation(fn: Callable, static_argnums, args: List, kwargs: Dict):
 class Kind(Enum):
     JAX = 1
     Tensorflow = 2
+    Torch = 3
 
 
 def compile(
@@ -61,14 +62,14 @@ def compile(
     if kind == Kind.JAX:
         import jax
 
-        xla, output = _jax_compilation(fn, static_argnums, args, kwargs)
+        ir_text, output = _jax_compilation(fn, static_argnums, args, kwargs)
         output_flat, _ = jax.tree_util.tree_flatten(output)
         output_names = outputNameGen(output_flat)
     elif kind == Kind.Tensorflow:
         import tensorflow as tf
 
         tf_fn = tf.function(fn, jit_compile=True, experimental_relax_shapes=True)
-        xla = tf_fn.experimental_get_compiler_ir(*args, **kwargs)(
+        ir_text = tf_fn.experimental_get_compiler_ir(*args, **kwargs)(
             stage="hlo_serialized",
         )
 
@@ -81,12 +82,48 @@ def compile(
 
         output = cf.structured_outputs
         output_names = outputNameGen(cf.outputs)
+    elif kind == Kind.Torch:
+        import jax
+        import torch
+        import torch_mlir
+        from torch_mlir._mlir_libs._mlir.ir import Attribute, Context
+
+        assert isinstance(
+            fn, torch.nn.Module
+        ), "currently only torch.nn.Module is supported"
+
+        # convert numpy.ndarray to torch tensor as torch_mlir required
+        arg_tensors = [torch.Tensor(arg) for arg in args]
+        # get mlir module
+        module = torch_mlir.compile(
+            fn, arg_tensors, output_type=torch_mlir.OutputType.MHLO
+        )
+        # get mlir func op of torch.nn.Module.forward function
+        func_op = module.body.operations[0]
+        # rename func name from 'forward' to 'main'
+        with Context():
+            func_op.attributes["sym_name"] = Attribute.parse('"main"')
+
+        # parse output_num from func op signature string
+        func_sig = func_op.attributes["function_type"]
+        output_num = len(str(func_sig).split("->")[1].split(","))
+        # get mhlo
+        ir_text = bytes(str(module), 'utf-8')
+        # mock output
+        output = [0] * output_num
+        output_names = outputNameGen(output)
+        output = tuple(output) if output_num > 1 else output[0]
+        _, output = jax.tree_util.tree_flatten(output)
     else:
         raise NameError(f"Unknown frontend type {kind}")
 
-    mlir = spuapi.compile(xla, input_vis)
-
-    name = fn.func.__name__ if isinstance(fn, functools.partial) else fn.__name__
+    if kind in [Kind.JAX, Kind.Tensorflow]:
+        ir_type = "hlo"
+        name = fn.func.__name__ if isinstance(fn, functools.partial) else fn.__name__
+    elif kind == Kind.Torch:
+        ir_type = "mhlo"
+        name = repr(fn)
+    mlir = spuapi.compile(ir_text, ir_type, input_vis)
     executable = spu_pb2.ExecutableProto(
         name=name,
         input_names=input_names,

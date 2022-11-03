@@ -20,22 +20,22 @@
 #include "mlir/IR/Location.h"
 
 #include "spu/device/frame.h"
-#include "spu/device/pphlo/kernels/basic_binary.h"
-#include "spu/device/pphlo/kernels/basic_ternary.h"
-#include "spu/device/pphlo/kernels/basic_unary.h"
-#include "spu/device/pphlo/kernels/casting.h"
-#include "spu/device/pphlo/kernels/const.h"
-#include "spu/device/pphlo/kernels/control_flow.h"
-#include "spu/device/pphlo/kernels/convolution.h"
-#include "spu/device/pphlo/kernels/dynamic_slice.h"
-#include "spu/device/pphlo/kernels/gather.h"
-#include "spu/device/pphlo/kernels/geometrical.h"
-#include "spu/device/pphlo/kernels/rand.h"
-#include "spu/device/pphlo/kernels/reduce.h"
-#include "spu/device/pphlo/kernels/select_and_scatter.h"
-#include "spu/device/pphlo/kernels/shift.h"
-#include "spu/device/pphlo/kernels/sort.h"
 #include "spu/dialect/pphlo_ops.h"
+#include "spu/kernel/hlo/basic_binary.h"
+#include "spu/kernel/hlo/basic_ternary.h"
+#include "spu/kernel/hlo/basic_unary.h"
+#include "spu/kernel/hlo/casting.h"
+#include "spu/kernel/hlo/const.h"
+#include "spu/kernel/hlo/control_flow.h"
+#include "spu/kernel/hlo/convolution.h"
+#include "spu/kernel/hlo/dynamic_slice.h"
+#include "spu/kernel/hlo/gather.h"
+#include "spu/kernel/hlo/geometrical.h"
+#include "spu/kernel/hlo/rand.h"
+#include "spu/kernel/hlo/reduce.h"
+#include "spu/kernel/hlo/select_and_scatter.h"
+#include "spu/kernel/hlo/shift.h"
+#include "spu/kernel/hlo/sort.h"
 
 namespace {
 
@@ -117,7 +117,7 @@ spu::DataType getDtypeFromMlirType(::mlir::Type mlir_ty) {
 
 namespace spu::device::pphlo {
 
-const hal::Value &RegionExecutor::lookupValue(::mlir::Value v) const {
+const spu::Value &RegionExecutor::lookupValue(::mlir::Value v) const {
   const auto *val = frame_->getValue(v);
   if (val == nullptr) {
     // Somehow cannot find this value on stack, print a reasonable error
@@ -136,11 +136,7 @@ const hal::Value &RegionExecutor::lookupValue(::mlir::Value v) const {
     YASL_THROW("Lowered op should not occur at backend");                      \
   }
 
-LOWERED_OP_IMPL(SqrtOp)
 LOWERED_OP_IMPL(ReturnOp)
-LOWERED_OP_IMPL(NotEqualOp)
-LOWERED_OP_IMPL(LessEqualOp)
-LOWERED_OP_IMPL(GreaterEqualOp)
 
 #undef LOWERED_OP_IMPL
 
@@ -151,9 +147,9 @@ LOWERED_OP_IMPL(GreaterEqualOp)
 
 #undef UNIMPL_OP
 
-std::vector<hal::Value>
+std::vector<spu::Value>
 RegionExecutor::executeRegion(mlir::Region &region,
-                              absl::Span<const hal::Value> inputs) {
+                              absl::Span<const spu::Value> inputs) {
   getFrame()->enterRegion();
   if (suppress_type_check_) {
     getFrame()->setTypeCheker(nullptr);
@@ -176,7 +172,7 @@ RegionExecutor::executeRegion(mlir::Region &region,
   return ret;
 }
 
-std::vector<hal::Value> RegionExecutor::executeBlock(mlir::Block &block) {
+std::vector<spu::Value> RegionExecutor::executeBlock(mlir::Block &block) {
   for (auto &op : block.without_terminator()) {
     dispatchOp<
 #define GET_OP_LIST
@@ -204,10 +200,10 @@ void RegionExecutor::debug_print(mlir::Operation &op) {
   }
 }
 
-std::vector<hal::Value> RegionExecutor::executeTerminator(mlir::Operation &op) {
+std::vector<spu::Value> RegionExecutor::executeTerminator(mlir::Operation &op) {
   if (llvm::isa<mlir::func::ReturnOp>(op) ||
       llvm::isa<mlir::pphlo::ReturnOp>(op)) {
-    std::vector<hal::Value> results;
+    std::vector<spu::Value> results;
     results.reserve(op.getNumOperands());
     for (const auto operand : op.getOperands()) {
       results.emplace_back(lookupValue(operand));
@@ -220,13 +216,14 @@ std::vector<hal::Value> RegionExecutor::executeTerminator(mlir::Operation &op) {
 #define STANDARD_UNARY_OP_EXEC_IMPL(OpName, KernelName)                        \
   void RegionExecutor::execute(mlir::pphlo::OpName &op) {                      \
     const auto in = lookupValue(op.getOperand());                              \
-    auto ret = kernel::KernelName(hctx_, in);                                  \
+    auto ret = kernel::hlo::KernelName(hctx_, in);                             \
     getFrame()->addValue(op.getResult(), std::move(ret));                      \
   }
 
 STANDARD_UNARY_OP_EXEC_IMPL(ReciprocalOp, Reciprocal)
 STANDARD_UNARY_OP_EXEC_IMPL(NegOp, Neg)
 STANDARD_UNARY_OP_EXEC_IMPL(ExpOp, Exp)
+STANDARD_UNARY_OP_EXEC_IMPL(Expm1Op, Expm1)
 STANDARD_UNARY_OP_EXEC_IMPL(LogOp, Log)
 STANDARD_UNARY_OP_EXEC_IMPL(Log1pOp, Log1p)
 STANDARD_UNARY_OP_EXEC_IMPL(FloorOp, Floor)
@@ -236,23 +233,26 @@ STANDARD_UNARY_OP_EXEC_IMPL(LogisticOp, Logistic)
 STANDARD_UNARY_OP_EXEC_IMPL(TanhOp, Tanh)
 STANDARD_UNARY_OP_EXEC_IMPL(NotOp, Not)
 STANDARD_UNARY_OP_EXEC_IMPL(RsqrtOp, Rsqrt)
+STANDARD_UNARY_OP_EXEC_IMPL(SqrtOp, Sqrt)
 
 #undef STANDARD_UNARY_OP_EXEC_IMPL
 
 #define STANDARD_BINARY_OP_EXEC_IMPL(OpName, KernelName)                       \
   void RegionExecutor::execute(mlir::pphlo::OpName &op) {                      \
     getFrame()->addValue(op.getResult(),                                       \
-                         kernel::KernelName(hctx_, lookupValue(op.lhs()),      \
-                                            lookupValue(op.rhs())));           \
+                         kernel::hlo::KernelName(hctx_, lookupValue(op.lhs()), \
+                                                 lookupValue(op.rhs())));      \
   }
 
 STANDARD_BINARY_OP_EXEC_IMPL(AddOp, Add)
-STANDARD_BINARY_OP_EXEC_IMPL(EqualOp, Equal);
-STANDARD_BINARY_OP_EXEC_IMPL(SubOp, Sub)
+STANDARD_BINARY_OP_EXEC_IMPL(EqualOp, Equal)
+STANDARD_BINARY_OP_EXEC_IMPL(NotEqualOp, NotEqual)
+STANDARD_BINARY_OP_EXEC_IMPL(LessEqualOp, LessEqual)
+STANDARD_BINARY_OP_EXEC_IMPL(GreaterEqualOp, GreaterEqual)
+STANDARD_BINARY_OP_EXEC_IMPL(SubtractOp, Sub)
 STANDARD_BINARY_OP_EXEC_IMPL(LessOp, Less)
 STANDARD_BINARY_OP_EXEC_IMPL(GreaterOp, Greater)
 STANDARD_BINARY_OP_EXEC_IMPL(MulOp, Mul)
-STANDARD_BINARY_OP_EXEC_IMPL(MixedMulOp, Mul)
 STANDARD_BINARY_OP_EXEC_IMPL(PowOp, Power)
 STANDARD_BINARY_OP_EXEC_IMPL(MaxOp, Max)
 STANDARD_BINARY_OP_EXEC_IMPL(MinOp, Min)
@@ -267,43 +267,78 @@ STANDARD_BINARY_OP_EXEC_IMPL(ShiftRightLogicalOp, Rshift)
 #undef STANDARD_BINARY_OP_EXEC_IMPL
 
 void RegionExecutor::execute(mlir::pphlo::DotOp &op) {
-  auto ret = kernel::Dot(hctx_, lookupValue(op.lhs()), lookupValue(op.rhs()));
+  auto ret =
+      kernel::hlo::Dot(hctx_, lookupValue(op.lhs()), lookupValue(op.rhs()));
 
   const auto ret_shape =
       op.getResult().getType().dyn_cast<mlir::TensorType>().getShape();
 
-  getFrame()->addValue(op.getResult(), kernel::Reshape(hctx_, ret, ret_shape));
+  getFrame()->addValue(op.getResult(),
+                       kernel::hlo::Reshape(hctx_, ret, ret_shape));
 }
 
-void RegionExecutor::execute(mlir::pphlo::MixedDotOp &op) {
-  auto ret = kernel::Dot(hctx_, lookupValue(op.lhs()), lookupValue(op.rhs()));
+void RegionExecutor::execute(mlir::pphlo::DotGeneralOp &op) {
+  auto dnum = op.dot_dimension_numbers();
+  // Should in order
+  YASL_ENFORCE(dnum.getLhsBatchingDimensions().size() == 1 &&
+                   dnum.getLhsContractingDimensions().size() == 1 &&
+                   dnum.getLhsBatchingDimensions()[0] == 0 &&
+                   dnum.getLhsContractingDimensions()[0] == 2,
+               "LHS dims is not in order");
+  YASL_ENFORCE(dnum.getRhsBatchingDimensions().size() == 1 &&
+                   dnum.getRhsContractingDimensions().size() == 1 &&
+                   dnum.getRhsBatchingDimensions()[0] == 0 &&
+                   dnum.getRhsContractingDimensions()[0] == 1,
+               "RHS dims is not in order");
 
-  const auto ret_shape =
-      op.getResult().getType().dyn_cast<mlir::TensorType>().getShape();
+  auto lhs = lookupValue(op.lhs());
+  auto rhs = lookupValue(op.rhs());
+  YASL_ENFORCE(lhs.shape()[0] == rhs.shape()[0], "Batch dim should equal");
+  int64_t num_batch = lhs.shape()[0];
 
-  getFrame()->addValue(op.getResult(), kernel::Reshape(hctx_, ret, ret_shape));
+  std::vector<spu::Value> results(num_batch);
+  std::vector<int64_t> lhs_slice_begin(3, 0);
+  std::vector<int64_t> lhs_slice_end = lhs.shape();
+  std::vector<int64_t> rhs_slice_begin(3, 0);
+  std::vector<int64_t> rhs_slice_end = rhs.shape();
+  std::vector<int64_t> strides(lhs.shape().size(), 1);
+
+  std::vector<int64_t> lhs_slice_shape{lhs.shape()[1], lhs.shape()[2]};
+  std::vector<int64_t> rhs_slice_shape{rhs.shape()[1], rhs.shape()[2]};
+  std::vector<int64_t> ret_slice_shape{1, lhs.shape()[1], rhs.shape()[2]};
+
+  for (int64_t batch_idx = 0; batch_idx < num_batch; ++batch_idx) {
+    lhs_slice_begin[0] = batch_idx;
+    lhs_slice_end[0] = batch_idx + 1;
+    rhs_slice_begin[0] = batch_idx;
+    rhs_slice_end[0] = batch_idx + 1;
+    auto lhs_slice = kernel::hlo::Reshape(
+        hctx_,
+        kernel::hlo::Slice(hctx_, lhs, lhs_slice_begin, lhs_slice_end, strides),
+        lhs_slice_shape);
+    auto rhs_slice = kernel::hlo::Reshape(
+        hctx_,
+        kernel::hlo::Slice(hctx_, rhs, rhs_slice_begin, rhs_slice_end, strides),
+        rhs_slice_shape);
+    results[batch_idx] = kernel::hlo::Reshape(
+        hctx_, kernel::hlo::Dot(hctx_, lhs_slice, rhs_slice), ret_slice_shape);
+  }
+
+  auto ret_type = op.getResult().getType().dyn_cast<mlir::RankedTensorType>();
+  auto ret = kernel::hlo::Reshape(
+      hctx_, kernel::hlo::Concatenate(hctx_, results, 0), ret_type.getShape());
+
+  getFrame()->addValue(op.getResult(), std::move(ret));
 }
 
-void RegionExecutor::execute(mlir::pphlo::ConvOp &op) {
+void RegionExecutor::execute(mlir::pphlo::ConvolutionOp &op) {
   const auto &dnums = op.dimension_numbers();
   const size_t num_spatial_dims = dnums.getOutputSpatialDimensions().size();
   YASL_ENFORCE(num_spatial_dims == dnums.getInputSpatialDimensions().size());
   YASL_ENFORCE(num_spatial_dims == dnums.getKernelSpatialDimensions().size());
 
-  // const auto lhs_shape =
-  //     op.lhs().getType().dyn_cast<mlir::TensorType>().getShape();
-
-  // const auto rhs_shape =
-  //     op.rhs().getType().dyn_cast<mlir::TensorType>().getShape();
-
   const auto ret_shape =
       op.getResult().getType().dyn_cast<mlir::TensorType>().getShape();
-
-  // bool fast_path = true;
-  // // fast path restrictions
-  // // Restriction 1.
-  // fast_path &= (op.feature_group_count() == 1);
-  // fast_path &= (op.batch_group_count() == 1);
 
   auto lhs = lookupValue(op.lhs());
   auto rhs = lookupValue(op.rhs());
@@ -316,37 +351,11 @@ void RegionExecutor::execute(mlir::pphlo::ConvOp &op) {
       window_strides[iter.index()] = iter.value();
     }
   }
-  std::vector<int64_t> padding(2 * dnums.getInputSpatialDimensions().size(), 0);
-  if (op.padding().hasValue()) {
-    for (const auto &iter :
-         llvm::enumerate(op.padding()->getValues<int64_t>())) {
-      padding[iter.index()] = iter.value();
-    }
-  }
-  std::vector<int64_t> lhs_dilation(dnums.getInputSpatialDimensions().size(),
-                                    1);
-  if (op.lhs_dilation().hasValue()) {
-    for (const auto &iter :
-         llvm::enumerate(op.lhs_dilation()->getValues<int64_t>())) {
-      lhs_dilation[iter.index()] = iter.value();
-    }
-  }
-  std::vector<int64_t> rhs_dilation(dnums.getInputSpatialDimensions().size(),
-                                    1);
-  if (op.rhs_dilation().hasValue()) {
-    for (const auto &iter :
-         llvm::enumerate(op.rhs_dilation()->getValues<int64_t>())) {
-      rhs_dilation[iter.index()] = iter.value();
-    }
-  }
 
-  kernel::ConvolutionConfig config;
+  kernel::hlo::ConvolutionConfig config;
   config.featureGroupCount = op.feature_group_count();
   config.batchGroupCount = op.batch_group_count();
   config.window_strides = window_strides;
-  config.padding = padding;
-  config.lhs_dilation = lhs_dilation;
-  config.rhs_dilation = rhs_dilation;
   config.inputBatchDimension = dnums.getInputBatchDimension();
   config.inputFeatureDimension = dnums.getInputFeatureDimension();
   config.inputSpatialDimensions = dnums.getInputSpatialDimensions();
@@ -357,13 +366,13 @@ void RegionExecutor::execute(mlir::pphlo::ConvOp &op) {
   config.outputFeatureDimension = dnums.getOutputFeatureDimension();
   config.outputSpatialDimensions = dnums.getOutputSpatialDimensions();
 
-  hal::Value result;
-  // FIXME:(xiaochen) Reenable fast path once fixed conv2d
-  // if (lhs_shape.size() == 4 && rhs_shape.size() == 4 && fast_path) {
-  //   result = kernel::Convolution2D(hctx_, lhs, rhs, config);
-  // } else {
-  result = kernel::Convolution(hctx_, lhs, rhs, config, ret_shape);
-  // }
+  spu::Value result;
+
+  if (dnums.getInputSpatialDimensions().size() == 2) {
+    result = kernel::hlo::Convolution2D(hctx_, lhs, rhs, config, ret_shape);
+  } else {
+    result = kernel::hlo::Convolution(hctx_, lhs, rhs, config, ret_shape);
+  }
 
   getFrame()->addValue(op.getResult(), std::move(result));
 }
@@ -371,7 +380,7 @@ void RegionExecutor::execute(mlir::pphlo::ConvOp &op) {
 void RegionExecutor::execute(mlir::pphlo::DynamicUpdateSliceOp &op) {
   // Basic idea here, get a ref slice and update the whole slice..
   // Start indicies
-  std::vector<hal::Value> start_indicies(op.start_indices().size());
+  std::vector<spu::Value> start_indicies(op.start_indices().size());
   const auto &operand = lookupValue(op.operand());
   const auto &update = lookupValue(op.update());
 
@@ -381,7 +390,7 @@ void RegionExecutor::execute(mlir::pphlo::DynamicUpdateSliceOp &op) {
 
   getFrame()->addValue(
       op.getResult(),
-      kernel::DynamicUpdateSlice(hctx_, operand, update, start_indicies));
+      kernel::hlo::DynamicUpdateSlice(hctx_, operand, update, start_indicies));
 }
 
 void RegionExecutor::execute(mlir::pphlo::DynamicSliceOp &op) {
@@ -389,7 +398,7 @@ void RegionExecutor::execute(mlir::pphlo::DynamicSliceOp &op) {
   auto iter = op.slice_sizes().getValues<int64_t>();
   std::vector<int64_t> slice_size{iter.begin(), iter.end()};
   const auto &operand = lookupValue(op.operand());
-  std::vector<hal::Value> start_indicies(op.start_indices().size());
+  std::vector<spu::Value> start_indicies(op.start_indices().size());
 
   for (const auto &idx : llvm::enumerate(op.start_indices())) {
     start_indicies[idx.index()] = lookupValue(idx.value());
@@ -397,7 +406,7 @@ void RegionExecutor::execute(mlir::pphlo::DynamicSliceOp &op) {
 
   getFrame()->addValue(
       op.getResult(),
-      kernel::DynamicSlice(hctx_, operand, slice_size, start_indicies));
+      kernel::hlo::DynamicSlice(hctx_, operand, slice_size, start_indicies));
 }
 
 void RegionExecutor::execute(mlir::pphlo::GatherOp &op) {
@@ -414,7 +423,7 @@ void RegionExecutor::execute(mlir::pphlo::GatherOp &op) {
 
   const auto &dim_numbers = op.dimension_numbers();
 
-  kernel::GatherConfig config;
+  kernel::hlo::GatherConfig config;
   auto ss = convertDenseIntElementAttr(op.slice_sizes());
   config.sliceSizes = ss;
   config.indexVectorDim = dim_numbers.getIndexVectorDim();
@@ -422,23 +431,24 @@ void RegionExecutor::execute(mlir::pphlo::GatherOp &op) {
   config.collapsedSliceDims = dim_numbers.getCollapsedSliceDims();
   config.startIndexMap = dim_numbers.getStartIndexMap();
 
-  getFrame()->addValue(
-      op.getResult(),
-      kernel::Gather(hctx_, operand, start_indicies, config, output_shape));
+  getFrame()->addValue(op.getResult(),
+                       kernel::hlo::Gather(hctx_, operand, start_indicies,
+                                           config, output_shape));
 }
 
 void RegionExecutor::execute(mlir::pphlo::SortOp &op) {
   auto sort_dim = op.dimension();
   auto is_stable = op.is_stable();
-  std::vector<hal::Value> inputs(op->getNumOperands());
+  std::vector<spu::Value> inputs(op->getNumOperands());
   for (size_t idx = 0; idx < inputs.size(); ++idx) {
     inputs[idx] = lookupValue(op->getOperand(idx));
   }
-  auto ret = kernel::Sort(hctx_, inputs, sort_dim, is_stable,
-                          [&](absl::Span<const hal::Value> inputs) {
-                            auto ret = executeRegion(op.comparator(), inputs);
-                            return ret[0];
-                          });
+  auto ret = kernel::hlo::Sort(hctx_, inputs, sort_dim, is_stable,
+                               [&](absl::Span<const spu::Value> inputs) {
+                                 auto ret =
+                                     executeRegion(op.comparator(), inputs);
+                                 return ret[0];
+                               });
 
   for (int64_t idx = 0; idx < op->getNumResults(); ++idx) {
     getFrame()->addValue(op->getResult(idx), std::move(ret[idx]));
@@ -449,6 +459,54 @@ void RegionExecutor::execute(mlir::pphlo::SelectAndScatterOp &op) {
   auto operand = lookupValue(op.operand());
   auto source = lookupValue(op.source());
   auto init_val = lookupValue(op.init_value());
+
+  auto window_shape = convertDenseIntElementAttr(op.window_dimensions());
+
+  // build strides
+  std::vector<int64_t> window_strides(window_shape.size(), 1);
+  if (op.window_strides().hasValue()) {
+    window_strides = convertDenseIntElementAttr(*op.window_strides());
+  }
+
+  // window padding
+  std::vector<std::pair<int64_t, int64_t>> window_padding(window_shape.size(),
+                                                          {0, 0});
+  if (op.padding().hasValue()) {
+    const auto v = *op.padding();
+
+    YASL_ENFORCE(window_padding.size() * 2 == (size_t)v.size());
+
+    for (size_t idx = 0; idx < window_padding.size(); ++idx) {
+      window_padding[idx] = {*(v.getValues<int64_t>().begin() + 2 * idx),
+                             *(v.getValues<int64_t>().begin() + 2 * idx + 1)};
+    }
+  }
+
+  suppress_pphlo_trace_ = true;
+  suppress_type_check_ = true;
+
+  // auto ret = kernel::hlo::SelectAndScatterNaive(
+  auto ret = kernel::hlo::SelectAndScatterExpanded(
+      hctx_, operand, source, init_val, window_shape, window_strides,
+      window_padding,
+      [&](const spu::Value &selected, const spu::Value &current) {
+        auto ret = executeRegion(op.select(), {selected, current});
+        return ret[0];
+      },
+      [&](const spu::Value &in, const spu::Value &scatter) {
+        auto ret = executeRegion(op.scatter(), {in, scatter});
+        return ret[0];
+      });
+
+  suppress_pphlo_trace_ = false;
+  suppress_type_check_ = false;
+
+  getFrame()->addValue(op.getResult(), std::move(ret));
+}
+
+void RegionExecutor::execute(mlir::pphlo::MaxPoolScatterOp &op) {
+  auto scatter_indices = lookupValue(op.scatter_indices());
+  auto update = lookupValue(op.update());
 
   auto window_shape =
       convertDenseIntElementAttr(op.window_dimensions().getValue());
@@ -473,29 +531,12 @@ void RegionExecutor::execute(mlir::pphlo::SelectAndScatterOp &op) {
     }
   }
 
-  std::vector<int64_t> window_dilations(window_shape.size(), 1);
-  std::vector<int64_t> base_dilations(operand.shape().size(), 1);
+  auto base_shape =
+      op.getResult().getType().dyn_cast<mlir::RankedTensorType>().getShape();
 
-  kernel::SelectAndScatterConfig config;
-  config.window_shape = window_shape;
-  config.window_strides = window_strides;
-  config.window_padding = window_padding;
-  config.window_dilations = window_dilations;
-  config.base_dilations = base_dilations;
-
-  suppress_pphlo_trace_ = true;
-  suppress_type_check_ = true;
-
-  auto ret = kernel::SelectAndScatter(
-      hctx_, operand, source, init_val,
-      [&](const hal::Value &selected, const hal::Value &current) {
-        auto ret = executeRegion(op.select(), {selected, current});
-        return ret[0];
-      },
-      config);
-
-  suppress_pphlo_trace_ = false;
-  suppress_type_check_ = false;
+  auto ret =
+      kernel::hlo::MaxPoolScatter(hctx_, scatter_indices, update, window_shape,
+                                  base_shape, window_strides, window_padding);
 
   getFrame()->addValue(op.getResult(), std::move(ret));
 }
@@ -503,7 +544,7 @@ void RegionExecutor::execute(mlir::pphlo::SelectAndScatterOp &op) {
 void RegionExecutor::execute(mlir::pphlo::IfOp &op) {
   auto conditional = lookupValue(op.condition());
 
-  auto results = kernel::IfElse(
+  auto results = kernel::hlo::IfElse(
       hctx_, conditional, //
       [&]() { return executeRegion(op.true_branch(), {}); },
       [&]() { return executeRegion(op.false_branch(), {}); });
@@ -516,7 +557,7 @@ void RegionExecutor::execute(mlir::pphlo::IfOp &op) {
 
 void RegionExecutor::execute(mlir::pphlo::WhileOp &op) {
   // First inputs vectors
-  std::vector<hal::Value> inputs;
+  std::vector<spu::Value> inputs;
   inputs.reserve(op->getNumOperands());
 
   // Prepare inputs
@@ -524,12 +565,12 @@ void RegionExecutor::execute(mlir::pphlo::WhileOp &op) {
     inputs.emplace_back(lookupValue(operand));
   }
 
-  auto ret = kernel::While(
+  auto ret = kernel::hlo::While(
       hctx_, inputs, //
-      [&](absl::Span<const hal::Value> inputs) {
+      [&](absl::Span<const spu::Value> inputs) {
         return executeRegion(op.cond(), inputs)[0];
       },
-      [&](absl::Span<const hal::Value> inputs) {
+      [&](absl::Span<const spu::Value> inputs) {
         return executeRegion(op.body(), inputs);
       });
 
@@ -564,14 +605,14 @@ void RegionExecutor::execute(mlir::pphlo::IotaOp &op) {
   auto ret_el_type = type_tools_.getExpressedType(ret_type);
   auto pt_type = getPtType(ret_el_type);
 
-  hal::Value iota_ret;
+  spu::Value iota_ret;
   DISPATCH_ALL_NONE_BOOL_PT_TYPES(pt_type, "_", [&] {
-    iota_ret = kernel::Iota<ScalarT>(hctx_, numel, VIS_PUBLIC);
+    iota_ret = kernel::hlo::Iota<ScalarT>(hctx_, numel, VIS_PUBLIC);
   });
 
   if (ret_type.getShape().size() > 1) {
     // Need a broadcast
-    iota_ret = kernel::Broadcast(hctx_, iota_ret, ret_type.getShape(), {});
+    iota_ret = kernel::hlo::Broadcast(hctx_, iota_ret, ret_type.getShape(), {});
   }
 
   getFrame()->addValue(op.output(), std::move(iota_ret));
@@ -582,34 +623,35 @@ void RegionExecutor::execute(mlir::pphlo::RemOp &op) {
   auto lhs = lookupValue(op.lhs());
   auto rhs = lookupValue(op.rhs());
 
-  auto ret = kernel::Remainder(hctx_, lhs, rhs);
+  auto ret = kernel::hlo::Remainder(hctx_, lhs, rhs);
   getFrame()->addValue(op.getResult(), std::move(ret));
 }
 
 void RegionExecutor::execute(mlir::pphlo::TransposeOp &op) {
   getFrame()->addValue(
       op.getResult(),
-      kernel::Transpose(hctx_, lookupValue(op.getOperand()),
-                        convertDenseIntElementAttr(op.permutation())));
+      kernel::hlo::Transpose(hctx_, lookupValue(op.getOperand()),
+                             convertDenseIntElementAttr(op.permutation())));
 }
 
 void RegionExecutor::execute(mlir::pphlo::BroadcastOp &op) {
   auto to_shape = op.getType().dyn_cast<mlir::RankedTensorType>().getShape();
   getFrame()->addValue(
       op.getResult(),
-      kernel::Broadcast(hctx_, lookupValue(op.getOperand()), to_shape,
-                        convertDenseIntElementAttr(op.broadcast_dimensions())));
+      kernel::hlo::Broadcast(
+          hctx_, lookupValue(op.getOperand()), to_shape,
+          convertDenseIntElementAttr(op.broadcast_dimensions())));
 }
 
 void RegionExecutor::execute(mlir::pphlo::ReshapeOp &op) {
   auto to_shape = op.getType().dyn_cast<mlir::RankedTensorType>().getShape();
   getFrame()->addValue(
       op.getResult(),
-      kernel::Reshape(hctx_, lookupValue(op.getOperand()), to_shape));
+      kernel::hlo::Reshape(hctx_, lookupValue(op.getOperand()), to_shape));
 }
 
 void RegionExecutor::execute(mlir::pphlo::ConcatenateOp &op) {
-  std::vector<hal::Value> values(op->getNumOperands());
+  std::vector<spu::Value> values(op->getNumOperands());
 
   for (size_t idx = 0; idx < op->getNumOperands(); ++idx) {
     values[idx] = lookupValue(op->getOperand(idx));
@@ -617,16 +659,16 @@ void RegionExecutor::execute(mlir::pphlo::ConcatenateOp &op) {
 
   // set result
   getFrame()->addValue(op.getResult(),
-                       kernel::Concatenate(hctx_, values, op.dimension()));
+                       kernel::hlo::Concatenate(hctx_, values, op.dimension()));
 }
 
 void RegionExecutor::execute(mlir::pphlo::SliceOp &op) {
   getFrame()->addValue(
       op.getResult(),
-      kernel::Slice(hctx_, lookupValue(op.getOperand()),
-                    convertDenseIntElementAttr(op.start_indices()),
-                    convertDenseIntElementAttr(op.limit_indices()),
-                    convertDenseIntElementAttr(op.strides())));
+      kernel::hlo::Slice(hctx_, lookupValue(op.getOperand()),
+                         convertDenseIntElementAttr(op.start_indices()),
+                         convertDenseIntElementAttr(op.limit_indices()),
+                         convertDenseIntElementAttr(op.strides())));
 }
 
 void RegionExecutor::execute(mlir::pphlo::PadOp &op) {
@@ -645,16 +687,16 @@ void RegionExecutor::execute(mlir::pphlo::PadOp &op) {
                            [](int64_t i) { return i >= 0; }));
 
   getFrame()->addValue(op.getResult(),
-                       kernel::Pad(hctx_, operand, padding_value,
-                                   edge_padding_low, edge_padding_high,
-                                   interior_padding));
+                       kernel::hlo::Pad(hctx_, operand, padding_value,
+                                        edge_padding_low, edge_padding_high,
+                                        interior_padding));
 }
 
 void RegionExecutor::execute(mlir::pphlo::ReverseOp &op) {
   getFrame()->addValue(
       op.getResult(),
-      kernel::Reverse(hctx_, lookupValue(op.getOperand()),
-                      convertDenseIntElementAttr(op.dimensions())));
+      kernel::hlo::Reverse(hctx_, lookupValue(op.getOperand()),
+                           convertDenseIntElementAttr(op.dimensions())));
 }
 
 void RegionExecutor::errorUnknownOp(mlir::Operation &op) {
@@ -672,22 +714,20 @@ void RegionExecutor::execute(mlir::pphlo::ReduceOp &op) {
   std::vector<int64_t> dimensions_to_reduce =
       convertDenseIntElementAttr(op.dimensions());
 
-  std::vector<hal::Value> input_args(num_args);
-  std::vector<hal::Value> init_values(num_args);
+  std::vector<spu::Value> input_args(num_args);
+  std::vector<spu::Value> init_values(num_args);
   for (int64_t i = 0; i < num_args; ++i) {
     input_args[i] = lookupValue(op.inputs()[i]);
     init_values[i] = lookupValue(op.init_values()[i]);
   }
-  const auto &output_shape =
-      op->getResultTypes()[0].dyn_cast<mlir::RankedTensorType>().getShape();
 
   suppress_type_check_ = true;
   suppress_pphlo_trace_ = true;
 
-  std::vector<hal::Value> ret = kernel::TreeReduce(
-      hctx_, input_args, init_values, dimensions_to_reduce, output_shape,
-      [&](absl::Span<const hal::Value> lhs, absl::Span<const hal::Value> rhs) {
-        std::vector<hal::Value> operands;
+  std::vector<spu::Value> ret = kernel::hlo::Reduce(
+      hctx_, input_args, init_values, dimensions_to_reduce,
+      [&](absl::Span<const spu::Value> lhs, absl::Span<const spu::Value> rhs) {
+        std::vector<spu::Value> operands;
         operands.reserve(lhs.size() + rhs.size());
         operands.insert(operands.end(), lhs.begin(), lhs.end());
         operands.insert(operands.end(), rhs.begin(), rhs.end());
@@ -697,21 +737,29 @@ void RegionExecutor::execute(mlir::pphlo::ReduceOp &op) {
   suppress_type_check_ = false;
   suppress_pphlo_trace_ = false;
 
+  const auto &output_shape =
+      op->getResultTypes()[0].dyn_cast<mlir::RankedTensorType>().getShape();
   for (size_t idx = 0; idx < op->getNumResults(); ++idx) {
     getFrame()->addValue(op->getResult(idx),
-                         kernel::Reshape(hctx_, ret[idx], output_shape));
+                         kernel::hlo::Reshape(hctx_, ret[idx], output_shape));
   }
 }
 
 void RegionExecutor::execute(mlir::pphlo::ReduceWindowOp &op) {
-  YASL_ENFORCE(op->getNumResults() == 1,
-               "Variadic reduce window is not supported yet");
+  int64_t num_args = op->getNumOperands() / 2;
 
-  const auto &input = lookupValue(op.inputs());
-  const auto &init_val = lookupValue(op.init_values());
+  std::vector<spu::Value> input_args(num_args);
+  std::vector<spu::Value> init_values(num_args);
 
-  auto ret_shape =
-      op.getResult().getType().dyn_cast<mlir::RankedTensorType>().getShape();
+  for (int64_t i = 0; i < num_args; ++i) {
+    input_args[i] = lookupValue(op.inputs()[i]);
+    init_values[i] = lookupValue(op.init_values()[i]);
+  }
+
+  auto ret_shape = op->getResults()[0]
+                       .getType()
+                       .dyn_cast<mlir::RankedTensorType>()
+                       .getShape();
   auto window_shape = convertDenseIntElementAttr(op.window_dimensions());
 
   // build strides
@@ -746,40 +794,68 @@ void RegionExecutor::execute(mlir::pphlo::ReduceWindowOp &op) {
     base_dilation = convertDenseIntElementAttr(*op.base_dilations());
   }
 
-  kernel::ReduceWindowConfig config;
+  kernel::hlo::ReduceWindowConfig config;
   config.window_shape = window_shape;
   config.window_strides = window_strides;
   config.window_dilations = window_dilations;
   config.window_padding = window_padding;
   config.base_dilations = base_dilation;
+  config.last_operand_is_window_mask = op.last_operand_is_window_mask();
+  config.ignore_init_value = op.ignore_init_value();
 
   suppress_type_check_ = true;
   suppress_pphlo_trace_ = true;
-  auto ret =
-      kernel::ReduceWindow(hctx_, input, init_val, ret_shape, config,
-                           [&](const hal::Value &lhs, const hal::Value &rhs) {
-                             return executeRegion(op.body(), {lhs, rhs})[0];
-                           });
+  auto rets = kernel::hlo::ReduceWindow(
+      hctx_, input_args, init_values, ret_shape, config,
+      [&](absl::Span<const spu::Value> lhs, absl::Span<const spu::Value> rhs) {
+        std::vector<spu::Value> operands;
+        operands.reserve(lhs.size() + rhs.size());
+        operands.insert(operands.end(), lhs.begin(), lhs.end());
+        operands.insert(operands.end(), rhs.begin(), rhs.end());
+        return executeRegion(op.body(), operands);
+      });
   suppress_type_check_ = false;
   suppress_pphlo_trace_ = false;
 
-  getFrame()->addValue(op.getResult(), std::move(ret));
+  for (int64_t idx = 0; idx < op->getNumResults(); ++idx) {
+    getFrame()->addValue(op->getResults()[idx], std::move(rets[idx]));
+  }
 }
 
 void RegionExecutor::execute(mlir::pphlo::SelectOp &op) {
   auto pred = lookupValue(op.pred());
-  auto on_true = lookupValue(op.on_true());
-  auto on_false = lookupValue(op.on_false());
+  auto k0 =
+      kernel::hlo::Cast(hctx_, kernel::hlo::Constant(hctx_, 0, pred.shape()),
+                        VIS_PUBLIC, pred.dtype());
+  pred = kernel::hlo::Add(hctx_, pred, k0);
 
-  getFrame()->addValue(op.getResult(),
-                       kernel::Select(hctx_, pred, on_true, on_false));
+  for (size_t idx = 0; idx < op.on_true().size(); ++idx) {
+    auto on_true = lookupValue(op.on_true()[idx]);
+    auto on_false = lookupValue(op.on_false()[idx]);
+
+    auto pred_ = pred;
+    if (suppress_type_check_) {
+      // FIXME: This can happen during argmax reduce window, which the mask can
+      // have an extra trailing dimens
+      if (pred.shape().size() + 1 == on_true.shape().size()) {
+        // Do a broadcast
+        auto new_shape = on_true.shape();
+        new_shape.back() = 1;
+        pred_ = kernel::hlo::Reshape(hctx_, pred_, new_shape);
+        pred_ = kernel::hlo::Broadcast(hctx_, pred_, on_true.shape(), {});
+      }
+    }
+
+    getFrame()->addValue(op.getResults()[idx],
+                         kernel::hlo::Select(hctx_, pred_, on_true, on_false));
+  }
 }
 
-void RegionExecutor::execute(mlir::pphlo::RngUniformOp &op) {
+void RegionExecutor::execute(mlir::pphlo::RngOp &op) {
   auto to_shape = op.getType().dyn_cast<mlir::RankedTensorType>().getShape();
-  getFrame()->addValue(op.getResult(),
-                       kernel::Uniform_rand(hctx_, lookupValue(op.a()),
-                                            lookupValue(op.b()), to_shape));
+  getFrame()->addValue(
+      op.getResult(), kernel::hlo::Uniform_rand(hctx_, lookupValue(op.a()),
+                                                lookupValue(op.b()), to_shape));
 }
 
 void RegionExecutor::execute(mlir::pphlo::ConvertOp &op) {
@@ -791,7 +867,27 @@ void RegionExecutor::execute(mlir::pphlo::ConvertOp &op) {
   auto in = lookupValue(op.getOperand());
 
   getFrame()->addValue(op.getResult(),
-                       kernel::Cast(hctx_, in, dst_vtype, dst_dtype));
+                       kernel::hlo::Cast(hctx_, in, dst_vtype, dst_dtype));
+}
+
+void RegionExecutor::execute(mlir::pphlo::SignOp &op) {
+  // -1 if x < 0
+  auto in = lookupValue(op.operand());
+  auto zero =
+      kernel::hlo::Cast(hctx_, kernel::hlo::Constant(hctx_, 0, in.shape()),
+                        VIS_PUBLIC, in.dtype());
+  auto mOne =
+      kernel::hlo::Cast(hctx_, kernel::hlo::Constant(hctx_, -1, in.shape()),
+                        VIS_PUBLIC, in.dtype());
+  auto pOne =
+      kernel::hlo::Cast(hctx_, kernel::hlo::Constant(hctx_, 1, in.shape()),
+                        VIS_PUBLIC, in.dtype());
+
+  auto ones = kernel::hlo::Select(hctx_, kernel::hlo::Less(hctx_, in, zero),
+                                  mOne, pOne);
+  auto ret = kernel::hlo::Select(hctx_, kernel::hlo::Equal(hctx_, in, zero),
+                                 zero, ones);
+  getFrame()->addValue(op.getResult(), ret);
 }
 
 void RegionExecutor::execute(mlir::pphlo::BitcastConvertOp &op) {
@@ -807,12 +903,11 @@ void RegionExecutor::execute(mlir::pphlo::BitcastConvertOp &op) {
                "bitcast with different size is not supported yet");
 
   getFrame()->addValue(op.getResult(),
-                       kernel::Bitcast(hctx_, lookupValue(op.getOperand()),
-                                       getDtypeFromMlirType(out_type),
-                                       op.elsize()));
+                       kernel::hlo::Bitcast(hctx_, lookupValue(op.getOperand()),
+                                            getDtypeFromMlirType(out_type)));
 }
 
-void RegionExecutor::execute(mlir::pphlo::ConstOp &op) {
+void RegionExecutor::execute(mlir::pphlo::ConstantOp &op) {
   const auto &val = op.value();
   const auto &dea = val.dyn_cast<mlir::DenseElementsAttr>();
   const auto &type = val.getType().dyn_cast<mlir::RankedTensorType>();
@@ -825,18 +920,18 @@ void RegionExecutor::execute(mlir::pphlo::ConstOp &op) {
                                   : makeCompactStrides(dst_shape));
 
   getFrame()->addValue(op.getResult(),
-                       kernel::Constant(hctx_, view, dst_shape));
+                       kernel::hlo::Constant(hctx_, view, dst_shape));
 }
 
 void RegionExecutor::execute(mlir::pphlo::ClampOp &op) {
   getFrame()->addValue(op.getResult(),
-                       kernel::Clamp(hctx_, lookupValue(op.operand()),
-                                     lookupValue(op.min()),
-                                     lookupValue(op.max())));
+                       kernel::hlo::Clamp(hctx_, lookupValue(op.operand()),
+                                          lookupValue(op.min()),
+                                          lookupValue(op.max())));
 }
 
 void RegionExecutor::execute(mlir::pphlo::DbgPrintOp &op) {
-  hal::dbg_print(hctx_, lookupValue(op.operand()));
+  kernel::hal::dbg_print(hctx_, lookupValue(op.operand()));
 }
 
 } // namespace spu::device::pphlo

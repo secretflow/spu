@@ -29,11 +29,11 @@
 
 namespace spu::compiler {
 
-std::string compile(CompilationContext *ctx,
-                    const std::string &serialized_xla) {
+std::string compile(CompilationContext *ctx, const std::string &serialized_ir,
+                    const std::string &ir_type) {
   // Call front end
   FE fe(ctx);
-  auto mlir_module = fe.doit(serialized_xla);
+  auto mlir_module = fe.doit(serialized_ir, ir_type);
 
   // Run core passes
   Core core(ctx);

@@ -18,8 +18,6 @@
 #include "mlir/IR/OpImplementation.h"
 #include "mlir/IR/Operation.h"
 
-#include "spu/dialect/pphlo_struct_attrs.h.inc"
-
 #define GET_ATTRDEF_CLASSES
 #include "spu/dialect/pphlo_attrs.h.inc"
 

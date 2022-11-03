@@ -14,30 +14,11 @@
 
 #include "spu/mpc/util/linalg.h"
 
-#include <memory>
+namespace spu::mpc::linalg::detail {
 
-#include "llvm/Support/Threading.h"
-
-namespace spu::mpc::linalg {
-
-struct EigenThreadPool {
-  EigenThreadPool() {
-    // std::thread::hardware_concurrency() counts hyper-threads as well, use
-    // llvm one to get a more accurate count
-    // Eigen suggests to use number of physical cores for better performance
-    // See https://eigen.tuxfamily.org/dox/TopicMultiThreading.html
-    auto nProc =
-        llvm::heavyweight_hardware_concurrency().compute_thread_count();
-    pool_ = std::make_unique<Eigen::ThreadPool>(nProc);
-    device_ = std::make_unique<Eigen::ThreadPoolDevice>(pool_.get(), nProc);
-  }
-  std::unique_ptr<Eigen::ThreadPool> pool_;
-  std::unique_ptr<Eigen::ThreadPoolDevice> device_;
-};
-
-Eigen::ThreadPoolDevice* getEigenThreadPoolDevice() {
-  static EigenThreadPool pool;
-  return pool.device_.get();
+void setEigenParallelLevel(int64_t expected_threads) {
+  auto nproc = std::min(getNumberOfProc(), static_cast<int>(expected_threads));
+  Eigen::setNbThreads(nproc);
 }
 
-}  // namespace spu::mpc::linalg
+}  // namespace spu::mpc::linalg::detail

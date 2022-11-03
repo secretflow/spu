@@ -54,8 +54,8 @@ std::string toString(const ::mlir::Type &type) {
 void checkShape(llvm::ArrayRef<int64_t> mlir_shape,
                 const absl::Span<const int64_t> rt_shape) {
   YASL_ENFORCE(mlir_shape.size() == rt_shape.size(),
-               "Runtime shape mismatch, expected={}, got={}", mlir_shape.size(),
-               rt_shape.size());
+               "Runtime shape mismatch, expected={}, got={}",
+               fmt::join(mlir_shape, "x"), fmt::join(rt_shape, "x"));
 
   for (size_t idx = 0; idx < mlir_shape.size(); ++idx) {
     YASL_ENFORCE(mlir_shape[idx] == rt_shape[idx],
@@ -64,7 +64,7 @@ void checkShape(llvm::ArrayRef<int64_t> mlir_shape,
   }
 }
 
-void PPHloTypeChecker::check(::mlir::Type type, const hal::Value &v) const {
+void PPHloTypeChecker::check(::mlir::Type type, const spu::Value &v) const {
   // Check shape
   checkShape(type.dyn_cast<::mlir::RankedTensorType>().getShape(), v.shape());
 

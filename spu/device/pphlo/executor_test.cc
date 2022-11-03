@@ -14,11 +14,15 @@
 
 #include <array>
 #include <memory>
+#include <string>
 #include <vector>
 
+#include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "xtensor/xrandom.hpp"
 
+#include "spu/compiler/common/compilation_context.h"
+#include "spu/compiler/compile.h"
 #include "spu/device/pphlo/executor.h"
 #include "spu/device/symbol_table.h"
 #include "spu/device/test_utils.h"
@@ -29,6 +33,7 @@ namespace spu::device {
 namespace {
 
 class Runner {
+
 public:
   Runner(size_t world_size, FieldType field, ProtocolKind protocol)
       : world_size_(world_size) {
@@ -45,6 +50,11 @@ public:
     const std::string name = fmt::format("input{}", input_idx_++);
     io_->InFeed(name, input, vis);
     exec_.add_input_names(name);
+  }
+
+  std::string compileMHlo(const std::string &mhlo) {
+    compiler::CompilationContext ctx;
+    return compiler::compile(&ctx, mhlo, "mhlo");
   }
 
   void run(const std::string &mlir, size_t num_output = 1) {
@@ -100,17 +110,17 @@ private:
 
 } // namespace
 
-class ProcessorTest : public ::testing::TestWithParam<
-                          std::tuple<size_t, FieldType, ProtocolKind>> {};
+class ExecutorTest : public ::testing::TestWithParam<
+                         std::tuple<size_t, FieldType, ProtocolKind>> {};
 
-TEST_P(ProcessorTest, Basic) {
+TEST_P(ExecutorTest, Basic) {
   Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
            std::get<2>(GetParam()));
   r.addInput(1);
   r.addInput(2);
 
   r.run(R"(
-func @main(%arg0: tensor<!pphlo.pub<i32>>, %arg1: tensor<!pphlo.pub<i32>>) -> (tensor<!pphlo.pub<i32>>) {
+func.func @main(%arg0: tensor<!pphlo.pub<i32>>, %arg1: tensor<!pphlo.pub<i32>>) -> (tensor<!pphlo.pub<i32>>) {
   %0 = "pphlo.add"(%arg0, %arg1) : (tensor<!pphlo.pub<i32>>, tensor<!pphlo.pub<i32>>) -> tensor<!pphlo.pub<i32>>
   return %0 : tensor<!pphlo.pub<i32>>
 })");
@@ -118,13 +128,13 @@ func @main(%arg0: tensor<!pphlo.pub<i32>>, %arg1: tensor<!pphlo.pub<i32>>) -> (t
   r.verifyScalarOutput(3);
 }
 
-TEST_P(ProcessorTest, WithConst) {
+TEST_P(ExecutorTest, WithConst) {
   Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
            std::get<2>(GetParam()));
   r.addInput(xt::xarray<int>({{1, 1}, {1, 1}}));
 
   r.run(R"(
-func @main(%arg0: tensor<2x2x!pphlo.pub<i32>>) -> (tensor<2x2x!pphlo.pub<i32>>) {
+func.func @main(%arg0: tensor<2x2x!pphlo.pub<i32>>) -> (tensor<2x2x!pphlo.pub<i32>>) {
     %0 = "pphlo.constant"() {value = dense<[[1,2],[3,4]]> : tensor<2x2xi32>} : () -> tensor<2x2x!pphlo.pub<i32>>
     %1 = "pphlo.add"(%arg0, %0) : (tensor<2x2x!pphlo.pub<i32>>, tensor<2x2x!pphlo.pub<i32>>) -> tensor<2x2x!pphlo.pub<i32>>
     return %1 : tensor<2x2x!pphlo.pub<i32>>
@@ -134,14 +144,14 @@ func @main(%arg0: tensor<2x2x!pphlo.pub<i32>>) -> (tensor<2x2x!pphlo.pub<i32>>) 
   r.verifyOutput(expect.data());
 }
 
-TEST_P(ProcessorTest, RowConcate) {
+TEST_P(ExecutorTest, RowConcate) {
   Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
            std::get<2>(GetParam()));
   r.addInput(xt::xarray<int>({{1, 2, 3}, {4, 5, 6}}));
   r.addInput(xt::xarray<int>({{7, 8, 9}, {10, 11, 12}}));
 
   r.run(R"(
-func @main(%arg0: tensor<2x3x!pphlo.pub<i32>>, %arg1: tensor<2x3x!pphlo.pub<i32>>) -> (tensor<4x3x!pphlo.pub<i32>>) {
+func.func @main(%arg0: tensor<2x3x!pphlo.pub<i32>>, %arg1: tensor<2x3x!pphlo.pub<i32>>) -> (tensor<4x3x!pphlo.pub<i32>>) {
   %0 = "pphlo.concatenate"(%arg0, %arg1) {dimension = 0 : i64} : (tensor<2x3x!pphlo.pub<i32>>, tensor<2x3x!pphlo.pub<i32>>) -> tensor<4x3x!pphlo.pub<i32>>
   return %0 : tensor<4x3x!pphlo.pub<i32>>
 })");
@@ -150,14 +160,14 @@ func @main(%arg0: tensor<2x3x!pphlo.pub<i32>>, %arg1: tensor<2x3x!pphlo.pub<i32>
   r.verifyOutput(expect.data());
 }
 
-TEST_P(ProcessorTest, ColConcate) {
+TEST_P(ExecutorTest, ColConcate) {
   Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
            std::get<2>(GetParam()));
   r.addInput(xt::xarray<int>({{1, 2, 3}, {4, 5, 6}}));
   r.addInput(xt::xarray<int>({{7, 8, 9}, {10, 11, 12}}));
 
   r.run(R"(
-func @main(%arg0: tensor<2x3x!pphlo.pub<i32>>, %arg1: tensor<2x3x!pphlo.pub<i32>>) -> (tensor<2x6x!pphlo.pub<i32>>) {
+func.func @main(%arg0: tensor<2x3x!pphlo.pub<i32>>, %arg1: tensor<2x3x!pphlo.pub<i32>>) -> (tensor<2x6x!pphlo.pub<i32>>) {
   %0 = "pphlo.concatenate"(%arg0, %arg1) {dimension = 1 : i64} : (tensor<2x3x!pphlo.pub<i32>>, tensor<2x3x!pphlo.pub<i32>>) -> tensor<2x6x!pphlo.pub<i32>>
   return %0 : tensor<2x6x!pphlo.pub<i32>>
 }
@@ -167,13 +177,13 @@ func @main(%arg0: tensor<2x3x!pphlo.pub<i32>>, %arg1: tensor<2x3x!pphlo.pub<i32>
   r.verifyOutput(expect.data());
 }
 
-TEST_P(ProcessorTest, VariadicConcate) {
+TEST_P(ExecutorTest, VariadicConcate) {
   Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
            std::get<2>(GetParam()));
   r.addInput(xt::xarray<int>({1, 2, 3}));
 
   r.run(R"(
-func @main(%arg0: tensor<3x!pphlo.pub<i32>>) -> (tensor<9x!pphlo.pub<i32>>) {
+func.func @main(%arg0: tensor<3x!pphlo.pub<i32>>) -> (tensor<9x!pphlo.pub<i32>>) {
   %0 = "pphlo.concatenate"(%arg0, %arg0, %arg0) {dimension = 0 : i64} : (tensor<3x!pphlo.pub<i32>>, tensor<3x!pphlo.pub<i32>>, tensor<3x!pphlo.pub<i32>>) -> tensor<9x!pphlo.pub<i32>>
   return %0 : tensor<9x!pphlo.pub<i32>>
 })");
@@ -182,13 +192,13 @@ func @main(%arg0: tensor<3x!pphlo.pub<i32>>) -> (tensor<9x!pphlo.pub<i32>>) {
   r.verifyOutput(expect.data());
 }
 
-TEST_P(ProcessorTest, Slice) {
+TEST_P(ExecutorTest, Slice) {
   Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
            std::get<2>(GetParam()));
   r.addInput(xt::xarray<int>({{0, 1, 2}, {3, 4, 5}, {6, 7, 8}, {9, 10, 11}}));
 
   r.run(R"(
-func @main(%arg0: tensor<4x3x!pphlo.pub<i32>>) -> (tensor<2x2x!pphlo.pub<i32>>) {
+func.func @main(%arg0: tensor<4x3x!pphlo.pub<i32>>) -> (tensor<2x2x!pphlo.pub<i32>>) {
   %0 = "pphlo.slice"(%arg0) {limit_indices = dense<[4, 3]> : tensor<2xi64>, start_indices = dense<[2, 1]> : tensor<2xi64>, strides = dense<[1, 1]> : tensor<2xi64>} : (tensor<4x3x!pphlo.pub<i32>>) -> tensor<2x2x!pphlo.pub<i32>>
   return %0 : tensor<2x2x!pphlo.pub<i32>>
 })");
@@ -197,7 +207,7 @@ func @main(%arg0: tensor<4x3x!pphlo.pub<i32>>) -> (tensor<2x2x!pphlo.pub<i32>>) 
   r.verifyOutput(expect.data());
 }
 
-TEST_P(ProcessorTest, SliceStride) {
+TEST_P(ExecutorTest, SliceStride) {
   Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
            std::get<2>(GetParam()));
   r.addInput(xt::xarray<int>({                          //
@@ -207,7 +217,7 @@ TEST_P(ProcessorTest, SliceStride) {
                               {18, 19, 20, 21, 22, 23}}));
 
   r.run(R"(
-func @main(%arg0: tensor<4x6x!pphlo.pub<i32>>) -> (tensor<2x3x!pphlo.pub<i32>>) {
+func.func @main(%arg0: tensor<4x6x!pphlo.pub<i32>>) -> (tensor<2x3x!pphlo.pub<i32>>) {
   %0 = "pphlo.slice"(%arg0) {limit_indices = dense<[4, 6]> : tensor<2xi64>, start_indices = dense<[0, 0]> : tensor<2xi64>, strides = dense<[2, 2]> : tensor<2xi64>} : (tensor<4x6x!pphlo.pub<i32>>) -> tensor<2x3x!pphlo.pub<i32>>
   return %0 : tensor<2x3x!pphlo.pub<i32>>
 })");
@@ -217,14 +227,14 @@ func @main(%arg0: tensor<4x6x!pphlo.pub<i32>>) -> (tensor<2x3x!pphlo.pub<i32>>) 
   r.verifyOutput(expect.data());
 }
 
-TEST_P(ProcessorTest, Reshape) {
+TEST_P(ExecutorTest, Reshape) {
   Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
            std::get<2>(GetParam()));
   r.addInput(xt::xarray<int>({{0, 1, 2}, {3, 4, 5}, {6, 7, 8}, {9, 10, 11}}));
 
   // Reshape to 2x6
   r.run(R"(
-func @main(%arg0: tensor<4x3x!pphlo.pub<i32>>) -> (tensor<2x6x!pphlo.pub<i32>>) {
+func.func @main(%arg0: tensor<4x3x!pphlo.pub<i32>>) -> (tensor<2x6x!pphlo.pub<i32>>) {
   %0 = "pphlo.reshape"(%arg0) : (tensor<4x3x!pphlo.pub<i32>>) -> tensor<2x6x!pphlo.pub<i32>>
   return %0 : tensor<2x6x!pphlo.pub<i32>>
 }
@@ -234,7 +244,7 @@ func @main(%arg0: tensor<4x3x!pphlo.pub<i32>>) -> (tensor<2x6x!pphlo.pub<i32>>) 
   r.verifyOutput(expected.data());
 }
 
-TEST_P(ProcessorTest, While) {
+TEST_P(ExecutorTest, While) {
   Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
            std::get<2>(GetParam()));
   r.addInput(1);
@@ -242,7 +252,7 @@ TEST_P(ProcessorTest, While) {
 
   // while(x < y) { x = x + 1; }
   r.run(R"(
-func @main(%arg0: tensor<!pphlo.pub<i32>>, %arg1: tensor<!pphlo.pub<i32>>) -> tensor<!pphlo.pub<i32>> {
+func.func @main(%arg0: tensor<!pphlo.pub<i32>>, %arg1: tensor<!pphlo.pub<i32>>) -> tensor<!pphlo.pub<i32>> {
   %0, %1 = "pphlo.while"(%arg0, %arg1) ( {
   ^bb0(%arg2: tensor<!pphlo.pub<i32>>, %arg3: tensor<!pphlo.pub<i32>>):  // no predecessors
     %2 = "pphlo.less"(%arg2, %arg3) : (tensor<!pphlo.pub<i32>>, tensor<!pphlo.pub<i32>>) -> tensor<!pphlo.pub<i1>>
@@ -259,7 +269,7 @@ func @main(%arg0: tensor<!pphlo.pub<i32>>, %arg1: tensor<!pphlo.pub<i32>>) -> te
   r.verifyScalarOutput(3);
 }
 
-TEST_P(ProcessorTest, Reduce1D) {
+TEST_P(ExecutorTest, Reduce1D) {
   Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
            std::get<2>(GetParam()));
 
@@ -267,7 +277,7 @@ TEST_P(ProcessorTest, Reduce1D) {
   r.addInput(in1);
 
   r.run(R"(
-func @main(%arg0: tensor<10x!pphlo.pub<i32>>) -> (tensor<!pphlo.pub<i32>>) {
+func.func @main(%arg0: tensor<10x!pphlo.pub<i32>>) -> (tensor<!pphlo.pub<i32>>) {
   %0 = "pphlo.constant"() {value = dense<0> : tensor<i32>} : () -> tensor<!pphlo.pub<i32>>
   %1 = "pphlo.reduce"(%arg0, %0) ( {
         ^bb0(%arg1: tensor<!pphlo.pub<i32>>, %arg2: tensor<!pphlo.pub<i32>>): // no predecessors
@@ -281,7 +291,7 @@ func @main(%arg0: tensor<10x!pphlo.pub<i32>>) -> (tensor<!pphlo.pub<i32>>) {
   r.verifyOutput(expect.data());
 }
 
-TEST_P(ProcessorTest, Reduce2D1) {
+TEST_P(ExecutorTest, Reduce2D1) {
   Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
            std::get<2>(GetParam()));
 
@@ -289,7 +299,7 @@ TEST_P(ProcessorTest, Reduce2D1) {
   r.addInput(in1);
 
   r.run(R"(
-func @main(%arg0: tensor<2x3x!pphlo.pub<i32>>) -> (tensor<2x!pphlo.pub<i32>>) {
+func.func @main(%arg0: tensor<2x3x!pphlo.pub<i32>>) -> (tensor<2x!pphlo.pub<i32>>) {
   %0 = "pphlo.constant"() {value = dense<0> : tensor<i32>} : () -> tensor<!pphlo.pub<i32>>
   %1 = "pphlo.reduce"(%arg0, %0) ( {
         ^bb0(%arg1: tensor<!pphlo.pub<i32>>, %arg2: tensor<!pphlo.pub<i32>>): // no predecessors
@@ -303,7 +313,7 @@ func @main(%arg0: tensor<2x3x!pphlo.pub<i32>>) -> (tensor<2x!pphlo.pub<i32>>) {
   r.verifyOutput(expect.data());
 }
 
-TEST_P(ProcessorTest, Reduce2D2) {
+TEST_P(ExecutorTest, Reduce2D2) {
   Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
            std::get<2>(GetParam()));
 
@@ -311,7 +321,7 @@ TEST_P(ProcessorTest, Reduce2D2) {
   r.addInput(in1);
 
   r.run(R"(
-func @main(%arg0: tensor<2x3x!pphlo.pub<i32>>) -> (tensor<3x!pphlo.pub<i32>>) {
+func.func @main(%arg0: tensor<2x3x!pphlo.pub<i32>>) -> (tensor<3x!pphlo.pub<i32>>) {
   %0 = "pphlo.constant"() {value = dense<0> : tensor<i32>} : () -> tensor<!pphlo.pub<i32>>
   %1 = "pphlo.reduce"(%arg0, %0) ( {
         ^bb0(%arg1: tensor<!pphlo.pub<i32>>, %arg2: tensor<!pphlo.pub<i32>>): // no predecessors
@@ -325,7 +335,7 @@ func @main(%arg0: tensor<2x3x!pphlo.pub<i32>>) -> (tensor<3x!pphlo.pub<i32>>) {
   r.verifyOutput(expect.data());
 }
 
-TEST_P(ProcessorTest, VReduce) {
+TEST_P(ExecutorTest, VReduce) {
   Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
            std::get<2>(GetParam()));
 
@@ -333,7 +343,7 @@ TEST_P(ProcessorTest, VReduce) {
   r.addInput(in1);
 
   r.run(R"(
-func @main(%arg0: tensor<10x!pphlo.pub<i32>>) -> (tensor<!pphlo.pub<i32>>, tensor<!pphlo.pub<i32>>) {
+func.func @main(%arg0: tensor<10x!pphlo.pub<i32>>) -> (tensor<!pphlo.pub<i32>>, tensor<!pphlo.pub<i32>>) {
   %0 = "pphlo.constant"() {value = dense<0> : tensor<i32>} : () -> tensor<!pphlo.pub<i32>>
   %1:2 = "pphlo.reduce"(%arg0, %arg0, %0, %0) ( {
         ^bb0(%arg1: tensor<!pphlo.pub<i32>>, %arg2: tensor<!pphlo.pub<i32>>, %arg3: tensor<!pphlo.pub<i32>>, %arg4: tensor<!pphlo.pub<i32>>): // no predecessors
@@ -351,7 +361,7 @@ func @main(%arg0: tensor<10x!pphlo.pub<i32>>) -> (tensor<!pphlo.pub<i32>>, tenso
   r.verifyOutput(expect1.data(), 1);
 }
 
-TEST_P(ProcessorTest, MaxReduce) {
+TEST_P(ExecutorTest, MaxReduce) {
   Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
            std::get<2>(GetParam()));
 
@@ -359,7 +369,7 @@ TEST_P(ProcessorTest, MaxReduce) {
   r.addInput(in1);
 
   r.run(R"(
-func @main(%arg0: tensor<1x10x!pphlo.pub<f32>>) -> (tensor<1x!pphlo.pub<f32>>) {
+func.func @main(%arg0: tensor<1x10x!pphlo.pub<f32>>) -> (tensor<1x!pphlo.pub<f32>>) {
   // Initial value is -inf
   %0 = "pphlo.constant"() {value = dense<0xFF800000> : tensor<f32>} : () -> tensor<!pphlo.pub<f32>>
   %1 = "pphlo.reduce"(%arg0, %0) ( {
@@ -374,7 +384,7 @@ func @main(%arg0: tensor<1x10x!pphlo.pub<f32>>) -> (tensor<1x!pphlo.pub<f32>>) {
   r.verifyOutput(expect.data());
 }
 
-TEST_P(ProcessorTest, ReduceMultiDims) {
+TEST_P(ExecutorTest, ReduceMultiDims) {
   Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
            std::get<2>(GetParam()));
 
@@ -384,7 +394,7 @@ TEST_P(ProcessorTest, ReduceMultiDims) {
   r.addInput(in1, VIS_SECRET);
 
   r.run(R"(
-func @main(%arg0: tensor<2x3x4x!pphlo.sec<f32>>, %arg1: tensor<2x3x4x!pphlo.sec<f32>>) -> (tensor<!pphlo.sec<i1>>) {
+func.func @main(%arg0: tensor<2x3x4x!pphlo.sec<f32>>, %arg1: tensor<2x3x4x!pphlo.sec<f32>>) -> (tensor<!pphlo.sec<i1>>) {
   %0 = "pphlo.constant"() {value = dense<true> : tensor<i1>} : () -> tensor<!pphlo.pub<i1>>
   %1 = "pphlo.equal"(%arg0, %arg1) : (tensor<2x3x4x!pphlo.sec<f32>>, tensor<2x3x4x!pphlo.sec<f32>>) -> tensor<2x3x4x!pphlo.sec<i1>>
   %2 = "pphlo.convert"(%0) : (tensor<!pphlo.pub<i1>>) -> tensor<!pphlo.sec<i1>>
@@ -400,7 +410,7 @@ func @main(%arg0: tensor<2x3x4x!pphlo.sec<f32>>, %arg1: tensor<2x3x4x!pphlo.sec<
   r.verifyOutput(expect.data());
 }
 
-TEST_P(ProcessorTest, ReduceWindow) {
+TEST_P(ExecutorTest, ReduceWindow) {
   Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
            std::get<2>(GetParam()));
 
@@ -411,7 +421,7 @@ TEST_P(ProcessorTest, ReduceWindow) {
   r.addInput(in1);
 
   r.run(R"(
-func @main(%arg0: tensor<4x6x!pphlo.pub<i32>>) -> (tensor<2x2x!pphlo.pub<i32>>) {
+func.func @main(%arg0: tensor<4x6x!pphlo.pub<i32>>) -> (tensor<2x2x!pphlo.pub<i32>>) {
   %0 = "pphlo.constant"() {value = dense<0> : tensor<i32>} : () -> tensor<!pphlo.pub<i32>>
   %1 = "pphlo.reduce_window"(%arg0, %0) ( {
     ^bb0(%arg1: tensor<!pphlo.pub<i32>>, %arg2: tensor<!pphlo.pub<i32>>):  // no predecessors
@@ -426,7 +436,7 @@ func @main(%arg0: tensor<4x6x!pphlo.pub<i32>>) -> (tensor<2x2x!pphlo.pub<i32>>) 
   r.verifyOutput(expect.data());
 }
 
-TEST_P(ProcessorTest, ReduceWindowDefaultStrides) {
+TEST_P(ExecutorTest, ReduceWindowDefaultStrides) {
   Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
            std::get<2>(GetParam()));
 
@@ -437,7 +447,7 @@ TEST_P(ProcessorTest, ReduceWindowDefaultStrides) {
   r.addInput(in1);
 
   r.run(R"(
-func @main(%arg0: tensor<4x6x!pphlo.pub<i32>>) -> (tensor<3x4x!pphlo.pub<i32>>) {
+func.func @main(%arg0: tensor<4x6x!pphlo.pub<i32>>) -> (tensor<3x4x!pphlo.pub<i32>>) {
   %0 = "pphlo.constant"() {value = dense<0> : tensor<i32>} : () -> tensor<!pphlo.pub<i32>>
   %1 = "pphlo.reduce_window"(%arg0, %0) ( {
     ^bb0(%arg1: tensor<!pphlo.pub<i32>>, %arg2: tensor<!pphlo.pub<i32>>):  // no predecessors
@@ -453,7 +463,7 @@ func @main(%arg0: tensor<4x6x!pphlo.pub<i32>>) -> (tensor<3x4x!pphlo.pub<i32>>) 
   r.verifyOutput(expect.data());
 }
 
-TEST_P(ProcessorTest, ReduceWindowIotaWindowDilation) {
+TEST_P(ExecutorTest, ReduceWindowIotaWindowDilation) {
   Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
            std::get<2>(GetParam()));
 
@@ -462,7 +472,7 @@ TEST_P(ProcessorTest, ReduceWindowIotaWindowDilation) {
   r.addInput(in1);
 
   r.run(R"(
-func @main(%arg0: tensor<4x4x!pphlo.pub<i32>>) -> (tensor<2x2x!pphlo.pub<i32>>) {
+func.func @main(%arg0: tensor<4x4x!pphlo.pub<i32>>) -> (tensor<2x2x!pphlo.pub<i32>>) {
   %0 = "pphlo.constant"() {value = dense<0> : tensor<i32>} : () -> tensor<!pphlo.pub<i32>>
   %1 = "pphlo.reduce_window"(%arg0, %0) ( {
     ^bb0(%arg1: tensor<!pphlo.pub<i32>>, %arg2: tensor<!pphlo.pub<i32>>):  // no predecessors
@@ -477,7 +487,7 @@ func @main(%arg0: tensor<4x4x!pphlo.pub<i32>>) -> (tensor<2x2x!pphlo.pub<i32>>) 
   r.verifyOutput(expect.data());
 }
 
-TEST_P(ProcessorTest, ReduceWindowIotaStrideWindowDilation) {
+TEST_P(ExecutorTest, ReduceWindowIotaStrideWindowDilation) {
   Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
            std::get<2>(GetParam()));
 
@@ -486,7 +496,7 @@ TEST_P(ProcessorTest, ReduceWindowIotaStrideWindowDilation) {
   r.addInput(in1);
 
   r.run(R"(
-func @main(%arg0: tensor<4x4x!pphlo.pub<i32>>) -> (tensor<1x1x!pphlo.pub<i32>>) {
+func.func @main(%arg0: tensor<4x4x!pphlo.pub<i32>>) -> (tensor<1x1x!pphlo.pub<i32>>) {
   %0 = "pphlo.constant"() {value = dense<0> : tensor<i32>} : () -> tensor<!pphlo.pub<i32>>
   %1 = "pphlo.reduce_window"(%arg0, %0) ( {
     ^bb0(%arg1: tensor<!pphlo.pub<i32>>, %arg2: tensor<!pphlo.pub<i32>>):  // no predecessors
@@ -501,7 +511,7 @@ func @main(%arg0: tensor<4x4x!pphlo.pub<i32>>) -> (tensor<1x1x!pphlo.pub<i32>>) 
   r.verifyOutput(expect.data());
 }
 
-TEST_P(ProcessorTest, ReduceWindowMaxIotaBaseDilation) {
+TEST_P(ExecutorTest, ReduceWindowMaxIotaBaseDilation) {
   Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
            std::get<2>(GetParam()));
 
@@ -510,7 +520,7 @@ TEST_P(ProcessorTest, ReduceWindowMaxIotaBaseDilation) {
   r.addInput(in1);
 
   r.run(R"(
-func @main(%arg0: tensor<4x4x!pphlo.pub<i32>>) -> (tensor<6x6x!pphlo.pub<i32>>) {
+func.func @main(%arg0: tensor<4x4x!pphlo.pub<i32>>) -> (tensor<6x6x!pphlo.pub<i32>>) {
   %0 = "pphlo.constant"() {value = dense<0> : tensor<i32>} : () -> tensor<!pphlo.pub<i32>>
   %1 = "pphlo.reduce_window"(%arg0, %0) ( {
     ^bb0(%arg1: tensor<!pphlo.pub<i32>>, %arg2: tensor<!pphlo.pub<i32>>):  // no predecessors
@@ -527,7 +537,7 @@ func @main(%arg0: tensor<4x4x!pphlo.pub<i32>>) -> (tensor<6x6x!pphlo.pub<i32>>) 
   r.verifyOutput(expect.data());
 }
 
-TEST_P(ProcessorTest, ReduceWindowMaxIotaStrideBaseDilation) {
+TEST_P(ExecutorTest, ReduceWindowMaxIotaStrideBaseDilation) {
   Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
            std::get<2>(GetParam()));
 
@@ -536,7 +546,7 @@ TEST_P(ProcessorTest, ReduceWindowMaxIotaStrideBaseDilation) {
   r.addInput(in1);
 
   r.run(R"(
-func @main(%arg0: tensor<4x4x!pphlo.pub<i32>>) -> (tensor<3x3x!pphlo.pub<i32>>) {
+func.func @main(%arg0: tensor<4x4x!pphlo.pub<i32>>) -> (tensor<3x3x!pphlo.pub<i32>>) {
   %0 = "pphlo.constant"() {value = dense<0> : tensor<i32>} : () -> tensor<!pphlo.pub<i32>>
   %1 = "pphlo.reduce_window"(%arg0, %0) ( {
     ^bb0(%arg1: tensor<!pphlo.pub<i32>>, %arg2: tensor<!pphlo.pub<i32>>):  // no predecessors
@@ -551,7 +561,7 @@ func @main(%arg0: tensor<4x4x!pphlo.pub<i32>>) -> (tensor<3x3x!pphlo.pub<i32>>) 
   r.verifyOutput(expect.data());
 }
 
-TEST_P(ProcessorTest, ReduceWindowMaxIotaStrideBothDilation) {
+TEST_P(ExecutorTest, ReduceWindowMaxIotaStrideBothDilation) {
   Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
            std::get<2>(GetParam()));
 
@@ -560,7 +570,7 @@ TEST_P(ProcessorTest, ReduceWindowMaxIotaStrideBothDilation) {
   r.addInput(in1);
 
   r.run(R"(
-func @main(%arg0: tensor<4x4x!pphlo.pub<i32>>) -> (tensor<3x3x!pphlo.pub<i32>>) {
+func.func @main(%arg0: tensor<4x4x!pphlo.pub<i32>>) -> (tensor<3x3x!pphlo.pub<i32>>) {
   %0 = "pphlo.constant"() {value = dense<0> : tensor<i32>} : () -> tensor<!pphlo.pub<i32>>
   %1 = "pphlo.reduce_window"(%arg0, %0) ( {
     ^bb0(%arg1: tensor<!pphlo.pub<i32>>, %arg2: tensor<!pphlo.pub<i32>>):  // no predecessors
@@ -575,7 +585,7 @@ func @main(%arg0: tensor<4x4x!pphlo.pub<i32>>) -> (tensor<3x3x!pphlo.pub<i32>>) 
   r.verifyOutput(expect.data());
 }
 
-TEST_P(ProcessorTest, ReduceWindowMaxIotaPaddingStrideBaseDilation) {
+TEST_P(ExecutorTest, ReduceWindowMaxIotaPaddingStrideBaseDilation) {
   Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
            std::get<2>(GetParam()));
 
@@ -584,7 +594,7 @@ TEST_P(ProcessorTest, ReduceWindowMaxIotaPaddingStrideBaseDilation) {
   r.addInput(in1);
 
   r.run(R"(
-func @main(%arg0: tensor<4x4x!pphlo.pub<i32>>) -> (tensor<3x3x!pphlo.pub<i32>>) {
+func.func @main(%arg0: tensor<4x4x!pphlo.pub<i32>>) -> (tensor<3x3x!pphlo.pub<i32>>) {
   %0 = "pphlo.constant"() {value = dense<0> : tensor<i32>} : () -> tensor<!pphlo.pub<i32>>
   %1 = "pphlo.reduce_window"(%arg0, %0) ( {
     ^bb0(%arg1: tensor<!pphlo.pub<i32>>, %arg2: tensor<!pphlo.pub<i32>>):  // no predecessors
@@ -599,9 +609,9 @@ func @main(%arg0: tensor<4x4x!pphlo.pub<i32>>) -> (tensor<3x3x!pphlo.pub<i32>>) 
   r.verifyOutput(expect.data());
 }
 
-TEST_P(ProcessorTest, If) {
+TEST_P(ExecutorTest, If) {
   const auto *prog = R"(
- func @main(%arg0: tensor<!pphlo.pub<f32>>) -> tensor<!pphlo.pub<f32>> {
+ func.func @main(%arg0: tensor<!pphlo.pub<f32>>) -> tensor<!pphlo.pub<f32>> {
   %0 = "pphlo.constant"() {value = dense<1.000000e+01> : tensor<f32>} : () -> tensor<!pphlo.pub<f32>>
   %1 = "pphlo.less"(%arg0, %0) : (tensor<!pphlo.pub<f32>>, tensor<!pphlo.pub<f32>>) -> tensor<!pphlo.pub<i1>>
   %2 = "pphlo.if"(%1) ( {
@@ -639,9 +649,9 @@ TEST_P(ProcessorTest, If) {
   }
 }
 
-TEST_P(ProcessorTest, SecretControlflow) {
+TEST_P(ExecutorTest, SecretControlflow) {
   const auto *prog = R"(
-func @main(%arg0: tensor<!pphlo.pub<f32>>) -> tensor<!pphlo.pub<f32>> {
+func.func @main(%arg0: tensor<!pphlo.pub<f32>>) -> tensor<!pphlo.pub<f32>> {
   %0 = "pphlo.constant"() {value = dense<1.000000e+01> : tensor<f32>} : () -> tensor<!pphlo.pub<f32>>
   %1 = "pphlo.convert"(%arg0) : (tensor<!pphlo.pub<f32>>) -> tensor<!pphlo.sec<f32>>
   %2 = "pphlo.less"(%1, %0) : (tensor<!pphlo.sec<f32>>, tensor<!pphlo.pub<f32>>) -> tensor<!pphlo.sec<i1>>
@@ -679,12 +689,12 @@ func @main(%arg0: tensor<!pphlo.pub<f32>>) -> tensor<!pphlo.pub<f32>> {
   }
 }
 
-TEST_P(ProcessorTest, Iota1D) {
+TEST_P(ExecutorTest, Iota1D) {
   Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
            std::get<2>(GetParam()));
 
   r.run(R"(
-func @main() -> (tensor<4x!pphlo.pub<i32>>) {
+func.func @main() -> (tensor<4x!pphlo.pub<i32>>) {
     %0 = "pphlo.iota"() {iota_dimension = 0 : i64} : () -> tensor<4x!pphlo.pub<i32>>
     return %0 : tensor<4x!pphlo.pub<i32>>
 })");
@@ -693,12 +703,12 @@ func @main() -> (tensor<4x!pphlo.pub<i32>>) {
   r.verifyOutput(expect.data());
 }
 
-TEST_P(ProcessorTest, Iota2D) {
+TEST_P(ExecutorTest, Iota2D) {
   Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
            std::get<2>(GetParam()));
 
   r.run(R"(
-func @main() -> (tensor<4x2x!pphlo.pub<i32>>) {
+func.func @main() -> (tensor<4x2x!pphlo.pub<i32>>) {
     %0 = "pphlo.iota"() {iota_dimension = 1 : i64} : () -> tensor<4x2x!pphlo.pub<i32>>
     return %0 : tensor<4x2x!pphlo.pub<i32>>
 })");
@@ -707,7 +717,7 @@ func @main() -> (tensor<4x2x!pphlo.pub<i32>>) {
   r.verifyOutput(expect.data());
 }
 
-TEST_P(ProcessorTest, SimpleBitcast) {
+TEST_P(ExecutorTest, SimpleBitcast) {
   GTEST_SKIP();
 
   Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
@@ -718,7 +728,7 @@ TEST_P(ProcessorTest, SimpleBitcast) {
   r.addInput(in);
 
   r.run(R"(
-func @main(%arg0: tensor<!pphlo.pub<f32>>) -> (tensor<!pphlo.pub<i32>>) {
+func.func @main(%arg0: tensor<!pphlo.pub<f32>>) -> (tensor<!pphlo.pub<i32>>) {
     %0 = "pphlo.bitcast_convert"(%arg0) {elsize = 32 : i64} : (tensor<!pphlo.pub<f32>>) -> tensor<!pphlo.pub<i32>>
     return %0 : tensor<!pphlo.pub<i32>>
 })");
@@ -726,7 +736,7 @@ func @main(%arg0: tensor<!pphlo.pub<f32>>) -> (tensor<!pphlo.pub<i32>>) {
   r.verifyOutput(reinterpret_cast<int32_t *>(&in));
 }
 
-TEST_P(ProcessorTest, Gather1) {
+TEST_P(ExecutorTest, Gather1) {
   Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
            std::get<2>(GetParam()));
 
@@ -735,7 +745,7 @@ TEST_P(ProcessorTest, Gather1) {
   r.addInput(xt::xarray<int>{0, 2});
 
   r.run(R"(
-func @main(%arg0: tensor<3x3x!pphlo.pub<i32>>, %arg1: tensor<2x!pphlo.pub<i32>>) -> (tensor<2x3x!pphlo.pub<i32>>) {
+func.func @main(%arg0: tensor<3x3x!pphlo.pub<i32>>, %arg1: tensor<2x!pphlo.pub<i32>>) -> (tensor<2x3x!pphlo.pub<i32>>) {
     %0 = "pphlo.gather"(%arg0, %arg1) {dimension_numbers = #pphlo.gather<offset_dims = [1], collapsed_slice_dims = [0], start_index_map = [0], index_vector_dim = 1>, indices_are_sorted = false, slice_sizes = dense<[1, 3]> : tensor<2xi64>} : (tensor<3x3x!pphlo.pub<i32>>, tensor<2x!pphlo.pub<i32>>) -> tensor<2x3x!pphlo.pub<i32>>
     return %0 : tensor<2x3x!pphlo.pub<i32>>
 })");
@@ -744,7 +754,7 @@ func @main(%arg0: tensor<3x3x!pphlo.pub<i32>>, %arg1: tensor<2x!pphlo.pub<i32>>)
   r.verifyOutput(expected.data());
 }
 
-TEST_P(ProcessorTest, Gather2) {
+TEST_P(ExecutorTest, Gather2) {
   Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
            std::get<2>(GetParam()));
 
@@ -753,7 +763,7 @@ TEST_P(ProcessorTest, Gather2) {
   r.addInput(xt::xarray<int>{0, 2});
 
   r.run(R"(
-func @main(%arg0: tensor<3x3x!pphlo.pub<i32>>, %arg1: tensor<2x!pphlo.pub<i32>>) -> (tensor<3x2x!pphlo.pub<i32>>) {
+func.func @main(%arg0: tensor<3x3x!pphlo.pub<i32>>, %arg1: tensor<2x!pphlo.pub<i32>>) -> (tensor<3x2x!pphlo.pub<i32>>) {
     %0 = "pphlo.gather"(%arg0, %arg1) {dimension_numbers = #pphlo.gather<offset_dims = [0], collapsed_slice_dims = [1], start_index_map = [1], index_vector_dim = 1>, indices_are_sorted = false, slice_sizes = dense<[3,1]> : tensor<2xi64>} : (tensor<3x3x!pphlo.pub<i32>>, tensor<2x!pphlo.pub<i32>>) -> tensor<3x2x!pphlo.pub<i32>>
     return %0 : tensor<3x2x!pphlo.pub<i32>>
 })");
@@ -762,7 +772,7 @@ func @main(%arg0: tensor<3x3x!pphlo.pub<i32>>, %arg1: tensor<2x!pphlo.pub<i32>>)
   r.verifyOutput(expected.data());
 }
 
-TEST_P(ProcessorTest, GatherBatch) {
+TEST_P(ExecutorTest, GatherBatch) {
   Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
            std::get<2>(GetParam()));
 
@@ -771,7 +781,7 @@ TEST_P(ProcessorTest, GatherBatch) {
   r.addInput(xt::xarray<int>{{0, 2}, {2, 1}});
 
   r.run(R"(
-func @main(%arg0: tensor<3x3x!pphlo.pub<i32>>, %arg1: tensor<2x2x!pphlo.pub<i32>>) -> (tensor<2x3x2x!pphlo.pub<i32>>) {
+func.func @main(%arg0: tensor<3x3x!pphlo.pub<i32>>, %arg1: tensor<2x2x!pphlo.pub<i32>>) -> (tensor<2x3x2x!pphlo.pub<i32>>) {
     %0 = "pphlo.gather"(%arg0, %arg1) {dimension_numbers = #pphlo.gather<offset_dims = [1], collapsed_slice_dims = [1], start_index_map = [1], index_vector_dim = 2>, indices_are_sorted = false, slice_sizes = dense<[3,1]> : tensor<2xi64>} : (tensor<3x3x!pphlo.pub<i32>>, tensor<2x2x!pphlo.pub<i32>>) -> tensor<2x3x2x!pphlo.pub<i32>>
     return %0 : tensor<2x3x2x!pphlo.pub<i32>>
 })");
@@ -781,7 +791,7 @@ func @main(%arg0: tensor<3x3x!pphlo.pub<i32>>, %arg1: tensor<2x2x!pphlo.pub<i32>
   r.verifyOutput(expected.data());
 }
 
-TEST_P(ProcessorTest, GatherNd) {
+TEST_P(ExecutorTest, GatherNd) {
   Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
            std::get<2>(GetParam()));
 
@@ -793,7 +803,7 @@ TEST_P(ProcessorTest, GatherNd) {
   r.addInput(xt::xarray<int>{{0, 0}, {1, 0}});
 
   r.run(R"(
-func @main(%arg0: tensor<3x3x2x!pphlo.pub<i32>>, %arg1: tensor<2x2x!pphlo.pub<i32>>) -> (tensor<2x2x!pphlo.pub<i32>>) {
+func.func @main(%arg0: tensor<3x3x2x!pphlo.pub<i32>>, %arg1: tensor<2x2x!pphlo.pub<i32>>) -> (tensor<2x2x!pphlo.pub<i32>>) {
     %0 = "pphlo.gather"(%arg0, %arg1) {dimension_numbers = #pphlo.gather<offset_dims = [1], collapsed_slice_dims = [0,1], start_index_map = [0,1], index_vector_dim = 1>, indices_are_sorted = false, slice_sizes = dense<[1,1,2]> : tensor<3xi64>} : (tensor<3x3x2x!pphlo.pub<i32>>, tensor<2x2x!pphlo.pub<i32>>) -> tensor<2x2x!pphlo.pub<i32>>
     return %0 : tensor<2x2x!pphlo.pub<i32>>
 })");
@@ -802,7 +812,7 @@ func @main(%arg0: tensor<3x3x2x!pphlo.pub<i32>>, %arg1: tensor<2x2x!pphlo.pub<i3
   r.verifyOutput(expected.data());
 }
 
-TEST_P(ProcessorTest, GatherNdNonDefaultIndexVectorDim) {
+TEST_P(ExecutorTest, GatherNdNonDefaultIndexVectorDim) {
   Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
            std::get<2>(GetParam()));
 
@@ -814,7 +824,7 @@ TEST_P(ProcessorTest, GatherNdNonDefaultIndexVectorDim) {
   r.addInput(xt::xarray<int>{{0, 0}, {1, 0}});
 
   r.run(R"(
-func @main(%arg0: tensor<3x3x2x!pphlo.pub<i32>>, %arg1: tensor<2x2x!pphlo.pub<i32>>) -> (tensor<2x2x!pphlo.pub<i32>>) {
+func.func @main(%arg0: tensor<3x3x2x!pphlo.pub<i32>>, %arg1: tensor<2x2x!pphlo.pub<i32>>) -> (tensor<2x2x!pphlo.pub<i32>>) {
     %0 = "pphlo.gather"(%arg0, %arg1) {dimension_numbers = #pphlo.gather<offset_dims = [1], collapsed_slice_dims = [0,1], start_index_map = [0,1], index_vector_dim = 0>, indices_are_sorted = false, slice_sizes = dense<[1,1,2]> : tensor<3xi64>} : (tensor<3x3x2x!pphlo.pub<i32>>, tensor<2x2x!pphlo.pub<i32>>) -> tensor<2x2x!pphlo.pub<i32>>
     return %0 : tensor<2x2x!pphlo.pub<i32>>
 })");
@@ -823,7 +833,7 @@ func @main(%arg0: tensor<3x3x2x!pphlo.pub<i32>>, %arg1: tensor<2x2x!pphlo.pub<i3
   r.verifyOutput(expected.data());
 }
 
-TEST_P(ProcessorTest, Simple4x4Conv2DWith2x2Kernel) {
+TEST_P(ExecutorTest, Simple4x4Conv2DWith2x2Kernel) {
   Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
            std::get<2>(GetParam()));
 
@@ -841,11 +851,19 @@ TEST_P(ProcessorTest, Simple4x4Conv2DWith2x2Kernel) {
   }}};
   r.addInput(rhs);
 
-  r.run(R"(
-func @main(%arg0: tensor<1x1x4x4x!pphlo.pub<f32>>, %arg1: tensor<1x1x2x2x!pphlo.pub<f32>>) -> (tensor<1x1x4x4x!pphlo.pub<f32>>) {
-    %0 = pphlo.convolution(%arg0, %arg1) dim_numbers = [b, f, 0, 1]x[o, i, 0, 1]->[b, f, 0, 1], window = {stride = [1, 1], pad = [[0, 1], [0, 1]], lhs_dilate = [1, 1], rhs_dilate = [1, 1]} {batch_group_count = 1 : i64, feature_group_count = 1 : i64} : (tensor<1x1x4x4x!pphlo.pub<f32>>, tensor<1x1x2x2x!pphlo.pub<f32>>) -> tensor<1x1x4x4x!pphlo.pub<f32>>
-    return %0 : tensor<1x1x4x4x!pphlo.pub<f32>>
+  auto ir = r.compileMHlo(R"(
+func.func @main(%arg0: tensor<1x1x4x4xf32>, %arg1: tensor<1x1x2x2xf32>) -> (tensor<1x1x4x4xf32>) {
+    %0 = mhlo.convolution(%arg0, %arg1) 
+            dim_numbers = [b, f, 0, 1]x[o, i, 0, 1]->[b, f, 0, 1], 
+            window = {stride = [1, 1], pad = [[0, 1], [0, 1]], lhs_dilate = [1, 1], rhs_dilate = [1, 1]} 
+            {
+              batch_group_count = 1 : i64, 
+              feature_group_count = 1 : i64
+            } : (tensor<1x1x4x4xf32>, tensor<1x1x2x2xf32>) -> tensor<1x1x4x4xf32>
+    return %0 : tensor<1x1x4x4xf32>
 })");
+
+  r.run(ir);
 
   xt::xarray<float> expected = {{{
       {100, 126, 152, 76},
@@ -856,37 +874,40 @@ func @main(%arg0: tensor<1x1x4x4x!pphlo.pub<f32>>, %arg1: tensor<1x1x2x2x!pphlo.
   r.verifyOutput(expected.data());
 }
 
-// TEST_P(ProcessorTest, Conv2DGeneralDimensions) {
-//   Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
-//            std::get<2>(GetParam()));
+TEST_P(ExecutorTest, Conv2DGeneralDimensions) {
+  Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
+           std::get<2>(GetParam()));
 
-//   xt::xarray<float> lhs = {
-//       {{{1, 2, 3, 4}}, {{5, 6, 7, 8}}, {{9, 10, 11, 12}}},
-//       {{{13, 14, 15, 16}}, {{17, 18, 19, 20}}, {{21, 22, 23, 24}}}};
-//   r.addInput(lhs);
+  xt::xarray<float> lhs = {
+      {{{1, 2, 3, 4}}, {{5, 6, 7, 8}}, {{9, 10, 11, 12}}},
+      {{{13, 14, 15, 16}}, {{17, 18, 19, 20}}, {{21, 22, 23, 24}}}};
+  r.addInput(lhs);
 
-//   xt::xarray<float> rhs = {{{{1, 7, 13}, {4, 10, 16}},
-//                             {{2, 8, 14}, {5, 11, 17}},
-//                             {{3, 9, 15}, {6, 12, 18}}}};
+  xt::xarray<float> rhs = {{{{1, 7, 13}, {4, 10, 16}},
+                            {{2, 8, 14}, {5, 11, 17}},
+                            {{3, 9, 15}, {6, 12, 18}}}};
 
-//   r.addInput(rhs);
+  r.addInput(rhs);
 
-//   r.run(R"(
-// func @main(%arg0: tensor<2x3x1x4x!pphlo.pub<f32>>, %arg1:
-// tensor<1x3x2x3x!pphlo.pub<f32>>) -> (tensor<1x1x1x2x!pphlo.pub<f32>>) {
-//     %0 = pphlo.convolution(%arg0, %arg1) dim_numbers = [f, 0, b, 1]x[o, 1, i,
-//     0]->[f, 0, b, 1], window = {stride = [1, 1], pad = [[0, 0], [0, 0]],
-//     lhs_dilate = [1, 1], rhs_dilate = [1, 1]} {batch_group_count = 1 : i64,
-//     feature_group_count = 1 : i64} : (tensor<2x3x1x4x!pphlo.pub<f32>>,
-//     tensor<1x3x2x3x!pphlo.pub<f32>>) -> tensor<1x1x1x2x!pphlo.pub<f32>>
-//     return %0 : tensor<1x1x1x2x!pphlo.pub<f32>>
-// })");
+  auto ir = r.compileMHlo(R"(
+func.func @main(%arg0: tensor<2x3x1x4xf32>, %arg1:tensor<1x3x2x3xf32>) -> (tensor<1x1x1x2xf32>) {
+    %0 = mhlo.convolution(%arg0, %arg1) 
+          dim_numbers = [f, 0, b, 1]x[o, 1, i,0]->[f, 0, b, 1], 
+          window = {stride = [1, 1], pad = [[0, 0], [0, 0]], lhs_dilate = [1, 1], rhs_dilate = [1, 1]} 
+          {
+            batch_group_count = 1 : i64,
+            feature_group_count = 1 : i64
+          } : (tensor<2x3x1x4xf32>,tensor<1x3x2x3xf32>) -> tensor<1x1x1x2xf32>
+    return %0 : tensor<1x1x1x2xf32>
+})");
 
-//   xt::xarray<float> expected = {{{{2514, 2685}}}};
-//   r.verifyOutput(expected.data());
-// }
+  r.run(ir);
 
-TEST_P(ProcessorTest, DilatedBaseConv2DWithHighPadding) {
+  xt::xarray<float> expected = {{{{2514, 2685}}}};
+  r.verifyOutput(expected.data());
+}
+
+TEST_P(ExecutorTest, DilatedBaseConv2DWithHighPadding) {
   Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
            std::get<2>(GetParam()));
 
@@ -905,11 +926,19 @@ TEST_P(ProcessorTest, DilatedBaseConv2DWithHighPadding) {
 
   r.addInput(rhs);
 
-  r.run(R"(
-func @main(%arg0: tensor<1x1x4x4x!pphlo.pub<f32>>, %arg1: tensor<1x1x2x2x!pphlo.pub<f32>>) -> (tensor<1x1x7x7x!pphlo.pub<f32>>) {
-    %0 = pphlo.convolution(%arg0, %arg1) dim_numbers = [b, f, 0, 1]x[o, i, 0, 1]->[b, f, 0, 1], window = {stride = [1, 1], pad = [[0, 1], [0, 1]], lhs_dilate = [2, 2], rhs_dilate = [1, 1]} {batch_group_count = 1 : i64, feature_group_count = 1 : i64} : (tensor<1x1x4x4x!pphlo.pub<f32>>, tensor<1x1x2x2x!pphlo.pub<f32>>) -> tensor<1x1x7x7x!pphlo.pub<f32>>
-    return %0 : tensor<1x1x7x7x!pphlo.pub<f32>>
+  auto ir = r.compileMHlo(R"(
+func.func @main(%arg0: tensor<1x1x4x4xf32>, %arg1: tensor<1x1x2x2xf32>) -> (tensor<1x1x7x7xf32>) {
+    %0 = mhlo.convolution(%arg0, %arg1) 
+          dim_numbers = [b, f, 0, 1]x[o, i, 0, 1]->[b, f, 0, 1], 
+          window = {stride = [1, 1], pad = [[0, 1], [0, 1]], lhs_dilate = [2, 2], rhs_dilate = [1, 1]} 
+          {
+            batch_group_count = 1 : i64, 
+            feature_group_count = 1 : i64
+          } : (tensor<1x1x4x4xf32>, tensor<1x1x2x2xf32>) -> tensor<1x1x7x7xf32>
+    return %0 : tensor<1x1x7x7xf32>
 })");
+
+  r.run(ir);
 
   xt::xarray<float> expected = {{{5, 12, 10, 18, 15, 24, 20},
                                  {35, 48, 42, 56, 49, 64, 56},
@@ -921,7 +950,7 @@ func @main(%arg0: tensor<1x1x4x4x!pphlo.pub<f32>>, %arg1: tensor<1x1x2x2x!pphlo.
   r.verifyOutput(expected.data());
 }
 
-TEST_P(ProcessorTest, DilatedBaseConv2DWithLowAndHighPadding) {
+TEST_P(ExecutorTest, DilatedBaseConv2DWithLowAndHighPadding) {
   Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
            std::get<2>(GetParam()));
 
@@ -940,11 +969,19 @@ TEST_P(ProcessorTest, DilatedBaseConv2DWithLowAndHighPadding) {
 
   r.addInput(rhs);
 
-  r.run(R"(
-func @main(%arg0: tensor<1x1x4x4x!pphlo.pub<f32>>, %arg1: tensor<1x1x2x2x!pphlo.pub<f32>>) -> (tensor<1x1x8x8x!pphlo.pub<f32>>) {
-    %0 = pphlo.convolution(%arg0, %arg1) dim_numbers = [b, f, 0, 1]x[o, i, 0, 1]->[b, f, 0, 1], window = {stride = [1, 1], pad = [[1, 1], [1, 1]], lhs_dilate = [2, 2], rhs_dilate = [1, 1]} {batch_group_count = 1 : i64, feature_group_count = 1 : i64} : (tensor<1x1x4x4x!pphlo.pub<f32>>, tensor<1x1x2x2x!pphlo.pub<f32>>) -> tensor<1x1x8x8x!pphlo.pub<f32>>
-    return %0 : tensor<1x1x8x8x!pphlo.pub<f32>>
+  auto ir = r.compileMHlo(R"(
+func.func @main(%arg0: tensor<1x1x4x4xf32>, %arg1: tensor<1x1x2x2xf32>) -> (tensor<1x1x8x8xf32>) {
+    %0 = mhlo.convolution(%arg0, %arg1) 
+          dim_numbers = [b, f, 0, 1]x[o, i, 0, 1]->[b, f, 0, 1], 
+          window = {stride = [1, 1], pad = [[1, 1], [1, 1]], lhs_dilate = [2, 2], rhs_dilate = [1, 1]} 
+          {
+            batch_group_count = 1 : i64, 
+            feature_group_count = 1 : i64
+          } : (tensor<1x1x4x4xf32>, tensor<1x1x2x2xf32>) -> tensor<1x1x8x8xf32>
+    return %0 : tensor<1x1x8x8xf32>
 })");
+
+  r.run(ir);
 
   xt::xarray<float> expected = {{
       {8, 7, 16, 14, 24, 21, 32, 28},
@@ -959,7 +996,7 @@ func @main(%arg0: tensor<1x1x4x4x!pphlo.pub<f32>>, %arg1: tensor<1x1x2x2x!pphlo.
   r.verifyOutput(expected.data());
 }
 
-TEST_P(ProcessorTest, FlatRhsDilation) {
+TEST_P(ExecutorTest, FlatRhsDilation) {
   Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
            std::get<2>(GetParam()));
 
@@ -977,17 +1014,25 @@ TEST_P(ProcessorTest, FlatRhsDilation) {
 
   r.addInput(rhs);
 
-  r.run(R"(
-func @main(%arg0: tensor<1x1x4x6x!pphlo.pub<f32>>, %arg1: tensor<1x1x2x3x!pphlo.pub<f32>>) -> (tensor<1x1x2x2x!pphlo.pub<f32>>) {
-    %0 = pphlo.convolution(%arg0, %arg1) dim_numbers = [b, f, 0, 1]x[o, i, 0, 1]->[b, f, 0, 1], window = {stride = [1, 1], pad = [[0, 0], [0, 0]], lhs_dilate = [1, 1], rhs_dilate = [2, 2]} {batch_group_count = 1 : i64, feature_group_count = 1 : i64} : (tensor<1x1x4x6x!pphlo.pub<f32>>, tensor<1x1x2x3x!pphlo.pub<f32>>) -> tensor<1x1x2x2x!pphlo.pub<f32>>
-    return %0 : tensor<1x1x2x2x!pphlo.pub<f32>>
+  auto ir = r.compileMHlo(R"(
+func.func @main(%arg0: tensor<1x1x4x6xf32>, %arg1: tensor<1x1x2x3xf32>) -> (tensor<1x1x2x2xf32>) {
+    %0 = mhlo.convolution(%arg0, %arg1) 
+          dim_numbers = [b, f, 0, 1]x[o, i, 0, 1]->[b, f, 0, 1], 
+          window = {stride = [1, 1], pad = [[0, 0], [0, 0]], lhs_dilate = [1, 1], rhs_dilate = [2, 2]} 
+          {
+            batch_group_count = 1 : i64, 
+            feature_group_count = 1 : i64
+          } : (tensor<1x1x4x6xf32>, tensor<1x1x2x3xf32>) -> tensor<1x1x2x2xf32>
+    return %0 : tensor<1x1x2x2xf32>
 })");
+
+  r.run(ir);
 
   xt::xarray<float> expected = {{3924, 4257}, {5922, 6255}};
   r.verifyOutput(expected.data());
 }
 
-TEST_P(ProcessorTest, ShiftLeft) {
+TEST_P(ExecutorTest, ShiftLeft) {
   Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
            std::get<2>(GetParam()));
 
@@ -998,7 +1043,7 @@ TEST_P(ProcessorTest, ShiftLeft) {
   r.addInput(rhs);
 
   r.run(R"(
-func @main(%arg0: tensor<2x!pphlo.pub<i32>>, %arg1: tensor<2x!pphlo.pub<i32>>) -> (tensor<2x!pphlo.pub<i32>>) {
+func.func @main(%arg0: tensor<2x!pphlo.pub<i32>>, %arg1: tensor<2x!pphlo.pub<i32>>) -> (tensor<2x!pphlo.pub<i32>>) {
     %0 = "pphlo.shift_left"(%arg0, %arg1) : (tensor<2x!pphlo.pub<i32>>, tensor<2x!pphlo.pub<i32>>) -> tensor<2x!pphlo.pub<i32>>
     return %0 : tensor<2x!pphlo.pub<i32>>
 })");
@@ -1007,7 +1052,7 @@ func @main(%arg0: tensor<2x!pphlo.pub<i32>>, %arg1: tensor<2x!pphlo.pub<i32>>) -
   r.verifyOutput(expected.data());
 }
 
-TEST_P(ProcessorTest, RightShiftLogical) {
+TEST_P(ExecutorTest, RightShiftLogical) {
   Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
            std::get<2>(GetParam()));
 
@@ -1018,7 +1063,7 @@ TEST_P(ProcessorTest, RightShiftLogical) {
   r.addInput(rhs);
 
   r.run(R"(
-func @main(%arg0: tensor<2x!pphlo.pub<i32>>, %arg1: tensor<2x!pphlo.pub<i32>>) -> (tensor<2x!pphlo.pub<i32>>) {
+func.func @main(%arg0: tensor<2x!pphlo.pub<i32>>, %arg1: tensor<2x!pphlo.pub<i32>>) -> (tensor<2x!pphlo.pub<i32>>) {
     %0 = "pphlo.shift_right_logical"(%arg0, %arg1) : (tensor<2x!pphlo.pub<i32>>, tensor<2x!pphlo.pub<i32>>) -> tensor<2x!pphlo.pub<i32>>
     return %0 : tensor<2x!pphlo.pub<i32>>
 })");
@@ -1027,7 +1072,7 @@ func @main(%arg0: tensor<2x!pphlo.pub<i32>>, %arg1: tensor<2x!pphlo.pub<i32>>) -
   r.verifyOutput(expected.data());
 }
 
-TEST_P(ProcessorTest, Maximum) {
+TEST_P(ExecutorTest, Maximum) {
   if (std::get<1>(GetParam()) == FM32) {
     return; // Ring type is not large enough to hold value
   }
@@ -1038,7 +1083,7 @@ TEST_P(ProcessorTest, Maximum) {
   r.addInput(10);
 
   r.run(R"(
-func @main(%arg0: tensor<!pphlo.pub<i32>>) -> (tensor<!pphlo.pub<i32>>) {
+func.func @main(%arg0: tensor<!pphlo.pub<i32>>) -> (tensor<!pphlo.pub<i32>>) {
   %0 = "pphlo.constant"() {value = dense<-2147483648> : tensor<i32>} : () -> tensor<!pphlo.pub<i32>>
   %1 = "pphlo.maximum"(%0, %arg0) : (tensor<!pphlo.pub<i32>>, tensor<!pphlo.pub<i32>>) -> tensor<!pphlo.pub<i32>>
   return %1 :  tensor<!pphlo.pub<i32>>
@@ -1048,7 +1093,7 @@ func @main(%arg0: tensor<!pphlo.pub<i32>>) -> (tensor<!pphlo.pub<i32>>) {
   r.verifyOutput(&expected);
 }
 
-TEST_P(ProcessorTest, Minimum) {
+TEST_P(ExecutorTest, Minimum) {
   if (std::get<1>(GetParam()) == FM32) {
     return; // Ring type is not large enough to hold value
   }
@@ -1059,7 +1104,7 @@ TEST_P(ProcessorTest, Minimum) {
   r.addInput(10);
 
   r.run(R"(
-func @main(%arg0: tensor<!pphlo.pub<i32>>) -> (tensor<!pphlo.pub<i32>>) {
+func.func @main(%arg0: tensor<!pphlo.pub<i32>>) -> (tensor<!pphlo.pub<i32>>) {
   %0 = "pphlo.constant"() {value = dense<2147483647> : tensor<i32>} : () -> tensor<!pphlo.pub<i32>>
   %1 = "pphlo.minimum"(%0, %arg0) : (tensor<!pphlo.pub<i32>>, tensor<!pphlo.pub<i32>>) -> tensor<!pphlo.pub<i32>>
   return %1 :  tensor<!pphlo.pub<i32>>
@@ -1069,7 +1114,7 @@ func @main(%arg0: tensor<!pphlo.pub<i32>>) -> (tensor<!pphlo.pub<i32>>) {
   r.verifyOutput(&expected);
 }
 
-TEST_P(ProcessorTest, DynamicSlice1D) {
+TEST_P(ExecutorTest, DynamicSlice1D) {
   Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
            std::get<2>(GetParam()));
 
@@ -1079,7 +1124,7 @@ TEST_P(ProcessorTest, DynamicSlice1D) {
   r.addInput(2);
 
   r.run(R"(
-func @main(%arg0: tensor<5x!pphlo.pub<i32>>, %arg1: tensor<!pphlo.pub<i32>>) -> tensor<2x!pphlo.pub<i32>> {
+func.func @main(%arg0: tensor<5x!pphlo.pub<i32>>, %arg1: tensor<!pphlo.pub<i32>>) -> tensor<2x!pphlo.pub<i32>> {
   %0 = "pphlo.dynamic-slice"(%arg0, %arg1) {slice_sizes = dense<2> : tensor<i64>} : (tensor<5x!pphlo.pub<i32>>, tensor<!pphlo.pub<i32>>) -> tensor<2x!pphlo.pub<i32>>
   return %0 : tensor<2x!pphlo.pub<i32>>
 })");
@@ -1088,7 +1133,7 @@ func @main(%arg0: tensor<5x!pphlo.pub<i32>>, %arg1: tensor<!pphlo.pub<i32>>) -> 
   r.verifyOutput(expected.data());
 }
 
-TEST_P(ProcessorTest, DynamicSlice2D) {
+TEST_P(ExecutorTest, DynamicSlice2D) {
   Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
            std::get<2>(GetParam()));
 
@@ -1102,7 +1147,7 @@ TEST_P(ProcessorTest, DynamicSlice2D) {
   r.addInput(1);
 
   r.run(R"(
-func @main(%arg0: tensor<4x3x!pphlo.pub<f32>>, %arg1: tensor<!pphlo.pub<i32>>, %arg2: tensor<!pphlo.pub<i32>>) -> tensor<2x2x!pphlo.pub<f32>> {
+func.func @main(%arg0: tensor<4x3x!pphlo.pub<f32>>, %arg1: tensor<!pphlo.pub<i32>>, %arg2: tensor<!pphlo.pub<i32>>) -> tensor<2x2x!pphlo.pub<f32>> {
   %0 = "pphlo.dynamic-slice"(%arg0, %arg1, %arg2) {slice_sizes = dense<[2, 2]> : tensor<2xi64>} : (tensor<4x3x!pphlo.pub<f32>>, tensor<!pphlo.pub<i32>>, tensor<!pphlo.pub<i32>>) -> tensor<2x2x!pphlo.pub<f32>>
   return %0 : tensor<2x2x!pphlo.pub<f32>>
 })");
@@ -1111,7 +1156,7 @@ func @main(%arg0: tensor<4x3x!pphlo.pub<f32>>, %arg1: tensor<!pphlo.pub<i32>>, %
   r.verifyOutput(expected.data());
 }
 
-TEST_P(ProcessorTest, DynamicUpdateSlice1D) {
+TEST_P(ExecutorTest, DynamicUpdateSlice1D) {
   Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
            std::get<2>(GetParam()));
 
@@ -1124,7 +1169,7 @@ TEST_P(ProcessorTest, DynamicUpdateSlice1D) {
   r.addInput(2);
 
   r.run(R"(
-func @main(%arg0: tensor<5x!pphlo.pub<i32>>, %arg1: tensor<2x!pphlo.pub<i32>>, %arg2: tensor<!pphlo.pub<i32>>) -> tensor<5x!pphlo.pub<i32>> {
+func.func @main(%arg0: tensor<5x!pphlo.pub<i32>>, %arg1: tensor<2x!pphlo.pub<i32>>, %arg2: tensor<!pphlo.pub<i32>>) -> tensor<5x!pphlo.pub<i32>> {
   %0 = "pphlo.dynamic-update-slice"(%arg0, %arg1, %arg2) : (tensor<5x!pphlo.pub<i32>>, tensor<2x!pphlo.pub<i32>>, tensor<!pphlo.pub<i32>>) -> tensor<5x!pphlo.pub<i32>>
   return %0 : tensor<5x!pphlo.pub<i32>>
 })");
@@ -1133,7 +1178,7 @@ func @main(%arg0: tensor<5x!pphlo.pub<i32>>, %arg1: tensor<2x!pphlo.pub<i32>>, %
   r.verifyOutput(expected.data());
 }
 
-TEST_P(ProcessorTest, DynamicUpdateSlice2D) {
+TEST_P(ExecutorTest, DynamicUpdateSlice2D) {
   Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
            std::get<2>(GetParam()));
 
@@ -1152,7 +1197,7 @@ TEST_P(ProcessorTest, DynamicUpdateSlice2D) {
   r.addInput(1);
 
   r.run(R"(
-func @main(%arg0: tensor<4x3x!pphlo.pub<f32>>, %arg1: tensor<3x2x!pphlo.pub<f32>>, %arg2: tensor<!pphlo.pub<i32>>, %arg3: tensor<!pphlo.pub<i32>>) -> tensor<4x3x!pphlo.pub<f32>> {
+func.func @main(%arg0: tensor<4x3x!pphlo.pub<f32>>, %arg1: tensor<3x2x!pphlo.pub<f32>>, %arg2: tensor<!pphlo.pub<i32>>, %arg3: tensor<!pphlo.pub<i32>>) -> tensor<4x3x!pphlo.pub<f32>> {
   %0 = "pphlo.dynamic-update-slice"(%arg0, %arg1, %arg2, %arg3) : (tensor<4x3x!pphlo.pub<f32>>, tensor<3x2x!pphlo.pub<f32>>, tensor<!pphlo.pub<i32>>, tensor<!pphlo.pub<i32>>) -> tensor<4x3x!pphlo.pub<f32>>
   return %0 : tensor<4x3x!pphlo.pub<f32>>
 })");
@@ -1164,7 +1209,7 @@ func @main(%arg0: tensor<4x3x!pphlo.pub<f32>>, %arg1: tensor<3x2x!pphlo.pub<f32>
   r.verifyOutput(expected.data());
 }
 
-TEST_P(ProcessorTest, Sort1D) {
+TEST_P(ExecutorTest, Sort1D) {
   Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
            std::get<2>(GetParam()));
 
@@ -1172,7 +1217,7 @@ TEST_P(ProcessorTest, Sort1D) {
   r.addInput(op);
 
   r.run(R"(
-func @main(%arg0: tensor<4x!pphlo.pub<f32>>) -> tensor<4x!pphlo.pub<f32>> {
+func.func @main(%arg0: tensor<4x!pphlo.pub<f32>>) -> tensor<4x!pphlo.pub<f32>> {
     %0 = "pphlo.sort"(%arg0) ( {
     ^bb0(%arg1: tensor<!pphlo.pub<f32>>, %arg2: tensor<!pphlo.pub<f32>>):  // no predecessors
       %1 = "pphlo.less"(%arg1, %arg2) : (tensor<!pphlo.pub<f32>>, tensor<!pphlo.pub<f32>>) -> tensor<!pphlo.pub<i1>>
@@ -1184,7 +1229,7 @@ func @main(%arg0: tensor<4x!pphlo.pub<f32>>) -> tensor<4x!pphlo.pub<f32>> {
   r.verifyOutput(expected.data());
 }
 
-TEST_P(ProcessorTest, Sort2DRow) {
+TEST_P(ExecutorTest, Sort2DRow) {
   Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
            std::get<2>(GetParam()));
 
@@ -1195,7 +1240,7 @@ TEST_P(ProcessorTest, Sort2DRow) {
 
   // Row sort
   r.run(R"(
-func @main(%arg0: tensor<2x4x!pphlo.pub<f32>>) -> tensor<2x4x!pphlo.pub<f32>> {
+func.func @main(%arg0: tensor<2x4x!pphlo.pub<f32>>) -> tensor<2x4x!pphlo.pub<f32>> {
     %0 = "pphlo.sort"(%arg0) ( {
     ^bb0(%arg1: tensor<!pphlo.pub<f32>>, %arg2: tensor<!pphlo.pub<f32>>):  // no predecessors
       %1 = "pphlo.less"(%arg1, %arg2) : (tensor<!pphlo.pub<f32>>, tensor<!pphlo.pub<f32>>) -> tensor<!pphlo.pub<i1>>
@@ -1208,7 +1253,7 @@ func @main(%arg0: tensor<2x4x!pphlo.pub<f32>>) -> tensor<2x4x!pphlo.pub<f32>> {
   r.verifyOutput(expected.data());
 }
 
-TEST_P(ProcessorTest, Sort2DCol) {
+TEST_P(ExecutorTest, Sort2DCol) {
   Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
            std::get<2>(GetParam()));
 
@@ -1219,7 +1264,7 @@ TEST_P(ProcessorTest, Sort2DCol) {
 
   // Column sort
   r.run(R"(
-func @main(%arg0: tensor<2x4x!pphlo.pub<f32>>) -> tensor<2x4x!pphlo.pub<f32>> {
+func.func @main(%arg0: tensor<2x4x!pphlo.pub<f32>>) -> tensor<2x4x!pphlo.pub<f32>> {
     %0 = "pphlo.sort"(%arg0) ( {
     ^bb0(%arg1: tensor<!pphlo.pub<f32>>, %arg2: tensor<!pphlo.pub<f32>>):  // no predecessors
       %1 = "pphlo.less"(%arg1, %arg2) : (tensor<!pphlo.pub<f32>>, tensor<!pphlo.pub<f32>>) -> tensor<!pphlo.pub<i1>>
@@ -1232,7 +1277,7 @@ func @main(%arg0: tensor<2x4x!pphlo.pub<f32>>) -> tensor<2x4x!pphlo.pub<f32>> {
   r.verifyOutput(expected.data());
 }
 
-TEST_P(ProcessorTest, SortMultiOperands) {
+TEST_P(ExecutorTest, SortMultiOperands) {
   Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
            std::get<2>(GetParam()));
 
@@ -1242,7 +1287,7 @@ TEST_P(ProcessorTest, SortMultiOperands) {
 
   // Row sort
   r.run(R"(
-func @main(%arg0: tensor<2x!pphlo.pub<i32>>, %arg1: tensor<2x!pphlo.pub<i32>>, %arg2: tensor<2x!pphlo.pub<f32>>) -> (tensor<2x!pphlo.pub<i32>>, tensor<2x!pphlo.pub<i32>>, tensor<2x!pphlo.pub<f32>>) {
+func.func @main(%arg0: tensor<2x!pphlo.pub<i32>>, %arg1: tensor<2x!pphlo.pub<i32>>, %arg2: tensor<2x!pphlo.pub<f32>>) -> (tensor<2x!pphlo.pub<i32>>, tensor<2x!pphlo.pub<i32>>, tensor<2x!pphlo.pub<f32>>) {
     %0:3 = "pphlo.sort"(%arg0, %arg1, %arg2) ( {
     ^bb0(%arg3: tensor<!pphlo.pub<i32>>, %arg4: tensor<!pphlo.pub<i32>>, %arg5: tensor<!pphlo.pub<i32>>, %arg6: tensor<!pphlo.pub<i32>>, %arg7: tensor<!pphlo.pub<f32>>, %arg8: tensor<!pphlo.pub<f32>>):  // no predecessors
       %1 = "pphlo.less"(%arg3, %arg4) : (tensor<!pphlo.pub<i32>>, tensor<!pphlo.pub<i32>>) -> tensor<!pphlo.pub<i1>>
@@ -1261,7 +1306,7 @@ func @main(%arg0: tensor<2x!pphlo.pub<i32>>, %arg1: tensor<2x!pphlo.pub<i32>>, %
   r.verifyOutput(expected2.data(), 2);
 }
 
-TEST_P(ProcessorTest, SortComplicatedComparator) {
+TEST_P(ExecutorTest, SortComplicatedComparator) {
   Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
            std::get<2>(GetParam()));
 
@@ -1270,7 +1315,7 @@ TEST_P(ProcessorTest, SortComplicatedComparator) {
 
   // Row sort
   r.run(R"(
-func @main(%arg0: tensor<4x!pphlo.pub<i32>>, %arg1: tensor<4x!pphlo.pub<i32>>) -> (tensor<4x!pphlo.pub<i32>>, tensor<4x!pphlo.pub<i32>>) {
+func.func @main(%arg0: tensor<4x!pphlo.pub<i32>>, %arg1: tensor<4x!pphlo.pub<i32>>) -> (tensor<4x!pphlo.pub<i32>>, tensor<4x!pphlo.pub<i32>>) {
     %0:2 = "pphlo.sort"(%arg0, %arg1) ( {
     ^bb0(%arg2: tensor<!pphlo.pub<i32>>, %arg3: tensor<!pphlo.pub<i32>>, %arg4: tensor<!pphlo.pub<i32>>, %arg5: tensor<!pphlo.pub<i32>>):  // no predecessors
       %1 = "pphlo.less"(%arg2, %arg3) : (tensor<!pphlo.pub<i32>>, tensor<!pphlo.pub<i32>>) -> tensor<!pphlo.pub<i1>>
@@ -1288,14 +1333,14 @@ func @main(%arg0: tensor<4x!pphlo.pub<i32>>, %arg1: tensor<4x!pphlo.pub<i32>>) -
   r.verifyOutput(expected1.data(), 1);
 }
 
-TEST_P(ProcessorTest, RemainderFxp) {
+TEST_P(ExecutorTest, RemainderFxp) {
   Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
            std::get<2>(GetParam()));
   r.addInput(std::vector<float>{2.5, 18.5, 5.3});
   r.addInput(std::vector<float>{5.0, 4.2, 2.0});
 
   r.run(R"(
-func @main(%arg0: tensor<3x!pphlo.pub<f32>>, %arg1: tensor<3x!pphlo.pub<f32>>) -> (tensor<3x!pphlo.pub<f32>>) {
+func.func @main(%arg0: tensor<3x!pphlo.pub<f32>>, %arg1: tensor<3x!pphlo.pub<f32>>) -> (tensor<3x!pphlo.pub<f32>>) {
   %0 = "pphlo.remainder"(%arg0, %arg1) : (tensor<3x!pphlo.pub<f32>>, tensor<3x!pphlo.pub<f32>>) -> tensor<3x!pphlo.pub<f32>> 
   return %0 : tensor<3x!pphlo.pub<f32>>
 })");
@@ -1304,14 +1349,14 @@ func @main(%arg0: tensor<3x!pphlo.pub<f32>>, %arg1: tensor<3x!pphlo.pub<f32>>) -
   r.verifyOutput(expected.data());
 }
 
-TEST_P(ProcessorTest, RemainderInt) {
+TEST_P(ExecutorTest, RemainderInt) {
   Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
            std::get<2>(GetParam()));
   r.addInput(std::vector<int>{5, -5, 17, -17, 5, -5, 17, -17});
   r.addInput(std::vector<int>{2, 2, 3, 3, -2, -2, -3, -3});
 
   r.run(R"(
-func @main(%arg0: tensor<8x!pphlo.pub<i32>>, %arg1: tensor<8x!pphlo.pub<i32>>) -> (tensor<8x!pphlo.pub<i32>>) {
+func.func @main(%arg0: tensor<8x!pphlo.pub<i32>>, %arg1: tensor<8x!pphlo.pub<i32>>) -> (tensor<8x!pphlo.pub<i32>>) {
   %0 = "pphlo.remainder"(%arg0, %arg1) : (tensor<8x!pphlo.pub<i32>>, tensor<8x!pphlo.pub<i32>>) -> tensor<8x!pphlo.pub<i32>>
   return %0 : tensor<8x!pphlo.pub<i32>>
 })");
@@ -1320,7 +1365,7 @@ func @main(%arg0: tensor<8x!pphlo.pub<i32>>, %arg1: tensor<8x!pphlo.pub<i32>>) -
   r.verifyOutput(expected.data());
 }
 
-TEST_P(ProcessorTest, ShiftLeftS32) {
+TEST_P(ExecutorTest, ShiftLeftS32) {
   Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
            std::get<2>(GetParam()));
 
@@ -1330,7 +1375,7 @@ TEST_P(ProcessorTest, ShiftLeftS32) {
   r.addInput(std::vector<int32_t>{4, 8, 2, 7, 15, 32, 100, -1});
 
   r.run(R"(
-func @main(%arg0: tensor<8x!pphlo.pub<i32>>, %arg1: tensor<8x!pphlo.pub<i32>>) -> (tensor<8x!pphlo.pub<i32>>) {
+func.func @main(%arg0: tensor<8x!pphlo.pub<i32>>, %arg1: tensor<8x!pphlo.pub<i32>>) -> (tensor<8x!pphlo.pub<i32>>) {
   %0 = "pphlo.shift_left"(%arg0, %arg1) : (tensor<8x!pphlo.pub<i32>>, tensor<8x!pphlo.pub<i32>>) -> tensor<8x!pphlo.pub<i32>>
   return %0 : tensor<8x!pphlo.pub<i32>>
 })");
@@ -1346,7 +1391,7 @@ func @main(%arg0: tensor<8x!pphlo.pub<i32>>, %arg1: tensor<8x!pphlo.pub<i32>>) -
   r.verifyOutput(expected.data());
 }
 
-TEST_P(ProcessorTest, ShiftLeftU32) {
+TEST_P(ExecutorTest, ShiftLeftU32) {
   Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
            std::get<2>(GetParam()));
 
@@ -1355,7 +1400,7 @@ TEST_P(ProcessorTest, ShiftLeftU32) {
   r.addInput(std::vector<uint32_t>{4, 8, 2, 7, 15, 32, 100, ~0U});
 
   r.run(R"(
-func @main(%arg0: tensor<8x!pphlo.pub<ui32>>, %arg1: tensor<8x!pphlo.pub<ui32>>) -> (tensor<8x!pphlo.pub<ui32>>) {
+func.func @main(%arg0: tensor<8x!pphlo.pub<ui32>>, %arg1: tensor<8x!pphlo.pub<ui32>>) -> (tensor<8x!pphlo.pub<ui32>>) {
   %0 = "pphlo.shift_left"(%arg0, %arg1) : (tensor<8x!pphlo.pub<ui32>>, tensor<8x!pphlo.pub<ui32>>) -> tensor<8x!pphlo.pub<ui32>>
   return %0 : tensor<8x!pphlo.pub<ui32>>
 })");
@@ -1365,7 +1410,7 @@ func @main(%arg0: tensor<8x!pphlo.pub<ui32>>, %arg1: tensor<8x!pphlo.pub<ui32>>)
   r.verifyOutput(expected.data());
 }
 
-TEST_P(ProcessorTest, ShiftRightLogicalS32) {
+TEST_P(ExecutorTest, ShiftRightLogicalS32) {
   Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
            std::get<2>(GetParam()));
 
@@ -1375,7 +1420,7 @@ TEST_P(ProcessorTest, ShiftRightLogicalS32) {
   r.addInput(std::vector<int32_t>{4, 8, 2, 7, 5, 32, /*100*/ 0, -1});
 
   r.run(R"(
-func @main(%arg0: tensor<8x!pphlo.pub<i32>>, %arg1: tensor<8x!pphlo.pub<i32>>) -> (tensor<8x!pphlo.pub<i32>>) {
+func.func @main(%arg0: tensor<8x!pphlo.pub<i32>>, %arg1: tensor<8x!pphlo.pub<i32>>) -> (tensor<8x!pphlo.pub<i32>>) {
   %0 = "pphlo.shift_right_logical"(%arg0, %arg1) : (tensor<8x!pphlo.pub<i32>>, tensor<8x!pphlo.pub<i32>>) -> tensor<8x!pphlo.pub<i32>>
   return %0 : tensor<8x!pphlo.pub<i32>>
 })");
@@ -1385,7 +1430,7 @@ func @main(%arg0: tensor<8x!pphlo.pub<i32>>, %arg1: tensor<8x!pphlo.pub<i32>>) -
   r.verifyOutput(expected.data());
 }
 
-TEST_P(ProcessorTest, ShiftRightLogicalU32) {
+TEST_P(ExecutorTest, ShiftRightLogicalU32) {
   Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
            std::get<2>(GetParam()));
 
@@ -1394,7 +1439,7 @@ TEST_P(ProcessorTest, ShiftRightLogicalU32) {
   r.addInput(std::vector<uint32_t>{4, 8, 2, 7, 5, 32, /*100*/ 0, ~0U});
 
   r.run(R"(
-func @main(%arg0: tensor<8x!pphlo.pub<ui32>>, %arg1: tensor<8x!pphlo.pub<ui32>>) -> (tensor<8x!pphlo.pub<ui32>>) {
+func.func @main(%arg0: tensor<8x!pphlo.pub<ui32>>, %arg1: tensor<8x!pphlo.pub<ui32>>) -> (tensor<8x!pphlo.pub<ui32>>) {
   %0 = "pphlo.shift_right_logical"(%arg0, %arg1) : (tensor<8x!pphlo.pub<ui32>>, tensor<8x!pphlo.pub<ui32>>) -> tensor<8x!pphlo.pub<ui32>>
   return %0 : tensor<8x!pphlo.pub<ui32>>
 })");
@@ -1403,7 +1448,7 @@ func @main(%arg0: tensor<8x!pphlo.pub<ui32>>, %arg1: tensor<8x!pphlo.pub<ui32>>)
   r.verifyOutput(expected.data());
 }
 
-TEST_P(ProcessorTest, ShiftRightArithmeticS32) {
+TEST_P(ExecutorTest, ShiftRightArithmeticS32) {
   Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
            std::get<2>(GetParam()));
 
@@ -1413,7 +1458,7 @@ TEST_P(ProcessorTest, ShiftRightArithmeticS32) {
   r.addInput(std::vector<int32_t>{4, 8, 2, 7, 2, 32, /*100*/ 0, -1});
 
   r.run(R"(
-func @main(%arg0: tensor<8x!pphlo.pub<i32>>, %arg1: tensor<8x!pphlo.pub<i32>>) -> (tensor<8x!pphlo.pub<i32>>) {
+func.func @main(%arg0: tensor<8x!pphlo.pub<i32>>, %arg1: tensor<8x!pphlo.pub<i32>>) -> (tensor<8x!pphlo.pub<i32>>) {
   %0 = "pphlo.shift_right_arithmetic"(%arg0, %arg1) : (tensor<8x!pphlo.pub<i32>>, tensor<8x!pphlo.pub<i32>>) -> tensor<8x!pphlo.pub<i32>>
   return %0 : tensor<8x!pphlo.pub<i32>>
 })");
@@ -1429,7 +1474,7 @@ func @main(%arg0: tensor<8x!pphlo.pub<i32>>, %arg1: tensor<8x!pphlo.pub<i32>>) -
   r.verifyOutput(expected.data());
 }
 
-TEST_P(ProcessorTest, ShiftRightArithmeticU32) {
+TEST_P(ExecutorTest, ShiftRightArithmeticU32) {
   Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
            std::get<2>(GetParam()));
 
@@ -1438,7 +1483,7 @@ TEST_P(ProcessorTest, ShiftRightArithmeticU32) {
   r.addInput(std::vector<uint32_t>{4, 8, 2, 7, 2, 32, /*100*/ 0, ~0U});
 
   r.run(R"(
-func @main(%arg0: tensor<8x!pphlo.pub<ui32>>, %arg1: tensor<8x!pphlo.pub<ui32>>) -> (tensor<8x!pphlo.pub<ui32>>) {
+func.func @main(%arg0: tensor<8x!pphlo.pub<ui32>>, %arg1: tensor<8x!pphlo.pub<ui32>>) -> (tensor<8x!pphlo.pub<ui32>>) {
   %0 = "pphlo.shift_right_arithmetic"(%arg0, %arg1) : (tensor<8x!pphlo.pub<ui32>>, tensor<8x!pphlo.pub<ui32>>) -> tensor<8x!pphlo.pub<ui32>>
   return %0 : tensor<8x!pphlo.pub<ui32>>
 })");
@@ -1447,7 +1492,33 @@ func @main(%arg0: tensor<8x!pphlo.pub<ui32>>, %arg1: tensor<8x!pphlo.pub<ui32>>)
   r.verifyOutput(expected.data());
 }
 
-TEST_P(ProcessorTest, SelectAndScatter1) {
+TEST_P(ExecutorTest, DotGeneral) {
+  Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
+           std::get<2>(GetParam()));
+
+  std::vector<int32_t> x(3 * 4, 0);
+  std::iota(x.begin(), x.end(), 0);
+  r.addInput(x);
+
+  std::vector<int32_t> y(3 * 4 * 5, 0);
+  std::iota(y.begin(), y.end(), 0);
+  r.addInput(y);
+
+  r.run(R"(
+func.func @main(%arg0: tensor<12x!pphlo.pub<i32>>, %arg1: tensor<60x!pphlo.pub<i32>>) -> (tensor<3x5x!pphlo.pub<i32>>) {
+  %0 = "pphlo.reshape" (%arg0) : (tensor<12x!pphlo.pub<i32>>) -> tensor<3x1x4x!pphlo.pub<i32>>
+  %1 = "pphlo.reshape" (%arg1) : (tensor<60x!pphlo.pub<i32>>) -> tensor<3x4x5x!pphlo.pub<i32>>
+  %2 = "pphlo.dot_general"(%0, %1) {dot_dimension_numbers = #pphlo.dot<lhs_batching_dimensions = [0], rhs_batching_dimensions = [0], lhs_contracting_dimensions = [2], rhs_contracting_dimensions = [1]>} : (tensor<3x1x4x!pphlo.pub<i32>>, tensor<3x4x5x!pphlo.pub<i32>>) -> tensor<3x5x!pphlo.pub<i32>>
+  return %2 : tensor<3x5x!pphlo.pub<i32>>
+})");
+
+  std::vector<int32_t> expected{70,  76,  82,   88,   94,   630,  652, 674,
+                                696, 718, 1830, 1868, 1906, 1944, 1982};
+
+  r.verifyOutput(expected.data());
+}
+
+TEST_P(ExecutorTest, SelectAndScatter1) {
   Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
            std::get<2>(GetParam()));
 
@@ -1464,7 +1535,7 @@ TEST_P(ProcessorTest, SelectAndScatter1) {
   r.addInput(static_cast<int32_t>(0));
 
   r.run(R"(
-func @main(%arg0: tensor<4x6x!pphlo.pub<i32>>, %arg1: tensor<2x2x!pphlo.pub<i32>>, %arg2: tensor<!pphlo.pub<i32>>) -> (tensor<4x6x!pphlo.pub<i32>>) {
+func.func @main(%arg0: tensor<4x6x!pphlo.pub<i32>>, %arg1: tensor<2x2x!pphlo.pub<i32>>, %arg2: tensor<!pphlo.pub<i32>>) -> (tensor<4x6x!pphlo.pub<i32>>) {
   %0 = "pphlo.select_and_scatter"(%arg0, %arg1, %arg2) ({
     ^bb0(%arg3: tensor<!pphlo.pub<i32>>, %arg4: tensor<!pphlo.pub<i32>>):
       %1 = "pphlo.less"(%arg3, %arg4) : (tensor<!pphlo.pub<i32>>, tensor<!pphlo.pub<i32>>) -> tensor<!pphlo.pub<i1>>
@@ -1485,7 +1556,7 @@ func @main(%arg0: tensor<4x6x!pphlo.pub<i32>>, %arg1: tensor<2x2x!pphlo.pub<i32>
   r.verifyOutput(expected.data());
 }
 
-TEST_P(ProcessorTest, SelectAndScatter2) {
+TEST_P(ExecutorTest, SelectAndScatter2) {
   Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
            std::get<2>(GetParam()));
 
@@ -1502,7 +1573,7 @@ TEST_P(ProcessorTest, SelectAndScatter2) {
   r.addInput(static_cast<int32_t>(0));
 
   r.run(R"(
-func @main(%arg0: tensor<4x5x!pphlo.pub<i32>>, %arg1: tensor<2x2x!pphlo.pub<i32>>, %arg2: tensor<!pphlo.pub<i32>>) -> (tensor<4x5x!pphlo.pub<i32>>) {
+func.func @main(%arg0: tensor<4x5x!pphlo.pub<i32>>, %arg1: tensor<2x2x!pphlo.pub<i32>>, %arg2: tensor<!pphlo.pub<i32>>) -> (tensor<4x5x!pphlo.pub<i32>>) {
   %0 = "pphlo.select_and_scatter"(%arg0, %arg1, %arg2) ({
     ^bb0(%arg3: tensor<!pphlo.pub<i32>>, %arg4: tensor<!pphlo.pub<i32>>):
       %1 = "pphlo.less"(%arg3, %arg4) : (tensor<!pphlo.pub<i32>>, tensor<!pphlo.pub<i32>>) -> tensor<!pphlo.pub<i1>>
@@ -1523,24 +1594,207 @@ func @main(%arg0: tensor<4x5x!pphlo.pub<i32>>, %arg1: tensor<2x2x!pphlo.pub<i32>
   r.verifyOutput(expected.data());
 }
 
+TEST_P(ExecutorTest, MaxPoolScatter1) {
+  Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
+           std::get<2>(GetParam()));
+
+  r.addInput(xt::xarray<int8_t>{
+      {{0, 0, 0, 0, 0, 1}, {0, 1, 0, 0, 0, 0}}, //
+      {{0, 0, 1, 0, 0, 0}, {0, 0, 0, 0, 0, 1}}, //
+  });
+  r.addInput(xt::xarray<int32_t>{
+      {2, 6}, //
+      {3, 1}  //
+  });
+
+  r.run(R"(
+func.func @main(%arg0: tensor<2x2x6x!pphlo.pub<i8>>, %arg1: tensor<2x2x!pphlo.pub<i32>>) -> (tensor<4x6x!pphlo.pub<i32>>) {
+    %0 = "pphlo.maxpool_scatter"(%arg0, %arg1) {padding = dense<0> : tensor<2x2xi64>, window_dimensions = dense<[2,3]> : tensor<2xi64>, window_strides = dense<[2,3]> : tensor<2xi64>} : (tensor<2x2x6x!pphlo.pub<i8>>, tensor<2x2x!pphlo.pub<i32>>) -> tensor<4x6x!pphlo.pub<i32>>
+    return %0 : tensor<4x6x!pphlo.pub<i32>>
+})");
+
+  xt::xarray<int32_t> expected = {{0, 0, 0, 0, 6, 0}, //
+                                  {0, 0, 2, 0, 0, 0}, //
+                                  {0, 0, 3, 0, 0, 0}, //
+                                  {0, 0, 0, 0, 0, 1}};
+  r.verifyOutput(expected.data());
+}
+
+TEST_P(ExecutorTest, MaxPoolScatter2) {
+  Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
+           std::get<2>(GetParam()));
+
+  r.addInput(xt::xarray<int8_t>{
+      {{0, 0, 0, 0, 0, 1}, {0, 0, 0, 1, 0, 0}}, //
+      {{0, 0, 1, 0, 0, 0}, {0, 0, 0, 0, 1, 0}}, //
+  });
+
+  r.addInput(xt::xarray<int32_t>{
+      {2, 6}, //
+      {3, 1}  //
+  });
+
+  r.run(R"(
+func.func @main(%arg0: tensor<2x2x6x!pphlo.pub<i8>>, %arg1: tensor<2x2x!pphlo.pub<i32>>) -> (tensor<4x5x!pphlo.pub<i32>>) {
+    %0 = "pphlo.maxpool_scatter"(%arg0, %arg1) {padding = dense<0> : tensor<2x2xi64>, window_dimensions = dense<[2,3]> : tensor<2xi64>, window_strides = dense<[2,2]> : tensor<2xi64>} : (tensor<2x2x6x!pphlo.pub<i8>>, tensor<2x2x!pphlo.pub<i32>>) -> tensor<4x5x!pphlo.pub<i32>>
+    return %0 : tensor<4x5x!pphlo.pub<i32>>
+})");
+
+  xt::xarray<int32_t> expected = {{0, 0, 0, 0, 0}, //
+                                  {0, 0, 8, 0, 0}, //
+                                  {0, 0, 3, 0, 0}, //
+                                  {0, 0, 0, 1, 0}};
+  r.verifyOutput(expected.data());
+}
+
+TEST_P(ExecutorTest, MaxPoolReduce1) {
+  Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
+           std::get<2>(GetParam()));
+
+  r.addInput(xt::xarray<int32_t>{
+      {7, 2, 5, 3, 10, 2}, //
+      {3, 8, 9, 3, 4, 2},  //
+      {1, 5, 7, 5, 6, 1},  //
+      {0, 6, 2, 7, 2, 8}   //
+  });
+
+  r.run(R"(
+func.func @main(%arg0: tensor<4x6x!pphlo.pub<i32>>) -> (tensor<2x2x!pphlo.pub<i32>>, tensor<2x2x6x!pphlo.pub<i8>>) {
+    %0 = "pphlo.constant"() {value = dense<[[1, 0, 0, 0, 0, 0], [0, 1, 0, 0, 0, 0], [0, 0, 1, 0, 0, 0], [0, 0, 0, 1, 0, 0], [0, 0, 0, 0, 1, 0], [0, 0, 0, 0, 0, 1]]> : tensor<6x6xi8>} : () -> tensor<6x6x!pphlo.pub<i8>>
+    %1 = "pphlo.constant"() {value = dense<-1> : tensor<i8>} : () -> tensor<!pphlo.pub<i8>>
+    %2 = "pphlo.constant"() {value = dense<-1> : tensor<i32>} : () -> tensor<!pphlo.pub<i32>>
+    %4:2 = "pphlo.reduce_window"(%arg0, %0, %2, %1) ({
+    ^bb0(%arg2: tensor<!pphlo.pub<i32>>, %arg3: tensor<!pphlo.pub<i8>>, %arg4: tensor<!pphlo.pub<i32>>, %arg5: tensor<!pphlo.pub<i8>>):
+      %6 = "pphlo.greater_equal"(%arg2, %arg4) : (tensor<!pphlo.pub<i32>>, tensor<!pphlo.pub<i32>>) -> tensor<!pphlo.pub<i1>>
+      %7 = "pphlo.select"(%6, %arg2, %arg4) : (tensor<!pphlo.pub<i1>>, tensor<!pphlo.pub<i32>>, tensor<!pphlo.pub<i32>>) -> tensor<!pphlo.pub<i32>>
+      %8 = "pphlo.select"(%6, %arg3, %arg5) : (tensor<!pphlo.pub<i1>>, tensor<!pphlo.pub<i8>>, tensor<!pphlo.pub<i8>>) -> tensor<!pphlo.pub<i8>>
+      "pphlo.return"(%7, %8) : (tensor<!pphlo.pub<i32>>, tensor<!pphlo.pub<i8>>) -> ()
+    }) {base_dilations = dense<1> : tensor<4xi64>, ignore_init_value = true, last_operand_is_window_mask = true, padding = dense<0> : tensor<2x2xi64>, window_dilations = dense<1> : tensor<2xi64>, window_dimensions = dense<[2, 3]> : tensor<2xi64>, window_strides = dense<[2, 3]> : tensor<2xi64>} : (tensor<4x6x!pphlo.pub<i32>>, tensor<6x6x!pphlo.pub<i8>>, tensor<!pphlo.pub<i32>>, tensor<!pphlo.pub<i8>>) -> (tensor<2x2x!pphlo.pub<i32>>, tensor<2x2x6x!pphlo.pub<i8>>)
+    return %4#0, %4#1: tensor<2x2x!pphlo.pub<i32>>, tensor<2x2x6x!pphlo.pub<i8>>
+})",
+        2);
+
+  xt::xarray<int32_t> reduce_ret = {{9, 10}, //
+                                    {7, 8}};
+  r.verifyOutput(reduce_ret.data(), 0);
+
+  xt::xarray<int8_t> mask = {
+      {{0, 0, 0, 0, 0, 1}, {0, 1, 0, 0, 0, 0}}, //
+      {{0, 0, 1, 0, 0, 0}, {0, 0, 0, 0, 0, 1}}, //
+  };
+
+  r.verifyOutput(mask.data(), 1);
+}
+
+TEST_P(ExecutorTest, MaxPoolReduce2) {
+  Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
+           std::get<2>(GetParam()));
+
+  r.addInput(xt::xarray<int32_t>{
+      {7, 2, 5, 3, 8}, //
+      {3, 8, 9, 3, 4}, //
+      {1, 5, 7, 5, 6}, //
+      {0, 6, 2, 10, 2} //
+  });
+
+  r.run(R"(
+func.func @main(%arg0: tensor<4x5x!pphlo.pub<i32>>) -> (tensor<2x2x!pphlo.pub<i32>>, tensor<2x2x6x!pphlo.pub<i8>>) {
+    %0 = "pphlo.constant"() {value = dense<[[1, 0, 0, 0, 0, 0], [0, 1, 0, 0, 0, 0], [0, 0, 1, 0, 0, 0], [0, 0, 0, 1, 0, 0], [0, 0, 0, 0, 1, 0], [0, 0, 0, 0, 0, 1]]> : tensor<6x6xi8>} : () -> tensor<6x6x!pphlo.pub<i8>>
+    %1 = "pphlo.constant"() {value = dense<-1> : tensor<i8>} : () -> tensor<!pphlo.pub<i8>>
+    %2 = "pphlo.constant"() {value = dense<-1> : tensor<i32>} : () -> tensor<!pphlo.pub<i32>>
+    %4:2 = "pphlo.reduce_window"(%arg0, %0, %2, %1) ({
+    ^bb0(%arg2: tensor<!pphlo.pub<i32>>, %arg3: tensor<!pphlo.pub<i8>>, %arg4: tensor<!pphlo.pub<i32>>, %arg5: tensor<!pphlo.pub<i8>>):
+      %6 = "pphlo.greater_equal"(%arg2, %arg4) : (tensor<!pphlo.pub<i32>>, tensor<!pphlo.pub<i32>>) -> tensor<!pphlo.pub<i1>>
+      %7 = "pphlo.select"(%6, %arg2, %arg4) : (tensor<!pphlo.pub<i1>>, tensor<!pphlo.pub<i32>>, tensor<!pphlo.pub<i32>>) -> tensor<!pphlo.pub<i32>>
+      %8 = "pphlo.select"(%6, %arg3, %arg5) : (tensor<!pphlo.pub<i1>>, tensor<!pphlo.pub<i8>>, tensor<!pphlo.pub<i8>>) -> tensor<!pphlo.pub<i8>>
+      "pphlo.return"(%7, %8) : (tensor<!pphlo.pub<i32>>, tensor<!pphlo.pub<i8>>) -> ()
+    }) {base_dilations = dense<1> : tensor<4xi64>, ignore_init_value = true, last_operand_is_window_mask = true, padding = dense<0> : tensor<2x2xi64>, window_dilations = dense<1> : tensor<2xi64>, window_dimensions = dense<[2, 3]> : tensor<2xi64>, window_strides = dense<[2, 2]> : tensor<2xi64>} : (tensor<4x5x!pphlo.pub<i32>>, tensor<6x6x!pphlo.pub<i8>>, tensor<!pphlo.pub<i32>>, tensor<!pphlo.pub<i8>>) -> (tensor<2x2x!pphlo.pub<i32>>, tensor<2x2x6x!pphlo.pub<i8>>)
+    return %4#0, %4#1: tensor<2x2x!pphlo.pub<i32>>, tensor<2x2x6x!pphlo.pub<i8>>
+})",
+        2);
+
+  xt::xarray<int32_t> reduce_ret = {{9, 9}, //
+                                    {7, 10}};
+  r.verifyOutput(reduce_ret.data(), 0);
+
+  xt::xarray<int8_t> mask = {
+      {{0, 0, 0, 0, 0, 1}, {0, 0, 0, 1, 0, 0}}, //
+      {{0, 0, 1, 0, 0, 0}, {0, 0, 0, 0, 1, 0}}, //
+  };
+
+  r.verifyOutput(mask.data(), 1);
+}
+
+TEST_P(ExecutorTest, OptimizedMaxPool1) {
+  Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
+           std::get<2>(GetParam()));
+
+  r.addInput(xt::xarray<int32_t>{
+      {7, 2, 5, 3, 10, 2}, //
+      {3, 8, 9, 3, 4, 2},  //
+      {1, 5, 7, 5, 6, 1},  //
+      {0, 6, 2, 7, 2, 8}   //
+  });
+  r.addInput(xt::xarray<int32_t>{
+      {2, 6}, //
+      {3, 1}  //
+  });
+
+  auto ir = r.compileMHlo(R"(
+func.func @main(%arg0: tensor<4x6xi32>, %arg1: tensor<2x2xi32>) -> (tensor<2x2xi32>, tensor<4x6xi32>) {
+  %0 = mhlo.constant dense<0> : tensor<i32>
+  %1 = "mhlo.reduce_window"(%arg0, %0) ({
+    ^bb0(%arg2: tensor<i32>, %arg3: tensor<i32>):
+      %3 = mhlo.maximum %arg2, %arg3 : tensor<i32>
+      "mhlo.return"(%3) : (tensor<i32>) -> ()
+    }) {base_dilations = dense<1> : tensor<2xi64>, padding = dense<0> : tensor<2x2xi64>, window_dilations = dense<1> : tensor<2xi64>, 
+        window_dimensions = dense<[2,3]> : tensor<2xi64>, window_strides = dense<[2, 3]> : tensor<2xi64>} : (tensor<4x6xi32>, tensor<i32>) -> tensor<2x2xi32>
+  %2 = "mhlo.select_and_scatter"(%arg0, %arg1, %0) ({
+    ^bb0(%arg3: tensor<i32>, %arg4: tensor<i32>):
+      %3 = "mhlo.compare"(%arg3, %arg4) {comparison_direction = #mhlo<comparison_direction GE>} : (tensor<i32>, tensor<i32>) -> tensor<i1>
+      "mhlo.return"(%3) : (tensor<i1>) -> ()
+    }, {
+    ^bb0(%arg3: tensor<i32>, %arg4: tensor<i32>):
+      %3 = mhlo.add %arg3, %arg4 : tensor<i32>
+      "mhlo.return"(%3) : (tensor<i32>) -> ()
+    }) {padding = dense<0> : tensor<2x2xi64>, window_dimensions = dense<[2,3]> : tensor<2xi64>, window_strides = dense<[2,3]> : tensor<2xi64>} : (tensor<4x6xi32>, tensor<2x2xi32>, tensor<i32>) -> tensor<4x6xi32>
+    return %1, %2 : tensor<2x2xi32>, tensor<4x6xi32>
+})");
+
+  EXPECT_THAT(ir, testing::HasSubstr("pphlo.maxpool_scatter"));
+
+  r.run(ir, 2);
+
+  xt::xarray<int32_t> reduce_ret = {{9, 10}, //
+                                    {7, 8}};
+  r.verifyOutput(reduce_ret.data(), 0);
+
+  xt::xarray<int32_t> mask = {
+      {{0, 0, 0, 0, 6, 0}, {0, 0, 2, 0, 0, 0}}, //
+      {{0, 0, 3, 0, 0, 0}, {0, 0, 0, 0, 0, 1}}, //
+  };
+
+  r.verifyOutput(mask.data(), 1);
+}
+
 INSTANTIATE_TEST_SUITE_P(
-    ProcessorTestInstances, ProcessorTest,
+    ExecutorTestInstances, ExecutorTest,
     testing::Combine(testing::Values(4, 3, 2),
                      testing::Values(FieldType::FM64, FieldType::FM128),
                      testing::Values(ProtocolKind::REF2K,
                                      ProtocolKind::SEMI2K)),
-    [](const testing::TestParamInfo<ProcessorTest::ParamType> &p) {
+    [](const testing::TestParamInfo<ExecutorTest::ParamType> &p) {
       return fmt::format("{}x{}x{}", std::get<0>(p.param), std::get<1>(p.param),
                          std::get<2>(p.param));
     });
 
 // NOTE(junfeng): ABY3 is 3pc only.
 INSTANTIATE_TEST_SUITE_P(
-    ProcessorTestABY3Instances, ProcessorTest,
+    ExecutorTestABY3Instances, ExecutorTest,
     testing::Combine(testing::Values(3),
                      testing::Values(FieldType::FM64, FieldType::FM128),
                      testing::Values(ProtocolKind::ABY3)),
-    [](const testing::TestParamInfo<ProcessorTest::ParamType> &p) {
+    [](const testing::TestParamInfo<ExecutorTest::ParamType> &p) {
       return fmt::format("{}x{}x{}", std::get<0>(p.param), std::get<1>(p.param),
                          std::get<2>(p.param));
     });

@@ -22,13 +22,26 @@ import numpy as np
 import numpy.testing as npt
 import tensorflow as tf
 
+import socket
+from contextlib import closing
+from typing import cast
+
 import spu.binding.util.distributed as ppd
 from spu import spu_pb2
 
+
+def unused_tcp_port() -> int:
+    """Return an unused port"""
+    with closing(socket.socket(socket.AF_INET, socket.SOCK_STREAM)) as sock:
+        sock.bind(("", 0))
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        return cast(int, sock.getsockname()[1])
+
+
 TEST_NODES_DEF = {
-    "node:0": "127.0.0.1:10227",
-    "node:1": "127.0.0.1:10228",
-    "node:2": "127.0.0.1:10229",
+    "node:0": f"127.0.0.1:{unused_tcp_port()}",
+    "node:1": f"127.0.0.1:{unused_tcp_port()}",
+    "node:2": f"127.0.0.1:{unused_tcp_port()}",
 }
 
 
@@ -38,13 +51,13 @@ TEST_DEVICES_DEF = {
         "config": {
             "node_ids": ["node:0", "node:1", "node:2"],
             "spu_internal_addrs": [
-                "127.0.0.1:10237",
-                "127.0.0.1:10238",
-                "127.0.0.1:10239",
+                f"127.0.0.1:{unused_tcp_port()}",
+                f"127.0.0.1:{unused_tcp_port()}",
+                f"127.0.0.1:{unused_tcp_port()}",
             ],
             "runtime_config": {
                 "protocol": "ABY3",
-                "field": "FM128",
+                "field": "FM64",
                 # "enable_pphlo_profile": True,
             },
         },

@@ -16,7 +16,7 @@
 
 #include "mlir/IR/BuiltinTypes.h"
 
-#include "spu/hal/value.h"
+#include "spu/kernel/value.h"
 
 namespace spu::device {
 
@@ -25,7 +25,7 @@ public:
   TypeChecker() = default;
   virtual ~TypeChecker();
 
-  virtual void check(mlir::Type, const hal::Value &value) const = 0;
+  virtual void check(mlir::Type, const spu::Value &value) const = 0;
 };
 
 } // namespace spu::device

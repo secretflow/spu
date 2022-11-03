@@ -21,7 +21,7 @@
 
 #include "spdlog/spdlog.h"
 
-#include "spu/hal/context.h"
+#include "spu/kernel/context.h"
 
 namespace spu::device {
 
@@ -39,7 +39,7 @@ void Executor::runWithEnv(const ExecutableProto &exec, SymbolTable *env) {
   Timer stage_timer;
 
   // prepare inputs from environment.
-  std::vector<hal::Value> inputs;
+  std::vector<spu::Value> inputs;
   inputs.reserve(exec.input_names_size());
   for (int32_t idx = 0; idx < exec.input_names_size(); idx++) {
     const std::string &sym_name = exec.input_names(idx);
@@ -100,8 +100,12 @@ void Executor::runWithEnv(const ExecutableProto &exec, SymbolTable *env) {
         "execution took {}s, output processing took {}s, total time {}s.",
         module_name_, input_time.count(), exec_time.count(),
         output_time.count(), total_time.count());
-    SPDLOG_INFO("Detailed pphlo profiling data:");
     const auto &records = getProfileRecords();
+    double total_time = .0;
+    for (const auto &[name, record] : records) {
+      total_time += record.time.count();
+    }
+    SPDLOG_INFO("HLO profiling: total time: {}", total_time);
     for (const auto &[name, record] : records) {
       SPDLOG_INFO("- {}, executed {} times, duration {}s", name, record.count,
                   record.time.count());
@@ -109,26 +113,28 @@ void Executor::runWithEnv(const ExecutableProto &exec, SymbolTable *env) {
   }
 
   if (hctx_->getProfilingEnabled()) {
-    SPDLOG_INFO("Detailed hal profiling data:");
     const auto &records = hctx_->getActionStats();
+    double total_time = .0;
+    for (const auto &[_, record] : records) {
+      total_time += record.getTotalTimeInSecond();
+    }
+    SPDLOG_INFO("HAL profiling: total time {}", total_time);
     for (const auto &[name, record] : records) {
-      auto seconds = std::chrono::duration_cast<std::chrono::duration<double>>(
-                         record.total_time)
-                         .count();
       SPDLOG_INFO("- {}, executed {} times, duration {}s", name, record.count,
-                  seconds);
+                  record.getTotalTimeInSecond());
     }
   }
 
   if (hctx_->prot()->getProfilingEnabled()) {
-    SPDLOG_INFO("Detailed mpc profiling data:");
     const auto &records = hctx_->prot()->getActionStats();
+    double total_time = .0;
+    for (const auto &[_, record] : records) {
+      total_time += record.getTotalTimeInSecond();
+    }
+    SPDLOG_INFO("MPC profiling: total time {}", total_time);
     for (const auto &[name, record] : records) {
-      auto seconds = std::chrono::duration_cast<std::chrono::duration<double>>(
-                         record.total_time)
-                         .count();
       SPDLOG_INFO("- {}, executed {} times, duration {}s", name, record.count,
-                  seconds);
+                  record.getTotalTimeInSecond());
     }
   }
 }

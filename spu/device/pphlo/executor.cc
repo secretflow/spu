@@ -24,8 +24,8 @@
 #include "spu/device/frame.h"
 #include "spu/device/pphlo/region_executor.h"
 #include "spu/dialect/pphlo_dialect.h"
-#include "spu/hal/context.h"
-#include "spu/hal/value.h"
+#include "spu/kernel/context.h"
+#include "spu/kernel/value.h"
 
 namespace spu::device::pphlo {
 
@@ -40,9 +40,9 @@ void SPUErrorHandler(void * /*use_data*/, const char *reason,
 
 } // namespace
 
-std::vector<hal::Value>
+std::vector<spu::Value>
 PPHloExecutor::executeFunc(mlir::func::FuncOp &fcn,
-                           llvm::ArrayRef<hal::Value> inputs) {
+                           llvm::ArrayRef<spu::Value> inputs) {
   Frame callFrame;
   RegionExecutor executor(getContext(), &callFrame, op_profiler_);
   return executor.executeRegion(fcn.getBody(), inputs);
@@ -69,13 +69,18 @@ PPHloExecutor::~PPHloExecutor() {
   llvm::remove_fatal_error_handler();
 }
 
-std::vector<hal::Value>
+std::vector<spu::Value>
 PPHloExecutor::run(const std::string &code,
-                   const std::vector<hal::Value> &inputs) {
+                   const std::vector<spu::Value> &inputs) {
   auto moduleOpRef =
       mlir::parseSourceString<mlir::ModuleOp>(code, mlir_context_.get());
 
-  auto entry_function = moduleOpRef->lookupSymbol<mlir::FuncOp>("main");
+  if (hctx_->rt_config().enable_pphlo_trace()) {
+    SPDLOG_INFO("Executing module {}",
+                moduleOpRef->getName().value_or("Unnamed"));
+  }
+
+  auto entry_function = moduleOpRef->lookupSymbol<mlir::func::FuncOp>("main");
   YASL_ENFORCE(entry_function);
 
   return executeFunc(entry_function, inputs);

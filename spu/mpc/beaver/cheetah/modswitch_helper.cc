@@ -42,21 +42,14 @@ inline static uint128_t AssignU128(uint64_t lo, uint64_t hi) {
   return (static_cast<uint128_t>(hi) << 64) | lo;
 }
 
-// return x^-1 mod 2^64
-static uint64_t InvU64(const uint64_t x) {
-  uint64_t inv = 1;
-  uint64_t p = x;
-  for (int i = 0; i < 63; ++i) {
-    inv *= p;
-    p *= p;
-  }
-  return inv;
-}
-
-static uint128_t InvU128(const uint128_t x) {
-  uint128_t inv = 1;
-  uint128_t p = x;
-  for (int i = 0; i < 127; ++i) {
+// return x^-1 mod 2^k for odd x
+template <typename T>
+constexpr T Inv2k(const T &x) {
+  YASL_ENFORCE(x & 1, "need odd input");
+  constexpr int nbits = sizeof(T) * 8;
+  T inv = 1;
+  T p = x;
+  for (int i = 1; i < nbits; ++i) {
     inv *= p;
     p *= p;
   }
@@ -401,15 +394,15 @@ void ModulusSwitchHelper::Impl::Init() {
   // -Q^{-1} mod t
   // gamma^{-1} mod t
   if (base_mod_bitlen_ <= 64) {
-    neg_inv_Q_mod_t_ = (-InvU64(base_Q.base_prod()[0])) & mod_t_mask_;
-    inv_gamma_mod_t_ = InvU64(gamma_.value()) & mod_t_mask_;
+    neg_inv_Q_mod_t_ = (-Inv2k(base_Q.base_prod()[0])) & mod_t_mask_;
+    inv_gamma_mod_t_ = Inv2k(gamma_.value()) & mod_t_mask_;
   } else {
     uint128_t base_Q_128 = AssignU128(
         base_Q.base_prod()[0], num_modulus > 1 ? base_Q.base_prod()[1] : 0);
     uint128_t gamma_128 = AssignU128(gamma_.value(), 0);
 
-    neg_inv_Q_mod_t_ = (-InvU128(base_Q_128)) & mod_t_mask_;
-    inv_gamma_mod_t_ = InvU128(gamma_128) & mod_t_mask_;
+    neg_inv_Q_mod_t_ = (-Inv2k(base_Q_128)) & mod_t_mask_;
+    inv_gamma_mod_t_ = Inv2k(gamma_128) & mod_t_mask_;
 
     YASL_ENFORCE_EQ((-neg_inv_Q_mod_t_ * base_Q_128) & mod_t_mask_,
                     static_cast<uint128_t>(1));

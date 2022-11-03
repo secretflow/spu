@@ -25,7 +25,7 @@ spu_cc_binary(
     deps = [
         ":utils",
         "//spu/device:io",
-        "//spu/hal",
+        "//spu/kernel/hal",
         "@com_google_absl//absl/strings",
         "@llvm-project//llvm:Support",
         "@yasl//yasl/link:factory",
@@ -37,7 +37,7 @@ spu_cc_library(
     srcs = ["utils.cc"],
     hdrs = ["utils.h"],
     deps = [
-        "//spu/hal:context",
+        "//spu/kernel:context",
         "@com_google_absl//absl/strings",
         "@llvm-project//llvm:Support",
         "@yasl//yasl/link:factory",

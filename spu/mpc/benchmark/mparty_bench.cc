@@ -80,7 +80,7 @@ void PrepareBenchmark(uint32_t rank, std::string& parties, uint32_t party_num,
   for (size_t i = 0; i < party_num; i++) {
     const std::string id = fmt::format("party{}", i);
     lctx_desc.parties.push_back({id, host_ips[i]});
-    benchmark::AddCustomContext(fmt::format("Benchmark Partyr-{} IP", i),
+    benchmark::AddCustomContext(fmt::format("BenchmarkParty-{} IP", i),
                                 host_ips[i]);
   }
 

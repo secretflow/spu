@@ -31,6 +31,7 @@ import numpy as np
 import pandas as pd
 from functools import reduce
 
+import examples.python.utils.dataset_utils as dsutil
 import examples.python.utils.appr_sigmoid as Sigmoid
 import spu.binding.util.distributed as ppd
 
@@ -38,10 +39,19 @@ from spu.binding.util.distributed import PYU, SPU
 
 parser = argparse.ArgumentParser(description='distributed driver.')
 parser.add_argument("-c", "--config", default="examples/python/conf/3pc.json")
+# use small dataset for this example
+parser.add_argument(
+    "-d", "--dataset_config", default="examples/python/conf/ds_breast_cancer_basic.json"
+)
+
 args = parser.parse_args()
 
 with open(args.config, 'r') as file:
     conf = json.load(file)
+
+
+with open(args.dataset_config, "r") as f:
+    dataset_config = json.load(f)
 
 ppd.init(conf["nodes"], conf["devices"])
 
@@ -426,41 +436,10 @@ class SSXgb:
         return self.spu(sigmoid)(pred)
 
 
-MOCK_DS = False
-MOCK_ROWS = 100000
-MOCK_COLS = 20
-
-
-def load_feature_r1():
-    if MOCK_DS:
-        x = np.random.rand(MOCK_ROWS, MOCK_COLS)
-        y = np.random.randint(1, size=(MOCK_ROWS,))
-        return x, y
-    else:
-        from sklearn.datasets import load_breast_cancer
-
-        ds = load_breast_cancer()
-        x, y = ds['data'], ds['target']
-        x = (x - np.min(x)) / (np.max(x) - np.min(x))
-        return x[:, :15], y
-
-
-def load_feature_r2():
-    if MOCK_DS:
-        x = np.random.rand(MOCK_ROWS, MOCK_COLS)
-        return x
-    else:
-        from sklearn.datasets import load_breast_cancer
-
-        ds = load_breast_cancer()
-        x = ds['data']
-        x = (x - np.min(x)) / (np.max(x) - np.min(x))  # normalize
-        return x[:, 15:]
-
-
 if __name__ == '__main__':
-    x1, y = ppd.device("P1")(load_feature_r1)()
-    x2 = ppd.device("P2")(load_feature_r2)()
+    x1, x2, y = dsutil.load_dataset_by_config(dataset_config)
+    x1, y = ppd.device("P1")(dsutil.load_feature_r1)(x1, y)
+    x2 = ppd.device("P2")(dsutil.load_feature_r2)(x2)
 
     dataset = [x1, x2]
 

@@ -42,21 +42,16 @@ void Core::doit(mlir::ModuleOp module) {
 }
 
 void Core::buildPipeline(mlir::PassManager *pm) {
-  {
-    // lowering
-    auto &optPM = pm->nest<mlir::func::FuncOp>();
-    optPM.addPass(mlir::pphlo::createDecomposeComparisonPass());
-    optPM.addPass(mlir::pphlo::createDecomposeSqrtPass());
-    optPM.addPass(mlir::pphlo::createDecomposeMinMaxPass());
-    optPM.addPass(mlir::pphlo::createReduceTruncationPass());
-    optPM.addPass(mlir::pphlo::createLowerMixedTypeOpPass());
-  }
-  {
-    auto &optPM = pm->nest<mlir::func::FuncOp>();
-    // Cleanup
-    optPM.addPass(mlir::createCanonicalizerPass());
-    optPM.addPass(mlir::createCSEPass());
-  }
+  // lowering
+  auto &optPM = pm->nest<mlir::func::FuncOp>();
+  optPM.addPass(mlir::pphlo::createOptimizeMaxPoolingPass());
+  optPM.addPass(mlir::pphlo::createDecomposeComparisonPass());
+  optPM.addPass(mlir::pphlo::createDecomposeMinMaxPass());
+  optPM.addPass(mlir::pphlo::createReduceTruncationPass());
+  optPM.addPass(mlir::pphlo::createLowerMixedTypeOpPass());
+
+  optPM.addPass(mlir::createCanonicalizerPass());
+  optPM.addPass(mlir::createCSEPass());
 }
 
 } // namespace spu::compiler

@@ -48,9 +48,10 @@ void CheetahIo::flush() {
     return;
   }
 
-  ctx_->Send(ctx_->NextRank(),
-             yasl::ByteContainerView(send_buffer_.data(), send_buffer_used_),
-             fmt::format("Cheetah send:{}", send_op_++));
+  ctx_->SendAsync(
+      ctx_->NextRank(),
+      yasl::ByteContainerView(send_buffer_.data(), send_buffer_used_),
+      fmt::format("Cheetah send:{}", send_op_++));
 
   memset(send_buffer_.data(), 0, SEND_BUFFER_SIZE);
   send_buffer_used_ = 0;

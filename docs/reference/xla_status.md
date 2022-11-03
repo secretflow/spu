@@ -32,7 +32,7 @@ Count: Total = 4, fully supported = 2
 | `count_leading_zeros`| no                    |
 | `cosine`       | no                          |
 | `exponential`  | fully                       |
-| `exponential_minus_one`| no                  |
+| `exponential_minus_one`| fully               |
 | `floor`        | fully                       |
 | `imag`         | no                          |
 | `is_finite`    | no                          |
@@ -45,7 +45,7 @@ Count: Total = 4, fully supported = 2
 | `real`         | not                         |
 | `round_nearest_afz`| not                     |
 | `rsqrt`        | fully                       |
-| `sign`         | not                         |
+| `sign`         | partial                     |
 | `sine`         | not                         |
 | `sqrt`         | fully                       |
 | `tanh`         | fully                       |
@@ -149,10 +149,10 @@ Count: Total = 2, fully supported = 2
 | `copy`         | no                          |
 | `cross-replica-sum` | no                     |
 | `custom_call`  | no                          |
-| `dot`          | partial                     | Up to 2D dot
-| `dot_general`  | partial                     | Inherits dot limitation and rely on XLA DotDecompose pass
-| `einsum`       | no                          |
-| `unary_einsum` | no                          |
+| `dot`          | fully                       | 
+| `dot_general`  | fully                       |
+| `einsum`       | fully                       |
+| `unary_einsum` | fully                       |
 | `fft`          | no                          |
 | `gather`       | fully                       |
 | `get_dimension_size` | no                    |
@@ -167,9 +167,9 @@ Count: Total = 2, fully supported = 2
 | `reverse`      | fully                       |
 | `pad`          | fully                       |
 | `trace`        | no                          |
-| `transpose`    | partial                     | General transpose is not supported, permutation must be a reverse of input dimension index
+| `transpose`    | fully                       |
 | `triangular_solve` | fully                   | Rely on XLA's TriangularSolverExpander pass
-| `reduce_window`| partial                     | Variadic reduce window is not supported
+| `reduce_window`| fully                       |
 | `return`       | fully                       |
 | `torch_index_select` | no                    |
 | `optimization_barrier` | no                  |

@@ -19,8 +19,6 @@
 
 #include "yasl/base/exception.h"
 
-#include "spu/core/type_util.h"
-
 namespace spu {
 
 int64_t calcNumel(absl::Span<const int64_t> shape) {
@@ -117,33 +115,27 @@ std::vector<int64_t> makeCompactStrides(absl::Span<const int64_t> shape) {
   return strides;
 }
 
-// This function assumes row major
-int64_t flattenIndex(absl::Span<const int64_t> indices,
+int64_t flattenIndex(absl::Span<const int64_t> index,
                      absl::Span<const int64_t> shape) {
-  YASL_ENFORCE(indices.size() == shape.size());
+  YASL_ENFORCE(index.size() == shape.size());
 
   int64_t linear_idx = 0;
   int64_t stride = 1;
-  for (int64_t idx = indices.size() - 1; idx >= 0; --idx) {
-    linear_idx += indices[idx] * stride;
+  for (int64_t idx = index.size() - 1; idx >= 0; --idx) {
+    linear_idx += index[idx] * stride;
     stride *= shape[idx];
   }
   return linear_idx;
 }
 
-void unflattenIndex(int64_t index, absl::Span<const int64_t> shape,
-                    std::vector<int64_t> &unflattened) {
+std::vector<int64_t> unflattenIndex(int64_t index,
+                                    absl::Span<const int64_t> shape) {
+  std::vector<int64_t> unflattened(shape.size());
   for (int64_t idx = unflattened.size() - 1; idx >= 0; --idx) {
     unflattened[idx] = index % shape[idx];
     index /= shape[idx];
   }
-}
-
-std::vector<int64_t> unflattenIndex(int64_t index,
-                                    absl::Span<const int64_t> shape) {
-  std::vector<int64_t> ret(shape.size());
-  unflattenIndex(index, shape, ret);
-  return ret;
+  return unflattened;
 }
 
 }  // namespace spu

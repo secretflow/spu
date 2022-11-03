@@ -42,7 +42,7 @@ public:
   }
 
   NdArrayRef OutFeed(const std::string &name) {
-    std::vector<hal::Value> shares;
+    std::vector<spu::Value> shares;
     for (auto &st : symbol_tables_) {
       shares.push_back(st.getVar(name));
     }

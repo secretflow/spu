@@ -19,7 +19,7 @@
 #include "mlir/IR/MLIRContext.h"
 
 #include "spu/device/executor.h"
-#include "spu/hal/value.h"
+#include "spu/kernel/value.h"
 
 namespace spu::device::pphlo {
 
@@ -29,14 +29,14 @@ public:
 
   ~PPHloExecutor() override;
 
-  std::vector<hal::Value> run(const std::string &code,
-                              const std::vector<hal::Value> &inputs) override;
+  std::vector<spu::Value> run(const std::string &code,
+                              const std::vector<spu::Value> &inputs) override;
 
   mlir::OwningOpRef<mlir::ModuleOp> parseSourceString(const std::string &code);
 
 private:
-  std::vector<hal::Value> executeFunc(mlir::func::FuncOp &fcn,
-                                      llvm::ArrayRef<hal::Value> inputs);
+  std::vector<spu::Value> executeFunc(mlir::func::FuncOp &fcn,
+                                      llvm::ArrayRef<spu::Value> inputs);
 
   std::unique_ptr<mlir::MLIRContext> mlir_context_;
 };

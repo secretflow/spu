@@ -21,6 +21,7 @@
 import json
 import time
 import math
+import itertools
 
 import jax
 import jax.numpy as jnp
@@ -87,6 +88,7 @@ def train(
         return x
 
     update_model_jit = jax.jit(update_model)
+    itercount = itertools.count()
 
     print('Start trainning...')
     for i in range(1, epochs + 1):
@@ -96,6 +98,7 @@ def train(
         for batch_idx, (batch_images, batch_labels) in enumerate(
             zip(imgs_batchs, labels_batchs)
         ):
+            it = next(itercount)
             print(
                 f'{datetime.now().time()} Epoch: {i}/{epochs}  Batch: {batch_idx}/{math.floor(len(train_x) / batch_size)}'
             )
@@ -103,10 +106,10 @@ def train(
                 batch_images = ppd.device("P1")(identity)(batch_images)
                 batch_labels = ppd.device("P2")(identity)(batch_labels)
                 opt_state = ppd.device("SPU")(update_model)(
-                    opt_state, batch_images, batch_labels, i
+                    opt_state, batch_images, batch_labels, it
                 )
             else:
-                opt_state = update_model_jit(opt_state, batch_images, batch_labels, i)
+                opt_state = update_model_jit(opt_state, batch_images, batch_labels, it)
     if run_on_spu:
         opt_state = ppd.get(opt_state)
     return get_params(opt_state)

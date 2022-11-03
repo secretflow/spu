@@ -52,6 +52,9 @@ void ring_mul_(ArrayRef& x, const ArrayRef& y);
 ArrayRef ring_mmul(const ArrayRef& x, const ArrayRef& y, size_t M, size_t N,
                    size_t K);
 
+void ring_mmul_(ArrayRef& z, const ArrayRef& x, const ArrayRef& y, size_t M,
+                size_t N, size_t K);
+
 ArrayRef ring_not(const ArrayRef& x);
 void ring_not_(ArrayRef& x);
 

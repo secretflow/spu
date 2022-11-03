@@ -20,7 +20,7 @@
 #include "mlir/IR/Region.h"
 #include "yasl/base/exception.h"
 
-#include "spu/dialect/pphlo_types.h"
+#include "spu/dialect/pphlo_base_enums.h"
 
 namespace mlir::pphlo {
 
@@ -40,76 +40,6 @@ void VisibilityInference::inferBlock(Block &blk) {
   for (auto &op : blk) {
     inferOperation(op);
   }
-}
-
-void VisibilityInference::inferReduce(Operation &op) {
-  auto reduceOp = llvm::dyn_cast<mhlo::ReduceOp>(op);
-
-  size_t num_results = op.getNumResults();
-  std::vector<Visibility> input_vis;
-  for (size_t idx = 0; idx < num_results; ++idx) {
-    auto inputVis = ValueVis_.getValueVisibility(reduceOp.inputs()[idx]);
-    auto initVis = ValueVis_.getValueVisibility(reduceOp.init_values()[idx]);
-
-    auto promoted_vis = TypeTools::inferResultVisibility({inputVis, initVis});
-    input_vis.emplace_back(promoted_vis);
-
-    ValueVis_.setValueVisibility(reduceOp.body().getArgument(idx),
-                                 promoted_vis);
-    ValueVis_.setValueVisibility(reduceOp.body().getArgument(num_results + idx),
-                                 promoted_vis);
-  }
-
-  // ret0 = reduce(init0, val0)
-  // Push inputs to body region
-  inferRegion(reduceOp.body());
-
-  // Get body return
-  bool reinfer = false;
-  auto *terminator = reduceOp.body().back().getTerminator();
-  YASL_ENFORCE(terminator &&
-               terminator->getNumOperands() == reduceOp->getNumResults());
-  std::vector<Visibility> ret_vis;
-  for (size_t idx = 0; idx < reduceOp->getNumResults(); ++idx) {
-    auto resultVis = ValueVis_.getValueVisibility(terminator->getOperand(idx));
-    ValueVis_.setValueVisibility(reduceOp->getResult(idx), resultVis);
-    ret_vis.emplace_back(resultVis);
-    if (resultVis != input_vis[idx]) {
-      reinfer = true;
-    }
-  }
-
-  if (reinfer) {
-    for (size_t idx = 0; idx < num_results; ++idx) {
-      ValueVis_.setValueVisibility(reduceOp.body().getArgument(idx),
-                                   ret_vis[idx]);
-      ValueVis_.setValueVisibility(
-          reduceOp.body().getArgument(num_results + idx), ret_vis[idx]);
-    }
-
-    // ret0 = reduce(init0, val0)
-    // Push inputs to body region
-    inferRegion(reduceOp.body());
-  }
-}
-
-void VisibilityInference::inferReduceWindow(Operation &op) {
-  auto reduceOp = llvm::dyn_cast<mhlo::ReduceWindowOp>(op);
-  YASL_ENFORCE(reduceOp->getNumResults() == 1,
-               "Variadic reduce is not supported");
-  auto inputVis = ValueVis_.getValueVisibility(reduceOp.inputs().front());
-  // ret0 = reduce(init0, val0)
-  // Push inputs to body region
-  ValueVis_.setValueVisibility(reduceOp.body().getArgument(0), inputVis);
-  ValueVis_.setValueVisibility(reduceOp.body().getArgument(1), inputVis);
-  inferRegion(reduceOp.body());
-
-  SmallVector<Visibility, 2> operand_vis;
-  operand_vis.emplace_back(
-      ValueVis_.getValueVisibility(reduceOp.init_values().front()));
-  operand_vis.emplace_back(inputVis);
-  ValueVis_.setValueVisibility(reduceOp->getResults().front(),
-                               TypeTools::inferResultVisibility(operand_vis));
 }
 
 void VisibilityInference::inferIf(Operation &op) {
@@ -158,43 +88,49 @@ void VisibilityInference::inferWhile(Operation &op) {
   auto whileOp = llvm::dyn_cast<mhlo::WhileOp>(op);
 
   // Initial body visibility
-  for (const auto &blkarg : whileOp.body().getArguments()) {
-    ValueVis_.setValueVisibility(
-        blkarg, ValueVis_.getValueVisibility(
-                    whileOp->getOperand(blkarg.getArgNumber())));
-  }
-  inferRegion(whileOp.body());
+  SmallVector<Visibility> input_vis(op.getNumOperands());
+  SmallVector<Visibility> result_vis(op.getNumOperands());
 
-  // body return
-  auto &body_return = whileOp.body().back().back();
-  YASL_ENFORCE(llvm::isa<mhlo::ReturnOp>(body_return));
-
-  // Update visibility
-  for (const auto &blkarg : whileOp.body().getArguments()) {
-    ValueVis_.setValueVisibility(
-        blkarg, ValueVis_.getValueVisibility(
-                    body_return.getOperand(blkarg.getArgNumber())));
+  for (int64_t idx = 0; idx < op.getNumOperands(); ++idx) {
+    input_vis[idx] = ValueVis_.getValueVisibility(whileOp->getOperand(idx));
   }
 
-  // Infer again
-  inferRegion(whileOp.body());
+  bool converge = false;
+  do {
+    // Push visibility to block args
+    for (const auto &blkarg : whileOp.body().getArguments()) {
+      ValueVis_.setValueVisibility(blkarg, input_vis[blkarg.getArgNumber()]);
+    }
 
-  // body results visibility is either the same as origin or more strict
-  // Now use the return visibility to infer cond region
-  YASL_ENFORCE(whileOp.cond().getNumArguments() ==
-               body_return.getNumOperands());
-  for (const auto &blkarg : whileOp.cond().getArguments()) {
-    ValueVis_.setValueVisibility(
-        blkarg, ValueVis_.getValueVisibility(
-                    body_return.getOperand(blkarg.getArgNumber())));
+    // Infer body region
+    inferRegion(whileOp.body());
+
+    // Get result visibility
+    auto &body_return = *whileOp.body().front().getTerminator();
+    YASL_ENFORCE(llvm::isa<mhlo::ReturnOp>(body_return));
+
+    // Update visibility
+    for (int64_t idx = 0; idx < body_return.getNumOperands(); ++idx) {
+      result_vis[idx] =
+          ValueVis_.getValueVisibility(body_return.getOperand(idx));
+    }
+
+    converge = (input_vis == result_vis);
+    input_vis.swap(result_vis);
+  } while (!converge);
+
+  for (int64_t idx = 0; idx < op.getNumOperands(); ++idx) {
+    ValueVis_.setValueVisibility(whileOp.body().getArgument(idx),
+                                 input_vis[idx]);
+    ValueVis_.setValueVisibility(whileOp.cond().getArgument(idx),
+                                 input_vis[idx]);
   }
+
   inferRegion(whileOp.cond());
 
   // Update result visibility
-  for (const auto &ret : llvm::enumerate(whileOp->getResults())) {
-    ValueVis_.setValueVisibility(
-        ret.value(),
-        ValueVis_.getValueVisibility(body_return.getOperand(ret.index())));
+  for (int64_t idx = 0; idx < op.getNumResults(); ++idx) {
+    ValueVis_.setValueVisibility(op.getResult(idx), input_vis[idx]);
   }
 }
 
@@ -257,14 +193,14 @@ void VisibilityInference::inferSelectAndScatter(Operation &op) {
 
 void VisibilityInference::inferOperation(Operation &op) {
   if (llvm::isa<mhlo::ReduceOp>(op)) {
-    inferReduce(op);
+    inferReduce<mhlo::ReduceOp>(op);
   } else if (llvm::isa<mhlo::ReduceWindowOp>(op)) {
-    inferReduceWindow(op);
+    inferReduce<mhlo::ReduceWindowOp>(op);
   } else if (llvm::isa<mhlo::WhileOp>(op)) {
     inferWhile(op);
   } else if (llvm::isa<mhlo::IfOp>(op)) {
     inferIf(op);
-  } else if (llvm::isa<mhlo::ConstOp>(op)) {
+  } else if (llvm::isa<mhlo::ConstantOp>(op)) {
     // Constant always returns public
     ValueVis_.setValueVisibility(op.getResult(0), Visibility::VIS_PUBLIC);
   } else if (llvm::isa<mhlo::SortOp>(op)) {

@@ -15,7 +15,7 @@
 #include "spu/device/io.h"
 
 #include "spu/core/encoding.h"
-#include "spu/hal/constants.h"
+#include "spu/kernel/hal/constants.h"
 #include "spu/mpc/factory.h"
 
 namespace spu::device {
@@ -25,7 +25,7 @@ IoClient::IoClient(size_t world_size, RuntimeConfig config)
   base_io_ = mpc::Factory::CreateIO(config_, world_size_);
 }
 
-std::vector<hal::Value> IoClient::makeShares(PtBufferView bv, Visibility vtype,
+std::vector<spu::Value> IoClient::makeShares(PtBufferView bv, Visibility vtype,
                                              int owner_rank) {
   // FIXME(jint), this should be in the io context.
   const size_t fxp_bits = getDefaultFxpBits(config_);
@@ -39,7 +39,7 @@ std::vector<hal::Value> IoClient::makeShares(PtBufferView bv, Visibility vtype,
     auto flat_shares = base_io_->makeBitSecret(flatten(arr));
 
     YASL_ENFORCE(flat_shares.size() == world_size_);
-    std::vector<hal::Value> result;
+    std::vector<spu::Value> result;
     result.reserve(world_size_);
     for (const auto &flat_share : flat_shares) {
       result.emplace_back(unflatten(flat_share, arr.shape()), DataType::DT_I1);
@@ -64,7 +64,7 @@ std::vector<hal::Value> IoClient::makeShares(PtBufferView bv, Visibility vtype,
   }
 
   // build value.
-  std::vector<hal::Value> result;
+  std::vector<spu::Value> result;
   result.reserve(world_size_);
   for (size_t idx = 0; idx < world_size_; idx++) {
     result.emplace_back(shares[idx], dtype);
@@ -72,7 +72,7 @@ std::vector<hal::Value> IoClient::makeShares(PtBufferView bv, Visibility vtype,
   return result;
 }
 
-NdArrayRef IoClient::combineShares(absl::Span<hal::Value const> values) {
+NdArrayRef IoClient::combineShares(absl::Span<spu::Value const> values) {
   YASL_ENFORCE(values.size() == world_size_,
                "wrong number of shares, got={}, expect={}", values.size(),
                world_size_);
@@ -112,10 +112,10 @@ NdArrayRef ColocatedIo::hostGetVar(const std::string &name) const {
     return itr->second.arr;
   }
 
-  const hal::Value &v = symbols_.getVar(name);
+  const spu::Value &v = symbols_.getVar(name);
 
   if (v.isPublic()) {
-    return dump_public(hctx_, v);
+    return kernel::hal::dump_public(hctx_, v);
   } else if (v.isSecret()) {
     YASL_THROW("not implemented");
     // TODO: test the secret's owner is self,
@@ -126,11 +126,11 @@ NdArrayRef ColocatedIo::hostGetVar(const std::string &name) const {
   }
 }
 
-void ColocatedIo::deviceSetVar(const std::string &name, const hal::Value &var) {
+void ColocatedIo::deviceSetVar(const std::string &name, const spu::Value &var) {
   symbols_.setVar(name, var);
 }
 
-hal::Value ColocatedIo::deviceGetVar(const std::string &name) const {
+spu::Value ColocatedIo::deviceGetVar(const std::string &name) const {
   return symbols_.getVar(name);
 }
 
@@ -230,7 +230,7 @@ void ColocatedIo::sync() {
 
   for (const auto &values : values_per_party) {
     for (const auto &[name, proto] : values.symbols()) {
-      symbols_.setVar(name, hal::Value::fromProto(proto));
+      symbols_.setVar(name, spu::Value::fromProto(proto));
     }
   }
 

@@ -8,9 +8,9 @@ the passed configuration.
 
 See https://www.tensorflow.org/xla/operation_semantics#pad.
 
-Traits: SameOperandsAndResultElementType
+Traits: InferTensorType, SameOperandsAndResultElementType
 
-Interfaces: NoSideEffect (MemoryEffectOpInterface)
+Interfaces: InferShapedTypeOpInterface, InferTypeOpInterface, NoSideEffect (MemoryEffectOpInterface)
 
 Effects: MemoryEffects::Effect{}
 
@@ -234,7 +234,7 @@ Note: All three arrays must be the same shape. Alternatively, as a
 
 See https://www.tensorflow.org/xla/operation_semantics#clamp.
 
-Traits: SameOperandsAndResultElementType
+Traits: SameOperandsAndResultShape
 
 Interfaces: NoSideEffect (MemoryEffectOpInterface)
 
@@ -286,7 +286,7 @@ Effects: MemoryEffects::Effect{}
 | :----: | ----------- |
 &laquo;unnamed&raquo; | statically shaped tensor of PPHlo public type or PPHlo secret type values
 
-### `pphlo.constant` (::mlir::pphlo::ConstOp)
+### `pphlo.constant` (::mlir::pphlo::ConstantOp)
 
 Constant operator
 
@@ -309,54 +309,6 @@ Effects: MemoryEffects::Effect{}
 | :----: | ----------- |
 | `output` | statically shaped tensor of PPHlo public type or PPHlo secret type values
 
-### `pphlo.convolution` (::mlir::pphlo::ConvOp)
-
-Convolution operator
-
-
-Syntax:
-
-```
-operation ::= `pphlo.convolution` `(`operands`)`
-              `dim_numbers` `=` custom<ConvolutionDimensions>($dimension_numbers) `,`
-              `window` `=` `{` custom<WindowAttributes>($window_strides, $padding,
-              $lhs_dilation, $rhs_dilation) `}`
-              attr-dict `:` functional-type(operands, results)
-```
-
-Computes a convolution of the kind used in neural networks.
-
-See https://www.tensorflow.org/xla/operation_semantics#conv_convolution.
-
-Interfaces: NoSideEffect (MemoryEffectOpInterface)
-
-Effects: MemoryEffects::Effect{}
-
-#### Attributes:
-
-| Attribute | MLIR Type | Description |
-| :-------: | :-------: | ----------- |
-| `window_strides` | ::mlir::DenseIntElementsAttr | 64-bit signless integer elements attribute
-| `padding` | ::mlir::DenseIntElementsAttr | 64-bit signless integer elements attribute
-| `lhs_dilation` | ::mlir::DenseIntElementsAttr | 64-bit signless integer elements attribute
-| `rhs_dilation` | ::mlir::DenseIntElementsAttr | 64-bit signless integer elements attribute
-| `dimension_numbers` | ::mlir::pphlo::ConvDimensionNumbersAttr | Structure of dimension information for conv op
-| `feature_group_count` | ::mlir::IntegerAttr | 64-bit signless integer attribute
-| `batch_group_count` | ::mlir::IntegerAttr | 64-bit signless integer attribute
-
-#### Operands:
-
-| Operand | Description |
-| :-----: | ----------- |
-| `lhs` | statically shaped tensor of PPHlo public type or PPHlo secret type values
-| `rhs` | statically shaped tensor of PPHlo public type or PPHlo secret type values
-
-#### Results:
-
-| Result | Description |
-| :----: | ----------- |
-&laquo;unnamed&raquo; | statically shaped tensor of PPHlo public type or PPHlo secret type values
-
 ### `pphlo.convert` (::mlir::pphlo::ConvertOp)
 
 Convert operator
@@ -378,6 +330,50 @@ Effects: MemoryEffects::Effect{}
 | Operand | Description |
 | :-----: | ----------- |
 | `operand` | statically shaped tensor of PPHlo public type or PPHlo secret type values
+
+#### Results:
+
+| Result | Description |
+| :----: | ----------- |
+&laquo;unnamed&raquo; | statically shaped tensor of PPHlo public type or PPHlo secret type values
+
+### `pphlo.convolution` (::mlir::pphlo::ConvolutionOp)
+
+Convolution operator
+
+
+Syntax:
+
+```
+operation ::= `pphlo.convolution` `(`operands`)`
+              `dim_numbers` `=` custom<ConvolutionDimensions>($dimension_numbers) `,`
+              `window` `=` `{` custom<WindowAttributes>($window_strides) `}`
+              attr-dict `:` functional-type(operands, results)
+```
+
+Computes a convolution of the kind used in neural networks.
+
+See https://www.tensorflow.org/xla/operation_semantics#conv_convolution.
+
+Interfaces: NoSideEffect (MemoryEffectOpInterface)
+
+Effects: MemoryEffects::Effect{}
+
+#### Attributes:
+
+| Attribute | MLIR Type | Description |
+| :-------: | :-------: | ----------- |
+| `window_strides` | ::mlir::DenseIntElementsAttr | 64-bit signless integer elements attribute
+| `dimension_numbers` | ::mlir::pphlo::ConvDimensionNumbersAttr | Structure of dimension information for conv op
+| `feature_group_count` | ::mlir::IntegerAttr | 64-bit signless integer attribute
+| `batch_group_count` | ::mlir::IntegerAttr | 64-bit signless integer attribute
+
+#### Operands:
+
+| Operand | Description |
+| :-----: | ----------- |
+| `lhs` | statically shaped tensor of PPHlo public type or PPHlo secret type values
+| `rhs` | statically shaped tensor of PPHlo public type or PPHlo secret type values
 
 #### Results:
 
@@ -410,6 +406,38 @@ Traits: Elementwise, SameOperandsAndResultShape
 Interfaces: NoSideEffect (MemoryEffectOpInterface)
 
 Effects: MemoryEffects::Effect{}
+
+#### Operands:
+
+| Operand | Description |
+| :-----: | ----------- |
+| `lhs` | statically shaped tensor of PPHlo public type or PPHlo secret type values
+| `rhs` | statically shaped tensor of PPHlo public type or PPHlo secret type values
+
+#### Results:
+
+| Result | Description |
+| :----: | ----------- |
+&laquo;unnamed&raquo; | statically shaped tensor of PPHlo public type or PPHlo secret type values
+
+### `pphlo.dot_general` (::mlir::pphlo::DotGeneralOp)
+
+General Dot operator
+
+Performs general dot products between vectors, vector/matrix and
+matrix/matrix multiplication.
+
+See https://www.tensorflow.org/xla/operation_semantics#dotgeneral.
+
+Interfaces: NoSideEffect (MemoryEffectOpInterface)
+
+Effects: MemoryEffects::Effect{}
+
+#### Attributes:
+
+| Attribute | MLIR Type | Description |
+| :-------: | :-------: | ----------- |
+| `dot_dimension_numbers` | ::mlir::pphlo::DotDimensionNumbersAttr | Attribute that models the dimension information for dot.
 
 #### Operands:
 
@@ -541,6 +569,33 @@ Effects: MemoryEffects::Effect{}
 Exponential operator
 
 Returns `e ^ (operand)` element-wise.
+
+See
+https://www.tensorflow.org/xla/operation_semantics#element-wise_unary_functions.
+
+Traits: Elementwise, SameOperandsAndResultShape
+
+Interfaces: NoSideEffect (MemoryEffectOpInterface)
+
+Effects: MemoryEffects::Effect{}
+
+#### Operands:
+
+| Operand | Description |
+| :-----: | ----------- |
+| `operand` | statically shaped tensor of public floating-point type or secret floating-point type values
+
+#### Results:
+
+| Result | Description |
+| :----: | ----------- |
+&laquo;unnamed&raquo; | statically shaped tensor of public floating-point type or secret floating-point type values
+
+### `pphlo.exponential_minus_one` (::mlir::pphlo::Expm1Op)
+
+Exponential minus one operator
+
+Returns `e^(operand) - 1` element-wise.
 
 See
 https://www.tensorflow.org/xla/operation_semantics#element-wise_unary_functions.
@@ -721,7 +776,7 @@ Effects: MemoryEffects::Effect{}
 
 | Result | Description |
 | :----: | ----------- |
-| `output` | statically shaped tensor of public integer type or secret integer type values
+| `output` | statically shaped tensor of PPHlo public type or PPHlo secret type values
 
 ### `pphlo.less_equal` (::mlir::pphlo::LessEqualOp)
 
@@ -840,7 +895,7 @@ https://www.tensorflow.org/xla/operation_semantics#element-wise_unary_functions.
 
 Traits: Elementwise, SameOperandsAndResultShape, SameOperandsAndResultType
 
-Interfaces: NoSideEffect (MemoryEffectOpInterface)
+Interfaces: InferTypeOpInterface, NoSideEffect (MemoryEffectOpInterface)
 
 Effects: MemoryEffects::Effect{}
 
@@ -889,60 +944,6 @@ Effects: MemoryEffects::Effect{}
 Minimum operator
 
 Returns `min(lhs, rhs)` element-wise.
-
-See
-https://www.tensorflow.org/xla/operation_semantics#element-wise_binary_arithmetic_operations.
-
-Traits: Commutative, Elementwise, SameOperandsAndResultShape
-
-Interfaces: NoSideEffect (MemoryEffectOpInterface)
-
-Effects: MemoryEffects::Effect{}
-
-#### Operands:
-
-| Operand | Description |
-| :-----: | ----------- |
-| `lhs` | statically shaped tensor of PPHlo public type or PPHlo secret type values
-| `rhs` | statically shaped tensor of PPHlo public type or PPHlo secret type values
-
-#### Results:
-
-| Result | Description |
-| :----: | ----------- |
-&laquo;unnamed&raquo; | statically shaped tensor of PPHlo public type or PPHlo secret type values
-
-### `pphlo.mixed_dot` (::mlir::pphlo::MixedDotOp)
-
-Mixed type dot operator
-
-Performs dot products between vectors, vector/matrix and matrix/matrix
-multiplication.
-
-See https://www.tensorflow.org/xla/operation_semantics#dot.
-
-Interfaces: NoSideEffect (MemoryEffectOpInterface)
-
-Effects: MemoryEffects::Effect{}
-
-#### Operands:
-
-| Operand | Description |
-| :-----: | ----------- |
-| `lhs` | statically shaped tensor of PPHlo public type or PPHlo secret type values
-| `rhs` | statically shaped tensor of PPHlo public type or PPHlo secret type values
-
-#### Results:
-
-| Result | Description |
-| :----: | ----------- |
-&laquo;unnamed&raquo; | statically shaped tensor of PPHlo public type or PPHlo secret type values
-
-### `pphlo.mixed_multiply` (::mlir::pphlo::MixedMulOp)
-
-Mixed type multiplication operator
-
-Returns `lhs * rhs` element-wise.
 
 See
 https://www.tensorflow.org/xla/operation_semantics#element-wise_binary_arithmetic_operations.
@@ -1061,7 +1062,7 @@ https://www.tensorflow.org/xla/operation_semantics#element-wise_unary_functions.
 
 Traits: Elementwise, SameOperandsAndResultShape, SameOperandsAndResultType
 
-Interfaces: NoSideEffect (MemoryEffectOpInterface)
+Interfaces: InferTypeOpInterface, NoSideEffect (MemoryEffectOpInterface)
 
 Effects: MemoryEffects::Effect{}
 
@@ -1144,7 +1145,7 @@ https://www.tensorflow.org/xla/operation_semantics#element-wise_unary_functions.
 
 Traits: Elementwise, SameOperandsAndResultShape, SameOperandsAndResultType
 
-Interfaces: NoSideEffect (MemoryEffectOpInterface)
+Interfaces: InferTypeOpInterface, NoSideEffect (MemoryEffectOpInterface)
 
 Effects: MemoryEffects::Effect{}
 
@@ -1308,7 +1309,7 @@ See https://www.tensorflow.org/xla/operation_semantics#rev_reverse.
 
 Traits: SameOperandsAndResultType
 
-Interfaces: NoSideEffect (MemoryEffectOpInterface)
+Interfaces: InferTypeOpInterface, NoSideEffect (MemoryEffectOpInterface)
 
 Effects: MemoryEffects::Effect{}
 
@@ -1330,7 +1331,7 @@ Effects: MemoryEffects::Effect{}
 | :----: | ----------- |
 &laquo;unnamed&raquo; | statically shaped tensor of PPHlo public type or PPHlo secret type values
 
-### `pphlo.rng_uniform` (::mlir::pphlo::RngUniformOp)
+### `pphlo.rng` (::mlir::pphlo::RngOp)
 
 RNG with uniform distribution.
 
@@ -1535,6 +1536,39 @@ Effects: MemoryEffects::Effect{}
 | :----: | ----------- |
 &laquo;unnamed&raquo; | statically shaped tensor of PPHlo public type or PPHlo secret type values
 
+### `pphlo.sign` (::mlir::pphlo::SignOp)
+
+Sign operator
+
+Returns `sign(operand)` element-wise, where
+
+```
+sign(x) = -1  : x < 0
+        = 0   : x = 0
+        = 1   : x > 0
+```
+
+See
+https://www.tensorflow.org/xla/operation_semantics#element-wise_unary_functions.
+
+Traits: Elementwise, SameOperandsAndResultShape, SameOperandsAndResultType
+
+Interfaces: InferTypeOpInterface, NoSideEffect (MemoryEffectOpInterface)
+
+Effects: MemoryEffects::Effect{}
+
+#### Operands:
+
+| Operand | Description |
+| :-----: | ----------- |
+| `operand` | statically shaped tensor of PPHlo public type or PPHlo secret type values
+
+#### Results:
+
+| Result | Description |
+| :----: | ----------- |
+&laquo;unnamed&raquo; | statically shaped tensor of PPHlo public type or PPHlo secret type values
+
 ### `pphlo.slice` (::mlir::pphlo::SliceOp)
 
 
@@ -1629,7 +1663,7 @@ Effects: MemoryEffects::Effect{}
 | :----: | ----------- |
 &laquo;unnamed&raquo; | statically shaped tensor of public floating-point type or secret floating-point type values
 
-### `pphlo.subtract` (::mlir::pphlo::SubOp)
+### `pphlo.subtract` (::mlir::pphlo::SubtractOp)
 
 Subtraction operator
 

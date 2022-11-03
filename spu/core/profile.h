@@ -49,6 +49,11 @@ struct ActionStatistic {
   size_t count;
   // total duration time.
   Duration total_time = {};
+
+  inline double getTotalTimeInSecond() const {
+    return std::chrono::duration_cast<std::chrono::duration<double>>(total_time)
+        .count();
+  }
 };
 
 // map type to its statistics
@@ -105,6 +110,20 @@ class ProfileGuard final {
   ~ProfileGuard();
 };
 
+class MemProfilingGuard {
+ private:
+  int indent_;
+  std::string_view module_;
+  std::string_view name_;
+  float start_peak_;
+  bool enable_;
+
+ public:
+  MemProfilingGuard() : enable_(false) {}
+  void enable(int i, std::string_view m, std::string_view n);
+  ~MemProfilingGuard();
+};
+
 class TraceGuard final {
   ProfilingContext* pctx_;
 
@@ -146,29 +165,37 @@ std::shared_ptr<spdlog::logger> spuTraceLog();
 
 #define __TRACE_OP1(MODULE, NAME, CTX, X)                             \
   TraceGuard __trace_guard(CTX);                                      \
+  MemProfilingGuard __mem_guard;                                      \
   if (CTX->getTracingEnabled()) {                                     \
     const auto indent = std::string(CTX->getTracingDepth() * 2, ' '); \
+    __mem_guard.enable(CTX->getTracingDepth(), MODULE, NAME);         \
     spuTraceLog()->info("{}{}.{}({})", indent, MODULE, NAME, X);      \
   }
 
 #define __TRACE_OP2(MODULE, NAME, CTX, X, Y)                           \
   TraceGuard __trace_guard(CTX);                                       \
+  MemProfilingGuard __mem_guard;                                       \
   if (CTX->getTracingEnabled()) {                                      \
     const auto indent = std::string(CTX->getTracingDepth() * 2, ' ');  \
+    __mem_guard.enable(CTX->getTracingDepth(), MODULE, NAME);          \
     spuTraceLog()->info("{}{}.{}({},{})", indent, MODULE, NAME, X, Y); \
   }
 
 #define __TRACE_OP3(MODULE, NAME, CTX, X, Y, Z)                              \
   TraceGuard __trace_guard(CTX);                                             \
+  MemProfilingGuard __mem_guard;                                             \
   if (CTX->getTracingEnabled()) {                                            \
     const auto indent = std::string(CTX->getTracingDepth() * 2, ' ');        \
+    __mem_guard.enable(CTX->getTracingDepth(), MODULE, NAME);                \
     spuTraceLog()->info("{}{}.{}({},{},{})", indent, MODULE, NAME, X, Y, Z); \
   }
 
 #define __TRACE_OP4(MODULE, NAME, CTX, X, Y, Z, U)                             \
   TraceGuard __trace_guard(CTX);                                               \
+  MemProfilingGuard __mem_guard;                                               \
   if (CTX->getTracingEnabled()) {                                              \
     const auto indent = std::string(CTX->getTracingDepth() * 2, ' ');          \
+    __mem_guard.enable(CTX->getTracingDepth(), MODULE, NAME);                  \
     spuTraceLog()->info("{}{}.{}({},{},{},{})", indent, MODULE, NAME, X, Y, Z, \
                         U);                                                    \
   }

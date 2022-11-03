@@ -370,7 +370,7 @@ struct MiniPsiRecvCtx {
 
 }  // namespace
 
-//#define DEBUG_OUT
+// #define DEBUG_OUT
 
 void MiniPsiSend(const std::shared_ptr<yasl::link::Context>& link_ctx,
                  const std::vector<std::string>& items) {

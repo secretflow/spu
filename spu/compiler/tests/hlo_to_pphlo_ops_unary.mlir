@@ -1,6 +1,6 @@
 // RUN: mlir-pphlo-opt --hlo-legalize-to-pphlo --split-input-file %s | FileCheck %s
 
-func @main(%arg0: tensor<2x2xi32>) -> (tensor<2x2xf32>) {
+func.func @main(%arg0: tensor<2x2xi32>) -> (tensor<2x2xf32>) {
     // CHECK:  %0 = "pphlo.convert"(%arg0) : (tensor<2x2x!pphlo.pub<i32>>) -> tensor<2x2x!pphlo.pub<f32>>
     %0 = "mhlo.convert"(%arg0) : (tensor<2x2xi32>) -> tensor<2x2xf32>
     // CHECK:  "pphlo.sqrt"(%0) : (tensor<2x2x!pphlo.pub<f32>>) -> tensor<2x2x!pphlo.pub<f32>>

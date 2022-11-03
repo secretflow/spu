@@ -73,6 +73,7 @@ int main(int argc, char* argv[]) {
     config.mutable_output_params()->set_need_sort(FLAGS_output_sort);
     config.set_psi_type(static_cast<spu::psi::PsiType>(FLAGS_psi_protocol));
     config.set_broadcast_result(true);
+    config.set_curve_type(spu::psi::CurveType::CURVE_25519);
 
     spu::psi::BucketPsi ctx(config, link_ctx);
     auto report = ctx.Run();

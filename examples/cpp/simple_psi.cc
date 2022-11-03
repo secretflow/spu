@@ -66,6 +66,7 @@ int main(int argc, char** argv) {
   // one-way PSI, just one party get result
   config.set_broadcast_result(false);
   config.set_bucket_size(BucketSizeOpt.getValue());
+  config.set_curve_type(spu::psi::CurveType::CURVE_25519);
 
   try {
     spu::psi::BucketPsi bucket_psi(config, hctx->lctx());

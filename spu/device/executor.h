@@ -18,7 +18,7 @@
 
 #include "spu/device/profiler.h"
 #include "spu/device/symbol_table.h"
-#include "spu/hal/value.h"
+#include "spu/kernel/value.h"
 
 #include "spu/spu.pb.h"
 
@@ -50,8 +50,8 @@ public:
 
   /// Run a code snippet with given inputs.
   // return a list of output values.
-  virtual std::vector<hal::Value>
-  run(const std::string &code, const std::vector<hal::Value> &inputs) = 0;
+  virtual std::vector<spu::Value>
+  run(const std::string &code, const std::vector<spu::Value> &inputs) = 0;
 
   /// Return the op profiling records.
   const Profiler::ExecutionRecordsT &getProfileRecords() const {

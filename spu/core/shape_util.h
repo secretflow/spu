@@ -17,25 +17,19 @@
 #include <numeric>
 #include <vector>
 
+#include "absl/types/span.h"
 #include "yasl/base/exception.h"
-
-#include "spu/core/type_util.h"
 
 namespace spu {
 
-int64_t calcNumel(absl::Span<const int64_t> shape);
+// This module assumes row major
 
-std::vector<int64_t> deduceDotShape(absl::Span<const int64_t> lhs,
-                                    absl::Span<const int64_t> rhs);
+int64_t calcNumel(absl::Span<const int64_t> shape);
 
 std::vector<int64_t> makeCompactStrides(absl::Span<const int64_t> shape);
 
-// This function assumes row major
 int64_t flattenIndex(absl::Span<const int64_t> indices,
                      absl::Span<const int64_t> shape);
-
-void unflattenIndex(int64_t index, absl::Span<const int64_t> shape,
-                    std::vector<int64_t> &unflattened);
 
 std::vector<int64_t> unflattenIndex(int64_t index,
                                     absl::Span<const int64_t> shape);
@@ -55,5 +49,8 @@ bool bumpIndices(absl::Span<const T> shape, absl::Span<T> indices) {
   }
   return false;
 }
+
+std::vector<int64_t> deduceDotShape(absl::Span<const int64_t> lhs,
+                                    absl::Span<const int64_t> rhs);
 
 }  // namespace spu

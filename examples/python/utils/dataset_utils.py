@@ -12,9 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
-from typing import Any, Callable, List, NamedTuple, Optional, Sequence, Tuple, Union
-
 import numpy as np
 import array
 import gzip
@@ -134,3 +131,143 @@ def mnist(permute_train=False):
         train_labels = train_labels[perm]
 
     return train_images, train_labels, test_images, test_labels
+
+
+def mock_classification(n_samples, n_features, hardness=0.1, random_seed=None):
+    """Generate a mock classification dataset.
+    Use scikit learn make classification utils,
+    which is much better than naively randomly sampled data.
+    https://scikit-learn.org/stable/modules/generated/sklearn.datasets.make_classification.html#sklearn.datasets.make_classification
+
+    hardness should be between 0 and 1.
+    1 -> completely random dataset
+    0 -> completely clean dataset: no noisy feature/label
+         and great separation between classes
+    """
+    from sklearn.datasets import make_classification
+
+    hardness = max(min(hardness, 1.0), 0.0)
+    informative_ratio = 1.0 - hardness
+    redundant_ratio = (1.0 - informative_ratio) * hardness
+    class_sep = 1.0 - hardness
+    flip_y = 0.5 * hardness
+    X, y = make_classification(
+        n_samples,
+        n_features,
+        n_informative=int(informative_ratio * n_features),
+        n_redundant=int(redundant_ratio * n_features),
+        class_sep=class_sep,
+        flip_y=flip_y,
+        random_state=random_seed,
+    )
+    return X, y
+
+
+def mock_regression(n_samples, n_features, hardness=0.1, random_seed=None):
+    """Generate a mock regression dataset.
+    Use scikit learn make regression utils,
+    which is much better than naively randomly sampled data.
+    https://scikit-learn.org/stable/modules/generated/sklearn.datasets.make_regression.html#sklearn.datasets.make_regression
+
+    hardness should be between 0 and 1.
+    1 -> completely random dataset
+    0 -> completely clean dataset: no noisy feature and y values
+    """
+    from sklearn.datasets import make_regression
+
+    hardness = max(min(hardness, 1.0), 0.0)
+    informative_ratio = 1.0 - hardness
+    X, y, coef = make_regression(
+        n_samples,
+        n_features,
+        n_informative=int(informative_ratio * n_features),
+        noise=hardness,
+        coef=True,
+        random_state=random_seed,
+    )
+    # coef is the underlying true coefficients for the linear model
+    return X, y, coef
+
+
+def mock_two_party_split(X, ratio=0.5):
+    """
+    The ratio fraction of X is data of p1,
+    and the (1-ratio) fraction of X is data of p2"""
+    p1_col_num = int(X.shape[0] * ratio)
+    X_a = X[:, :p1_col_num]
+    X_b = X[:, p1_col_num:]
+    return X_a, X_b
+
+
+# TODO(zoupeicheng.zpc): validate configuration, assumes correct for now.
+def load_dataset_by_config(config):
+    """
+    This function loads the dataset from a configuration file in folder examples/python/conf/.
+
+    ML algorithms run on different datasets. In order to quickly swap datasets to test the same algorithms,
+    or make comparisons between different algorithms on the same datasets without changing the source code frequently,
+    we designed a dataset configuration.
+
+    Currently, we provide support for vertical two-party split datasets for some builtin datasets and mock datasets.
+
+    dataset configurations should have prefix ds_.
+
+    TODO(zoupeicheng.zpc): support for more datasets.
+
+    If a dataset is trying to use mock data,
+    the config file must be like the following sample configuration:
+    {
+        "use_mock_data": true,
+        "n_samples": 1000,
+        "n_features": 100,
+        "problem_type": "regression",
+        "random_seed": 9237,
+        "hardness": 0.1,
+        "left_slice_feature_ratio": 0.5
+    }
+
+    If a dataset is trying to use sklearn builtin toy data,
+    the config file must be like the following sample configuration:
+    {
+        "use_mock_data": false,
+        "builtin_dataset_name": "breast_cancer",
+        "left_slice_feature_ratio": 0.5,
+    }
+    """
+    if config["use_mock_data"]:
+        if config["problem_type"] == "regression":
+            X, y, _ = mock_regression(
+                config["n_samples"],
+                config["n_features"],
+                config["hardness"],
+                config["random_seed"],
+            )
+        elif config["problem_type"] == "classification":
+            X, y = mock_classification(
+                config["n_samples"],
+                config["n_features"],
+                config["hardness"],
+                config["random_seed"],
+            )
+    else:
+        if config["builtin_dataset_name"] == "breast_cancer":
+            from sklearn.datasets import load_breast_cancer
+
+            ds = load_breast_cancer()
+        elif config["builtin_dataset_name"] == "diabetes":
+            from sklearn.datasets import load_diabetes
+
+            ds = load_diabetes()
+        X, y = ds['data'], ds['target']
+        # normalize, TODO(zoupeicheng.zpc): make preprocessing configurable
+        X = (X - np.min(X)) / (np.max(X) - np.min(X))
+    split_index = int(X.shape[1] * config["left_slice_feature_ratio"])
+    return X[:, :split_index], X[:, split_index:], y
+
+
+def load_feature_r1(x, y):
+    return x, y
+
+
+def load_feature_r2(x):
+    return x

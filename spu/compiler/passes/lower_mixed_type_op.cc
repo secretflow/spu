@@ -30,13 +30,13 @@ namespace {
 // %3 = mul/dot(%1, %2) fxp, fxp -> fxp
 // Can be rewrite into
 // %3 = mul/dot(%0, %2) int, fxp -> fxp // Save one truncation
-template <typename From, typename To>
-struct OpConverter : public OpRewritePattern<From> {
+template <typename OpT>
+struct FxpIntMulTruncationRemover : public OpRewritePattern<OpT> {
 public:
-  explicit OpConverter(MLIRContext *context)
-      : OpRewritePattern<From>(context) {}
+  explicit FxpIntMulTruncationRemover(MLIRContext *context)
+      : OpRewritePattern<OpT>(context) {}
 
-  LogicalResult matchAndRewrite(From op,
+  LogicalResult matchAndRewrite(OpT op,
                                 PatternRewriter &rewriter) const override {
     auto lhs = op.lhs();
     auto rhs = op.rhs();
@@ -53,10 +53,11 @@ public:
 
     if ((lhs_convert != nullptr && rhs_convert == nullptr) ||
         (lhs_convert == nullptr && rhs_convert != nullptr)) {
-      rewriter.replaceOpWithNewOp<To>(
-          op, op.getType(),
-          lhs_convert == nullptr ? lhs : lhs_convert.getOperand(),
-          rhs_convert == nullptr ? rhs : rhs_convert.getOperand());
+      llvm::SmallVector<mlir::Value, 2> operands(2);
+      operands[0] = lhs_convert == nullptr ? lhs : lhs_convert.getOperand();
+      operands[1] = rhs_convert == nullptr ? rhs : rhs_convert.getOperand();
+      rewriter.replaceOpWithNewOp<OpT>(op, op.getType(), operands,
+                                       op->getAttrs());
       return success();
     }
     return failure();
@@ -73,8 +74,9 @@ struct LowerMixedTypeOp : public LowerMixedTypeOpBase<LowerMixedTypeOp> {
 private:
   void populateOwningPatterns(RewritePatternSet *patterns,
                               MLIRContext *ctx) const {
-    patterns->insert<OpConverter<MulOp, MixedMulOp>,
-                     OpConverter<DotOp, MixedDotOp>>(ctx);
+    patterns->insert<FxpIntMulTruncationRemover<MulOp>,
+                     FxpIntMulTruncationRemover<DotOp>,
+                     FxpIntMulTruncationRemover<DotGeneralOp>>(ctx);
   }
 };
 } // namespace

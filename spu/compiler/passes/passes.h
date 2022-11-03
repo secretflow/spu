@@ -39,9 +39,6 @@ createLegalizeToPPHloPass(const std::string &io_visibility_json);
 // Decompose comparison into lower ops when possible
 std::unique_ptr<OperationPass<func::FuncOp>> createDecomposeComparisonPass();
 
-// Decompose sqrt into lower ops
-std::unique_ptr<OperationPass<func::FuncOp>> createDecomposeSqrtPass();
-
 // Categorize a normal reduce into categorized reduce ops
 std::unique_ptr<OperationPass<func::FuncOp>> createCategorizeReducePass();
 
@@ -57,5 +54,8 @@ std::unique_ptr<OperationPass<func::FuncOp>> createReduceTruncationPass();
 // Lower mixed-type op
 std::unique_ptr<OperationPass<func::FuncOp>> createLowerMixedTypeOpPass();
 
+std::unique_ptr<OperationPass<func::FuncOp>> createOptimizeMaxPoolingPass();
+
 } // namespace pphlo
+
 } // namespace mlir

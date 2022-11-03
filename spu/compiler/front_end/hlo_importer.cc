@@ -28,6 +28,8 @@
 #include "tensorflow/compiler/xla/service/conditional_to_select.h"
 #include "tensorflow/compiler/xla/service/convolution_group_converter.h"
 #include "tensorflow/compiler/xla/service/dot_decomposer.h"
+#include "tensorflow/compiler/xla/service/dot_merger.h"
+#include "tensorflow/compiler/xla/service/gather_expander.h"
 #include "tensorflow/compiler/xla/service/hlo_constant_folding.h"
 #include "tensorflow/compiler/xla/service/hlo_dce.h"
 #include "tensorflow/compiler/xla/service/hlo_module.h"
@@ -106,7 +108,6 @@ void runHloPasses(xla::HloModule *module) {
 
     AlgebraicSimplifierOptions options;
     options.set_enable_dot_strength_reduction(false);
-    options.set_enable_dot_to_multiply_rewrite(false);
     pipeline.AddPass<AlgebraicSimplifier>(options);
     pipeline.AddPass<SortSimplifier>();
     pipeline.AddPass<HloDCE>();

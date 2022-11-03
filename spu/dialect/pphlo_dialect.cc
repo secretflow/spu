@@ -57,4 +57,44 @@ void PPHloDialect::initialize() {
   getContext()->loadDialect<tensor::TensorDialect>();
 }
 
+Type PPHloDialect::parseType(DialectAsmParser& parser) const {
+  StringRef mnemonic;
+  Type parsedType;
+  auto parseResult = generatedTypeParser(parser, &mnemonic, parsedType);
+  if (parseResult.hasValue()) {
+    return parsedType;
+  }
+  parser.emitError(parser.getNameLoc()) << "unknown pphlo type: " << mnemonic;
+  return nullptr;
+}
+
+void PPHloDialect::printType(Type type, DialectAsmPrinter& os) const {
+  if (succeeded(generatedTypePrinter(type, os))) {
+    return;
+  }
+  os << "<unknown pphlo type>";
+}
+
+// Entry point for Attribute parsing, TableGen generated code will handle the
+// dispatch to the individual classes.
+Attribute PPHloDialect::parseAttribute(DialectAsmParser& parser,
+                                       Type type) const {
+  StringRef attrTag;
+  Attribute attr;
+  auto parseResult = generatedAttributeParser(parser, &attrTag, type, attr);
+  if (parseResult.hasValue()) {
+    return attr;
+  }
+  parser.emitError(parser.getNameLoc(), "unknown mhlo attribute");
+  return {};
+}
+
+// Entry point for Attribute printing, TableGen generated code will handle the
+// dispatch to the individual classes.
+void PPHloDialect::printAttribute(Attribute attr, DialectAsmPrinter& os) const {
+  LogicalResult result = generatedAttributePrinter(attr, os);
+  (void)result;
+  assert(succeeded(result));
+}
+
 }  // namespace mlir::pphlo
