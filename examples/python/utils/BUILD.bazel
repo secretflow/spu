@@ -52,7 +52,6 @@ py_binary(
     deps = [
         ":dataset_utils",  # server dependent.
         ":stax_models",  # server dependent.
-        "//examples/python/ml/flax_seq2seq:input_pipeline",
         "//spu/binding/util:distributed",
     ],
 )
