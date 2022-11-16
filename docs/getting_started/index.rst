@@ -7,7 +7,7 @@ New to SPU? This is the Beginner's Guide.
 
 If you don't know anything about SPU, please check :ref:`getting_started/introduction:what is spu?` first.
 
-After that, follow :ref:`getting_started/install:installing spu` to install SPU and :ref:`getting_started/quick_start:spu quickstart` to go through a simple example.
+After that, follow :ref:`getting_started/install:Installation Guidelines` to install SPU and :ref:`getting_started/quick_start:spu quickstart` to go through a simple example.
 
 Finally, Check :ref:`getting_started/tutorials/index:tutorials` for more examples.
 

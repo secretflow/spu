@@ -77,6 +77,6 @@ class HalContext final : public ProfilingContext {
 
 #define SPU_TRACE_HAL(...) __TRACE_OP("hal", __func__, __VA_ARGS__)
 #define SPU_PROFILE_OP(...) __PROFILE_OP("hal", __func__, __VA_ARGS__)
-#define SPU_PROFILE_END_OP(...) __PROFILE_END_OP("hal", __func__, __VA_ARGS__)
+#define SPU_PROFILE_LEAF_OP(...) __PROFILE_LEAF_OP("hal", __func__, __VA_ARGS__)
 
 }  // namespace spu

@@ -43,7 +43,7 @@ ArrayRef AddBB::proc(KernelEvalContext* ctx, const ArrayRef& x,
 }
 
 ArrayRef A2B::proc(KernelEvalContext* ctx, const ArrayRef& x) const {
-  SPU_PROFILE_END_TRACE_KERNEL(ctx, x);
+  SPU_PROFILE_TRACE_LEAF_KERNEL(ctx, x);
 
   const auto field = x.eltype().as<Ring2k>()->field();
   auto* comm = ctx->caller()->getState<Communicator>();

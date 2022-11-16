@@ -59,7 +59,7 @@ class ArrayRef {
   // Return total number of elements.
   int64_t numel() const { return numel_; }
 
-  size_t elsize() const { return eltype_.size(); }
+  inline size_t elsize() const { return eltype_.size(); }
 
   int64_t stride() const { return stride_; }
 

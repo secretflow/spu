@@ -52,4 +52,4 @@ Jit is short for `Just-in-time compilation <https://en.wikipedia.org/wiki/Just-i
 
 In SPU, jit has more benefits since the backend engine may be orders of magnitude faster if it knows the *visibility* of data. For example, when multiplying two secrets, the backend MPC engine may involve expensive *beaver triple* progress, but when one of the inputs (of multiply) is public known to all parties, the operation will be much faster. So we should *mark* as much data as possible to be *public* (if it doesn't need to be protected), and tell the compiler these information.
 
-So, SPU compilation normally happens after all data infeed is done, and `just in time` before the real evaluation, 
+So, SPU compilation normally happens after all data infeed is done, and `just in time` before the real evaluation.

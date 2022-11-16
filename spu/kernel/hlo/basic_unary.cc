@@ -35,7 +35,6 @@ SIMPLE_UNARY_KERNEL_DEFN(Ceil, hal::ceil)
 SIMPLE_UNARY_KERNEL_DEFN(Abs, hal::abs)
 SIMPLE_UNARY_KERNEL_DEFN(Logistic, hal::logistic)
 SIMPLE_UNARY_KERNEL_DEFN(Tanh, hal::tanh)
-SIMPLE_UNARY_KERNEL_DEFN(Not, hal::logical_not)
 SIMPLE_UNARY_KERNEL_DEFN(Rsqrt, hal::rsqrt)
 SIMPLE_UNARY_KERNEL_DEFN(Sqrt, hal::sqrt)
 
@@ -46,6 +45,16 @@ spu::Value Expm1(HalContext *ctx, const spu::Value &in) {
   // with exp(x) - 1. SPU is not doing so right now, rethink about what we
   // should do here.
   return hal::sub(ctx, hal::exp(ctx, in), hal::constant(ctx, 1.0F, in.shape()));
+}
+
+spu::Value Not(HalContext *ctx, const spu::Value &in) {
+  if (in.dtype() == DT_I1) {
+    return hal::logical_not(ctx, in);
+  } else {
+    // By XLA semantics, NotOp for int other than boolean, it should be
+    // bitwise not
+    return hal::bitwise_not(ctx, in);
+  }
 }
 
 }  // namespace spu::kernel::hlo

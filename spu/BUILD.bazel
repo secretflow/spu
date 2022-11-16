@@ -20,7 +20,7 @@ load("//bazel:spu.bzl", "spu_version_file")
 
 package(default_visibility = ["//visibility:public"])
 
-SPU_VERSION = "0.3.0b0"
+SPU_VERSION = "0.3.0"
 
 proto_library(
     name = "spu_proto",

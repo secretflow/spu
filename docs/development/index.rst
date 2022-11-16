@@ -14,4 +14,5 @@ This part contains design principle of SPU and staging PSI documentation.
    Runtime <runtime>
    type_system
    psi
+   psi_protocol_intro
 

@@ -103,7 +103,9 @@ size_t SizeOf(PtType ptt) {
   case (Name):              \
     return sizeof(Type);
   switch (ptt) {
-    FOREACH_PT_TYPES(CASE);
+    case PT_INVALID:
+      return 0;
+      FOREACH_PT_TYPES(CASE);
     default:
       YASL_THROW("unknown size of {}", ptt);
   }

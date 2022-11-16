@@ -194,12 +194,15 @@ spu::Value extractImagePatches(HalContext *ctx, spu::Value &input,
           ctx, input, {0, x, y, 0},
           {input_batch, x + kernel_x, y + kernel_y, input_channels}, {});
       auto reshaped = hal::reshape(
-          ctx, slice, {input_batch, 1, kernel_x * kernel_y, input_channels});
+          ctx, slice, {input_batch, 1, kernel_x, kernel_y, input_channels});
       images.emplace_back(std::move(reshaped));
     }
   }
 
-  return hal::concatenate(ctx, images, 1);
+  auto stacked = hal::concatenate(ctx, images, 1);
+  return hal::reshape(
+      ctx, stacked,
+      {input_batch, stacked.shape()[1], kernel_x * kernel_y, input_channels});
 }
 
 // This is an optimized conv2D with im2col

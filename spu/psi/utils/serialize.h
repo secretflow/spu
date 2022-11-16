@@ -39,7 +39,7 @@ inline size_t DeserializeSize(const yasl::Buffer& buf) {
 
 inline yasl::Buffer SerializeStrItems(const std::vector<std::string>& items) {
   proto::StrItemsProto proto;
-  for (auto item : items) {
+  for (const auto& item : items) {
     proto.add_items(item);
   }
   yasl::Buffer buf(proto.ByteSizeLong());

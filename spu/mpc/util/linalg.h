@@ -22,6 +22,7 @@
 #include "spu/core/parallel_utils.h"
 
 #define EIGEN_HAS_OPENMP
+
 #include "Eigen/Core"
 
 namespace spu::mpc::linalg {
@@ -143,25 +144,27 @@ void matmul(int64_t M, int64_t N, int64_t K, const T* A, int64_t LDA,
   MapMatrixConstT b(B, K, N, StrideT(LDB, IDB));
   MapMatrixT c(C, M, N, StrideT(LDC, IDC));
 
-  if (M == 1) {
-    // GEMV case 1*K * K*N -> 1*N
-    auto work_load_size = computeTaskSize(N);
-    yasl::parallel_for(0, N, work_load_size, [&](int64_t begin, int64_t end) {
-      auto block_size = end - begin;
-      c.block(0, begin, 1, block_size) =
-          a.row(0) * b.block(0, begin, K, block_size);
-    });
-    return;
-  } else if (N == 1) {
-    // GEMV case M*K * K*1 -> M*1
-    auto work_load_size = computeTaskSize(M);
-    yasl::parallel_for(0, M, work_load_size, [&](int64_t begin, int64_t end) {
-      auto block_size = end - begin;
-      c.block(begin, 0, block_size, 1) =
-          a.block(begin, 0, block_size, K) * b.col(0);
-    });
-    return;
-  }
+  // if (M == 1) {
+  //   // GEMV case 1*K * K*N -> 1*N
+  //   auto work_load_size = computeTaskSize(N);
+  //   yasl::parallel_for(0, N, work_load_size, [&](int64_t begin, int64_t end)
+  //   {
+  //     auto block_size = end - begin;
+  //     c.block(0, begin, 1, block_size) =
+  //         a.row(0) * b.block(0, begin, K, block_size);
+  //   });
+  //   return;
+  // } else if (N == 1) {
+  //   // GEMV case M*K * K*1 -> M*1
+  //   auto work_load_size = computeTaskSize(M);
+  //   yasl::parallel_for(0, M, work_load_size, [&](int64_t begin, int64_t end)
+  //   {
+  //     auto block_size = end - begin;
+  //     c.block(begin, 0, block_size, 1) =
+  //         a.block(begin, 0, block_size, K) * b.col(0);
+  //   });
+  //   return;
+  // }
 
   // If we don't limit # threads, eigen may overloading omp tasks (especially
   // under relative small tasks, MLP for example)

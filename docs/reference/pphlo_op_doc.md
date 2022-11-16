@@ -134,12 +134,6 @@ Interfaces: NoSideEffect (MemoryEffectOpInterface)
 
 Effects: MemoryEffects::Effect{}
 
-#### Attributes:
-
-| Attribute | MLIR Type | Description |
-| :-------: | :-------: | ----------- |
-| `elsize` | ::mlir::IntegerAttr | 64-bit signless integer attribute
-
 #### Operands:
 
 | Operand | Description |
@@ -939,6 +933,41 @@ Effects: MemoryEffects::Effect{}
 | :----: | ----------- |
 &laquo;unnamed&raquo; | statically shaped tensor of PPHlo public type or PPHlo secret type values
 
+### `pphlo.maxpool_scatter` (::mlir::pphlo::MaxPoolScatterOp)
+
+MaxPool Scatter operator
+
+Generates a result which is the value of the input array `operand`,
+with several slices (at indices specified by `scatter_indices`)
+updated with the values in `updates` using `update_computation`.
+
+See https://www.tensorflow.org/xla/operation_semantics#scatter.
+
+Interfaces: NoSideEffect (MemoryEffectOpInterface)
+
+Effects: MemoryEffects::Effect{}
+
+#### Attributes:
+
+| Attribute | MLIR Type | Description |
+| :-------: | :-------: | ----------- |
+| `window_dimensions` | ::mlir::DenseIntElementsAttr | 64-bit signless integer elements attribute
+| `window_strides` | ::mlir::DenseIntElementsAttr | 64-bit signless integer elements attribute
+| `padding` | ::mlir::DenseIntElementsAttr | 64-bit signless integer elements attribute
+
+#### Operands:
+
+| Operand | Description |
+| :-----: | ----------- |
+| `scatter_indices` | statically shaped tensor of public integer type or secret integer type values
+| `update` | statically shaped tensor of PPHlo public type or PPHlo secret type values
+
+#### Results:
+
+| Result | Description |
+| :----: | ----------- |
+&laquo;unnamed&raquo; | statically shaped tensor of PPHlo public type or PPHlo secret type values
+
 ### `pphlo.minimum` (::mlir::pphlo::MinOp)
 
 Minimum operator
@@ -1134,6 +1163,30 @@ Effects: MemoryEffects::Effect{}
 | :----: | ----------- |
 &laquo;unnamed&raquo; | statically shaped tensor of PPHlo public type or PPHlo secret type values
 
+### `pphlo.prefer_a` (::mlir::pphlo::PreferAOp)
+
+Prefer AShare operator
+
+Convert input to AShare if possible.
+
+Traits: Elementwise, SameOperandsAndResultShape
+
+Interfaces: NoSideEffect (MemoryEffectOpInterface)
+
+Effects: MemoryEffects::Effect{}
+
+#### Operands:
+
+| Operand | Description |
+| :-----: | ----------- |
+| `operand` | statically shaped tensor of PPHlo public type or PPHlo secret type values
+
+#### Results:
+
+| Result | Description |
+| :----: | ----------- |
+&laquo;unnamed&raquo; | statically shaped tensor of PPHlo public type or PPHlo secret type values
+
 ### `pphlo.reciprocal` (::mlir::pphlo::ReciprocalOp)
 
 Reciprocal operator
@@ -1211,6 +1264,8 @@ Traits: RecursiveSideEffects, SameVariadicOperandSize, SingleBlockImplicitTermin
 | `base_dilations` | ::mlir::DenseIntElementsAttr | 64-bit signless integer elements attribute
 | `window_dilations` | ::mlir::DenseIntElementsAttr | 64-bit signless integer elements attribute
 | `padding` | ::mlir::DenseIntElementsAttr | 64-bit signless integer elements attribute
+| `last_operand_is_window_mask` | ::mlir::BoolAttr | bool attribute
+| `ignore_init_value` | ::mlir::BoolAttr | bool attribute
 
 #### Operands:
 
@@ -1432,7 +1487,7 @@ broadcasted.
 
 See https://www.tensorflow.org/xla/operation_semantics#select.
 
-Traits: SameOperandsAndResultShape
+Traits: SameVariadicOperandSize
 
 Interfaces: NoSideEffect (MemoryEffectOpInterface)
 

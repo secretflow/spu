@@ -156,7 +156,35 @@ void BindLink(py::module& m) {
             return {buf.data<char>(), static_cast<size_t>(buf.size())};
           },
           NO_GIL,
-          "Sends data from one party to all other parties, aka MPI_Scatter");
+          "Sends data from one party to all other parties, aka MPI_Scatter")
+      .def(
+          "send",
+          [&PY_CALL_TAG](const std::shared_ptr<Context>& self, size_t dst_rank,
+                         const std::string& in) {
+            self->Send(dst_rank, in, PY_CALL_TAG);
+          },
+          "Sends data to dst_rank")
+      .def(
+          "send_async",
+          [&PY_CALL_TAG](const std::shared_ptr<Context>& self, size_t dst_rank,
+                         const std::string& in) {
+            self->SendAsync(dst_rank, yasl::Buffer(in), PY_CALL_TAG);
+          },
+          "Sends data to dst_rank asynchronously")
+      .def(
+          "recv",
+          [&PY_CALL_TAG](const std::shared_ptr<Context>& self,
+                         size_t src_rank) -> py::bytes {
+            auto buf = self->Recv(src_rank, PY_CALL_TAG);
+            return py::bytes{buf.data<char>(), static_cast<size_t>(buf.size())};
+          },  // Since it uses py bytes, we cannot release GIL here
+          "Receives data from src_rank")
+      .def(
+          "next_rank",
+          [](const std::shared_ptr<Context>& self, size_t strides = 1) {
+            return self->NextRank(strides);
+          },
+          NO_GIL, "Gets next party rank", py::arg("strides") = 1);
 
   m.def("create_brpc",
         [](const ContextDesc& desc,
