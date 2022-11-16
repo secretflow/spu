@@ -21,12 +21,15 @@
 
 namespace spu {
 
-Type::Type() : model_(std::make_unique<VoidTy>()) {}
+Type::Type()
+    : model_(std::make_unique<VoidTy>()), cached_model_size_(model_->size()) {}
 
-Type::Type(std::unique_ptr<TypeObject> model) : model_(std::move(model)) {}
+Type::Type(std::unique_ptr<TypeObject> model)
+    : model_(std::move(model)), cached_model_size_(model_->size()) {}
 
 Type& Type::operator=(const Type& other) {
-  model_ = std::unique_ptr<TypeObject>(other.model_->clone());
+  model_ = other.model_->clone();
+  cached_model_size_ = model_->size();
   return *this;
 }
 

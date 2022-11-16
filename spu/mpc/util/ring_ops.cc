@@ -19,6 +19,7 @@
 #include <cstring>
 #include <random>
 
+#define EIGEN_HAS_OPENMP
 #include "Eigen/Core"
 #include "absl/types/span.h"
 #include "yasl/crypto/pseudo_random_generator.h"
@@ -272,6 +273,10 @@ ArrayRef ring_ones(FieldType field, size_t size) {
 }
 
 ArrayRef ring_randbit(FieldType field, size_t size) {
+  std::random_device rd;
+  std::mt19937 gen(rd());
+  std::uniform_int_distribution<> distrib(0, RAND_MAX);
+
   return DISPATCH_ALL_FIELDS(field, kModule, [&]() {
     ArrayRef ret(makeType<RingTy>(field), size);
     auto x_eigen = Eigen::Map<Eigen::VectorX<ring2k_t>, 0,
@@ -279,7 +284,7 @@ ArrayRef ring_randbit(FieldType field, size_t size) {
         &ret.at<ring2k_t>(0), ret.numel(),
         Eigen::InnerStride<Eigen::Dynamic>(ret.stride()));
     for (size_t idx = 0; idx < size; idx++) {
-      x_eigen[idx] = rand() & 0x1;
+      x_eigen[idx] = distrib(gen) & 0x1;
     }
     return ret;
   });

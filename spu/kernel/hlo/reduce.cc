@@ -139,10 +139,10 @@ spu::Value ExpandStridedWindow(
         std::vector<int64_t> expanded_index =
             unflattenIndex(begin, expanded_shape);
 
-        for (int64_t idx = begin; idx < end; ++idx) {
-          std::vector<int64_t> window_count_index(ndim, 0);
-          std::vector<int64_t> window_index(ndim, 0);
+        std::vector<int64_t> window_count_index(ndim, 0);
+        std::vector<int64_t> window_index(ndim, 0);
 
+        for (int64_t idx = begin; idx < end; ++idx) {
           for (size_t dim = 0; dim < ndim; dim++) {
             window_index[dim] = expanded_index[dim] % window_shape[dim];
             window_count_index[dim] = expanded_index[dim] / window_shape[dim];

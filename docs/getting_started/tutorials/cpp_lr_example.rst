@@ -1,7 +1,7 @@
 C++ Example: Logistic Regression
 ================================
 
-To use SPU C++ API, we have to first :ref:`getting_started/install:build from source`, this document shows how to write a privacy preserving logistic regression program with SPU C++ API.
+To use SPU C++ API, we have to first :ref:`getting_started/install:From Source`, this document shows how to write a privacy preserving logistic regression program with SPU C++ API.
 
 
 Logistic Regression

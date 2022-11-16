@@ -14,11 +14,15 @@
 
 #include "spu/kernel/hal/concat.h"
 
+#include <cstdint>
+#include <numeric>
+
 #include "yasl/base/exception.h"
 
 #include "spu/core/parallel_utils.h"
 #include "spu/core/shape_util.h"
 #include "spu/kernel/hal/ring.h"
+#include "spu/kernel/hal/shape_ops.h"
 
 namespace spu::kernel::hal {
 
@@ -53,9 +57,7 @@ Value concatenate(HalContext* ctx, absl::Span<const Value> values,
   YASL_ENFORCE(all_same_stype);
 
   std::vector<int64_t> result_shape = values.front().shape();
-  std::vector<int64_t> offsets(values.size(), 0);
   for (size_t idx = 1; idx < values.size(); ++idx) {
-    offsets[idx] = result_shape[axis];
     result_shape[axis] += values[idx].shape()[axis];
   }
 
@@ -64,23 +66,83 @@ Value concatenate(HalContext* ctx, absl::Span<const Value> values,
                values.front().dtype());
   auto elsize = result.elsize();
 
-  // TODO(xiaochen): This is still very inefficient, consider a better
-  // implementation
-  for (size_t idx = 0; idx < values.size(); ++idx) {
-    yasl::parallel_for(0, values[idx].numel(), 2048,
-                       [&](int64_t begin, int64_t end) {
-                         std::vector<int64_t> from_indicies =
-                             unflattenIndex(begin, values[idx].shape());
-                         std::vector<int64_t> to_indicies;
-                         for (int64_t e_idx = begin; e_idx < end; ++e_idx) {
-                           to_indicies = from_indicies;
-                           to_indicies[axis] += offsets[idx];
-                           result.copyElementFrom(values[idx], from_indicies,
-                                                  to_indicies, elsize);
-                           bumpIndices<int64_t>(values[idx].shape(),
-                                                absl::MakeSpan(from_indicies));
-                         }
-                       });
+  // Generating slices
+  std::vector<Value> result_slices(values.size());
+  {
+    std::vector<int64_t> start(result_shape.size(), 0);
+    std::vector<int64_t> end = result_shape;
+    std::vector<int64_t> strides(result_shape.size(), 1);
+    for (size_t idx = 0; idx < values.size(); ++idx) {
+      end[axis] = start[axis] + values[idx].shape()[axis];
+      result_slices[idx] = slice(ctx, result, start, end, strides);
+      std::swap(start[axis], end[axis]);
+    }
+  }
+
+  auto next_two_iter_ =
+      [&](std::vector<int64_t>& coord, int64_t& idim,
+          absl::Span<const int64_t> shape, const std::byte*& ptr_a,
+          absl::Span<const int64_t> strides_a, std::byte*& ptr_b,
+          absl::Span<const int64_t> strides_b) {
+        for (idim = shape.size() - 1; idim >= 0; --idim) {
+          if (++coord[idim] == shape[idim]) {
+            // Once a dimension is done, just unwind by strides
+            coord[idim] = 0;
+            ptr_a -= (shape[idim] - 1) * elsize * strides_a[idim];
+            ptr_b -= (shape[idim] - 1) * elsize * strides_b[idim];
+          } else {
+            ptr_a += strides_a[idim] * elsize;
+            ptr_b += strides_b[idim] * elsize;
+            break;
+          }
+        }
+      };
+
+  // 5 here is just a magic number
+  if (values.size() < 5) {
+    // When there are just a few values to concat. Try to parallel on value
+    // level...
+    for (size_t idx = 0; idx < values.size(); ++idx) {
+      auto g_size = std::max<int64_t>(
+          (values[idx].numel() + getNumberOfProc()) / getNumberOfProc(), 2048);
+      yasl::parallel_for(
+          0, values[idx].numel(), g_size, [&](int64_t begin, int64_t end) {
+            std::vector<int64_t> indicies =
+                unflattenIndex(begin, values[idx].shape());
+            int64_t idim = values[idx].shape().size() - 1;
+            const auto* in_ptr = &values[idx].data().at(indicies);
+            auto* to_ptr = &result_slices[idx].data().at(indicies);
+            for (int64_t e_idx = begin; e_idx < end; ++e_idx) {
+              std::memcpy(to_ptr, in_ptr, elsize);
+              next_two_iter_(indicies, idim, values[idx].shape(), in_ptr,
+                             values[idx].strides(), to_ptr,
+                             result_slices[idx].strides());
+            }
+          });
+    }
+  } else {
+    // When there are a lot of values to concat (usually during im2col, where
+    // each value is just a window), try to parallel on inputs
+    yasl::parallel_for(
+        0, values.size(),
+        (values.size() + getNumberOfProc()) / getNumberOfProc(),
+        [&](int64_t begin, int64_t end) {
+          for (int64_t idx = begin; idx < end; ++idx) {
+            std::vector<int64_t> indicies(values[idx].shape().size(), 0);
+            const auto* from_ptr =
+                static_cast<const std::byte*>(values[idx].data().data());
+            auto* to_ptr =
+                static_cast<std::byte*>(result_slices[idx].data().data());
+
+            int64_t idim = values[idx].shape().size() - 1;
+            do {
+              std::memcpy(to_ptr, from_ptr, elsize);
+              next_two_iter_(indicies, idim, values[idx].shape(), from_ptr,
+                             values[idx].strides(), to_ptr,
+                             result_slices[idx].strides());
+            } while (idim >= 0);
+          }
+        });
   }
 
   return result;

@@ -28,6 +28,17 @@ py_binary(
 )
 
 py_binary(
+    name = "torch_experiment",
+    srcs = ["torch_experiment.py"],
+    data = [
+        "//examples/python/conf",
+    ],
+    deps = [
+        "//spu/binding/util:distributed",
+    ],
+)
+
+py_binary(
     name = "jax_lr",
     srcs = ["jax_lr.py"],
     data = [

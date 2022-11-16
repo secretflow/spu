@@ -1777,6 +1777,30 @@ func.func @main(%arg0: tensor<4x6xi32>, %arg1: tensor<2x2xi32>) -> (tensor<2x2xi
   r.verifyOutput(mask.data(), 1);
 }
 
+TEST_P(ExecutorTest, IntNot) {
+  Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
+           std::get<2>(GetParam()));
+
+  r.run(R"(
+func.func @main() -> (tensor<!pphlo.pub<i32>>, tensor<!pphlo.pub<i1>>) {
+    %0 = "pphlo.constant"() {value = dense<5> : tensor<i32>} : () -> tensor<!pphlo.pub<i32>>
+    %1 = "pphlo.not"(%0) : (tensor<!pphlo.pub<i32>>) -> tensor<!pphlo.pub<i32>>
+    %2 = "pphlo.constant"() {value = dense<0> : tensor<i1>} : () -> tensor<!pphlo.pub<i1>>
+    %3 = "pphlo.not"(%2) : (tensor<!pphlo.pub<i1>>) -> tensor<!pphlo.pub<i1>>
+    return %1, %3: tensor<!pphlo.pub<i32>>, tensor<!pphlo.pub<i1>>
+})",
+        2);
+
+  {
+    int32_t expected = ~5;
+    r.verifyOutput(&expected, 0);
+  }
+  {
+    bool expected = true;
+    r.verifyOutput(&expected, 1);
+  }
+}
+
 INSTANTIATE_TEST_SUITE_P(
     ExecutorTestInstances, ExecutorTest,
     testing::Combine(testing::Values(4, 3, 2),

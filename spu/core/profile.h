@@ -112,14 +112,13 @@ class ProfileGuard final {
 
 class MemProfilingGuard {
  private:
-  int indent_;
+  int indent_{0};
   std::string_view module_;
   std::string_view name_;
-  float start_peak_;
-  bool enable_;
+  float start_peak_{0.0F};
+  bool enable_{false};
 
  public:
-  MemProfilingGuard() : enable_(false) {}
   void enable(int i, std::string_view m, std::string_view n);
   ~MemProfilingGuard();
 };
@@ -149,18 +148,18 @@ std::shared_ptr<spdlog::logger> spuTraceLog();
   ProfileGuard __profile_guard(CTX, NAME,            \
                                fmt::format("{},{},{},{}", X, Y, Z, U));
 
-#define __PROFILE_END_OP1(MODULE, NAME, CTX, X) \
+#define __PROFILE_LEAF_OP1(MODULE, NAME, CTX, X) \
   ProfileGuard __profile_guard(CTX, NAME, fmt::format("{}", X), true);
 
-#define __PROFILE_END_OP2(MODULE, NAME, CTX, X, Y) \
+#define __PROFILE_LEAF_OP2(MODULE, NAME, CTX, X, Y) \
   ProfileGuard __profile_guard(CTX, NAME, fmt::format("{},{}", X, Y), true);
 
-#define __PROFILE_END_OP3(MODULE, NAME, CTX, X, Y, Z)                       \
+#define __PROFILE_LEAF_OP3(MODULE, NAME, CTX, X, Y, Z)                      \
   ProfileGuard __profile_guard(CTX, NAME, fmt::format("{},{},{}", X, Y, Z), \
                                true);
 
-#define __PROFILE_END_OP4(MODULE, NAME, CTX, X, Y, Z, U) \
-  ProfileGuard __profile_guard(CTX, NAME,                \
+#define __PROFILE_LEAF_OP4(MODULE, NAME, CTX, X, Y, Z, U) \
+  ProfileGuard __profile_guard(CTX, NAME,                 \
                                fmt::format("{},{},{},{}", X, Y, Z, U), true);
 
 #define __TRACE_OP1(MODULE, NAME, CTX, X)                             \
@@ -222,18 +221,18 @@ std::shared_ptr<spdlog::logger> spuTraceLog();
                           __PROFILE_OP2, __PROFILE_OP1)              \
   (MODULE, NAME, __VA_ARGS__)
 
-#define __PROFILE_END_OP(MODULE, NAME, ...)                                  \
-  __MACRO_SELECT_WITH_CTX(__VA_ARGS__, __PROFILE_END_OP4, __PROFILE_END_OP3, \
-                          __PROFILE_END_OP2, __PROFILE_END_OP1)              \
+#define __PROFILE_LEAF_OP(MODULE, NAME, ...)                                   \
+  __MACRO_SELECT_WITH_CTX(__VA_ARGS__, __PROFILE_LEAF_OP4, __PROFILE_LEAF_OP3, \
+                          __PROFILE_LEAF_OP2, __PROFILE_LEAF_OP1)              \
   (MODULE, NAME, __VA_ARGS__)
 
 #define __TRACE_AND_PROFILE_OP(MODULE, NAME, ...) \
   __TRACE_OP(MODULE, NAME, __VA_ARGS__)           \
   __PROFILE_OP(MODULE, NAME, __VA_ARGS__)
 
-#define __TRACE_AND_PROFILE_END_OP(MODULE, NAME, ...) \
-  __TRACE_OP(MODULE, NAME, __VA_ARGS__)               \
-  __PROFILE_END_OP(MODULE, NAME, __VA_ARGS__)
+#define __TRACE_AND_PROFILE_LEAF_OP(MODULE, NAME, ...) \
+  __TRACE_OP(MODULE, NAME, __VA_ARGS__)                \
+  __PROFILE_LEAF_OP(MODULE, NAME, __VA_ARGS__)
 
 }  // namespace spu
 

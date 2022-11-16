@@ -55,7 +55,7 @@ class AShrTy : public TypeImpl<AShrTy, RingTy, Secret, AShare> {
 
 class BShrTy : public TypeImpl<BShrTy, TypeObject, Secret, BShare> {
   using Base = TypeImpl<BShrTy, TypeObject, Secret, BShare>;
-  PtType back_type_;
+  PtType back_type_ = PT_INVALID;
 
  public:
   using Base::Base;

@@ -150,6 +150,8 @@ class TypeObject {
   static std::string_view getStaticId();
 
   // Return type size in bytes.
+  //
+  // Warn: change attributes of a type object should NOT affect the object size.
   virtual size_t size() const = 0;
 
   // Return the string representation of this concept.
@@ -173,13 +175,17 @@ class TypeObject {
 class Type final {
   std::unique_ptr<TypeObject> model_;
 
+  // cache dynamic object size for better performance.
+  size_t cached_model_size_ = -1;
+
  public:
   // default constructable, as the void type.
   Type();
   explicit Type(std::unique_ptr<TypeObject> model);
 
   // copy and move constructable
-  Type(const Type& other) : model_(other.model_->clone()) {}
+  Type(const Type& other)
+      : model_(other.model_->clone()), cached_model_size_(model_->size()) {}
   Type& operator=(const Type& other);
   Type(Type&& other) = default;
   Type& operator=(Type&& other) = default;
@@ -193,20 +199,22 @@ class Type final {
   static Type fromString(std::string_view repr);
 
   // return object of this type's size in bytes.
-  size_t size() const { return model_->size(); }
+  inline size_t size() const { return cached_model_size_; }
 
   // object oriented relationship
   template <typename T>
   T const* as() const;
+
   template <typename T>
   T* as();
+
   template <typename T>
   bool isa() const;
 };
 
 template <typename T>
 T const* Type::as() const {
-  T const* concrete_type = dynamic_cast<T*>(model_.get());
+  T const* concrete_type = dynamic_cast<T const*>(model_.get());
   YASL_ENFORCE(concrete_type, "casting from {} to {} failed", model_->getId(),
                typeid(T).name());
   return concrete_type;
@@ -222,7 +230,7 @@ T* Type::as() {
 
 template <typename T>
 bool Type::isa() const {
-  T const* concrete_type = dynamic_cast<T*>(model_.get());
+  T const* concrete_type = dynamic_cast<T const*>(model_.get());
   return concrete_type != nullptr;
 }
 
@@ -230,7 +238,7 @@ std::ostream& operator<<(std::ostream& os, const Type& type);
 
 template <typename ModelT, typename... Args>
 Type makeType(Args&&... args) {
-  return Type{std::make_unique<ModelT>(std::forward<Args>(args)...)};
+  return Type(std::make_unique<ModelT>(std::forward<Args>(args)...));
 }
 
 template <typename DerivedT, typename BaseT, typename... InterfaceT>
@@ -325,7 +333,12 @@ class RingTy : public TypeImpl<RingTy, TypeObject, Ring2k> {
 
   static std::string_view getStaticId() { return "Ring"; }
 
-  size_t size() const override { return SizeOf(GetStorageType(field_)); }
+  size_t size() const override {
+    if (field_ == FT_INVALID) {
+      return 0;
+    }
+    return SizeOf(GetStorageType(field_));
+  }
 
   void fromString(std::string_view detail) override {
     YASL_ENFORCE(FieldType_Parse(std::string(detail), &field_),

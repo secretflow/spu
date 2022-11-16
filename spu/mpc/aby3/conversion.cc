@@ -34,7 +34,7 @@ namespace spu::mpc::aby3 {
 //
 // Latency: 2 + log(nbits) from 1 rotate and 1 ppa.
 ArrayRef A2B::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
-  SPU_PROFILE_END_TRACE_KERNEL(ctx, in);
+  SPU_PROFILE_TRACE_LEAF_KERNEL(ctx, in);
 
   const auto field = in.eltype().as<Ring2k>()->field();
 

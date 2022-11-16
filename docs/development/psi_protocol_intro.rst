@@ -1,4 +1,4 @@
-PSI protocols introduction
+PSI Protocols Introduction
 ==========================
 
 SecretFlow SPU implements the following PSI protocols,

@@ -10,6 +10,12 @@ We have only uploaded SPU binaries with limited version.
 Please check https://pypi.org/project/spu/#files to confirm whether your environment meets the requirement of tags.
 Please refer to https://github.com/pypa/manylinux to check the tags.
 
+What is the requirement for glibc?
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+If you are using the binaries provided from us, the minimum requirement of glibc is 2.17.
+If you couldn't meet this restriction, please build your own binary from source.
+
 
 Usage
 -----
@@ -22,6 +28,17 @@ You have to enable these flags in :ref:`/reference/runtime_config.md` when you s
 - enable_action_trace
 - enable_pphlo_trace
 
+How could I use Cheetah protocol?
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+You only need to select Cheetah protocol in :ref:`/reference/runtime_config.md`. Please search for *protocol* field in RuntimeConfig.
+And please keep in mind that Cheetah protocol is a 2PC protocol.
+
+Do I need to remove duplicated keys locally before PSI?
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Yes. Otherwise error would be raised.
+
 
 General
 -------
@@ -30,7 +47,7 @@ Does SPU support PyTorch?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 And this moment, we only ship SPU with JAX support. But theoretically, all the frontend languages which could be transferred into XLA could be
-consumed by SPU compiler. In the near future, SPU team is not going to support other frontend languages however.
+consumed by SPU compiler, please check other opensource projects which work on transferring other languages to XLA.
 
 I have met huge inconsistency between SPU result and Plaintext(JAX) result.
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

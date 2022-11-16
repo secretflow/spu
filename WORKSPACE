@@ -50,18 +50,3 @@ python_configure(
     name = "local_config_python",
     python_version = "3",
 )
-
-load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
-
-# Hedron's Compile Commands Extractor for Bazel
-# https://github.com/hedronvision/bazel-compile-commands-extractor
-git_repository(
-    name = "hedron_compile_commands",
-    commit = "57046dba8d60f819887ea81933ed90f8e23a458a",
-    remote = "https://github.com/hedronvision/bazel-compile-commands-extractor.git",
-    shallow_since = "1644967664 -0800",
-)
-
-load("@hedron_compile_commands//:workspace_setup.bzl", "hedron_compile_commands_setup")
-
-hedron_compile_commands_setup()

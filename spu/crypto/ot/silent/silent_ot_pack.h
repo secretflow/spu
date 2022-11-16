@@ -31,7 +31,7 @@ class SilentOTPack {
  public:
   int party_;
   std::unique_ptr<IO> io_ = nullptr;
-  std::array<IO*, 1> ios_;
+  std::array<IO*, 1> ios_ = {nullptr};
   std::unique_ptr<SilentOT> silent_ot_ = nullptr;
   std::unique_ptr<SilentOT> silent_ot_reversed_ = nullptr;
 

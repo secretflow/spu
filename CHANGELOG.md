@@ -10,10 +10,13 @@
 > please add your unrelease change here.
 - [API] Add IR type for frontend compilation
 - [Feature] Support SignOp, Expm1Op, DotGeneralOp
+- [Feature] Improve convolution performance
+- [Feature] Link Send/Recv python binding
 - [bugfix] Relax iota type constraint
 - [bugfix] Fix type inference for whileOp/dynamicUpdateSliceOp
 - [bugfix] Relax clamp type constraint
-- [Feature] Improve convolution performance
+- [bugfix] Fix NotOp with non-pred integer types
+
 
 ## 20220905
 - [SPU] 0.2.4 release

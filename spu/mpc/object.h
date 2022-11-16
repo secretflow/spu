@@ -112,7 +112,7 @@ class Object : public ProfilingContext {
 #define SPU_PROFILE_TRACE_KERNEL(CTX, ...) \
   __TRACE_AND_PROFILE_OP("mpc", kBindName, CTX->caller(), __VA_ARGS__)
 
-#define SPU_PROFILE_END_TRACE_KERNEL(CTX, ...) \
-  __TRACE_AND_PROFILE_END_OP("mpc", kBindName, CTX->caller(), __VA_ARGS__)
+#define SPU_PROFILE_TRACE_LEAF_KERNEL(CTX, ...) \
+  __TRACE_AND_PROFILE_LEAF_OP("mpc", kBindName, CTX->caller(), __VA_ARGS__)
 
 }  // namespace spu::mpc

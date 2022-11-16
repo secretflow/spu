@@ -478,10 +478,9 @@ ArrayRef MatMulAA::proc(KernelEvalContext* ctx, const ArrayRef& x,
   // z1 := x1*y1 + x1*y2 + x2*y1 + k1
   // z2 := x2*y2 + x2*y3 + x3*y2 + k2
   // z3 := x3*y3 + x3*y1 + x1*y3 + k3
-  auto t0 = std::async(ring_mmul, x1, y1, M, N, K);  //
-  auto t1 = std::async(ring_mmul, x1, y2, M, N, K);  //
   auto t2 = std::async(ring_mmul, x2, y1, M, N, K);
-  auto z1 = ring_sum({t0.get(), t1.get(), t2.get(), r.get()});
+  auto t0 = ring_mmul(x1, ring_add(y1, y2), M, N, K);  //
+  auto z1 = ring_sum({t0, t2.get(), r.get()});
 
   auto z2 = comm->rotate(z1, kBindName);  // comm => 1, k
 
@@ -869,7 +868,7 @@ ArrayRef carry_out(Object* ctx, const ArrayRef& x, const ArrayRef& y,
 }  // namespace
 
 ArrayRef MsbA::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
-  SPU_PROFILE_END_TRACE_KERNEL(ctx, in);
+  SPU_PROFILE_TRACE_LEAF_KERNEL(ctx, in);
 
   const auto field = in.eltype().as<AShrTy>()->field();
   const auto numel = in.numel();

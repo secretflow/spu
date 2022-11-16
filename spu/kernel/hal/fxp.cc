@@ -410,7 +410,7 @@ Value tanh_pade_approx(HalContext* ctx, const Value& x) {
 
 Value f_square(HalContext* ctx, const Value& x) {
   SPU_TRACE_HAL(ctx, x);
-  SPU_PROFILE_END_OP(ctx, x);
+  SPU_PROFILE_LEAF_OP(ctx, x);
 
   YASL_ENFORCE(x.isFxp());
   // TODO(jint) optimize me.
@@ -420,7 +420,7 @@ Value f_square(HalContext* ctx, const Value& x) {
 
 Value f_exp(HalContext* ctx, const Value& x) {
   SPU_TRACE_HAL(ctx, x);
-  SPU_PROFILE_END_OP(ctx, x);
+  SPU_PROFILE_LEAF_OP(ctx, x);
 
   YASL_ENFORCE(x.isFxp());
 
@@ -442,7 +442,7 @@ Value f_exp(HalContext* ctx, const Value& x) {
 
 Value f_negate(HalContext* ctx, const Value& x) {
   SPU_TRACE_HAL(ctx, x);
-  SPU_PROFILE_END_OP(ctx, x);
+  SPU_PROFILE_LEAF_OP(ctx, x);
 
   YASL_ENFORCE(x.isFxp());
   return _negate(ctx, x).asFxp();
@@ -450,7 +450,7 @@ Value f_negate(HalContext* ctx, const Value& x) {
 
 Value f_abs(HalContext* ctx, const Value& x) {
   SPU_TRACE_HAL(ctx, x);
-  SPU_PROFILE_END_OP(ctx, x);
+  SPU_PROFILE_LEAF_OP(ctx, x);
 
   YASL_ENFORCE(x.isFxp());
   const Value sign = _sign(ctx, x);
@@ -460,7 +460,7 @@ Value f_abs(HalContext* ctx, const Value& x) {
 
 Value f_reciprocal(HalContext* ctx, const Value& x) {
   SPU_TRACE_HAL(ctx, x);
-  SPU_PROFILE_END_OP(ctx, x);
+  SPU_PROFILE_LEAF_OP(ctx, x);
 
   YASL_ENFORCE(x.isFxp());
   if (x.isPublic()) {
@@ -472,7 +472,7 @@ Value f_reciprocal(HalContext* ctx, const Value& x) {
 
 Value f_add(HalContext* ctx, const Value& x, const Value& y) {
   SPU_TRACE_HAL(ctx, x, y);
-  SPU_PROFILE_END_OP(ctx, x, y);
+  SPU_PROFILE_LEAF_OP(ctx, x, y);
 
   YASL_ENFORCE(x.isFxp());
   YASL_ENFORCE(y.isFxp());
@@ -482,7 +482,7 @@ Value f_add(HalContext* ctx, const Value& x, const Value& y) {
 
 Value f_sub(HalContext* ctx, const Value& x, const Value& y) {
   SPU_TRACE_HAL(ctx, x, y);
-  SPU_PROFILE_END_OP(ctx, x, y);
+  SPU_PROFILE_LEAF_OP(ctx, x, y);
 
   YASL_ENFORCE(x.isFxp());
   YASL_ENFORCE(y.isFxp());
@@ -491,7 +491,7 @@ Value f_sub(HalContext* ctx, const Value& x, const Value& y) {
 
 Value f_mul(HalContext* ctx, const Value& x, const Value& y) {
   SPU_TRACE_HAL(ctx, x, y);
-  SPU_PROFILE_END_OP(ctx, x, y);
+  SPU_PROFILE_LEAF_OP(ctx, x, y);
 
   YASL_ENFORCE(x.isFxp());
   YASL_ENFORCE(y.isFxp());
@@ -501,7 +501,7 @@ Value f_mul(HalContext* ctx, const Value& x, const Value& y) {
 
 Value f_mmul(HalContext* ctx, const Value& x, const Value& y) {
   SPU_TRACE_HAL(ctx, x, y);
-  SPU_PROFILE_END_OP(ctx, x, y);
+  SPU_PROFILE_LEAF_OP(ctx, x, y);
 
   YASL_ENFORCE(x.isFxp());
   YASL_ENFORCE(y.isFxp());
@@ -511,7 +511,7 @@ Value f_mmul(HalContext* ctx, const Value& x, const Value& y) {
 
 Value f_div(HalContext* ctx, const Value& x, const Value& y) {
   SPU_TRACE_HAL(ctx, x, y);
-  SPU_PROFILE_END_OP(ctx, x, y);
+  SPU_PROFILE_LEAF_OP(ctx, x, y);
 
   YASL_ENFORCE(x.isFxp());
   YASL_ENFORCE(y.isFxp());
@@ -525,7 +525,7 @@ Value f_div(HalContext* ctx, const Value& x, const Value& y) {
 
 Value f_equal(HalContext* ctx, const Value& x, const Value& y) {
   SPU_TRACE_HAL(ctx, x, y);
-  SPU_PROFILE_END_OP(ctx, x, y);
+  SPU_PROFILE_LEAF_OP(ctx, x, y);
 
   YASL_ENFORCE(x.isFxp());
   YASL_ENFORCE(y.isFxp());
@@ -535,7 +535,7 @@ Value f_equal(HalContext* ctx, const Value& x, const Value& y) {
 
 Value f_less(HalContext* ctx, const Value& x, const Value& y) {
   SPU_TRACE_HAL(ctx, x, y);
-  SPU_PROFILE_END_OP(ctx, x, y);
+  SPU_PROFILE_LEAF_OP(ctx, x, y);
 
   YASL_ENFORCE(x.isFxp());
   YASL_ENFORCE(y.isFxp());
@@ -545,7 +545,7 @@ Value f_less(HalContext* ctx, const Value& x, const Value& y) {
 
 Value f_log(HalContext* ctx, const Value& x) {
   SPU_TRACE_HAL(ctx, x);
-  SPU_PROFILE_END_OP(ctx, x);
+  SPU_PROFILE_LEAF_OP(ctx, x);
 
   YASL_ENFORCE(x.isFxp());
 
@@ -568,7 +568,7 @@ Value f_log(HalContext* ctx, const Value& x) {
 
 Value f_log1p(HalContext* ctx, const Value& x) {
   SPU_TRACE_HAL(ctx, x);
-  SPU_PROFILE_END_OP(ctx, x);
+  SPU_PROFILE_LEAF_OP(ctx, x);
 
   YASL_ENFORCE(x.isFxp());
 
@@ -577,7 +577,7 @@ Value f_log1p(HalContext* ctx, const Value& x) {
 
 Value f_floor(HalContext* ctx, const Value& x) {
   SPU_TRACE_HAL(ctx, x);
-  SPU_PROFILE_END_OP(ctx, x);
+  SPU_PROFILE_LEAF_OP(ctx, x);
 
   YASL_ENFORCE(x.isFxp());
 
@@ -587,7 +587,7 @@ Value f_floor(HalContext* ctx, const Value& x) {
 
 Value f_ceil(HalContext* ctx, const Value& x) {
   SPU_TRACE_HAL(ctx, x);
-  SPU_PROFILE_END_OP(ctx, x);
+  SPU_PROFILE_LEAF_OP(ctx, x);
 
   YASL_ENFORCE(x.isFxp());
 
@@ -601,7 +601,7 @@ Value f_ceil(HalContext* ctx, const Value& x) {
 
 Value f_log2(HalContext* ctx, const Value& x) {
   SPU_TRACE_HAL(ctx, x);
-  SPU_PROFILE_END_OP(ctx, x);
+  SPU_PROFILE_LEAF_OP(ctx, x);
 
   YASL_ENFORCE(x.isFxp());
 
@@ -610,14 +610,14 @@ Value f_log2(HalContext* ctx, const Value& x) {
 
 Value f_exp2(HalContext* ctx, const Value& x) {
   SPU_TRACE_HAL(ctx, x);
-  SPU_PROFILE_END_OP(ctx, x);
+  SPU_PROFILE_LEAF_OP(ctx, x);
 
   return detail::exp2_pade_approx(ctx, x);
 }
 
 Value f_tanh(HalContext* ctx, const Value& x) {
   SPU_TRACE_HAL(ctx, x);
-  SPU_PROFILE_END_OP(ctx, x);
+  SPU_PROFILE_LEAF_OP(ctx, x);
 
   return detail::tanh_pade_approx(ctx, x);
 }
@@ -631,7 +631,7 @@ Value f_tanh(HalContext* ctx, const Value& x) {
 //  4. multiple two parts and get the result.
 Value f_rsqrt(HalContext* ctx, const Value& x) {
   SPU_TRACE_HAL(ctx, x);
-  SPU_PROFILE_END_OP(ctx, x);
+  SPU_PROFILE_LEAF_OP(ctx, x);
 
   const size_t k = SizeOf(ctx->getField()) * 8;
   const size_t f = ctx->getFxpBits();
@@ -715,7 +715,7 @@ Value f_rsqrt(HalContext* ctx, const Value& x) {
 // 1 / (2 * sqrt(x)).
 Value f_sqrt(HalContext* ctx, const Value& x) {
   SPU_TRACE_HAL(ctx, x);
-  SPU_PROFILE_END_OP(ctx, x);
+  SPU_PROFILE_LEAF_OP(ctx, x);
 
   const auto c0 = constant(ctx, 0.5, x.shape());
   const auto c1 = constant(ctx, 1.5, x.shape());

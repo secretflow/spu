@@ -1,4 +1,4 @@
-# Copyright 2021 Ant Group Co., Ltd.
+# Copyright 2022 Ant Group Co., Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,47 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@rules_python//python:defs.bzl", "py_library")
+load("@rules_python//python:defs.bzl", "py_binary", "py_library")
 
 package(default_visibility = ["//visibility:public"])
 
 py_library(
-    name = "appr_sigmoid",
-    srcs = ["appr_sigmoid.py"],
-)
-
-py_library(
-    name = "dataset_utils",
-    srcs = ["dataset_utils.py"],
-)
-
-py_library(
-    name = "stax_utils",
-    srcs = ["stax_utils.py"],
-    deps = [
-    ],
-)
-
-py_library(
-    name = "stax_models",
-    srcs = ["stax_models.py"],
-)
-
-py_library(
-    name = "optimizers",
-    srcs = ["optimizers.py"],
+    name = "input_pipeline",
+    srcs = ["input_pipeline.py"],
 )
 
 py_binary(
-    name = "nodectl",
-    srcs = ["nodectl.py"],
+    name = "train_on_spu",
+    srcs = ["train_on_spu.py"],
     data = [
         "//examples/python/conf",
     ],
     deps = [
-        ":dataset_utils",  # server dependent.
-        ":stax_models",  # server dependent.
-        "//examples/python/ml/flax_seq2seq:input_pipeline",
+        ":input_pipeline",
         "//spu/binding/util:distributed",
     ],
 )

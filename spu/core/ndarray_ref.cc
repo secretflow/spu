@@ -14,6 +14,7 @@
 
 #include "spu/core/ndarray_ref.h"
 
+#include <cstring>
 #include <numeric>
 
 #include "fmt/format.h"
@@ -103,15 +104,32 @@ bool NdArrayRef::isCompact() const {
 NdArrayRef NdArrayRef::clone() const {
   NdArrayRef res(eltype(), shape());
 
-  auto* ret_ptr = static_cast<std::byte*>(res.data());
   auto elsize = res.elsize();
+
+  // FIXME(xiaochen): Once we have a proper iterator, just replace the following
+  // helper function with next()
+  auto next_ = [&](std::vector<int64_t>& coord, const std::byte*& frm_ptr) {
+    for (int64_t idim = shape().size() - 1; idim >= 0; --idim) {
+      if (++coord[idim] == shape()[idim]) {
+        // Once a dimension is done, just unwind by strides
+        coord[idim] = 0;
+        frm_ptr -= (shape()[idim] - 1) * strides()[idim] * elsize;
+      } else {
+        frm_ptr += strides()[idim] * elsize;
+        break;
+      }
+    }
+  };
+
+  auto* ret_ptr = static_cast<std::byte*>(res.data());
 
   yasl::parallel_for(0, numel(), 2048, [&](int64_t begin, int64_t end) {
     std::vector<int64_t> indices = unflattenIndex(begin, shape());
+    const auto* frm_ptr = &at(indices);
+
     for (int64_t idx = begin; idx < end; ++idx) {
-      const auto* frm = &at(indices);
-      bumpIndices<int64_t>(shape(), absl::MakeSpan(indices));
-      std::memcpy(ret_ptr + idx * elsize, frm, elsize);
+      std::memcpy(ret_ptr + idx * elsize, frm_ptr, elsize);
+      next_(indices, frm_ptr);
     }
   });
 
