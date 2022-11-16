@@ -40,13 +40,13 @@ def spu_deps():
     native.new_local_repository(
         name = "local_homebrew_x64",
         build_file = "@spulib//bazel:local_openmp_macos.BUILD",
-        path = "/usr/local/",
+        path = "/usr/local/opt/libomp",
     )
 
     native.new_local_repository(
         name = "local_homebrew_arm64",
         build_file = "@spulib//bazel:local_openmp_macos.BUILD",
-        path = "/opt/homebrew/",
+        path = "/opt/homebrew/opt/libomp/",
     )
 
 def _bazel_platform():
