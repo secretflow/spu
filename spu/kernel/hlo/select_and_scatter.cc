@@ -18,6 +18,8 @@
 #include <cstdint>
 #include <iostream>
 
+#include "yasl/utils/parallel.h"
+
 #include "spu/core/shape_util.h"
 #include "spu/kernel/context.h"
 #include "spu/kernel/hal/constants.h"
@@ -71,27 +73,31 @@ spu::Value MaxPoolScatter(
   const std::vector<int64_t> window_dilations(window_shape.size(), 1);
   const std::vector<int64_t> base_dilations(source.shape().size(), 1);
   std::vector<int64_t> window_index(ndim, 0);
-  std::vector<int64_t> tiled_index(2 * ndim, 0);
-  std::vector<int64_t> base_x_window_index(2 * ndim, 0);
+
   do {
-    std::copy(window_index.begin(), window_index.end(),
-              base_x_window_index.begin() + ndim);
-    std::fill(tiled_index.begin(), tiled_index.begin() + ndim, 0);
-    std::copy(window_index.begin(), window_index.end(),
-              tiled_index.begin() + ndim);
-
-    do {
-      bool out_of_bound = getBaseIndexFromWindowIndex(
-          window_shape, window_strides, window_dilations, window_padding,
-          base_shape, base_dilations,
-          absl::MakeSpan(tiled_index).subspan(0, ndim), window_index,
-          absl::MakeSpan(base_x_window_index).subspan(0, ndim));
-      if (!out_of_bound) {
-        output.copyElementFrom(selected, tiled_index, base_x_window_index);
-      }
-
-    } while (bumpIndices<int64_t>(
-        source.shape(), absl::MakeSpan(tiled_index).subspan(0, ndim)));
+    yasl::parallel_for(
+        0, source.numel(), 2048, [&](int64_t begin, int64_t end) {
+          std::vector<int64_t> tiled_index(2 * ndim, 0);
+          std::vector<int64_t> base_x_window_index(2 * ndim, 0);
+          std::copy(window_index.begin(), window_index.end(),
+                    base_x_window_index.begin() + ndim);
+          std::copy(window_index.begin(), window_index.end(),
+                    tiled_index.begin() + ndim);
+          auto source_index = unflattenIndex(begin, source.shape());
+          for (int64_t idx = begin; idx < end; ++idx) {
+            bool out_of_bound = getBaseIndexFromWindowIndex(
+                window_shape, window_strides, window_dilations, window_padding,
+                base_shape, base_dilations,
+                absl::MakeSpan(tiled_index).subspan(0, ndim), window_index,
+                absl::MakeSpan(base_x_window_index).subspan(0, ndim));
+            if (!out_of_bound) {
+              output.copyElementFrom(selected, tiled_index,
+                                     base_x_window_index);
+            }
+            bumpIndices<int64_t>(source.shape(),
+                                 absl::MakeSpan(tiled_index).subspan(0, ndim));
+          }
+        });
   } while (bumpIndices<int64_t>(window_shape, absl::MakeSpan(window_index)));
 
   std::vector<int64_t> base_1d_shape(base_shape.begin(), base_shape.end());

@@ -26,7 +26,7 @@ namespace spu::kernel::hal {
 
 Value rng_uniform(HalContext* ctx, const Value& a, const Value& b,
                   absl::Span<const int64_t> to_shape) {
-  SPU_TRACE_HAL(ctx, a, b, to_shape);
+  SPU_TRACE_HAL_LEAF(ctx, a, b, to_shape);
   YASL_ENFORCE(a.isPublic() && b.isPublic());
   YASL_ENFORCE(a.dtype() == b.dtype());
   // FIXME: This is a hacky ref impl, fill a real proper impl later.

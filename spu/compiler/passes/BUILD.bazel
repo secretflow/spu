@@ -174,6 +174,18 @@ spu_cc_library(
 )
 
 spu_cc_library(
+    name = "optimize_select",
+    srcs = ["optimize_select.cc"],
+    hdrs = ["passes.h"],
+    deps = [
+        ":pass_details",
+        "//spu/dialect:pphlo_dialect",
+        "@llvm-project//mlir:IR",
+        "@llvm-project//mlir:TransformUtils",
+    ],
+)
+
+spu_cc_library(
     name = "all_passes",
     hdrs = ["register_passes.h"],
     deps = [
@@ -183,6 +195,7 @@ spu_cc_library(
         ":lower_conversion_cast",
         ":lower_mixed_type_op",
         ":optimize_maxpool",
+        ":optimize_select",
         ":reduce_truncation",
     ],
 )

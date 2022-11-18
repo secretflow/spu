@@ -16,7 +16,7 @@
 
 #include <future>
 
-#include "spu/core/profile.h"
+#include "spu/core/trace.h"
 #include "spu/core/vectorize.h"
 #include "spu/mpc/cheetah/object.h"
 #include "spu/mpc/cheetah/utils.h"
@@ -27,7 +27,7 @@ namespace spu::mpc::cheetah {
 
 ArrayRef TruncPrA::proc(KernelEvalContext* ctx, const ArrayRef& x,
                         size_t bits) const {
-  SPU_PROFILE_TRACE_KERNEL(ctx, x, bits);
+  SPU_TRACE_MPC_LEAF(ctx, x, bits);
   auto primitives =
       ctx->caller()->getState<CheetahState>()->beaver()->OTPrimitives();
   size_t size = x.numel();
@@ -64,7 +64,7 @@ ArrayRef TruncPrA::proc(KernelEvalContext* ctx, const ArrayRef& x,
 }
 
 ArrayRef MsbA::proc(KernelEvalContext* ctx, const ArrayRef& x) const {
-  SPU_PROFILE_TRACE_KERNEL(ctx, x);
+  SPU_TRACE_MPC_LEAF(ctx, x);
   auto primitives =
       ctx->caller()->getState<CheetahState>()->beaver()->OTPrimitives();
 
@@ -88,7 +88,7 @@ ArrayRef MsbA::proc(KernelEvalContext* ctx, const ArrayRef& x) const {
 
 ArrayRef MulAA::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
                      const ArrayRef& rhs) const {
-  SPU_PROFILE_TRACE_KERNEL(ctx, lhs, rhs);
+  SPU_TRACE_MPC_LEAF(ctx, lhs, rhs);
   // (lhs0 + lhs1) * (rhs0 + rhs1)
   // lhs0*rhs0 + lhs0*rhs1 + lhs1*rhs0 + lhs1*rhs1
   // Compute the cross terms lhs0*rhs1, lhs1*rhs0 homomorphically
@@ -123,7 +123,7 @@ ArrayRef MulAA::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
 
 ArrayRef MatMulAA::proc(KernelEvalContext* ctx, const ArrayRef& x,
                         const ArrayRef& y, size_t M, size_t N, size_t K) const {
-  SPU_PROFILE_TRACE_KERNEL(ctx, x, y);
+  SPU_TRACE_MPC_LEAF(ctx, x, y);
 
   const auto field = x.eltype().as<Ring2k>()->field();
   auto comm = ctx->caller()->getState<Communicator>();

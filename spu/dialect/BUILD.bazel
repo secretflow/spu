@@ -112,6 +112,22 @@ gentbl_cc_library(
     deps = [":pphlo_dialect_td_files"],
 )
 
+gentbl_cc_library(
+    name = "pphlo_ops_pattern_inc_gen",
+    tbl_outs = [
+        (
+            ["-gen-rewriters"],
+            "pphlo_patterns.cc.inc",
+        ),
+    ],
+    tblgen = "@llvm-project//mlir:mlir-tblgen",
+    td_file = "pphlo_patterns.td",
+    deps = [
+        ":pphlo_dialect_td_files",
+        "@llvm-project//mlir:FuncTdFiles",
+    ],
+)
+
 spu_cc_library(
     name = "pphlo_dialect",
     srcs = glob([
@@ -124,6 +140,7 @@ spu_cc_library(
         ":pphlo_attrs_inc_gen",
         ":pphlo_base_enums_inc_gen",
         ":pphlo_ops_inc_gen",
+        ":pphlo_ops_pattern_inc_gen",
         ":pphlo_types_inc_gen",
         "@llvm-project//mlir:FuncDialect",
         "@llvm-project//mlir:IR",

@@ -1241,6 +1241,7 @@ private:
         HloToPPHloOpConverter<mhlo::RemOp>,
         HloToPPHloOpConverter<mhlo::ReshapeOp>,
         HloToPPHloOpConverter<mhlo::ReturnOp>,
+        HloToPPHloOpConverter<mhlo::RoundOp>,
         HloToPPHloOpConverter<mhlo::ReverseOp>,
         HloToPPHloOpConverter<mhlo::RngOp>,
         HloToPPHloOpConverter<mhlo::SelectOp>,

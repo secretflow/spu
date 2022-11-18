@@ -33,7 +33,7 @@ from spu import spu_pb2
 def unused_tcp_port() -> int:
     """Return an unused port"""
     with closing(socket.socket(socket.AF_INET, socket.SOCK_STREAM)) as sock:
-        sock.bind(("", 0))
+        sock.bind(("localhost", 0))
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         return cast(int, sock.getsockname()[1])
 

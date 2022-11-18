@@ -14,7 +14,7 @@
 
 #include "spu/mpc/cheetah/boolean.h"
 
-#include "spu/core/profile.h"
+#include "spu/core/trace.h"
 #include "spu/mpc/cheetah/object.h"
 #include "spu/mpc/kernel.h"
 #include "spu/mpc/semi2k/type.h"
@@ -25,7 +25,7 @@ namespace spu::mpc::cheetah {
 
 ArrayRef AndBB::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
                      const ArrayRef& rhs) const {
-  SPU_PROFILE_TRACE_KERNEL(ctx, lhs, rhs);
+  SPU_TRACE_MPC_LEAF(ctx, lhs, rhs);
 
   const auto field = lhs.eltype().as<Ring2k>()->field();
   auto* comm = ctx->caller()->getState<Communicator>();

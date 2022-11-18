@@ -204,6 +204,18 @@ def PPHLO_FloorOp
   }];
 }
 
+def PPHLO_RoundOp
+    : PPHLO_UnaryElementwiseOp<"round_nearest_afz", [NoSideEffect], PPHLO_FpTensor> {
+  let summary = "Round operator, ties away from zero";
+  let description = [{
+    Returns `Round(operand)` element-wise, rounding to nearest integer with
+    half-way cases rounding away from zero.
+
+    See
+    https://www.tensorflow.org/xla/operation_semantics#element-wise_unary_functions.
+  }];
+}
+
 def PPHLO_AbsOp
     : PPHLO_UnaryElementwiseOp<"abs", [NoSideEffect], PPHLO_Tensor> {
   let summary = "Absolute value operator";
@@ -269,6 +281,13 @@ def PPHLO_SignOp
 
     See
     https://www.tensorflow.org/xla/operation_semantics#element-wise_unary_functions.
+  }];
+}
+
+def PPHLO_PreferAOp : PPHLO_UnaryElementwiseOp<"prefer_a", [NoSideEffect], PPHLO_Tensor> {
+  let summary = "Prefer AShare operator";
+  let description = [{
+    Convert input to AShare if possible.
   }];
 }
 
@@ -654,6 +673,8 @@ def PPHLO_SelectOp
             ValueRange(on_true), ValueRange(on_false));
     }]>
   ];
+
+  let hasCanonicalizer = 1;
 }
 
 def PPHLO_SelectAndScatterOp: PPHLO_Op<"select_and_scatter",

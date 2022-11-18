@@ -60,8 +60,18 @@ PPHloExecutor::PPHloExecutor(HalContext *ctx) : Executor(ctx) {
   registry.insert<mlir::pphlo::PPHloDialect, mlir::func::FuncDialect>();
   mlir_context_ = std::make_unique<mlir::MLIRContext>(registry);
 
-  hctx_->clearProfilingRecords();
-  hctx_->prot()->clearProfilingRecords();
+  int64_t tr_mask = 0;
+  if (ctx->rt_config().enable_action_trace()) {
+    tr_mask |= TR_LOG;
+  }
+
+  if (ctx->rt_config().enable_hal_profile()) {
+    tr_mask |= TR_HLO | TR_HAL | TR_MPC;
+    tr_mask |= TR_REC;
+  }
+
+  getTracer(GET_CTX_NAME(ctx))->setMask(tr_mask);
+  getTracer(GET_CTX_NAME(ctx))->clearRecords();
 }
 
 PPHloExecutor::~PPHloExecutor() {

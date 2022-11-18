@@ -51,7 +51,7 @@ std::vector<int64_t> deducePadShape(
 
 Value transpose(HalContext* ctx, const Value& in,
                 absl::Span<const int64_t> permutation) {
-  SPU_TRACE_HAL(ctx, in);
+  SPU_TRACE_HAL_DISP(ctx, in);
 
   std::vector<int64_t> perm(in.shape().size());
   if (permutation.empty()) {
@@ -94,7 +94,7 @@ Value slice(HalContext* ctx, const Value& in,
             absl::Span<const int64_t> start_indices,
             absl::Span<const int64_t> end_indices,
             absl::Span<const int64_t> strides) {
-  SPU_TRACE_HAL(ctx, in, start_indices, end_indices, strides);
+  SPU_TRACE_HAL_DISP(ctx, in, start_indices, end_indices, strides);
 
   YASL_ENFORCE(in.shape().size() == start_indices.size());
   YASL_ENFORCE(in.shape().size() == end_indices.size());
@@ -200,7 +200,7 @@ bool attempt_nocopy_reshape(const Value& old,
 
 Value reshape(HalContext* ctx, const Value& in,
               absl::Span<const int64_t> to_shape) {
-  SPU_TRACE_HAL(ctx, in, to_shape);
+  SPU_TRACE_HAL_DISP(ctx, in, to_shape);
 
   // Nothing to reshape
   if (in.shape() == to_shape) {
@@ -224,7 +224,7 @@ Value reshape(HalContext* ctx, const Value& in,
 Value broadcast_to(HalContext* ctx, const Value& in,
                    absl::Span<const int64_t> to_shape,
                    absl::Span<const int64_t> in_dims) {
-  SPU_TRACE_HAL(ctx, in, to_shape);
+  SPU_TRACE_HAL_DISP(ctx, in, to_shape);
 
   std::vector<int64_t> new_strides(to_shape.size(), 0);
 
@@ -246,7 +246,7 @@ Value broadcast_to(HalContext* ctx, const Value& in,
 
 Value reverse(HalContext* ctx, const Value& in,
               absl::Span<const int64_t> dimensions) {
-  SPU_TRACE_HAL(ctx, in, dimensions);
+  SPU_TRACE_HAL_DISP(ctx, in, dimensions);
 
   std::vector<int64_t> new_strides = in.strides();
   int64_t el_offset = 0;

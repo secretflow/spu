@@ -27,7 +27,7 @@ namespace {
 //
 // Note: there is a abraction leakage, we should NOT touch Ring2kPubTy directly.
 Value make_pub2k(HalContext* ctx, PtBufferView bv) {
-  SPU_TRACE_HAL(ctx, bv);
+  SPU_TRACE_HAL_DISP(ctx, bv);
 
   NdArrayRef raw = xt_to_ndarray(bv);
 
@@ -42,7 +42,7 @@ Value make_pub2k(HalContext* ctx, PtBufferView bv) {
 
 Value constant(HalContext* ctx, PtBufferView bv,
                absl::Span<const int64_t> shape) {
-  SPU_TRACE_HAL(ctx, bv, shape);
+  SPU_TRACE_HAL_DISP(ctx, bv, shape);
 
   // If view shape is same as destination shape, just make public
   if (shape.empty() || shape == bv.shape) {
@@ -61,14 +61,14 @@ Value constant(HalContext* ctx, PtBufferView bv,
 
 Value const_secret(HalContext* ctx, PtBufferView bv,
                    absl::Span<const int64_t> shape) {
-  SPU_TRACE_HAL(ctx, bv);
+  SPU_TRACE_HAL_DISP(ctx, bv);
 
   auto pv = constant(ctx, bv, shape);
   return _p2s(ctx, pv).setDtype(pv.dtype());
 }
 
 NdArrayRef dump_public(HalContext* ctx, const Value& v) {
-  SPU_TRACE_HAL(ctx, v);
+  SPU_TRACE_HAL_DISP(ctx, v);
   YASL_ENFORCE(v.storage_type().isa<mpc::Pub2kTy>(), "got {}",
                v.storage_type());
   const auto field = v.storage_type().as<Ring2k>()->field();

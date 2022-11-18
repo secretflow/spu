@@ -23,7 +23,6 @@
 namespace spu::mpc::aby3 {
 
 ArrayRef getShare(const ArrayRef& in, int64_t share_idx) {
-  YASL_ENFORCE(in.stride() != 0);
   YASL_ENFORCE(share_idx == 0 || share_idx == 1);
 
   if (in.eltype().isa<AShrTy>()) {

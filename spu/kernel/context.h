@@ -19,7 +19,7 @@
 
 #include "yasl/link/link.h"
 
-#include "spu/core/profile.h"
+#include "spu/core/trace.h"
 #include "spu/mpc/object.h"
 
 #include "spu/spu.pb.h"
@@ -33,7 +33,7 @@ struct FeatureControl {
 };
 
 // The hal evaluation context for all spu operators.
-class HalContext final : public ProfilingContext {
+class HalContext final {
   const RuntimeConfig rt_config_;
 
   const std::shared_ptr<yasl::link::Context> lctx_;
@@ -72,11 +72,5 @@ class HalContext final : public ProfilingContext {
   //
   std::default_random_engine& rand_engine() { return rand_engine_; }
 };
-
-#define SPU_TRACE_HLO(...) __TRACE_OP("hlo", __func__, __VA_ARGS__)
-
-#define SPU_TRACE_HAL(...) __TRACE_OP("hal", __func__, __VA_ARGS__)
-#define SPU_PROFILE_OP(...) __PROFILE_OP("hal", __func__, __VA_ARGS__)
-#define SPU_PROFILE_LEAF_OP(...) __PROFILE_LEAF_OP("hal", __func__, __VA_ARGS__)
 
 }  // namespace spu

@@ -98,7 +98,7 @@ Value _cast_type(HalContext* ctx, const Value& x, const Type& to) {
 
 #define IMPL_UNARY_OP(Name, FnP, FnS)                        \
   Value Name(HalContext* ctx, const Value& in) {             \
-    SPU_TRACE_HAL(ctx, in);                                  \
+    SPU_TRACE_HAL_LEAF(ctx, in);                             \
     if (in.isPublic()) {                                     \
       return FnP(ctx, in);                                   \
     } else if (in.isSecret()) {                              \
@@ -110,7 +110,7 @@ Value _cast_type(HalContext* ctx, const Value& x, const Type& to) {
 
 #define IMPL_SHIFT_OP(Name, FnP, FnS)                         \
   Value Name(HalContext* ctx, const Value& in, size_t bits) { \
-    SPU_TRACE_HAL(ctx, in, bits);                             \
+    SPU_TRACE_HAL_LEAF(ctx, in, bits);                        \
     if (in.isPublic()) {                                      \
       return FnP(ctx, in, bits);                              \
     } else if (in.isSecret()) {                               \
@@ -122,7 +122,7 @@ Value _cast_type(HalContext* ctx, const Value& x, const Type& to) {
 
 #define IMPL_COMMUTATIVE_BINARY_OP(Name, FnPP, FnSP, FnSS)         \
   Value Name(HalContext* ctx, const Value& x, const Value& y) {    \
-    SPU_TRACE_HAL(ctx, x, y);                                      \
+    SPU_TRACE_HAL_LEAF(ctx, x, y);                                 \
     if (x.isPublic() && y.isPublic()) {                            \
       return FnPP(ctx, x, y);                                      \
     } else if (x.isSecret() && y.isPublic()) {                     \
@@ -150,12 +150,12 @@ IMPL_COMMUTATIVE_BINARY_OP(_and, _and_pp, _and_sp, _and_ss)
 IMPL_COMMUTATIVE_BINARY_OP(_xor, _xor_pp, _xor_sp, _xor_ss)
 
 Value _sub(HalContext* ctx, const Value& x, const Value& y) {
-  SPU_TRACE_HAL(ctx, x, y);
+  SPU_TRACE_HAL_LEAF(ctx, x, y);
   return _add(ctx, x, _negate(ctx, y));
 }
 
 Value _eqz(HalContext* ctx, const Value& x) {
-  SPU_TRACE_HAL(ctx, x);
+  SPU_TRACE_HAL_LEAF(ctx, x);
 
   // eqz(x) = not(lsb(pre_or(x)))
   // all equal to zero means lsb equals to zero
@@ -277,7 +277,7 @@ Value _or(HalContext* ctx, const Value& x, const Value& y) {
 }
 
 Value _trunc(HalContext* ctx, const Value& x, size_t bits) {
-  SPU_TRACE_HAL(ctx, x, bits);
+  SPU_TRACE_HAL_LEAF(ctx, x, bits);
   bits = (bits == 0) ? ctx->getFxpBits() : bits;
 
   if (x.isPublic()) {
@@ -290,14 +290,14 @@ Value _trunc(HalContext* ctx, const Value& x, size_t bits) {
 }
 
 Value _negate(HalContext* ctx, const Value& x) {
-  SPU_TRACE_HAL(ctx, x);
+  SPU_TRACE_HAL_LEAF(ctx, x);
 
   // negate(x) = not(x) + 1
   return _add(ctx, _not(ctx, x), constant(ctx, 1, x.shape()));
 }
 
 Value _sign(HalContext* ctx, const Value& x) {
-  SPU_TRACE_HAL(ctx, x);
+  SPU_TRACE_HAL_LEAF(ctx, x);
 
   // is_negative = x < 0 ? 1 : 0;
   const Value is_negative = _msb(ctx, x);
@@ -313,7 +313,7 @@ Value _sign(HalContext* ctx, const Value& x) {
 }
 
 Value _less(HalContext* ctx, const Value& x, const Value& y) {
-  SPU_TRACE_HAL(ctx, x, y);
+  SPU_TRACE_HAL_LEAF(ctx, x, y);
 
   // test msb(x-y) == 1
   return _msb(ctx, _sub(ctx, x, y));
@@ -321,7 +321,7 @@ Value _less(HalContext* ctx, const Value& x, const Value& y) {
 
 // swap bits of [start, end)
 Value _bitrev(HalContext* ctx, const Value& x, size_t start, size_t end) {
-  SPU_TRACE_HAL(ctx, x, start, end);
+  SPU_TRACE_HAL_LEAF(ctx, x, start, end);
 
   if (x.isPublic()) {
     return _bitrev_p(ctx, x, start, end);
@@ -333,7 +333,7 @@ Value _bitrev(HalContext* ctx, const Value& x, size_t start, size_t end) {
 }
 
 Value _mux(HalContext* ctx, const Value& pred, const Value& a, const Value& b) {
-  SPU_TRACE_HLO(ctx, pred, a, b);
+  SPU_TRACE_HAL_LEAF(ctx, pred, a, b);
 
   // b + pred*(a-b)
   return _add(ctx, b, _mul(ctx, pred, _sub(ctx, a, b)));
@@ -342,7 +342,7 @@ Value _mux(HalContext* ctx, const Value& pred, const Value& a, const Value& b) {
 // TODO(junfeng): OPTIMIZE ME
 // TODO: test me.
 Value _popcount(HalContext* ctx, const Value& x) {
-  SPU_TRACE_HAL(ctx, x);
+  SPU_TRACE_HAL_LEAF(ctx, x);
 
   Value ret = constant(ctx, 0, x.shape());
   // TODO:

@@ -17,7 +17,6 @@
 #include "absl/strings/str_split.h"
 #include "llvm/Support/CommandLine.h"
 #include "utils.h"
-#include "yasl/link/transport/channel_brpc.h"
 
 #include "spu/mpc/aby3/protocol.h"
 #include "spu/mpc/semi2k/protocol.h"

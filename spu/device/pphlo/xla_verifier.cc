@@ -211,6 +211,7 @@ SIMPLE_UNARY_VERIFY_IMPL(mlir::pphlo::Expm1Op, xla::HloOpcode::kExpm1)
 SIMPLE_UNARY_VERIFY_IMPL(mlir::pphlo::SqrtOp, xla::HloOpcode::kSqrt)
 SIMPLE_UNARY_VERIFY_IMPL(mlir::pphlo::RsqrtOp, xla::HloOpcode::kRsqrt)
 SIMPLE_UNARY_VERIFY_IMPL(mlir::pphlo::SignOp, xla::HloOpcode::kSign)
+SIMPLE_UNARY_VERIFY_IMPL(mlir::pphlo::RoundOp, xla::HloOpcode::kRoundNearestAfz)
 
 #undef SIMPLE_UNARY_VERIFY_IMPL
 

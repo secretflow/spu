@@ -138,6 +138,7 @@ private:
   void execute(mlir::pphlo::NotOp &op);
   void execute(mlir::pphlo::TanhOp &op);
   void execute(mlir::pphlo::RsqrtOp &op);
+  void execute(mlir::pphlo::RoundOp &op);
   void execute(mlir::pphlo::SqrtOp &op);
   void execute(mlir::pphlo::SignOp &op);
 
@@ -188,6 +189,7 @@ private:
   void execute(mlir::pphlo::SortOp &op);
   void execute(mlir::pphlo::DynamicUpdateSliceOp &op);
   void execute(mlir::pphlo::DynamicSliceOp &op);
+  void execute(mlir::pphlo::PreferAOp &op);
 
   /// Reduce ops
   void execute(mlir::pphlo::ReduceOp &op);

@@ -22,7 +22,6 @@ spu_cc_library(
         ":array_ref",
         ":encoding",
         ":ndarray_ref",
-        ":profile",
         ":shape_util",
         ":type",
         ":type_util",
@@ -32,20 +31,21 @@ spu_cc_library(
 )
 
 spu_cc_library(
-    name = "profile",
-    srcs = ["profile.cc"],
-    hdrs = ["profile.h"],
+    name = "trace",
+    srcs = ["trace.cc"],
+    hdrs = ["trace.h"],
     deps = [
+        "@com_google_absl//absl/types:span",
         "@yasl//yasl/base:exception",
         "@yasl//yasl/utils:scope_guard",
     ],
 )
 
 spu_cc_test(
-    name = "profile_test",
-    srcs = ["profile_test.cc"],
+    name = "trace_test",
+    srcs = ["trace_test.cc"],
     deps = [
-        ":profile",
+        ":trace",
         "@yasl//yasl/base:exception",
     ],
 )

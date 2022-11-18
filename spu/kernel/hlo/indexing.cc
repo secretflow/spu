@@ -12,11 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "spu/kernel/hlo/gather.h"
+#include "spu/kernel/hlo/indexing.h"
+
+#include <cstring>
 
 #include "spu/core/ndarray_ref.h"
 #include "spu/kernel/hal/hal.h"
 #include "spu/kernel/hlo/utils.h"
+#include "spu/kernel/value.h"
 
 namespace {
 struct IndexIterationSpace {
@@ -394,6 +397,39 @@ spu::Value Gather(HalContext *ctx, const spu::Value &operand,
                start_indices_iteration_space.index_count,
                start_indices_iteration_space.index_incr,
                gather_outer_loop_body);
+
+  return result;
+}
+
+spu::Value FilterByMask(HalContext *ctx, const spu::Value &operand,
+                        absl::Span<const uint8_t> mask) {
+  // Sanity
+  YASL_ENFORCE(operand.shape().size() == 1, "Operand must be a vector");
+  YASL_ENFORCE(mask.size() == (size_t)operand.shape()[0],
+               "filter must be same length as operand");
+
+  // Count result size
+  int64_t num_true = 0;
+  for (auto m : mask) {
+    if (m != 0U) {
+      ++num_true;
+    }
+  }
+
+  spu::Value result({operand.data().eltype(), {num_true}}, operand.dtype());
+
+  const auto *in_ptr = &operand.data().at({0});
+  auto *out_ptr = &result.data().at({0});
+  auto elseize = operand.elsize();
+
+  // Copy...
+  for (int64_t idx = 0; idx < operand.shape()[0]; ++idx) {
+    if (mask[idx] != 0U) {
+      std::memcpy(out_ptr, in_ptr, elseize);
+      out_ptr += elseize;
+    }
+    in_ptr += operand.strides()[0] * elseize;
+  }
 
   return result;
 }

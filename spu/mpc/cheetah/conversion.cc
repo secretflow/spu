@@ -14,7 +14,7 @@
 
 #include "spu/mpc/cheetah/conversion.h"
 
-#include "spu/core/profile.h"
+#include "spu/core/trace.h"
 #include "spu/core/vectorize.h"
 #include "spu/mpc/api.h"
 #include "spu/mpc/cheetah/object.h"
@@ -27,7 +27,7 @@
 namespace spu::mpc::cheetah {
 
 ArrayRef B2A::proc(KernelEvalContext* ctx, const ArrayRef& x) const {
-  SPU_PROFILE_TRACE_KERNEL(ctx, x);
+  SPU_TRACE_MPC_LEAF(ctx, x);
 
   auto primitives =
       ctx->caller()->getState<CheetahState>()->beaver()->OTPrimitives();

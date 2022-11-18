@@ -69,7 +69,7 @@ spu_cc_library(
     hdrs = ["object.h"],
     deps = [
         ":kernel",
-        "//spu/core:profile",
+        "//spu/core:trace",
     ],
 )
 

@@ -14,8 +14,10 @@
 
 #include "spu/kernel/hlo/basic_unary.h"
 
+#include "spu/kernel/context.h"
 #include "spu/kernel/hal/constants.h"
 #include "spu/kernel/hal/polymorphic.h"
+#include "spu/kernel/hal/type_cast.h"
 #include "spu/kernel/value.h"
 
 namespace spu::kernel::hlo {
@@ -55,6 +57,28 @@ spu::Value Not(HalContext *ctx, const spu::Value &in) {
     // bitwise not
     return hal::bitwise_not(ctx, in);
   }
+}
+
+spu::Value Sign(HalContext *ctx, const spu::Value &in) {
+  auto s = hal::sign(ctx, in);
+  auto zero =
+      hal::dtype_cast(ctx, hal::constant(ctx, 0, in.shape()), s.dtype());
+  s = hal::select(ctx, hal::equal(ctx, in, zero), zero, s);
+  return hal::dtype_cast(ctx, s, in.dtype());
+}
+
+spu::Value Round_AFZ(HalContext *ctx, const spu::Value &in) {
+  // select(x < 0, (int)(x-0.5), (int)(x+0.5))
+  // -> (float)(int)(x + sign(x) * 0.5)
+  YASL_ENFORCE(in.isFxp(), "Round only supports fxp");
+
+  auto sign_in = hal::sign(ctx, in);
+  auto p_half = hal::constant(ctx, 0.5, in.shape());
+  p_half = hal::mul(ctx, sign_in, p_half);
+
+  auto round = hal::add(ctx, in, p_half);
+
+  return hal::dtype_cast(ctx, hal::dtype_cast(ctx, round, DT_I64), in.dtype());
 }
 
 }  // namespace spu::kernel::hlo

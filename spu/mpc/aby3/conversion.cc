@@ -15,7 +15,7 @@
 #include "spu/mpc/aby3/conversion.h"
 
 #include "spu/core/parallel_utils.h"
-#include "spu/core/profile.h"
+#include "spu/core/trace.h"
 #include "spu/mpc/aby3/ot.h"
 #include "spu/mpc/aby3/type.h"
 #include "spu/mpc/aby3/value.h"
@@ -34,7 +34,7 @@ namespace spu::mpc::aby3 {
 //
 // Latency: 2 + log(nbits) from 1 rotate and 1 ppa.
 ArrayRef A2B::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
-  SPU_PROFILE_TRACE_LEAF_KERNEL(ctx, in);
+  SPU_TRACE_MPC_LEAF(ctx, in);
 
   const auto field = in.eltype().as<Ring2k>()->field();
 
@@ -104,7 +104,7 @@ ArrayRef A2B::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
 // Latency: 4 + log(nbits) - 3 rotate + 1 send/rec + 1 ppa.
 // TODO(junfeng): Optimize anount of comm.
 ArrayRef B2A::proc(KernelEvalContext* ctx, const ArrayRef& x) const {
-  SPU_PROFILE_TRACE_KERNEL(ctx, x);
+  SPU_TRACE_MPC_LEAF(ctx, x);
 
   const auto field = x.eltype().as<Ring2k>()->field();
   auto* comm = ctx->caller()->getState<Communicator>();
@@ -200,7 +200,7 @@ static std::vector<T> bitCompose(absl::Span<T const> in, size_t nbits) {
 // (the receiver) with input bit b2 learns the message c2 (not m[b2]) in the
 // first round, totaling 6k bits and 1 round.
 ArrayRef B2AByOT::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
-  SPU_PROFILE_TRACE_KERNEL(ctx, in);
+  SPU_TRACE_MPC_LEAF(ctx, in);
 
   const auto field = ctx->caller()->getState<Aby3State>()->getDefaultField();
   const auto* in_ty = in.eltype().as<BShrTy>();
@@ -342,7 +342,7 @@ ArrayRef B2AByOT::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
 
 ArrayRef AddBB::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
                      const ArrayRef& rhs) const {
-  SPU_PROFILE_TRACE_KERNEL(ctx, lhs, rhs);
+  SPU_TRACE_MPC_LEAF(ctx, lhs, rhs);
 
   const auto* lhs_ty = lhs.eltype().as<BShrTy>();
   const auto* rhs_ty = rhs.eltype().as<BShrTy>();

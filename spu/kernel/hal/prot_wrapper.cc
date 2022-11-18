@@ -65,44 +65,39 @@ std::tuple<int64_t, int64_t, int64_t> deduceMmulArgs(
 
 }  // namespace
 
-#define MAP_UNARY_OP(NAME)                                \
-  Value _##NAME(HalContext* ctx, const Value& in) {       \
-    SPU_TRACE_HAL(ctx, in);                               \
-    ctx->prot()->setTracingDepth(ctx->getTracingDepth()); \
-    auto ret = mpc::NAME(ctx->prot(), flattenValue(in));  \
-    return unflattenValue(ret, in.shape());               \
+#define MAP_UNARY_OP(NAME)                               \
+  Value _##NAME(HalContext* ctx, const Value& in) {      \
+    SPU_TRACE_HAL_DISP(ctx, in);                         \
+    auto ret = mpc::NAME(ctx->prot(), flattenValue(in)); \
+    return unflattenValue(ret, in.shape());              \
   }
 
 #define MAP_SHIFT_OP(NAME)                                       \
   Value _##NAME(HalContext* ctx, const Value& in, size_t bits) { \
-    SPU_TRACE_HAL(ctx, in, bits);                                \
-    ctx->prot()->setTracingDepth(ctx->getTracingDepth());        \
+    SPU_TRACE_HAL_DISP(ctx, in, bits);                           \
     auto ret = mpc::NAME(ctx->prot(), flattenValue(in), bits);   \
     return unflattenValue(ret, in.shape());                      \
   }
 
 #define MAP_BITREV_OP(NAME)                                                   \
   Value _##NAME(HalContext* ctx, const Value& in, size_t start, size_t end) { \
-    SPU_TRACE_HAL(ctx, in, start, end);                                       \
-    ctx->prot()->setTracingDepth(ctx->getTracingDepth());                     \
+    SPU_TRACE_HAL_DISP(ctx, in, start, end);                                  \
     auto ret = mpc::NAME(ctx->prot(), flattenValue(in), start, end);          \
     return unflattenValue(ret, in.shape());                                   \
   }
 
 #define MAP_BINARY_OP(NAME)                                              \
   Value _##NAME(HalContext* ctx, const Value& x, const Value& y) {       \
-    SPU_TRACE_HAL(ctx, x, y);                                            \
+    SPU_TRACE_HAL_DISP(ctx, x, y);                                       \
     YASL_ENFORCE(x.shape() == y.shape(), "shape mismatch: x={}, y={}",   \
                  x.shape(), y.shape());                                  \
-    ctx->prot()->setTracingDepth(ctx->getTracingDepth());                \
     auto ret = mpc::NAME(ctx->prot(), flattenValue(x), flattenValue(y)); \
     return unflattenValue(ret, x.shape());                               \
   }
 
 #define MAP_MMUL_OP(NAME)                                                  \
   Value _##NAME(HalContext* ctx, const Value& x, const Value& y) {         \
-    SPU_TRACE_HAL(ctx, x, y);                                              \
-    ctx->prot()->setTracingDepth(ctx->getTracingDepth());                  \
+    SPU_TRACE_HAL_DISP(ctx, x, y);                                         \
     auto [m, n, k] = deduceMmulArgs(x.shape(), y.shape());                 \
     auto ret =                                                             \
         mpc::NAME(ctx->prot(), flattenValue(x), flattenValue(y), m, n, k); \
@@ -110,14 +105,12 @@ std::tuple<int64_t, int64_t, int64_t> deduceMmulArgs(
   }
 
 Type _common_type_s(HalContext* ctx, const Type& a, const Type& b) {
-  SPU_TRACE_HAL(ctx, a, b);
-  ctx->prot()->setTracingDepth(ctx->getTracingDepth());
+  SPU_TRACE_HAL_DISP(ctx, a, b);
   return mpc::common_type_s(ctx->prot(), a, b);
 }
 
 Value _cast_type_s(HalContext* ctx, const Value& in, const Type& to) {
-  SPU_TRACE_HAL(ctx, in, to);
-  ctx->prot()->setTracingDepth(ctx->getTracingDepth());
+  SPU_TRACE_HAL_DISP(ctx, in, to);
   auto ret = mpc::cast_type_s(ctx->prot(), flattenValue(in), to);
   return unflattenValue(ret, in.shape());
 }

@@ -29,8 +29,8 @@
 #include "spu/kernel/hlo/control_flow.h"
 #include "spu/kernel/hlo/convolution.h"
 #include "spu/kernel/hlo/dynamic_slice.h"
-#include "spu/kernel/hlo/gather.h"
 #include "spu/kernel/hlo/geometrical.h"
+#include "spu/kernel/hlo/indexing.h"
 #include "spu/kernel/hlo/rand.h"
 #include "spu/kernel/hlo/reduce.h"
 #include "spu/kernel/hlo/select_and_scatter.h"
@@ -234,6 +234,7 @@ STANDARD_UNARY_OP_EXEC_IMPL(TanhOp, Tanh)
 STANDARD_UNARY_OP_EXEC_IMPL(NotOp, Not)
 STANDARD_UNARY_OP_EXEC_IMPL(RsqrtOp, Rsqrt)
 STANDARD_UNARY_OP_EXEC_IMPL(SqrtOp, Sqrt)
+STANDARD_UNARY_OP_EXEC_IMPL(RoundOp, Round_AFZ)
 
 #undef STANDARD_UNARY_OP_EXEC_IMPL
 
@@ -443,12 +444,16 @@ void RegionExecutor::execute(mlir::pphlo::SortOp &op) {
   for (size_t idx = 0; idx < inputs.size(); ++idx) {
     inputs[idx] = lookupValue(op->getOperand(idx));
   }
+
+  // TODO(junfeng): provide comparator_ret_vis.
+  suppress_type_check_ = true;
   auto ret = kernel::hlo::Sort(hctx_, inputs, sort_dim, is_stable,
                                [&](absl::Span<const spu::Value> inputs) {
                                  auto ret =
                                      executeRegion(op.comparator(), inputs);
                                  return ret[0];
                                });
+  suppress_type_check_ = false;
 
   for (int64_t idx = 0; idx < op->getNumResults(); ++idx) {
     getFrame()->addValue(op->getResult(idx), std::move(ret[idx]));
@@ -824,10 +829,6 @@ void RegionExecutor::execute(mlir::pphlo::ReduceWindowOp &op) {
 
 void RegionExecutor::execute(mlir::pphlo::SelectOp &op) {
   auto pred = lookupValue(op.pred());
-  auto k0 =
-      kernel::hlo::Cast(hctx_, kernel::hlo::Constant(hctx_, 0, pred.shape()),
-                        VIS_PUBLIC, pred.dtype());
-  pred = kernel::hlo::Add(hctx_, pred, k0);
 
   for (size_t idx = 0; idx < op.on_true().size(); ++idx) {
     auto on_true = lookupValue(op.on_true()[idx]);
@@ -870,24 +871,17 @@ void RegionExecutor::execute(mlir::pphlo::ConvertOp &op) {
                        kernel::hlo::Cast(hctx_, in, dst_vtype, dst_dtype));
 }
 
-void RegionExecutor::execute(mlir::pphlo::SignOp &op) {
-  // -1 if x < 0
+void RegionExecutor::execute(mlir::pphlo::PreferAOp &op) {
   auto in = lookupValue(op.operand());
-  auto zero =
+  auto k0 =
       kernel::hlo::Cast(hctx_, kernel::hlo::Constant(hctx_, 0, in.shape()),
                         VIS_PUBLIC, in.dtype());
-  auto mOne =
-      kernel::hlo::Cast(hctx_, kernel::hlo::Constant(hctx_, -1, in.shape()),
-                        VIS_PUBLIC, in.dtype());
-  auto pOne =
-      kernel::hlo::Cast(hctx_, kernel::hlo::Constant(hctx_, 1, in.shape()),
-                        VIS_PUBLIC, in.dtype());
+  getFrame()->addValue(op.getResult(), kernel::hlo::Add(hctx_, in, k0));
+}
 
-  auto ones = kernel::hlo::Select(hctx_, kernel::hlo::Less(hctx_, in, zero),
-                                  mOne, pOne);
-  auto ret = kernel::hlo::Select(hctx_, kernel::hlo::Equal(hctx_, in, zero),
-                                 zero, ones);
-  getFrame()->addValue(op.getResult(), ret);
+void RegionExecutor::execute(mlir::pphlo::SignOp &op) {
+  auto in = lookupValue(op.operand());
+  getFrame()->addValue(op.getResult(), kernel::hlo::Sign(hctx_, in));
 }
 
 void RegionExecutor::execute(mlir::pphlo::BitcastConvertOp &op) {

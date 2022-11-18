@@ -19,6 +19,8 @@
 #include "yasl/base/exception.h"
 
 #include "spu/core/encoding.h"  // for bitcast
+#include "spu/core/trace.h"
+#include "spu/kernel/context.h"
 #include "spu/kernel/hal/constants.h"
 #include "spu/kernel/hal/fxp.h"
 #include "spu/kernel/hal/integer.h"
@@ -69,7 +71,7 @@ bool isCrossIntFxp(const Value& x, const Value& y) {
 }
 
 Value logisticMM1(HalContext* ctx, const Value& x) {
-  SPU_TRACE_HLO(ctx, x);
+  SPU_TRACE_HAL_DISP(ctx, x);
 
   // SigmoidMM1: f(x) = 0.5 + 0.125 * x
   const auto c1 = constant(ctx, 0.5f, x.shape());
@@ -78,7 +80,7 @@ Value logisticMM1(HalContext* ctx, const Value& x) {
 }
 
 Value logisticReal(HalContext* ctx, const Value& x) {
-  SPU_TRACE_HLO(ctx, x);
+  SPU_TRACE_HAL_DISP(ctx, x);
 
   // f(x) = 1/(1+exp(-x))
   const auto c1 = constant(ctx, 1.0f, x.shape());
@@ -86,7 +88,7 @@ Value logisticReal(HalContext* ctx, const Value& x) {
 }
 
 Value logisticSEG3(HalContext* ctx, const Value& x) {
-  SPU_TRACE_HLO(ctx, x);
+  SPU_TRACE_HAL_DISP(ctx, x);
 
   // f(x) = 0.5 + 0.125x if -4 <= x <= 4
   //        1            if       x > 4
@@ -112,37 +114,47 @@ Value identity(HalContext* ctx, const Value& x) {
 }
 
 Value add(HalContext* ctx, const Value& x, const Value& y) {
-  SPU_TRACE_HLO(ctx, x, y);
+  SPU_TRACE_HAL_DISP(ctx, x, y);
   return dtypeBinaryDispatch<f_add, i_add>("add", ctx, x, y);
 }
 
 Value sub(HalContext* ctx, const Value& x, const Value& y) {
-  SPU_TRACE_HLO(ctx, x, y);
+  SPU_TRACE_HAL_DISP(ctx, x, y);
   return dtypeBinaryDispatch<f_sub, i_sub>("sub", ctx, x, y);
 }
 
+Value mixed_mul(HalContext* ctx, const Value& x, const Value& y) {
+  SPU_TRACE_HAL_LEAF(ctx, x, y);
+  return _mul(ctx, x, y).asFxp();
+}
+
+Value mixed_mmul(HalContext* ctx, const Value& x, const Value& y) {
+  SPU_TRACE_HAL_LEAF(ctx, x, y);
+  return _mmul(ctx, x, y).asFxp();
+}
+
 Value mul(HalContext* ctx, const Value& x, const Value& y) {
-  SPU_TRACE_HLO(ctx, x, y);
+  SPU_TRACE_HAL_DISP(ctx, x, y);
   // fast dispath, avoid trunction cost
   if (isCrossIntFxp(x, y)) {
-    return _mul(ctx, x, y).asFxp();
+    return mixed_mul(ctx, x, y);
   }
 
   return dtypeBinaryDispatch<f_mul, i_mul>("mul", ctx, x, y);
 }
 
 Value matmul(HalContext* ctx, const Value& x, const Value& y) {
-  SPU_TRACE_HLO(ctx, x, y);
+  SPU_TRACE_HAL_DISP(ctx, x, y);
   // fast dispath, avoid trunction cost
   if (isCrossIntFxp(x, y)) {
-    return _mmul(ctx, x, y).asFxp();
+    return mixed_mmul(ctx, x, y);
   }
 
   return dtypeBinaryDispatch<f_mmul, i_mmul>("mmul", ctx, x, y);
 }
 
 Value logical_not(HalContext* ctx, const Value& x) {
-  SPU_TRACE_HLO(ctx, x);
+  SPU_TRACE_HAL_LEAF(ctx, x);
 
   auto _k1 = constant(ctx, true, x.shape());
 
@@ -150,12 +162,12 @@ Value logical_not(HalContext* ctx, const Value& x) {
   if (x.storage_type().isa<BShare>()) {
     return _xor(ctx, x, _k1).setDtype(x.dtype());
   } else {
-    return i_sub(ctx, _k1, x);
+    return _sub(ctx, _k1, x).setDtype(x.dtype());
   }
 }
 
 Value equal(HalContext* ctx, const Value& x, const Value& y) {
-  SPU_TRACE_HLO(ctx, x, y);
+  SPU_TRACE_HAL_DISP(ctx, x, y);
   YASL_ENFORCE(x.shape() == y.shape(), "x = {}, y = {}", x, y);
 
   // TODO(junfeng): Implement the real equal!
@@ -168,21 +180,21 @@ Value equal(HalContext* ctx, const Value& x, const Value& y) {
 }
 
 Value not_equal(HalContext* ctx, const Value& x, const Value& y) {
-  SPU_TRACE_HLO(ctx, x, y);
+  SPU_TRACE_HAL_DISP(ctx, x, y);
   YASL_ENFORCE(x.shape() == y.shape());
 
   return logical_not(ctx, equal(ctx, x, y));
 }
 
 Value less(HalContext* ctx, const Value& x, const Value& y) {
-  SPU_TRACE_HLO(ctx, x, y);
+  SPU_TRACE_HAL_DISP(ctx, x, y);
   YASL_ENFORCE(x.shape() == y.shape());
 
   return dtypeBinaryDispatch<f_less, i_less>("less", ctx, x, y);
 }
 
 Value less_equal(HalContext* ctx, const Value& x, const Value& y) {
-  SPU_TRACE_HLO(ctx, x, y);
+  SPU_TRACE_HAL_DISP(ctx, x, y);
   YASL_ENFORCE(x.shape() == y.shape());
 
   // not (x > y)
@@ -190,14 +202,14 @@ Value less_equal(HalContext* ctx, const Value& x, const Value& y) {
 }
 
 Value greater(HalContext* ctx, const Value& x, const Value& y) {
-  SPU_TRACE_HLO(ctx, x, y);
+  SPU_TRACE_HAL_DISP(ctx, x, y);
   YASL_ENFORCE(x.shape() == y.shape());
 
   return less(ctx, y, x);
 }
 
 Value greater_equal(HalContext* ctx, const Value& x, const Value& y) {
-  SPU_TRACE_HLO(ctx, x, y);
+  SPU_TRACE_HAL_DISP(ctx, x, y);
   YASL_ENFORCE(x.shape() == y.shape());
 
   // not (x < y)
@@ -205,19 +217,19 @@ Value greater_equal(HalContext* ctx, const Value& x, const Value& y) {
 }
 
 Value negate(HalContext* ctx, const Value& x) {
-  SPU_TRACE_HLO(ctx, x);
+  SPU_TRACE_HAL_DISP(ctx, x);
 
   return dtypeUnaryDispatch<f_negate, i_negate>("negate", ctx, x);
 }
 
 Value abs(HalContext* ctx, const Value& x) {
-  SPU_TRACE_HLO(ctx, x);
+  SPU_TRACE_HAL_DISP(ctx, x);
 
   return dtypeUnaryDispatch<f_abs, i_abs>("abs", ctx, x);
 }
 
 Value exp(HalContext* ctx, const Value& a) {
-  SPU_TRACE_HLO(ctx, a);
+  SPU_TRACE_HAL_DISP(ctx, a);
 
   switch (ctx->rt_config().fxp_exp_mode()) {
     case RuntimeConfig::EXP_DEFAULT:
@@ -242,7 +254,7 @@ Value exp(HalContext* ctx, const Value& a) {
 
 Value select(HalContext* ctx, const Value& pred, const Value& a,
              const Value& b) {
-  SPU_TRACE_HLO(ctx, pred, a, b);
+  SPU_TRACE_HAL_DISP(ctx, pred, a, b);
 
   YASL_ENFORCE(pred.isInt());
   YASL_ENFORCE(a.shape() == b.shape());
@@ -255,7 +267,7 @@ Value select(HalContext* ctx, const Value& pred, const Value& a,
 }
 
 Value bitwise_and(HalContext* ctx, const Value& x, const Value& y) {
-  SPU_TRACE_HLO(ctx, x, y);
+  SPU_TRACE_HAL_DISP(ctx, x, y);
 
   YASL_ENFORCE(x.isInt() && y.isInt());
   YASL_ENFORCE(x.shape() == y.shape());
@@ -264,7 +276,7 @@ Value bitwise_and(HalContext* ctx, const Value& x, const Value& y) {
 }
 
 Value bitwise_xor(HalContext* ctx, const Value& x, const Value& y) {
-  SPU_TRACE_HLO(ctx, x, y);
+  SPU_TRACE_HAL_DISP(ctx, x, y);
   YASL_ENFORCE(x.isInt() && y.isInt());
   YASL_ENFORCE(x.shape() == y.shape());
 
@@ -272,7 +284,7 @@ Value bitwise_xor(HalContext* ctx, const Value& x, const Value& y) {
 }
 
 Value bitwise_or(HalContext* ctx, const Value& x, const Value& y) {
-  SPU_TRACE_HLO(ctx, x, y);
+  SPU_TRACE_HAL_DISP(ctx, x, y);
   YASL_ENFORCE(x.isInt() && y.isInt());
   YASL_ENFORCE(x.shape() == y.shape());
 
@@ -280,13 +292,13 @@ Value bitwise_or(HalContext* ctx, const Value& x, const Value& y) {
 }
 
 Value bitwise_not(HalContext* ctx, const Value& in) {
-  SPU_TRACE_HLO(ctx, in);
+  SPU_TRACE_HAL_DISP(ctx, in);
 
   return _not(ctx, in).setDtype(in.dtype());
 }
 
 Value logistic(HalContext* ctx, const Value& in) {
-  SPU_TRACE_HLO(ctx, in);
+  SPU_TRACE_HAL_DISP(ctx, in);
 
   YASL_ENFORCE(in.isFxp());
 
@@ -308,26 +320,26 @@ Value logistic(HalContext* ctx, const Value& in) {
 }
 
 Value log(HalContext* ctx, const Value& in) {
-  SPU_TRACE_HLO(ctx, in);
+  SPU_TRACE_HAL_DISP(ctx, in);
 
   return f_log(ctx, dtype_cast(ctx, in, DT_FXP));
 }
 
 Value log1p(HalContext* ctx, const Value& in) {
-  SPU_TRACE_HLO(ctx, in);
+  SPU_TRACE_HAL_DISP(ctx, in);
 
   return f_log1p(ctx, dtype_cast(ctx, in, DT_FXP));
 }
 
 Value reciprocal(HalContext* ctx, const Value& in) {
-  SPU_TRACE_HLO(ctx, in);
+  SPU_TRACE_HAL_DISP(ctx, in);
   YASL_ENFORCE(in.isFxp());
 
   return f_reciprocal(ctx, in);
 }
 
 Value floor(HalContext* ctx, const Value& in) {
-  SPU_TRACE_HLO(ctx, in);
+  SPU_TRACE_HAL_DISP(ctx, in);
 
   YASL_ENFORCE(in.isFxp());
 
@@ -335,7 +347,7 @@ Value floor(HalContext* ctx, const Value& in) {
 }
 
 Value ceil(HalContext* ctx, const Value& in) {
-  SPU_TRACE_HLO(ctx, in);
+  SPU_TRACE_HAL_DISP(ctx, in);
 
   YASL_ENFORCE(in.isFxp());
 
@@ -343,7 +355,7 @@ Value ceil(HalContext* ctx, const Value& in) {
 }
 
 Value max(HalContext* ctx, const Value& x, const Value& y) {
-  SPU_TRACE_HLO(ctx, x, y);
+  SPU_TRACE_HAL_DISP(ctx, x, y);
 
   YASL_ENFORCE(x.dtype() == y.dtype());
 
@@ -351,7 +363,7 @@ Value max(HalContext* ctx, const Value& x, const Value& y) {
 }
 
 Value min(HalContext* ctx, const Value& x, const Value& y) {
-  SPU_TRACE_HLO(ctx, x, y);
+  SPU_TRACE_HAL_DISP(ctx, x, y);
 
   YASL_ENFORCE(x.dtype() == y.dtype());
 
@@ -359,13 +371,48 @@ Value min(HalContext* ctx, const Value& x, const Value& y) {
 }
 
 Value power(HalContext* ctx, const Value& x, const Value& y) {
-  SPU_TRACE_HLO(ctx, x, y);
+  SPU_TRACE_HAL_DISP(ctx, x, y);
   // x^y = e^(y*ln(x))
   return exp(ctx, mul(ctx, y, log(ctx, x)));
 }
 
+Value idiv(HalContext* ctx, const Value& x, const Value& y) {
+  auto sign_x = sign(ctx, x);
+  auto sign_y = sign(ctx, y);
+
+  auto abs_x = mul(ctx, x, sign_x);
+  auto abs_y = mul(ctx, y, sign_y);
+
+  Value q;
+  {
+    const auto x_f = dtype_cast(ctx, abs_x, DT_FXP);
+    const auto y_f = dtype_cast(ctx, abs_y, DT_FXP);
+
+    auto approx_q = div(ctx, x_f, y_f);
+
+    // Due to truncation error and limited precision of fxp, the approximate
+    // quotient shoud be corrected
+    approx_q = dtype_cast(ctx, approx_q, x.dtype());
+
+    auto approx_x = mul(ctx, abs_y, approx_q);
+
+    // if (approx_q + 1) * y <= x, then ++approx_q;
+    auto v1 = less_equal(ctx, add(ctx, approx_x, abs_y), abs_x);
+    // if approx_q * y > x, then --approx_q;
+    auto v2 = greater(ctx, approx_x, abs_x);
+
+    q = sub(ctx, add(ctx, approx_q, v1), v2);
+  }
+
+  return mul(ctx, q, mul(ctx, sign_x, sign_y));
+}
+
 Value div(HalContext* ctx, const Value& x, const Value& y) {
-  SPU_TRACE_HLO(ctx, x, y);
+  SPU_TRACE_HAL_DISP(ctx, x, y);
+
+  if (x.isInt() && y.isInt()) {
+    return idiv(ctx, x, y);
+  }
 
   const auto x_f = dtype_cast(ctx, x, DT_FXP);
   const auto y_f = dtype_cast(ctx, y, DT_FXP);
@@ -377,15 +424,12 @@ Value div(HalContext* ctx, const Value& x, const Value& y) {
   auto res_f = mul(ctx, x, reciprocal(ctx, y));
 #endif
 
-  if (x.isInt() && y.isInt()) {
-    return dtype_cast(ctx, res_f, x.dtype());
-  }
   return res_f;
 }
 
 Value clamp(HalContext* ctx, const Value& minv, const Value& x,
             const Value& maxv) {
-  SPU_TRACE_HLO(ctx, minv, x, maxv);
+  SPU_TRACE_HAL_DISP(ctx, minv, x, maxv);
 
   YASL_ENFORCE(minv.dtype() == maxv.dtype());
   YASL_ENFORCE(minv.dtype() == x.dtype());
@@ -394,33 +438,33 @@ Value clamp(HalContext* ctx, const Value& minv, const Value& x,
 }
 
 Value bitcast(HalContext* ctx, const Value& x, DataType dtype) {
-  SPU_TRACE_HLO(ctx, x, dtype);
+  SPU_TRACE_HAL_DISP(ctx, x, dtype);
 
   // FIXME(jint) should we directly use fixed point binary expr for bitcast?
   return Value(x.data().clone(), dtype);
 }
 
 Value left_shift(HalContext* ctx, const Value& x, size_t bits) {
-  SPU_TRACE_HLO(ctx, x, bits);
+  SPU_TRACE_HAL_DISP(ctx, x, bits);
 
   return _lshift(ctx, x, bits).setDtype(x.dtype());
 }
 
 Value right_shift_logical(HalContext* ctx, const Value& x, size_t bits) {
-  SPU_TRACE_HLO(ctx, x, bits);
+  SPU_TRACE_HAL_DISP(ctx, x, bits);
 
   return _rshift(ctx, x, bits).setDtype(x.dtype());
 }
 
 Value right_shift_arithmetic(HalContext* ctx, const Value& x, size_t bits) {
-  SPU_TRACE_HLO(ctx, x, bits);
+  SPU_TRACE_HAL_DISP(ctx, x, bits);
 
   return _arshift(ctx, x, bits).setDtype(x.dtype());
 }
 
 Value permute(HalContext* ctx, const Value& x, size_t dimension,
               const Value& permutations) {
-  SPU_TRACE_HLO(ctx, x, dimension, permutations);
+  SPU_TRACE_HAL_DISP(ctx, x, dimension, permutations);
 
   if (permutations.isPublic()) {
     const auto field = x.storage_type().as<Ring2k>()->field();
@@ -440,33 +484,39 @@ Value permute(HalContext* ctx, const Value& x, size_t dimension,
 }
 
 Value log2(HalContext* ctx, const Value& in) {
-  SPU_TRACE_HLO(ctx, in);
+  SPU_TRACE_HAL_DISP(ctx, in);
 
   return f_log2(ctx, dtype_cast(ctx, in, DT_FXP));
 }
 
 Value exp2(HalContext* ctx, const Value& x) {
-  SPU_TRACE_HLO(ctx, x);
+  SPU_TRACE_HAL_DISP(ctx, x);
 
   return f_exp2(ctx, dtype_cast(ctx, x, DT_FXP));
 }
 
 Value tanh(HalContext* ctx, const Value& x) {
-  SPU_TRACE_HLO(ctx, x);
+  SPU_TRACE_HAL_DISP(ctx, x);
 
   return f_tanh(ctx, dtype_cast(ctx, x, DT_FXP));
 }
 
 Value rsqrt(HalContext* ctx, const Value& x) {
-  SPU_TRACE_HLO(ctx, x);
+  SPU_TRACE_HAL_DISP(ctx, x);
 
   return f_rsqrt(ctx, dtype_cast(ctx, x, DT_FXP));
 }
 
 Value sqrt(HalContext* ctx, const Value& x) {
-  SPU_TRACE_HLO(ctx, x);
+  SPU_TRACE_HAL_DISP(ctx, x);
 
   return f_sqrt(ctx, dtype_cast(ctx, x, DT_FXP));
+}
+
+Value sign(HalContext* ctx, const Value& x) {
+  SPU_TRACE_HAL_DISP(ctx, x);
+
+  return _sign(ctx, x).setDtype(DT_I8);
 }
 
 }  // namespace spu::kernel::hal

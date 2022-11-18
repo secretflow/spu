@@ -14,7 +14,7 @@
 
 #include "spu/mpc/semi2k/boolean.h"
 
-#include "spu/core/profile.h"
+#include "spu/core/trace.h"
 #include "spu/mpc/common/abprotocol.h"  // zero_b
 #include "spu/mpc/common/prg_state.h"
 #include "spu/mpc/common/pub2k.h"
@@ -46,7 +46,7 @@ void CommonTypeB::evaluate(EvalContext* ctx) const {
   const Type& lhs = ctx->getParam<Type>(0);
   const Type& rhs = ctx->getParam<Type>(1);
 
-  SPU_TRACE_KERNEL(ctx, lhs, rhs);
+  SPU_TRACE_MPC_DISP(ctx, lhs, rhs);
 
   YASL_ENFORCE(lhs == rhs, "semi2k always use same bshare type, lhs={}, rhs={}",
                lhs, rhs);
@@ -58,7 +58,7 @@ void CastTypeB::evaluate(EvalContext* ctx) const {
   const auto& in = ctx->getParam<ArrayRef>(0);
   const auto& to_type = ctx->getParam<Type>(1);
 
-  SPU_TRACE_KERNEL(ctx, in, to_type);
+  SPU_TRACE_MPC_DISP(ctx, in, to_type);
 
   YASL_ENFORCE(in.eltype() == to_type,
                "semi2k always use same bshare type, lhs={}, rhs={}",
@@ -69,7 +69,7 @@ void CastTypeB::evaluate(EvalContext* ctx) const {
 
 ArrayRef ZeroB::proc(KernelEvalContext* ctx, FieldType field,
                      size_t size) const {
-  SPU_PROFILE_TRACE_KERNEL(ctx, size);
+  SPU_TRACE_MPC_LEAF(ctx, size);
 
   auto* prg_state = ctx->caller()->getState<PrgState>();
   auto [r0, r1] = prg_state->genPrssPair(field, size);
@@ -78,7 +78,7 @@ ArrayRef ZeroB::proc(KernelEvalContext* ctx, FieldType field,
 }
 
 ArrayRef B2P::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
-  SPU_PROFILE_TRACE_KERNEL(ctx, in);
+  SPU_TRACE_MPC_LEAF(ctx, in);
 
   const auto field = in.eltype().as<Ring2k>()->field();
   auto* comm = ctx->caller()->getState<Communicator>();
@@ -87,7 +87,7 @@ ArrayRef B2P::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
 }
 
 ArrayRef P2B::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
-  SPU_PROFILE_TRACE_KERNEL(ctx, in);
+  SPU_TRACE_MPC_LEAF(ctx, in);
 
   const auto field = in.eltype().as<Ring2k>()->field();
   auto* comm = ctx->caller()->getState<Communicator>();
@@ -102,7 +102,7 @@ ArrayRef P2B::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
 
 ArrayRef AndBP::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
                      const ArrayRef& rhs) const {
-  SPU_PROFILE_TRACE_KERNEL(ctx, lhs, rhs);
+  SPU_TRACE_MPC_LEAF(ctx, lhs, rhs);
 
   const auto field = lhs.eltype().as<Ring2k>()->field();
   return makeBShare(ring_and(lhs, rhs), field);
@@ -110,7 +110,7 @@ ArrayRef AndBP::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
 
 ArrayRef AndBB::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
                      const ArrayRef& rhs) const {
-  SPU_PROFILE_TRACE_KERNEL(ctx, lhs, rhs);
+  SPU_TRACE_MPC_LEAF(ctx, lhs, rhs);
 
   const auto field = lhs.eltype().as<Ring2k>()->field();
   auto* comm = ctx->caller()->getState<Communicator>();
@@ -138,7 +138,7 @@ ArrayRef AndBB::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
 
 ArrayRef XorBP::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
                      const ArrayRef& rhs) const {
-  SPU_PROFILE_TRACE_KERNEL(ctx, lhs, rhs);
+  SPU_TRACE_MPC_LEAF(ctx, lhs, rhs);
 
   auto* comm = ctx->caller()->getState<Communicator>();
 
@@ -153,7 +153,7 @@ ArrayRef XorBP::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
 
 ArrayRef XorBB::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
                      const ArrayRef& rhs) const {
-  SPU_PROFILE_TRACE_KERNEL(ctx, lhs, rhs);
+  SPU_TRACE_MPC_LEAF(ctx, lhs, rhs);
 
   const auto field = lhs.eltype().as<Ring2k>()->field();
 
@@ -162,7 +162,7 @@ ArrayRef XorBB::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
 
 ArrayRef LShiftB::proc(KernelEvalContext* ctx, const ArrayRef& in,
                        size_t bits) const {
-  SPU_PROFILE_TRACE_KERNEL(ctx, in, bits);
+  SPU_TRACE_MPC_LEAF(ctx, in, bits);
 
   const auto field = in.eltype().as<Ring2k>()->field();
   bits %= SizeOf(field) * 8;
@@ -175,7 +175,7 @@ ArrayRef LShiftB::proc(KernelEvalContext* ctx, const ArrayRef& in,
 
 ArrayRef RShiftB::proc(KernelEvalContext* ctx, const ArrayRef& in,
                        size_t bits) const {
-  SPU_PROFILE_TRACE_KERNEL(ctx, in, bits);
+  SPU_TRACE_MPC_LEAF(ctx, in, bits);
 
   const auto field = in.eltype().as<Ring2k>()->field();
   bits %= SizeOf(field) * 8;
@@ -189,7 +189,7 @@ ArrayRef RShiftB::proc(KernelEvalContext* ctx, const ArrayRef& in,
 
 ArrayRef ARShiftB::proc(KernelEvalContext* ctx, const ArrayRef& in,
                         size_t bits) const {
-  SPU_PROFILE_TRACE_KERNEL(ctx, in, bits);
+  SPU_TRACE_MPC_LEAF(ctx, in, bits);
 
   const auto field = in.eltype().as<Ring2k>()->field();
   bits %= SizeOf(field) * 8;
@@ -199,7 +199,7 @@ ArrayRef ARShiftB::proc(KernelEvalContext* ctx, const ArrayRef& in,
 
 ArrayRef BitrevB::proc(KernelEvalContext* ctx, const ArrayRef& in, size_t start,
                        size_t end) const {
-  SPU_PROFILE_TRACE_KERNEL(ctx, in, start, end);
+  SPU_TRACE_MPC_LEAF(ctx, in, start, end);
   const auto field = in.eltype().as<Ring2k>()->field();
 
   YASL_ENFORCE(start <= end);

@@ -51,6 +51,9 @@ void Core::buildPipeline(mlir::PassManager *pm) {
   optPM.addPass(mlir::pphlo::createLowerMixedTypeOpPass());
 
   optPM.addPass(mlir::createCanonicalizerPass());
+
+  optPM.addPass(mlir::pphlo::createOptimizeSelectPass());
+
   optPM.addPass(mlir::createCSEPass());
 }
 

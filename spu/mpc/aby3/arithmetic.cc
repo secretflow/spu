@@ -18,7 +18,8 @@
 
 #include "spdlog/spdlog.h"
 
-#include "spu/core/profile.h"
+#include "spu/core/array_ref.h"
+#include "spu/core/trace.h"
 #include "spu/mpc/aby3/ot.h"
 #include "spu/mpc/aby3/type.h"
 #include "spu/mpc/aby3/value.h"
@@ -76,7 +77,7 @@ std::vector<ArrayRef> a1b_offline(size_t sender, const ArrayRef& a,
 }  // namespace
 
 ArrayRef A2P::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
-  SPU_PROFILE_TRACE_KERNEL(ctx, in);
+  SPU_TRACE_MPC_LEAF(ctx, in);
 
   auto* comm = ctx->caller()->getState<Communicator>();
   const auto field = in.eltype().as<AShrTy>()->field();
@@ -106,7 +107,7 @@ ArrayRef A2P::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
 }
 
 ArrayRef P2A::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
-  SPU_PROFILE_TRACE_KERNEL(ctx, in);
+  SPU_TRACE_MPC_LEAF(ctx, in);
 
   auto* comm = ctx->caller()->getState<Communicator>();
 
@@ -152,7 +153,7 @@ ArrayRef P2A::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
 }
 
 ArrayRef NotA::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
-  SPU_PROFILE_TRACE_KERNEL(ctx, in);
+  SPU_TRACE_MPC_LEAF(ctx, in);
 
   auto* comm = ctx->caller()->getState<Communicator>();
   const auto* in_ty = in.eltype().as<AShrTy>();
@@ -188,7 +189,7 @@ ArrayRef NotA::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
 ////////////////////////////////////////////////////////////////////
 ArrayRef AddAP::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
                      const ArrayRef& rhs) const {
-  SPU_PROFILE_TRACE_KERNEL(ctx, lhs, rhs);
+  SPU_TRACE_MPC_LEAF(ctx, lhs, rhs);
 
   auto* comm = ctx->caller()->getState<Communicator>();
   const auto* lhs_ty = lhs.eltype().as<AShrTy>();
@@ -220,7 +221,7 @@ ArrayRef AddAP::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
 
 ArrayRef AddAA::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
                      const ArrayRef& rhs) const {
-  SPU_PROFILE_TRACE_KERNEL(ctx, lhs, rhs);
+  SPU_TRACE_MPC_LEAF(ctx, lhs, rhs);
 
   const auto* lhs_ty = lhs.eltype().as<AShrTy>();
   const auto* rhs_ty = rhs.eltype().as<AShrTy>();
@@ -250,7 +251,7 @@ ArrayRef AddAA::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
 ////////////////////////////////////////////////////////////////////
 ArrayRef MulAP::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
                      const ArrayRef& rhs) const {
-  SPU_PROFILE_TRACE_KERNEL(ctx, lhs, rhs);
+  SPU_TRACE_MPC_LEAF(ctx, lhs, rhs);
 
   const auto* lhs_ty = lhs.eltype().as<AShrTy>();
   const auto* rhs_ty = rhs.eltype().as<Pub2kTy>();
@@ -277,7 +278,7 @@ ArrayRef MulAP::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
 
 ArrayRef MulAA::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
                      const ArrayRef& rhs) const {
-  SPU_PROFILE_TRACE_KERNEL(ctx, lhs, rhs);
+  SPU_TRACE_MPC_LEAF(ctx, lhs, rhs);
 
   const auto field = lhs.eltype().as<Ring2k>()->field();
   auto* comm = ctx->caller()->getState<Communicator>();
@@ -321,7 +322,7 @@ ArrayRef MulAA::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
 // - https://eprint.iacr.org/2018/403.pdf
 ArrayRef MulA1B::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
                       const ArrayRef& rhs) const {
-  SPU_PROFILE_TRACE_KERNEL(ctx, lhs, rhs);
+  SPU_TRACE_MPC_LEAF(ctx, lhs, rhs);
 
   YASL_ENFORCE(lhs.numel() == rhs.numel());
   YASL_ENFORCE(lhs.eltype().isa<AShare>());
@@ -438,7 +439,7 @@ ArrayRef MulA1B::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
 ////////////////////////////////////////////////////////////////////
 ArrayRef MatMulAP::proc(KernelEvalContext* ctx, const ArrayRef& x,
                         const ArrayRef& y, size_t M, size_t N, size_t K) const {
-  SPU_PROFILE_TRACE_KERNEL(ctx, x, y);
+  SPU_TRACE_MPC_LEAF(ctx, x, y);
 
   const auto field = x.eltype().as<Ring2k>()->field();
 
@@ -458,7 +459,7 @@ ArrayRef MatMulAP::proc(KernelEvalContext* ctx, const ArrayRef& x,
 
 ArrayRef MatMulAA::proc(KernelEvalContext* ctx, const ArrayRef& x,
                         const ArrayRef& y, size_t M, size_t N, size_t K) const {
-  SPU_PROFILE_TRACE_KERNEL(ctx, x, y);
+  SPU_TRACE_MPC_LEAF(ctx, x, y);
 
   const auto field = x.eltype().as<Ring2k>()->field();
   auto* comm = ctx->caller()->getState<Communicator>();
@@ -478,18 +479,23 @@ ArrayRef MatMulAA::proc(KernelEvalContext* ctx, const ArrayRef& x,
   // z1 := x1*y1 + x1*y2 + x2*y1 + k1
   // z2 := x2*y2 + x2*y3 + x3*y2 + k2
   // z3 := x3*y3 + x3*y1 + x1*y3 + k3
+  ArrayRef out(makeType<AShrTy>(field), M * N);
+  auto o1 = getFirstShare(out);
+  auto o2 = getSecondShare(out);
+
   auto t2 = std::async(ring_mmul, x2, y1, M, N, K);
   auto t0 = ring_mmul(x1, ring_add(y1, y2), M, N, K);  //
   auto z1 = ring_sum({t0, t2.get(), r.get()});
 
-  auto z2 = comm->rotate(z1, kBindName);  // comm => 1, k
-
-  return makeAShare(z1, z2, field);
+  auto f = std::async([&] { ring_assign(o1, z1); });
+  ring_assign(o2, comm->rotate(z1, kBindName));  // comm => 1, k
+  f.get();
+  return out;
 }
 
 ArrayRef LShiftA::proc(KernelEvalContext* ctx, const ArrayRef& in,
                        size_t bits) const {
-  SPU_PROFILE_TRACE_KERNEL(ctx, in, bits);
+  SPU_TRACE_MPC_LEAF(ctx, in, bits);
 
   const auto* in_ty = in.eltype().as<AShrTy>();
   const auto field = in_ty->field();
@@ -516,7 +522,7 @@ ArrayRef LShiftA::proc(KernelEvalContext* ctx, const ArrayRef& in,
 // - https://eprint.iacr.org/2018/403.pdf
 ArrayRef TruncPrA::proc(KernelEvalContext* ctx, const ArrayRef& in,
                         size_t bits) const {
-  SPU_PROFILE_TRACE_KERNEL(ctx, in, bits);
+  SPU_TRACE_MPC_LEAF(ctx, in, bits);
 
   const auto field = in.eltype().as<Ring2k>()->field();
   auto* prg_state = ctx->caller()->getState<PrgState>();
@@ -581,7 +587,7 @@ std::vector<T> openWith(Communicator* comm, size_t peer_rank,
 // - https://arxiv.org/pdf/1910.12435.pdf
 ArrayRef TruncPrAPrecise::proc(KernelEvalContext* ctx, const ArrayRef& in,
                                size_t bits) const {
-  SPU_PROFILE_TRACE_KERNEL(ctx, in, bits);
+  SPU_TRACE_MPC_LEAF(ctx, in, bits);
 
   const auto field = in.eltype().as<AShrTy>()->field();
   const auto numel = in.numel();
@@ -868,7 +874,7 @@ ArrayRef carry_out(Object* ctx, const ArrayRef& x, const ArrayRef& y,
 }  // namespace
 
 ArrayRef MsbA::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
-  SPU_PROFILE_TRACE_LEAF_KERNEL(ctx, in);
+  SPU_TRACE_MPC_LEAF(ctx, in);
 
   const auto field = in.eltype().as<AShrTy>()->field();
   const auto numel = in.numel();

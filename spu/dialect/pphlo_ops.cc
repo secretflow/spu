@@ -34,6 +34,8 @@
 
 namespace mlir::pphlo {
 
+#include "spu/dialect/pphlo_patterns.cc.inc"
+
 namespace {
 Type convertPtTypeToPPhloType(Type ptType) {
   return pphlo::PublicType::get(ptType.getContext(), ptType);
@@ -466,6 +468,11 @@ void DotGeneralOp::getCanonicalizationPatterns(RewritePatternSet& results,
 void ConvolutionOp::getCanonicalizationPatterns(RewritePatternSet& results,
                                                 MLIRContext* context) {
   results.add<NormalizeDimensionOrder>(context);
+}
+
+void SelectOp::getCanonicalizationPatterns(::mlir::RewritePatternSet& results,
+                                           ::mlir::MLIRContext* context) {
+  results.add<FusePredNegIntoSelect>(context);
 }
 
 OpFoldResult ReciprocalOp::fold(ArrayRef<Attribute> operands) {

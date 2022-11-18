@@ -14,6 +14,7 @@
 
 #include "spu/core/ndarray_ref.h"
 
+#include <algorithm>
 #include <cstring>
 #include <numeric>
 
@@ -149,6 +150,20 @@ NdArrayRef unflatten(const ArrayRef& arr, std::vector<int64_t> shape) {
           arr.offset()};
 }
 
+namespace {
+bool onlyStrideInnerMostDim(absl::Span<const int64_t> shape,
+                            absl::Span<const int64_t> strides) {
+  auto expect_stride = strides.back() * shape.back();
+  for (int64_t dim = strides.size() - 2; dim >= 0; --dim) {
+    if (strides[dim] != expect_stride) {
+      return false;
+    }
+    expect_stride *= shape[dim];
+  }
+  return true;
+}
+}  // namespace
+
 ArrayRef flatten(const NdArrayRef& ndarr) {
   if (ndarr.isCompact()) {
     // if compact, direct treat it as a 1D array.
@@ -157,6 +172,24 @@ ArrayRef flatten(const NdArrayRef& ndarr) {
     return ArrayRef(ndarr.buf(), ndarr.eltype(), ndarr.numel(), 1,
                     ndarr.offset());
   }
+
+  // Basically it's a scalar broadcasted into some shape
+  if (std::all_of(ndarr.strides().begin(), ndarr.strides().end(),
+                  [](int64_t in) { return in == 0; })) {
+    // SPDLOG_INFO("fast zero stride flatten");
+    return ArrayRef(ndarr.buf(), ndarr.eltype(), ndarr.numel(), 0,
+                    ndarr.offset());
+  }
+
+  // Check if only inner most dim has strides
+  if (onlyStrideInnerMostDim(ndarr.shape(), ndarr.strides())) {
+    // SPDLOG_INFO("fast innermost only stride flatten");
+    return ArrayRef(ndarr.buf(), ndarr.eltype(), ndarr.numel(),
+                    ndarr.strides().back(), ndarr.offset());
+  }
+
+  // SPDLOG_INFO("slow flatten..., in strides = {}, shape = {}",
+  // fmt::join(ndarr.strides(), "x"), fmt::join(ndarr.shape(), "x"));
 
   // create a compact clone, it's save here since underline layer will never
   // modify inplace.

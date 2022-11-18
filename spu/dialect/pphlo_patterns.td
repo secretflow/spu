@@ -1,4 +1,5 @@
-// Copyright 2021 Ant Group Co., Ltd.
+//
+// Copyright 2022 Ant Group Co., Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -11,18 +12,14 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+//
 
-#include "spu/kernel/context.h"
+// Canonicalization patterns for the MHLO dialect.
 
-#include "spu/mpc/factory.h"
+include "mlir/IR/PatternBase.td"
+include "pphlo_ops.td"
 
-namespace spu {
-
-HalContext::HalContext(RuntimeConfig config,
-                       std::shared_ptr<yasl::link::Context> lctx)
-    : rt_config_(config),
-      lctx_(lctx),
-      prot_(mpc::Factory::CreateCompute(config, lctx)),
-      rand_engine_(config.public_random_seed()) {}
-
-}  // namespace spu
+// select(not(p), t, f) => select(p, f, t)
+def FusePredNegIntoSelect : Pat<
+  (PPHLO_SelectOp (PPHLO_NotOp $pred), $on_true, $on_false),
+  (PPHLO_SelectOp $pred, $on_false, $on_true)>;

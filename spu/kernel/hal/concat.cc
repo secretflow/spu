@@ -28,7 +28,7 @@ namespace spu::kernel::hal {
 
 Value concatenate(HalContext* ctx, absl::Span<const Value> values,
                   const size_t& axis) {
-  SPU_TRACE_HAL(ctx, axis);
+  SPU_TRACE_HAL_DISP(ctx, axis);
   YASL_ENFORCE(!values.empty(), "got={}", values.size());
 
   bool all_same_dtype = std::all_of(

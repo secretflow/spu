@@ -34,7 +34,7 @@ namespace {
 // with the highest order term. (Constant is not included).
 Value f_polynomial(HalContext* ctx, const Value& x,
                    const std::vector<Value>& coeffs) {
-  SPU_TRACE_HAL(ctx, x);
+  SPU_TRACE_HAL_DISP(ctx, x);
   YASL_ENFORCE(x.isFxp());
   YASL_ENFORCE(!coeffs.empty());
 
@@ -97,7 +97,7 @@ namespace detail {
 //
 // Precision is decided by magic number, i.e 2.9142 and f.
 Value div_goldschmidt(HalContext* ctx, const Value& a, const Value& b) {
-  SPU_TRACE_HAL(ctx, a, b);
+  SPU_TRACE_HAL_DISP(ctx, a, b);
 
   auto b_sign = _sign(ctx, b);
   auto b_abs = _mul(ctx, b_sign, b).asFxp();
@@ -174,7 +174,7 @@ Value reciprocal_goldschmidt_positive(HalContext* ctx, const Value& b_abs) {
 // NOTE(junfeng): we have a seperate reciprocal_goldschmidt is to avoid
 // unnecessary f_mul for y initiation in div_goldschmidt.
 Value reciprocal_goldschmidt(HalContext* ctx, const Value& b) {
-  SPU_TRACE_HAL(ctx, b);
+  SPU_TRACE_HAL_DISP(ctx, b);
 
   auto b_sign = _sign(ctx, b);
   auto b_abs = _mul(ctx, b_sign, b).asFxp();
@@ -226,7 +226,7 @@ Value log2_pade_approx_for_normalized(HalContext* ctx, const Value& x) {
 // Benchmarking Privacy Preserving Scientific Operations
 // https://www.esat.kuleuven.be/cosic/publications/article-3013.pdf
 Value log2_pade_approx(HalContext* ctx, const Value& x) {
-  SPU_TRACE_HAL(ctx, x);
+  SPU_TRACE_HAL_DISP(ctx, x);
 
   auto k = _popcount(ctx, _prefix_or(ctx, x));
 
@@ -409,8 +409,7 @@ Value tanh_pade_approx(HalContext* ctx, const Value& x) {
 }  // namespace detail
 
 Value f_square(HalContext* ctx, const Value& x) {
-  SPU_TRACE_HAL(ctx, x);
-  SPU_PROFILE_LEAF_OP(ctx, x);
+  SPU_TRACE_HAL_LEAF(ctx, x);
 
   YASL_ENFORCE(x.isFxp());
   // TODO(jint) optimize me.
@@ -419,8 +418,7 @@ Value f_square(HalContext* ctx, const Value& x) {
 }
 
 Value f_exp(HalContext* ctx, const Value& x) {
-  SPU_TRACE_HAL(ctx, x);
-  SPU_PROFILE_LEAF_OP(ctx, x);
+  SPU_TRACE_HAL_LEAF(ctx, x);
 
   YASL_ENFORCE(x.isFxp());
 
@@ -441,16 +439,14 @@ Value f_exp(HalContext* ctx, const Value& x) {
 }
 
 Value f_negate(HalContext* ctx, const Value& x) {
-  SPU_TRACE_HAL(ctx, x);
-  SPU_PROFILE_LEAF_OP(ctx, x);
+  SPU_TRACE_HAL_LEAF(ctx, x);
 
   YASL_ENFORCE(x.isFxp());
   return _negate(ctx, x).asFxp();
 }
 
 Value f_abs(HalContext* ctx, const Value& x) {
-  SPU_TRACE_HAL(ctx, x);
-  SPU_PROFILE_LEAF_OP(ctx, x);
+  SPU_TRACE_HAL_LEAF(ctx, x);
 
   YASL_ENFORCE(x.isFxp());
   const Value sign = _sign(ctx, x);
@@ -459,8 +455,7 @@ Value f_abs(HalContext* ctx, const Value& x) {
 }
 
 Value f_reciprocal(HalContext* ctx, const Value& x) {
-  SPU_TRACE_HAL(ctx, x);
-  SPU_PROFILE_LEAF_OP(ctx, x);
+  SPU_TRACE_HAL_LEAF(ctx, x);
 
   YASL_ENFORCE(x.isFxp());
   if (x.isPublic()) {
@@ -471,8 +466,7 @@ Value f_reciprocal(HalContext* ctx, const Value& x) {
 }
 
 Value f_add(HalContext* ctx, const Value& x, const Value& y) {
-  SPU_TRACE_HAL(ctx, x, y);
-  SPU_PROFILE_LEAF_OP(ctx, x, y);
+  SPU_TRACE_HAL_LEAF(ctx, x, y);
 
   YASL_ENFORCE(x.isFxp());
   YASL_ENFORCE(y.isFxp());
@@ -481,8 +475,7 @@ Value f_add(HalContext* ctx, const Value& x, const Value& y) {
 }
 
 Value f_sub(HalContext* ctx, const Value& x, const Value& y) {
-  SPU_TRACE_HAL(ctx, x, y);
-  SPU_PROFILE_LEAF_OP(ctx, x, y);
+  SPU_TRACE_HAL_LEAF(ctx, x, y);
 
   YASL_ENFORCE(x.isFxp());
   YASL_ENFORCE(y.isFxp());
@@ -490,8 +483,7 @@ Value f_sub(HalContext* ctx, const Value& x, const Value& y) {
 }
 
 Value f_mul(HalContext* ctx, const Value& x, const Value& y) {
-  SPU_TRACE_HAL(ctx, x, y);
-  SPU_PROFILE_LEAF_OP(ctx, x, y);
+  SPU_TRACE_HAL_LEAF(ctx, x, y);
 
   YASL_ENFORCE(x.isFxp());
   YASL_ENFORCE(y.isFxp());
@@ -500,8 +492,7 @@ Value f_mul(HalContext* ctx, const Value& x, const Value& y) {
 }
 
 Value f_mmul(HalContext* ctx, const Value& x, const Value& y) {
-  SPU_TRACE_HAL(ctx, x, y);
-  SPU_PROFILE_LEAF_OP(ctx, x, y);
+  SPU_TRACE_HAL_LEAF(ctx, x, y);
 
   YASL_ENFORCE(x.isFxp());
   YASL_ENFORCE(y.isFxp());
@@ -510,8 +501,7 @@ Value f_mmul(HalContext* ctx, const Value& x, const Value& y) {
 }
 
 Value f_div(HalContext* ctx, const Value& x, const Value& y) {
-  SPU_TRACE_HAL(ctx, x, y);
-  SPU_PROFILE_LEAF_OP(ctx, x, y);
+  SPU_TRACE_HAL_LEAF(ctx, x, y);
 
   YASL_ENFORCE(x.isFxp());
   YASL_ENFORCE(y.isFxp());
@@ -524,8 +514,7 @@ Value f_div(HalContext* ctx, const Value& x, const Value& y) {
 }
 
 Value f_equal(HalContext* ctx, const Value& x, const Value& y) {
-  SPU_TRACE_HAL(ctx, x, y);
-  SPU_PROFILE_LEAF_OP(ctx, x, y);
+  SPU_TRACE_HAL_LEAF(ctx, x, y);
 
   YASL_ENFORCE(x.isFxp());
   YASL_ENFORCE(y.isFxp());
@@ -534,8 +523,7 @@ Value f_equal(HalContext* ctx, const Value& x, const Value& y) {
 }
 
 Value f_less(HalContext* ctx, const Value& x, const Value& y) {
-  SPU_TRACE_HAL(ctx, x, y);
-  SPU_PROFILE_LEAF_OP(ctx, x, y);
+  SPU_TRACE_HAL_LEAF(ctx, x, y);
 
   YASL_ENFORCE(x.isFxp());
   YASL_ENFORCE(y.isFxp());
@@ -544,8 +532,7 @@ Value f_less(HalContext* ctx, const Value& x, const Value& y) {
 }
 
 Value f_log(HalContext* ctx, const Value& x) {
-  SPU_TRACE_HAL(ctx, x);
-  SPU_PROFILE_LEAF_OP(ctx, x);
+  SPU_TRACE_HAL_LEAF(ctx, x);
 
   YASL_ENFORCE(x.isFxp());
 
@@ -567,8 +554,7 @@ Value f_log(HalContext* ctx, const Value& x) {
 }
 
 Value f_log1p(HalContext* ctx, const Value& x) {
-  SPU_TRACE_HAL(ctx, x);
-  SPU_PROFILE_LEAF_OP(ctx, x);
+  SPU_TRACE_HAL_LEAF(ctx, x);
 
   YASL_ENFORCE(x.isFxp());
 
@@ -576,8 +562,7 @@ Value f_log1p(HalContext* ctx, const Value& x) {
 }
 
 Value f_floor(HalContext* ctx, const Value& x) {
-  SPU_TRACE_HAL(ctx, x);
-  SPU_PROFILE_LEAF_OP(ctx, x);
+  SPU_TRACE_HAL_LEAF(ctx, x);
 
   YASL_ENFORCE(x.isFxp());
 
@@ -586,8 +571,7 @@ Value f_floor(HalContext* ctx, const Value& x) {
 }
 
 Value f_ceil(HalContext* ctx, const Value& x) {
-  SPU_TRACE_HAL(ctx, x);
-  SPU_PROFILE_LEAF_OP(ctx, x);
+  SPU_TRACE_HAL_LEAF(ctx, x);
 
   YASL_ENFORCE(x.isFxp());
 
@@ -600,8 +584,7 @@ Value f_ceil(HalContext* ctx, const Value& x) {
 }
 
 Value f_log2(HalContext* ctx, const Value& x) {
-  SPU_TRACE_HAL(ctx, x);
-  SPU_PROFILE_LEAF_OP(ctx, x);
+  SPU_TRACE_HAL_LEAF(ctx, x);
 
   YASL_ENFORCE(x.isFxp());
 
@@ -609,15 +592,13 @@ Value f_log2(HalContext* ctx, const Value& x) {
 }
 
 Value f_exp2(HalContext* ctx, const Value& x) {
-  SPU_TRACE_HAL(ctx, x);
-  SPU_PROFILE_LEAF_OP(ctx, x);
+  SPU_TRACE_HAL_LEAF(ctx, x);
 
   return detail::exp2_pade_approx(ctx, x);
 }
 
 Value f_tanh(HalContext* ctx, const Value& x) {
-  SPU_TRACE_HAL(ctx, x);
-  SPU_PROFILE_LEAF_OP(ctx, x);
+  SPU_TRACE_HAL_LEAF(ctx, x);
 
   return detail::tanh_pade_approx(ctx, x);
 }
@@ -630,8 +611,7 @@ Value f_tanh(HalContext* ctx, const Value& x) {
 //  3. get the compensation for 2^(e + 1) part.
 //  4. multiple two parts and get the result.
 Value f_rsqrt(HalContext* ctx, const Value& x) {
-  SPU_TRACE_HAL(ctx, x);
-  SPU_PROFILE_LEAF_OP(ctx, x);
+  SPU_TRACE_HAL_LEAF(ctx, x);
 
   const size_t k = SizeOf(ctx->getField()) * 8;
   const size_t f = ctx->getFxpBits();
@@ -714,8 +694,7 @@ Value f_rsqrt(HalContext* ctx, const Value& x) {
 // In the end, g is an approximation of sqrt(x) while h is an approximation of
 // 1 / (2 * sqrt(x)).
 Value f_sqrt(HalContext* ctx, const Value& x) {
-  SPU_TRACE_HAL(ctx, x);
-  SPU_PROFILE_LEAF_OP(ctx, x);
+  SPU_TRACE_HAL_LEAF(ctx, x);
 
   const auto c0 = constant(ctx, 0.5, x.shape());
   const auto c1 = constant(ctx, 1.5, x.shape());

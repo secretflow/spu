@@ -14,7 +14,7 @@
 
 #include "spu/mpc/semi2k/arithmetic.h"
 
-#include "spu/core/profile.h"
+#include "spu/core/trace.h"
 #include "spu/core/vectorize.h"
 #include "spu/mpc/common/abprotocol.h"  // zero_a
 #include "spu/mpc/common/prg_state.h"
@@ -28,7 +28,7 @@ namespace spu::mpc::semi2k {
 
 ArrayRef ZeroA::proc(KernelEvalContext* ctx, FieldType field,
                      size_t size) const {
-  SPU_PROFILE_TRACE_KERNEL(ctx, size);
+  SPU_TRACE_MPC_LEAF(ctx, size);
 
   auto* prg_state = ctx->caller()->getState<PrgState>();
 
@@ -37,7 +37,7 @@ ArrayRef ZeroA::proc(KernelEvalContext* ctx, FieldType field,
 }
 
 ArrayRef P2A::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
-  SPU_PROFILE_TRACE_KERNEL(ctx, in);
+  SPU_TRACE_MPC_LEAF(ctx, in);
 
   const auto field = in.eltype().as<Ring2k>()->field();
   auto* comm = ctx->caller()->getState<Communicator>();
@@ -52,7 +52,7 @@ ArrayRef P2A::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
 }
 
 ArrayRef A2P::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
-  SPU_PROFILE_TRACE_KERNEL(ctx, in);
+  SPU_TRACE_MPC_LEAF(ctx, in);
 
   const auto field = in.eltype().as<Ring2k>()->field();
   auto* comm = ctx->caller()->getState<Communicator>();
@@ -61,7 +61,7 @@ ArrayRef A2P::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
 }
 
 ArrayRef NotA::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
-  SPU_PROFILE_TRACE_KERNEL(ctx, in);
+  SPU_TRACE_MPC_LEAF(ctx, in);
 
   auto* comm = ctx->caller()->getState<Communicator>();
 
@@ -94,7 +94,7 @@ ArrayRef NotA::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
 ////////////////////////////////////////////////////////////////////
 ArrayRef AddAP::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
                      const ArrayRef& rhs) const {
-  SPU_PROFILE_TRACE_KERNEL(ctx, lhs, rhs);
+  SPU_TRACE_MPC_LEAF(ctx, lhs, rhs);
 
   YASL_ENFORCE(lhs.numel() == rhs.numel());
   auto* comm = ctx->caller()->getState<Communicator>();
@@ -108,7 +108,7 @@ ArrayRef AddAP::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
 
 ArrayRef AddAA::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
                      const ArrayRef& rhs) const {
-  SPU_PROFILE_TRACE_KERNEL(ctx, lhs, rhs);
+  SPU_TRACE_MPC_LEAF(ctx, lhs, rhs);
 
   YASL_ENFORCE(lhs.numel() == rhs.numel());
   YASL_ENFORCE(lhs.eltype() == rhs.eltype());
@@ -121,14 +121,14 @@ ArrayRef AddAA::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
 ////////////////////////////////////////////////////////////////////
 ArrayRef MulAP::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
                      const ArrayRef& rhs) const {
-  SPU_PROFILE_TRACE_KERNEL(ctx, lhs, rhs);
+  SPU_TRACE_MPC_LEAF(ctx, lhs, rhs);
 
   return ring_mul(lhs, rhs).as(lhs.eltype());
 }
 
 ArrayRef MulAA::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
                      const ArrayRef& rhs) const {
-  SPU_PROFILE_TRACE_KERNEL(ctx, lhs, rhs);
+  SPU_TRACE_MPC_LEAF(ctx, lhs, rhs);
 
   const auto field = lhs.eltype().as<Ring2k>()->field();
   auto* comm = ctx->caller()->getState<Communicator>();
@@ -159,13 +159,13 @@ ArrayRef MulAA::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
 ////////////////////////////////////////////////////////////////////
 ArrayRef MatMulAP::proc(KernelEvalContext* ctx, const ArrayRef& x,
                         const ArrayRef& y, size_t M, size_t N, size_t K) const {
-  SPU_PROFILE_TRACE_KERNEL(ctx, x, y);
+  SPU_TRACE_MPC_LEAF(ctx, x, y);
   return ring_mmul(x, y, M, N, K).as(x.eltype());
 }
 
 ArrayRef MatMulAA::proc(KernelEvalContext* ctx, const ArrayRef& x,
                         const ArrayRef& y, size_t M, size_t N, size_t K) const {
-  SPU_PROFILE_TRACE_KERNEL(ctx, x, y);
+  SPU_TRACE_MPC_LEAF(ctx, x, y);
 
   const auto field = x.eltype().as<Ring2k>()->field();
   auto* comm = ctx->caller()->getState<Communicator>();
@@ -194,7 +194,7 @@ ArrayRef MatMulAA::proc(KernelEvalContext* ctx, const ArrayRef& x,
 
 ArrayRef LShiftA::proc(KernelEvalContext* ctx, const ArrayRef& in,
                        size_t bits) const {
-  SPU_PROFILE_TRACE_KERNEL(ctx, in, bits);
+  SPU_TRACE_MPC_LEAF(ctx, in, bits);
 
   const auto field = in.eltype().as<Ring2k>()->field();
   bits %= SizeOf(field) * 8;
@@ -204,7 +204,7 @@ ArrayRef LShiftA::proc(KernelEvalContext* ctx, const ArrayRef& in,
 
 ArrayRef TruncPrA::proc(KernelEvalContext* ctx, const ArrayRef& x,
                         size_t bits) const {
-  SPU_PROFILE_TRACE_KERNEL(ctx, x, bits);
+  SPU_TRACE_MPC_LEAF(ctx, x, bits);
   auto* comm = ctx->caller()->getState<Communicator>();
 
   // TODO: add trunction method to options.

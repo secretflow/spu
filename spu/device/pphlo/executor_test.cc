@@ -1210,13 +1210,17 @@ func.func @main(%arg0: tensor<4x3x!pphlo.pub<f32>>, %arg1: tensor<3x2x!pphlo.pub
 }
 
 TEST_P(ExecutorTest, Sort1D) {
-  Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
-           std::get<2>(GetParam()));
-
   xt::xarray<float> op = {2.0, 1.0, 3.0, -10.0};
-  r.addInput(op);
+  xt::xarray<float> expected = {-10.0, 1.0, 2.0, 3.0};
 
-  r.run(R"(
+  {
+    Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
+             std::get<2>(GetParam()));
+
+    r.addInput(op);
+    r.getConfig().set_reveal_secret_condition(true);
+
+    r.run(R"(
 func.func @main(%arg0: tensor<4x!pphlo.pub<f32>>) -> tensor<4x!pphlo.pub<f32>> {
     %0 = "pphlo.sort"(%arg0) ( {
     ^bb0(%arg1: tensor<!pphlo.pub<f32>>, %arg2: tensor<!pphlo.pub<f32>>):  // no predecessors
@@ -1225,45 +1229,87 @@ func.func @main(%arg0: tensor<4x!pphlo.pub<f32>>) -> tensor<4x!pphlo.pub<f32>> {
     }) {dimension = 0 : i64, is_stable = true} : (tensor<4x!pphlo.pub<f32>>) -> (tensor<4x!pphlo.pub<f32>>)
     return %0 : tensor<4x!pphlo.pub<f32>>
 })");
-  xt::xarray<float> expected = {-10.0, 1.0, 2.0, 3.0};
-  r.verifyOutput(expected.data());
+    r.verifyOutput(expected.data());
+  }
+
+  {
+    Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
+             std::get<2>(GetParam()));
+
+    r.addInput(op, VIS_SECRET);
+    r.getConfig().set_reveal_secret_condition(false);
+
+    r.run(R"(
+func.func @main(%arg0: tensor<4x!pphlo.sec<f32>>) -> tensor<4x!pphlo.sec<f32>> {
+    %0 = "pphlo.sort"(%arg0) ( {
+    ^bb0(%arg1: tensor<!pphlo.sec<f32>>, %arg2: tensor<!pphlo.sec<f32>>):  // no predecessors
+      %1 = "pphlo.less"(%arg1, %arg2) : (tensor<!pphlo.sec<f32>>, tensor<!pphlo.sec<f32>>) -> tensor<!pphlo.sec<i1>>
+      "pphlo.return"(%1) : (tensor<!pphlo.sec<i1>>) -> ()
+    }) {dimension = 0 : i64, is_stable = true} : (tensor<4x!pphlo.sec<f32>>) -> (tensor<4x!pphlo.sec<f32>>)
+    return %0 : tensor<4x!pphlo.sec<f32>>
+})");
+    r.verifyOutput(expected.data());
+  }
 }
 
 TEST_P(ExecutorTest, Sort2DRow) {
-  Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
-           std::get<2>(GetParam()));
+  xt::xarray<float> op = {{2.0, 1.0, 3.0, -10.0, 11.0}, //
+                          {4.0, 3.0, 2.0, 1.0, 6.0}};
 
-  xt::xarray<float> op = {{2.0, 1.0, 3.0, -10.0}, //
-                          {4.0, 3.0, 2.0, 1.0}};
+  xt::xarray<float> expected = {{-10.0, 1.0, 2.0, 3.0, 11.0}, //
+                                {1.0, 2.0, 3.0, 4.0, 6.0}};
 
-  r.addInput(op);
-
-  // Row sort
-  r.run(R"(
-func.func @main(%arg0: tensor<2x4x!pphlo.pub<f32>>) -> tensor<2x4x!pphlo.pub<f32>> {
+  {
+    Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
+             std::get<2>(GetParam()));
+    // Row sort
+    r.getConfig().set_reveal_secret_condition(true);
+    r.addInput(op);
+    r.run(R"(
+func.func @main(%arg0: tensor<2x5x!pphlo.pub<f32>>) -> tensor<2x5x!pphlo.pub<f32>> {
     %0 = "pphlo.sort"(%arg0) ( {
     ^bb0(%arg1: tensor<!pphlo.pub<f32>>, %arg2: tensor<!pphlo.pub<f32>>):  // no predecessors
       %1 = "pphlo.less"(%arg1, %arg2) : (tensor<!pphlo.pub<f32>>, tensor<!pphlo.pub<f32>>) -> tensor<!pphlo.pub<i1>>
       "pphlo.return"(%1) : (tensor<!pphlo.pub<i1>>) -> ()
-    }) {dimension = 1 : i64, is_stable = true} : (tensor<2x4x!pphlo.pub<f32>>) -> (tensor<2x4x!pphlo.pub<f32>>)
-    return %0 : tensor<2x4x!pphlo.pub<f32>>
+    }) {dimension = 1 : i64, is_stable = true} : (tensor<2x5x!pphlo.pub<f32>>) -> (tensor<2x5x!pphlo.pub<f32>>)
+    return %0 : tensor<2x5x!pphlo.pub<f32>>
 })");
-  xt::xarray<float> expected = {{-10.0, 1.0, 2.0, 3.0}, //
-                                {1.0, 2.0, 3.0, 4.0}};
-  r.verifyOutput(expected.data());
+    r.verifyOutput(expected.data());
+  }
+
+  {
+    Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
+             std::get<2>(GetParam()));
+    // Row sort
+    r.getConfig().set_reveal_secret_condition(false);
+    r.addInput(op, VIS_SECRET);
+    r.run(R"(
+func.func @main(%arg0: tensor<2x5x!pphlo.sec<f32>>) -> tensor<2x5x!pphlo.sec<f32>> {
+    %0 = "pphlo.sort"(%arg0) ( {
+    ^bb0(%arg1: tensor<!pphlo.sec<f32>>, %arg2: tensor<!pphlo.sec<f32>>):  // no predecessors
+      %1 = "pphlo.less"(%arg1, %arg2) : (tensor<!pphlo.sec<f32>>, tensor<!pphlo.sec<f32>>) -> tensor<!pphlo.sec<i1>>
+      "pphlo.return"(%1) : (tensor<!pphlo.sec<i1>>) -> ()
+    }) {dimension = 1 : i64, is_stable = true} : (tensor<2x5x!pphlo.sec<f32>>) -> (tensor<2x5x!pphlo.sec<f32>>)
+    return %0 : tensor<2x5x!pphlo.sec<f32>>
+})");
+    r.verifyOutput(expected.data());
+  }
 }
 
 TEST_P(ExecutorTest, Sort2DCol) {
-  Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
-           std::get<2>(GetParam()));
-
   xt::xarray<float> op = {{2.0, 1.0, 3.0, -10.0}, //
                           {4.0, 3.0, 2.0, 1.0}};
+  xt::xarray<float> expected = {{2.0, 1.0, 2.0, -10.0}, //
+                                {4.0, 3.0, 3.0, 1.0}};
 
-  r.addInput(op);
+  {
+    Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
+             std::get<2>(GetParam()));
+    r.addInput(op);
+    r.getConfig().set_reveal_secret_condition(true);
 
-  // Column sort
-  r.run(R"(
+    // Column sort
+    r.run(R"(
 func.func @main(%arg0: tensor<2x4x!pphlo.pub<f32>>) -> tensor<2x4x!pphlo.pub<f32>> {
     %0 = "pphlo.sort"(%arg0) ( {
     ^bb0(%arg1: tensor<!pphlo.pub<f32>>, %arg2: tensor<!pphlo.pub<f32>>):  // no predecessors
@@ -1272,21 +1318,51 @@ func.func @main(%arg0: tensor<2x4x!pphlo.pub<f32>>) -> tensor<2x4x!pphlo.pub<f32
     }) {dimension = 0 : i64, is_stable = true} : (tensor<2x4x!pphlo.pub<f32>>) -> (tensor<2x4x!pphlo.pub<f32>>)
     return %0 : tensor<2x4x!pphlo.pub<f32>>
 })");
-  xt::xarray<float> expected = {{2.0, 1.0, 2.0, -10.0}, //
-                                {4.0, 3.0, 3.0, 1.0}};
-  r.verifyOutput(expected.data());
+
+    r.verifyOutput(expected.data());
+  }
+
+  {
+    Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
+             std::get<2>(GetParam()));
+    r.getConfig().set_reveal_secret_condition(false);
+    r.addInput(op, VIS_SECRET);
+
+    // Column sort
+    r.run(R"(
+func.func @main(%arg0: tensor<2x4x!pphlo.sec<f32>>) -> tensor<2x4x!pphlo.sec<f32>> {
+    %0 = "pphlo.sort"(%arg0) ( {
+    ^bb0(%arg1: tensor<!pphlo.sec<f32>>, %arg2: tensor<!pphlo.sec<f32>>):  // no predecessors
+      %1 = "pphlo.less"(%arg1, %arg2) : (tensor<!pphlo.sec<f32>>, tensor<!pphlo.sec<f32>>) -> tensor<!pphlo.sec<i1>>
+      "pphlo.return"(%1) : (tensor<!pphlo.sec<i1>>) -> ()
+    }) {dimension = 0 : i64, is_stable = true} : (tensor<2x4x!pphlo.sec<f32>>) -> (tensor<2x4x!pphlo.sec<f32>>)
+    return %0 : tensor<2x4x!pphlo.sec<f32>>
+})");
+
+    r.verifyOutput(expected.data());
+  }
 }
 
 TEST_P(ExecutorTest, SortMultiOperands) {
-  Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
-           std::get<2>(GetParam()));
+  xt::xarray<int> x = {3, 1};
+  xt::xarray<int> y = {42, 50};
+  xt::xarray<float> z = {-3.0, 1.5};
 
-  r.addInput(xt::xarray<int>{3, 1});
-  r.addInput(xt::xarray<int>{42, 50});
-  r.addInput(xt::xarray<float>{-3.0, 1.5});
+  xt::xarray<int> expected_x = {1, 3};
+  xt::xarray<int> expected_y = {50, 42};
+  xt::xarray<float> expected_z = {1.5, -3.0};
 
-  // Row sort
-  r.run(R"(
+  {
+    Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
+             std::get<2>(GetParam()));
+    r.getConfig().set_reveal_secret_condition(true);
+
+    r.addInput(x);
+    r.addInput(y);
+    r.addInput(z);
+
+    // Row sort
+    r.run(R"(
 func.func @main(%arg0: tensor<2x!pphlo.pub<i32>>, %arg1: tensor<2x!pphlo.pub<i32>>, %arg2: tensor<2x!pphlo.pub<f32>>) -> (tensor<2x!pphlo.pub<i32>>, tensor<2x!pphlo.pub<i32>>, tensor<2x!pphlo.pub<f32>>) {
     %0:3 = "pphlo.sort"(%arg0, %arg1, %arg2) ( {
     ^bb0(%arg3: tensor<!pphlo.pub<i32>>, %arg4: tensor<!pphlo.pub<i32>>, %arg5: tensor<!pphlo.pub<i32>>, %arg6: tensor<!pphlo.pub<i32>>, %arg7: tensor<!pphlo.pub<f32>>, %arg8: tensor<!pphlo.pub<f32>>):  // no predecessors
@@ -1295,42 +1371,96 @@ func.func @main(%arg0: tensor<2x!pphlo.pub<i32>>, %arg1: tensor<2x!pphlo.pub<i32
     }) {dimension = 0 : i64, is_stable = true} : (tensor<2x!pphlo.pub<i32>>, tensor<2x!pphlo.pub<i32>>, tensor<2x!pphlo.pub<f32>>) -> (tensor<2x!pphlo.pub<i32>>, tensor<2x!pphlo.pub<i32>>, tensor<2x!pphlo.pub<f32>>)
     return %0#0, %0#1, %0#2 : tensor<2x!pphlo.pub<i32>>, tensor<2x!pphlo.pub<i32>>, tensor<2x!pphlo.pub<f32>>
 })",
-        3);
-  xt::xarray<int> expected0 = {1, 3};
-  r.verifyOutput(expected0.data(), 0);
+          3);
 
-  xt::xarray<int> expected1 = {50, 42};
-  r.verifyOutput(expected1.data(), 1);
+    r.verifyOutput(expected_x.data(), 0);
+    r.verifyOutput(expected_y.data(), 1);
+    r.verifyOutput(expected_z.data(), 2);
+  }
 
-  xt::xarray<float> expected2 = {1.5, -3.0};
-  r.verifyOutput(expected2.data(), 2);
+  {
+    Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
+             std::get<2>(GetParam()));
+    r.getConfig().set_reveal_secret_condition(false);
+    r.addInput(x, VIS_SECRET);
+    r.addInput(y, VIS_SECRET);
+    r.addInput(z, VIS_SECRET);
+
+    // Row sort
+    r.run(R"(
+func.func @main(%arg0: tensor<2x!pphlo.sec<i32>>, %arg1: tensor<2x!pphlo.sec<i32>>, %arg2: tensor<2x!pphlo.sec<f32>>) -> (tensor<2x!pphlo.sec<i32>>, tensor<2x!pphlo.sec<i32>>, tensor<2x!pphlo.sec<f32>>) {
+    %0:3 = "pphlo.sort"(%arg0, %arg1, %arg2) ( {
+    ^bb0(%arg3: tensor<!pphlo.sec<i32>>, %arg4: tensor<!pphlo.sec<i32>>, %arg5: tensor<!pphlo.sec<i32>>, %arg6: tensor<!pphlo.sec<i32>>, %arg7: tensor<!pphlo.sec<f32>>, %arg8: tensor<!pphlo.sec<f32>>):  // no predecessors
+      %1 = "pphlo.less"(%arg3, %arg4) : (tensor<!pphlo.sec<i32>>, tensor<!pphlo.sec<i32>>) -> tensor<!pphlo.sec<i1>>
+      "pphlo.return"(%1) : (tensor<!pphlo.sec<i1>>) -> ()
+    }) {dimension = 0 : i64, is_stable = true} : (tensor<2x!pphlo.sec<i32>>, tensor<2x!pphlo.sec<i32>>, tensor<2x!pphlo.sec<f32>>) -> (tensor<2x!pphlo.sec<i32>>, tensor<2x!pphlo.sec<i32>>, tensor<2x!pphlo.sec<f32>>)
+    return %0#0, %0#1, %0#2 : tensor<2x!pphlo.sec<i32>>, tensor<2x!pphlo.sec<i32>>, tensor<2x!pphlo.sec<f32>>
+})",
+          3);
+
+    r.verifyOutput(expected_x.data(), 0);
+    r.verifyOutput(expected_y.data(), 1);
+    r.verifyOutput(expected_z.data(), 2);
+  }
 }
 
 TEST_P(ExecutorTest, SortComplicatedComparator) {
-  Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
-           std::get<2>(GetParam()));
+  xt::xarray<int> x = {3, 1, 4, 2};
+  xt::xarray<int> y = {42, 50, 49, 47};
+  xt::xarray<int> expected_x = {3, 2, 1, 4};
+  xt::xarray<int> expected_y = {42, 47, 50, 49};
 
-  r.addInput(xt::xarray<int>{3, 1, 4, 2});
-  r.addInput(xt::xarray<int>{42, 50, 49, 47});
+  {
+    Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
+             std::get<2>(GetParam()));
+    r.getConfig().set_reveal_secret_condition(true);
 
-  // Row sort
-  r.run(R"(
+    r.addInput(x);
+    r.addInput(y);
+
+    // Row sort
+    r.run(R"(
 func.func @main(%arg0: tensor<4x!pphlo.pub<i32>>, %arg1: tensor<4x!pphlo.pub<i32>>) -> (tensor<4x!pphlo.pub<i32>>, tensor<4x!pphlo.pub<i32>>) {
     %0:2 = "pphlo.sort"(%arg0, %arg1) ( {
     ^bb0(%arg2: tensor<!pphlo.pub<i32>>, %arg3: tensor<!pphlo.pub<i32>>, %arg4: tensor<!pphlo.pub<i32>>, %arg5: tensor<!pphlo.pub<i32>>):  // no predecessors
-      %1 = "pphlo.less"(%arg2, %arg3) : (tensor<!pphlo.pub<i32>>, tensor<!pphlo.pub<i32>>) -> tensor<!pphlo.pub<i1>>
-      %2 = "pphlo.less"(%arg4, %arg5) : (tensor<!pphlo.pub<i32>>, tensor<!pphlo.pub<i32>>) -> tensor<!pphlo.pub<i1>>
-      %3 = "pphlo.and" (%1, %2) : (tensor<!pphlo.pub<i1>>, tensor<!pphlo.pub<i1>>) -> tensor<!pphlo.pub<i1>>
+      %1 = "pphlo.add"(%arg2, %arg4) : (tensor<!pphlo.pub<i32>>, tensor<!pphlo.pub<i32>>) -> tensor<!pphlo.pub<i32>>
+      %2 = "pphlo.add"(%arg3, %arg5) : (tensor<!pphlo.pub<i32>>, tensor<!pphlo.pub<i32>>) -> tensor<!pphlo.pub<i32>>
+      %3 = "pphlo.less" (%1, %2) : (tensor<!pphlo.pub<i32>>, tensor<!pphlo.pub<i32>>) -> tensor<!pphlo.pub<i1>>
       "pphlo.return"(%3) : (tensor<!pphlo.pub<i1>>) -> ()
     }) {dimension = 0 : i64, is_stable = true} : (tensor<4x!pphlo.pub<i32>>, tensor<4x!pphlo.pub<i32>>) -> (tensor<4x!pphlo.pub<i32>>, tensor<4x!pphlo.pub<i32>>)
     return %0#0, %0#1 : tensor<4x!pphlo.pub<i32>>, tensor<4x!pphlo.pub<i32>>
 })",
-        2);
-  xt::xarray<int> expected0 = {3, 1, 2, 4};
-  r.verifyOutput(expected0.data(), 0);
+          2);
 
-  xt::xarray<int> expected1 = {42, 50, 47, 49};
-  r.verifyOutput(expected1.data(), 1);
+    r.verifyOutput(expected_x.data(), 0);
+    r.verifyOutput(expected_y.data(), 1);
+  }
+
+  {
+    Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
+             std::get<2>(GetParam()));
+
+    r.getConfig().set_reveal_secret_condition(false);
+    r.addInput(x, VIS_SECRET);
+    r.addInput(y, VIS_SECRET);
+
+    // Row sort
+    r.run(R"(
+func.func @main(%arg0: tensor<4x!pphlo.sec<i32>>, %arg1: tensor<4x!pphlo.sec<i32>>) -> (tensor<4x!pphlo.sec<i32>>, tensor<4x!pphlo.sec<i32>>) {
+    %0:2 = "pphlo.sort"(%arg0, %arg1) ( {
+    ^bb0(%arg2: tensor<!pphlo.sec<i32>>, %arg3: tensor<!pphlo.sec<i32>>, %arg4: tensor<!pphlo.sec<i32>>, %arg5: tensor<!pphlo.sec<i32>>):  // no predecessors
+      %1 = "pphlo.add"(%arg2, %arg4) : (tensor<!pphlo.sec<i32>>, tensor<!pphlo.sec<i32>>) -> tensor<!pphlo.sec<i32>>
+      %2 = "pphlo.add"(%arg3, %arg5) : (tensor<!pphlo.sec<i32>>, tensor<!pphlo.sec<i32>>) -> tensor<!pphlo.sec<i32>>
+      %3 = "pphlo.less" (%1, %2) : (tensor<!pphlo.sec<i32>>, tensor<!pphlo.sec<i32>>) -> tensor<!pphlo.sec<i1>>
+      "pphlo.return"(%3) : (tensor<!pphlo.sec<i1>>) -> ()
+    }) {dimension = 0 : i64, is_stable = true} : (tensor<4x!pphlo.sec<i32>>, tensor<4x!pphlo.sec<i32>>) -> (tensor<4x!pphlo.sec<i32>>, tensor<4x!pphlo.sec<i32>>)
+    return %0#0, %0#1 : tensor<4x!pphlo.sec<i32>>, tensor<4x!pphlo.sec<i32>>
+})",
+          2);
+
+    r.verifyOutput(expected_x.data(), 0);
+    r.verifyOutput(expected_y.data(), 1);
+  }
 }
 
 TEST_P(ExecutorTest, RemainderFxp) {

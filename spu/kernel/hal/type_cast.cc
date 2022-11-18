@@ -23,7 +23,7 @@ namespace spu::kernel::hal {
 namespace {
 
 Value int2fxp(HalContext* ctx, const Value& x) {
-  SPU_TRACE_HAL(ctx, x);
+  SPU_TRACE_HAL_LEAF(ctx, x);
   YASL_ENFORCE(x.isInt(), "expect integer, got {}", x.dtype());
 
   return _lshift(ctx, x, ctx->getFxpBits()).asFxp();
@@ -45,7 +45,7 @@ Value int2fxp(HalContext* ctx, const Value& x) {
 //   fxp2int(-1.2) = floor(-1.2+0.9999999) = -1
 //
 Value fxp2int(HalContext* ctx, const Value& x, DataType to_type) {
-  SPU_TRACE_HAL(ctx, x);
+  SPU_TRACE_HAL_LEAF(ctx, x);
   YASL_ENFORCE(x.dtype() == DataType::DT_FXP);
 
   const size_t fxp_bits = ctx->getFxpBits();
@@ -61,17 +61,17 @@ Value fxp2int(HalContext* ctx, const Value& x, DataType to_type) {
 
 // TODO: move p2s/reveal into a new header file.
 Value p2s(HalContext* ctx, const Value& x) {
-  SPU_TRACE_HAL(ctx, x);
+  SPU_TRACE_HAL_LEAF(ctx, x);
   return _p2s(ctx, x).setDtype(x.dtype());
 }
 
 Value reveal(HalContext* ctx, const Value& x) {
-  SPU_TRACE_HAL(ctx, x);
+  SPU_TRACE_HAL_LEAF(ctx, x);
   return _s2p(ctx, x).setDtype(x.dtype());
 }
 
 Value dtype_cast(HalContext* ctx, const Value& in, DataType to_type) {
-  SPU_TRACE_HAL(ctx, in, to_type);
+  SPU_TRACE_HAL_DISP(ctx, in, to_type);
 
   if (to_type == in.dtype()) {
     return in;
