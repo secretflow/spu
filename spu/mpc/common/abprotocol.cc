@@ -14,7 +14,7 @@
 
 #include "spu/mpc/common/abprotocol.h"
 
-#include "spu/core/profile.h"
+#include "spu/core/trace.h"
 #include "spu/mpc/common/pub2k.h"
 
 namespace spu::mpc {
@@ -94,7 +94,7 @@ class ABProtCommonTypeS : public Kernel {
     const Type& lhs = ctx->getParam<Type>(0);
     const Type& rhs = ctx->getParam<Type>(1);
 
-    SPU_TRACE_KERNEL(ctx, lhs, rhs);
+    SPU_TRACE_MPC_DISP(ctx, lhs, rhs);
 
     if (lhs.isa<AShare>() && rhs.isa<AShare>()) {
       YASL_ENFORCE(lhs == rhs, "expect same, got lhs={}, rhs={}", lhs, rhs);
@@ -121,7 +121,7 @@ class ABProtCastTypeS : public Kernel {
     const auto& frm = ctx->getParam<ArrayRef>(0);
     const auto& to_type = ctx->getParam<Type>(1);
 
-    SPU_TRACE_KERNEL(ctx, frm, to_type);
+    SPU_TRACE_MPC_DISP(ctx, frm, to_type);
 
     if (frm.eltype().isa<AShare>() && to_type.isa<AShare>()) {
       YASL_ENFORCE(frm.eltype() == to_type,
@@ -147,7 +147,7 @@ class ABProtP2S : public UnaryKernel {
   Kind kind() const override { return Kind::kDynamic; }
 
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in) const override {
-    SPU_TRACE_KERNEL(ctx, in);
+    SPU_TRACE_MPC_DISP(ctx, in);
     return _P2A(in);
   }
 };
@@ -159,7 +159,7 @@ class ABProtS2P : public UnaryKernel {
   Kind kind() const override { return Kind::kDynamic; }
 
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in) const override {
-    SPU_TRACE_KERNEL(ctx, in);
+    SPU_TRACE_MPC_DISP(ctx, in);
     if (_IsA(in)) {
       return _A2P(in);
     } else {
@@ -176,7 +176,7 @@ class ABProtNotS : public UnaryKernel {
   Kind kind() const override { return Kind::kDynamic; }
 
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in) const override {
-    SPU_TRACE_KERNEL(ctx, in);
+    SPU_TRACE_MPC_DISP(ctx, in);
     if (_LAZY_AB) {
       // TODO: Both A&B could handle not(invert).
       // if (in.eltype().isa<BShare>()) {
@@ -199,7 +199,7 @@ class ABProtAddSP : public BinaryKernel {
 
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& lhs,
                 const ArrayRef& rhs) const override {
-    SPU_TRACE_KERNEL(ctx, lhs, rhs);
+    SPU_TRACE_MPC_DISP(ctx, lhs, rhs);
     if (_LAZY_AB) {
       return _AddAP(_2A(lhs), rhs);
     }
@@ -215,7 +215,7 @@ class ABProtAddSS : public BinaryKernel {
 
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& lhs,
                 const ArrayRef& rhs) const override {
-    SPU_TRACE_KERNEL(ctx, lhs, rhs);
+    SPU_TRACE_MPC_DISP(ctx, lhs, rhs);
     if (_LAZY_AB) {
       return _AddAA(_2A(lhs), _2A(rhs));
     }
@@ -231,7 +231,7 @@ class ABProtMulSP : public BinaryKernel {
 
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& lhs,
                 const ArrayRef& rhs) const override {
-    SPU_TRACE_KERNEL(ctx, lhs, rhs);
+    SPU_TRACE_MPC_DISP(ctx, lhs, rhs);
     if (_LAZY_AB) {
       return _MulAP(_2A(lhs), rhs);
     }
@@ -247,7 +247,7 @@ class ABProtMulSS : public BinaryKernel {
 
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& lhs,
                 const ArrayRef& rhs) const override {
-    SPU_TRACE_KERNEL(ctx, lhs, rhs);
+    SPU_TRACE_MPC_DISP(ctx, lhs, rhs);
     if (_HasMulA1B() && _IsA(rhs) && _IsB(lhs) && _NBits(lhs) == 1) {
       return _MulA1B(rhs, lhs);
     }
@@ -270,7 +270,7 @@ class ABProtMatMulSP : public MatmulKernel {
 
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& A, const ArrayRef& B,
                 size_t M, size_t N, size_t K) const override {
-    SPU_TRACE_KERNEL(ctx, A, B);
+    SPU_TRACE_MPC_DISP(ctx, A, B);
     if (_LAZY_AB) {
       return _MatMulAP(_2A(A), B, M, N, K);
     }
@@ -286,7 +286,7 @@ class ABProtMatMulSS : public MatmulKernel {
 
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& A, const ArrayRef& B,
                 size_t M, size_t N, size_t K) const override {
-    SPU_TRACE_KERNEL(ctx, A, B);
+    SPU_TRACE_MPC_DISP(ctx, A, B);
     if (_LAZY_AB) {
       return _MatMulAA(_2A(A), _2A(B), M, N, K);
     }
@@ -302,7 +302,7 @@ class ABProtAndSP : public BinaryKernel {
 
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& lhs,
                 const ArrayRef& rhs) const override {
-    SPU_TRACE_KERNEL(ctx, lhs, rhs);
+    SPU_TRACE_MPC_DISP(ctx, lhs, rhs);
     if (_LAZY_AB) {
       return _AndBP(_2B(lhs), rhs);
     }
@@ -318,7 +318,7 @@ class ABProtAndSS : public BinaryKernel {
 
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& lhs,
                 const ArrayRef& rhs) const override {
-    SPU_TRACE_KERNEL(ctx, lhs, rhs);
+    SPU_TRACE_MPC_DISP(ctx, lhs, rhs);
     if (_LAZY_AB) {
       return _AndBB(_2B(lhs), _2B(rhs));
     }
@@ -334,7 +334,7 @@ class ABProtXorSP : public BinaryKernel {
 
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& lhs,
                 const ArrayRef& rhs) const override {
-    SPU_TRACE_KERNEL(ctx, lhs, rhs);
+    SPU_TRACE_MPC_DISP(ctx, lhs, rhs);
     if (_LAZY_AB) {
       return _XorBP(_2B(lhs), rhs);
     }
@@ -350,7 +350,7 @@ class ABProtXorSS : public BinaryKernel {
 
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& lhs,
                 const ArrayRef& rhs) const override {
-    SPU_TRACE_KERNEL(ctx, lhs, rhs);
+    SPU_TRACE_MPC_DISP(ctx, lhs, rhs);
     if (_LAZY_AB) {
       return _XorBB(_2B(lhs), _2B(rhs));
     }
@@ -365,7 +365,7 @@ class ABProtEqzS : public UnaryKernel {
   Kind kind() const override { return Kind::kDynamic; }
 
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in) const override {
-    SPU_TRACE_KERNEL(ctx, in);
+    SPU_TRACE_MPC_DISP(ctx, in);
     //
     YASL_THROW("TODO");
   }
@@ -379,7 +379,7 @@ class ABProtLShiftS : public ShiftKernel {
 
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in,
                 size_t bits) const override {
-    SPU_TRACE_KERNEL(ctx, in, bits);
+    SPU_TRACE_MPC_DISP(ctx, in, bits);
     if (in.eltype().isa<AShare>()) {
       return _LShiftA(in, bits);
     } else if (in.eltype().isa<BShare>()) {
@@ -402,7 +402,7 @@ class ABProtRShiftS : public ShiftKernel {
 
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in,
                 size_t bits) const override {
-    SPU_TRACE_KERNEL(ctx, in, bits);
+    SPU_TRACE_MPC_DISP(ctx, in, bits);
     if (_LAZY_AB) {
       return _RShiftB(_2B(in), bits);
     }
@@ -418,7 +418,7 @@ class ABProtARShiftS : public ShiftKernel {
 
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in,
                 size_t bits) const override {
-    SPU_TRACE_KERNEL(ctx, in, bits);
+    SPU_TRACE_MPC_DISP(ctx, in, bits);
     if (_LAZY_AB) {
       return _ARShiftB(_2B(in), bits);
     }
@@ -434,7 +434,7 @@ class ABProtTruncPrS : public ShiftKernel {
 
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in,
                 size_t bits) const override {
-    SPU_TRACE_KERNEL(ctx, in, bits);
+    SPU_TRACE_MPC_DISP(ctx, in, bits);
     if (_LAZY_AB) {
       return _TruncPrA(_2A(in), bits);
     }
@@ -454,7 +454,7 @@ class ABProtBitrevS : public Kernel {
   }
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in, size_t start,
                 size_t end) const {
-    SPU_TRACE_KERNEL(ctx, in, start, end);
+    SPU_TRACE_MPC_DISP(ctx, in, start, end);
     if (_LAZY_AB) {
       return _RitrevB(_2B(in), start, end);
     }
@@ -469,7 +469,7 @@ class ABProtMsbS : public UnaryKernel {
   Kind kind() const override { return Kind::kDynamic; }
 
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in) const override {
-    SPU_TRACE_KERNEL(ctx, in);
+    SPU_TRACE_MPC_DISP(ctx, in);
     const auto field = in.eltype().as<Ring2k>()->field();
     if (ctx->caller()->hasKernel("msb_a")) {
       if (_LAZY_AB) {

@@ -17,7 +17,7 @@
 #include <algorithm>
 
 #include "spu/core/parallel_utils.h"
-#include "spu/core/profile.h"
+#include "spu/core/trace.h"
 #include "spu/mpc/aby3/type.h"
 #include "spu/mpc/aby3/value.h"
 #include "spu/mpc/common/prg_state.h"
@@ -30,7 +30,7 @@ void CommonTypeB::evaluate(EvalContext* ctx) const {
   const Type& lhs = ctx->getParam<Type>(0);
   const Type& rhs = ctx->getParam<Type>(1);
 
-  SPU_TRACE_KERNEL(ctx, lhs, rhs);
+  SPU_TRACE_MPC_DISP(ctx, lhs, rhs);
 
   const size_t lhs_nbits = lhs.as<BShrTy>()->nbits();
   const size_t rhs_nbits = rhs.as<BShrTy>()->nbits();
@@ -45,7 +45,7 @@ void CastTypeB::evaluate(EvalContext* ctx) const {
   const auto& in = ctx->getParam<ArrayRef>(0);
   const auto& to_type = ctx->getParam<Type>(1);
 
-  SPU_TRACE_KERNEL(ctx, in, to_type);
+  SPU_TRACE_MPC_DISP(ctx, in, to_type);
 
   ArrayRef out(to_type, in.numel());
   DISPATCH_UINT_PT_TYPES(in.eltype().as<BShrTy>()->getBacktype(), "_", [&]() {
@@ -66,7 +66,7 @@ void CastTypeB::evaluate(EvalContext* ctx) const {
 }
 
 ArrayRef B2P::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
-  SPU_PROFILE_TRACE_KERNEL(ctx, in);
+  SPU_TRACE_MPC_LEAF(ctx, in);
 
   auto* comm = ctx->caller()->getState<Communicator>();
   const PtType btype = in.eltype().as<BShrTy>()->getBacktype();
@@ -96,7 +96,7 @@ ArrayRef B2P::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
 }
 
 ArrayRef P2B::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
-  SPU_PROFILE_TRACE_KERNEL(ctx, in);
+  SPU_TRACE_MPC_LEAF(ctx, in);
 
   auto* comm = ctx->caller()->getState<Communicator>();
   const auto* in_ty = in.eltype().as<Pub2kTy>();
@@ -131,7 +131,7 @@ ArrayRef P2B::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
 
 ArrayRef AndBP::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
                      const ArrayRef& rhs) const {
-  SPU_PROFILE_TRACE_KERNEL(ctx, lhs, rhs);
+  SPU_TRACE_MPC_LEAF(ctx, lhs, rhs);
 
   const auto* lhs_ty = lhs.eltype().as<BShrTy>();
   const auto* rhs_ty = rhs.eltype().as<Pub2kTy>();
@@ -165,7 +165,7 @@ ArrayRef AndBP::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
 
 ArrayRef AndBB::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
                      const ArrayRef& rhs) const {
-  SPU_PROFILE_TRACE_KERNEL(ctx, lhs, rhs);
+  SPU_TRACE_MPC_LEAF(ctx, lhs, rhs);
 
   auto* prg_state = ctx->caller()->getState<PrgState>();
   auto* comm = ctx->caller()->getState<Communicator>();
@@ -214,7 +214,7 @@ ArrayRef AndBB::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
 
 ArrayRef XorBP::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
                      const ArrayRef& rhs) const {
-  SPU_PROFILE_TRACE_KERNEL(ctx, lhs, rhs);
+  SPU_TRACE_MPC_LEAF(ctx, lhs, rhs);
 
   const auto* lhs_ty = lhs.eltype().as<BShrTy>();
   const auto* rhs_ty = rhs.eltype().as<Pub2kTy>();
@@ -248,7 +248,7 @@ ArrayRef XorBP::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
 
 ArrayRef XorBB::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
                      const ArrayRef& rhs) const {
-  SPU_PROFILE_TRACE_KERNEL(ctx, lhs, rhs);
+  SPU_TRACE_MPC_LEAF(ctx, lhs, rhs);
 
   const auto* lhs_ty = lhs.eltype().as<BShrTy>();
   const auto* rhs_ty = rhs.eltype().as<BShrTy>();
@@ -282,7 +282,7 @@ ArrayRef XorBB::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
 
 ArrayRef LShiftB::proc(KernelEvalContext* ctx, const ArrayRef& in,
                        size_t bits) const {
-  SPU_PROFILE_TRACE_KERNEL(ctx, in, bits);
+  SPU_TRACE_MPC_LEAF(ctx, in, bits);
 
   const auto* in_ty = in.eltype().as<BShrTy>();
 
@@ -314,7 +314,7 @@ ArrayRef LShiftB::proc(KernelEvalContext* ctx, const ArrayRef& in,
 
 ArrayRef RShiftB::proc(KernelEvalContext* ctx, const ArrayRef& in,
                        size_t bits) const {
-  SPU_PROFILE_TRACE_KERNEL(ctx, in, bits);
+  SPU_TRACE_MPC_LEAF(ctx, in, bits);
 
   const auto* in_ty = in.eltype().as<BShrTy>();
 
@@ -346,7 +346,7 @@ ArrayRef RShiftB::proc(KernelEvalContext* ctx, const ArrayRef& in,
 
 ArrayRef ARShiftB::proc(KernelEvalContext* ctx, const ArrayRef& in,
                         size_t bits) const {
-  SPU_PROFILE_TRACE_KERNEL(ctx, in, bits);
+  SPU_TRACE_MPC_LEAF(ctx, in, bits);
 
   const auto field = ctx->caller()->getState<Aby3State>()->getDefaultField();
   const auto* in_ty = in.eltype().as<BShrTy>();
@@ -376,7 +376,7 @@ ArrayRef ARShiftB::proc(KernelEvalContext* ctx, const ArrayRef& in,
 
 ArrayRef BitrevB::proc(KernelEvalContext* ctx, const ArrayRef& in, size_t start,
                        size_t end) const {
-  SPU_PROFILE_TRACE_KERNEL(ctx, in, start, end);
+  SPU_TRACE_MPC_LEAF(ctx, in, start, end);
 
   YASL_ENFORCE(start <= end && end <= 128);
 

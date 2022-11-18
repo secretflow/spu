@@ -41,7 +41,7 @@ spu_cc_library(
     hdrs = ["context.h"],
     deps = [
         "//spu/core",
-        "//spu/core:profile",
+        "//spu/core:trace",
         "//spu/kernel:value",  # FIXME: each module depends on value
         "//spu/mpc:factory",
         "@yasl//yasl/link",

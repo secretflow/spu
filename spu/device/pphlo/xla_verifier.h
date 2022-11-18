@@ -54,6 +54,7 @@ public:
   VERIFY_DECL(Expm1Op)
   VERIFY_DECL(RsqrtOp)
   VERIFY_DECL(SignOp)
+  VERIFY_DECL(RoundOp)
 
   // Simple binary
   VERIFY_DECL(AddOp)
@@ -137,6 +138,7 @@ public:
   NO_VERIFY_DEFN(RngOp)
   NO_VERIFY_DEFN(ConstantOp)
   NO_VERIFY_DEFN(MaxPoolScatterOp)
+  NO_VERIFY_DEFN(PreferAOp)
 
 #undef NO_VERIFY_DEFN
 };

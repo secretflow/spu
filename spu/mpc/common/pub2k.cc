@@ -17,7 +17,7 @@
 #include <mutex>
 
 #include "spu/core/array_ref.h"
-#include "spu/core/profile.h"
+#include "spu/core/trace.h"
 #include "spu/mpc/common/prg_state.h"
 #include "spu/mpc/kernel.h"
 #include "spu/mpc/util/ring_ops.h"
@@ -38,7 +38,7 @@ class Pub2kRandP : public Kernel {
   }
 
   ArrayRef proc(KernelEvalContext* ctx, FieldType field, size_t size) const {
-    SPU_PROFILE_TRACE_KERNEL(ctx, size);
+    SPU_TRACE_MPC_LEAF(ctx, size);
     auto* state = ctx->caller()->getState<PrgState>();
     return state->genPubl(field, size).as(makeType<Pub2kTy>(field));
   }
@@ -53,7 +53,7 @@ class Pub2kNotP : public UnaryKernel {
   util::CExpr comm() const override { return util::Const(0); }
 
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in) const override {
-    SPU_PROFILE_TRACE_KERNEL(ctx, in);
+    SPU_TRACE_MPC_LEAF(ctx, in);
     const auto field = in.eltype().as<Ring2k>()->field();
     return ring_not(in).as(makeType<Pub2kTy>(field));
   }
@@ -68,7 +68,7 @@ class Pub2kEqzP : public UnaryKernel {
   util::CExpr comm() const override { return util::Const(0); }
 
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in) const override {
-    SPU_PROFILE_TRACE_KERNEL(ctx, in);
+    SPU_TRACE_MPC_LEAF(ctx, in);
     const auto field = in.eltype().as<Ring2k>()->field();
     return ring_equal(in, ring_zeros(field, in.numel())).as(in.eltype());
   }
@@ -84,7 +84,7 @@ class Pub2kAddPP : public BinaryKernel {
 
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& lhs,
                 const ArrayRef& rhs) const override {
-    SPU_PROFILE_TRACE_KERNEL(ctx, lhs, rhs);
+    SPU_TRACE_MPC_LEAF(ctx, lhs, rhs);
     YASL_ENFORCE(lhs.eltype() == rhs.eltype());
     return ring_add(lhs, rhs).as(lhs.eltype());
   }
@@ -100,7 +100,7 @@ class Pub2kMulPP : public BinaryKernel {
 
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& lhs,
                 const ArrayRef& rhs) const override {
-    SPU_PROFILE_TRACE_KERNEL(ctx, lhs, rhs);
+    SPU_TRACE_MPC_LEAF(ctx, lhs, rhs);
     YASL_ENFORCE(lhs.eltype() == rhs.eltype());
     return ring_mul(lhs, rhs).as(lhs.eltype());
   }
@@ -117,7 +117,7 @@ class Pub2kMatMulPP : public MatmulKernel {
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& lhs,
                 const ArrayRef& rhs, size_t M, size_t N,
                 size_t K) const override {
-    SPU_PROFILE_TRACE_KERNEL(ctx, lhs, rhs);
+    SPU_TRACE_MPC_LEAF(ctx, lhs, rhs);
     YASL_ENFORCE(lhs.eltype() == rhs.eltype());
     return ring_mmul(lhs, rhs, M, N, K).as(lhs.eltype());
   }
@@ -133,7 +133,7 @@ class Pub2kAndPP : public BinaryKernel {
 
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& lhs,
                 const ArrayRef& rhs) const override {
-    SPU_PROFILE_TRACE_KERNEL(ctx, lhs, rhs);
+    SPU_TRACE_MPC_LEAF(ctx, lhs, rhs);
     YASL_ENFORCE(lhs.eltype() == rhs.eltype());
     return ring_and(lhs, rhs).as(lhs.eltype());
   }
@@ -149,7 +149,7 @@ class Pub2kXorPP : public BinaryKernel {
 
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& lhs,
                 const ArrayRef& rhs) const override {
-    SPU_PROFILE_TRACE_KERNEL(ctx, lhs, rhs);
+    SPU_TRACE_MPC_LEAF(ctx, lhs, rhs);
     YASL_ENFORCE(lhs.eltype() == rhs.eltype());
     return ring_xor(lhs, rhs).as(lhs.eltype());
   }
@@ -165,7 +165,7 @@ class Pub2kLShiftP : public ShiftKernel {
 
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in,
                 size_t bits) const override {
-    SPU_PROFILE_TRACE_KERNEL(ctx, in, bits);
+    SPU_TRACE_MPC_LEAF(ctx, in, bits);
     return ring_lshift(in, bits).as(in.eltype());
   }
 };
@@ -180,7 +180,7 @@ class Pub2kRShiftP : public ShiftKernel {
 
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in,
                 size_t bits) const override {
-    SPU_PROFILE_TRACE_KERNEL(ctx, in, bits);
+    SPU_TRACE_MPC_LEAF(ctx, in, bits);
     return ring_rshift(in, bits).as(in.eltype());
   }
 };
@@ -199,7 +199,7 @@ class Pub2kBitrevP : public BitrevKernel {
     YASL_ENFORCE(start <= end);
     YASL_ENFORCE(end <= SizeOf(field) * 8);
 
-    SPU_PROFILE_TRACE_KERNEL(ctx, in, start, end);
+    SPU_TRACE_MPC_LEAF(ctx, in, start, end);
     return ring_bitrev(in, start, end).as(in.eltype());
   }
 };
@@ -214,7 +214,7 @@ class Pub2kARShiftP : public ShiftKernel {
 
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in,
                 size_t bits) const override {
-    SPU_PROFILE_TRACE_KERNEL(ctx, in, bits);
+    SPU_TRACE_MPC_LEAF(ctx, in, bits);
     return ring_arshift(in, bits).as(in.eltype());
   }
 };
@@ -228,7 +228,7 @@ class Pub2kMsbP : public UnaryKernel {
   util::CExpr comm() const override { return util::Const(0); }
 
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in) const override {
-    SPU_PROFILE_TRACE_KERNEL(ctx, in);
+    SPU_TRACE_MPC_LEAF(ctx, in);
     return ring_rshift(in, in.elsize() * 8 - 1).as(in.eltype());
   }
 };

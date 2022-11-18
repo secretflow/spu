@@ -112,29 +112,57 @@ void Executor::runWithEnv(const ExecutableProto &exec, SymbolTable *env) {
     }
   }
 
-  if (hctx_->getProfilingEnabled()) {
-    const auto &records = hctx_->getActionStats();
-    double total_time = .0;
-    for (const auto &[_, record] : records) {
-      total_time += record.getTotalTimeInSecond();
+  struct ActionKey {
+    std::string_view name;
+    int64_t flag;
+    bool operator<(const ActionKey &other) const {
+      return std::tie(name, flag) < std::tie(other.name, other.flag);
     }
-    SPDLOG_INFO("HAL profiling: total time {}", total_time);
-    for (const auto &[name, record] : records) {
-      SPDLOG_INFO("- {}, executed {} times, duration {}s", name, record.count,
-                  record.getTotalTimeInSecond());
-    }
-  }
+  };
 
-  if (hctx_->prot()->getProfilingEnabled()) {
-    const auto &records = hctx_->prot()->getActionStats();
-    double total_time = .0;
-    for (const auto &[_, record] : records) {
-      total_time += record.getTotalTimeInSecond();
+  // helper utilities
+  struct ActionStatistic {
+    // number of actions executed.
+    size_t count = 0;
+    // total duration time.
+    Duration total_time = {};
+
+    inline double getTotalTimeInSecond() const {
+      return std::chrono::duration_cast<std::chrono::duration<double>>(
+                 total_time)
+          .count();
     }
-    SPDLOG_INFO("MPC profiling: total time {}", total_time);
-    for (const auto &[name, record] : records) {
-      SPDLOG_INFO("- {}, executed {} times, duration {}s", name, record.count,
-                  record.getTotalTimeInSecond());
+  };
+
+  std::map<ActionKey, ActionStatistic> stats;
+  if (hctx_->rt_config().enable_hal_profile()) {
+    const auto &tracer = getTracer(GET_CTX_NAME(hctx_));
+    const auto &records = tracer->getRecords();
+
+    for (const auto &rec : records) {
+      auto &stat = stats[{rec.name, rec.flag}];
+      stat.count++;
+      stat.total_time +=
+          std::chrono::duration_cast<Duration>(rec.end - rec.start);
+    }
+
+    static std::map<int64_t, std::string> kModules = {
+        {TR_HLO, "HLO"}, {TR_HAL, "HAL"}, {TR_MPC, "MPC"}};
+
+    for (const auto &[mod_flag, mod_name] : kModules) {
+      double total_time = 0.0;
+      for (const auto &[key, stat] : stats) {
+        if ((key.flag & mod_flag) != 0) {
+          total_time += stat.getTotalTimeInSecond();
+        }
+      }
+      SPDLOG_INFO("{} profiling: total time {}", mod_name, total_time);
+      for (const auto &[key, stat] : stats) {
+        if ((key.flag & mod_flag) != 0) {
+          SPDLOG_INFO("- {}, executed {} times, duration {}s", key.name,
+                      stat.count, stat.getTotalTimeInSecond());
+        }
+      }
     }
   }
 }

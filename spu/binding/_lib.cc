@@ -226,21 +226,11 @@ class RuntimeWrapper {
     spu::ExecutableProto exec;
     YASL_ENFORCE(exec.ParseFromString(exec_pb));
 
-    MemProfilingGuard mem_guard;
-    if (hctx_->getTracingEnabled()) {
-      mem_guard.enable(0, "spu", exec.name());
-    }
-
     spu::device::pphlo::PPHloExecutor executor(hctx_.get());
     executor.runWithEnv(exec, &env_);
   }
 
   void SetVar(const std::string& name, const py::bytes& value) {
-    MemProfilingGuard mem_guard;
-    if (hctx_->getTracingEnabled()) {
-      mem_guard.enable(0, "set", name);
-    }
-
     ValueProto proto;
     YASL_ENFORCE(proto.ParseFromString(value));
 
@@ -248,22 +238,10 @@ class RuntimeWrapper {
   }
 
   py::bytes GetVar(const std::string& name) const {
-    MemProfilingGuard mem_guard;
-    if (hctx_->getTracingEnabled()) {
-      mem_guard.enable(0, "get", name);
-    }
-
     return env_.getVar(name).toProto().SerializeAsString();
   }
 
-  void DelVar(const std::string& name) {
-    MemProfilingGuard mem_guard;
-    if (hctx_->getTracingEnabled()) {
-      mem_guard.enable(0, "del", name);
-    }
-
-    env_.delVar(name);
-  }
+  void DelVar(const std::string& name) { env_.delVar(name); }
 
   void Clear() { env_.clear(); }
 };

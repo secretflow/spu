@@ -163,7 +163,7 @@ Count: Total = 2, fully supported = 2
 | `select`       | fully                       |
 | `select_and_scatter` | fully                 |
 | `set_dimension_size` | no                    |
-| `sort`         | partial                     | Inputs must be public tensors
+| `sort`         | fully                       |
 | `reverse`      | fully                       |
 | `pad`          | fully                       |
 | `trace`        | no                          |
@@ -174,7 +174,7 @@ Count: Total = 2, fully supported = 2
 | `torch_index_select` | no                    |
 | `optimization_barrier` | no                  |
 
-Count: Total = 42, fully supported = 18, partial = 8
+Count: Total = 42, fully supported = 26, partial = 3
 
 ### XLA RNG ops
 

@@ -51,7 +51,7 @@ class Ref2kCommonTypeS : public Kernel {
     const Type& lhs = ctx->getParam<Type>(0);
     const Type& rhs = ctx->getParam<Type>(1);
 
-    SPU_TRACE_KERNEL(ctx, lhs, rhs);
+    SPU_TRACE_MPC_DISP(ctx, lhs, rhs);
     YASL_ENFORCE(lhs.isa<Ref2kSecrTy>(), "invalid type, got={}", lhs);
     YASL_ENFORCE(rhs.isa<Ref2kSecrTy>(), "invalid type, got={}", rhs);
     ctx->setOutput(lhs);
@@ -68,7 +68,7 @@ class Ref2kCastTypeS : public Kernel {
     const auto& in = ctx->getParam<ArrayRef>(0);
     const auto& to_type = ctx->getParam<Type>(1);
 
-    SPU_TRACE_KERNEL(ctx, in, to_type);
+    SPU_TRACE_MPC_DISP(ctx, in, to_type);
     YASL_ENFORCE(in.eltype() == to_type,
                  "semi2k always use same bshare type, lhs={}, rhs={}",
                  in.eltype(), to_type);
@@ -116,7 +116,7 @@ class Ref2kRandS : public Kernel {
   }
 
   ArrayRef proc(KernelEvalContext* ctx, FieldType field, size_t size) const {
-    SPU_PROFILE_TRACE_KERNEL(ctx, size);
+    SPU_TRACE_MPC_LEAF(ctx, size);
     auto* state = ctx->caller()->getState<PrgState>();
     return state->genPubl(field, size).as(makeType<Ref2kSecrTy>(field));
   }
@@ -131,7 +131,7 @@ class Ref2kNotS : public UnaryKernel {
   util::CExpr comm() const override { return util::Const(0); }
 
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in) const override {
-    SPU_PROFILE_TRACE_KERNEL(ctx, in);
+    SPU_TRACE_MPC_LEAF(ctx, in);
     const auto field = in.eltype().as<Ring2k>()->field();
     return ring_not(in).as(makeType<Ref2kSecrTy>(field));
   }
@@ -146,7 +146,7 @@ class Ref2kEqzS : public UnaryKernel {
   util::CExpr comm() const override { return util::Const(0); }
 
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in) const override {
-    SPU_PROFILE_TRACE_KERNEL(ctx, in);
+    SPU_TRACE_MPC_LEAF(ctx, in);
     const auto field = in.eltype().as<Ring2k>()->field();
     return ring_equal(in, ring_zeros(field, in.numel())).as(in.eltype());
   }
@@ -162,7 +162,7 @@ class Ref2kAddSS : public BinaryKernel {
 
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& lhs,
                 const ArrayRef& rhs) const override {
-    SPU_PROFILE_TRACE_KERNEL(ctx, lhs, rhs);
+    SPU_TRACE_MPC_LEAF(ctx, lhs, rhs);
     YASL_ENFORCE(lhs.eltype() == rhs.eltype());
     return ring_add(lhs, rhs).as(lhs.eltype());
   }
@@ -178,7 +178,7 @@ class Ref2kAddSP : public BinaryKernel {
 
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& lhs,
                 const ArrayRef& rhs) const override {
-    SPU_PROFILE_TRACE_KERNEL(ctx, lhs, rhs);
+    SPU_TRACE_MPC_LEAF(ctx, lhs, rhs);
     return ring_add(lhs, rhs).as(lhs.eltype());
   }
 };
@@ -193,7 +193,7 @@ class Ref2kMulSS : public BinaryKernel {
 
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& lhs,
                 const ArrayRef& rhs) const override {
-    SPU_PROFILE_TRACE_KERNEL(ctx, lhs, rhs);
+    SPU_TRACE_MPC_LEAF(ctx, lhs, rhs);
     YASL_ENFORCE(lhs.eltype() == rhs.eltype());
     return ring_mul(lhs, rhs).as(lhs.eltype());
   }
@@ -209,7 +209,7 @@ class Ref2kMulSP : public BinaryKernel {
 
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& lhs,
                 const ArrayRef& rhs) const override {
-    SPU_PROFILE_TRACE_KERNEL(ctx, lhs, rhs);
+    SPU_TRACE_MPC_LEAF(ctx, lhs, rhs);
     return ring_mul(lhs, rhs).as(lhs.eltype());
   }
 };
@@ -225,7 +225,7 @@ class Ref2kMatMulSS : public MatmulKernel {
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& lhs,
                 const ArrayRef& rhs, size_t M, size_t N,
                 size_t K) const override {
-    SPU_PROFILE_TRACE_KERNEL(ctx, lhs, rhs);
+    SPU_TRACE_MPC_LEAF(ctx, lhs, rhs);
     YASL_ENFORCE(lhs.eltype() == rhs.eltype());
     return ring_mmul(lhs, rhs, M, N, K).as(lhs.eltype());
   }
@@ -242,7 +242,7 @@ class Ref2kMatMulSP : public MatmulKernel {
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& lhs,
                 const ArrayRef& rhs, size_t M, size_t N,
                 size_t K) const override {
-    SPU_PROFILE_TRACE_KERNEL(ctx, lhs, rhs);
+    SPU_TRACE_MPC_LEAF(ctx, lhs, rhs);
     return ring_mmul(lhs, rhs, M, N, K).as(lhs.eltype());
   }
 };
@@ -257,7 +257,7 @@ class Ref2kAndSS : public BinaryKernel {
 
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& lhs,
                 const ArrayRef& rhs) const override {
-    SPU_PROFILE_TRACE_KERNEL(ctx, lhs, rhs);
+    SPU_TRACE_MPC_LEAF(ctx, lhs, rhs);
     YASL_ENFORCE(lhs.eltype() == rhs.eltype());
     return ring_and(lhs, rhs).as(lhs.eltype());
   }
@@ -273,7 +273,7 @@ class Ref2kAndSP : public BinaryKernel {
 
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& lhs,
                 const ArrayRef& rhs) const override {
-    SPU_PROFILE_TRACE_KERNEL(ctx, lhs, rhs);
+    SPU_TRACE_MPC_LEAF(ctx, lhs, rhs);
     return ring_and(lhs, rhs).as(lhs.eltype());
   }
 };
@@ -288,7 +288,7 @@ class Ref2kXorSS : public BinaryKernel {
 
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& lhs,
                 const ArrayRef& rhs) const override {
-    SPU_PROFILE_TRACE_KERNEL(ctx, lhs, rhs);
+    SPU_TRACE_MPC_LEAF(ctx, lhs, rhs);
     YASL_ENFORCE(lhs.eltype() == rhs.eltype());
     return ring_xor(lhs, rhs).as(lhs.eltype());
   }
@@ -304,7 +304,7 @@ class Ref2kXorSP : public BinaryKernel {
 
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& lhs,
                 const ArrayRef& rhs) const override {
-    SPU_PROFILE_TRACE_KERNEL(ctx, lhs, rhs);
+    SPU_TRACE_MPC_LEAF(ctx, lhs, rhs);
     return ring_xor(lhs, rhs).as(lhs.eltype());
   }
 };
@@ -319,7 +319,7 @@ class Ref2kLShiftS : public ShiftKernel {
 
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in,
                 size_t bits) const override {
-    SPU_PROFILE_TRACE_KERNEL(ctx, in, bits);
+    SPU_TRACE_MPC_LEAF(ctx, in, bits);
     return ring_lshift(in, bits).as(in.eltype());
   }
 };
@@ -334,7 +334,7 @@ class Ref2kRShiftS : public ShiftKernel {
 
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in,
                 size_t bits) const override {
-    SPU_PROFILE_TRACE_KERNEL(ctx, in, bits);
+    SPU_TRACE_MPC_LEAF(ctx, in, bits);
     return ring_rshift(in, bits).as(in.eltype());
   }
 };
@@ -353,7 +353,7 @@ class Ref2kBitrevS : public BitrevKernel {
     YASL_ENFORCE(start <= end);
     YASL_ENFORCE(end <= SizeOf(field) * 8);
 
-    SPU_PROFILE_TRACE_KERNEL(ctx, in, start, end);
+    SPU_TRACE_MPC_LEAF(ctx, in, start, end);
     return ring_bitrev(in, start, end).as(in.eltype());
   }
 };
@@ -368,7 +368,7 @@ class Ref2kARShiftS : public ShiftKernel {
 
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in,
                 size_t bits) const override {
-    SPU_PROFILE_TRACE_KERNEL(ctx, in, bits);
+    SPU_TRACE_MPC_LEAF(ctx, in, bits);
     return ring_arshift(in, bits).as(in.eltype());
   }
 };
@@ -382,7 +382,7 @@ class Ref2kMsbS : public UnaryKernel {
   util::CExpr comm() const override { return util::Const(0); }
 
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in) const override {
-    SPU_PROFILE_TRACE_KERNEL(ctx, in);
+    SPU_TRACE_MPC_LEAF(ctx, in);
     return ring_rshift(in, in.elsize() * 8 - 1).as(in.eltype());
   }
 };

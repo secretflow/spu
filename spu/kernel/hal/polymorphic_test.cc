@@ -14,6 +14,7 @@
 
 #include "spu/kernel/hal/polymorphic.h"
 
+#include <algorithm>
 #include <type_traits>
 
 #include "gtest/gtest.h"
@@ -715,32 +716,7 @@ INSTANTIATE_TEST_SUITE_P(
       return fmt::format("{}", p.param);
     });
 
-// FIXME(junfeng): (sint, sint) is disabled.
-using DivTestTypes = ::testing::Types<
-    // ss
-    std::tuple<float, secret_v, float, secret_v, float>,    // (sfxp, sfxp)
-    std::tuple<float, secret_v, int32_t, secret_v, float>,  // (sfxp, sint)
-    std::tuple<int32_t, secret_v, float, secret_v, float>,  // (sint, sfxp)
-    // sp
-    std::tuple<float, secret_v, float, public_v, float>,    // (sfxp, sfxp)
-    std::tuple<float, secret_v, int32_t, public_v, float>,  // (sfxp, sint)
-    std::tuple<int32_t, secret_v, float, public_v, float>,  // (sint, sfxp)
-    // ps
-    std::tuple<float, public_v, float, secret_v, float>,    // (sfxp, sfxp)
-    std::tuple<float, public_v, int32_t, secret_v, float>,  // (sfxp, sint)
-    std::tuple<int32_t, public_v, float, secret_v, float>,  // (sint, sfxp)
-    // pp
-    std::tuple<float, public_v, float, public_v, float>,    // (sfxp, sfxp)
-    std::tuple<float, public_v, int32_t, public_v, float>,  // (sfxp, sint)
-    std::tuple<int32_t, public_v, float, public_v, float>   // (sint, sfxp)
-    >;
-
-template <typename S>
-class DivTest : public ::testing::Test {};
-
-TYPED_TEST_SUITE(DivTest, DivTestTypes);
-
-TYPED_TEST(DivTest, Works) {
+TYPED_TEST(MathTest, Div) {
   using LHS_DT = typename std::tuple_element<0, TypeParam>::type;
   using LHS_VT = typename std::tuple_element<1, TypeParam>::type;
   using RHS_DT = typename std::tuple_element<2, TypeParam>::type;
@@ -749,7 +725,16 @@ TYPED_TEST(DivTest, Works) {
 
   // GIVEN
   const xt::xarray<LHS_DT> x = test::xt_random<LHS_DT>({5, 6});
-  const xt::xarray<RHS_DT> y = test::xt_random<RHS_DT>({5, 6});
+  xt::xarray<RHS_DT> y = test::xt_random<RHS_DT>({5, 6});
+
+  if constexpr (std::is_same_v<RHS_DT, int32_t>) {
+    // If y is int, exclude 0
+    std::for_each(y.begin(), y.end(), [](RHS_DT& v) {
+      if (v == 0) {
+        v = 1;
+      }
+    });
+  }
 
   // WHAT
   auto z = test::evalBinaryOp<RES_DT>(LHS_VT(), RHS_VT(), div, x, y);

@@ -192,29 +192,4 @@ class ArrayView {
   T const& operator[](size_t idx) const { return *(data_ + idx * stride_); }
 };
 
-// A vector like container which buffer could be stealed.
-template <typename T>
-class Array {
-  T* const data_;
-  int64_t const numel_;
-
- public:
-  // TODO: we explicit discard const correctness due to the complexity.
-  explicit Array(yasl::Buffer&& buf)
-      : data_(buf.data()), numel_(buf.size() / sizeof(T)) {
-    YASL_ENFORCE(buf.size() % sizeof(T) == 0);
-    buf.release();
-  }
-
-  ~Array() { delete[] data_; }
-
-  int64_t numel() const { return numel_; }
-
-  T* data() { return data_; }
-
-  T& operator[](size_t idx) { return *(data_ + idx); }
-
-  T const& operator[](size_t idx) const { return *(data_ + idx); }
-};
-
 }  // namespace spu

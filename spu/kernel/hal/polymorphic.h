@@ -197,8 +197,12 @@ Value tanh(HalContext* ctx, const Value& x);
 // @param in, the input value
 Value rsqrt(HalContext* ctx, const Value& x);
 
-//// element-wise square root operation.
+/// element-wise square root operation.
 // @param in, the input value
 Value sqrt(HalContext* ctx, const Value& x);
+
+/// element-wise sign operation
+// @param in, the input value
+Value sign(HalContext* ctx, const Value& x);
 
 }  // namespace spu::kernel::hal

@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include "spu/kernel/context.h"
 #include "spu/kernel/hlo/utils.h"
 
 namespace spu::kernel::hlo {
@@ -31,5 +32,8 @@ struct GatherConfig {
 spu::Value Gather(HalContext *ctx, const spu::Value &operand,
                   const spu::Value &start_indicies, const GatherConfig &config,
                   absl::Span<const int64_t> result_shape);
+
+spu::Value FilterByMask(HalContext *ctx, const spu::Value &operand,
+                        absl::Span<const uint8_t> mask);
 
 }  // namespace spu::kernel::hlo

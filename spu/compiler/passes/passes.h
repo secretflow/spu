@@ -54,7 +54,11 @@ std::unique_ptr<OperationPass<func::FuncOp>> createReduceTruncationPass();
 // Lower mixed-type op
 std::unique_ptr<OperationPass<func::FuncOp>> createLowerMixedTypeOpPass();
 
+// Optimize MaxPooling layer
 std::unique_ptr<OperationPass<func::FuncOp>> createOptimizeMaxPoolingPass();
+
+// Optimize SelectOp
+std::unique_ptr<OperationPass<func::FuncOp>> createOptimizeSelectPass();
 
 } // namespace pphlo
 

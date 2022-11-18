@@ -18,7 +18,7 @@
 #include <memory>
 #include <string>
 
-#include "spu/core/profile.h"
+#include "spu/core/trace.h"
 #include "spu/mpc/kernel.h"
 
 namespace spu::mpc {
@@ -31,12 +31,12 @@ class State {
 // A (kernel) dynamic object dispatch a function to a kernel at runtime.
 //
 // Class that inherit from this class could do `dynamic binding`.
-class Object : public ProfilingContext {
+class Object {
   std::map<std::string_view, std::unique_ptr<Kernel>> kernels_;
   std::map<std::string_view, std::unique_ptr<State>> states_;
 
  public:
-  ~Object() override = default;
+  std::string name() const { return "TODO"; }
 
   void regKernel(std::string_view name, std::unique_ptr<Kernel> kernel);
 
@@ -105,14 +105,5 @@ class Object : public ProfilingContext {
     return callImpl<Ret>(kernel, &ctx, std::forward<Args>(args)...);
   }
 };
-
-#define SPU_TRACE_KERNEL(CTX, ...) \
-  __TRACE_OP("mpc", kBindName, CTX->caller(), __VA_ARGS__)
-
-#define SPU_PROFILE_TRACE_KERNEL(CTX, ...) \
-  __TRACE_AND_PROFILE_OP("mpc", kBindName, CTX->caller(), __VA_ARGS__)
-
-#define SPU_PROFILE_TRACE_LEAF_KERNEL(CTX, ...) \
-  __TRACE_AND_PROFILE_LEAF_OP("mpc", kBindName, CTX->caller(), __VA_ARGS__)
 
 }  // namespace spu::mpc

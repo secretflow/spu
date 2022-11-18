@@ -74,23 +74,20 @@ def rand_default(rng):
     return partial(_rand_dtype, rng)
 
 
-# FIXME: reenable the disabled test cases.
-BINARY_OP_RECORDS = [
+JAX_ONE_TO_ONE_OP_RECORDS = [
     REC("abs", 1, all_dtypes, all_shapes, rand_default),
     REC("add", 2, all_dtypes, all_shapes, rand_default),
-    REC("ceil", 1, float_dtypes, all_shapes, rand_default),
-    REC("ceil", 1, int_dtypes, all_shapes, rand_default),
+    REC("ceil", 1, number_dtypes, all_shapes, rand_default),
     REC("conj", 1, number_dtypes, all_shapes, rand_default),
     REC("equal", 2, all_dtypes, all_shapes, jtu.rand_some_equal),
-    # REC("exp", 1, number_dtypes, all_shapes, rand_default),  # FIXME
+    REC("exp", 1, number_dtypes, all_shapes, jtu.rand_small),
     REC("fabs", 1, float_dtypes, all_shapes, rand_default),
-    # REC("float_power", 2, float_dtypes, all_shapes, partial(rand_default, scale=1)), # WrongAns
-    REC("floor", 1, float_dtypes, all_shapes, rand_default),
-    REC("floor", 1, int_dtypes, all_shapes, rand_default),
+    REC("float_power", 2, float_dtypes, all_shapes, jtu.rand_small_positive),
+    REC("floor", 1, number_dtypes, all_shapes, rand_default),
     REC("greater", 2, all_dtypes, all_shapes, jtu.rand_some_equal),
     REC("greater_equal", 2, all_dtypes, all_shapes, jtu.rand_some_equal),
-    # REC("i0", 1, float_dtypes, all_shapes, rand_default), # FIXME
-    # REC("ldexp", 2, int_dtypes, all_shapes, rand_default), # FIXME
+    # REC("i0", 1, float_dtypes, all_shapes, rand_default), # FIXME: accuracy
+    # REC("ldexp", 2, int_dtypes, all_shapes, rand_default), # FIXME: IEEE-754
     REC("less", 2, all_dtypes, all_shapes, jtu.rand_some_equal),
     REC("less_equal", 2, all_dtypes, all_shapes, jtu.rand_some_equal),
     REC("log", 1, number_dtypes, all_shapes, jtu.rand_positive),
@@ -102,60 +99,58 @@ BINARY_OP_RECORDS = [
     REC("minimum", 2, all_dtypes, all_shapes, rand_default),
     REC("multiply", 2, all_dtypes, all_shapes, rand_default),
     REC("negative", 1, number_dtypes, all_shapes, rand_default),
-    # REC("nextafter", 2, float_dtypes, all_shapes, rand_default), # FIXME
+    # REC("nextafter", 2, float_dtypes, all_shapes, rand_default), # FIXME: IEEE-754
     REC("not_equal", 2, all_dtypes, all_shapes, jtu.rand_some_equal),
     REC("array_equal", 2, number_dtypes, all_shapes, jtu.rand_some_equal),
     REC("array_equiv", 2, number_dtypes, all_shapes, jtu.rand_some_equal),
     REC("reciprocal", 1, float_dtypes, all_shapes, rand_default),
     REC("subtract", 2, number_dtypes, all_shapes, rand_default),
-    # REC("signbit", 1, number_dtypes, all_shapes, jtu.rand_some_inf_and_nan), # FIXME
-    REC("trunc", 1, float_dtypes, all_shapes, rand_default),
-    REC("trunc", 1, int_dtypes, all_shapes, rand_default),
-    # REC("sin", 1, number_dtypes, all_shapes, rand_default), # FIXME
-    # REC("cos", 1, number_dtypes, all_shapes, rand_default),
+    REC("signbit", 1, number_dtypes, all_shapes, rand_default),
+    REC("trunc", 1, number_dtypes, all_shapes, rand_default),
+    # REC("sin", 1, number_dtypes, all_shapes, rand_default), # FIXME: mhlo.sine
+    # REC("cos", 1, number_dtypes, all_shapes, rand_default), # FIXME: mhlo.cosine
     # REC(
     #     "tan",
     #     1,
     #     number_dtypes,
     #     all_shapes,
     #     partial(jtu.rand_uniform, low=-1.5, high=1.5),
-    # ), # FIXME
-    # REC("sinh", 1, number_dtypes, all_shapes, rand_default), # FIXME
-    # REC("cosh", 1, number_dtypes, all_shapes, rand_default), # FIXME
+    # ), # FIXME: mhlo.sine
+    # REC("sinh", 1, number_dtypes, all_shapes, rand_default), # FIXME: mhlo.cosine
+    REC("cosh", 1, number_dtypes, all_shapes, jtu.rand_small),
     REC("tanh", 1, number_dtypes, all_shapes, jtu.rand_small),
-    # REC("arcsin", 1, number_dtypes, all_shapes, jtu.rand_small), # FIXME
-    # REC("arccos", 1, number_dtypes, all_shapes, jtu.rand_small), # FIXME
-    # REC("arctan", 1, number_dtypes, all_shapes, jtu.rand_small), # FIXME
-    # REC("arctan2", 2, float_dtypes, all_shapes, jtu.rand_small), # FIXME
-    # REC("arcsinh", 1, number_dtypes, all_shapes, rand_default), # FIXME
-    # REC("arccosh", 1, number_dtypes, all_shapes, rand_default), # FIXME
-    # REC("arctanh", 1, number_dtypes, all_shapes, jtu.rand_small), # FIXME
+    # REC("arcsin", 1, number_dtypes, all_shapes, jtu.rand_small), # FIXME: mhlo.atan2
+    # REC("arccos", 1, number_dtypes, all_shapes, jtu.rand_small), # FIXME: mhlo.atan2
+    # REC("arctan", 1, number_dtypes, all_shapes, jtu.rand_small), # FIXME: mhlo.atan2
+    # REC("arctan2", 2, float_dtypes, all_shapes, jtu.rand_small), # FIXME: mhlo.atan2
+    REC("arcsinh", 1, number_dtypes, all_shapes, jtu.rand_small),
+    # REC("arccosh", 1, number_dtypes, all_shapes, rand_default), # FIXME: nan
+    # REC("arctanh", 1, number_dtypes, all_shapes, jtu.rand_small), # FIXME: [-1, 1] nan
 ]
 
 
 COMPOUND_OP_RECORDS = [
-    # REC("angle", 1, number_dtypes, all_shapes, rand_default), # FIXME
+    # REC("angle", 1, number_dtypes, all_shapes, rand_default), # FIXME: mhlo.atan2
     # REC(
     #     "angle", 1, number_dtypes, all_shapes, rand_default, kwargs={'deg': True}
-    # ), # FIXME
+    # ), # FIXME: mhlo.atan2
     REC("atleast_1d", 1, number_dtypes, all_shapes, rand_default),
     REC("atleast_2d", 1, number_dtypes, all_shapes, rand_default),
     REC("atleast_3d", 1, number_dtypes, all_shapes, rand_default),
-    # REC("cbrt", 1, number_dtypes, all_shapes, jtu.rand_some_inf), # FIXME
+    # REC("cbrt", 1, number_dtypes, all_shapes, jtu.rand_some_inf),  # FIXME: mhlo.cbrt
     REC("conjugate", 1, number_dtypes, all_shapes, rand_default),
     REC("deg2rad", 1, float_dtypes, all_shapes, rand_default),
-    # REC("divide", 2, number_dtypes, all_shapes, jtu.rand_nonzero),  # FIXME
-    # REC("divmod", 2, int_dtypes + float_dtypes, all_shapes, jtu.rand_nonzero), # FIXME
-    # REC("exp2", 1, number_dtypes, all_shapes, rand_default), # FIXME
+    REC("divide", 2, number_dtypes, all_shapes, jtu.rand_nonzero),
+    REC("divmod", 2, number_dtypes, all_shapes, jtu.rand_nonzero),
+    REC("exp2", 1, number_dtypes, all_shapes, jtu.rand_small_positive),
     REC("expm1", 1, number_dtypes, all_shapes, jtu.rand_small_positive),
-    REC("fix", 1, float_dtypes, all_shapes, rand_default),
-    REC("fix", 1, int_dtypes, all_shapes, rand_default),
-    # REC("floor_divide", 2, number_dtypes, all_shapes, jtu.rand_nonzero), # FIXME
+    REC("fix", 1, number_dtypes, all_shapes, rand_default),
+    REC("floor_divide", 2, number_dtypes, all_shapes, jtu.rand_nonzero),
     REC("fmin", 2, number_dtypes, all_shapes, rand_default),
     REC("fmax", 2, number_dtypes, all_shapes, rand_default),
-    # REC("fmod", 2, number_dtypes, all_shapes, jtu.rand_some_nan), # FIXME
+    REC("fmod", 2, number_dtypes, all_shapes, rand_default),
     REC("heaviside", 2, number_dtypes, all_shapes, rand_default),
-    # REC("hypot", 2, number_dtypes, all_shapes, rand_default),  # FIXME: Fix64 inaccurate
+    REC("hypot", 2, number_dtypes, all_shapes, rand_default),
     REC("kron", 2, number_dtypes, all_shapes, rand_default),
     REC("outer", 2, number_dtypes, all_shapes, rand_default),
     REC("imag", 1, number_dtypes, all_shapes, jtu.rand_some_inf),
@@ -173,30 +168,28 @@ COMPOUND_OP_RECORDS = [
     REC("log1p", 1, number_dtypes, all_shapes, jtu.rand_small_positive),
     REC("logaddexp", 2, float_dtypes, all_shapes, rand_default),
     REC("logaddexp2", 2, float_dtypes, all_shapes, rand_default),
-    # REC("polyval", 2, number_dtypes, all_shapes, rand_default), # FIXME: Fix64 inaccurate
+    REC("polyval", 2, number_dtypes, all_shapes, rand_default),
     REC("positive", 1, number_dtypes, all_shapes, rand_default),
-    # REC("power", 2, number_dtypes, all_shapes, jtu.rand_positive), # WrongAns
+    REC("power", 2, number_dtypes, all_shapes, jtu.rand_small_positive),
     REC("rad2deg", 1, float_dtypes, all_shapes, rand_default),
     REC("ravel", 1, all_dtypes, all_shapes, rand_default),
     REC("real", 1, number_dtypes, all_shapes, rand_default),
     REC("remainder", 2, number_dtypes, all_shapes, jtu.rand_small),
-    # REC("mod", 2, number_dtypes, all_shapes, jtu.rand_nonzero),# FIXME
-    # REC("modf", 1, float_dtypes, all_shapes, rand_default), # FIXME
-    # REC("modf", 1, int_dtypes, all_shapes, rand_default), #FIXME
-    # REC("rint", 1, float_dtypes, all_shapes, jtu.rand_some_inf_and_nan), # FIXME
-    # REC("rint", 1, int_dtypes, all_shapes, rand_default), # FIXME
+    REC("mod", 2, number_dtypes, all_shapes, jtu.rand_nonzero),
+    REC("modf", 1, number_dtypes, all_shapes, rand_default),
+    # REC("rint", 1, float_dtypes, all_shapes, rand_default), # FIXME: mhlo.round_nearest_even
     REC("sign", 1, number_dtypes, all_shapes, jtu.rand_default),
-    # REC("copysign", 2, number_dtypes, all_shapes, jtu.rand_some_inf_and_nan), # FIXME
-    # REC("sinc", 1, number_dtypes, all_shapes, rand_default), # FIXME
+    # REC("copysign", 2, number_dtypes, all_shapes, rand_default), # FIXME: shift
+    # REC("sinc", 1, number_dtypes, all_shapes, rand_default), # FIXME: mhlo.sine
     REC("square", 1, number_dtypes, all_shapes, rand_default),
     REC("sqrt", 1, number_dtypes, all_shapes, jtu.rand_positive),
     REC("transpose", 1, all_dtypes, all_shapes, rand_default),
-    # REC("true_divide", 2, all_dtypes, all_shapes, jtu.rand_nonzero), # FIXME
+    REC("true_divide", 2, number_dtypes, all_shapes, jtu.rand_nonzero),
     REC("ediff1d", 3, [np.int32], all_shapes, rand_default),
-    # REC("unwrap", 1, float_dtypes, all_shapes, rand_default), # FIXME
+    REC("unwrap", 1, float_dtypes, all_shapes, rand_default),
     REC("isclose", 2, all_dtypes, all_shapes, jtu.rand_some_equal),
-    # REC("gcd", 2, int_dtypes, all_shapes, rand_default), # FIXME
-    # REC("lcm", 2, int_dtypes, all_shapes, rand_default), # FIXME
+    # REC("gcd", 2, int_dtypes, all_shapes, rand_default), # FIXME: secret while
+    # REC("lcm", 2, int_dtypes, all_shapes, rand_default), # FIXME: secret while
 ]
 
 BITWISE_OP_RECORDS = [
@@ -275,7 +268,7 @@ class JnpTests:
         @parameterized.parameters(
             (rec.name, rec.nargs, dtype, shape, rec.rng_factory)
             for rec in itertools.chain(
-                BINARY_OP_RECORDS, BITWISE_OP_RECORDS, COMPOUND_OP_RECORDS
+                JAX_ONE_TO_ONE_OP_RECORDS, BITWISE_OP_RECORDS, COMPOUND_OP_RECORDS
             )
             for (dtype, shape) in itertools.product(rec.dtypes, rec.shapes)
         )

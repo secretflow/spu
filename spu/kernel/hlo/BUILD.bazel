@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("//bazel:spu.bzl", "spu_cc_binary", "spu_cc_library", "spu_cc_test")
+load("//bazel:spu.bzl", "spu_cc_library", "spu_cc_test")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -27,8 +27,8 @@ spu_cc_library(
         ":control_flow",
         ":convolution",
         ":dynamic_slice",
-        ":gather",
         ":geometrical",
+        ":indexing",
         ":rand",
         ":reduce",
         ":select_and_scatter",
@@ -119,12 +119,20 @@ spu_cc_library(
 )
 
 spu_cc_library(
-    name = "gather",
-    srcs = ["gather.cc"],
-    hdrs = ["gather.h"],
+    name = "indexing",
+    srcs = ["indexing.cc"],
+    hdrs = ["indexing.h"],
     deps = [
         ":utils",
         "//spu/kernel/hal",
+    ],
+)
+
+spu_cc_test(
+    name = "indexing_test",
+    srcs = ["indexing_test.cc"],
+    deps = [
+        ":indexing",
     ],
 )
 
@@ -183,11 +191,13 @@ spu_cc_library(
 
 spu_cc_library(
     name = "sort",
-    # srcs = ["sort.cc"],
+    srcs = ["sort.cc"],
     hdrs = ["sort.h"],
     deps = [
+        ":casting",
         ":utils",
         "//spu/kernel/hal",
+        "@com_github_emptoolkit_emp_tool//:emp-tool",
     ],
 )
 
