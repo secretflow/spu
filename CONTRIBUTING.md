@@ -74,7 +74,7 @@ sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
 https://brew.sh/
 
 # Install dependencies
-brew install bazel cmake ninja nasm
+brew install bazel cmake ninja nasm libomp
 
 # Extra setup step for Apple Silicon users
 conda install grpcio
