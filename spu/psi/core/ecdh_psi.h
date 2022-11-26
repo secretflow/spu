@@ -20,7 +20,7 @@
 #include <string_view>
 #include <vector>
 
-#include "yasl/link/link.h"
+#include "yacl/link/link.h"
 
 #include "spu/psi/core/communication.h"
 #include "spu/psi/cryptor/ecc_cryptor.h"
@@ -35,7 +35,11 @@ using FinishBatchHook = std::function<void(size_t)>;
 
 struct EcdhPsiOptions {
   // Provides the link for the rank world.
-  std::shared_ptr<yasl::link::Context> link_ctx;
+  std::shared_ptr<yacl::link::Context> link_ctx;
+
+  // ic_mode = true: 互联互通模式，对方可以是非隐语应用
+  // Interconnection mode, the other side can be non-secretflow application
+  bool ic_mode = false;
 
   // Provides private inputs for ecdh-psi.
   std::shared_ptr<IEccCryptor> ecc_cryptor;
@@ -53,7 +57,7 @@ struct EcdhPsiOptions {
   // - `link::kAllRank` i.e. std::numeric_limits<size_t>::max(), means reveal
   // to all rank
   // - otherwise the psi results should only revealed to the `target_rank`
-  size_t target_rank = yasl::link::kAllRank;
+  size_t target_rank = yacl::link::kAllRank;
 
   // Fnish batch callback. Could be used for logging or update progress.
   FinishBatchHook on_batch_finished;
@@ -87,50 +91,40 @@ class EcdhPsiContext {
   std::string Id() { return options_.link_ctx->Id(); }
 
  protected:
-  void SendBatch(const std::vector<std::string>& batch_items,
+  void SendBatch(const std::vector<std::string>& batch_items, int32_t batch_idx,
                  std::string_view tag = "");
 
   void SendBatch(const std::vector<std::string_view>& batch_items,
+                 int32_t batch_idx, std::string_view tag = "");
+
+  void RecvBatch(std::vector<std::string>* items, int32_t batch_idx,
                  std::string_view tag = "");
 
-  void RecvBatch(std::vector<std::string>* items, std::string_view tag = "");
-
   void SendDualMaskedBatch(const std::vector<std::string>& batch_items,
-                           std::string_view tag = "");
+                           int32_t batch_idx, std::string_view tag = "");
 
   void SendDualMaskedBatch(const std::vector<std::string_view>& batch_items,
-                           std::string_view tag = "");
+                           int32_t batch_idx, std::string_view tag = "");
 
-  void RecvDualMaskedBatch(std::vector<std::string>* items,
+  void RecvDualMaskedBatch(std::vector<std::string>* items, int32_t batch_idx,
                            std::string_view tag = "");
 
  private:
-  void SendBatchImpl(const std::vector<std::string>& batch_items,
-                     const std::shared_ptr<yasl::link::Context>& link_ctx,
-                     std::string_view tag);
-
-  void SendBatchImpl(const std::vector<std::string_view>& batch_items,
-                     const std::shared_ptr<yasl::link::Context>& link_ctx,
-                     std::string_view tag);
-
-  void RecvBatchImpl(const std::shared_ptr<yasl::link::Context>& link_ctx,
-                     std::vector<std::string>* items, std::string_view tag);
-
   bool CanTouchResults() const {
-    return options_.target_rank == yasl::link::kAllRank ||
+    return options_.target_rank == yacl::link::kAllRank ||
            options_.target_rank == options_.link_ctx->Rank();
   }
 
   bool PeerCanTouchResults() const {
-    return options_.target_rank == yasl::link::kAllRank ||
+    return options_.target_rank == yacl::link::kAllRank ||
            options_.target_rank == options_.link_ctx->NextRank();
   }
 
  protected:
   EcdhPsiOptions options_;
 
-  std::shared_ptr<yasl::link::Context> main_link_ctx_;
-  std::shared_ptr<yasl::link::Context> dual_mask_link_ctx_;
+  std::shared_ptr<yacl::link::Context> main_link_ctx_;
+  std::shared_ptr<yacl::link::Context> dual_mask_link_ctx_;
 };
 
 void RunEcdhPsi(const EcdhPsiOptions& options,
@@ -140,7 +134,7 @@ void RunEcdhPsi(const EcdhPsiOptions& options,
 // Simple wrapper for a common in memory psi case. It always use cpu based
 // ecc cryptor.
 std::vector<std::string> RunEcdhPsi(
-    const std::shared_ptr<yasl::link::Context>& link_ctx,
+    const std::shared_ptr<yacl::link::Context>& link_ctx,
     const std::vector<std::string>& items, size_t target_rank,
     CurveType crve = CurveType::CURVE_25519,
     size_t batch_size = kEcdhPsiBatchSize);

@@ -19,10 +19,10 @@
 #include <random>
 
 #include "spdlog/spdlog.h"
-#include "yasl/base/buffer.h"
-#include "yasl/base/exception.h"
-#include "yasl/utils/parallel.h"
-#include "yasl/utils/rand.h"
+#include "yacl/base/buffer.h"
+#include "yacl/base/exception.h"
+#include "yacl/crypto/utils/rand.h"
+#include "yacl/utils/parallel.h"
 
 #include "spu/psi/core/communication.h"
 #include "spu/psi/core/dp_psi/dp_psi_utils.h"
@@ -43,7 +43,7 @@ constexpr uint64_t kSendBatchSize = 8192;
 std::vector<size_t> BernoulliSamples(const std::vector<size_t>& items_idx,
                                      double q) {
   std::pair<uint64_t, uint64_t> seed_pair =
-      yasl::DecomposeUInt128(yasl::RandSeed());
+      yacl::DecomposeUInt128(yacl::RandSeed());
   std::mt19937 rand(seed_pair.first);
 
   SPDLOG_INFO("sample bernoulli_distribution: {}", q);
@@ -68,7 +68,7 @@ std::pair<std::vector<std::string>, std::vector<size_t>> BernoulliSamples(
     const std::vector<std::string>& items,
     const std::vector<size_t>& shuffled_idx, double p) {
   std::pair<uint64_t, uint64_t> seed_pair =
-      yasl::DecomposeUInt128(yasl::RandSeed());
+      yacl::DecomposeUInt128(yacl::RandSeed());
   std::mt19937 rand(seed_pair.first);
 
   SPDLOG_INFO("sample bernoulli_distribution: {}", p);
@@ -92,7 +92,7 @@ std::pair<std::vector<std::string>, std::vector<size_t>> BernoulliSamples(
 
 std::vector<size_t> GetShuffledIdx(size_t items_size) {
   std::pair<uint64_t, uint64_t> seed_pair =
-      yasl::DecomposeUInt128(yasl::RandSeed());
+      yacl::DecomposeUInt128(yacl::RandSeed());
   std::mt19937 rng(seed_pair.first);
 
   std::vector<size_t> shuffled_idx_vec(items_size);
@@ -105,7 +105,7 @@ std::vector<size_t> GetShuffledIdx(size_t items_size) {
 }  // namespace
 
 size_t RunDpEcdhPsiAlice(const DpPsiOptions& dp_psi_options,
-                         const std::shared_ptr<yasl::link::Context>& link_ctx,
+                         const std::shared_ptr<yacl::link::Context>& link_ctx,
                          const std::vector<std::string>& items,
                          size_t* sub_sample_size, size_t* up_sample_size,
                          CurveType curve) {
@@ -152,7 +152,7 @@ size_t RunDpEcdhPsiAlice(const DpPsiOptions& dp_psi_options,
   for (size_t index = 0; index < alice_peer_result.size(); index++) {
     if (std::binary_search(self_dual_mask.begin(), self_dual_mask.end(),
                            alice_peer_result[index])) {
-      YASL_ENFORCE(index < alice_peer_result.size());
+      YACL_ENFORCE(index < alice_peer_result.size());
 
       intersection_idx.push_back(index);
     } else {
@@ -162,7 +162,7 @@ size_t RunDpEcdhPsiAlice(const DpPsiOptions& dp_psi_options,
   // check non_intersection_idx size==0
   // if size==0 report intersection 0
   if (non_intersection_idx.size() == 0) {
-    yasl::Buffer intersection_idx_size_buffer = utils::SerializeSize(0);
+    yacl::Buffer intersection_idx_size_buffer = utils::SerializeSize(0);
     link_ctx->SendAsync(link_ctx->NextRank(), intersection_idx_size_buffer,
                         fmt::format("intersection_idx size: {}", 0));
 
@@ -187,7 +187,7 @@ size_t RunDpEcdhPsiAlice(const DpPsiOptions& dp_psi_options,
 
   SPDLOG_INFO("alice intersection size: {}", sub_sample_idx.size());
 
-  yasl::Buffer intersection_idx_size_buffer =
+  yacl::Buffer intersection_idx_size_buffer =
       utils::SerializeSize(sub_sample_idx.size());
   link_ctx->SendAsync(
       link_ctx->NextRank(), intersection_idx_size_buffer,
@@ -218,7 +218,7 @@ size_t RunDpEcdhPsiAlice(const DpPsiOptions& dp_psi_options,
 
 std::vector<size_t> RunDpEcdhPsiBob(
     const DpPsiOptions& dp_psi_options,
-    const std::shared_ptr<yasl::link::Context>& link_ctx,
+    const std::shared_ptr<yacl::link::Context>& link_ctx,
     const std::vector<std::string>& items, size_t* sub_sample_size,
     CurveType curve) {
   std::vector<size_t> bob_shuffled_idx = GetShuffledIdx(items.size());
@@ -266,7 +266,7 @@ std::vector<size_t> RunDpEcdhPsiBob(
 
   SPDLOG_INFO("after send shuffled batch");
 
-  yasl::Buffer intersection_size_buffer = link_ctx->Recv(
+  yacl::Buffer intersection_size_buffer = link_ctx->Recv(
       link_ctx->NextRank(), fmt::format("recv intersection_size"));
   size_t intersection_size = utils::DeserializeSize(intersection_size_buffer);
 
@@ -280,7 +280,7 @@ std::vector<size_t> RunDpEcdhPsiBob(
     PsiDataBatch batch = PsiDataBatch::Deserialize(link_ctx->Recv(
         link_ctx->NextRank(), fmt::format("recv batch idx{}", recv_idx)));
 
-    YASL_ENFORCE(batch.flatten_bytes.size() % sizeof(size_t) == 0);
+    YACL_ENFORCE(batch.flatten_bytes.size() % sizeof(size_t) == 0);
     size_t current_num;
     current_num = batch.flatten_bytes.size() / sizeof(size_t);
     std::memcpy(intersection_idx.data() + recv_idx, batch.flatten_bytes.data(),

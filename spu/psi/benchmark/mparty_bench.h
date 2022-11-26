@@ -25,8 +25,8 @@
 
 #include "benchmark/benchmark.h"
 #include "llvm/Support/CommandLine.h"
-#include "yasl/base/exception.h"
-#include "yasl/base/int128.h"
+#include "yacl/base/exception.h"
+#include "yacl/base/int128.h"
 
 #include "spu/psi/core/bc22_psi/bc22_psi.h"
 #include "spu/psi/core/ecdh_oprf_psi.h"
@@ -50,13 +50,13 @@ const char kTwoPartyHosts[] = "127.0.0.1:9540,127.0.0.1:9541";
 
 class PsiBench : public benchmark::Fixture {
  public:
-  static std::shared_ptr<yasl::link::Context> bench_lctx;
+  static std::shared_ptr<yacl::link::Context> bench_lctx;
   PsiBench() {
     spdlog::set_level(spdlog::level::off);  // turn off spdlog
   }
 };
 
-std::shared_ptr<yasl::link::Context> PsiBench::bench_lctx = nullptr;
+std::shared_ptr<yacl::link::Context> PsiBench::bench_lctx = nullptr;
 
 #define PSI_BM_DEFINE_ECDH_TYPE(CurveType)                                 \
   BENCHMARK_DEFINE_F(PsiBench, EcdhPsi_##CurveType)                        \
@@ -179,11 +179,11 @@ BENCHMARK_DEFINE_F(PsiBench, KkrtPsi)
     state.ResumeTiming();
 
     if (bench_lctx->Rank() == 0) { /* Sender */
-      yasl::BaseRecvOptions recv_opts;
+      yacl::BaseRecvOptions recv_opts;
       psi::GetKkrtOtSenderOptions(bench_lctx, 512, &recv_opts);
       psi::KkrtPsiSend(bench_lctx, recv_opts, items);
     } else { /* Receiver */
-      yasl::BaseSendOptions send_opts;
+      yacl::BaseSendOptions send_opts;
       psi::GetKkrtOtReceiverOptions(bench_lctx, 512, &send_opts);
       psi::KkrtPsiRecv(bench_lctx, send_opts, items);
     }

@@ -14,7 +14,7 @@
 
 #include "spu/mpc/aby3/value.h"
 
-#include "yasl/base/exception.h"
+#include "yacl/base/exception.h"
 
 #include "spu/core/array_ref.h"
 #include "spu/mpc/aby3/type.h"
@@ -23,7 +23,7 @@
 namespace spu::mpc::aby3 {
 
 ArrayRef getShare(const ArrayRef& in, int64_t share_idx) {
-  YASL_ENFORCE(share_idx == 0 || share_idx == 1);
+  YACL_ENFORCE(share_idx == 0 || share_idx == 1);
 
   if (in.eltype().isa<AShrTy>()) {
     const auto field = in.eltype().as<AShrTy>()->field();
@@ -36,7 +36,7 @@ ArrayRef getShare(const ArrayRef& in, int64_t share_idx) {
     return {in.buf(), ty, in.numel(), in.stride() * 2,
             in.offset() + share_idx * static_cast<int64_t>(ty.size())};
   } else {
-    YASL_THROW("unsupported type {}", in.eltype());
+    YACL_THROW("unsupported type {}", in.eltype());
   }
 }
 
@@ -48,11 +48,11 @@ ArrayRef makeAShare(const ArrayRef& s1, const ArrayRef& s2, FieldType field,
                     int owner_rank) {
   const Type ty = makeType<AShrTy>(field, owner_rank);
 
-  YASL_ENFORCE(s2.eltype().as<Ring2k>()->field() == field);
-  YASL_ENFORCE(s1.eltype().as<Ring2k>()->field() == field);
-  YASL_ENFORCE(s1.numel() == s2.numel(), "got s1={}, s2={}", s1.numel(),
+  YACL_ENFORCE(s2.eltype().as<Ring2k>()->field() == field);
+  YACL_ENFORCE(s1.eltype().as<Ring2k>()->field() == field);
+  YACL_ENFORCE(s1.numel() == s2.numel(), "got s1={}, s2={}", s1.numel(),
                s2.numel());
-  YASL_ENFORCE(ty.size() == 2 * s1.elsize());
+  YACL_ENFORCE(ty.size() == 2 * s1.elsize());
 
   ArrayRef res(ty, s1.numel());
 
@@ -69,8 +69,8 @@ ArrayRef makeAShare(const ArrayRef& s1, const ArrayRef& s2, FieldType field,
 
 ArrayRef makeBShare(const ArrayRef& s1, const ArrayRef& s2, size_t nbits) {
   const auto pt_type = s1.eltype().as<PtTy>()->pt_type();
-  YASL_ENFORCE(pt_type == s2.eltype().as<PtTy>()->pt_type());
-  YASL_ENFORCE(s1.elsize() >= 8 * nbits);
+  YACL_ENFORCE(pt_type == s2.eltype().as<PtTy>()->pt_type());
+  YACL_ENFORCE(s1.elsize() >= 8 * nbits);
   const Type ty = makeType<BShrTy>(pt_type, nbits);
   ArrayRef res(ty, s1.numel());
 
@@ -105,7 +105,7 @@ PtType calcBShareBacktype(size_t nbits) {
   if (nbits <= 128) {
     return PT_U128;
   }
-  YASL_THROW("invalid number of bits={}", nbits);
+  YACL_THROW("invalid number of bits={}", nbits);
 }
 
 }  // namespace spu::mpc::aby3

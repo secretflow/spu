@@ -28,7 +28,7 @@ spu_cc_binary(
         "//spu/kernel/hal",
         "@com_google_absl//absl/strings",
         "@llvm-project//llvm:Support",
-        "@yasl//yasl/link:factory",
+        "@yacl//yacl/link:factory",
     ],
 )
 
@@ -40,7 +40,7 @@ spu_cc_library(
         "//spu/kernel:context",
         "@com_google_absl//absl/strings",
         "@llvm-project//llvm:Support",
-        "@yasl//yasl/link:factory",
+        "@yacl//yacl/link:factory",
     ],
 )
 

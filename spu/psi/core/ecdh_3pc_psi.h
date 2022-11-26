@@ -54,7 +54,8 @@ class EcdhP2PExtendCtx : public EcdhPsiContext {
 
  public:
   // internal
-  void ForwardBatch(const std::vector<std::string>& batch_items);
+  void ForwardBatch(const std::vector<std::string>& batch_items,
+                    int32_t batch_idx);
 
  private:
   void SendImpl(const std::vector<std::string>& items, bool dup_masked);
@@ -100,7 +101,7 @@ class ShuffleEcdh3PcPsi {
  public:
   struct Options {
     // Provides the link for the rank world.
-    std::shared_ptr<yasl::link::Context> link_ctx;
+    std::shared_ptr<yacl::link::Context> link_ctx;
 
     // master rank get final result
     size_t master_rank;

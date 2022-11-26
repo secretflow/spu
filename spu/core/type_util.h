@@ -20,8 +20,8 @@
 
 #include "fmt/format.h"
 #include "fmt/ostream.h"
-#include "yasl/base/exception.h"
-#include "yasl/base/int128.h"
+#include "yacl/base/exception.h"
+#include "yacl/base/int128.h"
 
 #include "spu/spu.pb.h"
 
@@ -100,7 +100,7 @@ std::ostream& operator<<(std::ostream& os, const DataType& dtype);
       __CASE_PT_TYPE(spu::PT_F32, NAME, __VA_ARGS__)                     \
       __CASE_PT_TYPE(spu::PT_F64, NAME, __VA_ARGS__)                     \
       default:                                                           \
-        YASL_THROW("{} not implemented for pt_type={}", #NAME, PT_TYPE); \
+        YACL_THROW("{} not implemented for pt_type={}", #NAME, PT_TYPE); \
     }                                                                    \
   }()
 
@@ -113,7 +113,7 @@ std::ostream& operator<<(std::ostream& os, const DataType& dtype);
       __CASE_PT_TYPE(spu::PT_U64, NAME, __VA_ARGS__)                     \
       __CASE_PT_TYPE(spu::PT_U128, NAME, __VA_ARGS__)                    \
       default:                                                           \
-        YASL_THROW("{} not implemented for pt_type={}", #NAME, PT_TYPE); \
+        YACL_THROW("{} not implemented for pt_type={}", #NAME, PT_TYPE); \
     }                                                                    \
   }()
 
@@ -130,7 +130,7 @@ std::ostream& operator<<(std::ostream& os, const DataType& dtype);
       __CASE_PT_TYPE(spu::PT_I64, NAME, __VA_ARGS__)                     \
       __CASE_PT_TYPE(spu::PT_U64, NAME, __VA_ARGS__)                     \
       default:                                                           \
-        YASL_THROW("{} not implemented for pt_type={}", #NAME, PT_TYPE); \
+        YACL_THROW("{} not implemented for pt_type={}", #NAME, PT_TYPE); \
     }                                                                    \
   }()
 
@@ -149,7 +149,7 @@ std::ostream& operator<<(std::ostream& os, const DataType& dtype);
       __CASE_PT_TYPE(spu::PT_F32, NAME, __VA_ARGS__)                     \
       __CASE_PT_TYPE(spu::PT_F64, NAME, __VA_ARGS__)                     \
       default:                                                           \
-        YASL_THROW("{} not implemented for pt_type={}", #NAME, PT_TYPE); \
+        YACL_THROW("{} not implemented for pt_type={}", #NAME, PT_TYPE); \
     }                                                                    \
   }()
 
@@ -225,7 +225,7 @@ inline size_t SizeOf(FieldType field) { return SizeOf(GetStorageType(field)); }
       __CASE_FIELD(spu::FieldType::FM64, NAME, __VA_ARGS__)          \
       __CASE_FIELD(spu::FieldType::FM128, NAME, __VA_ARGS__)         \
       default:                                                       \
-        YASL_THROW("{} not implemented for field={}", #NAME, FIELD); \
+        YACL_THROW("{} not implemented for field={}", #NAME, FIELD); \
     }                                                                \
   }()
 

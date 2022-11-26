@@ -21,7 +21,7 @@ namespace spu::mpc {
 INSTANTIATE_TEST_SUITE_P(
     BeaverRefTest, BeaverTest,
     testing::Combine(
-        testing::Values([](const std::shared_ptr<yasl::link::Context>& lctx) {
+        testing::Values([](const std::shared_ptr<yacl::link::Context>& lctx) {
           (void)lctx;
           return std::make_unique<BeaverRef>();
         }),

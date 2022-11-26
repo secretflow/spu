@@ -42,8 +42,8 @@ spu::Value Convolution(HalContext *ctx, const spu::Value &lhs,
                        const spu::Value &rhs, const ConvolutionConfig &config,
                        absl::Span<const int64_t> result_shape) {
   const size_t num_spatial_dims = config.outputSpatialDimensions.size();
-  YASL_ENFORCE(num_spatial_dims == config.inputSpatialDimensions.size());
-  YASL_ENFORCE(num_spatial_dims == config.kernelSpatialDimensions.size());
+  YACL_ENFORCE(num_spatial_dims == config.inputSpatialDimensions.size());
+  YACL_ENFORCE(num_spatial_dims == config.kernelSpatialDimensions.size());
 
   const auto &lhs_shape = lhs.shape();
 

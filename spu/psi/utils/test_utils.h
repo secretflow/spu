@@ -19,7 +19,7 @@
 #include <string>
 #include <vector>
 
-#include "yasl/crypto/hash_util.h"
+#include "yacl/crypto/utils/hash_util.h"
 
 #include "spu/psi/psi.pb.h"
 
@@ -49,7 +49,7 @@ inline std::vector<std::string> GetIntersection(
 inline std::vector<uint128_t> CreateItemHashes(size_t begin, size_t size) {
   std::vector<uint128_t> ret;
   for (size_t i = 0; i < size; i++) {
-    ret.push_back(yasl::crypto::Blake3_128(std::to_string(begin + i)));
+    ret.push_back(yacl::crypto::Blake3_128(std::to_string(begin + i)));
   }
   return ret;
 }

@@ -33,15 +33,15 @@ llvm::cl::opt<uint32_t> Field(
 llvm::cl::opt<bool> EngineTrace("engine_trace", llvm::cl::init(false),
                                 llvm::cl::desc("Enable trace info"));
 
-std::shared_ptr<yasl::link::Context> MakeLink(const std::string& parties,
+std::shared_ptr<yacl::link::Context> MakeLink(const std::string& parties,
                                               size_t rank) {
-  yasl::link::ContextDesc lctx_desc;
+  yacl::link::ContextDesc lctx_desc;
   std::vector<std::string> hosts = absl::StrSplit(parties, ',');
   for (size_t rank = 0; rank < hosts.size(); rank++) {
     const auto id = fmt::format("party{}", rank);
     lctx_desc.parties.push_back({id, hosts[rank]});
   }
-  auto lctx = yasl::link::FactoryBrpc().CreateContext(lctx_desc, rank);
+  auto lctx = yacl::link::FactoryBrpc().CreateContext(lctx_desc, rank);
   lctx->ConnectToMesh();
   return lctx;
 }

@@ -35,8 +35,17 @@ def mem_psi(
     return _lib.libs.mem_psi(link, config.SerializeToString(), input_items)
 
 
-def bucket_psi(link: _lib.link.Context, config: BucketPsiConfig) -> PsiResultReport:
-    report_str = _lib.libs.bucket_psi(link, config.SerializeToString())
+def bucket_psi(
+    link: _lib.link.Context, config: BucketPsiConfig, ic_mode: bool = False
+) -> PsiResultReport:
+    """
+    Run bucket psi
+    :param link: the transport layer
+    :param config: psi config
+    :param ic_mode: Whether to run in interconnection mode
+    :return: statistical results
+    """
+    report_str = _lib.libs.bucket_psi(link, config.SerializeToString(), ic_mode)
     report = PsiResultReport()
     report.ParseFromString(report_str)
     return report

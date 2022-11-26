@@ -30,11 +30,11 @@ extern "C" {
 #include "curve25519.h"
 }
 
-#include "yasl/base/exception.h"
-#include "yasl/crypto/hash_util.h"
-#include "yasl/crypto/pseudo_random_generator.h"
-#include "yasl/crypto/symmetric_crypto.h"
-#include "yasl/utils/parallel.h"
+#include "yacl/base/exception.h"
+#include "yacl/crypto/base/symmetric_crypto.h"
+#include "yacl/crypto/tools/prg.h"
+#include "yacl/crypto/utils/hash_util.h"
+#include "yacl/utils/parallel.h"
 
 #include "spu/psi/core/communication.h"
 #include "spu/psi/core/cuckoo_index.h"
@@ -56,9 +56,9 @@ constexpr size_t kCuckooHashBatchSize = 2000;
 
 std::vector<std::string> HashInputs(const std::vector<std::string>& items) {
   std::vector<std::string> ret(items.size());
-  yasl::parallel_for(0, items.size(), 1, [&](int64_t begin, int64_t end) {
+  yacl::parallel_for(0, items.size(), 1, [&](int64_t begin, int64_t end) {
     for (int64_t idx = begin; idx < end; ++idx) {
-      std::vector<uint8_t> hash = yasl::crypto::Sha256(items[idx]);
+      std::vector<uint8_t> hash = yacl::crypto::Sha256(items[idx]);
       ret[idx].resize(hash.size());
       std::memcpy(&ret[idx][0], hash.data(), hash.size());
     }
@@ -68,31 +68,30 @@ std::vector<std::string> HashInputs(const std::vector<std::string>& items) {
 
 struct MiniPsiSendCtx {
   MiniPsiSendCtx() {
-    yasl::PseudoRandomGenerator<uint64_t> prg(0,
-                                              yasl::PRG_MODE::kNistAesCtrDrbg);
+    yacl::Prg<uint64_t> prg(0, yacl::PRG_MODE::kNistAesCtrDrbg);
     prg.Fill(absl::MakeSpan(private_key.data(), kKeySize));
 
     curve25519_donna_basepoint((unsigned char*)(public_key.data()),
                                private_key.data());
 
-    uint128_t aes_key = yasl::crypto::Blake3_128(public_key);
-    aes_ecb = std::make_shared<yasl::SymmetricCrypto>(
-        yasl::SymmetricCrypto::CryptoType::AES128_ECB, aes_key, 0);
+    uint128_t aes_key = yacl::crypto::Blake3_128(public_key);
+    aes_ecb = std::make_shared<yacl::SymmetricCrypto>(
+        yacl::SymmetricCrypto::CryptoType::AES128_ECB, aes_key, 0);
 
     prime256_str = absl::HexStringToBytes(kPrimeOver256bHexStr);
   }
 
   void RecvPolynomialCoeff(
-      const std::shared_ptr<yasl::link::Context>& link_ctx) {
+      const std::shared_ptr<yacl::link::Context>& link_ctx) {
     size_t batch_count = 0;
 
-    yasl::link::RecvTimeoutGuard guard(link_ctx, kLinkRecvTimeout);
+    yacl::link::RecvTimeoutGuard guard(link_ctx, kLinkRecvTimeout);
     while (true) {
       const auto tag = fmt::format("MINI-PSI:X^A:{}", batch_count);
       PsiDataBatch coeff_batch =
           PsiDataBatch::Deserialize(link_ctx->Recv(link_ctx->NextRank(), tag));
       // Fetch y^b.
-      YASL_ENFORCE(coeff_batch.flatten_bytes.size() % kHashSize == 0);
+      YACL_ENFORCE(coeff_batch.flatten_bytes.size() % kHashSize == 0);
       size_t num_items = coeff_batch.flatten_bytes.size() / kHashSize;
 
       if (num_items > 0) {
@@ -117,7 +116,7 @@ struct MiniPsiSendCtx {
 
     items_hash = HashInputs(items);
 
-    yasl::parallel_for(0, items.size(), 1, [&](int64_t begin, int64_t end) {
+    yacl::parallel_for(0, items.size(), 1, [&](int64_t begin, int64_t end) {
       for (int64_t idx = begin; idx < end; ++idx) {
         polynomial_eval_values[idx] = spu::psi::EvalPolynomial(
             polynomial_coeff, absl::string_view(items_hash[idx]), prime256_str);
@@ -134,7 +133,7 @@ struct MiniPsiSendCtx {
         curve25519_donna((unsigned char*)(masked.data()), private_key.data(),
                          (const unsigned char*)ideal_permuation.data());
 
-        yasl::crypto::Sha256Hash sha256;
+        yacl::crypto::Sha256Hash sha256;
         sha256.Update(items[idx].data());
         sha256.Update(masked.data());
         std::vector<uint8_t> mask_hash = sha256.CumulativeHash();
@@ -149,7 +148,7 @@ struct MiniPsiSendCtx {
   }
 
   void SendMaskedEvalValues(
-      const std::shared_ptr<yasl::link::Context>& link_ctx) {
+      const std::shared_ptr<yacl::link::Context>& link_ctx) {
     size_t batch_count = 0;
 
     std::shared_ptr<IBatchProvider> batch_provider =
@@ -198,7 +197,7 @@ struct MiniPsiSendCtx {
   std::vector<std::string> masked_values;
 
   // use aes-128-ecb as Ideal Permutation
-  std::shared_ptr<yasl::SymmetricCrypto> aes_ecb;
+  std::shared_ptr<yacl::SymmetricCrypto> aes_ecb;
 };
 
 struct MiniPsiRecvCtx {
@@ -210,10 +209,9 @@ struct MiniPsiRecvCtx {
     seeds.resize(data_size);
     seeds_point.resize(data_size);
 
-    yasl::parallel_for(0, data_size, 1, [&](int64_t begin, int64_t end) {
+    yacl::parallel_for(0, data_size, 1, [&](int64_t begin, int64_t end) {
       for (int64_t idx = begin; idx < end; ++idx) {
-        yasl::PseudoRandomGenerator<uint64_t> prg(
-            0, yasl::PRG_MODE::kNistAesCtrDrbg);
+        yacl::Prg<uint64_t> prg(0, yacl::PRG_MODE::kNistAesCtrDrbg);
         prg.Fill(absl::MakeSpan(seeds[idx].data(), kKeySize));
 
         curve25519_donna_basepoint((unsigned char*)(seeds_point[idx].data()),
@@ -248,7 +246,7 @@ struct MiniPsiRecvCtx {
   }
 
   void SendPolynomialCoeff(
-      const std::shared_ptr<yasl::link::Context>& link_ctx) {
+      const std::shared_ptr<yacl::link::Context>& link_ctx) {
     size_t batch_count = 0;
 
     std::shared_ptr<IBatchProvider> batch_provider =
@@ -281,16 +279,16 @@ struct MiniPsiRecvCtx {
   }
 
   void RecvMaskedEvalValues(
-      const std::shared_ptr<yasl::link::Context>& link_ctx) {
+      const std::shared_ptr<yacl::link::Context>& link_ctx) {
     size_t batch_count = 0;
 
-    yasl::link::RecvTimeoutGuard guard(link_ctx, kLinkRecvTimeout);
+    yacl::link::RecvTimeoutGuard guard(link_ctx, kLinkRecvTimeout);
     while (true) {
       const auto tag = fmt::format("MINI-PSI:X^A^B:{}", batch_count);
       PsiDataBatch masked_eval_batch =
           PsiDataBatch::Deserialize(link_ctx->Recv(link_ctx->NextRank(), tag));
       // Fetch y^b.
-      YASL_ENFORCE(
+      YACL_ENFORCE(
           masked_eval_batch.flatten_bytes.size() % kFinalCompareBytes == 0);
       size_t num_items =
           masked_eval_batch.flatten_bytes.size() / kFinalCompareBytes;
@@ -313,13 +311,13 @@ struct MiniPsiRecvCtx {
   void MaskPeerPublicKey(const std::vector<std::string>& items) {
     masked_values.resize(seeds.size());
 
-    yasl::parallel_for(0, seeds.size(), 1, [&](int64_t begin, int64_t end) {
+    yacl::parallel_for(0, seeds.size(), 1, [&](int64_t begin, int64_t end) {
       for (int64_t idx = begin; idx < end; ++idx) {
         std::string masked(kKeySize, '\0');
         curve25519_donna((unsigned char*)(masked.data()), seeds[idx].data(),
                          peer_public_key.data());
 
-        yasl::crypto::Sha256Hash sha256;
+        yacl::crypto::Sha256Hash sha256;
         sha256.Update(items[idx].data());
         sha256.Update(masked.data());
         std::vector<uint8_t> mask_hash = sha256.CumulativeHash();
@@ -365,14 +363,14 @@ struct MiniPsiRecvCtx {
   std::unordered_set<std::string> peer_masked_values;
 
   // use aes-128-ecb as Ideal Permutation
-  std::shared_ptr<yasl::SymmetricCrypto> aes_ecb;
+  std::shared_ptr<yacl::SymmetricCrypto> aes_ecb;
 };
 
 }  // namespace
 
 // #define DEBUG_OUT
 
-void MiniPsiSend(const std::shared_ptr<yasl::link::Context>& link_ctx,
+void MiniPsiSend(const std::shared_ptr<yacl::link::Context>& link_ctx,
                  const std::vector<std::string>& items) {
   MiniPsiSendCtx send_ctx;
 
@@ -384,7 +382,7 @@ void MiniPsiSend(const std::shared_ptr<yasl::link::Context>& link_ctx,
   //
   link_ctx->SendAsync(
       link_ctx->NextRank(),
-      yasl::Buffer(send_ctx.public_key.data(), send_ctx.public_key.size()),
+      yacl::Buffer(send_ctx.public_key.data(), send_ctx.public_key.size()),
       "MINI-PSI:X^A");
 
   // receive Polynomial Coefficient
@@ -400,19 +398,19 @@ void MiniPsiSend(const std::shared_ptr<yasl::link::Context>& link_ctx,
 }
 
 std::vector<std::string> MiniPsiRecv(
-    const std::shared_ptr<yasl::link::Context>& link_ctx,
+    const std::shared_ptr<yacl::link::Context>& link_ctx,
     const std::vector<std::string>& items) {
   MiniPsiRecvCtx recv_ctx;
 
   std::future<void> f_get_pubkey = std::async([&] {
     // receive sender's public key
-    yasl::Buffer buf =
+    yacl::Buffer buf =
         link_ctx->Recv(link_ctx->NextRank(), fmt::format("MINI-PSI:X^A"));
     std::memcpy(recv_ctx.peer_public_key.data(), buf.data(), buf.size());
 
-    uint128_t aes_key = yasl::crypto::Blake3_128(recv_ctx.peer_public_key);
-    recv_ctx.aes_ecb = std::make_shared<yasl::SymmetricCrypto>(
-        yasl::SymmetricCrypto::CryptoType::AES128_ECB, aes_key, 0);
+    uint128_t aes_key = yacl::crypto::Blake3_128(recv_ctx.peer_public_key);
+    recv_ctx.aes_ecb = std::make_shared<yacl::SymmetricCrypto>(
+        yacl::SymmetricCrypto::CryptoType::AES128_ECB, aes_key, 0);
   });
 
   std::future<void> f_gen_seeds = std::async([&] {
@@ -443,7 +441,7 @@ std::vector<std::string> MiniPsiRecv(
 }
 
 // big data
-void MiniPsiSendBatch(const std::shared_ptr<yasl::link::Context>& link_ctx,
+void MiniPsiSendBatch(const std::shared_ptr<yacl::link::Context>& link_ctx,
                       const std::vector<std::string>& items) {
   size_t peer_size = utils::DeserializeSize(
       link_ctx->Recv(link_ctx->NextRank(), fmt::format("RECV PEER SIZE")));
@@ -475,7 +473,7 @@ void MiniPsiSendBatch(const std::shared_ptr<yasl::link::Context>& link_ctx,
   size_t nthread = utils::DeserializeSize(link_ctx->Recv(
       link_ctx->NextRank(), fmt::format("Mini-PSI RECV THREAD Num")));
 
-  auto thread = [&](const std::shared_ptr<yasl::link::Context>& thread_link_ctx,
+  auto thread = [&](const std::shared_ptr<yacl::link::Context>& thread_link_ctx,
                     size_t thread_idx) {
     size_t start_idx = num_bins * thread_idx / nthread;
     size_t end_idx = num_bins * (thread_idx + 1) / nthread;
@@ -497,7 +495,7 @@ void MiniPsiSendBatch(const std::shared_ptr<yasl::link::Context>& link_ctx,
   };
 
   std::vector<std::future<void>> futures;
-  std::vector<std::shared_ptr<yasl::link::Context>> thread_link_ctxs(nthread);
+  std::vector<std::shared_ptr<yacl::link::Context>> thread_link_ctxs(nthread);
 
   for (size_t thread_idx = 0; thread_idx < nthread; ++thread_idx) {
     thread_link_ctxs[thread_idx] = link_ctx->Spawn();
@@ -513,7 +511,7 @@ void MiniPsiSendBatch(const std::shared_ptr<yasl::link::Context>& link_ctx,
 }
 
 std::vector<std::string> MiniPsiRecvBatch(
-    const std::shared_ptr<yasl::link::Context>& link_ctx,
+    const std::shared_ptr<yacl::link::Context>& link_ctx,
     const std::vector<std::string>& items) {
   // send size to peer
   link_ctx->SendAsync(link_ctx->NextRank(), utils::SerializeSize(items.size()),
@@ -522,7 +520,7 @@ std::vector<std::string> MiniPsiRecvBatch(
   std::vector<std::string> items_hash = HashInputs(items);
   std::vector<uint128_t> items_hash_u128(items.size());
 
-  yasl::parallel_for(0, items.size(), 1, [&](int64_t begin, int64_t end) {
+  yacl::parallel_for(0, items.size(), 1, [&](int64_t begin, int64_t end) {
     for (int64_t idx = begin; idx < end; ++idx) {
       std::memcpy(&items_hash_u128[idx], items_hash[idx].data(),
                   sizeof(uint128_t));
@@ -534,9 +532,9 @@ std::vector<std::string> MiniPsiRecvBatch(
 
   cuckoo_index.Insert(absl::MakeSpan(items_hash_u128));
 
-  YASL_ENFORCE(cuckoo_index.stash().size() == 0, "stash size not 0");
+  YACL_ENFORCE(cuckoo_index.stash().size() == 0, "stash size not 0");
 
-  size_t nthreads = yasl::intraop_default_num_threads();
+  size_t nthreads = yacl::intraop_default_num_threads();
   // send thread num
   if (items.size() < 100000) {
     nthreads = 1;
@@ -554,13 +552,13 @@ std::vector<std::string> MiniPsiRecvBatch(
   std::vector<std::vector<size_t>> ret_idx_vec(nthreads);
 
   // thread func
-  auto thread = [&](const std::shared_ptr<yasl::link::Context>& thread_link_ctx,
+  auto thread = [&](const std::shared_ptr<yacl::link::Context>& thread_link_ctx,
                     size_t thread_idx) {
     size_t start_idx = num_bins * thread_idx / nthreads;
     size_t end_idx = num_bins * (thread_idx + 1) / nthreads;
 
     std::random_device rd;
-    yasl::PseudoRandomGenerator<uint64_t> prg(rd());
+    yacl::Prg<uint64_t> prg(rd());
 
     for (size_t idx = start_idx; idx < end_idx; idx += kCuckooHashBatchSize) {
       size_t current_batch_size = std::min(kCuckooHashBatchSize, end_idx - idx);
@@ -594,7 +592,7 @@ std::vector<std::string> MiniPsiRecvBatch(
   };
 
   std::vector<std::future<void>> futures;
-  std::vector<std::shared_ptr<yasl::link::Context>> thread_link_ctxs(nthreads);
+  std::vector<std::shared_ptr<yacl::link::Context>> thread_link_ctxs(nthreads);
 
   for (size_t thread_idx = 0; thread_idx < nthreads; ++thread_idx) {
     thread_link_ctxs[thread_idx] = link_ctx->Spawn();

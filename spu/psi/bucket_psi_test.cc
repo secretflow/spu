@@ -19,7 +19,7 @@
 
 #include "gtest/gtest.h"
 #include "spdlog/spdlog.h"
-#include "yasl/link/test_util.h"
+#include "yacl/link/test_util.h"
 
 #include "spu/psi/io/io.h"
 
@@ -34,6 +34,7 @@ struct TestParams {
   spu::psi::PsiType psi_protocol;
   size_t num_bins;
   bool should_sort;
+  bool run_in_ic_mode;
   uint32_t expect_result_size;
 };
 
@@ -93,7 +94,7 @@ TEST_P(StreamTaskPsiTest, Works) {
   auto params = GetParam();
 
   SetupTmpfilePaths(params.in_content_list.size());
-  auto lctxs = yasl::link::test::SetupWorld(params.in_content_list.size());
+  auto lctxs = yacl::link::test::SetupWorld(params.in_content_list.size());
 
   auto proc = [&](int idx) -> spu::psi::PsiResultReport {
     spu::psi::BucketPsiConfig config;
@@ -110,7 +111,7 @@ TEST_P(StreamTaskPsiTest, Works) {
     config.set_bucket_size(3);
     config.set_curve_type(CurveType::CURVE_25519);
 
-    BucketPsi ctx(config, lctxs[idx]);
+    BucketPsi ctx(config, lctxs[idx], params.run_in_ic_mode);
     return ctx.Run();
   };
 
@@ -138,7 +139,7 @@ TEST_P(StreamTaskPsiTest, BroadcastFalse) {
   size_t receiver_rank = 0;
 
   SetupTmpfilePaths(params.in_content_list.size());
-  auto lctxs = yasl::link::test::SetupWorld(params.in_content_list.size());
+  auto lctxs = yacl::link::test::SetupWorld(params.in_content_list.size());
 
   auto proc = [&](int idx) -> spu::psi::PsiResultReport {
     spu::psi::BucketPsiConfig config;
@@ -156,7 +157,7 @@ TEST_P(StreamTaskPsiTest, BroadcastFalse) {
     config.set_bucket_size(1);
     config.set_curve_type(CurveType::CURVE_25519);
 
-    BucketPsi ctx(config, lctxs[idx]);
+    BucketPsi ctx(config, lctxs[idx], params.run_in_ic_mode);
     return ctx.Run();
   };
 
@@ -199,6 +200,21 @@ INSTANTIATE_TEST_SUITE_P(
             spu::psi::PsiType::ECDH_PSI_2PC,
             64,
             true,
+            false,
+            5,
+        },
+        TestParams{
+            {10, 15},
+            {"id,value\ng,1\nb,2\ns,1\nh,1\ne,1\nc,1\na,1\nj,1\nk,1\nl,1\n",
+             "id,value\ne,1\nc,1\na,1\nj,1\nk,1\nq,1\nw,1\nn,1\nr,1\nt,1\ny,"
+             "1\nu,1\ni,1\no,1\np,1\n"},
+            {"id,value\na,1\nc,1\ne,1\nj,1\nk,1\n",
+             "id,value\na,1\nc,1\ne,1\nj,1\nk,1\n"},
+            {{"id"}, {"id"}},
+            spu::psi::PsiType::ECDH_PSI_2PC,
+            64,
+            true,
+            true,
             5,
         },
         TestParams{
@@ -210,6 +226,20 @@ INSTANTIATE_TEST_SUITE_P(
             {{"id"}, {"id"}},
             spu::psi::PsiType::ECDH_PSI_2PC,
             64,
+            true,
+            false,
+            3,
+        },
+        TestParams{
+            {3, 3},
+            {"id,value\nc测试,c\nb测试,b\na测试,a\n",
+             "id,value\nb测试,b\nc测试,c\na测试,a\n"},
+            {"id,value\na测试,a\nb测试,b\nc测试,c\n",
+             "id,value\na测试,a\nb测试,b\nc测试,c\n"},
+            {{"id"}, {"id"}},
+            spu::psi::PsiType::ECDH_PSI_2PC,
+            64,
+            true,
             true,
             3,
         },
@@ -223,6 +253,7 @@ INSTANTIATE_TEST_SUITE_P(
             spu::psi::PsiType::KKRT_PSI_2PC,
             64,
             true,
+            false,
             3,
         },
         TestParams{
@@ -236,6 +267,7 @@ INSTANTIATE_TEST_SUITE_P(
             spu::psi::PsiType::BC22_PSI_2PC,
             64,
             true,
+            false,
             4,
         },
         TestParams{
@@ -250,6 +282,7 @@ INSTANTIATE_TEST_SUITE_P(
             spu::psi::PsiType::ECDH_PSI_3PC,
             64,
             true,
+            false,
             3,
         },
         TestParams{
@@ -266,6 +299,7 @@ INSTANTIATE_TEST_SUITE_P(
             spu::psi::PsiType::ECDH_PSI_NPC,
             64,
             true,
+            false,
             3,
         },
         TestParams{
@@ -282,6 +316,7 @@ INSTANTIATE_TEST_SUITE_P(
             spu::psi::PsiType::KKRT_PSI_NPC,
             64,
             true,
+            false,
             3,
         },
 
@@ -294,6 +329,7 @@ INSTANTIATE_TEST_SUITE_P(
             spu::psi::PsiType::ECDH_PSI_2PC,
             64,
             true,
+            false,
             0,
         },
         TestParams{
@@ -304,6 +340,7 @@ INSTANTIATE_TEST_SUITE_P(
             spu::psi::PsiType::KKRT_PSI_2PC,
             64,
             true,
+            false,
             0,
         },
         TestParams{
@@ -315,6 +352,7 @@ INSTANTIATE_TEST_SUITE_P(
             spu::psi::PsiType::ECDH_PSI_3PC,
             64,
             true,
+            false,
             0,
         },
         TestParams{
@@ -327,6 +365,7 @@ INSTANTIATE_TEST_SUITE_P(
             spu::psi::PsiType::ECDH_PSI_NPC,
             64,
             true,
+            false,
             0,
         },
         TestParams{
@@ -339,6 +378,7 @@ INSTANTIATE_TEST_SUITE_P(
             spu::psi::PsiType::KKRT_PSI_NPC,
             64,
             true,
+            false,
             0,
         },
 
@@ -351,6 +391,18 @@ INSTANTIATE_TEST_SUITE_P(
             spu::psi::PsiType::ECDH_PSI_2PC,
             64,
             true,
+            false,
+            2,
+        },
+        TestParams{
+            {3, 2},
+            {"f2,id\n1,a\n1,b\n6,c\n", "f1,id\n1,b\n6,c\n"},
+            {"f2,id\n1,b\n6,c\n", "f1,id\n1,b\n6,c\n"},
+            {{"f2", "id"}, {"f1", "id"}},
+            spu::psi::PsiType::ECDH_PSI_2PC,
+            64,
+            true,
+            true,
             2,
         },
         TestParams{
@@ -361,6 +413,7 @@ INSTANTIATE_TEST_SUITE_P(
             spu::psi::PsiType::KKRT_PSI_2PC,
             64,
             true,
+            false,
             2,
         },
         TestParams{
@@ -371,6 +424,7 @@ INSTANTIATE_TEST_SUITE_P(
             spu::psi::PsiType::ECDH_PSI_3PC,
             64,
             true,
+            false,
             1,
         },
         TestParams{
@@ -382,6 +436,7 @@ INSTANTIATE_TEST_SUITE_P(
             spu::psi::PsiType::ECDH_PSI_NPC,
             64,
             true,
+            false,
             1,
         },
         TestParams{
@@ -393,6 +448,7 @@ INSTANTIATE_TEST_SUITE_P(
             spu::psi::PsiType::KKRT_PSI_NPC,
             64,
             true,
+            false,
             1,
         }));
 
@@ -408,7 +464,7 @@ class BucketTaskPsiTestFailedTest
 TEST_P(BucketTaskPsiTestFailedTest, FailedWorks) {
   auto params = GetParam();
 
-  auto lctxs = yasl::link::test::SetupWorld(params.party_num);
+  auto lctxs = yacl::link::test::SetupWorld(params.party_num);
 
   spu::psi::BucketPsiConfig config;
   config.set_psi_type(params.psi_protocol);

@@ -17,7 +17,7 @@
 #include "xtensor/xarray.hpp"
 #include "xtensor/xio.hpp"
 #include "xtensor/xrandom.hpp"
-#include "yasl/base/exception.h"
+#include "yacl/base/exception.h"
 
 #include "spu/kernel/hal/constants.h"
 #include "spu/kernel/hal/test_util.h"
@@ -27,8 +27,8 @@ namespace spu::kernel::hal {
 Value rng_uniform(HalContext* ctx, const Value& a, const Value& b,
                   absl::Span<const int64_t> to_shape) {
   SPU_TRACE_HAL_LEAF(ctx, a, b, to_shape);
-  YASL_ENFORCE(a.isPublic() && b.isPublic());
-  YASL_ENFORCE(a.dtype() == b.dtype());
+  YACL_ENFORCE(a.isPublic() && b.isPublic());
+  YACL_ENFORCE(a.dtype() == b.dtype());
   // FIXME: This is a hacky ref impl, fill a real proper impl later.
   if (a.isFxp()) {
     auto pa = test::dump_public_as<float>(ctx, a);
@@ -38,7 +38,7 @@ Value rng_uniform(HalContext* ctx, const Value& a, const Value& b,
     return constant(ctx, randv);
   }
 
-  YASL_ENFORCE(a.isInt());
+  YACL_ENFORCE(a.isInt());
   auto pa = test::dump_public_as<int>(ctx, a);
   auto pb = test::dump_public_as<int>(ctx, b);
   xt::xarray<int> randv =

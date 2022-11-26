@@ -23,9 +23,9 @@
 #include <vector>
 
 #include "benchmark/benchmark.h"
-#include "yasl/base/exception.h"
-#include "yasl/base/int128.h"
-#include "yasl/link/test_util.h"
+#include "yacl/base/exception.h"
+#include "yacl/base/int128.h"
+#include "yacl/link/test_util.h"
 
 #include "spu/psi/core/bc22_psi/bc22_psi.h"
 #include "spu/psi/core/ecdh_oprf_psi.h"
@@ -54,8 +54,8 @@ class PsiBench : public benchmark::Fixture {
       size_t numel = state.range(0);                                      \
       auto a_items = psi::test::CreateRangeItems(1, numel);               \
       auto b_items = psi::test::CreateRangeItems(2, numel);               \
-      auto ctxs = yasl::link::test::SetupWorld(2);                        \
-      auto proc = [](const std::shared_ptr<yasl::link::Context>& ctx,     \
+      auto ctxs = yacl::link::test::SetupWorld(2);                        \
+      auto proc = [](const std::shared_ptr<yacl::link::Context>& ctx,     \
                      const std::vector<std::string>& items,               \
                      size_t target_rank) -> std::vector<std::string> {    \
         const auto curve = psi::test::GetOverrideCurveType();             \
@@ -137,10 +137,10 @@ PSI_BM_DEFINE_ECDH()
       size_t numel = state.range(0);                                    \
       auto a_items = psi::test::CreateRangeItems(1, numel);             \
       auto b_items = psi::test::CreateRangeItems(2, numel);             \
-      auto ctxs = yasl::link::test::SetupWorld(2);                      \
+      auto ctxs = yacl::link::test::SetupWorld(2);                      \
                                                                         \
       /* We let bob obtains the final result */                         \
-      auto a_proc = [](const std::shared_ptr<yasl::link::Context>& ctx, \
+      auto a_proc = [](const std::shared_ptr<yacl::link::Context>& ctx, \
                        const std::vector<std::string>& items) {         \
         EcdhOprfPsiOptions options;                                     \
         options.curve_type = (CurveType);                               \
@@ -157,7 +157,7 @@ PSI_BM_DEFINE_ECDH()
         ECDH_OPRF_SENDER_ONLINE()                                       \
       };                                                                \
                                                                         \
-      auto b_proc = [](const std::shared_ptr<yasl::link::Context>& ctx, \
+      auto b_proc = [](const std::shared_ptr<yacl::link::Context>& ctx, \
                        const std::vector<std::string>& items) {         \
         EcdhOprfPsiOptions options;                                     \
         options.curve_type = (CurveType);                               \
@@ -197,20 +197,20 @@ BENCHMARK_DEFINE_F(PsiBench, KkrtPsi)
     size_t numel = state.range(0);
     auto a_items = psi::test::CreateItemHashes(1, numel);
     auto b_items = psi::test::CreateItemHashes(2, numel);
-    auto ctxs = yasl::link::test::SetupWorld(2);
+    auto ctxs = yacl::link::test::SetupWorld(2);
 
     /* Sender */
-    auto a_proc = [](const std::shared_ptr<yasl::link::Context>& ctx,
+    auto a_proc = [](const std::shared_ptr<yacl::link::Context>& ctx,
                      const std::vector<uint128_t>& items) {
-      yasl::BaseRecvOptions recv_opts;
+      yacl::BaseRecvOptions recv_opts;
       psi::GetKkrtOtSenderOptions(ctx, 512, &recv_opts);
       psi::KkrtPsiSend(ctx, recv_opts, items);
     };
 
     /* Receiver */
-    auto b_proc = [](const std::shared_ptr<yasl::link::Context>& ctx,
+    auto b_proc = [](const std::shared_ptr<yacl::link::Context>& ctx,
                      const std::vector<uint128_t>& items) {
-      yasl::BaseSendOptions send_opts;
+      yacl::BaseSendOptions send_opts;
       psi::GetKkrtOtReceiverOptions(ctx, 512, &send_opts);
       return psi::KkrtPsiRecv(ctx, send_opts, items);
     };
@@ -232,20 +232,20 @@ BENCHMARK_DEFINE_F(PsiBench, Bc22Psi)
     size_t numel = state.range(0);
     auto a_items = psi::test::CreateRangeItems(1, numel);
     auto b_items = psi::test::CreateRangeItems(2, numel);
-    auto ctxs = yasl::link::test::SetupWorld(2);
+    auto ctxs = yacl::link::test::SetupWorld(2);
 
     Bc22PcgPsi sender(ctxs[0], PsiRoleType::Sender);
     Bc22PcgPsi receiver(ctxs[1], PsiRoleType::Receiver);
 
     /* Sender */
-    auto a_proc = [](const std::shared_ptr<yasl::link::Context>& ctx,
+    auto a_proc = [](const std::shared_ptr<yacl::link::Context>& ctx,
                      const std::vector<std::string>& items) {
       Bc22PcgPsi party(ctx, PsiRoleType::Sender);
       party.RunPsi(items);
     };
 
     /* Receiver */
-    auto b_proc = [](const std::shared_ptr<yasl::link::Context>& ctx,
+    auto b_proc = [](const std::shared_ptr<yacl::link::Context>& ctx,
                      const std::vector<std::string>& items) {
       Bc22PcgPsi party(ctx, PsiRoleType::Receiver);
       party.RunPsi(items);
@@ -270,16 +270,16 @@ BENCHMARK_DEFINE_F(PsiBench, Bc22Psi)
       size_t numel = state.range(0);                                    \
       auto a_items = psi::test::CreateRangeItems(1, numel);             \
       auto b_items = psi::test::CreateRangeItems(2, numel);             \
-      auto ctxs = yasl::link::test::SetupWorld(2);                      \
+      auto ctxs = yacl::link::test::SetupWorld(2);                      \
                                                                         \
       /* Sender */                                                      \
-      auto a_proc = [](const std::shared_ptr<yasl::link::Context>& ctx, \
+      auto a_proc = [](const std::shared_ptr<yacl::link::Context>& ctx, \
                        const std::vector<std::string>& items) {         \
         psi::MiniPsiSend(ctx, items);                                   \
       };                                                                \
                                                                         \
       /* Receiver */                                                    \
-      auto b_proc = [](const std::shared_ptr<yasl::link::Context>& ctx, \
+      auto b_proc = [](const std::shared_ptr<yacl::link::Context>& ctx, \
                        const std::vector<std::string>& items) {         \
         psi::MiniPsiRecv(ctx, items);                                   \
       };                                                                \

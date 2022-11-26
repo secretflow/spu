@@ -17,7 +17,7 @@
 #include "absl/strings/escaping.h"
 #include "absl/strings/str_join.h"
 #include "absl/strings/string_view.h"
-#include "yasl/base/exception.h"
+#include "yacl/base/exception.h"
 
 #include "spu/psi/utils/utils.h"
 
@@ -25,7 +25,7 @@ namespace spu::psi {
 
 std::vector<std::string> MemoryBatchProvider::ReadNextBatch(size_t batch_size) {
   std::vector<std::string> batch;
-  YASL_ENFORCE(cursor_index_ <= items_.size());
+  YACL_ENFORCE(cursor_index_ <= items_.size());
   size_t n_items = std::min(batch_size, items_.size() - cursor_index_);
   batch.insert(batch.end(), items_.begin() + cursor_index_,
                items_.begin() + cursor_index_ + n_items);
@@ -53,7 +53,7 @@ std::vector<std::string> CsvBatchProvider::ReadNextBatch(size_t batch_size) {
     std::vector<absl::string_view> tokens = absl::StrSplit(line, ',');
     std::vector<absl::string_view> targets;
     for (size_t fidx : analyzer_.target_indices()) {
-      YASL_ENFORCE(fidx < tokens.size(),
+      YACL_ENFORCE(fidx < tokens.size(),
                    "Illegal line due to no field at index={}, line={}", fidx,
                    line);
       targets.push_back(absl::StripAsciiWhitespace(tokens[fidx]));

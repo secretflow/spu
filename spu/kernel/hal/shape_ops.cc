@@ -35,9 +35,9 @@ std::vector<int64_t> deducePadShape(
     absl::Span<const int64_t> edge_padding_high,
     absl::Span<const int64_t> interior_padding) {
   std::vector<int64_t> dims;
-  YASL_ENFORCE(edge_padding_low.size() == input_shape.size());
-  YASL_ENFORCE(edge_padding_high.size() == input_shape.size());
-  YASL_ENFORCE(interior_padding.size() == input_shape.size());
+  YACL_ENFORCE(edge_padding_low.size() == input_shape.size());
+  YACL_ENFORCE(edge_padding_high.size() == input_shape.size());
+  YACL_ENFORCE(interior_padding.size() == input_shape.size());
   for (size_t i = 0; i < input_shape.size(); i++) {
     dims.emplace_back(edge_padding_low[i] + edge_padding_high[i] +
                       interior_padding[i] * (input_shape[i] - 1) +
@@ -60,13 +60,13 @@ Value transpose(HalContext* ctx, const Value& in,
     }
   } else {
     std::vector<int64_t> reverse_permutation(in.shape().size(), -1);
-    YASL_ENFORCE(permutation.size() == in.shape().size(),
+    YACL_ENFORCE(permutation.size() == in.shape().size(),
                  "axes don't match array, permutation = {}, input shape = {}",
                  fmt::join(permutation, "x"), fmt::join(in.shape(), "x"));
 
     for (size_t i = 0; i < permutation.size(); i++) {
       auto axis = permutation[i];
-      YASL_ENFORCE(reverse_permutation[axis] == -1,
+      YACL_ENFORCE(reverse_permutation[axis] == -1,
                    "repeated axis in transpose");
       reverse_permutation[axis] = i;
       perm[i] = axis;
@@ -96,14 +96,14 @@ Value slice(HalContext* ctx, const Value& in,
             absl::Span<const int64_t> strides) {
   SPU_TRACE_HAL_DISP(ctx, in, start_indices, end_indices, strides);
 
-  YASL_ENFORCE(in.shape().size() == start_indices.size());
-  YASL_ENFORCE(in.shape().size() == end_indices.size());
-  YASL_ENFORCE(strides.empty() || (in.shape().size() == strides.size()));
+  YACL_ENFORCE(in.shape().size() == start_indices.size());
+  YACL_ENFORCE(in.shape().size() == end_indices.size());
+  YACL_ENFORCE(strides.empty() || (in.shape().size() == strides.size()));
 
   std::vector<int64_t> new_shape(in.shape().size(), 0);
   std::vector<int64_t> new_strides(in.strides());
   for (size_t idx = 0; idx < in.shape().size(); ++idx) {
-    YASL_ENFORCE(end_indices[idx] <= in.shape()[idx],
+    YACL_ENFORCE(end_indices[idx] <= in.shape()[idx],
                  "Slice end at axis {} = {} is larger than input shape {}", idx,
                  end_indices[idx], in.shape()[idx]);
     new_shape[idx] = end_indices[idx] - start_indices[idx];
@@ -207,7 +207,7 @@ Value reshape(HalContext* ctx, const Value& in,
     return in;
   }
 
-  YASL_ENFORCE(calcNumel(in.shape()) == calcNumel(to_shape),
+  YACL_ENFORCE(calcNumel(in.shape()) == calcNumel(to_shape),
                "reshape, numel mismatch, lhs={}, rhs={}", in.shape(), to_shape);
 
   std::vector<int64_t> new_strides(to_shape.size(), 0);
@@ -252,7 +252,7 @@ Value reverse(HalContext* ctx, const Value& in,
   int64_t el_offset = 0;
 
   for (int64_t axis : dimensions) {
-    YASL_ENFORCE(axis < static_cast<int64_t>(in.shape().size()));
+    YACL_ENFORCE(axis < static_cast<int64_t>(in.shape().size()));
     new_strides[axis] *= -1;
     el_offset += in.strides()[axis] * (in.shape()[axis] - 1);
   }
@@ -267,7 +267,7 @@ Value pad(HalContext* ctx, const Value& in, const Value& padding_value,
           absl::Span<const int64_t> edge_padding_low,
           absl::Span<const int64_t> edge_padding_high,
           absl::Span<const int64_t> interior_padding) {
-  YASL_ENFORCE(in.storage_type() == padding_value.storage_type());
+  YACL_ENFORCE(in.storage_type() == padding_value.storage_type());
   Value result = expand(ctx, padding_value,
                         deducePadShape(in.shape(), edge_padding_low,
                                        edge_padding_high, interior_padding));
@@ -277,7 +277,7 @@ Value pad(HalContext* ctx, const Value& in, const Value& padding_value,
 
   auto elsize = result.elsize();
 
-  yasl::parallel_for(0, in.numel(), 1024, [&](int64_t begin, int64_t end) {
+  yacl::parallel_for(0, in.numel(), 1024, [&](int64_t begin, int64_t end) {
     std::vector<int64_t> unflatten = unflattenIndex(begin, input_shape);
 
     std::vector<int64_t> target_index(result_shape.size());
@@ -309,7 +309,7 @@ Value pad(HalContext* ctx, const Value& in, const Value& padding_value,
 
 Value expand(HalContext* ctx, const Value& in,
              absl::Span<const int64_t> to_shape) {
-  YASL_ENFORCE(in.numel() == 1, "Only support expanding scalar");
+  YACL_ENFORCE(in.numel() == 1, "Only support expanding scalar");
   Value ret({in.data().eltype(), to_shape}, in.dtype());
   // compute number of elements need to copy
   size_t numel = ret.numel();

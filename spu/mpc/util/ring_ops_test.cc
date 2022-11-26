@@ -32,7 +32,7 @@ static ArrayRef makeRandomArray(FieldType field, size_t numel, size_t stride) {
   const Type ty = makeType<RingTy>(field);
   const size_t buf_size = SizeOf(field) * numel * stride;
   // make random buffer.
-  auto buf = std::make_shared<yasl::Buffer>(buf_size);
+  auto buf = std::make_shared<yacl::Buffer>(buf_size);
   {
     size_t numOfInts = buf_size / sizeof(int32_t);
     auto* begin = buf->data<int32_t>();

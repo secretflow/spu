@@ -141,7 +141,7 @@ std::vector<spu::Value> Sort(HalContext *ctx,
   std::vector<int64_t> zero_base(rank, 0);
   std::vector<int64_t> increment(rank, 1);
   int64_t sort_dim_elements = key_shape[sort_dim];
-  YASL_ENFORCE(
+  YACL_ENFORCE(
       sort_dim >= 0 && sort_dim < static_cast<int64_t>(increment.size()),
       "Unexpected out-of-bound sort dimension {}"
       " accessing increment of size {} ",

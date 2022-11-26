@@ -57,9 +57,9 @@ spu::Value DynamicUpdateSlice(
   auto slice = hal::slice(ctx, result, start_indicies_i64, limit, strides);
 
   // (xiaochen): I know it's hacky here, but make life easier
-  YASL_ENFORCE(slice.data().buf()->data() == result.data().buf()->data(),
+  YACL_ENFORCE(slice.data().buf()->data() == result.data().buf()->data(),
                "slice needs to return a ref to input");
-  YASL_ENFORCE(slice.shape() == update.shape(),
+  YACL_ENFORCE(slice.shape() == update.shape(),
                "slice shape should equal to update shape");
 
   std::vector<int64_t> indicies(slice.shape().size(), 0);

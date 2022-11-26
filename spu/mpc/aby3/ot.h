@@ -16,7 +16,7 @@
 
 #include <optional>
 
-#include "yasl/link/link.h"
+#include "yacl/link/link.h"
 
 #include "spu/core/array_ref.h"
 #include "spu/core/type_util.h"

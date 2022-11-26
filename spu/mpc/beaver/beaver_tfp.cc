@@ -16,8 +16,8 @@
 
 #include <random>
 
-#include "yasl/link/link.h"
-#include "yasl/utils/serialize.h"
+#include "yacl/link/link.h"
+#include "yacl/utils/serialize.h"
 
 #include "spu/mpc/beaver/prg_tensor.h"
 #include "spu/mpc/util/ring_ops.h"
@@ -30,21 +30,21 @@ uint128_t GetHardwareRandom128() {
   // call random_device four times, make sure uint128 is random in 2^128 set.
   uint64_t lhs = static_cast<uint64_t>(rd()) << 32 | rd();
   uint64_t rhs = static_cast<uint64_t>(rd()) << 32 | rd();
-  return yasl::MakeUint128(lhs, rhs);
+  return yacl::MakeUint128(lhs, rhs);
 }
 
 }  // namespace
 
-BeaverTfpUnsafe::BeaverTfpUnsafe(std::shared_ptr<yasl::link::Context> lctx)
+BeaverTfpUnsafe::BeaverTfpUnsafe(std::shared_ptr<yacl::link::Context> lctx)
     : lctx_(lctx), seed_(GetHardwareRandom128()), counter_(0) {
-  auto buf = yasl::SerializeUint128(seed_);
-  std::vector<yasl::Buffer> all_bufs =
-      yasl::link::Gather(lctx_, buf, 0, "BEAVER_TFP:SYNC_SEEDS");
+  auto buf = yacl::SerializeUint128(seed_);
+  std::vector<yacl::Buffer> all_bufs =
+      yacl::link::Gather(lctx_, buf, 0, "BEAVER_TFP:SYNC_SEEDS");
 
   if (lctx_->Rank() == 0) {
     // Collects seeds from all parties.
     for (size_t rank = 0; rank < lctx_->WorldSize(); ++rank) {
-      PrgSeed seed = yasl::DeserializeUint128(all_bufs[rank]);
+      PrgSeed seed = yacl::DeserializeUint128(all_bufs[rank]);
       tp_.setSeed(rank, lctx_->WorldSize(), seed);
     }
   }

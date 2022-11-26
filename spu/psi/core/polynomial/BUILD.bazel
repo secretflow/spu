@@ -27,7 +27,7 @@ spu_cc_library(
     deps = [
         "@com_github_openssl_openssl//:openssl",
         "@com_google_absl//absl/strings",
-        "@yasl//yasl/base:exception",
+        "@yacl//yacl/base:exception",
     ],
 )
 
@@ -36,6 +36,6 @@ spu_cc_test(
     srcs = ["polynomial_test.cc"],
     deps = [
         ":polynomial",
-        "@yasl//yasl/crypto:pseudo_random_generator",
+        "@yacl//yacl/crypto/tools:prg",
     ],
 )

@@ -15,10 +15,11 @@
 #include "spu/psi/utils/utils.h"
 
 #include "spdlog/spdlog.h"
-#include "yasl/base/exception.h"
+#include "yacl/base/exception.h"
 
 #include "spu/psi/io/io.h"
 #include "spu/psi/utils/csv_header_analyzer.h"
+#include "spu/psi/utils/serialize.h"
 
 namespace spu::psi {
 
@@ -74,7 +75,7 @@ void MultiKeySort(const std::string& in_csv, const std::string& out_csv,
     size_t key_index = kOffset + index;
     sort_keys.push_back(fmt::format("--key={},{}", key_index, key_index));
   }
-  YASL_ENFORCE(sort_keys.size() == keys.size(),
+  YACL_ENFORCE(sort_keys.size() == keys.size(),
                "mismatched header, field_names={}, line={}",
                fmt::join(keys, ","), line);
 
@@ -86,7 +87,7 @@ void MultiKeySort(const std::string& in_csv, const std::string& out_csv,
   SPDLOG_INFO("Executing sort scripts: {}", cmd);
   int ret = system(cmd.c_str());
   SPDLOG_INFO("Finished sort scripts: {}, ret={}", cmd, ret);
-  YASL_ENFORCE(ret == 0, "failed to execute cmd={}, ret={}", cmd, ret);
+  YACL_ENFORCE(ret == 0, "failed to execute cmd={}, ret={}", cmd, ret);
 }
 
 void FilterFileByIndices(const std::string& input, const std::string& output,
@@ -116,7 +117,7 @@ void FilterFileByIndices(const std::string& input, const std::string& output,
     }
     idx++;
   }
-  YASL_ENFORCE(target_count == indices.size(),
+  YACL_ENFORCE(target_count == indices.size(),
                "logstic error, indices.size={}, target_count={}, please be "
                "sure the `indices` is sorted");
 
@@ -126,6 +127,20 @@ void FilterFileByIndices(const std::string& input, const std::string& output,
 
 std::string KeysJoin(const std::vector<absl::string_view>& keys) {
   return absl::StrJoin(keys, "-");
+}
+
+std::vector<size_t> AllGatherItemsSize(
+    const std::shared_ptr<yacl::link::Context>& link_ctx, size_t self_size) {
+  std::vector<size_t> items_size_list(link_ctx->WorldSize());
+
+  std::vector<yacl::Buffer> items_size_buf_list = yacl::link::AllGather(
+      link_ctx, utils::SerializeSize(self_size), "PSI:SYNC_SIZE");
+
+  for (size_t idx = 0; idx < items_size_buf_list.size(); idx++) {
+    items_size_list[idx] = utils::DeserializeSize(items_size_buf_list[idx]);
+  }
+
+  return items_size_list;
 }
 
 }  // namespace spu::psi

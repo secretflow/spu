@@ -15,12 +15,12 @@
 #include "spu/pir/seal_pir_utils.h"
 
 #include "spdlog/spdlog.h"
-#include "yasl/base/exception.h"
+#include "yacl/base/exception.h"
 
 namespace spu::pir {
 
 std::vector<uint8_t> MemoryDbElementProvider::ReadElement(size_t index) {
-  YASL_ENFORCE(index < items_.size());
+  YACL_ENFORCE(index < items_.size());
 
   std::vector<uint8_t> element(element_size_);
 
@@ -30,7 +30,7 @@ std::vector<uint8_t> MemoryDbElementProvider::ReadElement(size_t index) {
 
 std::vector<uint8_t> MemoryDbElementProvider::ReadElement(size_t index,
                                                           size_t size) {
-  YASL_ENFORCE((index + size) <= items_.size());
+  YACL_ENFORCE((index + size) <= items_.size());
 
   std::vector<uint8_t> element(size);
 

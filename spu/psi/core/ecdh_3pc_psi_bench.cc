@@ -16,8 +16,8 @@
 #include <iostream>
 
 #include "benchmark/benchmark.h"
-#include "yasl/base/exception.h"
-#include "yasl/link/test_util.h"
+#include "yacl/base/exception.h"
+#include "yacl/link/test_util.h"
 
 #include "spu/psi/core/ecdh_3pc_psi.h"
 #include "spu/psi/utils/test_utils.h"
@@ -30,7 +30,7 @@ static void BM_Ecdh3PcPsi(benchmark::State& state) {
     auto bob_items = spu::psi::test::CreateRangeItems(2, n);
     auto carol_items = spu::psi::test::CreateRangeItems(3, n);
 
-    auto contexts = yasl::link::test::SetupWorld(3);
+    auto contexts = yacl::link::test::SetupWorld(3);
 
     // simple runner
     auto psi_func =

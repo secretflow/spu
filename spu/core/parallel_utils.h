@@ -17,7 +17,7 @@
 #include <algorithm>
 #include <cmath>
 
-#include "yasl/utils/parallel.h"
+#include "yacl/utils/parallel.h"
 
 namespace spu {
 
@@ -34,13 +34,13 @@ inline int64_t computeTaskSize(int64_t numel) {
 template <class F>
 inline void pfor(const int64_t begin, const int64_t end, F&& f) {
   const int64_t grain_size = computeTaskSize(end - begin);
-  return yasl::parallel_for(begin, end, grain_size, f);
+  return yacl::parallel_for(begin, end, grain_size, f);
 }
 
 template <class F>
 inline void pforeach(const int64_t begin, const int64_t end, F&& fn) {
   const int64_t grain_size = computeTaskSize(end - begin);
-  yasl::parallel_for(begin, end, grain_size, [&](int64_t begin, int64_t end) {
+  yacl::parallel_for(begin, end, grain_size, [&](int64_t begin, int64_t end) {
     for (int64_t idx = begin; idx < end; idx++) {
       fn(idx);
     }

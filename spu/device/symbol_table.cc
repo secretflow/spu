@@ -22,7 +22,7 @@ void SymbolTable::setVar(const std::string &name, const spu::Value &val) {
 
 spu::Value SymbolTable::getVar(const std::string &name) const {
   const auto itr = data_.find(name);
-  YASL_ENFORCE(itr != data_.end(), "symbol {} not found", name);
+  YACL_ENFORCE(itr != data_.end(), "symbol {} not found", name);
   return itr->second;
 }
 

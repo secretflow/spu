@@ -18,7 +18,7 @@
 #include <memory>
 
 #include "openssl/bn.h"
-#include "yasl/base/exception.h"
+#include "yacl/base/exception.h"
 
 namespace spu::psi {
 
@@ -37,7 +37,7 @@ BigNumPtr GetBigNumPtr(int v) {
 
 BigNumPtr GetBigNumPtr(std::string_view v) {
   BIGNUM *bn = BN_bin2bn((const uint8_t *)v.data(), v.length(), NULL);
-  YASL_ENFORCE(bn != NULL);
+  YACL_ENFORCE(bn != NULL);
   return BigNumPtr(bn);
 }
 
@@ -60,7 +60,7 @@ std::vector<BigNumPtr> GetBigNumPtrVector(
   for (size_t idx = 0; idx < data_vec.size(); idx++) {
     BIGNUM *bn = BN_bin2bn((const uint8_t *)data_vec[idx].data(),
                            data_vec[idx].length(), NULL);
-    YASL_ENFORCE(bn != NULL);
+    YACL_ENFORCE(bn != NULL);
     res[idx] = BigNumPtr(bn);
   }
 
@@ -122,7 +122,7 @@ std::vector<std::string> InterpolatePolynomial(
     const std::vector<absl::string_view> &poly_y, std::string_view p_str) {
   int64_t m = poly_x.size();
 
-  YASL_ENFORCE(poly_y.size() == poly_x.size());
+  YACL_ENFORCE(poly_y.size() == poly_x.size());
 
   BigNumPtr bn_p = GetBigNumPtr(p_str);
 

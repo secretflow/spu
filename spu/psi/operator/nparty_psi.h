@@ -17,7 +17,7 @@
 #include <string>
 #include <vector>
 
-#include "yasl/link/link.h"
+#include "yacl/link/link.h"
 
 #include "spu/psi/core/ecdh_psi.h"
 #include "spu/psi/operator/base_operator.h"
@@ -40,20 +40,23 @@ namespace spu::psi {
 // 3rd round ||  <---->
 class NpartyPsiOperator : public PsiBaseOperator {
  public:
-  enum class PsiType {
+  enum class PsiProtocol {
     Ecdh,
     Kkrt,
   };
   struct Options {
-    std::shared_ptr<yasl::link::Context> link_ctx;
+    std::shared_ptr<yacl::link::Context> link_ctx;
 
-    PsiType psi_type;
+    PsiProtocol psi_proto;
     CurveType curve_type = CurveType::CURVE_25519;
     size_t master_rank = 0;
 
     // for ecdh
     size_t batch_size = kEcdhPsiBatchSize;
   };
+
+  static Options ParseConfig(const MemoryPsiConfig& config,
+                             const std::shared_ptr<yacl::link::Context>& lctx);
 
  public:
   explicit NpartyPsiOperator(const Options& options);

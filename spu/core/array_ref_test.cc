@@ -29,7 +29,7 @@ TEST(ArrayRefTest, Empty) {
 
 TEST(ArrayRefTest, Simple) {
   constexpr size_t kBufSize = 100;
-  auto mem = std::make_shared<yasl::Buffer>(kBufSize);
+  auto mem = std::make_shared<yacl::Buffer>(kBufSize);
 
   ArrayRef a(mem, I32, 100 / 4, 1, 0);
 
@@ -90,7 +90,7 @@ TEST(ArrayRefTest, Simple) {
 
 TEST(ArrayRefTest, Slice) {
   constexpr size_t kBufSize = 100;
-  auto mem = std::make_shared<yasl::Buffer>(kBufSize);
+  auto mem = std::make_shared<yacl::Buffer>(kBufSize);
 
   // GIVEN
   ArrayRef a(mem, I32, 100 / 4, 1, 0);
@@ -133,7 +133,7 @@ TEST(ArrayRefTest, Slice) {
 
 TEST(ArrayRefTest, Strides) {
   // Make 3 element, strides = 2 array
-  ArrayRef a(std::make_shared<yasl::Buffer>(6 * sizeof(int32_t)),
+  ArrayRef a(std::make_shared<yacl::Buffer>(6 * sizeof(int32_t)),
              makePtType(PT_I32), 3, 2, 0);
 
   EXPECT_EQ(a.numel(), 3);

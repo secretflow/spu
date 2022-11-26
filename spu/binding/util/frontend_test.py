@@ -37,14 +37,14 @@ class UnitTests(unittest.TestCase):
         self.assertEqual(executable.name, "add")
         self.assertEqual(executable.input_names, ["in1", "in2"])
         self.assertEqual(executable.output_names, ["test-out0"])
-        self.assertEqual(
-            executable.code,
-            b"module @xla_computation_add.0 {\n"
-            b"  func.func @main(%arg0: tensor<2x!pphlo.pub<i32>>,"
-            b" %arg1: tensor<2x!pphlo.pub<i32>>) -> tensor<2x!pphlo.pub<i32>> {\n"
-            b"    %0 = \"pphlo.add\"(%arg0, %arg1) : (tensor<2x!pphlo.pub<i32>>,"
-            b" tensor<2x!pphlo.pub<i32>>) -> tensor<2x!pphlo.pub<i32>>\n"
-            b"    return %0 : tensor<2x!pphlo.pub<i32>>\n  }\n}\n",
+        self.assertMultiLineEqual(
+            executable.code.decode(),
+            "module @xla_computation_add {\n"
+            "  func.func @main(%arg0: tensor<2x!pphlo.pub<i32>>,"
+            " %arg1: tensor<2x!pphlo.pub<i32>>) -> tensor<2x!pphlo.pub<i32>> {\n"
+            "    %0 = \"pphlo.add\"(%arg0, %arg1) : (tensor<2x!pphlo.pub<i32>>,"
+            " tensor<2x!pphlo.pub<i32>>) -> tensor<2x!pphlo.pub<i32>>\n"
+            "    return %0 : tensor<2x!pphlo.pub<i32>>\n  }\n}\n",
         )
         self.assertEqual(output.shape, (2,))
         self.assertEqual(output.dtype, np.dtype("int32"))
@@ -62,14 +62,14 @@ class UnitTests(unittest.TestCase):
         self.assertEqual(executable.name, "add")
         self.assertEqual(executable.input_names, ["in1", "in2"])
         self.assertEqual(executable.output_names, ["test-out0"])
-        self.assertEqual(
-            executable.code,
-            b"module @a_inference_add_9__.9 {\n"
-            b"  func.func @main(%arg0: tensor<2x!pphlo.pub<i64>>,"
-            b" %arg1: tensor<2x!pphlo.pub<i64>>) -> tensor<2x!pphlo.pub<i64>> {\n"
-            b"    %0 = \"pphlo.add\"(%arg0, %arg1) : (tensor<2x!pphlo.pub<i64>>,"
-            b" tensor<2x!pphlo.pub<i64>>) -> tensor<2x!pphlo.pub<i64>>\n"
-            b"    return %0 : tensor<2x!pphlo.pub<i64>>\n  }\n}\n",
+        self.assertMultiLineEqual(
+            executable.code.decode(),
+            "module @a_inference_add_9__.9 {\n"
+            "  func.func @main(%arg0: tensor<2x!pphlo.pub<i64>>,"
+            " %arg1: tensor<2x!pphlo.pub<i64>>) -> tensor<2x!pphlo.pub<i64>> {\n"
+            "    %0 = \"pphlo.add\"(%arg0, %arg1) : (tensor<2x!pphlo.pub<i64>>,"
+            " tensor<2x!pphlo.pub<i64>>) -> tensor<2x!pphlo.pub<i64>>\n"
+            "    return %0 : tensor<2x!pphlo.pub<i64>>\n  }\n}\n",
         )
         self.assertEqual(output.shape, (2,))
         self.assertEqual(output.dtype, np.dtype("int64"))

@@ -21,8 +21,8 @@
 #include <unordered_map>
 #include <vector>
 
-#include "yasl/link/link.h"
-#include "yasl/mpctools/ot/options.h"
+#include "yacl/crypto/primitives/ot/options.h"
+#include "yacl/link/link.h"
 
 //
 // implementation of KKRT16 PSI protocol
@@ -52,12 +52,12 @@ struct KkrtPsiOptions {
 };
 
 void GetKkrtOtSenderOptions(
-    const std::shared_ptr<yasl::link::Context>& link_ctx, const size_t num_ot,
-    yasl::BaseRecvOptions* recv_opts);
+    const std::shared_ptr<yacl::link::Context>& link_ctx, const size_t num_ot,
+    yacl::BaseRecvOptions* recv_opts);
 
 void GetKkrtOtReceiverOptions(
-    const std::shared_ptr<yasl::link::Context>& link_ctx, const size_t num_ot,
-    yasl::BaseSendOptions* send_opts);
+    const std::shared_ptr<yacl::link::Context>& link_ctx, const size_t num_ot,
+    yacl::BaseSendOptions* send_opts);
 
 KkrtPsiOptions GetDefaultKkrtPsiOptions();
 
@@ -65,24 +65,24 @@ KkrtPsiOptions GetDefaultKkrtPsiOptions();
 // sender and receiver psi input data shoud be prepocessed using hash algorithm.
 // like sha256 or blake2/blake3 hash algorithm or aes_ecb(key, x)^x
 //
-void KkrtPsiSend(const std::shared_ptr<yasl::link::Context>& link_ctx,
+void KkrtPsiSend(const std::shared_ptr<yacl::link::Context>& link_ctx,
                  const KkrtPsiOptions& kkrt_psi_options,
-                 const yasl::BaseRecvOptions& base_options,
+                 const yacl::BaseRecvOptions& base_options,
                  const std::vector<uint128_t>& items_hash);
 
 std::vector<std::size_t> KkrtPsiRecv(
-    const std::shared_ptr<yasl::link::Context>& link_ctx,
+    const std::shared_ptr<yacl::link::Context>& link_ctx,
     const KkrtPsiOptions& kkrt_psi_options,
-    const yasl::BaseSendOptions& base_options,
+    const yacl::BaseSendOptions& base_options,
     const std::vector<uint128_t>& items_hash);
 
-void KkrtPsiSend(const std::shared_ptr<yasl::link::Context>& link_ctx,
-                 const yasl::BaseRecvOptions& base_options,
+void KkrtPsiSend(const std::shared_ptr<yacl::link::Context>& link_ctx,
+                 const yacl::BaseRecvOptions& base_options,
                  const std::vector<uint128_t>& items_hash);
 
 std::vector<std::size_t> KkrtPsiRecv(
-    const std::shared_ptr<yasl::link::Context>& link_ctx,
-    const yasl::BaseSendOptions& base_options,
+    const std::shared_ptr<yacl::link::Context>& link_ctx,
+    const yacl::BaseSendOptions& base_options,
     const std::vector<uint128_t>& items_hash);
 
 }  // namespace spu::psi

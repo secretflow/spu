@@ -27,12 +27,15 @@ namespace spu::psi {
 class KkrtPsiOperator : public PsiBaseOperator {
  public:
   struct Options {
-    std::shared_ptr<yasl::link::Context> link_ctx;
+    std::shared_ptr<yacl::link::Context> link_ctx;
 
     size_t receiver_rank = 0;
 
     size_t num_ot = 512;
   };
+
+  static Options ParseConfig(const MemoryPsiConfig& config,
+                             const std::shared_ptr<yacl::link::Context>& lctx);
 
  public:
   explicit KkrtPsiOperator(const Options& options);

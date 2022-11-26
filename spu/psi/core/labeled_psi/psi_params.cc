@@ -47,7 +47,7 @@ std::vector<SEALParams> kSealParams = {
 
 }  // namespace
 
-yasl::Buffer PsiParamsToBuffer(const apsi::PSIParams &psi_params) {
+yacl::Buffer PsiParamsToBuffer(const apsi::PSIParams &psi_params) {
   proto::LabelPsiParamsProto psi_params_proto;
 
   psi_params_proto.set_hash_func_count(
@@ -80,15 +80,15 @@ yasl::Buffer PsiParamsToBuffer(const apsi::PSIParams &psi_params) {
 
   psi_params_proto.set_allocated_seal_params(seal_params_proto);
 
-  yasl::Buffer buffer(psi_params_proto.ByteSizeLong());
+  yacl::Buffer buffer(psi_params_proto.ByteSizeLong());
   psi_params_proto.SerializePartialToArray(buffer.data(), buffer.size());
   return buffer;
 }
 
-apsi::PSIParams ParsePsiParamsProto(const yasl::Buffer &buffer) {
+apsi::PSIParams ParsePsiParamsProto(const yacl::Buffer &buffer) {
   proto::LabelPsiParamsProto psi_params_proto;
 
-  YASL_ENFORCE(psi_params_proto.ParseFromArray(buffer.data(), buffer.size()));
+  YACL_ENFORCE(psi_params_proto.ParseFromArray(buffer.data(), buffer.size()));
 
   return ParsePsiParamsProto(psi_params_proto);
 }
@@ -250,7 +250,7 @@ apsi::PSIParams GetPsiParams(size_t nr, size_t ns) {
   } else if (seal_params.plain_modulus > 0) {
     apsi_seal_params.set_plain_modulus(seal_params.plain_modulus);
   } else {
-    YASL_THROW(
+    YACL_THROW(
         "SEALParams error, must set plain_modulus or plain_modulus_bits");
   }
 

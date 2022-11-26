@@ -15,8 +15,8 @@
 #pragma once
 
 #include "absl/types/span.h"
-#include "yasl/crypto/pseudo_random_generator.h"
-#include "yasl/link/link.h"
+#include "yacl/crypto/tools/prg.h"
+#include "yacl/link/link.h"
 
 #include "spu/core/array_ref.h"
 #include "spu/mpc/object.h"
@@ -46,10 +46,10 @@ class PrgState : public State {
  public:
   static constexpr char kBindName[] = "PrgState";
   static constexpr auto kAesType =
-      yasl::SymmetricCrypto::CryptoType::AES128_CTR;
+      yacl::SymmetricCrypto::CryptoType::AES128_CTR;
 
   PrgState();
-  explicit PrgState(std::shared_ptr<yasl::link::Context> lctx);
+  explicit PrgState(std::shared_ptr<yacl::link::Context> lctx);
 
   ArrayRef genPriv(FieldType field, size_t numel);
 
@@ -68,7 +68,7 @@ class PrgState : public State {
   template <typename T>
   void fillPriv(absl::Span<T> r) {
     priv_counter_ =
-        yasl::FillPseudoRandom(kAesType, priv_seed_, 0, priv_counter_, r);
+        yacl::FillPseudoRandom(kAesType, priv_seed_, 0, priv_counter_, r);
   }
 
   template <typename T>
@@ -77,16 +77,16 @@ class PrgState : public State {
     uint64_t new_counter = prss_counter_;
     if (!ignore_first) {
       new_counter =
-          yasl::FillPseudoRandom(kAesType, self_seed_, 0, prss_counter_, r0);
+          yacl::FillPseudoRandom(kAesType, self_seed_, 0, prss_counter_, r0);
     }
     if (!ignore_second) {
       new_counter =
-          yasl::FillPseudoRandom(kAesType, next_seed_, 0, prss_counter_, r1);
+          yacl::FillPseudoRandom(kAesType, next_seed_, 0, prss_counter_, r1);
     }
 
     if (new_counter == prss_counter_) {
       // both part ignored, dummy run to update counter...
-      new_counter = yasl::DummyUpdateRandomCount(prss_counter_, r0);
+      new_counter = yacl::DummyUpdateRandomCount(prss_counter_, r0);
     }
     prss_counter_ = new_counter;
   }

@@ -30,7 +30,7 @@ namespace {
 size_t maxNumBits(const ArrayRef& lhs, const ArrayRef& rhs) {
   size_t res = std::max(lhs.eltype().as<BShare>()->nbits(),
                         rhs.eltype().as<BShare>()->nbits());
-  YASL_ENFORCE(res <= SizeOf(lhs.eltype().as<Ring2k>()->field()) * 8);
+  YACL_ENFORCE(res <= SizeOf(lhs.eltype().as<Ring2k>()->field()) * 8);
   return res;
 }
 
@@ -48,7 +48,7 @@ void CommonTypeB::evaluate(EvalContext* ctx) const {
 
   SPU_TRACE_MPC_DISP(ctx, lhs, rhs);
 
-  YASL_ENFORCE(lhs == rhs, "semi2k always use same bshare type, lhs={}, rhs={}",
+  YACL_ENFORCE(lhs == rhs, "semi2k always use same bshare type, lhs={}, rhs={}",
                lhs, rhs);
 
   ctx->setOutput(lhs);
@@ -60,7 +60,7 @@ void CastTypeB::evaluate(EvalContext* ctx) const {
 
   SPU_TRACE_MPC_DISP(ctx, in, to_type);
 
-  YASL_ENFORCE(in.eltype() == to_type,
+  YACL_ENFORCE(in.eltype() == to_type,
                "semi2k always use same bshare type, lhs={}, rhs={}",
                in.eltype(), to_type);
 
@@ -182,7 +182,7 @@ ArrayRef RShiftB::proc(KernelEvalContext* ctx, const ArrayRef& in,
 
   size_t nbits = in.eltype().as<BShare>()->nbits();
   nbits -= std::min(nbits, bits);
-  YASL_ENFORCE(nbits <= SizeOf(field) * 8);
+  YACL_ENFORCE(nbits <= SizeOf(field) * 8);
 
   return makeBShare(ring_rshift(in, bits), field, nbits);
 }
@@ -202,8 +202,8 @@ ArrayRef BitrevB::proc(KernelEvalContext* ctx, const ArrayRef& in, size_t start,
   SPU_TRACE_MPC_LEAF(ctx, in, start, end);
   const auto field = in.eltype().as<Ring2k>()->field();
 
-  YASL_ENFORCE(start <= end);
-  YASL_ENFORCE(end <= SizeOf(field) * 8);
+  YACL_ENFORCE(start <= end);
+  YACL_ENFORCE(end <= SizeOf(field) * 8);
 
   // TODO: more accurate bits.
   return makeBShare(ring_bitrev(in, start, end), field);

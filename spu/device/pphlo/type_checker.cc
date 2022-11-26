@@ -39,7 +39,7 @@ DataType getDType(const mlir::Type &type) {
       return it.isUnsigned() ? DT_U64 : DT_I64;
     }
   }
-  YASL_THROW("Hit unknown mlir type");
+  YACL_THROW("Hit unknown mlir type");
 }
 
 } // namespace
@@ -53,12 +53,12 @@ std::string toString(const ::mlir::Type &type) {
 
 void checkShape(llvm::ArrayRef<int64_t> mlir_shape,
                 const absl::Span<const int64_t> rt_shape) {
-  YASL_ENFORCE(mlir_shape.size() == rt_shape.size(),
+  YACL_ENFORCE(mlir_shape.size() == rt_shape.size(),
                "Runtime shape mismatch, expected={}, got={}",
                fmt::join(mlir_shape, "x"), fmt::join(rt_shape, "x"));
 
   for (size_t idx = 0; idx < mlir_shape.size(); ++idx) {
-    YASL_ENFORCE(mlir_shape[idx] == rt_shape[idx],
+    YACL_ENFORCE(mlir_shape[idx] == rt_shape[idx],
                  "Runtime shape mismatch at dim {}, expected={}, got={}", idx,
                  fmt::join(mlir_shape, "x"), fmt::join(rt_shape, "x"));
   }
@@ -71,16 +71,16 @@ void PPHloTypeChecker::check(::mlir::Type type, const spu::Value &v) const {
   // dType checker
   mlir::pphlo::TypeTools tool;
   auto expectedType = getDType(tool.getExpressedType(type));
-  YASL_ENFORCE(expectedType == v.dtype(), "Expected Type {}, got {}",
+  YACL_ENFORCE(expectedType == v.dtype(), "Expected Type {}, got {}",
                expectedType, v.dtype());
 
   // vType checker
   if (tool.isMPCType<::mlir::pphlo::PublicType>(type)) {
-    YASL_ENFORCE(v.isPublic());
+    YACL_ENFORCE(v.isPublic());
   } else if (tool.isMPCType<::mlir::pphlo::SecretType>(type)) {
-    YASL_ENFORCE(v.isSecret());
+    YACL_ENFORCE(v.isSecret());
   } else {
-    YASL_ENFORCE("Unknown vtype");
+    YACL_ENFORCE("Unknown vtype");
   }
 }
 

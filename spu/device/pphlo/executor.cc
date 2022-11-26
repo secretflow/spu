@@ -19,7 +19,7 @@
 #include "mlir/IR/BuiltinOps.h"
 #include "mlir/IR/Value.h"
 #include "mlir/Parser/Parser.h"
-#include "yasl/base/exception.h"
+#include "yacl/base/exception.h"
 
 #include "spu/device/frame.h"
 #include "spu/device/pphlo/region_executor.h"
@@ -35,7 +35,7 @@ std::mutex ErrorHandlerMutex;
 
 void SPUErrorHandler(void * /*use_data*/, const char *reason,
                      bool /*gen_crash_diag*/) {
-  YASL_THROW(reason);
+  YACL_THROW(reason);
 }
 
 } // namespace
@@ -91,7 +91,7 @@ PPHloExecutor::run(const std::string &code,
   }
 
   auto entry_function = moduleOpRef->lookupSymbol<mlir::func::FuncOp>("main");
-  YASL_ENFORCE(entry_function);
+  YACL_ENFORCE(entry_function);
 
   return executeFunc(entry_function, inputs);
 }

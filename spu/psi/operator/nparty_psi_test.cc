@@ -23,8 +23,8 @@
 #include "absl/strings/str_split.h"
 #include "gtest/gtest.h"
 #include "spdlog/spdlog.h"
-#include "yasl/base/exception.h"
-#include "yasl/link/test_util.h"
+#include "yacl/base/exception.h"
+#include "yacl/link/test_util.h"
 
 #include "spu/psi/utils/test_utils.h"
 
@@ -34,7 +34,8 @@ namespace {
 struct NPartyTestParams {
   std::vector<size_t> item_size;
   size_t intersection_size;
-  NpartyPsiOperator::PsiType psi_type = NpartyPsiOperator::PsiType::Ecdh;
+  NpartyPsiOperator::PsiProtocol psi_type =
+      NpartyPsiOperator::PsiProtocol::Ecdh;
 };
 
 std::vector<std::vector<std::string>> CreateNPartyItems(
@@ -76,11 +77,11 @@ TEST_P(NPartyPsiTest, Works) {
   items = CreateNPartyItems(params);
   size_t master_rank = 0;
 
-  auto ctxs = yasl::link::test::SetupWorld(params.item_size.size());
+  auto ctxs = yacl::link::test::SetupWorld(params.item_size.size());
 
   auto proc = [&](int idx) -> std::vector<std::string> {
     NpartyPsiOperator::Options opts;
-    opts.psi_type = params.psi_type;
+    opts.psi_proto = params.psi_type;
     opts.link_ctx = ctxs[idx];
     opts.master_rank = master_rank;
 
@@ -128,21 +129,21 @@ INSTANTIATE_TEST_SUITE_P(
         //
         NPartyTestParams{{0, 0}, 0},
         // kkrt
-        NPartyTestParams{{0, 3}, 0, NpartyPsiOperator::PsiType::Kkrt},  //
-        NPartyTestParams{{3, 0}, 0, NpartyPsiOperator::PsiType::Kkrt},  //
-        NPartyTestParams{{0, 0}, 0, NpartyPsiOperator::PsiType::Kkrt},  //
-        NPartyTestParams{{4, 3}, 2, NpartyPsiOperator::PsiType::Kkrt},  //
+        NPartyTestParams{{0, 3}, 0, NpartyPsiOperator::PsiProtocol::Kkrt},  //
+        NPartyTestParams{{3, 0}, 0, NpartyPsiOperator::PsiProtocol::Kkrt},  //
+        NPartyTestParams{{0, 0}, 0, NpartyPsiOperator::PsiProtocol::Kkrt},  //
+        NPartyTestParams{{4, 3}, 2, NpartyPsiOperator::PsiProtocol::Kkrt},  //
         //
         NPartyTestParams{
-            {20, 17, 14}, 10, NpartyPsiOperator::PsiType::Kkrt},  //
+            {20, 17, 14}, 10, NpartyPsiOperator::PsiProtocol::Kkrt},  //
         NPartyTestParams{
-            {20, 17, 14, 30}, 10, NpartyPsiOperator::PsiType::Kkrt},  //
+            {20, 17, 14, 30}, 10, NpartyPsiOperator::PsiProtocol::Kkrt},  //
         NPartyTestParams{
-            {20, 17, 14, 30, 35}, 11, NpartyPsiOperator::PsiType::Kkrt},  //
+            {20, 17, 14, 30, 35}, 11, NpartyPsiOperator::PsiProtocol::Kkrt},  //
         NPartyTestParams{
-            {20, 17, 14, 30, 35}, 0, NpartyPsiOperator::PsiType::Kkrt},  //
+            {20, 17, 14, 30, 35}, 0, NpartyPsiOperator::PsiProtocol::Kkrt},  //
 
         //
-        NPartyTestParams{{0, 0}, 0, NpartyPsiOperator::PsiType::Kkrt}));
+        NPartyTestParams{{0, 0}, 0, NpartyPsiOperator::PsiProtocol::Kkrt}));
 
 }  // namespace spu::psi

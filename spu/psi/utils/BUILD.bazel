@@ -25,7 +25,7 @@ spu_cc_library(
     deps = [
         "//spu/psi/io",
         "@llvm-project//llvm:Support",
-        "@yasl//yasl/base:exception",
+        "@yacl//yacl/base:exception",
     ],
 )
 
@@ -48,9 +48,9 @@ spu_cc_library(
         "//spu/psi/io",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/time",
-        "@yasl//yasl/base:exception",
-        "@yasl//yasl/crypto:hash_util",
-        "@yasl//yasl/utils:scope_guard",
+        "@yacl//yacl/base:exception",
+        "@yacl//yacl/crypto/utils:hash_util",
+        "@yacl//yacl/utils:scope_guard",
     ],
 )
 
@@ -59,7 +59,7 @@ spu_cc_library(
     hdrs = ["serialize.h"],
     deps = [
         ":serializable_cc_proto",
-        "@yasl//yasl/base:buffer",
+        "@yacl//yacl/base:buffer",
     ],
 )
 
@@ -77,7 +77,7 @@ spu_cc_library(
     name = "csv_header_analyzer",
     hdrs = ["csv_header_analyzer.h"],
     deps = [
-        "@yasl//yasl/base:exception",
+        "@yacl//yacl/base:exception",
     ],
 )
 
@@ -117,7 +117,7 @@ spu_cc_library(
     deps = [
         ":hash_bucket_cache",
         "@com_google_absl//absl/strings",
-        "@yasl//yasl/base:exception",
+        "@yacl//yacl/base:exception",
     ],
 )
 
@@ -128,7 +128,7 @@ spu_cc_library(
     ],
     deps = [
         "//spu/psi:psi_cc_proto",
-        "@yasl//yasl/crypto:hash_util",
+        "@yacl//yacl/crypto/utils:hash_util",
     ],
 )
 
@@ -138,8 +138,9 @@ spu_cc_library(
     hdrs = ["utils.h"],
     deps = [
         ":csv_header_analyzer",
+        ":serialize",
         "//spu/psi/io",
-        "@yasl//yasl/base:exception",
-        "@yasl//yasl/link",
+        "@yacl//yacl/base:exception",
+        "@yacl//yacl/link",
     ],
 )

@@ -11,12 +11,20 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
 #include "spu/psi/operator/bc22_2party_psi.h"
 
+#include <memory>
+
 #include "spu/psi/core/bc22_psi/bc22_psi.h"
+#include "spu/psi/operator/factory.h"
 
 namespace spu::psi {
+
+Bc22PcgPsiOperator::Options Bc22PcgPsiOperator::ParseConfig(
+    const MemoryPsiConfig& config,
+    const std::shared_ptr<yacl::link::Context>& lctx) {
+  return {lctx, config.receiver_rank()};
+}
 
 Bc22PcgPsiOperator::Bc22PcgPsiOperator(const Options& options)
     : PsiBaseOperator(options.lctx), options_(options) {}
@@ -34,5 +42,18 @@ std::vector<std::string> Bc22PcgPsiOperator::OnRun(
     return {};
   }
 }
+
+namespace {
+
+std::unique_ptr<PsiBaseOperator> CreateOperator(
+    const MemoryPsiConfig& config,
+    const std::shared_ptr<yacl::link::Context>& lctx) {
+  auto options = Bc22PcgPsiOperator::ParseConfig(config, lctx);
+  return std::make_unique<Bc22PcgPsiOperator>(options);
+}
+
+REGISTER_OPERATOR(BC22_PSI_2PC, CreateOperator);
+
+}  // namespace
 
 }  // namespace spu::psi

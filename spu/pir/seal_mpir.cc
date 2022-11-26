@@ -31,7 +31,7 @@ void MultiQueryServer::GenerateSimpleHash() {
       query_options_.seal_options.element_number);
 
   // generate item hash, server and client use same seed
-  yasl::parallel_for(0, query_options_.seal_options.element_number, 1,
+  yacl::parallel_for(0, query_options_.seal_options.element_number, 1,
                      [&](int64_t begin, int64_t end) {
                        for (int idx = begin; idx < end; ++idx) {
                          query_index_hash[idx] = HashItemIndex(idx);
@@ -68,21 +68,21 @@ void MultiQueryServer::GenerateSimpleHash() {
   }
 }
 
-void MultiQueryServer::SetDatabase(yasl::ByteContainerView db_bytes) {
+void MultiQueryServer::SetDatabase(yacl::ByteContainerView db_bytes) {
   std::vector<uint8_t> zero_bytes(query_options_.seal_options.element_size);
   std::memset(zero_bytes.data(), 0, query_options_.seal_options.element_size);
 
   for (size_t idx = 0; idx < cuckoo_params_.NumBins(); ++idx) {
-    std::vector<yasl::ByteContainerView> db_vec;
+    std::vector<yacl::ByteContainerView> db_vec;
 
     for (size_t j = 0; j < simple_hash_[idx].size(); ++j) {
-      db_vec.emplace_back(yasl::ByteContainerView(
+      db_vec.emplace_back(yacl::ByteContainerView(
           &db_bytes[simple_hash_[idx][j] *
                     query_options_.seal_options.element_size],
           query_options_.seal_options.element_size));
     }
     for (size_t j = simple_hash_[idx].size(); j < max_bin_item_size_; ++j) {
-      db_vec.emplace_back(yasl::ByteContainerView(zero_bytes));
+      db_vec.emplace_back(yacl::ByteContainerView(zero_bytes));
     }
 
     pir_server_[idx]->SetDatabase(db_vec);
@@ -90,8 +90,8 @@ void MultiQueryServer::SetDatabase(yasl::ByteContainerView db_bytes) {
 }
 
 void MultiQueryServer::RecvGaloisKeys(
-    const std::shared_ptr<yasl::link::Context> &link_ctx) {
-  yasl::Buffer galkey_buffer = link_ctx->Recv(
+    const std::shared_ptr<yacl::link::Context> &link_ctx) {
+  yacl::Buffer galkey_buffer = link_ctx->Recv(
       link_ctx->NextRank(),
       fmt::format("recv galios key from rank-{}", link_ctx->Rank()));
 
@@ -103,21 +103,21 @@ void MultiQueryServer::RecvGaloisKeys(
 }
 
 void MultiQueryServer::DoMultiPirAnswer(
-    const std::shared_ptr<yasl::link::Context> &link_ctx) {
-  yasl::Buffer multi_query_buffer =
+    const std::shared_ptr<yacl::link::Context> &link_ctx) {
+  yacl::Buffer multi_query_buffer =
       link_ctx->Recv(link_ctx->NextRank(), fmt::format("recv multi pir query"));
 
   SealMultiPirQueryProto multi_query_proto;
   multi_query_proto.ParseFromArray(multi_query_buffer.data(),
                                    multi_query_buffer.size());
 
-  YASL_ENFORCE((uint64_t)multi_query_proto.querys().size() ==
+  YACL_ENFORCE((uint64_t)multi_query_proto.querys().size() ==
                cuckoo_params_.NumBins());
 
-  std::vector<yasl::Buffer> reply_cipher_buffers(
+  std::vector<yacl::Buffer> reply_cipher_buffers(
       multi_query_proto.querys().size());
 
-  yasl::parallel_for(
+  yacl::parallel_for(
       0, multi_query_proto.querys().size(), 1, [&](int64_t begin, int64_t end) {
         for (int64_t idx = begin; idx < end; ++idx) {
           std::vector<std::vector<seal::Ciphertext>> query_ciphers =
@@ -139,7 +139,7 @@ void MultiQueryServer::DoMultiPirAnswer(
                                              reply_cipher_buffers[idx].size());
   }
 
-  yasl::Buffer mpir_answer_buffer(mpir_answer_reply_proto.ByteSizeLong());
+  yacl::Buffer mpir_answer_buffer(mpir_answer_reply_proto.ByteSizeLong());
   mpir_answer_reply_proto.SerializePartialToArray(mpir_answer_buffer.data(),
                                                   mpir_answer_buffer.size());
 
@@ -155,7 +155,7 @@ void MultiQueryClient::GenerateSimpleHashMap() {
       query_options_.seal_options.element_number);
 
   // generate item hash, server and client use same seed
-  yasl::parallel_for(0, query_options_.seal_options.element_number, 1,
+  yacl::parallel_for(0, query_options_.seal_options.element_number, 1,
                      [&](int64_t begin, int64_t end) {
                        for (int idx = begin; idx < end; ++idx) {
                          query_index_hash[idx] = HashItemIndex(idx);
@@ -203,7 +203,7 @@ std::vector<MultiQueryItem> MultiQueryClient::GenerateBatchQueryIndex(
   std::vector<MultiQueryItem> multi_query(cuckoo_params_.NumBins());
   std::vector<uint128_t> query_index_hash(multi_query_index.size());
 
-  yasl::parallel_for(
+  yacl::parallel_for(
       0, multi_query_index.size(), 1, [&](int64_t begin, int64_t end) {
         for (int64_t idx = begin; idx < end; ++idx) {
           uint128_t item_hash = HashItemIndex(multi_query_index[idx]);
@@ -247,12 +247,12 @@ std::vector<MultiQueryItem> MultiQueryClient::GenerateBatchQueryIndex(
 }
 
 void MultiQueryClient::SendGaloisKeys(
-    const std::shared_ptr<yasl::link::Context> &link_ctx) {
+    const std::shared_ptr<yacl::link::Context> &link_ctx) {
   seal::GaloisKeys galkey = pir_client_->GenerateGaloisKeys();
 
   std::string galkey_str =
       pir_client_->SerializeSealObject<seal::GaloisKeys>(galkey);
-  yasl::Buffer galkey_buffer(galkey_str.data(), galkey_str.length());
+  yacl::Buffer galkey_buffer(galkey_str.data(), galkey_str.length());
 
   link_ctx->SendAsync(
       link_ctx->NextRank(), galkey_buffer,
@@ -260,7 +260,7 @@ void MultiQueryClient::SendGaloisKeys(
 }
 
 std::vector<std::vector<uint8_t>> MultiQueryClient::DoMultiPirQuery(
-    const std::shared_ptr<yasl::link::Context> &link_ctx,
+    const std::shared_ptr<yacl::link::Context> &link_ctx,
     const std::vector<size_t> &multi_query_index) {
   std::vector<MultiQueryItem> multi_query =
       GenerateBatchQueryIndex(multi_query_index);
@@ -293,12 +293,12 @@ std::vector<std::vector<uint8_t>> MultiQueryClient::DoMultiPirQuery(
   }
 
   auto s = multi_query_proto.SerializeAsString();
-  yasl::Buffer multi_query_buffer(s.data(), s.size());
+  yacl::Buffer multi_query_buffer(s.data(), s.size());
   link_ctx->SendAsync(
       link_ctx->NextRank(), multi_query_buffer,
       fmt::format("send multi pir query number:{}", multi_query.size()));
 
-  yasl::Buffer reply_buffer =
+  yacl::Buffer reply_buffer =
       link_ctx->Recv(link_ctx->NextRank(), fmt::format("recv pir answer"));
 
   SealMultiPirAnswerProto multi_answer_proto;
@@ -306,7 +306,7 @@ std::vector<std::vector<uint8_t>> MultiQueryClient::DoMultiPirQuery(
   // SPDLOG_INFO("multi_answer_proto size:{}",
   // multi_answer_proto.answers_size());
 
-  YASL_ENFORCE((uint64_t)multi_answer_proto.answers_size() ==
+  YACL_ENFORCE((uint64_t)multi_answer_proto.answers_size() ==
                multi_query.size());
 
   std::vector<std::vector<uint8_t>> answers(multi_query_index.size());
@@ -343,7 +343,7 @@ std::vector<std::vector<uint8_t>> MultiQueryClient::DoMultiPirQuery(
       break;
     }
   }
-  YASL_ENFORCE(answer_count == multi_query_index.size());
+  YACL_ENFORCE(answer_count == multi_query_index.size());
 
   return answers;
 }

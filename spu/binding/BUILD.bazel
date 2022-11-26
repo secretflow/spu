@@ -45,7 +45,7 @@ pybind_extension(
         "//spu/device/pphlo:executor",
         "//spu/psi:bucket_psi",
         "//spu/psi:memory_psi",
-        "@yasl//yasl/link",
+        "@yacl//yacl/link",
     ],
 )
 

@@ -55,7 +55,7 @@ struct element_t_s {
       __CASE_SIZE(16, __VA_ARGS__)                             \
       __CASE_SIZE(32, __VA_ARGS__)                             \
       default:                                                 \
-        YASL_THROW("un-implemented for elment_size={}", SIZE); \
+        YACL_THROW("un-implemented for elment_size={}", SIZE); \
     }                                                          \
   }()
 

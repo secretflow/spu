@@ -17,8 +17,8 @@
 #include <vector>
 
 #include "absl/types/span.h"
-#include "yasl/base/exception.h"
-#include "yasl/base/int128.h"
+#include "yacl/base/exception.h"
+#include "yacl/base/int128.h"
 
 namespace spu::psi {
 

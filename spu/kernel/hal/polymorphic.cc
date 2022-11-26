@@ -16,7 +16,7 @@
 
 #include "fmt/format.h"
 #include "fmt/ostream.h"
-#include "yasl/base/exception.h"
+#include "yacl/base/exception.h"
 
 #include "spu/core/encoding.h"  // for bitcast
 #include "spu/core/trace.h"
@@ -49,7 +49,7 @@ Value dtypeBinaryDispatch(std::string_view op_name, HalContext* ctx,
   } else if (x.isFxp() && y.isFxp()) {
     return FnFxp(ctx, x, y);
   } else {
-    YASL_THROW("unsupported op {} for x={}, y={}", op_name, x, y);
+    YACL_THROW("unsupported op {} for x={}, y={}", op_name, x, y);
   }
 }
 
@@ -62,7 +62,7 @@ Value dtypeUnaryDispatch(std::string_view op_name, HalContext* ctx,
   } else if (x.isFxp()) {
     return FnFxp(ctx, x);
   } else {
-    YASL_THROW("unsupported op {} for x={}", op_name, x);
+    YACL_THROW("unsupported op {} for x={}", op_name, x);
   }
 }
 
@@ -168,7 +168,7 @@ Value logical_not(HalContext* ctx, const Value& x) {
 
 Value equal(HalContext* ctx, const Value& x, const Value& y) {
   SPU_TRACE_HAL_DISP(ctx, x, y);
-  YASL_ENFORCE(x.shape() == y.shape(), "x = {}, y = {}", x, y);
+  YACL_ENFORCE(x.shape() == y.shape(), "x = {}, y = {}", x, y);
 
   // TODO(junfeng): Implement the real equal!
   return bitwise_and(ctx, logical_not(ctx, less(ctx, x, y)),
@@ -181,21 +181,21 @@ Value equal(HalContext* ctx, const Value& x, const Value& y) {
 
 Value not_equal(HalContext* ctx, const Value& x, const Value& y) {
   SPU_TRACE_HAL_DISP(ctx, x, y);
-  YASL_ENFORCE(x.shape() == y.shape());
+  YACL_ENFORCE(x.shape() == y.shape());
 
   return logical_not(ctx, equal(ctx, x, y));
 }
 
 Value less(HalContext* ctx, const Value& x, const Value& y) {
   SPU_TRACE_HAL_DISP(ctx, x, y);
-  YASL_ENFORCE(x.shape() == y.shape());
+  YACL_ENFORCE(x.shape() == y.shape());
 
   return dtypeBinaryDispatch<f_less, i_less>("less", ctx, x, y);
 }
 
 Value less_equal(HalContext* ctx, const Value& x, const Value& y) {
   SPU_TRACE_HAL_DISP(ctx, x, y);
-  YASL_ENFORCE(x.shape() == y.shape());
+  YACL_ENFORCE(x.shape() == y.shape());
 
   // not (x > y)
   return logical_not(ctx, greater(ctx, x, y));
@@ -203,14 +203,14 @@ Value less_equal(HalContext* ctx, const Value& x, const Value& y) {
 
 Value greater(HalContext* ctx, const Value& x, const Value& y) {
   SPU_TRACE_HAL_DISP(ctx, x, y);
-  YASL_ENFORCE(x.shape() == y.shape());
+  YACL_ENFORCE(x.shape() == y.shape());
 
   return less(ctx, y, x);
 }
 
 Value greater_equal(HalContext* ctx, const Value& x, const Value& y) {
   SPU_TRACE_HAL_DISP(ctx, x, y);
-  YASL_ENFORCE(x.shape() == y.shape());
+  YACL_ENFORCE(x.shape() == y.shape());
 
   // not (x < y)
   return logical_not(ctx, less(ctx, x, y));
@@ -247,7 +247,7 @@ Value exp(HalContext* ctx, const Value& a) {
       return f_exp(ctx, x);
     }
     default:
-      YASL_THROW("unexpected exp approxmation method {}",
+      YACL_THROW("unexpected exp approxmation method {}",
                  ctx->rt_config().fxp_exp_mode());
   }
 }
@@ -256,9 +256,9 @@ Value select(HalContext* ctx, const Value& pred, const Value& a,
              const Value& b) {
   SPU_TRACE_HAL_DISP(ctx, pred, a, b);
 
-  YASL_ENFORCE(pred.isInt());
-  YASL_ENFORCE(a.shape() == b.shape());
-  YASL_ENFORCE(a.dtype() == b.dtype());
+  YACL_ENFORCE(pred.isInt());
+  YACL_ENFORCE(a.shape() == b.shape());
+  YACL_ENFORCE(a.dtype() == b.dtype());
 
   // To ensure pred is {0, 1} on integer range, we have to promote pred to an
   // actual integer here. Otherwise, when we use pred to do computation the
@@ -269,24 +269,24 @@ Value select(HalContext* ctx, const Value& pred, const Value& a,
 Value bitwise_and(HalContext* ctx, const Value& x, const Value& y) {
   SPU_TRACE_HAL_DISP(ctx, x, y);
 
-  YASL_ENFORCE(x.isInt() && y.isInt());
-  YASL_ENFORCE(x.shape() == y.shape());
+  YACL_ENFORCE(x.isInt() && y.isInt());
+  YACL_ENFORCE(x.shape() == y.shape());
 
   return _and(ctx, x, y).setDtype(x.dtype());
 }
 
 Value bitwise_xor(HalContext* ctx, const Value& x, const Value& y) {
   SPU_TRACE_HAL_DISP(ctx, x, y);
-  YASL_ENFORCE(x.isInt() && y.isInt());
-  YASL_ENFORCE(x.shape() == y.shape());
+  YACL_ENFORCE(x.isInt() && y.isInt());
+  YACL_ENFORCE(x.shape() == y.shape());
 
   return _xor(ctx, x, y).setDtype(x.dtype());
 }
 
 Value bitwise_or(HalContext* ctx, const Value& x, const Value& y) {
   SPU_TRACE_HAL_DISP(ctx, x, y);
-  YASL_ENFORCE(x.isInt() && y.isInt());
-  YASL_ENFORCE(x.shape() == y.shape());
+  YACL_ENFORCE(x.isInt() && y.isInt());
+  YACL_ENFORCE(x.shape() == y.shape());
 
   return _or(ctx, x, y).setDtype(x.dtype());
 }
@@ -300,7 +300,7 @@ Value bitwise_not(HalContext* ctx, const Value& in) {
 Value logistic(HalContext* ctx, const Value& in) {
   SPU_TRACE_HAL_DISP(ctx, in);
 
-  YASL_ENFORCE(in.isFxp());
+  YACL_ENFORCE(in.isFxp());
 
   switch (ctx->rt_config().sigmoid_mode()) {
     case RuntimeConfig::SIGMOID_DEFAULT:
@@ -314,7 +314,7 @@ Value logistic(HalContext* ctx, const Value& in) {
       return logisticReal(ctx, in);
     }
     default: {
-      YASL_THROW("Should not hit");
+      YACL_THROW("Should not hit");
     }
   }
 }
@@ -333,7 +333,7 @@ Value log1p(HalContext* ctx, const Value& in) {
 
 Value reciprocal(HalContext* ctx, const Value& in) {
   SPU_TRACE_HAL_DISP(ctx, in);
-  YASL_ENFORCE(in.isFxp());
+  YACL_ENFORCE(in.isFxp());
 
   return f_reciprocal(ctx, in);
 }
@@ -341,7 +341,7 @@ Value reciprocal(HalContext* ctx, const Value& in) {
 Value floor(HalContext* ctx, const Value& in) {
   SPU_TRACE_HAL_DISP(ctx, in);
 
-  YASL_ENFORCE(in.isFxp());
+  YACL_ENFORCE(in.isFxp());
 
   return f_floor(ctx, in);
 }
@@ -349,7 +349,7 @@ Value floor(HalContext* ctx, const Value& in) {
 Value ceil(HalContext* ctx, const Value& in) {
   SPU_TRACE_HAL_DISP(ctx, in);
 
-  YASL_ENFORCE(in.isFxp());
+  YACL_ENFORCE(in.isFxp());
 
   return f_ceil(ctx, in);
 }
@@ -357,7 +357,7 @@ Value ceil(HalContext* ctx, const Value& in) {
 Value max(HalContext* ctx, const Value& x, const Value& y) {
   SPU_TRACE_HAL_DISP(ctx, x, y);
 
-  YASL_ENFORCE(x.dtype() == y.dtype());
+  YACL_ENFORCE(x.dtype() == y.dtype());
 
   return select(ctx, greater(ctx, x, y), x, y);
 }
@@ -365,7 +365,7 @@ Value max(HalContext* ctx, const Value& x, const Value& y) {
 Value min(HalContext* ctx, const Value& x, const Value& y) {
   SPU_TRACE_HAL_DISP(ctx, x, y);
 
-  YASL_ENFORCE(x.dtype() == y.dtype());
+  YACL_ENFORCE(x.dtype() == y.dtype());
 
   return select(ctx, less(ctx, x, y), x, y);
 }
@@ -431,8 +431,8 @@ Value clamp(HalContext* ctx, const Value& minv, const Value& x,
             const Value& maxv) {
   SPU_TRACE_HAL_DISP(ctx, minv, x, maxv);
 
-  YASL_ENFORCE(minv.dtype() == maxv.dtype());
-  YASL_ENFORCE(minv.dtype() == x.dtype());
+  YACL_ENFORCE(minv.dtype() == maxv.dtype());
+  YACL_ENFORCE(minv.dtype() == x.dtype());
 
   return min(ctx, max(ctx, minv, x), maxv);
 }
@@ -477,10 +477,10 @@ Value permute(HalContext* ctx, const Value& x, size_t dimension,
       return permute(ctx, x, dimension, xt::eval(permutations_xt_casted));
     });
   } else if (permutations.isSecret()) {
-    YASL_THROW("unimplemented.");
+    YACL_THROW("unimplemented.");
   }
 
-  YASL_THROW("unsupport op={} for {}", "permute", permutations);
+  YACL_THROW("unsupport op={} for {}", "permute", permutations);
 }
 
 Value log2(HalContext* ctx, const Value& in) {

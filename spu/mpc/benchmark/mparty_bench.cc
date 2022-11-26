@@ -44,7 +44,7 @@ void PrepareSemi2k(std::string& parties, uint32_t& party_num) {
     parties = spu::mpc::bench::kTwoPartyHosts;  // default ips for semi2k
     party_num = 2;
   }
-  YASL_ENFORCE(party_num >= 2);
+  YACL_ENFORCE(party_num >= 2);
   BenchInteral::bench_factory =
       spu::mpc::makeSemi2kProtocol;  // semi2k protocol factory
 }
@@ -55,7 +55,7 @@ void PrepareAby3(std::string& parties, uint32_t& party_num) {
     parties = spu::mpc::bench::kThreePartyHosts;  // default ips for aby3
     party_num = 3;
   }
-  YASL_ENFORCE(party_num == 3);
+  YACL_ENFORCE(party_num == 3);
   BenchInteral::bench_factory = spu::mpc::makeAby3Protocol;
 }
 
@@ -69,13 +69,13 @@ void PrepareBenchmark(uint32_t rank, std::string& parties, uint32_t party_num,
   } else if (protocol == "aby3") {
     PrepareAby3(parties, party_num);
   } else {
-    YASL_THROW("unknown protocol: {}, supported = semi2k/aby3", protocol);
+    YACL_THROW("unknown protocol: {}, supported = semi2k/aby3", protocol);
   }
 
   std::vector<std::string> host_ips = absl::StrSplit(parties, ',');
-  YASL_ENFORCE(host_ips.size() == party_num);
+  YACL_ENFORCE(host_ips.size() == party_num);
 
-  yasl::link::ContextDesc lctx_desc;
+  yacl::link::ContextDesc lctx_desc;
   for (size_t i = 0; i < party_num; i++) {
     const std::string id = fmt::format("party{}", i);
     lctx_desc.parties.push_back({id, host_ips[i]});
@@ -84,7 +84,7 @@ void PrepareBenchmark(uint32_t rank, std::string& parties, uint32_t party_num,
   }
 
   // setup bench_lctx and link
-  yasl::link::FactoryBrpc factory;
+  yacl::link::FactoryBrpc factory;
   BenchInteral::bench_lctx = factory.CreateContext(lctx_desc, rank);
   BenchInteral::bench_lctx->ConnectToMesh();
 

@@ -20,8 +20,8 @@
 #include <string>
 #include <vector>
 
-#include "yasl/base/byte_container_view.h"
-#include "yasl/link/link.h"
+#include "yacl/base/byte_container_view.h"
+#include "yacl/link/link.h"
 
 #include "spu/psi/core/ecdh_oprf/ecdh_oprf.h"
 #include "spu/psi/core/ecdh_oprf/ecdh_oprf_selector.h"
@@ -66,10 +66,10 @@ inline constexpr size_t kEcdhOprfPsiBatchSize = 4096;
 
 struct EcdhOprfPsiOptions {
   // Provides the link for server's evaluated data.
-  std::shared_ptr<yasl::link::Context> link0;
+  std::shared_ptr<yacl::link::Context> link0;
 
   // Provides the link for client's blind/evaluated data.
-  std::shared_ptr<yasl::link::Context> link1;
+  std::shared_ptr<yacl::link::Context> link1;
 
   // Now only support 2HashBased Ecdh-OPRF
   OprfType oprf_type = OprfType::Basic;
@@ -97,7 +97,7 @@ class EcdhOprfPsiServer {
             CreateEcdhOprfServer(options.oprf_type, options.curve_type)) {}
 
   EcdhOprfPsiServer(EcdhOprfPsiOptions options,
-                    yasl::ByteContainerView private_key)
+                    yacl::ByteContainerView private_key)
       : options_(options),
         oprf_server_(CreateEcdhOprfServer(private_key, options.oprf_type,
                                           options.curve_type)) {}

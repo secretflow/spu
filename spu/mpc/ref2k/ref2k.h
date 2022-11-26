@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "yasl/link/link.h"
+#include "yacl/link/link.h"
 
 #include "spu/mpc/io_interface.h"
 #include "spu/mpc/object.h"
@@ -33,7 +33,7 @@ class Ref2kIo final : public BaseIo {
 
 std::unique_ptr<Object> makeRef2kProtocol(
     const RuntimeConfig& conf,
-    const std::shared_ptr<yasl::link::Context>& lctx);
+    const std::shared_ptr<yacl::link::Context>& lctx);
 
 std::unique_ptr<Ref2kIo> makeRef2kIo(FieldType field, size_t npc);
 

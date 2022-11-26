@@ -17,8 +17,8 @@
 #include <future>
 #include <utility>
 
-#include "yasl/utils/parallel.h"
-#include "yasl/utils/serialize.h"
+#include "yacl/utils/parallel.h"
+#include "yacl/utils/serialize.h"
 
 #include "spu/psi/core/communication.h"
 #include "spu/psi/cryptor/ecc_utils.h"
@@ -106,7 +106,7 @@ void EcdhOprfPsiServer::RecvBlindAndSendEvaluate() {
     }
 
     // Fetch blinded y^r.
-    YASL_ENFORCE(blinded_batch.flatten_bytes.size() % ec_point_length == 0);
+    YACL_ENFORCE(blinded_batch.flatten_bytes.size() % ec_point_length == 0);
     size_t num_items = blinded_batch.flatten_bytes.size() / ec_point_length;
 
     std::vector<std::string> blinded_items(num_items);
@@ -148,7 +148,7 @@ void EcdhOprfPsiClient::RecvFinalEvaluatedItems(
       break;
     }
 
-    YASL_ENFORCE(masked_batch.flatten_bytes.size() % compare_length_ == 0);
+    YACL_ENFORCE(masked_batch.flatten_bytes.size() % compare_length_ == 0);
     size_t num_items = masked_batch.flatten_bytes.size() / compare_length_;
 
     for (size_t idx = 0; idx < num_items; ++idx) {
@@ -183,7 +183,7 @@ void EcdhOprfPsiClient::SendBlindedItems(
     std::vector<std::shared_ptr<IEcdhOprfClient>> oprf_clients(items.size());
     std::vector<std::string> blinded_items(items.size());
 
-    yasl::parallel_for(0, items.size(), 1, [&](int64_t begin, int64_t end) {
+    yacl::parallel_for(0, items.size(), 1, [&](int64_t begin, int64_t end) {
       for (int64_t idx = begin; idx < end; ++idx) {
         std::shared_ptr<IEcdhOprfClient> oprf_client =
             CreateEcdhOprfClient(options_.oprf_type, options_.curve_type);
@@ -237,10 +237,10 @@ void EcdhOprfPsiClient::RecvEvaluatedItems(
     }
     auto items = batch_provider->ReadNextBatch(options_.batch_size);
 
-    YASL_ENFORCE(masked_batch.flatten_bytes.size() % ec_point_length_ == 0);
+    YACL_ENFORCE(masked_batch.flatten_bytes.size() % ec_point_length_ == 0);
     size_t num_items = masked_batch.flatten_bytes.size() / ec_point_length_;
 
-    YASL_ENFORCE(items.size() % num_items == 0);
+    YACL_ENFORCE(items.size() % num_items == 0);
 
     std::vector<std::string> evaluate_items(num_items);
     for (size_t idx = 0; idx < num_items; ++idx) {
@@ -264,10 +264,10 @@ void EcdhOprfPsiClient::RecvEvaluatedItems(
       queue_push_cv_.notify_one();
     }
 
-    YASL_ENFORCE(oprf_clients.size() == items.size(),
+    YACL_ENFORCE(oprf_clients.size() == items.size(),
                  "EcdhOprfServer should not be nullptr");
 
-    yasl::parallel_for(0, items.size(), 1, [&](int64_t begin, int64_t end) {
+    yacl::parallel_for(0, items.size(), 1, [&](int64_t begin, int64_t end) {
       for (int64_t idx = begin; idx < end; ++idx) {
         oprf_items[idx] =
             oprf_clients[idx]->Finalize(items[idx], evaluate_items[idx]);

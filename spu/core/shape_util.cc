@@ -17,7 +17,7 @@
 #include <numeric>
 #include <vector>
 
-#include "yasl/base/exception.h"
+#include "yacl/base/exception.h"
 
 namespace spu {
 
@@ -38,26 +38,26 @@ std::vector<int64_t> deduceDotShape(absl::Span<const int64_t> lhs,
 
   // Vector dot product.
   if (lhs.size() == 1 && rhs.size() == 1) {
-    YASL_ENFORCE_EQ(lhs[0], rhs[0],
+    YACL_ENFORCE_EQ(lhs[0], rhs[0],
                     "deduceDotShape: shape mismatch: lhs={} ,rhs={}", lhs, rhs);
     return {1};
   }
 
   if (lhs.size() == 2 && rhs.size() == 1) {
     // Matrix-times-vector product.
-    YASL_ENFORCE_EQ(lhs[1], rhs[0],
+    YACL_ENFORCE_EQ(lhs[1], rhs[0],
                     "deduceDotShape: shape mismatch: lhs={} ,rhs={}", lhs, rhs);
 
     return {lhs[0]};
   } else if (lhs.size() == 1 && rhs.size() == 2) {
     // Matrix-times-vector product.
-    YASL_ENFORCE_EQ(lhs[0], rhs[0],
+    YACL_ENFORCE_EQ(lhs[0], rhs[0],
                     "deduceDotShape: shape mismatch: lhs={} ,rhs={}", lhs, rhs);
 
     return {rhs[1]};
   } else if (lhs.size() == 2 && rhs.size() == 2) {
     // Matrix-product.
-    YASL_ENFORCE_EQ(lhs[1], rhs[0],
+    YACL_ENFORCE_EQ(lhs[1], rhs[0],
                     "deduceDotShape: shape mismatch: lhs={} ,rhs={}", lhs, rhs);
     return {lhs[0], rhs[1]};
   } else {
@@ -72,7 +72,7 @@ std::vector<int64_t> deduceDotShape(absl::Span<const int64_t> lhs,
       rhs_match_dim = rhs.size() - 2;
     }
 
-    YASL_ENFORCE_EQ(lhs_back, rhs[rhs_match_dim],
+    YACL_ENFORCE_EQ(lhs_back, rhs[rhs_match_dim],
                     "deduceDotShape: shape mismatch: lhs={} ,rhs={}", lhs, rhs);
 
     int lhs_dim = static_cast<int>(lhs.size());
@@ -117,7 +117,7 @@ std::vector<int64_t> makeCompactStrides(absl::Span<const int64_t> shape) {
 
 int64_t flattenIndex(absl::Span<const int64_t> index,
                      absl::Span<const int64_t> shape) {
-  YASL_ENFORCE(index.size() == shape.size());
+  YACL_ENFORCE(index.size() == shape.size());
 
   int64_t linear_idx = 0;
   int64_t stride = 1;

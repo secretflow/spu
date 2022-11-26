@@ -404,8 +404,8 @@ spu::Value Gather(HalContext *ctx, const spu::Value &operand,
 spu::Value FilterByMask(HalContext *ctx, const spu::Value &operand,
                         absl::Span<const uint8_t> mask) {
   // Sanity
-  YASL_ENFORCE(operand.shape().size() == 1, "Operand must be a vector");
-  YASL_ENFORCE(mask.size() == (size_t)operand.shape()[0],
+  YACL_ENFORCE(operand.shape().size() == 1, "Operand must be a vector");
+  YACL_ENFORCE(mask.size() == (size_t)operand.shape()[0],
                "filter must be same length as operand");
 
   // Count result size

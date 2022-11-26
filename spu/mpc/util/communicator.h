@@ -20,9 +20,9 @@
 #include <type_traits>
 #include <utility>
 
-#include "yasl/base/buffer.h"
-#include "yasl/base/exception.h"
-#include "yasl/link/link.h"
+#include "yacl/base/buffer.h"
+#include "yacl/base/exception.h"
+#include "yacl/link/link.h"
 
 #include "spu/mpc/object.h"
 
@@ -37,7 +37,7 @@ enum class ReduceOp {
   XOR = 2,
 };
 
-// yasl::link does not make assumption on data types, (it works on buffer),
+// yacl::link does not make assumption on data types, (it works on buffer),
 // which means it's hard to write algorithms which depends on data arithmetics
 // like reduce/allreduce.
 //
@@ -64,9 +64,9 @@ class Communicator : public State {
 
   mutable Stats stats_;
 
-  const std::shared_ptr<yasl::link::Context> lctx_;
+  const std::shared_ptr<yacl::link::Context> lctx_;
 
-  explicit Communicator(std::shared_ptr<yasl::link::Context> lctx)
+  explicit Communicator(std::shared_ptr<yacl::link::Context> lctx)
       : lctx_(std::move(lctx)) {}
 
   Stats getStats() const { return stats_; }
@@ -105,7 +105,7 @@ class Communicator : public State {
 template <typename T>
 std::vector<T> Communicator::rotate(absl::Span<T const> in,
                                     std::string_view tag) {
-  yasl::ByteContainerView bv(reinterpret_cast<uint8_t const*>(in.data()),
+  yacl::ByteContainerView bv(reinterpret_cast<uint8_t const*>(in.data()),
                              sizeof(T) * in.size());
   lctx_->SendAsync(lctx_->PrevRank(), bv, tag);
   auto buf = lctx_->Recv(lctx_->NextRank(), tag);
@@ -113,14 +113,14 @@ std::vector<T> Communicator::rotate(absl::Span<T const> in,
   stats_.latency += 1;
   stats_.comm += in.size() * sizeof(T);
 
-  YASL_ENFORCE(buf.size() == static_cast<int64_t>(sizeof(T) * in.size()));
+  YACL_ENFORCE(buf.size() == static_cast<int64_t>(sizeof(T) * in.size()));
   return std::vector<T>(buf.data<T>(), buf.data<T>() + in.size());
 }
 
 template <typename T>
 void Communicator::sendAsync(size_t dst_rank, absl::Span<T const> in,
                              std::string_view tag) {
-  yasl::ByteContainerView bv(reinterpret_cast<uint8_t const*>(in.data()),
+  yacl::ByteContainerView bv(reinterpret_cast<uint8_t const*>(in.data()),
                              sizeof(T) * in.size());
   lctx_->SendAsync(dst_rank, bv, tag);
 }
@@ -128,7 +128,7 @@ void Communicator::sendAsync(size_t dst_rank, absl::Span<T const> in,
 template <typename T>
 std::vector<T> Communicator::recv(size_t src_rank, std::string_view tag) {
   auto buf = lctx_->Recv(src_rank, tag);
-  YASL_ENFORCE(buf.size() % sizeof(T) == 0);
+  YACL_ENFORCE(buf.size() % sizeof(T) == 0);
   auto numel = buf.size() / sizeof(T);
   // TODO: use a container which memory could be stealed.
   return std::vector<T>(buf.data<T>(), buf.data<T>() + numel);

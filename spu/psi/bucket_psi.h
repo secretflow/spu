@@ -18,8 +18,8 @@
 #include <string>
 #include <vector>
 
-#include "yasl/base/exception.h"
-#include "yasl/link/link.h"
+#include "yacl/base/exception.h"
+#include "yacl/link/link.h"
 
 #include "spu/psi/memory_psi.h"
 #include "spu/psi/utils/hash_bucket_cache.h"
@@ -30,8 +30,11 @@ namespace spu::psi {
 
 class BucketPsi {
  public:
+  // ic_mode: 互联互通模式，对方可以是非隐语应用
+  // Interconnection mode, the other side can be non-secretflow application
   explicit BucketPsi(BucketPsiConfig config,
-                     std::shared_ptr<yasl::link::Context> lctx);
+                     std::shared_ptr<yacl::link::Context> lctx,
+                     bool ic_mode = false);
   ~BucketPsi() = default;
 
   PsiResultReport Run();
@@ -43,6 +46,8 @@ class BucketPsi {
 
   std::vector<uint64_t> RunBucketPsi(uint64_t self_items_count);
 
+  void Handshake(uint64_t self_items_count);
+
   // the item order of `item_data_list` and `item_list` needs to be the same
   void GetResultIndices(
       const std::vector<std::string>& item_data_list,
@@ -52,8 +57,9 @@ class BucketPsi {
 
  private:
   BucketPsiConfig config_;
+  bool ic_mode_;
 
-  std::shared_ptr<yasl::link::Context> lctx_;
+  std::shared_ptr<yacl::link::Context> lctx_;
 
   std::vector<std::string> selected_fields_;
 

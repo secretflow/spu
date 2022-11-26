@@ -61,7 +61,7 @@ Type PPHloDialect::parseType(DialectAsmParser& parser) const {
   StringRef mnemonic;
   Type parsedType;
   auto parseResult = generatedTypeParser(parser, &mnemonic, parsedType);
-  if (parseResult.hasValue()) {
+  if (parseResult.has_value()) {
     return parsedType;
   }
   parser.emitError(parser.getNameLoc()) << "unknown pphlo type: " << mnemonic;
@@ -82,7 +82,7 @@ Attribute PPHloDialect::parseAttribute(DialectAsmParser& parser,
   StringRef attrTag;
   Attribute attr;
   auto parseResult = generatedAttributeParser(parser, &attrTag, type, attr);
-  if (parseResult.hasValue()) {
+  if (parseResult.has_value()) {
     return attr;
   }
   parser.emitError(parser.getNameLoc(), "unknown mhlo attribute");

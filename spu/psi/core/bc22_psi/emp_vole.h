@@ -23,8 +23,8 @@
 #include "emp-tool/utils/f2k.h"
 #include "emp-zk/emp-vole/constants.h"
 #include "emp-zk/emp-vole/emp-vole.h"
-#include "yasl/base/exception.h"
-#include "yasl/link/link.h"
+#include "yacl/base/exception.h"
+#include "yacl/link/link.h"
 
 #include "spu/crypto/ot/silent/cheetah_io_channel.h"
 #include "spu/psi/core/communication.h"
@@ -45,7 +45,7 @@ using WolverineVoleFieldType = __uint128_t;
 class WolverineVole {
  public:
   WolverineVole(PsiRoleType psi_role,
-                const std::shared_ptr<yasl::link::Context> &link_ctx);
+                const std::shared_ptr<yacl::link::Context> &link_ctx);
 
   // extend baseVole get vole_num voles
   // Filed: mersenne prime 2^61 - 1
@@ -59,7 +59,7 @@ class WolverineVole {
     if (party_ == emp::ALICE) {
       return delta_;
     } else {
-      YASL_THROW("party: {} without delta", party_);
+      YACL_THROW("party: {} without delta", party_);
     }
   }
 
@@ -70,7 +70,7 @@ class WolverineVole {
   void Setup();
 
   int party_;
-  std::shared_ptr<yasl::link::Context> link_ctx_;
+  std::shared_ptr<yacl::link::Context> link_ctx_;
 
   WolverineVoleFieldType delta_;
 

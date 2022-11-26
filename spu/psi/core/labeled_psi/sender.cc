@@ -27,7 +27,7 @@
 #include "apsi/powers.h"
 #include "apsi/util/label_encryptor.h"
 #include "gsl/span"
-#include "yasl/utils/parallel.h"
+#include "yacl/utils/parallel.h"
 
 #include "spu/psi/core/labeled_psi/package.h"
 #include "spu/psi/core/labeled_psi/sender_db.h"
@@ -55,7 +55,7 @@ class QueryRequest {
         cts.push_back(ct.extract(seal_context));
         if (!is_valid_for(cts.back(), *seal_context)) {
           SPDLOG_ERROR("Extracted ciphertext is invalid for SEALContext");
-          YASL_THROW("Extracted ciphertext is invalid for SEALContext");
+          YACL_THROW("Extracted ciphertext is invalid for SEALContext");
           return;
         }
       }
@@ -65,7 +65,7 @@ class QueryRequest {
     if (seal_context->using_keyswitching()) {
       relin_keys_ = relin_keys->extract(seal_context);
       if (!is_valid_for(relin_keys_, *seal_context)) {
-        YASL_THROW(
+        YACL_THROW(
             "Extracted relinearization keys are invalid for SEALContext");
       }
     }
@@ -110,7 +110,7 @@ uint32_t reset_powers_dag(apsi::PowersDag *pd, const apsi::PSIParams &params,
         "source_powers: {}, target_powers: {}",
         apsi::util::to_string(source_powers),
         apsi::util::to_string(target_powers));
-    YASL_THROW("failed to configure PowersDag");
+    YACL_THROW("failed to configure PowersDag");
   }
   SPDLOG_INFO("Configured PowersDag with depth {}", pd->depth());
 
@@ -126,17 +126,17 @@ LabelPsiSender::LabelPsiSender(
 }
 
 void LabelPsiSender::RunPsiParams(
-    size_t items_size, const std::shared_ptr<yasl::link::Context> &link_ctx) {
-  yasl::Buffer nr_buffer =
+    size_t items_size, const std::shared_ptr<yacl::link::Context> &link_ctx) {
+  yacl::Buffer nr_buffer =
       link_ctx->Recv(link_ctx->NextRank(), fmt::format("recv psi item size"));
 
   size_t nr;
-  YASL_ENFORCE(sizeof(nr) == nr_buffer.size());
+  YACL_ENFORCE(sizeof(nr) == nr_buffer.size());
   std::memcpy(&nr, nr_buffer.data(), nr_buffer.size());
 
   apsi::PSIParams psi_params = spu::psi::GetPsiParams(nr, items_size);
 
-  yasl::Buffer params_buffer = PsiParamsToBuffer(psi_params);
+  yacl::Buffer params_buffer = PsiParamsToBuffer(psi_params);
 
   link_ctx->SendAsync(
       link_ctx->NextRank(), params_buffer,
@@ -145,19 +145,19 @@ void LabelPsiSender::RunPsiParams(
 
 void LabelPsiSender::RunOPRF(
     const std::shared_ptr<IEcdhOprfServer> &oprf_server,
-    const std::shared_ptr<yasl::link::Context> &link_ctx) {
+    const std::shared_ptr<yacl::link::Context> &link_ctx) {
   oprf_server->SetCompareLength(kEccKeySize);
 
-  yasl::Buffer blind_buffer = link_ctx->Recv(
+  yacl::Buffer blind_buffer = link_ctx->Recv(
       link_ctx->NextRank(), fmt::format("recv oprf blind message"));
 
   proto::OprfProto blind_proto;
-  YASL_ENFORCE(
+  YACL_ENFORCE(
       blind_proto.ParseFromArray(blind_buffer.data(), blind_buffer.size()));
 
   proto::OprfProto evaluated_proto;
   std::vector<std::string> evaluated_vec(blind_proto.data_size());
-  yasl::parallel_for(
+  yacl::parallel_for(
       0, blind_proto.data_size(), 1, [&](int64_t begin, int64_t end) {
         for (int idx = begin; idx < end; ++idx) {
           evaluated_vec[idx] = oprf_server->Evaluate(blind_proto.data(idx));
@@ -169,7 +169,7 @@ void LabelPsiSender::RunOPRF(
                              evaluated_vec[idx].length());
   }
 
-  yasl::Buffer evaluated_buffer(evaluated_proto.ByteSizeLong());
+  yacl::Buffer evaluated_buffer(evaluated_proto.ByteSizeLong());
   evaluated_proto.SerializePartialToArray(evaluated_buffer.data(),
                                           evaluated_buffer.size());
 
@@ -183,12 +183,12 @@ std::vector<std::shared_ptr<ResultPackage>> SenderRunQuery(
     const std::shared_ptr<spu::psi::SenderDB> &sender_db);
 
 void LabelPsiSender::RunQuery(
-    const std::shared_ptr<yasl::link::Context> &link_ctx) {
-  yasl::Buffer query_buffer = link_ctx->Recv(
+    const std::shared_ptr<yacl::link::Context> &link_ctx) {
+  yacl::Buffer query_buffer = link_ctx->Recv(
       link_ctx->NextRank(), fmt::format("recv client query message"));
 
   proto::QueryRequestProto query_proto;
-  YASL_ENFORCE(
+  YACL_ENFORCE(
       query_proto.ParseFromArray(query_buffer.data(), query_buffer.size()));
 
   auto seal_context = sender_db_->GetSealContext();
@@ -248,7 +248,7 @@ void LabelPsiSender::RunQuery(
     }
   }
 
-  yasl::Buffer response_buffer(response_proto.ByteSizeLong());
+  yacl::Buffer response_buffer(response_proto.ByteSizeLong());
   response_proto.SerializePartialToArray(response_buffer.data(),
                                          response_buffer.size());
 

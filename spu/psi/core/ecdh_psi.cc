@@ -18,10 +18,10 @@
 #include <utility>
 
 #include "spdlog/spdlog.h"
-#include "yasl/base/exception.h"
-#include "yasl/crypto/hash_util.h"
-#include "yasl/utils/parallel.h"
-#include "yasl/utils/serialize.h"
+#include "yacl/base/exception.h"
+#include "yacl/crypto/utils/hash_util.h"
+#include "yacl/utils/parallel.h"
+#include "yacl/utils/serialize.h"
 
 #include "spu/psi/core/communication.h"
 #include "spu/psi/cryptor/cryptor_selector.h"
@@ -31,22 +31,26 @@ namespace spu::psi {
 
 EcdhPsiContext::EcdhPsiContext(const EcdhPsiOptions& options)
     : options_(options) {
-  YASL_ENFORCE(options_.link_ctx->WorldSize() == 2);
+  YACL_ENFORCE(options_.link_ctx->WorldSize() == 2);
 
   main_link_ctx_ = options_.link_ctx;
   dual_mask_link_ctx_ = options_.link_ctx->Spawn();
 }
 
 void EcdhPsiContext::CheckConfig() {
+  if (options_.ic_mode) {
+    return;
+  }
+
   // Sanity check: the `target_rank` and 'curve_type' should match.
   std::string my_config =
       fmt::format("target_rank={},curve={}", options_.target_rank,
                   static_cast<int>(options_.ecc_cryptor->GetCurveType()));
-  yasl::Buffer my_config_buf(my_config.c_str(), my_config.size());
+  yacl::Buffer my_config_buf(my_config.c_str(), my_config.size());
   auto config_list =
-      yasl::link::AllGather(main_link_ctx_, my_config_buf, "ECDHPSI:SANITY");
+      yacl::link::AllGather(main_link_ctx_, my_config_buf, "ECDHPSI:SANITY");
   auto peer_config = config_list[main_link_ctx_->NextRank()];
-  YASL_ENFORCE(my_config_buf == peer_config,
+  YACL_ENFORCE(my_config_buf == peer_config,
                "EcdhPsiContext Config mismatch, mine={}, peer={}", my_config,
                peer_config);
 }
@@ -65,7 +69,7 @@ void EcdhPsiContext::MaskSelf(
     }
     // Send x^a.
     const auto tag = fmt::format("ECDHPSI:X^A:{}", batch_count);
-    SendBatch(masked_items, tag);
+    SendBatch(masked_items, batch_count, tag);
     if (batch_items.empty()) {
       SPDLOG_INFO("MaskSelf:{}--finished, batch_count={}",
                   options_.link_ctx->Id(), batch_count);
@@ -83,7 +87,7 @@ void EcdhPsiContext::MaskPeer(
     std::vector<std::string> peer_items;
     std::vector<std::string> dual_masked_peers;
     const auto tag = fmt::format("ECDHPSI:Y^B:{}", batch_count);
-    RecvBatch(&peer_items, tag);
+    RecvBatch(&peer_items, batch_count, tag);
 
     // Compute (y^b)^a.
     if (!peer_items.empty()) {
@@ -103,7 +107,7 @@ void EcdhPsiContext::MaskPeer(
     // Should send out the dual masked items to peer.
     if (PeerCanTouchResults()) {
       const auto tag = fmt::format("ECDHPSI:Y^B^A:{}", batch_count);
-      SendDualMaskedBatch(dual_masked_peers, tag);
+      SendDualMaskedBatch(dual_masked_peers, batch_count, tag);
     }
     if (peer_items.empty()) {
       SPDLOG_INFO("MaskPeer:{}--finished, batch_count={}",
@@ -126,7 +130,7 @@ void EcdhPsiContext::RecvDualMaskedSelf(
     // TODO: avoid mem copy
     std::vector<std::string> masked_items;
     const auto tag = fmt::format("ECDHPSI:X^A^B:{}", batch_count);
-    RecvDualMaskedBatch(&masked_items, tag);
+    RecvDualMaskedBatch(&masked_items, batch_count, tag);
     for (auto& item : masked_items) {
       cipher_store->SaveSelf(std::move(item));
     }
@@ -139,44 +143,18 @@ void EcdhPsiContext::RecvDualMaskedSelf(
   }
 }
 
-void EcdhPsiContext::SendBatch(const std::vector<std::string>& batch_items,
-                               std::string_view tag) {
-  SendBatchImpl(batch_items, main_link_ctx_, tag);
-}
+namespace {
 
-void EcdhPsiContext::SendBatch(const std::vector<std::string_view>& batch_items,
-                               std::string_view tag) {
-  SendBatchImpl(batch_items, main_link_ctx_, tag);
-}
-
-void EcdhPsiContext::RecvBatch(std::vector<std::string>* items,
-                               std::string_view tag) {
-  RecvBatchImpl(main_link_ctx_, items, tag);
-}
-
-void EcdhPsiContext::SendDualMaskedBatch(
-    const std::vector<std::string>& batch_items, std::string_view tag) {
-  SendBatchImpl(batch_items, dual_mask_link_ctx_, tag);
-}
-
-void EcdhPsiContext::SendDualMaskedBatch(
-    const std::vector<std::string_view>& batch_items, std::string_view tag) {
-  SendBatchImpl(batch_items, dual_mask_link_ctx_, tag);
-}
-
-void EcdhPsiContext::RecvDualMaskedBatch(std::vector<std::string>* items,
-                                         std::string_view tag) {
-  RecvBatchImpl(dual_mask_link_ctx_, items, tag);
-}
-
-void EcdhPsiContext::SendBatchImpl(
-    const std::vector<std::string>& batch_items,
-    const std::shared_ptr<yasl::link::Context>& link_ctx,
-    std::string_view tag) {
+template <typename T>
+void SendBatchImpl(const std::vector<T>& batch_items,
+                   const std::shared_ptr<yacl::link::Context>& link_ctx,
+                   std::string_view type, int32_t batch_idx,
+                   std::string_view tag) {
   PsiDataBatch batch;
   batch.is_last_batch = batch_items.empty();
   batch.item_num = batch_items.size();
-  // Mask and Send this batch.
+  batch.batch_index = batch_idx;
+  batch.type = type;
   if (!batch_items.empty()) {
     batch.flatten_bytes.reserve(batch_items.size() * batch_items[0].size());
     for (const auto& item : batch_items) {
@@ -184,32 +162,17 @@ void EcdhPsiContext::SendBatchImpl(
     }
   }
 
-  link_ctx->SendAsync(link_ctx->NextRank(), batch.Serialize(), tag);
+  link_ctx->SendAsync(link_ctx->NextRank(),
+                      IcPsiBatchSerializer::Serialize(std::move(batch)), tag);
 }
 
-void EcdhPsiContext::SendBatchImpl(
-    const std::vector<std::string_view>& batch_items,
-    const std::shared_ptr<yasl::link::Context>& link_ctx,
-    std::string_view tag) {
-  PsiDataBatch batch;
-  batch.is_last_batch = batch_items.empty();
-  batch.item_num = batch_items.size();
-  // Mask and Send this batch.
-  if (!batch_items.empty()) {
-    batch.flatten_bytes.reserve(batch_items.size() * batch_items[0].size());
-    for (const auto& item : batch_items) {
-      batch.flatten_bytes.append(item);
-    }
-  }
-
-  link_ctx->SendAsync(link_ctx->NextRank(), batch.Serialize(), tag);
-}
-
-void EcdhPsiContext::RecvBatchImpl(
-    const std::shared_ptr<yasl::link::Context>& link_ctx,
-    std::vector<std::string>* items, std::string_view tag) {
-  PsiDataBatch batch =
-      PsiDataBatch::Deserialize(link_ctx->Recv(link_ctx->NextRank(), tag));
+void RecvBatchImpl(const std::shared_ptr<yacl::link::Context>& link_ctx,
+                   int32_t batch_idx, std::string_view tag,
+                   std::vector<std::string>* items) {
+  PsiDataBatch batch = IcPsiBatchSerializer::Deserialize(
+      link_ctx->Recv(link_ctx->NextRank(), tag));
+  YACL_ENFORCE(batch.batch_index == batch_idx, "Expected batch {}, but got {}",
+               batch_idx, batch.batch_index);
 
   if (batch.item_num > 0) {
     auto item_size = batch.flatten_bytes.size() / batch.item_num;
@@ -219,11 +182,46 @@ void EcdhPsiContext::RecvBatchImpl(
   }
 }
 
+};  // namespace
+
+void EcdhPsiContext::SendBatch(const std::vector<std::string>& batch_items,
+                               int32_t batch_idx, std::string_view tag) {
+  SendBatchImpl(batch_items, main_link_ctx_, "enc", batch_idx, tag);
+}
+
+void EcdhPsiContext::SendBatch(const std::vector<std::string_view>& batch_items,
+                               int32_t batch_idx, std::string_view tag) {
+  SendBatchImpl(batch_items, main_link_ctx_, "enc", batch_idx, tag);
+}
+
+void EcdhPsiContext::RecvBatch(std::vector<std::string>* items,
+                               int32_t batch_idx, std::string_view tag) {
+  RecvBatchImpl(main_link_ctx_, batch_idx, tag, items);
+}
+
+void EcdhPsiContext::SendDualMaskedBatch(
+    const std::vector<std::string>& batch_items, int32_t batch_idx,
+    std::string_view tag) {
+  SendBatchImpl(batch_items, dual_mask_link_ctx_, "dual.enc", batch_idx, tag);
+}
+
+void EcdhPsiContext::SendDualMaskedBatch(
+    const std::vector<std::string_view>& batch_items, int32_t batch_idx,
+    std::string_view tag) {
+  SendBatchImpl(batch_items, dual_mask_link_ctx_, "dual.enc", batch_idx, tag);
+}
+
+void EcdhPsiContext::RecvDualMaskedBatch(std::vector<std::string>* items,
+                                         int32_t batch_idx,
+                                         std::string_view tag) {
+  RecvBatchImpl(dual_mask_link_ctx_, batch_idx, tag, items);
+}
+
 void RunEcdhPsi(const EcdhPsiOptions& options,
                 const std::shared_ptr<IBatchProvider>& batch_provider,
                 const std::shared_ptr<ICipherStore>& cipher_store) {
-  YASL_ENFORCE(options.link_ctx->WorldSize() == 2);
-  YASL_ENFORCE(batch_provider != nullptr && cipher_store != nullptr);
+  YACL_ENFORCE(options.link_ctx->WorldSize() == 2);
+  YACL_ENFORCE(batch_provider != nullptr && cipher_store != nullptr);
 
   EcdhPsiContext handler(options);
   handler.CheckConfig();
@@ -275,7 +273,7 @@ void RunEcdhPsi(const EcdhPsiOptions& options,
 }
 
 std::vector<std::string> RunEcdhPsi(
-    const std::shared_ptr<yasl::link::Context>& link_ctx,
+    const std::shared_ptr<yacl::link::Context>& link_ctx,
     const std::vector<std::string>& items, size_t target_rank, CurveType curve,
     size_t batch_size) {
   EcdhPsiOptions options;
@@ -301,7 +299,7 @@ std::vector<std::string> RunEcdhPsi(
   for (uint32_t index = 0; index < self_results.size(); index++) {
     if (std::binary_search(peer_results.begin(), peer_results.end(),
                            self_results[index])) {
-      YASL_ENFORCE(index < items.size());
+      YACL_ENFORCE(index < items.size());
       ret.push_back(items[index]);
     }
   }

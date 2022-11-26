@@ -24,9 +24,9 @@
 #include "absl/strings/str_split.h"
 #include "gtest/gtest.h"
 #include "spdlog/spdlog.h"
-#include "yasl/base/exception.h"
-#include "yasl/crypto/pseudo_random_generator.h"
-#include "yasl/utils/rand.h"
+#include "yacl/base/exception.h"
+#include "yacl/crypto/tools/prg.h"
+#include "yacl/crypto/utils/rand.h"
 
 #include "spu/psi/core/ecdh_oprf/ecdh_oprf_selector.h"
 
@@ -41,7 +41,7 @@ class BasicEcdhOprfTest : public ::testing::TestWithParam<TestParams> {};
 TEST_P(BasicEcdhOprfTest, Works) {
   auto params = GetParam();
 
-  yasl::PseudoRandomGenerator<uint64_t> prg(yasl::DrbgRandSeed());
+  yacl::Prg<uint64_t> prg(yacl::DrbgRandSeed());
 
   std::shared_ptr<IEcdhOprfServer> dh_oprf_server =
       CreateEcdhOprfServer(OprfType::Basic, params.type);

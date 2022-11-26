@@ -297,7 +297,7 @@ void InsertOrAssignWorker(
           "failed to overwrite item at bundle index {} because the item was "
           "not found",
           bundle_idx);
-      YASL_THROW("tried to overwrite non-existent item");
+      YACL_THROW("tried to overwrite non-existent item");
     }
 
     // If we had conflicts everywhere when trying to insert, then we need to
@@ -315,7 +315,7 @@ void InsertOrAssignWorker(
             "Insert-or-Assign worker: "
             "failed to insert item into a new BinBundle at bundle index {}",
             bundle_idx);
-        YASL_THROW("failed to insert item into a new BinBundle");
+        YACL_THROW("failed to insert item into a new BinBundle");
       }
 
       // Push a new BinBundle to the set of BinBundles at this bundle index
@@ -439,7 +439,7 @@ void RemoveWorker(
           "failed to remove item at bundle index {} because the item was not "
           "found",
           bundle_idx);
-      YASL_THROW("failed to remove item");
+      YACL_THROW("failed to remove item");
     }
   }
 
@@ -525,13 +525,13 @@ SenderDB::SenderDB(const apsi::PSIParams &params, size_t label_byte_count,
     SPDLOG_ERROR("Requested label byte count {} exceeds the maximum (1024)",
                  label_byte_count_);
 
-    YASL_THROW("label_byte_count is too large");
+    YACL_THROW("label_byte_count is too large");
   }
 
   if (nonce_byte_count_ > apsi::max_nonce_byte_count) {
     SPDLOG_ERROR("Request nonce byte count {} exceeds the maximum ({}) ",
                  nonce_byte_count_, apsi::max_nonce_byte_count);
-    YASL_THROW("nonce_byte_count is too large");
+    YACL_THROW("nonce_byte_count is too large");
   }
 
   // If the nonce byte count is less than max_nonce_byte_count, print a warning;
@@ -554,7 +554,7 @@ SenderDB::SenderDB(const apsi::PSIParams &params, size_t label_byte_count,
 }
 
 SenderDB::SenderDB(const apsi::PSIParams &params,
-                   yasl::ByteContainerView oprf_key, size_t label_byte_count,
+                   yacl::ByteContainerView oprf_key, size_t label_byte_count,
                    size_t nonce_byte_count, bool compressed)
     : SenderDB(params, label_byte_count, nonce_byte_count, compressed) {
   oprf_key_.resize(oprf_key.size());
@@ -735,7 +735,7 @@ void SenderDB::strip() {
 std::vector<uint8_t> SenderDB::GetOprfKey() const {
   if (stripped_) {
     SPDLOG_ERROR("Cannot return the OPRF key from a stripped SenderDB");
-    YASL_THROW("failed to return OPRF key");
+    YACL_THROW("failed to return OPRF key");
   }
   return oprf_key_;
 }
@@ -744,12 +744,12 @@ void SenderDB::InsertOrAssign(
     const std::vector<std::pair<apsi::Item, apsi::Label>> &data) {
   if (stripped_) {
     SPDLOG_ERROR("Cannot insert data to a stripped SenderDB");
-    YASL_THROW("failed to insert data");
+    YACL_THROW("failed to insert data");
   }
   if (!IsLabeled()) {
     SPDLOG_ERROR(
         "Attempted to insert labeled data but this is an unlabeled SenderDB");
-    YASL_THROW("failed to insert data");
+    YACL_THROW("failed to insert data");
   }
 
   SPDLOG_INFO("Start inserting {} items in SenderDB", data.size());
@@ -857,12 +857,12 @@ void SenderDB::InsertOrAssign(
 void SenderDB::InsertOrAssign(const std::vector<apsi::Item> &data) {
   if (stripped_) {
     SPDLOG_ERROR("Cannot insert data to a stripped SenderDB");
-    YASL_THROW("failed to insert data");
+    YACL_THROW("failed to insert data");
   }
   if (IsLabeled()) {
     SPDLOG_ERROR(
         "Attempted to insert unlabeled data but this is a labeled SenderDB");
-    YASL_THROW("failed to insert data");
+    YACL_THROW("failed to insert data");
   }
 
   STOPWATCH(sender_stopwatch, "SenderDB::insert_or_assign (unlabeled)");
@@ -933,7 +933,7 @@ void SenderDB::InsertOrAssign(const std::vector<apsi::Item> &data) {
 void SenderDB::remove(const std::vector<apsi::Item> &data) {
   if (stripped_) {
     SPDLOG_ERROR("Cannot remove data from a stripped SenderDB");
-    YASL_THROW("failed to remove data");
+    YACL_THROW("failed to remove data");
   }
 
   STOPWATCH(sender_stopwatch, "SenderDB::remove");
@@ -1000,7 +1000,7 @@ bool SenderDB::HasItem(const apsi::Item &item) const {
   if (stripped_) {
     SPDLOG_ERROR(
         "Cannot retrieve the presence of an item from a stripped SenderDB");
-    YASL_THROW("failed to retrieve the presence of item");
+    YACL_THROW("failed to retrieve the presence of item");
   }
 
   // First compute the hash for the input item
@@ -1022,12 +1022,12 @@ bool SenderDB::HasItem(const apsi::Item &item) const {
 apsi::Label SenderDB::GetLabel(const apsi::Item &item) const {
   if (stripped_) {
     SPDLOG_ERROR("Cannot retrieve a label from a stripped SenderDB");
-    YASL_THROW("failed to retrieve label");
+    YACL_THROW("failed to retrieve label");
   }
   if (!IsLabeled()) {
     SPDLOG_ERROR(
         "Attempted to retrieve a label but this is an unlabeled SenderDB");
-    YASL_THROW("failed to retrieve label");
+    YACL_THROW("failed to retrieve label");
   }
 
   // First compute the hash for the input item
@@ -1049,7 +1049,7 @@ apsi::Label SenderDB::GetLabel(const apsi::Item &item) const {
   if (hashed_items_.find(hashed_item) == hashed_items_.end()) {
     SPDLOG_ERROR(
         "Cannot retrieve label for an item that is not in the SenderDB");
-    YASL_THROW("failed to retrieve label");
+    YACL_THROW("failed to retrieve label");
   }
 
   uint32_t bins_per_bundle = params_.bins_per_bundle();
@@ -1086,7 +1086,7 @@ apsi::Label SenderDB::GetLabel(const apsi::Item &item) const {
     SPDLOG_ERROR(
         "Failed to retrieve label for an item that was supposed to be in the "
         "SenderDB");
-    YASL_THROW("failed to retrieve label");
+    YACL_THROW("failed to retrieve label");
   }
 
   // All good. Now just reconstruct the big label from its split-up parts

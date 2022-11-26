@@ -22,7 +22,7 @@
 #include "spu/dialect/pphlo_base_enums.h"
 
 #define GET_TYPEDEF_CLASSES
-#include "yasl/base/exception.h"
+#include "yacl/base/exception.h"
 
 #include "spu/dialect/pphlo_types.h.inc"
 
@@ -76,7 +76,7 @@ class TypeTools {
     if (isMPCType<PublicType>(t)) {
       return Visibility::VIS_PUBLIC;
     }
-    YASL_ENFORCE(isMPCType<SecretType>(t));
+    YACL_ENFORCE(isMPCType<SecretType>(t));
     return Visibility::VIS_SECRET;
   }
 

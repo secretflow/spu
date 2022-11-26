@@ -22,7 +22,7 @@
 #include "absl/strings/str_split.h"
 #include "gtest/gtest.h"
 #include "spdlog/spdlog.h"
-#include "yasl/link/test_util.h"
+#include "yacl/link/test_util.h"
 
 #include "spu/psi/utils/test_utils.h"
 
@@ -74,7 +74,7 @@ TEST_P(MemoryTaskPsiTest, Works) {
   auto params = GetParam();
   items = CreateMemoryTaskItems(params);
 
-  auto lctxs = yasl::link::test::SetupWorld(params.item_size.size());
+  auto lctxs = yacl::link::test::SetupWorld(params.item_size.size());
 
   auto proc = [&](int idx) -> std::vector<std::string> {
     spu::psi::MemoryPsiConfig config;
@@ -111,7 +111,7 @@ TEST_P(MemoryTaskPsiTest, BroadcastFalse) {
   items = CreateMemoryTaskItems(params);
   size_t receiver_rank = 0;
 
-  auto lctxs = yasl::link::test::SetupWorld(params.item_size.size());
+  auto lctxs = yacl::link::test::SetupWorld(params.item_size.size());
 
   auto proc = [&](int idx) -> std::vector<std::string> {
     spu::psi::MemoryPsiConfig config;
@@ -189,7 +189,7 @@ class MemoryTaskPsiTestFailedTest
 TEST_P(MemoryTaskPsiTestFailedTest, FailedWorks) {
   auto params = GetParam();
 
-  auto lctxs = yasl::link::test::SetupWorld(params.party_num);
+  auto lctxs = yacl::link::test::SetupWorld(params.party_num);
 
   spu::psi::MemoryPsiConfig config;
   config.set_psi_type(params.psi_protocol);

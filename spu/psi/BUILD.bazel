@@ -42,7 +42,9 @@ spu_cc_library(
     ],
     deps = [
         ":psi_cc_proto",
+        "//spu/psi/core:ecdh_psi",
         "//spu/psi/operator",
+        "//spu/psi/operator:factory",
         "//spu/psi/utils",
     ],
 )

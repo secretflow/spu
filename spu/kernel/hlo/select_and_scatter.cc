@@ -18,7 +18,7 @@
 #include <cstdint>
 #include <iostream>
 
-#include "yasl/utils/parallel.h"
+#include "yacl/utils/parallel.h"
 
 #include "spu/core/shape_util.h"
 #include "spu/kernel/context.h"
@@ -75,7 +75,7 @@ spu::Value MaxPoolScatter(
   std::vector<int64_t> window_index(ndim, 0);
 
   do {
-    yasl::parallel_for(
+    yacl::parallel_for(
         0, source.numel(), 2048, [&](int64_t begin, int64_t end) {
           std::vector<int64_t> tiled_index(2 * ndim, 0);
           std::vector<int64_t> base_x_window_index(2 * ndim, 0);
@@ -127,8 +127,8 @@ spu::Value SelectAndScatterExpanded(
 
   // sanity check, make (source x window == expanded)
   for (size_t dim = 0; dim < ndim; dim++) {
-    YASL_ENFORCE(expanded.shape()[dim] % window_shape[dim] == 0);
-    YASL_ENFORCE(expanded.shape()[dim] / window_shape[dim] ==
+    YACL_ENFORCE(expanded.shape()[dim] % window_shape[dim] == 0);
+    YACL_ENFORCE(expanded.shape()[dim] / window_shape[dim] ==
                  source.shape()[dim]);
   }
 

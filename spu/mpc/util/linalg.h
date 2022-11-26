@@ -17,7 +17,7 @@
 #include <cstddef>
 
 #include "spdlog/spdlog.h"
-#include "yasl/base/exception.h"
+#include "yacl/base/exception.h"
 
 #include "spu/core/parallel_utils.h"
 
@@ -147,7 +147,7 @@ void matmul(int64_t M, int64_t N, int64_t K, const T* A, int64_t LDA,
   // if (M == 1) {
   //   // GEMV case 1*K * K*N -> 1*N
   //   auto work_load_size = computeTaskSize(N);
-  //   yasl::parallel_for(0, N, work_load_size, [&](int64_t begin, int64_t end)
+  //   yacl::parallel_for(0, N, work_load_size, [&](int64_t begin, int64_t end)
   //   {
   //     auto block_size = end - begin;
   //     c.block(0, begin, 1, block_size) =
@@ -157,7 +157,7 @@ void matmul(int64_t M, int64_t N, int64_t K, const T* A, int64_t LDA,
   // } else if (N == 1) {
   //   // GEMV case M*K * K*1 -> M*1
   //   auto work_load_size = computeTaskSize(M);
-  //   yasl::parallel_for(0, M, work_load_size, [&](int64_t begin, int64_t end)
+  //   yacl::parallel_for(0, M, work_load_size, [&](int64_t begin, int64_t end)
   //   {
   //     auto block_size = end - begin;
   //     c.block(begin, 0, block_size, 1) =

@@ -15,7 +15,7 @@
 #include "spu/mpc/beaver/cheetah/util.h"
 
 #include "spdlog/spdlog.h"
-#include "yasl/base/exception.h"
+#include "yacl/base/exception.h"
 
 #include "spu/core/array_ref.h"
 
@@ -23,15 +23,15 @@ namespace spu::mpc {
 
 void RemoveCoefficientsInplace(RLWECt& ciphertext,
                                const std::set<size_t>& to_remove) {
-  YASL_ENFORCE(!ciphertext.is_ntt_form());
-  YASL_ENFORCE_EQ(2UL, ciphertext.size());
+  YACL_ENFORCE(!ciphertext.is_ntt_form());
+  YACL_ENFORCE_EQ(2UL, ciphertext.size());
 
   size_t num_to_remove = to_remove.size();
   size_t num_coeff = ciphertext.poly_modulus_degree();
   size_t num_modulus = ciphertext.coeff_modulus_size();
-  YASL_ENFORCE(std::all_of(to_remove.begin(), to_remove.end(),
+  YACL_ENFORCE(std::all_of(to_remove.begin(), to_remove.end(),
                            [&](size_t idx) { return idx < num_coeff; }));
-  YASL_ENFORCE(num_to_remove < num_coeff);
+  YACL_ENFORCE(num_to_remove < num_coeff);
   if (num_to_remove == 0) return;
 
   for (size_t l = 0; l < num_modulus; ++l) {
@@ -44,11 +44,11 @@ void RemoveCoefficientsInplace(RLWECt& ciphertext,
 
 void KeepCoefficientsInplace(RLWECt& ciphertext,
                              const std::set<size_t>& to_keep) {
-  YASL_ENFORCE(!ciphertext.is_ntt_form());
-  YASL_ENFORCE_EQ(2UL, ciphertext.size());
+  YACL_ENFORCE(!ciphertext.is_ntt_form());
+  YACL_ENFORCE_EQ(2UL, ciphertext.size());
 
   size_t num_coeff = ciphertext.poly_modulus_degree();
-  YASL_ENFORCE(std::all_of(to_keep.begin(), to_keep.end(),
+  YACL_ENFORCE(std::all_of(to_keep.begin(), to_keep.end(),
                            [&](size_t idx) { return idx < num_coeff; }));
   if (to_keep.size() == num_coeff) return;
 
@@ -62,7 +62,7 @@ void KeepCoefficientsInplace(RLWECt& ciphertext,
 }
 
 AutoMemGuard::AutoMemGuard(ArrayRef* obj) : obj_(obj) {
-  if (obj_) YASL_ENFORCE(obj_->stride() == 1);
+  if (obj_) YACL_ENFORCE(obj_->stride() == 1);
 }
 
 AutoMemGuard::AutoMemGuard(RLWEPt* pt) : pt_(pt){};

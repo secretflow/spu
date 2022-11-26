@@ -33,6 +33,6 @@ spu_cc_library(
     hdrs = ["compilation_context.h"],
     deps = [
         ":ir_printer_config",
-        "@yasl//yasl/base:exception",
+        "@yacl//yacl/base:exception",
     ],
 )

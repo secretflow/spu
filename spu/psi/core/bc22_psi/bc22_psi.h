@@ -19,7 +19,7 @@
 #include <vector>
 
 #include "absl/types/span.h"
-#include "yasl/base/int128.h"
+#include "yacl/base/int128.h"
 
 #include "spu/psi/core/bc22_psi/generalized_cuckoo_hash.h"
 #include "spu/psi/core/communication.h"
@@ -39,7 +39,7 @@ namespace spu::psi {
 
 class Bc22PcgPsi {
  public:
-  Bc22PcgPsi(const std::shared_ptr<yasl::link::Context> &link_ctx,
+  Bc22PcgPsi(const std::shared_ptr<yacl::link::Context> &link_ctx,
              PsiRoleType role);
 
   void RunPsi(absl::Span<const std::string> items);
@@ -48,7 +48,7 @@ class Bc22PcgPsi {
     if (role_ == PsiRoleType::Receiver) {
       return results_;
     } else {
-      YASL_THROW("Bc22PcgPsi only Receiver get intersection");
+      YACL_THROW("Bc22PcgPsi only Receiver get intersection");
     }
   }
 
@@ -74,7 +74,7 @@ class Bc22PcgPsi {
   CuckooIndex::Options cuckoo_options_;
 
   // Provides the link for the rank world.
-  std::shared_ptr<yasl::link::Context> link_ctx_;
+  std::shared_ptr<yacl::link::Context> link_ctx_;
 
   // psi role sender/receiver
   PsiRoleType role_;

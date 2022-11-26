@@ -21,14 +21,14 @@ extern "C" {
 
 #include <vector>
 
-#include "yasl/crypto/hash_util.h"
-#include "yasl/utils/parallel.h"
+#include "yacl/crypto/utils/hash_util.h"
+#include "yacl/utils/parallel.h"
 
 namespace spu::psi {
 
 void FourQEccCryptor::EccMask(absl::Span<const char> batch_points,
                               absl::Span<char> dest_points) const {
-  YASL_ENFORCE(batch_points.size() % kEccKeySize == 0);
+  YACL_ENFORCE(batch_points.size() % kEccKeySize == 0);
 
   using Item = std::array<unsigned char, kEccKeySize>;
   static_assert(sizeof(Item) == kEccKeySize);
@@ -37,7 +37,7 @@ void FourQEccCryptor::EccMask(absl::Span<const char> batch_points,
     ECCRYPTO_STATUS status =
         CompressedSecretAgreement(this->private_key_, in.data(), out.data());
 
-    YASL_ENFORCE(status == ECCRYPTO_SUCCESS,
+    YACL_ENFORCE(status == ECCRYPTO_SUCCESS,
                  "FourQ CompressedSecretAgreement Error: ", status);
   };
 
@@ -47,7 +47,7 @@ void FourQEccCryptor::EccMask(absl::Span<const char> batch_points,
   absl::Span<Item> output(reinterpret_cast<Item*>(dest_points.data()),
                           dest_points.size() / sizeof(Item));
 
-  yasl::parallel_for(0, input.size(), 1, [&](int64_t begin, int64_t end) {
+  yacl::parallel_for(0, input.size(), 1, [&](int64_t begin, int64_t end) {
     for (int64_t idx = begin; idx < end; ++idx) {
       mask_functor(input[idx], output[idx]);
     }
@@ -58,7 +58,7 @@ std::vector<uint8_t> FourQEccCryptor::HashToCurve(
     absl::Span<const char> input) const {
   point_t P;
   std::vector<uint8_t> sha_bytes =
-      yasl::crypto::SslHash(yasl::crypto::HashAlgorithm::SHA512)
+      yacl::crypto::SslHash(yacl::crypto::HashAlgorithm::SHA512)
           .Update(input)
           .CumulativeHash();
   f2elm_t* f2elmt = (f2elm_t*)sha_bytes.data();
@@ -67,7 +67,7 @@ std::vector<uint8_t> FourQEccCryptor::HashToCurve(
   ECCRYPTO_STATUS status = ECCRYPTO_SUCCESS;
   // Hash GF(p^2) element to curve
   status = ::HashToCurve((felm_t*)f2elmt, P);
-  YASL_ENFORCE(status == ECCRYPTO_SUCCESS, "FourQ HashToCurve Error: ", status);
+  YACL_ENFORCE(status == ECCRYPTO_SUCCESS, "FourQ HashToCurve Error: ", status);
   std::vector<uint8_t> ret(kEccKeySize, 0U);
   encode(P, (unsigned char*)&ret[0]);  // Encode public key
   return ret;

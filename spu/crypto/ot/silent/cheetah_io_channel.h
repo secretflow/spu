@@ -15,14 +15,14 @@
 #pragma once
 
 #include "emp-tool/io/io_channel.h"
-#include "yasl/base/buffer.h"
-#include "yasl/link/link.h"
+#include "yacl/base/buffer.h"
+#include "yacl/link/link.h"
 
 namespace spu {
 
 class CheetahIo : public emp::IOChannel<CheetahIo> {
  public:
-  std::shared_ptr<yasl::link::Context> ctx_;
+  std::shared_ptr<yacl::link::Context> ctx_;
 
   const static uint64_t SEND_BUFFER_SIZE = 1024 * 1024;
   uint32_t send_op_;
@@ -31,10 +31,10 @@ class CheetahIo : public emp::IOChannel<CheetahIo> {
   std::vector<uint8_t> send_buffer_;
   uint64_t send_buffer_used_;
 
-  yasl::Buffer recv_buffer_;
+  yacl::Buffer recv_buffer_;
   uint64_t recv_buffer_used_;
 
-  explicit CheetahIo(std::shared_ptr<yasl::link::Context> ctx);
+  explicit CheetahIo(std::shared_ptr<yacl::link::Context> ctx);
 
   ~CheetahIo();
 

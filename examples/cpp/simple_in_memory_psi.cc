@@ -90,7 +90,7 @@ int main(int argc, char** argv) {
       CreateSampleDataset(DataSize.getValue(), Rank.getValue());
 
   std::vector<std::string> intersection =
-      spu::psi::RunEcdhPsi(hctx->lctx(), data_set, yasl::link::kAllRank);
+      spu::psi::RunEcdhPsi(hctx->lctx(), data_set, yacl::link::kAllRank);
 
   // output intersection size
   // psi result size is nearly 70% of the data_size

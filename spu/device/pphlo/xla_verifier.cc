@@ -63,7 +63,7 @@ xla::PrimitiveType getXlaType(PtTy type) {
   case spu::PtType::PT_F64:
     return xla::F64;
   default:
-    YASL_THROW("Unhandled type {}", type.toString());
+    YACL_THROW("Unhandled type {}", type.toString());
   }
   return xla::PrimitiveType::PRIMITIVE_TYPE_INVALID;
 }
@@ -103,7 +103,7 @@ xla::Literal convertToXlaLiteral(HalContext *ctx, const spu::Value &v) {
     ALL_POSSIBLE_PTTYPES(CASE)
 
   default:
-    YASL_THROW("unexpected type={}", arr.eltype());
+    YACL_THROW("unexpected type={}", arr.eltype());
   }
 
 #undef CASE
@@ -128,7 +128,7 @@ xla::Literal xlaOnes(HalContext *ctx, const spu::Value &base) {
     ALL_POSSIBLE_PTTYPES(CASE)
 
   default:
-    YASL_THROW("unexpected type={}", arr.eltype());
+    YACL_THROW("unexpected type={}", arr.eltype());
   }
 
 #undef CASE
@@ -165,7 +165,7 @@ bool verifyEqual(const xla::Literal &xla_ret, const NdArrayRef &expected) {
     ALL_POSSIBLE_PTTYPES(CASE)
 
   default:
-    YASL_THROW("unexpected type={}", expected.eltype());
+    YACL_THROW("unexpected type={}", expected.eltype());
   }
 
   SPDLOG_INFO("Answer has {} elements, {} mismatch found", numel, mismatch);
@@ -841,7 +841,7 @@ void XlaVerifier::verify(mlir::pphlo::ReduceOp op,
   void XlaVerifier::verify(OpName op, \ 
                          absl::Span<const spu::Value> operands, \ 
                          absl::Span<const spu::Value> expected) {                                       \
-    YASL_THROW("TBD");                                                         \
+    YACL_THROW("TBD");                                                         \
   }
 
 UNIMPL_VERIFIER(mlir::pphlo::SelectAndScatterOp)

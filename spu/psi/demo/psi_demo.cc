@@ -15,39 +15,42 @@
 #include <string>
 #include <vector>
 
-#include "absl/strings/str_join.h"
-#include "absl/strings/string_view.h"
 #include "gflags/gflags.h"
 #include "spdlog/spdlog.h"
-#include "yasl/base/exception.h"
-#include "yasl/link/link.h"
+#include "yacl/base/exception.h"
+#include "yacl/link/link.h"
 
 #include "spu/psi/bucket_psi.h"
 #include "spu/psi/utils/resource.h"
 
 DEFINE_string(input_path, "", "input csv file path");
 DEFINE_string(
-    psi_keys, "",
+    psi_keys, "id",
     "which keys in input file should be used in psi, separated by \",\"");
-DEFINE_string(output_path, "", "output csv file path");
+DEFINE_string(output_path, "psi_demo_out.csv", "output csv file path");
 DEFINE_string(
-    party_ips, "",
+    party_ips, "127.0.0.1:9307,127.0.0.1:9308",
     "all parties ip, separated by \",\", the order must be consistent");
-DEFINE_uint32(self_rank, 0, "self rank in link::Context");
-DEFINE_int32(psi_protocol, 1, "psi protocol, see PsiType");
+DEFINE_uint32(rank, 0, "self rank in link::Context");
+DEFINE_string(psi_protocol, "ECDH_PSI_2PC", "psi protocol, see PsiType");
 DEFINE_bool(output_sort, true, "whether output file should be sorted");
+DEFINE_bool(ic_mode, false, "run in interconnection mode");
 
-std::shared_ptr<yasl::link::Context> CreateLinkContext(
+std::shared_ptr<yacl::link::Context> CreateLinkContext(
     const std::string& party_ips, size_t self_rank) {
   std::vector<std::string> ip_list = absl::StrSplit(party_ips, ',');
-  YASL_ENFORCE(ip_list.size() > 1);
+  YACL_ENFORCE(ip_list.size() > 1);
 
-  yasl::link::ContextDesc ctx_desc;
+  yacl::link::ContextDesc ctx_desc;
+  ctx_desc.connect_retry_times = 180;
   for (size_t i = 0; i < ip_list.size(); ++i) {
     ctx_desc.parties.push_back({std::to_string(i), ip_list[i]});
   }
+  if (FLAGS_ic_mode) {
+    ctx_desc.brpc_channel_protocol = "h2:grpc";
+  }
 
-  return yasl::link::FactoryBrpc().CreateContext(ctx_desc, self_rank);
+  return yacl::link::FactoryBrpc().CreateContext(ctx_desc, self_rank);
 }
 
 std::vector<std::string> GetPsiKeys(const std::string& psi_keys) {
@@ -59,7 +62,7 @@ int main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
   try {
-    auto link_ctx = CreateLinkContext(FLAGS_party_ips, FLAGS_self_rank);
+    auto link_ctx = CreateLinkContext(FLAGS_party_ips, FLAGS_rank);
     link_ctx->ConnectToMesh();
 
     auto fields = GetPsiKeys(FLAGS_psi_keys);
@@ -71,11 +74,16 @@ int main(int argc, char* argv[]) {
     config.mutable_input_params()->set_precheck(false);
     config.mutable_output_params()->set_path(FLAGS_output_path);
     config.mutable_output_params()->set_need_sort(FLAGS_output_sort);
-    config.set_psi_type(static_cast<spu::psi::PsiType>(FLAGS_psi_protocol));
+    spu::psi::PsiType psi_type;
+    YACL_ENFORCE(spu::psi::PsiType_Parse(FLAGS_psi_protocol, &psi_type),
+                 "Parse psi_protocol {} fail", FLAGS_psi_protocol);
+    config.set_psi_type(psi_type);
     config.set_broadcast_result(true);
     config.set_curve_type(spu::psi::CurveType::CURVE_25519);
 
-    spu::psi::BucketPsi ctx(config, link_ctx);
+    SPDLOG_INFO("Run BucketPsi with config: {}", config.ShortDebugString());
+    SPDLOG_INFO("Ic mode: {}", FLAGS_ic_mode);
+    spu::psi::BucketPsi ctx(config, link_ctx, FLAGS_ic_mode);
     auto report = ctx.Run();
 
     SPDLOG_INFO("psi intersection_count={}, original_count={}",

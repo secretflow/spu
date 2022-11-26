@@ -19,7 +19,7 @@
 #include <utility>
 #include <vector>
 
-#include "yasl/link/link.h"
+#include "yacl/link/link.h"
 
 #include "spu/psi/core/ecdh_psi.h"
 
@@ -60,7 +60,7 @@ struct DpPsiOptions {
  * @return size_t : return intersection size
  */
 size_t RunDpEcdhPsiAlice(const DpPsiOptions& dp_psi_options,
-                         const std::shared_ptr<yasl::link::Context>& link_ctx,
+                         const std::shared_ptr<yacl::link::Context>& link_ctx,
                          const std::vector<std::string>& items,
                          size_t* sub_sample_size, size_t* up_sample_size,
                          CurveType curve = CurveType::CURVE_25519);
@@ -77,7 +77,7 @@ size_t RunDpEcdhPsiAlice(const DpPsiOptions& dp_psi_options,
  */
 std::vector<size_t> RunDpEcdhPsiBob(
     const DpPsiOptions& dp_psi_options,
-    const std::shared_ptr<yasl::link::Context>& link_ctx,
+    const std::shared_ptr<yacl::link::Context>& link_ctx,
     const std::vector<std::string>& items, size_t* sub_sample_size,
     CurveType curve = CurveType::CURVE_25519);
 

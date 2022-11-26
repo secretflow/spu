@@ -21,7 +21,7 @@
 #include "absl/strings/str_split.h"
 #include "benchmark/benchmark.h"
 #include "spdlog/spdlog.h"
-#include "yasl/link/test_util.h"
+#include "yacl/link/test_util.h"
 
 #include "spu/psi/core/bc22_psi/bc22_psi.h"
 
@@ -47,38 +47,38 @@ std::vector<std::string> CreateRangeItems(size_t start_pos, size_t size) {
   return ret;
 }
 
-std::shared_ptr<yasl::link::Context> CreateContext(
-    int self_rank, yasl::link::ContextDesc& lctx_desc) {
-  std::shared_ptr<yasl::link::Context> link_ctx;
+std::shared_ptr<yacl::link::Context> CreateContext(
+    int self_rank, yacl::link::ContextDesc& lctx_desc) {
+  std::shared_ptr<yacl::link::Context> link_ctx;
 
-  yasl::link::FactoryBrpc factory;
+  yacl::link::FactoryBrpc factory;
   link_ctx = factory.CreateContext(lctx_desc, self_rank);
   link_ctx->ConnectToMesh();
 
   return link_ctx;
 }
 
-std::vector<std::shared_ptr<yasl::link::Context>> CreateLinks(
+std::vector<std::shared_ptr<yacl::link::Context>> CreateLinks(
     std::string host_str) {
   std::vector<std::string> hosts = absl::StrSplit(host_str, ',');
-  yasl::link::ContextDesc lctx_desc;
+  yacl::link::ContextDesc lctx_desc;
   for (size_t rank = 0; rank < hosts.size(); rank++) {
     const std::string id = fmt::format("party{}", rank);
     lctx_desc.parties.push_back({id, hosts[rank]});
   }
 
-  auto proc = [&](int self_randk) -> std::shared_ptr<yasl::link::Context> {
+  auto proc = [&](int self_randk) -> std::shared_ptr<yacl::link::Context> {
     return CreateContext(self_randk, lctx_desc);
   };
 
   size_t world_size = hosts.size();
-  std::vector<std::future<std::shared_ptr<yasl::link::Context>>> f_links(
+  std::vector<std::future<std::shared_ptr<yacl::link::Context>>> f_links(
       world_size);
   for (size_t i = 0; i < world_size; i++) {
     f_links[i] = std::async(proc, i);
   }
 
-  std::vector<std::shared_ptr<yasl::link::Context>> links(world_size);
+  std::vector<std::shared_ptr<yacl::link::Context>> links(world_size);
   for (size_t i = 0; i < world_size; i++) {
     links[i] = f_links[i].get();
   }

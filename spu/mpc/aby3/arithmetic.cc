@@ -195,7 +195,7 @@ ArrayRef AddAP::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
   const auto* lhs_ty = lhs.eltype().as<AShrTy>();
   const auto* rhs_ty = rhs.eltype().as<Pub2kTy>();
 
-  YASL_ENFORCE(lhs_ty->field() == rhs_ty->field());
+  YACL_ENFORCE(lhs_ty->field() == rhs_ty->field());
   const auto field = lhs_ty->field();
 
   auto rank = comm->getRank();
@@ -226,7 +226,7 @@ ArrayRef AddAA::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
   const auto* lhs_ty = lhs.eltype().as<AShrTy>();
   const auto* rhs_ty = rhs.eltype().as<AShrTy>();
 
-  YASL_ENFORCE(lhs_ty->field() == rhs_ty->field());
+  YACL_ENFORCE(lhs_ty->field() == rhs_ty->field());
   const auto field = lhs_ty->field();
 
   return DISPATCH_ALL_FIELDS(field, "_", [&]() {
@@ -256,7 +256,7 @@ ArrayRef MulAP::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
   const auto* lhs_ty = lhs.eltype().as<AShrTy>();
   const auto* rhs_ty = rhs.eltype().as<Pub2kTy>();
 
-  YASL_ENFORCE(lhs_ty->field() == rhs_ty->field());
+  YACL_ENFORCE(lhs_ty->field() == rhs_ty->field());
   const auto field = lhs_ty->field();
 
   return DISPATCH_ALL_FIELDS(field, "_", [&]() {
@@ -324,9 +324,9 @@ ArrayRef MulA1B::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
                       const ArrayRef& rhs) const {
   SPU_TRACE_MPC_LEAF(ctx, lhs, rhs);
 
-  YASL_ENFORCE(lhs.numel() == rhs.numel());
-  YASL_ENFORCE(lhs.eltype().isa<AShare>());
-  YASL_ENFORCE(rhs.eltype().isa<BShare>() &&
+  YACL_ENFORCE(lhs.numel() == rhs.numel());
+  YACL_ENFORCE(lhs.eltype().isa<AShare>());
+  YACL_ENFORCE(rhs.eltype().isa<BShare>() &&
                rhs.eltype().as<BShare>()->nbits() == 1);
 
   const auto field = lhs.eltype().as<Ring2k>()->field();
@@ -561,7 +561,7 @@ ArrayRef TruncPrA::proc(KernelEvalContext* ctx, const ArrayRef& in,
     }
 
     default:
-      YASL_THROW("Party number exceeds 3!");
+      YACL_THROW("Party number exceeds 3!");
   }
 }
 
@@ -570,7 +570,7 @@ std::vector<T> openWith(Communicator* comm, size_t peer_rank,
                         absl::Span<T const> in) {
   comm->sendAsync(peer_rank, in, "_");
   auto peer = comm->recv<T>(peer_rank, "_");
-  YASL_ENFORCE(peer.size() == in.size());
+  YACL_ENFORCE(peer.size() == in.size());
   std::vector<T> out(in.size());
 
   pforeach(0, in.size(), [&](int64_t idx) {  //
@@ -762,7 +762,7 @@ ArrayRef TruncPrAPrecise::proc(KernelEvalContext* ctx, const ArrayRef& in,
         break;
       }
       default:
-        YASL_THROW("Party number exceeds 3!");
+        YACL_THROW("Party number exceeds 3!");
     };
   });
 
@@ -774,25 +774,25 @@ namespace {
 //   xAyBzCwD -> (xyzw, ABCD)
 std::pair<ArrayRef, ArrayRef> bit_split(const ArrayRef& in) {
   constexpr std::array<uint128_t, 6> kSwapMasks = {{
-      yasl::MakeUint128(0x2222222222222222, 0x2222222222222222),  // 4bit
-      yasl::MakeUint128(0x0C0C0C0C0C0C0C0C, 0x0C0C0C0C0C0C0C0C),  // 8bit
-      yasl::MakeUint128(0x00F000F000F000F0, 0x00F000F000F000F0),  // 16bit
-      yasl::MakeUint128(0x0000FF000000FF00, 0x0000FF000000FF00),  // 32bit
-      yasl::MakeUint128(0x00000000FFFF0000, 0x00000000FFFF0000),  // 64bit
-      yasl::MakeUint128(0x0000000000000000, 0xFFFFFFFF00000000),  // 128bit
+      yacl::MakeUint128(0x2222222222222222, 0x2222222222222222),  // 4bit
+      yacl::MakeUint128(0x0C0C0C0C0C0C0C0C, 0x0C0C0C0C0C0C0C0C),  // 8bit
+      yacl::MakeUint128(0x00F000F000F000F0, 0x00F000F000F000F0),  // 16bit
+      yacl::MakeUint128(0x0000FF000000FF00, 0x0000FF000000FF00),  // 32bit
+      yacl::MakeUint128(0x00000000FFFF0000, 0x00000000FFFF0000),  // 64bit
+      yacl::MakeUint128(0x0000000000000000, 0xFFFFFFFF00000000),  // 128bit
   }};
   constexpr std::array<uint128_t, 6> kKeepMasks = {{
-      yasl::MakeUint128(0x9999999999999999, 0x9999999999999999),  // 4bit
-      yasl::MakeUint128(0xC3C3C3C3C3C3C3C3, 0xC3C3C3C3C3C3C3C3),  // 8bit
-      yasl::MakeUint128(0xF00FF00FF00FF00F, 0xF00FF00FF00FF00F),  // 16bit
-      yasl::MakeUint128(0xFF0000FFFF0000FF, 0xFF0000FFFF0000FF),  // 32bit
-      yasl::MakeUint128(0xFFFF00000000FFFF, 0xFFFF00000000FFFF),  // 64bit
-      yasl::MakeUint128(0xFFFFFFFF00000000, 0x00000000FFFFFFFF),  // 128bit
+      yacl::MakeUint128(0x9999999999999999, 0x9999999999999999),  // 4bit
+      yacl::MakeUint128(0xC3C3C3C3C3C3C3C3, 0xC3C3C3C3C3C3C3C3),  // 8bit
+      yacl::MakeUint128(0xF00FF00FF00FF00F, 0xF00FF00FF00FF00F),  // 16bit
+      yacl::MakeUint128(0xFF0000FFFF0000FF, 0xFF0000FFFF0000FF),  // 32bit
+      yacl::MakeUint128(0xFFFF00000000FFFF, 0xFFFF00000000FFFF),  // 64bit
+      yacl::MakeUint128(0xFFFFFFFF00000000, 0x00000000FFFFFFFF),  // 128bit
   }};
 
   const auto* in_ty = in.eltype().as<BShrTy>();
   const size_t in_nbits = in_ty->nbits();
-  YASL_ENFORCE(in_nbits != 0 && in_nbits % 2 == 0, "in_nbits={}", in_nbits);
+  YACL_ENFORCE(in_nbits != 0 && in_nbits % 2 == 0, "in_nbits={}", in_nbits);
   const size_t out_nbits = in_nbits / 2;
   const auto out_backtype = calcBShareBacktype(out_nbits);
   const auto out_type = makeType<BShrTy>(out_backtype, out_nbits);

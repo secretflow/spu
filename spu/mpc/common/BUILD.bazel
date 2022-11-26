@@ -44,9 +44,9 @@ spu_cc_library(
         "//spu/core",
         "//spu/mpc:kernel",
         "//spu/mpc:object",
-        "@yasl//yasl/crypto:pseudo_random_generator",
-        "@yasl//yasl/link",
-        "@yasl//yasl/utils:rand",
+        "@yacl//yacl/crypto/tools:prg",
+        "@yacl//yacl/crypto/utils:rand",
+        "@yacl//yacl/link",
     ],
 )
 

@@ -20,23 +20,40 @@
 #include <utility>
 
 #include "spdlog/spdlog.h"
-#include "yasl/base/exception.h"
-#include "yasl/crypto/hash_util.h"
-#include "yasl/utils/parallel.h"
+#include "yacl/base/exception.h"
+#include "yacl/crypto/utils/hash_util.h"
+#include "yacl/utils/parallel.h"
 
 #include "spu/psi/core/communication.h"
+#include "spu/psi/operator/factory.h"
 #include "spu/psi/operator/kkrt_2party_psi.h"
 #include "spu/psi/utils/serialize.h"
 
-namespace spu::psi {
-
 namespace {
 constexpr size_t kSyncRecvWaitTimeoutMs = 60 * 60 * 1000;
+}  // namespace
+
+namespace spu::psi {
+
+NpartyPsiOperator::Options NpartyPsiOperator::ParseConfig(
+    const MemoryPsiConfig& config,
+    const std::shared_ptr<yacl::link::Context>& lctx) {
+  NpartyPsiOperator::Options opts;
+  opts.link_ctx = lctx;
+  opts.master_rank = config.receiver_rank();
+  opts.psi_proto = NpartyPsiOperator::PsiProtocol::Ecdh;
+  if (config.psi_type() == PsiType::KKRT_PSI_NPC) {
+    opts.psi_proto = NpartyPsiOperator::PsiProtocol::Kkrt;
+  }
+  if (config.curve_type() != CurveType::CURVE_INVALID_TYPE) {
+    opts.curve_type = config.curve_type();
+  }
+  return opts;
 }
 
 NpartyPsiOperator::NpartyPsiOperator(const Options& options)
     : PsiBaseOperator(options.link_ctx), options_(options) {
-  YASL_ENFORCE(options_.link_ctx->WorldSize() >= 2);
+  YACL_ENFORCE(options_.link_ctx->WorldSize() >= 2);
 }
 
 std::vector<std::string> NpartyPsiOperator::OnRun(
@@ -78,9 +95,9 @@ std::vector<std::string> NpartyPsiOperator::OnRun(
     size_t erase_pos = (party_size_rank_vec.size() + 1) / 2;
     for (size_t idx = erase_pos; idx < party_size_rank_vec.size(); ++idx) {
       if (options_.link_ctx->Rank() == party_size_rank_vec[idx].second) {
-        yasl::link::RecvTimeoutGuard guard(options_.link_ctx,
+        yacl::link::RecvTimeoutGuard guard(options_.link_ctx,
                                            kSyncRecvWaitTimeoutMs);
-        auto recv_intersection_buf = yasl::link::Broadcast(
+        auto recv_intersection_buf = yacl::link::Broadcast(
             options_.link_ctx, {}, options_.master_rank, "recv finish message");
         return {};
       }
@@ -96,9 +113,9 @@ std::vector<std::string> NpartyPsiOperator::OnRun(
     }
     std::string sub_id =
         fmt::format("subid-level:{}-{}", li, party_size_rank_vec.size());
-    std::shared_ptr<yasl::link::Context> sub_link_ctx =
+    std::shared_ptr<yacl::link::Context> sub_link_ctx =
         options_.link_ctx->SubWorld(sub_id, sub_party_ids);
-    std::vector<yasl::Buffer> gather_size_bufs = yasl::link::AllGather(
+    std::vector<yacl::Buffer> gather_size_bufs = yacl::link::AllGather(
         sub_link_ctx, utils::SerializeSize(intersection.size()),
         fmt::format("round:{}, {} gather item size", li, sub_link_ctx->Rank()));
 
@@ -115,10 +132,10 @@ std::vector<std::string> NpartyPsiOperator::OnRun(
     if (min_intersection_size == 0) {
       intersection.resize(0);
       if (options_.link_ctx->Rank() == options_.master_rank) {
-        yasl::link::Broadcast(options_.link_ctx, "finish", options_.master_rank,
+        yacl::link::Broadcast(options_.link_ctx, "finish", options_.master_rank,
                               "send finish message");
       } else {
-        yasl::link::Broadcast(options_.link_ctx, {}, options_.master_rank,
+        yacl::link::Broadcast(options_.link_ctx, {}, options_.master_rank,
                               "recv finish message");
       }
       return intersection;
@@ -126,7 +143,7 @@ std::vector<std::string> NpartyPsiOperator::OnRun(
 
     // broadcast intersection
     if (party_size_rank_vec.size() == 1) {
-      yasl::link::Broadcast(options_.link_ctx, "finish", options_.master_rank,
+      yacl::link::Broadcast(options_.link_ctx, "finish", options_.master_rank,
                             "send finish message");
       std::sort(intersection.begin(), intersection.end());
       return intersection;
@@ -146,14 +163,13 @@ std::vector<std::string> NpartyPsiOperator::Run2PartyPsi(
   }
 
   auto link_ctx = CreateP2PLinkCtx("2partypsi", options_.link_ctx, peer_rank);
-
-  if (options_.psi_type == PsiType::Ecdh) {
+  if (options_.psi_proto == PsiProtocol::Ecdh) {
     return RunEcdhPsi(link_ctx, items,
                       target_rank == options_.link_ctx->Rank()
                           ? link_ctx->Rank()
                           : link_ctx->NextRank(),
                       options_.curve_type, options_.batch_size);
-  } else if (options_.psi_type == PsiType::Kkrt) {
+  } else if (options_.psi_proto == PsiProtocol::Kkrt) {
     KkrtPsiOperator::Options opts;
     opts.link_ctx = link_ctx;
     opts.receiver_rank = target_rank == options_.link_ctx->Rank()
@@ -163,7 +179,8 @@ std::vector<std::string> NpartyPsiOperator::Run2PartyPsi(
 
     return kkrt_op.Run(items, false);
   } else {
-    YASL_THROW("not support psi type: {}", static_cast<int>(options_.psi_type));
+    YACL_THROW("not support psi type: {}",
+               static_cast<int>(options_.psi_proto));
   }
 }
 
@@ -172,10 +189,10 @@ NpartyPsiOperator::GetAllPartyItemSizeVec(size_t item_size) {
   // get all party's item size
   std::vector<std::pair<size_t, size_t>> party_size_rank_vec;
 
-  std::vector<yasl::Buffer> gather_size = yasl::link::AllGather(
+  std::vector<yacl::Buffer> gather_size = yacl::link::AllGather(
       options_.link_ctx, utils::SerializeSize(item_size),
       fmt::format("{} send item size", options_.link_ctx->Rank()));
-  YASL_ENFORCE(gather_size.size() == options_.link_ctx->WorldSize());
+  YACL_ENFORCE(gather_size.size() == options_.link_ctx->WorldSize());
 
   for (size_t idx = 0; idx < options_.link_ctx->WorldSize(); ++idx) {
     size_t idx_item_size = utils::DeserializeSize(gather_size[idx]);
@@ -222,7 +239,22 @@ void NpartyPsiOperator::GetPsiRank(
     }
   }
 
-  YASL_THROW("can not find self rank({}) in party_size_rank_vec",
+  YACL_THROW("can not find self rank({}) in party_size_rank_vec",
              options_.link_ctx->Rank());
 }
+
+namespace {
+
+std::unique_ptr<PsiBaseOperator> CreateOperator(
+    const MemoryPsiConfig& config,
+    const std::shared_ptr<yacl::link::Context>& lctx) {
+  auto options = NpartyPsiOperator::ParseConfig(config, lctx);
+  return std::make_unique<NpartyPsiOperator>(options);
+}
+
+REGISTER_OPERATOR(ECDH_PSI_NPC, CreateOperator);
+REGISTER_OPERATOR(KKRT_PSI_NPC, CreateOperator);
+
+}  // namespace
+
 }  // namespace spu::psi

@@ -14,6 +14,7 @@
 
 #include "spu/kernel/hlo/reduce.h"
 
+#include <algorithm>
 #include <cstdint>
 #include <iostream>
 #include <stack>
@@ -85,7 +86,7 @@ std::vector<spu::Value> TreeReduce(HalContext *ctx,
     outputs = reducer(lhs, rhs);
     len /= 2;
 
-    YASL_ENFORCE(outputs[0].shape()[axis] == len);
+    YACL_ENFORCE(outputs[0].shape()[axis] == len);
   }
 
   // TODO: this may cause at worst 2*lg(n) time of reducer call, compare the
@@ -111,7 +112,7 @@ spu::Value ExpandStridedWindow(
   const auto &base_shape = base.shape();
   const size_t ndim = base_shape.size();
 
-  YASL_ENFORCE(ndim == window_shape.size() &&    //
+  YACL_ENFORCE(ndim == window_shape.size() &&    //
                ndim == window_strides.size() &&  //
                ndim == padding.size());
 
@@ -120,7 +121,7 @@ spu::Value ExpandStridedWindow(
   for (size_t dim = 0; dim < ndim; dim++) {
     int64_t padded_size =
         padding[dim].first + padding[dim].second + base_shape[dim];
-    YASL_ENFORCE((padded_size - window_shape[dim]) % window_strides[dim] == 0);
+    YACL_ENFORCE((padded_size - window_shape[dim]) % window_strides[dim] == 0);
     expanded_shape[dim] =
         ((padded_size - window_shape[dim]) / window_strides[dim] + 1) *
         window_shape[dim];
@@ -134,7 +135,7 @@ spu::Value ExpandStridedWindow(
 
   auto numel = calcNumel(expanded_shape);
 
-  yasl::parallel_for(
+  yacl::parallel_for(
       0, numel, computeTaskSize(numel), [&](int64_t begin, int64_t end) {
         std::vector<int64_t> expanded_index =
             unflattenIndex(begin, expanded_shape);
@@ -173,10 +174,10 @@ spu::Value ConvertToTiledLayout(HalContext *ctx, const spu::Value &in,
   //
   // For example, in shape = [6, 12], window = [2, 3]
   // The result is [3, 4, 2, 3]
-  YASL_ENFORCE(in.shape().size() == block_shape.size());
+  YACL_ENFORCE(in.shape().size() == block_shape.size());
   std::vector<int64_t> tiled_shape;
   for (size_t dim = 0; dim < in.shape().size(); dim++) {
-    YASL_ENFORCE(in.shape()[dim] % block_shape[dim] == 0);
+    YACL_ENFORCE(in.shape()[dim] % block_shape[dim] == 0);
     tiled_shape.push_back(in.shape()[dim] / block_shape[dim]);
     tiled_shape.push_back(block_shape[dim]);
   }
@@ -189,6 +190,58 @@ spu::Value ConvertToTiledLayout(HalContext *ctx, const spu::Value &in,
   return hal::transpose(ctx, out, perm);
 }
 
+// So idea here..
+// When windows size is 2x2, tile and run parallel on window element level has
+// way to much overhead (both memory and computation).
+// Just do a window level parallel is good enough
+// And without dilation and padding, this can be achieved through just slicing
+// FIXME: This is a super special case...consider generalize it a little bit
+std::vector<spu::Value>
+ReduceWindow1x2x2x1NoPaddingOneStrideWithoutDilationWithWindowMask(
+    HalContext *ctx, absl::Span<const spu::Value> inputs,
+    absl::Span<const spu::Value> init_values,
+    absl::Span<const int64_t> ret_shape, const BatchedValueBinaryFn &reducer) {
+  std::vector<int64_t> start_indices = {0, 0, 0, 0};
+  auto input_shape = inputs[0].shape();
+
+  std::vector<spu::Value> input_slices(4);
+  std::vector<spu::Value> mask_slices(4);
+  input_slices[0] = hal::slice(
+      ctx, inputs[0], {0, 0, 0, 0},
+      {input_shape[0], input_shape[1] - 1, input_shape[2] - 1, input_shape[3]},
+      {1, 1, 1, 1});
+  input_slices[1] = hal::slice(
+      ctx, inputs[0], {0, 0, 1, 0},
+      {input_shape[0], input_shape[1] - 1, input_shape[2], input_shape[3]},
+      {1, 1, 1, 1});
+  input_slices[2] = hal::slice(
+      ctx, inputs[0], {0, 1, 0, 0},
+      {input_shape[0], input_shape[1], input_shape[2] - 1, input_shape[3]},
+      {1, 1, 1, 1});
+  input_slices[3] = hal::slice(
+      ctx, inputs[0], {0, 1, 1, 0},
+      {input_shape[0], input_shape[1], input_shape[2], input_shape[3]},
+      {1, 1, 1, 1});
+
+  std::vector<int64_t> mask_shape = {inputs[0].shape()[0], ret_shape[1],
+                                     ret_shape[2], inputs[0].shape().back(), 4};
+  for (int64_t mask_idx = 0; mask_idx < 4; ++mask_idx) {
+    mask_slices[mask_idx] = hal::slice(ctx, inputs.back(), {mask_idx, 0},
+                                       {mask_idx + 1, 4}, {1, 1});
+    mask_slices[mask_idx] =
+        hal::reshape(ctx, mask_slices[mask_idx], {1, 1, 1, 1, 4});
+    mask_slices[mask_idx] =
+        hal::broadcast_to(ctx, mask_slices[mask_idx], mask_shape);
+  }
+
+  std::vector<spu::Value> ret = {input_slices[0], mask_slices[0]};
+  for (size_t i = 1; i < input_slices.size(); ++i) {
+    ret = reducer({input_slices[i], mask_slices[i]}, ret);
+  }
+
+  return ret;
+}
+
 std::vector<spu::Value> ReduceWindowWithoutDilation(
     HalContext *ctx, absl::Span<const spu::Value> inputs,
     absl::Span<const spu::Value> init_values,
@@ -197,6 +250,19 @@ std::vector<spu::Value> ReduceWindowWithoutDilation(
     absl::Span<const std::pair<int64_t, int64_t>> window_padding,
     bool last_operand_is_window_mask, bool ignore_init_value,
     absl::Span<const int64_t> ret_shape, const BatchedValueBinaryFn &reducer) {
+  // Add a fast 1x2x2x1, no padding fast reduce
+  auto no_padding = std::all_of(window_padding.begin(), window_padding.end(),
+                                [](const std::pair<int64_t, int64_t> &p) {
+                                  return p.first == 0 && p.second == 0;
+                                });
+  auto one_stride = std::all_of(window_strides.begin(), window_strides.end(),
+                                [](auto v) { return v == 1; });
+  if (window_shape == absl::Span<const int64_t>{1, 2, 2, 1} &&
+      inputs.size() == 2 && last_operand_is_window_mask && no_padding &&
+      one_stride) {
+    return ReduceWindow1x2x2x1NoPaddingOneStrideWithoutDilationWithWindowMask(
+        ctx, inputs, init_values, ret_shape, reducer);
+  }
   const size_t nargs =
       last_operand_is_window_mask ? inputs.size() - 1 : inputs.size();
 
@@ -289,7 +355,7 @@ std::vector<spu::Value> ReduceWindow(HalContext *ctx,
         config.ignore_init_value, ret_shape, reducer);
   }
 
-  YASL_ENFORCE(config.last_operand_is_window_mask == false);
+  YACL_ENFORCE(config.last_operand_is_window_mask == false);
 
   const int64_t ndims = inputs[0].shape().size();
   std::vector<int64_t> window_index(ndims, 0);

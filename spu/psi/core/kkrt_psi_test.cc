@@ -18,9 +18,9 @@
 #include <iostream>
 
 #include "gtest/gtest.h"
-#include "yasl/base/exception.h"
-#include "yasl/crypto/hash_util.h"
-#include "yasl/link/test_util.h"
+#include "yacl/base/exception.h"
+#include "yacl/crypto/utils/hash_util.h"
+#include "yacl/link/test_util.h"
 
 struct TestParams {
   std::vector<uint128_t> items_a;
@@ -29,9 +29,9 @@ struct TestParams {
 
 namespace spu::psi {
 
-void KkrtPsiSend(const std::shared_ptr<yasl::link::Context>& link_ctx,
+void KkrtPsiSend(const std::shared_ptr<yacl::link::Context>& link_ctx,
                  const std::vector<uint128_t>& items_hash) {
-  yasl::BaseRecvOptions recv_opts;
+  yacl::BaseRecvOptions recv_opts;
 
   GetKkrtOtSenderOptions(link_ctx, 512, &recv_opts);
 
@@ -39,9 +39,9 @@ void KkrtPsiSend(const std::shared_ptr<yasl::link::Context>& link_ctx,
 }
 
 std::vector<std::size_t> KkrtPsiRecv(
-    const std::shared_ptr<yasl::link::Context>& link_ctx,
+    const std::shared_ptr<yacl::link::Context>& link_ctx,
     const std::vector<uint128_t>& items_hash) {
-  yasl::BaseSendOptions send_opts;
+  yacl::BaseSendOptions send_opts;
 
   GetKkrtOtReceiverOptions(link_ctx, 512, &send_opts);
 
@@ -68,7 +68,7 @@ class KkrtPsiTest : public testing::TestWithParam<TestParams> {};
 TEST_P(KkrtPsiTest, Works) {
   auto params = GetParam();
   const int kWorldSize = 2;
-  auto contexts = yasl::link::test::SetupWorld(kWorldSize);
+  auto contexts = yacl::link::test::SetupWorld(kWorldSize);
 
   std::future<void> kkrtPsi_sender =
       std::async([&] { return KkrtPsiSend(contexts[0], params.items_a); });
@@ -76,8 +76,8 @@ TEST_P(KkrtPsiTest, Works) {
       std::async([&] { return KkrtPsiRecv(contexts[1], params.items_b); });
 
   if ((params.items_a.size() == 0) || (params.items_b.size() == 0)) {
-    EXPECT_THROW(kkrtPsi_sender.get(), ::yasl::EnforceNotMet);
-    EXPECT_THROW(kkrtPsi_receiver.get(), ::yasl::EnforceNotMet);
+    EXPECT_THROW(kkrtPsi_sender.get(), ::yacl::EnforceNotMet);
+    EXPECT_THROW(kkrtPsi_receiver.get(), ::yacl::EnforceNotMet);
     return;
   }
   kkrtPsi_sender.get();
@@ -93,7 +93,7 @@ TEST_P(KkrtPsiTest, Works) {
 std::vector<uint128_t> CreateRangeItems(size_t begin, size_t size) {
   std::vector<uint128_t> ret;
   for (size_t i = 0; i < size; i++) {
-    ret.push_back(yasl::crypto::Blake3_128(std::to_string(begin + i)));
+    ret.push_back(yacl::crypto::Blake3_128(std::to_string(begin + i)));
   }
   return ret;
 }
@@ -102,25 +102,25 @@ INSTANTIATE_TEST_SUITE_P(
     Works_Instances, KkrtPsiTest,
     testing::Values(
         TestParams{
-            {yasl::crypto::Blake3_128("a"), yasl::crypto::Blake3_128("b")},
-            {yasl::crypto::Blake3_128("b"), yasl::crypto::Blake3_128("c")}},  //
+            {yacl::crypto::Blake3_128("a"), yacl::crypto::Blake3_128("b")},
+            {yacl::crypto::Blake3_128("b"), yacl::crypto::Blake3_128("c")}},  //
         //
         TestParams{
-            {yasl::crypto::Blake3_128("a"), yasl::crypto::Blake3_128("b")},
-            {yasl::crypto::Blake3_128("c"), yasl::crypto::Blake3_128("d")}},
+            {yacl::crypto::Blake3_128("a"), yacl::crypto::Blake3_128("b")},
+            {yacl::crypto::Blake3_128("c"), yacl::crypto::Blake3_128("d")}},
         // size not equal
         TestParams{
-            {yasl::crypto::Blake3_128("a"), yasl::crypto::Blake3_128("b"),
-             yasl::crypto::Blake3_128("c")},
-            {yasl::crypto::Blake3_128("c"), yasl::crypto::Blake3_128("d")}},  //
+            {yacl::crypto::Blake3_128("a"), yacl::crypto::Blake3_128("b"),
+             yacl::crypto::Blake3_128("c")},
+            {yacl::crypto::Blake3_128("c"), yacl::crypto::Blake3_128("d")}},  //
         TestParams{
-            {yasl::crypto::Blake3_128("a"), yasl::crypto::Blake3_128("b")},
-            {yasl::crypto::Blake3_128("b"), yasl::crypto::Blake3_128("c"),
-             yasl::crypto::Blake3_128("d")}},  //
+            {yacl::crypto::Blake3_128("a"), yacl::crypto::Blake3_128("b")},
+            {yacl::crypto::Blake3_128("b"), yacl::crypto::Blake3_128("c"),
+             yacl::crypto::Blake3_128("d")}},  //
         //
-        TestParams{{}, {yasl::crypto::Blake3_128("a")}},  //
+        TestParams{{}, {yacl::crypto::Blake3_128("a")}},  //
         //
-        TestParams{{yasl::crypto::Blake3_128("a")}, {}},  //
+        TestParams{{yacl::crypto::Blake3_128("a")}, {}},  //
         // less than one batch
         TestParams{CreateRangeItems(0, 1000), CreateRangeItems(1, 1000)},  //
         TestParams{CreateRangeItems(0, 1000), CreateRangeItems(1, 800)},   //

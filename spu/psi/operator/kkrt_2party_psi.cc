@@ -14,10 +14,20 @@
 
 #include "spu/psi/operator/kkrt_2party_psi.h"
 
-#include "yasl/crypto/hash_util.h"
-#include "yasl/utils/parallel.h"
+#include <memory>
+
+#include "yacl/crypto/utils/hash_util.h"
+#include "yacl/utils/parallel.h"
+
+#include "spu/psi/operator/factory.h"
 
 namespace spu::psi {
+
+KkrtPsiOperator::Options KkrtPsiOperator::ParseConfig(
+    const MemoryPsiConfig& config,
+    const std::shared_ptr<yacl::link::Context>& lctx) {
+  return {lctx, config.receiver_rank()};
+}
 
 KkrtPsiOperator::KkrtPsiOperator(const Options& options)
     : PsiBaseOperator(options.link_ctx), options_(options) {}
@@ -28,14 +38,14 @@ std::vector<std::string> KkrtPsiOperator::OnRun(
 
   // hash items to uint128_t
   std::vector<uint128_t> items_hash(inputs.size());
-  yasl::parallel_for(0, inputs.size(), 1, [&](int64_t begin, int64_t end) {
+  yacl::parallel_for(0, inputs.size(), 1, [&](int64_t begin, int64_t end) {
     for (int64_t idx = begin; idx < end; ++idx) {
-      items_hash[idx] = yasl::crypto::Blake3_128(inputs[idx]);
+      items_hash[idx] = yacl::crypto::Blake3_128(inputs[idx]);
     }
   });
 
   if (options_.receiver_rank == link_ctx_->Rank()) {
-    yasl::BaseSendOptions send_opts;
+    yacl::BaseSendOptions send_opts;
 
     GetKkrtOtReceiverOptions(options_.link_ctx, options_.num_ot, &send_opts);
 
@@ -46,7 +56,7 @@ std::vector<std::string> KkrtPsiOperator::OnRun(
       res.emplace_back(inputs[index]);
     }
   } else {
-    yasl::BaseRecvOptions recv_opts;
+    yacl::BaseRecvOptions recv_opts;
 
     GetKkrtOtSenderOptions(options_.link_ctx, options_.num_ot, &recv_opts);
 
@@ -55,5 +65,18 @@ std::vector<std::string> KkrtPsiOperator::OnRun(
 
   return res;
 }
+
+namespace {
+
+std::unique_ptr<PsiBaseOperator> CreateOperator(
+    const MemoryPsiConfig& config,
+    const std::shared_ptr<yacl::link::Context>& lctx) {
+  auto options = KkrtPsiOperator::ParseConfig(config, lctx);
+  return std::make_unique<KkrtPsiOperator>(options);
+}
+
+REGISTER_OPERATOR(KKRT_PSI_2PC, CreateOperator);
+
+}  // namespace
 
 }  // namespace spu::psi

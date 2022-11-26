@@ -25,7 +25,6 @@ spu_cc_library(
     visibility = ["//visibility:private"],  # Should not use this library directly
     deps = [
         "//spu/compiler/common:compilation_context",
-        "@org_tensorflow//tensorflow/compiler/mlir/xla:hlo_module_importer",
         "@org_tensorflow//tensorflow/compiler/xla/service:algebraic_simplifier",
         "@org_tensorflow//tensorflow/compiler/xla/service:batch_dot_simplification",
         "@org_tensorflow//tensorflow/compiler/xla/service:batchnorm_expander",
@@ -53,7 +52,8 @@ spu_cc_library(
         "@org_tensorflow//tensorflow/compiler/xla/service:triangular_solve_expander",
         "@org_tensorflow//tensorflow/compiler/xla/service:while_loop_simplifier",
         "@org_tensorflow//tensorflow/compiler/xla/service:zero_sized_hlo_elimination",
-        "@yasl//yasl/base:exception",
+        "@org_tensorflow//tensorflow/compiler/xla/translate/hlo_to_mhlo:hlo_module_importer",
+        "@yacl//yacl/base:exception",
     ],
 )
 
@@ -69,13 +69,6 @@ spu_cc_library(
         "//spu/compiler/passes:hlo_legalize_to_pphlo",
         "//spu/compiler/passes:lower_conversion_cast",
         "@llvm-project//mlir:Parser",
-        "@org_tensorflow//tensorflow/compiler/mlir/hlo:broadcast_propagation",
-        "@org_tensorflow//tensorflow/compiler/mlir/hlo:expand_hlo_tuples",
-        "@org_tensorflow//tensorflow/compiler/mlir/hlo:legalize_control_flow",
-        "@org_tensorflow//tensorflow/compiler/mlir/hlo:legalize_einsum_to_dot_general",
-        "@org_tensorflow//tensorflow/compiler/mlir/hlo:legalize_trigonometric_to_approximation",
-        "@org_tensorflow//tensorflow/compiler/mlir/hlo:mhlo_flatten_tuple",
-        "@org_tensorflow//tensorflow/compiler/mlir/hlo:mhlo_to_mhlo_lowering_patterns",
-        "@org_tensorflow//tensorflow/compiler/mlir/hlo:sink_constants_to_control_flow",
+        "@org_tensorflow//tensorflow/compiler/xla/mlir_hlo:mhlo_passes",
     ],
 )

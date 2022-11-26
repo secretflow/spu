@@ -15,7 +15,7 @@
 #pragma once
 #include <set>
 
-#include "yasl/base/buffer.h"
+#include "yacl/base/buffer.h"
 
 #include "spu/mpc/beaver/cheetah/types.h"
 

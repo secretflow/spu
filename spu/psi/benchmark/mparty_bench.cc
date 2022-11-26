@@ -53,9 +53,9 @@ void PreparePsiBench(const uint32_t rank, const std::string& parties) {
   } else {
     host_ips = absl::StrSplit(parties, ',');
   }
-  YASL_ENFORCE(host_ips.size() == 2);
+  YACL_ENFORCE(host_ips.size() == 2);
 
-  yasl::link::ContextDesc lctx_desc;
+  yacl::link::ContextDesc lctx_desc;
   for (size_t i = 0; i < 2; i++) {
     const std::string id = fmt::format("party{}", i);
     lctx_desc.parties.push_back({id, host_ips[i]});
@@ -64,7 +64,7 @@ void PreparePsiBench(const uint32_t rank, const std::string& parties) {
   }
 
   // setup bench_lctx and link
-  yasl::link::FactoryBrpc factory;
+  yacl::link::FactoryBrpc factory;
   spu::psi::bench::PsiBench::bench_lctx =
       factory.CreateContext(lctx_desc, rank);
   spu::psi::bench::PsiBench::bench_lctx->ConnectToMesh();

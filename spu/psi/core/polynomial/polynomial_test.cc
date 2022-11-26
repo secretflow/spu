@@ -20,7 +20,7 @@
 
 #include "absl/strings/escaping.h"
 #include "gtest/gtest.h"
-#include "yasl/crypto/pseudo_random_generator.h"
+#include "yacl/crypto/tools/prg.h"
 
 namespace {
 struct TestParams {
@@ -49,8 +49,8 @@ TEST_P(PolynomialBnTest, Works) {
   std::vector<std::string> coeff;
 
   std::random_device rd;
-  yasl::PseudoRandomGenerator<uint64_t> prg1(rd());
-  yasl::PseudoRandomGenerator<uint64_t> prg2(rd());
+  yacl::Prg<uint64_t> prg1(rd());
+  yacl::Prg<uint64_t> prg2(rd());
 
   std::string prime_data = absl::HexStringToBytes(kPrimeOver256bHexStr);
 

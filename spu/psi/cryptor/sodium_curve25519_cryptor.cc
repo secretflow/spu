@@ -20,23 +20,23 @@ extern "C" {
 
 #include <iostream>
 
-#include "yasl/crypto/hash_util.h"
-#include "yasl/utils/parallel.h"
+#include "yacl/crypto/utils/hash_util.h"
+#include "yacl/utils/parallel.h"
 
 namespace spu::psi {
 
 void SodiumCurve25519Cryptor::EccMask(absl::Span<const char> batch_points,
                                       absl::Span<char> dest_points) const {
-  YASL_ENFORCE(batch_points.size() % kEccKeySize == 0);
+  YACL_ENFORCE(batch_points.size() % kEccKeySize == 0);
 
   using Item = std::array<unsigned char, kEccKeySize>;
   static_assert(sizeof(Item) == kEccKeySize);
 
   auto mask_functor = [this](const Item& in, Item& out) {
-    YASL_ENFORCE(out.size() == kEccKeySize);
-    YASL_ENFORCE(in.size() == kEccKeySize);
+    YACL_ENFORCE(out.size() == kEccKeySize);
+    YACL_ENFORCE(in.size() == kEccKeySize);
 
-    YASL_ENFORCE(0 == crypto_scalarmult_curve25519(
+    YACL_ENFORCE(0 == crypto_scalarmult_curve25519(
                           out.data(), this->private_key_, in.data()));
   };
 
@@ -46,7 +46,7 @@ void SodiumCurve25519Cryptor::EccMask(absl::Span<const char> batch_points,
   absl::Span<Item> output(reinterpret_cast<Item*>(dest_points.data()),
                           dest_points.size() / sizeof(Item));
 
-  yasl::parallel_for(0, input.size(), 1, [&](int64_t begin, int64_t end) {
+  yacl::parallel_for(0, input.size(), 1, [&](int64_t begin, int64_t end) {
     for (int64_t idx = begin; idx < end; ++idx) {
       mask_functor(input[idx], output[idx]);
     }
@@ -54,20 +54,20 @@ void SodiumCurve25519Cryptor::EccMask(absl::Span<const char> batch_points,
 }
 
 std::vector<uint8_t> SodiumCurve25519Cryptor::KeyExchange(
-    const std::shared_ptr<yasl::link::Context>& link_ctx) {
+    const std::shared_ptr<yacl::link::Context>& link_ctx) {
   std::array<uint8_t, kEccKeySize> self_public_key;
   crypto_scalarmult_curve25519_base(self_public_key.data(), this->private_key_);
-  yasl::Buffer self_pubkey_buf(self_public_key.data(), self_public_key.size());
+  yacl::Buffer self_pubkey_buf(self_public_key.data(), self_public_key.size());
   link_ctx->SendAsync(link_ctx->NextRank(), self_pubkey_buf,
                       fmt::format("send rank-{} public key", link_ctx->Rank()));
-  yasl::Buffer peer_pubkey_buf = link_ctx->Recv(
+  yacl::Buffer peer_pubkey_buf = link_ctx->Recv(
       link_ctx->NextRank(),
       fmt::format("recv rank-{} public key", link_ctx->NextRank()));
   std::vector<uint8_t> dh_key(kEccKeySize);
-  YASL_ENFORCE(0 == crypto_scalarmult_curve25519(
+  YACL_ENFORCE(0 == crypto_scalarmult_curve25519(
                         dh_key.data(), this->private_key_,
                         (const unsigned char*)peer_pubkey_buf.data()));
-  std::vector<uint8_t> shared_key = yasl::crypto::Blake3(dh_key);
+  std::vector<uint8_t> shared_key = yacl::crypto::Blake3(dh_key);
   return shared_key;
 }
 

@@ -29,7 +29,7 @@
 #include "apsi/util/db_encoding.h"
 #include "apsi/util/label_encryptor.h"
 #include "spdlog/spdlog.h"
-#include "yasl/utils/parallel.h"
+#include "yacl/utils/parallel.h"
 
 #include "spu/psi/core/ecdh_oprf/ecdh_oprf_selector.h"
 #include "spu/psi/core/labeled_psi/package.h"
@@ -104,7 +104,7 @@ std::uint32_t LabelPsiReceiver::ResetPowersDag(
         apsi::util::to_string(source_powers),
         apsi::util::to_string(target_powers));
 
-    YASL_THROW("failed to configure PowersDag");
+    YACL_THROW("failed to configure PowersDag");
   }
   SPDLOG_DEBUG("Configured PowersDag with depth {}", pd_.depth());
 
@@ -112,13 +112,13 @@ std::uint32_t LabelPsiReceiver::ResetPowersDag(
 }
 
 apsi::PSIParams LabelPsiReceiver::RequestPsiParams(
-    size_t items_size, const std::shared_ptr<yasl::link::Context> &link_ctx) {
-  yasl::Buffer buffer(&items_size, sizeof(items_size));
+    size_t items_size, const std::shared_ptr<yacl::link::Context> &link_ctx) {
+  yacl::Buffer buffer(&items_size, sizeof(items_size));
 
   link_ctx->SendAsync(link_ctx->NextRank(), buffer,
                       fmt::format("send client items size:{}", items_size));
 
-  yasl::Buffer psi_params_buffer = link_ctx->Recv(
+  yacl::Buffer psi_params_buffer = link_ctx->Recv(
       link_ctx->NextRank(), fmt::format("recv psi params message"));
 
   return ParsePsiParamsProto(psi_params_buffer);
@@ -127,11 +127,11 @@ apsi::PSIParams LabelPsiReceiver::RequestPsiParams(
 std::pair<std::vector<apsi::HashedItem>, std::vector<apsi::LabelKey>>
 LabelPsiReceiver::RequestOPRF(
     const std::vector<std::string> &items,
-    const std::shared_ptr<yasl::link::Context> &link_ctx) {
+    const std::shared_ptr<yacl::link::Context> &link_ctx) {
   std::vector<std::string> blind_items(items.size());
   std::vector<std::shared_ptr<IEcdhOprfClient>> oprf_clients(items.size());
 
-  yasl::parallel_for(0, items.size(), 1, [&](int64_t begin, int64_t end) {
+  yacl::parallel_for(0, items.size(), 1, [&](int64_t begin, int64_t end) {
     for (int idx = begin; idx < end; ++idx) {
       oprf_clients[idx] =
           CreateEcdhOprfClient(OprfType::Basic, CurveType::CURVE_FOURQ);
@@ -146,22 +146,22 @@ LabelPsiReceiver::RequestOPRF(
     oprf_proto.add_data(blind_items[idx].data(), blind_items[idx].length());
   }
 
-  yasl::Buffer blind_buffer(oprf_proto.ByteSizeLong());
+  yacl::Buffer blind_buffer(oprf_proto.ByteSizeLong());
   oprf_proto.SerializePartialToArray(blind_buffer.data(), blind_buffer.size());
 
   link_ctx->SendAsync(
       link_ctx->NextRank(), blind_buffer,
       fmt::format("send oprf blind items buffer size:{}", blind_buffer.size()));
 
-  yasl::Buffer evaluated_buffer = link_ctx->Recv(
+  yacl::Buffer evaluated_buffer = link_ctx->Recv(
       link_ctx->NextRank(), fmt::format("recv oprf evaluated message"));
 
   proto::OprfProto evaluated_proto;
-  YASL_ENFORCE(evaluated_proto.ParseFromArray(evaluated_buffer.data(),
+  YACL_ENFORCE(evaluated_proto.ParseFromArray(evaluated_buffer.data(),
                                               evaluated_buffer.size()));
 
   std::vector<std::string> items_oprf(evaluated_proto.data_size());
-  yasl::parallel_for(0, evaluated_proto.data_size(), 1,
+  yacl::parallel_for(0, evaluated_proto.data_size(), 1,
                      [&](int64_t begin, int64_t end) {
                        for (int idx = begin; idx < end; ++idx) {
                          items_oprf[idx] = oprf_clients[idx]->Finalize(
@@ -188,7 +188,7 @@ std::pair<std::vector<size_t>, std::vector<std::string>>
 LabelPsiReceiver::RequestQuery(
     const std::vector<apsi::HashedItem> &hashed_items,
     const std::vector<apsi::LabelKey> &label_keys,
-    const std::shared_ptr<yasl::link::Context> &link_ctx) {
+    const std::shared_ptr<yacl::link::Context> &link_ctx) {
   kuku::KukuTable cuckoo(
       psi_params_.table_params().table_size,       // Size of the hash table
       0,                                           // Not using a stash
@@ -218,7 +218,7 @@ LabelPsiReceiver::RequestQuery(
       } else {
         SPDLOG_INFO("Failed to insert items[{}:{}; cuckoo table fill-rate: {}",
                     item_idx, item.to_string(), cuckoo.fill_rate());
-        YASL_THROW("failed to insert item into cuckoo table");
+        YACL_THROW("failed to insert item into cuckoo table");
       }
     }
   }
@@ -322,18 +322,18 @@ LabelPsiReceiver::RequestQuery(
     SPDLOG_DEBUG("ciphertexts_size:{}", powers_proto->ciphertexts_size());
   }
 
-  yasl::Buffer query_buffer(query_proto.ByteSizeLong());
+  yacl::Buffer query_buffer(query_proto.ByteSizeLong());
   query_proto.SerializePartialToArray(query_buffer.data(), query_buffer.size());
 
   link_ctx->SendAsync(
       link_ctx->NextRank(), query_buffer,
       fmt::format("send query buffer size:{}", query_buffer.size()));
 
-  yasl::Buffer response_buffer = link_ctx->Recv(
+  yacl::Buffer response_buffer = link_ctx->Recv(
       link_ctx->NextRank(), fmt::format("recv server query response message"));
 
   proto::QueryResponseProto response_proto;
-  YASL_ENFORCE(response_proto.ParseFromArray(response_buffer.data(),
+  YACL_ENFORCE(response_proto.ParseFromArray(response_buffer.data(),
                                              response_buffer.size()));
 
   std::vector<std::pair<size_t, std::string>> query_result_vec;
@@ -341,7 +341,7 @@ LabelPsiReceiver::RequestQuery(
   std::vector<std::vector<std::pair<size_t, std::string>>> results(
       response_proto.results_size());
 
-  yasl::parallel_for(0, response_proto.results_size(), 1,
+  yacl::parallel_for(0, response_proto.results_size(), 1,
                      [&](int64_t begin, int64_t end) {
                        for (int idx = begin; idx < end; ++idx) {
                          const proto::QueryResultProto &query_result_proto =

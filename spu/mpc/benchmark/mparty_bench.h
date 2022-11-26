@@ -17,7 +17,7 @@
 #include <functional>
 
 #include "benchmark/benchmark.h"
-#include "yasl/link/link.h"
+#include "yacl/link/link.h"
 
 #include "spu/core/shape_util.h"  // calcNumel
 #include "spu/mpc/api.h"
@@ -32,17 +32,17 @@ void BenchmarkPrint(uint32_t rank, std::vector<std::string>& parties,
 
 using CreateComputeFn = std::function<std::unique_ptr<Object>(
     const RuntimeConfig& conf,
-    const std::shared_ptr<yasl::link::Context>& lctx)>;
+    const std::shared_ptr<yacl::link::Context>& lctx)>;
 
 class ComputeBench : public benchmark::Fixture {
  public:
-  static std::shared_ptr<yasl::link::Context> bench_lctx;
+  static std::shared_ptr<yacl::link::Context> bench_lctx;
   static uint32_t bench_numel;
   static uint32_t bench_shiftbit;
   static CreateComputeFn bench_factory;
 };
 
-std::shared_ptr<yasl::link::Context> ComputeBench::bench_lctx = nullptr;
+std::shared_ptr<yacl::link::Context> ComputeBench::bench_lctx = nullptr;
 uint32_t ComputeBench::bench_numel = 7;
 uint32_t ComputeBench::bench_shiftbit = 2;
 CreateComputeFn ComputeBench::bench_factory = {};

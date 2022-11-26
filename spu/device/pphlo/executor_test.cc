@@ -63,7 +63,7 @@ public:
     }
     exec_.set_code(mlir);
     ::spu::mpc::util::simulate(
-        world_size_, [&](const std::shared_ptr<yasl::link::Context> &lctx) {
+        world_size_, [&](const std::shared_ptr<yacl::link::Context> &lctx) {
           RuntimeConfig conf;
           conf.CopyFrom(config_);
           if (lctx->Rank() == 0) {
@@ -672,7 +672,7 @@ func.func @main(%arg0: tensor<!pphlo.pub<f32>>) -> tensor<!pphlo.pub<f32>> {
 
     r.addInput(2.5F);
 
-    EXPECT_THROW(r.run(prog), yasl::EnforceNotMet);
+    EXPECT_THROW(r.run(prog), yacl::EnforceNotMet);
   }
   // reveal
   {
@@ -1903,6 +1903,49 @@ func.func @main(%arg0: tensor<4x6xi32>, %arg1: tensor<2x2xi32>) -> (tensor<2x2xi
       {{0, 0, 0, 0, 6, 0}, {0, 0, 2, 0, 0, 0}}, //
       {{0, 0, 3, 0, 0, 0}, {0, 0, 0, 0, 0, 1}}, //
   };
+
+  r.verifyOutput(mask.data(), 1);
+}
+
+TEST_P(ExecutorTest, MaxPoolReduce3) {
+  Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
+           std::get<2>(GetParam()));
+
+  xt::xarray<int32_t> in = xt::reshape_view(
+      xt::xarray<int32_t>{
+          {7, 2, 5, 3}, //
+          {3, 8, 9, 3}, //
+          {1, 5, 7, 5}, //
+          {0, 6, 2, 7}  //
+      },
+      {1, 4, 4, 1});
+
+  r.addInput(in);
+
+  r.run(R"(
+func.func @main(%arg0: tensor<1x4x4x1x!pphlo.pub<i32>>) -> (tensor<1x3x3x1x!pphlo.pub<i32>>, tensor<1x3x3x1x4x!pphlo.pub<i8>>) {
+    %0 = "pphlo.constant"() {value = dense<[[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]]> : tensor<4x4xi8>} : () -> tensor<4x4x!pphlo.pub<i8>>
+    %1 = "pphlo.constant"() {value = dense<-1> : tensor<i8>} : () -> tensor<!pphlo.pub<i8>>
+    %2 = "pphlo.constant"() {value = dense<-1> : tensor<i32>} : () -> tensor<!pphlo.pub<i32>>
+    %4:2 = "pphlo.reduce_window"(%arg0, %0, %2, %1) ({
+    ^bb0(%arg2: tensor<!pphlo.pub<i32>>, %arg3: tensor<!pphlo.pub<i8>>, %arg4: tensor<!pphlo.pub<i32>>, %arg5: tensor<!pphlo.pub<i8>>):
+      %6 = "pphlo.greater_equal"(%arg2, %arg4) : (tensor<!pphlo.pub<i32>>, tensor<!pphlo.pub<i32>>) -> tensor<!pphlo.pub<i1>>
+      %7 = "pphlo.select"(%6, %arg2, %arg4) : (tensor<!pphlo.pub<i1>>, tensor<!pphlo.pub<i32>>, tensor<!pphlo.pub<i32>>) -> tensor<!pphlo.pub<i32>>
+      %8 = "pphlo.select"(%6, %arg3, %arg5) : (tensor<!pphlo.pub<i1>>, tensor<!pphlo.pub<i8>>, tensor<!pphlo.pub<i8>>) -> tensor<!pphlo.pub<i8>>
+      "pphlo.return"(%7, %8) : (tensor<!pphlo.pub<i32>>, tensor<!pphlo.pub<i8>>) -> ()
+    }) {base_dilations = dense<1> : tensor<4xi64>, ignore_init_value = true, last_operand_is_window_mask = true, padding = dense<0> : tensor<4x2xi64>, window_dilations = dense<1> : tensor<4xi64>, window_dimensions = dense<[1, 2, 2, 1]> : tensor<4xi64>, window_strides = dense<1> : tensor<4xi64>} : (tensor<1x4x4x1x!pphlo.pub<i32>>, tensor<4x4x!pphlo.pub<i8>>, tensor<!pphlo.pub<i32>>, tensor<!pphlo.pub<i8>>) -> (tensor<1x3x3x1x!pphlo.pub<i32>>, tensor<1x3x3x1x4x!pphlo.pub<i8>>)
+    return %4#0, %4#1: tensor<1x3x3x1x!pphlo.pub<i32>>, tensor<1x3x3x1x4x!pphlo.pub<i8>>
+})",
+        2);
+
+  xt::xarray<int32_t> reduce_ret = {{8, 9, 9}, //
+                                    {8, 9, 9},
+                                    {6, 7, 7}};
+  r.verifyOutput(reduce_ret.data(), 0);
+
+  xt::xarray<int8_t> mask = {{{0, 0, 0, 1}, {0, 0, 0, 1}, {0, 0, 1, 0}}, //
+                             {{0, 1, 0, 0}, {0, 1, 0, 0}, {1, 0, 0, 0}}, //
+                             {{0, 0, 0, 1}, {0, 1, 0, 0}, {0, 0, 0, 1}}};
 
   r.verifyOutput(mask.data(), 1);
 }

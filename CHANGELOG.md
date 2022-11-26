@@ -7,7 +7,9 @@
 > - Add `[API]` prefix for API changes
 
 ## staging
-> please add your unrelease change here.
+> please add your unreleased change here.
+
+- [Feature] ECDH-PSI supports white box interconnection mode
 
 ## 20221116
 - [SPU] 0.3.0 release

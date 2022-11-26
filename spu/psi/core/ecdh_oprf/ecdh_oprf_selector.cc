@@ -18,7 +18,7 @@
 namespace spu::psi {
 
 std::unique_ptr<IEcdhOprfServer> CreateEcdhOprfServer(
-    yasl::ByteContainerView private_key, OprfType oprf_type,
+    yacl::ByteContainerView private_key, OprfType oprf_type,
     CurveType curve_type) {
   std::unique_ptr<IEcdhOprfServer> server;
 
@@ -38,7 +38,7 @@ std::unique_ptr<IEcdhOprfServer> CreateEcdhOprfServer(
           break;
         }
         default:
-          YASL_THROW("unknown support Curve type: {}",
+          YACL_THROW("unknown support Curve type: {}",
                      static_cast<int>(curve_type));
           break;
       }
@@ -46,10 +46,10 @@ std::unique_ptr<IEcdhOprfServer> CreateEcdhOprfServer(
       break;
     }
     default:
-      YASL_THROW("unknown Oprf type: {}", static_cast<int>(oprf_type));
+      YACL_THROW("unknown Oprf type: {}", static_cast<int>(oprf_type));
       break;
   }
-  YASL_ENFORCE(server != nullptr, "EcdhOprfServer should not be nullptr");
+  YACL_ENFORCE(server != nullptr, "EcdhOprfServer should not be nullptr");
 
   return server;
 }
@@ -73,16 +73,16 @@ std::unique_ptr<IEcdhOprfServer> CreateEcdhOprfServer(OprfType oprf_type,
           break;
         }
         default:
-          YASL_THROW("unknown support Curve type: {}",
+          YACL_THROW("unknown support Curve type: {}",
                      static_cast<int>(curve_type));
           break;
       }
       break;
     }
     default:
-      YASL_THROW("unknown Oprf type: {}", static_cast<int>(oprf_type));
+      YACL_THROW("unknown Oprf type: {}", static_cast<int>(oprf_type));
   }
-  YASL_ENFORCE(server != nullptr, "EcdhOprfServer should not be nullptr");
+  YACL_ENFORCE(server != nullptr, "EcdhOprfServer should not be nullptr");
 
   return server;
 }
@@ -104,7 +104,7 @@ std::unique_ptr<IEcdhOprfClient> CreateEcdhOprfClient(OprfType oprf_type,
           break;
         }
         default:
-          YASL_THROW("unknown support Curve type: {}",
+          YACL_THROW("unknown support Curve type: {}",
                      static_cast<int>(curve_type));
           break;
       }
@@ -112,7 +112,7 @@ std::unique_ptr<IEcdhOprfClient> CreateEcdhOprfClient(OprfType oprf_type,
     }
   }
 
-  YASL_ENFORCE(client != nullptr, "EcdhOprfClient should not be nullptr");
+  YACL_ENFORCE(client != nullptr, "EcdhOprfClient should not be nullptr");
 
   return client;
 }

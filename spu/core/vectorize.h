@@ -19,7 +19,7 @@
 #include <vector>
 
 #include "absl/types/span.h"
-#include "yasl/base/exception.h"
+#include "yacl/base/exception.h"
 
 namespace spu {
 namespace detail {
@@ -88,7 +88,7 @@ struct SimdTrait<
     const size_t total_num =
         std::accumulate(pi.begin(), pi.end(), 0u, std::plus<>());
 
-    YASL_ENFORCE(v.size() == total_num, "split number mismatch {} != {}",
+    YACL_ENFORCE(v.size() == total_num, "split number mismatch {} != {}",
                  v.size(), total_num);
 
     size_t offset = 0;

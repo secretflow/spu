@@ -19,8 +19,8 @@
 
 #include "gtest/gtest.h"
 #include "spdlog/spdlog.h"
-#include "yasl/base/exception.h"
-#include "yasl/link/test_util.h"
+#include "yacl/base/exception.h"
+#include "yacl/link/test_util.h"
 
 #include "spu/psi/utils/test_utils.h"
 
@@ -44,9 +44,9 @@ namespace spu::psi {
 
 TEST(EcdhPsiTestFailed, TargetRankMismatched) {
   for (std::pair<size_t, size_t> ranks : std::vector<std::pair<size_t, size_t>>{
-           {0, 1}, {0, yasl::link::kAllRank}, {1, yasl::link::kAllRank}}) {
-    auto ctxs = yasl::link::test::SetupWorld(2);
-    auto proc = [&](std::shared_ptr<yasl::link::Context> ctx,
+           {0, 1}, {0, yacl::link::kAllRank}, {1, yacl::link::kAllRank}}) {
+    auto ctxs = yacl::link::test::SetupWorld(2);
+    auto proc = [&](std::shared_ptr<yacl::link::Context> ctx,
                     const std::vector<std::string>& items,
                     size_t target_rank) -> std::vector<std::string> {
       return RunEcdhPsi(ctx, items, target_rank);
@@ -57,8 +57,8 @@ TEST(EcdhPsiTestFailed, TargetRankMismatched) {
     std::future<std::vector<std::string>> fb =
         std::async(proc, ctxs[1], std::vector<std::string>{}, ranks.second);
 
-    ASSERT_THROW(fa.get(), ::yasl::EnforceNotMet);
-    ASSERT_THROW(fb.get(), ::yasl::EnforceNotMet);
+    ASSERT_THROW(fa.get(), ::yacl::EnforceNotMet);
+    ASSERT_THROW(fb.get(), ::yacl::EnforceNotMet);
   }
 }
 
@@ -66,11 +66,11 @@ TEST(EcdhPsiTestFailed, CurveTypeMismatched) {
   std::pair<CurveType, CurveType> curves = {CurveType::CURVE_FOURQ,
                                             CurveType::CURVE_25519};
 
-  auto ctxs = yasl::link::test::SetupWorld(2);
-  auto proc = [&](std::shared_ptr<yasl::link::Context> ctx,
+  auto ctxs = yacl::link::test::SetupWorld(2);
+  auto proc = [&](std::shared_ptr<yacl::link::Context> ctx,
                   const std::vector<std::string>& items,
                   CurveType type) -> std::vector<std::string> {
-    return RunEcdhPsi(ctx, items, yasl::link::kAllRank, type);
+    return RunEcdhPsi(ctx, items, yacl::link::kAllRank, type);
   };
 
   std::future<std::vector<std::string>> fa =
@@ -78,17 +78,17 @@ TEST(EcdhPsiTestFailed, CurveTypeMismatched) {
   std::future<std::vector<std::string>> fb =
       std::async(proc, ctxs[1], std::vector<std::string>{}, curves.second);
 
-  ASSERT_THROW(fa.get(), ::yasl::EnforceNotMet);
-  ASSERT_THROW(fb.get(), ::yasl::EnforceNotMet);
+  ASSERT_THROW(fa.get(), ::yacl::EnforceNotMet);
+  ASSERT_THROW(fb.get(), ::yacl::EnforceNotMet);
 }
 
 class EcdhPsiTest : public testing::TestWithParam<TestParams> {};
 
 TEST_P(EcdhPsiTest, Works) {
   auto params = GetParam();
-  auto ctxs = yasl::link::test::SetupWorld(2);
+  auto ctxs = yacl::link::test::SetupWorld(2);
   auto proc =
-      [&](std::shared_ptr<yasl::link::Context> ctx,
+      [&](std::shared_ptr<yacl::link::Context> ctx,
           const std::vector<std::string>& items) -> std::vector<std::string> {
     return RunEcdhPsi(ctx, items, params.target_rank, params.curve_type);
   };
@@ -102,12 +102,12 @@ TEST_P(EcdhPsiTest, Works) {
   auto results_b = fb.get();
 
   auto intersection = test::GetIntersection(params.items_a, params.items_b);
-  if (params.target_rank == yasl::link::kAllRank || params.target_rank == 0) {
+  if (params.target_rank == yacl::link::kAllRank || params.target_rank == 0) {
     EXPECT_EQ(results_a, intersection);
   } else {
     EXPECT_TRUE(results_a.empty());
   }
-  if (params.target_rank == yasl::link::kAllRank || params.target_rank == 1) {
+  if (params.target_rank == yacl::link::kAllRank || params.target_rank == 1) {
     EXPECT_EQ(results_b, intersection);
   } else {
     EXPECT_TRUE(results_b.empty());
@@ -117,57 +117,57 @@ TEST_P(EcdhPsiTest, Works) {
 INSTANTIATE_TEST_SUITE_P(
     Works_Instances, EcdhPsiTest,
     testing::Values(
-        TestParams{{"a", "b"}, {"b", "c"}, yasl::link::kAllRank},  //
+        TestParams{{"a", "b"}, {"b", "c"}, yacl::link::kAllRank},  //
         TestParams{{"a", "b"}, {"b", "c"}, 0},                     //
         TestParams{{"a", "b"}, {"b", "c"}, 1},                     //
         //
-        TestParams{{"a", "b"}, {"c", "d"}, yasl::link::kAllRank},  //
+        TestParams{{"a", "b"}, {"c", "d"}, yacl::link::kAllRank},  //
         TestParams{{"a", "b"}, {"c", "d"}, 0},                     //
         TestParams{{"a", "b"}, {"c", "d"}, 1},                     //
         //
-        TestParams{{}, {"a"}, yasl::link::kAllRank},  //
+        TestParams{{}, {"a"}, yacl::link::kAllRank},  //
         TestParams{{}, {"a"}, 0},                     //
         TestParams{{}, {"a"}, 1},                     //
         //
-        TestParams{{"a"}, {}, yasl::link::kAllRank},  //
+        TestParams{{"a"}, {}, yacl::link::kAllRank},  //
         TestParams{{"a"}, {}, 0},                     //
         TestParams{{"a"}, {}, 1},                     //
         // less than one batch
         TestParams{test::CreateRangeItems(0, 4095),
-                   test::CreateRangeItems(1, 4095), yasl::link::kAllRank},  //
+                   test::CreateRangeItems(1, 4095), yacl::link::kAllRank},  //
         TestParams{test::CreateRangeItems(0, 4095),
                    test::CreateRangeItems(1, 4095), 0},  //
         TestParams{test::CreateRangeItems(0, 4095),
                    test::CreateRangeItems(1, 4095), 1},  //
         // exactly one batch
         TestParams{test::CreateRangeItems(0, 4096),
-                   test::CreateRangeItems(1, 4096), yasl::link::kAllRank},  //
+                   test::CreateRangeItems(1, 4096), yacl::link::kAllRank},  //
         TestParams{test::CreateRangeItems(0, 4096),
                    test::CreateRangeItems(1, 4096), 0},  //
         TestParams{test::CreateRangeItems(0, 4096),
                    test::CreateRangeItems(1, 4096), 1},  //
         // more than one batch
         TestParams{test::CreateRangeItems(0, 40961),
-                   test::CreateRangeItems(5, 40961), yasl::link::kAllRank},  //
+                   test::CreateRangeItems(5, 40961), yacl::link::kAllRank},  //
         TestParams{test::CreateRangeItems(0, 40961),
                    test::CreateRangeItems(5, 40961), 0},  //
         TestParams{test::CreateRangeItems(0, 40961),
                    test::CreateRangeItems(5, 40961), 1},  //
         //
-        TestParams{{}, {}, yasl::link::kAllRank},  //
+        TestParams{{}, {}, yacl::link::kAllRank},  //
         TestParams{{}, {}, 0},                     //
         TestParams{{}, {}, 1},                     //
         // test sm2
         TestParams{test::CreateRangeItems(0, 4096),
-                   test::CreateRangeItems(1, 4095), yasl::link::kAllRank,
+                   test::CreateRangeItems(1, 4095), yacl::link::kAllRank,
                    spu::psi::CurveType::CURVE_SM2},  //
         // exactly one batch
         TestParams{test::CreateRangeItems(0, 4096),
-                   test::CreateRangeItems(1, 4096), yasl::link::kAllRank,
+                   test::CreateRangeItems(1, 4096), yacl::link::kAllRank,
                    spu::psi::CurveType::CURVE_SECP256K1},  //
         // more than one batch
         TestParams{test::CreateRangeItems(0, 4096),
-                   test::CreateRangeItems(1, 4096), yasl::link::kAllRank,
+                   test::CreateRangeItems(1, 4096), yacl::link::kAllRank,
                    spu::psi::CurveType::CURVE_FOURQ}  //
         ));
 

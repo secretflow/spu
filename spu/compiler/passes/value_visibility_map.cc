@@ -14,7 +14,7 @@
 
 #include "spu/compiler/passes/value_visibility_map.h"
 
-#include "yasl/base/exception.h"
+#include "yacl/base/exception.h"
 
 namespace mlir::pphlo {
 namespace {
@@ -33,7 +33,7 @@ Visibility ComputePromotedVisibility(Visibility v1, Visibility v2) {
 
 Visibility ValueVisibilityMap::getValueVisibility(const Value &v) const {
   const auto &iter = storage.find(v);
-  YASL_ENFORCE(iter != storage.end());
+  YACL_ENFORCE(iter != storage.end());
   return iter->second;
 }
 

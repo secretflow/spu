@@ -41,7 +41,7 @@ ArrayRef B2A::proc(KernelEvalContext* ctx, const ArrayRef& x) const {
       using U = ring2k_t;
       auto x_buf = x.getOrCreateCompactBuf();
       auto y_buf = y.getOrCreateCompactBuf();
-      yasl::Buffer buf(size);
+      yacl::Buffer buf(size);
       cast(buf.data<uint8_t>(), x_buf->data<U>(), size);
 
       primitives->nonlinear()->b2a(y_buf->data<U>(), buf.data<uint8_t>(), size,

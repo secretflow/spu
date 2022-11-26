@@ -18,8 +18,8 @@
 #include <string>
 #include <vector>
 
-#include "yasl/base/exception.h"
-#include "yasl/link/link.h"
+#include "yacl/base/exception.h"
+#include "yacl/link/link.h"
 
 #include "spu/psi/psi.pb.h"
 
@@ -28,7 +28,7 @@ namespace spu::psi {
 class MemoryPsi {
  public:
   explicit MemoryPsi(MemoryPsiConfig config,
-                     std::shared_ptr<yasl::link::Context> lctx);
+                     std::shared_ptr<yacl::link::Context> lctx);
   ~MemoryPsi() = default;
 
   std::vector<std::string> Run(const std::vector<std::string>& inputs);
@@ -38,19 +38,10 @@ class MemoryPsi {
 
   std::vector<std::string> EcdhPsi(const std::vector<std::string>& inputs);
 
-  std::vector<std::string> KkrtPsi(const std::vector<std::string>& inputs);
-
-  std::vector<std::string> NPartyPsi(const std::vector<std::string>& inputs);
-
-  std::vector<std::string> Ecdh3PartyPsi(
-      const std::vector<std::string>& inputs);
-
-  std::vector<std::string> Bc22Psi(const std::vector<std::string>& inputs);
-
  private:
   MemoryPsiConfig config_;
 
-  std::shared_ptr<yasl::link::Context> lctx_;
+  std::shared_ptr<yacl::link::Context> lctx_;
 };
 
 }  // namespace spu::psi

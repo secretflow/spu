@@ -16,7 +16,7 @@
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
-#include "yasl/base/int128.h"
+#include "yacl/base/int128.h"
 
 namespace spu::mpc {
 namespace {
@@ -30,7 +30,7 @@ CircuitBasicBlock<T> makeScalarCBB() {
   cbb.rshift = [](T const& x, size_t bits) -> T { return x >> bits; };
   cbb.init_like = [](T const&, uint64_t hi, uint64_t lo) -> T {
     if constexpr (std::is_same_v<T, uint128_t>) {
-      return yasl::MakeUint128(hi, lo);
+      return yacl::MakeUint128(hi, lo);
     } else {
       return static_cast<T>(lo);
     }
@@ -44,7 +44,7 @@ CircuitBasicBlock<C> makeVectorCBB() {
   CircuitBasicBlock<C> cbb;
   cbb.init_like = [](C const& in, uint64_t hi, uint64_t lo) -> C {
     if constexpr (std::is_same_v<T, uint128_t>) {
-      return C(in.size(), yasl::MakeUint128(hi, lo));
+      return C(in.size(), yacl::MakeUint128(hi, lo));
     } else {
       return C(in.size(), lo);
     }

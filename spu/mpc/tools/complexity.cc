@@ -52,7 +52,7 @@ internal::SingleComplexityReport dumpComplexityReport(
   rt_conf.set_protocol(protocol);
 
   util::simulate(
-      party_cnt, [&](const std::shared_ptr<yasl::link::Context>& lctx) -> void {
+      party_cnt, [&](const std::shared_ptr<yacl::link::Context>& lctx) -> void {
         auto prot = Factory::CreateCompute(rt_conf, lctx);
         if (lctx->Rank() != 0) {
           return;
@@ -104,7 +104,7 @@ int main(int argc, char** argv) {
     google::protobuf::util::JsonPrintOptions json_options;
     json_options.preserve_proto_field_names = true;
 
-    YASL_ENFORCE(
+    YACL_ENFORCE(
         google::protobuf::util::MessageToJsonString(report, &json, json_options)
             .ok());
 

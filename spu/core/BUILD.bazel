@@ -26,7 +26,7 @@ spu_cc_library(
         ":type",
         ":type_util",
         ":xt_helper",
-        "@yasl//yasl/base:buffer",
+        "@yacl//yacl/base:buffer",
     ],
 )
 
@@ -36,8 +36,8 @@ spu_cc_library(
     hdrs = ["trace.h"],
     deps = [
         "@com_google_absl//absl/types:span",
-        "@yasl//yasl/base:exception",
-        "@yasl//yasl/utils:scope_guard",
+        "@yacl//yacl/base:exception",
+        "@yacl//yacl/utils:scope_guard",
     ],
 )
 
@@ -46,7 +46,7 @@ spu_cc_test(
     srcs = ["trace_test.cc"],
     deps = [
         ":trace",
-        "@yasl//yasl/base:exception",
+        "@yacl//yacl/base:exception",
     ],
 )
 
@@ -57,8 +57,8 @@ spu_cc_library(
     deps = [
         "//spu:spu_cc_proto",
         "@com_google_absl//absl/types:span",
-        "@yasl//yasl/base:exception",
-        "@yasl//yasl/base:int128",
+        "@yacl//yacl/base:exception",
+        "@yacl//yacl/base:int128",
     ],
 )
 
@@ -71,8 +71,8 @@ spu_cc_library(
         ":ndarray_ref",
         ":parallel_utils",
         ":xt_helper",
-        "@yasl//yasl/crypto:pseudo_random_generator",
-        "@yasl//yasl/utils:parallel",
+        "@yacl//yacl/crypto/tools:prg",
+        "@yacl//yacl/utils:parallel",
     ],
 )
 
@@ -90,7 +90,7 @@ spu_cc_library(
     srcs = ["shape_util.cc"],
     hdrs = ["shape_util.h"],
     deps = [
-        "@yasl//yasl/base:exception",
+        "@yacl//yacl/base:exception",
     ],
 )
 
@@ -108,7 +108,7 @@ spu_cc_library(
     hdrs = ["type.h"],
     deps = [
         ":type_util",
-        "@yasl//yasl/base:exception",
+        "@yacl//yacl/base:exception",
     ],
 )
 
@@ -128,8 +128,8 @@ spu_cc_library(
         ":parallel_utils",
         ":type",
         ":vectorize",
-        "@yasl//yasl/base:buffer",
-        "@yasl//yasl/base:exception",
+        "@yacl//yacl/base:buffer",
+        "@yacl//yacl/base:exception",
     ],
 )
 
@@ -150,8 +150,8 @@ spu_cc_library(
         ":parallel_utils",
         ":shape_util",
         ":type",
-        "@yasl//yasl/base:buffer",
-        "@yasl//yasl/base:exception",
+        "@yacl//yacl/base:buffer",
+        "@yacl//yacl/base:exception",
     ],
 )
 
@@ -172,7 +172,7 @@ spu_cc_library(
         ":ndarray_ref",
         ":shape_util",
         "@com_github_xtensor_xtensor//:xtensor",
-        "@yasl//yasl/crypto:pseudo_random_generator",
+        "@yacl//yacl/crypto/tools:prg",
     ],
 )
 
@@ -189,7 +189,7 @@ spu_cc_library(
     hdrs = ["vectorize.h"],
     deps = [
         "@com_google_absl//absl/types:span",
-        "@yasl//yasl/base:exception",
+        "@yacl//yacl/base:exception",
     ],
 )
 
@@ -207,6 +207,6 @@ spu_cc_library(
     hdrs = ["parallel_utils.h"],
     deps = [
         "@llvm-project//llvm:Support",
-        "@yasl//yasl/utils:parallel",
+        "@yacl//yacl/utils:parallel",
     ],
 )

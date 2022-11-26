@@ -20,7 +20,7 @@
 #include <vector>
 
 #include "absl/types/span.h"
-#include "yasl/link/link.h"
+#include "yacl/link/link.h"
 
 namespace spu::psi {
 
@@ -30,18 +30,18 @@ namespace spu::psi {
 // opensource code
 // https://github.com/osu-crypto/Mini-PSI
 //
-void MiniPsiSend(const std::shared_ptr<yasl::link::Context>& link_ctx,
+void MiniPsiSend(const std::shared_ptr<yacl::link::Context>& link_ctx,
                  const std::vector<std::string>& items);
 
 std::vector<std::string> MiniPsiRecv(
-    const std::shared_ptr<yasl::link::Context>& link_ctx,
+    const std::shared_ptr<yacl::link::Context>& link_ctx,
     const std::vector<std::string>& items);
 
 // use cuckoo hash to batch process
-void MiniPsiSendBatch(const std::shared_ptr<yasl::link::Context>& link_ctx,
+void MiniPsiSendBatch(const std::shared_ptr<yacl::link::Context>& link_ctx,
                       const std::vector<std::string>& items);
 
 std::vector<std::string> MiniPsiRecvBatch(
-    const std::shared_ptr<yasl::link::Context>& link_ctx,
+    const std::shared_ptr<yacl::link::Context>& link_ctx,
     const std::vector<std::string>& items);
 }  // namespace spu::psi

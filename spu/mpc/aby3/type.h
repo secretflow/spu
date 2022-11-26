@@ -60,7 +60,7 @@ class BShrTy : public TypeImpl<BShrTy, TypeObject, Secret, BShare> {
  public:
   using Base::Base;
   explicit BShrTy(PtType back_type, size_t nbits) {
-    YASL_ENFORCE(SizeOf(back_type) * 8 >= nbits,
+    YACL_ENFORCE(SizeOf(back_type) * 8 >= nbits,
                  "backtype={} has not enough bits={}", back_type, nbits);
     back_type_ = back_type;
     nbits_ = nbits;
@@ -74,7 +74,7 @@ class BShrTy : public TypeImpl<BShrTy, TypeObject, Secret, BShare> {
     auto comma = detail.find_first_of(',');
     auto back_type_str = detail.substr(0, comma);
     auto nbits_str = detail.substr(comma + 1);
-    YASL_ENFORCE(PtType_Parse(std::string(back_type_str), &back_type_),
+    YACL_ENFORCE(PtType_Parse(std::string(back_type_str), &back_type_),
                  "parse failed from={}", detail);
     nbits_ = std::stoul(std::string(nbits_str));
   };
@@ -87,7 +87,7 @@ class BShrTy : public TypeImpl<BShrTy, TypeObject, Secret, BShare> {
 
   bool equals(TypeObject const* other) const override {
     auto const* derived_other = dynamic_cast<BShrTy const*>(other);
-    YASL_ENFORCE(derived_other);
+    YACL_ENFORCE(derived_other);
     return getBacktype() == derived_other->getBacktype() &&
            nbits() == derived_other->nbits();
   }

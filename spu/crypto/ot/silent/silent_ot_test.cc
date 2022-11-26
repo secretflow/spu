@@ -22,7 +22,7 @@
 #include <thread>
 
 #include "gtest/gtest.h"
-#include "yasl/link/test_util.h"
+#include "yacl/link/test_util.h"
 
 // https://gcc.gnu.org/bugzilla/show_bug.cgi?id=69884
 #if defined __GNUC__ && __GNUC__ >= 6
@@ -447,7 +447,7 @@ void test_silent(int party, IO *ios[threads], int64_t num_ot) {
 
 TEST(SilentOTTest, Test) {
   const int kWorldSize = 2;
-  auto contexts = yasl::link::test::SetupWorld(kWorldSize);
+  auto contexts = yacl::link::test::SetupWorld(kWorldSize);
 
   int length = 20;
   std::future<void> alice = std::async([&] {

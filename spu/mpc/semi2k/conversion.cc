@@ -99,7 +99,7 @@ ArrayRef B2A_Randbit::proc(KernelEvalContext* ctx, const ArrayRef& x) const {
 
   const size_t numel = x.numel();
   const size_t nbits = x.eltype().as<BShare>()->nbits();
-  YASL_ENFORCE(nbits <= SizeOf(field) * 8, "invalid nbits={}", nbits);
+  YACL_ENFORCE(nbits <= SizeOf(field) * 8, "invalid nbits={}", nbits);
   if (nbits == 0) {
     // special case, it's known to be zero.
     return ring_zeros(field, numel).as(makeType<AShrTy>(field));

@@ -22,8 +22,8 @@
 #include "openssl/crypto.h"
 #include "openssl/rand.h"
 #include "spdlog/spdlog.h"
-#include "yasl/base/exception.h"
-#include "yasl/crypto/hash_interface.h"
+#include "yacl/base/exception.h"
+#include "yacl/crypto/base/hash/hash_interface.h"
 
 #include "spu/psi/core/ecdh_oprf/ecdh_oprf.h"
 #include "spu/psi/cryptor/ecc_cryptor.h"
@@ -56,7 +56,7 @@ class BasicEcdhOprfServer : public IEcdhOprfServer {
     (void)curve_type_;
   }
 
-  BasicEcdhOprfServer(yasl::ByteContainerView private_key, CurveType type)
+  BasicEcdhOprfServer(yacl::ByteContainerView private_key, CurveType type)
       : IEcdhOprfServer(private_key),
         curve_type_(type),
         ec_group_nid_(Sm2Cryptor::GetEcGroupId(type)) {}
@@ -67,19 +67,19 @@ class BasicEcdhOprfServer : public IEcdhOprfServer {
 
   std::string Evaluate(absl::string_view blinded_element) const override;
 
-  std::string FullEvaluate(yasl::ByteContainerView input) const override;
+  std::string FullEvaluate(yacl::ByteContainerView input) const override;
 
   size_t GetCompareLength() const override;
   size_t GetEcPointLength() const override;
 
-  void SetHashType(yasl::crypto::HashAlgorithm hash_type) {
+  void SetHashType(yacl::crypto::HashAlgorithm hash_type) {
     hash_type_ = hash_type;
   }
 
  private:
   CurveType curve_type_;
   int ec_group_nid_{};
-  yasl::crypto::HashAlgorithm hash_type_ = yasl::crypto::HashAlgorithm::BLAKE3;
+  yacl::crypto::HashAlgorithm hash_type_ = yacl::crypto::HashAlgorithm::BLAKE3;
 };
 
 class BasicEcdhOprfClient : public IEcdhOprfClient {
@@ -100,7 +100,7 @@ class BasicEcdhOprfClient : public IEcdhOprfClient {
 
   std::string Unblind(absl::string_view input) const override;
 
-  void SetHashType(yasl::crypto::HashAlgorithm hash_type) {
+  void SetHashType(yacl::crypto::HashAlgorithm hash_type) {
     hash_type_ = hash_type;
   }
 
@@ -110,14 +110,14 @@ class BasicEcdhOprfClient : public IEcdhOprfClient {
 
   std::array<uint8_t, kEccKeySize> sk_inv_;
 
-  yasl::crypto::HashAlgorithm hash_type_ = yasl::crypto::HashAlgorithm::BLAKE3;
+  yacl::crypto::HashAlgorithm hash_type_ = yacl::crypto::HashAlgorithm::BLAKE3;
 };
 
 class FourQBasicEcdhOprfServer : public IEcdhOprfServer {
  public:
   FourQBasicEcdhOprfServer() = default;
 
-  FourQBasicEcdhOprfServer(yasl::ByteContainerView private_key)
+  FourQBasicEcdhOprfServer(yacl::ByteContainerView private_key)
       : IEcdhOprfServer(private_key) {}
 
   ~FourQBasicEcdhOprfServer() override = default;
@@ -126,17 +126,17 @@ class FourQBasicEcdhOprfServer : public IEcdhOprfServer {
 
   std::string Evaluate(absl::string_view blinded_element) const override;
 
-  std::string FullEvaluate(yasl::ByteContainerView input) const override;
+  std::string FullEvaluate(yacl::ByteContainerView input) const override;
 
   size_t GetCompareLength() const override;
   size_t GetEcPointLength() const override;
 
-  void SetHashType(yasl::crypto::HashAlgorithm hash_type) {
+  void SetHashType(yacl::crypto::HashAlgorithm hash_type) {
     hash_type_ = hash_type;
   }
 
  private:
-  yasl::crypto::HashAlgorithm hash_type_ = yasl::crypto::HashAlgorithm::BLAKE3;
+  yacl::crypto::HashAlgorithm hash_type_ = yacl::crypto::HashAlgorithm::BLAKE3;
 };
 
 class FourQBasicEcdhOprfClient : public IEcdhOprfClient {
@@ -157,12 +157,12 @@ class FourQBasicEcdhOprfClient : public IEcdhOprfClient {
 
   std::string Unblind(absl::string_view input) const override;
 
-  void SetHashType(yasl::crypto::HashAlgorithm hash_type) {
+  void SetHashType(yacl::crypto::HashAlgorithm hash_type) {
     hash_type_ = hash_type;
   }
 
  private:
   std::array<uint8_t, kEccKeySize> sk_inv_;
-  yasl::crypto::HashAlgorithm hash_type_ = yasl::crypto::HashAlgorithm::BLAKE3;
+  yacl::crypto::HashAlgorithm hash_type_ = yacl::crypto::HashAlgorithm::BLAKE3;
 };
 }  // namespace spu::psi

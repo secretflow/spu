@@ -16,7 +16,7 @@
 
 #include <variant>
 
-#include "yasl/base/exception.h"
+#include "yacl/base/exception.h"
 
 #include "spu/core/array_ref.h"
 #include "spu/core/type.h"
@@ -70,7 +70,7 @@ class KernelEvalContext final {
     if (auto caller = dynamic_cast<T*>(caller_)) {
       return caller;
     }
-    YASL_THROW("cast failed");
+    YACL_THROW("cast failed");
   }
 
   // Get the i'th parameter.
@@ -78,7 +78,7 @@ class KernelEvalContext final {
   // * usually called by kernel callee.
   template <typename T>
   const T& getParam(size_t pos) const {
-    YASL_ENFORCE(pos < params_.size(), "pos={} exceed num of inputs={}", pos,
+    YACL_ENFORCE(pos < params_.size(), "pos={} exceed num of inputs={}", pos,
                  params_.size());
     return std::get<T>(params_[pos]);
   }

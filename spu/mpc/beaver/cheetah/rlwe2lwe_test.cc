@@ -35,7 +35,7 @@ static PrgSeed GetHardwareRandom128() {
   // call random_device four times, make sure uint128 is random in 2^128 set.
   uint64_t lhs = static_cast<uint64_t>(rd()) << 32 | rd();
   uint64_t rhs = static_cast<uint64_t>(rd()) << 32 | rd();
-  return yasl::MakeUint128(lhs, rhs);
+  return yacl::MakeUint128(lhs, rhs);
 }
 
 class RLWE2LWETest : public testing::TestWithParam<FieldType> {
@@ -72,7 +72,7 @@ class RLWE2LWETest : public testing::TestWithParam<FieldType> {
         modulus_bits = {55, 55, 55, 55, 36 + 5};
         break;
       default:
-        YASL_THROW("Not support field type {}", field_);
+        YACL_THROW("Not support field type {}", field_);
     }
 
     seal::EncryptionParameters parms(seal::scheme_type::ckks);
@@ -254,7 +254,7 @@ TEST_P(RLWE2LWETest, CompressViaExtract) {
 }
 
 TEST_P(RLWE2LWETest, IO) {
-  yasl::Buffer lwe_sk_str;
+  yacl::Buffer lwe_sk_str;
   lwe_sk_str = EncodeSEALObject(*lwe_sk_);
 
   seal::Encryptor encryptor(*context_, *rlwe_sk_);
@@ -273,7 +273,7 @@ TEST_P(RLWE2LWETest, IO) {
 
   LWECt lwe(ct, 1, *context_);
 
-  yasl::Buffer lwe_ct_str;
+  yacl::Buffer lwe_ct_str;
   lwe_ct_str = EncodeSEALObject(lwe);
 
   LWECt lwe2;

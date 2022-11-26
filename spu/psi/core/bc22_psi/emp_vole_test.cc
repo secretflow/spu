@@ -22,8 +22,8 @@
 #include "absl/strings/escaping.h"
 #include "gtest/gtest.h"
 #include "spdlog/spdlog.h"
-#include "yasl/link/test_util.h"
-#include "yasl/utils/rand.h"
+#include "yacl/crypto/utils/rand.h"
+#include "yacl/link/test_util.h"
 
 #include "spu/psi/utils/serialize.h"
 
@@ -34,7 +34,7 @@ class EmpVoleTest : public testing::TestWithParam<size_t> {};
 TEST_P(EmpVoleTest, Works) {
   auto params = GetParam();
 
-  auto ctxs = yasl::link::test::SetupWorld(2);
+  auto ctxs = yacl::link::test::SetupWorld(2);
 
   uint64_t vole_need = params;
 
@@ -87,7 +87,7 @@ INSTANTIATE_TEST_SUITE_P(Works_Instances, EmpVoleTest,
                          testing::Values(10000, 100000, 1000000));
 
 TEST(EmpVoleTest, PolynoimalTest) {
-  std::mt19937 rng(yasl::DrbgRandSeed());
+  std::mt19937 rng(yacl::DrbgRandSeed());
 
   for (size_t idx = 1; idx < 4; ++idx) {
     std::vector<std::string> points(idx);
