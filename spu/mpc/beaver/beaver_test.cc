@@ -33,7 +33,7 @@ TEST_P(BeaverTest, Mul_large) {
   std::vector<Beaver::Triple> triples;
   triples.resize(kWorldSize);
 
-  util::simulate(kWorldSize, [&](std::shared_ptr<yasl::link::Context> lctx) {
+  util::simulate(kWorldSize, [&](std::shared_ptr<yacl::link::Context> lctx) {
     auto beaver = factory(lctx);
     triples[lctx->Rank()] = beaver->Mul(kField, kNumel);
   });
@@ -74,7 +74,7 @@ TEST_P(BeaverTest, Mul) {
   std::vector<Beaver::Triple> triples;
   triples.resize(kWorldSize);
 
-  util::simulate(kWorldSize, [&](std::shared_ptr<yasl::link::Context> lctx) {
+  util::simulate(kWorldSize, [&](std::shared_ptr<yacl::link::Context> lctx) {
     auto beaver = factory(lctx);
     triples[lctx->Rank()] = beaver->Mul(kField, kNumel);
   });
@@ -114,7 +114,7 @@ TEST_P(BeaverTest, And) {
   std::vector<Beaver::Triple> triples;
   triples.resize(kWorldSize);
 
-  util::simulate(kWorldSize, [&](std::shared_ptr<yasl::link::Context> lctx) {
+  util::simulate(kWorldSize, [&](std::shared_ptr<yacl::link::Context> lctx) {
     auto beaver = factory(lctx);
     triples[lctx->Rank()] = beaver->And(kField, kNumel);
   });
@@ -149,7 +149,7 @@ TEST_P(BeaverTest, Dot) {
   std::vector<Beaver::Triple> triples;
   triples.resize(kWorldSize);
 
-  util::simulate(kWorldSize, [&](std::shared_ptr<yasl::link::Context> lctx) {
+  util::simulate(kWorldSize, [&](std::shared_ptr<yacl::link::Context> lctx) {
     auto beaver = factory(lctx);
     triples[lctx->Rank()] = beaver->Dot(kField, M, N, K);
   });
@@ -193,7 +193,7 @@ TEST_P(BeaverTest, Dot_large) {
   std::vector<Beaver::Triple> triples;
   triples.resize(kWorldSize);
 
-  util::simulate(kWorldSize, [&](std::shared_ptr<yasl::link::Context> lctx) {
+  util::simulate(kWorldSize, [&](std::shared_ptr<yacl::link::Context> lctx) {
     auto beaver = factory(lctx);
     triples[lctx->Rank()] = beaver->Dot(kField, M, N, K);
   });
@@ -234,7 +234,7 @@ TEST_P(BeaverTest, Trunc) {
   std::vector<Beaver::Pair> pairs;
   pairs.resize(kWorldSize);
 
-  util::simulate(kWorldSize, [&](std::shared_ptr<yasl::link::Context> lctx) {
+  util::simulate(kWorldSize, [&](std::shared_ptr<yacl::link::Context> lctx) {
     auto beaver = factory(lctx);
     if (beaver->SupportTrunc()) {
       pairs[lctx->Rank()] = beaver->Trunc(kField, kNumel, kBits);
@@ -269,7 +269,7 @@ TEST_P(BeaverTest, Randbit) {
 
   std::vector<ArrayRef> shares(kWorldSize);
 
-  util::simulate(kWorldSize, [&](std::shared_ptr<yasl::link::Context> lctx) {
+  util::simulate(kWorldSize, [&](std::shared_ptr<yacl::link::Context> lctx) {
     auto beaver = factory(lctx);
     if (beaver->SupportRandBit()) {
       shares[lctx->Rank()] = beaver->RandBit(kField, kNumel);

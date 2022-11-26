@@ -22,9 +22,9 @@
 #include "absl/strings/str_split.h"
 #include "gtest/gtest.h"
 #include "spdlog/spdlog.h"
-#include "yasl/base/exception.h"
-#include "yasl/crypto/pseudo_random_generator.h"
-#include "yasl/link/test_util.h"
+#include "yacl/base/exception.h"
+#include "yacl/crypto/tools/prg.h"
+#include "yacl/link/test_util.h"
 
 #include "spu/psi/core/ecdh_oprf/ecdh_oprf_selector.h"
 #include "spu/psi/core/labeled_psi/psi_params.h"
@@ -45,7 +45,7 @@ struct TestParams {
 };
 
 std::vector<std::string> GenerateData(size_t seed, size_t item_count) {
-  yasl::PseudoRandomGenerator<uint128_t> prg(seed);
+  yacl::Prg<uint128_t> prg(seed);
 
   std::vector<std::string> items;
 
@@ -64,7 +64,7 @@ std::vector<apsi::Item> GenerateSenderData(
     std::vector<size_t> *intersection_idx) {
   std::vector<apsi::Item> sender_items;
 
-  yasl::PseudoRandomGenerator<uint128_t> prg(seed);
+  yacl::Prg<uint128_t> prg(seed);
 
   for (size_t i = 0; i < item_count; ++i) {
     apsi::Item::value_type value{};
@@ -91,7 +91,7 @@ std::vector<std::pair<apsi::Item, apsi::Label>> GenerateSenderData(
     std::vector<std::string> *intersection_label) {
   std::vector<std::pair<apsi::Item, apsi::Label>> sender_items;
 
-  yasl::PseudoRandomGenerator<uint128_t> prg(seed);
+  yacl::Prg<uint128_t> prg(seed);
 
   for (size_t i = 0; i < item_count; ++i) {
     apsi::Item item;
@@ -126,7 +126,7 @@ class LabelPsiTest : public testing::TestWithParam<TestParams> {};
 
 TEST_P(LabelPsiTest, Works) {
   auto params = GetParam();
-  auto ctxs = yasl::link::test::SetupWorld(2);
+  auto ctxs = yacl::link::test::SetupWorld(2);
   apsi::PSIParams psi_params = spu::psi::GetPsiParams(params.nr, params.ns);
 
   // step 1: PsiParams Request and Response
@@ -147,7 +147,7 @@ TEST_P(LabelPsiTest, Works) {
   size_t nonce_byte_count = 16;
 
   std::random_device rd;
-  yasl::PseudoRandomGenerator<uint128_t> prg(rd());
+  yacl::Prg<uint128_t> prg(rd());
 
   std::array<uint8_t, 32> oprf_key;
   prg.Fill(absl::MakeSpan(oprf_key));

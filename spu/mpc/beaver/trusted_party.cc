@@ -44,7 +44,7 @@ std::pair<std::vector<ArrayRef>, std::vector<ArrayRef>> reconstruct(
         } else if (op == RecOp::XOR) {
           ring_xor_(rs[idx], t);
         } else {
-          YASL_ENFORCE("not supported reconstruct op");
+          YACL_ENFORCE("not supported reconstruct op");
         }
       }
     }
@@ -55,8 +55,8 @@ std::pair<std::vector<ArrayRef>, std::vector<ArrayRef>> reconstruct(
 
 void checkDescs(absl::Span<const PrgArrayDesc> descs) {
   for (size_t idx = 1; idx < descs.size(); idx++) {
-    YASL_ENFORCE(descs[0].field == descs[idx].field);
-    YASL_ENFORCE(descs[0].numel == descs[idx].numel);
+    YACL_ENFORCE(descs[0].field == descs[idx].field);
+    YACL_ENFORCE(descs[0].numel == descs[idx].numel);
   }
 }
 
@@ -64,7 +64,7 @@ void checkDescs(absl::Span<const PrgArrayDesc> descs) {
 
 void TrustedParty::setSeed(size_t rank, size_t world_size,
                            const PrgSeed& seed) {
-  YASL_ENFORCE(rank < world_size,
+  YACL_ENFORCE(rank < world_size,
                "rank={} should be smaller then world_size={}", rank,
                world_size);
 
@@ -74,11 +74,11 @@ void TrustedParty::setSeed(size_t rank, size_t world_size,
     seeds_.resize(world_size);
     seeds_[rank] = seed;
   } else {
-    YASL_ENFORCE(world_size == seeds_.size(),
+    YACL_ENFORCE(world_size == seeds_.size(),
                  "parties claim different world_size, prev={}, cur={}",
                  seeds_.size(), world_size);
 
-    YASL_ENFORCE(!seeds_[rank].has_value() || seeds_[rank].value() == seed);
+    YACL_ENFORCE(!seeds_[rank].has_value() || seeds_[rank].value() == seed);
 
     seeds_[rank] = seed;
   }
@@ -90,7 +90,7 @@ std::vector<PrgSeed> TrustedParty::getSeeds() const {
   std::vector<PrgSeed> seeds;
 
   for (size_t rank = 0; rank < seeds_.size(); rank++) {
-    YASL_ENFORCE(seeds_[rank].has_value(), "seed for rank={} not set", rank);
+    YACL_ENFORCE(seeds_[rank].has_value(), "seed for rank={} not set", rank);
     seeds.push_back(seeds_[rank].value());
   }
 
@@ -98,7 +98,7 @@ std::vector<PrgSeed> TrustedParty::getSeeds() const {
 }
 
 ArrayRef TrustedParty::adjustMul(absl::Span<const PrgArrayDesc> descs) {
-  YASL_ENFORCE_EQ(descs.size(), 3u);
+  YACL_ENFORCE_EQ(descs.size(), 3u);
   checkDescs(descs);
 
   auto [r0, rs] = reconstruct(RecOp::ADD, getSeeds(), descs);
@@ -109,10 +109,10 @@ ArrayRef TrustedParty::adjustMul(absl::Span<const PrgArrayDesc> descs) {
 
 ArrayRef TrustedParty::adjustDot(absl::Span<const PrgArrayDesc> descs, size_t M,
                                  size_t N, size_t K) {
-  YASL_ENFORCE_EQ(descs.size(), 3u);
-  YASL_ENFORCE(descs[0].numel == M * K);
-  YASL_ENFORCE(descs[1].numel == K * N);
-  YASL_ENFORCE(descs[2].numel == M * N);
+  YACL_ENFORCE_EQ(descs.size(), 3u);
+  YACL_ENFORCE(descs[0].numel == M * K);
+  YACL_ENFORCE(descs[1].numel == K * N);
+  YACL_ENFORCE(descs[2].numel == M * N);
 
   auto [r0, rs] = reconstruct(RecOp::ADD, getSeeds(), descs);
   // r0[2] += rs[0] dot rs[1] - rs[2];
@@ -121,7 +121,7 @@ ArrayRef TrustedParty::adjustDot(absl::Span<const PrgArrayDesc> descs, size_t M,
 }
 
 ArrayRef TrustedParty::adjustAnd(absl::Span<const PrgArrayDesc> descs) {
-  YASL_ENFORCE_EQ(descs.size(), 3u);
+  YACL_ENFORCE_EQ(descs.size(), 3u);
   checkDescs(descs);
 
   auto [r0, rs] = reconstruct(RecOp::XOR, getSeeds(), descs);
@@ -132,7 +132,7 @@ ArrayRef TrustedParty::adjustAnd(absl::Span<const PrgArrayDesc> descs) {
 
 ArrayRef TrustedParty::adjustTrunc(absl::Span<const PrgArrayDesc> descs,
                                    size_t bits) {
-  YASL_ENFORCE_EQ(descs.size(), 2u);
+  YACL_ENFORCE_EQ(descs.size(), 2u);
   checkDescs(descs);
 
   auto [r0, rs] = reconstruct(RecOp::ADD, getSeeds(), descs);
@@ -143,7 +143,7 @@ ArrayRef TrustedParty::adjustTrunc(absl::Span<const PrgArrayDesc> descs,
 
 ArrayRef TrustedParty::adjustRandBit(const PrgArrayDesc& desc) {
   auto [r0, rs] = reconstruct(RecOp::ADD, getSeeds(), absl::MakeSpan(&desc, 1));
-  YASL_ENFORCE(r0.size() == 1 && rs.size() == 1);
+  YACL_ENFORCE(r0.size() == 1 && rs.size() == 1);
 
   // r0[0] += bitrev - rs[0];
   ring_add_(r0[0], ring_sub(ring_randbit(desc.field, desc.numel), rs[0]));

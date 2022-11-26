@@ -20,7 +20,7 @@
 #include "absl/container/flat_hash_set.h"
 #include "gtest/gtest.h"
 #include "spdlog/spdlog.h"
-#include "yasl/link/test_util.h"
+#include "yacl/link/test_util.h"
 
 namespace spu::psi {
 
@@ -78,7 +78,7 @@ TEST_P(DpPsiTest, Works) {
 
   size_t items_size = param.items_size;
 
-  auto link_ctxs = yasl::link::test::SetupWorld(2);
+  auto link_ctxs = yacl::link::test::SetupWorld(2);
 
   std::vector<std::string> items_a = CreateRangeItems(0, items_size);
   std::vector<std::string> items_b =

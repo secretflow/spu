@@ -21,8 +21,8 @@
 #include "absl/types/span.h"
 #include "openssl/bn.h"
 #include "openssl/ec.h"
-#include "yasl/crypto/hash_util.h"
-#include "yasl/utils/parallel.h"
+#include "yacl/crypto/utils/hash_util.h"
+#include "yacl/utils/parallel.h"
 
 namespace spu::psi {
 
@@ -82,34 +82,34 @@ struct BigNumSt {
   }
 
   void FromBytes(absl::Span<const uint8_t> bytes) {
-    YASL_ENFORCE(nullptr !=
+    YACL_ENFORCE(nullptr !=
                  BN_bin2bn(bytes.data(), bytes.size(), bn_ptr.get()));
   }
 
   void FromBytes(absl::string_view bytes) {
-    YASL_ENFORCE(nullptr !=
+    YACL_ENFORCE(nullptr !=
                  BN_bin2bn(reinterpret_cast<const uint8_t*>(bytes.data()),
                            bytes.size(), bn_ptr.get()));
   }
 
   void FromBytes(absl::Span<const uint8_t> bytes, const BigNumSt& p) {
     BigNumSt bn_m(bytes);
-    BnCtxPtr bn_ctx(yasl::CheckNotNull(BN_CTX_new()));
+    BnCtxPtr bn_ctx(yacl::CheckNotNull(BN_CTX_new()));
 
-    YASL_ENFORCE(BN_nnmod(bn_ptr.get(), bn_m.get(), p.get(), bn_ctx.get()) ==
+    YACL_ENFORCE(BN_nnmod(bn_ptr.get(), bn_m.get(), p.get(), bn_ctx.get()) ==
                  1);
   }
 
   void FromBytes(absl::string_view bytes, const BigNumSt& p) {
     BigNumSt bn_m(bytes);
-    BnCtxPtr bn_ctx(yasl::CheckNotNull(BN_CTX_new()));
+    BnCtxPtr bn_ctx(yacl::CheckNotNull(BN_CTX_new()));
 
-    YASL_ENFORCE(BN_nnmod(bn_ptr.get(), bn_m.get(), p.get(), bn_ctx.get()) ==
+    YACL_ENFORCE(BN_nnmod(bn_ptr.get(), bn_m.get(), p.get(), bn_ctx.get()) ==
                  1);
   }
 
   BigNumSt Inverse(const BigNumSt& p) {
-    BnCtxPtr bn_ctx(yasl::CheckNotNull(BN_CTX_new()));
+    BnCtxPtr bn_ctx(yacl::CheckNotNull(BN_CTX_new()));
 
     BigNumSt bn_inv;
 
@@ -125,11 +125,11 @@ struct EcGroupSt {
       : EcGroupSt(EC_GROUP_new_by_curve_name(ec_group_nid)) {}
 
   explicit EcGroupSt(EC_GROUP* group) : group_ptr(group) {
-    BnCtxPtr bn_ctx(yasl::CheckNotNull(BN_CTX_new()));
+    BnCtxPtr bn_ctx(yacl::CheckNotNull(BN_CTX_new()));
 
-    YASL_ENFORCE(EC_GROUP_get_curve(group_ptr.get(), bn_p.get(), bn_a.get(),
+    YACL_ENFORCE(EC_GROUP_get_curve(group_ptr.get(), bn_p.get(), bn_a.get(),
                                     bn_b.get(), bn_ctx.get()) == 1);
-    YASL_ENFORCE(
+    YACL_ENFORCE(
         EC_GROUP_get_order(group_ptr.get(), bn_n.get(), bn_ctx.get()) == 1);
   }
 
@@ -158,7 +158,7 @@ struct EcPointSt {
   //
   static EcPointSt CreateEcPointByHashToCurve(absl::string_view m,
                                               const EcGroupSt& ec_group) {
-    BnCtxPtr bn_ctx(yasl::CheckNotNull(BN_CTX_new()));
+    BnCtxPtr bn_ctx(yacl::CheckNotNull(BN_CTX_new()));
 
     EcPointSt ec_point(ec_group);
 
@@ -176,13 +176,14 @@ struct EcPointSt {
       } else {
         std::string bn_x_bytes = bn_x.ToBytes();
 
-        // std::vector<uint8_t> hash = yasl::crypto::Sm3(bn_x_bytes);
-        std::vector<uint8_t> hash = yasl::crypto::Sha256(bn_x_bytes);
+        // warn: if you change this hash method, do update bucket_psi.cc as well
+        // std::vector<uint8_t> hash = yacl::crypto::Sm3(bn_x_bytes);
+        std::vector<uint8_t> hash = yacl::crypto::Sha256(bn_x_bytes);
         bn_x.FromBytes(absl::string_view((const char*)hash.data(), hash.size()),
                        ec_group.bn_p);
       }
       counter++;
-      YASL_ENFORCE(counter < kHashToCurveCounterGuard,
+      YACL_ENFORCE(counter < kHashToCurveCounterGuard,
                    "HashToCurve exceed max loop({})", kHashToCurveCounterGuard);
     }
 
@@ -206,12 +207,12 @@ struct EcPointSt {
    * @return size_t
    */
   size_t ToBytes(absl::Span<uint8_t> bytes) {
-    BnCtxPtr bn_ctx(yasl::CheckNotNull(BN_CTX_new()));
+    BnCtxPtr bn_ctx(yacl::CheckNotNull(BN_CTX_new()));
     size_t length =
         EC_POINT_point2oct(group_ref.get(), point_ptr.get(),
                            POINT_CONVERSION_COMPRESSED, NULL, 0, bn_ctx.get());
 
-    YASL_ENFORCE(length == kEcPointCompressLength, "{}!={}", length,
+    YACL_ENFORCE(length == kEcPointCompressLength, "{}!={}", length,
                  kEcPointCompressLength);
 
     std::vector<uint8_t> point_compress_bytes(length);
@@ -226,23 +227,23 @@ struct EcPointSt {
   }
 
   EcPointSt PointMul(const EcGroupSt& ec_group, const BigNumSt& bn_sk) {
-    BnCtxPtr bn_ctx(yasl::CheckNotNull(BN_CTX_new()));
+    BnCtxPtr bn_ctx(yacl::CheckNotNull(BN_CTX_new()));
     EcPointSt ec_point(ec_group);
     int ret = EC_POINT_mul(ec_group.get(), ec_point.get(), NULL,
                            point_ptr.get(), bn_sk.get(), bn_ctx.get());
-    YASL_ENFORCE(ret == 1);
+    YACL_ENFORCE(ret == 1);
 
     return ec_point;
   }
 
   static EcPointSt BasePointMul(const EcGroupSt& group, const BigNumSt& bn_sk) {
-    BnCtxPtr bn_ctx(yasl::CheckNotNull(BN_CTX_new()));
+    BnCtxPtr bn_ctx(yacl::CheckNotNull(BN_CTX_new()));
     EcPointSt ec_point(group);
 
     int ret = EC_POINT_mul(group.get(), ec_point.get(), bn_sk.get(), NULL, NULL,
                            bn_ctx.get());
 
-    YASL_ENFORCE(ret == 1);
+    YACL_ENFORCE(ret == 1);
 
     return ec_point;
   }

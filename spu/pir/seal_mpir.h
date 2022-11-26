@@ -19,9 +19,9 @@
 #include <vector>
 
 #include "spdlog/spdlog.h"
-#include "yasl/base/exception.h"
-#include "yasl/crypto/symmetric_crypto.h"
-#include "yasl/utils/parallel.h"
+#include "yacl/base/exception.h"
+#include "yacl/crypto/base/symmetric_crypto.h"
+#include "yacl/utils/parallel.h"
 
 #include "spu/pir/seal_pir.h"
 #include "spu/psi/core/cuckoo_index.h"
@@ -49,24 +49,24 @@ class MultiQuery {
  public:
   MultiQuery(const MultiQueryOptions &query_options,
              const psi::CuckooIndex::Options &cuckoo_params,
-             yasl::ByteContainerView seed)
+             yacl::ByteContainerView seed)
       : query_options_(query_options), cuckoo_params_(cuckoo_params) {
-    YASL_ENFORCE(seed.size() <= oracle_seed_.size());
+    YACL_ENFORCE(seed.size() <= oracle_seed_.size());
 
     std::memcpy(oracle_seed_.data(), seed.data(), seed.size());
     uint128_t crypto_key, crypto_iv = 0;
 
     std::memcpy(&crypto_key, seed.data(), sizeof(uint128_t));
 
-    crypto_ = std::make_unique<yasl::SymmetricCrypto>(
-        yasl::SymmetricCrypto::CryptoType::AES128_ECB, crypto_key, crypto_iv);
+    crypto_ = std::make_unique<yacl::SymmetricCrypto>(
+        yacl::SymmetricCrypto::CryptoType::AES128_ECB, crypto_key, crypto_iv);
   }
 
   size_t GetMaxBinItemSize() const { return max_bin_item_size_; }
 
  protected:
   uint128_t HashItemIndex(size_t index) {
-    uint128_t plaintext = yasl::MakeUint128(0, index);
+    uint128_t plaintext = yacl::MakeUint128(0, index);
 
     // aes(x) xor x
     return crypto_->Encrypt(plaintext) ^ plaintext;
@@ -77,14 +77,14 @@ class MultiQuery {
   std::array<uint8_t, 32> oracle_seed_;
 
   size_t max_bin_item_size_ = 0;
-  std::unique_ptr<yasl::SymmetricCrypto> crypto_;
+  std::unique_ptr<yacl::SymmetricCrypto> crypto_;
 };
 
 class MultiQueryServer : public MultiQuery {
  public:
   MultiQueryServer(const MultiQueryOptions &options,
                    const psi::CuckooIndex::Options &cuckoo_params,
-                   yasl::ByteContainerView seed)
+                   yacl::ByteContainerView seed)
       : MultiQuery(options, cuckoo_params, seed) {
     simple_hash_.resize(cuckoo_params_.NumBins());
 
@@ -108,7 +108,7 @@ class MultiQueryServer : public MultiQuery {
 
   size_t GetBinNum() const { return simple_hash_.size(); }
 
-  void SetDatabase(yasl::ByteContainerView db_bytes);
+  void SetDatabase(yacl::ByteContainerView db_bytes);
 
   void SetGaloisKeys(const seal::GaloisKeys &galkey) {
     for (size_t idx = 0; idx < pir_server_.size(); ++idx) {
@@ -116,9 +116,9 @@ class MultiQueryServer : public MultiQuery {
     }
   }
 
-  void RecvGaloisKeys(const std::shared_ptr<yasl::link::Context> &link_ctx);
+  void RecvGaloisKeys(const std::shared_ptr<yacl::link::Context> &link_ctx);
 
-  void DoMultiPirAnswer(const std::shared_ptr<yasl::link::Context> &link_ctx);
+  void DoMultiPirAnswer(const std::shared_ptr<yacl::link::Context> &link_ctx);
 
  private:
   std::vector<std::vector<size_t>> simple_hash_;
@@ -130,7 +130,7 @@ class MultiQueryClient : public MultiQuery {
  public:
   MultiQueryClient(const MultiQueryOptions &options,
                    const psi::CuckooIndex::Options &cuckoo_params,
-                   yasl::ByteContainerView seed)
+                   yacl::ByteContainerView seed)
       : MultiQuery(options, cuckoo_params, seed) {
     GenerateSimpleHashMap();
 
@@ -149,10 +149,10 @@ class MultiQueryClient : public MultiQuery {
     return pir_client_->GenerateGaloisKeys();
   }
 
-  void SendGaloisKeys(const std::shared_ptr<yasl::link::Context> &link_ctx);
+  void SendGaloisKeys(const std::shared_ptr<yacl::link::Context> &link_ctx);
 
   std::vector<std::vector<uint8_t>> DoMultiPirQuery(
-      const std::shared_ptr<yasl::link::Context> &link_ctx,
+      const std::shared_ptr<yacl::link::Context> &link_ctx,
       const std::vector<size_t> &multi_query_index);
 
  private:

@@ -19,9 +19,9 @@
 #include "apsi/psi_params.h"
 #include "apsi/seal_object.h"
 #include "seal/seal.h"
-#include "yasl/base/byte_container_view.h"
-#include "yasl/base/exception.h"
-#include "yasl/link/link.h"
+#include "yacl/base/byte_container_view.h"
+#include "yacl/base/exception.h"
+#include "yacl/link/link.h"
 
 #include "spu/psi/core/ecdh_oprf/ecdh_oprf.h"
 #include "spu/psi/core/labeled_psi/psi_params.h"
@@ -40,7 +40,7 @@ class LabelPsiSender {
    * @param link_ctx
    */
   static void RunPsiParams(
-      size_t items_size, const std::shared_ptr<yasl::link::Context>& link_ctx);
+      size_t items_size, const std::shared_ptr<yacl::link::Context>& link_ctx);
 
   /**
    * @brief Receive OPRF Request and Send OPRF Response
@@ -49,14 +49,14 @@ class LabelPsiSender {
    * @param link_ctx
    */
   void RunOPRF(const std::shared_ptr<IEcdhOprfServer>& oprf_server,
-               const std::shared_ptr<yasl::link::Context>& link_ctx);
+               const std::shared_ptr<yacl::link::Context>& link_ctx);
 
   /**
    * @brief Receive query_powers Request and Send polynoimal ciphertext Response
    *
    * @param link_ctx
    */
-  void RunQuery(const std::shared_ptr<yasl::link::Context>& link_ctx);
+  void RunQuery(const std::shared_ptr<yacl::link::Context>& link_ctx);
 
  private:
   std::shared_ptr<spu::psi::SenderDB> sender_db_;

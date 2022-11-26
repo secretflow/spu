@@ -55,7 +55,7 @@ class Object {
 
   void addState(std::string_view name, std::unique_ptr<State> state) {
     const auto& itr = states_.find(name);
-    YASL_ENFORCE(itr == states_.end(), "state={} already exist", name);
+    YACL_ENFORCE(itr == states_.end(), "state={} already exist", name);
     states_.emplace(name, std::move(state));
   }
 
@@ -68,7 +68,7 @@ class Object {
   template <typename StateT>
   StateT* getState() {
     const auto& itr = states_.find(StateT::kBindName);
-    YASL_ENFORCE(itr != states_.end(), "state={} not found", StateT::kBindName);
+    YACL_ENFORCE(itr != states_.end(), "state={} not found", StateT::kBindName);
     return dynamic_cast<StateT*>(itr->second.get());
   }
 

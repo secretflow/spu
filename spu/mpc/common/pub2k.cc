@@ -85,7 +85,7 @@ class Pub2kAddPP : public BinaryKernel {
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& lhs,
                 const ArrayRef& rhs) const override {
     SPU_TRACE_MPC_LEAF(ctx, lhs, rhs);
-    YASL_ENFORCE(lhs.eltype() == rhs.eltype());
+    YACL_ENFORCE(lhs.eltype() == rhs.eltype());
     return ring_add(lhs, rhs).as(lhs.eltype());
   }
 };
@@ -101,7 +101,7 @@ class Pub2kMulPP : public BinaryKernel {
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& lhs,
                 const ArrayRef& rhs) const override {
     SPU_TRACE_MPC_LEAF(ctx, lhs, rhs);
-    YASL_ENFORCE(lhs.eltype() == rhs.eltype());
+    YACL_ENFORCE(lhs.eltype() == rhs.eltype());
     return ring_mul(lhs, rhs).as(lhs.eltype());
   }
 };
@@ -118,7 +118,7 @@ class Pub2kMatMulPP : public MatmulKernel {
                 const ArrayRef& rhs, size_t M, size_t N,
                 size_t K) const override {
     SPU_TRACE_MPC_LEAF(ctx, lhs, rhs);
-    YASL_ENFORCE(lhs.eltype() == rhs.eltype());
+    YACL_ENFORCE(lhs.eltype() == rhs.eltype());
     return ring_mmul(lhs, rhs, M, N, K).as(lhs.eltype());
   }
 };
@@ -134,7 +134,7 @@ class Pub2kAndPP : public BinaryKernel {
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& lhs,
                 const ArrayRef& rhs) const override {
     SPU_TRACE_MPC_LEAF(ctx, lhs, rhs);
-    YASL_ENFORCE(lhs.eltype() == rhs.eltype());
+    YACL_ENFORCE(lhs.eltype() == rhs.eltype());
     return ring_and(lhs, rhs).as(lhs.eltype());
   }
 };
@@ -150,7 +150,7 @@ class Pub2kXorPP : public BinaryKernel {
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& lhs,
                 const ArrayRef& rhs) const override {
     SPU_TRACE_MPC_LEAF(ctx, lhs, rhs);
-    YASL_ENFORCE(lhs.eltype() == rhs.eltype());
+    YACL_ENFORCE(lhs.eltype() == rhs.eltype());
     return ring_xor(lhs, rhs).as(lhs.eltype());
   }
 };
@@ -196,8 +196,8 @@ class Pub2kBitrevP : public BitrevKernel {
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in, size_t start,
                 size_t end) const override {
     const auto field = in.eltype().as<Ring2k>()->field();
-    YASL_ENFORCE(start <= end);
-    YASL_ENFORCE(end <= SizeOf(field) * 8);
+    YACL_ENFORCE(start <= end);
+    YACL_ENFORCE(end <= SizeOf(field) * 8);
 
     SPU_TRACE_MPC_LEAF(ctx, in, start, end);
     return ring_bitrev(in, start, end).as(in.eltype());

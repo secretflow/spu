@@ -24,9 +24,9 @@ Value applyFloatingPointFn(
     HalContext* ctx, const Value& in,
     const std::function<NdArrayRef(const xt::xarray<float>&)>& fn) {
   SPU_TRACE_HAL_DISP(ctx, in);
-  YASL_ENFORCE(in.isPublic(), "float intrinsic, expected public, got {}",
+  YACL_ENFORCE(in.isPublic(), "float intrinsic, expected public, got {}",
                in.storage_type());
-  YASL_ENFORCE(in.dtype() == DT_FXP, "expected fxp, got={}", in.dtype());
+  YACL_ENFORCE(in.dtype() == DT_FXP, "expected fxp, got={}", in.dtype());
 
   const size_t fxp_bits = ctx->getFxpBits();
   const auto field = in.storage_type().as<Ring2k>()->field();
@@ -38,7 +38,7 @@ Value applyFloatingPointFn(
   DataType dtype;
   const auto out =
       encodeToRing(fn(xt_adapt<float>(raw)), field, fxp_bits, &dtype);
-  YASL_ENFORCE(dtype == DT_FXP, "sanity failed");
+  YACL_ENFORCE(dtype == DT_FXP, "sanity failed");
   return Value(out.as(in.storage_type()), dtype);
 }
 
@@ -47,9 +47,9 @@ Value applyFloatingPointFn(
     const std::function<NdArrayRef(const xt::xarray<float>&,
                                    const xt::xarray<float>&)>& fn) {
   SPU_TRACE_HAL_DISP(ctx, x, y);
-  YASL_ENFORCE(x.isPublic() && y.isPublic());
-  YASL_ENFORCE((x.dtype() == DT_FXP) && (y.dtype() == DT_FXP));
-  YASL_ENFORCE(x.dtype() == DT_FXP, "expected fxp, got={}", x.dtype());
+  YACL_ENFORCE(x.isPublic() && y.isPublic());
+  YACL_ENFORCE((x.dtype() == DT_FXP) && (y.dtype() == DT_FXP));
+  YACL_ENFORCE(x.dtype() == DT_FXP, "expected fxp, got={}", x.dtype());
 
   const auto field = x.storage_type().as<Ring2k>()->field();
   const size_t fxp_bits = ctx->getFxpBits();
@@ -63,7 +63,7 @@ Value applyFloatingPointFn(
   const auto out =
       encodeToRing(fn(xt_adapt<float>(flp_x), xt_adapt<float>(flp_y)), field,
                    fxp_bits, &dtype);
-  YASL_ENFORCE(dtype == DT_FXP, "sanity failed");
+  YACL_ENFORCE(dtype == DT_FXP, "sanity failed");
   return Value(out.as(x.storage_type()), dtype);
 }
 

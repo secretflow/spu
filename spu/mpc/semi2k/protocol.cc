@@ -28,7 +28,7 @@ namespace spu::mpc {
 
 std::unique_ptr<Object> makeSemi2kProtocol(
     const RuntimeConfig& conf,
-    const std::shared_ptr<yasl::link::Context>& lctx) {
+    const std::shared_ptr<yacl::link::Context>& lctx) {
   semi2k::registerTypes();
 
   auto obj = std::make_unique<Object>();

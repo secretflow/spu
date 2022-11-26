@@ -4,10 +4,13 @@ load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
 
 SECRETFLOW_GIT = "https://github.com/secretflow"
 
-YASL_COMMIT_ID = "a1cd56d69261a0e2e4d369b0d29a4ca629ed9bc9"
+SECRETFLOW_GIT = "https://github.com/secretflow"
+
+YACL_COMMIT_ID = "f44c9792d1fcad6af7623a0aebf71a78ef297d5c"
 
 def spu_deps():
     _bazel_platform()
+    _upb()
     _com_github_xtensor_xtensor()
     _com_github_xtensor_xtl()
     _com_github_grpc_grpc()
@@ -16,7 +19,6 @@ def spu_deps():
     _com_github_pybind11()
     _com_intel_hexl()
     _com_github_amrayn_easyloggingpp()
-    _com_github_google_boringssl()
     _com_github_emptoolkit_emp_ot()
     _com_github_facebook_zstd()
     _com_github_microsoft_seal()
@@ -29,8 +31,8 @@ def spu_deps():
 
     maybe(
         git_repository,
-        name = "yasl",
-        commit = YASL_COMMIT_ID,
+        name = "yacl",
+        commit = YACL_COMMIT_ID,
         remote = "{}/yasl.git".format(SECRETFLOW_GIT),
     )
 
@@ -70,15 +72,27 @@ def _com_github_facebook_zstd():
         ],
     )
 
+def _upb():
+    maybe(
+        http_archive,
+        name = "upb",
+        sha256 = "017a7e8e4e842d01dba5dc8aa316323eee080cd1b75986a7d1f94d87220e6502",
+        strip_prefix = "upb-e4635f223e7d36dfbea3b722a4ca4807a7e882e2",
+        urls = [
+            "https://storage.googleapis.com/grpc-bazel-mirror/github.com/protocolbuffers/upb/archive/e4635f223e7d36dfbea3b722a4ca4807a7e882e2.tar.gz",
+            "https://github.com/protocolbuffers/upb/archive/e4635f223e7d36dfbea3b722a4ca4807a7e882e2.tar.gz",
+        ],
+    )
+
 def _com_github_grpc_grpc():
     maybe(
         http_archive,
         name = "com_github_grpc_grpc",
-        sha256 = "e18b16f7976aab9a36c14c38180f042bb0fd196b75c9fd6a20a2b5f934876ad6",
-        strip_prefix = "grpc-1.45.2",
+        sha256 = "7f42363711eb483a0501239fd5522467b31d8fe98d70d7867c6ca7b52440d828",
+        strip_prefix = "grpc-1.51.0",
         type = "tar.gz",
         urls = [
-            "https://github.com/grpc/grpc/archive/refs/tags/v1.45.2.tar.gz",
+            "https://github.com/grpc/grpc/archive/refs/tags/v1.51.0.tar.gz",
         ],
     )
 
@@ -109,8 +123,8 @@ def _com_github_xtensor_xtl():
     )
 
 def _com_github_tensorflow():
-    LLVM_COMMIT = "0538e5431afdb1fa05bdcedf70ee502ccfcd112a"
-    LLVM_SHA256 = "01f168b1a8798e652a04f1faecc3d3c631ff12828b89c65503f39b0a0d6ad048"
+    LLVM_COMMIT = "d8415b02a519f222ecf71b069c96cc85ac635de3"
+    LLVM_SHA256 = "05fffac826b16218bbc0f882204734e68566fd0b61a1196f12c16a58b0b8af58"
     maybe(
         http_archive,
         name = "llvm-raw",
@@ -121,10 +135,10 @@ def _com_github_tensorflow():
             "https://github.com/llvm/llvm-project/archive/{commit}.tar.gz".format(commit = LLVM_COMMIT),
         ],
     )
-    SKYLIB_VERSION = "1.2.1"
+    SKYLIB_VERSION = "1.3.0"
     http_archive(
         name = "bazel_skylib",
-        sha256 = "f7be3474d42aae265405a592bb7da8e171919d74c16f082a5457840f06054728",
+        sha256 = "74d544d96f4a5bb630d465ca8bbcfe231e3594e5aae57e1edbf17a6eb3ca2506",
         urls = [
             "https://mirror.bazel.build/github.com/bazelbuild/bazel-skylib/releases/download/{version}/bazel-skylib-{version}.tar.gz".format(version = SKYLIB_VERSION),
             "https://github.com/bazelbuild/bazel-skylib/releases/download/{version}/bazel-skylib-{version}.tar.gz".format(version = SKYLIB_VERSION),
@@ -135,14 +149,14 @@ def _com_github_tensorflow():
     maybe(
         http_archive,
         name = "org_tensorflow",
-        sha256 = "b5a1bb04c84b6fe1538377e5a1f649bb5d5f0b2e3625a3c526ff3a8af88633e8",
-        strip_prefix = "tensorflow-2.10.0",
+        sha256 = "99c732b92b1b37fc243a559e02f9aef5671771e272758aa4aec7f34dc92dac48",
+        strip_prefix = "tensorflow-2.11.0",
         patch_args = ["-p1"],
-        # Fix mlir package visibility
+        # Fix hlo evaluator package visibility
         patches = ["@spulib//bazel:patches/tensorflow.patch"],
         type = ".tar.gz",
         urls = [
-            "https://github.com/tensorflow/tensorflow/archive/refs/tags/v2.10.0.tar.gz",
+            "https://github.com/tensorflow/tensorflow/archive/refs/tags/v2.11.0.tar.gz",
         ],
     )
 
@@ -162,10 +176,10 @@ def _com_github_pybind11():
         http_archive,
         name = "pybind11",
         build_file = "@pybind11_bazel//:pybind11.BUILD",
-        sha256 = "eacf582fa8f696227988d08cfc46121770823839fe9e301a20fbce67e7cd70ec",
-        strip_prefix = "pybind11-2.10.0",
+        sha256 = "111014b516b625083bef701df7880f78c2243835abdb263065b6b59b960b6bad",
+        strip_prefix = "pybind11-2.10.1",
         urls = [
-            "https://github.com/pybind/pybind11/archive/refs/tags/v2.10.0.tar.gz",
+            "https://github.com/pybind/pybind11/archive/refs/tags/v2.10.1.tar.gz",
         ],
     )
 
@@ -192,18 +206,6 @@ def _com_github_amrayn_easyloggingpp():
         build_file = "@spulib//bazel:easyloggingpp.BUILD",
         urls = [
             "https://github.com/amrayn/easyloggingpp/archive/refs/tags/v9.97.0.tar.gz",
-        ],
-    )
-
-# boringssl is required by grpc, we manually use a higher version.
-def _com_github_google_boringssl():
-    maybe(
-        http_archive,
-        name = "boringssl",
-        sha256 = "09a9ea8b7ecdc97a7e2f128fc0fa7fcc91d781832ad19293054d3547f95fb2cd",
-        strip_prefix = "boringssl-5ad11497644b75feba3163135da0909943541742",
-        urls = [
-            "https://github.com/google/boringssl/archive/5ad11497644b75feba3163135da0909943541742.zip",
         ],
     )
 

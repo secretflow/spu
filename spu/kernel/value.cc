@@ -19,7 +19,7 @@
 
 #include "fmt/format.h"
 #include "fmt/ostream.h"
-#include "yasl/base/exception.h"
+#include "yacl/base/exception.h"
 
 #include "spu/core/ndarray_ref.h"
 #include "spu/core/shape_util.h"
@@ -52,7 +52,7 @@ Value& Value::setDtype(DataType new_dtype, bool force) {
   }
 
   if (!force && dtype_ != DT_INVALID) {
-    YASL_THROW("Invalid set new dtype, cur={}, new={}", dtype_, new_dtype);
+    YACL_THROW("Invalid set new dtype, cur={}, new={}", dtype_, new_dtype);
   }
 
   dtype_ = new_dtype;
@@ -67,7 +67,7 @@ void Value::copyElementFrom(const Value& v, absl::Span<const int64_t> input_idx,
 #ifdef SANITY_ELEWRITE
   for (size_t idx = 0; idx < shape().size(); ++idx) {
     if (shape()[idx] != 1) {
-      YASL_ENFORCE(strides()[idx] != 0,
+      YACL_ENFORCE(strides()[idx] != 0,
                    "Copy into a broadcast value is not safe");
     }
   }
@@ -78,7 +78,7 @@ void Value::copyElementFrom(const Value& v, absl::Span<const int64_t> input_idx,
 
 Value Value::getElementAt(absl::Span<const int64_t> index) const {
   // TODO: use NdArrayRef.slice to implement this function.
-  YASL_ENFORCE(dtype() != DT_INVALID);
+  YACL_ENFORCE(dtype() != DT_INVALID);
 
   std::vector<int64_t> start_index(index.size(), 0);
   const int64_t new_offset =
@@ -109,7 +109,7 @@ ValueProto Value::toProto() const {
   } else {
     // Make a compact clone
     auto copy = data_.clone();
-    YASL_ENFORCE(copy.isCompact(), "Must be a compact copy.");
+    YACL_ENFORCE(copy.isCompact(), "Must be a compact copy.");
     proto.set_content(copy.data(), copy.buf()->size());
   }
   return proto;
@@ -118,11 +118,11 @@ ValueProto Value::toProto() const {
 Value Value::fromProto(const ValueProto& proto) {
   const auto eltype = Type::fromString(proto.storage_type());
 
-  YASL_ENFORCE(proto.data_type() != DT_INVALID, "invalid data type={}",
+  YACL_ENFORCE(proto.data_type() != DT_INVALID, "invalid data type={}",
                proto.data_type());
 
   // vtype is deduced from storage_type.
-  YASL_ENFORCE(proto.visibility() == getVisibilityFromType(eltype),
+  YACL_ENFORCE(proto.visibility() == getVisibilityFromType(eltype),
                "visibility {} does not match storage_type {}",
                proto.visibility(), eltype);
 
@@ -130,7 +130,7 @@ Value Value::fromProto(const ValueProto& proto) {
                              proto.shape().dims().end());
 
   NdArrayRef data(eltype, shape);
-  YASL_ENFORCE(static_cast<size_t>(data.buf()->size()) ==
+  YACL_ENFORCE(static_cast<size_t>(data.buf()->size()) ==
                proto.content().size());
   memcpy(data.data(), proto.content().c_str(), data.buf()->size());
 

@@ -24,8 +24,8 @@
 #include "absl/strings/escaping.h"
 #include "openssl/rand.h"
 #include "spdlog/spdlog.h"
-#include "yasl/utils/parallel.h"
-#include "yasl/utils/rand.h"
+#include "yacl/crypto/utils/rand.h"
+#include "yacl/utils/parallel.h"
 
 #include "spu/psi/core/bc22_psi/emp_vole.h"
 #include "spu/psi/utils/serialize.h"
@@ -52,13 +52,13 @@ std::vector<uint8_t> BaRKOPRFHash(size_t bin_idx,
   std::memcpy(hash_input.data(), &bin_idx, sizeof(size_t));
   std::memcpy(hash_input.data() + sizeof(size_t), &value,
               sizeof(WolverineVoleFieldType));
-  std::vector<uint8_t> hash_res = yasl::crypto::Blake3(hash_input);
+  std::vector<uint8_t> hash_res = yacl::crypto::Blake3(hash_input);
   return hash_res;
 }
 
 }  // namespace
 
-Bc22PcgPsi::Bc22PcgPsi(const std::shared_ptr<yasl::link::Context> &link_ctx,
+Bc22PcgPsi::Bc22PcgPsi(const std::shared_ptr<yacl::link::Context> &link_ctx,
                        PsiRoleType role)
     : link_ctx_(link_ctx), role_(role), batch_size_(kPcgPsiBatchSize) {}
 
@@ -66,11 +66,11 @@ void Bc22PcgPsi::ExchangeItemsNumber(size_t self_item_num) {
   // exchange items number, compute compare bytes size
   // oprf compare bits: 40 + log2(n1) + log2(n2)
 
-  yasl::Buffer self_count_buffer = utils::SerializeSize(self_item_num);
+  yacl::Buffer self_count_buffer = utils::SerializeSize(self_item_num);
   link_ctx_->SendAsync(link_ctx_->NextRank(), self_count_buffer,
                        fmt::format("send items count: {}", self_item_num));
 
-  yasl::Buffer peer_items_num_buffer =
+  yacl::Buffer peer_items_num_buffer =
       link_ctx_->Recv(link_ctx_->NextRank(), fmt::format("peer items number"));
   peer_items_num_ = utils::DeserializeSize(peer_items_num_buffer);
 }
@@ -106,7 +106,7 @@ void Bc22PcgPsi::RunPsi(absl::Span<const std::string> items) {
     // receive sender's oprfs, and compute intersection
     PcgPsiRecvOprf(items, oprf_encode_vec, compare_bytes_size);
   } else {
-    YASL_THROW("wrong psi role type: {}", static_cast<int>(role_));
+    YACL_THROW("wrong psi role type: {}", static_cast<int>(role_));
   }
 }
 
@@ -154,9 +154,9 @@ std::string Bc22PcgPsi::RunmBaRKOprfSender(absl::Span<const std::string> items,
       masked_coeffs(bins_num);
 
   while (true) {
-    yasl::Buffer masked_coeff_buffer = link_ctx_->Recv(
+    yacl::Buffer masked_coeff_buffer = link_ctx_->Recv(
         link_ctx_->NextRank(), fmt::format("recv {} bin", recv_bin_idx));
-    YASL_ENFORCE((masked_coeff_buffer.size() % coeff_byte_size) == 0);
+    YACL_ENFORCE((masked_coeff_buffer.size() % coeff_byte_size) == 0);
 
     size_t num_bin = masked_coeff_buffer.size() / coeff_byte_size;
 
@@ -196,7 +196,7 @@ std::string Bc22PcgPsi::RunmBaRKOprfSender(absl::Span<const std::string> items,
   oprfs.resize(items.size() * cuckoo_options_.num_hash * kMaxCompareBytes);
 
   // shuffer sender's oprfs
-  std::mt19937 rng(yasl::DrbgRandSeed());
+  std::mt19937 rng(yacl::DrbgRandSeed());
 
   std::vector<size_t> shuffled_idx_vec(items.size());
   std::iota(shuffled_idx_vec.begin(), shuffled_idx_vec.end(), 0);
@@ -208,7 +208,7 @@ std::string Bc22PcgPsi::RunmBaRKOprfSender(absl::Span<const std::string> items,
   for (size_t i = 0; i < conflict_idx.size(); ++i) {
     size_t shuffled_idx = shuffled_idx_vec[conflict_idx[i]];
 
-    YASL_ENFORCE(
+    YACL_ENFORCE(
         RAND_bytes(reinterpret_cast<unsigned char *>(
                        &oprfs[((shuffled_idx * cuckoo_options_.num_hash)) *
                               compare_bytes_size]),
@@ -216,7 +216,7 @@ std::string Bc22PcgPsi::RunmBaRKOprfSender(absl::Span<const std::string> items,
   }
 
   // compute sender's oprf
-  yasl::parallel_for(0, bins.size(), 1, [&](int64_t begin, int64_t end) {
+  yacl::parallel_for(0, bins.size(), 1, [&](int64_t begin, int64_t end) {
     for (int64_t bin_idx = begin; bin_idx < end; ++bin_idx) {
       std::vector<WolverineVoleFieldType> oprf_key(kMaxItemsPerBin);
 
@@ -313,11 +313,11 @@ std::vector<std::string> Bc22PcgPsi::RunmBaRKOprfReceiver(
   for (size_t idx = 0; idx < bins.size(); idx += batch_size_) {
     size_t current_batch_size = std::min(batch_size_, bins.size() - idx);
 
-    yasl::Buffer masked_coeff_buffer(coeff_byte_size * current_batch_size);
+    yacl::Buffer masked_coeff_buffer(coeff_byte_size * current_batch_size);
 
     std::vector<std::string> oprf_blocks_batch(current_batch_size);
 
-    yasl::parallel_for(
+    yacl::parallel_for(
         0, current_batch_size, 1, [&](int64_t begin, int64_t end) {
           for (int64_t j = begin; j < end; ++j) {
             size_t bin_idx = idx + j;
@@ -335,7 +335,7 @@ std::vector<std::string> Bc22PcgPsi::RunmBaRKOprfReceiver(
 
             for (; k < kMaxItemsPerBin; ++k) {
               std::string buf(sizeof(uint64_t), '\0');
-              YASL_ENFORCE(RAND_bytes(reinterpret_cast<uint8_t *>(buf.data()),
+              YACL_ENFORCE(RAND_bytes(reinterpret_cast<uint8_t *>(buf.data()),
                                       buf.length()) == 1);
               bin_data[k] = buf;
             }
@@ -416,7 +416,7 @@ void Bc22PcgPsi::PcgPsiSendOprf(absl::Span<const std::string> items,
 
     proto.set_flatten_bytes(flatten_bytes);
     proto.set_is_last_batch(is_last_batch);
-    yasl::Buffer oprf_buffer(proto.ByteSizeLong());
+    yacl::Buffer oprf_buffer(proto.ByteSizeLong());
     proto.SerializeToArray(oprf_buffer.data(), oprf_buffer.size());
 
     link_ctx_->SendAsync(
@@ -438,7 +438,7 @@ void Bc22PcgPsi::PcgPsiRecvOprf(absl::Span<const std::string> items,
 
   size_t oprf_count = 0;
   while (true) {
-    yasl::Buffer oprf_buffer =
+    yacl::Buffer oprf_buffer =
         link_ctx_->Recv(link_ctx_->NextRank(), fmt::format("recv oprf buffer"));
 
     proto::PsiDataBatchProto proto;

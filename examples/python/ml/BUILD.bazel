@@ -71,6 +71,7 @@ py_binary(
     ],
     deps = [
         "//examples/python/utils:dataset_utils",
+        "//examples/python/utils:optimizers",
         "//examples/python/utils:stax_models",
         "//examples/python/utils:stax_utils",
         "//spu/binding/util:distributed",

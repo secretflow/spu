@@ -35,7 +35,7 @@
 #include "apsi/crypto_context.h"
 #include "apsi/item.h"
 #include "apsi/psi_params.h"
-#include "yasl/base/byte_container_view.h"
+#include "yacl/base/byte_container_view.h"
 
 #include "spu/psi/core/ecdh_oprf/basic_ecdh_oprf.h"
 
@@ -80,7 +80,7 @@ class SenderDB {
   /**
   Creates a new SenderDB.
   */
-  SenderDB(const apsi::PSIParams &params, yasl::ByteContainerView oprf_key,
+  SenderDB(const apsi::PSIParams &params, yacl::ByteContainerView oprf_key,
            std::size_t label_byte_count = 0, std::size_t nonce_byte_count = 16,
            bool compressed = true);
 

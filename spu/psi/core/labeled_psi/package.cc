@@ -17,13 +17,13 @@
 #include <utility>
 
 #include "spdlog/spdlog.h"
-#include "yasl/base/exception.h"
+#include "yacl/base/exception.h"
 
 namespace spu::psi {
 
 PlainResultPackage ResultPackage::extract(
     const apsi::CryptoContext &crypto_context) {
-  YASL_ENFORCE(crypto_context.decryptor(),
+  YACL_ENFORCE(crypto_context.decryptor(),
                "decryptor is not configured in CryptoContext");
 
   // SPDLOG_INFO("extract ciphertext");

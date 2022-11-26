@@ -16,9 +16,9 @@
 #include <iostream>
 
 #include "benchmark/benchmark.h"
-#include "yasl/base/exception.h"
-#include "yasl/crypto/hash_util.h"
-#include "yasl/link/test_util.h"
+#include "yacl/base/exception.h"
+#include "yacl/crypto/utils/hash_util.h"
+#include "yacl/link/test_util.h"
 
 #include "spu/psi/core/kkrt_psi.h"
 
@@ -26,15 +26,15 @@ namespace {
 std::vector<uint128_t> CreateRangeItems(size_t begin, size_t size) {
   std::vector<uint128_t> ret(size);
   for (size_t i = 0; i < size; i++) {
-    std::vector<uint8_t> hash = yasl::crypto::Blake3(std::to_string(begin + i));
+    std::vector<uint8_t> hash = yacl::crypto::Blake3(std::to_string(begin + i));
     memcpy(&ret[i], hash.data(), sizeof(uint128_t));
   }
   return ret;
 }
 
-void KkrtPsiSend(const std::shared_ptr<yasl::link::Context>& link_ctx,
+void KkrtPsiSend(const std::shared_ptr<yacl::link::Context>& link_ctx,
                  const std::vector<uint128_t>& items_hash) {
-  yasl::BaseRecvOptions recv_opts;
+  yacl::BaseRecvOptions recv_opts;
 
   spu::psi::GetKkrtOtSenderOptions(link_ctx, 512, &recv_opts);
 
@@ -42,9 +42,9 @@ void KkrtPsiSend(const std::shared_ptr<yasl::link::Context>& link_ctx,
 }
 
 std::vector<std::size_t> KkrtPsiRecv(
-    const std::shared_ptr<yasl::link::Context>& link_ctx,
+    const std::shared_ptr<yacl::link::Context>& link_ctx,
     const std::vector<uint128_t>& items_hash) {
-  yasl::BaseSendOptions send_opts;
+  yacl::BaseSendOptions send_opts;
 
   spu::psi::GetKkrtOtReceiverOptions(link_ctx, 512, &send_opts);
 
@@ -60,7 +60,7 @@ static void BM_KkrtPsi(benchmark::State& state) {
     auto alice_items = CreateRangeItems(1, n);
     auto bob_items = CreateRangeItems(2, n);
 
-    auto contexts = yasl::link::test::SetupWorld(2);
+    auto contexts = yacl::link::test::SetupWorld(2);
 
     state.ResumeTiming();
 

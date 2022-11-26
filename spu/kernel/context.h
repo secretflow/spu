@@ -17,7 +17,7 @@
 #include <memory>
 #include <random>
 
-#include "yasl/link/link.h"
+#include "yacl/link/link.h"
 
 #include "spu/core/trace.h"
 #include "spu/mpc/object.h"
@@ -36,7 +36,7 @@ struct FeatureControl {
 class HalContext final {
   const RuntimeConfig rt_config_;
 
-  const std::shared_ptr<yasl::link::Context> lctx_;
+  const std::shared_ptr<yacl::link::Context> lctx_;
 
   std::unique_ptr<mpc::Object> prot_;
 
@@ -46,7 +46,7 @@ class HalContext final {
 
  public:
   explicit HalContext(RuntimeConfig config,
-                      std::shared_ptr<yasl::link::Context> lctx);
+                      std::shared_ptr<yacl::link::Context> lctx);
 
   HalContext(const HalContext& other) = delete;
   HalContext& operator=(const HalContext& other) = delete;
@@ -54,7 +54,7 @@ class HalContext final {
   HalContext(HalContext&& other) = default;
 
   //
-  const std::shared_ptr<yasl::link::Context>& lctx() const { return lctx_; }
+  const std::shared_ptr<yacl::link::Context>& lctx() const { return lctx_; }
 
   mpc::Object* prot() const { return prot_.get(); }
 

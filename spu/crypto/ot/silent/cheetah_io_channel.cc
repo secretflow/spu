@@ -18,15 +18,15 @@
 
 #include "spdlog/spdlog.h"
 #include "utils.h"
-#include "yasl/base/byte_container_view.h"
-#include "yasl/link/link.h"
+#include "yacl/base/byte_container_view.h"
+#include "yacl/link/link.h"
 
 using std::shared_ptr;
 using std::string;
 
 namespace spu {
 
-CheetahIo::CheetahIo(shared_ptr<yasl::link::Context> ctx)
+CheetahIo::CheetahIo(shared_ptr<yacl::link::Context> ctx)
     : ctx_(std::move(ctx)),
       send_op_(0),
       recv_op_(0),
@@ -50,7 +50,7 @@ void CheetahIo::flush() {
 
   ctx_->SendAsync(
       ctx_->NextRank(),
-      yasl::ByteContainerView(send_buffer_.data(), send_buffer_used_),
+      yacl::ByteContainerView(send_buffer_.data(), send_buffer_used_),
       fmt::format("Cheetah send:{}", send_op_++));
 
   memset(send_buffer_.data(), 0, SEND_BUFFER_SIZE);

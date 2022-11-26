@@ -86,7 +86,7 @@ spu::PtType getPtType(const mlir::Type &type) {
       return it.isUnsigned() ? spu::PT_U64 : spu::PT_I64;
     }
   }
-  YASL_THROW("Hit unknown pt_type");
+  YACL_THROW("Hit unknown pt_type");
 }
 
 spu::DataType getDtypeFromMlirType(::mlir::Type mlir_ty) {
@@ -105,11 +105,11 @@ spu::DataType getDtypeFromMlirType(::mlir::Type mlir_ty) {
     case 64:
       return int_ty.isUnsigned() ? spu::DT_U64 : spu::DT_I64;
     default:
-      YASL_THROW("unsupported int type {}");
+      YACL_THROW("unsupported int type {}");
     }
   }
   auto flp_ty = tool.getExpressedType(mlir_ty).dyn_cast<::mlir::FloatType>();
-  YASL_ENFORCE(flp_ty, "invalid type");
+  YACL_ENFORCE(flp_ty, "invalid type");
   return spu::DT_FXP;
 }
 
@@ -125,7 +125,7 @@ const spu::Value &RegionExecutor::lookupValue(::mlir::Value v) const {
     std::string str;
     llvm::raw_string_ostream debug_s(str);
     v.getDefiningOp()->print(debug_s);
-    YASL_ENFORCE(false, "Try to get a non-exist value, defined at {}",
+    YACL_ENFORCE(false, "Try to get a non-exist value, defined at {}",
                  debug_s.str());
   }
   return *val;
@@ -133,7 +133,7 @@ const spu::Value &RegionExecutor::lookupValue(::mlir::Value v) const {
 
 #define LOWERED_OP_IMPL(OpName)                                                \
   void RegionExecutor::execute(mlir::pphlo::OpName &) {                        \
-    YASL_THROW("Lowered op should not occur at backend");                      \
+    YACL_THROW("Lowered op should not occur at backend");                      \
   }
 
 LOWERED_OP_IMPL(ReturnOp)
@@ -142,7 +142,7 @@ LOWERED_OP_IMPL(ReturnOp)
 
 #define UNIMPL_OP(OpName)                                                      \
   void RegionExecutor::execute(mlir::pphlo::OpName &op) {                      \
-    YASL_THROW("Missing Runtime Impl Op {}", op->getName().getStringRef());    \
+    YACL_THROW("Missing Runtime Impl Op {}", op->getName().getStringRef());    \
   }
 
 #undef UNIMPL_OP
@@ -155,7 +155,7 @@ RegionExecutor::executeRegion(mlir::Region &region,
     getFrame()->setTypeCheker(nullptr);
   }
 
-  YASL_ENFORCE(region.getNumArguments() == inputs.size(),
+  YACL_ENFORCE(region.getNumArguments() == inputs.size(),
                "Entrypoint function requires {} arguments, which is more than "
                "actual number of inputs {}",
                region.getRegionNumber(), inputs.size());
@@ -281,12 +281,12 @@ void RegionExecutor::execute(mlir::pphlo::DotOp &op) {
 void RegionExecutor::execute(mlir::pphlo::DotGeneralOp &op) {
   auto dnum = op.dot_dimension_numbers();
   // Should in order
-  YASL_ENFORCE(dnum.getLhsBatchingDimensions().size() == 1 &&
+  YACL_ENFORCE(dnum.getLhsBatchingDimensions().size() == 1 &&
                    dnum.getLhsContractingDimensions().size() == 1 &&
                    dnum.getLhsBatchingDimensions()[0] == 0 &&
                    dnum.getLhsContractingDimensions()[0] == 2,
                "LHS dims is not in order");
-  YASL_ENFORCE(dnum.getRhsBatchingDimensions().size() == 1 &&
+  YACL_ENFORCE(dnum.getRhsBatchingDimensions().size() == 1 &&
                    dnum.getRhsContractingDimensions().size() == 1 &&
                    dnum.getRhsBatchingDimensions()[0] == 0 &&
                    dnum.getRhsContractingDimensions()[0] == 1,
@@ -294,7 +294,7 @@ void RegionExecutor::execute(mlir::pphlo::DotGeneralOp &op) {
 
   auto lhs = lookupValue(op.lhs());
   auto rhs = lookupValue(op.rhs());
-  YASL_ENFORCE(lhs.shape()[0] == rhs.shape()[0], "Batch dim should equal");
+  YACL_ENFORCE(lhs.shape()[0] == rhs.shape()[0], "Batch dim should equal");
   int64_t num_batch = lhs.shape()[0];
 
   std::vector<spu::Value> results(num_batch);
@@ -335,8 +335,8 @@ void RegionExecutor::execute(mlir::pphlo::DotGeneralOp &op) {
 void RegionExecutor::execute(mlir::pphlo::ConvolutionOp &op) {
   const auto &dnums = op.dimension_numbers();
   const size_t num_spatial_dims = dnums.getOutputSpatialDimensions().size();
-  YASL_ENFORCE(num_spatial_dims == dnums.getInputSpatialDimensions().size());
-  YASL_ENFORCE(num_spatial_dims == dnums.getKernelSpatialDimensions().size());
+  YACL_ENFORCE(num_spatial_dims == dnums.getInputSpatialDimensions().size());
+  YACL_ENFORCE(num_spatial_dims == dnums.getKernelSpatialDimensions().size());
 
   const auto ret_shape =
       op.getResult().getType().dyn_cast<mlir::TensorType>().getShape();
@@ -346,7 +346,7 @@ void RegionExecutor::execute(mlir::pphlo::ConvolutionOp &op) {
 
   std::vector<int64_t> window_strides(dnums.getInputSpatialDimensions().size(),
                                       1);
-  if (op.window_strides().hasValue()) {
+  if (op.window_strides().has_value()) {
     for (const auto &iter :
          llvm::enumerate(op.window_strides()->getValues<int64_t>())) {
       window_strides[iter.index()] = iter.value();
@@ -469,17 +469,17 @@ void RegionExecutor::execute(mlir::pphlo::SelectAndScatterOp &op) {
 
   // build strides
   std::vector<int64_t> window_strides(window_shape.size(), 1);
-  if (op.window_strides().hasValue()) {
+  if (op.window_strides().has_value()) {
     window_strides = convertDenseIntElementAttr(*op.window_strides());
   }
 
   // window padding
   std::vector<std::pair<int64_t, int64_t>> window_padding(window_shape.size(),
                                                           {0, 0});
-  if (op.padding().hasValue()) {
+  if (op.padding().has_value()) {
     const auto v = *op.padding();
 
-    YASL_ENFORCE(window_padding.size() * 2 == (size_t)v.size());
+    YACL_ENFORCE(window_padding.size() * 2 == (size_t)v.size());
 
     for (size_t idx = 0; idx < window_padding.size(); ++idx) {
       window_padding[idx] = {*(v.getValues<int64_t>().begin() + 2 * idx),
@@ -514,21 +514,21 @@ void RegionExecutor::execute(mlir::pphlo::MaxPoolScatterOp &op) {
   auto update = lookupValue(op.update());
 
   auto window_shape =
-      convertDenseIntElementAttr(op.window_dimensions().getValue());
+      convertDenseIntElementAttr(op.window_dimensions().value());
 
   // build strides
   std::vector<int64_t> window_strides(window_shape.size(), 1);
-  if (op.window_strides().hasValue()) {
+  if (op.window_strides().has_value()) {
     window_strides = convertDenseIntElementAttr(*op.window_strides());
   }
 
   // window padding
   std::vector<std::pair<int64_t, int64_t>> window_padding(window_shape.size(),
                                                           {0, 0});
-  if (op.padding().hasValue()) {
+  if (op.padding().has_value()) {
     const auto v = *op.padding();
 
-    YASL_ENFORCE(window_padding.size() * 2 == (size_t)v.size());
+    YACL_ENFORCE(window_padding.size() * 2 == (size_t)v.size());
 
     for (size_t idx = 0; idx < window_padding.size(); ++idx) {
       window_padding[idx] = {*(v.getValues<int64_t>().begin() + 2 * idx),
@@ -598,7 +598,7 @@ void RegionExecutor::execute(mlir::pphlo::WhileOp &op) {
       __CASE_PT_TYPE(spu::PT_F32, NAME, __VA_ARGS__)                           \
       __CASE_PT_TYPE(spu::PT_F64, NAME, __VA_ARGS__)                           \
     default:                                                                   \
-      YASL_THROW("{} not implemented for pt_type={}", #NAME, PT_TYPE);         \
+      YACL_THROW("{} not implemented for pt_type={}", #NAME, PT_TYPE);         \
     }                                                                          \
   }()
 
@@ -680,15 +680,15 @@ void RegionExecutor::execute(mlir::pphlo::PadOp &op) {
   const auto &operand = lookupValue(op.operand());
   const size_t operand_rank = operand.shape().size();
   const auto &padding_value = lookupValue(op.padding_value());
-  YASL_ENFORCE(padding_value.shape().empty());
+  YACL_ENFORCE(padding_value.shape().empty());
 
   auto edge_padding_low = convertDenseIntElementAttr(op.edge_padding_low());
-  YASL_ENFORCE(edge_padding_low.size() == operand_rank);
+  YACL_ENFORCE(edge_padding_low.size() == operand_rank);
   auto edge_padding_high = convertDenseIntElementAttr(op.edge_padding_high());
-  YASL_ENFORCE(edge_padding_high.size() == operand_rank);
+  YACL_ENFORCE(edge_padding_high.size() == operand_rank);
   auto interior_padding = convertDenseIntElementAttr(op.interior_padding());
-  YASL_ENFORCE(interior_padding.size() == operand_rank);
-  YASL_ENFORCE(std::all_of(interior_padding.begin(), interior_padding.end(),
+  YACL_ENFORCE(interior_padding.size() == operand_rank);
+  YACL_ENFORCE(std::all_of(interior_padding.begin(), interior_padding.end(),
                            [](int64_t i) { return i >= 0; }));
 
   getFrame()->addValue(op.getResult(),
@@ -710,7 +710,7 @@ void RegionExecutor::errorUnknownOp(mlir::Operation &op) {
   std::string err_str;
   llvm::raw_string_ostream err(err_str);
   op.print(err);
-  YASL_THROW("Unhandled mlir op {} at {}", err.str(),
+  YACL_THROW("Unhandled mlir op {} at {}", err.str(),
              printLocation(op.getLoc()));
 }
 
@@ -769,23 +769,23 @@ void RegionExecutor::execute(mlir::pphlo::ReduceWindowOp &op) {
 
   // build strides
   std::vector<int64_t> window_strides(window_shape.size(), 1);
-  if (op.window_strides().hasValue()) {
+  if (op.window_strides().has_value()) {
     window_strides = convertDenseIntElementAttr(*op.window_strides());
   }
 
   // window dilation
   std::vector<int64_t> window_dilations(window_shape.size(), 1);
-  if (op.window_dilations().hasValue()) {
+  if (op.window_dilations().has_value()) {
     window_dilations = convertDenseIntElementAttr(*op.window_dilations());
   }
 
   // window padding
   std::vector<std::pair<int64_t, int64_t>> window_padding(window_shape.size(),
                                                           {0, 0});
-  if (op.padding().hasValue()) {
+  if (op.padding().has_value()) {
     const auto v = *op.padding();
 
-    YASL_ENFORCE(window_padding.size() * 2 == (size_t)v.size());
+    YACL_ENFORCE(window_padding.size() * 2 == (size_t)v.size());
 
     for (size_t idx = 0; idx < window_padding.size(); ++idx) {
       window_padding[idx] = {*(v.getValues<int64_t>().begin() + 2 * idx),
@@ -795,7 +795,7 @@ void RegionExecutor::execute(mlir::pphlo::ReduceWindowOp &op) {
 
   // base dilation
   std::vector<int64_t> base_dilation(window_shape.size(), 1);
-  if (op.base_dilations().hasValue()) {
+  if (op.base_dilations().has_value()) {
     base_dilation = convertDenseIntElementAttr(*op.base_dilations());
   }
 
@@ -893,7 +893,7 @@ void RegionExecutor::execute(mlir::pphlo::BitcastConvertOp &op) {
   // bitcast should not change total #bytes, so if sizeof(in_t) !=
   // sizeof(out_t) will result to a shape change, thus it's enough to just
   // ensure in_shape == out_shape
-  YASL_ENFORCE(in_type.getShape() == out_type.getShape(),
+  YACL_ENFORCE(in_type.getShape() == out_type.getShape(),
                "bitcast with different size is not supported yet");
 
   getFrame()->addValue(op.getResult(),

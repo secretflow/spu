@@ -36,7 +36,7 @@ TEST(ValueTest, Empty) {
 //   // default constructor makes a placeholder value.
 //   int ival = 1;
 //   double dval = 1.0F;
-//   Value a(VIS_PUBLIC, DT_INT, {}, yasl::Buffer(&ival, sizeof(int)));
+//   Value a(VIS_PUBLIC, DT_INT, {}, yacl::Buffer(&ival, sizeof(int)));
 //   {
 //     a.GetBuffer()->data<int>()[0] = 1;
 //     EXPECT_EQ(a.vtype(), VIS_PUBLIC);
@@ -50,7 +50,7 @@ TEST(ValueTest, Empty) {
 //    EXPECT_EQ(a.GetBuffer()->data<int>()[0], 1);
 //  }
 
-//  Value b(VIS_SECRET, DT_FXP, {}, yasl::Buffer(&dval, sizeof(double)));
+//  Value b(VIS_SECRET, DT_FXP, {}, yacl::Buffer(&dval, sizeof(double)));
 //  {
 //    b.GetBuffer()->data<double>()[0] = 1;
 

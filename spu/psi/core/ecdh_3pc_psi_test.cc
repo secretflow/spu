@@ -21,8 +21,8 @@
 
 #include "absl/strings/str_split.h"
 #include "gtest/gtest.h"
-#include "yasl/base/exception.h"
-#include "yasl/link/test_util.h"
+#include "yacl/base/exception.h"
+#include "yacl/link/test_util.h"
 
 #include "spu/psi/utils/test_utils.h"
 
@@ -39,7 +39,7 @@ class Ecdh3PcPsiTest : public testing::TestWithParam<TestParams> {};
 TEST_P(Ecdh3PcPsiTest, MaskMaster) {
   auto params = GetParam();
 
-  auto link_abc = yasl::link::test::SetupWorld("abc", 3);
+  auto link_abc = yacl::link::test::SetupWorld("abc", 3);
 
   size_t alice_rank = 1;
   size_t bob_rank = 2;
@@ -90,7 +90,7 @@ TEST_P(Ecdh3PcPsiTest, MaskMaster) {
 TEST_P(Ecdh3PcPsiTest, PartnersPsi) {
   auto params = GetParam();
 
-  auto link_abc = yasl::link::test::SetupWorld("abc", 3);
+  auto link_abc = yacl::link::test::SetupWorld("abc", 3);
 
   size_t alice_rank = 1;
   size_t bob_rank = 2;
@@ -143,7 +143,7 @@ TEST_P(Ecdh3PcPsiTest, PartnersPsi) {
 TEST_P(Ecdh3PcPsiTest, Works) {
   auto params = GetParam();
 
-  auto link_abc = yasl::link::test::SetupWorld("abc", 3);
+  auto link_abc = yacl::link::test::SetupWorld("abc", 3);
 
   size_t alice_rank = 1;
   size_t bob_rank = 2;

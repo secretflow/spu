@@ -19,16 +19,16 @@
 namespace spu::kernel {
 
 bool getConditionValue(HalContext *ctx, const spu::Value &value) {
-  YASL_ENFORCE(value.numel() == 1, "Condition value must be a scalar tensor.");
-  YASL_ENFORCE(value.dtype() == DT_I1, "Expect bool, got {}", value.dtype());
+  YACL_ENFORCE(value.numel() == 1, "Condition value must be a scalar tensor.");
+  YACL_ENFORCE(value.dtype() == DT_I1, "Expect bool, got {}", value.dtype());
 
   const auto public_val = kernel::hal::test::dump_public_as<bool>(ctx, value);
   return public_val.front();
 }
 
 xt::xarray<int64_t> getIndicies(HalContext *ctx, const spu::Value &value) {
-  YASL_ENFORCE(value.isInt(), "indicies value must be integers.");
-  YASL_ENFORCE(value.isPublic(), "indicies value must be public.");
+  YACL_ENFORCE(value.isInt(), "indicies value must be integers.");
+  YACL_ENFORCE(value.isPublic(), "indicies value must be public.");
   return kernel::hal::test::dump_public_as<int64_t>(ctx, value);
 }
 

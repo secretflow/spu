@@ -25,7 +25,7 @@ extern llvm::cl::opt<uint32_t> Field;
 extern llvm::cl::opt<bool> EngineTrace;
 
 //
-std::shared_ptr<yasl::link::Context> MakeLink(const std::string& parties,
+std::shared_ptr<yacl::link::Context> MakeLink(const std::string& parties,
                                               size_t rank);
 
 // Create an evaluator with setting flags.

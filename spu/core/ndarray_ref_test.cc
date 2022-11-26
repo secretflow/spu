@@ -38,7 +38,7 @@ TEST(NdArrayRefTest, Empty) {
 
 TEST(ArrayRefTest, NdStrides) {
   // Make 3x3 element, strides = 2x2 array
-  NdArrayRef a(std::make_shared<yasl::Buffer>(36 * sizeof(int32_t)),
+  NdArrayRef a(std::make_shared<yacl::Buffer>(36 * sizeof(int32_t)),
                makePtType(PT_I32), {3, 3}, {2 * 6, 2}, 0);
 
   EXPECT_EQ(a.numel(), 9);

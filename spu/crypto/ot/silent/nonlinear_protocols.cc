@@ -556,7 +556,7 @@ void NonlinearProtocols::msb(uint8_t *msb_x, const T *x, int32_t size,
   if (bw_x <= 0) {
     bw_x = max_bw;
   }
-  YASL_ENFORCE_LE(bw_x, max_bw);
+  YACL_ENFORCE_LE(bw_x, max_bw);
   int32_t shift = bw_x - 1;
   T shift_mask = (static_cast<T>(1) << shift) - 1;
 

@@ -18,7 +18,7 @@
 #include <vector>
 
 #include "openssl/evp.h"
-#include "yasl/base/exception.h"
+#include "yacl/base/exception.h"
 
 #include "spu/psi/cryptor/ecc_cryptor.h"
 
@@ -31,7 +31,7 @@ class Sm2Cryptor : public IEccCryptor {
   explicit Sm2Cryptor(absl::Span<const uint8_t> key,
                       CurveType type = CurveType::CURVE_SM2)
       : curve_type_(type), ec_group_nid_(GetEcGroupId(type)) {
-    YASL_ENFORCE(key.size() == kEccKeySize);
+    YACL_ENFORCE(key.size() == kEccKeySize);
     std::memcpy(private_key_, key.data(), key.size());
   }
 
@@ -53,7 +53,7 @@ class Sm2Cryptor : public IEccCryptor {
       case CurveType::CURVE_SM2:
         return NID_sm2;
       default:
-        YASL_THROW("wron curve type:{}", static_cast<int>(type));
+        YACL_THROW("wron curve type:{}", static_cast<int>(type));
         return -1;
     }
   }

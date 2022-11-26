@@ -21,7 +21,7 @@
 namespace spu::psi {
 
 std::unique_ptr<IEcdhOprfServer> CreateEcdhOprfServer(
-    yasl::ByteContainerView private_key, OprfType oprf_type, CurveType type);
+    yacl::ByteContainerView private_key, OprfType oprf_type, CurveType type);
 
 std::unique_ptr<IEcdhOprfServer> CreateEcdhOprfServer(OprfType oprf_type,
                                                       CurveType type);

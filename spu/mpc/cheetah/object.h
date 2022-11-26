@@ -26,7 +26,7 @@ class CheetahState : public State {
  public:
   static constexpr char kBindName[] = "CheetahState";
 
-  explicit CheetahState(std::shared_ptr<yasl::link::Context> lctx) {
+  explicit CheetahState(std::shared_ptr<yacl::link::Context> lctx) {
     beaver_ = std::make_unique<BeaverCheetah>(lctx);
   }
 

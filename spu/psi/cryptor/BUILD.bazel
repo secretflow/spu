@@ -23,8 +23,8 @@ spu_cc_library(
     deps = [
         "//spu/psi:psi_cc_proto",
         "@com_google_absl//absl/types:span",
-        "@yasl//yasl/crypto:hash_util",
-        "@yasl//yasl/utils:parallel",
+        "@yacl//yacl/crypto/utils:hash_util",
+        "@yacl//yacl/utils:parallel",
     ],
 )
 
@@ -36,10 +36,10 @@ spu_cc_library(
         ":ecc_cryptor",
         "@com_github_libsodium//:libsodium",
         "@com_github_openssl_openssl//:openssl",
-        "@yasl//yasl/base:exception",
-        "@yasl//yasl/crypto:hash_util",
-        "@yasl//yasl/link",
-        "@yasl//yasl/utils:parallel",
+        "@yacl//yacl/base:exception",
+        "@yacl//yacl/crypto/utils:hash_util",
+        "@yacl//yacl/link",
+        "@yacl//yacl/utils:parallel",
     ],
 )
 
@@ -54,8 +54,8 @@ spu_cc_library(
         ":ecc_cryptor",
         "@com_github_intel_ipp//:ipp",
         "@com_github_openssl_openssl//:openssl",
-        "@yasl//yasl/base:exception",
-        "@yasl//yasl/utils:parallel",
+        "@yacl//yacl/base:exception",
+        "@yacl//yacl/utils:parallel",
     ],
 )
 
@@ -67,8 +67,8 @@ spu_cc_library(
         ":ecc_cryptor",
         "@com_github_microsoft_fourqlib//:fourqlib",
         "@com_github_openssl_openssl//:openssl",
-        "@yasl//yasl/base:exception",
-        "@yasl//yasl/utils:parallel",
+        "@yacl//yacl/base:exception",
+        "@yacl//yacl/utils:parallel",
     ],
 )
 
@@ -96,8 +96,8 @@ spu_cc_library(
     linkopts = ["-ldl"],
     deps = [
         "@com_github_openssl_openssl//:openssl",
-        "@yasl//yasl/base:exception",
-        "@yasl//yasl/crypto:hash_util",
+        "@yacl//yacl/base:exception",
+        "@yacl//yacl/crypto/utils:hash_util",
     ],
 )
 
@@ -109,8 +109,8 @@ spu_cc_library(
         ":ecc_cryptor",
         ":ecc_utils",
         "@com_github_openssl_openssl//:openssl",
-        "@yasl//yasl/base:exception",
-        "@yasl//yasl/utils:parallel",
+        "@yacl//yacl/base:exception",
+        "@yacl//yacl/utils:parallel",
     ],
 )
 
@@ -119,7 +119,7 @@ spu_cc_test(
     srcs = ["sm2_cryptor_test.cc"],
     deps = [
         ":sm2_cryptor",
-        "@yasl//yasl/crypto:hash_util",
-        "@yasl//yasl/crypto:utils",
+        "@yacl//yacl/crypto/base:utils",
+        "@yacl//yacl/crypto/utils:hash_util",
     ],
 )

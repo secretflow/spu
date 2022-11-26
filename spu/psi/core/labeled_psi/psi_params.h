@@ -20,8 +20,8 @@
 #include <vector>
 
 #include "apsi/psi_params.h"
-#include "yasl/base/exception.h"
-#include "yasl/link/link.h"
+#include "yacl/base/exception.h"
+#include "yacl/link/link.h"
 
 #include "spu/psi/core/labeled_psi/serializable.pb.h"
 
@@ -42,7 +42,7 @@ struct SEALParams {
       // get plain_modulus_bits by plain_modulus
       return std::floor(std::log2(plain_modulus));
     } else {
-      YASL_THROW(
+      YACL_THROW(
           "SEALParams error, must set plain_modulus or plain_modulus_bits");
     }
   }
@@ -58,20 +58,20 @@ struct SEALParams {
 apsi::PSIParams GetPsiParams(size_t nr, size_t ns);
 
 /**
- * @brief Serialize apsi::PSIParams to yasl::Buffer
+ * @brief Serialize apsi::PSIParams to yacl::Buffer
  *
  * @param psi_params  apsi::PSIParams
- * @return yasl::Buffer
+ * @return yacl::Buffer
  */
-yasl::Buffer PsiParamsToBuffer(const apsi::PSIParams &psi_params);
+yacl::Buffer PsiParamsToBuffer(const apsi::PSIParams &psi_params);
 
 /**
- * @brief DeSerialize yasl::Buffer to apsi::PSIParams
+ * @brief DeSerialize yacl::Buffer to apsi::PSIParams
  *
  * @param buffer  PSIParams bytes buffer
  * @return apsi::PSIParams
  */
-apsi::PSIParams ParsePsiParamsProto(const yasl::Buffer &buffer);
+apsi::PSIParams ParsePsiParamsProto(const yacl::Buffer &buffer);
 apsi::PSIParams ParsePsiParamsProto(
     const proto::LabelPsiParamsProto &psi_params_proto);
 

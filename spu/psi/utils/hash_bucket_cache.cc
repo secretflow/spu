@@ -28,9 +28,9 @@ namespace spu::psi {
 HashBucketCache::HashBucketCache(const std::string& target_dir,
                                  uint32_t bucket_num)
     : target_dir_(target_dir), bucket_num_(bucket_num), item_index_(0) {
-  YASL_ENFORCE(bucket_num_ > 0);
+  YACL_ENFORCE(bucket_num_ > 0);
   disk_cache_ = ScopeDiskCache::Create(std::filesystem::path(target_dir_));
-  YASL_ENFORCE(disk_cache_, "cannot create disk cache from dir={}",
+  YACL_ENFORCE(disk_cache_, "cannot create disk cache from dir={}",
                target_dir_);
   disk_cache_->CreateHashBinStreams(bucket_num_, &bucket_os_vec_);
 }

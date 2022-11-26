@@ -16,7 +16,7 @@
 
 #include "nonlinear_protocols.h"
 #include "silent_ot_pack.h"
-#include "yasl/link/link.h"
+#include "yacl/link/link.h"
 
 namespace spu {
 
@@ -26,7 +26,7 @@ class CheetahPrimitives {
   std::unique_ptr<NonlinearProtocols> nonlinear_;
 
  public:
-  explicit CheetahPrimitives(std::shared_ptr<yasl::link::Context> lctx) {
+  explicit CheetahPrimitives(std::shared_ptr<yacl::link::Context> lctx) {
     // Map rank to party.
     cheetah_party_ = lctx->Rank() == 0 ? emp::ALICE : emp::BOB;
     // Setup silent ot.

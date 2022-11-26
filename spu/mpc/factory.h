@@ -16,7 +16,7 @@
 
 #include <memory>
 
-#include "yasl/link/link.h"
+#include "yacl/link/link.h"
 
 #include "spu/mpc/io_interface.h"
 #include "spu/mpc/object.h"
@@ -33,7 +33,7 @@ class Factory final {
   // @param lctx, the inter party link context.
   static std::unique_ptr<Object> CreateCompute(
       const RuntimeConfig& conf,
-      const std::shared_ptr<yasl::link::Context>& lctx);
+      const std::shared_ptr<yacl::link::Context>& lctx);
 
   // Create a io context.
   //

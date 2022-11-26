@@ -63,7 +63,7 @@ class Ecdh3PartyPsiOperator : public PsiBaseOperator {
  public:
   struct Options {
     // Provides the link for the rank world.
-    std::shared_ptr<yasl::link::Context> link_ctx;
+    std::shared_ptr<yacl::link::Context> link_ctx;
 
     size_t master_rank;
 
@@ -77,6 +77,9 @@ class Ecdh3PartyPsiOperator : public PsiBaseOperator {
     // curve_type
     CurveType curve_type = CurveType::CURVE_25519;
   };
+
+  static Options ParseConfig(const MemoryPsiConfig& config,
+                             const std::shared_ptr<yacl::link::Context>& lctx);
 
  public:
   explicit Ecdh3PartyPsiOperator(const Options& options);
@@ -104,7 +107,7 @@ class Ecdh3PartyPsiOperator : public PsiBaseOperator {
  * other rank return empty vector
  */
 std::vector<std::string> RunShuffleEcdh3PartyPsi(
-    const std::shared_ptr<yasl::link::Context>& link, size_t master_rank,
+    const std::shared_ptr<yacl::link::Context>& link, size_t master_rank,
     std::vector<std::string>& items,
     CurveType curve_type = CurveType::CURVE_25519,
     size_t batch_size = kEcdhPsiBatchSize);

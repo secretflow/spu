@@ -15,7 +15,7 @@
 #include "spu/compiler/common/compilation_context.h"
 
 #include "llvm/Support/ErrorHandling.h"
-#include "yasl/base/exception.h"
+#include "yacl/base/exception.h"
 
 #include "spu/compiler/common/ir_printer_config.h"
 
@@ -23,7 +23,7 @@ namespace {
 
 void SPUErrorHandler(void * /*use_data*/, const char *reason,
                      bool /*gen_crash_diag*/) {
-  YASL_THROW(reason);
+  YACL_THROW(reason);
 }
 
 } // namespace
@@ -61,7 +61,7 @@ void CompilationContext::setupPrettyPrintConfigurations(mlir::PassManager *pm) {
 }
 
 std::filesystem::path CompilationContext::getPrettyPrintDir() const {
-  YASL_ENFORCE(hasPrettyPrintEnabled());
+  YACL_ENFORCE(hasPrettyPrintEnabled());
   return static_cast<const mlir::pphlo::IRPrinterConfig *>(pp_config_.get())
       ->GetPrettyPrintDir();
 }

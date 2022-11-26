@@ -22,7 +22,7 @@
 #include "mlir/Pass/Pass.h"
 #include "mlir/Pass/PassManager.h"
 #include "mlir/Transforms/Passes.h"
-#include "yasl/base/exception.h"
+#include "yacl/base/exception.h"
 
 #include "spu/compiler/common/compilation_context.h"
 #include "spu/compiler/front_end/hlo_importer.h"
@@ -47,7 +47,7 @@ mlir::OwningOpRef<mlir::ModuleOp> FE::doit(const std::string &input,
     module =
         mlir::parseSourceString<mlir::ModuleOp>(input, ctx_->getMLIRContext());
   } else {
-    YASL_THROW("Unsupported input IR type");
+    YACL_THROW("Unsupported input IR type");
   }
 
   // Run pipeline
@@ -59,7 +59,7 @@ mlir::OwningOpRef<mlir::ModuleOp> FE::doit(const std::string &input,
   auto ret = pm.run(module.get());
 
   if (ret.failed()) {
-    YASL_THROW("Run front end pipeline failed");
+    YACL_THROW("Run front end pipeline failed");
   }
 
   return module;

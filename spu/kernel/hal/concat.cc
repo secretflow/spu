@@ -17,7 +17,7 @@
 #include <cstdint>
 #include <numeric>
 
-#include "yasl/base/exception.h"
+#include "yacl/base/exception.h"
 
 #include "spu/core/parallel_utils.h"
 #include "spu/core/shape_util.h"
@@ -29,12 +29,12 @@ namespace spu::kernel::hal {
 Value concatenate(HalContext* ctx, absl::Span<const Value> values,
                   const size_t& axis) {
   SPU_TRACE_HAL_DISP(ctx, axis);
-  YASL_ENFORCE(!values.empty(), "got={}", values.size());
+  YACL_ENFORCE(!values.empty(), "got={}", values.size());
 
   bool all_same_dtype = std::all_of(
       values.begin() + 1, values.end(),
       [&](const Value& v) { return v.dtype() == values.begin()->dtype(); });
-  YASL_ENFORCE(all_same_dtype, "not all element has same dtype");
+  YACL_ENFORCE(all_same_dtype, "not all element has same dtype");
 
   bool all_same_stype =
       std::all_of(values.begin() + 1, values.end(), [&](const Value& v) {
@@ -54,7 +54,7 @@ Value concatenate(HalContext* ctx, absl::Span<const Value> values,
     return concatenate(ctx, common_values, axis).setDtype(values[0].dtype());
   }
 
-  YASL_ENFORCE(all_same_stype);
+  YACL_ENFORCE(all_same_stype);
 
   std::vector<int64_t> result_shape = values.front().shape();
   for (size_t idx = 1; idx < values.size(); ++idx) {
@@ -105,7 +105,7 @@ Value concatenate(HalContext* ctx, absl::Span<const Value> values,
     for (size_t idx = 0; idx < values.size(); ++idx) {
       auto g_size = std::max<int64_t>(
           (values[idx].numel() + getNumberOfProc()) / getNumberOfProc(), 2048);
-      yasl::parallel_for(
+      yacl::parallel_for(
           0, values[idx].numel(), g_size, [&](int64_t begin, int64_t end) {
             std::vector<int64_t> indicies =
                 unflattenIndex(begin, values[idx].shape());
@@ -123,7 +123,7 @@ Value concatenate(HalContext* ctx, absl::Span<const Value> values,
   } else {
     // When there are a lot of values to concat (usually during im2col, where
     // each value is just a window), try to parallel on inputs
-    yasl::parallel_for(
+    yacl::parallel_for(
         0, values.size(),
         (values.size() + getNumberOfProc()) / getNumberOfProc(),
         [&](int64_t begin, int64_t end) {

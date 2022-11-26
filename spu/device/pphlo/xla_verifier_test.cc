@@ -26,7 +26,7 @@ namespace spu::device::pphlo {
 
 void failed(bool v) {
   if (!v) {
-    YASL_THROW("Equal check failed");
+    YACL_THROW("Equal check failed");
   }
 }
 
@@ -47,7 +47,7 @@ void runner(const OpFcn &f, absl::Span<const xt::xarray<InT>> inputs,
   }
 
   ::spu::mpc::util::simulate(
-      2, [&](const std::shared_ptr<yasl::link::Context> &lctx) {
+      2, [&](const std::shared_ptr<yacl::link::Context> &lctx) {
         HalContext hctx(conf, lctx);
         XlaVerifier verifier(&hctx);
         verifier.setMismatchHandler(failed);
@@ -68,7 +68,7 @@ void runner(const OpFcn &f, absl::Span<const xt::xarray<InT>> inputs,
         verifier.verify(f(), in, pout);
 
         // negative case, should throw
-        EXPECT_THROW(verifier.verify(f(), in, nout), yasl::RuntimeError);
+        EXPECT_THROW(verifier.verify(f(), in, nout), yacl::RuntimeError);
       });
 }
 
@@ -265,7 +265,7 @@ TEST(Verify, Select) {
   io_->InFeed("nout", xt::xarray<int32_t>{0, 0, 0, 0}, VIS_SECRET);
 
   ::spu::mpc::util::simulate(
-      2, [&](const std::shared_ptr<yasl::link::Context> &lctx) {
+      2, [&](const std::shared_ptr<yacl::link::Context> &lctx) {
         HalContext hctx(conf, lctx);
         XlaVerifier verifier(&hctx);
         verifier.setMismatchHandler(failed);
@@ -283,7 +283,7 @@ TEST(Verify, Select) {
                             {table->getVar("in0"), table->getVar("in1"),
                              table->getVar("in2")},
                             {table->getVar("nout")}),
-            yasl::RuntimeError);
+            yacl::RuntimeError);
       });
 }
 

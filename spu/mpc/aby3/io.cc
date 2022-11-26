@@ -14,8 +14,8 @@
 
 #include "spu/mpc/aby3/io.h"
 
-#include "yasl/crypto/pseudo_random_generator.h"
-#include "yasl/utils/rand.h"
+#include "yacl/crypto/tools/prg.h"
+#include "yacl/crypto/utils/rand.h"
 
 #include "spu/mpc/aby3/type.h"
 #include "spu/mpc/aby3/value.h"
@@ -26,10 +26,10 @@ namespace spu::mpc::aby3 {
 
 std::vector<ArrayRef> Aby3Io::toShares(const ArrayRef& raw, Visibility vis,
                                        int owner_rank) const {
-  YASL_ENFORCE(raw.eltype().isa<RingTy>(), "expected RingTy, got {}",
+  YACL_ENFORCE(raw.eltype().isa<RingTy>(), "expected RingTy, got {}",
                raw.eltype());
   const auto field = raw.eltype().as<Ring2k>()->field();
-  YASL_ENFORCE(field == field_, "expect raw value encoded in field={}, got={}",
+  YACL_ENFORCE(field == field_, "expect raw value encoded in field={}, got={}",
                field_, field);
 
   if (vis == VIS_PUBLIC) {
@@ -52,7 +52,7 @@ std::vector<ArrayRef> Aby3Io::toShares(const ArrayRef& raw, Visibility vis,
     } else {
       splits = ring_rand_additive_splits(raw, world_size_);
     }
-    YASL_ENFORCE(splits.size() == 3, "expect 3PC, got={}", splits.size());
+    YACL_ENFORCE(splits.size() == 3, "expect 3PC, got={}", splits.size());
     std::vector<ArrayRef> shares;
     for (std::size_t i = 0; i < 3; i++) {
       shares.push_back(
@@ -61,13 +61,13 @@ std::vector<ArrayRef> Aby3Io::toShares(const ArrayRef& raw, Visibility vis,
     return shares;
   }
 
-  YASL_THROW("unsupported vis type {}", vis);
+  YACL_THROW("unsupported vis type {}", vis);
 }
 
 std::vector<ArrayRef> Aby3Io::makeBitSecret(const ArrayRef& in) const {
-  YASL_ENFORCE(in.eltype().isa<PtTy>(), "expected PtType, got {}", in.eltype());
+  YACL_ENFORCE(in.eltype().isa<PtTy>(), "expected PtType, got {}", in.eltype());
   PtType in_pt_type = in.eltype().as<PtTy>()->pt_type();
-  YASL_ENFORCE(in_pt_type == PT_BOOL);
+  YACL_ENFORCE(in_pt_type == PT_BOOL);
 
   if (in_pt_type == PT_BOOL) {
     // we assume boolean is stored with byte array.
@@ -76,7 +76,7 @@ std::vector<ArrayRef> Aby3Io::makeBitSecret(const ArrayRef& in) const {
 
   const auto out_type = makeType<BShrTy>(PT_U8, /* out_nbits */ 1);
   const size_t numel = in.numel();
-  constexpr auto kCryptoType = yasl::SymmetricCrypto::CryptoType::AES128_CTR;
+  constexpr auto kCryptoType = yacl::SymmetricCrypto::CryptoType::AES128_CTR;
   constexpr uint128_t kAesIV = 0U;
 
   std::vector<ArrayRef> shares{
@@ -91,9 +91,9 @@ std::vector<ArrayRef> Aby3Io::makeBitSecret(const ArrayRef& in) const {
     std::vector<BShrT> r1(numel);
 
     uint64_t counter = 0;
-    yasl::FillPseudoRandom(kCryptoType, yasl::RandSeed(), kAesIV, counter,
+    yacl::FillPseudoRandom(kCryptoType, yacl::RandSeed(), kAesIV, counter,
                            absl::MakeSpan(r0));
-    yasl::FillPseudoRandom(kCryptoType, yasl::RandSeed(), kAesIV, counter,
+    yacl::FillPseudoRandom(kCryptoType, yacl::RandSeed(), kAesIV, counter,
                            absl::MakeSpan(r1));
 
     auto _s0 = ArrayView<std::array<BShrT, 2>>(shares[0]);
@@ -120,10 +120,10 @@ ArrayRef Aby3Io::fromShares(const std::vector<ArrayRef>& shares) const {
   const auto& eltype = shares.at(0).eltype();
 
   if (eltype.isa<Pub2kTy>()) {
-    YASL_ENFORCE(field_ == eltype.as<Ring2k>()->field());
+    YACL_ENFORCE(field_ == eltype.as<Ring2k>()->field());
     return shares[0].as(makeType<RingTy>(field_));
   } else if (eltype.isa<AShrTy>()) {
-    YASL_ENFORCE(field_ == eltype.as<Ring2k>()->field());
+    YACL_ENFORCE(field_ == eltype.as<Ring2k>()->field());
     ArrayRef out(makeType<Pub2kTy>(field_), shares[0].numel());
     DISPATCH_ALL_FIELDS(field_, "_", [&]() {
       auto _out = ArrayView<ring2k_t>(out);
@@ -160,11 +160,11 @@ ArrayRef Aby3Io::fromShares(const std::vector<ArrayRef>& shares) const {
 
     return out;
   }
-  YASL_THROW("unsupported eltype {}", eltype);
+  YACL_THROW("unsupported eltype {}", eltype);
 }
 
 std::unique_ptr<Aby3Io> makeAby3Io(FieldType field, size_t npc) {
-  YASL_ENFORCE_EQ(npc, 3u, "aby3 is only for 3pc.");
+  YACL_ENFORCE_EQ(npc, 3u, "aby3 is only for 3pc.");
   registerTypes();
   return std::make_unique<Aby3Io>(field, npc);
 }

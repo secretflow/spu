@@ -21,10 +21,13 @@ namespace spu::psi {
 class Bc22PcgPsiOperator : public PsiBaseOperator {
  public:
   struct Options {
-    std::shared_ptr<yasl::link::Context> lctx;
+    std::shared_ptr<yacl::link::Context> lctx;
 
     size_t receiver_rank;
   };
+
+  static Options ParseConfig(const MemoryPsiConfig& config,
+                             const std::shared_ptr<yacl::link::Context>& lctx);
 
  public:
   explicit Bc22PcgPsiOperator(const Options& options);

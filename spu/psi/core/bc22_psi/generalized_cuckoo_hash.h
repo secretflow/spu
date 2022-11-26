@@ -20,10 +20,10 @@
 #include <vector>
 
 #include "absl/types/span.h"
-#include "yasl/base/byte_container_view.h"
-#include "yasl/base/exception.h"
-#include "yasl/base/int128.h"
-#include "yasl/crypto/hash_util.h"
+#include "yacl/base/byte_container_view.h"
+#include "yacl/base/exception.h"
+#include "yacl/base/int128.h"
+#include "yacl/crypto/utils/hash_util.h"
 
 #include "spu/psi/core/cuckoo_index.h"
 
@@ -51,8 +51,8 @@ class GeneralizedCuckooHashTable : public IPsiHashTable {
   explicit GeneralizedCuckooHashTable(CuckooIndex::Options options,
                                       size_t bin_data_num, uint128_t seed = 0);
 
-  void Insert(yasl::ByteContainerView item_data, size_t input_offset);
-  void Insert(yasl::ByteContainerView item);
+  void Insert(yacl::ByteContainerView item_data, size_t input_offset);
+  void Insert(yacl::ByteContainerView item);
   void Insert(absl::Span<const std::string> items) override;
 
   const std::vector<std::vector<CuckooIndex::Bin>> &bins() const {
@@ -94,9 +94,9 @@ class SimpleHashTable : public IPsiHashTable {
  public:
   explicit SimpleHashTable(CuckooIndex::Options options, uint128_t seed = 0);
 
-  void Insert(yasl::ByteContainerView item_data,
+  void Insert(yacl::ByteContainerView item_data,
               const std::vector<uint64_t> &hash_bin_idx);
-  void Insert(yasl::ByteContainerView data);
+  void Insert(yacl::ByteContainerView data);
   void Insert(absl::Span<const std::string> data) override;
 
   const std::vector<std::vector<CuckooIndex::Bin>> &bins() const {

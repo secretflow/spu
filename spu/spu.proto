@@ -200,6 +200,9 @@ message RuntimeConfig {
   // to do with security.
   uint64 public_random_seed = 19;
 
+  // Experimental: DO NOT USE
+  bool experimental_disable_mmul_split = 20;
+
   // @exclude
   // Fixed-point arithmetic related, reserved for [50, 100)
 

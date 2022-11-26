@@ -16,7 +16,7 @@
 
 #include <cstddef>
 
-#include "yasl/base/exception.h"
+#include "yacl/base/exception.h"
 
 namespace spu::psi {
 

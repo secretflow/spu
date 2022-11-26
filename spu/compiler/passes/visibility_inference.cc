@@ -18,7 +18,7 @@
 #include "mlir-hlo/Dialect/mhlo/IR/hlo_ops.h"
 #include "mlir/IR/Block.h"
 #include "mlir/IR/Region.h"
-#include "yasl/base/exception.h"
+#include "yacl/base/exception.h"
 
 #include "spu/dialect/pphlo_base_enums.h"
 
@@ -46,28 +46,28 @@ void VisibilityInference::inferIf(Operation &op) {
   auto ifOp = llvm::dyn_cast<mhlo::IfOp>(op);
 
   // Infer true branch
-  for (const auto &blkarg : ifOp.true_branch().getArguments()) {
+  for (const auto &blkarg : ifOp.getTrueBranch().getArguments()) {
     ValueVis_.setValueVisibility(
         blkarg, ValueVis_.getValueVisibility(
-                    ifOp.true_branch().getArgument(blkarg.getArgNumber())));
+                    ifOp.getTrueBranch().getArgument(blkarg.getArgNumber())));
   }
-  inferRegion(ifOp.true_branch());
+  inferRegion(ifOp.getTrueBranch());
 
   // Infer false branch
-  for (const auto &blkarg : ifOp.false_branch().getArguments()) {
+  for (const auto &blkarg : ifOp.getFalseBranch().getArguments()) {
     ValueVis_.setValueVisibility(
         blkarg, ValueVis_.getValueVisibility(
-                    ifOp.false_branch().getArgument(blkarg.getArgNumber())));
+                    ifOp.getFalseBranch().getArgument(blkarg.getArgNumber())));
   }
-  inferRegion(ifOp.false_branch());
+  inferRegion(ifOp.getFalseBranch());
 
   // Infer result visibility
-  auto &true_return = ifOp.true_branch().back().back();
-  auto &false_return = ifOp.false_branch().back().back();
-  YASL_ENFORCE(llvm::isa<mhlo::ReturnOp>(true_return));
-  YASL_ENFORCE(llvm::isa<mhlo::ReturnOp>(false_return));
-  YASL_ENFORCE(true_return.getNumOperands() == false_return.getNumOperands());
-  YASL_ENFORCE(true_return.getNumOperands() == ifOp->getNumResults());
+  auto &true_return = ifOp.getTrueBranch().back().back();
+  auto &false_return = ifOp.getFalseBranch().back().back();
+  YACL_ENFORCE(llvm::isa<mhlo::ReturnOp>(true_return));
+  YACL_ENFORCE(llvm::isa<mhlo::ReturnOp>(false_return));
+  YACL_ENFORCE(true_return.getNumOperands() == false_return.getNumOperands());
+  YACL_ENFORCE(true_return.getNumOperands() == ifOp->getNumResults());
 
   for (const auto &ret : llvm::enumerate(ifOp->getResults())) {
     SmallVector<Visibility, 2> vis;
@@ -98,16 +98,16 @@ void VisibilityInference::inferWhile(Operation &op) {
   bool converge = false;
   do {
     // Push visibility to block args
-    for (const auto &blkarg : whileOp.body().getArguments()) {
+    for (const auto &blkarg : whileOp.getBody().getArguments()) {
       ValueVis_.setValueVisibility(blkarg, input_vis[blkarg.getArgNumber()]);
     }
 
     // Infer body region
-    inferRegion(whileOp.body());
+    inferRegion(whileOp.getBody());
 
     // Get result visibility
-    auto &body_return = *whileOp.body().front().getTerminator();
-    YASL_ENFORCE(llvm::isa<mhlo::ReturnOp>(body_return));
+    auto &body_return = *whileOp.getBody().front().getTerminator();
+    YACL_ENFORCE(llvm::isa<mhlo::ReturnOp>(body_return));
 
     // Update visibility
     for (int64_t idx = 0; idx < body_return.getNumOperands(); ++idx) {
@@ -120,13 +120,13 @@ void VisibilityInference::inferWhile(Operation &op) {
   } while (!converge);
 
   for (int64_t idx = 0; idx < op.getNumOperands(); ++idx) {
-    ValueVis_.setValueVisibility(whileOp.body().getArgument(idx),
+    ValueVis_.setValueVisibility(whileOp.getBody().getArgument(idx),
                                  input_vis[idx]);
-    ValueVis_.setValueVisibility(whileOp.cond().getArgument(idx),
+    ValueVis_.setValueVisibility(whileOp.getCond().getArgument(idx),
                                  input_vis[idx]);
   }
 
-  inferRegion(whileOp.cond());
+  inferRegion(whileOp.getCond());
 
   // Update result visibility
   for (int64_t idx = 0; idx < op.getNumResults(); ++idx) {
@@ -141,22 +141,24 @@ void VisibilityInference::inferSort(Operation &op) {
   for (const auto &in : llvm::enumerate(op.getOperands())) {
     auto inputVis = ValueVis_.getValueVisibility(in.value());
     ValueVis_.setValueVisibility(
-        sortOp.comparator().getArgument(2 * in.index()), inputVis);
+        sortOp.getComparator().getArgument(2 * in.index()), inputVis);
     ValueVis_.setValueVisibility(
-        sortOp.comparator().getArgument(2 * in.index() + 1), inputVis);
+        sortOp.getComparator().getArgument(2 * in.index() + 1), inputVis);
 
     // Sort does not change result vis
     ValueVis_.setValueVisibility(op.getResult(in.index()), inputVis);
   }
-  inferRegion(sortOp.comparator());
+  inferRegion(sortOp.getComparator());
 }
 
 void VisibilityInference::inferSelectAndScatter(Operation &op) {
   auto selectAndScatterOp = llvm::dyn_cast<mhlo::SelectAndScatterOp>(op);
 
-  auto op_vis = ValueVis_.getValueVisibility(selectAndScatterOp.operand());
-  auto source_vis = ValueVis_.getValueVisibility(selectAndScatterOp.source());
-  auto init_vis = ValueVis_.getValueVisibility(selectAndScatterOp.init_value());
+  auto op_vis = ValueVis_.getValueVisibility(selectAndScatterOp.getOperand());
+  auto source_vis =
+      ValueVis_.getValueVisibility(selectAndScatterOp.getSource());
+  auto init_vis =
+      ValueVis_.getValueVisibility(selectAndScatterOp.getInitValue());
 
   // init and operand must have the same visibility
   auto promoted_init_op_vis =
@@ -164,26 +166,26 @@ void VisibilityInference::inferSelectAndScatter(Operation &op) {
 
   // Select region
   {
-    ValueVis_.setValueVisibility(selectAndScatterOp.select().getArgument(0),
+    ValueVis_.setValueVisibility(selectAndScatterOp.getSelect().getArgument(0),
                                  promoted_init_op_vis);
-    ValueVis_.setValueVisibility(selectAndScatterOp.select().getArgument(1),
+    ValueVis_.setValueVisibility(selectAndScatterOp.getSelect().getArgument(1),
                                  promoted_init_op_vis);
-    inferRegion(selectAndScatterOp.select());
+    inferRegion(selectAndScatterOp.getSelect());
   }
   // Scatter region
   {
-    ValueVis_.setValueVisibility(selectAndScatterOp.scatter().getArgument(0),
+    ValueVis_.setValueVisibility(selectAndScatterOp.getScatter().getArgument(0),
                                  source_vis);
-    ValueVis_.setValueVisibility(selectAndScatterOp.scatter().getArgument(1),
+    ValueVis_.setValueVisibility(selectAndScatterOp.getScatter().getArgument(1),
                                  promoted_init_op_vis);
-    inferRegion(selectAndScatterOp.scatter());
+    inferRegion(selectAndScatterOp.getScatter());
   }
 
   // Result visibility should be same as scatter result
   // body return
-  auto &scatter_return = selectAndScatterOp.scatter().back().back();
-  YASL_ENFORCE(llvm::isa<mhlo::ReturnOp>(scatter_return));
-  YASL_ENFORCE(
+  auto &scatter_return = selectAndScatterOp.getScatter().back().back();
+  YACL_ENFORCE(llvm::isa<mhlo::ReturnOp>(scatter_return));
+  YACL_ENFORCE(
       llvm::dyn_cast<mhlo::ReturnOp>(scatter_return)->getNumOperands() == 1);
 
   ValueVis_.setValueVisibility(

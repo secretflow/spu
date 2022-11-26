@@ -30,7 +30,7 @@
 #include "mlir/IR/PatternMatch.h"
 #include "mlir/Pass/Pass.h"
 #include "mlir/Transforms/DialectConversion.h"
-#include "yasl/base/exception.h"
+#include "yacl/base/exception.h"
 
 #include "spu/compiler/passes/map_mhlo_to_pphlo_op.h"
 #include "spu/compiler/passes/pass_details.h"
@@ -51,7 +51,7 @@ struct IoVisibilityInfo {
   void convertFromStrings(llvm::ArrayRef<std::string> data) {
     for (const auto &s : data) {
       const auto symbolized = symbolizeEnum<Visibility>(s);
-      YASL_ENFORCE(symbolized.hasValue());
+      YACL_ENFORCE(symbolized.has_value());
       inputs.emplace_back(*symbolized);
     }
   }
@@ -69,7 +69,7 @@ ValueVisibilityMap VisibilityDiscovery(ModuleOp op,
   // Get the main function
   auto entry_func = op.lookupSymbol<mlir::func::FuncOp>("main");
 
-  YASL_ENFORCE(entry_func != nullptr);
+  YACL_ENFORCE(entry_func != nullptr);
 
   ValueVisibilityMap vis_map;
   // Populate top level io visibility
@@ -102,8 +102,8 @@ private:
 
   static Value materializeToMPCTensor(OpBuilder &builder, RankedTensorType type,
                                       ValueRange inputs, Location loc) {
-    YASL_ENFORCE(inputs.size() == 1);
-    YASL_ENFORCE(inputs[0].getType().isa<RankedTensorType>());
+    YACL_ENFORCE(inputs.size() == 1);
+    YACL_ENFORCE(inputs[0].getType().isa<RankedTensorType>());
 
     // To unknown type is always a noop, just forward operands
     if (typetools_.isMPCType<UnsetType>(type)) {
@@ -212,7 +212,7 @@ public:
     // Update return types
     auto retOp =
         llvm::dyn_cast<::mlir::func::ReturnOp>(op.getBody().back().back());
-    YASL_ENFORCE(retOp->getNumOperands() == newResultTypes.size());
+    YACL_ENFORCE(retOp->getNumOperands() == newResultTypes.size());
 
     for (const auto &resultType : llvm::enumerate(newResultTypes)) {
       auto vis_v =
@@ -264,7 +264,7 @@ public:
     Type resultType = HloToPPHloTypeConverter::getTypeWithVisibility(
         this->getTypeConverter()->convertType(hlo_op.getType()), result_vis);
 
-    auto comp_direction = hlo_op.comparison_direction();
+    auto comp_direction = hlo_op.getComparisonDirection();
 
     SmallVector<Value, 2> operands(adaptor.getOperands());
 
@@ -320,7 +320,7 @@ public:
     auto materialize = [&, this](size_t idx) {
       auto current_vis = getOperandVisibility(adaptor.getOperands()[idx]);
       auto expected_vis =
-          vis_.getValueVisibility(op.body().getArguments()[idx]);
+          vis_.getValueVisibility(op.getBody().getArguments()[idx]);
 
       if (expected_vis == current_vis) {
         materialized_operands[idx] = adaptor.getOperands()[idx];
@@ -344,7 +344,7 @@ public:
     }
 
     // Convert the region signature.
-    auto &entry_block = op.body().front();
+    auto &entry_block = op.getBody().front();
     TypeConverter::SignatureConversion sig_conversion(
         entry_block.getNumArguments());
 
@@ -360,7 +360,8 @@ public:
             op, result_types, materialized_operands, op->getAttrs());
 
     // Copy over the operations inside the region.
-    rewriter.inlineRegionBefore(op.body(), new_op.body(), new_op.body().end());
+    rewriter.inlineRegionBefore(op.getBody(), new_op.body(),
+                                new_op.body().end());
 
     if (failed(rewriter.convertRegionTypes(
             &new_op.body(), *this->getTypeConverter(), &sig_conversion))) {
@@ -394,7 +395,7 @@ public:
     }
 
     // Convert true region signature.
-    auto &true_region = op.true_branch();
+    auto &true_region = op.getTrueBranch();
     TypeConverter::SignatureConversion true_sig_conversion(
         true_region.getNumArguments());
 
@@ -406,7 +407,7 @@ public:
     }
 
     // Convert false region signature.
-    auto &false_region = op.false_branch();
+    auto &false_region = op.getFalseBranch();
     TypeConverter::SignatureConversion false_sig_conversion(
         false_region.getNumArguments());
 
@@ -423,9 +424,9 @@ public:
         op, resultTypes, operands, op->getAttrs());
 
     // Copy over the operations inside true/false region.
-    rewriter.inlineRegionBefore(op.true_branch(), new_op.true_branch(),
+    rewriter.inlineRegionBefore(op.getTrueBranch(), new_op.true_branch(),
                                 new_op.true_branch().end());
-    rewriter.inlineRegionBefore(op.false_branch(), new_op.false_branch(),
+    rewriter.inlineRegionBefore(op.getFalseBranch(), new_op.false_branch(),
                                 new_op.false_branch().end());
 
     if (failed(rewriter.convertRegionTypes(&new_op.true_branch(),
@@ -467,7 +468,7 @@ public:
     }
 
     // Convert cond region signature.
-    auto &cond_region = op.cond();
+    auto &cond_region = op.getCond();
     TypeConverter::SignatureConversion cond_sig_conversion(
         cond_region.getNumArguments());
 
@@ -479,7 +480,7 @@ public:
     }
 
     // Convert body region signature.
-    auto &body_region = op.body();
+    auto &body_region = op.getBody();
     TypeConverter::SignatureConversion body_sig_conversion(
         body_region.getNumArguments());
 
@@ -497,7 +498,7 @@ public:
     for (const auto &operand : llvm::enumerate(operands)) {
       auto currentVis = getOperandVisibility(operand.value());
       auto targetVis =
-          vis_.getValueVisibility(op.body().getArgument(operand.index()));
+          vis_.getValueVisibility(op.getBody().getArgument(operand.index()));
       if (currentVis == targetVis) {
         materializedOperands.emplace_back(operand.value());
       } else {
@@ -513,8 +514,10 @@ public:
         op, resultTypes, materializedOperands, op->getAttrs());
 
     // Copy over the operations inside body region.
-    rewriter.inlineRegionBefore(op.body(), new_op.body(), new_op.body().end());
-    rewriter.inlineRegionBefore(op.cond(), new_op.cond(), new_op.cond().end());
+    rewriter.inlineRegionBefore(op.getBody(), new_op.body(),
+                                new_op.body().end());
+    rewriter.inlineRegionBefore(op.getCond(), new_op.cond(),
+                                new_op.cond().end());
 
     if (failed(rewriter.convertRegionTypes(&new_op.body(), *getTypeConverter(),
                                            &body_sig_conversion))) {
@@ -568,7 +571,7 @@ public:
   matchAndRewrite(mhlo::ConstantOp hlo_op, mhlo::ConstantOpAdaptor /*adaptor*/,
                   ConversionPatternRewriter &rewriter) const override {
     rewriter.replaceOpWithNewOp<pphlo::HloToPPHloOp<mhlo::ConstantOp>>(
-        hlo_op, hlo_op.value());
+        hlo_op, hlo_op.getValue());
     return success();
   }
 };
@@ -590,7 +593,7 @@ public:
         Visibility::VIS_PUBLIC);
 
     rewriter.replaceOpWithNewOp<pphlo::HloToPPHloOp<mhlo::IotaOp>>(
-        hlo_op, resultType, hlo_op.iota_dimension());
+        hlo_op, resultType, hlo_op.getIotaDimension());
     return success();
   }
 };
@@ -658,17 +661,17 @@ public:
 
     auto attr = DotDimensionNumbersAttr::get(
         hlo_op->getContext(),
-        hlo_op.dot_dimension_numbersAttr().getLhsBatchingDimensions(),
-        hlo_op.dot_dimension_numbersAttr().getRhsBatchingDimensions(),
-        hlo_op.dot_dimension_numbersAttr().getLhsContractingDimensions(),
-        hlo_op.dot_dimension_numbersAttr().getRhsContractingDimensions());
+        hlo_op.getDotDimensionNumbersAttr().getLhsBatchingDimensions(),
+        hlo_op.getDotDimensionNumbersAttr().getRhsBatchingDimensions(),
+        hlo_op.getDotDimensionNumbersAttr().getLhsContractingDimensions(),
+        hlo_op.getDotDimensionNumbersAttr().getRhsContractingDimensions());
 
     rewriter.replaceOpWithNewOp<pphlo::DotGeneralOp>(
         hlo_op, resultType,
-        ensureAtLeast3D(rewriter, adaptor.lhs(),
-                        vis_.getValueVisibility(hlo_op.lhs())),
-        ensureAtLeast3D(rewriter, adaptor.rhs(),
-                        vis_.getValueVisibility(hlo_op.rhs())),
+        ensureAtLeast3D(rewriter, adaptor.getLhs(),
+                        vis_.getValueVisibility(hlo_op.getLhs())),
+        ensureAtLeast3D(rewriter, adaptor.getRhs(),
+                        vis_.getValueVisibility(hlo_op.getRhs())),
         attr);
     return success();
   }
@@ -726,25 +729,25 @@ public:
     };
 
     auto promoted_vis = typetools_.inferResultVisibility(
-        {vis_.getValueVisibility(op.operand()),
-         vis_.getValueVisibility(op.init_value())});
-    auto materialized_operand = materialize(adaptor.operand(), promoted_vis);
+        {vis_.getValueVisibility(op.getOperand()),
+         vis_.getValueVisibility(op.getInitValue())});
+    auto materialized_operand = materialize(adaptor.getOperand(), promoted_vis);
     auto materialized_init_value =
-        materialize(adaptor.init_value(), promoted_vis);
+        materialize(adaptor.getInitValue(), promoted_vis);
 
     auto result_type = HloToPPHloTypeConverter::getTypeWithVisibility(
         op.getType(), vis_.getValueVisibility(op.getResult()));
 
     auto new_op = rewriter.replaceOpWithNewOp<pphlo::SelectAndScatterOp>(
-        op, result_type, materialized_operand, adaptor.source(),
-        materialized_init_value, op.window_dimensionsAttr(),
-        op.window_stridesAttr(), op.paddingAttr());
+        op, result_type, materialized_operand, adaptor.getSource(),
+        materialized_init_value, op.getWindowDimensionsAttr(),
+        op.getWindowStridesAttr(), op.getPaddingAttr());
 
     // Convert the region signature.
     TypeConverter::SignatureConversion select_sig_conversion(
-        op.select().front().getNumArguments());
+        op.getSelect().front().getNumArguments());
 
-    for (const auto &arg : op.select().front().getArguments()) {
+    for (const auto &arg : op.getSelect().front().getArguments()) {
       auto arg_t = this->getTypeConverter()->convertType(arg.getType());
       auto lower_t = HloToPPHloTypeConverter::getTypeWithVisibility(
           arg_t, vis_.getValueVisibility(arg));
@@ -752,9 +755,9 @@ public:
     }
 
     TypeConverter::SignatureConversion scatter_sig_conversion(
-        op.scatter().front().getNumArguments());
+        op.getScatter().front().getNumArguments());
 
-    for (const auto &arg : op.scatter().front().getArguments()) {
+    for (const auto &arg : op.getScatter().front().getArguments()) {
       auto arg_t = this->getTypeConverter()->convertType(arg.getType());
       auto lower_t = HloToPPHloTypeConverter::getTypeWithVisibility(
           arg_t, vis_.getValueVisibility(arg));
@@ -762,9 +765,9 @@ public:
     }
 
     // Copy over the operations inside the region.
-    rewriter.inlineRegionBefore(op.select(), new_op.select(),
+    rewriter.inlineRegionBefore(op.getSelect(), new_op.select(),
                                 new_op.select().end());
-    rewriter.inlineRegionBefore(op.scatter(), new_op.scatter(),
+    rewriter.inlineRegionBefore(op.getScatter(), new_op.scatter(),
                                 new_op.scatter().end());
 
     if (failed(rewriter.convertRegionTypes(&new_op.select(),
@@ -821,9 +824,9 @@ public:
   LogicalResult
   matchAndRewrite(mhlo::SortOp op, mhlo::SortOpAdaptor adaptor,
                   ConversionPatternRewriter &rewriter) const override {
-    auto comp_ret =
-        llvm::dyn_cast<mhlo::ReturnOp>(op.comparator().back().getTerminator());
-    YASL_ENFORCE(comp_ret.getNumOperands() == 1,
+    auto comp_ret = llvm::dyn_cast<mhlo::ReturnOp>(
+        op.getComparator().back().getTerminator());
+    YACL_ENFORCE(comp_ret.getNumOperands() == 1,
                  "SortOp comparator can only return one value");
 
     llvm::SmallVector<Type, 2> ret_types;
@@ -834,7 +837,7 @@ public:
     }
 
     // Convert the region signature.
-    auto &comp_region = op.comparator();
+    auto &comp_region = op.getComparator();
     TypeConverter::SignatureConversion sig_conversion(
         comp_region.getNumArguments());
 
@@ -846,10 +849,11 @@ public:
     }
 
     auto new_op = rewriter.replaceOpWithNewOp<pphlo::SortOp>(
-        op, ret_types, adaptor.getOperands(), op.dimension(), op.is_stable());
+        op, ret_types, adaptor.getOperands(), op.getDimension(),
+        op.getIsStable());
 
     // Copy over the operations inside the region.
-    rewriter.inlineRegionBefore(op.comparator(), new_op.comparator(),
+    rewriter.inlineRegionBefore(op.getComparator(), new_op.comparator(),
                                 new_op.comparator().end());
 
     if (failed(rewriter.convertRegionTypes(&new_op.comparator(),
@@ -877,7 +881,7 @@ public:
   LogicalResult
   matchAndRewrite(mhlo::GatherOp op, mhlo::GatherOpAdaptor adaptor,
                   ConversionPatternRewriter &rewriter) const override {
-    auto old_attr = op.dimension_numbers();
+    auto old_attr = op.getDimensionNumbers();
     pphlo::GatherDimensionNumbersAttr attr = GatherDimensionNumbersAttr::get(
         op.getContext(), old_attr.getOffsetDims(),
         old_attr.getCollapsedSliceDims(), old_attr.getStartIndexMap(),
@@ -890,7 +894,7 @@ public:
 
     rewriter.replaceOpWithNewOp<pphlo::GatherOp>(
         op, resultType, adaptor.getOperands()[0], adaptor.getOperands()[1],
-        attr, op.slice_sizes(), op.indices_are_sorted());
+        attr, op.getSliceSizes(), op.getIndicesAreSorted());
 
     return success();
   }
@@ -970,7 +974,7 @@ public:
   LogicalResult
   matchAndRewrite(mhlo::ConvolutionOp op, mhlo::ConvolutionOpAdaptor adaptor,
                   ConversionPatternRewriter &rewriter) const override {
-    auto old_attr = op.dimension_numbers();
+    auto old_attr = op.getDimensionNumbers();
     auto attr = ConvDimensionNumbersAttr::get(
         op->getContext(), old_attr.getInputBatchDimension(),
         old_attr.getInputFeatureDimension(),
@@ -995,28 +999,28 @@ public:
     };
 
     auto modifiedLhs =
-        materialize(adaptor.lhs(), vis_.getValueVisibility(op.lhs()));
+        materialize(adaptor.getLhs(), vis_.getValueVisibility(op.getLhs()));
 
     modifiedLhs = applyConvolutionPadding(
-        op->getLoc(), modifiedLhs, adaptor.paddingAttr(),
-        adaptor.lhs_dilationAttr(),
-        adaptor.dimension_numbers().getInputSpatialDimensions(), rewriter);
+        op->getLoc(), modifiedLhs, adaptor.getPaddingAttr(),
+        adaptor.getLhsDilationAttr(),
+        adaptor.getDimensionNumbers().getInputSpatialDimensions(), rewriter);
 
     auto modifiedRhs =
-        materialize(adaptor.rhs(), vis_.getValueVisibility(op.rhs()));
+        materialize(adaptor.getRhs(), vis_.getValueVisibility(op.getRhs()));
 
     modifiedRhs = applyConvolutionPadding(
-        op.getLoc(), modifiedRhs, nullptr, adaptor.rhs_dilationAttr(),
-        op.dimension_numbers().getKernelSpatialDimensions(), rewriter);
+        op.getLoc(), modifiedRhs, nullptr, adaptor.getRhsDilationAttr(),
+        op.getDimensionNumbers().getKernelSpatialDimensions(), rewriter);
 
-    auto reversals = op.window_reversal();
+    auto reversals = op.getWindowReversal();
     if (reversals.has_value()) {
       llvm::SmallVector<int64_t> reversedDims;
       for (const auto &idxAndBool :
-           llvm::enumerate(reversals.value().getValues<bool>())) {
+           llvm::enumerate(reversals->getValues<bool>())) {
         if (idxAndBool.value()) {
           reversedDims.push_back(
-              op.dimension_numbers()
+              op.getDimensionNumbers()
                   .getKernelSpatialDimensions()[idxAndBool.index()]);
         }
       }
@@ -1031,8 +1035,8 @@ public:
 
     rewriter.replaceOpWithNewOp<pphlo::ConvolutionOp>(
         op, resultType, modifiedLhs, modifiedRhs,
-        op.window_strides().value_or(nullptr), attr, op.feature_group_count(),
-        op.batch_group_count());
+        op.getWindowStrides().value_or(nullptr), attr,
+        op.getFeatureGroupCount(), op.getBatchGroupCount());
 
     return success();
   }
@@ -1110,7 +1114,7 @@ public:
                              .dyn_cast<RankedTensorType>()
                              .getElementTypeBitWidth();
 
-    YASL_ENFORCE(in_type_size == out_type_size,
+    YACL_ENFORCE(in_type_size == out_type_size,
                  "BitcastConvert with different input/output element size is "
                  "not supported");
 
@@ -1153,7 +1157,7 @@ public:
     }
 
     rewriter.replaceOpWithNewOp<pphlo::ConcatenateOp>(
-        op, result_type, materialized_operands, op.dimension());
+        op, result_type, materialized_operands, op.getDimension());
 
     return success();
   }
@@ -1190,12 +1194,12 @@ public:
           builder, op.getLoc(), new_type, in);
     };
 
-    Value materized_operand = materialize(adaptor.operand());
-    Value materized_update = materialize(adaptor.update());
+    Value materized_operand = materialize(adaptor.getOperand());
+    Value materized_update = materialize(adaptor.getUpdate());
 
     rewriter.replaceOpWithNewOp<pphlo::DynamicUpdateSliceOp>(
         op, result_type, materized_operand, materized_update,
-        adaptor.start_indices());
+        adaptor.getStartIndices());
 
     return success();
   }

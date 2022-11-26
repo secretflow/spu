@@ -15,8 +15,8 @@
 #pragma once
 
 // TODO: we need a prelude for int128 before include xtensor
-#include "yasl/base/exception.h"
-#include "yasl/base/int128.h"
+#include "yacl/base/exception.h"
+#include "yacl/base/int128.h"
 
 #include "spu/core/shape_util.h"
 //
@@ -39,7 +39,7 @@ class NdArrayRef;
 
 template <typename T>
 auto xt_adapt(const ArrayRef& aref) {
-  YASL_ENFORCE(aref.elsize() == sizeof(T), "adapt eltype={} with size={}",
+  YACL_ENFORCE(aref.elsize() == sizeof(T), "adapt eltype={} with size={}",
                aref.eltype(), sizeof(T));
 
   std::vector<int64_t> shape = {aref.numel()};
@@ -52,7 +52,7 @@ auto xt_adapt(const ArrayRef& aref) {
 
 template <typename T>
 auto xt_mutable_adapt(ArrayRef& aref) {
-  YASL_ENFORCE(aref.elsize() == sizeof(T), "adapt eltype={} with size={}",
+  YACL_ENFORCE(aref.elsize() == sizeof(T), "adapt eltype={} with size={}",
                aref.eltype(), sizeof(T));
 
   std::vector<int64_t> shape = {aref.numel()};
@@ -67,13 +67,13 @@ auto xt_mutable_adapt(ArrayRef& aref) {
 template <typename E,
           typename T = typename std::remove_const<typename E::value_type>::type>
 ArrayRef xt_to_array(const xt::xexpression<E>& e, const Type& eltype) {
-  YASL_ENFORCE(sizeof(T) == sizeof(typename E::value_type));
-  YASL_ENFORCE(sizeof(T) == eltype.size());
+  YACL_ENFORCE(sizeof(T) == sizeof(typename E::value_type));
+  YACL_ENFORCE(sizeof(T) == eltype.size());
 
   auto&& ret = xt::eval(e.derived_cast());
 
   // TODO(jint) for matmul, we also pass as a 1D array, but the result is 2D
-  YASL_ENFORCE(ret.shape().size() == 1);
+  YACL_ENFORCE(ret.shape().size() == 1);
 
   std::vector<std::size_t> shape = {ret.size()};
   ArrayRef aref(eltype, ret.size());
@@ -85,7 +85,7 @@ ArrayRef xt_to_array(const xt::xexpression<E>& e, const Type& eltype) {
 
 template <typename T>
 auto xt_mutable_adapt(NdArrayRef& aref) {
-  YASL_ENFORCE(aref.elsize() == sizeof(T), "adapt eltype={} with size={}",
+  YACL_ENFORCE(aref.elsize() == sizeof(T), "adapt eltype={} with size={}",
                aref.eltype(), sizeof(T));
 
   return xt::adapt(static_cast<T*>(aref.data()), aref.numel(),
@@ -94,7 +94,7 @@ auto xt_mutable_adapt(NdArrayRef& aref) {
 
 template <typename T>
 auto xt_adapt(const NdArrayRef& aref) {
-  YASL_ENFORCE(aref.elsize() == sizeof(T), "adapt eltype={} with size={}",
+  YACL_ENFORCE(aref.elsize() == sizeof(T), "adapt eltype={} with size={}",
                aref.eltype(), sizeof(T));
 
   return xt::adapt(static_cast<const T*>(aref.data()), aref.numel(),

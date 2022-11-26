@@ -22,9 +22,9 @@
 #define EIGEN_HAS_OPENMP
 #include "Eigen/Core"
 #include "absl/types/span.h"
-#include "yasl/crypto/pseudo_random_generator.h"
-#include "yasl/utils/parallel.h"
-#include "yasl/utils/rand.h"
+#include "yacl/crypto/tools/prg.h"
+#include "yacl/crypto/utils/rand.h"
+#include "yacl/utils/parallel.h"
 
 #include "spu/core/array_ref.h"
 #include "spu/mpc/util/linalg.h"
@@ -35,15 +35,15 @@ namespace {
 
 constexpr char kModule[] = "RingOps";
 
-#define YASL_ENFORCE_RING(x)                                         \
-  YASL_ENFORCE(x.eltype().isa<Ring2k>(), "expect ring type, got={}", \
+#define YACL_ENFORCE_RING(x)                                         \
+  YACL_ENFORCE(x.eltype().isa<Ring2k>(), "expect ring type, got={}", \
                x.eltype());
 
 #define ENFORCE_EQ_ELSIZE_AND_NUMEL(lhs, rhs)                                \
-  YASL_ENFORCE(lhs.eltype().as<Ring2k>()->field() ==                         \
+  YACL_ENFORCE(lhs.eltype().as<Ring2k>()->field() ==                         \
                    rhs.eltype().as<Ring2k>()->field(),                       \
                "type mismatch lhs={}, rhs={}", lhs.eltype(), rhs.eltype());  \
-  YASL_ENFORCE(lhs.numel() == rhs.numel(), "numel mismatch, lhs={}, rhs={}", \
+  YACL_ENFORCE(lhs.numel() == rhs.numel(), "numel mismatch, lhs={}, rhs={}", \
                lhs.numel(), rhs.numel());
 
 #define DEF_UNARY_RING_OP_EIGEN(NAME, FNAME)                              \
@@ -151,7 +151,7 @@ void ring_bitmask_impl(ArrayRef& ret, const ArrayRef& x, size_t low,
   const auto field = x.eltype().as<Ring2k>()->field();
   const auto numel = ret.numel();
 
-  YASL_ENFORCE(low < high && high <= SizeOf(field) * 8);
+  YACL_ENFORCE(low < high && high <= SizeOf(field) * 8);
 
   return DISPATCH_ALL_FIELDS(field, kModule, [&]() {
     using U = ring2k_t;
@@ -168,7 +168,7 @@ void ring_bitmask_impl(ArrayRef& ret, const ArrayRef& x, size_t low,
 
 // debug only
 void ring_print(const ArrayRef& x, std::string_view name) {
-  YASL_ENFORCE_RING(x);
+  YACL_ENFORCE_RING(x);
 
   const auto field = x.eltype().as<Ring2k>()->field();
   DISPATCH_ALL_FIELDS(field, kModule, [&]() {
@@ -192,17 +192,17 @@ void ring_print(const ArrayRef& x, std::string_view name) {
 
 ArrayRef ring_rand(FieldType field, size_t size) {
   uint64_t cnt = 0;
-  return ring_rand(field, size, yasl::RandSeed(), &cnt);
+  return ring_rand(field, size, yacl::RandSeed(), &cnt);
 }
 
 ArrayRef ring_rand(FieldType field, size_t size, uint128_t prg_seed,
                    uint64_t* prg_counter) {
-  constexpr yasl::SymmetricCrypto::CryptoType kCryptoType =
-      yasl::SymmetricCrypto::CryptoType::AES128_CTR;
+  constexpr yacl::SymmetricCrypto::CryptoType kCryptoType =
+      yacl::SymmetricCrypto::CryptoType::AES128_CTR;
   constexpr uint128_t kAesInitialVector = 0U;
 
   ArrayRef res(makeType<RingTy>(field), size);
-  *prg_counter = yasl::FillPseudoRandom(
+  *prg_counter = yacl::FillPseudoRandom(
       kCryptoType, prg_seed, kAesInitialVector, *prg_counter,
       absl::MakeSpan(static_cast<char*>(res.data()), res.buf()->size()));
 
@@ -218,7 +218,7 @@ ArrayRef ring_rand_range(FieldType field, size_t size, int32_t min,
   ArrayRef x(makeType<RingTy>(field), size);
 
   DISPATCH_ALL_FIELDS(field, kModule, [&]() {
-    YASL_ENFORCE(sizeof(ring2k_t) >= sizeof(int32_t));
+    YACL_ENFORCE(sizeof(ring2k_t) >= sizeof(int32_t));
     auto x_eigen = Eigen::Map<Eigen::ArrayX<ring2k_t>, 0,
                               Eigen::InnerStride<Eigen::Dynamic>>(
         &x.at<ring2k_t>(0), x.numel(),
@@ -233,7 +233,7 @@ ArrayRef ring_rand_range(FieldType field, size_t size, int32_t min,
 }
 
 void ring_assign(ArrayRef& x, const ArrayRef& y) {
-  YASL_ENFORCE_RING(x);
+  YACL_ENFORCE_RING(x);
   ENFORCE_EQ_ELSIZE_AND_NUMEL(x, y);
 
   const auto numel = x.numel();
@@ -332,12 +332,12 @@ void ring_mul_(ArrayRef& x, const ArrayRef& y) { ring_mul_impl(x, x, y); }
 
 void ring_mmul_(ArrayRef& z, const ArrayRef& lhs, const ArrayRef& rhs, size_t M,
                 size_t N, size_t K) {
-  YASL_ENFORCE(lhs.eltype().isa<Ring2k>(), "lhs not ring, got={}",
+  YACL_ENFORCE(lhs.eltype().isa<Ring2k>(), "lhs not ring, got={}",
                lhs.eltype());
-  YASL_ENFORCE(rhs.eltype().isa<Ring2k>(), "rhs not ring, got={}",
+  YACL_ENFORCE(rhs.eltype().isa<Ring2k>(), "rhs not ring, got={}",
                rhs.eltype());
-  YASL_ENFORCE(static_cast<size_t>(lhs.numel()) >= M * K);
-  YASL_ENFORCE(static_cast<size_t>(rhs.numel()) >= K * N);
+  YACL_ENFORCE(static_cast<size_t>(lhs.numel()) >= M * K);
+  YACL_ENFORCE(static_cast<size_t>(rhs.numel()) >= K * N);
 
   const auto field = lhs.eltype().as<Ring2k>()->field();
   return DISPATCH_ALL_FIELDS(field, kModule, [&]() {
@@ -434,13 +434,13 @@ void ring_bitmask_(ArrayRef& x, size_t low, size_t high) {
 }
 
 ArrayRef ring_sum(absl::Span<ArrayRef const> arrs) {
-  YASL_ENFORCE(!arrs.empty(), "expected non empty, got size={}", arrs.size());
+  YACL_ENFORCE(!arrs.empty(), "expected non empty, got size={}", arrs.size());
 
   if (arrs.size() == 1) {
     return arrs[0];
   }
 
-  YASL_ENFORCE(arrs.size() >= 2);
+  YACL_ENFORCE(arrs.size() >= 2);
   auto res = ring_add(arrs[0], arrs[1]);
   for (size_t idx = 2; idx < arrs.size(); idx++) {
     ring_add_(res, arrs[idx]);
@@ -450,7 +450,7 @@ ArrayRef ring_sum(absl::Span<ArrayRef const> arrs) {
 
 bool ring_all_equal(const ArrayRef& x, const ArrayRef& y, size_t abs_err) {
   ENFORCE_EQ_ELSIZE_AND_NUMEL(x, y);
-  YASL_ENFORCE(x.numel() == y.numel());
+  YACL_ENFORCE(x.numel() == y.numel());
 
   const auto field = x.eltype().as<Ring2k>()->field();
   return DISPATCH_ALL_FIELDS(field, "_", [&]() {
@@ -475,7 +475,7 @@ bool ring_all_equal(const ArrayRef& x, const ArrayRef& y, size_t abs_err) {
 }
 
 std::vector<uint8_t> ring_cast_boolean(const ArrayRef& x) {
-  YASL_ENFORCE_RING(x);
+  YACL_ENFORCE_RING(x);
   const auto field = x.eltype().as<Ring2k>()->field();
 
   std::vector<uint8_t> res(x.numel());
@@ -484,7 +484,7 @@ std::vector<uint8_t> ring_cast_boolean(const ArrayRef& x) {
                               Eigen::InnerStride<Eigen::Dynamic>>(
         &x.at<ring2k_t>(0), x.numel(),
         Eigen::InnerStride<Eigen::Dynamic>(x.stride()));
-    yasl::parallel_for(0, x.numel(), PFOR_GRAIN_SIZE,
+    yacl::parallel_for(0, x.numel(), PFOR_GRAIN_SIZE,
                        [&](size_t start, size_t end) {
                          for (size_t i = start; i < end; i++) {
                            res[i] = static_cast<uint8_t>(x_eigen[i] & 0x1);
@@ -498,8 +498,8 @@ std::vector<uint8_t> ring_cast_boolean(const ArrayRef& x) {
 ArrayRef ring_select(const std::vector<uint8_t>& c, const ArrayRef& x,
                      const ArrayRef& y) {
   ENFORCE_EQ_ELSIZE_AND_NUMEL(x, y);
-  YASL_ENFORCE(x.numel() == y.numel());
-  YASL_ENFORCE(x.numel() == static_cast<int64_t>(c.size()));
+  YACL_ENFORCE(x.numel() == y.numel());
+  YACL_ENFORCE(x.numel() == static_cast<int64_t>(c.size()));
 
   const auto field = x.eltype().as<Ring2k>()->field();
   ArrayRef z(x.eltype(), x.numel());
@@ -517,7 +517,7 @@ ArrayRef ring_select(const std::vector<uint8_t>& c, const ArrayRef& x,
 std::vector<ArrayRef> ring_rand_additive_splits(const ArrayRef& arr,
                                                 size_t num_splits) {
   const auto field = arr.eltype().as<Ring2k>()->field();
-  YASL_ENFORCE(num_splits > 1, "num split {} be greater than 1 ", num_splits);
+  YACL_ENFORCE(num_splits > 1, "num split {} be greater than 1 ", num_splits);
 
   std::vector<ArrayRef> splits(num_splits);
   splits[0] = arr.clone();
@@ -533,7 +533,7 @@ std::vector<ArrayRef> ring_rand_additive_splits(const ArrayRef& arr,
 std::vector<ArrayRef> ring_rand_boolean_splits(const ArrayRef& arr,
                                                size_t num_splits) {
   const auto field = arr.eltype().as<Ring2k>()->field();
-  YASL_ENFORCE(num_splits > 1, "num split {} be greater than 1 ", num_splits);
+  YACL_ENFORCE(num_splits > 1, "num split {} be greater than 1 ", num_splits);
 
   std::vector<ArrayRef> splits(num_splits);
   splits[0] = arr.clone();

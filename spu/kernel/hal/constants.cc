@@ -55,7 +55,7 @@ Value constant(HalContext* ctx, PtBufferView bv,
   }
 
   // Other, do a broadcast, let broadcast handles the sanity check
-  YASL_ENFORCE(calcNumel(bv.shape) <= calcNumel(shape));
+  YACL_ENFORCE(calcNumel(bv.shape) <= calcNumel(shape));
   return broadcast_to(ctx, make_pub2k(ctx, bv), shape);
 }
 
@@ -69,7 +69,7 @@ Value const_secret(HalContext* ctx, PtBufferView bv,
 
 NdArrayRef dump_public(HalContext* ctx, const Value& v) {
   SPU_TRACE_HAL_DISP(ctx, v);
-  YASL_ENFORCE(v.storage_type().isa<mpc::Pub2kTy>(), "got {}",
+  YACL_ENFORCE(v.storage_type().isa<mpc::Pub2kTy>(), "got {}",
                v.storage_type());
   const auto field = v.storage_type().as<Ring2k>()->field();
   auto encoded = v.data().as(makeType<RingTy>(field));
@@ -84,7 +84,7 @@ Value make_value(HalContext* ctx, Visibility vtype, PtBufferView bv) {
     case VIS_SECRET:
       return const_secret(ctx, bv);
     default:
-      YASL_THROW("not support vtype={}", vtype);
+      YACL_THROW("not support vtype={}", vtype);
   }
 }
 
@@ -133,7 +133,7 @@ spu::Value zeros(HalContext* ctx, Visibility vis, DataType dtype,
       break;
     }
     default: {
-      YASL_THROW("Should not hit, dtype = {}", dtype);
+      YACL_THROW("Should not hit, dtype = {}", dtype);
     }
   }
 

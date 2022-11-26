@@ -16,7 +16,7 @@
 
 #include "emp-tool/utils/block.h"
 #include "emp-tool/utils/group.h"
-#include "yasl/base/int128.h"  // For int 128 support
+#include "yacl/base/int128.h"  // For int 128 support
 
 namespace spu {
 using emp::BigInt;

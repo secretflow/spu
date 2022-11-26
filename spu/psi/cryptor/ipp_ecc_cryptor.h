@@ -16,7 +16,7 @@
 
 #include "openssl/crypto.h"
 #include "openssl/rand.h"
-#include "yasl/base/exception.h"
+#include "yacl/base/exception.h"
 
 #include "spu/psi/cryptor/ecc_cryptor.h"
 

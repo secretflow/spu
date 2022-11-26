@@ -17,8 +17,8 @@
 #include <memory>
 #include <string>
 
-#include "yasl/base/buffer.h"
-#include "yasl/link/link.h"
+#include "yacl/base/buffer.h"
+#include "yacl/link/link.h"
 
 #include "spu/psi/utils/serializable.pb.h"
 
@@ -54,20 +54,30 @@ struct PsiDataBatch {
   std::string flatten_bytes;
 
   // Metadata.
+  // Batch index. Start from 0.
+  int32_t batch_index = 0;
   bool is_last_batch = false;
 
-  yasl::Buffer Serialize() const {
+  // The type hint for each message.
+  //
+  // "enc": the first stage ciphertext
+  // "dual.enc": the second stage ciphertext
+  std::string type;
+
+  // deprecated. use IcPsiBatchSerializer instead.
+  yacl::Buffer Serialize() const {
     proto::PsiDataBatchProto proto;
     proto.set_item_num(item_num);
     proto.set_flatten_bytes(flatten_bytes);
     proto.set_is_last_batch(is_last_batch);
 
-    yasl::Buffer buf(proto.ByteSizeLong());
+    yacl::Buffer buf(proto.ByteSizeLong());
     proto.SerializeToArray(buf.data(), buf.size());
     return buf;
   }
 
-  static PsiDataBatch Deserialize(const yasl::Buffer& buf) {
+  // deprecated. use IcPsiBatchSerializer instead.
+  static PsiDataBatch Deserialize(const yacl::Buffer& buf) {
     proto::PsiDataBatchProto proto;
     proto.ParseFromArray(buf.data(), buf.size());
 
@@ -80,7 +90,15 @@ struct PsiDataBatch {
   }
 };
 
-std::shared_ptr<yasl::link::Context> CreateP2PLinkCtx(
+// Serialize data using an interconnection standard protocol
+class IcPsiBatchSerializer {
+ public:
+  // support interconnection standard.
+  static yacl::Buffer Serialize(PsiDataBatch&& batch);
+  static PsiDataBatch Deserialize(yacl::ByteContainerView buf);
+};
+
+std::shared_ptr<yacl::link::Context> CreateP2PLinkCtx(
     const std::string& id_prefix,
-    const std::shared_ptr<yasl::link::Context>& link_ctx, size_t peer_rank);
+    const std::shared_ptr<yacl::link::Context>& link_ctx, size_t peer_rank);
 }  // namespace spu::psi

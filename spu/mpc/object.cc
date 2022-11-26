@@ -18,13 +18,13 @@ namespace spu::mpc {
 
 void Object::regKernel(std::string_view name, std::unique_ptr<Kernel> kernel) {
   const auto itr = kernels_.find(name);
-  YASL_ENFORCE(itr == kernels_.end(), "kernel={} already exist", name);
+  YACL_ENFORCE(itr == kernels_.end(), "kernel={} already exist", name);
   kernels_.insert({name, std::move(kernel)});
 }
 
 Kernel* Object::getKernel(std::string_view name) {
   const auto itr = kernels_.find(name);
-  YASL_ENFORCE(itr != kernels_.end(), "kernel={} not found", name);
+  YACL_ENFORCE(itr != kernels_.end(), "kernel={} not found", name);
   return itr->second.get();
 }
 

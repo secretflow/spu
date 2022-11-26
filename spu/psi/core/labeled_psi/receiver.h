@@ -27,7 +27,7 @@
 #include "apsi/seal_object.h"
 #include "gsl/span"
 #include "seal/seal.h"
-#include "yasl/link/link.h"
+#include "yacl/link/link.h"
 
 #include "spu/psi/core/ecdh_oprf/ecdh_oprf.h"
 
@@ -48,7 +48,7 @@ class LabelPsiReceiver {
    * @return apsi::PSIParams
    */
   static apsi::PSIParams RequestPsiParams(
-      size_t items_size, const std::shared_ptr<yasl::link::Context> &link_ctx);
+      size_t items_size, const std::shared_ptr<yacl::link::Context> &link_ctx);
 
   /**
    * @brief  Request items oprf
@@ -62,7 +62,7 @@ class LabelPsiReceiver {
    */
   std::pair<std::vector<apsi::HashedItem>, std::vector<apsi::LabelKey>>
   RequestOPRF(const std::vector<std::string> &items,
-              const std::shared_ptr<yasl::link::Context> &link_ctx);
+              const std::shared_ptr<yacl::link::Context> &link_ctx);
 
   /**
    * @brief  Request PSI Query
@@ -78,7 +78,7 @@ class LabelPsiReceiver {
   std::pair<std::vector<size_t>, std::vector<std::string>> RequestQuery(
       const std::vector<apsi::HashedItem> &hashed_items,
       const std::vector<apsi::LabelKey> &label_keys,
-      const std::shared_ptr<yasl::link::Context> &link_ctx);
+      const std::shared_ptr<yacl::link::Context> &link_ctx);
 
   /**
   Generates a new set of keys to use for queries.

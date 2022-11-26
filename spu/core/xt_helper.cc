@@ -43,7 +43,7 @@ NdArrayRef xt_to_ndarray(PtBufferView bv) {
   switch (bv.pt_type) {
     FOREACH_PT_TYPES(CASE)
     default:
-      YASL_THROW("should not be here, pt_type={}", bv.pt_type);
+      YACL_THROW("should not be here, pt_type={}", bv.pt_type);
   }
 
 #undef CASE

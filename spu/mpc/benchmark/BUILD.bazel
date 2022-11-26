@@ -22,7 +22,7 @@ spu_cc_library(
     hdrs = ["utils.h"],
     deps = [
         "@llvm-project//llvm:Support",
-        "@yasl//yasl/link:factory",
+        "@yacl//yacl/link:factory",
     ],
 )
 
@@ -61,6 +61,6 @@ spu_cc_binary(
         "@com_github_fmtlib_fmt//:fmtlib",
         "@com_github_google_benchmark//:benchmark",
         "@com_google_absl//absl/strings",
-        "@yasl//yasl/link:context",
+        "@yacl//yacl/link:context",
     ],
 )

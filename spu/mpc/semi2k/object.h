@@ -26,7 +26,7 @@ class Semi2kState : public State {
  public:
   static constexpr char kBindName[] = "Semi2kState";
 
-  explicit Semi2kState(std::shared_ptr<yasl::link::Context> lctx) {
+  explicit Semi2kState(std::shared_ptr<yacl::link::Context> lctx) {
     beaver_ = std::make_unique<BeaverTfpUnsafe>(lctx);
   }
 

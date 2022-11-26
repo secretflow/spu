@@ -111,21 +111,21 @@ void WriteCsvData(const std::string& file_name,
   out_file.close();
 }
 
-std::shared_ptr<yasl::link::Context> CreateContext(
-    int self_rank, yasl::link::ContextDesc& lctx_desc) {
-  std::shared_ptr<yasl::link::Context> link_ctx;
+std::shared_ptr<yacl::link::Context> CreateContext(
+    int self_rank, yacl::link::ContextDesc& lctx_desc) {
+  std::shared_ptr<yacl::link::Context> link_ctx;
 
-  yasl::link::FactoryBrpc factory;
+  yacl::link::FactoryBrpc factory;
   link_ctx = factory.CreateContext(lctx_desc, self_rank);
   link_ctx->ConnectToMesh();
 
   return link_ctx;
 }
 
-std::shared_ptr<yasl::link::Context> CreateLinks(const std::string& local_addr,
+std::shared_ptr<yacl::link::Context> CreateLinks(const std::string& local_addr,
                                                  const std::string& remote_addr,
                                                  int self_rank) {
-  yasl::link::ContextDesc lctx_desc;
+  yacl::link::ContextDesc lctx_desc;
 
   // int self_rank = 0;
 
@@ -174,7 +174,7 @@ int main(int argc, char** argv) {
   std::cout << items.size() << std::endl;
 
   try {
-    std::shared_ptr<yasl::link::Context> link_ctx = CreateLinks(
+    std::shared_ptr<yacl::link::Context> link_ctx = CreateLinks(
         InPathOpt.getValue(), RemoteOpt.getValue(), RankOpt.getValue());
     link_ctx->SetRecvTimeout(kLinkRecvTimeout);
 

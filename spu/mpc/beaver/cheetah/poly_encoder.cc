@@ -14,7 +14,7 @@
 
 #include "spu/mpc/beaver/cheetah/poly_encoder.h"
 
-#include "yasl/base/exception.h"
+#include "yacl/base/exception.h"
 
 #include "spu/core/type_util.h"
 #include "spu/core/xt_helper.h"
@@ -25,10 +25,10 @@ namespace spu::mpc {
 PolyEncoder::PolyEncoder(const seal::SEALContext &context,
                          ModulusSwitchHelper ms_helper)
     : ms_helper_(ms_helper) {
-  YASL_ENFORCE(context.parameters_set());
+  YACL_ENFORCE(context.parameters_set());
   auto pid0 = context.first_parms_id();
   auto pid1 = ms_helper.parms_id();
-  YASL_ENFORCE_EQ(0, std::memcmp(&pid0, &pid1, sizeof(seal::parms_id_type)),
+  YACL_ENFORCE_EQ(0, std::memcmp(&pid0, &pid1, sizeof(seal::parms_id_type)),
                   fmt::format("parameter set mismatch"));
   poly_deg_ = context.first_context_data()->parms().poly_modulus_degree();
 }
@@ -37,12 +37,12 @@ void PolyEncoder::Forward(const ArrayRef &vec, RLWEPt *out,
                           bool scale_delta) const {
   // Place the vector elements as polynomial coefficients forwardly.
   // a0, a1, ..., an -> \sum_i ai*X^i
-  yasl::CheckNotNull(out);
+  yacl::CheckNotNull(out);
 
   size_t num_coeffs = vec.numel();
   size_t num_modulus = ms_helper_.coeff_modulus_size();
-  YASL_ENFORCE_GT(num_coeffs, 0UL);
-  YASL_ENFORCE(num_coeffs <= poly_deg_);
+  YACL_ENFORCE_GT(num_coeffs, 0UL);
+  YACL_ENFORCE(num_coeffs <= poly_deg_);
 
   out->parms_id() = seal::parms_id_zero;
   out->resize(seal::util::mul_safe(poly_deg_, num_modulus));
@@ -68,15 +68,15 @@ void PolyEncoder::Backward(const ArrayRef &vec, RLWEPt *out,
   // Place the vector elements as polynomial coefficients in backward.
   // a0, a1, ..., an -> a0 - \sum_{i>0} ai*X^{N-i}
   // where N defines the base ring X^N + 1.
-  yasl::CheckNotNull(out);
+  yacl::CheckNotNull(out);
 
   size_t num_coeffs = vec.numel();
   size_t num_modulus = ms_helper_.coeff_modulus_size();
-  YASL_ENFORCE_GT(num_coeffs, 0UL);
-  YASL_ENFORCE(num_coeffs <= poly_deg_);
+  YACL_ENFORCE_GT(num_coeffs, 0UL);
+  YACL_ENFORCE(num_coeffs <= poly_deg_);
 
   const Type &eltype = vec.eltype();
-  YASL_ENFORCE(eltype.isa<RingTy>(), "must be ring_type, got={}", eltype);
+  YACL_ENFORCE(eltype.isa<RingTy>(), "must be ring_type, got={}", eltype);
   out->parms_id() = seal::parms_id_zero;
   out->resize(seal::util::mul_safe(poly_deg_, num_modulus));
 

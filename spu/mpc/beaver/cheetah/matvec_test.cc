@@ -46,7 +46,7 @@ static PrgSeed GetHardwareRandom128() {
   // call random_device four times, make sure uint128 is random in 2^128 set.
   uint64_t lhs = static_cast<uint64_t>(rd()) << 32 | rd();
   uint64_t rhs = static_cast<uint64_t>(rd()) << 32 | rd();
-  return yasl::MakeUint128(lhs, rhs);
+  return yacl::MakeUint128(lhs, rhs);
 }
 
 class MatVecTest : public ::testing::TestWithParam<
@@ -87,7 +87,7 @@ class MatVecTest : public ::testing::TestWithParam<
         modulus_bits = {59, 59, 59, 59, 50};
         break;
       default:
-        YASL_THROW("Not support field type {}", field_);
+        YACL_THROW("Not support field type {}", field_);
     }
 
     auto scheme_type = seal::scheme_type::ckks;

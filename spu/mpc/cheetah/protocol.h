@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "yasl/link/link.h"
+#include "yacl/link/link.h"
 
 #include "spu/mpc/object.h"
 
@@ -22,6 +22,6 @@ namespace spu::mpc {
 
 std::unique_ptr<Object> makeCheetahProtocol(
     const RuntimeConfig& conf,
-    const std::shared_ptr<yasl::link::Context>& lctx);
+    const std::shared_ptr<yacl::link::Context>& lctx);
 
 }  // namespace spu::mpc

@@ -13,7 +13,7 @@
 # limitations under the License.
 
 load("//bazel:spu.bzl", "spu_cc_library", "spu_cc_test")
-load("@yasl//bazel:yasl.bzl", "EMP_COPT_FLAGS")
+load("@yacl//bazel:yacl.bzl", "EMP_COPT_FLAGS")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -35,7 +35,7 @@ spu_cc_library(
     ],
     deps = [
         "@com_github_emptoolkit_emp_tool//:emp-tool",
-        "@yasl//yasl/link",
+        "@yacl//yacl/link",
     ],
 )
 
@@ -67,7 +67,7 @@ spu_cc_library(
         "cheetah_io",
         "@com_github_emptoolkit_emp_ot//:emp-ot",
         "@com_github_emptoolkit_emp_tool//:emp-tool",
-        "@yasl//yasl/link",
+        "@yacl//yacl/link",
     ] + select({
         "@platforms//cpu:aarch64": [
             "@com_github_dltcollab_sse2neon//:sse2neon",

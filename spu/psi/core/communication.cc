@@ -16,11 +16,13 @@
 
 #include "spdlog/spdlog.h"
 
+#include "interconnection/algos/psi.pb.h"
+
 namespace spu::psi {
 
-std::shared_ptr<yasl::link::Context> CreateP2PLinkCtx(
+std::shared_ptr<yacl::link::Context> CreateP2PLinkCtx(
     const std::string& id_prefix,
-    const std::shared_ptr<yasl::link::Context>& link_ctx, size_t peer_rank) {
+    const std::shared_ptr<yacl::link::Context>& link_ctx, size_t peer_rank) {
   if (link_ctx->WorldSize() > 2) {
     // build subworld link
     auto peer_id = link_ctx->PartyIdByRank(peer_rank);
@@ -39,6 +41,35 @@ std::shared_ptr<yasl::link::Context> CreateP2PLinkCtx(
   } else {
     return link_ctx;
   }
+}
+
+yacl::Buffer IcPsiBatchSerializer::Serialize(PsiDataBatch&& batch) {
+  org::interconnection::algos::psi::EcdhPsiCipherBatch proto;
+  proto.set_type(batch.type);
+  proto.set_batch_index(batch.batch_index);
+  proto.set_is_last_batch(batch.is_last_batch);
+
+  proto.set_count(batch.item_num);
+  proto.set_ciphertext(std::move(batch.flatten_bytes));
+
+  yacl::Buffer buf(proto.ByteSizeLong());
+  proto.SerializeToArray(buf.data(), buf.size());
+  return buf;
+}
+
+PsiDataBatch IcPsiBatchSerializer::Deserialize(yacl::ByteContainerView buf) {
+  org::interconnection::algos::psi::EcdhPsiCipherBatch proto;
+  YACL_ENFORCE(proto.ParseFromArray(buf.data(), buf.size()),
+               "parse EcdhPsiCipherBatch proto fail");
+
+  PsiDataBatch batch;
+  batch.item_num = proto.count();
+  batch.flatten_bytes = std::move(*proto.mutable_ciphertext());
+  batch.is_last_batch = proto.is_last_batch();
+
+  batch.type = proto.type();
+  batch.batch_index = proto.batch_index();
+  return batch;
 }
 
 }  // namespace spu::psi

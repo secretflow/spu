@@ -21,7 +21,7 @@
 #include <string_view>
 #include <vector>
 
-#include "yasl/link/link.h"
+#include "yacl/link/link.h"
 
 namespace spu::psi {
 
@@ -49,19 +49,23 @@ void FilterFileByIndices(const std::string& input, const std::string& output,
                          const std::vector<uint64_t>& indices,
                          size_t header_line_count = 1);
 
+// join keys with "-"
 std::string KeysJoin(const std::vector<absl::string_view>& keys);
 
+std::vector<size_t> AllGatherItemsSize(
+    const std::shared_ptr<yacl::link::Context>& link_ctx, size_t self_size);
+
 template <typename T>
-T SyncWait(const std::shared_ptr<yasl::link::Context>& lctx,
+T SyncWait(const std::shared_ptr<yacl::link::Context>& lctx,
            std::future<T>* f) {
-  std::vector<yasl::Buffer> flag_list;
+  std::vector<yacl::Buffer> flag_list;
   std::chrono::seconds span(5);
   while (true) {
     bool done = f->wait_for(span) == std::future_status::ready;
     auto flag = done ? kFinishedFlag : kUnFinishedFlag;
-    flag_list = yasl::link::AllGather(lctx, flag, "sync wait");
+    flag_list = yacl::link::AllGather(lctx, flag, "sync wait");
     if (std::find_if(flag_list.begin(), flag_list.end(),
-                     [](const yasl::Buffer& b) {
+                     [](const yacl::Buffer& b) {
                        return std::string_view(b.data<char>(), b.size()) ==
                               kUnFinishedFlag;
                      }) == flag_list.end()) {

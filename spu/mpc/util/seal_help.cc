@@ -17,7 +17,7 @@
 #include "seal/ciphertext.h"
 #include "seal/plaintext.h"
 #include "seal/util/ntt.h"
-#include "yasl/base/exception.h"
+#include "yacl/base/exception.h"
 
 namespace spu::mpc {
 
@@ -34,12 +34,12 @@ void TruncateBFVForDecryption(seal::Ciphertext &ct,
   auto context_data = context.last_context_data();
 
   const auto &parms = context_data->parms();
-  YASL_ENFORCE(parms.scheme() == seal::scheme_type::bfv,
+  YACL_ENFORCE(parms.scheme() == seal::scheme_type::bfv,
                "TruncateSEALCtInplace: scheme_type not supported");
-  YASL_ENFORCE(ct.size() == 2, "TruncateSEALCtInplace: invalid ct.size");
-  YASL_ENFORCE(ct.coeff_modulus_size() == 1,
+  YACL_ENFORCE(ct.size() == 2, "TruncateSEALCtInplace: invalid ct.size");
+  YACL_ENFORCE(ct.coeff_modulus_size() == 1,
                "TruncateSEALCtInplace: invalid ct.coeff_modulus_size");
-  YASL_ENFORCE(!ct.is_ntt_form(),
+  YACL_ENFORCE(!ct.is_ntt_form(),
                "TruncateSEALCtInplace: invalid ct.is_ntt_form");
   // Hack on BFV decryption formula: c0 + c1*s mod p0 = m' = Delta*m + e ->
   // round(m'/Delta) = m The low-end bits of c0, c1 are useless for decryption,
@@ -70,12 +70,12 @@ void TruncateBFVForDecryption(seal::Ciphertext &ct,
 
 void NttInplace(seal::Plaintext &pt, const seal::SEALContext &context) {
   using namespace seal::util;
-  YASL_ENFORCE(context.parameters_set());
+  YACL_ENFORCE(context.parameters_set());
   auto cntxt_data = context.get_context_data(pt.parms_id());
-  YASL_ENFORCE(cntxt_data != nullptr);
+  YACL_ENFORCE(cntxt_data != nullptr);
 
   auto L = cntxt_data->parms().coeff_modulus().size();
-  YASL_ENFORCE(pt.coeff_count() % L == 0);
+  YACL_ENFORCE(pt.coeff_count() % L == 0);
 
   auto ntt_tables = cntxt_data->small_ntt_tables();
   size_t n = pt.coeff_count() / L;
@@ -88,12 +88,12 @@ void NttInplace(seal::Plaintext &pt, const seal::SEALContext &context) {
 
 void InvNttInplace(seal::Plaintext &pt, const seal::SEALContext &context) {
   using namespace seal::util;
-  YASL_ENFORCE(context.parameters_set());
+  YACL_ENFORCE(context.parameters_set());
   auto cntxt_data = context.get_context_data(pt.parms_id());
-  YASL_ENFORCE(cntxt_data != nullptr);
+  YACL_ENFORCE(cntxt_data != nullptr);
 
   auto L = cntxt_data->parms().coeff_modulus().size();
-  YASL_ENFORCE(pt.coeff_count() % L == 0);
+  YACL_ENFORCE(pt.coeff_count() % L == 0);
 
   auto ntt_tables = cntxt_data->small_ntt_tables();
   size_t n = pt.coeff_count() / L;

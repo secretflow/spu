@@ -16,8 +16,8 @@
 
 #include "openssl/crypto.h"
 #include "openssl/rand.h"
-#include "yasl/base/exception.h"
-#include "yasl/link/link.h"
+#include "yacl/base/exception.h"
+#include "yacl/link/link.h"
 
 #include "spu/psi/cryptor/ecc_cryptor.h"
 
@@ -56,7 +56,7 @@ class SodiumCurve25519Cryptor : public IEccCryptor {
                absl::Span<char> dest_points) const override;
 
   std::vector<uint8_t> KeyExchange(
-      const std::shared_ptr<yasl::link::Context> &link_ctx);
+      const std::shared_ptr<yacl::link::Context> &link_ctx);
 };
 
 }  // namespace spu::psi

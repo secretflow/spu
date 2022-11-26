@@ -22,10 +22,10 @@ namespace spu::mpc::semi2k {
 
 std::vector<ArrayRef> Semi2kIo::toShares(const ArrayRef& raw, Visibility vis,
                                          int owner_rank) const {
-  YASL_ENFORCE(raw.eltype().isa<RingTy>(), "expected RingTy, got {}",
+  YACL_ENFORCE(raw.eltype().isa<RingTy>(), "expected RingTy, got {}",
                raw.eltype());
   const auto field = raw.eltype().as<Ring2k>()->field();
-  YASL_ENFORCE(field == field_, "expect raw value encoded in field={}, got={}",
+  YACL_ENFORCE(field == field_, "expect raw value encoded in field={}, got={}",
                field_, field);
 
   if (vis == VIS_PUBLIC) {
@@ -56,7 +56,7 @@ std::vector<ArrayRef> Semi2kIo::toShares(const ArrayRef& raw, Visibility vis,
     }
     return shares;
   }
-  YASL_THROW("unsupported vis type {}", vis);
+  YACL_THROW("unsupported vis type {}", vis);
 }
 
 ArrayRef Semi2kIo::fromShares(const std::vector<ArrayRef>& shares) const {
@@ -77,12 +77,12 @@ ArrayRef Semi2kIo::fromShares(const std::vector<ArrayRef>& shares) const {
       } else if (eltype.isa<BShare>()) {
         ring_xor_(res, share);
       } else {
-        YASL_THROW("invalid share type {}", eltype);
+        YACL_THROW("invalid share type {}", eltype);
       }
     }
     return res;
   }
-  YASL_THROW("unsupported eltype {}", eltype);
+  YACL_THROW("unsupported eltype {}", eltype);
 }
 
 std::unique_ptr<Semi2kIo> makeSemi2kIo(FieldType field, size_t npc) {

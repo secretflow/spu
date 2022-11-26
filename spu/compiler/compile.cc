@@ -21,7 +21,7 @@
 #include "mlir/IR/BuiltinOps.h"
 #include "mlir/IR/MLIRContext.h"
 #include "spdlog/spdlog.h"
-#include "yasl/base/exception.h"
+#include "yacl/base/exception.h"
 
 #include "spu/compiler/codegen/codegen.h"
 #include "spu/compiler/core/core.h"
@@ -48,7 +48,7 @@ std::string compile(CompilationContext *ctx, const std::string &serialized_ir,
 std::string compile(CompilationContext *ctx,
                     const std::filesystem::path &file) {
   if (!std::filesystem::exists(file)) {
-    YASL_THROW("File {} not found!", file.c_str());
+    YACL_THROW("File {} not found!", file.c_str());
   }
 
   // Start loading

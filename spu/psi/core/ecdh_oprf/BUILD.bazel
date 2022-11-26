@@ -26,9 +26,9 @@ spu_cc_library(
         "//spu/psi/cryptor:ecc_cryptor",
         "@com_github_openssl_openssl//:openssl",
         "@com_google_absl//absl/types:span",
-        "@yasl//yasl/base:byte_container_view",
-        "@yasl//yasl/base:exception",
-        "@yasl//yasl/utils:parallel",
+        "@yacl//yacl/base:byte_container_view",
+        "@yacl//yacl/base:exception",
+        "@yacl//yacl/utils:parallel",
     ],
 )
 
@@ -42,10 +42,10 @@ spu_cc_library(
         "//spu/psi/cryptor:sm2_cryptor",
         "@com_github_microsoft_fourqlib//:fourqlib",
         "@com_google_absl//absl/types:span",
-        "@yasl//yasl/base:exception",
-        "@yasl//yasl/crypto:blake3_hash",
-        "@yasl//yasl/crypto:hash_util",
-        "@yasl//yasl/utils:parallel",
+        "@yacl//yacl/base:exception",
+        "@yacl//yacl/crypto/base/hash:blake3",
+        "@yacl//yacl/crypto/utils:hash_util",
+        "@yacl//yacl/utils:parallel",
     ],
 )
 
@@ -63,7 +63,7 @@ spu_cc_test(
     srcs = ["basic_ecdh_oprf_test.cc"],
     deps = [
         ":ecdh_oprf_selector",
-        "@yasl//yasl/crypto:pseudo_random_generator",
-        "@yasl//yasl/utils:rand",
+        "@yacl//yacl/crypto/tools:prg",
+        "@yacl//yacl/crypto/utils:rand",
     ],
 )

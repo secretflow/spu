@@ -70,7 +70,7 @@ spu::Value Sign(HalContext *ctx, const spu::Value &in) {
 spu::Value Round_AFZ(HalContext *ctx, const spu::Value &in) {
   // select(x < 0, (int)(x-0.5), (int)(x+0.5))
   // -> (float)(int)(x + sign(x) * 0.5)
-  YASL_ENFORCE(in.isFxp(), "Round only supports fxp");
+  YACL_ENFORCE(in.isFxp(), "Round only supports fxp");
 
   auto sign_in = hal::sign(ctx, in);
   auto p_half = hal::constant(ctx, 0.5, in.shape());

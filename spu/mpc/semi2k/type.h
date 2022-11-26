@@ -40,7 +40,7 @@ class BShrTy : public TypeImpl<BShrTy, RingTy, Secret, BShare> {
   explicit BShrTy(FieldType field, size_t nbits = kDefaultNumBits) {
     field_ = field;
     nbits_ = nbits == kDefaultNumBits ? SizeOf(field) * 8 : nbits;
-    YASL_ENFORCE(nbits_ <= SizeOf(field) * 8);
+    YACL_ENFORCE(nbits_ <= SizeOf(field) * 8);
   }
 
   static std::string_view getStaticId() { return "semi2k.BShr"; }
@@ -49,7 +49,7 @@ class BShrTy : public TypeImpl<BShrTy, RingTy, Secret, BShare> {
     auto comma = detail.find_first_of(',');
     auto field_str = detail.substr(0, comma);
     auto nbits_str = detail.substr(comma + 1);
-    YASL_ENFORCE(FieldType_Parse(std::string(field_str), &field_),
+    YACL_ENFORCE(FieldType_Parse(std::string(field_str), &field_),
                  "parse failed from={}", detail);
     nbits_ = std::stoul(std::string(nbits_str));
   };

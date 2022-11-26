@@ -35,7 +35,7 @@ TEST_P(OTTest, OT3Party) {
     choices[idx] = static_cast<uint8_t>(idx % 2);
   }
 
-  util::simulate(3u, [&](std::shared_ptr<yasl::link::Context> lctx) {
+  util::simulate(3u, [&](std::shared_ptr<yacl::link::Context> lctx) {
     Communicator comm(lctx);
     PrgState prg_state(lctx);
 

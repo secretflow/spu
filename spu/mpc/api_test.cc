@@ -36,7 +36,7 @@ const std::vector<size_t> kShiftBits = {0, 1, 2, 31, 32, 33, 64, 1000};
     const RuntimeConfig& conf = std::get<1>(GetParam());                     \
     const size_t npc = std::get<2>(GetParam());                              \
                                                                              \
-    util::simulate(npc, [&](std::shared_ptr<yasl::link::Context> lctx) {     \
+    util::simulate(npc, [&](std::shared_ptr<yacl::link::Context> lctx) {     \
       auto obj = factory(conf, lctx);                                        \
                                                                              \
       /* GIVEN */                                                            \
@@ -59,7 +59,7 @@ const std::vector<size_t> kShiftBits = {0, 1, 2, 31, 32, 33, 64, 1000};
     const RuntimeConfig& conf = std::get<1>(GetParam());                 \
     const size_t npc = std::get<2>(GetParam());                          \
                                                                          \
-    util::simulate(npc, [&](std::shared_ptr<yasl::link::Context> lctx) { \
+    util::simulate(npc, [&](std::shared_ptr<yacl::link::Context> lctx) { \
       auto obj = factory(conf, lctx);                                    \
                                                                          \
       /* GIVEN */                                                        \
@@ -91,7 +91,7 @@ TEST_BINARY_OP(xor)
     const RuntimeConfig& conf = std::get<1>(GetParam());                 \
     const size_t npc = std::get<2>(GetParam());                          \
                                                                          \
-    util::simulate(npc, [&](std::shared_ptr<yasl::link::Context> lctx) { \
+    util::simulate(npc, [&](std::shared_ptr<yacl::link::Context> lctx) { \
       auto obj = factory(conf, lctx);                                    \
                                                                          \
       /* GIVEN */                                                        \
@@ -112,7 +112,7 @@ TEST_BINARY_OP(xor)
     const RuntimeConfig& conf = std::get<1>(GetParam());                 \
     const size_t npc = std::get<2>(GetParam());                          \
                                                                          \
-    util::simulate(npc, [&](std::shared_ptr<yasl::link::Context> lctx) { \
+    util::simulate(npc, [&](std::shared_ptr<yacl::link::Context> lctx) { \
       auto obj = factory(conf, lctx);                                    \
                                                                          \
       /* GIVEN */                                                        \
@@ -140,7 +140,7 @@ TEST_UNARY_OP(msb)
     const RuntimeConfig& conf = std::get<1>(GetParam());                 \
     const size_t npc = std::get<2>(GetParam());                          \
                                                                          \
-    util::simulate(npc, [&](std::shared_ptr<yasl::link::Context> lctx) { \
+    util::simulate(npc, [&](std::shared_ptr<yacl::link::Context> lctx) { \
       auto obj = factory(conf, lctx);                                    \
                                                                          \
       /* GIVEN */                                                        \
@@ -167,7 +167,7 @@ TEST_UNARY_OP(msb)
     const RuntimeConfig& conf = std::get<1>(GetParam());                 \
     const size_t npc = std::get<2>(GetParam());                          \
                                                                          \
-    util::simulate(npc, [&](std::shared_ptr<yasl::link::Context> lctx) { \
+    util::simulate(npc, [&](std::shared_ptr<yacl::link::Context> lctx) { \
       auto obj = factory(conf, lctx);                                    \
                                                                          \
       /* GIVEN */                                                        \
@@ -201,7 +201,7 @@ TEST_P(ApiTest, TruncPrS) {
 
   // trunc_pr only work for smalle range.
   auto p0 = ring_rand_range(conf.field(), kNumel, 0, 10000);
-  util::simulate(npc, [&](std::shared_ptr<yasl::link::Context> lctx) {
+  util::simulate(npc, [&](std::shared_ptr<yacl::link::Context> lctx) {
     auto obj = factory(conf, lctx);
 
     const size_t bits = 2;
@@ -224,7 +224,7 @@ TEST_P(ApiTest, MatMulSS) {
   const std::vector<int64_t> shape_A{M, K};
   const std::vector<int64_t> shape_B{K, N};
 
-  util::simulate(npc, [&](std::shared_ptr<yasl::link::Context> lctx) {
+  util::simulate(npc, [&](std::shared_ptr<yacl::link::Context> lctx) {
     auto obj = factory(conf, lctx);
 
     /* GIVEN */
@@ -253,7 +253,7 @@ TEST_P(ApiTest, MmulSP) {
   const std::vector<int64_t> shape_A{M, K};
   const std::vector<int64_t> shape_B{K, N};
 
-  util::simulate(npc, [&](std::shared_ptr<yasl::link::Context> lctx) {
+  util::simulate(npc, [&](std::shared_ptr<yacl::link::Context> lctx) {
     auto obj = factory(conf, lctx);
 
     /* GIVEN */
@@ -275,7 +275,7 @@ TEST_P(ApiTest, P2S_S2P) {
   const RuntimeConfig& conf = std::get<1>(GetParam());
   const size_t npc = std::get<2>(GetParam());
 
-  util::simulate(npc, [&](std::shared_ptr<yasl::link::Context> lctx) {
+  util::simulate(npc, [&](std::shared_ptr<yacl::link::Context> lctx) {
     auto obj = factory(conf, lctx);
 
     /* GIVEN */

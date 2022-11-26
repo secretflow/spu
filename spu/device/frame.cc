@@ -15,33 +15,33 @@
 #include "spu/device/frame.h"
 
 #include "mlir/IR/BuiltinTypes.h"
-#include "yasl/base/exception.h"
+#include "yacl/base/exception.h"
 
 #include "spu/dialect/pphlo_types.h"
 
 namespace spu::device {
 
 void Frame::releaseValue(::mlir::Value operand) {
-  YASL_ENFORCE(!segments_.empty(),
+  YACL_ENFORCE(!segments_.empty(),
                "Need at least one activate segment running");
   segments_.back().values_.erase(operand);
 }
 
 void Frame::addValue(::mlir::Value operand, spu::Value &&val) {
-  YASL_ENFORCE(!segments_.empty(),
+  YACL_ENFORCE(!segments_.empty(),
                "Need at least one activate segment running");
   segments_.back().values_[operand] = std::move(val);
 }
 
 void Frame::addValue(::mlir::Value operand, const spu::Value &val) {
-  YASL_ENFORCE(!segments_.empty(),
+  YACL_ENFORCE(!segments_.empty(),
                "Need at least one activate segment running");
   segments_.back().values_[operand] = val;
 }
 
 const spu::Value *Frame::getValue(::mlir::Value operand) const {
   const spu::Value *val = nullptr;
-  YASL_ENFORCE(!segments_.empty());
+  YACL_ENFORCE(!segments_.empty());
   for (auto siter = segments_.rbegin(); siter != segments_.rend(); ++siter) {
     auto iter = siter->values_.find(operand);
     if (iter != siter->values_.end()) {

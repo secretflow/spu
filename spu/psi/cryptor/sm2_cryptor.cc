@@ -17,8 +17,8 @@
 #include "absl/types/span.h"
 #include "openssl/bn.h"
 #include "openssl/ec.h"
-#include "yasl/crypto/hash_util.h"
-#include "yasl/utils/parallel.h"
+#include "yacl/crypto/utils/hash_util.h"
+#include "yacl/utils/parallel.h"
 
 #include "spu/psi/cryptor/ecc_utils.h"
 
@@ -26,14 +26,14 @@ namespace spu::psi {
 
 void Sm2Cryptor::EccMask(absl::Span<const char> batch_points,
                          absl::Span<char> dest_points) const {
-  YASL_ENFORCE(batch_points.size() % kEcPointCompressLength == 0, "{} % {}!=0",
+  YACL_ENFORCE(batch_points.size() % kEcPointCompressLength == 0, "{} % {}!=0",
                batch_points.size(), kEcPointCompressLength);
 
   using Item = std::array<char, kEcPointCompressLength>;
   static_assert(sizeof(Item) == kEcPointCompressLength);
 
   auto mask_functor = [this](const Item& in, Item& out) {
-    BnCtxPtr bn_ctx(yasl::CheckNotNull(BN_CTX_new()));
+    BnCtxPtr bn_ctx(yacl::CheckNotNull(BN_CTX_new()));
 
     EcGroupSt ec_group(ec_group_nid_);
 
@@ -62,7 +62,7 @@ void Sm2Cryptor::EccMask(absl::Span<const char> batch_points,
   absl::Span<Item> output(reinterpret_cast<Item*>(dest_points.data()),
                           dest_points.size() / sizeof(Item));
 
-  yasl::parallel_for(0, input.size(), 1, [&](int64_t begin, int64_t end) {
+  yacl::parallel_for(0, input.size(), 1, [&](int64_t begin, int64_t end) {
     for (int64_t idx = begin; idx < end; ++idx) {
       mask_functor(input[idx], output[idx]);
     }

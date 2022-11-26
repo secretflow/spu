@@ -25,10 +25,10 @@
 #include "absl/strings/str_split.h"
 #include "gtest/gtest.h"
 #include "spdlog/spdlog.h"
-#include "yasl/base/exception.h"
-#include "yasl/crypto/pseudo_random_generator.h"
-#include "yasl/link/test_util.h"
-#include "yasl/utils/rand.h"
+#include "yacl/base/exception.h"
+#include "yacl/crypto/tools/prg.h"
+#include "yacl/crypto/utils/rand.h"
+#include "yacl/link/test_util.h"
 
 #include "spu/psi/core/ecdh_oprf/ecdh_oprf_selector.h"
 #include "spu/psi/utils/batch_provider.h"
@@ -59,9 +59,9 @@ class BasicEcdhOprfTest : public ::testing::TestWithParam<TestParams> {};
 
 TEST_P(BasicEcdhOprfTest, Works) {
   auto params = GetParam();
-  auto ctxs = yasl::link::test::SetupWorld(2);
+  auto ctxs = yacl::link::test::SetupWorld(2);
 
-  yasl::PseudoRandomGenerator<uint64_t> prg(yasl::DrbgRandSeed());
+  yacl::Prg<uint64_t> prg(yacl::DrbgRandSeed());
 
   std::vector<std::string> items_a_vec(params.items_size);
   std::vector<std::string> items_b_vec(params.items_size);
@@ -125,7 +125,7 @@ TEST_P(BasicEcdhOprfTest, Works) {
   //
   // shuffle server side FullEvaluated data
   //
-  std::mt19937 rng(yasl::DrbgRandSeed());
+  std::mt19937 rng(yacl::DrbgRandSeed());
   std::shuffle(server_evaluate_items.begin(), server_evaluate_items.end(), rng);
 
   //
@@ -151,7 +151,7 @@ TEST_P(BasicEcdhOprfTest, Works) {
 
   // online phase
   /*
-  auto ctxs_online = yasl::link::test::SetupWorld(2);
+  auto ctxs_online = yacl::link::test::SetupWorld(2);
 
   server_options.link0 = ctxs_online[0];
   server_options.link1 = ctxs_online[0]->Spawn();
@@ -206,7 +206,7 @@ TEST_P(BasicEcdhOprfTest, Works) {
     if (std::binary_search(client_peer_evaluate_items.begin(),
                            client_peer_evaluate_items.end(),
                            client_self_evaluate_items[index])) {
-      YASL_ENFORCE(index < items_b_vec.size());
+      YACL_ENFORCE(index < items_b_vec.size());
       intersection.push_back(items_b_vec[index]);
     }
   }

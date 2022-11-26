@@ -16,7 +16,7 @@
 # > bazel run -c opt //examples/python/utils:nodectl -- up
 #
 # Run this example script.
-# > bazel run //examples/python/ml:stax_nn
+# > bazel run -c opt //examples/python/ml:stax_nn
 
 import json
 import time
@@ -27,7 +27,7 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 import tensorflow_datasets as tfds
-from jax.example_libraries import optimizers, stax
+from jax.example_libraries import stax
 from keras.datasets import cifar10
 from datetime import datetime
 
@@ -46,11 +46,22 @@ from examples.python.utils.stax_models import (
 
 from sklearn.metrics import accuracy_score
 
+
+import argparse
+
+parser = argparse.ArgumentParser(description='distributed driver.')
+parser.add_argument("--model", default='network_a')
+parser.add_argument("-c", "--config", default="examples/python/conf/3pc.json")
+parser.add_argument("-l", "--learning_rate", default=0.01)
+parser.add_argument("-e", "--epoch", default=5)
+parser.add_argument("-b", "--batch_size", default=128)
+parser.add_argument("-o", "--optimizer", default="SGD")
+args = parser.parse_args()
+
 # Follows https://arxiv.org/pdf/2107.00501.pdf Appendix C.
-DEFAULT_LEARNING_RATE = 0.01
-# Suggested to be 150.
-DEFAULT_EPOCHS = 5
-DEFAULT_BATCH_SIZE = 128
+DEFAULT_LEARNING_RATE = args.learning_rate
+DEFAULT_EPOCHS = args.epoch
+DEFAULT_BATCH_SIZE = args.batch_size
 
 
 def train(
@@ -69,7 +80,20 @@ def train(
         [-1 if idx == 0 else i for idx, i in enumerate(list(train_x.shape))]
     )
     _, params_init = init_fun(key, input_shape)
-    opt_init, opt_update, get_params = optimizers.momentum(learning_rate, 0.9)
+    if args.optimizer in ["SGD", "sgd"]:
+        from jax.example_libraries import optimizers
+
+        opt_init, opt_update, get_params = optimizers.momentum(learning_rate, 0.9)
+    elif args.optimizer in ["ADAM", "adam"]:
+        from jax.example_libraries import optimizers
+
+        opt_init, opt_update, get_params = optimizers.adam(learning_rate)
+    elif args.optimizer in ["AMSgrad", "amsgrad"]:
+        from examples.python.utils import optimizers
+
+        opt_init, opt_update, get_params = optimizers.amsgrad(learning_rate)
+    else:
+        raise RuntimeError(f"Unsupported optimizer type {args.optimizer}.")
     opt_state = opt_init(params_init)
 
     def update_model(state, imgs, labels, i):
@@ -92,12 +116,13 @@ def train(
 
     print('Start trainning...')
     for i in range(1, epochs + 1):
-        imgs_batchs = jnp.array_split(train_x, len(train_x) / batch_size, axis=0)
-        labels_batchs = jnp.array_split(train_y, len(train_y) / batch_size, axis=0)
-
-        for batch_idx, (batch_images, batch_labels) in enumerate(
-            zip(imgs_batchs, labels_batchs)
-        ):
+        for batch_idx in range(math.ceil(len(train_x) / batch_size)):
+            batch_images = train_x[
+                batch_idx * batch_size : (batch_idx + 1) * batch_size
+            ]
+            batch_labels = train_y[
+                batch_idx * batch_size : (batch_idx + 1) * batch_size
+            ]
             it = next(itercount)
             print(
                 f'{datetime.now().time()} Epoch: {i}/{epochs}  Batch: {batch_idx}/{math.floor(len(train_x) / batch_size)}'
@@ -266,12 +291,6 @@ def train_chamelon(run_on_spu: bool = False):
 """
 NN functionality test
 """
-import argparse
-
-parser = argparse.ArgumentParser(description='distributed driver.')
-parser.add_argument("--model", default='network_a')
-parser.add_argument("-c", "--config", default="examples/python/conf/3pc.json")
-args = parser.parse_args()
 
 print(f'The selected NN model is {args.model}.')
 

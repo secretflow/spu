@@ -23,8 +23,8 @@ namespace {
 constexpr int64_t kStride = 1;
 constexpr int64_t kOffset = 0;
 
-std::shared_ptr<yasl::Buffer> stealBuffer(yasl::Buffer&& buf) {
-  return std::make_shared<yasl::Buffer>(std::move(buf));
+std::shared_ptr<yacl::Buffer> stealBuffer(yacl::Buffer&& buf) {
+  return std::make_shared<yacl::Buffer>(std::move(buf));
 }
 
 }  // namespace
@@ -33,9 +33,9 @@ ArrayRef Communicator::allReduce(ReduceOp op, const ArrayRef& in,
                                  std::string_view tag) {
   const auto buf = in.getOrCreateCompactBuf();
 
-  std::vector<yasl::Buffer> bufs = yasl::link::AllGather(lctx_, *buf, tag);
+  std::vector<yacl::Buffer> bufs = yacl::link::AllGather(lctx_, *buf, tag);
 
-  YASL_ENFORCE(bufs.size() == getWorldSize());
+  YACL_ENFORCE(bufs.size() == getWorldSize());
   ArrayRef res = in.clone();
   for (size_t idx = 0; idx < bufs.size(); idx++) {
     if (idx == getRank()) {
@@ -49,7 +49,7 @@ ArrayRef Communicator::allReduce(ReduceOp op, const ArrayRef& in,
     } else if (op == ReduceOp::XOR) {
       ring_xor_(res, arr);
     } else {
-      YASL_THROW("unsupported reduce op={}", static_cast<int>(op));
+      YACL_THROW("unsupported reduce op={}", static_cast<int>(op));
     }
   }
 
@@ -61,10 +61,10 @@ ArrayRef Communicator::allReduce(ReduceOp op, const ArrayRef& in,
 
 ArrayRef Communicator::reduce(ReduceOp op, const ArrayRef& in, size_t root,
                               std::string_view tag) {
-  YASL_ENFORCE(root < lctx_->WorldSize());
+  YACL_ENFORCE(root < lctx_->WorldSize());
   const auto buf = in.getOrCreateCompactBuf();
 
-  std::vector<yasl::Buffer> bufs = yasl::link::Gather(lctx_, *buf, root, tag);
+  std::vector<yacl::Buffer> bufs = yacl::link::Gather(lctx_, *buf, root, tag);
 
   ArrayRef res = in.clone();
   if (getRank() == root) {
@@ -80,7 +80,7 @@ ArrayRef Communicator::reduce(ReduceOp op, const ArrayRef& in, size_t root,
       } else if (op == ReduceOp::XOR) {
         ring_xor_(res, arr);
       } else {
-        YASL_THROW("unsupported reduce op={}", static_cast<int>(op));
+        YACL_THROW("unsupported reduce op={}", static_cast<int>(op));
       }
     }
   }

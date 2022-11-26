@@ -23,8 +23,8 @@
 #include "openssl/crypto.h"
 #include "openssl/rand.h"
 #include "spdlog/spdlog.h"
-#include "yasl/base/byte_container_view.h"
-#include "yasl/base/exception.h"
+#include "yacl/base/byte_container_view.h"
+#include "yacl/base/exception.h"
 
 #include "spu/psi/cryptor/ecc_cryptor.h"
 
@@ -61,7 +61,7 @@ enum class OprfType {
 class IEcdhOprf {
  public:
   IEcdhOprf() {
-    YASL_ENFORCE(RAND_bytes(&private_key_[0], kEccKeySize) == 1,
+    YACL_ENFORCE(RAND_bytes(&private_key_[0], kEccKeySize) == 1,
                  "Cannot create random private key");
   }
 
@@ -79,12 +79,12 @@ class IEcdhOprf {
   virtual size_t GetEcPointLength() const { return kEccKeySize; }
 
   void SetCompareLength(size_t compare_length) {
-    YASL_ENFORCE(compare_length <= kEccKeySize);
+    YACL_ENFORCE(compare_length <= kEccKeySize);
     compare_length_ = compare_length;
   }
 
-  void SetPrivateKey(yasl::ByteContainerView private_key) {
-    YASL_ENFORCE(private_key.size() == kEccKeySize);
+  void SetPrivateKey(yacl::ByteContainerView private_key) {
+    YACL_ENFORCE(private_key.size() == kEccKeySize);
 
     std::memcpy(private_key_, private_key.data(), private_key.size());
   }
@@ -98,7 +98,7 @@ class IEcdhOprfServer : public IEcdhOprf {
  public:
   IEcdhOprfServer() = default;
   // set private_key
-  explicit IEcdhOprfServer(yasl::ByteContainerView private_key) {
+  explicit IEcdhOprfServer(yacl::ByteContainerView private_key) {
     SetPrivateKey(private_key);
   }
 
@@ -123,7 +123,7 @@ class IEcdhOprfServer : public IEcdhOprf {
    * @param input   server's input data
    * @return std::string   H2(x,H1(x)^sk)
    */
-  virtual std::string FullEvaluate(yasl::ByteContainerView input) const = 0;
+  virtual std::string FullEvaluate(yacl::ByteContainerView input) const = 0;
 
   virtual std::vector<std::string> FullEvaluate(
       absl::Span<const std::string> input) const;

@@ -18,7 +18,7 @@
 #include <vector>
 
 #include "absl/types/span.h"
-#include "yasl/base/exception.h"
+#include "yacl/base/exception.h"
 
 namespace spu {
 
@@ -36,7 +36,7 @@ std::vector<int64_t> unflattenIndex(int64_t index,
 
 template <typename T, std::enable_if_t<std::is_integral_v<T>, bool> = true>
 bool bumpIndices(absl::Span<const T> shape, absl::Span<T> indices) {
-  YASL_ENFORCE(shape.size() == indices.size());
+  YACL_ENFORCE(shape.size() == indices.size());
   for (int64_t dimno = indices.size() - 1; dimno >= 0; --dimno) {
     T limit = shape[dimno];
     if (indices[dimno] + 1 < limit) {

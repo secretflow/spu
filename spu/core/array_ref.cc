@@ -43,7 +43,7 @@ void strided_copy(int64_t numel, int64_t elsize, void* dst, int64_t dstride,
 
 }  // namespace detail
 
-ArrayRef::ArrayRef(std::shared_ptr<yasl::Buffer> buf, Type eltype,
+ArrayRef::ArrayRef(std::shared_ptr<yacl::Buffer> buf, Type eltype,
                    int64_t numel, int64_t stride, int64_t offset)
     : buf_(std::move(buf)),
       eltype_(std::move(eltype)),
@@ -54,8 +54,8 @@ ArrayRef::ArrayRef(std::shared_ptr<yasl::Buffer> buf, Type eltype,
   if (numel != 0) {
     const auto elsize = static_cast<int64_t>(eltype_.size());
     const auto bufsize = buf_->size();
-    YASL_ENFORCE(offset >= 0 && offset + elsize <= bufsize);
-    YASL_ENFORCE(
+    YACL_ENFORCE(offset >= 0 && offset + elsize <= bufsize);
+    YACL_ENFORCE(
         (offset + stride * (numel - 1) >= 0) &&
             (offset + stride * (numel - 1) + elsize <= bufsize),
         "sanity failed, eltype={}, offset={}, stride={}, numel={}, buf.size={}",
@@ -64,7 +64,7 @@ ArrayRef::ArrayRef(std::shared_ptr<yasl::Buffer> buf, Type eltype,
 }
 
 ArrayRef::ArrayRef(Type eltype, size_t numel)
-    : ArrayRef(std::make_shared<yasl::Buffer>(numel * eltype.size()),
+    : ArrayRef(std::make_shared<yacl::Buffer>(numel * eltype.size()),
                eltype,  // eltype
                numel,   // numel
                1,       // stride,
@@ -72,7 +72,7 @@ ArrayRef::ArrayRef(Type eltype, size_t numel)
       ) {}
 
 ArrayRef makeConstantArrayRef(Type eltype, size_t numel) {
-  return ArrayRef(std::make_shared<yasl::Buffer>(eltype.size()),
+  return ArrayRef(std::make_shared<yacl::Buffer>(eltype.size()),
                   eltype,  // eltype
                   numel,   // numel
                   0,       // stride,
@@ -82,7 +82,7 @@ ArrayRef makeConstantArrayRef(Type eltype, size_t numel) {
 
 bool ArrayRef::isCompact() const { return stride_ == 1; }
 
-std::shared_ptr<yasl::Buffer> ArrayRef::getOrCreateCompactBuf() const {
+std::shared_ptr<yacl::Buffer> ArrayRef::getOrCreateCompactBuf() const {
   if (isCompact() && offset_ == 0) {
     return buf();
   }
@@ -99,7 +99,7 @@ ArrayRef ArrayRef::clone() const {
 
 ArrayRef ArrayRef::as(const Type& new_ty, bool force) const {
   if (!force) {
-    YASL_ENFORCE(elsize() == new_ty.size(),
+    YACL_ENFORCE(elsize() == new_ty.size(),
                  "viewed type={} not equal to origin type={}", new_ty,
                  eltype());
   }
@@ -116,7 +116,7 @@ ArrayRef ArrayRef::slice(int64_t start, int64_t stop, int64_t stride) const {
   // corresponding dimension) with index values i, i + k, …, i + (m - 1) k
   // where and q and r are the quotient and remainder obtained by dividing j -
   // i by k: j - i = q k + r, so that i + (m - 1) k < j.
-  YASL_ENFORCE(start < numel_, "start={}, numel_={}", start, numel_);
+  YACL_ENFORCE(start < numel_, "start={}, numel_={}", start, numel_);
 
   const int64_t q = (stop - start) / stride;
   const int64_t r = (stop - start) % stride;

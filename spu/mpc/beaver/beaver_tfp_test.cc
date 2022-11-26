@@ -21,7 +21,7 @@ namespace spu::mpc {
 INSTANTIATE_TEST_SUITE_P(
     BeaverTfpUnsafeTest, BeaverTest,
     testing::Combine(
-        testing::Values([](const std::shared_ptr<yasl::link::Context>& lctx) {
+        testing::Values([](const std::shared_ptr<yacl::link::Context>& lctx) {
           return std::make_unique<BeaverTfpUnsafe>(lctx);
         }),
         testing::Values(4, 3, 2),

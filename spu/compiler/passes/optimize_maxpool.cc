@@ -38,7 +38,7 @@ private:
   // Which returns both max value and onehot for max location
   void rewriteReduceBody(Region &r, PatternRewriter &rewriter) const {
     auto comp = mlir::dyn_cast<pphlo::MaxOp>(r.front().front());
-    YASL_ENFORCE(comp);
+    YACL_ENFORCE(comp);
 
     auto builder = OpBuilder::atBlockBegin(&r.front());
 
@@ -205,10 +205,10 @@ public:
         // Make sure no dialation
         auto window_dilation = previous_reduce_window.window_dilations();
         auto base_dilation = previous_reduce_window.base_dilations();
-        if (window_dilation.hasValue() && !isAllOne(*window_dilation)) {
+        if (window_dilation.has_value() && !isAllOne(*window_dilation)) {
           continue;
         }
-        if (base_dilation.hasValue() && !isAllOne(*base_dilation)) {
+        if (base_dilation.has_value() && !isAllOne(*base_dilation)) {
           continue;
         }
 

@@ -15,14 +15,14 @@
 #include <functional>
 
 #include "gtest/gtest.h"
-#include "yasl/link/link.h"
+#include "yacl/link/link.h"
 
 #include "spu/mpc/beaver/beaver.h"
 
 namespace spu::mpc {
 
 using CreateBeaverFn = std::function<std::unique_ptr<Beaver>(
-    const std::shared_ptr<yasl::link::Context>& lctx)>;
+    const std::shared_ptr<yacl::link::Context>& lctx)>;
 
 // This test fixture defines the standard test cases for the beaver interface.
 //

@@ -35,8 +35,8 @@ namespace {
 Value f_polynomial(HalContext* ctx, const Value& x,
                    const std::vector<Value>& coeffs) {
   SPU_TRACE_HAL_DISP(ctx, x);
-  YASL_ENFORCE(x.isFxp());
-  YASL_ENFORCE(!coeffs.empty());
+  YACL_ENFORCE(x.isFxp());
+  YACL_ENFORCE(!coeffs.empty());
 
   Value x_pow = x;
   Value res = _mul(ctx, x_pow, coeffs[0]);
@@ -411,7 +411,7 @@ Value tanh_pade_approx(HalContext* ctx, const Value& x) {
 Value f_square(HalContext* ctx, const Value& x) {
   SPU_TRACE_HAL_LEAF(ctx, x);
 
-  YASL_ENFORCE(x.isFxp());
+  YACL_ENFORCE(x.isFxp());
   // TODO(jint) optimize me.
 
   return f_mul(ctx, x, x);
@@ -420,7 +420,7 @@ Value f_square(HalContext* ctx, const Value& x) {
 Value f_exp(HalContext* ctx, const Value& x) {
   SPU_TRACE_HAL_LEAF(ctx, x);
 
-  YASL_ENFORCE(x.isFxp());
+  YACL_ENFORCE(x.isFxp());
 
   if (x.isPublic()) {
     return f_exp_p(ctx, x);
@@ -433,7 +433,7 @@ Value f_exp(HalContext* ctx, const Value& x) {
     case RuntimeConfig::EXP_PADE:
       return detail::exp_pade_approx(ctx, x);
     default:
-      YASL_THROW("unexpected exp approxmation method {}",
+      YACL_THROW("unexpected exp approxmation method {}",
                  ctx->rt_config().fxp_exp_mode());
   }
 }
@@ -441,14 +441,14 @@ Value f_exp(HalContext* ctx, const Value& x) {
 Value f_negate(HalContext* ctx, const Value& x) {
   SPU_TRACE_HAL_LEAF(ctx, x);
 
-  YASL_ENFORCE(x.isFxp());
+  YACL_ENFORCE(x.isFxp());
   return _negate(ctx, x).asFxp();
 }
 
 Value f_abs(HalContext* ctx, const Value& x) {
   SPU_TRACE_HAL_LEAF(ctx, x);
 
-  YASL_ENFORCE(x.isFxp());
+  YACL_ENFORCE(x.isFxp());
   const Value sign = _sign(ctx, x);
 
   return _mul(ctx, sign, x).asFxp();
@@ -457,7 +457,7 @@ Value f_abs(HalContext* ctx, const Value& x) {
 Value f_reciprocal(HalContext* ctx, const Value& x) {
   SPU_TRACE_HAL_LEAF(ctx, x);
 
-  YASL_ENFORCE(x.isFxp());
+  YACL_ENFORCE(x.isFxp());
   if (x.isPublic()) {
     return f_reciprocal_p(ctx, x);
   }
@@ -468,8 +468,8 @@ Value f_reciprocal(HalContext* ctx, const Value& x) {
 Value f_add(HalContext* ctx, const Value& x, const Value& y) {
   SPU_TRACE_HAL_LEAF(ctx, x, y);
 
-  YASL_ENFORCE(x.isFxp());
-  YASL_ENFORCE(y.isFxp());
+  YACL_ENFORCE(x.isFxp());
+  YACL_ENFORCE(y.isFxp());
 
   return _add(ctx, x, y).asFxp();
 }
@@ -477,16 +477,16 @@ Value f_add(HalContext* ctx, const Value& x, const Value& y) {
 Value f_sub(HalContext* ctx, const Value& x, const Value& y) {
   SPU_TRACE_HAL_LEAF(ctx, x, y);
 
-  YASL_ENFORCE(x.isFxp());
-  YASL_ENFORCE(y.isFxp());
+  YACL_ENFORCE(x.isFxp());
+  YACL_ENFORCE(y.isFxp());
   return f_add(ctx, x, f_negate(ctx, y));
 }
 
 Value f_mul(HalContext* ctx, const Value& x, const Value& y) {
   SPU_TRACE_HAL_LEAF(ctx, x, y);
 
-  YASL_ENFORCE(x.isFxp());
-  YASL_ENFORCE(y.isFxp());
+  YACL_ENFORCE(x.isFxp());
+  YACL_ENFORCE(y.isFxp());
 
   return _trunc(ctx, _mul(ctx, x, y)).asFxp();
 }
@@ -494,8 +494,8 @@ Value f_mul(HalContext* ctx, const Value& x, const Value& y) {
 Value f_mmul(HalContext* ctx, const Value& x, const Value& y) {
   SPU_TRACE_HAL_LEAF(ctx, x, y);
 
-  YASL_ENFORCE(x.isFxp());
-  YASL_ENFORCE(y.isFxp());
+  YACL_ENFORCE(x.isFxp());
+  YACL_ENFORCE(y.isFxp());
 
   return _trunc(ctx, _mmul(ctx, x, y)).asFxp();
 }
@@ -503,8 +503,8 @@ Value f_mmul(HalContext* ctx, const Value& x, const Value& y) {
 Value f_div(HalContext* ctx, const Value& x, const Value& y) {
   SPU_TRACE_HAL_LEAF(ctx, x, y);
 
-  YASL_ENFORCE(x.isFxp());
-  YASL_ENFORCE(y.isFxp());
+  YACL_ENFORCE(x.isFxp());
+  YACL_ENFORCE(y.isFxp());
 
   if (x.isPublic() && y.isPublic()) {
     return f_div_p(ctx, x, y);
@@ -516,8 +516,8 @@ Value f_div(HalContext* ctx, const Value& x, const Value& y) {
 Value f_equal(HalContext* ctx, const Value& x, const Value& y) {
   SPU_TRACE_HAL_LEAF(ctx, x, y);
 
-  YASL_ENFORCE(x.isFxp());
-  YASL_ENFORCE(y.isFxp());
+  YACL_ENFORCE(x.isFxp());
+  YACL_ENFORCE(y.isFxp());
 
   return _eqz(ctx, f_sub(ctx, x, y)).setDtype(DT_I1);
 }
@@ -525,8 +525,8 @@ Value f_equal(HalContext* ctx, const Value& x, const Value& y) {
 Value f_less(HalContext* ctx, const Value& x, const Value& y) {
   SPU_TRACE_HAL_LEAF(ctx, x, y);
 
-  YASL_ENFORCE(x.isFxp());
-  YASL_ENFORCE(y.isFxp());
+  YACL_ENFORCE(x.isFxp());
+  YACL_ENFORCE(y.isFxp());
 
   return _less(ctx, x, y).setDtype(DT_I1);
 }
@@ -534,7 +534,7 @@ Value f_less(HalContext* ctx, const Value& x, const Value& y) {
 Value f_log(HalContext* ctx, const Value& x) {
   SPU_TRACE_HAL_LEAF(ctx, x);
 
-  YASL_ENFORCE(x.isFxp());
+  YACL_ENFORCE(x.isFxp());
 
   if (x.isPublic()) {
     return f_log_p(ctx, x);
@@ -548,7 +548,7 @@ Value f_log(HalContext* ctx, const Value& x) {
     case RuntimeConfig::LOG_NEWTON:
       return detail::log_householder_approx(ctx, x);
     default:
-      YASL_THROW("unlogected log approxmation method {}",
+      YACL_THROW("unlogected log approxmation method {}",
                  ctx->rt_config().fxp_log_mode());
   }
 }
@@ -556,7 +556,7 @@ Value f_log(HalContext* ctx, const Value& x) {
 Value f_log1p(HalContext* ctx, const Value& x) {
   SPU_TRACE_HAL_LEAF(ctx, x);
 
-  YASL_ENFORCE(x.isFxp());
+  YACL_ENFORCE(x.isFxp());
 
   return f_log(ctx, f_add(ctx, constant(ctx, 1.0f, x.shape()), x));
 }
@@ -564,7 +564,7 @@ Value f_log1p(HalContext* ctx, const Value& x) {
 Value f_floor(HalContext* ctx, const Value& x) {
   SPU_TRACE_HAL_LEAF(ctx, x);
 
-  YASL_ENFORCE(x.isFxp());
+  YACL_ENFORCE(x.isFxp());
 
   const size_t fbits = ctx->getFxpBits();
   return _lshift(ctx, _arshift(ctx, x, fbits), fbits).asFxp();
@@ -573,7 +573,7 @@ Value f_floor(HalContext* ctx, const Value& x) {
 Value f_ceil(HalContext* ctx, const Value& x) {
   SPU_TRACE_HAL_LEAF(ctx, x);
 
-  YASL_ENFORCE(x.isFxp());
+  YACL_ENFORCE(x.isFxp());
 
   // TODO: Add fxp::epsilon
   return f_floor(
@@ -586,7 +586,7 @@ Value f_ceil(HalContext* ctx, const Value& x) {
 Value f_log2(HalContext* ctx, const Value& x) {
   SPU_TRACE_HAL_LEAF(ctx, x);
 
-  YASL_ENFORCE(x.isFxp());
+  YACL_ENFORCE(x.isFxp());
 
   return detail::log2_pade_approx(ctx, x).asFxp();
 }

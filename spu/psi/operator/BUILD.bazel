@@ -21,8 +21,9 @@ spu_cc_library(
     srcs = ["base_operator.cc"],
     hdrs = ["base_operator.h"],
     deps = [
-        "//spu/psi/utils:serialize",
-        "@yasl//yasl/link",
+        "//spu/psi:psi_cc_proto",
+        "//spu/psi/utils",
+        "@yacl//yacl/link",
     ],
 )
 
@@ -32,8 +33,10 @@ spu_cc_library(
     hdrs = ["ecdh_3party_psi.h"],
     deps = [
         ":base_operator",
+        ":factory",
         "//spu/psi/core:ecdh_3pc_psi",
     ],
+    alwayslink = True,
 )
 
 spu_cc_library(
@@ -42,9 +45,11 @@ spu_cc_library(
     hdrs = ["kkrt_2party_psi.h"],
     deps = [
         ":base_operator",
+        ":factory",
         "//spu/psi/core:kkrt_psi",
-        "@yasl//yasl/utils:parallel",
+        "@yacl//yacl/utils:parallel",
     ],
+    alwayslink = True,
 )
 
 spu_cc_library(
@@ -53,10 +58,12 @@ spu_cc_library(
     hdrs = ["nparty_psi.h"],
     deps = [
         ":base_operator",
+        ":factory",
         ":kkrt_2party_psi",
         "//spu/psi/core:ecdh_psi",
-        "@yasl//yasl/utils:parallel",
+        "@yacl//yacl/utils:parallel",
     ],
+    alwayslink = True,
 )
 
 spu_cc_test(
@@ -69,14 +76,13 @@ spu_cc_test(
 )
 
 spu_cc_library(
-    name = "operator",
-    srcs = ["operator.cc"],
-    hdrs = ["operator.h"],
+    name = "factory",
+    hdrs = ["factory.h"],
     deps = [
-        ":bc22_2party_psi",
-        ":ecdh_3party_psi",
-        ":kkrt_2party_psi",
-        ":nparty_psi",
+        ":base_operator",
+        "//spu/psi:psi_cc_proto",
+        "@yacl//yacl/base:exception",
+        "@yacl//yacl/link",
     ],
 )
 
@@ -86,6 +92,18 @@ spu_cc_library(
     hdrs = ["bc22_2party_psi.h"],
     deps = [
         ":base_operator",
+        ":factory",
         "//spu/psi/core/bc22_psi",
+    ],
+    alwayslink = True,
+)
+
+spu_cc_library(
+    name = "operator",
+    deps = [
+        ":bc22_2party_psi",
+        ":ecdh_3party_psi",
+        ":kkrt_2party_psi",
+        ":nparty_psi",
     ],
 )

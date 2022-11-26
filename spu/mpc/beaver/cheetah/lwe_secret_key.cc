@@ -14,7 +14,7 @@
 
 #include "seal/util/ntt.h"
 #include "seal/util/polyarithsmallmod.h"
-#include "yasl/base/exception.h"
+#include "yacl/base/exception.h"
 
 #include "spu/mpc/beaver/cheetah/types.h"
 
@@ -22,7 +22,7 @@ namespace spu::mpc {
 
 LWESecretKey::LWESecretKey(const RLWESecretKey &rlwe_sk,
                            const seal::SEALContext &context) {
-  YASL_ENFORCE(seal::is_metadata_valid_for(rlwe_sk, context),
+  YACL_ENFORCE(seal::is_metadata_valid_for(rlwe_sk, context),
                "invalid rlwe secret key for this context");
 
   const auto &parms = context.key_context_data()->parms();
@@ -59,7 +59,7 @@ size_t LWESecretKey::save(seal::seal_byte *buffer, size_t size,
   try {
     return secret_non_ntt_.save(buffer, size, compr_mode);
   } catch (const std::exception &e) {
-    YASL_THROW(fmt::format("SEAL error [{}]", e.what()));
+    YACL_THROW(fmt::format("SEAL error [{}]", e.what()));
   }
 }
 
@@ -68,7 +68,7 @@ void LWESecretKey::load(const seal::SEALContext &context,
   try {
     secret_non_ntt_.load(context, buffer, size);
   } catch (const std::exception &e) {
-    YASL_THROW(fmt::format("SEAL error [{}]", e.what()));
+    YACL_THROW(fmt::format("SEAL error [{}]", e.what()));
   }
 }
 
@@ -77,7 +77,7 @@ void LWESecretKey::unsafe_load(const seal::SEALContext &context,
   try {
     secret_non_ntt_.unsafe_load(context, buffer, size);
   } catch (const std::exception &e) {
-    YASL_THROW(fmt::format("SEAL error [{}]", e.what()));
+    YACL_THROW(fmt::format("SEAL error [{}]", e.what()));
   }
 }
 

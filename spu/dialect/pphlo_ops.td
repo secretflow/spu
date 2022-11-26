@@ -44,7 +44,7 @@ class PPHLO_Op<string mnemonic, list<Trait> traits>
 // pphlo nullary op definitions.
 //===----------------------------------------------------------------------===//
 
-def PPHLO_ConstantOp : PPHLO_Op<"constant", [ConstantLike, NoSideEffect]> {
+def PPHLO_ConstantOp : PPHLO_Op<"constant", [ConstantLike, Pure]> {
   let summary = "Constant operator";
   let description = [{Create a constant value.}];
   let arguments = (ins ElementsAttr : $value);
@@ -54,7 +54,7 @@ def PPHLO_ConstantOp : PPHLO_Op<"constant", [ConstantLike, NoSideEffect]> {
   let hasFolder = 1;
 }
 
-def PPHLO_IotaOp : PPHLO_Op<"iota", [NoSideEffect]> {
+def PPHLO_IotaOp : PPHLO_Op<"iota", [Pure]> {
   let summary = "Iota operator";
   let description = [{
     Creates a rank 1 array of values starting at zero and incrementing by one.
@@ -77,7 +77,7 @@ class PPHLO_UnaryElementwiseOp<string mnemonic, list<Trait> traits,
 }
 
 def PPHLO_ConvertOp
-    : PPHLO_UnaryElementwiseOp<"convert", [NoSideEffect], PPHLO_Tensor> {
+    : PPHLO_UnaryElementwiseOp<"convert", [Pure], PPHLO_Tensor> {
   let summary = "Convert operator";
   let description = [{
     Performs element-wise conversion of values from one type to another,
@@ -94,7 +94,7 @@ def PPHLO_ConvertOp
 }
 
 def PPHLO_SqrtOp
-    : PPHLO_UnaryElementwiseOp<"sqrt", [NoSideEffect], PPHLO_FpTensor> {
+    : PPHLO_UnaryElementwiseOp<"sqrt", [Pure], PPHLO_FpTensor> {
   let summary = "Square-root operator";
   let description = [{
     Returns `sqrt(operand)` element-wise.
@@ -105,7 +105,7 @@ def PPHLO_SqrtOp
 }
 
 def PPHLO_RsqrtOp
-    : PPHLO_UnaryElementwiseOp<"rsqrt", [NoSideEffect], PPHLO_FpTensor> {
+    : PPHLO_UnaryElementwiseOp<"rsqrt", [Pure], PPHLO_FpTensor> {
   let summary = "Reciprocal of square-root operator";
   let description = [{
     Returns `rsqrt(operand)` element-wise.
@@ -116,7 +116,7 @@ def PPHLO_RsqrtOp
 }
 
 def PPHLO_TanhOp
-    : PPHLO_UnaryElementwiseOp<"tanh", [NoSideEffect], PPHLO_FpTensor> {
+    : PPHLO_UnaryElementwiseOp<"tanh", [Pure], PPHLO_FpTensor> {
   let summary = "Tanh operator";
   let description = [{
     Returns `tanh(operand)` element-wise.
@@ -127,7 +127,7 @@ def PPHLO_TanhOp
 }
 
 def PPHLO_NegOp
-    : PPHLO_UnaryElementwiseOp<"negate", [NoSideEffect], PPHLO_Tensor> {
+    : PPHLO_UnaryElementwiseOp<"negate", [Pure], PPHLO_Tensor> {
   let summary = "Negation operator";
   let description = [{
     Returns `- operand` element -
@@ -139,7 +139,7 @@ def PPHLO_NegOp
 }
 
 def PPHLO_ExpOp
-    : PPHLO_UnaryElementwiseOp<"exponential", [NoSideEffect], PPHLO_FpTensor> {
+    : PPHLO_UnaryElementwiseOp<"exponential", [Pure], PPHLO_FpTensor> {
   let summary = "Exponential operator";
   let description = [{
     Returns `e ^ (operand)` element-wise.
@@ -150,7 +150,7 @@ def PPHLO_ExpOp
 }
 
 def PPHLO_Expm1Op: PPHLO_UnaryElementwiseOp<"exponential_minus_one",
-    [NoSideEffect], PPHLO_FpTensor> {
+    [Pure], PPHLO_FpTensor> {
   let summary = "Exponential minus one operator";
   let description = [{
     Returns `e^(operand) - 1` element-wise.
@@ -161,7 +161,7 @@ def PPHLO_Expm1Op: PPHLO_UnaryElementwiseOp<"exponential_minus_one",
 }
 
 def PPHLO_LogOp
-    : PPHLO_UnaryElementwiseOp<"log", [NoSideEffect], PPHLO_FpTensor> {
+    : PPHLO_UnaryElementwiseOp<"log", [Pure], PPHLO_FpTensor> {
   let summary = "Log operator";
   let description = [{
     Returns `log(operand)` element-wise.
@@ -171,7 +171,7 @@ def PPHLO_LogOp
   }];
 }
 
-def PPHLO_Log1pOp : PPHLO_UnaryElementwiseOp<"log_plus_one", [NoSideEffect],
+def PPHLO_Log1pOp : PPHLO_UnaryElementwiseOp<"log_plus_one", [Pure],
                                              PPHLO_FpTensor> {
   let summary = "Log1p operator";
   let description = [{
@@ -183,7 +183,7 @@ def PPHLO_Log1pOp : PPHLO_UnaryElementwiseOp<"log_plus_one", [NoSideEffect],
 }
 
 def PPHLO_CeilOp
-    : PPHLO_UnaryElementwiseOp<"ceil", [NoSideEffect], PPHLO_FpTensor> {
+    : PPHLO_UnaryElementwiseOp<"ceil", [Pure], PPHLO_FpTensor> {
   let summary = "Ceil operator";
   let description = [{
     Returns `Ceil(operand)` element-wise.
@@ -194,7 +194,7 @@ def PPHLO_CeilOp
 }
 
 def PPHLO_FloorOp
-    : PPHLO_UnaryElementwiseOp<"floor", [NoSideEffect], PPHLO_FpTensor> {
+    : PPHLO_UnaryElementwiseOp<"floor", [Pure], PPHLO_FpTensor> {
   let summary = "Floor operator";
   let description = [{
     Returns `Floor(operand)` element-wise.
@@ -205,7 +205,7 @@ def PPHLO_FloorOp
 }
 
 def PPHLO_RoundOp
-    : PPHLO_UnaryElementwiseOp<"round_nearest_afz", [NoSideEffect], PPHLO_FpTensor> {
+    : PPHLO_UnaryElementwiseOp<"round_nearest_afz", [Pure], PPHLO_FpTensor> {
   let summary = "Round operator, ties away from zero";
   let description = [{
     Returns `Round(operand)` element-wise, rounding to nearest integer with
@@ -217,7 +217,7 @@ def PPHLO_RoundOp
 }
 
 def PPHLO_AbsOp
-    : PPHLO_UnaryElementwiseOp<"abs", [NoSideEffect], PPHLO_Tensor> {
+    : PPHLO_UnaryElementwiseOp<"abs", [Pure], PPHLO_Tensor> {
   let summary = "Absolute value operator";
   let description = [{
     Returns `abs(operand)` element-wise.
@@ -229,7 +229,7 @@ def PPHLO_AbsOp
 
 def PPHLO_ReciprocalOp
     : PPHLO_UnaryElementwiseOp<"reciprocal",
-                               [NoSideEffect, SameOperandsAndResultType],
+                               [Pure, SameOperandsAndResultType],
                                PPHLO_FpTensor> {
   let summary = "Reciprocal operator";
   let description = [{
@@ -243,7 +243,7 @@ def PPHLO_ReciprocalOp
 
 def PPHLO_LogisticOp
     : PPHLO_UnaryElementwiseOp<"logistic",
-                               [NoSideEffect, SameOperandsAndResultType],
+                               [Pure, SameOperandsAndResultType],
                                PPHLO_FpTensor> {
   let summary = "Reciprocal operator";
   let description = [{
@@ -255,7 +255,7 @@ def PPHLO_LogisticOp
 }
 
 def PPHLO_NotOp
-    : PPHLO_UnaryElementwiseOp<"not", [NoSideEffect, SameOperandsAndResultType],
+    : PPHLO_UnaryElementwiseOp<"not", [Pure, SameOperandsAndResultType],
                                PPHLO_IntTensor> {
   let summary = "Not operator";
   let description = [{
@@ -267,7 +267,7 @@ def PPHLO_NotOp
 }
 
 def PPHLO_SignOp
-    : PPHLO_UnaryElementwiseOp<"sign", [NoSideEffect, SameOperandsAndResultType],
+    : PPHLO_UnaryElementwiseOp<"sign", [Pure, SameOperandsAndResultType],
                                PPHLO_Tensor> {
   let summary = "Sign operator";
   let description = [{
@@ -284,7 +284,7 @@ def PPHLO_SignOp
   }];
 }
 
-def PPHLO_PreferAOp : PPHLO_UnaryElementwiseOp<"prefer_a", [NoSideEffect], PPHLO_Tensor> {
+def PPHLO_PreferAOp : PPHLO_UnaryElementwiseOp<"prefer_a", [Pure], PPHLO_Tensor> {
   let summary = "Prefer AShare operator";
   let description = [{
     Convert input to AShare if possible.
@@ -302,7 +302,7 @@ class PPHLO_BinaryElementwiseOp<string mnemonic, list<Trait> traits>
   let results = (outs PPHLO_Tensor);
 }
 
-def PPHLO_SubtractOp : PPHLO_BinaryElementwiseOp<"subtract", [NoSideEffect]> {
+def PPHLO_SubtractOp : PPHLO_BinaryElementwiseOp<"subtract", [Pure]> {
   let summary = "Subtraction operator";
   let description = [{
     Returns `lhs - rhs` element-wise.
@@ -313,7 +313,7 @@ def PPHLO_SubtractOp : PPHLO_BinaryElementwiseOp<"subtract", [NoSideEffect]> {
 }
 
 def PPHLO_MaxOp
-    : PPHLO_BinaryElementwiseOp<"maximum", [Commutative, NoSideEffect]> {
+    : PPHLO_BinaryElementwiseOp<"maximum", [Commutative, Pure]> {
   let summary = "Maximum operator";
   let description = [{
     Returns `max(lhs, rhs)` element-wise.
@@ -324,7 +324,7 @@ def PPHLO_MaxOp
 }
 
 def PPHLO_MinOp
-    : PPHLO_BinaryElementwiseOp<"minimum", [Commutative, NoSideEffect]> {
+    : PPHLO_BinaryElementwiseOp<"minimum", [Commutative, Pure]> {
   let summary = "Minimum operator";
   let description = [{
     Returns `min(lhs, rhs)` element-wise.
@@ -334,7 +334,7 @@ def PPHLO_MinOp
     }];
 }
 
-def PPHLO_DivOp : PPHLO_BinaryElementwiseOp<"divide", [NoSideEffect]> {
+def PPHLO_DivOp : PPHLO_BinaryElementwiseOp<"divide", [Pure]> {
   let summary = "Division operator";
   let description = [{
     Returns `lhs / rhs` element-wise.
@@ -345,7 +345,7 @@ def PPHLO_DivOp : PPHLO_BinaryElementwiseOp<"divide", [NoSideEffect]> {
 }
 
 def PPHLO_AddOp
-    : PPHLO_BinaryElementwiseOp<"add", [Commutative, NoSideEffect]> {
+    : PPHLO_BinaryElementwiseOp<"add", [Commutative, Pure]> {
   let summary = "Addition operator";
   let description = [{
     Returns `lhs + rhs` element-wise.
@@ -356,7 +356,7 @@ def PPHLO_AddOp
 }
 
 def PPHLO_MulOp
-    : PPHLO_BinaryElementwiseOp<"multiply", [Commutative, NoSideEffect]> {
+    : PPHLO_BinaryElementwiseOp<"multiply", [Commutative, Pure]> {
   let summary = "Multiplication operator";
   let description = [{
     Returns `lhs * rhs` element-wise.
@@ -366,7 +366,7 @@ def PPHLO_MulOp
   }];
 }
 
-def PPHLO_PowOp : PPHLO_BinaryElementwiseOp<"power", [NoSideEffect]> {
+def PPHLO_PowOp : PPHLO_BinaryElementwiseOp<"power", [Pure]> {
   let summary = "Power operator";
   let description = [{
     Returns `lhs ^ rhs` element-wise.
@@ -376,7 +376,7 @@ def PPHLO_PowOp : PPHLO_BinaryElementwiseOp<"power", [NoSideEffect]> {
   }];
 }
 
-def PPHLO_RemOp : PPHLO_BinaryElementwiseOp<"remainder", [NoSideEffect]> {
+def PPHLO_RemOp : PPHLO_BinaryElementwiseOp<"remainder", [Pure]> {
   let summary = "Remainder operator";
   let description = [{
     Returns `lhs % rhs` element-wise.
@@ -388,7 +388,7 @@ def PPHLO_RemOp : PPHLO_BinaryElementwiseOp<"remainder", [NoSideEffect]> {
 
 def PPHLO_ShiftLeftOp
     : PPHLO_BinaryElementwiseOp<"shift_left",
-                                [NoSideEffect]> {
+                                [Pure]> {
   let summary = "Shift Left operator";
   let description = [{
     Returns `lhs << rhs` element-wise.
@@ -400,7 +400,7 @@ def PPHLO_ShiftLeftOp
 
 def PPHLO_ShiftRightLogicalOp
     : PPHLO_BinaryElementwiseOp<"shift_right_logical",
-                                [NoSideEffect]> {
+                                [Pure]> {
   let summary = "Shift right logical operator";
   let description = [{
     Returns logical `lhs >> rhs` element-wise.
@@ -412,7 +412,7 @@ def PPHLO_ShiftRightLogicalOp
 
 def PPHLO_ShiftRightArithmeticOp
     : PPHLO_BinaryElementwiseOp<"shift_right_arithmetic",
-                                [NoSideEffect]> {
+                                [Pure]> {
   let summary = "Shift right arithmetic operator";
   let description = [{
     Returns arithmetic `lhs >> rhs` element-wise.
@@ -427,7 +427,7 @@ def PPHLO_ShiftRightArithmeticOp
 //===----------------------------------------------------------------------===//
 class PPHLO_BinaryLogicalElementwiseOp<string mnemonic>
     : PPHLO_BinaryElementwiseOp<
-          mnemonic, [Commutative, NoSideEffect, SameOperandsAndResultShape]> {
+          mnemonic, [Commutative, Pure, SameOperandsAndResultShape]> {
   let arguments = (ins PPHLO_IntTensor : $lhs, PPHLO_IntTensor : $rhs);
 }
 
@@ -466,7 +466,7 @@ def PPHLO_XorOp : PPHLO_BinaryLogicalElementwiseOp<"xor"> {
 //===----------------------------------------------------------------------===//
 def PPHLO_EqualOp
     : PPHLO_Op<"equal",
-               [NoSideEffect, SameOperandsAndResultShape, Elementwise]> {
+               [Pure, SameOperandsAndResultShape, Elementwise]> {
   let summary = "Equal comparison operator";
   let description = [{
     Returns `lhs` == `rhs` element-wise.
@@ -480,7 +480,7 @@ def PPHLO_EqualOp
 
 def PPHLO_NotEqualOp
     : PPHLO_Op<"not_equal",
-               [NoSideEffect, SameOperandsAndResultShape, Elementwise]> {
+               [Pure, SameOperandsAndResultShape, Elementwise]> {
   let summary = "Not-equal comparison operator";
   let description = [{
     Returns `lhs` != `rhs` element-wise.
@@ -494,7 +494,7 @@ def PPHLO_NotEqualOp
 
 def PPHLO_GreaterEqualOp
     : PPHLO_Op<"greater_equal",
-               [NoSideEffect, SameOperandsAndResultShape, Elementwise]> {
+               [Pure, SameOperandsAndResultShape, Elementwise]> {
   let summary = "greater_equal comparison operator";
   let description = [{
     Returns `lhs` >= `rhs` element-wise.
@@ -508,7 +508,7 @@ def PPHLO_GreaterEqualOp
 
 def PPHLO_GreaterOp
     : PPHLO_Op<"greater",
-               [NoSideEffect, SameOperandsAndResultShape, Elementwise]> {
+               [Pure, SameOperandsAndResultShape, Elementwise]> {
   let summary = "greater comparison operator";
   let description = [{elementwise `lhs` > `rhs`.}];
   let arguments = (ins PPHLO_Tensor : $lhs, PPHLO_Tensor : $rhs);
@@ -517,7 +517,7 @@ def PPHLO_GreaterOp
 
 def PPHLO_LessEqualOp
     : PPHLO_Op<"less_equal",
-               [NoSideEffect, SameOperandsAndResultShape, Elementwise]> {
+               [Pure, SameOperandsAndResultShape, Elementwise]> {
   let summary = "less_equal comparison operator";
   let description = [{elementwise `lhs` <= `rhs`.}];
   let arguments = (ins PPHLO_Tensor : $lhs, PPHLO_Tensor : $rhs);
@@ -526,7 +526,7 @@ def PPHLO_LessEqualOp
 
 def PPHLO_LessOp
     : PPHLO_Op<"less",
-               [NoSideEffect, SameOperandsAndResultShape, Elementwise]> {
+               [Pure, SameOperandsAndResultShape, Elementwise]> {
   let summary = "less comparison operator";
   let description = [{
     Returns `lhs` < `rhs` element-wise.
@@ -561,7 +561,7 @@ def PPHLO_RngOp
 // pphlo other op definitions.
 //===----------------------------------------------------------------------===//
 def PPHLO_BroadcastOp
-    : PPHLO_Op<"broadcast", [NoSideEffect, SameOperandsAndResultElementType]> {
+    : PPHLO_Op<"broadcast", [Pure, SameOperandsAndResultElementType]> {
   let summary = "Broadcast a tensor into the given shape by adding dimensions.";
   let description = [{
     Broadcasts the `operand` tensor to a higher rank. This is not the limited
@@ -587,7 +587,7 @@ def PPHLO_BroadcastOp
 }
 
 def PPHLO_ReshapeOp
-    : PPHLO_Op<"reshape", [NoSideEffect, SameOperandsAndResultElementType]> {
+    : PPHLO_Op<"reshape", [Pure, SameOperandsAndResultElementType]> {
   let summary = "Reshape operator";
   let description = [{
     Reshapes the dimensions of `operand` into a new configuration.
@@ -602,7 +602,7 @@ def PPHLO_ReshapeOp
 
 def PPHLO_ConcatenateOp
     : PPHLO_Op<"concatenate",
-               [NoSideEffect, SameOperandsAndResultElementType]> {
+               [Pure, SameOperandsAndResultElementType]> {
   let summary = "Concatenate op";
   let description = [{
     Concatenates a set of tensors along the specified dimension.
@@ -615,7 +615,7 @@ def PPHLO_ConcatenateOp
   let results = (outs PPHLO_Tensor);
 }
 
-def PPHLO_DotOp : PPHLO_Op<"dot", [NoSideEffect]> {
+def PPHLO_DotOp : PPHLO_Op<"dot", [Pure]> {
   let summary = "Dot operator";
   let description = [{
     Performs dot products between vectors, vector/matrix and matrix/matrix
@@ -627,7 +627,7 @@ def PPHLO_DotOp : PPHLO_Op<"dot", [NoSideEffect]> {
   let results = (outs PPHLO_Tensor);
 }
 
-def PPHLO_DotGeneralOp: PPHLO_Op<"dot_general", [NoSideEffect]> {
+def PPHLO_DotGeneralOp: PPHLO_Op<"dot_general", [Pure]> {
   let summary = "General Dot operator";
   let description = [{
     Performs general dot products between vectors, vector/matrix and
@@ -646,7 +646,7 @@ def PPHLO_DotGeneralOp: PPHLO_Op<"dot_general", [NoSideEffect]> {
 }
 
 def PPHLO_SelectOp
-    : PPHLO_Op<"select", [NoSideEffect, SameVariadicOperandSize]> {
+    : PPHLO_Op<"select", [Pure, SameVariadicOperandSize]> {
   let summary = "Select operator";
   let description = [{
     Constructs an output tensor from the elements of `on_true` and `on_false`
@@ -678,7 +678,7 @@ def PPHLO_SelectOp
 }
 
 def PPHLO_SelectAndScatterOp: PPHLO_Op<"select_and_scatter",
-      [RecursiveSideEffects]> {
+      [RecursiveMemoryEffects]> {
   let summary = "SelectAndScatter operator";
   let description = [{
     Runs a windowed selection `select` function over `operand` with shape
@@ -704,7 +704,7 @@ def PPHLO_SelectAndScatterOp: PPHLO_Op<"select_and_scatter",
   let results = (outs PPHLO_Tensor);
 }
 
-def PPHLO_MaxPoolScatterOp: PPHLO_Op<"maxpool_scatter", [NoSideEffect]> {
+def PPHLO_MaxPoolScatterOp: PPHLO_Op<"maxpool_scatter", [Pure]> {
   let summary = "MaxPool Scatter operator";
   let description = [{
     Generates a result which is the value of the input array `operand`,
@@ -725,7 +725,7 @@ def PPHLO_MaxPoolScatterOp: PPHLO_Op<"maxpool_scatter", [NoSideEffect]> {
 }
 
 def PPHLO_ReduceOp : PPHLO_Op<"reduce", [
-  RecursiveSideEffects, SameVariadicOperandSize,
+  RecursiveMemoryEffects, SameVariadicOperandSize,
   SingleBlockImplicitTerminator<"ReturnOp">
 ]> {
   let summary = "Reduce operator";
@@ -751,7 +751,7 @@ def PPHLO_ReduceOp : PPHLO_Op<"reduce", [
 }
 
 def PPHLO_ReduceWindowOp : PPHLO_Op<"reduce_window", [
-  RecursiveSideEffects, SameVariadicOperandSize,
+  RecursiveMemoryEffects, SameVariadicOperandSize,
   SingleBlockImplicitTerminator<"ReturnOp">
 ]> {
   let summary = "ReduceWindow operator";
@@ -784,7 +784,7 @@ def PPHLO_ReduceWindowOp : PPHLO_Op<"reduce_window", [
   let regions = (region SizedRegion<1> : $body);
 }
 
-def PPHLO_ReturnOp : PPHLO_Op<"return", [NoSideEffect, Terminator]> {
+def PPHLO_ReturnOp : PPHLO_Op<"return", [Pure, Terminator]> {
   let summary = [{
     The `pphlo.return` operation terminates a region and returns values.
   }];
@@ -793,7 +793,7 @@ def PPHLO_ReturnOp : PPHLO_Op<"return", [NoSideEffect, Terminator]> {
 }
 
 def PPHLO_TransposeOp
-    : PPHLO_Op<"transpose", [NoSideEffect, SameOperandsAndResultElementType]> {
+    : PPHLO_Op<"transpose", [Pure, SameOperandsAndResultElementType]> {
   let summary = "Transpose operator";
   let description = [{
     Permutes the dimensions of `operand` according to the given `permutation`.
@@ -808,7 +808,7 @@ def PPHLO_TransposeOp
 }
 
 def PPHLO_SliceOp : PPHLO_Op<"slice", [
-  NoSideEffect, SameOperandsAndResultElementType,
+  Pure, SameOperandsAndResultElementType,
   AllTypesMatch<["start_indices", "limit_indices", "strides"]>
 ]> {
   let description = [{
@@ -833,7 +833,7 @@ def PPHLO_DbgPrintOp : PPHLO_Op<"dbg_print", []> {
 }
 
 def PPHLO_ClampOp
-    : PPHLO_Op<"clamp", [NoSideEffect, SameOperandsAndResultShape]> {
+    : PPHLO_Op<"clamp", [Pure, SameOperandsAndResultShape]> {
   let summary = "Clamp operator";
   let description = [{
     Clamps an operand to within the range between a minimum and maximum value.
@@ -852,7 +852,7 @@ def PPHLO_ClampOp
   let results = (outs PPHLO_Tensor);
 }
 
-def PPHLO_BitcastConvertOp : PPHLO_Op<"bitcast_convert", [NoSideEffect]> {
+def PPHLO_BitcastConvertOp : PPHLO_Op<"bitcast_convert", [Pure]> {
   let summary = "BitcastConvert operator";
   let description =[{
    Similar to a 'tf.bitcast' in TensorFlow, performs an element-wise bitcast
@@ -869,7 +869,7 @@ def PPHLO_BitcastConvertOp : PPHLO_Op<"bitcast_convert", [NoSideEffect]> {
 }
 
 def PPHLO_SortOp
-    : PPHLO_Op<"sort", [RecursiveSideEffects, SameOperandsAndResultShape]> {
+    : PPHLO_Op<"sort", [RecursiveMemoryEffects, SameOperandsAndResultShape]> {
   let summary = "Sort operator";
   let description = [{
     Sorts the given `operands` at the given `dimension` with the given
@@ -893,7 +893,7 @@ def PPHLO_SortOp
 }
 
 def PPHLO_ReverseOp
-    : PPHLO_Op<"reverse", [NoSideEffect, SameOperandsAndResultType]> {
+    : PPHLO_Op<"reverse", [Pure, SameOperandsAndResultType]> {
   let summary = "Reverse operator";
   let description = [{
     Reverses the specified dimensions of `operand` according to the given
@@ -909,7 +909,7 @@ def PPHLO_ReverseOp
 }
 
 def HLO_PadOp
-    : PPHLO_Op<"pad", [NoSideEffect, SameOperandsAndResultElementType, InferTensorType]> {
+    : PPHLO_Op<"pad", [Pure, SameOperandsAndResultElementType, InferTensorType]> {
   let summary = "Pad operator";
   let description = [{
     Pads the edges of `operand` with the `padding_value` and according to
@@ -927,7 +927,7 @@ def HLO_PadOp
   let results = (outs PPHLO_Tensor);
 }
 
-def PPHLO_GatherOp : PPHLO_Op<"gather", [NoSideEffect]> {
+def PPHLO_GatherOp : PPHLO_Op<"gather", [Pure]> {
   let summary = "Gather operator";
   let description = [{
     Stitches together several slices of `operand` from offsets specified in
@@ -957,7 +957,7 @@ def ConvolutionAttributes {
   );
 }
 
-def PPHLO_ConvolutionOp : PPHLO_Op<"convolution", [NoSideEffect]> {
+def PPHLO_ConvolutionOp : PPHLO_Op<"convolution", [Pure]> {
   let summary = "Convolution operator";
   let description = [{
     Computes a convolution of the kind used in neural networks.
@@ -982,7 +982,7 @@ def PPHLO_ConvolutionOp : PPHLO_Op<"convolution", [NoSideEffect]> {
   let hasCanonicalizer = 1;
 }
 
-def PPHLO_DynamicSliceOp: PPHLO_Op<"dynamic-slice", [NoSideEffect]> {
+def PPHLO_DynamicSliceOp: PPHLO_Op<"dynamic-slice", [Pure]> {
   let summary = "Dynamic Slice operator";
   let description = [{
     Extracts a sub-array from the input array at dynamic start_indices.
@@ -999,7 +999,7 @@ def PPHLO_DynamicSliceOp: PPHLO_Op<"dynamic-slice", [NoSideEffect]> {
 }
 
 def PPHLO_DynamicUpdateSliceOp: PPHLO_Op<"dynamic-update-slice",
-      [NoSideEffect, AllShapesMatch<["operand", "result"]>]> {
+      [Pure, AllShapesMatch<["operand", "result"]>]> {
   let summary = "Dynamic Update Slice operator";
   let description = [{
     DynamicUpdateSlice generates a result which is the value of the input array
@@ -1019,7 +1019,7 @@ def PPHLO_DynamicUpdateSliceOp: PPHLO_Op<"dynamic-update-slice",
 // pphlo control flow op definitions.
 //===----------------------------------------------------------------------===//
 def PPHLO_WhileOp : PPHLO_Op<"while", [
-  RecursiveSideEffects, PPHLO_PairwiseSameOperandAndResultType, SingleBlockImplicitTerminator<"ReturnOp">
+  RecursiveMemoryEffects, PPHLO_PairwiseSameOperandAndResultType, SingleBlockImplicitTerminator<"ReturnOp">
 ]> {
   let summary = "While operator";
   let description = [{
@@ -1036,7 +1036,7 @@ def PPHLO_WhileOp : PPHLO_Op<"while", [
 }
 
 def PPHLO_IfOp : PPHLO_Op<"if", [
-  RecursiveSideEffects,
+  RecursiveMemoryEffects,
   SingleBlockImplicitTerminator<"ReturnOp">
 ]> {
   let summary = "If operator";

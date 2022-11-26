@@ -16,29 +16,29 @@
 #include <any>
 #include <memory>
 
-#include "yasl/io/rw/reader.h"
-#include "yasl/io/rw/writer.h"
-#include "yasl/io/stream/interface.h"
+#include "yacl/io/rw/reader.h"
+#include "yacl/io/rw/writer.h"
+#include "yacl/io/stream/interface.h"
 
 namespace spu::psi::io {
 
-using Schema = yasl::io::Schema;
+using Schema = yacl::io::Schema;
 
-using InputStream = yasl::io::InputStream;
-using OutputStream = yasl::io::OutputStream;
+using InputStream = yacl::io::InputStream;
+using OutputStream = yacl::io::OutputStream;
 
-using Reader = yasl::io::Reader;
-using Writer = yasl::io::Writer;
-using ReaderOptions = yasl::io::ReaderOptions;
-using WriterOptions = yasl::io::WriterOptions;
+using Reader = yacl::io::Reader;
+using Writer = yacl::io::Writer;
+using ReaderOptions = yacl::io::ReaderOptions;
+using WriterOptions = yacl::io::WriterOptions;
 
-using ColumnVectorBatch = yasl::io::ColumnVectorBatch;
-using FloatColumnVector = yasl::io::FloatColumnVector;
-using DoubleColumnVector = yasl::io::DoubleColumnVector;
-using StringColumnVector = yasl::io::StringColumnVector;
+using ColumnVectorBatch = yacl::io::ColumnVectorBatch;
+using FloatColumnVector = yacl::io::FloatColumnVector;
+using DoubleColumnVector = yacl::io::DoubleColumnVector;
+using StringColumnVector = yacl::io::StringColumnVector;
 
 template <class S>
-using ColumnVector = yasl::io::ColumnVector<S>;
+using ColumnVector = yacl::io::ColumnVector<S>;
 
 struct MemIoOptions {
   // IO buffer

@@ -22,7 +22,7 @@
 
 #include "absl/strings/ascii.h"
 #include "absl/strings/str_split.h"
-#include "yasl/base/exception.h"
+#include "yacl/base/exception.h"
 
 namespace spu::psi {
 
@@ -33,10 +33,10 @@ class CsvHeaderAnalyzer {
     std::set<std::string> target_set = CheckAndNormalizeTokens(target_fields);
 
     std::ifstream in(path);
-    YASL_ENFORCE(in.is_open(), "Cannot open {}", path);
+    YACL_ENFORCE(in.is_open(), "Cannot open {}", path);
     std::string line;
-    YASL_ENFORCE(std::getline(in, line), "Cannot read header line in {}", path);
-    YASL_ENFORCE(!CheckIfBOMExists(line),
+    YACL_ENFORCE(std::getline(in, line), "Cannot read header line in {}", path);
+    YACL_ENFORCE(!CheckIfBOMExists(line),
                  "The file {} starts with BOM(Byte Order Mark).", path);
 
     std::vector<std::string> headers = GetCsvTokens(line);
@@ -49,7 +49,7 @@ class CsvHeaderAnalyzer {
     }
     // Iterate by sorted order.
     for (const auto& target : target_set) {
-      YASL_ENFORCE(col_index_map.find(target) != col_index_map.end(),
+      YACL_ENFORCE(col_index_map.find(target) != col_index_map.end(),
                    "Cannot find feature name='{}' in CSV file header='{}'",
                    target, line);
       target_indices_sorted_.push_back(col_index_map[target]);
@@ -57,7 +57,7 @@ class CsvHeaderAnalyzer {
     // Iterate by target_fields sequence.
     for (std::string target : target_fields) {
       absl::StripAsciiWhitespace(&target);
-      YASL_ENFORCE(col_index_map.find(target) != col_index_map.end(),
+      YACL_ENFORCE(col_index_map.find(target) != col_index_map.end(),
                    "Cannot find feature name='{}' in CSV file header='{}'",
                    target, line);
       target_indices_.push_back(col_index_map[target]);
@@ -88,12 +88,12 @@ class CsvHeaderAnalyzer {
     std::set<std::string> ret;
     for (std::string input : inputs) {
       absl::StripAsciiWhitespace(&input);
-      YASL_ENFORCE(!input.empty(),
+      YACL_ENFORCE(!input.empty(),
                    "Found empty feature name, input feature names='{}'",
                    fmt::join(inputs, ","));
       ret.insert(input);
     }
-    YASL_ENFORCE(ret.size() == inputs.size(), "Repeated feature name in ='{}'",
+    YACL_ENFORCE(ret.size() == inputs.size(), "Repeated feature name in ='{}'",
                  fmt::join(inputs, ","));
     return ret;
   }

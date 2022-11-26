@@ -71,10 +71,10 @@ OpFoldResult ConstantOp::fold(ArrayRef<Attribute> operands) {
 }
 
 OpFoldResult ConvertOp::fold(ArrayRef<Attribute> operands) {
-  auto operand_ty = getOperand().getType().cast<TensorType>();
+  auto operand_ty = operand().getType().cast<TensorType>();
   auto result_ty = getResult().getType().cast<TensorType>();
   if (operand_ty == result_ty) {
-    return getOperand();
+    return operand();
   }
 
   return {};
@@ -486,7 +486,7 @@ OpFoldResult ReciprocalOp::fold(ArrayRef<Attribute> operands) {
     auto splat_val = val.getSplatValue<APFloat>();
     APFloat one(splat_val.getSemantics(), 1);
 
-    return SplatElementsAttr::get(operands[0].getType().dyn_cast<ShapedType>(),
+    return SplatElementsAttr::get(val.getType().dyn_cast<ShapedType>(),
                                   one / splat_val);
   }
 
@@ -500,7 +500,7 @@ OpFoldResult ReciprocalOp::fold(ArrayRef<Attribute> operands) {
     values.push_back(one / it);
   }
 
-  return DenseFPElementsAttr::get(operands[0].getType().dyn_cast<ShapedType>(),
+  return DenseFPElementsAttr::get(val.getType().dyn_cast<ShapedType>(),
                                   values);
 }
 
@@ -911,8 +911,8 @@ ParseResult parseConvolutionDimensions(AsmParser& parser,
       auto dim_location = parser.getCurrentLocation();
       OptionalParseResult parseResult =
           parser.parseOptionalInteger(spatial_dim);
-      if (parseResult.hasValue()) {
-        if (parseResult.getValue().failed()) {
+      if (parseResult.has_value()) {
+        if (parseResult.value().failed()) {
           return failure();
         }
         // We were successful in parsing an integer. Check if it is a valid

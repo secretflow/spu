@@ -39,7 +39,7 @@ TEST_P(CommTest, AllReduce) {
     ring_xor_(xor_x, xs[idx]);
   }
 
-  util::simulate(kWorldSize, [&](std::shared_ptr<yasl::link::Context> lctx) {
+  util::simulate(kWorldSize, [&](std::shared_ptr<yacl::link::Context> lctx) {
     Communicator com(lctx);
     // WHEN
     auto sum_r = com.allReduce(ReduceOp::ADD, xs[com.getRank()], "_");
@@ -65,7 +65,7 @@ TEST_P(CommTest, Reduce) {
     ring_xor_(xor_x, xs[idx]);
   }
 
-  util::simulate(kWorldSize, [&](std::shared_ptr<yasl::link::Context> lctx) {
+  util::simulate(kWorldSize, [&](std::shared_ptr<yacl::link::Context> lctx) {
     Communicator com(lctx);
 
     for (size_t root = 0; root < kWorldSize; root++) {
@@ -95,7 +95,7 @@ TEST_P(CommTest, Rotate) {
     xs[idx] = ring_rand(kField, kNumel);
   }
 
-  util::simulate(kWorldSize, [&](std::shared_ptr<yasl::link::Context> lctx) {
+  util::simulate(kWorldSize, [&](std::shared_ptr<yacl::link::Context> lctx) {
     Communicator com(lctx);
     // WHEN
     auto r = com.rotate(xs[com.getRank()], "_");

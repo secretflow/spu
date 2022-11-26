@@ -41,8 +41,8 @@ spu_cc_library(
         "//spu/mpc/util:ring_ops",
         "//spu/mpc/util:seal_help",
         "@com_github_microsoft_seal//:seal",
-        "@yasl//yasl/base:int128",
-        "@yasl//yasl/utils:parallel",
+        "@yacl//yacl/base:int128",
+        "@yacl//yacl/utils:parallel",
     ],
 )
 

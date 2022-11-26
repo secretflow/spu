@@ -29,7 +29,7 @@ std::vector<spu::Value> IoClient::makeShares(PtBufferView bv, Visibility vtype,
                                              int owner_rank) {
   // FIXME(jint), this should be in the io context.
   const size_t fxp_bits = getDefaultFxpBits(config_);
-  YASL_ENFORCE(fxp_bits != 0, "fxp should never be zero, please check default");
+  YACL_ENFORCE(fxp_bits != 0, "fxp should never be zero, please check default");
 
   if (bv.pt_type == PT_BOOL && vtype == VIS_SECRET &&
       base_io_->hasBitSecretSupport()) {
@@ -38,7 +38,7 @@ std::vector<spu::Value> IoClient::makeShares(PtBufferView bv, Visibility vtype,
 
     auto flat_shares = base_io_->makeBitSecret(flatten(arr));
 
-    YASL_ENFORCE(flat_shares.size() == world_size_);
+    YACL_ENFORCE(flat_shares.size() == world_size_);
     std::vector<spu::Value> result;
     result.reserve(world_size_);
     for (const auto &flat_share : flat_shares) {
@@ -56,7 +56,7 @@ std::vector<spu::Value> IoClient::makeShares(PtBufferView bv, Visibility vtype,
   std::vector<NdArrayRef> shares;
   {
     auto flat_shares = base_io_->toShares(flatten(encoded), vtype);
-    YASL_ENFORCE(flat_shares.size() == world_size_);
+    YACL_ENFORCE(flat_shares.size() == world_size_);
     shares.reserve(world_size_);
     for (const auto &flat_share : flat_shares) {
       shares.push_back(unflatten(flat_share, encoded.shape()));
@@ -73,13 +73,13 @@ std::vector<spu::Value> IoClient::makeShares(PtBufferView bv, Visibility vtype,
 }
 
 NdArrayRef IoClient::combineShares(absl::Span<spu::Value const> values) {
-  YASL_ENFORCE(values.size() == world_size_,
+  YACL_ENFORCE(values.size() == world_size_,
                "wrong number of shares, got={}, expect={}", values.size(),
                world_size_);
 
   // FIXME(jint), this should be in the io context.
   const size_t fxp_bits = getDefaultFxpBits(config_);
-  YASL_ENFORCE(fxp_bits != 0, "fxp should never be zero, please check default");
+  YACL_ENFORCE(fxp_bits != 0, "fxp should never be zero, please check default");
 
   // reconstruct to ring buffer.
   NdArrayRef encoded;
@@ -117,12 +117,12 @@ NdArrayRef ColocatedIo::hostGetVar(const std::string &name) const {
   if (v.isPublic()) {
     return kernel::hal::dump_public(hctx_, v);
   } else if (v.isSecret()) {
-    YASL_THROW("not implemented");
+    YACL_THROW("not implemented");
     // TODO: test the secret's owner is self,
     // - if yes, reconstruct it
     // - else raise an error.
   } else {
-    YASL_THROW("invalid value {}", v);
+    YACL_THROW("invalid value {}", v);
   }
 }
 
@@ -147,16 +147,16 @@ bool ColocatedIo::deviceHasVar(const std::string &name) const {
 //   Bob:   {x1, y1, z1}
 //   Carol: {x2, y2, z2}
 static std::vector<SymbolTableProto>
-all2all(const std::shared_ptr<yasl::link::Context> &lctx,
+all2all(const std::shared_ptr<yacl::link::Context> &lctx,
         const std::vector<SymbolTableProto> &rows) {
-  // TODO: implement all2all in yasl::link
+  // TODO: implement all2all in yacl::link
   for (size_t idx = 0; idx < lctx->WorldSize(); idx++) {
     if (idx == lctx->Rank()) {
       continue;
     }
-    yasl::Buffer buf;
+    yacl::Buffer buf;
     buf.resize(rows[idx].ByteSizeLong());
-    YASL_ENFORCE(rows[idx].SerializeToArray(buf.data(), buf.size()));
+    YACL_ENFORCE(rows[idx].SerializeToArray(buf.data(), buf.size()));
     lctx->SendAsync(idx, std::move(buf), "all2all");
   }
 
@@ -168,7 +168,7 @@ all2all(const std::shared_ptr<yasl::link::Context> &lctx,
     }
     auto data = lctx->Recv(idx, "all2all");
     SymbolTableProto vars;
-    YASL_ENFORCE(vars.ParseFromArray(data.data(), data.size()));
+    YACL_ENFORCE(vars.ParseFromArray(data.data(), data.size()));
     cols.push_back(std::move(vars));
   }
 
@@ -202,13 +202,13 @@ void ColocatedIo::sync() {
   std::vector<SymbolTableProto> shares_per_party(lctx->WorldSize());
   for (const auto &[name, priv] : unsynced_) {
     const auto &arr = priv.arr;
-    YASL_ENFORCE(arr.eltype().isa<PtTy>(), "unsupported type={}", arr.eltype());
+    YACL_ENFORCE(arr.eltype().isa<PtTy>(), "unsupported type={}", arr.eltype());
 
     PtBufferView bv(arr.data(), arr.eltype().as<PtTy>()->pt_type(), arr.shape(),
                     arr.strides());
 
     auto shares = io.makeShares(bv, priv.vtype);
-    YASL_ENFORCE(shares.size() == lctx->WorldSize());
+    YACL_ENFORCE(shares.size() == lctx->WorldSize());
 
     for (size_t idx = 0; idx < shares.size(); idx++) {
       shares_per_party[idx].mutable_symbols()->insert(
@@ -222,7 +222,7 @@ void ColocatedIo::sync() {
   std::set<std::string> all_names;
   for (const auto &values : values_per_party) {
     for (const auto &[name, _] : values.symbols()) {
-      YASL_ENFORCE(all_names.find(name) == all_names.end(),
+      YACL_ENFORCE(all_names.find(name) == all_names.end(),
                    "name duplicated {}", name);
       all_names.insert(name);
     }

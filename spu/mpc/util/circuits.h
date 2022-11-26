@@ -221,11 +221,11 @@ T odd_even_split(const CircuitBasicBlock<T>& ctx, const T& v, size_t nbits) {
 template <typename T>
 T carry_out(const CircuitBasicBlock<T>& ctx, const T& x, const T& y,
             size_t nbits) {
-  YASL_ENFORCE(nbits != 0, "carry out with 0 is meaningless");
+  YACL_ENFORCE(nbits != 0, "carry out with 0 is meaningless");
   // split even and odd bits. e.g.
   //   xAyBzCwD -> [xyzw, ABCD]
   auto bit_split = [&](T const& in, size_t kk) -> std::tuple<T, T> {
-    YASL_ENFORCE(kk % 2 == 0 && kk <= 128);
+    YACL_ENFORCE(kk % 2 == 0 && kk <= 128);
     const size_t hk = kk / 2;
 
     auto perm = odd_even_split(ctx, in, kk);

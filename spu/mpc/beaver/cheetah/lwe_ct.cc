@@ -14,7 +14,7 @@
 
 #include "seal/util/ntt.h"
 #include "seal/util/polyarithsmallmod.h"
-#include "yasl/base/exception.h"
+#include "yacl/base/exception.h"
 
 #include "spu/mpc/beaver/cheetah/types.h"
 
@@ -41,20 +41,20 @@ LWECt::~LWECt() {}
 
 LWECt::LWECt(const RLWECt &rlwe, size_t coeff_index,
              const seal::SEALContext &context) {
-  YASL_ENFORCE(seal::is_metadata_valid_for(rlwe, context),
+  YACL_ENFORCE(seal::is_metadata_valid_for(rlwe, context),
                "invalid rlwe ct meta");
 
   size_t num_coeff = rlwe.poly_modulus_degree();
   size_t num_modulus = rlwe.coeff_modulus_size();
 
-  YASL_ENFORCE(!rlwe.is_ntt_form(), "RLWECt should in non-ntt form");
-  YASL_ENFORCE_EQ(rlwe.size(), 2u);
-  YASL_ENFORCE(coeff_index < num_coeff,
+  YACL_ENFORCE(!rlwe.is_ntt_form(), "RLWECt should in non-ntt form");
+  YACL_ENFORCE_EQ(rlwe.size(), 2u);
+  YACL_ENFORCE(coeff_index < num_coeff,
                fmt::format("coefficient index out-of-bound {} >= {}",
                            coeff_index, num_coeff));
 
   auto cntxt_dat = context.get_context_data(rlwe.parms_id());
-  YASL_ENFORCE(cntxt_dat != nullptr, "invalid RLWECt.parms_id for the context");
+  YACL_ENFORCE(cntxt_dat != nullptr, "invalid RLWECt.parms_id for the context");
   auto &parms = cntxt_dat->parms();
   auto &modulus = parms.coeff_modulus();
 
@@ -86,11 +86,11 @@ LWECt::LWECt(const RLWECt &rlwe, size_t coeff_index,
 }
 
 LWECt &LWECt::NegateInplace(const seal::SEALContext &context) {
-  YASL_ENFORCE(IsValid());
+  YACL_ENFORCE(IsValid());
   if (lazy_counter_ > 0) Reduce(context);
 
   auto cntxt_dat = context.get_context_data(parms_id());
-  YASL_ENFORCE(cntxt_dat != nullptr);
+  YACL_ENFORCE(cntxt_dat != nullptr);
 
   auto &parms = cntxt_dat->parms();
   auto &modulus = parms.coeff_modulus();
@@ -114,11 +114,11 @@ LWECt &LWECt::AddInplace(const LWECt &oth, const seal::SEALContext &context) {
   }
 
   if (lazy_counter_ > 0) Reduce(context);
-  YASL_ENFORCE(oth.lazy_counter_ == 0, "Call LWECt::Reduce() on RHS");
+  YACL_ENFORCE(oth.lazy_counter_ == 0, "Call LWECt::Reduce() on RHS");
 
-  YASL_ENFORCE(parms_id() == oth.parms_id());
+  YACL_ENFORCE(parms_id() == oth.parms_id());
   auto cntxt_dat = context.get_context_data(parms_id());
-  YASL_ENFORCE(cntxt_dat != nullptr);
+  YACL_ENFORCE(cntxt_dat != nullptr);
 
   auto &parms = cntxt_dat->parms();
   auto &modulus = parms.coeff_modulus();
@@ -139,12 +139,12 @@ LWECt &LWECt::AddInplace(const LWECt &oth, const seal::SEALContext &context) {
 
 LWECt &LWECt::SubPlainInplace(const std::vector<uint64_t> &plain,
                               const seal::SEALContext &context) {
-  YASL_ENFORCE(IsValid());
-  YASL_ENFORCE_EQ(plain.size(), coeff_modulus_size());
+  YACL_ENFORCE(IsValid());
+  YACL_ENFORCE_EQ(plain.size(), coeff_modulus_size());
   if (lazy_counter_ > 0) Reduce(context);
-  YASL_ENFORCE(parms_id() == context.first_parms_id());
+  YACL_ENFORCE(parms_id() == context.first_parms_id());
   auto cntxt_dat = context.get_context_data(parms_id());
-  YASL_ENFORCE(cntxt_dat != nullptr);
+  YACL_ENFORCE(cntxt_dat != nullptr);
 
   auto &parms = cntxt_dat->parms();
   auto &modulus = parms.coeff_modulus();
@@ -152,7 +152,7 @@ LWECt &LWECt::SubPlainInplace(const std::vector<uint64_t> &plain,
 
   for (size_t l = 0; l < num_modulus; ++l) {
     using namespace seal::util;
-    YASL_ENFORCE(plain[l] < modulus[l].value());
+    YACL_ENFORCE(plain[l] < modulus[l].value());
     cnst_term_[l] = sub_uint_mod(cnst_term_[l], plain[l], modulus[l]);
   }
   return *this;
@@ -165,11 +165,11 @@ LWECt &LWECt::SubInplace(const LWECt &oth, const seal::SEALContext &context) {
   }
 
   if (lazy_counter_ > 0) Reduce(context);
-  YASL_ENFORCE(oth.lazy_counter_ == 0, "Call LWECt::Reduce() on RHS");
+  YACL_ENFORCE(oth.lazy_counter_ == 0, "Call LWECt::Reduce() on RHS");
 
-  YASL_ENFORCE(parms_id() == oth.parms_id());
+  YACL_ENFORCE(parms_id() == oth.parms_id());
   auto cntxt_dat = context.get_context_data(parms_id());
-  YASL_ENFORCE(cntxt_dat != nullptr);
+  YACL_ENFORCE(cntxt_dat != nullptr);
 
   auto &parms = cntxt_dat->parms();
   auto &modulus = parms.coeff_modulus();
@@ -190,19 +190,19 @@ LWECt &LWECt::SubInplace(const LWECt &oth, const seal::SEALContext &context) {
 
 LWECt &LWECt::AddPlainInplace(const std::vector<uint64_t> &plain,
                               const seal::SEALContext &context) {
-  YASL_ENFORCE(IsValid());
-  YASL_ENFORCE_EQ(plain.size(), coeff_modulus_size());
+  YACL_ENFORCE(IsValid());
+  YACL_ENFORCE_EQ(plain.size(), coeff_modulus_size());
   if (lazy_counter_ > 0) Reduce(context);
-  YASL_ENFORCE(parms_id() == context.first_parms_id());
+  YACL_ENFORCE(parms_id() == context.first_parms_id());
   auto cntxt_dat = context.get_context_data(parms_id());
-  YASL_ENFORCE(cntxt_dat != nullptr);
+  YACL_ENFORCE(cntxt_dat != nullptr);
 
   auto &parms = cntxt_dat->parms();
   auto &modulus = parms.coeff_modulus();
   size_t num_modulus = modulus.size();
   for (size_t l = 0; l < num_modulus; ++l) {
     using namespace seal::util;
-    YASL_ENFORCE(plain[l] < modulus[l].value());
+    YACL_ENFORCE(plain[l] < modulus[l].value());
     cnst_term_[l] = add_uint_mod(cnst_term_[l], plain[l], modulus[l]);
   }
   return *this;
@@ -220,18 +220,18 @@ LWECt &LWECt::AddLazyInplace(const RLWECt &rlwe, size_t coeff_index,
   size_t num_coeff = poly_modulus_degree();
   size_t num_modulus = coeff_modulus_size();
 
-  YASL_ENFORCE(seal::is_metadata_valid_for(rlwe, context),
+  YACL_ENFORCE(seal::is_metadata_valid_for(rlwe, context),
                "invalid RLWECt meta");
-  YASL_ENFORCE(!rlwe.is_ntt_form(), "RLWECt should in non-ntt form");
-  YASL_ENFORCE_EQ(rlwe.size(), 2u);
-  YASL_ENFORCE(coeff_index < num_coeff,
+  YACL_ENFORCE(!rlwe.is_ntt_form(), "RLWECt should in non-ntt form");
+  YACL_ENFORCE_EQ(rlwe.size(), 2u);
+  YACL_ENFORCE(coeff_index < num_coeff,
                fmt::format("coefficient index out-of-bound {} >= {}",
                            coeff_index, num_coeff));
 
-  YASL_ENFORCE(parms_id() == rlwe.parms_id());
+  YACL_ENFORCE(parms_id() == rlwe.parms_id());
 
   auto cntxt_dat = context.get_context_data(rlwe.parms_id());
-  YASL_ENFORCE(cntxt_dat != nullptr, "invalid RLWECt.parms_id for the context");
+  YACL_ENFORCE(cntxt_dat != nullptr, "invalid RLWECt.parms_id for the context");
   auto &parms = cntxt_dat->parms();
   auto &modulus = parms.coeff_modulus();
 
@@ -274,18 +274,18 @@ LWECt &LWECt::SubLazyInplace(const RLWECt &rlwe, size_t coeff_index,
   size_t num_coeff = poly_modulus_degree();
   size_t num_modulus = coeff_modulus_size();
 
-  YASL_ENFORCE(seal::is_metadata_valid_for(rlwe, context),
+  YACL_ENFORCE(seal::is_metadata_valid_for(rlwe, context),
                "invalid RLWECt meta");
-  YASL_ENFORCE(!rlwe.is_ntt_form(), "RLWECt should in non-ntt form");
-  YASL_ENFORCE_EQ(rlwe.size(), 2u);
-  YASL_ENFORCE(coeff_index < num_coeff,
+  YACL_ENFORCE(!rlwe.is_ntt_form(), "RLWECt should in non-ntt form");
+  YACL_ENFORCE_EQ(rlwe.size(), 2u);
+  YACL_ENFORCE(coeff_index < num_coeff,
                fmt::format("coefficient index out-of-bound {} >= {}",
                            coeff_index, num_coeff));
 
-  YASL_ENFORCE(parms_id() == rlwe.parms_id());
+  YACL_ENFORCE(parms_id() == rlwe.parms_id());
 
   auto cntxt_dat = context.get_context_data(rlwe.parms_id());
-  YASL_ENFORCE(cntxt_dat != nullptr, "invalid RLWECt.parms_id for the context");
+  YACL_ENFORCE(cntxt_dat != nullptr, "invalid RLWECt.parms_id for the context");
   auto &parms = cntxt_dat->parms();
   auto &modulus = parms.coeff_modulus();
 
@@ -321,17 +321,17 @@ LWECt &LWECt::SubLazyInplace(const RLWECt &rlwe, size_t coeff_index,
 void LWECt::Reduce(const seal::SEALContext &context) {
   if (!IsValid()) return;
   if (lazy_counter_ == 0) return;
-  YASL_ENFORCE(lazy_counter_ <= maximum_lazy_);
+  YACL_ENFORCE(lazy_counter_ <= maximum_lazy_);
 
   auto cntxt_dat = context.get_context_data(parms_id());
-  YASL_ENFORCE(cntxt_dat != nullptr, "invalid context for this LWECt");
+  YACL_ENFORCE(cntxt_dat != nullptr, "invalid context for this LWECt");
 
   auto &parms = cntxt_dat->parms();
   auto &modulus = parms.coeff_modulus();
   size_t num_coeff = parms.poly_modulus_degree();
   size_t num_modulus = modulus.size();
 
-  YASL_ENFORCE(num_coeff == poly_deg_ && num_modulus == cnst_term_.size(),
+  YACL_ENFORCE(num_coeff == poly_deg_ && num_modulus == cnst_term_.size(),
                "invalid context for this LWECt");
 
   auto src_ptr = vec_.data();
@@ -357,7 +357,7 @@ size_t LWECt::save_size(seal::compr_mode_type compr_mode) const {
 }
 
 void LWECt::save_members(std::ostream &stream) const {
-  YASL_ENFORCE(lazy_counter_ == 0, "Call LWECt::Reduce() before saving it");
+  YACL_ENFORCE(lazy_counter_ == 0, "Call LWECt::Reduce() before saving it");
   auto old_except_mask = stream.exceptions();
   try {
     // Throw exceptions on std::ios_base::badbit and std::ios_base::failbit
@@ -371,10 +371,10 @@ void LWECt::save_members(std::ostream &stream) const {
     }
   } catch (const std::ios_base::failure &) {
     stream.exceptions(old_except_mask);
-    YASL_THROW_IO_ERROR("failed to save LWECt due to I/O error");
+    YACL_THROW_IO_ERROR("failed to save LWECt due to I/O error");
   } catch (...) {
     stream.exceptions(old_except_mask);
-    YASL_THROW("failed to save LWECt");
+    YACL_THROW("failed to save LWECt");
   }
   stream.exceptions(old_except_mask);
 }
@@ -385,18 +385,18 @@ void LWECt::load(const seal::SEALContext &context,
   tmp.unsafe_load(context, buffer, size);
 
   const auto &modulus = context.first_context_data()->parms().coeff_modulus();
-  YASL_ENFORCE(coeff_modulus_size() <= modulus.size());
+  YACL_ENFORCE(coeff_modulus_size() <= modulus.size());
   for (size_t l = 0; l < coeff_modulus_size(); ++l) {
-    YASL_ENFORCE(cnst_term_[l] < modulus[l].value());
+    YACL_ENFORCE(cnst_term_[l] < modulus[l].value());
   }
-  YASL_ENFORCE(seal::is_valid_for(tmp.vec_, context));
+  YACL_ENFORCE(seal::is_valid_for(tmp.vec_, context));
 
   std::swap(*this, tmp);
 }
 
 void LWECt::load_members(const seal::SEALContext &context, std::istream &stream,
                          SEAL_MAYBE_UNUSED seal::SEALVersion version) {
-  YASL_ENFORCE(context.parameters_set());
+  YACL_ENFORCE(context.parameters_set());
   auto old_except_mask = stream.exceptions();
   LWECt tmp;
   try {
@@ -419,10 +419,10 @@ void LWECt::load_members(const seal::SEALContext &context, std::istream &stream,
     tmp.lazy_counter_ = 0;
   } catch (const std::ios_base::failure &) {
     stream.exceptions(old_except_mask);
-    YASL_THROW_IO_ERROR("failed to load LWECt due to I/O error");
+    YACL_THROW_IO_ERROR("failed to load LWECt due to I/O error");
   } catch (...) {
     stream.exceptions(old_except_mask);
-    YASL_THROW("failed to load LWECt");
+    YACL_THROW("failed to load LWECt");
   }
   stream.exceptions(old_except_mask);
 

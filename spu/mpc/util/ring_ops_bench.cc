@@ -24,7 +24,7 @@ namespace spu::mpc::util {
 static ArrayRef makeRandomArray(FieldType field, size_t numel, size_t stride) {
   const Type ty = makeType<RingTy>(field);
   const size_t buf_size = SizeOf(field) * numel * stride;
-  auto buf = std::make_shared<yasl::Buffer>(buf_size);
+  auto buf = std::make_shared<yacl::Buffer>(buf_size);
   const int64_t offset = 0;
   return ArrayRef(buf, ty, numel, stride, offset);
 }

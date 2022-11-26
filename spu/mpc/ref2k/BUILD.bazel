@@ -25,7 +25,7 @@ spu_cc_library(
         "//spu/mpc:object",
         "//spu/mpc/common:prg_state",
         "//spu/mpc/common:pub2k",
-        "@yasl//yasl/link",
+        "@yacl//yacl/link",
     ],
 )
 

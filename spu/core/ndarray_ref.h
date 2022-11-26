@@ -18,7 +18,7 @@
 #include <vector>
 
 #include "absl/types/span.h"
-#include "yasl/base/buffer.h"
+#include "yacl/base/buffer.h"
 
 #include "spu/core/array_ref.h"
 #include "spu/core/type.h"
@@ -38,7 +38,7 @@ size_t calcFlattenOffset(absl::Span<const int64_t> indices,
 // About: 0-dimension processing.
 // We use numpy/xtensor 0-dimension setting.
 class NdArrayRef {
-  std::shared_ptr<yasl::Buffer> buf_{nullptr};
+  std::shared_ptr<yacl::Buffer> buf_{nullptr};
 
   Type eltype_{};
 
@@ -55,12 +55,12 @@ class NdArrayRef {
   NdArrayRef() = default;
 
   // full constructor
-  NdArrayRef(std::shared_ptr<yasl::Buffer> buf, Type eltype,
+  NdArrayRef(std::shared_ptr<yacl::Buffer> buf, Type eltype,
              std::vector<int64_t> shape, std::vector<int64_t> strides,
              int64_t offset);
 
   // constructor, view buf as a compact buffer with given shape.
-  NdArrayRef(std::shared_ptr<yasl::Buffer> buf, Type eltype,
+  NdArrayRef(std::shared_ptr<yacl::Buffer> buf, Type eltype,
              absl::Span<const int64_t> shape);
 
   // constructor, create a new buffer of elements and ref to it.
@@ -68,7 +68,7 @@ class NdArrayRef {
 
   // convenient constructor to accept shape/strides from xtensor.
   template <typename ShapeT, typename StridesT>
-  NdArrayRef(std::shared_ptr<yasl::Buffer> buf, Type eltype, ShapeT&& shape,
+  NdArrayRef(std::shared_ptr<yacl::Buffer> buf, Type eltype, ShapeT&& shape,
              StridesT&& strides, int64_t offset)
       : NdArrayRef(std::move(buf), std::move(eltype),
                    {shape.begin(), shape.end()},
@@ -101,7 +101,7 @@ class NdArrayRef {
 
   int64_t offset() const { return offset_; }
 
-  std::shared_ptr<yasl::Buffer> buf() const { return buf_; }
+  std::shared_ptr<yacl::Buffer> buf() const { return buf_; }
 
   bool isCompact() const;
 

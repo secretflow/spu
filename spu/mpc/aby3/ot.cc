@@ -45,7 +45,7 @@ std::pair<ArrayRef, ArrayRef> Ot3::genMasks() {
       std::tie(_, w0) = prg_state_->genPrssPair(field_, numel_, true, false);
       std::tie(_, w1) = prg_state_->genPrssPair(field_, numel_, true, false);
     } else {
-      YASL_ENFORCE(inFrontOf(roles_.helper, roles_.sender));
+      YACL_ENFORCE(inFrontOf(roles_.helper, roles_.sender));
       std::tie(w0, _) = prg_state_->genPrssPair(field_, numel_, false, true);
       std::tie(w1, _) = prg_state_->genPrssPair(field_, numel_, false, true);
     }
@@ -54,12 +54,12 @@ std::pair<ArrayRef, ArrayRef> Ot3::genMasks() {
       std::tie(w0, _) = prg_state_->genPrssPair(field_, numel_, false, true);
       std::tie(w1, _) = prg_state_->genPrssPair(field_, numel_, false, true);
     } else {
-      YASL_ENFORCE(inFrontOf(roles_.helper, roles_.sender));
+      YACL_ENFORCE(inFrontOf(roles_.helper, roles_.sender));
       std::tie(_, w0) = prg_state_->genPrssPair(field_, numel_, true, false);
       std::tie(_, w1) = prg_state_->genPrssPair(field_, numel_, true, false);
     }
   } else {
-    YASL_ENFORCE(comm_->getRank() == roles_.receiver);
+    YACL_ENFORCE(comm_->getRank() == roles_.receiver);
     prg_state_->genPrssPair(field_, numel_, true, true);
     prg_state_->genPrssPair(field_, numel_, true, true);
   }
@@ -69,22 +69,22 @@ std::pair<ArrayRef, ArrayRef> Ot3::genMasks() {
 
 void Ot3::send(ArrayRef m0, ArrayRef m1) {
   // sanity check.
-  YASL_ENFORCE(comm_->getRank() == roles_.sender);
-  YASL_ENFORCE(m0.numel() == numel_);
-  YASL_ENFORCE(m1.numel() == numel_);
+  YACL_ENFORCE(comm_->getRank() == roles_.sender);
+  YACL_ENFORCE(m0.numel() == numel_);
+  YACL_ENFORCE(m1.numel() == numel_);
 
   // generate masks
   ArrayRef w0;
   ArrayRef w1;
   if (!reentrancy_) {
-    YASL_ENFORCE(masks_.has_value(), "this OT instance can only use once.");
+    YACL_ENFORCE(masks_.has_value(), "this OT instance can only use once.");
     std::tie(w0, w1) = masks_.value();
     masks_.reset();
   } else {
     std::tie(w0, w1) = genMasks();
   }
-  YASL_ENFORCE(w0.numel() == numel_);
-  YASL_ENFORCE(w1.numel() == numel_);
+  YACL_ENFORCE(w0.numel() == numel_);
+  YACL_ENFORCE(w1.numel() == numel_);
 
   // mask the values
   auto masked_m0 = ring_xor(m0, w0);
@@ -96,13 +96,13 @@ void Ot3::send(ArrayRef m0, ArrayRef m1) {
 
 ArrayRef Ot3::recv(const std::vector<uint8_t>& choices) {
   // sanity check.
-  YASL_ENFORCE(comm_->getRank() == roles_.receiver);
-  YASL_ENFORCE(choices.size() == static_cast<size_t>(numel_));
+  YACL_ENFORCE(comm_->getRank() == roles_.receiver);
+  YACL_ENFORCE(choices.size() == static_cast<size_t>(numel_));
 
   const auto ty = makeType<RingTy>(field_);
 
   if (!reentrancy_) {
-    YASL_ENFORCE(masks_.has_value(), "this OT instance can only use once.");
+    YACL_ENFORCE(masks_.has_value(), "this OT instance can only use once.");
     masks_.reset();
   } else {
     genMasks();
@@ -115,7 +115,7 @@ ArrayRef Ot3::recv(const std::vector<uint8_t>& choices) {
   // get chosen masks
   auto wc = comm_->recv(roles_.helper, ty, "wc");
 
-  YASL_ENFORCE(m0.numel() == static_cast<int64_t>(choices.size()));
+  YACL_ENFORCE(m0.numel() == static_cast<int64_t>(choices.size()));
 
   // reconstruct mc
   ring_xor_(mc, wc);
@@ -125,21 +125,21 @@ ArrayRef Ot3::recv(const std::vector<uint8_t>& choices) {
 
 void Ot3::help(const std::vector<uint8_t>& choices) {
   // sanity check.
-  YASL_ENFORCE(comm_->getRank() == roles_.helper);
-  YASL_ENFORCE(choices.size() == static_cast<size_t>(numel_));
+  YACL_ENFORCE(comm_->getRank() == roles_.helper);
+  YACL_ENFORCE(choices.size() == static_cast<size_t>(numel_));
 
   // generate masks, same as sender
   ArrayRef w0;
   ArrayRef w1;
   if (!reentrancy_) {
-    YASL_ENFORCE(masks_.has_value(), "this OT instance can only use once.");
+    YACL_ENFORCE(masks_.has_value(), "this OT instance can only use once.");
     std::tie(w0, w1) = masks_.value();
     masks_.reset();
   } else {
     std::tie(w0, w1) = genMasks();
   }
-  YASL_ENFORCE(w0.numel() == numel_);
-  YASL_ENFORCE(w1.numel() == numel_);
+  YACL_ENFORCE(w0.numel() == numel_);
+  YACL_ENFORCE(w1.numel() == numel_);
 
   // gen chosen masks
   ArrayRef wc = ring_select(choices, w0, w1);

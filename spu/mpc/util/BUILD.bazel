@@ -29,7 +29,7 @@ spu_cc_test(
     srcs = ["bit_utils_test.cc"],
     deps = [
         ":bit_utils",
-        "@yasl//yasl/base:int128",
+        "@yacl//yacl/base:int128",
     ],
 )
 
@@ -47,7 +47,7 @@ spu_cc_test(
     srcs = ["circuits_test.cc"],
     deps = [
         ":circuits",
-        "@yasl//yasl/base:int128",
+        "@yacl//yacl/base:int128",
     ],
 )
 
@@ -58,7 +58,7 @@ spu_cc_library(
     deps = [
         ":ring_ops",
         "//spu/mpc:object",
-        "@yasl//yasl/link",
+        "@yacl//yacl/link",
     ],
 )
 
@@ -75,7 +75,7 @@ spu_cc_library(
     name = "simulate",
     hdrs = ["simulate.h"],
     deps = [
-        "@yasl//yasl/link",
+        "@yacl//yacl/link",
     ],
 )
 
@@ -103,9 +103,9 @@ spu_cc_library(
     deps = [
         ":linalg",
         "//spu/core",
-        "@yasl//yasl/crypto:pseudo_random_generator",
-        "@yasl//yasl/utils:parallel",
-        "@yasl//yasl/utils:rand",
+        "@yacl//yacl/crypto/tools:prg",
+        "@yacl//yacl/crypto/utils:rand",
+        "@yacl//yacl/utils:parallel",
     ],
 )
 
@@ -136,7 +136,7 @@ spu_cc_library(
     }),
     deps = [
         "@com_github_eigenteam_eigen//:eigen3",
-        "@yasl//yasl/utils:parallel",
+        "@yacl//yacl/utils:parallel",
         "//spu/core:parallel_utils",
     ] + select({
         "@bazel_tools//src/conditions:darwin_x86_64": ["@local_homebrew_x64//:openmp"],

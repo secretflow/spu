@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("//bazel:spu.bzl", "spu_cc_binary", "spu_cc_library", "spu_cc_test")
+load("//bazel:spu.bzl", "spu_cc_library", "spu_cc_test")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -29,10 +29,10 @@ spu_cc_library(
         ":serializable_cc_proto",
         "@com_github_microsoft_seal//:seal",
         "@com_github_openssl_openssl//:openssl",
-        "@yasl//yasl/base:byte_container_view",
-        "@yasl//yasl/base:exception",
-        "@yasl//yasl/link",
-        "@yasl//yasl/utils:parallel",
+        "@yacl//yacl/base:byte_container_view",
+        "@yacl//yacl/base:exception",
+        "@yacl//yacl/link",
+        "@yacl//yacl/utils:parallel",
     ],
 )
 
@@ -42,7 +42,7 @@ spu_cc_library(
     hdrs = ["seal_pir_utils.h"],
     deps = [
         "@com_github_microsoft_seal//:seal",
-        "@yasl//yasl/base:exception",
+        "@yacl//yacl/base:exception",
     ],
 )
 
@@ -53,7 +53,7 @@ spu_cc_library(
     deps = [
         ":seal_pir",
         "//spu/psi/core:cuckoo_index",
-        "@yasl//yasl/crypto:symmetric_crypto",
+        "@yacl//yacl/crypto/base:symmetric_crypto",
     ],
 )
 

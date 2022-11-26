@@ -52,8 +52,8 @@ class Ref2kCommonTypeS : public Kernel {
     const Type& rhs = ctx->getParam<Type>(1);
 
     SPU_TRACE_MPC_DISP(ctx, lhs, rhs);
-    YASL_ENFORCE(lhs.isa<Ref2kSecrTy>(), "invalid type, got={}", lhs);
-    YASL_ENFORCE(rhs.isa<Ref2kSecrTy>(), "invalid type, got={}", rhs);
+    YACL_ENFORCE(lhs.isa<Ref2kSecrTy>(), "invalid type, got={}", lhs);
+    YACL_ENFORCE(rhs.isa<Ref2kSecrTy>(), "invalid type, got={}", rhs);
     ctx->setOutput(lhs);
   }
 };
@@ -69,7 +69,7 @@ class Ref2kCastTypeS : public Kernel {
     const auto& to_type = ctx->getParam<Type>(1);
 
     SPU_TRACE_MPC_DISP(ctx, in, to_type);
-    YASL_ENFORCE(in.eltype() == to_type,
+    YACL_ENFORCE(in.eltype() == to_type,
                  "semi2k always use same bshare type, lhs={}, rhs={}",
                  in.eltype(), to_type);
     ctx->setOutput(in);
@@ -163,7 +163,7 @@ class Ref2kAddSS : public BinaryKernel {
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& lhs,
                 const ArrayRef& rhs) const override {
     SPU_TRACE_MPC_LEAF(ctx, lhs, rhs);
-    YASL_ENFORCE(lhs.eltype() == rhs.eltype());
+    YACL_ENFORCE(lhs.eltype() == rhs.eltype());
     return ring_add(lhs, rhs).as(lhs.eltype());
   }
 };
@@ -194,7 +194,7 @@ class Ref2kMulSS : public BinaryKernel {
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& lhs,
                 const ArrayRef& rhs) const override {
     SPU_TRACE_MPC_LEAF(ctx, lhs, rhs);
-    YASL_ENFORCE(lhs.eltype() == rhs.eltype());
+    YACL_ENFORCE(lhs.eltype() == rhs.eltype());
     return ring_mul(lhs, rhs).as(lhs.eltype());
   }
 };
@@ -226,7 +226,7 @@ class Ref2kMatMulSS : public MatmulKernel {
                 const ArrayRef& rhs, size_t M, size_t N,
                 size_t K) const override {
     SPU_TRACE_MPC_LEAF(ctx, lhs, rhs);
-    YASL_ENFORCE(lhs.eltype() == rhs.eltype());
+    YACL_ENFORCE(lhs.eltype() == rhs.eltype());
     return ring_mmul(lhs, rhs, M, N, K).as(lhs.eltype());
   }
 };
@@ -258,7 +258,7 @@ class Ref2kAndSS : public BinaryKernel {
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& lhs,
                 const ArrayRef& rhs) const override {
     SPU_TRACE_MPC_LEAF(ctx, lhs, rhs);
-    YASL_ENFORCE(lhs.eltype() == rhs.eltype());
+    YACL_ENFORCE(lhs.eltype() == rhs.eltype());
     return ring_and(lhs, rhs).as(lhs.eltype());
   }
 };
@@ -289,7 +289,7 @@ class Ref2kXorSS : public BinaryKernel {
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& lhs,
                 const ArrayRef& rhs) const override {
     SPU_TRACE_MPC_LEAF(ctx, lhs, rhs);
-    YASL_ENFORCE(lhs.eltype() == rhs.eltype());
+    YACL_ENFORCE(lhs.eltype() == rhs.eltype());
     return ring_xor(lhs, rhs).as(lhs.eltype());
   }
 };
@@ -350,8 +350,8 @@ class Ref2kBitrevS : public BitrevKernel {
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in, size_t start,
                 size_t end) const override {
     const auto field = in.eltype().as<Ring2k>()->field();
-    YASL_ENFORCE(start <= end);
-    YASL_ENFORCE(end <= SizeOf(field) * 8);
+    YACL_ENFORCE(start <= end);
+    YACL_ENFORCE(end <= SizeOf(field) * 8);
 
     SPU_TRACE_MPC_LEAF(ctx, in, start, end);
     return ring_bitrev(in, start, end).as(in.eltype());
@@ -391,7 +391,7 @@ class Ref2kMsbS : public UnaryKernel {
 
 std::unique_ptr<Object> makeRef2kProtocol(
     const RuntimeConfig& conf,
-    const std::shared_ptr<yasl::link::Context>& lctx) {
+    const std::shared_ptr<yacl::link::Context>& lctx) {
   registerTypes();
 
   auto obj = std::make_unique<Object>();
@@ -431,17 +431,17 @@ std::unique_ptr<Object> makeRef2kProtocol(
 
 std::vector<ArrayRef> Ref2kIo::toShares(const ArrayRef& raw, Visibility vis,
                                         int owner_rank) const {
-  YASL_ENFORCE(raw.eltype().isa<RingTy>(), "expected RingTy, got {}",
+  YACL_ENFORCE(raw.eltype().isa<RingTy>(), "expected RingTy, got {}",
                raw.eltype());
   const auto field = raw.eltype().as<Ring2k>()->field();
-  YASL_ENFORCE(field == field_, "expect raw value encoded in field={}, got={}",
+  YACL_ENFORCE(field == field_, "expect raw value encoded in field={}, got={}",
                field_, field);
 
   if (vis == VIS_PUBLIC) {
     const auto share = raw.as(makeType<Pub2kTy>(field));
     return std::vector<ArrayRef>(world_size_, share);
   }
-  YASL_ENFORCE(vis == VIS_SECRET, "expected SECRET, got {}", vis);
+  YACL_ENFORCE(vis == VIS_SECRET, "expected SECRET, got {}", vis);
 
   // directly view the data as secret.
   const auto share = raw.as(makeType<Ref2kSecrTy>(field));

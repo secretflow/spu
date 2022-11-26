@@ -24,7 +24,7 @@ CuckooIndex::CuckooIndex(const Options& options) : options_(options) {
   stash_.resize(options_.num_stash);
   hashes_.reserve(options_.NumBins());
 
-  YASL_ENFORCE((options_.num_hash - 1) * HashRoom::kBlockSize +
+  YACL_ENFORCE((options_.num_hash - 1) * HashRoom::kBlockSize +
                    sizeof(uint64_t) <=
                sizeof(HashType));
 }
@@ -38,7 +38,7 @@ void CuckooIndex::Insert(absl::Span<const HashType> codes) {
   for (const HashType& code : codes) {
     hashes_.push_back(HashRoom(code));
   }
-  YASL_ENFORCE(hashes_.size() <= options_.num_input);
+  YACL_ENFORCE(hashes_.size() <= options_.num_input);
 
   std::vector<Bin> candidates(size);
   for (size_t i = 0; i < candidates.size(); ++i) {
@@ -80,30 +80,30 @@ void CuckooIndex::PutToStash(uint64_t input_idx) {
       return;
     }
   }
-  YASL_THROW("Cannot find empty bin in stash for input_idx={}", input_idx);
+  YACL_THROW("Cannot find empty bin in stash for input_idx={}", input_idx);
 }
 
 void CuckooIndex::SanityCheck() const {
   std::set<uint64_t> set;
   for (const auto& bin : bins_) {
     if (!bin.IsEmpty()) {
-      YASL_ENFORCE(set.insert(bin.InputIdx()).second,
+      YACL_ENFORCE(set.insert(bin.InputIdx()).second,
                    "Input={} already exists.", bin.InputIdx());
     }
   }
   for (const auto& bin : stash_) {
     if (!bin.IsEmpty()) {
-      YASL_ENFORCE(set.insert(bin.InputIdx()).second,
+      YACL_ENFORCE(set.insert(bin.InputIdx()).second,
                    "Input={} already exists.", bin.InputIdx());
     }
   }
 
   // All inputs should be found.
-  YASL_ENFORCE(set.size() == options_.num_input);
+  YACL_ENFORCE(set.size() == options_.num_input);
   // Every input must exists.
   size_t idx = 0;
   for (uint64_t i : set) {
-    YASL_ENFORCE(idx++ == i, "Cannot find input={}", i);
+    YACL_ENFORCE(idx++ == i, "Cannot find input={}", i);
   }
 }
 
@@ -129,7 +129,7 @@ CuckooIndex::Options CuckooIndex::SelectParams(uint64_t n, uint64_t stash_size,
     return CuckooIndex::Options{n, 0, h, e};
   }
 
-  YASL_THROW("not support for stash_size={} and hash_num={}", stash_size,
+  YACL_THROW("not support for stash_size={} and hash_num={}", stash_size,
              hash_num);
 }
 

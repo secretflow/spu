@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #pragma once
-#include "yasl/base/exception.h"
+#include "yacl/base/exception.h"
 
 #include "spu/mpc/beaver/cheetah/poly_encoder.h"
 #include "spu/mpc/beaver/cheetah/types.h"

@@ -22,7 +22,7 @@ namespace spu::mpc {
 INSTANTIATE_TEST_SUITE_P(
     BeaverCheetahTest, BeaverTest,
     testing::Combine(
-        testing::Values([](const std::shared_ptr<yasl::link::Context>& lctx) {
+        testing::Values([](const std::shared_ptr<yacl::link::Context>& lctx) {
           std::shared_ptr<CheetahPrimitives> primitives =
               std::make_shared<CheetahPrimitives>(lctx);
           std::unique_ptr<BeaverCheetah> beaver =

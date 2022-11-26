@@ -24,7 +24,7 @@
 #include "absl/strings/ascii.h"
 #include "absl/strings/numbers.h"
 #include "absl/strings/str_split.h"
-#include "yasl/base/exception.h"
+#include "yacl/base/exception.h"
 
 #ifdef __APPLE__
 #include <mach/mach.h>

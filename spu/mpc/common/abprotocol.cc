@@ -24,7 +24,7 @@ ArrayRef _Lazy2B(Object* obj, const ArrayRef& in) {
   if (in.eltype().isa<AShare>()) {
     return obj->call("a2b", in);
   } else {
-    YASL_ENFORCE(in.eltype().isa<BShare>());
+    YACL_ENFORCE(in.eltype().isa<BShare>());
     return in;
   }
 }
@@ -33,7 +33,7 @@ ArrayRef _Lazy2A(Object* obj, const ArrayRef& in) {
   if (in.eltype().isa<BShare>()) {
     return obj->call("b2a", in);
   } else {
-    YASL_ENFORCE(in.eltype().isa<AShare>(), "expect AShare, got {}",
+    YACL_ENFORCE(in.eltype().isa<AShare>(), "expect AShare, got {}",
                  in.eltype());
     return in;
   }
@@ -97,7 +97,7 @@ class ABProtCommonTypeS : public Kernel {
     SPU_TRACE_MPC_DISP(ctx, lhs, rhs);
 
     if (lhs.isa<AShare>() && rhs.isa<AShare>()) {
-      YASL_ENFORCE(lhs == rhs, "expect same, got lhs={}, rhs={}", lhs, rhs);
+      YACL_ENFORCE(lhs == rhs, "expect same, got lhs={}, rhs={}", lhs, rhs);
       ctx->setOutput(lhs);
     } else if (lhs.isa<AShare>() && rhs.isa<BShare>()) {
       ctx->setOutput(lhs);
@@ -106,7 +106,7 @@ class ABProtCommonTypeS : public Kernel {
     } else if (lhs.isa<BShare>() && rhs.isa<BShare>()) {
       ctx->setOutput(common_type_b(ctx->caller(), lhs, rhs));
     } else {
-      YASL_THROW("should not be here, lhs={}, rhs={}", lhs, rhs);
+      YACL_THROW("should not be here, lhs={}, rhs={}", lhs, rhs);
     }
   }
 };
@@ -124,7 +124,7 @@ class ABProtCastTypeS : public Kernel {
     SPU_TRACE_MPC_DISP(ctx, frm, to_type);
 
     if (frm.eltype().isa<AShare>() && to_type.isa<AShare>()) {
-      YASL_ENFORCE(frm.eltype() == to_type,
+      YACL_ENFORCE(frm.eltype() == to_type,
                    "expect same, got frm={}, to_type={}", frm, to_type);
       // do nothing.
       ctx->setOutput(frm);
@@ -135,7 +135,7 @@ class ABProtCastTypeS : public Kernel {
     } else if (frm.eltype().isa<BShare>() && to_type.isa<BShare>()) {
       ctx->setOutput(cast_type_b(ctx->caller(), frm, to_type));
     } else {
-      YASL_THROW("should not be here, frm={}, to_type={}", frm, to_type);
+      YACL_THROW("should not be here, frm={}, to_type={}", frm, to_type);
     }
   }
 };
@@ -163,7 +163,7 @@ class ABProtS2P : public UnaryKernel {
     if (_IsA(in)) {
       return _A2P(in);
     } else {
-      YASL_ENFORCE(_IsB(in));
+      YACL_ENFORCE(_IsB(in));
       return _B2P(in);
     }
   }
@@ -182,7 +182,7 @@ class ABProtNotS : public UnaryKernel {
       // if (in.eltype().isa<BShare>()) {
       //  return _NotB(in);
       //} else {
-      //  YASL_ENFORCE(in.eltype().isa<AShare>());
+      //  YACL_ENFORCE(in.eltype().isa<AShare>());
       //  return _NotA(in);
       //}
       return _NotA(_2A(in));
@@ -367,7 +367,7 @@ class ABProtEqzS : public UnaryKernel {
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in) const override {
     SPU_TRACE_MPC_DISP(ctx, in);
     //
-    YASL_THROW("TODO");
+    YACL_THROW("TODO");
   }
 };
 
@@ -389,7 +389,7 @@ class ABProtLShiftS : public ShiftKernel {
         return _B2A(_LShiftB(in, bits));
       }
     } else {
-      YASL_THROW("Unsupported type {}", in.eltype());
+      YACL_THROW("Unsupported type {}", in.eltype());
     }
   }
 };
@@ -578,7 +578,7 @@ void regABKernels(Object* obj) {
   } else if (_IsB(x) && _IsB(y)) {                 \
     return FnBB(ctx, y, x);                        \
   } else {                                         \
-    YASL_THROW("unsupported op x={}, y={}", x, y); \
+    YACL_THROW("unsupported op x={}, y={}", x, y); \
   }
 
 CircuitBasicBlock<ArrayRef> makeABProtBasicBlock(Object* ctx) {
@@ -595,7 +595,7 @@ CircuitBasicBlock<ArrayRef> makeABProtBasicBlock(Object* ctx) {
     } else if (_IsB(x)) {
       return lshift_b(ctx, x, bits);
     }
-    YASL_THROW("unsupported op x={}", x);
+    YACL_THROW("unsupported op x={}", x);
   };
   cbb.rshift = [=](ArrayRef const& x, size_t bits) -> ArrayRef {
     if (_IsP(x)) {
@@ -603,7 +603,7 @@ CircuitBasicBlock<ArrayRef> makeABProtBasicBlock(Object* ctx) {
     } else if (_IsB(x)) {
       return rshift_b(ctx, x, bits);
     }
-    YASL_THROW("unsupported op x={}", x);
+    YACL_THROW("unsupported op x={}", x);
   };
   cbb.init_like = [=](ArrayRef const& x, uint64_t hi, uint64_t lo) {
     // TODO: use single element + stride.
@@ -615,7 +615,7 @@ CircuitBasicBlock<ArrayRef> makeABProtBasicBlock(Object* ctx) {
       U* ptr = &ret.at<U>(0);
       for (int64_t idx = 0; idx < x.numel(); idx++) {
         if constexpr (sizeof(U) * 8 == 128) {
-          ptr[idx] = yasl::MakeUint128(hi, lo);
+          ptr[idx] = yacl::MakeUint128(hi, lo);
         } else {
           ptr[idx] = static_cast<U>(lo);
         }
@@ -625,7 +625,7 @@ CircuitBasicBlock<ArrayRef> makeABProtBasicBlock(Object* ctx) {
     return ret;
   };
   cbb.set_nbits = [=](ArrayRef& x, size_t nbits) {
-    YASL_ENFORCE(x.eltype().isa<BShare>());
+    YACL_ENFORCE(x.eltype().isa<BShare>());
     x.eltype().as<BShare>()->setNbits(nbits);
   };
   return cbb;

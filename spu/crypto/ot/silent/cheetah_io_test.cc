@@ -16,7 +16,7 @@
 #include <thread>
 
 #include "gtest/gtest.h"
-#include "yasl/link/test_util.h"
+#include "yacl/link/test_util.h"
 
 #include "spu/crypto/ot/silent/cheetah_io_channel.h"
 
@@ -24,7 +24,7 @@ namespace spu {
 
 TEST(CheetahIoTest, Test) {
   const int kWorldSize = 2;
-  auto contexts = yasl::link::test::SetupWorld(kWorldSize);
+  auto contexts = yacl::link::test::SetupWorld(kWorldSize);
 
   std::future<void> player1 = std::async([&] {
     char msg[100];
@@ -53,7 +53,7 @@ TEST(CheetahIoTest, Test) {
 
 TEST(CheetahIoTest, TestPartial) {
   const int kWorldSize = 2;
-  auto contexts = yasl::link::test::SetupWorld(kWorldSize);
+  auto contexts = yacl::link::test::SetupWorld(kWorldSize);
 
   std::future<void> player1 = std::async([&] {
     uint64_t a[4] = {0x284, 0xf3a, 0x97e4, 0x8fa};

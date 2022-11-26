@@ -13,8 +13,6 @@
 # limitations under the License.
 
 load("//bazel:spu.bzl", "spu_cc_binary", "spu_cc_library", "spu_cc_test")
-load("@rules_proto//proto:defs.bzl", "proto_library")
-load("@rules_cc//cc:defs.bzl", "cc_proto_library")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -36,10 +34,10 @@ spu_cc_library(
         "//spu/psi/utils:cipher_store",
         "//spu/psi/utils:serialize",
         "@com_google_absl//absl/strings",
-        "@yasl//yasl/base:exception",
-        "@yasl//yasl/link",
-        "@yasl//yasl/utils:parallel",
-        "@yasl//yasl/utils:rand",
+        "@yacl//yacl/base:exception",
+        "@yacl//yacl/crypto/utils:rand",
+        "@yacl//yacl/link",
+        "@yacl//yacl/utils:parallel",
     ],
 )
 

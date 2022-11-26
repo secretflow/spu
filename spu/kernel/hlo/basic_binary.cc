@@ -47,7 +47,7 @@ SIMPLE_BINARY_KERNEL_DEFN(GreaterEqual, hal::greater_equal)
 
 spu::Value Remainder(HalContext *ctx, const spu::Value &lhs,
                      const spu::Value &rhs) {
-  YASL_ENFORCE(lhs.dtype() == rhs.dtype(), "dtype mismatch {} != {}",
+  YACL_ENFORCE(lhs.dtype() == rhs.dtype(), "dtype mismatch {} != {}",
                lhs.dtype(), rhs.dtype());
 
   // 1st: find quotient by x/y
@@ -65,8 +65,8 @@ spu::Value Remainder(HalContext *ctx, const spu::Value &lhs,
 }
 
 spu::Value Dot(HalContext *ctx, const spu::Value &lhs, const spu::Value &rhs) {
-  YASL_ENFORCE(!lhs.shape().empty() && lhs.shape().size() <= 2);
-  YASL_ENFORCE(!rhs.shape().empty() && rhs.shape().size() <= 2);
+  YACL_ENFORCE(!lhs.shape().empty() && lhs.shape().size() <= 2);
+  YACL_ENFORCE(!rhs.shape().empty() && rhs.shape().size() <= 2);
 
   return hal::matmul(ctx, lhs, rhs);
 }

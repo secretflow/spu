@@ -21,7 +21,7 @@
 
 #include "absl/strings/str_split.h"
 #include "fmt/format.h"
-#include "yasl/base/exception.h"
+#include "yacl/base/exception.h"
 
 #include "spu/psi/io/io.h"
 #include "spu/psi/utils/scope_disk_cache.h"
@@ -39,9 +39,9 @@ class HashBucketCache {
     static BucketItem Deserialize(std::string_view data_str) {
       BucketItem item;
       std::vector<absl::string_view> tokens = absl::StrSplit(data_str, ",");
-      YASL_ENFORCE(tokens.size() == 2, "should have two tokens, actual: {}",
+      YACL_ENFORCE(tokens.size() == 2, "should have two tokens, actual: {}",
                    tokens.size());
-      YASL_ENFORCE(absl::SimpleAtoi(tokens[0], &item.index),
+      YACL_ENFORCE(absl::SimpleAtoi(tokens[0], &item.index),
                    "cannot convert {} to idx",
                    std::string(tokens[0].data(), tokens[0].size()));
       item.base64_data = std::string(tokens[1].data(), tokens[1].size());

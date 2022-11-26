@@ -17,37 +17,37 @@
 #include <string>
 #include <vector>
 
-#include "yasl/base/buffer.h"
+#include "yacl/base/buffer.h"
 
 #include "spu/psi/utils/serializable.pb.h"
 
 namespace spu::psi::utils {
 
-inline yasl::Buffer SerializeSize(size_t size) {
+inline yacl::Buffer SerializeSize(size_t size) {
   proto::SizeProto proto;
   proto.set_input_size(size);
-  yasl::Buffer buf(proto.ByteSizeLong());
+  yacl::Buffer buf(proto.ByteSizeLong());
   proto.SerializeToArray(buf.data(), buf.size());
   return buf;
 }
 
-inline size_t DeserializeSize(const yasl::Buffer& buf) {
+inline size_t DeserializeSize(const yacl::Buffer& buf) {
   proto::SizeProto proto;
   proto.ParseFromArray(buf.data(), buf.size());
   return proto.input_size();
 }
 
-inline yasl::Buffer SerializeStrItems(const std::vector<std::string>& items) {
+inline yacl::Buffer SerializeStrItems(const std::vector<std::string>& items) {
   proto::StrItemsProto proto;
   for (const auto& item : items) {
     proto.add_items(item);
   }
-  yasl::Buffer buf(proto.ByteSizeLong());
+  yacl::Buffer buf(proto.ByteSizeLong());
   proto.SerializeToArray(buf.data(), buf.size());
   return buf;
 }
 
-inline void DeserializeStrItems(const yasl::Buffer& buf,
+inline void DeserializeStrItems(const yacl::Buffer& buf,
                                 std::vector<std::string>* items) {
   proto::StrItemsProto proto;
   proto.ParseFromArray(buf.data(), buf.size());

@@ -22,8 +22,8 @@
 #include "absl/strings/str_split.h"
 #include "gtest/gtest.h"
 #include "spdlog/spdlog.h"
-#include "yasl/base/exception.h"
-#include "yasl/link/test_util.h"
+#include "yacl/base/exception.h"
+#include "yacl/link/test_util.h"
 
 #include "spu/psi/utils/test_utils.h"
 
@@ -39,7 +39,7 @@ class MiniPsiTest : public testing::TestWithParam<TestParams> {};
 TEST_P(MiniPsiTest, Works) {
   auto params = GetParam();
 
-  auto link_ab = yasl::link::test::SetupWorld("mini", 2);
+  auto link_ab = yacl::link::test::SetupWorld("mini", 2);
 
   auto intersection_std_ab =
       test::GetIntersection(params.items_a, params.items_b);

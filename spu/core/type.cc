@@ -90,9 +90,9 @@ Type Type::fromString(std::string_view repr) {
   auto keyword = repr.substr(0, less);
   auto details = repr.substr(less + 1);
 
-  YASL_ENFORCE(!keyword.empty());
-  YASL_ENFORCE(!details.empty());
-  YASL_ENFORCE(details.back() == '>');
+  YACL_ENFORCE(!keyword.empty());
+  YACL_ENFORCE(!details.empty());
+  YACL_ENFORCE(details.back() == '>');
 
   // Remove trailing >
   details = details.substr(0, details.length());

@@ -69,11 +69,11 @@ ArrayRef getShare(const ArrayRef& in, int64_t share_idx);
 
 template <typename T>
 std::vector<T> getShareAs(const ArrayRef& in, size_t share_idx) {
-  YASL_ENFORCE(in.stride() != 0);
-  YASL_ENFORCE(share_idx == 0 || share_idx == 1);
+  YACL_ENFORCE(in.stride() != 0);
+  YACL_ENFORCE(share_idx == 0 || share_idx == 1);
 
   ArrayRef share = getShare(in, share_idx);
-  YASL_ENFORCE(share.elsize() == sizeof(T));
+  YACL_ENFORCE(share.elsize() == sizeof(T));
 
   std::vector<T> res(in.numel());
   DISPATCH_UINT_PT_TYPES(share.eltype().as<PtTy>()->pt_type(), "_", [&]() {

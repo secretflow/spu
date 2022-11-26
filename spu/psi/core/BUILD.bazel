@@ -21,9 +21,15 @@ spu_cc_library(
     srcs = ["communication.cc"],
     hdrs = ["communication.h"],
     deps = [
+        ":ic_protocol_psi_cc_proto",
         "//spu/psi/utils:serialize",
-        "@yasl//yasl/link",
+        "@yacl//yacl/link",
     ],
+)
+
+cc_proto_library(
+    name = "ic_protocol_psi_cc_proto",
+    deps = ["@org_interconnection//interconnection/algos:psi"],
 )
 
 spu_cc_library(
@@ -36,8 +42,8 @@ spu_cc_library(
         "//spu/psi/utils:batch_provider",
         "//spu/psi/utils:cipher_store",
         "@com_google_absl//absl/strings",
-        "@yasl//yasl/link",
-        "@yasl//yasl/utils:parallel",
+        "@yacl//yacl/link",
+        "@yacl//yacl/utils:parallel",
     ],
 )
 
@@ -94,8 +100,8 @@ spu_cc_library(
     linkopts = ["-lm"],
     deps = [
         "@com_google_absl//absl/types:span",
-        "@yasl//yasl/base:exception",
-        "@yasl//yasl/base:int128",
+        "@yacl//yacl/base:exception",
+        "@yacl//yacl/base:int128",
     ],
 )
 
@@ -104,7 +110,7 @@ spu_cc_test(
     srcs = ["cuckoo_index_test.cc"],
     deps = [
         ":cuckoo_index",
-        "@yasl//yasl/crypto:symmetric_crypto",
+        "@yacl//yacl/crypto/base:symmetric_crypto",
     ],
 )
 
@@ -117,12 +123,12 @@ spu_cc_library(
         ":cuckoo_index",
         "//spu/psi/utils:serialize",
         "@com_google_absl//absl/strings",
-        "@yasl//yasl/crypto:hash_util",
-        "@yasl//yasl/link",
-        "@yasl//yasl/mpctools/ot:base_ot",
-        "@yasl//yasl/mpctools/ot:iknp_ot_extension",
-        "@yasl//yasl/mpctools/ot:kkrt_ot_extension",
-        "@yasl//yasl/utils:rand",
+        "@yacl//yacl/crypto/primitives/ot:base_ot",
+        "@yacl//yacl/crypto/primitives/ot:iknp_ot_extension",
+        "@yacl//yacl/crypto/primitives/ot:kkrt_ot_extension",
+        "@yacl//yacl/crypto/utils:hash_util",
+        "@yacl//yacl/crypto/utils:rand",
+        "@yacl//yacl/link",
     ],
 )
 
@@ -131,7 +137,7 @@ spu_cc_test(
     srcs = ["kkrt_psi_test.cc"],
     deps = [
         ":kkrt_psi",
-        "@yasl//yasl/crypto:hash_util",
+        "@yacl//yacl/crypto/utils:hash_util",
     ],
 )
 
@@ -154,8 +160,8 @@ spu_cc_library(
         "//spu/psi/utils:batch_provider",
         "//spu/psi/utils:cipher_store",
         "@com_google_absl//absl/strings",
-        "@yasl//yasl/link",
-        "@yasl//yasl/utils:parallel",
+        "@yacl//yacl/link",
+        "@yacl//yacl/utils:parallel",
     ],
 )
 
@@ -164,8 +170,8 @@ spu_cc_test(
     srcs = ["ecdh_oprf_psi_test.cc"],
     deps = [
         ":ecdh_oprf_psi",
-        "@yasl//yasl/crypto:pseudo_random_generator",
-        "@yasl//yasl/utils:rand",
+        "@yacl//yacl/crypto/tools:prg",
+        "@yacl//yacl/crypto/utils:rand",
     ],
 )
 
@@ -198,10 +204,10 @@ spu_cc_library(
         "@com_github_floodyberry_curve25519_donna//:curve25519_donna",
         "@com_google_absl//absl/strings",
         "@com_google_googletest//:gtest",
-        "@yasl//yasl/crypto:hash_util",
-        "@yasl//yasl/crypto:pseudo_random_generator",
-        "@yasl//yasl/link",
-        "@yasl//yasl/utils:parallel",
+        "@yacl//yacl/crypto/tools:prg",
+        "@yacl//yacl/crypto/utils:hash_util",
+        "@yacl//yacl/link",
+        "@yacl//yacl/utils:parallel",
     ],
 )
 

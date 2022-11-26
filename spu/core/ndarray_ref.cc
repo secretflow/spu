@@ -44,7 +44,7 @@ size_t calcFlattenOffset(absl::Span<const int64_t> indices,
 }  // namespace detail
 
 // full constructor
-NdArrayRef::NdArrayRef(std::shared_ptr<yasl::Buffer> buf, Type eltype,
+NdArrayRef::NdArrayRef(std::shared_ptr<yacl::Buffer> buf, Type eltype,
                        std::vector<int64_t> shape, std::vector<int64_t> strides,
                        int64_t offset)
     : buf_(std::move(buf)),
@@ -54,7 +54,7 @@ NdArrayRef::NdArrayRef(std::shared_ptr<yasl::Buffer> buf, Type eltype,
       offset_(offset) {}
 
 // constructor, view buf as a compact buffer with given shape.
-NdArrayRef::NdArrayRef(std::shared_ptr<yasl::Buffer> buf, Type eltype,
+NdArrayRef::NdArrayRef(std::shared_ptr<yacl::Buffer> buf, Type eltype,
                        absl::Span<const int64_t> shape)
     : NdArrayRef(std::move(buf),             // buf
                  eltype,                     // eltype
@@ -65,7 +65,7 @@ NdArrayRef::NdArrayRef(std::shared_ptr<yasl::Buffer> buf, Type eltype,
 
 // constructor, create a new buffer of elements and ref to it.
 NdArrayRef::NdArrayRef(Type eltype, absl::Span<const int64_t> shape)
-    : NdArrayRef(std::make_shared<yasl::Buffer>(calcNumel(shape) *
+    : NdArrayRef(std::make_shared<yacl::Buffer>(calcNumel(shape) *
                                                 eltype.size()),  // buf
                  eltype,                                         // eltype
                  shape,                                          // shape
@@ -74,20 +74,20 @@ NdArrayRef::NdArrayRef(Type eltype, absl::Span<const int64_t> shape)
       ) {}
 
 size_t NdArrayRef::dim(size_t idx) const {
-  YASL_ENFORCE(idx < ndim());
+  YACL_ENFORCE(idx < ndim());
   return shape_[idx];
 }
 
 NdArrayRef NdArrayRef::as(const Type& new_ty, bool force) const {
   if (!force) {
-    YASL_ENFORCE(elsize() == new_ty.size(),
+    YACL_ENFORCE(elsize() == new_ty.size(),
                  "viewed type={} not equal to origin type={}", new_ty,
                  eltype());
     return {buf(), new_ty, shape(), strides(), offset()};
   }
   // Force view, we need to adjust strides
   auto distance = ((strides().empty() ? 1 : strides().back()) * elsize());
-  YASL_ENFORCE(distance % new_ty.size() == 0);
+  YACL_ENFORCE(distance % new_ty.size() == 0);
 
   std::vector<int64_t> new_strides = strides();
   std::transform(new_strides.begin(), new_strides.end(), new_strides.begin(),
@@ -124,7 +124,7 @@ NdArrayRef NdArrayRef::clone() const {
 
   auto* ret_ptr = static_cast<std::byte*>(res.data());
 
-  yasl::parallel_for(0, numel(), 2048, [&](int64_t begin, int64_t end) {
+  yacl::parallel_for(0, numel(), 2048, [&](int64_t begin, int64_t end) {
     std::vector<int64_t> indices = unflattenIndex(begin, shape());
     const auto* frm_ptr = &at(indices);
 
@@ -138,12 +138,12 @@ NdArrayRef NdArrayRef::clone() const {
 }
 
 NdArrayRef unflatten(const ArrayRef& arr, std::vector<int64_t> shape) {
-  YASL_ENFORCE(arr.numel() == calcNumel(shape),
+  YACL_ENFORCE(arr.numel() == calcNumel(shape),
                "unflatten numel mismatch, expected={}, got={}",
                calcNumel(shape), arr.numel());
 
   // FIXME: due to the current implementation,
-  YASL_ENFORCE(arr.isCompact(), "FIXME: impl assume array is flatten");
+  YACL_ENFORCE(arr.isCompact(), "FIXME: impl assume array is flatten");
 
   auto strides = makeCompactStrides(shape);
   return {arr.buf(), arr.eltype(), std::move(shape), std::move(strides),

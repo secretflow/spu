@@ -160,7 +160,7 @@ static std::vector<bool> bitDecompose(ArrayView<T> in, size_t nbits) {
 
 template <typename T>
 static std::vector<T> bitCompose(absl::Span<T const> in, size_t nbits) {
-  YASL_ENFORCE(in.size() % nbits == 0);
+  YACL_ENFORCE(in.size() % nbits == 0);
   std::vector<T> out(in.size() / nbits, 0);
   pforeach(0, out.size(), [&](int64_t idx) {
     for (size_t bit = 0; bit < nbits; bit++) {
@@ -206,7 +206,7 @@ ArrayRef B2AByOT::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
   const auto* in_ty = in.eltype().as<BShrTy>();
   const size_t in_nbits = in_ty->nbits();
 
-  YASL_ENFORCE(in_nbits <= SizeOf(field) * 8, "invalid nbits={}", in_nbits);
+  YACL_ENFORCE(in_nbits <= SizeOf(field) * 8, "invalid nbits={}", in_nbits);
 
   ArrayRef out(makeType<AShrTy>(field), in.numel());
   if (in_nbits == 0) {
@@ -250,7 +250,7 @@ ArrayRef B2AByOT::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
           prg_state->fillPrssPair(absl::MakeSpan(m1), {}, false, true);
 
           // build selected mask
-          YASL_ENFORCE(b2.size() == m0.size() && b2.size() == m1.size());
+          YACL_ENFORCE(b2.size() == m0.size() && b2.size() == m1.size());
           pforeach(0, total_nbits, [&](int64_t idx) {
             m0[idx] = !b2[idx] ? m0[idx] : m1[idx];
           });
@@ -332,7 +332,7 @@ ArrayRef B2AByOT::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
           break;
         }
         default:
-          YASL_THROW("expected party=3, got={}", comm->getRank());
+          YACL_THROW("expected party=3, got={}", comm->getRank());
       }
     });
   });
@@ -349,7 +349,7 @@ ArrayRef AddBB::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
 
   // TODO: propogate out nbits;
   // const size_t out_nbits = std::max(lhs_ty->nbits(), rhs_ty->nbits()) + 1;
-  YASL_ENFORCE(lhs_ty->nbits() == rhs_ty->nbits());
+  YACL_ENFORCE(lhs_ty->nbits() == rhs_ty->nbits());
   const size_t out_nbits = lhs_ty->nbits();
 
   auto* obj = ctx->caller();

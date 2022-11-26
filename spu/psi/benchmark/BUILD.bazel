@@ -31,7 +31,7 @@ spu_cc_binary(
         "//spu/psi/utils:test_utils",
         "@com_github_google_benchmark//:benchmark",
         "@com_google_absl//absl/strings",
-        "@yasl//yasl/link:test_util",
+        "@yacl//yacl/link:test_util",
     ],
 )
 
@@ -52,8 +52,8 @@ spu_cc_binary(
         "@com_github_google_benchmark//:benchmark",
         "@com_google_absl//absl/strings",
         "@llvm-project//llvm:Support",
-        "@yasl//yasl/base:int128",
-        "@yasl//yasl/crypto:hash_util",
-        "@yasl//yasl/link:factory",
+        "@yacl//yacl/base:int128",
+        "@yacl//yacl/crypto/utils:hash_util",
+        "@yacl//yacl/link:factory",
     ],
 )

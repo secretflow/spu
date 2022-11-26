@@ -21,8 +21,8 @@
 
 #include "absl/numeric/bits.h"
 #include "xtensor/xview.hpp"
-#include "yasl/base/exception.h"
-#include "yasl/utils/parallel.h"
+#include "yacl/base/exception.h"
+#include "yacl/utils/parallel.h"
 
 #include "spu/core/xt_helper.h"
 #include "spu/mpc/beaver/cheetah/util.h"
@@ -80,7 +80,7 @@ MatVecProtocol::MatVecProtocol(const seal::SEALContext& context,
     : poly_deg_(context.key_context_data()->parms().poly_modulus_degree()),
       encoder_(context, ms_helper),
       context_(context) {
-  YASL_ENFORCE(context_.parameters_set());
+  YACL_ENFORCE(context_.parameters_set());
 }
 
 bool MatVecProtocol::IsValidMeta(const Meta& meta) const {
@@ -91,20 +91,20 @@ void MatVecProtocol::MatVecNoExtract(const Meta& meta,
                                      const std::vector<RLWEPt>& mat,
                                      const std::vector<RLWECt>& vec,
                                      std::vector<RLWECt>* out) const {
-  YASL_ENFORCE(IsValidMeta(meta));
-  yasl::CheckNotNull(out);
+  YACL_ENFORCE(IsValidMeta(meta));
+  yacl::CheckNotNull(out);
   for (const auto& mat_pt : mat) {
-    YASL_ENFORCE(seal::is_metadata_valid_for(mat_pt, context_));
+    YACL_ENFORCE(seal::is_metadata_valid_for(mat_pt, context_));
   }
   for (const auto& vec_pt : vec) {
-    YASL_ENFORCE(seal::is_metadata_valid_for(vec_pt, context_));
+    YACL_ENFORCE(seal::is_metadata_valid_for(vec_pt, context_));
   }
 
   auto submat_shape = GetSubMatrixShape(meta, poly_degree());
   size_t num_row_blks = CeilDiv(meta.nrows, submat_shape[0]);
   size_t num_col_blks = CeilDiv(meta.ncols, submat_shape[1]);
-  YASL_ENFORCE_EQ(seal::util::mul_safe(num_row_blks, num_col_blks), mat.size());
-  YASL_ENFORCE_EQ(num_col_blks, vec.size());
+  YACL_ENFORCE_EQ(seal::util::mul_safe(num_row_blks, num_col_blks), mat.size());
+  YACL_ENFORCE_EQ(num_col_blks, vec.size());
 
   out->resize(num_row_blks);
   seal::Evaluator evaluator(context_);
@@ -127,7 +127,7 @@ void MatVecProtocol::MatVecNoExtract(const Meta& meta,
         accumulated = tmp;
       }
     }
-    YASL_ENFORCE(accumulated.size() > 0,
+    YACL_ENFORCE(accumulated.size() > 0,
                  fmt::format("all zero matrix is not supported for MatVec"));
 
     // position form for RLWE2LWE
@@ -145,10 +145,10 @@ void MatVecProtocol::ExtractLWEsInplace(const Meta& meta,
                                         std::vector<RLWECt>& rlwes) const {
   auto submat_shape = GetSubMatrixShape(meta, poly_degree());
   size_t num_row_blks = CeilDiv(meta.nrows, submat_shape[0]);
-  YASL_ENFORCE_EQ(rlwes.size(), num_row_blks);
+  YACL_ENFORCE_EQ(rlwes.size(), num_row_blks);
   for (const auto& rlwe : rlwes) {
-    YASL_ENFORCE(seal::is_metadata_valid_for(rlwe, context_));
-    YASL_ENFORCE(!rlwe.is_ntt_form() && rlwe.size() == 2);
+    YACL_ENFORCE(seal::is_metadata_valid_for(rlwe, context_));
+    YACL_ENFORCE(!rlwe.is_ntt_form() && rlwe.size() == 2);
   }
 
   std::set<size_t> to_keep;
@@ -177,10 +177,10 @@ void MatVecProtocol::ExtractLWEs(const Meta& meta,
                                  std::vector<LWECt>* out) const {
   auto submat_shape = GetSubMatrixShape(meta, poly_degree());
   size_t num_row_blks = CeilDiv(meta.nrows, submat_shape[0]);
-  YASL_ENFORCE_EQ(rlwes.size(), num_row_blks);
+  YACL_ENFORCE_EQ(rlwes.size(), num_row_blks);
   for (const auto& rlwe : rlwes) {
-    YASL_ENFORCE(seal::is_metadata_valid_for(rlwe, context_));
-    YASL_ENFORCE(!rlwe.is_ntt_form() && rlwe.size() == 2);
+    YACL_ENFORCE(seal::is_metadata_valid_for(rlwe, context_));
+    YACL_ENFORCE(!rlwe.is_ntt_form() && rlwe.size() == 2);
   }
 
   out->resize(meta.nrows);
@@ -205,12 +205,12 @@ void MatVecProtocol::MatVec(const Meta& meta, const std::vector<RLWEPt>& mat,
 
 void MatVecProtocol::EncodeVector(const Meta& meta, const ArrayRef& vec,
                                   std::vector<RLWEPt>* out) const {
-  YASL_ENFORCE(IsValidMeta(meta));
-  yasl::CheckNotNull(out);
+  YACL_ENFORCE(IsValidMeta(meta));
+  yacl::CheckNotNull(out);
 
   const Type& eltype = vec.eltype();
-  YASL_ENFORCE(eltype.isa<RingTy>(), "must be ring_type, got={}", eltype);
-  YASL_ENFORCE_EQ(static_cast<size_t>(vec.numel()), meta.ncols);
+  YACL_ENFORCE(eltype.isa<RingTy>(), "must be ring_type, got={}", eltype);
+  YACL_ENFORCE_EQ(static_cast<size_t>(vec.numel()), meta.ncols);
 
   auto submat_shape = GetSubMatrixShape(meta, poly_degree());
   size_t num_subvec = CeilDiv(meta.ncols, submat_shape[1]);
@@ -226,13 +226,13 @@ void MatVecProtocol::EncodeVector(const Meta& meta, const ArrayRef& vec,
 
 void MatVecProtocol::EncodeMatrix(const Meta& meta, const ArrayRef& mat,
                                   std::vector<RLWEPt>* out) const {
-  YASL_ENFORCE(IsValidMeta(meta));
-  yasl::CheckNotNull(out);
-  YASL_ENFORCE_EQ(seal::util::mul_safe(meta.nrows, meta.ncols),
+  YACL_ENFORCE(IsValidMeta(meta));
+  yacl::CheckNotNull(out);
+  YACL_ENFORCE_EQ(seal::util::mul_safe(meta.nrows, meta.ncols),
                   static_cast<size_t>(mat.numel()));
 
   const Type& eltype = mat.eltype();
-  YASL_ENFORCE(eltype.isa<RingTy>(), "must be ring_type, got={}", eltype);
+  YACL_ENFORCE(eltype.isa<RingTy>(), "must be ring_type, got={}", eltype);
 
   auto submat_shape = GetSubMatrixShape(meta, poly_degree());
   size_t num_row_blks = CeilDiv(meta.nrows, submat_shape[0]);
@@ -240,7 +240,7 @@ void MatVecProtocol::EncodeMatrix(const Meta& meta, const ArrayRef& mat,
   out->resize(seal::util::mul_safe(num_row_blks, num_col_blks));
 
   constexpr size_t kParallelGrain = 1;
-  yasl::parallel_for(
+  yacl::parallel_for(
       0, num_row_blks, kParallelGrain, [&](size_t rb_bgn, size_t rb_end) {
         auto out_ptr = out->data() + rb_bgn * num_col_blks;
         for (size_t rblk = rb_bgn; rblk < rb_end; ++rblk) {
@@ -267,15 +267,15 @@ void MatVecProtocol::EncodeMatrix(const Meta& meta, const ArrayRef& mat,
 
 ArrayRef MatVecProtocol::ParseMatVecResult(
     FieldType field, const Meta& meta, const std::vector<RLWEPt>& rlwes) const {
-  YASL_ENFORCE(IsValidMeta(meta));
+  YACL_ENFORCE(IsValidMeta(meta));
 
   auto submat_shape = GetSubMatrixShape(meta, poly_degree());
   size_t num_row_blks = CeilDiv(meta.nrows, submat_shape[0]);
-  YASL_ENFORCE_EQ(num_row_blks, rlwes.size());
+  YACL_ENFORCE_EQ(num_row_blks, rlwes.size());
   size_t coeff_count = rlwes[0].coeff_count();
   for (const auto& rlwe : rlwes) {
-    YASL_ENFORCE(seal::is_metadata_valid_for(rlwe, context_));
-    YASL_ENFORCE_EQ(rlwe.coeff_count(), coeff_count);
+    YACL_ENFORCE(seal::is_metadata_valid_for(rlwe, context_));
+    YACL_ENFORCE_EQ(rlwe.coeff_count(), coeff_count);
   }
 
   const size_t poly_deg = poly_degree();
@@ -290,7 +290,7 @@ ArrayRef MatVecProtocol::ParseMatVecResult(
     // Take the needed coefficients (RNS form) then compute the ModulusDown.
     for (size_t r = 0; r < num_coeff; ++r) {
       size_t row = rb * submat_shape[0] + r;
-      YASL_ENFORCE(row < meta.nrows);
+      YACL_ENFORCE(row < meta.nrows);
       size_t target_coeff = r * submat_shape[1];
       auto dst_ptr = coeff_rns.data() + r;
       auto src_ptr = rlwes[rb].data() + target_coeff;

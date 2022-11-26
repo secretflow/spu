@@ -14,8 +14,8 @@
 
 #include "spu/psi/cryptor/ecc_cryptor.h"
 
-#include "yasl/crypto/hash_util.h"
-#include "yasl/utils/parallel.h"
+#include "yacl/crypto/utils/hash_util.h"
+#include "yacl/utils/parallel.h"
 
 namespace spu::psi {
 
@@ -27,7 +27,7 @@ std::string CreateFlattenEccBuffer(const std::vector<std::string>& items,
   ret.reserve(items.size() * item_size);
   size_t size = std::min<size_t>(chosen_size, item_size);
   for (const auto& item : items) {
-    YASL_ENFORCE(item.size() == item_size, "item.size:{}, item_size:{}",
+    YACL_ENFORCE(item.size() == item_size, "item.size:{}, item_size:{}",
                  item.size(), item_size);
     ret.append(item.data(), size);
   }
@@ -41,7 +41,7 @@ std::string CreateFlattenEccBuffer(const std::vector<absl::string_view>& items,
   ret.reserve(items.size() * item_size);
   size_t size = std::min<size_t>(chosen_size, item_size);
   for (const auto& item : items) {
-    YASL_ENFORCE(item.size() == item_size, "item.size:{}, item_size:{}",
+    YACL_ENFORCE(item.size() == item_size, "item.size:{}, item_size:{}",
                  item.size(), item_size);
     ret.append(item.data(), size);
   }
@@ -50,7 +50,7 @@ std::string CreateFlattenEccBuffer(const std::vector<absl::string_view>& items,
 
 std::vector<std::string> CreateItemsFromFlattenEccBuffer(
     std::string_view buf, size_t item_size = kEccKeySize) {
-  YASL_ENFORCE(buf.size() % item_size == 0);
+  YACL_ENFORCE(buf.size() % item_size == 0);
   size_t num_item = buf.size() / item_size;
   std::vector<std::string> ret;
   ret.reserve(num_item);
@@ -64,7 +64,7 @@ std::vector<std::string> CreateItemsFromFlattenEccBuffer(
 
 std::vector<uint8_t> IEccCryptor::HashToCurve(
     absl::Span<const char> input) const {
-  return yasl::crypto::Sha256(input);
+  return yacl::crypto::Sha256(input);
 }
 
 std::vector<std::string> Mask(const std::shared_ptr<IEccCryptor>& cryptor,
@@ -96,7 +96,7 @@ std::string HashInput(const std::shared_ptr<IEccCryptor>& cryptor,
 std::vector<std::string> HashInputs(const std::shared_ptr<IEccCryptor>& cryptor,
                                     const std::vector<std::string>& items) {
   std::vector<std::string> ret(items.size());
-  yasl::parallel_for(0, items.size(), 1, [&](int64_t begin, int64_t end) {
+  yacl::parallel_for(0, items.size(), 1, [&](int64_t begin, int64_t end) {
     for (int64_t idx = begin; idx < end; ++idx) {
       ret[idx] = HashInput(cryptor, items[idx]);
     }

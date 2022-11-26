@@ -22,9 +22,9 @@
 #include "openssl/crypto.h"
 #include "openssl/rand.h"
 #include "spdlog/spdlog.h"
-#include "yasl/base/exception.h"
-#include "yasl/link/link.h"
-#include "yasl/utils/serialize.h"
+#include "yacl/base/exception.h"
+#include "yacl/link/link.h"
+#include "yacl/utils/serialize.h"
 
 #include "spu/psi/cryptor/cryptor_selector.h"
 
@@ -73,7 +73,7 @@ void EcdhP2PExtendCtx::MaskPeerForward(
   while (true) {
     std::vector<std::string> peer_items;
     std::vector<std::string> dup_masked_items;
-    RecvBatch(&peer_items);
+    RecvBatch(&peer_items, batch_count);
     if (!peer_items.empty()) {
       for (auto& masked : Mask(options_.ecc_cryptor, peer_items)) {
         if (truncation_size > 0) {
@@ -84,7 +84,7 @@ void EcdhP2PExtendCtx::MaskPeerForward(
         }
       }
     }
-    forward_ctx->ForwardBatch(dup_masked_items);
+    forward_ctx->ForwardBatch(dup_masked_items, batch_count);
     if (peer_items.empty()) {
       SPDLOG_INFO("MaskPeerForward:{} finished, batch_count={}",
                   options_.link_ctx->Id(), batch_count);
@@ -116,7 +116,7 @@ void EcdhP2PExtendCtx::RecvItems(std::vector<std::string>* items) {
   size_t batch_count = 0;
   while (true) {
     std::vector<std::string> recv_batch_items;
-    RecvBatch(&recv_batch_items);
+    RecvBatch(&recv_batch_items, batch_count);
     for (auto& item : recv_batch_items) {
       items->emplace_back(std::move(item));
     }
@@ -129,9 +129,9 @@ void EcdhP2PExtendCtx::RecvItems(std::vector<std::string>* items) {
   }
 }
 
-void EcdhP2PExtendCtx::ForwardBatch(
-    const std::vector<std::string>& batch_items) {
-  SendBatch(batch_items);
+void EcdhP2PExtendCtx::ForwardBatch(const std::vector<std::string>& batch_items,
+                                    int32_t batch_idx) {
+  SendBatch(batch_items, batch_idx);
 }
 
 void EcdhP2PExtendCtx::SendImpl(const std::vector<std::string>& items,
@@ -147,9 +147,9 @@ void EcdhP2PExtendCtx::SendImpl(const std::vector<std::string>& items,
     }
 
     if (dup_masked) {
-      SendDualMaskedBatch(batch_items);
+      SendDualMaskedBatch(batch_items, batch_count);
     } else {
-      SendBatch(batch_items);
+      SendBatch(batch_items, batch_count);
     }
 
     if (curr_step_item_num == 0) {
@@ -164,10 +164,10 @@ void EcdhP2PExtendCtx::SendImpl(const std::vector<std::string>& items,
 
 // shuffled ecdh 3pc psi
 ShuffleEcdh3PcPsi::ShuffleEcdh3PcPsi(Options options) : options_(options) {
-  YASL_ENFORCE(options_.link_ctx->WorldSize() == 3);
+  YACL_ENFORCE(options_.link_ctx->WorldSize() == 3);
 
   private_key_.resize(kKeySize);
-  YASL_ENFORCE(RAND_bytes(&private_key_[0], kKeySize) == 1,
+  YACL_ENFORCE(RAND_bytes(&private_key_[0], kKeySize) == 1,
                "Cannot create random private key");
   ecc_cryptor_ = CreateEccCryptor(options_.curve_type);
   ecc_cryptor_->SetPrivateKey(absl::MakeSpan(private_key_));
@@ -326,7 +326,7 @@ void ShuffleEcdh3PcPsi::FinalPsi(
       if (std::binary_search(masked_parteners_items.begin(),
                              masked_parteners_items.end(),
                              master_items[index])) {
-        YASL_ENFORCE(index < self_items.size());
+        YACL_ENFORCE(index < self_items.size());
         results->push_back(self_items[index]);
       }
     }
@@ -340,8 +340,8 @@ std::shared_ptr<EcdhP2PExtendCtx> ShuffleEcdh3PcPsi::CreateP2PCtx(
   opts.link_ctx = CreateP2PLinkCtx(link_id_prefix, options_.link_ctx, dst_rank);
   opts.ecc_cryptor = ecc_cryptor_;
   opts.dual_mask_size = dual_mask_size;
-  if (target_rank != yasl::link::kAllRank) {
-    YASL_ENFORCE(target_rank == options_.link_ctx->Rank() ||
+  if (target_rank != yacl::link::kAllRank) {
+    YACL_ENFORCE(target_rank == options_.link_ctx->Rank() ||
                  target_rank == dst_rank);
     opts.target_rank = target_rank == dst_rank ? opts.link_ctx->NextRank()
                                                : opts.link_ctx->Rank();
@@ -353,7 +353,7 @@ std::shared_ptr<EcdhP2PExtendCtx> ShuffleEcdh3PcPsi::CreateP2PCtx(
 }
 
 size_t ShuffleEcdh3PcPsi::GetPartnersPsiPeerRank() {
-  YASL_ENFORCE(!IsMaster());
+  YACL_ENFORCE(!IsMaster());
   if (IsCalcuator()) {
     return options_.link_ctx->NextRank();
   } else {

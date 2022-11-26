@@ -17,13 +17,13 @@
 #include <array>
 
 #include "crypto_mb/x25519.h"
-#include "yasl/utils/parallel.h"
+#include "yacl/utils/parallel.h"
 
 namespace spu::psi {
 
 void IppEccCryptor::EccMask(absl::Span<const char> batch_points,
                             absl::Span<char> dest_points) const {
-  YASL_ENFORCE(batch_points.size() % kEccKeySize == 0);
+  YACL_ENFORCE(batch_points.size() % kEccKeySize == 0);
 
   using Item = std::array<unsigned char, kEccKeySize>;
   static_assert(sizeof(Item) == kEccKeySize);
@@ -52,7 +52,7 @@ void IppEccCryptor::EccMask(absl::Span<const char> batch_points,
     }
     mbx_status status =
         mbx_x25519_mb8(ptr_key.data(), ptr_sk.data(), ptr_pk.data());
-    YASL_ENFORCE(status == 0, "ippc mbx_x25519_mb8 Error: ", status);
+    YACL_ENFORCE(status == 0, "ippc mbx_x25519_mb8 Error: ", status);
   };
 
   absl::Span<const Item> input(
@@ -61,7 +61,7 @@ void IppEccCryptor::EccMask(absl::Span<const char> batch_points,
   absl::Span<Item> output(reinterpret_cast<Item *>(dest_points.data()),
                           dest_points.size() / sizeof(Item));
 
-  yasl::parallel_for(0, input.size(), 8, [&](int64_t begin, int64_t end) {
+  yacl::parallel_for(0, input.size(), 8, [&](int64_t begin, int64_t end) {
     for (int64_t idx = begin; idx < end; idx += 8) {
       int64_t current_batch_size = std::min(int64_t(8), end - begin);
       mask_functor(input.subspan(idx, current_batch_size),

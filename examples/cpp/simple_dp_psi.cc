@@ -132,7 +132,7 @@ int main(int argc, char** argv) {
   link_ctx->SetRecvTimeout(kLinkRecvTimeout);
 
   if (Rank.getValue() == 0) {
-    yasl::Buffer bob_items_size_buffer = hctx->lctx()->Recv(
+    yacl::Buffer bob_items_size_buffer = hctx->lctx()->Recv(
         link_ctx->NextRank(), fmt::format("peer items number"));
     size_t bob_items_size =
         spu::psi::utils::DeserializeSize(bob_items_size_buffer);
@@ -149,7 +149,7 @@ int main(int argc, char** argv) {
     SPDLOG_INFO("alice_up_sample_size: {}", alice_up_sample_size);
     SPDLOG_INFO("intersection_size: {}", intersection_size);
   } else if (Rank.getValue() == 1) {
-    yasl::Buffer self_count_buffer =
+    yacl::Buffer self_count_buffer =
         spu::psi::utils::SerializeSize(items.size());
     link_ctx->SendAsync(link_ctx->NextRank(), self_count_buffer,
                         fmt::format("send items count: {}", items.size()));
@@ -165,7 +165,7 @@ int main(int argc, char** argv) {
 
     WriteCsvData(OutPathOpt.getValue(), items, intersection_idx);
   } else {
-    YASL_THROW("wrong rank");
+    YACL_THROW("wrong rank");
   }
 
   return 0;

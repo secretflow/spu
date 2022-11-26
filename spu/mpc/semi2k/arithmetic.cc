@@ -96,7 +96,7 @@ ArrayRef AddAP::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
                      const ArrayRef& rhs) const {
   SPU_TRACE_MPC_LEAF(ctx, lhs, rhs);
 
-  YASL_ENFORCE(lhs.numel() == rhs.numel());
+  YACL_ENFORCE(lhs.numel() == rhs.numel());
   auto* comm = ctx->caller()->getState<Communicator>();
 
   if (comm->getRank() == 0) {
@@ -110,8 +110,8 @@ ArrayRef AddAA::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
                      const ArrayRef& rhs) const {
   SPU_TRACE_MPC_LEAF(ctx, lhs, rhs);
 
-  YASL_ENFORCE(lhs.numel() == rhs.numel());
-  YASL_ENFORCE(lhs.eltype() == rhs.eltype());
+  YACL_ENFORCE(lhs.numel() == rhs.numel());
+  YACL_ENFORCE(lhs.eltype() == rhs.eltype());
 
   return ring_add(lhs, rhs).as(lhs.eltype());
 }

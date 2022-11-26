@@ -47,25 +47,26 @@ private:
     std::vector<Visibility> input_vis;
     for (size_t idx = 0; idx < num_results; ++idx) {
       auto inputVis = ValueVis_.getValueVisibility(reduceOp.operands()[idx]);
-      auto initVis = ValueVis_.getValueVisibility(reduceOp.init_values()[idx]);
+      auto initVis =
+          ValueVis_.getValueVisibility(reduceOp.getInitValues()[idx]);
 
       auto promoted_vis = TypeTools::inferResultVisibility({inputVis, initVis});
       input_vis.emplace_back(promoted_vis);
 
-      ValueVis_.setValueVisibility(reduceOp.body().getArgument(idx),
+      ValueVis_.setValueVisibility(reduceOp.getBody().getArgument(idx),
                                    promoted_vis);
       ValueVis_.setValueVisibility(
-          reduceOp.body().getArgument(num_results + idx), promoted_vis);
+          reduceOp.getBody().getArgument(num_results + idx), promoted_vis);
     }
 
     // ret0 = reduce(init0, val0)
     // Push inputs to body region
-    inferRegion(reduceOp.body());
+    inferRegion(reduceOp.getBody());
 
     // Get body return
     bool reinfer = false;
-    auto *terminator = reduceOp.body().back().getTerminator();
-    YASL_ENFORCE(terminator &&
+    auto *terminator = reduceOp.getBody().back().getTerminator();
+    YACL_ENFORCE(terminator &&
                  terminator->getNumOperands() == reduceOp->getNumResults());
     std::vector<Visibility> ret_vis;
     for (size_t idx = 0; idx < reduceOp->getNumResults(); ++idx) {
@@ -80,15 +81,15 @@ private:
 
     if (reinfer) {
       for (size_t idx = 0; idx < num_results; ++idx) {
-        ValueVis_.setValueVisibility(reduceOp.body().getArgument(idx),
+        ValueVis_.setValueVisibility(reduceOp.getBody().getArgument(idx),
                                      ret_vis[idx]);
         ValueVis_.setValueVisibility(
-            reduceOp.body().getArgument(num_results + idx), ret_vis[idx]);
+            reduceOp.getBody().getArgument(num_results + idx), ret_vis[idx]);
       }
 
       // ret0 = reduce(init0, val0)
       // Push inputs to body region
-      inferRegion(reduceOp.body());
+      inferRegion(reduceOp.getBody());
     }
   }
 

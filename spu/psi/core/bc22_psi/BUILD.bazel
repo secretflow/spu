@@ -13,7 +13,7 @@
 # limitations under the License.
 
 load("//bazel:spu.bzl", "spu_cc_binary", "spu_cc_library", "spu_cc_test")
-load("@yasl//bazel:yasl.bzl", "EMP_COPT_FLAGS")
+load("@yacl//bazel:yacl.bzl", "EMP_COPT_FLAGS")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -29,11 +29,11 @@ spu_cc_library(
         "//spu/psi/utils:serialize",
         "@com_google_absl//absl/container:flat_hash_set",
         "@com_google_absl//absl/strings",
-        "@yasl//yasl/base:exception",
-        "@yasl//yasl/base:int128",
-        "@yasl//yasl/link",
-        "@yasl//yasl/utils:parallel",
-        "@yasl//yasl/utils:rand",
+        "@yacl//yacl/base:exception",
+        "@yacl//yacl/base:int128",
+        "@yacl//yacl/crypto/utils:rand",
+        "@yacl//yacl/link",
+        "@yacl//yacl/utils:parallel",
     ],
 )
 
@@ -57,9 +57,9 @@ spu_cc_library(
         "@com_github_emptoolkit_emp_zk//:emp-zk",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/types:span",
-        "@yasl//yasl/base:exception",
-        "@yasl//yasl/link",
-        "@yasl//yasl/utils:rand",
+        "@yacl//yacl/base:exception",
+        "@yacl//yacl/crypto/utils:rand",
+        "@yacl//yacl/link",
     ],
 )
 
@@ -70,7 +70,7 @@ spu_cc_test(
     deps = [
         ":emp_vole",
         "@com_google_absl//absl/container:flat_hash_set",
-        "@yasl//yasl/link",
+        "@yacl//yacl/link",
     ],
 )
 
@@ -81,14 +81,14 @@ spu_cc_library(
     deps = [
         "//spu/psi/core:cuckoo_index",
         "@com_google_absl//absl/strings",
-        "@yasl//yasl/base:byte_container_view",
-        "@yasl//yasl/base:exception",
-        "@yasl//yasl/base:int128",
-        "@yasl//yasl/crypto:hash_util",
-        "@yasl//yasl/crypto:pseudo_random_generator",
-        "@yasl//yasl/link",
-        "@yasl//yasl/utils:parallel",
-        "@yasl//yasl/utils:rand",
+        "@yacl//yacl/base:byte_container_view",
+        "@yacl//yacl/base:exception",
+        "@yacl//yacl/base:int128",
+        "@yacl//yacl/crypto/tools:prg",
+        "@yacl//yacl/crypto/utils:hash_util",
+        "@yacl//yacl/crypto/utils:rand",
+        "@yacl//yacl/link",
+        "@yacl//yacl/utils:parallel",
     ],
 )
 

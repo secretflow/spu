@@ -15,7 +15,6 @@
 #include "spu/compiler/front_end/hlo_importer.h"
 
 #include "spdlog/spdlog.h"
-#include "tensorflow/compiler/mlir/xla/hlo_module_importer.h"
 #include "tensorflow/compiler/xla/service/algebraic_simplifier.h"
 #include "tensorflow/compiler/xla/service/batch_dot_simplification.h"
 #include "tensorflow/compiler/xla/service/batchnorm_expander.h"
@@ -48,7 +47,8 @@
 #include "tensorflow/compiler/xla/service/tuple_simplifier.h"
 #include "tensorflow/compiler/xla/service/while_loop_simplifier.h"
 #include "tensorflow/compiler/xla/service/zero_sized_hlo_elimination.h"
-#include "yasl/base/exception.h"
+#include "tensorflow/compiler/xla/translate/hlo_to_mhlo/hlo_module_importer.h"
+#include "yacl/base/exception.h"
 
 #include "spu/compiler/common/compilation_context.h"
 
@@ -128,7 +128,7 @@ void runHloPasses(xla::HloModule *module) {
 
   auto status = pipeline.Run(module).status();
 
-  YASL_ENFORCE(status.ok());
+  YACL_ENFORCE(status.ok());
 }
 } // namespace xla
 
@@ -142,7 +142,7 @@ HloImporter::parseXlaModuleFromString(const std::string &content) {
     // If parse as HloModuleProto fails, try HloProto.
     xla::HloProto hlo_proto;
     if (!hlo_proto.ParseFromString(content)) {
-      YASL_THROW("Failed to parse hlo module from string");
+      YACL_THROW("Failed to parse hlo module from string");
     }
     hlo_module = hlo_proto.hlo_module();
   }
@@ -159,12 +159,12 @@ HloImporter::parseXlaModuleFromString(const std::string &content) {
   auto module_config =
       xla::HloModule::CreateModuleConfigFromProto(hlo_module, debug_options);
   if (!module_config.status().ok()) {
-    YASL_THROW(module_config.status().error_message());
+    YACL_THROW(module_config.status().error_message());
   }
 
   auto module = xla::HloModule::CreateFromProto(hlo_module, *module_config);
   if (!module.status().ok()) {
-    YASL_THROW(module.status().error_message());
+    YACL_THROW(module.status().error_message());
   }
 
   xla::runHloPasses((*module).get());
@@ -177,7 +177,7 @@ HloImporter::parseXlaModuleFromString(const std::string &content) {
 
   auto status = importer.Import(**module);
   if (!status.ok()) {
-    YASL_THROW(status.error_message());
+    YACL_THROW(status.error_message());
   }
 
   return mlir_hlo;

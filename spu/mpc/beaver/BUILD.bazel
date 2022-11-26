@@ -13,7 +13,7 @@
 # limitations under the License.
 
 load("//bazel:spu.bzl", "spu_cc_library", "spu_cc_test")
-load("@yasl//bazel:yasl.bzl", "EMP_COPT_FLAGS")
+load("@yacl//bazel:yacl.bzl", "EMP_COPT_FLAGS")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -65,7 +65,7 @@ spu_cc_library(
     deps = [
         "//spu/core:array_ref",
         "//spu/mpc/util:ring_ops",
-        "@yasl//yasl/crypto:pseudo_random_generator",
+        "@yacl//yacl/crypto/tools:prg",
     ],
 )
 
@@ -88,8 +88,8 @@ spu_cc_library(
         ":beaver",
         ":trusted_party",
         "//spu/mpc/util:ring_ops",
-        "@yasl//yasl/link",
-        "@yasl//yasl/utils:serialize",
+        "@yacl//yacl/link",
+        "@yacl//yacl/utils:serialize",
     ],
 )
 
@@ -114,8 +114,8 @@ spu_cc_library(
         "//spu/mpc/beaver/cheetah:cheetah_he",
         "//spu/mpc/util:ring_ops",
         "@com_github_microsoft_seal//:seal",
-        "@yasl//yasl/link",
-        "@yasl//yasl/utils:parallel",
+        "@yacl//yacl/link",
+        "@yacl//yacl/utils:parallel",
     ],
 )
 

@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "yasl/link/context.h"
+#include "yacl/link/context.h"
 
 #include "spu/crypto/ot/silent/primitives.h"
 #include "spu/mpc/beaver/beaver.h"
@@ -47,11 +47,11 @@ class BeaverCheetah : public Beaver {
   std::shared_ptr<spu::CheetahPrimitives> ot_primitives_{nullptr};
 
   friend class cheetah::MulAA;
-  ArrayRef MulAShr(const ArrayRef& shr, yasl::link::Context* conn,
+  ArrayRef MulAShr(const ArrayRef& shr, yacl::link::Context* conn,
                    bool evaluator);
 
  public:
-  BeaverCheetah(std::shared_ptr<yasl::link::Context> lctx);
+  BeaverCheetah(std::shared_ptr<yacl::link::Context> lctx);
 
   const spu::CheetahPrimitives* OTPrimitives() const {
     return ot_primitives_.get();

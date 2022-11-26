@@ -15,25 +15,38 @@
 #include "spu/psi/operator/ecdh_3party_psi.h"
 
 #include <future>
+#include <memory>
 #include <random>
 
 #include "fmt/format.h"
 #include "openssl/crypto.h"
 #include "openssl/rand.h"
 #include "spdlog/spdlog.h"
-#include "yasl/base/exception.h"
-#include "yasl/link/context.h"
-#include "yasl/link/link.h"
-#include "yasl/utils/serialize.h"
+#include "yacl/base/exception.h"
+#include "yacl/link/context.h"
+#include "yacl/link/link.h"
+#include "yacl/utils/serialize.h"
 
 #include "spu/psi/cryptor/cryptor_selector.h"
-
-namespace spu::psi {
+#include "spu/psi/operator/factory.h"
 
 namespace {
 constexpr uint32_t kLinkRecvTimeout = 30 * 60 * 1000;
-
 }  // namespace
+
+namespace spu::psi {
+
+Ecdh3PartyPsiOperator::Options Ecdh3PartyPsiOperator::ParseConfig(
+    const MemoryPsiConfig& config,
+    const std::shared_ptr<yacl::link::Context>& lctx) {
+  Ecdh3PartyPsiOperator::Options opts;
+  opts.link_ctx = lctx;
+  opts.master_rank = config.receiver_rank();
+  if (config.curve_type() != CurveType::CURVE_INVALID_TYPE) {
+    opts.curve_type = config.curve_type();
+  }
+  return opts;
+}
 
 Ecdh3PartyPsiOperator::Ecdh3PartyPsiOperator(const Options& options)
     : PsiBaseOperator(options.link_ctx), options_(options), handler_(nullptr) {
@@ -67,5 +80,18 @@ std::vector<std::string> Ecdh3PartyPsiOperator::OnRun(
 
   return results;
 }
+
+namespace {
+
+std::unique_ptr<PsiBaseOperator> CreateOperator(
+    const MemoryPsiConfig& config,
+    const std::shared_ptr<yacl::link::Context>& lctx) {
+  auto options = Ecdh3PartyPsiOperator::ParseConfig(config, lctx);
+  return std::make_unique<Ecdh3PartyPsiOperator>(options);
+}
+
+REGISTER_OPERATOR(ECDH_PSI_3PC, CreateOperator);
+
+}  // namespace
 
 }  // namespace spu::psi

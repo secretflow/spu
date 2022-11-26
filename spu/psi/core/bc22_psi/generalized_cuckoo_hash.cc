@@ -19,9 +19,9 @@
 
 #include "absl/strings/escaping.h"
 #include "spdlog/spdlog.h"
-#include "yasl/base/int128.h"
-#include "yasl/utils/parallel.h"
-#include "yasl/utils/rand.h"
+#include "yacl/base/int128.h"
+#include "yacl/crypto/utils/rand.h"
+#include "yacl/utils/parallel.h"
 
 namespace spu::psi {
 
@@ -37,7 +37,7 @@ constexpr size_t kDefaultHashNum = 2;
 // h1(x) = h0(x) xor fingerprint(x).
 std::vector<uint64_t> GetBinIdx(const CuckooIndex::Options &options,
                                 uint128_t item_hash, uint64_t item_hash_u64) {
-  YASL_ENFORCE(options.num_hash == kDefaultHashNum);
+  YACL_ENFORCE(options.num_hash == kDefaultHashNum);
   size_t num_bins = options.NumBins();
 
   CuckooIndex::HashRoom hash_room(item_hash);
@@ -62,7 +62,7 @@ CuckooIndex::Options GetCuckooHashOption(size_t bin_size, size_t hash_num,
   options.num_stash = 0;
   options.num_hash = hash_num;
 
-  YASL_ENFORCE(hash_num == kDefaultHashNum, "just support 2 hash");
+  YACL_ENFORCE(hash_num == kDefaultHashNum, "just support 2 hash");
 
   if (hash_num == kDefaultHashNum) {
     if (bin_size == 2) {
@@ -70,10 +70,10 @@ CuckooIndex::Options GetCuckooHashOption(size_t bin_size, size_t hash_num,
     } else if (bin_size == 3) {
       options.scale_factor = 0.6;
     } else {
-      YASL_THROW("unsupport");
+      YACL_THROW("unsupport");
     }
   } else {
-    YASL_THROW("unsupport");
+    YACL_THROW("unsupport");
   }
   return options;
 }
@@ -83,7 +83,7 @@ GeneralizedCuckooHashTable::GeneralizedCuckooHashTable(
     : gch_options_(options),
       max_items_per_bin_(bin_data_num),
       seed_(seed),
-      gen_(yasl::DrbgRandSeed()) {
+      gen_(yacl::DrbgRandSeed()) {
   size_t table_size = gch_options_.NumBins();
   bins_.resize(table_size);
 
@@ -93,7 +93,7 @@ GeneralizedCuckooHashTable::GeneralizedCuckooHashTable(
       std::uniform_int_distribution<uint32_t>(0, max_items_per_bin_ - 1);
 }
 
-void GeneralizedCuckooHashTable::Insert(yasl::ByteContainerView item_data,
+void GeneralizedCuckooHashTable::Insert(yacl::ByteContainerView item_data,
                                         size_t input_offset) {
   CuckooIndex::Bin candidate;
   candidate.set_encoded(input_offset);
@@ -135,19 +135,19 @@ void GeneralizedCuckooHashTable::Insert(yasl::ByteContainerView item_data,
         bins_[bin_idx][rand_data_idx].Swap(candidate.encoded()));
   }
 
-  YASL_THROW(
+  YACL_THROW(
       "Error insert, level:{} insert item_data:{}", level,
       absl::BytesToHexString(absl::string_view(
           reinterpret_cast<const char *>(item_data.data()), item_data.size())));
 }
 
-void GeneralizedCuckooHashTable::Insert(yasl::ByteContainerView item) {
-  uint128_t item_hash = yasl::crypto::Blake3_128(item);
+void GeneralizedCuckooHashTable::Insert(yacl::ByteContainerView item) {
+  uint128_t item_hash = yacl::crypto::Blake3_128(item);
   size_t input_offset = hashes_.size();
 
   // hash_bin_idx
   std::pair<uint64_t, uint64_t> items_hash_u64 =
-      yasl::DecomposeUInt128(item_hash);
+      yacl::DecomposeUInt128(item_hash);
   std::vector<uint64_t> hash_bin_idx =
       GetBinIdx(gch_options_, item_hash, items_hash_u64.first);
   hashes_.push_back(hash_bin_idx);
@@ -162,12 +162,12 @@ void GeneralizedCuckooHashTable::Insert(absl::Span<const std::string> items) {
   items_hash_low64_.resize(input_offset + items.size());
   hashes_.resize(input_offset + items.size());
 
-  yasl::parallel_for(0, items.size(), 1, [&](int64_t begin, int64_t end) {
+  yacl::parallel_for(0, items.size(), 1, [&](int64_t begin, int64_t end) {
     for (int i = begin; i < end; ++i) {
-      uint128_t item_hash = yasl::crypto::Blake3_128(items[i]);
+      uint128_t item_hash = yacl::crypto::Blake3_128(items[i]);
 
       std::pair<uint64_t, uint64_t> items_hash_u64 =
-          yasl::DecomposeUInt128(item_hash);
+          yacl::DecomposeUInt128(item_hash);
 
       items_hash_low64_[input_offset + i] = items_hash_u64.second;
       hashes_[input_offset + i] =
@@ -187,7 +187,7 @@ SimpleHashTable::SimpleHashTable(CuckooIndex::Options options, uint128_t seed)
   bins_.resize(table_size);
 }
 
-void SimpleHashTable::Insert(yasl::ByteContainerView item_data,
+void SimpleHashTable::Insert(yacl::ByteContainerView item_data,
                              const std::vector<uint64_t> &hash_bin_idx) {
   CuckooIndex::Bin candidate;
   candidate.set_encoded(inserted_items_);
@@ -222,12 +222,12 @@ void SimpleHashTable::Insert(yasl::ByteContainerView item_data,
   inserted_items_++;
 }
 
-void SimpleHashTable::Insert(yasl::ByteContainerView item) {
-  uint128_t item_hash = yasl::crypto::Blake3_128(item);
+void SimpleHashTable::Insert(yacl::ByteContainerView item) {
+  uint128_t item_hash = yacl::crypto::Blake3_128(item);
 
   std::vector<uint64_t> hash_bin_idx;
   std::pair<uint64_t, uint64_t> item_hash_u64 =
-      yasl::DecomposeUInt128(item_hash);
+      yacl::DecomposeUInt128(item_hash);
 
   items_hash_low64_.push_back(item_hash_u64.second);
 
@@ -242,12 +242,12 @@ void SimpleHashTable::Insert(absl::Span<const std::string> items) {
 
   std::vector<std::vector<uint64_t>> hash_bin_idx(items.size());
 
-  yasl::parallel_for(0, items.size(), 1, [&](int64_t begin, int64_t end) {
+  yacl::parallel_for(0, items.size(), 1, [&](int64_t begin, int64_t end) {
     for (int i = begin; i < end; ++i) {
-      uint128_t item_hash = yasl::crypto::Blake3_128(items[i]);
+      uint128_t item_hash = yacl::crypto::Blake3_128(items[i]);
 
       std::pair<uint64_t, uint64_t> item_hash_u64 =
-          yasl::DecomposeUInt128(item_hash);
+          yacl::DecomposeUInt128(item_hash);
       hash_bin_idx[i] = GetBinIdx(gch_options_, item_hash, item_hash_u64.first);
 
       items_hash_low64_[input_offset + i] = item_hash_u64.second;

@@ -21,7 +21,7 @@
 #include "absl/strings/escaping.h"
 #include "gtest/gtest.h"
 #include "spdlog/spdlog.h"
-#include "yasl/link/test_util.h"
+#include "yacl/link/test_util.h"
 
 #include "spu/psi/cryptor/sodium_curve25519_cryptor.h"
 
@@ -91,7 +91,7 @@ TEST_P(SealMultiPirTest, Works) {
 
   std::vector<uint8_t> db_bytes = GenerateDbData(params);
 
-  auto ctxs = yasl::link::test::SetupWorld(2);
+  auto ctxs = yacl::link::test::SetupWorld(2);
 
   // use dh keyexchange get shared oracle seed
   psi::SodiumCurve25519Cryptor c25519_cryptor0, c25519_cryptor1;

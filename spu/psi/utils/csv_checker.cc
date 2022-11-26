@@ -21,9 +21,9 @@
 #include "absl/time/clock.h"
 #include "absl/time/time.h"
 #include "spdlog/spdlog.h"
-#include "yasl/base/exception.h"
-#include "yasl/crypto/hash_util.h"
-#include "yasl/utils/scope_guard.h"
+#include "yacl/base/exception.h"
+#include "yacl/crypto/utils/hash_util.h"
+#include "yacl/utils/scope_guard.h"
 
 #include "spu/psi/io/io.h"
 
@@ -54,12 +54,12 @@ CsvChecker::CsvChecker(const std::string& csv_path,
                        const std::vector<std::string>& schema_names,
                        const std::string& tmp_cache_dir, bool skip_check)
     : data_count_(0), hash_digest_() {
-  YASL_ENFORCE(!CheckIfBOMExists(csv_path),
+  YACL_ENFORCE(!CheckIfBOMExists(csv_path),
                "the file {} starts with BOM(Byte Order Mark).", csv_path);
 
   size_t duplicated_size = 0;
   std::vector<std::string> duplicated_keys;
-  yasl::crypto::SslHash hash_obj(yasl::crypto::HashAlgorithm::SHA256);
+  yacl::crypto::SslHash hash_obj(yacl::crypto::HashAlgorithm::SHA256);
 
   io::FileIoOptions file_opts(csv_path);
   io::CsvOptions csv_opts;
@@ -89,7 +89,7 @@ CsvChecker::CsvChecker(const std::string& csv_path,
       std::vector<std::string> chosen;
       for (size_t col = 0; col < batch.Shape().cols; col++) {
         const auto& token = batch.At<std::string>(row, col);
-        YASL_ENFORCE(token.size(), "empty token in row={} field={}",
+        YACL_ENFORCE(token.size(), "empty token in row={} field={}",
                      data_count_ + row, schema_names[col]);
         chosen.push_back(token);
       }
@@ -124,7 +124,7 @@ CsvChecker::CsvChecker(const std::string& csv_path,
         tmp_cache_dir, keys_file, duplicated_keys_file);
     SPDLOG_INFO("Executing duplicated scripts: {}", cmd);
     int ret = system(cmd.c_str());
-    YASL_ENFORCE(ret == 0, "failed to execute cmd={}, ret={}", cmd, ret);
+    YACL_ENFORCE(ret == 0, "failed to execute cmd={}, ret={}", cmd, ret);
     io::FileIoOptions dup_keys_file_opts(duplicated_keys_file);
     auto duplicated_is = io::BuildInputStream(dup_keys_file_opts);
     std::string duplicated_key;
@@ -134,7 +134,7 @@ CsvChecker::CsvChecker(const std::string& csv_path,
       }
     }
     // not precise size if some key repeat more than 2 times.
-    YASL_ENFORCE(duplicated_size == 0, "found duplicated keys: {}",
+    YACL_ENFORCE(duplicated_size == 0, "found duplicated keys: {}",
                  fmt::join(duplicated_keys, ","));
   }
 

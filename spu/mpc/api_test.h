@@ -15,7 +15,7 @@
 #include <functional>
 
 #include "gtest/gtest.h"
-#include "yasl/link/link.h"
+#include "yacl/link/link.h"
 
 #include "spu/mpc/object.h"
 
@@ -32,7 +32,7 @@ namespace spu::mpc::test {
 
 using CreateComputeFn = std::function<std::unique_ptr<Object>(
     const RuntimeConfig& conf,
-    const std::shared_ptr<yasl::link::Context>& lctx)>;
+    const std::shared_ptr<yacl::link::Context>& lctx)>;
 
 class ApiTest : public ::testing::TestWithParam<
                     std::tuple<CreateComputeFn, RuntimeConfig, size_t>> {};

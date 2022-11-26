@@ -33,8 +33,8 @@
 #include "spdlog/spdlog.h"
 #include "xtensor/xvectorize.hpp"
 #include "xtensor/xview.hpp"
-#include "yasl/link/link.h"
-#include "yasl/utils/parallel.h"
+#include "yacl/link/link.h"
+#include "yacl/utils/parallel.h"
 
 #include "spu/core/xt_helper.h"
 #include "spu/mpc/beaver/cheetah/lwe_decryptor.h"
@@ -57,11 +57,11 @@ static PrgSeed GetHardwareRandom128() {
   std::random_device rd;
   uint64_t lhs = static_cast<uint64_t>(rd()) << 32 | rd();
   uint64_t rhs = static_cast<uint64_t>(rd()) << 32 | rd();
-  return yasl::MakeUint128(lhs, rhs);
+  return yacl::MakeUint128(lhs, rhs);
 }
 
 static void TransposeInplace(ArrayRef mat, size_t nrows, size_t ncols) {
-  YASL_ENFORCE_EQ((size_t)mat.numel(), nrows * ncols);
+  YACL_ENFORCE_EQ((size_t)mat.numel(), nrows * ncols);
   const auto field = mat.eltype().as<Ring2k>()->field();
   DISPATCH_ALL_FIELDS(field, "_", [&]() {
     auto xmat = xt_mutable_adapt<ring2k_t>(mat);
@@ -76,7 +76,7 @@ struct EnablePRNG {
 
   // uniform random on prime field
   void CPRNGPrime(const seal::Modulus &prime, absl::Span<uint64_t> dst) {
-    YASL_ENFORCE(dst.size() > 0);
+    YACL_ENFORCE(dst.size() > 0);
     using namespace seal::util;
     constexpr uint64_t max_random =
         static_cast<uint64_t>(0xFFFFFFFFFFFFFFFFULL);
@@ -124,7 +124,7 @@ struct BeaverCheetah::MulImpl : public EnablePRNG {
   static constexpr int kNoiseFloodRandomBits = 50;
   static constexpr size_t kParallelGrain = 1;
 
-  MulImpl(std::shared_ptr<yasl::link::Context> lctx)
+  MulImpl(std::shared_ptr<yacl::link::Context> lctx)
       : EnablePRNG(), lctx_(lctx) {
     parms_ = DecideSEALParameters(kSmallPrimeBitLen);
   }
@@ -146,11 +146,11 @@ struct BeaverCheetah::MulImpl : public EnablePRNG {
   size_t num_slots() const { return parms_.poly_modulus_degree(); }
 
   void LazyExpandSEALContexts(uint32_t field_bitlen,
-                              yasl::link::Context *conn = nullptr);
+                              yacl::link::Context *conn = nullptr);
 
   Beaver::Triple Mul(FieldType field, size_t size);
 
-  ArrayRef MulAShr(const ArrayRef &shr, yasl::link::Context *conn,
+  ArrayRef MulAShr(const ArrayRef &shr, yacl::link::Context *conn,
                    bool evaluator);
 
  protected:
@@ -165,7 +165,7 @@ struct BeaverCheetah::MulImpl : public EnablePRNG {
 
   inline uint32_t WorkingContextSize(uint32_t field_bitlen) {
     uint32_t target_bitlen = TotalCRTBitLen(field_bitlen);
-    YASL_ENFORCE(target_bitlen <= current_crt_plain_bitlen_,
+    YACL_ENFORCE(target_bitlen <= current_crt_plain_bitlen_,
                  "Call ExpandSEALContexts first");
     return CeilDiv(target_bitlen, kSmallPrimeBitLen);
   }
@@ -185,8 +185,8 @@ struct BeaverCheetah::MulImpl : public EnablePRNG {
                    std::vector<RLWEPt> *out) {
     size_t num_elts = array.numel();
     auto eltype = array.eltype();
-    YASL_ENFORCE(num_elts > 0, "empty array");
-    YASL_ENFORCE(eltype.isa<RingTy>(), "array must be ring_type, got={}",
+    YACL_ENFORCE(num_elts > 0, "empty array");
+    YACL_ENFORCE(eltype.isa<RingTy>(), "array must be ring_type, got={}",
                  eltype);
 
     auto field = eltype.as<Ring2k>()->field();
@@ -203,15 +203,15 @@ struct BeaverCheetah::MulImpl : public EnablePRNG {
   // return the payload size (absl::Buffer)
   size_t EncryptArrayThenSend(const ArrayRef &array,
                               std::vector<RLWEPt> *out = nullptr,
-                              yasl::link::Context *conn = nullptr);
+                              yacl::link::Context *conn = nullptr);
 
   // Sample random array `r` of `size` elements in the field.
   // Then compute ciphers*plains + r and response the result to the peer.
   // Return teh sampled array `r`.
   ArrayRef ElementMulThenResponse(FieldType field, size_t size,
-                                  absl::Span<const yasl::Buffer> ciphers,
+                                  absl::Span<const yacl::Buffer> ciphers,
                                   absl::Span<const RLWEPt> plains,
-                                  yasl::link::Context *conn = nullptr);
+                                  yacl::link::Context *conn = nullptr);
 
   ArrayRef _PrepareRandomMask(FieldType field, size_t size,
                               const Options &options,
@@ -225,14 +225,14 @@ struct BeaverCheetah::MulImpl : public EnablePRNG {
   }
 
   ArrayRef DecryptArray(FieldType field, size_t size,
-                        const std::vector<yasl::Buffer> &ct_array);
+                        const std::vector<yacl::Buffer> &ct_array);
 
   void _NoiseFloodCiphertext(RLWECt &ct, const seal::SEALContext &context);
 
   void RandomizeCipherForDecryption(RLWECt &ct, size_t cidx);
 
  private:
-  std::shared_ptr<yasl::link::Context> lctx_;
+  std::shared_ptr<yacl::link::Context> lctx_;
 
   seal::EncryptionParameters parms_;
 
@@ -260,7 +260,7 @@ void BeaverCheetah::MulImpl::LazyInitModSwitchHelper(uint32_t field_bitlen) {
   if (ms_helpers_.count(field_bitlen) > 0) return;
 
   uint32_t target_plain_bitlen = TotalCRTBitLen(field_bitlen);
-  YASL_ENFORCE(current_crt_plain_bitlen_ >= target_plain_bitlen);
+  YACL_ENFORCE(current_crt_plain_bitlen_ >= target_plain_bitlen);
   std::vector<seal::Modulus> crt_modulus;
   uint32_t accum_plain_bitlen = 0;
 
@@ -282,7 +282,7 @@ void BeaverCheetah::MulImpl::LazyInitModSwitchHelper(uint32_t field_bitlen) {
 }
 
 void BeaverCheetah::MulImpl::LazyExpandSEALContexts(uint32_t field_bitlen,
-                                                    yasl::link::Context *conn) {
+                                                    yacl::link::Context *conn) {
   uint32_t target_plain_bitlen = TotalCRTBitLen(field_bitlen);
   {
     std::shared_lock<std::shared_mutex> guard(context_lock_);
@@ -310,7 +310,7 @@ void BeaverCheetah::MulImpl::LazyExpandSEALContexts(uint32_t field_bitlen,
     for (uint32_t j = 0; j < current_num_ctx; ++j) {
       uint32_t prev_plain_modulus =
           seal_cntxts_[j].key_context_data()->parms().plain_modulus().value();
-      YASL_ENFORCE_NE(new_plain_modulus, prev_plain_modulus);
+      YACL_ENFORCE_NE(new_plain_modulus, prev_plain_modulus);
     }
   }
 
@@ -374,12 +374,12 @@ void BeaverCheetah::MulImpl::LazyExpandSEALContexts(uint32_t field_bitlen,
 }
 
 ArrayRef BeaverCheetah::MulImpl::MulAShr(const ArrayRef &shr,
-                                         yasl::link::Context *conn,
+                                         yacl::link::Context *conn,
                                          bool evaluator) {
-  yasl::CheckNotNull(conn);
+  yacl::CheckNotNull(conn);
   auto eltype = shr.eltype();
-  YASL_ENFORCE(eltype.isa<RingTy>(), "must be ring_type, got={}", eltype);
-  YASL_ENFORCE(shr.numel() > 0);
+  YACL_ENFORCE(eltype.isa<RingTy>(), "must be ring_type, got={}", eltype);
+  YACL_ENFORCE(shr.numel() > 0);
 
   auto field = eltype.as<Ring2k>()->field();
   LazyExpandSEALContexts(FieldBitLen(field), conn);
@@ -390,7 +390,7 @@ ArrayRef BeaverCheetah::MulImpl::MulAShr(const ArrayRef &shr,
   std::vector<RLWEPt> encoded_shr;
   if (!evaluator) {
     size_t payload_sze = EncryptArrayThenSend(shr, nullptr, conn);
-    std::vector<yasl::Buffer> recv_ct(payload_sze);
+    std::vector<yacl::Buffer> recv_ct(payload_sze);
     for (size_t idx = 0; idx < payload_sze; ++idx) {
       recv_ct[idx] = conn->Recv(nxt_rank, "");
     }
@@ -402,7 +402,7 @@ ArrayRef BeaverCheetah::MulImpl::MulAShr(const ArrayRef &shr,
     options.scale_delta = false;
     EncodeArray(shr, options, &encoded_shr);
     size_t payload_sze = encoded_shr.size();
-    std::vector<yasl::Buffer> recv_ct(payload_sze);
+    std::vector<yacl::Buffer> recv_ct(payload_sze);
     for (size_t idx = 0; idx < payload_sze; ++idx) {
       recv_ct[idx] = conn->Recv(nxt_rank, "");
     }
@@ -413,7 +413,7 @@ ArrayRef BeaverCheetah::MulImpl::MulAShr(const ArrayRef &shr,
 Beaver::Triple BeaverCheetah::MulImpl::Mul(FieldType field, size_t size) {
   LazyExpandSEALContexts(FieldBitLen(field));
   LazyInitModSwitchHelper(FieldBitLen(field));
-  YASL_ENFORCE(size > 0);
+  YACL_ENFORCE(size > 0);
 
   auto a = CPRNG(field, size);
   auto b = CPRNG(field, size);
@@ -445,11 +445,11 @@ Beaver::Triple BeaverCheetah::MulImpl::Mul(FieldType field, size_t size) {
 
 size_t BeaverCheetah::MulImpl::EncryptArrayThenSend(const ArrayRef &array,
                                                     std::vector<RLWEPt> *out,
-                                                    yasl::link::Context *conn) {
+                                                    yacl::link::Context *conn) {
   size_t num_elts = array.numel();
   auto eltype = array.eltype();
-  YASL_ENFORCE(num_elts > 0, "empty array");
-  YASL_ENFORCE(eltype.isa<RingTy>(), "array must be ring_type, got={}", eltype);
+  YACL_ENFORCE(num_elts > 0, "empty array");
+  YACL_ENFORCE(eltype.isa<RingTy>(), "array must be ring_type, got={}", eltype);
 
   Options options;
   options.max_pack = num_slots();
@@ -472,8 +472,8 @@ size_t BeaverCheetah::MulImpl::EncryptArrayThenSend(const ArrayRef &array,
   }
   EncodeArray(array, options, _wrap);
 
-  std::vector<yasl::Buffer> payload(num_polys);
-  yasl::parallel_for(
+  std::vector<yacl::Buffer> payload(num_polys);
+  yacl::parallel_for(
       0, num_seal_ctx, kParallelGrain, [&](size_t cntxt_bgn, size_t cntxt_end) {
         for (size_t c = cntxt_bgn; c < cntxt_end; ++c) {
           size_t offset = c * num_splits;
@@ -504,7 +504,7 @@ ArrayRef BeaverCheetah::MulImpl::_PrepareRandomMask(
   const size_t field_bitlen = FieldBitLen(field);
   const size_t num_seal_ctx = WorkingContextSize(field_bitlen);
   const size_t num_polys = num_seal_ctx * num_splits;
-  YASL_ENFORCE(ms_helpers_.count(field_bitlen) > 0);
+  YACL_ENFORCE(ms_helpers_.count(field_bitlen) > 0);
   encoded_mask->resize(num_polys);
 
   // sample r from [0, P) in the RNS format
@@ -544,8 +544,8 @@ void BeaverCheetah::MulImpl::EncodeArray(const ArrayRef &array,
                                          absl::Span<RLWEPt> out) {
   size_t num_elts = array.numel();
   auto eltype = array.eltype();
-  YASL_ENFORCE(num_elts > 0, "empty array");
-  YASL_ENFORCE(eltype.isa<RingTy>(), "array must be ring_type, got={}", eltype);
+  YACL_ENFORCE(num_elts > 0, "empty array");
+  YACL_ENFORCE(eltype.isa<RingTy>(), "array must be ring_type, got={}", eltype);
 
   auto field = eltype.as<Ring2k>()->field();
   size_t max_pack = options.max_pack > 0 ? options.max_pack : num_slots();
@@ -553,14 +553,14 @@ void BeaverCheetah::MulImpl::EncodeArray(const ArrayRef &array,
   size_t field_bitlen = FieldBitLen(field);
   size_t num_seal_ctx = WorkingContextSize(field_bitlen);
   size_t num_polys = num_seal_ctx * num_splits;
-  YASL_ENFORCE_EQ(out.size(), num_polys,
+  YACL_ENFORCE_EQ(out.size(), num_polys,
                   "out size mismatch, expect={}, got={}size", num_polys,
                   out.size());
-  YASL_ENFORCE(ms_helpers_.count(field_bitlen) > 0);
+  YACL_ENFORCE(ms_helpers_.count(field_bitlen) > 0);
 
   auto &ms_helper = ms_helpers_.find(field_bitlen)->second;
 
-  yasl::parallel_for(
+  yacl::parallel_for(
       0, num_seal_ctx, kParallelGrain, [&](size_t cntxt_bgn, size_t cntxt_end) {
         std::vector<uint64_t> u64tmp(num_slots());
 
@@ -590,10 +590,10 @@ void BeaverCheetah::MulImpl::EncodeArray(const ArrayRef &array,
 }
 
 ArrayRef BeaverCheetah::MulImpl::ElementMulThenResponse(
-    FieldType field, size_t num_elts, absl::Span<const yasl::Buffer> ciphers,
-    absl::Span<const RLWEPt> plains, yasl::link::Context *conn) {
-  YASL_ENFORCE(ciphers.size() > 0, "BeaverCheetah: empty cipher");
-  YASL_ENFORCE(plains.size() == ciphers.size(),
+    FieldType field, size_t num_elts, absl::Span<const yacl::Buffer> ciphers,
+    absl::Span<const RLWEPt> plains, yacl::link::Context *conn) {
+  YACL_ENFORCE(ciphers.size() > 0, "BeaverCheetah: empty cipher");
+  YACL_ENFORCE(plains.size() == ciphers.size(),
                "BeaverCheetah: ct/pt size mismatch");
 
   const size_t max_pack = num_slots();
@@ -601,17 +601,17 @@ ArrayRef BeaverCheetah::MulImpl::ElementMulThenResponse(
   const size_t field_bitlen = FieldBitLen(field);
   const size_t num_seal_ctx = WorkingContextSize(field_bitlen);
   const size_t num_ciphers = num_seal_ctx * num_splits;
-  YASL_ENFORCE(ciphers.size() == num_ciphers,
+  YACL_ENFORCE(ciphers.size() == num_ciphers,
                fmt::format("ElementMulThenResponse: expect {} != {}",
                            num_ciphers, ciphers.size()));
 
   std::vector<RLWEPt> ecd_random;
   auto rnd_mask = PrepareRandomMask(field, num_elts, &ecd_random);
-  YASL_ENFORCE(ecd_random.size() == num_ciphers,
+  YACL_ENFORCE(ecd_random.size() == num_ciphers,
                "BeaverCheetah: encoded poly size mismatch");
 
-  std::vector<yasl::Buffer> response(num_ciphers);
-  yasl::parallel_for(
+  std::vector<yacl::Buffer> response(num_ciphers);
+  yacl::parallel_for(
       0, num_seal_ctx, kParallelGrain, [&](size_t cntxt_bgn, size_t cntxt_end) {
         RLWECt ct;
         for (size_t cidx = cntxt_bgn; cidx < cntxt_end; ++cidx) {
@@ -650,20 +650,20 @@ ArrayRef BeaverCheetah::MulImpl::ElementMulThenResponse(
 }
 
 ArrayRef BeaverCheetah::MulImpl::DecryptArray(
-    FieldType field, size_t size, const std::vector<yasl::Buffer> &ct_array) {
+    FieldType field, size_t size, const std::vector<yacl::Buffer> &ct_array) {
   const size_t max_pack = num_slots();
   const size_t num_splits = CeilDiv(size, max_pack);
   const size_t field_bitlen = FieldBitLen(field);
   const size_t num_seal_ctx = WorkingContextSize(field_bitlen);
   const size_t num_ciphers = num_seal_ctx * num_splits;
-  YASL_ENFORCE(ct_array.size() == num_ciphers,
+  YACL_ENFORCE(ct_array.size() == num_ciphers,
                "BeaverCheetah: cipher size mismatch");
-  YASL_ENFORCE(ms_helpers_.count(field_bitlen) > 0);
+  YACL_ENFORCE(ms_helpers_.count(field_bitlen) > 0);
 
   auto rns_temp = ring_zeros(FieldType::FM64, size * num_seal_ctx);
   auto xrns_temp = xt_mutable_adapt<uint64_t>(rns_temp);
 
-  yasl::parallel_for(
+  yacl::parallel_for(
       0, num_seal_ctx, kParallelGrain, [&](size_t cntxt_bgn, size_t cntxt_end) {
         // Loop each SEALContext
         // For each context, we obtain `size` uint64 from `num_splits` polys.
@@ -700,10 +700,10 @@ ArrayRef BeaverCheetah::MulImpl::DecryptArray(
 
 void BeaverCheetah::MulImpl::_NoiseFloodCiphertext(
     RLWECt &ct, const seal::SEALContext &context) {
-  YASL_ENFORCE(seal::is_metadata_valid_for(ct, context));
-  YASL_ENFORCE(ct.size() == 2);
+  YACL_ENFORCE(seal::is_metadata_valid_for(ct, context));
+  YACL_ENFORCE(ct.size() == 2);
   auto context_data = context.get_context_data(ct.parms_id());
-  yasl::CheckNotNull(context_data.get());
+  yacl::CheckNotNull(context_data.get());
   size_t num_coeffs = ct.poly_modulus_degree();
   size_t num_modulus = ct.coeff_modulus_size();
   auto &modulus = context_data->parms().coeff_modulus();
@@ -711,7 +711,7 @@ void BeaverCheetah::MulImpl::_NoiseFloodCiphertext(
   constexpr uint64_t range_mask = (1ULL << kNoiseFloodRandomBits) - 1;
   int logQ = context_data->total_coeff_modulus_bit_count();
   int logt = context_data->parms().plain_modulus().bit_count();
-  YASL_ENFORCE_GT(logQ - logt - 1, kNoiseFloodRandomBits);
+  YACL_ENFORCE_GT(logQ - logt - 1, kNoiseFloodRandomBits);
 
   // sample random from [0, 2^{kStatRandom})
   auto random = CPRNG(FieldType::FM64, num_coeffs);
@@ -744,7 +744,7 @@ void BeaverCheetah::MulImpl::RandomizeCipherForDecryption(RLWECt &ct,
                                                           size_t cidx) {
   auto &seal_cntxt = seal_cntxts_.at(cidx);
   auto context_data = seal_cntxt.last_context_data();
-  yasl::CheckNotNull(context_data.get());
+  yacl::CheckNotNull(context_data.get());
   seal::Evaluator evaluator(seal_cntxt);
   // 1. Add statistical independent randomness
   _NoiseFloodCiphertext(ct, seal_cntxt);
@@ -765,7 +765,7 @@ void BeaverCheetah::MulImpl::RandomizeCipherForDecryption(RLWECt &ct,
 
 struct BeaverCheetah::DotImpl : public EnablePRNG {
  public:
-  DotImpl(std::shared_ptr<yasl::link::Context> lctx)
+  DotImpl(std::shared_ptr<yacl::link::Context> lctx)
       : EnablePRNG(), lctx_(lctx) {}
 
   // Compute C = A*B where |A|=M*K, |B|=K*N
@@ -800,9 +800,9 @@ struct BeaverCheetah::DotImpl : public EnablePRNG {
 
   void AddPlainInplace(RLWECt &ct, const RLWEPt &pt,
                        const seal::SEALContext &context) const {
-    YASL_ENFORCE(ct.parms_id() == pt.parms_id());
+    YACL_ENFORCE(ct.parms_id() == pt.parms_id());
     auto cntxt_dat = context.get_context_data(ct.parms_id());
-    YASL_ENFORCE(cntxt_dat != nullptr);
+    YACL_ENFORCE(cntxt_dat != nullptr);
     const auto &parms = cntxt_dat->parms();
     const auto &modulus = parms.coeff_modulus();
     size_t num_coeff = ct.poly_modulus_degree();
@@ -832,8 +832,8 @@ struct BeaverCheetah::DotImpl : public EnablePRNG {
   void H2A(std::vector<RLWECt> &ct, const seal::SEALContext &context,
            std::vector<RLWEPt> *rnd_mask) {
     size_t num_poly = ct.size();
-    YASL_ENFORCE(num_poly > 0);
-    YASL_ENFORCE(rnd_mask != nullptr);
+    YACL_ENFORCE(num_poly > 0);
+    YACL_ENFORCE(rnd_mask != nullptr);
 
     rnd_mask->resize(num_poly);
     for (size_t idx = 0; idx < num_poly; ++idx) {
@@ -860,7 +860,7 @@ struct BeaverCheetah::DotImpl : public EnablePRNG {
   }
 
  private:
-  std::shared_ptr<yasl::link::Context> lctx_;
+  std::shared_ptr<yacl::link::Context> lctx_;
 
   mutable std::shared_mutex context_lock_;
   // field_bitlen -> functor mapping
@@ -934,7 +934,7 @@ Beaver::Triple BeaverCheetah::DotImpl::Dot(FieldType field, size_t M, size_t N,
   seal::Evaluator evaluator(this_context);
 
   MatVecProtocol matvec_prot(this_context, *this_ms);
-  YASL_ENFORCE_EQ(this_ms->base_mod_bitlen(), field_bitlen);
+  YACL_ENFORCE_EQ(this_ms->base_mod_bitlen(), field_bitlen);
 
   const size_t lhs_nrows = std::max(M, N);
   const size_t loop_dim = std::min(M, N);
@@ -1054,31 +1054,31 @@ Beaver::Triple BeaverCheetah::DotImpl::Dot(FieldType field, size_t M, size_t N,
 
   return {lhs_mat, rhs_mat, ans_mat};
 }
-BeaverCheetah::BeaverCheetah(std::shared_ptr<yasl::link::Context> lctx)
+BeaverCheetah::BeaverCheetah(std::shared_ptr<yacl::link::Context> lctx)
     : mul_impl_(std::make_shared<MulImpl>(lctx)),
       dot_impl_(std::make_shared<DotImpl>(lctx)) {
   ot_primitives_ = std::make_shared<spu::CheetahPrimitives>(lctx);
 }
 
 Beaver::Triple BeaverCheetah::Mul(FieldType field, size_t size) {
-  yasl::CheckNotNull(mul_impl_.get());
+  yacl::CheckNotNull(mul_impl_.get());
   return mul_impl_->Mul(field, size);
 }
 
-ArrayRef BeaverCheetah::MulAShr(const ArrayRef &shr, yasl::link::Context *conn,
+ArrayRef BeaverCheetah::MulAShr(const ArrayRef &shr, yacl::link::Context *conn,
                                 bool evaluator) {
-  yasl::CheckNotNull(mul_impl_.get());
+  yacl::CheckNotNull(mul_impl_.get());
   return mul_impl_->MulAShr(shr, conn, evaluator);
 }
 
 Beaver::Triple BeaverCheetah::Dot(FieldType field, size_t M, size_t N,
                                   size_t K) {
-  yasl::CheckNotNull(dot_impl_.get());
+  yacl::CheckNotNull(dot_impl_.get());
   return dot_impl_->Dot(field, M, N, K);
 }
 
 Beaver::Triple BeaverCheetah::And(FieldType field, size_t size) {
-  yasl::CheckNotNull(ot_primitives_.get());
+  yacl::CheckNotNull(ot_primitives_.get());
 
   ArrayRef a(makeType<RingTy>(field), size);
   ArrayRef b(makeType<RingTy>(field), size);
@@ -1092,11 +1092,11 @@ Beaver::Triple BeaverCheetah::And(FieldType field, size_t size) {
 }
 
 Beaver::Pair BeaverCheetah::Trunc(FieldType field, size_t size, size_t bits) {
-  YASL_THROW_LOGIC_ERROR("this method should not be called");
+  YACL_THROW_LOGIC_ERROR("this method should not be called");
 }
 
 ArrayRef BeaverCheetah::RandBit(FieldType field, size_t size) {
-  YASL_THROW_LOGIC_ERROR("this method should not be called");
+  YACL_THROW_LOGIC_ERROR("this method should not be called");
 }
 
 }  // namespace spu::mpc

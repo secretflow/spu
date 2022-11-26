@@ -17,14 +17,16 @@
 #include <string>
 #include <vector>
 
-#include "yasl/link/link.h"
+#include "yacl/link/link.h"
+
+#include "spu/psi/psi.pb.h"
 
 namespace spu::psi {
 
 class PsiBaseOperator {
  public:
   explicit PsiBaseOperator(
-      const std::shared_ptr<yasl::link::Context>& link_ctx);
+      const std::shared_ptr<yacl::link::Context>& link_ctx);
   virtual ~PsiBaseOperator() = default;
 
   // after call OnRun, it decides whether to broadcast result or not based on
@@ -36,10 +38,7 @@ class PsiBaseOperator {
       const std::vector<std::string>& inputs) = 0;
 
  protected:
-  std::shared_ptr<yasl::link::Context> link_ctx_;
+  std::shared_ptr<yacl::link::Context> link_ctx_;
 };
-
-std::vector<size_t> AllGatherItemsSize(
-    const std::shared_ptr<yasl::link::Context>& link_ctx, size_t self_size);
 
 }  // namespace spu::psi

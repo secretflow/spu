@@ -19,7 +19,7 @@
 #include <string>
 #include <unordered_map>
 
-#include "yasl/base/exception.h"
+#include "yacl/base/exception.h"
 
 #include "spu/core/type_util.h"
 
@@ -215,7 +215,7 @@ class Type final {
 template <typename T>
 T const* Type::as() const {
   T const* concrete_type = dynamic_cast<T const*>(model_.get());
-  YASL_ENFORCE(concrete_type, "casting from {} to {} failed", model_->getId(),
+  YACL_ENFORCE(concrete_type, "casting from {} to {} failed", model_->getId(),
                typeid(T).name());
   return concrete_type;
 }
@@ -223,7 +223,7 @@ T const* Type::as() const {
 template <typename T>
 T* Type::as() {
   T* concrete_type = dynamic_cast<T*>(model_.get());
-  YASL_ENFORCE(concrete_type, "casting from {} to {} failed", model_->getId(),
+  YACL_ENFORCE(concrete_type, "casting from {} to {} failed", model_->getId(),
                typeid(T).name());
   return concrete_type;
 }
@@ -263,7 +263,7 @@ class VoidTy : public TypeImpl<VoidTy, TypeObject> {
   size_t size() const override { return 0u; }
 
   void fromString(std::string_view detail) override {
-    YASL_ENFORCE(detail.empty(), "expect empty, got={}", detail);
+    YACL_ENFORCE(detail.empty(), "expect empty, got={}", detail);
   };
 
   std::string toString() const override { return ""; }
@@ -285,7 +285,7 @@ class PtTy : public TypeImpl<PtTy, TypeObject> {
 
   bool equals(TypeObject const* other) const override {
     auto const* derived_other = dynamic_cast<PtTy const*>(other);
-    YASL_ENFORCE(derived_other);
+    YACL_ENFORCE(derived_other);
     return pt_type() == derived_other->pt_type();
   }
 
@@ -294,7 +294,7 @@ class PtTy : public TypeImpl<PtTy, TypeObject> {
   std::string toString() const override { return PtType_Name(pt_type_); }
 
   void fromString(std::string_view detail) override {
-    YASL_ENFORCE(PtType_Parse(std::string(detail), &pt_type_),
+    YACL_ENFORCE(PtType_Parse(std::string(detail), &pt_type_),
                  "parse failed from={}", detail);
   }
 };
@@ -341,7 +341,7 @@ class RingTy : public TypeImpl<RingTy, TypeObject, Ring2k> {
   }
 
   void fromString(std::string_view detail) override {
-    YASL_ENFORCE(FieldType_Parse(std::string(detail), &field_),
+    YACL_ENFORCE(FieldType_Parse(std::string(detail), &field_),
                  "parse failed from={}", detail);
   };
 
@@ -349,7 +349,7 @@ class RingTy : public TypeImpl<RingTy, TypeObject, Ring2k> {
 
   bool equals(TypeObject const* other) const override {
     auto const* derived_other = dynamic_cast<RingTy const*>(other);
-    YASL_ENFORCE(derived_other);
+    YACL_ENFORCE(derived_other);
     return field() == derived_other->field();
   }
 };
@@ -386,7 +386,7 @@ class TypeContext {
 
   TypeCreateFn getTypeCreateFunction(std::string_view keyword) {
     auto fctor = creators.find(keyword);
-    YASL_ENFORCE(fctor != creators.end(), "type not found, {}", keyword);
+    YACL_ENFORCE(fctor != creators.end(), "type not found, {}", keyword);
     return fctor->second;
   }
 

@@ -353,7 +353,7 @@ ArrayRef ARShiftB::proc(KernelEvalContext* ctx, const ArrayRef& in,
 
   // arithmetic right shift expects to work on ring, or the behaviour is
   // undefined.
-  YASL_ENFORCE(in_ty->nbits() == SizeOf(field) * 8, "in.type={}, field={}",
+  YACL_ENFORCE(in_ty->nbits() == SizeOf(field) * 8, "in.type={}, field={}",
                in.eltype(), field);
   const PtType out_btype = in_ty->getBacktype();
   const size_t out_nbits = in_ty->nbits();
@@ -378,7 +378,7 @@ ArrayRef BitrevB::proc(KernelEvalContext* ctx, const ArrayRef& in, size_t start,
                        size_t end) const {
   SPU_TRACE_MPC_LEAF(ctx, in, start, end);
 
-  YASL_ENFORCE(start <= end && end <= 128);
+  YACL_ENFORCE(start <= end && end <= 128);
 
   const auto* in_ty = in.eltype().as<BShrTy>();
   const size_t out_nbits = std::max(in_ty->nbits(), end);

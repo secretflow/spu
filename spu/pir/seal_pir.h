@@ -20,8 +20,8 @@
 #include <vector>
 
 #include "seal/seal.h"
-#include "yasl/base/byte_container_view.h"
-#include "yasl/link/link.h"
+#include "yacl/base/byte_container_view.h"
+#include "yacl/link/link.h"
 
 #include "spu/pir/seal_pir_utils.h"
 
@@ -109,24 +109,24 @@ class SealPir {
   std::vector<seal::Plaintext> DeSerializePlaintexts(
       const std::string &plaintext_bytes, bool safe_load = false);
 
-  yasl::Buffer SerializeCiphertexts(
+  yacl::Buffer SerializeCiphertexts(
       const std::vector<seal::Ciphertext> &ciphers);
 
   std::vector<seal::Ciphertext> DeSerializeCiphertexts(
       const CiphertextsProto &ciphers_proto, bool safe_load = false);
 
   std::vector<seal::Ciphertext> DeSerializeCiphertexts(
-      const yasl::Buffer &ciphers_bytes, bool safe_load = false);
+      const yacl::Buffer &ciphers_bytes, bool safe_load = false);
 
-  yasl::Buffer SerializeQuery(
+  yacl::Buffer SerializeQuery(
       SealPirQueryProto *query_proto,
       const std::vector<std::vector<seal::Ciphertext>> &query_ciphers);
 
-  yasl::Buffer SerializeQuery(
+  yacl::Buffer SerializeQuery(
       const std::vector<std::vector<seal::Ciphertext>> &query_ciphers);
 
   std::vector<std::vector<seal::Ciphertext>> DeSerializeQuery(
-      const yasl::Buffer &query_bytes, bool safe_load = false);
+      const yacl::Buffer &query_bytes, bool safe_load = false);
 
   std::vector<std::vector<seal::Ciphertext>> DeSerializeQuery(
       const SealPirQueryProto query_proto, bool safe_load = false);
@@ -184,7 +184,7 @@ class SealPirServer : public SealPir {
 
   // read db data, convert to Seal::Plaintext
   void SetDatabase(const std::shared_ptr<IDbElementProvider> &db_provider);
-  void SetDatabase(const std::vector<yasl::ByteContainerView> &db_vec);
+  void SetDatabase(const std::vector<yacl::ByteContainerView> &db_vec);
 
   // set client GaloisKeys
   void SetGaloisKeys(const seal::GaloisKeys &galkey) { galois_key_ = galkey; }
@@ -203,10 +203,10 @@ class SealPirServer : public SealPir {
                               int db_index = 0);
 
   // receive, deserialize, and set client GaloisKeys
-  void RecvGaloisKeys(const std::shared_ptr<yasl::link::Context> &link_ctx);
+  void RecvGaloisKeys(const std::shared_ptr<yacl::link::Context> &link_ctx);
 
   // receive client query, and answer
-  void DoPirAnswer(const std::shared_ptr<yasl::link::Context> &link_ctx);
+  void DoPirAnswer(const std::shared_ptr<yacl::link::Context> &link_ctx);
 
  private:
   // for debug use, get noise budget
@@ -239,7 +239,7 @@ class SealPirClient : public SealPir {
   seal::Plaintext DecodeReply(const std::vector<seal::Ciphertext> &reply);
 
   // send GaloisKeys to server
-  void SendGaloisKeys(const std::shared_ptr<yasl::link::Context> &link_ctx);
+  void SendGaloisKeys(const std::shared_ptr<yacl::link::Context> &link_ctx);
 
   // generate GaloisKeys
   seal::GaloisKeys GenerateGaloisKeys();
@@ -256,7 +256,7 @@ class SealPirClient : public SealPir {
 
   // PirQuery
   std::vector<uint8_t> DoPirQuery(
-      const std::shared_ptr<yasl::link::Context> &link_ctx, size_t db_index);
+      const std::shared_ptr<yacl::link::Context> &link_ctx, size_t db_index);
 
  private:
   std::unique_ptr<seal::KeyGenerator> keygen_;

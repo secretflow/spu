@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "yasl/link/context.h"
+#include "yacl/link/context.h"
 
 #include "spu/mpc/beaver/beaver.h"
 #include "spu/mpc/beaver/trusted_party.h"
@@ -32,14 +32,14 @@ class BeaverTfpUnsafe : public Beaver {
   // Only for rank0 party.
   TrustedParty tp_;
 
-  std::shared_ptr<yasl::link::Context> lctx_;
+  std::shared_ptr<yacl::link::Context> lctx_;
 
   PrgSeed seed_;
 
   PrgCounter counter_;
 
  public:
-  BeaverTfpUnsafe(std::shared_ptr<yasl::link::Context> lctx);
+  BeaverTfpUnsafe(std::shared_ptr<yacl::link::Context> lctx);
 
   Beaver::Triple Mul(FieldType field, size_t size) override;
 

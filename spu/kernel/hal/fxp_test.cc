@@ -29,7 +29,7 @@ template <typename T = float>
 xt::xarray<T> xarrayMMul(const xt::xarray<T>& x, const xt::xarray<T>& y) {
   size_t m = x.shape(0);
   size_t n = y.shape(1);
-  YASL_ENFORCE(x.shape(1) == y.shape(0));
+  YACL_ENFORCE(x.shape(1) == y.shape(0));
   size_t k = x.shape(1);
 
   xt::xarray<T> ret({m, n}, static_cast<T>(0));

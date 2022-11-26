@@ -15,7 +15,7 @@
 #include "spu/psi/utils/scope_disk_cache.h"
 
 #include "llvm/Support/FileSystem.h"
-#include "yasl/base/exception.h"
+#include "yacl/base/exception.h"
 namespace spu::psi {
 
 std::string ScopeDiskCache::GetBinPath(size_t index) const {
@@ -24,7 +24,7 @@ std::string ScopeDiskCache::GetBinPath(size_t index) const {
 
 void ScopeDiskCache::CreateHashBinStreams(
     size_t num_bins, std::vector<std::unique_ptr<io::OutputStream>>* bin_outs) {
-  YASL_ENFORCE(num_bins != 0, "bad num_bins={}", num_bins);
+  YACL_ENFORCE(num_bins != 0, "bad num_bins={}", num_bins);
   for (size_t i = 0; i < num_bins; ++i) {
     bin_outs->push_back(
         io::BuildOutputStream(io::FileIoOptions(GetBinPath(i))));

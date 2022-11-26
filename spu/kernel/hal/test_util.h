@@ -35,7 +35,7 @@ auto xt_random(const std::vector<size_t>& shape, double min = -100,
   } else if constexpr (std::is_floating_point_v<T>) {
     return xt::random::rand<T>(shape, static_cast<T>(min), static_cast<T>(max));
   } else {
-    YASL_THROW("unsupport xt_random type");
+    YACL_THROW("unsupport xt_random type");
   }
 }
 
@@ -53,7 +53,7 @@ xt::xarray<T> dump_public_as(HalContext* ctx, const Value& in) {
     FOREACH_PT_TYPES(CASE)
 
     default:
-      YASL_THROW("unexpected type={}", arr.eltype());
+      YACL_THROW("unexpected type={}", arr.eltype());
   }
 
 #undef CASE
@@ -79,7 +79,7 @@ xt::xarray<T> evalTernaryOp(Visibility in1_vtype, Visibility in2_vtype,
   if (d.isSecret()) {
     d = _s2p(&ctx, d);
   }
-  YASL_ENFORCE(d.isPublic());
+  YACL_ENFORCE(d.isPublic());
 
   return dump_public_as<T>(&ctx, d);
 }
@@ -97,7 +97,7 @@ xt::xarray<T> evalBinaryOp(Visibility lhs_vtype, Visibility rhs_vtype,
   if (c.isSecret()) {
     c = _s2p(&ctx, c).setDtype(c.dtype());
   }
-  YASL_ENFORCE(c.isPublic());
+  YACL_ENFORCE(c.isPublic());
 
   return dump_public_as<T>(&ctx, c);
 }
@@ -113,7 +113,7 @@ xt::xarray<T> evalUnaryOp(Visibility in_vtype, UnaryOp* op, PtBufferView in) {
   if (b.isSecret()) {
     b = _s2p(&ctx, b).setDtype(b.dtype());
   }
-  YASL_ENFORCE(b.isPublic());
+  YACL_ENFORCE(b.isPublic());
 
   return dump_public_as<T>(&ctx, b);
 }

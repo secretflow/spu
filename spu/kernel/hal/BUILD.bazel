@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("//bazel:spu.bzl", "spu_cc_binary", "spu_cc_library", "spu_cc_test")
+load("//bazel:spu.bzl", "spu_cc_library", "spu_cc_test")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -143,7 +143,7 @@ spu_cc_library(
     deps = [
         ":test_util",
         ":type_cast",
-        "@yasl//yasl/base:exception",
+        "@yacl//yacl/base:exception",
     ],
 )
 
@@ -158,7 +158,7 @@ spu_cc_library(
         ":shape_ops",
         ":type_cast",
         "//spu/core:vectorize",
-        "@yasl//yasl/base:exception",
+        "@yacl//yacl/base:exception",
     ],
 )
 
@@ -190,7 +190,7 @@ spu_cc_library(
     deps = [
         ":random",
         ":ring",
-        "@yasl//yasl/base:exception",
+        "@yacl//yacl/base:exception",
     ],
 )
 
@@ -210,7 +210,7 @@ spu_cc_library(
     deps = [
         ":test_util",
         "//spu/kernel:context",
-        "@yasl//yasl/base:exception",
+        "@yacl//yacl/base:exception",
     ],
 )
 
@@ -221,7 +221,7 @@ spu_cc_library(
     deps = [
         "//spu/core:vectorize",
         "//spu/kernel:context",
-        "@yasl//yasl/base:exception",
+        "@yacl//yacl/base:exception",
     ],
 )
 
@@ -243,7 +243,7 @@ spu_cc_library(
         "//spu/core:shape_util",
         "//spu/core:vectorize",
         "//spu/kernel:context",
-        "@yasl//yasl/base:exception",
+        "@yacl//yacl/base:exception",
     ],
 )
 

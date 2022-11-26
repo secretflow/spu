@@ -20,7 +20,7 @@
 #include "absl/strings/str_split.h"
 #include "llvm/Support/CommandLine.h"
 #include "spdlog/spdlog.h"
-#include "yasl/link/test_util.h"
+#include "yacl/link/test_util.h"
 
 #include "spu/device/pphlo/executor.h"
 #include "spu/device/symbol_table.h"
@@ -45,15 +45,15 @@ llvm::cl::opt<std::string> Parties(
 llvm::cl::opt<uint32_t> Rank("rank", llvm::cl::init(0),
                              llvm::cl::desc("self rank"));
 
-std::shared_ptr<yasl::link::Context> MakeLink(const std::string &parties,
+std::shared_ptr<yacl::link::Context> MakeLink(const std::string &parties,
                                               size_t rank) {
-  yasl::link::ContextDesc lctx_desc;
+  yacl::link::ContextDesc lctx_desc;
   std::vector<std::string> hosts = absl::StrSplit(parties, ',');
   for (size_t rank = 0; rank < hosts.size(); rank++) {
     const auto id = fmt::format("party{}", rank);
     lctx_desc.parties.push_back({id, hosts[rank]});
   }
-  auto lctx = yasl::link::FactoryBrpc().CreateContext(lctx_desc, rank);
+  auto lctx = yacl::link::FactoryBrpc().CreateContext(lctx_desc, rank);
   lctx->ConnectToMesh();
   return lctx;
 }
@@ -65,12 +65,12 @@ std::unique_ptr<spu::HalContext> MakeHalContext() {
 
   // Parse protocol
   spu::ProtocolKind pk;
-  YASL_ENFORCE(spu::ProtocolKind_Parse(Protocol.getValue(), &pk),
+  YACL_ENFORCE(spu::ProtocolKind_Parse(Protocol.getValue(), &pk),
                "Invalid protocol kind {}", Protocol.getValue());
 
   // Parse field
   spu::FieldType field;
-  YASL_ENFORCE(spu::FieldType_Parse(Field.getValue(), &field),
+  YACL_ENFORCE(spu::FieldType_Parse(Field.getValue(), &field),
                "Invalid field {}", Field.getValue());
 
   config.set_protocol(pk);
@@ -89,7 +89,7 @@ int main(int argc, char **argv) {
   spu::ExecutableProto exec;
   {
     auto exec_file = core_dump_dir / "exec.txt";
-    YASL_ENFORCE(std::filesystem::exists(exec_file),
+    YACL_ENFORCE(std::filesystem::exists(exec_file),
                  "Serialized executable file does not exit");
     SPDLOG_INFO("Read executable file from {}", exec_file.c_str());
     std::ifstream stream(exec_file, std::ios::binary);
@@ -115,13 +115,13 @@ int main(int argc, char **argv) {
         core_dump_dir /
         fmt::format("data_{}_{}.txt", hctx->lctx()->Rank(), var_counter);
 
-    YASL_ENFORCE(std::filesystem::exists(data_file),
+    YACL_ENFORCE(std::filesystem::exists(data_file),
                  "Data file does not exist");
 
     std::ifstream stream(data_file, std::ios::binary);
 
     spu::ValueProto vp;
-    YASL_ENFORCE(vp.ParseFromIstream(&stream));
+    YACL_ENFORCE(vp.ParseFromIstream(&stream));
     auto v = spu::Value::fromProto(vp);
     SPDLOG_INFO("Read input {} {} for processor {} from {}, v = {}",
                 var_counter, exec.input_names(var_counter),

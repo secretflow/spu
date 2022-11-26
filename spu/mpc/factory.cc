@@ -16,7 +16,7 @@
 
 #include <memory>
 
-#include "yasl/base/exception.h"
+#include "yacl/base/exception.h"
 
 #include "spu/mpc/aby3/io.h"
 #include "spu/mpc/aby3/protocol.h"
@@ -30,7 +30,7 @@ namespace spu::mpc {
 
 std::unique_ptr<Object> Factory::CreateCompute(
     const RuntimeConfig& conf,
-    const std::shared_ptr<yasl::link::Context>& lctx) {
+    const std::shared_ptr<yacl::link::Context>& lctx) {
   switch (conf.protocol()) {
     case ProtocolKind::REF2K: {
       return makeRef2kProtocol(conf, lctx);
@@ -45,7 +45,7 @@ std::unique_ptr<Object> Factory::CreateCompute(
       return makeCheetahProtocol(conf, lctx);
     }
     default: {
-      YASL_THROW("Invalid protocol kind {}", conf.protocol());
+      YACL_THROW("Invalid protocol kind {}", conf.protocol());
     }
   }
   return nullptr;
@@ -67,7 +67,7 @@ std::unique_ptr<IoInterface> Factory::CreateIO(const RuntimeConfig& conf,
       return cheetah::makeCheetahIo(conf.field(), npc);
     }
     default: {
-      YASL_THROW("Invalid protocol kind {}", conf.protocol());
+      YACL_THROW("Invalid protocol kind {}", conf.protocol());
     }
   }
   return nullptr;
