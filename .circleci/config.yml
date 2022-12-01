@@ -54,6 +54,7 @@ jobs:
             conda activate secretflow
             conda install grpcio
             pip install -r requirements.txt
+            
             bazel test //spu/... --ui_event_filters=-info,-debug,-warning --jobs=8 --test_timeout=1800 --test_output=errors
 
 
