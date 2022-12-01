@@ -1,7 +1,7 @@
 name: "Publish Python Package"
 on:
   release:
-    types: [publish]
+    types: [published]
 jobs:
   trigger-circleci:
     runs-on: ubuntu-latest
