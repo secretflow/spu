@@ -18,7 +18,7 @@ parameters:
 # Define a job to be invoked later in a workflow.
 # See: https://circleci.com/docs/2.0/configuration-reference/#jobs
 jobs:
-  ut:
+  linux-ut:
     # Specify the execution environment. You can specify an image from Dockerhub or use one of our Convenience Images from CircleCI's Developer Hub.
     # See: https://circleci.com/docs/2.0/configuration-reference/#docker-machine-macos-windows-executor
     docker:
@@ -29,10 +29,34 @@ jobs:
     steps:
       - checkout
       - run:
-          name: "bazel test"
+          name: "test"
           command: "bazel test //spu/... --ui_event_filters=-info,-debug,-warning --jobs=8 --test_timeout=1800 --test_output=errors"
       - store_test_results:
           path: ./bazel-testlogs
+  macOS-ut:
+    macos:
+      xcode: 13.0.0
+    resource_class: large
+    steps:
+      - checkout
+      - run:
+          name: "test"
+          command: |
+            set -ex
+
+            # install brew
+            NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/uninstall.sh)"
+            
+            brew install bazel cmake ninja nasm libomp
+            brew install --cask miniconda
+
+            conda create -y -n secretflow python=3.8
+            conda activate secretflow
+            conda install grpcio
+            pip install -r requirements.txt
+            bazel test //spu/... --ui_event_filters=-info,-debug,-warning --jobs=8 --test_timeout=1800 --test_output=errors
+
+
   test_pypi_publish:
     docker:
       - image: registry.hub.docker.com/secretflow/secretflow-gcc11-centos7-release:0.1
@@ -52,11 +76,11 @@ jobs:
 # Invoke jobs via workflows
 # See: https://circleci.com/docs/2.0/configuration-reference/#workflows
 workflows:
-  default:
+  ut:
     jobs:
-      - ut
-  publish:
-    when: << pipeline.parameters.GHA_Action >>
-    jobs:
-      - test_pypi_publish
+      - macOS-ut
+  # publish:
+  #   when: << pipeline.parameters.GHA_Action >>
+  #   jobs:
+  #     - test_pypi_publish
     
