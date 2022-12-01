@@ -46,8 +46,7 @@ jobs:
           command: |
             set -ex
             
-            # brew install bazel cmake ninja nasm libomp
-            # brew install --cask miniconda
+            brew install bazel cmake ninja nasm libomp wget
 
             wget https://repo.anaconda.com/miniconda/Miniconda3-latest-MacOSX-x86_64.sh -O ~/miniconda.sh
             bash ~/miniconda.sh -b -p $HOME/miniconda
