@@ -1,6 +1,7 @@
 on:
   release:
-    types: [published]
+    types: [created]
+  workflow_dispatch
 jobs:
   trigger-circleci:
     runs-on: ubuntu-latest
