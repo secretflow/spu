@@ -40,17 +40,17 @@ jobs:
 workflows:
   default:
     jobs:
-      - ut
+      # - ut
       - hold:
           type: approval
-          requires:
-            - ut
-          filters:
-            tags:
-              only: /^v.*/
+          # requires:
+          #   - ut
+          # filters:
+          #   tags:
+          #     only: /^v.*/
       - test_pypi_publish:
           requires:
             - hold
-          filters:
-            tags:
-              only: /^v.*/
+          # filters:
+          #   tags:
+          #     only: /^v.*/
