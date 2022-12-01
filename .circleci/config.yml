@@ -46,15 +46,18 @@ jobs:
           command: |
             set -ex
             
-            brew install bazel cmake ninja nasm libomp
-            brew install --cask miniconda
+            # brew install bazel cmake ninja nasm libomp
+            # brew install --cask miniconda
+
+            wget https://repo.anaconda.com/miniconda/Miniconda3-latest-MacOSX-x86_64.sh -O ~/miniconda.sh
+            bash ~/miniconda.sh -b -p $HOME/miniconda
 
             conda create -y -n secretflow python=3.8
             conda activate secretflow
             conda install grpcio
             pip install -r requirements.txt
             
-            bazel test //spu/... --ui_event_filters=-info,-debug,-warning --jobs=8 --test_timeout=1800 --test_output=errors
+            # bazel test //spu/... --ui_event_filters=-info,-debug,-warning --jobs=8 --test_timeout=1800 --test_output=errors
 
 
   test_pypi_publish:
