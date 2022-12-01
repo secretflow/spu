@@ -20,6 +20,20 @@ jobs:
           command: "bazel test //spu/... --ui_event_filters=-info,-debug,-warning --jobs=8 --test_timeout=1800 --test_output=errors"
       - store_test_results:
           path: ./bazel-testlogs
+  test_pypi_publish:
+    docker:
+      - image: registry.hub.docker.com/secretflow/secretflow-gcc11-centos7-release:0.1
+    resource_class: xlarge
+    steps:
+      - checkout
+      - run:
+          name: "build package and publish"
+          command: |
+            sh ./build_wheel_entrypoint.sh
+            spu_wheel_name=$(<./spu_wheel.name)
+            spu_wheel_path="./${spu_wheel_name//sf-spu/sf_spu}"
+            pip install -y twine
+            twine upload -r testpypi -u __token__ -p ${TEST_PYPI_TWINE_TOKEN} $spu_wheel_path
 
 # Invoke jobs via workflows
 # See: https://circleci.com/docs/2.0/configuration-reference/#workflows
@@ -27,3 +41,16 @@ workflows:
   default:
     jobs:
       - ut
+      - hold:
+          type: approval
+          requires:
+            - ut
+          filters:
+            tags:
+              only: /^v.*/
+      - test_pypi_publish:
+          requires:
+            - hold
+          filters:
+            tags:
+              only: /^v.*/
