@@ -29,10 +29,11 @@ jobs:
       - run:
           name: "build package and publish"
           command: |
+            set -ex
             env BAZEL_MAX_JOBS=8 sh ./build_wheel_entrypoint.sh
             spu_wheel_name=$(<./spu_wheel.name)
             spu_wheel_path="./${spu_wheel_name//sf-spu/sf_spu}"
-            pip install -y twine
+            python3 -m pip install twine
             twine upload -r testpypi -u __token__ -p ${TEST_PYPI_TWINE_TOKEN} $spu_wheel_path
 
 # Invoke jobs via workflows
