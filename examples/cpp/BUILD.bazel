@@ -49,8 +49,9 @@ spu_cc_binary(
     srcs = ["simple_pphlo.cc"],
     deps = [
         ":utils",
+        "//spu/device:api",
         "//spu/device:io",
-        "//spu/device/pphlo:executor",
+        "//spu/device/pphlo:pphlo_executor",
         "@llvm-project//llvm:Support",
     ],
 )

@@ -23,7 +23,7 @@ optimization.
 # > bazel run -c opt //examples/python/utils:nodectl -- up
 #
 # Run this example script.
-# > bazel run //examples/python/ml:stax_mnist_classifier
+# > bazel run -c opt //examples/python/ml:stax_mnist_classifier
 
 import time
 import itertools

@@ -14,59 +14,80 @@
 
 #pragma once
 
-#include <memory>
+#include <functional>
 
-#include "spu/device/profiler.h"
-#include "spu/device/symbol_table.h"
+#include "llvm/ADT/DenseMap.h"
+#include "mlir/IR/BuiltinOps.h"
+#include "mlir/IR/MLIRContext.h"
+
+#include "spu/kernel/context.h"
 #include "spu/kernel/value.h"
-
-#include "spu/spu.pb.h"
-
-namespace spu {
-class HalContext;
-}
 
 namespace spu::device {
 
-// The executor interface, an executor evaluates a texted code with given
-// inputs, and produce expected outputs.
-class Executor {
-protected:
-  HalContext *hctx_ = nullptr;
+//
+class SymbolScope final {
+  // The parent region, null if this region is isolated from above.
+  SymbolScope *parent_;
 
-  // Profiling thingy
-  std::shared_ptr<Profiler> op_profiler_;
-
-  std::string module_name_ = "unnamed";
+  // Local symbols inside this value.
+  // TODO: thread safety for parallel execution.
+  llvm::DenseMap<mlir::Value, spu::Value> symbols_;
 
 public:
-  explicit Executor(HalContext *hctx)
-      : hctx_(hctx), op_profiler_(std::make_shared<Profiler>()){};
+  explicit SymbolScope(SymbolScope *parent = nullptr) : parent_(parent) {}
 
-  virtual ~Executor() = default;
+  // return true if this is the root scope.
+  bool isRoot() const { return parent_ == nullptr; }
 
-  // Return the HAL context.
-  HalContext *getContext() const { return hctx_; }
-
-  /// Run a code snippet with given inputs.
-  // return a list of output values.
-  virtual std::vector<spu::Value>
-  run(const std::string &code, const std::vector<spu::Value> &inputs) = 0;
-
-  /// Return the op profiling records.
-  const Profiler::ExecutionRecordsT &getProfileRecords() const {
-    // op_profiler_ cannot be nullptr
-    return op_profiler_->getRecords();
-  }
-
-  /// Evaluate an spu executable with given environment.
-  void runWithEnv(const ExecutableProto &exec, SymbolTable *env);
-
-  ///
-  void runWithEnv(const std::string &text,
-                  const std::vector<std::string> &input_names,
-                  const std::vector<std::string> &output_names,
-                  SymbolTable *env);
+  //
+  const spu::Value &lookupValue(mlir::Value key) const;
+  void addValue(::mlir::Value key, const spu::Value &val);
+  void addValue(::mlir::Value key, spu::Value &&val);
 };
+
+// This class encapsulate execution states used during the evaluation.
+struct ExecutionOptions {
+  bool do_type_check = false;
+  bool do_log_execution = false;
+};
+
+class OpExecutor {
+public:
+  virtual ~OpExecutor() = default;
+
+  //
+  virtual void checkType(mlir::Type mlir_type, const spu::Value &v) const = 0;
+
+  // return true if the operation has a corresponding kernel.
+  virtual bool hasKernel(mlir::Operation &op) const = 0;
+
+  // run a kernel in a given region.
+  virtual void runKernelImpl(HalContext *hctx, SymbolScope *sscope,
+                             mlir::Operation &op,
+                             const ExecutionOptions &opts) = 0;
+
+  void runKernel(HalContext *hctx, SymbolScope *sscope, mlir::Operation &op,
+                 const ExecutionOptions &opts = {}) {
+    return runKernelImpl(hctx, sscope, op, opts);
+  }
+};
+
+std::vector<spu::Value> runRegion(OpExecutor *executor, HalContext *hctx,
+                                  SymbolScope *parent_scope,
+                                  mlir::Region &region,
+                                  absl::Span<spu::Value const> params,
+                                  const ExecutionOptions &opts = {});
+
+std::vector<spu::Value> runBlock(OpExecutor *executor, HalContext *hctx,
+                                 SymbolScope *symbols, mlir::Block &block,
+                                 absl::Span<spu::Value const> params,
+                                 const ExecutionOptions &opts);
+
+std::vector<spu::Value> runBlockParallel(OpExecutor *executor, HalContext *hctx,
+                                         SymbolScope *symbols,
+                                         mlir::Block &block,
+                                         absl::Span<spu::Value const> params,
+                                         const ExecutionOptions &opts);
 
 } // namespace spu::device

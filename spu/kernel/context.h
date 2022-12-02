@@ -26,12 +26,6 @@
 
 namespace spu {
 
-// Toggles put here are internal features
-struct FeatureControl {
-  bool enable_xla_verifier = false;
-  std::function<void(bool)> verifier_handler{[](bool) {}};
-};
-
 // The hal evaluation context for all spu operators.
 class HalContext final {
   const RuntimeConfig rt_config_;
@@ -41,8 +35,6 @@ class HalContext final {
   std::unique_ptr<mpc::Object> prot_;
 
   std::default_random_engine rand_engine_;
-
-  FeatureControl fc_;
 
  public:
   explicit HalContext(RuntimeConfig config,
@@ -66,8 +58,6 @@ class HalContext final {
 
   // Return current working runtime config.
   const RuntimeConfig& rt_config() const { return rt_config_; }
-
-  FeatureControl& feature_control() { return fc_; }
 
   //
   std::default_random_engine& rand_engine() { return rand_engine_; }

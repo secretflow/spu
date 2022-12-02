@@ -40,16 +40,41 @@ public:
 
   LogicalResult matchAndRewrite(SelectOp op,
                                 PatternRewriter &rewriter) const override {
+    auto pred = op.pred();
     // Only do this for certain select...
-    if (op.pred().getDefiningOp<PreferAOp>() != nullptr) {
+    if (pred.getDefiningOp<PreferAOp>() != nullptr) {
       // This select pred has already been optimized, bailout here
       return failure();
     }
 
-    auto pref_a = rewriter.create<PreferAOp>(op->getLoc(), op.pred().getType(),
-                                             op.pred());
-    rewriter.replaceOpWithNewOp<SelectOp>(op, op->getResultTypes(), pref_a,
-                                          op.on_true(), op.on_false());
+    // If this pred has only one use...do not rewrite, with mula1b is faster
+    if (pred.hasOneUse()) {
+      return failure();
+    }
+
+    auto number_of_selects = 0;
+    for (auto &use : pred.getUses()) {
+      if (mlir::isa<SelectOp>(use.getOwner())) {
+        ++number_of_selects;
+      }
+    }
+
+    // Although this value is used by multiple operations, there is still a
+    // single select
+    if (number_of_selects == 1) {
+      return failure();
+    }
+
+    OpBuilder builder(op);
+    builder.setInsertionPoint(pred.getDefiningOp()->getNextNode());
+    auto pref_a = builder.create<PreferAOp>(pred.getDefiningOp()->getLoc(),
+                                            pred.getType(), pred);
+
+    // Only replace select usage
+    pred.replaceUsesWithIf(pref_a, [](OpOperand &use) {
+      return mlir::isa<SelectOp>(use.getOwner());
+    });
+
     return success();
   }
 };

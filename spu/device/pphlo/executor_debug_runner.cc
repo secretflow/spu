@@ -128,5 +128,5 @@ int main(int argc, char **argv) {
                 hctx->lctx()->Rank(), data_file.c_str(), v);
     table.setVar(exec.input_names(var_counter), v);
   }
-  executor.runWithEnv(exec, &table);
+  spu::device::execute(&executor, exec, &table);
 }

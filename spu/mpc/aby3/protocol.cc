@@ -56,7 +56,7 @@ std::unique_ptr<Object> makeAby3Protocol(
   obj->regKernel<aby3::MulAP>();
   obj->regKernel<aby3::MulAA>();
   // FIXME: temp disable MulA1B method.
-  // obj->regKernel<aby3::MulA1B>();
+  obj->regKernel<aby3::MulA1B>();
   obj->regKernel<aby3::MatMulAP>();
   obj->regKernel<aby3::MatMulAA>();
   obj->regKernel<aby3::LShiftA>();

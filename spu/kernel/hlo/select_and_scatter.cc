@@ -16,7 +16,9 @@
 #include "spu/kernel/hlo/select_and_scatter.h"
 
 #include <cstdint>
+#include <future>
 #include <iostream>
+#include <vector>
 
 #include "yacl/utils/parallel.h"
 
@@ -26,11 +28,58 @@
 #include "spu/kernel/hal/debug.h"
 #include "spu/kernel/hal/polymorphic.h"  // for select
 #include "spu/kernel/hal/shape_ops.h"
+#include "spu/kernel/hal/type_cast.h"
 #include "spu/kernel/hlo/const.h"
 #include "spu/kernel/hlo/reduce.h"
 #include "spu/kernel/hlo/utils.h"
+#include "spu/kernel/value.h"
 
 namespace spu::kernel::hlo {
+
+spu::Value MaxPoolScatter1x2x2x1NoPaddingNoStrides(
+    HalContext *ctx, const spu::Value &scatter_indices,
+    const spu::Value &source) {
+  std::vector<spu::Value> slices(4);
+  for (int64_t idx = 0; idx < 4; ++idx) {
+    slices[idx] = hal::slice(
+        ctx, scatter_indices, {0, 0, 0, 0, idx},
+        {scatter_indices.shape()[0], scatter_indices.shape()[1],
+         scatter_indices.shape()[2], scatter_indices.shape()[3], idx + 1},
+        {1, 1, 1, 1, 1});
+    slices[idx] =
+        hal::mul(ctx, hal::reshape(ctx, slices[idx], source.shape()), source);
+
+    // FIXME(jint), handle int type promotion
+    slices[idx] = hal::dtype_cast(ctx, slices[idx], source.dtype());
+  }
+
+  auto z = hal::zeros(ctx, slices[0].vtype(), slices[0].dtype());
+
+  std::vector<std::future<spu::Value>> f_slices(4);
+  f_slices[0] = std::async(std::launch::async, hal::pad, ctx, slices[0], z,
+                           std::vector<int64_t>{0, 0, 0, 0},
+                           std::vector<int64_t>{0, 1, 1, 0},
+                           std::vector<int64_t>{0, 0, 0, 0});
+  f_slices[1] = std::async(std::launch::async, hal::pad, ctx, slices[1], z,
+                           std::vector<int64_t>{0, 0, 1, 0},
+                           std::vector<int64_t>{0, 1, 0, 0},
+                           std::vector<int64_t>{0, 0, 0, 0});
+  f_slices[2] = std::async(std::launch::async, hal::pad, ctx, slices[2], z,
+                           std::vector<int64_t>{0, 1, 0, 0},
+                           std::vector<int64_t>{0, 0, 1, 0},
+                           std::vector<int64_t>{0, 0, 0, 0});
+  f_slices[3] = std::async(std::launch::async, hal::pad, ctx, slices[3], z,
+                           std::vector<int64_t>{0, 1, 1, 0},
+                           std::vector<int64_t>{0, 0, 0, 0},
+                           std::vector<int64_t>{0, 0, 0, 0});
+
+  spu::Value ret = f_slices[0].get();
+  for (size_t idx = 1; idx < 4; ++idx) {
+    ret = hal::add(ctx, ret, f_slices[idx].get());
+  }
+
+  return ret;
+};
 
 spu::Value MaxPoolScatter(
     HalContext *ctx, const spu::Value &scatter_indices,
@@ -38,13 +87,23 @@ spu::Value MaxPoolScatter(
     absl::Span<const int64_t> base_shape,
     absl::Span<const int64_t> window_strides,
     absl::Span<const std::pair<int64_t, int64_t>> window_padding) {
-  // source_shape * window_numel
+  // Add a fast 1x2x2x1, no padding fast reduce
+  auto no_padding = std::all_of(window_padding.begin(), window_padding.end(),
+                                [](const std::pair<int64_t, int64_t> &p) {
+                                  return p.first == 0 && p.second == 0;
+                                });
+  auto one_stride = std::all_of(window_strides.begin(), window_strides.end(),
+                                [](auto v) { return v == 1; });
+  if (window_shape == absl::Span<const int64_t>{1, 2, 2, 1} && no_padding &&
+      one_stride) {
+    return MaxPoolScatter1x2x2x1NoPaddingNoStrides(ctx, scatter_indices,
+                                                   source);
+  }
+  //  source_shape * window_numel
   std::vector<int64_t> tiled_1d_shape = source.shape();
   const int64_t window_numel = std::accumulate(
       window_shape.begin(), window_shape.end(), 1, std::multiplies<int64_t>());
   tiled_1d_shape.push_back(window_numel);
-
-  auto tiled_1d_select = hal::reshape(ctx, scatter_indices, tiled_1d_shape);
 
   std::vector<int64_t> broadcast_dims(source.shape().size(), 0);
   std::iota(broadcast_dims.begin(), broadcast_dims.end(), 0);
@@ -53,7 +112,7 @@ spu::Value MaxPoolScatter(
       hal::broadcast_to(ctx, source, tiled_1d_shape, broadcast_dims);
 
   // selected_pos is the one hot encoding for each window.
-  auto selected = hal::mul(ctx, tiled_1d_source, tiled_1d_select);
+  auto selected = hal::mul(ctx, tiled_1d_source, scatter_indices);
 
   std::vector<int64_t> tiled_shape(source.shape().begin(),
                                    source.shape().end());

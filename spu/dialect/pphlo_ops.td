@@ -579,11 +579,12 @@ def PPHLO_BroadcastOp
 
     See https://www.tensorflow.org/xla/broadcasting.
   }];
-  let arguments = (ins PPHLO_Tensor
-                   : $operand, I64ElementsAttr
-                   : $broadcast_dimensions);
+  let arguments = (ins PPHLO_Tensor: $operand, 
+                      I64ElementsAttr: $broadcast_dimensions);
 
   let results = (outs PPHLO_Tensor);
+
+  let hasVerifier = 1;
 }
 
 def PPHLO_ReshapeOp
@@ -613,6 +614,8 @@ def PPHLO_ConcatenateOp
   let arguments = (ins Variadic<PPHLO_Tensor> : $val, I64Attr : $dimension);
 
   let results = (outs PPHLO_Tensor);
+
+  let hasVerifier = 1;
 }
 
 def PPHLO_DotOp : PPHLO_Op<"dot", [Pure]> {
@@ -646,7 +649,7 @@ def PPHLO_DotGeneralOp: PPHLO_Op<"dot_general", [Pure]> {
 }
 
 def PPHLO_SelectOp
-    : PPHLO_Op<"select", [Pure, SameVariadicOperandSize]> {
+    : PPHLO_Op<"select", [Pure]> {
   let summary = "Select operator";
   let description = [{
     Constructs an output tensor from the elements of `on_true` and `on_false`
@@ -658,21 +661,10 @@ def PPHLO_SelectOp
   }];
   let arguments = (ins 
                   PPHLO_IntTensor: $pred, 
-                  Variadic<PPHLO_Tensor>: $on_true, 
-                  Variadic<PPHLO_Tensor>: $on_false);
+                  PPHLO_Tensor: $on_true, 
+                  PPHLO_Tensor: $on_false);
 
-  let results = (outs Variadic<PPHLO_Tensor>);
-
-  // Builder for non-variadic version of the operation.
-  let builders = [
-    OpBuilder<(ins "Type":$result_type, "Value":$pred,
-      "Value":$on_true,
-      "Value":$on_false),
-    [{
-      build($_builder, $_state, TypeRange(result_type), pred,
-            ValueRange(on_true), ValueRange(on_false));
-    }]>
-  ];
+  let results = (outs PPHLO_Tensor);
 
   let hasCanonicalizer = 1;
 }
@@ -772,16 +764,35 @@ def PPHLO_ReduceWindowOp : PPHLO_Op<"reduce_window", [
     OptionalAttr<I64ElementsAttr>:$window_strides,
     OptionalAttr<I64ElementsAttr>:$base_dilations,
     OptionalAttr<I64ElementsAttr>:$window_dilations,
-    OptionalAttr<I64ElementsAttr>:$padding,
-    // These are two special attributes for argmax reduce window
-    // Do not set unless you know what these means
-    DefaultValuedAttr<BoolAttr, "false">:$last_operand_is_window_mask,
-    DefaultValuedAttr<BoolAttr, "false">:$ignore_init_value
+    OptionalAttr<I64ElementsAttr>:$padding
   );
 
   let results = (outs Variadic<PPHLO_Tensor>);
 
   let regions = (region SizedRegion<1> : $body);
+}
+
+def PPHLO_ArgMaxOp: PPHLO_Op<"argmax", [Pure]> {
+  let summary = "ArgMax operator";
+
+  let description = [{
+    Returns the max value and index in a window.
+  }];
+
+  let arguments = (ins
+    PPHLO_Tensor:$input,
+    I64ElementsAttr:$window_dimensions,
+    // If strides or dilations attributes are missing then the default value is
+    // one for each of the input dimensions. Similarly, padding values are zero
+    // for both low and high in each of the dimensions, if not specified.
+    OptionalAttr<I64ElementsAttr>:$window_strides,
+    OptionalAttr<I64ElementsAttr>:$base_dilations,
+    OptionalAttr<I64ElementsAttr>:$window_dilations,
+    OptionalAttr<I64ElementsAttr>:$padding,
+    DefaultValuedAttr<BoolAttr, "true">:$onehot_index
+  );
+
+  let results = (outs PPHLO_Tensor, PPHLO_IntTensor);
 }
 
 def PPHLO_ReturnOp : PPHLO_Op<"return", [Pure, Terminator]> {

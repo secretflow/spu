@@ -50,12 +50,12 @@ from sklearn.metrics import accuracy_score
 import argparse
 
 parser = argparse.ArgumentParser(description='distributed driver.')
-parser.add_argument("--model", default='network_a')
-parser.add_argument("-c", "--config", default="examples/python/conf/3pc.json")
-parser.add_argument("-l", "--learning_rate", default=0.01)
-parser.add_argument("-e", "--epoch", default=5)
-parser.add_argument("-b", "--batch_size", default=128)
-parser.add_argument("-o", "--optimizer", default="SGD")
+parser.add_argument("--model", default='network_a', type=str)
+parser.add_argument("-c", "--config", default="examples/python/conf/3pc.json", type=str)
+parser.add_argument("-l", "--learning_rate", default=0.01, type=float)
+parser.add_argument("-e", "--epoch", default=5, type=int)
+parser.add_argument("-b", "--batch_size", default=128, type=int)
+parser.add_argument("-o", "--optimizer", default="SGD", type=str)
 args = parser.parse_args()
 
 # Follows https://arxiv.org/pdf/2107.00501.pdf Appendix C.

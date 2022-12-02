@@ -17,69 +17,26 @@ load("//bazel:spu.bzl", "spu_cc_binary", "spu_cc_library", "spu_cc_test")
 package(default_visibility = ["//visibility:public"])
 
 spu_cc_library(
-    name = "executor",
-    srcs = ["executor.cc"],
-    hdrs = ["executor.h"],
+    name = "pphlo_executor",
+    srcs = ["pphlo_executor.cc"],
+    hdrs = ["pphlo_executor.h"],
     deps = [
-        ":region_executor",
-        ":type_checker",
-        "//spu/device:executor",
-        "//spu/device:frame",
-        "//spu/dialect:pphlo_dialect",
-        "@llvm-project//mlir:Parser",
-    ],
-)
-
-spu_cc_library(
-    name = "region_executor",
-    srcs = [
-        "region_executor.cc",
-    ],
-    hdrs = [
-        "region_executor.h",
-    ],
-    deps = [
-        ":type_checker",
         ":xla_verifier",
-        "//spu/device:frame",
-        "//spu/device:profiler",
+        "//spu/device:executor",
         "//spu/dialect:pphlo_dialect",
         "//spu/kernel/hlo",
     ],
 )
 
 spu_cc_test(
-    name = "executor_test",
-    srcs = ["executor_test.cc"],
+    name = "pphlo_executor_test",
+    srcs = ["pphlo_executor_test.cc"],
     deps = [
-        ":executor",
+        ":pphlo_executor",
         "//spu/compiler:compile",
+        "//spu/device:api",
         "//spu/device:io",
         "//spu/device:test_utils",
-    ],
-)
-
-spu_cc_library(
-    name = "type_checker",
-    srcs = ["type_checker.cc"],
-    hdrs = ["type_checker.h"],
-    deps = [
-        "//spu/device:type_checker",
-        "//spu/dialect:pphlo_dialect",
-        "//spu/kernel:value",
-        "@llvm-project//mlir:IR",
-        "@yacl//yacl/base:exception",
-    ],
-)
-
-spu_cc_binary(
-    name = "executor_debug_runner",
-    testonly = True,
-    srcs = ["executor_debug_runner.cc"],
-    deps = [
-        ":executor",
-        "//spu/device:test_utils",
-        "@llvm-project//llvm:Support",
     ],
 )
 

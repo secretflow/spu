@@ -34,44 +34,84 @@
 namespace spu::mpc::aby3 {
 namespace {
 
+// [zx]: Addapt this to new semantics of boolean sharing
 std::vector<ArrayRef> a1b_offline(size_t sender, const ArrayRef& a,
                                   FieldType field, size_t self_rank,
                                   PrgState* prg_state, size_t numel,
-                                  const ArrayRef& b1, const ArrayRef& b2) {
-  if (self_rank == sender) {
-    auto c1 = prg_state->genPrssPair(field, numel, false, true).first;
-    auto c2 = prg_state->genPrssPair(field, numel, true).second;
+                                  const ArrayRef& b) {
+  YACL_ENFORCE(a.eltype().isa<RingTy>());
+  YACL_ENFORCE(b.eltype().isa<BShrTy>());
 
-    auto m0 = ring_zeros(field, numel);
-    {
-      ring_xor_(m0, b1);
-      ring_xor_(m0, b2);
-      ring_mul_(m0, a);
-      ring_sub_(m0, c1);
-      ring_sub_(m0, c2);
-    }
+  return DISPATCH_ALL_FIELDS(field, "_", [&]() -> std::vector<ArrayRef> {
+    using AShrT = ring2k_t;
 
-    auto m1 = ring_ones(field, numel);
-    {
-      ring_xor_(m1, b1);
-      ring_xor_(m1, b2);
-      ring_mul_(m1, a);
-      ring_sub_(m1, c1);
-      ring_sub_(m1, c2);
-    }
+    ArrayRef m0(makeType<RingTy>(field), numel),
+        m1(makeType<RingTy>(field), numel);
+    linalg::setConstantValue(numel, &m0.at<AShrT>(0), m0.stride(), AShrT(0));
+    linalg::setConstantValue(numel, &m1.at<AShrT>(0), m1.stride(), AShrT(1));
 
-    return {c1, c2, m0, m1};
-  } else if (self_rank == (sender + 1) % 3) {
-    prg_state->genPrssPair(field, numel, true, true);
-    auto c1 = prg_state->genPrssPair(field, numel, false, true).first;
+    auto _m0 = ArrayView<std::array<AShrT, 1>>(m0);
+    auto _m1 = ArrayView<std::array<AShrT, 1>>(m1);
+    auto _a = ArrayView<std::array<AShrT, 1>>(a);
 
-    return {c1};
-  } else {
-    auto c2 = prg_state->genPrssPair(field, numel, true, false).second;
-    prg_state->genPrssPair(field, numel, true, true);
+    return DISPATCH_UINT_PT_TYPES(
+        b.eltype().as<BShrTy>()->getBacktype(), "_",
+        [&]() -> std::vector<ArrayRef> {
+          using BSharT = ScalarT;
+          if (self_rank == sender) {
+            auto c1 = prg_state->genPrssPair(field, numel, false, true).first;
+            auto c2 = prg_state->genPrssPair(field, numel, true).second;
 
-    return {c2};
-  }
+            auto _b = ArrayView<std::array<BSharT, 2>>(b);
+
+            auto _c1 = ArrayView<std::array<AShrT, 1>>(c1);
+            auto _c2 = ArrayView<std::array<AShrT, 1>>(c2);
+
+            // (i \xor b1 \xor b2) * a - c1 - c2
+            pforeach(0, numel, [&](int64_t idx) {
+              _m0[idx][0] =
+                  (_m0[idx][0] ^ (_b[idx][0] & 0x1) ^ (_b[idx][1] & 0x1)) *
+                      _a[idx][0] -
+                  _c1[idx][0] - _c2[idx][0];
+            });
+
+            pforeach(0, numel, [&](int64_t idx) {
+              _m1[idx][0] =
+                  (_m1[idx][0] ^ (_b[idx][0] & 0x1) ^ (_b[idx][1] & 0x1)) *
+                      _a[idx][0] -
+                  _c1[idx][0] - _c2[idx][0];
+            });
+
+            return {c1, c2, m0, m1};
+          } else if (self_rank == (sender + 1) % 3) {
+            prg_state->genPrssPair(field, numel, true, true);
+            auto c1 = prg_state->genPrssPair(field, numel, false, true).first;
+
+            return {c1};
+          } else {
+            auto c2 = prg_state->genPrssPair(field, numel, true, false).second;
+            prg_state->genPrssPair(field, numel, true, true);
+
+            return {c2};
+          }
+        });
+  });
+}
+
+std::vector<uint8_t> ring_cast_boolean_(const ArrayRef& x) {
+  YACL_ENFORCE(x.eltype().isa<PtTy>(), "expect PtTy type, got={}", x.eltype());
+  const size_t numel = x.numel();
+  std::vector<uint8_t> res(numel);
+
+  DISPATCH_UINT_PT_TYPES(x.eltype().as<PtTy>()->pt_type(), "_", [&]() {
+    using BShrT = ScalarT;
+    auto _x = ArrayView<std::array<BShrT, 1>>(x);
+    pforeach(0, numel, [&](int64_t idx) {
+      res[idx] = static_cast<uint8_t>(_x[idx][0] & 0x1);
+    });
+  });
+
+  return res;
 }
 
 }  // namespace
@@ -325,12 +365,21 @@ ArrayRef MulA1B::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
   SPU_TRACE_MPC_LEAF(ctx, lhs, rhs);
 
   YACL_ENFORCE(lhs.numel() == rhs.numel());
-  YACL_ENFORCE(lhs.eltype().isa<AShare>());
-  YACL_ENFORCE(rhs.eltype().isa<BShare>() &&
-               rhs.eltype().as<BShare>()->nbits() == 1);
+  YACL_ENFORCE(lhs.eltype().isa<AShrTy>());
+  YACL_ENFORCE(rhs.eltype().isa<BShrTy>() &&
+               rhs.eltype().as<BShrTy>()->nbits() == 1);
 
-  const auto field = lhs.eltype().as<Ring2k>()->field();
-  const auto numel = lhs.numel();
+  const auto field = lhs.eltype().as<AShrTy>()->field();
+  const size_t in_nbits = rhs.eltype().as<BShrTy>()->nbits();
+
+  YACL_ENFORCE(in_nbits <= SizeOf(field) * 8, "invalid nbits={}", in_nbits);
+
+  const auto numel = rhs.numel();
+
+  const auto b_ty = *rhs.eltype().as<BShrTy>();
+
+  ArrayRef out(makeType<AShrTy>(field), numel);
+
   auto* comm = ctx->caller()->getState<Communicator>();
   auto* prg_state = ctx->caller()->getState<PrgState>();
 
@@ -344,9 +393,10 @@ ArrayRef MulA1B::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
 
   // leave only lsb, in case the boolean value is randomized in a larger
   // domain.
-  const auto kOne = ring_ones(field, numel);
-  b1 = ring_and(b1, kOne);
-  b2 = ring_and(b2, kOne);
+  // NOTE: This is useless since we have n_bits to indicate valid bits
+  // const auto kOne = ring_ones(back_type, rhs.numel());
+  // b1 = ring_and(b1, kOne);
+  // b2 = ring_and(b2, kOne);
 
   auto self_rank = comm->getRank();
   const auto kComm = a1.elsize() * a1.numel();
@@ -364,7 +414,7 @@ ArrayRef MulA1B::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
   // TODO: optimization for large input.
   // online part: tasks two rounds latency. do 3-parties OT.
   auto offline = [&](size_t sender, const ArrayRef& a) {
-    return a1b_offline(sender, a, field, self_rank, prg_state, numel, b1, b2);
+    return a1b_offline(sender, a, field, self_rank, prg_state, numel, rhs);
   };
 
   // parallel online: parallel two 3-parties OT.
@@ -380,6 +430,7 @@ ArrayRef MulA1B::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
     // asymmetric cost.
     comm->addCommStatsManually(2, kComm * 8);
 
+    // c1, c3, m0, m1
     if (self_rank == sender1) {
       ot1.send(data1[2], data1[3]);  // 2k
       r1 = {data1[0], data1[1]};
@@ -389,28 +440,31 @@ ArrayRef MulA1B::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
       r2 = {data2[0], data2[1]};
     }
 
+    // helper send wc to receiver
     if (self_rank == (sender1 + 1) % 3) {
-      ot1.help(ring_cast_boolean(b2));  // 1k
+      ot1.help(ring_cast_boolean_(b2));  // 1k
       r1.first = data1[0];
     }
     if (self_rank == (sender2 + 1) % 3) {
-      ot2.help(ring_cast_boolean(b2));  // 1k
+      ot2.help(ring_cast_boolean_(b2));  // 1k
       r2.first = data2[0];
     }
 
+    // receiver recv c2 and send c2 to helper
     if (self_rank == (sender1 + 2) % 3) {
       // 1 latency
-      auto c1 = ot1.recv(ring_cast_boolean(b1));
+      auto c1 = ot1.recv(ring_cast_boolean_(b1));
       comm->sendAsync((sender1 + 1) % 3, c1, "ABY3-MUL-R1C1");  // 1k
       r1 = {c1, data1[0]};
     }
     if (self_rank == (sender2 + 2) % 3) {
       // 1 latency overlapping with "ABY3-MUL-R1C1"
-      auto c1 = ot2.recv(ring_cast_boolean(b1));
+      auto c1 = ot2.recv(ring_cast_boolean_(b1));
       comm->sendAsync((sender2 + 1) % 3, c1, "ABY3-MUL-R2C1");  // 1k
       r2 = {c1, data2[0]};
     }
 
+    // // NOTE: here two sequential rounds are required
     if (self_rank == (sender1 + 1) % 3) {
       // 1 latency
       r1.second = comm->recv((sender1 + 2) % 3, a1.eltype(), "ABY3-MUL-R1C1");
@@ -420,9 +474,21 @@ ArrayRef MulA1B::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
       r2.second = comm->recv((sender2 + 2) % 3, a1.eltype(), "ABY3-MUL-R2C1");
     }
 
-    ring_add_(r1.first, r2.first);
-    ring_add_(r1.second, r2.second);
+    DISPATCH_ALL_FIELDS(field, "_", [&]() {
+      using AShrT = ring2k_t;
 
+      auto _r1_first = ArrayView<std::array<AShrT, 1>>(r1.first);
+      auto _r1_second = ArrayView<std::array<AShrT, 1>>(r1.second);
+      auto _r2_first = ArrayView<std::array<AShrT, 1>>(r2.first);
+      auto _r2_second = ArrayView<std::array<AShrT, 1>>(r2.second);
+
+      // r1.first = r1.first + r2.first
+      // r1.second = r1.second + r2.second
+      pforeach(0, r1.first.numel(), [&](int64_t idx) {
+        _r1_first[idx][0] = _r1_first[idx][0] + _r2_first[idx][0];
+        _r1_second[idx][0] = _r1_second[idx][0] + _r2_second[idx][0];
+      });
+    });
     return r1;
   };
 
@@ -430,8 +496,10 @@ ArrayRef MulA1B::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
   auto data1 = offline(0, a2);
   // only sender access a1 + a2, avoid useless add for other two parties.
   auto data2 = offline(2, self_rank == 2 ? ring_add(a1, a2) : a2);
+
   auto ret = parallel_online(0, data1, 2, data2);
-  return makeAShare(ret.first, ret.second, field);
+
+  return makeAShare(ret.first, ret.second, field, self_rank);
 }
 
 ////////////////////////////////////////////////////////////////////

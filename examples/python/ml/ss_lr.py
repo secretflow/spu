@@ -16,7 +16,7 @@
 # > bazel run -c opt //examples/python/utils:nodectl -- up
 #
 # Run this example script.
-# > bazel run //examples/python/ml:ss_lr
+# > bazel run -c opt //examples/python/ml:ss_lr
 
 import argparse
 import json
