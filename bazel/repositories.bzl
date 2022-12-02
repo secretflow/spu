@@ -4,7 +4,7 @@ load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
 
 SECRETFLOW_GIT = "https://github.com/secretflow"
 
-YACL_COMMIT_ID = "f44c9792d1fcad6af7623a0aebf71a78ef297d5c"
+YACL_COMMIT_ID = "f70558ffdaf4784f16e147c7e7322a78d467e974"
 
 def spu_deps():
     _bazel_platform()
