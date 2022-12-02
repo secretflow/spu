@@ -31,6 +31,11 @@ Value concatenate(HalContext* ctx, absl::Span<const Value> values,
   SPU_TRACE_HAL_DISP(ctx, axis);
   YACL_ENFORCE(!values.empty(), "got={}", values.size());
 
+  if (values.size() == 1) {
+    // Nothing to concate
+    return values.front();
+  }
+
   bool all_same_dtype = std::all_of(
       values.begin() + 1, values.end(),
       [&](const Value& v) { return v.dtype() == values.begin()->dtype(); });

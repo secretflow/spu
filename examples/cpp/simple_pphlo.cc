@@ -21,36 +21,37 @@
 #include "examples/cpp/utils.h"
 #include "spdlog/spdlog.h"
 
+#include "spu/device/api.h"
 #include "spu/device/io.h"
-#include "spu/device/pphlo/executor.h"
+#include "spu/device/pphlo/pphlo_executor.h"
 
 // This example demostrates the basic compute functionality of spu vm.
-void constant_add(spu::device::Executor* executor) {
+void constant_add(spu::HalContext* hctx) {
   // Write the assembly, this code simple add two numbers.
   // - `%1` is a constant public integer, with dtype int32 and value 1.
   // - `%2` is a constant public integer, with dtype int32 and value 2.
   // - `%3` is the sum of two integers.
   // - `dbg_print` print the value of `%3`
-  constexpr auto code = R"PPHlo(
-func @main() -> () {
+  constexpr auto code = R"(
+func.func @main() -> () {
     %0 = "pphlo.constant"() {value = dense<1> : tensor<i32>} : () -> tensor<!pphlo.pub<i32>>
     %1 = "pphlo.constant"() {value = dense<2> : tensor<i32>} : () -> tensor<!pphlo.pub<i32>>
     %2 = "pphlo.add"(%0, %1) : (tensor<!pphlo.pub<i32>>, tensor<!pphlo.pub<i32>>) -> tensor<!pphlo.pub<i32>>
     "pphlo.dbg_print"(%2) : (tensor<!pphlo.pub<i32>>) -> ()
     return
-}
-)PPHlo";
+})";
 
   // Run it, with no input and output, (since the program does not contain IO)
   spu::device::SymbolTable env;
-  executor->runWithEnv(code, {}, {}, &env);
+  spu::device::pphlo::PPHloExecutor executor;
+  spu::device::execute(&executor, hctx, code, {}, {}, &env);
 }
 
 // This example demostrates how to pass parameters.
-void parameters(spu::device::Executor* executor) {
+void parameters(spu::HalContext* hctx) {
   // In this example, data owner also participates the computation progress,
   // which is called "colocated mode" in spu system.
-  spu::device::ColocatedIo cio(executor->getContext());
+  spu::device::ColocatedIo cio(hctx);
 
   if (cio.getRank() == 0) {
     // rank-0, set a float variable 3.14 as 'x' to the device.
@@ -72,29 +73,29 @@ void parameters(spu::device::Executor* executor) {
   // - `%3` is the product of two values, it will do auto type promotion.
   // - `dbg_print` print the value of `%3`
   constexpr auto code = R"PPHlo(
-func @main(%arg0: tensor<!pphlo.sec<i32>>, %arg1: tensor<!pphlo.sec<i32>>) -> () {
-  %0 = "pphlo.multiply"(%arg0, %arg1) : (tensor<!pphlo.sec<i32>>, tensor<!pphlo.sec<i32>>) -> tensor<!pphlo.sec<i32>>
-  "pphlo.dbg_print"(%0) : (tensor<!pphlo.sec<i32>>) -> ()
+func.func @main(%arg0: tensor<!pphlo.sec<f32>>, %arg1: tensor<!pphlo.sec<i32>>) -> () {
+  %0 = "pphlo.multiply"(%arg0, %arg1) : (tensor<!pphlo.sec<f32>>, tensor<!pphlo.sec<i32>>) -> tensor<!pphlo.sec<f32>>
+  "pphlo.dbg_print"(%0) : (tensor<!pphlo.sec<f32>>) -> ()
   return
-}
-  )PPHlo";
+})PPHlo";
 
   // run the assembly, with
   // - "x" binding to the first parameter (position 0).
   // - "y" binding to the second parameter (position 1).
   // - there is no output bindings.
-  executor->runWithEnv(code, {"x", "y"}, {}, &cio.deviceSymbols());
+  spu::device::pphlo::PPHloExecutor executor;
+  spu::device::execute(&executor, hctx, code, {"x", "y"}, {},
+                       &cio.deviceSymbols());
 }
 
 int main(int argc, char** argv) {
   llvm::cl::ParseCommandLineOptions(argc, argv);
 
   auto hctx = MakeHalContext();
-  spu::device::pphlo::PPHloExecutor executor(hctx.get());
 
-  parameters(&executor);
+  parameters(hctx.get());
 
-  constant_add(&executor);
+  constant_add(hctx.get());
 
   return 0;
 }

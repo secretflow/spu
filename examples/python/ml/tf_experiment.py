@@ -29,7 +29,7 @@ import spu.binding.util.distributed as ppd
 # > bazel run -c opt //examples/python/utils:nodectl -- up
 #
 # Run this example script.
-# > bazel run //examples/python/ml:tf_experiment
+# > bazel run -c opt //examples/python/ml:tf_experiment
 # This example is tf counterpart to //examples/python/ml:jax_lr
 
 

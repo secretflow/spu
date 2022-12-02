@@ -22,8 +22,9 @@
 #include "spu/compiler/common/compilation_context.h"
 #include "spu/compiler/compile.h"
 #include "spu/core/type_util.h"
+#include "spu/device/api.h"
 #include "spu/device/io.h"
-#include "spu/device/pphlo/executor.h"
+#include "spu/device/pphlo/pphlo_executor.h"
 #include "spu/kernel/context.h"
 #include "spu/kernel/value.h"
 #include "spu/psi/bucket_psi.h"
@@ -205,8 +206,7 @@ void BindLink(py::module& m) {
         });
 }
 
-// Wrap Processor, it's workaround for protobuf pybind11/protoc conflict.
-
+// Wrap Runtime, it's workaround for protobuf pybind11/protoc conflict.
 class RuntimeWrapper {
   std::unique_ptr<spu::HalContext> hctx_;
 
@@ -226,8 +226,8 @@ class RuntimeWrapper {
     spu::ExecutableProto exec;
     YACL_ENFORCE(exec.ParseFromString(exec_pb));
 
-    spu::device::pphlo::PPHloExecutor executor(hctx_.get());
-    executor.runWithEnv(exec, &env_);
+    spu::device::pphlo::PPHloExecutor executor;
+    spu::device::execute(&executor, hctx_.get(), exec, &env_);
   }
 
   void SetVar(const std::string& name, const py::bytes& value) {

@@ -37,9 +37,17 @@ namespace mlir::pphlo {
 #include "spu/dialect/pphlo_patterns.cc.inc"
 
 namespace {
+
 Type convertPtTypeToPPhloType(Type ptType) {
   return pphlo::PublicType::get(ptType.getContext(), ptType);
 }
+
+// Checks if the vector `nums` has duplicates.
+bool hasDuplicates(const ArrayRef<int64_t> nums) {
+  llvm::SmallDenseSet<int64_t> set(nums.begin(), nums.end());
+  return set.size() != nums.size();
+}
+
 }  // namespace
 
 template <typename T>
@@ -500,8 +508,7 @@ OpFoldResult ReciprocalOp::fold(ArrayRef<Attribute> operands) {
     values.push_back(one / it);
   }
 
-  return DenseFPElementsAttr::get(val.getType().dyn_cast<ShapedType>(),
-                                  values);
+  return DenseFPElementsAttr::get(val.getType().dyn_cast<ShapedType>(), values);
 }
 
 OpFoldResult ReshapeOp::fold(ArrayRef<Attribute> operands) {
@@ -588,6 +595,121 @@ LogicalResult PadOp::inferReturnTypeComponents(
     resultShape.push_back(expectedOutput);
   }
   inferredReturnShapes.emplace_back(resultShape, inputType.getElementType());
+
+  return success();
+}
+
+LogicalResult ConcatenateOp::verify() {
+  RankedTensorType firstRankedType;
+  int firstRankedIndex;
+  int numOperands = getNumOperands();
+  auto concatDimension = static_cast<int64_t>(dimension());
+  if (concatDimension < 0) {
+    return emitOpError(
+        llvm::formatv("dimension {0} is negative", concatDimension));
+  }
+  for (int i = 0; i < numOperands; i++) {
+    auto secondType = getOperand(i).getType().dyn_cast<ShapedType>();
+    if (!secondType.hasRank()) {
+      continue;
+    }
+
+    if (!firstRankedType) {
+      firstRankedType = secondType.cast<RankedTensorType>();
+      firstRankedIndex = i;
+      if (firstRankedType.getRank() == 0) {
+        return emitOpError(
+            llvm::formatv("rank-0 values cannot be concatenated"));
+      }
+      if (concatDimension >= firstRankedType.getRank()) {
+        return emitOpError(
+            llvm::formatv("dimension {0} is out-of-bounds for input rank {1}",
+                          concatDimension, firstRankedType.getRank()));
+      }
+      continue;
+    }
+
+    if (firstRankedType.getRank() != secondType.getRank()) {
+      return emitOpError(llvm::formatv(
+          "operands ({0}) and ({1}) do not match rank", firstRankedIndex, i));
+    }
+
+    auto firstShape = firstRankedType.getShape();
+    auto secondShape = secondType.getShape();
+    for (int d = 0; d < firstRankedType.getRank(); ++d) {
+      if (!ShapedType::isDynamic(firstShape[d]) &&
+          !ShapedType::isDynamic(secondShape[d]) &&
+          firstShape[d] != secondShape[d] && d != concatDimension) {
+        return emitOpError(llvm::formatv(
+            "shapes of operand ({0}) and ({1}) do not match at non-concat "
+            "index: ({2}) != ({3}) at non-concat index {4}",
+            firstRankedIndex, i,
+            llvm::make_range(firstShape.begin(), firstShape.end()),
+            llvm::make_range(secondShape.begin(), secondShape.end()), d));
+      }
+    }
+  }
+  return success();
+}
+
+LogicalResult BroadcastOp::verify() {
+  auto operandType = getOperand().getType().dyn_cast<RankedTensorType>();
+
+  auto operandRank = operandType.getRank();
+
+  if (!broadcast_dimensions()) {
+    if (operandRank == 0) {
+      return success();
+    }
+    return emitOpError(
+        llvm::formatv("broadcast_dimensions is absent, but required because "
+                      "operand has non-zero rank ({0})",
+                      operandRank));
+  }
+
+  auto dimensionsType = broadcast_dimensions().getType();
+  auto dimensionsRank = dimensionsType.getRank();
+  if (dimensionsRank != 1) {
+    return emitOpError(llvm::formatv(
+        "broadcast_dimensions has rank {0} instead of rank 1", dimensionsRank));
+  }
+
+  auto dimensionsSize = dimensionsType.getNumElements();
+  if (dimensionsSize != operandRank) {
+    return emitOpError(llvm::formatv(
+        "broadcast_dimensions size ({0}) does not match operand rank ({1})",
+        dimensionsSize, operandRank));
+  }
+
+  auto dimensions =
+      llvm::to_vector(broadcast_dimensions().getValues<int64_t>());
+  if (hasDuplicates(dimensions)) {
+    return emitOpError("broadcast_dimensions should not have duplicates");
+  }
+
+  auto resultType = getResult().getType().cast<RankedTensorType>();
+  auto resultRank = resultType.getRank();
+
+  for (int i = 0; i != dimensionsSize; ++i) {
+    auto dimIndex = dimensions[i];
+    if (dimIndex >= resultRank) {
+      return emitOpError(
+          llvm::formatv("broadcast_dimensions contains invalid value {0} for "
+                        "result with rank {1}",
+                        dimIndex, resultRank));
+    }
+
+    if (!operandType.isDynamicDim(i)) {
+      auto dimSize = operandType.getDimSize(i);
+      auto resultDimSize = resultType.getDimSize(dimIndex);
+      if (dimSize != 1 && dimSize != resultDimSize) {
+        return emitOpError(
+            llvm::formatv("size of operand dimension {0} ({1}) is not equal to "
+                          "1 or size of result dimension {2} ({3})",
+                          i, dimSize, dimIndex, resultDimSize));
+      }
+    }
+  }
 
   return success();
 }

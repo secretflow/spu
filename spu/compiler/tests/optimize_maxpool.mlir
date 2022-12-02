@@ -5,10 +5,9 @@ func.func @main(%arg0: tensor<129x24x24x16x!pphlo.sec<f32>>, %arg1: tensor<129x2
     %1 = "pphlo.constant"() {value = dense<0.000000e+00> : tensor<f32>} : () -> tensor<!pphlo.pub<f32>>
     %2 = "pphlo.convert"(%0) : (tensor<!pphlo.pub<f32>>) -> tensor<!pphlo.sec<f32>>
     %3 = "pphlo.convert"(%1) : (tensor<!pphlo.pub<f32>>) -> tensor<!pphlo.sec<f32>>
+    //CHECK: "pphlo.argmax"(%arg0) {base_dilations = dense<1> : tensor<4xi64>, onehot_index = true, padding = dense<0> : tensor<4x2xi64>, window_dilations = dense<1> : tensor<4xi64>, window_dimensions = dense<[1, 2, 2, 1]> : tensor<4xi64>, window_strides = dense<1> : tensor<4xi64>} : (tensor<129x24x24x16x!pphlo.sec<f32>>) -> (tensor<129x23x23x16x!pphlo.sec<f32>>, tensor<129x23x23x16x4x!pphlo.sec<i1>>)
     %4 = "pphlo.reduce_window"(%arg0, %2) ({
     ^bb0(%arg2: tensor<!pphlo.sec<f32>>, %arg3: tensor<!pphlo.sec<f32>>):
-      //CHECK: %[[GE:.+]] = "pphlo.greater_equal"(%arg2, %arg4) : (tensor<!pphlo.sec<f32>>, tensor<!pphlo.sec<f32>>) -> tensor<!pphlo.sec<i1>>
-      //CHECK-NEXT: "pphlo.select"(%[[GE:.+]], %arg2, %arg3, %arg4, %arg5) : (tensor<!pphlo.sec<i1>>, tensor<!pphlo.sec<f32>>, tensor<!pphlo.pub<i8>>, tensor<!pphlo.sec<f32>>, tensor<!pphlo.pub<i8>>) -> (tensor<!pphlo.sec<f32>>, tensor<!pphlo.sec<i8>>)
       %6 = "pphlo.maximum"(%arg2, %arg3) : (tensor<!pphlo.sec<f32>>, tensor<!pphlo.sec<f32>>) -> tensor<!pphlo.sec<f32>>
       "pphlo.return"(%6) : (tensor<!pphlo.sec<f32>>) -> ()
     }) {base_dilations = dense<1> : tensor<4xi64>, padding = dense<0> : tensor<4x2xi64>, window_dilations = dense<1> : tensor<4xi64>, window_dimensions = dense<[1, 2, 2, 1]> : tensor<4xi64>, window_strides = dense<1> : tensor<4xi64>} : (tensor<129x24x24x16x!pphlo.sec<f32>>, tensor<!pphlo.sec<f32>>) -> tensor<129x23x23x16x!pphlo.sec<f32>>

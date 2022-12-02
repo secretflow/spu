@@ -117,7 +117,7 @@ struct ActionRecord {
   // the uuid of this action.
   int64_t id;
   // name of the action, the name should be static allocated.
-  std::string_view name;
+  std::string name;
   // detail of the action
   std::string detail;
   // the flag of this action.
@@ -155,9 +155,9 @@ class Tracer final {
   // @flag, various attributes of the action.
   // @name, name of the action.
   // @detail, detail of the action.
-  void logActionBegin(int64_t id, int64_t flag, std::string_view name,
+  void logActionBegin(int64_t id, int64_t flag, const std::string& name,
                       const std::string& detail = "");
-  void logActionEnd(int64_t id, int64_t flag, std::string_view name,
+  void logActionEnd(int64_t id, int64_t flag, const std::string& name,
                     const std::string& detail = "");
 
   void addRecord(ActionRecord&& rec) {
@@ -178,7 +178,7 @@ class TraceAction final {
   int64_t id_;
 
   // name of the action.
-  std::string_view name_;
+  std::string name_;
 
   // detail of the action.
   std::string detail_;
@@ -190,7 +190,7 @@ class TraceAction final {
   int64_t saved_tracer_mask_;
 
   template <typename... Args>
-  void begin(std::string_view name, Args&&... args) {
+  void begin(const std::string& name, Args&&... args) {
     name_ = name;
     start_ = std::chrono::high_resolution_clock::now();
 
@@ -238,7 +238,7 @@ class TraceAction final {
   //   mask = ~TR_MOD2,       means disable further TR_MOD2 tracing.
   template <typename... Args>
   explicit TraceAction(std::shared_ptr<Tracer> tracer, int64_t flag,
-                       int64_t mask, std::string_view name, Args&&... args)
+                       int64_t mask, const std::string& name, Args&&... args)
       : tracer_(std::move(tracer)), flag_(flag), mask_(mask) {
     id_ = internal::genActionUuid();
     begin(name, std::forward<Args>(args)...);

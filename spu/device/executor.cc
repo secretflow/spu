@@ -14,170 +14,91 @@
 
 #include "spu/device/executor.h"
 
-#include <chrono>
-#include <filesystem>
-#include <fstream>
-#include <vector>
-
-#include "spdlog/spdlog.h"
+#include "mlir/IR/BuiltinAttributes.h"
+#include "mlir/IR/BuiltinOps.h"
+#include "mlir/IR/Value.h"
+#include "yacl/base/exception.h"
 
 #include "spu/kernel/context.h"
+#include "spu/kernel/value.h"
 
 namespace spu::device {
 
-void Executor::runWithEnv(const ExecutableProto &exec, SymbolTable *env) {
-  // setup global states.
-  const RuntimeConfig rt_config = hctx_->rt_config();
+const spu::Value &SymbolScope::lookupValue(mlir::Value key) const {
+  auto itr = symbols_.find(key);
 
-  //
-  const bool isRefHal = hctx_->lctx() == nullptr;
-  const size_t rank = isRefHal ? 0 : hctx_->lctx()->Rank();
-
-  module_name_ = exec.name();
-
-  Timer timer;
-  Timer stage_timer;
-
-  // prepare inputs from environment.
-  std::vector<spu::Value> inputs;
-  inputs.reserve(exec.input_names_size());
-  for (int32_t idx = 0; idx < exec.input_names_size(); idx++) {
-    const std::string &sym_name = exec.input_names(idx);
-    inputs.emplace_back(env->getVar(sym_name));
+  if (itr != symbols_.end()) {
+    return itr->second;
   }
 
-  const auto input_time = stage_timer.count();
-
-  // TODO: rename this flag, enable_executable_dump?
-  if (rt_config.enable_processor_dump()) {
-    // Naming convention for dumped files must align with debug runner.
-    std::filesystem::path dump_folder(rt_config.processor_dump_dir());
-    dump_folder /= exec.name();
-
-    std::filesystem::create_directories(dump_folder);
-
-    // dump executable.
-    if (rank == 0) {
-      auto fname = dump_folder / std::string("exec.txt");
-      SPDLOG_INFO("Dump exec to {}", fname);
-      std::ofstream ir_file(fname, std::ios::binary | std::ios::out);
-      ir_file << exec.SerializeAsString();
-    }
-
-    // dump all inputs.
-    {
-      size_t var_counter = 0;
-      for (const auto &val : inputs) {
-        auto fname =
-            dump_folder / fmt::format("data_{}_{}.txt", rank, var_counter++);
-        SPDLOG_INFO("Dump data to {}", fname);
-        std::ofstream inputs_file(fname, std::ios::binary | std::ios::out);
-        inputs_file << val.toProto().SerializeAsString();
-      }
-    }
+  if (parent_ != nullptr) {
+    return parent_->lookupValue(key);
   }
 
-  // Profile: before execution stamp
-  stage_timer.reset();
-  auto outputs = run(exec.code(), inputs);
-  const auto exec_time = stage_timer.count();
-
-  // sync output to environment.
-  stage_timer.reset();
-  for (int32_t idx = 0; idx < exec.output_names_size(); idx++) {
-    const std::string &sym_name = exec.output_names(idx);
-    env->setVar(sym_name, outputs[idx]);
-  }
-  const auto output_time = stage_timer.count();
-
-  // Collect time profile data
-  auto total_time = timer.count();
-
-  // Only one party prints for multi-threading simulation
-  if (hctx_->rt_config().enable_pphlo_profile()) {
-    SPDLOG_INFO(
-        "[Profiling] SPU execution {} completed, input processing took {}s, "
-        "execution took {}s, output processing took {}s, total time {}s.",
-        module_name_, input_time.count(), exec_time.count(),
-        output_time.count(), total_time.count());
-    const auto &records = getProfileRecords();
-    double total_time = .0;
-    for (const auto &[name, record] : records) {
-      total_time += record.time.count();
-    }
-    SPDLOG_INFO("HLO profiling: total time: {}", total_time);
-    for (const auto &[name, record] : records) {
-      SPDLOG_INFO("- {}, executed {} times, duration {}s", name, record.count,
-                  record.time.count());
-    }
-  }
-
-  struct ActionKey {
-    std::string_view name;
-    int64_t flag;
-    bool operator<(const ActionKey &other) const {
-      return std::tie(name, flag) < std::tie(other.name, other.flag);
-    }
-  };
-
-  // helper utilities
-  struct ActionStatistic {
-    // number of actions executed.
-    size_t count = 0;
-    // total duration time.
-    Duration total_time = {};
-
-    inline double getTotalTimeInSecond() const {
-      return std::chrono::duration_cast<std::chrono::duration<double>>(
-                 total_time)
-          .count();
-    }
-  };
-
-  std::map<ActionKey, ActionStatistic> stats;
-  if (hctx_->rt_config().enable_hal_profile()) {
-    const auto &tracer = getTracer(GET_CTX_NAME(hctx_));
-    const auto &records = tracer->getRecords();
-
-    for (const auto &rec : records) {
-      auto &stat = stats[{rec.name, rec.flag}];
-      stat.count++;
-      stat.total_time +=
-          std::chrono::duration_cast<Duration>(rec.end - rec.start);
-    }
-
-    static std::map<int64_t, std::string> kModules = {
-        {TR_HLO, "HLO"}, {TR_HAL, "HAL"}, {TR_MPC, "MPC"}};
-
-    for (const auto &[mod_flag, mod_name] : kModules) {
-      double total_time = 0.0;
-      for (const auto &[key, stat] : stats) {
-        if ((key.flag & mod_flag) != 0) {
-          total_time += stat.getTotalTimeInSecond();
-        }
-      }
-      SPDLOG_INFO("{} profiling: total time {}", mod_name, total_time);
-      for (const auto &[key, stat] : stats) {
-        if ((key.flag & mod_flag) != 0) {
-          SPDLOG_INFO("- {}, executed {} times, duration {}s", key.name,
-                      stat.count, stat.getTotalTimeInSecond());
-        }
-      }
-    }
-  }
+  // Somehow cannot find this value on stack, print a reasonable error
+  YACL_THROW("TODO: add more details");
+  // YACL_THROW("Try to get a non-exist value, defined at {} ",
+  //            mlirObjectToString(*v.getDefiningOp()));
 }
 
-void Executor::runWithEnv(const std::string &text,
-                          const std::vector<std::string> &input_names,
-                          const std::vector<std::string> &output_names,
-                          SymbolTable *env) {
-  ExecutableProto exec;
-  exec.set_name("unnamed");
-  *exec.mutable_input_names() = {input_names.begin(), input_names.end()};
-  *exec.mutable_output_names() = {output_names.begin(), output_names.end()};
-  exec.set_code(text);
+void SymbolScope::addValue(mlir::Value key, const spu::Value &val) {
+  symbols_[key] = val;
+}
 
-  runWithEnv(exec, env);
+void SymbolScope::addValue(mlir::Value key, spu::Value &&val) {
+  symbols_[key] = std::move(val);
+}
+
+std::vector<spu::Value> runRegion(OpExecutor *executor,                //
+                                  HalContext *hctx,                    //
+                                  SymbolScope *parent_scope,           //
+                                  mlir::Region &region,                //
+                                  absl::Span<spu::Value const> params, //
+                                  const ExecutionOptions &opts) {
+  YACL_ENFORCE(region.getNumArguments() == params.size(),
+               "region requires {} arguments while got number of params {}",
+               region.getRegionNumber(), params.size());
+
+  // create a new scope for this region.
+  SymbolScope sscope(parent_scope);
+
+  // inject the parameters to region's symbol table.
+  for (const auto &blkarg : region.getArguments()) {
+    sscope.addValue(blkarg, params[blkarg.getArgNumber()]);
+  }
+
+  YACL_ENFORCE(region.hasOneBlock());
+  return runBlock(executor, hctx, &sscope, region.front(), params, opts);
+}
+
+std::vector<spu::Value> runBlock(OpExecutor *executor, HalContext *hctx,
+                                 SymbolScope *symbols, mlir::Block &block,
+                                 absl::Span<spu::Value const> params,
+                                 const ExecutionOptions &opts) {
+  for (auto &op : block.without_terminator()) {
+    executor->runKernel(hctx, symbols, op);
+  }
+
+  if (auto *termOp = block.getTerminator()) {
+    // TODO: enforce ReturnLike
+    std::vector<spu::Value> results;
+    results.reserve(termOp->getNumOperands());
+    for (const auto operand : termOp->getOperands()) {
+      results.emplace_back(symbols->lookupValue(operand));
+    }
+    return results;
+  }
+
+  // No terminator
+  YACL_THROW("Should not be here");
+}
+
+std::vector<spu::Value> runBlockParallel(OpExecutor *executor, HalContext *hctx,
+                                         SymbolScope *symbols,
+                                         mlir::Block &block,
+                                         absl::Span<spu::Value const> params,
+                                         const ExecutionOptions &opts) {
+  YACL_THROW("TODO");
 }
 
 } // namespace spu::device

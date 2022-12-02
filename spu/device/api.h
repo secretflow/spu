@@ -1,4 +1,4 @@
-// Copyright 2022 Ant Group Co., Ltd.
+// Copyright 2021 Ant Group Co., Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,18 +14,25 @@
 
 #pragma once
 
-#include "mlir/IR/BuiltinTypes.h"
+#include <string>
+#include <vector>
 
+#include "spu/device/executor.h"
+#include "spu/device/symbol_table.h"
+#include "spu/kernel/context.h"
 #include "spu/kernel/value.h"
+
+#include "spu/spu.pb.h"
 
 namespace spu::device {
 
-class TypeChecker {
-public:
-  TypeChecker() = default;
-  virtual ~TypeChecker();
+void execute(OpExecutor *executor, HalContext *hctx,
+             const ExecutableProto &executable, SymbolTable *env);
 
-  virtual void check(mlir::Type, const spu::Value &value) const = 0;
-};
+///
+void execute(OpExecutor *executor, spu::HalContext *hctx,
+             const std::string &text,
+             const std::vector<std::string> &input_names,
+             const std::vector<std::string> &output_names, SymbolTable *env);
 
 } // namespace spu::device

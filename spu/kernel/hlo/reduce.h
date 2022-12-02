@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <cstdint>
 #include <vector>
 
 #include "absl/types/span.h"
@@ -46,11 +47,6 @@ struct ReduceWindowConfig {
   absl::Span<const int64_t> window_dilations;
   absl::Span<const std::pair<int64_t, int64_t>> window_padding;
   absl::Span<const int64_t> base_dilations;
-  // This is a special attribute for
-  // argmax-like reduce, DO NOT set to true unless you know what
-  // this means
-  bool last_operand_is_window_mask{false};
-  bool ignore_init_value;
 };
 
 std::vector<spu::Value> ReduceWindow(HalContext *ctx,
@@ -65,5 +61,10 @@ std::vector<spu::Value> Reduce(HalContext *ctx,
                                absl::Span<const spu::Value> init_values,
                                absl::Span<const int64_t> dimensions_to_reduce,
                                const BatchedValueBinaryFn &reducer);
+
+std::pair<spu::Value, spu::Value> ArgMax(HalContext *ctx,
+                                         const spu::Value &input,
+                                         absl::Span<const int64_t> ret_shape,
+                                         const ReduceWindowConfig &config);
 
 }  // namespace spu::kernel::hlo

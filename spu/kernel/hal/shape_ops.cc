@@ -225,6 +225,11 @@ Value broadcast_to(HalContext* ctx, const Value& in,
                    absl::Span<const int64_t> to_shape,
                    absl::Span<const int64_t> in_dims) {
   SPU_TRACE_HAL_DISP(ctx, in, to_shape);
+  for (auto d : in_dims) {
+    YACL_ENFORCE(d < (int64_t)to_shape.size() && d >= 0,
+                 "Broadcast dim {} out of valid range [0, {})", d,
+                 to_shape.size());
+  }
 
   std::vector<int64_t> new_strides(to_shape.size(), 0);
 

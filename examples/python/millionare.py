@@ -17,7 +17,7 @@
 # > bazel run -c opt //examples/python/utils:nodectl -- up
 #
 # Run this example script.
-# > bazel run //examples/python:millionare
+# > bazel run -c opt //examples/python:millionare
 
 
 import argparse

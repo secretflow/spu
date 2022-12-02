@@ -16,7 +16,7 @@
 # > bazel run -c opt //examples/python/utils:nodectl -- up
 #
 # Run this example script.
-# > bazel run //examples/python/stats:woe
+# > bazel run -c opt //examples/python/stats:woe
 
 
 import argparse

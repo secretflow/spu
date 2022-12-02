@@ -25,11 +25,10 @@ namespace spu::device::pphlo {
 class XlaVerifier {
 private:
   HalContext *ctx_{nullptr};
-  std::function<void(bool)> mismatch_handler_;
+  std::function<void(bool)> mismatch_handler_{[](bool) {}};
 
 public:
-  explicit XlaVerifier(HalContext *ctx)
-      : ctx_(ctx), mismatch_handler_(ctx->feature_control().verifier_handler) {}
+  explicit XlaVerifier(HalContext *ctx) : ctx_(ctx) {}
 
   void setMismatchHandler(std::function<void(bool)> f) {
     mismatch_handler_ = std::move(f);
@@ -139,6 +138,7 @@ public:
   NO_VERIFY_DEFN(ConstantOp)
   NO_VERIFY_DEFN(MaxPoolScatterOp)
   NO_VERIFY_DEFN(PreferAOp)
+  NO_VERIFY_DEFN(ArgMaxOp)
 
 #undef NO_VERIFY_DEFN
 };

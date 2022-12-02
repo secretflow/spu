@@ -148,7 +148,7 @@ std::shared_ptr<spdlog::logger> getDefaultLogger() {
 
 }  // namespace
 
-void Tracer::logActionBegin(int64_t id, int64_t flag, std::string_view name,
+void Tracer::logActionBegin(int64_t id, int64_t flag, const std::string& name,
                             const std::string& detail) {
   if ((flag & mask_ & TR_MODALL) == 0 || (mask_ & TR_LOGB) == 0) {
     // module is disabled or logging is disabled, ignore.
@@ -162,7 +162,7 @@ void Tracer::logActionBegin(int64_t id, int64_t flag, std::string_view name,
   }
 }
 
-void Tracer::logActionEnd(int64_t id, int64_t flag, std::string_view name,
+void Tracer::logActionEnd(int64_t id, int64_t flag, const std::string& name,
                           const std::string& detail) {
   if ((flag & mask_ & TR_MODALL) == 0 || (mask_ & TR_LOGE) == 0) {
     // module is disabled or logging is disabled, ignore.

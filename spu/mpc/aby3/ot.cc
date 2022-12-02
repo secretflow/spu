@@ -111,6 +111,7 @@ ArrayRef Ot3::recv(const std::vector<uint8_t>& choices) {
   // get masked messages from sender.
   auto m0 = comm_->recv(roles_.sender, ty, "m0");
   auto m1 = comm_->recv(roles_.sender, ty, "m1");
+
   auto mc = ring_select(choices, m0, m1);
   // get chosen masks
   auto wc = comm_->recv(roles_.helper, ty, "wc");

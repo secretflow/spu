@@ -21,7 +21,7 @@ package(default_visibility = ["//visibility:public"])
 spu_cc_library(
     name = "device",
     deps = [
-        ":frame",
+        ":api",
         ":io",
     ],
 )
@@ -65,29 +65,29 @@ spu_cc_test(
 )
 
 spu_cc_library(
-    name = "frame",
-    srcs = ["frame.cc"],
-    hdrs = ["frame.h"],
-    deps = [
-        ":type_checker",
-        "//spu/dialect:pphlo_dialect",
-        "//spu/kernel:value",
-        "@llvm-project//mlir:IR",
-        "@yacl//yacl/base:exception",
-    ],
-)
-
-spu_cc_library(
     name = "executor",
     srcs = ["executor.cc"],
     hdrs = ["executor.h"],
     deps = [
-        ":profiler",
         ":symbol_table",
         "//spu:spu_cc_proto",
+        "//spu/dialect:pphlo_dialect",
         "//spu/kernel:context",
         "//spu/kernel:value",
-        "//spu/kernel/hal:polymorphic",
+        "@llvm-project//mlir:IR",
+    ],
+)
+
+spu_cc_library(
+    name = "api",
+    srcs = ["api.cc"],
+    hdrs = ["api.h"],
+    deps = [
+        ":executor",
+        "//spu/device/pphlo:pphlo_executor",
+        "@llvm-project//mlir:FuncDialect",
+        "@llvm-project//mlir:IR",
+        "@llvm-project//mlir:Parser",
     ],
 )
 
@@ -113,19 +113,4 @@ spu_cc_library(
         "//spu/core:xt_helper",
         "//spu/kernel:value",
     ],
-)
-
-spu_cc_library(
-    name = "type_checker",
-    srcs = ["type_checker.cc"],
-    hdrs = ["type_checker.h"],
-    deps = [
-        "//spu/kernel:value",
-        "@llvm-project//mlir:IR",
-    ],
-)
-
-spu_cc_library(
-    name = "profiler",
-    hdrs = ["profiler.h"],
 )

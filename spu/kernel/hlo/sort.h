@@ -25,9 +25,10 @@ namespace spu::kernel::hlo {
 
 using CompFn = std::function<spu::Value(absl::Span<const spu::Value>)>;
 
-std::vector<spu::Value> Sort(
-    HalContext *ctx, absl::Span<const spu::Value> inputs, int64_t sort_dim,
-    bool is_stable, const CompFn &comparator_body,
-    const Visibility &comparator_ret_vis = Visibility::VIS_SECRET);
+std::vector<spu::Value> Sort(HalContext *ctx,
+                             absl::Span<const spu::Value> inputs,
+                             int64_t sort_dim, bool is_stable,
+                             const CompFn &comparator_body,
+                             Visibility comparator_ret_vis);
 
 }  // namespace spu::kernel::hlo
