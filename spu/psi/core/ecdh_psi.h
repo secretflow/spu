@@ -59,7 +59,7 @@ struct EcdhPsiOptions {
   // - otherwise the psi results should only revealed to the `target_rank`
   size_t target_rank = yacl::link::kAllRank;
 
-  // Fnish batch callback. Could be used for logging or update progress.
+  // Finish batch callback. Could be used for logging or update progress.
   FinishBatchHook on_batch_finished;
 };
 
