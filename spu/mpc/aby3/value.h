@@ -46,9 +46,6 @@ ArrayRef getSecondShare(const ArrayRef& in);
 ArrayRef makeAShare(const ArrayRef& s1, const ArrayRef& s2, FieldType field,
                     int owner_rank = -1);
 
-// TODO: drop me
-ArrayRef makeBShare(const ArrayRef& s1, const ArrayRef& s2, size_t nbits);
-
 PtType calcBShareBacktype(size_t nbits);
 
 template <typename T>

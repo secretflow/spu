@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <thread>
 #include <variant>
 
 #include "yacl/base/exception.h"
@@ -43,6 +44,10 @@ class KernelEvalContext final {
 
  public:
   explicit KernelEvalContext(Object* caller) : caller_(caller) {}
+
+  std::string name() const {
+    return fmt::format("CTX:{}", std::this_thread::get_id());
+  }
 
   size_t numParams() const { return params_.size(); }
 

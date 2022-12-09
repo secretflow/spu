@@ -36,7 +36,9 @@ class Object {
   std::map<std::string_view, std::unique_ptr<State>> states_;
 
  public:
-  std::string name() const { return "TODO"; }
+  std::string name() const {
+    return fmt::format("CTX:{}", std::this_thread::get_id());
+  }
 
   void regKernel(std::string_view name, std::unique_ptr<Kernel> kernel);
 
