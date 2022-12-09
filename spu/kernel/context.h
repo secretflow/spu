@@ -43,6 +43,10 @@ class HalContext final {
   HalContext(const HalContext& other) = delete;
   HalContext& operator=(const HalContext& other) = delete;
 
+  std::string name() const {
+    return fmt::format("CTX:{}", std::this_thread::get_id());
+  }
+
   HalContext(HalContext&& other) = default;
 
   //

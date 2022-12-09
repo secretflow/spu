@@ -258,8 +258,8 @@ void registerTracer(std::shared_ptr<Tracer> tracer);
 #define SPU_ENABLE_TRACE
 
 // TODO: support per-context trace.
-#define GET_CTX_NAME(CTX) "CTX:0"
-// #define GET_CTX_NAME(CTX) (CTX->name())
+// #define GET_CTX_NAME(CTX) "CTX:0"
+#define GET_CTX_NAME(CTX) ((CTX)->name())
 
 #ifdef SPU_ENABLE_TRACE
 

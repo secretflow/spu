@@ -67,28 +67,6 @@ ArrayRef makeAShare(const ArrayRef& s1, const ArrayRef& s2, FieldType field,
   return res;
 }
 
-ArrayRef makeBShare(const ArrayRef& s1, const ArrayRef& s2, size_t nbits) {
-  const auto pt_type = s1.eltype().as<PtTy>()->pt_type();
-  YACL_ENFORCE(pt_type == s2.eltype().as<PtTy>()->pt_type());
-  YACL_ENFORCE(s1.elsize() >= 8 * nbits);
-  const Type ty = makeType<BShrTy>(pt_type, nbits);
-  ArrayRef res(ty, s1.numel());
-
-  DISPATCH_INT_PT_TYPES(pt_type, "makeBShare", [&]() {
-    auto _x1 = ArrayView<ScalarT>(getFirstShare(res));
-    auto _x2 = ArrayView<ScalarT>(getSecondShare(res));
-    auto _s1 = ArrayView<ScalarT>(s1);
-    auto _s2 = ArrayView<ScalarT>(s2);
-
-    for (int64_t idx = 0; idx < s1.numel(); ++idx) {
-      _x1[idx] = _s1[idx];
-      _x2[idx] = _s2[idx];
-    }
-  });
-
-  return res;
-}
-
 PtType calcBShareBacktype(size_t nbits) {
   if (nbits <= 8) {
     return PT_U8;

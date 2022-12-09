@@ -52,28 +52,32 @@ class A2B : public UnaryKernel {
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in) const override;
 };
 
+class B2ASelector : public UnaryKernel {
+ public:
+  static constexpr char kBindName[] = "b2a";
+
+  Kind kind() const override { return Kind::kDynamic; }
+
+  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& x) const override;
+};
+
 // Referrence:
 // IV.E Boolean to Arithmetic Sharing (B2A), extended to 3pc settings.
 // https://encrypto.de/papers/DSZ15.pdf
-//
-// Latency: 4 + log(nbits) - 3 rotate + 1 send/rec + 1 ppa.
-// TODO(junfeng): Optimize anount of comm.
-class B2A : public UnaryKernel {
+class B2AByPPA : public UnaryKernel {
  public:
   static constexpr char kBindName[] = "b2a";
 
   CExpr latency() const override {
-    // 3 * rotate   : 3
+    // 2 * rotate   : 2
     // 1 * AddBB    : 1 + logk
-    // manual set   : 1
-    return Const(5) + Log(K());
+    return Const(3) + Log(K());
   }
 
   CExpr comm() const override {
-    // 3 * rotate   : 3k
+    // 2 * rotate   : 2k
     // 1 * AddBB    : logk * 2k + k
-    // manual add   : k
-    return Log(K()) * K() * 2 + K() * 5;
+    return Log(K()) * K() * 2 + 3 * K();
   }
 
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& x) const override;
@@ -82,8 +86,6 @@ class B2A : public UnaryKernel {
 // Referrence:
 // 5.4.1 Semi-honest Security
 // https://eprint.iacr.org/2018/403.pdf
-//
-// Latency: 2.
 class B2AByOT : public UnaryKernel {
  public:
   static constexpr char kBindName[] = "b2a";

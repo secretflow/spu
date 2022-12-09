@@ -134,7 +134,7 @@ void dumpExecutableToFolder(const ExecutableProto &executable, size_t rank,
   }
 }
 
-void printProfilingData(const std::string &name,
+void printProfilingData(spu::HalContext *hctx, const std::string &name,
                         const ExecutionStats &exec_stats,
                         const CommunicationStats &comm_stats) {
   // print overall information
@@ -149,7 +149,7 @@ void printProfilingData(const std::string &name,
   {
     std::map<ActionKey, ActionStats> stats;
 
-    const auto &tracer = getTracer(GET_CTX_NAME(hctx_));
+    const auto &tracer = getTracer(GET_CTX_NAME(hctx));
     const auto &records = tracer->getRecords();
 
     for (const auto &rec : records) {
@@ -184,7 +184,7 @@ void printProfilingData(const std::string &name,
               comm_stats.send_bytes, comm_stats.send_actions);
 }
 
-void setupTrace(const spu::RuntimeConfig &rt_config) {
+void setupTrace(spu::HalContext *hctx, const spu::RuntimeConfig &rt_config) {
   int64_t tr_mask = 0;
   if (rt_config.enable_action_trace()) {
     tr_mask |= TR_LOG;
@@ -200,8 +200,8 @@ void setupTrace(const spu::RuntimeConfig &rt_config) {
     tr_mask |= TR_REC;
   }
 
-  getTracer(GET_CTX_NAME(ctx))->setMask(tr_mask);
-  getTracer(GET_CTX_NAME(ctx))->clearRecords();
+  getTracer(GET_CTX_NAME(hctx))->setMask(tr_mask);
+  getTracer(GET_CTX_NAME(hctx))->clearRecords();
 }
 
 void SPUErrorHandler(void *use_data, const char *reason, bool gen_crash_diag) {
@@ -226,7 +226,7 @@ void installLLVMErrorHandler() {
 
 void executeImpl(OpExecutor *executor, spu::HalContext *hctx,
                  const ExecutableProto &executable, SymbolTable *env) {
-  setupTrace(hctx->rt_config());
+  setupTrace(hctx, hctx->rt_config());
   installLLVMErrorHandler();
 
   CommunicationStats comm_stats;
@@ -293,7 +293,7 @@ void executeImpl(OpExecutor *executor, spu::HalContext *hctx,
 
   comm_stats.diff(hctx->lctx());
   if ((getTracer(GET_CTX_NAME(hctx))->getMask() & TR_REC) != 0) {
-    printProfilingData(executable.name(), exec_stats, comm_stats);
+    printProfilingData(hctx, executable.name(), exec_stats, comm_stats);
   }
 }
 
