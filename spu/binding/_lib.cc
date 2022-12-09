@@ -12,7 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <cstddef>
+
 #include "fmt/format.h"
+#include "gflags/gflags.h"
 #include "pybind11/iostream.h"
 #include "pybind11/numpy.h"
 #include "pybind11/pybind11.h"
@@ -32,6 +35,13 @@
 #include "spu/psi/memory_psi.h"
 
 namespace py = pybind11;
+
+namespace brpc {
+
+DECLARE_uint64(max_body_size);
+DECLARE_int64(socket_max_unwritten_bytes);
+
+}  // namespace brpc
 
 namespace spu {
 
@@ -191,6 +201,8 @@ void BindLink(py::module& m) {
         [](const ContextDesc& desc,
            size_t self_rank) -> std::shared_ptr<Context> {
           py::gil_scoped_release release;
+          brpc::FLAGS_max_body_size = 2UL * 1024 * 1024 * 1024;
+          brpc::FLAGS_socket_max_unwritten_bytes = 2L * 1024 * 1024 * 1024;
           auto ctx = yacl::link::FactoryBrpc().CreateContext(desc, self_rank);
           ctx->ConnectToMesh();
           return ctx;
@@ -200,6 +212,7 @@ void BindLink(py::module& m) {
         [](const ContextDesc& desc,
            size_t self_rank) -> std::shared_ptr<Context> {
           py::gil_scoped_release release;
+
           auto ctx = yacl::link::FactoryMem().CreateContext(desc, self_rank);
           ctx->ConnectToMesh();
           return ctx;

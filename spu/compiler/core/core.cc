@@ -47,6 +47,7 @@ void Core::buildPipeline(mlir::PassManager *pm) {
   optPM.addPass(mlir::pphlo::createOptimizeMaxPoolingPass());
   optPM.addPass(mlir::pphlo::createDecomposeComparisonPass());
   optPM.addPass(mlir::pphlo::createDecomposeMinMaxPass());
+  optPM.addPass(mlir::pphlo::createOptimizeSqrtToRsqrtPass());
 
   optPM.addPass(mlir::createCSEPass());
 

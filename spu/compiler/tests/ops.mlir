@@ -25,3 +25,26 @@ func.func @invalid_broadcast_dim() -> tensor<!pphlo.pub<i32>> {
 }
 
 // -----
+
+// -----
+
+func.func @negative_broadcast_dims() -> tensor<!pphlo.pub<i32>> {
+  %0 = "pphlo.constant"() {value = dense<[0.000000e+00, -3.40282347E+38]> : tensor<2xf32>} : () -> tensor<2x!pphlo.pub<f32>>
+  // expected-error @+1 {{op broadcast_dimensions contains invalid value -6 for result with rank 1}}
+  %1 = "pphlo.broadcast"(%0) {broadcast_dimensions = dense<-6> : tensor<1xi64>} : (tensor<2x!pphlo.pub<f32>>) -> tensor<2x!pphlo.pub<f32>>
+  %2 = "pphlo.constant"() {value = dense<5> : tensor<i32>} : () -> tensor<!pphlo.pub<i32>>
+  "pphlo.return"(%2) : (tensor<!pphlo.pub<i32>>) -> ()
+}
+
+// -----
+
+// -----
+
+func.func @main() -> tensor<!pphlo.pub<i32>> {
+  // expected-error @+1 {{op iota dimension cannot go beyond the output rank or be negative}}
+  %0 = "pphlo.iota"() {iota_dimension = 1000 : i64} : () -> tensor<1x!pphlo.pub<i32>>
+  %1 = "pphlo.constant"() {value = dense<5> : tensor<i32>} : () -> tensor<!pphlo.pub<i32>>
+  "pphlo.return"(%1) : (tensor<!pphlo.pub<i32>>) -> ()
+}
+
+// -----

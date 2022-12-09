@@ -64,6 +64,8 @@ def PPHLO_IotaOp : PPHLO_Op<"iota", [Pure]> {
   let arguments = (ins I64Attr : $iota_dimension);
 
   let results = (outs PPHLO_Tensor : $output);
+
+  let hasVerifier = 1;
 }
 
 //===----------------------------------------------------------------------===//
@@ -94,7 +96,7 @@ def PPHLO_ConvertOp
 }
 
 def PPHLO_SqrtOp
-    : PPHLO_UnaryElementwiseOp<"sqrt", [Pure], PPHLO_FpTensor> {
+    : PPHLO_UnaryElementwiseOp<"sqrt", [Pure, SameOperandsAndResultType], PPHLO_FpTensor> {
   let summary = "Square-root operator";
   let description = [{
     Returns `sqrt(operand)` element-wise.
@@ -105,7 +107,7 @@ def PPHLO_SqrtOp
 }
 
 def PPHLO_RsqrtOp
-    : PPHLO_UnaryElementwiseOp<"rsqrt", [Pure], PPHLO_FpTensor> {
+    : PPHLO_UnaryElementwiseOp<"rsqrt", [Pure, SameOperandsAndResultType], PPHLO_FpTensor> {
   let summary = "Reciprocal of square-root operator";
   let description = [{
     Returns `rsqrt(operand)` element-wise.
@@ -116,7 +118,7 @@ def PPHLO_RsqrtOp
 }
 
 def PPHLO_TanhOp
-    : PPHLO_UnaryElementwiseOp<"tanh", [Pure], PPHLO_FpTensor> {
+    : PPHLO_UnaryElementwiseOp<"tanh", [Pure, SameOperandsAndResultType], PPHLO_FpTensor> {
   let summary = "Tanh operator";
   let description = [{
     Returns `tanh(operand)` element-wise.
@@ -127,7 +129,7 @@ def PPHLO_TanhOp
 }
 
 def PPHLO_NegOp
-    : PPHLO_UnaryElementwiseOp<"negate", [Pure], PPHLO_Tensor> {
+    : PPHLO_UnaryElementwiseOp<"negate", [Pure, SameOperandsAndResultType], PPHLO_Tensor> {
   let summary = "Negation operator";
   let description = [{
     Returns `- operand` element -
@@ -139,7 +141,7 @@ def PPHLO_NegOp
 }
 
 def PPHLO_ExpOp
-    : PPHLO_UnaryElementwiseOp<"exponential", [Pure], PPHLO_FpTensor> {
+    : PPHLO_UnaryElementwiseOp<"exponential", [Pure, SameOperandsAndResultType], PPHLO_FpTensor> {
   let summary = "Exponential operator";
   let description = [{
     Returns `e ^ (operand)` element-wise.
@@ -150,7 +152,7 @@ def PPHLO_ExpOp
 }
 
 def PPHLO_Expm1Op: PPHLO_UnaryElementwiseOp<"exponential_minus_one",
-    [Pure], PPHLO_FpTensor> {
+    [Pure, SameOperandsAndResultType], PPHLO_FpTensor> {
   let summary = "Exponential minus one operator";
   let description = [{
     Returns `e^(operand) - 1` element-wise.
@@ -161,7 +163,7 @@ def PPHLO_Expm1Op: PPHLO_UnaryElementwiseOp<"exponential_minus_one",
 }
 
 def PPHLO_LogOp
-    : PPHLO_UnaryElementwiseOp<"log", [Pure], PPHLO_FpTensor> {
+    : PPHLO_UnaryElementwiseOp<"log", [Pure, SameOperandsAndResultType], PPHLO_FpTensor> {
   let summary = "Log operator";
   let description = [{
     Returns `log(operand)` element-wise.
@@ -171,7 +173,7 @@ def PPHLO_LogOp
   }];
 }
 
-def PPHLO_Log1pOp : PPHLO_UnaryElementwiseOp<"log_plus_one", [Pure],
+def PPHLO_Log1pOp : PPHLO_UnaryElementwiseOp<"log_plus_one", [Pure, SameOperandsAndResultType],
                                              PPHLO_FpTensor> {
   let summary = "Log1p operator";
   let description = [{
@@ -183,7 +185,7 @@ def PPHLO_Log1pOp : PPHLO_UnaryElementwiseOp<"log_plus_one", [Pure],
 }
 
 def PPHLO_CeilOp
-    : PPHLO_UnaryElementwiseOp<"ceil", [Pure], PPHLO_FpTensor> {
+    : PPHLO_UnaryElementwiseOp<"ceil", [Pure, SameOperandsAndResultType], PPHLO_FpTensor> {
   let summary = "Ceil operator";
   let description = [{
     Returns `Ceil(operand)` element-wise.
@@ -194,7 +196,7 @@ def PPHLO_CeilOp
 }
 
 def PPHLO_FloorOp
-    : PPHLO_UnaryElementwiseOp<"floor", [Pure], PPHLO_FpTensor> {
+    : PPHLO_UnaryElementwiseOp<"floor", [Pure, SameOperandsAndResultType], PPHLO_FpTensor> {
   let summary = "Floor operator";
   let description = [{
     Returns `Floor(operand)` element-wise.
@@ -205,7 +207,7 @@ def PPHLO_FloorOp
 }
 
 def PPHLO_RoundOp
-    : PPHLO_UnaryElementwiseOp<"round_nearest_afz", [Pure], PPHLO_FpTensor> {
+    : PPHLO_UnaryElementwiseOp<"round_nearest_afz", [Pure, SameOperandsAndResultType], PPHLO_FpTensor> {
   let summary = "Round operator, ties away from zero";
   let description = [{
     Returns `Round(operand)` element-wise, rounding to nearest integer with
@@ -217,7 +219,7 @@ def PPHLO_RoundOp
 }
 
 def PPHLO_AbsOp
-    : PPHLO_UnaryElementwiseOp<"abs", [Pure], PPHLO_Tensor> {
+    : PPHLO_UnaryElementwiseOp<"abs", [Pure, SameOperandsAndResultType], PPHLO_Tensor> {
   let summary = "Absolute value operator";
   let description = [{
     Returns `abs(operand)` element-wise.
@@ -284,7 +286,7 @@ def PPHLO_SignOp
   }];
 }
 
-def PPHLO_PreferAOp : PPHLO_UnaryElementwiseOp<"prefer_a", [Pure], PPHLO_Tensor> {
+def PPHLO_PreferAOp : PPHLO_UnaryElementwiseOp<"prefer_a", [Pure, SameOperandsAndResultType], PPHLO_Tensor> {
   let summary = "Prefer AShare operator";
   let description = [{
     Convert input to AShare if possible.

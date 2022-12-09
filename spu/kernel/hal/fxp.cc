@@ -626,20 +626,14 @@ Value f_rsqrt(HalContext* ctx, const Value& x) {
   hintNumberOfBits(z_rev, 2 * f);
   auto u = _trunc(ctx, _mul(ctx, x, z_rev)).asFxp();
 
-  // let rsqrt(u) = 4.7979 * u^2 - 5.9417 * u + 3.1855
-  std::vector<Value> coeffs = {constant(ctx, -5.9417, x.shape()),
-                               constant(ctx, 4.7979, x.shape())};
+  // let rsqrt(u) = 26.02942339 * u^4 - 49.86605845 * u^3 + 38.4714796 * u^2
+  // - 15.47994394 * u + 4.14285016
+  std::vector<Value> coeffs = {constant(ctx, -15.47994394, x.shape()),
+                               constant(ctx, 38.4714796, x.shape()),
+                               constant(ctx, -49.86605845, x.shape()),
+                               constant(ctx, 26.02942339, x.shape())};
   auto r = f_add(ctx, f_polynomial(ctx, u, coeffs),
-                 constant(ctx, 3.1855, x.shape()));
-
-  // Newton Method to reduce error
-  // r' = r * ( threehalfs - ( u * half * r * r ) );
-  const auto& k_threehalfs = constant(ctx, 1.5f, r.shape());
-  const auto& k_half = constant(ctx, 0.5f, r.shape());
-
-  r = f_mul(ctx, r,
-            f_sub(ctx, k_threehalfs,
-                  f_mul(ctx, f_mul(ctx, u, k_half), f_square(ctx, r))));
+                 constant(ctx, 4.14285016, x.shape()));
 
   // let a = 2^((e+f)/2), that is a[i] = 1 for i = (e+f)/2 else 0
   // let b = lsb(e+f)

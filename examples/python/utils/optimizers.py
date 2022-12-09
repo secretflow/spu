@@ -56,7 +56,7 @@ def amsgrad(step_size, b1=0.9, b2=0.999, eps=1e-8):
         m = (1 - b1) * g + b1 * m
         v = (1 - b2) * jnp.square(g) + b2 * v
         vhat = jnp.maximum(vhat, v)
-        x = x - step_size(i) * m / (jnp.sqrt(vhat + eps))
+        x = x - step_size(i) * m / (jnp.sqrt(vhat) + eps)
         return x, m, v, vhat
 
     def get_params(state):

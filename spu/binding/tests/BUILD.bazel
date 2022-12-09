@@ -26,6 +26,14 @@ py_library(
     ],
 )
 
+py_binary(
+    name = "np_op_status",
+    srcs = ["np_op_status.py"],
+    deps = [
+        ":jnp_testbase",
+    ],
+)
+
 py_test(
     name = "jnp_aby3_r128_test",
     srcs = ["jnp_aby3_r128_test.py"],
