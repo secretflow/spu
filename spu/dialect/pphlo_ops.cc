@@ -692,7 +692,7 @@ LogicalResult BroadcastOp::verify() {
 
   for (int i = 0; i != dimensionsSize; ++i) {
     auto dimIndex = dimensions[i];
-    if (dimIndex >= resultRank) {
+    if ((dimIndex >= resultRank) || (dimIndex < 0)) {
       return emitOpError(
           llvm::formatv("broadcast_dimensions contains invalid value {0} for "
                         "result with rank {1}",
@@ -711,6 +711,24 @@ LogicalResult BroadcastOp::verify() {
     }
   }
 
+  return success();
+}
+
+LogicalResult IotaOp::verify() {
+  auto shape = getType().cast<ShapedType>();
+  if (!shape.hasRank()) {
+    return success();
+  }
+
+  if (shape.getRank() == 0) {
+    return emitOpError() << "does not support scalars.";
+  }
+
+  auto iotaDimension = static_cast<int64_t>(this->iota_dimension());
+  if (iotaDimension >= shape.getRank() || iotaDimension < 0) {
+    return emitOpError()
+           << "iota dimension cannot go beyond the output rank or be negative.";
+  }
   return success();
 }
 

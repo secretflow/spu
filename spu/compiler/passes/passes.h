@@ -60,6 +60,9 @@ std::unique_ptr<OperationPass<func::FuncOp>> createOptimizeMaxPoolingPass();
 // Optimize SelectOp
 std::unique_ptr<OperationPass<func::FuncOp>> createOptimizeSelectPass();
 
+// Optimize 1/(sqrt(x) + very_small_const) -> rsqrt(x)
+std::unique_ptr<OperationPass<func::FuncOp>> createOptimizeSqrtToRsqrtPass();
+
 } // namespace pphlo
 
 } // namespace mlir

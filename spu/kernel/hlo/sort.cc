@@ -15,8 +15,8 @@
 #include "sort.h"
 
 #include "absl/numeric/bits.h"
-#include "emp-tool/circuits/number.h"
 
+#include "spu/kernel/hal/concat.h"
 #include "spu/kernel/hal/permute_util.h"
 #include "spu/kernel/hal/polymorphic.h"
 #include "spu/kernel/hlo/casting.h"
@@ -25,7 +25,7 @@
 namespace spu::kernel::hlo {
 namespace {
 
-void sliceCopy(spu::Value &dst, const spu::Value &src,
+void SliceCopy(spu::Value &dst, const spu::Value &src,
                std::vector<int64_t> dst_indices, size_t dim) {
   auto copy_size = src.shape()[0];
   for (int64_t idx = 0; idx < copy_size; ++idx) {
@@ -34,7 +34,7 @@ void sliceCopy(spu::Value &dst, const spu::Value &src,
   }
 }
 
-std::vector<spu::Value> getValuesToSort(HalContext *ctx,
+std::vector<spu::Value> GetValuesToSort(HalContext *ctx,
                                         absl::Span<const spu::Value> inputs,
                                         const std::vector<int64_t> &indices,
                                         int64_t sort_dim,
@@ -57,9 +57,9 @@ std::vector<spu::Value> getValuesToSort(HalContext *ctx,
 
 // Refers to implementation of emp-tool:
 // https://github.com/emp-toolkit/emp-tool/blob/b07a7d9ab3053a3e16991751402742d418377f63/emp-tool/circuits/number.h
-void cmpSwap(HalContext *ctx, const CompFn &comparator_body,
+void CmpSwap(HalContext *ctx, const CompFn &comparator_body,
              std::vector<spu::Value> *values_to_sort, int64_t x_start_indices,
-             int64_t y_start_indices, int64_t n, bool acc) {
+             int64_t y_start_indices, int64_t n) {
   size_t num_operands = values_to_sort->size();
 
   std::vector<spu::Value> values;
@@ -75,57 +75,23 @@ void cmpSwap(HalContext *ctx, const CompFn &comparator_body,
   for (size_t i = 0; i < num_operands; ++i) {
     auto fst = hal::slice(ctx, values_to_sort->at(i), {x_start_indices},
                           {x_start_indices + n}, {1});
-    auto snd = hal::slice(ctx, values_to_sort->at(i), {y_start_indices},
+    auto sec = hal::slice(ctx, values_to_sort->at(i), {y_start_indices},
                           {y_start_indices + n}, {1});
 
-    auto greater = spu::kernel::hal::select(ctx, predicate, fst, snd);
-    auto less = spu::kernel::hal::select(ctx, predicate, snd, fst);
+    auto greater = spu::kernel::hal::select(ctx, predicate, fst, sec);
+    auto less = spu::kernel::hal::select(ctx, predicate, sec, fst);
 
-    if (acc) {
-      values_to_sort->at(i).copyElementFrom(
-          greater, {}, {static_cast<int64_t>(x_start_indices)},
-          static_cast<int64_t>(n * values_to_sort->front().elsize()));
-      values_to_sort->at(i).copyElementFrom(
-          less, {}, {static_cast<int64_t>(y_start_indices)},
-          static_cast<int64_t>(n * values_to_sort->front().elsize()));
-    } else {
-      values_to_sort->at(i).copyElementFrom(
-          less, {}, {static_cast<int64_t>(x_start_indices)},
-          static_cast<int64_t>(n * values_to_sort->front().elsize()));
-      values_to_sort->at(i).copyElementFrom(
-          greater, {}, {static_cast<int64_t>(y_start_indices)},
-          static_cast<int64_t>(n * values_to_sort->front().elsize()));
-    }
+    values_to_sort->at(i).copyElementFrom(
+        greater, {}, {static_cast<int64_t>(x_start_indices)},
+        static_cast<int64_t>(n * values_to_sort->front().elsize()));
+    values_to_sort->at(i).copyElementFrom(
+        less, {}, {static_cast<int64_t>(y_start_indices)},
+        static_cast<int64_t>(n * values_to_sort->front().elsize()));
   }
 }
 
-void sequentialBitonicMerge(HalContext *ctx, const CompFn &comparator_body,
-                            std::vector<spu::Value> *values_to_sort, size_t lo,
-                            size_t n, bool acc) {
-  if (n > 1) {
-    size_t m = emp::greatestPowerOfTwoLessThan(n);
-    cmpSwap(ctx, comparator_body, values_to_sort, lo, lo + m, n - m, acc);
-
-    sequentialBitonicMerge(ctx, comparator_body, values_to_sort, lo, m, acc);
-    sequentialBitonicMerge(ctx, comparator_body, values_to_sort, lo + m, n - m,
-                           acc);
-  }
-}
-
-void sequentialBitonicSort(HalContext *ctx, const CompFn &comparator_body,
-                           std::vector<spu::Value> *values_to_sort, size_t lo,
-                           size_t n, bool acc) {
-  if (n > 1) {
-    size_t m = (n >> 1);
-    sequentialBitonicSort(ctx, comparator_body, values_to_sort, lo, m, !acc);
-    sequentialBitonicSort(ctx, comparator_body, values_to_sort, lo + m, n - m,
-                          acc);
-    sequentialBitonicMerge(ctx, comparator_body, values_to_sort, lo, n, acc);
-  }
-}
-
-void generateBitonicSortIndex(size_t n,
-                              std::vector<std::vector<size_t>> *indices) {
+void GenerateBitonicMergeIndex(size_t n,
+                               std::vector<std::vector<size_t>> *indices) {
   YACL_ENFORCE(absl::has_single_bit(n));
   size_t stage = absl::bit_width(n) - 1;
 
@@ -146,8 +112,8 @@ void generateBitonicSortIndex(size_t n,
   }
 }
 
-void generateBitonicMergeIndex(size_t n,
-                               std::vector<std::vector<size_t>> *indices) {
+void GenerateBitonicSortIndex(size_t n,
+                              std::vector<std::vector<size_t>> *indices) {
   YACL_ENFORCE(absl::has_single_bit(n));
   size_t stage = absl::bit_width(n) - 1;
 
@@ -174,14 +140,14 @@ void generateBitonicMergeIndex(size_t n,
   }
 }
 
-std::vector<spu::Value> parallelBitonicSort(
+std::vector<spu::Value> BitonicSort(
     HalContext *ctx, const CompFn &comparator_body,
     const std::vector<spu::Value> &values_to_sort, size_t n) {
   YACL_ENFORCE(absl::has_single_bit(n));
 
   std::vector<std::vector<size_t>> indices;
-  generateBitonicMergeIndex(n, &indices);
-  generateBitonicSortIndex(n, &indices);
+  GenerateBitonicSortIndex(n, &indices);
+  GenerateBitonicMergeIndex(n, &indices);
 
   std::vector<spu::Value> target = values_to_sort;
 
@@ -194,8 +160,8 @@ std::vector<spu::Value> parallelBitonicSort(
     }
 
     // cmp and swap
-    cmpSwap(ctx, comparator_body, &permuted_values, 0,
-            static_cast<int64_t>(n / 2), static_cast<int64_t>(n / 2), true);
+    CmpSwap(ctx, comparator_body, &permuted_values, 0,
+            static_cast<int64_t>(n / 2), static_cast<int64_t>(n / 2));
 
     // inverse permute
     std::vector<size_t> inverse_permutation(index.size());
@@ -214,6 +180,72 @@ std::vector<spu::Value> parallelBitonicSort(
   }
 
   return target;
+}
+
+spu::Value Repeat(HalContext *ctx, const spu::Value &in, int64_t repeats) {
+  const auto &origin_shape = in.shape();
+
+  auto shape_1 = origin_shape;
+  shape_1.insert(shape_1.begin(), 1);
+  auto shape_2 = shape_1;
+  shape_2[0] = repeats;
+  auto shape_3 = origin_shape;
+  shape_3[0] = origin_shape[0] * repeats;
+
+  return hal::reshape(
+      ctx, hal::broadcast_to(ctx, hal::reshape(ctx, in, shape_1), shape_2),
+      shape_3);
+}
+
+std::vector<spu::Value> GetPaddingOfBitonicSort(
+    HalContext *ctx, const CompFn &comparator_body,
+    const std::vector<spu::Value> &values_to_sort) {
+  std::vector<spu::Value> values = values_to_sort;
+  int64_t n = values[0].numel();
+  size_t num_operands = values_to_sort.size();
+
+  while (n > 1) {
+    size_t n_bit_floor = absl::bit_floor(static_cast<size_t>(n));
+
+    std::vector<spu::Value> cmp_values;
+    cmp_values.reserve(2 * num_operands);
+
+    std::vector<spu::Value> new_values;
+    new_values.reserve(num_operands);
+    for (size_t i = 0; i < num_operands; ++i) {
+      cmp_values.push_back(hal::slice(ctx, values.at(i), {0},
+                                      {static_cast<int64_t>(n_bit_floor / 2)},
+                                      {1}));
+      cmp_values.push_back(
+          hal::slice(ctx, values.at(i), {static_cast<int64_t>(n_bit_floor / 2)},
+                     {static_cast<int64_t>(n_bit_floor)}, {1}));
+    }
+
+    spu::Value predicate = comparator_body(cmp_values);
+
+    for (size_t i = 0; i < num_operands; ++i) {
+      auto fst = hal::slice(ctx, values.at(i), {0},
+                            {static_cast<int64_t>(n_bit_floor / 2)}, {1});
+      auto sec =
+          hal::slice(ctx, values.at(i), {static_cast<int64_t>(n_bit_floor / 2)},
+                     {static_cast<int64_t>(n_bit_floor)}, {1});
+
+      auto greater = spu::kernel::hal::select(ctx, predicate, sec, fst);
+
+      if (absl::has_single_bit(static_cast<size_t>(n))) {
+        new_values.push_back(greater);
+      } else {
+        auto tail = hal::slice(ctx, values.at(i),
+                               {static_cast<int64_t>(n_bit_floor)}, {n}, {1});
+        new_values.push_back(hal::concatenate(ctx, {greater, tail}, 0));
+      }
+    }
+
+    values = new_values;
+    n = values[0].numel();
+  }
+
+  return values;
 }
 
 }  // namespace
@@ -250,7 +282,7 @@ std::vector<spu::Value> Sort(HalContext *ctx,
                    // Extract a slice from each operand literal that corresponds
                    // to exactly the row in dimension 'sort_dim'.
                    std::vector<spu::Value> values_to_sort =
-                       getValuesToSort(ctx, inputs, indices, sort_dim,
+                       GetValuesToSort(ctx, inputs, indices, sort_dim,
                                        sort_dim_elements, num_operands);
 
                    std::vector<int64_t> indices_to_sort(sort_dim_elements);
@@ -279,7 +311,7 @@ std::vector<spu::Value> Sort(HalContext *ctx,
                    for (int64_t i = 0; i < num_operands; ++i) {
                      auto sorted_value = hal::permute(
                          ctx, values_to_sort[i], 0, xt::adapt(indices_to_sort));
-                     sliceCopy(results[i], sorted_value, indices, sort_dim);
+                     SliceCopy(results[i], sorted_value, indices, sort_dim);
                    }
                  });
   } else {
@@ -287,22 +319,47 @@ std::vector<spu::Value> Sort(HalContext *ctx,
     forEachIndex(
         key_shape, zero_base, key_shape, increment,
         [&](const std::vector<int64_t> &indices) {
-          std::vector<spu::Value> values_to_sort = getValuesToSort(
+          std::vector<spu::Value> values_to_sort = GetValuesToSort(
               ctx, inputs, indices, sort_dim, sort_dim_elements, num_operands);
 
-          int64_t n = values_to_sort[0].numel();
-          if (absl::has_single_bit(static_cast<size_t>(n))) {
-            // TODO(junfeng): add paddings when n x is not an integral power of
-            // two.
-            values_to_sort =
-                parallelBitonicSort(ctx, comparator_body, values_to_sort, n);
-          } else {
-            sequentialBitonicSort(ctx, comparator_body, &values_to_sort, 0, n,
-                                  true);
-          }
+          int64_t original_n = values_to_sort[0].numel();
+          if (original_n > 1) {
+            if (absl::has_single_bit(static_cast<size_t>(original_n))) {
+              values_to_sort =
+                  BitonicSort(ctx, comparator_body, values_to_sort, original_n);
 
-          for (int64_t i = 0; i < num_operands; ++i) {
-            sliceCopy(results[i], values_to_sort[i], indices, sort_dim);
+              for (int64_t i = 0; i < num_operands; ++i) {
+                SliceCopy(results[i], values_to_sort[i], indices, sort_dim);
+              }
+            } else {
+              auto padding =
+                  GetPaddingOfBitonicSort(ctx, comparator_body, values_to_sort);
+
+              int64_t padding_length =
+                  absl::bit_ceil(static_cast<size_t>(original_n)) - original_n;
+
+              for (int64_t i = 0; i < num_operands; ++i) {
+                values_to_sort[i] =
+                    hal::concatenate(ctx,
+                                     {values_to_sort[i],
+                                      Repeat(ctx, padding[i], padding_length)},
+                                     0);
+              }
+
+              values_to_sort = BitonicSort(ctx, comparator_body, values_to_sort,
+                                           values_to_sort[0].numel());
+
+              for (int64_t i = 0; i < num_operands; ++i) {
+                auto v = hal::slice(ctx, values_to_sort.at(i), {0},
+                                    {original_n}, {1});
+
+                SliceCopy(results[i], v, indices, sort_dim);
+              }
+            }
+          } else {
+            for (int64_t i = 0; i < num_operands; ++i) {
+              SliceCopy(results[i], values_to_sort[i], indices, sort_dim);
+            }
           }
         });
   }

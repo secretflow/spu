@@ -26,6 +26,7 @@ import spu.binding._lib.link as link
 import spu.binding.api as ppapi
 import spu.binding.util.frontend as spu_fe
 import spu.spu_pb2 as spu_pb2
+from jax import linear_util as lu
 
 
 # https://stackoverflow.com/questions/2829329/catch-a-threads-exception-in-the-caller-thread-in-python
@@ -125,8 +126,8 @@ def sim_jax(
     """
 
     def wrapper(*args, **kwargs):
-        f, dyn_args = japi_util.argnums_partial_except(
-            fun, static_argnums, args, allow_invalid=False
+        _, dyn_args = japi_util.argnums_partial_except(
+            lu.wrap_init(fun), static_argnums, args, allow_invalid=False
         )
         args_flat, _ = jax.tree_util.tree_flatten((dyn_args, kwargs))
 
@@ -137,7 +138,14 @@ def sim_jax(
             return [f'out{idx}' for idx in range(len(out_flat))]
 
         executable, output = spu_fe.compile(
-            spu_fe.Kind.JAX, f, dyn_args, kwargs, in_names, in_vis, outputNameGen
+            spu_fe.Kind.JAX,
+            fun,
+            args,
+            kwargs,
+            in_names,
+            in_vis,
+            outputNameGen,
+            static_argnums=static_argnums,
         )
 
         wrapper.pphlo = executable.code.decode("utf-8")

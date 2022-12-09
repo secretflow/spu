@@ -52,14 +52,12 @@ import argparse
 parser = argparse.ArgumentParser(description='distributed driver.')
 parser.add_argument("--model", default='network_a', type=str)
 parser.add_argument("-c", "--config", default="examples/python/conf/3pc.json", type=str)
-parser.add_argument("-l", "--learning_rate", default=0.01, type=float)
 parser.add_argument("-e", "--epoch", default=5, type=int)
 parser.add_argument("-b", "--batch_size", default=128, type=int)
 parser.add_argument("-o", "--optimizer", default="SGD", type=str)
 args = parser.parse_args()
 
 # Follows https://arxiv.org/pdf/2107.00501.pdf Appendix C.
-DEFAULT_LEARNING_RATE = args.learning_rate
 DEFAULT_EPOCHS = args.epoch
 DEFAULT_BATCH_SIZE = args.batch_size
 
@@ -69,7 +67,6 @@ def train(
     train_y,
     init_fun,
     predict_fun,
-    learning_rate,
     epochs,
     batch_size,
     run_on_spu,
@@ -83,15 +80,15 @@ def train(
     if args.optimizer in ["SGD", "sgd"]:
         from jax.example_libraries import optimizers
 
-        opt_init, opt_update, get_params = optimizers.momentum(learning_rate, 0.9)
+        opt_init, opt_update, get_params = optimizers.momentum(0.01, 0.9)
     elif args.optimizer in ["ADAM", "adam"]:
         from jax.example_libraries import optimizers
 
-        opt_init, opt_update, get_params = optimizers.adam(learning_rate)
+        opt_init, opt_update, get_params = optimizers.adam(0.001)
     elif args.optimizer in ["AMSgrad", "amsgrad"]:
         from examples.python.utils import optimizers
 
-        opt_init, opt_update, get_params = optimizers.amsgrad(learning_rate)
+        opt_init, opt_update, get_params = optimizers.amsgrad(0.001)
     else:
         raise RuntimeError(f"Unsupported optimizer type {args.optimizer}.")
     opt_state = opt_init(params_init)
@@ -166,7 +163,6 @@ def train_secureml(run_on_spu: bool = False):
     train_y = jax.nn.one_hot(train_y, 10)
 
     # Hyper-parameters
-    learning_rate = DEFAULT_LEARNING_RATE
     epochs = DEFAULT_EPOCHS
     batch_size = DEFAULT_BATCH_SIZE
 
@@ -178,7 +174,6 @@ def train_secureml(run_on_spu: bool = False):
         train_y,
         init_fun,
         predict_fun,
-        learning_rate,
         epochs,
         batch_size,
         run_on_spu,
@@ -198,7 +193,6 @@ def train_minionn(run_on_spu: bool = False):
     train_y = jax.nn.one_hot(train_y, 10)
 
     # Hyper-parameters
-    learning_rate = DEFAULT_LEARNING_RATE
     epochs = DEFAULT_EPOCHS
     batch_size = DEFAULT_BATCH_SIZE
 
@@ -210,7 +204,6 @@ def train_minionn(run_on_spu: bool = False):
         train_y,
         init_fun,
         predict_fun,
-        learning_rate,
         epochs,
         batch_size,
         run_on_spu,
@@ -230,7 +223,6 @@ def train_lenet(run_on_spu: bool = False):
     train_y = jax.nn.one_hot(train_y, 10)
 
     # Hyper-parameters
-    learning_rate = DEFAULT_LEARNING_RATE
     epochs = DEFAULT_EPOCHS
     batch_size = DEFAULT_BATCH_SIZE
 
@@ -242,7 +234,6 @@ def train_lenet(run_on_spu: bool = False):
         train_y,
         init_fun,
         predict_fun,
-        learning_rate,
         epochs,
         batch_size,
         run_on_spu,
@@ -262,7 +253,6 @@ def train_chamelon(run_on_spu: bool = False):
     train_y = jax.nn.one_hot(train_y, 10)
 
     # Hyper-parameters
-    learning_rate = DEFAULT_LEARNING_RATE
     epochs = DEFAULT_EPOCHS
     batch_size = DEFAULT_BATCH_SIZE
 
@@ -274,7 +264,6 @@ def train_chamelon(run_on_spu: bool = False):
         train_y,
         init_fun,
         predict_fun,
-        learning_rate,
         epochs,
         batch_size,
         run_on_spu,

@@ -34,3 +34,6 @@ docker run --rm -v $(pwd)/reference/:/out \
                 -v $(pwd)/../spu/psi:/protos \
                 pseudomuto/protoc-gen-doc \
                 --doc_opt=/out/psi_config_md.tmpl,psi_config.md psi.proto
+
+echo "5. Update numpy op status doc."
+bash reference/update_np_op_status_doc.sh

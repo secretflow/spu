@@ -14,6 +14,7 @@ This part contains detailed explanation of background, configs and APIs.
    pphlo_doc
    xla_status
    mpc_status
+   np_op_status
    fxp
    psi_config
    change_log

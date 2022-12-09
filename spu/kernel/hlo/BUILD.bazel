@@ -197,7 +197,16 @@ spu_cc_library(
         ":casting",
         ":utils",
         "//spu/kernel/hal",
-        "@com_github_emptoolkit_emp_tool//:emp-tool",
+    ],
+)
+
+spu_cc_test(
+    name = "sort_test",
+    srcs = ["sort_test.cc"],
+    deps = [
+        ":sort",
+        "//spu/kernel/hal:polymorphic",
+        "//spu/kernel/hal:test_util",
     ],
 )
 
