@@ -644,8 +644,8 @@ Value f_rsqrt(HalContext* ctx, const Value& x) {
     auto z_2i1 = _rshift(ctx, z, 2 * i + 1);
     // a[i] = z[2*i] ^ z[2*i+1]
     auto a_i = _and(ctx, _xor(ctx, z_2i, z_2i1), k1);
-    a = _xor(ctx, a, _lshift(ctx, a_i, i));
 
+    a = _xor(ctx, a, _lshift(ctx, a_i, i));
     // b ^= z[2*i]
     b = _xor(ctx, b, z_2i);
   }

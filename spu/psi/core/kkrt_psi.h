@@ -21,7 +21,7 @@
 #include <unordered_map>
 #include <vector>
 
-#include "yacl/crypto/primitives/ot/options.h"
+#include "yacl/crypto/primitives/ot/common.h"
 #include "yacl/link/link.h"
 
 //
@@ -53,11 +53,11 @@ struct KkrtPsiOptions {
 
 void GetKkrtOtSenderOptions(
     const std::shared_ptr<yacl::link::Context>& link_ctx, const size_t num_ot,
-    yacl::BaseRecvOptions* recv_opts);
+    yacl::crypto::BaseOtRecvStore* recv_opts);
 
 void GetKkrtOtReceiverOptions(
     const std::shared_ptr<yacl::link::Context>& link_ctx, const size_t num_ot,
-    yacl::BaseSendOptions* send_opts);
+    yacl::crypto::BaseOtSendStore* send_opts);
 
 KkrtPsiOptions GetDefaultKkrtPsiOptions();
 
@@ -67,22 +67,22 @@ KkrtPsiOptions GetDefaultKkrtPsiOptions();
 //
 void KkrtPsiSend(const std::shared_ptr<yacl::link::Context>& link_ctx,
                  const KkrtPsiOptions& kkrt_psi_options,
-                 const yacl::BaseRecvOptions& base_options,
+                 const yacl::crypto::BaseOtRecvStore& base_options,
                  const std::vector<uint128_t>& items_hash);
 
 std::vector<std::size_t> KkrtPsiRecv(
     const std::shared_ptr<yacl::link::Context>& link_ctx,
     const KkrtPsiOptions& kkrt_psi_options,
-    const yacl::BaseSendOptions& base_options,
+    const yacl::crypto::BaseOtSendStore& base_options,
     const std::vector<uint128_t>& items_hash);
 
 void KkrtPsiSend(const std::shared_ptr<yacl::link::Context>& link_ctx,
-                 const yacl::BaseRecvOptions& base_options,
+                 const yacl::crypto::BaseOtRecvStore& base_options,
                  const std::vector<uint128_t>& items_hash);
 
 std::vector<std::size_t> KkrtPsiRecv(
     const std::shared_ptr<yacl::link::Context>& link_ctx,
-    const yacl::BaseSendOptions& base_options,
+    const yacl::crypto::BaseOtSendStore& base_options,
     const std::vector<uint128_t>& items_hash);
 
 }  // namespace spu::psi

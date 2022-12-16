@@ -33,13 +33,20 @@ class Pub2kRandP : public Kernel {
   util::CExpr comm() const override { return util::Const(0); }
 
   void evaluate(KernelEvalContext* ctx) const override {
-    ctx->setOutput(
-        proc(ctx, ctx->getParam<FieldType>(0), ctx->getParam<size_t>(1)));
+    ctx->setOutput(proc(ctx, ctx->getParam<size_t>(0)));
   }
 
-  ArrayRef proc(KernelEvalContext* ctx, FieldType field, size_t size) const {
+  ArrayRef proc(KernelEvalContext* ctx, size_t size) const {
     SPU_TRACE_MPC_LEAF(ctx, size);
     auto* state = ctx->caller()->getState<PrgState>();
+    const auto field = ctx->caller()->getState<Z2kState>()->getDefaultField();
+
+    // NOTE(junfeng): rand_p is heavily in unit tests and nbits has to been kept
+    // full.
+    //
+    // Reference: https://eprint.iacr.org/2019/599.pdf
+    // To make `msb based comparison` work, the safe range is
+    // [-2^(k-2), 2^(k-2))
     return state->genPubl(field, size).as(makeType<Pub2kTy>(field));
   }
 };

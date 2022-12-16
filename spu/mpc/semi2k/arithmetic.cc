@@ -36,6 +36,22 @@ ArrayRef ZeroA::proc(KernelEvalContext* ctx, FieldType field,
   return ring_sub(r0, r1).as(makeType<AShrTy>(field));
 }
 
+ArrayRef RandA::proc(KernelEvalContext* ctx, size_t size) const {
+  SPU_TRACE_MPC_LEAF(ctx, size);
+
+  auto* prg_state = ctx->caller()->getState<PrgState>();
+  const auto field = ctx->caller()->getState<Z2kState>()->getDefaultField();
+
+  // NOTES for ring_rshift to 2 bits.
+  // Refer to:
+  // New Primitives for Actively-Secure MPC over Rings with Applications to
+  // Private Machine Learning
+  // - https://eprint.iacr.org/2019/599.pdf
+  // It's safer to keep the number within [-2**(k-2), 2**(k-2)) for comparsion
+  // operations.
+  return ring_rshift(prg_state->genPriv(field, size), 2);
+}
+
 ArrayRef P2A::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
   SPU_TRACE_MPC_LEAF(ctx, in);
 

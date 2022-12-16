@@ -23,7 +23,7 @@ spu_cc_library(
     deps = [
         "//spu/psi:psi_cc_proto",
         "@com_google_absl//absl/types:span",
-        "@yacl//yacl/crypto/utils:hash_util",
+        "@yacl//yacl/crypto/base/hash:hash_utils",
         "@yacl//yacl/utils:parallel",
     ],
 )
@@ -37,7 +37,7 @@ spu_cc_library(
         "@com_github_libsodium//:libsodium",
         "@com_github_openssl_openssl//:openssl",
         "@yacl//yacl/base:exception",
-        "@yacl//yacl/crypto/utils:hash_util",
+        "@yacl//yacl/crypto/base/hash:hash_utils",
         "@yacl//yacl/link",
         "@yacl//yacl/utils:parallel",
     ],
@@ -97,7 +97,7 @@ spu_cc_library(
     deps = [
         "@com_github_openssl_openssl//:openssl",
         "@yacl//yacl/base:exception",
-        "@yacl//yacl/crypto/utils:hash_util",
+        "@yacl//yacl/crypto/base/hash:hash_utils",
     ],
 )
 
@@ -119,7 +119,7 @@ spu_cc_test(
     srcs = ["sm2_cryptor_test.cc"],
     deps = [
         ":sm2_cryptor",
-        "@yacl//yacl/crypto/base:utils",
-        "@yacl//yacl/crypto/utils:hash_util",
+        "@yacl//yacl/crypto/base/hash:hash_utils",
+        "@yacl//yacl/crypto/tools:prg",
     ],
 )

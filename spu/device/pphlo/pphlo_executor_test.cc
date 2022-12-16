@@ -682,28 +682,15 @@ func.func @main(%arg0: tensor<!pphlo.pub<f32>>) -> tensor<!pphlo.pub<f32>> {
   return %3 : tensor<!pphlo.pub<f32>>
 }
 )";
-  // default
-  {
-    Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
-             std::get<2>(GetParam()));
 
-    r.addInput(2.5F);
+  Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
+           std::get<2>(GetParam()));
 
-    EXPECT_THROW(r.run(prog), yacl::EnforceNotMet);
-  }
-  // reveal
-  {
-    Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
-             std::get<2>(GetParam()));
+  r.addInput(2.5F);
 
-    r.getConfig().set_reveal_secret_condition(true);
+  r.run(prog);
 
-    r.addInput(2.5F);
-
-    r.run(prog);
-
-    r.verifyScalarOutput(2.5f * 2.5f);
-  }
+  r.verifyScalarOutput(2.5f * 2.5f);
 }
 
 TEST_P(ExecutorTest, Iota1D) {

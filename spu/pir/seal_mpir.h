@@ -58,8 +58,9 @@ class MultiQuery {
 
     std::memcpy(&crypto_key, seed.data(), sizeof(uint128_t));
 
-    crypto_ = std::make_unique<yacl::SymmetricCrypto>(
-        yacl::SymmetricCrypto::CryptoType::AES128_ECB, crypto_key, crypto_iv);
+    crypto_ = std::make_unique<yacl::crypto::SymmetricCrypto>(
+        yacl::crypto::SymmetricCrypto::CryptoType::AES128_ECB, crypto_key,
+        crypto_iv);
   }
 
   size_t GetMaxBinItemSize() const { return max_bin_item_size_; }
@@ -77,7 +78,7 @@ class MultiQuery {
   std::array<uint8_t, 32> oracle_seed_;
 
   size_t max_bin_item_size_ = 0;
-  std::unique_ptr<yacl::SymmetricCrypto> crypto_;
+  std::unique_ptr<yacl::crypto::SymmetricCrypto> crypto_;
 };
 
 class MultiQueryServer : public MultiQuery {

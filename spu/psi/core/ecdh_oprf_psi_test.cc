@@ -61,7 +61,7 @@ TEST_P(BasicEcdhOprfTest, Works) {
   auto params = GetParam();
   auto ctxs = yacl::link::test::SetupWorld(2);
 
-  yacl::Prg<uint64_t> prg(yacl::DrbgRandSeed());
+  yacl::crypto::Prg<uint64_t> prg(yacl::crypto::RandU64(true));
 
   std::vector<std::string> items_a_vec(params.items_size);
   std::vector<std::string> items_b_vec(params.items_size);
@@ -125,7 +125,7 @@ TEST_P(BasicEcdhOprfTest, Works) {
   //
   // shuffle server side FullEvaluated data
   //
-  std::mt19937 rng(yacl::DrbgRandSeed());
+  std::mt19937 rng(yacl::crypto::RandU64(true));
   std::shuffle(server_evaluate_items.begin(), server_evaluate_items.end(), rng);
 
   //

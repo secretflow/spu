@@ -67,6 +67,7 @@ spu_cc_library(
     deps = [
         ":memory_psi",
         ":psi_cc_proto",
+        "//spu/psi/core:ecdh_oprf_psi",
         "//spu/psi/utils:batch_provider",
         "//spu/psi/utils:cipher_store",
         "//spu/psi/utils:csv_checker",

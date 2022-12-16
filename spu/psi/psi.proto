@@ -40,6 +40,12 @@ enum PsiType {
   // Iterative running 2-party kkrt psi to get n-party PSI.
   // Notice: two-party intersection leak
   KKRT_PSI_NPC = 6;
+
+  // ecdh-oprf 2-party Unbalanced-PSI offline phase.
+  ECDH_OPRF_UNBALANCED_PSI_2PC_OFFLINE = 7;
+
+  // ecdh-oprf 2-party Unbalanced-PSI online phase.
+  ECDH_OPRF_UNBALANCED_PSI_2PC_ONLINE = 8;
 }
 
 // The specified elliptic curve cryptography used in psi.
@@ -57,6 +63,10 @@ enum CurveType {
   // parameters of the elliptic curve defined in Standards for Efficient
   // Cryptography (SEC) http://www.secg.org/sec2-v2.pdf
   CURVE_SECP256K1 = 4;
+
+  // TODO: @changjun.zl support ristretto255 
+  // Ristretto255 implements abstract prime-order group interface of Curve25519
+  // CURVE_RISTRETTO255 = 5; 
 }
 
 // The input parameters of psi.
@@ -128,6 +138,12 @@ message BucketPsiConfig {
 
   // Optional, specified the hash bucket size used in psi.
   uint32 bucket_size = 7;
+
+  // Optional， The path of offline preprocess file.
+  string preprocess_path = 8;
+
+  // Optional， secret key path of ecdh_oprf, 256bit/32bytes binary file.
+  string ecdh_secret_key_path = 9;
 }
 
 // The In-memory psi configuration.

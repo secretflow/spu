@@ -43,7 +43,7 @@ constexpr uint64_t kSendBatchSize = 8192;
 std::vector<size_t> BernoulliSamples(const std::vector<size_t>& items_idx,
                                      double q) {
   std::pair<uint64_t, uint64_t> seed_pair =
-      yacl::DecomposeUInt128(yacl::RandSeed());
+      yacl::DecomposeUInt128(yacl::crypto::RandU128());
   std::mt19937 rand(seed_pair.first);
 
   SPDLOG_INFO("sample bernoulli_distribution: {}", q);
@@ -68,7 +68,7 @@ std::pair<std::vector<std::string>, std::vector<size_t>> BernoulliSamples(
     const std::vector<std::string>& items,
     const std::vector<size_t>& shuffled_idx, double p) {
   std::pair<uint64_t, uint64_t> seed_pair =
-      yacl::DecomposeUInt128(yacl::RandSeed());
+      yacl::DecomposeUInt128(yacl::crypto::RandU128());
   std::mt19937 rand(seed_pair.first);
 
   SPDLOG_INFO("sample bernoulli_distribution: {}", p);
@@ -92,7 +92,7 @@ std::pair<std::vector<std::string>, std::vector<size_t>> BernoulliSamples(
 
 std::vector<size_t> GetShuffledIdx(size_t items_size) {
   std::pair<uint64_t, uint64_t> seed_pair =
-      yacl::DecomposeUInt128(yacl::RandSeed());
+      yacl::DecomposeUInt128(yacl::crypto::RandU128());
   std::mt19937 rng(seed_pair.first);
 
   std::vector<size_t> shuffled_idx_vec(items_size);

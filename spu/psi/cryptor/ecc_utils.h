@@ -21,7 +21,7 @@
 #include "absl/types/span.h"
 #include "openssl/bn.h"
 #include "openssl/ec.h"
-#include "yacl/crypto/utils/hash_util.h"
+#include "yacl/crypto/base/hash/hash_utils.h"
 #include "yacl/utils/parallel.h"
 
 namespace spu::psi {
@@ -178,9 +178,11 @@ struct EcPointSt {
 
         // warn: if you change this hash method, do update bucket_psi.cc as well
         // std::vector<uint8_t> hash = yacl::crypto::Sm3(bn_x_bytes);
-        std::vector<uint8_t> hash = yacl::crypto::Sha256(bn_x_bytes);
-        bn_x.FromBytes(absl::string_view((const char*)hash.data(), hash.size()),
-                       ec_group.bn_p);
+        const auto hash = yacl::crypto::Sha256(bn_x_bytes);
+        bn_x.FromBytes(
+            absl::string_view(reinterpret_cast<const char*>(hash.data()),
+                              hash.size()),
+            ec_group.bn_p);
       }
       counter++;
       YACL_ENFORCE(counter < kHashToCurveCounterGuard,
@@ -193,7 +195,8 @@ struct EcPointSt {
   static EcPointSt CreateEcPointByHashToCurve(absl::Span<const uint8_t> m,
                                               const EcGroupSt& ec_group) {
     return CreateEcPointByHashToCurve(
-        absl::string_view((const char*)m.data(), m.size()), ec_group);
+        absl::string_view(reinterpret_cast<const char*>(m.data()), m.size()),
+        ec_group);
   }
 
   EC_POINT* get() { return point_ptr.get(); }
@@ -208,9 +211,9 @@ struct EcPointSt {
    */
   size_t ToBytes(absl::Span<uint8_t> bytes) {
     BnCtxPtr bn_ctx(yacl::CheckNotNull(BN_CTX_new()));
-    size_t length =
-        EC_POINT_point2oct(group_ref.get(), point_ptr.get(),
-                           POINT_CONVERSION_COMPRESSED, NULL, 0, bn_ctx.get());
+    size_t length = EC_POINT_point2oct(group_ref.get(), point_ptr.get(),
+                                       POINT_CONVERSION_COMPRESSED, nullptr, 0,
+                                       bn_ctx.get());
 
     YACL_ENFORCE(length == kEcPointCompressLength, "{}!={}", length,
                  kEcPointCompressLength);
@@ -229,7 +232,7 @@ struct EcPointSt {
   EcPointSt PointMul(const EcGroupSt& ec_group, const BigNumSt& bn_sk) {
     BnCtxPtr bn_ctx(yacl::CheckNotNull(BN_CTX_new()));
     EcPointSt ec_point(ec_group);
-    int ret = EC_POINT_mul(ec_group.get(), ec_point.get(), NULL,
+    int ret = EC_POINT_mul(ec_group.get(), ec_point.get(), nullptr,
                            point_ptr.get(), bn_sk.get(), bn_ctx.get());
     YACL_ENFORCE(ret == 1);
 
@@ -240,8 +243,8 @@ struct EcPointSt {
     BnCtxPtr bn_ctx(yacl::CheckNotNull(BN_CTX_new()));
     EcPointSt ec_point(group);
 
-    int ret = EC_POINT_mul(group.get(), ec_point.get(), bn_sk.get(), NULL, NULL,
-                           bn_ctx.get());
+    int ret = EC_POINT_mul(group.get(), ec_point.get(), bn_sk.get(), nullptr,
+                           nullptr, bn_ctx.get());
 
     YACL_ENFORCE(ret == 1);
 

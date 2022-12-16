@@ -29,6 +29,19 @@ class Pub2kTy : public TypeImpl<Pub2kTy, RingTy, Public> {
   static std::string_view getStaticId() { return "Pub2k"; }
 };
 
+// Z2k related states.
+class Z2kState : public State {
+  FieldType field_;
+
+ public:
+  static constexpr char kBindName[] = "Z2kState";
+  explicit Z2kState(FieldType field) : field_(field) {}
+  FieldType getDefaultField() const { return field_; }
+  std::unique_ptr<State> fork() override {
+    return std::make_unique<Z2kState>(field_);
+  }
+};
+
 void regPub2kTypes();
 
 void regPub2kKernels(Object* obj);

@@ -16,6 +16,19 @@
 
 namespace spu::mpc {
 
+std::unique_ptr<State> State::fork() {
+  YACL_THROW("Not implemented, the sub class should override this");
+}
+
+std::unique_ptr<Object> Object::fork() {
+  auto new_obj = std::make_unique<Object>();
+  new_obj->kernels_ = kernels_;
+  for (const auto& [key, val] : states_) {
+    new_obj->addState(key, val->fork());
+  }
+  return new_obj;
+}
+
 void Object::regKernel(std::string_view name, std::unique_ptr<Kernel> kernel) {
   const auto itr = kernels_.find(name);
   YACL_ENFORCE(itr == kernels_.end(), "kernel={} already exist", name);

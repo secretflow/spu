@@ -14,6 +14,8 @@
 
 #pragma once
 
+#include <memory>
+
 #include "yacl/link/context.h"
 
 #include "spu/mpc/beaver/beaver.h"

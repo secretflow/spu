@@ -41,7 +41,7 @@ class BasicEcdhOprfTest : public ::testing::TestWithParam<TestParams> {};
 TEST_P(BasicEcdhOprfTest, Works) {
   auto params = GetParam();
 
-  yacl::Prg<uint64_t> prg(yacl::DrbgRandSeed());
+  yacl::crypto::Prg<uint64_t> prg(yacl::crypto::RandU64(true));
 
   std::shared_ptr<IEcdhOprfServer> dh_oprf_server =
       CreateEcdhOprfServer(OprfType::Basic, params.type);

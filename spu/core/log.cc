@@ -54,13 +54,13 @@ spdlog::level::level_enum FromBrpcLogSeverity(int severity) {
 
 spdlog::level::level_enum FromSpuLogLevel(LogLevel spu_log_level) {
   spdlog::level::level_enum level = spdlog::level::off;
-  if (spu_log_level == LogLevel::DEBUG) {
+  if (spu_log_level == LogLevel::debug) {
     level = spdlog::level::debug;
-  } else if (spu_log_level == LogLevel::INFO) {
+  } else if (spu_log_level == LogLevel::info) {
     level = spdlog::level::info;
-  } else if (spu_log_level == LogLevel::WARN) {
+  } else if (spu_log_level == LogLevel::warn) {
     level = spdlog::level::warn;
-  } else if (spu_log_level == LogLevel::ERROR) {
+  } else if (spu_log_level == LogLevel::error) {
     level = spdlog::level::err;
   } else {
     level = spdlog::level::info;

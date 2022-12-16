@@ -26,4 +26,12 @@ spu::Value DynamicSlice(HalContext *ctx, const spu::Value &operand,
                         absl::Span<const int64_t> slice_size,
                         absl::Span<const spu::Value> start_indicies);
 
+/// ------------------- non-XLA APIs ------------------------------------
+/**
+ * @brief Update slice in place.
+ */
+void UpdateSliceInPlace(HalContext *ctx, spu::Value &operand,
+                        const spu::Value &update,
+                        absl::Span<const int64_t> start_indicies);
+
 }  // namespace spu::kernel::hlo

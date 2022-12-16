@@ -134,7 +134,7 @@ spu_cc_test(
 
 spu_cc_library(
     name = "control_flow",
-    # srcs = ["control_flow.cc"],
+    srcs = ["control_flow.cc"],
     hdrs = ["control_flow.h"],
     deps = [
         ":utils",
@@ -159,6 +159,15 @@ spu_cc_library(
     deps = [
         ":utils",
         "//spu/kernel/hal",
+    ],
+)
+
+spu_cc_test(
+    name = "dynamic_slice_test",
+    srcs = ["dynamic_slice_test.cc"],
+    deps = [
+        ":const",
+        ":dynamic_slice",
     ],
 )
 
@@ -269,5 +278,23 @@ spu_cc_library(
     hdrs = ["utils.h"],
     deps = [
         "//spu/kernel/hal",
+    ],
+)
+
+spu_cc_library(
+    name = "shuffle",
+    srcs = ["shuffle.cc"],
+    hdrs = ["shuffle.h"],
+    deps = [
+        ":sort",
+        "//spu/kernel/hal",
+    ],
+)
+
+spu_cc_test(
+    name = "shuffle_test",
+    srcs = ["shuffle_test.cc"],
+    deps = [
+        ":shuffle",
     ],
 )

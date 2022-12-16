@@ -1056,7 +1056,8 @@ Beaver::Triple BeaverCheetah::DotImpl::Dot(FieldType field, size_t M, size_t N,
 }
 BeaverCheetah::BeaverCheetah(std::shared_ptr<yacl::link::Context> lctx)
     : mul_impl_(std::make_shared<MulImpl>(lctx)),
-      dot_impl_(std::make_shared<DotImpl>(lctx)) {
+      dot_impl_(std::make_shared<DotImpl>(lctx)),
+      lctx_(lctx) {
   ot_primitives_ = std::make_shared<spu::CheetahPrimitives>(lctx);
 }
 

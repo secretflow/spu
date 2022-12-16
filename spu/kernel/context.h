@@ -28,13 +28,15 @@ namespace spu {
 
 // The hal evaluation context for all spu operators.
 class HalContext final {
-  const RuntimeConfig rt_config_;
+  RuntimeConfig rt_config_;
 
-  const std::shared_ptr<yacl::link::Context> lctx_;
+  std::shared_ptr<yacl::link::Context> lctx_;
 
   std::unique_ptr<mpc::Object> prot_;
 
   std::default_random_engine rand_engine_;
+
+  HalContext() = default;
 
  public:
   explicit HalContext(RuntimeConfig config,
@@ -42,6 +44,9 @@ class HalContext final {
 
   HalContext(const HalContext& other) = delete;
   HalContext& operator=(const HalContext& other) = delete;
+
+  // all parties get a 'corresponding' hal context when forked.
+  std::unique_ptr<HalContext> fork();
 
   std::string name() const {
     return fmt::format("CTX:{}", std::this_thread::get_id());
@@ -65,9 +70,6 @@ class HalContext final {
 
   //
   std::default_random_engine& rand_engine() { return rand_engine_; }
-
-  //
-  std::unique_ptr<HalContext> fork();
 };
 
 }  // namespace spu

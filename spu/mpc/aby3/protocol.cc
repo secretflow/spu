@@ -33,7 +33,7 @@ std::unique_ptr<Object> makeAby3Protocol(
 
   auto obj = std::make_unique<Object>();
 
-  obj->addState<aby3::Aby3State>(conf.field());
+  obj->addState<Z2kState>(conf.field());
 
   // add communicator
   obj->addState<Communicator>(lctx);
@@ -86,6 +86,7 @@ std::unique_ptr<Object> makeAby3Protocol(
   obj->regKernel<aby3::RShiftB>();
   obj->regKernel<aby3::ARShiftB>();
   obj->regKernel<aby3::BitrevB>();
+  obj->regKernel<aby3::RandA>();
 
   return obj;
 }

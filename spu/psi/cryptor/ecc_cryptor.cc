@@ -14,7 +14,9 @@
 
 #include "spu/psi/cryptor/ecc_cryptor.h"
 
-#include "yacl/crypto/utils/hash_util.h"
+#include <vector>
+
+#include "yacl/crypto/base/hash/hash_utils.h"
 #include "yacl/utils/parallel.h"
 
 namespace spu::psi {
@@ -64,7 +66,8 @@ std::vector<std::string> CreateItemsFromFlattenEccBuffer(
 
 std::vector<uint8_t> IEccCryptor::HashToCurve(
     absl::Span<const char> input) const {
-  return yacl::crypto::Sha256(input);
+  auto d = yacl::crypto::Sha256(input);
+  return {d.begin(), d.end()};
 }
 
 std::vector<std::string> Mask(const std::shared_ptr<IEccCryptor>& cryptor,
@@ -87,9 +90,9 @@ std::vector<std::string> Mask(const std::shared_ptr<IEccCryptor>& cryptor,
 
 std::string HashInput(const std::shared_ptr<IEccCryptor>& cryptor,
                       const std::string& item) {
-  std::vector<uint8_t> sha_bytes = cryptor->HashToCurve(item);
+  auto sha_bytes = cryptor->HashToCurve(item);
   std::string ret(sha_bytes.size(), '\0');
-  std::memcpy(&ret[0], sha_bytes.data(), sha_bytes.size());
+  std::memcpy(ret.data(), sha_bytes.data(), sha_bytes.size());
   return ret;
 }
 

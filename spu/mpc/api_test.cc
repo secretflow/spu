@@ -40,8 +40,8 @@ const std::vector<size_t> kShiftBits = {0, 1, 2, 31, 32, 33, 64, 1000};
       auto obj = factory(conf, lctx);                                        \
                                                                              \
       /* GIVEN */                                                            \
-      auto p0 = rand_p(obj.get(), conf.field(), kNumel);                     \
-      auto p1 = rand_p(obj.get(), conf.field(), kNumel);                     \
+      auto p0 = rand_p(obj.get(), kNumel);                                   \
+      auto p1 = rand_p(obj.get(), kNumel);                                   \
                                                                              \
       /* WHEN */                                                             \
       auto tmp = OP##_ss(obj.get(), p2s(obj.get(), p0), p2s(obj.get(), p1)); \
@@ -63,8 +63,8 @@ const std::vector<size_t> kShiftBits = {0, 1, 2, 31, 32, 33, 64, 1000};
       auto obj = factory(conf, lctx);                                    \
                                                                          \
       /* GIVEN */                                                        \
-      auto p0 = rand_p(obj.get(), conf.field(), kNumel);                 \
-      auto p1 = rand_p(obj.get(), conf.field(), kNumel);                 \
+      auto p0 = rand_p(obj.get(), kNumel);                               \
+      auto p1 = rand_p(obj.get(), kNumel);                               \
                                                                          \
       /* WHEN */                                                         \
       auto tmp = OP##_sp(obj.get(), p2s(obj.get(), p0), p1);             \
@@ -95,7 +95,7 @@ TEST_BINARY_OP(xor)
       auto obj = factory(conf, lctx);                                    \
                                                                          \
       /* GIVEN */                                                        \
-      auto p0 = rand_p(obj.get(), conf.field(), kNumel);                 \
+      auto p0 = rand_p(obj.get(), kNumel);                               \
                                                                          \
       /* WHEN */                                                         \
       auto r_s = s2p(obj.get(), OP##_s(obj.get(), p2s(obj.get(), p0)));  \
@@ -116,7 +116,7 @@ TEST_BINARY_OP(xor)
       auto obj = factory(conf, lctx);                                    \
                                                                          \
       /* GIVEN */                                                        \
-      auto p0 = rand_p(obj.get(), conf.field(), kNumel);                 \
+      auto p0 = rand_p(obj.get(), kNumel);                               \
                                                                          \
       /* WHEN */                                                         \
       auto r_p = OP##_p(obj.get(), p0);                                  \
@@ -144,7 +144,7 @@ TEST_UNARY_OP(msb)
       auto obj = factory(conf, lctx);                                    \
                                                                          \
       /* GIVEN */                                                        \
-      auto p0 = rand_p(obj.get(), conf.field(), kNumel);                 \
+      auto p0 = rand_p(obj.get(), kNumel);                               \
                                                                          \
       for (auto bits : kShiftBits) {                                     \
         if (bits >= SizeOf(conf.field()) * 8) {                          \
@@ -171,7 +171,7 @@ TEST_UNARY_OP(msb)
       auto obj = factory(conf, lctx);                                    \
                                                                          \
       /* GIVEN */                                                        \
-      auto p0 = rand_p(obj.get(), conf.field(), kNumel);                 \
+      auto p0 = rand_p(obj.get(), kNumel);                               \
                                                                          \
       for (auto bits : kShiftBits) { /* WHEN */                          \
         if (bits >= SizeOf(conf.field()) * 8) {                          \
@@ -228,8 +228,8 @@ TEST_P(ApiTest, MatMulSS) {
     auto obj = factory(conf, lctx);
 
     /* GIVEN */
-    auto p0 = rand_p(obj.get(), conf.field(), calcNumel(shape_A));
-    auto p1 = rand_p(obj.get(), conf.field(), calcNumel(shape_B));
+    auto p0 = rand_p(obj.get(), calcNumel(shape_A));
+    auto p1 = rand_p(obj.get(), calcNumel(shape_B));
 
     /* WHEN */
     auto tmp =
@@ -257,8 +257,8 @@ TEST_P(ApiTest, MmulSP) {
     auto obj = factory(conf, lctx);
 
     /* GIVEN */
-    auto p0 = rand_p(obj.get(), conf.field(), calcNumel(shape_A));
-    auto p1 = rand_p(obj.get(), conf.field(), calcNumel(shape_B));
+    auto p0 = rand_p(obj.get(), calcNumel(shape_A));
+    auto p1 = rand_p(obj.get(), calcNumel(shape_B));
 
     /* WHEN */
     auto tmp = mmul_sp(obj.get(), p2s(obj.get(), p0), p1, M, N, K);
@@ -279,7 +279,7 @@ TEST_P(ApiTest, P2S_S2P) {
     auto obj = factory(conf, lctx);
 
     /* GIVEN */
-    auto p0 = rand_p(obj.get(), conf.field(), kNumel);
+    auto p0 = rand_p(obj.get(), kNumel);
 
     /* WHEN */
     auto s = p2s(obj.get(), p0);

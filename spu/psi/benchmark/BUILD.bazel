@@ -53,7 +53,7 @@ spu_cc_binary(
         "@com_google_absl//absl/strings",
         "@llvm-project//llvm:Support",
         "@yacl//yacl/base:int128",
-        "@yacl//yacl/crypto/utils:hash_util",
+        "@yacl//yacl/crypto/base/hash:hash_utils",
         "@yacl//yacl/link:factory",
     ],
 )

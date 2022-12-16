@@ -44,6 +44,9 @@ std::unique_ptr<Object> makeCheetahProtocol(
   // register random states & kernels.
   obj->addState<PrgState>(lctx);
 
+  // add Z2k state.
+  obj->addState<Z2kState>(conf.field());
+
   // register public kernels.
   regPub2kKernels(obj.get());
 
@@ -83,6 +86,7 @@ std::unique_ptr<Object> makeCheetahProtocol(
   obj->regKernel<cheetah::RShiftB>();
   obj->regKernel<cheetah::ARShiftB>();
   obj->regKernel<cheetah::BitrevB>();
+  obj->regKernel<cheetah::RandA>();
 
   return obj;
 }

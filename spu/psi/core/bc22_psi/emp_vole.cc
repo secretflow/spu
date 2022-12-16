@@ -41,8 +41,9 @@ WolverineVole::WolverineVole(
 
 void WolverineVole::Setup() {
   if (party_ == emp::ALICE) {
-    delta_ = yacl::RandSeed();
-    delta_ = delta_ & ((WolverineVoleFieldType)0xFFFFFFFFFFFFFFFFLL);
+    delta_ = yacl::crypto::RandSeed();
+    delta_ =
+        delta_ & (static_cast<WolverineVoleFieldType>(0xFFFFFFFFFFFFFFFFLL));
     delta_ = mod(delta_, pr);
     emp_zk_vole_->setup(delta_);
   } else {

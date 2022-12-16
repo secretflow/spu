@@ -43,6 +43,21 @@ class A2P : public UnaryKernel {
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in) const override;
 };
 
+class RandA : public Kernel {
+ public:
+  static constexpr char kBindName[] = "rand_a";
+
+  CExpr latency() const override { return Const(0); }
+
+  CExpr comm() const override { return Const(0); }
+
+  void evaluate(KernelEvalContext* ctx) const override {
+    ctx->setOutput(proc(ctx, ctx->getParam<size_t>(0)));
+  }
+
+  ArrayRef proc(KernelEvalContext* ctx, size_t size) const;
+};
+
 class P2A : public UnaryKernel {
  public:
   static constexpr char kBindName[] = "p2a";

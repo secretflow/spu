@@ -429,10 +429,10 @@ void BindLogging(py::module& m) {
                   )pbdoc";
 
   py::enum_<logging::LogLevel>(m, "LogLevel")
-      .value("DEBUG", logging::LogLevel::DEBUG)
-      .value("INFO", logging::LogLevel::INFO)
-      .value("WARN", logging::LogLevel::WARN)
-      .value("ERROR", logging::LogLevel::ERROR);
+      .value("DEBUG", logging::LogLevel::debug)
+      .value("INFO", logging::LogLevel::info)
+      .value("WARN", logging::LogLevel::warn)
+      .value("ERROR", logging::LogLevel::error);
 
   py::class_<logging::LogOptions>(m, "LogOptions",
                                   "options for setup spu logger")
@@ -444,7 +444,31 @@ void BindLogging(py::module& m) {
       .def_readwrite("max_log_file_size",
                      &logging::LogOptions::max_log_file_size)
       .def_readwrite("max_log_file_count",
-                     &logging::LogOptions::max_log_file_count);
+                     &logging::LogOptions::max_log_file_count)
+      .def(py::pickle(
+          [](const logging::LogOptions& opts) {  // __getstate__
+            /* Return a tuple that fully encodes the state of the object */
+            return py::make_tuple(opts.enable_console_logger,
+                                  opts.system_log_path, opts.log_level,
+                                  opts.max_log_file_size,
+                                  opts.max_log_file_count);
+          },
+          [](py::tuple t) {  // __setstate__
+            if (t.size() != 5) {
+              throw std::runtime_error("Invalid serialized data!");
+            }
+
+            /* Create a new C++ instance */
+            logging::LogOptions opts = logging::LogOptions();
+            opts.enable_console_logger = t[0].cast<bool>();
+            opts.system_log_path = t[1].cast<std::string>();
+            opts.log_level = t[2].cast<logging::LogLevel>();
+            opts.max_log_file_size = t[3].cast<size_t>();
+            opts.max_log_file_count = t[4].cast<size_t>();
+
+            return opts;
+          }));
+  ;
 
   m.def(
       "setup_logging",

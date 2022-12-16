@@ -50,6 +50,15 @@ spu_cc_library(
     ],
 )
 
+spu_cc_test(
+    name = "prg_state_test",
+    srcs = ["prg_state_test.cc"],
+    deps = [
+        ":prg_state",
+        "//spu/mpc/util:simulate",
+    ],
+)
+
 spu_cc_library(
     name = "abprotocol",
     srcs = ["abprotocol.cc"],

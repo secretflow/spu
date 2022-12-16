@@ -179,11 +179,11 @@ BENCHMARK_DEFINE_F(PsiBench, KkrtPsi)
     state.ResumeTiming();
 
     if (bench_lctx->Rank() == 0) { /* Sender */
-      yacl::BaseRecvOptions recv_opts;
+      yacl::crypto::BaseOtRecvStore recv_opts;
       psi::GetKkrtOtSenderOptions(bench_lctx, 512, &recv_opts);
       psi::KkrtPsiSend(bench_lctx, recv_opts, items);
     } else { /* Receiver */
-      yacl::BaseSendOptions send_opts;
+      yacl::crypto::BaseOtSendStore send_opts;
       psi::GetKkrtOtReceiverOptions(bench_lctx, 512, &send_opts);
       psi::KkrtPsiRecv(bench_lctx, send_opts, items);
     }

@@ -14,6 +14,8 @@
 
 #pragma once
 
+#include <memory>
+
 #include "yacl/link/context.h"
 
 #include "spu/crypto/ot/silent/primitives.h"
@@ -46,12 +48,14 @@ class BeaverCheetah : public Beaver {
 
   std::shared_ptr<spu::CheetahPrimitives> ot_primitives_{nullptr};
 
+  std::shared_ptr<yacl::link::Context> lctx_;
+
   friend class cheetah::MulAA;
   ArrayRef MulAShr(const ArrayRef& shr, yacl::link::Context* conn,
                    bool evaluator);
 
  public:
-  BeaverCheetah(std::shared_ptr<yacl::link::Context> lctx);
+  explicit BeaverCheetah(std::shared_ptr<yacl::link::Context> lctx);
 
   const spu::CheetahPrimitives* OTPrimitives() const {
     return ot_primitives_.get();
@@ -70,6 +74,8 @@ class BeaverCheetah : public Beaver {
 
   bool SupportRandBit() override { return false; }
   ArrayRef RandBit(FieldType field, size_t size) override;
+
+  std::shared_ptr<yacl::link::Context> GetLink() const { return lctx_; }
 };
 
 }  // namespace spu::mpc

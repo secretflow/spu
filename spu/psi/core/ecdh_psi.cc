@@ -19,7 +19,7 @@
 
 #include "spdlog/spdlog.h"
 #include "yacl/base/exception.h"
-#include "yacl/crypto/utils/hash_util.h"
+#include "yacl/crypto/base/hash/hash_utils.h"
 #include "yacl/utils/parallel.h"
 #include "yacl/utils/serialize.h"
 

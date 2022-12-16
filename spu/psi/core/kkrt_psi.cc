@@ -22,11 +22,10 @@
 #include "openssl/rand.h"
 #include "spdlog/spdlog.h"
 #include "yacl/base/exception.h"
-#include "yacl/crypto/base/utils.h"
+#include "yacl/crypto/base/hash/hash_utils.h"
 #include "yacl/crypto/primitives/ot/base_ot.h"
-#include "yacl/crypto/primitives/ot/iknp_ot_extension.h"
-#include "yacl/crypto/primitives/ot/kkrt_ot_extension.h"
-#include "yacl/crypto/utils/hash_util.h"
+#include "yacl/crypto/primitives/ot/iknp_ote.h"
+#include "yacl/crypto/primitives/ot/kkrt_ote.h"
 #include "yacl/crypto/utils/rand.h"
 
 #include "spu/psi/core/communication.h"
@@ -95,27 +94,28 @@ KkrtPsiOptions GetDefaultKkrtPsiOptions() {
 // then, use iknpOtExtension get 512 ots
 void GetKkrtOtSenderOptions(
     const std::shared_ptr<yacl::link::Context>& link_ctx, const size_t num_ot,
-    yacl::BaseRecvOptions* recv_opts) {
+    yacl::crypto::BaseOtRecvStore* recv_opts) {
   YACL_ENFORCE(recv_opts != nullptr);
   size_t base_ot_num = 128;
 
   // use baseot get 128 ots
-  yacl::BaseSendOptions iknp_send_opts;
+  yacl::crypto::BaseOtSendStore iknp_send_opts;
 
   iknp_send_opts.blocks.resize(base_ot_num);
 
-  yacl::BaseOtSend(link_ctx, absl::MakeSpan(iknp_send_opts.blocks));
+  yacl::crypto::BaseOtSend(link_ctx, absl::MakeSpan(iknp_send_opts.blocks));
 
-  (*recv_opts).choices = yacl::CreateRandomChoices(num_ot);
+  (*recv_opts).choices = yacl::crypto::RandBits(num_ot);
 
   (*recv_opts).blocks.resize(num_ot);
   (*recv_opts).choices.resize(num_ot);
 
   std::vector<uint128_t> choices =
-      yacl::CreateRandomChoiceBits<uint128_t>(num_ot);
+      yacl::crypto::RandVec<uint128_t>(num_ot / (sizeof(uint128_t) * 8));
 
-  yacl::IknpOtExtRecv(link_ctx, iknp_send_opts, absl::MakeConstSpan(choices),
-                      absl::MakeSpan((*recv_opts).blocks));
+  yacl::crypto::IknpOtExtRecv(link_ctx, iknp_send_opts,
+                              absl::MakeConstSpan(choices),
+                              absl::MakeSpan((*recv_opts).blocks));
 
   for (size_t i = 0; i < num_ot; ++i) {
     (*recv_opts).choices[i] = GetBit(choices, i);
@@ -124,31 +124,31 @@ void GetKkrtOtSenderOptions(
 
 void GetKkrtOtReceiverOptions(
     const std::shared_ptr<yacl::link::Context>& link_ctx, const size_t num_ot,
-    yacl::BaseSendOptions* send_opts) {
+    yacl::crypto::BaseOtSendStore* send_opts) {
   YACL_ENFORCE(send_opts != nullptr);
   size_t base_ot_num = 128;
 
   // use baseot get 128 ots
-  yacl::BaseRecvOptions iknp_recv_opts;
+  yacl::crypto::BaseOtRecvStore iknp_recv_opts;
 
-  iknp_recv_opts.choices = yacl::CreateRandomChoices(base_ot_num);
+  iknp_recv_opts.choices = yacl::crypto::RandBits(base_ot_num);
 
   iknp_recv_opts.blocks.resize(base_ot_num);
 
-  yacl::BaseOtRecv(link_ctx, iknp_recv_opts.choices,
-                   absl::MakeSpan(iknp_recv_opts.blocks));
+  yacl::crypto::BaseOtRecv(link_ctx, iknp_recv_opts.choices,
+                           absl::MakeSpan(iknp_recv_opts.blocks));
 
   (*send_opts).blocks.resize(num_ot);
 
   std::vector<uint128_t> choices =
-      yacl::CreateRandomChoiceBits<uint128_t>(num_ot);
+      yacl::crypto::RandVec<uint128_t>(num_ot / (sizeof(uint128_t) * 8));
 
   IknpOtExtSend(link_ctx, iknp_recv_opts, absl::MakeSpan((*send_opts).blocks));
 }
 
 void KkrtPsiSend(const std::shared_ptr<yacl::link::Context>& link_ctx,
                  const KkrtPsiOptions& kkrt_psi_options,
-                 const yacl::BaseRecvOptions& base_options,
+                 const yacl::crypto::BaseOtRecvStore& base_options,
                  const std::vector<uint128_t>& items_hash) {
   YACL_ENFORCE((kkrt_psi_options.cuckoo_hash_num == 3) &&
                    (kkrt_psi_options.stash_size == 0),
@@ -171,7 +171,7 @@ void KkrtPsiSend(const std::shared_ptr<yacl::link::Context>& link_ctx,
       peer_size, kkrt_psi_options.stash_size, kkrt_psi_options.cuckoo_hash_num);
   size_t num_bins = option.NumBins();
 
-  yacl::KkrtOtExtSender sender;
+  yacl::crypto::KkrtOtExtSender sender;
   sender.Init(link_ctx, base_options, option.NumBins());
   sender.SetBatchSize(kKkrtOtBatchSize);
   uint64_t kkrtOtBatchSize = sender.GetBatchSize();
@@ -202,7 +202,7 @@ void KkrtPsiSend(const std::shared_ptr<yacl::link::Context>& link_ctx,
   input_permute.resize(self_size);
   std::iota(input_permute.begin(), input_permute.end(), 0);
 
-  yacl::Prg<uint128_t> prg(yacl::RandSeed());
+  yacl::crypto::Prg<uint128_t> prg(yacl::crypto::RandSeed());
   uint64_t mt_seed;
   prg.Fill(
       absl::MakeSpan(reinterpret_cast<uint8_t*>(&mt_seed), sizeof(mt_seed)));
@@ -338,14 +338,14 @@ void KkrtPsiSend(const std::shared_ptr<yacl::link::Context>& link_ctx,
 std::vector<std::size_t> KkrtPsiRecv(
     const std::shared_ptr<yacl::link::Context>& link_ctx,
     const KkrtPsiOptions& kkrt_psi_options,
-    const yacl::BaseSendOptions& base_options,
+    const yacl::crypto::BaseOtSendStore& base_options,
     const std::vector<uint128_t>& items_hash) {
   YACL_ENFORCE((kkrt_psi_options.cuckoo_hash_num == 3) &&
                    (kkrt_psi_options.stash_size == 0),
                "now only support cuckoo HashNum = 3 , stash size = 0");
 
   YACL_ENFORCE(base_options.blocks.size() == 512,
-               "now only support yacl::BaseSendOptions block size 512");
+               "now only support yacl::BaseOtSendStore block size 512");
 
   std::vector<std::size_t> ret_intersection;
 
@@ -363,7 +363,7 @@ std::vector<std::size_t> KkrtPsiRecv(
   YACL_ENFORCE(cuckoo_index.stash().empty(), "stash size not 0");
   size_t kkrt_ot_num = cuckoo_index.bins().size();
 
-  yacl::KkrtOtExtReceiver receiver;
+  yacl::crypto::KkrtOtExtReceiver receiver;
   receiver.Init(link_ctx, base_options, kkrt_ot_num);
   receiver.SetBatchSize(kkrt_psi_options.ot_batch_size);
   uint64_t kkrt_ot_batch_size = receiver.GetBatchSize();
@@ -395,7 +395,7 @@ std::vector<std::size_t> KkrtPsiRecv(
         uint128_t input_item = items_hash[ck_bins[current_idx].InputIdx()];
         receiver.Encode(
             current_idx, input_item,
-            absl::Span<uint8_t>(reinterpret_cast<uint8_t*>(&encode_str[0]),
+            absl::Span<uint8_t>(reinterpret_cast<uint8_t*>(encode_str.data()),
                                 encode_size));
 
         uint8_t min_hash_idx = cuckoo_index.MinCollidingHashIdx(current_idx);
@@ -450,7 +450,7 @@ std::vector<std::size_t> KkrtPsiRecv(
 }
 
 void KkrtPsiSend(const std::shared_ptr<yacl::link::Context>& link_ctx,
-                 const yacl::BaseRecvOptions& base_options,
+                 const yacl::crypto::BaseOtRecvStore& base_options,
                  const std::vector<uint128_t>& items_hash) {
   KkrtPsiOptions kkrt_psi_options = GetDefaultKkrtPsiOptions();
 
@@ -459,7 +459,7 @@ void KkrtPsiSend(const std::shared_ptr<yacl::link::Context>& link_ctx,
 
 std::vector<std::size_t> KkrtPsiRecv(
     const std::shared_ptr<yacl::link::Context>& link_ctx,
-    const yacl::BaseSendOptions& base_options,
+    const yacl::crypto::BaseOtSendStore& base_options,
     const std::vector<uint128_t>& items_hash) {
   KkrtPsiOptions kkrt_psi_options = GetDefaultKkrtPsiOptions();
 

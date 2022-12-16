@@ -76,12 +76,21 @@ ArrayRef _Lazy2A(Object* obj, const ArrayRef& in) {
 #define _ARShiftB(in, bits) ctx->caller()->call("arshift_b", in, bits)
 #define _RitrevB(in, start, end) ctx->caller()->call("bitrev_b", in, start, end)
 #define _MsbA(in) ctx->caller()->call("msb_a", in)
+#define _RandA(size) ctx->caller()->call("rand_a", size)
+#define _RandB(size) ctx->caller()->call("rand_b", size)
 
 class ABProtState : public State {
  public:
   static constexpr char kBindName[] = "ABProtState";
 
   bool lazy_ab = true;
+
+  ABProtState() = default;
+  explicit ABProtState(bool lazy) : lazy_ab(lazy) {}
+
+  std::unique_ptr<State> fork() override {
+    return std::make_unique<ABProtState>(lazy_ab);
+  }
 };
 
 class ABProtCommonTypeS : public Kernel {
@@ -166,6 +175,23 @@ class ABProtS2P : public UnaryKernel {
       YACL_ENFORCE(_IsB(in));
       return _B2P(in);
     }
+  }
+};
+
+class ABProtRandS : public Kernel {
+ public:
+  static constexpr char kBindName[] = "rand_s";
+
+  Kind kind() const override { return Kind::kDynamic; }
+
+  void evaluate(EvalContext* ctx) const override {
+    const size_t size = ctx->getParam<size_t>(0);
+
+    // ArrayRef proc(KernelEvalContext* ctx, size_t size) const override {
+    SPU_TRACE_MPC_DISP(ctx, size);
+
+    // always return random a share
+    ctx->setOutput(_RandA(size));
   }
 };
 
@@ -508,6 +534,14 @@ ArrayRef zero_a(Object* ctx, FieldType field, size_t sz) {
   return ctx->call("zero_a", field, sz);
 }
 
+ArrayRef rand_a(Object* ctx, FieldType field, size_t sz) {
+  return ctx->call("rand_a", field, sz);
+}
+
+ArrayRef rand_b(Object* ctx, FieldType field, size_t sz) {
+  return ctx->call("rand_b", field, sz);
+}
+
 SPU_MPC_DEF_UNARY_OP(a2p)
 SPU_MPC_DEF_UNARY_OP(p2a)
 SPU_MPC_DEF_UNARY_OP(not_a)
@@ -547,6 +581,7 @@ void regABKernels(Object* obj) {
   obj->regKernel<ABProtCastTypeS>();
   obj->regKernel<ABProtP2S>();
   obj->regKernel<ABProtS2P>();
+  obj->regKernel<ABProtRandS>();
   obj->regKernel<ABProtNotS>();
   obj->regKernel<ABProtAddSP>();
   obj->regKernel<ABProtAddSS>();

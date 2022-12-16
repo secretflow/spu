@@ -62,7 +62,7 @@ namespace spu::psi {
 
 // send queque capacity
 inline constexpr size_t kQueueCapacity = 32;
-inline constexpr size_t kEcdhOprfPsiBatchSize = 4096;
+inline constexpr size_t kEcdhOprfPsiBatchSize = 8192;
 
 struct EcdhOprfPsiOptions {
   // Provides the link for server's evaluated data.
@@ -108,8 +108,11 @@ class EcdhOprfPsiServer {
    * @param batch_provider input data batch provider
    * @param cipher_store   masked data store
    */
-  void FullEvaluate(const std::shared_ptr<IBatchProvider>& batch_provider,
-                    const std::shared_ptr<ICipherStore>& cipher_store);
+  size_t FullEvaluate(const std::shared_ptr<IBatchProvider>& batch_provider,
+                      const std::shared_ptr<ICipherStore>& cipher_store);
+
+  size_t FullEvaluateAndSend(
+      const std::shared_ptr<IBatchProvider>& batch_provider);
 
   /**
    * @brief send masked data
@@ -162,7 +165,8 @@ class EcdhOprfPsiClient {
    *
    * @param batch_provider input data batch provider
    */
-  void SendBlindedItems(const std::shared_ptr<IBatchProvider>& batch_provider);
+  size_t SendBlindedItems(
+      const std::shared_ptr<IBatchProvider>& batch_provider);
 
   /**
    * @brief recv evaluated data, do Finalize and store to cipher_store

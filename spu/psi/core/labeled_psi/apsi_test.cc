@@ -45,7 +45,7 @@ struct TestParams {
 };
 
 std::vector<std::string> GenerateData(size_t seed, size_t item_count) {
-  yacl::Prg<uint128_t> prg(seed);
+  yacl::crypto::Prg<uint128_t> prg(seed);
 
   std::vector<std::string> items;
 
@@ -64,7 +64,7 @@ std::vector<apsi::Item> GenerateSenderData(
     std::vector<size_t> *intersection_idx) {
   std::vector<apsi::Item> sender_items;
 
-  yacl::Prg<uint128_t> prg(seed);
+  yacl::crypto::Prg<uint128_t> prg(seed);
 
   for (size_t i = 0; i < item_count; ++i) {
     apsi::Item::value_type value{};
@@ -91,7 +91,7 @@ std::vector<std::pair<apsi::Item, apsi::Label>> GenerateSenderData(
     std::vector<std::string> *intersection_label) {
   std::vector<std::pair<apsi::Item, apsi::Label>> sender_items;
 
-  yacl::Prg<uint128_t> prg(seed);
+  yacl::crypto::Prg<uint128_t> prg(seed);
 
   for (size_t i = 0; i < item_count; ++i) {
     apsi::Item item;
@@ -147,7 +147,7 @@ TEST_P(LabelPsiTest, Works) {
   size_t nonce_byte_count = 16;
 
   std::random_device rd;
-  yacl::Prg<uint128_t> prg(rd());
+  yacl::crypto::Prg<uint128_t> prg(rd());
 
   std::array<uint8_t, 32> oprf_key;
   prg.Fill(absl::MakeSpan(oprf_key));

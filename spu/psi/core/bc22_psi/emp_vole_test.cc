@@ -87,7 +87,7 @@ INSTANTIATE_TEST_SUITE_P(Works_Instances, EmpVoleTest,
                          testing::Values(10000, 100000, 1000000));
 
 TEST(EmpVoleTest, PolynoimalTest) {
-  std::mt19937 rng(yacl::DrbgRandSeed());
+  std::mt19937 rng(yacl::crypto::RandU64(true));
 
   for (size_t idx = 1; idx < 4; ++idx) {
     std::vector<std::string> points(idx);

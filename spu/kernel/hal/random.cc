@@ -46,4 +46,18 @@ Value rng_uniform(HalContext* ctx, const Value& a, const Value& b,
   return constant(ctx, randv);
 }
 
+Value random(HalContext* ctx, Visibility vis, DataType dtype,
+             absl::Span<const int64_t> shape) {
+  Value ret;
+  if (vis == VIS_PUBLIC) {
+    ret = _rand_p(ctx, shape).setDtype(dtype);
+  } else if (vis == VIS_SECRET) {
+    ret = _rand_s(ctx, shape).setDtype(dtype);
+  } else {
+    YACL_THROW("Invalid visibility={}", vis);
+  }
+
+  return ret;
+}
+
 }  // namespace spu::kernel::hal

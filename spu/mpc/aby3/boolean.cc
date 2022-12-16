@@ -70,7 +70,7 @@ ArrayRef B2P::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
 
   auto* comm = ctx->caller()->getState<Communicator>();
   const PtType btype = in.eltype().as<BShrTy>()->getBacktype();
-  const auto field = ctx->caller()->getState<Aby3State>()->getDefaultField();
+  const auto field = ctx->caller()->getState<Z2kState>()->getDefaultField();
 
   return DISPATCH_UINT_PT_TYPES(btype, "aby3.b2p", [&]() {
     using BShrT = ScalarT;
@@ -287,7 +287,7 @@ ArrayRef LShiftB::proc(KernelEvalContext* ctx, const ArrayRef& in,
   const auto* in_ty = in.eltype().as<BShrTy>();
 
   // TODO: the hal dtype should tell us about the max number of possible bits.
-  const auto field = ctx->caller()->getState<Aby3State>()->getDefaultField();
+  const auto field = ctx->caller()->getState<Z2kState>()->getDefaultField();
   const size_t out_nbits = std::min(in_ty->nbits() + bits, SizeOf(field) * 8);
   const PtType out_btype = calcBShareBacktype(out_nbits);
 
@@ -348,7 +348,7 @@ ArrayRef ARShiftB::proc(KernelEvalContext* ctx, const ArrayRef& in,
                         size_t bits) const {
   SPU_TRACE_MPC_LEAF(ctx, in, bits);
 
-  const auto field = ctx->caller()->getState<Aby3State>()->getDefaultField();
+  const auto field = ctx->caller()->getState<Z2kState>()->getDefaultField();
   const auto* in_ty = in.eltype().as<BShrTy>();
 
   // arithmetic right shift expects to work on ring, or the behaviour is

@@ -14,6 +14,8 @@
 
 #pragma once
 
+#include <memory>
+
 #include "spu/mpc/beaver/beaver_tfp.h"
 #include "spu/mpc/util/communicator.h"
 
@@ -31,6 +33,11 @@ class Semi2kState : public State {
   }
 
   Beaver* beaver() { return beaver_.get(); }
+
+  std::unique_ptr<State> fork() override {
+    return std::make_unique<Semi2kState>(
+        dynamic_cast<BeaverTfpUnsafe*>(beaver())->GetLink()->Spawn());
+  }
 };
 
 }  // namespace spu::mpc

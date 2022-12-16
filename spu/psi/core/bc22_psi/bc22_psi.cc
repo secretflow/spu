@@ -52,8 +52,8 @@ std::vector<uint8_t> BaRKOPRFHash(size_t bin_idx,
   std::memcpy(hash_input.data(), &bin_idx, sizeof(size_t));
   std::memcpy(hash_input.data() + sizeof(size_t), &value,
               sizeof(WolverineVoleFieldType));
-  std::vector<uint8_t> hash_res = yacl::crypto::Blake3(hash_input);
-  return hash_res;
+  auto hash_res = yacl::crypto::Blake3(hash_input);
+  return {hash_res.begin(), hash_res.end()};
 }
 
 }  // namespace
@@ -196,7 +196,7 @@ std::string Bc22PcgPsi::RunmBaRKOprfSender(absl::Span<const std::string> items,
   oprfs.resize(items.size() * cuckoo_options_.num_hash * kMaxCompareBytes);
 
   // shuffer sender's oprfs
-  std::mt19937 rng(yacl::DrbgRandSeed());
+  std::mt19937 rng(yacl::crypto::RandU64(true));
 
   std::vector<size_t> shuffled_idx_vec(items.size());
   std::iota(shuffled_idx_vec.begin(), shuffled_idx_vec.end(), 0);

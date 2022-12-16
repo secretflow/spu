@@ -22,20 +22,17 @@ namespace spu::mpc {
 
 PrgState::PrgState() {
   pub_seed_ = 0;
-  pub_counter_ = 0;
 
-  priv_seed_ = yacl::RandSeed();
-  priv_counter_ = 0;
+  priv_seed_ = yacl::crypto::RandSeed();
 
   self_seed_ = 0;
   next_seed_ = 0;
-  prss_counter_ = 0;
 }
 
 PrgState::PrgState(std::shared_ptr<yacl::link::Context> lctx) {
   // synchronize public state.
   {
-    uint128_t self_pk = yacl::RandSeed();
+    uint128_t self_pk = yacl::crypto::RandSeed();
 
     const auto all_buf = yacl::link::AllGather(
         lctx, yacl::SerializeUint128(self_pk), "Random::PK");
@@ -45,19 +42,14 @@ PrgState::PrgState(std::shared_ptr<yacl::link::Context> lctx) {
       uint128_t seed = yacl::DeserializeUint128(buf);
       pub_seed_ += seed;
     }
-
-    pub_counter_ = 0;
   }
 
   // init private state.
-  {
-    priv_seed_ = yacl::RandSeed();
-    priv_counter_ = 0;
-  }
+  priv_seed_ = yacl::crypto::RandSeed();
 
   // init PRSS state.
   {
-    self_seed_ = yacl::RandSeed();
+    self_seed_ = yacl::crypto::RandSeed();
 
     constexpr char kCommTag[] = "Random:PRSS";
 
@@ -66,9 +58,21 @@ PrgState::PrgState(std::shared_ptr<yacl::link::Context> lctx) {
                     kCommTag);
     next_seed_ =
         yacl::DeserializeUint128(lctx->Recv(lctx->NextRank(), kCommTag));
-
-    prss_counter_ = 0;
   }
+}
+
+std::unique_ptr<State> PrgState::fork() {
+  //
+  auto new_prg = std::make_unique<PrgState>();
+
+  fillPubl(absl::MakeSpan(&new_prg->pub_seed_, 1));
+
+  new_prg->priv_seed_ = yacl::crypto::RandSeed();
+
+  fillPrssPair(absl::MakeSpan(&new_prg->self_seed_, 1),
+               absl::MakeSpan(&new_prg->next_seed_, 1));
+
+  return new_prg;
 }
 
 std::pair<ArrayRef, ArrayRef> PrgState::genPrssPair(FieldType field,
@@ -82,21 +86,21 @@ std::pair<ArrayRef, ArrayRef> PrgState::genPrssPair(FieldType field,
 
   uint64_t new_counter = prss_counter_;
   if (!ignore_first) {
-    new_counter =
-        yacl::FillPseudoRandom(kAesType, self_seed_, 0, prss_counter_,
-                               absl::MakeSpan(static_cast<char*>(r_self.data()),
-                                              r_self.buf()->size()));
+    new_counter = yacl::crypto::FillPseudoRandom(
+        kAesType, self_seed_, 0, prss_counter_,
+        absl::MakeSpan(static_cast<char*>(r_self.data()),
+                       r_self.buf()->size()));
   }
   if (!ignore_second) {
-    new_counter =
-        yacl::FillPseudoRandom(kAesType, next_seed_, 0, prss_counter_,
-                               absl::MakeSpan(static_cast<char*>(r_next.data()),
-                                              r_next.buf()->size()));
+    new_counter = yacl::crypto::FillPseudoRandom(
+        kAesType, next_seed_, 0, prss_counter_,
+        absl::MakeSpan(static_cast<char*>(r_next.data()),
+                       r_next.buf()->size()));
   }
 
   if (new_counter == prss_counter_) {
     // both part ignored, dummy run to update counter...
-    new_counter = yacl::DummyUpdateRandomCount(
+    new_counter = yacl::crypto::DummyUpdateRandomCount(
         prss_counter_, absl::MakeSpan(static_cast<char*>(r_next.data()),
                                       r_next.buf()->size()));
   }
@@ -107,7 +111,7 @@ std::pair<ArrayRef, ArrayRef> PrgState::genPrssPair(FieldType field,
 
 ArrayRef PrgState::genPriv(FieldType field, size_t numel) {
   ArrayRef res(makeType<RingTy>(field), numel);
-  priv_counter_ = yacl::FillPseudoRandom(
+  priv_counter_ = yacl::crypto::FillPseudoRandom(
       kAesType, priv_seed_, 0, priv_counter_,
       absl::MakeSpan(static_cast<char*>(res.data()), res.buf()->size()));
 
@@ -116,7 +120,7 @@ ArrayRef PrgState::genPriv(FieldType field, size_t numel) {
 
 ArrayRef PrgState::genPubl(FieldType field, size_t numel) {
   ArrayRef res(makeType<RingTy>(field), numel);
-  pub_counter_ = yacl::FillPseudoRandom(
+  pub_counter_ = yacl::crypto::FillPseudoRandom(
       kAesType, pub_seed_, 0, pub_counter_,
       absl::MakeSpan(static_cast<char*>(res.data()), res.buf()->size()));
 

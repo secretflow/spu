@@ -116,4 +116,5 @@ std::unique_ptr<IEcdhOprfClient> CreateEcdhOprfClient(OprfType oprf_type,
 
   return client;
 }
+
 }  // namespace spu::psi

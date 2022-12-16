@@ -21,7 +21,7 @@ extern "C" {
 
 #include <vector>
 
-#include "yacl/crypto/utils/hash_util.h"
+#include "yacl/crypto/base/hash/hash_utils.h"
 #include "yacl/utils/parallel.h"
 
 namespace spu::psi {
@@ -61,15 +61,15 @@ std::vector<uint8_t> FourQEccCryptor::HashToCurve(
       yacl::crypto::SslHash(yacl::crypto::HashAlgorithm::SHA512)
           .Update(input)
           .CumulativeHash();
-  f2elm_t* f2elmt = (f2elm_t*)sha_bytes.data();
-  mod1271(((felm_t*)f2elmt)[0]);
-  mod1271(((felm_t*)f2elmt)[1]);
+  auto* f2elmt = reinterpret_cast<f2elm_t*>(sha_bytes.data());
+  mod1271((reinterpret_cast<felm_t*>(f2elmt))[0]);
+  mod1271((reinterpret_cast<felm_t*>(f2elmt))[1]);
   ECCRYPTO_STATUS status = ECCRYPTO_SUCCESS;
   // Hash GF(p^2) element to curve
-  status = ::HashToCurve((felm_t*)f2elmt, P);
+  status = ::HashToCurve(reinterpret_cast<felm_t*>(f2elmt), P);
   YACL_ENFORCE(status == ECCRYPTO_SUCCESS, "FourQ HashToCurve Error: ", status);
   std::vector<uint8_t> ret(kEccKeySize, 0U);
-  encode(P, (unsigned char*)&ret[0]);  // Encode public key
+  encode(P, static_cast<unsigned char*>(ret.data()));  // Encode public key
   return ret;
 }
 

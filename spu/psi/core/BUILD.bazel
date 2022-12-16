@@ -123,10 +123,10 @@ spu_cc_library(
         ":cuckoo_index",
         "//spu/psi/utils:serialize",
         "@com_google_absl//absl/strings",
+        "@yacl//yacl/crypto/base/hash:hash_utils",
         "@yacl//yacl/crypto/primitives/ot:base_ot",
-        "@yacl//yacl/crypto/primitives/ot:iknp_ot_extension",
-        "@yacl//yacl/crypto/primitives/ot:kkrt_ot_extension",
-        "@yacl//yacl/crypto/utils:hash_util",
+        "@yacl//yacl/crypto/primitives/ot:iknp_ote",
+        "@yacl//yacl/crypto/primitives/ot:kkrt_ote",
         "@yacl//yacl/crypto/utils:rand",
         "@yacl//yacl/link",
     ],
@@ -137,7 +137,7 @@ spu_cc_test(
     srcs = ["kkrt_psi_test.cc"],
     deps = [
         ":kkrt_psi",
-        "@yacl//yacl/crypto/utils:hash_util",
+        "@yacl//yacl/crypto/base/hash:hash_utils",
     ],
 )
 
@@ -204,8 +204,8 @@ spu_cc_library(
         "@com_github_floodyberry_curve25519_donna//:curve25519_donna",
         "@com_google_absl//absl/strings",
         "@com_google_googletest//:gtest",
+        "@yacl//yacl/crypto/base/hash:hash_utils",
         "@yacl//yacl/crypto/tools:prg",
-        "@yacl//yacl/crypto/utils:hash_util",
         "@yacl//yacl/link",
         "@yacl//yacl/utils:parallel",
     ],

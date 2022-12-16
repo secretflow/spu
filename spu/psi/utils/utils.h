@@ -75,4 +75,5 @@ T SyncWait(const std::shared_ptr<yacl::link::Context>& lctx,
   }
   return f->get();
 }
+
 }  // namespace spu::psi

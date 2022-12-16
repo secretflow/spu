@@ -20,9 +20,8 @@
 #include "absl/strings/escaping.h"
 #include "gtest/gtest.h"
 #include "yacl/base/exception.h"
-#include "yacl/crypto/base/utils.h"
+#include "yacl/crypto/base/hash/hash_utils.h"
 #include "yacl/crypto/tools/prg.h"
-#include "yacl/crypto/utils/hash_util.h"
 
 namespace spu::psi {
 
@@ -36,7 +35,7 @@ class Sm2CryptorTest : public ::testing::TestWithParam<TestParams> {};
 TEST_P(Sm2CryptorTest, Works) {
   auto params = GetParam();
   std::random_device rd;
-  yacl::Prg<uint64_t> prg(rd());
+  yacl::crypto::Prg<uint64_t> prg(rd());
 
   std::shared_ptr<Sm2Cryptor> sm2_cryptor_a =
       std::make_shared<Sm2Cryptor>(params.type);

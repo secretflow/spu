@@ -42,7 +42,10 @@ class BucketPsi {
  private:
   void Init();
 
-  std::vector<uint64_t> RunPsi(uint64_t self_items_count);
+  // unbalanced get items_count when RunPSI
+  // other psi use sanity check get items_count
+  // TODO: sanity check affects performance maybe optional
+  std::vector<uint64_t> RunPsi(uint64_t& self_items_count);
 
   std::vector<uint64_t> RunBucketPsi(uint64_t self_items_count);
 

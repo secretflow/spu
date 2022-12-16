@@ -96,7 +96,7 @@ ArrayRef MulAA::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
   auto beaver = ctx->caller()->getState<CheetahState>()->beaver();
   int rank = comm->getRank();
 
-  auto dupx = comm->lctx_->Spawn();
+  auto dupx = comm->lctx()->Spawn();
   // NOTE(juhou): we suppose rank0 and rank1 have the same level of computation
   // power. So we parallel the two computation by switching the role of
   // evaluator.
@@ -109,7 +109,7 @@ ArrayRef MulAA::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
   });
 
   ArrayRef cross0;
-  yacl::link::Context* conn = comm->lctx_.get();
+  yacl::link::Context* conn = comm->lctx().get();
   if (rank == 0) {
     cross0 = beaver->MulAShr(rhs, conn, false);
   } else {

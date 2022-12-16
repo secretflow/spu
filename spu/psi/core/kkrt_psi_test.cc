@@ -19,7 +19,7 @@
 
 #include "gtest/gtest.h"
 #include "yacl/base/exception.h"
-#include "yacl/crypto/utils/hash_util.h"
+#include "yacl/crypto/base/hash/hash_utils.h"
 #include "yacl/link/test_util.h"
 
 struct TestParams {
@@ -31,7 +31,7 @@ namespace spu::psi {
 
 void KkrtPsiSend(const std::shared_ptr<yacl::link::Context>& link_ctx,
                  const std::vector<uint128_t>& items_hash) {
-  yacl::BaseRecvOptions recv_opts;
+  yacl::crypto::BaseOtRecvStore recv_opts;
 
   GetKkrtOtSenderOptions(link_ctx, 512, &recv_opts);
 
@@ -41,7 +41,7 @@ void KkrtPsiSend(const std::shared_ptr<yacl::link::Context>& link_ctx,
 std::vector<std::size_t> KkrtPsiRecv(
     const std::shared_ptr<yacl::link::Context>& link_ctx,
     const std::vector<uint128_t>& items_hash) {
-  yacl::BaseSendOptions send_opts;
+  yacl::crypto::BaseOtSendStore send_opts;
 
   GetKkrtOtReceiverOptions(link_ctx, 512, &send_opts);
 
@@ -75,7 +75,7 @@ TEST_P(KkrtPsiTest, Works) {
   std::future<std::vector<std::size_t>> kkrtPsi_receiver =
       std::async([&] { return KkrtPsiRecv(contexts[1], params.items_b); });
 
-  if ((params.items_a.size() == 0) || (params.items_b.size() == 0)) {
+  if (params.items_a.empty() || params.items_b.empty()) {
     EXPECT_THROW(kkrtPsi_sender.get(), ::yacl::EnforceNotMet);
     EXPECT_THROW(kkrtPsi_receiver.get(), ::yacl::EnforceNotMet);
     return;

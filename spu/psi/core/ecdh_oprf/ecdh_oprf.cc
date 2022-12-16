@@ -14,6 +14,10 @@
 
 #include "spu/psi/core/ecdh_oprf/ecdh_oprf.h"
 
+#include <algorithm>
+#include <string>
+#include <vector>
+
 #include "yacl/utils/parallel.h"
 
 namespace spu::psi {

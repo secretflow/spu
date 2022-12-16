@@ -137,17 +137,22 @@ NdArrayRef NdArrayRef::clone() const {
   return res;
 }
 
-NdArrayRef unflatten(const ArrayRef& arr, std::vector<int64_t> shape) {
+NdArrayRef unflatten(const ArrayRef& arr, absl::Span<const int64_t> shape) {
   YACL_ENFORCE(arr.numel() == calcNumel(shape),
                "unflatten numel mismatch, expected={}, got={}",
                calcNumel(shape), arr.numel());
 
+  if (arr.stride() == 0) {
+    return {arr.buf(), arr.eltype(), shape,
+            std::vector<int64_t>(0, shape.size()), arr.offset()};
+  }
+
   // FIXME: due to the current implementation,
-  YACL_ENFORCE(arr.isCompact(), "FIXME: impl assume array is flatten");
+  YACL_ENFORCE(arr.isCompact(), "FIXME: impl assume array is flatten, got {}",
+               arr);
 
   auto strides = makeCompactStrides(shape);
-  return {arr.buf(), arr.eltype(), std::move(shape), std::move(strides),
-          arr.offset()};
+  return {arr.buf(), arr.eltype(), shape, std::move(strides), arr.offset()};
 }
 
 namespace {

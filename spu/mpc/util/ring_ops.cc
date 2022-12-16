@@ -192,17 +192,17 @@ void ring_print(const ArrayRef& x, std::string_view name) {
 
 ArrayRef ring_rand(FieldType field, size_t size) {
   uint64_t cnt = 0;
-  return ring_rand(field, size, yacl::RandSeed(), &cnt);
+  return ring_rand(field, size, yacl::crypto::RandSeed(), &cnt);
 }
 
 ArrayRef ring_rand(FieldType field, size_t size, uint128_t prg_seed,
                    uint64_t* prg_counter) {
-  constexpr yacl::SymmetricCrypto::CryptoType kCryptoType =
-      yacl::SymmetricCrypto::CryptoType::AES128_CTR;
+  constexpr yacl::crypto::SymmetricCrypto::CryptoType kCryptoType =
+      yacl::crypto::SymmetricCrypto::CryptoType::AES128_CTR;
   constexpr uint128_t kAesInitialVector = 0U;
 
   ArrayRef res(makeType<RingTy>(field), size);
-  *prg_counter = yacl::FillPseudoRandom(
+  *prg_counter = yacl::crypto::FillPseudoRandom(
       kCryptoType, prg_seed, kAesInitialVector, *prg_counter,
       absl::MakeSpan(static_cast<char*>(res.data()), res.buf()->size()));
 

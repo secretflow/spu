@@ -189,6 +189,128 @@ class UnitTests(unittest.TestCase):
             2, inputs, outputs, selected_fields, psi.PsiType.ECDH_PSI_2PC
         )
 
+    def test_ecdh_oprf_unbalanced(self):
+        print("----------test_ecdh_oprf_unbalanced-------------")
+
+        offline_path = ["", "spu/binding/tests/data/bob.csv"]
+        online_path = ["spu/binding/tests/data/alice.csv", ""]
+        outputs = ["./alice-ecdh-unbalanced.csv", ""]
+        preprocess_path = ["./alice-preprocess.csv", ""]
+        secret_key_path = ["", "./secret_key.bin"]
+        selected_fields = ["id", "idx"]
+
+        with open(secret_key_path[1], 'wb') as f:
+            f.write(
+                bytes.fromhex(
+                    "000102030405060708090a0b0c0d0e0ff0e0d0c0b0a090807060504030201000"
+                )
+            )
+
+        time_stamp = time.time()
+        lctx_desc = link.Desc()
+        lctx_desc.id = str(round(time_stamp * 1000))
+
+        for rank in range(2):
+            port = get_free_port()
+            lctx_desc.add_party(f"id_{rank}", f"127.0.0.1:{port}")
+
+        receiver_rank = 0
+        # one-way PSI, just one party get result
+        broadcast_result = False
+
+        precheck_input = False
+
+        global wrap
+
+        def wrap(
+            rank, offline_path, online_path, out_path, preprocess_path, secret_key_path
+        ):
+            link_ctx = link.create_brpc(lctx_desc, rank)
+
+            offline_config = psi.BucketPsiConfig(
+                psi_type=psi.PsiType.Value('ECDH_OPRF_UNBALANCED_PSI_2PC_OFFLINE'),
+                broadcast_result=broadcast_result,
+                receiver_rank=receiver_rank,
+                input_params=psi.InputParams(
+                    path=offline_path,
+                    select_fields=selected_fields,
+                    precheck=precheck_input,
+                ),
+                output_params=psi.OuputParams(path="fake.out", need_sort=False),
+                bucket_size=1000000,
+                curve_type=psi.CurveType.CURVE_FOURQ,
+            )
+
+            if receiver_rank == link_ctx.rank:
+                offline_config.preprocess_path = preprocess_path
+                offline_config.input_params.path = "dummy.csv"
+            else:
+                offline_config.ecdh_secret_key_path = secret_key_path
+
+            start = time.time()
+            offline_report = psi.bucket_psi(link_ctx, offline_config)
+
+            if receiver_rank != link_ctx.rank:
+                server_source_count = wc_count(offline_path)
+                self.assertEqual(offline_report.original_count, server_source_count - 1)
+            print(f"offline cost time: {time.time() - start}")
+            print(
+                f"offline: rank: {rank} original_count: {offline_report.original_count}, intersection_count: {offline_report.intersection_count}"
+            )
+
+            print("===== online phase =====")
+            online_config = psi.BucketPsiConfig(
+                psi_type=psi.PsiType.Value('ECDH_OPRF_UNBALANCED_PSI_2PC_ONLINE'),
+                broadcast_result=broadcast_result,
+                receiver_rank=receiver_rank,
+                input_params=psi.InputParams(
+                    path=online_path,
+                    select_fields=selected_fields,
+                    precheck=precheck_input,
+                ),
+                output_params=psi.OuputParams(path=out_path, need_sort=False),
+                bucket_size=300000,
+                curve_type=psi.CurveType.CURVE_FOURQ,
+            )
+
+            if receiver_rank == link_ctx.rank:
+                online_config.preprocess_path = preprocess_path
+            else:
+                online_config.ecdh_secret_key_path = secret_key_path
+                online_config.input_params.path = "dummy.csv"
+
+            start = time.time()
+            report_online = psi.bucket_psi(link_ctx, online_config)
+
+            if receiver_rank == link_ctx.rank:
+                client_source_count = wc_count(online_path)
+                self.assertEqual(report_online.original_count, client_source_count - 1)
+
+            print(f"online cost time: {time.time() - start}")
+            print(
+                f"online: rank:{rank} original_count: {report_online.original_count}, intersection_count: {report_online.intersection_count}"
+            )
+
+        # launch with multiprocess
+        jobs = [
+            multiprocess.Process(
+                target=wrap,
+                args=(
+                    rank,
+                    offline_path[rank],
+                    online_path[rank],
+                    outputs[rank],
+                    preprocess_path[rank],
+                    secret_key_path[rank],
+                ),
+            )
+            for rank in range(2)
+        ]
+        [job.start() for job in jobs]
+        for job in jobs:
+            job.join()
+            self.assertEqual(job.exitcode, 0)
+
 
 if __name__ == '__main__':
     unittest.main()

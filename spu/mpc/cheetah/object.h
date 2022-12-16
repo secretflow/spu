@@ -14,6 +14,8 @@
 
 #pragma once
 
+#include <memory>
+
 #include "spu/mpc/beaver/beaver_cheetah.h"
 #include "spu/mpc/util/communicator.h"
 
@@ -30,9 +32,13 @@ class CheetahState : public State {
     beaver_ = std::make_unique<BeaverCheetah>(lctx);
   }
 
-  ~CheetahState() {}
+  ~CheetahState() override = default;
 
   BeaverCheetah* beaver() { return beaver_.get(); }
+
+  std::unique_ptr<State> fork() override {
+    return std::make_unique<CheetahState>(beaver()->GetLink()->Spawn());
+  }
 };
 
 }  // namespace spu::mpc

@@ -20,7 +20,7 @@ extern "C" {
 
 #include <iostream>
 
-#include "yacl/crypto/utils/hash_util.h"
+#include "yacl/crypto/base/hash/hash_utils.h"
 #include "yacl/utils/parallel.h"
 
 namespace spu::psi {
@@ -67,8 +67,8 @@ std::vector<uint8_t> SodiumCurve25519Cryptor::KeyExchange(
   YACL_ENFORCE(0 == crypto_scalarmult_curve25519(
                         dh_key.data(), this->private_key_,
                         (const unsigned char*)peer_pubkey_buf.data()));
-  std::vector<uint8_t> shared_key = yacl::crypto::Blake3(dh_key);
-  return shared_key;
+  const auto shared_key = yacl::crypto::Blake3(dh_key);
+  return {shared_key.begin(), shared_key.end()};
 }
 
 }  // namespace spu::psi
