@@ -14,9 +14,12 @@
 
 #include "spu/psi/core/ecdh_oprf/basic_ecdh_oprf.h"
 
+#include <string>
+#include <vector>
+
 #include "absl/strings/escaping.h"
 #include "yacl/crypto/base/hash/blake3.h"
-#include "yacl/crypto/utils/hash_util.h"
+#include "yacl/crypto/base/hash/hash_utils.h"
 
 #include "spu/psi/cryptor/ecc_utils.h"
 
@@ -82,8 +85,9 @@ std::string EcPointMul(absl::string_view sk_bytes,
   EcPointSt ec_point2 = ec_point.PointMul(ec_group, bn_sk);
 
   std::string masked_point_bytes(kEcPointCompressLength, '\0');
-  ec_point2.ToBytes(absl::MakeSpan((uint8_t *)masked_point_bytes.data(),
-                                   masked_point_bytes.size()));
+  ec_point2.ToBytes(
+      absl::MakeSpan(reinterpret_cast<uint8_t *>(masked_point_bytes.data()),
+                     masked_point_bytes.size()));
 
   return masked_point_bytes;
 }
@@ -112,8 +116,8 @@ std::string ItemMul(absl::string_view sk_bytes, absl::string_view item_bytes,
 
   EcPointSt ec_point2 = ec_point.PointMul(ec_group, bn_sk);
   std::string point_bytes(kEcPointCompressLength, '\0');
-  ec_point2.ToBytes(
-      absl::MakeSpan((uint8_t *)point_bytes.data(), point_bytes.size()));
+  ec_point2.ToBytes(absl::MakeSpan(
+      reinterpret_cast<uint8_t *>(point_bytes.data()), point_bytes.size()));
 
   return point_bytes;
 }
@@ -210,7 +214,7 @@ std::string FourQPointMul(absl::string_view sk_bytes, point_t point) {
   YACL_ENFORCE(status, "fourq ecc_mul error, status = {}", status);
 
   std::string masked_point_bytes(kEccKeySize, '\0');
-  encode(A, (uint8_t *)masked_point_bytes.data());
+  encode(A, reinterpret_cast<uint8_t *>(masked_point_bytes.data()));
 
   return masked_point_bytes;
 }
@@ -237,36 +241,38 @@ void FourQHashToCurvePoint(absl::string_view input, point_t pt) {
   f2elm_t r;
 
   // blake3 hash
-  std::vector<uint8_t> hash = yacl::crypto::Blake3(input);
+  auto hash = yacl::crypto::Blake3(input);
 
-  std::memcpy(r, hash.data(), hash.size());
+  std::memcpy(r, hash.data(), hash.size() * sizeof(decltype(hash)::value_type));
   // Reduce r; note that this does not produce a perfectly uniform distribution
   // modulo 2^127-1, but it is good enough.
   mod1271(r[0]);
   mod1271(r[1]);
 
   HashToCurve(r, pt);
-  return;
 }
 
 }  // namespace
 std::string FourQBasicEcdhOprfServer::Evaluate(
     absl::string_view blinded_element) const {
   return FourQPointMul(
-      absl::string_view((const char *)&private_key_[0], kEccKeySize),
-      absl::MakeSpan((const uint8_t *)blinded_element.data(),
+      absl::string_view(reinterpret_cast<const char *>(&private_key_[0]),
+                        kEccKeySize),
+      absl::MakeSpan(reinterpret_cast<const uint8_t *>(blinded_element.data()),
                      blinded_element.size()));
 }
 
 std::string FourQBasicEcdhOprfServer::FullEvaluate(
     yacl::ByteContainerView input) const {
   point_t pt;
-  absl::string_view input_sv =
-      absl::string_view((const char *)input.data(), input.size());
+  absl::string_view input_sv = absl::string_view(
+      reinterpret_cast<const char *>(input.data()), input.size());
   FourQHashToCurvePoint(input_sv, pt);
 
   std::string pt_mul_bytes = FourQPointMul(
-      absl::string_view((const char *)&private_key_[0], kEccKeySize), pt);
+      absl::string_view(reinterpret_cast<const char *>(&private_key_[0]),
+                        kEccKeySize),
+      pt);
 
   return HashItem(input_sv, pt_mul_bytes, GetCompareLength(), hash_type_);
 }

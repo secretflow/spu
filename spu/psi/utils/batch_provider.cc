@@ -14,10 +14,16 @@
 
 #include "spu/psi/utils/batch_provider.h"
 
+#include <algorithm>
+#include <future>
+#include <random>
+
 #include "absl/strings/escaping.h"
 #include "absl/strings/str_join.h"
 #include "absl/strings/string_view.h"
+#include "spdlog/spdlog.h"
 #include "yacl/base/exception.h"
+#include "yacl/crypto/utils/rand.h"
 
 #include "spu/psi/utils/utils.h"
 
@@ -64,6 +70,82 @@ std::vector<std::string> CsvBatchProvider::ReadNextBatch(size_t batch_size) {
     }
   }
   return ret;
+}
+
+CachedCsvBatchProvider::CachedCsvBatchProvider(
+    const std::string& path, const std::vector<std::string>& target_fields,
+    size_t bucket_size, bool shuffle)
+    : bucket_size_(bucket_size), shuffle_(shuffle) {
+  provider_ = std::make_shared<CsvBatchProvider>(path, target_fields);
+
+  ReadAndShuffle(0, false);
+  ReadAndShuffle(1, true);
+}
+
+std::vector<std::string> CachedCsvBatchProvider::ReadNextBatch(
+    size_t batch_size) {
+  std::vector<std::string> batch;
+
+  YACL_ENFORCE(cursor_index_ <= bucket_items_[bucket_index_].size());
+
+  size_t n_items =
+      std::min(batch_size, bucket_items_[bucket_index_].size() - cursor_index_);
+  batch.insert(batch.end(),
+               bucket_items_[bucket_index_].begin() + cursor_index_,
+               bucket_items_[bucket_index_].begin() + cursor_index_ + n_items);
+  cursor_index_ += n_items;
+
+  if (n_items < batch_size) {
+    size_t next_index = (bucket_index_ + 1) % 2;
+    if (bucket_items_[next_index].size() > 0) {
+      size_t left_size = batch_size - n_items;
+
+      cursor_index_ = 0;
+      size_t m_items =
+          std::min(left_size, bucket_items_[next_index].size() - cursor_index_);
+      batch.insert(batch.end(),
+                   bucket_items_[next_index].begin() + cursor_index_,
+                   bucket_items_[next_index].begin() + cursor_index_ + m_items);
+
+      cursor_index_ += m_items;
+
+      // read
+
+      SPDLOG_INFO("read next bucket");
+      ReadAndShuffle(bucket_index_, true);
+
+      bucket_index_ = next_index;
+    }
+  }
+
+  return batch;
+}
+
+void CachedCsvBatchProvider::ReadAndShuffle(size_t read_index,
+                                            bool thread_model) {
+  SPDLOG_INFO("begin func for ReadAndShuffle read_index:{}", read_index);
+
+  auto read_proc = [&](int idx) -> void {
+    SPDLOG_INFO(
+        "Begin thread ReadAndShuffle next bucket, read_index:{} "
+        "bucket_size_:{}",
+        idx, bucket_size_);
+
+    bucket_items_[idx] = provider_->ReadNextBatch(bucket_size_);
+
+    if (shuffle_ && bucket_items_[idx].size() > 0) {
+      std::mt19937 rng(yacl::crypto::RandU64(true));
+      std::shuffle(bucket_items_[idx].begin(), bucket_items_[idx].end(), rng);
+    }
+    SPDLOG_INFO("End thread ReadAndShuffle next bucket[idx] {}", idx,
+                bucket_items_[idx].size());
+  };
+
+  f_read[read_index] = std::async(std::launch::async, read_proc, read_index);
+  if (!thread_model) {
+    f_read[read_index].get();
+  }
+  SPDLOG_INFO("end func ReadAndShuffle read_index:{}", read_index);
 }
 
 }  // namespace spu::psi

@@ -62,12 +62,21 @@ class Communicator : public State {
     }
   };
 
+ private:
   mutable Stats stats_;
 
   const std::shared_ptr<yacl::link::Context> lctx_;
 
+ public:
   explicit Communicator(std::shared_ptr<yacl::link::Context> lctx)
       : lctx_(std::move(lctx)) {}
+
+  std::unique_ptr<State> fork() override {
+    // TODO: share the same statistics.
+    return std::make_unique<Communicator>(lctx_->Spawn());
+  }
+
+  const std::shared_ptr<yacl::link::Context>& lctx() { return lctx_; }
 
   Stats getStats() const { return stats_; }
 

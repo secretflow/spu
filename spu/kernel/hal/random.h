@@ -26,4 +26,10 @@ namespace spu::kernel::hal {
 Value rng_uniform(HalContext* ctx, const Value& a, const Value& b,
                   absl::Span<const int64_t> to_shape);
 
+/// Make a random value.
+//
+// The value is uniformly distributed in value's range.
+Value random(HalContext* ctx, Visibility vis, DataType dtype,
+             absl::Span<const int64_t> shape);
+
 }  // namespace spu::kernel::hal

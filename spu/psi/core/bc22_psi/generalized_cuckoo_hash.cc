@@ -83,7 +83,7 @@ GeneralizedCuckooHashTable::GeneralizedCuckooHashTable(
     : gch_options_(options),
       max_items_per_bin_(bin_data_num),
       seed_(seed),
-      gen_(yacl::DrbgRandSeed()) {
+      gen_(yacl::crypto::RandU64(true)) {
   size_t table_size = gch_options_.NumBins();
   bins_.resize(table_size);
 

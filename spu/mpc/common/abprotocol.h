@@ -25,6 +25,9 @@ ArrayRef p2a(Object* ctx, const ArrayRef&);
 
 ArrayRef zero_a(Object* ctx, FieldType, size_t);
 
+ArrayRef rand_a(Object* ctx, FieldType, size_t);
+ArrayRef rand_b(Object* ctx, FieldType, size_t);
+
 ArrayRef not_a(Object* ctx, const ArrayRef&);
 ArrayRef msb_a(Object* ctx, const ArrayRef&);
 

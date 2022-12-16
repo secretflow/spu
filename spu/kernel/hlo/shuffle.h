@@ -1,4 +1,4 @@
-// Copyright 2021 Ant Group Co., Ltd.
+// Copyright 2022 Ant Group Co., Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,29 +14,16 @@
 
 #pragma once
 
-#include <string>
+#include "absl/types/span.h"
 
-#include "spdlog/spdlog.h"
+#include "spu/kernel/context.h"
+#include "spu/kernel/value.h"
 
-namespace spu::logging {
+namespace spu::kernel::hlo {
 
-enum class LogLevel {
-  debug = 0,
-  info = 1,
-  warn = 2,
-  error = 3,
-};
+// secret shuffle which means the order is kept secret between parties.
+std::vector<spu::Value> Shuffle(HalContext* ctx,
+                                absl::Span<const spu::Value> inputs,
+                                int64_t axis = 0);
 
-struct LogOptions {
-  bool enable_console_logger = true;
-  std::string system_log_path = "spu.log";
-
-  LogLevel log_level = LogLevel::info;
-
-  size_t max_log_file_size = 500 * 1024 * 1024;
-  size_t max_log_file_count = 10;
-};
-
-void SetupLogging(const LogOptions& options = {});
-
-}  // namespace spu::logging
+}  // namespace spu::kernel::hlo

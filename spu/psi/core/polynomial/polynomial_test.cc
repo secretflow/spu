@@ -49,8 +49,8 @@ TEST_P(PolynomialBnTest, Works) {
   std::vector<std::string> coeff;
 
   std::random_device rd;
-  yacl::Prg<uint64_t> prg1(rd());
-  yacl::Prg<uint64_t> prg2(rd());
+  yacl::crypto::Prg<uint64_t> prg1(rd());
+  yacl::crypto::Prg<uint64_t> prg2(rd());
 
   std::string prime_data = absl::HexStringToBytes(kPrimeOver256bHexStr);
 

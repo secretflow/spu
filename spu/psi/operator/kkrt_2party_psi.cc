@@ -16,7 +16,7 @@
 
 #include <memory>
 
-#include "yacl/crypto/utils/hash_util.h"
+#include "yacl/crypto/base/hash/hash_utils.h"
 #include "yacl/utils/parallel.h"
 
 #include "spu/psi/operator/factory.h"
@@ -45,7 +45,7 @@ std::vector<std::string> KkrtPsiOperator::OnRun(
   });
 
   if (options_.receiver_rank == link_ctx_->Rank()) {
-    yacl::BaseSendOptions send_opts;
+    yacl::crypto::BaseOtSendStore send_opts;
 
     GetKkrtOtReceiverOptions(options_.link_ctx, options_.num_ot, &send_opts);
 
@@ -56,7 +56,7 @@ std::vector<std::string> KkrtPsiOperator::OnRun(
       res.emplace_back(inputs[index]);
     }
   } else {
-    yacl::BaseRecvOptions recv_opts;
+    yacl::crypto::BaseOtRecvStore recv_opts;
 
     GetKkrtOtSenderOptions(options_.link_ctx, options_.num_ot, &recv_opts);
 

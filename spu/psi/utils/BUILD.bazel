@@ -49,7 +49,7 @@ spu_cc_library(
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/time",
         "@yacl//yacl/base:exception",
-        "@yacl//yacl/crypto/utils:hash_util",
+        "@yacl//yacl/crypto/base/hash:hash_utils",
         "@yacl//yacl/utils:scope_guard",
     ],
 )
@@ -107,6 +107,7 @@ spu_cc_library(
         ":utils",
         "//spu/psi/io",
         "@com_google_absl//absl/strings",
+        "@yacl//yacl/crypto/utils:rand",
     ],
 )
 
@@ -128,7 +129,7 @@ spu_cc_library(
     ],
     deps = [
         "//spu/psi:psi_cc_proto",
-        "@yacl//yacl/crypto/utils:hash_util",
+        "@yacl//yacl/crypto/base/hash:hash_utils",
     ],
 )
 

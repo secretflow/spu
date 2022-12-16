@@ -77,7 +77,7 @@ class BShrTy : public TypeImpl<BShrTy, TypeObject, Secret, BShare> {
     YACL_ENFORCE(PtType_Parse(std::string(back_type_str), &back_type_),
                  "parse failed from={}", detail);
     nbits_ = std::stoul(std::string(nbits_str));
-  };
+  }
 
   std::string toString() const override {
     return fmt::format("{},{}", PtType_Name(back_type_), nbits_);
@@ -91,15 +91,6 @@ class BShrTy : public TypeImpl<BShrTy, TypeObject, Secret, BShare> {
     return getBacktype() == derived_other->getBacktype() &&
            nbits() == derived_other->nbits();
   }
-};
-
-class Aby3State : public State {
-  FieldType field_;
-
- public:
-  static constexpr char kBindName[] = "Aby3State";
-  explicit Aby3State(FieldType field) : field_(field) {}
-  FieldType getDefaultField() const { return field_; }
 };
 
 void registerTypes();

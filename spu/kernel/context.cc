@@ -26,7 +26,16 @@ HalContext::HalContext(RuntimeConfig config,
       rand_engine_(config.public_random_seed()) {}
 
 std::unique_ptr<HalContext> HalContext::fork() {
-  return std::make_unique<HalContext>(rt_config_, lctx_->Spawn());
+  auto new_hctx = std::unique_ptr<HalContext>(new HalContext);
+
+  new_hctx->rt_config_ = rt_config_;
+  if (lctx_) {
+    new_hctx->lctx_ = lctx_->Spawn();
+  }
+  new_hctx->prot_ = prot_->fork();
+  new_hctx->rand_engine_.seed(rand_engine_());
+
+  return new_hctx;
 }
 
 }  // namespace spu

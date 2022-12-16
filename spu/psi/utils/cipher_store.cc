@@ -14,9 +14,14 @@
 
 #include "spu/psi/utils/cipher_store.h"
 
+#include <algorithm>
+#include <future>
 #include <unordered_set>
 
+#include "absl/strings/escaping.h"
 #include "spdlog/spdlog.h"
+
+#include "spu/psi/utils/batch_provider.h"
 
 namespace spu::psi {
 
@@ -67,6 +72,143 @@ void DiskCipherStore::FindIntersectionIndices(size_t bucket_idx,
       indices->push_back(item.index);
     }
   }
+}
+
+CachedCsvCipherStore::CachedCsvCipherStore(const std::string& self_csv,
+                                           const std::string& peer_csv,
+                                           bool self_read_only,
+                                           bool peer_read_only)
+    : self_csv_path_(self_csv),
+      peer_csv_path_(peer_csv),
+      self_read_only_(self_read_only),
+      peer_read_only_(peer_read_only) {
+  if (!self_read_only_) {
+    self_out_ = io::BuildOutputStream(io::FileIoOptions(self_csv_path_));
+    self_out_->Write("id\n");
+  }
+  if (!peer_read_only_) {
+    peer_out_ = io::BuildOutputStream(io::FileIoOptions(peer_csv_path_));
+    peer_out_->Write("id\n");
+  }
+}
+
+CachedCsvCipherStore::~CachedCsvCipherStore() {
+  if (!self_read_only_) {
+    self_out_->Close();
+  }
+
+  if (!peer_read_only_) {
+    peer_out_->Close();
+  }
+}
+
+void CachedCsvCipherStore::SaveSelf(std::string ciphertext) {
+  std::string hex_str = absl::BytesToHexString(ciphertext);
+  self_out_->Write(fmt::format("{}\n", hex_str));
+  self_data_.push_back(hex_str);
+
+  self_items_count_ += 1;
+  if (self_items_count_ % 10000000 == 0) {
+    SPDLOG_INFO("self_items_count_={}", self_items_count_);
+  }
+}
+
+void CachedCsvCipherStore::SavePeer(std::string ciphertext) {
+  peer_out_->Write(fmt::format("{}\n", absl::BytesToHexString(ciphertext)));
+  peer_items_count_ += 1;
+  if (peer_items_count_ % 10000000 == 0) {
+    SPDLOG_INFO("peer_items_count={}", peer_items_count_);
+  }
+}
+
+void CachedCsvCipherStore::SaveSelf(
+    const std::vector<std::string>& ciphertext) {
+  for (size_t i = 0; i < ciphertext.size(); i++) {
+    std::string hex_str = absl::BytesToHexString(ciphertext[i]);
+    self_out_->Write(fmt::format("{}\n", hex_str));
+    self_data_.push_back(hex_str);
+
+    self_items_count_ += 1;
+    if (self_items_count_ % 10000000 == 0) {
+      SPDLOG_INFO("self_items_count_={}", self_items_count_);
+    }
+  }
+}
+
+void CachedCsvCipherStore::SavePeer(
+    const std::vector<std::string>& ciphertext) {
+  for (size_t i = 0; i < ciphertext.size(); i++) {
+    peer_out_->Write(
+        fmt::format("{}\n", absl::BytesToHexString(ciphertext[i])));
+
+    peer_items_count_ += 1;
+    if (peer_items_count_ % 10000000 == 0) {
+      SPDLOG_INFO("peer_items_count={}", peer_items_count_);
+    }
+  }
+}
+
+std::vector<uint64_t> CachedCsvCipherStore::FinalizeAndComputeIndices(
+    size_t bucket_size) {
+  if (!self_read_only_) {
+    self_out_->Flush();
+  }
+  FlushPeer();
+
+  SPDLOG_INFO("Begin FinalizeAndComputeIndices");
+
+  std::vector<uint64_t> indices;
+
+  std::vector<std::string> ids = {"id"};
+  CsvBatchProvider peer_provider(peer_csv_path_, ids);
+  size_t batch_count = 0;
+
+  while (true) {
+    SPDLOG_INFO("begin read compare batch {}", batch_count);
+    std::vector<std::string> batch_peer_data =
+        peer_provider.ReadNextBatch(bucket_size);
+    SPDLOG_INFO("end read compare batch {}", batch_count);
+
+    if (batch_peer_data.empty()) {
+      break;
+    }
+
+    size_t thread_num = 6;
+    size_t compare_size = (self_data_.size() + thread_num - 1) / thread_num;
+
+    std::vector<std::vector<uint64_t>> result(thread_num);
+
+    auto compare_proc = [&](int idx) -> void {
+      uint64_t begin = idx * compare_size;
+      uint64_t end = std::min<size_t>(self_data_.size(), begin + compare_size);
+      // SPDLOG_INFO("begin:{}, end:{}", begin, end);
+      for (uint64_t i = begin; i < end; i++) {
+        if (std::binary_search(batch_peer_data.begin(), batch_peer_data.end(),
+                               self_data_[i])) {
+          result[idx].push_back(i);
+        }
+      }
+    };
+
+    std::vector<std::future<void>> f_compare(thread_num);
+    for (size_t i = 0; i < thread_num; i++) {
+      f_compare[i] = std::async(compare_proc, i);
+    }
+
+    for (size_t i = 0; i < thread_num; i++) {
+      f_compare[i].get();
+    }
+
+    batch_count++;
+    for (size_t i = 0; i < result.size(); ++i) {
+      indices.insert(indices.end(), result[i].begin(), result[i].end());
+    }
+    SPDLOG_INFO("FinalizeAndComputeIndices, batch_count:{}", batch_count);
+  }
+
+  std::sort(indices.begin(), indices.end());
+  SPDLOG_INFO("End FinalizeAndComputeIndices, batch_count:{}", batch_count);
+  return indices;
 }
 
 }  // namespace spu::psi

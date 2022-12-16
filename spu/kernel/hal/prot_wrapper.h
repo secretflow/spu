@@ -68,4 +68,7 @@ Value _xor_ss(HalContext* ctx, const Value& x, const Value& y);
 Value _bitrev_p(HalContext* ctx, const Value& in, size_t start, size_t end);
 Value _bitrev_s(HalContext* ctx, const Value& in, size_t start, size_t end);
 
+Value _rand_p(HalContext* ctx, absl::Span<const int64_t> shape);
+Value _rand_s(HalContext* ctx, absl::Span<const int64_t> shape);
+
 }  // namespace spu::kernel::hal

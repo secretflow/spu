@@ -31,9 +31,9 @@ extern "C" {
 }
 
 #include "yacl/base/exception.h"
+#include "yacl/crypto/base/hash/hash_utils.h"
 #include "yacl/crypto/base/symmetric_crypto.h"
 #include "yacl/crypto/tools/prg.h"
-#include "yacl/crypto/utils/hash_util.h"
 #include "yacl/utils/parallel.h"
 
 #include "spu/psi/core/communication.h"
@@ -58,9 +58,9 @@ std::vector<std::string> HashInputs(const std::vector<std::string>& items) {
   std::vector<std::string> ret(items.size());
   yacl::parallel_for(0, items.size(), 1, [&](int64_t begin, int64_t end) {
     for (int64_t idx = begin; idx < end; ++idx) {
-      std::vector<uint8_t> hash = yacl::crypto::Sha256(items[idx]);
+      auto hash = yacl::crypto::Sha256(items[idx]);
       ret[idx].resize(hash.size());
-      std::memcpy(&ret[idx][0], hash.data(), hash.size());
+      std::memcpy(ret[idx].data(), hash.data(), hash.size());
     }
   });
   return ret;
@@ -68,15 +68,15 @@ std::vector<std::string> HashInputs(const std::vector<std::string>& items) {
 
 struct MiniPsiSendCtx {
   MiniPsiSendCtx() {
-    yacl::Prg<uint64_t> prg(0, yacl::PRG_MODE::kNistAesCtrDrbg);
+    yacl::crypto::Prg<uint64_t> prg(0, yacl::crypto::PRG_MODE::kNistAesCtrDrbg);
     prg.Fill(absl::MakeSpan(private_key.data(), kKeySize));
 
-    curve25519_donna_basepoint((unsigned char*)(public_key.data()),
+    curve25519_donna_basepoint(static_cast<unsigned char*>(public_key.data()),
                                private_key.data());
 
     uint128_t aes_key = yacl::crypto::Blake3_128(public_key);
-    aes_ecb = std::make_shared<yacl::SymmetricCrypto>(
-        yacl::SymmetricCrypto::CryptoType::AES128_ECB, aes_key, 0);
+    aes_ecb = std::make_shared<yacl::crypto::SymmetricCrypto>(
+        yacl::crypto::SymmetricCrypto::CryptoType::AES128_ECB, aes_key, 0);
 
     prime256_str = absl::HexStringToBytes(kPrimeOver256bHexStr);
   }
@@ -197,7 +197,7 @@ struct MiniPsiSendCtx {
   std::vector<std::string> masked_values;
 
   // use aes-128-ecb as Ideal Permutation
-  std::shared_ptr<yacl::SymmetricCrypto> aes_ecb;
+  std::shared_ptr<yacl::crypto::SymmetricCrypto> aes_ecb;
 };
 
 struct MiniPsiRecvCtx {
@@ -211,11 +211,13 @@ struct MiniPsiRecvCtx {
 
     yacl::parallel_for(0, data_size, 1, [&](int64_t begin, int64_t end) {
       for (int64_t idx = begin; idx < end; ++idx) {
-        yacl::Prg<uint64_t> prg(0, yacl::PRG_MODE::kNistAesCtrDrbg);
+        yacl::crypto::Prg<uint64_t> prg(
+            0, yacl::crypto::PRG_MODE::kNistAesCtrDrbg);
         prg.Fill(absl::MakeSpan(seeds[idx].data(), kKeySize));
 
-        curve25519_donna_basepoint((unsigned char*)(seeds_point[idx].data()),
-                                   seeds[idx].data());
+        curve25519_donna_basepoint(
+            static_cast<unsigned char*>(seeds_point[idx].data()),
+            seeds[idx].data());
       }
     });
   }
@@ -236,7 +238,8 @@ struct MiniPsiRecvCtx {
                        absl::MakeSpan(poly_y_permuation[idx]));
 
       poly_y[idx] = absl::string_view(
-          (const char*)poly_y_permuation[idx].data(), kKeySize);
+          reinterpret_cast<const char*>(poly_y_permuation[idx].data()),
+          kKeySize);
     }
 
     // ToDo: now use newton Polynomial Interpolation, need optimize to fft
@@ -260,7 +263,7 @@ struct MiniPsiRecvCtx {
       auto items = batch_provider->ReadNextBatch(batch_size);
       batch.is_last_batch = items.empty();
       // Mask and Send this batch.
-      if (items.size() > 0) {
+      if (!items.empty()) {
         batch.flatten_bytes.reserve(items.size() * kHashSize);
 
         for (const auto& item : items) {
@@ -314,8 +317,8 @@ struct MiniPsiRecvCtx {
     yacl::parallel_for(0, seeds.size(), 1, [&](int64_t begin, int64_t end) {
       for (int64_t idx = begin; idx < end; ++idx) {
         std::string masked(kKeySize, '\0');
-        curve25519_donna((unsigned char*)(masked.data()), seeds[idx].data(),
-                         peer_public_key.data());
+        curve25519_donna(reinterpret_cast<unsigned char*>(masked.data()),
+                         seeds[idx].data(), peer_public_key.data());
 
         yacl::crypto::Sha256Hash sha256;
         sha256.Update(items[idx].data());
@@ -363,7 +366,7 @@ struct MiniPsiRecvCtx {
   std::unordered_set<std::string> peer_masked_values;
 
   // use aes-128-ecb as Ideal Permutation
-  std::shared_ptr<yacl::SymmetricCrypto> aes_ecb;
+  std::shared_ptr<yacl::crypto::SymmetricCrypto> aes_ecb;
 };
 
 }  // namespace
@@ -409,8 +412,8 @@ std::vector<std::string> MiniPsiRecv(
     std::memcpy(recv_ctx.peer_public_key.data(), buf.data(), buf.size());
 
     uint128_t aes_key = yacl::crypto::Blake3_128(recv_ctx.peer_public_key);
-    recv_ctx.aes_ecb = std::make_shared<yacl::SymmetricCrypto>(
-        yacl::SymmetricCrypto::CryptoType::AES128_ECB, aes_key, 0);
+    recv_ctx.aes_ecb = std::make_shared<yacl::crypto::SymmetricCrypto>(
+        yacl::crypto::SymmetricCrypto::CryptoType::AES128_ECB, aes_key, 0);
   });
 
   std::future<void> f_gen_seeds = std::async([&] {
@@ -466,7 +469,7 @@ void MiniPsiSendBatch(const std::shared_ptr<yacl::link::Context>& link_ctx,
     bin_idx_set.insert(bin_idx1);
     bin_idx_set.insert(bin_idx2);
 
-    for (auto& idx_inter : bin_idx_set) {
+    for (const auto& idx_inter : bin_idx_set) {
       simple_hash[idx_inter].push_back(items[idx]);
     }
   }
@@ -532,7 +535,7 @@ std::vector<std::string> MiniPsiRecvBatch(
 
   cuckoo_index.Insert(absl::MakeSpan(items_hash_u128));
 
-  YACL_ENFORCE(cuckoo_index.stash().size() == 0, "stash size not 0");
+  YACL_ENFORCE(cuckoo_index.stash().empty(), "stash size not 0");
 
   size_t nthreads = yacl::intraop_default_num_threads();
   // send thread num
@@ -558,7 +561,7 @@ std::vector<std::string> MiniPsiRecvBatch(
     size_t end_idx = num_bins * (thread_idx + 1) / nthreads;
 
     std::random_device rd;
-    yacl::Prg<uint64_t> prg(rd());
+    yacl::crypto::Prg<uint64_t> prg(rd());
 
     for (size_t idx = start_idx; idx < end_idx; idx += kCuckooHashBatchSize) {
       size_t current_batch_size = std::min(kCuckooHashBatchSize, end_idx - idx);

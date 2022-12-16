@@ -29,7 +29,8 @@ TEST_P(CuckooIndexTest, Works) {
     // Insert all in one call.
     CuckooIndex cuckoo_index(param);
     std::vector<uint128_t> inputs(param.num_input);
-    yacl::FillAesRandom(std::random_device()(), 0, 0, absl::MakeSpan(inputs));
+    yacl::crypto::FillAesRandom(std::random_device()(), 0, 0,
+                                absl::MakeSpan(inputs));
 
     ASSERT_NO_THROW(cuckoo_index.Insert(absl::MakeSpan(inputs)));
     ASSERT_NO_THROW(cuckoo_index.SanityCheck());
@@ -42,7 +43,8 @@ TEST_P(CuckooIndexTest, Works) {
     // Insert by batches.
     CuckooIndex cuckoo_index(param);
     std::vector<uint128_t> inputs(param.num_input);
-    yacl::FillAesRandom(std::random_device()(), 0, 0, absl::MakeSpan(inputs));
+    yacl::crypto::FillAesRandom(std::random_device()(), 0, 0,
+                                absl::MakeSpan(inputs));
 
     constexpr size_t kChunkSize = 1024;
     for (size_t i = 0; i < inputs.size(); i += kChunkSize) {
@@ -71,7 +73,8 @@ INSTANTIATE_TEST_SUITE_P(
 TEST(CuckooIndexTest, Bad_StashTooSmall) {
   CuckooIndex cuckoo_index(CuckooIndex::Options{1 << 16, 0, 3, 1.1});
   std::vector<uint128_t> inputs(1 << 16);
-  yacl::FillAesRandom(std::random_device()(), 0, 0, absl::MakeSpan(inputs));
+  yacl::crypto::FillAesRandom(std::random_device()(), 0, 0,
+                              absl::MakeSpan(inputs));
 
   ASSERT_THROW(cuckoo_index.Insert(absl::MakeSpan(inputs)), yacl::Exception);
 }
@@ -79,7 +82,8 @@ TEST(CuckooIndexTest, Bad_StashTooSmall) {
 TEST(CuckooIndexTest, Bad_SmallScaleFactor) {
   CuckooIndex cuckoo_index(CuckooIndex::Options{1 << 16, 8, 3, 1.01});
   std::vector<uint128_t> inputs(1 << 16);
-  yacl::FillAesRandom(std::random_device()(), 0, 0, absl::MakeSpan(inputs));
+  yacl::crypto::FillAesRandom(std::random_device()(), 0, 0,
+                              absl::MakeSpan(inputs));
 
   ASSERT_THROW(cuckoo_index.Insert(absl::MakeSpan(inputs)), yacl::Exception);
 }

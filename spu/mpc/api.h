@@ -47,9 +47,8 @@ ArrayRef cast_type_s(Object* ctx, const ArrayRef& a, const Type& to_type);
 ArrayRef make_p(Object* ctx, const ArrayRef& plaintext);
 
 // parties random a public together.
-// TODO: move field into ctx
-ArrayRef rand_p(Object* ctx, FieldType, size_t);
-ArrayRef rand_s(Object* ctx, FieldType, size_t);
+ArrayRef rand_p(Object* ctx, size_t);
+ArrayRef rand_s(Object* ctx, size_t);
 
 // Compute bitwise_not(invert) of a value in ring 2k space.
 ArrayRef not_s(Object* ctx, const ArrayRef&);

@@ -17,7 +17,7 @@
 #include "absl/types/span.h"
 #include "openssl/bn.h"
 #include "openssl/ec.h"
-#include "yacl/crypto/utils/hash_util.h"
+#include "yacl/crypto/base/hash/hash_utils.h"
 #include "yacl/utils/parallel.h"
 
 #include "spu/psi/cryptor/ecc_utils.h"

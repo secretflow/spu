@@ -81,7 +81,7 @@ void MultiKeySort(const std::string& in_csv, const std::string& out_csv,
 
   // Sort the csv body and append to out csv.
   std::string cmd = fmt::format(
-      "tail -n +2 {} | LC_ALL=C sort --buffer-size=1G "
+      "tail -n +2 {} | LC_ALL=C sort --buffer-size=3G --parallel=8 "
       "--temporary-directory=./ --stable --field-separator=, {} >>{}",
       in_csv, fmt::join(sort_keys, " "), out_csv);
   SPDLOG_INFO("Executing sort scripts: {}", cmd);

@@ -26,19 +26,23 @@ namespace spu::mpc {
 class State {
  public:
   virtual ~State() = default;
+
+  virtual std::unique_ptr<State> fork();
 };
 
 // A (kernel) dynamic object dispatch a function to a kernel at runtime.
 //
 // Class that inherit from this class could do `dynamic binding`.
-class Object {
-  std::map<std::string_view, std::unique_ptr<Kernel>> kernels_;
+class Object final {
+  std::map<std::string_view, std::shared_ptr<Kernel>> kernels_;
   std::map<std::string_view, std::unique_ptr<State>> states_;
 
  public:
   std::string name() const {
     return fmt::format("CTX:{}", std::this_thread::get_id());
   }
+
+  std::unique_ptr<Object> fork();
 
   void regKernel(std::string_view name, std::unique_ptr<Kernel> kernel);
 

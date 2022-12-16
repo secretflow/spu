@@ -14,6 +14,8 @@
 
 #include "spu/psi/io/io.h"
 
+#include <utility>
+
 #include "yacl/io/rw/csv_reader.h"
 #include "yacl/io/rw/csv_writer.h"
 #include "yacl/io/stream/file_io.h"

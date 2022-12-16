@@ -20,12 +20,12 @@ ArrayRef make_p(Object* ctx, const ArrayRef& plaintext) {
   return ctx->call("make_p", plaintext);
 }
 
-ArrayRef rand_p(Object* ctx, FieldType field, size_t sz) {
-  return ctx->call("rand_p", field, sz);
+ArrayRef rand_p(Object* ctx, size_t numel) {
+  return ctx->call("rand_p", numel);
 }
 
-ArrayRef rand_s(Object* ctx, FieldType field, size_t sz) {
-  return ctx->call("rand_s", field, sz);
+ArrayRef rand_s(Object* ctx, size_t numel) {
+  return ctx->call("rand_s", numel);
 }
 
 Type common_type_s(Object* ctx, const Type& a, const Type& b) {

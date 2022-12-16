@@ -8,8 +8,10 @@
 
 ## staging
 > please add your unreleased change here.
+- [Feature] Add SPU logging
 - [Feature] ECDH-PSI supports white box interconnection mode
 - [Feature] Various performance improvements
+- [Feature] Lift IfOp condition limit
 - [3p] Build with Tensorflow 2.11.0
 - [bugfix] Fix various crashes
 

@@ -134,7 +134,7 @@ class NdArrayRef {
 };
 
 // Unflatten a 1d-array to an ndarray.
-NdArrayRef unflatten(const ArrayRef& arr, std::vector<int64_t> shape);
+NdArrayRef unflatten(const ArrayRef& arr, absl::Span<const int64_t> shape);
 
 // Flatten an nd-array to a 1d-array.
 //

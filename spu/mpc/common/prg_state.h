@@ -46,10 +46,12 @@ class PrgState : public State {
  public:
   static constexpr char kBindName[] = "PrgState";
   static constexpr auto kAesType =
-      yacl::SymmetricCrypto::CryptoType::AES128_CTR;
+      yacl::crypto::SymmetricCrypto::CryptoType::AES128_CTR;
 
   PrgState();
   explicit PrgState(std::shared_ptr<yacl::link::Context> lctx);
+
+  std::unique_ptr<State> fork() override;
 
   ArrayRef genPriv(FieldType field, size_t numel);
 
@@ -66,9 +68,15 @@ class PrgState : public State {
                                             bool ignore_second = false);
 
   template <typename T>
+  void fillPubl(absl::Span<T> r) {
+    pub_counter_ =
+        yacl::crypto::FillPseudoRandom(kAesType, pub_seed_, 0, pub_counter_, r);
+  }
+
+  template <typename T>
   void fillPriv(absl::Span<T> r) {
-    priv_counter_ =
-        yacl::FillPseudoRandom(kAesType, priv_seed_, 0, priv_counter_, r);
+    priv_counter_ = yacl::crypto::FillPseudoRandom(kAesType, priv_seed_, 0,
+                                                   priv_counter_, r);
   }
 
   template <typename T>
@@ -76,17 +84,17 @@ class PrgState : public State {
                     bool ignore_first = false, bool ignore_second = false) {
     uint64_t new_counter = prss_counter_;
     if (!ignore_first) {
-      new_counter =
-          yacl::FillPseudoRandom(kAesType, self_seed_, 0, prss_counter_, r0);
+      new_counter = yacl::crypto::FillPseudoRandom(kAesType, self_seed_, 0,
+                                                   prss_counter_, r0);
     }
     if (!ignore_second) {
-      new_counter =
-          yacl::FillPseudoRandom(kAesType, next_seed_, 0, prss_counter_, r1);
+      new_counter = yacl::crypto::FillPseudoRandom(kAesType, next_seed_, 0,
+                                                   prss_counter_, r1);
     }
 
     if (new_counter == prss_counter_) {
       // both part ignored, dummy run to update counter...
-      new_counter = yacl::DummyUpdateRandomCount(prss_counter_, r0);
+      new_counter = yacl::crypto::DummyUpdateRandomCount(prss_counter_, r0);
     }
     prss_counter_ = new_counter;
   }

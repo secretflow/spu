@@ -39,6 +39,9 @@ std::unique_ptr<Object> makeSemi2kProtocol(
   // register random states & kernels.
   obj->addState<PrgState>(lctx);
 
+  // add Z2k state.
+  obj->addState<Z2kState>(conf.field());
+
   // register public kernels.
   regPub2kKernels(obj.get());
 
@@ -77,6 +80,7 @@ std::unique_ptr<Object> makeSemi2kProtocol(
   obj->regKernel<semi2k::RShiftB>();
   obj->regKernel<semi2k::ARShiftB>();
   obj->regKernel<semi2k::BitrevB>();
+  obj->regKernel<semi2k::RandA>();
 
   return obj;
 }

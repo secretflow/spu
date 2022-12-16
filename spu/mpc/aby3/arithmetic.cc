@@ -116,6 +116,24 @@ std::vector<uint8_t> ring_cast_boolean_(const ArrayRef& x) {
 
 }  // namespace
 
+ArrayRef RandA::proc(KernelEvalContext* ctx, size_t size) const {
+  SPU_TRACE_MPC_LEAF(ctx, size);
+
+  auto* prg_state = ctx->caller()->getState<PrgState>();
+  const auto field = ctx->caller()->getState<Z2kState>()->getDefaultField();
+
+  auto [r0, r1] = prg_state->genPrssPair(field, size);
+
+  // NOTES for ring_rshift to 2 bits.
+  // Refer to:
+  // New Primitives for Actively-Secure MPC over Rings with Applications to
+  // Private Machine Learning
+  // - https://eprint.iacr.org/2019/599.pdf
+  // It's safer to keep the number within [-2**(k-2), 2**(k-2)) for comparsion
+  // operations.
+  return makeAShare(ring_rshift(r0, 2), ring_rshift(r1, 2), field);
+}
+
 ArrayRef A2P::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
   SPU_TRACE_MPC_LEAF(ctx, in);
 

@@ -15,11 +15,11 @@
 #pragma once
 #include <any>
 #include <memory>
+#include <string>
 
 #include "yacl/io/rw/reader.h"
 #include "yacl/io/rw/writer.h"
 #include "yacl/io/stream/interface.h"
-
 namespace spu::psi::io {
 
 using Schema = yacl::io::Schema;
@@ -49,7 +49,7 @@ struct MemIoOptions {
 
 struct FileIoOptions {
   FileIoOptions() : exit_for_fail_in_destructor(true) {}
-  FileIoOptions(const std::string& f)
+  explicit FileIoOptions(const std::string& f)
       : file_name(f), exit_for_fail_in_destructor(true) {}
   // filename for read / write.
   // IF read:

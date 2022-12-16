@@ -29,7 +29,7 @@
 namespace spu::kernel::hal {
 namespace {
 
-Value unflattenValue(const ArrayRef& arr, std::vector<int64_t> shape) {
+Value unflattenValue(const ArrayRef& arr, absl::Span<const int64_t> shape) {
   // The underline MPC engine does not take care of dtype information, so we
   // should set it as INVALID and let the upper layer to handle it.
   return Value(unflatten(arr, shape), DT_INVALID);
@@ -113,6 +113,18 @@ Value _cast_type_s(HalContext* ctx, const Value& in, const Type& to) {
   SPU_TRACE_HAL_DISP(ctx, in, to);
   auto ret = mpc::cast_type_s(ctx->prot(), flattenValue(in), to);
   return unflattenValue(ret, in.shape());
+}
+
+Value _rand_p(HalContext* ctx, absl::Span<const int64_t> shape) {
+  SPU_TRACE_HAL_DISP(ctx, shape);
+  auto rnd = mpc::rand_p(ctx->prot(), calcNumel(shape));
+  return unflattenValue(rnd, shape);
+}
+
+Value _rand_s(HalContext* ctx, absl::Span<const int64_t> shape) {
+  SPU_TRACE_HAL_DISP(ctx, shape);
+  auto rnd = mpc::rand_s(ctx->prot(), calcNumel(shape));
+  return unflattenValue(rnd, shape);
 }
 
 MAP_UNARY_OP(p2s)

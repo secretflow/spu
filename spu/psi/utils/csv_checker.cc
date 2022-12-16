@@ -22,7 +22,7 @@
 #include "absl/time/time.h"
 #include "spdlog/spdlog.h"
 #include "yacl/base/exception.h"
-#include "yacl/crypto/utils/hash_util.h"
+#include "yacl/crypto/base/hash/hash_utils.h"
 #include "yacl/utils/scope_guard.h"
 
 #include "spu/psi/io/io.h"

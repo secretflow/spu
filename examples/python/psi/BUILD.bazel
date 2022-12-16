@@ -27,3 +27,15 @@ py_binary(
         "//spu/binding/util:distributed",
     ],
 )
+
+py_binary(
+    name = "unbalanced_psi",
+    srcs = ["unbalanced_psi.py"],
+    data = [
+        "//examples/data",
+    ],
+    deps = [
+        "//spu/binding:psi",
+        "//spu/binding/util:distributed",
+    ],
+)

@@ -27,6 +27,8 @@ using util::N;
 
 typedef spu::mpc::semi2k::ZeroA ZeroA;
 
+typedef spu::mpc::semi2k::RandA RandA;
+
 typedef spu::mpc::semi2k::P2A P2A;
 
 typedef spu::mpc::semi2k::A2P A2P;

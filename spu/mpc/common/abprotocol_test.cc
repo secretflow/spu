@@ -73,8 +73,8 @@ bool verifyCost(Kernel* kernel, std::string_view name, FieldType field,
       auto obj = factory(conf, lctx);                                    \
                                                                          \
       /* GIVEN */                                                        \
-      auto p0 = rand_p(obj.get(), conf.field(), kNumel);                 \
-      auto p1 = rand_p(obj.get(), conf.field(), kNumel);                 \
+      auto p0 = rand_p(obj.get(), kNumel);                               \
+      auto p1 = rand_p(obj.get(), kNumel);                               \
                                                                          \
       /* WHEN */                                                         \
       auto a0 = p2a(obj.get(), p0);                                      \
@@ -102,8 +102,8 @@ bool verifyCost(Kernel* kernel, std::string_view name, FieldType field,
       auto obj = factory(conf, lctx);                                    \
                                                                          \
       /* GIVEN */                                                        \
-      auto p0 = rand_p(obj.get(), conf.field(), kNumel);                 \
-      auto p1 = rand_p(obj.get(), conf.field(), kNumel);                 \
+      auto p0 = rand_p(obj.get(), kNumel);                               \
+      auto p1 = rand_p(obj.get(), kNumel);                               \
                                                                          \
       /* WHEN */                                                         \
       auto a0 = p2a(obj.get(), p0);                                      \
@@ -143,8 +143,8 @@ TEST_P(ArithmeticTest, MulA1B) {
     }
 
     /* GIVEN */
-    auto p0 = rand_p(obj.get(), conf.field(), calcNumel(shape));
-    auto p1 = rand_p(obj.get(), conf.field(), calcNumel(shape));
+    auto p0 = rand_p(obj.get(), calcNumel(shape));
+    auto p1 = rand_p(obj.get(), calcNumel(shape));
     ring_bitmask_(p1, 0, 1);
     auto a0 = p2a(obj.get(), p0);
     auto a1 = p2b(obj.get(), p1);
@@ -183,8 +183,8 @@ TEST_P(ArithmeticTest, MatMulAP) {
     auto obj = factory(conf, lctx);
 
     /* GIVEN */
-    auto p0 = rand_p(obj.get(), conf.field(), calcNumel(shape_A));
-    auto p1 = rand_p(obj.get(), conf.field(), calcNumel(shape_B));
+    auto p0 = rand_p(obj.get(), calcNumel(shape_A));
+    auto p1 = rand_p(obj.get(), calcNumel(shape_B));
     auto a0 = p2a(obj.get(), p0);
 
     /* WHEN */
@@ -218,8 +218,8 @@ TEST_P(ArithmeticTest, MatMulAA) {
     auto obj = factory(conf, lctx);
 
     /* GIVEN */
-    auto p0 = rand_p(obj.get(), conf.field(), calcNumel(shape_A));
-    auto p1 = rand_p(obj.get(), conf.field(), calcNumel(shape_B));
+    auto p0 = rand_p(obj.get(), calcNumel(shape_A));
+    auto p1 = rand_p(obj.get(), calcNumel(shape_B));
     auto a0 = p2a(obj.get(), p0);
     auto a1 = p2a(obj.get(), p1);
 
@@ -247,7 +247,7 @@ TEST_P(ArithmeticTest, NotA) {
     auto obj = factory(conf, lctx);
 
     /* GIVEN */
-    auto p0 = rand_p(obj.get(), conf.field(), kNumel);
+    auto p0 = rand_p(obj.get(), kNumel);
     auto a0 = p2a(obj.get(), p0);
 
     /* WHEN */
@@ -274,7 +274,7 @@ TEST_P(ArithmeticTest, LShiftA) {
     auto obj = factory(conf, lctx);
 
     /* GIVEN */
-    auto p0 = rand_p(obj.get(), conf.field(), kNumel);
+    auto p0 = rand_p(obj.get(), kNumel);
     auto a0 = p2a(obj.get(), p0);
 
     for (auto bits : kShiftBits) {
@@ -344,7 +344,7 @@ TEST_P(ArithmeticTest, P2A) {
     auto obj = factory(conf, lctx);
 
     /* GIVEN */
-    auto p0 = rand_p(obj.get(), conf.field(), kNumel);
+    auto p0 = rand_p(obj.get(), kNumel);
 
     /* WHEN */
     auto prev = obj->getState<Communicator>()->getStats();
@@ -368,7 +368,7 @@ TEST_P(ArithmeticTest, A2P) {
     auto obj = factory(conf, lctx);
 
     /* GIVEN */
-    auto p0 = rand_p(obj.get(), conf.field(), kNumel);
+    auto p0 = rand_p(obj.get(), kNumel);
 
     /* WHEN */
     auto a0 = p2a(obj.get(), p0);
@@ -393,8 +393,8 @@ TEST_P(ArithmeticTest, A2P) {
       auto obj = factory(conf, lctx);                                    \
                                                                          \
       /* GIVEN */                                                        \
-      auto p0 = rand_p(obj.get(), conf.field(), kNumel);                 \
-      auto p1 = rand_p(obj.get(), conf.field(), kNumel);                 \
+      auto p0 = rand_p(obj.get(), kNumel);                               \
+      auto p1 = rand_p(obj.get(), kNumel);                               \
                                                                          \
       /* WHEN */                                                         \
       auto b0 = p2b(obj.get(), p0);                                      \
@@ -422,8 +422,8 @@ TEST_P(ArithmeticTest, A2P) {
       auto obj = factory(conf, lctx);                                    \
                                                                          \
       /* GIVEN */                                                        \
-      auto p0 = rand_p(obj.get(), conf.field(), kNumel);                 \
-      auto p1 = rand_p(obj.get(), conf.field(), kNumel);                 \
+      auto p0 = rand_p(obj.get(), kNumel);                               \
+      auto p1 = rand_p(obj.get(), kNumel);                               \
                                                                          \
       /* WHEN */                                                         \
       auto b0 = p2b(obj.get(), p0);                                      \
@@ -457,7 +457,7 @@ TEST_BOOLEAN_BINARY_OP(xor)
       auto obj = factory(conf, lctx);                                    \
                                                                          \
       /* GIVEN */                                                        \
-      auto p0 = rand_p(obj.get(), conf.field(), kNumel);                 \
+      auto p0 = rand_p(obj.get(), kNumel);                               \
       auto b0 = p2b(obj.get(), p0);                                      \
                                                                          \
       for (auto bits : kShiftBits) {                                     \
@@ -492,7 +492,7 @@ TEST_P(BooleanTest, P2B) {
     auto obj = factory(conf, lctx);
 
     /* GIVEN */
-    auto p0 = rand_p(obj.get(), conf.field(), kNumel);
+    auto p0 = rand_p(obj.get(), kNumel);
 
     /* WHEN */
     auto prev = obj->getState<Communicator>()->getStats();
@@ -516,7 +516,7 @@ TEST_P(BooleanTest, B2P) {
     auto obj = factory(conf, lctx);
 
     /* GIVEN */
-    auto p0 = rand_p(obj.get(), conf.field(), kNumel);
+    auto p0 = rand_p(obj.get(), kNumel);
 
     /* WHEN */
     auto b0 = p2b(obj.get(), p0);
@@ -540,7 +540,7 @@ TEST_P(BooleanTest, BitrevB) {
     auto obj = factory(conf, lctx);
 
     /* GIVEN */
-    auto p0 = rand_p(obj.get(), conf.field(), kNumel);
+    auto p0 = rand_p(obj.get(), kNumel);
 
     /* WHEN */
     auto b0 = p2b(obj.get(), p0);
@@ -571,7 +571,7 @@ TEST_P(ConversionTest, A2B) {
     auto obj = factory(conf, lctx);
 
     /* GIVEN */
-    auto p0 = rand_p(obj.get(), conf.field(), kNumel);
+    auto p0 = rand_p(obj.get(), kNumel);
     auto a0 = p2a(obj.get(), p0);
 
     /* WHEN */
@@ -595,7 +595,7 @@ TEST_P(ConversionTest, B2A) {
     auto obj = factory(conf, lctx);
 
     /* GIVEN */
-    auto p0 = rand_p(obj.get(), conf.field(), kNumel);
+    auto p0 = rand_p(obj.get(), kNumel);
     auto a0 = p2a(obj.get(), p0);
 
     /* WHEN */
@@ -624,7 +624,7 @@ TEST_P(ConversionTest, MSB) {
     }
 
     /* GIVEN */
-    auto p0 = rand_p(obj.get(), conf.field(), kNumel);
+    auto p0 = rand_p(obj.get(), kNumel);
     auto a0 = p2a(obj.get(), p0);
 
     /* WHEN */

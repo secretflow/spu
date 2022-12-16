@@ -202,7 +202,7 @@ BENCHMARK_DEFINE_F(PsiBench, KkrtPsi)
     /* Sender */
     auto a_proc = [](const std::shared_ptr<yacl::link::Context>& ctx,
                      const std::vector<uint128_t>& items) {
-      yacl::BaseRecvOptions recv_opts;
+      yacl::crypto::BaseOtRecvStore recv_opts;
       psi::GetKkrtOtSenderOptions(ctx, 512, &recv_opts);
       psi::KkrtPsiSend(ctx, recv_opts, items);
     };
@@ -210,7 +210,7 @@ BENCHMARK_DEFINE_F(PsiBench, KkrtPsi)
     /* Receiver */
     auto b_proc = [](const std::shared_ptr<yacl::link::Context>& ctx,
                      const std::vector<uint128_t>& items) {
-      yacl::BaseSendOptions send_opts;
+      yacl::crypto::BaseOtSendStore send_opts;
       psi::GetKkrtOtReceiverOptions(ctx, 512, &send_opts);
       return psi::KkrtPsiRecv(ctx, send_opts, items);
     };

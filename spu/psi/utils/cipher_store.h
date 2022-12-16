@@ -16,7 +16,10 @@
 
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
+
+#include "yacl/link/link.h"
 
 #include "spu/psi/utils/hash_bucket_cache.h"
 
@@ -42,6 +45,18 @@ class ICipherStore {
   // match the `target_rank`.
   virtual void SaveSelf(std::string ciphertext) = 0;
   virtual void SavePeer(std::string ciphertext) = 0;
+
+  virtual void SaveSelf(const std::vector<std::string>& ciphertext) {
+    for (size_t i = 0; i < ciphertext.size(); ++i) {
+      SaveSelf(ciphertext[i]);
+    }
+  }
+
+  virtual void SavePeer(const std::vector<std::string>& ciphertext) {
+    for (size_t i = 0; i < ciphertext.size(); ++i) {
+      SavePeer(ciphertext[i]);
+    }
+  }
 };
 
 class MemoryCipherStore : public ICipherStore {
@@ -84,6 +99,53 @@ class DiskCipherStore : public ICipherStore {
 
   std::unique_ptr<HashBucketCache> self_cache_;
   std::unique_ptr<HashBucketCache> peer_cache_;
+};
+
+class CachedCsvCipherStore : public ICipherStore {
+ public:
+  CachedCsvCipherStore(const std::string& self_csv, const std::string& peer_csv,
+                       bool self_read_only = true, bool peer_read_only = true);
+
+  ~CachedCsvCipherStore();
+
+  void SaveSelf(std::string ciphertext) override;
+
+  void SavePeer(std::string ciphertext) override;
+
+  void SaveSelf(const std::vector<std::string>& ciphertext) override;
+
+  void SavePeer(const std::vector<std::string>& ciphertext) override;
+
+  std::vector<std::string> GetId() {
+    std::vector<std::string> ids = {"id"};
+    return ids;
+  }
+
+  size_t GetSelfItemsCount() { return self_items_count_; }
+  size_t GetPeerItemsCount() { return peer_items_count_; }
+
+  void FlushPeer() {
+    if (!peer_read_only_) {
+      peer_out_->Flush();
+    }
+  }
+
+  std::vector<uint64_t> FinalizeAndComputeIndices(size_t bucket_size);
+
+ private:
+  std::unique_ptr<io::OutputStream> self_out_;
+  std::unique_ptr<io::OutputStream> peer_out_;
+
+  std::string self_csv_path_;
+  std::string peer_csv_path_;
+
+  bool self_read_only_;
+  bool peer_read_only_;
+
+  size_t self_items_count_ = 0;
+  size_t peer_items_count_ = 0;
+
+  std::vector<std::string> self_data_;
 };
 
 }  // namespace spu::psi

@@ -14,18 +14,22 @@
 
 #include "spu/psi/bucket_psi.h"
 
+#include <algorithm>
 #include <filesystem>
 #include <numeric>
 #include <type_traits>
+#include <utility>
 
 #include "absl/time/clock.h"
 #include "absl/time/time.h"
 #include "spdlog/spdlog.h"
 #include "yacl/base/exception.h"
-#include "yacl/crypto/utils/hash_util.h"
+#include "yacl/crypto/base/hash/hash_utils.h"
+#include "yacl/crypto/utils/rand.h"
 #include "yacl/utils/scope_guard.h"
 #include "yacl/utils/serialize.h"
 
+#include "spu/psi/core/ecdh_oprf_psi.h"
 #include "spu/psi/core/ecdh_psi.h"
 #include "spu/psi/cryptor/cryptor_selector.h"
 #include "spu/psi/io/io.h"
@@ -58,6 +62,22 @@ bool HashListEqualTest(const std::vector<yacl::Buffer>& hash_list) {
   return true;
 }
 
+std::vector<uint8_t> ReadEcSecretKeyFile(const std::string& file_path) {
+  auto file_byte_size = std::filesystem::file_size(file_path);
+  YACL_ENFORCE(file_byte_size == kEccKeySize,
+               "error format: key file bytes is not {}", kEccKeySize);
+
+  std::ifstream rf(file_path, std::ios::in | std::ios::binary);
+
+  YACL_ENFORCE(rf.is_open(), "open file {} error", file_path);
+
+  std::vector<uint8_t> secret_key(kEccKeySize);
+  rf.read(reinterpret_cast<char*>(secret_key.data()), secret_key.size());
+  rf.close();
+
+  return secret_key;
+}
+
 }  // namespace
 
 BucketPsi::BucketPsi(BucketPsiConfig config,
@@ -74,48 +94,62 @@ PsiResultReport BucketPsi::Run() {
                           config_.input_params().select_fields().begin(),
                           config_.input_params().select_fields().end());
 
-  // input dataset pre check
-  SPDLOG_INFO("Begin sanity check for input file: {}, precheck_switch:{}",
-              config_.input_params().path(), config_.input_params().precheck());
-  std::shared_ptr<CsvChecker> checker;
-  auto csv_check_f = std::async([&] {
-    checker = std::make_shared<CsvChecker>(
-        config_.input_params().path(), selected_fields_,
-        std::filesystem::path(config_.output_params().path())
-            .parent_path()
-            .string(),
-        !config_.input_params().precheck());
-  });
-  // keep alived
-  if (ic_mode_) {
-    csv_check_f.get();
-  } else {
-    SyncWait(lctx_, &csv_check_f);
-  }
-  SPDLOG_INFO("End sanity check for input file: {}, size={}",
-              config_.input_params().path(), checker->data_count());
-  report.set_original_count(checker->data_count());
-
-  // gather others hash digest
-  bool digest_equal = false;
-  if (!ic_mode_) {
-    std::vector<yacl::Buffer> digest_buf_list =
-        yacl::link::AllGather(lctx_, checker->hash_digest(), "PSI:SYNC_DIGEST");
-    digest_equal = HashListEqualTest(digest_buf_list);
-  }
-
-  // run psi
   std::vector<uint64_t> indices;
-  if (!digest_equal) {
-    indices = RunPsi(checker->data_count());
+  bool digest_equal = false;
+
+  if (config_.psi_type() != PsiType::ECDH_OPRF_UNBALANCED_PSI_2PC_OFFLINE &&
+      config_.psi_type() != PsiType::ECDH_OPRF_UNBALANCED_PSI_2PC_ONLINE) {
+    // input dataset pre check
+    SPDLOG_INFO("Begin sanity check for input file: {}, precheck_switch:{}",
+                config_.input_params().path(),
+                config_.input_params().precheck());
+    std::shared_ptr<CsvChecker> checker;
+    auto csv_check_f = std::async([&] {
+      checker = std::make_shared<CsvChecker>(
+          config_.input_params().path(), selected_fields_,
+          std::filesystem::path(config_.output_params().path())
+              .parent_path()
+              .string(),
+          !config_.input_params().precheck());
+    });
+    // keep alived
+    if (ic_mode_) {
+      csv_check_f.get();
+    } else {
+      SyncWait(lctx_, &csv_check_f);
+    }
+    SPDLOG_INFO("End sanity check for input file: {}, size={}",
+                config_.input_params().path(), checker->data_count());
+    report.set_original_count(checker->data_count());
+
+    // gather others hash digest
+    bool digest_equal = false;
+    if (!ic_mode_) {
+      std::vector<yacl::Buffer> digest_buf_list = yacl::link::AllGather(
+          lctx_, checker->hash_digest(), "PSI:SYNC_DIGEST");
+      digest_equal = HashListEqualTest(digest_buf_list);
+    }
+
+    // run psi
+
+    if (!digest_equal) {
+      uint64_t items_count = checker->data_count();
+      indices = RunPsi(items_count);
+    } else {
+      SPDLOG_INFO("Skip doing psi, because dataset has been aligned!");
+      indices.resize(checker->data_count());
+      std::iota(indices.begin(), indices.end(), 0);
+    }
+
   } else {
-    SPDLOG_INFO("Skip doing psi, because dataset has been aligned!");
-    indices.resize(checker->data_count());
-    std::iota(indices.begin(), indices.end(), 0);
+    uint64_t items_count = 0;
+    indices = RunPsi(items_count);
+    report.set_original_count(items_count);
   }
 
-  if (static_cast<size_t>(config_.receiver_rank()) != lctx_->Rank() &&
-      config_.broadcast_result() == false) {
+  if ((static_cast<size_t>(config_.receiver_rank()) != lctx_->Rank() &&
+       config_.broadcast_result() == false) ||
+      (config_.psi_type() == PsiType::ECDH_OPRF_UNBALANCED_PSI_2PC_OFFLINE)) {
     report.set_intersection_count(-1);
     // no generate output file;
     return report;
@@ -357,7 +391,7 @@ void BucketPsi::Handshake(uint64_t self_items_count) {
   }
 }
 
-std::vector<uint64_t> BucketPsi::RunPsi(uint64_t self_items_count) {
+std::vector<uint64_t> BucketPsi::RunPsi(uint64_t& self_items_count) {
   SPDLOG_INFO("Run psi protocol={}, self_items_count={}", config_.psi_type(),
               self_items_count);
 
@@ -388,6 +422,179 @@ std::vector<uint64_t> BucketPsi::RunPsi(uint64_t self_items_count) {
     RunEcdhPsi(psi_options, batch_provider, cipher_store);
 
     return cipher_store->FinalizeAndComputeIndices();
+  } else if (config_.psi_type() ==
+             PsiType::ECDH_OPRF_UNBALANCED_PSI_2PC_OFFLINE) {
+    std::string tmp_dir =
+        fmt::format("bucket_tmp_{}", yacl::crypto::RandU64(true));
+    std::filesystem::create_directory(tmp_dir);
+
+    std::vector<uint64_t> results;
+
+    if (lctx_->Rank() == config_.receiver_rank()) {
+      spu::psi::EcdhOprfPsiOptions client_options;
+
+      client_options.link0 = lctx_;
+      client_options.link1 = lctx_->Spawn();
+      client_options.curve_type = CurveType::CURVE_FOURQ;
+
+      std::shared_ptr<EcdhOprfPsiClient> dh_oprf_psi_client_offline =
+          std::make_shared<EcdhOprfPsiClient>(client_options);
+
+      std::string self_cipher_store_path = fmt::format(
+          "{}/tmp-self-cipher-store-{}.csv", tmp_dir, lctx_->Rank());
+      std::string peer_cipher_store_path_sort_in = fmt::format(
+          "{}/tmp-peer-cipher-store-sort-in-{}.csv", tmp_dir, lctx_->Rank());
+
+      std::shared_ptr<CachedCsvCipherStore> cipher_store =
+          std::make_shared<CachedCsvCipherStore>(self_cipher_store_path,
+                                                 peer_cipher_store_path_sort_in,
+                                                 false, false);
+
+      // config_.output_params().path());
+      SPDLOG_INFO("Start Sync");
+      std::vector<size_t> sync_list = AllGatherItemsSize(lctx_, 0);
+      SPDLOG_INFO("After Sync");
+      dh_oprf_psi_client_offline->RecvFinalEvaluatedItems(cipher_store);
+
+      cipher_store->FlushPeer();
+
+      std::vector<std::string> ids = cipher_store->GetId();
+
+      SPDLOG_INFO("begin MultiKeySort");
+
+      std::string peer_cipher_store_path_sort_out = fmt::format(
+          "{}/tmp-peer-cipher-store-sort-out-{}.csv", tmp_dir, lctx_->Rank());
+      MultiKeySort(peer_cipher_store_path_sort_in,
+                   peer_cipher_store_path_sort_out, ids);
+      SPDLOG_INFO("sort in bytes:{}",
+                  std::filesystem::file_size(peer_cipher_store_path_sort_in));
+      SPDLOG_INFO("rename bytes:{}",
+                  std::filesystem::file_size(peer_cipher_store_path_sort_out));
+      std::filesystem::rename(peer_cipher_store_path_sort_out,
+                              config_.preprocess_path());
+
+      SPDLOG_INFO("sort out bytes:{}",
+                  std::filesystem::file_size(config_.preprocess_path()));
+
+      SPDLOG_INFO("end MultiKeySort");
+
+    } else {
+      spu::psi::EcdhOprfPsiOptions server_options;
+      server_options.link0 = lctx_;
+      server_options.link1 = lctx_->Spawn();
+      server_options.curve_type = CurveType::CURVE_FOURQ;
+
+      std::vector<uint8_t> server_private_key =
+          ReadEcSecretKeyFile(config_.ecdh_secret_key_path());
+
+      SPDLOG_INFO("secret_key hex len:{}", server_private_key.size());
+
+      std::shared_ptr<EcdhOprfPsiServer> dh_oprf_psi_server_offline =
+          std::make_shared<EcdhOprfPsiServer>(server_options,
+                                              server_private_key);
+
+      std::vector<std::string> ids = {"id"};
+      std::shared_ptr<IBatchProvider> batch_provider =
+          std::make_shared<CachedCsvBatchProvider>(
+              config_.input_params().path(), selected_fields_,
+              config_.bucket_size(), true);
+
+      SPDLOG_INFO("Start sync");
+      std::vector<size_t> sync_list = AllGatherItemsSize(lctx_, 0);
+      SPDLOG_INFO("After sync");
+
+      self_items_count =
+          dh_oprf_psi_server_offline->FullEvaluateAndSend(batch_provider);
+    }
+
+    if (!tmp_dir.empty()) {
+      std::error_code ec;
+      std::filesystem::remove_all(tmp_dir, ec);
+      //     Leave error as it is, do nothing
+    }
+
+    return results;
+  } else if (config_.psi_type() ==
+             PsiType::ECDH_OPRF_UNBALANCED_PSI_2PC_ONLINE) {
+    std::vector<uint64_t> results;
+
+    std::string tmp_dir =
+        fmt::format("bucket_tmp_{}", yacl::crypto::RandU64(true));
+    std::filesystem::create_directory(tmp_dir);
+
+    SPDLOG_INFO(" input file path:{}", config_.input_params().path());
+    SPDLOG_INFO("output file path:{}", config_.output_params().path());
+
+    if (lctx_->Rank() == config_.receiver_rank()) {
+      spu::psi::EcdhOprfPsiOptions client_options;
+
+      client_options.link0 = lctx_;
+      client_options.link1 = lctx_->Spawn();
+      client_options.curve_type = CurveType::CURVE_FOURQ;
+
+      std::shared_ptr<EcdhOprfPsiClient> dh_oprf_psi_client_online =
+          std::make_shared<EcdhOprfPsiClient>(client_options);
+
+      std::shared_ptr<IBatchProvider> batch_provider =
+          std::make_shared<CsvBatchProvider>(config_.input_params().path(),
+                                             selected_fields_);
+      std::shared_ptr<IBatchProvider> batch_provider2 =
+          std::make_shared<CsvBatchProvider>(config_.input_params().path(),
+                                             selected_fields_);
+
+      std::string cipher_store_path1 = fmt::format(
+          "{}/tmp-self-cipher-store-{}.csv", tmp_dir, lctx_->Rank());
+      std::string cipher_store_path2 =
+          fmt::format("{}/tmp-peer-cipher-store-{}.csv",
+                      std::filesystem::path(config_.output_params().path())
+                          .parent_path()
+                          .string(),
+                      lctx_->NextRank());
+
+      std::shared_ptr<CachedCsvCipherStore> cipher_store =
+          std::make_shared<CachedCsvCipherStore>(
+              cipher_store_path1, config_.preprocess_path(), false, true);
+
+      SPDLOG_INFO("online protocol CachedCsvCipherStore: {} {}",
+                  cipher_store_path1, config_.preprocess_path());
+
+      std::future<size_t> f_client_send_blind = std::async([&] {
+        return dh_oprf_psi_client_online->SendBlindedItems(batch_provider);
+      });
+
+      dh_oprf_psi_client_online->RecvEvaluatedItems(batch_provider2,
+                                                    cipher_store);
+
+      self_items_count = f_client_send_blind.get();
+
+      results = cipher_store->FinalizeAndComputeIndices(config_.bucket_size());
+      SPDLOG_INFO("indices size:{}", results.size());
+
+    } else {
+      spu::psi::EcdhOprfPsiOptions server_options;
+      server_options.link0 = lctx_;
+      server_options.link1 = lctx_->Spawn();
+      server_options.curve_type = CurveType::CURVE_FOURQ;
+
+      std::vector<uint8_t> server_private_key =
+          ReadEcSecretKeyFile(config_.ecdh_secret_key_path());
+
+      SPDLOG_INFO("secret_key len:{}", server_private_key.size());
+
+      std::shared_ptr<EcdhOprfPsiServer> dh_oprf_psi_server_online =
+          std::make_shared<EcdhOprfPsiServer>(server_options,
+                                              server_private_key);
+
+      dh_oprf_psi_server_online->RecvBlindAndSendEvaluate();
+    }
+
+    if (!tmp_dir.empty()) {
+      std::error_code ec;
+      std::filesystem::remove_all(tmp_dir, ec);
+      //   Leave error as it is, do nothing
+    }
+
+    return results;
   } else {
     return RunBucketPsi(self_items_count);
   }

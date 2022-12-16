@@ -21,6 +21,7 @@
 #include "spu/mpc/aby3/value.h"
 #include "spu/mpc/common/abprotocol.h"
 #include "spu/mpc/common/prg_state.h"
+#include "spu/mpc/common/pub2k.h"
 #include "spu/mpc/util/circuits.h"
 #include "spu/mpc/util/communicator.h"
 #include "spu/mpc/util/ring_ops.h"
@@ -126,7 +127,7 @@ ArrayRef B2ASelector::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
 ArrayRef B2AByPPA::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
   SPU_TRACE_MPC_LEAF(ctx, in);
 
-  const auto field = ctx->caller()->getState<Aby3State>()->getDefaultField();
+  const auto field = ctx->caller()->getState<Z2kState>()->getDefaultField();
   const auto* in_ty = in.eltype().as<BShrTy>();
   const size_t in_nbits = in_ty->nbits();
 
@@ -285,7 +286,7 @@ static std::vector<T> bitCompose(absl::Span<T const> in, size_t nbits) {
 ArrayRef B2AByOT::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
   SPU_TRACE_MPC_LEAF(ctx, in);
 
-  const auto field = ctx->caller()->getState<Aby3State>()->getDefaultField();
+  const auto field = ctx->caller()->getState<Z2kState>()->getDefaultField();
   const auto* in_ty = in.eltype().as<BShrTy>();
   const size_t in_nbits = in_ty->nbits();
 
