@@ -15,6 +15,8 @@
 #include "spu/kernel/hal/constants.h"
 
 #include "spu/core/encoding.h"
+#include "spu/core/ndarray_ref.h"
+#include "spu/core/shape_util.h"
 #include "spu/core/xt_helper.h"
 #include "spu/kernel/hal/prot_wrapper.h"
 #include "spu/kernel/hal/shape_ops.h"
@@ -43,6 +45,11 @@ Value make_pub2k(HalContext* ctx, PtBufferView bv) {
 Value constant(HalContext* ctx, PtBufferView bv,
                absl::Span<const int64_t> shape) {
   SPU_TRACE_HAL_DISP(ctx, bv, shape);
+
+  if (isEmpty(shape)) {
+    auto pt = make_pub2k(ctx, bv);
+    return Value(NdArrayRef(nullptr, pt.storage_type(), shape), pt.dtype());
+  }
 
   // If view shape is same as destination shape, just make public
   if (shape.empty() || shape == bv.shape) {

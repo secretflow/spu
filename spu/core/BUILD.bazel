@@ -210,3 +210,14 @@ spu_cc_library(
         "@yacl//yacl/utils:parallel",
     ],
 )
+
+spu_cc_library(
+    name = "log",
+    srcs = ["log.cc"],
+    hdrs = ["log.h"],
+    deps = [
+        "@com_github_brpc_brpc//:butil",
+        "@com_github_fmtlib_fmt//:fmtlib",
+        "@yacl//yacl/base:exception",
+    ],
+)

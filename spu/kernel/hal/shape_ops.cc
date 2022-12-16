@@ -106,7 +106,8 @@ Value slice(HalContext* ctx, const Value& in,
     YACL_ENFORCE(end_indices[idx] <= in.shape()[idx],
                  "Slice end at axis {} = {} is larger than input shape {}", idx,
                  end_indices[idx], in.shape()[idx]);
-    new_shape[idx] = end_indices[idx] - start_indices[idx];
+    new_shape[idx] = std::max(end_indices[idx] - start_indices[idx],
+                              static_cast<int64_t>(0));
     if (!strides.empty()) {
       auto n = new_shape[idx] / strides[idx];
       auto q = new_shape[idx] % strides[idx];

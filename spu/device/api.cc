@@ -279,6 +279,7 @@ void executeImpl(OpExecutor *executor, spu::HalContext *hctx,
     ExecutionOptions opts;
     opts.do_type_check = rt_config.enable_type_checker();
     opts.do_log_execution = rt_config.enable_pphlo_trace();
+    opts.do_parallel = false;
     outputs = runRegion(executor, hctx, nullptr, entry_function.getBody(),
                         inputs, opts);
   }

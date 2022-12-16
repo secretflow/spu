@@ -70,6 +70,16 @@ TEST(ShapeUtilTest, FlattenIndex2D) {
   EXPECT_THAT(unflattenIndex(8, shape), testing::ElementsAre(2, 2));
 }
 
+TEST(ShapeUilTest, Empty) {
+  EXPECT_TRUE(isEmpty({0}));
+  EXPECT_TRUE(isEmpty({0, 1}));
+  EXPECT_TRUE(isEmpty({1, 0}));
+
+  EXPECT_FALSE(isEmpty({}));
+  EXPECT_FALSE(isEmpty({1}));
+  EXPECT_FALSE(isEmpty({1, 1}));
+}
+
 INSTANTIATE_TEST_SUITE_P(
     DeduceDotShapeTestInstances, DeduceDotShapeTest,
     testing::Values(

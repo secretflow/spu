@@ -41,6 +41,7 @@ pybind_extension(
         ":version_script.lds",
         "//spu/compiler:compile",
         "//spu/compiler/common:compilation_context",
+        "//spu/core:log",
         "//spu/device:api",
         "//spu/device:io",
         "//spu/device/pphlo:pphlo_executor",

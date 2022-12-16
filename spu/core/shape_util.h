@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <cstdint>
 #include <numeric>
 #include <vector>
 
@@ -25,6 +26,8 @@ namespace spu {
 // This module assumes row major
 
 int64_t calcNumel(absl::Span<const int64_t> shape);
+
+bool isEmpty(absl::Span<const int64_t> shape);
 
 std::vector<int64_t> makeCompactStrides(absl::Span<const int64_t> shape);
 

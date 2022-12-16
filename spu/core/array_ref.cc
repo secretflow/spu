@@ -80,7 +80,7 @@ ArrayRef makeConstantArrayRef(Type eltype, size_t numel) {
   );
 }
 
-bool ArrayRef::isCompact() const { return stride_ == 1; }
+bool ArrayRef::isCompact() const { return stride_ == 1 || numel_ == 0; }
 
 std::shared_ptr<yacl::Buffer> ArrayRef::getOrCreateCompactBuf() const {
   if (isCompact() && offset_ == 0) {

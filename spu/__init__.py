@@ -29,5 +29,6 @@ from spu.spu_pb2 import (
 
 from .binding.api import Io, Runtime, compile
 from .binding import util
+from .binding._lib.logging as logging
 
 from .binding import psi

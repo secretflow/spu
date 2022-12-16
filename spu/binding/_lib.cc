@@ -24,6 +24,7 @@
 
 #include "spu/compiler/common/compilation_context.h"
 #include "spu/compiler/compile.h"
+#include "spu/core/log.h"
 #include "spu/core/type_util.h"
 #include "spu/device/api.h"
 #include "spu/device/io.h"
@@ -422,6 +423,37 @@ void BindLibs(py::module& m) {
       "Run bucket psi. ic_mode means run in interconnection mode");
 }
 
+void BindLogging(py::module& m) {
+  m.doc() = R"pbdoc(
+              SPU Logging Library
+                  )pbdoc";
+
+  py::enum_<logging::LogLevel>(m, "LogLevel")
+      .value("DEBUG", logging::LogLevel::DEBUG)
+      .value("INFO", logging::LogLevel::INFO)
+      .value("WARN", logging::LogLevel::WARN)
+      .value("ERROR", logging::LogLevel::ERROR);
+
+  py::class_<logging::LogOptions>(m, "LogOptions",
+                                  "options for setup spu logger")
+      .def(py::init<>())
+      .def_readwrite("enable_console_logger",
+                     &logging::LogOptions::enable_console_logger)
+      .def_readwrite("system_log_path", &logging::LogOptions::system_log_path)
+      .def_readwrite("log_level", &logging::LogOptions::log_level)
+      .def_readwrite("max_log_file_size",
+                     &logging::LogOptions::max_log_file_size)
+      .def_readwrite("max_log_file_count",
+                     &logging::LogOptions::max_log_file_count);
+
+  m.def(
+      "setup_logging",
+      [](const logging::LogOptions& options) -> void {
+        logging::SetupLogging(options);
+      },
+      py::arg("options") = logging::LogOptions(), NO_GIL);
+}
+
 PYBIND11_MODULE(_lib, m) {
   py::register_exception_translator([](std::exception_ptr p) {
     try {
@@ -484,6 +516,9 @@ PYBIND11_MODULE(_lib, m) {
 
   py::module libs_m = m.def_submodule("libs");
   BindLibs(libs_m);
+
+  py::module logging_m = m.def_submodule("logging");
+  BindLogging(logging_m);
 }
 
 }  // namespace spu

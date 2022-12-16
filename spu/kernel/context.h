@@ -65,6 +65,9 @@ class HalContext final {
 
   //
   std::default_random_engine& rand_engine() { return rand_engine_; }
+
+  //
+  std::unique_ptr<HalContext> fork();
 };
 
 }  // namespace spu

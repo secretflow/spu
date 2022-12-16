@@ -14,6 +14,8 @@
 
 #include "spu/core/shape_util.h"
 
+#include <algorithm>
+#include <cstdint>
 #include <numeric>
 #include <vector>
 
@@ -24,6 +26,11 @@ namespace spu {
 int64_t calcNumel(absl::Span<const int64_t> shape) {
   return std::accumulate(shape.begin(), shape.end(), static_cast<int64_t>(1),
                          std::multiplies<>());
+}
+
+bool isEmpty(absl::Span<const int64_t> shape) {
+  return std::any_of(shape.begin(), shape.end(),
+                     [](int64_t d) { return d == 0; });
 }
 
 // Citation:

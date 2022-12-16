@@ -1,4 +1,4 @@
-// Copyright 2021 Ant Group Co., Ltd.
+// Copyright 2022 Ant Group Co., Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,21 +12,25 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "spu/kernel/hlo/const.h"
+
+#include "gtest/gtest.h"
+
+#include "spu/core/ndarray_ref.h"
 #include "spu/kernel/context.h"
+#include "spu/kernel/hal/test_util.h"
+#include "spu/kernel/value.h"
 
-#include "spu/mpc/factory.h"
+namespace spu::kernel::hlo {
 
-namespace spu {
+TEST(ConstTest, Empty) {
+  HalContext hctx = hal::test::makeRefHalContext();
 
-HalContext::HalContext(RuntimeConfig config,
-                       std::shared_ptr<yacl::link::Context> lctx)
-    : rt_config_(config),
-      lctx_(lctx),
-      prot_(mpc::Factory::CreateCompute(config, lctx)),
-      rand_engine_(config.public_random_seed()) {}
+  auto empty_c = Constant(&hctx, true, {0});
 
-std::unique_ptr<HalContext> HalContext::fork() {
-  return std::make_unique<HalContext>(rt_config_, lctx_->Spawn());
+  EXPECT_EQ(empty_c.numel(), 0);
+  EXPECT_EQ(empty_c.shape().size(), 1);
+  EXPECT_EQ(empty_c.shape()[0], 0);
 }
 
-}  // namespace spu
+}  // namespace spu::kernel::hlo

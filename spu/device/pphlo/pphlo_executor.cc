@@ -131,9 +131,9 @@ spu::Visibility convertVisibility(mlir::pphlo::Visibility vis) {
 namespace spu::device::pphlo {
 namespace {
 
-const spu::Value &lookupValue(SymbolScope *scope, mlir::Value key,
-                              const ExecutionOptions &opts) {
-  const auto &val = scope->lookupValue(key);
+spu::Value lookupValue(SymbolScope *scope, mlir::Value key,
+                       const ExecutionOptions &opts) {
+  auto val = scope->lookupValue(key);
 
   if (opts.do_type_check) {
     const auto mlir_type = key.getType();
