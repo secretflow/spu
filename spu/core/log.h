@@ -12,21 +12,31 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "spu/kernel/context.h"
+#pragma once
 
-#include "spu/mpc/factory.h"
+#include <string>
 
-namespace spu {
+#include "spdlog/spdlog.h"
 
-HalContext::HalContext(RuntimeConfig config,
-                       std::shared_ptr<yacl::link::Context> lctx)
-    : rt_config_(config),
-      lctx_(lctx),
-      prot_(mpc::Factory::CreateCompute(config, lctx)),
-      rand_engine_(config.public_random_seed()) {}
+namespace spu::logging {
 
-std::unique_ptr<HalContext> HalContext::fork() {
-  return std::make_unique<HalContext>(rt_config_, lctx_->Spawn());
-}
+enum class LogLevel {
+  DEBUG = 0,
+  INFO = 1,
+  WARN = 2,
+  ERROR = 3,
+};
 
-}  // namespace spu
+struct LogOptions {
+  bool enable_console_logger = true;
+  std::string system_log_path = "spu.log";
+
+  LogLevel log_level = LogLevel::INFO;
+
+  size_t max_log_file_size = 500 * 1024 * 1024;
+  size_t max_log_file_count = 10;
+};
+
+void SetupLogging(const LogOptions& options = {});
+
+}  // namespace spu::logging

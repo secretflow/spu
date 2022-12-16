@@ -15,6 +15,7 @@
 #pragma once
 
 #include <functional>
+#include <mutex>
 
 #include "llvm/ADT/DenseMap.h"
 #include "mlir/IR/BuiltinOps.h"
@@ -31,7 +32,7 @@ class SymbolScope final {
   SymbolScope *parent_;
 
   // Local symbols inside this value.
-  // TODO: thread safety for parallel execution.
+  mutable std::mutex mu_;
   llvm::DenseMap<mlir::Value, spu::Value> symbols_;
 
 public:
@@ -41,15 +42,21 @@ public:
   bool isRoot() const { return parent_ == nullptr; }
 
   //
+  bool hasValue(mlir::Value key) const;
+  bool hasValues(absl::Span<mlir::Value const> keys) const;
   const spu::Value &lookupValue(mlir::Value key) const;
   void addValue(::mlir::Value key, const spu::Value &val);
   void addValue(::mlir::Value key, spu::Value &&val);
+
+protected:
+  bool hasValueUnsafe(mlir::Value key) const;
 };
 
 // This class encapsulate execution states used during the evaluation.
 struct ExecutionOptions {
   bool do_type_check = false;
   bool do_log_execution = false;
+  bool do_parallel = false;
 };
 
 class OpExecutor {

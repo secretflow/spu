@@ -537,6 +537,7 @@ def builtin_spu_init(
         return
     desc = liblink.Desc()
     desc.recv_timeout_ms = 100 * 1000  # 100 seconds
+    desc.throttle_window_size = 1000
     desc.http_max_payload_size = 32 * 1024 * 1024  # Default set link payload to 32M
     for rank, addr in enumerate(addrs):
         desc.add_party(f"r{rank}", addr)

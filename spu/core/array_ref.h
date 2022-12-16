@@ -92,10 +92,16 @@ class ArrayRef {
 
   // Get data pointer
   void* data() {
-    return reinterpret_cast<void*>(buf_->data<std::byte>() + offset_);
+    if (buf_) {
+      return reinterpret_cast<void*>(buf_->data<std::byte>() + offset_);
+    }
+    return nullptr;
   }
   void const* data() const {
-    return reinterpret_cast<void const*>(buf_->data<std::byte>() + offset_);
+    if (buf_) {
+      return reinterpret_cast<void const*>(buf_->data<std::byte>() + offset_);
+    }
+    return nullptr;
   }
 
   // Get element.

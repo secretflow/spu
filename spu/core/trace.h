@@ -15,6 +15,7 @@
 #pragma once
 
 #include <chrono>
+#include <mutex>
 #include <sstream>
 #include <string>
 #include <string_view>
@@ -140,6 +141,8 @@ class Tracer final {
   // the recorded action, at ending time.
   std::vector<ActionRecord> records_;
 
+  std::mutex mutex_;
+
  public:
   explicit Tracer(std::string name, int64_t mask,
                   std::shared_ptr<spdlog::logger> logger)
@@ -162,6 +165,7 @@ class Tracer final {
 
   void addRecord(ActionRecord&& rec) {
     if ((rec.flag & mask_ & TR_MODALL) != 0 && (mask_ & TR_REC) != 0) {
+      std::unique_lock lk(mutex_);
       records_.push_back(std::move(rec));
     }
   }

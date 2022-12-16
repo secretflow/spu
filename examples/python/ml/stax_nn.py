@@ -55,6 +55,7 @@ parser.add_argument("-c", "--config", default="examples/python/conf/3pc.json", t
 parser.add_argument("-e", "--epoch", default=5, type=int)
 parser.add_argument("-b", "--batch_size", default=128, type=int)
 parser.add_argument("-o", "--optimizer", default="SGD", type=str)
+parser.add_argument('--run_cpu', default=False, action='store_true')
 args = parser.parse_args()
 
 # Follows https://arxiv.org/pdf/2107.00501.pdf Appendix C.
@@ -293,8 +294,10 @@ elif args.model == 'network_d':
     fn = train_chamelon
 else:
     raise RuntimeError("unsupported model.")
-print('Run on CPU\n------\n')
-fn(run_on_spu=False)
+
+if args.run_cpu:
+    print('Run on CPU\n------\n')
+    fn(run_on_spu=False)
 
 print('Run on SPU\n------\n')
 with open(args.config, 'r') as file:

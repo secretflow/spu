@@ -19,6 +19,7 @@
 
 #include "yacl/base/exception.h"
 
+#include "spu/core/shape_util.h"
 #include "spu/kernel/hal/constants.h"
 #include "spu/kernel/hal/prot_wrapper.h"
 #include "spu/kernel/hal/shape_ops.h"
@@ -52,6 +53,9 @@ std::tuple<int64_t, int64_t, int64_t> calcMmulTilingSize(int64_t m, int64_t n,
                                                          int64_t k,
                                                          size_t elsize,
                                                          size_t mem_limit) {
+  if (m == 0 || n == 0 || k == 0) {
+    return {m, n, k};
+  }
   const auto elnum_limit = static_cast<int64_t>(mem_limit / elsize);
   const int64_t expected_step = std::ceil(std::sqrt(elnum_limit));
 
