@@ -141,7 +141,6 @@ def run_on_cpu():
 
     print(centers)
     print(labels)
-    print()
 
 
 def run_on_spu():
@@ -166,7 +165,6 @@ def run_on_spu():
 
     print(centers)
     print(labels)
-    print()
 
 
 if __name__ == "__main__":
