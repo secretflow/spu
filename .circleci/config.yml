@@ -29,9 +29,11 @@ jobs:
     steps:
       - checkout
       - restore_cache:
-          keys:
-            - &pip-cache pip-{{ checksum "requirements.txt" }}
-            - build-{{ arch }}-{{ .Environment.CIRCLE_PREVIOUS_BUILD_NUM }}	            
+          name: "Restore pip cache"
+          key: &pip-cache pip-{{ checksum "requirements.txt" }}
+      - restore_cache:
+          name: "Restore build cache"
+          key: build-{{ arch }}-            
       - run:
           name: "Install dependencies"
           command: pip install -r requirements.txt
