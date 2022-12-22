@@ -23,7 +23,7 @@ jobs:
     # See: https://circleci.com/docs/2.0/configuration-reference/#docker-machine-macos-windows-executor
     docker:
       - image: registry.hub.docker.com/secretflow/secretflow-gcc11-anolis-dev:0.3
-    resource_class: xlarge
+    resource_class: 2xlarge
     # Add steps to the job
     # See: https://circleci.com/docs/2.0/configuration-reference/#steps
     steps:
@@ -41,7 +41,7 @@ jobs:
           command: |
             set -ex
             rm -rf /root/.cache/bazel/_bazel_root/install/
-            bazel test //spu/... --ui_event_filters=-info,-debug,-warning --jobs=8 --test_timeout=1800 --test_output=errors
+            bazel test //spu/... --ui_event_filters=-info,-debug,-warning --jobs=16 --test_timeout=1800 --test_output=errors
             sh .ci/rename-junit-xml.sh
       - store_test_results:
           path: test-results
