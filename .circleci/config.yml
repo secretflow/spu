@@ -39,10 +39,12 @@ jobs:
       - run:
           name: "test"
           command: |
+            set -ex
             rm -rf /root/.cache/bazel/_bazel_root/install/
             bazel test //spu/... --ui_event_filters=-info,-debug,-warning --jobs=8 --test_timeout=1800 --test_output=errors
+            sh .ci/rename-junit-xml.sh
       - store_test_results:
-          path: ./bazel-testlogs
+          path: test-results
       - persist_to_workspace:
           root: /root/.cache
           paths:
