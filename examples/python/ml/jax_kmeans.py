@@ -92,7 +92,8 @@ def kmeans(data_alice, data_bob, k, random_numbers, n_epochs=10):
                 return sums
 
             sums = jax.lax.fori_loop(0, n, loop_for_4, sums)
-            avg = sums / jnp.sum(jnp.where(labels == i, 1, 0))
+            cluster_numbers = jnp.sum(jnp.where(labels == i, 1, 0))
+            avg = jnp.where(cluster_numbers != 0, sums / cluster_numbers, jnp.zeros(m))
             new_centers = new_centers.at[i].set(avg)
             return new_centers
 
