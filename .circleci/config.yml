@@ -38,7 +38,7 @@ jobs:
           name: "Install dependencies"
           command: pip install -r requirements.txt
       - run:
-          name: "test"
+          name: "build and test"
           command: |
             set -ex
             rm -rf /root/.cache/bazel/_bazel_root/install/
