@@ -63,8 +63,7 @@ def kmeans(data_alice, data_bob, k, random_numbers, n_epochs=10):
 
     def loop_while_func(stat):
 
-        rounds, centers, new_centers, labels = stat
-        centers = new_centers
+        rounds, centers, labels = stat
 
         def loop_for_1(i, stat):
             labels = stat
@@ -97,14 +96,14 @@ def kmeans(data_alice, data_bob, k, random_numbers, n_epochs=10):
             new_centers = new_centers.at[i].set(avg)
             return new_centers
 
-        new_centers = jax.lax.fori_loop(0, k, loop_for_3, jnp.zeros((k, m)))
+        centers = jax.lax.fori_loop(0, k, loop_for_3, jnp.zeros((k, m)))
 
-        return rounds + 1, centers, new_centers, labels
+        return rounds + 1, centers, labels
 
-    stat = (0, jnp.zeros((k, m)), centers, labels)
+    stat = (0, centers, labels)
     res = jax.lax.while_loop(lambda stat: stat[0] < n_epochs, loop_while_func, stat)
 
-    return res[1], res[3]
+    return res[1], res[2]
 
 
 @ppd.device("P1")
