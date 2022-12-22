@@ -31,6 +31,8 @@ jobs:
       - restore_cache:
           keys:
             - &pip-cache pip-{{ checksum "requirements.txt" }}
+      - attach_workspace:
+          at: /root/.cache
       - run:
           name: "Install dependencies"
           command: pip install -r requirements.txt
@@ -42,7 +44,7 @@ jobs:
       - store_test_results:
           path: ./bazel-testlogs
       - persist_to_workspace:
-          root: ~/.cache
+          root: /root/.cache
           paths:
             - bazel
       - save_cache:
