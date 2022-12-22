@@ -31,8 +31,7 @@ jobs:
       - restore_cache:
           keys:
             - &pip-cache pip-{{ checksum "requirements.txt" }}
-      - attach_workspace:
-          at: /root/.cache
+            - build-{{ arch }}-{{ .Environment.CIRCLE_PREVIOUS_BUILD_NUM }}	            
       - run:
           name: "Install dependencies"
           command: pip install -r requirements.txt
@@ -45,14 +44,14 @@ jobs:
             sh .ci/rename-junit-xml.sh
       - store_test_results:
           path: test-results
-      - persist_to_workspace:
-          root: /root/.cache
-          paths:
-            - bazel
       - save_cache:
           key: *pip-cache
           paths:
             - /usr/local/lib64/python3.8/site-packages
+      - save_cache:
+          key: build-{{ arch }}-{{ .Environment.CIRCLE_BUILD_NUM }}
+          paths:
+            - /root/.cache/bazel
   macOS_ut:
     macos:
       xcode: 13.0.0
