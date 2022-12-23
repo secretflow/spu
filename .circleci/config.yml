@@ -70,9 +70,6 @@ jobs:
     steps:
       - checkout
       - restore_cache:
-          name: "Restore python cache"
-          key: &conda-cache pip-{{ arch}}-{{ checksum "requirements.txt" }}
-      - restore_cache:
           name: "Restore build cache"
           key: build-{{ arch }}-      
       - run:
@@ -94,10 +91,6 @@ jobs:
             conda install -y grpcio
 
             pip install -r requirements.txt
-      - save_cache:
-          key: *conda-cache
-          paths:
-            - /Users/distiller/miniconda
       - run:
           name: "build"
           command: |
@@ -126,9 +119,6 @@ jobs:
     resource_class: large
     steps:
       - checkout
-      - restore_cache:
-          name: "Restore python cache"
-          key: &conda-cache pip-{{ arch}}-{{ checksum "requirements.txt" }}
       - restore_cache:
           name: "Restore build cache"
           key: build-{{ arch }}-   
