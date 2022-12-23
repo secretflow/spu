@@ -79,7 +79,7 @@ exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-html_theme = 'pydata_sphinx_theme'
+html_theme = 'sf_pydata_sphinx_theme'
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
@@ -115,14 +115,8 @@ html_theme_options = {
             "type": "fontawesome",
         },
     ],
-    "external_links": [
-        {"name": "SecretFlow", "url": "https://secretflow.readthedocs.io/"},
-        {"name": "HEU", "url": "https://heu.readthedocs.io/"},
-    ],
     "logo": {
         "text": "SPU",
-        "image_light": "logo-light.png",
-        "image_dark": "logo-dark.png",
     },
 }
 
@@ -149,6 +143,8 @@ myst_heading_anchors = 1
 myst_title_to_header = True
 
 # app setup hook
+
+
 def setup(app):
     app.add_config_value(
         'recommonmark_config',

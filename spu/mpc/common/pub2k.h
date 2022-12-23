@@ -35,11 +35,16 @@ class Z2kState : public State {
 
  public:
   static constexpr char kBindName[] = "Z2kState";
+
   explicit Z2kState(FieldType field) : field_(field) {}
+
   FieldType getDefaultField() const { return field_; }
+
   std::unique_ptr<State> fork() override {
     return std::make_unique<Z2kState>(field_);
   }
+
+  bool hasLowCostFork() const override { return true; }
 };
 
 void regPub2kTypes();

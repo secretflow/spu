@@ -8,12 +8,15 @@
 
 ## staging
 > please add your unreleased change here.
+- [API] Add get_var_meta
+- [API] Change ValueProto to bytes in Runtime/IO binding API
 - [Feature] Add SPU logging
 - [Feature] ECDH-PSI supports white box interconnection mode
 - [Feature] Various performance improvements
 - [Feature] Lift IfOp condition limit
-- [3p] Build with Tensorflow 2.11.0
 - [bugfix] Fix various crashes
+- [3p] Build with Tensorflow 2.11.0
+- [3p] Update JAX to 0.4.1
 
 ## 20221116
 - [SPU] 0.3.0 release

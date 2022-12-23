@@ -15,6 +15,7 @@
 #pragma once
 
 #include "spu/core/array_ref.h"
+#include "spu/core/parallel_utils.h"
 #include "spu/core/type_util.h"
 
 namespace spu::mpc::aby3 {
@@ -50,16 +51,22 @@ PtType calcBShareBacktype(size_t nbits);
 
 template <typename T>
 size_t maxBitWidth(ArrayView<T> av) {
-  size_t res = 0;
   if constexpr (sizeof(T) == 16) {
     // TODO: absl::bit_width can not handle int128
     return 128;
   } else {
-    for (auto idx = 0; idx < av.numel(); idx++) {
-      res = std::max(res, static_cast<size_t>(absl::bit_width(av[idx])));
+    const int64_t kNumBits = sizeof(T) * 8 + 1;
+    std::vector<uint8_t> mask(kNumBits, 0);
+    // FIXME: fix multi-threading write race.
+    pforeach(0, av.numel(),
+             [&](int64_t idx) { mask[absl::bit_width(av[idx])] = 1; });
+    for (int64_t bit = kNumBits - 1; bit >= 0; bit--) {
+      if (mask[bit] == 1) {
+        return bit;
+      }
     }
+    return 0;
   }
-  return res;
 }
 
 ArrayRef getShare(const ArrayRef& in, int64_t share_idx);

@@ -134,6 +134,17 @@ message ValueProto {
   bytes content = 5;
 }
 
+message ValueMeta {
+  // The data type.
+  DataType data_type = 1;
+
+  // The data visibility.
+  Visibility visibility = 2;
+
+  // The shape of the value.
+  ShapeProto shape = 3;
+}
+
 //////////////////////////////////////////////////////////////////////////
 // Runtime configuration
 //////////////////////////////////////////////////////////////////////////
@@ -260,6 +271,9 @@ message RuntimeConfig {
 
   // The sigmoid function approximation model.
   SigmoidMode sigmoid_mode = 56;
+
+  // Enable a simpler rsqrt approximation
+  bool enable_lower_accuracy_rsqrt = 57;
 
   /// - MPC protocol related definitions.
 }

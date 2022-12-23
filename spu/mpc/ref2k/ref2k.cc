@@ -396,7 +396,7 @@ std::unique_ptr<Object> makeRef2kProtocol(
     const std::shared_ptr<yacl::link::Context>& lctx) {
   registerTypes();
 
-  auto obj = std::make_unique<Object>();
+  auto obj = std::make_unique<Object>("REF2K");
 
   // register random states & kernels.
   obj->addState<PrgState>();

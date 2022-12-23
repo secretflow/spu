@@ -17,9 +17,9 @@ from __future__ import annotations
 import os
 from typing import List
 
-import spu.spu_pb2 as spu_pb2
-
 from cachetools import LRUCache, cached
+
+import spu.spu_pb2 as spu_pb2
 
 from . import _lib
 
@@ -45,7 +45,7 @@ class Runtime(object):
         """
         return self._vm.Run(executable.SerializeToString())
 
-    def set_var(self, name: str, value: spu_pb2.ValueProto) -> None:
+    def set_var(self, name: str, value: bytes) -> None:
         """Set an SPU value.
 
         Args:
@@ -53,9 +53,9 @@ class Runtime(object):
             value (ValueProto): value data.
 
         """
-        return self._vm.SetVar(name, value.SerializeToString())
+        return self._vm.SetVar(name, value)
 
-    def get_var(self, name: str) -> spu_pb2.ValueProto:
+    def get_var(self, name: str) -> bytes:
         """Get an SPU value.
 
         Args:
@@ -64,8 +64,19 @@ class Runtime(object):
         Returns:
             ValueProto: Data data.
         """
+        return self._vm.GetVar(name)
+
+    def get_var_meta(self, name: str) -> spu_pb2.ValueMeta:
+        """Get an SPU value without content.
+
+        Args:
+            name (str): Id of value.
+
+        Returns:
+            ValueProto: Data with out content.
+        """
         ret = spu_pb2.ValueProto()
-        ret.ParseFromString(self._vm.GetVar(name))
+        ret.ParseFromString(self._vm.GetVarMeta(name))
         return ret
 
     def del_var(self, name: str) -> None:
@@ -95,7 +106,7 @@ class Io(object):
 
     def make_shares(
         self, x: 'np.ndarray', vtype: spu_pb2.Visibility, owner_rank: int = -1
-    ) -> List[spu_pb2.ValueProto]:
+    ) -> List[bytes]:
         """Convert from NumPy array to list of SPU value(s).
 
         Args:
@@ -106,15 +117,9 @@ class Io(object):
         Returns:
             [ValueProto]: output.
         """
-        str_shares = self._io.MakeShares(x, vtype, owner_rank)
-        rets = []
-        for str_share in str_shares:
-            value_share = spu_pb2.ValueProto()
-            value_share.ParseFromString(str_share)
-            rets.append(value_share)
-        return rets
+        return self._io.MakeShares(x, vtype, owner_rank)
 
-    def reconstruct(self, xs: List[spu_pb2.ValueProto]) -> 'np.ndarray':
+    def reconstruct(self, str_shares: List[bytes]) -> 'np.ndarray':
         """Convert from list of SPU value(s) to NumPy array.
 
         Args:
@@ -123,7 +128,6 @@ class Io(object):
         Returns:
             np.ndarray: output.
         """
-        str_shares = [x.SerializeToString() for x in xs]
         return self._io.Reconstruct(str_shares)
 
 

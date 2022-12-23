@@ -16,6 +16,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <future>
 
 #include "absl/numeric/bits.h"
 
@@ -628,12 +629,20 @@ Value f_rsqrt(HalContext* ctx, const Value& x) {
 
   // let rsqrt(u) = 26.02942339 * u^4 - 49.86605845 * u^3 + 38.4714796 * u^2
   // - 15.47994394 * u + 4.14285016
-  std::vector<Value> coeffs = {constant(ctx, -15.47994394, x.shape()),
-                               constant(ctx, 38.4714796, x.shape()),
-                               constant(ctx, -49.86605845, x.shape()),
-                               constant(ctx, 26.02942339, x.shape())};
-  auto r = f_add(ctx, f_polynomial(ctx, u, coeffs),
-                 constant(ctx, 4.14285016, x.shape()));
+  spu::Value r;
+  if (!ctx->rt_config().enable_lower_accuracy_rsqrt()) {
+    std::vector<Value> coeffs = {constant(ctx, -15.47994394, x.shape()),
+                                 constant(ctx, 38.4714796, x.shape()),
+                                 constant(ctx, -49.86605845, x.shape()),
+                                 constant(ctx, 26.02942339, x.shape())};
+    r = f_add(ctx, f_polynomial(ctx, u, coeffs),
+              constant(ctx, 4.14285016, x.shape()));
+  } else {
+    std::vector<Value> coeffs = {constant(ctx, -5.9417, x.shape()),
+                                 constant(ctx, 4.7979, x.shape())};
+    r = f_add(ctx, f_polynomial(ctx, u, coeffs),
+              constant(ctx, 3.1855, x.shape()));
+  }
 
   // let a = 2^((e+f)/2), that is a[i] = 1 for i = (e+f)/2 else 0
   // let b = lsb(e+f)

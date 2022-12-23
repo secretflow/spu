@@ -36,7 +36,7 @@ std::unique_ptr<Object> makeCheetahProtocol(
     const std::shared_ptr<yacl::link::Context>& lctx) {
   semi2k::registerTypes();
 
-  auto obj = std::make_unique<Object>();
+  auto obj = std::make_unique<Object>("CHEETAH");
 
   // add communicator
   obj->addState<Communicator>(lctx);

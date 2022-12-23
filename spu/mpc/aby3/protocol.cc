@@ -31,7 +31,7 @@ std::unique_ptr<Object> makeAby3Protocol(
     const std::shared_ptr<yacl::link::Context>& lctx) {
   aby3::registerTypes();
 
-  auto obj = std::make_unique<Object>();
+  auto obj = std::make_unique<Object>("ABY3");
 
   obj->addState<Z2kState>(conf.field());
 

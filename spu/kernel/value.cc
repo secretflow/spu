@@ -115,6 +115,16 @@ ValueProto Value::toProto() const {
   return proto;
 }
 
+ValueMeta Value::toMetaProto() const {
+  ValueMeta proto;
+  proto.set_data_type(dtype_);
+  proto.set_visibility(vtype());
+  for (const auto& d : shape()) {
+    proto.mutable_shape()->add_dims(d);
+  }
+  return proto;
+}
+
 Value Value::fromProto(const ValueProto& proto) {
   const auto eltype = Type::fromString(proto.storage_type());
 

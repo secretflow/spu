@@ -27,6 +27,7 @@ class State {
  public:
   virtual ~State() = default;
 
+  virtual bool hasLowCostFork() const { return false; }
   virtual std::unique_ptr<State> fork();
 };
 
@@ -37,12 +38,16 @@ class Object final {
   std::map<std::string_view, std::shared_ptr<Kernel>> kernels_;
   std::map<std::string_view, std::unique_ptr<State>> states_;
 
+  std::string name_;
+
  public:
-  std::string name() const {
-    return fmt::format("CTX:{}", std::this_thread::get_id());
-  }
+  explicit Object(std::string name) : name_(std::move(name)) {}
+
+  const std::string& name() const { return name_; }
 
   std::unique_ptr<Object> fork();
+
+  bool hasLowCostFork() const;
 
   void regKernel(std::string_view name, std::unique_ptr<Kernel> kernel);
 

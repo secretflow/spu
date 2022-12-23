@@ -51,6 +51,8 @@ class PrgState : public State {
   PrgState();
   explicit PrgState(std::shared_ptr<yacl::link::Context> lctx);
 
+  bool hasLowCostFork() const override { return true; }
+
   std::unique_ptr<State> fork() override;
 
   ArrayRef genPriv(FieldType field, size_t numel);

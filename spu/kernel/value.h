@@ -64,6 +64,7 @@ class Value final {
 
   // Serialize to protobuf.
   ValueProto toProto() const;
+  ValueMeta toMetaProto() const;
 
   // Deserialize from protobuf.
   static Value fromProto(const ValueProto& proto);

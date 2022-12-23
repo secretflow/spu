@@ -31,7 +31,7 @@ std::unique_ptr<Object> makeSemi2kProtocol(
     const std::shared_ptr<yacl::link::Context>& lctx) {
   semi2k::registerTypes();
 
-  auto obj = std::make_unique<Object>();
+  auto obj = std::make_unique<Object>("SEMI2K");
 
   // add communicator
   obj->addState<Communicator>(lctx);
