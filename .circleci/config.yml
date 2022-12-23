@@ -40,14 +40,6 @@ jobs:
       - run:
           name: "build"
           command: bazel build //spu/... -c opt --ui_event_filters=-info,-debug,-warning --jobs=16 --disk_cache=~/.cache/spu_build_cache
-      - save_cache:
-          key: *pip-cache
-          paths:
-            - /usr/local/lib64/python3.8/site-packages
-      - save_cache:
-          key: spu-build-{{ arch }}-{{ .Environment.CIRCLE_BUILD_NUM }}
-          paths:
-            - /root/.cache/spu_build_cache
       - run:
           name: "test"
           command: |
@@ -57,6 +49,14 @@ jobs:
             sh .ci/rename-junit-xml.sh
             find bazel-bin/ -executable -type f -name "*_test"  -print0 | xargs -0 tar -cvzf test_binary.tar
             exit ${test_status}
+      - save_cache:
+          key: *pip-cache
+          paths:
+            - /usr/local/lib64/python3.8/site-packages
+      - save_cache:
+          key: spu-build-{{ arch }}-{{ .Environment.CIRCLE_BUILD_NUM }}
+          paths:
+            - /root/.cache/spu_build_cache
       - store_test_results:
           path: test-results
       - store_artifacts: 
@@ -101,7 +101,7 @@ jobs:
             declare -i test_status
             bazel test //spu/... -c opt --ui_event_filters=-info,-debug,-warning --jobs=16 --test_timeout=180 --test_output=errors | tee test_result.log; test_status=${PIPESTATUS[0]}
             sh .ci/rename-junit-xml.sh
-            find bazel-bin/ -executable -type f -name "*_test"  -print0 | xargs -0 tar -cvzf test_binary.tar
+            find bazel-bin/ -perm +111 -type f -name "*_test"  -print0 | xargs -0 tar -cvzf test_binary.tar
             exit ${test_status}
       - store_test_results:
           path: test-results
