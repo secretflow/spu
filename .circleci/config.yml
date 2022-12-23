@@ -86,20 +86,18 @@ jobs:
             pip install -r requirements.txt
       - run:
           name: "build"
-          command: |
-            rm -rf /private/var/tmp/_bazel_distiller/install/
-            bazel build //spu/... -c opt --ui_event_filters=-info,-debug,-warning --jobs=8
+          command: bazel build //spu/... -c opt --ui_event_filters=-info,-debug,-warning --disk_cache=~/.cache/spu_build_cache
       - save_cache:
           key: build-{{ arch }}-{{ .Environment.CIRCLE_BUILD_NUM }}
           paths:
-            - /private/var/tmp/_bazel_distiller
+            - ~/.cache/spu_build_cache
       - run:
           name: "test"
           command: |
             set +e
             brew install coreutils
             declare -i test_status
-            bazel test //spu/... -c opt --ui_event_filters=-info,-debug,-warning --jobs=16 --test_timeout=180 --test_output=errors | tee test_result.log; test_status=${PIPESTATUS[0]}
+            bazel test //spu/... -c opt --ui_event_filters=-info,-debug,-warning --test_output=errors | tee test_result.log; test_status=${PIPESTATUS[0]}
             sh .ci/rename-junit-xml.sh
             find bazel-bin/ -perm +111 -type f -name "*_test"  -print0 | xargs -0 tar -cvzf test_binary.tar
             exit ${test_status}
