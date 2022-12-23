@@ -52,6 +52,8 @@ class BeaverTfpUnsafe : public Beaver {
   Beaver::Pair Trunc(FieldType field, size_t size, size_t bits) override;
 
   ArrayRef RandBit(FieldType field, size_t size) override;
+
+  std::shared_ptr<yacl::link::Context> GetLink() const { return lctx_; }
 };
 
 }  // namespace spu::mpc
