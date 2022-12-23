@@ -102,7 +102,7 @@ jobs:
           command: |
             set -ex
             declare -i test_status
-            bazel test //spu/... -c opt --ui_event_filters=-info,-debug,-warning --jobs=16 --test_timeout=1800 --test_output=errors | tee test_result.log; test_status=${PIPESTATUS[0]}
+            bazel test //spu/... -c opt --ui_event_filters=-info,-debug,-warning --jobs=16 --test_output=errors | tee test_result.log; test_status=${PIPESTATUS[0]}
             sh .ci/rename-junit-xml.sh
             exit ${test_status}
       - store_test_results:
