@@ -60,6 +60,11 @@ jobs:
             exit ${test_status}
       - store_test_results:
           path: test-results
+      - run:
+          name: "archive build artifacts"
+          command: find bazel-bin/ -executable -name "*_test"  -print0 | xargs -0 tar -cvzf test_binary.tar
+      - store_artifacts: 
+          path: test_binary.tar
   macOS_ut:
     macos:
       xcode: 13.4.1
@@ -103,6 +108,11 @@ jobs:
             exit ${test_status}
       - store_test_results:
           path: test-results
+      - run:
+          name: "archive build artifacts"
+          command: find bazel-bin/ -executable -name "*_test"  -print0 | xargs -0 tar -cvzf test_binary.tar
+      - store_artifacts: 
+          path: test_binary.tar
   macOS_publish:
     macos:
       xcode: 13.4.1
