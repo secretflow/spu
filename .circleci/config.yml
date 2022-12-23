@@ -45,7 +45,7 @@ jobs:
           command: |
             set +e
             declare -i test_status
-            bazel test //spu/... -c opt --ui_event_filters=-info,-debug,-warning --jobs=16 --test_timeout=180 --test_output=errors --disk_cache=~/.cache/spu_build_cache | tee test_result.log; test_status=${PIPESTATUS[0]}
+            bazel test //spu/... -c opt --ui_event_filters=-info,-debug,-warning --jobs=16 --test_output=errors --disk_cache=~/.cache/spu_build_cache | tee test_result.log; test_status=${PIPESTATUS[0]}
             sh .ci/rename-junit-xml.sh
             find bazel-bin/ -executable -type f -name "*_test"  -print0 | xargs -0 tar -cvzf test_binary.tar
             exit ${test_status}
@@ -71,7 +71,7 @@ jobs:
       - checkout
       - restore_cache:
           name: "Restore build cache"
-          key: build-{{ arch }}-      
+          key: spu-build-{{ arch }}-      
       - run:
           name: "Install homebrew dependencies"
           command: brew install bazel cmake ninja nasm libomp wget
@@ -88,7 +88,7 @@ jobs:
           name: "build"
           command: bazel build //spu/... -c opt --ui_event_filters=-info,-debug,-warning --disk_cache=~/.cache/spu_build_cache
       - save_cache:
-          key: build-{{ arch }}-{{ .Environment.CIRCLE_BUILD_NUM }}
+          key: spu-build-{{ arch }}-{{ .Environment.CIRCLE_BUILD_NUM }}
           paths:
             - ~/.cache/spu_build_cache
       - run:
@@ -97,7 +97,7 @@ jobs:
             set +e
             brew install coreutils
             declare -i test_status
-            bazel test //spu/... -c opt --ui_event_filters=-info,-debug,-warning --test_output=errors | tee test_result.log; test_status=${PIPESTATUS[0]}
+            bazel test //spu/... -c opt --ui_event_filters=-info,-debug,-warning --test_output=errors ~/.cache/spu_build_cache| tee test_result.log; test_status=${PIPESTATUS[0]}
             sh .ci/rename-junit-xml.sh
             find bazel-bin/ -perm +111 -type f -name "*_test"  -print0 | xargs -0 tar -cvzf test_binary.tar
             exit ${test_status}
@@ -115,7 +115,7 @@ jobs:
       - checkout
       - restore_cache:
           name: "Restore build cache"
-          key: build-{{ arch }}-   
+          key: spu-build-{{ arch }}-  
       - run:
           name: "Install homebrew dependencies"
           command: brew install bazel cmake ninja nasm libomp wget
@@ -132,7 +132,7 @@ jobs:
           name: "build package and publish"
           command: |
             set +e
-            env BAZEL_MAX_JOBS=8 sh ./build_wheel_entrypoint.sh
+            sh ./build_wheel_entrypoint.sh
             spu_wheel_name=$(<./spu_wheel.name)
             spu_wheel_path="./${spu_wheel_name//sf-spu/sf_spu}"
             python3 -m pip install twine
@@ -146,12 +146,12 @@ jobs:
       - checkout
       - restore_cache:
           name: "Restore build cache"
-          key: build-{{ arch }}-   
+          key: spu-build-{{ arch }}-   
       - run:
           name: "build package and publish"
           command: |
             set +e
-            env BAZEL_MAX_JOBS=8 sh ./build_wheel_entrypoint.sh
+            env BAZEL_MAX_JOBS=16 sh ./build_wheel_entrypoint.sh
             spu_wheel_name=$(<./spu_wheel.name)
             spu_wheel_path="./${spu_wheel_name//sf-spu/sf_spu}"
             python3 -m pip install twine
