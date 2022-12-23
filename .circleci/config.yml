@@ -62,7 +62,7 @@ jobs:
           path: test-results
       - run:
           name: "archive build artifacts"
-          command: find bazel-bin/ -executable -name "*_test"  -print0 | xargs -0 tar -cvzf test_binary.tar
+          command: find bazel-bin/ -executable -type f -name "*_test"  -print0 | xargs -0 tar -cvzf test_binary.tar
       - store_artifacts: 
           path: test_binary.tar
   macOS_ut:
@@ -110,7 +110,7 @@ jobs:
           path: test-results
       - run:
           name: "archive build artifacts"
-          command: find bazel-bin/ -executable -name "*_test"  -print0 | xargs -0 tar -cvzf test_binary.tar
+          command: find bazel-bin/ -executable -type f -name "*_test"  -print0 | xargs -0 tar -cvzf test_binary.tar
       - store_artifacts: 
           path: test_binary.tar
   macOS_publish:
