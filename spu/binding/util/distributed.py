@@ -24,7 +24,6 @@ import pickle
 import sys
 import traceback
 import uuid
-import multiprocess
 from collections import Counter
 from enum import Enum
 from functools import partial, wraps
@@ -44,6 +43,7 @@ from typing import (
 import cloudpickle
 import grpc
 import jax
+import multiprocess
 import numpy as np
 from google.protobuf import json_format
 from jax import linear_util as lu
@@ -537,7 +537,7 @@ def builtin_spu_init(
         return
     desc = liblink.Desc()
     desc.recv_timeout_ms = 100 * 1000  # 100 seconds
-    desc.throttle_window_size = 1000
+    desc.throttle_window_size = 0  # disable throttle
     desc.http_max_payload_size = 32 * 1024 * 1024  # Default set link payload to 32M
     for rank, addr in enumerate(addrs):
         desc.add_party(f"r{rank}", addr)
@@ -574,9 +574,7 @@ def builtin_spu_run(
     # do infeed.
     for idx, arg in enumerate(args_flat):
         if isinstance(arg, ValueWrapper):
-            v = ValueProto()
-            v.ParseFromString(arg.value_str)
-            rt.set_var(spu_exec.input_names[idx], v)
+            rt.set_var(spu_exec.input_names[idx], arg.value_str)
         else:
             arg = np.asarray(jax.numpy.asarray(arg))
             fst, *_ = io.make_shares(arg, Visibility.VIS_PUBLIC)
@@ -586,15 +584,16 @@ def builtin_spu_run(
     rt.run(spu_exec)
 
     # do outfeed
-    ret_protos = [rt.get_var(name) for name in spu_exec.output_names]
+    values_str = [rt.get_var(name) for name in spu_exec.output_names]
+    values_meta = [rt.get_var_meta(name) for name in spu_exec.output_names]
     rets = [
         ValueWrapper(
-            shape_spu_to_np(proto.shape),
-            dtype_spu_to_np(proto.data_type),
-            proto.visibility,
-            proto.SerializeToString(),
+            shape_spu_to_np(value_meta.shape),
+            dtype_spu_to_np(value_meta.data_type),
+            value_meta.visibility,
+            value_str,
         )
-        for proto in ret_protos
+        for value_str, value_meta in zip(values_str, values_meta)
     ]
 
     # cleanup
@@ -963,13 +962,8 @@ class SPU(Device):
 
     def get(self, obj: SPU.Object):
         value_wrappers = [nc.get(ref) for nc, ref in zip(self.node_clients, obj.refs)]
-        protos = []
-        for wrapper in value_wrappers:
-            proto = ValueProto()
-            proto.ParseFromString(wrapper.value_str)
-            protos.append(proto)
         io = Io(len(self.internal_addrs), self.runtime_config)
-        return io.reconstruct(protos)
+        return io.reconstruct([w.value_str for w in value_wrappers])
 
     def save(self, spu_objects: List[SPU.Object], filename: str):
         assert (
@@ -1203,7 +1197,7 @@ def SPU2PYU(to: PYU, obj: SPU.Object):
             proto.ParseFromString(share.value_str)
             protos.append(proto)
 
-        return spu_io.reconstruct(protos)
+        return spu_io.reconstruct([s.value_str for s in shares])
 
     return to(reconstruct)(
         len(obj.device.node_clients),
@@ -1233,10 +1227,7 @@ def PYU2SPU(to: SPU, obj: PYU.Object, vtype=Visibility.VIS_SECRET):
             raise Exception("unsupported frontend framework.")
 
         shares = spu_io.make_shares(x, vtype, owner_rank)
-        return tuple(
-            ValueWrapper(x.shape, x.dtype, vtype, share.SerializeToString())
-            for share in shares
-        )
+        return tuple(ValueWrapper(x.shape, x.dtype, vtype, share) for share in shares)
 
     owner_rank = -1
     for index, node_client in enumerate(to.node_clients):

@@ -255,6 +255,10 @@ class RuntimeWrapper {
     return env_.getVar(name).toProto().SerializeAsString();
   }
 
+  py::bytes GetVarMeta(const std::string& name) const {
+    return env_.getVar(name).toMetaProto().SerializeAsString();
+  }
+
   void DelVar(const std::string& name) { env_.delVar(name); }
 
   void Clear() { env_.clear(); }
@@ -504,6 +508,7 @@ PYBIND11_MODULE(_lib, m) {
                         // SetVar & GetVar are using
                         // py::byte, so they must acquire gil...
       .def("GetVar", &RuntimeWrapper::GetVar)
+      .def("GetVarMeta", &RuntimeWrapper::GetVarMeta)
       .def("DelVar", &RuntimeWrapper::DelVar);
 
   // bind spu io suite.

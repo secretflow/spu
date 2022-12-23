@@ -23,6 +23,12 @@ import spu.binding.api as ppapi
 import spu.spu_pb2 as spu_pb2
 
 
+def _bytes_to_pb(msg: bytes):
+    ret = spu_pb2.ValueProto()
+    ret.ParseFromString(msg)
+    return ret
+
+
 @parameterized.product(
     wsize=(2, 3, 5),
     prot=(
@@ -45,7 +51,10 @@ class UnitTests(parameterized.TestCase):
 
         xs = io.make_shares(x, spu_pb2.Visibility.VIS_SECRET)
         self.assertEqual(len(xs), wsize)
-        self.assertEqual(xs[0].shape, spu_pb2.ShapeProto(dims=(3, 4, 5)))
+        self.assertEqual(
+            _bytes_to_pb(xs[0]).shape,
+            spu_pb2.ShapeProto(dims=(3, 4, 5)),
+        )
         y = io.reconstruct(xs)
 
         npt.assert_equal(x, y)
@@ -55,7 +64,10 @@ class UnitTests(parameterized.TestCase):
 
         xs = io.make_shares(x, spu_pb2.Visibility.VIS_SECRET)
         self.assertEqual(len(xs), wsize)
-        self.assertEqual(xs[0].shape, spu_pb2.ShapeProto(dims=(3, 4, 5)))
+        self.assertEqual(
+            _bytes_to_pb(xs[0]).shape,
+            spu_pb2.ShapeProto(dims=(3, 4, 5)),
+        )
         y = io.reconstruct(xs)
 
         npt.assert_almost_equal(x, y, decimal=5)
@@ -65,7 +77,10 @@ class UnitTests(parameterized.TestCase):
 
         xs = io.make_shares(x, spu_pb2.Visibility.VIS_PUBLIC)
         self.assertEqual(len(xs), wsize)
-        self.assertEqual(xs[0].shape, spu_pb2.ShapeProto(dims=(3, 4, 5)))
+        self.assertEqual(
+            _bytes_to_pb(xs[0]).shape,
+            spu_pb2.ShapeProto(dims=(3, 4, 5)),
+        )
         y = io.reconstruct(xs)
 
         npt.assert_almost_equal(x, y, decimal=5)
@@ -83,7 +98,10 @@ class UnitTests(parameterized.TestCase):
 
         xs = io.make_shares(x, spu_pb2.Visibility.VIS_SECRET)
         self.assertEqual(len(xs), wsize)
-        self.assertEqual(xs[0].shape, spu_pb2.ShapeProto(dims=(3, 4, 4)))
+        self.assertEqual(
+            _bytes_to_pb(xs[0]).shape,
+            spu_pb2.ShapeProto(dims=(3, 4, 4)),
+        )
         y = io.reconstruct(xs)
 
         npt.assert_equal(x, y)
@@ -94,7 +112,10 @@ class UnitTests(parameterized.TestCase):
 
         xs = io.make_shares(x, spu_pb2.Visibility.VIS_SECRET)
         self.assertEqual(len(xs), wsize)
-        self.assertEqual(xs[0].shape, spu_pb2.ShapeProto(dims=(3, 4, 4)))
+        self.assertEqual(
+            _bytes_to_pb(xs[0]).shape,
+            spu_pb2.ShapeProto(dims=(3, 4, 4)),
+        )
         y = io.reconstruct(xs)
 
         npt.assert_almost_equal(x, y, decimal=5)
@@ -105,7 +126,10 @@ class UnitTests(parameterized.TestCase):
 
         xs = io.make_shares(x, spu_pb2.Visibility.VIS_PUBLIC)
         self.assertEqual(len(xs), wsize)
-        self.assertEqual(xs[0].shape, spu_pb2.ShapeProto(dims=(3, 4, 4)))
+        self.assertEqual(
+            _bytes_to_pb(xs[0]).shape,
+            spu_pb2.ShapeProto(dims=(3, 4, 4)),
+        )
         y = io.reconstruct(xs)
 
         npt.assert_almost_equal(x, y, decimal=5)
@@ -122,7 +146,7 @@ class UnitTests(parameterized.TestCase):
 
         xs = io.make_shares(x, spu_pb2.Visibility.VIS_SECRET)
         self.assertEqual(len(xs), wsize)
-        self.assertEqual(xs[0].shape, spu_pb2.ShapeProto(dims=()))
+        self.assertEqual(_bytes_to_pb(xs[0]).shape, spu_pb2.ShapeProto(dims=()))
         y = io.reconstruct(xs)
 
         npt.assert_equal(x, y)
@@ -132,7 +156,7 @@ class UnitTests(parameterized.TestCase):
 
         xs = io.make_shares(x, spu_pb2.Visibility.VIS_SECRET)
         self.assertEqual(len(xs), wsize)
-        self.assertEqual(xs[0].shape, spu_pb2.ShapeProto(dims=()))
+        self.assertEqual(_bytes_to_pb(xs[0]).shape, spu_pb2.ShapeProto(dims=()))
         y = io.reconstruct(xs)
 
         npt.assert_almost_equal(x, y, decimal=5)
@@ -142,7 +166,7 @@ class UnitTests(parameterized.TestCase):
 
         xs = io.make_shares(x, spu_pb2.Visibility.VIS_PUBLIC)
         self.assertEqual(len(xs), wsize)
-        self.assertEqual(xs[0].shape, spu_pb2.ShapeProto(dims=()))
+        self.assertEqual(_bytes_to_pb(xs[0]).shape, spu_pb2.ShapeProto(dims=()))
         y = io.reconstruct(xs)
 
         npt.assert_almost_equal(x, y, decimal=5)

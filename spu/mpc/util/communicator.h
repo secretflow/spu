@@ -71,6 +71,8 @@ class Communicator : public State {
   explicit Communicator(std::shared_ptr<yacl::link::Context> lctx)
       : lctx_(std::move(lctx)) {}
 
+  bool hasLowCostFork() const override { return true; }
+
   std::unique_ptr<State> fork() override {
     // TODO: share the same statistics.
     return std::make_unique<Communicator>(lctx_->Spawn());

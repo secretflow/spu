@@ -14,24 +14,179 @@
 
 #include "spu/mpc/common/abprotocol.h"
 
+#include <future>
+
+#include "spu/core/parallel_utils.h"
 #include "spu/core/trace.h"
 #include "spu/mpc/common/pub2k.h"
 
 namespace spu::mpc {
 namespace {
 
-ArrayRef _Lazy2B(Object* obj, const ArrayRef& in) {
+// TODO(jint) may be we should move tiling to a `tiling` layer or dialect.
+ArrayRef block_par_unary(KernelEvalContext* ctx, std::string_view fn_name,
+                         const ArrayRef& in) {
+  const int64_t kBlockSize = kMinTaskSize;
+  if (!ctx->caller()->hasLowCostFork() || in.numel() <= kBlockSize) {
+    return ctx->caller()->call(fn_name, in);
+  }
+
+  std::string kBindName(fn_name);
+  SPU_TRACE_MPC_LEAF(ctx, in);
+
+  auto* obj = ctx->caller();
+  std::vector<std::unique_ptr<Object>> sub_objs;
+
+  const int64_t numBlocks =
+      in.numel() / kBlockSize + ((in.numel() % kBlockSize) != 0 ? 1 : 0);
+
+  for (int64_t blk_idx = 0; blk_idx < numBlocks; blk_idx++) {
+    sub_objs.push_back(obj->fork());
+  }
+
+  std::vector<std::future<ArrayRef>> futures;
+  for (int64_t blk_idx = 0; blk_idx < numBlocks; blk_idx++) {
+    futures.push_back(std::async(
+        [&](int64_t index) {
+          int64_t begin = index * kBlockSize;
+          int64_t end = std::min(begin + kBlockSize, in.numel());
+
+          return sub_objs[index]->call(fn_name, in.slice(begin, end));
+        },
+        blk_idx));
+  }
+
+  std::vector<ArrayRef> out_slices;
+  for (int64_t blk_idx = 0; blk_idx < numBlocks; blk_idx++) {
+    out_slices.push_back(futures[blk_idx].get());
+  }
+
+  // Assume out.numel = in.numel
+  ArrayRef out(out_slices[0].eltype(), in.numel());
+  for (int64_t blk_idx = 0; blk_idx < numBlocks; blk_idx++) {
+    int64_t begin = blk_idx * kBlockSize;
+    int64_t end = std::min(begin + kBlockSize, in.numel());
+    std::memcpy(&out.at(begin), &out_slices[blk_idx].at(0),
+                (end - begin) * out.elsize());
+  }
+
+  return out;
+}
+
+ArrayRef block_par_unary_with_size(KernelEvalContext* ctx,
+                                   std::string_view fn_name, const ArrayRef& in,
+                                   size_t bits) {
+  const int64_t kBlockSize = kMinTaskSize;
+  if (!ctx->caller()->hasLowCostFork() || in.numel() <= kBlockSize) {
+    return ctx->caller()->call(fn_name, in, bits);
+  }
+
+  std::string kBindName(fn_name);
+  SPU_TRACE_MPC_LEAF(ctx, in);
+
+  auto* obj = ctx->caller();
+  std::vector<std::unique_ptr<Object>> sub_objs;
+
+  const int64_t numBlocks =
+      in.numel() / kBlockSize + ((in.numel() % kBlockSize) != 0 ? 1 : 0);
+
+  for (int64_t blk_idx = 0; blk_idx < numBlocks; blk_idx++) {
+    sub_objs.push_back(obj->fork());
+  }
+
+  std::vector<std::future<ArrayRef>> futures;
+  for (int64_t blk_idx = 0; blk_idx < numBlocks; blk_idx++) {
+    futures.push_back(std::async(
+        [&](int64_t index) {
+          int64_t begin = index * kBlockSize;
+          int64_t end = std::min(begin + kBlockSize, in.numel());
+          return sub_objs[index]->call(fn_name, in.slice(begin, end), bits);
+        },
+        blk_idx));
+  }
+
+  std::vector<ArrayRef> out_slices;
+  for (int64_t blk_idx = 0; blk_idx < numBlocks; blk_idx++) {
+    out_slices.push_back(futures[blk_idx].get());
+  }
+
+  // Assume out.numel = in.numel
+  ArrayRef out(out_slices[0].eltype(), in.numel());
+  for (int64_t blk_idx = 0; blk_idx < numBlocks; blk_idx++) {
+    int64_t begin = blk_idx * kBlockSize;
+    int64_t end = std::min(begin + kBlockSize, in.numel());
+    std::memcpy(&out.at(begin), &out_slices[blk_idx].at(0),
+                (end - begin) * out.elsize());
+  }
+
+  return out;
+}
+
+ArrayRef block_par_binary(KernelEvalContext* ctx, std::string_view fn_name,
+                          const ArrayRef& lhs, const ArrayRef& rhs) {
+  const int64_t kBlockSize = kMinTaskSize;
+  YACL_ENFORCE(lhs.numel() == rhs.numel());
+  if (!ctx->caller()->hasLowCostFork() || lhs.numel() <= kBlockSize) {
+    return ctx->caller()->call(fn_name, lhs, rhs);
+  }
+
+  const int64_t numel = lhs.numel();
+
+  std::string kBindName(fn_name);
+  SPU_TRACE_MPC_LEAF(ctx, lhs);
+
+  auto* obj = ctx->caller();
+  std::vector<std::unique_ptr<Object>> sub_objs;
+
+  const int64_t numBlocks =
+      numel / kBlockSize + ((numel % kBlockSize) != 0 ? 1 : 0);
+
+  for (int64_t blk_idx = 0; blk_idx < numBlocks; blk_idx++) {
+    sub_objs.push_back(obj->fork());
+  }
+
+  std::vector<std::future<ArrayRef>> futures;
+  for (int64_t blk_idx = 0; blk_idx < numBlocks; blk_idx++) {
+    futures.push_back(std::async(
+        [&](int64_t index) {
+          int64_t begin = index * kBlockSize;
+          int64_t end = std::min(begin + kBlockSize, numel);
+
+          return sub_objs[index]->call(fn_name, lhs.slice(begin, end),
+                                       rhs.slice(begin, end));
+        },
+        blk_idx));
+  }
+
+  std::vector<ArrayRef> out_slices;
+  for (int64_t blk_idx = 0; blk_idx < numBlocks; blk_idx++) {
+    out_slices.push_back(futures[blk_idx].get());
+  }
+
+  // Assume out.numel = numel
+  ArrayRef out(out_slices[0].eltype(), numel);
+  for (int64_t blk_idx = 0; blk_idx < numBlocks; blk_idx++) {
+    int64_t begin = blk_idx * kBlockSize;
+    int64_t end = std::min(begin + kBlockSize, numel);
+    std::memcpy(&out.at(begin), &out_slices[blk_idx].at(0),
+                (end - begin) * out.elsize());
+  }
+
+  return out;
+}
+
+ArrayRef _Lazy2B(KernelEvalContext* ctx, const ArrayRef& in) {
   if (in.eltype().isa<AShare>()) {
-    return obj->call("a2b", in);
+    return block_par_unary(ctx, "a2b", in);
   } else {
     YACL_ENFORCE(in.eltype().isa<BShare>());
     return in;
   }
 }
 
-ArrayRef _Lazy2A(Object* obj, const ArrayRef& in) {
+ArrayRef _Lazy2A(KernelEvalContext* ctx, const ArrayRef& in) {
   if (in.eltype().isa<BShare>()) {
-    return obj->call("b2a", in);
+    return block_par_unary(ctx, "b2a", in);
   } else {
     YACL_ENFORCE(in.eltype().isa<AShare>(), "expect AShare, got {}",
                  in.eltype());
@@ -41,8 +196,8 @@ ArrayRef _Lazy2A(Object* obj, const ArrayRef& in) {
 
 #define _LAZY_AB ctx->caller()->getState<ABProtState>()->lazy_ab
 
-#define _2A(x) _Lazy2A(ctx->caller(), x)
-#define _2B(x) _Lazy2B(ctx->caller(), x)
+#define _2A(x) _Lazy2A(ctx, x)
+#define _2B(x) _Lazy2B(ctx, x)
 
 #define _IsA(x) x.eltype().isa<AShare>()
 #define _IsB(x) x.eltype().isa<BShare>()
@@ -55,27 +210,28 @@ ArrayRef _Lazy2A(Object* obj, const ArrayRef& in) {
 #define _AddAP(lhs, rhs) ctx->caller()->call("add_ap", lhs, rhs)
 #define _AddAA(lhs, rhs) ctx->caller()->call("add_aa", lhs, rhs)
 #define _MulAP(lhs, rhs) ctx->caller()->call("mul_ap", lhs, rhs)
-#define _MulAA(lhs, rhs) ctx->caller()->call("mul_aa", lhs, rhs)
+#define _MulAA(lhs, rhs) block_par_binary(ctx, "mul_aa", lhs, rhs)
 #define _HasMulA1B() ctx->caller()->hasKernel("mul_a1b")
 #define _MulA1B(lhs, rhs) ctx->caller()->call("mul_a1b", lhs, rhs)
 #define _LShiftA(in, bits) ctx->caller()->call("lshift_a", in, bits)
-#define _TruncPrA(in, bits) ctx->caller()->call("truncpr_a", in, bits)
+#define _TruncPrA(in, bits) \
+  block_par_unary_with_size(ctx, "truncpr_a", in, bits)
 #define _MatMulAP(A, B, M, N, K) ctx->caller()->call("mmul_ap", A, B, M, N, K)
 #define _MatMulAA(A, B, M, N, K) ctx->caller()->call("mmul_aa", A, B, M, N, K)
 #define _B2P(x) ctx->caller()->call("b2p", x)
 #define _P2B(x) ctx->caller()->call("p2b", x)
-#define _A2B(x) ctx->caller()->call("a2b", x)
-#define _B2A(x) ctx->caller()->call("b2a", x)
+#define _A2B(x) block_par_unary(ctx, "a2b", x)
+#define _B2A(x) block_par_unary(ctx, "b2a", x)
 #define _NotB(x) ctx->caller()->call("not_b", x)
 #define _AndBP(lhs, rhs) ctx->caller()->call("and_bp", lhs, rhs)
-#define _AndBB(lhs, rhs) ctx->caller()->call("and_bb", lhs, rhs)
+#define _AndBB(lhs, rhs) block_par_binary(ctx, "and_bb", lhs, rhs)
 #define _XorBP(lhs, rhs) ctx->caller()->call("xor_bp", lhs, rhs)
 #define _XorBB(lhs, rhs) ctx->caller()->call("xor_bb", lhs, rhs)
 #define _LShiftB(in, bits) ctx->caller()->call("lshift_b", in, bits)
 #define _RShiftB(in, bits) ctx->caller()->call("rshift_b", in, bits)
 #define _ARShiftB(in, bits) ctx->caller()->call("arshift_b", in, bits)
 #define _RitrevB(in, start, end) ctx->caller()->call("bitrev_b", in, start, end)
-#define _MsbA(in) ctx->caller()->call("msb_a", in)
+#define _MsbA(in) block_par_unary(ctx, "msb_a", in)
 #define _RandA(size) ctx->caller()->call("rand_a", size)
 #define _RandB(size) ctx->caller()->call("rand_b", size)
 
@@ -87,6 +243,8 @@ class ABProtState : public State {
 
   ABProtState() = default;
   explicit ABProtState(bool lazy) : lazy_ab(lazy) {}
+
+  bool hasLowCostFork() const override { return true; }
 
   std::unique_ptr<State> fork() override {
     return std::make_unique<ABProtState>(lazy_ab);

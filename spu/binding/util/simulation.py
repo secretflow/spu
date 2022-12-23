@@ -68,6 +68,7 @@ class Simulator(object):
         ]
 
         lctx_desc = link.Desc()
+        lctx_desc.throttle_window_size = 0  # disable throttle
         for rank in range(self.wsize):
             lctx_desc.add_party(f"id_{rank}", f"thread_{rank}")
 

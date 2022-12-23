@@ -14,6 +14,8 @@
 
 #include "spu/mpc/aby3/conversion.h"
 
+#include <functional>
+
 #include "spu/core/parallel_utils.h"
 #include "spu/core/trace.h"
 #include "spu/mpc/aby3/ot.h"
@@ -309,6 +311,13 @@ ArrayRef B2AByOT::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
   auto* comm = ctx->caller()->getState<Communicator>();
   auto* prg_state = ctx->caller()->getState<PrgState>();
 
+  // P0 as the helper/dealer, helps to prepare correlated randomness.
+  // P1, P2 as the receiver and sender of OT.
+  const size_t pivot = std::hash<std::string>{}(comm->lctx()->Id()) % 3;
+  size_t P0 = pivot % 3;
+  size_t P1 = (pivot + 1) % 3;
+  size_t P2 = (pivot + 2) % 3;
+
   DISPATCH_UINT_PT_TYPES(in_ty->getBacktype(), "_", [&]() {
     using BShrT = ScalarT;
 
@@ -323,100 +332,92 @@ ArrayRef B2AByOT::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
       std::vector<AShrT> r1(total_nbits);
       prg_state->fillPrssPair(absl::MakeSpan(r0), absl::MakeSpan(r1));
 
-      switch (comm->getRank()) {
-        case 0: {  // the helper
-          auto b2 = bitDecompose(ArrayView<BShrT>(getShare(in, 1)), in_nbits);
+      if (comm->getRank() == P0) {
+        // the helper
+        auto b2 = bitDecompose(ArrayView<BShrT>(getShare(in, 1)), in_nbits);
 
-          // gen masks with helper.
-          std::vector<AShrT> m0(total_nbits);
-          std::vector<AShrT> m1(total_nbits);
-          prg_state->fillPrssPair(absl::MakeSpan(m0), {}, false, true);
-          prg_state->fillPrssPair(absl::MakeSpan(m1), {}, false, true);
+        // gen masks with helper.
+        std::vector<AShrT> m0(total_nbits);
+        std::vector<AShrT> m1(total_nbits);
+        prg_state->fillPrssPair(absl::MakeSpan(m0), {}, false, true);
+        prg_state->fillPrssPair(absl::MakeSpan(m1), {}, false, true);
 
-          // build selected mask
-          YACL_ENFORCE(b2.size() == m0.size() && b2.size() == m1.size());
-          pforeach(0, total_nbits, [&](int64_t idx) {
-            m0[idx] = !b2[idx] ? m0[idx] : m1[idx];
-          });
+        // build selected mask
+        YACL_ENFORCE(b2.size() == m0.size() && b2.size() == m1.size());
+        pforeach(0, total_nbits,
+                 [&](int64_t idx) { m0[idx] = !b2[idx] ? m0[idx] : m1[idx]; });
 
-          // send selected masked to receiver.
-          comm->sendAsync<AShrT>(1, m0, "mc");
+        // send selected masked to receiver.
+        comm->sendAsync<AShrT>(P1, m0, "mc");
 
-          auto c1 = bitCompose<AShrT>(r0, in_nbits);
-          auto c2 = comm->recv<AShrT>(1, "c2");
+        auto c1 = bitCompose<AShrT>(r0, in_nbits);
+        auto c2 = comm->recv<AShrT>(P1, "c2");
 
-          pforeach(0, in.numel(), [&](int64_t idx) {
-            _out[idx][0] = c1[idx];
-            _out[idx][1] = c2[idx];
-          });
+        pforeach(0, in.numel(), [&](int64_t idx) {
+          _out[idx][0] = c1[idx];
+          _out[idx][1] = c2[idx];
+        });
+      } else if (comm->getRank() == P1) {
+        // the receiver
+        prg_state->fillPrssPair(absl::MakeSpan(r0), {}, false, false);
+        prg_state->fillPrssPair(absl::MakeSpan(r0), {}, false, false);
 
-          break;
-        }
-        case 1: {  // the receiver
-          prg_state->fillPrssPair(absl::MakeSpan(r0), {}, false, false);
-          prg_state->fillPrssPair(absl::MakeSpan(r0), {}, false, false);
+        auto b2 = bitDecompose(ArrayView<BShrT>(getShare(in, 0)), in_nbits);
 
-          auto b2 = bitDecompose(ArrayView<BShrT>(getShare(in, 0)), in_nbits);
+        // ot.recv
+        auto mc = comm->recv<AShrT>(P0, "mc");
+        auto m0 = comm->recv<AShrT>(P2, "m0");
+        auto m1 = comm->recv<AShrT>(P2, "m1");
 
-          // ot.recv
-          auto mc = comm->recv<AShrT>(0, "mc");
-          auto m0 = comm->recv<AShrT>(2, "m0");
-          auto m1 = comm->recv<AShrT>(2, "m1");
+        // rebuild c2 = (b1^b2^b3)-c1-c3
+        pforeach(0, total_nbits, [&](int64_t idx) {
+          mc[idx] = !b2[idx] ? m0[idx] ^ mc[idx] : m1[idx] ^ mc[idx];
+        });
+        auto c2 = bitCompose<AShrT>(mc, in_nbits);
+        comm->sendAsync<AShrT>(P0, c2, "c2");
+        auto c3 = bitCompose<AShrT>(r1, in_nbits);
 
-          // rebuild c2 = (b1^b2^b3)-c1-c3
-          pforeach(0, total_nbits, [&](int64_t idx) {
-            mc[idx] = !b2[idx] ? m0[idx] ^ mc[idx] : m1[idx] ^ mc[idx];
-          });
-          auto c2 = bitCompose<AShrT>(mc, in_nbits);
-          comm->sendAsync<AShrT>(0, c2, "c2");
-          auto c3 = bitCompose<AShrT>(r1, in_nbits);
+        pforeach(0, in.numel(), [&](int64_t idx) {
+          _out[idx][0] = c2[idx];
+          _out[idx][1] = c3[idx];
+        });
+      } else if (comm->getRank() == P2) {
+        // the sender.
+        auto c3 = bitCompose<AShrT>(r0, in_nbits);
+        auto c1 = bitCompose<AShrT>(r1, in_nbits);
 
-          pforeach(0, in.numel(), [&](int64_t idx) {
-            _out[idx][0] = c2[idx];
-            _out[idx][1] = c3[idx];
-          });
+        // c3 = r0, c1 = r1
+        // let mi := (i^b1^b3)−c1−c3 for i in {0, 1}
+        // reuse r's memory for m
+        pforeach(0, in.numel(), [&](int64_t idx) {
+          auto xx = _in[idx][0] ^ _in[idx][1];
+          for (size_t bit = 0; bit < in_nbits; bit++) {
+            size_t flat_idx = idx * in_nbits + bit;
+            AShrT t = r0[flat_idx] + r1[flat_idx];
+            r0[flat_idx] = ((xx >> bit) & 0x1) - t;
+            r1[flat_idx] = ((~xx >> bit) & 0x1) - t;
+          }
+        });
 
-          break;
-        }
-        case 2: {  // the sender.
-          auto c3 = bitCompose<AShrT>(r0, in_nbits);
-          auto c1 = bitCompose<AShrT>(r1, in_nbits);
+        // gen masks with helper.
+        std::vector<AShrT> m0(total_nbits);
+        std::vector<AShrT> m1(total_nbits);
+        prg_state->fillPrssPair({}, absl::MakeSpan(m0), true, false);
+        prg_state->fillPrssPair({}, absl::MakeSpan(m1), true, false);
+        pforeach(0, total_nbits, [&](int64_t idx) {
+          m0[idx] ^= r0[idx];
+          m1[idx] ^= r1[idx];
+        });
 
-          // c3 = r0, c1 = r1
-          // let mi := (i^b1^b3)−c1−c3 for i in {0, 1}
-          // reuse r's memory for m
-          pforeach(0, in.numel(), [&](int64_t idx) {
-            auto xx = _in[idx][0] ^ _in[idx][1];
-            for (size_t bit = 0; bit < in_nbits; bit++) {
-              size_t flat_idx = idx * in_nbits + bit;
-              AShrT t = r0[flat_idx] + r1[flat_idx];
-              r0[flat_idx] = ((xx >> bit) & 0x1) - t;
-              r1[flat_idx] = ((~xx >> bit) & 0x1) - t;
-            }
-          });
+        comm->sendAsync<AShrT>(P1, m0, "m0");
+        comm->sendAsync<AShrT>(P1, m1, "m1");
 
-          // gen masks with helper.
-          std::vector<AShrT> m0(total_nbits);
-          std::vector<AShrT> m1(total_nbits);
-          prg_state->fillPrssPair({}, absl::MakeSpan(m0), true, false);
-          prg_state->fillPrssPair({}, absl::MakeSpan(m1), true, false);
-          pforeach(0, total_nbits, [&](int64_t idx) {
-            m0[idx] ^= r0[idx];
-            m1[idx] ^= r1[idx];
-          });
-
-          comm->sendAsync<AShrT>(1, m0, "m0");
-          comm->sendAsync<AShrT>(1, m1, "m1");
-
-          pforeach(0, in.numel(), [&](int64_t idx) {
-            _out[idx][0] = c3[idx];
-            _out[idx][1] = c1[idx];
-          });
-
-          break;
-        }
-        default:
-          YACL_THROW("expected party=3, got={}", comm->getRank());
+        pforeach(0, in.numel(), [&](int64_t idx) {
+          _out[idx][0] = c3[idx];
+          _out[idx][1] = c1[idx];
+        });
+      } else {
+        YACL_THROW("expected party=3, got={}", comm->getRank());
       }
     });
   });

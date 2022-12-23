@@ -21,12 +21,21 @@ std::unique_ptr<State> State::fork() {
 }
 
 std::unique_ptr<Object> Object::fork() {
-  auto new_obj = std::make_unique<Object>();
+  auto new_obj = std::make_unique<Object>(name_);
   new_obj->kernels_ = kernels_;
   for (const auto& [key, val] : states_) {
     new_obj->addState(key, val->fork());
   }
   return new_obj;
+}
+
+bool Object::hasLowCostFork() const {
+  for (const auto& [key, val] : states_) {
+    if (!val->hasLowCostFork()) {
+      return false;
+    }
+  }
+  return true;
 }
 
 void Object::regKernel(std::string_view name, std::unique_ptr<Kernel> kernel) {

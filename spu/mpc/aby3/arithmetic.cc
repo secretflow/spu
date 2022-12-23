@@ -14,6 +14,7 @@
 
 #include "spu/mpc/aby3/arithmetic.h"
 
+#include <functional>
 #include <future>
 
 #include "spdlog/spdlog.h"
@@ -685,6 +686,13 @@ ArrayRef TruncPrAPrecise::proc(KernelEvalContext* ctx, const ArrayRef& in,
   // TODO: cost model is asymmetric, but test framework requires the same.
   comm->addCommStatsManually(3, 4 * SizeOf(field) * numel);
 
+  // 1. P0 & P1 samples r together.
+  // 2. P2 knows r and compute correlated random r{k-1} & sum(r{m~(k-2)})
+  const size_t pivot = std::hash<std::string>{}(comm->lctx()->Id()) % 3;
+  size_t P0 = pivot % 3;
+  size_t P1 = (pivot + 1) % 3;
+  size_t P2 = (pivot + 2) % 3;
+
   ArrayRef out(in.eltype(), numel);
   DISPATCH_ALL_FIELDS(field, "aby3.truncpr", [&]() {
     using U = ring2k_t;
@@ -692,164 +700,154 @@ ArrayRef TruncPrAPrecise::proc(KernelEvalContext* ctx, const ArrayRef& in,
     auto _in = ArrayView<std::array<U, 2>>(in);
     auto _out = ArrayView<std::array<U, 2>>(out);
 
-    // 1. P0 & P1 samples r together.
-    // 2. P2 knows r and compute correlated random r{k-1} & sum(r{m~(k-2)})
-    switch (comm->getRank()) {
-      case 0: {
-        std::vector<U> r(numel);
-        prg_state->fillPrssPair(absl::MakeSpan(r), {}, false, true);
+    if (comm->getRank() == P0) {
+      std::vector<U> r(numel);
+      prg_state->fillPrssPair(absl::MakeSpan(r), {}, false, true);
 
-        std::vector<U> x_plus_r(numel);
-        pforeach(0, numel, [&](int64_t idx) {
-          // convert to 2-outof-2 share.
-          auto x = _in[idx][0] + _in[idx][1];
+      std::vector<U> x_plus_r(numel);
+      pforeach(0, numel, [&](int64_t idx) {
+        // convert to 2-outof-2 share.
+        auto x = _in[idx][0] + _in[idx][1];
 
-          // handle negative number.
-          // assume secret x in [-2^(k-2), 2^(k-2)), by
-          // adding 2^(k-2) x' = x + 2^(k-2) in [0,
-          // 2^(k-1)), with msb(x') == 0
-          x += U(1) << (k - 2);
+        // handle negative number.
+        // assume secret x in [-2^(k-2), 2^(k-2)), by
+        // adding 2^(k-2) x' = x + 2^(k-2) in [0,
+        // 2^(k-1)), with msb(x') == 0
+        x += U(1) << (k - 2);
 
-          // mask it with ra
-          x_plus_r[idx] = x + r[idx];
-        });
+        // mask it with ra
+        x_plus_r[idx] = x + r[idx];
+      });
 
-        // open c = <x> + <r>
-        auto c = openWith<U>(comm, 1, x_plus_r);
+      // open c = <x> + <r>
+      auto c = openWith<U>(comm, P1, x_plus_r);
 
-        // get correlated randomness from P2
-        // let rb = r{k-1},
-        //     rc = sum(r{i-m}<<(i-m)) for i in range(m, k-2)
-        auto cr = comm->recv<U>(2, "cr0");
-        auto rb = absl::MakeSpan(cr).subspan(0, numel);
-        auto rc = absl::MakeSpan(cr).subspan(numel, numel);
+      // get correlated randomness from P2
+      // let rb = r{k-1},
+      //     rc = sum(r{i-m}<<(i-m)) for i in range(m, k-2)
+      auto cr = comm->recv<U>(P2, "cr0");
+      auto rb = absl::MakeSpan(cr).subspan(0, numel);
+      auto rc = absl::MakeSpan(cr).subspan(numel, numel);
 
-        std::vector<U> y2(numel);  // the 2-out-of-2 truncation result
-        pforeach(0, numel, [&](int64_t idx) {
-          // c_hat = c/2^m mod 2^(k-m-1) = (c << 1) >> (1+m)
-          auto c_hat = (c[idx] << 1) >> (1 + bits);
+      std::vector<U> y2(numel);  // the 2-out-of-2 truncation result
+      pforeach(0, numel, [&](int64_t idx) {
+        // c_hat = c/2^m mod 2^(k-m-1) = (c << 1) >> (1+m)
+        auto c_hat = (c[idx] << 1) >> (1 + bits);
 
-          // <b> = <rb> ^ c{k-1} = <rb> + c{k-1} - 2*c{k-1}*<rb>
-          // note: <rb> is a randbit (in r^2k)
-          const auto ck_1 = c[idx] >> (k - 1);
-          auto b = rb[idx] + ck_1 - 2 * ck_1 * rb[idx];
+        // <b> = <rb> ^ c{k-1} = <rb> + c{k-1} - 2*c{k-1}*<rb>
+        // note: <rb> is a randbit (in r^2k)
+        const auto ck_1 = c[idx] >> (k - 1);
+        auto b = rb[idx] + ck_1 - 2 * ck_1 * rb[idx];
 
-          // y = c_hat - <rc> + <b> * 2^(k-m-1)
-          auto y = c_hat - rc[idx] + (b << (k - 1 - bits));
+        // y = c_hat - <rc> + <b> * 2^(k-m-1)
+        auto y = c_hat - rc[idx] + (b << (k - 1 - bits));
 
-          // re-encode negative numbers.
-          // from https://eprint.iacr.org/2020/338.pdf, section 5.1
-          // y' = y - 2^(k-2-m)
-          y2[idx] = y - (U(1) << (k - 2 - bits));
-        });
+        // re-encode negative numbers.
+        // from https://eprint.iacr.org/2020/338.pdf, section 5.1
+        // y' = y - 2^(k-2-m)
+        y2[idx] = y - (U(1) << (k - 2 - bits));
+      });
 
-        //
-        std::vector<U> y1(numel);
-        prg_state->fillPrssPair(absl::MakeSpan(y1), {}, false, true);
-        pforeach(0, numel, [&](int64_t idx) {  //
-          y2[idx] -= y1[idx];
-        });
+      //
+      std::vector<U> y1(numel);
+      prg_state->fillPrssPair(absl::MakeSpan(y1), {}, false, true);
+      pforeach(0, numel, [&](int64_t idx) {  //
+        y2[idx] -= y1[idx];
+      });
 
-        comm->sendAsync<U>(1, y2, "2to3");
-        auto tmp = comm->recv<U>(1, "2to3");
+      comm->sendAsync<U>(P1, y2, "2to3");
+      auto tmp = comm->recv<U>(P1, "2to3");
 
-        // rebuild the final result.
-        pforeach(0, numel, [&](int64_t idx) {
-          _out[idx][0] = y1[idx];
-          _out[idx][1] = y2[idx] + tmp[idx];
-        });
-        break;
-      }
-      case 1: {
-        std::vector<U> r(numel);
-        prg_state->fillPrssPair({}, absl::MakeSpan(r), true, false);
+      // rebuild the final result.
+      pforeach(0, numel, [&](int64_t idx) {
+        _out[idx][0] = y1[idx];
+        _out[idx][1] = y2[idx] + tmp[idx];
+      });
+    } else if (comm->getRank() == P1) {
+      std::vector<U> r(numel);
+      prg_state->fillPrssPair({}, absl::MakeSpan(r), true, false);
 
-        std::vector<U> x_plus_r(numel);
-        pforeach(0, numel, [&](int64_t idx) {
-          // let t as 2-out-of-2 share, mask it with ra.
-          x_plus_r[idx] = _in[idx][1] + r[idx];
-        });
+      std::vector<U> x_plus_r(numel);
+      pforeach(0, numel, [&](int64_t idx) {
+        // let t as 2-out-of-2 share, mask it with ra.
+        x_plus_r[idx] = _in[idx][1] + r[idx];
+      });
 
-        // open c = <x> + <r>
-        auto c = openWith<U>(comm, 0, x_plus_r);
+      // open c = <x> + <r>
+      auto c = openWith<U>(comm, P0, x_plus_r);
 
-        // get correlated randomness from P2
-        // let rb = r{k-1},
-        //     rc = sum(r{i-m}<<(i-m)) for i in range(m, k-2)
-        auto cr = comm->recv<U>(2, "cr1");
-        auto rb = absl::MakeSpan(cr).subspan(0, numel);
-        auto rc = absl::MakeSpan(cr).subspan(numel, numel);
+      // get correlated randomness from P2
+      // let rb = r{k-1},
+      //     rc = sum(r{i-m}<<(i-m)) for i in range(m, k-2)
+      auto cr = comm->recv<U>(P2, "cr1");
+      auto rb = absl::MakeSpan(cr).subspan(0, numel);
+      auto rc = absl::MakeSpan(cr).subspan(numel, numel);
 
-        std::vector<U> y2(numel);  // the 2-out-of-2 truncation result
-        pforeach(0, numel, [&](int64_t idx) {
-          // <b> = <rb> ^ c{k-1} = <rb> + c{k-1} - 2*c{k-1}*<rb>
-          // note: <rb> is a randbit (in r^2k)
-          const auto ck_1 = c[idx] >> (k - 1);
-          auto b = rb[idx] + 0 - 2 * ck_1 * rb[idx];
+      std::vector<U> y2(numel);  // the 2-out-of-2 truncation result
+      pforeach(0, numel, [&](int64_t idx) {
+        // <b> = <rb> ^ c{k-1} = <rb> + c{k-1} - 2*c{k-1}*<rb>
+        // note: <rb> is a randbit (in r^2k)
+        const auto ck_1 = c[idx] >> (k - 1);
+        auto b = rb[idx] + 0 - 2 * ck_1 * rb[idx];
 
-          // y = c_hat - <rc> + <b> * 2^(k-m-1)
-          y2[idx] = 0 - rc[idx] + (b << (k - 1 - bits));
-        });
+        // y = c_hat - <rc> + <b> * 2^(k-m-1)
+        y2[idx] = 0 - rc[idx] + (b << (k - 1 - bits));
+      });
 
-        std::vector<U> y3(numel);
-        prg_state->fillPrssPair({}, absl::MakeSpan(y3), true, false);
-        pforeach(0, numel, [&](int64_t idx) {  //
-          y2[idx] -= y3[idx];
-        });
-        comm->sendAsync<U>(0, y2, "2to3");
-        auto tmp = comm->recv<U>(0, "2to3");
+      std::vector<U> y3(numel);
+      prg_state->fillPrssPair({}, absl::MakeSpan(y3), true, false);
+      pforeach(0, numel, [&](int64_t idx) {  //
+        y2[idx] -= y3[idx];
+      });
+      comm->sendAsync<U>(P0, y2, "2to3");
+      auto tmp = comm->recv<U>(P0, "2to3");
 
-        // rebuild the final result.
-        pforeach(0, numel, [&](int64_t idx) {
-          _out[idx][0] = y2[idx] + tmp[idx];
-          _out[idx][1] = y3[idx];
-        });
-        break;
-      }
-      case 2: {
-        std::vector<U> r0(numel);
-        std::vector<U> r1(numel);
-        prg_state->fillPrssPair(absl::MakeSpan(r0), absl::MakeSpan(r1));
+      // rebuild the final result.
+      pforeach(0, numel, [&](int64_t idx) {
+        _out[idx][0] = y2[idx] + tmp[idx];
+        _out[idx][1] = y3[idx];
+      });
+    } else if (comm->getRank() == P2) {
+      std::vector<U> r0(numel);
+      std::vector<U> r1(numel);
+      prg_state->fillPrssPair(absl::MakeSpan(r0), absl::MakeSpan(r1));
 
-        std::vector<U> cr0(2 * numel);
-        std::vector<U> cr1(2 * numel);
-        auto rb0 = absl::MakeSpan(cr0).subspan(0, numel);
-        auto rc0 = absl::MakeSpan(cr0).subspan(numel, numel);
-        auto rb1 = absl::MakeSpan(cr1).subspan(0, numel);
-        auto rc1 = absl::MakeSpan(cr1).subspan(numel, numel);
+      std::vector<U> cr0(2 * numel);
+      std::vector<U> cr1(2 * numel);
+      auto rb0 = absl::MakeSpan(cr0).subspan(0, numel);
+      auto rc0 = absl::MakeSpan(cr0).subspan(numel, numel);
+      auto rb1 = absl::MakeSpan(cr1).subspan(0, numel);
+      auto rc1 = absl::MakeSpan(cr1).subspan(numel, numel);
 
-        prg_state->fillPriv(absl::MakeSpan(cr0));
-        pforeach(0, numel, [&](int64_t idx) {
-          // let <rb> = <rc> = 0
-          rb1[idx] = -rb0[idx];
-          rc1[idx] = -rc0[idx];
+      prg_state->fillPriv(absl::MakeSpan(cr0));
+      pforeach(0, numel, [&](int64_t idx) {
+        // let <rb> = <rc> = 0
+        rb1[idx] = -rb0[idx];
+        rc1[idx] = -rc0[idx];
 
-          auto r = r0[idx] + r1[idx];
+        auto r = r0[idx] + r1[idx];
 
-          // <rb> = r{k-1}
-          rb0[idx] += r >> (k - 1);
+        // <rb> = r{k-1}
+        rb0[idx] += r >> (k - 1);
 
-          // rc = sum(r{i-m} << (i-m)) for i in range(m,
-          // k-2)
-          //    = (r<<1)>>(m+1)
-          rc0[idx] += (r << 1) >> (bits + 1);
-        });
+        // rc = sum(r{i-m} << (i-m)) for i in range(m, k-2)
+        //    = (r<<1)>>(m+1)
+        rc0[idx] += (r << 1) >> (bits + 1);
+      });
 
-        comm->sendAsync<U>(0, cr0, "cr0");
-        comm->sendAsync<U>(1, cr1, "cr1");
+      comm->sendAsync<U>(P0, cr0, "cr0");
+      comm->sendAsync<U>(P1, cr1, "cr1");
 
-        std::vector<U> y3(numel);
-        std::vector<U> y1(numel);
-        prg_state->fillPrssPair(absl::MakeSpan(y3), absl::MakeSpan(y1));
-        pforeach(0, numel, [&](int64_t idx) {
-          _out[idx][0] = y3[idx];
-          _out[idx][1] = y1[idx];
-        });
-        break;
-      }
-      default:
-        YACL_THROW("Party number exceeds 3!");
-    };
+      std::vector<U> y3(numel);
+      std::vector<U> y1(numel);
+      prg_state->fillPrssPair(absl::MakeSpan(y3), absl::MakeSpan(y1));
+      pforeach(0, numel, [&](int64_t idx) {
+        _out[idx][0] = y3[idx];
+        _out[idx][1] = y1[idx];
+      });
+    } else {
+      YACL_THROW("Party number exceeds 3!");
+    }
   });
 
   return out;

@@ -270,9 +270,6 @@ void executeImpl(OpExecutor *executor, spu::HalContext *hctx,
 
     YACL_ENFORCE(moduleOpRef, "MLIR parser failure");
 
-    SPDLOG_INFO("Executing module {}",
-                moduleOpRef->getName().value_or("Unnamed"));
-
     auto entry_function = moduleOpRef->lookupSymbol<mlir::func::FuncOp>("main");
     YACL_ENFORCE(entry_function, "main module not found");
 
