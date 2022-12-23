@@ -33,29 +33,27 @@ jobs:
           key: &pip-cache pip-{{ checksum "requirements.txt" }}
       - restore_cache:
           name: "Restore build cache"
-          key: build-{{ arch }}-            
+          key: spu-build-{{ arch }}-            
       - run:
           name: "Install dependencies"
           command: pip install -r requirements.txt
       - run:
           name: "build"
-          command: |
-            rm -rf /root/.cache/bazel/_bazel_root/install/
-            bazel build //spu/... -c opt --ui_event_filters=-info,-debug,-warning --jobs=16
+          command: bazel build //spu/... -c opt --ui_event_filters=-info,-debug,-warning --jobs=16 --disk_cache=~/.cache/spu_build_cache
       - save_cache:
           key: *pip-cache
           paths:
             - /usr/local/lib64/python3.8/site-packages
       - save_cache:
-          key: build-{{ arch }}-{{ .Environment.CIRCLE_BUILD_NUM }}
+          key: spu-build-{{ arch }}-{{ .Environment.CIRCLE_BUILD_NUM }}
           paths:
-            - /root/.cache/bazel
+            - /root/.cache/spu_build_cache
       - run:
           name: "test"
           command: |
             set +e
             declare -i test_status
-            bazel test //spu/... -c opt --ui_event_filters=-info,-debug,-warning --jobs=16 --test_timeout=180 --test_output=errors | tee test_result.log; test_status=${PIPESTATUS[0]}
+            bazel test //spu/... -c opt --ui_event_filters=-info,-debug,-warning --jobs=16 --test_timeout=180 --test_output=errors --disk_cache=~/.cache/spu_build_cache | tee test_result.log; test_status=${PIPESTATUS[0]}
             sh .ci/rename-junit-xml.sh
             exit ${test_status}
       - store_test_results:
