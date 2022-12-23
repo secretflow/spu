@@ -42,7 +42,7 @@ jobs:
           command: |
             set -ex
             rm -rf /root/.cache/bazel/_bazel_root/install/
-            bazel build //spu/... --ui_event_filters=-info,-debug,-warning --jobs=16
+            bazel build //spu/... -c opt --ui_event_filters=-info,-debug,-warning --jobs=16
       - save_cache:
           key: *pip-cache
           paths:
@@ -56,7 +56,7 @@ jobs:
           command: |
             set -ex
             declare -i test_status
-            bazel test //spu/... --ui_event_filters=-info,-debug,-warning --jobs=16 --test_timeout=1800 --test_output=errors | tee test_result.log; test_status=${PIPESTATUS[0]}
+            bazel test //spu/... -c opt --ui_event_filters=-info,-debug,-warning --jobs=16 --test_timeout=1800 --test_output=errors | tee test_result.log; test_status=${PIPESTATUS[0]}
             sh .ci/rename-junit-xml.sh
             exit ${test_status}
       - store_test_results:
@@ -69,28 +69,55 @@ jobs:
     resource_class: large
     steps:
       - checkout
+      - restore_cache:
+          name: "Restore python cache"
+          key: &conda-cache pip-{{ arch}}-{{ checksum "requirements.txt" }}
+      - restore_cache:
+          name: "Restore build cache"
+          key: build-{{ arch }}-      
       - run:
-          name: "test"
+          name: "Install homebrew dependencies"
           command: |
-            set -ex
-
             brew install bazel cmake ninja nasm libomp wget
             (cd "/usr/local/Cellar/bazel/4.2.1/libexec/bin" && curl -fLO https://releases.bazel.build/5.1.1/release/bazel-5.1.1-darwin-x86_64 && chmod +x bazel-5.1.1-darwin-x86_64)
-
+      - run:
+          name: "Install Miniconda"
+          command: |
+            set -ex
             wget https://repo.anaconda.com/miniconda/Miniconda3-latest-MacOSX-x86_64.sh -O ~/miniconda.sh
             bash ~/miniconda.sh -b -p $HOME/miniconda
             source $HOME/miniconda/bin/activate
             conda init zsh
-
 
             conda create -y -n secretflow python=3.8
             conda activate secretflow
             conda install -y grpcio
 
             pip install -r requirements.txt
-
-            bazel test //spu/... --ui_event_filters=-info,-debug,-warning --jobs=8 --test_timeout=1800 --test_output=errors
-
+      - save_cache:
+          key: *conda-cache
+          paths:
+            - /Users/distiller/miniconda
+      - run:
+          name: "build"
+          command: |
+            set -ex
+            rm -rf /private/var/tmp/_bazel_distiller/install/
+            bazel build //spu/... -c opt --ui_event_filters=-info,-debug,-warning --jobs=8
+      - save_cache:
+          key: build-{{ arch }}-{{ .Environment.CIRCLE_BUILD_NUM }}
+          paths:
+            - /private/var/tmp/_bazel_distiller
+      - run:
+          name: "test"
+          command: |
+            set -ex
+            declare -i test_status
+            bazel test //spu/... -c opt --ui_event_filters=-info,-debug,-warning --jobs=16 --test_timeout=1800 --test_output=errors | tee test_result.log; test_status=${PIPESTATUS[0]}
+            sh .ci/rename-junit-xml.sh
+            exit ${test_status}
+      - store_test_results:
+          path: test-results
   macOS_publish:
     macos:
       xcode: 13.0.0
@@ -127,10 +154,13 @@ jobs:
 
   linux_publish:
     docker:
-      - image: registry.hub.docker.com/secretflow/secretflow-gcc11-centos7-release:0.1
+      - image: registry.hub.docker.com/secretflow/secretflow-gcc11-centos7-release:0.3
     resource_class: xlarge
     steps:
       - checkout
+      - restore_cache:
+          name: "Restore build cache"
+          key: build-{{ arch }}-   
       - run:
           name: "build package and publish"
           command: |
@@ -147,6 +177,7 @@ workflows:
   ut:
     jobs:
       - linux_ut
+      - macOS_ut
   linux_publish:
     when: << pipeline.parameters.GHA_Action >>
     jobs:
