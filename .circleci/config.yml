@@ -98,6 +98,7 @@ jobs:
           name: "test"
           command: |
             set +e
+            brew install coreutils
             declare -i test_status
             bazel test //spu/... -c opt --ui_event_filters=-info,-debug,-warning --jobs=16 --test_timeout=180 --test_output=errors | tee test_result.log; test_status=${PIPESTATUS[0]}
             sh .ci/rename-junit-xml.sh
