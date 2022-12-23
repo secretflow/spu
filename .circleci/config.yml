@@ -38,14 +38,11 @@ jobs:
           name: "Install dependencies"
           command: pip install -r requirements.txt
       - run:
-          name: "build and test"
+          name: "build"
           command: |
             set -ex
             rm -rf /root/.cache/bazel/_bazel_root/install/
-            bazel test //spu/... --ui_event_filters=-info,-debug,-warning --jobs=16 --test_timeout=1800 --test_output=errors
-            sh .ci/rename-junit-xml.sh
-      - store_test_results:
-          path: test-results
+            bazel build //spu/... --ui_event_filters=-info,-debug,-warning --jobs=16
       - save_cache:
           key: *pip-cache
           paths:
@@ -54,6 +51,16 @@ jobs:
           key: build-{{ arch }}-{{ .Environment.CIRCLE_BUILD_NUM }}
           paths:
             - /root/.cache/bazel
+      - run:
+          name: "test"
+          command: |
+            set -ex
+            declare -i test_status
+            bazel test //spu/... --ui_event_filters=-info,-debug,-warning --jobs=16 --test_timeout=1800 --test_output=errors | tee test_result.log; test_status=${PIPESTATUS[0]}
+            sh .ci/rename-junit-xml.sh
+            exit ${test_status}
+      - store_test_results:
+          path: test-results
   macOS_ut:
     macos:
       xcode: 13.0.0
