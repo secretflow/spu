@@ -81,20 +81,17 @@ jobs:
           name: "Install Miniconda"
           command: |
             set -ex
-            wget https://repo.anaconda.com/miniconda/Miniconda3-latest-MacOSX-x86_64.sh -O ~/miniconda.sh
+            wget https://repo.anaconda.com/miniconda/Miniconda3-py38_22.11.1-1-MacOSX-x86_64.sh -O ~/miniconda.sh
             bash ~/miniconda.sh -b -p $HOME/miniconda
             source $HOME/miniconda/bin/activate
             conda init bash zsh
-
-            conda create -y -n secretflow python=3.8
-            conda activate secretflow
             conda install -y grpcio
-
             pip install -r requirements.txt
       - run:
           name: "build"
           command: |
             set -ex
+            conda activate secretflow
             rm -rf /private/var/tmp/_bazel_distiller/install/
             bazel build //spu/... -c opt --ui_event_filters=-info,-debug,-warning --jobs=8
       - save_cache:
@@ -132,16 +129,11 @@ jobs:
           name: "Install Miniconda"
           command: |
             set -ex
-            wget https://repo.anaconda.com/miniconda/Miniconda3-latest-MacOSX-x86_64.sh -O ~/miniconda.sh
+            wget https://repo.anaconda.com/miniconda/Miniconda3-py38_22.11.1-1-MacOSX-x86_64.sh -O ~/miniconda.sh
             bash ~/miniconda.sh -b -p $HOME/miniconda
             source $HOME/miniconda/bin/activate
             conda init zsh bash
-
-
-            conda create -y -n secretflow python=3.8
-            conda activate secretflow
             conda install -y grpcio
-
             pip install -r requirements.txt
       - run:
           name: "build package and publish"
