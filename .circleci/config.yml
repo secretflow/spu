@@ -90,10 +90,6 @@ jobs:
       - run:
           name: "build"
           command: bazel build //spu/... -c opt --ui_event_filters=-info,-debug,-warning --disk_cache=~/.cache/spu_build_cache
-      - save_cache:
-          key: spu-build-{{ arch }}-{{ .Environment.CIRCLE_BUILD_NUM }}
-          paths:
-            - ~/.cache/spu_build_cache
       - run:
           name: "test"
           command: |
@@ -106,6 +102,10 @@ jobs:
             find bazel-testlogs/ -type f -name "test.log"  -print0 | xargs -0 tar -cvzf test_logs.tar.gz
             # mac test somehow is really unstable on CI machines, make it always pass for now
             exit 0 
+      - save_cache:
+          key: spu-build-{{ arch }}-{{ .Environment.CIRCLE_BUILD_NUM }}
+          paths:
+            - ~/.cache/spu_build_cache
       - store_test_results:
           path: test-results
       - store_artifacts: 
