@@ -48,6 +48,7 @@ jobs:
             bazel test //spu/... -c opt --ui_event_filters=-info,-debug,-warning --jobs=16 --test_output=errors --disk_cache=~/.cache/spu_build_cache | tee test_result.log; test_status=${PIPESTATUS[0]}
             sh .ci/rename-junit-xml.sh
             find bazel-bin/ -executable -type f -name "*_test"  -print0 | xargs -0 tar -cvzf test_binary.tar.gz
+            find bazel-testlogs/ -type f -name "test.log"  -print0 | xargs -0 tar -cvzf test_logs.tar.gz
             exit ${test_status}
       - save_cache:
           key: *pip-cache
@@ -61,6 +62,8 @@ jobs:
           path: test-results
       - store_artifacts: 
           path: test_binary.tar
+      - store_artifacts: 
+          path: test_logs.tar.gz
   macOS_ut:
     macos:
       xcode: 13.4.1
@@ -100,11 +103,14 @@ jobs:
             bazel test //spu/... -c opt --ui_event_filters=-info,-debug,-warning --test_output=errors --disk_cache=~/.cache/spu_build_cache --jobs=4 | tee test_result.log; test_status=${PIPESTATUS[0]}
             sh .ci/rename-junit-xml.sh
             find bazel-bin/ -perm +111 -type f -name "*_test"  -print0 | xargs -0 tar -cvzf test_binary.tar.gz
+            find bazel-testlogs/ -type f -name "test.log"  -print0 | xargs -0 tar -cvzf test_logs.tar.gz
             exit ${test_status}
       - store_test_results:
           path: test-results
       - store_artifacts: 
           path: test_binary.tar
+      - store_artifacts: 
+          path: test_logs.tar.gz
   macOS_publish:
     macos:
       xcode: 13.4.1
