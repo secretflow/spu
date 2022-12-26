@@ -56,8 +56,8 @@ spu_cc_library(
     srcs = ["ring.cc"],
     hdrs = ["ring.h"],
     deps = [
-        ":constants",  # Strange
         ":prot_wrapper",
+        ":shape_ops",
         "//spu/kernel:context",
     ],
 )

@@ -115,6 +115,12 @@ Value _cast_type_s(HalContext* ctx, const Value& in, const Type& to) {
   return unflattenValue(ret, in.shape());
 }
 
+Value _make_p(HalContext* ctx, uint128_t init) {
+  SPU_TRACE_HAL_DISP(ctx, init);
+  auto res = mpc::make_p(ctx->prot(), init);
+  return unflattenValue(res, {});
+}
+
 Value _rand_p(HalContext* ctx, absl::Span<const int64_t> shape) {
   SPU_TRACE_HAL_DISP(ctx, shape);
   auto rnd = mpc::rand_p(ctx->prot(), calcNumel(shape));

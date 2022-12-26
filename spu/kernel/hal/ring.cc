@@ -20,9 +20,9 @@
 #include "yacl/base/exception.h"
 
 #include "spu/core/shape_util.h"
-#include "spu/kernel/hal/constants.h"
 #include "spu/kernel/hal/prot_wrapper.h"
 #include "spu/kernel/hal/shape_ops.h"
+#include "spu/mpc/util/bit_utils.h"  // TODO: move out of mpc folder.
 
 namespace spu::kernel::hal {
 
@@ -163,7 +163,7 @@ Value _eqz(HalContext* ctx, const Value& x) {
 
   // eqz(x) = not(lsb(pre_or(x)))
   // all equal to zero means lsb equals to zero
-  auto _k1 = constant(ctx, 1U, x.shape());
+  auto _k1 = _constant(ctx, 1U, x.shape());
   auto res = _xor(ctx, _and(ctx, _prefix_or(ctx, x), _k1), _k1);
 
   // FIXME(jint): see hintNumberOfBits
@@ -298,7 +298,7 @@ Value _negate(HalContext* ctx, const Value& x) {
   SPU_TRACE_HAL_LEAF(ctx, x);
 
   // negate(x) = not(x) + 1
-  return _add(ctx, _not(ctx, x), constant(ctx, 1, x.shape()));
+  return _add(ctx, _not(ctx, x), _constant(ctx, 1, x.shape()));
 }
 
 Value _sign(HalContext* ctx, const Value& x) {
@@ -310,8 +310,8 @@ Value _sign(HalContext* ctx, const Value& x) {
   // sign = 1 - 2 * is_negative
   //      = +1 ,if x >= 0
   //      = -1 ,if x < 0
-  const auto one = constant(ctx, 1, is_negative.shape());
-  const auto two = constant(ctx, 2, is_negative.shape());
+  const auto one = _constant(ctx, 1, is_negative.shape());
+  const auto two = _constant(ctx, 2, is_negative.shape());
 
   //
   return _sub(ctx, one, _mul(ctx, two, is_negative));
@@ -344,21 +344,40 @@ Value _mux(HalContext* ctx, const Value& pred, const Value& a, const Value& b) {
   return _add(ctx, b, _mul(ctx, pred, _sub(ctx, a, b)));
 }
 
-// TODO(junfeng): OPTIMIZE ME
+Value _constant(HalContext* ctx, uint128_t init,
+                absl::Span<const int64_t> shape) {
+  return broadcast_to(ctx, _make_p(ctx, init), shape);
+}
+
 // TODO: test me.
-Value _popcount(HalContext* ctx, const Value& x) {
+Value _bit_parity(HalContext* ctx, const Value& x, size_t bits) {
   SPU_TRACE_HAL_LEAF(ctx, x);
 
-  Value ret = constant(ctx, 0, x.shape());
+  YACL_ENFORCE(absl::has_single_bit(bits), "currently only support power of 2");
+  auto ret = _xor(ctx, x, _constant(ctx, 0, x.shape()));  // nop, cast to bshr.
+  while (bits > 1) {
+    ret = _xor(ctx, ret, _rshift(ctx, ret, bits / 2));
+    bits /= 2;
+  }
+
+  ret = _and(ctx, ret, _constant(ctx, 1, x.shape()));
+  return ret;
+}
+
+// TODO(jint): OPTIMIZE ME, this impl seems to be super slow.
+// TODO: test me.
+Value _popcount(HalContext* ctx, const Value& x, size_t bits) {
+  SPU_TRACE_HAL_LEAF(ctx, x);
+
+  Value ret = _constant(ctx, 0, x.shape());
   // TODO:
   // 1. x's dtype may not be set at the moment.
   // 2. x's stype could be dynamic, especial for variadic boolean shares.
-  const size_t bit_width = SizeOf(ctx->rt_config().field()) * 8;
-  const auto one = constant(ctx, 1, x.shape());
+  const auto k1 = _constant(ctx, 1, x.shape());
 
-  for (size_t idx = 0; idx < bit_width; idx++) {
+  for (size_t idx = 0; idx < bits; idx++) {
     auto x_ = _rshift(ctx, x, idx);
-    ret = _add(ctx, ret, _and(ctx, x_, one));
+    ret = _add(ctx, ret, _and(ctx, x_, k1));
   }
 
   return ret;
@@ -366,7 +385,7 @@ Value _popcount(HalContext* ctx, const Value& x) {
 
 // Fill all bits after msb to 1.
 //
-// Algorithm, lets consider the msb only, in each iteration we fill
+// Algorithm, lets consider one bit, in each iteration we fill
 // [msb-2^k, msb) to 1.
 //   x0:  010000000   ; x0
 //   x1:  011000000   ; x0 | (x0>>1)
@@ -374,7 +393,9 @@ Value _popcount(HalContext* ctx, const Value& x) {
 //   x3:  011111111   ; x2 | (x2>>4)
 //
 Value _prefix_or(HalContext* ctx, const Value& x) {
-  auto b0 = _xor(ctx, x, constant(ctx, 0, x.shape()));  // nop, cast to bshr.
+  SPU_TRACE_HAL_LEAF(ctx, x);
+
+  auto b0 = _xor(ctx, x, _constant(ctx, 0, x.shape()));  // nop, cast to bshr.
   const size_t bit_width = SizeOf(ctx->getField()) * 8;
   for (size_t idx = 0; idx < absl::bit_width(bit_width) - 1; idx++) {
     const size_t offset = 1UL << idx;
@@ -382,6 +403,49 @@ Value _prefix_or(HalContext* ctx, const Value& x) {
     b0 = _or(ctx, b0, b1);
   }
   return b0;
+}
+
+Value _seperate_odd_even(HalContext* ctx, const Value& in) {
+  SPU_TRACE_HAL_LEAF(ctx, in);
+
+  constexpr std::array<uint128_t, 6> kSwapMasks = {{
+      yacl::MakeUint128(0x2222222222222222, 0x2222222222222222),  // 4bit
+      yacl::MakeUint128(0x0C0C0C0C0C0C0C0C, 0x0C0C0C0C0C0C0C0C),  // 8bit
+      yacl::MakeUint128(0x00F000F000F000F0, 0x00F000F000F000F0),  // 16bit
+      yacl::MakeUint128(0x0000FF000000FF00, 0x0000FF000000FF00),  // 32bit
+      yacl::MakeUint128(0x00000000FFFF0000, 0x00000000FFFF0000),  // 64bit
+      yacl::MakeUint128(0x0000000000000000, 0xFFFFFFFF00000000),  // 128bit
+  }};
+  constexpr std::array<uint128_t, 6> kKeepMasks = {{
+      yacl::MakeUint128(0x9999999999999999, 0x9999999999999999),  // 4bit
+      yacl::MakeUint128(0xC3C3C3C3C3C3C3C3, 0xC3C3C3C3C3C3C3C3),  // 8bit
+      yacl::MakeUint128(0xF00FF00FF00FF00F, 0xF00FF00FF00FF00F),  // 16bit
+      yacl::MakeUint128(0xFF0000FFFF0000FF, 0xFF0000FFFF0000FF),  // 32bit
+      yacl::MakeUint128(0xFFFF00000000FFFF, 0xFFFF00000000FFFF),  // 64bit
+      yacl::MakeUint128(0xFFFFFFFF00000000, 0x00000000FFFFFFFF),  // 128bit
+  }};
+
+  // algorithm:
+  //      0101010101010101
+  // swap  ^^  ^^  ^^  ^^
+  //      0011001100110011
+  // swap   ^^^^    ^^^^
+  //      0000111100001111
+  // swap     ^^^^^^^^
+  //      0000000011111111
+  Value out = in;
+  const size_t k = SizeOf(ctx->getField()) * 8;
+  for (int64_t idx = 0; idx + 1 < mpc::log2Ceil(k); idx++) {
+    auto keep = _constant(ctx, kKeepMasks[idx], in.shape());
+    auto move = _constant(ctx, kSwapMasks[idx], in.shape());
+    int64_t shift = 1 << idx;
+    // out = (out & keep) ^ ((out >> shift) & move) ^ ((out & move) << shift);
+    out = _xor(ctx,
+               _xor(ctx, _and(ctx, out, keep),
+                    _and(ctx, _rshift(ctx, out, shift), move)),
+               _lshift(ctx, _and(ctx, out, move), shift));
+  }
+  return out;
 }
 
 }  // namespace spu::kernel::hal

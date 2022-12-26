@@ -34,7 +34,8 @@ class KernelEvalContext final {
       FieldType,  // TODO: drop this field when default field is added.
       size_t,     // for shift, mmul etc.
       ArrayRef,   // value type
-      Type        // type of type
+      Type,       // type of type
+      uint128_t   // ring constant
       >;
 
   Object* caller_;

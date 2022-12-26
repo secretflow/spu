@@ -28,12 +28,8 @@ CircuitBasicBlock<T> makeScalarCBB() {
   cbb._and = [](T const& lhs, T const& rhs) -> T { return lhs & rhs; };
   cbb.lshift = [](T const& x, size_t bits) -> T { return x << bits; };
   cbb.rshift = [](T const& x, size_t bits) -> T { return x >> bits; };
-  cbb.init_like = [](T const&, uint64_t hi, uint64_t lo) -> T {
-    if constexpr (std::is_same_v<T, uint128_t>) {
-      return yacl::MakeUint128(hi, lo);
-    } else {
-      return static_cast<T>(lo);
-    }
+  cbb.init_like = [](T const&, uint128_t init) -> T {
+    return static_cast<T>(init);
   };
   cbb.set_nbits = [](T& x, size_t nbits) {};
   return cbb;
@@ -42,12 +38,8 @@ CircuitBasicBlock<T> makeScalarCBB() {
 template <typename C, typename T = typename C::value_type>
 CircuitBasicBlock<C> makeVectorCBB() {
   CircuitBasicBlock<C> cbb;
-  cbb.init_like = [](C const& in, uint64_t hi, uint64_t lo) -> C {
-    if constexpr (std::is_same_v<T, uint128_t>) {
-      return C(in.size(), yacl::MakeUint128(hi, lo));
-    } else {
-      return C(in.size(), lo);
-    }
+  cbb.init_like = [](C const& in, uint128_t init) -> C {
+    return C(in.size(), static_cast<T>(init));
   };
   cbb._xor = [](C const& lhs, C const& rhs) -> C {
     C res;

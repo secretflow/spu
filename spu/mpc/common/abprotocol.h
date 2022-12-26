@@ -23,8 +23,8 @@ namespace spu::mpc {
 ArrayRef a2p(Object* ctx, const ArrayRef&);
 ArrayRef p2a(Object* ctx, const ArrayRef&);
 
+// FIXME(jint) drop FieldType.
 ArrayRef zero_a(Object* ctx, FieldType, size_t);
-
 ArrayRef rand_a(Object* ctx, FieldType, size_t);
 ArrayRef rand_b(Object* ctx, FieldType, size_t);
 
