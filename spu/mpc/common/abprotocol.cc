@@ -660,13 +660,11 @@ class ABProtMsbS : public UnaryKernel {
         if (in.eltype().isa<BShare>()) {
           return _RShiftB(in, SizeOf(field) * 8 - 1);
         } else {
-          // fast path, directly apply msb in AShare,
-          // result a BShare.
+          // fast path, directly apply msb in AShare, result a BShare.
           return _MsbA(in);
         }
       } else {
-        // Do it in AShare domain, and convert back to
-        // AShare.
+        // Do it in AShare domain, and convert back to AShare.
         return _B2A(_MsbA(in));
       }
     } else {
@@ -798,24 +796,18 @@ CircuitBasicBlock<ArrayRef> makeABProtBasicBlock(Object* ctx) {
     }
     YACL_THROW("unsupported op x={}", x);
   };
-  cbb.init_like = [=](ArrayRef const& x, uint64_t hi, uint64_t lo) {
-    // TODO: use single element + stride.
-    const auto field = x.eltype().as<Ring2k>()->field();
-    ArrayRef ret(makeType<Pub2kTy>(field), x.numel());
-
-    DISPATCH_ALL_FIELDS(field, "_", [&]() {
-      using U = ring2k_t;
-      U* ptr = &ret.at<U>(0);
-      for (int64_t idx = 0; idx < x.numel(); idx++) {
-        if constexpr (sizeof(U) * 8 == 128) {
-          ptr[idx] = yacl::MakeUint128(hi, lo);
-        } else {
-          ptr[idx] = static_cast<U>(lo);
-        }
-      }
-    });
-
-    return ret;
+  cbb.init_like = [=](ArrayRef const& x, uint128_t init) {
+    const auto field = ctx->getState<Z2kState>()->getDefaultField();
+    const auto eltype = makeType<Pub2kTy>(field);
+    ArrayRef res(std::make_shared<yacl::Buffer>(1 * eltype.size()),  // buffer
+                 eltype,                                             // eltype
+                 x.numel(),                                          // numel
+                 0,                                                  // stride,
+                 0                                                   // offset
+    );
+    DISPATCH_ALL_FIELDS(field, "pub2k.make_p",
+                        [&]() { res.at<ring2k_t>(0) = init; });
+    return res;
   };
   cbb.set_nbits = [=](ArrayRef& x, size_t nbits) {
     YACL_ENFORCE(x.eltype().isa<BShare>());

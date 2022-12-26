@@ -44,7 +44,7 @@ ArrayRef cast_type_s(Object* ctx, const ArrayRef& a, const Type& to_type);
 // Make a public variable with given plaintext input.
 //
 // All parties knowns the value.
-ArrayRef make_p(Object* ctx, const ArrayRef& plaintext);
+ArrayRef make_p(Object* ctx, uint128_t init);
 
 // parties random a public together.
 ArrayRef rand_p(Object* ctx, size_t);

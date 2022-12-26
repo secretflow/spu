@@ -16,8 +16,8 @@
 
 namespace spu::mpc {
 
-ArrayRef make_p(Object* ctx, const ArrayRef& plaintext) {
-  return ctx->call("make_p", plaintext);
+ArrayRef make_p(Object* ctx, uint128_t init) {
+  return ctx->call("make_p", init);
 }
 
 ArrayRef rand_p(Object* ctx, size_t numel) {

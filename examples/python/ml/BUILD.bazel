@@ -124,5 +124,5 @@ py_binary(
     ],
     deps = [
         "//spu/binding/util:distributed",
-    ]
+    ],
 )

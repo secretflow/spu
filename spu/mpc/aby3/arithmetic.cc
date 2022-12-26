@@ -920,7 +920,7 @@ std::pair<ArrayRef, ArrayRef> bit_split(const ArrayRef& in) {
   });
 
   return std::make_pair(lo, hi);
-};
+}
 
 // compute the k'th bit of x + y
 ArrayRef carry_out(Object* ctx, const ArrayRef& x, const ArrayRef& y,

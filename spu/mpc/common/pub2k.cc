@@ -24,6 +24,29 @@
 
 namespace spu::mpc {
 
+class Pub2kMakeP : public Kernel {
+ public:
+  static constexpr char kBindName[] = "make_p";
+
+  util::CExpr latency() const override { return util::Const(0); }
+
+  util::CExpr comm() const override { return util::Const(0); }
+
+  void evaluate(KernelEvalContext* ctx) const override {
+    ctx->setOutput(proc(ctx, ctx->getParam<uint128_t>(0)));
+  }
+
+  ArrayRef proc(KernelEvalContext* ctx, uint128_t init) const {
+    SPU_TRACE_MPC_LEAF(ctx, init);
+    const auto field = ctx->caller()->getState<Z2kState>()->getDefaultField();
+    ArrayRef res(makeType<Pub2kTy>(field), 1);
+    DISPATCH_ALL_FIELDS(field, "pub2k.make_p", [&]() {
+      res.at<ring2k_t>(0) = static_cast<ring2k_t>(init);
+    });
+    return res;
+  }
+};
+
 class Pub2kRandP : public Kernel {
  public:
   static constexpr char kBindName[] = "rand_p";
@@ -38,7 +61,7 @@ class Pub2kRandP : public Kernel {
 
   ArrayRef proc(KernelEvalContext* ctx, size_t size) const {
     SPU_TRACE_MPC_LEAF(ctx, size);
-    auto* state = ctx->caller()->getState<PrgState>();
+    auto* prg_state = ctx->caller()->getState<PrgState>();
     const auto field = ctx->caller()->getState<Z2kState>()->getDefaultField();
 
     // NOTE(junfeng): rand_p is heavily in unit tests and nbits has to been kept
@@ -47,7 +70,7 @@ class Pub2kRandP : public Kernel {
     // Reference: https://eprint.iacr.org/2019/599.pdf
     // To make `msb based comparison` work, the safe range is
     // [-2^(k-2), 2^(k-2))
-    return state->genPubl(field, size).as(makeType<Pub2kTy>(field));
+    return prg_state->genPubl(field, size).as(makeType<Pub2kTy>(field));
   }
 };
 
@@ -248,6 +271,7 @@ void regPub2kTypes() {
 }
 
 void regPub2kKernels(Object* obj) {
+  obj->regKernel<Pub2kMakeP>();
   obj->regKernel<Pub2kRandP>();
   obj->regKernel<Pub2kNotP>();
   obj->regKernel<Pub2kEqzP>();

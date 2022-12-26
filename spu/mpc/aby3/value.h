@@ -55,17 +55,19 @@ size_t maxBitWidth(ArrayView<T> av) {
     // TODO: absl::bit_width can not handle int128
     return 128;
   } else {
-    const int64_t kNumBits = sizeof(T) * 8 + 1;
-    std::vector<uint8_t> mask(kNumBits, 0);
-    // FIXME: fix multi-threading write race.
-    pforeach(0, av.numel(),
-             [&](int64_t idx) { mask[absl::bit_width(av[idx])] = 1; });
-    for (int64_t bit = kNumBits - 1; bit >= 0; bit--) {
-      if (mask[bit] == 1) {
-        return bit;
-      }
-    }
-    return 0;
+    size_t res = preduce<size_t>(
+        0, av.numel(),
+        [&](int64_t begin, int64_t end) {
+          size_t partial_max = 0;
+          for (int64_t idx = begin; idx < end; ++idx) {
+            partial_max =
+                std::max<size_t>(partial_max, absl::bit_width(av[idx]));
+          }
+          return partial_max;
+        },
+        [](const size_t& a, const size_t& b) { return std::max(a, b); });
+
+    return res;
   }
 }
 

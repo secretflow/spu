@@ -466,7 +466,7 @@ TEST(FxpTest, Tanh) {
   }
 }
 
-TEST(FxpTest, SqrtInv) {
+TEST(FxpTest, Rsqrt) {
   // GIVEN
   xt::xarray<float> x{0.36, 1.25, 2.5, 32, 123, 234.75, 556.6, 12142};
   xt::xarray<float> expected_y = 1.0f / xt::sqrt(x);

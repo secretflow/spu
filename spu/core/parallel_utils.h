@@ -32,19 +32,27 @@ inline int64_t computeTaskSize(int64_t numel) {
 }
 
 template <class F>
-inline void pfor(const int64_t begin, const int64_t end, F&& f) {
+inline void pfor(int64_t begin, int64_t end, F&& f) {
   const int64_t grain_size = computeTaskSize(end - begin);
   return yacl::parallel_for(begin, end, grain_size, f);
 }
 
 template <class F>
-inline void pforeach(const int64_t begin, const int64_t end, F&& fn) {
+inline void pforeach(int64_t begin, int64_t end, F&& fn) {
   const int64_t grain_size = computeTaskSize(end - begin);
   yacl::parallel_for(begin, end, grain_size, [&](int64_t begin, int64_t end) {
     for (int64_t idx = begin; idx < end; idx++) {
       fn(idx);
     }
   });
+}
+
+template <typename T>
+inline T preduce(int64_t begin, int64_t end,
+                 std::function<T(int64_t, int64_t)>&& reducer,
+                 std::function<T(const T&, const T&)>&& combine) {
+  const int64_t grain_size = computeTaskSize(end - begin);
+  return yacl::parallel_reduce(begin, end, grain_size, reducer, combine);
 }
 
 #define PFOR(IDX, BEG, END, ...) \

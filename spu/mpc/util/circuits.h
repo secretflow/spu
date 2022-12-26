@@ -19,6 +19,7 @@
 #include <iostream>
 
 #include "absl/numeric/bits.h"
+#include "yacl/base/int128.h"
 
 #include "spu/core/vectorize.h"
 #include "spu/mpc/util/bit_utils.h"
@@ -40,7 +41,7 @@ struct CircuitBasicBlock {
   using RShift = std::function<T(T const&, size_t)>;
 
   // Init a constant.
-  using InitLike = std::function<T(T const&, uint64_t hi, uint64_t lo)>;
+  using InitLike = std::function<T(T const&, uint128_t)>;
 
   // Set number of bits.
   using SetNBits = std::function<void(T&, size_t)>;
@@ -96,33 +97,31 @@ T kogge_stone(const CircuitBasicBlock<T>& ctx, T const& lhs, T const& rhs,
 template <typename T>
 T sklansky(const CircuitBasicBlock<T>& ctx, T const& lhs, T const& rhs,
            size_t nbits) {
-  constexpr std::array<std::array<uint64_t, 2>, 7> kKeepMasks = {{
-      // hi, lo
-      {0x5555555555555555, 0x5555555555555555},
-      {0x3333333333333333, 0x3333333333333333},
-      {0x0F0F0F0F0F0F0F0F, 0x0F0F0F0F0F0F0F0F},
-      {0x00FF00FF00FF00FF, 0x00FF00FF00FF00FF},
-      {0x0000FFFF0000FFFF, 0x0000FFFF0000FFFF},
-      {0x00000000FFFFFFFF, 0x00000000FFFFFFFF},
-      {0x0000000000000000, 0xFFFFFFFFFFFFFFFF},
+  constexpr std::array<uint128_t, 7> kKeepMasks = {{
+      yacl::MakeUint128(0x5555555555555555, 0x5555555555555555),
+      yacl::MakeUint128(0x3333333333333333, 0x3333333333333333),
+      yacl::MakeUint128(0x0F0F0F0F0F0F0F0F, 0x0F0F0F0F0F0F0F0F),
+      yacl::MakeUint128(0x00FF00FF00FF00FF, 0x00FF00FF00FF00FF),
+      yacl::MakeUint128(0x0000FFFF0000FFFF, 0x0000FFFF0000FFFF),
+      yacl::MakeUint128(0x00000000FFFFFFFF, 0x00000000FFFFFFFF),
+      yacl::MakeUint128(0x0000000000000000, 0xFFFFFFFFFFFFFFFF),
   }};
 
-  constexpr std::array<std::array<uint64_t, 2>, 7> kSelMask = {{
-      // hi, lo
-      {0x5555555555555555, 0x5555555555555555},
-      {0x2222222222222222, 0x2222222222222222},
-      {0x0808080808080808, 0x0808080808080808},
-      {0x0080008000800080, 0x0080008000800080},
-      {0x0000800000008000, 0x0000800000008000},
-      {0x0000000080000000, 0x0000000080000000},
-      {0x0000000000000000, 0x8000000000000000},
+  constexpr std::array<uint128_t, 7> kSelMask = {{
+      yacl::MakeUint128(0x5555555555555555, 0x5555555555555555),
+      yacl::MakeUint128(0x2222222222222222, 0x2222222222222222),
+      yacl::MakeUint128(0x0808080808080808, 0x0808080808080808),
+      yacl::MakeUint128(0x0080008000800080, 0x0080008000800080),
+      yacl::MakeUint128(0x0000800000008000, 0x0000800000008000),
+      yacl::MakeUint128(0x0000000080000000, 0x0000000080000000),
+      yacl::MakeUint128(0x0000000000000000, 0x8000000000000000),
   }};
 
   // Generate p & g.
   auto P = ctx._xor(lhs, rhs);
   auto G = ctx._and(lhs, rhs);
   for (int idx = 0; idx < log2Ceil(nbits); ++idx) {
-    const auto s_mask = ctx.init_like(G, kSelMask[idx][0], kSelMask[idx][1]);
+    const auto s_mask = ctx.init_like(G, kSelMask[idx]);
     auto G1 = ctx.lshift(ctx._and(G, s_mask), 1);
     auto P1 = ctx.lshift(ctx._and(P, s_mask), 1);
 
@@ -131,8 +130,7 @@ T sklansky(const CircuitBasicBlock<T>& ctx, T const& lhs, T const& rhs,
       P1 = ctx._xor(P1, ctx.lshift(P1, 1 << j));
     }
 
-    const auto k_mask =
-        ctx.init_like(G, kKeepMasks[idx][0], kKeepMasks[idx][1]);
+    const auto k_mask = ctx.init_like(G, kKeepMasks[idx]);
     P1 = ctx._xor(P1, k_mask);
 
     // P = P & P1
@@ -165,30 +163,29 @@ T odd_even_split(const CircuitBasicBlock<T>& ctx, const T& v, size_t nbits) {
   // swap     ^^^^^^^^
   //      0000000011111111
 
-  constexpr std::array<std::array<uint64_t, 2>, 6> kSwapMasks = {{
-      // hi, lo
-      {0x2222222222222222, 0x2222222222222222},  // 4bit
-      {0x0C0C0C0C0C0C0C0C, 0x0C0C0C0C0C0C0C0C},  // 8bit
-      {0x00F000F000F000F0, 0x00F000F000F000F0},  // 16bit
-      {0x0000FF000000FF00, 0x0000FF000000FF00},  // 32bit
-      {0x00000000FFFF0000, 0x00000000FFFF0000},  // 64bit
-      {0x0000000000000000, 0xFFFFFFFF00000000},  // 128bit
+  constexpr std::array<uint128_t, 6> kSwapMasks = {{
+      yacl::MakeUint128(0x2222222222222222, 0x2222222222222222),  // 4bit
+      yacl::MakeUint128(0x0C0C0C0C0C0C0C0C, 0x0C0C0C0C0C0C0C0C),  // 8bit
+      yacl::MakeUint128(0x00F000F000F000F0, 0x00F000F000F000F0),  // 16bit
+      yacl::MakeUint128(0x0000FF000000FF00, 0x0000FF000000FF00),  // 32bit
+      yacl::MakeUint128(0x00000000FFFF0000, 0x00000000FFFF0000),  // 64bit
+      yacl::MakeUint128(0x0000000000000000, 0xFFFFFFFF00000000),  // 128bit
   }};
-  constexpr std::array<std::array<uint64_t, 2>, 6> kKeepMasks = {{
-      {0x9999999999999999, 0x9999999999999999},  // 4bit
-      {0xC3C3C3C3C3C3C3C3, 0xC3C3C3C3C3C3C3C3},  // 8bit
-      {0xF00FF00FF00FF00F, 0xF00FF00FF00FF00F},  // 16bit
-      {0xFF0000FFFF0000FF, 0xFF0000FFFF0000FF},  // 32bit
-      {0xFFFF00000000FFFF, 0xFFFF00000000FFFF},  // 64bit
-      {0xFFFFFFFF00000000, 0x00000000FFFFFFFF},  // 128bit
+  constexpr std::array<uint128_t, 6> kKeepMasks = {{
+      yacl::MakeUint128(0x9999999999999999, 0x9999999999999999),  // 4bit
+      yacl::MakeUint128(0xC3C3C3C3C3C3C3C3, 0xC3C3C3C3C3C3C3C3),  // 8bit
+      yacl::MakeUint128(0xF00FF00FF00FF00F, 0xF00FF00FF00FF00F),  // 16bit
+      yacl::MakeUint128(0xFF0000FFFF0000FF, 0xFF0000FFFF0000FF),  // 32bit
+      yacl::MakeUint128(0xFFFF00000000FFFF, 0xFFFF00000000FFFF),  // 64bit
+      yacl::MakeUint128(0xFFFFFFFF00000000, 0x00000000FFFFFFFF),  // 128bit
   }};
 
   // let r = v
   T r = ctx.lshift(v, 0);
   for (int idx = 0; idx + 1 < log2Ceil(nbits); ++idx) {
     // r = (r & keep) ^ ((r >> i) & move) ^ ((r & move) << i)
-    const auto keep = ctx.init_like(r, kKeepMasks[idx][0], kKeepMasks[idx][1]);
-    const auto move = ctx.init_like(r, kSwapMasks[idx][0], kSwapMasks[idx][1]);
+    const auto keep = ctx.init_like(r, kKeepMasks[idx]);
+    const auto move = ctx.init_like(r, kSwapMasks[idx]);
 
     r = ctx._xor(ctx._and(r, keep),
                  ctx._xor(ctx._and(ctx.rshift(r, 1 << idx), move),
@@ -197,7 +194,7 @@ T odd_even_split(const CircuitBasicBlock<T>& ctx, const T& v, size_t nbits) {
 
   if (!absl::has_single_bit(nbits)) {
     // handle non 2^k bits case.
-    T mask = ctx.init_like(r, 0, (1ULL << (nbits / 2)) - 1);
+    T mask = ctx.init_like(r, (1ULL << (nbits / 2)) - 1);
     r = ctx._xor(ctx.lshift(ctx.rshift(r, 1 << log2Floor(nbits)), nbits / 2),
                  ctx._and(r, mask));
   }
@@ -229,8 +226,7 @@ T carry_out(const CircuitBasicBlock<T>& ctx, const T& x, const T& y,
     const size_t hk = kk / 2;
 
     auto perm = odd_even_split(ctx, in, kk);
-    T mask = (hk == 64) ? ctx.init_like(perm, 0, ~0x0ULL)
-                        : ctx.init_like(perm, 0, (1ULL << (hk)) - 1);
+    T mask = ctx.init_like(perm, (static_cast<uint128_t>(1) << hk) - 1);
     T t0 = ctx._and(perm, mask);
     T t1 = ctx._and(ctx.rshift(perm, hk), mask);
     ctx.set_nbits(t0, hk);
@@ -243,7 +239,7 @@ T carry_out(const CircuitBasicBlock<T>& ctx, const T& x, const T& y,
   auto G = ctx._and(x, y);
 
   if (nbits == 1) {
-    return ctx._and(G, ctx.init_like(G, 0, 1));
+    return ctx._and(G, ctx.init_like(G, 1));
   }
 
   // Use kogge stone layout.

@@ -33,7 +33,7 @@ jobs:
           key: &pip-cache pip-{{ checksum "requirements.txt" }}
       - restore_cache:
           name: "Restore build cache"
-          key: spu-build-{{ arch }}-            
+          key: spu-build-{{ arch }}-
       - run:
           name: "Install dependencies"
           command: pip install -r requirements.txt
@@ -60,9 +60,9 @@ jobs:
             - /root/.cache/spu_build_cache
       - store_test_results:
           path: test-results
-      - store_artifacts: 
+      - store_artifacts:
           path: test_binary.tar.gz
-      - store_artifacts: 
+      - store_artifacts:
           path: test_logs.tar.gz
   macOS_ut:
     macos:
@@ -74,7 +74,7 @@ jobs:
       - checkout
       - restore_cache:
           name: "Restore build cache"
-          key: spu-build-{{ arch }}-      
+          key: spu-build-{{ arch }}-
       - run:
           name: "Install homebrew dependencies"
           command: brew install bazel cmake ninja nasm libomp wget
@@ -101,16 +101,16 @@ jobs:
             find bazel-bin/ -perm +111 -type f -name "*_test"  -print0 | xargs -0 tar -cvzf test_binary.tar.gz
             find bazel-testlogs/ -type f -name "test.log"  -print0 | xargs -0 tar -cvzf test_logs.tar.gz
             # mac test somehow is really unstable on CI machines, make it always pass for now
-            exit 0 
+            exit 0
       - save_cache:
           key: spu-build-{{ arch }}-{{ .Environment.CIRCLE_BUILD_NUM }}
           paths:
             - ~/.cache/spu_build_cache
       - store_test_results:
           path: test-results
-      - store_artifacts: 
+      - store_artifacts:
           path: test_binary.tar.gz
-      - store_artifacts: 
+      - store_artifacts:
           path: test_logs.tar.gz
   macOS_publish:
     macos:
@@ -122,7 +122,7 @@ jobs:
       - checkout
       - restore_cache:
           name: "Restore build cache"
-          key: spu-build-{{ arch }}-  
+          key: spu-build-{{ arch }}-
       - run:
           name: "Install homebrew dependencies"
           command: brew install bazel cmake ninja nasm libomp wget
@@ -153,7 +153,7 @@ jobs:
       - checkout
       - restore_cache:
           name: "Restore build cache"
-          key: spu-build-{{ arch }}-   
+          key: spu-build-{{ arch }}-
       - run:
           name: "build package and publish"
           command: |

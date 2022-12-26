@@ -229,7 +229,8 @@ Value log2_pade_approx_for_normalized(HalContext* ctx, const Value& x) {
 Value log2_pade_approx(HalContext* ctx, const Value& x) {
   SPU_TRACE_HAL_DISP(ctx, x);
 
-  auto k = _popcount(ctx, _prefix_or(ctx, x));
+  const size_t bit_width = SizeOf(ctx->rt_config().field()) * 8;
+  auto k = _popcount(ctx, _prefix_or(ctx, x), bit_width);
 
   const size_t num_fxp_bits = ctx->getFxpBits();
 
@@ -604,27 +605,14 @@ Value f_tanh(HalContext* ctx, const Value& x) {
   return detail::tanh_pade_approx(ctx, x);
 }
 
-// Reference:
-//  1. https://dl.acm.org/doi/10.1145/3411501.3419427
-// Main idea:
-//  1. convert x to u * 2^(e + 1) while u belongs to [0.25, 0.5).
-//  2. get a nice approximation for u part.
-//  3. get the compensation for 2^(e + 1) part.
-//  4. multiple two parts and get the result.
-Value f_rsqrt(HalContext* ctx, const Value& x) {
-  SPU_TRACE_HAL_LEAF(ctx, x);
-
-  const size_t k = SizeOf(ctx->getField()) * 8;
+static Value rsqrt_init_guess(HalContext* ctx, const Value& x, const Value& z) {
+  SPU_TRACE_HAL_LEAF(ctx, x, z);
   const size_t f = ctx->getFxpBits();
-  const auto k1 = constant(ctx, 1U, x.shape());
-
-  // let e = NP2(x)
-  //   , z = 2^(e+f)
-  auto z = _lshift(ctx, highestOneBit(ctx, x), 1);
 
   // let u in [0.25, 0.5)
   auto z_rev = _bitrev(ctx, z, 0, 2 * f);
   hintNumberOfBits(z_rev, 2 * f);
+
   auto u = _trunc(ctx, _mul(ctx, x, z_rev)).asFxp();
 
   // let rsqrt(u) = 26.02942339 * u^4 - 49.86605845 * u^3 + 38.4714796 * u^2
@@ -644,22 +632,34 @@ Value f_rsqrt(HalContext* ctx, const Value& x) {
               constant(ctx, 3.1855, x.shape()));
   }
 
+  return r;
+}
+
+static Value rsqrt_comp(HalContext* ctx, const Value& x, const Value& z) {
+  SPU_TRACE_HAL_LEAF(ctx, x, z);
+
+  const size_t k = SizeOf(ctx->getField()) * 8;
+  const size_t f = ctx->getFxpBits();
+  const auto k1 = constant(ctx, 1U, x.shape());
+
   // let a = 2^((e+f)/2), that is a[i] = 1 for i = (e+f)/2 else 0
   // let b = lsb(e+f)
-  auto a = constant(ctx, 0U, x.shape());
-  auto b = constant(ctx, 0U, x.shape());
-  for (size_t i = 0; i < k / 2; i++) {
-    auto z_2i = _rshift(ctx, z, 2 * i);
-    auto z_2i1 = _rshift(ctx, z, 2 * i + 1);
-    // a[i] = z[2*i] ^ z[2*i+1]
-    auto a_i = _and(ctx, _xor(ctx, z_2i, z_2i1), k1);
+  Value a;
+  Value b;
+  {
+    auto z_sep = _seperate_odd_even(ctx, z);
+    auto lo_mask =
+        _constant(ctx, (static_cast<uint128_t>(1) << (k / 2)) - 1, x.shape());
+    auto z_even = _and(ctx, z_sep, lo_mask);
+    auto z_odd = _and(ctx, _rshift(ctx, z_sep, k / 2), lo_mask);
 
-    a = _xor(ctx, a, _lshift(ctx, a_i, i));
+    // a[i] = z[2*i] ^ z[2*i+1]
+    a = _xor(ctx, z_odd, z_even);
     // b ^= z[2*i]
-    b = _xor(ctx, b, z_2i);
+    b = _bit_parity(ctx, z_even, k / 2);
+    hintNumberOfBits(b, 1);
   }
-  b = _and(ctx, b, k1);
-  hintNumberOfBits(b, 1);
+
   auto a_rev = _bitrev(ctx, a, 0, (f / 2) * 2);
   hintNumberOfBits(a_rev, (f / 2) * 2);
 
@@ -684,9 +684,42 @@ Value f_rsqrt(HalContext* ctx, const Value& x) {
   }
 
   // let comp = 2^(-(e-1)/2) = mux(b, c1, c0) * a_rev
-  auto comp = _mul(ctx, _mux(ctx, b, c0, c1), a_rev);
+  return _mul(ctx, _mux(ctx, b, c0, c1), a_rev);
+}
 
-  return _trunc(ctx, _mul(ctx, r, comp)).asFxp();
+static Value rsqrt_np2(HalContext* ctx, const Value& x) {
+  SPU_TRACE_HAL_LEAF(ctx, x);
+
+  // let e = NP2(x), z = 2^(e+f)
+  return _lshift(ctx, highestOneBit(ctx, x), 1);
+}
+
+// Reference:
+//  1. https://dl.acm.org/doi/10.1145/3411501.3419427
+// Main idea:
+//  1. convert x to u * 2^(e + 1) while u belongs to [0.25, 0.5).
+//  2. get a nice approximation for u part.
+//  3. get the compensation for 2^(e + 1) part.
+//  4. multiple two parts and get the result.
+Value f_rsqrt(HalContext* ctx, const Value& x) {
+  SPU_TRACE_HAL_LEAF(ctx, x);
+
+  // let e = NP2(x) , z = 2^(e+f)
+  auto z = rsqrt_np2(ctx, x);
+
+  // TODO: we should avoid fork context in hal layer, it will make global
+  // scheduling harder and also make profiling harder.
+  constexpr bool parallel = false;
+  if (parallel) {
+    auto sub_ctx = ctx->fork();
+    auto r = std::async(rsqrt_init_guess, sub_ctx.get(), x, z);
+    auto comp = rsqrt_comp(ctx, x, z);
+    return _trunc(ctx, _mul(ctx, r.get(), comp)).asFxp();
+  } else {
+    auto r = rsqrt_init_guess(ctx, x, z);
+    auto comp = rsqrt_comp(ctx, x, z);
+    return _trunc(ctx, _mul(ctx, r, comp)).asFxp();
+  }
 }
 
 // Referrence:
