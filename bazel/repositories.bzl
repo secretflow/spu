@@ -31,7 +31,7 @@ def spu_deps():
         git_repository,
         name = "yacl",
         commit = YACL_COMMIT_ID,
-        remote = "{}/yacl.git".format(SECRETFLOW_GIT),
+        remote = "{}/yasl.git".format(SECRETFLOW_GIT),
     )
 
     # Add homebrew openmp for macOS, somehow..homebrew installs to different location on Apple Silcon/Intel macs.. so we need two rules here
