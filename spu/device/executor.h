@@ -15,7 +15,7 @@
 #pragma once
 
 #include <functional>
-#include <mutex>
+#include <shared_mutex>
 
 #include "llvm/ADT/DenseMap.h"
 #include "mlir/IR/BuiltinOps.h"
@@ -32,7 +32,7 @@ class SymbolScope final {
   SymbolScope *parent_;
 
   // Local symbols inside this value.
-  mutable std::mutex mu_;
+  mutable std::shared_mutex mu_;
   llvm::DenseMap<mlir::Value, spu::Value> symbols_;
 
 public:

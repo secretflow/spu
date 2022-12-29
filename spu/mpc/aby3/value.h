@@ -75,7 +75,6 @@ ArrayRef getShare(const ArrayRef& in, int64_t share_idx);
 
 template <typename T>
 std::vector<T> getShareAs(const ArrayRef& in, size_t share_idx) {
-  YACL_ENFORCE(in.stride() != 0);
   YACL_ENFORCE(share_idx == 0 || share_idx == 1);
 
   ArrayRef share = getShare(in, share_idx);

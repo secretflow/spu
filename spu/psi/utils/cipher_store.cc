@@ -173,15 +173,15 @@ std::vector<uint64_t> CachedCsvCipherStore::FinalizeAndComputeIndices(
       break;
     }
 
-    size_t thread_num = 6;
-    size_t compare_size = (self_data_.size() + thread_num - 1) / thread_num;
+    size_t compare_size =
+        (self_data_.size() + compare_thread_num_ - 1) / compare_thread_num_;
 
-    std::vector<std::vector<uint64_t>> result(thread_num);
+    std::vector<std::vector<uint64_t>> result(compare_thread_num_);
 
     auto compare_proc = [&](int idx) -> void {
       uint64_t begin = idx * compare_size;
       uint64_t end = std::min<size_t>(self_data_.size(), begin + compare_size);
-      // SPDLOG_INFO("begin:{}, end:{}", begin, end);
+
       for (uint64_t i = begin; i < end; i++) {
         if (std::binary_search(batch_peer_data.begin(), batch_peer_data.end(),
                                self_data_[i])) {
@@ -190,12 +190,12 @@ std::vector<uint64_t> CachedCsvCipherStore::FinalizeAndComputeIndices(
       }
     };
 
-    std::vector<std::future<void>> f_compare(thread_num);
-    for (size_t i = 0; i < thread_num; i++) {
+    std::vector<std::future<void>> f_compare(compare_thread_num_);
+    for (size_t i = 0; i < compare_thread_num_; i++) {
       f_compare[i] = std::async(compare_proc, i);
     }
 
-    for (size_t i = 0; i < thread_num; i++) {
+    for (size_t i = 0; i < compare_thread_num_; i++) {
       f_compare[i].get();
     }
 

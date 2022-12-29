@@ -65,4 +65,17 @@ TEST(ArrayRefTest, NdStrides) {
   EXPECT_EQ(b.at<int32_t>({2, 2}), 28);
 }
 
+TEST(ArrayRefTest, unflatten) {
+  ArrayRef a(std::make_shared<yacl::Buffer>(sizeof(int32_t)),
+             makePtType(PT_I32), 5, 0, 0);
+  *static_cast<int32_t*>(a.data()) = 1;
+
+  auto b = unflatten(a, {1, 1, 5});
+
+  std::vector<int64_t> expected_shape = {1, 1, 5};
+  std::vector<int64_t> expected_strides = {0, 0, 0};
+  EXPECT_EQ(b.shape(), expected_shape);
+  EXPECT_EQ(b.strides(), expected_strides);
+}
+
 }  // namespace spu

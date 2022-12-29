@@ -57,9 +57,7 @@ spu_cc_library(
     srcs = ["kernel.cc"],
     hdrs = ["kernel.h"],
     deps = [
-        "//spu/core:array_ref",
-        "//spu/core:type",
-        "//spu/mpc/util:cexpr",
+        ":object",
     ],
 )
 
@@ -68,8 +66,10 @@ spu_cc_library(
     srcs = ["object.cc"],
     hdrs = ["object.h"],
     deps = [
-        ":kernel",
+        "//spu/core:array_ref",
         "//spu/core:trace",
+        "//spu/core:type",
+        "//spu/mpc/util:cexpr",
     ],
 )
 
@@ -79,6 +79,7 @@ spu_cc_library(
     hdrs = ["api.h"],
     deps = [
         ":object",
+        "//spu/core:array_ref",
     ],
 )
 

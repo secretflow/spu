@@ -15,6 +15,7 @@
 #pragma once
 
 #include "spu/mpc/api.h"
+#include "spu/mpc/kernel.h"
 #include "spu/mpc/object.h"
 #include "spu/mpc/util/circuits.h"
 
@@ -23,10 +24,9 @@ namespace spu::mpc {
 ArrayRef a2p(Object* ctx, const ArrayRef&);
 ArrayRef p2a(Object* ctx, const ArrayRef&);
 
-// FIXME(jint) drop FieldType.
-ArrayRef zero_a(Object* ctx, FieldType, size_t);
-ArrayRef rand_a(Object* ctx, FieldType, size_t);
-ArrayRef rand_b(Object* ctx, FieldType, size_t);
+ArrayRef zero_a(Object* ctx, size_t);
+ArrayRef rand_a(Object* ctx, size_t);
+ArrayRef rand_b(Object* ctx, size_t);
 
 ArrayRef not_a(Object* ctx, const ArrayRef&);
 ArrayRef msb_a(Object* ctx, const ArrayRef&);
@@ -46,7 +46,7 @@ ArrayRef mmul_ap(Object* ctx, const ArrayRef&, const ArrayRef&, size_t, size_t,
 ArrayRef mmul_aa(Object* ctx, const ArrayRef&, const ArrayRef&, size_t, size_t,
                  size_t);
 
-ArrayRef zero_b(Object* ctx, FieldType, size_t);
+ArrayRef zero_b(Object* ctx, size_t);
 
 Type common_type_b(Object* ctx, const Type& a, const Type& b);
 ArrayRef cast_type_b(Object* ctx, const ArrayRef& a, const Type& to_type);

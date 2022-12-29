@@ -144,6 +144,7 @@ class CachedCsvCipherStore : public ICipherStore {
 
   size_t self_items_count_ = 0;
   size_t peer_items_count_ = 0;
+  size_t compare_thread_num_ = 6;
 
   std::vector<std::string> self_data_;
 };

@@ -82,7 +82,7 @@ class CachedCsvBatchProvider : public IBatchProvider {
   size_t cursor_index_ = 0;
   size_t bucket_index_ = 0;
 
-  std::array<std::future<void>, 2> f_read;
+  std::array<std::future<void>, 2> f_read_;
 };
 
 }  // namespace spu::psi

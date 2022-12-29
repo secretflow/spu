@@ -34,31 +34,20 @@ std::shared_ptr<spdlog::logger> makeSStreamLogger(std::ostringstream& oss) {
 
 TEST(TraceTest, TracerLogWorks) {
   std::ostringstream oss;
-  Tracer tracer("test", TR_MODALL | TR_LAR, makeSStreamLogger(oss));
+  initTrace(TR_MODALL | TR_LAR, makeSStreamLogger(oss));
 
-  tracer.logActionBegin(1, (TR_MOD1 | TR_LOG), "f", "");
-  tracer.logActionBegin(2, (TR_MOD2 | TR_LOG), "g", "");
-  tracer.logActionEnd(2, (TR_MOD2 | TR_LOG), "g", "");
-  tracer.logActionEnd(1, (TR_MOD1 | TR_LOG), "h", "");
-}
-
-TEST(TraceTest, TracerRecordWorks) {
-  std::ostringstream oss;
-  Tracer tracer("test", TR_MODALL | TR_LAR, makeSStreamLogger(oss));
-
-  tracer.logActionBegin(1, (TR_MOD1 | TR_REC), "f", "");
-  tracer.logActionBegin(2, (TR_MOD1 | TR_REC), "g", "");
-  tracer.logActionBegin(3, (TR_MOD1 | TR_REC), "h", "");
-  tracer.logActionEnd(3, (TR_MOD1 | TR_REC), "h", "");
-  tracer.logActionEnd(2, (TR_MOD1 | TR_REC), "g", "");
-  tracer.logActionEnd(1, (TR_MOD1 | TR_REC), "h", "");
+  Tracer tracer(TR_MODALL | TR_LAR);
+  tracer.logActionBegin(1, "f", "");
+  tracer.logActionBegin(2, "g", "");
+  tracer.logActionEnd(2, "g", "");
+  tracer.logActionEnd(1, "h", "");
 }
 
 TEST(TraceTest, ActionWorks) {
   std::ostringstream oss;
-  auto tracer = std::make_shared<Tracer>("test", TR_MODALL | TR_LAR,
-                                         makeSStreamLogger(oss));
+  initTrace(TR_MODALL | TR_LAR, makeSStreamLogger(oss));
 
+  auto tracer = std::make_shared<Tracer>(TR_MODALL | TR_LAR);
   {
     TraceAction ta0(tracer, (TR_MOD1 | TR_LOG), ~0, "f");
     TraceAction ta1(tracer, (TR_MOD1 | TR_LAR), ~TR_MOD1, "g", 10);
@@ -66,14 +55,15 @@ TEST(TraceTest, ActionWorks) {
     TraceAction ta3(tracer, (TR_MOD2 | TR_LAR), ~0, "h", 10, 20);
   }
 
-  ASSERT_EQ(tracer->getRecords().size(), 2);
-  EXPECT_EQ(tracer->getRecords()[0].name, "h");
-  EXPECT_EQ(tracer->getRecords()[1].name, "g");
+  ASSERT_EQ(tracer->getProfState()->getRecords().size(), 2);
+  EXPECT_EQ(tracer->getProfState()->getRecords()[0].name, "h");
+  EXPECT_EQ(tracer->getProfState()->getRecords()[1].name, "g");
 }
 
 /// macros examples.
 struct Context {
-  std::string name() { return "TEST_CTX"; }
+  std::string id() { return "id"; }
+  std::string pid() { return ""; }
 };
 void g(Context* ctx) { SPU_TRACE_HAL_LEAF(ctx); }
 
@@ -91,10 +81,10 @@ TEST(TraceTest, Example) {
   Context ctx;
   f(&ctx);
 
-  auto tracer = getTracer(GET_CTX_NAME(&ctx));
+  auto tracer = GET_TRACER(&ctx);
 
-  ASSERT_EQ(tracer->getRecords().size(), 1);
-  EXPECT_EQ(tracer->getRecords()[0].name, "g");
+  ASSERT_EQ(tracer->getProfState()->getRecords().size(), 1);
+  EXPECT_EQ(tracer->getProfState()->getRecords()[0].name, "g");
   // std::cout << oss.str() << std::endl;
 }
 

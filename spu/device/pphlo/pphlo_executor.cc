@@ -991,7 +991,7 @@ static void dispatchOp(OpExecutor *executor, HalContext *hctx,
     // Execute op
     {
       const auto fn_name = op.getName().getStringRef().str();
-      SPU_TRACE_ACTION(GET_CTX_NAME(hctx), (TR_HLO | TR_LAR), ~TR_HLO, fn_name);
+      SPU_TRACE_ACTION(GET_TRACER(hctx), (TR_HLO | TR_LAR), ~TR_HLO, fn_name);
       execute(executor, hctx, sscope, casted, opts);
     }
 

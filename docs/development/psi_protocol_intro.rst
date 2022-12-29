@@ -34,21 +34,21 @@ Curve25519 [Ber06]_ offer a good balance between security and performance.
 
 1. For each element :math:`x_i` in its set, Alice applies the hash function and then exponentiates it 
    using its key :math:`\alpha`, thus computing :math:`{H(x_i)}^\alpha` . Alice sends 
-   :math:`\{{H(x_i)}^\alpha\}_{i=1}^{n_1}` to Bob.
+   :math:`\{\{H(x_i)\}^\alpha\}_{i=1}^{n_1}` to Bob.
 
 2. For each element :math:`{H(x_i)}^\alpha`  received from Alice in the previous step, Bob exponentiates 
    it using its key :math:`\beta`, computing :math:`{H(x_i)}^{\alpha\beta}`. 
-   Bob sends :math:`{\{{H(x_i)}^{\alpha\beta}\}}_{i=1}^{n_1}` to Alice.
+   Bob sends :math:`{\{\{H(x_i)\}^{\alpha\beta}\}}_{i=1}^{n_1}` to Alice.
 
 3. For each element :math:`y_i` in its set, Bob applies the hash function and then exponentiates it 
    using its key :math:`\beta`, thus computing :math:`{H(y_i)}^\beta` . 
-   Bob sends the set :math:`\{{H(y_i)}^\beta\}_{i=1}^{n_2}` to Alice.
+   Bob sends the set :math:`\{\{H(y_i)\}^\beta\}_{i=1}^{n_2}` to Alice.
 
 4. For each element :math:`{H(y_i)}^\beta`  received from Bob in the previous step, Alice exponentiates 
    it using its key :math:`\alpha`, computing :math:`{H(y_i)}^{\beta\alpha}` .   
 
-5. Alice compares two set :math:`{\{{H(x_i)}^{\alpha\beta}\}}_{i=1}^{n_1}` 
-   and :math:`{\{{H(y_i)}^{\beta\alpha}\}}_{i=1}^{n_2}`  and gets intersection.
+5. Alice compares two set :math:`{\{\{H(x_i)\}^{\alpha\beta}\}}_{i=1}^{n_1}` 
+   and :math:`{\{\{H(y_i)\}^{\beta\alpha}\}}_{i=1}^{n_2}`  and gets intersection.
 
 The Elliptic Curve groups, supported in secretflow SPU PSI moudule.
 
@@ -246,20 +246,20 @@ built upon prime-order groups.
   1. For each element :math:`y_i` in its set, Bob applies PRF using 
      private key :math:`\beta`, i.e. computing :math:`H_2(y_i,{H_1(y_i)}^\beta)` . 
   
-  2. Bob sends :math:`\{{H_2(y_i,{H_1(y_i)}^\beta)}\}_{i=1}^{n_2}` to Alice in shuffled order
+  2. Bob sends :math:`\{\{H_2(y_i,{H_1(y_i)}^\beta)\}\}_{i=1}^{n_2}` to Alice in shuffled order
    
 - Online Phase
   
   1. For each element :math:`x_i` in its set, Alice applies the hash function and then exponentiates 
      it using its blind key :math:`r_i`, thus computing :math:`{H_1(x_i)}^{r_i}`. Alice sends 
-     :math:`\{{H_1(x_i)}^{r_i}\}_{i=1}^{n_1}` to Bob.
+     :math:`\{\{H_1(x_i)\}^{r_i}\}_{i=1}^{n_1}` to Bob.
   2. For each element :math:`H_1(x_i)^{r_i}` received from Alice in the previous step, Bob exponentiates 
      it using its key :math:`\beta`, computing :math:`{H_1(x_i)}^{r_i\beta}`. 
-     Bob sends :math:`{\{{H_1(x_i)}^{{r_i}\beta}\}}_{i=1}^{n_1}` to Alice.
-  3. Alice receive :math:`{\{{H_1(x_i)}^{r_i\beta}\}}_{i=1}^{n_1}` from Bob, and unblind it use :math:`r_i`,
-     Get :math:`\{{{H_1(x_i)}^\beta}\}_{i=1}^{n_1}`, compute OPRF :math:`\{{H_2(x_i,{H_1(x_i)}^\beta)}\}_{i=1}^{n_1}`.
-  4. Alice compares two sets :math:`\{{H_2(x_i,{H_1(x_i)}^\beta)}\}_{i=1}^{n_1}`
-     and :math:`\{{H_2(y_i,{H_1(y_i)}^\beta)}\}_{i=1}^{n_2}` and gets intersection.
+     Bob sends :math:`{\{\{H_1(x_i)\}^{\{r_i\}\beta}\}}_{i=1}^{n_1}` to Alice.
+  3. Alice receive :math:`{\{\{H_1(x_i)\}^{r_i\beta}\}}_{i=1}^{n_1}` from Bob, and unblind it use :math:`r_i`,
+     Get :math:`\{\{\{H_1(x_i)\}^\beta\}\}_{i=1}^{n_1}`, compute OPRF :math:`\{\{H_2(x_i,{H_1(x_i)}^\beta)\}\}_{i=1}^{n_1}`.
+  4. Alice compares two sets :math:`\{\{H_2(x_i,{H_1(x_i)}^\beta)\}\}_{i=1}^{n_1}`
+     and :math:`\{\{H_2(y_i,{H_1(y_i)}^\beta)\}\}_{i=1}^{n_2}` and gets intersection.
 
 Labeled PSI
 >>>>>>>>>>>
@@ -287,7 +287,7 @@ SecretFlow SPU wrap `APSI <https://github.com/microsoft/APSI>`_ library, can be 
   
   1. **Choose ItemParams**, TableParams, QueryParams, SEALParams.
   2. **Sender's OPRF**: The sender samples a key :math:`\beta` for the OPRF, update its items set 
-     to :math:`\{{H_2(s_i,{H_1(s_i)}^\beta)}\}_{s_i\in S}`.
+     to :math:`\{\{H_2(s_i,{H_1(s_i)}^\beta)\}\}_{s_i\in S}`.
   3. **Sender's Hashing**: Sender inserts all :math:`s_i\in S` into the sets :math:`\mathcal{B}[h_0(s_i)]`,
      :math:`\mathcal{B}[h_1(s_i)]` and :math:`\mathcal{B}[h_2(s_i)]`.
   4. **Splitting**: For each set :math:`\mathcal{B}[i]`, the sender splits it into bin bundles, denoted as
@@ -304,7 +304,7 @@ SecretFlow SPU wrap `APSI <https://github.com/microsoft/APSI>`_ library, can be 
   1. Receiver Encrypt :math:`r_i \in R`.
 
      - **Receiver's OPRF**: Receiver and Sender run ecdh-OPRF protocol, get 
-       :math:`\{{H_2(r_i,{H_1(r_i)}^\beta)}\}_{r_i\in R}`.
+       :math:`\{\{H_2(r_i,{H_1(r_i)}^\beta)\}\}_{r_i\in R}`.
      - **Receiver's CuckooHash**: Receiver performs cuckoo hashing on the set :math:`R` into CuckooTable C with m bins
        using h1; h2; h3 has the hash functions.
      - **Packing**: Receiver pack items in CuckooTable C into a FHE plaintext polynomial.

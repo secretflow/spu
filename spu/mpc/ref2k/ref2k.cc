@@ -16,9 +16,11 @@
 
 #include <mutex>
 
+#include "spu/core/trace.h"
 #include "spu/core/type.h"
 #include "spu/mpc/common/prg_state.h"
 #include "spu/mpc/common/pub2k.h"
+#include "spu/mpc/kernel.h"
 #include "spu/mpc/util/ring_ops.h"
 
 namespace spu::mpc {

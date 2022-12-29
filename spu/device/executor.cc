@@ -30,11 +30,13 @@
 namespace spu::device {
 
 const spu::Value &SymbolScope::lookupValue(mlir::Value key) const {
-  std::unique_lock lk(mu_);
-  auto itr = symbols_.find(key);
+  {
+    std::shared_lock<std::shared_mutex> lk(mu_);
+    auto itr = symbols_.find(key);
 
-  if (itr != symbols_.end()) {
-    return itr->second;
+    if (itr != symbols_.end()) {
+      return itr->second;
+    }
   }
 
   if (parent_ != nullptr) {
@@ -63,7 +65,7 @@ bool SymbolScope::hasValueUnsafe(mlir::Value key) const {
 }
 
 bool SymbolScope::hasValues(absl::Span<mlir::Value const> keys) const {
-  std::unique_lock lk(mu_);
+  std::shared_lock<std::shared_mutex> lk(mu_);
   for (const auto &key : keys) {
     if (!hasValueUnsafe(key)) {
       return false;
@@ -73,17 +75,17 @@ bool SymbolScope::hasValues(absl::Span<mlir::Value const> keys) const {
 }
 
 bool SymbolScope::hasValue(mlir::Value key) const {
-  std::unique_lock lk(mu_);
+  std::shared_lock<std::shared_mutex> lk(mu_);
   return hasValueUnsafe(key);
 }
 
 void SymbolScope::addValue(mlir::Value key, const spu::Value &val) {
-  std::unique_lock lk(mu_);
+  std::lock_guard<std::shared_mutex> lk(mu_);
   symbols_[key] = val;
 }
 
 void SymbolScope::addValue(mlir::Value key, spu::Value &&val) {
-  std::unique_lock lk(mu_);
+  std::lock_guard<std::shared_mutex> lk(mu_);
   symbols_[key] = std::move(val);
 }
 

@@ -48,9 +48,8 @@ class HalContext final {
   // all parties get a 'corresponding' hal context when forked.
   std::unique_ptr<HalContext> fork();
 
-  std::string name() const {
-    return fmt::format("CTX:{}", std::this_thread::get_id());
-  }
+  const std::string& id() { return prot_->id(); }
+  const std::string& pid() { return prot_->pid(); }
 
   HalContext(HalContext&& other) = default;
 

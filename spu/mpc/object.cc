@@ -21,7 +21,8 @@ std::unique_ptr<State> State::fork() {
 }
 
 std::unique_ptr<Object> Object::fork() {
-  auto new_obj = std::make_unique<Object>(name_);
+  auto new_id = fmt::format("{}-{}", id_, child_counter_++);
+  auto new_obj = std::make_unique<Object>(new_id, id_);
   new_obj->kernels_ = kernels_;
   for (const auto& [key, val] : states_) {
     new_obj->addState(key, val->fork());

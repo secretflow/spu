@@ -141,9 +141,9 @@ void CachedCsvBatchProvider::ReadAndShuffle(size_t read_index,
                 bucket_items_[idx].size());
   };
 
-  f_read[read_index] = std::async(std::launch::async, read_proc, read_index);
+  f_read_[read_index] = std::async(std::launch::async, read_proc, read_index);
   if (!thread_model) {
-    f_read[read_index].get();
+    f_read_[read_index].get();
   }
   SPDLOG_INFO("end func ReadAndShuffle read_index:{}", read_index);
 }
