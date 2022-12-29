@@ -36,7 +36,7 @@ import spu.binding.util.distributed as ppd
 from examples.python.utils.stax_models import (
     LR,
     alexnet,
-    chamelon,
+    chameleon,
     custom_model,
     lenet,
     minionn,
@@ -248,7 +248,7 @@ def train_lenet(run_on_spu: bool = False):
     print(f'accuracy({env}): {accuracy_score(np.argmax(predict_y, axis=1),test_y)}')
 
 
-def train_chamelon(run_on_spu: bool = False):
+def train_chameleon(run_on_spu: bool = False):
     train_ds, test_ds = get_datasets('mnist')
     train_x, train_y = train_ds['image'], train_ds['label']
     train_y = jax.nn.one_hot(train_y, 10)
@@ -257,7 +257,7 @@ def train_chamelon(run_on_spu: bool = False):
     epochs = DEFAULT_EPOCHS
     batch_size = DEFAULT_BATCH_SIZE
 
-    init_fun, predict_fun = chamelon()
+    init_fun, predict_fun = chameleon()
 
     start = time.perf_counter()
     params = train(
@@ -291,7 +291,7 @@ elif args.model == 'network_b':
 elif args.model == 'network_c':
     fn = train_lenet
 elif args.model == 'network_d':
-    fn = train_chamelon
+    fn = train_chameleon
 else:
     raise RuntimeError("unsupported model.")
 

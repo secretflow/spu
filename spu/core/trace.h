@@ -72,26 +72,41 @@ int64_t genActionUuid();
 
 }  // namespace internal
 
-/// Trace module macros
-// Module divide action into groups.
+/// Design of tracing system.
 //
-// For each traced action, it's only recorded when:
-// 1. the action belongs the module.
-// 2. the tracer enables the module.
+// Each action has two attributes:
+// - flag: describes the expected behavior of the action, i.e. (MOD1|LOG|REC)
+//         means the action belongs to MOD1, expected to be logged and recorded.
+// - mask: used to mask out the current flag.
 //
-// |-MOD1--|-MOD2--|
-// f0
-// |- g0
-// |  |- h0
-// |  |  |- r1
-// |  |  |  |- s0
-// |  |  |  |  |- t0
-// |  |  |  |  |- t1
-// |  |  |  |- s1
-// |  |- h1
-// |  g1
-// |  |- h2
-// |  |- h3
+// The behavior is defined by two attributes: the action's flag and the current
+// context's flag. i.e. action's flag is (LOG | REC) and current context's flag
+// is LOG, the final flag is (LOG | REC) & LOG = LOG.
+//
+// Module divide action into groups. For example, let's consider the following
+// call stack: f0 calls g0, g0 calls h0, etc.
+//
+//   |--- M1 ---|--- M2 ---|
+//   f0->g0->h0->r0->r0->t0
+//
+// (f0, g0, h0) belongs to module 1, (r0, g0, h0) belongs to module 2.
+//
+// The call stack looks like this:
+//
+// |   M1  |  M2      | flag,       mask,   cur           | action
+// --------|----------|-----------------------------------|-------
+// f0                 | M1|LOG,     ~0,     M1|M2|LOG|REC | M1|LOG
+// |- g0              | M1|REG,     ~M1,    M1|M2|LOG|REC | M1|LOG|REC
+// |  |- h0           | M1|LOG|REC, ~0,     M2|LOG|REC    | -
+// |  |  |- r1        | M2|LOG,     ~0,     M2|LOG|REC    | M2|LOG
+// |  |  |  |- s0     | M2,         ~M2,    M2|LOG|REC    | M2
+// |  |  |  |  |- t0  | M2|REC,     ~0,     LOG|REC       | -
+// |  |  |  |  |- t1  | M2|REC,     ~0,     LOG|REC       | -
+// |  |  |  |- s1     | M2|REC,     ~0,     M2|LOG|REC    | M2|REC
+// |  |- h1           | M1|LOG,     ~0,     M1|M2|LOG|REC | M1|LOG
+//
+// The current flag is a thread-local (per thread) state.
+
 #define TR_MOD1 0x0001  // module 1
 #define TR_MOD2 0x0002  // module 2
 #define TR_MOD3 0x0004  // module 3
@@ -114,68 +129,71 @@ int64_t genActionUuid();
 using TimePoint = std::chrono::time_point<std::chrono::high_resolution_clock>;
 using Duration = std::chrono::nanoseconds;
 
-struct ActionRecord {
+struct ActionRecord final {
   // the uuid of this action.
   int64_t id;
   // name of the action, the name should be static allocated.
   std::string name;
-  // detail of the action
+  // detail of the action.
   std::string detail;
-  // the flag of this action.
+  // the flag of the action.
   int64_t flag;
   // the action timing information.
   TimePoint start;
   TimePoint end;
 };
 
-class Tracer final {
-  // name of this tracer
-  const std::string name_;
-
-  // current tracer mask.
-  int64_t mask_;
-
-  // the logger
-  std::shared_ptr<spdlog::logger> logger_;
-
+class ProfState final {
   // the recorded action, at ending time.
   std::vector<ActionRecord> records_;
-
+  // the records_ mutex.
   std::mutex mutex_;
 
  public:
-  explicit Tracer(std::string name, int64_t mask,
-                  std::shared_ptr<spdlog::logger> logger)
-      : name_(std::move(name)), mask_(mask), logger_(std::move(logger)) {}
-
-  const std::string& name() const { return name_; }
-
-  void setMask(int64_t new_mask) { mask_ = new_mask; }
-  int64_t getMask() const { return mask_; }
-
-  /// log begin of an action.
-  // @id, unique action id.
-  // @flag, various attributes of the action.
-  // @name, name of the action.
-  // @detail, detail of the action.
-  void logActionBegin(int64_t id, int64_t flag, const std::string& name,
-                      const std::string& detail = "");
-  void logActionEnd(int64_t id, int64_t flag, const std::string& name,
-                    const std::string& detail = "");
-
   void addRecord(ActionRecord&& rec) {
-    if ((rec.flag & mask_ & TR_MODALL) != 0 && (mask_ & TR_REC) != 0) {
-      std::unique_lock lk(mutex_);
-      records_.push_back(std::move(rec));
-    }
+    std::unique_lock lk(mutex_);
+    records_.push_back(std::move(rec));
   }
   const std::vector<ActionRecord>& getRecords() const { return records_; }
   void clearRecords() { records_.clear(); }
 };
 
+// A tracer is a 'single thread'
+class Tracer final {
+  // current tracer's flag.
+  int64_t flag_;
+  // current depth
+  int64_t depth_ = 0;
+  // trace from multi-thread shares a profile state.
+  std::shared_ptr<ProfState> prof_state_ = nullptr;
+
+ public:
+  explicit Tracer(int64_t flag)
+      : flag_(flag), prof_state_(std::make_shared<ProfState>()) {}
+
+  void setFlag(int64_t new_flag) { flag_ = new_flag; }
+  int64_t getFlag() const { return flag_; }
+
+  int64_t getDepth() const { return depth_; }
+
+  const std::shared_ptr<ProfState>& getProfState() { return prof_state_; }
+
+  // TODO: drop these two functions.
+  void logActionBegin(int64_t id, const std::string& name,
+                      const std::string& detail = "") const;
+
+  void logActionEnd(int64_t id, const std::string& name,
+                    const std::string& detail = "") const;
+};
+
 class TraceAction final {
+  // The tracer.
   std::shared_ptr<Tracer> const tracer_;
+
+  // The static expected behavior of this action.
   int64_t const flag_;
+
+  // The mask to suppress current tracer's flag.
   int64_t const mask_;
 
   // the uuid of this action.
@@ -191,40 +209,39 @@ class TraceAction final {
   TimePoint start_;
   TimePoint end_;
 
-  int64_t saved_tracer_mask_;
+  int64_t saved_tracer_flag_;
 
   template <typename... Args>
-  void begin(const std::string& name, Args&&... args) {
-    name_ = name;
+  void begin(Args&&... args) {
     start_ = std::chrono::high_resolution_clock::now();
 
-    if ((flag_ & TR_LOGB) != 0) {
-      // request for logging begin of the acion
+    const auto flag = flag_ & tracer_->getFlag();
+    if ((flag & TR_MODALL) != 0 && (flag & TR_LOGB) != 0) {
       detail_ = internal::variadicToString(std::forward<Args>(args)...);
-      tracer_->logActionBegin(id_, flag_, name_, detail_);
+      tracer_->logActionBegin(id_, name_, detail_);
     }
 
-    // set new mask to the tracer.
-    saved_tracer_mask_ = tracer_->getMask();
-    tracer_->setMask(saved_tracer_mask_ & mask_);
+    // set new flag to the tracer.
+    saved_tracer_flag_ = tracer_->getFlag();
+    tracer_->setFlag(saved_tracer_flag_ & mask_);
   }
 
   void end() {
     // recover mask of the tracer.
-    tracer_->setMask(saved_tracer_mask_);
+    tracer_->setFlag(saved_tracer_flag_);
 
     //
     end_ = std::chrono::high_resolution_clock::now();
 
-    if ((flag_ & TR_LOGE) != 0) {
-      // request for logging end of the acion
-      tracer_->logActionEnd(id_, flag_, name_, detail_);
-    }
-
-    if ((flag_ & TR_REC) != 0) {
-      // request for recording this action.
-      tracer_->addRecord(
-          ActionRecord{id_, name_, std::move(detail_), flag_, start_, end_});
+    const auto flag = flag_ & tracer_->getFlag();
+    if ((flag & TR_MODALL) != 0) {
+      if ((flag & TR_LOGE) != 0) {
+        tracer_->logActionEnd(id_, name_, detail_);
+      }
+      if ((flag & TR_REC) != 0) {
+        tracer_->getProfState()->addRecord(
+            ActionRecord{id_, name_, std::move(detail_), flag_, start_, end_});
+      }
     }
   }
 
@@ -241,41 +258,52 @@ class TraceAction final {
   //   flag = TR_MOD2|TR_LOG, means it belongs MOD2, request for logging.
   //   mask = ~TR_MOD2,       means disable further TR_MOD2 tracing.
   template <typename... Args>
-  explicit TraceAction(std::shared_ptr<Tracer> tracer, int64_t flag,
-                       int64_t mask, const std::string& name, Args&&... args)
-      : tracer_(std::move(tracer)), flag_(flag), mask_(mask) {
+  explicit TraceAction(
+      std::shared_ptr<Tracer> tracer,  //
+      int64_t flag,      // the static expected behaviour flag of action.
+      int64_t mask,      // the suppress mask of the action.
+      std::string name,  // name of this action.
+      Args&&... args)
+      : tracer_(std::move(tracer)),
+        flag_(flag),
+        mask_(mask),
+        name_(std::move(name)) {
     id_ = internal::genActionUuid();
-    begin(name, std::forward<Args>(args)...);
+    begin(std::forward<Args>(args)...);
   }
 
   ~TraceAction() { end(); }
 };
 
 // global setting
-void initTrace(int64_t tr_flag,
+void initTrace(int64_t global_tr_flag,
                std::shared_ptr<spdlog::logger> tr_logger = nullptr);
 
-std::shared_ptr<Tracer> getTracer(const std::string& name);
+int64_t getGlobalTraceFlag();
 
-void registerTracer(std::shared_ptr<Tracer> tracer);
+// Get the trace state by current (virtual thread) id, if there is no
+// corresponding Tracer found, try to clone a state from the Tracer
+// corresponding to the parent id.
+std::shared_ptr<Tracer> getTracer(const std::string& tid,
+                                  const std::string& pid);
 
+/// The helper macros
 #define SPU_ENABLE_TRACE
 
 // TODO: support per-context trace.
-// #define GET_CTX_NAME(CTX) "CTX:0"
-#define GET_CTX_NAME(CTX) ((CTX)->name())
+// #define GET_TRACER(CTX) "CTX:0"
+#define GET_TRACER(CTX) getTracer((CTX)->id(), (CTX)->pid())
 
 #ifdef SPU_ENABLE_TRACE
 
 // Why add `##` to __VA_ARGS__, please see
 // https://stackoverflow.com/questions/5891221/variadic-macros-with-zero-arguments
-#define SPU_TRACE_ACTION(TR_NAME, FLAG, MASK, NAME, ...)           \
-  TraceAction __trace_action(getTracer(TR_NAME), FLAG, MASK, NAME, \
-                             ##__VA_ARGS__);
+#define SPU_TRACE_ACTION(TRACER, FLAG, MASK, NAME, ...) \
+  TraceAction __trace_action(TRACER, FLAG, MASK, NAME, ##__VA_ARGS__);
 
 #else
 
-#define SPU_TRACE_ACTION(TR_NAME, FLAG, MASK, NAME, ...) (void)NAME;
+#define SPU_TRACE_ACTION(TRACER, FLAG, MASK, NAME, ...) (void)NAME;
 
 #endif
 
@@ -288,36 +316,36 @@ void registerTracer(std::shared_ptr<Tracer> tracer);
 #define TR_MPC TR_MOD3
 
 // trace a hal layer dispatch
-#define SPU_TRACE_HLO_DISP(CTX, ...)                                     \
-  SPU_TRACE_ACTION(GET_CTX_NAME(CTX), (TR_HLO | TR_LOG), (~0), __func__, \
+#define SPU_TRACE_HLO_DISP(CTX, ...)                                   \
+  SPU_TRACE_ACTION(GET_TRACER(CTX), (TR_HLO | TR_LOG), (~0), __func__, \
                    ##__VA_ARGS__)
 
 // trace a hal layer leaf
-#define SPU_TRACE_HLO_LEAF(CTX, ...)                                          \
-  SPU_TRACE_ACTION(GET_CTX_NAME(CTX), (TR_HLO | TR_LAR), (~TR_HLO), __func__, \
+#define SPU_TRACE_HLO_LEAF(CTX, ...)                                        \
+  SPU_TRACE_ACTION(GET_TRACER(CTX), (TR_HLO | TR_LAR), (~TR_HLO), __func__, \
                    ##__VA_ARGS__)
 
 // trace a hal layer dispatch
-#define SPU_TRACE_HAL_DISP(CTX, ...)                                     \
-  SPU_TRACE_ACTION(GET_CTX_NAME(CTX), (TR_HAL | TR_LOG), (~0), __func__, \
+#define SPU_TRACE_HAL_DISP(CTX, ...)                                   \
+  SPU_TRACE_ACTION(GET_TRACER(CTX), (TR_HAL | TR_LOG), (~0), __func__, \
                    ##__VA_ARGS__)
 
 // trace a hal layer leaf
-#define SPU_TRACE_HAL_LEAF(CTX, ...)                                          \
-  SPU_TRACE_ACTION(GET_CTX_NAME(CTX), (TR_HAL | TR_LAR), (~TR_HAL), __func__, \
+#define SPU_TRACE_HAL_LEAF(CTX, ...)                                        \
+  SPU_TRACE_ACTION(GET_TRACER(CTX), (TR_HAL | TR_LAR), (~TR_HAL), __func__, \
                    ##__VA_ARGS__)
 
 // trace a mpc layer dispatch
-#define SPU_TRACE_MPC_DISP(CTX, ...)                                      \
-  SPU_TRACE_ACTION(GET_CTX_NAME(CTX), (TR_MPC | TR_LOG), (~0), kBindName, \
-                   ##__VA_ARGS__)
+#define SPU_TRACE_MPC_DISP(CTX, ...)                                   \
+  SPU_TRACE_ACTION(GET_TRACER(CTX->caller()), (TR_MPC | TR_LOG), (~0), \
+                   kBindName, ##__VA_ARGS__)
 
 // trace a mpc layer leaf
-#define SPU_TRACE_MPC_LEAF(CTX, ...)                                           \
-  SPU_TRACE_ACTION(GET_CTX_NAME(CTX), (TR_MPC | TR_LAR), (~TR_MPC), kBindName, \
-                   ##__VA_ARGS__)
+#define SPU_TRACE_MPC_LEAF(CTX, ...)                                        \
+  SPU_TRACE_ACTION(GET_TRACER(CTX->caller()), (TR_MPC | TR_LAR), (~TR_MPC), \
+                   kBindName, ##__VA_ARGS__)
 
-// TODO: remove this.
+// Debug purpose only.
 class MemProfilingGuard {
  private:
   int indent_ = 0;

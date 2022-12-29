@@ -27,10 +27,39 @@ from jax.example_libraries.stax import (
     BatchNorm,
 )
 
+# Network A
+# Ref: https://eprint.iacr.org/2017/396.pdf
+def secureml():
+    nn_init, nn_apply = stax.serial(
+        Flatten,
+        Dense(128),
+        Relu,
+        Dense(128),
+        Relu,
+        Dense(10),
+    )
+    return nn_init, nn_apply
+
+# Network B
+# Ref: https://eprint.iacr.org/2017/452.pdf
+def minionn():
+    nn_init, nn_apply = stax.serial(
+        Conv(out_chan=16, filter_shape=(5, 5), strides=(1, 1), padding='valid'),
+        Relu,
+        MaxPool(window_shape=(2, 2)),
+        Conv(out_chan=16, filter_shape=(5, 5), strides=(1, 1), padding='valid'),
+        Relu,
+        MaxPool(window_shape=(2, 2)),
+        Flatten,
+        Dense(100),
+        Relu,
+        Dense(10),
+    )
+    return nn_init, nn_apply
+
 # Network C
+# Ref: https://eprint.iacr.org/2018/442.pdf
 def lenet():
-    # Follows https://arxiv.org/pdf/2107.00501.pdf while
-    # https://eprint.iacr.org/2018/442.pdf is different.
     nn_init, nn_apply = stax.serial(
         Conv(out_chan=20, filter_shape=(5, 5), strides=(1, 1), padding='valid'),
         Relu,
@@ -39,16 +68,24 @@ def lenet():
         Relu,
         MaxPool(window_shape=(2, 2)),
         Flatten,
-        # https://eprint.iacr.org/2018/442.pdf is
-        # Dense(500)
-        Dense(100),
+        Dense(500),
         Relu,
-        Dense(10),  # Same structure as CryptGPU, use Cross Entropy Loss
-        # Relu,       # Falcon
-        # Softmax,    # Secure Quantized Training for Deep Learning
+        Dense(10),
     )
     return nn_init, nn_apply
 
+# Network D
+# Ref: https://eprint.iacr.org/2017/1164.pdf
+def chameleon():
+    nn_init, nn_apply = stax.serial(
+        Conv(out_chan=5, filter_shape=(5, 5), strides=(2, 2), padding='same'),
+        Relu,
+        Flatten,
+        Dense(100),
+        Relu,
+        Dense(10),
+    )
+    return nn_init, nn_apply
 
 def alexnet(num_class=10):
     nn_init, nn_apply = stax.serial(
@@ -97,8 +134,7 @@ def alexnet(num_class=10):
         Relu,
         Dense(256),
         Relu,
-        Dense(10),  # CryptGPU
-        # Relu,       # Falcon
+        Dense(10),
     )
     return nn_init, nn_apply
 
@@ -172,71 +208,19 @@ def vgg16(num_class=10):
     )
     return nn_init, nn_apply
 
-
 def custom_model():
     nn_init, nn_apply = stax.serial(
         Conv(2, (1, 1)),
-        # stax.MaxPool((2, 2)),
         AvgPool((2, 2), (1, 1)),
-        # stax.BatchNorm(),
         Flatten,
         Dense(10),
-        # custom_Dense(10),
-        # stax.elementwise(stax.relu),
-        # stax.Softmax,
     )
     return nn_init, nn_apply
-
-
-# Network A
-def secureml():
-    nn_init, nn_apply = stax.serial(
-        Flatten,
-        Dense(128),
-        Relu,
-        Dense(128),
-        Relu,
-        Dense(10),  # delete output activation function relu
-    )
-    return nn_init, nn_apply
-
-
-# Network D
-def chamelon():
-    nn_init, nn_apply = stax.serial(
-        Conv(out_chan=5, filter_shape=(5, 5), strides=(2, 2), padding='same'),
-        Relu,
-        Flatten,
-        Dense(100),
-        Relu,
-        Dense(10),
-    )
-    return nn_init, nn_apply
-
-
-# Network B
-def minionn():
-    nn_init, nn_apply = stax.serial(
-        Conv(out_chan=16, filter_shape=(5, 5), strides=(1, 1), padding='valid'),
-        Relu,
-        MaxPool(window_shape=(2, 2)),
-        Conv(out_chan=16, filter_shape=(5, 5), strides=(1, 1), padding='valid'),
-        Relu,
-        MaxPool(window_shape=(2, 2)),
-        Flatten,
-        Dense(100),
-        Relu,
-        Dense(10),
-        # Softmax,    # add Softmax. From Secure Quantized Training for Deep Learning
-        # Relu,         # Falcon
-    )
-    return nn_init, nn_apply
-
 
 def LR():
     nn_init, nn_apply = stax.serial(
         Flatten,
         Dense(10),
-        Sigmoid,  # LoR, replace relu to sigmoid
+        Sigmoid,
     )
     return nn_init, nn_apply

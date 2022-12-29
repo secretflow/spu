@@ -144,7 +144,7 @@ NdArrayRef unflatten(const ArrayRef& arr, absl::Span<const int64_t> shape) {
 
   if (arr.stride() == 0) {
     return {arr.buf(), arr.eltype(), shape,
-            std::vector<int64_t>(0, shape.size()), arr.offset()};
+            std::vector<int64_t>(shape.size(), 0), arr.offset()};
   }
 
   // FIXME: due to the current implementation,

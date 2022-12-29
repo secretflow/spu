@@ -202,8 +202,9 @@ void BindLink(py::module& m) {
         [](const ContextDesc& desc,
            size_t self_rank) -> std::shared_ptr<Context> {
           py::gil_scoped_release release;
-          brpc::FLAGS_max_body_size = 2UL * 1024 * 1024 * 1024;
-          brpc::FLAGS_socket_max_unwritten_bytes = 2L * 1024 * 1024 * 1024;
+          brpc::FLAGS_max_body_size = std::numeric_limits<uint64_t>::max();
+          brpc::FLAGS_socket_max_unwritten_bytes =
+              std::numeric_limits<int64_t>::max() / 2;
           auto ctx = yacl::link::FactoryBrpc().CreateContext(desc, self_rank);
           ctx->ConnectToMesh();
           return ctx;

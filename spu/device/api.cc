@@ -149,8 +149,8 @@ void printProfilingData(spu::HalContext *hctx, const std::string &name,
   {
     std::map<ActionKey, ActionStats> stats;
 
-    const auto &tracer = getTracer(GET_CTX_NAME(hctx));
-    const auto &records = tracer->getRecords();
+    const auto &tracer = GET_TRACER(hctx);
+    const auto &records = tracer->getProfState()->getRecords();
 
     for (const auto &rec : records) {
       auto &stat = stats[{rec.name, rec.flag}];
@@ -185,23 +185,23 @@ void printProfilingData(spu::HalContext *hctx, const std::string &name,
 }
 
 void setupTrace(spu::HalContext *hctx, const spu::RuntimeConfig &rt_config) {
-  int64_t tr_mask = 0;
+  int64_t tr_flag = 0;
   if (rt_config.enable_action_trace()) {
-    tr_mask |= TR_LOG;
+    tr_flag |= TR_LOG;
   }
 
   if (rt_config.enable_pphlo_profile()) {
-    tr_mask |= TR_HLO;
-    tr_mask |= TR_REC;
+    tr_flag |= TR_HLO;
+    tr_flag |= TR_REC;
   }
 
   if (rt_config.enable_hal_profile()) {
-    tr_mask |= TR_HAL | TR_MPC;
-    tr_mask |= TR_REC;
+    tr_flag |= TR_HAL | TR_MPC;
+    tr_flag |= TR_REC;
   }
 
-  getTracer(GET_CTX_NAME(hctx))->setMask(tr_mask);
-  getTracer(GET_CTX_NAME(hctx))->clearRecords();
+  initTrace(tr_flag);
+  GET_TRACER(hctx)->getProfState()->clearRecords();
 }
 
 void SPUErrorHandler(void *use_data, const char *reason, bool gen_crash_diag) {
@@ -290,7 +290,7 @@ void executeImpl(OpExecutor *executor, spu::HalContext *hctx,
   }
 
   comm_stats.diff(hctx->lctx());
-  if ((getTracer(GET_CTX_NAME(hctx))->getMask() & TR_REC) != 0) {
+  if ((getGlobalTraceFlag() & TR_REC) != 0) {
     printProfilingData(hctx, executable.name(), exec_stats, comm_stats);
   }
 }

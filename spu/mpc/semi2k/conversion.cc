@@ -51,7 +51,7 @@ ArrayRef A2B::proc(KernelEvalContext* ctx, const ArrayRef& x) const {
   std::vector<ArrayRef> bshrs;
   const auto bty = makeType<BShrTy>(field);
   for (size_t idx = 0; idx < comm->getWorldSize(); idx++) {
-    auto b = zero_b(ctx->caller(), field, x.numel());
+    auto b = zero_b(ctx->caller(), x.numel());
     if (idx == comm->getRank()) {
       ring_xor_(b, x);
     }

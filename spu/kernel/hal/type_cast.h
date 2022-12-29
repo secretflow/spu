@@ -32,4 +32,7 @@ Value p2s(HalContext* ctx, const Value& in);
 // @param in, the input value
 Value reveal(HalContext* ctx, const Value& in);
 
+/// cast in storage type to dest type
+Value stype_cast(HalContext* ctx, const Value& in, const Type& dest);
+
 }  // namespace spu::kernel::hal

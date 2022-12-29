@@ -102,4 +102,11 @@ Value dtype_cast(HalContext* ctx, const Value& in, DataType to_type) {
   YACL_THROW("should not be here");
 }
 
+Value stype_cast(HalContext* ctx, const Value& in, const Type& to) {
+  if (in.storage_type() == to) {
+    return in;
+  }
+  return _cast_type(ctx, in, to).setDtype(in.dtype());
+}
+
 }  // namespace spu::kernel::hal

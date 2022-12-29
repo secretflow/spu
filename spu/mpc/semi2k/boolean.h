@@ -52,11 +52,10 @@ class ZeroB : public Kernel {
   CExpr comm() const override { return Const(0); }
 
   void evaluate(KernelEvalContext* ctx) const override {
-    ctx->setOutput(
-        proc(ctx, ctx->getParam<FieldType>(0), ctx->getParam<size_t>(1)));
+    ctx->setOutput(proc(ctx, ctx->getParam<size_t>(0)));
   }
 
-  ArrayRef proc(KernelEvalContext* ctx, FieldType field, size_t size) const;
+  ArrayRef proc(KernelEvalContext* ctx, size_t size) const;
 };
 
 class B2P : public UnaryKernel {

@@ -94,7 +94,7 @@ todo_include_todos = True
 
 # global variables
 extlinks = {
-    'spu_doc_host': ('https://spu.readthedocs.io/zh/latest', 'doc '),
+    'spu_doc_host': ('https://www.secretflow.org.cn/docs/spu/en/', 'doc '),
     'spu_code_host': ('https://github.com/secretflow', 'code '),
 }
 

@@ -8,7 +8,7 @@ SPU Documentation
 
 SPU (Secure Processing Unit) is a domain-specific **compiler and runtime suite**, that aims to provide a **secure computation** service with **provable security**.
 
-SPU is a major part of `SecretFlow <https://secretflow.readthedocs.io/>`_ project. SPU is designed to be easily integrated into other distributed system, it's **recommended to use** SecretFlow to write SPU program.
+SPU is a major part of `SecretFlow <https://www.secretflow.org.cn/docs/secretflow/en/>`_ project. SPU is designed to be easily integrated into other distributed system, it's **recommended to use** SecretFlow to write SPU program.
 
 
 Content

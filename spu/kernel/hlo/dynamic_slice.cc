@@ -76,14 +76,11 @@ void UpdateSliceInPlace(HalContext *ctx, spu::Value &operand,
                "slice needs to return a ref to input");
   YACL_ENFORCE(slice.shape() == update.shape(),
                "slice shape should equal to update shape");
-  YACL_ENFORCE(
-      slice.storage_type() == update.storage_type(),
-      "update needs to have same storage type as operand, got {} and {}",
-      update.storage_type(), slice.storage_type());
+  auto u = hal::stype_cast(ctx, update, slice.storage_type());
 
   std::vector<int64_t> indicies(slice.shape().size(), 0);
   do {
-    slice.copyElementFrom(update, indicies, indicies);
+    slice.copyElementFrom(u, indicies, indicies);
   } while (bumpIndices<int64_t>(slice.shape(), absl::MakeSpan(indicies)));
 }
 

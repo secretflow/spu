@@ -14,10 +14,14 @@
 
 #include "spu/kernel/hlo/shift.h"
 
+#include <algorithm>
+#include <cstddef>
 #include <optional>
 
 #include "spu/kernel/hal/constants.h"
 #include "spu/kernel/hal/polymorphic.h"
+#include "spu/kernel/hal/ring.h"
+#include "spu/kernel/hal/type_cast.h"
 
 namespace spu::kernel::hlo {
 
@@ -35,21 +39,34 @@ spu::Value shift_imp(HalContext *ctx, const spu::Value &lhs,
   YACL_ENFORCE(rhs.isPublic(), "shift bit value needs to be a public");
   YACL_ENFORCE(rhs.shape() == lhs.shape());
   std::vector<int64_t> indicies(lhs.shape().size(), 0);
-  // Depend on protocl, shift result might be different, AShr vs BShr.
+  // Depend on protocol, shift result might be different, AShr vs BShr.
   // So delay the preallocation
   // FIXME: maybe we can do something better?
-  std::optional<spu::Value> result;
+  std::vector<spu::Value> elements(lhs.numel());
+  size_t idx = 0;
   do {
     auto bits = extractShiftBits(ctx, rhs.getElementAt(indicies));
     const auto lhs_el = lhs.getElementAt(indicies);
-    auto ret_el = f(ctx, lhs_el, bits);
-    if (!result.has_value()) {
-      result = spu::Value({ret_el.storage_type(), lhs.shape()}, lhs.dtype());
-    }
-    result->copyElementFrom(ret_el, {}, indicies);
+    elements[idx++] = f(ctx, lhs_el, bits);
   } while (bumpIndices<int64_t>(lhs.shape(), absl::MakeSpan(indicies)));
 
-  return result.value();
+  // Compute common type
+  auto common_type = elements.front().storage_type();
+  for (size_t idx = 1; idx < elements.size(); ++idx) {
+    common_type =
+        hal::_common_type(ctx, common_type, elements[idx].storage_type());
+  }
+
+  spu::Value result({common_type, lhs.shape()}, lhs.dtype());
+  // reset indicies
+  std::fill(indicies.begin(), indicies.end(), 0);
+  idx = 0;
+  do {
+    auto ret_el = hal::stype_cast(ctx, elements[idx++], common_type);
+    result.copyElementFrom(ret_el, {}, indicies);
+  } while (bumpIndices<int64_t>(lhs.shape(), absl::MakeSpan(indicies)));
+
+  return result;
 }
 
 spu::Value Lshift(HalContext *ctx, const spu::Value &operand,

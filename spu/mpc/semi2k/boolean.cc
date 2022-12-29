@@ -67,10 +67,11 @@ void CastTypeB::evaluate(EvalContext* ctx) const {
   ctx->setOutput(in);
 }
 
-ArrayRef ZeroB::proc(KernelEvalContext* ctx, FieldType field,
-                     size_t size) const {
+ArrayRef ZeroB::proc(KernelEvalContext* ctx, size_t size) const {
   SPU_TRACE_MPC_LEAF(ctx, size);
 
+  // TODO: semantically, we should not use field for boolean share.
+  const auto field = ctx->caller()->getState<Z2kState>()->getDefaultField();
   auto* prg_state = ctx->caller()->getState<PrgState>();
   auto [r0, r1] = prg_state->genPrssPair(field, size);
 
@@ -91,7 +92,7 @@ ArrayRef P2B::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
 
   const auto field = in.eltype().as<Ring2k>()->field();
   auto* comm = ctx->caller()->getState<Communicator>();
-  auto x = zero_b(ctx->caller(), field, in.numel());
+  auto x = zero_b(ctx->caller(), in.numel());
 
   if (comm->getRank() == 0) {
     ring_xor_(x, in);

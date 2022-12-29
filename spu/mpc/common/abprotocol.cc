@@ -686,17 +686,13 @@ ArrayRef cast_type_b(Object* ctx, const ArrayRef& a, const Type& to_type) {
   return ctx->call("cast_type_b", a, to_type);
 }
 
-ArrayRef zero_a(Object* ctx, FieldType field, size_t sz) {
-  return ctx->call("zero_a", field, sz);
-}
+ArrayRef zero_a(Object* ctx, size_t sz) { return ctx->call("zero_a", sz); }
 
-ArrayRef rand_a(Object* ctx, FieldType field, size_t sz) {
-  return ctx->call("rand_a", field, sz);
-}
+ArrayRef rand_a(Object* ctx, size_t sz) { return ctx->call("rand_a", sz); }
 
-ArrayRef rand_b(Object* ctx, FieldType field, size_t sz) {
-  return ctx->call("rand_b", field, sz);
-}
+ArrayRef zero_b(Object* ctx, size_t sz) { return ctx->call("zero_b", sz); }
+
+ArrayRef rand_b(Object* ctx, size_t sz) { return ctx->call("rand_b", sz); }
 
 SPU_MPC_DEF_UNARY_OP(a2p)
 SPU_MPC_DEF_UNARY_OP(p2a)
@@ -711,10 +707,6 @@ SPU_MPC_DEF_UNARY_OP_WITH_SIZE(lshift_a)
 SPU_MPC_DEF_UNARY_OP_WITH_SIZE(truncpr_a)
 SPU_MPC_DEF_MMUL(mmul_ap)
 SPU_MPC_DEF_MMUL(mmul_aa)
-
-ArrayRef zero_b(Object* ctx, FieldType field, size_t sz) {
-  return ctx->call("zero_b", field, sz);
-}
 
 SPU_MPC_DEF_UNARY_OP(b2p)
 SPU_MPC_DEF_UNARY_OP(p2b)

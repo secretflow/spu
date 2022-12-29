@@ -16,6 +16,7 @@
 
 #include "spu/core/shape_util.h"
 #include "spu/mpc/common/abprotocol.h"
+#include "spu/mpc/kernel.h"
 #include "spu/mpc/util/communicator.h"
 #include "spu/mpc/util/ring_ops.h"
 #include "spu/mpc/util/simulate.h"

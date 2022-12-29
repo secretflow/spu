@@ -428,6 +428,18 @@ std::vector<uint64_t> BucketPsi::RunPsi(uint64_t& self_items_count) {
         fmt::format("bucket_tmp_{}", yacl::crypto::RandU64(true));
     std::filesystem::create_directory(tmp_dir);
 
+    // register remove of temp dir.
+    ON_SCOPE_EXIT([&] {
+      if (!tmp_dir.empty()) {
+        std::error_code ec;
+        std::filesystem::remove_all(tmp_dir, ec);
+        if (ec.value() != 0) {
+          SPDLOG_WARN("can not remove tmp dir: {}, msg: {}", tmp_dir,
+                      ec.message());
+        }
+      }
+    });
+
     std::vector<uint64_t> results;
 
     if (lctx_->Rank() == config_.receiver_rank()) {
@@ -435,7 +447,7 @@ std::vector<uint64_t> BucketPsi::RunPsi(uint64_t& self_items_count) {
 
       client_options.link0 = lctx_;
       client_options.link1 = lctx_->Spawn();
-      client_options.curve_type = CurveType::CURVE_FOURQ;
+      client_options.curve_type = config_.curve_type();
 
       std::shared_ptr<EcdhOprfPsiClient> dh_oprf_psi_client_offline =
           std::make_shared<EcdhOprfPsiClient>(client_options);
@@ -482,7 +494,7 @@ std::vector<uint64_t> BucketPsi::RunPsi(uint64_t& self_items_count) {
       spu::psi::EcdhOprfPsiOptions server_options;
       server_options.link0 = lctx_;
       server_options.link1 = lctx_->Spawn();
-      server_options.curve_type = CurveType::CURVE_FOURQ;
+      server_options.curve_type = config_.curve_type();
 
       std::vector<uint8_t> server_private_key =
           ReadEcSecretKeyFile(config_.ecdh_secret_key_path());
@@ -493,7 +505,6 @@ std::vector<uint64_t> BucketPsi::RunPsi(uint64_t& self_items_count) {
           std::make_shared<EcdhOprfPsiServer>(server_options,
                                               server_private_key);
 
-      std::vector<std::string> ids = {"id"};
       std::shared_ptr<IBatchProvider> batch_provider =
           std::make_shared<CachedCsvBatchProvider>(
               config_.input_params().path(), selected_fields_,
@@ -507,12 +518,6 @@ std::vector<uint64_t> BucketPsi::RunPsi(uint64_t& self_items_count) {
           dh_oprf_psi_server_offline->FullEvaluateAndSend(batch_provider);
     }
 
-    if (!tmp_dir.empty()) {
-      std::error_code ec;
-      std::filesystem::remove_all(tmp_dir, ec);
-      //     Leave error as it is, do nothing
-    }
-
     return results;
   } else if (config_.psi_type() ==
              PsiType::ECDH_OPRF_UNBALANCED_PSI_2PC_ONLINE) {
@@ -522,7 +527,19 @@ std::vector<uint64_t> BucketPsi::RunPsi(uint64_t& self_items_count) {
         fmt::format("bucket_tmp_{}", yacl::crypto::RandU64(true));
     std::filesystem::create_directory(tmp_dir);
 
-    SPDLOG_INFO(" input file path:{}", config_.input_params().path());
+    // register remove of temp dir.
+    ON_SCOPE_EXIT([&] {
+      if (!tmp_dir.empty()) {
+        std::error_code ec;
+        std::filesystem::remove_all(tmp_dir, ec);
+        if (ec.value() != 0) {
+          SPDLOG_WARN("can not remove tmp dir: {}, msg: {}", tmp_dir,
+                      ec.message());
+        }
+      }
+    });
+
+    SPDLOG_INFO("input file path:{}", config_.input_params().path());
     SPDLOG_INFO("output file path:{}", config_.output_params().path());
 
     if (lctx_->Rank() == config_.receiver_rank()) {
@@ -530,7 +547,7 @@ std::vector<uint64_t> BucketPsi::RunPsi(uint64_t& self_items_count) {
 
       client_options.link0 = lctx_;
       client_options.link1 = lctx_->Spawn();
-      client_options.curve_type = CurveType::CURVE_FOURQ;
+      client_options.curve_type = config_.curve_type();
 
       std::shared_ptr<EcdhOprfPsiClient> dh_oprf_psi_client_online =
           std::make_shared<EcdhOprfPsiClient>(client_options);
@@ -574,7 +591,7 @@ std::vector<uint64_t> BucketPsi::RunPsi(uint64_t& self_items_count) {
       spu::psi::EcdhOprfPsiOptions server_options;
       server_options.link0 = lctx_;
       server_options.link1 = lctx_->Spawn();
-      server_options.curve_type = CurveType::CURVE_FOURQ;
+      server_options.curve_type = config_.curve_type();
 
       std::vector<uint8_t> server_private_key =
           ReadEcSecretKeyFile(config_.ecdh_secret_key_path());
@@ -586,12 +603,6 @@ std::vector<uint64_t> BucketPsi::RunPsi(uint64_t& self_items_count) {
                                               server_private_key);
 
       dh_oprf_psi_server_online->RecvBlindAndSendEvaluate();
-    }
-
-    if (!tmp_dir.empty()) {
-      std::error_code ec;
-      std::filesystem::remove_all(tmp_dir, ec);
-      //   Leave error as it is, do nothing
     }
 
     return results;
