@@ -277,8 +277,16 @@ void executeImpl(OpExecutor *executor, spu::HalContext *hctx,
     opts.do_type_check = rt_config.enable_type_checker();
     opts.do_log_execution = rt_config.enable_pphlo_trace();
     opts.do_parallel = false;
+    if (opts.do_parallel) {
+      mlir_ctx.enableMultithreading();
+      mlir_ctx.enterMultiThreadedExecution();
+    }
     outputs = runRegion(executor, hctx, nullptr, entry_function.getBody(),
                         inputs, opts);
+
+    if (opts.do_parallel) {
+      mlir_ctx.exitMultiThreadedExecution();
+    }
   }
 
   // sync output to environment.

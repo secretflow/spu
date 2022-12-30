@@ -21,3 +21,12 @@ Compiler
 --------
 
 .. autofunction:: spu.compile
+
+Simulation
+----------
+
+.. autoclass:: spu.Simulator
+   :members:
+   :undoc-members:
+
+.. autofunction:: spu.sim_jax

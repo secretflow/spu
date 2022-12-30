@@ -140,7 +140,7 @@ ArrayRef AndBP::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
     using RhsT = ring2k_t;
     auto _rhs = ArrayView<RhsT>(rhs);
     const size_t rhs_nbits = maxBitWidth(_rhs);
-    const size_t out_nbits = std::max(lhs_ty->nbits(), rhs_nbits);
+    const size_t out_nbits = std::min(lhs_ty->nbits(), rhs_nbits);
     const PtType out_btype = calcBShareBacktype(out_nbits);
 
     return DISPATCH_UINT_PT_TYPES(lhs_ty->getBacktype(), "_", [&]() {

@@ -28,6 +28,6 @@ from spu.spu_pb2 import (
 )
 
 from .binding.api import Io, Runtime, compile
-from .binding import util
+from .binding.util.simulation import Simulator, sim_jax
 
 from .binding import psi

@@ -14,6 +14,7 @@
 
 #include "spu/device/executor.h"
 
+#include <algorithm>
 #include <chrono>
 #include <condition_variable>
 #include <future>
@@ -64,14 +65,11 @@ bool SymbolScope::hasValueUnsafe(mlir::Value key) const {
   return false;
 }
 
-bool SymbolScope::hasValues(absl::Span<mlir::Value const> keys) const {
+bool SymbolScope::hasValues(mlir::OperandRange keys) const {
   std::shared_lock<std::shared_mutex> lk(mu_);
-  for (const auto &key : keys) {
-    if (!hasValueUnsafe(key)) {
-      return false;
-    }
-  }
-  return true;
+  return std::all_of(keys.begin(), keys.end(), [this](const mlir::Value &key) {
+    return hasValueUnsafe(key);
+  });
 }
 
 bool SymbolScope::hasValue(mlir::Value key) const {
@@ -141,8 +139,6 @@ std::vector<spu::Value> runBlock(OpExecutor *executor, HalContext *hctx,
 struct SymbolTableEvent {
   std::condition_variable cv;
   std::mutex mutex;
-
-  std::atomic<int64_t> count = 0;
 };
 
 class OpExecTask final {
@@ -161,27 +157,17 @@ public:
       : hctx_(std::move(hctx)), executor_(executor), sscope_(sscope), op_(op),
         event_(event) {}
 
-  bool ready() {
-    std::vector<mlir::Value> operands;
-    for (const auto &operand : op_->getOperands()) {
-      operands.push_back(operand);
-    }
-    return sscope_->hasValues(operands);
-  }
+  bool ready() { return sscope_->hasValues(op_->getOperands()); }
 
   void run() {
     // wait for this operation ready.
-    {
-      using namespace std::chrono_literals;
+    if (op_->getNumOperands() > 0) {
       std::unique_lock lk(event_->mutex);
-      event_->cv.wait(lk, [this]() { return this->ready(); });
+      event_->cv.wait(lk, [this] { return ready(); });
     }
 
     executor_->runKernel(hctx_.get(), sscope_, *op_);
-    {
-      std::unique_lock lk(event_->mutex);
-      event_->cv.notify_all();
-    }
+    event_->cv.notify_all();
   }
 };
 
@@ -202,12 +188,11 @@ std::vector<spu::Value> runBlockParallel(OpExecutor *executor, HalContext *hctx,
 
   futures.reserve(tasks.size());
   for (auto &task : tasks) {
-    futures.push_back(std::async(std::launch::async, &OpExecTask::run, &task));
+    futures.emplace_back(
+        std::async(std::launch::async, &OpExecTask::run, &task));
   }
 
-  for (auto &future : futures) {
-    future.get();
-  }
+  futures.clear();
 
   if (auto *termOp = block.getTerminator()) {
     // TODO: enforce ReturnLike

@@ -52,7 +52,19 @@ class Simulator(object):
         self.io = ppapi.Io(wsize, rt_config)
 
     @classmethod
-    def simple(cls, wsize, prot, field):
+    def simple(cls, wsize: int, prot: spu_pb2.ProtocolKind, field: spu_pb2.FieldType):
+        """helper method to create a SPU Simulator
+
+        Args:
+            wsize (int): the world size.
+
+            prot (spu_pb2.ProtocolKind): protocol.
+
+            field (spu_pb2.FieldType): field type.
+
+        Returns:
+            A SPU Simulator
+        """
         config = spu_pb2.RuntimeConfig(protocol=prot, field=field)
         # config.enable_hal_profile = True
         # config.enable_pphlo_profile = True
@@ -114,14 +126,14 @@ def sim_jax(
     """
     Decorates a jax numpy fn that simulated on SPU.
 
-        sim = Simulator.simple(3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM64)
-        spu_fn = sim_jax(sim, jnp.add)
+        >>> sim = Simulator.simple(3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM64)
+        >>> spu_fn = sim_jax(sim, jnp.add)
 
     Then we can call spu_fn like normal jnp fn.
 
-        x = np.array([[1, 2], [3, 4]])
-        y = np.array([[5, 6], [7, 8]])
-        z = spu_fn(x, y)
+        >>> x = np.array([[1, 2], [3, 4]])
+        >>> y = np.array([[5, 6], [7, 8]])
+        >>> z = spu_fn(x, y)
 
     The function will be evaluated in an spu simulator.
     """
