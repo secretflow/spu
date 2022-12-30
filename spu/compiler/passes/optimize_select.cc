@@ -66,9 +66,15 @@ public:
     }
 
     OpBuilder builder(op);
-    builder.setInsertionPoint(pred.getDefiningOp()->getNextNode());
-    auto pref_a = builder.create<PreferAOp>(pred.getDefiningOp()->getLoc(),
-                                            pred.getType(), pred);
+    // set insertion point
+    auto new_loc = op->getLoc();
+    if (pred.isa<mlir::BlockArgument>()) {
+      builder.setInsertionPointToStart(op->getBlock());
+    } else {
+      builder.setInsertionPoint(pred.getDefiningOp()->getNextNode());
+      new_loc = pred.getDefiningOp()->getLoc();
+    }
+    auto pref_a = builder.create<PreferAOp>(new_loc, pred.getType(), pred);
 
     // Only replace select usage
     pred.replaceUsesWithIf(pref_a, [](OpOperand &use) {

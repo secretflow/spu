@@ -28,3 +28,12 @@ func.func @multi_uses_single_select() -> (tensor<!pphlo.pub<f32>>, tensor<!pphlo
     %4 = "pphlo.not"(%2): (tensor<!pphlo.pub<i1>>) -> tensor<!pphlo.pub<i1>>
     return %3, %4: tensor<!pphlo.pub<f32>>, tensor<!pphlo.pub<i1>>
 }
+
+func.func @multi_selects_arg(%arg0: tensor<!pphlo.pub<i1>>) -> (tensor<!pphlo.pub<f32>>, tensor<!pphlo.pub<f32>>) {
+    %0 = "pphlo.constant"() {value = dense<0xFF800000> : tensor<f32>} : () -> tensor<!pphlo.pub<f32>>
+    %1 = "pphlo.constant"() {value = dense<0.000000e+00> : tensor<f32>} : () -> tensor<!pphlo.pub<f32>>
+    //CHECK: pphlo.prefer_a
+    %2 = "pphlo.select"(%arg0, %0, %1): (tensor<!pphlo.pub<i1>>, tensor<!pphlo.pub<f32>>, tensor<!pphlo.pub<f32>>) -> tensor<!pphlo.pub<f32>>
+    %3 = "pphlo.select"(%arg0, %1, %0): (tensor<!pphlo.pub<i1>>, tensor<!pphlo.pub<f32>>, tensor<!pphlo.pub<f32>>) -> tensor<!pphlo.pub<f32>>
+    return %2, %3: tensor<!pphlo.pub<f32>>, tensor<!pphlo.pub<f32>>
+}

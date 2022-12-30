@@ -43,7 +43,7 @@ public:
 
   //
   bool hasValue(mlir::Value key) const;
-  bool hasValues(absl::Span<mlir::Value const> keys) const;
+  bool hasValues(mlir::OperandRange keys) const;
   const spu::Value &lookupValue(mlir::Value key) const;
   void addValue(::mlir::Value key, const spu::Value &val);
   void addValue(::mlir::Value key, spu::Value &&val);
