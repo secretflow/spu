@@ -36,9 +36,9 @@
 
 namespace spu::kernel::hlo {
 
-spu::Value MaxPoolScatter1x2x2x1NoPaddingNoStrides(
+spu::Value MaxPoolScatter1x2x2x1NoPaddingNoDialation(
     HalContext *ctx, const spu::Value &scatter_indices,
-    const spu::Value &source) {
+    const spu::Value &source, absl::Span<const int64_t> window_strides) {
   std::vector<spu::Value> slices(4);
   for (int64_t idx = 0; idx < 4; ++idx) {
     slices[idx] = hal::slice(
@@ -53,25 +53,27 @@ spu::Value MaxPoolScatter1x2x2x1NoPaddingNoStrides(
     slices[idx] = hal::dtype_cast(ctx, slices[idx], source.dtype());
   }
 
+  // Improvement idea: If window strides is >= window size (no overlap), we
+  // should be able to compute scatter result with just one multiply
   auto z = hal::zeros(ctx, slices[0].vtype(), slices[0].dtype());
 
   std::vector<std::future<spu::Value>> f_slices(4);
-  f_slices[0] = std::async(std::launch::async, hal::pad, ctx, slices[0], z,
-                           std::vector<int64_t>{0, 0, 0, 0},
-                           std::vector<int64_t>{0, 1, 1, 0},
-                           std::vector<int64_t>{0, 0, 0, 0});
-  f_slices[1] = std::async(std::launch::async, hal::pad, ctx, slices[1], z,
-                           std::vector<int64_t>{0, 0, 1, 0},
-                           std::vector<int64_t>{0, 1, 0, 0},
-                           std::vector<int64_t>{0, 0, 0, 0});
-  f_slices[2] = std::async(std::launch::async, hal::pad, ctx, slices[2], z,
-                           std::vector<int64_t>{0, 1, 0, 0},
-                           std::vector<int64_t>{0, 0, 1, 0},
-                           std::vector<int64_t>{0, 0, 0, 0});
-  f_slices[3] = std::async(std::launch::async, hal::pad, ctx, slices[3], z,
-                           std::vector<int64_t>{0, 1, 1, 0},
-                           std::vector<int64_t>{0, 0, 0, 0},
-                           std::vector<int64_t>{0, 0, 0, 0});
+  f_slices[0] = std::async(
+      std::launch::async, hal::pad, ctx, slices[0], z,
+      std::vector<int64_t>{0, 0, 0, 0}, std::vector<int64_t>{0, 1, 1, 0},
+      std::vector<int64_t>{0, window_strides[1] - 1, window_strides[2] - 1, 0});
+  f_slices[1] = std::async(
+      std::launch::async, hal::pad, ctx, slices[1], z,
+      std::vector<int64_t>{0, 0, 1, 0}, std::vector<int64_t>{0, 1, 0, 0},
+      std::vector<int64_t>{0, window_strides[1] - 1, window_strides[2] - 1, 0});
+  f_slices[2] = std::async(
+      std::launch::async, hal::pad, ctx, slices[2], z,
+      std::vector<int64_t>{0, 1, 0, 0}, std::vector<int64_t>{0, 0, 1, 0},
+      std::vector<int64_t>{0, window_strides[1] - 1, window_strides[2] - 1, 0});
+  f_slices[3] = std::async(
+      std::launch::async, hal::pad, ctx, slices[3], z,
+      std::vector<int64_t>{0, 1, 1, 0}, std::vector<int64_t>{0, 0, 0, 0},
+      std::vector<int64_t>{0, window_strides[1] - 1, window_strides[2] - 1, 0});
 
   spu::Value ret = f_slices[0].get();
   for (size_t idx = 1; idx < 4; ++idx) {
@@ -92,12 +94,9 @@ spu::Value MaxPoolScatter(
                                 [](const std::pair<int64_t, int64_t> &p) {
                                   return p.first == 0 && p.second == 0;
                                 });
-  auto one_stride = std::all_of(window_strides.begin(), window_strides.end(),
-                                [](auto v) { return v == 1; });
-  if (window_shape == absl::Span<const int64_t>{1, 2, 2, 1} && no_padding &&
-      one_stride) {
-    return MaxPoolScatter1x2x2x1NoPaddingNoStrides(ctx, scatter_indices,
-                                                   source);
+  if (window_shape == absl::Span<const int64_t>{1, 2, 2, 1} && no_padding) {
+    return MaxPoolScatter1x2x2x1NoPaddingNoDialation(ctx, scatter_indices,
+                                                     source, window_strides);
   }
   //  source_shape * window_numel
   std::vector<int64_t> tiled_1d_shape = source.shape();

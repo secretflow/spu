@@ -47,6 +47,13 @@ llvm::cl::opt<bool> PrecheckOpt(
 llvm::cl::opt<int> BucketSizeOpt("bucket_size", llvm::cl::init(1 << 20),
                                  llvm::cl::desc("hash bucket size"));
 
+llvm::cl::opt<double> DPPsiBobSubSamplingOpt(
+    "bob_sub_sampling", llvm::cl::init(0.9),
+    llvm::cl::desc("dppsi bob_sub_sampling"));
+
+llvm::cl::opt<double> DPPsiEpsilonOpt("epsilon", llvm::cl::init(3),
+                                      llvm::cl::desc("dppsi epsilon"));
+
 int main(int argc, char** argv) {
   llvm::cl::ParseCommandLineOptions(argc, argv);
 
@@ -62,6 +69,13 @@ int main(int argc, char** argv) {
   config.mutable_output_params()->set_path(OutPathOpt.getValue());
   config.mutable_output_params()->set_need_sort(ShouldSortOpt.getValue());
   config.set_psi_type(static_cast<spu::psi::PsiType>(ProtocolOpt.getValue()));
+  config.set_receiver_rank(0);
+
+  if (spu::psi::DP_PSI_2PC == ProtocolOpt.getValue()) {
+    spu::psi::DpPsiParams* dppsi_params = config.mutable_dppsi_params();
+    dppsi_params->set_bob_sub_sampling(DPPsiBobSubSamplingOpt.getValue());
+    dppsi_params->set_epsilon(DPPsiEpsilonOpt.getValue());
+  }
 
   // one-way PSI, just one party get result
   config.set_broadcast_result(false);
@@ -72,8 +86,9 @@ int main(int argc, char** argv) {
     spu::psi::BucketPsi bucket_psi(config, hctx->lctx());
     auto report = bucket_psi.Run();
 
-    SPDLOG_INFO("original_count:{} intersection_count:{}",
-                report.original_count(), report.intersection_count());
+    SPDLOG_INFO("rank:{} original_count:{} intersection_count:{}",
+                hctx->lctx()->Rank(), report.original_count(),
+                report.intersection_count());
   } catch (const std::exception& e) {
     SPDLOG_ERROR("run psi failed: {}", e.what());
     return -1;

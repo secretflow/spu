@@ -14,11 +14,13 @@
 
 #pragma once
 
+#include <cmath>
 #include <memory>
 #include <string>
 #include <utility>
 #include <vector>
 
+#include "spdlog/spdlog.h"
 #include "yacl/link/link.h"
 
 #include "spu/psi/core/ecdh_psi.h"

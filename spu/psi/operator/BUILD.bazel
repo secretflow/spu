@@ -99,11 +99,25 @@ spu_cc_library(
 )
 
 spu_cc_library(
+    name = "dp_2party_psi",
+    srcs = ["dp_2party_psi.cc"],
+    hdrs = ["dp_2party_psi.h"],
+    deps = [
+        ":base_operator",
+        ":factory",
+        "//spu/psi/core/dp_psi:dp_psi",
+    ],
+    alwayslink = True,
+)
+
+spu_cc_library(
     name = "operator",
     deps = [
         ":bc22_2party_psi",
+        ":dp_2party_psi",
         ":ecdh_3party_psi",
         ":kkrt_2party_psi",
         ":nparty_psi",
     ],
 )
+

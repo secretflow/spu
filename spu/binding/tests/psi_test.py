@@ -75,6 +75,11 @@ class UnitTests(unittest.TestCase):
                 output_params=psi.OuputParams(path=output_path, need_sort=True),
                 curve_type=psi.CurveType.CURVE_25519,
             )
+
+            if type == psi.PsiType.DP_PSI_2PC:
+                config.dppsi_params.bob_sub_sampling = 0.9
+                config.dppsi_params.epsilon = 3
+
             report = psi.bucket_psi(lctx, config)
 
             source_count = wc_count(input_path)
@@ -187,6 +192,17 @@ class UnitTests(unittest.TestCase):
 
         self.run_streaming_psi(
             2, inputs, outputs, selected_fields, psi.PsiType.ECDH_PSI_2PC
+        )
+
+    def test_dppsi_2pc(self):
+        print("----------test_dppsi_2pc-------------")
+
+        inputs = ["spu/binding/tests/data/alice.csv", "spu/binding/tests/data/bob.csv"]
+        outputs = ["./alice-dppsi.csv", "./bob-dppsi.csv"]
+        selected_fields = ["id", "idx"]
+
+        self.run_streaming_psi(
+            2, inputs, outputs, selected_fields, psi.PsiType.DP_PSI_2PC
         )
 
     def test_ecdh_oprf_unbalanced(self):

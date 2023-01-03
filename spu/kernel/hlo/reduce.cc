@@ -451,23 +451,28 @@ std::vector<spu::Value> Reduce(HalContext *ctx,
 // Just do a window level parallel is good enough
 // And without dilation and padding, this can be achieved through just slicing
 // FIXME: This is a super special case...consider generalize it a little bit
-std::pair<spu::Value, spu::Value>
-ArgMax1x2x2x1NoPaddingOneStrideWithoutDilation(HalContext *ctx,
-                                               const spu::Value &input) {
+std::pair<spu::Value, spu::Value> ArgMax1x2x2x1NoPaddingWithoutDilation(
+    HalContext *ctx, const spu::Value &input,
+    absl::Span<const int64_t> window_strides) {
   auto input_shape = input.shape();
 
   spu::Value h_max;
   spu::Value h_idx_max;
+
+  std::vector<int64_t> strides(window_strides.size(), 1);
   {
     // Get to horizontal slices
+    strides[2] = window_strides[2];
     auto lhs = hal::slice(
         ctx, input, {0, 0, 0, 0},
         {input_shape[0], input_shape[1], input_shape[2] - 1, input_shape[3]},
-        {1, 1, 1, 1});
+        strides);
     auto rhs = hal::slice(
         ctx, input, {0, 0, 1, 0},
         {input_shape[0], input_shape[1], input_shape[2], input_shape[3]},
-        {1, 1, 1, 1});
+        strides);
+
+    strides[2] = 1;
     // Do a less comp
     auto h_comp = hal::less(ctx, rhs, lhs);
     // make comp an ashare
@@ -492,14 +497,15 @@ ArgMax1x2x2x1NoPaddingOneStrideWithoutDilation(HalContext *ctx,
   }
 
   // Now do vertical compare...
+  strides[1] = window_strides[1];
   auto upper_value = hal::slice(ctx, h_max, {0, 0, 0, 0},
                                 {h_max.shape()[0], h_max.shape()[1] - 1,
                                  h_max.shape()[2], h_max.shape()[3]},
-                                {1, 1, 1, 1});
+                                strides);
   auto bottom_value = hal::slice(
       ctx, h_max, {0, 1, 0, 0},
       {h_max.shape()[0], h_max.shape()[1], h_max.shape()[2], h_max.shape()[3]},
-      {1, 1, 1, 1});
+      strides);
 
   auto v_comp = hal::less(ctx, bottom_value, upper_value);
   // make comp an ashare
@@ -528,17 +534,18 @@ ArgMax1x2x2x1NoPaddingOneStrideWithoutDilation(HalContext *ctx,
                         {v_i_comp_not.shape()[0], v_i_comp_not.shape()[1],
                          v_i_comp_not.shape()[2], v_i_comp_not.shape()[3], 2});
 
+  strides.emplace_back(1);
   auto upper_slice = hal::slice(
       ctx, h_idx_max, {0, 0, 0, 0, 0},
       {h_idx_max.shape()[0], h_idx_max.shape()[1] - 1, h_idx_max.shape()[2],
        h_idx_max.shape()[3], h_idx_max.shape()[4]},
-      {1, 1, 1, 1, 1});
+      strides);
 
   auto bottom_slice = hal::slice(
       ctx, h_idx_max, {0, 1, 0, 0, 0},
       {h_idx_max.shape()[0], h_idx_max.shape()[1], h_idx_max.shape()[2],
        h_idx_max.shape()[3], h_idx_max.shape()[4]},
-      {1, 1, 1, 1, 1});
+      strides);
 
   upper_slice = hal::mul(ctx, v_i_comp, upper_slice);
   bottom_slice = hal::mul(ctx, v_i_comp_not, bottom_slice);
@@ -558,12 +565,10 @@ std::pair<spu::Value, spu::Value> ArgMax(HalContext *ctx,
                   [](const std::pair<int64_t, int64_t> &p) {
                     return p.first == 0 && p.second == 0;
                   });
-  auto one_stride =
-      std::all_of(config.window_strides.begin(), config.window_strides.end(),
-                  [](auto v) { return v == 1; });
   if (config.window_shape == absl::Span<const int64_t>{1, 2, 2, 1} &&
-      no_padding && one_stride) {
-    return ArgMax1x2x2x1NoPaddingOneStrideWithoutDilation(ctx, input);
+      no_padding) {
+    return ArgMax1x2x2x1NoPaddingWithoutDilation(ctx, input,
+                                                 config.window_strides);
   }
 
   // Create eye

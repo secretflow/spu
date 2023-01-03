@@ -76,6 +76,11 @@ def main(_):
         bucket_size=FLAGS.bucket_size,
         curve_type=psi.CurveType.CURVE_25519,
     )
+
+    if FLAGS.protocol == "DP_PSI_2PC":
+        config.dppsi_params.bob_sub_sampling = 0.9
+        config.dppsi_params.epsilon = 3
+
     report = psi.bucket_psi(setup_link(FLAGS.rank), config, FLAGS.ic_mode)
     print(
         f"original_count: {report.original_count}, intersection_count: {report.intersection_count}"
