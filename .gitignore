@@ -54,3 +54,4 @@ idir/
 
 spu_wheel.name
 *.whl
+.vscode/settings.json
