@@ -85,8 +85,8 @@ llvm::cl::opt<int> ProtocolOpt(
 llvm::cl::opt<std::string> InPathOpt("in_path", llvm::cl::init("data.csv"),
                                      llvm::cl::desc("psi data in file path "));
 
-llvm::cl::opt<std::string> FieldNameOpt("field_name", llvm::cl::init("id"),
-                                        llvm::cl::desc("field name "));
+llvm::cl::opt<std::string> FieldNamesOpt("field_names", llvm::cl::init("id"),
+                                         llvm::cl::desc("field names "));
 
 llvm::cl::opt<std::string> OutPathOpt("out_path", llvm::cl::init(""),
                                       llvm::cl::desc("psi out file path"));
@@ -106,11 +106,9 @@ int main(int argc, char** argv) {
 
   auto hctx = MakeHalContext();
 
-  std::vector<std::string> target_fields;
-  target_fields.push_back(FieldNameOpt.getValue());
-
+  auto field_list = absl::StrSplit(FieldNamesOpt.getValue(), ',');
   auto batch_provider = std::make_shared<spu::psi::CsvBatchProvider>(
-      InPathOpt.getValue(), target_fields);
+      InPathOpt.getValue(), field_list);
 
   std::vector<std::string> items;
 

@@ -215,6 +215,13 @@ void BucketPsi::Init() {
   config.set_curve_type(config_.curve_type());
   config.set_receiver_rank(config_.receiver_rank());
   config.set_broadcast_result(config_.broadcast_result());
+  // set dppsi parameters
+  if (config_.has_dppsi_params()) {
+    DpPsiParams* dppsi_params = config.mutable_dppsi_params();
+    dppsi_params->set_bob_sub_sampling(
+        config_.dppsi_params().bob_sub_sampling());
+    dppsi_params->set_epsilon(config_.dppsi_params().epsilon());
+  }
   mem_psi_ = std::make_unique<MemoryPsi>(config, lctx_);
 
   // create output folder.
