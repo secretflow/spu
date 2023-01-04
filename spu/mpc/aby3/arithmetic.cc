@@ -688,7 +688,9 @@ ArrayRef TruncPrAPrecise::proc(KernelEvalContext* ctx, const ArrayRef& in,
 
   // 1. P0 & P1 samples r together.
   // 2. P2 knows r and compute correlated random r{k-1} & sum(r{m~(k-2)})
-  const size_t pivot = std::hash<std::string>{}(comm->lctx()->Id()) % 3;
+
+  size_t pivot;
+  prg_state->fillPubl(absl::MakeSpan(&pivot, 1));
   size_t P0 = pivot % 3;
   size_t P1 = (pivot + 1) % 3;
   size_t P2 = (pivot + 2) % 3;

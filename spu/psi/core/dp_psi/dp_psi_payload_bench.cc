@@ -391,6 +391,4 @@ BENCHMARK(BM_DpPsi)
     ->Args({1 << 20, 4})
     ->Args({1 << 20, 5});
 
-BENCHMARK_MAIN();
-
 }  // namespace spu::psi

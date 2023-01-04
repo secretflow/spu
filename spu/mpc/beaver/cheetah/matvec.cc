@@ -35,7 +35,8 @@ static std::array<size_t, 2> GetSubMatrixShape(const MatVecProtocol::Meta& meta,
                                                size_t poly_degree) {
   size_t ncols = std::min(poly_degree, meta.ncols);
   size_t nrows = absl::bit_ceil(meta.nrows);  // NextPow2
-  auto log2 = absl::bit_width(poly_degree / ncols) - 1;
+  auto log2 = static_cast<int>(absl::bit_width(poly_degree / ncols)) - 1;
+  YACL_ENFORCE_GE(log2, 0);
   size_t subnrows = std::min(nrows, 1UL << log2);
 
   return std::array<size_t, 2>{subnrows, ncols};

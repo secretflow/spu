@@ -313,7 +313,8 @@ ArrayRef B2AByOT::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
 
   // P0 as the helper/dealer, helps to prepare correlated randomness.
   // P1, P2 as the receiver and sender of OT.
-  const size_t pivot = std::hash<std::string>{}(comm->lctx()->Id()) % 3;
+  size_t pivot;
+  prg_state->fillPubl(absl::MakeSpan(&pivot, 1));
   size_t P0 = pivot % 3;
   size_t P1 = (pivot + 1) % 3;
   size_t P2 = (pivot + 2) % 3;
