@@ -8,6 +8,9 @@
 
 ## staging
 > please add your unreleased change here.
+
+## 20230104
+- [SPU] 0.3.1 release
 - [API] Add get_var_meta
 - [API] Change ValueProto to bytes in Runtime/IO binding API
 - [Feature] Add SPU logging

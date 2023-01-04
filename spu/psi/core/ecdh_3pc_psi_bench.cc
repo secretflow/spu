@@ -92,5 +92,3 @@ BENCHMARK(BM_Ecdh3PcPsi)
     ->Arg(512 << 10)
     ->Arg(1 << 20)
     ->Arg(2 << 20);
-
-BENCHMARK_MAIN();

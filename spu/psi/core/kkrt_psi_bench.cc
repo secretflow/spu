@@ -83,5 +83,3 @@ BENCHMARK(BM_KkrtPsi)
     ->Arg(2 << 20)
     ->Arg(4 << 20)
     ->Arg(8 << 20);
-
-BENCHMARK_MAIN();

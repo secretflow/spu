@@ -179,21 +179,7 @@ spu_cc_library(
     name = "mini_psi",
     srcs = ["mini_psi.cc"],
     hdrs = ["mini_psi.h"],
-    copts = select({
-        "@bazel_tools//src/conditions:darwin": [],
-        "//conditions:default": ["-fopenmp"],
-    }),
-    defines = ["CURVE25519_DONNA"] + select({
-        "@bazel_tools//src/conditions:darwin": ["USE_LIBDISPATCH"],
-        "//conditions:default": [],
-    }),
-    # TODO : libgomp.a is gcc only flag.
-    linkopts = select({
-        "@bazel_tools//src/conditions:darwin": [],
-        "//conditions:default": ["-l:libgomp.a"],
-    }),
-    # for libgomp.a has no -fPIC
-    linkstatic = True,
+    defines = ["CURVE25519_DONNA"],
     deps = [
         ":communication",
         ":cuckoo_index",

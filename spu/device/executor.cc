@@ -30,7 +30,7 @@
 
 namespace spu::device {
 
-const spu::Value &SymbolScope::lookupValue(mlir::Value key) const {
+spu::Value SymbolScope::lookupValue(mlir::Value key) const {
   {
     std::shared_lock<std::shared_mutex> lk(mu_);
     auto itr = symbols_.find(key);
@@ -181,18 +181,23 @@ std::vector<spu::Value> runBlockParallel(OpExecutor *executor, HalContext *hctx,
   // context.
   SymbolTableEvent st_event;
   std::vector<OpExecTask> tasks;
-  std::vector<std::future<void>> futures;
   for (auto &op : block.without_terminator()) {
     tasks.emplace_back(hctx->fork(), executor, symbols, &op, &st_event);
   }
 
-  futures.reserve(tasks.size());
-  for (auto &task : tasks) {
-    futures.emplace_back(
-        std::async(std::launch::async, &OpExecTask::run, &task));
+#pragma omp parallel for schedule(dynamic)
+  for (size_t idx = 0; idx < tasks.size(); ++idx) {
+    try {
+      tasks[idx].run();
+    } catch (yacl::Exception &e) {
+      SPDLOG_ERROR("OpExecTask {} run failed, reason = {}, stacktrace = {}",
+                   idx, e.what(), e.stack_trace());
+      spdlog::shutdown(); // Make sure log printed out....
+      abort();
+    } catch (...) {
+      abort(); // WTF...jump the boat...
+    }
   }
-
-  futures.clear();
 
   if (auto *termOp = block.getTerminator()) {
     // TODO: enforce ReturnLike

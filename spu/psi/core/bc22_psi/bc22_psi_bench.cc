@@ -144,6 +144,4 @@ BENCHMARK(BM_PcgPsi)
     ->Arg(8 << 20)
     ->Arg(16 << 20);
 
-BENCHMARK_MAIN();
-
 }  // namespace spu::psi
