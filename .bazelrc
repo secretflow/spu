@@ -9,7 +9,9 @@ build --host_cxxopt=-std=c++17
 
 test --keep_going
 test --test_output=errors
-test --test_timeout=1800
+
+build:benchmark --copt -O3
+build:benchmark --copt -march=native
 
 # platform specific config
 # Bazel will automatic pick platform config since we have enable_platform_specific_config set

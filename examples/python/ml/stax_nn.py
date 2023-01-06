@@ -78,15 +78,16 @@ def train(
         [-1 if idx == 0 else i for idx, i in enumerate(list(train_x.shape))]
     )
     _, params_init = init_fun(key, input_shape)
-    if args.optimizer in ["SGD", "sgd"]:
+    opt_kind = args.optimizer.lower()
+    if opt_kind == "sgd":
         from jax.example_libraries import optimizers
 
         opt_init, opt_update, get_params = optimizers.momentum(0.01, 0.9)
-    elif args.optimizer in ["ADAM", "adam"]:
+    elif opt_kind == "adam":
         from jax.example_libraries import optimizers
 
         opt_init, opt_update, get_params = optimizers.adam(0.001)
-    elif args.optimizer in ["AMSgrad", "amsgrad"]:
+    elif opt_kind == "amsgrad":
         from examples.python.utils import optimizers
 
         opt_init, opt_update, get_params = optimizers.amsgrad(0.001)

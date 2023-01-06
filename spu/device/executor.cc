@@ -167,6 +167,7 @@ public:
     }
 
     executor_->runKernel(hctx_.get(), sscope_, *op_);
+    std::unique_lock lk(event_->mutex);
     event_->cv.notify_all();
   }
 };
@@ -181,14 +182,27 @@ std::vector<spu::Value> runBlockParallel(OpExecutor *executor, HalContext *hctx,
   // context.
   SymbolTableEvent st_event;
   std::vector<OpExecTask> tasks;
+  std::vector<std::future<void>> futures;
   for (auto &op : block.without_terminator()) {
     tasks.emplace_back(hctx->fork(), executor, symbols, &op, &st_event);
   }
 
-#pragma omp parallel for schedule(dynamic)
-  for (size_t idx = 0; idx < tasks.size(); ++idx) {
+  futures.reserve(tasks.size());
+  for (auto &task : tasks) {
+    futures.emplace_back(
+        std::async(std::launch::async, &OpExecTask::run, &task));
+  }
+
+  // Long story short....
+  // std::future A throws
+  // A.get() will propagate the exception to main thread.
+  // main thread starts stack unwinding and tries to destroy of futures
+  // std::vector<std::future>{...A...} all downstream of A is waiting on A...
+  // thus hang during unwinding, so if a future throws, the only choice we have
+  // is abort
+  for (size_t idx = 0; idx < futures.size(); ++idx) {
     try {
-      tasks[idx].run();
+      futures[idx].get();
     } catch (yacl::Exception &e) {
       SPDLOG_ERROR("OpExecTask {} run failed, reason = {}, stacktrace = {}",
                    idx, e.what(), e.stack_trace());
