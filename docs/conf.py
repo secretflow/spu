@@ -58,7 +58,6 @@ extensions = [
     'sphinxcontrib.packetdiag',
     'sphinxcontrib.rackdiag',
     'sphinxcontrib.seqdiag',
-    'sphinx_markdown_tables',
 ]
 
 nbsphinx_requirejs_path = ''
