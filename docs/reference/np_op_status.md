@@ -5,12 +5,12 @@ JAX NumPy Operators Status
 # Overview
 
 
-SPU recommends users to use JAX as frontend language to write logics.We found most of users would utilize **jax.numpy** modules.We have conducted tests with some *selected* Operators for referrence.
+SPU recommends users to use JAX as frontend language to write logics. We found most of users would utilize **jax.numpy** modules in their programs. We have conducted tests with some *selected* Operators for referrence.
 
-Just keep in mind, if you couldn't find a **jax.numpy** operator in this list, it doesn't mean it's not supported. We just did't test it, e.g. sort.And we don't test other **JAX** modules at this moment.
+Just keep in mind, if you couldn't find a **jax.numpy** operator in this list, it doesn't mean it's not supported. We just did't test it, e.g. jax.numpy.sort. And we don't test other **JAX** modules at this moment.
 
 Please contact us if
-- You need to confirm the status of another **jax.numpy** operator.
+- You need to confirm the status of another **jax.numpy** operator not listed here.
 - You found a **jax.numpy** is not working even it is marked as **PASS**. e.g. The precision is bad.
 
 

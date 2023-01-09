@@ -9,7 +9,6 @@ sphinxcontrib-blockdiag==3.0.0
 sphinxcontrib-mermaid==0.7.1
 sphinxcontrib-nwdiag==2.0.0
 sphinxcontrib-seqdiag==3.0.0
-sphinx-markdown-tables==0.0.17
 pytablewriter==0.64.2
 linkify-it-py==2.0.0
 mdutils==1.4.0

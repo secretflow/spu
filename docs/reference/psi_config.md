@@ -6,6 +6,7 @@
 
 - Messages
     - [BucketPsiConfig](#bucketpsiconfig)
+    - [DpPsiParams](#dppsiparams)
     - [InputParams](#inputparams)
     - [MemoryPsiConfig](#memorypsiconfig)
     - [OuputParams](#ouputparams)
@@ -52,6 +53,21 @@ The Bucket-psi configuration.
 | output_params | [ OuputParams](#ouputparams) | The output parameters of psi. |
 | curve_type | [ CurveType](#curvetype) | Optional, specified elliptic curve cryptography used in psi when needed. |
 | bucket_size | [ uint32](#uint32) | Optional, specified the hash bucket size used in psi. |
+| preprocess_path | [ string](#string) | Optional，The path of offline preprocess file. |
+| ecdh_secret_key_path | [ string](#string) | Optional，secret key path of ecdh_oprf, 256bit/32bytes binary file. |
+| dppsi_params | [ DpPsiParams](#dppsiparams) | Optional，Params for dp-psi |
+ <!-- end Fields -->
+ <!-- end HasFields -->
+
+
+### DpPsiParams
+The input parameters of dp-psi.
+
+
+| Field | Type | Description |
+| ----- | ---- | ----------- |
+| bob_sub_sampling | [ double](#double) | bob sub-sampling bernoulli_distribution probability. |
+| epsilon | [ double](#double) | dp epsilon |
  <!-- end Fields -->
  <!-- end HasFields -->
 
@@ -90,6 +106,7 @@ The In-memory psi configuration.
 | receiver_rank | [ uint32](#uint32) | Specified the receiver rank. Receiver can get psi result. |
 | broadcast_result | [ bool](#bool) | Whether to broadcast psi result to all parties. |
 | curve_type | [ CurveType](#curvetype) | Optional, specified elliptic curve cryptography used in psi when needed. |
+| dppsi_params | [ DpPsiParams](#dppsiparams) | Optional，Params for dp-psi |
  <!-- end Fields -->
  <!-- end HasFields -->
 
@@ -147,6 +164,9 @@ The algorithm type of psi.
 | ECDH_PSI_3PC | 4 | Multi-party PSI based on ECDH (Say A, B, C (receiver)) notice: two-party intersection cardinarlity leak (|A intersect B|) |
 | ECDH_PSI_NPC | 5 | Iterative running 2-party ecdh psi to get n-party PSI. Notice: two-party intersection leak |
 | KKRT_PSI_NPC | 6 | Iterative running 2-party kkrt psi to get n-party PSI. Notice: two-party intersection leak |
+| ECDH_OPRF_UNBALANCED_PSI_2PC_OFFLINE | 7 | ecdh-oprf 2-party Unbalanced-PSI offline phase. |
+| ECDH_OPRF_UNBALANCED_PSI_2PC_ONLINE | 8 | ecdh-oprf 2-party Unbalanced-PSI online phase. |
+| DP_PSI_2PC | 9 | Differentially-Private PSI https://arxiv.org/pdf/2208.13249.pdf bases on ECDH-PSI, and provides: Differentially private PSI results. |
 
 
  <!-- end Enums -->

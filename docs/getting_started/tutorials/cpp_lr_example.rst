@@ -10,8 +10,6 @@ Logistic Regression
 .. literalinclude:: ../../../examples/cpp/simple_lr.cc
   :language: cpp
 
-.. todo:: could you help to add comments for *simple_lr.cc* @shantang
-
 
 Run it
 ------
