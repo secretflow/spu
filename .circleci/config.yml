@@ -147,7 +147,7 @@ jobs:
 
   linux_publish:
     docker:
-      - image: registry.hub.docker.com/secretflow/secretflow-gcc11-centos7-release:0.3
+      - image: registry.hub.docker.com/secretflow/secretflow-gcc11-centos7-release:0.1
     resource_class: xlarge
     steps:
       - checkout
@@ -171,11 +171,10 @@ workflows:
     jobs:
       - linux_ut
       - macOS_ut
-  linux_publish:
+  publish:
     when: << pipeline.parameters.GHA_Action >>
     jobs:
       - linux_publish
-  macOS_publish:
-    when: << pipeline.parameters.GHA_Action >>
-    jobs:
       - macOS_publish
+
+      
