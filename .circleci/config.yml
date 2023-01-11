@@ -176,5 +176,3 @@ workflows:
     jobs:
       - linux_publish
       - macOS_publish
-
-      

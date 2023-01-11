@@ -111,6 +111,7 @@ spu_cc_library(
     hdrs = ["constants.h"],
     deps = [
         ":prot_wrapper",
+        ":ring",
         ":shape_ops",
         "//spu/kernel:context",
     ],

@@ -19,6 +19,7 @@
 #include "spu/core/shape_util.h"
 #include "spu/core/xt_helper.h"
 #include "spu/kernel/hal/prot_wrapper.h"
+#include "spu/kernel/hal/ring.h"
 #include "spu/kernel/hal/shape_ops.h"
 #include "spu/mpc/common/pub2k.h"
 
@@ -149,6 +150,10 @@ spu::Value zeros(HalContext* ctx, Visibility vis, DataType dtype,
   } else {
     return hal::expand(ctx, scalar, shape);
   }
+}
+
+Value epsilon(HalContext* ctx) {
+  return _constant(ctx, static_cast<int128_t>(1), {}).asFxp();
 }
 
 }  // namespace spu::kernel::hal

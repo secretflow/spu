@@ -938,6 +938,14 @@ void execute(OpExecutor *executor, HalContext *hctx, SymbolScope *sscope,
 }
 
 void execute(OpExecutor *executor, HalContext *hctx, SymbolScope *sscope,
+             mlir::pphlo::EpsilonOp &op, const ExecutionOptions &opts) {
+  auto e = kernel::hlo::Epsilon(hctx);
+  auto shape =
+      op->getResultTypes()[0].dyn_cast<mlir::RankedTensorType>().getShape();
+  sscope->addValue(op.getResult(), kernel::hlo::Broadcast(hctx, e, shape, {}));
+}
+
+void execute(OpExecutor *executor, HalContext *hctx, SymbolScope *sscope,
              mlir::pphlo::ClampOp &op, const ExecutionOptions &opts) {
   sscope->addValue(op.getResult(),
                    kernel::hlo::Clamp(hctx,

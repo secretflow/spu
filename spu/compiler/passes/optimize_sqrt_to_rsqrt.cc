@@ -75,9 +75,11 @@ struct SqrtRewriter : public OpRewritePattern<DivOp> {
       }
     }
 
+    auto eps = rewriter.create<EpsilonOp>(added_sqrt->getLoc(),
+                                          added_const->getResultTypes());
     auto add = rewriter.create<AddOp>(added_sqrt.getLoc(),
                                       added_sqrt->getResultTypes(),
-                                      added_sqrt->getOperand(0), added_const);
+                                      added_sqrt->getOperand(0), eps);
     auto rsqrt = rewriter.create<RsqrtOp>(added_sqrt.getLoc(),
                                           added_sqrt->getResultTypes(), add);
     rewriter.replaceOpWithNewOp<MulOp>(op, op->getResultTypes(), op.lhs(),

@@ -15,11 +15,13 @@
 #include "spu/kernel/hlo/const.h"
 
 #include "gtest/gtest.h"
+#include "spdlog/fmt/bin_to_hex.h"
 
 #include "spu/core/ndarray_ref.h"
 #include "spu/kernel/context.h"
 #include "spu/kernel/hal/test_util.h"
 #include "spu/kernel/value.h"
+#include "spu/mpc/util/ring_ops.h"
 
 namespace spu::kernel::hlo {
 
@@ -31,6 +33,16 @@ TEST(ConstTest, Empty) {
   EXPECT_EQ(empty_c.numel(), 0);
   EXPECT_EQ(empty_c.shape().size(), 1);
   EXPECT_EQ(empty_c.shape()[0], 0);
+}
+
+TEST(ConstTest, Epsilon) {
+  HalContext hctx = hal::test::makeRefHalContext();
+
+  auto eps = Epsilon(&hctx);
+
+  auto v = hal::test::dump_public_as<float>(&hctx, eps);
+
+  EXPECT_FLOAT_EQ(v[0], 1 / (std::pow(2, getDefaultFxpBits(hctx.rt_config()))));
 }
 
 }  // namespace spu::kernel::hlo

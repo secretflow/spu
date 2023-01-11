@@ -246,13 +246,13 @@ Effects: MemoryEffects::Effect{}
 
 | Operand | Description |
 | :-----: | ----------- |
-| `operand` | statically shaped tensor of public floating-point type or secret floating-point type values
+| `operand` | statically shaped tensor of public fixed-point type or secret fixed-point type values
 
 #### Results:
 
 | Result | Description |
 | :----: | ----------- |
-&laquo;unnamed&raquo; | statically shaped tensor of public floating-point type or secret floating-point type values
+&laquo;unnamed&raquo; | statically shaped tensor of public fixed-point type or secret fixed-point type values
 
 ### `pphlo.clamp` (::mlir::pphlo::ClampOp)
 
@@ -578,6 +578,23 @@ Effects: MemoryEffects::Effect{}
 | :----: | ----------- |
 | `result` | statically shaped tensor of PPHlo public type or PPHlo secret type values
 
+### `pphlo.epsilon` (::mlir::pphlo::EpsilonOp)
+
+Epsilon operator
+
+Return a value that representation runtime epsilon.
+Traits: AlwaysSpeculatableImplTrait
+
+Interfaces: ConditionallySpeculatable, NoMemoryEffect (MemoryEffectOpInterface)
+
+Effects: MemoryEffects::Effect{}
+
+#### Results:
+
+| Result | Description |
+| :----: | ----------- |
+| `output` | statically shaped tensor of public fixed-point type or secret fixed-point type values
+
 ### `pphlo.equal` (::mlir::pphlo::EqualOp)
 
 Equal comparison operator
@@ -625,13 +642,13 @@ Effects: MemoryEffects::Effect{}
 
 | Operand | Description |
 | :-----: | ----------- |
-| `operand` | statically shaped tensor of public floating-point type or secret floating-point type values
+| `operand` | statically shaped tensor of public fixed-point type or secret fixed-point type values
 
 #### Results:
 
 | Result | Description |
 | :----: | ----------- |
-&laquo;unnamed&raquo; | statically shaped tensor of public floating-point type or secret floating-point type values
+&laquo;unnamed&raquo; | statically shaped tensor of public fixed-point type or secret fixed-point type values
 
 ### `pphlo.exponential_minus_one` (::mlir::pphlo::Expm1Op)
 
@@ -652,13 +669,13 @@ Effects: MemoryEffects::Effect{}
 
 | Operand | Description |
 | :-----: | ----------- |
-| `operand` | statically shaped tensor of public floating-point type or secret floating-point type values
+| `operand` | statically shaped tensor of public fixed-point type or secret fixed-point type values
 
 #### Results:
 
 | Result | Description |
 | :----: | ----------- |
-&laquo;unnamed&raquo; | statically shaped tensor of public floating-point type or secret floating-point type values
+&laquo;unnamed&raquo; | statically shaped tensor of public fixed-point type or secret fixed-point type values
 
 ### `pphlo.floor` (::mlir::pphlo::FloorOp)
 
@@ -679,13 +696,13 @@ Effects: MemoryEffects::Effect{}
 
 | Operand | Description |
 | :-----: | ----------- |
-| `operand` | statically shaped tensor of public floating-point type or secret floating-point type values
+| `operand` | statically shaped tensor of public fixed-point type or secret fixed-point type values
 
 #### Results:
 
 | Result | Description |
 | :----: | ----------- |
-&laquo;unnamed&raquo; | statically shaped tensor of public floating-point type or secret floating-point type values
+&laquo;unnamed&raquo; | statically shaped tensor of public fixed-point type or secret fixed-point type values
 
 ### `pphlo.gather` (::mlir::pphlo::GatherOp)
 
@@ -895,13 +912,13 @@ Effects: MemoryEffects::Effect{}
 
 | Operand | Description |
 | :-----: | ----------- |
-| `operand` | statically shaped tensor of public floating-point type or secret floating-point type values
+| `operand` | statically shaped tensor of public fixed-point type or secret fixed-point type values
 
 #### Results:
 
 | Result | Description |
 | :----: | ----------- |
-&laquo;unnamed&raquo; | statically shaped tensor of public floating-point type or secret floating-point type values
+&laquo;unnamed&raquo; | statically shaped tensor of public fixed-point type or secret fixed-point type values
 
 ### `pphlo.log` (::mlir::pphlo::LogOp)
 
@@ -922,13 +939,13 @@ Effects: MemoryEffects::Effect{}
 
 | Operand | Description |
 | :-----: | ----------- |
-| `operand` | statically shaped tensor of public floating-point type or secret floating-point type values
+| `operand` | statically shaped tensor of public fixed-point type or secret fixed-point type values
 
 #### Results:
 
 | Result | Description |
 | :----: | ----------- |
-&laquo;unnamed&raquo; | statically shaped tensor of public floating-point type or secret floating-point type values
+&laquo;unnamed&raquo; | statically shaped tensor of public fixed-point type or secret fixed-point type values
 
 ### `pphlo.logistic` (::mlir::pphlo::LogisticOp)
 
@@ -949,13 +966,13 @@ Effects: MemoryEffects::Effect{}
 
 | Operand | Description |
 | :-----: | ----------- |
-| `operand` | statically shaped tensor of public floating-point type or secret floating-point type values
+| `operand` | statically shaped tensor of public fixed-point type or secret fixed-point type values
 
 #### Results:
 
 | Result | Description |
 | :----: | ----------- |
-&laquo;unnamed&raquo; | statically shaped tensor of public floating-point type or secret floating-point type values
+&laquo;unnamed&raquo; | statically shaped tensor of public fixed-point type or secret fixed-point type values
 
 ### `pphlo.maximum` (::mlir::pphlo::MaxOp)
 
@@ -1260,13 +1277,13 @@ Effects: MemoryEffects::Effect{}
 
 | Operand | Description |
 | :-----: | ----------- |
-| `operand` | statically shaped tensor of public floating-point type or secret floating-point type values
+| `operand` | statically shaped tensor of public fixed-point type or secret fixed-point type values
 
 #### Results:
 
 | Result | Description |
 | :----: | ----------- |
-&laquo;unnamed&raquo; | statically shaped tensor of public floating-point type or secret floating-point type values
+&laquo;unnamed&raquo; | statically shaped tensor of public fixed-point type or secret fixed-point type values
 
 ### `pphlo.reduce` (::mlir::pphlo::ReduceOp)
 
@@ -1484,13 +1501,13 @@ Effects: MemoryEffects::Effect{}
 
 | Operand | Description |
 | :-----: | ----------- |
-| `operand` | statically shaped tensor of public floating-point type or secret floating-point type values
+| `operand` | statically shaped tensor of public fixed-point type or secret fixed-point type values
 
 #### Results:
 
 | Result | Description |
 | :----: | ----------- |
-&laquo;unnamed&raquo; | statically shaped tensor of public floating-point type or secret floating-point type values
+&laquo;unnamed&raquo; | statically shaped tensor of public fixed-point type or secret fixed-point type values
 
 ### `pphlo.rsqrt` (::mlir::pphlo::RsqrtOp)
 
@@ -1511,13 +1528,13 @@ Effects: MemoryEffects::Effect{}
 
 | Operand | Description |
 | :-----: | ----------- |
-| `operand` | statically shaped tensor of public floating-point type or secret floating-point type values
+| `operand` | statically shaped tensor of public fixed-point type or secret fixed-point type values
 
 #### Results:
 
 | Result | Description |
 | :----: | ----------- |
-&laquo;unnamed&raquo; | statically shaped tensor of public floating-point type or secret floating-point type values
+&laquo;unnamed&raquo; | statically shaped tensor of public fixed-point type or secret fixed-point type values
 
 ### `pphlo.select_and_scatter` (::mlir::pphlo::SelectAndScatterOp)
 
@@ -1790,13 +1807,13 @@ Effects: MemoryEffects::Effect{}
 
 | Operand | Description |
 | :-----: | ----------- |
-| `operand` | statically shaped tensor of public floating-point type or secret floating-point type values
+| `operand` | statically shaped tensor of public fixed-point type or secret fixed-point type values
 
 #### Results:
 
 | Result | Description |
 | :----: | ----------- |
-&laquo;unnamed&raquo; | statically shaped tensor of public floating-point type or secret floating-point type values
+&laquo;unnamed&raquo; | statically shaped tensor of public fixed-point type or secret fixed-point type values
 
 ### `pphlo.subtract` (::mlir::pphlo::SubtractOp)
 
@@ -1845,13 +1862,13 @@ Effects: MemoryEffects::Effect{}
 
 | Operand | Description |
 | :-----: | ----------- |
-| `operand` | statically shaped tensor of public floating-point type or secret floating-point type values
+| `operand` | statically shaped tensor of public fixed-point type or secret fixed-point type values
 
 #### Results:
 
 | Result | Description |
 | :----: | ----------- |
-&laquo;unnamed&raquo; | statically shaped tensor of public floating-point type or secret floating-point type values
+&laquo;unnamed&raquo; | statically shaped tensor of public fixed-point type or secret fixed-point type values
 
 ### `pphlo.transpose` (::mlir::pphlo::TransposeOp)
 
