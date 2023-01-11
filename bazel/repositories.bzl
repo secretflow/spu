@@ -4,7 +4,7 @@ load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
 
 SECRETFLOW_GIT = "https://github.com/secretflow"
 
-YACL_COMMIT_ID = "c7b46e47713a2bfd6309890698b9751a98912484"
+YACL_COMMIT_ID = "b3f50c6dbcd141d8dfd3e1dc6b4d54885fd5ac92"
 
 def spu_deps():
     _bazel_platform()
@@ -31,7 +31,7 @@ def spu_deps():
         git_repository,
         name = "yacl",
         commit = YACL_COMMIT_ID,
-        remote = "{}/yasl.git".format(SECRETFLOW_GIT),
+        remote = "{}/yacl.git".format(SECRETFLOW_GIT),
     )
 
     # Add homebrew openmp for macOS, somehow..homebrew installs to different location on Apple Silcon/Intel macs.. so we need two rules here
