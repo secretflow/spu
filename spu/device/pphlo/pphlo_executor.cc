@@ -928,13 +928,35 @@ void execute(OpExecutor *executor, HalContext *hctx, SymbolScope *sscope,
   const auto &dst_shape = type.getShape();
   const auto &pt_type = getPtTypeFromMlirType(type.getElementType());
 
-  PtBufferView view(dea.getRawData().data(), pt_type,
-                    dea.isSplat() ? llvm::ArrayRef<int64_t>() : dst_shape,
-                    dea.isSplat() ? std::vector<int64_t>()
-                                  : makeCompactStrides(dst_shape));
+  // For 1-bit type, MLIR buffer is either 0 or 255
+  // See
+  // https://github.com/llvm/llvm-project/blob/3696941dae5cc5bb379c50eae6190e29f7edbbb1/mlir/include/mlir/IR/BuiltinAttributes.h#L188
+  // We need to normalize the value to 0,1
+  if (dea.getElementType().isInteger(1)) {
+    if (dea.isSplat()) {
+      sscope->addValue(
+          op.getResult(),
+          kernel::hlo::Constant(hctx, dea.getSplatValue<bool>(), dst_shape));
+    } else {
+      std::vector<uint8_t> buf(type.getNumElements());
+      for (const auto &v : llvm::enumerate(dea.getValues<bool>())) {
+        buf[v.index()] = v.value();
+      }
+      PtBufferView view(reinterpret_cast<const bool *>(buf.data()), pt_type,
+                        dst_shape, makeCompactStrides(dst_shape));
 
-  sscope->addValue(op.getResult(),
-                   kernel::hlo::Constant(hctx, view, dst_shape));
+      sscope->addValue(op.getResult(),
+                       kernel::hlo::Constant(hctx, view, dst_shape));
+    }
+  } else {
+    PtBufferView view(dea.getRawData().data(), pt_type,
+                      dea.isSplat() ? llvm::ArrayRef<int64_t>() : dst_shape,
+                      dea.isSplat() ? std::vector<int64_t>()
+                                    : makeCompactStrides(dst_shape));
+
+    sscope->addValue(op.getResult(),
+                     kernel::hlo::Constant(hctx, view, dst_shape));
+  }
 }
 
 void execute(OpExecutor *executor, HalContext *hctx, SymbolScope *sscope,
