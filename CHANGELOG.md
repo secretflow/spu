@@ -8,6 +8,8 @@
 
 ## staging
 > please add your unreleased change here.
+- [Feature] Add EpsilonOp
+
 
 ## 20230104
 - [SPU] 0.3.1 release

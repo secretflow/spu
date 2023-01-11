@@ -186,8 +186,8 @@ spu_cc_library(
 )
 
 spu_cc_library(
-    name = "optmize_sqrt_to_rsqrt",
-    srcs = ["optmize_sqrt_to_rsqrt.cc"],
+    name = "optimize_sqrt_to_rsqrt",
+    srcs = ["optimize_sqrt_to_rsqrt.cc"],
     hdrs = ["passes.h"],
     deps = [
         ":pass_details",
@@ -208,7 +208,7 @@ spu_cc_library(
         ":lower_mixed_type_op",
         ":optimize_maxpool",
         ":optimize_select",
-        ":optmize_sqrt_to_rsqrt",
+        ":optimize_sqrt_to_rsqrt",
         ":reduce_truncation",
     ],
 )

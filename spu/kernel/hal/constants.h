@@ -47,4 +47,7 @@ NdArrayRef dump_public(HalContext* ctx, const Value& v);
 // Deprecated:
 Value make_value(HalContext* ctx, Visibility vtype, PtBufferView bv);
 
+// Return eps
+Value epsilon(HalContext* ctx);
+
 }  // namespace spu::kernel::hal

@@ -54,6 +54,12 @@ def PPHLO_ConstantOp : PPHLO_Op<"constant", [ConstantLike, Pure]> {
   let hasFolder = 1;
 }
 
+def PPHLO_EpsilonOp : PPHLO_Op<"epsilon", [Pure]> {
+  let summary = "Epsilon operator";
+  let description = [{Return a value that representation runtime epsilon.}];
+  let results = (outs PPHLO_FpTensor : $output);
+}
+
 def PPHLO_IotaOp : PPHLO_Op<"iota", [Pure]> {
   let summary = "Iota operator";
   let description = [{

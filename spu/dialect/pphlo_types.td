@@ -61,10 +61,10 @@ def PPHLO_SecretIntType : Type<And<[PPHLO_SecretType.predicate,
     CPred<"$_self.cast<::mlir::pphlo::SecretType>().getBase().isa<::mlir::IntegerType>()">]>, "secret integer type", "::pphlo::SecIntType">;
 
 def PPHLO_PublicFpType : Type<And<[PPHLO_PublicType.predicate, 
-    CPred<"$_self.cast<::mlir::pphlo::PublicType>().getBase().isa<::mlir::FloatType>()">]>, "public floating-point type", "::pphlo::PubFpType">;
+    CPred<"$_self.cast<::mlir::pphlo::PublicType>().getBase().isa<::mlir::FloatType>()">]>, "public fixed-point type", "::pphlo::PubFpType">;
 
 def PPHLO_SecretFpType : Type<And<[PPHLO_SecretType.predicate, 
-    CPred<"$_self.cast<::mlir::pphlo::SecretType>().getBase().isa<::mlir::FloatType>()">]>, "secret floating-point type", "::pphlo::SecFpType">;
+    CPred<"$_self.cast<::mlir::pphlo::SecretType>().getBase().isa<::mlir::FloatType>()">]>, "secret fixed-point type", "::pphlo::SecFpType">;
 
 def PPHLO_Tensor : StaticShapeTensorOf<[PPHLO_PublicType, PPHLO_SecretType]>;
 def PPHLO_IntTensor : StaticShapeTensorOf<[PPHLO_PublicIntType, PPHLO_SecretIntType]>;

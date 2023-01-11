@@ -139,6 +139,7 @@ public:
   NO_VERIFY_DEFN(MaxPoolScatterOp)
   NO_VERIFY_DEFN(PreferAOp)
   NO_VERIFY_DEFN(ArgMaxOp)
+  NO_VERIFY_DEFN(EpsilonOp)
 
 #undef NO_VERIFY_DEFN
 };

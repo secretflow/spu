@@ -37,4 +37,6 @@ spu::Value Iota(HalContext *ctx, int64_t numel, Visibility vis) {
   }
 }
 
+spu::Value Epsilon(HalContext *ctx);
+
 }  // namespace spu::kernel::hlo

@@ -29,4 +29,6 @@ spu::Value Constant(HalContext *ctx, PtBufferView view,
   }
 }
 
+spu::Value Epsilon(HalContext *ctx) { return hal::epsilon(ctx); }
+
 }  // namespace spu::kernel::hlo
