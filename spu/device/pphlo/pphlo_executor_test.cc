@@ -129,6 +129,44 @@ func.func @main(%arg0: tensor<!pphlo.pub<i32>>, %arg1: tensor<!pphlo.pub<i32>>) 
   r.verifyScalarOutput(3);
 }
 
+TEST_P(ExecutorTest, BoolSplatConstant) {
+  Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
+           std::get<2>(GetParam()));
+
+  r.getConfig().set_enable_type_checker(false);
+
+  r.run(R"(
+func.func @main() -> (tensor<!pphlo.pub<i32>>) {
+  %0 = "pphlo.constant"() {value = dense<true> : tensor<i1>} : () ->tensor<!pphlo.pub<i1>>
+  %1 = "pphlo.constant"() {value = dense<1> : tensor<i32>} : () ->tensor<!pphlo.pub<i32>>
+  %2 = "pphlo.constant"() {value = dense<0> : tensor<i32>} : () ->tensor<!pphlo.pub<i32>>
+  %3 = "pphlo.select"(%0, %1, %2) : (tensor<!pphlo.pub<i1>>, tensor<!pphlo.pub<i32>>, tensor<!pphlo.pub<i32>>) -> tensor<!pphlo.pub<i32>>
+  return %3 : tensor<!pphlo.pub<i32>>
+})");
+
+  int32_t expected = 1;
+  r.verifyOutput(&expected);
+}
+
+TEST_P(ExecutorTest, BoolConstant) {
+  Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
+           std::get<2>(GetParam()));
+
+  r.getConfig().set_enable_type_checker(false);
+
+  r.run(R"(
+func.func @main() -> (tensor<2x!pphlo.pub<i32>>) {
+  %0 = "pphlo.constant"() {value = dense<[true,false]> : tensor<2xi1>} : () ->tensor<2x!pphlo.pub<i1>>
+  %1 = "pphlo.constant"() {value = dense<1> : tensor<2xi32>} : () ->tensor<2x!pphlo.pub<i32>>
+  %2 = "pphlo.constant"() {value = dense<0> : tensor<2xi32>} : () ->tensor<2x!pphlo.pub<i32>>
+  %3 = "pphlo.select"(%0, %1, %2) : (tensor<2x!pphlo.pub<i1>>, tensor<2x!pphlo.pub<i32>>, tensor<2x!pphlo.pub<i32>>) -> tensor<2x!pphlo.pub<i32>>
+  return %3 : tensor<2x!pphlo.pub<i32>>
+})");
+
+  std::array<int32_t, 2> expected{1, 0};
+  r.verifyOutput(expected.data());
+}
+
 TEST_P(ExecutorTest, InvalidIR) {
   Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
            std::get<2>(GetParam()));

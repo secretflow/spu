@@ -72,6 +72,16 @@ bool SymbolScope::hasValues(mlir::OperandRange keys) const {
   });
 }
 
+bool SymbolScope::hasValues(llvm::ArrayRef<mlir::Value> keys) const {
+  if (keys.empty()) {
+    return true;
+  }
+  std::shared_lock<std::shared_mutex> lk(mu_);
+  return std::all_of(keys.begin(), keys.end(), [this](const mlir::Value &key) {
+    return hasValueUnsafe(key);
+  });
+}
+
 bool SymbolScope::hasValue(mlir::Value key) const {
   std::shared_lock<std::shared_mutex> lk(mu_);
   return hasValueUnsafe(key);
@@ -148,6 +158,7 @@ class OpExecTask final {
   SymbolScope *sscope_ = nullptr;
   mlir::Operation *op_ = nullptr;
   SymbolTableEvent *event_ = nullptr;
+  llvm::SmallVector<mlir::Value> extra_dependencies_;
 
 public:
   OpExecTask() = default;
@@ -155,9 +166,28 @@ public:
                       SymbolScope *sscope, mlir::Operation *op,
                       SymbolTableEvent *event)
       : hctx_(std::move(hctx)), executor_(executor), sscope_(sscope), op_(op),
-        event_(event) {}
+        event_(event) {
+    // If a op has nested regions, it may depend on more values than operands
+    // FIXME: (azheng) Implement a better notify mechanism
+    if (op->getNumRegions() > 0) {
+      const auto *current_region = op->getParentRegion();
+      for (auto &r : op->getRegions()) {
+        r.walk([&](mlir::Operation *nestedOp) {
+          for (const auto &o : nestedOp->getOperands()) {
+            if (o.getDefiningOp() &&
+                o.getDefiningOp()->getParentRegion() == current_region) {
+              extra_dependencies_.emplace_back(o);
+            }
+          }
+        });
+      }
+    }
+  }
 
-  bool ready() { return sscope_->hasValues(op_->getOperands()); }
+  bool ready() {
+    return sscope_->hasValues(op_->getOperands()) &&
+           sscope_->hasValues(extra_dependencies_);
+  }
 
   void run() {
     // wait for this operation ready.

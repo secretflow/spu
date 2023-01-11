@@ -44,6 +44,7 @@ public:
   //
   bool hasValue(mlir::Value key) const;
   bool hasValues(mlir::OperandRange keys) const;
+  bool hasValues(llvm::ArrayRef<mlir::Value> keys) const;
   spu::Value lookupValue(mlir::Value key) const;
   void addValue(::mlir::Value key, const spu::Value &val);
   void addValue(::mlir::Value key, spu::Value &&val);
