@@ -10,6 +10,7 @@ https://github.com/deepmind/jraph/blob/master/jraph/examples/zacharys_karate_clu
     ```
 
 2. Set runtime configuration
+
     This example requires a higher precision setting than the default.
 
     Set `"fxp_fraction_bits": 24` in `SPU runtime_config`.

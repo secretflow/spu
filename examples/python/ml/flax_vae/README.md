@@ -5,6 +5,7 @@ This example comes from Flax official github repo:
 https://github.com/google/flax/tree/main/examples/vae
 
 1. Set runtime configuration
+
     This example requires a higher precision setting than the default.
 
     Set `"fxp_fraction_bits": 24` in `SPU runtime_config`.
