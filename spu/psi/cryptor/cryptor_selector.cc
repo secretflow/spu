@@ -18,13 +18,12 @@
 
 #include "spdlog/spdlog.h"
 
+#include "spu/core/platform_utils.h"
 #include "spu/psi/cryptor/fourq_cryptor.h"
 #include "spu/psi/cryptor/sm2_cryptor.h"
 #include "spu/psi/cryptor/sodium_curve25519_cryptor.h"
 
 #ifdef __x86_64__
-#include "cpu_features/cpuinfo_x86.h"
-
 #include "spu/psi/cryptor/ipp_ecc_cryptor.h"
 #endif
 
@@ -32,13 +31,9 @@ namespace spu::psi {
 
 namespace {
 
-#ifdef __x86_64__
-static const auto kCpuFeatures = cpu_features::GetX86Info().features;
-#endif
-
 std::unique_ptr<IEccCryptor> GetIppCryptor() {
 #ifdef __x86_64__
-  if (kCpuFeatures.avx512ifma) {
+  if (hasAVX512ifma()) {
     SPDLOG_INFO("Using IPPCP");
     return std::make_unique<IppEccCryptor>();
   }
@@ -53,7 +48,7 @@ std::unique_ptr<IEccCryptor> GetSodiumCryptor() {
 
 std::unique_ptr<IEccCryptor> GetFourQCryptor() {
 #ifdef __x86_64__
-  if (kCpuFeatures.avx2) {
+  if (hasAVX2()) {
 #endif
     SPDLOG_INFO("Using FourQ");
     return std::make_unique<FourQEccCryptor>();  // fourq has an arm impl,

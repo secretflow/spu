@@ -21,8 +21,8 @@
 
 #include "spu/core/shape_util.h"  // calcNumel
 #include "spu/mpc/api.h"
+#include "spu/mpc/common/communicator.h"
 #include "spu/mpc/object.h"
-#include "spu/mpc/util/communicator.h"
 #include "spu/mpc/util/ring_ops.h"
 #include "spu/mpc/util/simulate.h"
 
@@ -242,7 +242,7 @@ BM_DEFINE_UNARY_OP_WITH_BIT(lshift)
 BM_DEFINE_UNARY_OP_WITH_BIT(rshift)
 BM_DEFINE_UNARY_OP_WITH_BIT(arshift)
 
-SPU_BM_DEFINE_F(ComputeBench, truncpr_s)
+SPU_BM_DEFINE_F(ComputeBench, trunc_s)
 (benchmark::State& state) {
   for (auto _ : state) {
     state.PauseTiming();
@@ -261,7 +261,7 @@ SPU_BM_DEFINE_F(ComputeBench, truncpr_s)
       const size_t bits = 2;
       auto s0 = p2s(obj.get(), p0);
 
-      SPU_BM_SECTION(comm, truncpr_s(obj.get(), s0, bits));
+      SPU_BM_SECTION(comm, trunc_s(obj.get(), s0, bits));
     });
   }
 }
@@ -395,7 +395,7 @@ SPU_BM_DEFINE_F(ComputeBench, s2p)
   SPU_BM_REGISTER_UNARY_OP(lshift, Arguments)  \
   SPU_BM_REGISTER_UNARY_OP(rshift, Arguments)  \
   SPU_BM_REGISTER_UNARY_OP(arshift, Arguments) \
-  SPU_BM_REGISTER_OP(truncpr_s, Arguments)     \
+  SPU_BM_REGISTER_OP(trunc_s, Arguments)       \
   SPU_BM_REGISTER_OP(mmul_ss, Arguments)       \
   SPU_BM_REGISTER_OP(mmul_sp, Arguments)       \
   SPU_BM_REGISTER_OP(p2s, Arguments)           \

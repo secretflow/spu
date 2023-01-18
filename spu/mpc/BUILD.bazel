@@ -91,7 +91,7 @@ spu_cc_library(
     deps = [
         ":api",
         ":object",
-        "//spu/mpc/util:communicator",
+        "//spu/mpc/common:communicator",
         "//spu/mpc/util:simulate",
         "@com_google_googletest//:gtest",
     ],

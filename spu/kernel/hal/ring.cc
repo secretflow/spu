@@ -19,10 +19,10 @@
 
 #include "yacl/base/exception.h"
 
+#include "spu/core/bit_utils.h"
 #include "spu/core/shape_util.h"
 #include "spu/kernel/hal/prot_wrapper.h"
 #include "spu/kernel/hal/shape_ops.h"
-#include "spu/mpc/util/bit_utils.h"  // TODO: move out of mpc folder.
 
 namespace spu::kernel::hal {
 
@@ -286,9 +286,9 @@ Value _trunc(HalContext* ctx, const Value& x, size_t bits) {
   bits = (bits == 0) ? ctx->getFxpBits() : bits;
 
   if (x.isPublic()) {
-    return _arshift_p(ctx, x, bits);
+    return _trunc_p(ctx, x, bits);
   } else if (x.isSecret()) {
-    return _truncpr_s(ctx, x, bits);
+    return _trunc_s(ctx, x, bits);
   } else {
     YACL_THROW("unsupport unary op={} for {}", "_rshift", x);
   }
@@ -435,7 +435,7 @@ Value _seperate_odd_even(HalContext* ctx, const Value& in) {
   //      0000000011111111
   Value out = in;
   const size_t k = SizeOf(ctx->getField()) * 8;
-  for (int64_t idx = 0; idx + 1 < mpc::log2Ceil(k); idx++) {
+  for (int64_t idx = 0; idx + 1 < Log2Ceil(k); idx++) {
     auto keep = _constant(ctx, kKeepMasks[idx], in.shape());
     auto move = _constant(ctx, kSwapMasks[idx], in.shape());
     int64_t shift = 1 << idx;

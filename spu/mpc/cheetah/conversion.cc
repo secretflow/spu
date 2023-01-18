@@ -19,9 +19,9 @@
 #include "spu/mpc/api.h"
 #include "spu/mpc/cheetah/object.h"
 #include "spu/mpc/cheetah/utils.h"
+#include "spu/mpc/common/communicator.h"
 #include "spu/mpc/semi2k/type.h"
 #include "spu/mpc/util/circuits.h"
-#include "spu/mpc/util/communicator.h"
 #include "spu/mpc/util/ring_ops.h"
 
 namespace spu::mpc::cheetah {
@@ -29,8 +29,7 @@ namespace spu::mpc::cheetah {
 ArrayRef B2A::proc(KernelEvalContext* ctx, const ArrayRef& x) const {
   SPU_TRACE_MPC_LEAF(ctx, x);
 
-  auto primitives =
-      ctx->caller()->getState<CheetahState>()->beaver()->OTPrimitives();
+  auto primitives = ctx->getState<CheetahState>()->beaver()->OTPrimitives();
   auto shareType = x.eltype().as<semi2k::BShrTy>();
   const auto field = x.eltype().as<Ring2k>()->field();
   size_t size = x.numel();

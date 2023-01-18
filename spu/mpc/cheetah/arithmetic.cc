@@ -16,20 +16,23 @@
 
 #include <future>
 
+#include "xtensor/xview.hpp"
+
 #include "spu/core/trace.h"
 #include "spu/core/vectorize.h"
+#include "spu/core/xt_helper.h"
 #include "spu/mpc/cheetah/object.h"
 #include "spu/mpc/cheetah/utils.h"
+#include "spu/mpc/common/communicator.h"
 #include "spu/mpc/semi2k/type.h"
-#include "spu/mpc/util/communicator.h"
 #include "spu/mpc/util/ring_ops.h"
+
 namespace spu::mpc::cheetah {
 
-ArrayRef TruncPrA::proc(KernelEvalContext* ctx, const ArrayRef& x,
-                        size_t bits) const {
+ArrayRef TruncA::proc(KernelEvalContext* ctx, const ArrayRef& x,
+                      size_t bits) const {
   SPU_TRACE_MPC_LEAF(ctx, x, bits);
-  auto primitives =
-      ctx->caller()->getState<CheetahState>()->beaver()->OTPrimitives();
+  auto primitives = ctx->getState<CheetahState>()->beaver()->OTPrimitives();
   size_t size = x.numel();
   const auto field = x.eltype().as<Ring2k>()->field();
   ArrayRef y(makeType<RingTy>(field), size);
@@ -65,8 +68,7 @@ ArrayRef TruncPrA::proc(KernelEvalContext* ctx, const ArrayRef& x,
 
 ArrayRef MsbA::proc(KernelEvalContext* ctx, const ArrayRef& x) const {
   SPU_TRACE_MPC_LEAF(ctx, x);
-  auto primitives =
-      ctx->caller()->getState<CheetahState>()->beaver()->OTPrimitives();
+  auto primitives = ctx->getState<CheetahState>()->beaver()->OTPrimitives();
 
   size_t size = x.numel();
   const auto field = x.eltype().as<Ring2k>()->field();
@@ -92,8 +94,8 @@ ArrayRef MulAA::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
   // (lhs0 + lhs1) * (rhs0 + rhs1)
   // lhs0*rhs0 + lhs0*rhs1 + lhs1*rhs0 + lhs1*rhs1
   // Compute the cross terms lhs0*rhs1, lhs1*rhs0 homomorphically
-  auto comm = ctx->caller()->getState<Communicator>();
-  auto beaver = ctx->caller()->getState<CheetahState>()->beaver();
+  auto comm = ctx->getState<Communicator>();
+  auto beaver = ctx->getState<CheetahState>()->beaver();
   int rank = comm->getRank();
 
   auto dupx = comm->lctx()->Spawn();
@@ -102,18 +104,18 @@ ArrayRef MulAA::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
   // evaluator.
   std::future<ArrayRef> task = std::async(std::launch::async, [&] {
     if (rank == 0) {
-      return beaver->MulAShr(lhs, dupx.get(), /*evaluator*/ true);
+      return beaver->MulOLE(lhs, dupx.get(), /*evaluator*/ true);
     } else {
-      return beaver->MulAShr(rhs, dupx.get(), false);
+      return beaver->MulOLE(rhs, dupx.get(), false);
     }
   });
 
   ArrayRef cross0;
   yacl::link::Context* conn = comm->lctx().get();
   if (rank == 0) {
-    cross0 = beaver->MulAShr(rhs, conn, false);
+    cross0 = beaver->MulOLE(rhs, conn, false);
   } else {
-    cross0 = beaver->MulAShr(lhs, conn, true);
+    cross0 = beaver->MulOLE(lhs, conn, true);
   }
   ArrayRef cross1 = task.get();
 
@@ -121,34 +123,80 @@ ArrayRef MulAA::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
       .as(lhs.eltype());
 }
 
+static ArrayRef TransposeMat(const ArrayRef& mat, size_t nrows, size_t ncols) {
+  auto cpy = mat.clone();
+  YACL_ENFORCE_EQ((size_t)mat.numel(), nrows * ncols);
+  const auto field = mat.eltype().as<Ring2k>()->field();
+  auto ans = ring_zeros(field, nrows * ncols);
+  DISPATCH_ALL_FIELDS(field, "_", [&]() {
+    auto src_mat = xt_adapt<ring2k_t>(mat);
+    src_mat.reshape({nrows, ncols});
+
+    auto xmatT = xt::eval(xt::transpose(src_mat));
+    auto dst_mat = xt_mutable_adapt<ring2k_t>(ans);
+    std::copy_n(xmatT.begin(), xmatT.size(), dst_mat.data());
+  });
+  return ans;
+}
+
 // A is (M, K); B is (K, N)
 ArrayRef MatMulAA::proc(KernelEvalContext* ctx, const ArrayRef& x,
                         const ArrayRef& y, size_t M, size_t N, size_t K) const {
   SPU_TRACE_MPC_LEAF(ctx, x, y);
 
-  const auto field = x.eltype().as<Ring2k>()->field();
-  auto comm = ctx->caller()->getState<Communicator>();
-  auto beaver = ctx->caller()->getState<CheetahState>()->beaver();
+  auto* comm = ctx->getState<Communicator>();
+  auto* beaver = ctx->getState<CheetahState>()->beaver();
+  int rank = comm->getRank();
 
-  // generate beaver multiple triple.
-  auto [a, b, c] = beaver->Dot(field, M, N, K);
+  // (x0 + x1) * (y0 + y1)
+  // Compute the cross terms homomorphically
+  auto dupx = comm->lctx()->Spawn();
+  size_t lhs_dim = std::max(M, N);
+  size_t rhs_dim = std::min(M, N);
 
-  // Open x-a & y-b
-  auto res =
-      vectorize({ring_sub(x, a), ring_sub(y, b)}, [&](const ArrayRef& s) {
-        return comm->allReduce(ReduceOp::ADD, s, kBindName);
-      });
-  auto x_a = std::move(res[0]);
-  auto y_b = std::move(res[1]);
-
-  // Zi = Ci + (X - A) dot Bi + Ai dot (Y - B) + <(X - A) dot (Y - B)>
-  auto z = ring_add(
-      ring_add(ring_mmul(x_a, b, M, N, K), ring_mmul(a, y_b, M, N, K)), c);
-  if (comm->getRank() == 0) {
-    // z += (X-A) * (Y-B);
-    ring_add_(z, ring_mmul(x_a, y_b, M, N, K));
+  ArrayRef lhs;
+  ArrayRef rhs;
+  // DotOLE needs RHS is given in the column-major order
+  if (lhs_dim == M) {
+    // Case: LHS = x, RHS = y
+    lhs = x;
+    rhs = TransposeMat(y, K, N);
+  } else {
+    // Case: LHS = y, RHS = x
+    // But, in this case, we compute y^t * x^t
+    // So we tranpose the LHS only
+    lhs = TransposeMat(y, K, N);
+    rhs = x;
   }
-  return z.as(x.eltype());
+
+  std::future<ArrayRef> task = std::async(std::launch::async, [&] {
+    if (rank == 0) {
+      return beaver->DotOLE(lhs, dupx.get(), lhs_dim, rhs_dim, K, false);
+    } else {
+      return beaver->DotOLE(rhs, dupx.get(), lhs_dim, rhs_dim, K, true);
+    }
+  });
+
+  ArrayRef x0y1;
+  yacl::link::Context* conn = comm->lctx().get();
+  if (rank == 0) {
+    x0y1 = beaver->DotOLE(rhs, conn, lhs_dim, rhs_dim, K, true);
+  } else {
+    x0y1 = beaver->DotOLE(lhs, conn, lhs_dim, rhs_dim, K, false);
+  }
+  ArrayRef x1y0 = task.get();
+
+  if (lhs_dim == M) {
+    // x*y is given in the transposed form (see DotOLE)
+    x0y1 = TransposeMat(x0y1, N, M);
+    x1y0 = TransposeMat(x1y0, N, M);
+  } else {
+    // Nothing to do in this case
+    // We compute y^t * x^t and resulting at the transposed form.
+    // That is x*y already.
+  }
+  return ring_add(x0y1, ring_add(x1y0, ring_mmul(x, y, M, N, K)))
+      .as(x.eltype());
 }
 
 }  // namespace spu::mpc::cheetah

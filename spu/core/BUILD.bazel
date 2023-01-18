@@ -125,6 +125,7 @@ spu_cc_library(
     srcs = ["array_ref.cc"],
     hdrs = ["array_ref.h"],
     deps = [
+        ":bit_utils",
         ":parallel_utils",
         ":type",
         ":vectorize",
@@ -219,5 +220,40 @@ spu_cc_library(
         "@com_github_brpc_brpc//:butil",
         "@com_github_fmtlib_fmt//:fmtlib",
         "@yacl//yacl/base:exception",
+    ],
+)
+
+spu_cc_library(
+    name = "platform_utils",
+    srcs = ["platform_utils.cc"],
+    hdrs = ["platform_utils.h"],
+    copts = select({
+        "@platforms//cpu:aarch64": [""],
+        "//conditions:default": [
+            "-mbmi2",
+        ],
+    }),
+    deps = select({
+        "@platforms//cpu:x86_64": [
+            "@com_github_google_cpu_features//:cpu_features",
+        ],
+        "//conditions:default": [],
+    }),
+)
+
+spu_cc_library(
+    name = "bit_utils",
+    hdrs = ["bit_utils.h"],
+    deps = [
+        "@com_google_absl//absl/numeric:bits",
+    ],
+)
+
+spu_cc_test(
+    name = "bit_utils_test",
+    srcs = ["bit_utils_test.cc"],
+    deps = [
+        ":bit_utils",
+        "@yacl//yacl/base:int128",
     ],
 )

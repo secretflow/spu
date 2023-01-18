@@ -9,6 +9,8 @@
 ## staging
 > please add your unreleased change here.
 - [Feature] Add EpsilonOp
+- [bugfix] Fix boolean ConstantOp
+- [3p] Relax TensorFlow version in requirements.txt
 
 
 ## 20230104

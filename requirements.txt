@@ -1,6 +1,6 @@
 grpcio>=1.42.0,!=1.48.0
 numpy>=1.22.0
-protobuf==3.19.4
+protobuf >= 3.19, < 4
 cloudpickle>=2.0.0
 multiprocess>=0.70.12.2
 cachetools
@@ -9,11 +9,11 @@ jaxlib==0.4.1
 
 # Extra dependencies
 matplotlib
-tensorflow==2.10.0; platform_machine != "arm64"
-tensorflow-macos==2.10.0; platform_machine == "arm64" and platform_system == "Darwin"
-tensorflow_datasets==4.8.0
+tensorflow >= 2.7.0; platform_machine != "arm64"
+tensorflow-macos >= 2.7.0; platform_machine == "arm64" and platform_system == "Darwin"
+tensorflow_datasets
 pandas>=1.4.2
-flax==0.6.3
+flax
 keras
 scikit-learn
 

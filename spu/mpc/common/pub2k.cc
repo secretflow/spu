@@ -33,13 +33,23 @@ class Pub2kMakeP : public Kernel {
   util::CExpr comm() const override { return util::Const(0); }
 
   void evaluate(KernelEvalContext* ctx) const override {
-    ctx->setOutput(proc(ctx, ctx->getParam<uint128_t>(0)));
+    ctx->setOutput(
+        proc(ctx, ctx->getParam<uint128_t>(0), ctx->getParam<size_t>(1)));
   }
 
-  ArrayRef proc(KernelEvalContext* ctx, uint128_t init) const {
+  ArrayRef proc(KernelEvalContext* ctx, uint128_t init, size_t size) const {
     SPU_TRACE_MPC_LEAF(ctx, init);
-    const auto field = ctx->caller()->getState<Z2kState>()->getDefaultField();
-    ArrayRef res(makeType<Pub2kTy>(field), 1);
+    const auto field = ctx->getState<Z2kState>()->getDefaultField();
+
+    const auto eltype = makeType<Pub2kTy>(field);
+    auto buf = std::make_shared<yacl::Buffer>(1 * eltype.size());
+    ArrayRef res(buf,     // buffer
+                 eltype,  // eltype
+                 size,    // numel
+                 0,       // stride,
+                 0        // offset
+    );
+
     DISPATCH_ALL_FIELDS(field, "pub2k.make_p", [&]() {
       res.at<ring2k_t>(0) = static_cast<ring2k_t>(init);
     });
@@ -61,8 +71,8 @@ class Pub2kRandP : public Kernel {
 
   ArrayRef proc(KernelEvalContext* ctx, size_t size) const {
     SPU_TRACE_MPC_LEAF(ctx, size);
-    auto* prg_state = ctx->caller()->getState<PrgState>();
-    const auto field = ctx->caller()->getState<Z2kState>()->getDefaultField();
+    auto* prg_state = ctx->getState<PrgState>();
+    const auto field = ctx->getState<Z2kState>()->getDefaultField();
 
     // NOTE(junfeng): rand_p is heavily in unit tests and nbits has to been kept
     // full.
@@ -249,6 +259,31 @@ class Pub2kARShiftP : public ShiftKernel {
   }
 };
 
+class Pub2kTruncP : public ShiftKernel {
+ public:
+  static constexpr char kBindName[] = "trunc_p";
+
+  util::CExpr latency() const override { return util::Const(0); }
+
+  util::CExpr comm() const override { return util::Const(0); }
+
+  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in,
+                size_t bits) const override {
+    SPU_TRACE_MPC_LEAF(ctx, in, bits);
+    // Rounding
+    // AxB = (AxB >> 14) + ((AxB >> 13) & 1);
+    // See
+    // https://stackoverflow.com/questions/14008330/how-do-you-multiply-two-fixed-point-numbers
+    // Under certain pattern, like sum(mul(A, B)), error can accumulate in a
+    // fairly significant way
+    auto v1 = ring_arshift(in, bits);
+    auto v2 = ring_arshift(in, bits - 1);
+    ring_and_(v2, ring_ones(in.eltype().as<Ring2k>()->field(), in.numel()));
+    ring_add_(v1, v2);
+    return v1;
+  }
+};
+
 class Pub2kMsbP : public UnaryKernel {
  public:
   static constexpr char kBindName[] = "msb_p";
@@ -285,6 +320,7 @@ void regPub2kKernels(Object* obj) {
   obj->regKernel<Pub2kBitrevP>();
   obj->regKernel<Pub2kARShiftP>();
   obj->regKernel<Pub2kMsbP>();
+  obj->regKernel<Pub2kTruncP>();
 }
 
 }  // namespace spu::mpc

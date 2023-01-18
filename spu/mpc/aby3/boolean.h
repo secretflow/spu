@@ -34,7 +34,7 @@ class CommonTypeB : public Kernel {
 
   CExpr comm() const override { return Const(0); }
 
-  void evaluate(EvalContext* ctx) const override;
+  void evaluate(KernelEvalContext* ctx) const override;
 };
 
 class CastTypeB : public Kernel {
@@ -45,7 +45,7 @@ class CastTypeB : public Kernel {
 
   CExpr comm() const override { return Const(0); }
 
-  void evaluate(EvalContext* ctx) const override;
+  void evaluate(KernelEvalContext* ctx) const override;
 };
 
 class B2P : public UnaryKernel {
@@ -176,6 +176,28 @@ class BitrevB : public BitrevKernel {
 
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in, size_t start,
                 size_t end) const override;
+};
+
+class BitIntlB : public Kernel {
+ public:
+  static constexpr char kBindName[] = "bitintl_b";
+
+  CExpr latency() const override { return Const(0); }
+
+  CExpr comm() const override { return Const(0); }
+
+  void evaluate(KernelEvalContext* ctx) const override;
+};
+
+class BitDeintlB : public Kernel {
+ public:
+  static constexpr char kBindName[] = "bitdeintl_b";
+
+  CExpr latency() const override { return Const(0); }
+
+  CExpr comm() const override { return Const(0); }
+
+  void evaluate(KernelEvalContext* ctx) const override;
 };
 
 }  // namespace spu::mpc::aby3

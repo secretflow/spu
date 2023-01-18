@@ -26,8 +26,8 @@ exports_files(
 )
 
 pybind_extension(
-    name = "_lib",
-    srcs = ["_lib.cc"],
+    name = "libspu",
+    srcs = ["libspu.cc"],
     linkopts = select({
         "@bazel_tools//src/conditions:darwin": [
             "-Wl,-exported_symbols_list,$(location //spu/binding:exported_symbols.lds)",
@@ -55,7 +55,7 @@ py_library(
     name = "api",
     srcs = ["api.py"],
     data = [
-        ":_lib.so",
+        ":libspu.so",
     ],
     deps = [
         "//spu:spu_py_proto",
@@ -66,7 +66,7 @@ py_library(
     name = "psi",
     srcs = ["psi.py"],
     data = [
-        ":_lib.so",
+        ":libspu.so",
     ],
     deps = [
         "//spu/psi:psi_py_proto",

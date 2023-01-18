@@ -33,6 +33,7 @@ spu_cc_library(
         ":boolean",
         ":conversion",
         ":value",
+        "//spu/mpc/common:ab_kernels",
     ],
 )
 
@@ -42,7 +43,7 @@ spu_cc_test(
     deps = [
         ":protocol",
         "//spu/mpc:api_test",
-        "//spu/mpc/common:abprotocol_test",
+        "//spu/mpc/common:ab_api_test",
     ],
 )
 
@@ -54,10 +55,11 @@ spu_cc_library(
         ":ot",
         ":type",
         ":value",
-        "//spu/mpc/common:abprotocol",
+        "//spu/core:platform_utils",
+        "//spu/mpc/common:ab_api",
+        "//spu/mpc/common:communicator",
         "//spu/mpc/common:prg_state",
         "//spu/mpc/util:circuits",
-        "//spu/mpc/util:communicator",
     ],
 )
 
@@ -68,9 +70,10 @@ spu_cc_library(
     deps = [
         ":type",
         ":value",
-        "//spu/mpc/common:abprotocol",
+        "//spu/core:platform_utils",
+        "//spu/mpc/common:ab_api",
+        "//spu/mpc/common:communicator",
         "//spu/mpc/common:prg_state",
-        "//spu/mpc/util:communicator",
     ],
 )
 
@@ -81,10 +84,10 @@ spu_cc_library(
     deps = [
         ":ot",
         ":value",
-        "//spu/mpc/common:abprotocol",
+        "//spu/mpc/common:ab_api",
+        "//spu/mpc/common:communicator",
         "//spu/mpc/common:prg_state",
         "//spu/mpc/util:circuits",
-        "//spu/mpc/util:communicator",
     ],
 )
 
@@ -105,8 +108,8 @@ spu_cc_library(
     hdrs = ["ot.h"],
     deps = [
         "//spu/core",
+        "//spu/mpc/common:communicator",
         "//spu/mpc/common:prg_state",
-        "//spu/mpc/util:communicator",
         "//spu/mpc/util:ring_ops",
     ],
 )

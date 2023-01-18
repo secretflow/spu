@@ -21,8 +21,8 @@
 #include "absl/numeric/bits.h"
 #include "yacl/base/int128.h"
 
+#include "spu/core/bit_utils.h"
 #include "spu/core/vectorize.h"
-#include "spu/mpc/util/bit_utils.h"
 
 namespace spu::mpc {
 
@@ -71,7 +71,7 @@ T kogge_stone(const CircuitBasicBlock<T>& ctx, T const& lhs, T const& rhs,
   auto P = ctx._xor(lhs, rhs);
   auto G = ctx._and(lhs, rhs);
 
-  for (int idx = 0; idx < log2Ceil(nbits); ++idx) {
+  for (int idx = 0; idx < Log2Ceil(nbits); ++idx) {
     const size_t offset = 1UL << idx;
     auto G1 = ctx.lshift(G, offset);
     auto P1 = ctx.lshift(P, offset);
@@ -120,7 +120,7 @@ T sklansky(const CircuitBasicBlock<T>& ctx, T const& lhs, T const& rhs,
   // Generate p & g.
   auto P = ctx._xor(lhs, rhs);
   auto G = ctx._and(lhs, rhs);
-  for (int idx = 0; idx < log2Ceil(nbits); ++idx) {
+  for (int idx = 0; idx < Log2Ceil(nbits); ++idx) {
     const auto s_mask = ctx.init_like(G, kSelMask[idx]);
     auto G1 = ctx.lshift(ctx._and(G, s_mask), 1);
     auto P1 = ctx.lshift(ctx._and(P, s_mask), 1);
@@ -182,7 +182,7 @@ T odd_even_split(const CircuitBasicBlock<T>& ctx, const T& v, size_t nbits) {
 
   // let r = v
   T r = ctx.lshift(v, 0);
-  for (int idx = 0; idx + 1 < log2Ceil(nbits); ++idx) {
+  for (int idx = 0; idx + 1 < Log2Ceil(nbits); ++idx) {
     // r = (r & keep) ^ ((r >> i) & move) ^ ((r & move) << i)
     const auto keep = ctx.init_like(r, kKeepMasks[idx]);
     const auto move = ctx.init_like(r, kSwapMasks[idx]);
@@ -195,7 +195,7 @@ T odd_even_split(const CircuitBasicBlock<T>& ctx, const T& v, size_t nbits) {
   if (!absl::has_single_bit(nbits)) {
     // handle non 2^k bits case.
     T mask = ctx.init_like(r, (1ULL << (nbits / 2)) - 1);
-    r = ctx._xor(ctx.lshift(ctx.rshift(r, 1 << log2Floor(nbits)), nbits / 2),
+    r = ctx._xor(ctx.lshift(ctx.rshift(r, 1 << Log2Floor(nbits)), nbits / 2),
                  ctx._and(r, mask));
   }
 

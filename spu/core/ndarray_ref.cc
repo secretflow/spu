@@ -124,15 +124,13 @@ NdArrayRef NdArrayRef::clone() const {
 
   auto* ret_ptr = static_cast<std::byte*>(res.data());
 
-  yacl::parallel_for(0, numel(), 2048, [&](int64_t begin, int64_t end) {
-    std::vector<int64_t> indices = unflattenIndex(begin, shape());
-    const auto* frm_ptr = &at(indices);
+  std::vector<int64_t> indices(shape().size(), 0);
+  const auto* frm_ptr = &at(indices);
 
-    for (int64_t idx = begin; idx < end; ++idx) {
-      std::memcpy(ret_ptr + idx * elsize, frm_ptr, elsize);
-      next_(indices, frm_ptr);
-    }
-  });
+  for (int64_t idx = 0; idx < numel(); ++idx) {
+    std::memcpy(ret_ptr + idx * elsize, frm_ptr, elsize);
+    next_(indices, frm_ptr);
+  }
 
   return res;
 }

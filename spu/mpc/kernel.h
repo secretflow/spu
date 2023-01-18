@@ -20,29 +20,29 @@ namespace spu::mpc {
 
 class UnaryKernel : public Kernel {
  public:
-  void evaluate(EvalContext* ctx) const override {
+  void evaluate(KernelEvalContext* ctx) const override {
     ctx->setOutput(proc(ctx, ctx->getParam<ArrayRef>(0)));
   }
-  virtual ArrayRef proc(EvalContext* ctx, const ArrayRef& in) const = 0;
+  virtual ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in) const = 0;
 };
 
 class ShiftKernel : public Kernel {
  public:
-  void evaluate(EvalContext* ctx) const override {
+  void evaluate(KernelEvalContext* ctx) const override {
     ctx->setOutput(
         proc(ctx, ctx->getParam<ArrayRef>(0), ctx->getParam<size_t>(1)));
   }
-  virtual ArrayRef proc(EvalContext* ctx, const ArrayRef& in,
+  virtual ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in,
                         size_t bits) const = 0;
 };
 
 class BinaryKernel : public Kernel {
  public:
-  void evaluate(EvalContext* ctx) const override {
+  void evaluate(KernelEvalContext* ctx) const override {
     ctx->setOutput(
         proc(ctx, ctx->getParam<ArrayRef>(0), ctx->getParam<ArrayRef>(1)));
   }
-  virtual ArrayRef proc(EvalContext* ctx, const ArrayRef& lhs,
+  virtual ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& lhs,
                         const ArrayRef& rhs) const = 0;
 };
 
@@ -68,9 +68,27 @@ class BitrevKernel : public Kernel {
                         size_t start, size_t end) const = 0;
 };
 
-class TruncPrAKernel : public ShiftKernel {
+enum class TruncLsbRounding {
+  // For protocols like SecureML/ABY3, the LSB is random.
+  Random,
+  // For DEK19/EGK+20, the LSB is probabilistic, More precisely, for
+  //    y = x/2` + u, where u ∈ [0, 1).
+  // The result has probability of u to be x/2`+1, and probability 1-u to be
+  // x/2`.
+  Probabilistic,
+  // For some deterministic truncation, the LSB is deterministic.
+  Nearest,
+};
+
+class TruncAKernel : public ShiftKernel {
  public:
-  virtual bool isPrecise() const = 0;
+  // For protocol like SecureML, the most significant bit may have error with
+  // low probability, which lead to huge calculation error.
+  //
+  // Return true if the protocol has this kind of error.
+  virtual bool hasMsbError() const = 0;
+
+  virtual TruncLsbRounding lsbRounding() const = 0;
 };
 
 }  // namespace spu::mpc

@@ -117,7 +117,7 @@ Value _cast_type_s(HalContext* ctx, const Value& in, const Type& to) {
 
 Value _make_p(HalContext* ctx, uint128_t init) {
   SPU_TRACE_HAL_DISP(ctx, init);
-  auto res = mpc::make_p(ctx->prot(), init);
+  auto res = mpc::make_p(ctx->prot(), init, 1);
   return unflattenValue(res, {});
 }
 
@@ -147,7 +147,8 @@ MAP_SHIFT_OP(rshift_p)
 MAP_SHIFT_OP(rshift_s)
 MAP_SHIFT_OP(arshift_p)
 MAP_SHIFT_OP(arshift_s)
-MAP_SHIFT_OP(truncpr_s)
+MAP_SHIFT_OP(trunc_p)
+MAP_SHIFT_OP(trunc_s)
 MAP_BITREV_OP(bitrev_p)
 MAP_BITREV_OP(bitrev_s)
 MAP_BINARY_OP(add_pp)

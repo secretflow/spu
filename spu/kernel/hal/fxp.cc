@@ -709,8 +709,7 @@ Value f_rsqrt(HalContext* ctx, const Value& x) {
 
   // TODO: we should avoid fork context in hal layer, it will make global
   // scheduling harder and also make profiling harder.
-  bool parallel = ctx->rt_config().experimental_enable_inner_op_par();
-  if (parallel) {
+  if (ctx->rt_config().experimental_enable_intra_op_par()) {
     auto sub_ctx = ctx->fork();
     auto r = std::async(rsqrt_init_guess, sub_ctx.get(), x, z);
     auto comp = rsqrt_comp(ctx, x, z);

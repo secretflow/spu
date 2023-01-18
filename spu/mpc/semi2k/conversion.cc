@@ -22,31 +22,22 @@
 #include "spu/core/trace.h"
 #include "spu/core/vectorize.h"
 #include "spu/core/xt_helper.h"
-#include "spu/mpc/common/abprotocol.h"
+#include "spu/mpc/common/ab_api.h"
+#include "spu/mpc/common/ab_kernels.h"
+#include "spu/mpc/common/communicator.h"
 #include "spu/mpc/common/prg_state.h"
 #include "spu/mpc/semi2k/object.h"
 #include "spu/mpc/semi2k/type.h"
 #include "spu/mpc/util/circuits.h"
-#include "spu/mpc/util/communicator.h"
 #include "spu/mpc/util/ring_ops.h"
 
 namespace spu::mpc::semi2k {
-
-ArrayRef AddBB::proc(KernelEvalContext* ctx, const ArrayRef& x,
-                     const ArrayRef& y) const {
-  SPU_TRACE_MPC_LEAF(ctx, x, y);
-
-  const auto field = x.eltype().as<Ring2k>()->field();
-  const size_t nbits = SizeOf(field) * 8;
-  auto cbb = makeABProtBasicBlock(ctx->caller());
-  return kogge_stone<ArrayRef>(cbb, x, y, nbits);
-}
 
 ArrayRef A2B::proc(KernelEvalContext* ctx, const ArrayRef& x) const {
   SPU_TRACE_MPC_LEAF(ctx, x);
 
   const auto field = x.eltype().as<Ring2k>()->field();
-  auto* comm = ctx->caller()->getState<Communicator>();
+  auto* comm = ctx->getState<Communicator>();
 
   std::vector<ArrayRef> bshrs;
   const auto bty = makeType<BShrTy>(field);
@@ -69,8 +60,8 @@ ArrayRef B2A::proc(KernelEvalContext* ctx, const ArrayRef& x) const {
   SPU_TRACE_MPC_LEAF(ctx, x);
 
   const auto field = x.eltype().as<Ring2k>()->field();
-  auto* comm = ctx->caller()->getState<Communicator>();
-  auto* prg_state = ctx->caller()->getState<PrgState>();
+  auto* comm = ctx->getState<Communicator>();
+  auto* prg_state = ctx->getState<PrgState>();
 
   auto r_v = prg_state->genPriv(field, x.numel());
   auto r_a = r_v.as(makeType<AShrTy>(field));
@@ -94,8 +85,8 @@ ArrayRef B2A_Randbit::proc(KernelEvalContext* ctx, const ArrayRef& x) const {
   SPU_TRACE_MPC_LEAF(ctx, x);
 
   const auto field = x.eltype().as<Ring2k>()->field();
-  auto* comm = ctx->caller()->getState<Communicator>();
-  auto* beaver = ctx->caller()->getState<Semi2kState>()->beaver();
+  auto* comm = ctx->getState<Communicator>();
+  auto* beaver = ctx->getState<Semi2kState>()->beaver();
 
   const size_t numel = x.numel();
   const size_t nbits = x.eltype().as<BShare>()->nbits();
@@ -147,6 +138,35 @@ ArrayRef B2A_Randbit::proc(KernelEvalContext* ctx, const ArrayRef& x) const {
   });
 
   return res;
+}
+
+ArrayRef MsbA2B::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
+  SPU_TRACE_MPC_LEAF(ctx, in);
+
+  const auto field = in.eltype().as<AShrTy>()->field();
+  auto* comm = ctx->getState<Communicator>();
+
+  // For if k > 2 parties does not collude with each other, then we can
+  // construct two additive share and use carray out circuit directly.
+  YACL_ENFORCE(comm->getWorldSize() == 2, "only support for 2PC, got={}",
+               comm->getWorldSize());
+
+  std::vector<ArrayRef> bshrs;
+  const auto bty = makeType<BShrTy>(field);
+  for (size_t idx = 0; idx < comm->getWorldSize(); idx++) {
+    auto b = zero_b(ctx->caller(), in.numel());
+    if (idx == comm->getRank()) {
+      ring_xor_(b, in);
+    }
+    bshrs.push_back(b.as(bty));
+  }
+
+  // Compute the k-1'th carry bit.
+  const size_t k = SizeOf(field) * 8 - 1;
+
+  auto* obj = ctx->caller();
+  ArrayRef carry = common::carry_out(obj, bshrs[0], bshrs[1], k);
+  return xor_bb(obj, rshift_b(obj, xor_bb(obj, bshrs[0], bshrs[1]), k), carry);
 }
 
 }  // namespace spu::mpc::semi2k

@@ -187,9 +187,9 @@ class LShiftA : public ShiftKernel {
                 size_t bits) const override;
 };
 
-class TruncPrA : public TruncPrAKernel {
+class TruncA : public TruncAKernel {
  public:
-  static constexpr char kBindName[] = "truncpr_a";
+  static constexpr char kBindName[] = "trunc_a";
 
   // TODO: handle case > 3PC
   Kind kind() const override { return Kind::kDynamic; }
@@ -201,7 +201,12 @@ class TruncPrA : public TruncPrAKernel {
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in,
                 size_t bits) const override;
 
-  bool isPrecise() const override { return false; }
+  bool hasMsbError() const override { return true; }
+
+  // TODO: Add probabilistic truncation (with edabits)
+  TruncLsbRounding lsbRounding() const override {
+    return TruncLsbRounding::Random;
+  }
 };
 
 }  // namespace spu::mpc::semi2k

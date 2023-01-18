@@ -30,6 +30,10 @@ class MatVecProtocol {
   explicit MatVecProtocol(const seal::SEALContext& context,
                           const ModulusSwitchHelper& ms_helper);
 
+  size_t GetEncVectorSize(const Meta& meta) const;
+
+  size_t GetMatVecSize(const Meta& meta) const;
+
   void EncodeVector(const Meta& meta, const ArrayRef& vec,
                     std::vector<RLWEPt>* out) const;
 

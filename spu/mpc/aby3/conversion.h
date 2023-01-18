@@ -32,7 +32,6 @@ using util::N;
 // https://eprint.iacr.org/2018/403.pdf
 //
 // Latency: 2 + log(nbits) from 2 rotate and 1 ppa.
-// TODO(junfeng): Optimize anount of comm.
 class A2B : public UnaryKernel {
  public:
   static constexpr char kBindName[] = "a2b";
@@ -43,10 +42,11 @@ class A2B : public UnaryKernel {
     return Log(K()) + 1 + 1;
   }
 
+  // TODO: this depends on the adder circuit.
   CExpr comm() const override {
-    // 1 * AddBB : logk * 2k + k
+    // 1 * AddBB : logk * k + k
     // 1 * rotate: k
-    return Log(K()) * K() * 2 + K() * 2;
+    return Log(K()) * K() + K() * 2;
   }
 
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in) const override;
@@ -74,10 +74,11 @@ class B2AByPPA : public UnaryKernel {
     return Const(3) + Log(K());
   }
 
+  // TODO: this depends on the adder circuit.
   CExpr comm() const override {
     // 2 * rotate   : 2k
-    // 1 * AddBB    : logk * 2k + k
-    return Log(K()) * K() * 2 + 3 * K();
+    // 1 * AddBB    : logk * k + k
+    return Log(K()) * K() + 3 * K();
   }
 
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& x) const override;
@@ -103,28 +104,6 @@ class B2AByOT : public UnaryKernel {
   Kind kind() const override { return Kind::kDynamic; }
 
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in) const override;
-};
-
-class AddBB : public BinaryKernel {
- public:
-  static constexpr char kBindName[] = "add_bb";
-
-  CExpr latency() const override {
-    // Cost from other gates (from KoggeStoneAdder):
-    // 1 * AddBB    : 1
-    // logk * AndBB : 2logk (if vectorize, logk)
-    return Log(K()) + Const(1);
-  }
-
-  CExpr comm() const override {
-    // Cost from other gates (from KoggeStoneAdder):
-    // 1 * AddBB    : k
-    // logk * AndBB : logk * 2k
-    return Log(K()) * K() * 2 + K();
-  }
-
-  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& lhs,
-                const ArrayRef& rhs) const override;
 };
 
 }  // namespace spu::mpc::aby3

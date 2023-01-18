@@ -32,10 +32,9 @@ namespace spu::mpc {
 // - State: the dynamic member variable.
 // - Object: the dynamic binding object.
 
-class Object;
-
 // Helper class to instantiate kernel calls.
-class KernelEvalContext final {
+template <typename CallerT>
+class EvaluationContext final {
   // Please keep param types as less as possible.
   using ParamType = std::variant<  //
       ArrayRef,                    // value type
@@ -44,18 +43,12 @@ class KernelEvalContext final {
       uint128_t                    // ring constant
       >;
 
-  Object* caller_;
-
+  CallerT* caller_;
   std::vector<ParamType> params_;
   ParamType output_;
 
  public:
-  explicit KernelEvalContext(Object* caller) : caller_(caller) {}
-
-  std::string name() const {
-    return "TODO";
-    // return fmt::format("CTX:{}", std::this_thread::get_id());
-  }
+  explicit EvaluationContext(CallerT* caller) : caller_(caller) {}
 
   size_t numParams() const { return params_.size(); }
 
@@ -78,12 +71,16 @@ class KernelEvalContext final {
   // Get the caller's pointer.
   //
   // * usually called by kernel callee.
-  template <typename T = Object>
-  T* caller() {
-    if (auto caller = dynamic_cast<T*>(caller_)) {
+  CallerT* caller() {
+    if (auto caller = dynamic_cast<CallerT*>(caller_)) {
       return caller;
     }
     YACL_THROW("cast failed");
+  }
+
+  template <typename StateT>
+  StateT* getState() {
+    return caller()->template getState<StateT>();
   }
 
   // Get the i'th parameter.
@@ -105,10 +102,9 @@ class KernelEvalContext final {
   }
 };
 
+class Object;
 class Kernel {
  public:
-  using EvalContext = KernelEvalContext;
-
   enum class Kind {
     // Indicate the kernel's complexity is static known.
     //
@@ -146,7 +142,7 @@ class Kernel {
   virtual float getCommTolerance() const { return 0.0; }
 
   // Evaluate this protocol within given context.
-  virtual void evaluate(EvalContext* ctx) const = 0;
+  virtual void evaluate(EvaluationContext<Object>* ctx) const = 0;
 };
 
 class State {
@@ -226,13 +222,13 @@ class Object final {
   }
 
   template <typename Ret = ArrayRef>
-  Ret callImpl(Kernel* kernel, KernelEvalContext* ctx) {
+  Ret callImpl(Kernel* kernel, EvaluationContext<Object>* ctx) {
     kernel->evaluate(ctx);
     return ctx->stealOutput<Ret>();
   }
 
   template <typename Ret = ArrayRef, typename First, typename... Args>
-  Ret callImpl(Kernel* kernel, KernelEvalContext* ctx, First&& head,
+  Ret callImpl(Kernel* kernel, EvaluationContext<Object>* ctx, First&& head,
                Args&&... tail) {
     ctx->bindParam(std::forward<First>(head));
     if constexpr (sizeof...(Args) == 0) {
@@ -245,9 +241,11 @@ class Object final {
   template <typename Ret = ArrayRef, typename... Args>
   Ret call(std::string_view name, Args&&... args) {
     Kernel* kernel = getKernel(name);
-    KernelEvalContext ctx(this);
+    EvaluationContext<Object> ctx(this);
     return callImpl<Ret>(kernel, &ctx, std::forward<Args>(args)...);
   }
 };
+
+using KernelEvalContext = EvaluationContext<Object>;
 
 }  // namespace spu::mpc

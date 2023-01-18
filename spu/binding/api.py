@@ -21,20 +21,20 @@ from cachetools import LRUCache, cached
 
 import spu.spu_pb2 as spu_pb2
 
-from . import _lib
+from . import libspu
 
 
 class Runtime(object):
     """The SPU Virtual Machine Slice."""
 
-    def __init__(self, link: _lib.link.Context, config: spu_pb2.RuntimeConfig):
+    def __init__(self, link: libspu.link.Context, config: spu_pb2.RuntimeConfig):
         """Constructor of an SPU Runtime.
 
         Args:
-            link (_lib.link.Context): Link context.
+            link (libspu.link.Context): Link context.
             config (RuntimeConfig): SPU Runtime Config.
         """
-        self._vm = _lib.RuntimeWrapper(link, config.SerializeToString())
+        self._vm = libspu.RuntimeWrapper(link, config.SerializeToString())
 
     def run(self, executable: spu_pb2.ExecutableProto) -> None:
         """Run an SPU executable.
@@ -102,7 +102,7 @@ class Io(object):
             world_size (int): # of participants of SPU Device.
             config (RuntimeConfig): SPU Runtime Config.
         """
-        self._io = _lib.IoWrapper(world_size, config.SerializeToString())
+        self._io = libspu.IoWrapper(world_size, config.SerializeToString())
 
     def make_shares(
         self, x: 'np.ndarray', vtype: spu_pb2.Visibility, owner_rank: int = -1
@@ -134,7 +134,7 @@ class Io(object):
 @cached(cache=LRUCache(maxsize=128))
 def _spu_compilation(ir_text: str, ir_type: str, json_meta: str):
     pp_dir = os.getenv('SPU_IR_DUMP_DIR')
-    return _lib.compile(ir_text, ir_type, json_meta, pp_dir or "")
+    return libspu.compile(ir_text, ir_type, json_meta, pp_dir or "")
 
 
 def compile(ir_text: str, ir_type: str, vis: List[spu_pb2.Visibility]) -> str:

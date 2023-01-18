@@ -276,8 +276,10 @@ message RuntimeConfig {
 
   // Experimental: DO NOT USE
   bool experimental_disable_mmul_split = 100;
-  bool experimental_enable_intra_op_par = 101;
-  bool experimental_enable_inner_op_par = 102;
+  // inter op parallel, aka. DAG level parallel.
+  bool experimental_enable_inter_op_par = 101;
+  // intra op parallel, aka, hal/mpc level parallel.
+  bool experimental_enable_intra_op_par = 102;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -288,7 +290,6 @@ message RuntimeConfig {
 message XlaMeta {
   repeated Visibility inputs = 1;
 }
-
 
 // The executable format accepted by SPU runtime.
 //

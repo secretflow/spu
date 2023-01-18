@@ -25,8 +25,6 @@ using util::K;
 using util::Log;
 using util::N;
 
-typedef spu::mpc::semi2k::AddBB AddBB;
-
 typedef spu::mpc::semi2k::A2B A2B;
 
 class B2A : public UnaryKernel {

@@ -23,7 +23,8 @@
 #include "spu/mpc/cheetah/boolean.h"
 #include "spu/mpc/cheetah/conversion.h"
 #include "spu/mpc/cheetah/object.h"
-#include "spu/mpc/common/abprotocol.h"
+#include "spu/mpc/common/ab_api.h"
+#include "spu/mpc/common/ab_kernels.h"
 #include "spu/mpc/common/pub2k.h"
 #include "spu/mpc/object.h"
 #include "spu/mpc/semi2k/object.h"
@@ -66,15 +67,17 @@ std::unique_ptr<Object> makeCheetahProtocol(
   obj->regKernel<cheetah::MatMulAP>();
   obj->regKernel<cheetah::MatMulAA>();
   obj->regKernel<cheetah::LShiftA>();
-  obj->regKernel<cheetah::TruncPrA>();
+  obj->regKernel<cheetah::TruncA>();
   obj->regKernel<cheetah::MsbA>();
 
+  obj->regKernel<common::AddBB>();
+  obj->regKernel<common::BitIntlB>();
+  obj->regKernel<common::BitDeintlB>();
   obj->regKernel<cheetah::CommonTypeB>();
   obj->regKernel<cheetah::CastTypeB>();
   obj->regKernel<cheetah::ZeroB>();
   obj->regKernel<cheetah::B2P>();
   obj->regKernel<cheetah::P2B>();
-  obj->regKernel<cheetah::AddBB>();
   obj->regKernel<cheetah::A2B>();
   obj->regKernel<cheetah::B2A>();
   // obj->regKernel<cheetah::B2A_Randbit>();

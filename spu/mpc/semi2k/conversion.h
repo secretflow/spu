@@ -25,18 +25,6 @@ using util::K;
 using util::Log;
 using util::N;
 
-class AddBB : public BinaryKernel {
- public:
-  static constexpr char kBindName[] = "add_bb";
-
-  CExpr latency() const override { return Log(K()) + 1; }
-
-  CExpr comm() const override { return Log(K()) * K(); }
-
-  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& x,
-                const ArrayRef& y) const override;
-};
-
 class A2B : public UnaryKernel {
  public:
   static constexpr char kBindName[] = "a2b";
@@ -78,6 +66,26 @@ class B2A_Randbit : public UnaryKernel {
     return K() * (N() - 1)  // Open bit masked value
         ;
   }
+
+  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& x) const override;
+};
+
+// Note: current only for 2PC.
+class MsbA2B : public UnaryKernel {
+ public:
+  static constexpr char kBindName[] = "msb_a";
+
+  CExpr latency() const override {
+    // 1 * carry_out : log(k) + 1
+    return Log(K()) + 1;
+  }
+
+  CExpr comm() const override {
+    // 1 * carry_out: k + 4 * k
+    return K() * 5;
+  }
+
+  float getCommTolerance() const override { return 0.2; }
 
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& x) const override;
 };

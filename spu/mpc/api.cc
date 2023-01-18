@@ -16,8 +16,8 @@
 
 namespace spu::mpc {
 
-ArrayRef make_p(Object* ctx, uint128_t init) {
-  return ctx->call("make_p", init);
+ArrayRef make_p(Object* ctx, uint128_t init, size_t size) {
+  return ctx->call("make_p", init, size);
 }
 
 ArrayRef rand_p(Object* ctx, size_t numel) {
@@ -50,7 +50,8 @@ SPU_MPC_DEF_UNARY_OP_WITH_SIZE(rshift_p)
 SPU_MPC_DEF_UNARY_OP_WITH_SIZE(rshift_s)
 SPU_MPC_DEF_UNARY_OP_WITH_SIZE(arshift_p)
 SPU_MPC_DEF_UNARY_OP_WITH_SIZE(arshift_s)
-SPU_MPC_DEF_UNARY_OP_WITH_SIZE(truncpr_s)
+SPU_MPC_DEF_UNARY_OP_WITH_SIZE(trunc_p)
+SPU_MPC_DEF_UNARY_OP_WITH_SIZE(trunc_s)
 SPU_MPC_DEF_UNARY_OP_WITH_2SIZE(bitrev_s)
 SPU_MPC_DEF_UNARY_OP_WITH_2SIZE(bitrev_p)
 SPU_MPC_DEF_BINARY_OP(add_pp)

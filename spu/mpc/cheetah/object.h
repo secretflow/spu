@@ -17,7 +17,7 @@
 #include <memory>
 
 #include "spu/mpc/beaver/beaver_cheetah.h"
-#include "spu/mpc/util/communicator.h"
+#include "spu/mpc/common/communicator.h"
 
 namespace spu::mpc {
 

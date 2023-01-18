@@ -210,9 +210,9 @@ class LShiftA : public ShiftKernel {
 // Share Truncation I, 5.1 Fixed-point Arithmetic, P13,
 // ABY3: A Mixed Protocol Framework for Machine Learning
 // - https://eprint.iacr.org/2018/403.pdf
-class TruncPrA : public TruncPrAKernel {
+class TruncA : public TruncAKernel {
  public:
-  static constexpr char kBindName[] = "truncpr_a";
+  static constexpr char kBindName[] = "trunc_a";
 
   CExpr latency() const override { return Const(1); }
 
@@ -221,16 +221,20 @@ class TruncPrA : public TruncPrAKernel {
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in,
                 size_t bits) const override;
 
-  bool isPrecise() const override { return false; }
+  bool hasMsbError() const override { return true; }
+
+  TruncLsbRounding lsbRounding() const override {
+    return TruncLsbRounding::Random;
+  }
 };
 
 // Refer to:
 // 3.2.2 Truncation by a public value, P10,
 // Secure Evaluation of Quantized Neural Networks
 // - https://arxiv.org/pdf/1910.12435.pdf
-class TruncPrAPrecise : public TruncPrAKernel {
+class TruncAPrecise : public TruncAKernel {
  public:
-  static constexpr char kBindName[] = "truncpr_a";
+  static constexpr char kBindName[] = "trunc_a";
 
   CExpr latency() const override { return Const(3); }
 
@@ -239,7 +243,11 @@ class TruncPrAPrecise : public TruncPrAKernel {
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in,
                 size_t bits) const override;
 
-  bool isPrecise() const override { return true; }
+  bool hasMsbError() const override { return false; }
+
+  TruncLsbRounding lsbRounding() const override {
+    return TruncLsbRounding::Probabilistic;
+  }
 };
 
 class MsbA : public UnaryKernel {

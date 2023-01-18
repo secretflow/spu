@@ -51,7 +51,7 @@ from jax._src import api_util as japi_util
 from jax.tree_util import tree_flatten, tree_map, tree_unflatten
 from termcolor import colored
 
-import spu.binding._lib.link as liblink
+import spu.binding.libspu.link as liblink
 import spu.binding.util.frontend as spu_fe
 from spu.binding.api import Io, Runtime, compile
 from spu.binding.util.distributed_pb2 import RunRequest, RunResponse
