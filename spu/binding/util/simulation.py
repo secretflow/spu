@@ -18,15 +18,14 @@ from typing import Callable
 
 import jax
 import jax.numpy as jnp
+import numpy as np
 from jax import linear_util as lu
 from jax._src import api_util as japi_util
-import numpy as np
 
-import spu.binding._lib.link as link
 import spu.binding.api as ppapi
+import spu.binding.libspu.link as link
 import spu.binding.util.frontend as spu_fe
 import spu.spu_pb2 as spu_pb2
-from jax import linear_util as lu
 
 
 # https://stackoverflow.com/questions/2829329/catch-a-threads-exception-in-the-caller-thread-in-python

@@ -49,7 +49,7 @@ class Ref2kCommonTypeS : public Kernel {
 
   Kind kind() const override { return Kind::kDynamic; }
 
-  void evaluate(EvalContext* ctx) const override {
+  void evaluate(KernelEvalContext* ctx) const override {
     const Type& lhs = ctx->getParam<Type>(0);
     const Type& rhs = ctx->getParam<Type>(1);
 
@@ -66,7 +66,7 @@ class Ref2kCastTypeS : public Kernel {
 
   Kind kind() const override { return Kind::kDynamic; }
 
-  void evaluate(EvalContext* ctx) const override {
+  void evaluate(KernelEvalContext* ctx) const override {
     const auto& in = ctx->getParam<ArrayRef>(0);
     const auto& to_type = ctx->getParam<Type>(1);
 
@@ -118,8 +118,8 @@ class Ref2kRandS : public Kernel {
 
   ArrayRef proc(KernelEvalContext* ctx, size_t size) const {
     SPU_TRACE_MPC_LEAF(ctx, size);
-    auto* state = ctx->caller()->getState<PrgState>();
-    const auto field = ctx->caller()->getState<Z2kState>()->getDefaultField();
+    auto* state = ctx->getState<PrgState>();
+    const auto field = ctx->getState<Z2kState>()->getDefaultField();
 
     return ring_rshift(
         state->genPubl(field, size).as(makeType<Ref2kSecrTy>(field)), 2);
@@ -377,6 +377,37 @@ class Ref2kARShiftS : public ShiftKernel {
   }
 };
 
+class Ref2kTruncS : public TruncAKernel {
+ public:
+  static constexpr char kBindName[] = "trunc_s";
+
+  bool hasMsbError() const override { return false; }
+
+  TruncLsbRounding lsbRounding() const override {
+    return TruncLsbRounding::Nearest;
+  }
+
+  util::CExpr latency() const override { return util::Const(0); }
+
+  util::CExpr comm() const override { return util::Const(0); }
+
+  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in,
+                size_t bits) const override {
+    SPU_TRACE_MPC_LEAF(ctx, in, bits);
+    // Rounding
+    // AxB = (AxB >> 14) + ((AxB >> 13) & 1);
+    // See
+    // https://stackoverflow.com/questions/14008330/how-do-you-multiply-two-fixed-point-numbers
+    // Under certain pattern, like sum(mul(A, B)), error can accumulate in a
+    // fairly significant way
+    auto v1 = ring_arshift(in, bits);
+    auto v2 = ring_arshift(in, bits - 1);
+    ring_and_(v2, ring_ones(in.eltype().as<Ring2k>()->field(), in.numel()));
+    ring_add_(v1, v2);
+    return v1;
+  }
+};
+
 class Ref2kMsbS : public UnaryKernel {
  public:
   static constexpr char kBindName[] = "msb_s";
@@ -430,7 +461,7 @@ std::unique_ptr<Object> makeRef2kProtocol(
   obj->regKernel<Ref2kRShiftS>();
   obj->regKernel<Ref2kBitrevS>();
   obj->regKernel<Ref2kARShiftS>();
-  obj->regKernel<Ref2kARShiftS>("truncpr_s");
+  obj->regKernel<Ref2kTruncS>();
   obj->regKernel<Ref2kMsbS>();
   obj->regKernel<Ref2kRandS>();
 

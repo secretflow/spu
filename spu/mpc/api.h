@@ -44,7 +44,7 @@ ArrayRef cast_type_s(Object* ctx, const ArrayRef& a, const Type& to_type);
 // Make a public variable with given plaintext input.
 //
 // All parties knowns the value.
-ArrayRef make_p(Object* ctx, uint128_t init);
+ArrayRef make_p(Object* ctx, uint128_t init, size_t size);
 
 // parties random a public together.
 ArrayRef rand_p(Object* ctx, size_t);
@@ -68,7 +68,8 @@ ArrayRef rshift_s(Object* ctx, const ArrayRef&, size_t);
 
 ArrayRef arshift_p(Object* ctx, const ArrayRef&, size_t);
 ArrayRef arshift_s(Object* ctx, const ArrayRef&, size_t);
-ArrayRef truncpr_s(Object* ctx, const ArrayRef&, size_t);
+ArrayRef trunc_p(Object* ctx, const ArrayRef&, size_t);
+ArrayRef trunc_s(Object* ctx, const ArrayRef&, size_t);
 
 // Reverse bit, like MISP BITREV instruction, and linux bitrev library.
 ArrayRef bitrev_s(Object* ctx, const ArrayRef&, size_t, size_t);

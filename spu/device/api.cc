@@ -276,7 +276,7 @@ void executeImpl(OpExecutor *executor, spu::HalContext *hctx,
     ExecutionOptions opts;
     opts.do_type_check = rt_config.enable_type_checker();
     opts.do_log_execution = rt_config.enable_pphlo_trace();
-    opts.do_parallel = rt_config.experimental_enable_intra_op_par();
+    opts.do_parallel = rt_config.experimental_enable_inter_op_par();
     if (opts.do_parallel) {
       mlir_ctx.enableMultithreading();
       mlir_ctx.enterMultiThreadedExecution();

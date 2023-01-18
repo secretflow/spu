@@ -20,15 +20,15 @@
 #include "spdlog/spdlog.h"
 
 #include "spu/core/array_ref.h"
+#include "spu/core/platform_utils.h"
 #include "spu/core/trace.h"
 #include "spu/mpc/aby3/ot.h"
 #include "spu/mpc/aby3/type.h"
 #include "spu/mpc/aby3/value.h"
-#include "spu/mpc/common/abprotocol.h"
+#include "spu/mpc/common/ab_api.h"
+#include "spu/mpc/common/communicator.h"
 #include "spu/mpc/common/prg_state.h"
 #include "spu/mpc/common/pub2k.h"
-#include "spu/mpc/util/circuits.h"
-#include "spu/mpc/util/communicator.h"
 #include "spu/mpc/util/linalg.h"
 #include "spu/mpc/util/ring_ops.h"
 
@@ -120,25 +120,39 @@ std::vector<uint8_t> ring_cast_boolean_(const ArrayRef& x) {
 ArrayRef RandA::proc(KernelEvalContext* ctx, size_t size) const {
   SPU_TRACE_MPC_LEAF(ctx, size);
 
-  auto* prg_state = ctx->caller()->getState<PrgState>();
-  const auto field = ctx->caller()->getState<Z2kState>()->getDefaultField();
+  auto* prg_state = ctx->getState<PrgState>();
+  const auto field = ctx->getState<Z2kState>()->getDefaultField();
 
-  auto [r0, r1] = prg_state->genPrssPair(field, size);
+  ArrayRef out(makeType<AShrTy>(field), size);
+  DISPATCH_ALL_FIELDS(field, "_", [&]() {
+    using AShrT = ring2k_t;
 
-  // NOTES for ring_rshift to 2 bits.
-  // Refer to:
-  // New Primitives for Actively-Secure MPC over Rings with Applications to
-  // Private Machine Learning
-  // - https://eprint.iacr.org/2019/599.pdf
-  // It's safer to keep the number within [-2**(k-2), 2**(k-2)) for comparsion
-  // operations.
-  return makeAShare(ring_rshift(r0, 2), ring_rshift(r1, 2), field);
+    std::vector<AShrT> r0(size);
+    std::vector<AShrT> r1(size);
+    prg_state->fillPrssPair(absl::MakeSpan(r0), absl::MakeSpan(r1));
+
+    auto _out = ArrayView<std::array<AShrT, 2>>(out);
+    pforeach(0, size, [&](int64_t idx) {
+      // NOTES for ring_rshift to 2 bits.
+      //
+      // Refer to: New Primitives for Actively-Secure MPC over Rings with
+      // Applications to Private Machine Learning
+      // - https://eprint.iacr.org/2019/599.pdf
+      //
+      // It's safer to keep the number within [-2**(k-2), 2**(k-2)) for
+      // comparsion operations.
+      _out[idx][0] = r0[idx] >> 2;
+      _out[idx][1] = r1[idx] >> 2;
+    });
+  });
+
+  return out;
 }
 
 ArrayRef A2P::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
   SPU_TRACE_MPC_LEAF(ctx, in);
 
-  auto* comm = ctx->caller()->getState<Communicator>();
+  auto* comm = ctx->getState<Communicator>();
   const auto field = in.eltype().as<AShrTy>()->field();
 
   return DISPATCH_ALL_FIELDS(field, "_", [&]() {
@@ -168,7 +182,7 @@ ArrayRef A2P::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
 ArrayRef P2A::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
   SPU_TRACE_MPC_LEAF(ctx, in);
 
-  auto* comm = ctx->caller()->getState<Communicator>();
+  auto* comm = ctx->getState<Communicator>();
 
   // TODO: we should expect Pub2kTy instead of Ring2k
   const auto* in_ty = in.eltype().as<Ring2k>();
@@ -193,7 +207,7 @@ ArrayRef P2A::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
 #ifdef ENABLE_MASK_DURING_ABY3_P2A
     std::vector<AShrT> r0(in.numel());
     std::vector<AShrT> r1(in.numel());
-    auto* prg_state = ctx->caller()->getState<PrgState>();
+    auto* prg_state = ctx->getState<PrgState>();
     prg_state->fillPrssPair(absl::MakeSpan(r0), absl::MakeSpan(r1));
 
     for (int64_t idx = 0; idx < in.numel(); idx++) {
@@ -214,7 +228,7 @@ ArrayRef P2A::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
 ArrayRef NotA::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
   SPU_TRACE_MPC_LEAF(ctx, in);
 
-  auto* comm = ctx->caller()->getState<Communicator>();
+  auto* comm = ctx->getState<Communicator>();
   const auto* in_ty = in.eltype().as<AShrTy>();
   const auto field = in_ty->field();
 
@@ -250,7 +264,7 @@ ArrayRef AddAP::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
                      const ArrayRef& rhs) const {
   SPU_TRACE_MPC_LEAF(ctx, lhs, rhs);
 
-  auto* comm = ctx->caller()->getState<Communicator>();
+  auto* comm = ctx->getState<Communicator>();
   const auto* lhs_ty = lhs.eltype().as<AShrTy>();
   const auto* rhs_ty = rhs.eltype().as<Pub2kTy>();
 
@@ -340,8 +354,8 @@ ArrayRef MulAA::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
   SPU_TRACE_MPC_LEAF(ctx, lhs, rhs);
 
   const auto field = lhs.eltype().as<Ring2k>()->field();
-  auto* comm = ctx->caller()->getState<Communicator>();
-  auto* prg_state = ctx->caller()->getState<PrgState>();
+  auto* comm = ctx->getState<Communicator>();
+  auto* prg_state = ctx->getState<PrgState>();
 
   return DISPATCH_ALL_FIELDS(field, "aby3.mulAA", [&]() {
     using U = ring2k_t;
@@ -399,8 +413,8 @@ ArrayRef MulA1B::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
 
   ArrayRef out(makeType<AShrTy>(field), numel);
 
-  auto* comm = ctx->caller()->getState<Communicator>();
-  auto* prg_state = ctx->caller()->getState<PrgState>();
+  auto* comm = ctx->getState<Communicator>();
+  auto* prg_state = ctx->getState<PrgState>();
 
   // lhs
   const auto& a1 = getFirstShare(lhs);
@@ -549,8 +563,8 @@ ArrayRef MatMulAA::proc(KernelEvalContext* ctx, const ArrayRef& x,
   SPU_TRACE_MPC_LEAF(ctx, x, y);
 
   const auto field = x.eltype().as<Ring2k>()->field();
-  auto* comm = ctx->caller()->getState<Communicator>();
-  auto* prg_state = ctx->caller()->getState<PrgState>();
+  auto* comm = ctx->getState<Communicator>();
+  auto* prg_state = ctx->getState<PrgState>();
 
   auto r = std::async([&] {
     auto [r0, r1] = prg_state->genPrssPair(field, M * N);
@@ -607,13 +621,13 @@ ArrayRef LShiftA::proc(KernelEvalContext* ctx, const ArrayRef& in,
 // Share Truncation I, 5.1 Fixed-point Arithmetic, P13,
 // ABY3: A Mixed Protocol Framework for Machine Learning
 // - https://eprint.iacr.org/2018/403.pdf
-ArrayRef TruncPrA::proc(KernelEvalContext* ctx, const ArrayRef& in,
-                        size_t bits) const {
+ArrayRef TruncA::proc(KernelEvalContext* ctx, const ArrayRef& in,
+                      size_t bits) const {
   SPU_TRACE_MPC_LEAF(ctx, in, bits);
 
   const auto field = in.eltype().as<Ring2k>()->field();
-  auto* prg_state = ctx->caller()->getState<PrgState>();
-  auto* comm = ctx->caller()->getState<Communicator>();
+  auto* prg_state = ctx->getState<PrgState>();
+  auto* comm = ctx->getState<Communicator>();
 
   auto r_future =
       std::async([&] { return prg_state->genPrssPair(field, in.numel()); });
@@ -672,16 +686,16 @@ std::vector<T> openWith(Communicator* comm, size_t peer_rank,
 // 3.2.2 Truncation by a public value, P10,
 // Secure Evaluation of Quantized Neural Networks
 // - https://arxiv.org/pdf/1910.12435.pdf
-ArrayRef TruncPrAPrecise::proc(KernelEvalContext* ctx, const ArrayRef& in,
-                               size_t bits) const {
+ArrayRef TruncAPrecise::proc(KernelEvalContext* ctx, const ArrayRef& in,
+                             size_t bits) const {
   SPU_TRACE_MPC_LEAF(ctx, in, bits);
 
   const auto field = in.eltype().as<AShrTy>()->field();
   const auto numel = in.numel();
   const size_t k = SizeOf(field) * 8;
 
-  auto* prg_state = ctx->caller()->getState<PrgState>();
-  auto* comm = ctx->caller()->getState<Communicator>();
+  auto* prg_state = ctx->getState<PrgState>();
+  auto* comm = ctx->getState<Communicator>();
 
   // TODO: cost model is asymmetric, but test framework requires the same.
   comm->addCommStatsManually(3, 4 * SizeOf(field) * numel);
@@ -713,8 +727,7 @@ ArrayRef TruncPrAPrecise::proc(KernelEvalContext* ctx, const ArrayRef& in,
 
         // handle negative number.
         // assume secret x in [-2^(k-2), 2^(k-2)), by
-        // adding 2^(k-2) x' = x + 2^(k-2) in [0,
-        // 2^(k-1)), with msb(x') == 0
+        // adding 2^(k-2) x' = x + 2^(k-2) in [0, 2^(k-1)), with msb(x') == 0
         x += U(1) << (k - 2);
 
         // mask it with ra
@@ -893,35 +906,49 @@ std::pair<ArrayRef, ArrayRef> bit_split(const ArrayRef& in) {
       auto _lo = ArrayView<std::array<OutT, 2>>(lo);
       auto _hi = ArrayView<std::array<OutT, 2>>(hi);
 
-      pforeach(0, in.numel(), [&](int64_t idx) {
-        InT r0 = _in[idx][0];
-        InT r1 = _in[idx][1];
-        // algorithm:
-        //      0101010101010101
-        // swap  ^^  ^^  ^^  ^^
-        //      0011001100110011
-        // swap   ^^^^    ^^^^
-        //      0000111100001111
-        // swap     ^^^^^^^^
-        //      0000000011111111
-        for (int k = 0; k + 1 < log2Ceil(in_nbits); k++) {
-          InT keep = static_cast<InT>(kKeepMasks[k]);
-          InT move = static_cast<InT>(kSwapMasks[k]);
-          int shift = 1 << k;
+      if constexpr (sizeof(InT) <= 8) {
+        pforeach(0, in.numel(), [&](int64_t idx) {
+          constexpr uint64_t S = 0x5555555555555555;  // 01010101
+          const InT M = (InT(1) << (in_nbits / 2)) - 1;
 
-          r0 = (r0 & keep) ^ ((r0 >> shift) & move) ^ ((r0 & move) << shift);
-          r1 = (r1 & keep) ^ ((r1 >> shift) & move) ^ ((r1 & move) << shift);
-        }
-        InT mask = (InT(1) << (in_nbits / 2)) - 1;
-        _lo[idx][0] = static_cast<OutT>(r0) & mask;
-        _hi[idx][0] = static_cast<OutT>(r0 >> (in_nbits / 2)) & mask;
-        _lo[idx][1] = static_cast<OutT>(r1) & mask;
-        _hi[idx][1] = static_cast<OutT>(r1 >> (in_nbits / 2)) & mask;
-      });
+          uint64_t r0 = _in[idx][0];
+          uint64_t r1 = _in[idx][1];
+          _lo[idx][0] = pext_u64(r0, S) & M;
+          _hi[idx][0] = pext_u64(r0, ~S) & M;
+          _lo[idx][1] = pext_u64(r1, S) & M;
+          _hi[idx][1] = pext_u64(r1, ~S) & M;
+        });
+      } else {
+        pforeach(0, in.numel(), [&](int64_t idx) {
+          InT r0 = _in[idx][0];
+          InT r1 = _in[idx][1];
+          // algorithm:
+          //      0101010101010101
+          // swap  ^^  ^^  ^^  ^^
+          //      0011001100110011
+          // swap   ^^^^    ^^^^
+          //      0000111100001111
+          // swap     ^^^^^^^^
+          //      0000000011111111
+          for (int k = 0; k + 1 < Log2Ceil(in_nbits); k++) {
+            InT keep = static_cast<InT>(kKeepMasks[k]);
+            InT move = static_cast<InT>(kSwapMasks[k]);
+            int shift = 1 << k;
+
+            r0 = (r0 & keep) ^ ((r0 >> shift) & move) ^ ((r0 & move) << shift);
+            r1 = (r1 & keep) ^ ((r1 >> shift) & move) ^ ((r1 & move) << shift);
+          }
+          InT mask = (InT(1) << (in_nbits / 2)) - 1;
+          _lo[idx][0] = static_cast<OutT>(r0) & mask;
+          _hi[idx][0] = static_cast<OutT>(r0 >> (in_nbits / 2)) & mask;
+          _lo[idx][1] = static_cast<OutT>(r1) & mask;
+          _hi[idx][1] = static_cast<OutT>(r1 >> (in_nbits / 2)) & mask;
+        });
+      }
     });
   });
 
-  return std::make_pair(lo, hi);
+  return std::make_pair(hi, lo);
 }
 
 // compute the k'th bit of x + y
@@ -938,8 +965,8 @@ ArrayRef carry_out(Object* ctx, const ArrayRef& x, const ArrayRef& y,
       P = lshift_b(ctx, P, 1);
       G = lshift_b(ctx, G, 1);
     }
-    auto [P0, P1] = bit_split(P);
-    auto [G0, G1] = bit_split(G);
+    auto [P1, P0] = bit_split(P);
+    auto [G1, G0] = bit_split(G);
 
     // Calculate next-level of P, G
     //   P = P1 & P0
@@ -964,8 +991,8 @@ ArrayRef MsbA::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
 
   const auto field = in.eltype().as<AShrTy>()->field();
   const auto numel = in.numel();
-  auto* comm = ctx->caller()->getState<Communicator>();
-  auto* prg_state = ctx->caller()->getState<PrgState>();
+  auto* comm = ctx->getState<Communicator>();
+  auto* prg_state = ctx->getState<PrgState>();
 
   // First construct 2 boolean shares.
   // Let

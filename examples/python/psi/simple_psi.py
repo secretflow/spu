@@ -20,8 +20,8 @@
 from absl import app, flags
 
 import spu.binding.psi as psi
-import spu.binding._lib.link as link
-import spu.binding._lib.logging as logging
+import spu.binding.libspu.link as link
+import spu.binding.libspu.logging as logging
 
 flags.DEFINE_string("protocol", "ECDH_PSI_2PC", "psi protocol, see `spu/psi/psi.proto`")
 flags.DEFINE_integer("rank", 0, "rank: 0/1/2...")

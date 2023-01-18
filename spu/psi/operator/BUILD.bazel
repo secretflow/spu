@@ -105,7 +105,7 @@ spu_cc_library(
     deps = [
         ":base_operator",
         ":factory",
-        "//spu/psi/core/dp_psi:dp_psi",
+        "//spu/psi/core/dp_psi",
     ],
     alwayslink = True,
 )
@@ -120,4 +120,3 @@ spu_cc_library(
         ":nparty_psi",
     ],
 )
-

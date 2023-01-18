@@ -16,12 +16,12 @@
 
 #include "spu/core/trace.h"
 #include "spu/core/vectorize.h"
-#include "spu/mpc/common/abprotocol.h"  // zero_a
+#include "spu/mpc/common/ab_api.h"
+#include "spu/mpc/common/communicator.h"
 #include "spu/mpc/common/prg_state.h"
 #include "spu/mpc/common/pub2k.h"
 #include "spu/mpc/semi2k/object.h"
 #include "spu/mpc/semi2k/type.h"
-#include "spu/mpc/util/communicator.h"
 #include "spu/mpc/util/ring_ops.h"
 
 namespace spu::mpc::semi2k {
@@ -29,8 +29,8 @@ namespace spu::mpc::semi2k {
 ArrayRef ZeroA::proc(KernelEvalContext* ctx, size_t size) const {
   SPU_TRACE_MPC_LEAF(ctx, size);
 
-  auto* prg_state = ctx->caller()->getState<PrgState>();
-  const auto field = ctx->caller()->getState<Z2kState>()->getDefaultField();
+  auto* prg_state = ctx->getState<PrgState>();
+  const auto field = ctx->getState<Z2kState>()->getDefaultField();
 
   auto [r0, r1] = prg_state->genPrssPair(field, size);
   return ring_sub(r0, r1).as(makeType<AShrTy>(field));
@@ -39,8 +39,8 @@ ArrayRef ZeroA::proc(KernelEvalContext* ctx, size_t size) const {
 ArrayRef RandA::proc(KernelEvalContext* ctx, size_t size) const {
   SPU_TRACE_MPC_LEAF(ctx, size);
 
-  auto* prg_state = ctx->caller()->getState<PrgState>();
-  const auto field = ctx->caller()->getState<Z2kState>()->getDefaultField();
+  auto* prg_state = ctx->getState<PrgState>();
+  const auto field = ctx->getState<Z2kState>()->getDefaultField();
 
   // NOTES for ring_rshift to 2 bits.
   // Refer to:
@@ -56,7 +56,7 @@ ArrayRef P2A::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
   SPU_TRACE_MPC_LEAF(ctx, in);
 
   const auto field = in.eltype().as<Ring2k>()->field();
-  auto* comm = ctx->caller()->getState<Communicator>();
+  auto* comm = ctx->getState<Communicator>();
 
   auto x = zero_a(ctx->caller(), in.numel());
 
@@ -71,7 +71,7 @@ ArrayRef A2P::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
   SPU_TRACE_MPC_LEAF(ctx, in);
 
   const auto field = in.eltype().as<Ring2k>()->field();
-  auto* comm = ctx->caller()->getState<Communicator>();
+  auto* comm = ctx->getState<Communicator>();
   auto out = comm->allReduce(ReduceOp::ADD, in, kBindName);
   return out.as(makeType<Pub2kTy>(field));
 }
@@ -113,7 +113,7 @@ ArrayRef AddAP::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
   SPU_TRACE_MPC_LEAF(ctx, lhs, rhs);
 
   YACL_ENFORCE(lhs.numel() == rhs.numel());
-  auto* comm = ctx->caller()->getState<Communicator>();
+  auto* comm = ctx->getState<Communicator>();
 
   if (comm->getRank() == 0) {
     return ring_add(lhs, rhs).as(lhs.eltype());
@@ -149,6 +149,7 @@ ArrayRef MulAA::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
   const auto field = lhs.eltype().as<Ring2k>()->field();
   auto* comm = ctx->caller()->getState<Communicator>();
   auto* beaver = ctx->caller()->getState<Semi2kState>()->beaver();
+
   auto [a, b, c] = beaver->Mul(field, lhs.numel());
 
   // Open x-a & y-b
@@ -184,8 +185,8 @@ ArrayRef MatMulAA::proc(KernelEvalContext* ctx, const ArrayRef& x,
   SPU_TRACE_MPC_LEAF(ctx, x, y);
 
   const auto field = x.eltype().as<Ring2k>()->field();
-  auto* comm = ctx->caller()->getState<Communicator>();
-  auto* beaver = ctx->caller()->getState<Semi2kState>()->beaver();
+  auto* comm = ctx->getState<Communicator>();
+  auto* beaver = ctx->getState<Semi2kState>()->beaver();
 
   // generate beaver multiple triple.
   auto [a, b, c] = beaver->Dot(field, M, N, K);
@@ -218,10 +219,10 @@ ArrayRef LShiftA::proc(KernelEvalContext* ctx, const ArrayRef& in,
   return ring_lshift(in, bits).as(in.eltype());
 }
 
-ArrayRef TruncPrA::proc(KernelEvalContext* ctx, const ArrayRef& x,
-                        size_t bits) const {
+ArrayRef TruncA::proc(KernelEvalContext* ctx, const ArrayRef& x,
+                      size_t bits) const {
   SPU_TRACE_MPC_LEAF(ctx, x, bits);
-  auto* comm = ctx->caller()->getState<Communicator>();
+  auto* comm = ctx->getState<Communicator>();
 
   // TODO: add trunction method to options.
   if (comm->getWorldSize() == 2u) {
@@ -231,7 +232,7 @@ ArrayRef TruncPrA::proc(KernelEvalContext* ctx, const ArrayRef& x,
   } else {
     // ABY3, truncation pair method.
     // Ref: Section 5.1.2 https://eprint.iacr.org/2018/403.pdf
-    auto* beaver = ctx->caller()->getState<Semi2kState>()->beaver();
+    auto* beaver = ctx->getState<Semi2kState>()->beaver();
 
     const auto field = x.eltype().as<Ring2k>()->field();
     const auto& [r, rb] = beaver->Trunc(field, x.numel(), bits);

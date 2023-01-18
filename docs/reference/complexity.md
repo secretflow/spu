@@ -12,7 +12,7 @@
 |mul_ap   |0                 |0                                |
 |mmul_aa  |TODO              |TODO                             |
 |mmul_ap  |0                 |0                                |
-|truncpr_a|0                 |0                                |
+|trunc_a|0                 |0                                |
 |xor_bb   |0                 |0                                |
 |xor_bp   |0                 |0                                |
 |and_bb   |1                 |k\*2\*(n-1)                      |
@@ -31,7 +31,7 @@
 |mul_ap   |0         |0             |
 |mmul_aa  |TODO      |TODO          |
 |mmul_ap  |0         |0             |
-|truncpr_a|3         |4\*k          |
+|trunc_a|3         |4\*k          |
 |xor_bb   |0         |0             |
 |xor_bp   |0         |0             |
 |and_bb   |1         |k             |

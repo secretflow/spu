@@ -25,6 +25,7 @@ namespace spu::mpc {
 
 namespace cheetah {
 class MulAA;
+class MatMulAA;
 }  // namespace cheetah
 
 // Cheetah beaver implementation.
@@ -49,10 +50,18 @@ class BeaverCheetah : public Beaver {
   std::shared_ptr<spu::CheetahPrimitives> ot_primitives_{nullptr};
 
   std::shared_ptr<yacl::link::Context> lctx_;
-
+  // Olivious Linear Evaluation (OLE)
+  // compute the share of a*b where Alice holds `a` and Bob holds `b` privately.
   friend class cheetah::MulAA;
-  ArrayRef MulAShr(const ArrayRef& shr, yacl::link::Context* conn,
-                   bool evaluator);
+  ArrayRef MulOLE(const ArrayRef& inp, yacl::link::Context* conn,
+                  bool evaluator);
+
+  friend class cheetah::MatMulAA;
+  // Compute the matrix product A*B where Alice inputs A and Bob inputs B
+  // where |A| = M*K and |B| = K*N.
+  // Assume the RHS matrix B is given in the column-major order.
+  ArrayRef DotOLE(const ArrayRef& inp, yacl::link::Context* conn, size_t M,
+                  size_t N, size_t K, bool is_right_hand_side);
 
  public:
   explicit BeaverCheetah(std::shared_ptr<yacl::link::Context> lctx);

@@ -25,6 +25,27 @@
 #include "spu/kernel/hal/shape_ops.h"
 
 namespace spu::kernel::hal {
+namespace {
+
+void calcNextPtrs(std::vector<int64_t>& coord, int64_t& idim,
+                  const std::vector<int64_t>& shape, const std::byte*& ptr_a,
+                  const std::vector<int64_t>& strides_a, std::byte*& ptr_b,
+                  const std::vector<int64_t>& strides_b) {
+  for (idim = shape.size() - 1; idim >= 0; --idim) {
+    if (++coord[idim] == shape[idim]) {
+      // Once a dimension is done, just unwind by strides
+      coord[idim] = 0;
+      ptr_a -= (shape[idim] - 1) * strides_a[idim];
+      ptr_b -= (shape[idim] - 1) * strides_b[idim];
+    } else {
+      ptr_a += strides_a[idim];
+      ptr_b += strides_b[idim];
+      break;
+    }
+  }
+}
+
+}  // namespace
 
 Value concatenate(HalContext* ctx, absl::Span<const Value> values,
                   const size_t& axis) {
@@ -84,70 +105,46 @@ Value concatenate(HalContext* ctx, absl::Span<const Value> values,
     }
   }
 
-  auto next_two_iter_ =
-      [&](std::vector<int64_t>& coord, int64_t& idim,
-          absl::Span<const int64_t> shape, const std::byte*& ptr_a,
-          absl::Span<const int64_t> strides_a, std::byte*& ptr_b,
-          absl::Span<const int64_t> strides_b) {
-        for (idim = shape.size() - 1; idim >= 0; --idim) {
-          if (++coord[idim] == shape[idim]) {
-            // Once a dimension is done, just unwind by strides
-            coord[idim] = 0;
-            ptr_a -= (shape[idim] - 1) * elsize * strides_a[idim];
-            ptr_b -= (shape[idim] - 1) * elsize * strides_b[idim];
-          } else {
-            ptr_a += strides_a[idim] * elsize;
-            ptr_b += strides_b[idim] * elsize;
-            break;
-          }
-        }
-      };
+  for (size_t idx = 0; idx < values.size(); ++idx) {
+    const auto* from_ptr =
+        static_cast<const std::byte*>(values[idx].data().data());
+    auto* to_ptr = static_cast<std::byte*>(result_slices[idx].data().data());
 
-  // 5 here is just a magic number
-  if (values.size() < 5) {
-    // When there are just a few values to concat. Try to parallel on value
-    // level...
-    for (size_t idx = 0; idx < values.size(); ++idx) {
-      auto g_size = std::max<int64_t>(
-          (values[idx].numel() + getNumberOfProc()) / getNumberOfProc(), 2048);
-      yacl::parallel_for(
-          0, values[idx].numel(), g_size, [&](int64_t begin, int64_t end) {
-            std::vector<int64_t> indicies =
-                unflattenIndex(begin, values[idx].shape());
-            int64_t idim = values[idx].shape().size() - 1;
-            const auto* in_ptr = &values[idx].data().at(indicies);
-            auto* to_ptr = &result_slices[idx].data().at(indicies);
-            for (int64_t e_idx = begin; e_idx < end; ++e_idx) {
-              std::memcpy(to_ptr, in_ptr, elsize);
-              next_two_iter_(indicies, idim, values[idx].shape(), in_ptr,
-                             values[idx].strides(), to_ptr,
-                             result_slices[idx].strides());
-            }
-          });
+    std::vector<int64_t> from_strides = values[idx].strides();
+    std::vector<int64_t> to_strides = result_slices[idx].strides();
+    std::vector<int64_t> shape = values[idx].shape();
+
+    // try optimize memcpy by make larger block size.
+    auto compact_strides = makeCompactStrides(shape);
+    int64_t blksize = elsize;
+    int64_t ndims = shape.size() - 1;
+    for (; ndims >= 0; ndims--) {
+      if (from_strides[ndims] == to_strides[ndims] &&
+          from_strides[ndims] == compact_strides[ndims]) {
+        blksize *= shape[ndims];
+        shape[ndims] = 1;
+      } else {
+        break;
+      }
     }
-  } else {
-    // When there are a lot of values to concat (usually during im2col, where
-    // each value is just a window), try to parallel on inputs
-    yacl::parallel_for(
-        0, values.size(),
-        (values.size() + getNumberOfProc()) / getNumberOfProc(),
-        [&](int64_t begin, int64_t end) {
-          for (int64_t idx = begin; idx < end; ++idx) {
-            std::vector<int64_t> indicies(values[idx].shape().size(), 0);
-            const auto* from_ptr =
-                static_cast<const std::byte*>(values[idx].data().data());
-            auto* to_ptr =
-                static_cast<std::byte*>(result_slices[idx].data().data());
+    ndims++;
+    shape.resize(ndims);
+    from_strides.resize(ndims);
+    to_strides.resize(ndims);
 
-            int64_t idim = values[idx].shape().size() - 1;
-            do {
-              std::memcpy(to_ptr, from_ptr, elsize);
-              next_two_iter_(indicies, idim, values[idx].shape(), from_ptr,
-                             values[idx].strides(), to_ptr,
-                             result_slices[idx].strides());
-            } while (idim >= 0);
-          }
-        });
+    // convert to byte based stride.
+    for (size_t dim = 0; dim < from_strides.size(); dim++) {
+      from_strides[dim] *= elsize;
+      to_strides[dim] *= elsize;
+    }
+
+    int64_t idim = ndims - 1;
+    std::vector<int64_t> indicies(ndims, 0);
+    do {
+      std::copy_n(from_ptr, blksize, to_ptr);
+      calcNextPtrs(indicies, idim, shape, from_ptr, from_strides, to_ptr,
+                   to_strides);
+    } while (idim >= 0);
   }
 
   return result;

@@ -14,7 +14,8 @@
 
 #include "spu/mpc/semi2k/protocol.h"
 
-#include "spu/mpc/common/abprotocol.h"
+#include "spu/mpc/common/ab_api.h"
+#include "spu/mpc/common/ab_kernels.h"
 #include "spu/mpc/common/prg_state.h"
 #include "spu/mpc/common/pub2k.h"
 #include "spu/mpc/object.h"
@@ -61,15 +62,21 @@ std::unique_ptr<Object> makeSemi2kProtocol(
   obj->regKernel<semi2k::MatMulAP>();
   obj->regKernel<semi2k::MatMulAA>();
   obj->regKernel<semi2k::LShiftA>();
-  obj->regKernel<semi2k::TruncPrA>();
+  obj->regKernel<semi2k::TruncA>();
 
+  obj->regKernel<common::AddBB>();
+  obj->regKernel<common::BitIntlB>();
+  obj->regKernel<common::BitDeintlB>();
   obj->regKernel<semi2k::CommonTypeB>();
   obj->regKernel<semi2k::CastTypeB>();
   obj->regKernel<semi2k::ZeroB>();
   obj->regKernel<semi2k::B2P>();
   obj->regKernel<semi2k::P2B>();
-  obj->regKernel<semi2k::AddBB>();
   obj->regKernel<semi2k::A2B>();
+
+  if (lctx->WorldSize() == 2) {
+    obj->regKernel<semi2k::MsbA2B>();
+  }
   // obj->regKernel<semi2k::B2A>();
   obj->regKernel<semi2k::B2A_Randbit>();
   obj->regKernel<semi2k::AndBP>();

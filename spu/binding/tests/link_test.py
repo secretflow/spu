@@ -13,14 +13,15 @@
 # limitations under the License.
 
 
-import multiprocess
 import os
 import re
 import sys
 import threading
 import unittest
 
-import spu.binding._lib.link as link
+import multiprocess
+
+import spu.binding.libspu.link as link
 
 
 class UnitTests(unittest.TestCase):

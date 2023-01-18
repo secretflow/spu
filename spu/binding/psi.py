@@ -16,27 +16,27 @@ from __future__ import annotations
 
 from typing import List
 
-from . import _lib
-
 from spu.psi.psi_pb2 import (
-    PsiType,
+    BucketPsiConfig,
     CurveType,
     InputParams,
+    MemoryPsiConfig,
     OuputParams,
     PsiResultReport,
-    BucketPsiConfig,
-    MemoryPsiConfig,
+    PsiType,
 )
+
+from . import libspu
 
 
 def mem_psi(
-    link: _lib.link.Context, config: MemoryPsiConfig, input_items: List[str]
+    link: libspu.link.Context, config: MemoryPsiConfig, input_items: List[str]
 ) -> List[str]:
-    return _lib.libs.mem_psi(link, config.SerializeToString(), input_items)
+    return libspu.libs.mem_psi(link, config.SerializeToString(), input_items)
 
 
 def bucket_psi(
-    link: _lib.link.Context, config: BucketPsiConfig, ic_mode: bool = False
+    link: libspu.link.Context, config: BucketPsiConfig, ic_mode: bool = False
 ) -> PsiResultReport:
     """
     Run bucket psi
@@ -45,7 +45,7 @@ def bucket_psi(
     :param ic_mode: Whether to run in interconnection mode
     :return: statistical results
     """
-    report_str = _lib.libs.bucket_psi(link, config.SerializeToString(), ic_mode)
+    report_str = libspu.libs.bucket_psi(link, config.SerializeToString(), ic_mode)
     report = PsiResultReport()
     report.ParseFromString(report_str)
     return report

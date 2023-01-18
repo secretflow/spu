@@ -43,7 +43,8 @@ Value _rshift_s(HalContext* ctx, const Value& x, size_t bits);
 
 Value _arshift_p(HalContext* ctx, const Value& x, size_t bits);
 Value _arshift_s(HalContext* ctx, const Value& x, size_t bits);
-Value _truncpr_s(HalContext* ctx, const Value& x, size_t bits);
+Value _trunc_p(HalContext* ctx, const Value& x, size_t bits);
+Value _trunc_s(HalContext* ctx, const Value& x, size_t bits);
 
 Value _add_pp(HalContext* ctx, const Value& x, const Value& y);
 Value _add_sp(HalContext* ctx, const Value& x, const Value& y);

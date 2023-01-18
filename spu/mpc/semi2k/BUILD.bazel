@@ -41,8 +41,8 @@ spu_cc_library(
         ":object",
         ":type",
         "//spu/mpc:kernel",
-        "//spu/mpc/common:abprotocol",
-        "//spu/mpc/util:communicator",
+        "//spu/mpc/common:ab_api",
+        "//spu/mpc/common:communicator",
     ],
 )
 
@@ -55,9 +55,10 @@ spu_cc_library(
         ":type",
         "//spu/core:vectorize",
         "//spu/mpc:kernel",
-        "//spu/mpc/common:abprotocol",
+        "//spu/mpc/common:ab_api",
+        "//spu/mpc/common:ab_kernels",
+        "//spu/mpc/common:communicator",
         "//spu/mpc/util:circuits",
-        "//spu/mpc/util:communicator",
     ],
 )
 
@@ -70,9 +71,9 @@ spu_cc_library(
         ":type",
         "//spu/core:vectorize",
         "//spu/mpc:kernel",
-        "//spu/mpc/common:abprotocol",
+        "//spu/mpc/common:ab_api",
+        "//spu/mpc/common:communicator",
         "//spu/mpc/util:circuits",
-        "//spu/mpc/util:communicator",
         "//spu/mpc/util:ring_ops",
     ],
 )
@@ -86,7 +87,8 @@ spu_cc_library(
         ":boolean",
         ":conversion",
         ":object",
-        "//spu/mpc/common:abprotocol",
+        "//spu/mpc/common:ab_api",
+        "//spu/mpc/common:ab_kernels",
         "//spu/mpc/common:prg_state",
     ],
 )
@@ -97,7 +99,7 @@ spu_cc_test(
     deps = [
         ":protocol",
         "//spu/mpc:api_test",
-        "//spu/mpc/common:abprotocol_test",
+        "//spu/mpc/common:ab_api_test",
     ],
 )
 

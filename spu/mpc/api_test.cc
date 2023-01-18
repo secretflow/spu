@@ -18,7 +18,7 @@
 
 #include "spu/core/shape_util.h"
 #include "spu/mpc/api.h"
-#include "spu/mpc/util/communicator.h"
+#include "spu/mpc/common/communicator.h"
 #include "spu/mpc/util/ring_ops.h"
 #include "spu/mpc/util/simulate.h"
 
@@ -194,7 +194,7 @@ TEST_UNARY_OP_WITH_BIT(lshift)
 TEST_UNARY_OP_WITH_BIT(rshift)
 TEST_UNARY_OP_WITH_BIT(arshift)
 
-TEST_P(ApiTest, TruncPrS) {
+TEST_P(ApiTest, TruncS) {
   const auto factory = std::get<0>(GetParam());
   const RuntimeConfig& conf = std::get<1>(GetParam());
   const size_t npc = std::get<2>(GetParam());
@@ -205,7 +205,7 @@ TEST_P(ApiTest, TruncPrS) {
     auto obj = factory(conf, lctx);
 
     const size_t bits = 2;
-    auto r_s = s2p(obj.get(), truncpr_s(obj.get(), p2s(obj.get(), p0), bits));
+    auto r_s = s2p(obj.get(), trunc_s(obj.get(), p2s(obj.get(), p0), bits));
     auto r_p = arshift_p(obj.get(), p0, bits);
 
     /* THEN */
@@ -218,11 +218,13 @@ TEST_P(ApiTest, MatMulSS) {
   const RuntimeConfig& conf = std::get<1>(GetParam());
   const size_t npc = std::get<2>(GetParam());
 
-  const int64_t M = 3;
-  const int64_t K = 4;
-  const int64_t N = 3;
+  const int64_t M = 70;
+  const int64_t K = 400;
+  const int64_t N = 60;
+  const int64_t N2 = 90;
   const std::vector<int64_t> shape_A{M, K};
   const std::vector<int64_t> shape_B{K, N};
+  const std::vector<int64_t> shape_B2{K, N2};
 
   util::simulate(npc, [&](std::shared_ptr<yacl::link::Context> lctx) {
     auto obj = factory(conf, lctx);
@@ -230,15 +232,23 @@ TEST_P(ApiTest, MatMulSS) {
     /* GIVEN */
     auto p0 = rand_p(obj.get(), calcNumel(shape_A));
     auto p1 = rand_p(obj.get(), calcNumel(shape_B));
+    auto p2 = rand_p(obj.get(), calcNumel(shape_B2));
 
     /* WHEN */
     auto tmp =
         mmul_ss(obj.get(), p2s(obj.get(), p0), p2s(obj.get(), p1), M, N, K);
+    auto tmp2 =
+        mmul_ss(obj.get(), p2s(obj.get(), p0), p2s(obj.get(), p2), M, N2, K);
+
     auto r_ss = s2p(obj.get(), tmp);
     auto r_pp = mmul_pp(obj.get(), p0, p1, M, N, K);
 
+    auto r_ss2 = s2p(obj.get(), tmp2);
+    auto r_pp2 = mmul_pp(obj.get(), p0, p2, M, N2, K);
+
     /* THEN */
     EXPECT_TRUE(ring_all_equal(r_ss, r_pp));
+    EXPECT_TRUE(ring_all_equal(r_ss2, r_pp2));
   });
 }
 

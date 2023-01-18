@@ -31,7 +31,7 @@ class CommonTypeB : public Kernel {
 
   Kind kind() const override { return Kind::kDynamic; }
 
-  void evaluate(EvalContext* ctx) const override;
+  void evaluate(KernelEvalContext* ctx) const override;
 };
 
 class CastTypeB : public Kernel {
@@ -40,7 +40,7 @@ class CastTypeB : public Kernel {
 
   Kind kind() const override { return Kind::kDynamic; }
 
-  void evaluate(EvalContext* ctx) const override;
+  void evaluate(KernelEvalContext* ctx) const override;
 };
 
 class ZeroB : public Kernel {

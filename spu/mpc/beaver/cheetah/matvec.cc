@@ -31,20 +31,50 @@
 
 namespace spu::mpc {
 
-static std::array<size_t, 2> GetSubMatrixShape(const MatVecProtocol::Meta& meta,
-                                               size_t poly_degree) {
-  size_t ncols = std::min(poly_degree, meta.ncols);
-  size_t nrows = absl::bit_ceil(meta.nrows);  // NextPow2
-  auto log2 = static_cast<int>(absl::bit_width(poly_degree / ncols)) - 1;
-  YACL_ENFORCE_GE(log2, 0);
-  size_t subnrows = std::min(nrows, 1UL << log2);
-
-  return std::array<size_t, 2>{subnrows, ncols};
-}
-
 template <typename T>
 inline static T CeilDiv(T a, T b) {
   return (a + b - 1) / b;
+}
+
+static std::array<size_t, 2> CostModel(const MatVecProtocol::Meta& meta,
+                                       size_t N, double cpu_weight,
+                                       double band_weight) {
+  // some heuristics
+  const double enc_cost = 1.0;
+  const double mul_cost = 4.0;
+  const double dec_cost = 0.5;
+  const double commu_cost = 1.0;
+
+  double min_cost = std::numeric_limits<double>::max();
+  std::array<size_t, 2> ret{0};
+  for (size_t d0 = 1; d0 <= std::min(N, meta.nrows); ++d0) {
+    for (size_t d1 = 1; d1 <= std::min(N, meta.ncols); ++d1) {
+      if (d0 * d1 > N) continue;
+
+      size_t ct_in = CeilDiv(meta.ncols, d1);
+      size_t ct_out = CeilDiv(meta.nrows, d0);
+
+      size_t mul = ct_out * ct_in;
+      double cpu_cost = ct_in * enc_cost + mul * mul_cost + ct_out * dec_cost;
+      double band_cost = (ct_in + ct_out) * commu_cost;
+
+      double cost =
+          (1. - cpu_weight) * cpu_cost + (1 - band_weight) * band_cost;
+
+      if (cost < min_cost) {
+        min_cost = cost;
+        ret[0] = d0;
+        ret[1] = d1;
+      }
+    }
+  }
+  return ret;
+}
+
+static std::array<size_t, 2> GetSubMatrixShape(const MatVecProtocol::Meta& meta,
+                                               size_t poly_degree) {
+  // we balance the cpu/bandwidth
+  return CostModel(meta, poly_degree, 0.5, 0.5);
 }
 
 /// Concatenate the specified submatrix into one vector in row-major
@@ -86,6 +116,18 @@ MatVecProtocol::MatVecProtocol(const seal::SEALContext& context,
 
 bool MatVecProtocol::IsValidMeta(const Meta& meta) const {
   return meta.nrows > 0 && meta.ncols > 0;
+}
+
+size_t MatVecProtocol::GetEncVectorSize(const Meta& meta) const {
+  YACL_ENFORCE(IsValidMeta(meta));
+  auto submat_shape = GetSubMatrixShape(meta, poly_degree());
+  return CeilDiv(meta.ncols, submat_shape[1]);
+}
+
+size_t MatVecProtocol::GetMatVecSize(const Meta& meta) const {
+  YACL_ENFORCE(IsValidMeta(meta));
+  auto submat_shape = GetSubMatrixShape(meta, poly_degree());
+  return CeilDiv(meta.nrows, submat_shape[0]);
 }
 
 void MatVecProtocol::MatVecNoExtract(const Meta& meta,

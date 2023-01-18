@@ -18,15 +18,12 @@
 
 #include "spu/core/parallel_utils.h"
 #include "spu/core/trace.h"
-#include "spu/mpc/aby3/ot.h"
 #include "spu/mpc/aby3/type.h"
 #include "spu/mpc/aby3/value.h"
-#include "spu/mpc/common/abprotocol.h"
+#include "spu/mpc/common/ab_api.h"
+#include "spu/mpc/common/communicator.h"
 #include "spu/mpc/common/prg_state.h"
 #include "spu/mpc/common/pub2k.h"
-#include "spu/mpc/util/circuits.h"
-#include "spu/mpc/util/communicator.h"
-#include "spu/mpc/util/ring_ops.h"
 
 namespace spu::mpc::aby3 {
 
@@ -41,8 +38,8 @@ ArrayRef A2B::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
 
   const auto field = in.eltype().as<Ring2k>()->field();
 
-  auto* comm = ctx->caller()->getState<Communicator>();
-  auto* prg_state = ctx->caller()->getState<PrgState>();
+  auto* comm = ctx->getState<Communicator>();
+  auto* prg_state = ctx->getState<PrgState>();
 
   // Let
   //   X = [(x0, x1), (x1, x2), (x2, x0)] as input.
@@ -129,7 +126,7 @@ ArrayRef B2ASelector::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
 ArrayRef B2AByPPA::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
   SPU_TRACE_MPC_LEAF(ctx, in);
 
-  const auto field = ctx->caller()->getState<Z2kState>()->getDefaultField();
+  const auto field = ctx->getState<Z2kState>()->getDefaultField();
   const auto* in_ty = in.eltype().as<BShrTy>();
   const size_t in_nbits = in_ty->nbits();
 
@@ -149,8 +146,8 @@ ArrayRef B2AByPPA::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
     return out;
   }
 
-  auto* comm = ctx->caller()->getState<Communicator>();
-  auto* prg_state = ctx->caller()->getState<PrgState>();
+  auto* comm = ctx->getState<Communicator>();
+  auto* prg_state = ctx->getState<PrgState>();
 
   DISPATCH_UINT_PT_TYPES(in_ty->getBacktype(), "_", [&]() {
     using BShrT = ScalarT;
@@ -288,7 +285,7 @@ static std::vector<T> bitCompose(absl::Span<T const> in, size_t nbits) {
 ArrayRef B2AByOT::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
   SPU_TRACE_MPC_LEAF(ctx, in);
 
-  const auto field = ctx->caller()->getState<Z2kState>()->getDefaultField();
+  const auto field = ctx->getState<Z2kState>()->getDefaultField();
   const auto* in_ty = in.eltype().as<BShrTy>();
   const size_t in_nbits = in_ty->nbits();
 
@@ -308,8 +305,8 @@ ArrayRef B2AByOT::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
     return out;
   }
 
-  auto* comm = ctx->caller()->getState<Communicator>();
-  auto* prg_state = ctx->caller()->getState<PrgState>();
+  auto* comm = ctx->getState<Communicator>();
+  auto* prg_state = ctx->getState<PrgState>();
 
   // P0 as the helper/dealer, helps to prepare correlated randomness.
   // P1, P2 as the receiver and sender of OT.
@@ -424,23 +421,6 @@ ArrayRef B2AByOT::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
   });
 
   return out;
-}
-
-ArrayRef AddBB::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
-                     const ArrayRef& rhs) const {
-  SPU_TRACE_MPC_LEAF(ctx, lhs, rhs);
-
-  const auto* lhs_ty = lhs.eltype().as<BShrTy>();
-  const auto* rhs_ty = rhs.eltype().as<BShrTy>();
-
-  YACL_ENFORCE(lhs_ty->nbits() == rhs_ty->nbits());
-  const size_t nbits = lhs_ty->nbits();
-
-  auto* obj = ctx->caller();
-  auto cbb = makeABProtBasicBlock(obj);
-  // sklansky has more local computation which leads to lower performance.
-  // return sklansky<ArrayRef>(cbb, lhs, rhs, nbits);
-  return kogge_stone<ArrayRef>(cbb, lhs, rhs, nbits);
 }
 
 }  // namespace spu::mpc::aby3

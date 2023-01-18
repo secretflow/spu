@@ -19,6 +19,8 @@
 
 #include "yacl/base/buffer.h"
 
+#include "spu/core/bit_utils.h"
+#include "spu/core/parallel_utils.h"
 #include "spu/core/type.h"
 #include "spu/core/vectorize.h"
 
@@ -174,13 +176,18 @@ class ArrayView {
   int64_t const numel_;
 
  public:
-  // TODO: we explicit discard const correctness due to the complexity.
+  // Note: we explicit discard const correctness due to the complexity.
   explicit ArrayView(const ArrayRef& arr)
       : data_(const_cast<T*>(&arr.at<T>(0))),
         stride_(arr.stride()),
         numel_(arr.numel()) {}
 
+  explicit ArrayView(T* data, int64_t stride, int64_t numel)
+      : data_(data), stride_(stride), numel_(numel) {}
+
   int64_t numel() const { return numel_; }
+
+  int64_t stride() const { return stride_; }
 
   bool isCompact() const { return stride_ == 1; }
 
@@ -196,6 +203,27 @@ class ArrayView {
   T& operator[](size_t idx) { return *(data_ + idx * stride_); }
 
   T const& operator[](size_t idx) const { return *(data_ + idx * stride_); }
+
+  // TODO: test me.
+  size_t maxBitWidth() const {
+    if (stride() == 0) {
+      return BitWidth(this->operator[](0));
+    }
+
+    size_t res = preduce<size_t>(
+        0, numel(),
+        [&](int64_t begin, int64_t end) {
+          size_t partial_max = 0;
+          for (int64_t idx = begin; idx < end; ++idx) {
+            partial_max =
+                std::max<size_t>(partial_max, BitWidth(this->operator[](idx)));
+          }
+          return partial_max;
+        },
+        [](const size_t& a, const size_t& b) { return std::max(a, b); });
+
+    return res;
+  }
 };
 
 }  // namespace spu

@@ -16,21 +16,23 @@
 
 #include <algorithm>
 
+#include "spu/core/bit_utils.h"
 #include "spu/core/parallel_utils.h"
+#include "spu/core/platform_utils.h"
 #include "spu/core/trace.h"
 #include "spu/mpc/aby3/type.h"
 #include "spu/mpc/aby3/value.h"
+#include "spu/mpc/common/communicator.h"
 #include "spu/mpc/common/prg_state.h"
 #include "spu/mpc/common/pub2k.h"
-#include "spu/mpc/util/communicator.h"
 
 namespace spu::mpc::aby3 {
 
-void CommonTypeB::evaluate(EvalContext* ctx) const {
+void CommonTypeB::evaluate(KernelEvalContext* ctx) const {
   const Type& lhs = ctx->getParam<Type>(0);
   const Type& rhs = ctx->getParam<Type>(1);
 
-  SPU_TRACE_MPC_DISP(ctx, lhs, rhs);
+  SPU_TRACE_MPC_LEAF(ctx, lhs, rhs);
 
   const size_t lhs_nbits = lhs.as<BShrTy>()->nbits();
   const size_t rhs_nbits = rhs.as<BShrTy>()->nbits();
@@ -41,11 +43,11 @@ void CommonTypeB::evaluate(EvalContext* ctx) const {
   ctx->setOutput(makeType<BShrTy>(out_btype, out_nbits));
 }
 
-void CastTypeB::evaluate(EvalContext* ctx) const {
+void CastTypeB::evaluate(KernelEvalContext* ctx) const {
   const auto& in = ctx->getParam<ArrayRef>(0);
   const auto& to_type = ctx->getParam<Type>(1);
 
-  SPU_TRACE_MPC_DISP(ctx, in, to_type);
+  SPU_TRACE_MPC_LEAF(ctx, in, to_type);
 
   ArrayRef out(to_type, in.numel());
   DISPATCH_UINT_PT_TYPES(in.eltype().as<BShrTy>()->getBacktype(), "_", [&]() {
@@ -68,9 +70,9 @@ void CastTypeB::evaluate(EvalContext* ctx) const {
 ArrayRef B2P::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
   SPU_TRACE_MPC_LEAF(ctx, in);
 
-  auto* comm = ctx->caller()->getState<Communicator>();
+  auto* comm = ctx->getState<Communicator>();
   const PtType btype = in.eltype().as<BShrTy>()->getBacktype();
-  const auto field = ctx->caller()->getState<Z2kState>()->getDefaultField();
+  const auto field = ctx->getState<Z2kState>()->getDefaultField();
 
   return DISPATCH_UINT_PT_TYPES(btype, "aby3.b2p", [&]() {
     using BShrT = ScalarT;
@@ -98,13 +100,13 @@ ArrayRef B2P::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
 ArrayRef P2B::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
   SPU_TRACE_MPC_LEAF(ctx, in);
 
-  auto* comm = ctx->caller()->getState<Communicator>();
+  auto* comm = ctx->getState<Communicator>();
   const auto* in_ty = in.eltype().as<Pub2kTy>();
   const auto field = in_ty->field();
 
   return DISPATCH_ALL_FIELDS(field, "_", [&]() {
     auto _in = ArrayView<ring2k_t>(in);
-    const size_t nbits = maxBitWidth(_in);
+    const size_t nbits = _in.maxBitWidth();
     const PtType btype = calcBShareBacktype(nbits);
 
     return DISPATCH_UINT_PT_TYPES(btype, "_", [&]() {
@@ -139,7 +141,7 @@ ArrayRef AndBP::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
   return DISPATCH_ALL_FIELDS(rhs_ty->field(), "_", [&]() {
     using RhsT = ring2k_t;
     auto _rhs = ArrayView<RhsT>(rhs);
-    const size_t rhs_nbits = maxBitWidth(_rhs);
+    const size_t rhs_nbits = _rhs.maxBitWidth();
     const size_t out_nbits = std::min(lhs_ty->nbits(), rhs_nbits);
     const PtType out_btype = calcBShareBacktype(out_nbits);
 
@@ -167,8 +169,8 @@ ArrayRef AndBB::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
                      const ArrayRef& rhs) const {
   SPU_TRACE_MPC_LEAF(ctx, lhs, rhs);
 
-  auto* prg_state = ctx->caller()->getState<PrgState>();
-  auto* comm = ctx->caller()->getState<Communicator>();
+  auto* prg_state = ctx->getState<PrgState>();
+  auto* comm = ctx->getState<Communicator>();
 
   const auto* lhs_ty = lhs.eltype().as<BShrTy>();
   const auto* rhs_ty = rhs.eltype().as<BShrTy>();
@@ -223,7 +225,7 @@ ArrayRef XorBP::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
     using RhsT = ring2k_t;
     auto _rhs = ArrayView<RhsT>(rhs);
 
-    const size_t rhs_nbits = maxBitWidth(_rhs);
+    const size_t rhs_nbits = _rhs.maxBitWidth();
     const size_t out_nbits = std::max(lhs_ty->nbits(), rhs_nbits);
     const PtType out_btype = calcBShareBacktype(out_nbits);
     ArrayRef out(makeType<BShrTy>(out_btype, out_nbits), lhs.numel());
@@ -287,7 +289,7 @@ ArrayRef LShiftB::proc(KernelEvalContext* ctx, const ArrayRef& in,
   const auto* in_ty = in.eltype().as<BShrTy>();
 
   // TODO: the hal dtype should tell us about the max number of possible bits.
-  const auto field = ctx->caller()->getState<Z2kState>()->getDefaultField();
+  const auto field = ctx->getState<Z2kState>()->getDefaultField();
   const size_t out_nbits = std::min(in_ty->nbits() + bits, SizeOf(field) * 8);
   const PtType out_btype = calcBShareBacktype(out_nbits);
 
@@ -348,7 +350,7 @@ ArrayRef ARShiftB::proc(KernelEvalContext* ctx, const ArrayRef& in,
                         size_t bits) const {
   SPU_TRACE_MPC_LEAF(ctx, in, bits);
 
-  const auto field = ctx->caller()->getState<Z2kState>()->getDefaultField();
+  const auto field = ctx->getState<Z2kState>()->getDefaultField();
   const auto* in_ty = in.eltype().as<BShrTy>();
 
   // arithmetic right shift expects to work on ring, or the behaviour is
@@ -415,6 +417,153 @@ ArrayRef BitrevB::proc(KernelEvalContext* ctx, const ArrayRef& in, size_t start,
       return out;
     });
   });
+}
+
+namespace {
+
+constexpr std::array<uint128_t, 6> kBitIntlSwapMasks = {{
+    yacl::MakeUint128(0x2222222222222222, 0x2222222222222222),  // 4bit
+    yacl::MakeUint128(0x0C0C0C0C0C0C0C0C, 0x0C0C0C0C0C0C0C0C),  // 8bit
+    yacl::MakeUint128(0x00F000F000F000F0, 0x00F000F000F000F0),  // 16bit
+    yacl::MakeUint128(0x0000FF000000FF00, 0x0000FF000000FF00),  // 32bit
+    yacl::MakeUint128(0x00000000FFFF0000, 0x00000000FFFF0000),  // 64bit
+    yacl::MakeUint128(0x0000000000000000, 0xFFFFFFFF00000000),  // 128bit
+}};
+
+constexpr std::array<uint128_t, 6> kBitIntlKeepMasks = {{
+    yacl::MakeUint128(0x9999999999999999, 0x9999999999999999),  // 4bit
+    yacl::MakeUint128(0xC3C3C3C3C3C3C3C3, 0xC3C3C3C3C3C3C3C3),  // 8bit
+    yacl::MakeUint128(0xF00FF00FF00FF00F, 0xF00FF00FF00FF00F),  // 16bit
+    yacl::MakeUint128(0xFF0000FFFF0000FF, 0xFF0000FFFF0000FF),  // 32bit
+    yacl::MakeUint128(0xFFFF00000000FFFF, 0xFFFF00000000FFFF),  // 64bit
+    yacl::MakeUint128(0xFFFFFFFF00000000, 0x00000000FFFFFFFF),  // 128bit
+}};
+
+}  // namespace
+
+void BitIntlB::evaluate(KernelEvalContext* ctx) const {
+  const auto& in = ctx->getParam<ArrayRef>(0);
+  const size_t stride = ctx->getParam<size_t>(1);
+
+  SPU_TRACE_MPC_LEAF(ctx, in, stride);
+
+  // algorithm:
+  //      0000000011111111
+  // swap     ^^^^^^^^
+  //      0000111100001111
+  // swap   ^^^^    ^^^^
+  //      0011001100110011
+  // swap  ^^  ^^  ^^  ^^
+  //      0101010101010101
+  const auto* in_ty = in.eltype().as<BShrTy>();
+  const size_t nbits = in_ty->nbits();
+  YACL_ENFORCE(absl::has_single_bit(nbits));
+
+  ArrayRef out = in.clone();
+  DISPATCH_UINT_PT_TYPES(in_ty->getBacktype(), "_", [&]() {
+    using T = ScalarT;
+    auto _in = ArrayView<std::array<T, 2>>(in);
+    auto _out = ArrayView<std::array<T, 2>>(out);
+
+    if constexpr (std::is_same_v<T, uint64_t>) {
+      pforeach(0, in.numel(), [&](int64_t idx) {
+        constexpr std::array<uint64_t, 6> kMasks = {{
+            0x5555555555555555,  // 01010101
+            0x3333333333333333,  // 00110011
+            0x0F0F0F0F0F0F0F0F,  // 00001111
+            0x00FF00FF00FF00FF,  // ...
+            0x0000FFFF0000FFFF,  // ...
+            0x00000000FFFFFFFF,  // ...
+        }};
+        const uint64_t r0 = _in[idx][0];
+        const uint64_t r1 = _in[idx][1];
+
+        const uint64_t m = kMasks[stride];
+        _out[idx][0] = pdep_u64(r0, m) ^ pdep_u64(r0 >> 32, ~m);
+        _out[idx][1] = pdep_u64(r1, m) ^ pdep_u64(r1 >> 32, ~m);
+      });
+    } else {
+      pforeach(0, in.numel(), [&](int64_t idx) {
+        T r0 = _in[idx][0];
+        T r1 = _in[idx][1];
+        for (int64_t level = Log2Ceil(nbits) - 2;
+             level >= static_cast<int64_t>(stride); level--) {
+          T K = static_cast<T>(kBitIntlKeepMasks[level]);
+          T M = static_cast<T>(kBitIntlSwapMasks[level]);
+          int S = 1 << level;
+
+          r0 = (r0 & K) ^ ((r0 >> S) & M) ^ ((r0 & M) << S);
+          r1 = (r1 & K) ^ ((r1 >> S) & M) ^ ((r1 & M) << S);
+        }
+        _out[idx][0] = r0;
+        _out[idx][1] = r1;
+      });
+    }
+  });
+
+  ctx->setOutput(out);
+}
+
+void BitDeintlB::evaluate(KernelEvalContext* ctx) const {
+  const auto& in = ctx->getParam<ArrayRef>(0);
+  const size_t stride = ctx->getParam<size_t>(1);
+
+  SPU_TRACE_MPC_LEAF(ctx, in, stride);
+
+  // algorithm:
+  //      0101010101010101
+  // swap  ^^  ^^  ^^  ^^
+  //      0011001100110011
+  // swap   ^^^^    ^^^^
+  //      0000111100001111
+  // swap     ^^^^^^^^
+  //      0000000011111111
+  const auto* in_ty = in.eltype().as<BShrTy>();
+  const size_t nbits = in_ty->nbits();
+  YACL_ENFORCE(absl::has_single_bit(nbits));
+
+  ArrayRef out = in.clone();
+  DISPATCH_UINT_PT_TYPES(in_ty->getBacktype(), "_", [&]() {
+    using T = ScalarT;
+    auto _in = ArrayView<std::array<T, 2>>(in);
+    auto _out = ArrayView<std::array<T, 2>>(out);
+
+    if constexpr (std::is_same_v<T, uint64_t>) {
+      pforeach(0, in.numel(), [&](int64_t idx) {
+        constexpr std::array<uint64_t, 6> kMasks = {{
+            0x5555555555555555,  // 01010101
+            0x3333333333333333,  // 00110011
+            0x0F0F0F0F0F0F0F0F,  // 00001111
+            0x00FF00FF00FF00FF,  // ...
+            0x0000FFFF0000FFFF,  // ...
+            0x00000000FFFFFFFF,  // ...
+        }};
+        const uint64_t r0 = _in[idx][0];
+        const uint64_t r1 = _in[idx][1];
+
+        const uint64_t m = kMasks[stride];
+        _out[idx][0] = pext_u64(r0, m) ^ (pext_u64(r0, ~m) << 32);
+        _out[idx][1] = pext_u64(r1, m) ^ (pext_u64(r1, ~m) << 32);
+      });
+    } else {
+      pforeach(0, in.numel(), [&](int64_t idx) {
+        T r0 = _in[idx][0];
+        T r1 = _in[idx][1];
+        for (int64_t level = stride; level + 1 < Log2Ceil(nbits); level++) {
+          T K = static_cast<T>(kBitIntlKeepMasks[level]);
+          T M = static_cast<T>(kBitIntlSwapMasks[level]);
+          int S = 1 << level;
+
+          r0 = (r0 & K) ^ ((r0 >> S) & M) ^ ((r0 & M) << S);
+          r1 = (r1 & K) ^ ((r1 >> S) & M) ^ ((r1 & M) << S);
+        }
+        _out[idx][0] = r0;
+        _out[idx][1] = r1;
+      });
+    }
+  });
+
+  ctx->setOutput(out);
 }
 
 }  // namespace spu::mpc::aby3

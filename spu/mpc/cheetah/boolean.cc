@@ -16,9 +16,9 @@
 
 #include "spu/core/trace.h"
 #include "spu/mpc/cheetah/object.h"
+#include "spu/mpc/common/communicator.h"
 #include "spu/mpc/kernel.h"
 #include "spu/mpc/semi2k/type.h"
-#include "spu/mpc/util/communicator.h"
 #include "spu/mpc/util/ring_ops.h"
 
 namespace spu::mpc::cheetah {
@@ -28,8 +28,8 @@ ArrayRef AndBB::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
   SPU_TRACE_MPC_LEAF(ctx, lhs, rhs);
 
   const auto field = lhs.eltype().as<Ring2k>()->field();
-  auto* comm = ctx->caller()->getState<Communicator>();
-  auto* beaver = ctx->caller()->getState<CheetahState>()->beaver();
+  auto* comm = ctx->getState<Communicator>();
+  auto* beaver = ctx->getState<CheetahState>()->beaver();
 
   // generate beaver and triple.
   auto [a, b, c] = beaver->And(field, lhs.numel());

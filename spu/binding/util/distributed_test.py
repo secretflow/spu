@@ -13,18 +13,17 @@
 # limitations under the License.
 
 
+import socket
 import sys
 import unittest
+from contextlib import closing
+from typing import cast
 
 import jax.numpy as jnp
 import multiprocess
 import numpy as np
 import numpy.testing as npt
 import tensorflow as tf
-
-import socket
-from contextlib import closing
-from typing import cast
 
 import spu.binding.util.distributed as ppd
 from spu import spu_pb2

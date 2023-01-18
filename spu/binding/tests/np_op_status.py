@@ -15,22 +15,20 @@
 import argparse
 import json
 
-
 from spu.binding.tests.jnp_testbase import (
-    Status,
-    OpRecord,
-    REC,
-    JAX_ONE_TO_ONE_OP_RECORDS,
-    COMPOUND_OP_RECORDS,
-    BITWISE_OP_RECORDS,
-    REDUCER_RECORDS,
-    REDUCER_INITIAL_RECORDS,
-    SHIFT_RECORDS,
-    REDUCER_WHERE_NO_INITIAL_RECORDS,
-    REDUCER_NO_DTYPE_RECORDS,
     ARGMINMAX_RECORDS,
+    BITWISE_OP_RECORDS,
+    COMPOUND_OP_RECORDS,
+    JAX_ONE_TO_ONE_OP_RECORDS,
+    REC,
+    REDUCER_INITIAL_RECORDS,
+    REDUCER_NO_DTYPE_RECORDS,
+    REDUCER_RECORDS,
+    REDUCER_WHERE_NO_INITIAL_RECORDS,
+    SHIFT_RECORDS,
+    OpRecord,
+    Status,
 )
-
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Generate numpy operators status.')

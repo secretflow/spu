@@ -33,6 +33,7 @@
 #include "spdlog/spdlog.h"
 #include "xtensor/xvectorize.hpp"
 #include "xtensor/xview.hpp"
+#include "yacl/crypto/utils/rand.h"  // RandSeed
 #include "yacl/link/link.h"
 #include "yacl/utils/parallel.h"
 
@@ -52,14 +53,6 @@ static T CeilDiv(T a, T b) {
   return (a + b - 1) / b;
 }
 
-static PrgSeed GetHardwareRandom128() {
-  // NOTE(juhou) can we use thr rdseed instruction ?
-  std::random_device rd;
-  uint64_t lhs = static_cast<uint64_t>(rd()) << 32 | rd();
-  uint64_t rhs = static_cast<uint64_t>(rd()) << 32 | rd();
-  return yacl::MakeUint128(lhs, rhs);
-}
-
 static void TransposeInplace(ArrayRef mat, size_t nrows, size_t ncols) {
   YACL_ENFORCE_EQ((size_t)mat.numel(), nrows * ncols);
   const auto field = mat.eltype().as<Ring2k>()->field();
@@ -72,7 +65,8 @@ static void TransposeInplace(ArrayRef mat, size_t nrows, size_t ncols) {
 }
 
 struct EnablePRNG {
-  explicit EnablePRNG() : seed_(GetHardwareRandom128()), prng_counter_(0) {}
+  explicit EnablePRNG()
+      : seed_(yacl::crypto::RandSeed(/*drbg*/ true)), prng_counter_(0) {}
 
   // uniform random on prime field
   void CPRNGPrime(const seal::Modulus &prime, absl::Span<uint64_t> dst) {
@@ -103,7 +97,7 @@ struct EnablePRNG {
     std::scoped_lock guard(counter_lock_);
     // TODO(juhou): PrgCounter type might incompatible with uint64_t.
     if (prng_counter_ > kPRNG_THREASHOLD) {
-      seed_ = GetHardwareRandom128();
+      seed_ = yacl::crypto::RandSeed(true);
       prng_counter_ = 0;
     }
     // NOTE(juhou): do we need to replay the PRNG ?
@@ -150,8 +144,8 @@ struct BeaverCheetah::MulImpl : public EnablePRNG {
 
   Beaver::Triple Mul(FieldType field, size_t size);
 
-  ArrayRef MulAShr(const ArrayRef &shr, yacl::link::Context *conn,
-                   bool evaluator);
+  ArrayRef MulOLE(const ArrayRef &shr, yacl::link::Context *conn,
+                  bool evaluator);
 
  protected:
   inline uint32_t FieldBitLen(FieldType f) { return 8 * SizeOf(f); }
@@ -373,9 +367,9 @@ void BeaverCheetah::MulImpl::LazyExpandSEALContexts(uint32_t field_bitlen,
   current_crt_plain_bitlen_ = target_plain_bitlen;
 }
 
-ArrayRef BeaverCheetah::MulImpl::MulAShr(const ArrayRef &shr,
-                                         yacl::link::Context *conn,
-                                         bool evaluator) {
+ArrayRef BeaverCheetah::MulImpl::MulOLE(const ArrayRef &shr,
+                                        yacl::link::Context *conn,
+                                        bool evaluator) {
   yacl::CheckNotNull(conn);
   auto eltype = shr.eltype();
   YACL_ENFORCE(eltype.isa<RingTy>(), "must be ring_type, got={}", eltype);
@@ -422,20 +416,19 @@ Beaver::Triple BeaverCheetah::MulImpl::Mul(FieldType field, size_t size) {
   auto dupx = lctx_->Spawn();
   //  (a0 + a1) * (b0 + b1)
   // = a0*b0 + <a0*b1> + <a1*b0> + a1*b1
-
   std::future<ArrayRef> task = std::async(std::launch::async, [&] {
     if (rank == 0) {
-      return MulAShr(a, dupx.get(), true);
+      return MulOLE(a, dupx.get(), true);
     } else {
-      return MulAShr(b, dupx.get(), false);
+      return MulOLE(b, dupx.get(), false);
     }
   });
 
   ArrayRef b0a1;
   if (rank == 0) {
-    b0a1 = MulAShr(b, lctx_.get(), false);
+    b0a1 = MulOLE(b, lctx_.get(), false);
   } else {
-    b0a1 = MulAShr(a, lctx_.get(), true);
+    b0a1 = MulOLE(a, lctx_.get(), true);
   }
   ArrayRef a0b1 = task.get();
 
@@ -771,6 +764,9 @@ struct BeaverCheetah::DotImpl : public EnablePRNG {
   // Compute C = A*B where |A|=M*K, |B|=K*N
   Beaver::Triple Dot(FieldType field, size_t M, size_t N, size_t K);
 
+  ArrayRef DotOLE(const ArrayRef &prv, yacl::link::Context *conn, size_t M,
+                  size_t N, size_t K, bool is_rhs);
+
   seal::EncryptionParameters DecideSEALParameters(uint32_t ring_bitlen) {
     size_t poly_deg;
     std::vector<int> modulus_bits;
@@ -798,7 +794,7 @@ struct BeaverCheetah::DotImpl : public EnablePRNG {
 
   void LazyInit(size_t field_bitlen);
 
-  void AddPlainInplace(RLWECt &ct, const RLWEPt &pt,
+  void SubPlainInplace(RLWECt &ct, const RLWEPt &pt,
                        const seal::SEALContext &context) const {
     YACL_ENFORCE(ct.parms_id() == pt.parms_id());
     auto cntxt_dat = context.get_context_data(ct.parms_id());
@@ -811,7 +807,7 @@ struct BeaverCheetah::DotImpl : public EnablePRNG {
     for (size_t l = 0; l < num_modulus; ++l) {
       auto op0 = ct.data(0) + l * num_coeff;
       auto op1 = pt.data() + l * num_coeff;
-      seal::util::add_poly_coeffmod(op0, op1, num_coeff, modulus[l], op0);
+      seal::util::sub_poly_coeffmod(op0, op1, num_coeff, modulus[l], op0);
     }
   }
 
@@ -828,7 +824,7 @@ struct BeaverCheetah::DotImpl : public EnablePRNG {
     out.parms_id() = context.first_parms_id();
   }
 
-  // ct -> ct + r, r where r is sampled from the full modulus range.
+  // ct <- ct - r, r where r is sampled from the full modulus range.
   void H2A(std::vector<RLWECt> &ct, const seal::SEALContext &context,
            std::vector<RLWEPt> *rnd_mask) {
     size_t num_poly = ct.size();
@@ -842,7 +838,7 @@ struct BeaverCheetah::DotImpl : public EnablePRNG {
       if (ct[idx].is_ntt_form()) {
         NttInplace(rnd, context);
       }
-      AddPlainInplace(ct[idx], rnd, context);
+      SubPlainInplace(ct[idx], rnd, context);
     }
   }
 
@@ -921,9 +917,22 @@ void BeaverCheetah::DotImpl::LazyInit(size_t field_bitlen) {
               modulus.size(), parms.poly_modulus_degree(), field_bitlen);
 }
 
-// Compute C = A*B where |A|=M*K, |B|=K*N
-Beaver::Triple BeaverCheetah::DotImpl::Dot(FieldType field, size_t M, size_t N,
-                                           size_t K) {
+ArrayRef BeaverCheetah::DotImpl::DotOLE(const ArrayRef &prv,
+                                        yacl::link::Context *conn, size_t M,
+                                        size_t N, size_t K, bool is_rhs) {
+  yacl::CheckNotNull(conn);
+  int nxt_rank = conn->NextRank();
+  auto eltype = prv.eltype();
+  YACL_ENFORCE(eltype.isa<RingTy>(), "must be ring_type, got={}", eltype);
+  YACL_ENFORCE(prv.numel() > 0);
+
+  if (is_rhs) {
+    YACL_ENFORCE_EQ(prv.numel(), static_cast<int64_t>(K * N));
+  } else {
+    YACL_ENFORCE_EQ(prv.numel(), static_cast<int64_t>(K * M));
+  }
+
+  auto field = eltype.as<Ring2k>()->field();
   const size_t field_bitlen = FieldBitLen(field);
   LazyInit(field_bitlen);
   const auto &this_context = *seal_cntxts_.find(field_bitlen)->second;
@@ -936,124 +945,132 @@ Beaver::Triple BeaverCheetah::DotImpl::Dot(FieldType field, size_t M, size_t N,
   MatVecProtocol matvec_prot(this_context, *this_ms);
   YACL_ENFORCE_EQ(this_ms->base_mod_bitlen(), field_bitlen);
 
-  const size_t lhs_nrows = std::max(M, N);
-  const size_t loop_dim = std::min(M, N);
-  const int nxt_rank = lctx_->NextRank();
-
-  // To compute lhs_mat * rhs_mat = ans_mat + mask_mat
-  auto lhs_mat = CPRNG(field, lhs_nrows * K);
-  auto rhs_mat = CPRNG(field, loop_dim * K);
-  auto ans_mat = ring_zeros(field, loop_dim * lhs_nrows);
-  auto mask_mat = ring_zeros(field, loop_dim * lhs_nrows);
-
+  const size_t lhs_nrows = M;
+  const size_t rhs_ncols = N;
   MatVecProtocol::Meta meta;
   meta.nrows = lhs_nrows;
   meta.ncols = K;
 
-  std::vector<RLWEPt> ecd_lhs_mat;
-  matvec_prot.EncodeMatrix(meta, lhs_mat, &ecd_lhs_mat);
-
   std::vector<RLWEPt> ecd_vec;
   std::vector<RLWECt> enc_vec;
+  std::vector<RLWEPt> ecd_lhs_mat;
+  std::vector<RLWECt> prod;
+  std::vector<RLWEPt> rnd_masks;
 
-  // FIXME: sendAsync may blocking when concurrent sending task exceed
-  // `ThrottleWindowSize`, so temporary disable the window, but there's no API
-  // to recover it back.
-  lctx_->SetThrottleWindowSize(0);
+  auto ans_mat = ring_zeros(field, lhs_nrows * rhs_ncols);
+  enc_vec.resize(matvec_prot.GetEncVectorSize(meta));
+  prod.resize(matvec_prot.GetMatVecSize(meta));
+  rnd_masks.resize(prod.size());
 
-  for (size_t n = 0; n < loop_dim; ++n) {
-    auto rhs_slice = rhs_mat.slice(n * K, n * K + K);
-    matvec_prot.EncodeVector(meta, rhs_slice, &ecd_vec);
-    enc_vec.resize(ecd_vec.size());
+  if (not is_rhs) {
+    matvec_prot.EncodeMatrix(meta, prv, &ecd_lhs_mat);
+  }
 
-    // send encrypted to the peer
-    for (size_t idx = 0; idx < ecd_vec.size(); ++idx) {
-      NttInplace(ecd_vec[idx], this_context);
-      auto ct = this_encryptor->encrypt_symmetric(ecd_vec[idx]).obj();
-      lctx_->SendAsync(nxt_rank, EncodeSEALObject(ct), "");
+  // Loop for each column of B
+  for (size_t n = 0; n < rhs_ncols; ++n) {
+    if (is_rhs) {
+      // B is assumed given in column-major order.
+      auto rhs_slice = prv.slice(n * K, n * K + K);
+      matvec_prot.EncodeVector(meta, rhs_slice, &ecd_vec);
+      YACL_ENFORCE_EQ(ecd_vec.size(), enc_vec.size());
+      for (size_t idx = 0; idx < ecd_vec.size(); ++idx) {
+        NttInplace(ecd_vec[idx], this_context);
+        auto ct = this_encryptor->encrypt_symmetric(ecd_vec[idx]).obj();
+        conn->SendAsync(nxt_rank, EncodeSEALObject(ct), "");
+      }
+
+      // recv RLWE vector (ie. MatVec result) from the peer
+      for (size_t idx = 0; idx < prod.size(); ++idx) {
+        auto payload = conn->Recv(nxt_rank, "");
+        DecodeSEALObject(payload, this_context, prod.data() + idx);
+      }
+
+      for (size_t idx = 0; idx < prod.size(); ++idx) {
+        evaluator.transform_to_ntt_inplace(prod[idx]);
+        this_decryptor->decrypt(prod[idx], rnd_masks[idx]);
+        InvNttInplace(rnd_masks[idx], this_context);
+      }
+    } else {
+      // recv encrypted vector from the peer
+      for (size_t idx = 0; idx < enc_vec.size(); ++idx) {
+        auto payload = conn->Recv(nxt_rank, "");
+        DecodeSEALObject(payload, this_context, enc_vec.data() + idx);
+      }
+
+      // M_lhs, [v_rhs] -> [M*v + rnd]
+      matvec_prot.MatVecNoExtract(meta, ecd_lhs_mat, enc_vec, &prod);
+      H2A(prod, this_context, &rnd_masks);
+
+      // Before sending the masked matvec product, we need to re-randomize the
+      // ciphertext via adding fresh encryption of zero.
+      RandomizeCipherForDecryption(prod, *this_pk_encryptor, evaluator);
+      // Also, we need to clean up unused coefficients.
+      // `ExtractLWEsInplace` should be placed **after**
+      // `RandomizeCipherForDecryption` for a smaller communication cost.
+      matvec_prot.ExtractLWEsInplace(meta, prod);
+
+      // send the masked product to the peer
+      for (size_t idx = 0; idx < prod.size(); ++idx) {
+        conn->SendAsync(nxt_rank, EncodeSEALObject(prod[idx]), "");
+      }
     }
 
-    // recv encrypted vector from the peer
-    for (size_t idx = 0; idx < ecd_vec.size(); ++idx) {
-      auto payload = lctx_->Recv(nxt_rank, "");
-      DecodeSEALObject(payload, this_context, enc_vec.data() + idx);
-    }
-
-    // M_a, [v_b] -> [M_a * v_b]
-    std::vector<RLWECt> prod;
-    matvec_prot.MatVecNoExtract(meta, ecd_lhs_mat, enc_vec, &prod);
-
-    // Re-sharing the matvec product homomorphically
-    std::vector<RLWEPt> rnd_masks(prod.size());
-    H2A(prod, this_context, &rnd_masks);
     // NOTE(juhou): the random mask is sampled from the whole ciphertext
-    // modulus We need to cast it down to mod 2^k using `ParseMatVecResult`
+    // modulus. We need to cast it down to mod 2^k using `ParseMatVecResult`
     DISPATCH_ALL_FIELDS(field, "Dot-1", [&]() {
-      auto xmask_mat = xt_mutable_adapt<ring2k_t>(mask_mat);
       auto xans_mat = xt_mutable_adapt<ring2k_t>(ans_mat);
-      xmask_mat = xmask_mat.reshape({loop_dim, lhs_nrows});
-      xans_mat = xans_mat.reshape({loop_dim, lhs_nrows});
-
-      xt::row(xmask_mat, n) = xt_adapt<ring2k_t>(
-          matvec_prot.ParseMatVecResult(field, meta, rnd_masks));
-    });
-
-    // Before sending the masked matvec product, we need to re-randomize the
-    // ciphertext via adding fresh encryption of zero.
-    RandomizeCipherForDecryption(prod, *this_pk_encryptor, evaluator);
-    // Also, we need to clean up unused coefficients.
-    // `ExtractLWEsInplace` should be placed **after**
-    // `RandomizeCipherForDecryption` for a smaller communication cost.
-    matvec_prot.ExtractLWEsInplace(meta, prod);
-
-    // send the masked product to the peer
-    for (size_t idx = 0; idx < prod.size(); ++idx) {
-      lctx_->SendAsync(nxt_rank, EncodeSEALObject(prod[idx]), "");
-    }
-    // recv RLWE vector from the peer
-    for (size_t idx = 0; idx < prod.size(); ++idx) {
-      auto payload = lctx_->Recv(nxt_rank, "");
-      DecodeSEALObject(payload, this_context, prod.data() + idx);
-    }
-
-    // Finally, decrypt the RLWEs and parse some of the coefficients as the
-    // matvec result.
-    for (size_t idx = 0; idx < prod.size(); ++idx) {
-      evaluator.transform_to_ntt_inplace(prod[idx]);
-      // re-use the RLWEPt array
-      this_decryptor->decrypt(prod[idx], rnd_masks[idx]);
-      InvNttInplace(rnd_masks[idx], this_context);
-    }
-
-    // r_b := M_a * v_b + r_a
-    DISPATCH_ALL_FIELDS(field, "Dot-2", [&]() {
-      auto xans_mat = xt_mutable_adapt<ring2k_t>(ans_mat);
-      xans_mat = xans_mat.reshape({loop_dim, lhs_nrows});
+      xans_mat = xans_mat.reshape({rhs_ncols, lhs_nrows});
+      // We store the result matrix in the column-major order.
       xt::row(xans_mat, n) = xt_adapt<ring2k_t>(
           matvec_prot.ParseMatVecResult(field, meta, rnd_masks));
     });
-  }  // end loop_dim
+  }
+  return ans_mat;
+}
 
-  if (M == lhs_nrows) {
-    // A = lhs_mat
-    // B = rhs_mat^T
-    // C = ans_mat^T
-    TransposeInplace(rhs_mat, loop_dim, K);
-    TransposeInplace(ans_mat, loop_dim, lhs_nrows);
-    TransposeInplace(mask_mat, loop_dim, lhs_nrows);
+// Compute C = A*B where |A|=M*K, |B|=K*N
+Beaver::Triple BeaverCheetah::DotImpl::Dot(FieldType field, size_t M, size_t N,
+                                           size_t K) {
+  LazyInit(FieldBitLen(field));
+
+  int rank = lctx_->Rank();
+  auto dupx = lctx_->Spawn();
+  // If M > N then compute A*Enc(B)
+  // If M < N then compute B^t*Enc(A^t) first then transpose
+  size_t lhs_dim = std::max(M, N);
+  size_t rhs_dim = std::min(M, N);
+  auto lhs = CPRNG(field, lhs_dim * K);
+  auto rhs = CPRNG(field, rhs_dim * K);
+
+  std::future<ArrayRef> task = std::async(std::launch::async, [&] {
+    if (rank == 0) {
+      return DotOLE(lhs, dupx.get(), lhs_dim, rhs_dim, K, false);
+    } else {
+      return DotOLE(rhs, dupx.get(), lhs_dim, rhs_dim, K, true);
+    }
+  });
+
+  ArrayRef b0a1;
+  if (rank == 0) {
+    b0a1 = DotOLE(rhs, lctx_.get(), lhs_dim, rhs_dim, K, true);
   } else {
-    // A = rhs_mat
-    // B = lhs_mat^T,
-    // C = ans_mat
-    TransposeInplace(lhs_mat, lhs_nrows, K);
-    std::swap(lhs_mat, rhs_mat);
+    b0a1 = DotOLE(lhs, lctx_.get(), lhs_dim, rhs_dim, K, false);
+  }
+  ArrayRef a0b1 = task.get();
+
+  if (M == lhs_dim) {
+    TransposeInplace(rhs, rhs_dim, K);
+    TransposeInplace(a0b1, rhs_dim, lhs_dim);
+    TransposeInplace(b0a1, rhs_dim, lhs_dim);
+  } else {
+    TransposeInplace(lhs, lhs_dim, K);
+    std::swap(lhs, rhs);
   }
 
-  ans_mat = ring_add(ans_mat,
-                     ring_sub(ring_mmul(lhs_mat, rhs_mat, M, N, K), mask_mat));
-
-  return {lhs_mat, rhs_mat, ans_mat};
+  auto c = ring_add(ring_add(ring_mmul(lhs, rhs, M, N, K), a0b1), b0a1);
+  return {lhs, rhs, c};
 }
+
 BeaverCheetah::BeaverCheetah(std::shared_ptr<yacl::link::Context> lctx)
     : mul_impl_(std::make_shared<MulImpl>(lctx)),
       dot_impl_(std::make_shared<DotImpl>(lctx)),
@@ -1066,16 +1083,22 @@ Beaver::Triple BeaverCheetah::Mul(FieldType field, size_t size) {
   return mul_impl_->Mul(field, size);
 }
 
-ArrayRef BeaverCheetah::MulAShr(const ArrayRef &shr, yacl::link::Context *conn,
-                                bool evaluator) {
+ArrayRef BeaverCheetah::MulOLE(const ArrayRef &shr, yacl::link::Context *conn,
+                               bool evaluator) {
   yacl::CheckNotNull(mul_impl_.get());
-  return mul_impl_->MulAShr(shr, conn, evaluator);
+  return mul_impl_->MulOLE(shr, conn, evaluator);
 }
 
 Beaver::Triple BeaverCheetah::Dot(FieldType field, size_t M, size_t N,
                                   size_t K) {
   yacl::CheckNotNull(dot_impl_.get());
   return dot_impl_->Dot(field, M, N, K);
+}
+
+ArrayRef BeaverCheetah::DotOLE(const ArrayRef &prv, yacl::link::Context *conn,
+                               size_t M, size_t N, size_t K, bool is_rhs) {
+  yacl::CheckNotNull(dot_impl_.get());
+  return dot_impl_->DotOLE(prv, conn, M, N, K, is_rhs);
 }
 
 Beaver::Triple BeaverCheetah::And(FieldType field, size_t size) {

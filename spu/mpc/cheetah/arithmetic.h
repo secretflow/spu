@@ -45,12 +45,12 @@ typedef spu::mpc::semi2k::MatMulAP MatMulAP;
 
 typedef spu::mpc::semi2k::LShiftA LShiftA;
 
-class TruncPrA : public TruncPrAKernel {
+class TruncA : public TruncAKernel {
  private:
   bool heuristic = true;
 
  public:
-  static constexpr char kBindName[] = "truncpr_a";
+  static constexpr char kBindName[] = "trunc_a";
 
   util::CExpr latency() const override { return Const(0); }
 
@@ -59,7 +59,11 @@ class TruncPrA : public TruncPrAKernel {
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in,
                 size_t bits) const override;
 
-  bool isPrecise() const override { return false; }
+  bool hasMsbError() const override { return false; }
+
+  TruncLsbRounding lsbRounding() const override {
+    return TruncLsbRounding::Probabilistic;
+  }
 };
 
 class MsbA : public UnaryKernel {

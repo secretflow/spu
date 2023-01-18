@@ -13,15 +13,16 @@
 # limitations under the License.
 
 
-import multiprocess
 import subprocess
 import time
 import unittest
-
-import spu.binding.psi as psi
-import spu.binding._lib.link as link
-from spu.binding.util.simulation import PropagatingThread
 from socket import socket
+
+import multiprocess
+
+import spu.binding.libspu.link as link
+import spu.binding.psi as psi
+from spu.binding.util.simulation import PropagatingThread
 
 
 def get_free_port():

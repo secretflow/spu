@@ -20,8 +20,8 @@
 
 #include "spu/core/array_ref.h"
 #include "spu/core/type_util.h"
+#include "spu/mpc/common/communicator.h"
 #include "spu/mpc/common/prg_state.h"
-#include "spu/mpc/util/communicator.h"
 
 namespace spu::mpc::aby3 {
 

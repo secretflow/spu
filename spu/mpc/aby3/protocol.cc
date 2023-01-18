@@ -18,11 +18,11 @@
 #include "spu/mpc/aby3/boolean.h"
 #include "spu/mpc/aby3/conversion.h"
 #include "spu/mpc/aby3/type.h"
-#include "spu/mpc/common/abprotocol.h"
+#include "spu/mpc/common/ab_api.h"
+#include "spu/mpc/common/ab_kernels.h"
+#include "spu/mpc/common/communicator.h"
 #include "spu/mpc/common/prg_state.h"
 #include "spu/mpc/common/pub2k.h"
-#include "spu/mpc/object.h"
-#include "spu/mpc/util/communicator.h"
 
 namespace spu::mpc {
 
@@ -62,9 +62,9 @@ std::unique_ptr<Object> makeAby3Protocol(
 
 #define ENABLE_PRECISE_ABY3_TRUNCPR
 #ifdef ENABLE_PRECISE_ABY3_TRUNCPR
-  obj->regKernel<aby3::TruncPrAPrecise>();
+  obj->regKernel<aby3::TruncAPrecise>();
 #else
-  obj->regKernel<aby3::TruncPrA>();
+  obj->regKernel<aby3::TruncA>();
 #endif
 
   obj->regKernel<aby3::MsbA>();
@@ -73,7 +73,7 @@ std::unique_ptr<Object> makeAby3Protocol(
   obj->regKernel<aby3::CastTypeB>();
   obj->regKernel<aby3::B2P>();
   obj->regKernel<aby3::P2B>();
-  obj->regKernel<aby3::AddBB>();
+  obj->regKernel<common::AddBB>();
   obj->regKernel<aby3::A2B>();
   obj->regKernel<aby3::B2ASelector>();
   // obj->regKernel<aby3::B2AByOT>();
@@ -86,6 +86,8 @@ std::unique_ptr<Object> makeAby3Protocol(
   obj->regKernel<aby3::RShiftB>();
   obj->regKernel<aby3::ARShiftB>();
   obj->regKernel<aby3::BitrevB>();
+  obj->regKernel<aby3::BitIntlB>();
+  obj->regKernel<aby3::BitDeintlB>();
   obj->regKernel<aby3::RandA>();
 
   return obj;

@@ -24,13 +24,12 @@
 #include "spdlog/spdlog.h"
 
 #include "spu/mpc/api.h"
+#include "spu/mpc/common/communicator.h"
 #include "spu/mpc/factory.h"
 #include "spu/mpc/object.h"
-#include "spu/mpc/util/communicator.h"
 #include "spu/mpc/util/simulate.h"
 
 #include "spu/mpc/tools/complexity.pb.h"
-
 namespace spu::mpc {
 
 internal::SingleComplexityReport dumpComplexityReport(
@@ -41,7 +40,7 @@ internal::SingleComplexityReport dumpComplexityReport(
   // the interested kernel whitelist.
   const std::vector<std::string> kWhitelist = {
       "a2b",    "b2a",    "a2p",    "b2p",     "add_bb",  "add_aa",
-      "add_ap", "mul_aa", "mul_ap", "mmul_aa", "mmul_ap", "truncpr_a",
+      "add_ap", "mul_aa", "mul_ap", "mmul_aa", "mmul_ap", "trunc_a",
       "xor_bb", "xor_bp", "and_bb", "and_bp",
   };
   std::cout << protocol_str << std::endl;

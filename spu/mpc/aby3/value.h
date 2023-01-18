@@ -49,28 +49,6 @@ ArrayRef makeAShare(const ArrayRef& s1, const ArrayRef& s2, FieldType field,
 
 PtType calcBShareBacktype(size_t nbits);
 
-template <typename T>
-size_t maxBitWidth(ArrayView<T> av) {
-  if constexpr (sizeof(T) == 16) {
-    // TODO: absl::bit_width can not handle int128
-    return 128;
-  } else {
-    size_t res = preduce<size_t>(
-        0, av.numel(),
-        [&](int64_t begin, int64_t end) {
-          size_t partial_max = 0;
-          for (int64_t idx = begin; idx < end; ++idx) {
-            partial_max =
-                std::max<size_t>(partial_max, absl::bit_width(av[idx]));
-          }
-          return partial_max;
-        },
-        [](const size_t& a, const size_t& b) { return std::max(a, b); });
-
-    return res;
-  }
-}
-
 ArrayRef getShare(const ArrayRef& in, int64_t share_idx);
 
 template <typename T>
