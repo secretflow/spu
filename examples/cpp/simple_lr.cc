@@ -29,10 +29,10 @@
 #include "xtensor/xio.hpp"
 #include "xtensor/xview.hpp"
 
-#include "spu/device/io.h"
-#include "spu/kernel/hal/hal.h"
-#include "spu/kernel/hal/test_util.h"
-#include "spu/kernel/hal/type_cast.h"
+#include "libspu/device/io.h"
+#include "libspu/kernel/hal/hal.h"
+#include "libspu/kernel/hal/test_util.h"
+#include "libspu/kernel/hal/type_cast.h"
 
 using namespace spu::kernel;
 

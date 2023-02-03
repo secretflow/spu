@@ -250,7 +250,7 @@ def optimize_club(num_steps: int, run_on_spu: bool):
 
 
 import argparse
-import spu.binding.util.distributed as ppd
+import spu.util.distributed as ppd
 import json
 
 parser = argparse.ArgumentParser(description="distributed driver.")

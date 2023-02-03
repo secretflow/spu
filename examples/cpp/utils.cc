@@ -17,7 +17,7 @@
 #include "absl/strings/match.h"
 #include "absl/strings/str_split.h"
 
-#include "spu/spu.pb.h"
+#include "libspu/spu.pb.h"
 
 llvm::cl::opt<std::string> Parties(
     "parties", llvm::cl::init("127.0.0.1:9530,127.0.0.1:9531"),

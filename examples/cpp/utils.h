@@ -16,7 +16,7 @@
 
 #include "llvm/Support/CommandLine.h"
 
-#include "spu/kernel/context.h"
+#include "libspu/kernel/context.h"
 
 extern llvm::cl::opt<std::string> Parties;
 extern llvm::cl::opt<uint32_t> Rank;

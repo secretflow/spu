@@ -23,6 +23,6 @@ py_binary(
         "//examples/python/conf",
     ],
     deps = [
-        "//spu/binding/util:distributed",
+        "//spu/util:distributed",
     ],
 )

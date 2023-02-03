@@ -20,7 +20,7 @@ import numpy as np
 import torch
 from sklearn import metrics
 
-import spu.binding.util.distributed as ppd
+import spu.util.distributed as ppd
 
 # This is an experimental example to show legacy pytorch program could be run
 # by SPU. Currently we rely on torch-mlir to convert torch code into MLIR

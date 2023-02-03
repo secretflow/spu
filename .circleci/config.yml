@@ -22,7 +22,7 @@ jobs:
     # Specify the execution environment. You can specify an image from Dockerhub or use one of our Convenience Images from CircleCI's Developer Hub.
     # See: https://circleci.com/docs/2.0/configuration-reference/#docker-machine-macos-windows-executor
     docker:
-      - image: registry.hub.docker.com/secretflow/secretflow-gcc11-anolis-dev:0.3
+      - image: registry.hub.docker.com/secretflow/secretflow-gcc11-anolis-dev:0.7-slim
     resource_class: 2xlarge
     # Add steps to the job
     # See: https://circleci.com/docs/2.0/configuration-reference/#steps
@@ -34,17 +34,21 @@ jobs:
           command: |
             sleep 3600
             echo "Canceling workflow as too much time has elapsed"
-            curl -X POST --header "Content-Type: application/json" "https://circleci.com/api/v2/workflow/${CIRCLE_WORKFLOW_ID}/cancel?circle-token=${BUILD_TIMER_TOKEN}" 
+            curl -X POST --header "Content-Type: application/json" "https://circleci.com/api/v2/workflow/${CIRCLE_WORKFLOW_ID}/cancel?circle-token=${BUILD_TIMER_TOKEN}"
       - checkout
       - restore_cache:
           name: "Restore pip cache"
-          key: &pip-cache pip-{{ checksum "requirements.txt" }}
+          key: &pip-cache pip-{{ checksum "requirements.txt" }}-{{ checksum "requirements-dev.txt" }}
       - restore_cache:
           name: "Restore build cache"
           key: spu-build-{{ arch }}-
       - run:
           name: "Install dependencies"
-          command: pip install -r requirements.txt
+          command: |
+            python3 -m pip install -U pip
+            python3 -m pip install -r requirements.txt
+            sed -i "s/tensorflow /tensorflow-cpu /g" ./requirements-dev.txt
+            python3 -m pip install -r requirements-dev.txt
       - run:
           name: "build"
           command: bazel build //spu/... -c opt --ui_event_filters=-info,-debug,-warning --jobs=16 --disk_cache=~/.cache/spu_build_cache
@@ -85,7 +89,9 @@ jobs:
           key: spu-build-{{ arch }}-
       - run:
           name: "Install homebrew dependencies"
-          command: brew install bazel cmake ninja nasm libomp wget
+          command: |
+            brew install bazel cmake ninja nasm libomp wget go
+            (cd "/usr/local/Cellar/bazel/5.1.1/libexec/bin" && curl -fLO https://releases.bazel.build/5.4.0/release/bazel-5.4.0-darwin-x86_64 && chmod +x bazel-5.4.0-darwin-x86_64)
       - run:
           name: "Install Miniconda"
           command: |
@@ -133,7 +139,9 @@ jobs:
           key: spu-build-{{ arch }}-
       - run:
           name: "Install homebrew dependencies"
-          command: brew install bazel cmake ninja nasm libomp wget
+          command: |
+            brew install bazel cmake ninja nasm libomp wget go
+            (cd "/usr/local/Cellar/bazel/5.1.1/libexec/bin" && curl -fLO https://releases.bazel.build/5.4.0/release/bazel-5.4.0-darwin-x86_64 && chmod +x bazel-5.4.0-darwin-x86_64)
       - run:
           name: "Install Miniconda"
           command: |
@@ -184,5 +192,3 @@ workflows:
     jobs:
       - linux_publish
       - macOS_publish
-
-      

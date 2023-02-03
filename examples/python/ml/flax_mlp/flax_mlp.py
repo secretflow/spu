@@ -29,7 +29,7 @@ import numpy as np
 from sklearn import metrics
 
 import examples.python.utils.dataset_utils as dsutil
-import spu.binding.util.distributed as ppd
+import spu.util.distributed as ppd
 
 FEATURES = [30, 15, 8, 1]
 
@@ -69,7 +69,7 @@ def train_auto_grad(x, y, params, n_batch=10, n_epochs=10, step_size=0.01):
 
     def body_fun(_, loop_carry):
         params = loop_carry
-        for (x, y) in zip(xs, ys):
+        for x, y in zip(xs, ys):
             _, grads = jax.value_and_grad(loss_func)(params, x, y)
             params = jax.tree_util.tree_map(
                 lambda p, g: p - step_size * g, params, grads

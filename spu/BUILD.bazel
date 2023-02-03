@@ -12,43 +12,100 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+load("@pybind11_bazel//:build_defs.bzl", "pybind_extension")
+load("@rules_python//python:defs.bzl", "py_library")
 load("@com_github_grpc_grpc//bazel:python_rules.bzl", "py_proto_library")
-load("@rules_proto//proto:defs.bzl", "proto_library")
-load("@rules_cc//cc:defs.bzl", "cc_proto_library")
 load("@rules_python//python:packaging.bzl", "py_package", "py_wheel")
 load("//bazel:spu.bzl", "spu_version_file")
+load("@pip_deps//:requirements.bzl", "all_deps")
 
 package(default_visibility = ["//visibility:public"])
 
-SPU_VERSION = "0.3.2b0"
-
-proto_library(
-    name = "spu_proto",
-    srcs = ["spu.proto"],
+exports_files(
+    [
+        "exported_symbols.lds",
+        "version_script.lds",
+    ],
+    visibility = ["//visibility:private"],
 )
 
-cc_proto_library(
-    name = "spu_cc_proto",
-    deps = [":spu_proto"],
+pybind_extension(
+    name = "libspu",
+    srcs = ["libspu.cc"],
+    linkopts = select({
+        "@bazel_tools//src/conditions:darwin": [
+            "-Wl,-exported_symbols_list,$(location //spu:exported_symbols.lds)",
+        ],
+        "//conditions:default": [
+            "-Wl,--version-script,$(location //spu:version_script.lds)",
+        ],
+    }),
+    deps = [
+        ":exported_symbols.lds",
+        ":version_script.lds",
+        "//libspu/compiler:compile",
+        "//libspu/compiler/common:compilation_context",
+        "//libspu/core:logging",
+        "//libspu/device:api",
+        "//libspu/device:io",
+        "//libspu/device/pphlo:pphlo_executor",
+        "//libspu/psi:bucket_psi",
+        "//libspu/psi:memory_psi",
+        "@yacl//yacl/link",
+    ],
 )
 
 py_proto_library(
     name = "spu_py_proto",
-    deps = [":spu_proto"],
+    deps = ["//libspu:spu_proto"],
 )
+
+py_proto_library(
+    name = "psi_py_proto",
+    deps = ["//libspu/psi:psi_proto"],
+)
+
+py_library(
+    name = "api",
+    srcs = ["api.py"],
+    data = [
+        ":libspu.so",
+    ],
+    deps = [
+        ":spu_py_proto",
+    ],
+)
+
+py_library(
+    name = "psi",
+    srcs = ["psi.py"],
+    data = [
+        ":libspu.so",
+    ],
+    deps = [
+        ":psi_py_proto",
+    ],
+)
+
+SPU_VERSION = "0.3.2b3"
 
 py_library(
     name = "init",
     srcs = [
         "__init__.py",
+        ":api",
+        ":psi",
+        ":psi_py_proto",
+        ":spu_py_proto",
         ":version_file",
+        "//spu/util:simulation",
     ],
 )
 
 py_package(
     name = "_lib_deps",
     deps = [
-        "//spu/binding:api",
+        ":api",
     ],
 )
 
@@ -71,28 +128,14 @@ py_wheel(
     }),
     python_requires = "==3.8.*",
     python_tag = "cp38",
-    requires = [
-        "grpcio>=1.42.0,!=1.48.0",
-        "numpy>=1.22.0",
-        "protobuf==3.19.4",
-        "jax==0.4.1",
-        "jaxlib==0.4.1",
-        "cloudpickle>=2.0.0",
-        "multiprocess>=0.70.12.2",
-        "cachetools",
-    ],
+    requires = all_deps,
     version = SPU_VERSION,
     deps = [
         ":_lib_deps",
-        ":init",
-        ":spu_py_proto",
-        "//spu/binding:api",
-        "//spu/binding:psi",
-        "//spu/binding/util:distributed",
-        "//spu/binding/util:distributed_py_proto",
-        "//spu/binding/util:distributed_py_proto_grpc",
-        "//spu/binding/util:frontend",
-        "//spu/binding/util:simulation",
-        "//spu/psi:psi_py_proto",
+        "//spu/util:distributed",
+        "//spu/util:distributed_py_proto",
+        "//spu/util:distributed_py_proto_grpc",
+        "//spu/util:frontend",
+        "//spu/util:simulation",
     ],
 )

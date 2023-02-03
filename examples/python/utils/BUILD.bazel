@@ -46,6 +46,6 @@ py_binary(
     ],
     deps = [
         ":dataset_utils",  # server dependent.
-        "//spu/binding/util:distributed",
+        "//spu/util:distributed",
     ],
 )

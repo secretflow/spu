@@ -21,9 +21,9 @@
 #include "examples/cpp/utils.h"
 #include "spdlog/spdlog.h"
 
-#include "spu/device/api.h"
-#include "spu/device/io.h"
-#include "spu/device/pphlo/pphlo_executor.h"
+#include "libspu/device/api.h"
+#include "libspu/device/io.h"
+#include "libspu/device/pphlo/pphlo_executor.h"
 
 // This example demostrates the basic compute functionality of spu vm.
 void constant_add(spu::HalContext* hctx) {

@@ -20,8 +20,8 @@ import sys
 import grpc
 import jax
 
-import spu.binding.util.distributed as ppd
-from spu.binding.util import distributed_pb2_grpc
+import spu.util.distributed as ppd
+from spu.util import distributed_pb2_grpc
 
 parser = argparse.ArgumentParser(description='SPU node service.')
 parser.add_argument(

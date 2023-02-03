@@ -27,6 +27,7 @@ from jax.example_libraries.stax import (
     BatchNorm,
 )
 
+
 # Network A
 # Ref: https://eprint.iacr.org/2017/396.pdf
 def secureml():

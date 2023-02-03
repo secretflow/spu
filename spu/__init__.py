@@ -13,9 +13,9 @@
 # limitations under the License.
 
 
-from .version import __version__
+from .version import __version__  # type: ignore
 
-from spu.spu_pb2 import (
+from .spu_pb2 import (  # type: ignore
     DataType,
     Visibility,
     PtType,
@@ -27,7 +27,30 @@ from spu.spu_pb2 import (
     ExecutableProto,
 )
 
-from .binding.api import Io, Runtime, compile
-from .binding.util.simulation import Simulator, sim_jax
+from .api import Io, Runtime, compile
+from .util.simulation import Simulator, sim_jax
 
-from .binding import psi
+from . import psi
+
+__all__ = [
+    "__version__",
+    # spu_pb2
+    "DataType",
+    "Visibility",
+    "PtType",
+    "ProtocolKind",
+    "FieldType",
+    "ValueProto",
+    "ShapeProto",
+    "RuntimeConfig",
+    "ExecutableProto",
+    # spu_api
+    "Io",
+    "Runtime",
+    "compile",
+    # utils
+    "Simulator",
+    "sim_jax",
+    # libs
+    "psi",
+]
