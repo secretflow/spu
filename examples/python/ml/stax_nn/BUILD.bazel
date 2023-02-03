@@ -31,6 +31,6 @@ py_binary(
         ":models",
         "//examples/python/utils:dataset_utils",
         "//examples/python/utils:optimizers",
-        "//spu/binding/util:distributed",
+        "//spu/util:distributed",
     ],
 )

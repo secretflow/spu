@@ -27,7 +27,7 @@ import jax.numpy as jnp
 from sklearn import metrics
 
 import examples.python.utils.dataset_utils as dsutil
-import spu.binding.util.distributed as ppd
+import spu.util.distributed as ppd
 
 
 def predict(x, w, b):

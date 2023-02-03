@@ -33,9 +33,9 @@ from functools import reduce
 
 import examples.python.utils.dataset_utils as dsutil
 import examples.python.utils.appr_sigmoid as Sigmoid
-import spu.binding.util.distributed as ppd
+import spu.util.distributed as ppd
 
-from spu.binding.util.distributed import PYU, SPU
+from spu.util.distributed import PYU, SPU
 
 parser = argparse.ArgumentParser(description='distributed driver.')
 parser.add_argument("-c", "--config", default="examples/python/conf/3pc.json")

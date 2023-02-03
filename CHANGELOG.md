@@ -9,8 +9,11 @@
 ## staging
 > please add your unreleased change here.
 - [Feature] Add EpsilonOp
+- [Feature] Support CaseOp
 - [bugfix] Fix boolean ConstantOp
 - [3p] Relax TensorFlow version in requirements.txt
+- [API] Move C++ API from spu to libspu
+- [3p] Move to OpenXLA
 
 
 ## 20230104

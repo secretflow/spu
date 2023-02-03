@@ -19,8 +19,8 @@
 
 from absl import app, flags
 
-import spu.binding.psi as psi
-import spu.binding.libspu.link as link
+import spu.psi as psi
+import spu.libspu.link as link
 import time
 
 flags.DEFINE_integer("rank", 0, "rank: 0/1/2...")

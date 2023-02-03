@@ -1,0 +1,207 @@
+diff --git a/tsl/lib/gtl/BUILD b/tsl/lib/gtl/BUILD
+index 36ad40f..fbd8038 100644
+--- a/tsl/lib/gtl/BUILD
++++ b/tsl/lib/gtl/BUILD
+@@ -10,27 +10,7 @@ load(
+ 
+ package(
+     # copybara:uncomment default_applicable_licenses = ["//third_party/tensorflow:license"],
+-    default_visibility = [
+-        # tensorflow/core:lib effectively exposes all targets under tensorflow/core/lib/**
+-        "//third_party/tensorflow/core:__pkg__",
+-        # tensorflow/core/lib/strings:proto_serialization uses on gtl:inlined_vector
+-        "//third_party/tensorflow/core/lib/strings:__pkg__",
+-        "//tsl/lib/strings:__pkg__",
+-        # tensorflow/core/framework uses map_util, and flatmap
+-        "//third_party/tensorflow/core/framework:__pkg__",
+-        "//tsl/framework:__pkg__",
+-        "//tsl/platform/cloud:__pkg__",
+-        # tensorflow/core/util uses inlined_vector
+-        "//third_party/tensorflow/core/util:__pkg__",
+-        # tensorflow/core/tfrt/utils uses inlined_vector
+-        "//third_party/tensorflow/core/tfrt/utils:__pkg__",
+-        # tensorflow/examples/custom_ops_doc/simple_hash_table uses map_util
+-        "//third_party/tensorflow/examples/custom_ops_doc/simple_hash_table:__pkg__",
+-        "//third_party/tensorflow/compiler/xla:__subpackages__",
+-        "//third_party/tensorflow/core/lib/gtl:__subpackages__",
+-        "//tsl/distributed_runtime/rpc:__pkg__",
+-        "//tsl/profiler/utils:__pkg__",
+-    ],
++    default_visibility = ["//visibility:public"],
+     licenses = ["notice"],
+ )
+ 
+diff --git a/tsl/lib/io/BUILD b/tsl/lib/io/BUILD
+index 981a3fb..e5518b2 100644
+--- a/tsl/lib/io/BUILD
++++ b/tsl/lib/io/BUILD
+@@ -7,16 +7,7 @@ load(
+ 
+ package(
+     # copybara:uncomment default_applicable_licenses = ["//third_party/tensorflow:license"],
+-    default_visibility = [
+-        "//third_party/tensorflow/c/experimental/filesystem:__pkg__",
+-        "//third_party/tensorflow/c/experimental/filesystem/plugins/posix:__pkg__",
+-        "//tsl/lib/io/snappy:__pkg__",
+-        "//third_party/tensorflow/compiler/xla:__subpackages__",
+-        # tensorflow/core:lib effectively exposes all targets under tensorflow/core/lib/**
+-        "//third_party/tensorflow/core:__pkg__",
+-        "//third_party/tensorflow/core/lib/io:__subpackages__",
+-        "//tsl/profiler:__subpackages__",
+-    ],
++    default_visibility = ["//visibility:public"],
+     licenses = ["notice"],
+ )
+ 
+diff --git a/tsl/lib/math/BUILD b/tsl/lib/math/BUILD
+index 1c7c6e4..c5ba8f1 100644
+--- a/tsl/lib/math/BUILD
++++ b/tsl/lib/math/BUILD
+@@ -7,7 +7,7 @@ load(
+ package(
+     # copybara:uncomment default_applicable_licenses = ["//third_party/tensorflow:license"],
+     default_visibility = [
+-        "//third_party/tensorflow:__subpackages__",
++        "//visibility:public",
+     ],
+     licenses = ["notice"],
+ )
+@@ -16,11 +16,6 @@ cc_library(
+     name = "math_util",
+     hdrs = ["math_util.h"],
+     compatible_with = get_compatible_with_portable(),
+-    visibility = [
+-        "//platforms/performance/tf_sim/utils:__subpackages__",
+-        "//platforms/xla/service:__subpackages__",
+-        "//third_party/tensorflow:__subpackages__",
+-    ],
+     deps = [
+         "//tsl/platform:logging",
+         "//tsl/platform:types",
+@@ -50,7 +45,6 @@ filegroup(
+         "math_util.h",
+     ],
+     compatible_with = get_compatible_with_portable(),
+-    visibility = ["//third_party/tensorflow/core:__pkg__"],
+ )
+ 
+ exports_files([
+diff --git a/tsl/lib/strings/BUILD b/tsl/lib/strings/BUILD
+index 55538ae..e4dc747 100644
+--- a/tsl/lib/strings/BUILD
++++ b/tsl/lib/strings/BUILD
+@@ -10,12 +10,7 @@ cc_library(
+     name = "proto_serialization",
+     srcs = ["proto_serialization.cc"],
+     hdrs = ["proto_serialization.h"],
+-    visibility = [
+-        "//third_party/tensorflow/compiler/xla/python:__pkg__",
+-        "//third_party/tensorflow/compiler/xla/service:__pkg__",
+-        "//third_party/tensorflow/compiler/xla/stream_executor:__pkg__",
+-        "//third_party/tensorflow/core/lib/strings:__pkg__",
+-    ],
++    visibility = ["//visibility:public"],
+     deps = [
+         "//tsl/lib/gtl:inlined_vector",
+         "//tsl/platform:hash",
+diff --git a/tsl/platform/default/BUILD b/tsl/platform/default/BUILD
+index c848b8c..39a73b4 100644
+--- a/tsl/platform/default/BUILD
++++ b/tsl/platform/default/BUILD
+@@ -7,8 +7,7 @@ load("//tsl/platform:rules_cc.bzl", "cc_library")
+ package(
+     # copybara:uncomment default_applicable_licenses = ["//third_party/tensorflow:license"],
+     default_visibility = [
+-        "//third_party/tensorflow/core/platform:__pkg__",
+-        "//tsl/platform:__pkg__",
++        "//visibility:public",
+     ],
+     licenses = ["notice"],
+ )
+@@ -539,7 +538,6 @@ cc_library(
+         "nobuilder",
+     ],
+     textual_hdrs = ["crash_analysis.h"],
+-    visibility = ["//third_party/tensorflow:__subpackages__"],
+     deps = [
+         "//tsl/platform",
+         "//tsl/platform:protobuf",
+@@ -554,7 +552,6 @@ cc_library(
+         "nobuilder",
+     ],
+     textual_hdrs = ["status.h"],
+-    visibility = ["//third_party/tensorflow:__subpackages__"],
+     deps = [
+         "//tsl/platform:types",
+         "//tsl/protobuf:error_codes_proto_impl_cc",
+@@ -567,7 +564,6 @@ cc_library(
+ bzl_library(
+     name = "cuda_build_defs_bzl",
+     srcs = ["cuda_build_defs.bzl"],
+-    visibility = ["//third_party/tensorflow:__subpackages__"],
+ )
+ 
+ bzl_library(
+@@ -578,7 +574,6 @@ bzl_library(
+ # Export source files needed for mobile builds, which do not use granular targets.
+ filegroup(
+     name = "additional_mobile_srcs_no_runtime",
+-    visibility = ["//third_party/tensorflow/core/platform:__pkg__"],
+ )
+ 
+ filegroup(
+@@ -599,10 +594,6 @@ filegroup(
+         "//tsl/platform/profile_utils:cpu_utils.h",
+         "//tsl/platform/profile_utils:i_cpu_utils_helper.h",
+     ],
+-    visibility = [
+-        "//third_party/tensorflow/core/platform:__pkg__",
+-        "//tsl/platform:__pkg__",
+-    ],
+ )
+ 
+ filegroup(
+@@ -619,7 +610,6 @@ filegroup(
+         "subprocess.cc",
+         "subprocess.h",
+     ]),
+-    visibility = ["//third_party/tensorflow/core/platform:__pkg__"],
+ )
+ 
+ exports_files(
+@@ -631,7 +621,6 @@ exports_files(
+             "test.cc",
+         ],
+     ),
+-    visibility = ["//third_party/tensorflow/core/platform:__pkg__"],
+ )
+ 
+ exports_files(
+@@ -640,10 +629,4 @@ exports_files(
+         "logging.h",
+         "test.cc",
+     ],
+-    visibility = [
+-        "//third_party/tensorflow/core:__pkg__",
+-        "//third_party/tensorflow/core/lib/gif:__pkg__",
+-        "//third_party/tensorflow/core/lib/jpeg:__pkg__",
+-        "//third_party/tensorflow/core/platform:__pkg__",
+-    ],
+ )
+diff --git a/tsl/protobuf/BUILD b/tsl/protobuf/BUILD
+index 85c7415..481a54f 100644
+--- a/tsl/protobuf/BUILD
++++ b/tsl/protobuf/BUILD
+@@ -9,11 +9,7 @@ load(
+ 
+ package(
+     # copybara:uncomment default_applicable_licenses = ["//third_party/tensorflow:license"],
+-    default_visibility = [
+-        "//third_party/tensorflow/core:__subpackages__",
+-        "//third_party/tensorflow_models:__subpackages__",
+-        "//tsl:internal",
+-    ],
++    default_visibility = ["//visibility:public"],
+     features = if_google(["-parse_headers"]),
+     licenses = ["notice"],
+ )

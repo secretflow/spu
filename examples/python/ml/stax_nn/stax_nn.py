@@ -35,7 +35,7 @@ from keras.datasets import cifar10
 from sklearn.metrics import accuracy_score
 
 import examples.python.ml.stax_nn.models as models
-import spu.binding.util.distributed as ppd
+import spu.util.distributed as ppd
 
 parser = argparse.ArgumentParser(description='distributed driver.')
 parser.add_argument("--model", default='network_a', type=str)

@@ -54,9 +54,10 @@ docker exec -it spu-gcc11-anolis-dev-$(whoami) bash
 #### Linux
 
 ```sh
-Install gcc>=11.2, cmake>=3.18, ninja, nasm>=2.15, python==3.8, bazel==5.1.1
+Install gcc>=11.2, cmake>=3.18, ninja, nasm>=2.15, python==3.8, bazel==5.4.0, golang
 
 python3 -m pip install -r requirements.txt
+python3 -m pip install -r requirements-dev.txt
 ```
 
 #### macOS
@@ -74,17 +75,19 @@ sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
 https://brew.sh/
 
 # Install dependencies
-brew install bazel cmake ninja nasm libomp
+# Be aware, brew may install a newer version of bazel, when that happens bazel will give an error message during build.
+# Please follow instructions in the error message to install the required version
+brew install bazel cmake ninja nasm libomp go
 
 # Extra setup step for Apple Silicon users
 conda install grpcio
 
 # Install python dependencies
 pip install -r requirements.txt
+pip install -r requirements-dev.txt
 ```
 
 ### Build & UnitTest
-
 ``` sh
 
 # build as debug

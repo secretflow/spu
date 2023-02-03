@@ -26,7 +26,7 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 
-import spu.binding.util.distributed as ppd
+import spu.util.distributed as ppd
 
 parser = argparse.ArgumentParser(description="distributed driver.")
 parser.add_argument("-c", "--config", default="examples/python/conf/3pc.json")
@@ -62,7 +62,6 @@ def kmeans(data_alice, data_bob, k, random_numbers, n_epochs=10):
     labels = jnp.zeros(n)
 
     def loop_while_func(stat):
-
         rounds, centers, labels = stat
 
         def loop_for_1(i, stat):

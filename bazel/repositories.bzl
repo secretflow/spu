@@ -1,18 +1,33 @@
+# Copyright 2021 Ant Group Co., Ltd.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 load("@bazel_tools//tools/build_defs/repo:utils.bzl", "maybe")
 load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
 
 SECRETFLOW_GIT = "https://github.com/secretflow"
 
-YACL_COMMIT_ID = "b3f50c6dbcd141d8dfd3e1dc6b4d54885fd5ac92"
+YACL_COMMIT_ID = "36651b8002d7ef6ac3576b4b118b2b5cf9827bf5"
 
 def spu_deps():
+    _rule_python()
     _bazel_platform()
     _upb()
     _com_github_xtensor_xtensor()
     _com_github_xtensor_xtl()
     _com_github_grpc_grpc()
-    _com_github_tensorflow()
+    _com_github_openxla_xla()
     _com_github_pybind11_bazel()
     _com_github_pybind11()
     _com_intel_hexl()
@@ -45,6 +60,17 @@ def spu_deps():
         name = "local_homebrew_arm64",
         build_file = "@spulib//bazel:local_openmp_macos.BUILD",
         path = "/opt/homebrew/opt/libomp/",
+    )
+
+def _rule_python():
+    maybe(
+        http_archive,
+        name = "rules_python",
+        sha256 = "8c15896f6686beb5c631a4459a3aa8392daccaab805ea899c9d14215074b60ef",
+        strip_prefix = "rules_python-0.17.3",
+        urls = [
+            "https://github.com/bazelbuild/rules_python/archive/refs/tags/0.17.3.tar.gz",
+        ],
     )
 
 def _bazel_platform():
@@ -89,6 +115,9 @@ def _com_github_grpc_grpc():
         sha256 = "7f42363711eb483a0501239fd5522467b31d8fe98d70d7867c6ca7b52440d828",
         strip_prefix = "grpc-1.51.0",
         type = "tar.gz",
+        patch_args = ["-p1"],
+        # Set grpc to use local go toolchain
+        patches = ["@spulib//bazel:patches/grpc.patch"],
         urls = [
             "https://github.com/grpc/grpc/archive/refs/tags/v1.51.0.tar.gz",
         ],
@@ -120,9 +149,18 @@ def _com_github_xtensor_xtl():
         ],
     )
 
-def _com_github_tensorflow():
-    LLVM_COMMIT = "d8415b02a519f222ecf71b069c96cc85ac635de3"
-    LLVM_SHA256 = "05fffac826b16218bbc0f882204734e68566fd0b61a1196f12c16a58b0b8af58"
+def _com_github_openxla_xla():
+    LLVM_COMMIT = "10939d1d580b9d3c9c2f3539c6bdb39f408179c0"
+    LLVM_SHA256 = "4adce5ef34c2062be0d7c5eb2a11606fa70690342e7e93327457ee2b6ad7ac72"
+
+    OPENXLA_COMMIT = "35d98732bd9f1b753eb3de80170a29c1af878e01"
+    OPENXLA_SHA256 = "e10ef5cc5c88fdcee94b8f0cf0e716698575504e255e08696dcc2e0d43eae8d2"
+
+    TSL_COMMIT = "e1300e661b0db8aeb1063bb8f6a8182de3be7648"
+    TSL_SHA256 = "a7e4258f5c8f591989ec565bc49839dd70898e586ade8e9f873150ad636266dd"
+
+    SKYLIB_VERSION = "1.3.0"
+
     maybe(
         http_archive,
         name = "llvm-raw",
@@ -133,8 +171,9 @@ def _com_github_tensorflow():
             "https://github.com/llvm/llvm-project/archive/{commit}.tar.gz".format(commit = LLVM_COMMIT),
         ],
     )
-    SKYLIB_VERSION = "1.3.0"
-    http_archive(
+
+    maybe(
+        http_archive,
         name = "bazel_skylib",
         sha256 = "74d544d96f4a5bb630d465ca8bbcfe231e3594e5aae57e1edbf17a6eb3ca2506",
         urls = [
@@ -143,18 +182,30 @@ def _com_github_tensorflow():
         ],
     )
 
+    # This is due to current status of openxla......once migration is done, we should remove this
+    maybe(
+        http_archive,
+        name = "tsl",
+        strip_prefix = "tsl-" + TSL_COMMIT,
+        sha256 = TSL_SHA256,
+        patch_args = ["-p1"],
+        patches = ["@spulib//bazel:patches/tsl.patch"],
+        urls = [
+            "https://github.com/google/tsl/archive/{commit}.tar.gz".format(commit = TSL_COMMIT),
+        ],
+    )
+
     # We need tensorflow to handle xla->mlir hlo
     maybe(
         http_archive,
-        name = "org_tensorflow",
-        sha256 = "99c732b92b1b37fc243a559e02f9aef5671771e272758aa4aec7f34dc92dac48",
-        strip_prefix = "tensorflow-2.11.0",
-        patch_args = ["-p1"],
-        # Fix hlo evaluator package visibility
-        patches = ["@spulib//bazel:patches/tensorflow.patch"],
+        name = "xla",
+        sha256 = OPENXLA_SHA256,
+        strip_prefix = "xla-" + OPENXLA_COMMIT,
         type = ".tar.gz",
+        patch_args = ["-p1"],
+        patches = ["@spulib//bazel:patches/xla.patch"],
         urls = [
-            "https://github.com/tensorflow/tensorflow/archive/refs/tags/v2.11.0.tar.gz",
+            "https://github.com/openxla/xla/archive/{commit}.tar.gz".format(commit = OPENXLA_COMMIT),
         ],
     )
 

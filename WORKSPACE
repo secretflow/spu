@@ -1,3 +1,17 @@
+# Copyright 2021 Ant Group Co., Ltd.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 workspace(name = "spulib")
 
 load("//bazel:repositories.bzl", "spu_deps")
@@ -28,19 +42,19 @@ load("//bazel:llvm.bzl", "llvm_setup")
 
 llvm_setup(name = "llvm-project")
 
-load("@org_tensorflow//tensorflow:workspace3.bzl", "tf_workspace3")
+load("@xla//:workspace3.bzl", "tf_workspace3")
 
 tf_workspace3()
 
-load("@org_tensorflow//tensorflow:workspace2.bzl", "tf_workspace2")
+load("@xla//:workspace2.bzl", "tf_workspace2")
 
 tf_workspace2()
 
-load("@org_tensorflow//tensorflow:workspace1.bzl", "tf_workspace1")
+load("@xla//:workspace1.bzl", "tf_workspace1")
 
 tf_workspace1()
 
-load("@org_tensorflow//tensorflow:workspace0.bzl", "tf_workspace0")
+load("@xla//:workspace0.bzl", "tf_workspace0")
 
 tf_workspace0()
 
@@ -49,4 +63,11 @@ load("@pybind11_bazel//:python_configure.bzl", "python_configure")
 python_configure(
     name = "local_config_python",
     python_version = "3",
+)
+
+load("//bazel:pip_rules.bzl", "read_requirements")
+
+read_requirements(
+    name = "pip_deps",
+    requirements = "//:requirements.txt",
 )

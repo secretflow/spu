@@ -22,7 +22,7 @@ import json
 import numpy as np
 import tensorflow as tf
 from sklearn import metrics
-import spu.binding.util.distributed as ppd
+import spu.util.distributed as ppd
 
 # This example is to show tf program could be converted to XLA IR and run by SPU.
 # Start nodes.
@@ -63,22 +63,18 @@ class LogitRegression:
         remainder = feature.shape[0] % self.n_iters
 
         xs = tf.split(
-            feature[
-                :-remainder,
-            ],
+            feature[:-remainder,],
             self.n_iters,
             axis=0,
         )
         ys = tf.split(
-            label[
-                :-remainder,
-            ],
+            label[:-remainder,],
             self.n_iters,
             axis=0,
         )
 
         for _ in range(self.n_epochs):
-            for (x, y) in zip(xs, ys):
+            for x, y in zip(xs, ys):
                 with tf.GradientTape() as t:
                     current_loss = loss(x, y, self.w)
 
@@ -96,22 +92,18 @@ class LogitRegression:
         remainder = feature.shape[0] % self.n_iters
 
         xs = tf.split(
-            feature[
-                :-remainder,
-            ],
+            feature[:-remainder,],
             self.n_iters,
             axis=0,
         )
         ys = tf.split(
-            label[
-                :-remainder,
-            ],
+            label[:-remainder,],
             self.n_iters,
             axis=0,
         )
 
         for _ in range(self.n_epochs):
-            for (x, y) in zip(xs, ys):
+            for x, y in zip(xs, ys):
                 pred = predict(x, self.w)
                 err = pred - y
                 dw = tf.linalg.matvec(tf.transpose(x), err)
@@ -128,22 +120,18 @@ class LogitRegression:
         remainder = feature.shape[0] % self.n_iters
 
         xs = tf.split(
-            feature[
-                :-remainder,
-            ],
+            feature[:-remainder,],
             self.n_iters,
             axis=0,
         )
         ys = tf.split(
-            label[
-                :-remainder,
-            ],
+            label[:-remainder,],
             self.n_iters,
             axis=0,
         )
 
         for _ in range(self.n_epochs):
-            for (x, y) in zip(xs, ys):
+            for x, y in zip(xs, ys):
                 pred = predict(x, w)
                 err = pred - y
                 dw = tf.linalg.matvec(tf.transpose(x), err)

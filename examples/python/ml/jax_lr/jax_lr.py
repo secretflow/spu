@@ -28,7 +28,7 @@ import numpy as np
 from sklearn import metrics
 
 import examples.python.utils.dataset_utils as dsutil
-import spu.binding.util.distributed as ppd
+import spu.util.distributed as ppd
 
 
 # FIXME: For un-normalized data, grad(sigmoid) is likely to overflow, either with exp/tanh or taylor series
@@ -63,7 +63,7 @@ class LogitRegression:
 
         def body_fun(_, loop_carry):
             w_, b_ = loop_carry
-            for (x, y) in zip(xs, ys):
+            for x, y in zip(xs, ys):
                 grad = jax.grad(loss, argnums=(2, 3))(x, y, w_, b_)
                 w_ -= grad[0] * self.step_size
                 b_ -= grad[1] * self.step_size
@@ -81,7 +81,7 @@ class LogitRegression:
 
         def body_fun(_, loop_carry):
             w_, b_ = loop_carry
-            for (x, y) in zip(xs, ys):
+            for x, y in zip(xs, ys):
                 pred = predict(x, w_, b_)
                 err = pred - y
                 w_ -= jnp.matmul(jnp.transpose(x), err) / y.shape[0] * self.step_size

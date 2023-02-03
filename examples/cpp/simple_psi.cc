@@ -22,7 +22,7 @@
 #include "examples/cpp/utils.h"
 #include "spdlog/spdlog.h"
 
-#include "spu/psi/bucket_psi.h"
+#include "libspu/psi/bucket_psi.h"
 
 llvm::cl::opt<int> ProtocolOpt(
     "protocol", llvm::cl::init(1),

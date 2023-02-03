@@ -129,7 +129,7 @@ def run_cpu():
 def run_spu():
     import argparse
     import json
-    import spu.binding.util.distributed as ppd
+    import spu.util.distributed as ppd
 
     parser = argparse.ArgumentParser(description='distributed driver.')
     parser.add_argument("-c", "--config", default="examples/python/conf/3pc.json")

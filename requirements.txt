@@ -1,21 +1,11 @@
+# Beaware, bazel rules_python requirements parser has a bug parsing line without version spec...
+# So always put a version range in this file
 grpcio>=1.42.0,!=1.48.0
 numpy>=1.22.0
-protobuf >= 3.19, < 4
+protobuf>=3.19, <4
 cloudpickle>=2.0.0
 multiprocess>=0.70.12.2
-cachetools
+cachetools>=5.0.0
 jax==0.4.1
 jaxlib==0.4.1
 
-# Extra dependencies
-matplotlib
-tensorflow >= 2.7.0; platform_machine != "arm64"
-tensorflow-macos >= 2.7.0; platform_machine == "arm64" and platform_system == "Darwin"
-tensorflow_datasets
-pandas>=1.4.2
-flax
-keras
-scikit-learn
-
-# for tests
-absl-py>=1.1.0

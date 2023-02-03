@@ -30,9 +30,9 @@
 #include "examples/cpp/utils.h"
 #include "spdlog/spdlog.h"
 
-#include "spu/psi/core/dp_psi/dp_psi.h"
-#include "spu/psi/utils/batch_provider.h"
-#include "spu/psi/utils/serialize.h"
+#include "libspu/psi/core/dp_psi/dp_psi.h"
+#include "libspu/psi/utils/batch_provider.h"
+#include "libspu/psi/utils/serialize.h"
 
 namespace {
 

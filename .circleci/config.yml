@@ -27,14 +27,6 @@ jobs:
     # Add steps to the job
     # See: https://circleci.com/docs/2.0/configuration-reference/#steps
     steps:
-      # Kill the whole ci after 1hr
-      - run:
-          name: Cancel build after set time
-          background: true
-          command: |
-            sleep 3600
-            echo "Canceling workflow as too much time has elapsed"
-            curl -X POST --header "Content-Type: application/json" "https://circleci.com/api/v2/workflow/${CIRCLE_WORKFLOW_ID}/cancel?circle-token=${BUILD_TIMER_TOKEN}" 
       - checkout
       - restore_cache:
           name: "Restore pip cache"
@@ -85,7 +77,7 @@ jobs:
           key: spu-build-{{ arch }}-
       - run:
           name: "Install homebrew dependencies"
-          command: brew install bazel cmake ninja nasm libomp wget
+          command: brew install bazel cmake ninja nasm libomp wget go
       - run:
           name: "Install Miniconda"
           command: |
@@ -133,7 +125,7 @@ jobs:
           key: spu-build-{{ arch }}-
       - run:
           name: "Install homebrew dependencies"
-          command: brew install bazel cmake ninja nasm libomp wget
+          command: brew install bazel cmake ninja nasm libomp wget go
       - run:
           name: "Install Miniconda"
           command: |
@@ -184,5 +176,3 @@ workflows:
     jobs:
       - linux_publish
       - macOS_publish
-
-      

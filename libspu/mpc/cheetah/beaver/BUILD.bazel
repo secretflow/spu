@@ -1,0 +1,96 @@
+# Copyright 2021 Ant Group Co., Ltd.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+load("//bazel:spu.bzl", "spu_cc_library", "spu_cc_test")
+load("@yacl//bazel:yacl.bzl", "EMP_COPT_FLAGS")
+
+package(default_visibility = ["//visibility:public"])
+
+spu_cc_library(
+    name = "beaver",
+    srcs = ["beaver.cc"],
+    hdrs = ["beaver.h"],
+    copts = EMP_COPT_FLAGS,
+    deps = [
+        ":cheetah_he",
+        "//libspu/crypto/ot/silent:primitives",
+        "//libspu/mpc/common:prg_tensor",
+        "//libspu/mpc/util:ring_ops",
+        "@com_github_microsoft_seal//:seal",
+        "@yacl//yacl/link",
+        "@yacl//yacl/utils:parallel",
+    ],
+)
+
+spu_cc_test(
+    name = "beaver_test",
+    size = "large",
+    srcs = ["beaver_test.cc"],
+    copts = EMP_COPT_FLAGS,
+    deps = [
+        ":beaver",
+        "//libspu/mpc/util:simulate",
+        "@com_google_googletest//:gtest",
+    ],
+)
+
+spu_cc_library(
+    name = "cheetah_he",
+    srcs = [
+        "lwe_ct.cc",
+        "lwe_decryptor.cc",
+        "lwe_secret_key.cc",
+        "matvec.cc",
+        "modswitch_helper.cc",
+        "poly_encoder.cc",
+        "util.cc",
+    ],
+    hdrs = [
+        "lwe_decryptor.h",
+        "matvec.h",
+        "modswitch_helper.h",
+        "poly_encoder.h",
+        "types.h",
+        "util.h",
+    ],
+    deps = [
+        "//libspu/core:array_ref",
+        "//libspu/core:xt_helper",
+        "//libspu/mpc/util:ring_ops",
+        "//libspu/mpc/util:seal_help",
+        "@com_github_microsoft_seal//:seal",
+        "@yacl//yacl/base:int128",
+        "@yacl//yacl/utils:parallel",
+    ],
+)
+
+spu_cc_test(
+    name = "rlwe2lwe_test",
+    srcs = ["rlwe2lwe_test.cc"],
+    deps = [
+        ":cheetah_he",
+        "//libspu/mpc/common:prg_tensor",
+        "@com_github_xtensor_xtensor//:xtensor",
+    ],
+)
+
+spu_cc_test(
+    name = "matvec_test",
+    srcs = ["matvec_test.cc"],
+    deps = [
+        ":cheetah_he",
+        "//libspu/mpc/common:prg_tensor",
+        "@com_github_xtensor_xtensor//:xtensor",
+    ],
+)

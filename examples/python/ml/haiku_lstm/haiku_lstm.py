@@ -1,3 +1,18 @@
+# Copyright 2023 Ant Group Co., Ltd.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+
 import argparse
 import json
 import math
@@ -13,7 +28,7 @@ import optax
 import pandas as pd
 import plotnine as gg
 
-import spu.binding.util.distributed as ppd
+import spu.util.distributed as ppd
 
 parser = argparse.ArgumentParser(description='SPU LSTM example.')
 parser.add_argument("--output_dir", default=os.getcwd())
@@ -198,6 +213,7 @@ def plot_samples(truth: np.ndarray, prediction: np.ndarray) -> gg.ggplot:
 sample_x, _ = next(valid_ds)
 sample_x = sample_x[:, :1]  # Shrink to batch-size 1.
 
+
 # Generate a prediction, feeding in ground truth at each point as input.
 def draw_predict(run_on_spu: bool):
     if run_on_spu:
@@ -240,6 +256,7 @@ sample_x, _ = next(valid_ds)
 context_length = SEQ_LEN // 8
 # Cut the batch-size 1 context from the start of the sequence.
 context = sample_x[:context_length, :1]
+
 
 # We can reuse params we got from training for inference - as long as the
 # declaration order is the same.

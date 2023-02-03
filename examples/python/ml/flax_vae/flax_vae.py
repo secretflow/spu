@@ -203,7 +203,7 @@ def prepare_image(x):
 
 import json
 import time
-import spu.binding.util.distributed as ppd
+import spu.util.distributed as ppd
 
 with open("examples/python/conf/3pc.json", 'r') as file:
     conf = json.load(file)

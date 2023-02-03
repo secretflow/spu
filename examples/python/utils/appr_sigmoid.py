@@ -16,6 +16,7 @@ import jax.numpy as jnp
 
 ### TODO: move to sf
 
+
 # taylor series referenced from:
 # https://mortendahl.github.io/2017/04/17/private-deep-learning-with-mpc/
 def t1_sig(x):

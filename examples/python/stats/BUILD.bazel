@@ -24,7 +24,7 @@ py_binary(
     ],
     deps = [
         "//examples/python/utils:dataset_utils",
-        "//spu/binding/util:distributed",
+        "//spu/util:distributed",
     ],
 )
 
@@ -36,7 +36,7 @@ py_binary(
     ],
     deps = [
         "//examples/python/utils:dataset_utils",
-        "//spu/binding/util:distributed",
+        "//spu/util:distributed",
     ],
 )
 
@@ -48,6 +48,6 @@ py_binary(
     ],
     deps = [
         "//examples/python/utils:dataset_utils",
-        "//spu/binding/util:distributed",
+        "//spu/util:distributed",
     ],
 )

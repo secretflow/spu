@@ -24,8 +24,8 @@ spu_cc_binary(
     ],
     deps = [
         ":utils",
-        "//spu/device:io",
-        "//spu/kernel/hal",
+        "//libspu/device:io",
+        "//libspu/kernel/hal",
         "@com_google_absl//absl/strings",
         "@llvm-project//llvm:Support",
         "@yacl//yacl/link:factory",
@@ -37,7 +37,7 @@ spu_cc_library(
     srcs = ["utils.cc"],
     hdrs = ["utils.h"],
     deps = [
-        "//spu/kernel:context",
+        "//libspu/kernel:context",
         "@com_google_absl//absl/strings",
         "@llvm-project//llvm:Support",
         "@yacl//yacl/link:factory",
@@ -49,9 +49,9 @@ spu_cc_binary(
     srcs = ["simple_pphlo.cc"],
     deps = [
         ":utils",
-        "//spu/device:api",
-        "//spu/device:io",
-        "//spu/device/pphlo:pphlo_executor",
+        "//libspu/device:api",
+        "//libspu/device:io",
+        "//libspu/device/pphlo:pphlo_executor",
         "@llvm-project//llvm:Support",
     ],
 )
@@ -61,8 +61,8 @@ spu_cc_binary(
     srcs = ["simple_in_memory_psi.cc"],
     deps = [
         ":utils",
-        "//spu/device:io",
-        "//spu/psi/core:ecdh_psi",
+        "//libspu/device:io",
+        "//libspu/psi/core:ecdh_psi",
         "@llvm-project//llvm:Support",
     ],
 )
@@ -75,8 +75,8 @@ spu_cc_binary(
     ],
     deps = [
         ":utils",
-        "//spu/device:io",
-        "//spu/psi:bucket_psi",
+        "//libspu/device:io",
+        "//libspu/psi:bucket_psi",
         "@llvm-project//llvm:Support",
     ],
 )
@@ -86,8 +86,8 @@ spu_cc_binary(
     srcs = ["simple_dp_psi.cc"],
     deps = [
         ":utils",
-        "//spu/device:io",
-        "//spu/psi/core/dp_psi",
+        "//libspu/device:io",
+        "//libspu/psi/core/dp_psi",
         "@llvm-project//llvm:Support",
     ],
 )

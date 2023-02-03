@@ -29,7 +29,7 @@
 #include "llvm/Support/CommandLine.h"
 #include "spdlog/spdlog.h"
 
-#include "spu/psi/core/ecdh_psi.h"
+#include "libspu/psi/core/ecdh_psi.h"
 
 llvm::cl::opt<uint32_t> DataSize("data_size",
                                  llvm::cl::desc("size of dataset to do psi"),
