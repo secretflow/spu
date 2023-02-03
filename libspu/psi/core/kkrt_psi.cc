@@ -59,11 +59,6 @@ size_t ExchangeSetSize(const std::shared_ptr<yacl::link::Context>& link_ctx,
   return peer_size;
 }
 
-inline bool GetBit(const std::vector<uint128_t>& choices, size_t idx) {
-  uint128_t mask = uint128_t(1) << (idx & 127);
-  return (choices[idx / 128] & mask) ? true : false;
-}
-
 //
 // stat_sec_param = 40, data_size 2^40 encode size is 15
 // data_size > 2^40, use encode size 16,
