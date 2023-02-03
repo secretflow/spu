@@ -46,6 +46,7 @@ jobs:
           name: "Install dependencies"
           command: |
             python3 -m pip install -r requirements.txt
+            sed -i "s/tensorflow /tensorflow-cpu /g" ./requirements-dev.txt
             python3 -m pip install -r requirements-dev.txt
       - run:
           name: "build"
