@@ -16,14 +16,9 @@
 
 #include "libspu/mpc/kernel.h"
 #include "libspu/mpc/semi2k/conversion.h"
-#include "libspu/mpc/util/cexpr.h"
+#include "libspu/mpc/utils/cexpr.h"
 
 namespace spu::mpc::cheetah {
-
-using util::Const;
-using util::K;
-using util::Log;
-using util::N;
 
 typedef spu::mpc::semi2k::A2B A2B;
 
@@ -31,9 +26,9 @@ class B2A : public UnaryKernel {
  public:
   static constexpr char kBindName[] = "b2a";
 
-  util::CExpr latency() const override { return Const(0); }
+  ce::CExpr latency() const override { return ce::Const(0); }
 
-  util::CExpr comm() const override { return Const(0); }
+  ce::CExpr comm() const override { return ce::Const(0); }
 
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& x) const override;
 };

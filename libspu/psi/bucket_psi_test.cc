@@ -86,7 +86,6 @@ class StreamTaskPsiTest : public testing::TestWithParam<TestParams> {
     }
   }
 
- protected:
   std::string tmp_dir_;
   std::vector<std::string> input_paths_;
   std::vector<std::string> output_paths_;

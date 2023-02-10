@@ -29,6 +29,6 @@ py_binary(
     ],
     deps = [
         ":utils",
-        "//spu/util:distributed",
+        "//spu/utils:distributed",
     ],
 )

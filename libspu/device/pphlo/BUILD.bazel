@@ -63,7 +63,7 @@ spu_cc_test(
     deps = [
         ":xla_verifier",
         "//libspu/device:test_utils",
-        "//libspu/mpc/util:simulate",
+        "//libspu/mpc/utils:simulate",
         "@llvm-project//mlir:Parser",
     ],
 )

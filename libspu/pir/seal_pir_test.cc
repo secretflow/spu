@@ -46,7 +46,7 @@ std::vector<uint8_t> GenerateDbData(TestParams params) {
   return db_data;
 }
 
-using duration_millis = std::chrono::duration<double, std::milli>;
+using DurationMillis = std::chrono::duration<double, std::milli>;
 }  // namespace
 
 class SealPirTest : public testing::TestWithParam<TestParams> {};
@@ -109,7 +109,7 @@ TEST_P(SealPirTest, Works) {
   std::vector<uint8_t> query_reply_bytes = pir_client_func.get();
 
   const auto pir_end_time = std::chrono::system_clock::now();
-  const duration_millis pir_time = pir_end_time - pir_start_time;
+  const DurationMillis pir_time = pir_end_time - pir_start_time;
 
   SPDLOG_INFO("pir time : {} ms", pir_time.count());
 

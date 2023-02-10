@@ -14,15 +14,17 @@
 
 #include "libspu/psi/core/bc22_psi/emp_vole.h"
 
+#include <utility>
+
 #include "spdlog/spdlog.h"
 #include "yacl/crypto/utils/rand.h"
 
 namespace spu::psi {
 
-WolverineVole::WolverineVole(
-    PsiRoleType psi_role, const std::shared_ptr<yacl::link::Context>& link_ctx)
+WolverineVole::WolverineVole(PsiRoleType psi_role,
+                             std::shared_ptr<yacl::link::Context> link_ctx)
     : party_((psi_role == PsiRoleType::Sender) ? emp::ALICE : emp::BOB),
-      link_ctx_(link_ctx) {
+      link_ctx_(std::move(link_ctx)) {
   // set CheetahIo
   for (size_t i = 0; i < kVoleSilentOTThreads; ++i) {
     silent_ios_[i] = std::make_unique<CheetahIo>(link_ctx_);
@@ -59,16 +61,16 @@ std::vector<WolverineVoleFieldType> WolverineVole::Extend(size_t vole_num) {
   return vole_blocks;
 }
 
-std::vector<WolverineVoleFieldType> GetPolynoimalCoefficients(
+std::vector<WolverineVoleFieldType> GetPolynomialCoefficients(
     const std::vector<std::string>& bin_data) {
-  YACL_ENFORCE(bin_data.size() <= 3);
+  SPU_ENFORCE(bin_data.size() <= 3);
 
   std::vector<WolverineVoleFieldType> block_coeffs(bin_data.size());
 
   std::vector<WolverineVoleFieldType> t(bin_data.size());
   for (size_t i = 0; i < bin_data.size(); ++i) {
-    YACL_ENFORCE(bin_data[0].length() <= sizeof(WolverineVoleFieldType),
-                 "{}>{}", bin_data[0].length(), sizeof(WolverineVoleFieldType));
+    SPU_ENFORCE(bin_data[0].length() <= sizeof(WolverineVoleFieldType), "{}>{}",
+                bin_data[0].length(), sizeof(WolverineVoleFieldType));
     t[i] = 0;
     std::memcpy(&t[i], bin_data[i].data(), bin_data[i].length());
     t[i] = mod(t[i], pr);
@@ -80,7 +82,9 @@ std::vector<WolverineVoleFieldType> GetPolynoimalCoefficients(
     block_coeffs[0] = mult_mod(t[0], t[1]);
     block_coeffs[1] = pr - mod(t[0] + t[1], pr);
   } else if (bin_data.size() == 3) {
-    WolverineVoleFieldType d01, d02, d12;
+    WolverineVoleFieldType d01;
+    WolverineVoleFieldType d02;
+    WolverineVoleFieldType d12;
 
     d01 = mult_mod(t[0], t[1]);
     d02 = mult_mod(t[0], t[2]);
@@ -100,20 +104,20 @@ std::vector<WolverineVoleFieldType> GetPolynoimalCoefficients(
   return block_coeffs;
 }
 
-WolverineVoleFieldType EvaluatePolynoimal(
+WolverineVoleFieldType EvaluatePolynomial(
     absl::Span<const WolverineVoleFieldType> coeffs, WolverineVoleFieldType x,
     WolverineVoleFieldType high_coeff) {
   std::vector<WolverineVoleFieldType> xp(coeffs.size() + 1);
 
   std::vector<WolverineVoleFieldType> block_coeffs;
-  for (size_t i = 0; i < coeffs.size(); ++i) {
-    block_coeffs.push_back((WolverineVoleFieldType)coeffs[i]);
+  for (unsigned __int128 coeff : coeffs) {
+    block_coeffs.push_back(static_cast<WolverineVoleFieldType>(coeff));
   }
 
-  WolverineVoleFieldType xx = mod((WolverineVoleFieldType)x, pr);
+  WolverineVoleFieldType xx = mod(x, pr);
 
   xp[0] = 1;
-  block_coeffs.push_back((WolverineVoleFieldType)high_coeff);
+  block_coeffs.push_back(high_coeff);
 
   for (size_t i = 1; i < xp.size(); ++i) {
     xp[i] = mult_mod(xp[i - 1], xx);
@@ -128,15 +132,15 @@ WolverineVoleFieldType EvaluatePolynoimal(
   return result;
 }
 
-WolverineVoleFieldType EvaluatePolynoimal(
+WolverineVoleFieldType EvaluatePolynomial(
     absl::Span<const WolverineVoleFieldType> coeffs, std::string_view x,
     WolverineVoleFieldType high_coeff) {
   WolverineVoleFieldType block_x = 0;
 
-  YACL_ENFORCE(x.length() <= sizeof(WolverineVoleFieldType));
+  SPU_ENFORCE(x.length() <= sizeof(WolverineVoleFieldType));
   std::memcpy(&block_x, x.data(), x.length());
 
-  return EvaluatePolynoimal(coeffs, block_x, high_coeff);
+  return EvaluatePolynomial(coeffs, block_x, high_coeff);
 }
 
 }  // namespace spu::psi

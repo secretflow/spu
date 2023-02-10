@@ -51,7 +51,7 @@ TEST(ArrayRefUtilTest, XtensorSanity) {
 TEST(ArrayRefUtilTest, MakeNdArray) {
   // make from scalar
   {
-    double _ = 1.0f;
+    double _ = 1.0F;
     auto a = xt_to_ndarray(_);
     EXPECT_EQ(a.eltype(), F64);
     EXPECT_EQ(a.buf()->size(), a.elsize());
@@ -59,7 +59,7 @@ TEST(ArrayRefUtilTest, MakeNdArray) {
     EXPECT_TRUE(a.shape().empty());
     EXPECT_TRUE(a.strides().empty());
     EXPECT_EQ(a.offset(), 0);
-    EXPECT_EQ(a.at<double>({}), 1.0f);
+    EXPECT_EQ(a.at<double>({}), 1.0F);
 
     EXPECT_THROW(xt_adapt<float>(a), std::exception);
   }

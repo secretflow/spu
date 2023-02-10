@@ -17,9 +17,9 @@
 #include <optional>
 
 #include "benchmark/benchmark.h"
-#include "yacl/base/exception.h"
 #include "yacl/link/test_util.h"
 
+#include "libspu/core/prelude.h"
 #include "libspu/psi/core/ecdh_psi.h"
 #include "libspu/psi/cryptor/cryptor_selector.h"
 #include "libspu/psi/utils/batch_provider.h"
@@ -57,7 +57,7 @@ static void BM_EcdhPsi(benchmark::State& state) {
     auto bob_items = CreateRangeItems(2, n);
 
     auto ctxs = yacl::link::test::SetupWorld(2);
-    auto proc = [](std::shared_ptr<yacl::link::Context> ctx,
+    auto proc = [](const std::shared_ptr<yacl::link::Context>& ctx,
                    const std::vector<std::string>& items,
                    size_t target_rank) -> std::vector<std::string> {
       const auto curve = GetOverrideCurveType();

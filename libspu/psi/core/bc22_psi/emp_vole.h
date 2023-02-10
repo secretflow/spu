@@ -23,9 +23,9 @@
 #include "emp-tool/utils/f2k.h"
 #include "emp-zk/emp-vole/constants.h"
 #include "emp-zk/emp-vole/emp-vole.h"
-#include "yacl/base/exception.h"
 #include "yacl/link/link.h"
 
+#include "libspu/core/prelude.h"
 #include "libspu/crypto/ot/silent/cheetah_io_channel.h"
 #include "libspu/psi/core/communication.h"
 #include "libspu/psi/utils/serialize.h"
@@ -45,7 +45,7 @@ using WolverineVoleFieldType = __uint128_t;
 class WolverineVole {
  public:
   WolverineVole(PsiRoleType psi_role,
-                const std::shared_ptr<yacl::link::Context> &link_ctx);
+                std::shared_ptr<yacl::link::Context> link_ctx);
 
   // extend baseVole get vole_num voles
   // Filed: mersenne prime 2^61 - 1
@@ -59,7 +59,7 @@ class WolverineVole {
     if (party_ == emp::ALICE) {
       return delta_;
     } else {
-      YACL_THROW("party: {} without delta", party_);
+      SPU_THROW("party: {} without delta", party_);
     }
   }
 
@@ -79,14 +79,14 @@ class WolverineVole {
   std::unique_ptr<VoleTriple<CheetahIo>> emp_zk_vole_;
 };
 
-std::vector<WolverineVoleFieldType> GetPolynoimalCoefficients(
+std::vector<WolverineVoleFieldType> GetPolynomialCoefficients(
     const std::vector<std::string> &bin_data);
 
-WolverineVoleFieldType EvaluatePolynoimal(
+WolverineVoleFieldType EvaluatePolynomial(
     absl::Span<const WolverineVoleFieldType> coeffs, std::string_view x,
     WolverineVoleFieldType high_coeff = 1);
 
-WolverineVoleFieldType EvaluatePolynoimal(
+WolverineVoleFieldType EvaluatePolynomial(
     absl::Span<const WolverineVoleFieldType> coeffs, WolverineVoleFieldType x,
     WolverineVoleFieldType high_coeff);
 

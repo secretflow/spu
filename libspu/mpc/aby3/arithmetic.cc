@@ -28,25 +28,25 @@
 #include "libspu/mpc/common/communicator.h"
 #include "libspu/mpc/common/prg_state.h"
 #include "libspu/mpc/common/pub2k.h"
-#include "libspu/mpc/util/linalg.h"
-#include "libspu/mpc/util/ring_ops.h"
+#include "libspu/mpc/utils/linalg.h"
+#include "libspu/mpc/utils/ring_ops.h"
 
 namespace spu::mpc::aby3 {
 namespace {
 
-// [zx]: Addapt this to new semantics of boolean sharing
+// [zx]: Adapt this to new semantics of boolean sharing
 std::vector<ArrayRef> a1b_offline(size_t sender, const ArrayRef& a,
                                   FieldType field, size_t self_rank,
                                   PrgState* prg_state, size_t numel,
                                   const ArrayRef& b) {
-  YACL_ENFORCE(a.eltype().isa<RingTy>());
-  YACL_ENFORCE(b.eltype().isa<BShrTy>());
+  SPU_ENFORCE(a.eltype().isa<RingTy>());
+  SPU_ENFORCE(b.eltype().isa<BShrTy>());
 
   return DISPATCH_ALL_FIELDS(field, "_", [&]() -> std::vector<ArrayRef> {
     using AShrT = ring2k_t;
 
-    ArrayRef m0(makeType<RingTy>(field), numel),
-        m1(makeType<RingTy>(field), numel);
+    ArrayRef m0(makeType<RingTy>(field), numel);
+    ArrayRef m1(makeType<RingTy>(field), numel);
     linalg::setConstantValue(numel, &m0.at<AShrT>(0), m0.stride(), AShrT(0));
     linalg::setConstantValue(numel, &m1.at<AShrT>(0), m1.stride(), AShrT(1));
 
@@ -98,8 +98,8 @@ std::vector<ArrayRef> a1b_offline(size_t sender, const ArrayRef& a,
   });
 }
 
-std::vector<uint8_t> ring_cast_boolean_(const ArrayRef& x) {
-  YACL_ENFORCE(x.eltype().isa<PtTy>(), "expect PtTy type, got={}", x.eltype());
+std::vector<uint8_t> ring_cast_boolean(const ArrayRef& x) {
+  SPU_ENFORCE(x.eltype().isa<PtTy>(), "expect PtTy type, got={}", x.eltype());
   const size_t numel = x.numel();
   std::vector<uint8_t> res(numel);
 
@@ -116,7 +116,7 @@ std::vector<uint8_t> ring_cast_boolean_(const ArrayRef& x) {
 
 }  // namespace
 
-ArrayRef RandA::proc(KernelEvalContext* ctx, size_t size) const {
+ArrayRef RandA::proc(KernelEvalContext* ctx, size_t size) {
   SPU_TRACE_MPC_LEAF(ctx, size);
 
   auto* prg_state = ctx->getState<PrgState>();
@@ -267,7 +267,7 @@ ArrayRef AddAP::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
   const auto* lhs_ty = lhs.eltype().as<AShrTy>();
   const auto* rhs_ty = rhs.eltype().as<Pub2kTy>();
 
-  YACL_ENFORCE(lhs_ty->field() == rhs_ty->field());
+  SPU_ENFORCE(lhs_ty->field() == rhs_ty->field());
   const auto field = lhs_ty->field();
 
   auto rank = comm->getRank();
@@ -298,7 +298,7 @@ ArrayRef AddAA::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
   const auto* lhs_ty = lhs.eltype().as<AShrTy>();
   const auto* rhs_ty = rhs.eltype().as<AShrTy>();
 
-  YACL_ENFORCE(lhs_ty->field() == rhs_ty->field());
+  SPU_ENFORCE(lhs_ty->field() == rhs_ty->field());
   const auto field = lhs_ty->field();
 
   return DISPATCH_ALL_FIELDS(field, "_", [&]() {
@@ -328,7 +328,7 @@ ArrayRef MulAP::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
   const auto* lhs_ty = lhs.eltype().as<AShrTy>();
   const auto* rhs_ty = rhs.eltype().as<Pub2kTy>();
 
-  YACL_ENFORCE(lhs_ty->field() == rhs_ty->field());
+  SPU_ENFORCE(lhs_ty->field() == rhs_ty->field());
   const auto field = lhs_ty->field();
 
   return DISPATCH_ALL_FIELDS(field, "_", [&]() {
@@ -396,15 +396,15 @@ ArrayRef MulA1B::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
                       const ArrayRef& rhs) const {
   SPU_TRACE_MPC_LEAF(ctx, lhs, rhs);
 
-  YACL_ENFORCE(lhs.numel() == rhs.numel());
-  YACL_ENFORCE(lhs.eltype().isa<AShrTy>());
-  YACL_ENFORCE(rhs.eltype().isa<BShrTy>() &&
-               rhs.eltype().as<BShrTy>()->nbits() == 1);
+  SPU_ENFORCE(lhs.numel() == rhs.numel());
+  SPU_ENFORCE(lhs.eltype().isa<AShrTy>());
+  SPU_ENFORCE(rhs.eltype().isa<BShrTy>() &&
+              rhs.eltype().as<BShrTy>()->nbits() == 1);
 
   const auto field = lhs.eltype().as<AShrTy>()->field();
   const size_t in_nbits = rhs.eltype().as<BShrTy>()->nbits();
 
-  YACL_ENFORCE(in_nbits <= SizeOf(field) * 8, "invalid nbits={}", in_nbits);
+  SPU_ENFORCE(in_nbits <= SizeOf(field) * 8, "invalid nbits={}", in_nbits);
 
   const auto numel = rhs.numel();
 
@@ -474,24 +474,24 @@ ArrayRef MulA1B::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
 
     // helper send wc to receiver
     if (self_rank == (sender1 + 1) % 3) {
-      ot1.help(ring_cast_boolean_(b2));  // 1k
+      ot1.help(ring_cast_boolean(b2));  // 1k
       r1.first = data1[0];
     }
     if (self_rank == (sender2 + 1) % 3) {
-      ot2.help(ring_cast_boolean_(b2));  // 1k
+      ot2.help(ring_cast_boolean(b2));  // 1k
       r2.first = data2[0];
     }
 
     // receiver recv c2 and send c2 to helper
     if (self_rank == (sender1 + 2) % 3) {
       // 1 latency
-      auto c1 = ot1.recv(ring_cast_boolean_(b1));
+      auto c1 = ot1.recv(ring_cast_boolean(b1));
       comm->sendAsync((sender1 + 1) % 3, c1, "ABY3-MUL-R1C1");  // 1k
       r1 = {c1, data1[0]};
     }
     if (self_rank == (sender2 + 2) % 3) {
       // 1 latency overlapping with "ABY3-MUL-R1C1"
-      auto c1 = ot2.recv(ring_cast_boolean_(b1));
+      auto c1 = ot2.recv(ring_cast_boolean(b1));
       comm->sendAsync((sender2 + 1) % 3, c1, "ABY3-MUL-R2C1");  // 1k
       r2 = {c1, data2[0]};
     }
@@ -538,12 +538,12 @@ ArrayRef MulA1B::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
 // matmul family
 ////////////////////////////////////////////////////////////////////
 ArrayRef MatMulAP::proc(KernelEvalContext* ctx, const ArrayRef& x,
-                        const ArrayRef& y, size_t M, size_t N, size_t K) const {
+                        const ArrayRef& y, size_t m, size_t n, size_t k) const {
   SPU_TRACE_MPC_LEAF(ctx, x, y);
 
   const auto field = x.eltype().as<Ring2k>()->field();
 
-  ArrayRef z(makeType<AShrTy>(field), M * N);
+  ArrayRef z(makeType<AShrTy>(field), m * n);
 
   auto x1 = getFirstShare(x);
   auto x2 = getSecondShare(x);
@@ -551,14 +551,14 @@ ArrayRef MatMulAP::proc(KernelEvalContext* ctx, const ArrayRef& x,
   auto z1 = getFirstShare(z);
   auto z2 = getSecondShare(z);
 
-  ring_mmul_(z1, x1, y, M, N, K);
-  ring_mmul_(z2, x2, y, M, N, K);
+  ring_mmul_(z1, x1, y, m, n, k);
+  ring_mmul_(z2, x2, y, m, n, k);
 
   return z;
 }
 
 ArrayRef MatMulAA::proc(KernelEvalContext* ctx, const ArrayRef& x,
-                        const ArrayRef& y, size_t M, size_t N, size_t K) const {
+                        const ArrayRef& y, size_t m, size_t n, size_t k) const {
   SPU_TRACE_MPC_LEAF(ctx, x, y);
 
   const auto field = x.eltype().as<Ring2k>()->field();
@@ -566,7 +566,7 @@ ArrayRef MatMulAA::proc(KernelEvalContext* ctx, const ArrayRef& x,
   auto* prg_state = ctx->getState<PrgState>();
 
   auto r = std::async([&] {
-    auto [r0, r1] = prg_state->genPrssPair(field, M * N);
+    auto [r0, r1] = prg_state->genPrssPair(field, m * n);
     return ring_sub(r0, r1);
   });
 
@@ -579,12 +579,12 @@ ArrayRef MatMulAA::proc(KernelEvalContext* ctx, const ArrayRef& x,
   // z1 := x1*y1 + x1*y2 + x2*y1 + k1
   // z2 := x2*y2 + x2*y3 + x3*y2 + k2
   // z3 := x3*y3 + x3*y1 + x1*y3 + k3
-  ArrayRef out(makeType<AShrTy>(field), M * N);
+  ArrayRef out(makeType<AShrTy>(field), m * n);
   auto o1 = getFirstShare(out);
   auto o2 = getSecondShare(out);
 
-  auto t2 = std::async(ring_mmul, x2, y1, M, N, K);
-  auto t0 = ring_mmul(x1, ring_add(y1, y2), M, N, K);  //
+  auto t2 = std::async(ring_mmul, x2, y1, m, n, k);
+  auto t0 = ring_mmul(x1, ring_add(y1, y2), m, n, k);  //
   auto z1 = ring_sum({t0, t2.get(), r.get()});
 
   auto f = std::async([&] { ring_assign(o1, z1); });
@@ -661,7 +661,7 @@ ArrayRef TruncA::proc(KernelEvalContext* ctx, const ArrayRef& in,
     }
 
     default:
-      YACL_THROW("Party number exceeds 3!");
+      SPU_THROW("Party number exceeds 3!");
   }
 }
 
@@ -670,7 +670,7 @@ std::vector<T> openWith(Communicator* comm, size_t peer_rank,
                         absl::Span<T const> in) {
   comm->sendAsync(peer_rank, in, "_");
   auto peer = comm->recv<T>(peer_rank, "_");
-  YACL_ENFORCE(peer.size() == in.size());
+  SPU_ENFORCE(peer.size() == in.size());
   std::vector<T> out(in.size());
 
   pforeach(0, in.size(), [&](int64_t idx) {  //
@@ -860,7 +860,7 @@ ArrayRef TruncAPr::proc(KernelEvalContext* ctx, const ArrayRef& in,
         _out[idx][1] = y1[idx];
       });
     } else {
-      YACL_THROW("Party number exceeds 3!");
+      SPU_THROW("Party number exceeds 3!");
     }
   });
 

@@ -19,8 +19,7 @@
 #include <mutex>
 #include <unordered_map>
 
-#include "yacl/base/exception.h"
-
+#include "libspu/core/prelude.h"
 #include "libspu/psi/operator/base_operator.h"
 
 #include "libspu/psi/psi.pb.h"
@@ -40,8 +39,8 @@ class OperatorFactory {
 
   void Register(const std::string& type, OperatorCreator creator) {
     std::lock_guard<std::mutex> lock(mutex_);
-    YACL_ENFORCE(creators_.find(type) == creators_.end(),
-                 "duplicated creator registered for {}", type);
+    SPU_ENFORCE(creators_.find(type) == creators_.end(),
+                "duplicated creator registered for {}", type);
     creators_[type] = std::move(creator);
   }
 
@@ -50,7 +49,7 @@ class OperatorFactory {
       const std::shared_ptr<yacl::link::Context>& lctx) {
     std::string type = PsiType_Name(config.psi_type());
     auto creator = creators_[type];
-    YACL_ENFORCE(creator, "no creator registered for operator type: {}", type);
+    SPU_ENFORCE(creator, "no creator registered for operator type: {}", type);
     return creator(config, lctx);
   }
 

@@ -16,11 +16,9 @@
 
 #include "libspu/mpc/kernel.h"
 #include "libspu/mpc/semi2k/arithmetic.h"
-#include "libspu/mpc/util/cexpr.h"
+#include "libspu/mpc/utils/cexpr.h"
 
 namespace spu::mpc::cheetah {
-
-using util::Const;
 
 using ZeroA = spu::mpc::semi2k::ZeroA;
 
@@ -43,16 +41,14 @@ using MatMulAP = spu::mpc::semi2k::MatMulAP;
 using LShiftA = spu::mpc::semi2k::LShiftA;
 
 class TruncA : public TruncAKernel {
-  bool heuristic_ = true;
-
  public:
   static constexpr char kBindName[] = "trunc_a";
 
-  util::CExpr latency() const override { return Const(0); }
+  ce::CExpr latency() const override { return ce::Const(0); }
 
-  util::CExpr comm() const override { return Const(0); }
+  ce::CExpr comm() const override { return ce::Const(0); }
 
-  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in,
+  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& x,
                 size_t bits) const override;
 
   bool hasMsbError() const override { return false; }
@@ -66,9 +62,9 @@ class MsbA2B : public UnaryKernel {
  public:
   static constexpr char kBindName[] = "msb_a2b";
 
-  util::CExpr latency() const override { return Const(0); }
+  ce::CExpr latency() const override { return ce::Const(0); }
 
-  util::CExpr comm() const override { return Const(0); }
+  ce::CExpr comm() const override { return ce::Const(0); }
 
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& x) const override;
 };
@@ -77,31 +73,31 @@ class MulAA : public BinaryKernel {
  public:
   static constexpr char kBindName[] = "mul_aa";
 
-  Kind kind() const override { return Kind::kDynamic; }
+  Kind kind() const override { return Kind::Dynamic; }
 
   // TODO(juhou)
-  util::CExpr latency() const override { return Const(0); }
-  util::CExpr comm() const override { return Const(0); }
+  ce::CExpr latency() const override { return ce::Const(0); }
+  ce::CExpr comm() const override { return ce::Const(0); }
 
-  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& lhs,
-                const ArrayRef& rhs) const override;
+  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& x,
+                const ArrayRef& y) const override;
 };
 
 class MatMulAA : public MatmulKernel {
  public:
   static constexpr char kBindName[] = "mmul_aa";
 
-  Kind kind() const override { return Kind::kDynamic; }
+  Kind kind() const override { return Kind::Dynamic; }
 
-  util::CExpr latency() const override { return Const(1); }
+  ce::CExpr latency() const override { return ce::Const(1); }
 
-  util::CExpr comm() const override {
+  ce::CExpr comm() const override {
     // TODO(jint) express M, N, K
     return nullptr;
   }
 
-  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& A, const ArrayRef& B,
-                size_t M, size_t N, size_t K) const override;
+  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& x, const ArrayRef& y,
+                size_t m, size_t n, size_t k) const override;
 };
 
 }  // namespace spu::mpc::cheetah

@@ -20,7 +20,6 @@
 #include "absl/strings/str_split.h"
 #include "llvm/Support/CommandLine.h"
 #include "spdlog/spdlog.h"
-#include "yacl/link/test_util.h"
 
 #include "libspu/device/api.h"
 #include "libspu/device/pphlo/pphlo_executor.h"
@@ -28,7 +27,7 @@
 #include "libspu/device/test_utils.h"
 #include "libspu/kernel/hal/debug.h"
 #include "libspu/kernel/value.h"
-#include "libspu/mpc/util/simulate.h"
+#include "libspu/mpc/utils/simulate.h"
 
 llvm::cl::opt<std::string> SnapshotDir(
     "snapshot_dir", llvm::cl::desc("folder contains core snapshot files"),
@@ -76,14 +75,14 @@ spu::device::SnapshotProto ParseSnapshotFile(
     const std::filesystem::path &snapshot_file) {
   spu::device::SnapshotProto snapshot;
   {
-    YACL_ENFORCE(std::filesystem::exists(snapshot_file),
-                 "Serialized snapshot file {} does not exit",
-                 snapshot_file.c_str());
+    SPU_ENFORCE(std::filesystem::exists(snapshot_file),
+                "Serialized snapshot file {} does not exit",
+                snapshot_file.c_str());
     SPDLOG_INFO("Read snapshot file from {}", snapshot_file.c_str());
     std::ifstream stream(snapshot_file, std::ios::binary);
-    YACL_ENFORCE(snapshot.ParseFromIstream(&stream),
-                 "Parse serialized snapshot file {} failed",
-                 snapshot_file.c_str());
+    SPU_ENFORCE(snapshot.ParseFromIstream(&stream),
+                "Parse serialized snapshot file {} failed",
+                snapshot_file.c_str());
   }
 
   return snapshot;
@@ -108,7 +107,7 @@ void RpcBasedRunner(const std::filesystem::path &snapshot_dir) {
 void MemBasedRunner(const std::filesystem::path &snapshot_dir) {
   auto world_size = NumProc.getValue();
 
-  spu::mpc::util::simulate(
+  spu::mpc::utils::simulate(
       world_size, [&](const std::shared_ptr<::yacl::link::Context> &lctx) {
         auto snapshot_file =
             snapshot_dir / fmt::format("snapshot_{}.spu", lctx->Rank());

@@ -49,18 +49,18 @@ struct element_t_s {
     return __VA_ARGS__();                            \
   }
 
-#define DISPATCH_ALL_ELSIZE(SIZE, ...)                         \
-  [&] {                                                        \
-    switch (SIZE) {                                            \
-      __CASE_SIZE(1, __VA_ARGS__)                              \
-      __CASE_SIZE(2, __VA_ARGS__)                              \
-      __CASE_SIZE(4, __VA_ARGS__)                              \
-      __CASE_SIZE(8, __VA_ARGS__)                              \
-      __CASE_SIZE(16, __VA_ARGS__)                             \
-      __CASE_SIZE(32, __VA_ARGS__)                             \
-      default:                                                 \
-        YACL_THROW("un-implemented for elment_size={}", SIZE); \
-    }                                                          \
+#define DISPATCH_ALL_ELSIZE(SIZE, ...)                        \
+  [&] {                                                       \
+    switch (SIZE) {                                           \
+      __CASE_SIZE(1, __VA_ARGS__)                             \
+      __CASE_SIZE(2, __VA_ARGS__)                             \
+      __CASE_SIZE(4, __VA_ARGS__)                             \
+      __CASE_SIZE(8, __VA_ARGS__)                             \
+      __CASE_SIZE(16, __VA_ARGS__)                            \
+      __CASE_SIZE(32, __VA_ARGS__)                            \
+      default:                                                \
+        SPU_THROW("un-implemented for elment_size={}", SIZE); \
+    }                                                         \
   }()
 
 Value permute(HalContext *ctx, const Value &x, size_t axis,
@@ -210,7 +210,7 @@ void CmpSwap(HalContext *ctx, const CompFn &comparator_body,
 
 void GenerateBitonicMergeIndex(size_t n,
                                std::vector<std::vector<size_t>> *indices) {
-  YACL_ENFORCE(absl::has_single_bit(n));
+  SPU_ENFORCE(absl::has_single_bit(n));
   size_t stage = absl::bit_width(n) - 1;
 
   for (int i = static_cast<int>(stage); i > 0; i--) {
@@ -232,7 +232,7 @@ void GenerateBitonicMergeIndex(size_t n,
 
 void GenerateBitonicSortIndex(size_t n,
                               std::vector<std::vector<size_t>> *indices) {
-  YACL_ENFORCE(absl::has_single_bit(n));
+  SPU_ENFORCE(absl::has_single_bit(n));
   size_t stage = absl::bit_width(n) - 1;
 
   for (int stage_idx = 0; stage_idx < static_cast<int>(stage - 1);
@@ -300,17 +300,17 @@ PrepProcessPadding(HalContext *ctx,
         }
 
         if (fst_is_padding) {
-          value_records.emplace_back(std::make_pair(fst_idx, sec_values));
-          value_records.emplace_back(std::make_pair(sec_idx, fst_values));
+          value_records.emplace_back(fst_idx, sec_values);
+          value_records.emplace_back(sec_idx, fst_values);
         } else {
-          value_records.emplace_back(std::make_pair(fst_idx, fst_values));
-          value_records.emplace_back(std::make_pair(sec_idx, sec_values));
+          value_records.emplace_back(fst_idx, fst_values);
+          value_records.emplace_back(sec_idx, sec_values);
         }
       }
     }
   }
 
-  YACL_ENFORCE_EQ(padding_indices.size(), new_padding_indices.size());
+  SPU_ENFORCE_EQ(padding_indices.size(), new_padding_indices.size());
 
   return {new_padding_indices, value_records};
 }
@@ -335,7 +335,7 @@ std::vector<spu::Value> BitonicSort(
     HalContext *ctx, const CompFn &comparator_body,
     const std::vector<spu::Value> &values_to_sort, size_t n,
     const std::vector<size_t> &init_padding_indices) {
-  YACL_ENFORCE(absl::has_single_bit(n));
+  SPU_ENFORCE(absl::has_single_bit(n));
 
   std::vector<std::vector<size_t>> indices;
   GenerateBitonicSortIndex(n, &indices);
@@ -375,7 +375,7 @@ std::vector<spu::Value> BitonicSort(
 
     target.clear();
 
-    for (auto v : permuted_values) {
+    for (const auto &v : permuted_values) {
       target.emplace_back(permute(ctx, v, 0, xt::adapt(inverse_permutation)));
     }
 
@@ -405,7 +405,7 @@ std::vector<spu::Value> Sort(HalContext *ctx,
   std::vector<int64_t> zero_base(rank, 0);
   std::vector<int64_t> increment(rank, 1);
   int64_t sort_dim_elements = key_shape[sort_dim];
-  YACL_ENFORCE(
+  SPU_ENFORCE(
       sort_dim >= 0 && sort_dim < static_cast<int64_t>(increment.size()),
       "Unexpected out-of-bound sort dimension {}"
       " accessing increment of size {} ",
@@ -452,8 +452,8 @@ std::vector<spu::Value> Sort(HalContext *ctx,
                    }
                  });
   } else {
-    YACL_ENFORCE(!is_stable,
-                 "Stable sort is unsupported if comparator return is secret.");
+    SPU_ENFORCE(!is_stable,
+                "Stable sort is unsupported if comparator return is secret.");
 
     // Iterate through each dimension except 'sort_dim'.
     forEachIndex(

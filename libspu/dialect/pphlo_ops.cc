@@ -38,8 +38,8 @@ namespace mlir::pphlo {
 
 namespace {
 
-Type convertPtTypeToPPhloType(Type ptType) {
-  return pphlo::PublicType::get(ptType.getContext(), ptType);
+Type convertPtTypeToPPhloType(Type pt_type) {
+  return pphlo::PublicType::get(pt_type.getContext(), pt_type);
 }
 
 // Checks if the vector `nums` has duplicates.
@@ -108,36 +108,35 @@ class TransposeReshapeGenericDotGeneral
  public:
   using OpRewritePattern<DotGeneralOp>::OpRewritePattern;
 
-  Value TransposeIfNonConsecutive(OpBuilder& b, Location loc, Value src,
-                                  ArrayRef<int64_t> targetOrder) const {
-    if (isConsecutive(targetOrder)) {
+  static Value TransposeIfNonConsecutive(OpBuilder& b, Location loc, Value src,
+                                         ArrayRef<int64_t> target_order) {
+    if (isConsecutive(target_order)) {
       return src;
     }
     auto type = src.getType().cast<RankedTensorType>();
     SmallVector<int64_t, 4> transposeShape;
-    for (auto i : targetOrder) {
+    for (auto i : target_order) {
       transposeShape.push_back(type.getDimSize(i));
     }
     return b.create<pphlo::TransposeOp>(
         loc, RankedTensorType::get(transposeShape, type.getElementType()), src,
-        b.getI64TensorAttr(targetOrder));
+        b.getI64TensorAttr(target_order));
   }
 
-  Value ReshapeIfMorethan3D(OpBuilder& b, Location loc, Value src,
-                            size_t dimsBorder0, size_t dimsBorder1) const {
+  static Value ReshapeIfMorethan3D(OpBuilder& b, Location loc, Value src,
+                                   size_t dims_border0, size_t dims_border1) {
     auto type = src.getType().cast<RankedTensorType>();
     if (type.getRank() <= 3) {
       return src;
     }
     auto shape = type.getShape();
     SmallVector<int64_t, 4> result_shape = {
-        std::accumulate(shape.begin(), shape.begin() + dimsBorder0, 1,
-                        std::multiplies<int64_t>()),
-        std::accumulate(shape.begin() + dimsBorder0,
-                        shape.begin() + dimsBorder1, 1,
-                        std::multiplies<int64_t>()),
-        std::accumulate(shape.begin() + dimsBorder1, shape.end(), 1,
-                        std::multiplies<int64_t>())};
+        std::accumulate(shape.begin(), shape.begin() + dims_border0, 1,
+                        std::multiplies<>()),
+        std::accumulate(shape.begin() + dims_border0,
+                        shape.begin() + dims_border1, 1, std::multiplies<>()),
+        std::accumulate(shape.begin() + dims_border1, shape.end(), 1,
+                        std::multiplies<>())};
     return b.create<pphlo::ReshapeOp>(
         loc, RankedTensorType::get(result_shape, type.getElementType()), src);
   }
@@ -243,7 +242,7 @@ class TransposeReshapeGenericDotGeneral
     // if lhs's shape or rhs's shape has collapsed, we need reshape the result
     bool needReshapeResult = lhsNewType.getRank() < lhsShapeType.getRank() ||
                              rhsNewType.getRank() < rhsShapeType.getRank();
-    // batching、lhs parallel、rhs parallel this order is a convension
+    // batching、lhs parallel、rhs parallel this order is a convention
     SmallVector<int64_t, 4> newShape = {lhsNewType.getShape()[0],
                                         lhsNewType.getShape()[1],
                                         rhsNewType.getShape()[2]};
@@ -521,7 +520,7 @@ OpFoldResult ReshapeOp::fold(FoldAdaptor) {
 }
 
 OpFoldResult TransposeOp::fold(FoldAdaptor) {
-  for (auto it : llvm::enumerate(getPermutation().getValues<APInt>())) {
+  for (const auto& it : llvm::enumerate(getPermutation().getValues<APInt>())) {
     if (it.index() != it.value()) {
       return {};
     }
@@ -532,7 +531,7 @@ OpFoldResult TransposeOp::fold(FoldAdaptor) {
 LogicalResult PadOp::inferReturnTypeComponents(
     MLIRContext*, Optional<Location> location, ValueShapeRange operands,
     DictionaryAttr attributes, RegionRange regions,
-    SmallVectorImpl<ShapedTypeComponents>& inferredReturnShapes) {
+    SmallVectorImpl<ShapedTypeComponents>& inferred_return_shapes) {
   PadOp::Adaptor adaptor(operands, attributes, regions);
   auto inputType = adaptor.getOperand().getType().cast<RankedTensorType>();
   auto padType = adaptor.getPaddingValue().getType().cast<RankedTensorType>();
@@ -594,7 +593,7 @@ LogicalResult PadOp::inferReturnTypeComponents(
     }
     resultShape.push_back(expectedOutput);
   }
-  inferredReturnShapes.emplace_back(resultShape, inputType.getElementType());
+  inferred_return_shapes.emplace_back(resultShape, inputType.getElementType());
 
   return success();
 }
@@ -753,14 +752,14 @@ static void printField(AsmPrinter& printer, StringRef name, ArrayRef<T> field,
 
 template <typename... Ts>
 static void printStruct(AsmPrinter& printer, StringRef name,
-                        Ts... printFields) {
+                        Ts... print_fields) {
   printer << "<";
   StringRef separator = "";
   // Fold expression to print each entry in the parameter pack.
   // TODO(mhlo-team): this can be simplified when TF moves to C++17.
-  using unused = int[];
-  (void)unused{0, (printField(printer, std::get<0>(printFields),
-                              std::get<1>(printFields), separator),
+  using Unused = int[];
+  (void)Unused{0, (printField(printer, std::get<0>(print_fields),
+                              std::get<1>(print_fields), separator),
                    0)...};
   printer << ">";
 }
@@ -776,9 +775,9 @@ static void printStruct(AsmPrinter& printer, StringRef name,
 /// not provided, all fields must be followed by a '='.
 static ParseResult parseStruct(
     AsmParser& parser, ArrayRef<StringRef> keywords,
-    ArrayRef<llvm::function_ref<ParseResult()>> parseFuncs,
+    ArrayRef<llvm::function_ref<ParseResult()>> parse_funcs,
     ArrayRef<bool> parse_equal = {}) {
-  assert(keywords.size() == parseFuncs.size());
+  assert(keywords.size() == parse_funcs.size());
   assert(parse_equal.empty() || parse_equal.size() == keywords.size());
   SmallVector<bool> seen(keywords.size(), false);
   while (failed(parser.parseOptionalGreater())) {
@@ -796,7 +795,7 @@ static ParseResult parseStruct(
             return failure();
           }
         }
-        if (failed(parseFuncs[index]())) {
+        if (failed(parse_funcs[index]())) {
           return failure();
         }
         if (failed(parser.parseOptionalComma())) {
@@ -917,19 +916,19 @@ enum NonSpatialDim : int64_t {
 
 struct DenseMapInfoNonSpatialDim {
   static inline NonSpatialDim getEmptyKey() {
-    return NonSpatialDim(DenseMapInfo<int64_t>::getEmptyKey());
+    return static_cast<NonSpatialDim>(DenseMapInfo<int64_t>::getEmptyKey());
   }
 
   static inline NonSpatialDim getTombstoneKey() {
-    return NonSpatialDim(DenseMapInfo<int64_t>::getTombstoneKey());
+    return static_cast<NonSpatialDim>(DenseMapInfo<int64_t>::getTombstoneKey());
   }
 
-  static unsigned getHashValue(const NonSpatialDim& Key) {
-    return DenseMapInfo<int64_t>::getHashValue(Key);
+  static unsigned getHashValue(const NonSpatialDim& key) {
+    return DenseMapInfo<int64_t>::getHashValue(key);
   }
 
-  static bool isEqual(const NonSpatialDim& LHS, const NonSpatialDim& RHS) {
-    return LHS == RHS;
+  static bool isEqual(const NonSpatialDim& lhs, const NonSpatialDim& rhs) {
+    return lhs == rhs;
   }
 };
 
@@ -1018,7 +1017,7 @@ ParseResult parseConvolutionDimensions(AsmParser& parser,
   // Parsing a single set of dim numbers gives the spatial dimensions as a
   // single ArrayRef<int64_t> and a list of non-spatial dimensions as
   // IntegerAttrs (indexed by the NonSpatialDim enum).
-  using parse_dim_result_t =
+  using ParseDimResultT =
       std::pair<llvm::SmallVector<int64_t>,
                 llvm::SmallDenseMap<NonSpatialDim, int64_t, 4,
                                     DenseMapInfoNonSpatialDim>>;
@@ -1028,7 +1027,7 @@ ParseResult parseConvolutionDimensions(AsmParser& parser,
   // error messages, so making it a set keeps the error messages deterministic.
   auto parse_dims =
       [&](std::set<NonSpatialDim, std::greater<>> allowed_non_spatial_dims,
-          parse_dim_result_t& parsed_dims) -> ParseResult {
+          ParseDimResultT& parsed_dims) -> ParseResult {
     auto& spatial_dims = std::get<0>(parsed_dims);
     auto& non_spatial_dims = std::get<1>(parsed_dims);
     spatial_dims.clear();
@@ -1146,8 +1145,9 @@ ParseResult parseConvolutionDimensions(AsmParser& parser,
       if (it == spatial_dims_map.end()) {
         // Have an upper bound on the number of unspecified dimensions to print
         // in the error message.
-        if (unspecified_spatial_dims.size() < kPrintUnspecifiedDimsMax)
+        if (unspecified_spatial_dims.size() < kPrintUnspecifiedDimsMax) {
           unspecified_spatial_dims.push_back(dim);
+        }
         continue;
       }
       spatial_dims[dim] = it->second;
@@ -1166,7 +1166,7 @@ ParseResult parseConvolutionDimensions(AsmParser& parser,
     return success();
   };
 
-  parse_dim_result_t parsed_dims;
+  ParseDimResultT parsed_dims;
   if (parse_dims({IOBatch, IOFeature}, parsed_dims)) {
     return failure();
   }
@@ -1252,17 +1252,17 @@ void printWindowAttribute(OpAsmPrinter& p, DenseElementsAttr attribute) {
 void printWindowAttributes(
     OpAsmPrinter& p, Operation* op,
     llvm::Optional<DenseIntElementsAttr> window_strides) {
-  using pair_t = std::pair<DenseElementsAttr, StringRef>;
-  std::array<pair_t, 1> printed_attributes = {{
+  using PairT = std::pair<DenseElementsAttr, StringRef>;
+  std::array<PairT, 1> printed_attributes = {{
       {window_strides ? *window_strides : nullptr, "stride"},
   }};
 
   // Do not print attributes that do no exist.
   auto non_null_attributes = llvm::make_filter_range(
       printed_attributes,
-      [](const pair_t& a) { return static_cast<bool>(a.first); });
+      [](const PairT& a) { return static_cast<bool>(a.first); });
 
-  llvm::interleaveComma(non_null_attributes, p, [&](const pair_t& a) {
+  llvm::interleaveComma(non_null_attributes, p, [&](const PairT& a) {
     p << a.second << " = [";
     printWindowAttribute(p, a.first);
     p << "]";
@@ -1274,7 +1274,7 @@ ParseResult parseWindowAttributes(OpAsmParser& parser,
   StringRef attribute_name;
 
   // Helper to parse an array of the form [ e0, e1, .. ]
-  auto parse_array = [&](std::function<ParseResult(void)> parse_element,
+  auto parse_array = [&](const std::function<ParseResult(void)>& parse_element,
                          llvm::Optional<size_t> expected_size =
                              std::nullopt) -> ParseResult {
     if (parser.parseLSquare()) {

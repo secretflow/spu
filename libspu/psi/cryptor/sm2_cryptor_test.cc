@@ -19,9 +19,10 @@
 
 #include "absl/strings/escaping.h"
 #include "gtest/gtest.h"
-#include "yacl/base/exception.h"
 #include "yacl/crypto/base/hash/hash_utils.h"
 #include "yacl/crypto/tools/prg.h"
+
+#include "libspu/core/prelude.h"
 
 namespace spu::psi {
 
@@ -61,12 +62,12 @@ TEST_P(Sm2CryptorTest, Works) {
     absl::Span<const char> items_span =
         absl::MakeSpan(&items_a[idx * kEccKeySize], kEccKeySize);
     std::vector<uint8_t> point_data = sm2_cryptor_a->HashToCurve(items_span);
-    std::memcpy(&items_a_point[idx * (kEccKeySize + 1)], &point_data[0],
+    std::memcpy(&items_a_point[idx * (kEccKeySize + 1)], point_data.data(),
                 point_data.size());
 
     items_span = absl::MakeSpan(&items_b[idx * kEccKeySize], kEccKeySize);
     point_data = sm2_cryptor_b->HashToCurve(items_span);
-    std::memcpy(&items_b_point[idx * (kEccKeySize + 1)], &point_data[0],
+    std::memcpy(&items_b_point[idx * (kEccKeySize + 1)], point_data.data(),
                 point_data.size());
   }
 

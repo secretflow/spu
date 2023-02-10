@@ -346,25 +346,25 @@ TEST(ArrayElementwiseTest, MulTwoConstantU32s) {
 }
 
 TEST(ArrayElementwiseTest, AndPredR1) {
-  xt::xarray<uint8_t> a = {false, false, true, true};
-  xt::xarray<uint8_t> b = {false, true, false, true};
+  xt::xarray<bool> a = {false, false, true, true};
+  xt::xarray<bool> b = {false, true, false, true};
 
   auto ret =
       test::evalBinaryOp<uint8_t>(VIS_PUBLIC, VIS_PUBLIC, bitwise_and, a, b);
 
-  xt::xarray<uint8_t> expected = {false, false, false, true};
+  xt::xarray<bool> expected = {false, false, false, true};
 
   EXPECT_EQ(expected, ret);
 }
 
 TEST(ArrayElementwiseTest, AndPredR2) {
-  xt::xarray<uint8_t> a = {{false, false}, {true, true}};
-  xt::xarray<uint8_t> b = {{false, true}, {false, true}};
+  xt::xarray<bool> a = {{false, false}, {true, true}};
+  xt::xarray<bool> b = {{false, true}, {false, true}};
 
   auto ret =
       test::evalBinaryOp<uint8_t>(VIS_PUBLIC, VIS_PUBLIC, bitwise_and, a, b);
 
-  xt::xarray<uint8_t> expected = {{false, false}, {false, true}};
+  xt::xarray<bool> expected = {{false, false}, {false, true}};
 
   EXPECT_EQ(expected, ret);
 }
@@ -418,25 +418,25 @@ TEST(ArrayElementwiseTest, AndU32R2) {
 }
 
 TEST(ArrayElementwiseTest, OrPredR1) {
-  xt::xarray<uint8_t> a = {false, false, true, true};
-  xt::xarray<uint8_t> b = {false, true, false, true};
+  xt::xarray<bool> a = {false, false, true, true};
+  xt::xarray<bool> b = {false, true, false, true};
 
   auto ret =
       test::evalBinaryOp<uint8_t>(VIS_PUBLIC, VIS_PUBLIC, bitwise_or, a, b);
 
-  xt::xarray<uint8_t> expected = {false, true, true, true};
+  xt::xarray<bool> expected = {false, true, true, true};
 
   EXPECT_EQ(expected, ret);
 }
 
 TEST(ArrayElementwiseTest, OrPredR2) {
-  xt::xarray<uint8_t> a = {{false, false}, {true, true}};
-  xt::xarray<uint8_t> b = {{false, true}, {false, true}};
+  xt::xarray<bool> a = {{false, false}, {true, true}};
+  xt::xarray<bool> b = {{false, true}, {false, true}};
 
   auto ret =
       test::evalBinaryOp<uint8_t>(VIS_PUBLIC, VIS_PUBLIC, bitwise_or, a, b);
 
-  xt::xarray<uint8_t> expected = {{false, true}, {true, true}};
+  xt::xarray<bool> expected = {{false, true}, {true, true}};
 
   EXPECT_EQ(expected, ret);
 }
@@ -490,25 +490,25 @@ TEST(ArrayElementwiseTest, OrU32R2) {
 }
 
 TEST(ArrayElementwiseTest, XorPredR1) {
-  xt::xarray<uint8_t> a = {false, false, true, true};
-  xt::xarray<uint8_t> b = {false, true, false, true};
+  xt::xarray<bool> a = {false, false, true, true};
+  xt::xarray<bool> b = {false, true, false, true};
 
   auto ret =
       test::evalBinaryOp<uint8_t>(VIS_PUBLIC, VIS_PUBLIC, bitwise_xor, a, b);
 
-  xt::xarray<uint8_t> expected = {false, true, true, false};
+  xt::xarray<bool> expected = {false, true, true, false};
 
   EXPECT_EQ(expected, ret);
 }
 
 TEST(ArrayElementwiseTest, XorPredR2) {
-  xt::xarray<uint8_t> a = {{false, false}, {true, true}};
-  xt::xarray<uint8_t> b = {{false, true}, {false, true}};
+  xt::xarray<bool> a = {{false, false}, {true, true}};
+  xt::xarray<bool> b = {{false, true}, {false, true}};
 
   auto ret =
       test::evalBinaryOp<uint8_t>(VIS_PUBLIC, VIS_PUBLIC, bitwise_xor, a, b);
 
-  xt::xarray<uint8_t> expected = {{false, true}, {true, false}};
+  xt::xarray<bool> expected = {{false, true}, {true, false}};
 
   EXPECT_EQ(expected, ret);
 }
@@ -628,7 +628,7 @@ TEST(ArrayElementwiseTest, CompareEqF32s) {
   auto ret =
       test::evalBinaryOp<uint8_t>(VIS_PUBLIC, VIS_PUBLIC, equal, lhs, rhs);
 
-  xt::xarray<uint8_t> expected = {false, false, true, false, false};
+  xt::xarray<bool> expected = {false, false, true, false, false};
 
   EXPECT_EQ(expected, ret);
 }
@@ -640,7 +640,7 @@ TEST(ArrayElementwiseTest, CompareEqF32sTO) {
   auto ret =
       test::evalBinaryOp<uint8_t>(VIS_PUBLIC, VIS_PUBLIC, equal, lhs, rhs);
 
-  xt::xarray<uint8_t> expected = {false, false, true, true, false};
+  xt::xarray<bool> expected = {false, false, true, true, false};
 
   EXPECT_EQ(expected, ret);
 }
@@ -652,7 +652,7 @@ TEST(ArrayElementwiseTest, CompareGeF32s) {
   auto ret = test::evalBinaryOp<uint8_t>(VIS_PUBLIC, VIS_PUBLIC, greater_equal,
                                          lhs, rhs);
 
-  xt::xarray<uint8_t> expected = {false, true, true, false, false};
+  xt::xarray<bool> expected = {false, true, true, false, false};
 
   // FIXME: nan?
   // EXPECT_EQ(expected, ret);
@@ -669,7 +669,7 @@ TEST(ArrayElementwiseTest, CompareGeF32sTO) {
   auto ret = test::evalBinaryOp<uint8_t>(VIS_PUBLIC, VIS_PUBLIC, greater_equal,
                                          lhs, rhs);
 
-  xt::xarray<uint8_t> expected = {false, true, true, true, false, true};
+  xt::xarray<bool> expected = {false, true, true, true, false, true};
 
   // FIXME: nan?
   // EXPECT_EQ(expected, ret);
@@ -682,7 +682,7 @@ TEST(ArrayElementwiseTest, CompareGtF32s) {
   auto ret =
       test::evalBinaryOp<uint8_t>(VIS_PUBLIC, VIS_PUBLIC, greater, lhs, rhs);
 
-  xt::xarray<uint8_t> expected = {false, true, true, false, false};
+  xt::xarray<bool> expected = {false, true, true, false, false};
 
   // FIXME: nan?
   // EXPECT_EQ(expected, ret);
@@ -695,7 +695,7 @@ TEST(ArrayElementwiseTest, CompareLeF32s) {
   auto ret =
       test::evalBinaryOp<uint8_t>(VIS_PUBLIC, VIS_PUBLIC, less_equal, lhs, rhs);
 
-  xt::xarray<uint8_t> expected = {true, true, false, false, false};
+  xt::xarray<bool> expected = {true, true, false, false, false};
 
   // FIXME: nan?
   // EXPECT_EQ(expected, ret);
@@ -708,7 +708,7 @@ TEST(ArrayElementwiseTest, CompareLtF32s) {
   auto ret =
       test::evalBinaryOp<uint8_t>(VIS_PUBLIC, VIS_PUBLIC, less, lhs, rhs);
 
-  xt::xarray<uint8_t> expected = {true, false, false, false, false};
+  xt::xarray<bool> expected = {true, false, false, false, false};
 
   // FIXME: nan?
   // EXPECT_EQ(expected, ret);
@@ -723,8 +723,8 @@ TEST(ArrayElementwiseTest, CompareEqS32s) {
   auto ret =
       test::evalBinaryOp<uint8_t>(VIS_PUBLIC, VIS_PUBLIC, equal, lhs, rhs);
 
-  xt::xarray<uint8_t> expected = {true,  false, false, false, true,
-                                  false, false, false, true};
+  xt::xarray<bool> expected = {true,  false, false, false, true,
+                               false, false, false, true};
 
   EXPECT_EQ(expected, ret);
 }
@@ -736,7 +736,7 @@ TEST(ArrayElementwiseTest, CompareNeF32s) {
   auto ret =
       test::evalBinaryOp<uint8_t>(VIS_PUBLIC, VIS_PUBLIC, not_equal, lhs, rhs);
 
-  xt::xarray<uint8_t> expected = {true, false, true, true, true};
+  xt::xarray<bool> expected = {true, false, true, true, true};
 
   EXPECT_EQ(expected, ret);
 }
@@ -750,8 +750,8 @@ TEST(ArrayElementwiseTest, CompareNeS32s) {
   auto ret =
       test::evalBinaryOp<uint8_t>(VIS_PUBLIC, VIS_PUBLIC, not_equal, lhs, rhs);
 
-  xt::xarray<uint8_t> expected = {false, true, true, true, false,
-                                  true,  true, true, false};
+  xt::xarray<bool> expected = {false, true, true, true, false,
+                               true,  true, true, false};
 
   EXPECT_EQ(expected, ret);
 }
@@ -765,8 +765,8 @@ TEST(ArrayElementwiseTest, CompareGeS32s) {
   auto ret = test::evalBinaryOp<uint8_t>(VIS_PUBLIC, VIS_PUBLIC, greater_equal,
                                          lhs, rhs);
 
-  xt::xarray<uint8_t> expected = {true,  false, false, true, true,
-                                  false, true,  true,  true};
+  xt::xarray<bool> expected = {true,  false, false, true, true,
+                               false, true,  true,  true};
 
   EXPECT_EQ(expected, ret);
 }
@@ -780,8 +780,8 @@ TEST(ArrayElementwiseTest, CompareGtS32s) {
   auto ret =
       test::evalBinaryOp<uint8_t>(VIS_PUBLIC, VIS_PUBLIC, greater, lhs, rhs);
 
-  xt::xarray<uint8_t> expected = {false, false, false, true, false,
-                                  false, true,  true,  false};
+  xt::xarray<bool> expected = {false, false, false, true, false,
+                               false, true,  true,  false};
 
   EXPECT_EQ(expected, ret);
 }
@@ -795,8 +795,8 @@ TEST(ArrayElementwiseTest, CompareLeS32s) {
   auto ret =
       test::evalBinaryOp<uint8_t>(VIS_PUBLIC, VIS_PUBLIC, less_equal, lhs, rhs);
 
-  xt::xarray<uint8_t> expected = {true, true,  true,  false, true,
-                                  true, false, false, true};
+  xt::xarray<bool> expected = {true, true,  true,  false, true,
+                               true, false, false, true};
 
   EXPECT_EQ(expected, ret);
 }
@@ -810,8 +810,8 @@ TEST(ArrayElementwiseTest, CompareLtS32s) {
   auto ret =
       test::evalBinaryOp<uint8_t>(VIS_PUBLIC, VIS_PUBLIC, less, lhs, rhs);
 
-  xt::xarray<uint8_t> expected = {false, true,  true,  false, false,
-                                  true,  false, false, false};
+  xt::xarray<bool> expected = {false, true,  true,  false, false,
+                               true,  false, false, false};
 
   EXPECT_EQ(expected, ret);
 }
@@ -824,8 +824,8 @@ TEST(ArrayElementwiseTest, CompareEqU32s) {
   auto ret =
       test::evalBinaryOp<uint8_t>(VIS_PUBLIC, VIS_PUBLIC, equal, lhs, rhs);
 
-  xt::xarray<uint8_t> expected = {true,  false, false, false, true,
-                                  false, false, false, true};
+  xt::xarray<bool> expected = {true,  false, false, false, true,
+                               false, false, false, true};
 
   EXPECT_EQ(expected, ret);
 }
@@ -838,8 +838,8 @@ TEST(ArrayElementwiseTest, CompareNeU32s) {
   auto ret =
       test::evalBinaryOp<uint8_t>(VIS_PUBLIC, VIS_PUBLIC, not_equal, lhs, rhs);
 
-  xt::xarray<uint8_t> expected = {false, true, true, true, false,
-                                  true,  true, true, false};
+  xt::xarray<bool> expected = {false, true, true, true, false,
+                               true,  true, true, false};
 
   EXPECT_EQ(expected, ret);
 }
@@ -852,8 +852,8 @@ TEST(ArrayElementwiseTest, CompareGeU32s) {
   auto ret = test::evalBinaryOp<uint8_t>(VIS_PUBLIC, VIS_PUBLIC, greater_equal,
                                          lhs, rhs);
 
-  xt::xarray<uint8_t> expected = {true,  false, false, true, true,
-                                  false, true,  true,  true};
+  xt::xarray<bool> expected = {true,  false, false, true, true,
+                               false, true,  true,  true};
 
   EXPECT_EQ(expected, ret);
 }
@@ -866,8 +866,8 @@ TEST(ArrayElementwiseTest, CompareGtU32s) {
   auto ret =
       test::evalBinaryOp<uint8_t>(VIS_PUBLIC, VIS_PUBLIC, greater, lhs, rhs);
 
-  xt::xarray<uint8_t> expected = {false, false, false, true, false,
-                                  false, true,  true,  false};
+  xt::xarray<bool> expected = {false, false, false, true, false,
+                               false, true,  true,  false};
 
   EXPECT_EQ(expected, ret);
 }
@@ -880,8 +880,8 @@ TEST(ArrayElementwiseTest, CompareLeU32s) {
   auto ret =
       test::evalBinaryOp<uint8_t>(VIS_PUBLIC, VIS_PUBLIC, less_equal, lhs, rhs);
 
-  xt::xarray<uint8_t> expected = {true, true,  true,  false, true,
-                                  true, false, false, true};
+  xt::xarray<bool> expected = {true, true,  true,  false, true,
+                               true, false, false, true};
 
   EXPECT_EQ(expected, ret);
 }
@@ -894,8 +894,8 @@ TEST(ArrayElementwiseTest, CompareLtU32s) {
   auto ret =
       test::evalBinaryOp<uint8_t>(VIS_PUBLIC, VIS_PUBLIC, less, lhs, rhs);
 
-  xt::xarray<uint8_t> expected = {false, true,  true,  false, false,
-                                  true,  false, false, false};
+  xt::xarray<bool> expected = {false, true,  true,  false, false,
+                               true,  false, false, false};
 
   EXPECT_EQ(expected, ret);
 }
@@ -1107,15 +1107,15 @@ TEST(ArrayElementwiseTest, ClampS32Vector) {
 }
 
 TEST(ArrayElementwiseTest, ClampU32Vector) {
-  xt::xarray<uint32_t> min_vector = {1, 2, 1, 2, 0, ~0u - 4};
+  xt::xarray<uint32_t> min_vector = {1, 2, 1, 2, 0, ~0U - 4};
   xt::xarray<uint32_t> arg_vector = {2, 10, 5, 1, 4, 10};
-  xt::xarray<uint32_t> max_vector = {3, 5, 25, 5, 123, ~0u};
+  xt::xarray<uint32_t> max_vector = {3, 5, 25, 5, 123, ~0U};
 
   auto ret =
       test::evalTernaryOp<uint32_t>(VIS_PUBLIC, VIS_PUBLIC, VIS_PUBLIC, clamp,
                                     min_vector, arg_vector, max_vector);
 
-  xt::xarray<uint32_t> expected = {2, 5, 5, 2, 4, ~0u - 4};
+  xt::xarray<uint32_t> expected = {2, 5, 5, 2, 4, ~0U - 4};
 
   EXPECT_EQ(expected, ret);
 }

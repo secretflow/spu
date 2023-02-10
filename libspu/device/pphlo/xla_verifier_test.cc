@@ -21,13 +21,13 @@
 #include "xtensor/xarray.hpp"
 
 #include "libspu/device/test_utils.h"
-#include "libspu/mpc/util/simulate.h"
+#include "libspu/mpc/utils/simulate.h"
 
 namespace spu::device::pphlo {
 
 void failed(bool v) {
   if (!v) {
-    YACL_THROW("Equal check failed");
+    SPU_THROW("Equal check failed");
   }
 }
 
@@ -47,7 +47,7 @@ void runner(const OpFcn &f, absl::Span<const xt::xarray<InT>> inputs,
     io_->InFeed(fmt::format("nout{}", idx), negatives[idx], VIS_SECRET);
   }
 
-  ::spu::mpc::util::simulate(
+  ::spu::mpc::utils::simulate(
       2, [&](const std::shared_ptr<yacl::link::Context> &lctx) {
         HalContext hctx(conf, lctx);
         XlaVerifier verifier(&hctx);
@@ -265,7 +265,7 @@ TEST(Verify, Select) {
   io_->InFeed("pout", xt::xarray<int32_t>{1, 2, 7, 8}, VIS_SECRET);
   io_->InFeed("nout", xt::xarray<int32_t>{0, 0, 0, 0}, VIS_SECRET);
 
-  ::spu::mpc::util::simulate(
+  ::spu::mpc::utils::simulate(
       2, [&](const std::shared_ptr<yacl::link::Context> &lctx) {
         HalContext hctx(conf, lctx);
         XlaVerifier verifier(&hctx);

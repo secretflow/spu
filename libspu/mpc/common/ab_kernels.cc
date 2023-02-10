@@ -73,7 +73,7 @@ void BitIntlB::evaluate(KernelEvalContext* ctx) const {
   // swap  ^^  ^^  ^^  ^^
   //      0101010101010101
   const size_t nbits = in.eltype().as<BShare>()->nbits();
-  YACL_ENFORCE(absl::has_single_bit(nbits));
+  SPU_ENFORCE(absl::has_single_bit(nbits));
   const int64_t logn = Log2Ceil(nbits);
 
   const size_t size = in.numel();
@@ -110,7 +110,7 @@ void BitDeintlB::evaluate(KernelEvalContext* ctx) const {
   // swap     ^^^^^^^^
   //      0000000011111111
   const size_t nbits = in.eltype().as<BShare>()->nbits();
-  YACL_ENFORCE(absl::has_single_bit(nbits));
+  SPU_ENFORCE(absl::has_single_bit(nbits));
   const int64_t logn = Log2Ceil(nbits);
   const size_t size = in.numel();
 
@@ -170,7 +170,7 @@ ArrayRef ppa_kogge_stone(Object* ctx, const ArrayRef& lhs, const ArrayRef& rhs,
 std::pair<ArrayRef, ArrayRef> bit_scatter(Object* ctx, const ArrayRef& in,
                                           size_t stride) {
   const size_t nbits = numBits(in);
-  YACL_ENFORCE(absl::has_single_bit(nbits), "unsupported {}", nbits);
+  SPU_ENFORCE(absl::has_single_bit(nbits), "unsupported {}", nbits);
   auto out = bitdeintl_b(ctx, in, stride);
 
   auto hi = rshift_b(ctx, out, nbits / 2);
@@ -183,9 +183,9 @@ std::pair<ArrayRef, ArrayRef> bit_scatter(Object* ctx, const ArrayRef& in,
 ArrayRef bit_gather(Object* ctx, const ArrayRef& hi, const ArrayRef& lo,
                     size_t stride) {
   const size_t nbits = numBits(hi);
-  YACL_ENFORCE(absl::has_single_bit(nbits), "unsupported {}", nbits);
-  YACL_ENFORCE(nbits == numBits(lo), "nbits mismatch {}, {}", nbits,
-               numBits(lo));
+  SPU_ENFORCE(absl::has_single_bit(nbits), "unsupported {}", nbits);
+  SPU_ENFORCE(nbits == numBits(lo), "nbits mismatch {}, {}", nbits,
+              numBits(lo));
 
   auto out = xor_bb(ctx, lshift_b(ctx, hi, nbits), lo);
   return bitintl_b(ctx, out, stride);
@@ -194,7 +194,7 @@ ArrayRef bit_gather(Object* ctx, const ArrayRef& hi, const ArrayRef& lo,
 // The sklansky adder.
 ArrayRef ppa_sklansky(Object* ctx, ArrayRef const& lhs, ArrayRef const& rhs,
                       size_t nbits) {
-  YACL_ENFORCE(lhs.numel() == rhs.numel());
+  SPU_ENFORCE(lhs.numel() == rhs.numel());
 
   constexpr std::array<uint128_t, 7> kSelMask = {{
       yacl::MakeUint128(0xFFFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFF),  // invalid
@@ -211,15 +211,15 @@ ArrayRef ppa_sklansky(Object* ctx, ArrayRef const& lhs, ArrayRef const& rhs,
   auto G = and_bb(ctx, lhs, rhs);
 
   const size_t bit_width = numBits(lhs);
-  YACL_ENFORCE(bit_width == numBits(rhs), "nbits mismatch {}, {}", bit_width,
-               numBits(rhs));
+  SPU_ENFORCE(bit_width == numBits(rhs), "nbits mismatch {}, {}", bit_width,
+              numBits(rhs));
   for (int idx = 0; idx < Log2Ceil(nbits); ++idx) {
     auto [Ph, Pl] = bit_scatter(ctx, P, idx);
     auto [Gh, Gl] = bit_scatter(ctx, G, idx);
-    // YACL_ENFORCE(numBits(Ph) == bit_width / 2);
-    // YACL_ENFORCE(numBits(Pl) == bit_width / 2);
-    // YACL_ENFORCE(numBits(Gh) == bit_width / 2);
-    // YACL_ENFORCE(numBits(Gl) == bit_width / 2);
+    // SPU_ENFORCE(numBits(Ph) == bit_width / 2);
+    // SPU_ENFORCE(numBits(Pl) == bit_width / 2);
+    // SPU_ENFORCE(numBits(Gh) == bit_width / 2);
+    // SPU_ENFORCE(numBits(Gl) == bit_width / 2);
 
     const auto s_mask = make_p(ctx, kSelMask[idx], lhs.numel());
     auto Gs = and_bp(ctx, Gl, s_mask);
@@ -228,8 +228,8 @@ ArrayRef ppa_sklansky(Object* ctx, ArrayRef const& lhs, ArrayRef const& rhs,
       Gs = xor_bb(ctx, Gs, rshift_b(ctx, Gs, 1 << j));
       Ps = xor_bb(ctx, Ps, rshift_b(ctx, Ps, 1 << j));
     }
-    // YACL_ENFORCE(numBits(Ps) == bit_width / 2);
-    // YACL_ENFORCE(numBits(Gs) == bit_width / 2);
+    // SPU_ENFORCE(numBits(Ps) == bit_width / 2);
+    // SPU_ENFORCE(numBits(Gs) == bit_width / 2);
 
     // Ph = Ph & Ps
     // Gh = Gh ^ (Ph & Gs)
@@ -239,8 +239,8 @@ ArrayRef ppa_sklansky(Object* ctx, ArrayRef const& lhs, ArrayRef const& rhs,
         });
     Ph = std::move(PG[0]);
     Gh = xor_bb(ctx, Gh, PG[1]);
-    // YACL_ENFORCE(numBits(Gh) == numBits(G) / 2);
-    // YACL_ENFORCE(numBits(Ph) == numBits(P) / 2);
+    // SPU_ENFORCE(numBits(Gh) == numBits(G) / 2);
+    // SPU_ENFORCE(numBits(Ph) == numBits(P) / 2);
 
     P = bit_gather(ctx, Ph, Pl, idx);
     G = bit_gather(ctx, Gh, Gl, idx);
@@ -258,8 +258,8 @@ ArrayRef AddBB::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
   SPU_TRACE_MPC_LEAF(ctx, lhs, rhs);
 
   const size_t nbits = numBits(lhs);
-  YACL_ENFORCE(nbits == numBits(rhs), "nbits mismatch {}!={}", nbits,
-               numBits(rhs));
+  SPU_ENFORCE(nbits == numBits(rhs), "nbits mismatch {}!={}", nbits,
+              numBits(rhs));
 
   switch (type_) {
     case CircuitType::KoggeStone:
@@ -267,7 +267,7 @@ ArrayRef AddBB::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
     case CircuitType::Sklansky:
       return ppa_sklansky(ctx->caller(), lhs, rhs, nbits);
     default:
-      YACL_THROW("unknown circuit type {}", static_cast<uint32_t>(type_));
+      SPU_THROW("unknown circuit type {}", static_cast<uint32_t>(type_));
   }
 }
 

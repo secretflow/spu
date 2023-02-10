@@ -117,12 +117,12 @@ ArrayRef P2B::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
       pforeach(0, in.numel(), [&](int64_t idx) {
         if (comm->getRank() == 0) {
           _out[idx][0] = static_cast<BShrT>(_in[idx]);
-          _out[idx][1] = 0u;
+          _out[idx][1] = 0U;
         } else if (comm->getRank() == 1) {
-          _out[idx][0] = 0u;
-          _out[idx][1] = 0u;
+          _out[idx][0] = 0U;
+          _out[idx][1] = 0U;
         } else {
-          _out[idx][0] = 0u;
+          _out[idx][0] = 0U;
           _out[idx][1] = static_cast<BShrT>(_in[idx]);
         }
       });
@@ -355,8 +355,8 @@ ArrayRef ARShiftB::proc(KernelEvalContext* ctx, const ArrayRef& in,
 
   // arithmetic right shift expects to work on ring, or the behaviour is
   // undefined.
-  YACL_ENFORCE(in_ty->nbits() == SizeOf(field) * 8, "in.type={}, field={}",
-               in.eltype(), field);
+  SPU_ENFORCE(in_ty->nbits() == SizeOf(field) * 8, "in.type={}, field={}",
+              in.eltype(), field);
   const PtType out_btype = in_ty->getBacktype();
   const size_t out_nbits = in_ty->nbits();
 
@@ -380,7 +380,7 @@ ArrayRef BitrevB::proc(KernelEvalContext* ctx, const ArrayRef& in, size_t start,
                        size_t end) const {
   SPU_TRACE_MPC_LEAF(ctx, in, start, end);
 
-  YACL_ENFORCE(start <= end && end <= 128);
+  SPU_ENFORCE(start <= end && end <= 128);
 
   const auto* in_ty = in.eltype().as<BShrTy>();
   const size_t out_nbits = std::max(in_ty->nbits(), end);
@@ -457,7 +457,7 @@ void BitIntlB::evaluate(KernelEvalContext* ctx) const {
   //      0101010101010101
   const auto* in_ty = in.eltype().as<BShrTy>();
   const size_t nbits = in_ty->nbits();
-  YACL_ENFORCE(absl::has_single_bit(nbits));
+  SPU_ENFORCE(absl::has_single_bit(nbits));
 
   ArrayRef out = in.clone();
   DISPATCH_UINT_PT_TYPES(in_ty->getBacktype(), "_", [&]() {
@@ -520,7 +520,7 @@ void BitDeintlB::evaluate(KernelEvalContext* ctx) const {
   //      0000000011111111
   const auto* in_ty = in.eltype().as<BShrTy>();
   const size_t nbits = in_ty->nbits();
-  YACL_ENFORCE(absl::has_single_bit(nbits));
+  SPU_ENFORCE(absl::has_single_bit(nbits));
 
   ArrayRef out = in.clone();
   DISPATCH_UINT_PT_TYPES(in_ty->getBacktype(), "_", [&]() {

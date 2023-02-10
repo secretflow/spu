@@ -35,8 +35,8 @@ spu_cc_library(
     srcs = ["trace.cc"],
     hdrs = ["trace.h"],
     deps = [
+        "//libspu/core:prelude",
         "@com_google_absl//absl/types:span",
-        "@yacl//yacl/base:exception",
         "@yacl//yacl/utils:scope_guard",
     ],
 )
@@ -46,7 +46,17 @@ spu_cc_test(
     srcs = ["trace_test.cc"],
     deps = [
         ":trace",
+        "//libspu/core:prelude",
+    ],
+)
+
+spu_cc_library(
+    name = "prelude",
+    srcs = [],
+    hdrs = ["prelude.h"],
+    deps = [
         "@yacl//yacl/base:exception",
+        "@yacl//yacl/utils:scope_guard",
     ],
 )
 
@@ -56,8 +66,8 @@ spu_cc_library(
     hdrs = ["type_util.h"],
     deps = [
         "//libspu:spu_cc_proto",
+        "//libspu/core:prelude",
         "@com_google_absl//absl/types:span",
-        "@yacl//yacl/base:exception",
         "@yacl//yacl/base:int128",
     ],
 )
@@ -90,7 +100,7 @@ spu_cc_library(
     srcs = ["shape_util.cc"],
     hdrs = ["shape_util.h"],
     deps = [
-        "@yacl//yacl/base:exception",
+        "//libspu/core:prelude",
     ],
 )
 
@@ -108,7 +118,7 @@ spu_cc_library(
     hdrs = ["type.h"],
     deps = [
         ":type_util",
-        "@yacl//yacl/base:exception",
+        "//libspu/core:prelude",
     ],
 )
 
@@ -129,8 +139,8 @@ spu_cc_library(
         ":parallel_utils",
         ":type",
         ":vectorize",
+        "//libspu/core:prelude",
         "@yacl//yacl/base:buffer",
-        "@yacl//yacl/base:exception",
     ],
 )
 
@@ -151,8 +161,8 @@ spu_cc_library(
         ":parallel_utils",
         ":shape_util",
         ":type",
+        "//libspu/core:prelude",
         "@yacl//yacl/base:buffer",
-        "@yacl//yacl/base:exception",
     ],
 )
 
@@ -189,8 +199,8 @@ spu_cc_library(
     name = "vectorize",
     hdrs = ["vectorize.h"],
     deps = [
+        "//libspu/core:prelude",
         "@com_google_absl//absl/types:span",
-        "@yacl//yacl/base:exception",
     ],
 )
 
@@ -217,9 +227,9 @@ spu_cc_library(
     srcs = ["logging.cc"],
     hdrs = ["logging.h"],
     deps = [
+        "//libspu/core:prelude",
         "@com_github_brpc_brpc//:butil",
         "@com_github_fmtlib_fmt//:fmtlib",
-        "@yacl//yacl/base:exception",
     ],
 )
 

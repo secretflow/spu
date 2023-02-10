@@ -56,7 +56,7 @@ class ArrayRef {
            int64_t stride, int64_t offset);
 
   // create a new buffer of uninitialized elements and ref to it.
-  ArrayRef(Type eltype, size_t numel);
+  ArrayRef(const Type& eltype, size_t numel);
 
   // Return total number of elements.
   int64_t numel() const { return numel_; }
@@ -127,13 +127,13 @@ struct SimdTrait<ArrayRef> {
 
   template <typename InputIt>
   static ArrayRef pack(InputIt first, InputIt last, PackInfo& pi) {
-    YACL_ENFORCE(first != last);
+    SPU_ENFORCE(first != last);
 
     size_t total_numel = 0;
     const Type ty = first->eltype();
     for (auto itr = first; itr != last; ++itr) {
-      YACL_ENFORCE(itr->eltype() == ty, "type mismatch {} != {}", itr->eltype(),
-                   ty);
+      SPU_ENFORCE(itr->eltype() == ty, "type mismatch {} != {}", itr->eltype(),
+                  ty);
       total_numel += itr->numel();
     }
     ArrayRef result(first->eltype(), total_numel);
@@ -153,8 +153,8 @@ struct SimdTrait<ArrayRef> {
     const int64_t total_num =
         std::accumulate(pi.begin(), pi.end(), 0, std::plus<>());
 
-    YACL_ENFORCE(v.numel() == total_num, "split number mismatch {} != {}",
-                 v.numel(), total_num);
+    SPU_ENFORCE(v.numel() == total_num, "split number mismatch {} != {}",
+                v.numel(), total_num);
 
     int64_t offset = 0;
     for (const auto& sz : pi) {
@@ -166,7 +166,7 @@ struct SimdTrait<ArrayRef> {
   }
 };
 
-ArrayRef makeConstantArrayRef(Type eltype, size_t numel);
+ArrayRef makeConstantArrayRef(const Type& eltype, size_t numel);
 
 // A strided array view type.
 template <typename T>

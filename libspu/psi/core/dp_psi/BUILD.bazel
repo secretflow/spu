@@ -27,6 +27,7 @@ spu_cc_library(
         "dp_psi_utils.h",
     ],
     deps = [
+        "//libspu/core:prelude",
         "//libspu/psi/core:ecdh_3pc_psi",
         "//libspu/psi/core:ecdh_psi",
         "//libspu/psi/cryptor:cryptor_selector",
@@ -34,7 +35,6 @@ spu_cc_library(
         "//libspu/psi/utils:cipher_store",
         "//libspu/psi/utils:serialize",
         "@com_google_absl//absl/strings",
-        "@yacl//yacl/base:exception",
         "@yacl//yacl/crypto/utils:rand",
         "@yacl//yacl/link",
         "@yacl//yacl/utils:parallel",

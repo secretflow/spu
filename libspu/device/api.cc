@@ -197,7 +197,7 @@ void setupTrace(spu::HalContext *hctx, const spu::RuntimeConfig &rt_config) {
 void SPUErrorHandler(void *use_data, const char *reason, bool gen_crash_diag) {
   (void)use_data;
   (void)gen_crash_diag;
-  YACL_THROW(reason);
+  SPU_THROW(reason);
 }
 
 std::mutex ErrorHandlerMutex;
@@ -257,10 +257,10 @@ void executeImpl(OpExecutor *executor, spu::HalContext *hctx,
     auto moduleOpRef =
         mlir::parseSourceString<mlir::ModuleOp>(executable.code(), &mlir_ctx);
 
-    YACL_ENFORCE(moduleOpRef, "MLIR parser failure");
+    SPU_ENFORCE(moduleOpRef, "MLIR parser failure");
 
     auto entry_function = moduleOpRef->lookupSymbol<mlir::func::FuncOp>("main");
-    YACL_ENFORCE(entry_function, "main module not found");
+    SPU_ENFORCE(entry_function, "main module not found");
 
     ExecutionOptions opts;
     opts.do_type_check = rt_config.enable_type_checker();

@@ -79,4 +79,15 @@ TEST(ConstTest, Empty_Dot) {
   EXPECT_EQ(ret.shape()[1], 0);
 }
 
+TEST(ConstTest, MixedIntMul) {
+  HalContext hctx = hal::test::makeRefHalContext();
+  auto c0 = Constant(&hctx, static_cast<int32_t>(1), {1, 1});
+  auto c1 = Constant(&hctx, static_cast<int16_t>(1), {1, 1});
+
+  // M = 1, N = 1, K = 0, result should be 1x1
+  auto ret = Mul(&hctx, c0, c1);
+
+  EXPECT_EQ(ret.dtype(), DataType::DT_I32);
+}
+
 }  // namespace spu::kernel::hlo

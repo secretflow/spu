@@ -34,7 +34,7 @@ NdArrayRef make_ndarray_impl(PtBufferView bv) {
 
 }  // namespace
 
-NdArrayRef xt_to_ndarray(PtBufferView bv) {
+NdArrayRef xt_to_ndarray(const PtBufferView& bv) {
 #define CASE(NAME, CTYPE, _)             \
   case NAME: {                           \
     return make_ndarray_impl<CTYPE>(bv); \
@@ -43,13 +43,13 @@ NdArrayRef xt_to_ndarray(PtBufferView bv) {
   switch (bv.pt_type) {
     FOREACH_PT_TYPES(CASE)
     default:
-      YACL_THROW("should not be here, pt_type={}", bv.pt_type);
+      SPU_THROW("should not be here, pt_type={}", bv.pt_type);
   }
 
 #undef CASE
 }
 
-std::ostream& operator<<(std::ostream& out, PtBufferView v) {
+std::ostream& operator<<(std::ostream& out, const PtBufferView& v) {
   out << fmt::format("PtBufferView<{},{}x{},{}>", v.ptr,
                      fmt::join(v.shape, "x"), v.pt_type,
                      fmt::join(v.strides, "x"));

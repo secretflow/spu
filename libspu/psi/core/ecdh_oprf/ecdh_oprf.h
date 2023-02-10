@@ -24,8 +24,8 @@
 #include "openssl/rand.h"
 #include "spdlog/spdlog.h"
 #include "yacl/base/byte_container_view.h"
-#include "yacl/base/exception.h"
 
+#include "libspu/core/prelude.h"
 #include "libspu/psi/cryptor/ecc_cryptor.h"
 
 namespace spu::psi {
@@ -61,8 +61,8 @@ enum class OprfType {
 class IEcdhOprf {
  public:
   IEcdhOprf() {
-    YACL_ENFORCE(RAND_bytes(&private_key_[0], kEccKeySize) == 1,
-                 "Cannot create random private key");
+    SPU_ENFORCE(RAND_bytes(&private_key_[0], kEccKeySize) == 1,
+                "Cannot create random private key");
   }
 
   virtual ~IEcdhOprf() { OPENSSL_cleanse(&private_key_[0], kEccKeySize); }
@@ -79,12 +79,12 @@ class IEcdhOprf {
   virtual size_t GetEcPointLength() const { return kEccKeySize; }
 
   void SetCompareLength(size_t compare_length) {
-    YACL_ENFORCE(compare_length <= kEccKeySize);
+    SPU_ENFORCE(compare_length <= kEccKeySize);
     compare_length_ = compare_length;
   }
 
   void SetPrivateKey(yacl::ByteContainerView private_key) {
-    YACL_ENFORCE(private_key.size() == kEccKeySize);
+    SPU_ENFORCE(private_key.size() == kEccKeySize);
 
     std::memcpy(private_key_, private_key.data(), private_key.size());
   }

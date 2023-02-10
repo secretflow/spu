@@ -8,6 +8,7 @@
 
 ## staging
 > please add your unreleased change here.
+- [Feature] Expose ssl/tls options
 - [Feature] Add EpsilonOp
 - [Feature] Support CaseOp
 - [bugfix] Fix boolean ConstantOp

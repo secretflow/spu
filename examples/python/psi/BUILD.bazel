@@ -24,7 +24,7 @@ py_binary(
     ],
     deps = [
         "//spu:psi",
-        "//spu/util:distributed",
+        "//spu/utils:distributed",
     ],
 )
 
@@ -36,6 +36,6 @@ py_binary(
     ],
     deps = [
         "//spu:psi",
-        "//spu/util:distributed",
+        "//spu/utils:distributed",
     ],
 )

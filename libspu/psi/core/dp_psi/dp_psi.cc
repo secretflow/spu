@@ -20,10 +20,10 @@
 
 #include "spdlog/spdlog.h"
 #include "yacl/base/buffer.h"
-#include "yacl/base/exception.h"
 #include "yacl/crypto/utils/rand.h"
 #include "yacl/utils/parallel.h"
 
+#include "libspu/core/prelude.h"
 #include "libspu/psi/core/communication.h"
 #include "libspu/psi/core/dp_psi/dp_psi_utils.h"
 #include "libspu/psi/core/ecdh_3pc_psi.h"
@@ -51,9 +51,9 @@ std::vector<size_t> BernoulliSamples(const std::vector<size_t>& items_idx,
   std::bernoulli_distribution dist(q);
 
   std::vector<size_t> bernoulli_items_idx;
-  for (size_t idx = 0; idx < items_idx.size(); idx++) {
+  for (unsigned long idx : items_idx) {
     if (dist(rand)) {
-      bernoulli_items_idx.push_back(items_idx[idx]);
+      bernoulli_items_idx.push_back(idx);
     }
   }
 
@@ -113,7 +113,7 @@ size_t RunDpEcdhPsiAlice(const DpPsiOptions& dp_psi_options,
   auto batch_provider = std::make_shared<MemoryBatchProvider>(items);
 
   SPDLOG_INFO(
-      "alice items_size: {}, downsampling_rate: {}, upsampling_rate: {}",
+      "alice items_size: {}, down_sampling_rate: {}, up_sampling_rate: {}",
       items.size(), dp_psi_options.p2, dp_psi_options.q);
 
   EcdhPsiOptions options;
@@ -152,7 +152,7 @@ size_t RunDpEcdhPsiAlice(const DpPsiOptions& dp_psi_options,
   for (size_t index = 0; index < alice_peer_result.size(); index++) {
     if (std::binary_search(self_dual_mask.begin(), self_dual_mask.end(),
                            alice_peer_result[index])) {
-      YACL_ENFORCE(index < alice_peer_result.size());
+      SPU_ENFORCE(index < alice_peer_result.size());
 
       intersection_idx.push_back(index);
     } else {
@@ -161,7 +161,7 @@ size_t RunDpEcdhPsiAlice(const DpPsiOptions& dp_psi_options,
   }
   // check non_intersection_idx size==0
   // if size==0 report intersection 0
-  if (non_intersection_idx.size() == 0) {
+  if (non_intersection_idx.empty()) {
     yacl::Buffer intersection_idx_size_buffer = utils::SerializeSize(0);
     link_ctx->SendAsync(link_ctx->NextRank(), intersection_idx_size_buffer,
                         fmt::format("intersection_idx size: {}", 0));
@@ -205,7 +205,7 @@ size_t RunDpEcdhPsiAlice(const DpPsiOptions& dp_psi_options,
     }
     std::string flatten_bytes(current_batch_size * sizeof(size_t), '\0');
 
-    std::memcpy(&flatten_bytes[0], &sub_sample_idx[idx],
+    std::memcpy(flatten_bytes.data(), &sub_sample_idx[idx],
                 current_batch_size * sizeof(size_t));
 
     data_batch.flatten_bytes = flatten_bytes;
@@ -223,7 +223,7 @@ std::vector<size_t> RunDpEcdhPsiBob(
     CurveType curve) {
   std::vector<size_t> bob_shuffled_idx = GetShuffledIdx(items.size());
 
-  SPDLOG_INFO("bob items_size: {}, downsampling_rate: {}", items.size(),
+  SPDLOG_INFO("bob items_size: {}, down_sampling_rate: {}", items.size(),
               dp_psi_options.p1);
 
   std::pair<std::vector<std::string>, std::vector<size_t>> sub_sample_result =
@@ -280,7 +280,7 @@ std::vector<size_t> RunDpEcdhPsiBob(
     PsiDataBatch batch = PsiDataBatch::Deserialize(link_ctx->Recv(
         link_ctx->NextRank(), fmt::format("recv batch idx{}", recv_idx)));
 
-    YACL_ENFORCE(batch.flatten_bytes.size() % sizeof(size_t) == 0);
+    SPU_ENFORCE(batch.flatten_bytes.size() % sizeof(size_t) == 0);
     size_t current_num;
     current_num = batch.flatten_bytes.size() / sizeof(size_t);
     std::memcpy(intersection_idx.data() + recv_idx, batch.flatten_bytes.data(),
@@ -295,6 +295,7 @@ std::vector<size_t> RunDpEcdhPsiBob(
   }
 
   std::vector<size_t> dp_intersection_idx;
+  dp_intersection_idx.reserve(intersection_idx.size());
   for (const auto& idx : intersection_idx) {
     dp_intersection_idx.push_back(sub_sample_result.second[idx]);
   }

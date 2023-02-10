@@ -14,16 +14,15 @@
 
 #include "libspu/mpc/aby3/value.h"
 
-#include "yacl/base/exception.h"
-
 #include "libspu/core/array_ref.h"
+#include "libspu/core/prelude.h"
 #include "libspu/mpc/aby3/type.h"
-#include "libspu/mpc/util/ring_ops.h"
+#include "libspu/mpc/utils/ring_ops.h"
 
 namespace spu::mpc::aby3 {
 
 ArrayRef getShare(const ArrayRef& in, int64_t share_idx) {
-  YACL_ENFORCE(share_idx == 0 || share_idx == 1);
+  SPU_ENFORCE(share_idx == 0 || share_idx == 1);
 
   if (in.eltype().isa<AShrTy>()) {
     const auto field = in.eltype().as<AShrTy>()->field();
@@ -36,7 +35,7 @@ ArrayRef getShare(const ArrayRef& in, int64_t share_idx) {
     return {in.buf(), ty, in.numel(), in.stride() * 2,
             in.offset() + share_idx * static_cast<int64_t>(ty.size())};
   } else {
-    YACL_THROW("unsupported type {}", in.eltype());
+    SPU_THROW("unsupported type {}", in.eltype());
   }
 }
 
@@ -48,11 +47,11 @@ ArrayRef makeAShare(const ArrayRef& s1, const ArrayRef& s2, FieldType field,
                     int owner_rank) {
   const Type ty = makeType<AShrTy>(field, owner_rank);
 
-  YACL_ENFORCE(s2.eltype().as<Ring2k>()->field() == field);
-  YACL_ENFORCE(s1.eltype().as<Ring2k>()->field() == field);
-  YACL_ENFORCE(s1.numel() == s2.numel(), "got s1={}, s2={}", s1.numel(),
-               s2.numel());
-  YACL_ENFORCE(ty.size() == 2 * s1.elsize());
+  SPU_ENFORCE(s2.eltype().as<Ring2k>()->field() == field);
+  SPU_ENFORCE(s1.eltype().as<Ring2k>()->field() == field);
+  SPU_ENFORCE(s1.numel() == s2.numel(), "got s1={}, s2={}", s1.numel(),
+              s2.numel());
+  SPU_ENFORCE(ty.size() == 2 * s1.elsize());
 
   ArrayRef res(ty, s1.numel());
 
@@ -83,7 +82,7 @@ PtType calcBShareBacktype(size_t nbits) {
   if (nbits <= 128) {
     return PT_U128;
   }
-  YACL_THROW("invalid number of bits={}", nbits);
+  SPU_THROW("invalid number of bits={}", nbits);
 }
 
 }  // namespace spu::mpc::aby3

@@ -19,10 +19,10 @@
 #include "mlir/Pass/Pass.h"
 #include "mlir/Pass/PassManager.h"
 #include "mlir/Transforms/Passes.h"
-#include "yacl/base/exception.h"
 
 #include "libspu/compiler/common/compilation_context.h"
 #include "libspu/compiler/passes/passes.h"
+#include "libspu/core/prelude.h"
 
 namespace spu::compiler {
 
@@ -37,7 +37,7 @@ void Core::doit(mlir::ModuleOp module) {
   auto ret = pm.run(module);
 
   if (ret.failed()) {
-    YACL_THROW("Run core pipeline failed");
+    SPU_THROW("Run core pipeline failed");
   }
 }
 

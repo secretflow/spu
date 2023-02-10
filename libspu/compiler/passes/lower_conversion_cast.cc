@@ -47,8 +47,8 @@ struct LowerConversionCast
   }
 
 private:
-  void populateOwningPatterns(RewritePatternSet *patterns,
-                              MLIRContext *ctx) const {
+  static void populateOwningPatterns(RewritePatternSet *patterns,
+                                     MLIRContext *ctx) {
     patterns->insert<CastConverter>(ctx);
   }
 };

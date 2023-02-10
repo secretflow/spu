@@ -9,7 +9,7 @@
     - [DpPsiParams](#dppsiparams)
     - [InputParams](#inputparams)
     - [MemoryPsiConfig](#memorypsiconfig)
-    - [OuputParams](#ouputparams)
+    - [OutputParams](#outputparams)
     - [PsiResultReport](#psiresultreport)
   
 
@@ -38,7 +38,7 @@ The Bucket-psi configuration.
       broadcast_result=True,
       receiver_rank=0,
       input_params=psi.InputParams(path='/xxx/ccc.csv', select_fields=['c1', 'c2']),
-      output_params=psi.OuputParams(path='/yyyy/oooo.csv', need_sort=True),
+      output_params=psi.OutputParams(path='/yyyy/oooo.csv', need_sort=True),
   )
   report = psi.bucket_psi(lctx, config)  # run psi and get report
 ```
@@ -50,7 +50,7 @@ The Bucket-psi configuration.
 | receiver_rank | [ uint32](#uint32) | Specified the receiver rank. Receiver can get psi result. |
 | broadcast_result | [ bool](#bool) | Whether to broadcast psi result to all parties. |
 | input_params | [ InputParams](#inputparams) | The input parameters of psi. |
-| output_params | [ OuputParams](#ouputparams) | The output parameters of psi. |
+| output_params | [ OutputParams](#outputparams) | The output parameters of psi. |
 | curve_type | [ CurveType](#curvetype) | Optional, specified elliptic curve cryptography used in psi when needed. |
 | bucket_size | [ uint32](#uint32) | Optional, specified the hash bucket size used in psi. |
 | preprocess_path | [ string](#string) | Optional，The path of offline preprocess file. |
@@ -111,7 +111,7 @@ The In-memory psi configuration.
  <!-- end HasFields -->
 
 
-### OuputParams
+### OutputParams
 The output parameters of psi.
 
 

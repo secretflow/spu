@@ -38,18 +38,18 @@ std::unique_ptr<IEcdhOprfServer> CreateEcdhOprfServer(
           break;
         }
         default:
-          YACL_THROW("unknown support Curve type: {}",
-                     static_cast<int>(curve_type));
+          SPU_THROW("unknown support Curve type: {}",
+                    static_cast<int>(curve_type));
           break;
       }
 
       break;
     }
     default:
-      YACL_THROW("unknown Oprf type: {}", static_cast<int>(oprf_type));
+      SPU_THROW("unknown Oprf type: {}", static_cast<int>(oprf_type));
       break;
   }
-  YACL_ENFORCE(server != nullptr, "EcdhOprfServer should not be nullptr");
+  SPU_ENFORCE(server != nullptr, "EcdhOprfServer should not be nullptr");
 
   return server;
 }
@@ -73,16 +73,16 @@ std::unique_ptr<IEcdhOprfServer> CreateEcdhOprfServer(OprfType oprf_type,
           break;
         }
         default:
-          YACL_THROW("unknown support Curve type: {}",
-                     static_cast<int>(curve_type));
+          SPU_THROW("unknown support Curve type: {}",
+                    static_cast<int>(curve_type));
           break;
       }
       break;
     }
     default:
-      YACL_THROW("unknown Oprf type: {}", static_cast<int>(oprf_type));
+      SPU_THROW("unknown Oprf type: {}", static_cast<int>(oprf_type));
   }
-  YACL_ENFORCE(server != nullptr, "EcdhOprfServer should not be nullptr");
+  SPU_ENFORCE(server != nullptr, "EcdhOprfServer should not be nullptr");
 
   return server;
 }
@@ -104,15 +104,15 @@ std::unique_ptr<IEcdhOprfClient> CreateEcdhOprfClient(OprfType oprf_type,
           break;
         }
         default:
-          YACL_THROW("unknown support Curve type: {}",
-                     static_cast<int>(curve_type));
+          SPU_THROW("unknown support Curve type: {}",
+                    static_cast<int>(curve_type));
           break;
       }
       break;
     }
   }
 
-  YACL_ENFORCE(client != nullptr, "EcdhOprfClient should not be nullptr");
+  SPU_ENFORCE(client != nullptr, "EcdhOprfClient should not be nullptr");
 
   return client;
 }

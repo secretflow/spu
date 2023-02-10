@@ -28,7 +28,7 @@ import numpy as np
 from sklearn import metrics
 
 import examples.python.utils.dataset_utils as dsutil
-import spu.util.distributed as ppd
+import spu.utils.distributed as ppd
 
 
 # FIXME: For un-normalized data, grad(sigmoid) is likely to overflow, either with exp/tanh or taylor series

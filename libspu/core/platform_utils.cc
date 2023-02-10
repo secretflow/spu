@@ -26,14 +26,13 @@ namespace spu {
 
 namespace impl {
 
-// These reference impls are inspired by
+// These reference implementations are inspired by
 // https://gcc.gnu.org/pipermail/gcc-patches/2017-June/475893.html
 
 // Reference pdep_u64 impl
-inline uint64_t _pdep_u64_impl(uint64_t __X, uint64_t __M) {
+inline uint64_t pdep_u64_impl(uint64_t x, uint64_t m) {
   uint64_t result = 0x0UL;
   const uint64_t mask = 0x8000000000000000UL;
-  uint64_t m = __M;
   uint64_t c;
   uint64_t t;
   uint64_t p;
@@ -41,13 +40,13 @@ inline uint64_t _pdep_u64_impl(uint64_t __X, uint64_t __M) {
   // The pop-count of the mask gives the number of the bits from
   // source to process.  This is also needed to shift bits from the
   // source into the correct position for the result.
-  p = 64 - __builtin_popcountl(__M);
+  p = 64 - __builtin_popcountl(m);
 
   // The loop is for the number of '1' bits in the mask and clearing
   // each mask bit as it is processed.
   while (m != 0) {
     c = __builtin_clzl(m);
-    t = __X << (p - c);
+    t = x << (p - c);
     m ^= (mask >> c);
     result |= (t & (mask >> c));
     p++;
@@ -56,15 +55,14 @@ inline uint64_t _pdep_u64_impl(uint64_t __X, uint64_t __M) {
 }
 
 // Reference pext_u64 impl
-inline uint64_t _pext_u64_impl(uint64_t __X, uint64_t __M) {
+inline uint64_t pext_u64_impl(uint64_t x, uint64_t m) {
   // initial bit permute control
   uint64_t p = 0x4040404040404040UL;
   const uint64_t mask = 0x8000000000000000UL;
-  uint64_t m = __M;
   uint64_t c;
   uint64_t result;
 
-  p = 64 - __builtin_popcountl(__M);
+  p = 64 - __builtin_popcountl(m);
   result = 0;
   // We could a use a for loop here, but that combined with
   // -funroll-loops can expand to a lot of code.  The while
@@ -74,7 +72,7 @@ inline uint64_t _pext_u64_impl(uint64_t __X, uint64_t __M) {
   while (m != 0) {
     uint64_t t;
     c = __builtin_clzl(m);
-    t = (__X & (mask >> c)) >> (p - c);
+    t = (x & (mask >> c)) >> (p - c);
     m ^= (mask >> c);
     result |= (t);
     p++;
@@ -96,14 +94,14 @@ bool hasAVX512ifma() { return false; }
 #endif
 
 // There are no bmi2 intrinsics on platforms other than x86, so directly
-// redirect them to ref impls
+// redirect them to ref implementations
 uint64_t pdep_u64(uint64_t a, uint64_t b) {
 #ifdef __x86_64__
   if (kCpuFeatures.avx2) {
     return _pdep_u64(a, b);
   }
 #endif
-  return impl::_pdep_u64_impl(a, b);
+  return impl::pdep_u64_impl(a, b);
 }
 
 uint64_t pext_u64(uint64_t a, uint64_t b) {
@@ -112,7 +110,7 @@ uint64_t pext_u64(uint64_t a, uint64_t b) {
     return _pext_u64(a, b);
   }
 #endif
-  return impl::_pext_u64_impl(a, b);
+  return impl::pext_u64_impl(a, b);
 }
 
 }  // namespace spu

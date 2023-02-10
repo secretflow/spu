@@ -157,7 +157,7 @@ void EcdhOprfPsiServer::RecvBlindAndSendEvaluate() {
     }
 
     // Fetch blinded y^r.
-    YACL_ENFORCE(blinded_batch.flatten_bytes.size() % ec_point_length == 0);
+    SPU_ENFORCE(blinded_batch.flatten_bytes.size() % ec_point_length == 0);
     size_t num_items = blinded_batch.flatten_bytes.size() / ec_point_length;
 
     std::vector<std::string> blinded_items(num_items);
@@ -201,7 +201,7 @@ void EcdhOprfPsiClient::RecvFinalEvaluatedItems(
       break;
     }
 
-    YACL_ENFORCE(masked_batch.flatten_bytes.size() % compare_length_ == 0);
+    SPU_ENFORCE(masked_batch.flatten_bytes.size() % compare_length_ == 0);
     size_t num_items = masked_batch.flatten_bytes.size() / compare_length_;
 
     std::vector<std::string> evaluated_items(num_items);
@@ -303,10 +303,10 @@ void EcdhOprfPsiClient::RecvEvaluatedItems(
     }
     auto items = batch_provider->ReadNextBatch(options_.batch_size);
 
-    YACL_ENFORCE(masked_batch.flatten_bytes.size() % ec_point_length_ == 0);
+    SPU_ENFORCE(masked_batch.flatten_bytes.size() % ec_point_length_ == 0);
     size_t num_items = masked_batch.flatten_bytes.size() / ec_point_length_;
 
-    YACL_ENFORCE(items.size() % num_items == 0);
+    SPU_ENFORCE(items.size() % num_items == 0);
 
     std::vector<std::string> evaluate_items(num_items);
     for (size_t idx = 0; idx < num_items; ++idx) {
@@ -330,8 +330,8 @@ void EcdhOprfPsiClient::RecvEvaluatedItems(
       queue_push_cv_.notify_one();
     }
 
-    YACL_ENFORCE(oprf_clients.size() == items.size(),
-                 "EcdhOprfServer should not be nullptr");
+    SPU_ENFORCE(oprf_clients.size() == items.size(),
+                "EcdhOprfServer should not be nullptr");
 
     yacl::parallel_for(0, items.size(), 1, [&](int64_t begin, int64_t end) {
       for (int64_t idx = begin; idx < end; ++idx) {

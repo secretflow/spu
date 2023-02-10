@@ -17,15 +17,7 @@ load("@yacl//bazel:yacl.bzl", "EMP_COPT_FLAGS")
 
 package(default_visibility = ["//visibility:public"])
 
-spu_cc_library(
-    name = "primitives",
-    hdrs = ["primitives.h"],
-    deps = [
-        ":nonlinear_protocols",
-        ":silent_ot",
-    ],
-)
-
+# TODO: drop me, referenced by bc22_psi.
 spu_cc_library(
     name = "cheetah_io",
     srcs = ["cheetah_io_channel.cc"],
@@ -45,52 +37,5 @@ spu_cc_test(
     copts = EMP_COPT_FLAGS,
     deps = [
         "cheetah_io",
-    ],
-)
-
-spu_cc_library(
-    name = "silent_ot",
-    srcs = [
-        "ot-utils.cc",
-        "silent_ot.cc",
-        "silent_ot_pack.cc",
-    ],
-    hdrs = [
-        "mitccrh_exp.h",
-        "ot-utils.h",
-        "silent_ot.h",
-        "silent_ot_pack.h",
-        "utils.h",
-    ],
-    copts = EMP_COPT_FLAGS,
-    deps = [
-        "cheetah_io",
-        "@com_github_emptoolkit_emp_ot//:emp-ot",
-        "@com_github_emptoolkit_emp_tool//:emp-tool",
-        "@yacl//yacl/link",
-    ] + select({
-        "@platforms//cpu:aarch64": [
-            "@com_github_dltcollab_sse2neon//:sse2neon",
-        ],
-        "//conditions:default": [],
-    }),
-)
-
-spu_cc_test(
-    name = "silent_ot_test",
-    srcs = ["silent_ot_test.cc"],
-    copts = EMP_COPT_FLAGS,
-    deps = [
-        "silent_ot",
-    ],
-)
-
-spu_cc_library(
-    name = "nonlinear_protocols",
-    srcs = ["nonlinear_protocols.cc"],
-    hdrs = ["nonlinear_protocols.h"],
-    copts = EMP_COPT_FLAGS,
-    deps = [
-        "silent_ot",
     ],
 )

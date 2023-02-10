@@ -37,7 +37,7 @@ namespace spu::pir {
 // https://github.com/microsoft/SealPIR
 
 struct SealPirOptions {
-  // RLWE ploynomial degree
+  // RLWE polynomial degree
   size_t poly_modulus_degree;
   // db element number
   size_t element_number;
@@ -60,7 +60,7 @@ class SealPir {
   explicit SealPir(const SealPirOptions &options) : options_(options) {
     SetPolyModulusDegree(options.poly_modulus_degree);
 
-    evaluator_ = std::make_unique<seal::Evaluator>(*(context_.get()));
+    evaluator_ = std::make_unique<seal::Evaluator>(*context_);
 
     if (options.query_size > 0) {
       SetPirParams(options.query_size, options.element_size);
@@ -97,9 +97,9 @@ class SealPir {
     T seal_object;
     std::istringstream object_input(object_bytes);
     if (safe_load) {
-      seal_object.load(*(context_.get()), object_input);
+      seal_object.load(*context_, object_input);
     } else {
-      seal_object.unsafe_load(*(context_.get()), object_input);
+      seal_object.unsafe_load(*context_, object_input);
     }
     return seal_object;
   }
@@ -116,7 +116,7 @@ class SealPir {
       const CiphertextsProto &ciphers_proto, bool safe_load = false);
 
   std::vector<seal::Ciphertext> DeSerializeCiphertexts(
-      const yacl::Buffer &ciphers_bytes, bool safe_load = false);
+      const yacl::Buffer &ciphers_buffer, bool safe_load = false);
 
   yacl::Buffer SerializeQuery(
       SealPirQueryProto *query_proto,
@@ -126,10 +126,10 @@ class SealPir {
       const std::vector<std::vector<seal::Ciphertext>> &query_ciphers);
 
   std::vector<std::vector<seal::Ciphertext>> DeSerializeQuery(
-      const yacl::Buffer &query_bytes, bool safe_load = false);
+      const yacl::Buffer &query_buffer, bool safe_load = false);
 
   std::vector<std::vector<seal::Ciphertext>> DeSerializeQuery(
-      const SealPirQueryProto query_proto, bool safe_load = false);
+      const SealPirQueryProto &query_proto, bool safe_load = false);
 
  protected:
   SealPirOptions options_;
@@ -179,7 +179,7 @@ class SealPirServer : public SealPir {
 
 #else
   SealPirServer(const SealPirOptions &options,
-                const std::shared_ptr<IDbPlaintextStore> &plaintext_store);
+                std::shared_ptr<IDbPlaintextStore> plaintext_store);
 #endif
 
   // read db data, convert to Seal::Plaintext

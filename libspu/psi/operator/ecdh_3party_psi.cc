@@ -22,11 +22,11 @@
 #include "openssl/crypto.h"
 #include "openssl/rand.h"
 #include "spdlog/spdlog.h"
-#include "yacl/base/exception.h"
 #include "yacl/link/context.h"
 #include "yacl/link/link.h"
 #include "yacl/utils/serialize.h"
 
+#include "libspu/core/prelude.h"
 #include "libspu/psi/cryptor/cryptor_selector.h"
 #include "libspu/psi/operator/factory.h"
 

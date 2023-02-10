@@ -14,7 +14,7 @@
 
 #include "libspu/mpc/common/communicator.h"
 
-#include "libspu/mpc/util/ring_ops.h"
+#include "libspu/mpc/utils/ring_ops.h"
 
 namespace spu::mpc {
 namespace {
@@ -35,7 +35,7 @@ ArrayRef Communicator::allReduce(ReduceOp op, const ArrayRef& in,
 
   std::vector<yacl::Buffer> bufs = yacl::link::AllGather(lctx_, *buf, tag);
 
-  YACL_ENFORCE(bufs.size() == getWorldSize());
+  SPU_ENFORCE(bufs.size() == getWorldSize());
   ArrayRef res = in.clone();
   for (size_t idx = 0; idx < bufs.size(); idx++) {
     if (idx == getRank()) {
@@ -49,7 +49,7 @@ ArrayRef Communicator::allReduce(ReduceOp op, const ArrayRef& in,
     } else if (op == ReduceOp::XOR) {
       ring_xor_(res, arr);
     } else {
-      YACL_THROW("unsupported reduce op={}", static_cast<int>(op));
+      SPU_THROW("unsupported reduce op={}", static_cast<int>(op));
     }
   }
 
@@ -61,7 +61,7 @@ ArrayRef Communicator::allReduce(ReduceOp op, const ArrayRef& in,
 
 ArrayRef Communicator::reduce(ReduceOp op, const ArrayRef& in, size_t root,
                               std::string_view tag) {
-  YACL_ENFORCE(root < lctx_->WorldSize());
+  SPU_ENFORCE(root < lctx_->WorldSize());
   const auto buf = in.getOrCreateCompactBuf();
 
   std::vector<yacl::Buffer> bufs = yacl::link::Gather(lctx_, *buf, root, tag);
@@ -80,7 +80,7 @@ ArrayRef Communicator::reduce(ReduceOp op, const ArrayRef& in, size_t root,
       } else if (op == ReduceOp::XOR) {
         ring_xor_(res, arr);
       } else {
-        YACL_THROW("unsupported reduce op={}", static_cast<int>(op));
+        SPU_THROW("unsupported reduce op={}", static_cast<int>(op));
       }
     }
   }
@@ -112,7 +112,7 @@ void Communicator::sendAsync(size_t dst_rank, const ArrayRef& in,
   lctx_->SendAsync(dst_rank, *buf, tag);
 }
 
-ArrayRef Communicator::recv(size_t src_rank, Type eltype,
+ArrayRef Communicator::recv(size_t src_rank, const Type& eltype,
                             std::string_view tag) {
   auto buf = lctx_->Recv(src_rank, tag);
 

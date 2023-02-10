@@ -62,8 +62,8 @@ struct DecomposeMinMax : public DecomposeMinMaxBase<DecomposeMinMax> {
   }
 
 private:
-  void populateOwningPatterns(RewritePatternSet *patterns,
-                              MLIRContext *ctx) const {
+  static void populateOwningPatterns(RewritePatternSet *patterns,
+                                     MLIRContext *ctx) {
     patterns->insert<MinMaxOpConverter<MaxOp, GreaterOp>,
                      MinMaxOpConverter<MinOp, LessOp>>(ctx);
   }

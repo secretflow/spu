@@ -27,17 +27,17 @@ namespace spu::psi {
 
 void SodiumCurve25519Cryptor::EccMask(absl::Span<const char> batch_points,
                                       absl::Span<char> dest_points) const {
-  YACL_ENFORCE(batch_points.size() % kEccKeySize == 0);
+  SPU_ENFORCE(batch_points.size() % kEccKeySize == 0);
 
   using Item = std::array<unsigned char, kEccKeySize>;
   static_assert(sizeof(Item) == kEccKeySize);
 
   auto mask_functor = [this](const Item& in, Item& out) {
-    YACL_ENFORCE(out.size() == kEccKeySize);
-    YACL_ENFORCE(in.size() == kEccKeySize);
+    SPU_ENFORCE(out.size() == kEccKeySize);
+    SPU_ENFORCE(in.size() == kEccKeySize);
 
-    YACL_ENFORCE(0 == crypto_scalarmult_curve25519(
-                          out.data(), this->private_key_, in.data()));
+    SPU_ENFORCE(0 == crypto_scalarmult_curve25519(
+                         out.data(), this->private_key_, in.data()));
   };
 
   absl::Span<const Item> input(
@@ -64,9 +64,9 @@ std::vector<uint8_t> SodiumCurve25519Cryptor::KeyExchange(
       link_ctx->NextRank(),
       fmt::format("recv rank-{} public key", link_ctx->NextRank()));
   std::vector<uint8_t> dh_key(kEccKeySize);
-  YACL_ENFORCE(0 == crypto_scalarmult_curve25519(
-                        dh_key.data(), this->private_key_,
-                        (const unsigned char*)peer_pubkey_buf.data()));
+  SPU_ENFORCE(0 == crypto_scalarmult_curve25519(
+                       dh_key.data(), this->private_key_,
+                       (const unsigned char*)peer_pubkey_buf.data()));
   const auto shared_key = yacl::crypto::Blake3(dh_key);
   return {shared_key.begin(), shared_key.end()};
 }

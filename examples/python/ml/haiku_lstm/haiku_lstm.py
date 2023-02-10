@@ -28,7 +28,7 @@ import optax
 import pandas as pd
 import plotnine as gg
 
-import spu.util.distributed as ppd
+import spu.utils.distributed as ppd
 
 parser = argparse.ArgumentParser(description='SPU LSTM example.')
 parser.add_argument("--output_dir", default=os.getcwd())
@@ -231,7 +231,7 @@ draw_predict(True)
 del sample_x
 
 # Typically: the beginning of the predictions are a bit wonky, but the curve
-# quickly smoothes out.
+# quickly smooths out.
 
 
 def autoregressive_predict(
@@ -239,7 +239,7 @@ def autoregressive_predict(
     context: jnp.ndarray,
     seq_len: int,
 ):
-    """Given a context, autoregressively generate the rest of a sine wave."""
+    """Given a context, auto regressively generate the rest of a sine wave."""
     ar_outs = []
     context = jax.device_put(context)
     for _ in range(seq_len - context.shape[0]):
@@ -278,7 +278,7 @@ draw_ar_prediction(run_on_spu=True)
 
 
 def fast_autoregressive_predict_fn(context, seq_len):
-    """Given a context, autoregressively generate the rest of a sine wave."""
+    """Given a context, auto regressively generate the rest of a sine wave."""
     core = hk.LSTM(32)
     dense = hk.Linear(1)
     state = core.initial_state(context.shape[1])

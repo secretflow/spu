@@ -20,13 +20,14 @@
 #include "mlir/Pass/Pass.h"
 #include "mlir/Pass/PassManager.h"
 #include "mlir/Transforms/Passes.h"
+#include "stablehlo/dialect/StablehloOps.h"
 #include "xla/mlir_hlo/mhlo/IR/hlo_ops.h"
 #include "xla/mlir_hlo/mhlo/transforms/passes.h"
-#include "yacl/base/exception.h"
 
 #include "libspu/compiler/common/compilation_context.h"
 #include "libspu/compiler/front_end/hlo_importer.h"
 #include "libspu/compiler/passes/passes.h"
+#include "libspu/core/prelude.h"
 #include "libspu/dialect/pphlo_dialect.h"
 
 namespace spu::compiler {
@@ -34,6 +35,7 @@ namespace spu::compiler {
 FE::FE(CompilationContext *ctx) : ctx_(ctx) {
   ctx_->getMLIRContext()
       ->loadDialect<mlir::pphlo::PPHloDialect, mlir::mhlo::MhloDialect,
+                    mlir::stablehlo::StablehloDialect,
                     mlir::func::FuncDialect>();
 }
 
@@ -47,7 +49,7 @@ mlir::OwningOpRef<mlir::ModuleOp> FE::doit(const std::string &input,
     module =
         mlir::parseSourceString<mlir::ModuleOp>(input, ctx_->getMLIRContext());
   } else {
-    YACL_THROW("Unsupported input IR type");
+    SPU_THROW("Unsupported input IR type");
   }
 
   // Run pipeline
@@ -59,17 +61,19 @@ mlir::OwningOpRef<mlir::ModuleOp> FE::doit(const std::string &input,
   auto ret = pm.run(module.get());
 
   if (ret.failed()) {
-    YACL_THROW("Run front end pipeline failed");
+    SPU_THROW("Run front end pipeline failed");
   }
 
   return module;
 }
 
 void FE::buildFrontEndPipeline(mlir::PassManager *pm) {
+
+  // mhlo side
   {
-    // mhlo side
     pm->addPass(mlir::createInlinerPass());
     pm->addPass(mlir::mhlo::createExpandHloTuplesPass());
+
     auto &optPM = pm->nest<mlir::func::FuncOp>();
     optPM.addPass(mlir::mhlo::createLegalizeEinsumToDotGeneralPass());
     optPM.addPass(mlir::mhlo::createLegalizeGeneralDotPass());
@@ -78,25 +82,21 @@ void FE::buildFrontEndPipeline(mlir::PassManager *pm) {
     optPM.addPass(mlir::mhlo::createFlattenTuplePass());
     optPM.addPass(mlir::mhlo::createLegalizeTrigonometricToApproximationPass());
     optPM.addPass(mlir::mhlo::createBroadcastPropagationPass());
+
+    // Convert to stablehlo
+    pm->addPass(mlir::mhlo::createHloLegalizeToStablehloPass());
   }
-  {
-    // Cleanup
-    auto &optPM = pm->nest<mlir::func::FuncOp>();
-    optPM.addPass(mlir::createCanonicalizerPass());
-    optPM.addPass(mlir::createSCCPPass());
-    optPM.addPass(mlir::createCSEPass());
+
+  // stablehlo now
+  // Dialect conversion
+  auto vis_str = ctx_->getInputVisibilityString();
+  if (vis_str.empty()) {
+    pm->addPass(mlir::pphlo::createLegalizeToPPHloPass());
+  } else {
+    pm->addPass(mlir::pphlo::createLegalizeToPPHloPass(vis_str));
   }
-  {
-    // Dialect conversion
-    auto vis_str = ctx_->getInputVisibilityString();
-    if (vis_str.empty()) {
-      pm->addPass(mlir::pphlo::createLegalizeToPPHloPass());
-    } else {
-      pm->addPass(mlir::pphlo::createLegalizeToPPHloPass(vis_str));
-    }
-    auto &optPM = pm->nest<mlir::func::FuncOp>();
-    optPM.addPass(mlir::pphlo::createLowerConversionCastPass());
-  }
+  auto &optPM = pm->nest<mlir::func::FuncOp>();
+  optPM.addPass(mlir::pphlo::createLowerConversionCastPass());
 }
 
 } // namespace spu::compiler

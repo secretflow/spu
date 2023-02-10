@@ -17,7 +17,7 @@
 #include "gtest/gtest.h"
 #include "xtensor/xarray.hpp"
 
-#include "libspu/mpc/util/simulate.h"
+#include "libspu/mpc/utils/simulate.h"
 
 namespace spu::device {
 
@@ -104,7 +104,7 @@ TEST_P(ColocatedIoTest, Works) {
   hconf.set_protocol(std::get<1>(GetParam()));
   hconf.set_field(std::get<2>(GetParam()));
 
-  mpc::util::simulate(kWorldSize, [&](auto lctx) {
+  mpc::utils::simulate(kWorldSize, [&](auto lctx) {
     HalContext hctx(hconf, lctx);
     ColocatedIo cio(&hctx);
 

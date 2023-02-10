@@ -52,19 +52,19 @@ Value _xor(HalContext* ctx, const Value& x, const Value& y);
 
 Value _or(HalContext* ctx, const Value& x, const Value& y);
 
-Value _not(HalContext* ctx, const Value& x);
+Value _not(HalContext* ctx, const Value& in);
 
-Value _msb(HalContext* ctx, const Value& x);
+Value _msb(HalContext* ctx, const Value& in);
 
 Value _eqz(HalContext* ctx, const Value& x);
 
 Value _less(HalContext* ctx, const Value& x, const Value& y);
 
-Value _lshift(HalContext* ctx, const Value& x, size_t bits);
+Value _lshift(HalContext* ctx, const Value& in, size_t bits);
 
-Value _rshift(HalContext* ctx, const Value& x, size_t bits);
+Value _rshift(HalContext* ctx, const Value& in, size_t bits);
 
-Value _arshift(HalContext* ctx, const Value& x, size_t bits);
+Value _arshift(HalContext* ctx, const Value& in, size_t bits);
 
 Value _trunc(HalContext* ctx, const Value& x, size_t bits = 0);
 
@@ -90,7 +90,7 @@ Value _popcount(HalContext* ctx, const Value& x, size_t bits);
 // out[i] = OR(in[0..i])
 Value _prefix_or(HalContext* ctx, const Value& x);
 
-// seperate even and odd bits. e.g.
+// separate even and odd bits. e.g.
 //   xAyBzCwD -> xyzwABCD
 Value _seperate_odd_even(HalContext* ctx, const Value& in);
 

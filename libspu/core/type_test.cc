@@ -27,7 +27,7 @@ TEST(TypeTest, VoidTy) {
   EXPECT_EQ(va.toString(), "Void<>");
   EXPECT_EQ(Type::fromString(va.toString()), va);
 
-  Type vb = va;
+  Type vb = va;  // NOLINT: Test copy ctor
   EXPECT_FALSE(vb.isa<PtTy>());
   EXPECT_EQ(vb.size(), 0);
   EXPECT_EQ(vb.toString(), "Void<>");

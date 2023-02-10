@@ -63,8 +63,8 @@ void MultiQueryServer::GenerateSimpleHash() {
     }
   }
 
-  for (size_t idx = 0; idx < simple_hash_.size(); ++idx) {
-    max_bin_item_size_ = std::max(max_bin_item_size_, simple_hash_[idx].size());
+  for (const auto &hash_ : simple_hash_) {
+    max_bin_item_size_ = std::max(max_bin_item_size_, hash_.size());
   }
 }
 
@@ -75,14 +75,13 @@ void MultiQueryServer::SetDatabase(yacl::ByteContainerView db_bytes) {
   for (size_t idx = 0; idx < cuckoo_params_.NumBins(); ++idx) {
     std::vector<yacl::ByteContainerView> db_vec;
 
-    for (size_t j = 0; j < simple_hash_[idx].size(); ++j) {
-      db_vec.emplace_back(yacl::ByteContainerView(
-          &db_bytes[simple_hash_[idx][j] *
-                    query_options_.seal_options.element_size],
-          query_options_.seal_options.element_size));
+    for (size_t j : simple_hash_[idx]) {
+      db_vec.emplace_back(
+          &db_bytes[j * query_options_.seal_options.element_size],
+          query_options_.seal_options.element_size);
     }
     for (size_t j = simple_hash_[idx].size(); j < max_bin_item_size_; ++j) {
-      db_vec.emplace_back(yacl::ByteContainerView(zero_bytes));
+      db_vec.emplace_back(zero_bytes);
     }
 
     pir_server_[idx]->SetDatabase(db_vec);
@@ -96,8 +95,8 @@ void MultiQueryServer::RecvGaloisKeys(
       fmt::format("recv galios key from rank-{}", link_ctx->Rank()));
 
   std::string galkey_str(galkey_buffer.size(), '\0');
-  std::memcpy(&galkey_str[0], galkey_buffer.data(), galkey_buffer.size());
-  seal::GaloisKeys galkey =
+  std::memcpy(galkey_str.data(), galkey_buffer.data(), galkey_buffer.size());
+  auto galkey =
       pir_server_[0]->DeSerializeSealObject<seal::GaloisKeys>(galkey_str);
   SetGaloisKeys(galkey);
 }
@@ -111,8 +110,8 @@ void MultiQueryServer::DoMultiPirAnswer(
   multi_query_proto.ParseFromArray(multi_query_buffer.data(),
                                    multi_query_buffer.size());
 
-  YACL_ENFORCE((uint64_t)multi_query_proto.querys().size() ==
-               cuckoo_params_.NumBins());
+  SPU_ENFORCE((uint64_t)multi_query_proto.querys().size() ==
+              cuckoo_params_.NumBins());
 
   std::vector<yacl::Buffer> reply_cipher_buffers(
       multi_query_proto.querys().size());
@@ -146,8 +145,6 @@ void MultiQueryServer::DoMultiPirAnswer(
   link_ctx->SendAsync(
       link_ctx->NextRank(), mpir_answer_buffer,
       fmt::format("send mpir reply buffer size:{}", mpir_answer_buffer.size()));
-
-  return;
 }
 
 void MultiQueryClient::GenerateSimpleHashMap() {
@@ -192,9 +189,8 @@ void MultiQueryClient::GenerateSimpleHashMap() {
       simple_hash_counter[bin_idx[j]]++;
     }
   }
-  for (size_t idx = 0; idx < simple_hash_map_.size(); ++idx) {
-    max_bin_item_size_ =
-        std::max(max_bin_item_size_, simple_hash_map_[idx].size());
+  for (const auto &simple_hash_ : simple_hash_map_) {
+    max_bin_item_size_ = std::max(max_bin_item_size_, simple_hash_.size());
   }
 }
 
@@ -278,14 +274,13 @@ std::vector<std::vector<uint8_t>> MultiQueryClient::DoMultiPirQuery(
 
     query_proto_vec[idx]->set_query_size(0);
     query_proto_vec[idx]->set_start_pos(0);
-    for (size_t j = 0; j < query_ciphers.size(); ++j) {
+    for (auto &query_cipher : query_ciphers) {
       spu::pir::CiphertextsProto *ciphers_proto =
           query_proto_vec[idx]->add_query_cipher();
 
-      for (size_t k = 0; k < query_ciphers[j].size(); ++k) {
+      for (size_t k = 0; k < query_cipher.size(); ++k) {
         std::string cipher_bytes =
-            pir_client_->SerializeSealObject<seal::Ciphertext>(
-                query_ciphers[j][k]);
+            pir_client_->SerializeSealObject<seal::Ciphertext>(query_cipher[k]);
 
         ciphers_proto->add_ciphers(cipher_bytes.data(), cipher_bytes.length());
       }
@@ -306,8 +301,8 @@ std::vector<std::vector<uint8_t>> MultiQueryClient::DoMultiPirQuery(
   // SPDLOG_INFO("multi_answer_proto size:{}",
   // multi_answer_proto.answers_size());
 
-  YACL_ENFORCE((uint64_t)multi_answer_proto.answers_size() ==
-               multi_query.size());
+  SPU_ENFORCE((uint64_t)multi_answer_proto.answers_size() ==
+              multi_query.size());
 
   std::vector<std::vector<uint8_t>> answers(multi_query_index.size());
   size_t answer_count = 0;
@@ -343,7 +338,7 @@ std::vector<std::vector<uint8_t>> MultiQueryClient::DoMultiPirQuery(
       break;
     }
   }
-  YACL_ENFORCE(answer_count == multi_query_index.size());
+  SPU_ENFORCE(answer_count == multi_query_index.size());
 
   return answers;
 }

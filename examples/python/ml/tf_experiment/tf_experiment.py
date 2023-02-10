@@ -22,7 +22,7 @@ import json
 import numpy as np
 import tensorflow as tf
 from sklearn import metrics
-import spu.util.distributed as ppd
+import spu.utils.distributed as ppd
 
 # This example is to show tf program could be converted to XLA IR and run by SPU.
 # Start nodes.
@@ -63,12 +63,16 @@ class LogitRegression:
         remainder = feature.shape[0] % self.n_iters
 
         xs = tf.split(
-            feature[:-remainder,],
+            feature[
+                :-remainder,
+            ],
             self.n_iters,
             axis=0,
         )
         ys = tf.split(
-            label[:-remainder,],
+            label[
+                :-remainder,
+            ],
             self.n_iters,
             axis=0,
         )
@@ -92,12 +96,16 @@ class LogitRegression:
         remainder = feature.shape[0] % self.n_iters
 
         xs = tf.split(
-            feature[:-remainder,],
+            feature[
+                :-remainder,
+            ],
             self.n_iters,
             axis=0,
         )
         ys = tf.split(
-            label[:-remainder,],
+            label[
+                :-remainder,
+            ],
             self.n_iters,
             axis=0,
         )
@@ -120,12 +128,16 @@ class LogitRegression:
         remainder = feature.shape[0] % self.n_iters
 
         xs = tf.split(
-            feature[:-remainder,],
+            feature[
+                :-remainder,
+            ],
             self.n_iters,
             axis=0,
         )
         ys = tf.split(
-            label[:-remainder,],
+            label[
+                :-remainder,
+            ],
             self.n_iters,
             axis=0,
         )
@@ -173,7 +185,7 @@ def breast_cancer(
 
 def compile_to_xla(fn, *args, **kwargs):
     """
-    This method demostrate the method to run tf function on spu via tf->xla->spu path.
+    This method demonstrate the method to run tf function on spu via tf->xla->spu path.
     It's not supported on SPU yet.
     """
     tf_fn = tf.function(fn, jit_compile=True, experimental_relax_shapes=True)

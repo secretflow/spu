@@ -62,7 +62,7 @@ class BaseIo : public IoInterface {
       : field_(field), world_size_(world_size) {}
 
   std::vector<ArrayRef> makeBitSecret(const ArrayRef& raw) const override {
-    YACL_THROW("should not be here");
+    SPU_THROW("should not be here");
   }
   bool hasBitSecretSupport() const override { return false; }
 };

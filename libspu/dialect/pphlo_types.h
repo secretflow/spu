@@ -22,8 +22,7 @@
 #include "libspu/dialect/pphlo_base_enums.h"
 
 #define GET_TYPEDEF_CLASSES
-#include "yacl/base/exception.h"
-
+#include "libspu/core/prelude.h"
 #include "libspu/dialect/pphlo_types.h.inc"
 
 namespace mlir::pphlo {
@@ -76,7 +75,7 @@ class TypeTools {
     if (isMPCType<PublicType>(t)) {
       return Visibility::VIS_PUBLIC;
     }
-    YACL_ENFORCE(isMPCType<SecretType>(t));
+    SPU_ENFORCE(isMPCType<SecretType>(t));
     return Visibility::VIS_SECRET;
   }
 

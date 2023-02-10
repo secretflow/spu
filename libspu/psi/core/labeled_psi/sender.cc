@@ -44,7 +44,7 @@ class QueryRequest {
                std::unordered_map<
                    uint32_t, std::vector<apsi::SEALObject<seal::Ciphertext>>>
                    &encrypted_powers,
-               std::shared_ptr<spu::psi::SenderDB> sender_db) {
+               const std::shared_ptr<spu::psi::SenderDB> &sender_db) {
     auto seal_context = sender_db->GetSealContext();
 
     for (auto &q : encrypted_powers) {
@@ -55,7 +55,7 @@ class QueryRequest {
         cts.push_back(ct.extract(seal_context));
         if (!is_valid_for(cts.back(), *seal_context)) {
           SPDLOG_ERROR("Extracted ciphertext is invalid for SEALContext");
-          YACL_THROW("Extracted ciphertext is invalid for SEALContext");
+          SPU_THROW("Extracted ciphertext is invalid for SEALContext");
           return;
         }
       }
@@ -65,8 +65,7 @@ class QueryRequest {
     if (seal_context->using_keyswitching()) {
       relin_keys_ = relin_keys->extract(seal_context);
       if (!is_valid_for(relin_keys_, *seal_context)) {
-        YACL_THROW(
-            "Extracted relinearization keys are invalid for SEALContext");
+        SPU_THROW("Extracted relinearization keys are invalid for SEALContext");
       }
     }
   }
@@ -110,7 +109,7 @@ uint32_t reset_powers_dag(apsi::PowersDag *pd, const apsi::PSIParams &params,
         "source_powers: {}, target_powers: {}",
         apsi::util::to_string(source_powers),
         apsi::util::to_string(target_powers));
-    YACL_THROW("failed to configure PowersDag");
+    SPU_THROW("failed to configure PowersDag");
   }
   SPDLOG_INFO("Configured PowersDag with depth {}", pd->depth());
 
@@ -119,9 +118,8 @@ uint32_t reset_powers_dag(apsi::PowersDag *pd, const apsi::PSIParams &params,
 
 }  // namespace
 
-LabelPsiSender::LabelPsiSender(
-    const std::shared_ptr<spu::psi::SenderDB> &sender_db)
-    : sender_db_(sender_db) {
+LabelPsiSender::LabelPsiSender(std::shared_ptr<spu::psi::SenderDB> sender_db)
+    : sender_db_(std::move(sender_db)) {
   crypto_context_ = apsi::CryptoContext(sender_db_->GetParams());
 }
 
@@ -131,7 +129,7 @@ void LabelPsiSender::RunPsiParams(
       link_ctx->Recv(link_ctx->NextRank(), fmt::format("recv psi item size"));
 
   size_t nr;
-  YACL_ENFORCE(sizeof(nr) == nr_buffer.size());
+  SPU_ENFORCE(sizeof(nr) == nr_buffer.size());
   std::memcpy(&nr, nr_buffer.data(), nr_buffer.size());
 
   apsi::PSIParams psi_params = spu::psi::GetPsiParams(nr, items_size);
@@ -152,7 +150,7 @@ void LabelPsiSender::RunOPRF(
       link_ctx->NextRank(), fmt::format("recv oprf blind message"));
 
   proto::OprfProto blind_proto;
-  YACL_ENFORCE(
+  SPU_ENFORCE(
       blind_proto.ParseFromArray(blind_buffer.data(), blind_buffer.size()));
 
   proto::OprfProto evaluated_proto;
@@ -188,7 +186,7 @@ void LabelPsiSender::RunQuery(
       link_ctx->NextRank(), fmt::format("recv client query message"));
 
   proto::QueryRequestProto query_proto;
-  YACL_ENFORCE(
+  SPU_ENFORCE(
       query_proto.ParseFromArray(query_buffer.data(), query_buffer.size()));
 
   auto seal_context = sender_db_->GetSealContext();
@@ -231,17 +229,17 @@ void LabelPsiSender::RunQuery(
       SenderRunQuery(request, sender_db_);
 
   proto::QueryResponseProto response_proto;
-  for (size_t idx = 0; idx < query_result.size(); ++idx) {
+  for (auto &result : query_result) {
     proto::QueryResultProto *result_proto = response_proto.add_results();
-    result_proto->set_bundle_idx(query_result[idx]->bundle_idx);
+    result_proto->set_bundle_idx(result->bundle_idx);
     std::vector<uint8_t> temp;
-    temp.resize(query_result[idx]->psi_result.save_size(compr_mode_));
-    auto size = query_result[idx]->psi_result.save(temp, compr_mode_);
+    temp.resize(result->psi_result.save_size(compr_mode_));
+    auto size = result->psi_result.save(temp, compr_mode_);
     result_proto->set_ciphertext(temp.data(), temp.size());
-    result_proto->set_label_byte_count(query_result[idx]->label_byte_count);
-    result_proto->set_nonce_byte_count(query_result[idx]->nonce_byte_count);
+    result_proto->set_label_byte_count(result->label_byte_count);
+    result_proto->set_nonce_byte_count(result->nonce_byte_count);
 
-    for (auto &r : query_result[idx]->label_result) {
+    for (auto &r : result->label_result) {
       temp.resize(r.save_size(compr_mode_));
       size = r.save(temp, compr_mode_);
       result_proto->add_label_results(temp.data(), size);
@@ -272,7 +270,7 @@ void ProcessBinBundleCache(
     std::reference_wrapper<const apsi::sender::BinBundleCache> cache,
     std::vector<CiphertextPowers> *all_powers, uint32_t bundle_idx,
     seal::compr_mode_type compr_mode, seal::MemoryPoolHandle *pool,
-    std::shared_ptr<ResultPackage> result);
+    const std::shared_ptr<ResultPackage> &result);
 
 std::vector<std::shared_ptr<ResultPackage>> SenderRunQuery(
     const QueryRequest &query,
@@ -327,9 +325,9 @@ std::vector<std::shared_ptr<ResultPackage>> SenderRunQuery(
   }
 
   // Load inputs provided in the query
-  for (auto &q : query.data()) {
+  for (const auto &q : query.data()) {
     // The exponent of all the query powers we're about to iterate through
-    size_t exponent = static_cast<size_t>(q.first);
+    auto exponent = static_cast<size_t>(q.first);
 
     // Load Qᵢᵉ for all bundle indices i, where e is the exponent specified
     // above
@@ -338,7 +336,7 @@ std::vector<std::shared_ptr<ResultPackage>> SenderRunQuery(
 
       SPDLOG_DEBUG("Extracting query ciphertext power {} for bundle index {}",
                    exponent, bundle_idx);
-      all_powers[bundle_idx][exponent] = std::move(q.second[bundle_idx]);
+      all_powers[bundle_idx][exponent] = q.second[bundle_idx];
     }
   }
 
@@ -387,7 +385,7 @@ void ComputePowers(const std::shared_ptr<spu::psi::SenderDB> &sender_db,
                    seal::MemoryPoolHandle *pool) {
   SPDLOG_DEBUG("Sender::ComputePowers");
   auto bundle_caches = sender_db->GetCacheAt(bundle_idx);
-  if (!bundle_caches.size()) {
+  if (bundle_caches.empty()) {
     return;
   }
 
@@ -445,7 +443,7 @@ void ComputePowers(const std::shared_ptr<spu::psi::SenderDB> &sender_db,
   std::vector<std::future<void>> futures;
   for (uint32_t power : pd.target_powers()) {
     futures.push_back(tpm.thread_pool().enqueue([&, power]() {
-      if (!ps_low_degree) {
+      if (ps_low_degree == 0) {
         // Only one ciphertext-plaintext multiplication is needed after this
         evaluator->mod_switch_to_inplace(powers_at_this_bundle_idx[power],
                                          high_powers_parms_id, *pool);
@@ -480,7 +478,7 @@ void ProcessBinBundleCache(
     std::reference_wrapper<const apsi::sender::BinBundleCache> cache,
     std::vector<CiphertextPowers> *all_powers, uint32_t bundle_idx,
     seal::compr_mode_type compr_mode, seal::MemoryPoolHandle *pool,
-    std::shared_ptr<ResultPackage> result) {
+    const std::shared_ptr<ResultPackage> &result) {
   SPDLOG_DEBUG("Sender::ProcessBinBundleCache");
 
   // Package for the result data
@@ -516,10 +514,10 @@ void ProcessBinBundleCache(
         seal::util::safe_cast<uint32_t>(interp_polyn.batched_coeffs.size()) - 1;
     using_ps = (ps_low_degree > 1) && (ps_low_degree < degree);
     if (using_ps) {
-      result->label_result.push_back(interp_polyn.eval_patstock(
+      result->label_result.emplace_back(interp_polyn.eval_patstock(
           crypto_context, (*all_powers)[bundle_idx], ps_low_degree, *pool));
     } else {
-      result->label_result.push_back(
+      result->label_result.emplace_back(
           interp_polyn.eval((*all_powers)[bundle_idx], *pool));
     }
   }

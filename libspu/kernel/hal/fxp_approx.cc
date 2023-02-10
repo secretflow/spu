@@ -102,28 +102,28 @@ Value log2_pade_approx(HalContext* ctx, const Value& x) {
 // Householder iterations. This approximation is accurate within 2% relative
 // error on [0.0001, 250].
 Value log_householder_approx(HalContext* ctx, const Value& x) {
-  Value term_1 = f_div(ctx, x, constant(ctx, 120.0f, x.shape()));
+  Value term_1 = f_div(ctx, x, constant(ctx, 120.0, x.shape()));
   Value term_2 = f_mul(
       ctx,
-      f_exp(ctx,
-            f_negate(ctx,
-                     f_add(ctx, f_mul(ctx, x, constant(ctx, 2.0f, x.shape())),
-                           constant(ctx, 1.0f, x.shape())))),
-      constant(ctx, 20.0f, x.shape()));
+      f_exp(
+          ctx,
+          f_negate(ctx, f_add(ctx, f_mul(ctx, x, constant(ctx, 2.0, x.shape())),
+                              constant(ctx, 1.0, x.shape())))),
+      constant(ctx, 20.0, x.shape()));
   Value y =
-      f_add(ctx, f_sub(ctx, term_1, term_2), constant(ctx, 3.0f, x.shape()));
+      f_add(ctx, f_sub(ctx, term_1, term_2), constant(ctx, 3.0, x.shape()));
 
   std::vector<Value> coeffs;
   const size_t config_orders = ctx->rt_config().fxp_log_orders();
   const size_t num_order = config_orders == 0 ? 8 : config_orders;
   for (size_t i = 0; i < num_order; i++) {
-    coeffs.emplace_back(constant(ctx, 1.0f / (1.0f + i), x.shape()));
+    coeffs.emplace_back(constant(ctx, 1.0 / (1.0 + i), x.shape()));
   }
 
   const size_t config_iters = ctx->rt_config().fxp_log_iters();
   const size_t num_iters = config_iters == 0 ? 3 : config_iters;
   for (size_t i = 0; i < num_iters; i++) {
-    Value h = f_sub(ctx, constant(ctx, 1.0f, x.shape()),
+    Value h = f_sub(ctx, constant(ctx, 1.0, x.shape()),
                     f_mul(ctx, x, f_exp(ctx, f_negate(ctx, y))));
     y = f_sub(ctx, y, detail::f_polynomial(ctx, h, coeffs));
   }
@@ -138,7 +138,7 @@ Value exp_taylor_series(HalContext* ctx, const Value& x) {
   const size_t num_iters = config_iters == 0 ? 8 : config_iters;
 
   Value res = f_add(ctx, _trunc(ctx, x, num_iters).asFxp(),
-                    constant(ctx, 1.0f, x.shape()));
+                    constant(ctx, 1.0, x.shape()));
 
   for (size_t i = 0; i < num_iters; i++) {
     res = f_square(ctx, res);
@@ -256,7 +256,7 @@ Value tanh_pade_approx(HalContext* ctx, const Value& x) {
 Value f_exp(HalContext* ctx, const Value& x) {
   SPU_TRACE_HAL_LEAF(ctx, x);
 
-  YACL_ENFORCE(x.isFxp());
+  SPU_ENFORCE(x.isFxp());
 
   if (x.isPublic()) {
     return f_exp_p(ctx, x);
@@ -269,15 +269,15 @@ Value f_exp(HalContext* ctx, const Value& x) {
     case RuntimeConfig::EXP_PADE:
       return detail::exp_pade_approx(ctx, x);
     default:
-      YACL_THROW("unexpected exp approxmation method {}",
-                 ctx->rt_config().fxp_exp_mode());
+      SPU_THROW("unexpected exp approxmation method {}",
+                ctx->rt_config().fxp_exp_mode());
   }
 }
 
 Value f_log(HalContext* ctx, const Value& x) {
   SPU_TRACE_HAL_LEAF(ctx, x);
 
-  YACL_ENFORCE(x.isFxp());
+  SPU_ENFORCE(x.isFxp());
 
   if (x.isPublic()) {
     return f_log_p(ctx, x);
@@ -286,28 +286,28 @@ Value f_log(HalContext* ctx, const Value& x) {
   switch (ctx->rt_config().fxp_log_mode()) {
     case RuntimeConfig::LOG_DEFAULT:
     case RuntimeConfig::LOG_PADE:
-      return f_mul(ctx, constant(ctx, std::log(2.0f), x.shape()),
+      return f_mul(ctx, constant(ctx, std::log(2.0), x.shape()),
                    f_log2(ctx, x));
     case RuntimeConfig::LOG_NEWTON:
       return detail::log_householder_approx(ctx, x);
     default:
-      YACL_THROW("unlogected log approxmation method {}",
-                 ctx->rt_config().fxp_log_mode());
+      SPU_THROW("unlogected log approxmation method {}",
+                ctx->rt_config().fxp_log_mode());
   }
 }
 
 Value f_log1p(HalContext* ctx, const Value& x) {
   SPU_TRACE_HAL_LEAF(ctx, x);
 
-  YACL_ENFORCE(x.isFxp());
+  SPU_ENFORCE(x.isFxp());
 
-  return f_log(ctx, f_add(ctx, constant(ctx, 1.0f, x.shape()), x));
+  return f_log(ctx, f_add(ctx, constant(ctx, 1.0, x.shape()), x));
 }
 
 Value f_log2(HalContext* ctx, const Value& x) {
   SPU_TRACE_HAL_LEAF(ctx, x);
 
-  YACL_ENFORCE(x.isFxp());
+  SPU_ENFORCE(x.isFxp());
 
   return detail::log2_pade_approx(ctx, x).asFxp();
 }

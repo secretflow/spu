@@ -20,16 +20,16 @@
 namespace spu::kernel::hal {
 
 // FIXME(jint) handle cross (int) dtype binary operators
-#define ENSURE_INT_AND_DTYPE_MATCH(X, Y)                        \
-  YACL_ENFORCE(X.isInt(), "expect lhs int, got {]", X.dtype()); \
-  YACL_ENFORCE(Y.isInt(), "expect rhs int, got {]", X.dtype());
+#define ENSURE_INT_AND_DTYPE_MATCH(X, Y)                           \
+  SPU_ENFORCE((X).isInt(), "expect lhs int, got {]", (X).dtype()); \
+  SPU_ENFORCE((Y).isInt(), "expect rhs int, got {]", (X).dtype());
 
-#define DEF_UNARY_OP(Name, Fn2K)                              \
-  Value Name(HalContext* ctx, const Value& x) {               \
-    SPU_TRACE_HAL_LEAF(ctx, x);                               \
-                                                              \
-    YACL_ENFORCE(x.isInt(), "expect Int, got {]", x.dtype()); \
-    return Fn2K(ctx, x).setDtype(x.dtype());                  \
+#define DEF_UNARY_OP(Name, Fn2K)                             \
+  Value Name(HalContext* ctx, const Value& x) {              \
+    SPU_TRACE_HAL_LEAF(ctx, x);                              \
+                                                             \
+    SPU_ENFORCE(x.isInt(), "expect Int, got {]", x.dtype()); \
+    return Fn2K(ctx, x).setDtype(x.dtype());                 \
   }
 
 /*           name,     op_2k */
@@ -60,7 +60,7 @@ Value i_less(HalContext* ctx, const Value& x, const Value& y) {
 Value i_abs(HalContext* ctx, const Value& x) {
   SPU_TRACE_HAL_LEAF(ctx, x);
 
-  YACL_ENFORCE(x.isInt());
+  SPU_ENFORCE(x.isInt());
 
   // abs(x) = _sign(x) * x
   return _mul(ctx, _sign(ctx, x), x).setDtype(x.dtype());
@@ -69,8 +69,8 @@ Value i_abs(HalContext* ctx, const Value& x) {
 Value i_equal(HalContext* ctx, const Value& x, const Value& y) {
   SPU_TRACE_HAL_LEAF(ctx, x, y);
 
-  YACL_ENFORCE(x.isInt());
-  YACL_ENFORCE(y.isInt());
+  SPU_ENFORCE(x.isInt());
+  SPU_ENFORCE(y.isInt());
 
   return _eqz(ctx, i_sub(ctx, x, y)).setDtype(DT_I1);
 }
@@ -78,8 +78,8 @@ Value i_equal(HalContext* ctx, const Value& x, const Value& y) {
 Value i_sub(HalContext* ctx, const Value& x, const Value& y) {
   SPU_TRACE_HAL_LEAF(ctx, x, y);
 
-  YACL_ENFORCE(x.isInt());
-  YACL_ENFORCE(y.isInt());
+  SPU_ENFORCE(x.isInt());
+  SPU_ENFORCE(y.isInt());
   return i_add(ctx, x, i_negate(ctx, y));
 }
 

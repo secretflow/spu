@@ -39,8 +39,7 @@ namespace spu::psi {
 
 class Bc22PcgPsi {
  public:
-  Bc22PcgPsi(const std::shared_ptr<yacl::link::Context> &link_ctx,
-             PsiRoleType role);
+  Bc22PcgPsi(std::shared_ptr<yacl::link::Context> link_ctx, PsiRoleType role);
 
   void RunPsi(absl::Span<const std::string> items);
 
@@ -48,7 +47,7 @@ class Bc22PcgPsi {
     if (role_ == PsiRoleType::Receiver) {
       return results_;
     } else {
-      YACL_THROW("Bc22PcgPsi only Receiver get intersection");
+      SPU_THROW("Bc22PcgPsi only Receiver get intersection");
     }
   }
 
@@ -68,7 +67,7 @@ class Bc22PcgPsi {
                       const std::string &oprfs, size_t compare_bytes_size);
 
   void PcgPsiRecvOprf(absl::Span<const std::string> items,
-                      const std::vector<std::string> &oprfs, size_t);
+                      const std::vector<std::string> &oprf_encode_vec, size_t);
 
   // cuckoo_options
   CuckooIndex::Options cuckoo_options_;

@@ -22,10 +22,10 @@
 #include "absl/strings/str_split.h"
 #include "gtest/gtest.h"
 #include "spdlog/spdlog.h"
-#include "yacl/base/exception.h"
 #include "yacl/crypto/tools/prg.h"
 #include "yacl/link/test_util.h"
 
+#include "libspu/core/prelude.h"
 #include "libspu/psi/core/ecdh_oprf/ecdh_oprf_selector.h"
 #include "libspu/psi/core/labeled_psi/psi_params.h"
 #include "libspu/psi/core/labeled_psi/receiver.h"
@@ -35,7 +35,7 @@ namespace spu::psi {
 
 namespace {
 
-using duration_millis = std::chrono::duration<double, std::milli>;
+using DurationMillis = std::chrono::duration<double, std::milli>;
 
 constexpr size_t kPsiStartPos = 100;
 struct TestParams {
@@ -111,7 +111,7 @@ std::vector<std::pair<apsi::Item, apsi::Label>> GenerateSenderData(
     (*intersection_idx).emplace_back(i);
     std::string label_string(sender_items[kPsiStartPos + i * 5].second.size(),
                              '\0');
-    std::memcpy(&label_string[0],
+    std::memcpy(label_string.data(),
                 sender_items[kPsiStartPos + i * 5].second.data(),
                 sender_items[kPsiStartPos + i * 5].second.size());
     (*intersection_label).emplace_back(label_string);
@@ -181,7 +181,7 @@ TEST_P(LabelPsiTest, Works) {
   }
 
   const auto setdb_end = std::chrono::system_clock::now();
-  const duration_millis setdb_duration = setdb_end - setdb_start;
+  const DurationMillis setdb_duration = setdb_end - setdb_start;
   SPDLOG_INFO("*** step2 set db duration:{}", setdb_duration.count());
 
   EXPECT_EQ(params.ns, sender_db->GetItemCount());
@@ -213,7 +213,7 @@ TEST_P(LabelPsiTest, Works) {
       oprf_pair = f_receiver_oprf.get();
 
   const auto oprf_end = std::chrono::system_clock::now();
-  const duration_millis oprf_duration = oprf_end - oprf_start;
+  const DurationMillis oprf_duration = oprf_end - oprf_start;
   SPDLOG_INFO("*** step3 oprf duration:{}", oprf_duration.count());
 
   SPDLOG_INFO("hashed_item size:{} label keys size:{}", oprf_pair.first.size(),
@@ -237,7 +237,7 @@ TEST_P(LabelPsiTest, Works) {
       f_receiver_query.get();
 
   const auto query_end = std::chrono::system_clock::now();
-  const duration_millis query_duration = query_end - query_start;
+  const DurationMillis query_duration = query_end - query_start;
   SPDLOG_INFO("*** step4 query duration:{}", query_duration.count());
 
   SPDLOG_INFO("index vec size:{} intersection_idx size:{}",

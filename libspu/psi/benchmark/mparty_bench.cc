@@ -53,7 +53,7 @@ void PreparePsiBench(const uint32_t rank, const std::string& parties) {
   } else {
     host_ips = absl::StrSplit(parties, ',');
   }
-  YACL_ENFORCE(host_ips.size() == 2);
+  SPU_ENFORCE(host_ips.size() == 2);
 
   yacl::link::ContextDesc lctx_desc;
   for (size_t i = 0; i < 2; i++) {

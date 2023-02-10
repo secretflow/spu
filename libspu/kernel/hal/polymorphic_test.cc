@@ -24,7 +24,7 @@
 #include "xtensor/xvectorize.hpp"
 
 #include "libspu/kernel/hal/test_util.h"
-#include "libspu/mpc/util/linalg.h"
+#include "libspu/mpc/utils/linalg.h"
 
 namespace spu::kernel::hal {
 
@@ -44,33 +44,44 @@ using MathTestTypes = ::testing::Types<
                std::common_type_t<int32_t, float>>,  // (sint, sfxp)
     std::tuple<int32_t, secret_v, int32_t, secret_v,
                std::common_type_t<int32_t, int32_t>>,  // (sint, sint)
+    std::tuple<int16_t, secret_v, int32_t, secret_v,
+               std::common_type_t<int16_t, int32_t>>,  // (sint, sint)
+
     // sp
     std::tuple<float, secret_v, float, public_v,
-               std::common_type_t<float, float>>,  // (sfxp, sfxp)
+               std::common_type_t<float, float>>,  // (sfxp, pfxp)
     std::tuple<float, secret_v, int32_t, public_v,
-               std::common_type_t<float, int32_t>>,  // (sfxp, sint)
+               std::common_type_t<float, int32_t>>,  // (sfxp, pint)
     std::tuple<int32_t, secret_v, float, public_v,
-               std::common_type_t<int32_t, float>>,  // (sint, sfxp)
+               std::common_type_t<int32_t, float>>,  // (sint, pfxp)
     std::tuple<int32_t, secret_v, int32_t, public_v,
-               std::common_type_t<int32_t, int32_t>>,  // (sint, sint)
+               std::common_type_t<int32_t, int32_t>>,  // (sint, pint)
+    std::tuple<int16_t, secret_v, int32_t, public_v,
+               std::common_type_t<int16_t, int32_t>>,  // (sint, pint)
+
     // ps
     std::tuple<float, public_v, float, secret_v,
-               std::common_type_t<float, float>>,  // (sfxp, sfxp)
+               std::common_type_t<float, float>>,  // (pfxp, sfxp)
     std::tuple<float, public_v, int32_t, secret_v,
-               std::common_type_t<float, int32_t>>,  // (sfxp, sint)
+               std::common_type_t<float, int32_t>>,  // (pfxp, sint)
     std::tuple<int32_t, public_v, float, secret_v,
-               std::common_type_t<int32_t, float>>,  // (sint, sfxp)
+               std::common_type_t<int32_t, float>>,  // (pint, sfxp)
     std::tuple<int32_t, public_v, int32_t, secret_v,
-               std::common_type_t<int32_t, int32_t>>,  // (sint, sint)
+               std::common_type_t<int32_t, int32_t>>,  // (pint, sint)
+    std::tuple<int16_t, public_v, int32_t, secret_v,
+               std::common_type_t<int16_t, int32_t>>,  // (pint, pint)
+
     // pp
     std::tuple<float, public_v, float, public_v,
-               std::common_type_t<float, float>>,  // (sfxp, sfxp)
+               std::common_type_t<float, float>>,  // (pfxp, pfxp)
     std::tuple<float, public_v, int32_t, public_v,
-               std::common_type_t<float, int32_t>>,  // (sfxp, sint)
+               std::common_type_t<float, int32_t>>,  // (pfxp, pint)
     std::tuple<int32_t, public_v, float, public_v,
-               std::common_type_t<int32_t, float>>,  // (sint, sfxp)
+               std::common_type_t<int32_t, float>>,  // (pint, pfxp)
     std::tuple<int32_t, public_v, int32_t, public_v,
-               std::common_type_t<int32_t, int32_t>>  // (sint, sint)
+               std::common_type_t<int32_t, int32_t>>,  // (pint, pint)
+    std::tuple<int16_t, public_v, int32_t, public_v,
+               std::common_type_t<int16_t, int32_t>>  // (pint, pint)
     >;
 
 TYPED_TEST_SUITE(MathTest, MathTestTypes);

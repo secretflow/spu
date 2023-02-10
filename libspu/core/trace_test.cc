@@ -62,8 +62,8 @@ TEST(TraceTest, ActionWorks) {
 
 /// macros examples.
 struct Context {
-  std::string id() { return "id"; }
-  std::string pid() { return ""; }
+  static std::string id() { return "id"; }
+  static std::string pid() { return ""; }
 };
 void g(Context* ctx) { SPU_TRACE_HAL_LEAF(ctx); }
 

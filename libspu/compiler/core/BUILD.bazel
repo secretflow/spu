@@ -22,5 +22,6 @@ spu_cc_library(
     deps = [
         "//libspu/compiler/common:compilation_context",
         "//libspu/compiler/passes:all_passes",
+        "@llvm-project//mlir:Transforms",
     ],
 )

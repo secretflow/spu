@@ -42,8 +42,8 @@ spu::Value Convolution(HalContext *ctx, const spu::Value &lhs,
                        const spu::Value &rhs, const ConvolutionConfig &config,
                        absl::Span<const int64_t> result_shape) {
   const size_t num_spatial_dims = config.outputSpatialDimensions.size();
-  YACL_ENFORCE(num_spatial_dims == config.inputSpatialDimensions.size());
-  YACL_ENFORCE(num_spatial_dims == config.kernelSpatialDimensions.size());
+  SPU_ENFORCE(num_spatial_dims == config.inputSpatialDimensions.size());
+  SPU_ENFORCE(num_spatial_dims == config.kernelSpatialDimensions.size());
 
   const auto &lhs_shape = lhs.shape();
 
@@ -122,8 +122,8 @@ spu::Value Convolution(HalContext *ctx, const spu::Value &lhs,
             window_index[ki];
 
         // Skip if input index is not in bounds.
-        if (!(lhs_spatial_index >= 0 &&
-              lhs_spatial_index < lhs_shape[input_spatial_dim])) {
+        if (lhs_spatial_index < 0 ||
+            lhs_spatial_index >= lhs_shape[input_spatial_dim]) {
           return;
         }
 
@@ -206,7 +206,8 @@ spu::Value extractImagePatches(HalContext *ctx, spu::Value &input,
 }
 
 // This is an optimized conv2D with im2col
-spu::Value Convolution2D(HalContext *ctx, spu::Value input, spu::Value kernel,
+spu::Value Convolution2D(HalContext *ctx, spu::Value input,
+                         const spu::Value &kernel,
                          const ConvolutionConfig &config,
                          absl::Span<const int64_t> result_shape) {
   auto input_batch = input.shape()[0];

@@ -17,21 +17,22 @@
 #include <algorithm>
 #include <future>
 #include <random>
+#include <utility>
 
 #include "fmt/format.h"
 #include "openssl/crypto.h"
 #include "openssl/rand.h"
 #include "spdlog/spdlog.h"
-#include "yacl/base/exception.h"
 #include "yacl/link/link.h"
 #include "yacl/utils/serialize.h"
 
+#include "libspu/core/prelude.h"
 #include "libspu/psi/cryptor/cryptor_selector.h"
 
 namespace spu::psi {
 
-EcdhP2PExtendCtx::EcdhP2PExtendCtx(EcdhPsiOptions options)
-    : EcdhPsiContext(std::move(options)) {}
+EcdhP2PExtendCtx::EcdhP2PExtendCtx(const EcdhPsiOptions& options)
+    : EcdhPsiContext(options) {}
 
 void EcdhP2PExtendCtx::MaskSendSelf(
     const std::vector<std::string>& self_items) {
@@ -54,7 +55,7 @@ void EcdhP2PExtendCtx::MaskShufflePeer() {
   RecvItems(&peer_items);
 
   std::vector<std::string> dup_masked_items;
-  if (peer_items.size() > 0) {
+  if (!peer_items.empty()) {
     for (const auto& masked : Mask(options_.ecc_cryptor, peer_items)) {
       dup_masked_items.emplace_back(masked.substr(
           masked.length() - options_.dual_mask_size, options_.dual_mask_size));
@@ -163,12 +164,13 @@ void EcdhP2PExtendCtx::SendImpl(const std::vector<std::string>& items,
 }
 
 // shuffled ecdh 3pc psi
-ShuffleEcdh3PcPsi::ShuffleEcdh3PcPsi(Options options) : options_(options) {
-  YACL_ENFORCE(options_.link_ctx->WorldSize() == 3);
+ShuffleEcdh3PcPsi::ShuffleEcdh3PcPsi(Options options)
+    : options_(std::move(std::move(options))) {
+  SPU_ENFORCE(options_.link_ctx->WorldSize() == 3);
 
   private_key_.resize(kKeySize);
-  YACL_ENFORCE(RAND_bytes(&private_key_[0], kKeySize) == 1,
-               "Cannot create random private key");
+  SPU_ENFORCE(RAND_bytes(private_key_.data(), kKeySize) == 1,
+              "Cannot create random private key");
   ecc_cryptor_ = CreateEccCryptor(options_.curve_type);
   ecc_cryptor_->SetPrivateKey(absl::MakeSpan(private_key_));
 }
@@ -197,7 +199,7 @@ void ShuffleEcdh3PcPsi::MaskMaster(const std::vector<std::string>& self_items,
 
     SPDLOG_INFO("MaskMaster:{} recv masked master items:{}",
                 options_.link_ctx->Rank(), masked_items->size());
-  } else if (IsCalcuator()) {
+  } else if (IsCalculator()) {
     // a
     // - c-->[a] recv z^c mask z^c^a then [a]-->b send z^c^a
     auto a_c_ctx =
@@ -240,7 +242,7 @@ void ShuffleEcdh3PcPsi::PartnersPsiImpl(
     std::vector<std::string>* results) {
   SPDLOG_INFO("PartnersPsi:{} begin", options_.link_ctx->Rank());
   // a - b psi
-  if (IsCalcuator()) {
+  if (IsCalculator()) {
     std::vector<std::string> self_result;
     std::vector<std::string> peer_result;
 
@@ -314,19 +316,19 @@ void ShuffleEcdh3PcPsi::FinalPsi(
     const std::vector<std::string>& partners_result,
     std::vector<std::string>* results) {
   if (IsMaster()) {
-    std::vector<std::string> masked_parteners_items;
+    std::vector<std::string> masked_partners_items;
     for (const auto& masked : Mask(ecc_cryptor_, partners_result)) {
-      masked_parteners_items.emplace_back(masked.substr(
+      masked_partners_items.emplace_back(masked.substr(
           masked.length() - options_.dual_mask_size, options_.dual_mask_size));
     }
 
-    std::sort(masked_parteners_items.begin(), masked_parteners_items.end());
+    std::sort(masked_partners_items.begin(), masked_partners_items.end());
 
     for (uint32_t index = 0; index < master_items.size(); index++) {
-      if (std::binary_search(masked_parteners_items.begin(),
-                             masked_parteners_items.end(),
+      if (std::binary_search(masked_partners_items.begin(),
+                             masked_partners_items.end(),
                              master_items[index])) {
-        YACL_ENFORCE(index < self_items.size());
+        SPU_ENFORCE(index < self_items.size());
         results->push_back(self_items[index]);
       }
     }
@@ -341,8 +343,8 @@ std::shared_ptr<EcdhP2PExtendCtx> ShuffleEcdh3PcPsi::CreateP2PCtx(
   opts.ecc_cryptor = ecc_cryptor_;
   opts.dual_mask_size = dual_mask_size;
   if (target_rank != yacl::link::kAllRank) {
-    YACL_ENFORCE(target_rank == options_.link_ctx->Rank() ||
-                 target_rank == dst_rank);
+    SPU_ENFORCE(target_rank == options_.link_ctx->Rank() ||
+                target_rank == dst_rank);
     opts.target_rank = target_rank == dst_rank ? opts.link_ctx->NextRank()
                                                : opts.link_ctx->Rank();
   } else {
@@ -353,8 +355,8 @@ std::shared_ptr<EcdhP2PExtendCtx> ShuffleEcdh3PcPsi::CreateP2PCtx(
 }
 
 size_t ShuffleEcdh3PcPsi::GetPartnersPsiPeerRank() {
-  YACL_ENFORCE(!IsMaster());
-  if (IsCalcuator()) {
+  SPU_ENFORCE(!IsMaster());
+  if (IsCalculator()) {
     return options_.link_ctx->NextRank();
   } else {
     return options_.link_ctx->PrevRank();

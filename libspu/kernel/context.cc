@@ -18,8 +18,8 @@
 
 namespace spu {
 
-HalContext::HalContext(RuntimeConfig config,
-                       std::shared_ptr<yacl::link::Context> lctx)
+HalContext::HalContext(const RuntimeConfig& config,
+                       const std::shared_ptr<yacl::link::Context>& lctx)
     : rt_config_(config),
       lctx_(lctx),
       prot_(mpc::Factory::CreateCompute(config, lctx)),

@@ -39,7 +39,7 @@ spu_cc_binary(
         "//libspu/mpc/aby3",
         "//libspu/mpc/common:communicator",
         "//libspu/mpc/semi2k",
-        "//libspu/mpc/util:simulate",
+        "//libspu/mpc/utils:simulate",
         "@com_github_google_benchmark//:benchmark",
         "@com_google_absl//absl/strings",
     ],

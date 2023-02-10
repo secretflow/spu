@@ -17,6 +17,7 @@
 #include "mlir/Dialect/Func/IR/FuncOps.h"
 #include "mlir/Tools/mlir-opt/MlirOptMain.h"
 #include "mlir/Transforms/Passes.h"
+#include "stablehlo/dialect/StablehloOps.h"
 #include "xla/mlir_hlo/mhlo/transforms/passes.h"
 
 #include "libspu/compiler/passes/register_passes.h"
@@ -28,8 +29,8 @@ int main(int argc, char **argv) {
   mlir::mhlo::registerAllMhloPasses();
 
   mlir::DialectRegistry registry;
-  registry.insert<mlir::mhlo::MhloDialect, mlir::pphlo::PPHloDialect,
-                  mlir::func::FuncDialect>();
+  registry.insert<mlir::mhlo::MhloDialect, mlir::stablehlo::StablehloDialect,
+                  mlir::pphlo::PPHloDialect, mlir::func::FuncDialect>();
 
   return static_cast<int>(
       failed(mlir::MlirOptMain(argc, argv, "MLIR pphlo pass driver\n", registry,

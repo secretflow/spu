@@ -15,6 +15,7 @@
 #include "libspu/device/pphlo/pphlo_executor.h"
 
 #include <array>
+#include <cstddef>
 #include <exception>
 #include <memory>
 #include <string>
@@ -30,7 +31,7 @@
 #include "libspu/device/symbol_table.h"
 #include "libspu/device/test_utils.h"
 #include "libspu/mpc/ref2k/ref2k.h"
-#include "libspu/mpc/util/simulate.h"
+#include "libspu/mpc/utils/simulate.h"
 
 namespace spu::device {
 namespace {
@@ -54,7 +55,7 @@ class Runner {
     executable_.add_input_names(name);
   }
 
-  std::string compileMHlo(const std::string &mhlo) {
+  static std::string compileMHlo(const std::string &mhlo) {
     compiler::CompilationContext ctx;
     return compiler::compile(&ctx, mhlo, "mhlo");
   }
@@ -64,7 +65,7 @@ class Runner {
       executable_.add_output_names(fmt::format("output{}", idx));
     }
     executable_.set_code(mlir);
-    ::spu::mpc::util::simulate(
+    ::spu::mpc::utils::simulate(
         world_size_, [&](const std::shared_ptr<yacl::link::Context> &lctx) {
           RuntimeConfig conf;
           conf.CopyFrom(config_);
@@ -200,7 +201,7 @@ func.func @main(%arg0: tensor<2x2x!pphlo.pub<i32>>) -> (tensor<2x2x!pphlo.pub<i3
   r.verifyOutput(expect.data());
 }
 
-TEST_P(ExecutorTest, RowConcate) {
+TEST_P(ExecutorTest, RowConcat) {
   Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
            std::get<2>(GetParam()));
   r.addInput(xt::xarray<int>({{1, 2, 3}, {4, 5, 6}}));
@@ -216,7 +217,7 @@ func.func @main(%arg0: tensor<2x3x!pphlo.pub<i32>>, %arg1: tensor<2x3x!pphlo.pub
   r.verifyOutput(expect.data());
 }
 
-TEST_P(ExecutorTest, ColConcate) {
+TEST_P(ExecutorTest, ColConcat) {
   Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
            std::get<2>(GetParam()));
   r.addInput(xt::xarray<int>({{1, 2, 3}, {4, 5, 6}}));
@@ -233,7 +234,7 @@ func.func @main(%arg0: tensor<2x3x!pphlo.pub<i32>>, %arg1: tensor<2x3x!pphlo.pub
   r.verifyOutput(expect.data());
 }
 
-TEST_P(ExecutorTest, VariadicConcate) {
+TEST_P(ExecutorTest, VariadicConcat) {
   Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
            std::get<2>(GetParam()));
   r.addInput(xt::xarray<int>({1, 2, 3}));
@@ -689,7 +690,7 @@ TEST_P(ExecutorTest, If) {
 
     r.run(prog);
 
-    r.verifyScalarOutput(2.5f * 2.5f);
+    r.verifyScalarOutput(2.5F * 2.5F);
   }
 
   {
@@ -701,11 +702,11 @@ TEST_P(ExecutorTest, If) {
 
     r.run(prog);
 
-    r.verifyScalarOutput(12.5f + 12.5f);
+    r.verifyScalarOutput(12.5F + 12.5F);
   }
 }
 
-TEST_P(ExecutorTest, SecretControlflow) {
+TEST_P(ExecutorTest, SecretControlFlow) {
   const auto *prog = R"(
 func.func @main(%arg0: tensor<!pphlo.pub<f32>>) -> tensor<!pphlo.pub<f32>> {
   %0 = "pphlo.constant"() {value = dense<1.000000e+01> : tensor<f32>} : () -> tensor<!pphlo.pub<f32>>
@@ -729,7 +730,7 @@ func.func @main(%arg0: tensor<!pphlo.pub<f32>>) -> tensor<!pphlo.pub<f32>> {
 
   r.run(prog);
 
-  r.verifyScalarOutput(2.5f * 2.5f);
+  r.verifyScalarOutput(2.5F * 2.5F);
 }
 
 TEST_P(ExecutorTest, Iota1D) {
@@ -894,7 +895,7 @@ TEST_P(ExecutorTest, Simple4x4Conv2DWith2x2Kernel) {
   }}};
   r.addInput(rhs);
 
-  auto ir = r.compileMHlo(R"(
+  auto ir = spu::device::Runner::compileMHlo(R"(
 func.func @main(%arg0: tensor<1x1x4x4xf32>, %arg1: tensor<1x1x2x2xf32>) -> (tensor<1x1x4x4xf32>) {
     %0 = mhlo.convolution(%arg0, %arg1) 
             dim_numbers = [b, f, 0, 1]x[o, i, 0, 1]->[b, f, 0, 1], 
@@ -932,7 +933,7 @@ TEST_P(ExecutorTest, Conv2DGeneralDimensions) {
 
   r.addInput(rhs);
 
-  auto ir = r.compileMHlo(R"(
+  auto ir = spu::device::Runner::compileMHlo(R"(
 func.func @main(%arg0: tensor<2x3x1x4xf32>, %arg1:tensor<1x3x2x3xf32>) -> (tensor<1x1x1x2xf32>) {
     %0 = mhlo.convolution(%arg0, %arg1) 
           dim_numbers = [f, 0, b, 1]x[o, 1, i,0]->[f, 0, b, 1], 
@@ -969,7 +970,7 @@ TEST_P(ExecutorTest, DilatedBaseConv2DWithHighPadding) {
 
   r.addInput(rhs);
 
-  auto ir = r.compileMHlo(R"(
+  auto ir = spu::device::Runner::compileMHlo(R"(
 func.func @main(%arg0: tensor<1x1x4x4xf32>, %arg1: tensor<1x1x2x2xf32>) -> (tensor<1x1x7x7xf32>) {
     %0 = mhlo.convolution(%arg0, %arg1) 
           dim_numbers = [b, f, 0, 1]x[o, i, 0, 1]->[b, f, 0, 1], 
@@ -1012,7 +1013,7 @@ TEST_P(ExecutorTest, DilatedBaseConv2DWithLowAndHighPadding) {
 
   r.addInput(rhs);
 
-  auto ir = r.compileMHlo(R"(
+  auto ir = spu::device::Runner::compileMHlo(R"(
 func.func @main(%arg0: tensor<1x1x4x4xf32>, %arg1: tensor<1x1x2x2xf32>) -> (tensor<1x1x8x8xf32>) {
     %0 = mhlo.convolution(%arg0, %arg1) 
           dim_numbers = [b, f, 0, 1]x[o, i, 0, 1]->[b, f, 0, 1], 
@@ -1057,7 +1058,7 @@ TEST_P(ExecutorTest, FlatRhsDilation) {
 
   r.addInput(rhs);
 
-  auto ir = r.compileMHlo(R"(
+  auto ir = spu::device::Runner::compileMHlo(R"(
 func.func @main(%arg0: tensor<1x1x4x6xf32>, %arg1: tensor<1x1x2x3xf32>) -> (tensor<1x1x2x2xf32>) {
     %0 = mhlo.convolution(%arg0, %arg1) 
           dim_numbers = [b, f, 0, 1]x[o, i, 0, 1]->[b, f, 0, 1], 
@@ -1669,11 +1670,11 @@ TEST_P(ExecutorTest, DotGeneral) {
   Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
            std::get<2>(GetParam()));
 
-  std::vector<int32_t> x(3 * 4, 0);
+  std::vector<int32_t> x(3L * 4, 0);
   std::iota(x.begin(), x.end(), 0);
   r.addInput(x);
 
-  std::vector<int32_t> y(3 * 4 * 5, 0);
+  std::vector<int32_t> y(3L * 4 * 5, 0);
   std::iota(y.begin(), y.end(), 0);
   r.addInput(y);
 
@@ -1842,7 +1843,7 @@ func.func @main(%arg0: tensor<4x6x!pphlo.pub<i32>>) -> (tensor<2x2x!pphlo.pub<i3
                                     {7, 8}};
   r.verifyOutput(reduce_ret.data(), 0);
 
-  xt::xarray<bool> mask = {
+  xt::xarray<uint8_t> mask = {
       {{0, 0, 0, 0, 0, 1}, {0, 1, 0, 0, 0, 0}},  //
       {{0, 0, 1, 0, 0, 0}, {0, 0, 0, 0, 0, 1}},  //
   };
@@ -1895,7 +1896,7 @@ TEST_P(ExecutorTest, OptimizedMaxPool1) {
       {3, 1}   //
   });
 
-  auto ir = r.compileMHlo(R"(
+  auto ir = spu::device::Runner::compileMHlo(R"(
 func.func @main(%arg0: tensor<4x6xi32>, %arg1: tensor<2x2xi32>) -> (tensor<2x2xi32>, tensor<4x6xi32>) {
   %0 = mhlo.constant dense<0> : tensor<i32>
   %1 = "mhlo.reduce_window"(%arg0, %0) ({
@@ -1974,9 +1975,9 @@ func.func @main(%arg0: tensor<1x4x4x1x!pphlo.pub<i32>>, %arg1: tensor<1x3x3x1x!p
                                     {6, 7, 7}};
   r.verifyOutput(reduce_ret.data(), 0);
 
-  xt::xarray<bool> mask = {{{0, 0, 0, 1}, {0, 0, 0, 1}, {0, 0, 1, 0}},  //
-                           {{0, 1, 0, 0}, {0, 1, 0, 0}, {1, 0, 0, 0}},  //
-                           {{0, 0, 0, 1}, {0, 1, 0, 0}, {0, 0, 0, 1}}};
+  xt::xarray<uint8_t> mask = {{{0, 0, 0, 1}, {0, 0, 0, 1}, {0, 0, 1, 0}},  //
+                              {{0, 1, 0, 0}, {0, 1, 0, 0}, {1, 0, 0, 0}},  //
+                              {{0, 0, 0, 1}, {0, 1, 0, 0}, {0, 0, 0, 1}}};
 
   r.verifyOutput(mask.data(), 1);
 }

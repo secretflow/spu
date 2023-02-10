@@ -22,7 +22,7 @@ import multiprocess
 
 import spu.libspu.link as link
 import spu.psi as psi
-from spu.util.simulation import PropagatingThread
+from spu.utils.simulation import PropagatingThread
 
 
 def get_free_port():
@@ -73,7 +73,7 @@ class UnitTests(unittest.TestCase):
                 input_params=psi.InputParams(
                     path=input_path, select_fields=selected_fields
                 ),
-                output_params=psi.OuputParams(path=output_path, need_sort=True),
+                output_params=psi.OutputParams(path=output_path, need_sort=True),
                 curve_type=psi.CurveType.CURVE_25519,
             )
 
@@ -253,7 +253,7 @@ class UnitTests(unittest.TestCase):
                     select_fields=selected_fields,
                     precheck=precheck_input,
                 ),
-                output_params=psi.OuputParams(path="fake.out", need_sort=False),
+                output_params=psi.OutputParams(path="fake.out", need_sort=False),
                 bucket_size=1000000,
                 curve_type=psi.CurveType.CURVE_FOURQ,
             )
@@ -285,7 +285,7 @@ class UnitTests(unittest.TestCase):
                     select_fields=selected_fields,
                     precheck=precheck_input,
                 ),
-                output_params=psi.OuputParams(path=out_path, need_sort=False),
+                output_params=psi.OutputParams(path=out_path, need_sort=False),
                 bucket_size=300000,
                 curve_type=psi.CurveType.CURVE_FOURQ,
             )

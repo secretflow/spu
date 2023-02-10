@@ -24,20 +24,20 @@ namespace mlir::pphlo {
 
 class IRPrinterConfig final : public PassManager::IRPrinterConfig {
 public:
-  IRPrinterConfig(std::string_view pp_dir);
+  /*explicit*/ IRPrinterConfig(std::string_view pp_dir); // NOLINT
 
   IRPrinterConfig(const IRPrinterConfig &) = default;
 
   void printBeforeIfEnabled(Pass *pass, Operation *operation,
-                            PrintCallbackFn printCallback) override;
+                            PrintCallbackFn print_callback) override;
 
   void printAfterIfEnabled(Pass *pass, Operation *operation,
-                           PrintCallbackFn printCallback) override;
+                           PrintCallbackFn print_callback) override;
 
   std::filesystem::path GetPrettyPrintDir() const { return pp_dir_; }
 
 private:
-  std::string genFileName(StringRef passName, StringRef stage) const;
+  static std::string genFileName(StringRef pass_name, StringRef stage);
   std::filesystem::path pp_dir_;
 };
 

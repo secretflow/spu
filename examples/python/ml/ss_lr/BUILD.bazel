@@ -25,6 +25,6 @@ py_binary(
     deps = [
         "//examples/python/utils:appr_sigmoid",
         "//examples/python/utils:dataset_utils",
-        "//spu/util:distributed",
+        "//spu/utils:distributed",
     ],
 )

@@ -58,7 +58,6 @@ class CsvCheckerTest : public testing::TestWithParam<TestParams> {
     }
   }
 
- protected:
   std::string tmp_file_path_a_;
   std::string tmp_file_path_b_;
 };
@@ -81,7 +80,7 @@ TEST_P(CsvCheckerTest, Works) {
   ASSERT_EQ(params.item_size_b, checker_b.data_count());
 }
 
-class CsvCheckerDigestEquelTest : public testing::TestWithParam<TestParams> {
+class CsvCheckerDigestEqualTest : public testing::TestWithParam<TestParams> {
  protected:
   void SetUp() override {
     tmp_file_path_a_ = "csv_checker_test_file_a";
@@ -100,12 +99,11 @@ class CsvCheckerDigestEquelTest : public testing::TestWithParam<TestParams> {
     }
   }
 
- protected:
   std::string tmp_file_path_a_;
   std::string tmp_file_path_b_;
 };
 
-TEST_P(CsvCheckerDigestEquelTest, HashDigestEquel) {
+TEST_P(CsvCheckerDigestEqualTest, HashDigestEqual) {
   auto params = GetParam();
 
   auto a_os = io::BuildOutputStream(io::FileIoOptions(tmp_file_path_a_));
@@ -148,7 +146,7 @@ INSTANTIATE_TEST_SUITE_P(Works_Instances, CsvCheckerTest,
                                                     true}));
 
 INSTANTIATE_TEST_SUITE_P(
-    HashDigestEquel_Instances, CsvCheckerDigestEquelTest,
+    HashDigestEqual_Instances, CsvCheckerDigestEqualTest,
     testing::Values(
         TestParams{"id\nc\nb\na\n", "id\nc\nb\na\n", {"id"}, {"id"}, 3, 3},
         TestParams{"x1,id\n1,a\n2,b\n3,c\n",
@@ -169,7 +167,6 @@ class CsvCheckerFailedTest : public testing::TestWithParam<FailedTestParams> {
     }
   }
 
- protected:
   std::string tmp_file_path_;
 };
 

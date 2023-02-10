@@ -60,7 +60,7 @@ class LabelPsiReceiver {
    *
    * split items's oprf(32B) to HashedItem(16B) and LabelKey(16B)
    */
-  std::pair<std::vector<apsi::HashedItem>, std::vector<apsi::LabelKey>>
+  static std::pair<std::vector<apsi::HashedItem>, std::vector<apsi::LabelKey>>
   RequestOPRF(const std::vector<std::string> &items,
               const std::shared_ptr<yacl::link::Context> &link_ctx);
 
@@ -72,7 +72,7 @@ class LabelPsiReceiver {
    * @param label_keys
    * @param link_ctx
    * @return std::pair<std::vector<size_t>, std::vector<std::string>>
-   *  Get query polynoimal ciphertext
+   *  Get query polynomial ciphertext
    *
    */
   std::pair<std::vector<size_t>, std::vector<std::string>> RequestQuery(

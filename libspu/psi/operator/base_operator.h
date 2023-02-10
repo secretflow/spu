@@ -25,8 +25,7 @@ namespace spu::psi {
 
 class PsiBaseOperator {
  public:
-  explicit PsiBaseOperator(
-      const std::shared_ptr<yacl::link::Context>& link_ctx);
+  explicit PsiBaseOperator(std::shared_ptr<yacl::link::Context> link_ctx);
   virtual ~PsiBaseOperator() = default;
 
   // after call OnRun, it decides whether to broadcast result or not based on

@@ -90,7 +90,7 @@ std::vector<spu::Value> TreeReduce(HalContext *ctx,
     outputs = reducer(lhs, rhs);
     len /= 2;
 
-    YACL_ENFORCE(outputs[0].shape()[axis] == len);
+    SPU_ENFORCE(outputs[0].shape()[axis] == len);
   }
 
   // TODO: this may cause at worst 2*lg(n) time of reducer call, compare the
@@ -116,16 +116,16 @@ spu::Value ExpandStridedWindow(
   const auto &base_shape = base.shape();
   const size_t ndim = base_shape.size();
 
-  YACL_ENFORCE(ndim == window_shape.size() &&    //
-               ndim == window_strides.size() &&  //
-               ndim == padding.size());
+  SPU_ENFORCE(ndim == window_shape.size() &&    //
+              ndim == window_strides.size() &&  //
+              ndim == padding.size());
 
   // calculate output shape
   std::vector<int64_t> expanded_shape(ndim, 0);
   for (size_t dim = 0; dim < ndim; dim++) {
     int64_t padded_size =
         padding[dim].first + padding[dim].second + base_shape[dim];
-    YACL_ENFORCE((padded_size - window_shape[dim]) % window_strides[dim] == 0);
+    SPU_ENFORCE((padded_size - window_shape[dim]) % window_strides[dim] == 0);
     expanded_shape[dim] =
         ((padded_size - window_shape[dim]) / window_strides[dim] + 1) *
         window_shape[dim];
@@ -178,10 +178,10 @@ spu::Value ConvertToTiledLayout(HalContext *ctx, const spu::Value &in,
   //
   // For example, in shape = [6, 12], window = [2, 3]
   // The result is [3, 4, 2, 3]
-  YACL_ENFORCE(in.shape().size() == block_shape.size());
+  SPU_ENFORCE(in.shape().size() == block_shape.size());
   std::vector<int64_t> tiled_shape;
   for (size_t dim = 0; dim < in.shape().size(); dim++) {
-    YACL_ENFORCE(in.shape()[dim] % block_shape[dim] == 0);
+    SPU_ENFORCE(in.shape()[dim] % block_shape[dim] == 0);
     tiled_shape.push_back(in.shape()[dim] / block_shape[dim]);
     tiled_shape.push_back(block_shape[dim]);
   }
@@ -294,7 +294,7 @@ std::vector<spu::Value> ReduceWindowImpl(
         ret_shape, reducer);
   }
 
-  YACL_ENFORCE(!last_operand_is_window_mask);
+  SPU_ENFORCE(!last_operand_is_window_mask);
 
   const int64_t ndims = inputs[0].shape().size();
   std::vector<int64_t> window_index(ndims, 0);
@@ -583,7 +583,7 @@ std::pair<spu::Value, spu::Value> ArgMax(HalContext *ctx,
       ctx, {input, mask}, {}, ret_shape, config, true, true,
       [&](absl::Span<spu::Value const> lhs,
           absl::Span<spu::Value const> rhs) -> std::vector<spu::Value> {
-        YACL_ENFORCE(lhs.size() == 2);
+        SPU_ENFORCE(lhs.size() == 2);
         auto c = hal::less(ctx, rhs[0], lhs[0]);
         // make a share
         c = hal::add(ctx, c, hal::zeros(ctx, VIS_PUBLIC, c.dtype(), c.shape()));

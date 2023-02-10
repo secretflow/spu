@@ -25,7 +25,7 @@ import jax
 import jax.numpy as jnp
 
 import examples.python.utils.dataset_utils as dsutil
-import spu.util.distributed as ppd
+import spu.utils.distributed as ppd
 
 parser = argparse.ArgumentParser(description='distributed driver.')
 parser.add_argument("-c", "--config", default="examples/python/conf/3pc.json")

@@ -17,9 +17,9 @@
 #include "llvm/Support/raw_ostream.h"
 #include "mlir/IR/Block.h"
 #include "mlir/IR/Region.h"
-#include "xla/mlir_hlo/mhlo/IR/hlo_ops.h"
-#include "yacl/base/exception.h"
+#include "stablehlo/dialect/StablehloOps.h"
 
+#include "libspu/core/prelude.h"
 #include "libspu/dialect/pphlo_base_enums.h"
 
 namespace mlir::pphlo {
@@ -43,7 +43,7 @@ void VisibilityInference::inferBlock(Block &blk) {
 }
 
 void VisibilityInference::inferIf(Operation &op) {
-  auto ifOp = llvm::dyn_cast<mhlo::IfOp>(op);
+  auto ifOp = llvm::dyn_cast<stablehlo::IfOp>(op);
 
   llvm::SmallVector<Visibility, 2> input_vis;
   for (const auto &operand : op.getOperands()) {
@@ -65,8 +65,8 @@ void VisibilityInference::inferIf(Operation &op) {
   // Infer result visibility
   auto &true_return = ifOp.getTrueBranch().back().back();
   auto &false_return = ifOp.getFalseBranch().back().back();
-  YACL_ENFORCE(llvm::isa<mhlo::ReturnOp>(true_return));
-  YACL_ENFORCE(llvm::isa<mhlo::ReturnOp>(false_return));
+  SPU_ENFORCE(llvm::isa<stablehlo::ReturnOp>(true_return));
+  SPU_ENFORCE(llvm::isa<stablehlo::ReturnOp>(false_return));
 
   // Cond vis
   auto cond_vis = ValueVis_.getValueVisibility(ifOp.getPred());
@@ -90,7 +90,7 @@ void VisibilityInference::inferIf(Operation &op) {
 }
 
 void VisibilityInference::inferCase(Operation &op) {
-  auto caseOp = llvm::dyn_cast<mhlo::CaseOp>(op);
+  auto caseOp = llvm::dyn_cast<stablehlo::CaseOp>(op);
 
   // Collect
   llvm::SmallVector<Visibility, 2> input_vis;
@@ -106,7 +106,7 @@ void VisibilityInference::inferCase(Operation &op) {
     }
     inferRegion(region);
     auto *ret = &region.back().back();
-    YACL_ENFORCE(llvm::isa<mhlo::ReturnOp>(ret));
+    SPU_ENFORCE(llvm::isa<stablehlo::ReturnOp>(ret));
     returns.emplace_back(ret);
   }
 
@@ -130,7 +130,7 @@ void VisibilityInference::inferCase(Operation &op) {
 }
 
 void VisibilityInference::inferWhile(Operation &op) {
-  auto whileOp = llvm::dyn_cast<mhlo::WhileOp>(op);
+  auto whileOp = llvm::dyn_cast<stablehlo::WhileOp>(op);
 
   // Initial body visibility
   SmallVector<Visibility> input_vis(op.getNumOperands());
@@ -152,7 +152,7 @@ void VisibilityInference::inferWhile(Operation &op) {
 
     // Get result visibility
     auto &body_return = *whileOp.getBody().front().getTerminator();
-    YACL_ENFORCE(llvm::isa<mhlo::ReturnOp>(body_return));
+    SPU_ENFORCE(llvm::isa<stablehlo::ReturnOp>(body_return));
 
     // Update visibility
     for (int64_t idx = 0; idx < body_return.getNumOperands(); ++idx) {
@@ -180,7 +180,7 @@ void VisibilityInference::inferWhile(Operation &op) {
 }
 
 void VisibilityInference::inferSort(Operation &op) {
-  auto sortOp = llvm::dyn_cast<mhlo::SortOp>(op);
+  auto sortOp = llvm::dyn_cast<stablehlo::SortOp>(op);
 
   // Push inputs to body region
   for (const auto &in : llvm::enumerate(op.getOperands())) {
@@ -197,7 +197,7 @@ void VisibilityInference::inferSort(Operation &op) {
 }
 
 void VisibilityInference::inferSelectAndScatter(Operation &op) {
-  auto selectAndScatterOp = llvm::dyn_cast<mhlo::SelectAndScatterOp>(op);
+  auto selectAndScatterOp = llvm::dyn_cast<stablehlo::SelectAndScatterOp>(op);
 
   auto op_vis = ValueVis_.getValueVisibility(selectAndScatterOp.getOperand());
   auto source_vis =
@@ -229,9 +229,10 @@ void VisibilityInference::inferSelectAndScatter(Operation &op) {
   // Result visibility should be same as scatter result
   // body return
   auto &scatter_return = selectAndScatterOp.getScatter().back().back();
-  YACL_ENFORCE(llvm::isa<mhlo::ReturnOp>(scatter_return));
-  YACL_ENFORCE(
-      llvm::dyn_cast<mhlo::ReturnOp>(scatter_return)->getNumOperands() == 1);
+  SPU_ENFORCE(llvm::isa<stablehlo::ReturnOp>(scatter_return));
+  SPU_ENFORCE(
+      llvm::dyn_cast<stablehlo::ReturnOp>(scatter_return)->getNumOperands() ==
+      1);
 
   ValueVis_.setValueVisibility(
       selectAndScatterOp.getResult(),
@@ -239,26 +240,26 @@ void VisibilityInference::inferSelectAndScatter(Operation &op) {
 }
 
 void VisibilityInference::inferOperation(Operation &op) {
-  if (llvm::isa<mhlo::ReduceOp>(op)) {
-    inferReduce<mhlo::ReduceOp>(op);
-  } else if (llvm::isa<mhlo::ReduceWindowOp>(op)) {
-    inferReduce<mhlo::ReduceWindowOp>(op);
-  } else if (llvm::isa<mhlo::WhileOp>(op)) {
+  if (llvm::isa<stablehlo::ReduceOp>(op)) {
+    inferReduce<stablehlo::ReduceOp>(op);
+  } else if (llvm::isa<stablehlo::ReduceWindowOp>(op)) {
+    inferReduce<stablehlo::ReduceWindowOp>(op);
+  } else if (llvm::isa<stablehlo::WhileOp>(op)) {
     inferWhile(op);
-  } else if (llvm::isa<mhlo::IfOp>(op)) {
+  } else if (llvm::isa<stablehlo::IfOp>(op)) {
     inferIf(op);
-  } else if (llvm::isa<mhlo::CaseOp>(op)) {
+  } else if (llvm::isa<stablehlo::CaseOp>(op)) {
     inferCase(op);
-  } else if (llvm::isa<mhlo::ConstantOp>(op)) {
+  } else if (llvm::isa<stablehlo::ConstantOp>(op)) {
     // Constant always returns public
     ValueVis_.setValueVisibility(op.getResult(0), Visibility::VIS_PUBLIC);
-  } else if (llvm::isa<mhlo::SortOp>(op)) {
+  } else if (llvm::isa<stablehlo::SortOp>(op)) {
     inferSort(op);
-  } else if (llvm::isa<mhlo::GatherOp>(op)) {
+  } else if (llvm::isa<stablehlo::GatherOp>(op)) {
     // For gather op, visibility should be the same as first operand
     ValueVis_.setValueVisibility(
         op.getResult(0), ValueVis_.getValueVisibility(op.getOperand(0)));
-  } else if (llvm::isa<mhlo::SelectAndScatterOp>(op)) {
+  } else if (llvm::isa<stablehlo::SelectAndScatterOp>(op)) {
     inferSelectAndScatter(op);
   } else if (op.getNumResults() == 1) {
     SmallVector<Visibility, 2> operand_vis;
@@ -268,7 +269,7 @@ void VisibilityInference::inferOperation(Operation &op) {
     auto ret_vis = TypeTools::inferResultVisibility(operand_vis);
     ValueVis_.setValueVisibility(op.getResult(0), ret_vis);
   } else if (llvm::isa<mlir::func::ReturnOp>(op) ||
-             llvm::isa<mhlo::ReturnOp>(op)) {
+             llvm::isa<stablehlo::ReturnOp>(op)) {
     // Do nothing
   } else {
     std::string dump;

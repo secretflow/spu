@@ -24,7 +24,7 @@ spu_cc_library(
         "//libspu/core",
         "//libspu/mpc:kernel",
         "//libspu/mpc/common:prg_state",
-        "//libspu/mpc/util:ring_ops",
+        "//libspu/mpc/utils:ring_ops",
     ],
 )
 
@@ -42,7 +42,7 @@ spu_cc_library(
     hdrs = ["communicator.h"],
     deps = [
         "//libspu/mpc:object",
-        "//libspu/mpc/util:ring_ops",
+        "//libspu/mpc/utils:ring_ops",
         "@yacl//yacl/link",
     ],
 )
@@ -52,7 +52,7 @@ spu_cc_test(
     srcs = ["communicator_test.cc"],
     deps = [
         ":communicator",
-        "//libspu/mpc/util:simulate",
+        "//libspu/mpc/utils:simulate",
     ],
 )
 
@@ -75,7 +75,7 @@ spu_cc_test(
     srcs = ["prg_state_test.cc"],
     deps = [
         ":prg_state",
-        "//libspu/mpc/util:simulate",
+        "//libspu/mpc/utils:simulate",
     ],
 )
 
@@ -112,7 +112,7 @@ spu_cc_library(
         ":pub2k",
         "//libspu/mpc:object",
         "//libspu/mpc/common:communicator",
-        "//libspu/mpc/util:simulate",
+        "//libspu/mpc/utils:simulate",
         "@com_google_googletest//:gtest",
     ],
     alwayslink = True,
@@ -123,7 +123,7 @@ spu_cc_library(
     hdrs = ["prg_tensor.h"],
     deps = [
         "//libspu/core:array_ref",
-        "//libspu/mpc/util:ring_ops",
+        "//libspu/mpc/utils:ring_ops",
         "@yacl//yacl/crypto/tools:prg",
     ],
 )

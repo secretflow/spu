@@ -1,172 +1,202 @@
-diff --git a/tools/toolchains/BUILD b/tools/toolchains/BUILD
-index 5a39892d6..d12c32125 100644
---- a/tools/toolchains/BUILD
-+++ b/tools/toolchains/BUILD
-@@ -1,4 +1,4 @@
--load("@//tools/toolchains/remote_config:containers.bzl", "container_digests")
-+load("//tools/toolchains/remote_config:containers.bzl", "container_digests")
+diff --git a/third_party/tsl/tsl/lib/gtl/BUILD b/third_party/tsl/tsl/lib/gtl/BUILD
+index 36ad40fd1..fbd8038bc 100644
+--- a/third_party/tsl/tsl/lib/gtl/BUILD
++++ b/third_party/tsl/tsl/lib/gtl/BUILD
+@@ -10,27 +10,7 @@ load(
  
- licenses(["restricted"])
- 
-diff --git a/tools/toolchains/clang6/repo.bzl b/tools/toolchains/clang6/repo.bzl
-index 8565b57ae..daad2ebbc 100644
---- a/tools/toolchains/clang6/repo.bzl
-+++ b/tools/toolchains/clang6/repo.bzl
-@@ -28,10 +28,10 @@ clang6_configure = repository_rule(
-     implementation = _clang6_configure,
-     attrs = {
-         "_build": attr.label(
--            default = str(Label("@//tools/toolchains/clang6:clang.BUILD")),
-+            default = str(Label("//tools/toolchains/clang6:clang.BUILD")),
-         ),
-         "_crosstool": attr.label(
--            default = str(Label("@//tools/toolchains/clang6:CROSSTOOL.tpl")),
-+            default = str(Label("//tools/toolchains/clang6:CROSSTOOL.tpl")),
-         ),
-     },
+ package(
+     # copybara:uncomment default_applicable_licenses = ["//third_party/tensorflow:license"],
+-    default_visibility = [
+-        # tensorflow/core:lib effectively exposes all targets under tensorflow/core/lib/**
+-        "//third_party/tensorflow/core:__pkg__",
+-        # tensorflow/core/lib/strings:proto_serialization uses on gtl:inlined_vector
+-        "//third_party/tensorflow/core/lib/strings:__pkg__",
+-        "//tsl/lib/strings:__pkg__",
+-        # tensorflow/core/framework uses map_util, and flatmap
+-        "//third_party/tensorflow/core/framework:__pkg__",
+-        "//tsl/framework:__pkg__",
+-        "//tsl/platform/cloud:__pkg__",
+-        # tensorflow/core/util uses inlined_vector
+-        "//third_party/tensorflow/core/util:__pkg__",
+-        # tensorflow/core/tfrt/utils uses inlined_vector
+-        "//third_party/tensorflow/core/tfrt/utils:__pkg__",
+-        # tensorflow/examples/custom_ops_doc/simple_hash_table uses map_util
+-        "//third_party/tensorflow/examples/custom_ops_doc/simple_hash_table:__pkg__",
+-        "//third_party/tensorflow/compiler/xla:__subpackages__",
+-        "//third_party/tensorflow/core/lib/gtl:__subpackages__",
+-        "//tsl/distributed_runtime/rpc:__pkg__",
+-        "//tsl/profiler/utils:__pkg__",
+-    ],
++    default_visibility = ["//visibility:public"],
+     licenses = ["notice"],
  )
-diff --git a/tools/toolchains/cpus/aarch64/aarch64_compiler_configure.bzl b/tools/toolchains/cpus/aarch64/aarch64_compiler_configure.bzl
-index 655ddc05d..2805f5ff7 100644
---- a/tools/toolchains/cpus/aarch64/aarch64_compiler_configure.bzl
-+++ b/tools/toolchains/cpus/aarch64/aarch64_compiler_configure.bzl
-@@ -1,6 +1,6 @@
- """Configurations of AARCH64 builds used with Docker container."""
  
--load("@//tools/toolchains:cpus/aarch64/aarch64.bzl", "remote_aarch64_configure")
-+load("//tools/toolchains:cpus/aarch64/aarch64.bzl", "remote_aarch64_configure")
- load("//third_party/remote_config:remote_platform_configure.bzl", "remote_platform_configure")
- load("//third_party/py:python_configure.bzl", "remote_python_configure")
+diff --git a/third_party/tsl/tsl/lib/io/BUILD b/third_party/tsl/tsl/lib/io/BUILD
+index 981a3fb5b..e5518b241 100644
+--- a/third_party/tsl/tsl/lib/io/BUILD
++++ b/third_party/tsl/tsl/lib/io/BUILD
+@@ -7,16 +7,7 @@ load(
  
-diff --git a/tools/toolchains/cpus/arm/arm_compiler_configure.bzl b/tools/toolchains/cpus/arm/arm_compiler_configure.bzl
-index 38567818f..e982c6d58 100644
---- a/tools/toolchains/cpus/arm/arm_compiler_configure.bzl
-+++ b/tools/toolchains/cpus/arm/arm_compiler_configure.bzl
-@@ -5,7 +5,7 @@ def _tpl(repository_ctx, tpl, substitutions = {}, out = None):
-         out = tpl
-     repository_ctx.template(
-         out,
--        Label("@//tools/toolchains/cpus/arm:%s.tpl" % tpl),
-+        Label("//tools/toolchains/cpus/arm:%s.tpl" % tpl),
-         substitutions,
-     )
+ package(
+     # copybara:uncomment default_applicable_licenses = ["//third_party/tensorflow:license"],
+-    default_visibility = [
+-        "//third_party/tensorflow/c/experimental/filesystem:__pkg__",
+-        "//third_party/tensorflow/c/experimental/filesystem/plugins/posix:__pkg__",
+-        "//tsl/lib/io/snappy:__pkg__",
+-        "//third_party/tensorflow/compiler/xla:__subpackages__",
+-        # tensorflow/core:lib effectively exposes all targets under tensorflow/core/lib/**
+-        "//third_party/tensorflow/core:__pkg__",
+-        "//third_party/tensorflow/core/lib/io:__subpackages__",
+-        "//tsl/profiler:__subpackages__",
+-    ],
++    default_visibility = ["//visibility:public"],
+     licenses = ["notice"],
+ )
  
-diff --git a/tools/toolchains/embedded/arm-linux/arm_linux_toolchain_configure.bzl b/tools/toolchains/embedded/arm-linux/arm_linux_toolchain_configure.bzl
-index ce078c458..a4731f573 100644
---- a/tools/toolchains/embedded/arm-linux/arm_linux_toolchain_configure.bzl
-+++ b/tools/toolchains/embedded/arm-linux/arm_linux_toolchain_configure.bzl
-@@ -5,7 +5,7 @@ def _tpl(repository_ctx, tpl, substitutions = {}, out = None):
-         out = tpl
-     repository_ctx.template(
-         out,
--        Label("@//tools/toolchains/embedded/arm-linux:%s.tpl" % tpl),
-+        Label("//tools/toolchains/embedded/arm-linux:%s.tpl" % tpl),
-         substitutions,
-     )
+diff --git a/third_party/tsl/tsl/lib/math/BUILD b/third_party/tsl/tsl/lib/math/BUILD
+index 1c7c6e43f..ac536ecf0 100644
+--- a/third_party/tsl/tsl/lib/math/BUILD
++++ b/third_party/tsl/tsl/lib/math/BUILD
+@@ -6,9 +6,7 @@ load(
  
-diff --git a/tools/toolchains/remote/configure.bzl b/tools/toolchains/remote/configure.bzl
-index 9a5e5c3a3..172050cc9 100644
---- a/tools/toolchains/remote/configure.bzl
-+++ b/tools/toolchains/remote/configure.bzl
-@@ -27,14 +27,14 @@ def _remote_execution_configure(repository_ctx):
-         gpu_test_tags = "\"remote-gpu\""
-     repository_ctx.template(
-         "remote_execution.bzl",
--        Label("@//tools/toolchains/remote:execution.bzl.tpl"),
-+        Label("//tools/toolchains/remote:execution.bzl.tpl"),
-         {
-             "%{gpu_test_tags}": gpu_test_tags,
-         },
-     )
-     repository_ctx.template(
-         "BUILD",
--        Label("@//tools/toolchains/remote:BUILD.tpl"),
-+        Label("//tools/toolchains/remote:BUILD.tpl"),
-     )
+ package(
+     # copybara:uncomment default_applicable_licenses = ["//third_party/tensorflow:license"],
+-    default_visibility = [
+-        "//third_party/tensorflow:__subpackages__",
+-    ],
++    default_visibility = ["//visibility:public"],
+     licenses = ["notice"],
+ )
  
- remote_execution_configure = repository_rule(
-diff --git a/tools/toolchains/remote_config/configs.bzl b/tools/toolchains/remote_config/configs.bzl
-index b9db7980b..28e08c67c 100644
---- a/tools/toolchains/remote_config/configs.bzl
-+++ b/tools/toolchains/remote_config/configs.bzl
-@@ -1,6 +1,6 @@
- """Configurations of RBE builds used with remote config."""
+@@ -16,11 +14,7 @@ cc_library(
+     name = "math_util",
+     hdrs = ["math_util.h"],
+     compatible_with = get_compatible_with_portable(),
+-    visibility = [
+-        "//platforms/performance/tf_sim/utils:__subpackages__",
+-        "//platforms/xla/service:__subpackages__",
+-        "//third_party/tensorflow:__subpackages__",
+-    ],
++    visibility = ["//visibility:public"],
+     deps = [
+         "//tsl/platform:logging",
+         "//tsl/platform:types",
+diff --git a/third_party/tsl/tsl/lib/strings/BUILD b/third_party/tsl/tsl/lib/strings/BUILD
+index 55538aece..e4dc747f9 100644
+--- a/third_party/tsl/tsl/lib/strings/BUILD
++++ b/third_party/tsl/tsl/lib/strings/BUILD
+@@ -10,12 +10,7 @@ cc_library(
+     name = "proto_serialization",
+     srcs = ["proto_serialization.cc"],
+     hdrs = ["proto_serialization.h"],
+-    visibility = [
+-        "//third_party/tensorflow/compiler/xla/python:__pkg__",
+-        "//third_party/tensorflow/compiler/xla/service:__pkg__",
+-        "//third_party/tensorflow/compiler/xla/stream_executor:__pkg__",
+-        "//third_party/tensorflow/core/lib/strings:__pkg__",
+-    ],
++    visibility = ["//visibility:public"],
+     deps = [
+         "//tsl/lib/gtl:inlined_vector",
+         "//tsl/platform:hash",
+diff --git a/third_party/tsl/tsl/platform/default/BUILD b/third_party/tsl/tsl/platform/default/BUILD
+index 6dbffc29a..cb6a2ca2b 100644
+--- a/third_party/tsl/tsl/platform/default/BUILD
++++ b/third_party/tsl/tsl/platform/default/BUILD
+@@ -6,10 +6,7 @@ load("//tsl/platform:rules_cc.bzl", "cc_library")
  
--load("@//tools/toolchains/remote_config:rbe_config.bzl", "sigbuild_tf_configs", "tensorflow_local_config", "tensorflow_rbe_config", "tensorflow_rbe_win_config")
-+load("//tools/toolchains/remote_config:rbe_config.bzl", "sigbuild_tf_configs", "tensorflow_local_config", "tensorflow_rbe_config", "tensorflow_rbe_win_config")
+ package(
+     # copybara:uncomment default_applicable_licenses = ["//third_party/tensorflow:license"],
+-    default_visibility = [
+-        "//third_party/tensorflow/core/platform:__pkg__",
+-        "//tsl/platform:__pkg__",
+-    ],
++    default_visibility = ["//visibility:public"],
+     licenses = ["notice"],
+ )
  
- def initialize_rbe_configs():
-     tensorflow_local_config(
-diff --git a/tools/toolchains/remote_config/rbe_config.bzl b/tools/toolchains/remote_config/rbe_config.bzl
-index 05751d14e..271cabe8d 100644
---- a/tools/toolchains/remote_config/rbe_config.bzl
-+++ b/tools/toolchains/remote_config/rbe_config.bzl
-@@ -5,7 +5,7 @@ load("//third_party/gpus:cuda_configure.bzl", "remote_cuda_configure")
- load("//third_party/nccl:nccl_configure.bzl", "remote_nccl_configure")
- load("//third_party/gpus:rocm_configure.bzl", "remote_rocm_configure")
- load("//third_party/tensorrt:tensorrt_configure.bzl", "remote_tensorrt_configure")
--load("@//tools/toolchains/remote_config:containers.bzl", "containers")
-+load("//tools/toolchains/remote_config:containers.bzl", "containers")
- load("//third_party/remote_config:remote_platform_configure.bzl", "remote_platform_configure")
+@@ -554,7 +551,7 @@ cc_library(
+         "nobuilder",
+     ],
+     textual_hdrs = ["status.h"],
+-    visibility = ["//third_party/tensorflow:__subpackages__"],
++    visibility = ["//visibility:public"],
+     deps = [
+         "//tsl/platform:types",
+         "//tsl/protobuf:error_codes_proto_impl_cc",
+diff --git a/third_party/tsl/tsl/protobuf/BUILD b/third_party/tsl/tsl/protobuf/BUILD
+index 85c7415dc..481a54fbf 100644
+--- a/third_party/tsl/tsl/protobuf/BUILD
++++ b/third_party/tsl/tsl/protobuf/BUILD
+@@ -9,11 +9,7 @@ load(
  
- def _container_image_uri(container_name):
+ package(
+     # copybara:uncomment default_applicable_licenses = ["//third_party/tensorflow:license"],
+-    default_visibility = [
+-        "//third_party/tensorflow/core:__subpackages__",
+-        "//third_party/tensorflow_models:__subpackages__",
+-        "//tsl:internal",
+-    ],
++    default_visibility = ["//visibility:public"],
+     features = if_google(["-parse_headers"]),
+     licenses = ["notice"],
+ )
+diff --git a/third_party/vendored.bzl b/third_party/vendored.bzl
+new file mode 100644
+index 000000000..34ad77d46
+--- /dev/null
++++ b/third_party/vendored.bzl
+@@ -0,0 +1,18 @@
++def _vendored_impl(repository_ctx):
++    parent_path = repository_ctx.path(repository_ctx.attr.parent).dirname
++    # get_child doesn't allow slashes. Yes this is silly. bazel_skylib paths
++    # doesn't work with path objects.
++    relpath_parts = repository_ctx.attr.relpath.split("/")
++    vendored_path = parent_path
++    for part in relpath_parts:
++      vendored_path = vendored_path.get_child(part)
++    repository_ctx.symlink(vendored_path, ".")
++
++
++vendored = repository_rule(
++    implementation = _vendored_impl,
++    attrs = {
++        "parent": attr.label(default = "//:WORKSPACE"),
++        "relpath": attr.string(),
++    },
++)
 diff --git a/workspace2.bzl b/workspace2.bzl
-index 8192e2bf0..7203e3a73 100644
+index 625a60291..9620f585d 100644
 --- a/workspace2.bzl
 +++ b/workspace2.bzl
-@@ -9,9 +9,9 @@ load("//third_party/nccl:nccl_configure.bzl", "nccl_configure")
- load("//third_party/git:git_configure.bzl", "git_configure")
- load("//third_party/py:python_configure.bzl", "python_configure")
- load("//third_party/systemlibs:syslibs_configure.bzl", "syslibs_configure")
--load("@//tools/toolchains:cpus/aarch64/aarch64_compiler_configure.bzl", "aarch64_compiler_configure")
--load("@//tools/toolchains:cpus/arm/arm_compiler_configure.bzl", "arm_compiler_configure")
--load("@//tools/toolchains/embedded/arm-linux:arm_linux_toolchain_configure.bzl", "arm_linux_toolchain_configure")
-+load("//tools/toolchains:cpus/aarch64/aarch64_compiler_configure.bzl", "aarch64_compiler_configure")
-+load("//tools/toolchains:cpus/arm/arm_compiler_configure.bzl", "arm_compiler_configure")
-+load("//tools/toolchains/embedded/arm-linux:arm_linux_toolchain_configure.bzl", "arm_linux_toolchain_configure")
- load("//third_party:repo.bzl", "tf_http_archive", "tf_mirror_urls")
- load("//third_party/clang_toolchain:cc_configure_clang.bzl", "cc_download_clang_toolchain")
+@@ -2,7 +2,7 @@
  
-@@ -35,9 +35,9 @@ load("//third_party/tensorrt:workspace.bzl", tensorrt = "repo")
- load("@bazel_tools//tools/build_defs/repo:java.bzl", "java_import_external")
- load("@io_bazel_rules_closure//closure:defs.bzl", "filegroup_external")
- load("@tf_runtime//:dependencies.bzl", "tfrt_dependencies")
--load("@//tools/toolchains/remote_config:configs.bzl", "initialize_rbe_configs")
--load("@//tools/toolchains/remote:configure.bzl", "remote_execution_configure")
--load("@//tools/toolchains/clang6:repo.bzl", "clang6_configure")
-+load("//tools/toolchains/remote_config:configs.bzl", "initialize_rbe_configs")
-+load("//tools/toolchains/remote:configure.bzl", "remote_execution_configure")
-+load("//tools/toolchains/clang6:repo.bzl", "clang6_configure")
+ # Import third party config rules.
+ load("@bazel_skylib//lib:versions.bzl", "versions")
+-load("@bazel_skylib//lib:paths.bzl", "paths")
++load("//third_party:vendored.bzl", "vendored")
+ load("//third_party/gpus:cuda_configure.bzl", "cuda_configure")
+ load("//third_party/gpus:rocm_configure.bzl", "rocm_configure")
+ load("//third_party/tensorrt:tensorrt_configure.bzl", "tensorrt_configure")
+@@ -39,7 +39,7 @@ load("//tools/toolchains/remote_config:configs.bzl", "initialize_rbe_configs")
+ load("//tools/toolchains/remote:configure.bzl", "remote_execution_configure")
+ load("//tools/toolchains/clang6:repo.bzl", "clang6_configure")
  
- def _initialize_third_party():
+-def _initialize_third_party(xla_path):
++def _initialize_third_party():
      """ Load third party repositories.  See above load() statements. """
-@@ -53,7 +53,7 @@ def _initialize_third_party():
-     stablehlo()
+     absl()
+     benchmark()
+@@ -54,7 +54,7 @@ def _initialize_third_party(xla_path):
      tensorrt()
+     triton()
  
--    native.local_repository(name = "tsl", path = "third_party/tsl")
-+    # native.local_repository(name = "tsl", path = "third_party/tsl")
+-    native.local_repository(name = "tsl", path = paths.join(xla_path + "third_party/tsl"))
++    vendored(name = "tsl", relpath = "third_party/tsl")
  
  # Toolchains & platforms required by Tensorflow to build.
  def _tf_toolchains():
-@@ -78,7 +78,7 @@ def _tf_toolchains():
-     # Point //external/local_config_arm_compiler to //external/arm_compiler
-     arm_compiler_configure(
-         name = "local_config_arm_compiler",
--        build_file = "@//tools/toolchains/cpus/arm:template.BUILD",
-+        build_file = "//tools/toolchains/cpus/arm:template.BUILD",
-         remote_config_repo_arm = "../arm_compiler",
-         remote_config_repo_aarch64 = "../aarch64_compiler",
-     )
-@@ -89,7 +89,7 @@ def _tf_toolchains():
-     # TFLite crossbuild toolchain for embeddeds Linux
-     arm_linux_toolchain_configure(
-         name = "local_config_embedded_arm",
--        build_file = "@//tools/toolchains/embedded/arm-linux:template.BUILD",
-+        build_file = "//tools/toolchains/embedded/arm-linux:template.BUILD",
-         aarch64_repo = "../aarch64_linux_toolchain",
-         armhf_repo = "../armhf_linux_toolchain",
-     )
-@@ -145,7 +145,7 @@ def _tf_repositories():
+@@ -146,7 +146,7 @@ def _tf_repositories():
  
      tf_http_archive(
          name = "mkl_dnn",
@@ -175,7 +205,7 @@ index 8192e2bf0..7203e3a73 100644
          sha256 = "a0211aeb5e7dad50b97fa5dffc1a2fe2fe732572d4164e1ee8750a2ede43fbec",
          strip_prefix = "oneDNN-0.21.3",
          urls = tf_mirror_urls("https://github.com/oneapi-src/oneDNN/archive/v0.21.3.tar.gz"),
-@@ -153,7 +153,7 @@ def _tf_repositories():
+@@ -154,7 +154,7 @@ def _tf_repositories():
  
      tf_http_archive(
          name = "mkl_dnn_v1",
@@ -184,7 +214,7 @@ index 8192e2bf0..7203e3a73 100644
          sha256 = "dc2b9bc851cd8d5a6c4622f7dc215bdb6b32349962875f8bf55cceed45a4c449",
          strip_prefix = "oneDNN-2.7.1",
          urls = tf_mirror_urls("https://github.com/oneapi-src/oneDNN/archive/refs/tags/v2.7.1.tar.gz"),
-@@ -161,8 +161,8 @@ def _tf_repositories():
+@@ -162,8 +162,8 @@ def _tf_repositories():
  
      tf_http_archive(
          name = "mkl_dnn_acl_compatible",
@@ -195,26 +225,26 @@ index 8192e2bf0..7203e3a73 100644
          sha256 = "a50993aa6265b799b040fe745e0010502f9f7103cc53a9525d59646aef006633",
          strip_prefix = "oneDNN-2.7.3",
          urls = tf_mirror_urls("https://github.com/oneapi-src/oneDNN/archive/v2.7.3.tar.gz"),
-@@ -198,7 +198,7 @@ def _tf_repositories():
+@@ -605,7 +605,7 @@ def _tf_repositories():
  
-     tf_http_archive(
-         name = "aarch64_linux_toolchain",
--        build_file = "@//tools/toolchains/embedded/arm-linux:aarch64-linux-toolchain.BUILD",
-+        build_file = "//tools/toolchains/embedded/arm-linux:aarch64-linux-toolchain.BUILD",
-         sha256 = "50cdef6c5baddaa00f60502cc8b59cc11065306ae575ad2f51e412a9b2a90364",
-         strip_prefix = "arm-gnu-toolchain-11.3.rel1-x86_64-aarch64-none-linux-gnu",
-         urls = tf_mirror_urls("https://developer.arm.com/-/media/Files/downloads/gnu/11.3.rel1/binrel/arm-gnu-toolchain-11.3.rel1-x86_64-aarch64-none-linux-gnu.tar.xz"),
-@@ -206,7 +206,7 @@ def _tf_repositories():
+ # buildifier: disable=function-docstring
+ # buildifier: disable=unnamed-macro
+-def workspace(xla_path = "./"):
++def workspace():
+     # Check the bazel version before executing any repository rules, in case
+     # those rules rely on the version we require here.
+     versions.check("1.0.0")
+@@ -614,7 +614,7 @@ def workspace(xla_path = "./"):
+     _tf_toolchains()
  
-     tf_http_archive(
-         name = "armhf_linux_toolchain",
--        build_file = "@//tools/toolchains/embedded/arm-linux:armhf-linux-toolchain.BUILD",
-+        build_file = "//tools/toolchains/embedded/arm-linux:armhf-linux-toolchain.BUILD",
-         sha256 = "3f76650b1d048036473b16b647b8fd005ffccd1a2869c10994967e0e49f26ac2",
-         strip_prefix = "arm-gnu-toolchain-11.3.rel1-x86_64-arm-none-linux-gnueabihf",
-         urls = tf_mirror_urls("https://developer.arm.com/-/media/Files/downloads/gnu/11.3.rel1/binrel/arm-gnu-toolchain-11.3.rel1-x86_64-arm-none-linux-gnueabihf.tar.xz"),
+     # Import third party repositories according to go/tfbr-thirdparty.
+-    _initialize_third_party(xla_path)
++    _initialize_third_party()
+ 
+     # Import all other repositories. This should happen before initializing
+     # any external repositories, because those come with their own
 diff --git a/xla/hlo/evaluator/BUILD b/xla/hlo/evaluator/BUILD
-index dcb377c10..ef38872d7 100644
+index 47dff7bb5..92dc83ff4 100644
 --- a/xla/hlo/evaluator/BUILD
 +++ b/xla/hlo/evaluator/BUILD
 @@ -6,7 +6,7 @@ load("//xla:xla.bzl", "xla_cc_test")
@@ -227,7 +257,7 @@ index dcb377c10..ef38872d7 100644
  )
  
 diff --git a/xla/service/BUILD b/xla/service/BUILD
-index 75fd8f663..b2c57dd7a 100644
+index ba28fb52d..8ee1f5c62 100644
 --- a/xla/service/BUILD
 +++ b/xla/service/BUILD
 @@ -30,7 +30,7 @@ load("//xla/service:xla_compile.bzl", "xla_aot_compile_cpu", "xla_aot_compile_gp

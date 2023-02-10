@@ -106,7 +106,7 @@ class IoClient {
 
   // Make shares from plaintext buffer view.
   // Valid owner must be >= 0, and -1 indicates outsourcing model.
-  std::vector<spu::Value> makeShares(PtBufferView bv, Visibility vtype,
+  std::vector<spu::Value> makeShares(const PtBufferView &bv, Visibility vtype,
                                      int owner_rank = -1);
 
   // Combine shares to a plaintext ndarray.
@@ -134,7 +134,7 @@ class ColocatedIo {
 
   size_t getRank() const { return hctx_->lctx()->Rank(); }
 
-  void hostSetVar(const std::string &name, PtBufferView bv,
+  void hostSetVar(const std::string &name, const PtBufferView &bv,
                   Visibility vtype = VIS_SECRET);
 
   // Get a variable from this io context.

@@ -21,13 +21,13 @@
 #include "openssl/crypto.h"
 #include "openssl/rand.h"
 #include "spdlog/spdlog.h"
-#include "yacl/base/exception.h"
 #include "yacl/crypto/base/hash/hash_utils.h"
 #include "yacl/crypto/primitives/ot/base_ot.h"
 #include "yacl/crypto/primitives/ot/iknp_ote.h"
 #include "yacl/crypto/primitives/ot/kkrt_ote.h"
 #include "yacl/crypto/utils/rand.h"
 
+#include "libspu/core/prelude.h"
 #include "libspu/psi/core/communication.h"
 #include "libspu/psi/core/cuckoo_index.h"
 #include "libspu/psi/utils/serialize.h"
@@ -41,7 +41,7 @@ constexpr size_t kStashSize = 0;
 constexpr size_t kCuckooHashNum = 3;
 constexpr size_t kStatSecParam = 40;
 
-constexpr size_t kKkrtOtBatchSize = (65535 / 4 / 16 * 0.8);
+constexpr size_t kKkrtOtBatchSize = (65535 / 4 / 16 * 0.8);  // NOLINT
 
 // send set size to peer
 // get peer's item size
@@ -90,10 +90,10 @@ KkrtPsiOptions GetDefaultKkrtPsiOptions() {
 void GetKkrtOtSenderOptions(
     const std::shared_ptr<yacl::link::Context>& link_ctx, const size_t num_ot,
     yacl::crypto::OtRecvStore* recv_opts) {
-  YACL_ENFORCE(recv_opts != nullptr);
+  SPU_ENFORCE(recv_opts != nullptr);
   size_t base_ot_num = 128;
 
-  // use baseot get 128 ots
+  // use base ot get 128 ots
   yacl::crypto::OtSendStore iknp_send_opts;
 
   iknp_send_opts.blocks.resize(base_ot_num);
@@ -111,10 +111,10 @@ void GetKkrtOtSenderOptions(
 void GetKkrtOtReceiverOptions(
     const std::shared_ptr<yacl::link::Context>& link_ctx, const size_t num_ot,
     yacl::crypto::OtSendStore* send_opts) {
-  YACL_ENFORCE(send_opts != nullptr);
+  SPU_ENFORCE(send_opts != nullptr);
   size_t base_ot_num = 128;
 
-  // use baseot get 128 ots
+  // use base ot get 128 ots
   yacl::crypto::OtRecvStore iknp_recv_opts;
 
   iknp_recv_opts.choices = yacl::crypto::RandBits(base_ot_num);
@@ -136,18 +136,18 @@ void KkrtPsiSend(const std::shared_ptr<yacl::link::Context>& link_ctx,
                  const KkrtPsiOptions& kkrt_psi_options,
                  const yacl::crypto::OtRecvStore& base_options,
                  const std::vector<uint128_t>& items_hash) {
-  YACL_ENFORCE((kkrt_psi_options.cuckoo_hash_num == 3) &&
-                   (kkrt_psi_options.stash_size == 0),
-               "now only support cuckoo HashNum = 3 , stash size = 0");
-  YACL_ENFORCE((base_options.blocks.size() == 512) &&
-                   (base_options.choices.size() == 512),
-               "now only support baseRecvOption block size 512");
+  SPU_ENFORCE((kkrt_psi_options.cuckoo_hash_num == 3) &&
+                  (kkrt_psi_options.stash_size == 0),
+              "now only support cuckoo HashNum = 3 , stash size = 0");
+  SPU_ENFORCE((base_options.blocks.size() == 512) &&
+                  (base_options.choices.size() == 512),
+              "now only support baseRecvOption block size 512");
 
   size_t self_size = items_hash.size();
   size_t peer_size = ExchangeSetSize(link_ctx, self_size);
-  YACL_ENFORCE((peer_size > 0) && (self_size > 0),
-               "item size need not zero, mine={}, peer={}", self_size,
-               peer_size);
+  SPU_ENFORCE((peer_size > 0) && (self_size > 0),
+              "item size need not zero, mine={}, peer={}", self_size,
+              peer_size);
 
   uint64_t encode_size =
       KkrtEncodeSize(kkrt_psi_options.stat_sec_param, self_size,
@@ -164,7 +164,7 @@ void KkrtPsiSend(const std::shared_ptr<yacl::link::Context>& link_ctx,
 
   std::atomic<uint64_t> recv_idx(0);
   auto f_recv_corrections = std::async([&]() {
-    // while there are more corrections for be recieved
+    // while there are more corrections for be received
     size_t correction_batch_idx = 0;
     while (recv_idx < num_bins) {
       // compute the  size of the current step and the end index
@@ -210,9 +210,9 @@ void KkrtPsiSend(const std::shared_ptr<yacl::link::Context>& link_ctx,
       bin_indices[i][0] = bin_idx0;
       // check collision
       uint8_t c01 = (bin_idx0 == bin_idx1) ? 1 : 0;
-      bin_indices[i][1] = bin_idx1 | (c01 * uint64_t(-1));
+      bin_indices[i][1] = bin_idx1 | (c01 * static_cast<uint64_t>(-1));
       uint8_t c02 = (bin_idx0 == bin_idx2 || bin_idx1 == bin_idx2) ? 1 : 0;
-      bin_indices[i][2] = bin_idx2 | (c02 * uint64_t(-1));
+      bin_indices[i][2] = bin_idx2 | (c02 * static_cast<uint64_t>(-1));
       if (c01 == 1) {
         uint8_t* encode_pos =
             encode_buf.data<uint8_t>() +
@@ -232,10 +232,10 @@ void KkrtPsiSend(const std::shared_ptr<yacl::link::Context>& link_ctx,
 
   uint64_t t = 0;
   uint64_t r = 0;
-  // while not all the corrections have been recieved, try to encode any that
+  // while not all the corrections have been received, try to encode any that
   // we can
   // TODO(shuyan.ycf): this implementation wastes cpus if the networking is
-  // slow (Due to spin logics). Better use synchoronization primitives.
+  // slow (Due to spin logics). Better use synchronization primitives.
   while (r != num_bins) {
     // process things in steps
     for (uint64_t j = 0; j < kkrtOtBatchSize; ++j) {
@@ -247,7 +247,7 @@ void KkrtPsiSend(const std::shared_ptr<yacl::link::Context>& link_ctx,
       for (uint64_t h = 0; h < kkrt_psi_options.cuckoo_hash_num; ++h) {
         uint64_t b_idx = bin_indices[input_idx][h];
 
-        // if the bin index is less than r, then we have recieved
+        // if the bin index is less than r, then we have received
         // the correction and can encode it
         if (b_idx < r) {
           // write the encoding into encode_buf at position  t, h
@@ -290,7 +290,7 @@ void KkrtPsiSend(const std::shared_ptr<yacl::link::Context>& link_ctx,
       for (size_t k = 0; k < kkrt_psi_options.cuckoo_hash_num; k++) {
         uint64_t b_idx = bin_indices[input_idx][k];
 
-        if (b_idx != uint64_t(-1)) {
+        if (b_idx != static_cast<uint64_t>(-1)) {
           sender.Encode(b_idx, items_hash[input_idx], encoding, encode_size);
         }
         encoding += encode_size;
@@ -326,27 +326,27 @@ std::vector<std::size_t> KkrtPsiRecv(
     const KkrtPsiOptions& kkrt_psi_options,
     const yacl::crypto::OtSendStore& base_options,
     const std::vector<uint128_t>& items_hash) {
-  YACL_ENFORCE((kkrt_psi_options.cuckoo_hash_num == 3) &&
-                   (kkrt_psi_options.stash_size == 0),
-               "now only support cuckoo HashNum = 3 , stash size = 0");
+  SPU_ENFORCE((kkrt_psi_options.cuckoo_hash_num == 3) &&
+                  (kkrt_psi_options.stash_size == 0),
+              "now only support cuckoo HashNum = 3 , stash size = 0");
 
-  YACL_ENFORCE(base_options.blocks.size() == 512,
-               "now only support yacl::OtSendStore block size 512");
+  SPU_ENFORCE(base_options.blocks.size() == 512,
+              "now only support yacl::OtSendStore block size 512");
 
   std::vector<std::size_t> ret_intersection;
 
   size_t self_size = items_hash.size();
   size_t peer_size = ExchangeSetSize(link_ctx, self_size);
 
-  YACL_ENFORCE((peer_size > 0) && (!items_hash.empty()),
-               "item size need not zero, mine={}, peer={}", self_size,
-               peer_size);
+  SPU_ENFORCE((peer_size > 0) && (!items_hash.empty()),
+              "item size need not zero, mine={}, peer={}", self_size,
+              peer_size);
 
   CuckooIndex::Options option = CuckooIndex::SelectParams(
       self_size, kkrt_psi_options.stash_size, kkrt_psi_options.cuckoo_hash_num);
   CuckooIndex cuckoo_index(option);
   cuckoo_index.Insert(absl::MakeSpan(items_hash));
-  YACL_ENFORCE(cuckoo_index.stash().empty(), "stash size not 0");
+  SPU_ENFORCE(cuckoo_index.stash().empty(), "stash size not 0");
   size_t kkrt_ot_num = cuckoo_index.bins().size();
 
   yacl::crypto::KkrtOtExtReceiver receiver;
@@ -408,8 +408,8 @@ std::vector<std::size_t> KkrtPsiRecv(
     size_t curr_step_item_num = batch.item_num;
     size_t curr_step_encode_num =
         curr_step_item_num * kkrt_psi_options.cuckoo_hash_num;
-    YACL_ENFORCE_EQ(batch.flatten_bytes.size(),
-                    (curr_step_encode_num * encode_size));
+    SPU_ENFORCE_EQ(batch.flatten_bytes.size(),
+                   (curr_step_encode_num * encode_size));
 
     for (size_t i = 0; i < curr_step_item_num; ++i) {
       for (size_t j = 0; j < kkrt_psi_options.cuckoo_hash_num; ++j) {

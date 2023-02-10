@@ -64,7 +64,7 @@ class NdArrayRef {
              absl::Span<const int64_t> shape);
 
   // constructor, create a new buffer of elements and ref to it.
-  NdArrayRef(Type eltype, absl::Span<const int64_t> shape);
+  NdArrayRef(const Type& eltype, absl::Span<const int64_t> shape);
 
   // convenient constructor to accept shape/strides from xtensor.
   template <typename ShapeT, typename StridesT>

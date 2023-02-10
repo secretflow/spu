@@ -15,7 +15,7 @@
 #pragma once
 
 #include "libspu/core/array_ref.h"
-#include "libspu/mpc/util/ring_ops.h"
+#include "libspu/mpc/utils/ring_ops.h"
 
 namespace spu::mpc {
 

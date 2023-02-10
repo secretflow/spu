@@ -23,7 +23,7 @@
 #include "libspu/mpc/api.h"
 #include "libspu/mpc/common/communicator.h"
 #include "libspu/mpc/object.h"
-#include "libspu/mpc/util/ring_ops.h"
+#include "libspu/mpc/utils/ring_ops.h"
 
 namespace spu::mpc::bench {
 

@@ -88,7 +88,7 @@ spu::PtType getPtTypeFromMlirType(mlir::Type mlir_ty) {
         return it.isUnsigned() ? spu::PT_U64 : spu::PT_I64;
     }
   }
-  YACL_THROW("invalid type {}", mlirObjectToString(mlir_ty));
+  SPU_THROW("invalid type {}", mlirObjectToString(mlir_ty));
 }
 
 spu::DataType getDtypeFromMlirType(mlir::Type mlir_ty) {
@@ -107,12 +107,12 @@ spu::DataType getDtypeFromMlirType(mlir::Type mlir_ty) {
       case 64:
         return int_ty.isUnsigned() ? spu::DT_U64 : spu::DT_I64;
       default:
-        YACL_THROW("unsupported int type {}", mlirObjectToString(mlir_ty));
+        SPU_THROW("unsupported int type {}", mlirObjectToString(mlir_ty));
     }
   } else if (auto flp_ty = express_type.dyn_cast<mlir::FloatType>()) {
     return spu::DT_FXP;
   }
-  YACL_THROW("invalid type {}", mlirObjectToString(mlir_ty));
+  SPU_THROW("invalid type {}", mlirObjectToString(mlir_ty));
 }
 
 // Convert mlir visibility to spu visibility
@@ -123,7 +123,7 @@ spu::Visibility convertVisibility(mlir::pphlo::Visibility vis) {
     case mlir::pphlo::Visibility::VIS_SECRET:
       return spu::Visibility::VIS_SECRET;
   }
-  YACL_THROW("Should not hit");
+  SPU_THROW("Should not hit");
 }
 
 }  // namespace
@@ -142,31 +142,30 @@ spu::Value lookupValue(SymbolScope *scope, mlir::Value key,
           mlir_type.dyn_cast<mlir::RankedTensorType>().getShape();
       const auto &spu_shape = val.shape();
 
-      YACL_ENFORCE(mlir_shape.size() == spu_shape.size(),
-                   "Runtime shape mismatch, expected={}, got={}",
-                   fmt::join(mlir_shape, "x"), fmt::join(spu_shape, "x"));
+      SPU_ENFORCE(mlir_shape.size() == spu_shape.size(),
+                  "Runtime shape mismatch, expected={}, got={}",
+                  fmt::join(mlir_shape, "x"), fmt::join(spu_shape, "x"));
 
       for (size_t idx = 0; idx < mlir_shape.size(); ++idx) {
-        YACL_ENFORCE(mlir_shape[idx] == spu_shape[idx],
-                     "Runtime shape mismatch at dim {}, expected={}, got={}",
-                     idx, fmt::join(mlir_shape, "x"),
-                     fmt::join(spu_shape, "x"));
+        SPU_ENFORCE(mlir_shape[idx] == spu_shape[idx],
+                    "Runtime shape mismatch at dim {}, expected={}, got={}",
+                    idx, fmt::join(mlir_shape, "x"), fmt::join(spu_shape, "x"));
       }
     }
 
     // Check dtype
     mlir::pphlo::TypeTools tool;
     auto expectedType = getDtypeFromMlirType(mlir_type);
-    YACL_ENFORCE(expectedType == val.dtype(), "Expected mlir_type {}, got {}",
-                 expectedType, val.dtype());
+    SPU_ENFORCE(expectedType == val.dtype(), "Expected mlir_type {}, got {}",
+                expectedType, val.dtype());
 
     // Check vtype
     if (tool.isMPCType<mlir::pphlo::PublicType>(mlir_type)) {
-      YACL_ENFORCE(val.isPublic());
+      SPU_ENFORCE(val.isPublic());
     } else if (tool.isMPCType<mlir::pphlo::SecretType>(mlir_type)) {
-      YACL_ENFORCE(val.isSecret());
+      SPU_ENFORCE(val.isSecret());
     } else {
-      YACL_ENFORCE("Unknown vtype");
+      SPU_ENFORCE("Unknown vtype");
     }
   }
   return val;
@@ -245,20 +244,20 @@ void execute(OpExecutor *executor, HalContext *hctx, SymbolScope *sscope,
              mlir::pphlo::DotGeneralOp &op, const ExecutionOptions &opts) {
   auto dnum = op.getDotDimensionNumbers();
   // Should in order
-  YACL_ENFORCE(dnum.getLhsBatchingDimensions().size() == 1 &&
-                   dnum.getLhsContractingDimensions().size() == 1 &&
-                   dnum.getLhsBatchingDimensions()[0] == 0 &&
-                   dnum.getLhsContractingDimensions()[0] == 2,
-               "LHS dims is not in order");
-  YACL_ENFORCE(dnum.getRhsBatchingDimensions().size() == 1 &&
-                   dnum.getRhsContractingDimensions().size() == 1 &&
-                   dnum.getRhsBatchingDimensions()[0] == 0 &&
-                   dnum.getRhsContractingDimensions()[0] == 1,
-               "RHS dims is not in order");
+  SPU_ENFORCE(dnum.getLhsBatchingDimensions().size() == 1 &&
+                  dnum.getLhsContractingDimensions().size() == 1 &&
+                  dnum.getLhsBatchingDimensions()[0] == 0 &&
+                  dnum.getLhsContractingDimensions()[0] == 2,
+              "LHS dims is not in order");
+  SPU_ENFORCE(dnum.getRhsBatchingDimensions().size() == 1 &&
+                  dnum.getRhsContractingDimensions().size() == 1 &&
+                  dnum.getRhsBatchingDimensions()[0] == 0 &&
+                  dnum.getRhsContractingDimensions()[0] == 1,
+              "RHS dims is not in order");
 
   auto lhs = lookupValue(sscope, op.getLhs(), opts);
   auto rhs = lookupValue(sscope, op.getRhs(), opts);
-  YACL_ENFORCE(lhs.shape()[0] == rhs.shape()[0], "Batch dim should equal");
+  SPU_ENFORCE(lhs.shape()[0] == rhs.shape()[0], "Batch dim should equal");
   int64_t num_batch = lhs.shape()[0];
 
   std::vector<spu::Value> results(num_batch);
@@ -300,8 +299,8 @@ void execute(OpExecutor *executor, HalContext *hctx, SymbolScope *sscope,
              mlir::pphlo::ConvolutionOp &op, const ExecutionOptions &opts) {
   const auto &dnums = op.getDimensionNumbers();
   const size_t num_spatial_dims = dnums.getOutputSpatialDimensions().size();
-  YACL_ENFORCE(num_spatial_dims == dnums.getInputSpatialDimensions().size());
-  YACL_ENFORCE(num_spatial_dims == dnums.getKernelSpatialDimensions().size());
+  SPU_ENFORCE(num_spatial_dims == dnums.getInputSpatialDimensions().size());
+  SPU_ENFORCE(num_spatial_dims == dnums.getKernelSpatialDimensions().size());
 
   const auto ret_shape =
       op.getResult().getType().dyn_cast<mlir::TensorType>().getShape();
@@ -312,8 +311,8 @@ void execute(OpExecutor *executor, HalContext *hctx, SymbolScope *sscope,
   std::vector<int64_t> window_strides(dnums.getInputSpatialDimensions().size(),
                                       1);
   if (op.getWindowStrides().has_value()) {
-    for (const auto &iter :
-         llvm::enumerate(op.getWindowStrides()->getValues<int64_t>())) {
+    for (const auto &iter : llvm::enumerate(
+             op.getWindowStrides()->getValues<int64_t>())) {  // NOLINT
       window_strides[iter.index()] = iter.value();
     }
   }
@@ -416,9 +415,9 @@ void execute(OpExecutor *executor, HalContext *hctx, SymbolScope *sscope,
 
   auto body_return =
       llvm::dyn_cast<mlir::pphlo::ReturnOp>(op.getComparator().back().back());
-  YACL_ENFORCE(body_return, "Cannot find body return");
-  YACL_ENFORCE(body_return->getNumOperands() == 1,
-               "Comparator should have exactly one return");
+  SPU_ENFORCE(body_return, "Cannot find body return");
+  SPU_ENFORCE(body_return->getNumOperands() == 1,
+              "Comparator should have exactly one return");
 
   mlir::pphlo::TypeTools type_tools;
   auto return_vis =
@@ -461,16 +460,17 @@ void execute(OpExecutor *executor, HalContext *hctx, SymbolScope *sscope,
   // build strides
   std::vector<int64_t> window_strides(window_shape.size(), 1);
   if (op.getWindowStrides().has_value()) {
-    window_strides = convertDenseIntElementAttr(*op.getWindowStrides());
+    window_strides =
+        convertDenseIntElementAttr(*op.getWindowStrides());  // NOLINT
   }
 
   // window padding
   std::vector<std::pair<int64_t, int64_t>> window_padding(window_shape.size(),
                                                           {0, 0});
   if (op.getPadding().has_value()) {
-    const auto v = *op.getPadding();
+    const auto v = *op.getPadding();  // NOLINT
 
-    YACL_ENFORCE(window_padding.size() * 2 == (size_t)v.size());
+    SPU_ENFORCE(window_padding.size() * 2 == (size_t)v.size());
 
     for (size_t idx = 0; idx < window_padding.size(); ++idx) {
       window_padding[idx] = {*(v.getValues<int64_t>().begin() + 2 * idx),
@@ -502,21 +502,22 @@ void execute(OpExecutor *executor, HalContext *hctx, SymbolScope *sscope,
   auto update = lookupValue(sscope, op.getUpdate(), opts);
 
   auto window_shape =
-      convertDenseIntElementAttr(op.getWindowDimensions().value());
+      convertDenseIntElementAttr(op.getWindowDimensions().value());  // NOLINT
 
   // build strides
   std::vector<int64_t> window_strides(window_shape.size(), 1);
   if (op.getWindowStrides().has_value()) {
-    window_strides = convertDenseIntElementAttr(*op.getWindowStrides());
+    window_strides =
+        convertDenseIntElementAttr(*op.getWindowStrides());  // NOLINT
   }
 
   // window padding
   std::vector<std::pair<int64_t, int64_t>> window_padding(window_shape.size(),
                                                           {0, 0});
   if (op.getPadding().has_value()) {
-    const auto v = *op.getPadding();
+    const auto v = *op.getPadding();  // NOLINT
 
-    YACL_ENFORCE(window_padding.size() * 2 == (size_t)v.size());
+    SPU_ENFORCE(window_padding.size() * 2 == (size_t)v.size());
 
     for (size_t idx = 0; idx < window_padding.size(); ++idx) {
       window_padding[idx] = {*(v.getValues<int64_t>().begin() + 2 * idx),
@@ -683,16 +684,16 @@ void execute(OpExecutor *executor, HalContext *hctx, SymbolScope *sscope,
   const auto &operand = lookupValue(sscope, op.getOperand(), opts);
   const size_t operand_rank = operand.shape().size();
   const auto &padding_value = lookupValue(sscope, op.getPaddingValue(), opts);
-  YACL_ENFORCE(padding_value.shape().empty());
+  SPU_ENFORCE(padding_value.shape().empty());
 
   auto edge_padding_low = convertDenseIntElementAttr(op.getEdgePaddingLow());
-  YACL_ENFORCE(edge_padding_low.size() == operand_rank);
+  SPU_ENFORCE(edge_padding_low.size() == operand_rank);
   auto edge_padding_high = convertDenseIntElementAttr(op.getEdgePaddingHigh());
-  YACL_ENFORCE(edge_padding_high.size() == operand_rank);
+  SPU_ENFORCE(edge_padding_high.size() == operand_rank);
   auto interior_padding = convertDenseIntElementAttr(op.getInteriorPadding());
-  YACL_ENFORCE(interior_padding.size() == operand_rank);
-  YACL_ENFORCE(std::all_of(interior_padding.begin(), interior_padding.end(),
-                           [](int64_t i) { return i >= 0; }));
+  SPU_ENFORCE(interior_padding.size() == operand_rank);
+  SPU_ENFORCE(std::all_of(interior_padding.begin(), interior_padding.end(),
+                          [](int64_t i) { return i >= 0; }));
 
   sscope->addValue(
       op.getResult(),
@@ -760,22 +761,24 @@ void execute(OpExecutor *executor, HalContext *hctx, SymbolScope *sscope,
   // build strides
   std::vector<int64_t> window_strides(window_shape.size(), 1);
   if (op.getWindowStrides().has_value()) {
-    window_strides = convertDenseIntElementAttr(*op.getWindowStrides());
+    window_strides =
+        convertDenseIntElementAttr(*op.getWindowStrides());  // NOLINT
   }
 
   // window dilation
   std::vector<int64_t> window_dilations(window_shape.size(), 1);
   if (op.getWindowDilations().has_value()) {
-    window_dilations = convertDenseIntElementAttr(*op.getWindowDilations());
+    window_dilations =
+        convertDenseIntElementAttr(*op.getWindowDilations());  // NOLINT
   }
 
   // window padding
   std::vector<std::pair<int64_t, int64_t>> window_padding(window_shape.size(),
                                                           {0, 0});
   if (op.getPadding().has_value()) {
-    const auto v = *op.getPadding();
+    const auto v = *op.getPadding();  // NOLINT
 
-    YACL_ENFORCE(window_padding.size() * 2 == (size_t)v.size());
+    SPU_ENFORCE(window_padding.size() * 2 == (size_t)v.size());
 
     for (size_t idx = 0; idx < window_padding.size(); ++idx) {
       window_padding[idx] = {*(v.getValues<int64_t>().begin() + 2 * idx),
@@ -786,7 +789,8 @@ void execute(OpExecutor *executor, HalContext *hctx, SymbolScope *sscope,
   // base dilation
   std::vector<int64_t> base_dilation(window_shape.size(), 1);
   if (op.getBaseDilations().has_value()) {
-    base_dilation = convertDenseIntElementAttr(*op.getBaseDilations());
+    base_dilation =
+        convertDenseIntElementAttr(*op.getBaseDilations());  // NOLINT
   }
 
   kernel::hlo::ReduceWindowConfig config;
@@ -818,22 +822,24 @@ void execute(OpExecutor *executor, HalContext *hctx, SymbolScope *sscope,
   // build strides
   std::vector<int64_t> window_strides(window_shape.size(), 1);
   if (op.getWindowStrides().has_value()) {
-    window_strides = convertDenseIntElementAttr(*op.getWindowStrides());
+    window_strides =
+        convertDenseIntElementAttr(*op.getWindowStrides());  // NOLINT
   }
 
   // window dilation
   std::vector<int64_t> window_dilations(window_shape.size(), 1);
   if (op.getWindowDilations().has_value()) {
-    window_dilations = convertDenseIntElementAttr(*op.getWindowDilations());
+    window_dilations =
+        convertDenseIntElementAttr(*op.getWindowDilations());  // NOLINT
   }
 
   // window padding
   std::vector<std::pair<int64_t, int64_t>> window_padding(window_shape.size(),
                                                           {0, 0});
   if (op.getPadding().has_value()) {
-    const auto v = *op.getPadding();
+    const auto v = *op.getPadding();  // NOLINT
 
-    YACL_ENFORCE(window_padding.size() * 2 == (size_t)v.size());
+    SPU_ENFORCE(window_padding.size() * 2 == (size_t)v.size());
 
     for (size_t idx = 0; idx < window_padding.size(); ++idx) {
       window_padding[idx] = {*(v.getValues<int64_t>().begin() + 2 * idx),
@@ -844,7 +850,8 @@ void execute(OpExecutor *executor, HalContext *hctx, SymbolScope *sscope,
   // base dilation
   std::vector<int64_t> base_dilation(window_shape.size(), 1);
   if (op.getBaseDilations().has_value()) {
-    base_dilation = convertDenseIntElementAttr(*op.getBaseDilations());
+    base_dilation =
+        convertDenseIntElementAttr(*op.getBaseDilations());  // NOLINT
   }
 
   auto ret_shape = op->getResults()[0]
@@ -924,8 +931,8 @@ void execute(OpExecutor *executor, HalContext *hctx, SymbolScope *sscope,
   // bitcast should not change total #bytes, so if sizeof(in_t) !=
   // sizeof(out_t) will result to a shape change, thus it's enough to just
   // ensure in_shape == out_shape
-  YACL_ENFORCE(in_type.getShape() == out_type.getShape(),
-               "bitcast with different size is not supported yet");
+  SPU_ENFORCE(in_type.getShape() == out_type.getShape(),
+              "bitcast with different size is not supported yet");
 
   sscope->addValue(
       op.getResult(),
@@ -953,7 +960,7 @@ void execute(OpExecutor *executor, HalContext *hctx, SymbolScope *sscope,
     } else {
       std::vector<uint8_t> buf(type.getNumElements());
       for (const auto &v : llvm::enumerate(dea.getValues<bool>())) {
-        buf[v.index()] = v.value();
+        buf[v.index()] = static_cast<uint8_t>(v.value());
       }
       PtBufferView view(reinterpret_cast<const bool *>(buf.data()), pt_type,
                         dst_shape, makeCompactStrides(dst_shape));
@@ -997,7 +1004,7 @@ void execute(OpExecutor *executor, HalContext *hctx, SymbolScope *sscope,
 #define DEFINE_UNIMPLEMENTED_OP(OpName)                                     \
   void execute(OpExecutor *executor, HalContext *hctx, SymbolScope *sscope, \
                mlir::pphlo::OpName &, const ExecutionOptions &opts) {       \
-    YACL_THROW("Lowered op should not occur at backend");                   \
+    SPU_THROW("Lowered op should not occur at backend");                    \
   }
 
 DEFINE_UNIMPLEMENTED_OP(ReturnOp)
@@ -1079,8 +1086,8 @@ static void dispatchOp(OpExecutor *executor, HalContext *hctx,
     }
   } else {
     if constexpr (!sizeof...(MoreOpT)) {
-      YACL_THROW("Unhandled mlir op {} at {}", mlirObjectToString(op),
-                 mlirObjectToString(op.getLoc()));
+      SPU_THROW("Unhandled mlir op {} at {}", mlirObjectToString(op),
+                mlirObjectToString(op.getLoc()));
     } else {
       dispatchOp<MoreOpT...>(executor, hctx, sscope, op, opts);
     }

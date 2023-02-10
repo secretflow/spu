@@ -67,7 +67,8 @@ TEST(GchTest, BasicTest) {
   size_t bin_items[4] = {
       0,
   };
-  size_t c1 = 0, c2 = 0;
+  size_t c1 = 0;
+  size_t c2 = 0;
   std::vector<size_t> hash_data_num(hash_num);
   memset(hash_data_num.data(), 0, hash_data_num.size() * sizeof(size_t));
 
@@ -75,9 +76,9 @@ TEST(GchTest, BasicTest) {
     if (simple_table_bins[i].size() < bins[i].size()) {
       SPDLOG_INFO("****{}****", i);
     }
-    for (size_t j = 0; j < bins[i].size(); j++) {
+    for (const auto &bin : bins[i]) {
       // size_t item_idx = bins[i][j].InputIdx();
-      size_t hash_idx = bins[i][j].HashIdx();
+      size_t hash_idx = bin.HashIdx();
       hash_data_num[hash_idx]++;
     }
     bin_items[bins[i].size()]++;

@@ -23,15 +23,12 @@ using CreateObjectFn = std::function<std::unique_ptr<Object>(
     const RuntimeConfig& conf,
     const std::shared_ptr<yacl::link::Context>& lctx)>;
 
-class ArithmeticTest : public ::testing::TestWithParam<
-                           std::tuple<CreateObjectFn, RuntimeConfig, size_t>> {
-};
+using OpTestParams = std::tuple<CreateObjectFn, RuntimeConfig, size_t>;
 
-class BooleanTest : public ::testing::TestWithParam<
-                        std::tuple<CreateObjectFn, RuntimeConfig, size_t>> {};
+class ArithmeticTest : public ::testing::TestWithParam<OpTestParams> {};
 
-class ConversionTest : public ::testing::TestWithParam<
-                           std::tuple<CreateObjectFn, RuntimeConfig, size_t>> {
-};
+class BooleanTest : public ::testing::TestWithParam<OpTestParams> {};
+
+class ConversionTest : public ::testing::TestWithParam<OpTestParams> {};
 
 }  // namespace spu::mpc::test

@@ -49,7 +49,7 @@ class PrgState : public State {
       yacl::crypto::SymmetricCrypto::CryptoType::AES128_CTR;
 
   PrgState();
-  explicit PrgState(std::shared_ptr<yacl::link::Context> lctx);
+  explicit PrgState(const std::shared_ptr<yacl::link::Context>& lctx);
 
   bool hasLowCostFork() const override { return true; }
 
@@ -64,8 +64,8 @@ class PrgState : public State {
   //
   // This correlation could be used to construct zero shares.
   //
-  // Note: ignore_first, ignore_second is for perf improment.
-  std::pair<ArrayRef, ArrayRef> genPrssPair(FieldType field, size_t numel,
+  // Note: ignore_first, ignore_second is for perf improvement.
+  std::pair<ArrayRef, ArrayRef> genPrssPair(FieldType field, size_t size,
                                             bool ignore_first = false,
                                             bool ignore_second = false);
 

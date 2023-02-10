@@ -69,7 +69,7 @@ struct SqrtRewriter : public OpRewritePattern<DivOp> {
         return failure();
       }
     } else {
-      YACL_ENFORCE(const_value.getElementType().isF64());
+      SPU_ENFORCE(const_value.getElementType().isF64());
       if (!isSmallerThanEps(const_value.getSplatValue<double>())) {
         return failure();
       }
@@ -98,8 +98,8 @@ struct OptimizeSqrtToRsqrt
   }
 
 private:
-  void populateOwningPatterns(RewritePatternSet *patterns,
-                              MLIRContext *ctx) const {
+  static void populateOwningPatterns(RewritePatternSet *patterns,
+                                     MLIRContext *ctx) {
     patterns->insert<SqrtRewriter>(ctx);
   }
 };

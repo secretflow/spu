@@ -17,7 +17,7 @@ import unittest
 
 import numpy as np
 
-import spu.util.simulation as ppsim
+import spu.utils.simulation as ppsim
 import spu.spu_pb2 as spu_pb2
 from spu.tests.jnp_testbase import JnpTests
 

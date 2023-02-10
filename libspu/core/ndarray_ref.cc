@@ -65,7 +65,7 @@ NdArrayRef::NdArrayRef(std::shared_ptr<yacl::Buffer> buf, Type eltype,
       ) {}
 
 // constructor, create a new buffer of elements and ref to it.
-NdArrayRef::NdArrayRef(Type eltype, absl::Span<const int64_t> shape)
+NdArrayRef::NdArrayRef(const Type& eltype, absl::Span<const int64_t> shape)
     : NdArrayRef(std::make_shared<yacl::Buffer>(calcNumel(shape) *
                                                 eltype.size()),  // buf
                  eltype,                                         // eltype
@@ -75,20 +75,19 @@ NdArrayRef::NdArrayRef(Type eltype, absl::Span<const int64_t> shape)
       ) {}
 
 size_t NdArrayRef::dim(size_t idx) const {
-  YACL_ENFORCE(idx < ndim());
+  SPU_ENFORCE(idx < ndim());
   return shape_[idx];
 }
 
 NdArrayRef NdArrayRef::as(const Type& new_ty, bool force) const {
   if (!force) {
-    YACL_ENFORCE(elsize() == new_ty.size(),
-                 "viewed type={} not equal to origin type={}", new_ty,
-                 eltype());
+    SPU_ENFORCE(elsize() == new_ty.size(),
+                "viewed type={} not equal to origin type={}", new_ty, eltype());
     return {buf(), new_ty, shape(), strides(), offset()};
   }
   // Force view, we need to adjust strides
   auto distance = ((strides().empty() ? 1 : strides().back()) * elsize());
-  YACL_ENFORCE(distance % new_ty.size() == 0);
+  SPU_ENFORCE(distance % new_ty.size() == 0);
 
   std::vector<int64_t> new_strides = strides();
   std::transform(new_strides.begin(), new_strides.end(), new_strides.begin(),
@@ -137,9 +136,9 @@ NdArrayRef NdArrayRef::clone() const {
 }
 
 NdArrayRef unflatten(const ArrayRef& arr, absl::Span<const int64_t> shape) {
-  YACL_ENFORCE(arr.numel() == calcNumel(shape),
-               "unflatten numel mismatch, expected={}, got={}",
-               calcNumel(shape), arr.numel());
+  SPU_ENFORCE(arr.numel() == calcNumel(shape),
+              "unflatten numel mismatch, expected={}, got={}", calcNumel(shape),
+              arr.numel());
 
   if (arr.stride() == 0) {
     return {arr.buf(), arr.eltype(), shape,
@@ -147,8 +146,8 @@ NdArrayRef unflatten(const ArrayRef& arr, absl::Span<const int64_t> shape) {
   }
 
   // FIXME: due to the current implementation,
-  YACL_ENFORCE(arr.isCompact(), "FIXME: impl assume array is flatten, got {}",
-               arr);
+  SPU_ENFORCE(arr.isCompact(), "FIXME: impl assume array is flatten, got {}",
+              arr);
 
   auto strides = makeCompactStrides(shape);
   return {arr.buf(), arr.eltype(), shape, std::move(strides), arr.offset()};

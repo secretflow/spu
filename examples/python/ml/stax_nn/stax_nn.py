@@ -35,7 +35,7 @@ from keras.datasets import cifar10
 from sklearn.metrics import accuracy_score
 
 import examples.python.ml.stax_nn.models as models
-import spu.util.distributed as ppd
+import spu.utils.distributed as ppd
 
 parser = argparse.ArgumentParser(description='distributed driver.')
 parser.add_argument("--model", default='network_a', type=str)
@@ -101,7 +101,7 @@ def train(
     update_model_jit = jax.jit(update_model)
     itercount = itertools.count()
 
-    print('Start trainning...')
+    print('Start training...')
     for i in range(1, epochs + 1):
         for batch_idx in range(math.ceil(len(train_x) / batch_size)):
             batch_images = train_x[

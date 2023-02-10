@@ -29,8 +29,8 @@ std::string CreateFlattenEccBuffer(const std::vector<std::string>& items,
   ret.reserve(items.size() * item_size);
   size_t size = std::min<size_t>(chosen_size, item_size);
   for (const auto& item : items) {
-    YACL_ENFORCE(item.size() == item_size, "item.size:{}, item_size:{}",
-                 item.size(), item_size);
+    SPU_ENFORCE(item.size() == item_size, "item.size:{}, item_size:{}",
+                item.size(), item_size);
     ret.append(item.data(), size);
   }
   return ret;
@@ -43,8 +43,8 @@ std::string CreateFlattenEccBuffer(const std::vector<absl::string_view>& items,
   ret.reserve(items.size() * item_size);
   size_t size = std::min<size_t>(chosen_size, item_size);
   for (const auto& item : items) {
-    YACL_ENFORCE(item.size() == item_size, "item.size:{}, item_size:{}",
-                 item.size(), item_size);
+    SPU_ENFORCE(item.size() == item_size, "item.size:{}, item_size:{}",
+                item.size(), item_size);
     ret.append(item.data(), size);
   }
   return ret;
@@ -52,7 +52,7 @@ std::string CreateFlattenEccBuffer(const std::vector<absl::string_view>& items,
 
 std::vector<std::string> CreateItemsFromFlattenEccBuffer(
     std::string_view buf, size_t item_size = kEccKeySize) {
-  YACL_ENFORCE(buf.size() % item_size == 0);
+  SPU_ENFORCE(buf.size() % item_size == 0);
   size_t num_item = buf.size() / item_size;
   std::vector<std::string> ret;
   ret.reserve(num_item);

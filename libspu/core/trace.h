@@ -277,7 +277,7 @@ class TraceAction final {
 
 // global setting
 void initTrace(int64_t global_tr_flag,
-               std::shared_ptr<spdlog::logger> tr_logger = nullptr);
+               const std::shared_ptr<spdlog::logger>& tr_logger = nullptr);
 
 int64_t getGlobalTraceFlag();
 

@@ -15,12 +15,13 @@
 #include "libspu/pir/seal_pir_utils.h"
 
 #include "spdlog/spdlog.h"
-#include "yacl/base/exception.h"
+
+#include "libspu/core/prelude.h"
 
 namespace spu::pir {
 
 std::vector<uint8_t> MemoryDbElementProvider::ReadElement(size_t index) {
-  YACL_ENFORCE(index < items_.size());
+  SPU_ENFORCE(index < items_.size());
 
   std::vector<uint8_t> element(element_size_);
 
@@ -30,7 +31,7 @@ std::vector<uint8_t> MemoryDbElementProvider::ReadElement(size_t index) {
 
 std::vector<uint8_t> MemoryDbElementProvider::ReadElement(size_t index,
                                                           size_t size) {
-  YACL_ENFORCE((index + size) <= items_.size());
+  SPU_ENFORCE((index + size) <= items_.size());
 
   std::vector<uint8_t> element(size);
 
@@ -42,15 +43,15 @@ void MemoryDbPlaintextStore::SetSubDbNumber(size_t sub_db_num) {
   db_vec_.resize(sub_db_num);
 }
 
-void MemoryDbPlaintextStore::SavePlaintext(const seal::Plaintext& plaintxt,
+void MemoryDbPlaintextStore::SavePlaintext(const seal::Plaintext& plaintext,
                                            size_t sub_db_index) {
-  db_vec_[sub_db_index].push_back(plaintxt);
+  db_vec_[sub_db_index].push_back(plaintext);
 }
 
 void MemoryDbPlaintextStore::SavePlaintexts(
     const std::vector<seal::Plaintext>& plaintexts, size_t sub_db_index) {
-  for (size_t idx = 0; idx < plaintexts.size(); ++idx) {
-    db_vec_[sub_db_index].push_back(plaintexts[idx]);
+  for (const auto& plaintext : plaintexts) {
+    db_vec_[sub_db_index].push_back(plaintext);
   }
 }
 

@@ -15,30 +15,24 @@
 #pragma once
 
 #include "libspu/mpc/kernel.h"
-#include "libspu/mpc/util/cexpr.h"
+#include "libspu/mpc/utils/cexpr.h"
 
 namespace spu::mpc::semi2k {
-
-using util::CExpr;
-using util::Const;
-using util::K;
-using util::Log;
-using util::N;
 
 class A2B : public UnaryKernel {
  public:
   static constexpr char kBindName[] = "a2b";
 
-  CExpr latency() const override {
-    return (Log(K()) + 1)  // adder-circuit;
-           * Log(N())      // tree-reduce parties.
+  ce::CExpr latency() const override {
+    return (Log(ce::K()) + 1)  // adder-circuit;
+           * Log(ce::N())      // tree-reduce parties.
         ;
   }
 
-  CExpr comm() const override {
-    return (2 * Log(K()) + 1)     // KS-adder-circuit
-           * 2 * K() * (N() - 1)  // And gate, for nPC
-           * (N() - 1)            // (no-matter tree or ring) redue
+  ce::CExpr comm() const override {
+    return (2 * Log(ce::K()) + 1)         // KS-adder-circuit
+           * 2 * ce::K() * (ce::N() - 1)  // And gate, for nPC
+           * (ce::N() - 1)                // (no-matter tree or ring) reduce
         ;
   }
 
@@ -49,9 +43,9 @@ class B2A : public UnaryKernel {
  public:
   static constexpr char kBindName[] = "b2a";
 
-  CExpr latency() const override { return Const(0); }
+  ce::CExpr latency() const override { return ce::Const(0); }
 
-  CExpr comm() const override { return Const(0); }
+  ce::CExpr comm() const override { return ce::Const(0); }
 
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& x) const override;
 };
@@ -60,10 +54,10 @@ class B2A_Randbit : public UnaryKernel {
  public:
   static constexpr char kBindName[] = "b2a";
 
-  CExpr latency() const override { return Const(1); }
+  ce::CExpr latency() const override { return ce::Const(1); }
 
-  CExpr comm() const override {
-    return K() * (N() - 1)  // Open bit masked value
+  ce::CExpr comm() const override {
+    return ce::K() * (ce::N() - 1)  // Open bit masked value
         ;
   }
 
@@ -75,19 +69,19 @@ class MsbA2B : public UnaryKernel {
  public:
   static constexpr char kBindName[] = "msb_a2b";
 
-  CExpr latency() const override {
+  ce::CExpr latency() const override {
     // 1 * carry_out : log(k) + 1
-    return Log(K()) + 1;
+    return Log(ce::K()) + 1;
   }
 
-  CExpr comm() const override {
+  ce::CExpr comm() const override {
     // 1 * carry_out: k + 4 * k
-    return K() * 5;
+    return ce::K() * 5;
   }
 
   float getCommTolerance() const override { return 0.2; }
 
-  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& x) const override;
+  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in) const override;
 };
 
 }  // namespace spu::mpc::semi2k

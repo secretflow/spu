@@ -34,7 +34,7 @@ class LocalIo {
 
   void InFeed(const std::string &name, PtBufferView view, Visibility vtype) {
     auto shares = io_client_.makeShares(view, vtype);
-    YACL_ENFORCE(shares.size() == symbol_tables_.size());
+    SPU_ENFORCE(shares.size() == symbol_tables_.size());
     for (size_t idx = 0; idx < symbol_tables_.size(); ++idx) {
       // TODO: remove clone, pphlo_executor_test will fail.
       symbol_tables_[idx].setVar(name, shares[idx].clone());

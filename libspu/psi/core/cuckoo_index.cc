@@ -24,9 +24,9 @@ CuckooIndex::CuckooIndex(const Options& options) : options_(options) {
   stash_.resize(options_.num_stash);
   hashes_.reserve(options_.NumBins());
 
-  YACL_ENFORCE((options_.num_hash - 1) * HashRoom::kBlockSize +
-                   sizeof(uint64_t) <=
-               sizeof(HashType));
+  SPU_ENFORCE((options_.num_hash - 1) * HashRoom::kBlockSize +
+                  sizeof(uint64_t) <=
+              sizeof(HashType));
 }
 
 void CuckooIndex::Insert(absl::Span<const HashType> codes) {
@@ -36,9 +36,9 @@ void CuckooIndex::Insert(absl::Span<const HashType> codes) {
 
   // Add to hash rooms.
   for (const HashType& code : codes) {
-    hashes_.push_back(HashRoom(code));
+    hashes_.emplace_back(code);
   }
-  YACL_ENFORCE(hashes_.size() <= options_.num_input);
+  SPU_ENFORCE(hashes_.size() <= options_.num_input);
 
   std::vector<Bin> candidates(size);
   for (size_t i = 0; i < candidates.size(); ++i) {
@@ -67,43 +67,43 @@ void CuckooIndex::Insert(absl::Span<const HashType> codes) {
     candidates.resize(write_idx);
   }
 
-  for (size_t i = 0; i < candidates.size(); ++i) {
-    PutToStash(candidates[i].InputIdx());
+  for (auto& candidate : candidates) {
+    PutToStash(candidate.InputIdx());
   }
 }
 
 void CuckooIndex::PutToStash(uint64_t input_idx) {
   // `stash` is small enough to do a linear search.
-  for (size_t i = 0; i < stash_.size(); ++i) {
-    if (stash_[i].IsEmpty()) {
-      stash_[i].set_encoded(input_idx);
+  for (auto& s : stash_) {
+    if (s.IsEmpty()) {
+      s.set_encoded(input_idx);
       return;
     }
   }
-  YACL_THROW("Cannot find empty bin in stash for input_idx={}", input_idx);
+  SPU_THROW("Cannot find empty bin in stash for input_idx={}", input_idx);
 }
 
 void CuckooIndex::SanityCheck() const {
   std::set<uint64_t> set;
   for (const auto& bin : bins_) {
     if (!bin.IsEmpty()) {
-      YACL_ENFORCE(set.insert(bin.InputIdx()).second,
-                   "Input={} already exists.", bin.InputIdx());
+      SPU_ENFORCE(set.insert(bin.InputIdx()).second, "Input={} already exists.",
+                  bin.InputIdx());
     }
   }
   for (const auto& bin : stash_) {
     if (!bin.IsEmpty()) {
-      YACL_ENFORCE(set.insert(bin.InputIdx()).second,
-                   "Input={} already exists.", bin.InputIdx());
+      SPU_ENFORCE(set.insert(bin.InputIdx()).second, "Input={} already exists.",
+                  bin.InputIdx());
     }
   }
 
   // All inputs should be found.
-  YACL_ENFORCE(set.size() == options_.num_input);
+  SPU_ENFORCE(set.size() == options_.num_input);
   // Every input must exists.
   size_t idx = 0;
   for (uint64_t i : set) {
-    YACL_ENFORCE(idx++ == i, "Cannot find input={}", i);
+    SPU_ENFORCE(idx++ == i, "Cannot find input={}", i);
   }
 }
 
@@ -112,7 +112,7 @@ void CuckooIndex::SanityCheck() const {
 CuckooIndex::Options CuckooIndex::SelectParams(uint64_t n, uint64_t stash_size,
                                                uint64_t hash_num,
                                                uint64_t stat_sec_param) {
-  auto h = hash_num ? hash_num : 3;
+  auto h = hash_num != 0 ? hash_num : 3;
 
   if (stash_size == 0 && h == 3) {
     double a = 240;
@@ -129,8 +129,8 @@ CuckooIndex::Options CuckooIndex::SelectParams(uint64_t n, uint64_t stash_size,
     return CuckooIndex::Options{n, 0, h, e};
   }
 
-  YACL_THROW("not support for stash_size={} and hash_num={}", stash_size,
-             hash_num);
+  SPU_THROW("not support for stash_size={} and hash_num={}", stash_size,
+            hash_num);
 }
 
 uint8_t CuckooIndex::MinCollidingHashIdx(uint64_t bin_index) const {
@@ -141,7 +141,7 @@ uint8_t CuckooIndex::MinCollidingHashIdx(uint64_t bin_index) const {
   for (uint64_t i = 0; i < options_.num_hash; i++) {
     target = hashes_[input_idx].GetHash(i) % num_bins;
     if (target == bin_index) {
-      return uint8_t(i);
+      return static_cast<uint8_t>(i);
     }
   }
   return -1;

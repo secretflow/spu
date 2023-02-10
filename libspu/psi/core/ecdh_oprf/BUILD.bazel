@@ -23,11 +23,11 @@ spu_cc_library(
     # Openssl::libcrypto requires `dlopen`...
     linkopts = ["-ldl"],
     deps = [
+        "//libspu/core:prelude",
         "//libspu/psi/cryptor:ecc_cryptor",
         "@com_github_openssl_openssl//:openssl",
         "@com_google_absl//absl/types:span",
         "@yacl//yacl/base:byte_container_view",
-        "@yacl//yacl/base:exception",
         "@yacl//yacl/utils:parallel",
     ],
 )
@@ -38,11 +38,11 @@ spu_cc_library(
     hdrs = ["basic_ecdh_oprf.h"],
     deps = [
         ":ecdh_oprf",
+        "//libspu/core:prelude",
         "//libspu/psi/cryptor:ecc_utils",
         "//libspu/psi/cryptor:sm2_cryptor",
         "@com_github_microsoft_fourqlib//:fourqlib",
         "@com_google_absl//absl/types:span",
-        "@yacl//yacl/base:exception",
         "@yacl//yacl/crypto/base/hash:blake3",
         "@yacl//yacl/crypto/base/hash:hash_utils",
         "@yacl//yacl/utils:parallel",

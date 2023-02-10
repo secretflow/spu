@@ -37,7 +37,7 @@ def main():
     mdFile.new_paragraph(
         "SPU recommends users to use JAX as frontend language to write logics. "
         "We found most of users would utilize **jax.numpy** modules in their programs. "
-        "We have conducted tests with some *selected* Operators for referrence."
+        "We have conducted tests with some *selected* Operators for reference."
     )
 
     mdFile.new_paragraph(

@@ -26,7 +26,7 @@ namespace spu::kernel::hal {
 // Create a public value from a given buffer view.
 //
 // if shape is specified, the value will be broadcasted to given shape.
-Value constant(HalContext* ctx, PtBufferView bv,
+Value constant(HalContext* ctx, const PtBufferView& bv,
                absl::Span<const int64_t> shape = {});
 
 Value zeros(HalContext* ctx, Visibility vis, DataType dtype,
@@ -38,14 +38,14 @@ Value zeros(HalContext* ctx, Visibility vis, DataType dtype,
 // `secret-typed` value that all parties knowns, debug purpose only.
 //
 // Make a secret from a plaintext buffer.
-Value const_secret(HalContext* ctx, PtBufferView bv,
+Value const_secret(HalContext* ctx, const PtBufferView& bv,
                    absl::Span<const int64_t> shape = {});
 
 // Export a value to a buffer.
 NdArrayRef dump_public(HalContext* ctx, const Value& v);
 
 // Deprecated:
-Value make_value(HalContext* ctx, Visibility vtype, PtBufferView bv);
+Value make_value(HalContext* ctx, Visibility vtype, const PtBufferView& bv);
 
 // Return eps
 Value epsilon(HalContext* ctx, absl::Span<const int64_t> shape = {});

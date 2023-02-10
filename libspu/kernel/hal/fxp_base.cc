@@ -31,8 +31,8 @@ namespace detail {
 Value f_polynomial(HalContext* ctx, const Value& x,
                    const std::vector<Value>& coeffs) {
   SPU_TRACE_HAL_DISP(ctx, x);
-  YACL_ENFORCE(x.isFxp());
-  YACL_ENFORCE(!coeffs.empty());
+  SPU_ENFORCE(x.isFxp());
+  SPU_ENFORCE(!coeffs.empty());
 
   Value x_pow = x;
   Value res = _mul(ctx, x_pow, coeffs[0]);
@@ -105,11 +105,11 @@ Value div_goldschmidt(HalContext* ctx, const Value& a, const Value& b) {
   // initial guess:
   //   w = 1/c ≈ 2.9142 - 2c when c >= 0.5 and c < 1
   const auto k2 = constant(ctx, 2, c.shape());
-  const auto k2_9142 = constant(ctx, 2.9142f, c.shape());
+  const auto k2_9142 = constant(ctx, 2.9142F, c.shape());
   auto w = f_sub(ctx, k2_9142, _mul(ctx, k2, c).asFxp());
 
   // init r=w, e=1-c*w
-  const auto& k1_ = constant(ctx, 1.0f, c.shape());
+  const auto& k1_ = constant(ctx, 1.0F, c.shape());
   auto r = w;
   auto e = f_sub(ctx, k1_, f_mul(ctx, c, w));
 
@@ -141,11 +141,11 @@ Value reciprocal_goldschmidt_positive(HalContext* ctx, const Value& b_abs) {
   // initial guess:
   //   w = 1/b = 2.9142 - 2c when c >= 0.5 and c < 1
   const auto k2 = constant(ctx, 2, c.shape());
-  const auto k2_9142 = constant(ctx, 2.9142f, c.shape());
+  const auto k2_9142 = constant(ctx, 2.9142F, c.shape());
   auto w = f_mul(ctx, f_sub(ctx, k2_9142, _mul(ctx, k2, c).asFxp()), factor);
 
   // init r=a*w, e=1-b*w
-  const auto& k1_ = constant(ctx, 1.0f, c.shape());
+  const auto& k1_ = constant(ctx, 1.0F, c.shape());
   auto r = w;
   auto e = f_sub(ctx, k1_, f_mul(ctx, b_abs, w));
 
@@ -177,14 +177,14 @@ Value reciprocal_goldschmidt(HalContext* ctx, const Value& b) {
 Value f_negate(HalContext* ctx, const Value& x) {
   SPU_TRACE_HAL_LEAF(ctx, x);
 
-  YACL_ENFORCE(x.isFxp());
+  SPU_ENFORCE(x.isFxp());
   return _negate(ctx, x).asFxp();
 }
 
 Value f_abs(HalContext* ctx, const Value& x) {
   SPU_TRACE_HAL_LEAF(ctx, x);
 
-  YACL_ENFORCE(x.isFxp());
+  SPU_ENFORCE(x.isFxp());
   const Value sign = _sign(ctx, x);
 
   return _mul(ctx, sign, x).asFxp();
@@ -193,7 +193,7 @@ Value f_abs(HalContext* ctx, const Value& x) {
 Value f_reciprocal(HalContext* ctx, const Value& x) {
   SPU_TRACE_HAL_LEAF(ctx, x);
 
-  YACL_ENFORCE(x.isFxp());
+  SPU_ENFORCE(x.isFxp());
   if (x.isPublic()) {
     return f_reciprocal_p(ctx, x);
   }
@@ -204,8 +204,8 @@ Value f_reciprocal(HalContext* ctx, const Value& x) {
 Value f_add(HalContext* ctx, const Value& x, const Value& y) {
   SPU_TRACE_HAL_LEAF(ctx, x, y);
 
-  YACL_ENFORCE(x.isFxp());
-  YACL_ENFORCE(y.isFxp());
+  SPU_ENFORCE(x.isFxp());
+  SPU_ENFORCE(y.isFxp());
 
   return _add(ctx, x, y).asFxp();
 }
@@ -213,16 +213,16 @@ Value f_add(HalContext* ctx, const Value& x, const Value& y) {
 Value f_sub(HalContext* ctx, const Value& x, const Value& y) {
   SPU_TRACE_HAL_LEAF(ctx, x, y);
 
-  YACL_ENFORCE(x.isFxp());
-  YACL_ENFORCE(y.isFxp());
+  SPU_ENFORCE(x.isFxp());
+  SPU_ENFORCE(y.isFxp());
   return f_add(ctx, x, f_negate(ctx, y));
 }
 
 Value f_mul(HalContext* ctx, const Value& x, const Value& y) {
   SPU_TRACE_HAL_LEAF(ctx, x, y);
 
-  YACL_ENFORCE(x.isFxp());
-  YACL_ENFORCE(y.isFxp());
+  SPU_ENFORCE(x.isFxp());
+  SPU_ENFORCE(y.isFxp());
 
   return _trunc(ctx, _mul(ctx, x, y)).asFxp();
 }
@@ -230,8 +230,8 @@ Value f_mul(HalContext* ctx, const Value& x, const Value& y) {
 Value f_mmul(HalContext* ctx, const Value& x, const Value& y) {
   SPU_TRACE_HAL_LEAF(ctx, x, y);
 
-  YACL_ENFORCE(x.isFxp());
-  YACL_ENFORCE(y.isFxp());
+  SPU_ENFORCE(x.isFxp());
+  SPU_ENFORCE(y.isFxp());
 
   return _trunc(ctx, _mmul(ctx, x, y)).asFxp();
 }
@@ -239,8 +239,8 @@ Value f_mmul(HalContext* ctx, const Value& x, const Value& y) {
 Value f_div(HalContext* ctx, const Value& x, const Value& y) {
   SPU_TRACE_HAL_LEAF(ctx, x, y);
 
-  YACL_ENFORCE(x.isFxp());
-  YACL_ENFORCE(y.isFxp());
+  SPU_ENFORCE(x.isFxp());
+  SPU_ENFORCE(y.isFxp());
 
   if (x.isPublic() && y.isPublic()) {
     return f_div_p(ctx, x, y);
@@ -252,8 +252,8 @@ Value f_div(HalContext* ctx, const Value& x, const Value& y) {
 Value f_equal(HalContext* ctx, const Value& x, const Value& y) {
   SPU_TRACE_HAL_LEAF(ctx, x, y);
 
-  YACL_ENFORCE(x.isFxp());
-  YACL_ENFORCE(y.isFxp());
+  SPU_ENFORCE(x.isFxp());
+  SPU_ENFORCE(y.isFxp());
 
   return _eqz(ctx, f_sub(ctx, x, y)).setDtype(DT_I1);
 }
@@ -261,8 +261,8 @@ Value f_equal(HalContext* ctx, const Value& x, const Value& y) {
 Value f_less(HalContext* ctx, const Value& x, const Value& y) {
   SPU_TRACE_HAL_LEAF(ctx, x, y);
 
-  YACL_ENFORCE(x.isFxp());
-  YACL_ENFORCE(y.isFxp());
+  SPU_ENFORCE(x.isFxp());
+  SPU_ENFORCE(y.isFxp());
 
   return _less(ctx, x, y).setDtype(DT_I1);
 }
@@ -270,7 +270,7 @@ Value f_less(HalContext* ctx, const Value& x, const Value& y) {
 Value f_square(HalContext* ctx, const Value& x) {
   SPU_TRACE_HAL_LEAF(ctx, x);
 
-  YACL_ENFORCE(x.isFxp());
+  SPU_ENFORCE(x.isFxp());
   // TODO(jint) optimize me.
 
   return f_mul(ctx, x, x);
@@ -279,7 +279,7 @@ Value f_square(HalContext* ctx, const Value& x) {
 Value f_floor(HalContext* ctx, const Value& x) {
   SPU_TRACE_HAL_LEAF(ctx, x);
 
-  YACL_ENFORCE(x.isFxp());
+  SPU_ENFORCE(x.isFxp());
 
   const size_t fbits = ctx->getFxpBits();
   return _lshift(ctx, _arshift(ctx, x, fbits), fbits).asFxp();
@@ -288,7 +288,7 @@ Value f_floor(HalContext* ctx, const Value& x) {
 Value f_ceil(HalContext* ctx, const Value& x) {
   SPU_TRACE_HAL_LEAF(ctx, x);
 
-  YACL_ENFORCE(x.isFxp());
+  SPU_ENFORCE(x.isFxp());
 
   // ceil(x) = floor(x + 1.0 - epsilon)
   const auto& k1 = constant(ctx, 1.0F, x.shape());

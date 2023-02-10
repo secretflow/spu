@@ -26,7 +26,8 @@ TEST(IntegralTest, Add) {
   // GIVEN
   HalContext ctx = test::makeRefHalContext();
 
-  int ra = 3, rb = 4;
+  int ra = 3;
+  int rb = 4;
 
   // WHAT
   Value a = constant(&ctx, ra);
@@ -51,7 +52,8 @@ TEST(IntegralTest, Sub) {
   // GIVEN
   HalContext ctx = test::makeRefHalContext();
 
-  int ra = 3, rb = 4;
+  int ra = 3;
+  int rb = 4;
 
   // WHAT
   Value a = constant(&ctx, ra);

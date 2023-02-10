@@ -27,10 +27,10 @@ class Aby3Io final : public BaseIo {
 
   ArrayRef fromShares(const std::vector<ArrayRef>& shares) const override;
 
-  std::vector<ArrayRef> makeBitSecret(const ArrayRef& raw) const override;
+  std::vector<ArrayRef> makeBitSecret(const ArrayRef& in) const override;
   bool hasBitSecretSupport() const override { return true; }
 };
 
-std::unique_ptr<Aby3Io> makeAby3Io(FieldType type, size_t npc);
+std::unique_ptr<Aby3Io> makeAby3Io(FieldType field, size_t npc);
 
 }  // namespace spu::mpc::aby3

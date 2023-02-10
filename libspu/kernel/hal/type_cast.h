@@ -26,13 +26,13 @@ Value dtype_cast(HalContext* ctx, const Value& in, DataType to_type);
 
 /// cast public to secret
 // @param in, the input value
-Value p2s(HalContext* ctx, const Value& in);
+Value p2s(HalContext* ctx, const Value& x);
 
 /// reveal a secret
 // @param in, the input value
-Value reveal(HalContext* ctx, const Value& in);
+Value reveal(HalContext* ctx, const Value& x);
 
 /// cast in storage type to dest type
-Value stype_cast(HalContext* ctx, const Value& in, const Type& dest);
+Value stype_cast(HalContext* ctx, const Value& in, const Type& to);
 
 }  // namespace spu::kernel::hal

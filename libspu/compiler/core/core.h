@@ -27,14 +27,14 @@ class CompilationContext;
 
 class Core final {
 public:
-  Core(CompilationContext *ctx);
+  explicit Core(CompilationContext *ctx);
 
   void doit(mlir::ModuleOp module);
 
 private:
   CompilationContext *ctx_;
 
-  void buildPipeline(mlir::PassManager *pm);
+  static void buildPipeline(mlir::PassManager *pm);
 };
 
 } // namespace spu::compiler

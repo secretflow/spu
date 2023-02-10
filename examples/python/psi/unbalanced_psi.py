@@ -68,7 +68,9 @@ def main(_):
             select_fields=selected_fields,
             precheck=FLAGS.precheck_input,
         ),
-        output_params=psi.OuputParams(path=FLAGS.out_path, need_sort=FLAGS.output_sort),
+        output_params=psi.OutputParams(
+            path=FLAGS.out_path, need_sort=FLAGS.output_sort
+        ),
         bucket_size=10000000,
         curve_type=psi.CurveType.CURVE_FOURQ,
     )
@@ -97,7 +99,9 @@ def main(_):
             select_fields=selected_fields,
             precheck=FLAGS.precheck_input,
         ),
-        output_params=psi.OuputParams(path=FLAGS.out_path, need_sort=FLAGS.output_sort),
+        output_params=psi.OutputParams(
+            path=FLAGS.out_path, need_sort=FLAGS.output_sort
+        ),
         bucket_size=100000000,
         curve_type=psi.CurveType.CURVE_FOURQ,
     )

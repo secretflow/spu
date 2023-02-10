@@ -25,11 +25,11 @@
 #include "libspu/mpc/common/pub2k.h"
 #include "libspu/mpc/semi2k/object.h"
 #include "libspu/mpc/semi2k/type.h"
-#include "libspu/mpc/util/ring_ops.h"
+#include "libspu/mpc/utils/ring_ops.h"
 
 namespace spu::mpc::semi2k {
 
-ArrayRef ZeroA::proc(KernelEvalContext* ctx, size_t size) const {
+ArrayRef ZeroA::proc(KernelEvalContext* ctx, size_t size) {
   SPU_TRACE_MPC_LEAF(ctx, size);
 
   auto* prg_state = ctx->getState<PrgState>();
@@ -39,7 +39,7 @@ ArrayRef ZeroA::proc(KernelEvalContext* ctx, size_t size) const {
   return ring_sub(r0, r1).as(makeType<AShrTy>(field));
 }
 
-ArrayRef RandA::proc(KernelEvalContext* ctx, size_t size) const {
+ArrayRef RandA::proc(KernelEvalContext* ctx, size_t size) {
   SPU_TRACE_MPC_LEAF(ctx, size);
 
   auto* prg_state = ctx->getState<PrgState>();
@@ -50,7 +50,7 @@ ArrayRef RandA::proc(KernelEvalContext* ctx, size_t size) const {
   // New Primitives for Actively-Secure MPC over Rings with Applications to
   // Private Machine Learning
   // - https://eprint.iacr.org/2019/599.pdf
-  // It's safer to keep the number within [-2**(k-2), 2**(k-2)) for comparsion
+  // It's safer to keep the number within [-2**(k-2), 2**(k-2)) for comparison
   // operations.
   return ring_rshift(prg_state->genPriv(field, size), 2);
 }
@@ -115,7 +115,7 @@ ArrayRef AddAP::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
                      const ArrayRef& rhs) const {
   SPU_TRACE_MPC_LEAF(ctx, lhs, rhs);
 
-  YACL_ENFORCE(lhs.numel() == rhs.numel());
+  SPU_ENFORCE(lhs.numel() == rhs.numel());
   auto* comm = ctx->getState<Communicator>();
 
   if (comm->getRank() == 0) {
@@ -129,8 +129,8 @@ ArrayRef AddAA::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
                      const ArrayRef& rhs) const {
   SPU_TRACE_MPC_LEAF(ctx, lhs, rhs);
 
-  YACL_ENFORCE(lhs.numel() == rhs.numel());
-  YACL_ENFORCE(lhs.eltype() == rhs.eltype());
+  SPU_ENFORCE(lhs.numel() == rhs.numel());
+  SPU_ENFORCE(lhs.eltype() == rhs.eltype());
 
   return ring_add(lhs, rhs).as(lhs.eltype());
 }
@@ -178,13 +178,13 @@ ArrayRef MulAA::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
 // matmul family
 ////////////////////////////////////////////////////////////////////
 ArrayRef MatMulAP::proc(KernelEvalContext* ctx, const ArrayRef& x,
-                        const ArrayRef& y, size_t M, size_t N, size_t K) const {
+                        const ArrayRef& y, size_t m, size_t n, size_t k) const {
   SPU_TRACE_MPC_LEAF(ctx, x, y);
-  return ring_mmul(x, y, M, N, K).as(x.eltype());
+  return ring_mmul(x, y, m, n, k).as(x.eltype());
 }
 
 ArrayRef MatMulAA::proc(KernelEvalContext* ctx, const ArrayRef& x,
-                        const ArrayRef& y, size_t M, size_t N, size_t K) const {
+                        const ArrayRef& y, size_t m, size_t n, size_t k) const {
   SPU_TRACE_MPC_LEAF(ctx, x, y);
 
   const auto field = x.eltype().as<Ring2k>()->field();
@@ -192,7 +192,7 @@ ArrayRef MatMulAA::proc(KernelEvalContext* ctx, const ArrayRef& x,
   auto* beaver = ctx->getState<Semi2kState>()->beaver();
 
   // generate beaver multiple triple.
-  auto [a, b, c] = beaver->Dot(field, M, N, K);
+  auto [a, b, c] = beaver->Dot(field, m, n, k);
 
   // Open x-a & y-b
   auto res =
@@ -204,10 +204,10 @@ ArrayRef MatMulAA::proc(KernelEvalContext* ctx, const ArrayRef& x,
 
   // Zi = Ci + (X - A) dot Bi + Ai dot (Y - B) + <(X - A) dot (Y - B)>
   auto z = ring_add(
-      ring_add(ring_mmul(x_a, b, M, N, K), ring_mmul(a, y_b, M, N, K)), c);
+      ring_add(ring_mmul(x_a, b, m, n, k), ring_mmul(a, y_b, m, n, k)), c);
   if (comm->getRank() == 0) {
     // z += (X-A) * (Y-B);
-    ring_add_(z, ring_mmul(x_a, y_b, M, N, K));
+    ring_add_(z, ring_mmul(x_a, y_b, m, n, k));
   }
   return z.as(x.eltype());
 }
@@ -227,9 +227,9 @@ ArrayRef TruncA::proc(KernelEvalContext* ctx, const ArrayRef& x,
   SPU_TRACE_MPC_LEAF(ctx, x, bits);
   auto* comm = ctx->getState<Communicator>();
 
-  // TODO: add trunction method to options.
-  if (comm->getWorldSize() == 2u) {
-    // SecurlML, local trunction.
+  // TODO: add truncation method to options.
+  if (comm->getWorldSize() == 2) {
+    // SecurlML, local truncation.
     // Ref: Theorem 1. https://eprint.iacr.org/2017/396.pdf
     return ring_arshift(x, bits).as(x.eltype());
   } else {
@@ -261,7 +261,9 @@ ArrayRef TruncAPr::proc(KernelEvalContext* ctx, const ArrayRef& in,
   const auto field = in.eltype().as<Ring2k>()->field();
   const size_t k = SizeOf(field) * 8;
 
-  ArrayRef r, rc, rb;
+  ArrayRef r;
+  ArrayRef rc;
+  ArrayRef rb;
   std::tie(r, rc, rb) = beaver->TruncPr(field, numel, bits);
 
   ArrayRef out(in.eltype(), numel);

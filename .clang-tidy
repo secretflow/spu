@@ -8,6 +8,7 @@ Checks: "abseil-cleanup-ctad,
   abseil-upgrade-duration-conversions
   bugprone-*,
   -bugprone-easily-swappable-parameters,
+  -bugprone-implicit-widening-of-multiplication-result,
   -bugprone-narrowing-conversions, # too many false positives around `std::size_t`  vs. `*::difference_type`.
   google-build-using-namespace,
   google-explicit-constructor,
@@ -18,6 +19,7 @@ Checks: "abseil-cleanup-ctad,
   misc-unused-using-decls,
   modernize-*,
   -modernize-use-trailing-return-type,
+  -modernize-avoid-c-arrays,
   -modernize-return-braced-init-list, # can hurt readability
   -modernize-use-nodiscard,
   performance-*,

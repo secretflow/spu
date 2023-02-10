@@ -21,7 +21,7 @@
 #include "libspu/kernel/context.h"
 #include "libspu/kernel/hal/test_util.h"
 #include "libspu/kernel/value.h"
-#include "libspu/mpc/util/ring_ops.h"
+#include "libspu/mpc/utils/ring_ops.h"
 
 namespace spu::kernel::hlo {
 

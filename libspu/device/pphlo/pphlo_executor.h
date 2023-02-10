@@ -33,7 +33,7 @@ class PPHloExecutor : public OpExecutor {
   bool hasKernel(mlir::Operation &op) const override;
 
   // run a kernel in a given region.
-  void runKernelImpl(HalContext *hcts, SymbolScope *sscope, mlir::Operation &op,
+  void runKernelImpl(HalContext *hctx, SymbolScope *sscope, mlir::Operation &op,
                      const ExecutionOptions &opts) override;
 };
 
