@@ -16,10 +16,10 @@
 #include <iostream>
 
 #include "benchmark/benchmark.h"
-#include "yacl/base/exception.h"
 #include "yacl/crypto/base/hash/hash_utils.h"
 #include "yacl/link/test_util.h"
 
+#include "libspu/core/prelude.h"
 #include "libspu/psi/core/kkrt_psi.h"
 
 namespace {

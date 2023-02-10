@@ -37,7 +37,7 @@ constexpr size_t kDefaultHashNum = 2;
 // h1(x) = h0(x) xor fingerprint(x).
 std::vector<uint64_t> GetBinIdx(const CuckooIndex::Options &options,
                                 uint128_t item_hash, uint64_t item_hash_u64) {
-  YACL_ENFORCE(options.num_hash == kDefaultHashNum);
+  SPU_ENFORCE(options.num_hash == kDefaultHashNum);
   size_t num_bins = options.NumBins();
 
   CuckooIndex::HashRoom hash_room(item_hash);
@@ -62,7 +62,7 @@ CuckooIndex::Options GetCuckooHashOption(size_t bin_size, size_t hash_num,
   options.num_stash = 0;
   options.num_hash = hash_num;
 
-  YACL_ENFORCE(hash_num == kDefaultHashNum, "just support 2 hash");
+  SPU_ENFORCE(hash_num == kDefaultHashNum, "just support 2 hash");
 
   if (hash_num == kDefaultHashNum) {
     if (bin_size == 2) {
@@ -70,10 +70,10 @@ CuckooIndex::Options GetCuckooHashOption(size_t bin_size, size_t hash_num,
     } else if (bin_size == 3) {
       options.scale_factor = 0.6;
     } else {
-      YACL_THROW("unsupport");
+      SPU_THROW("unsupported");
     }
   } else {
-    YACL_THROW("unsupport");
+    SPU_THROW("unsupported");
   }
   return options;
 }
@@ -87,9 +87,9 @@ GeneralizedCuckooHashTable::GeneralizedCuckooHashTable(
   size_t table_size = gch_options_.NumBins();
   bins_.resize(table_size);
 
-  uniform_hashidx_ =
+  uniform_hash_idx_ =
       std::uniform_int_distribution<uint32_t>(0, gch_options_.num_hash - 1);
-  uniform_dataidx_ =
+  uniform_data_idx_ =
       std::uniform_int_distribution<uint32_t>(0, max_items_per_bin_ - 1);
 }
 
@@ -100,8 +100,8 @@ void GeneralizedCuckooHashTable::Insert(yacl::ByteContainerView item_data,
 
   int64_t level = gch_options_.max_try_count;
   size_t bin_idx;
-  while (level--) {
-    size_t rand_hash_idx = uniform_hashidx_(gen_);
+  while ((level--) != 0) {
+    size_t rand_hash_idx = uniform_hash_idx_(gen_);
 
     for (uint32_t i = 0; i < gch_options_.num_hash; i++) {
       size_t hash_idx = (rand_hash_idx + i) % gch_options_.num_hash;
@@ -121,9 +121,9 @@ void GeneralizedCuckooHashTable::Insert(yacl::ByteContainerView item_data,
     }
 
     // random select bin_idx and idx in bin, swap candidate
-    size_t rand_data_idx = uniform_dataidx_(gen_);
+    size_t rand_data_idx = uniform_data_idx_(gen_);
 
-    rand_hash_idx = uniform_hashidx_(gen_);
+    rand_hash_idx = uniform_hash_idx_(gen_);
 
     bin_idx = hashes_[candidate.InputIdx()][rand_hash_idx];
 
@@ -135,7 +135,7 @@ void GeneralizedCuckooHashTable::Insert(yacl::ByteContainerView item_data,
         bins_[bin_idx][rand_data_idx].Swap(candidate.encoded()));
   }
 
-  YACL_THROW(
+  SPU_THROW(
       "Error insert, level:{} insert item_data:{}", level,
       absl::BytesToHexString(absl::string_view(
           reinterpret_cast<const char *>(item_data.data()), item_data.size())));

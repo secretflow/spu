@@ -15,23 +15,17 @@
 #pragma once
 
 #include "libspu/mpc/kernel.h"
-#include "libspu/mpc/util/cexpr.h"
+#include "libspu/mpc/utils/cexpr.h"
 
 namespace spu::mpc::common {
-
-using util::CExpr;
-using util::Const;
-using util::K;
-using util::Log;
-using util::N;
 
 class BitIntlB : public Kernel {
  public:
   static constexpr char kBindName[] = "bitintl_b";
 
-  CExpr latency() const override { return Const(0); }
+  ce::CExpr latency() const override { return ce::Const(0); }
 
-  CExpr comm() const override { return Const(0); }
+  ce::CExpr comm() const override { return ce::Const(0); }
 
   void evaluate(KernelEvalContext* ctx) const override;
 };
@@ -40,9 +34,9 @@ class BitDeintlB : public Kernel {
  public:
   static constexpr char kBindName[] = "bitdeintl_b";
 
-  CExpr latency() const override { return Const(0); }
+  ce::CExpr latency() const override { return ce::Const(0); }
 
-  CExpr comm() const override { return Const(0); }
+  ce::CExpr comm() const override { return ce::Const(0); }
 
   void evaluate(KernelEvalContext* ctx) const override;
 };
@@ -63,28 +57,28 @@ class AddBB : public BinaryKernel {
  public:
   explicit AddBB(CircuitType type = CircuitType::KoggeStone) : type_(type) {}
 
-  CExpr latency() const override {
+  ce::CExpr latency() const override {
     // For both sklansky/ks
-    return Log(K()) + Const(1);
+    return Log(ce::K()) + ce::Const(1);
   }
 
   // TODO: depends on the and gate.
-  CExpr comm() const override {
+  ce::CExpr comm() const override {
     switch (type_) {
       case CircuitType::KoggeStone: {
         // FIXME: this is aby3 cost
         // 1 * and        : k
         // logk * 2 * and : logk * 2k
-        return Log(K()) * K() * 2 + K();
+        return Log(ce::K()) * ce::K() * 2 + ce::K();
       }
       case CircuitType::Sklansky: {
         // FIXME: this is aby3 cost
         // 1 * and    : k
         // logk * and : logk * k
-        return Log(K()) * K() + K();
+        return Log(ce::K()) * ce::K() + ce::K();
       }
       default:
-        YACL_THROW("should not be here");
+        SPU_THROW("should not be here");
     }
   }
 

@@ -19,25 +19,19 @@
 
 namespace spu::mpc::aby3 {
 
-using util::CExpr;
-using util::Const;
-using util::K;
-using util::Log;
-using util::N;
-
 #define ENABLE_MASK_DURING_ABY3_P2A
 class A2P : public UnaryKernel {
  public:
   static constexpr char kBindName[] = "a2p";
 
-  CExpr latency() const override {
+  ce::CExpr latency() const override {
     // 1 * rotate: 1
-    return Const(1);
+    return ce::Const(1);
   }
 
-  CExpr comm() const override {
+  ce::CExpr comm() const override {
     // 1 * rotate: k
-    return K();
+    return ce::K();
   }
 
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in) const override;
@@ -47,34 +41,34 @@ class RandA : public Kernel {
  public:
   static constexpr char kBindName[] = "rand_a";
 
-  CExpr latency() const override { return Const(0); }
+  ce::CExpr latency() const override { return ce::Const(0); }
 
-  CExpr comm() const override { return Const(0); }
+  ce::CExpr comm() const override { return ce::Const(0); }
 
   void evaluate(KernelEvalContext* ctx) const override {
     ctx->setOutput(proc(ctx, ctx->getParam<size_t>(0)));
   }
 
-  ArrayRef proc(KernelEvalContext* ctx, size_t size) const;
+  static ArrayRef proc(KernelEvalContext* ctx, size_t size);
 };
 
 class P2A : public UnaryKernel {
  public:
   static constexpr char kBindName[] = "p2a";
 
-  CExpr latency() const override {
+  ce::CExpr latency() const override {
 #ifdef ENABLE_MASK_DURING_ABY3_P2A
-    return Const(1);
+    return ce::Const(1);
 #else
-    return Const(0);
+    return ce::Const(0);
 #endif
   }
 
-  CExpr comm() const override {
+  ce::CExpr comm() const override {
 #ifdef ENABLE_MASK_DURING_ABY3_P2A
-    return K();
+    return ce::K();
 #else
-    return Const(0);
+    return ce::Const(0);
 #endif
   }
 
@@ -85,9 +79,9 @@ class NotA : public UnaryKernel {
  public:
   static constexpr char kBindName[] = "not_a";
 
-  CExpr latency() const override { return Const(0); }
+  ce::CExpr latency() const override { return ce::Const(0); }
 
-  CExpr comm() const override { return Const(0); }
+  ce::CExpr comm() const override { return ce::Const(0); }
 
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in) const override;
 };
@@ -99,9 +93,9 @@ class AddAP : public BinaryKernel {
  public:
   static constexpr char kBindName[] = "add_ap";
 
-  CExpr latency() const override { return Const(0); }
+  ce::CExpr latency() const override { return ce::Const(0); }
 
-  CExpr comm() const override { return Const(0); }
+  ce::CExpr comm() const override { return ce::Const(0); }
 
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& lhs,
                 const ArrayRef& rhs) const override;
@@ -111,9 +105,9 @@ class AddAA : public BinaryKernel {
  public:
   static constexpr char kBindName[] = "add_aa";
 
-  CExpr latency() const override { return Const(0); }
+  ce::CExpr latency() const override { return ce::Const(0); }
 
-  CExpr comm() const override { return Const(0); }
+  ce::CExpr comm() const override { return ce::Const(0); }
 
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& lhs,
                 const ArrayRef& rhs) const override;
@@ -126,9 +120,9 @@ class MulAP : public BinaryKernel {
  public:
   static constexpr char kBindName[] = "mul_ap";
 
-  CExpr latency() const override { return Const(0); }
+  ce::CExpr latency() const override { return ce::Const(0); }
 
-  CExpr comm() const override { return Const(0); }
+  ce::CExpr comm() const override { return ce::Const(0); }
 
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& lhs,
                 const ArrayRef& rhs) const override;
@@ -138,14 +132,14 @@ class MulAA : public BinaryKernel {
  public:
   static constexpr char kBindName[] = "mul_aa";
 
-  CExpr latency() const override {
+  ce::CExpr latency() const override {
     // 1 * rotate: 1
-    return Const(1);
+    return ce::Const(1);
   }
 
-  CExpr comm() const override {
+  ce::CExpr comm() const override {
     // 1 * rotate: k
-    return K();
+    return ce::K();
   }
 
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& lhs,
@@ -156,9 +150,9 @@ class MulA1B : public BinaryKernel {
  public:
   static constexpr char kBindName[] = "mul_a1b";
 
-  CExpr latency() const override { return Const(2); }
+  ce::CExpr latency() const override { return ce::Const(2); }
 
-  CExpr comm() const override { return 8 * K(); }
+  ce::CExpr comm() const override { return 8 * ce::K(); }
 
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& lhs,
                 const ArrayRef& rhs) const override;
@@ -171,36 +165,41 @@ class MatMulAP : public MatmulKernel {
  public:
   static constexpr char kBindName[] = "mmul_ap";
 
-  CExpr latency() const override { return Const(0); }
+  ce::CExpr latency() const override { return ce::Const(0); }
 
-  CExpr comm() const override { return Const(0); }
+  ce::CExpr comm() const override { return ce::Const(0); }
 
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& x, const ArrayRef& y,
-                size_t M, size_t N, size_t K) const override;
+                size_t m, size_t n, size_t k) const override;
 };
 
 class MatMulAA : public MatmulKernel {
  public:
   static constexpr char kBindName[] = "mmul_aa";
 
-  // TODO(jint) express M, N, K
-  Kind kind() const override { return Kind::kDynamic; }
+  ce::CExpr latency() const override {
+    // 1 * rotate: 1
+    return ce::Const(1);
+  }
 
-  CExpr latency() const override { return nullptr; }
+  ce::CExpr comm() const override {
+    // 1 * rotate: k
+    auto m = ce::Variable("m", "rows of lhs");
+    auto n = ce::Variable("n", "cols of rhs");
+    return ce::K() * m * n;
+  }
 
-  CExpr comm() const override { return nullptr; }
-
-  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& A, const ArrayRef& B,
-                size_t M, size_t N, size_t K) const override;
+  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& x, const ArrayRef& y,
+                size_t m, size_t n, size_t k) const override;
 };
 
 class LShiftA : public ShiftKernel {
  public:
   static constexpr char kBindName[] = "lshift_a";
 
-  CExpr latency() const override { return Const(0); }
+  ce::CExpr latency() const override { return ce::Const(0); }
 
-  CExpr comm() const override { return Const(0); }
+  ce::CExpr comm() const override { return ce::Const(0); }
 
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in,
                 size_t bits) const override;
@@ -214,9 +213,9 @@ class TruncA : public TruncAKernel {
  public:
   static constexpr char kBindName[] = "trunc_a";
 
-  CExpr latency() const override { return Const(1); }
+  ce::CExpr latency() const override { return ce::Const(1); }
 
-  CExpr comm() const override { return K(); }
+  ce::CExpr comm() const override { return ce::K(); }
 
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in,
                 size_t bits) const override;
@@ -236,9 +235,9 @@ class TruncAPr : public TruncAKernel {
  public:
   static constexpr char kBindName[] = "trunc_a";
 
-  CExpr latency() const override { return Const(3); }
+  ce::CExpr latency() const override { return ce::Const(3); }
 
-  CExpr comm() const override { return 4 * K(); }
+  ce::CExpr comm() const override { return 4 * ce::K(); }
 
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in,
                 size_t bits) const override;

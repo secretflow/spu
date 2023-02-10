@@ -49,14 +49,12 @@ ArrayRef makeAShare(const ArrayRef& s1, const ArrayRef& s2, FieldType field,
 
 PtType calcBShareBacktype(size_t nbits);
 
-ArrayRef getShare(const ArrayRef& in, int64_t share_idx);
-
 template <typename T>
 std::vector<T> getShareAs(const ArrayRef& in, size_t share_idx) {
-  YACL_ENFORCE(share_idx == 0 || share_idx == 1);
+  SPU_ENFORCE(share_idx == 0 || share_idx == 1);
 
   ArrayRef share = getShare(in, share_idx);
-  YACL_ENFORCE(share.elsize() == sizeof(T));
+  SPU_ENFORCE(share.elsize() == sizeof(T));
 
   std::vector<T> res(in.numel());
   DISPATCH_UINT_PT_TYPES(share.eltype().as<PtTy>()->pt_type(), "_", [&]() {

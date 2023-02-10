@@ -25,7 +25,7 @@
 
 namespace spu::mpc::aby3 {
 
-// Referrence:
+// Reference:
 // 5.4.1 Semi-honest Security
 // https://eprint.iacr.org/2018/403.pdf
 //
@@ -68,7 +68,7 @@ class Ot3 {
   explicit Ot3(FieldType field, int64_t numel, const RoleRanks& roles,
                Communicator* comm, PrgState* prg_state, bool reentrancy = true);
 
-  void send(ArrayRef m0, ArrayRef m1);
+  void send(const ArrayRef& m0, const ArrayRef& m1);
 
   ArrayRef recv(const std::vector<uint8_t>& choices);
 

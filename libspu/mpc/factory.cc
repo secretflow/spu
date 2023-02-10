@@ -16,8 +16,7 @@
 
 #include <memory>
 
-#include "yacl/base/exception.h"
-
+#include "libspu/core/prelude.h"
 #include "libspu/mpc/aby3/io.h"
 #include "libspu/mpc/aby3/protocol.h"
 #include "libspu/mpc/cheetah/io.h"
@@ -45,7 +44,7 @@ std::unique_ptr<Object> Factory::CreateCompute(
       return makeCheetahProtocol(conf, lctx);
     }
     default: {
-      YACL_THROW("Invalid protocol kind {}", conf.protocol());
+      SPU_THROW("Invalid protocol kind {}", conf.protocol());
     }
   }
   return nullptr;
@@ -67,7 +66,7 @@ std::unique_ptr<IoInterface> Factory::CreateIO(const RuntimeConfig& conf,
       return cheetah::makeCheetahIo(conf.field(), npc);
     }
     default: {
-      YACL_THROW("Invalid protocol kind {}", conf.protocol());
+      SPU_THROW("Invalid protocol kind {}", conf.protocol());
     }
   }
   return nullptr;

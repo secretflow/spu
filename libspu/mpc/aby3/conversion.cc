@@ -131,7 +131,7 @@ ArrayRef B2AByPPA::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
   const auto* in_ty = in.eltype().as<BShrTy>();
   const size_t in_nbits = in_ty->nbits();
 
-  YACL_ENFORCE(in_nbits <= SizeOf(field) * 8, "invalid nbits={}", in_nbits);
+  SPU_ENFORCE(in_nbits <= SizeOf(field) * 8, "invalid nbits={}", in_nbits);
   const auto out_ty = makeType<AShrTy>(field);
   ArrayRef out(out_ty, in.numel());
   if (in_nbits == 0) {
@@ -244,7 +244,7 @@ static std::vector<bool> bitDecompose(ArrayView<T> in, size_t nbits) {
 
 template <typename T>
 static std::vector<T> bitCompose(absl::Span<T const> in, size_t nbits) {
-  YACL_ENFORCE(in.size() % nbits == 0);
+  SPU_ENFORCE(in.size() % nbits == 0);
   std::vector<T> out(in.size() / nbits, 0);
   pforeach(0, out.size(), [&](int64_t idx) {
     for (size_t bit = 0; bit < nbits; bit++) {
@@ -290,7 +290,7 @@ ArrayRef B2AByOT::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
   const auto* in_ty = in.eltype().as<BShrTy>();
   const size_t in_nbits = in_ty->nbits();
 
-  YACL_ENFORCE(in_nbits <= SizeOf(field) * 8, "invalid nbits={}", in_nbits);
+  SPU_ENFORCE(in_nbits <= SizeOf(field) * 8, "invalid nbits={}", in_nbits);
 
   ArrayRef out(makeType<AShrTy>(field), in.numel());
   if (in_nbits == 0) {
@@ -342,7 +342,7 @@ ArrayRef B2AByOT::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
         prg_state->fillPrssPair(absl::MakeSpan(m1), {}, false, true);
 
         // build selected mask
-        YACL_ENFORCE(b2.size() == m0.size() && b2.size() == m1.size());
+        SPU_ENFORCE(b2.size() == m0.size() && b2.size() == m1.size());
         pforeach(0, total_nbits,
                  [&](int64_t idx) { m0[idx] = !b2[idx] ? m0[idx] : m1[idx]; });
 
@@ -416,7 +416,7 @@ ArrayRef B2AByOT::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
           _out[idx][1] = c1[idx];
         });
       } else {
-        YACL_THROW("expected party=3, got={}", comm->getRank());
+        SPU_THROW("expected party=3, got={}", comm->getRank());
       }
     });
   });
@@ -447,7 +447,7 @@ std::pair<ArrayRef, ArrayRef> bit_split(const ArrayRef& in) {
 
   const auto* in_ty = in.eltype().as<BShrTy>();
   const size_t in_nbits = in_ty->nbits();
-  YACL_ENFORCE(in_nbits != 0 && in_nbits % 2 == 0, "in_nbits={}", in_nbits);
+  SPU_ENFORCE(in_nbits != 0 && in_nbits % 2 == 0, "in_nbits={}", in_nbits);
   const size_t out_nbits = in_nbits / 2;
   const auto out_backtype = calcBShareBacktype(out_nbits);
   const auto out_type = makeType<BShrTy>(out_backtype, out_nbits);

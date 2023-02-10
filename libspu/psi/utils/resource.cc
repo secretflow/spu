@@ -44,11 +44,11 @@ size_t ReadVMxFromProcSelfStatus(const std::string& key) {
       absl::StrSplit(str_usage, absl::ByChar(' '));
   if (fields.size() == 2) {
     size_t ret = 0;
-    YACL_ENFORCE(absl::SimpleAtoi(fields[0], &ret),
-                 "Fail to get {} in self status, {}", key, str_usage);
+    SPU_ENFORCE(absl::SimpleAtoi(fields[0], &ret),
+                "Fail to get {} in self status, {}", key, str_usage);
     return ret;
   }
-  YACL_THROW("Fail to get {} in self status, {}", key, str_usage);
+  SPU_THROW("Fail to get {} in self status, {}", key, str_usage);
 }
 
 size_t GetPeakKbMemUsage() { return ReadVMxFromProcSelfStatus("VmHWM"); }

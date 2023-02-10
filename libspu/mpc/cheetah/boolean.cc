@@ -17,23 +17,27 @@
 #include "libspu/core/trace.h"
 #include "libspu/mpc/cheetah/object.h"
 #include "libspu/mpc/common/communicator.h"
-#include "libspu/mpc/kernel.h"
+#include "libspu/mpc/common/pub2k.h"
 #include "libspu/mpc/semi2k/type.h"
-#include "libspu/mpc/util/ring_ops.h"
+#include "libspu/mpc/utils/ring_ops.h"
 
 namespace spu::mpc::cheetah {
 
 ArrayRef AndBB::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
                      const ArrayRef& rhs) const {
   SPU_TRACE_MPC_LEAF(ctx, lhs, rhs);
+  SPU_ENFORCE_EQ(lhs.numel(), rhs.numel());
 
-  const auto field = lhs.eltype().as<Ring2k>()->field();
+  const auto field = ctx->getState<Z2kState>()->getDefaultField();
+  const auto* const shareType = lhs.eltype().as<semi2k::BShrTy>();
+  const size_t size = lhs.numel();
+
   auto* comm = ctx->getState<Communicator>();
-  auto* beaver = ctx->getState<CheetahState>()->beaver();
-
-  // generate beaver and triple.
-  auto [a, b, c] = beaver->And(field, lhs.numel());
-
+  auto ot_prot = ctx->getState<CheetahOTState>()->get();
+  // TODO(juhou): When shareType->nbits() < 8*SizeOf(field), we can create the
+  // exact number of ANDs in a compact form.
+  auto [a, b, c] = ot_prot->AndTriple(field, size * 8 * SizeOf(field),
+                                      shareType->nbits() > 1);
   // open x^a, y^b
   auto res =
       vectorize({ring_xor(lhs, a), ring_xor(rhs, b)}, [&](const ArrayRef& s) {

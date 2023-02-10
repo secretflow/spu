@@ -20,8 +20,8 @@
 
 #include "libspu/core/type_util.h"
 #include "libspu/core/xt_helper.h"
-#include "libspu/mpc/util/ring_ops.h"
-#include "libspu/mpc/util/simulate.h"
+#include "libspu/mpc/utils/ring_ops.h"
+#include "libspu/mpc/utils/simulate.h"
 
 namespace spu::mpc::semi2k {
 
@@ -58,10 +58,11 @@ TEST_P(BeaverTest, Mul_large) {
   std::vector<Triple> triples;
   triples.resize(kWorldSize);
 
-  util::simulate(kWorldSize, [&](std::shared_ptr<yacl::link::Context> lctx) {
-    auto beaver = factory(lctx);
-    triples[lctx->Rank()] = beaver->Mul(kField, kNumel);
-  });
+  utils::simulate(kWorldSize,
+                  [&](const std::shared_ptr<yacl::link::Context>& lctx) {
+                    auto beaver = factory(lctx);
+                    triples[lctx->Rank()] = beaver->Mul(kField, kNumel);
+                  });
 
   auto sum_a = ring_zeros(kField, kNumel);
   auto sum_b = ring_zeros(kField, kNumel);
@@ -99,10 +100,11 @@ TEST_P(BeaverTest, Mul) {
   std::vector<Triple> triples;
   triples.resize(kWorldSize);
 
-  util::simulate(kWorldSize, [&](std::shared_ptr<yacl::link::Context> lctx) {
-    auto beaver = factory(lctx);
-    triples[lctx->Rank()] = beaver->Mul(kField, kNumel);
-  });
+  utils::simulate(kWorldSize,
+                  [&](const std::shared_ptr<yacl::link::Context>& lctx) {
+                    auto beaver = factory(lctx);
+                    triples[lctx->Rank()] = beaver->Mul(kField, kNumel);
+                  });
 
   auto sum_a = ring_zeros(kField, kNumel);
   auto sum_b = ring_zeros(kField, kNumel);
@@ -139,10 +141,11 @@ TEST_P(BeaverTest, And) {
   std::vector<Triple> triples;
   triples.resize(kWorldSize);
 
-  util::simulate(kWorldSize, [&](std::shared_ptr<yacl::link::Context> lctx) {
-    auto beaver = factory(lctx);
-    triples[lctx->Rank()] = beaver->And(kField, kNumel);
-  });
+  utils::simulate(kWorldSize,
+                  [&](const std::shared_ptr<yacl::link::Context>& lctx) {
+                    auto beaver = factory(lctx);
+                    triples[lctx->Rank()] = beaver->And(kField, kNumel);
+                  });
 
   EXPECT_EQ(triples.size(), kWorldSize);
   auto sum_a = ring_zeros(kField, kNumel);
@@ -174,10 +177,11 @@ TEST_P(BeaverTest, Dot) {
   std::vector<Triple> triples;
   triples.resize(kWorldSize);
 
-  util::simulate(kWorldSize, [&](std::shared_ptr<yacl::link::Context> lctx) {
-    auto beaver = factory(lctx);
-    triples[lctx->Rank()] = beaver->Dot(kField, M, N, K);
-  });
+  utils::simulate(kWorldSize,
+                  [&](const std::shared_ptr<yacl::link::Context>& lctx) {
+                    auto beaver = factory(lctx);
+                    triples[lctx->Rank()] = beaver->Dot(kField, M, N, K);
+                  });
 
   EXPECT_EQ(triples.size(), kWorldSize);
   auto sum_a = ring_zeros(kField, M * K);
@@ -218,10 +222,11 @@ TEST_P(BeaverTest, Dot_large) {
   std::vector<Triple> triples;
   triples.resize(kWorldSize);
 
-  util::simulate(kWorldSize, [&](std::shared_ptr<yacl::link::Context> lctx) {
-    auto beaver = factory(lctx);
-    triples[lctx->Rank()] = beaver->Dot(kField, M, N, K);
-  });
+  utils::simulate(kWorldSize,
+                  [&](const std::shared_ptr<yacl::link::Context>& lctx) {
+                    auto beaver = factory(lctx);
+                    triples[lctx->Rank()] = beaver->Dot(kField, M, N, K);
+                  });
 
   EXPECT_EQ(triples.size(), kWorldSize);
   auto sum_a = ring_zeros(kField, M * K);
@@ -259,10 +264,11 @@ TEST_P(BeaverTest, Trunc) {
   std::vector<Pair> pairs;
   pairs.resize(kWorldSize);
 
-  util::simulate(kWorldSize, [&](std::shared_ptr<yacl::link::Context> lctx) {
-    auto beaver = factory(lctx);
-    pairs[lctx->Rank()] = beaver->Trunc(kField, kNumel, kBits);
-  });
+  utils::simulate(kWorldSize,
+                  [&](const std::shared_ptr<yacl::link::Context>& lctx) {
+                    auto beaver = factory(lctx);
+                    pairs[lctx->Rank()] = beaver->Trunc(kField, kNumel, kBits);
+                  });
 
   EXPECT_EQ(pairs.size(), kWorldSize);
   auto sum_a = ring_zeros(kField, kNumel);
@@ -289,10 +295,11 @@ TEST_P(BeaverTest, TruncPr) {
   std::vector<Triple> rets;
   rets.resize(kWorldSize);
 
-  util::simulate(kWorldSize, [&](std::shared_ptr<yacl::link::Context> lctx) {
-    auto beaver = factory(lctx);
-    rets[lctx->Rank()] = beaver->TruncPr(kField, kNumel, kBits);
-  });
+  utils::simulate(kWorldSize,
+                  [&](const std::shared_ptr<yacl::link::Context>& lctx) {
+                    auto beaver = factory(lctx);
+                    rets[lctx->Rank()] = beaver->TruncPr(kField, kNumel, kBits);
+                  });
 
   EXPECT_EQ(rets.size(), kWorldSize);
   auto sum_r = ring_zeros(kField, kNumel);
@@ -332,10 +339,11 @@ TEST_P(BeaverTest, Randbit) {
 
   std::vector<ArrayRef> shares(kWorldSize);
 
-  util::simulate(kWorldSize, [&](std::shared_ptr<yacl::link::Context> lctx) {
-    auto beaver = factory(lctx);
-    shares[lctx->Rank()] = beaver->RandBit(kField, kNumel);
-  });
+  utils::simulate(kWorldSize,
+                  [&](const std::shared_ptr<yacl::link::Context>& lctx) {
+                    auto beaver = factory(lctx);
+                    shares[lctx->Rank()] = beaver->RandBit(kField, kNumel);
+                  });
 
   EXPECT_EQ(shares.size(), kWorldSize);
   auto sum = ring_zeros(kField, kNumel);

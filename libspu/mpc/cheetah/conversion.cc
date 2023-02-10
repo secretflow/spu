@@ -15,49 +15,17 @@
 #include "libspu/mpc/cheetah/conversion.h"
 
 #include "libspu/core/trace.h"
-#include "libspu/core/vectorize.h"
-#include "libspu/mpc/api.h"
 #include "libspu/mpc/cheetah/object.h"
-#include "libspu/mpc/cheetah/utils.h"
-#include "libspu/mpc/common/communicator.h"
-#include "libspu/mpc/semi2k/type.h"
-#include "libspu/mpc/util/ring_ops.h"
+#include "libspu/mpc/common/pub2k.h"
+#include "libspu/mpc/semi2k/type.h"  // TODO: use cheetah type
 
 namespace spu::mpc::cheetah {
 
 ArrayRef B2A::proc(KernelEvalContext* ctx, const ArrayRef& x) const {
   SPU_TRACE_MPC_LEAF(ctx, x);
-
-  auto primitives = ctx->getState<CheetahState>()->beaver()->OTPrimitives();
-  auto shareType = x.eltype().as<semi2k::BShrTy>();
-  const auto field = x.eltype().as<Ring2k>()->field();
-  size_t size = x.numel();
-  ArrayRef y(makeType<RingTy>(field), size);
-
-  if (shareType->nbits() == 1) {
-    DISPATCH_ALL_FIELDS(field, kBindName, [&]() {
-      using U = ring2k_t;
-      auto x_buf = x.getOrCreateCompactBuf();
-      auto y_buf = y.getOrCreateCompactBuf();
-      yacl::Buffer buf(size);
-      cast(buf.data<uint8_t>(), x_buf->data<U>(), size);
-
-      primitives->nonlinear()->b2a(y_buf->data<U>(), buf.data<uint8_t>(), size,
-                                   sizeof(U) * 8);
-      primitives->nonlinear()->flush();
-    });
-  } else {
-    DISPATCH_ALL_FIELDS(field, kBindName, [&]() {
-      using U = ring2k_t;
-      auto x_buf = x.getOrCreateCompactBuf();
-      auto y_buf = y.getOrCreateCompactBuf();
-
-      primitives->nonlinear()->b2a_full(y_buf->data<U>(), x_buf->data<U>(),
-                                        size, shareType->nbits());
-      primitives->nonlinear()->flush();
-    });
-  }
-  return y.as(makeType<semi2k::AShrTy>(field));
+  const auto field = ctx->getState<Z2kState>()->getDefaultField();
+  auto ty = makeType<semi2k::AShrTy>(field);
+  return ctx->getState<CheetahOTState>()->get()->B2A(x).as(ty);
 }
 
 }  // namespace spu::mpc::cheetah

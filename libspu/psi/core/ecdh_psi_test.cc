@@ -19,9 +19,9 @@
 
 #include "gtest/gtest.h"
 #include "spdlog/spdlog.h"
-#include "yacl/base/exception.h"
 #include "yacl/link/test_util.h"
 
+#include "libspu/core/prelude.h"
 #include "libspu/psi/utils/test_utils.h"
 
 struct TestParams {
@@ -46,7 +46,7 @@ TEST(EcdhPsiTestFailed, TargetRankMismatched) {
   for (std::pair<size_t, size_t> ranks : std::vector<std::pair<size_t, size_t>>{
            {0, 1}, {0, yacl::link::kAllRank}, {1, yacl::link::kAllRank}}) {
     auto ctxs = yacl::link::test::SetupWorld(2);
-    auto proc = [&](std::shared_ptr<yacl::link::Context> ctx,
+    auto proc = [&](const std::shared_ptr<yacl::link::Context>& ctx,
                     const std::vector<std::string>& items,
                     size_t target_rank) -> std::vector<std::string> {
       return RunEcdhPsi(ctx, items, target_rank);
@@ -67,7 +67,7 @@ TEST(EcdhPsiTestFailed, CurveTypeMismatched) {
                                             CurveType::CURVE_25519};
 
   auto ctxs = yacl::link::test::SetupWorld(2);
-  auto proc = [&](std::shared_ptr<yacl::link::Context> ctx,
+  auto proc = [&](const std::shared_ptr<yacl::link::Context>& ctx,
                   const std::vector<std::string>& items,
                   CurveType type) -> std::vector<std::string> {
     return RunEcdhPsi(ctx, items, yacl::link::kAllRank, type);
@@ -88,7 +88,7 @@ TEST_P(EcdhPsiTest, Works) {
   auto params = GetParam();
   auto ctxs = yacl::link::test::SetupWorld(2);
   auto proc =
-      [&](std::shared_ptr<yacl::link::Context> ctx,
+      [&](const std::shared_ptr<yacl::link::Context>& ctx,
           const std::vector<std::string>& items) -> std::vector<std::string> {
     return RunEcdhPsi(ctx, items, params.target_rank, params.curve_type);
   };

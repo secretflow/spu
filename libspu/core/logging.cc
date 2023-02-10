@@ -21,7 +21,8 @@
 #include "fmt/format.h"
 #include "spdlog/sinks/rotating_file_sink.h"
 #include "spdlog/sinks/stdout_color_sinks.h"
-#include "yacl/base/exception.h"
+
+#include "libspu/core/prelude.h"
 
 namespace spu::logging {
 
@@ -94,8 +95,8 @@ void SetupLogging(const LogOptions& options) {
   if (!log_dir.empty()) {
     std::error_code ec;
     std::filesystem::create_directories(log_dir, ec);
-    YACL_ENFORCE(ec.value() == 0, "failed to create dir={}, reason = {}",
-                 log_dir.string(), ec.message());
+    SPU_ENFORCE(ec.value() == 0, "failed to create dir={}, reason = {}",
+                log_dir.string(), ec.message());
   }
 
   auto file_sink = std::make_shared<spdlog::sinks::rotating_file_sink_mt>(

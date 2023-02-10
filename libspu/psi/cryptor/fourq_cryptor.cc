@@ -28,7 +28,7 @@ namespace spu::psi {
 
 void FourQEccCryptor::EccMask(absl::Span<const char> batch_points,
                               absl::Span<char> dest_points) const {
-  YACL_ENFORCE(batch_points.size() % kEccKeySize == 0);
+  SPU_ENFORCE(batch_points.size() % kEccKeySize == 0);
 
   using Item = std::array<unsigned char, kEccKeySize>;
   static_assert(sizeof(Item) == kEccKeySize);
@@ -37,8 +37,8 @@ void FourQEccCryptor::EccMask(absl::Span<const char> batch_points,
     ECCRYPTO_STATUS status =
         CompressedSecretAgreement(this->private_key_, in.data(), out.data());
 
-    YACL_ENFORCE(status == ECCRYPTO_SUCCESS,
-                 "FourQ CompressedSecretAgreement Error: ", status);
+    SPU_ENFORCE(status == ECCRYPTO_SUCCESS,
+                "FourQ CompressedSecretAgreement Error: ", status);
   };
 
   absl::Span<const Item> input(
@@ -67,8 +67,8 @@ std::vector<uint8_t> FourQEccCryptor::HashToCurve(
   ECCRYPTO_STATUS status = ECCRYPTO_SUCCESS;
   // Hash GF(p^2) element to curve
   status = ::HashToCurve(reinterpret_cast<felm_t*>(f2elmt), P);
-  YACL_ENFORCE(status == ECCRYPTO_SUCCESS, "FourQ HashToCurve Error: ", status);
-  std::vector<uint8_t> ret(kEccKeySize, 0U);
+  SPU_ENFORCE(status == ECCRYPTO_SUCCESS, "FourQ HashToCurve Error: ", status);
+  std::vector<uint8_t> ret(kEccKeySize, 0);
   encode(P, static_cast<unsigned char*>(ret.data()));  // Encode public key
   return ret;
 }

@@ -21,10 +21,10 @@
 
 #include "absl/types/span.h"
 #include "yacl/base/byte_container_view.h"
-#include "yacl/base/exception.h"
 #include "yacl/base/int128.h"
 #include "yacl/crypto/base/hash/hash_utils.h"
 
+#include "libspu/core/prelude.h"
 #include "libspu/psi/core/cuckoo_index.h"
 
 namespace spu::psi {
@@ -86,8 +86,8 @@ class GeneralizedCuckooHashTable : public IPsiHashTable {
   // Randomness source for location function sampling.
   std::mt19937_64 gen_;
 
-  std::uniform_int_distribution<std::uint32_t> uniform_hashidx_;
-  std::uniform_int_distribution<std::uint32_t> uniform_dataidx_;
+  std::uniform_int_distribution<std::uint32_t> uniform_hash_idx_;
+  std::uniform_int_distribution<std::uint32_t> uniform_data_idx_;
 };
 
 class SimpleHashTable : public IPsiHashTable {
@@ -96,8 +96,8 @@ class SimpleHashTable : public IPsiHashTable {
 
   void Insert(yacl::ByteContainerView item_data,
               const std::vector<uint64_t> &hash_bin_idx);
-  void Insert(yacl::ByteContainerView data);
-  void Insert(absl::Span<const std::string> data) override;
+  void Insert(yacl::ByteContainerView item);
+  void Insert(absl::Span<const std::string> items) override;
 
   const std::vector<std::vector<CuckooIndex::Bin>> &bins() const {
     return bins_;

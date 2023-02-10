@@ -89,7 +89,6 @@ pip install -r requirements-dev.txt
 
 ### Build & UnitTest
 ``` sh
-
 # build as debug
 bazel build //... -c dbg
 

@@ -14,10 +14,12 @@
 
 #include "libspu/mpc/common/communicator.h"
 
+#include <utility>
+
 #include "gtest/gtest.h"
 
-#include "libspu/mpc/util/ring_ops.h"
-#include "libspu/mpc/util/simulate.h"
+#include "libspu/mpc/utils/ring_ops.h"
+#include "libspu/mpc/utils/simulate.h"
 
 namespace spu::mpc {
 namespace {
@@ -39,8 +41,8 @@ TEST_P(CommTest, AllReduce) {
     ring_xor_(xor_x, xs[idx]);
   }
 
-  util::simulate(kWorldSize, [&](std::shared_ptr<yacl::link::Context> lctx) {
-    Communicator com(lctx);
+  utils::simulate(kWorldSize, [&](std::shared_ptr<yacl::link::Context> lctx) {
+    Communicator com(std::move(lctx));
     // WHEN
     auto sum_r = com.allReduce(ReduceOp::ADD, xs[com.getRank()], "_");
     auto xor_r = com.allReduce(ReduceOp::XOR, xs[com.getRank()], "_");
@@ -65,8 +67,8 @@ TEST_P(CommTest, Reduce) {
     ring_xor_(xor_x, xs[idx]);
   }
 
-  util::simulate(kWorldSize, [&](std::shared_ptr<yacl::link::Context> lctx) {
-    Communicator com(lctx);
+  utils::simulate(kWorldSize, [&](std::shared_ptr<yacl::link::Context> lctx) {
+    Communicator com(std::move(lctx));
 
     for (size_t root = 0; root < kWorldSize; root++) {
       // WHEN
@@ -95,8 +97,8 @@ TEST_P(CommTest, Rotate) {
     xs[idx] = ring_rand(kField, kNumel);
   }
 
-  util::simulate(kWorldSize, [&](std::shared_ptr<yacl::link::Context> lctx) {
-    Communicator com(lctx);
+  utils::simulate(kWorldSize, [&](std::shared_ptr<yacl::link::Context> lctx) {
+    Communicator com(std::move(lctx));
     // WHEN
     auto r = com.rotate(xs[com.getRank()], "_");
 

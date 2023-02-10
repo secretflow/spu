@@ -21,30 +21,30 @@ namespace spu::kernel::hal {
 
 // !!please read [README.md] for api naming conventions.
 Type _common_type_s(HalContext* ctx, const Type& a, const Type& b);
-Value _cast_type_s(HalContext* ctx, const Value& x, const Type& to);
+Value _cast_type_s(HalContext* ctx, const Value& in, const Type& to);
 
-Value _p2s(HalContext* ctx, const Value& x);
-Value _s2p(HalContext* ctx, const Value& x);
+Value _p2s(HalContext* ctx, const Value& in);
+Value _s2p(HalContext* ctx, const Value& in);
 
-Value _not_p(HalContext* ctx, const Value& x);
-Value _not_s(HalContext* ctx, const Value& x);
+Value _not_p(HalContext* ctx, const Value& in);
+Value _not_s(HalContext* ctx, const Value& in);
 
-Value _msb_p(HalContext* ctx, const Value& x);
-Value _msb_s(HalContext* ctx, const Value& x);
+Value _msb_p(HalContext* ctx, const Value& in);
+Value _msb_s(HalContext* ctx, const Value& in);
 
-Value _eqz_p(HalContext* ctx, const Value& x);
-Value _eqz_s(HalContext* ctx, const Value& x);
+Value _eqz_p(HalContext* ctx, const Value& in);
+Value _eqz_s(HalContext* ctx, const Value& in);
 
-Value _lshift_p(HalContext* ctx, const Value& x, size_t bits);
-Value _lshift_s(HalContext* ctx, const Value& x, size_t bits);
+Value _lshift_p(HalContext* ctx, const Value& in, size_t bits);
+Value _lshift_s(HalContext* ctx, const Value& in, size_t bits);
 
-Value _rshift_p(HalContext* ctx, const Value& x, size_t bits);
-Value _rshift_s(HalContext* ctx, const Value& x, size_t bits);
+Value _rshift_p(HalContext* ctx, const Value& in, size_t bits);
+Value _rshift_s(HalContext* ctx, const Value& in, size_t bits);
 
-Value _arshift_p(HalContext* ctx, const Value& x, size_t bits);
-Value _arshift_s(HalContext* ctx, const Value& x, size_t bits);
-Value _trunc_p(HalContext* ctx, const Value& x, size_t bits);
-Value _trunc_s(HalContext* ctx, const Value& x, size_t bits);
+Value _arshift_p(HalContext* ctx, const Value& in, size_t bits);
+Value _arshift_s(HalContext* ctx, const Value& in, size_t bits);
+Value _trunc_p(HalContext* ctx, const Value& in, size_t bits);
+Value _trunc_s(HalContext* ctx, const Value& in, size_t bits);
 
 Value _add_pp(HalContext* ctx, const Value& x, const Value& y);
 Value _add_sp(HalContext* ctx, const Value& x, const Value& y);

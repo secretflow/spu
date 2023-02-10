@@ -57,8 +57,8 @@ struct DecomposeComparison
   }
 
 private:
-  void populateOwningPatterns(RewritePatternSet *patterns,
-                              MLIRContext *ctx) const {
+  static void populateOwningPatterns(RewritePatternSet *patterns,
+                                     MLIRContext *ctx) {
     patterns->insert<CompareOpConverter<NotEqualOp, EqualOp>,
                      CompareOpConverter<GreaterEqualOp, LessOp>,
                      CompareOpConverter<LessEqualOp, GreaterOp>>(ctx);

@@ -35,14 +35,14 @@ spu::Value SelectAndScatterExpanded(
     const ValueBinaryFn &select_fn, const ValueBinaryFn &scatter_fn);
 
 spu::Value SelectAndScatterNaive(
-    HalContext *ctx, const spu::Value &base, const spu::Value &source,
+    HalContext *ctx, const spu::Value &operand, const spu::Value &source,
     const spu::Value &init_val, absl::Span<const int64_t> window_shape,
     absl::Span<const int64_t> window_strides,
     absl::Span<const std::pair<int64_t, int64_t>> window_padding,
     const ValueBinaryFn &select_fn, const ValueBinaryFn &scatter_fn);
 
 /**
- * @brief This is a special implementation of MaxPoolling's scatter part
+ * @brief This is a special implementation of MaxPooling's scatter part
  *
  * @param ctx HAL Context
  * @param scatter_indices Selected indices by ArgMax step
@@ -55,7 +55,7 @@ spu::Value SelectAndScatterNaive(
  */
 spu::Value MaxPoolScatter(
     HalContext *ctx, const spu::Value &scatter_indices,
-    const spu::Value &update, absl::Span<const int64_t> window_shape,
+    const spu::Value &source, absl::Span<const int64_t> window_shape,
     absl::Span<const int64_t> base_shape,
     absl::Span<const int64_t> window_strides,
     absl::Span<const std::pair<int64_t, int64_t>> window_padding);

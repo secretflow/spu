@@ -26,7 +26,7 @@
 namespace spu::kernel::hlo {
 
 size_t extractShiftBits(HalContext *ctx, const spu::Value &v) {
-  YACL_ENFORCE(v.isInt());
+  SPU_ENFORCE(v.isInt());
   const auto arr = hal::dump_public(ctx, v);
   return DISPATCH_ALL_PT_TYPES(arr.eltype().as<PtTy>()->pt_type(), "", [&] {
     return static_cast<size_t>(arr.at<ScalarT>({}));
@@ -36,8 +36,8 @@ size_t extractShiftBits(HalContext *ctx, const spu::Value &v) {
 template <typename Fn>
 spu::Value shift_imp(HalContext *ctx, const spu::Value &lhs,
                      const spu::Value &rhs, const Fn &f) {
-  YACL_ENFORCE(rhs.isPublic(), "shift bit value needs to be a public");
-  YACL_ENFORCE(rhs.shape() == lhs.shape());
+  SPU_ENFORCE(rhs.isPublic(), "shift bit value needs to be a public");
+  SPU_ENFORCE(rhs.shape() == lhs.shape());
   std::vector<int64_t> indicies(lhs.shape().size(), 0);
   // Depend on protocol, shift result might be different, AShr vs BShr.
   // So delay the preallocation

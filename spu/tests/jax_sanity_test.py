@@ -23,7 +23,7 @@ from absl.testing import absltest, parameterized
 from sklearn import metrics
 from sklearn.datasets import load_breast_cancer
 
-import spu.util.simulation as ppsim
+import spu.utils.simulation as ppsim
 import spu.spu_pb2 as spu_pb2
 
 

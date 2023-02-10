@@ -36,10 +36,10 @@ spu_cc_library(
     ],
     deps = [
         ":serializable_cc_proto",
+        "//libspu/core:prelude",
         "//libspu/psi/core/ecdh_oprf:ecdh_oprf_selector",
         "@com_github_microsoft_apsi//:apsi",
         "@com_google_absl//absl/strings",
-        "@yacl//yacl/base:exception",
         "@yacl//yacl/crypto/tools:prg",
         "@yacl//yacl/link",
         "@yacl//yacl/utils:parallel",

@@ -19,6 +19,6 @@ SCRIPT=`realpath $0`
 SCRIPTPATH=`dirname $SCRIPT`
 REPOPATH=`realpath $SCRIPTPATH/../../`
 
-bazel run //spu/binding/tests:np_op_status -- --out="$REPOPATH/docs/reference/np_op_status.json"
+bazel run //spu/tests:np_op_status -- --out="$REPOPATH/docs/reference/np_op_status.json"
 python $REPOPATH/docs/reference/gen_np_op_status_doc.py --in="$REPOPATH/docs/reference/np_op_status.json" --out="$REPOPATH/docs/reference/np_op_status.md" 
 

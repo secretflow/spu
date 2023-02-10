@@ -73,7 +73,7 @@ std::shared_ptr<yacl::link::Context> CreateContext(
 }
 
 std::vector<std::shared_ptr<yacl::link::Context>> CreateLinks(
-    std::string host_str) {
+    const std::string& host_str) {
   std::vector<std::string> hosts = absl::StrSplit(host_str, ',');
   yacl::link::ContextDesc lctx_desc;
   for (size_t rank = 0; rank < hosts.size(); rank++) {
@@ -81,8 +81,8 @@ std::vector<std::shared_ptr<yacl::link::Context>> CreateLinks(
     lctx_desc.parties.push_back({id, hosts[rank]});
   }
 
-  auto proc = [&](int self_randk) -> std::shared_ptr<yacl::link::Context> {
-    return CreateContext(self_randk, lctx_desc);
+  auto proc = [&](int self_rank) -> std::shared_ptr<yacl::link::Context> {
+    return CreateContext(self_rank, lctx_desc);
   };
 
   size_t world_size = hosts.size();

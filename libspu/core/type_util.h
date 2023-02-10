@@ -20,8 +20,9 @@
 
 #include "fmt/format.h"
 #include "fmt/ostream.h"
-#include "yacl/base/exception.h"
 #include "yacl/base/int128.h"
+
+#include "libspu/core/prelude.h"
 
 #include "libspu/spu.pb.h"
 
@@ -95,81 +96,81 @@ std::ostream& operator<<(std::ostream& os, const DataType& dtype);
     return __VA_ARGS__();                                      \
   }
 
-#define DISPATCH_FLOAT_PT_TYPES(PT_TYPE, NAME, ...)                      \
-  [&] {                                                                  \
-    switch (PT_TYPE) {                                                   \
-      __CASE_PT_TYPE(spu::PT_F32, NAME, __VA_ARGS__)                     \
-      __CASE_PT_TYPE(spu::PT_F64, NAME, __VA_ARGS__)                     \
-      default:                                                           \
-        YACL_THROW("{} not implemented for pt_type={}", #NAME, PT_TYPE); \
-    }                                                                    \
+#define DISPATCH_FLOAT_PT_TYPES(PT_TYPE, NAME, ...)                     \
+  [&] {                                                                 \
+    switch (PT_TYPE) {                                                  \
+      __CASE_PT_TYPE(spu::PT_F32, NAME, __VA_ARGS__)                    \
+      __CASE_PT_TYPE(spu::PT_F64, NAME, __VA_ARGS__)                    \
+      default:                                                          \
+        SPU_THROW("{} not implemented for pt_type={}", #NAME, PT_TYPE); \
+    }                                                                   \
   }()
 
-#define DISPATCH_UINT_PT_TYPES(PT_TYPE, NAME, ...)                       \
-  [&] {                                                                  \
-    switch (PT_TYPE) {                                                   \
-      __CASE_PT_TYPE(spu::PT_U8, NAME, __VA_ARGS__)                      \
-      __CASE_PT_TYPE(spu::PT_U16, NAME, __VA_ARGS__)                     \
-      __CASE_PT_TYPE(spu::PT_U32, NAME, __VA_ARGS__)                     \
-      __CASE_PT_TYPE(spu::PT_U64, NAME, __VA_ARGS__)                     \
-      __CASE_PT_TYPE(spu::PT_U128, NAME, __VA_ARGS__)                    \
-      default:                                                           \
-        YACL_THROW("{} not implemented for pt_type={}", #NAME, PT_TYPE); \
-    }                                                                    \
+#define DISPATCH_UINT_PT_TYPES(PT_TYPE, NAME, ...)                      \
+  [&] {                                                                 \
+    switch (PT_TYPE) {                                                  \
+      __CASE_PT_TYPE(spu::PT_U8, NAME, __VA_ARGS__)                     \
+      __CASE_PT_TYPE(spu::PT_U16, NAME, __VA_ARGS__)                    \
+      __CASE_PT_TYPE(spu::PT_U32, NAME, __VA_ARGS__)                    \
+      __CASE_PT_TYPE(spu::PT_U64, NAME, __VA_ARGS__)                    \
+      __CASE_PT_TYPE(spu::PT_U128, NAME, __VA_ARGS__)                   \
+      default:                                                          \
+        SPU_THROW("{} not implemented for pt_type={}", #NAME, PT_TYPE); \
+    }                                                                   \
   }()
 
-#define DISPATCH_INT_PT_TYPES(PT_TYPE, NAME, ...)                        \
-  [&] {                                                                  \
-    switch (PT_TYPE) {                                                   \
-      __CASE_PT_TYPE(spu::PT_BOOL, NAME, __VA_ARGS__)                    \
-      __CASE_PT_TYPE(spu::PT_I8, NAME, __VA_ARGS__)                      \
-      __CASE_PT_TYPE(spu::PT_U8, NAME, __VA_ARGS__)                      \
-      __CASE_PT_TYPE(spu::PT_I16, NAME, __VA_ARGS__)                     \
-      __CASE_PT_TYPE(spu::PT_U16, NAME, __VA_ARGS__)                     \
-      __CASE_PT_TYPE(spu::PT_I32, NAME, __VA_ARGS__)                     \
-      __CASE_PT_TYPE(spu::PT_U32, NAME, __VA_ARGS__)                     \
-      __CASE_PT_TYPE(spu::PT_I64, NAME, __VA_ARGS__)                     \
-      __CASE_PT_TYPE(spu::PT_U64, NAME, __VA_ARGS__)                     \
-      default:                                                           \
-        YACL_THROW("{} not implemented for pt_type={}", #NAME, PT_TYPE); \
-    }                                                                    \
+#define DISPATCH_INT_PT_TYPES(PT_TYPE, NAME, ...)                       \
+  [&] {                                                                 \
+    switch (PT_TYPE) {                                                  \
+      __CASE_PT_TYPE(spu::PT_BOOL, NAME, __VA_ARGS__)                   \
+      __CASE_PT_TYPE(spu::PT_I8, NAME, __VA_ARGS__)                     \
+      __CASE_PT_TYPE(spu::PT_U8, NAME, __VA_ARGS__)                     \
+      __CASE_PT_TYPE(spu::PT_I16, NAME, __VA_ARGS__)                    \
+      __CASE_PT_TYPE(spu::PT_U16, NAME, __VA_ARGS__)                    \
+      __CASE_PT_TYPE(spu::PT_I32, NAME, __VA_ARGS__)                    \
+      __CASE_PT_TYPE(spu::PT_U32, NAME, __VA_ARGS__)                    \
+      __CASE_PT_TYPE(spu::PT_I64, NAME, __VA_ARGS__)                    \
+      __CASE_PT_TYPE(spu::PT_U64, NAME, __VA_ARGS__)                    \
+      default:                                                          \
+        SPU_THROW("{} not implemented for pt_type={}", #NAME, PT_TYPE); \
+    }                                                                   \
   }()
 
-#define DISPATCH_ALL_PT_TYPES(PT_TYPE, NAME, ...)                        \
-  [&] {                                                                  \
-    switch (PT_TYPE) {                                                   \
-      __CASE_PT_TYPE(spu::PT_BOOL, NAME, __VA_ARGS__)                    \
-      __CASE_PT_TYPE(spu::PT_I8, NAME, __VA_ARGS__)                      \
-      __CASE_PT_TYPE(spu::PT_U8, NAME, __VA_ARGS__)                      \
-      __CASE_PT_TYPE(spu::PT_I16, NAME, __VA_ARGS__)                     \
-      __CASE_PT_TYPE(spu::PT_U16, NAME, __VA_ARGS__)                     \
-      __CASE_PT_TYPE(spu::PT_I32, NAME, __VA_ARGS__)                     \
-      __CASE_PT_TYPE(spu::PT_U32, NAME, __VA_ARGS__)                     \
-      __CASE_PT_TYPE(spu::PT_I64, NAME, __VA_ARGS__)                     \
-      __CASE_PT_TYPE(spu::PT_U64, NAME, __VA_ARGS__)                     \
-      __CASE_PT_TYPE(spu::PT_F32, NAME, __VA_ARGS__)                     \
-      __CASE_PT_TYPE(spu::PT_F64, NAME, __VA_ARGS__)                     \
-      default:                                                           \
-        YACL_THROW("{} not implemented for pt_type={}", #NAME, PT_TYPE); \
-    }                                                                    \
+#define DISPATCH_ALL_PT_TYPES(PT_TYPE, NAME, ...)                       \
+  [&] {                                                                 \
+    switch (PT_TYPE) {                                                  \
+      __CASE_PT_TYPE(spu::PT_BOOL, NAME, __VA_ARGS__)                   \
+      __CASE_PT_TYPE(spu::PT_I8, NAME, __VA_ARGS__)                     \
+      __CASE_PT_TYPE(spu::PT_U8, NAME, __VA_ARGS__)                     \
+      __CASE_PT_TYPE(spu::PT_I16, NAME, __VA_ARGS__)                    \
+      __CASE_PT_TYPE(spu::PT_U16, NAME, __VA_ARGS__)                    \
+      __CASE_PT_TYPE(spu::PT_I32, NAME, __VA_ARGS__)                    \
+      __CASE_PT_TYPE(spu::PT_U32, NAME, __VA_ARGS__)                    \
+      __CASE_PT_TYPE(spu::PT_I64, NAME, __VA_ARGS__)                    \
+      __CASE_PT_TYPE(spu::PT_U64, NAME, __VA_ARGS__)                    \
+      __CASE_PT_TYPE(spu::PT_F32, NAME, __VA_ARGS__)                    \
+      __CASE_PT_TYPE(spu::PT_F64, NAME, __VA_ARGS__)                    \
+      default:                                                          \
+        SPU_THROW("{} not implemented for pt_type={}", #NAME, PT_TYPE); \
+    }                                                                   \
   }()
 
-#define DISPATCH_ALL_NONE_BOOL_PT_TYPES(PT_TYPE, NAME, ...)              \
-  [&] {                                                                  \
-    switch (PT_TYPE) {                                                   \
-      __CASE_PT_TYPE(spu::PT_I8, NAME, __VA_ARGS__)                      \
-      __CASE_PT_TYPE(spu::PT_U8, NAME, __VA_ARGS__)                      \
-      __CASE_PT_TYPE(spu::PT_I16, NAME, __VA_ARGS__)                     \
-      __CASE_PT_TYPE(spu::PT_U16, NAME, __VA_ARGS__)                     \
-      __CASE_PT_TYPE(spu::PT_I32, NAME, __VA_ARGS__)                     \
-      __CASE_PT_TYPE(spu::PT_U32, NAME, __VA_ARGS__)                     \
-      __CASE_PT_TYPE(spu::PT_I64, NAME, __VA_ARGS__)                     \
-      __CASE_PT_TYPE(spu::PT_U64, NAME, __VA_ARGS__)                     \
-      __CASE_PT_TYPE(spu::PT_F32, NAME, __VA_ARGS__)                     \
-      __CASE_PT_TYPE(spu::PT_F64, NAME, __VA_ARGS__)                     \
-      default:                                                           \
-        YACL_THROW("{} not implemented for pt_type={}", #NAME, PT_TYPE); \
-    }                                                                    \
+#define DISPATCH_ALL_NONE_BOOL_PT_TYPES(PT_TYPE, NAME, ...)             \
+  [&] {                                                                 \
+    switch (PT_TYPE) {                                                  \
+      __CASE_PT_TYPE(spu::PT_I8, NAME, __VA_ARGS__)                     \
+      __CASE_PT_TYPE(spu::PT_U8, NAME, __VA_ARGS__)                     \
+      __CASE_PT_TYPE(spu::PT_I16, NAME, __VA_ARGS__)                    \
+      __CASE_PT_TYPE(spu::PT_U16, NAME, __VA_ARGS__)                    \
+      __CASE_PT_TYPE(spu::PT_I32, NAME, __VA_ARGS__)                    \
+      __CASE_PT_TYPE(spu::PT_U32, NAME, __VA_ARGS__)                    \
+      __CASE_PT_TYPE(spu::PT_I64, NAME, __VA_ARGS__)                    \
+      __CASE_PT_TYPE(spu::PT_U64, NAME, __VA_ARGS__)                    \
+      __CASE_PT_TYPE(spu::PT_F32, NAME, __VA_ARGS__)                    \
+      __CASE_PT_TYPE(spu::PT_F64, NAME, __VA_ARGS__)                    \
+      default:                                                          \
+        SPU_THROW("{} not implemented for pt_type={}", #NAME, PT_TYPE); \
+    }                                                                   \
   }()
 
 std::ostream& operator<<(std::ostream& os, const PtType& pt_type);
@@ -238,15 +239,15 @@ inline size_t SizeOf(FieldType field) { return SizeOf(GetStorageType(field)); }
     return __VA_ARGS__();                                             \
   }
 
-#define DISPATCH_ALL_FIELDS(FIELD, NAME, ...)                        \
-  [&] {                                                              \
-    switch (FIELD) {                                                 \
-      __CASE_FIELD(spu::FieldType::FM32, NAME, __VA_ARGS__)          \
-      __CASE_FIELD(spu::FieldType::FM64, NAME, __VA_ARGS__)          \
-      __CASE_FIELD(spu::FieldType::FM128, NAME, __VA_ARGS__)         \
-      default:                                                       \
-        YACL_THROW("{} not implemented for field={}", #NAME, FIELD); \
-    }                                                                \
+#define DISPATCH_ALL_FIELDS(FIELD, NAME, ...)                       \
+  [&] {                                                             \
+    switch (FIELD) {                                                \
+      __CASE_FIELD(spu::FieldType::FM32, NAME, __VA_ARGS__)         \
+      __CASE_FIELD(spu::FieldType::FM64, NAME, __VA_ARGS__)         \
+      __CASE_FIELD(spu::FieldType::FM128, NAME, __VA_ARGS__)        \
+      default:                                                      \
+        SPU_THROW("{} not implemented for field={}", #NAME, FIELD); \
+    }                                                               \
   }()
 
 // Return the default number of fractional bits.

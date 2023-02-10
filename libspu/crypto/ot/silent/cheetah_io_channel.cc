@@ -17,9 +17,10 @@
 #include <utility>
 
 #include "spdlog/spdlog.h"
-#include "utils.h"
 #include "yacl/base/byte_container_view.h"
 #include "yacl/link/link.h"
+
+#include "libspu/crypto/ot/silent/utils.h"
 
 using std::shared_ptr;
 using std::string;
@@ -110,7 +111,7 @@ void CheetahIo::send_data_partial(const T *data, int len, int bitlength) {
   std::vector<uint8_t> bytes(len);
   for (int i = 0; i < compact_len; i++) {
     for (int j = 0; j < len; j++) {
-      bytes[j] = uint8_t(data[j] >> (i * 8));
+      bytes[j] = static_cast<uint8_t>(data[j] >> (i * 8));
     }
     send_data_internal(bytes.data(), len);
   }
@@ -129,10 +130,10 @@ void CheetahIo::recv_data_partial(T *data, int len, int bitlength) {
   for (int i = 0; i < compact_len; i++) {
     recv_data_internal(bytes.data(), len);
     for (int j = 0; j < len; j++) {
-      data[j] |= T(bytes[j]) << (i * 8);
+      data[j] |= static_cast<T>(bytes[j]) << (i * 8);
     }
   }
-  T mask = (T(1) << bitlength) - 1;
+  T mask = (static_cast<T>(1) << bitlength) - 1;
   for (int i = 0; i < len; i++) {
     data[i] &= mask;
   }

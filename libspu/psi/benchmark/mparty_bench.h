@@ -25,9 +25,9 @@
 
 #include "benchmark/benchmark.h"
 #include "llvm/Support/CommandLine.h"
-#include "yacl/base/exception.h"
 #include "yacl/base/int128.h"
 
+#include "libspu/core/prelude.h"
 #include "libspu/psi/core/bc22_psi/bc22_psi.h"
 #include "libspu/psi/core/ecdh_oprf_psi.h"
 #include "libspu/psi/core/ecdh_psi.h"

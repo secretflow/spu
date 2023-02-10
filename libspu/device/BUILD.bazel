@@ -60,7 +60,7 @@ spu_cc_test(
     srcs = ["io_test.cc"],
     deps = [
         ":io",
-        "//libspu/mpc/util:simulate",
+        "//libspu/mpc/utils:simulate",
     ],
 )
 
@@ -101,7 +101,7 @@ spu_cc_library(
         ":symbol_table",
         "//libspu:spu_cc_proto",
         "//libspu/core:array_ref",
-        "//libspu/mpc/util:simulate",
+        "//libspu/mpc/utils:simulate",
     ],
 )
 

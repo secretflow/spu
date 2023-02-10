@@ -86,21 +86,21 @@ TEST_P(EmpVoleTest, Works) {
 INSTANTIATE_TEST_SUITE_P(Works_Instances, EmpVoleTest,
                          testing::Values(10000, 100000, 1000000));
 
-TEST(EmpVoleTest, PolynoimalTest) {
+TEST(EmpVoleTest, PolynomialTest) {
   std::mt19937 rng(yacl::crypto::SecureRandU64());
 
   for (size_t idx = 1; idx < 4; ++idx) {
     std::vector<std::string> points(idx);
 
-    for (size_t i = 0; i < points.size(); ++i) {
-      points[i] = std::to_string(rng());
+    for (auto& point : points) {
+      point = std::to_string(rng());
     }
 
-    std::vector<__uint128_t> coeffs = GetPolynoimalCoefficients(points);
+    std::vector<__uint128_t> coeffs = GetPolynomialCoefficients(points);
 
-    for (size_t i = 0; i < points.size(); ++i) {
+    for (auto& point : points) {
       WolverineVoleFieldType result =
-          EvaluatePolynoimal(absl::MakeSpan(coeffs), points[i]);
+          EvaluatePolynomial(absl::MakeSpan(coeffs), point);
       WolverineVoleFieldType tt;
       memcpy(&tt, &result, sizeof(tt));
 

@@ -37,7 +37,7 @@ namespace {
 // https://github.com/abrari/block-cipher-testing/blob/master/stats.c
 double ErfInv(double x) {
   // beware that the logarithm argument must be
-  // commputed as (1.0 - x) * (1.0 + x),
+  // computed as (1.0 - x) * (1.0 + x),
   // it must NOT be simplified as 1.0 - x * x as this
   // would induce rounding errors near the boundaries +/-1
   double w = -std::log((1.0 - x) * (1.0 + x));
@@ -175,14 +175,15 @@ std::vector<uint32_t> CreateItemsPayload(size_t size) {
   double mu = kPayloadMu;
   double sigma = kPayloadSigma;
 
-  double a = kPayloadMinValue, b = kPayloadMaxValue;
+  double a = kPayloadMinValue;
+  double b = kPayloadMaxValue;
 
   std::random_device rd;
 
   std::mt19937 rand_mt(rd());
 
   std::generate(begin(random_data), end(random_data), [&]() {
-    uint64_t seed = ((uint64_t)rand_mt() << 32) | rand_mt();
+    uint64_t seed = (static_cast<uint64_t>(rand_mt()) << 32) | rand_mt();
     double res = TruncatedNormalSample(mu, sigma, a, b, seed);
     return std::round(res);
   });
@@ -252,7 +253,7 @@ std::shared_ptr<yacl::link::Context> CreateContext(
 }
 
 std::vector<std::shared_ptr<yacl::link::Context>> CreateLinks(
-    std::string host_str) {
+    const std::string& host_str) {
   std::vector<std::string> hosts = absl::StrSplit(host_str, ',');
   yacl::link::ContextDesc lctx_desc;
   for (size_t rank = 0; rank < hosts.size(); rank++) {
@@ -260,8 +261,8 @@ std::vector<std::shared_ptr<yacl::link::Context>> CreateLinks(
     lctx_desc.parties.push_back({id, hosts[rank]});
   }
 
-  auto proc = [&](int self_randk) -> std::shared_ptr<yacl::link::Context> {
-    return CreateContext(self_randk, lctx_desc);
+  auto proc = [&](int self_rank) -> std::shared_ptr<yacl::link::Context> {
+    return CreateContext(self_rank, lctx_desc);
   };
 
   size_t world_size = hosts.size();
@@ -356,7 +357,9 @@ static void BM_DpPsi(benchmark::State& state) {
         "real_intersection size: {}",
         dp_psi_result.size(), bob_sub_sample_size, real_intersection.size());
 
-    double mean, dp_mean, sigma;
+    double mean;
+    double dp_mean;
+    double sigma;
     PayloadMeanWithDp(options, dp_psi_result, payloads_b, &mean, &dp_mean,
                       &sigma, kPayloadMaxValue, payload_epsilon);
 

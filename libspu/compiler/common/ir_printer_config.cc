@@ -38,13 +38,13 @@ IRPrinterConfig::IRPrinterConfig(std::string_view pp_dir)
   pp_dir_ /= current_time;
 
   std::error_code ec;
-  if (std::filesystem::create_directories(pp_dir_, ec) == false) {
+  if (!std::filesystem::create_directories(pp_dir_, ec)) {
     spdlog::error("Failed to create pp folder, error = {}", ec.message());
   }
 }
 
 void IRPrinterConfig::printBeforeIfEnabled(Pass *pass, Operation *operation,
-                                           PrintCallbackFn printCallback) {
+                                           PrintCallbackFn print_callback) {
   std::filesystem::path file_name =
       pp_dir_ / genFileName(pass->getName(), "before");
   std::error_code ec;
@@ -53,11 +53,11 @@ void IRPrinterConfig::printBeforeIfEnabled(Pass *pass, Operation *operation,
     spdlog::error("Open file {} failed, error = {}", file_name.c_str(),
                   ec.message());
   }
-  printCallback(f);
+  print_callback(f);
 }
 
 void IRPrinterConfig::printAfterIfEnabled(Pass *pass, Operation *operation,
-                                          PrintCallbackFn printCallback) {
+                                          PrintCallbackFn print_callback) {
   std::filesystem::path file_name =
       pp_dir_ / genFileName(pass->getName(), "after");
   std::error_code ec;
@@ -66,12 +66,11 @@ void IRPrinterConfig::printAfterIfEnabled(Pass *pass, Operation *operation,
     spdlog::error("Open file {} failed, error = {}", file_name.c_str(),
                   ec.message());
   }
-  printCallback(f);
+  print_callback(f);
 }
 
-std::string IRPrinterConfig::genFileName(StringRef passName,
-                                         StringRef stage) const {
-  return fmt::format("{}-{}-{}.mlir", pp_cnt++, passName, stage);
+std::string IRPrinterConfig::genFileName(StringRef pass_name, StringRef stage) {
+  return fmt::format("{}-{}-{}.mlir", pp_cnt++, pass_name, stage);
 }
 
 } // namespace mlir::pphlo

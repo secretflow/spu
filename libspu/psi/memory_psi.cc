@@ -30,29 +30,28 @@ MemoryPsi::MemoryPsi(MemoryPsiConfig config,
 
 void MemoryPsi::CheckOptions() const {
   // options sanity check.
-  YACL_ENFORCE(config_.psi_type() != PsiType::INVALID_PSI_TYPE,
-               "unsupported psi proto:{}", config_.psi_type());
+  SPU_ENFORCE(config_.psi_type() != PsiType::INVALID_PSI_TYPE,
+              "unsupported psi proto:{}", config_.psi_type());
 
-  YACL_ENFORCE(
-      static_cast<size_t>(config_.receiver_rank()) < lctx_->WorldSize(),
-      "invalid receiver_rank:{}, world_size:{}", config_.receiver_rank(),
-      lctx_->WorldSize());
+  SPU_ENFORCE(static_cast<size_t>(config_.receiver_rank()) < lctx_->WorldSize(),
+              "invalid receiver_rank:{}, world_size:{}",
+              config_.receiver_rank(), lctx_->WorldSize());
 
   // check world size
   if (config_.psi_type() == PsiType::ECDH_PSI_2PC ||
       config_.psi_type() == PsiType::KKRT_PSI_2PC ||
       config_.psi_type() == PsiType::BC22_PSI_2PC) {
-    YACL_ENFORCE(lctx_->WorldSize() == 2,
-                 "psi_type:{}, only two parties supported, got "
-                 "{}",
-                 config_.psi_type(), lctx_->WorldSize());
+    SPU_ENFORCE(lctx_->WorldSize() == 2,
+                "psi_type:{}, only two parties supported, got "
+                "{}",
+                config_.psi_type(), lctx_->WorldSize());
   }
   if (config_.psi_type() == PsiType::ECDH_PSI_3PC) {
     if (lctx_->WorldSize() != 3) {
-      YACL_ENFORCE(lctx_->WorldSize() == 3,
-                   "psi_type:{}, only three parties supported, got "
-                   "{}",
-                   config_.psi_type(), lctx_->WorldSize());
+      SPU_ENFORCE(lctx_->WorldSize() == 3,
+                  "psi_type:{}, only three parties supported, got "
+                  "{}",
+                  config_.psi_type(), lctx_->WorldSize());
     }
   }
 }

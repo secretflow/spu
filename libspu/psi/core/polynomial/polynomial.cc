@@ -18,7 +18,8 @@
 #include <memory>
 
 #include "openssl/bn.h"
-#include "yacl/base/exception.h"
+
+#include "libspu/core/prelude.h"
 
 namespace spu::psi {
 
@@ -27,7 +28,7 @@ class BNDeleter {
  public:
   void operator()(BIGNUM *bn) { BN_free(bn); }
 };
-typedef std::unique_ptr<BIGNUM, BNDeleter> BigNumPtr;
+using BigNumPtr = std::unique_ptr<BIGNUM, BNDeleter>;
 
 BigNumPtr GetBigNumPtr(int v) {
   BIGNUM *bn = BN_new();
@@ -36,8 +37,9 @@ BigNumPtr GetBigNumPtr(int v) {
 }
 
 BigNumPtr GetBigNumPtr(std::string_view v) {
-  BIGNUM *bn = BN_bin2bn((const uint8_t *)v.data(), v.length(), NULL);
-  YACL_ENFORCE(bn != NULL);
+  BIGNUM *bn = BN_bin2bn(reinterpret_cast<const uint8_t *>(v.data()),
+                         v.length(), nullptr);
+  SPU_ENFORCE(bn != nullptr);
   return BigNumPtr(bn);
 }
 
@@ -58,9 +60,10 @@ std::vector<BigNumPtr> GetBigNumPtrVector(
   std::vector<BigNumPtr> res(data_vec.size());
 
   for (size_t idx = 0; idx < data_vec.size(); idx++) {
-    BIGNUM *bn = BN_bin2bn((const uint8_t *)data_vec[idx].data(),
-                           data_vec[idx].length(), NULL);
-    YACL_ENFORCE(bn != NULL);
+    BIGNUM *bn =
+        BN_bin2bn(reinterpret_cast<const uint8_t *>(data_vec[idx].data()),
+                  data_vec[idx].length(), nullptr);
+    SPU_ENFORCE(bn != nullptr);
     res[idx] = BigNumPtr(bn);
   }
 
@@ -90,7 +93,7 @@ std::string EvalPolynomial(const std::vector<absl::string_view> &coeff,
       std::max(BN_num_bytes(acc.get()), static_cast<int>(poly_x.length()));
   res.resize(len);
 
-  BN_bn2binpad(acc.get(), (unsigned char *)res.data(), len);
+  BN_bn2binpad(acc.get(), reinterpret_cast<unsigned char *>(res.data()), len);
 
   return res;
 }
@@ -122,7 +125,7 @@ std::vector<std::string> InterpolatePolynomial(
     const std::vector<absl::string_view> &poly_y, std::string_view p_str) {
   int64_t m = poly_x.size();
 
-  YACL_ENFORCE(poly_y.size() == poly_x.size());
+  SPU_ENFORCE(poly_y.size() == poly_x.size());
 
   BigNumPtr bn_p = GetBigNumPtr(p_str);
 
@@ -132,7 +135,8 @@ std::vector<std::string> InterpolatePolynomial(
   BigNumPtr t1 = GetBigNumPtr(0);
   BigNumPtr t2 = GetBigNumPtr(0);
 
-  int64_t k, i;
+  int64_t k;
+  int64_t i;
 
   std::vector<BigNumPtr> bn_x = GetBigNumPtrVector(poly_x);
   std::vector<BigNumPtr> bn_y = GetBigNumPtrVector(poly_y);
@@ -216,7 +220,9 @@ std::vector<std::string> InterpolatePolynomial(
 
   BN_CTX_free(bn_ctx);
   // while (m > 0 && !(res_bn[m - 1] != zero)) m--;
-  while ((m > 0) && BN_is_zero(res_bn[m - 1].get())) m--;
+  while ((m > 0) && (BN_is_zero(res_bn[m - 1].get()) != 0)) {
+    m--;
+  }
 
   res_bn.resize(m);
 
@@ -225,7 +231,8 @@ std::vector<std::string> InterpolatePolynomial(
     int len = std::max(BN_num_bytes(res_bn[idx].get()),
                        static_cast<int>(poly_y[0].length()));
     res[idx].resize(len);
-    BN_bn2binpad(res_bn[idx].get(), (unsigned char *)res[idx].data(), len);
+    BN_bn2binpad(res_bn[idx].get(),
+                 reinterpret_cast<unsigned char *>(res[idx].data()), len);
   }
 
   return res;

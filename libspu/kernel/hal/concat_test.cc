@@ -21,19 +21,19 @@
 
 namespace spu::kernel::hal {
 
-using secret_v = std::integral_constant<Visibility, VIS_SECRET>;
-using public_v = std::integral_constant<Visibility, VIS_PUBLIC>;
+using SecretV = std::integral_constant<Visibility, VIS_SECRET>;
+using PublicV = std::integral_constant<Visibility, VIS_PUBLIC>;
 
-using ConcatTestTypes = ::testing::Types<     //
-    std::tuple<float, secret_v, secret_v>,    // concat(s, s)
-    std::tuple<float, public_v, public_v>,    // concat(p, p)
-    std::tuple<float, secret_v, public_v>,    // concat(s, p)
-    std::tuple<float, public_v, secret_v>,    // concat(p, s)
-                                              //
-    std::tuple<int16_t, secret_v, secret_v>,  // concat(s, s)
-    std::tuple<int16_t, public_v, public_v>,  // concat(p, p)
-    std::tuple<int16_t, secret_v, public_v>,  // concat(s, p)
-    std::tuple<int16_t, public_v, secret_v>   // concat(p, s)
+using ConcatTestTypes = ::testing::Types<   //
+    std::tuple<float, SecretV, SecretV>,    // concat(s, s)
+    std::tuple<float, PublicV, PublicV>,    // concat(p, p)
+    std::tuple<float, SecretV, PublicV>,    // concat(s, p)
+    std::tuple<float, PublicV, SecretV>,    // concat(p, s)
+                                            //
+    std::tuple<int16_t, SecretV, SecretV>,  // concat(s, s)
+    std::tuple<int16_t, PublicV, PublicV>,  // concat(p, p)
+    std::tuple<int16_t, SecretV, PublicV>,  // concat(s, p)
+    std::tuple<int16_t, PublicV, SecretV>   // concat(p, s)
     >;
 
 template <typename S>
@@ -43,8 +43,8 @@ TYPED_TEST_SUITE(ConcatTest, ConcatTestTypes);
 
 TYPED_TEST(ConcatTest, Concatenate) {
   using DT = typename std::tuple_element<0, TypeParam>::type;
-  using LHS_VT = typename std::tuple_element<1, TypeParam>::type;
-  using RHS_VT = typename std::tuple_element<2, TypeParam>::type;
+  using LhsVt = typename std::tuple_element<1, TypeParam>::type;
+  using RhsVt = typename std::tuple_element<2, TypeParam>::type;
 
   // GIVEN
   xt::xarray<DT> x = test::xt_random<DT>({1, 5});
@@ -55,7 +55,7 @@ TYPED_TEST(ConcatTest, Concatenate) {
     return concatenate(ctx, {lhs, rhs}, 0);
   };
   // WHAT
-  auto z = test::evalBinaryOp<DT>(LHS_VT(), RHS_VT(), concat_wrapper, x, y);
+  auto z = test::evalBinaryOp<DT>(LhsVt(), RhsVt(), concat_wrapper, x, y);
 
   // THEN
   EXPECT_TRUE(

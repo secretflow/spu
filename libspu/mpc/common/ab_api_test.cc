@@ -14,12 +14,13 @@
 
 #include "libspu/mpc/common/ab_api_test.h"
 
+#include "libspu/core/prelude.h"
 #include "libspu/core/shape_util.h"
 #include "libspu/mpc/common/ab_api.h"
 #include "libspu/mpc/common/communicator.h"
 #include "libspu/mpc/kernel.h"
-#include "libspu/mpc/util/ring_ops.h"
-#include "libspu/mpc/util/simulate.h"
+#include "libspu/mpc/utils/ring_ops.h"
+#include "libspu/mpc/utils/simulate.h"
 
 namespace spu::mpc::test {
 namespace {
@@ -27,9 +28,9 @@ namespace {
 constexpr int64_t kNumel = 1000;
 const std::vector<size_t> kShiftBits = {0, 1, 2, 31, 32, 33, 64, 1000};
 
-bool verifyCost(Kernel* kernel, std::string_view name, FieldType field,
-                size_t numel, size_t npc, const Communicator::Stats& cost) {
-  if (kernel->kind() == Kernel::Kind::kDynamic) {
+bool verifyCost(Kernel* kernel, std::string_view name, const ce::Params& params,
+                const Communicator::Stats& cost, size_t repeated = 1) {
+  if (kernel->kind() == Kernel::Kind::Dynamic) {
     return true;
   }
 
@@ -38,7 +39,7 @@ bool verifyCost(Kernel* kernel, std::string_view name, FieldType field,
 
   bool succeed = true;
   constexpr size_t kBitsPerBytes = 8;
-  const auto expectedComm = comm->eval(field, npc) * numel;
+  const auto expectedComm = comm->eval(params) * repeated;
   const auto realComm = cost.comm * kBitsPerBytes;
 
   float diff;
@@ -53,72 +54,80 @@ bool verifyCost(Kernel* kernel, std::string_view name, FieldType field,
     succeed = false;
   }
 
-  if (latency->eval(field, npc) != cost.latency) {
+  if (latency->eval(params) != cost.latency) {
     fmt::print("Failed: {} latency mismatch, expected={}, got={}\n", name,
-               latency->eval(field, npc), cost.latency);
+               latency->eval(params), cost.latency);
     succeed = false;
   }
 
   return succeed;
 }
 
+bool verifyCost(Kernel* kernel, std::string_view name, FieldType field,
+                size_t numel, size_t npc, const Communicator::Stats& cost) {
+  ce::Params params = {{"K", SizeOf(field) * 8}, {"N", npc}};
+  return verifyCost(kernel, name, params, cost, numel /*repeated*/);
+}
+
 }  // namespace
 
-#define TEST_ARITHMETIC_BINARY_OP_AA(OP)                                 \
-  TEST_P(ArithmeticTest, OP##AA) {                                       \
-    const auto factory = std::get<0>(GetParam());                        \
-    const RuntimeConfig& conf = std::get<1>(GetParam());                 \
-    const size_t npc = std::get<2>(GetParam());                          \
-                                                                         \
-    util::simulate(npc, [&](std::shared_ptr<yacl::link::Context> lctx) { \
-      auto obj = factory(conf, lctx);                                    \
-                                                                         \
-      /* GIVEN */                                                        \
-      auto p0 = rand_p(obj.get(), kNumel);                               \
-      auto p1 = rand_p(obj.get(), kNumel);                               \
-                                                                         \
-      /* WHEN */                                                         \
-      auto a0 = p2a(obj.get(), p0);                                      \
-      auto a1 = p2a(obj.get(), p1);                                      \
-      auto prev = obj->getState<Communicator>()->getStats();             \
-      auto tmp = OP##_aa(obj.get(), a0, a1);                             \
-      auto cost = obj->getState<Communicator>()->getStats() - prev;      \
-      auto re = a2p(obj.get(), tmp);                                     \
-      auto rp = OP##_pp(obj.get(), p0, p1);                              \
-                                                                         \
-      /* THEN */                                                         \
-      EXPECT_TRUE(ring_all_equal(re, rp));                               \
-      EXPECT_TRUE(verifyCost(obj->getKernel(#OP "_aa"), #OP "_aa",       \
-                             conf.field(), kNumel, npc, cost));          \
-    });                                                                  \
+#define TEST_ARITHMETIC_BINARY_OP_AA(OP)                                \
+  TEST_P(ArithmeticTest, OP##AA) {                                      \
+    const auto factory = std::get<0>(GetParam());                       \
+    const RuntimeConfig& conf = std::get<1>(GetParam());                \
+    const size_t npc = std::get<2>(GetParam());                         \
+                                                                        \
+    utils::simulate(                                                    \
+        npc, [&](const std::shared_ptr<yacl::link::Context>& lctx) {    \
+          auto obj = factory(conf, lctx);                               \
+                                                                        \
+          /* GIVEN */                                                   \
+          auto p0 = rand_p(obj.get(), kNumel);                          \
+          auto p1 = rand_p(obj.get(), kNumel);                          \
+                                                                        \
+          /* WHEN */                                                    \
+          auto a0 = p2a(obj.get(), p0);                                 \
+          auto a1 = p2a(obj.get(), p1);                                 \
+          auto prev = obj->getState<Communicator>()->getStats();        \
+          auto tmp = OP##_aa(obj.get(), a0, a1);                        \
+          auto cost = obj->getState<Communicator>()->getStats() - prev; \
+          auto re = a2p(obj.get(), tmp);                                \
+          auto rp = OP##_pp(obj.get(), p0, p1);                         \
+                                                                        \
+          /* THEN */                                                    \
+          EXPECT_TRUE(ring_all_equal(re, rp));                          \
+          EXPECT_TRUE(verifyCost(obj->getKernel(#OP "_aa"), #OP "_aa",  \
+                                 conf.field(), kNumel, npc, cost));     \
+        });                                                             \
   }
 
-#define TEST_ARITHMETIC_BINARY_OP_AP(OP)                                 \
-  TEST_P(ArithmeticTest, OP##AP) {                                       \
-    const auto factory = std::get<0>(GetParam());                        \
-    const RuntimeConfig& conf = std::get<1>(GetParam());                 \
-    const size_t npc = std::get<2>(GetParam());                          \
-                                                                         \
-    util::simulate(npc, [&](std::shared_ptr<yacl::link::Context> lctx) { \
-      auto obj = factory(conf, lctx);                                    \
-                                                                         \
-      /* GIVEN */                                                        \
-      auto p0 = rand_p(obj.get(), kNumel);                               \
-      auto p1 = rand_p(obj.get(), kNumel);                               \
-                                                                         \
-      /* WHEN */                                                         \
-      auto a0 = p2a(obj.get(), p0);                                      \
-      auto prev = obj->getState<Communicator>()->getStats();             \
-      auto tmp = OP##_ap(obj.get(), a0, p1);                             \
-      auto cost = obj->getState<Communicator>()->getStats() - prev;      \
-      auto re = a2p(obj.get(), tmp);                                     \
-      auto rp = OP##_pp(obj.get(), p0, p1);                              \
-                                                                         \
-      /* THEN */                                                         \
-      EXPECT_TRUE(ring_all_equal(re, rp));                               \
-      EXPECT_TRUE(verifyCost(obj->getKernel(#OP "_ap"), #OP "_ap",       \
-                             conf.field(), kNumel, npc, cost));          \
-    });                                                                  \
+#define TEST_ARITHMETIC_BINARY_OP_AP(OP)                                \
+  TEST_P(ArithmeticTest, OP##AP) {                                      \
+    const auto factory = std::get<0>(GetParam());                       \
+    const RuntimeConfig& conf = std::get<1>(GetParam());                \
+    const size_t npc = std::get<2>(GetParam());                         \
+                                                                        \
+    utils::simulate(                                                    \
+        npc, [&](const std::shared_ptr<yacl::link::Context>& lctx) {    \
+          auto obj = factory(conf, lctx);                               \
+                                                                        \
+          /* GIVEN */                                                   \
+          auto p0 = rand_p(obj.get(), kNumel);                          \
+          auto p1 = rand_p(obj.get(), kNumel);                          \
+                                                                        \
+          /* WHEN */                                                    \
+          auto a0 = p2a(obj.get(), p0);                                 \
+          auto prev = obj->getState<Communicator>()->getStats();        \
+          auto tmp = OP##_ap(obj.get(), a0, p1);                        \
+          auto cost = obj->getState<Communicator>()->getStats() - prev; \
+          auto re = a2p(obj.get(), tmp);                                \
+          auto rp = OP##_pp(obj.get(), p0, p1);                         \
+                                                                        \
+          /* THEN */                                                    \
+          EXPECT_TRUE(ring_all_equal(re, rp));                          \
+          EXPECT_TRUE(verifyCost(obj->getKernel(#OP "_ap"), #OP "_ap",  \
+                                 conf.field(), kNumel, npc, cost));     \
+        });                                                             \
   }
 
 #define TEST_ARITHMETIC_BINARY_OP(OP) \
@@ -135,7 +144,7 @@ TEST_P(ArithmeticTest, MulA1B) {
 
   const std::vector<int64_t> shape{5, 5};
 
-  util::simulate(npc, [&](std::shared_ptr<yacl::link::Context> lctx) {
+  utils::simulate(npc, [&](const std::shared_ptr<yacl::link::Context>& lctx) {
     auto obj = factory(conf, lctx);
 
     // MulA1B available for aby3 only for now.
@@ -180,7 +189,7 @@ TEST_P(ArithmeticTest, MatMulAP) {
   const std::vector<int64_t> shape_B{K, N};
   const std::vector<int64_t> shape_C{M, N};
 
-  util::simulate(npc, [&](std::shared_ptr<yacl::link::Context> lctx) {
+  utils::simulate(npc, [&](const std::shared_ptr<yacl::link::Context>& lctx) {
     auto obj = factory(conf, lctx);
 
     /* GIVEN */
@@ -198,8 +207,13 @@ TEST_P(ArithmeticTest, MatMulAP) {
 
     /* THEN */
     EXPECT_TRUE(ring_all_equal(r_aa, r_pp));
-    EXPECT_TRUE(verifyCost(obj->getKernel("mmul_ap"), "mmul_ap", conf.field(),
-                           calcNumel(shape_C), npc, cost));
+    ce::Params params = {{"K", SizeOf(conf.field()) * 8},
+                         {"N", npc},
+                         {"m", M},
+                         {"n", N},
+                         {"k", K}};
+    EXPECT_TRUE(
+        verifyCost(obj->getKernel("mmul_ap"), "mmul_ap", params, cost, 1));
   });
 }
 
@@ -215,7 +229,7 @@ TEST_P(ArithmeticTest, MatMulAA) {
   const std::vector<int64_t> shape_B{K, N};
   const std::vector<int64_t> shape_C{M, N};
 
-  util::simulate(npc, [&](std::shared_ptr<yacl::link::Context> lctx) {
+  utils::simulate(npc, [&](const std::shared_ptr<yacl::link::Context>& lctx) {
     auto obj = factory(conf, lctx);
 
     /* GIVEN */
@@ -234,8 +248,13 @@ TEST_P(ArithmeticTest, MatMulAA) {
 
     /* THEN */
     EXPECT_TRUE(ring_all_equal(r_aa, r_pp));
-    EXPECT_TRUE(verifyCost(obj->getKernel("mmul_aa"), "mmul_aa", conf.field(),
-                           calcNumel(shape_C), npc, cost));
+    ce::Params params = {{"K", SizeOf(conf.field()) * 8},
+                         {"N", npc},
+                         {"m", M},
+                         {"n", N},
+                         {"k", K}};
+    EXPECT_TRUE(
+        verifyCost(obj->getKernel("mmul_aa"), "mmul_aa", params, cost, 1));
   });
 }
 
@@ -244,7 +263,7 @@ TEST_P(ArithmeticTest, NotA) {
   const RuntimeConfig& conf = std::get<1>(GetParam());
   const size_t npc = std::get<2>(GetParam());
 
-  util::simulate(npc, [&](std::shared_ptr<yacl::link::Context> lctx) {
+  utils::simulate(npc, [&](const std::shared_ptr<yacl::link::Context>& lctx) {
     auto obj = factory(conf, lctx);
 
     /* GIVEN */
@@ -271,7 +290,7 @@ TEST_P(ArithmeticTest, LShiftA) {
   const RuntimeConfig& conf = std::get<1>(GetParam());
   const size_t npc = std::get<2>(GetParam());
 
-  util::simulate(npc, [&](std::shared_ptr<yacl::link::Context> lctx) {
+  utils::simulate(npc, [&](const std::shared_ptr<yacl::link::Context>& lctx) {
     auto obj = factory(conf, lctx);
 
     /* GIVEN */
@@ -307,7 +326,7 @@ TEST_P(ArithmeticTest, TruncA) {
       ring_rand_range(conf.field(), kNumel, -(1 << 28), -(1 << 27));
   ArrayRef p0_small = ring_rand_range(conf.field(), kNumel, 1, 10000);
 
-  util::simulate(npc, [&](std::shared_ptr<yacl::link::Context> lctx) {
+  utils::simulate(npc, [&](const std::shared_ptr<yacl::link::Context>& lctx) {
     auto obj = factory(conf, lctx);
     ArrayRef p0;
     if (!static_cast<TruncAKernel*>(obj->getKernel("trunc_a"))->hasMsbError()) {
@@ -340,7 +359,7 @@ TEST_P(ArithmeticTest, P2A) {
   const RuntimeConfig& conf = std::get<1>(GetParam());
   const size_t npc = std::get<2>(GetParam());
 
-  util::simulate(npc, [&](std::shared_ptr<yacl::link::Context> lctx) {
+  utils::simulate(npc, [&](const std::shared_ptr<yacl::link::Context>& lctx) {
     auto obj = factory(conf, lctx);
 
     /* GIVEN */
@@ -364,7 +383,7 @@ TEST_P(ArithmeticTest, A2P) {
   const RuntimeConfig& conf = std::get<1>(GetParam());
   const size_t npc = std::get<2>(GetParam());
 
-  util::simulate(npc, [&](std::shared_ptr<yacl::link::Context> lctx) {
+  utils::simulate(npc, [&](const std::shared_ptr<yacl::link::Context>& lctx) {
     auto obj = factory(conf, lctx);
 
     /* GIVEN */
@@ -383,61 +402,63 @@ TEST_P(ArithmeticTest, A2P) {
   });
 }
 
-#define TEST_BOOLEAN_BINARY_OP_BB(OP)                                    \
-  TEST_P(BooleanTest, OP##BB) {                                          \
-    const auto factory = std::get<0>(GetParam());                        \
-    const RuntimeConfig& conf = std::get<1>(GetParam());                 \
-    const size_t npc = std::get<2>(GetParam());                          \
-                                                                         \
-    util::simulate(npc, [&](std::shared_ptr<yacl::link::Context> lctx) { \
-      auto obj = factory(conf, lctx);                                    \
-                                                                         \
-      /* GIVEN */                                                        \
-      auto p0 = rand_p(obj.get(), kNumel);                               \
-      auto p1 = rand_p(obj.get(), kNumel);                               \
-                                                                         \
-      /* WHEN */                                                         \
-      auto b0 = p2b(obj.get(), p0);                                      \
-      auto b1 = p2b(obj.get(), p1);                                      \
-      auto prev = obj->getState<Communicator>()->getStats();             \
-      auto tmp = OP##_bb(obj.get(), b0, b1);                             \
-      auto cost = obj->getState<Communicator>()->getStats() - prev;      \
-      auto re = b2p(obj.get(), tmp);                                     \
-      auto rp = OP##_pp(obj.get(), p0, p1);                              \
-                                                                         \
-      /* THEN */                                                         \
-      EXPECT_TRUE(ring_all_equal(re, rp));                               \
-      EXPECT_TRUE(verifyCost(obj->getKernel(#OP "_bb"), #OP "_bb",       \
-                             conf.field(), kNumel, npc, cost));          \
-    });                                                                  \
+#define TEST_BOOLEAN_BINARY_OP_BB(OP)                                   \
+  TEST_P(BooleanTest, OP##BB) {                                         \
+    const auto factory = std::get<0>(GetParam());                       \
+    const RuntimeConfig& conf = std::get<1>(GetParam());                \
+    const size_t npc = std::get<2>(GetParam());                         \
+                                                                        \
+    utils::simulate(                                                    \
+        npc, [&](const std::shared_ptr<yacl::link::Context>& lctx) {    \
+          auto obj = factory(conf, lctx);                               \
+                                                                        \
+          /* GIVEN */                                                   \
+          auto p0 = rand_p(obj.get(), kNumel);                          \
+          auto p1 = rand_p(obj.get(), kNumel);                          \
+                                                                        \
+          /* WHEN */                                                    \
+          auto b0 = p2b(obj.get(), p0);                                 \
+          auto b1 = p2b(obj.get(), p1);                                 \
+          auto prev = obj->getState<Communicator>()->getStats();        \
+          auto tmp = OP##_bb(obj.get(), b0, b1);                        \
+          auto cost = obj->getState<Communicator>()->getStats() - prev; \
+          auto re = b2p(obj.get(), tmp);                                \
+          auto rp = OP##_pp(obj.get(), p0, p1);                         \
+                                                                        \
+          /* THEN */                                                    \
+          EXPECT_TRUE(ring_all_equal(re, rp));                          \
+          EXPECT_TRUE(verifyCost(obj->getKernel(#OP "_bb"), #OP "_bb",  \
+                                 conf.field(), kNumel, npc, cost));     \
+        });                                                             \
   }
 
-#define TEST_BOOLEAN_BINARY_OP_BP(OP)                                    \
-  TEST_P(BooleanTest, OP##BP) {                                          \
-    const auto factory = std::get<0>(GetParam());                        \
-    const RuntimeConfig& conf = std::get<1>(GetParam());                 \
-    const size_t npc = std::get<2>(GetParam());                          \
-                                                                         \
-    util::simulate(npc, [&](std::shared_ptr<yacl::link::Context> lctx) { \
-      auto obj = factory(conf, lctx);                                    \
-                                                                         \
-      /* GIVEN */                                                        \
-      auto p0 = rand_p(obj.get(), kNumel);                               \
-      auto p1 = rand_p(obj.get(), kNumel);                               \
-                                                                         \
-      /* WHEN */                                                         \
-      auto b0 = p2b(obj.get(), p0);                                      \
-      auto prev = obj->getState<Communicator>()->getStats();             \
-      auto tmp = OP##_bp(obj.get(), b0, p1);                             \
-      auto cost = obj->getState<Communicator>()->getStats() - prev;      \
-      auto re = b2p(obj.get(), tmp);                                     \
-      auto rp = OP##_pp(obj.get(), p0, p1);                              \
-                                                                         \
-      /* THEN */                                                         \
-      EXPECT_TRUE(ring_all_equal(re, rp));                               \
-      EXPECT_TRUE(verifyCost(obj->getKernel(#OP "_bp"), #OP "_bp",       \
-                             conf.field(), kNumel, npc, cost));          \
-    });                                                                  \
+#define TEST_BOOLEAN_BINARY_OP_BP(OP)                                   \
+  TEST_P(BooleanTest, OP##BP) {                                         \
+    const auto factory = std::get<0>(GetParam());                       \
+    const RuntimeConfig& conf = std::get<1>(GetParam());                \
+    const size_t npc = std::get<2>(GetParam());                         \
+                                                                        \
+    utils::simulate(                                                    \
+        npc, [&](const std::shared_ptr<yacl::link::Context>& lctx) {    \
+          auto obj = factory(conf, lctx);                               \
+                                                                        \
+          /* GIVEN */                                                   \
+          auto p0 = rand_p(obj.get(), kNumel);                          \
+          auto p1 = rand_p(obj.get(), kNumel);                          \
+                                                                        \
+          /* WHEN */                                                    \
+          auto b0 = p2b(obj.get(), p0);                                 \
+          auto prev = obj->getState<Communicator>()->getStats();        \
+          auto tmp = OP##_bp(obj.get(), b0, p1);                        \
+          auto cost = obj->getState<Communicator>()->getStats() - prev; \
+          auto re = b2p(obj.get(), tmp);                                \
+          auto rp = OP##_pp(obj.get(), p0, p1);                         \
+                                                                        \
+          /* THEN */                                                    \
+          EXPECT_TRUE(ring_all_equal(re, rp));                          \
+          EXPECT_TRUE(verifyCost(obj->getKernel(#OP "_bp"), #OP "_bp",  \
+                                 conf.field(), kNumel, npc, cost));     \
+        });                                                             \
   }
 
 #define TEST_BOOLEAN_BINARY_OP(OP) \
@@ -447,36 +468,37 @@ TEST_P(ArithmeticTest, A2P) {
 TEST_BOOLEAN_BINARY_OP(and)
 TEST_BOOLEAN_BINARY_OP(xor)
 
-#define TEST_UNARY_OP_WITH_BIT_B(OP)                                     \
-  TEST_P(BooleanTest, OP##B) {                                           \
-    const auto factory = std::get<0>(GetParam());                        \
-    const RuntimeConfig& conf = std::get<1>(GetParam());                 \
-    const size_t npc = std::get<2>(GetParam());                          \
-                                                                         \
-    util::simulate(npc, [&](std::shared_ptr<yacl::link::Context> lctx) { \
-      auto obj = factory(conf, lctx);                                    \
-                                                                         \
-      /* GIVEN */                                                        \
-      auto p0 = rand_p(obj.get(), kNumel);                               \
-      auto b0 = p2b(obj.get(), p0);                                      \
-                                                                         \
-      for (auto bits : kShiftBits) {                                     \
-        if (bits >= p0.elsize() * 8) {                                   \
-          continue;                                                      \
-        }                                                                \
-        /* WHEN */                                                       \
-        auto prev = obj->getState<Communicator>()->getStats();           \
-        auto tmp = OP##_b(obj.get(), b0, bits);                          \
-        auto cost = obj->getState<Communicator>()->getStats() - prev;    \
-        auto r_b = b2p(obj.get(), tmp);                                  \
-        auto r_p = OP##_p(obj.get(), p0, bits);                          \
-                                                                         \
-        /* THEN */                                                       \
-        EXPECT_TRUE(ring_all_equal(r_b, r_p));                           \
-        EXPECT_TRUE(verifyCost(obj->getKernel(#OP "_b"), #OP "_b",       \
-                               conf.field(), kNumel, npc, cost));        \
-      }                                                                  \
-    });                                                                  \
+#define TEST_UNARY_OP_WITH_BIT_B(OP)                                      \
+  TEST_P(BooleanTest, OP##B) {                                            \
+    const auto factory = std::get<0>(GetParam());                         \
+    const RuntimeConfig& conf = std::get<1>(GetParam());                  \
+    const size_t npc = std::get<2>(GetParam());                           \
+                                                                          \
+    utils::simulate(                                                      \
+        npc, [&](const std::shared_ptr<yacl::link::Context>& lctx) {      \
+          auto obj = factory(conf, lctx);                                 \
+                                                                          \
+          /* GIVEN */                                                     \
+          auto p0 = rand_p(obj.get(), kNumel);                            \
+          auto b0 = p2b(obj.get(), p0);                                   \
+                                                                          \
+          for (auto bits : kShiftBits) {                                  \
+            if (bits >= p0.elsize() * 8) {                                \
+              continue;                                                   \
+            }                                                             \
+            /* WHEN */                                                    \
+            auto prev = obj->getState<Communicator>()->getStats();        \
+            auto tmp = OP##_b(obj.get(), b0, bits);                       \
+            auto cost = obj->getState<Communicator>()->getStats() - prev; \
+            auto r_b = b2p(obj.get(), tmp);                               \
+            auto r_p = OP##_p(obj.get(), p0, bits);                       \
+                                                                          \
+            /* THEN */                                                    \
+            EXPECT_TRUE(ring_all_equal(r_b, r_p));                        \
+            EXPECT_TRUE(verifyCost(obj->getKernel(#OP "_b"), #OP "_b",    \
+                                   conf.field(), kNumel, npc, cost));     \
+          }                                                               \
+        });                                                               \
   }
 
 TEST_UNARY_OP_WITH_BIT_B(lshift)
@@ -488,7 +510,7 @@ TEST_P(BooleanTest, P2B) {
   const RuntimeConfig& conf = std::get<1>(GetParam());
   const size_t npc = std::get<2>(GetParam());
 
-  util::simulate(npc, [&](std::shared_ptr<yacl::link::Context> lctx) {
+  utils::simulate(npc, [&](const std::shared_ptr<yacl::link::Context>& lctx) {
     auto obj = factory(conf, lctx);
 
     /* GIVEN */
@@ -512,7 +534,7 @@ TEST_P(BooleanTest, B2P) {
   const RuntimeConfig& conf = std::get<1>(GetParam());
   const size_t npc = std::get<2>(GetParam());
 
-  util::simulate(npc, [&](std::shared_ptr<yacl::link::Context> lctx) {
+  utils::simulate(npc, [&](const std::shared_ptr<yacl::link::Context>& lctx) {
     auto obj = factory(conf, lctx);
 
     /* GIVEN */
@@ -536,7 +558,7 @@ TEST_P(BooleanTest, BitrevB) {
   const RuntimeConfig& conf = std::get<1>(GetParam());
   const size_t npc = std::get<2>(GetParam());
 
-  util::simulate(npc, [&](std::shared_ptr<yacl::link::Context> lctx) {
+  utils::simulate(npc, [&](const std::shared_ptr<yacl::link::Context>& lctx) {
     auto obj = factory(conf, lctx);
 
     /* GIVEN */
@@ -567,7 +589,7 @@ TEST_P(ConversionTest, A2B) {
   const RuntimeConfig& conf = std::get<1>(GetParam());
   const size_t npc = std::get<2>(GetParam());
 
-  util::simulate(npc, [&](std::shared_ptr<yacl::link::Context> lctx) {
+  utils::simulate(npc, [&](const std::shared_ptr<yacl::link::Context>& lctx) {
     auto obj = factory(conf, lctx);
 
     /* GIVEN */
@@ -591,7 +613,7 @@ TEST_P(ConversionTest, B2A) {
   const RuntimeConfig& conf = std::get<1>(GetParam());
   const size_t npc = std::get<2>(GetParam());
 
-  util::simulate(npc, [&](std::shared_ptr<yacl::link::Context> lctx) {
+  utils::simulate(npc, [&](const std::shared_ptr<yacl::link::Context>& lctx) {
     auto obj = factory(conf, lctx);
 
     /* GIVEN */
@@ -616,7 +638,7 @@ TEST_P(ConversionTest, MSB) {
   const RuntimeConfig& conf = std::get<1>(GetParam());
   const size_t npc = std::get<2>(GetParam());
 
-  util::simulate(npc, [&](std::shared_ptr<yacl::link::Context> lctx) {
+  utils::simulate(npc, [&](const std::shared_ptr<yacl::link::Context>& lctx) {
     auto obj = factory(conf, lctx);
 
     if (!obj->hasKernel("msb_a2b")) {

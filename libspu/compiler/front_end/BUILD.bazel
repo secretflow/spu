@@ -25,6 +25,7 @@ spu_cc_library(
     visibility = ["//visibility:private"],  # Should not use this library directly
     deps = [
         "//libspu/compiler/common:compilation_context",
+        "//libspu/core:prelude",
         "@xla//xla/service:algebraic_simplifier",
         "@xla//xla/service:batch_dot_simplification",
         "@xla//xla/service:batchnorm_expander",
@@ -52,7 +53,6 @@ spu_cc_library(
         "@xla//xla/service:while_loop_simplifier",
         "@xla//xla/service:zero_sized_hlo_elimination",
         "@xla//xla/translate/hlo_to_mhlo:hlo_module_importer",
-        "@yacl//yacl/base:exception",
     ],
 )
 
@@ -60,7 +60,6 @@ spu_cc_library(
     name = "fe",
     srcs = ["fe.cc"],
     hdrs = ["fe.h"],
-    include_prefix = "tensorflow/compiler/mlir/hlo/include",
     visibility = ["//visibility:public"],
     deps = [
         ":hlo_importer",

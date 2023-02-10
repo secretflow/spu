@@ -50,7 +50,7 @@ std::string HashItem(absl::string_view item, absl::string_view masked_item,
   hash_algo->Update(masked_item);
   std::vector<uint8_t> hash = hash_algo->CumulativeHash();
 
-  YACL_ENFORCE(hash_len <= hash.size());
+  SPU_ENFORCE(hash_len <= hash.size());
 
   std::string hash_str(hash_len, '\0');
   std::memcpy(hash_str.data(), hash.data(), hash_len);
@@ -62,9 +62,9 @@ std::string HashItem(absl::string_view item, absl::string_view masked_item,
  * @brief do ec ponit mul
  *
  * @param sk_bytes  private key data
- * @param point_bytes comporessed ec point data
+ * @param point_bytes compressed ec point data
  * @param ec_group_nid ec group nid
- * @return std::string comporessed ec point data
+ * @return std::string compressed ec point data
  */
 std::string EcPointMul(absl::string_view sk_bytes,
                        absl::string_view point_bytes, int ec_group_nid) {
@@ -72,15 +72,15 @@ std::string EcPointMul(absl::string_view sk_bytes,
   EcGroupSt ec_group(ec_group_nid);
   BigNumSt bn_sk;
 
-  YACL_ENFORCE(sk_bytes.size() == kEccKeySize);
-  bn_sk.FromBytes(
-      absl::string_view((const char *)sk_bytes.data(), sk_bytes.length()),
-      ec_group.bn_n);
+  SPU_ENFORCE(sk_bytes.size() == kEccKeySize);
+  bn_sk.FromBytes(absl::string_view(static_cast<const char *>(sk_bytes.data()),
+                                    sk_bytes.length()),
+                  ec_group.bn_n);
 
   EcPointSt ec_point(ec_group);
   EC_POINT_oct2point(ec_group.get(), ec_point.get(),
-                     (const uint8_t *)point_bytes.data(), point_bytes.length(),
-                     bn_ctx.get());
+                     reinterpret_cast<const uint8_t *>(point_bytes.data()),
+                     point_bytes.length(), bn_ctx.get());
 
   EcPointSt ec_point2 = ec_point.PointMul(ec_group, bn_sk);
 
@@ -98,7 +98,7 @@ std::string EcPointMul(absl::string_view sk_bytes,
  * @param sk_bytes  private key data
  * @param item_bytes input data, map to ec point internal
  * @param ec_group_nid ec group nid
- * @return std::string comporessed ec point data
+ * @return std::string compressed ec point data
  */
 std::string ItemMul(absl::string_view sk_bytes, absl::string_view item_bytes,
                     int ec_group_nid) {
@@ -106,10 +106,10 @@ std::string ItemMul(absl::string_view sk_bytes, absl::string_view item_bytes,
   EcGroupSt ec_group(ec_group_nid);
   BigNumSt bn_sk;
 
-  YACL_ENFORCE(sk_bytes.size() == kEccKeySize);
-  bn_sk.FromBytes(
-      absl::string_view((const char *)sk_bytes.data(), sk_bytes.length()),
-      ec_group.bn_n);
+  SPU_ENFORCE(sk_bytes.size() == kEccKeySize);
+  bn_sk.FromBytes(absl::string_view(static_cast<const char *>(sk_bytes.data()),
+                                    sk_bytes.length()),
+                  ec_group.bn_n);
 
   EcPointSt ec_point =
       EcPointSt::CreateEcPointByHashToCurve(item_bytes, ec_group);
@@ -127,23 +127,25 @@ std::string ItemMul(absl::string_view sk_bytes, absl::string_view item_bytes,
 std::string BasicEcdhOprfServer::Evaluate(
     absl::string_view blinded_element) const {
   return EcPointMul(
-      absl::string_view((const char *)&private_key_[0], kEccKeySize),
+      absl::string_view(reinterpret_cast<const char *>(&private_key_[0]),
+                        kEccKeySize),
       blinded_element, ec_group_nid_);
 }
 
 std::string BasicEcdhOprfServer::FullEvaluate(
     yacl::ByteContainerView input) const {
-  absl::string_view input_sv =
-      absl::string_view((const char *)input.data(), input.size());
-  std::string point_bytes =
-      ItemMul(absl::string_view((const char *)&private_key_[0], kEccKeySize),
-              input_sv, ec_group_nid_);
+  absl::string_view input_sv = absl::string_view(
+      reinterpret_cast<const char *>(input.data()), input.size());
+  std::string point_bytes = ItemMul(
+      absl::string_view(reinterpret_cast<const char *>(&private_key_[0]),
+                        kEccKeySize),
+      input_sv, ec_group_nid_);
 
   return HashItem(input_sv, point_bytes, GetCompareLength(), hash_type_);
 }
 
 size_t BasicEcdhOprfServer::GetCompareLength() const {
-  if (compare_length_) {
+  if (compare_length_ != 0) {
     return compare_length_;
   }
 
@@ -161,21 +163,24 @@ BasicEcdhOprfClient::BasicEcdhOprfClient(CurveType type) : curve_type_(type) {
   BigNumSt bn_sk;
 
   bn_sk.FromBytes(
-      absl::string_view((const char *)&private_key_[0], kEccKeySize),
+      absl::string_view(reinterpret_cast<const char *>(&private_key_[0]),
+                        kEccKeySize),
       ec_group.bn_n);
 
   BigNumSt bn_sk_inv = bn_sk.Inverse(ec_group.bn_n);
 
   std::string sk_inv = bn_sk_inv.ToBytes();
-  YACL_ENFORCE(sk_inv_.size() == sk_inv.length());
+  SPU_ENFORCE(sk_inv_.size() == sk_inv.length());
 
   std::memcpy(sk_inv_.data(), sk_inv.data(), sk_inv.length());
   (void)curve_type_;
 }
 
 std::string BasicEcdhOprfClient::Blind(absl::string_view input) const {
-  return ItemMul(absl::string_view((const char *)&private_key_[0], kEccKeySize),
-                 input, ec_group_nid_);
+  return ItemMul(
+      absl::string_view(reinterpret_cast<const char *>(&private_key_[0]),
+                        kEccKeySize),
+      input, ec_group_nid_);
 }
 
 std::string BasicEcdhOprfClient::Finalize(
@@ -186,12 +191,14 @@ std::string BasicEcdhOprfClient::Finalize(
 }
 
 std::string BasicEcdhOprfClient::Unblind(absl::string_view input) const {
-  return EcPointMul(absl::string_view((const char *)&sk_inv_[0], kEccKeySize),
-                    input, ec_group_nid_);
+  return EcPointMul(
+      absl::string_view(reinterpret_cast<const char *>(sk_inv_.data()),
+                        kEccKeySize),
+      input, ec_group_nid_);
 }
 
 size_t BasicEcdhOprfClient::GetCompareLength() const {
-  if (compare_length_) {
+  if (compare_length_ != 0) {
     return compare_length_;
   }
 
@@ -211,7 +218,7 @@ std::string FourQPointMul(absl::string_view sk_bytes, point_t point) {
   // whether cofactor clearing is required or not,
   //
   bool status = ecc_mul(point, (digit_t *)sk_bytes.data(), A, false);
-  YACL_ENFORCE(status, "fourq ecc_mul error, status = {}", status);
+  SPU_ENFORCE(status, "fourq ecc_mul error, status = {}", status);
 
   std::string masked_point_bytes(kEccKeySize, '\0');
   encode(A, reinterpret_cast<uint8_t *>(masked_point_bytes.data()));
@@ -226,13 +233,13 @@ std::string FourQPointMul(absl::string_view sk_bytes,
 
   if ((point_bytes[15] & 0x80) != 0) {  // Is bit128(PublicKey) = 0?
     status = ECCRYPTO_ERROR_INVALID_PARAMETER;
-    YACL_THROW("fourq invalid point status = {}", static_cast<int>(status));
+    SPU_THROW("fourq invalid point status = {}", static_cast<int>(status));
   }
 
   // Also verifies that A is on the curve. If it is not, it fails
   status = decode(point_bytes.data(), A);
-  YACL_ENFORCE(status == ECCRYPTO_SUCCESS, "fourq decode error, status={}",
-               static_cast<int>(status));
+  SPU_ENFORCE(status == ECCRYPTO_SUCCESS, "fourq decode error, status={}",
+              static_cast<int>(status));
 
   return FourQPointMul(sk_bytes, A);
 }
@@ -278,7 +285,7 @@ std::string FourQBasicEcdhOprfServer::FullEvaluate(
 }
 
 size_t FourQBasicEcdhOprfServer::GetCompareLength() const {
-  if (compare_length_) {
+  if (compare_length_ != 0) {
     return compare_length_;
   }
   return kEc256CompareLength;
@@ -303,7 +310,9 @@ std::string FourQBasicEcdhOprfClient::Blind(absl::string_view input) const {
   FourQHashToCurvePoint(input, pt);
 
   return FourQPointMul(
-      absl::string_view((const char *)&private_key_[0], kEccKeySize), pt);
+      absl::string_view(reinterpret_cast<const char *>(&private_key_[0]),
+                        kEccKeySize),
+      pt);
 }
 
 std::string FourQBasicEcdhOprfClient::Finalize(
@@ -315,12 +324,14 @@ std::string FourQBasicEcdhOprfClient::Finalize(
 
 std::string FourQBasicEcdhOprfClient::Unblind(absl::string_view input) const {
   return FourQPointMul(
-      absl::string_view((const char *)&sk_inv_[0], kEccKeySize),
-      absl::MakeSpan((const uint8_t *)input.data(), input.size()));
+      absl::string_view(reinterpret_cast<const char *>(sk_inv_.data()),
+                        kEccKeySize),
+      absl::MakeSpan(reinterpret_cast<const uint8_t *>(input.data()),
+                     input.size()));
 }
 
 size_t FourQBasicEcdhOprfClient::GetCompareLength() const {
-  if (compare_length_) {
+  if (compare_length_ != 0) {
     return compare_length_;
   }
 

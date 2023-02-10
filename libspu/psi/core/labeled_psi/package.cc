@@ -17,14 +17,15 @@
 #include <utility>
 
 #include "spdlog/spdlog.h"
-#include "yacl/base/exception.h"
+
+#include "libspu/core/prelude.h"
 
 namespace spu::psi {
 
 PlainResultPackage ResultPackage::extract(
     const apsi::CryptoContext &crypto_context) {
-  YACL_ENFORCE(crypto_context.decryptor(),
-               "decryptor is not configured in CryptoContext");
+  SPU_ENFORCE(crypto_context.decryptor(),
+              "decryptor is not configured in CryptoContext");
 
   // SPDLOG_INFO("extract ciphertext");
 
@@ -51,7 +52,7 @@ PlainResultPackage ResultPackage::extract(
 
     std::vector<uint64_t> label_result_data;
     crypto_context.encoder()->decode(label_result_pt, label_result_data);
-    plain_rp.label_result.push_back(move(label_result_data));
+    plain_rp.label_result.push_back(std::move(label_result_data));
   }
 
   // Clear the label data

@@ -23,12 +23,12 @@
 #include "absl/time/clock.h"
 #include "absl/time/time.h"
 #include "spdlog/spdlog.h"
-#include "yacl/base/exception.h"
 #include "yacl/crypto/base/hash/hash_utils.h"
 #include "yacl/crypto/utils/rand.h"
 #include "yacl/utils/scope_guard.h"
 #include "yacl/utils/serialize.h"
 
+#include "libspu/core/prelude.h"
 #include "libspu/psi/core/ecdh_oprf_psi.h"
 #include "libspu/psi/core/ecdh_psi.h"
 #include "libspu/psi/cryptor/cryptor_selector.h"
@@ -51,8 +51,8 @@ constexpr size_t kCsvHeaderLineCount = 1;
 constexpr size_t kBucketSize = 1 << 20;
 
 bool HashListEqualTest(const std::vector<yacl::Buffer>& hash_list) {
-  YACL_ENFORCE(!hash_list.empty(), "unsupported hash_list size={}",
-               hash_list.size());
+  SPU_ENFORCE(!hash_list.empty(), "unsupported hash_list size={}",
+              hash_list.size());
   for (size_t idx = 1; idx < hash_list.size(); idx++) {
     if (hash_list[idx] == hash_list[0]) {
       continue;
@@ -64,12 +64,12 @@ bool HashListEqualTest(const std::vector<yacl::Buffer>& hash_list) {
 
 std::vector<uint8_t> ReadEcSecretKeyFile(const std::string& file_path) {
   auto file_byte_size = std::filesystem::file_size(file_path);
-  YACL_ENFORCE(file_byte_size == kEccKeySize,
-               "error format: key file bytes is not {}", kEccKeySize);
+  SPU_ENFORCE(file_byte_size == kEccKeySize,
+              "error format: key file bytes is not {}", kEccKeySize);
 
   std::ifstream rf(file_path, std::ios::in | std::ios::binary);
 
-  YACL_ENFORCE(rf.is_open(), "open file {} error", file_path);
+  SPU_ENFORCE(rf.is_open(), "open file {} error", file_path);
 
   std::vector<uint8_t> secret_key(kEccKeySize);
   rf.read(reinterpret_cast<char*>(secret_key.data()), secret_key.size());
@@ -112,7 +112,7 @@ PsiResultReport BucketPsi::Run() {
               .string(),
           !config_.input_params().precheck());
     });
-    // keep alived
+    // keep alive
     if (ic_mode_) {
       csv_check_f.get();
     } else {
@@ -148,7 +148,7 @@ PsiResultReport BucketPsi::Run() {
   }
 
   if ((static_cast<size_t>(config_.receiver_rank()) != lctx_->Rank() &&
-       config_.broadcast_result() == false) ||
+       !config_.broadcast_result()) ||
       (config_.psi_type() == PsiType::ECDH_OPRF_UNBALANCED_PSI_2PC_OFFLINE)) {
     report.set_intersection_count(-1);
     // no generate output file;
@@ -233,10 +233,10 @@ void BucketPsi::Init() {
 
   std::error_code ec;
   std::filesystem::create_directory(out_dir_path, ec);
-  YACL_ENFORCE(ec.value() == 0,
-               "failed to create output dir={} for path={}, reason = {}",
-               out_dir_path.string(), config_.output_params().path(),
-               ec.message());
+  SPU_ENFORCE(ec.value() == 0,
+              "failed to create output dir={} for path={}, reason = {}",
+              out_dir_path.string(), config_.output_params().path(),
+              ec.message());
 }
 
 org::interconnection::algos::psi::HandshakeResponse CheckSelectAlgo(
@@ -330,15 +330,15 @@ org::interconnection::algos::psi::HandshakeResponse CheckSelectAlgo(
   org::interconnection::algos::psi::EcdhPsiParamsResult ec_params_res;
   ec_params_res.set_curve(curve_name);
   ec_params_res.set_hash_method(hash_name);
-  YACL_ENFORCE(response.mutable_algo_params()->PackFrom(ec_params_res),
-               "handshake: pack EcdhPsiParamsResult fail");
+  SPU_ENFORCE(response.mutable_algo_params()->PackFrom(ec_params_res),
+              "handshake: pack EcdhPsiParamsResult fail");
   return response;
 }
 
 void BucketPsi::Handshake(uint64_t self_items_count) {
-  YACL_ENFORCE(config_.psi_type() == PsiType::ECDH_PSI_2PC,
-               "IC mode only support ECDH_PSI_2PC");
-  YACL_ENFORCE(lctx_->WorldSize() == 2, "ECDH_PSI_2PC only support 2PC");
+  SPU_ENFORCE(config_.psi_type() == PsiType::ECDH_PSI_2PC,
+              "IC mode only support ECDH_PSI_2PC");
+  SPU_ENFORCE(lctx_->WorldSize() == 2, "ECDH_PSI_2PC only support 2PC");
 
   if (lctx_->Rank() == 0) {
     org::interconnection::algos::psi::HandshakeRequest handshake_request;
@@ -359,24 +359,24 @@ void BucketPsi::Handshake(uint64_t self_items_count) {
     ec_params.add_hash_methods("SHA_256");
 
     handshake_request.add_supported_algos(PsiType_Name(PsiType::ECDH_PSI_2PC));
-    YACL_ENFORCE(handshake_request.add_algo_params()->PackFrom(ec_params),
-                 "handshake: pack message fail");
+    SPU_ENFORCE(handshake_request.add_algo_params()->PackFrom(ec_params),
+                "handshake: pack message fail");
 
     // send
     lctx_->Send(1, handshake_request.SerializeAsString(), "Handshake");
     // recv HandshakeResponse
     auto buf = lctx_->Recv(1, "Handshake_response");
     org::interconnection::algos::psi::HandshakeResponse response;
-    YACL_ENFORCE(response.ParseFromArray(buf.data(), buf.size()),
-                 "handshake: parse HandshakeResponse from array fail");
-    YACL_ENFORCE(response.header().error_code() == org::interconnection::OK,
-                 "{}", response.header().error_msg());
+    SPU_ENFORCE(response.ParseFromArray(buf.data(), buf.size()),
+                "handshake: parse HandshakeResponse from array fail");
+    SPU_ENFORCE(response.header().error_code() == org::interconnection::OK,
+                "{}", response.header().error_msg());
 
   } else {
     auto buf = lctx_->Recv(0, "Handshake");
     org::interconnection::algos::psi::HandshakeRequest handshake_request;
-    YACL_ENFORCE(handshake_request.ParseFromArray(buf.data(), buf.size()),
-                 "handshake: parse from array fail");
+    SPU_ENFORCE(handshake_request.ParseFromArray(buf.data(), buf.size()),
+                "handshake: parse from array fail");
 
     auto response = CheckSelectAlgo(handshake_request);
     // check algo and params
@@ -393,8 +393,8 @@ void BucketPsi::Handshake(uint64_t self_items_count) {
     }
 
     lctx_->SendAsync(0, response.SerializeAsString(), "Handshake_response");
-    YACL_ENFORCE(response.header().error_code() == org::interconnection::OK,
-                 "{}", response.header().error_msg());
+    SPU_ENFORCE(response.header().error_code() == org::interconnection::OK,
+                "{}", response.header().error_msg());
   }
 }
 
@@ -409,7 +409,7 @@ std::vector<uint64_t> BucketPsi::RunPsi(uint64_t& self_items_count) {
   if (config_.psi_type() == PsiType::ECDH_PSI_2PC) {
     EcdhPsiOptions psi_options;
     if (config_.curve_type() == CurveType::CURVE_INVALID_TYPE) {
-      YACL_THROW("Unsupported curve type");
+      SPU_THROW("Unsupported curve type");
     }
     psi_options.ecc_cryptor = CreateEccCryptor(config_.curve_type());
     psi_options.link_ctx = lctx_;
@@ -681,8 +681,7 @@ std::vector<uint64_t> BucketPsi::RunBucketPsi(uint64_t self_items_count) {
 void BucketPsi::GetResultIndices(
     const std::vector<std::string>& item_data_list,
     const std::vector<HashBucketCache::BucketItem>& item_list,
-    std::vector<std::string>& result_list,
-    std::vector<uint64_t>* indices) const {
+    std::vector<std::string>& result_list, std::vector<uint64_t>* indices) {
   indices->reserve(indices->size() + result_list.size());
   if (result_list.empty()) {
     return;

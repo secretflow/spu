@@ -18,8 +18,8 @@
 #include <vector>
 
 #include "openssl/evp.h"
-#include "yacl/base/exception.h"
 
+#include "libspu/core/prelude.h"
 #include "libspu/psi/cryptor/ecc_cryptor.h"
 
 namespace spu::psi {
@@ -31,7 +31,7 @@ class Sm2Cryptor : public IEccCryptor {
   explicit Sm2Cryptor(absl::Span<const uint8_t> key,
                       CurveType type = CurveType::CURVE_SM2)
       : curve_type_(type), ec_group_nid_(GetEcGroupId(type)) {
-    YACL_ENFORCE(key.size() == kEccKeySize);
+    SPU_ENFORCE(key.size() == kEccKeySize);
     std::memcpy(private_key_, key.data(), key.size());
   }
 
@@ -44,7 +44,8 @@ class Sm2Cryptor : public IEccCryptor {
 
   size_t GetMaskLength() const override;
 
-  std::vector<uint8_t> HashToCurve(absl::Span<const char> input) const override;
+  std::vector<uint8_t> HashToCurve(
+      absl::Span<const char> item_data) const override;
 
   static int GetEcGroupId(CurveType type) {
     switch (type) {
@@ -53,7 +54,7 @@ class Sm2Cryptor : public IEccCryptor {
       case CurveType::CURVE_SM2:
         return NID_sm2;
       default:
-        YACL_THROW("wron curve type:{}", static_cast<int>(type));
+        SPU_THROW("wrong curve type:{}", static_cast<int>(type));
         return -1;
     }
   }

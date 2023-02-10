@@ -28,7 +28,7 @@
 #include "libspu/mpc/common/prg_state.h"
 #include "libspu/mpc/semi2k/object.h"
 #include "libspu/mpc/semi2k/type.h"
-#include "libspu/mpc/util/ring_ops.h"
+#include "libspu/mpc/utils/ring_ops.h"
 
 namespace spu::mpc::semi2k {
 
@@ -89,7 +89,7 @@ ArrayRef B2A_Randbit::proc(KernelEvalContext* ctx, const ArrayRef& x) const {
 
   const size_t numel = x.numel();
   const size_t nbits = x.eltype().as<BShare>()->nbits();
-  YACL_ENFORCE(nbits <= SizeOf(field) * 8, "invalid nbits={}", nbits);
+  SPU_ENFORCE(nbits <= SizeOf(field) * 8, "invalid nbits={}", nbits);
   if (nbits == 0) {
     // special case, it's known to be zero.
     return ring_zeros(field, numel).as(makeType<AShrTy>(field));
@@ -147,8 +147,8 @@ ArrayRef MsbA2B::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
 
   // For if k > 2 parties does not collude with each other, then we can
   // construct two additive share and use carray out circuit directly.
-  YACL_ENFORCE(comm->getWorldSize() == 2, "only support for 2PC, got={}",
-               comm->getWorldSize());
+  SPU_ENFORCE(comm->getWorldSize() == 2, "only support for 2PC, got={}",
+              comm->getWorldSize());
 
   std::vector<ArrayRef> bshrs;
   const auto bty = makeType<BShrTy>(field);

@@ -47,9 +47,9 @@
 #include "xla/service/while_loop_simplifier.h"
 #include "xla/service/zero_sized_hlo_elimination.h"
 #include "xla/translate/hlo_to_mhlo/hlo_module_importer.h"
-#include "yacl/base/exception.h"
 
 #include "libspu/compiler/common/compilation_context.h"
+#include "libspu/core/prelude.h"
 
 #include "xla/service/hlo.pb.h"
 
@@ -127,7 +127,7 @@ void runHloPasses(xla::HloModule *module) {
 
   auto status = pipeline.Run(module).status();
 
-  YACL_ENFORCE(status.ok());
+  SPU_ENFORCE(status.ok());
 }
 } // namespace xla
 
@@ -141,7 +141,7 @@ HloImporter::parseXlaModuleFromString(const std::string &content) {
     // If parse as HloModuleProto fails, try HloProto.
     xla::HloProto hlo_proto;
     if (!hlo_proto.ParseFromString(content)) {
-      YACL_THROW("Failed to parse hlo module from string");
+      SPU_THROW("Failed to parse hlo module from string");
     }
     hlo_module = hlo_proto.hlo_module();
   }
@@ -158,12 +158,12 @@ HloImporter::parseXlaModuleFromString(const std::string &content) {
   auto module_config =
       xla::HloModule::CreateModuleConfigFromProto(hlo_module, debug_options);
   if (!module_config.status().ok()) {
-    YACL_THROW(module_config.status().error_message());
+    SPU_THROW(module_config.status().error_message());
   }
 
   auto module = xla::HloModule::CreateFromProto(hlo_module, *module_config);
   if (!module.status().ok()) {
-    YACL_THROW(module.status().error_message());
+    SPU_THROW(module.status().error_message());
   }
 
   xla::runHloPasses((*module).get());
@@ -176,7 +176,7 @@ HloImporter::parseXlaModuleFromString(const std::string &content) {
 
   auto status = importer.Import(**module);
   if (!status.ok()) {
-    YACL_THROW(status.error_message());
+    SPU_THROW(status.error_message());
   }
 
   return mlir_hlo;

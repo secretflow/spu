@@ -16,7 +16,7 @@
 
 #include <cstddef>
 
-#include "yacl/base/exception.h"
+#include "libspu/core/prelude.h"
 
 namespace spu::psi {
 

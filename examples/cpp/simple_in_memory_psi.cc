@@ -18,8 +18,7 @@
 // > bazel run //examples/cpp:simple_in_memory_psi -- --rank=1
 // clang-format on
 
-#include <assert.h>
-
+#include <cassert>
 #include <iostream>
 #include <random>
 #include <string>
@@ -58,7 +57,7 @@ std::vector<std::string> CreateSampleDataset(uint32_t data_size,
 
   for (size_t idx = 0; idx < data_size; idx++) {
     if (rank == 0) {
-      ret[idx] = kDataSetPrefix[bernoulli(random_gen)];
+      ret[idx] = kDataSetPrefix[static_cast<size_t>(bernoulli(random_gen))];
     } else {
       ret[idx] = kDataSetPrefix[rank];
     }
@@ -68,7 +67,7 @@ std::vector<std::string> CreateSampleDataset(uint32_t data_size,
   return ret;
 }
 
-size_t CheckPsiSize(std::vector<std::string> data_set) {
+size_t CheckPsiSize(const std::vector<std::string>& data_set) {
   size_t flow_prefix_size = 0;
   size_t compare_length = kDataSetPrefix[1].length();
   for (auto& item : data_set) {

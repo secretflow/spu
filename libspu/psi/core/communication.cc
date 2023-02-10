@@ -16,6 +16,8 @@
 
 #include "spdlog/spdlog.h"
 
+#include "libspu/core/prelude.h"
+
 #include "interconnection/algos/psi.pb.h"
 
 namespace spu::psi {
@@ -59,8 +61,8 @@ yacl::Buffer IcPsiBatchSerializer::Serialize(PsiDataBatch&& batch) {
 
 PsiDataBatch IcPsiBatchSerializer::Deserialize(yacl::ByteContainerView buf) {
   org::interconnection::algos::psi::EcdhPsiCipherBatch proto;
-  YACL_ENFORCE(proto.ParseFromArray(buf.data(), buf.size()),
-               "parse EcdhPsiCipherBatch proto fail");
+  SPU_ENFORCE(proto.ParseFromArray(buf.data(), buf.size()),
+              "parse EcdhPsiCipherBatch proto fail");
 
   PsiDataBatch batch;
   batch.item_num = proto.count();

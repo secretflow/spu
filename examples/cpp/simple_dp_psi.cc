@@ -62,12 +62,12 @@ spu::psi::DpPsiOptions GetDpPsiOptions(size_t items_size) {
 
 void WriteCsvData(const std::string& file_name,
                   const std::vector<std::string>& items,
-                  const std::vector<size_t>& intersection_idx) {
+                  const std::vector<size_t>& intersection_idxes) {
   std::ofstream out_file;
   out_file.open(file_name, std::ios::app);
 
-  for (size_t i = 0; i < intersection_idx.size(); ++i) {
-    out_file << items[intersection_idx[i]] << std::endl;
+  for (auto intersection_idx : intersection_idxes) {
+    out_file << items[intersection_idx] << std::endl;
   }
 
   out_file.close();
@@ -101,7 +101,7 @@ llvm::cl::opt<bool> PrecheckOpt(
 llvm::cl::opt<int> BucketSizeOpt("bucket_size", llvm::cl::init(1 << 20),
                                  llvm::cl::desc("hash bucket size"));
 
-int main(int argc, char** argv) {
+int main(int argc, char** argv) {  // NOLINT
   llvm::cl::ParseCommandLineOptions(argc, argv);
 
   auto hctx = MakeHalContext();
@@ -163,7 +163,7 @@ int main(int argc, char** argv) {
 
     WriteCsvData(OutPathOpt.getValue(), items, intersection_idx);
   } else {
-    YACL_THROW("wrong rank");
+    SPU_THROW("wrong rank");
   }
 
   return 0;

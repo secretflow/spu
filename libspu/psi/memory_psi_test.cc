@@ -56,7 +56,7 @@ std::vector<std::vector<std::string>> CreateMemoryTaskItems(
       idx_set.insert(dis(gen));
     }
     size_t j = 0;
-    for (auto& iter : idx_set) {
+    for (const auto& iter : idx_set) {
       ret[idx][iter] = ret[params.item_size.size()][j++];
     }
   }

@@ -21,10 +21,10 @@
 #include "absl/time/clock.h"
 #include "absl/time/time.h"
 #include "spdlog/spdlog.h"
-#include "yacl/base/exception.h"
 #include "yacl/crypto/base/hash/hash_utils.h"
 #include "yacl/utils/scope_guard.h"
 
+#include "libspu/core/prelude.h"
 #include "libspu/psi/io/io.h"
 
 namespace spu::psi {
@@ -41,21 +41,17 @@ bool CheckIfBOMExists(const std::string& file_path) {
   }
 
   // Only detect UTF-8 BOM right now.
-  if (first_line.length() >= 3 && first_line[0] == '\xEF' &&
-      first_line[1] == '\xBB' && first_line[2] == '\xBF') {
-    return true;
-  } else {
-    return false;
-  }
+  return first_line.length() >= 3 && first_line[0] == '\xEF' &&
+         first_line[1] == '\xBB' && first_line[2] == '\xBF';
 }
 }  // namespace
 
 CsvChecker::CsvChecker(const std::string& csv_path,
                        const std::vector<std::string>& schema_names,
                        const std::string& tmp_cache_dir, bool skip_check)
-    : data_count_(0), hash_digest_() {
-  YACL_ENFORCE(!CheckIfBOMExists(csv_path),
-               "the file {} starts with BOM(Byte Order Mark).", csv_path);
+    : data_count_(0) {
+  SPU_ENFORCE(!CheckIfBOMExists(csv_path),
+              "the file {} starts with BOM(Byte Order Mark).", csv_path);
 
   size_t duplicated_size = 0;
   std::vector<std::string> duplicated_keys;
@@ -89,8 +85,8 @@ CsvChecker::CsvChecker(const std::string& csv_path,
       std::vector<std::string> chosen;
       for (size_t col = 0; col < batch.Shape().cols; col++) {
         const auto& token = batch.At<std::string>(row, col);
-        YACL_ENFORCE(token.size(), "empty token in row={} field={}",
-                     data_count_ + row, schema_names[col]);
+        SPU_ENFORCE(token.size(), "empty token in row={} field={}",
+                    data_count_ + row, schema_names[col]);
         chosen.push_back(token);
       }
       // if combined_id is about 128bytes
@@ -124,7 +120,7 @@ CsvChecker::CsvChecker(const std::string& csv_path,
         tmp_cache_dir, keys_file, duplicated_keys_file);
     SPDLOG_INFO("Executing duplicated scripts: {}", cmd);
     int ret = system(cmd.c_str());
-    YACL_ENFORCE(ret == 0, "failed to execute cmd={}, ret={}", cmd, ret);
+    SPU_ENFORCE(ret == 0, "failed to execute cmd={}, ret={}", cmd, ret);
     io::FileIoOptions dup_keys_file_opts(duplicated_keys_file);
     auto duplicated_is = io::BuildInputStream(dup_keys_file_opts);
     std::string duplicated_key;
@@ -134,8 +130,8 @@ CsvChecker::CsvChecker(const std::string& csv_path,
       }
     }
     // not precise size if some key repeat more than 2 times.
-    YACL_ENFORCE(duplicated_size == 0, "found duplicated keys: {}",
-                 fmt::join(duplicated_keys, ","));
+    SPU_ENFORCE(duplicated_size == 0, "found duplicated keys: {}",
+                fmt::join(duplicated_keys, ","));
   }
 
   std::vector<uint8_t> digest = hash_obj.CumulativeHash();

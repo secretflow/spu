@@ -54,8 +54,8 @@ ArrayRef::ArrayRef(std::shared_ptr<yacl::Buffer> buf, Type eltype,
   if (numel != 0) {
     const auto elsize = static_cast<int64_t>(eltype_.size());
     const auto bufsize = buf_->size();
-    YACL_ENFORCE(offset >= 0 && offset + elsize <= bufsize);
-    YACL_ENFORCE(
+    SPU_ENFORCE(offset >= 0 && offset + elsize <= bufsize);
+    SPU_ENFORCE(
         (offset + stride * (numel - 1) >= 0) &&
             (offset + stride * (numel - 1) + elsize <= bufsize),
         "sanity failed, eltype={}, offset={}, stride={}, numel={}, buf.size={}",
@@ -63,7 +63,7 @@ ArrayRef::ArrayRef(std::shared_ptr<yacl::Buffer> buf, Type eltype,
   }
 }
 
-ArrayRef::ArrayRef(Type eltype, size_t numel)
+ArrayRef::ArrayRef(const Type& eltype, size_t numel)
     : ArrayRef(std::make_shared<yacl::Buffer>(numel * eltype.size()),
                eltype,  // eltype
                numel,   // numel
@@ -71,7 +71,7 @@ ArrayRef::ArrayRef(Type eltype, size_t numel)
                0        // offset
       ) {}
 
-ArrayRef makeConstantArrayRef(Type eltype, size_t numel) {
+ArrayRef makeConstantArrayRef(const Type& eltype, size_t numel) {
   return ArrayRef(std::make_shared<yacl::Buffer>(eltype.size()),
                   eltype,  // eltype
                   numel,   // numel
@@ -99,9 +99,8 @@ ArrayRef ArrayRef::clone() const {
 
 ArrayRef ArrayRef::as(const Type& new_ty, bool force) const {
   if (!force) {
-    YACL_ENFORCE(elsize() == new_ty.size(),
-                 "viewed type={} not equal to origin type={}", new_ty,
-                 eltype());
+    SPU_ENFORCE(elsize() == new_ty.size(),
+                "viewed type={} not equal to origin type={}", new_ty, eltype());
   }
 
   return {buf(), new_ty, numel(), stride(), offset()};
@@ -116,7 +115,7 @@ ArrayRef ArrayRef::slice(int64_t start, int64_t stop, int64_t stride) const {
   // corresponding dimension) with index values i, i + k, …, i + (m - 1) k
   // where and q and r are the quotient and remainder obtained by dividing j -
   // i by k: j - i = q k + r, so that i + (m - 1) k < j.
-  YACL_ENFORCE(start < numel_, "start={}, numel_={}", start, numel_);
+  SPU_ENFORCE(start < numel_, "start={}, numel_={}", start, numel_);
 
   const int64_t q = (stop - start) / stride;
   const int64_t r = (stop - start) % stride;

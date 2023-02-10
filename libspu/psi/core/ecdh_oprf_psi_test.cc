@@ -25,11 +25,11 @@
 #include "absl/strings/str_split.h"
 #include "gtest/gtest.h"
 #include "spdlog/spdlog.h"
-#include "yacl/base/exception.h"
 #include "yacl/crypto/tools/prg.h"
 #include "yacl/crypto/utils/rand.h"
 #include "yacl/link/test_util.h"
 
+#include "libspu/core/prelude.h"
 #include "libspu/psi/core/ecdh_oprf/ecdh_oprf_selector.h"
 #include "libspu/psi/utils/batch_provider.h"
 #include "libspu/psi/utils/cipher_store.h"
@@ -206,7 +206,7 @@ TEST_P(BasicEcdhOprfTest, Works) {
     if (std::binary_search(client_peer_evaluate_items.begin(),
                            client_peer_evaluate_items.end(),
                            client_self_evaluate_items[index])) {
-      YACL_ENFORCE(index < items_b_vec.size());
+      SPU_ENFORCE(index < items_b_vec.size());
       intersection.push_back(items_b_vec[index]);
     }
   }

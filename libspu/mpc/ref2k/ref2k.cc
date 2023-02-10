@@ -21,7 +21,7 @@
 #include "libspu/mpc/common/prg_state.h"
 #include "libspu/mpc/common/pub2k.h"
 #include "libspu/mpc/kernel.h"
-#include "libspu/mpc/util/ring_ops.h"
+#include "libspu/mpc/utils/ring_ops.h"
 
 namespace spu::mpc {
 namespace {
@@ -47,15 +47,15 @@ class Ref2kCommonTypeS : public Kernel {
  public:
   static constexpr char kBindName[] = "common_type_s";
 
-  Kind kind() const override { return Kind::kDynamic; }
+  Kind kind() const override { return Kind::Dynamic; }
 
   void evaluate(KernelEvalContext* ctx) const override {
     const Type& lhs = ctx->getParam<Type>(0);
     const Type& rhs = ctx->getParam<Type>(1);
 
     SPU_TRACE_MPC_DISP(ctx, lhs, rhs);
-    YACL_ENFORCE(lhs.isa<Ref2kSecrTy>(), "invalid type, got={}", lhs);
-    YACL_ENFORCE(rhs.isa<Ref2kSecrTy>(), "invalid type, got={}", rhs);
+    SPU_ENFORCE(lhs.isa<Ref2kSecrTy>(), "invalid type, got={}", lhs);
+    SPU_ENFORCE(rhs.isa<Ref2kSecrTy>(), "invalid type, got={}", rhs);
     ctx->setOutput(lhs);
   }
 };
@@ -64,16 +64,16 @@ class Ref2kCastTypeS : public Kernel {
  public:
   static constexpr char kBindName[] = "cast_type_s";
 
-  Kind kind() const override { return Kind::kDynamic; }
+  Kind kind() const override { return Kind::Dynamic; }
 
   void evaluate(KernelEvalContext* ctx) const override {
     const auto& in = ctx->getParam<ArrayRef>(0);
     const auto& to_type = ctx->getParam<Type>(1);
 
     SPU_TRACE_MPC_DISP(ctx, in, to_type);
-    YACL_ENFORCE(in.eltype() == to_type,
-                 "semi2k always use same bshare type, lhs={}, rhs={}",
-                 in.eltype(), to_type);
+    SPU_ENFORCE(in.eltype() == to_type,
+                "semi2k always use same bshare type, lhs={}, rhs={}",
+                in.eltype(), to_type);
     ctx->setOutput(in);
   }
 };
@@ -82,9 +82,9 @@ class Ref2kP2S : public UnaryKernel {
  public:
   static constexpr char kBindName[] = "p2s";
 
-  util::CExpr latency() const override { return util::Const(0); }
+  ce::CExpr latency() const override { return ce::Const(0); }
 
-  util::CExpr comm() const override { return util::Const(0); }
+  ce::CExpr comm() const override { return ce::Const(0); }
 
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in) const override {
     return in.as(makeType<Ref2kSecrTy>(in.eltype().as<Ring2k>()->field()));
@@ -95,9 +95,9 @@ class Ref2kS2P : public UnaryKernel {
  public:
   static constexpr char kBindName[] = "s2p";
 
-  util::CExpr latency() const override { return util::Const(0); }
+  ce::CExpr latency() const override { return ce::Const(0); }
 
-  util::CExpr comm() const override { return util::Const(0); }
+  ce::CExpr comm() const override { return ce::Const(0); }
 
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in) const override {
     return in.as(makeType<Pub2kTy>(in.eltype().as<Ring2k>()->field()));
@@ -108,15 +108,15 @@ class Ref2kRandS : public Kernel {
  public:
   static constexpr char kBindName[] = "rand_s";
 
-  util::CExpr latency() const override { return util::Const(0); }
+  ce::CExpr latency() const override { return ce::Const(0); }
 
-  util::CExpr comm() const override { return util::Const(0); }
+  ce::CExpr comm() const override { return ce::Const(0); }
 
   void evaluate(KernelEvalContext* ctx) const override {
     ctx->setOutput(proc(ctx, ctx->getParam<size_t>(0)));
   }
 
-  ArrayRef proc(KernelEvalContext* ctx, size_t size) const {
+  static ArrayRef proc(KernelEvalContext* ctx, size_t size) {
     SPU_TRACE_MPC_LEAF(ctx, size);
     auto* state = ctx->getState<PrgState>();
     const auto field = ctx->getState<Z2kState>()->getDefaultField();
@@ -130,9 +130,9 @@ class Ref2kNotS : public UnaryKernel {
  public:
   static constexpr char kBindName[] = "not_s";
 
-  util::CExpr latency() const override { return util::Const(0); }
+  ce::CExpr latency() const override { return ce::Const(0); }
 
-  util::CExpr comm() const override { return util::Const(0); }
+  ce::CExpr comm() const override { return ce::Const(0); }
 
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in) const override {
     SPU_TRACE_MPC_LEAF(ctx, in);
@@ -145,9 +145,9 @@ class Ref2kEqzS : public UnaryKernel {
  public:
   static constexpr char kBindName[] = "eqz_s";
 
-  util::CExpr latency() const override { return util::Const(0); }
+  ce::CExpr latency() const override { return ce::Const(0); }
 
-  util::CExpr comm() const override { return util::Const(0); }
+  ce::CExpr comm() const override { return ce::Const(0); }
 
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in) const override {
     SPU_TRACE_MPC_LEAF(ctx, in);
@@ -160,14 +160,14 @@ class Ref2kAddSS : public BinaryKernel {
  public:
   static constexpr char kBindName[] = "add_ss";
 
-  util::CExpr latency() const override { return util::Const(0); }
+  ce::CExpr latency() const override { return ce::Const(0); }
 
-  util::CExpr comm() const override { return util::Const(0); }
+  ce::CExpr comm() const override { return ce::Const(0); }
 
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& lhs,
                 const ArrayRef& rhs) const override {
     SPU_TRACE_MPC_LEAF(ctx, lhs, rhs);
-    YACL_ENFORCE(lhs.eltype() == rhs.eltype());
+    SPU_ENFORCE(lhs.eltype() == rhs.eltype());
     return ring_add(lhs, rhs).as(lhs.eltype());
   }
 };
@@ -176,9 +176,9 @@ class Ref2kAddSP : public BinaryKernel {
  public:
   static constexpr char kBindName[] = "add_sp";
 
-  util::CExpr latency() const override { return util::Const(0); }
+  ce::CExpr latency() const override { return ce::Const(0); }
 
-  util::CExpr comm() const override { return util::Const(0); }
+  ce::CExpr comm() const override { return ce::Const(0); }
 
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& lhs,
                 const ArrayRef& rhs) const override {
@@ -191,14 +191,14 @@ class Ref2kMulSS : public BinaryKernel {
  public:
   static constexpr char kBindName[] = "mul_ss";
 
-  util::CExpr latency() const override { return util::Const(0); }
+  ce::CExpr latency() const override { return ce::Const(0); }
 
-  util::CExpr comm() const override { return util::Const(0); }
+  ce::CExpr comm() const override { return ce::Const(0); }
 
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& lhs,
                 const ArrayRef& rhs) const override {
     SPU_TRACE_MPC_LEAF(ctx, lhs, rhs);
-    YACL_ENFORCE(lhs.eltype() == rhs.eltype());
+    SPU_ENFORCE(lhs.eltype() == rhs.eltype());
     return ring_mul(lhs, rhs).as(lhs.eltype());
   }
 };
@@ -207,9 +207,9 @@ class Ref2kMulSP : public BinaryKernel {
  public:
   static constexpr char kBindName[] = "mul_sp";
 
-  util::CExpr latency() const override { return util::Const(0); }
+  ce::CExpr latency() const override { return ce::Const(0); }
 
-  util::CExpr comm() const override { return util::Const(0); }
+  ce::CExpr comm() const override { return ce::Const(0); }
 
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& lhs,
                 const ArrayRef& rhs) const override {
@@ -222,16 +222,16 @@ class Ref2kMatMulSS : public MatmulKernel {
  public:
   static constexpr char kBindName[] = "mmul_ss";
 
-  util::CExpr latency() const override { return util::Const(0); }
+  ce::CExpr latency() const override { return ce::Const(0); }
 
-  util::CExpr comm() const override { return util::Const(0); }
+  ce::CExpr comm() const override { return ce::Const(0); }
 
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& lhs,
-                const ArrayRef& rhs, size_t M, size_t N,
-                size_t K) const override {
+                const ArrayRef& rhs, size_t m, size_t n,
+                size_t k) const override {
     SPU_TRACE_MPC_LEAF(ctx, lhs, rhs);
-    YACL_ENFORCE(lhs.eltype() == rhs.eltype());
-    return ring_mmul(lhs, rhs, M, N, K).as(lhs.eltype());
+    SPU_ENFORCE(lhs.eltype() == rhs.eltype());
+    return ring_mmul(lhs, rhs, m, n, k).as(lhs.eltype());
   }
 };
 
@@ -239,15 +239,15 @@ class Ref2kMatMulSP : public MatmulKernel {
  public:
   static constexpr char kBindName[] = "mmul_sp";
 
-  util::CExpr latency() const override { return util::Const(0); }
+  ce::CExpr latency() const override { return ce::Const(0); }
 
-  util::CExpr comm() const override { return util::Const(0); }
+  ce::CExpr comm() const override { return ce::Const(0); }
 
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& lhs,
-                const ArrayRef& rhs, size_t M, size_t N,
-                size_t K) const override {
+                const ArrayRef& rhs, size_t m, size_t n,
+                size_t k) const override {
     SPU_TRACE_MPC_LEAF(ctx, lhs, rhs);
-    return ring_mmul(lhs, rhs, M, N, K).as(lhs.eltype());
+    return ring_mmul(lhs, rhs, m, n, k).as(lhs.eltype());
   }
 };
 
@@ -255,14 +255,14 @@ class Ref2kAndSS : public BinaryKernel {
  public:
   static constexpr char kBindName[] = "and_ss";
 
-  util::CExpr latency() const override { return util::Const(0); }
+  ce::CExpr latency() const override { return ce::Const(0); }
 
-  util::CExpr comm() const override { return util::Const(0); }
+  ce::CExpr comm() const override { return ce::Const(0); }
 
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& lhs,
                 const ArrayRef& rhs) const override {
     SPU_TRACE_MPC_LEAF(ctx, lhs, rhs);
-    YACL_ENFORCE(lhs.eltype() == rhs.eltype());
+    SPU_ENFORCE(lhs.eltype() == rhs.eltype());
     return ring_and(lhs, rhs).as(lhs.eltype());
   }
 };
@@ -271,9 +271,9 @@ class Ref2kAndSP : public BinaryKernel {
  public:
   static constexpr char kBindName[] = "and_sp";
 
-  util::CExpr latency() const override { return util::Const(0); }
+  ce::CExpr latency() const override { return ce::Const(0); }
 
-  util::CExpr comm() const override { return util::Const(0); }
+  ce::CExpr comm() const override { return ce::Const(0); }
 
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& lhs,
                 const ArrayRef& rhs) const override {
@@ -286,14 +286,14 @@ class Ref2kXorSS : public BinaryKernel {
  public:
   static constexpr char kBindName[] = "xor_ss";
 
-  util::CExpr latency() const override { return util::Const(0); }
+  ce::CExpr latency() const override { return ce::Const(0); }
 
-  util::CExpr comm() const override { return util::Const(0); }
+  ce::CExpr comm() const override { return ce::Const(0); }
 
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& lhs,
                 const ArrayRef& rhs) const override {
     SPU_TRACE_MPC_LEAF(ctx, lhs, rhs);
-    YACL_ENFORCE(lhs.eltype() == rhs.eltype());
+    SPU_ENFORCE(lhs.eltype() == rhs.eltype());
     return ring_xor(lhs, rhs).as(lhs.eltype());
   }
 };
@@ -302,9 +302,9 @@ class Ref2kXorSP : public BinaryKernel {
  public:
   static constexpr char kBindName[] = "xor_sp";
 
-  util::CExpr latency() const override { return util::Const(0); }
+  ce::CExpr latency() const override { return ce::Const(0); }
 
-  util::CExpr comm() const override { return util::Const(0); }
+  ce::CExpr comm() const override { return ce::Const(0); }
 
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& lhs,
                 const ArrayRef& rhs) const override {
@@ -317,9 +317,9 @@ class Ref2kLShiftS : public ShiftKernel {
  public:
   static constexpr char kBindName[] = "lshift_s";
 
-  util::CExpr latency() const override { return util::Const(0); }
+  ce::CExpr latency() const override { return ce::Const(0); }
 
-  util::CExpr comm() const override { return util::Const(0); }
+  ce::CExpr comm() const override { return ce::Const(0); }
 
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in,
                 size_t bits) const override {
@@ -332,9 +332,9 @@ class Ref2kRShiftS : public ShiftKernel {
  public:
   static constexpr char kBindName[] = "rshift_s";
 
-  util::CExpr latency() const override { return util::Const(0); }
+  ce::CExpr latency() const override { return ce::Const(0); }
 
-  util::CExpr comm() const override { return util::Const(0); }
+  ce::CExpr comm() const override { return ce::Const(0); }
 
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in,
                 size_t bits) const override {
@@ -347,15 +347,15 @@ class Ref2kBitrevS : public BitrevKernel {
  public:
   static constexpr char kBindName[] = "bitrev_s";
 
-  util::CExpr latency() const override { return util::Const(0); }
+  ce::CExpr latency() const override { return ce::Const(0); }
 
-  util::CExpr comm() const override { return util::Const(0); }
+  ce::CExpr comm() const override { return ce::Const(0); }
 
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in, size_t start,
                 size_t end) const override {
     const auto field = in.eltype().as<Ring2k>()->field();
-    YACL_ENFORCE(start <= end);
-    YACL_ENFORCE(end <= SizeOf(field) * 8);
+    SPU_ENFORCE(start <= end);
+    SPU_ENFORCE(end <= SizeOf(field) * 8);
 
     SPU_TRACE_MPC_LEAF(ctx, in, start, end);
     return ring_bitrev(in, start, end).as(in.eltype());
@@ -366,9 +366,9 @@ class Ref2kARShiftS : public ShiftKernel {
  public:
   static constexpr char kBindName[] = "arshift_s";
 
-  util::CExpr latency() const override { return util::Const(0); }
+  ce::CExpr latency() const override { return ce::Const(0); }
 
-  util::CExpr comm() const override { return util::Const(0); }
+  ce::CExpr comm() const override { return ce::Const(0); }
 
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in,
                 size_t bits) const override {
@@ -387,9 +387,9 @@ class Ref2kTruncS : public TruncAKernel {
     return TruncLsbRounding::Nearest;
   }
 
-  util::CExpr latency() const override { return util::Const(0); }
+  ce::CExpr latency() const override { return ce::Const(0); }
 
-  util::CExpr comm() const override { return util::Const(0); }
+  ce::CExpr comm() const override { return ce::Const(0); }
 
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in,
                 size_t bits) const override {
@@ -412,9 +412,9 @@ class Ref2kMsbS : public UnaryKernel {
  public:
   static constexpr char kBindName[] = "msb_s";
 
-  util::CExpr latency() const override { return util::Const(0); }
+  ce::CExpr latency() const override { return ce::Const(0); }
 
-  util::CExpr comm() const override { return util::Const(0); }
+  ce::CExpr comm() const override { return ce::Const(0); }
 
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in) const override {
     SPU_TRACE_MPC_LEAF(ctx, in);
@@ -470,17 +470,17 @@ std::unique_ptr<Object> makeRef2kProtocol(
 
 std::vector<ArrayRef> Ref2kIo::toShares(const ArrayRef& raw, Visibility vis,
                                         int owner_rank) const {
-  YACL_ENFORCE(raw.eltype().isa<RingTy>(), "expected RingTy, got {}",
-               raw.eltype());
+  SPU_ENFORCE(raw.eltype().isa<RingTy>(), "expected RingTy, got {}",
+              raw.eltype());
   const auto field = raw.eltype().as<Ring2k>()->field();
-  YACL_ENFORCE(field == field_, "expect raw value encoded in field={}, got={}",
-               field_, field);
+  SPU_ENFORCE(field == field_, "expect raw value encoded in field={}, got={}",
+              field_, field);
 
   if (vis == VIS_PUBLIC) {
     const auto share = raw.as(makeType<Pub2kTy>(field));
     return std::vector<ArrayRef>(world_size_, share);
   }
-  YACL_ENFORCE(vis == VIS_SECRET, "expected SECRET, got {}", vis);
+  SPU_ENFORCE(vis == VIS_SECRET, "expected SECRET, got {}", vis);
 
   // directly view the data as secret.
   const auto share = raw.as(makeType<Ref2kSecrTy>(field));

@@ -22,8 +22,8 @@ spu_cc_library(
     hdrs = ["value.h"],
     deps = [
         "//libspu/core:ndarray_ref",
+        "//libspu/core:prelude",
         "//libspu/core:shape_util",
-        "@yacl//yacl/base:exception",
     ],
 )
 

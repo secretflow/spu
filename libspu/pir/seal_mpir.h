@@ -19,10 +19,10 @@
 #include <vector>
 
 #include "spdlog/spdlog.h"
-#include "yacl/base/exception.h"
 #include "yacl/crypto/base/symmetric_crypto.h"
 #include "yacl/utils/parallel.h"
 
+#include "libspu/core/prelude.h"
 #include "libspu/pir/seal_pir.h"
 #include "libspu/psi/core/cuckoo_index.h"
 
@@ -51,7 +51,7 @@ class MultiQuery {
              const psi::CuckooIndex::Options &cuckoo_params,
              yacl::ByteContainerView seed)
       : query_options_(query_options), cuckoo_params_(cuckoo_params) {
-    YACL_ENFORCE(seed.size() <= oracle_seed_.size());
+    SPU_ENFORCE(seed.size() <= oracle_seed_.size());
 
     std::memcpy(oracle_seed_.data(), seed.data(), seed.size());
     uint128_t crypto_key, crypto_iv = 0;

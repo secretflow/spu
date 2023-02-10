@@ -37,7 +37,7 @@ TEST(ConstantsTest, Constant) {
 
   // fxp scalar
   {
-    Value x = constant(&ctx, 0.0f);
+    Value x = constant(&ctx, 0.0F);
     EXPECT_TRUE(x.shape().empty());
     EXPECT_TRUE(x.strides().empty());
     EXPECT_EQ(x.numel(), 1);
@@ -47,7 +47,7 @@ TEST(ConstantsTest, Constant) {
 
   // tensor
   {
-    xt::xarray<float> raw{1.0f};
+    xt::xarray<float> raw{1.0F};
     Value x = constant(&ctx, raw);
     EXPECT_THAT(x.shape(), testing::ElementsAre(1));
     EXPECT_THAT(x.strides(), testing::ElementsAre(0));
@@ -58,7 +58,7 @@ TEST(ConstantsTest, Constant) {
 
   // tensor broadcast
   {
-    xt::xarray<float> raw{{1.0f, 2.0f}};
+    xt::xarray<float> raw{{1.0F, 2.0F}};
     Value x = constant(&ctx, raw, {6, 2});
     EXPECT_THAT(x.shape(), testing::ElementsAre(6, 2));
     EXPECT_THAT(x.strides(), testing::ElementsAre(0, 1));

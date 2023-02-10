@@ -227,6 +227,33 @@ Effects: MemoryEffects::Effect{}
 | :----: | ----------- |
 &laquo;unnamed&raquo; | statically shaped tensor of PPHlo public type or PPHlo secret type values
 
+### `pphlo.case` (::mlir::pphlo::CaseOp)
+
+Switch-Case operator
+
+Returns the result of executing `branches[index]`. If `index` is < 0 or >=
+N, then `branches[N-1]` is executed as the default branch.
+
+The type of the returned values of each branch must be the same and equal
+to the types of the values returned by the operation.
+
+Note that if index is public only one of the branches will be executed depending on the value
+of index, otherwise all branches will be executed and select results based on index value.
+
+Traits: RecursiveMemoryEffects, SingleBlockImplicitTerminator<ReturnOp>
+
+#### Operands:
+
+| Operand | Description |
+| :-----: | ----------- |
+| `index` | statically shaped tensor of public integer type or secret integer type values
+
+#### Results:
+
+| Result | Description |
+| :----: | ----------- |
+&laquo;unnamed&raquo; | statically shaped tensor of PPHlo public type or PPHlo secret type values
+
 ### `pphlo.ceil` (::mlir::pphlo::CeilOp)
 
 Ceil operator

@@ -20,8 +20,9 @@
 #include <vector>
 
 #include "apsi/psi_params.h"
-#include "yacl/base/exception.h"
 #include "yacl/link/link.h"
+
+#include "libspu/core/prelude.h"
 
 #include "libspu/psi/core/labeled_psi/serializable.pb.h"
 
@@ -42,7 +43,7 @@ struct SEALParams {
       // get plain_modulus_bits by plain_modulus
       return std::floor(std::log2(plain_modulus));
     } else {
-      YACL_THROW(
+      SPU_THROW(
           "SEALParams error, must set plain_modulus or plain_modulus_bits");
     }
   }

@@ -22,16 +22,16 @@
 #include "absl/strings/str_join.h"
 #include "absl/strings/string_view.h"
 #include "spdlog/spdlog.h"
-#include "yacl/base/exception.h"
 #include "yacl/crypto/utils/rand.h"
 
+#include "libspu/core/prelude.h"
 #include "libspu/psi/utils/utils.h"
 
 namespace spu::psi {
 
 std::vector<std::string> MemoryBatchProvider::ReadNextBatch(size_t batch_size) {
   std::vector<std::string> batch;
-  YACL_ENFORCE(cursor_index_ <= items_.size());
+  SPU_ENFORCE(cursor_index_ <= items_.size());
   size_t n_items = std::min(batch_size, items_.size() - cursor_index_);
   batch.insert(batch.end(), items_.begin() + cursor_index_,
                items_.begin() + cursor_index_ + n_items);
@@ -59,9 +59,9 @@ std::vector<std::string> CsvBatchProvider::ReadNextBatch(size_t batch_size) {
     std::vector<absl::string_view> tokens = absl::StrSplit(line, ',');
     std::vector<absl::string_view> targets;
     for (size_t fidx : analyzer_.target_indices()) {
-      YACL_ENFORCE(fidx < tokens.size(),
-                   "Illegal line due to no field at index={}, line={}", fidx,
-                   line);
+      SPU_ENFORCE(fidx < tokens.size(),
+                  "Illegal line due to no field at index={}, line={}", fidx,
+                  line);
       targets.push_back(absl::StripAsciiWhitespace(tokens[fidx]));
     }
     ret.push_back(KeysJoin(targets));
@@ -86,7 +86,7 @@ std::vector<std::string> CachedCsvBatchProvider::ReadNextBatch(
     size_t batch_size) {
   std::vector<std::string> batch;
 
-  YACL_ENFORCE(cursor_index_ <= bucket_items_[bucket_index_].size());
+  SPU_ENFORCE(cursor_index_ <= bucket_items_[bucket_index_].size());
 
   size_t n_items =
       std::min(batch_size, bucket_items_[bucket_index_].size() - cursor_index_);
@@ -97,7 +97,7 @@ std::vector<std::string> CachedCsvBatchProvider::ReadNextBatch(
 
   if (n_items < batch_size) {
     size_t next_index = (bucket_index_ + 1) % 2;
-    if (bucket_items_[next_index].size() > 0) {
+    if (!bucket_items_[next_index].empty()) {
       size_t left_size = batch_size - n_items;
 
       cursor_index_ = 0;
@@ -133,7 +133,7 @@ void CachedCsvBatchProvider::ReadAndShuffle(size_t read_index,
 
     bucket_items_[idx] = provider_->ReadNextBatch(bucket_size_);
 
-    if (shuffle_ && bucket_items_[idx].size() > 0) {
+    if (shuffle_ && !bucket_items_[idx].empty()) {
       std::mt19937 rng(yacl::crypto::SecureRandU64());
       std::shuffle(bucket_items_[idx].begin(), bucket_items_[idx].end(), rng);
     }

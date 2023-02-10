@@ -67,8 +67,8 @@ private:
     // Get body return
     bool reinfer = false;
     auto *terminator = reduceOp.getBody().back().getTerminator();
-    YACL_ENFORCE(terminator &&
-                 terminator->getNumOperands() == reduceOp->getNumResults());
+    SPU_ENFORCE(terminator &&
+                terminator->getNumOperands() == reduceOp->getNumResults());
     std::vector<Visibility> ret_vis;
     for (size_t idx = 0; idx < reduceOp->getNumResults(); ++idx) {
       auto resultVis =

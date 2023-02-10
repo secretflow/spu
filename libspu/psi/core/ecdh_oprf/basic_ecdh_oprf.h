@@ -22,9 +22,9 @@
 #include "openssl/crypto.h"
 #include "openssl/rand.h"
 #include "spdlog/spdlog.h"
-#include "yacl/base/exception.h"
 #include "yacl/crypto/base/hash/hash_interface.h"
 
+#include "libspu/core/prelude.h"
 #include "libspu/psi/core/ecdh_oprf/ecdh_oprf.h"
 #include "libspu/psi/cryptor/ecc_cryptor.h"
 #include "libspu/psi/cryptor/sm2_cryptor.h"

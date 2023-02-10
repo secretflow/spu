@@ -30,12 +30,12 @@ extern "C" {
 #include "curve25519.h"
 }
 
-#include "yacl/base/exception.h"
 #include "yacl/crypto/base/hash/hash_utils.h"
 #include "yacl/crypto/base/symmetric_crypto.h"
 #include "yacl/crypto/tools/prg.h"
 #include "yacl/utils/parallel.h"
 
+#include "libspu/core/prelude.h"
 #include "libspu/psi/core/communication.h"
 #include "libspu/psi/core/cuckoo_index.h"
 #include "libspu/psi/core/polynomial/polynomial.h"
@@ -47,7 +47,7 @@ namespace spu::psi {
 namespace {
 
 constexpr uint32_t kLinkRecvTimeout = 30 * 60 * 1000;
-// first prime over 2^256, used as module for polynoimal interpolate
+// first prime over 2^256, used as module for polynomial interpolate
 std::string kPrimeOver256bHexStr =
     "010000000000000000000000000000000000000000000000000000000000000129";
 
@@ -91,7 +91,7 @@ struct MiniPsiSendCtx {
       PsiDataBatch coeff_batch =
           PsiDataBatch::Deserialize(link_ctx->Recv(link_ctx->NextRank(), tag));
       // Fetch y^b.
-      YACL_ENFORCE(coeff_batch.flatten_bytes.size() % kHashSize == 0);
+      SPU_ENFORCE(coeff_batch.flatten_bytes.size() % kHashSize == 0);
       size_t num_items = coeff_batch.flatten_bytes.size() / kHashSize;
 
       if (num_items > 0) {
@@ -121,17 +121,18 @@ struct MiniPsiSendCtx {
         polynomial_eval_values[idx] = spu::psi::EvalPolynomial(
             polynomial_coeff, absl::string_view(items_hash[idx]), prime256_str);
 
-        std::array<uint8_t, kKeySize> ideal_permuation;
-        // Ideal Permuation
-        aes_ecb->Decrypt(
-            absl::MakeSpan((uint8_t*)&polynomial_eval_values[idx][0],
-                           polynomial_eval_values[idx].length()),
-            absl::MakeSpan(ideal_permuation));
+        std::array<uint8_t, kKeySize> ideal_permutation;
+        // Ideal Permutation
+        aes_ecb->Decrypt(absl::MakeSpan(reinterpret_cast<uint8_t*>(
+                                            polynomial_eval_values[idx].data()),
+                                        polynomial_eval_values[idx].length()),
+                         absl::MakeSpan(ideal_permutation));
 
         std::string masked(kKeySize, '\0');
 
-        curve25519_donna((unsigned char*)(masked.data()), private_key.data(),
-                         (const unsigned char*)ideal_permuation.data());
+        curve25519_donna(
+            reinterpret_cast<unsigned char*>(masked.data()), private_key.data(),
+            static_cast<const unsigned char*>(ideal_permutation.data()));
 
         yacl::crypto::Sha256Hash sha256;
         sha256.Update(items[idx].data());
@@ -162,7 +163,7 @@ struct MiniPsiSendCtx {
       auto items = batch_provider->ReadNextBatch(batch_size);
       batch.is_last_batch = items.empty();
       // Mask and Send this batch.
-      if (items.size() > 0) {
+      if (!items.empty()) {
         batch.flatten_bytes.reserve(items.size() * kFinalCompareBytes);
 
         for (const auto& item : items) {
@@ -227,18 +228,18 @@ struct MiniPsiRecvCtx {
 
     std::vector<absl::string_view> poly_x(items_hash.size());
     std::vector<absl::string_view> poly_y(items_hash.size());
-    std::vector<std::array<uint8_t, kKeySize>> poly_y_permuation(
+    std::vector<std::array<uint8_t, kKeySize>> poly_y_permutation(
         items_hash.size());
 
     for (size_t idx = 0; idx < items_hash.size(); idx++) {
       poly_x[idx] = absl::string_view(items_hash[idx]);
 
-      // Ideal Permuation
+      // Ideal Permutation
       aes_ecb->Encrypt(absl::MakeSpan(seeds_point[idx]),
-                       absl::MakeSpan(poly_y_permuation[idx]));
+                       absl::MakeSpan(poly_y_permutation[idx]));
 
       poly_y[idx] = absl::string_view(
-          reinterpret_cast<const char*>(poly_y_permuation[idx].data()),
+          reinterpret_cast<const char*>(poly_y_permutation[idx].data()),
           kKeySize);
     }
 
@@ -291,8 +292,8 @@ struct MiniPsiRecvCtx {
       PsiDataBatch masked_eval_batch =
           PsiDataBatch::Deserialize(link_ctx->Recv(link_ctx->NextRank(), tag));
       // Fetch y^b.
-      YACL_ENFORCE(
-          masked_eval_batch.flatten_bytes.size() % kFinalCompareBytes == 0);
+      SPU_ENFORCE(masked_eval_batch.flatten_bytes.size() % kFinalCompareBytes ==
+                  0);
       size_t num_items =
           masked_eval_batch.flatten_bytes.size() / kFinalCompareBytes;
 
@@ -380,7 +381,7 @@ void MiniPsiSend(const std::shared_ptr<yacl::link::Context>& link_ctx,
   //
   // TODO: whether use zk to prove sender's public_key
   //    https://github.com/osu-crypto/MiniPSI/blob/master/libPSI/MiniPSI/MiniSender.cpp#L601
-  //    MiniPSI code use zk prove public_key (discret logirithm)
+  //    MiniPSI code use zk prove public_key (discrete logarithm)
   //    in the origin paper no use zk
   //
   link_ctx->SendAsync(
@@ -428,7 +429,7 @@ std::vector<std::string> MiniPsiRecv(
 
   f_interpolate.get();
 
-  // send poloynoimal coefficient to sender
+  // send polynomial coefficient to sender
   recv_ctx.SendPolynomialCoeff(link_ctx);
 
   std::future<void> f_mask_peer =
@@ -509,8 +510,6 @@ void MiniPsiSendBatch(const std::shared_ptr<yacl::link::Context>& link_ctx,
   for (auto& f : futures) {
     f.get();
   }
-
-  return;
 }
 
 std::vector<std::string> MiniPsiRecvBatch(
@@ -535,7 +534,7 @@ std::vector<std::string> MiniPsiRecvBatch(
 
   cuckoo_index.Insert(absl::MakeSpan(items_hash_u128));
 
-  YACL_ENFORCE(cuckoo_index.stash().empty(), "stash size not 0");
+  SPU_ENFORCE(cuckoo_index.stash().empty(), "stash size not 0");
 
   size_t nthreads = yacl::intraop_default_num_threads();
   // send thread num
@@ -569,7 +568,7 @@ std::vector<std::string> MiniPsiRecvBatch(
       std::unordered_map<std::string, size_t> batch_map;
       for (size_t batch_idx = 0; batch_idx < current_batch_size; batch_idx++) {
         // real data
-        if (ck_bins[idx + batch_idx].IsEmpty() == false) {
+        if (!ck_bins[idx + batch_idx].IsEmpty()) {
           batch_items.push_back(items[ck_bins[idx + batch_idx].InputIdx()]);
           batch_map.emplace(items[ck_bins[idx + batch_idx].InputIdx()],
                             ck_bins[idx + batch_idx].InputIdx());
@@ -586,8 +585,8 @@ std::vector<std::string> MiniPsiRecvBatch(
       std::vector<std::string> intersection =
           MiniPsiRecv(thread_link_ctx, batch_items);
 
-      for (size_t batch_idx = 0; batch_idx < intersection.size(); ++batch_idx) {
-        auto it = batch_map.find(intersection[batch_idx]);
+      for (auto& batch_idx : intersection) {
+        auto it = batch_map.find(batch_idx);
         ret_idx_vec[thread_idx].push_back(it->second);
       }
     }
@@ -613,8 +612,9 @@ std::vector<std::string> MiniPsiRecvBatch(
   }
   std::sort(ret_idx.begin(), ret_idx.end());
 
-  for (size_t idx = 0; idx < ret_idx.size(); ++idx) {
-    ret.push_back(items[ret_idx[idx]]);
+  ret.reserve(ret_idx.size());
+  for (auto idx : ret_idx) {
+    ret.push_back(items[idx]);
   }
 
   return ret;

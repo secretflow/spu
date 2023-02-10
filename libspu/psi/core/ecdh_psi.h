@@ -59,14 +59,14 @@ struct EcdhPsiOptions {
   // - otherwise the psi results should only revealed to the `target_rank`
   size_t target_rank = yacl::link::kAllRank;
 
-  // Fnish batch callback. Could be used for logging or update progress.
+  // Finish batch callback. Could be used for logging or update progress.
   FinishBatchHook on_batch_finished;
 };
 
 // batch handler for 2-party ecdh psi
 class EcdhPsiContext {
  public:
-  explicit EcdhPsiContext(const EcdhPsiOptions& options);
+  explicit EcdhPsiContext(EcdhPsiOptions options);
   ~EcdhPsiContext() = default;
 
   void CheckConfig();
@@ -77,15 +77,14 @@ class EcdhPsiContext {
 
   // one of main steps for 2 party ecdh psi
   // recv peer's masked items, then masked them again and send back
-  // cipher_store: available only when traget_rank equal to self_rank
+  // cipher_store: available only when target_rank equal to self_rank
   void MaskPeer(const std::shared_ptr<ICipherStore>& cipher_store);
 
   // one of main steps for 2 party ecdh psi
   // recv dual masked self items from peer
-  // cipher_store: available only when traget_rank equal to self_rank
+  // cipher_store: available only when target_rank equal to self_rank
   void RecvDualMaskedSelf(const std::shared_ptr<ICipherStore>& cipher_store);
 
- public:
   size_t PeerRank() { return options_.link_ctx->NextRank(); }
 
   std::string Id() { return options_.link_ctx->Id(); }
@@ -136,7 +135,7 @@ void RunEcdhPsi(const EcdhPsiOptions& options,
 std::vector<std::string> RunEcdhPsi(
     const std::shared_ptr<yacl::link::Context>& link_ctx,
     const std::vector<std::string>& items, size_t target_rank,
-    CurveType crve = CurveType::CURVE_25519,
+    CurveType curve = CurveType::CURVE_25519,
     size_t batch_size = kEcdhPsiBatchSize);
 
 }  // namespace spu::psi

@@ -39,8 +39,8 @@ class HalContext final {
   HalContext() = default;
 
  public:
-  explicit HalContext(RuntimeConfig config,
-                      std::shared_ptr<yacl::link::Context> lctx);
+  explicit HalContext(const RuntimeConfig& config,
+                      const std::shared_ptr<yacl::link::Context>& lctx);
 
   HalContext(const HalContext& other) = delete;
   HalContext& operator=(const HalContext& other) = delete;

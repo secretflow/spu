@@ -25,7 +25,8 @@
 #include "absl/strings/ascii.h"
 #include "absl/strings/numbers.h"
 #include "absl/strings/str_split.h"
-#include "yacl/base/exception.h"
+
+#include "libspu/core/prelude.h"
 
 #ifdef __APPLE__
 #include <mach/mach.h>
@@ -179,7 +180,8 @@ void Tracer::logActionEnd(int64_t id, const std::string& name,
   }
 }
 
-void initTrace(int64_t tr_flag, std::shared_ptr<spdlog::logger> tr_logger) {
+void initTrace(int64_t tr_flag,
+               const std::shared_ptr<spdlog::logger>& tr_logger) {
   g_trace_flag = tr_flag;
 
   if (tr_logger) {
@@ -198,7 +200,7 @@ std::shared_ptr<Tracer> getTracer(const std::string& tid,
   }
 
   if (pid.empty()) {
-    // tihs is a new trace tree, use global trace flag.
+    // this is a new trace tree, use global trace flag.
     auto tracer = std::make_shared<Tracer>(g_trace_flag);
     g_tracers.emplace(tid, tracer);
     return tracer;
@@ -238,7 +240,7 @@ MemProfilingGuard::~MemProfilingGuard() {
   }
   auto p = GetPeakMemUsage();
   auto increase = p - start_peak_;
-  if (increase >= 0.01) {
+  if (increase >= 0.01) {  // NOLINT
     SPDLOG_DEBUG("{}{}.{}: peak {:.2f}GB, increase {:.2f}GB, current {:.2f}GB",
                  std::string(indent_, ' '), module_, name_, p, increase,
                  GetCurrentMemUsage());

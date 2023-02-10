@@ -21,11 +21,11 @@ namespace spu::kernel::hal {
 
 /// return the identity representation of in value.
 // Useful to normalize stateful value (like lazy value).
-Value identity(HalContext* ctx, const Value& in);
+Value identity(HalContext* ctx, const Value& x);
 
 /// the element-wise absolute value function
 // @param in, the value to negate
-Value abs(HalContext* ctx, const Value& in);
+Value abs(HalContext* ctx, const Value& x);
 
 /// general element-wise add operator
 // @param x, the first parameter
@@ -128,7 +128,7 @@ Value div(HalContext* ctx, const Value& x, const Value& y);
 
 /// see numpy.negate(in)
 // @param in, the value to negate
-Value negate(HalContext* ctx, const Value& in);
+Value negate(HalContext* ctx, const Value& x);
 
 /// general element-wise bitwise equal operator
 // @param x, the first parameter

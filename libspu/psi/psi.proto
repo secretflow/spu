@@ -84,7 +84,7 @@ message InputParams {
 }
 
 // The output parameters of psi.
-message OuputParams {
+message OutputParams {
   // The path of output csv file.
   string path = 1;
   // Whether to sort output file by select fields.
@@ -115,7 +115,7 @@ message DpPsiParams {
 //       broadcast_result=True,
 //       receiver_rank=0,
 //       input_params=psi.InputParams(path='/xxx/ccc.csv', select_fields=['c1', 'c2']),
-//       output_params=psi.OuputParams(path='/yyyy/oooo.csv', need_sort=True),
+//       output_params=psi.OutputParams(path='/yyyy/oooo.csv', need_sort=True),
 //   )
 //   report = psi.bucket_psi(lctx, config)  # run psi and get report
 // ```
@@ -139,7 +139,7 @@ message BucketPsiConfig {
   InputParams input_params = 4;
 
   // The output parameters of psi.
-  OuputParams output_params = 5;
+  OutputParams output_params = 5;
 
   ///////////////////////////////////////
   // Advanced

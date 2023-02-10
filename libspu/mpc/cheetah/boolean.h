@@ -16,49 +16,44 @@
 
 #include "libspu/mpc/kernel.h"
 #include "libspu/mpc/semi2k/boolean.h"
-#include "libspu/mpc/util/cexpr.h"
+#include "libspu/mpc/utils/cexpr.h"
 
 namespace spu::mpc::cheetah {
 
-using util::Const;
-using util::K;
-using util::Log;
-using util::N;
+using CommonTypeB = spu::mpc::semi2k::CommonTypeB;
 
-typedef spu::mpc::semi2k::CommonTypeB CommonTypeB;
+using CastTypeB = spu::mpc::semi2k::CastTypeB;
 
-typedef spu::mpc::semi2k::CastTypeB CastTypeB;
+using ZeroB = spu::mpc::semi2k::ZeroB;
 
-typedef spu::mpc::semi2k::ZeroB ZeroB;
+using B2P = spu::mpc::semi2k::B2P;
 
-typedef spu::mpc::semi2k::B2P B2P;
+using P2B = spu::mpc::semi2k::P2B;
 
-typedef spu::mpc::semi2k::P2B P2B;
-
-typedef spu::mpc::semi2k::AndBP AndBP;
+using AndBP = spu::mpc::semi2k::AndBP;
 
 class AndBB : public BinaryKernel {
  public:
   static constexpr char kBindName[] = "and_bb";
 
-  util::CExpr latency() const override { return Const(1); }
+  ce::CExpr latency() const override { return ce::Const(1); }
 
-  util::CExpr comm() const override { return K() * 2 * (N() - 1); }
+  ce::CExpr comm() const override { return ce::K() * 2 * (ce::N() - 1); }
 
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& lhs,
                 const ArrayRef& rhs) const override;
 };
 
-typedef spu::mpc::semi2k::XorBP XorBP;
+using XorBP = spu::mpc::semi2k::XorBP;
 
-typedef spu::mpc::semi2k::XorBB XorBB;
+using XorBB = spu::mpc::semi2k::XorBB;
 
-typedef spu::mpc::semi2k::LShiftB LShiftB;
+using LShiftB = spu::mpc::semi2k::LShiftB;
 
-typedef spu::mpc::semi2k::RShiftB RShiftB;
+using RShiftB = spu::mpc::semi2k::RShiftB;
 
-typedef spu::mpc::semi2k::ARShiftB ARShiftB;
+using ARShiftB = spu::mpc::semi2k::ARShiftB;
 
-typedef spu::mpc::semi2k::BitrevB BitrevB;
+using BitrevB = spu::mpc::semi2k::BitrevB;
 
 }  // namespace spu::mpc::cheetah

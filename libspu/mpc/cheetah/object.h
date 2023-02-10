@@ -16,29 +16,56 @@
 
 #include <memory>
 
-#include "libspu/mpc/cheetah/beaver/beaver.h"
-#include "libspu/mpc/common/communicator.h"
+#include "libspu/mpc/cheetah/arith/cheetah_dot.h"
+#include "libspu/mpc/cheetah/arith/cheetah_mul.h"
+#include "libspu/mpc/cheetah/ot/basic_ot_prot.h"
+#include "libspu/mpc/object.h"
 
-namespace spu::mpc {
+namespace spu::mpc::cheetah {
 
-// TODO(jint) split this into individual states.
-class CheetahState : public State {
-  std::unique_ptr<cheetah::Beaver> beaver_;
+class CheetahMulState : public State {
+  std::unique_ptr<CheetahMul> mul_prot_;
 
  public:
-  static constexpr char kBindName[] = "CheetahState";
+  static constexpr char kBindName[] = "CheetahMul";
 
-  explicit CheetahState(std::shared_ptr<yacl::link::Context> lctx) {
-    beaver_ = std::make_unique<cheetah::Beaver>(lctx);
+  explicit CheetahMulState(const std::shared_ptr<yacl::link::Context>& lctx) {
+    mul_prot_ = std::make_unique<CheetahMul>(lctx);
   }
 
-  ~CheetahState() override = default;
+  ~CheetahMulState() override = default;
 
-  cheetah::Beaver* beaver() { return beaver_.get(); }
-
-  std::unique_ptr<State> fork() override {
-    return std::make_unique<CheetahState>(beaver()->GetLink()->Spawn());
-  }
+  CheetahMul* get() { return mul_prot_.get(); }
 };
 
-}  // namespace spu::mpc
+class CheetahDotState : public State {
+  std::unique_ptr<CheetahDot> dot_prot_;
+
+ public:
+  static constexpr char kBindName[] = "CheetahDot";
+
+  explicit CheetahDotState(const std::shared_ptr<yacl::link::Context>& lctx) {
+    dot_prot_ = std::make_unique<CheetahDot>(lctx);
+  }
+
+  ~CheetahDotState() override = default;
+
+  CheetahDot* get() { return dot_prot_.get(); }
+};
+
+class CheetahOTState : public State {
+  std::shared_ptr<BasicOTProtocols> basic_ot_prot_;
+
+ public:
+  static constexpr char kBindName[] = "CheetahOT";
+
+  explicit CheetahOTState(std::shared_ptr<yacl::link::Context> lctx) {
+    basic_ot_prot_ = std::make_shared<BasicOTProtocols>(lctx);
+  }
+
+  ~CheetahOTState() override = default;
+
+  std::shared_ptr<BasicOTProtocols> get() { return basic_ot_prot_; }
+};
+
+}  // namespace spu::mpc::cheetah

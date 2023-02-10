@@ -16,9 +16,9 @@
 #include <iostream>
 
 #include "benchmark/benchmark.h"
-#include "yacl/base/exception.h"
 #include "yacl/link/test_util.h"
 
+#include "libspu/core/prelude.h"
 #include "libspu/psi/core/ecdh_3pc_psi.h"
 #include "libspu/psi/utils/test_utils.h"
 

@@ -72,10 +72,10 @@ void UpdateSliceInPlace(HalContext *ctx, spu::Value &operand,
   auto slice = hal::slice(ctx, operand, start_indicies, limit, strides);
 
   // (xiaochen): I know it's hacky here, but make life easier
-  YACL_ENFORCE(slice.data().buf()->data() == operand.data().buf()->data(),
-               "slice needs to return a ref to input");
-  YACL_ENFORCE(slice.shape() == update.shape(),
-               "slice shape should equal to update shape");
+  SPU_ENFORCE(slice.data().buf()->data() == operand.data().buf()->data(),
+              "slice needs to return a ref to input");
+  SPU_ENFORCE(slice.shape() == update.shape(),
+              "slice shape should equal to update shape");
   auto u = hal::stype_cast(ctx, update, slice.storage_type());
 
   std::vector<int64_t> indicies(slice.shape().size(), 0);

@@ -19,7 +19,8 @@
 #include <vector>
 
 #include "absl/types/span.h"
-#include "yacl/base/exception.h"
+
+#include "libspu/core/prelude.h"
 
 namespace spu {
 namespace detail {
@@ -88,8 +89,8 @@ struct SimdTrait<
     const size_t total_num =
         std::accumulate(pi.begin(), pi.end(), 0U, std::plus<>());
 
-    YACL_ENFORCE(v.size() == total_num, "split number mismatch {} != {}",
-                 v.size(), total_num);
+    SPU_ENFORCE(v.size() == total_num, "split number mismatch {} != {}",
+                v.size(), total_num);
 
     size_t offset = 0;
     for (const auto& sz : pi) {

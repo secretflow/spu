@@ -18,9 +18,9 @@
 #include <string>
 #include <vector>
 
-#include "yacl/base/exception.h"
 #include "yacl/link/link.h"
 
+#include "libspu/core/prelude.h"
 #include "libspu/psi/memory_psi.h"
 #include "libspu/psi/utils/hash_bucket_cache.h"
 
@@ -52,13 +52,11 @@ class BucketPsi {
   void Handshake(uint64_t self_items_count);
 
   // the item order of `item_data_list` and `item_list` needs to be the same
-  void GetResultIndices(
+  static void GetResultIndices(
       const std::vector<std::string>& item_data_list,
       const std::vector<HashBucketCache::BucketItem>& item_list,
-      std::vector<std::string>& result_list,
-      std::vector<uint64_t>* indices) const;
+      std::vector<std::string>& result_list, std::vector<uint64_t>* indices);
 
- private:
   BucketPsiConfig config_;
   bool ic_mode_;
 

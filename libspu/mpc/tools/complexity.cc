@@ -27,7 +27,7 @@
 #include "libspu/mpc/common/communicator.h"
 #include "libspu/mpc/factory.h"
 #include "libspu/mpc/object.h"
-#include "libspu/mpc/util/simulate.h"
+#include "libspu/mpc/utils/simulate.h"
 
 #include "libspu/mpc/tools/complexity.pb.h"
 namespace spu::mpc {
@@ -50,7 +50,7 @@ internal::SingleComplexityReport dumpComplexityReport(
   RuntimeConfig rt_conf;
   rt_conf.set_protocol(protocol);
 
-  util::simulate(
+  utils::simulate(
       party_cnt, [&](const std::shared_ptr<yacl::link::Context>& lctx) -> void {
         auto prot = Factory::CreateCompute(rt_conf, lctx);
         if (lctx->Rank() != 0) {
@@ -103,7 +103,7 @@ int main(int argc, char** argv) {
     google::protobuf::util::JsonPrintOptions json_options;
     json_options.preserve_proto_field_names = true;
 
-    YACL_ENFORCE(
+    SPU_ENFORCE(
         google::protobuf::util::MessageToJsonString(report, &json, json_options)
             .ok());
 

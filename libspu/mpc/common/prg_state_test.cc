@@ -17,7 +17,7 @@
 #include "gtest/gtest.h"
 #include "yacl/link/link.h"
 
-#include "libspu/mpc/util/simulate.h"
+#include "libspu/mpc/utils/simulate.h"
 
 namespace spu::mpc {
 
@@ -28,7 +28,7 @@ TEST(PrgStateTest, Fork) {
   std::array<std::array<int, 2>, 3> data1;
   std::array<std::array<int, 2>, 3> data2;
 
-  util::simulate(npc, [&](std::shared_ptr<yacl::link::Context> lctx) {
+  utils::simulate(npc, [&](const std::shared_ptr<yacl::link::Context>& lctx) {
     const size_t rank = lctx->Rank();
     auto root = std::make_unique<PrgState>(lctx);
 
@@ -37,13 +37,13 @@ TEST(PrgStateTest, Fork) {
     auto sub1_sub1 = sub1->fork();
 
     dynamic_cast<PrgState*>(sub1.get())
-        ->fillPrssPair(absl::MakeSpan(&data0[rank][0], 1),
+        ->fillPrssPair(absl::MakeSpan(data0[rank].data(), 1),
                        absl::MakeSpan(&data0[rank][1], 1));
     dynamic_cast<PrgState*>(sub2.get())
-        ->fillPrssPair(absl::MakeSpan(&data1[rank][0], 1),
+        ->fillPrssPair(absl::MakeSpan(data1[rank].data(), 1),
                        absl::MakeSpan(&data1[rank][1], 1));
     dynamic_cast<PrgState*>(sub1_sub1.get())
-        ->fillPrssPair(absl::MakeSpan(&data2[rank][0], 1),
+        ->fillPrssPair(absl::MakeSpan(data2[rank].data(), 1),
                        absl::MakeSpan(&data2[rank][1], 1));
     yacl::link::Barrier(lctx, "_");
 

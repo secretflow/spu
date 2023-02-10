@@ -18,10 +18,9 @@
 #include <tuple>
 #include <vector>
 
-#include "yacl/base/exception.h"
-
 #include "libspu/core/array_ref.h"
 #include "libspu/core/ndarray_ref.h"
+#include "libspu/core/prelude.h"
 #include "libspu/core/shape_util.h"
 #include "libspu/core/type_util.h"
 #include "libspu/mpc/api.h"
@@ -44,22 +43,22 @@ ArrayRef flattenValue(const Value& v) {
 
 std::tuple<int64_t, int64_t, int64_t> deduceMmulArgs(
     const std::vector<int64_t>& lhs, const std::vector<int64_t>& rhs) {
-  YACL_ENFORCE(!lhs.empty() && lhs.size() <= 2);
-  YACL_ENFORCE(!rhs.empty() && rhs.size() <= 2);
+  SPU_ENFORCE(!lhs.empty() && lhs.size() <= 2);
+  SPU_ENFORCE(!rhs.empty() && rhs.size() <= 2);
 
   if (lhs.size() == 1 && rhs.size() == 1) {
-    YACL_ENFORCE(lhs[0] == rhs[0]);
+    SPU_ENFORCE(lhs[0] == rhs[0]);
     return std::make_tuple(1, 1, rhs[0]);
   }
   if (lhs.size() == 1 && rhs.size() == 2) {
-    YACL_ENFORCE(lhs[0] == rhs[0]);
+    SPU_ENFORCE(lhs[0] == rhs[0]);
     return std::make_tuple(1, rhs[1], rhs[0]);
   }
   if (lhs.size() == 2 && rhs.size() == 1) {
-    YACL_ENFORCE(lhs[1] == rhs[0]);
+    SPU_ENFORCE(lhs[1] == rhs[0]);
     return std::make_tuple(lhs[0], 1, rhs[0]);
   }
-  YACL_ENFORCE(lhs[1] == rhs[0]);
+  SPU_ENFORCE(lhs[1] == rhs[0]);
   return std::make_tuple(lhs[0], rhs[1], rhs[0]);
 }
 
@@ -89,8 +88,8 @@ std::tuple<int64_t, int64_t, int64_t> deduceMmulArgs(
 #define MAP_BINARY_OP(NAME)                                              \
   Value _##NAME(HalContext* ctx, const Value& x, const Value& y) {       \
     SPU_TRACE_HAL_DISP(ctx, x, y);                                       \
-    YACL_ENFORCE(x.shape() == y.shape(), "shape mismatch: x={}, y={}",   \
-                 x.shape(), y.shape());                                  \
+    SPU_ENFORCE(x.shape() == y.shape(), "shape mismatch: x={}, y={}",    \
+                x.shape(), y.shape());                                   \
     auto ret = mpc::NAME(ctx->prot(), flattenValue(x), flattenValue(y)); \
     return unflattenValue(ret, x.shape());                               \
   }

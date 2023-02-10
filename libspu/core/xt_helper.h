@@ -15,9 +15,9 @@
 #pragma once
 
 // TODO: we need a prelude for int128 before include xtensor
-#include "yacl/base/exception.h"
 #include "yacl/base/int128.h"
 
+#include "libspu/core/prelude.h"
 #include "libspu/core/shape_util.h"
 //
 
@@ -39,8 +39,8 @@ class NdArrayRef;
 
 template <typename T>
 auto xt_adapt(const ArrayRef& aref) {
-  YACL_ENFORCE(aref.elsize() == sizeof(T), "adapt eltype={} with size={}",
-               aref.eltype(), sizeof(T));
+  SPU_ENFORCE(aref.elsize() == sizeof(T), "adapt eltype={} with size={}",
+              aref.eltype(), sizeof(T));
 
   std::vector<int64_t> shape = {aref.numel()};
   std::vector<int64_t> strides = {aref.stride()};
@@ -52,8 +52,8 @@ auto xt_adapt(const ArrayRef& aref) {
 
 template <typename T>
 auto xt_mutable_adapt(ArrayRef& aref) {
-  YACL_ENFORCE(aref.elsize() == sizeof(T), "adapt eltype={} with size={}",
-               aref.eltype(), sizeof(T));
+  SPU_ENFORCE(aref.elsize() == sizeof(T), "adapt eltype={} with size={}",
+              aref.eltype(), sizeof(T));
 
   std::vector<int64_t> shape = {aref.numel()};
   std::vector<int64_t> strides = {aref.stride()};
@@ -67,13 +67,13 @@ auto xt_mutable_adapt(ArrayRef& aref) {
 template <typename E,
           typename T = typename std::remove_const<typename E::value_type>::type>
 ArrayRef xt_to_array(const xt::xexpression<E>& e, const Type& eltype) {
-  YACL_ENFORCE(sizeof(T) == sizeof(typename E::value_type));
-  YACL_ENFORCE(sizeof(T) == eltype.size());
+  SPU_ENFORCE(sizeof(T) == sizeof(typename E::value_type));
+  SPU_ENFORCE(sizeof(T) == eltype.size());
 
   auto&& ret = xt::eval(e.derived_cast());
 
   // TODO(jint) for matmul, we also pass as a 1D array, but the result is 2D
-  YACL_ENFORCE(ret.shape().size() == 1);
+  SPU_ENFORCE(ret.shape().size() == 1);
 
   std::vector<std::size_t> shape = {ret.size()};
   ArrayRef aref(eltype, ret.size());
@@ -85,8 +85,8 @@ ArrayRef xt_to_array(const xt::xexpression<E>& e, const Type& eltype) {
 
 template <typename T>
 auto xt_mutable_adapt(NdArrayRef& aref) {
-  YACL_ENFORCE(aref.elsize() == sizeof(T), "adapt eltype={} with size={}",
-               aref.eltype(), sizeof(T));
+  SPU_ENFORCE(aref.elsize() == sizeof(T), "adapt eltype={} with size={}",
+              aref.eltype(), sizeof(T));
 
   return xt::adapt(static_cast<T*>(aref.data()), aref.numel(),
                    xt::no_ownership(), aref.shape(), aref.strides());
@@ -94,8 +94,8 @@ auto xt_mutable_adapt(NdArrayRef& aref) {
 
 template <typename T>
 auto xt_adapt(const NdArrayRef& aref) {
-  YACL_ENFORCE(aref.elsize() == sizeof(T), "adapt eltype={} with size={}",
-               aref.eltype(), sizeof(T));
+  SPU_ENFORCE(aref.elsize() == sizeof(T), "adapt eltype={} with size={}",
+              aref.eltype(), sizeof(T));
 
   return xt::adapt(static_cast<const T*>(aref.data()), aref.numel(),
                    xt::no_ownership(), aref.shape(), aref.strides());
@@ -123,7 +123,7 @@ struct PtBufferView {
 
   // View c++ builtin scalar type as a buffer
   template <typename T, std::enable_if_t<std::is_arithmetic_v<T>, bool> = true>
-  /* implicit */ PtBufferView(T const& s)
+  /* implicit */ PtBufferView(T const& s)  // NOLINT
       : ptr(static_cast<void const*>(&s)),
         pt_type(PtTypeToEnum<T>::value),
         shape(),
@@ -131,7 +131,7 @@ struct PtBufferView {
 
   // View a xt::xarray as a buffer.
   template <typename T, std::enable_if_t<std::is_arithmetic_v<T>, bool> = true>
-  /* implicit */ PtBufferView(const xt::xarray<T>& xarr)
+  /* implicit */ PtBufferView(const xt::xarray<T>& xarr)  // NOLINT
       : ptr(static_cast<void const*>(xarr.data())),
         pt_type(PtTypeToEnum<T>::value),
         shape(xarr.shape().begin(), xarr.shape().end()),
@@ -139,18 +139,18 @@ struct PtBufferView {
 
   // FIXME(jint): make it work when T = bool
   template <typename T, std::enable_if_t<std::is_arithmetic_v<T>, bool> = true>
-  /* implicit */ PtBufferView(const std::vector<T>& xarr)
+  /* implicit */ PtBufferView(const std::vector<T>& xarr)  // NOLINT
       : ptr(static_cast<void const*>(xarr.data())),
         pt_type(PtTypeToEnum<T>::value),
         shape({static_cast<int64_t>(xarr.size())}),
         strides({1}) {}
 };
 
-std::ostream& operator<<(std::ostream& out, PtBufferView v);
+std::ostream& operator<<(std::ostream& out, const PtBufferView& v);
 
 // Make a ndarray from a plaintext buffer.
 // TODO: rename this function.
-NdArrayRef xt_to_ndarray(PtBufferView bv);
+NdArrayRef xt_to_ndarray(const PtBufferView& bv);
 
 // Make a NdArrayRef from an xt expression.
 template <typename E,

@@ -15,8 +15,8 @@
 #include "libspu/psi/utils/utils.h"
 
 #include "spdlog/spdlog.h"
-#include "yacl/base/exception.h"
 
+#include "libspu/core/prelude.h"
 #include "libspu/psi/io/io.h"
 #include "libspu/psi/utils/csv_header_analyzer.h"
 #include "libspu/psi/utils/serialize.h"
@@ -75,9 +75,9 @@ void MultiKeySort(const std::string& in_csv, const std::string& out_csv,
     size_t key_index = kOffset + index;
     sort_keys.push_back(fmt::format("--key={},{}", key_index, key_index));
   }
-  YACL_ENFORCE(sort_keys.size() == keys.size(),
-               "mismatched header, field_names={}, line={}",
-               fmt::join(keys, ","), line);
+  SPU_ENFORCE(sort_keys.size() == keys.size(),
+              "mismatched header, field_names={}, line={}",
+              fmt::join(keys, ","), line);
 
   // Sort the csv body and append to out csv.
   std::string cmd = fmt::format(
@@ -87,7 +87,7 @@ void MultiKeySort(const std::string& in_csv, const std::string& out_csv,
   SPDLOG_INFO("Executing sort scripts: {}", cmd);
   int ret = system(cmd.c_str());
   SPDLOG_INFO("Finished sort scripts: {}, ret={}", cmd, ret);
-  YACL_ENFORCE(ret == 0, "failed to execute cmd={}, ret={}", cmd, ret);
+  SPU_ENFORCE(ret == 0, "failed to execute cmd={}, ret={}", cmd, ret);
 }
 
 void FilterFileByIndices(const std::string& input, const std::string& output,
@@ -117,9 +117,9 @@ void FilterFileByIndices(const std::string& input, const std::string& output,
     }
     idx++;
   }
-  YACL_ENFORCE(target_count == indices.size(),
-               "logstic error, indices.size={}, target_count={}, please be "
-               "sure the `indices` is sorted");
+  SPU_ENFORCE(target_count == indices.size(),
+              "logstic error, indices.size={}, target_count={}, please be "
+              "sure the `indices` is sorted");
 
   out->Close();
   in->Close();

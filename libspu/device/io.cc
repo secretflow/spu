@@ -14,6 +14,8 @@
 
 #include "libspu/device/io.h"
 
+#include <utility>
+
 #include "libspu/core/encoding.h"
 #include "libspu/kernel/hal/constants.h"
 #include "libspu/mpc/factory.h"
@@ -25,11 +27,11 @@ IoClient::IoClient(size_t world_size, RuntimeConfig config)
   base_io_ = mpc::Factory::CreateIO(config_, world_size_);
 }
 
-std::vector<spu::Value> IoClient::makeShares(PtBufferView bv, Visibility vtype,
-                                             int owner_rank) {
+std::vector<spu::Value> IoClient::makeShares(const PtBufferView &bv,
+                                             Visibility vtype, int owner_rank) {
   // FIXME(jint), this should be in the io context.
   const size_t fxp_bits = getDefaultFxpBits(config_);
-  YACL_ENFORCE(fxp_bits != 0, "fxp should never be zero, please check default");
+  SPU_ENFORCE(fxp_bits != 0, "fxp should never be zero, please check default");
 
   if (bv.pt_type == PT_BOOL && vtype == VIS_SECRET &&
       base_io_->hasBitSecretSupport()) {
@@ -38,7 +40,7 @@ std::vector<spu::Value> IoClient::makeShares(PtBufferView bv, Visibility vtype,
 
     auto flat_shares = base_io_->makeBitSecret(flatten(arr));
 
-    YACL_ENFORCE(flat_shares.size() == world_size_);
+    SPU_ENFORCE(flat_shares.size() == world_size_);
     std::vector<spu::Value> result;
     result.reserve(world_size_);
     for (const auto &flat_share : flat_shares) {
@@ -56,7 +58,7 @@ std::vector<spu::Value> IoClient::makeShares(PtBufferView bv, Visibility vtype,
   std::vector<NdArrayRef> shares;
   {
     auto flat_shares = base_io_->toShares(flatten(encoded), vtype);
-    YACL_ENFORCE(flat_shares.size() == world_size_);
+    SPU_ENFORCE(flat_shares.size() == world_size_);
     shares.reserve(world_size_);
     for (const auto &flat_share : flat_shares) {
       shares.push_back(unflatten(flat_share, encoded.shape()));
@@ -73,13 +75,13 @@ std::vector<spu::Value> IoClient::makeShares(PtBufferView bv, Visibility vtype,
 }
 
 NdArrayRef IoClient::combineShares(absl::Span<spu::Value const> values) {
-  YACL_ENFORCE(values.size() == world_size_,
-               "wrong number of shares, got={}, expect={}", values.size(),
-               world_size_);
+  SPU_ENFORCE(values.size() == world_size_,
+              "wrong number of shares, got={}, expect={}", values.size(),
+              world_size_);
 
   // FIXME(jint), this should be in the io context.
   const size_t fxp_bits = getDefaultFxpBits(config_);
-  YACL_ENFORCE(fxp_bits != 0, "fxp should never be zero, please check default");
+  SPU_ENFORCE(fxp_bits != 0, "fxp should never be zero, please check default");
 
   // reconstruct to ring buffer.
   NdArrayRef encoded;
@@ -101,7 +103,7 @@ NdArrayRef IoClient::combineShares(absl::Span<spu::Value const> values) {
 
 ColocatedIo::ColocatedIo(HalContext *hctx) : hctx_(hctx) {}
 
-void ColocatedIo::hostSetVar(const std::string &name, PtBufferView bv,
+void ColocatedIo::hostSetVar(const std::string &name, const PtBufferView &bv,
                              Visibility vtype) {
   unsynced_[name] = {xt_to_ndarray(bv), vtype};
 }
@@ -117,12 +119,12 @@ NdArrayRef ColocatedIo::hostGetVar(const std::string &name) const {
   if (v.isPublic()) {
     return kernel::hal::dump_public(hctx_, v);
   } else if (v.isSecret()) {
-    YACL_THROW("not implemented");
+    SPU_THROW("not implemented");
     // TODO: test the secret's owner is self,
     // - if yes, reconstruct it
     // - else raise an error.
   } else {
-    YACL_THROW("invalid value {}", v);
+    SPU_THROW("invalid value {}", v);
   }
 }
 
@@ -156,7 +158,7 @@ static std::vector<SymbolTableProto> all2all(
     }
     yacl::Buffer buf;
     buf.resize(rows[idx].ByteSizeLong());
-    YACL_ENFORCE(rows[idx].SerializeToArray(buf.data(), buf.size()));
+    SPU_ENFORCE(rows[idx].SerializeToArray(buf.data(), buf.size()));
     lctx->SendAsync(idx, std::move(buf), "all2all");
   }
 
@@ -168,7 +170,7 @@ static std::vector<SymbolTableProto> all2all(
     }
     auto data = lctx->Recv(idx, "all2all");
     SymbolTableProto vars;
-    YACL_ENFORCE(vars.ParseFromArray(data.data(), data.size()));
+    SPU_ENFORCE(vars.ParseFromArray(data.data(), data.size()));
     cols.push_back(std::move(vars));
   }
 
@@ -202,13 +204,13 @@ void ColocatedIo::sync() {
   std::vector<SymbolTableProto> shares_per_party(lctx->WorldSize());
   for (const auto &[name, priv] : unsynced_) {
     const auto &arr = priv.arr;
-    YACL_ENFORCE(arr.eltype().isa<PtTy>(), "unsupported type={}", arr.eltype());
+    SPU_ENFORCE(arr.eltype().isa<PtTy>(), "unsupported type={}", arr.eltype());
 
     PtBufferView bv(arr.data(), arr.eltype().as<PtTy>()->pt_type(), arr.shape(),
                     arr.strides());
 
     auto shares = io.makeShares(bv, priv.vtype);
-    YACL_ENFORCE(shares.size() == lctx->WorldSize());
+    SPU_ENFORCE(shares.size() == lctx->WorldSize());
 
     for (size_t idx = 0; idx < shares.size(); idx++) {
       shares_per_party[idx].mutable_symbols()->insert(
@@ -222,8 +224,8 @@ void ColocatedIo::sync() {
   std::set<std::string> all_names;
   for (const auto &values : values_per_party) {
     for (const auto &[name, _] : values.symbols()) {
-      YACL_ENFORCE(all_names.find(name) == all_names.end(),
-                   "name duplicated {}", name);
+      SPU_ENFORCE(all_names.find(name) == all_names.end(), "name duplicated {}",
+                  name);
       all_names.insert(name);
     }
   }

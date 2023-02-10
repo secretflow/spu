@@ -28,8 +28,9 @@ namespace {
 
 // make a public typed value.
 //
-// Note: there is a abraction leakage, we should NOT touch Ring2kPubTy directly.
-Value make_pub2k(HalContext* ctx, PtBufferView bv) {
+// Note: there is a abstraction leakage, we should NOT touch Ring2kPubTy
+// directly.
+Value make_pub2k(HalContext* ctx, const PtBufferView& bv) {
   SPU_TRACE_HAL_DISP(ctx, bv);
 
   NdArrayRef raw = xt_to_ndarray(bv);
@@ -43,7 +44,7 @@ Value make_pub2k(HalContext* ctx, PtBufferView bv) {
 
 }  // namespace
 
-Value constant(HalContext* ctx, PtBufferView bv,
+Value constant(HalContext* ctx, const PtBufferView& bv,
                absl::Span<const int64_t> shape) {
   SPU_TRACE_HAL_DISP(ctx, bv, shape);
 
@@ -63,11 +64,11 @@ Value constant(HalContext* ctx, PtBufferView bv,
   }
 
   // Other, do a broadcast, let broadcast handles the sanity check
-  YACL_ENFORCE(calcNumel(bv.shape) <= calcNumel(shape));
+  SPU_ENFORCE(calcNumel(bv.shape) <= calcNumel(shape));
   return broadcast_to(ctx, make_pub2k(ctx, bv), shape);
 }
 
-Value const_secret(HalContext* ctx, PtBufferView bv,
+Value const_secret(HalContext* ctx, const PtBufferView& bv,
                    absl::Span<const int64_t> shape) {
   SPU_TRACE_HAL_DISP(ctx, bv);
 
@@ -77,22 +78,21 @@ Value const_secret(HalContext* ctx, PtBufferView bv,
 
 NdArrayRef dump_public(HalContext* ctx, const Value& v) {
   SPU_TRACE_HAL_DISP(ctx, v);
-  YACL_ENFORCE(v.storage_type().isa<mpc::Pub2kTy>(), "got {}",
-               v.storage_type());
+  SPU_ENFORCE(v.storage_type().isa<mpc::Pub2kTy>(), "got {}", v.storage_type());
   const auto field = v.storage_type().as<Ring2k>()->field();
   auto encoded = v.data().as(makeType<RingTy>(field));
 
   return decodeFromRing(encoded, v.dtype(), ctx->getFxpBits());
 }
 
-Value make_value(HalContext* ctx, Visibility vtype, PtBufferView bv) {
+Value make_value(HalContext* ctx, Visibility vtype, const PtBufferView& bv) {
   switch (vtype) {
     case VIS_PUBLIC:
       return make_pub2k(ctx, bv);
     case VIS_SECRET:
       return const_secret(ctx, bv);
     default:
-      YACL_THROW("not support vtype={}", vtype);
+      SPU_THROW("not support vtype={}", vtype);
   }
 }
 
@@ -141,7 +141,7 @@ spu::Value zeros(HalContext* ctx, Visibility vis, DataType dtype,
       break;
     }
     default: {
-      YACL_THROW("Should not hit, dtype = {}", dtype);
+      SPU_THROW("Should not hit, dtype = {}", dtype);
     }
   }
 

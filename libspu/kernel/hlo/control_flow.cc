@@ -31,7 +31,7 @@ std::vector<spu::Value> IfElse(HalContext *ctx, const spu::Value &condition,
     auto true_ret = on_true();
     auto false_ret = on_false();
 
-    YACL_ENFORCE(true_ret.size() == false_ret.size());
+    SPU_ENFORCE(true_ret.size() == false_ret.size());
 
     std::vector<spu::Value> selected(true_ret.size());
     for (size_t idx = 0; idx < true_ret.size(); ++idx) {
@@ -49,7 +49,7 @@ std::vector<spu::Value> IfElse(HalContext *ctx, const spu::Value &condition,
 
 std::vector<spu::Value> Case(HalContext *ctx, const spu::Value &index,
                              absl::Span<const BranchFcnT> branches) {
-  YACL_ENFORCE(index.isInt());
+  SPU_ENFORCE(index.isInt());
   if (index.isPublic()) {
     auto idx = getI32Value(ctx, index);
     auto upper_bound = static_cast<int32_t>(branches.size() - 1);
@@ -126,7 +126,7 @@ std::vector<spu::Value> While(HalContext *ctx,
           warned = true;
         }
       } else {
-        YACL_THROW("While with secret condition is not supported");
+        SPU_THROW("While with secret condition is not supported");
       }
     }
 

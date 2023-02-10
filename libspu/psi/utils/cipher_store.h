@@ -47,14 +47,14 @@ class ICipherStore {
   virtual void SavePeer(std::string ciphertext) = 0;
 
   virtual void SaveSelf(const std::vector<std::string>& ciphertext) {
-    for (size_t i = 0; i < ciphertext.size(); ++i) {
-      SaveSelf(ciphertext[i]);
+    for (const auto& ct : ciphertext) {
+      SaveSelf(ct);
     }
   }
 
   virtual void SavePeer(const std::vector<std::string>& ciphertext) {
-    for (size_t i = 0; i < ciphertext.size(); ++i) {
-      SavePeer(ciphertext[i]);
+    for (const auto& ct : ciphertext) {
+      SavePeer(ct);
     }
   }
 };
@@ -94,7 +94,6 @@ class DiskCipherStore : public ICipherStore {
   void FindIntersectionIndices(size_t bucket_idx,
                                std::vector<uint64_t>* indices);
 
- private:
   const size_t num_bins_;
 
   std::unique_ptr<HashBucketCache> self_cache_;
@@ -103,10 +102,10 @@ class DiskCipherStore : public ICipherStore {
 
 class CachedCsvCipherStore : public ICipherStore {
  public:
-  CachedCsvCipherStore(const std::string& self_csv, const std::string& peer_csv,
+  CachedCsvCipherStore(std::string self_csv, std::string peer_csv,
                        bool self_read_only = true, bool peer_read_only = true);
 
-  ~CachedCsvCipherStore();
+  ~CachedCsvCipherStore() override;
 
   void SaveSelf(std::string ciphertext) override;
 
@@ -116,13 +115,13 @@ class CachedCsvCipherStore : public ICipherStore {
 
   void SavePeer(const std::vector<std::string>& ciphertext) override;
 
-  std::vector<std::string> GetId() {
+  static std::vector<std::string> GetId() {
     std::vector<std::string> ids = {"id"};
     return ids;
   }
 
-  size_t GetSelfItemsCount() { return self_items_count_; }
-  size_t GetPeerItemsCount() { return peer_items_count_; }
+  size_t GetSelfItemsCount() const { return self_items_count_; }
+  size_t GetPeerItemsCount() const { return peer_items_count_; }
 
   void FlushPeer() {
     if (!peer_read_only_) {

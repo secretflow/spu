@@ -93,8 +93,8 @@ struct OptimizeSelect : public OptimizeSelectBase<OptimizeSelect> {
   }
 
 private:
-  void populateOwningPatterns(RewritePatternSet *patterns,
-                              MLIRContext *ctx) const {
+  static void populateOwningPatterns(RewritePatternSet *patterns,
+                                     MLIRContext *ctx) {
     patterns->insert<SelectConversion>(ctx);
   }
 };

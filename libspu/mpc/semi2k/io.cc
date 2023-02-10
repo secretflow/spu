@@ -16,17 +16,17 @@
 
 #include "libspu/mpc/common/pub2k.h"
 #include "libspu/mpc/semi2k/type.h"
-#include "libspu/mpc/util/ring_ops.h"
+#include "libspu/mpc/utils/ring_ops.h"
 
 namespace spu::mpc::semi2k {
 
 std::vector<ArrayRef> Semi2kIo::toShares(const ArrayRef& raw, Visibility vis,
                                          int owner_rank) const {
-  YACL_ENFORCE(raw.eltype().isa<RingTy>(), "expected RingTy, got {}",
-               raw.eltype());
+  SPU_ENFORCE(raw.eltype().isa<RingTy>(), "expected RingTy, got {}",
+              raw.eltype());
   const auto field = raw.eltype().as<Ring2k>()->field();
-  YACL_ENFORCE(field == field_, "expect raw value encoded in field={}, got={}",
-               field_, field);
+  SPU_ENFORCE(field == field_, "expect raw value encoded in field={}, got={}",
+              field_, field);
 
   if (vis == VIS_PUBLIC) {
     const auto share = raw.as(makeType<Pub2kTy>(field));
@@ -56,7 +56,7 @@ std::vector<ArrayRef> Semi2kIo::toShares(const ArrayRef& raw, Visibility vis,
     }
     return shares;
   }
-  YACL_THROW("unsupported vis type {}", vis);
+  SPU_THROW("unsupported vis type {}", vis);
 }
 
 ArrayRef Semi2kIo::fromShares(const std::vector<ArrayRef>& shares) const {
@@ -71,18 +71,20 @@ ArrayRef Semi2kIo::fromShares(const std::vector<ArrayRef>& shares) const {
     for (const auto& share : shares) {
       // Currently, only packed zeros are not compact, this is for colocation
       // optimization
-      if (!share.isCompact()) continue;
+      if (!share.isCompact()) {
+        continue;
+      }
       if (eltype.isa<AShare>()) {
         ring_add_(res, share);
       } else if (eltype.isa<BShare>()) {
         ring_xor_(res, share);
       } else {
-        YACL_THROW("invalid share type {}", eltype);
+        SPU_THROW("invalid share type {}", eltype);
       }
     }
     return res;
   }
-  YACL_THROW("unsupported eltype {}", eltype);
+  SPU_THROW("unsupported eltype {}", eltype);
 }
 
 std::unique_ptr<Semi2kIo> makeSemi2kIo(FieldType field, size_t npc) {

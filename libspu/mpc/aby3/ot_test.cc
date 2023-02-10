@@ -16,8 +16,8 @@
 
 #include "gtest/gtest.h"
 
-#include "libspu/mpc/util/ring_ops.h"
-#include "libspu/mpc/util/simulate.h"
+#include "libspu/mpc/utils/ring_ops.h"
+#include "libspu/mpc/utils/simulate.h"
 
 namespace spu::mpc::aby3 {
 class OTTest : public ::testing::TestWithParam<
@@ -35,7 +35,7 @@ TEST_P(OTTest, OT3Party) {
     choices[idx] = static_cast<uint8_t>(idx % 2);
   }
 
-  util::simulate(3u, [&](std::shared_ptr<yacl::link::Context> lctx) {
+  utils::simulate(3U, [&](const std::shared_ptr<yacl::link::Context>& lctx) {
     Communicator comm(lctx);
     PrgState prg_state(lctx);
 

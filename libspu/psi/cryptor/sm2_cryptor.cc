@@ -26,8 +26,8 @@ namespace spu::psi {
 
 void Sm2Cryptor::EccMask(absl::Span<const char> batch_points,
                          absl::Span<char> dest_points) const {
-  YACL_ENFORCE(batch_points.size() % kEcPointCompressLength == 0, "{} % {}!=0",
-               batch_points.size(), kEcPointCompressLength);
+  SPU_ENFORCE(batch_points.size() % kEcPointCompressLength == 0, "{} % {}!=0",
+              batch_points.size(), kEcPointCompressLength);
 
   using Item = std::array<char, kEcPointCompressLength>;
   static_assert(sizeof(Item) == kEcPointCompressLength);
@@ -40,12 +40,13 @@ void Sm2Cryptor::EccMask(absl::Span<const char> batch_points,
     EcPointSt ec_point(ec_group);
 
     EC_POINT_oct2point(ec_group.get(), ec_point.get(),
-                       (const unsigned char*)in.data(), in.size(),
-                       bn_ctx.get());
+                       reinterpret_cast<const unsigned char*>(in.data()),
+                       in.size(), bn_ctx.get());
 
     BigNumSt bn_sk;
     bn_sk.FromBytes(
-        absl::string_view((const char*)&this->private_key_[0], kEccKeySize),
+        absl::string_view(reinterpret_cast<const char*>(&this->private_key_[0]),
+                          kEccKeySize),
         ec_group.bn_p);
 
     // pointmul
@@ -78,7 +79,7 @@ std::vector<uint8_t> Sm2Cryptor::HashToCurve(
   EcPointSt ec_point = EcPointSt::CreateEcPointByHashToCurve(
       absl::string_view(item_data.data(), item_data.size()), ec_group);
 
-  std::vector<uint8_t> out(kEcPointCompressLength, 0U);
+  std::vector<uint8_t> out(kEcPointCompressLength, 0);
 
   ec_point.ToBytes(absl::MakeSpan(out.data(), out.size()));
 

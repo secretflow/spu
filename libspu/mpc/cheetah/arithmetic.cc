@@ -16,186 +16,122 @@
 
 #include <future>
 
-#include "xtensor/xview.hpp"
-
 #include "libspu/core/trace.h"
-#include "libspu/core/vectorize.h"
-#include "libspu/core/xt_helper.h"
+#include "libspu/mpc/cheetah/nonlinear/compare_prot.h"
+#include "libspu/mpc/cheetah/nonlinear/truncate_prot.h"
 #include "libspu/mpc/cheetah/object.h"
-#include "libspu/mpc/cheetah/utils.h"
 #include "libspu/mpc/common/communicator.h"
+#include "libspu/mpc/common/pub2k.h"
 #include "libspu/mpc/semi2k/type.h"
-#include "libspu/mpc/util/ring_ops.h"
+#include "libspu/mpc/utils/ring_ops.h"
 
 namespace spu::mpc::cheetah {
 
 ArrayRef TruncA::proc(KernelEvalContext* ctx, const ArrayRef& x,
                       size_t bits) const {
-  SPU_TRACE_MPC_LEAF(ctx, x, bits);
-  auto primitives = ctx->getState<CheetahState>()->beaver()->OTPrimitives();
-  size_t size = x.numel();
-  const auto field = x.eltype().as<Ring2k>()->field();
-  ArrayRef y(makeType<RingTy>(field), size);
-
-  if (heuristic_) {
-    // Use heuristic optimization from SecureQ8: Add a large positive to make
-    // sure the value is always positive
-    ArrayRef adjusted_x =
-        ring_add(x, ring_lshift(ring_ones(field, size), x.elsize() * 8 - 5));
-
-    DISPATCH_ALL_FIELDS(field, kBindName, [&]() {
-      using U = ring2k_t;
-      auto x_buf = adjusted_x.getOrCreateCompactBuf();
-      auto y_buf = y.getOrCreateCompactBuf();
-      primitives->nonlinear()->truncate_msb0(y_buf->data<U>(), x_buf->data<U>(),
-                                             size, bits, sizeof(U) * 8);
-      primitives->nonlinear()->flush();
-    });
-    ring_sub_(y,
-              ring_lshift(ring_ones(field, size), x.elsize() * 8 - 5 - bits));
-  } else {
-    DISPATCH_ALL_FIELDS(field, kBindName, [&]() {
-      using U = ring2k_t;
-      auto x_buf = x.getOrCreateCompactBuf();
-      auto y_buf = y.getOrCreateCompactBuf();
-      primitives->nonlinear()->truncate(y_buf->data<U>(), x_buf->data<U>(),
-                                        size, bits, sizeof(U) * 8);
-      primitives->nonlinear()->flush();
-    });
-  }
-  return y.as(x.eltype());
+  SPU_TRACE_MPC_LEAF(ctx, x);
+  TruncateProtocol prot(ctx->getState<CheetahOTState>()->get());
+  TruncateProtocol::Meta meta;
+  meta.signed_arith = true;
+  return prot.Compute(x, meta, bits);
 }
 
 ArrayRef MsbA2B::proc(KernelEvalContext* ctx, const ArrayRef& x) const {
   SPU_TRACE_MPC_LEAF(ctx, x);
-  auto primitives = ctx->getState<CheetahState>()->beaver()->OTPrimitives();
 
-  size_t size = x.numel();
-  const auto field = x.eltype().as<Ring2k>()->field();
-  ArrayRef y(makeType<RingTy>(field), size);
+  const int rank = ctx->getState<Communicator>()->getRank();
+  const auto field = ctx->getState<Z2kState>()->getDefaultField();
+  const size_t n = x.numel();
+  const size_t shft = SizeOf(field) * 8 - 1;
 
-  DISPATCH_ALL_FIELDS(field, kBindName, [&]() {
-    using U = ring2k_t;
-    auto x_buf = x.getOrCreateCompactBuf();
-    auto y_buf = y.getOrCreateCompactBuf();
-    yacl::Buffer msb_buf(size);
-    primitives->nonlinear()->msb(msb_buf.data<uint8_t>(), x_buf->data<U>(),
-                                 size, sizeof(U) * 8);
-    primitives->nonlinear()->flush();
-    cast(y_buf->data<U>(), msb_buf.data<uint8_t>(), size);
+  CompareProtocol compare_prot(ctx->getState<CheetahOTState>()->get());
+
+  return DISPATCH_ALL_FIELDS(field, "", [&]() {
+    using u2k = std::make_unsigned<ring2k_t>::type;
+    const u2k mask = (static_cast<u2k>(1) << shft) - 1;
+    ArrayRef adjusted = ring_zeros(field, n);
+    auto xinp = ArrayView<const u2k>(x);
+    auto xadj = ArrayView<u2k>(adjusted);
+
+    if (rank == 0) {
+      pforeach(0, n, [&](int64_t i) { xadj[i] = xinp[i] & mask; });
+    } else {
+      pforeach(0, n, [&](int64_t i) { xadj[i] = (mask - xinp[i]) & mask; });
+    }
+
+    // NOTE(juhou): CompareProtocol returns BShr type
+    ArrayRef cmp_bit = compare_prot.Compute(adjusted, /*gt*/ true);
+    auto xcmp = ArrayView<u2k>(cmp_bit);
+    pforeach(0, n, [&](int64_t i) { xcmp[i] ^= (xinp[i] >> shft); });
+
+    return cmp_bit;
   });
-  // Enforce it to be a boolean sharing
-  return y.as(makeType<semi2k::BShrTy>(field, 1));
 }
 
-ArrayRef MulAA::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
-                     const ArrayRef& rhs) const {
-  SPU_TRACE_MPC_LEAF(ctx, lhs, rhs);
-  // (lhs0 + lhs1) * (rhs0 + rhs1)
-  // lhs0*rhs0 + lhs0*rhs1 + lhs1*rhs0 + lhs1*rhs1
-  // Compute the cross terms lhs0*rhs1, lhs1*rhs0 homomorphically
-  auto comm = ctx->getState<Communicator>();
-  auto beaver = ctx->getState<CheetahState>()->beaver();
-  int rank = comm->getRank();
+ArrayRef MulAA::proc(KernelEvalContext* ctx, const ArrayRef& x,
+                     const ArrayRef& y) const {
+  SPU_TRACE_MPC_LEAF(ctx, x, y);
+  // (x0 + x1) * (y0+ y1)
+  // Compute the cross terms x0*y1, x1*y0 homomorphically
+  auto* comm = ctx->getState<Communicator>();
+  auto* mul_prot = ctx->getState<CheetahMulState>()->get();
+  const int rank = comm->getRank();
 
-  auto dupx = comm->lctx()->Spawn();
-  // NOTE(juhou): we suppose rank0 and rank1 have the same level of computation
-  // power. So we parallel the two computation by switching the role of
-  // evaluator.
+  auto* conn = comm->lctx().get();
+  auto dupx = conn->Spawn();
   std::future<ArrayRef> task = std::async(std::launch::async, [&] {
     if (rank == 0) {
-      return beaver->MulOLE(lhs, dupx.get(), /*evaluator*/ true);
-    } else {
-      return beaver->MulOLE(rhs, dupx.get(), false);
+      return mul_prot->MulOLE(x, dupx.get(), true);
     }
+    return mul_prot->MulOLE(y, dupx.get(), false);
   });
 
-  ArrayRef cross0;
-  yacl::link::Context* conn = comm->lctx().get();
+  ArrayRef x0y1;
+  ArrayRef x1y0;
   if (rank == 0) {
-    cross0 = beaver->MulOLE(rhs, conn, false);
+    x1y0 = mul_prot->MulOLE(y, conn, false);
   } else {
-    cross0 = beaver->MulOLE(lhs, conn, true);
+    x1y0 = mul_prot->MulOLE(x, conn, true);
   }
-  ArrayRef cross1 = task.get();
+  x0y1 = task.get();
 
-  return ring_add(cross0, ring_add(cross1, ring_mul(lhs, rhs)))
-      .as(lhs.eltype());
-}
-
-static ArrayRef TransposeMat(const ArrayRef& mat, size_t nrows, size_t ncols) {
-  auto cpy = mat.clone();
-  YACL_ENFORCE_EQ((size_t)mat.numel(), nrows * ncols);
-  const auto field = mat.eltype().as<Ring2k>()->field();
-  auto ans = ring_zeros(field, nrows * ncols);
-  DISPATCH_ALL_FIELDS(field, "_", [&]() {
-    auto src_mat = xt_adapt<ring2k_t>(mat);
-    src_mat.reshape({nrows, ncols});
-
-    auto xmatT = xt::eval(xt::transpose(src_mat));
-    auto dst_mat = xt_mutable_adapt<ring2k_t>(ans);
-    std::copy_n(xmatT.begin(), xmatT.size(), dst_mat.data());
-  });
-  return ans;
+  return ring_add(x0y1, ring_add(x1y0, ring_mul(x, y))).as(x.eltype());
 }
 
 // A is (M, K); B is (K, N)
 ArrayRef MatMulAA::proc(KernelEvalContext* ctx, const ArrayRef& x,
-                        const ArrayRef& y, size_t M, size_t N, size_t K) const {
+                        const ArrayRef& y, size_t m, size_t n, size_t k) const {
   SPU_TRACE_MPC_LEAF(ctx, x, y);
 
   auto* comm = ctx->getState<Communicator>();
-  auto* beaver = ctx->getState<CheetahState>()->beaver();
-  int rank = comm->getRank();
+  auto* dot_prot = ctx->getState<CheetahDotState>()->get();
+  const int rank = comm->getRank();
 
   // (x0 + x1) * (y0 + y1)
   // Compute the cross terms homomorphically
-  auto dupx = comm->lctx()->Spawn();
-  size_t lhs_dim = std::max(M, N);
-  size_t rhs_dim = std::min(M, N);
+  const Shape3D dim3 = {static_cast<int64_t>(m), static_cast<int64_t>(k),
+                        static_cast<int64_t>(n)};
 
-  ArrayRef lhs;
-  ArrayRef rhs;
-  // DotOLE needs RHS is given in the column-major order
-  if (lhs_dim == M) {
-    // Case: LHS = x, RHS = y
-    lhs = x;
-    rhs = TransposeMat(y, K, N);
-  } else {
-    // Case: LHS = y, RHS = x
-    // But, in this case, we compute y^t * x^t
-    // So we tranpose the LHS only
-    lhs = TransposeMat(y, K, N);
-    rhs = x;
-  }
-
+  auto* conn = comm->lctx().get();
+  auto dupx = conn->Spawn();
   std::future<ArrayRef> task = std::async(std::launch::async, [&] {
     if (rank == 0) {
-      return beaver->DotOLE(lhs, dupx.get(), lhs_dim, rhs_dim, K, false);
+      return dot_prot->DotOLE(x, dupx.get(), dim3, true);
     } else {
-      return beaver->DotOLE(rhs, dupx.get(), lhs_dim, rhs_dim, K, true);
+      return dot_prot->DotOLE(y, dupx.get(), dim3, false);
     }
   });
 
   ArrayRef x0y1;
-  yacl::link::Context* conn = comm->lctx().get();
+  ArrayRef x1y0;
   if (rank == 0) {
-    x0y1 = beaver->DotOLE(rhs, conn, lhs_dim, rhs_dim, K, true);
+    x1y0 = dot_prot->DotOLE(y, conn, dim3, false);
   } else {
-    x0y1 = beaver->DotOLE(lhs, conn, lhs_dim, rhs_dim, K, false);
+    x1y0 = dot_prot->DotOLE(x, conn, dim3, true);
   }
-  ArrayRef x1y0 = task.get();
+  x0y1 = task.get();
 
-  if (lhs_dim == M) {
-    // x*y is given in the transposed form (see DotOLE)
-    x0y1 = TransposeMat(x0y1, N, M);
-    x1y0 = TransposeMat(x1y0, N, M);
-  } else {
-    // Nothing to do in this case
-    // We compute y^t * x^t and resulting at the transposed form.
-    // That is x*y already.
-  }
-  return ring_add(x0y1, ring_add(x1y0, ring_mmul(x, y, M, N, K)))
+  return ring_add(x0y1, ring_add(x1y0, ring_mmul(x, y, m, n, k)))
       .as(x.eltype());
 }
 

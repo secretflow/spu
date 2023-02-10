@@ -16,6 +16,7 @@
 
 #include <filesystem>
 #include <memory>
+#include <utility>
 
 #include "absl/strings/escaping.h"
 #include "absl/strings/str_split.h"
@@ -25,13 +26,13 @@
 
 namespace spu::psi {
 
-HashBucketCache::HashBucketCache(const std::string& target_dir,
-                                 uint32_t bucket_num)
-    : target_dir_(target_dir), bucket_num_(bucket_num), item_index_(0) {
-  YACL_ENFORCE(bucket_num_ > 0);
+HashBucketCache::HashBucketCache(std::string target_dir, uint32_t bucket_num)
+    : target_dir_(std::move(target_dir)),
+      bucket_num_(bucket_num),
+      item_index_(0) {
+  SPU_ENFORCE(bucket_num_ > 0);
   disk_cache_ = ScopeDiskCache::Create(std::filesystem::path(target_dir_));
-  YACL_ENFORCE(disk_cache_, "cannot create disk cache from dir={}",
-               target_dir_);
+  SPU_ENFORCE(disk_cache_, "cannot create disk cache from dir={}", target_dir_);
   disk_cache_->CreateHashBinStreams(bucket_num_, &bucket_os_vec_);
 }
 

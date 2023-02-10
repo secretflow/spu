@@ -17,9 +17,8 @@
 #include <cstdint>
 #include <numeric>
 
-#include "yacl/base/exception.h"
-
 #include "libspu/core/parallel_utils.h"
+#include "libspu/core/prelude.h"
 #include "libspu/core/shape_util.h"
 #include "libspu/kernel/hal/ring.h"
 #include "libspu/kernel/hal/shape_ops.h"
@@ -50,7 +49,7 @@ void calcNextPtrs(std::vector<int64_t>& coord, int64_t& idim,
 Value concatenate(HalContext* ctx, absl::Span<const Value> values,
                   const size_t& axis) {
   SPU_TRACE_HAL_DISP(ctx, axis);
-  YACL_ENFORCE(!values.empty(), "got={}", values.size());
+  SPU_ENFORCE(!values.empty(), "got={}", values.size());
 
   if (values.size() == 1) {
     // Nothing to concate
@@ -60,7 +59,7 @@ Value concatenate(HalContext* ctx, absl::Span<const Value> values,
   bool all_same_dtype = std::all_of(
       values.begin() + 1, values.end(),
       [&](const Value& v) { return v.dtype() == values.begin()->dtype(); });
-  YACL_ENFORCE(all_same_dtype, "not all element has same dtype");
+  SPU_ENFORCE(all_same_dtype, "not all element has same dtype");
 
   bool all_same_stype =
       std::all_of(values.begin() + 1, values.end(), [&](const Value& v) {
@@ -80,7 +79,7 @@ Value concatenate(HalContext* ctx, absl::Span<const Value> values,
     return concatenate(ctx, common_values, axis).setDtype(values[0].dtype());
   }
 
-  YACL_ENFORCE(all_same_stype);
+  SPU_ENFORCE(all_same_stype);
 
   std::vector<int64_t> result_shape = values.front().shape();
   for (size_t idx = 1; idx < values.size(); ++idx) {

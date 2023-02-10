@@ -17,8 +17,8 @@
 #include "xtensor/xarray.hpp"
 #include "xtensor/xio.hpp"
 #include "xtensor/xrandom.hpp"
-#include "yacl/base/exception.h"
 
+#include "libspu/core/prelude.h"
 #include "libspu/kernel/hal/constants.h"
 #include "libspu/kernel/hal/test_util.h"
 
@@ -27,8 +27,8 @@ namespace spu::kernel::hal {
 Value rng_uniform(HalContext* ctx, const Value& a, const Value& b,
                   absl::Span<const int64_t> to_shape) {
   SPU_TRACE_HAL_LEAF(ctx, a, b, to_shape);
-  YACL_ENFORCE(a.isPublic() && b.isPublic());
-  YACL_ENFORCE(a.dtype() == b.dtype());
+  SPU_ENFORCE(a.isPublic() && b.isPublic());
+  SPU_ENFORCE(a.dtype() == b.dtype());
   // FIXME: This is a hacky ref impl, fill a real proper impl later.
   if (a.isFxp()) {
     auto pa = test::dump_public_as<float>(ctx, a);
@@ -38,7 +38,7 @@ Value rng_uniform(HalContext* ctx, const Value& a, const Value& b,
     return constant(ctx, randv);
   }
 
-  YACL_ENFORCE(a.isInt());
+  SPU_ENFORCE(a.isInt());
   auto pa = test::dump_public_as<int>(ctx, a);
   auto pb = test::dump_public_as<int>(ctx, b);
   xt::xarray<int> randv =
@@ -54,7 +54,7 @@ Value random(HalContext* ctx, Visibility vis, DataType dtype,
   } else if (vis == VIS_SECRET) {
     ret = _rand_s(ctx, shape).setDtype(dtype);
   } else {
-    YACL_THROW("Invalid visibility={}", vis);
+    SPU_THROW("Invalid visibility={}", vis);
   }
 
   return ret;

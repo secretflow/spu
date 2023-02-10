@@ -20,9 +20,9 @@
 #include "apsi/seal_object.h"
 #include "seal/seal.h"
 #include "yacl/base/byte_container_view.h"
-#include "yacl/base/exception.h"
 #include "yacl/link/link.h"
 
+#include "libspu/core/prelude.h"
 #include "libspu/psi/core/ecdh_oprf/ecdh_oprf.h"
 #include "libspu/psi/core/labeled_psi/psi_params.h"
 #include "libspu/psi/core/labeled_psi/sender_db.h"
@@ -31,7 +31,7 @@ namespace spu::psi {
 
 class LabelPsiSender {
  public:
-  explicit LabelPsiSender(const std::shared_ptr<spu::psi::SenderDB>& sender_db);
+  explicit LabelPsiSender(std::shared_ptr<spu::psi::SenderDB> sender_db);
 
   /**
    * @brief  Receive PsiParams Request and Send PsiParams Response
@@ -48,11 +48,11 @@ class LabelPsiSender {
    * @param oprf_server
    * @param link_ctx
    */
-  void RunOPRF(const std::shared_ptr<IEcdhOprfServer>& oprf_server,
-               const std::shared_ptr<yacl::link::Context>& link_ctx);
+  static void RunOPRF(const std::shared_ptr<IEcdhOprfServer>& oprf_server,
+                      const std::shared_ptr<yacl::link::Context>& link_ctx);
 
   /**
-   * @brief Receive query_powers Request and Send polynoimal ciphertext Response
+   * @brief Receive query_powers Request and Send polynomial ciphertext Response
    *
    * @param link_ctx
    */

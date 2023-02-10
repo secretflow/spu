@@ -23,8 +23,8 @@
 #include "mlir/IR/BuiltinAttributes.h"
 #include "mlir/IR/BuiltinOps.h"
 #include "mlir/IR/Value.h"
-#include "yacl/base/exception.h"
 
+#include "libspu/core/prelude.h"
 #include "libspu/kernel/context.h"
 #include "libspu/kernel/value.h"
 
@@ -46,8 +46,8 @@ spu::Value SymbolScope::lookupValue(mlir::Value key) const {
 
   // Somehow cannot find this value on stack, print a reasonable error
   SPDLOG_ERROR("Should not be here, symbol not found");
-  YACL_THROW("TODO: add more details");
-  // YACL_THROW("Try to get a non-exist value, defined at {} ",
+  SPU_THROW("TODO: add more details");
+  // SPU_THROW("Try to get a non-exist value, defined at {} ",
   //            mlirObjectToString(*v.getDefiningOp()));
 }
 
@@ -103,9 +103,9 @@ std::vector<spu::Value> runRegion(OpExecutor *executor,                 //
                                   mlir::Region &region,                 //
                                   absl::Span<spu::Value const> params,  //
                                   const ExecutionOptions &opts) {
-  YACL_ENFORCE(region.getNumArguments() == params.size(),
-               "region requires {} arguments while got number of params {}",
-               region.getRegionNumber(), params.size());
+  SPU_ENFORCE(region.getNumArguments() == params.size(),
+              "region requires {} arguments while got number of params {}",
+              region.getRegionNumber(), params.size());
 
   // create a new scope for this region.
   SymbolScope sscope(parent_scope);
@@ -115,7 +115,7 @@ std::vector<spu::Value> runRegion(OpExecutor *executor,                 //
     sscope.addValue(blkarg, params[blkarg.getArgNumber()]);
   }
 
-  YACL_ENFORCE(region.hasOneBlock());
+  SPU_ENFORCE(region.hasOneBlock());
   if (opts.do_parallel) {
     return runBlockParallel(executor, hctx, &sscope, region.front(), params,
                             opts);
@@ -143,7 +143,7 @@ std::vector<spu::Value> runBlock(OpExecutor *executor, HalContext *hctx,
   }
 
   // No terminator
-  YACL_THROW("Should not be here");
+  SPU_THROW("Should not be here");
 }
 
 struct SymbolTableEvent {
@@ -177,7 +177,7 @@ class OpExecTask final {
       for (auto &r : op->getRegions()) {
         r.walk([&](mlir::Operation *nested_op) {
           for (const auto &o : nested_op->getOperands()) {
-            if (o.getDefiningOp() &&
+            if ((o.getDefiningOp() != nullptr) &&
                 o.getDefiningOp()->getParentRegion() == current_region) {
               extra_dependencies_.emplace_back(o);
             }
@@ -257,7 +257,7 @@ std::vector<spu::Value> runBlockParallel(OpExecutor *executor, HalContext *hctx,
   }
 
   // No terminator
-  YACL_THROW("Should not be here");
+  SPU_THROW("Should not be here");
 }
 
 }  // namespace spu::device

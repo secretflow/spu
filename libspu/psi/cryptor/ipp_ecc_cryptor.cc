@@ -23,7 +23,7 @@ namespace spu::psi {
 
 void IppEccCryptor::EccMask(absl::Span<const char> batch_points,
                             absl::Span<char> dest_points) const {
-  YACL_ENFORCE(batch_points.size() % kEccKeySize == 0);
+  SPU_ENFORCE(batch_points.size() % kEccKeySize == 0);
 
   using Item = std::array<unsigned char, kEccKeySize>;
   static_assert(sizeof(Item) == kEccKeySize);
@@ -47,12 +47,12 @@ void IppEccCryptor::EccMask(absl::Span<const char> batch_points,
         ptr_key[i] = static_cast<int8u *>(out[i].data());
       } else {
         ptr_pk[i] = static_cast<const int8u *>(in[0].data());
-        ptr_key[i] = (int8u *)key_data[i];
+        ptr_key[i] = static_cast<int8u *>(key_data[i]);
       }
     }
     mbx_status status =
         mbx_x25519_mb8(ptr_key.data(), ptr_sk.data(), ptr_pk.data());
-    YACL_ENFORCE(status == 0, "ippc mbx_x25519_mb8 Error: ", status);
+    SPU_ENFORCE(status == 0, "ippc mbx_x25519_mb8 Error: ", status);
   };
 
   absl::Span<const Item> input(
@@ -63,7 +63,8 @@ void IppEccCryptor::EccMask(absl::Span<const char> batch_points,
 
   yacl::parallel_for(0, input.size(), 8, [&](int64_t begin, int64_t end) {
     for (int64_t idx = begin; idx < end; idx += 8) {
-      int64_t current_batch_size = std::min(int64_t(8), end - begin);
+      int64_t current_batch_size =
+          std::min(static_cast<int64_t>(8), end - begin);
       mask_functor(input.subspan(idx, current_batch_size),
                    output.subspan(idx, current_batch_size));
     }

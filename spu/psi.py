@@ -21,7 +21,7 @@ from .psi_pb2 import (  # type: ignore
     CurveType,
     InputParams,
     MemoryPsiConfig,
-    OuputParams,
+    OutputParams,
     PsiResultReport,
     PsiType,
 )

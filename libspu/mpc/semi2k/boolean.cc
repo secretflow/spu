@@ -24,7 +24,7 @@
 #include "libspu/mpc/kernel.h"
 #include "libspu/mpc/semi2k/object.h"
 #include "libspu/mpc/semi2k/type.h"
-#include "libspu/mpc/util/ring_ops.h"
+#include "libspu/mpc/utils/ring_ops.h"
 
 namespace spu::mpc::semi2k {
 namespace {
@@ -39,7 +39,7 @@ size_t getNumBits(const ArrayRef& in) {
   } else if (in.eltype().isa<BShrTy>()) {
     return in.eltype().as<BShrTy>()->nbits();
   } else {
-    YACL_THROW("should not be here, {}", in.eltype());
+    SPU_THROW("should not be here, {}", in.eltype());
   }
 }
 
@@ -65,7 +65,7 @@ PtType getBacktype(size_t nbits) {
   if (nbits <= 128) {
     return PT_U128;
   }
-  YACL_THROW("invalid number of bits={}", nbits);
+  SPU_THROW("invalid number of bits={}", nbits);
 }
 
 }  // namespace
@@ -76,8 +76,8 @@ void CommonTypeB::evaluate(KernelEvalContext* ctx) const {
 
   SPU_TRACE_MPC_DISP(ctx, lhs, rhs);
 
-  YACL_ENFORCE(lhs == rhs, "semi2k always use same bshare type, lhs={}, rhs={}",
-               lhs, rhs);
+  SPU_ENFORCE(lhs == rhs, "semi2k always use same bshare type, lhs={}, rhs={}",
+              lhs, rhs);
 
   ctx->setOutput(lhs);
 }
@@ -88,14 +88,14 @@ void CastTypeB::evaluate(KernelEvalContext* ctx) const {
 
   SPU_TRACE_MPC_DISP(ctx, in, to_type);
 
-  YACL_ENFORCE(in.eltype() == to_type,
-               "semi2k always use same bshare type, lhs={}, rhs={}",
-               in.eltype(), to_type);
+  SPU_ENFORCE(in.eltype() == to_type,
+              "semi2k always use same bshare type, lhs={}, rhs={}", in.eltype(),
+              to_type);
 
   ctx->setOutput(in);
 }
 
-ArrayRef ZeroB::proc(KernelEvalContext* ctx, size_t size) const {
+ArrayRef ZeroB::proc(KernelEvalContext* ctx, size_t size) {
   SPU_TRACE_MPC_LEAF(ctx, size);
 
   // TODO: semantically, we should not use field for boolean share.
@@ -132,7 +132,7 @@ ArrayRef P2B::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
 ArrayRef AndBP::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
                      const ArrayRef& rhs) const {
   SPU_TRACE_MPC_LEAF(ctx, lhs, rhs);
-  YACL_ENFORCE(lhs.numel() == rhs.numel());
+  SPU_ENFORCE(lhs.numel() == rhs.numel());
 
   const auto field = ctx->getState<Z2kState>()->getDefaultField();
   const size_t out_nbits = std::min(getNumBits(lhs), getNumBits(rhs));
@@ -153,7 +153,7 @@ ArrayRef AndBP::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
 ArrayRef AndBB::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
                      const ArrayRef& rhs) const {
   SPU_TRACE_MPC_LEAF(ctx, lhs, rhs);
-  YACL_ENFORCE(lhs.numel() == rhs.numel());
+  SPU_ENFORCE(lhs.numel() == rhs.numel());
 
   auto* comm = ctx->getState<Communicator>();
   auto* beaver = ctx->getState<Semi2kState>()->beaver();
@@ -176,7 +176,7 @@ ArrayRef AndBB::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
       if (numBytes % SizeOf(field)) numField += 1;
 
       auto [a, b, c] = beaver->And(field, numField);
-      YACL_ENFORCE(a.buf()->size() >= static_cast<int64_t>(numBytes));
+      SPU_ENFORCE(a.buf()->size() >= static_cast<int64_t>(numBytes));
 
       ArrayView<V> _a(&a.at<V>(0), 1, numel);
       ArrayView<V> _b(&b.at<V>(0), 1, numel);
@@ -213,7 +213,7 @@ ArrayRef AndBB::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
 ArrayRef XorBP::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
                      const ArrayRef& rhs) const {
   SPU_TRACE_MPC_LEAF(ctx, lhs, rhs);
-  YACL_ENFORCE(lhs.numel() == rhs.numel());
+  SPU_ENFORCE(lhs.numel() == rhs.numel());
 
   auto* comm = ctx->getState<Communicator>();
 
@@ -230,7 +230,7 @@ ArrayRef XorBP::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
 ArrayRef XorBB::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
                      const ArrayRef& rhs) const {
   SPU_TRACE_MPC_LEAF(ctx, lhs, rhs);
-  YACL_ENFORCE(lhs.numel() == rhs.numel());
+  SPU_ENFORCE(lhs.numel() == rhs.numel());
 
   const auto field = ctx->getState<Z2kState>()->getDefaultField();
   const size_t out_nbits = std::max(getNumBits(lhs), getNumBits(rhs));
@@ -259,7 +259,7 @@ ArrayRef RShiftB::proc(KernelEvalContext* ctx, const ArrayRef& in,
 
   size_t nbits = in.eltype().as<BShare>()->nbits();
   size_t out_nbits = nbits - std::min(nbits, shift);
-  YACL_ENFORCE(nbits <= SizeOf(field) * 8);
+  SPU_ENFORCE(nbits <= SizeOf(field) * 8);
 
   return makeBShare(ring_rshift(in, shift), field, out_nbits);
 }
@@ -281,8 +281,8 @@ ArrayRef BitrevB::proc(KernelEvalContext* ctx, const ArrayRef& in, size_t start,
   SPU_TRACE_MPC_LEAF(ctx, in, start, end);
   const auto field = in.eltype().as<Ring2k>()->field();
 
-  YACL_ENFORCE(start <= end);
-  YACL_ENFORCE(end <= SizeOf(field) * 8);
+  SPU_ENFORCE(start <= end);
+  SPU_ENFORCE(end <= SizeOf(field) * 8);
   const size_t out_nbits = std::max(getNumBits(in), end);
 
   // TODO: more accurate bits.

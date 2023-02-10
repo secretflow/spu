@@ -87,7 +87,7 @@ py_library(
     ],
 )
 
-SPU_VERSION = "0.3.2b3"
+SPU_VERSION = "0.3.2b4"
 
 py_library(
     name = "init",
@@ -98,7 +98,7 @@ py_library(
         ":psi_py_proto",
         ":spu_py_proto",
         ":version_file",
-        "//spu/util:simulation",
+        "//spu/utils:simulation",
     ],
 )
 
@@ -132,10 +132,11 @@ py_wheel(
     version = SPU_VERSION,
     deps = [
         ":_lib_deps",
-        "//spu/util:distributed",
-        "//spu/util:distributed_py_proto",
-        "//spu/util:distributed_py_proto_grpc",
-        "//spu/util:frontend",
-        "//spu/util:simulation",
+        ":init",
+        "//spu/utils:distributed",
+        "//spu/utils:distributed_py_proto",
+        "//spu/utils:distributed_py_proto_grpc",
+        "//spu/utils:frontend",
+        "//spu/utils:simulation",
     ],
 )

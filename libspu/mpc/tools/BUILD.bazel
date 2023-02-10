@@ -38,7 +38,7 @@ spu_cc_binary(
         "//libspu/mpc:factory",
         "//libspu/mpc:kernel",
         "//libspu/mpc:object",
-        "//libspu/mpc/util:simulate",
+        "//libspu/mpc/utils:simulate",
         "@llvm-project//llvm:Support",
     ],
 )

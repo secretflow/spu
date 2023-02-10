@@ -28,7 +28,7 @@ from .spu_pb2 import (  # type: ignore
 )
 
 from .api import Io, Runtime, compile
-from .util.simulation import Simulator, sim_jax
+from .utils import simulation
 
 from . import psi
 
@@ -49,8 +49,7 @@ __all__ = [
     "Runtime",
     "compile",
     # utils
-    "Simulator",
-    "sim_jax",
+    "simulation",
     # libs
     "psi",
 ]

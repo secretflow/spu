@@ -19,8 +19,8 @@
 #include "libspu/core/shape_util.h"
 #include "libspu/mpc/api.h"
 #include "libspu/mpc/common/communicator.h"
-#include "libspu/mpc/util/ring_ops.h"
-#include "libspu/mpc/util/simulate.h"
+#include "libspu/mpc/utils/ring_ops.h"
+#include "libspu/mpc/utils/simulate.h"
 
 namespace spu::mpc::test {
 namespace {
@@ -30,50 +30,53 @@ const std::vector<size_t> kShiftBits = {0, 1, 2, 31, 32, 33, 64, 1000};
 
 }  // namespace
 
-#define TEST_BINARY_OP_SS(OP)                                                \
-  TEST_P(ApiTest, OP##_ss) {                                                 \
+#define TEST_BINARY_OP_SS(OP)                                             \
+  TEST_P(ApiTest, OP##_ss) {                                              \
+    const auto factory = std::get<0>(GetParam());                         \
+    const RuntimeConfig& conf = std::get<1>(GetParam());                  \
+    const size_t npc = std::get<2>(GetParam());                           \
+                                                                          \
+    utils::simulate(                                                      \
+        npc, [&](const std::shared_ptr<yacl::link::Context>& lctx) {      \
+          auto obj = factory(conf, lctx);                                 \
+                                                                          \
+          /* GIVEN */                                                     \
+          auto p0 = rand_p(obj.get(), kNumel);                            \
+          auto p1 = rand_p(obj.get(), kNumel);                            \
+                                                                          \
+          /* WHEN */                                                      \
+          auto tmp =                                                      \
+              OP##_ss(obj.get(), p2s(obj.get(), p0), p2s(obj.get(), p1)); \
+          auto re = s2p(obj.get(), tmp);                                  \
+          auto rp = OP##_pp(obj.get(), p0, p1);                           \
+                                                                          \
+          /* THEN */                                                      \
+          EXPECT_TRUE(ring_all_equal(re, rp));                            \
+        });                                                               \
+  }
+
+#define TEST_BINARY_OP_SP(OP)                                                \
+  TEST_P(ApiTest, OP##_sp) {                                                 \
     const auto factory = std::get<0>(GetParam());                            \
     const RuntimeConfig& conf = std::get<1>(GetParam());                     \
     const size_t npc = std::get<2>(GetParam());                              \
                                                                              \
-    util::simulate(npc, [&](std::shared_ptr<yacl::link::Context> lctx) {     \
-      auto obj = factory(conf, lctx);                                        \
+    utils::simulate(npc,                                                     \
+                    [&](const std::shared_ptr<yacl::link::Context>& lctx) {  \
+                      auto obj = factory(conf, lctx);                        \
                                                                              \
-      /* GIVEN */                                                            \
-      auto p0 = rand_p(obj.get(), kNumel);                                   \
-      auto p1 = rand_p(obj.get(), kNumel);                                   \
+                      /* GIVEN */                                            \
+                      auto p0 = rand_p(obj.get(), kNumel);                   \
+                      auto p1 = rand_p(obj.get(), kNumel);                   \
                                                                              \
-      /* WHEN */                                                             \
-      auto tmp = OP##_ss(obj.get(), p2s(obj.get(), p0), p2s(obj.get(), p1)); \
-      auto re = s2p(obj.get(), tmp);                                         \
-      auto rp = OP##_pp(obj.get(), p0, p1);                                  \
+                      /* WHEN */                                             \
+                      auto tmp = OP##_sp(obj.get(), p2s(obj.get(), p0), p1); \
+                      auto re = s2p(obj.get(), tmp);                         \
+                      auto rp = OP##_pp(obj.get(), p0, p1);                  \
                                                                              \
-      /* THEN */                                                             \
-      EXPECT_TRUE(ring_all_equal(re, rp));                                   \
-    });                                                                      \
-  }
-
-#define TEST_BINARY_OP_SP(OP)                                            \
-  TEST_P(ApiTest, OP##_sp) {                                             \
-    const auto factory = std::get<0>(GetParam());                        \
-    const RuntimeConfig& conf = std::get<1>(GetParam());                 \
-    const size_t npc = std::get<2>(GetParam());                          \
-                                                                         \
-    util::simulate(npc, [&](std::shared_ptr<yacl::link::Context> lctx) { \
-      auto obj = factory(conf, lctx);                                    \
-                                                                         \
-      /* GIVEN */                                                        \
-      auto p0 = rand_p(obj.get(), kNumel);                               \
-      auto p1 = rand_p(obj.get(), kNumel);                               \
-                                                                         \
-      /* WHEN */                                                         \
-      auto tmp = OP##_sp(obj.get(), p2s(obj.get(), p0), p1);             \
-      auto re = s2p(obj.get(), tmp);                                     \
-      auto rp = OP##_pp(obj.get(), p0, p1);                              \
-                                                                         \
-      /* THEN */                                                         \
-      EXPECT_TRUE(ring_all_equal(re, rp));                               \
-    });                                                                  \
+                      /* THEN */                                             \
+                      EXPECT_TRUE(ring_all_equal(re, rp));                   \
+                    });                                                      \
   }
 
 #define TEST_BINARY_OP(OP) \
@@ -85,46 +88,48 @@ TEST_BINARY_OP(mul)
 TEST_BINARY_OP(and)
 TEST_BINARY_OP(xor)
 
-#define TEST_UNARY_OP_S(OP)                                              \
-  TEST_P(ApiTest, OP##_s) {                                              \
-    const auto factory = std::get<0>(GetParam());                        \
-    const RuntimeConfig& conf = std::get<1>(GetParam());                 \
-    const size_t npc = std::get<2>(GetParam());                          \
-                                                                         \
-    util::simulate(npc, [&](std::shared_ptr<yacl::link::Context> lctx) { \
-      auto obj = factory(conf, lctx);                                    \
-                                                                         \
-      /* GIVEN */                                                        \
-      auto p0 = rand_p(obj.get(), kNumel);                               \
-                                                                         \
-      /* WHEN */                                                         \
-      auto r_s = s2p(obj.get(), OP##_s(obj.get(), p2s(obj.get(), p0)));  \
-      auto r_p = OP##_p(obj.get(), p0);                                  \
-                                                                         \
-      /* THEN */                                                         \
-      EXPECT_TRUE(ring_all_equal(r_s, r_p));                             \
-    });                                                                  \
+#define TEST_UNARY_OP_S(OP)                                                 \
+  TEST_P(ApiTest, OP##_s) {                                                 \
+    const auto factory = std::get<0>(GetParam());                           \
+    const RuntimeConfig& conf = std::get<1>(GetParam());                    \
+    const size_t npc = std::get<2>(GetParam());                             \
+                                                                            \
+    utils::simulate(                                                        \
+        npc, [&](const std::shared_ptr<yacl::link::Context>& lctx) {        \
+          auto obj = factory(conf, lctx);                                   \
+                                                                            \
+          /* GIVEN */                                                       \
+          auto p0 = rand_p(obj.get(), kNumel);                              \
+                                                                            \
+          /* WHEN */                                                        \
+          auto r_s = s2p(obj.get(), OP##_s(obj.get(), p2s(obj.get(), p0))); \
+          auto r_p = OP##_p(obj.get(), p0);                                 \
+                                                                            \
+          /* THEN */                                                        \
+          EXPECT_TRUE(ring_all_equal(r_s, r_p));                            \
+        });                                                                 \
   }
 
-#define TEST_UNARY_OP_P(OP)                                              \
-  TEST_P(ApiTest, OP##_p) {                                              \
-    const auto factory = std::get<0>(GetParam());                        \
-    const RuntimeConfig& conf = std::get<1>(GetParam());                 \
-    const size_t npc = std::get<2>(GetParam());                          \
-                                                                         \
-    util::simulate(npc, [&](std::shared_ptr<yacl::link::Context> lctx) { \
-      auto obj = factory(conf, lctx);                                    \
-                                                                         \
-      /* GIVEN */                                                        \
-      auto p0 = rand_p(obj.get(), kNumel);                               \
-                                                                         \
-      /* WHEN */                                                         \
-      auto r_p = OP##_p(obj.get(), p0);                                  \
-      auto r_pp = OP##_p(obj.get(), p0);                                 \
-                                                                         \
-      /* THEN */                                                         \
-      EXPECT_TRUE(ring_all_equal(r_p, r_pp));                            \
-    });                                                                  \
+#define TEST_UNARY_OP_P(OP)                                                 \
+  TEST_P(ApiTest, OP##_p) {                                                 \
+    const auto factory = std::get<0>(GetParam());                           \
+    const RuntimeConfig& conf = std::get<1>(GetParam());                    \
+    const size_t npc = std::get<2>(GetParam());                             \
+                                                                            \
+    utils::simulate(npc,                                                    \
+                    [&](const std::shared_ptr<yacl::link::Context>& lctx) { \
+                      auto obj = factory(conf, lctx);                       \
+                                                                            \
+                      /* GIVEN */                                           \
+                      auto p0 = rand_p(obj.get(), kNumel);                  \
+                                                                            \
+                      /* WHEN */                                            \
+                      auto r_p = OP##_p(obj.get(), p0);                     \
+                      auto r_pp = OP##_p(obj.get(), p0);                    \
+                                                                            \
+                      /* THEN */                                            \
+                      EXPECT_TRUE(ring_all_equal(r_p, r_pp));               \
+                    });                                                     \
   }
 
 #define TEST_UNARY_OP(OP) \
@@ -134,56 +139,58 @@ TEST_BINARY_OP(xor)
 TEST_UNARY_OP(not )
 TEST_UNARY_OP(msb)
 
-#define TEST_UNARY_OP_WITH_BIT_S(OP)                                     \
-  TEST_P(ApiTest, OP##S) {                                               \
-    const auto factory = std::get<0>(GetParam());                        \
-    const RuntimeConfig& conf = std::get<1>(GetParam());                 \
-    const size_t npc = std::get<2>(GetParam());                          \
-                                                                         \
-    util::simulate(npc, [&](std::shared_ptr<yacl::link::Context> lctx) { \
-      auto obj = factory(conf, lctx);                                    \
-                                                                         \
-      /* GIVEN */                                                        \
-      auto p0 = rand_p(obj.get(), kNumel);                               \
-                                                                         \
-      for (auto bits : kShiftBits) {                                     \
-        if (bits >= SizeOf(conf.field()) * 8) {                          \
-          continue;                                                      \
-        }                                                                \
-        /* WHEN */                                                       \
-        auto r_s =                                                       \
-            s2p(obj.get(), OP##_s(obj.get(), p2s(obj.get(), p0), bits)); \
-        auto r_p = OP##_p(obj.get(), p0, bits);                          \
-                                                                         \
-        /* THEN */                                                       \
-        EXPECT_TRUE(ring_all_equal(r_s, r_p));                           \
-      }                                                                  \
-    });                                                                  \
+#define TEST_UNARY_OP_WITH_BIT_S(OP)                                         \
+  TEST_P(ApiTest, OP##S) {                                                   \
+    const auto factory = std::get<0>(GetParam());                            \
+    const RuntimeConfig& conf = std::get<1>(GetParam());                     \
+    const size_t npc = std::get<2>(GetParam());                              \
+                                                                             \
+    utils::simulate(                                                         \
+        npc, [&](const std::shared_ptr<yacl::link::Context>& lctx) {         \
+          auto obj = factory(conf, lctx);                                    \
+                                                                             \
+          /* GIVEN */                                                        \
+          auto p0 = rand_p(obj.get(), kNumel);                               \
+                                                                             \
+          for (auto bits : kShiftBits) {                                     \
+            if (bits >= SizeOf(conf.field()) * 8) {                          \
+              continue;                                                      \
+            }                                                                \
+            /* WHEN */                                                       \
+            auto r_s =                                                       \
+                s2p(obj.get(), OP##_s(obj.get(), p2s(obj.get(), p0), bits)); \
+            auto r_p = OP##_p(obj.get(), p0, bits);                          \
+                                                                             \
+            /* THEN */                                                       \
+            EXPECT_TRUE(ring_all_equal(r_s, r_p));                           \
+          }                                                                  \
+        });                                                                  \
   }
 
-#define TEST_UNARY_OP_WITH_BIT_P(OP)                                     \
-  TEST_P(ApiTest, OP##P) {                                               \
-    const auto factory = std::get<0>(GetParam());                        \
-    const RuntimeConfig& conf = std::get<1>(GetParam());                 \
-    const size_t npc = std::get<2>(GetParam());                          \
-                                                                         \
-    util::simulate(npc, [&](std::shared_ptr<yacl::link::Context> lctx) { \
-      auto obj = factory(conf, lctx);                                    \
-                                                                         \
-      /* GIVEN */                                                        \
-      auto p0 = rand_p(obj.get(), kNumel);                               \
-                                                                         \
-      for (auto bits : kShiftBits) { /* WHEN */                          \
-        if (bits >= SizeOf(conf.field()) * 8) {                          \
-          continue;                                                      \
-        }                                                                \
-        auto r_p = OP##_p(obj.get(), p0, bits);                          \
-        auto r_pp = OP##_p(obj.get(), p0, bits);                         \
-                                                                         \
-        /* THEN */                                                       \
-        EXPECT_TRUE(ring_all_equal(r_p, r_pp));                          \
-      }                                                                  \
-    });                                                                  \
+#define TEST_UNARY_OP_WITH_BIT_P(OP)                                        \
+  TEST_P(ApiTest, OP##P) {                                                  \
+    const auto factory = std::get<0>(GetParam());                           \
+    const RuntimeConfig& conf = std::get<1>(GetParam());                    \
+    const size_t npc = std::get<2>(GetParam());                             \
+                                                                            \
+    utils::simulate(npc,                                                    \
+                    [&](const std::shared_ptr<yacl::link::Context>& lctx) { \
+                      auto obj = factory(conf, lctx);                       \
+                                                                            \
+                      /* GIVEN */                                           \
+                      auto p0 = rand_p(obj.get(), kNumel);                  \
+                                                                            \
+                      for (auto bits : kShiftBits) { /* WHEN */             \
+                        if (bits >= SizeOf(conf.field()) * 8) {             \
+                          continue;                                         \
+                        }                                                   \
+                        auto r_p = OP##_p(obj.get(), p0, bits);             \
+                        auto r_pp = OP##_p(obj.get(), p0, bits);            \
+                                                                            \
+                        /* THEN */                                          \
+                        EXPECT_TRUE(ring_all_equal(r_p, r_pp));             \
+                      }                                                     \
+                    });                                                     \
   }
 
 #define TEST_UNARY_OP_WITH_BIT(OP) \
@@ -201,7 +208,7 @@ TEST_P(ApiTest, TruncS) {
 
   // trunc_pr only work for smalle range.
   auto p0 = ring_rand_range(conf.field(), kNumel, 0, 10000);
-  util::simulate(npc, [&](std::shared_ptr<yacl::link::Context> lctx) {
+  utils::simulate(npc, [&](const std::shared_ptr<yacl::link::Context>& lctx) {
     auto obj = factory(conf, lctx);
 
     const size_t bits = 2;
@@ -226,7 +233,7 @@ TEST_P(ApiTest, MatMulSS) {
   const std::vector<int64_t> shape_B{K, N};
   const std::vector<int64_t> shape_B2{K, N2};
 
-  util::simulate(npc, [&](std::shared_ptr<yacl::link::Context> lctx) {
+  utils::simulate(npc, [&](const std::shared_ptr<yacl::link::Context>& lctx) {
     auto obj = factory(conf, lctx);
 
     /* GIVEN */
@@ -263,7 +270,7 @@ TEST_P(ApiTest, MmulSP) {
   const std::vector<int64_t> shape_A{M, K};
   const std::vector<int64_t> shape_B{K, N};
 
-  util::simulate(npc, [&](std::shared_ptr<yacl::link::Context> lctx) {
+  utils::simulate(npc, [&](const std::shared_ptr<yacl::link::Context>& lctx) {
     auto obj = factory(conf, lctx);
 
     /* GIVEN */
@@ -285,7 +292,7 @@ TEST_P(ApiTest, P2S_S2P) {
   const RuntimeConfig& conf = std::get<1>(GetParam());
   const size_t npc = std::get<2>(GetParam());
 
-  util::simulate(npc, [&](std::shared_ptr<yacl::link::Context> lctx) {
+  utils::simulate(npc, [&](const std::shared_ptr<yacl::link::Context>& lctx) {
     auto obj = factory(conf, lctx);
 
     /* GIVEN */

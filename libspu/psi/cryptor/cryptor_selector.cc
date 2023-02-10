@@ -73,7 +73,7 @@ std::unique_ptr<IEccCryptor> CreateEccCryptor(CurveType type) {
     }
     case CurveType::CURVE_FOURQ: {
       cryptor = GetFourQCryptor();
-      YACL_ENFORCE(cryptor != nullptr, "FourQ requires AVX2 instruction");
+      SPU_ENFORCE(cryptor != nullptr, "FourQ requires AVX2 instruction");
       break;
     }
     case CurveType::CURVE_SM2: {
@@ -87,10 +87,10 @@ std::unique_ptr<IEccCryptor> CreateEccCryptor(CurveType type) {
       break;
     }
     default: {
-      YACL_THROW("Invaild curve type: {}", type);
+      SPU_THROW("Invaild curve type: {}", type);
     }
   }
-  YACL_ENFORCE(cryptor != nullptr, "Cryptor should not be nullptr");
+  SPU_ENFORCE(cryptor != nullptr, "Cryptor should not be nullptr");
   return cryptor;
 }
 

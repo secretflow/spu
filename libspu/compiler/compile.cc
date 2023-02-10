@@ -21,11 +21,11 @@
 #include "mlir/IR/BuiltinOps.h"
 #include "mlir/IR/MLIRContext.h"
 #include "spdlog/spdlog.h"
-#include "yacl/base/exception.h"
 
 #include "libspu/compiler/codegen/codegen.h"
 #include "libspu/compiler/core/core.h"
 #include "libspu/compiler/front_end/fe.h"
+#include "libspu/core/prelude.h"
 
 namespace spu::compiler {
 
@@ -48,7 +48,7 @@ std::string compile(CompilationContext *ctx, const std::string &serialized_ir,
 std::string compile(CompilationContext *ctx,
                     const std::filesystem::path &file) {
   if (!std::filesystem::exists(file)) {
-    YACL_THROW("File {} not found!", file.c_str());
+    SPU_THROW("File {} not found!", file.c_str());
   }
 
   // Start loading

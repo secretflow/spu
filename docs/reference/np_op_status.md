@@ -5,7 +5,7 @@ JAX NumPy Operators Status
 # Overview
 
 
-SPU recommends users to use JAX as frontend language to write logics. We found most of users would utilize **jax.numpy** modules in their programs. We have conducted tests with some *selected* Operators for referrence.
+SPU recommends users to use JAX as frontend language to write logics. We found most of users would utilize **jax.numpy** modules in their programs. We have conducted tests with some *selected* Operators for reference.
 
 Just keep in mind, if you couldn't find a **jax.numpy** operator in this list, it doesn't mean it's not supported. We just did't test it, e.g. jax.numpy.sort. And we don't test other **JAX** modules at this moment.
 
@@ -59,7 +59,7 @@ Please check *Note* for details.
 ### Note
 
 
-mhlo.atan2
+stablehlo.atan2
 ## angle
   
 JAX NumPy Document link: https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.angle.html
@@ -70,7 +70,7 @@ Please check *Note* for details.
 ### Note
 
 
-mhlo.atan2
+stablehlo.atan2
 ## arccos
   
 JAX NumPy Document link: https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.arccos.html
@@ -81,7 +81,7 @@ Please check *Note* for details.
 ### Note
 
 
-mhlo.atan2
+stablehlo.atan2
 ## arccosh
   
 JAX NumPy Document link: https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.arccosh.html
@@ -103,7 +103,7 @@ Please check *Note* for details.
 ### Note
 
 
-mhlo.atan2
+stablehlo.atan2
 ## arcsinh
   
 JAX NumPy Document link: https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.arcsinh.html
@@ -129,7 +129,7 @@ Please check *Note* for details.
 ### Note
 
 
-mhlo.atan2
+stablehlo.atan2
 ## arctan2
   
 JAX NumPy Document link: https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.arctan2.html
@@ -140,7 +140,7 @@ Please check *Note* for details.
 ### Note
 
 
-mhlo.atan2
+stablehlo.atan2
 ## arctanh
   
 JAX NumPy Document link: https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.arctanh.html
@@ -325,7 +325,7 @@ Please check *Note* for details.
 ### Note
 
 
-mhlo.cbrt
+stablehlo.cbrt
 ## ceil
   
 JAX NumPy Document link: https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.ceil.html
@@ -392,7 +392,7 @@ Please check *Note* for details.
 ### Note
 
 
-mhlo.cosine
+stablehlo.cosine
 ## cosh
   
 JAX NumPy Document link: https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.cosh.html
@@ -1432,7 +1432,7 @@ Please check *Note* for details.
 ### Note
 
 
-mhlo.round_nearest_even
+stablehlo.round_nearest_even
 ## sign
   
 JAX NumPy Document link: https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.sign.html
@@ -1473,7 +1473,7 @@ Please check *Note* for details.
 ### Note
 
 
-mhlo.sine
+stablehlo.sine
 ## sinc
   
 JAX NumPy Document link: https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.sinc.html
@@ -1484,7 +1484,7 @@ Please check *Note* for details.
 ### Note
 
 
-mhlo.sine
+stablehlo.sine
 ## sinh
   
 JAX NumPy Document link: https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.sinh.html
@@ -1495,7 +1495,7 @@ Please check *Note* for details.
 ### Note
 
 
-mhlo.cosine
+stablehlo.cosine
 ## sqrt
   
 JAX NumPy Document link: https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.sqrt.html
@@ -1565,7 +1565,7 @@ Please check *Note* for details.
 ### Note
 
 
-mhlo.sine
+stablehlo.sine
 ## tanh
   
 JAX NumPy Document link: https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.tanh.html

@@ -19,18 +19,18 @@
 namespace spu::kernel {
 
 bool getBooleanValue(HalContext *ctx, const spu::Value &value) {
-  YACL_ENFORCE(value.numel() == 1, "Condition value must be a scalar tensor.");
-  YACL_ENFORCE(value.dtype() == DT_I1, "Expect bool, got {}", value.dtype());
-  YACL_ENFORCE(value.isPublic(), "Expect public value");
+  SPU_ENFORCE(value.numel() == 1, "Condition value must be a scalar tensor.");
+  SPU_ENFORCE(value.dtype() == DT_I1, "Expect bool, got {}", value.dtype());
+  SPU_ENFORCE(value.isPublic(), "Expect public value");
 
   const auto public_val = kernel::hal::test::dump_public_as<bool>(ctx, value);
   return public_val.front();
 }
 
 int32_t getI32Value(HalContext *ctx, const spu::Value &value) {
-  YACL_ENFORCE(value.numel() == 1, "Index value must be a scalar tensor.");
-  YACL_ENFORCE(value.dtype() == DT_I32, "Expect bool, got {}", value.dtype());
-  YACL_ENFORCE(value.isPublic(), "Expect public value");
+  SPU_ENFORCE(value.numel() == 1, "Index value must be a scalar tensor.");
+  SPU_ENFORCE(value.dtype() == DT_I32, "Expect bool, got {}", value.dtype());
+  SPU_ENFORCE(value.isPublic(), "Expect public value");
 
   const auto public_val =
       kernel::hal::test::dump_public_as<int32_t>(ctx, value);
@@ -38,8 +38,8 @@ int32_t getI32Value(HalContext *ctx, const spu::Value &value) {
 }
 
 xt::xarray<int64_t> getIndicies(HalContext *ctx, const spu::Value &value) {
-  YACL_ENFORCE(value.isInt(), "indicies value must be integers.");
-  YACL_ENFORCE(value.isPublic(), "indicies value must be public.");
+  SPU_ENFORCE(value.isInt(), "indicies value must be integers.");
+  SPU_ENFORCE(value.isPublic(), "indicies value must be public.");
   return kernel::hal::test::dump_public_as<int64_t>(ctx, value);
 }
 

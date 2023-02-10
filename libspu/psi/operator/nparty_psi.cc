@@ -15,22 +15,23 @@
 #include "libspu/psi/operator/nparty_psi.h"
 
 #include <algorithm>
+#include <cstddef>
 #include <future>
 #include <memory>
 #include <utility>
 
 #include "spdlog/spdlog.h"
-#include "yacl/base/exception.h"
 #include "yacl/crypto/base/hash/hash_utils.h"
 #include "yacl/utils/parallel.h"
 
+#include "libspu/core/prelude.h"
 #include "libspu/psi/core/communication.h"
 #include "libspu/psi/operator/factory.h"
 #include "libspu/psi/operator/kkrt_2party_psi.h"
 #include "libspu/psi/utils/serialize.h"
 
 namespace {
-constexpr size_t kSyncRecvWaitTimeoutMs = 60 * 60 * 1000;
+constexpr size_t kSyncRecvWaitTimeoutMs = 60L * 60 * 1000;
 }  // namespace
 
 namespace spu::psi {
@@ -53,7 +54,7 @@ NpartyPsiOperator::Options NpartyPsiOperator::ParseConfig(
 
 NpartyPsiOperator::NpartyPsiOperator(const Options& options)
     : PsiBaseOperator(options.link_ctx), options_(options) {
-  YACL_ENFORCE(options_.link_ctx->WorldSize() >= 2);
+  SPU_ENFORCE(options_.link_ctx->WorldSize() >= 2);
 }
 
 std::vector<std::string> NpartyPsiOperator::OnRun(
@@ -80,7 +81,8 @@ std::vector<std::string> NpartyPsiOperator::OnRun(
 
   std::vector<std::string> intersection;
   for (size_t li = 0; li < level_num; ++li) {
-    size_t peer_rank, target_rank;
+    size_t peer_rank;
+    size_t target_rank;
     GetPsiRank(party_size_rank_vec, &peer_rank, &target_rank);
     if (li == 0) {
       intersection = Run2PartyPsi(inputs, peer_rank, target_rank);
@@ -120,8 +122,8 @@ std::vector<std::string> NpartyPsiOperator::OnRun(
         fmt::format("round:{}, {} gather item size", li, sub_link_ctx->Rank()));
 
     size_t min_intersection_size = inputs.size();
-    for (size_t idx = 0; idx < gather_size_bufs.size(); ++idx) {
-      size_t current_idx_size = utils::DeserializeSize(gather_size_bufs[idx]);
+    for (auto& gather_size_buf : gather_size_bufs) {
+      size_t current_idx_size = utils::DeserializeSize(gather_size_buf);
       min_intersection_size = std::min(min_intersection_size, current_idx_size);
       if (min_intersection_size == 0) {
         break;
@@ -179,8 +181,7 @@ std::vector<std::string> NpartyPsiOperator::Run2PartyPsi(
 
     return kkrt_op.Run(items, false);
   } else {
-    YACL_THROW("not support psi type: {}",
-               static_cast<int>(options_.psi_proto));
+    SPU_THROW("not support psi type: {}", static_cast<int>(options_.psi_proto));
   }
 }
 
@@ -192,7 +193,7 @@ NpartyPsiOperator::GetAllPartyItemSizeVec(size_t item_size) {
   std::vector<yacl::Buffer> gather_size = yacl::link::AllGather(
       options_.link_ctx, utils::SerializeSize(item_size),
       fmt::format("{} send item size", options_.link_ctx->Rank()));
-  YACL_ENFORCE(gather_size.size() == options_.link_ctx->WorldSize());
+  SPU_ENFORCE(gather_size.size() == options_.link_ctx->WorldSize());
 
   for (size_t idx = 0; idx < options_.link_ctx->WorldSize(); ++idx) {
     size_t idx_item_size = utils::DeserializeSize(gather_size[idx]);
@@ -239,8 +240,8 @@ void NpartyPsiOperator::GetPsiRank(
     }
   }
 
-  YACL_THROW("can not find self rank({}) in party_size_rank_vec",
-             options_.link_ctx->Rank());
+  SPU_THROW("can not find self rank({}) in party_size_rank_vec",
+            options_.link_ctx->Rank());
 }
 
 namespace {

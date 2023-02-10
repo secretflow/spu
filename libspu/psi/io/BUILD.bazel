@@ -20,7 +20,7 @@ spu_cc_library(
     hdrs = ["io.h"],
     visibility = ["//visibility:public"],
     deps = [
-        "@yacl//yacl/base:exception",
+        "//libspu/core:prelude",
         "@yacl//yacl/io/rw",
         "@yacl//yacl/io/stream",
     ],

@@ -21,9 +21,9 @@
 
 #include "absl/strings/str_split.h"
 #include "gtest/gtest.h"
-#include "yacl/base/exception.h"
 #include "yacl/link/test_util.h"
 
+#include "libspu/core/prelude.h"
 #include "libspu/psi/utils/test_utils.h"
 
 struct TestParams {
@@ -47,8 +47,9 @@ TEST_P(Ecdh3PcPsiTest, MaskMaster) {
 
   size_t master_rank = alice_rank;
 
-  std::shared_ptr<ShuffleEcdh3PcPsi> ecdh_3pc_psi_master,
-      ecdh_3pc_psi_master_next, ecdh_3pc_psi_master_prev;
+  std::shared_ptr<ShuffleEcdh3PcPsi> ecdh_3pc_psi_master;
+  std::shared_ptr<ShuffleEcdh3PcPsi> ecdh_3pc_psi_master_next;
+  std::shared_ptr<ShuffleEcdh3PcPsi> ecdh_3pc_psi_master_prev;
 
   ShuffleEcdh3PcPsi::Options opts;
   opts.link_ctx = link_abc[alice_rank];
@@ -100,8 +101,9 @@ TEST_P(Ecdh3PcPsiTest, PartnersPsi) {
 
   auto intersection_std_bc = GetIntersection(params.items_b, params.items_c);
 
-  std::shared_ptr<ShuffleEcdh3PcPsi> ecdh_3pc_psi_master,
-      ecdh_3pc_psi_master_next, ecdh_3pc_psi_master_prev;
+  std::shared_ptr<ShuffleEcdh3PcPsi> ecdh_3pc_psi_master;
+  std::shared_ptr<ShuffleEcdh3PcPsi> ecdh_3pc_psi_master_next;
+  std::shared_ptr<ShuffleEcdh3PcPsi> ecdh_3pc_psi_master_prev;
 
   ShuffleEcdh3PcPsi::Options opts;
   opts.link_ctx = link_abc[alice_rank];
@@ -156,8 +158,9 @@ TEST_P(Ecdh3PcPsiTest, Works) {
   auto intersection_std_abc =
       GetIntersection(intersection_std_ab, params.items_c);
 
-  std::shared_ptr<ShuffleEcdh3PcPsi> ecdh_3pc_psi_master,
-      ecdh_3pc_psi_master_next, ecdh_3pc_psi_master_prev;
+  std::shared_ptr<ShuffleEcdh3PcPsi> ecdh_3pc_psi_master;
+  std::shared_ptr<ShuffleEcdh3PcPsi> ecdh_3pc_psi_master_next;
+  std::shared_ptr<ShuffleEcdh3PcPsi> ecdh_3pc_psi_master_prev;
 
   ShuffleEcdh3PcPsi::Options opts;
   opts.link_ctx = link_abc[alice_rank];

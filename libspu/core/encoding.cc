@@ -29,7 +29,7 @@ DataType getEncodeType(PtType pt_type) {
   switch (pt_type) {
     MAP_PTTYPE_TO_DTYPE(CASE)
     default:
-      YACL_THROW("invalid PtType {}", pt_type);
+      SPU_THROW("invalid PtType {}", pt_type);
   }
 
 #undef CASE
@@ -43,7 +43,7 @@ PtType getDecodeType(DataType dtype) {
   switch (dtype) {
     MAP_DTYPE_TO_PTTYPE(CASE)
     default:
-      YACL_THROW("invalid DataType {}", dtype);
+      SPU_THROW("invalid DataType {}", dtype);
   }
 
 #undef CASE
@@ -51,7 +51,7 @@ PtType getDecodeType(DataType dtype) {
 
 ArrayRef encodeToRing(const ArrayRef& src, FieldType field, size_t fxp_bits,
                       DataType* out_dtype) {
-  YACL_ENFORCE(src.eltype().isa<PtTy>(), "expect PtType, got={}", src.eltype());
+  SPU_ENFORCE(src.eltype().isa<PtTy>(), "expect PtType, got={}", src.eltype());
   const PtType pt_type = src.eltype().as<PtTy>()->pt_type();
   const size_t numel = src.numel();
   ArrayRef dst(makeType<RingTy>(field), numel);
@@ -104,9 +104,9 @@ ArrayRef encodeToRing(const ArrayRef& src, FieldType field, size_t fxp_bits,
     DISPATCH_INT_PT_TYPES(pt_type, "_", [&]() {
       DISPATCH_ALL_FIELDS(field, "_", [&]() {
         using Integer = ScalarT;
-        YACL_ENFORCE(sizeof(ring2k_t) >= sizeof(Integer),
-                     "integer encoding failed, ring={} could not represent {}",
-                     field, pt_type);
+        SPU_ENFORCE(sizeof(ring2k_t) >= sizeof(Integer),
+                    "integer encoding failed, ring={} could not represent {}",
+                    field, pt_type);
 
         using T = std::make_signed_t<ring2k_t>;
         // TODO: encoding integer in range [-2^(k-2),2^(k-2))
@@ -121,7 +121,7 @@ ArrayRef encodeToRing(const ArrayRef& src, FieldType field, size_t fxp_bits,
     return dst;
   }
 
-  YACL_THROW("shold not be here");
+  SPU_THROW("shold not be here");
 }
 
 NdArrayRef encodeToRing(const NdArrayRef& src, FieldType field, size_t fxp_bits,
@@ -137,8 +137,8 @@ ArrayRef decodeFromRing(const ArrayRef& src, DataType in_dtype, size_t fxp_bits,
   const PtType pt_type = getDecodeType(in_dtype);
   const size_t numel = src.numel();
 
-  YACL_ENFORCE(src_type.isa<RingTy>(), "source must be ring_type, got={}",
-               src_type);
+  SPU_ENFORCE(src_type.isa<RingTy>(), "source must be ring_type, got={}",
+              src_type);
 
   if (out_pt_type != nullptr) {
     *out_pt_type = pt_type;
@@ -157,7 +157,7 @@ ArrayRef decodeFromRing(const ArrayRef& src, DataType in_dtype, size_t fxp_bits,
 
       if (in_dtype == DT_I1) {
         constexpr bool kSanity = std::is_same_v<ScalarT, bool>;
-        YACL_ENFORCE(kSanity);
+        SPU_ENFORCE(kSanity);
         pforeach(0, numel, [&](int64_t idx) {
           dst_ptr[idx * dst_stride] = !((src_ptr[idx * src_stride] & 0x1) == 0);
         });

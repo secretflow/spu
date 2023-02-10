@@ -17,9 +17,9 @@
 
 #include "gflags/gflags.h"
 #include "spdlog/spdlog.h"
-#include "yacl/base/exception.h"
 #include "yacl/link/link.h"
 
+#include "libspu/core/prelude.h"
 #include "libspu/psi/bucket_psi.h"
 #include "libspu/psi/utils/resource.h"
 
@@ -39,7 +39,7 @@ DEFINE_bool(ic_mode, false, "run in interconnection mode");
 std::shared_ptr<yacl::link::Context> CreateLinkContext(
     const std::string& party_ips, size_t self_rank) {
   std::vector<std::string> ip_list = absl::StrSplit(party_ips, ',');
-  YACL_ENFORCE(ip_list.size() > 1);
+  SPU_ENFORCE(ip_list.size() > 1);
 
   yacl::link::ContextDesc ctx_desc;
   ctx_desc.connect_retry_times = 180;
@@ -75,8 +75,8 @@ int main(int argc, char* argv[]) {
     config.mutable_output_params()->set_path(FLAGS_output_path);
     config.mutable_output_params()->set_need_sort(FLAGS_output_sort);
     spu::psi::PsiType psi_type;
-    YACL_ENFORCE(spu::psi::PsiType_Parse(FLAGS_psi_protocol, &psi_type),
-                 "Parse psi_protocol {} fail", FLAGS_psi_protocol);
+    SPU_ENFORCE(spu::psi::PsiType_Parse(FLAGS_psi_protocol, &psi_type),
+                "Parse psi_protocol {} fail", FLAGS_psi_protocol);
     config.set_psi_type(psi_type);
     config.set_broadcast_result(true);
     config.set_curve_type(spu::psi::CurveType::CURVE_25519);

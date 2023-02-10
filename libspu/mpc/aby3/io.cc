@@ -20,17 +20,17 @@
 #include "libspu/mpc/aby3/type.h"
 #include "libspu/mpc/aby3/value.h"
 #include "libspu/mpc/common/pub2k.h"
-#include "libspu/mpc/util/ring_ops.h"
+#include "libspu/mpc/utils/ring_ops.h"
 
 namespace spu::mpc::aby3 {
 
 std::vector<ArrayRef> Aby3Io::toShares(const ArrayRef& raw, Visibility vis,
                                        int owner_rank) const {
-  YACL_ENFORCE(raw.eltype().isa<RingTy>(), "expected RingTy, got {}",
-               raw.eltype());
+  SPU_ENFORCE(raw.eltype().isa<RingTy>(), "expected RingTy, got {}",
+              raw.eltype());
   const auto field = raw.eltype().as<Ring2k>()->field();
-  YACL_ENFORCE(field == field_, "expect raw value encoded in field={}, got={}",
-               field_, field);
+  SPU_ENFORCE(field == field_, "expect raw value encoded in field={}, got={}",
+              field_, field);
 
   if (vis == VIS_PUBLIC) {
     const auto share = raw.as(makeType<Pub2kTy>(field));
@@ -52,7 +52,7 @@ std::vector<ArrayRef> Aby3Io::toShares(const ArrayRef& raw, Visibility vis,
     } else {
       splits = ring_rand_additive_splits(raw, world_size_);
     }
-    YACL_ENFORCE(splits.size() == 3, "expect 3PC, got={}", splits.size());
+    SPU_ENFORCE(splits.size() == 3, "expect 3PC, got={}", splits.size());
     std::vector<ArrayRef> shares;
     for (std::size_t i = 0; i < 3; i++) {
       shares.push_back(
@@ -61,13 +61,13 @@ std::vector<ArrayRef> Aby3Io::toShares(const ArrayRef& raw, Visibility vis,
     return shares;
   }
 
-  YACL_THROW("unsupported vis type {}", vis);
+  SPU_THROW("unsupported vis type {}", vis);
 }
 
 std::vector<ArrayRef> Aby3Io::makeBitSecret(const ArrayRef& in) const {
-  YACL_ENFORCE(in.eltype().isa<PtTy>(), "expected PtType, got {}", in.eltype());
+  SPU_ENFORCE(in.eltype().isa<PtTy>(), "expected PtType, got {}", in.eltype());
   PtType in_pt_type = in.eltype().as<PtTy>()->pt_type();
-  YACL_ENFORCE(in_pt_type == PT_BOOL);
+  SPU_ENFORCE(in_pt_type == PT_BOOL);
 
   if (in_pt_type == PT_BOOL) {
     // we assume boolean is stored with byte array.
@@ -121,10 +121,10 @@ ArrayRef Aby3Io::fromShares(const std::vector<ArrayRef>& shares) const {
   const auto& eltype = shares.at(0).eltype();
 
   if (eltype.isa<Pub2kTy>()) {
-    YACL_ENFORCE(field_ == eltype.as<Ring2k>()->field());
+    SPU_ENFORCE(field_ == eltype.as<Ring2k>()->field());
     return shares[0].as(makeType<RingTy>(field_));
   } else if (eltype.isa<AShrTy>()) {
-    YACL_ENFORCE(field_ == eltype.as<Ring2k>()->field());
+    SPU_ENFORCE(field_ == eltype.as<Ring2k>()->field());
     ArrayRef out(makeType<Pub2kTy>(field_), shares[0].numel());
     DISPATCH_ALL_FIELDS(field_, "_", [&]() {
       auto _out = ArrayView<ring2k_t>(out);
@@ -161,11 +161,11 @@ ArrayRef Aby3Io::fromShares(const std::vector<ArrayRef>& shares) const {
 
     return out;
   }
-  YACL_THROW("unsupported eltype {}", eltype);
+  SPU_THROW("unsupported eltype {}", eltype);
 }
 
 std::unique_ptr<Aby3Io> makeAby3Io(FieldType field, size_t npc) {
-  YACL_ENFORCE_EQ(npc, 3u, "aby3 is only for 3pc.");
+  SPU_ENFORCE(npc == 3U, "aby3 is only for 3pc.");
   registerTypes();
   return std::make_unique<Aby3Io>(field, npc);
 }

@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include <cstddef>
+#include <utility>
 
 #include "fmt/format.h"
 #include "pybind11/iostream.h"
@@ -48,8 +49,11 @@ namespace spu {
 #define NO_GIL py::call_guard<py::gil_scoped_release>()
 
 void BindLink(py::module& m) {
+  using yacl::link::CertInfo;
   using yacl::link::Context;
   using yacl::link::ContextDesc;
+  using yacl::link::SSLOptions;
+  using yacl::link::VerifyOptions;
 
   // TODO(jint) expose this tag to python?
   constexpr char PY_CALL_TAG[] = "PY_CALL";
@@ -57,6 +61,25 @@ void BindLink(py::module& m) {
   m.doc() = R"pbdoc(
               SPU Link Library
                   )pbdoc";
+
+  py::class_<CertInfo>(m, "CertInfo", "The config info used for certificate")
+      .def_readwrite("certificate_path", &CertInfo::certificate_path,
+                     "certificate file path")
+      .def_readwrite("private_key_path", &CertInfo::private_key_path,
+                     "private key file path");
+
+  py::class_<VerifyOptions>(m, "VerifyOptions",
+                            "The options used for verify certificate")
+      .def_readwrite("verify_depth", &VerifyOptions::verify_depth,
+                     "maximum depth of the certificate chain for verification")
+      .def_readwrite("ca_file_path", &VerifyOptions::ca_file_path,
+                     "the trusted CA file path");
+
+  py::class_<SSLOptions>(m, "SSLOptions", "The options used for ssl")
+      .def_readwrite("cert", &SSLOptions::cert,
+                     "certificate used for authentication")
+      .def_readwrite("verify", &SSLOptions::verify,
+                     "options used to verify the peer's certificate");
 
   py::class_<ContextDesc::Party>(
       m, "Party", "The party that participate the secure computation")
@@ -84,10 +107,13 @@ void BindLink(py::module& m) {
       .def_readwrite("brpc_channel_connection_type",
                      &ContextDesc::brpc_channel_connection_type)
       .def_readwrite("throttle_window_size", &ContextDesc::throttle_window_size)
+      .def_readwrite("enable_ssl", &ContextDesc::enable_ssl)
+      .def_readwrite("client_ssl_opts", &ContextDesc::client_ssl_opts)
+      .def_readwrite("server_ssl_opts", &ContextDesc::server_ssl_opts)
       .def(
           "add_party",
           [](ContextDesc& desc, std::string id, std::string host) {
-            desc.parties.push_back({id, host});
+            desc.parties.push_back({std::move(id), std::move(host)});
           },
           "add a party to the link");
 
@@ -133,7 +159,7 @@ void BindLink(py::module& m) {
           },
           NO_GIL,
           "Gathers data from all parties and distribute the combined data to "
-          "all parties, aka MPI_Allgather")
+          "all parties, aka MPI_AllGather")
       .def(
           "gather",
           [&PY_CALL_TAG](const std::shared_ptr<Context>& self,
@@ -204,6 +230,7 @@ void BindLink(py::module& m) {
           brpc::FLAGS_max_body_size = std::numeric_limits<uint64_t>::max();
           brpc::FLAGS_socket_max_unwritten_bytes =
               std::numeric_limits<int64_t>::max() / 2;
+
           auto ctx = yacl::link::FactoryBrpc().CreateContext(desc, self_rank);
           ctx->ConnectToMesh();
           return ctx;
@@ -228,17 +255,17 @@ class RuntimeWrapper {
   spu::device::SymbolTable env_;
 
  public:
-  explicit RuntimeWrapper(std::shared_ptr<yacl::link::Context> lctx,
+  explicit RuntimeWrapper(const std::shared_ptr<yacl::link::Context>& lctx,
                           const std::string& config_pb) {
     spu::RuntimeConfig config;
-    YACL_ENFORCE(config.ParseFromString(config_pb));
+    SPU_ENFORCE(config.ParseFromString(config_pb));
 
     hctx_ = std::make_unique<spu::HalContext>(config, lctx);
   }
 
   void Run(const py::bytes& exec_pb) {
     spu::ExecutableProto exec;
-    YACL_ENFORCE(exec.ParseFromString(exec_pb));
+    SPU_ENFORCE(exec.ParseFromString(exec_pb));
 
     spu::device::pphlo::PPHloExecutor executor;
     spu::device::execute(&executor, hctx_.get(), exec, &env_);
@@ -246,7 +273,7 @@ class RuntimeWrapper {
 
   void SetVar(const std::string& name, const py::bytes& value) {
     ValueProto proto;
-    YACL_ENFORCE(proto.ParseFromString(value));
+    SPU_ENFORCE(proto.ParseFromString(value));
 
     env_.setVar(name, spu::Value::fromProto(proto));
   }
@@ -285,26 +312,26 @@ class RuntimeWrapper {
 // definition
 spu::PtType PyFormatToPtType(const std::string& format) {
 #define CASE(FORMAT, PT_TYPE) \
-  if (format == FORMAT) return PT_TYPE;
+  if (format == (FORMAT)) return PT_TYPE;
 
-  if (false) {
+  if (false) {  // NOLINT: macro trick
   }
   FOR_PY_FORMATS(CASE)
 
 #undef CASE
-  YACL_THROW("unknown py format={}", format);
+  SPU_THROW("unknown py format={}", format);
 }
 
 std::string PtTypeToPyFormat(spu::PtType pt_type) {
 #define CASE(FORMAT, PT_TYPE) \
-  if (pt_type == PT_TYPE) return FORMAT;
+  if (pt_type == (PT_TYPE)) return FORMAT;
 
-  if (false) {
+  if (false) {  // NOLINT: macro trick
   }
   FOR_PY_FORMATS(CASE)
 
 #undef CASE
-  YACL_THROW("unknown pt_type={}", pt_type);
+  SPU_THROW("unknown pt_type={}", pt_type);
 }
 
 template <typename Iter>
@@ -312,7 +339,7 @@ std::vector<int64_t> ByteToElementStrides(const Iter& begin, const Iter& end,
                                           size_t elsize) {
   std::vector<int64_t> ret(std::distance(begin, end));
   std::transform(begin, end, ret.begin(), [&](int64_t c) -> int64_t {
-    YACL_ENFORCE(c % elsize == 0);
+    SPU_ENFORCE(c % elsize == 0);
     return c / elsize;
   });
   return ret;
@@ -320,8 +347,9 @@ std::vector<int64_t> ByteToElementStrides(const Iter& begin, const Iter& end,
 
 constexpr void SizeCheck() {
   static_assert(sizeof(intptr_t) == 8, "SPU only supports 64-bit system");
-  static_assert(sizeof(long long) == 8, "SPU assumes size of longlong == 8");
-  static_assert(sizeof(unsigned long long) == 8,
+  static_assert(sizeof(long long) == 8,  // NOLINT
+                "SPU assumes size of longlong == 8");
+  static_assert(sizeof(unsigned long long) == 8,  // NOLINT
                 "SPU assumes size of ulonglong == 8");
 }
 
@@ -331,7 +359,7 @@ class IoWrapper {
  public:
   IoWrapper(size_t world_size, const std::string& config_pb) {
     spu::RuntimeConfig config;
-    YACL_ENFORCE(config.ParseFromString(config_pb));
+    SPU_ENFORCE(config.ParseFromString(config_pb));
 
     ptr_ = std::make_unique<spu::device::IoClient>(world_size, config);
   }
@@ -351,12 +379,12 @@ class IoWrapper {
         ByteToElementStrides(binfo.strides.begin(), binfo.strides.end(),
                              binfo.itemsize));
 
-    auto shares =
-        ptr_->makeShares(view, spu::Visibility(visibility), owner_rank);
+    auto shares = ptr_->makeShares(
+        view, static_cast<spu::Visibility>(visibility), owner_rank);
     std::vector<py::bytes> serialized(shares.size());
     for (size_t idx = 0; idx < shares.size(); ++idx) {
       std::string s;
-      YACL_ENFORCE(shares[idx].toProto().SerializeToString(&s));
+      SPU_ENFORCE(shares[idx].toProto().SerializeToString(&s));
       serialized[idx] = py::bytes(s);
     }
 
@@ -365,10 +393,10 @@ class IoWrapper {
 
   py::array reconstruct(const std::vector<std::string>& vals) {
     std::vector<spu::Value> shares;
-    YACL_ENFORCE(vals.size() > 0);
+    SPU_ENFORCE(!vals.empty());
     for (const auto& val_str : vals) {
       spu::ValueProto vp;
-      YACL_ENFORCE(vp.ParseFromString(val_str));
+      SPU_ENFORCE(vp.ParseFromString(val_str));
       shares.push_back(spu::Value::fromProto(vp));
     }
 
@@ -376,16 +404,16 @@ class IoWrapper {
     for (size_t idx = 1; idx < vals.size(); ++idx) {
       const auto& cur = shares[idx];
       const auto& prev = shares[idx - 1];
-      YACL_ENFORCE(cur.storage_type() == prev.storage_type(),
-                   "storage type mismatch, {} {}", cur.storage_type(),
-                   prev.storage_type());
-      YACL_ENFORCE(cur.dtype() == prev.dtype(), "data type mismatch, {} {}",
-                   cur.dtype(), prev.dtype());
+      SPU_ENFORCE(cur.storage_type() == prev.storage_type(),
+                  "storage type mismatch, {} {}", cur.storage_type(),
+                  prev.storage_type());
+      SPU_ENFORCE(cur.dtype() == prev.dtype(), "data type mismatch, {} {}",
+                  cur.dtype(), prev.dtype());
     }
 
     auto ndarr = ptr_->combineShares(shares);
-    YACL_ENFORCE(ndarr.eltype().isa<PtTy>(), "expect decode to pt_type, got {}",
-                 ndarr.eltype());
+    SPU_ENFORCE(ndarr.eltype().isa<PtTy>(), "expect decode to pt_type, got {}",
+                ndarr.eltype());
 
     const auto pt_type = ndarr.eltype().as<PtTy>()->pt_type();
     std::vector<size_t> shape = {ndarr.shape().begin(), ndarr.shape().end()};
@@ -404,7 +432,7 @@ void BindLibs(py::module& m) {
          const std::string& config_pb,
          const std::vector<std::string>& items) -> std::vector<std::string> {
         psi::MemoryPsiConfig config;
-        YACL_ENFORCE(config.ParseFromString(config_pb));
+        SPU_ENFORCE(config.ParseFromString(config_pb));
 
         psi::MemoryPsi psi(config, lctx);
         return psi.Run(items);
@@ -416,7 +444,7 @@ void BindLibs(py::module& m) {
       [](const std::shared_ptr<yacl::link::Context>& lctx,
          const std::string& config_pb, bool ic_mode) -> py::bytes {
         psi::BucketPsiConfig config;
-        YACL_ENFORCE(config.ParseFromString(config_pb));
+        SPU_ENFORCE(config.ParseFromString(config_pb));
 
         psi::BucketPsi psi(config, lctx, ic_mode);
         auto r = psi.Run();
@@ -457,7 +485,7 @@ void BindLogging(py::module& m) {
                                   opts.max_log_file_size,
                                   opts.max_log_file_count);
           },
-          [](py::tuple t) {  // __setstate__
+          [](const py::tuple& t) {  // __setstate__
             if (t.size() != 5) {
               throw std::runtime_error("Invalid serialized data!");
             }
@@ -483,19 +511,20 @@ void BindLogging(py::module& m) {
 }
 
 PYBIND11_MODULE(libspu, m) {
-  py::register_exception_translator([](std::exception_ptr p) {
-    try {
-      if (p) {
-        std::rethrow_exception(p);
-      }
-    } catch (const yacl::Exception& e) {
-      // Translate this exception to a standard RuntimeError
-      PyErr_SetString(PyExc_RuntimeError,
-                      fmt::format("what: \n\t{}\nstacktrace: \n{}\n", e.what(),
-                                  e.stack_trace())
-                          .c_str());
-    }
-  });
+  py::register_exception_translator(
+      [](std::exception_ptr p) {  // NOLINT: pybind11
+        try {
+          if (p) {
+            std::rethrow_exception(p);
+          }
+        } catch (const yacl::Exception& e) {
+          // Translate this exception to a standard RuntimeError
+          PyErr_SetString(PyExc_RuntimeError,
+                          fmt::format("what: \n\t{}\nstacktrace: \n{}\n",
+                                      e.what(), e.stack_trace())
+                              .c_str());
+        }
+      });
 
   // bind spu virtual machine.
   py::class_<RuntimeWrapper>(m, "RuntimeWrapper", "SPU virtual device")
@@ -521,14 +550,14 @@ PYBIND11_MODULE(libspu, m) {
   m.def(
       "compile",
       [](const py::bytes& ir_text, const std::string& ir_type,
-         const std::string& input_visbility_map, const std::string& dump_path) {
+         const std::string& input_visiblity_map, const std::string& dump_path) {
         py::scoped_ostream_redirect stream(
             std::cout,                                 // std::ostream&
             py::module_::import("sys").attr("stdout")  // Python output
         );
 
         spu::compiler::CompilationContext ctx;
-        ctx.setInputVisibilityString(input_visbility_map);
+        ctx.setInputVisibilityString(input_visiblity_map);
 
         if (!dump_path.empty()) {
           ctx.enablePrettyPrintWithDir(dump_path);

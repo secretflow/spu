@@ -15,6 +15,7 @@
 #include "libspu/psi/core/labeled_psi/receiver.h"
 
 #include <algorithm>
+#include <cstddef>
 #include <future>
 #include <map>
 #include <memory>
@@ -43,7 +44,8 @@ constexpr std::uint64_t kCuckooTableInsertAttempts = 500;
 
 template <typename T>
 bool HasNZeros(T *ptr, size_t count) {
-  return std::all_of(ptr, ptr + count, [](auto a) { return a == T(0); });
+  return std::all_of(ptr, ptr + count,
+                     [](auto a) { return a == static_cast<T>(0); });
 }
 }  // namespace
 
@@ -104,7 +106,7 @@ std::uint32_t LabelPsiReceiver::ResetPowersDag(
         apsi::util::to_string(source_powers),
         apsi::util::to_string(target_powers));
 
-    YACL_THROW("failed to configure PowersDag");
+    SPU_THROW("failed to configure PowersDag");
   }
   SPDLOG_DEBUG("Configured PowersDag with depth {}", pd_.depth());
 
@@ -142,8 +144,8 @@ LabelPsiReceiver::RequestOPRF(
   });
 
   proto::OprfProto oprf_proto;
-  for (size_t idx = 0; idx < blind_items.size(); ++idx) {
-    oprf_proto.add_data(blind_items[idx].data(), blind_items[idx].length());
+  for (auto &blind_item : blind_items) {
+    oprf_proto.add_data(blind_item.data(), blind_item.length());
   }
 
   yacl::Buffer blind_buffer(oprf_proto.ByteSizeLong());
@@ -157,8 +159,8 @@ LabelPsiReceiver::RequestOPRF(
       link_ctx->NextRank(), fmt::format("recv oprf evaluated message"));
 
   proto::OprfProto evaluated_proto;
-  YACL_ENFORCE(evaluated_proto.ParseFromArray(evaluated_buffer.data(),
-                                              evaluated_buffer.size()));
+  SPU_ENFORCE(evaluated_proto.ParseFromArray(evaluated_buffer.data(),
+                                             evaluated_buffer.size()));
 
   std::vector<std::string> items_oprf(evaluated_proto.data_size());
   yacl::parallel_for(0, evaluated_proto.data_size(), 1,
@@ -173,7 +175,7 @@ LabelPsiReceiver::RequestOPRF(
   std::vector<apsi::LabelKey> label_keys(items_oprf.size());
 
   for (size_t idx = 0; idx < items_oprf.size(); ++idx) {
-    std::memcpy(hashed_items[idx].value().data(), &items_oprf[idx][0],
+    std::memcpy(hashed_items[idx].value().data(), items_oprf[idx].data(),
                 hashed_items[idx].value().size());
 
     std::memcpy(label_keys[idx].data(),
@@ -218,7 +220,7 @@ LabelPsiReceiver::RequestQuery(
       } else {
         SPDLOG_INFO("Failed to insert items[{}:{}; cuckoo table fill-rate: {}",
                     item_idx, item.to_string(), cuckoo.fill_rate());
-        YACL_THROW("failed to insert item into cuckoo table");
+        SPU_THROW("failed to insert item into cuckoo table");
       }
     }
   }
@@ -249,11 +251,12 @@ LabelPsiReceiver::RequestQuery(
 
       // First, find the items for this bundle index
       absl::Span<const kuku::item_type> bundle_items = absl::MakeSpan(
-          cuckoo.table().data() + bundle_idx * psi_params_.items_per_bundle(),
+          cuckoo.table().data() +
+              static_cast<size_t>(bundle_idx * psi_params_.items_per_bundle()),
           psi_params_.items_per_bundle());
 
       std::vector<uint64_t> alg_items;
-      for (auto &item : bundle_items) {
+      for (const auto &item : bundle_items) {
         // Now set up a BitstringView to this item
         gsl::span<const unsigned char> item_bytes(
             reinterpret_cast<const unsigned char *>(item.data()), sizeof(item));
@@ -270,7 +273,7 @@ LabelPsiReceiver::RequestQuery(
       // Now that we have the algebraized items for this bundle index, we
       // create a PlaintextPowers object that computes all necessary powers of
       // the algebraized items.
-      plain_powers.emplace_back(move(alg_items), psi_params_, pd_);
+      plain_powers.emplace_back(std::move(alg_items), psi_params_, pd_);
     }
   }
   SPDLOG_INFO("plain_powers size:{}, using_keyswitching:{}",
@@ -333,8 +336,8 @@ LabelPsiReceiver::RequestQuery(
       link_ctx->NextRank(), fmt::format("recv server query response message"));
 
   proto::QueryResponseProto response_proto;
-  YACL_ENFORCE(response_proto.ParseFromArray(response_buffer.data(),
-                                             response_buffer.size()));
+  SPU_ENFORCE(response_proto.ParseFromArray(response_buffer.data(),
+                                            response_buffer.size()));
 
   std::vector<std::pair<size_t, std::string>> query_result_vec;
 
@@ -357,8 +360,10 @@ LabelPsiReceiver::RequestQuery(
   }
 
   std::sort(query_result_vec.begin(), query_result_vec.end(),
-            [](std::pair<size_t, std::string> a,
-               std::pair<size_t, std::string> b) { return a.first < b.first; });
+            [](const std::pair<size_t, std::string> &a,
+               const std::pair<size_t, std::string> &b) {
+              return a.first < b.first;
+            });
 
   std::vector<size_t> query_result;
   std::vector<std::string> query_labels;
@@ -406,9 +411,9 @@ LabelPsiReceiver::ProcessQueryResult(
 
   size_t item_count = itt.item_count();
 
-  size_t felts_per_item =
+  auto felts_per_item =
       seal::util::safe_cast<size_t>(psi_params_.item_params().felts_per_item);
-  size_t items_per_bundle =
+  auto items_per_bundle =
       seal::util::safe_cast<size_t>(psi_params_.items_per_bundle());
   size_t bundle_start = seal::util::mul_safe(
       seal::util::safe_cast<size_t>(plain_rp.bundle_idx), items_per_bundle);
@@ -418,9 +423,9 @@ LabelPsiReceiver::ProcessQueryResult(
 
   // Check if we are supposed to have label data present but don't have for
   // some reason
-  size_t label_byte_count =
+  auto label_byte_count =
       seal::util::safe_cast<size_t>(plain_rp.label_byte_count);
-  if (label_byte_count && plain_rp.label_result.empty()) {
+  if ((label_byte_count != 0) && plain_rp.label_result.empty()) {
     SPDLOG_WARN(
         "Expected {}-byte labels in this result part, but label data is "
         "missing entirely",
@@ -433,7 +438,7 @@ LabelPsiReceiver::ProcessQueryResult(
   // Read the nonce byte count and compute the effective label byte count; set
   // the nonce byte count to zero if no label is expected anyway.
   size_t nonce_byte_count =
-      label_byte_count
+      label_byte_count != 0
           ? seal::util::safe_cast<size_t>(plain_rp.nonce_byte_count)
           : 0;
   size_t effective_label_byte_count =
@@ -469,7 +474,7 @@ LabelPsiReceiver::ProcessQueryResult(
 
   // If there is a label, then we better have the appropriate label encryption
   // keys available
-  if (label_byte_count && label_keys.size() != item_count) {
+  if ((label_byte_count != 0) && label_keys.size() != item_count) {
     SPDLOG_WARN(
         "Expected {} label encryption keys but only {} were given; ignoring "
         "the label data",
@@ -490,10 +495,10 @@ LabelPsiReceiver::ProcessQueryResult(
 
   std::vector<std::pair<size_t, std::string>> match_ids;
   seal_for_each_n(
-      seal::util::iter(plain_rp_iter, size_t(0)), items_per_bundle,
-      [&](auto &&I) {
+      seal::util::iter(plain_rp_iter, static_cast<size_t>(0)), items_per_bundle,
+      [&](auto &&i) {
         // Find felts_per_item consecutive zeros
-        bool match = HasNZeros(std::get<0>(I).ptr(), felts_per_item);
+        bool match = HasNZeros(std::get<0>(i).ptr(), felts_per_item);
 
         if (!match) {
           return;
@@ -503,7 +508,7 @@ LabelPsiReceiver::ProcessQueryResult(
         // the corresponding index
         // in the input items vector so we know where to place the
         // result.
-        size_t table_idx = seal::util::add_safe(std::get<1>(I), bundle_start);
+        size_t table_idx = seal::util::add_safe(std::get<1>(i), bundle_start);
         auto item_idx = itt.find_item_idx(table_idx);
 
         // If this table_idx doesn't match any item_idx, ignore the
@@ -524,7 +529,7 @@ LabelPsiReceiver::ProcessQueryResult(
           apsi::util::AlgLabel alg_label;
 
           size_t label_offset =
-              seal::util::mul_safe(std::get<1>(I), felts_per_item);
+              seal::util::mul_safe(std::get<1>(i), felts_per_item);
           for (auto &label_parts : plain_rp.label_result) {
             gsl::span<apsi::util::felt_t> label_part(
                 label_parts.data() + label_offset, felts_per_item);
@@ -546,13 +551,15 @@ LabelPsiReceiver::ProcessQueryResult(
         }
 
         std::string label_str(label.size(), '\0');
-        std::memcpy(&label_str[0], label.data(), label.size());
-        match_ids.push_back(std::make_pair(item_idx, label_str));
+        std::memcpy(label_str.data(), label.data(), label.size());
+        match_ids.emplace_back(item_idx, label_str);
       });
 
   std::sort(match_ids.begin(), match_ids.end(),
-            [](std::pair<size_t, std::string> a,
-               std::pair<size_t, std::string> b) { return a.first < b.first; });
+            [](const std::pair<size_t, std::string> &a,
+               const std::pair<size_t, std::string> &b) {
+              return a.first < b.first;
+            });
 
   return match_ids;
 }

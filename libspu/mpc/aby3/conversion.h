@@ -20,13 +20,7 @@
 
 namespace spu::mpc::aby3 {
 
-using util::CExpr;
-using util::Const;
-using util::K;
-using util::Log;
-using util::N;
-
-// Referrence:
+// Reference:
 // ABY3: A Mixed Protocol Framework for Machine Learning
 // P16 5.3 Share Conversions, Bit Decomposition
 // https://eprint.iacr.org/2018/403.pdf
@@ -36,17 +30,17 @@ class A2B : public UnaryKernel {
  public:
   static constexpr char kBindName[] = "a2b";
 
-  CExpr latency() const override {
+  ce::CExpr latency() const override {
     // 1 * AddBB : log(k) + 1
     // 1 * rotate: 1
-    return Log(K()) + 1 + 1;
+    return Log(ce::K()) + 1 + 1;
   }
 
   // TODO: this depends on the adder circuit.
-  CExpr comm() const override {
+  ce::CExpr comm() const override {
     // 1 * AddBB : logk * k + k
     // 1 * rotate: k
-    return Log(K()) * K() + K() * 2;
+    return Log(ce::K()) * ce::K() + ce::K() * 2;
   }
 
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in) const override;
@@ -56,52 +50,52 @@ class B2ASelector : public UnaryKernel {
  public:
   static constexpr char kBindName[] = "b2a";
 
-  Kind kind() const override { return Kind::kDynamic; }
+  Kind kind() const override { return Kind::Dynamic; }
 
-  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& x) const override;
+  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in) const override;
 };
 
-// Referrence:
+// Reference:
 // IV.E Boolean to Arithmetic Sharing (B2A), extended to 3pc settings.
 // https://encrypto.de/papers/DSZ15.pdf
 class B2AByPPA : public UnaryKernel {
  public:
   static constexpr char kBindName[] = "b2a";
 
-  CExpr latency() const override {
+  ce::CExpr latency() const override {
     // 2 * rotate   : 2
     // 1 * AddBB    : 1 + logk
-    return Const(3) + Log(K());
+    return ce::Const(3) + Log(ce::K());
   }
 
   // TODO: this depends on the adder circuit.
-  CExpr comm() const override {
+  ce::CExpr comm() const override {
     // 2 * rotate   : 2k
     // 1 * AddBB    : logk * k + k
-    return Log(K()) * K() + 3 * K();
+    return Log(ce::K()) * ce::K() + 3 * ce::K();
   }
 
-  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& x) const override;
+  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in) const override;
 };
 
-// Referrence:
+// Reference:
 // 5.4.1 Semi-honest Security
 // https://eprint.iacr.org/2018/403.pdf
 class B2AByOT : public UnaryKernel {
  public:
   static constexpr char kBindName[] = "b2a";
 
-  CExpr latency() const override { return Const(2); }
+  ce::CExpr latency() const override { return ce::Const(2); }
 
   // Note: when nbits is large, OT method will be slower then circuit method.
-  CExpr comm() const override {
-    return 2 * K() * K()  // the OT
-           + K()          // partial send
+  ce::CExpr comm() const override {
+    return 2 * ce::K() * ce::K()  // the OT
+           + ce::K()              // partial send
         ;
   }
 
   // FIXME: bypass unittest.
-  Kind kind() const override { return Kind::kDynamic; }
+  Kind kind() const override { return Kind::Dynamic; }
 
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in) const override;
 };
@@ -110,21 +104,21 @@ class MsbA2B : public UnaryKernel {
  public:
   static constexpr char kBindName[] = "msb_a2b";
 
-  util::CExpr latency() const override {
+  ce::CExpr latency() const override {
     // 1 * carry_out : log(k) + 1
     // 1 * rotate: 1
-    return Log(K()) + 1 + 1;
+    return Log(ce::K()) + 1 + 1;
   }
 
-  util::CExpr comm() const override {
+  ce::CExpr comm() const override {
     // 1 * carry_out: k + 2 * k
     // 1 * rotate: k
-    return K() * 4;
+    return ce::K() * 4;
   }
 
   float getCommTolerance() const override { return 0.2; }
 
-  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& x) const override;
+  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in) const override;
 };
 
 }  // namespace spu::mpc::aby3

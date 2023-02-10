@@ -74,8 +74,9 @@ class SenderDB {
   /**
   Creates a new SenderDB.
   */
-  SenderDB(const apsi::PSIParams &params, std::size_t label_byte_count = 0,
-           std::size_t nonce_byte_count = 16, bool compressed = true);
+  explicit SenderDB(const apsi::PSIParams &params,
+                    std::size_t label_byte_count = 0,
+                    std::size_t nonce_byte_count = 16, bool compressed = true);
 
   /**
   Creates a new SenderDB.
@@ -87,12 +88,14 @@ class SenderDB {
   /**
   Creates a new SenderDB by moving from an existing one.
   */
-  SenderDB(SenderDB &&source);
+  SenderDB(SenderDB &&source) noexcept;
+
+  SenderDB(const SenderDB &copy) = delete;
 
   /**
   Moves an existing SenderDB to the current one.
   */
-  SenderDB &operator=(SenderDB &&source);
+  SenderDB &operator=(SenderDB &&source) noexcept;
 
   /**
   Clears the database. Every item and label will be removed. The OPRF key is
@@ -272,8 +275,6 @@ class SenderDB {
   std::vector<uint8_t> GetOprfKey() const;
 
  private:
-  SenderDB(const SenderDB &copy) = delete;
-
   seal::util::WriterLock GetWriterLock() { return db_lock_.acquire_write(); }
 
   void ClearInternal();

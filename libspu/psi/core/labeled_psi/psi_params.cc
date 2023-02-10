@@ -61,21 +61,21 @@ yacl::Buffer PsiParamsToBuffer(const apsi::PSIParams &psi_params) {
 
   psi_params_proto.set_ps_low_degree(psi_params.query_params().ps_low_degree);
 
-  if (psi_params.query_params().ps_low_degree) {
-    for (auto &power : psi_params.query_params().query_powers) {
+  if (psi_params.query_params().ps_low_degree != 0) {
+    for (const auto &power : psi_params.query_params().query_powers) {
       psi_params_proto.add_query_powers(power);
     }
   }
 
-  proto::SealParamsProto *seal_params_proto = new proto::SealParamsProto();
+  auto *seal_params_proto = new proto::SealParamsProto();
   seal_params_proto->set_plain_modulus(
       psi_params.seal_params().plain_modulus().value());
   seal_params_proto->set_poly_modulus_degree(
       psi_params.seal_params().poly_modulus_degree());
 
   auto coeff_modulus = psi_params.seal_params().coeff_modulus();
-  for (size_t idx = 0; idx < coeff_modulus.size(); ++idx) {
-    seal_params_proto->add_coeff_modulus(coeff_modulus[idx].value());
+  for (auto &coeff_moduli : coeff_modulus) {
+    seal_params_proto->add_coeff_modulus(coeff_moduli.value());
   }
 
   psi_params_proto.set_allocated_seal_params(seal_params_proto);
@@ -88,7 +88,7 @@ yacl::Buffer PsiParamsToBuffer(const apsi::PSIParams &psi_params) {
 apsi::PSIParams ParsePsiParamsProto(const yacl::Buffer &buffer) {
   proto::LabelPsiParamsProto psi_params_proto;
 
-  YACL_ENFORCE(psi_params_proto.ParseFromArray(buffer.data(), buffer.size()));
+  SPU_ENFORCE(psi_params_proto.ParseFromArray(buffer.data(), buffer.size()));
 
   return ParsePsiParamsProto(psi_params_proto);
 }
@@ -108,7 +108,7 @@ apsi::PSIParams ParsePsiParamsProto(
 
   query_params.ps_low_degree = psi_params_proto.ps_low_degree();
 
-  if (query_params.ps_low_degree) {
+  if (query_params.ps_low_degree != 0) {
     for (int idx = 0; idx < psi_params_proto.query_powers_size(); ++idx) {
       query_params.query_powers.insert(psi_params_proto.query_powers(idx));
     }
@@ -232,7 +232,7 @@ apsi::PSIParams GetPsiParams(size_t nr, size_t ns) {
     }
   }
 
-  if (query_params.ps_low_degree) {
+  if (query_params.ps_low_degree != 0) {
     table_params.max_items_per_bin = 12 * query_params.ps_low_degree;
   } else {
     for (size_t idx = 0; idx < table_params.max_items_per_bin; ++idx) {
@@ -250,8 +250,7 @@ apsi::PSIParams GetPsiParams(size_t nr, size_t ns) {
   } else if (seal_params.plain_modulus > 0) {
     apsi_seal_params.set_plain_modulus(seal_params.plain_modulus);
   } else {
-    YACL_THROW(
-        "SEALParams error, must set plain_modulus or plain_modulus_bits");
+    SPU_THROW("SEALParams error, must set plain_modulus or plain_modulus_bits");
   }
 
   apsi_seal_params.set_coeff_modulus(seal::CoeffModulus::Create(

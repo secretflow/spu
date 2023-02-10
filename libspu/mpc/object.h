@@ -19,10 +19,9 @@
 #include <string>
 #include <variant>
 
-#include "yacl/base/exception.h"
-
 #include "libspu/core/array_ref.h"
-#include "libspu/mpc/util/cexpr.h"
+#include "libspu/core/prelude.h"
+#include "libspu/mpc/utils/cexpr.h"
 
 namespace spu::mpc {
 
@@ -75,7 +74,7 @@ class EvaluationContext final {
     if (auto caller = dynamic_cast<CallerT*>(caller_)) {
       return caller;
     }
-    YACL_THROW("cast failed");
+    SPU_THROW("cast failed");
   }
 
   template <typename StateT>
@@ -88,8 +87,8 @@ class EvaluationContext final {
   // * usually called by kernel callee.
   template <typename T>
   const T& getParam(size_t pos) const {
-    YACL_ENFORCE(pos < params_.size(), "pos={} exceed num of inputs={}", pos,
-                 params_.size());
+    SPU_ENFORCE(pos < params_.size(), "pos={} exceed num of inputs={}", pos,
+                params_.size());
     return std::get<T>(params_[pos]);
   }
 
@@ -112,23 +111,22 @@ class Kernel {
     // selecting different kernels according to different configs.
     //
     // By default, we should make kernels as 'atomic' as possible.
-    kStatic,
+    Static,
 
     // Indicate the kernel depends on runtime options, this kind of kernel is
     // hard to analysis statically.
-    kDynamic,
+    Dynamic,
   };
 
- public:
   virtual ~Kernel() = default;
 
-  virtual Kind kind() const { return Kind::kStatic; }
+  virtual Kind kind() const { return Kind::Static; }
 
   // Calculate number of comm rounds required for this kernel.
-  virtual util::CExpr latency() const { return nullptr; }
+  virtual ce::CExpr latency() const { return nullptr; }
 
   // Calculate number of comm in bits.
-  virtual util::CExpr comm() const { return nullptr; }
+  virtual ce::CExpr comm() const { return nullptr; }
 
   // Some kernel's communication can not be measured/implemented easily, this
   // field tells the tolerance of theory value and implementation diff, in
@@ -194,7 +192,7 @@ class Object final {
 
   void addState(std::string_view name, std::unique_ptr<State> state) {
     const auto& itr = states_.find(name);
-    YACL_ENFORCE(itr == states_.end(), "state={} already exist", name);
+    SPU_ENFORCE(itr == states_.end(), "state={} already exist", name);
     states_.emplace(name, std::move(state));
   }
 
@@ -207,7 +205,7 @@ class Object final {
   template <typename StateT>
   StateT* getState() {
     const auto& itr = states_.find(StateT::kBindName);
-    YACL_ENFORCE(itr != states_.end(), "state={} not found", StateT::kBindName);
+    SPU_ENFORCE(itr != states_.end(), "state={} not found", StateT::kBindName);
     return dynamic_cast<StateT*>(itr->second.get());
   }
 

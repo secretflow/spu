@@ -27,10 +27,10 @@ spu_cc_library(
     deps = [
         ":seal_pir_utils",
         ":serializable_cc_proto",
+        "//libspu/core:prelude",
         "@com_github_microsoft_seal//:seal",
         "@com_github_openssl_openssl//:openssl",
         "@yacl//yacl/base:byte_container_view",
-        "@yacl//yacl/base:exception",
         "@yacl//yacl/link",
         "@yacl//yacl/utils:parallel",
     ],
@@ -41,8 +41,8 @@ spu_cc_library(
     srcs = ["seal_pir_utils.cc"],
     hdrs = ["seal_pir_utils.h"],
     deps = [
+        "//libspu/core:prelude",
         "@com_github_microsoft_seal//:seal",
-        "@yacl//yacl/base:exception",
     ],
 )
 

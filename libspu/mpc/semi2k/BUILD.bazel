@@ -71,8 +71,8 @@ spu_cc_library(
         "//libspu/mpc:kernel",
         "//libspu/mpc/common:ab_api",
         "//libspu/mpc/common:communicator",
-        "//libspu/mpc/util:circuits",
-        "//libspu/mpc/util:ring_ops",
+        "//libspu/mpc/utils:circuits",
+        "//libspu/mpc/utils:ring_ops",
     ],
 )
 
@@ -108,7 +108,7 @@ spu_cc_library(
     deps = [
         ":type",
         "//libspu/mpc:io_interface",
-        "//libspu/mpc/util:ring_ops",
+        "//libspu/mpc/utils:ring_ops",
     ],
 )
 

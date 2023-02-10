@@ -1,4 +1,4 @@
-PSI Quickstart
+PSI QuickStart
 ===============
 
 Quick start with SPU Private Set Intersection (PSI).

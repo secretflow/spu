@@ -67,7 +67,7 @@ size_t getWidth(DataType dtype) {
   switch (dtype) {
     FOREACH_DTYPES(CASE)
     default:
-      YACL_THROW("invalid dtype {}", dtype);
+      SPU_THROW("invalid dtype {}", dtype);
   }
 
 #undef CASE
@@ -107,7 +107,7 @@ size_t SizeOf(PtType ptt) {
       return 0;
       FOREACH_PT_TYPES(CASE);
     default:
-      YACL_THROW("unknown size of {}", ptt);
+      SPU_THROW("unknown size of {}", ptt);
   }
 #undef CASE
 }
@@ -136,7 +136,7 @@ PtType GetStorageType(FieldType field) {
   switch (field) {
     FIELD_TO_STORAGE_MAP(CASE)
     default:
-      YACL_THROW("unknown storage type of {}", field);
+      SPU_THROW("unknown storage type of {}", field);
   }
 #undef CASE
 }
@@ -149,7 +149,7 @@ FieldType PtTypeToField(PtType pt_type) {
   switch (pt_type) {
     FIELD_TO_STORAGE_MAP(CASE)
     default:
-      YACL_THROW("can not convert pt_type={} to field", pt_type);
+      SPU_THROW("can not convert pt_type={} to field", pt_type);
   }
 #undef CASE
 }
@@ -166,7 +166,7 @@ static size_t makeDefaultFractionalBits(FieldType field) {
       return 26;
     }
     default: {
-      YACL_THROW("unsupported field={}", field);
+      SPU_THROW("unsupported field={}", field);
     }
   }
 }

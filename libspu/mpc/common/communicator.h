@@ -21,10 +21,10 @@
 #include <utility>
 
 #include "yacl/base/buffer.h"
-#include "yacl/base/exception.h"
 #include "yacl/link/link.h"
 
 #include "libspu/core/parallel_utils.h"
+#include "libspu/core/prelude.h"
 #include "libspu/mpc/object.h"
 
 // This module defines the protocol comm pattern used for all
@@ -40,7 +40,7 @@ enum class ReduceOp {
 
 // yacl::link does not make assumption on data types, (it works on buffer),
 // which means it's hard to write algorithms which depends on data arithmetics
-// like reduce/allreduce.
+// like reduce/AllReduce.
 //
 // In mpc module, we have concrete data type definition, so we can fill this
 // gap.
@@ -102,7 +102,7 @@ class Communicator : public State {
 
   void sendAsync(size_t dst_rank, const ArrayRef& in, std::string_view tag);
 
-  ArrayRef recv(size_t src_rank, Type eltype, std::string_view tag);
+  ArrayRef recv(size_t src_rank, const Type& eltype, std::string_view tag);
 
   template <typename T>
   std::vector<T> rotate(absl::Span<T const> in, std::string_view tag);
@@ -128,7 +128,7 @@ std::vector<T> Communicator::rotate(absl::Span<T const> in,
   stats_.latency += 1;
   stats_.comm += in.size() * sizeof(T);
 
-  YACL_ENFORCE(buf.size() == static_cast<int64_t>(sizeof(T) * in.size()));
+  SPU_ENFORCE(buf.size() == static_cast<int64_t>(sizeof(T) * in.size()));
   return std::vector<T>(buf.data<T>(), buf.data<T>() + in.size());
 }
 
@@ -143,9 +143,9 @@ void Communicator::sendAsync(size_t dst_rank, absl::Span<T const> in,
 template <typename T>
 std::vector<T> Communicator::recv(size_t src_rank, std::string_view tag) {
   auto buf = lctx_->Recv(src_rank, tag);
-  YACL_ENFORCE(buf.size() % sizeof(T) == 0);
+  SPU_ENFORCE(buf.size() % sizeof(T) == 0);
   auto numel = buf.size() / sizeof(T);
-  // TODO: use a container which memory could be stealed.
+  // TODO: use a container which memory could be stolen.
   return std::vector<T>(buf.data<T>(), buf.data<T>() + numel);
 }
 
@@ -155,7 +155,7 @@ std::vector<T> Communicator::allReduce(absl::Span<T const> in,
   yacl::ByteContainerView bv(reinterpret_cast<uint8_t const*>(in.data()),
                              sizeof(T) * in.size());
   std::vector<yacl::Buffer> bufs = yacl::link::AllGather(lctx_, bv, tag);
-  YACL_ENFORCE(bufs.size() == getWorldSize());
+  SPU_ENFORCE(bufs.size() == getWorldSize());
 
   std::vector<T> res(in.size(), 0);
   const FN<T> fn;

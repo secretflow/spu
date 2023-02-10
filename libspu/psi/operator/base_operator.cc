@@ -14,16 +14,18 @@
 
 #include "libspu/psi/operator/base_operator.h"
 
+#include <utility>
+
 #include "spdlog/spdlog.h"
 
+#include "libspu/core/prelude.h"
 #include "libspu/psi/utils/serialize.h"
 #include "libspu/psi/utils/utils.h"
 
 namespace spu::psi {
 
-PsiBaseOperator::PsiBaseOperator(
-    const std::shared_ptr<yacl::link::Context>& link_ctx)
-    : link_ctx_(link_ctx) {}
+PsiBaseOperator::PsiBaseOperator(std::shared_ptr<yacl::link::Context> link_ctx)
+    : link_ctx_(std::move(link_ctx)) {}
 
 std::vector<std::string> PsiBaseOperator::Run(
     const std::vector<std::string>& inputs, bool broadcast_result) {
@@ -39,7 +41,7 @@ std::vector<std::string> PsiBaseOperator::Run(
       max_size = std::max(max_size, res_size_list[i]);
       if (res_size_list[i] > 0) {
         // in broadcast case, there should be only one party have results
-        YACL_ENFORCE(broadcast_rank == 0);
+        SPU_ENFORCE(broadcast_rank == 0);
         broadcast_rank = i;
       }
     }

@@ -23,8 +23,8 @@
 #include "libspu/mpc/api.h"
 #include "libspu/mpc/common/communicator.h"
 #include "libspu/mpc/object.h"
-#include "libspu/mpc/util/ring_ops.h"
-#include "libspu/mpc/util/simulate.h"
+#include "libspu/mpc/utils/ring_ops.h"
+#include "libspu/mpc/utils/simulate.h"
 
 namespace spu::mpc::bench {
 namespace {
@@ -74,55 +74,55 @@ uint32_t ComputeBench::bench_npc = 0;
 
 #define SPU_BM_DEFINE_F(BaseClass, Method) BENCHMARK_DEFINE_F(BaseClass, Method)
 
-#define BM_DEFINE_BINARY_OP_SS(OP)                                         \
-  SPU_BM_DEFINE_F(ComputeBench, OP##_ss)                                   \
-  (benchmark::State & state) {                                             \
-    for (auto _ : state) {                                                 \
-      state.PauseTiming();                                                 \
-      const size_t npc = bench_npc;                                        \
-      const auto field = static_cast<spu::FieldType>(state.range(0));      \
-      RuntimeConfig conf;                                                  \
-      conf.set_field(field);                                               \
-                                                                           \
-      util::simulate(npc, [&](std::shared_ptr<yacl::link::Context> lctx) { \
-        auto obj = bench_factory(conf, lctx);                              \
-        auto* comm = obj->getState<Communicator>();                        \
-                                                                           \
-        /* GIVEN */                                                        \
-        auto p0 = rand_p(obj.get(), kNumel);                               \
-        auto p1 = rand_p(obj.get(), kNumel);                               \
-        auto s0 = p2s(obj.get(), p0);                                      \
-        auto s1 = p2s(obj.get(), p1);                                      \
-                                                                           \
-        /* WHEN */                                                         \
-        SPU_BM_SECTION(comm, OP##_ss(obj.get(), s0, s1))                   \
-      });                                                                  \
-    }                                                                      \
+#define BM_DEFINE_BINARY_OP_SS(OP)                                          \
+  SPU_BM_DEFINE_F(ComputeBench, OP##_ss)                                    \
+  (benchmark::State & state) {                                              \
+    for (auto _ : state) {                                                  \
+      state.PauseTiming();                                                  \
+      const size_t npc = bench_npc;                                         \
+      const auto field = static_cast<spu::FieldType>(state.range(0));       \
+      RuntimeConfig conf;                                                   \
+      conf.set_field(field);                                                \
+                                                                            \
+      utils::simulate(npc, [&](std::shared_ptr<yacl::link::Context> lctx) { \
+        auto obj = bench_factory(conf, lctx);                               \
+        auto* comm = obj->getState<Communicator>();                         \
+                                                                            \
+        /* GIVEN */                                                         \
+        auto p0 = rand_p(obj.get(), kNumel);                                \
+        auto p1 = rand_p(obj.get(), kNumel);                                \
+        auto s0 = p2s(obj.get(), p0);                                       \
+        auto s1 = p2s(obj.get(), p1);                                       \
+                                                                            \
+        /* WHEN */                                                          \
+        SPU_BM_SECTION(comm, OP##_ss(obj.get(), s0, s1))                    \
+      });                                                                   \
+    }                                                                       \
   }
 
-#define BM_DEFINE_BINARY_OP_SP(OP)                                         \
-  SPU_BM_DEFINE_F(ComputeBench, OP##_sp)                                   \
-  (benchmark::State & state) {                                             \
-    for (auto _ : state) {                                                 \
-      state.PauseTiming();                                                 \
-      const size_t npc = bench_npc;                                        \
-      const auto field = static_cast<spu::FieldType>(state.range(0));      \
-      RuntimeConfig conf;                                                  \
-      conf.set_field(field);                                               \
-                                                                           \
-      util::simulate(npc, [&](std::shared_ptr<yacl::link::Context> lctx) { \
-        auto obj = bench_factory(conf, lctx);                              \
-        auto* comm = obj->getState<Communicator>();                        \
-                                                                           \
-        /* GIVEN */                                                        \
-        auto p0 = rand_p(obj.get(), kNumel);                               \
-        auto p1 = rand_p(obj.get(), kNumel);                               \
-        auto s0 = p2s(obj.get(), p0);                                      \
-                                                                           \
-        /* WHEN */                                                         \
-        SPU_BM_SECTION(comm, OP##_sp(obj.get(), s0, p1));                  \
-      });                                                                  \
-    }                                                                      \
+#define BM_DEFINE_BINARY_OP_SP(OP)                                          \
+  SPU_BM_DEFINE_F(ComputeBench, OP##_sp)                                    \
+  (benchmark::State & state) {                                              \
+    for (auto _ : state) {                                                  \
+      state.PauseTiming();                                                  \
+      const size_t npc = bench_npc;                                         \
+      const auto field = static_cast<spu::FieldType>(state.range(0));       \
+      RuntimeConfig conf;                                                   \
+      conf.set_field(field);                                                \
+                                                                            \
+      utils::simulate(npc, [&](std::shared_ptr<yacl::link::Context> lctx) { \
+        auto obj = bench_factory(conf, lctx);                               \
+        auto* comm = obj->getState<Communicator>();                         \
+                                                                            \
+        /* GIVEN */                                                         \
+        auto p0 = rand_p(obj.get(), kNumel);                                \
+        auto p1 = rand_p(obj.get(), kNumel);                                \
+        auto s0 = p2s(obj.get(), p0);                                       \
+                                                                            \
+        /* WHEN */                                                          \
+        SPU_BM_SECTION(comm, OP##_sp(obj.get(), s0, p1));                   \
+      });                                                                   \
+    }                                                                       \
   }
 
 #define BM_DEFINE_BINARY_OP(OP) \
@@ -134,51 +134,51 @@ BM_DEFINE_BINARY_OP(mul)
 BM_DEFINE_BINARY_OP(and)
 BM_DEFINE_BINARY_OP(xor)
 
-#define BM_DEFINE_UNARY_OP_S(OP)                                           \
-  SPU_BM_DEFINE_F(ComputeBench, OP##_s)                                    \
-  (benchmark::State & state) {                                             \
-    for (auto _ : state) {                                                 \
-      state.PauseTiming();                                                 \
-      const size_t npc = bench_npc;                                        \
-      const auto field = static_cast<spu::FieldType>(state.range(0));      \
-      RuntimeConfig conf;                                                  \
-      conf.set_field(field);                                               \
-                                                                           \
-      util::simulate(npc, [&](std::shared_ptr<yacl::link::Context> lctx) { \
-        auto obj = bench_factory(conf, lctx);                              \
-        auto* comm = obj->getState<Communicator>();                        \
-                                                                           \
-        /* GIVEN */                                                        \
-        auto p0 = rand_p(obj.get(), kNumel);                               \
-        auto s0 = p2s(obj.get(), p0);                                      \
-                                                                           \
-        /* WHEN */                                                         \
-        SPU_BM_SECTION(comm, OP##_s(obj.get(), s0));                       \
-      });                                                                  \
-    }                                                                      \
+#define BM_DEFINE_UNARY_OP_S(OP)                                            \
+  SPU_BM_DEFINE_F(ComputeBench, OP##_s)                                     \
+  (benchmark::State & state) {                                              \
+    for (auto _ : state) {                                                  \
+      state.PauseTiming();                                                  \
+      const size_t npc = bench_npc;                                         \
+      const auto field = static_cast<spu::FieldType>(state.range(0));       \
+      RuntimeConfig conf;                                                   \
+      conf.set_field(field);                                                \
+                                                                            \
+      utils::simulate(npc, [&](std::shared_ptr<yacl::link::Context> lctx) { \
+        auto obj = bench_factory(conf, lctx);                               \
+        auto* comm = obj->getState<Communicator>();                         \
+                                                                            \
+        /* GIVEN */                                                         \
+        auto p0 = rand_p(obj.get(), kNumel);                                \
+        auto s0 = p2s(obj.get(), p0);                                       \
+                                                                            \
+        /* WHEN */                                                          \
+        SPU_BM_SECTION(comm, OP##_s(obj.get(), s0));                        \
+      });                                                                   \
+    }                                                                       \
   }
 
-#define BM_DEFINE_UNARY_OP_P(OP)                                           \
-  SPU_BM_DEFINE_F(ComputeBench, OP##_p)                                    \
-  (benchmark::State & state) {                                             \
-    for (auto _ : state) {                                                 \
-      state.PauseTiming();                                                 \
-      const size_t npc = bench_npc;                                        \
-      const auto field = static_cast<spu::FieldType>(state.range(0));      \
-      RuntimeConfig conf;                                                  \
-      conf.set_field(field);                                               \
-                                                                           \
-      util::simulate(npc, [&](std::shared_ptr<yacl::link::Context> lctx) { \
-        auto obj = bench_factory(conf, lctx);                              \
-        auto* comm = obj->getState<Communicator>();                        \
-                                                                           \
-        /* GIVEN */                                                        \
-        auto p0 = rand_p(obj.get(), kNumel);                               \
-                                                                           \
-        /* WHEN */                                                         \
-        SPU_BM_SECTION(comm, OP##_p(obj.get(), p0);)                       \
-      });                                                                  \
-    }                                                                      \
+#define BM_DEFINE_UNARY_OP_P(OP)                                            \
+  SPU_BM_DEFINE_F(ComputeBench, OP##_p)                                     \
+  (benchmark::State & state) {                                              \
+    for (auto _ : state) {                                                  \
+      state.PauseTiming();                                                  \
+      const size_t npc = bench_npc;                                         \
+      const auto field = static_cast<spu::FieldType>(state.range(0));       \
+      RuntimeConfig conf;                                                   \
+      conf.set_field(field);                                                \
+                                                                            \
+      utils::simulate(npc, [&](std::shared_ptr<yacl::link::Context> lctx) { \
+        auto obj = bench_factory(conf, lctx);                               \
+        auto* comm = obj->getState<Communicator>();                         \
+                                                                            \
+        /* GIVEN */                                                         \
+        auto p0 = rand_p(obj.get(), kNumel);                                \
+                                                                            \
+        /* WHEN */                                                          \
+        SPU_BM_SECTION(comm, OP##_p(obj.get(), p0);)                        \
+      });                                                                   \
+    }                                                                       \
   }
 
 #define BM_DEFINE_UNARY_OP(OP) \
@@ -187,51 +187,51 @@ BM_DEFINE_BINARY_OP(xor)
 
 BM_DEFINE_UNARY_OP(not )
 
-#define BM_DEFINE_UNARY_OP_WITH_BIT_S(OP, BIT)                             \
-  SPU_BM_DEFINE_F(ComputeBench, OP##_s)                                    \
-  (benchmark::State & state) {                                             \
-    for (auto _ : state) {                                                 \
-      state.PauseTiming();                                                 \
-      const size_t npc = bench_npc;                                        \
-      const auto field = static_cast<spu::FieldType>(state.range(0));      \
-      RuntimeConfig conf;                                                  \
-      conf.set_field(field);                                               \
-                                                                           \
-      util::simulate(npc, [&](std::shared_ptr<yacl::link::Context> lctx) { \
-        auto obj = bench_factory(conf, lctx);                              \
-        auto* comm = obj->getState<Communicator>();                        \
-                                                                           \
-        /* GIVEN */                                                        \
-        auto p0 = rand_p(obj.get(), kNumel);                               \
-        auto s0 = p2s(obj.get(), p0);                                      \
-                                                                           \
-        /* WHEN */                                                         \
-        SPU_BM_SECTION(comm, OP##_s(obj.get(), s0, BIT));                  \
-      });                                                                  \
-    }                                                                      \
+#define BM_DEFINE_UNARY_OP_WITH_BIT_S(OP, BIT)                              \
+  SPU_BM_DEFINE_F(ComputeBench, OP##_s)                                     \
+  (benchmark::State & state) {                                              \
+    for (auto _ : state) {                                                  \
+      state.PauseTiming();                                                  \
+      const size_t npc = bench_npc;                                         \
+      const auto field = static_cast<spu::FieldType>(state.range(0));       \
+      RuntimeConfig conf;                                                   \
+      conf.set_field(field);                                                \
+                                                                            \
+      utils::simulate(npc, [&](std::shared_ptr<yacl::link::Context> lctx) { \
+        auto obj = bench_factory(conf, lctx);                               \
+        auto* comm = obj->getState<Communicator>();                         \
+                                                                            \
+        /* GIVEN */                                                         \
+        auto p0 = rand_p(obj.get(), kNumel);                                \
+        auto s0 = p2s(obj.get(), p0);                                       \
+                                                                            \
+        /* WHEN */                                                          \
+        SPU_BM_SECTION(comm, OP##_s(obj.get(), s0, BIT));                   \
+      });                                                                   \
+    }                                                                       \
   }
 
-#define BM_DEFINE_UNARY_OP_WITH_BIT_P(OP, BIT)                             \
-  SPU_BM_DEFINE_F(ComputeBench, OP##_p)                                    \
-  (benchmark::State & state) {                                             \
-    for (auto _ : state) {                                                 \
-      state.PauseTiming();                                                 \
-      const size_t npc = bench_npc;                                        \
-      const auto field = static_cast<spu::FieldType>(state.range(0));      \
-      RuntimeConfig conf;                                                  \
-      conf.set_field(field);                                               \
-                                                                           \
-      util::simulate(npc, [&](std::shared_ptr<yacl::link::Context> lctx) { \
-        auto obj = bench_factory(conf, lctx);                              \
-        auto* comm = obj->getState<Communicator>();                        \
-                                                                           \
-        /* GIVEN */                                                        \
-        auto p0 = rand_p(obj.get(), kNumel);                               \
-                                                                           \
-        /* WHEN */                                                         \
-        SPU_BM_SECTION(comm, OP##_p(obj.get(), p0, BIT));                  \
-      });                                                                  \
-    }                                                                      \
+#define BM_DEFINE_UNARY_OP_WITH_BIT_P(OP, BIT)                              \
+  SPU_BM_DEFINE_F(ComputeBench, OP##_p)                                     \
+  (benchmark::State & state) {                                              \
+    for (auto _ : state) {                                                  \
+      state.PauseTiming();                                                  \
+      const size_t npc = bench_npc;                                         \
+      const auto field = static_cast<spu::FieldType>(state.range(0));       \
+      RuntimeConfig conf;                                                   \
+      conf.set_field(field);                                                \
+                                                                            \
+      utils::simulate(npc, [&](std::shared_ptr<yacl::link::Context> lctx) { \
+        auto obj = bench_factory(conf, lctx);                               \
+        auto* comm = obj->getState<Communicator>();                         \
+                                                                            \
+        /* GIVEN */                                                         \
+        auto p0 = rand_p(obj.get(), kNumel);                                \
+                                                                            \
+        /* WHEN */                                                          \
+        SPU_BM_SECTION(comm, OP##_p(obj.get(), p0, BIT));                   \
+      });                                                                   \
+    }                                                                       \
   }
 
 #define BM_DEFINE_UNARY_OP_WITH_BIT(OP)        \
@@ -254,7 +254,7 @@ SPU_BM_DEFINE_F(ComputeBench, trunc_s)
     auto p0 = ring_rand_range(field, kNumel, /*min*/ 0,
                               /*max*/ 10000);
 
-    util::simulate(npc, [&](std::shared_ptr<yacl::link::Context> lctx) {
+    utils::simulate(npc, [&](std::shared_ptr<yacl::link::Context> lctx) {
       auto obj = bench_factory(conf, lctx);
       auto* comm = obj->getState<Communicator>();
 
@@ -281,7 +281,7 @@ SPU_BM_DEFINE_F(ComputeBench, mmul_ss)
     const std::vector<int64_t> shape_A{M, K};
     const std::vector<int64_t> shape_B{K, N};
 
-    util::simulate(npc, [&](std::shared_ptr<yacl::link::Context> lctx) {
+    utils::simulate(npc, [&](std::shared_ptr<yacl::link::Context> lctx) {
       auto obj = bench_factory(conf, lctx);
       auto* comm = obj->getState<Communicator>();
 
@@ -312,7 +312,7 @@ SPU_BM_DEFINE_F(ComputeBench, mmul_sp)
     const std::vector<int64_t> shape_A{M, K};
     const std::vector<int64_t> shape_B{K, N};
 
-    util::simulate(npc, [&](std::shared_ptr<yacl::link::Context> lctx) {
+    utils::simulate(npc, [&](std::shared_ptr<yacl::link::Context> lctx) {
       auto obj = bench_factory(conf, lctx);
       auto* comm = obj->getState<Communicator>();
 
@@ -336,7 +336,7 @@ SPU_BM_DEFINE_F(ComputeBench, p2s)
     RuntimeConfig conf;
     conf.set_field(field);
 
-    util::simulate(npc, [&](std::shared_ptr<yacl::link::Context> lctx) {
+    utils::simulate(npc, [&](std::shared_ptr<yacl::link::Context> lctx) {
       auto obj = bench_factory(conf, lctx);
       auto* comm = obj->getState<Communicator>();
 
@@ -358,7 +358,7 @@ SPU_BM_DEFINE_F(ComputeBench, s2p)
     RuntimeConfig conf;
     conf.set_field(field);
 
-    util::simulate(npc, [&](std::shared_ptr<yacl::link::Context> lctx) {
+    utils::simulate(npc, [&](std::shared_ptr<yacl::link::Context> lctx) {
       auto obj = bench_factory(conf, lctx);
       auto* comm = obj->getState<Communicator>();
 

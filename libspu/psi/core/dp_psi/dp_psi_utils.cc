@@ -24,7 +24,10 @@
 namespace spu::psi {
 
 double ComputeEpsilon2(size_t n, double epsilon) {
-  double epsilon1, epsilon2_mid, epsilon2_min, epsilon2_max;
+  double epsilon1;
+  double epsilon2_mid;
+  double epsilon2_min;
+  double epsilon2_max;
   double err_epsilon;
   epsilon2_min = 2.5;
   epsilon2_max = kEpsilonPsi;
@@ -88,7 +91,8 @@ inline double caseB(double epsilon, double s) {
 }
 
 std::pair<double, double> DoublingTrick(
-    std::function<bool(double)> predicate_stop, double s_inf, double s_sup) {
+    const std::function<bool(double)>& predicate_stop, double s_inf,
+    double s_sup) {
   while (!predicate_stop(s_sup)) {
     s_inf = s_sup;
     s_sup = 2.0 * s_inf;
@@ -96,9 +100,9 @@ std::pair<double, double> DoublingTrick(
   return std::make_pair(s_inf, s_sup);
 }
 
-double BinarySearch(std::function<bool(double)> predicate_stop,
-                    std::function<bool(double)> predicate_left, double s_inf,
-                    double s_sup) {
+double BinarySearch(const std::function<bool(double)>& predicate_stop,
+                    const std::function<bool(double)>& predicate_left,
+                    double s_inf, double s_sup) {
   double s_mid = s_inf + (s_sup - s_inf) / 2.0;
   while (!predicate_stop(s_mid)) {
     if (predicate_left(s_mid)) {
@@ -113,7 +117,7 @@ double BinarySearch(std::function<bool(double)> predicate_stop,
 }
 
 double CalibrateAnalyticGaussianMechanism(double epsilon, double delta,
-                                          double GS, double tol) {
+                                          double gs, double tol) {
   double alpha;
   double delta_thr = caseA(epsilon, 0.0);
   const double EPSINON = 0.00001;
@@ -160,7 +164,7 @@ double CalibrateAnalyticGaussianMechanism(double epsilon, double delta,
     alpha = function_s_to_alpha(s_final);
   }
 
-  double sigma = alpha * GS / std::sqrt(2.0 * epsilon);
+  double sigma = alpha * gs / std::sqrt(2.0 * epsilon);
 
   return sigma;
 }

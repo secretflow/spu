@@ -80,8 +80,8 @@ spu_cc_library(
     hdrs = ["factory.h"],
     deps = [
         ":base_operator",
+        "//libspu/core:prelude",
         "//libspu/psi:psi_cc_proto",
-        "@yacl//yacl/base:exception",
         "@yacl//yacl/link",
     ],
 )

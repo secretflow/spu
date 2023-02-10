@@ -55,7 +55,9 @@ std::unique_ptr<Object> makeCheetahProtocol(
   regABKernels(obj.get());
 
   // register arithmetic & binary kernels
-  obj->addState<CheetahState>(lctx);
+  obj->addState<cheetah::CheetahMulState>(lctx);
+  obj->addState<cheetah::CheetahDotState>(lctx);
+  obj->addState<cheetah::CheetahOTState>(lctx);
   obj->regKernel<cheetah::ZeroA>();
   obj->regKernel<cheetah::P2A>();
   obj->regKernel<cheetah::A2P>();

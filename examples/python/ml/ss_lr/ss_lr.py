@@ -31,7 +31,7 @@ import examples.python.utils.dataset_utils as dsutil
 import jax.numpy as jnp
 import numpy as np
 import examples.python.utils.appr_sigmoid as Sigmoid
-import spu.util.distributed as ppd
+import spu.utils.distributed as ppd
 
 
 def sigmoid(x):

@@ -159,7 +159,7 @@ Differentially Private PSI
 --------------------------
 
 We also implement a Differentially Private (DP) Private Set Intersection (PSI)
-Protocol. Our implementaion bases on ECDH-PSI, and provides:
+Protocol. Our implementation bases on ECDH-PSI, and provides:
 
 - Differentially private PSI results.
 
@@ -172,7 +172,7 @@ HE) on the PSI result without revealing it. `PSTY19
 <https://eprint.iacr.org/2019/241.pdf>`_ However those protocols are expensive
 in terms of efficiency.  
 
-DP-PSI is a way of utilising the up-sampling and sub-sampling mechanism to add
+DP-PSI is a way of utilizing the up-sampling and sub-sampling mechanism to add
 calibrated noises to the PSI results, without revealing its concise value.  
 
 The protocol is listed below, assume Alice has a (hashed and shuffled) set
@@ -196,7 +196,7 @@ Protocol:
    permutation :math:`\pi` to permute Alice's set, and send permuted
    :math:`\pi(X^{ab})` back to Alice.
    
-4. On receving :math:`Y_*^b` and :math:`\pi(X^{ab})` from Bob, Alice reencrypts
+4. On receiving :math:`Y_*^b` and :math:`\pi(X^{ab})` from Bob, Alice reencrypts
    :math:`Y_*^b` and gets :math:`Y_*^{ab}`, then calculate the intersection
    :math:`I_*^{ab}\gets\pi(X^{ab})\cap Y_*^{ab}`.
    

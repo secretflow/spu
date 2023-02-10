@@ -16,9 +16,9 @@
 
 #include "openssl/crypto.h"
 #include "openssl/rand.h"
-#include "yacl/base/exception.h"
 #include "yacl/link/link.h"
 
+#include "libspu/core/prelude.h"
 #include "libspu/psi/cryptor/ecc_cryptor.h"
 
 namespace spu::psi {

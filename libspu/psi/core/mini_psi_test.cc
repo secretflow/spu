@@ -22,9 +22,9 @@
 #include "absl/strings/str_split.h"
 #include "gtest/gtest.h"
 #include "spdlog/spdlog.h"
-#include "yacl/base/exception.h"
 #include "yacl/link/test_util.h"
 
+#include "libspu/core/prelude.h"
 #include "libspu/psi/utils/test_utils.h"
 
 struct TestParams {
@@ -46,7 +46,7 @@ TEST_P(MiniPsiTest, Works) {
 
   std::future<void> f_send;
   std::future<std::vector<std::string>> f_recv;
-  if (params.batch == false) {
+  if (!params.batch) {
     f_send = std::async(
         [&] { return spu::psi::MiniPsiSend(link_ab[0], params.items_a); });
 

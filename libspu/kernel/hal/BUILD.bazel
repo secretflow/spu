@@ -169,7 +169,7 @@ spu_cc_library(
     deps = [
         ":test_util",
         ":type_cast",
-        "@yacl//yacl/base:exception",
+        "//libspu/core:prelude",
     ],
 )
 
@@ -182,8 +182,8 @@ spu_cc_library(
         ":integer",
         ":shape_ops",
         ":type_cast",
+        "//libspu/core:prelude",
         "//libspu/core:vectorize",
-        "@yacl//yacl/base:exception",
     ],
 )
 
@@ -194,7 +194,7 @@ spu_cc_test(
         ":polymorphic",
         ":test_util",
         "//libspu/kernel:context",
-        "//libspu/mpc/util:linalg",
+        "//libspu/mpc/utils:linalg",
     ],
 )
 
@@ -215,7 +215,7 @@ spu_cc_library(
     deps = [
         ":random",
         ":ring",
-        "@yacl//yacl/base:exception",
+        "//libspu/core:prelude",
     ],
 )
 
@@ -234,8 +234,8 @@ spu_cc_library(
     hdrs = ["random.h"],
     deps = [
         ":test_util",
+        "//libspu/core:prelude",
         "//libspu/kernel:context",
-        "@yacl//yacl/base:exception",
     ],
 )
 
@@ -244,9 +244,9 @@ spu_cc_library(
     srcs = ["shape_ops.cc"],
     hdrs = ["shape_ops.h"],
     deps = [
+        "//libspu/core:prelude",
         "//libspu/core:vectorize",
         "//libspu/kernel:context",
-        "@yacl//yacl/base:exception",
     ],
 )
 
@@ -265,10 +265,10 @@ spu_cc_library(
     hdrs = ["concat.h"],
     deps = [
         ":ring",
+        "//libspu/core:prelude",
         "//libspu/core:shape_util",
         "//libspu/core:vectorize",
         "//libspu/kernel:context",
-        "@yacl//yacl/base:exception",
     ],
 )
 

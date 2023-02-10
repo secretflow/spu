@@ -49,7 +49,7 @@ The executable format accepted by SPU runtime.
           input_names = ['x'],
           output_names = ['y'],
           code = ...)
-  rt.run(exe)                      # run the execubable.
+  rt.run(exe)                      # run the executable.
   y = rt.get_var('y')              # get the executable from spu runtime.
 ```
 
@@ -73,7 +73,7 @@ The SPU runtime configuration.
 | protocol | [ ProtocolKind](#protocolkind) | The protocol kind. |
 | field | [ FieldType](#fieldtype) | The field type. |
 | fxp_fraction_bits | [ int64](#int64) | Number of fraction bits of fixed-point number. |
-| enable_action_trace | [ bool](#bool) | When enabled, runtime prints verbose info of the callstack, debug purpose only. |
+| enable_action_trace | [ bool](#bool) | When enabled, runtime prints verbose info of the call stack, debug purpose only. |
 | enable_type_checker | [ bool](#bool) | When enabled, runtime checks runtime type infos against the compile-time ones, exceptions are raised if mismatches happen. Note: Runtime outputs prefer runtime type infos even when flag is on. |
 | enable_pphlo_trace | [ bool](#bool) | When enabled, runtime prints executed pphlo list, debug purpose only. |
 | enable_processor_dump | [ bool](#bool) | When enabled, runtime dumps executed executables in the dump_dir, debug purpose only. |

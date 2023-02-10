@@ -185,9 +185,9 @@ spu::Value SelectAndScatterExpanded(
 
   // sanity check, make (source x window == expanded)
   for (size_t dim = 0; dim < ndim; dim++) {
-    YACL_ENFORCE(expanded.shape()[dim] % window_shape[dim] == 0);
-    YACL_ENFORCE(expanded.shape()[dim] / window_shape[dim] ==
-                 source.shape()[dim]);
+    SPU_ENFORCE(expanded.shape()[dim] % window_shape[dim] == 0);
+    SPU_ENFORCE(expanded.shape()[dim] / window_shape[dim] ==
+                source.shape()[dim]);
   }
 
   auto tiled = ConvertToTiledLayout(ctx, expanded, window_shape);

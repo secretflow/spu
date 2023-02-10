@@ -72,7 +72,7 @@ std::unordered_set<kuku::location_type> AllLocations(
     const std::vector<kuku::LocFunc> &hash_funcs,
     const apsi::HashedItem &item) {
   std::unordered_set<kuku::location_type> result;
-  for (auto &hf : hash_funcs) {
+  for (const auto &hf : hash_funcs) {
     result.emplace(hf(item.get_as<kuku::item_type>().front()));
   }
 
@@ -150,7 +150,7 @@ std::vector<std::pair<apsi::util::AlgItemLabel, size_t>> PreprocessLabeledData(
       size_t bin_idx = location * bins_per_item;
 
       // Store the data along with its index
-      data_with_indices.push_back(std::make_pair(alg_item_label, bin_idx));
+      data_with_indices.emplace_back(alg_item_label, bin_idx);
     }
   }
 
@@ -197,7 +197,7 @@ std::vector<std::pair<apsi::util::AlgItem, size_t>> PreprocessUnlabeledData(
       size_t bin_idx = location * bins_per_item;
 
       // Store the data along with its index
-      data_with_indices.emplace_back(std::make_pair(alg_item, bin_idx));
+      data_with_indices.emplace_back(alg_item, bin_idx);
     }
   }
 
@@ -244,7 +244,8 @@ void InsertOrAssignWorker(
 
     // Get the bundle index
     size_t cuckoo_idx = data_with_idx.second;
-    size_t bin_idx, bundle_idx;
+    size_t bin_idx;
+    size_t bundle_idx;
     std::tie(bin_idx, bundle_idx) =
         UnpackCuckooIdx(cuckoo_idx, bins_per_bundle);
 
@@ -297,7 +298,7 @@ void InsertOrAssignWorker(
           "failed to overwrite item at bundle index {} because the item was "
           "not found",
           bundle_idx);
-      YACL_THROW("tried to overwrite non-existent item");
+      SPU_THROW("tried to overwrite non-existent item");
     }
 
     // If we had conflicts everywhere when trying to insert, then we need to
@@ -315,7 +316,7 @@ void InsertOrAssignWorker(
             "Insert-or-Assign worker: "
             "failed to insert item into a new BinBundle at bundle index {}",
             bundle_idx);
-        YACL_THROW("failed to insert item into a new BinBundle");
+        SPU_THROW("failed to insert item into a new BinBundle");
       }
 
       // Push a new BinBundle to the set of BinBundles at this bundle index
@@ -349,7 +350,8 @@ void DispatchInsertOrAssign(
   std::set<size_t> bundle_indices_set;
   for (auto &data_with_idx : data_with_indices) {
     size_t cuckoo_idx = data_with_idx.second;
-    size_t bin_idx, bundle_idx;
+    size_t bin_idx;
+    size_t bundle_idx;
     std::tie(bin_idx, bundle_idx) =
         UnpackCuckooIdx(cuckoo_idx, bins_per_bundle);
     bundle_indices_set.insert(bundle_idx);
@@ -398,10 +400,11 @@ void RemoveWorker(
   SPDLOG_INFO("Remove worker [{}]", bundle_index);
 
   // Iteratively remove each item-label pair at the given cuckoo index
-  for (auto &data_with_idx : data_with_indices) {
+  for (const auto &data_with_idx : data_with_indices) {
     // Get the bundle index
     size_t cuckoo_idx = data_with_idx.second;
-    size_t bin_idx, bundle_idx;
+    size_t bin_idx;
+    size_t bundle_idx;
     std::tie(bin_idx, bundle_idx) =
         UnpackCuckooIdx(cuckoo_idx, bins_per_bundle);
 
@@ -439,7 +442,7 @@ void RemoveWorker(
           "failed to remove item at bundle index {} because the item was not "
           "found",
           bundle_idx);
-      YACL_THROW("failed to remove item");
+      SPU_THROW("failed to remove item");
     }
   }
 
@@ -463,9 +466,10 @@ void DispatchRemove(
   // per partition should be roughly the same. Note that the contents of
   // bundle_indices is always sorted (increasing order).
   std::set<size_t> bundle_indices_set;
-  for (auto &data_with_idx : data_with_indices) {
+  for (const auto &data_with_idx : data_with_indices) {
     size_t cuckoo_idx = data_with_idx.second;
-    size_t bin_idx, bundle_idx;
+    size_t bin_idx;
+    size_t bundle_idx;
     std::tie(bin_idx, bundle_idx) =
         UnpackCuckooIdx(cuckoo_idx, bins_per_bundle);
     bundle_indices_set.insert(bundle_idx);
@@ -517,7 +521,7 @@ SenderDB::SenderDB(const apsi::PSIParams &params, size_t label_byte_count,
     : params_(params),
       crypto_context_(params_),
       label_byte_count_(label_byte_count),
-      nonce_byte_count_(label_byte_count_ ? nonce_byte_count : 0),
+      nonce_byte_count_(label_byte_count_ != 0 ? nonce_byte_count : 0),
       item_count_(0),
       compressed_(compressed) {
   // The labels cannot be more than 1 KB.
@@ -525,19 +529,20 @@ SenderDB::SenderDB(const apsi::PSIParams &params, size_t label_byte_count,
     SPDLOG_ERROR("Requested label byte count {} exceeds the maximum (1024)",
                  label_byte_count_);
 
-    YACL_THROW("label_byte_count is too large");
+    SPU_THROW("label_byte_count is too large");
   }
 
   if (nonce_byte_count_ > apsi::max_nonce_byte_count) {
     SPDLOG_ERROR("Request nonce byte count {} exceeds the maximum ({}) ",
                  nonce_byte_count_, apsi::max_nonce_byte_count);
-    YACL_THROW("nonce_byte_count is too large");
+    SPU_THROW("nonce_byte_count is too large");
   }
 
   // If the nonce byte count is less than max_nonce_byte_count, print a warning;
   // this is a labeled SenderDB but may not be safe to use for arbitrary label
   // changes.
-  if (label_byte_count_ && nonce_byte_count_ < apsi::max_nonce_byte_count) {
+  if ((label_byte_count_ != 0) &&
+      nonce_byte_count_ < apsi::max_nonce_byte_count) {
     SPDLOG_WARN(
         "You have instantiated a labeled SenderDB instance with a nonce byte "
         "count {} , which is less than the safe default value {} . Updating "
@@ -565,7 +570,7 @@ SenderDB::SenderDB(const apsi::PSIParams &params,
   oprf_server_->SetCompareLength(kEccKeySize);
 }
 
-SenderDB::SenderDB(SenderDB &&source)
+SenderDB::SenderDB(SenderDB &&source) noexcept
     : params_(source.params_),
       crypto_context_(source.crypto_context_),
       label_byte_count_(source.label_byte_count_),
@@ -576,8 +581,8 @@ SenderDB::SenderDB(SenderDB &&source)
   // Lock the source before moving stuff over
   auto lock = source.GetWriterLock();
 
-  hashed_items_ = move(source.hashed_items_);
-  bin_bundles_ = move(source.bin_bundles_);
+  hashed_items_ = std::move(source.hashed_items_);
+  bin_bundles_ = std::move(source.bin_bundles_);
 
   std::vector<uint8_t> oprf_key = source.GetOprfKey();
   oprf_key_.resize(oprf_key.size());
@@ -590,7 +595,7 @@ SenderDB::SenderDB(SenderDB &&source)
   source.ClearInternal();
 }
 
-SenderDB &SenderDB::operator=(SenderDB &&source) {
+SenderDB &SenderDB::operator=(SenderDB &&source) noexcept {
   // Do nothing if moving to self
   if (&source == this) {
     return *this;
@@ -610,8 +615,8 @@ SenderDB &SenderDB::operator=(SenderDB &&source) {
   // Lock the source before moving stuff over
   auto source_lock = source.GetWriterLock();
 
-  hashed_items_ = move(source.hashed_items_);
-  bin_bundles_ = move(source.bin_bundles_);
+  hashed_items_ = std::move(source.hashed_items_);
+  bin_bundles_ = std::move(source.bin_bundles_);
 
   std::vector<uint8_t> oprf_key = source.GetOprfKey();
   oprf_key_.resize(oprf_key.size());
@@ -638,7 +643,8 @@ size_t SenderDB::GetBinBundleCount() const {
   auto lock = GetReaderLock();
 
   // Compute the total number of BinBundles
-  return std::accumulate(bin_bundles_.cbegin(), bin_bundles_.cend(), size_t(0),
+  return std::accumulate(bin_bundles_.cbegin(), bin_bundles_.cend(),
+                         static_cast<size_t>(0),
                          [&](auto &a, auto &b) { return a + b.size(); });
 }
 
@@ -654,9 +660,9 @@ double SenderDB::GetPackingRate() const {
       static_cast<uint64_t>(params_.items_per_bundle()),
       static_cast<uint64_t>(params_.table_params().max_items_per_bin));
 
-  return max_item_count ? static_cast<double>(item_count) /
-                              static_cast<double>(max_item_count)
-                        : 0.0;
+  return max_item_count != 0 ? static_cast<double>(item_count) /
+                                   static_cast<double>(max_item_count)
+                             : 0.0;
 }
 
 void SenderDB::ClearInternal() {
@@ -675,7 +681,7 @@ void SenderDB::ClearInternal() {
 }
 
 void SenderDB::clear() {
-  if (hashed_items_.size()) {
+  if (!hashed_items_.empty()) {
     SPDLOG_INFO("Removing {} items pairs from SenderDB", hashed_items_.size());
   }
 
@@ -728,14 +734,12 @@ void SenderDB::strip() {
   }
 
   SPDLOG_INFO("SenderDB has been stripped");
-
-  return;
 }
 
 std::vector<uint8_t> SenderDB::GetOprfKey() const {
   if (stripped_) {
     SPDLOG_ERROR("Cannot return the OPRF key from a stripped SenderDB");
-    YACL_THROW("failed to return OPRF key");
+    SPU_THROW("failed to return OPRF key");
   }
   return oprf_key_;
 }
@@ -744,12 +748,12 @@ void SenderDB::InsertOrAssign(
     const std::vector<std::pair<apsi::Item, apsi::Label>> &data) {
   if (stripped_) {
     SPDLOG_ERROR("Cannot insert data to a stripped SenderDB");
-    YACL_THROW("failed to insert data");
+    SPU_THROW("failed to insert data");
   }
   if (!IsLabeled()) {
     SPDLOG_ERROR(
         "Attempted to insert labeled data but this is an unlabeled SenderDB");
-    YACL_THROW("failed to insert data");
+    SPU_THROW("failed to insert data");
   }
 
   SPDLOG_INFO("Start inserting {} items in SenderDB", data.size());
@@ -761,7 +765,7 @@ void SenderDB::InsertOrAssign(
   for (size_t i = 0; i < data.size(); ++i) {
     std::string temp_str(data[i].first.value().size(), '\0');
 
-    std::memcpy(&temp_str[0], data[i].first.value().data(),
+    std::memcpy(temp_str.data(), data[i].first.value().data(),
                 data[i].first.value().size());
     data_str[i] = temp_str;
   }
@@ -769,7 +773,7 @@ void SenderDB::InsertOrAssign(
   std::vector<std::pair<apsi::HashedItem, apsi::EncryptedLabel>> hashed_data;
   for (size_t i = 0; i < oprf_out.size(); ++i) {
     apsi::HashedItem hashed_item;
-    std::memcpy(hashed_item.value().data(), &oprf_out[i][0],
+    std::memcpy(hashed_item.value().data(), oprf_out[i].data(),
                 hashed_item.value().size());
 
     apsi::LabelKey key;
@@ -779,7 +783,7 @@ void SenderDB::InsertOrAssign(
     apsi::EncryptedLabel encrypted_label = encrypt_label(
         data[i].second, key, label_byte_count_, nonce_byte_count_);
 
-    hashed_data.push_back(std::make_pair(hashed_item, encrypted_label));
+    hashed_data.emplace_back(hashed_item, encrypted_label);
   }
 
   // Lock the database for writing
@@ -816,7 +820,7 @@ void SenderDB::InsertOrAssign(
   auto new_item_count = distance(hashed_data.begin(), new_data_end);
   auto existing_item_count = distance(new_data_end, hashed_data.end());
 
-  if (existing_item_count) {
+  if (existing_item_count != 0) {
     SPDLOG_INFO("Found {} existing items to replace in SenderDB",
                 existing_item_count);
 
@@ -834,7 +838,7 @@ void SenderDB::InsertOrAssign(
     hashed_data.erase(new_data_end, hashed_data.end());
   }
 
-  if (new_item_count) {
+  if (new_item_count != 0) {
     SPDLOG_INFO("Found {} new items to insert in SenderDB", new_item_count);
 
     // Process and add the new data. Break the data into field element
@@ -857,12 +861,12 @@ void SenderDB::InsertOrAssign(
 void SenderDB::InsertOrAssign(const std::vector<apsi::Item> &data) {
   if (stripped_) {
     SPDLOG_ERROR("Cannot insert data to a stripped SenderDB");
-    YACL_THROW("failed to insert data");
+    SPU_THROW("failed to insert data");
   }
   if (IsLabeled()) {
     SPDLOG_ERROR(
         "Attempted to insert unlabeled data but this is a labeled SenderDB");
-    YACL_THROW("failed to insert data");
+    SPU_THROW("failed to insert data");
   }
 
   STOPWATCH(sender_stopwatch, "SenderDB::insert_or_assign (unlabeled)");
@@ -873,14 +877,15 @@ void SenderDB::InsertOrAssign(const std::vector<apsi::Item> &data) {
   std::vector<std::string> data_str(data.size());
   for (size_t i = 0; i < data.size(); ++i) {
     std::string item_str(data[i].value().size(), '\0');
-    std::memcpy(&item_str[0], data[i].value().data(), data[i].value().size());
+    std::memcpy(item_str.data(), data[i].value().data(),
+                data[i].value().size());
     data_str[i] = item_str;
   }
   std::vector<std::string> oprf_out = oprf_server_->FullEvaluate(data_str);
   std::vector<apsi::HashedItem> hashed_data;
-  for (size_t i = 0; i < oprf_out.size(); ++i) {
+  for (const auto &out : oprf_out) {
     apsi::Item::value_type value{};
-    std::memcpy(value.data(), &oprf_out[i][0], value.size());
+    std::memcpy(value.data(), out.data(), value.size());
 
     hashed_data.emplace_back(value);
   }
@@ -933,7 +938,7 @@ void SenderDB::InsertOrAssign(const std::vector<apsi::Item> &data) {
 void SenderDB::remove(const std::vector<apsi::Item> &data) {
   if (stripped_) {
     SPDLOG_ERROR("Cannot remove data from a stripped SenderDB");
-    YACL_THROW("failed to remove data");
+    SPU_THROW("failed to remove data");
   }
 
   STOPWATCH(sender_stopwatch, "SenderDB::remove");
@@ -944,14 +949,14 @@ void SenderDB::remove(const std::vector<apsi::Item> &data) {
   std::vector<std::string> data_str(data.size());
   for (size_t i = 0; i < data.size(); ++i) {
     data_str[i].reserve(data[i].value().size());
-    std::memcpy(&data_str[i][0], data[i].value().data(),
+    std::memcpy(data_str[i].data(), data[i].value().data(),
                 data[i].value().size());
   }
   std::vector<std::string> oprf_out = oprf_server_->FullEvaluate(data_str);
   std::vector<apsi::HashedItem> hashed_data;
-  for (size_t i = 0; i < oprf_out.size(); ++i) {
+  for (const auto &out : oprf_out) {
     apsi::Item::value_type value{};
-    std::memcpy(value.data(), &oprf_out[i][0], value.size());
+    std::memcpy(value.data(), out.data(), value.size());
 
     hashed_data.emplace_back(value);
   }
@@ -974,9 +979,9 @@ void SenderDB::remove(const std::vector<apsi::Item> &data) {
       });
 
   // This distance is always non-negative
-  size_t existing_item_count =
+  auto existing_item_count =
       static_cast<size_t>(distance(existing_data_end, hashed_data.end()));
-  if (existing_item_count) {
+  if (existing_item_count != 0) {
     SPDLOG_WARN("Ignoring {} items that are not present in the SenderDB",
                 existing_item_count);
   }
@@ -1000,17 +1005,17 @@ bool SenderDB::HasItem(const apsi::Item &item) const {
   if (stripped_) {
     SPDLOG_ERROR(
         "Cannot retrieve the presence of an item from a stripped SenderDB");
-    YACL_THROW("failed to retrieve the presence of item");
+    SPU_THROW("failed to retrieve the presence of item");
   }
 
   // First compute the hash for the input item
   // auto hashed_item = OPRFSender::ComputeHashes({&item, 1}, oprf_key_)[0];
   std::string item_str;
   item_str.reserve(item.value().size());
-  std::memcpy(&item_str[0], item.value().data(), item.value().size());
+  std::memcpy(item_str.data(), item.value().data(), item.value().size());
   std::string oprf_out = oprf_server_->FullEvaluate(item_str);
   apsi::HashedItem hashed_item;
-  std::memcpy(hashed_item.value().data(), &oprf_out[0],
+  std::memcpy(hashed_item.value().data(), oprf_out.data(),
               hashed_item.value().size());
 
   // Lock the database for reading
@@ -1022,12 +1027,12 @@ bool SenderDB::HasItem(const apsi::Item &item) const {
 apsi::Label SenderDB::GetLabel(const apsi::Item &item) const {
   if (stripped_) {
     SPDLOG_ERROR("Cannot retrieve a label from a stripped SenderDB");
-    YACL_THROW("failed to retrieve label");
+    SPU_THROW("failed to retrieve label");
   }
   if (!IsLabeled()) {
     SPDLOG_ERROR(
         "Attempted to retrieve a label but this is an unlabeled SenderDB");
-    YACL_THROW("failed to retrieve label");
+    SPU_THROW("failed to retrieve label");
   }
 
   // First compute the hash for the input item
@@ -1037,9 +1042,9 @@ apsi::Label SenderDB::GetLabel(const apsi::Item &item) const {
 
   std::string item_str;
   item_str.reserve(item.value().size());
-  std::memcpy(&item_str[0], item.value().data(), item.value().size());
+  std::memcpy(item_str.data(), item.value().data(), item.value().size());
   std::string oprf_out = oprf_server_->FullEvaluate(item_str);
-  std::memcpy(hashed_item.value().data(), &oprf_out[0],
+  std::memcpy(hashed_item.value().data(), oprf_out.data(),
               hashed_item.value().size());
 
   // Lock the database for reading
@@ -1049,7 +1054,7 @@ apsi::Label SenderDB::GetLabel(const apsi::Item &item) const {
   if (hashed_items_.find(hashed_item) == hashed_items_.end()) {
     SPDLOG_ERROR(
         "Cannot retrieve label for an item that is not in the SenderDB");
-    YACL_THROW("failed to retrieve label");
+    SPU_THROW("failed to retrieve label");
   }
 
   uint32_t bins_per_bundle = params_.bins_per_bundle();
@@ -1063,7 +1068,8 @@ apsi::Label SenderDB::GetLabel(const apsi::Item &item) const {
       PreprocessUnlabeledData(hashed_item, params_)[0];
 
   // Now figure out where to look to get the label
-  size_t bin_idx, bundle_idx;
+  size_t bin_idx;
+  size_t bundle_idx;
   std::tie(bin_idx, bundle_idx) = UnpackCuckooIdx(cuckoo_idx, bins_per_bundle);
 
   // Retrieve the algebraic labels from one of the BinBundles at this index
@@ -1086,7 +1092,7 @@ apsi::Label SenderDB::GetLabel(const apsi::Item &item) const {
     SPDLOG_ERROR(
         "Failed to retrieve label for an item that was supposed to be in the "
         "SenderDB");
-    YACL_THROW("failed to retrieve label");
+    SPU_THROW("failed to retrieve label");
   }
 
   // All good. Now just reconstruct the big label from its split-up parts

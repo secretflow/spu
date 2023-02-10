@@ -53,7 +53,7 @@ TEST(BShrTy, Simple) {
     EXPECT_EQ(Type::fromString(ty.toString()), ty);
 
     // clone
-    Type cty = ty;
+    Type cty = ty;  // NOLINT: Test clone
     EXPECT_EQ(cty, ty);
     EXPECT_TRUE(cty.isa<Secret>());
     EXPECT_FALSE(cty.isa<Public>());

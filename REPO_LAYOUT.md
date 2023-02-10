@@ -22,4 +22,4 @@ This is a high level overview of how the repository is laid out. Some major fold
         * [cheetah/](spu/mpc/cheetah/): An excellent semi-honest 2PC protocol implemented by [Alibaba-Gemini-Lab](https://alibaba-gemini-lab.github.io/).
         * [semi2k/](spu/mpc/semi2k/): The semi-honest variant of SPDZ protocol. It could be shipped with different correlated random generators.
         * [ref2k/](spu/mpc/ref2k/): A plaintext protocol. It is aimed to serve as a reference implementation of how a new protocol could be added in SPU.
-        * [util/](spu/mpc/util/): Common utilities for different mpc protocols.
+        * [util/](spu/mpc/utils/): Common utilities for different mpc protocols.

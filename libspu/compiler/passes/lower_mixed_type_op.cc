@@ -72,8 +72,8 @@ struct LowerMixedTypeOp : public LowerMixedTypeOpBase<LowerMixedTypeOp> {
   }
 
 private:
-  void populateOwningPatterns(RewritePatternSet *patterns,
-                              MLIRContext *ctx) const {
+  static void populateOwningPatterns(RewritePatternSet *patterns,
+                                     MLIRContext *ctx) {
     patterns->insert<FxpIntMulTruncationRemover<MulOp>,
                      FxpIntMulTruncationRemover<DotOp>,
                      FxpIntMulTruncationRemover<DotGeneralOp>>(ctx);

@@ -21,7 +21,7 @@ List of XLA(mhlo-mlir) Ops that SPU supports:
 
 Count: Total = 4, fully supported = 2
 
-### XLA unary elementwise ops
+### XLA unary element-wise ops
 
 |  Op Name       | supported(fully/partial/no) | notes       |
 | :------------: | :-------------------------: | ----------- |
@@ -52,7 +52,7 @@ Count: Total = 4, fully supported = 2
 
 Count: Total = 24, fully supported = 12, partial = 0
 
-### XLA binary elementwise ops
+### XLA binary element-wise ops
 
 |  Op Name       | supported(fully/partial/no) | notes       |
 | :------------: | :-------------------------: | ----------- |
@@ -73,7 +73,7 @@ Count: Total = 24, fully supported = 12, partial = 0
 
 Count: Total = 14, fully supported = 9, partial = 3
 
-### XLA binary logical elementwise ops
+### XLA binary logical element-wise ops
 
 |  Op Name       | supported(fully/partial/no) | notes       |
 | :------------: | :-------------------------: | ----------- |

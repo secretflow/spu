@@ -14,6 +14,8 @@
 
 #include "libspu/device/pphlo/xla_verifier.h"
 
+#include <utility>
+
 #include "spdlog/spdlog.h"
 #include "xla/hlo/evaluator/hlo_evaluator.h"
 #include "xla/literal.h"
@@ -38,7 +40,7 @@ std::vector<int64_t> convertDenseIntElementAttr(
   return ret;
 }
 
-xla::PrimitiveType getXlaType(PtTy type) {
+xla::PrimitiveType getXlaType(const PtTy &type) {
   switch (type.pt_type()) {
     case spu::PtType::PT_BOOL:
       return xla::PRED;
@@ -63,13 +65,13 @@ xla::PrimitiveType getXlaType(PtTy type) {
     case spu::PtType::PT_F64:
       return xla::F64;
     default:
-      YACL_THROW("Unhandled type {}", type.toString());
+      SPU_THROW("Unhandled type {}", type.toString());
   }
   return xla::PrimitiveType::PRIMITIVE_TYPE_INVALID;
 }
 
 xla::Shape buildXLAShape(PtTy type, absl::Span<const int64_t> shape) {
-  return xla::ShapeUtil::MakeShape(getXlaType(type), shape);
+  return xla::ShapeUtil::MakeShape(getXlaType(std::move(type)), shape);
 }  // namespace
 
 #define ALL_POSSIBLE_PTTYPES(FN) \
@@ -103,7 +105,7 @@ xla::Literal convertToXlaLiteral(HalContext *ctx, const spu::Value &v) {
     ALL_POSSIBLE_PTTYPES(CASE)
 
     default:
-      YACL_THROW("unexpected type={}", arr.eltype());
+      SPU_THROW("unexpected type={}", arr.eltype());
   }
 
 #undef CASE
@@ -128,7 +130,7 @@ xla::Literal xlaOnes(HalContext *ctx, const spu::Value &base) {
     ALL_POSSIBLE_PTTYPES(CASE)
 
     default:
-      YACL_THROW("unexpected type={}", arr.eltype());
+      SPU_THROW("unexpected type={}", arr.eltype());
   }
 
 #undef CASE
@@ -165,7 +167,7 @@ bool verifyEqual(const xla::Literal &xla_ret, const NdArrayRef &expected) {
     ALL_POSSIBLE_PTTYPES(CASE)
 
     default:
-      YACL_THROW("unexpected type={}", expected.eltype());
+      SPU_THROW("unexpected type={}", expected.eltype());
   }
 
   SPDLOG_INFO("Answer has {} elements, {} mismatch found", numel, mismatch);
@@ -841,7 +843,7 @@ void XlaVerifier::verify(mlir::pphlo::ReduceOp op,
   void XlaVerifier::verify(OpName op, \ 
                          absl::Span<const spu::Value> operands, \ 
                          absl::Span<const spu::Value> expected) { \
-    YACL_THROW("TBD");                   \
+    SPU_THROW("TBD");                    \
   }
 
 UNIMPL_VERIFIER(mlir::pphlo::SelectAndScatterOp)

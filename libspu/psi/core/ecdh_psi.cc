@@ -18,20 +18,20 @@
 #include <utility>
 
 #include "spdlog/spdlog.h"
-#include "yacl/base/exception.h"
 #include "yacl/crypto/base/hash/hash_utils.h"
 #include "yacl/utils/parallel.h"
 #include "yacl/utils/serialize.h"
 
+#include "libspu/core/prelude.h"
 #include "libspu/psi/core/communication.h"
 #include "libspu/psi/cryptor/cryptor_selector.h"
 #include "libspu/psi/utils/batch_provider.h"
 
 namespace spu::psi {
 
-EcdhPsiContext::EcdhPsiContext(const EcdhPsiOptions& options)
-    : options_(options) {
-  YACL_ENFORCE(options_.link_ctx->WorldSize() == 2);
+EcdhPsiContext::EcdhPsiContext(EcdhPsiOptions options)
+    : options_(std::move(options)) {
+  SPU_ENFORCE(options_.link_ctx->WorldSize() == 2);
 
   main_link_ctx_ = options_.link_ctx;
   dual_mask_link_ctx_ = options_.link_ctx->Spawn();
@@ -50,9 +50,9 @@ void EcdhPsiContext::CheckConfig() {
   auto config_list =
       yacl::link::AllGather(main_link_ctx_, my_config_buf, "ECDHPSI:SANITY");
   auto peer_config = config_list[main_link_ctx_->NextRank()];
-  YACL_ENFORCE(my_config_buf == peer_config,
-               "EcdhPsiContext Config mismatch, mine={}, peer={}", my_config,
-               peer_config);
+  SPU_ENFORCE(my_config_buf == peer_config,
+              "EcdhPsiContext Config mismatch, mine={}, peer={}", my_config,
+              peer_config);
 }
 
 void EcdhPsiContext::MaskSelf(
@@ -171,8 +171,8 @@ void RecvBatchImpl(const std::shared_ptr<yacl::link::Context>& link_ctx,
                    std::vector<std::string>* items) {
   PsiDataBatch batch = IcPsiBatchSerializer::Deserialize(
       link_ctx->Recv(link_ctx->NextRank(), tag));
-  YACL_ENFORCE(batch.batch_index == batch_idx, "Expected batch {}, but got {}",
-               batch_idx, batch.batch_index);
+  SPU_ENFORCE(batch.batch_index == batch_idx, "Expected batch {}, but got {}",
+              batch_idx, batch.batch_index);
 
   if (batch.item_num > 0) {
     auto item_size = batch.flatten_bytes.size() / batch.item_num;
@@ -220,8 +220,8 @@ void EcdhPsiContext::RecvDualMaskedBatch(std::vector<std::string>* items,
 void RunEcdhPsi(const EcdhPsiOptions& options,
                 const std::shared_ptr<IBatchProvider>& batch_provider,
                 const std::shared_ptr<ICipherStore>& cipher_store) {
-  YACL_ENFORCE(options.link_ctx->WorldSize() == 2);
-  YACL_ENFORCE(batch_provider != nullptr && cipher_store != nullptr);
+  SPU_ENFORCE(options.link_ctx->WorldSize() == 2);
+  SPU_ENFORCE(batch_provider != nullptr && cipher_store != nullptr);
 
   EcdhPsiContext handler(options);
   handler.CheckConfig();
@@ -299,7 +299,7 @@ std::vector<std::string> RunEcdhPsi(
   for (uint32_t index = 0; index < self_results.size(); index++) {
     if (std::binary_search(peer_results.begin(), peer_results.end(),
                            self_results[index])) {
-      YACL_ENFORCE(index < items.size());
+      SPU_ENFORCE(index < items.size());
       ret.push_back(items[index]);
     }
   }

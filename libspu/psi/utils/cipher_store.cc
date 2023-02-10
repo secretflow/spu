@@ -17,6 +17,7 @@
 #include <algorithm>
 #include <future>
 #include <unordered_set>
+#include <utility>
 
 #include "absl/strings/escaping.h"
 #include "spdlog/spdlog.h"
@@ -74,12 +75,12 @@ void DiskCipherStore::FindIntersectionIndices(size_t bucket_idx,
   }
 }
 
-CachedCsvCipherStore::CachedCsvCipherStore(const std::string& self_csv,
-                                           const std::string& peer_csv,
+CachedCsvCipherStore::CachedCsvCipherStore(std::string self_csv,
+                                           std::string peer_csv,
                                            bool self_read_only,
                                            bool peer_read_only)
-    : self_csv_path_(self_csv),
-      peer_csv_path_(peer_csv),
+    : self_csv_path_(std::move(self_csv)),
+      peer_csv_path_(std::move(peer_csv)),
       self_read_only_(self_read_only),
       peer_read_only_(peer_read_only) {
   if (!self_read_only_) {
@@ -123,8 +124,8 @@ void CachedCsvCipherStore::SavePeer(std::string ciphertext) {
 
 void CachedCsvCipherStore::SaveSelf(
     const std::vector<std::string>& ciphertext) {
-  for (size_t i = 0; i < ciphertext.size(); i++) {
-    std::string hex_str = absl::BytesToHexString(ciphertext[i]);
+  for (const auto& text : ciphertext) {
+    std::string hex_str = absl::BytesToHexString(text);
     self_out_->Write(fmt::format("{}\n", hex_str));
     self_data_.push_back(hex_str);
 
@@ -137,9 +138,8 @@ void CachedCsvCipherStore::SaveSelf(
 
 void CachedCsvCipherStore::SavePeer(
     const std::vector<std::string>& ciphertext) {
-  for (size_t i = 0; i < ciphertext.size(); i++) {
-    peer_out_->Write(
-        fmt::format("{}\n", absl::BytesToHexString(ciphertext[i])));
+  for (const auto& text : ciphertext) {
+    peer_out_->Write(fmt::format("{}\n", absl::BytesToHexString(text)));
 
     peer_items_count_ += 1;
     if (peer_items_count_ % 10000000 == 0) {
@@ -200,8 +200,8 @@ std::vector<uint64_t> CachedCsvCipherStore::FinalizeAndComputeIndices(
     }
 
     batch_count++;
-    for (size_t i = 0; i < result.size(); ++i) {
-      indices.insert(indices.end(), result[i].begin(), result[i].end());
+    for (const auto& r : result) {
+      indices.insert(indices.end(), r.begin(), r.end());
     }
     SPDLOG_INFO("FinalizeAndComputeIndices, batch_count:{}", batch_count);
   }

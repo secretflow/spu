@@ -50,14 +50,14 @@ spu_cc_library(
 )
 
 spu_cc_library(
-    name = "map_mhlo_to_pphlo_op",
-    hdrs = ["map_mhlo_to_pphlo_op.h"],
+    name = "map_stablehlo_to_pphlo_op",
+    hdrs = ["map_stablehlo_to_pphlo_op.h"],
     visibility = [
         "//visibility:private",  # This target is a private detail of ops map
     ],
     deps = [
         "//libspu/dialect:pphlo_dialect",
-        "@xla//xla/mlir_hlo",
+        "@stablehlo//:stablehlo_ops",
     ],
 )
 
@@ -66,9 +66,9 @@ spu_cc_library(
     srcs = ["value_visibility_map.cc"],
     hdrs = ["value_visibility_map.h"],
     deps = [
+        "//libspu/core:prelude",
         "//libspu/dialect:pphlo_dialect",
         "@llvm-project//mlir:IR",
-        "@yacl//yacl/base:exception",
     ],
 )
 
@@ -78,10 +78,10 @@ spu_cc_library(
     hdrs = ["visibility_inference.h"],
     deps = [
         ":value_visibility_map",
+        "//libspu/core:prelude",
         "//libspu/dialect:pphlo_dialect",
         "@llvm-project//mlir:IR",
-        "@xla//xla/mlir_hlo",
-        "@yacl//yacl/base:exception",
+        "@stablehlo//:stablehlo_ops",
     ],
 )
 
@@ -91,13 +91,13 @@ spu_cc_library(
     hdrs = ["passes.h"],
     include_prefix = "tensorflow/compiler/xla/mlir_hlo/include",
     deps = [
-        ":map_mhlo_to_pphlo_op",
+        ":map_stablehlo_to_pphlo_op",
         ":pass_details",
         ":visibility_inference",
+        "//libspu/core:prelude",
         "//libspu/dialect:pphlo_dialect",
         "@llvm-project//mlir:IR",
-        "@xla//xla/mlir_hlo",
-        "@yacl//yacl/base:exception",
+        "@stablehlo//:stablehlo_ops",
     ],
 )
 

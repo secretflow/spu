@@ -125,7 +125,7 @@ ArrayRef block_par_unary_with_size(KernelEvalContext* ctx,
 ArrayRef block_par_binary(KernelEvalContext* ctx, std::string_view fn_name,
                           const ArrayRef& lhs, const ArrayRef& rhs) {
   const int64_t kBlockSize = kMinTaskSize;
-  YACL_ENFORCE(lhs.numel() == rhs.numel());
+  SPU_ENFORCE(lhs.numel() == rhs.numel());
   if (!ctx->caller()->hasLowCostFork() || lhs.numel() <= kBlockSize) {
     return ctx->caller()->call(fn_name, lhs, rhs);
   }
@@ -179,7 +179,7 @@ ArrayRef _Lazy2B(KernelEvalContext* ctx, const ArrayRef& in) {
   if (in.eltype().isa<AShare>()) {
     return block_par_unary(ctx, "a2b", in);
   } else {
-    YACL_ENFORCE(in.eltype().isa<BShare>());
+    SPU_ENFORCE(in.eltype().isa<BShare>());
     return in;
   }
 }
@@ -188,12 +188,13 @@ ArrayRef _Lazy2A(KernelEvalContext* ctx, const ArrayRef& in) {
   if (in.eltype().isa<BShare>()) {
     return block_par_unary(ctx, "b2a", in);
   } else {
-    YACL_ENFORCE(in.eltype().isa<AShare>(), "expect AShare, got {}",
-                 in.eltype());
+    SPU_ENFORCE(in.eltype().isa<AShare>(), "expect AShare, got {}",
+                in.eltype());
     return in;
   }
 }
 
+// NOLINTBEGIN(bugprone-reserved-identifier)
 #define _LAZY_AB ctx->getState<ABProtState>()->lazy_ab
 
 #define _2A(x) _Lazy2A(ctx, x)
@@ -228,10 +229,11 @@ ArrayRef _Lazy2A(KernelEvalContext* ctx, const ArrayRef& in) {
 #define _LShiftB(in, bits) ctx->caller()->call("lshift_b", in, bits)
 #define _RShiftB(in, bits) ctx->caller()->call("rshift_b", in, bits)
 #define _ARShiftB(in, bits) ctx->caller()->call("arshift_b", in, bits)
-#define _RitrevB(in, start, end) ctx->caller()->call("bitrev_b", in, start, end)
+#define _BitrevB(in, start, end) ctx->caller()->call("bitrev_b", in, start, end)
 #define _MsbA(in) block_par_unary(ctx, "msb_a2b", in)
 #define _RandA(size) ctx->caller()->call("rand_a", size)
 #define _RandB(size) ctx->caller()->call("rand_b", size)
+// NOLINTEND(bugprone-reserved-identifier)
 
 class ABProtState : public State {
  public:
@@ -253,7 +255,7 @@ class ABProtCommonTypeS : public Kernel {
  public:
   static constexpr char kBindName[] = "common_type_s";
 
-  Kind kind() const override { return Kind::kDynamic; }
+  Kind kind() const override { return Kind::Dynamic; }
 
   void evaluate(KernelEvalContext* ctx) const override {
     const Type& lhs = ctx->getParam<Type>(0);
@@ -262,7 +264,7 @@ class ABProtCommonTypeS : public Kernel {
     SPU_TRACE_MPC_DISP(ctx, lhs, rhs);
 
     if (lhs.isa<AShare>() && rhs.isa<AShare>()) {
-      YACL_ENFORCE(lhs == rhs, "expect same, got lhs={}, rhs={}", lhs, rhs);
+      SPU_ENFORCE(lhs == rhs, "expect same, got lhs={}, rhs={}", lhs, rhs);
       ctx->setOutput(lhs);
     } else if (lhs.isa<AShare>() && rhs.isa<BShare>()) {
       ctx->setOutput(lhs);
@@ -271,7 +273,7 @@ class ABProtCommonTypeS : public Kernel {
     } else if (lhs.isa<BShare>() && rhs.isa<BShare>()) {
       ctx->setOutput(common_type_b(ctx->caller(), lhs, rhs));
     } else {
-      YACL_THROW("should not be here, lhs={}, rhs={}", lhs, rhs);
+      SPU_THROW("should not be here, lhs={}, rhs={}", lhs, rhs);
     }
   }
 };
@@ -280,7 +282,7 @@ class ABProtCastTypeS : public Kernel {
  public:
   static constexpr char kBindName[] = "cast_type_s";
 
-  Kind kind() const override { return Kind::kDynamic; }
+  Kind kind() const override { return Kind::Dynamic; }
 
   void evaluate(KernelEvalContext* ctx) const override {
     const auto& frm = ctx->getParam<ArrayRef>(0);
@@ -289,8 +291,8 @@ class ABProtCastTypeS : public Kernel {
     SPU_TRACE_MPC_DISP(ctx, frm, to_type);
 
     if (frm.eltype().isa<AShare>() && to_type.isa<AShare>()) {
-      YACL_ENFORCE(frm.eltype() == to_type,
-                   "expect same, got frm={}, to_type={}", frm, to_type);
+      SPU_ENFORCE(frm.eltype() == to_type,
+                  "expect same, got frm={}, to_type={}", frm, to_type);
       // do nothing.
       ctx->setOutput(frm);
     } else if (frm.eltype().isa<AShare>() && to_type.isa<BShare>()) {
@@ -300,7 +302,7 @@ class ABProtCastTypeS : public Kernel {
     } else if (frm.eltype().isa<BShare>() && to_type.isa<BShare>()) {
       ctx->setOutput(cast_type_b(ctx->caller(), frm, to_type));
     } else {
-      YACL_THROW("should not be here, frm={}, to_type={}", frm, to_type);
+      SPU_THROW("should not be here, frm={}, to_type={}", frm, to_type);
     }
   }
 };
@@ -309,7 +311,7 @@ class ABProtP2S : public UnaryKernel {
  public:
   static constexpr char kBindName[] = "p2s";
 
-  Kind kind() const override { return Kind::kDynamic; }
+  Kind kind() const override { return Kind::Dynamic; }
 
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in) const override {
     SPU_TRACE_MPC_DISP(ctx, in);
@@ -321,14 +323,14 @@ class ABProtS2P : public UnaryKernel {
  public:
   static constexpr char kBindName[] = "s2p";
 
-  Kind kind() const override { return Kind::kDynamic; }
+  Kind kind() const override { return Kind::Dynamic; }
 
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in) const override {
     SPU_TRACE_MPC_DISP(ctx, in);
     if (_IsA(in)) {
       return _A2P(in);
     } else {
-      YACL_ENFORCE(_IsB(in));
+      SPU_ENFORCE(_IsB(in));
       return _B2P(in);
     }
   }
@@ -338,7 +340,7 @@ class ABProtRandS : public Kernel {
  public:
   static constexpr char kBindName[] = "rand_s";
 
-  Kind kind() const override { return Kind::kDynamic; }
+  Kind kind() const override { return Kind::Dynamic; }
 
   void evaluate(KernelEvalContext* ctx) const override {
     const size_t size = ctx->getParam<size_t>(0);
@@ -355,7 +357,7 @@ class ABProtNotS : public UnaryKernel {
  public:
   static constexpr char kBindName[] = "not_s";
 
-  Kind kind() const override { return Kind::kDynamic; }
+  Kind kind() const override { return Kind::Dynamic; }
 
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in) const override {
     SPU_TRACE_MPC_DISP(ctx, in);
@@ -364,7 +366,7 @@ class ABProtNotS : public UnaryKernel {
       // if (in.eltype().isa<BShare>()) {
       //  return _NotB(in);
       //} else {
-      //  YACL_ENFORCE(in.eltype().isa<AShare>());
+      //  SPU_ENFORCE(in.eltype().isa<AShare>());
       //  return _NotA(in);
       //}
       return _NotA(_2A(in));
@@ -377,7 +379,7 @@ class ABProtAddSP : public BinaryKernel {
  public:
   static constexpr char kBindName[] = "add_sp";
 
-  Kind kind() const override { return Kind::kDynamic; }
+  Kind kind() const override { return Kind::Dynamic; }
 
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& lhs,
                 const ArrayRef& rhs) const override {
@@ -393,7 +395,7 @@ class ABProtAddSS : public BinaryKernel {
  public:
   static constexpr char kBindName[] = "add_ss";
 
-  Kind kind() const override { return Kind::kDynamic; }
+  Kind kind() const override { return Kind::Dynamic; }
 
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& lhs,
                 const ArrayRef& rhs) const override {
@@ -409,7 +411,7 @@ class ABProtMulSP : public BinaryKernel {
  public:
   static constexpr char kBindName[] = "mul_sp";
 
-  Kind kind() const override { return Kind::kDynamic; }
+  Kind kind() const override { return Kind::Dynamic; }
 
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& lhs,
                 const ArrayRef& rhs) const override {
@@ -429,7 +431,7 @@ class ABProtMulSS : public BinaryKernel {
  public:
   static constexpr char kBindName[] = "mul_ss";
 
-  Kind kind() const override { return Kind::kDynamic; }
+  Kind kind() const override { return Kind::Dynamic; }
 
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& lhs,
                 const ArrayRef& rhs) const override {
@@ -452,15 +454,15 @@ class ABProtMatMulSP : public MatmulKernel {
  public:
   static constexpr char kBindName[] = "mmul_sp";
 
-  Kind kind() const override { return Kind::kDynamic; }
+  Kind kind() const override { return Kind::Dynamic; }
 
-  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& A, const ArrayRef& B,
-                size_t M, size_t N, size_t K) const override {
-    SPU_TRACE_MPC_DISP(ctx, A, B);
+  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& a, const ArrayRef& b,
+                size_t m, size_t n, size_t k) const override {
+    SPU_TRACE_MPC_DISP(ctx, a, b);
     if (_LAZY_AB) {
-      return _MatMulAP(_2A(A), B, M, N, K);
+      return _MatMulAP(_2A(a), b, m, n, k);
     }
-    return _MatMulAP(A, B, M, N, K);
+    return _MatMulAP(a, b, m, n, k);
   }
 };
 
@@ -468,15 +470,15 @@ class ABProtMatMulSS : public MatmulKernel {
  public:
   static constexpr char kBindName[] = "mmul_ss";
 
-  Kind kind() const override { return Kind::kDynamic; }
+  Kind kind() const override { return Kind::Dynamic; }
 
-  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& A, const ArrayRef& B,
-                size_t M, size_t N, size_t K) const override {
-    SPU_TRACE_MPC_DISP(ctx, A, B);
+  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& a, const ArrayRef& b,
+                size_t m, size_t n, size_t k) const override {
+    SPU_TRACE_MPC_DISP(ctx, a, b);
     if (_LAZY_AB) {
-      return _MatMulAA(_2A(A), _2A(B), M, N, K);
+      return _MatMulAA(_2A(a), _2A(b), m, n, k);
     }
-    return _MatMulAA(A, B, M, N, K);
+    return _MatMulAA(a, b, m, n, k);
   }
 };
 
@@ -484,7 +486,7 @@ class ABProtAndSP : public BinaryKernel {
  public:
   static constexpr char kBindName[] = "and_sp";
 
-  Kind kind() const override { return Kind::kDynamic; }
+  Kind kind() const override { return Kind::Dynamic; }
 
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& lhs,
                 const ArrayRef& rhs) const override {
@@ -500,7 +502,7 @@ class ABProtAndSS : public BinaryKernel {
  public:
   static constexpr char kBindName[] = "and_ss";
 
-  Kind kind() const override { return Kind::kDynamic; }
+  Kind kind() const override { return Kind::Dynamic; }
 
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& lhs,
                 const ArrayRef& rhs) const override {
@@ -516,7 +518,7 @@ class ABProtXorSP : public BinaryKernel {
  public:
   static constexpr char kBindName[] = "xor_sp";
 
-  Kind kind() const override { return Kind::kDynamic; }
+  Kind kind() const override { return Kind::Dynamic; }
 
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& lhs,
                 const ArrayRef& rhs) const override {
@@ -532,7 +534,7 @@ class ABProtXorSS : public BinaryKernel {
  public:
   static constexpr char kBindName[] = "xor_ss";
 
-  Kind kind() const override { return Kind::kDynamic; }
+  Kind kind() const override { return Kind::Dynamic; }
 
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& lhs,
                 const ArrayRef& rhs) const override {
@@ -548,12 +550,12 @@ class ABProtEqzS : public UnaryKernel {
  public:
   static constexpr char kBindName[] = "eqz_s";
 
-  Kind kind() const override { return Kind::kDynamic; }
+  Kind kind() const override { return Kind::Dynamic; }
 
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in) const override {
     SPU_TRACE_MPC_DISP(ctx, in);
     //
-    YACL_THROW("TODO");
+    SPU_THROW("TODO");
   }
 };
 
@@ -561,7 +563,7 @@ class ABProtLShiftS : public ShiftKernel {
  public:
   static constexpr char kBindName[] = "lshift_s";
 
-  Kind kind() const override { return Kind::kDynamic; }
+  Kind kind() const override { return Kind::Dynamic; }
 
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in,
                 size_t bits) const override {
@@ -575,7 +577,7 @@ class ABProtLShiftS : public ShiftKernel {
         return _B2A(_LShiftB(in, bits));
       }
     } else {
-      YACL_THROW("Unsupported type {}", in.eltype());
+      SPU_THROW("Unsupported type {}", in.eltype());
     }
   }
 };
@@ -584,7 +586,7 @@ class ABProtRShiftS : public ShiftKernel {
  public:
   static constexpr char kBindName[] = "rshift_s";
 
-  Kind kind() const override { return Kind::kDynamic; }
+  Kind kind() const override { return Kind::Dynamic; }
 
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in,
                 size_t bits) const override {
@@ -600,7 +602,7 @@ class ABProtARShiftS : public ShiftKernel {
  public:
   static constexpr char kBindName[] = "arshift_s";
 
-  Kind kind() const override { return Kind::kDynamic; }
+  Kind kind() const override { return Kind::Dynamic; }
 
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in,
                 size_t bits) const override {
@@ -616,7 +618,7 @@ class ABProtTruncS : public ShiftKernel {
  public:
   static constexpr char kBindName[] = "trunc_s";
 
-  Kind kind() const override { return Kind::kDynamic; }
+  Kind kind() const override { return Kind::Dynamic; }
 
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in,
                 size_t bits) const override {
@@ -632,19 +634,19 @@ class ABProtBitrevS : public Kernel {
  public:
   static constexpr char kBindName[] = "bitrev_s";
 
-  Kind kind() const override { return Kind::kDynamic; }
+  Kind kind() const override { return Kind::Dynamic; }
 
   void evaluate(KernelEvalContext* ctx) const override {
     ctx->setOutput(proc(ctx, ctx->getParam<ArrayRef>(0),
                         ctx->getParam<size_t>(1), ctx->getParam<size_t>(2)));
   }
-  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in, size_t start,
-                size_t end) const {
+  static ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in, size_t start,
+                       size_t end) {
     SPU_TRACE_MPC_DISP(ctx, in, start, end);
     if (_LAZY_AB) {
-      return _RitrevB(_2B(in), start, end);
+      return _BitrevB(_2B(in), start, end);
     }
-    return _B2A(_RitrevB(_A2B(in), start, end));
+    return _B2A(_BitrevB(_A2B(in), start, end));
   }
 };
 
@@ -652,7 +654,7 @@ class ABProtMsbS : public UnaryKernel {
  public:
   static constexpr char kBindName[] = "msb_s";
 
-  Kind kind() const override { return Kind::kDynamic; }
+  Kind kind() const override { return Kind::Dynamic; }
 
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in) const override {
     SPU_TRACE_MPC_DISP(ctx, in);

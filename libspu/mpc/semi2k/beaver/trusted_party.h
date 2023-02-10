@@ -35,19 +35,19 @@ class TrustedParty {
 
   std::vector<PrgSeed> getSeeds() const;
 
-  ArrayRef adjustMul(absl::Span<const PrgArrayDesc> descs);
+  ArrayRef adjustMul(absl::Span<const PrgArrayDesc> descs) const;
 
   ArrayRef adjustDot(absl::Span<const PrgArrayDesc> descs, size_t M, size_t N,
-                     size_t K);
+                     size_t K) const;
 
-  ArrayRef adjustAnd(absl::Span<const PrgArrayDesc> descs);
+  ArrayRef adjustAnd(absl::Span<const PrgArrayDesc> descs) const;
 
-  ArrayRef adjustTrunc(absl::Span<const PrgArrayDesc> descs, size_t bits);
+  ArrayRef adjustTrunc(absl::Span<const PrgArrayDesc> descs, size_t bits) const;
 
   std::pair<ArrayRef, ArrayRef> adjustTruncPr(
-      absl::Span<const PrgArrayDesc> descs, size_t bits);
+      absl::Span<const PrgArrayDesc> descs, size_t bits) const;
 
-  ArrayRef adjustRandBit(const PrgArrayDesc& descs);
+  ArrayRef adjustRandBit(const PrgArrayDesc& descs) const;
 };
 
 }  // namespace spu::mpc::semi2k

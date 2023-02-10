@@ -22,7 +22,7 @@ py_library(
     srcs = ["jnp_testbase.py"],
     deps = [
         "//spu:api",
-        "//spu/util:simulation",
+        "//spu/utils:simulation",
     ],
 )
 
@@ -74,12 +74,20 @@ py_test(
     ],
 )
 
+py_test(
+    name = "jnp_ref2k_r64_test",
+    srcs = ["jnp_ref2k_r64_test.py"],
+    deps = [
+        ":jnp_testbase",
+    ],
+)
+
 py_binary(
     name = "jnp_debug",
     srcs = ["jnp_debug.py"],
     deps = [
         "//spu:api",
-        "//spu/util:simulation",
+        "//spu/utils:simulation",
     ],
 )
 
@@ -88,8 +96,8 @@ py_test(
     srcs = ["spu_compiler_test.py"],
     deps = [
         "//spu:api",
-        "//spu/util:frontend",
-        "//spu/util:simulation",
+        "//spu/utils:frontend",
+        "//spu/utils:simulation",
     ],
 )
 
@@ -106,7 +114,7 @@ py_test(
     srcs = ["spu_runtime_test.py"],
     deps = [
         "//spu:api",
-        "//spu/util:simulation",
+        "//spu/utils:simulation",
     ],
 )
 
@@ -115,7 +123,7 @@ py_test(
     srcs = ["spu_io_test.py"],
     deps = [
         "//spu:api",
-        "//spu/util:simulation",
+        "//spu/utils:simulation",
     ],
 )
 
@@ -135,6 +143,22 @@ py_test(
     ],
     deps = [
         "//spu:psi",
-        "//spu/util:simulation",
+        "//spu/utils:simulation",
+    ],
+)
+
+py_test(
+    name = "frontend_test",
+    srcs = ["frontend_test.py"],
+    deps = [
+        "//spu/utils:frontend",
+    ],
+)
+
+py_test(
+    name = "distributed_test",
+    srcs = ["distributed_test.py"],
+    deps = [
+        "//spu/utils:distributed",
     ],
 )

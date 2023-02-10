@@ -24,7 +24,7 @@ import numpy.testing as npt
 from absl.testing import parameterized
 from jax._src import test_util as jtu
 
-from spu.util.simulation import sim_jax
+from spu.utils.simulation import sim_jax
 
 all_shapes = [(4,), (2, 3, 4)]
 
@@ -122,8 +122,14 @@ JAX_ONE_TO_ONE_OP_RECORDS = [
     REC("signbit", 1, number_dtypes, all_shapes, rand_default),
     REC("trunc", 1, number_dtypes, all_shapes, rand_default),
     REC(
-        "sin", 1, number_dtypes, all_shapes, rand_default, Status.SysError, "mhlo.sine"
-    ),  # FIXME: mhlo.sine
+        "sin",
+        1,
+        number_dtypes,
+        all_shapes,
+        rand_default,
+        Status.SysError,
+        "stablehlo.sine",
+    ),  # FIXME: stablehlo.sine
     REC(
         "cos",
         1,
@@ -131,8 +137,8 @@ JAX_ONE_TO_ONE_OP_RECORDS = [
         all_shapes,
         rand_default,
         Status.SysError,
-        "mhlo.cosine",
-    ),  # FIXME: mhlo.cosine
+        "stablehlo.cosine",
+    ),  # FIXME: stablehlo.cosine
     REC(
         "tan",
         1,
@@ -140,8 +146,8 @@ JAX_ONE_TO_ONE_OP_RECORDS = [
         all_shapes,
         partial(jtu.rand_uniform, low=-1.5, high=1.5),
         Status.SysError,
-        "mhlo.sine",
-    ),  # FIXME: mhlo.sine
+        "stablehlo.sine",
+    ),  # FIXME: stablehlo.sine
     REC(
         "sinh",
         1,
@@ -149,8 +155,8 @@ JAX_ONE_TO_ONE_OP_RECORDS = [
         all_shapes,
         rand_default,
         Status.SysError,
-        "mhlo.cosine",
-    ),  # FIXME: mhlo.cosine
+        "stablehlo.cosine",
+    ),  # FIXME: stablehlo.cosine
     REC("cosh", 1, number_dtypes, all_shapes, jtu.rand_small),
     REC("tanh", 1, number_dtypes, all_shapes, jtu.rand_small),
     REC(
@@ -160,8 +166,8 @@ JAX_ONE_TO_ONE_OP_RECORDS = [
         all_shapes,
         jtu.rand_small,
         Status.SysError,
-        "mhlo.atan2",
-    ),  # FIXME: mhlo.atan2
+        "stablehlo.atan2",
+    ),  # FIXME: stablehlo.atan2
     REC(
         "arccos",
         1,
@@ -169,8 +175,8 @@ JAX_ONE_TO_ONE_OP_RECORDS = [
         all_shapes,
         jtu.rand_small,
         Status.SysError,
-        "mhlo.atan2",
-    ),  # FIXME: mhlo.atan2
+        "stablehlo.atan2",
+    ),  # FIXME: stablehlo.atan2
     REC(
         "arctan",
         1,
@@ -178,8 +184,8 @@ JAX_ONE_TO_ONE_OP_RECORDS = [
         all_shapes,
         jtu.rand_small,
         Status.SysError,
-        "mhlo.atan2",
-    ),  # FIXME: mhlo.atan2
+        "stablehlo.atan2",
+    ),  # FIXME: stablehlo.atan2
     REC(
         "arctan2",
         2,
@@ -187,8 +193,8 @@ JAX_ONE_TO_ONE_OP_RECORDS = [
         all_shapes,
         jtu.rand_small,
         Status.SysError,
-        "mhlo.atan2",
-    ),  # FIXME: mhlo.atan2
+        "stablehlo.atan2",
+    ),  # FIXME: stablehlo.atan2
     REC("arcsinh", 1, number_dtypes, all_shapes, jtu.rand_small),
     REC(
         "arccosh", 1, number_dtypes, all_shapes, rand_default, Status.SysError, "nan"
@@ -213,8 +219,8 @@ COMPOUND_OP_RECORDS = [
         all_shapes,
         rand_default,
         Status.SysError,
-        "mhlo.atan2",
-    ),  # FIXME: mhlo.atan2
+        "stablehlo.atan2",
+    ),  # FIXME: stablehlo.atan2
     REC(
         "angle",
         1,
@@ -222,9 +228,9 @@ COMPOUND_OP_RECORDS = [
         all_shapes,
         rand_default,
         Status.SysError,
-        "mhlo.atan2",
+        "stablehlo.atan2",
         kwargs={'deg': True},
-    ),  # FIXME: mhlo.atan2
+    ),  # FIXME: stablehlo.atan2
     REC("atleast_1d", 1, number_dtypes, all_shapes, rand_default),
     REC("atleast_2d", 1, number_dtypes, all_shapes, rand_default),
     REC("atleast_3d", 1, number_dtypes, all_shapes, rand_default),
@@ -235,8 +241,8 @@ COMPOUND_OP_RECORDS = [
         all_shapes,
         jtu.rand_some_inf,
         Status.SysError,
-        "mhlo.cbrt",
-    ),  # FIXME: mhlo.cbrt
+        "stablehlo.cbrt",
+    ),  # FIXME: stablehlo.cbrt
     REC("conjugate", 1, number_dtypes, all_shapes, rand_default),
     REC("deg2rad", 1, float_dtypes, all_shapes, rand_default),
     REC("divide", 2, number_dtypes, all_shapes, jtu.rand_nonzero),
@@ -304,15 +310,21 @@ COMPOUND_OP_RECORDS = [
         all_shapes,
         rand_default,
         Status.SysError,
-        "mhlo.round_nearest_even",
-    ),  # FIXME: mhlo.round_nearest_even
+        "stablehlo.round_nearest_even",
+    ),  # FIXME: stablehlo.round_nearest_even
     REC("sign", 1, number_dtypes, all_shapes, jtu.rand_default),
     REC(
         "copysign", 2, number_dtypes, all_shapes, rand_default, Status.SysError, "shift"
     ),  # FIXME: shift
     REC(
-        "sinc", 1, number_dtypes, all_shapes, rand_default, Status.SysError, "mhlo.sine"
-    ),  # FIXME: mhlo.sine
+        "sinc",
+        1,
+        number_dtypes,
+        all_shapes,
+        rand_default,
+        Status.SysError,
+        "stablehlo.sine",
+    ),  # FIXME: stablehlo.sine
     REC("square", 1, number_dtypes, all_shapes, rand_default),
     REC("sqrt", 1, number_dtypes, all_shapes, jtu.rand_positive),
     REC("transpose", 1, all_dtypes, all_shapes, rand_default),

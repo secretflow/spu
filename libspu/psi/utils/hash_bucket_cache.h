@@ -21,8 +21,8 @@
 
 #include "absl/strings/str_split.h"
 #include "fmt/format.h"
-#include "yacl/base/exception.h"
 
+#include "libspu/core/prelude.h"
 #include "libspu/psi/io/io.h"
 #include "libspu/psi/utils/scope_disk_cache.h"
 
@@ -38,20 +38,19 @@ class HashBucketCache {
 
     static BucketItem Deserialize(std::string_view data_str) {
       BucketItem item;
-      std::vector<absl::string_view> tokens = absl::StrSplit(data_str, ",");
-      YACL_ENFORCE(tokens.size() == 2, "should have two tokens, actual: {}",
-                   tokens.size());
-      YACL_ENFORCE(absl::SimpleAtoi(tokens[0], &item.index),
-                   "cannot convert {} to idx",
-                   std::string(tokens[0].data(), tokens[0].size()));
+      std::vector<absl::string_view> tokens = absl::StrSplit(data_str, ',');
+      SPU_ENFORCE(tokens.size() == 2, "should have two tokens, actual: {}",
+                  tokens.size());
+      SPU_ENFORCE(absl::SimpleAtoi(tokens[0], &item.index),
+                  "cannot convert {} to idx",
+                  std::string(tokens[0].data(), tokens[0].size()));
       item.base64_data = std::string(tokens[1].data(), tokens[1].size());
 
       return item;
     }
   };
 
- public:
-  explicit HashBucketCache(const std::string& target_dir, uint32_t bucket_num);
+  explicit HashBucketCache(std::string target_dir, uint32_t bucket_num);
 
   ~HashBucketCache();
 
@@ -61,7 +60,7 @@ class HashBucketCache {
 
   std::vector<BucketItem> LoadBucketItems(uint32_t index);
 
-  uint32_t BucketNum() { return bucket_num_; }
+  uint32_t BucketNum() const { return bucket_num_; }
 
  private:
   std::unique_ptr<ScopeDiskCache> disk_cache_;

@@ -17,12 +17,12 @@ import unittest
 
 import numpy as np
 
-import spu.util.simulation as ppsim
+import spu.utils.simulation as ppsim
 import spu.spu_pb2 as spu_pb2
 from spu.tests.jnp_testbase import JnpTests
 
 
-class JnpTestAby3FM128(JnpTests.JnpTestBase):
+class JnpTestSemi2kFM128(JnpTests.JnpTestBase):
     def setUp(self):
         self._sim = ppsim.Simulator.simple(
             3, spu_pb2.ProtocolKind.SEMI2K, spu_pb2.FieldType.FM128

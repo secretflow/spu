@@ -25,10 +25,9 @@ namespace spu::psi {
 
 class EcdhP2PExtendCtx : public EcdhPsiContext {
  public:
-  EcdhP2PExtendCtx(EcdhPsiOptions options);
+  explicit EcdhP2PExtendCtx(const EcdhPsiOptions& options);
   ~EcdhP2PExtendCtx() = default;
 
- public:
   // wrapper of `EcdhPsiContext::MaskSelf`
   void MaskSendSelf(const std::vector<std::string>& self_items);
 
@@ -52,7 +51,6 @@ class EcdhP2PExtendCtx : public EcdhPsiContext {
 
   void RecvItems(std::vector<std::string>* items);
 
- public:
   // internal
   void ForwardBatch(const std::vector<std::string>& batch_items,
                     int32_t batch_idx);
@@ -65,10 +63,10 @@ class EcdhP2PExtendCtx : public EcdhPsiContext {
 // 3party ecdh psi algorithm.
 //
 //  master get the final intersection
-//     calcuator role is master-link->NextRank()
+//     calculator role is master-link->NextRank()
 //     partner   role is master-link->PrevRank()
 //
-//  (calcuator)       (partner)             (master)
+//  (calculator)       (partner)             (master)
 //     alice           bob                    candy
 // partners psi =============================================
 //       |              | shuffle b items       |
@@ -117,7 +115,6 @@ class ShuffleEcdh3PcPsi {
     CurveType curve_type = CurveType::CURVE_25519;
   };
 
- public:
   explicit ShuffleEcdh3PcPsi(Options options);
   ~ShuffleEcdh3PcPsi() = default;
 
@@ -125,7 +122,7 @@ class ShuffleEcdh3PcPsi {
   void MaskMaster(const std::vector<std::string>& self_items,
                   std::vector<std::string>* masked_items);
 
-  // master / calcuator can get results
+  // master / calculator can get results
   void PartnersPsi(const std::vector<std::string>& self_items,
                    std::vector<std::string>* results);
 
@@ -145,7 +142,7 @@ class ShuffleEcdh3PcPsi {
   void PartnersPsiImpl(const std::vector<std::string>& self_items,
                        std::vector<std::string>* results);
 
-  bool IsCalcuator() {
+  bool IsCalculator() {
     return options_.link_ctx->PrevRank() == options_.master_rank;
   }
 
@@ -155,7 +152,6 @@ class ShuffleEcdh3PcPsi {
 
   bool IsMaster() { return options_.link_ctx->Rank() == options_.master_rank; }
 
- private:
   Options options_;
 
   std::shared_ptr<IEccCryptor> ecc_cryptor_;

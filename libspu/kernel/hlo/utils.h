@@ -35,9 +35,9 @@ void forEachIndex(absl::Span<const int64_t> shape,
                   absl::Span<const int64_t> base,
                   absl::Span<const int64_t> count,
                   absl::Span<const int64_t> incr, FnTy &&visitor_function) {
-  YACL_ENFORCE_EQ(shape.size(), base.size());
-  YACL_ENFORCE_EQ(incr.size(), base.size());
-  YACL_ENFORCE_EQ(count.size(), base.size());
+  SPU_ENFORCE_EQ(shape.size(), base.size());
+  SPU_ENFORCE_EQ(incr.size(), base.size());
+  SPU_ENFORCE_EQ(count.size(), base.size());
 
   const auto rank = static_cast<int64_t>(shape.size());
   // Allows handling R0 arrays, such that the visitor function will be called

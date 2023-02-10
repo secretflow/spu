@@ -16,7 +16,7 @@
 
 #include "gtest/gtest.h"
 
-#include "libspu/mpc/util/ring_ops.h"
+#include "libspu/mpc/utils/ring_ops.h"
 
 namespace spu::mpc {
 

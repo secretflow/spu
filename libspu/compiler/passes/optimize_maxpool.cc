@@ -69,7 +69,7 @@ private:
     return argmax->getResult(1);
   }
 
-  bool isSingleRegion(Region &r) const {
+  static bool isSingleRegion(Region &r) {
     if (r.hasOneBlock()) {
       return llvm::hasSingleElement(r.front().without_terminator());
     }
@@ -171,8 +171,8 @@ struct OptimizeMaxPooling : public OptimizeMaxPoolingBase<OptimizeMaxPooling> {
   }
 
 private:
-  void populateOwningPatterns(RewritePatternSet *patterns,
-                              MLIRContext *ctx) const {
+  static void populateOwningPatterns(RewritePatternSet *patterns,
+                                     MLIRContext *ctx) {
     patterns->insert<SelectAndScatterConverter>(ctx);
   }
 };

@@ -25,13 +25,13 @@ namespace spu::kernel::hlo {
 std::vector<spu::Value> Shuffle(HalContext* ctx,
                                 absl::Span<const spu::Value> inputs,
                                 int64_t axis) {
-  YACL_ENFORCE_GT(inputs.size(), 0U);
+  SPU_ENFORCE_GT(inputs.size(), 0U);
   if (inputs[0].numel() == 0) {
     return std::vector<spu::Value>(inputs.begin(), inputs.end());
   }
   auto input_shape = inputs[0].shape();
 
-  YACL_ENFORCE_LT(axis, static_cast<int64_t>(input_shape.size()));
+  SPU_ENFORCE_LT(axis, static_cast<int64_t>(input_shape.size()));
   spu::Value rand = hal::random(ctx, VIS_SECRET, DT_U64, input_shape);
 
   std::vector<spu::Value> inputs_to_sort(inputs.begin(), inputs.end());

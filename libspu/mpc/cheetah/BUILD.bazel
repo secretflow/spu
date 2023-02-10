@@ -30,8 +30,10 @@ spu_cc_library(
     hdrs = ["object.h"],
     copts = EMP_COPT_FLAGS,
     deps = [
-        "//libspu/mpc/cheetah/beaver",
-        "//libspu/mpc/common:prg_state",
+        "//libspu/mpc/cheetah/arith:cheetah_arith",
+        "//libspu/mpc/cheetah/nonlinear:cheetah_nonlinear",
+        "//libspu/mpc/cheetah/ot:cheetah_ot",
+        "//libspu/mpc/cheetah/rlwe:cheetah_rlwe",
     ],
 )
 
@@ -55,7 +57,6 @@ spu_cc_library(
     deps = [
         ":object",
         ":type",
-        ":utils",
         "//libspu/mpc/semi2k:conversion",
     ],
 )
@@ -68,7 +69,6 @@ spu_cc_library(
     deps = [
         ":object",
         ":type",
-        ":utils",
         "//libspu/mpc/semi2k:arithmetic",
     ],
 )
@@ -93,6 +93,7 @@ spu_cc_library(
 spu_cc_test(
     name = "protocol_test",
     size = "large",
+    timeout = "moderate",
     srcs = ["protocol_test.cc"],
     deps = [
         ":protocol",
@@ -108,7 +109,7 @@ spu_cc_library(
     deps = [
         ":type",
         "//libspu/mpc/semi2k:io",
-        "//libspu/mpc/util:ring_ops",
+        "//libspu/mpc/utils:ring_ops",
     ],
 )
 
@@ -117,9 +118,4 @@ spu_cc_library(
     deps = [
         "//libspu/mpc/semi2k:type",
     ],
-)
-
-spu_cc_library(
-    name = "utils",
-    hdrs = ["utils.h"],
 )

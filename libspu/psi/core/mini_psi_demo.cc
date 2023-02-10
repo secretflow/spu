@@ -58,28 +58,28 @@ constexpr uint32_t kLinkRecvTimeout = 30 * 60 * 1000;
 class CSVRow {
  public:
   std::string_view operator[](std::size_t index) const {
-    return std::string_view(&m_line[m_data[index] + 1],
-                            m_data[index + 1] - (m_data[index] + 1));
+    return std::string_view(&m_line_[m_data_[index] + 1],
+                            m_data_[index + 1] - (m_data_[index] + 1));
   }
-  std::size_t size() const { return m_data.size() - 1; }
+  std::size_t size() const { return m_data_.size() - 1; }
   void readNextRow(std::istream& str) {
-    std::getline(str, m_line);
+    std::getline(str, m_line_);
 
-    m_data.clear();
-    m_data.emplace_back(-1);
+    m_data_.clear();
+    m_data_.emplace_back(-1);
     std::string::size_type pos = 0;
-    while ((pos = m_line.find(',', pos)) != std::string::npos) {
-      m_data.emplace_back(pos);
+    while ((pos = m_line_.find(',', pos)) != std::string::npos) {
+      m_data_.emplace_back(pos);
       ++pos;
     }
     // This checks for a trailing comma with no data after it.
-    pos = m_line.size();
-    m_data.emplace_back(pos);
+    pos = m_line_.size();
+    m_data_.emplace_back(pos);
   }
 
  private:
-  std::string m_line;
-  std::vector<int> m_data;
+  std::string m_line_;
+  std::vector<int> m_data_;
 };
 
 std::istream& operator>>(std::istream& str, CSVRow& data) {
@@ -105,7 +105,7 @@ void WriteCsvData(const std::string& file_name,
   std::ofstream out_file;
   out_file.open(file_name, std::ios::out);
   out_file << "id" << '\r' << std::endl;
-  for (auto& item : items) {
+  for (const auto& item : items) {
     out_file << item << '\r' << std::endl;
   }
   out_file.close();

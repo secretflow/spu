@@ -23,9 +23,9 @@
 #include "absl/strings/str_split.h"
 #include "gtest/gtest.h"
 #include "spdlog/spdlog.h"
-#include "yacl/base/exception.h"
 #include "yacl/link/test_util.h"
 
+#include "libspu/core/prelude.h"
 #include "libspu/psi/utils/test_utils.h"
 
 namespace spu::psi {
@@ -59,7 +59,7 @@ std::vector<std::vector<std::string>> CreateNPartyItems(
       idx_set.insert(dis(gen));
     }
     size_t j = 0;
-    for (auto& iter : idx_set) {
+    for (const auto& iter : idx_set) {
       ret[idx][iter] = ret[params.item_size.size()][j++];
     }
   }

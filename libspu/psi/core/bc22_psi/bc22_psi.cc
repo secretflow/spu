@@ -58,9 +58,11 @@ std::vector<uint8_t> BaRKOPRFHash(size_t bin_idx,
 
 }  // namespace
 
-Bc22PcgPsi::Bc22PcgPsi(const std::shared_ptr<yacl::link::Context> &link_ctx,
+Bc22PcgPsi::Bc22PcgPsi(std::shared_ptr<yacl::link::Context> link_ctx,
                        PsiRoleType role)
-    : link_ctx_(link_ctx), role_(role), batch_size_(kPcgPsiBatchSize) {}
+    : link_ctx_(std::move(link_ctx)),
+      role_(role),
+      batch_size_(kPcgPsiBatchSize) {}
 
 void Bc22PcgPsi::ExchangeItemsNumber(size_t self_item_num) {
   // exchange items number, compute compare bytes size
@@ -106,7 +108,7 @@ void Bc22PcgPsi::RunPsi(absl::Span<const std::string> items) {
     // receive sender's oprfs, and compute intersection
     PcgPsiRecvOprf(items, oprf_encode_vec, compare_bytes_size);
   } else {
-    YACL_THROW("wrong psi role type: {}", static_cast<int>(role_));
+    SPU_THROW("wrong psi role type: {}", static_cast<int>(role_));
   }
 }
 
@@ -156,7 +158,7 @@ std::string Bc22PcgPsi::RunmBaRKOprfSender(absl::Span<const std::string> items,
   while (true) {
     yacl::Buffer masked_coeff_buffer = link_ctx_->Recv(
         link_ctx_->NextRank(), fmt::format("recv {} bin", recv_bin_idx));
-    YACL_ENFORCE((masked_coeff_buffer.size() % coeff_byte_size) == 0);
+    SPU_ENFORCE((masked_coeff_buffer.size() % coeff_byte_size) == 0);
 
     size_t num_bin = masked_coeff_buffer.size() / coeff_byte_size;
 
@@ -195,7 +197,7 @@ std::string Bc22PcgPsi::RunmBaRKOprfSender(absl::Span<const std::string> items,
   std::string oprfs;
   oprfs.resize(items.size() * cuckoo_options_.num_hash * kMaxCompareBytes);
 
-  // shuffer sender's oprfs
+  // shuffle sender's oprfs
   std::mt19937 rng(yacl::crypto::SecureRandU64());
 
   std::vector<size_t> shuffled_idx_vec(items.size());
@@ -205,10 +207,10 @@ std::string Bc22PcgPsi::RunmBaRKOprfSender(absl::Span<const std::string> items,
   // randomize conflict oprfs
   const std::vector<size_t> &conflict_idx = simple_table.GetConflictIdx();
 
-  for (size_t i = 0; i < conflict_idx.size(); ++i) {
-    size_t shuffled_idx = shuffled_idx_vec[conflict_idx[i]];
+  for (auto i : conflict_idx) {
+    size_t shuffled_idx = shuffled_idx_vec[i];
 
-    YACL_ENFORCE(
+    SPU_ENFORCE(
         RAND_bytes(reinterpret_cast<unsigned char *>(
                        &oprfs[((shuffled_idx * cuckoo_options_.num_hash)) *
                               compare_bytes_size]),
@@ -244,7 +246,7 @@ std::string Bc22PcgPsi::RunmBaRKOprfSender(absl::Span<const std::string> items,
 
         // delta * Poly(x) + vi_0 + vi_1*x+vi_1*x^2
         WolverineVoleFieldType eval =
-            EvaluatePolynoimal(absl::MakeSpan(oprf_key), item_hash_str, delta);
+            EvaluatePolynomial(absl::MakeSpan(oprf_key), item_hash_str, delta);
 
         std::vector<uint8_t> hash_res = BaRKOPRFHash(bin_idx, eval);
 
@@ -335,14 +337,14 @@ std::vector<std::string> Bc22PcgPsi::RunmBaRKOprfReceiver(
 
             for (; k < kMaxItemsPerBin; ++k) {
               std::string buf(sizeof(uint64_t), '\0');
-              YACL_ENFORCE(RAND_bytes(reinterpret_cast<uint8_t *>(buf.data()),
-                                      buf.length()) == 1);
+              SPU_ENFORCE(RAND_bytes(reinterpret_cast<uint8_t *>(buf.data()),
+                                     buf.length()) == 1);
               bin_data[k] = buf;
             }
             std::vector<WolverineVoleFieldType> coeff_blocks =
-                GetPolynoimalCoefficients(bin_data);
+                GetPolynomialCoefficients(bin_data);
 
-            // use vole mask polynoimal coefficient
+            // use vole mask polynomial coefficient
             // coeff_i - ui
             size_t vole_start = (idx + j) * kMaxItemsPerBin;
             for (k = 0; k < coeff_blocks.size(); ++k) {
@@ -372,7 +374,7 @@ std::vector<std::string> Bc22PcgPsi::RunmBaRKOprfReceiver(
 
               // compute vi_0 + vi_1*x +vi_2*x^2, i: bin index
               WolverineVoleFieldType eval =
-                  EvaluatePolynoimal(coeff_vole, item_hash_str, 0);
+                  EvaluatePolynomial(coeff_vole, item_hash_str, 0);
 
               // compute oprf, H(i, vi_0 + vi_1*x +vi_2*x^2), i: bin index
               std::vector<uint8_t> hash_res = BaRKOPRFHash(bin_idx, eval);
@@ -457,7 +459,7 @@ void Bc22PcgPsi::PcgPsiRecvOprf(absl::Span<const std::string> items,
 
     std::memcpy(&sender_oprf[oprf_count * cuckoo_options_.num_hash *
                              compare_bytes_size],
-                &flatten_bytes[0], flatten_bytes.length());
+                flatten_bytes.data(), flatten_bytes.length());
 
     oprf_count += current_batch_size;
 
@@ -519,7 +521,7 @@ void Bc22PcgPsi::PcgPsiRecvOprf(absl::Span<const std::string> items,
       for (size_t j = 0; j < cuckoo_options_.num_hash; ++j) {
         auto it = sender_oprf_set[j].find(oprf_encode_vec[i]);
         if (it != sender_oprf_set[j].end()) {
-          (*results_vec).emplace_back(std::move(items[i]));
+          (*results_vec).emplace_back(items[i]);
           (*result_by_hash)[j]++;
           break;
         }

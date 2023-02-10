@@ -19,7 +19,8 @@
 #include <vector>
 
 #include "absl/types/span.h"
-#include "yacl/base/exception.h"
+
+#include "libspu/core/prelude.h"
 
 namespace spu {
 
@@ -31,7 +32,7 @@ bool isEmpty(absl::Span<const int64_t> shape);
 
 std::vector<int64_t> makeCompactStrides(absl::Span<const int64_t> shape);
 
-int64_t flattenIndex(absl::Span<const int64_t> indices,
+int64_t flattenIndex(absl::Span<const int64_t> index,
                      absl::Span<const int64_t> shape);
 
 std::vector<int64_t> unflattenIndex(int64_t index,
@@ -39,7 +40,7 @@ std::vector<int64_t> unflattenIndex(int64_t index,
 
 template <typename T, std::enable_if_t<std::is_integral_v<T>, bool> = true>
 bool bumpIndices(absl::Span<const T> shape, absl::Span<T> indices) {
-  YACL_ENFORCE(shape.size() == indices.size());
+  SPU_ENFORCE(shape.size() == indices.size());
   for (int64_t dimno = indices.size() - 1; dimno >= 0; --dimno) {
     T limit = shape[dimno];
     if (indices[dimno] + 1 < limit) {

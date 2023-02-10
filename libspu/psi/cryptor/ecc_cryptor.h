@@ -24,7 +24,8 @@
 #include "absl/types/span.h"
 #include "openssl/crypto.h"
 #include "openssl/rand.h"
-#include "yacl/base/exception.h"
+
+#include "libspu/core/prelude.h"
 
 #include "libspu/psi/psi.pb.h"
 
@@ -36,14 +37,14 @@ inline constexpr int kEccKeySize = 32;
 class IEccCryptor {
  public:
   IEccCryptor() {
-    YACL_ENFORCE(RAND_bytes(&private_key_[0], kEccKeySize) == 1,
-                 "Cannot create random private key");
+    SPU_ENFORCE(RAND_bytes(&private_key_[0], kEccKeySize) == 1,
+                "Cannot create random private key");
   }
 
   virtual ~IEccCryptor() { OPENSSL_cleanse(&private_key_[0], kEccKeySize); }
 
   virtual void SetPrivateKey(absl::Span<const uint8_t> key) {
-    YACL_ENFORCE(key.size() == kEccKeySize);
+    SPU_ENFORCE(key.size() == kEccKeySize);
     std::memcpy(private_key_, key.data(), key.size());
   }
 

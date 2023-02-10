@@ -14,6 +14,8 @@
 
 #include "libspu/core/ndarray_ref.h"
 
+#include <cstddef>
+
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 
@@ -39,7 +41,7 @@ TEST(NdArrayRefTest, Empty) {
 TEST(ArrayRefTest, NdStrides) {
   // Make 3x3 element, strides = 2x2 array
   NdArrayRef a(std::make_shared<yacl::Buffer>(36 * sizeof(int32_t)),
-               makePtType(PT_I32), {3, 3}, {2 * 6, 2}, 0);
+               makePtType(PT_I32), {3, 3}, {2L * 6, 2}, 0);
 
   EXPECT_EQ(a.numel(), 9);
 

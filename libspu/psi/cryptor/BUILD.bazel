@@ -21,6 +21,7 @@ spu_cc_library(
     srcs = ["ecc_cryptor.cc"],
     hdrs = ["ecc_cryptor.h"],
     deps = [
+        "//libspu/core:prelude",
         "//libspu/psi:psi_cc_proto",
         "@com_google_absl//absl/types:span",
         "@yacl//yacl/crypto/base/hash:hash_utils",
@@ -34,9 +35,9 @@ spu_cc_library(
     hdrs = ["sodium_curve25519_cryptor.h"],
     deps = [
         ":ecc_cryptor",
+        "//libspu/core:prelude",
         "@com_github_libsodium//:libsodium",
         "@com_github_openssl_openssl//:openssl",
-        "@yacl//yacl/base:exception",
         "@yacl//yacl/crypto/base/hash:hash_utils",
         "@yacl//yacl/link",
         "@yacl//yacl/utils:parallel",
@@ -52,9 +53,9 @@ spu_cc_library(
     ],
     deps = [
         ":ecc_cryptor",
+        "//libspu/core:prelude",
         "@com_github_intel_ipp//:ipp",
         "@com_github_openssl_openssl//:openssl",
-        "@yacl//yacl/base:exception",
         "@yacl//yacl/utils:parallel",
     ],
 )
@@ -65,9 +66,9 @@ spu_cc_library(
     hdrs = ["fourq_cryptor.h"],
     deps = [
         ":ecc_cryptor",
+        "//libspu/core:prelude",
         "@com_github_microsoft_fourqlib//:fourqlib",
         "@com_github_openssl_openssl//:openssl",
-        "@yacl//yacl/base:exception",
         "@yacl//yacl/utils:parallel",
     ],
 )
@@ -95,8 +96,8 @@ spu_cc_library(
     # Openssl::libcrypto requires `dlopen`...
     linkopts = ["-ldl"],
     deps = [
+        "//libspu/core:prelude",
         "@com_github_openssl_openssl//:openssl",
-        "@yacl//yacl/base:exception",
         "@yacl//yacl/crypto/base/hash:hash_utils",
     ],
 )
@@ -108,8 +109,8 @@ spu_cc_library(
     deps = [
         ":ecc_cryptor",
         ":ecc_utils",
+        "//libspu/core:prelude",
         "@com_github_openssl_openssl//:openssl",
-        "@yacl//yacl/base:exception",
         "@yacl//yacl/utils:parallel",
     ],
 )

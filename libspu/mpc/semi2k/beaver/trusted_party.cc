@@ -14,7 +14,7 @@
 
 #include "libspu/mpc/semi2k/beaver/trusted_party.h"
 
-#include "libspu/mpc/util/ring_ops.h"
+#include "libspu/mpc/utils/ring_ops.h"
 
 namespace spu::mpc::semi2k {
 namespace {
@@ -44,7 +44,7 @@ std::pair<std::vector<ArrayRef>, std::vector<ArrayRef>> reconstruct(
         } else if (op == RecOp::XOR) {
           ring_xor_(rs[idx], t);
         } else {
-          YACL_ENFORCE("not supported reconstruct op");
+          SPU_ENFORCE("not supported reconstruct op");
         }
       }
     }
@@ -55,8 +55,8 @@ std::pair<std::vector<ArrayRef>, std::vector<ArrayRef>> reconstruct(
 
 void checkDescs(absl::Span<const PrgArrayDesc> descs) {
   for (size_t idx = 1; idx < descs.size(); idx++) {
-    YACL_ENFORCE(descs[0].field == descs[idx].field);
-    YACL_ENFORCE(descs[0].numel == descs[idx].numel);
+    SPU_ENFORCE(descs[0].field == descs[idx].field);
+    SPU_ENFORCE(descs[0].numel == descs[idx].numel);
   }
 }
 
@@ -64,21 +64,21 @@ void checkDescs(absl::Span<const PrgArrayDesc> descs) {
 
 void TrustedParty::setSeed(size_t rank, size_t world_size,
                            const PrgSeed& seed) {
-  YACL_ENFORCE(rank < world_size,
-               "rank={} should be smaller then world_size={}", rank,
-               world_size);
+  SPU_ENFORCE(rank < world_size, "rank={} should be smaller then world_size={}",
+              rank, world_size);
 
   std::unique_lock lock(mutex_);
 
-  if (seeds_.size() == 0) {
+  if (seeds_.empty()) {
     seeds_.resize(world_size);
     seeds_[rank] = seed;
   } else {
-    YACL_ENFORCE(world_size == seeds_.size(),
-                 "parties claim different world_size, prev={}, cur={}",
-                 seeds_.size(), world_size);
+    SPU_ENFORCE(world_size == seeds_.size(),
+                "parties claim different world_size, prev={}, cur={}",
+                seeds_.size(), world_size);
 
-    YACL_ENFORCE(!seeds_[rank].has_value() || seeds_[rank].value() == seed);
+    SPU_ENFORCE(!seeds_[rank].has_value() ||
+                seeds_[rank].value() == seed);  // NOLINT: checked
 
     seeds_[rank] = seed;
   }
@@ -90,15 +90,15 @@ std::vector<PrgSeed> TrustedParty::getSeeds() const {
   std::vector<PrgSeed> seeds(seeds_.size());
 
   for (size_t rank = 0; rank < seeds_.size(); rank++) {
-    YACL_ENFORCE(seeds_[rank].has_value(), "seed for rank={} not set", rank);
-    seeds[rank] = seeds_[rank].value();
+    SPU_ENFORCE(seeds_[rank].has_value(), "seed for rank={} not set", rank);
+    seeds[rank] = seeds_[rank].value();  // NOLINT: checked
   }
 
   return seeds;
 }
 
-ArrayRef TrustedParty::adjustMul(absl::Span<const PrgArrayDesc> descs) {
-  YACL_ENFORCE_EQ(descs.size(), 3u);
+ArrayRef TrustedParty::adjustMul(absl::Span<const PrgArrayDesc> descs) const {
+  SPU_ENFORCE_EQ(descs.size(), 3U);
   checkDescs(descs);
 
   auto [r0, rs] = reconstruct(RecOp::ADD, getSeeds(), descs);
@@ -107,21 +107,21 @@ ArrayRef TrustedParty::adjustMul(absl::Span<const PrgArrayDesc> descs) {
   return r0[2];
 }
 
-ArrayRef TrustedParty::adjustDot(absl::Span<const PrgArrayDesc> descs, size_t M,
-                                 size_t N, size_t K) {
-  YACL_ENFORCE_EQ(descs.size(), 3u);
-  YACL_ENFORCE(descs[0].numel == M * K);
-  YACL_ENFORCE(descs[1].numel == K * N);
-  YACL_ENFORCE(descs[2].numel == M * N);
+ArrayRef TrustedParty::adjustDot(absl::Span<const PrgArrayDesc> descs, size_t m,
+                                 size_t n, size_t k) const {
+  SPU_ENFORCE_EQ(descs.size(), 3U);
+  SPU_ENFORCE(descs[0].numel == m * k);
+  SPU_ENFORCE(descs[1].numel == k * n);
+  SPU_ENFORCE(descs[2].numel == m * n);
 
   auto [r0, rs] = reconstruct(RecOp::ADD, getSeeds(), descs);
   // r0[2] += rs[0] dot rs[1] - rs[2];
-  ring_add_(r0[2], ring_sub(ring_mmul(rs[0], rs[1], M, N, K), rs[2]));
+  ring_add_(r0[2], ring_sub(ring_mmul(rs[0], rs[1], m, n, k), rs[2]));
   return r0[2];
 }
 
-ArrayRef TrustedParty::adjustAnd(absl::Span<const PrgArrayDesc> descs) {
-  YACL_ENFORCE_EQ(descs.size(), 3u);
+ArrayRef TrustedParty::adjustAnd(absl::Span<const PrgArrayDesc> descs) const {
+  SPU_ENFORCE_EQ(descs.size(), 3U);
   checkDescs(descs);
 
   auto [r0, rs] = reconstruct(RecOp::XOR, getSeeds(), descs);
@@ -131,8 +131,8 @@ ArrayRef TrustedParty::adjustAnd(absl::Span<const PrgArrayDesc> descs) {
 }
 
 ArrayRef TrustedParty::adjustTrunc(absl::Span<const PrgArrayDesc> descs,
-                                   size_t bits) {
-  YACL_ENFORCE_EQ(descs.size(), 2u);
+                                   size_t bits) const {
+  SPU_ENFORCE_EQ(descs.size(), 2U);
   checkDescs(descs);
 
   auto [r0, rs] = reconstruct(RecOp::ADD, getSeeds(), descs);
@@ -142,9 +142,9 @@ ArrayRef TrustedParty::adjustTrunc(absl::Span<const PrgArrayDesc> descs,
 }
 
 std::pair<ArrayRef, ArrayRef> TrustedParty::adjustTruncPr(
-    absl::Span<const PrgArrayDesc> descs, size_t bits) {
+    absl::Span<const PrgArrayDesc> descs, size_t bits) const {
   // descs[0] is r, descs[1] adjust to r[k-2, bits], descs[2] adjust to r[k-1]
-  YACL_ENFORCE_EQ(descs.size(), 3u);
+  SPU_ENFORCE_EQ(descs.size(), 3U);
   checkDescs(descs);
 
   auto [r0, rs] = reconstruct(RecOp::ADD, getSeeds(), descs);
@@ -160,9 +160,9 @@ std::pair<ArrayRef, ArrayRef> TrustedParty::adjustTruncPr(
   return {r0[1], r0[2]};
 }
 
-ArrayRef TrustedParty::adjustRandBit(const PrgArrayDesc& desc) {
+ArrayRef TrustedParty::adjustRandBit(const PrgArrayDesc& desc) const {
   auto [r0, rs] = reconstruct(RecOp::ADD, getSeeds(), absl::MakeSpan(&desc, 1));
-  YACL_ENFORCE(r0.size() == 1 && rs.size() == 1);
+  SPU_ENFORCE(r0.size() == 1 && rs.size() == 1);
 
   // r0[0] += bitrev - rs[0];
   ring_add_(r0[0], ring_sub(ring_randbit(desc.field, desc.numel), rs[0]));

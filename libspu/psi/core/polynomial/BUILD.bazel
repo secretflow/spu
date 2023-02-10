@@ -25,9 +25,9 @@ spu_cc_library(
         "polynomial.h",
     ],
     deps = [
+        "//libspu/core:prelude",
         "@com_github_openssl_openssl//:openssl",
         "@com_google_absl//absl/strings",
-        "@yacl//yacl/base:exception",
     ],
 )
 

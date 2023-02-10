@@ -150,14 +150,11 @@ def _com_github_xtensor_xtl():
     )
 
 def _com_github_openxla_xla():
-    LLVM_COMMIT = "10939d1d580b9d3c9c2f3539c6bdb39f408179c0"
-    LLVM_SHA256 = "4adce5ef34c2062be0d7c5eb2a11606fa70690342e7e93327457ee2b6ad7ac72"
+    LLVM_COMMIT = "af73834243a1035787935960bfd5a71713b89701"
+    LLVM_SHA256 = "0732b818541653742e3a2ccdc04759321263969568fe2bb6cc01986ab6829808"
 
-    OPENXLA_COMMIT = "35d98732bd9f1b753eb3de80170a29c1af878e01"
-    OPENXLA_SHA256 = "e10ef5cc5c88fdcee94b8f0cf0e716698575504e255e08696dcc2e0d43eae8d2"
-
-    TSL_COMMIT = "e1300e661b0db8aeb1063bb8f6a8182de3be7648"
-    TSL_SHA256 = "a7e4258f5c8f591989ec565bc49839dd70898e586ade8e9f873150ad636266dd"
+    OPENXLA_COMMIT = "f7e1855af03b175853f23eb22f5031d581344cbf"
+    OPENXLA_SHA256 = "b6ebfa87f06ab64fbe77ff4957ec631315a1d7df4e40d58b1159112c0024d323"
 
     SKYLIB_VERSION = "1.3.0"
 
@@ -179,19 +176,6 @@ def _com_github_openxla_xla():
         urls = [
             "https://mirror.bazel.build/github.com/bazelbuild/bazel-skylib/releases/download/{version}/bazel-skylib-{version}.tar.gz".format(version = SKYLIB_VERSION),
             "https://github.com/bazelbuild/bazel-skylib/releases/download/{version}/bazel-skylib-{version}.tar.gz".format(version = SKYLIB_VERSION),
-        ],
-    )
-
-    # This is due to current status of openxla......once migration is done, we should remove this
-    maybe(
-        http_archive,
-        name = "tsl",
-        strip_prefix = "tsl-" + TSL_COMMIT,
-        sha256 = TSL_SHA256,
-        patch_args = ["-p1"],
-        patches = ["@spulib//bazel:patches/tsl.patch"],
-        urls = [
-            "https://github.com/google/tsl/archive/{commit}.tar.gz".format(commit = TSL_COMMIT),
         ],
     )
 

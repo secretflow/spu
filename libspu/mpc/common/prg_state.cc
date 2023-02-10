@@ -29,7 +29,7 @@ PrgState::PrgState() {
   next_seed_ = 0;
 }
 
-PrgState::PrgState(std::shared_ptr<yacl::link::Context> lctx) {
+PrgState::PrgState(const std::shared_ptr<yacl::link::Context>& lctx) {
   // synchronize public state.
   {
     uint128_t self_pk = yacl::crypto::RandSeed();

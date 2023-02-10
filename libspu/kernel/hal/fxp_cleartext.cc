@@ -24,9 +24,9 @@ Value applyFloatingPointFn(
     HalContext* ctx, const Value& in,
     const std::function<NdArrayRef(const xt::xarray<float>&)>& fn) {
   SPU_TRACE_HAL_DISP(ctx, in);
-  YACL_ENFORCE(in.isPublic(), "float intrinsic, expected public, got {}",
-               in.storage_type());
-  YACL_ENFORCE(in.dtype() == DT_FXP, "expected fxp, got={}", in.dtype());
+  SPU_ENFORCE(in.isPublic(), "float intrinsic, expected public, got {}",
+              in.storage_type());
+  SPU_ENFORCE(in.dtype() == DT_FXP, "expected fxp, got={}", in.dtype());
 
   const size_t fxp_bits = ctx->getFxpBits();
   const auto field = in.storage_type().as<Ring2k>()->field();
@@ -38,7 +38,7 @@ Value applyFloatingPointFn(
   DataType dtype;
   const auto out =
       encodeToRing(fn(xt_adapt<float>(raw)), field, fxp_bits, &dtype);
-  YACL_ENFORCE(dtype == DT_FXP, "sanity failed");
+  SPU_ENFORCE(dtype == DT_FXP, "sanity failed");
   return Value(out.as(in.storage_type()), dtype);
 }
 
@@ -47,9 +47,9 @@ Value applyFloatingPointFn(
     const std::function<NdArrayRef(const xt::xarray<float>&,
                                    const xt::xarray<float>&)>& fn) {
   SPU_TRACE_HAL_DISP(ctx, x, y);
-  YACL_ENFORCE(x.isPublic() && y.isPublic());
-  YACL_ENFORCE((x.dtype() == DT_FXP) && (y.dtype() == DT_FXP));
-  YACL_ENFORCE(x.dtype() == DT_FXP, "expected fxp, got={}", x.dtype());
+  SPU_ENFORCE(x.isPublic() && y.isPublic());
+  SPU_ENFORCE((x.dtype() == DT_FXP) && (y.dtype() == DT_FXP));
+  SPU_ENFORCE(x.dtype() == DT_FXP, "expected fxp, got={}", x.dtype());
 
   const auto field = x.storage_type().as<Ring2k>()->field();
   const size_t fxp_bits = ctx->getFxpBits();
@@ -63,7 +63,7 @@ Value applyFloatingPointFn(
   const auto out =
       encodeToRing(fn(xt_adapt<float>(flp_x), xt_adapt<float>(flp_y)), field,
                    fxp_bits, &dtype);
-  YACL_ENFORCE(dtype == DT_FXP, "sanity failed");
+  SPU_ENFORCE(dtype == DT_FXP, "sanity failed");
   return Value(out.as(x.storage_type()), dtype);
 }
 
@@ -73,7 +73,7 @@ Value f_reciprocal_p(HalContext* ctx, const Value& in) {
   SPU_TRACE_HAL_DISP(ctx, in);
 
   return applyFloatingPointFn(ctx, in, [&](const xt::xarray<float>& farr) {
-    return xt_to_ndarray(1.0f / farr);
+    return xt_to_ndarray(1.0 / farr);
   });
 }
 

@@ -22,7 +22,8 @@
 
 #include "absl/strings/ascii.h"
 #include "absl/strings/str_split.h"
-#include "yacl/base/exception.h"
+
+#include "libspu/core/prelude.h"
 
 namespace spu::psi {
 
@@ -33,11 +34,11 @@ class CsvHeaderAnalyzer {
     std::set<std::string> target_set = CheckAndNormalizeTokens(target_fields);
 
     std::ifstream in(path);
-    YACL_ENFORCE(in.is_open(), "Cannot open {}", path);
+    SPU_ENFORCE(in.is_open(), "Cannot open {}", path);
     std::string line;
-    YACL_ENFORCE(std::getline(in, line), "Cannot read header line in {}", path);
-    YACL_ENFORCE(!CheckIfBOMExists(line),
-                 "The file {} starts with BOM(Byte Order Mark).", path);
+    SPU_ENFORCE(std::getline(in, line), "Cannot read header line in {}", path);
+    SPU_ENFORCE(!CheckIfBOMExists(line),
+                "The file {} starts with BOM(Byte Order Mark).", path);
 
     std::vector<std::string> headers = GetCsvTokens(line);
     std::map<std::string, size_t> col_index_map;
@@ -49,17 +50,17 @@ class CsvHeaderAnalyzer {
     }
     // Iterate by sorted order.
     for (const auto& target : target_set) {
-      YACL_ENFORCE(col_index_map.find(target) != col_index_map.end(),
-                   "Cannot find feature name='{}' in CSV file header='{}'",
-                   target, line);
+      SPU_ENFORCE(col_index_map.find(target) != col_index_map.end(),
+                  "Cannot find feature name='{}' in CSV file header='{}'",
+                  target, line);
       target_indices_sorted_.push_back(col_index_map[target]);
     }
     // Iterate by target_fields sequence.
     for (std::string target : target_fields) {
       absl::StripAsciiWhitespace(&target);
-      YACL_ENFORCE(col_index_map.find(target) != col_index_map.end(),
-                   "Cannot find feature name='{}' in CSV file header='{}'",
-                   target, line);
+      SPU_ENFORCE(col_index_map.find(target) != col_index_map.end(),
+                  "Cannot find feature name='{}' in CSV file header='{}'",
+                  target, line);
       target_indices_.push_back(col_index_map[target]);
     }
     headers_set_ = CheckAndNormalizeTokens(headers_);
@@ -88,13 +89,13 @@ class CsvHeaderAnalyzer {
     std::set<std::string> ret;
     for (std::string input : inputs) {
       absl::StripAsciiWhitespace(&input);
-      YACL_ENFORCE(!input.empty(),
-                   "Found empty feature name, input feature names='{}'",
-                   fmt::join(inputs, ","));
+      SPU_ENFORCE(!input.empty(),
+                  "Found empty feature name, input feature names='{}'",
+                  fmt::join(inputs, ","));
       ret.insert(input);
     }
-    YACL_ENFORCE(ret.size() == inputs.size(), "Repeated feature name in ='{}'",
-                 fmt::join(inputs, ","));
+    SPU_ENFORCE(ret.size() == inputs.size(), "Repeated feature name in ='{}'",
+                fmt::join(inputs, ","));
     return ret;
   }
 

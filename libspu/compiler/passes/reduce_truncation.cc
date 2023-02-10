@@ -90,8 +90,8 @@ struct ReduceTruncation : public ReduceTruncBase<ReduceTruncation> {
   }
 
 private:
-  void populateOwningPatterns(RewritePatternSet *patterns,
-                              MLIRContext *ctx) const {
+  static void populateOwningPatterns(RewritePatternSet *patterns,
+                                     MLIRContext *ctx) {
     patterns->insert<MulConverter>(ctx);
   }
 };

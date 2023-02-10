@@ -70,7 +70,7 @@ std::vector<size_t> GenerateQueryIndex(size_t batch_number,
   return query_index;
 }
 
-using duration_millis = std::chrono::duration<double, std::milli>;
+using DurationMillis = std::chrono::duration<double, std::milli>;
 }  // namespace
 
 class SealMultiPirTest : public testing::TestWithParam<TestParams> {};
@@ -93,8 +93,9 @@ TEST_P(SealMultiPirTest, Works) {
 
   auto ctxs = yacl::link::test::SetupWorld(2);
 
-  // use dh keyexchange get shared oracle seed
-  psi::SodiumCurve25519Cryptor c25519_cryptor0, c25519_cryptor1;
+  // use dh key exchange get shared oracle seed
+  psi::SodiumCurve25519Cryptor c25519_cryptor0;
+  psi::SodiumCurve25519Cryptor c25519_cryptor1;
 
   std::future<std::vector<uint8_t>> ke_func_server =
       std::async([&] { return c25519_cryptor0.KeyExchange(ctxs[0]); });
@@ -115,7 +116,7 @@ TEST_P(SealMultiPirTest, Works) {
 
   spu::pir::MultiQueryClient mpir_client(options, cuckoo_params, seed_client);
 
-  // server steup data
+  // server setup data
   mpir_server.SetDatabase(db_bytes);
 
   // online send galoiskey(28MB) cause: pipeline check unittest timeout

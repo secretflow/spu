@@ -15,7 +15,6 @@
 #include "libspu/mpc/cheetah/io.h"
 
 #include "libspu/mpc/semi2k/type.h"
-#include "libspu/mpc/util/ring_ops.h"
 
 namespace spu::mpc::cheetah {
 

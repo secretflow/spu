@@ -32,8 +32,8 @@ spu_cc_library(
     hdrs = ["io_test.h"],
     deps = [
         ":io_interface",
-        "//libspu/mpc/util:ring_ops",
-        "//libspu/mpc/util:simulate",
+        "//libspu/mpc/utils:ring_ops",
+        "//libspu/mpc/utils:simulate",
         "@com_google_googletest//:gtest",
     ],
     alwayslink = True,
@@ -69,7 +69,7 @@ spu_cc_library(
         "//libspu/core:array_ref",
         "//libspu/core:trace",
         "//libspu/core:type",
-        "//libspu/mpc/util:cexpr",
+        "//libspu/mpc/utils:cexpr",
     ],
 )
 
@@ -92,7 +92,7 @@ spu_cc_library(
         ":api",
         ":object",
         "//libspu/mpc/common:communicator",
-        "//libspu/mpc/util:simulate",
+        "//libspu/mpc/utils:simulate",
         "@com_google_googletest//:gtest",
     ],
     alwayslink = True,

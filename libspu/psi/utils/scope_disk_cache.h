@@ -64,9 +64,9 @@ class ScopeDiskCache {
 
   void CreateHashBinStreams(
       size_t num_bins,
-      std::vector<std::unique_ptr<io::OutputStream>>* bin_outs);
+      std::vector<std::unique_ptr<io::OutputStream>>* bin_outs) const;
 
-  std::unique_ptr<io::InputStream> CreateHashBinInputStream(size_t index);
+  std::unique_ptr<io::InputStream> CreateHashBinInputStream(size_t index) const;
 
  private:
   explicit ScopeDiskCache(std::filesystem::path cache_dir)

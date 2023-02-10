@@ -22,6 +22,7 @@ spu_cc_library(
     hdrs = ["communication.h"],
     deps = [
         ":ic_protocol_psi_cc_proto",
+        "//libspu/core:prelude",
         "//libspu/psi/utils:serialize",
         "@yacl//yacl/link",
     ],
@@ -99,8 +100,8 @@ spu_cc_library(
     hdrs = ["cuckoo_index.h"],
     linkopts = ["-lm"],
     deps = [
+        "//libspu/core:prelude",
         "@com_google_absl//absl/types:span",
-        "@yacl//yacl/base:exception",
         "@yacl//yacl/base:int128",
     ],
 )

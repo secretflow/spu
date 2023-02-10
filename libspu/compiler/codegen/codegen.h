@@ -24,7 +24,7 @@ namespace spu::compiler {
 
 class CodeGen final {
 public:
-  std::string doit(mlir::ModuleOp module);
+  static std::string doit(mlir::ModuleOp module);
 };
 
 } // namespace spu::compiler

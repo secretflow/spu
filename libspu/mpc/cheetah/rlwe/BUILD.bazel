@@ -1,0 +1,71 @@
+# Copyright 2021 Ant Group Co., Ltd.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+load("//bazel:spu.bzl", "spu_cc_library", "spu_cc_test")
+
+package(default_visibility = ["//visibility:public"])
+
+spu_cc_library(
+    name = "cheetah_rlwe",
+    deps = [
+        ":modswitch_helper",
+    ],
+)
+
+spu_cc_library(
+    name = "lwe",
+    srcs = [
+        "lwe_ct.cc",
+        "lwe_decryptor.cc",
+        "lwe_secret_key.cc",
+    ],
+    hdrs = ["lwe_decryptor.h"],
+    deps = [":modswitch_helper"],
+)
+
+spu_cc_library(
+    name = "modswitch_helper",
+    srcs = [
+        "modswitch_helper.cc",
+        "utils.cc",
+    ],
+    hdrs = [
+        "modswitch_helper.h",
+        "utils.h",
+    ],
+    deps = [":rlwe_utils"],
+)
+
+spu_cc_library(
+    name = "rlwe_utils",
+    srcs = ["utils.cc"],
+    hdrs = [
+        "types.h",
+        "utils.h",
+    ],
+    deps = [
+        "//libspu/core:array_ref",
+        "//libspu/mpc/utils:ring_ops",
+        "@com_github_microsoft_seal//:seal",
+    ],
+)
+
+spu_cc_test(
+    name = "modswitch_helper_test",
+    srcs = ["modswitch_helper_test.cc"],
+    deps = [
+        ":modswitch_helper",
+        "@com_github_xtensor_xtensor//:xtensor",
+    ],
+)
