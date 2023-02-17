@@ -35,6 +35,62 @@
 
 namespace spu::mpc::cheetah::test {
 
+static ArrayRef ring_conv2d(const ArrayRef& tensor, const ArrayRef& filter,
+                            int64_t num_tensors, Shape3D tensor_shape,
+                            int64_t num_filters, Shape3D filter_shape,
+                            Shape2D window_strides) {
+  auto field = tensor.eltype().as<Ring2k>()->field();
+  Shape4D result_shape;
+  result_shape[0] = num_tensors;
+  for (int s : {0, 1}) {
+    result_shape[s + 1] =
+        (tensor_shape[s] - filter_shape[s] + window_strides[s]) /
+        window_strides[s];
+  }
+  result_shape[3] = num_filters;
+
+  std::vector<int64_t> ts = {num_tensors, tensor_shape[0], tensor_shape[1],
+                             tensor_shape[2]};
+  std::vector<int64_t> fs = {filter_shape[0], filter_shape[1], filter_shape[2],
+                             num_filters};
+
+  NdArrayRef _tensor = unflatten(tensor, ts);
+  NdArrayRef _filter = unflatten(filter, fs);
+  NdArrayRef _ret =
+      unflatten(ring_zeros(field, calcNumel(result_shape)), result_shape);
+
+  DISPATCH_ALL_FIELDS(field, "ring_conv2d", [&]() {
+    // NOTE(juhou): valid padding so offset are always 0.
+    constexpr int64_t padh = 0;
+    constexpr int64_t padw = 0;
+
+    for (int64_t ib = 0; ib < ts[0]; ++ib) {
+      for (int64_t oc = 0; oc < fs[3]; ++oc) {
+        for (int64_t ih = -padh, oh = 0; oh < result_shape[1];
+             ih += window_strides[0], ++oh) {
+          for (int64_t iw = -padw, ow = 0; ow < result_shape[2];
+               iw += window_strides[1], ++ow) {
+            ring2k_t sum{0};
+
+            for (int64_t ic = 0; ic < filter_shape[2]; ++ic) {
+              for (int64_t fh = 0; fh < filter_shape[0]; ++fh) {
+                for (int64_t fw = 0; fw < filter_shape[1]; ++fw) {
+                  auto f = _filter.at<ring2k_t>({fh, fw, ic, oc});
+                  auto t = _tensor.at<ring2k_t>({ib, ih + fh, iw + fw, ic});
+                  sum += f * t;
+                }
+              }
+            }
+            _ret.at<ring2k_t>({ib, oh, ow, oc}) = sum;
+          }
+        }
+      }
+    }
+  });
+
+  return flatten(_ret);
+}
+
 class Conv2DProtTest
     : public ::testing::TestWithParam<
           std::tuple<FieldType, int64_t, Shape3D, Shape3D, Shape2D>> {
@@ -95,20 +151,19 @@ class Conv2DProtTest
 };
 
 std::string to_string(const Shape3D& dim3) {
-  return fmt::format("{}x{}x{}", dim3[0], dim3[1], dim3[2]);
+  return fmt::format("H{}W{}C{}", dim3[0], dim3[1], dim3[2]);
 }
 
 INSTANTIATE_TEST_SUITE_P(
     Cheetah, Conv2DProtTest,
     testing::Combine(
         testing::Values(FieldType::FM32, FieldType::FM64),
-        testing::Values(1LL, 2LL, 3LL),  // O
-        testing::Values(Shape3D{8, 8, 64},
-                        Shape3D{128, 128, 3}),                // input_shape
+        testing::Values(1LL, 2LL, 3LL),                           // O
+        testing::Values(Shape3D{8, 8, 4}, Shape3D{128, 128, 3}),  // input_shape
         testing::Values(Shape3D{1, 1, 3}, Shape3D{2, 2, 3}),  // kernel_shape
         testing::Values(Shape2D{3, 3}, Shape2D{1, 1})),       // window_strides
     [](const testing::TestParamInfo<Conv2DProtTest::ParamType>& p) {
-      return fmt::format("{}_{}_h{}O{}_s{}", std::get<0>(p.param),
+      return fmt::format("{}{}h{}O{}s{}", std::get<0>(p.param),
                          to_string(std::get<2>(p.param)),
                          std::get<3>(p.param)[0], std::get<1>(p.param),
                          std::get<4>(p.param)[0]);
@@ -162,15 +217,39 @@ TEST_P(Conv2DProtTest, Plain) {
     meta.kernel_shape = {_k[0], _k[1], _t[2]};
     meta.window_strides = window_strides;
 
+    std::vector<int64_t> start_indices = {0, 0, 0, 0};
+    std::vector<int64_t> end_indices = {1, _t[0], _t[1], _t[2]};
+    // NxHxWxC
+    std::vector<int64_t> strides = {1, 1, 1, 1};
+    for (int d : {0, 1}) {
+      if (meta.kernel_shape[0] == 1) {
+        strides[1 + d] = meta.window_strides[d];
+        meta.input_shape[d] =
+            (meta.input_shape[d] + meta.window_strides[d] - 1) /
+            meta.window_strides[d];
+        meta.window_strides[d] = 1;
+      }
+    }
+    if (std::any_of(strides.begin(), strides.end(),
+                    [](int64_t s) { return s > 1; })) {
+      tensor = hal::slice(&hctx, tensor, start_indices, end_indices, strides);
+    }
+
     std::vector<RLWEPt> ecd_tensor(conv2d_prot.GetInputSize(meta));
     std::vector<RLWEPt> ecd_kernels(conv2d_prot.GetKernelSize(meta));
     std::vector<RLWEPt> out_poly(conv2d_prot.GetOutSize(meta));
 
     tensor = hal::reshape(&hctx, tensor, meta.input_shape);
 
-    conv2d_prot.EncodeInput(tensor.data(), meta, true,
-                            absl::MakeSpan(ecd_tensor));
-    conv2d_prot.EncodeKernels(filter.data(), meta, false,
+    auto _tensor = flatten(tensor.data());
+    auto _filter = flatten(filter.data());
+
+    ArrayRef _expected =
+        ring_conv2d(_tensor, _filter, tensor_shape[0], meta.input_shape,
+                    meta.num_kernels, meta.kernel_shape, meta.window_strides);
+
+    conv2d_prot.EncodeInput(_tensor, meta, true, absl::MakeSpan(ecd_tensor));
+    conv2d_prot.EncodeKernels(_filter, meta, false,
                               absl::MakeSpan(ecd_kernels));
 
     for (auto& poly : ecd_tensor) {
@@ -186,13 +265,14 @@ TEST_P(Conv2DProtTest, Plain) {
       InvNttInplace(poly, *context_);
     }
 
-    NdArrayRef computed =
+    ArrayRef computed =
         conv2d_prot.ParseResult(field_, meta, absl::MakeSpan(out_poly));
+    EXPECT_TRUE(ring_all_equal(_expected, computed));
 
     auto fe = flatten(expected.data());
     // NOTE(juhou): we haved used VIS_PUBLIC to create spu::Value
     // So the eltype will mismatch.
-    auto fc = flatten(computed).as(fe.eltype());
+    auto fc = computed.as(fe.eltype());
     EXPECT_TRUE(fc == fe);
   });
 }
@@ -245,15 +325,34 @@ TEST_P(Conv2DProtTest, EncTensor) {
     meta.kernel_shape = {_k[0], _k[1], _t[2]};
     meta.window_strides = window_strides;
 
+    std::vector<int64_t> start_indices = {0, 0, 0, 0};
+    std::vector<int64_t> end_indices = {1, _t[0], _t[1], _t[2]};
+    // NxHxWxC
+    std::vector<int64_t> strides = {1, 1, 1, 1};
+    for (int d : {0, 1}) {
+      if (meta.kernel_shape[0] == 1) {
+        strides[1 + d] = meta.window_strides[d];
+        meta.input_shape[d] =
+            (meta.input_shape[d] + meta.window_strides[d] - 1) /
+            meta.window_strides[d];
+        meta.window_strides[d] = 1;
+      }
+    }
+    if (std::any_of(strides.begin(), strides.end(),
+                    [](int64_t s) { return s > 1; })) {
+      tensor = hal::slice(&hctx, tensor, start_indices, end_indices, strides);
+    }
+
     std::vector<RLWEPt> ecd_tensor(conv2d_prot.GetInputSize(meta));
     std::vector<RLWEPt> ecd_kernels(conv2d_prot.GetKernelSize(meta));
 
     tensor = hal::reshape(&hctx, tensor, meta.input_shape);
 
-    conv2d_prot.EncodeInput(tensor.data(), meta, true,
-                            absl::MakeSpan(ecd_tensor));
+    auto _tensor = flatten(tensor.data());
+    auto _filter = flatten(filter.data());
+    conv2d_prot.EncodeInput(_tensor, meta, true, absl::MakeSpan(ecd_tensor));
 
-    conv2d_prot.EncodeKernels(filter.data(), meta, false,
+    conv2d_prot.EncodeKernels(_filter, meta, false,
                               absl::MakeSpan(ecd_kernels));
 
     for (auto& poly : ecd_tensor) {
@@ -286,13 +385,13 @@ TEST_P(Conv2DProtTest, EncTensor) {
       InvNttInplace(out_poly[i], *context_);
     }
 
-    NdArrayRef computed =
+    ArrayRef computed =
         conv2d_prot.ParseResult(field_, meta, absl::MakeSpan(out_poly));
 
     auto fe = flatten(expected.data());
     // NOTE(juhou): we haved used VIS_PUBLIC to create spu::Value
     // So the eltype will mismatch.
-    auto fc = flatten(computed).as(fe.eltype());
+    auto fc = computed.as(fe.eltype());
     EXPECT_TRUE(fc == fe);
   });
 }
@@ -345,16 +444,33 @@ TEST_P(Conv2DProtTest, EncKernels) {
     meta.kernel_shape = {_k[0], _k[1], _t[2]};
     meta.window_strides = window_strides;
 
+    std::vector<int64_t> start_indices = {0, 0, 0, 0};
+    std::vector<int64_t> end_indices = {1, _t[0], _t[1], _t[2]};
+    // NxHxWxC
+    std::vector<int64_t> strides = {1, 1, 1, 1};
+    for (int d : {0, 1}) {
+      if (meta.kernel_shape[0] == 1) {
+        strides[1 + d] = meta.window_strides[d];
+        meta.input_shape[d] =
+            (meta.input_shape[d] + meta.window_strides[d] - 1) /
+            meta.window_strides[d];
+        meta.window_strides[d] = 1;
+      }
+    }
+    if (std::any_of(strides.begin(), strides.end(),
+                    [](int64_t s) { return s > 1; })) {
+      tensor = hal::slice(&hctx, tensor, start_indices, end_indices, strides);
+    }
+
     std::vector<RLWEPt> ecd_tensor(conv2d_prot.GetInputSize(meta));
     std::vector<RLWEPt> ecd_kernels(conv2d_prot.GetKernelSize(meta));
 
     tensor = hal::reshape(&hctx, tensor, meta.input_shape);
 
-    conv2d_prot.EncodeInput(tensor.data(), meta, false,
-                            absl::MakeSpan(ecd_tensor));
-
-    conv2d_prot.EncodeKernels(filter.data(), meta, true,
-                              absl::MakeSpan(ecd_kernels));
+    auto _tensor = flatten(tensor.data());
+    auto _filter = flatten(filter.data());
+    conv2d_prot.EncodeInput(_tensor, meta, false, absl::MakeSpan(ecd_tensor));
+    conv2d_prot.EncodeKernels(_filter, meta, true, absl::MakeSpan(ecd_kernels));
 
     for (auto& poly : ecd_tensor) {
       NttInplace(poly, *context_);
@@ -386,13 +502,13 @@ TEST_P(Conv2DProtTest, EncKernels) {
       InvNttInplace(out_poly[i], *context_);
     }
 
-    NdArrayRef computed =
+    ArrayRef computed =
         conv2d_prot.ParseResult(field_, meta, absl::MakeSpan(out_poly));
 
     auto fe = flatten(expected.data());
     // NOTE(juhou): we haved used VIS_PUBLIC to create spu::Value
     // So the eltype will mismatch.
-    auto fc = flatten(computed).as(fe.eltype());
+    auto fc = computed.as(fe.eltype());
     EXPECT_TRUE(fc == fe);
   });
 }

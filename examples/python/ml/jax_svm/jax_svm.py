@@ -77,6 +77,9 @@ class LinearSVM:
 
 parser = argparse.ArgumentParser(description='distributed driver.')
 parser.add_argument("-c", "--config", default="examples/python/conf/3pc.json")
+parser.add_argument("--n_epochs", default=1000, type=int)
+parser.add_argument("--step_size", default=0.001, type=float)
+parser.add_argument("--lambda_param", default=0.01, type=float)
 args = parser.parse_args()
 
 with open(args.config, 'r') as file:
@@ -88,36 +91,38 @@ ppd.init(conf["nodes"], conf["devices"])
 def run_on_cpu():
     x_train, y_train = dsutil.breast_cancer(slice(None, None, None), True)
 
-    svm = LinearSVM()
+    svm = LinearSVM(args.n_epochs, args.step_size, args.lambda_param)
     y_train = jnp.where(y_train <= 0, -1, 1)
     w, b = jax.jit(svm.fit)(x_train, y_train)
     print(w, b)
 
     x_test, y_test = dsutil.breast_cancer(slice(None, None, None), False)
     y_test = jnp.where(y_test <= 0, -1, 1)
-    print("AUC(cpu)={}".format(metrics.accuracy_score(y_test, predict(x_test, w, b))))
+    score = metrics.accuracy_score(y_test, predict(x_test, w, b))
+    print("AUC(cpu)={}".format(score))
+    return score
 
 
 def run_on_spu():
     @ppd.device("SPU")
     def train(x1, x2, y):
         x = jnp.concatenate((x1, x2), axis=1)
-        svm = LinearSVM()
+        svm = LinearSVM(args.n_epochs, args.step_size, args.lambda_param)
         y = jnp.where(y <= 0, -1, 1)
         return svm.fit(x, y)
 
     x1, y = ppd.device("P1")(dsutil.breast_cancer)(slice(None, 15), True)
     x2, _ = ppd.device("P2")(dsutil.breast_cancer)(slice(15, None), True)
-    W, b = train(x1, x2, y)
+    w, b = train(x1, x2, y)
 
-    W_r, b_r = ppd.get(W), ppd.get(b)
-    print(W_r, b_r)
+    w_r, b_r = ppd.get(w), ppd.get(b)
+    print(w_r, b_r)
 
     x_test, y_test = dsutil.breast_cancer(slice(None, None, None), False)
     y_test = jnp.where(y_test <= 0, -1, 1)
-    print(
-        "AUC(spu)={}".format(metrics.accuracy_score(y_test, predict(x_test, W_r, b_r)))
-    )
+    score = metrics.accuracy_score(y_test, predict(x_test, w_r, b_r))
+    print("AUC(spu)={}".format(score))
+    return score
 
 
 if __name__ == "__main__":

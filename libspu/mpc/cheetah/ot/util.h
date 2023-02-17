@@ -67,7 +67,7 @@ inline T CeilDiv(T a, T b) {
 template <typename T>
 size_t ZipArray(absl::Span<const T> inp, size_t bit_width, absl::Span<T> oup) {
   size_t width = sizeof(T) * 8;
-  SPU_ENFORCE(bit_width > 0 && width >= 2 * bit_width);
+  SPU_ENFORCE(bit_width > 0 && width >= bit_width);
   size_t shft = bit_width;
   size_t pack_load = width / shft;
   size_t numel = inp.size();
@@ -90,7 +90,7 @@ template <typename T>
 size_t UnzipArray(absl::Span<const T> inp, size_t bit_width,
                   absl::Span<T> oup) {
   size_t width = sizeof(T) * 8;
-  SPU_ENFORCE(bit_width > 0 && width >= 2 * bit_width);
+  SPU_ENFORCE(bit_width > 0 && bit_width <= width);
 
   size_t shft = bit_width;
   size_t pack_load = width / shft;
@@ -99,7 +99,7 @@ size_t UnzipArray(absl::Span<const T> inp, size_t bit_width,
   // NOTE(the last block might contain only one element
   SPU_ENFORCE(
       oup.size() + (pack_load - 1) >= max_numel,
-      fmt::format("expect {} got {}", oup.size() + pack_load - 1, max_numel));
+      fmt::format("expect {} got {}x{}", oup.size() + pack_load - 1, pack_load, packed_sze));
 
   const T mask = makeBitsMask<T>(bit_width);
 

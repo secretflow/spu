@@ -18,21 +18,30 @@
 
 #include "libspu/core/ndarray_ref.h"
 #include "libspu/kernel/context.h"
-#include "libspu/kernel/hal/test_util.h"
 #include "libspu/kernel/hlo/casting.h"
 #include "libspu/kernel/hlo/const.h"
+#include "libspu/kernel/hlo/test_utils.h"
 #include "libspu/kernel/value.h"
+#include "libspu/mpc/utils/simulate.h"
 
 namespace spu::kernel::hlo {
 
-#define UNARY_EMPTY_TEST(NAME)                        \
-  TEST(ConstTest, Empty_##NAME) {                     \
-    HalContext hctx = hal::test::makeRefHalContext(); \
-    auto empty_c = Constant(&hctx, 1.0F, {0});        \
-    auto s_empty = NAME(&hctx, empty_c);              \
-    EXPECT_EQ(s_empty.numel(), 0);                    \
-    EXPECT_EQ(s_empty.shape().size(), 1);             \
-    EXPECT_EQ(s_empty.shape()[0], 0);                 \
+class UnaryTest
+    : public ::testing::TestWithParam<std::tuple<FieldType, ProtocolKind>> {};
+
+#define UNARY_EMPTY_TEST(NAME)                                                 \
+  TEST_P(UnaryTest, Empty_##NAME) {                                            \
+    auto cfg =                                                                 \
+        test::makeRefConfig(std::get<0>(GetParam()), std::get<1>(GetParam())); \
+    mpc::utils::simulate(                                                      \
+        3, [&](const std::shared_ptr<yacl::link::Context> &lctx) {             \
+          HalContext hctx(cfg, lctx);                                          \
+          auto empty_c = Constant(&hctx, 1.0F, {0});                           \
+          auto s_empty = NAME(&hctx, empty_c);                                 \
+          EXPECT_EQ(s_empty.numel(), 0);                                       \
+          EXPECT_EQ(s_empty.shape().size(), 1);                                \
+          EXPECT_EQ(s_empty.shape()[0], 0);                                    \
+        });                                                                    \
   }
 
 UNARY_EMPTY_TEST(Reciprocal)
@@ -51,5 +60,14 @@ UNARY_EMPTY_TEST(Rsqrt)
 UNARY_EMPTY_TEST(Sqrt)
 UNARY_EMPTY_TEST(Sign)
 UNARY_EMPTY_TEST(Round_AFZ)
+
+INSTANTIATE_TEST_SUITE_P(
+    UnaryTestInstances, UnaryTest,
+    testing::Combine(testing::Values(FieldType::FM64, FieldType::FM128),
+                     testing::Values(ProtocolKind::REF2K, ProtocolKind::SEMI2K,
+                                     ProtocolKind::ABY3)),
+    [](const testing::TestParamInfo<UnaryTest::ParamType> &p) {
+      return fmt::format("{}x{}", std::get<0>(p.param), std::get<1>(p.param));
+    });
 
 }  // namespace spu::kernel::hlo

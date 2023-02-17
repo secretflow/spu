@@ -26,6 +26,7 @@
 #include "libspu/kernel/context.h"
 #include "libspu/kernel/hal/constants.h"
 #include "libspu/kernel/hal/debug.h"
+#include "libspu/kernel/hal/pad.h"
 #include "libspu/kernel/hal/polymorphic.h"  // for select
 #include "libspu/kernel/hal/shape_ops.h"
 #include "libspu/kernel/hal/type_cast.h"

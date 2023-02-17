@@ -63,16 +63,12 @@ class LogitRegression:
         remainder = feature.shape[0] % self.n_iters
 
         xs = tf.split(
-            feature[
-                :-remainder,
-            ],
+            feature[:-remainder,],
             self.n_iters,
             axis=0,
         )
         ys = tf.split(
-            label[
-                :-remainder,
-            ],
+            label[:-remainder,],
             self.n_iters,
             axis=0,
         )
@@ -96,16 +92,12 @@ class LogitRegression:
         remainder = feature.shape[0] % self.n_iters
 
         xs = tf.split(
-            feature[
-                :-remainder,
-            ],
+            feature[:-remainder,],
             self.n_iters,
             axis=0,
         )
         ys = tf.split(
-            label[
-                :-remainder,
-            ],
+            label[:-remainder,],
             self.n_iters,
             axis=0,
         )
@@ -128,16 +120,12 @@ class LogitRegression:
         remainder = feature.shape[0] % self.n_iters
 
         xs = tf.split(
-            feature[
-                :-remainder,
-            ],
+            feature[:-remainder,],
             self.n_iters,
             axis=0,
         )
         ys = tf.split(
-            label[
-                :-remainder,
-            ],
+            label[:-remainder,],
             self.n_iters,
             axis=0,
         )
@@ -257,12 +245,12 @@ def run_fit_manual_grad_spu():
     W_r = ppd.get(W)
     x_test, y_test = breast_cancer(slice(None, None, None), False)
 
+    score = metrics.roc_auc_score(y_test, predict(x_test, W_r.astype(dtype=np.float64)))
     print(
-        "AUC(spu)={}".format(
-            metrics.roc_auc_score(y_test, predict(x_test, W_r.astype(dtype=np.float64)))
-        ),
+        "AUC(spu)={}".format(score),
         f"time={end_ts-start_ts}",
     )
+    return score
 
 
 if __name__ == '__main__':

@@ -17,6 +17,7 @@
 #include "libspu/kernel/hal/concat.h"
 #include "libspu/kernel/hal/constants.h"
 #include "libspu/kernel/hal/debug.h"
+#include "libspu/kernel/hal/pad.h"
 #include "libspu/kernel/hal/polymorphic.h"
 #include "libspu/kernel/hal/random.h"
 #include "libspu/kernel/hal/shape_ops.h"

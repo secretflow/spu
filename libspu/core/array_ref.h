@@ -206,6 +206,9 @@ class ArrayView {
 
   // TODO: test me.
   size_t maxBitWidth() const {
+    if (numel_ == 0) {
+      return 0;
+    }
     if (stride() == 0) {
       return BitWidth(this->operator[](0));
     }

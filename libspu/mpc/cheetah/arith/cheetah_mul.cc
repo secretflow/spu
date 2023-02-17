@@ -11,7 +11,6 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
 #include "libspu/mpc/cheetah/arith/cheetah_mul.h"
 
 #include <future>
@@ -57,6 +56,10 @@ struct CheetahMul::Impl : public EnableCPRNG {
 
   ~Impl() = default;
 
+  constexpr size_t OLEBatchSize() const { return kPolyDegree; }
+
+  int Rank() const { return lctx_->Rank(); }
+
   static seal::EncryptionParameters DecideSEALParameters(uint32_t ring_bitlen) {
     size_t poly_deg = kPolyDegree;
     auto scheme_type = seal::scheme_type::bfv;
@@ -71,35 +74,25 @@ struct CheetahMul::Impl : public EnableCPRNG {
     return parms;
   }
 
-  std::unique_ptr<Impl> Fork() const {
+  std::unique_ptr<Impl> Fork() {
+    using namespace seal;
     auto f = std::make_unique<Impl>(lctx_->Spawn());
-    std::shared_lock<std::shared_mutex> guard(context_lock_);
-
-    if (!seal_cntxts_.empty()) {
-      using namespace seal;
-      f->current_crt_plain_bitlen_ = current_crt_plain_bitlen_;
-      f->seal_cntxts_ = seal_cntxts_;
-      f->secret_key_ = std::make_shared<SecretKey>(*secret_key_);
-      f->pair_public_key_ = std::make_shared<PublicKey>(*pair_public_key_);
-      f->ms_helpers_ = ms_helpers_;
-
-      for (size_t cid = 0; cid < seal_cntxts_.size(); ++cid) {
-        f->bfv_encoders_.push_back(
-            std::make_shared<BatchEncoder>(seal_cntxts_[cid]));
-        if (cid > 0) {
-          f->LocalExpandSEALContexts(cid);
-        } else {
-          f->sym_encryptors_.push_back(
-              std::make_shared<seal::Encryptor>(seal_cntxts_[0], *secret_key_));
-          f->decryptors_.push_back(
-              std::make_shared<seal::Decryptor>(seal_cntxts_[0], *secret_key_));
-          f->pk_encryptors_.push_back(std::make_shared<seal::Encryptor>(
-              seal_cntxts_[0], *pair_public_key_));
-        }
-      }
-    }
+    std::unique_lock<std::shared_mutex> guard(context_lock_);
 
     f->current_crt_plain_bitlen_ = current_crt_plain_bitlen_;
+    if (seal_cntxts_.empty()) {
+      return f;
+    }
+
+    f->seal_cntxts_ = seal_cntxts_;
+    f->ms_helpers_ = ms_helpers_;
+    // NOTE(juhou): just take the pointer
+    f->secret_key_ = secret_key_;
+    f->pair_public_key_ = pair_public_key_;
+    f->sym_encryptors_ = sym_encryptors_;
+    f->decryptors_ = decryptors_;
+    f->pk_encryptors_ = pk_encryptors_;
+    f->bfv_encoders_ = bfv_encoders_;
     return f;
   }
 
@@ -368,15 +361,8 @@ ArrayRef CheetahMul::Impl::MulOLE(const ArrayRef &shr,
   size_t numel = shr.numel();
   int nxt_rank = conn->NextRank();
   std::vector<RLWEPt> encoded_shr;
-  if (!evaluator) {
-    size_t payload_sze = EncryptArrayThenSend(shr, nullptr, conn);
-    std::vector<yacl::Buffer> recv_ct(payload_sze);
-    for (size_t idx = 0; idx < payload_sze; ++idx) {
-      recv_ct[idx] = conn->Recv(nxt_rank, "");
-    }
-    return DecryptArray(field, numel, recv_ct);
-  } else {
-    // NOTE(juhou): rank=0 take more computation
+
+  if (evaluator) {
     Options options;
     options.max_pack = num_slots();
     options.scale_delta = false;
@@ -388,6 +374,12 @@ ArrayRef CheetahMul::Impl::MulOLE(const ArrayRef &shr,
     }
     return MuThenResponse(field, numel, recv_ct, encoded_shr, conn);
   }
+  size_t payload_sze = EncryptArrayThenSend(shr, nullptr, conn);
+  std::vector<yacl::Buffer> recv_ct(payload_sze);
+  for (size_t idx = 0; idx < payload_sze; ++idx) {
+    recv_ct[idx] = conn->Recv(nxt_rank, "");
+  }
+  return DecryptArray(field, numel, recv_ct);
 }
 
 size_t CheetahMul::Impl::EncryptArrayThenSend(const ArrayRef &array,
@@ -719,6 +711,18 @@ CheetahMul::CheetahMul(std::shared_ptr<yacl::link::Context> lctx) {
 CheetahMul::CheetahMul(std::unique_ptr<Impl> impl) { impl_ = std::move(impl); }
 
 CheetahMul::~CheetahMul() = default;
+
+int CheetahMul::Rank() const { return impl_->Rank(); }
+
+std::unique_ptr<CheetahMul> CheetahMul::Fork() {
+  auto ptr = new CheetahMul(impl_->Fork());
+  return std::unique_ptr<CheetahMul>(ptr);
+}
+
+size_t CheetahMul::OLEBatchSize() const {
+  SPU_ENFORCE(impl_ != nullptr);
+  return impl_->OLEBatchSize();
+}
 
 ArrayRef CheetahMul::MulOLE(const ArrayRef &inp, yacl::link::Context *conn,
                             bool evaluator) {

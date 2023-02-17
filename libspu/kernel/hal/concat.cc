@@ -52,7 +52,7 @@ Value concatenate(HalContext* ctx, absl::Span<const Value> values,
   SPU_ENFORCE(!values.empty(), "got={}", values.size());
 
   if (values.size() == 1) {
-    // Nothing to concate
+    // Nothing to concat
     return values.front();
   }
 
@@ -72,11 +72,12 @@ Value concatenate(HalContext* ctx, absl::Span<const Value> values,
     }
 
     std::vector<Value> common_values;
-    std::transform(
-        values.cbegin(), values.cend(), std::back_inserter(common_values),
-        [&](const Value& x) { return _cast_type(ctx, x, common_type); });
+    std::transform(values.cbegin(), values.cend(),
+                   std::back_inserter(common_values), [&](const Value& x) {
+                     return _cast_type(ctx, x, common_type).setDtype(x.dtype());
+                   });
 
-    return concatenate(ctx, common_values, axis).setDtype(values[0].dtype());
+    return concatenate(ctx, common_values, axis);
   }
 
   SPU_ENFORCE(all_same_stype);

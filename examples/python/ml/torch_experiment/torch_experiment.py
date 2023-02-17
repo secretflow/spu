@@ -135,6 +135,7 @@ def run_inference_on_spu(model):
     _, y_test = breast_cancer(slice(None, None, None), False)
     auc = metrics.roc_auc_score(y_test, y_pred_plaintext)
     print(f"AUC(cpu)={auc}, time={end_ts-start_ts}\n------\n")
+    return auc
 
 
 def compile_torch_to_mhlo(model):

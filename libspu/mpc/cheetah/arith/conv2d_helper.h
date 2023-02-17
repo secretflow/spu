@@ -1,14 +1,25 @@
+// Copyright 2021 Ant Group Co., Ltd.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//   http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
+
 #pragma once
+#include "libspu/core/array_ref.h"
 #include "libspu/core/ndarray_ref.h"
 #include "libspu/core/shape_util.h"
 #include "libspu/mpc/cheetah/arith/conv2d_prot.h"
 
 namespace spu::mpc::cheetah {
-
-// Obtain a subtensor
-// NxHxWxC -> HxWxC
-// HxWxIxO -> HxWxI
-NdArrayRef SliceDim(const NdArrayRef &base, int64_t dim, int64_t at);
 
 // forward
 struct Sliced3DTensor;
@@ -28,10 +39,11 @@ class Conv2DHelper {
 
   Shape3D GetSliceShape(const Shape3D &indices) const;
 
-  Sliced3DTensor partition(const NdArrayRef &tensor,
-                           const Shape3D &indices) const;
+  Sliced3DTensor Slice(const ArrayRef &base, const Shape3D &base_shape,
+                       const Shape3D &slice_index) const;
 
-  void GetResultCoefficients(Shape3D indices, std::vector<size_t> *coefficients,
+  void GetResultCoefficients(Shape3D slice_index,
+                             std::vector<size_t> *coefficients,
                              Shape3D *oshape = nullptr) const;
 
  private:
@@ -42,14 +54,16 @@ class Conv2DHelper {
   Shape3D slices_;
 };
 
+// A slice of a 3D tensor with zero padding.
+// The slice is defined by `offsets` and `extents`
 struct Sliced3DTensor {
  private:
-  Sliced3DTensor(const NdArrayRef &base, const Shape3D &offsets,
-                 const Shape3D &extents);
+  Sliced3DTensor(const ArrayRef &base, const Shape3D &base_shape,
+                 const Shape3D &offsets, const Shape3D &extents);
 
  public:
-  static Sliced3DTensor Wrap(const NdArrayRef &base, const Shape3D &offsets,
-                             const Shape3D &partition_shape);
+  static Sliced3DTensor Wrap(const ArrayRef &base, const Shape3D &base_shape,
+                             const Shape3D &offsets, const Shape3D &extents);
 
   Sliced3DTensor(const Sliced3DTensor &oth) = default;
 
@@ -64,10 +78,12 @@ struct Sliced3DTensor {
     constexpr int kW = 1;
     constexpr int kC = 2;
 
-    SPU_ENFORCE(h >= 0 && h < mock_extents_[kH]);
-    SPU_ENFORCE(w >= 0 && w < mock_extents_[kW]);
-    SPU_ENFORCE(c >= 0 && c < mock_extents_[kC]);
+    // sementic check
+    SPU_ENFORCE(h >= 0 && h < zero_pad_extents_[kH]);
+    SPU_ENFORCE(w >= 0 && w < zero_pad_extents_[kW]);
+    SPU_ENFORCE(c >= 0 && c < zero_pad_extents_[kC]);
 
+    // zero padding
     if (c >= extents_[kC]) {
       return static_cast<T>(0);
     }
@@ -78,10 +94,16 @@ struct Sliced3DTensor {
       return static_cast<T>(0);
     }
 
-    return base_.at<T>({h + offsets_[kH], w + offsets_[kW], c + offsets_[kC]});
+    std::array<int64_t, 3> index = {h + offsets_[kH], w + offsets_[kW],
+                                    c + offsets_[kC]};
+    // see core/ndarray_ref.h
+    int64_t offset =
+        spu::detail::calcFlattenOffset(index, base_shape_, flatten_strides_);
+    SPU_ENFORCE(offset >= 0 && offset < base_.numel());
+    return base_.at<T>(offset);
   }
 
-  Shape3D shape() const { return mock_extents_; }
+  Shape3D shape() const { return zero_pad_extents_; }
 
   int64_t numel() const { return calcNumel(shape()); }
 
@@ -91,15 +113,17 @@ struct Sliced3DTensor {
     for (size_t d = 0; d < 3; ++d) {
       SPU_ENFORCE(extents[d] > 0);
     }
-    mock_extents_ = extents;
+    zero_pad_extents_ = extents;
   }
 
  private:
-  const NdArrayRef &base_;
+  const ArrayRef &base_;
+  Shape3D base_shape_;
   Shape3D offsets_;
   Shape3D extents_;
+  Shape3D flatten_strides_;
 
-  Shape3D mock_extents_;
+  Shape3D zero_pad_extents_;
 };
 
 struct InputIndexer {

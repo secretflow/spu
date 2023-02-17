@@ -23,9 +23,7 @@ namespace spu::mpc::cheetah {
 class TensorEncoder;
 class ModulusSwitchHelper;
 
-bool IsSameInputShape(const NdArrayRef& base, const Shape3D& shape);
-bool IsSameKernelShape(const NdArrayRef& base, const Shape3D& shape,
-                       int64_t num_kernels);
+bool IsSameInputShape(const ArrayRef& base, const Shape3D& shape);
 
 class Conv2DProtocol {
  public:
@@ -59,18 +57,18 @@ class Conv2DProtocol {
 
   Shape3D GetSubTensorShape(const Conv2DProtocol::Meta& meta) const;
 
-  void EncodeKernels(const NdArrayRef& kernels, const Meta& meta,
-                     bool need_encrypt, absl::Span<RLWEPt> out) const;
-
-  void EncodeInput(const NdArrayRef& input, const Meta& meta, bool need_encrypt,
+  void EncodeInput(const ArrayRef& input, const Meta& meta, bool need_encrypt,
                    absl::Span<RLWEPt> out) const;
+
+  void EncodeKernels(const ArrayRef& kernels, const Meta& meta,
+                     bool need_encrypt, absl::Span<RLWEPt> out) const;
 
   void ExtractLWEsInplace(const Meta& meta, absl::Span<RLWECt> rlwe) const;
 
   bool IsValidMeta(const Meta& meta) const;
 
-  NdArrayRef ParseResult(FieldType field, const Meta& meta,
-                         absl::Span<const RLWEPt> rlwe) const;
+  ArrayRef ParseResult(FieldType field, const Meta& meta,
+                       absl::Span<const RLWEPt> rlwe) const;
 
   void Compute(absl::Span<const RLWEPt> tensor, absl::Span<const RLWEPt> kernel,
                const Meta& meta, absl::Span<RLWEPt> out) const;
@@ -88,8 +86,9 @@ class Conv2DProtocol {
 
   bool IsValidSubShape(const Shape3D& shape) const;
 
-  void EncodeSingleKernel(const NdArrayRef& kernel, const Meta& meta,
+  void EncodeSingleKernel(const ArrayRef& kernel, const Meta& meta,
                           bool scaleup, absl::Span<RLWEPt> out) const;
+
   // work horse
   template <typename I, typename K, typename O>
   void ComputeOneKernel(absl::Span<const I> input, absl::Span<const K> kernel,

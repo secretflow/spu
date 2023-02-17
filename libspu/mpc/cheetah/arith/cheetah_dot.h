@@ -19,7 +19,6 @@
 #include "yacl/link/context.h"
 
 #include "libspu/core/array_ref.h"
-#include "libspu/core/ndarray_ref.h"
 #include "libspu/mpc/cheetah/arith/common.h"
 
 namespace spu::mpc::cheetah {
@@ -34,7 +33,7 @@ class CheetahDot {
 
   ~CheetahDot();
 
-  CheetahDot Fork() const;
+  std::unique_ptr<CheetahDot> Fork();
 
   CheetahDot& operator=(const CheetahDot&) = delete;
 
@@ -48,21 +47,21 @@ class CheetahDot {
   ArrayRef DotOLE(const ArrayRef& inp, const Shape3D& dim3,
                   bool is_left_hand_side);
 
-  NdArrayRef Conv2dOLE(const NdArrayRef& inp, yacl::link::Context* conn,
-                       const Shape3D& tensor_shape, int64_t num_kernels,
-                       const Shape3D& kernel_shape,
-                       const Shape2D& window_strides, bool is_tensor);
+  ArrayRef Conv2dOLE(const ArrayRef& inp, yacl::link::Context* conn,
+                     const Shape3D& tensor_shape, int64_t num_kernels,
+                     const Shape3D& kernel_shape, const Shape2D& window_strides,
+                     bool is_tensor);
 
-  NdArrayRef Conv2dOLE(const NdArrayRef& inp, const Shape3D& tensor_shape,
-                       int64_t num_kernels, const Shape3D& kernel_shape,
-                       const Shape2D& window_strides, bool is_tensor);
+  ArrayRef Conv2dOLE(const ArrayRef& inp, const Shape3D& tensor_shape,
+                     int64_t num_kernels, const Shape3D& kernel_shape,
+                     const Shape2D& window_strides, bool is_tensor);
 
   std::shared_ptr<yacl::link::Context> GetLink() const { return lctx_; }
 
  private:
   struct Impl;
 
-  explicit CheetahDot(std::shared_ptr<Impl> impl);
+  explicit CheetahDot(std::unique_ptr<Impl> impl);
 
   std::unique_ptr<Impl> impl_{nullptr};
 

@@ -117,9 +117,11 @@ void FilterFileByIndices(const std::string& input, const std::string& output,
     }
     idx++;
   }
+
   SPU_ENFORCE(target_count == indices.size(),
               "logstic error, indices.size={}, target_count={}, please be "
-              "sure the `indices` is sorted");
+              "sure the `indices` is sorted",
+              indices.size(), target_count);
 
   out->Close();
   in->Close();

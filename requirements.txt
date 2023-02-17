@@ -1,11 +1,8 @@
-# Beaware, bazel rules_python requirements parser has a bug parsing line without version spec...
-# So always put a version range in this file
 grpcio>=1.42.0,!=1.48.0
 numpy>=1.22.0
 protobuf>=3.19, <4
 cloudpickle>=2.0.0
 multiprocess>=0.70.12.2
 cachetools>=5.0.0
-jax==0.4.1
-jaxlib==0.4.1
-
+jax>=0.3.15  # Last version that supports numpy 1.9
+jaxlib>=0.3.15

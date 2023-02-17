@@ -34,10 +34,9 @@ ArrayRef AndBB::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
 
   auto* comm = ctx->getState<Communicator>();
   auto ot_prot = ctx->getState<CheetahOTState>()->get();
-  // TODO(juhou): When shareType->nbits() < 8*SizeOf(field), we can create the
-  // exact number of ANDs in a compact form.
-  auto [a, b, c] = ot_prot->AndTriple(field, size * 8 * SizeOf(field),
-                                      shareType->nbits() > 1);
+  // Create `size` AND triples, each contains shareType->nbits() bits
+  // and stored in the low-end bits of the ring element.
+  auto [a, b, c] = ot_prot->AndTriple(field, size, shareType->nbits());
   // open x^a, y^b
   auto res =
       vectorize({ring_xor(lhs, a), ring_xor(rhs, b)}, [&](const ArrayRef& s) {

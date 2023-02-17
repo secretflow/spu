@@ -436,7 +436,7 @@ class SSXgb:
         return self.spu(sigmoid)(pred)
 
 
-if __name__ == '__main__':
+def main():
     x1, x2, y = dsutil.load_dataset_by_config(dataset_config)
     x1, y = ppd.device("P1")(dsutil.load_feature_r1)(x1, y)
     x2 = ppd.device("P2")(dsutil.load_feature_r2)(x2)
@@ -451,5 +451,10 @@ if __name__ == '__main__':
     start = time.time()
     yhat = ppd.get(ss_xgb.predict(dataset, model))
     print(f"predict time {time.time()- start}")
+    score = roc_auc_score(ppd.get(y), yhat)
+    print(f"auc {score}")
+    return score
 
-    print(f"auc {roc_auc_score(ppd.get(y), yhat)}")
+
+if __name__ == '__main__':
+    main()

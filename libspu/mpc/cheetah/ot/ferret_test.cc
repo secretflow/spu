@@ -52,9 +52,10 @@ TEST_P(FerretCOTTest, ChosenCorrelationChosenChoice) {
     auto correlation = xt_adapt<ring2k_t>(_correlation);
     std::vector<ring2k_t> computed[2];
     utils::simulate(kWorldSize, [&](std::shared_ptr<yacl::link::Context> ctx) {
+      auto conn = std::make_shared<Communicator>(ctx);
       int rank = ctx->Rank();
       computed[rank].resize(n);
-      FerretOT ferret(ctx, rank == 0);
+      FerretOT ferret(conn, rank == 0);
       if (rank == 0) {
         ferret.SendCAMCC({correlation.data(), correlation.size()},
                          absl::MakeSpan(computed[0]));
@@ -87,8 +88,9 @@ TEST_P(FerretCOTTest, RndMsgRndChoice) {
     std::vector<ring2k_t> selected(n);
 
     utils::simulate(kWorldSize, [&](std::shared_ptr<yacl::link::Context> ctx) {
+      auto conn = std::make_shared<Communicator>(ctx);
       int rank = ctx->Rank();
-      FerretOT ferret(ctx, rank == 0);
+      FerretOT ferret(conn, rank == 0);
       if (rank == 0) {
         ferret.SendRMRC(absl::MakeSpan(msg0), absl::MakeSpan(msg1), bw);
         ferret.Flush();
@@ -132,8 +134,9 @@ TEST_P(FerretCOTTest, ChosenMsgChosenChoice) {
 
         utils::simulate(kWorldSize,
                         [&](std::shared_ptr<yacl::link::Context> ctx) {
+                          auto conn = std::make_shared<Communicator>(ctx);
                           int rank = ctx->Rank();
-                          FerretOT ferret(ctx, rank == 0);
+                          FerretOT ferret(conn, rank == 0);
                           if (rank == 0) {
                             ferret.SendCMCC({msg.data(), msg.size()}, N, bw);
                             ferret.Flush();

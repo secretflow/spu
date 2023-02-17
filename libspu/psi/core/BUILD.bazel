@@ -157,6 +157,7 @@ spu_cc_library(
     hdrs = ["ecdh_oprf_psi.h"],
     deps = [
         ":communication",
+        "//libspu/core:prelude",
         "//libspu/psi/core/ecdh_oprf:ecdh_oprf_selector",
         "//libspu/psi/utils:batch_provider",
         "//libspu/psi/utils:cipher_store",

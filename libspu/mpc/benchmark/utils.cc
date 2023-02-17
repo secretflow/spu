@@ -13,7 +13,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "utils.h"
+#include "libspu/mpc/benchmark/utils.h"
 
 llvm::cl::opt<uint32_t> cli_rank("rank", llvm::cl::init(0),
                                  llvm::cl::desc("self rank, starts with 0"));

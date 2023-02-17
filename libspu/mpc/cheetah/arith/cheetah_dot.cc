@@ -30,6 +30,7 @@
 #include "spdlog/spdlog.h"
 #include "yacl/link/link.h"
 
+#include "libspu/core/shape_util.h"
 #include "libspu/mpc/cheetah/arith/common.h"
 #include "libspu/mpc/cheetah/arith/conv2d_prot.h"
 #include "libspu/mpc/cheetah/arith/matmat_prot.h"
@@ -46,14 +47,16 @@ struct CheetahDot::Impl : public EnableCPRNG {
 
   ~Impl() = default;
 
+  std::unique_ptr<Impl> Fork();
+
   // Compute C = A*B where |A|=dims[0]xdims[1], |B|=dims[1]xdims[2
   ArrayRef DotOLE(const ArrayRef &prv, yacl::link::Context *conn,
                   const Shape3D &dim3, bool is_lhs);
 
-  NdArrayRef Conv2dOLE(const NdArrayRef &inp, yacl::link::Context *conn,
-                       const Shape3D &tensor_shape, int64_t num_kernels,
-                       const Shape3D &kernel_shape,
-                       const Shape2D &window_strides, bool is_tensor);
+  ArrayRef Conv2dOLE(const ArrayRef &inp, yacl::link::Context *conn,
+                     int64_t input_batch, const Shape3D &tensor_shape,
+                     int64_t num_kernels, const Shape3D &kernel_shape,
+                     const Shape2D &window_strides, bool is_tensor);
 
   static seal::EncryptionParameters DecideSEALParameters(uint32_t ring_bitlen) {
     size_t poly_deg;
@@ -155,6 +158,21 @@ struct CheetahDot::Impl : public EnableCPRNG {
   std::unordered_map<size_t, std::shared_ptr<seal::Encryptor>> pk_encryptors_;
   std::unordered_map<size_t, std::shared_ptr<seal::Decryptor>> decryptors_;
 };
+
+std::unique_ptr<CheetahDot::Impl> CheetahDot::Impl::Fork() {
+  auto f = std::make_unique<Impl>(lctx_->Spawn());
+  if (seal_cntxts_.size() == 0) return f;
+  std::unique_lock<std::shared_mutex> guard(context_lock_);
+
+  f->seal_cntxts_ = seal_cntxts_;
+  f->secret_keys_ = secret_keys_;
+  f->pair_pub_keys_ = pair_pub_keys_;
+  f->ms_helpers_ = ms_helpers_;
+  f->sym_encryptors_ = sym_encryptors_;
+  f->pk_encryptors_ = pk_encryptors_;
+  f->decryptors_ = decryptors_;
+  return f;
+}
 
 void CheetahDot::Impl::LazyInit(size_t field_bitlen) {
   {
@@ -309,25 +327,24 @@ ArrayRef CheetahDot::Impl::DotOLE(const ArrayRef &prv_mat,
   return matmat.ParseResult(field, meta, absl::MakeSpan(mask_mat));
 }
 
-NdArrayRef CheetahDot::Impl::Conv2dOLE(const NdArrayRef &inp,
-                                       yacl::link::Context *conn,
-                                       const Shape3D &tensor_shape,
-                                       int64_t num_kernels,
-                                       const Shape3D &kernel_shape,
-                                       const Shape2D &window_strides,
-                                       bool is_tensor) {
+ArrayRef CheetahDot::Impl::Conv2dOLE(
+    const ArrayRef &inp, yacl::link::Context *conn, int64_t input_batch,
+    const Shape3D &tensor_shape, int64_t num_kernels,
+    const Shape3D &kernel_shape, const Shape2D &window_strides,
+    bool is_tensor) {
   if (conn == nullptr) {
     conn = lctx_.get();
   }
   int nxt_rank = conn->NextRank();
   auto eltype = inp.eltype();
   SPU_ENFORCE(eltype.isa<RingTy>(), "must be ring_type, got={}", eltype);
-  SPU_ENFORCE(inp.numel() > 0);
-
+  SPU_ENFORCE(input_batch > 0 && num_kernels > 0);
   if (is_tensor) {
-    SPU_ENFORCE(IsSameInputShape(inp, tensor_shape));
+    // TODO(juhou): handle 4D for input tensor
+    SPU_ENFORCE(input_batch == 1);
+    SPU_ENFORCE_EQ(inp.numel(), calcNumel(tensor_shape) * input_batch);
   } else {
-    SPU_ENFORCE(IsSameKernelShape(inp, kernel_shape, num_kernels));
+    SPU_ENFORCE_EQ(inp.numel(), calcNumel(kernel_shape) * num_kernels);
   }
 
   auto field = eltype.as<Ring2k>()->field();
@@ -349,9 +366,10 @@ NdArrayRef CheetahDot::Impl::Conv2dOLE(const NdArrayRef &inp,
   meta.window_strides = window_strides;
   auto subshape = conv2d.GetSubTensorShape(meta);
 
-  size_t tensor_n = conv2d.GetInputSize(meta, subshape);
+  size_t num_poly_per_input = conv2d.GetInputSize(meta, subshape);
+  size_t tensor_n = input_batch * num_poly_per_input;
   size_t kernel_n = conv2d.GetKernelSize(meta, subshape);
-  size_t out_n = conv2d.GetOutSize(meta, subshape);
+  size_t out_n = input_batch * conv2d.GetOutSize(meta, subshape);
   bool to_encrypt_tensor = tensor_n < kernel_n;
   bool need_encrypt = !(is_tensor ^ to_encrypt_tensor);
 
@@ -383,6 +401,7 @@ NdArrayRef CheetahDot::Impl::Conv2dOLE(const NdArrayRef &inp,
     }
     return conv2d.ParseResult(field, meta, absl::MakeSpan(result_poly));
   }
+
   // convert local poly to NTT form to perform multiplication.
   for (auto &poly : encoded_poly) {
     NttInplace(poly, this_context);
@@ -423,6 +442,13 @@ CheetahDot::CheetahDot(std::shared_ptr<yacl::link::Context> lctx) {
 
 CheetahDot::~CheetahDot() = default;
 
+CheetahDot::CheetahDot(std::unique_ptr<Impl> impl) : impl_(std::move(impl)) {}
+
+std::unique_ptr<CheetahDot> CheetahDot::Fork() {
+  auto ptr = new CheetahDot(impl_->Fork());
+  return std::unique_ptr<CheetahDot>(ptr);
+}
+
 ArrayRef CheetahDot::DotOLE(const ArrayRef &inp, yacl::link::Context *conn,
                             const Shape3D &dim3, bool is_lhs) {
   SPU_ENFORCE(impl_ != nullptr);
@@ -436,28 +462,24 @@ ArrayRef CheetahDot::DotOLE(const ArrayRef &inp, const Shape3D &dim3,
   return impl_->DotOLE(inp, nullptr, dim3, is_lhs);
 }
 
-NdArrayRef CheetahDot::Conv2dOLE(const NdArrayRef &inp,
-                                 yacl::link::Context *conn,
-                                 const Shape3D &tensor_shape,
-                                 int64_t num_kernels,
-                                 const Shape3D &kernel_shape,
-                                 const Shape2D &window_strides,
-                                 bool is_tensor) {
+ArrayRef CheetahDot::Conv2dOLE(const ArrayRef &inp, yacl::link::Context *conn,
+                               const Shape3D &tensor_shape, int64_t num_kernels,
+                               const Shape3D &kernel_shape,
+                               const Shape2D &window_strides, bool is_tensor) {
   SPU_ENFORCE(impl_ != nullptr);
   SPU_ENFORCE(conn != nullptr);
-  return impl_->Conv2dOLE(inp, conn, tensor_shape, num_kernels, kernel_shape,
-                          window_strides, is_tensor);
+  int64_t input_batch = 1;
+  return impl_->Conv2dOLE(inp, conn, input_batch, tensor_shape, num_kernels,
+                          kernel_shape, window_strides, is_tensor);
 }
 
-NdArrayRef CheetahDot::Conv2dOLE(const NdArrayRef &inp,
-                                 const Shape3D &tensor_shape,
-                                 int64_t num_kernels,
-                                 const Shape3D &kernel_shape,
-                                 const Shape2D &window_strides,
-                                 bool is_tensor) {
+ArrayRef CheetahDot::Conv2dOLE(const ArrayRef &inp, const Shape3D &tensor_shape,
+                               int64_t num_kernels, const Shape3D &kernel_shape,
+                               const Shape2D &window_strides, bool is_tensor) {
   SPU_ENFORCE(impl_ != nullptr);
-  return impl_->Conv2dOLE(inp, nullptr, tensor_shape, num_kernels, kernel_shape,
-                          window_strides, is_tensor);
+  int64_t input_batch = 1;
+  return impl_->Conv2dOLE(inp, nullptr, input_batch, tensor_shape, num_kernels,
+                          kernel_shape, window_strides, is_tensor);
 }
 
 }  // namespace spu::mpc::cheetah

@@ -16,6 +16,7 @@
 
 #include <future>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <vector>
 
@@ -83,6 +84,10 @@ class CachedCsvBatchProvider : public IBatchProvider {
   size_t bucket_index_ = 0;
 
   std::array<std::future<void>, 2> f_read_;
+
+  std::array<std::mutex, 2> bucket_mutex_;
+  std::mutex file_mutex_;
+  bool file_end_flag_ = false;
 };
 
 }  // namespace spu::psi

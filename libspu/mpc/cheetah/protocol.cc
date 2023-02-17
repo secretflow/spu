@@ -13,12 +13,11 @@
 // limitations under the License.
 
 #include "libspu/mpc/cheetah/protocol.h"
-
 // FIXME: both emp-tools & openssl defines AES_KEY, hack the include order to
 // avoid compiler error.
 #include "libspu/mpc/common/prg_state.h"
-
 //
+
 #include "libspu/mpc/cheetah/arithmetic.h"
 #include "libspu/mpc/cheetah/boolean.h"
 #include "libspu/mpc/cheetah/conversion.h"
@@ -48,6 +47,12 @@ std::unique_ptr<Object> makeCheetahProtocol(
   // add Z2k state.
   obj->addState<Z2kState>(conf.field());
 
+  // add Cheetah states
+  obj->addState<cheetah::CheetahMulState>(lctx);
+  obj->addState<cheetah::CheetahDotState>(lctx);
+  // auto conn = std::make_shared<Communicator>(lctx);
+  obj->addState<cheetah::CheetahOTState>(obj->getState<Communicator>());
+
   // register public kernels.
   regPub2kKernels(obj.get());
 
@@ -55,9 +60,6 @@ std::unique_ptr<Object> makeCheetahProtocol(
   regABKernels(obj.get());
 
   // register arithmetic & binary kernels
-  obj->addState<cheetah::CheetahMulState>(lctx);
-  obj->addState<cheetah::CheetahDotState>(lctx);
-  obj->addState<cheetah::CheetahOTState>(lctx);
   obj->regKernel<cheetah::ZeroA>();
   obj->regKernel<cheetah::P2A>();
   obj->regKernel<cheetah::A2P>();
@@ -66,6 +68,7 @@ std::unique_ptr<Object> makeCheetahProtocol(
   obj->regKernel<cheetah::AddAA>();
   obj->regKernel<cheetah::MulAP>();
   obj->regKernel<cheetah::MulAA>();
+  obj->regKernel<cheetah::MulA1B>();
   obj->regKernel<cheetah::MatMulAP>();
   obj->regKernel<cheetah::MatMulAA>();
   obj->regKernel<cheetah::LShiftA>();

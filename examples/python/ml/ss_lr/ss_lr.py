@@ -218,6 +218,7 @@ class SSLR:
     def predict(
         self,
         xs: List[ppd.PYU.Object],
+        y: ppd.PYU.Object,
         w: ppd.SPU.Object,
         reg_type: str,
     ) -> ppd.SPU.Object:
@@ -241,6 +242,11 @@ parser.add_argument(
     "--dataset_config",
     default="examples/python/conf/ds_mock_regression_basic.json",
 )
+parser.add_argument("--epochs", default=10, type=int)
+parser.add_argument("--learning_rate", default=0.1, type=float)
+parser.add_argument("--batch_size", default=1024, type=int)
+parser.add_argument("--penalty", default="None", choices=["None", "L1", "L2"])
+parser.add_argument("--l2_norm", default=0.0, type=float)
 args = parser.parse_args()
 
 with open(args.config, 'r') as file:
@@ -253,7 +259,8 @@ ppd.init(conf["nodes"], conf["devices"])
 
 REGTYPE = None
 
-if __name__ == '__main__':
+
+def train():
     if dataset_config["problem_type"] == "regression":
         REGTYPE = RegType.Linear.value
     elif dataset_config["problem_type"] == "classification":
@@ -269,22 +276,27 @@ if __name__ == '__main__':
     model = sslr.fit(
         xs,
         y,
-        epochs=10,
-        learning_rate=0.1,
-        batch_size=1024,
+        epochs=args.epochs,
+        learning_rate=args.learning_rate,
+        batch_size=args.batch_size,
         reg_type=REGTYPE,
-        penalty='None',
-        l2_norm=0.0,
+        penalty=args.penalty,
+        l2_norm=args.l2_norm,
     )
     print(f"train time {time.time()- start}")
 
     start = time.time()
-    yhat = ppd.get(sslr.predict(xs=xs, w=model, reg_type=REGTYPE))
+    yhat = ppd.get(sslr.predict(xs=xs, y=y, w=model, reg_type=REGTYPE))
     print(f"predict time {time.time()- start}")
 
     if REGTYPE == RegType.Linear.value:
-        print(
-            f"explained variance score {explained_variance_score(ppd.get(y), ppd.get(yhat))}"
-        )
+        score = explained_variance_score(ppd.get(y), ppd.get(yhat))
+        print(f"explained variance score {score}")
     else:
-        print(f"auc {roc_auc_score(ppd.get(y), ppd.get(yhat))}")
+        score = roc_auc_score(ppd.get(y), ppd.get(yhat))
+        print(f"auc {score}")
+    return score
+
+
+if __name__ == '__main__':
+    train()

@@ -68,9 +68,55 @@ ArrayRef MsbA2B::proc(KernelEvalContext* ctx, const ArrayRef& x) const {
   });
 }
 
+ArrayRef MulA1B::proc(KernelEvalContext* ctx, const ArrayRef& x,
+                      const ArrayRef& y) const {
+  SPU_TRACE_MPC_LEAF(ctx, x, y);
+  SPU_ENFORCE_EQ(x.numel(), y.numel());
+  auto ot_prot = ctx->getState<CheetahOTState>()->get();
+  return ot_prot->Multiplexer(x, y).as(x.eltype());
+}
+
 ArrayRef MulAA::proc(KernelEvalContext* ctx, const ArrayRef& x,
                      const ArrayRef& y) const {
   SPU_TRACE_MPC_LEAF(ctx, x, y);
+  size_t batch_sze = ctx->getState<CheetahMulState>()->get()->OLEBatchSize();
+  size_t numel = x.numel();
+  if (numel >= batch_sze) {
+    // TODO(juhou): combine mulWithBeaver and mulDirectly to save time
+    return mulDirectly(ctx, x, y);
+  }
+  return mulWithBeaver(ctx, x, y);
+}
+
+ArrayRef MulAA::mulWithBeaver(KernelEvalContext* ctx, const ArrayRef& x,
+                              const ArrayRef& y) const {
+  const int64_t numel = x.numel();
+  const auto field = ctx->getState<Z2kState>()->getDefaultField();
+  auto [a, b, c] =
+      ctx->getState<CheetahMulState>()->TakeCachedBeaver(field, numel);
+  YACL_ENFORCE_EQ(a.numel(), numel);
+
+  auto* comm = ctx->caller()->getState<Communicator>();
+  // Open x-a & y - b
+  auto res =
+      vectorize({ring_sub(x, a), ring_sub(y, b)}, [&](const ArrayRef& s) {
+        return comm->allReduce(ReduceOp::ADD, s, kBindName);
+      });
+  auto x_a = std::move(res[0]);
+  auto y_b = std::move(res[1]);
+
+  // Zi = Ci + (X - A) * Bi + (Y - B) * Ai + <(X - A) * (Y - B)>
+  auto z = ring_add(ring_add(ring_mul(x_a, b), ring_mul(y_b, a)), c);
+  if (comm->getRank() == 0) {
+    // z += (X-A) * (Y-B);
+    ring_add_(z, ring_mul(x_a, y_b));
+  }
+
+  return z.as(x.eltype());
+}
+
+ArrayRef MulAA::mulDirectly(KernelEvalContext* ctx, const ArrayRef& x,
+                            const ArrayRef& y) const {
   // (x0 + x1) * (y0+ y1)
   // Compute the cross terms x0*y1, x1*y0 homomorphically
   auto* comm = ctx->getState<Communicator>();

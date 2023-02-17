@@ -245,8 +245,10 @@ def optimize_club(num_steps: int, run_on_spu: bool):
     print(f"Ground truth: {labels}")
     if run_on_spu:
         print(f"SPU prediction: {predict(ppd.get(params))}")
+        return accuracy(ppd.get(params)).item()
     else:
         print(f"CPU prediction: {predict(params)}")
+        return accuracy(params).item()
 
 
 import argparse

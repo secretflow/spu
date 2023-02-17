@@ -93,10 +93,6 @@ spu_cc_library(
     name = "linalg",
     srcs = ["linalg.cc"],
     hdrs = ["linalg.h"],
-    linkopts = select({
-        "@bazel_tools//src/conditions:darwin": [],
-        "//conditions:default": ["-fopenmp"],
-    }),
     deps = [
         "@com_github_eigenteam_eigen//:eigen3",
         "//libspu/core:parallel_utils",
