@@ -27,7 +27,7 @@ function build_spu() {
             --cap-add=NET_ADMIN \
             --privileged=true \
             --entrypoint "./build_wheel_entrypoint.sh" \
-            registry.hub.docker.com/secretflow/sf-gcc11-centos7-amd64-release:latest
+            registry.hub.docker.com/secretflow/release-ci:latest
     elif [[ "$OSTYPE" == "darwin"* ]]; then
         sh ./build_wheel_entrypoint.sh
     fi
