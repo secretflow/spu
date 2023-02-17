@@ -95,7 +95,11 @@ spu_cc_library(
     hdrs = ["cipher_store.h"],
     deps = [
         ":hash_bucket_cache",
-    ],
+    ] + select({
+        "@bazel_tools//src/conditions:darwin_x86_64": ["@local_homebrew_x64//:openmp"],
+        "@bazel_tools//src/conditions:darwin_arm64": ["@local_homebrew_arm64//:openmp"],
+        "//conditions:default": [],
+    }),
 )
 
 spu_cc_library(
