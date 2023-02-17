@@ -164,7 +164,11 @@ spu_cc_library(
         "@com_google_absl//absl/strings",
         "@yacl//yacl/link",
         "@yacl//yacl/utils:parallel",
-    ],
+    ] + select({
+        "@bazel_tools//src/conditions:darwin_x86_64": ["@local_homebrew_x64//:openmp"],
+        "@bazel_tools//src/conditions:darwin_arm64": ["@local_homebrew_arm64//:openmp"],
+        "//conditions:default": [],
+    }),
 )
 
 spu_cc_test(
