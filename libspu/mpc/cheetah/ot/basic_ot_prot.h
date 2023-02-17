@@ -21,9 +21,11 @@ namespace spu::mpc::cheetah {
 
 class BasicOTProtocols {
  public:
-  explicit BasicOTProtocols(std::shared_ptr<yacl::link::Context> conn);
+  explicit BasicOTProtocols(std::shared_ptr<Communicator> conn);
 
   ~BasicOTProtocols();
+
+  std::unique_ptr<BasicOTProtocols> Fork();
 
   int Rank() const;
 
@@ -31,16 +33,18 @@ class BasicOTProtocols {
 
   ArrayRef RandBits(FieldType filed, size_t numel);
 
-  std::array<ArrayRef, 3> AndTriple(FieldType field, size_t numel,
-                                    bool packed = true);
+  // msg * select for select \in {0, 1}
+  ArrayRef Multiplexer(const ArrayRef &msg, const ArrayRef &select);
+
+  // Create `numel` of AND-triple. Each element contains `k` bits
+  // 1 <= k <= field size
+  std::array<ArrayRef, 3> AndTriple(FieldType field, size_t numel, size_t k);
 
   ArrayRef BitwiseAnd(const ArrayRef &lhs, const ArrayRef &rhs);
 
   std::shared_ptr<FerretOT> GetSenderCOT() { return ferret_sender_; }
 
   std::shared_ptr<FerretOT> GetReceiverCOT() { return ferret_receiver_; }
-
-  std::shared_ptr<yacl::link::Context> GetLink() { return conn_; }
 
   void Flush();
 
@@ -53,7 +57,7 @@ class BasicOTProtocols {
   ArrayRef PackedB2A(const ArrayRef &inp);
 
  private:
-  std::shared_ptr<yacl::link::Context> conn_;
+  std::shared_ptr<Communicator> conn_;
   std::shared_ptr<FerretOT> ferret_sender_;
   std::shared_ptr<FerretOT> ferret_receiver_;
 };

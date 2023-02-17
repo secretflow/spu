@@ -161,7 +161,10 @@ ArrayRef MsbA2B::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
   }
 
   // Compute the k-1'th carry bit.
-  const size_t k = SizeOf(field) * 8 - 1;
+  size_t k = SizeOf(field) * 8 - 1;
+  if (in.numel() == 0) {
+    k = 0;  // Empty matrix
+  }
 
   auto* obj = ctx->caller();
   ArrayRef carry = common::carry_out(obj, bshrs[0], bshrs[1], k);

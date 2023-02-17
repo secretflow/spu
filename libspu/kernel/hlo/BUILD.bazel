@@ -53,6 +53,9 @@ spu_cc_test(
     deps = [
         ":basic_binary",
         ":const",
+        ":test_utils",
+        "//libspu/kernel/hal",
+        "//libspu/mpc/utils:simulate",
     ],
 )
 
@@ -72,6 +75,9 @@ spu_cc_test(
     deps = [
         ":basic_ternary",
         ":const",
+        ":test_utils",
+        "//libspu/kernel/hal",
+        "//libspu/mpc/utils:simulate",
     ],
 )
 
@@ -91,6 +97,9 @@ spu_cc_test(
     deps = [
         ":basic_unary",
         ":const",
+        ":test_utils",
+        "//libspu/kernel/hal",
+        "//libspu/mpc/utils:simulate",
     ],
 )
 
@@ -195,6 +204,7 @@ spu_cc_library(
     srcs = ["geometrical.cc"],
     hdrs = ["geometrical.h"],
     deps = [
+        ":basic_binary",
         ":utils",
         "//libspu/kernel/hal",
     ],
@@ -206,6 +216,8 @@ spu_cc_test(
     deps = [
         ":const",
         ":geometrical",
+        ":test_utils",
+        "//libspu/mpc/utils:simulate",
     ],
 )
 
@@ -297,5 +309,13 @@ spu_cc_test(
     srcs = ["shuffle_test.cc"],
     deps = [
         ":shuffle",
+    ],
+)
+
+spu_cc_library(
+    name = "test_utils",
+    hdrs = ["test_utils.h"],
+    deps = [
+        "//libspu:spu_cc_proto",
     ],
 )

@@ -14,8 +14,7 @@
 
 #include "libspu/mpc/cheetah/ot/basic_ot_prot.h"
 
-#include "yacl/link/link.h"
-
+#include "libspu/mpc/cheetah/ot/util.h"
 #include "libspu/mpc/common/communicator.h"
 #include "libspu/mpc/semi2k/type.h"
 #include "libspu/mpc/utils/ring_ops.h"
@@ -24,36 +23,22 @@ namespace spu::mpc::cheetah {
 
 using BShrTy = semi2k::BShrTy;
 
-template <typename T>
-inline T CeilDiv(T a, T b) {
-  return (a + b - 1) / b;
+BasicOTProtocols::BasicOTProtocols(std::shared_ptr<Communicator> conn)
+    : conn_(std::move(conn)) {
+  SPU_ENFORCE(conn_ != nullptr);
+  if (conn_->getRank() == 0) {
+    ferret_sender_ = std::make_shared<FerretOT>(conn_, true);
+    ferret_receiver_ = std::make_shared<FerretOT>(conn_, false);
+  } else {
+    ferret_receiver_ = std::make_shared<FerretOT>(conn_, false);
+    ferret_sender_ = std::make_shared<FerretOT>(conn_, true);
+  }
 }
 
-inline uint8_t BoolToU8(const uint8_t *bits, size_t len = 0) {
-  if (0 == len) {
-    len = 8;
-  } else {
-    len = std::min(8UL, len);
-  }
-
-  return std::accumulate(
-      bits, bits + len,
-      /*init*/ static_cast<uint8_t>(0),
-      [](uint8_t init, uint8_t next) { return (init << 1) | (next & 1); });
-}
-
-BasicOTProtocols::BasicOTProtocols(std::shared_ptr<yacl::link::Context> conn)
-    : conn_(conn) {
-  SPU_ENFORCE(conn != nullptr);
-  // NOTE(juhou): we create a seperate link for OT
-  // std::shared_ptr<yacl::link::Context> ot_conn{conn->Spawn()};
-  if (conn->Rank() == 0) {
-    ferret_sender_ = std::make_shared<FerretOT>(conn, true);
-    ferret_receiver_ = std::make_shared<FerretOT>(conn, false);
-  } else {
-    ferret_receiver_ = std::make_shared<FerretOT>(conn, false);
-    ferret_sender_ = std::make_shared<FerretOT>(conn, true);
-  }
+std::unique_ptr<BasicOTProtocols> BasicOTProtocols::Fork() {
+  // TODO(juhou) we can take from cached ROTs from the caller
+  auto conn = std::make_shared<Communicator>(conn_->lctx()->Spawn());
+  return std::make_unique<BasicOTProtocols>(conn);
 }
 
 BasicOTProtocols::~BasicOTProtocols() { Flush(); }
@@ -92,7 +77,7 @@ ArrayRef BasicOTProtocols::PackedB2A(const ArrayRef &inp) {
     DISPATCH_ALL_FIELDS(field, "", [&]() {
       auto xb = ArrayView<const ring2k_t>(bform);
       auto xi = ArrayView<ring2k_t>(iform);
-      YACL_ENFORCE(xb.isCompact());
+      SPU_ENFORCE(xb.isCompact());
       for (size_t i = 0; i < n; ++i) {
         // LSB is bits[0]; MSB is bits[nbits - 1]
         // We use reverse_iterator to iterate the bits.
@@ -114,9 +99,8 @@ ArrayRef BasicOTProtocols::PackedB2A(const ArrayRef &inp) {
 
   // open c = x ^ r
   // FIXME(juhou): Actually, we only want to exchange the low-end bits.
-  Communicator communicator(conn_);
-  auto opened = communicator.allReduce(ReduceOp::XOR, ring_xor(inp, rand),
-                                       "B2AFull_open");
+  auto opened =
+      conn_->allReduce(ReduceOp::XOR, ring_xor(inp, rand), "B2AFull_open");
 
   // compute c + (1 - 2*c)*<r>
   ArrayRef oup = ring_zeros(field, n);
@@ -163,7 +147,7 @@ ArrayRef BasicOTProtocols::SingleB2A(const ArrayRef &inp) {
     using u2k = std::make_unsigned<ring2k_t>::type;
     auto xinp = ArrayView<const u2k>(inp);
     auto xoup = ArrayView<u2k>(oup);
-    YACL_ENFORCE(xoup.isCompact());
+    SPU_ENFORCE(xoup.isCompact());
 
     if (Rank() == 0) {
       std::vector<u2k> corr_data(n);
@@ -201,16 +185,14 @@ ArrayRef BasicOTProtocols::BitwiseAnd(const ArrayRef &lhs,
   auto field = lhs.eltype().as<Ring2k>()->field();
   const auto *shareType = lhs.eltype().as<semi2k::BShrTy>();
   size_t size = lhs.numel();
-  auto [a, b, c] = AndTriple(field, size * shareType->nbits(),
-                             /*packed*/ shareType->nbits() > 1);
+  auto [a, b, c] = AndTriple(field, size, shareType->nbits());
 
-  Communicator comm(conn_);
   // open x^a, y^b
-  auto x_a = comm.allReduce(ReduceOp::XOR, ring_xor(lhs, a), "BitwiseAnd");
-  auto y_b = comm.allReduce(ReduceOp::XOR, ring_xor(rhs, b), "BitwiseAnd");
+  auto x_a = conn_->allReduce(ReduceOp::XOR, ring_xor(lhs, a), "BitwiseAnd");
+  auto y_b = conn_->allReduce(ReduceOp::XOR, ring_xor(rhs, b), "BitwiseAnd");
   // Zi = Ci ^ ((X ^ A) & Bi) ^ ((Y ^ B) & Ai) ^ <(X ^ A) & (Y ^ B)>
   auto z = ring_xor(ring_xor(ring_and(x_a, b), ring_and(y_b, a)), c);
-  if (conn_->Rank() == 0) {
+  if (conn_->getRank() == 0) {
     ring_xor_(z, ring_and(x_a, y_b));
   }
 
@@ -218,67 +200,104 @@ ArrayRef BasicOTProtocols::BitwiseAnd(const ArrayRef &lhs,
 }
 
 std::array<ArrayRef, 3> BasicOTProtocols::AndTriple(FieldType field,
-                                                    size_t numel, bool packed) {
+                                                    size_t numel,
+                                                    size_t nbits_each) {
   SPU_ENFORCE(numel > 0);
+  SPU_ENFORCE(nbits_each >= 1 && nbits_each <= SizeOf(field) * 8,
+              "invalid packing load {} for one AND", nbits_each);
 
-  std::vector<uint8_t> a(numel);
-  std::vector<uint8_t> b(numel);
-  std::vector<uint8_t> c(numel);
-
-  std::vector<uint8_t> u(numel);
-  std::vector<uint8_t> v(numel);
-
-  constexpr size_t bit_width = 1;
+  // NOTE(juhou): we use uint8_t to store 1-bit ROT
+  constexpr size_t ot_msg_width = 1;
+  std::vector<uint8_t> a(numel * nbits_each);
+  std::vector<uint8_t> b(numel * nbits_each);
+  std::vector<uint8_t> v(numel * nbits_each);
+  std::vector<uint8_t> u(numel * nbits_each);
   if (0 == Rank()) {
-    ferret_receiver_->RecvRMRC(/*choice*/ absl::MakeSpan(a),
-                               /*msg*/ absl::MakeSpan(u), bit_width);
-    ferret_sender_->SendRMRC(absl::MakeSpan(v), absl::MakeSpan(b), bit_width);
+    ferret_receiver_->RecvRMRC(absl::MakeSpan(a), absl::MakeSpan(u),
+                               ot_msg_width);
+    ferret_sender_->SendRMRC(absl::MakeSpan(v), absl::MakeSpan(b),
+                             ot_msg_width);
+    ferret_sender_->Flush();
   } else {
-    ferret_sender_->SendRMRC(absl::MakeSpan(v), absl::MakeSpan(b), bit_width);
-    ferret_receiver_->RecvRMRC(/*choice*/ absl::MakeSpan(a),
-                               /*msg*/ absl::MakeSpan(u), bit_width);
+    ferret_sender_->SendRMRC(absl::MakeSpan(v), absl::MakeSpan(b),
+                             ot_msg_width);
+    ferret_sender_->Flush();
+    ferret_receiver_->RecvRMRC(absl::MakeSpan(a), absl::MakeSpan(u),
+                               ot_msg_width);
   }
-  ferret_sender_->Flush();
 
-  for (size_t i = 0; i < numel; i++) {
+  std::vector<uint8_t> c(numel * nbits_each);
+  pforeach(0, c.size(), [&](int64_t i) {
     b[i] = b[i] ^ v[i];
     c[i] = (a[i] & b[i]) ^ u[i] ^ v[i];
-  }
-
-  const size_t n = CeilDiv(numel, packed ? 8UL * SizeOf(field) : 1UL);
-
-  ArrayRef _a = ring_zeros(field, n);
-  ArrayRef _b = ring_zeros(field, n);
-  ArrayRef _c = ring_zeros(field, n);
-
-  DISPATCH_ALL_FIELDS(field, "", [&]() {
-    if (not packed) {
-      auto xa = ArrayView<ring2k_t>(_a);
-      auto xb = ArrayView<ring2k_t>(_b);
-      auto xc = ArrayView<ring2k_t>(_c);
-
-      SPU_ENFORCE_EQ(n, numel);
-      for (size_t i = 0; i < n; ++i) {
-        xa[i] = static_cast<ring2k_t>(a[i]);
-        xb[i] = static_cast<ring2k_t>(b[i]);
-        xc[i] = static_cast<ring2k_t>(c[i]);
-      }
-    } else {
-      auto xa = ArrayView<uint8_t>(_a);
-      auto xb = ArrayView<uint8_t>(_b);
-      auto xc = ArrayView<uint8_t>(_c);
-      for (size_t i = 0; i < numel; i += 8) {
-        size_t sze = std::min(i + 8, numel) - i;
-        xa[i >> 3] = BoolToU8(a.data() + i, sze);
-        xb[i >> 3] = BoolToU8(b.data() + i, sze);
-        xc[i >> 3] = BoolToU8(c.data() + i, sze);
-      }
-    }
   });
 
-  return {_a, _b, _c};
+  // init as zero
+  ArrayRef AND_a = ring_zeros(field, numel);
+  ArrayRef AND_b = ring_zeros(field, numel);
+  ArrayRef AND_c = ring_zeros(field, numel);
+  DISPATCH_ALL_FIELDS(field, "AndTriple", [&]() {
+    auto AND_xa = ArrayView<ring2k_t>(AND_a);
+    auto AND_xb = ArrayView<ring2k_t>(AND_b);
+    auto AND_xc = ArrayView<ring2k_t>(AND_c);
+    pforeach(0, numel, [&](int64_t i) {
+      int64_t bgn = i * nbits_each;
+      int64_t end = bgn + nbits_each;
+      for (int64_t j = bgn; j < end; ++j) {
+        AND_xa[i] = (AND_xa[i] << 1) | (a[j] & 1);
+        AND_xb[i] = (AND_xb[i] << 1) | (b[j] & 1);
+        AND_xc[i] = (AND_xc[i] << 1) | (c[j] & 1);
+      }
+    });
+  });
+
+  return {AND_a, AND_b, AND_c};
 }
 
 int BasicOTProtocols::Rank() const { return ferret_sender_->Rank(); }
 
+ArrayRef BasicOTProtocols::Multiplexer(const ArrayRef &msg,
+                                       const ArrayRef &select) {
+  SPU_ENFORCE_EQ(msg.numel(), select.numel());
+  const auto *shareType = select.eltype().as<semi2k::BShrTy>();
+  SPU_ENFORCE_EQ(shareType->nbits(), 1UL);
+
+  const auto field = msg.eltype().as<Ring2k>()->field();
+  const size_t size = msg.numel();
+
+  ArrayRef _corr_data = ring_zeros(field, size);
+  ArrayRef _sent = ring_zeros(field, size);
+  ArrayRef _recv = ring_zeros(field, size);
+  std::vector<uint8_t> sel(size);
+  // Compute (x0 + x1) * (b0 ^ b1)
+  // Also b0 ^ b1 = 1 - 2*b0*b1
+  return DISPATCH_ALL_FIELDS(field, "Multiplexer", [&]() {
+    ArrayView<const ring2k_t> _msg(msg);
+    ArrayView<const ring2k_t> _sel(select);
+    ArrayView<ring2k_t> corr_data(_corr_data);
+    ArrayView<ring2k_t> sent(_sent);
+    ArrayView<ring2k_t> recv(_recv);
+
+    pforeach(0, size, [&](int64_t i) {
+      sel[i] = static_cast<uint8_t>(_sel[i] & 1);
+      corr_data[i] = _msg[i] * (1 - 2 * sel[i]);
+    });
+
+    if (Rank() == 0) {
+      ferret_sender_->SendCAMCC({corr_data.data(), size}, {sent.data(), size});
+      ferret_sender_->Flush();
+      ferret_receiver_->RecvCAMCC(absl::MakeSpan(sel), {recv.data(), size});
+    } else {
+      ferret_receiver_->RecvCAMCC(absl::MakeSpan(sel), {recv.data(), size});
+      ferret_sender_->SendCAMCC({corr_data.data(), size}, {sent.data(), size});
+      ferret_sender_->Flush();
+    }
+
+    pforeach(0, size, [&](int64_t i) {
+      recv[i] = _msg[i] * static_cast<ring2k_t>(sel[i]) - sent[i] + recv[i];
+    });
+
+    return _recv;
+  });
+}
 }  // namespace spu::mpc::cheetah

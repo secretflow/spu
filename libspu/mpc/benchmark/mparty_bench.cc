@@ -12,13 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "mparty_bench.h"
+#include "libspu/mpc/benchmark/mparty_bench.h"
 
 #include "absl/strings/str_split.h"
 #include "llvm/Support/CommandLine.h"
-#include "utils.h"
 
 #include "libspu/mpc/aby3/protocol.h"
+#include "libspu/mpc/benchmark/utils.h"
 #include "libspu/mpc/semi2k/protocol.h"
 
 namespace spu::mpc::bench {

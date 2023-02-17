@@ -52,7 +52,8 @@ ArrayRef RandA::proc(KernelEvalContext* ctx, size_t size) {
   // - https://eprint.iacr.org/2019/599.pdf
   // It's safer to keep the number within [-2**(k-2), 2**(k-2)) for comparison
   // operations.
-  return ring_rshift(prg_state->genPriv(field, size), 2);
+  return ring_rshift(prg_state->genPriv(field, size), 2)
+      .as(makeType<AShrTy>(field));
 }
 
 ArrayRef P2A::proc(KernelEvalContext* ctx, const ArrayRef& in) const {

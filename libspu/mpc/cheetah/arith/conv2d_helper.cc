@@ -23,12 +23,6 @@ namespace spu::mpc::cheetah {
 [[maybe_unused]] constexpr int kC = 2;
 [[maybe_unused]] constexpr int kO = 3;
 
-// Reference:
-// https://github.com/numpy/numpy/blob/c652fcbd9c7d651780ea56f078c8609932822cf7/numpy/core/src/multiarray/shape.c#L371
-static bool attempt_nocopy_reshape(const NdArrayRef &old,
-                                   absl::Span<const int64_t> new_shape,
-                                   std::vector<int64_t> &new_strides);
-
 InputIndexer::InputIndexer(Shape3D ishape, Shape3D fshape) {
   SPU_ENFORCE_EQ(ishape[kC], fshape[kC]);
   shape_ = ishape;
@@ -67,71 +61,28 @@ int64_t KernelIndexer::operator()(int64_t h, int64_t w, int64_t c) const {
   return begin_ - c * offset_ - h * row_nskip_ - w;
 }
 
-NdArrayRef SliceDim(const NdArrayRef &in, int64_t dim, int64_t at) {
-  int64_t ndim = in.ndim();
-  std::vector<int64_t> shape = in.shape();
-  SPU_ENFORCE(dim >= 0 && dim < ndim);
-  SPU_ENFORCE(at >= 0 && at < shape[dim]);
-
-  std::vector<int64_t> start_indices(ndim, 0);
-  std::vector<int64_t> end_indices = shape;
-  std::vector<int64_t> strides(ndim, 1);
-  // clip on the target dimension
-  start_indices[dim] = at;
-  end_indices[dim] = at + 1;
-
-  std::vector<int64_t> new_shape(ndim, 0);
-  std::vector<int64_t> new_strides(in.strides());
-  for (int64_t idx = 0; idx < ndim; ++idx) {
-    SPU_ENFORCE(end_indices[idx] <= shape[idx],
-                "Slice end at axis {} = {} is larger than input shape {}", idx,
-                end_indices[idx], shape[idx]);
-    new_shape[idx] = std::max(end_indices[idx] - start_indices[idx],
-                              static_cast<int64_t>(0));
-    if (!strides.empty()) {
-      auto n = new_shape[idx] / strides[idx];
-      auto q = new_shape[idx] % strides[idx];
-      new_shape[idx] = n + static_cast<int64_t>(q != 0);
-      new_strides[idx] *= strides[idx];
-    }
-  }
-
-  // Ref to hal::slice()
-  auto ret = NdArrayRef(in.buf(), in.eltype(), new_shape, new_strides,
-                        &in.at(start_indices) - in.buf()->data<std::byte>());
-  // Ref to hal::reshape()
-  std::vector<int64_t> to_shape = new_shape;
-  // drop the target dimension
-  to_shape.erase(to_shape.begin() + dim);
-  new_strides.resize(to_shape.size());
-  if (attempt_nocopy_reshape(ret, to_shape, new_strides)) {
-    return NdArrayRef(ret.buf(), ret.eltype(), to_shape, new_strides,
-                      ret.offset());
-  }
-  // we need to make clone in this case for reshape
-  ret = ret.clone();  // compact clone
-  return NdArrayRef(ret.buf(), ret.eltype(), to_shape);
-}
-
-Sliced3DTensor::Sliced3DTensor(const NdArrayRef &base, const Shape3D &offsets,
-                               const Shape3D &extents)
+Sliced3DTensor::Sliced3DTensor(const ArrayRef &base, const Shape3D &shape,
+                               const Shape3D &offsets, const Shape3D &extents)
     : base_(base),
+      base_shape_(shape),
       offsets_(offsets),
       extents_(extents),
-      mock_extents_(extents) {}
+      zero_pad_extents_(extents) {
+  SPU_ENFORCE_EQ(base_.numel(), calcNumel(base_shape_));
+  flatten_strides_ = {shape[1] * shape[2], shape[2], 1LL};
+}
 
-Sliced3DTensor Sliced3DTensor::Wrap(const NdArrayRef &base,
+Sliced3DTensor Sliced3DTensor::Wrap(const ArrayRef &base, const Shape3D &shape,
                                     const Shape3D &offsets,
                                     const Shape3D &extents) {
-  SPU_ENFORCE_EQ(base.ndim(), 3UL);
+  SPU_ENFORCE_EQ(base.numel(), calcNumel(shape));
 
   for (int d = 0; d < 3; ++d) {
-    SPU_ENFORCE(extents[d] > 0 &&
-                base.dim(d) >= static_cast<size_t>(extents[d]));
+    SPU_ENFORCE(extents[d] > 0 && shape[d] >= extents[d]);
     SPU_ENFORCE(offsets[d] >= 0);
   }
 
-  return Sliced3DTensor(base, offsets, extents);
+  return Sliced3DTensor(base, shape, offsets, extents);
 }
 
 FieldType Sliced3DTensor::field() const {
@@ -172,8 +123,10 @@ Shape3D Conv2DHelper::GetSliceShape(
   return sliced_shape;
 }
 
-Sliced3DTensor Conv2DHelper::partition(
-    const NdArrayRef &base, const std::array<int64_t, 3> &indices) const {
+Sliced3DTensor Conv2DHelper::Slice(
+    const ArrayRef &base, const Shape3D &shape,
+    const std::array<int64_t, 3> &indices) const {
+  SPU_ENFORCE_EQ(base.numel(), calcNumel(shape));
   Shape3D extents = GetSliceShape(indices);
 
   Shape3D offsets;
@@ -186,7 +139,7 @@ Sliced3DTensor Conv2DHelper::partition(
     clipped_size -= offsets[d];
     SPU_ENFORCE(clipped_size > 0);
   }
-  return Sliced3DTensor::Wrap(base, offsets, extents);
+  return Sliced3DTensor::Wrap(base, shape, offsets, extents);
 }
 
 void Conv2DHelper::GetResultCoefficients(std::array<int64_t, 3> indices,
@@ -234,80 +187,6 @@ void Conv2DHelper::GetResultCoefficients(std::array<int64_t, 3> indices,
   if (oshape != nullptr) {
     *oshape = out_shape;
   }
-}
-
-bool attempt_nocopy_reshape(const NdArrayRef &old,
-                            absl::Span<const int64_t> new_shape,
-                            std::vector<int64_t> &new_strides) {
-  size_t oldnd;
-  std::vector<int64_t> olddims(old.shape().size());
-  std::vector<int64_t> oldstrides(old.strides().size());
-  size_t oi;
-  size_t oj;
-  size_t ok;
-  size_t ni;
-  size_t nj;
-  size_t nk;
-
-  oldnd = 0;
-  /*
-   * Remove axes with dimension 1 from the old array. They have no effect
-   * but would need special cases since their strides do not matter.
-   */
-  for (oi = 0; oi < old.shape().size(); oi++) {
-    if (old.shape()[oi] != 1) {
-      olddims[oldnd] = old.shape()[oi];
-      oldstrides[oldnd] = old.strides()[oi];
-      oldnd++;
-    }
-  }
-
-  /* oi to oj and ni to nj give the axis ranges currently worked with */
-  oi = 0;
-  oj = 1;
-  ni = 0;
-  nj = 1;
-  while (ni < new_shape.size() && oi < oldnd) {
-    auto np = new_shape[ni];
-    auto op = olddims[oi];
-
-    while (np != op) {
-      if (np < op) {
-        /* Misses trailing 1s, these are handled later */
-        np *= new_shape[nj++];
-      } else {
-        op *= olddims[oj++];
-      }
-    }
-
-    /* Check whether the original axes can be combined */
-    for (ok = oi; ok < oj - 1; ok++) {
-      if (oldstrides[ok] != olddims[ok + 1] * oldstrides[ok + 1]) {
-        /* not contiguous enough */
-        return false;
-      }
-    }
-
-    /* Calculate new strides for all axes currently worked with */
-    new_strides[nj - 1] = oldstrides[oj - 1];
-    for (nk = nj - 1; nk > ni; nk--) {
-      new_strides[nk - 1] = new_strides[nk] * new_shape[nk];
-    }
-
-    ni = nj++;
-    oi = oj++;
-  }
-
-  for (size_t idx = 0; idx < new_shape.size(); ++idx) {
-    if (new_shape[idx] == 1) {
-      // During attempt_nocopy_reshape strides for 1 sized dimensions are not
-      // set to 0, which can be a problem if this value is later broadcasted
-      // in this dimension, so force set to 0 here
-      new_strides[idx] = 0;
-    }
-  }
-
-  return true;
 }
 
 }  // namespace spu::mpc::cheetah

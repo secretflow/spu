@@ -19,10 +19,10 @@
 
 namespace spu::kernel::hlo {
 
-spu::Value Constant(HalContext *ctx, PtBufferView view,
+spu::Value Constant(HalContext *ctx, const PtBufferView &view,
                     absl::Span<const int64_t> out_shape) {
   if (view.shape == out_shape) {
-    return hal::constant(ctx, std::move(view));
+    return hal::constant(ctx, view);
   } else {
     auto s = hal::constant(ctx, view);
     return hal::broadcast_to(ctx, s, out_shape);

@@ -39,7 +39,7 @@ using OtBaseTyp = emp::block;
 // Because emp::FerretCOT needs a uniform API of emp::IOChannel
 class CheetahIO : public emp::IOChannel<CheetahIO> {
  public:
-  std::shared_ptr<yacl::link::Context> ctx_;
+  std::shared_ptr<Communicator> conn_;
 
   constexpr static uint64_t SEND_BUFFER_SIZE = 1024 * 1024;
 
@@ -49,11 +49,11 @@ class CheetahIO : public emp::IOChannel<CheetahIO> {
   std::vector<uint8_t> send_buffer_;
   uint64_t send_buffer_used_;
 
-  yacl::Buffer recv_buffer_;
+  std::vector<uint8_t> recv_buffer_;
   uint64_t recv_buffer_used_;
 
-  explicit CheetahIO(std::shared_ptr<yacl::link::Context> ctx)
-      : ctx_(std::move(ctx)),
+  explicit CheetahIO(std::shared_ptr<Communicator> conn)
+      : conn_(std::move(conn)),
         send_op_(0),
         recv_op_(0),
         send_buffer_used_(0),
@@ -74,18 +74,18 @@ class CheetahIO : public emp::IOChannel<CheetahIO> {
       return;
     }
 
-    ctx_->SendAsync(
-        ctx_->NextRank(),
-        yacl::ByteContainerView(send_buffer_.data(), send_buffer_used_),
-        fmt::format("Cheetah send:{}", send_op_++));
+    conn_->sendAsync(
+        conn_->nextRank(),
+        absl::Span<const uint8_t>{send_buffer_.data(), send_buffer_used_},
+        fmt::format("CheetahIO send:{}", send_op_++));
 
     std::memset(send_buffer_.data(), 0, SEND_BUFFER_SIZE);
     send_buffer_used_ = 0;
   }
 
   void fill_recv() {
-    recv_buffer_ = ctx_->Recv(ctx_->NextRank(),
-                              fmt::format("Cheetah recv:{}", recv_op_++));
+    recv_buffer_ = conn_->recv<uint8_t>(
+        conn_->nextRank(), fmt::format("CheetahIO recv:{}", recv_op_++));
     recv_buffer_used_ = 0;
   }
 
@@ -112,11 +112,11 @@ class CheetahIO : public emp::IOChannel<CheetahIO> {
 
     size_t recv_buffer_left = recv_buffer_.size() - recv_buffer_used_;
     if (recv_buffer_left >= static_cast<size_t>(len)) {
-      std::memcpy(data, recv_buffer_.data<uint8_t>() + recv_buffer_used_, len);
+      std::memcpy(data, recv_buffer_.data() + recv_buffer_used_, len);
       recv_buffer_used_ += len;
     } else {
       if (recv_buffer_.size() != 0) {
-        std::memcpy(data, recv_buffer_.data<uint8_t>() + recv_buffer_used_,
+        std::memcpy(data, recv_buffer_.data() + recv_buffer_used_,
                     recv_buffer_left);
       }
       fill_recv();
@@ -194,18 +194,18 @@ struct FerretOT::Impl {
   }
 
  public:
-  Impl(std::shared_ptr<yacl::link::Context> ctx, bool is_sender)
+  Impl(std::shared_ptr<Communicator> conn, bool is_sender)
       : is_sender_(is_sender) {
-    SPU_ENFORCE(ctx != nullptr);
+    SPU_ENFORCE(conn != nullptr);
     constexpr int thread = 1;
     constexpr bool malicious = false;
     constexpr bool run_setup = true;
     int role = is_sender ? emp::ALICE : emp::BOB;
     // NOTE(juhou): we create a seperated channel for OT
-    io_ = std::make_shared<CheetahIO>(ctx);
+    io_ = std::make_shared<CheetahIO>(conn);
     io_holder_[0] = io_.get();
     std::string save_file;
-    if (ctx->Rank() == 0) {
+    if (conn->getRank() == 0) {
       if (is_sender) {
         save_file = PRE_OT_DATA_REG_SEND_FILE_ALICE;
       } else {
@@ -236,7 +236,7 @@ struct FerretOT::Impl {
 
   ~Impl() = default;
 
-  int Rank() const { return io_->ctx_->Rank(); }
+  int Rank() const { return io_->conn_->getRank(); }
 
   void Flush() {
     if (io_) {
@@ -613,8 +613,8 @@ struct FerretOT::Impl {
   }
 };
 
-FerretOT::FerretOT(std::shared_ptr<yacl::link::Context> ctx, bool is_sender) {
-  impl_ = std::make_shared<Impl>(ctx, is_sender);
+FerretOT::FerretOT(std::shared_ptr<Communicator> conn, bool is_sender) {
+  impl_ = std::make_shared<Impl>(conn, is_sender);
 }
 
 int FerretOT::Rank() const { return impl_->Rank(); }

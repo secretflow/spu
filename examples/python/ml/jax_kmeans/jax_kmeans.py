@@ -140,6 +140,7 @@ def run_on_cpu():
 
     print(centers)
     print(labels)
+    return centers, labels
 
 
 def run_on_spu():
@@ -164,6 +165,7 @@ def run_on_spu():
 
     print(centers)
     print(labels)
+    return centers, labels
 
 
 if __name__ == "__main__":

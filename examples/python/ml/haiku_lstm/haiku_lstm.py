@@ -32,6 +32,7 @@ import spu.utils.distributed as ppd
 
 parser = argparse.ArgumentParser(description='SPU LSTM example.')
 parser.add_argument("--output_dir", default=os.getcwd())
+parser.add_argument("--num_steps", default=2001, type=int)
 args = parser.parse_args()
 
 with open("examples/python/conf/3pc.json", 'r') as file:
@@ -161,7 +162,7 @@ def train_model(
     import time
 
     start_ts = time.time()
-    for step in range(2001):
+    for step in range(args.num_steps):
         if step % 100 == 0:
             x, y = next(valid_ds)
             if run_on_spu:
@@ -188,13 +189,7 @@ def train_model(
 
     print(f'Elapsed time:{time.time() - start_ts}')
 
-    return params
-
-
-print('Run on CPU\n------\n')
-cpu_trained_params = train_model(train_ds, valid_ds, run_on_spu=False)
-print('Run on SPU\n------\n')
-spu_trained_params = ppd.get(train_model(train_ds, valid_ds, run_on_spu=True))
+    return params, train_loss
 
 
 def plot_samples(truth: np.ndarray, prediction: np.ndarray) -> gg.ggplot:
@@ -209,31 +204,17 @@ def plot_samples(truth: np.ndarray, prediction: np.ndarray) -> gg.ggplot:
     return plot
 
 
-# Grab a sample from the validation set.
-sample_x, _ = next(valid_ds)
-sample_x = sample_x[:, :1]  # Shrink to batch-size 1.
-
-
 # Generate a prediction, feeding in ground truth at each point as input.
-def draw_predict(run_on_spu: bool):
-    if run_on_spu:
-        predicted, _ = model.apply(spu_trained_params, None, sample_x)
-    else:
-        predicted, _ = model.apply(cpu_trained_params, None, sample_x)
+def draw_predict(run_on_spu: bool, trained_params, sample_x):
+    predicted, _ = model.apply(trained_params, None, sample_x)
     suffix = "spu" if run_on_spu else "cpu"
     plot = plot_samples(sample_x[1:], predicted[:-1])
     plot.save(filename=f"{args.output_dir}/predication_{suffix}.png")
     del predicted
 
 
-draw_predict(False)
-draw_predict(True)
-del sample_x
-
 # Typically: the beginning of the predictions are a bit wonky, but the curve
 # quickly smooths out.
-
-
 def autoregressive_predict(
     trained_params: hk.Params,
     context: jnp.ndarray,
@@ -252,29 +233,15 @@ def autoregressive_predict(
     return outs
 
 
-sample_x, _ = next(valid_ds)
-context_length = SEQ_LEN // 8
-# Cut the batch-size 1 context from the start of the sequence.
-context = sample_x[:context_length, :1]
-
-
 # We can reuse params we got from training for inference - as long as the
 # declaration order is the same.
-def draw_ar_prediction(run_on_spu: bool):
-    if run_on_spu:
-        predicted = autoregressive_predict(spu_trained_params, context, SEQ_LEN)
-    else:
-        predicted = autoregressive_predict(cpu_trained_params, context, SEQ_LEN)
-
+def draw_ar_prediction(run_on_spu: bool, trained_params, context, sample_x):
+    predicted = autoregressive_predict(trained_params, context, SEQ_LEN)
     plot = plot_samples(sample_x[1:, :1], predicted)
     plot += gg.geom_vline(xintercept=len(context), linetype='dashed')
     suffix = "spu" if run_on_spu else "cpu"
     plot.save(filename=f"{args.output_dir}/ar_prediction_{suffix}.png")
     del predicted
-
-
-draw_ar_prediction(run_on_spu=False)
-draw_ar_prediction(run_on_spu=True)
 
 
 def fast_autoregressive_predict_fn(context, seq_len):
@@ -297,14 +264,11 @@ def fast_autoregressive_predict_fn(context, seq_len):
     return jnp.concatenate([context_outs, jnp.stack(ar_outs)])
 
 
-def draw_from_reused_params(run_on_spu: bool):
+def draw_from_reused_params(run_on_spu: bool, trained_params, context, sample_x):
     fast_ar_predict = hk.transform(fast_autoregressive_predict_fn)
     fast_ar_predict = jax.jit(fast_ar_predict.apply, static_argnums=3)
     # Reuse the same context from the previous cell.
-    if run_on_spu:
-        predicted = fast_ar_predict(spu_trained_params, None, context, SEQ_LEN)
-    else:
-        predicted = fast_ar_predict(cpu_trained_params, None, context, SEQ_LEN)
+    predicted = fast_ar_predict(trained_params, None, context, SEQ_LEN)
     # The plots should be equivalent!
     plot = plot_samples(sample_x[1:, :1], predicted[:-1])
     plot += gg.geom_vline(xintercept=len(context), linetype='dashed')
@@ -314,5 +278,38 @@ def draw_from_reused_params(run_on_spu: bool):
     )
 
 
-draw_from_reused_params(run_on_spu=False)
-draw_from_reused_params(run_on_spu=True)
+def main():
+    # Train models
+    print('Run on CPU\n------\n')
+    cpu_trained_params, _ = train_model(train_ds, valid_ds, run_on_spu=False)
+    print('Run on SPU\n------\n')
+    spu_trained_params, _ = ppd.get(train_model(train_ds, valid_ds, run_on_spu=True))
+
+    # Grab a sample from the validation set.
+    sample_x, _ = next(valid_ds)
+    sample_x = sample_x[:, :1]  # Shrink to batch-size 1.
+
+    # Predict on CPU model
+    draw_predict(False, cpu_trained_params, sample_x)
+    # Predict on SPU model
+    draw_predict(True, spu_trained_params, sample_x)
+    del sample_x
+
+    sample_x, _ = next(valid_ds)
+    context_length = SEQ_LEN // 8
+    # Cut the batch-size 1 context from the start of the sequence.
+    context = sample_x[:context_length, :1]
+
+    # Autoregressive predict on CPU model
+    draw_ar_prediction(False, cpu_trained_params, context, sample_x)
+    # Autoregressive predict on SPU model
+    draw_ar_prediction(True, spu_trained_params, context, sample_x)
+
+    # Reuse CPU model
+    draw_from_reused_params(False, cpu_trained_params, context, sample_x)
+    # Reuse SPU model
+    draw_from_reused_params(True, spu_trained_params, context, sample_x)
+
+
+if __name__ == '__main__':
+    main()

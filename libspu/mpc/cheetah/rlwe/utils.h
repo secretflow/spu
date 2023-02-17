@@ -19,6 +19,7 @@
 
 #include "seal/context.h"
 #include "yacl/base/buffer.h"
+#include "yacl/base/int128.h"
 
 #include "libspu/core/prelude.h"
 #include "libspu/mpc/cheetah/rlwe/types.h"

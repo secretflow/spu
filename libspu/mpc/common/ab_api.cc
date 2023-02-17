@@ -212,7 +212,7 @@ ArrayRef _Lazy2A(KernelEvalContext* ctx, const ArrayRef& in) {
 #define _AddAA(lhs, rhs) ctx->caller()->call("add_aa", lhs, rhs)
 #define _MulAP(lhs, rhs) ctx->caller()->call("mul_ap", lhs, rhs)
 #define _MulAA(lhs, rhs) block_par_binary(ctx, "mul_aa", lhs, rhs)
-#define _MulA1B(lhs, rhs) ctx->caller()->call("mul_a1b", lhs, rhs)
+#define _MulA1B(lhs, rhs) block_par_binary(ctx, "mul_a1b", lhs, rhs)
 #define _LShiftA(in, bits) ctx->caller()->call("lshift_a", in, bits)
 #define _TruncA(in, bits) block_par_unary_with_size(ctx, "trunc_a", in, bits)
 #define _MatMulAP(A, B, M, N, K) ctx->caller()->call("mmul_ap", A, B, M, N, K)
@@ -436,14 +436,18 @@ class ABProtMulSS : public BinaryKernel {
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& lhs,
                 const ArrayRef& rhs) const override {
     SPU_TRACE_MPC_DISP(ctx, lhs, rhs);
+
     if (hasMulA1B(ctx) && _IsA(rhs) && _IsB(lhs) && _NBits(lhs) == 1) {
       return _MulA1B(rhs, lhs);
     }
     if (hasMulA1B(ctx) && _IsA(lhs) && _IsB(rhs) && _NBits(rhs) == 1) {
       return _MulA1B(lhs, rhs);
     }
-
     if (_LAZY_AB) {
+      // NOTE(juhou): Multiplication of two bits
+      if (_IsB(lhs) && _NBits(lhs) == 1 && _IsB(rhs) && _NBits(rhs) == 1) {
+        return _AndBB(lhs, rhs);
+      }
       return _MulAA(_2A(lhs), _2A(rhs));
     }
     return _MulAA(lhs, rhs);

@@ -174,27 +174,34 @@ def train_mnist(model, run_on_spu: bool = False):
     print(f"train({env}) elapsed time: {end - start:0.4f} seconds")
     test_x, test_y = test_ds['image'], test_ds['label']
     predict_y = predict_fun(params, test_x)
-    print(f'accuracy({env}): {accuracy_score(np.argmax(predict_y, axis=1),test_y)}')
+    score = accuracy_score(np.argmax(predict_y, axis=1), test_y)
+    print(f'accuracy({env}): {score}')
+    return score
 
 
-print(f'The selected NN model is {args.model}.')
+def main():
+    print(f'The selected NN model is {args.model}.')
 
-MODEL_MAPS = {
-    'network_a': models.secureml,
-    'network_b': models.minionn,
-    'network_c': models.lenet,
-    'network_d': models.chameleon,
-}
+    MODEL_MAPS = {
+        'network_a': models.secureml,
+        'network_b': models.minionn,
+        'network_c': models.lenet,
+        'network_d': models.chameleon,
+    }
 
-fn = partial(train_mnist, MODEL_MAPS.get(args.model))
+    fn = partial(train_mnist, MODEL_MAPS.get(args.model))
 
-if args.run_cpu:
-    print('Run on CPU\n------\n')
-    fn(run_on_spu=False)
+    if args.run_cpu:
+        print('Run on CPU\n------\n')
+        fn(run_on_spu=False)
 
-print('Run on SPU\n------\n')
-with open(args.config, 'r') as file:
-    conf = json.load(file)
-ppd.init(conf["nodes"], conf["devices"])
+    print('Run on SPU\n------\n')
+    with open(args.config, 'r') as file:
+        conf = json.load(file)
+    ppd.init(conf["nodes"], conf["devices"])
 
-fn(run_on_spu=True)
+    return fn(run_on_spu=True)
+
+
+if __name__ == '__main__':
+    main()

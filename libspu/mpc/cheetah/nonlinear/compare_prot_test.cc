@@ -66,8 +66,9 @@ TEST_P(CompareProtTest, Basic) {
   ArrayRef cmp_oup[2];
   ArrayRef eq_oup[2];
   utils::simulate(kWorldSize, [&](std::shared_ptr<yacl::link::Context> ctx) {
+    auto conn = std::make_shared<Communicator>(ctx);
     int rank = ctx->Rank();
-    auto base = std::make_shared<BasicOTProtocols>(ctx);
+    auto base = std::make_shared<BasicOTProtocols>(conn);
     CompareProtocol comp_prot(base);
     auto [_c, _e] = comp_prot.ComputeWithEq(inp[rank], greater_than);
     cmp_oup[rank] = _c;

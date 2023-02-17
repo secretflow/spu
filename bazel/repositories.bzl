@@ -150,11 +150,11 @@ def _com_github_xtensor_xtl():
     )
 
 def _com_github_openxla_xla():
-    LLVM_COMMIT = "af73834243a1035787935960bfd5a71713b89701"
-    LLVM_SHA256 = "0732b818541653742e3a2ccdc04759321263969568fe2bb6cc01986ab6829808"
+    LLVM_COMMIT = "4f15267d3dd797a15901fe9352f0d5fa121b9095"
+    LLVM_SHA256 = "79d7663c87eb499e73b4b03b88e3a6771c444f44b61a2c10054639250cb4ef87"
 
-    OPENXLA_COMMIT = "f7e1855af03b175853f23eb22f5031d581344cbf"
-    OPENXLA_SHA256 = "b6ebfa87f06ab64fbe77ff4957ec631315a1d7df4e40d58b1159112c0024d323"
+    OPENXLA_COMMIT = "d5e43371a0fa6e185354a839e49da3960ed3dfa2"
+    OPENXLA_SHA256 = "e3d0c9fe4a566b620699ddcbc1b96763c2e996833778e102f326009d56d927e3"
 
     SKYLIB_VERSION = "1.3.0"
 
@@ -186,8 +186,6 @@ def _com_github_openxla_xla():
         sha256 = OPENXLA_SHA256,
         strip_prefix = "xla-" + OPENXLA_COMMIT,
         type = ".tar.gz",
-        patch_args = ["-p1"],
-        patches = ["@spulib//bazel:patches/xla.patch"],
         urls = [
             "https://github.com/openxla/xla/archive/{commit}.tar.gz".format(commit = OPENXLA_COMMIT),
         ],

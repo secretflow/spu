@@ -97,6 +97,8 @@ Value Value::getElementAt(int64_t idx) const {
 }
 
 ValueProto Value::toProto() const {
+  SPU_ENFORCE(dtype_ != DT_INVALID && vtype() != VIS_INVALID);
+
   ValueProto proto;
   proto.set_data_type(dtype_);
   proto.set_visibility(vtype());
@@ -116,6 +118,8 @@ ValueProto Value::toProto() const {
 }
 
 ValueMeta Value::toMetaProto() const {
+  SPU_ENFORCE(dtype_ != DT_INVALID && vtype() != VIS_INVALID);
+
   ValueMeta proto;
   proto.set_data_type(dtype_);
   proto.set_visibility(vtype());

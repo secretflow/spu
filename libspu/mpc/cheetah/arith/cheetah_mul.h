@@ -32,6 +32,8 @@ class CheetahMul {
 
   ~CheetahMul();
 
+  std::unique_ptr<CheetahMul> Fork();
+
   CheetahMul& operator=(const CheetahMul&) = delete;
 
   CheetahMul(const CheetahMul&) = delete;
@@ -43,7 +45,9 @@ class CheetahMul {
 
   ArrayRef MulOLE(const ArrayRef& inp, bool evaluator);
 
-  std::shared_ptr<yacl::link::Context> GetLink() const { return lctx_; }
+  int Rank() const;
+
+  size_t OLEBatchSize() const;
 
  private:
   struct Impl;
@@ -52,8 +56,6 @@ class CheetahMul {
   explicit CheetahMul(std::unique_ptr<Impl> impl);
 
   std::unique_ptr<Impl> impl_{nullptr};
-
-  std::shared_ptr<yacl::link::Context> lctx_{nullptr};
 };
 
 }  // namespace spu::mpc::cheetah

@@ -43,43 +43,20 @@ namespace spu::mpc::cheetah {
 // Layout:
 //   NxHxWxC for input
 //   HxWxIxO for kernel
-constexpr int kH = 0;
-constexpr int kW = 1;
-constexpr int kC = 2;
-constexpr int kO = 3;
+[[maybe_unused]] constexpr int kH = 0;
+[[maybe_unused]] constexpr int kW = 1;
+[[maybe_unused]] constexpr int kC = 2;
+[[maybe_unused]] constexpr int kO = 3;
 
-bool IsSameInputShape(const NdArrayRef &base, const Shape3D &shape) {
-  if (base.ndim() != 3) {
-    return false;
-  }
-  auto s = base.shape();
-  for (int d = 0; d < 3; ++d) {
-    if (s[d] != shape[d]) {
-      return false;
-    }
-  }
-  return true;
+bool IsSameInputShape(const ArrayRef &base, const Shape3D &shape) {
+  return base.numel() == calcNumel(shape);
 }
 
-bool IsSameKernelShape(const NdArrayRef &base, const Shape3D &shape,
+bool IsSameKernelShape(const ArrayRef &base, const Shape3D &shape,
                        int64_t num_kernels) {
-  if (base.ndim() != 4) {
-    return false;
-  }
-  if (num_kernels == 0) {
-    return false;
-  }
-  auto s = base.shape();
-  if (s[kO] != num_kernels) {
-    return false;
-  }
-  for (int d = 0; d < 3; ++d) {
-    if (s[d] != shape[d]) {
-      return false;
-    }
-  }
-  return true;
+  return base.numel() == (num_kernels * calcNumel(shape));
 }
+
 bool operator==(const Conv2DProtocol::Meta &x, const Conv2DProtocol::Meta &y) {
   return 0 == std::memcmp(&x, &y, sizeof(Conv2DProtocol::Meta));
 }
@@ -131,28 +108,35 @@ Shape3D Conv2DProtocol::GetSubTensorShape(const Meta &meta) const {
                  "channel mismatch");
   SPU_ENFORCE(Cw > 0, "kernel size out-of-bound poly_deg={}", poly_deg_);
 
-  Shape3D subshape = meta.input_shape;
+  Shape3D input_shape = meta.input_shape;
+  for (int64_t d : {kH, kW}) {
+    if (meta.kernel_shape[d] == 1) {
+      SPU_ENFORCE(meta.window_strides[d] == 1, "To optimize it in mpc layer");
+    }
+  }
 
-  int64_t H = meta.input_shape[kH];
-  int64_t W = meta.input_shape[kW];
-  int64_t HW = H * W;
+  Shape3D subshape = input_shape;
+  const int64_t H = input_shape[kH];
+  const int64_t W = input_shape[kW];
+  const int64_t C = input_shape[kC];
+  const int64_t HW = H * W;
   if (HW <= poly_deg_) {
     // H * W <= N
-    subshape[kC] = std::min(Cw, std::min(poly_deg_ / HW, meta.input_shape[kC]));
+    subshape[kC] = std::min(Cw, std::min(poly_deg_ / HW, input_shape[kC]));
   } else {
     int64_t min_cost = std::numeric_limits<int64_t>::max();
 
-    for (int64_t c = 1; c <= std::min(Cw, meta.input_shape[kC]); ++c) {
-      for (int64_t h = 1; h <= meta.input_shape[kH]; ++h) {
-        for (int64_t w = 1; w <= meta.input_shape[kW]; ++w) {
+    for (int64_t c = 1; c <= std::min(Cw, C); ++c) {
+      for (int64_t h = 1; h <= H; ++h) {
+        for (int64_t w = 1; w <= W; ++w) {
           if (c * h * w > poly_deg_) {
             continue;
           }
 
-          int64_t encode_input = CeilDiv(meta.input_shape[kH], h) *
-                                 CeilDiv(meta.input_shape[kW], w);
+          int64_t encode_input =
+              CeilDiv(input_shape[kH], h) * CeilDiv(input_shape[kW], w);
 
-          int64_t cost = CeilDiv(meta.input_shape[kC], c) * encode_input;
+          int64_t cost = CeilDiv(input_shape[kC], c) * encode_input;
 
           if (cost < min_cost) {
             subshape[kC] = c;
@@ -198,7 +182,7 @@ bool Conv2DProtocol::IsValidMeta(const Meta &meta) const {
   return true;
 }
 
-void Conv2DProtocol::EncodeInput(const NdArrayRef &input, const Meta &meta,
+void Conv2DProtocol::EncodeInput(const ArrayRef &input, const Meta &meta,
                                  bool need_encrypt,
                                  absl::Span<RLWEPt> out) const {
   SPU_ENFORCE(IsSameInputShape(input, meta.input_shape));
@@ -216,30 +200,34 @@ void Conv2DProtocol::EncodeInput(const NdArrayRef &input, const Meta &meta,
     int64_t c = i / poly_per_channel;
     int64_t h = (i % poly_per_channel) / helper.slice_size(kW);
     int64_t w = i % helper.slice_size(kW);
-    auto subinput = helper.partition(input, {h, w, c});
+    auto subinput = helper.Slice(input, meta.input_shape, {h, w, c});
     subinput.ZeroPadAs(subinput_shape);
     tencoder_->EncodeInput(subinput, subkernel_shape, need_encrypt, &out[i]);
   }
 }
 
-void Conv2DProtocol::EncodeKernels(const NdArrayRef &kernels, const Meta &meta,
+void Conv2DProtocol::EncodeKernels(const ArrayRef &kernels, const Meta &meta,
                                    bool need_encrypt,
                                    absl::Span<RLWEPt> out) const {
   SPU_ENFORCE(IsSameKernelShape(kernels, meta.kernel_shape, meta.num_kernels));
   SPU_ENFORCE_EQ(out.size(), GetKernelSize(meta));
-  size_t num_poly_per_kernel = out.size() / meta.num_kernels;
+  const int64_t kernel_sze = calcNumel(meta.kernel_shape);
+  const size_t num_poly_per_kernel = out.size() / meta.num_kernels;
+  const int64_t stride = meta.num_kernels;
+  // H x W x C x O for kernel
+  // slice on each O-channel
   for (int64_t m = 0; m < meta.num_kernels; ++m) {
-    auto kernel = SliceDim(kernels, /*dim*/ kO, static_cast<int64_t>(m));
+    auto kernel = kernels.slice(m, m + kernel_sze * stride, stride);
     absl::Span<RLWEPt> dst = {out.data() + m * num_poly_per_kernel,
                               num_poly_per_kernel};
     EncodeSingleKernel(kernel, meta, need_encrypt, dst);
   }
 }
 
-void Conv2DProtocol::EncodeSingleKernel(const NdArrayRef &kernel,
+void Conv2DProtocol::EncodeSingleKernel(const ArrayRef &kernel,
                                         const Meta &meta, bool need_encrypt,
                                         absl::Span<RLWEPt> out) const {
-  SPU_ENFORCE_EQ(kernel.ndim(), 3UL);
+  SPU_ENFORCE_EQ(kernel.numel(), calcNumel(meta.kernel_shape));
   Shape3D subinput_shape = GetSubTensorShape(meta);
   Shape3D subkernel_shape = meta.kernel_shape;
   subkernel_shape[kC] = subinput_shape[kC];
@@ -259,7 +247,7 @@ void Conv2DProtocol::EncodeSingleKernel(const NdArrayRef &kernel,
     int64_t c = i / poly_per_channel;
     int64_t h = (i % poly_per_channel) / helper.slice_size(kW);
     int64_t w = i % helper.slice_size(kW);
-    auto subkernel = helper.partition(kernel, {h, w, c});
+    auto subkernel = helper.Slice(kernel, meta.kernel_shape, {h, w, c});
     subkernel.ZeroPadAs(subkernel_shape);
     tencoder_->EncodeKernel(subkernel, subinput_shape, need_encrypt, &out[i]);
   }
@@ -405,8 +393,8 @@ void Conv2DProtocol::ExtractLWEsInplace(const Meta &meta,
   }
 }
 
-NdArrayRef Conv2DProtocol::ParseResult(FieldType field, const Meta &meta,
-                                       absl::Span<const RLWEPt> rlwe) const {
+ArrayRef Conv2DProtocol::ParseResult(FieldType field, const Meta &meta,
+                                     absl::Span<const RLWEPt> rlwe) const {
   SPU_ENFORCE_EQ(rlwe.size(), GetOutSize(meta));
   size_t expected_n = poly_deg_ * tencoder_->ms_helper().coeff_modulus_size();
   SPU_ENFORCE(std::all_of(rlwe.data(), rlwe.data() + rlwe.size(),
@@ -457,7 +445,7 @@ NdArrayRef Conv2DProtocol::ParseResult(FieldType field, const Meta &meta,
     }
   }
 
-  return computed_tensor;
+  return flatten(computed_tensor);
 }
 
 }  // namespace spu::mpc::cheetah

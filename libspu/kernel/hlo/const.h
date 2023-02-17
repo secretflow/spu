@@ -22,7 +22,7 @@
 
 namespace spu::kernel::hlo {
 
-spu::Value Constant(HalContext *ctx, PtBufferView view,
+spu::Value Constant(HalContext *ctx, const PtBufferView &view,
                     absl::Span<const int64_t> out_shape);
 
 template <typename T>

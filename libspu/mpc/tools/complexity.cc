@@ -30,6 +30,7 @@
 #include "libspu/mpc/utils/simulate.h"
 
 #include "libspu/mpc/tools/complexity.pb.h"
+
 namespace spu::mpc {
 
 internal::SingleComplexityReport dumpComplexityReport(

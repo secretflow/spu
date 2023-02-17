@@ -15,9 +15,7 @@
 load("@pybind11_bazel//:build_defs.bzl", "pybind_extension")
 load("@rules_python//python:defs.bzl", "py_library")
 load("@com_github_grpc_grpc//bazel:python_rules.bzl", "py_proto_library")
-load("@rules_python//python:packaging.bzl", "py_package", "py_wheel")
-load("//bazel:spu.bzl", "spu_version_file")
-load("@pip_deps//:requirements.bzl", "all_deps")
+load("@rules_python//python:packaging.bzl", "py_package")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -87,17 +85,15 @@ py_library(
     ],
 )
 
-SPU_VERSION = "0.3.2b4"
-
 py_library(
     name = "init",
     srcs = [
         "__init__.py",
+        "version.py",
         ":api",
         ":psi",
         ":psi_py_proto",
         ":spu_py_proto",
-        ":version_file",
         "//spu/utils:simulation",
     ],
 )
@@ -106,37 +102,5 @@ py_package(
     name = "_lib_deps",
     deps = [
         ":api",
-    ],
-)
-
-spu_version_file(
-    name = "version_file",
-    filename = "version.py",
-    version = SPU_VERSION,
-)
-
-py_wheel(
-    name = "spu_wheel",
-    abi = "cp38",
-    author = "secretflow",
-    distribution = "spu",
-    license = "Apache 2.0",
-    platform = select({
-        "@bazel_tools//src/conditions:darwin_x86_64": "macosx_10_16_x86_64",
-        "@bazel_tools//src/conditions:darwin_arm64": "macosx_11_0_arm64",
-        "//conditions:default": "manylinux2014_x86_64",
-    }),
-    python_requires = "==3.8.*",
-    python_tag = "cp38",
-    requires = all_deps,
-    version = SPU_VERSION,
-    deps = [
-        ":_lib_deps",
-        ":init",
-        "//spu/utils:distributed",
-        "//spu/utils:distributed_py_proto",
-        "//spu/utils:distributed_py_proto_grpc",
-        "//spu/utils:frontend",
-        "//spu/utils:simulation",
     ],
 )

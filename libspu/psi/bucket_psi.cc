@@ -18,6 +18,7 @@
 #include <filesystem>
 #include <numeric>
 #include <type_traits>
+#include <unordered_set>
 #include <utility>
 
 #include "absl/time/clock.h"
@@ -76,6 +77,34 @@ std::vector<uint8_t> ReadEcSecretKeyFile(const std::string& file_path) {
   rf.close();
 
   return secret_key;
+}
+
+std::vector<std::string> GetItemsByIndices(
+    const std::string& input_path,
+    const std::vector<std::string>& selected_fields,
+    const std::vector<size_t>& indices, size_t batch_size = 8192) {
+  std::vector<std::string> items;
+  std::unordered_set<size_t> indices_set;
+
+  indices_set.insert(indices.begin(), indices.end());
+
+  std::shared_ptr<IBatchProvider> batch_provider =
+      std::make_shared<CsvBatchProvider>(input_path, selected_fields);
+
+  size_t item_index = 0;
+  while (true) {
+    auto batch_items = batch_provider->ReadNextBatch(batch_size);
+    if (batch_items.empty()) {
+      break;
+    }
+    for (size_t i = 0; i < batch_items.size(); ++i) {
+      if (indices_set.find(item_index) != indices_set.end()) {
+        items.push_back(batch_items[i]);
+      }
+      item_index++;
+    }
+  }
+  return items;
 }
 
 }  // namespace
@@ -461,41 +490,20 @@ std::vector<uint64_t> BucketPsi::RunPsi(uint64_t& self_items_count) {
 
       std::string self_cipher_store_path = fmt::format(
           "{}/tmp-self-cipher-store-{}.csv", tmp_dir, lctx_->Rank());
-      std::string peer_cipher_store_path_sort_in = fmt::format(
-          "{}/tmp-peer-cipher-store-sort-in-{}.csv", tmp_dir, lctx_->Rank());
 
       std::shared_ptr<CachedCsvCipherStore> cipher_store =
-          std::make_shared<CachedCsvCipherStore>(self_cipher_store_path,
-                                                 peer_cipher_store_path_sort_in,
-                                                 false, false);
+          std::make_shared<CachedCsvCipherStore>(
+              self_cipher_store_path, config_.preprocess_path(), false, false);
 
       // config_.output_params().path());
+
       SPDLOG_INFO("Start Sync");
       std::vector<size_t> sync_list = AllGatherItemsSize(lctx_, 0);
       SPDLOG_INFO("After Sync");
+
       dh_oprf_psi_client_offline->RecvFinalEvaluatedItems(cipher_store);
 
       cipher_store->FlushPeer();
-
-      std::vector<std::string> ids = cipher_store->GetId();
-
-      SPDLOG_INFO("begin MultiKeySort");
-
-      std::string peer_cipher_store_path_sort_out = fmt::format(
-          "{}/tmp-peer-cipher-store-sort-out-{}.csv", tmp_dir, lctx_->Rank());
-      MultiKeySort(peer_cipher_store_path_sort_in,
-                   peer_cipher_store_path_sort_out, ids);
-      SPDLOG_INFO("sort in bytes:{}",
-                  std::filesystem::file_size(peer_cipher_store_path_sort_in));
-      SPDLOG_INFO("rename bytes:{}",
-                  std::filesystem::file_size(peer_cipher_store_path_sort_out));
-      std::filesystem::rename(peer_cipher_store_path_sort_out,
-                              config_.preprocess_path());
-
-      SPDLOG_INFO("sort out bytes:{}",
-                  std::filesystem::file_size(config_.preprocess_path()));
-
-      SPDLOG_INFO("end MultiKeySort");
 
     } else {
       spu::psi::EcdhOprfPsiOptions server_options;
@@ -524,6 +532,10 @@ std::vector<uint64_t> BucketPsi::RunPsi(uint64_t& self_items_count) {
       self_items_count =
           dh_oprf_psi_server_offline->FullEvaluateAndSend(batch_provider);
     }
+
+    SPDLOG_INFO("rank:{} Start end sync", lctx_->Rank());
+    std::vector<size_t> sync_list = AllGatherItemsSize(lctx_, 0);
+    SPDLOG_INFO("rank:{} After end sync", lctx_->Rank());
 
     return results;
   } else if (config_.psi_type() ==
@@ -594,6 +606,30 @@ std::vector<uint64_t> BucketPsi::RunPsi(uint64_t& self_items_count) {
       results = cipher_store->FinalizeAndComputeIndices(config_.bucket_size());
       SPDLOG_INFO("indices size:{}", results.size());
 
+      if (config_.broadcast_result()) {
+        // send intersection size
+        lctx_->SendAsync(
+            lctx_->NextRank(), utils::SerializeSize(results.size()),
+            fmt::format("EC-OPRF:PSI:INTERSECTION_SIZE={}", results.size()));
+
+        SPDLOG_INFO("rank:{} begin broadcast {} intersection results",
+                    lctx_->Rank(), results.size());
+
+        if (results.size() > 0) {
+          std::vector<std::string> result_items = GetItemsByIndices(
+              config_.input_params().path(), selected_fields_, results);
+
+          auto recv_res_buf = yacl::link::Broadcast(
+              lctx_, utils::SerializeStrItems(result_items),
+              config_.receiver_rank(), "broadcast psi result");
+
+          SPDLOG_INFO("rank:{} result size:{}", lctx_->Rank(),
+                      result_items.size());
+        }
+        SPDLOG_INFO("rank:{} end broadcast {} intersection results",
+                    lctx_->Rank(), results.size());
+      }
+
     } else {
       spu::psi::EcdhOprfPsiOptions server_options;
       server_options.link0 = lctx_;
@@ -610,7 +646,40 @@ std::vector<uint64_t> BucketPsi::RunPsi(uint64_t& self_items_count) {
                                               server_private_key);
 
       dh_oprf_psi_server_online->RecvBlindAndSendEvaluate();
+
+      if (config_.broadcast_result()) {
+        size_t intersection_size = utils::DeserializeSize(lctx_->Recv(
+            lctx_->NextRank(), fmt::format("EC-OPRF:PSI:INTERSECTION_SIZE")));
+
+        SPDLOG_INFO("rank:{} begin recv broadcast {} intersection results",
+                    lctx_->Rank(), results.size(), intersection_size);
+
+        if (intersection_size > 0) {
+          std::vector<std::string> result_items;
+
+          auto recv_res_buf = yacl::link::Broadcast(
+              lctx_, utils::SerializeStrItems(result_items),
+              config_.receiver_rank(), "broadcast psi result");
+
+          utils::DeserializeStrItems(recv_res_buf, &result_items);
+
+          SPDLOG_INFO("begin GetIndicesByItems");
+          results =
+              GetIndicesByItems(config_.input_params().path(), selected_fields_,
+                                result_items, config_.bucket_size());
+          SPDLOG_INFO("end GetIndicesByItems");
+
+          SPDLOG_INFO("rank:{} result size:{}", lctx_->Rank(),
+                      result_items.size());
+        }
+        SPDLOG_INFO("rank:{} end recv broadcast {} intersection results",
+                    lctx_->Rank(), results.size());
+      }
     }
+
+    SPDLOG_INFO("rank:{} Start end sync", lctx_->Rank());
+    std::vector<size_t> sync_list = AllGatherItemsSize(lctx_, 0);
+    SPDLOG_INFO("rank:{} After end sync", lctx_->Rank());
 
     return results;
   } else {

@@ -12,35 +12,30 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from absl import app
-from absl import flags
-from flax import linen as nn
-from flax.training import train_state
-import jax.numpy as jnp
+import argparse
+import os
+
 import jax
-from jax import random
+import jax.numpy as jnp
 import numpy as np
 import optax
 import tensorflow as tf
 import tensorflow_datasets as tfds
-import os
+from jax import random
 
-import utils as vae_utils
+import examples.python.ml.flax_vae.utils as vae_utils
+from flax import linen as nn
+from flax.training import train_state
 
-
-FLAGS = flags.FLAGS
-
-flags.DEFINE_float(
-    'learning_rate', default=1e-3, help=('The learning rate for the Adam optimizer.')
-)
-
-flags.DEFINE_integer('batch_size', default=128, help=('Batch size for training.'))
-
-flags.DEFINE_integer('num_epochs', default=30, help=('Number of training epochs.'))
-
-flags.DEFINE_integer('latents', default=20, help=('Number of latent variables.'))
-
-flags.DEFINE_string('output_dir', default=os.getcwd(), help=('Output directory.'))
+# Replace absl.flags used by original authors with argparse for unittest
+parser = argparse.ArgumentParser(description='distributed driver.')
+parser.add_argument("--learning_rate", default=1e-3, type=float)
+parser.add_argument("--batch_size", default=128, type=int)
+parser.add_argument("--num_epochs", default=5, type=int)
+parser.add_argument("--num_steps", type=int)
+parser.add_argument("--latents", default=20, type=int)
+parser.add_argument("--output_dir", default=os.getcwd(), type=str)
+args = parser.parse_args()
 
 
 class Encoder(nn.Module):
@@ -128,11 +123,11 @@ def compute_metrics(recon_x, x, mean, logvar):
 
 
 def cpu_model():
-    return CPU_VAE(latents=FLAGS.latents)
+    return CPU_VAE(latents=args.latents)
 
 
 def spu_model():
-    return SPU_VAE(latents=FLAGS.latents)
+    return SPU_VAE(latents=args.latents)
 
 
 @jax.jit
@@ -203,6 +198,7 @@ def prepare_image(x):
 
 import json
 import time
+
 import spu.utils.distributed as ppd
 
 with open("examples/python/conf/3pc.json", 'r') as file:
@@ -225,7 +221,7 @@ def train(run_on_spu: bool = True):
     train_ds = train_ds.cache()
     train_ds = train_ds.repeat()
     train_ds = train_ds.shuffle(50000)
-    train_ds = train_ds.batch(FLAGS.batch_size)
+    train_ds = train_ds.batch(args.batch_size)
     train_ds = iter(tfds.as_numpy(train_ds))
 
     test_ds = ds_builder.as_dataset(split=tfds.Split.TEST)
@@ -233,7 +229,7 @@ def train(run_on_spu: bool = True):
     test_ds = np.array(list(test_ds)[0])
     test_ds = jax.device_put(test_ds)
 
-    init_data = jnp.ones((FLAGS.batch_size, 784), jnp.float32)
+    init_data = jnp.ones((args.batch_size, 784), jnp.float32)
 
     if run_on_spu:
         state = train_state.TrainState.create(
@@ -241,24 +237,24 @@ def train(run_on_spu: bool = True):
             params=spu_model().init(
                 key,
                 init_data,
-                np.random.normal(size=(len(init_data), FLAGS.latents)),
+                np.random.normal(size=(len(init_data), args.latents)),
             )['params'],
-            tx=optax.adam(FLAGS.learning_rate),
+            tx=optax.adam(args.learning_rate),
         )
     else:
         state = train_state.TrainState.create(
             apply_fn=cpu_model().apply,
             params=cpu_model().init(key, init_data, rng)['params'],
-            tx=optax.adam(FLAGS.learning_rate),
+            tx=optax.adam(args.learning_rate),
         )
 
     rng, z_key, eval_rng = random.split(rng, 3)
-    z = random.normal(z_key, (64, FLAGS.latents))
+    z = random.normal(z_key, (64, args.latents))
 
-    steps_per_epoch = 50000 // FLAGS.batch_size
+    steps_per_epoch = args.num_steps if args.num_steps else 50000 // args.batch_size
 
     start_ts = time.time()
-    for epoch in range(FLAGS.num_epochs):
+    for epoch in range(args.num_epochs):
         for _ in range(steps_per_epoch):
             batch = next(train_ds)
             if run_on_spu:
@@ -266,13 +262,13 @@ def train(run_on_spu: bool = True):
                 state = ppd.device("SPU")(train_step_spu)(
                     state,
                     spu_batch,
-                    np.random.normal(size=(len(batch), FLAGS.latents)),
+                    np.random.normal(size=(len(batch), args.latents)),
                 )
                 metrics, comparison, sample = eval_spu(
                     ppd.get(state).params,
                     test_ds,
                     z,
-                    np.random.normal(size=(len(test_ds), FLAGS.latents)),
+                    np.random.normal(size=(len(test_ds), args.latents)),
                 )
             else:
                 rng, key = random.split(rng)
@@ -291,18 +287,18 @@ def train(run_on_spu: bool = True):
                 ppd.get(state).params,
                 test_ds,
                 z,
-                np.random.normal(size=(len(test_ds), FLAGS.latents)),
+                np.random.normal(size=(len(test_ds), args.latents)),
             )
         else:
             metrics, comparison, sample = eval_cpu(state.params, test_ds, z, eval_rng)
         suffix = "spu" if run_on_spu else "cpu"
         vae_utils.save_image(
             comparison,
-            f'{FLAGS.output_dir}/reconstruction_{epoch}_{suffix}.png',
+            f'{args.output_dir}/reconstruction_{epoch}_{suffix}.png',
             nrow=8,
         )
         vae_utils.save_image(
-            sample, f'{FLAGS.output_dir}/sample_{epoch}_{suffix}.png', nrow=8
+            sample, f'{args.output_dir}/sample_{epoch}_{suffix}.png', nrow=8
         )
 
         print(
@@ -311,9 +307,10 @@ def train(run_on_spu: bool = True):
             )
         )
     print(f'Elapsed time:{time.time() - start_ts}')
+    return metrics
 
 
-def main(_):
+def main():
     print('Run on CPU\n------\n')
     train(run_on_spu=False)
     print('Run on SPU\n------\n')
@@ -321,4 +318,4 @@ def main(_):
 
 
 if __name__ == '__main__':
-    app.run(main)
+    main()

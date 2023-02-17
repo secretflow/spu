@@ -16,6 +16,7 @@
 
 #include <memory>
 #include <string>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -117,6 +118,7 @@ class CachedCsvCipherStore : public ICipherStore {
 
   static std::vector<std::string> GetId() {
     std::vector<std::string> ids = {"id"};
+
     return ids;
   }
 
@@ -145,7 +147,15 @@ class CachedCsvCipherStore : public ICipherStore {
   size_t peer_items_count_ = 0;
   size_t compare_thread_num_ = 6;
 
-  std::vector<std::string> self_data_;
+  const std::string cipher_id_ = "id";
+
+  std::unordered_map<std::string, size_t> self_data_;
 };
+
+// Get data Indices in csv file
+std::vector<size_t> GetIndicesByItems(
+    const std::string& input_path,
+    const std::vector<std::string>& selected_fields,
+    const std::vector<std::string> items, size_t batch_size);
 
 }  // namespace spu::psi

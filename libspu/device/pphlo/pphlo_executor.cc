@@ -910,6 +910,12 @@ void execute(OpExecutor *executor, HalContext *hctx, SymbolScope *sscope,
 void execute(OpExecutor *executor, HalContext *hctx, SymbolScope *sscope,
              mlir::pphlo::PreferAOp &op, const ExecutionOptions &opts) {
   auto in = lookupValue(sscope, op.getOperand(), opts);
+  if (hctx->rt_config().protocol() == ProtocolKind::CHEETAH) {
+    // NOTE(juhou): For 2PC, MulAB uses COT which is efficient and accurate than
+    // MulAA that needs HE. Thus we just by-pass the PreferAOp for 2PC.
+    sscope->addValue(op.getResult(), in);
+    return;
+  }
   auto k0 = kernel::hlo::Cast(hctx, kernel::hlo::Constant(hctx, 0, in.shape()),
                               VIS_PUBLIC, in.dtype());
   sscope->addValue(op.getResult(), kernel::hlo::Add(hctx, in, k0));

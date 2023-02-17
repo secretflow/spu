@@ -14,12 +14,16 @@
 
 #include "libspu/psi/core/ecdh_oprf_psi.h"
 
+#include <omp.h>
+
+#include <chrono>
 #include <future>
 #include <utility>
 
 #include "yacl/utils/parallel.h"
 #include "yacl/utils/serialize.h"
 
+#include "libspu/core/prelude.h"
 #include "libspu/psi/core/communication.h"
 #include "libspu/psi/cryptor/ecc_utils.h"
 
@@ -89,42 +93,79 @@ size_t EcdhOprfPsiServer::FullEvaluateAndSend(
   size_t items_count = 0;
   size_t batch_count = 1;
   size_t compare_length = oprf_server_->GetCompareLength();
-  std::vector<std::string> batch_items_next =
-      batch_provider->ReadNextBatch(options_.batch_size);
 
-  SPDLOG_INFO("Begin EvaluateAndSend items");
+  bool stop_flag = false;
+  omp_lock_t lck_read, lck_send;
 
-  while (true) {
-    PsiDataBatch batch;
-    auto items = batch_items_next;
-    batch.is_last_batch = items.empty();
+  omp_init_lock(&lck_read);
+  omp_init_lock(&lck_send);
 
-    if (items.empty()) {
-      const auto tag = fmt::format(
-          "EcdhOprfPSI last batch,FinalEvaluatedItems:{}", batch_count);
-      options_.link0->SendAsync(options_.link0->NextRank(), batch.Serialize(),
-                                tag);
-      break;
+  int tid;
+  batch_count = 0;
+  std::vector<std::string> batch_items;
+  PsiDataBatch batch;
+  size_t i;
+  size_t local_batch_count;
+  int nthreads = omp_get_num_threads();
+  int mcpus = omp_get_num_procs();
+  SPDLOG_INFO("omp_get_num_threads:{} cpus:{}", nthreads, mcpus);
+  omp_set_num_threads(mcpus);
+
+#pragma omp parallel private(tid, nthreads, i, batch_items, batch,       \
+                             local_batch_count)                          \
+    shared(lck_read, lck_send, batch_count, items_count, compare_length, \
+           stop_flag)
+  {
+    tid = omp_get_thread_num();
+    if ((tid == 0) && (batch_count == 0)) {
+      nthreads = omp_get_num_threads();
+      SPDLOG_INFO("tid:{} omp_get_num_threads:{}", tid, nthreads);
     }
-    std::future<void> f_prefetch = std::async([&] {
-      batch_items_next = batch_provider->ReadNextBatch(options_.batch_size);
-    });
+    while (!stop_flag) {
+      omp_set_lock(&lck_read);
+      batch_items = batch_provider->ReadNextBatch(options_.batch_size);
 
-    auto masked_items = oprf_server_->FullEvaluate(items);
+      batch.is_last_batch = batch_items.empty();
 
-    batch.flatten_bytes.reserve(items.size() * compare_length);
-    for (const auto& masked_item : masked_items) {
-      batch.flatten_bytes.append(masked_item);
+      if (batch_items.empty()) {
+        stop_flag = true;
+
+      } else {
+        items_count += batch_items.size();
+        batch_count++;
+        local_batch_count = batch_count;
+      }
+
+      omp_unset_lock(&lck_read);
+
+      if (batch_items.size() == 0) {
+        break;
+      }
+
+      batch.flatten_bytes.reserve(batch_items.size() * compare_length);
+
+      batch.flatten_bytes = oprf_server_->FullEvaluate(batch_items[0]);
+      for (i = 1; i < batch_items.size(); i++) {
+        std::string masked_item = oprf_server_->FullEvaluate(batch_items[i]);
+        batch.flatten_bytes.append(masked_item);
+      }
+
+      // Send x^a.
+      omp_set_lock(&lck_send);
+
+      options_.link0->SendAsync(
+          options_.link0->NextRank(), batch.Serialize(),
+          fmt::format("EcdhOprfPSI:FinalEvaluatedItems:{}", local_batch_count));
+
+      omp_unset_lock(&lck_send);
     }
-    // Send x^a.
-    const auto tag =
-        fmt::format("EcdhOprfPSI:FinalEvaluatedItems:{}", batch_count);
-    options_.link0->SendAsync(options_.link0->NextRank(), batch.Serialize(),
-                              tag);
-    batch_count++;
-    items_count += items.size();
-    f_prefetch.get();
   }
+  batch.is_last_batch = true;
+  options_.link0->SendAsync(
+      options_.link0->NextRank(), batch.Serialize(),
+      fmt::format("EcdhOprfPSI last batch,FinalEvaluatedItems:{}",
+                  batch_count));
+
   SPDLOG_INFO("{} finished, batch_count={} items_count={}", __func__,
               batch_count, items_count);
 
@@ -201,8 +242,8 @@ void EcdhOprfPsiClient::RecvFinalEvaluatedItems(
       break;
     }
 
-    SPU_ENFORCE(masked_batch.flatten_bytes.size() % compare_length_ == 0);
-    size_t num_items = masked_batch.flatten_bytes.size() / compare_length_;
+    SPU_ENFORCE(masked_batch.flatten_bytes.length() % compare_length_ == 0);
+    size_t num_items = masked_batch.flatten_bytes.length() / compare_length_;
 
     std::vector<std::string> evaluated_items(num_items);
     for (size_t idx = 0; idx < num_items; ++idx) {

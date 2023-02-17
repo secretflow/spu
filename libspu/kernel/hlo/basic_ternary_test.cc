@@ -21,34 +21,60 @@
 #include "libspu/kernel/hal/test_util.h"
 #include "libspu/kernel/hlo/casting.h"
 #include "libspu/kernel/hlo/const.h"
+#include "libspu/kernel/hlo/test_utils.h"
 #include "libspu/kernel/value.h"
+#include "libspu/mpc/utils/simulate.h"
 
 namespace spu::kernel::hlo {
 
-TEST(ConstTest, SelectEmpty) {
-  HalContext hctx = hal::test::makeRefHalContext();
-  auto empty_p = Constant(&hctx, true, {0});
-  auto empty_true = Constant(&hctx, 1, {0});
-  auto empty_false = Constant(&hctx, 2, {0});
+class TernaryTest
+    : public ::testing::TestWithParam<std::tuple<FieldType, ProtocolKind>> {};
 
-  auto ret = Select(&hctx, empty_p, empty_true, empty_false);
+TEST_P(TernaryTest, SelectEmpty) {
+  auto cfg =
+      test::makeRefConfig(std::get<0>(GetParam()), std::get<1>(GetParam()));
 
-  EXPECT_EQ(ret.numel(), 0);
-  EXPECT_EQ(ret.shape().size(), 1);
-  EXPECT_EQ(ret.shape()[0], 0);
+  mpc::utils::simulate(
+      3, [&](const std::shared_ptr<yacl::link::Context> &lctx) {
+        HalContext hctx(cfg, lctx);
+        auto empty_p = Seal(&hctx, Constant(&hctx, true, {0}));
+        auto empty_true = Seal(&hctx, Constant(&hctx, 1, {0}));
+        auto empty_false = Seal(&hctx, Constant(&hctx, 2, {0}));
+
+        auto ret = Select(&hctx, empty_p, empty_true, empty_false);
+
+        EXPECT_EQ(ret.numel(), 0);
+        EXPECT_EQ(ret.shape().size(), 1);
+        EXPECT_EQ(ret.shape()[0], 0);
+      });
 }
 
-TEST(ConstTest, ClampEmpty) {
-  HalContext hctx = hal::test::makeRefHalContext();
-  auto empty_in = Constant(&hctx, 0, {0});
-  auto empty_min = Constant(&hctx, 1, {0});
-  auto empty_max = Constant(&hctx, 2, {0});
+TEST_P(TernaryTest, ClampEmpty) {
+  auto cfg =
+      test::makeRefConfig(std::get<0>(GetParam()), std::get<1>(GetParam()));
 
-  auto ret = Clamp(&hctx, empty_in, empty_min, empty_max);
+  mpc::utils::simulate(
+      3, [&](const std::shared_ptr<yacl::link::Context> &lctx) {
+        HalContext hctx(cfg, lctx);
+        auto empty_in = Seal(&hctx, Constant(&hctx, 0, {0}));
+        auto empty_min = Seal(&hctx, Constant(&hctx, 1, {0}));
+        auto empty_max = Seal(&hctx, Constant(&hctx, 2, {0}));
 
-  EXPECT_EQ(ret.numel(), 0);
-  EXPECT_EQ(ret.shape().size(), 1);
-  EXPECT_EQ(ret.shape()[0], 0);
+        auto ret = Clamp(&hctx, empty_in, empty_min, empty_max);
+
+        EXPECT_EQ(ret.numel(), 0);
+        EXPECT_EQ(ret.shape().size(), 1);
+        EXPECT_EQ(ret.shape()[0], 0);
+      });
 }
+
+INSTANTIATE_TEST_SUITE_P(
+    TernaryTestInstances, TernaryTest,
+    testing::Combine(testing::Values(FieldType::FM64, FieldType::FM128),
+                     testing::Values(ProtocolKind::REF2K, ProtocolKind::SEMI2K,
+                                     ProtocolKind::ABY3)),
+    [](const testing::TestParamInfo<TernaryTest::ParamType> &p) {
+      return fmt::format("{}x{}", std::get<0>(p.param), std::get<1>(p.param));
+    });
 
 }  // namespace spu::kernel::hlo

@@ -93,6 +93,8 @@ class Communicator : public State {
 
   size_t getRank() const { return lctx_->Rank(); }
 
+  size_t nextRank() const { return lctx_->NextRank(); }
+
   ArrayRef allReduce(ReduceOp op, const ArrayRef& in, std::string_view tag);
 
   ArrayRef reduce(ReduceOp op, const ArrayRef& in, size_t root,

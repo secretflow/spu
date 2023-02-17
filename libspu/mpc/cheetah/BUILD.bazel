@@ -27,6 +27,7 @@ spu_cc_library(
 
 spu_cc_library(
     name = "object",
+    srcs = ["object.cc"],
     hdrs = ["object.h"],
     copts = EMP_COPT_FLAGS,
     deps = [

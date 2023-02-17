@@ -116,7 +116,7 @@ TEST(UnbalancedPsiTest, EcdhOprfUnbalanced) {
   auto lctxs = yacl::link::test::SetupWorld(params.in_content_list.size());
 
   std::string preprocess_file_path =
-      fmt::format("{}/preprocess-cipher-store-{}.db",
+      fmt::format("{}/preprocess-cipher-store-{}.csv",
                   unbalanced_psi_test.tmp_dir_, receiver_rank);
   std::string ecdh_secret_key_path = fmt::format(
       "{}/ecdh-secret-key.bin", unbalanced_psi_test.tmp_dir_, receiver_rank);
@@ -148,7 +148,7 @@ TEST(UnbalancedPsiTest, EcdhOprfUnbalanced) {
     config.set_receiver_rank(receiver_rank);
     config.set_broadcast_result(false);
     // set min bucket size for test
-    config.set_bucket_size(1);
+    config.set_bucket_size(10000);
     config.set_curve_type(CurveType::CURVE_FOURQ);
     if (receiver_rank == lctxs[idx]->Rank()) {
       config.set_preprocess_path(preprocess_file_path);
@@ -193,7 +193,7 @@ TEST(UnbalancedPsiTest, EcdhOprfUnbalanced) {
     config.set_receiver_rank(receiver_rank);
     config.set_broadcast_result(false);
     // set min bucket size for test
-    config.set_bucket_size(1);
+    config.set_bucket_size(10000);
     config.set_curve_type(CurveType::CURVE_FOURQ);
 
     if (receiver_rank == lctxs[idx]->Rank()) {

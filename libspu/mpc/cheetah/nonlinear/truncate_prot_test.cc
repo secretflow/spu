@@ -86,7 +86,8 @@ TEST_P(TruncateProtTest, Basic) {
   ArrayRef oup[2];
   utils::simulate(kWorldSize, [&](std::shared_ptr<yacl::link::Context> ctx) {
     int rank = ctx->Rank();
-    auto base = std::make_shared<BasicOTProtocols>(ctx);
+    auto conn = std::make_shared<Communicator>(ctx);
+    auto base = std::make_shared<BasicOTProtocols>(conn);
     TruncateProtocol trunc_prot(base);
     TruncateProtocol::Meta meta;
     meta.msb = msb_t;

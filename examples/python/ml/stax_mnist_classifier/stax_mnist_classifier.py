@@ -163,9 +163,11 @@ def run_spu():
         print("Epoch {} in {:0.2f} sec".format(epoch, epoch_time))
         print("Training set accuracy {}".format(train_acc))
         print("Test set accuracy {}".format(test_acc))
+    return test_acc
 
 
-print("run_cpu:")
-run_cpu()
-print("run_spu:")
-run_spu()
+if __name__ == '__main__':
+    print("run_cpu:")
+    run_cpu()
+    print("run_spu:")
+    run_spu()

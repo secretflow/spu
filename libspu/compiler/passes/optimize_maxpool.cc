@@ -101,6 +101,7 @@ public:
 
     LogicalResult status = failure();
     Value selected_indicies;
+    bool rewritten = false;
 
     auto isAllOne = [](const DenseIntElementsAttr &attr) {
       return attr.isSplat() && attr.getSplatValue<int64_t>() == 1;
@@ -149,9 +150,14 @@ public:
 
         selected_indicies =
             rewriteReduceWindow(previous_reduce_window, rewriter);
+        rewritten = true;
 
         break;
       }
+    }
+
+    if (rewritten == false) {
+      return failure();
     }
 
     rewriter.replaceOpWithNewOp<pphlo::MaxPoolScatterOp>(

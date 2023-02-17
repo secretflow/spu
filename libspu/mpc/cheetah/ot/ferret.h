@@ -20,9 +20,7 @@
 #include "absl/types/span.h"
 #include "yacl/base/int128.h"
 
-namespace yacl::link {
-class Context;
-}
+#include "libspu/mpc/common/communicator.h"
 
 namespace spu::mpc::cheetah {
 
@@ -32,7 +30,7 @@ class FerretOT {
   std::shared_ptr<Impl> impl_;
 
  public:
-  FerretOT(std::shared_ptr<yacl::link::Context> conn, bool is_sender);
+  FerretOT(std::shared_ptr<Communicator> conn, bool is_sender);
 
   ~FerretOT();
 

@@ -69,14 +69,35 @@ class MsbA2B : public UnaryKernel {
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& x) const override;
 };
 
+class MulA1B : public BinaryKernel {
+ public:
+  static constexpr char kBindName[] = "mul_a1b";
+
+  Kind kind() const override { return Kind::Dynamic; }
+
+  ce::CExpr latency() const override { return ce::Const(1); }
+
+  ce::CExpr comm() const override { return 2 * ce::K(); }
+
+  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& ashr,
+                const ArrayRef& bshr) const override;
+};
+
 class MulAA : public BinaryKernel {
+ private:
+  ArrayRef mulDirectly(KernelEvalContext* ctx, const ArrayRef& lhs,
+                       const ArrayRef& rhs) const;
+
+  ArrayRef mulWithBeaver(KernelEvalContext* ctx, const ArrayRef& lhs,
+                         const ArrayRef& rhs) const;
+
  public:
   static constexpr char kBindName[] = "mul_aa";
 
   Kind kind() const override { return Kind::Dynamic; }
 
-  // TODO(juhou)
-  ce::CExpr latency() const override { return ce::Const(0); }
+  ce::CExpr latency() const override { return ce::Const(1); }
+
   ce::CExpr comm() const override { return ce::Const(0); }
 
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& x,

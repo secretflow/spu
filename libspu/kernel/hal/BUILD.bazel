@@ -25,6 +25,7 @@ spu_cc_library(
         ":debug",
         ":fxp",
         ":integer",
+        ":pad",
         ":polymorphic",
         ":random",
         ":shape_ops",
@@ -277,6 +278,28 @@ spu_cc_test(
     srcs = ["concat_test.cc"],
     deps = [
         ":concat",
+        ":test_util",
+    ],
+)
+
+spu_cc_library(
+    name = "pad",
+    srcs = ["pad.cc"],
+    hdrs = ["pad.h"],
+    deps = [
+        ":ring",
+        ":shape_ops",
+        "//libspu/core:prelude",
+        "//libspu/core:shape_util",
+        "//libspu/kernel:context",
+    ],
+)
+
+spu_cc_test(
+    name = "pad_test",
+    srcs = ["pad_test.cc"],
+    deps = [
+        ":pad",
         ":test_util",
     ],
 )

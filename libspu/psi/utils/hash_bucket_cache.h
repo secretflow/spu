@@ -62,6 +62,8 @@ class HashBucketCache {
 
   uint32_t BucketNum() const { return bucket_num_; }
 
+  uint64_t ItemCount() const { return item_index_; }
+
  private:
   std::unique_ptr<ScopeDiskCache> disk_cache_;
   std::vector<std::unique_ptr<io::OutputStream>> bucket_os_vec_;

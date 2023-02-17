@@ -42,6 +42,10 @@ load("//bazel:llvm.bzl", "llvm_setup")
 
 llvm_setup(name = "llvm-project")
 
+load("@xla//:workspace4.bzl", "xla_workspace4")
+
+xla_workspace4()
+
 load("@xla//:workspace3.bzl", "xla_workspace3")
 
 xla_workspace3()
@@ -63,11 +67,4 @@ load("@pybind11_bazel//:python_configure.bzl", "python_configure")
 python_configure(
     name = "local_config_python",
     python_version = "3",
-)
-
-load("//bazel:pip_rules.bzl", "read_requirements")
-
-read_requirements(
-    name = "pip_deps",
-    requirements = "//:requirements.txt",
 )
