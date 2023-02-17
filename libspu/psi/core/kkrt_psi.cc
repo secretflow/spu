@@ -35,7 +35,7 @@
 namespace spu::psi {
 
 namespace {
-// constexpr size_t kPsiDataBatchSize = 1 << 10;
+
 constexpr size_t kPsiDataBatchSize = 1024;
 constexpr size_t kStashSize = 0;
 constexpr size_t kCuckooHashNum = 3;
