@@ -185,7 +185,9 @@ void KkrtPsiSend(const std::shared_ptr<yacl::link::Context>& link_ctx,
 
   // permute sender input data
   std::vector<size_t> input_permute;
+  std::vector<size_t> input_permute_inv;
   input_permute.resize(self_size);
+  input_permute_inv.resize(self_size);
   std::iota(input_permute.begin(), input_permute.end(), 0);
 
   yacl::crypto::Prg<uint128_t> prg(yacl::crypto::RandSeed());
@@ -194,39 +196,41 @@ void KkrtPsiSend(const std::shared_ptr<yacl::link::Context>& link_ctx,
       absl::MakeSpan(reinterpret_cast<uint8_t*>(&mt_seed), sizeof(mt_seed)));
   std::mt19937 rng(mt_seed);
   std::shuffle(input_permute.begin(), input_permute.end(), rng);
+  for (size_t i = 0; i < self_size; i++) {
+    input_permute_inv[input_permute[i]] = i;
+  }
 
   // hash bucketing
   yacl::Buffer encode_buf(self_size * kkrt_psi_options.cuckoo_hash_num *
                           encode_size);
   std::vector<std::array<uint64_t, kCuckooHashNum>> bin_indices;
   bin_indices.resize(self_size);
-  {
-    for (size_t i = 0; i < self_size; ++i) {
-      CuckooIndex::HashRoom itemHash(items_hash[i]);
-      uint64_t bin_idx0 = itemHash.GetHash(0) % num_bins;
-      uint64_t bin_idx1 = itemHash.GetHash(1) % num_bins;
-      uint64_t bin_idx2 = itemHash.GetHash(2) % num_bins;
+  
+  for (size_t i = 0; i < self_size; ++i) {
+    CuckooIndex::HashRoom itemHash(items_hash[i]);
+    uint64_t bin_idx0 = itemHash.GetHash(0) % num_bins;
+    uint64_t bin_idx1 = itemHash.GetHash(1) % num_bins;
+    uint64_t bin_idx2 = itemHash.GetHash(2) % num_bins;
 
-      bin_indices[i][0] = bin_idx0;
-      // check collision
-      uint8_t c01 = (bin_idx0 == bin_idx1) ? 1 : 0;
-      bin_indices[i][1] = bin_idx1 | (c01 * static_cast<uint64_t>(-1));
-      uint8_t c02 = (bin_idx0 == bin_idx2 || bin_idx1 == bin_idx2) ? 1 : 0;
-      bin_indices[i][2] = bin_idx2 | (c02 * static_cast<uint64_t>(-1));
-      if (c01 == 1) {
-        uint8_t* encode_pos =
-            encode_buf.data<uint8_t>() +
-            (input_permute[i] * kkrt_psi_options.cuckoo_hash_num + 1) *
-                encode_size;
-        prg.Fill(absl::MakeSpan(encode_pos, encode_size));
-      }
-      if (c02 == 1) {
-        uint8_t* encode_pos =
-            encode_buf.data<uint8_t>() +
-            (input_permute[i] * kkrt_psi_options.cuckoo_hash_num + 2) *
-                encode_size;
-        prg.Fill(absl::MakeSpan(encode_pos, encode_size));
-      }
+    bin_indices[i][0] = bin_idx0;
+    // check collision
+    uint8_t c01 = (bin_idx0 == bin_idx1) ? 1 : 0;
+    bin_indices[i][1] = bin_idx1 | (c01 * static_cast<uint64_t>(-1));
+    uint8_t c02 = (bin_idx0 == bin_idx2 || bin_idx1 == bin_idx2) ? 1 : 0;
+    bin_indices[i][2] = bin_idx2 | (c02 * static_cast<uint64_t>(-1));
+    if (c01 == 1) {
+      uint8_t* encode_pos =
+          encode_buf.data<uint8_t>() +
+          (input_permute[i] * kkrt_psi_options.cuckoo_hash_num + 1) *
+              encode_size;
+      prg.Fill(absl::MakeSpan(encode_pos, encode_size));
+    }
+    if (c02 == 1) {
+      uint8_t* encode_pos =
+          encode_buf.data<uint8_t>() +
+          (input_permute[i] * kkrt_psi_options.cuckoo_hash_num + 2) *
+              encode_size;
+      prg.Fill(absl::MakeSpan(encode_pos, encode_size));
     }
   }
 
