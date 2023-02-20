@@ -131,7 +131,7 @@ class CachedCsvCipherStore : public ICipherStore {
     }
   }
 
-  std::vector<uint64_t> FinalizeAndComputeIndices(size_t bucket_size);
+  std::vector<size_t> FinalizeAndComputeIndices(size_t bucket_size);
 
  private:
   std::unique_ptr<io::OutputStream> self_out_;
