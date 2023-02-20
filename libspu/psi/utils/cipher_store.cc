@@ -152,7 +152,7 @@ void CachedCsvCipherStore::SavePeer(
   }
 }
 
-std::vector<uint64_t> CachedCsvCipherStore::FinalizeAndComputeIndices(
+std::vector<size_t> CachedCsvCipherStore::FinalizeAndComputeIndices(
     size_t bucket_size) {
   if (!self_read_only_) {
     self_out_->Flush();
@@ -161,8 +161,8 @@ std::vector<uint64_t> CachedCsvCipherStore::FinalizeAndComputeIndices(
 
   SPDLOG_INFO("Begin FinalizeAndComputeIndices");
 
-  std::unordered_set<uint64_t> indices_set;
-  std::vector<uint64_t> indices;
+  std::unordered_set<size_t> indices_set;
+  std::vector<size_t> indices;
 
   std::vector<std::string> ids = {cipher_id_};
   CsvBatchProvider peer_provider(peer_csv_path_, ids);
@@ -181,14 +181,14 @@ std::vector<uint64_t> CachedCsvCipherStore::FinalizeAndComputeIndices(
     size_t compare_size = (batch_peer_data.size() + compare_thread_num_ - 1) /
                           compare_thread_num_;
 
-    std::vector<std::vector<uint64_t>> result(compare_thread_num_);
+    std::vector<std::vector<size_t>> result(compare_thread_num_);
 
     auto compare_proc = [&](int idx) -> void {
-      uint64_t begin = idx * compare_size;
-      uint64_t end =
+      size_t begin = idx * compare_size;
+      size_t end =
           std::min<size_t>(batch_peer_data.size(), begin + compare_size);
 
-      for (uint64_t i = begin; i < end; i++) {
+      for (size_t i = begin; i < end; i++) {
         auto search_ret = self_data_.find(batch_peer_data[i]);
         if (search_ret != self_data_.end()) {
           result[idx].push_back(search_ret->second);
