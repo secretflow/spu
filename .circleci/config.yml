@@ -18,6 +18,37 @@ parameters:
 # Define a job to be invoked later in a workflow.
 # See: https://circleci.com/docs/2.0/configuration-reference/#jobs
 jobs:
+  nn_benchmark:
+    # Use machine executor for convenient data sharing between the host and docker-compose cluster
+    machine:
+      image: ubuntu-2004:2022.07.1
+    resource_class: 2xlarge
+    steps:
+    - checkout
+    - run:
+        name: build
+        command: bazel build //... -c opt --ui_event_filters=-info,-debug,-warning --jobs=16 --disk_cache=~/.cache/spu_build_cache
+    - run:
+        name: Launch docker-compose cluster
+        command: |
+          set +e
+          declare -i test_status
+          cp .circleci/benchmark.json examples/python/conf/3pc.json
+          docker-compose -f .circleci/benchmark.yml up -d
+          sleep 20
+          docker run --network nn-benchmark --mount \
+              type=bind,source="$(pwd)",target=/home/admin/dev/ \
+              -w /home/admin/dev secretflow/spu-ci:0.2 sh -c \
+              "bazel run -c opt //examples/python/ml/stax_nn &> results.log"; test_status=${PIPESTATUS[0]}
+          exit ${test_status}
+    - save_cache:
+        key: spu-build-{{ arch }}-{{ .Environment.CIRCLE_BUILD_NUM }}
+        paths:
+          - ~/.cache/spu_build_cache
+    - store_test_results:
+        path: test-results
+    - store_artifacts:
+        path: results.log
   linux_ut:
     # Specify the execution environment. You can specify an image from Dockerhub or use one of our Convenience Images from CircleCI's Developer Hub.
     # See: https://circleci.com/docs/2.0/configuration-reference/#docker-machine-macos-windows-executor
@@ -183,12 +214,15 @@ jobs:
 # Invoke jobs via workflows
 # See: https://circleci.com/docs/2.0/configuration-reference/#workflows
 workflows:
-  ut:
+  benchmark:
     jobs:
-      - linux_ut
-      - macOS_ut
-  publish:
-    when: << pipeline.parameters.GHA_Action >>
-    jobs:
-      - linux_publish
-      - macOS_publish
+      - nn_benchmark
+  # ut:
+  #   jobs:
+  #     - linux_ut
+  #     - macOS_ut
+  # publish:
+  #   when: << pipeline.parameters.GHA_Action >>
+  #   jobs:
+  #     - linux_publish
+  #     - macOS_publish
