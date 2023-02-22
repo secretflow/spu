@@ -25,17 +25,21 @@ jobs:
     resource_class: 2xlarge
     steps:
     - checkout
+    - restore_cache:
+        name: "Restore build cache"
+        key: spu-build-{{ arch }}-
     - run:
-        name: build
+        name: Build SPU
         command: |
           set +e 
+          declare -i build_status
           sed -i "s/tensorflow /tensorflow-cpu /g" ./requirements-dev.txt
           docker run --name spu-build --mount type=bind,source="$(pwd)",target=/home/admin/dev/ secretflow/spu-ci:0.2 \
               sh -c "cd /home/admin/dev && \
                       python3 -m pip install -U pip && \
                       python3 -m pip install -r requirements.txt && \
-                      bazel build //... -c opt --ui_event_filters=-info,-debug,-warning --jobs=16 --disk_cache=~/.cache/spu_build_cache"; test_status=${PIPESTATUS[0]}
-          exit ${test_status} 
+                      bazel build //... -c opt --ui_event_filters=-info,-debug,-warning --jobs=16 --disk_cache=~/.cache/spu_build_cache | tee /home/admin/dev/build_results.log"; build_status=${PIPESTATUS[0]}
+          exit ${build_status} 
     - run:
         name: Save image
         command: docker commit spu-build spu-build:v1 
@@ -48,14 +52,13 @@ jobs:
         name: Launch benchmark task
         command: |
           set +e
-          declare -i test_status
+          declare -i benchmark_status
           sleep 20
-          docker run --rm --mount type=bind,source="$(pwd)",target=/home/admin/dev/ secretflow/spu-ci:0.2 \
+          # TODO: run all stax_nn models with different optimizers
+          docker run --rm --mount type=bind,source="$(pwd)",target=/home/admin/dev/ spu-build:v1 \
               sh -c "cd /home/admin/dev && \
-                      python3 -m pip install -U pip && \
-                      python3 -m pip install -r requirements.txt && \
-                      bazel run -c opt //examples/python/ml/stax_nn &> /home/admin/dev/results.log"; test_status=${PIPESTATUS[0]}
-          exit ${test_status}
+                      bazel run -c opt //examples/python/ml/stax_nn | tee /home/admin/dev/benchmark_results.log"; benchmark_status=${PIPESTATUS[0]}
+          exit ${benchmark_status}
     - run:
         name: Shutdown docker-compose cluster
         command: docker-compose -f .circleci/benchmark.yml down
@@ -63,10 +66,10 @@ jobs:
         key: spu-build-{{ arch }}-{{ .Environment.CIRCLE_BUILD_NUM }}
         paths:
           - ~/.cache/spu_build_cache
-    - store_test_results:
-        path: test-results
     - store_artifacts:
-        path: results.log
+        path: build_results.log
+    - store_artifacts:
+        path: benchmark_results.log
   linux_ut:
     # Specify the execution environment. You can specify an image from Dockerhub or use one of our Convenience Images from CircleCI's Developer Hub.
     # See: https://circleci.com/docs/2.0/configuration-reference/#docker-machine-macos-windows-executor
