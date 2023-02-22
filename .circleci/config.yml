@@ -39,7 +39,7 @@ jobs:
                       python3 -m pip install -U pip && \
                       python3 -m pip install -r requirements.txt && \
                       python3 -m pip install -r requirements-dev.txt && \
-                      bazel build //... -c opt --ui_event_filters=-info,-debug,-warning --jobs=16 --disk_cache=/home/admin/dev/.cache/spu_build_cache" | tee build_results.log; build_status=${PIPESTATUS[0]}
+                      bazel build //examples/python/utils:nodectl -c opt --ui_event_filters=-info,-debug,-warning --jobs=16 --disk_cache=/home/admin/dev/.cache/spu_build_cache" | tee build_results.log; build_status=${PIPESTATUS[0]}
           exit ${build_status} 
     - run:
         name: Save image
@@ -54,7 +54,8 @@ jobs:
         command: |
           set +e
           declare -i benchmark_status
-          sleep 20
+          sleep 60
+          docker-compose -f .circleci/benchmark.yml logs
           # TODO: run all stax_nn models with different optimizers
           docker run --rm --mount type=bind,source="$(pwd)",target=/home/admin/dev/ spu-build:v1 \
               sh -c "cd /home/admin/dev && \
