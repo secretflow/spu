@@ -29,9 +29,16 @@ jobs:
         name: build
         command: |
           set +e 
-          docker run --rm --mount type=bind,source="$(pwd)",target=/home/admin/dev/ secretflow/spu-ci:0.2 \
-              sh -c "cd /home/admin/dev && bazel build //... -c opt --ui_event_filters=-info,-debug,-warning --jobs=16 --disk_cache=~/.cache/spu_build_cache"; test_status=${PIPESTATUS[0]}
+          sed -i "s/tensorflow /tensorflow-cpu /g" ./requirements-dev.txt
+          docker run --name spu-build --mount type=bind,source="$(pwd)",target=/home/admin/dev/ secretflow/spu-ci:0.2 \
+              sh -c "python3 -m pip install -U pip && \
+                     python3 -m pip install -r requirements.txt && \
+                     cd /home/admin/dev && \
+                     bazel build //... -c opt --ui_event_filters=-info,-debug,-warning --jobs=16 --disk_cache=~/.cache/spu_build_cache"; test_status=${PIPESTATUS[0]}
           exit ${test_status} 
+    - run:
+        name: Save image
+        command: docker commit spu-build spu-build:v1 
     - run:
         name: Launch docker-compose cluster
         command: |
@@ -44,7 +51,10 @@ jobs:
           declare -i test_status
           sleep 20
           docker run --rm --mount type=bind,source="$(pwd)",target=/home/admin/dev/ secretflow/spu-ci:0.2 \
-              sh -c "cd /home/admin/dev && bazel run -c opt //examples/python/ml/stax_nn &> /home/admin/dev/results.log"; test_status=${PIPESTATUS[0]}
+              sh -c "python3 -m pip install -U pip && \
+                     python3 -m pip install -r requirements.txt && \
+                     cd /home/admin/dev && \
+                     bazel run -c opt //examples/python/ml/stax_nn &> /home/admin/dev/results.log"; test_status=${PIPESTATUS[0]}
           exit ${test_status}
     - run:
         name: Shutdown docker-compose cluster
