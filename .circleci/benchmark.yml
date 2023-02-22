@@ -1,0 +1,73 @@
+networks:
+  nn-benchmark:
+    ipam:
+      config:
+      - subnet: 172.16.238.0/24
+      driver: default
+    name: nn-benchmark
+services:
+  node_0:
+    command:
+      - /bin/sh
+      - -c
+      - |
+        cd /home/admin/dev
+        bazel run -c opt //examples/python/utils:nodectl -- start -c /home/admin/dev/examples/python/conf/3pc.json --node_id node:0
+    image: secretflow/spu-ci:0.2
+    networks:
+      nn-benchmark:
+        ipv4_address: 172.16.238.2
+    volumes:
+    - ${PWD}:/home/admin/dev/
+  node_1:
+    command:
+      - /bin/sh
+      - -c
+      - |
+        cd /home/admin/dev
+        bazel run -c opt //examples/python/utils:nodectl -- start -c /home/admin/dev/examples/python/conf/3pc.json --node_id node:1
+    image: secretflow/spu-ci:0.2
+    networks:
+      nn-benchmark:
+        ipv4_address: 172.16.238.3
+    volumes:
+    - ${PWD}:/home/admin/dev/
+  node_2:
+    command:
+      - /bin/sh
+      - -c
+      - |
+        cd /home/admin/dev
+        bazel run -c opt //examples/python/utils:nodectl -- start -c /home/admin/dev/examples/python/conf/3pc.json --node_id node:2
+    image: secretflow/spu-ci:0.2
+    networks:
+      nn-benchmark:
+        ipv4_address: 172.16.238.4
+    volumes:
+    - ${PWD}:/home/admin/dev/
+  node_3:
+    command:
+      - /bin/sh
+      - -c
+      - |
+        cd /home/admin/dev
+        bazel run -c opt //examples/python/utils:nodectl -- start -c /home/admin/dev/examples/python/conf/3pc.json --node_id node:3
+    image: secretflow/spu-ci:0.2
+    networks:
+      nn-benchmark:
+        ipv4_address: 172.16.238.5
+    volumes:
+    - ${PWD}:/home/admin/dev/
+  node_4:
+    command:
+      - /bin/sh
+      - -c
+      - |
+        cd /home/admin/dev
+        bazel run -c opt //examples/python/utils:nodectl -- start -c /home/admin/dev/examples/python/conf/3pc.json --node_id node:4
+    image: secretflow/spu-ci:0.2
+    networks:
+      nn-benchmark:
+        ipv4_address: 172.16.238.6
+    volumes:
+    - ${PWD}:/home/admin/dev/

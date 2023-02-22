@@ -27,26 +27,34 @@ jobs:
     - checkout
     - run:
         name: build
-        command: bazel build //... -c opt --ui_event_filters=-info,-debug,-warning --jobs=16 --disk_cache=~/.cache/spu_build_cache
+        command: |
+          set +e 
+          docker run --rm --mount type=bind,source="$(pwd)",target=/home/admin/dev/ secretflow/spu-ci:0.2 \
+              sh -c "cd /home/admin/dev && bazel build //... -c opt --ui_event_filters=-info,-debug,-warning --jobs=16 --disk_cache=~/.cache/spu_build_cache"; test_status=${PIPESTATUS[0]}
+          exit ${test_status} 
     - run:
         name: Launch docker-compose cluster
         command: |
-          set +e
-          declare -i test_status
           cp .circleci/benchmark.json examples/python/conf/3pc.json
           docker-compose -f .circleci/benchmark.yml up -d
+    - run:
+        name: Launch benchmark task
+        command: |
+          set +e
+          declare -i test_status
           sleep 20
-          docker run --network nn-benchmark --mount \
-              type=bind,source="$(pwd)",target=/home/admin/dev/ \
-              -w /home/admin/dev secretflow/spu-ci:0.2 sh -c \
-              "bazel run -c opt //examples/python/ml/stax_nn &> results.log"; test_status=${PIPESTATUS[0]}
+          docker run --rm --mount type=bind,source="$(pwd)",target=/home/admin/dev/ secretflow/spu-ci:0.2 \
+              sh -c "cd /home/admin/dev && bazel run -c opt //examples/python/ml/stax_nn &> /home/admin/dev/results.log"; test_status=${PIPESTATUS[0]}
           exit ${test_status}
+    - run:
+        name: Shutdown docker-compose cluster
+        command: docker-compose -f .circleci/benchmark.yml down
     - save_cache:
         key: spu-build-{{ arch }}-{{ .Environment.CIRCLE_BUILD_NUM }}
         paths:
           - ~/.cache/spu_build_cache
     - store_test_results:
-        path: test-results
+      path: test-results
     - store_artifacts:
         path: results.log
   linux_ut:
