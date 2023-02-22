@@ -54,7 +54,7 @@ jobs:
         paths:
           - ~/.cache/spu_build_cache
     - store_test_results:
-      path: test-results
+        path: test-results
     - store_artifacts:
         path: results.log
   linux_ut:
