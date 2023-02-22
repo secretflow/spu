@@ -66,7 +66,7 @@ jobs:
     - save_cache:
         key: spu-build-linuxVM-{{ .Environment.CIRCLE_BUILD_NUM }}
         paths:
-          - "$(pwd)"/.cache/spu_build_cache
+          - $(pwd)/.cache/spu_build_cache
     - store_artifacts:
         path: build_results.log
     - store_artifacts:
