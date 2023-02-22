@@ -27,7 +27,7 @@ jobs:
     - checkout
     - restore_cache:
         name: "Restore build cache"
-        key: spu-build-{{ arch }}-
+        key: spu-build-{{ awk -F= '$1=="ID" { print $2 ;}' /etc/os-release }}-
     - run:
         name: Build SPU
         command: |
@@ -38,7 +38,7 @@ jobs:
               sh -c "cd /home/admin/dev && \
                       python3 -m pip install -U pip && \
                       python3 -m pip install -r requirements.txt && \
-                      bazel build //... -c opt --ui_event_filters=-info,-debug,-warning --jobs=16 --disk_cache=~/.cache/spu_build_cache | tee /home/admin/dev/build_results.log"; build_status=${PIPESTATUS[0]}
+                      bazel build //... -c opt --ui_event_filters=-info,-debug,-warning --jobs=16 --disk_cache=/home/admin/dev/.cache/spu_build_cache | tee /home/admin/dev/build_results.log"; build_status=${PIPESTATUS[0]}
           exit ${build_status} 
     - run:
         name: Save image
@@ -119,7 +119,7 @@ jobs:
           paths:
             - /usr/local/lib64/python3.8/site-packages
       - save_cache:
-          key: spu-build-{{ arch }}-{{ .Environment.CIRCLE_BUILD_NUM }}
+          key: spu-build-{{ awk -F= '$1=="ID" { print $2 ;}' /etc/os-release }}-{{ .Environment.CIRCLE_BUILD_NUM }}
           paths:
             - /root/.cache/spu_build_cache
       - store_test_results:
