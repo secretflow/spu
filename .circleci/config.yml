@@ -41,6 +41,10 @@ jobs:
                       python3 -m pip install -r requirements-dev.txt && \
                       bazel build //examples/python/utils:nodectl -c opt --ui_event_filters=-info,-debug,-warning --jobs=16 --disk_cache=/home/admin/dev/.cache/spu_build_cache" | tee build_results.log; build_status=${PIPESTATUS[0]}
           exit ${build_status} 
+    - save_cache:
+        key: spu-build-linuxVM-{{ .Environment.CIRCLE_BUILD_NUM }}
+        paths:
+          - $(pwd)/.cache/spu_build_cache
     - run:
         name: Save image
         command: docker commit spu-build spu-build:v1 
@@ -54,7 +58,7 @@ jobs:
         command: |
           set +e
           declare -i benchmark_status
-          sleep 60
+          sleep 300
           docker-compose -f .circleci/benchmark.yml logs
           # TODO: run all stax_nn models with different optimizers
           docker run --rm --mount type=bind,source="$(pwd)",target=/home/admin/dev/ spu-build:v1 \
@@ -121,7 +125,7 @@ jobs:
           paths:
             - /usr/local/lib64/python3.8/site-packages
       - save_cache:
-          key: spu-build-{{ awk -F= '$1=="ID" { print $2 ;}' /etc/os-release }}-{{ .Environment.CIRCLE_BUILD_NUM }}
+          key: spu-build-{{ arch }}-{{ .Environment.CIRCLE_BUILD_NUM }}
           paths:
             - /root/.cache/spu_build_cache
       - store_test_results:
