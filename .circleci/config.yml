@@ -53,15 +53,12 @@ jobs:
         command: |
           cp .circleci/benchmark.json examples/python/conf/3pc.json
           docker-compose -f .circleci/benchmark.yml up -d
-          sleep 300
-          docker-compose -f .circleci/benchmark.yml logs
     - run:
         name: Launch benchmark task
         command: |
           set +e
           declare -i benchmark_status
           sleep 60
-          docker-compose -f .circleci/benchmark.yml logs
           # TODO: run all stax_nn models with different optimizers
           docker run --rm --mount type=bind,source="$(pwd)",target=/home/admin/dev/ --network nn-benchmark spu-build:v1 \
               sh -c "cd /home/admin/dev && \
