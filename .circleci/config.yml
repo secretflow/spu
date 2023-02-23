@@ -44,7 +44,7 @@ jobs:
     - save_cache:
         key: spu-build-linuxVM-{{ .Environment.CIRCLE_BUILD_NUM }}
         paths:
-          - $(pwd)/.cache/spu_build_cache
+          - ${PWD}/.cache/spu_build_cache
     - run:
         name: Save image
         command: docker commit spu-build spu-build:v1 
@@ -58,10 +58,10 @@ jobs:
         command: |
           set +e
           declare -i benchmark_status
-          sleep 300
+          sleep 60
           docker-compose -f .circleci/benchmark.yml logs
           # TODO: run all stax_nn models with different optimizers
-          docker run --rm --mount type=bind,source="$(pwd)",target=/home/admin/dev/ spu-build:v1 \
+          docker run --rm --mount type=bind,source="$(pwd)",target=/home/admin/dev/ --network nn-benchmark spu-build:v1 \
               sh -c "cd /home/admin/dev && \
                       bazel run -c opt //examples/python/ml/stax_nn" | tee benchmark_results.log; benchmark_status=${PIPESTATUS[0]}
           exit ${benchmark_status}
@@ -71,7 +71,7 @@ jobs:
     - save_cache:
         key: spu-build-linuxVM-{{ .Environment.CIRCLE_BUILD_NUM }}
         paths:
-          - $(pwd)/.cache/spu_build_cache
+          - ${PWD}/.cache/spu_build_cache
     - store_artifacts:
         path: build_results.log
     - store_artifacts:
