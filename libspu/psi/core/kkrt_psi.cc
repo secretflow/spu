@@ -221,14 +221,14 @@ void KkrtPsiSend(const std::shared_ptr<yacl::link::Context>& link_ctx,
     if (c01 == 1) {
       uint8_t* encode_pos =
           encode_buf.data<uint8_t>() +
-          (input_permute[i] * kkrt_psi_options.cuckoo_hash_num + 1) *
+          (input_permute_inv[i] * kkrt_psi_options.cuckoo_hash_num + 1) *
               encode_size;
       prg.Fill(absl::MakeSpan(encode_pos, encode_size));
     }
     if (c02 == 1) {
       uint8_t* encode_pos =
           encode_buf.data<uint8_t>() +
-          (input_permute[i] * kkrt_psi_options.cuckoo_hash_num + 2) *
+          (input_permute_inv[i] * kkrt_psi_options.cuckoo_hash_num + 2) *
               encode_size;
       prg.Fill(absl::MakeSpan(encode_pos, encode_size));
     }
