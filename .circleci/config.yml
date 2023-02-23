@@ -243,12 +243,12 @@ workflows:
   benchmark:
     jobs:
       - nn_benchmark
-  # ut:
-  #   jobs:
-  #     - linux_ut
-  #     - macOS_ut
-  # publish:
-  #   when: << pipeline.parameters.GHA_Action >>
-  #   jobs:
-  #     - linux_publish
-  #     - macOS_publish
+  ut:
+    jobs:
+      - linux_ut
+      - macOS_ut
+  publish:
+    when: << pipeline.parameters.GHA_Action >>
+    jobs:
+      - linux_publish
+      - macOS_publish
