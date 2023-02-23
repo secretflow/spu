@@ -15,6 +15,10 @@ parameters:
     type: string
     default: ""
 
+on:
+  schedule:
+    - cron: '* * * * 6'
+
 # Define a job to be invoked later in a workflow.
 # See: https://circleci.com/docs/2.0/configuration-reference/#jobs
 jobs:
