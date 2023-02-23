@@ -1,24 +1,30 @@
 
 #pragma once
 
-#include "spu/mpc/kernel.h"
-#include "spu/mpc/util/cexpr.h"
+#include "libspu/mpc/kernel.h"
+#include "libspu/core/array_ref.h"
 
 namespace spu::mpc::spdzwisefield {
-
-using util::CExpr;
-using util::Const;
-using util::K;
-using util::Log;
-using util::N;
 
 class P2A : public UnaryKernel {
     public:
         static constexpr char kBindName[] = "p2a";
 
-        CExpr latency() const override { return Const(0); }
+/*
+ * Note that verification is needed for checking the correctness
+ * of mac, but it is not included in the latency and comm.
+ */
+        ce::CExpr latency() const override {
+            // one for pass around rss share and 
+            // one for mac_key * share
 
-        CExpr comm() const override { return Const(0); }
+            return ce::Const(2); 
+        }
+
+        ce::CExpr comm() const override {
+
+            return ce::K() * ce::Const(2); 
+        }
 
         ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in) const override;
 };
@@ -27,9 +33,9 @@ class A2P : public UnaryKernel {
     public:
         static constexpr char kBindName[] = "a2p";
 
-        CExpr latency() const override { return Const(1); }
+        ce::CExpr latency() const override { return ce::Const(1); }
 
-        CExpr comm() const override { return Const(0); }
+        ce::CExpr comm() const override { return ce::K(); }
 
         ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in) const override;
 };

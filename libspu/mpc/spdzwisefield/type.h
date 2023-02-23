@@ -1,8 +1,8 @@
 
 #pragma once
 
-#include "spu/core/type.h"
-#include "spu/mpc/object.h"
+#include "libspu/core/type.h"
+#include "libspu/mpc/object.h"
 
 namespace spu::mpc::spdzwisefield {
 
@@ -51,5 +51,7 @@ class BShrTy : public TypeImpl<BShrTy, RingTy, Secret, BShare> {
     }
 
 };
+
+void registerTypes();
 
 }
