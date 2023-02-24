@@ -36,6 +36,8 @@ class AndBB : public BinaryKernel {
  public:
   static constexpr char kBindName[] = "and_bb";
 
+  Kind kind() const override { return Kind::Dynamic; }
+
   ce::CExpr latency() const override { return ce::Const(1); }
 
   ce::CExpr comm() const override { return ce::K() * 2 * (ce::N() - 1); }

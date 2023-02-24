@@ -36,7 +36,9 @@ std::unique_ptr<Object> makeCheetahProtocol(
     const std::shared_ptr<yacl::link::Context>& lctx) {
   semi2k::registerTypes();
 
-  auto obj = std::make_unique<Object>("CHEETAH");
+  // FIXME: use same id for different rank
+  auto obj =
+      std::make_unique<Object>(fmt::format("{}-{}", lctx->Rank(), "CHEETAH"));
 
   // add communicator
   obj->addState<Communicator>(lctx);
@@ -50,8 +52,7 @@ std::unique_ptr<Object> makeCheetahProtocol(
   // add Cheetah states
   obj->addState<cheetah::CheetahMulState>(lctx);
   obj->addState<cheetah::CheetahDotState>(lctx);
-  // auto conn = std::make_shared<Communicator>(lctx);
-  obj->addState<cheetah::CheetahOTState>(obj->getState<Communicator>());
+  obj->addState<cheetah::CheetahOTState>();
 
   // register public kernels.
   regPub2kKernels(obj.get());
@@ -69,8 +70,11 @@ std::unique_ptr<Object> makeCheetahProtocol(
   obj->regKernel<cheetah::MulAP>();
   obj->regKernel<cheetah::MulAA>();
   obj->regKernel<cheetah::MulA1B>();
+  obj->regKernel<cheetah::EqualAA>();
+  obj->regKernel<cheetah::EqualAP>();
   obj->regKernel<cheetah::MatMulAP>();
   obj->regKernel<cheetah::MatMulAA>();
+  obj->regKernel<cheetah::Conv2DAA>();
   obj->regKernel<cheetah::LShiftA>();
   obj->regKernel<cheetah::TruncA>();
   obj->regKernel<cheetah::MsbA2B>();
@@ -85,7 +89,7 @@ std::unique_ptr<Object> makeCheetahProtocol(
   obj->regKernel<cheetah::P2B>();
   obj->regKernel<cheetah::A2B>();
   obj->regKernel<cheetah::B2A>();
-  // obj->regKernel<cheetah::B2A_Randbit>();
+
   obj->regKernel<cheetah::AndBP>();
   obj->regKernel<cheetah::AndBB>();
   obj->regKernel<cheetah::XorBP>();

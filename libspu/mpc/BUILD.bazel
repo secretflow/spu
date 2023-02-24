@@ -67,7 +67,6 @@ spu_cc_library(
     hdrs = ["object.h"],
     deps = [
         "//libspu/core:array_ref",
-        "//libspu/core:trace",
         "//libspu/core:type",
         "//libspu/mpc/utils:cexpr",
     ],

@@ -236,6 +236,7 @@ class UnitTests(unittest.TestCase):
         broadcast_result = False
 
         precheck_input = False
+        server_cache_path = "server_cache.bin"
 
         global wrap
 
@@ -244,8 +245,83 @@ class UnitTests(unittest.TestCase):
         ):
             link_ctx = link.create_brpc(lctx_desc, rank)
 
+            if receiver_rank != link_ctx.rank:
+                print("===== gen cache phase =====")
+                print(f"{offline_path}, {server_cache_path}")
+
+                gen_cache_config = psi.BucketPsiConfig(
+                    psi_type=psi.PsiType.Value('ECDH_OPRF_UB_PSI_2PC_GEN_CACHE'),
+                    broadcast_result=False,
+                    receiver_rank=receiver_rank,
+                    input_params=psi.InputParams(
+                        path=offline_path,
+                        select_fields=selected_fields,
+                        precheck=False,
+                    ),
+                    output_params=psi.OutputParams(
+                        path=server_cache_path, need_sort=False
+                    ),
+                    bucket_size=1000000,
+                    curve_type=psi.CurveType.CURVE_FOURQ,
+                    ecdh_secret_key_path=secret_key_path,
+                )
+
+                start = time.time()
+                gen_cache_report = psi.bucket_psi(None, gen_cache_config)
+
+                server_source_count = wc_count(offline_path)
+                self.assertEqual(
+                    gen_cache_report.original_count, server_source_count - 1
+                )
+
+                print(f"offline cost time: {time.time() - start}")
+                print(
+                    f"offline: rank: {rank} original_count: {gen_cache_report.original_count}"
+                )
+
+            print("===== transfer cache phase =====")
+            transfer_cache_config = psi.BucketPsiConfig(
+                psi_type=psi.PsiType.Value('ECDH_OPRF_UB_PSI_2PC_TRANSFER_CACHE'),
+                broadcast_result=broadcast_result,
+                receiver_rank=receiver_rank,
+                input_params=psi.InputParams(
+                    path=offline_path,
+                    select_fields=selected_fields,
+                    precheck=precheck_input,
+                ),
+                output_params=psi.OutputParams(path="fake.out", need_sort=False),
+                bucket_size=1000000,
+                curve_type=psi.CurveType.CURVE_FOURQ,
+            )
+
+            if receiver_rank == link_ctx.rank:
+                transfer_cache_config.preprocess_path = preprocess_path
+                # transfer_cache_config.input_params.path = "dummy.csv"
+            else:
+                transfer_cache_config.input_params.path = server_cache_path
+                transfer_cache_config.ecdh_secret_key_path = secret_key_path
+
+            print(
+                f"rank:{link_ctx.rank} file:{transfer_cache_config.input_params.path}"
+            )
+
+            start = time.time()
+            transfer_cache_report = psi.bucket_psi(link_ctx, transfer_cache_config)
+
+            if receiver_rank != link_ctx.rank:
+                server_source_count = wc_count(offline_path)
+                self.assertEqual(
+                    transfer_cache_report.original_count, server_source_count - 1
+                )
+
+            print(f"offline cost time: {time.time() - start}")
+            print(
+                f"offline: rank: {rank} original_count: {transfer_cache_report.original_count}"
+            )
+
+            print("===== offline phase =====")
             offline_config = psi.BucketPsiConfig(
-                psi_type=psi.PsiType.Value('ECDH_OPRF_UNBALANCED_PSI_2PC_OFFLINE'),
+                psi_type=psi.PsiType.Value('ECDH_OPRF_UB_PSI_2PC_OFFLINE'),
                 broadcast_result=broadcast_result,
                 receiver_rank=receiver_rank,
                 input_params=psi.InputParams(
@@ -270,14 +346,18 @@ class UnitTests(unittest.TestCase):
             if receiver_rank != link_ctx.rank:
                 server_source_count = wc_count(offline_path)
                 self.assertEqual(offline_report.original_count, server_source_count - 1)
+
             print(f"offline cost time: {time.time() - start}")
             print(
-                f"offline: rank: {rank} original_count: {offline_report.original_count}, intersection_count: {offline_report.intersection_count}"
+                f"offline: rank: {rank} original_count: {offline_report.original_count}"
+            )
+            print(
+                f"offline: rank: {rank} intersection_count: {offline_report.intersection_count}"
             )
 
             print("===== online phase =====")
             online_config = psi.BucketPsiConfig(
-                psi_type=psi.PsiType.Value('ECDH_OPRF_UNBALANCED_PSI_2PC_ONLINE'),
+                psi_type=psi.PsiType.Value('ECDH_OPRF_UB_PSI_2PC_ONLINE'),
                 broadcast_result=broadcast_result,
                 receiver_rank=receiver_rank,
                 input_params=psi.InputParams(
@@ -304,9 +384,8 @@ class UnitTests(unittest.TestCase):
                 self.assertEqual(report_online.original_count, client_source_count - 1)
 
             print(f"online cost time: {time.time() - start}")
-            print(
-                f"online: rank:{rank} original_count: {report_online.original_count}, intersection_count: {report_online.intersection_count}"
-            )
+            print(f"online: rank:{rank} original_count: {report_online.original_count}")
+            print(f"intersection_count: {report_online.intersection_count}")
 
         # launch with multiprocess
         jobs = [

@@ -57,4 +57,18 @@ bool bumpIndices(absl::Span<const T> shape, absl::Span<T> indices) {
 std::vector<int64_t> deduceDotShape(absl::Span<const int64_t> lhs,
                                     absl::Span<const int64_t> rhs);
 
+inline size_t calcFlattenOffset(absl::Span<const int64_t> indices,
+                                absl::Span<const int64_t> shape,
+                                absl::Span<const int64_t> strides) {
+  if (!shape.empty() && strides.empty()) {
+    return calcFlattenOffset(indices, shape, makeCompactStrides(shape));
+  }
+
+  int64_t offset = 0;
+  for (int64_t idx = indices.size() - 1; idx >= 0; --idx) {
+    offset += indices[idx] * strides[idx];
+  }
+  return offset;
+}
+
 }  // namespace spu

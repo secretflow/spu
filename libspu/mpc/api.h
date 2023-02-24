@@ -79,6 +79,10 @@ ArrayRef not_p(Object* ctx, const ArrayRef&);
 ArrayRef msb_p(Object* ctx, const ArrayRef&);
 ArrayRef msb_s(Object* ctx, const ArrayRef&);
 
+ArrayRef equal_pp(Object* ctx, const ArrayRef&, const ArrayRef&);
+ArrayRef equal_sp(Object* ctx, const ArrayRef&, const ArrayRef&);
+ArrayRef equal_ss(Object* ctx, const ArrayRef&, const ArrayRef&);
+
 ArrayRef eqz_p(Object* ctx, const ArrayRef&);
 ArrayRef eqz_s(Object* ctx, const ArrayRef&);
 

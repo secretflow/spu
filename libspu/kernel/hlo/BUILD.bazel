@@ -269,6 +269,7 @@ spu_cc_library(
     srcs = ["sort.cc"],
     hdrs = ["sort.h"],
     deps = [
+        ":basic_binary",
         ":casting",
         ":utils",
         "//libspu/kernel/hal",

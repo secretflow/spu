@@ -66,10 +66,10 @@ def _rule_python():
     maybe(
         http_archive,
         name = "rules_python",
-        sha256 = "8c15896f6686beb5c631a4459a3aa8392daccaab805ea899c9d14215074b60ef",
-        strip_prefix = "rules_python-0.17.3",
+        sha256 = "29a801171f7ca190c543406f9894abf2d483c206e14d6acbd695623662320097",
+        strip_prefix = "rules_python-0.18.1",
         urls = [
-            "https://github.com/bazelbuild/rules_python/archive/refs/tags/0.17.3.tar.gz",
+            "https://github.com/bazelbuild/rules_python/releases/download/0.18.1/rules_python-0.18.1.tar.gz",
         ],
     )
 
@@ -150,11 +150,11 @@ def _com_github_xtensor_xtl():
     )
 
 def _com_github_openxla_xla():
-    LLVM_COMMIT = "4f15267d3dd797a15901fe9352f0d5fa121b9095"
-    LLVM_SHA256 = "79d7663c87eb499e73b4b03b88e3a6771c444f44b61a2c10054639250cb4ef87"
+    LLVM_COMMIT = "a7b6978285c1c07600d1762b206c1dcec35fe6c8"
+    LLVM_SHA256 = "ceb04060043f6692ed7dfed3656ff78b0e45e7dbf68c7f7ffb3903b551dce266"
 
-    OPENXLA_COMMIT = "d5e43371a0fa6e185354a839e49da3960ed3dfa2"
-    OPENXLA_SHA256 = "e3d0c9fe4a566b620699ddcbc1b96763c2e996833778e102f326009d56d927e3"
+    OPENXLA_COMMIT = "716551689ab53f15d7e7474978ee23df94fe1764"
+    OPENXLA_SHA256 = "f93a712cf29f09c55f4086a6ad0ed482e379b86ecc08dd754ef8afab98cab168"
 
     SKYLIB_VERSION = "1.3.0"
 
@@ -179,7 +179,7 @@ def _com_github_openxla_xla():
         ],
     )
 
-    # We need tensorflow to handle xla->mlir hlo
+    # We need openxla to handle xla/mhlo/stablehlo
     maybe(
         http_archive,
         name = "xla",
@@ -195,10 +195,10 @@ def _com_github_pybind11_bazel():
     maybe(
         http_archive,
         name = "pybind11_bazel",
-        sha256 = "a5666d950c3344a8b0d3892a88dc6b55c8e0c78764f9294e806d69213c03f19d",
-        strip_prefix = "pybind11_bazel-26973c0ff320cb4b39e45bc3e4297b82bc3a6c09",
+        sha256 = "6426567481ee345eb48661e7db86adc053881cb4dd39fbf527c8986316b682b9",
+        strip_prefix = "pybind11_bazel-fc56ce8a8b51e3dd941139d329b63ccfea1d304b",
         urls = [
-            "https://github.com/pybind/pybind11_bazel/archive/26973c0ff320cb4b39e45bc3e4297b82bc3a6c09.zip",
+            "https://github.com/pybind/pybind11_bazel/archive/fc56ce8a8b51e3dd941139d329b63ccfea1d304b.zip",
         ],
     )
 
@@ -207,10 +207,10 @@ def _com_github_pybind11():
         http_archive,
         name = "pybind11",
         build_file = "@pybind11_bazel//:pybind11.BUILD",
-        sha256 = "111014b516b625083bef701df7880f78c2243835abdb263065b6b59b960b6bad",
-        strip_prefix = "pybind11-2.10.1",
+        sha256 = "5d8c4c5dda428d3a944ba3d2a5212cb988c2fae4670d58075a5a49075a6ca315",
+        strip_prefix = "pybind11-2.10.3",
         urls = [
-            "https://github.com/pybind/pybind11/archive/refs/tags/v2.10.1.tar.gz",
+            "https://github.com/pybind/pybind11/archive/refs/tags/v2.10.3.tar.gz",
         ],
     )
 

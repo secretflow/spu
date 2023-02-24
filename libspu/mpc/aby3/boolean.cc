@@ -419,42 +419,12 @@ ArrayRef BitrevB::proc(KernelEvalContext* ctx, const ArrayRef& in, size_t start,
   });
 }
 
-namespace {
-
-constexpr std::array<uint128_t, 6> kBitIntlSwapMasks = {{
-    yacl::MakeUint128(0x2222222222222222, 0x2222222222222222),  // 4bit
-    yacl::MakeUint128(0x0C0C0C0C0C0C0C0C, 0x0C0C0C0C0C0C0C0C),  // 8bit
-    yacl::MakeUint128(0x00F000F000F000F0, 0x00F000F000F000F0),  // 16bit
-    yacl::MakeUint128(0x0000FF000000FF00, 0x0000FF000000FF00),  // 32bit
-    yacl::MakeUint128(0x00000000FFFF0000, 0x00000000FFFF0000),  // 64bit
-    yacl::MakeUint128(0x0000000000000000, 0xFFFFFFFF00000000),  // 128bit
-}};
-
-constexpr std::array<uint128_t, 6> kBitIntlKeepMasks = {{
-    yacl::MakeUint128(0x9999999999999999, 0x9999999999999999),  // 4bit
-    yacl::MakeUint128(0xC3C3C3C3C3C3C3C3, 0xC3C3C3C3C3C3C3C3),  // 8bit
-    yacl::MakeUint128(0xF00FF00FF00FF00F, 0xF00FF00FF00FF00F),  // 16bit
-    yacl::MakeUint128(0xFF0000FFFF0000FF, 0xFF0000FFFF0000FF),  // 32bit
-    yacl::MakeUint128(0xFFFF00000000FFFF, 0xFFFF00000000FFFF),  // 64bit
-    yacl::MakeUint128(0xFFFFFFFF00000000, 0x00000000FFFFFFFF),  // 128bit
-}};
-
-}  // namespace
-
 void BitIntlB::evaluate(KernelEvalContext* ctx) const {
   const auto& in = ctx->getParam<ArrayRef>(0);
   const size_t stride = ctx->getParam<size_t>(1);
 
   SPU_TRACE_MPC_LEAF(ctx, in, stride);
 
-  // algorithm:
-  //      0000000011111111
-  // swap     ^^^^^^^^
-  //      0000111100001111
-  // swap   ^^^^    ^^^^
-  //      0011001100110011
-  // swap  ^^  ^^  ^^  ^^
-  //      0101010101010101
   const auto* in_ty = in.eltype().as<BShrTy>();
   const size_t nbits = in_ty->nbits();
   SPU_ENFORCE(absl::has_single_bit(nbits));
@@ -465,40 +435,10 @@ void BitIntlB::evaluate(KernelEvalContext* ctx) const {
     auto _in = ArrayView<std::array<T, 2>>(in);
     auto _out = ArrayView<std::array<T, 2>>(out);
 
-    if constexpr (std::is_same_v<T, uint64_t>) {
-      pforeach(0, in.numel(), [&](int64_t idx) {
-        constexpr std::array<uint64_t, 6> kMasks = {{
-            0x5555555555555555,  // 01010101
-            0x3333333333333333,  // 00110011
-            0x0F0F0F0F0F0F0F0F,  // 00001111
-            0x00FF00FF00FF00FF,  // ...
-            0x0000FFFF0000FFFF,  // ...
-            0x00000000FFFFFFFF,  // ...
-        }};
-        const uint64_t r0 = _in[idx][0];
-        const uint64_t r1 = _in[idx][1];
-
-        const uint64_t m = kMasks[stride];
-        _out[idx][0] = pdep_u64(r0, m) ^ pdep_u64(r0 >> 32, ~m);
-        _out[idx][1] = pdep_u64(r1, m) ^ pdep_u64(r1 >> 32, ~m);
-      });
-    } else {
-      pforeach(0, in.numel(), [&](int64_t idx) {
-        T r0 = _in[idx][0];
-        T r1 = _in[idx][1];
-        for (int64_t level = Log2Ceil(nbits) - 2;
-             level >= static_cast<int64_t>(stride); level--) {
-          T K = static_cast<T>(kBitIntlKeepMasks[level]);
-          T M = static_cast<T>(kBitIntlSwapMasks[level]);
-          int S = 1 << level;
-
-          r0 = (r0 & K) ^ ((r0 >> S) & M) ^ ((r0 & M) << S);
-          r1 = (r1 & K) ^ ((r1 >> S) & M) ^ ((r1 & M) << S);
-        }
-        _out[idx][0] = r0;
-        _out[idx][1] = r1;
-      });
-    }
+    pforeach(0, in.numel(), [&](int64_t idx) {
+      _out[idx][0] = BitIntl<T>(_in[idx][0], stride, nbits);
+      _out[idx][1] = BitIntl<T>(_in[idx][1], stride, nbits);
+    });
   });
 
   ctx->setOutput(out);
@@ -510,14 +450,6 @@ void BitDeintlB::evaluate(KernelEvalContext* ctx) const {
 
   SPU_TRACE_MPC_LEAF(ctx, in, stride);
 
-  // algorithm:
-  //      0101010101010101
-  // swap  ^^  ^^  ^^  ^^
-  //      0011001100110011
-  // swap   ^^^^    ^^^^
-  //      0000111100001111
-  // swap     ^^^^^^^^
-  //      0000000011111111
   const auto* in_ty = in.eltype().as<BShrTy>();
   const size_t nbits = in_ty->nbits();
   SPU_ENFORCE(absl::has_single_bit(nbits));
@@ -528,39 +460,10 @@ void BitDeintlB::evaluate(KernelEvalContext* ctx) const {
     auto _in = ArrayView<std::array<T, 2>>(in);
     auto _out = ArrayView<std::array<T, 2>>(out);
 
-    if constexpr (std::is_same_v<T, uint64_t>) {
-      pforeach(0, in.numel(), [&](int64_t idx) {
-        constexpr std::array<uint64_t, 6> kMasks = {{
-            0x5555555555555555,  // 01010101
-            0x3333333333333333,  // 00110011
-            0x0F0F0F0F0F0F0F0F,  // 00001111
-            0x00FF00FF00FF00FF,  // ...
-            0x0000FFFF0000FFFF,  // ...
-            0x00000000FFFFFFFF,  // ...
-        }};
-        const uint64_t r0 = _in[idx][0];
-        const uint64_t r1 = _in[idx][1];
-
-        const uint64_t m = kMasks[stride];
-        _out[idx][0] = pext_u64(r0, m) ^ (pext_u64(r0, ~m) << 32);
-        _out[idx][1] = pext_u64(r1, m) ^ (pext_u64(r1, ~m) << 32);
-      });
-    } else {
-      pforeach(0, in.numel(), [&](int64_t idx) {
-        T r0 = _in[idx][0];
-        T r1 = _in[idx][1];
-        for (int64_t level = stride; level + 1 < Log2Ceil(nbits); level++) {
-          T K = static_cast<T>(kBitIntlKeepMasks[level]);
-          T M = static_cast<T>(kBitIntlSwapMasks[level]);
-          int S = 1 << level;
-
-          r0 = (r0 & K) ^ ((r0 >> S) & M) ^ ((r0 & M) << S);
-          r1 = (r1 & K) ^ ((r1 >> S) & M) ^ ((r1 & M) << S);
-        }
-        _out[idx][0] = r0;
-        _out[idx][1] = r1;
-      });
-    }
+    pforeach(0, in.numel(), [&](int64_t idx) {
+      _out[idx][0] = BitDeintl<T>(_in[idx][0], stride, nbits);
+      _out[idx][1] = BitDeintl<T>(_in[idx][1], stride, nbits);
+    });
   });
 
   ctx->setOutput(out);

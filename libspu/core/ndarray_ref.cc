@@ -23,23 +23,102 @@
 #include "fmt/ostream.h"
 
 #include "libspu/core/parallel_utils.h"
-#include "libspu/core/shape_util.h"
 
 namespace spu {
 namespace detail {
 
-size_t calcFlattenOffset(absl::Span<const int64_t> indices,
-                         absl::Span<const int64_t> shape,
-                         absl::Span<const int64_t> strides) {
-  if (!shape.empty() && strides.empty()) {
-    return calcFlattenOffset(indices, shape, makeCompactStrides(shape));
+std::vector<int64_t> deducePadShape(
+    absl::Span<const int64_t> input_shape,
+    absl::Span<const int64_t> edge_padding_low,
+    absl::Span<const int64_t> edge_padding_high,
+    absl::Span<const int64_t> interior_padding) {
+  std::vector<int64_t> dims;
+  SPU_ENFORCE(edge_padding_low.size() == input_shape.size());
+  SPU_ENFORCE(edge_padding_high.size() == input_shape.size());
+  SPU_ENFORCE(interior_padding.size() == input_shape.size());
+  for (size_t i = 0; i < input_shape.size(); i++) {
+    dims.emplace_back(edge_padding_low[i] + edge_padding_high[i] +
+                      interior_padding[i] * (input_shape[i] - 1) +
+                      input_shape[i]);
   }
 
-  int64_t offset = 0;
-  for (int64_t idx = indices.size() - 1; idx >= 0; --idx) {
-    offset += indices[idx] * strides[idx];
+  return dims;
+}
+
+// Reference:
+// https://github.com/numpy/numpy/blob/c652fcbd9c7d651780ea56f078c8609932822cf7/numpy/core/src/multiarray/shape.c#L371
+static bool attempt_nocopy_reshape(const NdArrayRef& old,
+                                   absl::Span<const int64_t> new_shape,
+                                   std::vector<int64_t>& new_strides) {
+  size_t oldnd;
+  std::vector<int64_t> olddims(old.shape().size());
+  std::vector<int64_t> oldstrides(old.strides().size());
+  size_t oi;
+  size_t oj;
+  size_t ok;
+  size_t ni;
+  size_t nj;
+  size_t nk;
+
+  oldnd = 0;
+  /*
+   * Remove axes with dimension 1 from the old array. They have no effect
+   * but would need special cases since their strides do not matter.
+   */
+  for (oi = 0; oi < old.shape().size(); oi++) {
+    if (old.shape()[oi] != 1) {
+      olddims[oldnd] = old.shape()[oi];
+      oldstrides[oldnd] = old.strides()[oi];
+      oldnd++;
+    }
   }
-  return offset;
+
+  /* oi to oj and ni to nj give the axis ranges currently worked with */
+  oi = 0;
+  oj = 1;
+  ni = 0;
+  nj = 1;
+  while (ni < new_shape.size() && oi < oldnd) {
+    auto np = new_shape[ni];
+    auto op = olddims[oi];
+
+    while (np != op) {
+      if (np < op) {
+        /* Misses trailing 1s, these are handled later */
+        np *= new_shape[nj++];
+      } else {
+        op *= olddims[oj++];
+      }
+    }
+
+    /* Check whether the original axes can be combined */
+    for (ok = oi; ok < oj - 1; ok++) {
+      if (oldstrides[ok] != olddims[ok + 1] * oldstrides[ok + 1]) {
+        /* not contiguous enough */
+        return false;
+      }
+    }
+
+    /* Calculate new strides for all axes currently worked with */
+    new_strides[nj - 1] = oldstrides[oj - 1];
+    for (nk = nj - 1; nk > ni; nk--) {
+      new_strides[nk - 1] = new_strides[nk] * new_shape[nk];
+    }
+
+    ni = nj++;
+    oi = oj++;
+  }
+
+  for (size_t idx = 0; idx < new_shape.size(); ++idx) {
+    if (new_shape[idx] == 1) {
+      // During attempt_nocopy_reshape strides for 1 sized dimensions are not
+      // set to 0, which can be a problem if this value is later broadcasted
+      // in this dimension, so force set to 0 here
+      new_strides[idx] = 0;
+    }
+  }
+
+  return true;
 }
 
 }  // namespace detail
@@ -107,32 +186,289 @@ NdArrayRef NdArrayRef::clone() const {
 
   auto elsize = res.elsize();
 
-  // FIXME(xiaochen): Once we have a proper iterator, just replace the following
-  // helper function with next()
-  auto next_ = [&](std::vector<int64_t>& coord, const std::byte*& frm_ptr) {
-    for (int64_t idim = shape().size() - 1; idim >= 0; --idim) {
-      if (++coord[idim] == shape()[idim]) {
-        // Once a dimension is done, just unwind by strides
-        coord[idim] = 0;
-        frm_ptr -= (shape()[idim] - 1) * strides()[idim] * elsize;
-      } else {
-        frm_ptr += strides()[idim] * elsize;
-        break;
-      }
-    }
-  };
+  auto src_iter = cbegin();
 
   auto* ret_ptr = static_cast<std::byte*>(res.data());
 
-  std::vector<int64_t> indices(shape().size(), 0);
-  const auto* frm_ptr = &at(indices);
-
   for (int64_t idx = 0; idx < numel(); ++idx) {
-    std::memcpy(ret_ptr + idx * elsize, frm_ptr, elsize);
-    next_(indices, frm_ptr);
+    std::memcpy(ret_ptr + idx * elsize, src_iter.getRawPtr(), elsize);
+    ++src_iter;
   }
 
   return res;
+}
+
+void NdArrayRef::copy_slice(const NdArrayRef& src,
+                            absl::Span<const int64_t> src_base,
+                            absl::Span<const int64_t> dst_base,
+                            int64_t num_copy) {
+  NdArrayRef::Iterator src_iter(src, src_base);
+  NdArrayRef::Iterator dst_iter(*this, dst_base);
+  auto elsize = this->elsize();
+  for (int64_t counter = 0; counter < num_copy;
+       ++counter, ++src_iter, ++dst_iter) {
+#ifdef ITER_DEBUG
+    SPU_ENFORCE(src_iter.validate());
+    SPU_ENFORCE(dst_iter.validate());
+    // SPDLOG_INFO(src_iter);
+    // SPDLOG_INFO(dst_iter);
+#endif
+    std::memcpy(dst_iter.getRawPtr(), src_iter.getRawPtr(), elsize);
+  }
+}
+
+NdArrayRef NdArrayRef::broadcast_to(absl::Span<const int64_t> to_shape,
+                                    absl::Span<const int64_t> in_dims) const {
+  for (auto d : in_dims) {
+    SPU_ENFORCE(d < (int64_t)to_shape.size() && d >= 0,
+                "Broadcast dim {} out of valid range [0, {})", d,
+                to_shape.size());
+  }
+
+  std::vector<int64_t> new_strides(to_shape.size(), 0);
+
+  if (!in_dims.empty()) {
+    for (size_t idx = 0; idx < in_dims.size(); ++idx) {
+      new_strides[in_dims[idx]] = strides()[idx];
+    }
+  } else {
+    for (size_t idx = 0; idx < strides().size(); ++idx) {
+      new_strides[new_strides.size() - 1 - idx] =
+          strides()[strides().size() - 1 - idx];
+    }
+  }
+
+  return {buf(), eltype(), to_shape, new_strides, offset()};
+}
+
+NdArrayRef NdArrayRef::reshape(absl::Span<const int64_t> to_shape) const {
+  // Nothing to reshape
+  if (shape() == to_shape) {
+    return *this;
+  }
+
+  SPU_ENFORCE(calcNumel(shape()) == calcNumel(to_shape),
+              "reshape from {} to {} is changing numel", shape(), to_shape);
+
+  std::vector<int64_t> new_strides(to_shape.size(), 0);
+  if (detail::attempt_nocopy_reshape(*this, to_shape, new_strides)) {
+    // No copy reshape
+    return {buf(), eltype(), to_shape, new_strides, offset()};
+  }
+
+  auto compact_clone = clone();
+  return {compact_clone.buf(), compact_clone.eltype(), to_shape};
+}
+
+NdArrayRef NdArrayRef::slice(absl::Span<const int64_t> start_indices,
+                             absl::Span<const int64_t> end_indices,
+                             absl::Span<const int64_t> slice_strides) const {
+  SPU_ENFORCE(shape().size() == start_indices.size());
+  SPU_ENFORCE(shape().size() == end_indices.size());
+  SPU_ENFORCE(slice_strides.empty() ||
+              (shape().size() == slice_strides.size()));
+
+  std::vector<int64_t> new_shape(shape().size(), 0);
+  std::vector<int64_t> new_strides(strides());
+  for (size_t idx = 0; idx < shape().size(); ++idx) {
+    SPU_ENFORCE(end_indices[idx] <= shape()[idx],
+                "Slice end at axis {} = {} is larger than input shape {}", idx,
+                end_indices[idx], shape()[idx]);
+    new_shape[idx] = std::max(end_indices[idx] - start_indices[idx],
+                              static_cast<int64_t>(0));
+
+    if (new_shape[idx] == 1) {
+      new_strides[idx] = 0;
+    } else if (!slice_strides.empty()) {
+      auto n = new_shape[idx] / slice_strides[idx];
+      auto q = new_shape[idx] % slice_strides[idx];
+      new_shape[idx] = n + static_cast<int64_t>(q != 0);
+      new_strides[idx] *= slice_strides[idx];
+    }
+  }
+
+  return {buf(), eltype(), new_shape, new_strides,
+          &at(start_indices) - buf()->data<std::byte>()};
+}
+
+NdArrayRef NdArrayRef::transpose(absl::Span<const int64_t> permutation) const {
+  std::vector<int64_t> perm(shape().size());
+  if (permutation.empty()) {
+    for (size_t i = 0; i < perm.size(); ++i) {
+      perm[i] = static_cast<int64_t>(shape().size()) - 1 - i;
+    }
+  } else {
+    std::vector<int64_t> reverse_permutation(shape().size(), -1);
+    SPU_ENFORCE(permutation.size() == shape().size(),
+                "axes don't match array, permutation = {}, input shape = {}",
+                fmt::join(permutation, "x"), fmt::join(shape(), "x"));
+
+    for (size_t i = 0; i < permutation.size(); i++) {
+      auto axis = permutation[i];
+      SPU_ENFORCE(reverse_permutation[axis] == -1,
+                  "repeated axis in transpose");
+      reverse_permutation[axis] = i;
+      perm[i] = axis;
+    }
+  }
+
+  std::vector<int64_t> ret_shape(shape().size());
+  std::vector<int64_t> ret_strides(strides().size());
+
+  for (size_t i = 0; i < shape().size(); i++) {
+    ret_shape[i] = shape()[perm[i]];
+    ret_strides[i] = strides()[perm[i]];
+  }
+
+  return NdArrayRef{buf(), eltype(), ret_shape, ret_strides, offset()};
+}
+
+NdArrayRef NdArrayRef::reverse(absl::Span<const int64_t> dimensions) const {
+  std::vector<int64_t> new_strides = strides();
+  int64_t el_offset = 0;
+
+  for (int64_t axis : dimensions) {
+    SPU_ENFORCE(axis < static_cast<int64_t>(shape().size()));
+    new_strides[axis] *= -1;
+    el_offset += strides()[axis] * (shape()[axis] - 1);
+  }
+
+  return NdArrayRef(buf(), eltype(), shape(), new_strides,
+                    offset() + el_offset * elsize());
+}
+
+NdArrayRef NdArrayRef::expand(absl::Span<const int64_t> to_shape) const {
+  SPU_ENFORCE(numel() == 1, "Only support expanding scalar");
+  NdArrayRef ret(eltype(), to_shape);
+  // compute number of elements need to copy
+  size_t numel = ret.numel();
+  size_t num_bytes = numel * elsize();
+  size_t bytes_copied = elsize();
+
+  // Copy first element
+  std::memcpy(ret.data(), data(), elsize());
+
+  while (bytes_copied != num_bytes) {
+    size_t copy_size = std::min(bytes_copied, num_bytes - bytes_copied);
+    std::memcpy(static_cast<char*>(ret.data()) + bytes_copied, ret.data(),
+                copy_size);
+    bytes_copied += copy_size;
+  }
+  return ret;
+}
+
+NdArrayRef NdArrayRef::concatenate(absl::Span<const NdArrayRef> others,
+                                   const size_t& axis) const {
+  std::vector<int64_t> result_shape = shape();
+  for (const auto& o : others) {
+    result_shape[axis] += o.shape()[axis];
+  }
+
+  // Preallocate output buffer
+  NdArrayRef result(eltype(), result_shape);
+
+  // Copy self
+  std::vector<int64_t> base(shape().size(), 0);
+
+  std::vector<int64_t> slice_start(shape().size(), 0);
+  std::vector<int64_t> slice_end = shape();
+  std::vector<int64_t> slice_stride(shape().size(), 1);
+
+  {
+    auto r1 = result.slice(slice_start, slice_end, slice_stride);
+    r1.copy_slice(*this, base, base, numel());
+    slice_start[axis] = slice_end[axis];
+  }
+
+  // Copy other slices
+  for (const auto& o : others) {
+    slice_end[axis] += o.shape()[axis];
+    auto s = result.slice(slice_start, slice_end, slice_stride);
+    s.copy_slice(o, base, base, o.numel());
+    slice_start[axis] = slice_end[axis];
+  }
+
+  return result;
+}
+
+NdArrayRef NdArrayRef::pad(const NdArrayRef& padding_value,
+                           absl::Span<const int64_t> edge_padding_low,
+                           absl::Span<const int64_t> edge_padding_high,
+                           absl::Span<const int64_t> interior_padding) const {
+  auto result = padding_value.expand(detail::deducePadShape(
+      shape(), edge_padding_low, edge_padding_high, interior_padding));
+
+  const auto& result_shape = result.shape();
+  const auto& input_shape = shape();
+
+  // auto elsize = result.elsize();
+
+  yacl::parallel_for(0, numel(), 1024, [&](int64_t begin, int64_t end) {
+    std::vector<int64_t> unflatten = unflattenIndex(begin, input_shape);
+
+    std::vector<int64_t> target_index(result_shape.size());
+    for (int64_t idx = begin; idx < end; ++idx) {
+      bool valid = true;
+      for (size_t i = 0; i < unflatten.size(); ++i) {
+        // Interior padding occurs logically before edge padding, so in the case
+        // of negative edge padding elements are removed from the
+        // interior-padded operand.
+        target_index[i] =
+            edge_padding_low[i] + unflatten[i] * (interior_padding[i] + 1);
+
+        // Account for negative low and high padding: skip assignment if the
+        // any target index is out of range.
+        if (target_index[i] < 0 || target_index[i] >= result_shape[i]) {
+          valid = false;
+          break;
+        }
+      }
+      if (valid) {
+        std::memcpy(&result.at(target_index), &at(unflatten), elsize());
+      }
+      bumpIndices<int64_t>(shape(), absl::MakeSpan(unflatten));
+    }
+  });
+
+  return result;
+}
+
+NdArrayRef NdArrayRef::linear_gather(absl::Span<const int64_t> indices) const {
+  SPU_ENFORCE(shape().size() == 1);
+
+  NdArrayRef result(eltype(), {static_cast<int64_t>(indices.size())});
+
+  auto result_iter = result.begin();
+
+  const auto* src_ptr = static_cast<const std::byte*>(data());
+
+  auto elsize = this->elsize();
+
+  for (const auto& idx : indices) {
+    std::memcpy(result_iter.getRawPtr(), src_ptr + idx * strides_[0] * elsize,
+                elsize);
+    ++result_iter;
+  }
+
+  return result;
+}
+
+NdArrayRef& NdArrayRef::linear_scatter(const NdArrayRef& new_values,
+                                       absl::Span<const int64_t> indices) {
+  SPU_ENFORCE(shape().size() == 1);
+
+  auto new_values_iter = new_values.cbegin();
+
+  auto* dst_ptr = static_cast<std::byte*>(data());
+  auto elsize = this->elsize();
+
+  for (const auto& idx : indices) {
+    std::memcpy(dst_ptr + idx * strides_[0] * elsize,
+                new_values_iter.getRawPtr(), elsize);
+    ++new_values_iter;
+  }
+
+  return *this;
 }
 
 NdArrayRef unflatten(const ArrayRef& arr, absl::Span<const int64_t> shape) {
@@ -191,13 +527,31 @@ ArrayRef flatten(const NdArrayRef& ndarr) {
                     ndarr.strides().back(), ndarr.offset());
   }
 
-  // SPDLOG_INFO("slow flatten..., in strides = {}, shape = {}",
-  // fmt::join(ndarr.strides(), "x"), fmt::join(ndarr.shape(), "x"));
-
   // create a compact clone, it's save here since underline layer will never
   // modify inplace.
   auto compact = ndarr.clone();
   return {compact.buf(), ndarr.eltype(), ndarr.numel(), 1, compact.offset()};
+}
+
+NdArrayRef::Iterator& NdArrayRef::Iterator::operator++() {
+  if (!invalid_) {
+    int64_t idim;
+    for (idim = shape_.size() - 1; idim >= 0; --idim) {
+      if (++coord_[idim] == shape_[idim]) {
+        // Once a dimension is done, just unwind by strides
+        coord_[idim] = 0;
+        ptr_ -= (shape_[idim] - 1) * strides_[idim] * elsize_;
+      } else {
+        ptr_ += strides_[idim] * elsize_;
+        break;
+      }
+    }
+    // Mark invalid
+    if (idim == -1) {
+      invalid_ = true;
+    }
+  }
+  return *this;
 }
 
 std::ostream& operator<<(std::ostream& out, const NdArrayRef& v) {

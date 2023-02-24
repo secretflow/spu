@@ -41,15 +41,25 @@ enum PsiType {
   // Notice: two-party intersection leak
   KKRT_PSI_NPC = 6;
 
+  // ecdh-oprf 2-party Unbalanced-PSI Generate CACHE.
+  ECDH_OPRF_UB_PSI_2PC_GEN_CACHE = 7;
+
+  // ecdh-oprf 2-party Unbalanced-PSI transfer CACHE.
+  ECDH_OPRF_UB_PSI_2PC_TRANSFER_CACHE = 8;
+
   // ecdh-oprf 2-party Unbalanced-PSI offline phase.
-  ECDH_OPRF_UNBALANCED_PSI_2PC_OFFLINE = 7;
+  ECDH_OPRF_UB_PSI_2PC_OFFLINE = 9;
 
   // ecdh-oprf 2-party Unbalanced-PSI online phase.
-  ECDH_OPRF_UNBALANCED_PSI_2PC_ONLINE = 8;
+  ECDH_OPRF_UB_PSI_2PC_ONLINE = 10;
+
+  // ecdh-oprf 2-party Unbalanced-PSI with shuffling online phase.
+  // large set party get intersection result
+  ECDH_OPRF_UB_PSI_2PC_SHUFFLE_ONLINE = 11;
 
   // Differentially-Private PSI https://arxiv.org/pdf/2208.13249.pdf
   // bases on ECDH-PSI, and provides: Differentially private PSI results.
-  DP_PSI_2PC = 9;
+  DP_PSI_2PC = 12;
 }
 
 // The specified elliptic curve cryptography used in psi.

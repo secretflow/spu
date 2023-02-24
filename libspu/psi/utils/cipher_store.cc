@@ -108,9 +108,8 @@ CachedCsvCipherStore::~CachedCsvCipherStore() {
 }
 
 void CachedCsvCipherStore::SaveSelf(std::string ciphertext) {
-  std::string hex_str = absl::BytesToHexString(ciphertext);
-  self_out_->Write(fmt::format("{}\n", hex_str));
-  self_data_.insert({hex_str, self_items_count_});
+  self_out_->Write(fmt::format("{}\n", ciphertext));
+  self_data_.insert({ciphertext, self_items_count_});
 
   self_items_count_ += 1;
   if (self_items_count_ % 10000000 == 0) {
@@ -119,7 +118,7 @@ void CachedCsvCipherStore::SaveSelf(std::string ciphertext) {
 }
 
 void CachedCsvCipherStore::SavePeer(std::string ciphertext) {
-  peer_out_->Write(fmt::format("{}\n", absl::BytesToHexString(ciphertext)));
+  peer_out_->Write(fmt::format("{}\n", ciphertext));
   peer_items_count_ += 1;
   if (peer_items_count_ % 10000000 == 0) {
     SPDLOG_INFO("peer_items_count={}", peer_items_count_);
@@ -129,9 +128,8 @@ void CachedCsvCipherStore::SavePeer(std::string ciphertext) {
 void CachedCsvCipherStore::SaveSelf(
     const std::vector<std::string>& ciphertext) {
   for (const auto& text : ciphertext) {
-    std::string hex_str = absl::BytesToHexString(text);
-    self_out_->Write(fmt::format("{}\n", hex_str));
-    self_data_.insert({hex_str, self_items_count_});
+    self_out_->Write(fmt::format("{}\n", text));
+    self_data_.insert({text, self_items_count_});
 
     self_items_count_ += 1;
     if (self_items_count_ % 10000000 == 0) {
@@ -143,7 +141,7 @@ void CachedCsvCipherStore::SaveSelf(
 void CachedCsvCipherStore::SavePeer(
     const std::vector<std::string>& ciphertext) {
   for (const auto& text : ciphertext) {
-    peer_out_->Write(fmt::format("{}\n", absl::BytesToHexString(text)));
+    peer_out_->Write(fmt::format("{}\n", text));
 
     peer_items_count_ += 1;
     if (peer_items_count_ % 10000000 == 0) {
@@ -181,14 +179,14 @@ std::vector<uint64_t> CachedCsvCipherStore::FinalizeAndComputeIndices(
     size_t compare_size = (batch_peer_data.size() + compare_thread_num_ - 1) /
                           compare_thread_num_;
 
-    std::vector<std::vector<uint64_t>> result(compare_thread_num_);
+    std::vector<std::vector<size_t>> result(compare_thread_num_);
 
     auto compare_proc = [&](int idx) -> void {
-      uint64_t begin = idx * compare_size;
-      uint64_t end =
+      size_t begin = idx * compare_size;
+      size_t end =
           std::min<size_t>(batch_peer_data.size(), begin + compare_size);
 
-      for (uint64_t i = begin; i < end; i++) {
+      for (size_t i = begin; i < end; i++) {
         auto search_ret = self_data_.find(batch_peer_data[i]);
         if (search_ret != self_data_.end()) {
           result[idx].push_back(search_ret->second);
@@ -219,11 +217,11 @@ std::vector<uint64_t> CachedCsvCipherStore::FinalizeAndComputeIndices(
   return indices;
 }
 
-std::vector<size_t> GetIndicesByItems(
+std::vector<uint64_t> GetIndicesByItems(
     const std::string& input_path,
     const std::vector<std::string>& selected_fields,
-    const std::vector<std::string> items, size_t batch_size) {
-  std::vector<size_t> indices;
+    const std::vector<std::string>& items, size_t batch_size) {
+  std::vector<uint64_t> indices;
 
   std::unordered_set<std::string> items_set;
 

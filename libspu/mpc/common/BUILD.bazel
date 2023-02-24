@@ -22,6 +22,7 @@ spu_cc_library(
     hdrs = ["pub2k.h"],
     deps = [
         "//libspu/core",
+        "//libspu/core:trace",
         "//libspu/mpc:kernel",
         "//libspu/mpc/common:prg_state",
         "//libspu/mpc/utils:ring_ops",

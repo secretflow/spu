@@ -40,7 +40,16 @@ class BasicOTProtocols {
   // 1 <= k <= field size
   std::array<ArrayRef, 3> AndTriple(FieldType field, size_t numel, size_t k);
 
+  // [a, b, b', c, c'] such that c = a*b and c' = a*b' for the same a
+  std::array<ArrayRef, 5> CorrelatedAndTriple(FieldType field, size_t numel);
+
   ArrayRef BitwiseAnd(const ArrayRef &lhs, const ArrayRef &rhs);
+
+  // Compute the ANDs `lhs & rhs0` and `lhs & rhs1`
+  // Require non-packed Boolean currently.
+  std::array<ArrayRef, 2> CorrelatedBitwiseAnd(const ArrayRef &lhs,
+                                               const ArrayRef &rhs0,
+                                               const ArrayRef &rhs1);
 
   std::shared_ptr<FerretOT> GetSenderCOT() { return ferret_sender_; }
 

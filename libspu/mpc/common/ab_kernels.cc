@@ -74,11 +74,11 @@ void BitIntlB::evaluate(KernelEvalContext* ctx) const {
   //      0101010101010101
   const size_t nbits = in.eltype().as<BShare>()->nbits();
   SPU_ENFORCE(absl::has_single_bit(nbits));
-  const int64_t logn = Log2Ceil(nbits);
 
   const size_t size = in.numel();
   ArrayRef out = in.clone();
-  for (int64_t idx = logn - 2; idx >= static_cast<int64_t>(stride); idx--) {
+  for (int64_t idx = Log2Ceil(nbits) - 2; idx >= static_cast<int64_t>(stride);
+       idx--) {
     auto K = make_p(obj, kBitIntlKeepMasks[idx], size);
     auto M = make_p(obj, kBitIntlSwapMasks[idx], size);
     int64_t S = 1 << idx;
@@ -111,11 +111,10 @@ void BitDeintlB::evaluate(KernelEvalContext* ctx) const {
   //      0000000011111111
   const size_t nbits = in.eltype().as<BShare>()->nbits();
   SPU_ENFORCE(absl::has_single_bit(nbits));
-  const int64_t logn = Log2Ceil(nbits);
   const size_t size = in.numel();
 
   ArrayRef out = in.clone();
-  for (int64_t idx = stride; idx + 1 < logn; idx++) {
+  for (int64_t idx = stride; idx + 1 < Log2Ceil(nbits); idx++) {
     auto K = make_p(obj, kBitIntlKeepMasks[idx], size);
     auto M = make_p(obj, kBitIntlSwapMasks[idx], size);
     int64_t S = 1 << idx;
@@ -133,7 +132,7 @@ namespace {
 
 // The kogge-stone adder.
 //
-// P stands for propogate, G stands for generate, where:
+// P stands for propagate, G stands for generate, where:
 //  (G0, P0) = (g0, p0)
 //  (Gi, Pi) = (gi, pi) o (Gi-1, Pi-1)
 //

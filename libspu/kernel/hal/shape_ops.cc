@@ -31,41 +31,10 @@ Value transpose(HalContext* ctx, const Value& in,
                 absl::Span<const int64_t> permutation) {
   SPU_TRACE_HAL_DISP(ctx, in);
 
-  std::vector<int64_t> perm(in.shape().size());
-  if (permutation.empty()) {
-    for (size_t i = 0; i < perm.size(); ++i) {
-      perm[i] = static_cast<int64_t>(in.shape().size()) - 1 - i;
-    }
-  } else {
-    std::vector<int64_t> reverse_permutation(in.shape().size(), -1);
-    SPU_ENFORCE(permutation.size() == in.shape().size(),
-                "axes don't match array, permutation = {}, input shape = {}",
-                fmt::join(permutation, "x"), fmt::join(in.shape(), "x"));
-
-    for (size_t i = 0; i < permutation.size(); i++) {
-      auto axis = permutation[i];
-      SPU_ENFORCE(reverse_permutation[axis] == -1,
-                  "repeated axis in transpose");
-      reverse_permutation[axis] = i;
-      perm[i] = axis;
-    }
-  }
-
-  std::vector<int64_t> ret_shape(in.shape().size());
-  std::vector<int64_t> ret_strides(in.strides().size());
-
-  for (size_t i = 0; i < in.shape().size(); i++) {
-    ret_shape[i] = in.shape()[perm[i]];
-    ret_strides[i] = in.strides()[perm[i]];
-  }
-
   // compact clone is a rather expensive memory operation.
   // To prevent transposed value being cloned multiple times in later ops, clone
   // the value here.
-  auto transposed = NdArrayRef{in.data().buf(), in.storage_type(), ret_shape,
-                               ret_strides, in.data().offset()}
-                        .clone();
-  return Value(transposed, in.dtype());
+  return Value(in.data().transpose(permutation), in.dtype()).clone();
 }
 
 Value slice(HalContext* ctx, const Value& in,
@@ -74,133 +43,15 @@ Value slice(HalContext* ctx, const Value& in,
             absl::Span<const int64_t> strides) {
   SPU_TRACE_HAL_DISP(ctx, in, start_indices, end_indices, strides);
 
-  SPU_ENFORCE(in.shape().size() == start_indices.size());
-  SPU_ENFORCE(in.shape().size() == end_indices.size());
-  SPU_ENFORCE(strides.empty() || (in.shape().size() == strides.size()));
-
-  std::vector<int64_t> new_shape(in.shape().size(), 0);
-  std::vector<int64_t> new_strides(in.strides());
-  for (size_t idx = 0; idx < in.shape().size(); ++idx) {
-    SPU_ENFORCE(end_indices[idx] <= in.shape()[idx],
-                "Slice end at axis {} = {} is larger than input shape {}", idx,
-                end_indices[idx], in.shape()[idx]);
-    new_shape[idx] = std::max(end_indices[idx] - start_indices[idx],
-                              static_cast<int64_t>(0));
-
-    if (new_shape[idx] == 1) {
-      new_strides[idx] = 0;
-    } else if (!strides.empty()) {
-      auto n = new_shape[idx] / strides[idx];
-      auto q = new_shape[idx] % strides[idx];
-      new_shape[idx] = n + static_cast<int64_t>(q != 0);
-      new_strides[idx] *= strides[idx];
-    }
-  }
-
-  return Value(
-      NdArrayRef(
-          in.data().buf(), in.storage_type(), new_shape, new_strides,
-          &in.data().at(start_indices) - in.data().buf()->data<std::byte>()),
-      in.dtype());
-}
-
-// Reference:
-// https://github.com/numpy/numpy/blob/c652fcbd9c7d651780ea56f078c8609932822cf7/numpy/core/src/multiarray/shape.c#L371
-static bool attempt_nocopy_reshape(const Value& old,
-                                   absl::Span<const int64_t> new_shape,
-                                   std::vector<int64_t>& new_strides) {
-  size_t oldnd;
-  std::vector<int64_t> olddims(old.shape().size());
-  std::vector<int64_t> oldstrides(old.strides().size());
-  size_t oi;
-  size_t oj;
-  size_t ok;
-  size_t ni;
-  size_t nj;
-  size_t nk;
-
-  oldnd = 0;
-  /*
-   * Remove axes with dimension 1 from the old array. They have no effect
-   * but would need special cases since their strides do not matter.
-   */
-  for (oi = 0; oi < old.shape().size(); oi++) {
-    if (old.shape()[oi] != 1) {
-      olddims[oldnd] = old.shape()[oi];
-      oldstrides[oldnd] = old.strides()[oi];
-      oldnd++;
-    }
-  }
-
-  /* oi to oj and ni to nj give the axis ranges currently worked with */
-  oi = 0;
-  oj = 1;
-  ni = 0;
-  nj = 1;
-  while (ni < new_shape.size() && oi < oldnd) {
-    auto np = new_shape[ni];
-    auto op = olddims[oi];
-
-    while (np != op) {
-      if (np < op) {
-        /* Misses trailing 1s, these are handled later */
-        np *= new_shape[nj++];
-      } else {
-        op *= olddims[oj++];
-      }
-    }
-
-    /* Check whether the original axes can be combined */
-    for (ok = oi; ok < oj - 1; ok++) {
-      if (oldstrides[ok] != olddims[ok + 1] * oldstrides[ok + 1]) {
-        /* not contiguous enough */
-        return false;
-      }
-    }
-
-    /* Calculate new strides for all axes currently worked with */
-    new_strides[nj - 1] = oldstrides[oj - 1];
-    for (nk = nj - 1; nk > ni; nk--) {
-      new_strides[nk - 1] = new_strides[nk] * new_shape[nk];
-    }
-
-    ni = nj++;
-    oi = oj++;
-  }
-
-  for (size_t idx = 0; idx < new_shape.size(); ++idx) {
-    if (new_shape[idx] == 1) {
-      // During attempt_nocopy_reshape strides for 1 sized dimensions are not
-      // set to 0, which can be a problem if this value is later broadcasted
-      // in this dimension, so force set to 0 here
-      new_strides[idx] = 0;
-    }
-  }
-
-  return true;
+  return Value(in.data().slice(start_indices, end_indices, strides),
+               in.dtype());
 }
 
 Value reshape(HalContext* ctx, const Value& in,
               absl::Span<const int64_t> to_shape) {
   SPU_TRACE_HAL_DISP(ctx, in, to_shape);
 
-  // Nothing to reshape
-  if (in.shape() == to_shape) {
-    return in;
-  }
-
-  SPU_ENFORCE(calcNumel(in.shape()) == calcNumel(to_shape),
-              "reshape, numel mismatch, lhs={}, rhs={}", in.shape(), to_shape);
-
-  std::vector<int64_t> new_strides(to_shape.size(), 0);
-  if (attempt_nocopy_reshape(in, to_shape, new_strides)) {
-    return Value({in.data().buf(), in.storage_type(), to_shape, new_strides,
-                  in.data().offset()},
-                 in.dtype());
-  }
-
-  auto compact_clone = in.data().clone();
-  return Value({compact_clone.buf(), in.storage_type(), to_shape}, in.dtype());
+  return Value(in.data().reshape(to_shape), in.dtype());
 }
 
 Value broadcast_to(HalContext* ctx, const Value& in,
@@ -208,68 +59,19 @@ Value broadcast_to(HalContext* ctx, const Value& in,
                    absl::Span<const int64_t> in_dims) {
   SPU_TRACE_HAL_DISP(ctx, in, to_shape);
 
-  for (auto d : in_dims) {
-    SPU_ENFORCE(d < (int64_t)to_shape.size() && d >= 0,
-                "Broadcast dim {} out of valid range [0, {})", d,
-                to_shape.size());
-  }
-
-  std::vector<int64_t> new_strides(to_shape.size(), 0);
-
-  if (!in_dims.empty()) {
-    for (size_t idx = 0; idx < in_dims.size(); ++idx) {
-      new_strides[in_dims[idx]] = in.strides()[idx];
-    }
-  } else {
-    for (size_t idx = 0; idx < in.strides().size(); ++idx) {
-      new_strides.at(new_strides.size() - 1 - idx) =
-          in.strides().at(in.strides().size() - 1 - idx);
-    }
-  }
-
-  return Value(NdArrayRef(in.data().buf(), in.data().eltype(), to_shape,
-                          new_strides, in.data().offset()),
-               in.dtype());
+  return Value(in.data().broadcast_to(to_shape, in_dims), in.dtype());
 }
 
 Value reverse(HalContext* ctx, const Value& in,
               absl::Span<const int64_t> dimensions) {
   SPU_TRACE_HAL_DISP(ctx, in, dimensions);
 
-  std::vector<int64_t> new_strides = in.strides();
-  int64_t el_offset = 0;
-
-  for (int64_t axis : dimensions) {
-    SPU_ENFORCE(axis < static_cast<int64_t>(in.shape().size()));
-    new_strides[axis] *= -1;
-    el_offset += in.strides()[axis] * (in.shape()[axis] - 1);
-  }
-
-  return Value(
-      NdArrayRef(in.data().buf(), in.data().eltype(), in.shape(), new_strides,
-                 in.data().offset() + el_offset * in.elsize()),
-      in.dtype());
+  return Value(in.data().reverse(dimensions), in.dtype());
 }
 
 Value expand(HalContext* ctx, const Value& in,
              absl::Span<const int64_t> to_shape) {
-  SPU_ENFORCE(in.numel() == 1, "Only support expanding scalar");
-  Value ret({in.data().eltype(), to_shape}, in.dtype());
-  // compute number of elements need to copy
-  size_t numel = ret.numel();
-  size_t num_bytes = numel * in.elsize();
-  size_t bytes_copied = in.elsize();
-
-  // Copy first element
-  std::memcpy(ret.data().data(), in.data().data(), in.elsize());
-
-  while (bytes_copied != num_bytes) {
-    size_t copy_size = std::min(bytes_copied, num_bytes - bytes_copied);
-    std::memcpy(static_cast<char*>(ret.data().data()) + bytes_copied,
-                ret.data().data(), copy_size);
-    bytes_copied += copy_size;
-  }
-  return ret;
+  return Value(in.data().expand(to_shape), in.dtype());
 }
 
 }  // namespace spu::kernel::hal

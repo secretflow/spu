@@ -12,22 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cheetah_io_channel.h"
+#include "libspu/psi/utils/emp_io_adapter.h"
 
 #include <utility>
 
+#include "emp-tool/utils/block.h"
+#include "emp-tool/utils/group.h"
 #include "spdlog/spdlog.h"
 #include "yacl/base/byte_container_view.h"
+#include "yacl/base/int128.h"
 #include "yacl/link/link.h"
-
-#include "libspu/crypto/ot/silent/utils.h"
-
-using std::shared_ptr;
-using std::string;
 
 namespace spu {
 
-CheetahIo::CheetahIo(shared_ptr<yacl::link::Context> ctx)
+EmpIoAdapter::EmpIoAdapter(std::shared_ptr<yacl::link::Context> ctx)
     : ctx_(std::move(ctx)),
       send_op_(0),
       recv_op_(0),
@@ -36,7 +34,7 @@ CheetahIo::CheetahIo(shared_ptr<yacl::link::Context> ctx)
   send_buffer_.resize(SEND_BUFFER_SIZE);
 }
 
-CheetahIo::~CheetahIo() {
+EmpIoAdapter::~EmpIoAdapter() {
   try {
     flush();
   } catch (const std::exception &e) {
@@ -44,7 +42,7 @@ CheetahIo::~CheetahIo() {
   }
 }
 
-void CheetahIo::flush() {
+void EmpIoAdapter::flush() {
   if (send_buffer_used_ == 0) {
     return;
   }
@@ -58,13 +56,13 @@ void CheetahIo::flush() {
   send_buffer_used_ = 0;
 }
 
-void CheetahIo::fill_recv() {
+void EmpIoAdapter::fill_recv() {
   recv_buffer_ =
       ctx_->Recv(ctx_->NextRank(), fmt::format("Cheetah recv:{}", recv_op_++));
   recv_buffer_used_ = 0;
 }
 
-void CheetahIo::send_data_internal(const void *data, int len) {
+void EmpIoAdapter::send_data_internal(const void *data, int len) {
   size_t send_buffer_left = SEND_BUFFER_SIZE - send_buffer_used_;
   if (send_buffer_left <= static_cast<size_t>(len)) {
     memcpy(send_buffer_.data() + send_buffer_used_, data, send_buffer_left);
@@ -79,7 +77,7 @@ void CheetahIo::send_data_internal(const void *data, int len) {
   }
 }
 
-void CheetahIo::recv_data_internal(void *data, int len) {
+void EmpIoAdapter::recv_data_internal(void *data, int len) {
   if (send_buffer_used_ > 0) {
     flush();
   }
@@ -101,7 +99,7 @@ void CheetahIo::recv_data_internal(void *data, int len) {
 }
 
 template <typename T>
-void CheetahIo::send_data_partial(const T *data, int len, int bitlength) {
+void EmpIoAdapter::send_data_partial(const T *data, int len, int bitlength) {
   if (bitlength == sizeof(T) * 8) {
     send_data_internal(static_cast<const void *>(data), len * sizeof(T));
     return;
@@ -118,7 +116,7 @@ void CheetahIo::send_data_partial(const T *data, int len, int bitlength) {
 }
 
 template <typename T>
-void CheetahIo::recv_data_partial(T *data, int len, int bitlength) {
+void EmpIoAdapter::recv_data_partial(T *data, int len, int bitlength) {
   if (bitlength == sizeof(T) * 8) {
     recv_data_internal(static_cast<void *>(data), len * sizeof(T));
     return;
@@ -139,18 +137,20 @@ void CheetahIo::recv_data_partial(T *data, int len, int bitlength) {
   }
 }
 
-template void CheetahIo::send_data_partial<uint32_t>(const uint32_t *data,
-                                                     int len, int bitlength);
-template void CheetahIo::send_data_partial<uint64_t>(const uint64_t *data,
-                                                     int len, int bitlength);
-template void CheetahIo::send_data_partial<uint128_t>(const uint128_t *data,
-                                                      int len, int bitlength);
+template void EmpIoAdapter::send_data_partial<uint32_t>(const uint32_t *data,
+                                                        int len, int bitlength);
+template void EmpIoAdapter::send_data_partial<uint64_t>(const uint64_t *data,
+                                                        int len, int bitlength);
+template void EmpIoAdapter::send_data_partial<uint128_t>(const uint128_t *data,
+                                                         int len,
+                                                         int bitlength);
 
-template void CheetahIo::recv_data_partial<uint32_t>(uint32_t *data, int len,
-                                                     int bitlength);
-template void CheetahIo::recv_data_partial<uint64_t>(uint64_t *data, int len,
-                                                     int bitlength);
-template void CheetahIo::recv_data_partial<uint128_t>(uint128_t *data, int len,
-                                                      int bitlength);
+template void EmpIoAdapter::recv_data_partial<uint32_t>(uint32_t *data, int len,
+                                                        int bitlength);
+template void EmpIoAdapter::recv_data_partial<uint64_t>(uint64_t *data, int len,
+                                                        int bitlength);
+template void EmpIoAdapter::recv_data_partial<uint128_t>(uint128_t *data,
+                                                         int len,
+                                                         int bitlength);
 
 }  // namespace spu

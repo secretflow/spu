@@ -23,6 +23,7 @@
 #include "libspu/core/prelude.h"
 #include "libspu/core/shape_util.h"
 #include "libspu/core/type_util.h"
+#include "libspu/kernel/hal/shape_ops.h"
 #include "libspu/mpc/api.h"
 
 namespace spu::kernel::hal {
@@ -132,6 +133,48 @@ Value _rand_s(HalContext* ctx, absl::Span<const int64_t> shape) {
   return unflattenValue(rnd, shape);
 }
 
+Value _conv2d_ss(HalContext* ctx, Value input, const Value& kernel,
+                 absl::Span<const int64_t> window_strides,
+                 absl::Span<const int64_t> result_shape) {
+  SPU_TRACE_HAL_DISP(ctx, input, kernel, window_strides, result_shape);
+  SPU_ENFORCE_EQ(window_strides.size(), 2UL);
+  size_t N = input.shape()[0];
+  size_t C = input.shape()[3];
+
+  size_t h = kernel.shape()[0];
+  size_t w = kernel.shape()[1];
+  size_t O = kernel.shape()[3];
+  size_t stride_w = window_strides[0];
+  size_t stride_h = window_strides[1];
+  SPU_ENFORCE_EQ(result_shape[0], static_cast<int64_t>(N));
+  SPU_ENFORCE_EQ(result_shape[3], static_cast<int64_t>(O));
+  SPU_ENFORCE_EQ(kernel.shape()[2], static_cast<int64_t>(C));
+
+  // ad-hoc optimization for strided conv2d when h=1
+  std::vector<int64_t> strides = {1, 1, 1, 1};
+  if (h == 1) {
+    strides[1] = stride_h;
+  }
+  if (w == 1) {
+    strides[2] = stride_w;
+  }
+
+  if (std::any_of(strides.begin(), strides.end(),
+                  [](int64_t s) { return s > 1; })) {
+    input = hal::slice(ctx, input, {0, 0, 0, 0}, input.shape(), strides);
+    stride_h = 1;
+    stride_w = 1;
+  }
+
+  size_t H = input.shape()[1];
+  size_t W = input.shape()[2];
+  // FIXME(juhou): define conv2d_ss in api.h to capture this
+  return unflattenValue(
+      ctx->prot()->call("conv2d_aa", flattenValue(input), flattenValue(kernel),
+                        N, H, W, C, O, h, w, stride_h, stride_w),
+      result_shape);
+}
+
 MAP_UNARY_OP(p2s)
 MAP_UNARY_OP(s2p)
 MAP_UNARY_OP(not_p)
@@ -162,6 +205,9 @@ MAP_BINARY_OP(and_ss)
 MAP_BINARY_OP(xor_pp)
 MAP_BINARY_OP(xor_sp)
 MAP_BINARY_OP(xor_ss)
+MAP_BINARY_OP(equal_ss)
+MAP_BINARY_OP(equal_sp)
+MAP_BINARY_OP(equal_pp)
 MAP_MMUL_OP(mmul_pp)
 MAP_MMUL_OP(mmul_sp)
 MAP_MMUL_OP(mmul_ss)

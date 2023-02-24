@@ -89,8 +89,16 @@ void hintNumberOfBits(const Value& a, size_t nbits) {
 Value div_goldschmidt(HalContext* ctx, const Value& a, const Value& b) {
   SPU_TRACE_HAL_DISP(ctx, a, b);
 
-  auto b_sign = _sign(ctx, b);
-  auto b_abs = _mul(ctx, b_sign, b).asFxp();
+  // We prefer  b_abs = b < 0 ? -b : b over b_abs = sign(b) * b
+  // because MulA1B is a better choice than MulAA for CHEETAH.
+  // For ABY3, these two computations give the same cost though.
+  auto is_negative = _msb(ctx, b);
+  if (ctx->rt_config().protocol() != ProtocolKind::CHEETAH) {
+    // insert ``prefer_a'' because the msb bit are used twice.
+    is_negative =
+        _add(ctx, is_negative, _constant(ctx, 0, is_negative.shape()));
+  }
+  auto b_abs = _mux(ctx, is_negative, _negate(ctx, b), b).asFxp();
 
   auto b_msb = detail::highestOneBit(ctx, b_abs);
 
@@ -118,13 +126,17 @@ Value div_goldschmidt(HalContext* ctx, const Value& a, const Value& b) {
 
   // iterate, r=r(1+e), e=e*e
   for (size_t itr = 0; itr < num_iters; itr++) {
+	// TODO(juhou): `r` is always positive, use truncate with msb=0
     r = f_mul(ctx, r, f_add(ctx, e, k1_));
-    e = f_square(ctx, e);
+    if (itr + 1 < num_iters) {
+      e = f_square(ctx, e);
+    }
   }
 
   r = f_mul(ctx, r, a);
   r = f_mul(ctx, r, factor);
-  return _mul(ctx, r, b_sign).asFxp();
+
+  return _mux(ctx, is_negative, _negate(ctx, r), r).asFxp();
 }
 
 Value reciprocal_goldschmidt_positive(HalContext* ctx, const Value& b_abs) {
@@ -155,7 +167,9 @@ Value reciprocal_goldschmidt_positive(HalContext* ctx, const Value& b_abs) {
   // iterate, r=r(1+e), e=e*e
   for (size_t itr = 0; itr < num_iters; itr++) {
     r = f_mul(ctx, r, f_add(ctx, e, k1_));
-    e = f_square(ctx, e);
+    if (itr + 1 < num_iters) {
+      e = f_square(ctx, e);
+    }
   }
 
   return r;
@@ -166,10 +180,15 @@ Value reciprocal_goldschmidt_positive(HalContext* ctx, const Value& b_abs) {
 Value reciprocal_goldschmidt(HalContext* ctx, const Value& b) {
   SPU_TRACE_HAL_DISP(ctx, b);
 
-  auto b_sign = _sign(ctx, b);
-  auto b_abs = _mul(ctx, b_sign, b).asFxp();
+  auto is_negative = _msb(ctx, b);
+  if (ctx->rt_config().protocol() != ProtocolKind::CHEETAH) {
+    is_negative =
+        _add(ctx, is_negative, _constant(ctx, 0, is_negative.shape()));
+  }
 
-  return _mul(ctx, reciprocal_goldschmidt_positive(ctx, b_abs), b_sign).asFxp();
+  auto b_abs = _mux(ctx, is_negative, _negate(ctx, b), b).asFxp();
+  auto r = reciprocal_goldschmidt_positive(ctx, b_abs);
+  return _mux(ctx, is_negative, _negate(ctx, r), r).asFxp();
 }
 
 }  // namespace detail
@@ -236,6 +255,17 @@ Value f_mmul(HalContext* ctx, const Value& x, const Value& y) {
   return _trunc(ctx, _mmul(ctx, x, y)).asFxp();
 }
 
+Value f_conv2d(HalContext* ctx, const Value& x, const Value& y,
+               absl::Span<const int64_t> window_strides,
+               absl::Span<const int64_t> result_shape) {
+  SPU_TRACE_HAL_LEAF(ctx, x, y);
+
+  SPU_ENFORCE(x.isFxp());
+  SPU_ENFORCE(y.isFxp());
+
+  return _trunc(ctx, _conv2d(ctx, x, y, window_strides, result_shape)).asFxp();
+}
+
 Value f_div(HalContext* ctx, const Value& x, const Value& y) {
   SPU_TRACE_HAL_LEAF(ctx, x, y);
 
@@ -255,7 +285,7 @@ Value f_equal(HalContext* ctx, const Value& x, const Value& y) {
   SPU_ENFORCE(x.isFxp());
   SPU_ENFORCE(y.isFxp());
 
-  return _eqz(ctx, f_sub(ctx, x, y)).setDtype(DT_I1);
+  return _equal(ctx, x, y).setDtype(DT_I1);
 }
 
 Value f_less(HalContext* ctx, const Value& x, const Value& y) {
@@ -272,6 +302,7 @@ Value f_square(HalContext* ctx, const Value& x) {
 
   SPU_ENFORCE(x.isFxp());
   // TODO(jint) optimize me.
+  // TODO(juhou) can use truncate with msb=0
 
   return f_mul(ctx, x, x);
 }

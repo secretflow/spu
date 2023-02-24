@@ -201,7 +201,6 @@ struct FerretOT::Impl {
     constexpr bool malicious = false;
     constexpr bool run_setup = true;
     int role = is_sender ? emp::ALICE : emp::BOB;
-    // NOTE(juhou): we create a seperated channel for OT
     io_ = std::make_shared<CheetahIO>(conn);
     io_holder_[0] = io_.get();
     std::string save_file;
@@ -493,6 +492,10 @@ struct FerretOT::Impl {
     const size_t n = Nn / N;
     size_t logN = absl::bit_width(N) - 1;
 
+    // REF: "Oblivious transfer and polynomial evaluation"
+    // Construct one-of-N-OT from logN instances of one-of-2-OT
+    // Send: (s_{0, j}, s_{1, j}) for 0 <= j < logN
+    // Recv:  c_j \in {0, 1}
     std::unique_ptr<OtBaseTyp[]> rm_data0(new OtBaseTyp[n * logN]);
     std::unique_ptr<OtBaseTyp[]> rm_data1(new OtBaseTyp[n * logN]);
     SendRandMsgChosenChoice(rm_data0.get(), rm_data1.get(), n * logN);
@@ -510,11 +513,18 @@ struct FerretOT::Impl {
       }
     }
 
-    // construct one-of-N-OT from one-of-2-OT
     std::vector<OtBaseTyp> hash_out0(N - 1);
     std::vector<OtBaseTyp> hash_out1(N - 1);
     std::vector<OtBaseTyp> pad(kOTBatchSize * N);
+
+    const T msg_mask = makeBitsMask<T>(bit_width);
+    size_t pack_load = 8 * sizeof(T) / bit_width;
     std::vector<T> to_send(kOTBatchSize * N);
+    std::vector<T> packed_to_send;
+    if (pack_load > 1) {
+      // NOTE: pack bit chunks into single T element if possible
+      packed_to_send.resize(CeilDiv(to_send.size(), pack_load));
+    }
 
     for (size_t i = 0; i < n; i += kOTBatchSize) {
       size_t this_batch = std::min(kOTBatchSize, n - i);
@@ -546,11 +556,19 @@ struct FerretOT::Impl {
       for (size_t j = 0; j < this_batch; ++j) {
         const auto* this_msg = msg_array.data() + (i + j) * N;
         for (size_t k = 0; k < N; ++k) {
-          to_send[j * N + k] = ConvFromBlock<T>(pad[j * N + k]) ^ this_msg[k];
+          to_send[j * N + k] = (ConvFromBlock<T>(pad[j * N + k]) ^ this_msg[k]);
+          to_send[j * N + k] &= msg_mask;
         }
       }
 
-      io_->send_data(to_send.data(), N * this_batch * sizeof(T));
+      if (pack_load > 1) {
+        size_t used = ZipArray<T>({to_send.data(), N * this_batch}, bit_width,
+                                  absl::MakeSpan(packed_to_send));
+        SPU_ENFORCE(used == CeilDiv(N * this_batch, pack_load));
+        io_->send_data(packed_to_send.data(), used * sizeof(T));
+      } else {
+        io_->send_data(to_send.data(), N * this_batch * sizeof(T));
+      }
     }
   }
 
@@ -585,12 +603,18 @@ struct FerretOT::Impl {
     std::vector<OtBaseTyp> hash_in(logN);
     std::vector<OtBaseTyp> hash_out(logN);
     std::vector<OtBaseTyp> pad(kOTBatchSize);
-    std::vector<T> recv(kOTBatchSize * N);
 
-    const T mask = makeBitsMask<T>(bit_width);
+    const T msg_mask = makeBitsMask<T>(bit_width);
+    const size_t pack_load = 8 * sizeof(T) / bit_width;
+    std::vector<T> recv(kOTBatchSize * N);
+    std::vector<T> packed_recv(CeilDiv(recv.size(), pack_load));
+
     for (size_t i = 0; i < n; i += kOTBatchSize) {
       size_t this_batch = std::min(kOTBatchSize, n - i);
-      io_->recv_data(recv.data(), N * this_batch * sizeof(T));
+      size_t used = CeilDiv(N * this_batch, pack_load);
+      io_->recv_data(packed_recv.data(), used * sizeof(T));
+      UnzipArray<T>({packed_recv.data(), used}, bit_width,
+                    {recv.data(), N * this_batch});
 
       std::memset(pad.data(), 0, kOTBatchSize * sizeof(OtBaseTyp));
       for (size_t j = 0; j < this_batch; ++j) {
@@ -601,13 +625,14 @@ struct FerretOT::Impl {
         mitccrh_exp_.renew_ks(&rm_data[(i + j) * logN], logN);
         mitccrh_exp_.hash_single(hash_out.data(), hash_in.data(), logN);
 
-        pad[j] = std::reduce(hash_out.begin(), hash_out.end(), pad[j],
-                             std::bit_xor<OtBaseTyp>());
+        pad[j] = std::accumulate(hash_out.begin(), hash_out.end(), pad[j],
+                                 std::bit_xor<OtBaseTyp>());
       }
 
       for (size_t j = 0; j < this_batch; ++j) {
-        output[i + j] = ConvFromBlock<T>(pad[j]) ^ recv[N * j + choices[i + j]];
-        output[i + j] &= mask;
+        output[i + j] =
+            (ConvFromBlock<T>(pad[j]) ^ recv[N * j + choices[i + j]]) &
+            msg_mask;
       }
     }
   }

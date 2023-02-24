@@ -25,13 +25,13 @@ WolverineVole::WolverineVole(PsiRoleType psi_role,
                              std::shared_ptr<yacl::link::Context> link_ctx)
     : party_((psi_role == PsiRoleType::Sender) ? emp::ALICE : emp::BOB),
       link_ctx_(std::move(link_ctx)) {
-  // set CheetahIo
+  // set EmpIoAdapter
   for (size_t i = 0; i < kVoleSilentOTThreads; ++i) {
-    silent_ios_[i] = std::make_unique<CheetahIo>(link_ctx_);
+    silent_ios_[i] = std::make_unique<EmpIoAdapter>(link_ctx_);
     ios_[i] = silent_ios_[i].get();
   }
 
-  emp_zk_vole_ = std::make_unique<VoleTriple<CheetahIo>>(
+  emp_zk_vole_ = std::make_unique<VoleTriple<EmpIoAdapter>>(
       party_, kVoleSilentOTThreads, ios_);
 
   SPDLOG_INFO("party {}, begin svole setup",

@@ -39,6 +39,7 @@ spu_cc_library(
     srcs = ["prot_wrapper.cc"],
     hdrs = ["prot_wrapper.h"],
     deps = [
+        ":shape_ops",
         "//libspu/kernel:context",
     ],
 )

@@ -20,39 +20,26 @@
 #include <future>
 #include <utility>
 
+#include "absl/strings/escaping.h"
 #include "yacl/utils/parallel.h"
 #include "yacl/utils/serialize.h"
 
 #include "libspu/core/prelude.h"
 #include "libspu/psi/core/communication.h"
 #include "libspu/psi/cryptor/ecc_utils.h"
+#include "libspu/psi/utils/ub_psi_cache.h"
 
 namespace spu::psi {
 
-size_t EcdhOprfPsiServer::FullEvaluate(
-    const std::shared_ptr<IBatchProvider>& batch_provider,
-    const std::shared_ptr<ICipherStore>& cipher_store) {
-  size_t items_count = 0;
-  size_t batch_count = 0;
-  while (true) {
-    auto items = batch_provider->ReadNextBatch(options_.batch_size);
-    if (items.empty()) {
-      break;
-    }
-    auto masked_items = oprf_server_->FullEvaluate(items);
-    for (const auto& masked_item : masked_items) {
-      cipher_store->SaveSelf(masked_item);
-    }
-    items_count += items.size();
-    batch_count++;
-  }
-  SPDLOG_INFO("{} finished, batch_count={} items_count={}", __func__,
-              batch_count, items_count);
-  return items_count;
+size_t EcdhOprfPsiServer::FullEvaluateAndSend(
+    const std::shared_ptr<IShuffleBatchProvider>& batch_provider,
+    const std::shared_ptr<IUbPsiCache>& ub_cache) {
+  return FullEvaluate(batch_provider, ub_cache, true);
 }
 
-void EcdhOprfPsiServer::SendFinalEvaluatedItems(
+size_t EcdhOprfPsiServer::SendFinalEvaluatedItems(
     const std::shared_ptr<IBatchProvider>& batch_provider) {
+  size_t items_count = 0;
   size_t batch_count = 0;
 
   size_t compare_length = oprf_server_->GetCompareLength();
@@ -61,6 +48,8 @@ void EcdhOprfPsiServer::SendFinalEvaluatedItems(
     PsiDataBatch batch;
     auto items = batch_provider->ReadNextBatch(options_.batch_size);
     batch.is_last_batch = items.empty();
+    SPDLOG_INFO("*** debug batch_count:{} items size:{}", batch_count,
+                items.size());
 
     if (!batch.is_last_batch) {
       batch.flatten_bytes.reserve(items.size() * compare_length);
@@ -82,14 +71,18 @@ void EcdhOprfPsiServer::SendFinalEvaluatedItems(
       break;
     }
 
+    items_count += items.size();
     batch_count++;
   }
 
   SPDLOG_INFO("{} finished, batch_count={}", __func__, batch_count);
+
+  return items_count;
 }
 
-size_t EcdhOprfPsiServer::FullEvaluateAndSend(
-    const std::shared_ptr<IBatchProvider>& batch_provider) {
+size_t EcdhOprfPsiServer::FullEvaluate(
+    const std::shared_ptr<IShuffleBatchProvider>& batch_provider,
+    const std::shared_ptr<IUbPsiCache>& ub_cache, bool send_flag) {
   size_t items_count = 0;
   size_t batch_count = 1;
   size_t compare_length = oprf_server_->GetCompareLength();
@@ -103,6 +96,8 @@ size_t EcdhOprfPsiServer::FullEvaluateAndSend(
   int tid;
   batch_count = 0;
   std::vector<std::string> batch_items;
+  std::vector<size_t> batch_indices;
+  std::vector<size_t> shuffle_indices;
   PsiDataBatch batch;
   size_t i;
   size_t local_batch_count;
@@ -111,9 +106,9 @@ size_t EcdhOprfPsiServer::FullEvaluateAndSend(
   SPDLOG_INFO("omp_get_num_threads:{} cpus:{}", nthreads, mcpus);
   omp_set_num_threads(mcpus);
 
-#pragma omp parallel private(tid, nthreads, i, batch_items, batch,       \
-                             local_batch_count)                          \
-    shared(lck_read, lck_send, batch_count, items_count, compare_length, \
+#pragma omp parallel private(tid, nthreads, i, batch_items, batch_indices, \
+                             shuffle_indices, batch, local_batch_count)    \
+    shared(lck_read, lck_send, batch_count, items_count, compare_length,   \
            stop_flag)
   {
     tid = omp_get_thread_num();
@@ -123,17 +118,28 @@ size_t EcdhOprfPsiServer::FullEvaluateAndSend(
     }
     while (!stop_flag) {
       omp_set_lock(&lck_read);
-      batch_items = batch_provider->ReadNextBatch(options_.batch_size);
+
+      if (stop_flag) {
+        omp_unset_lock(&lck_read);
+        break;
+      }
+      std::tie(batch_items, batch_indices, shuffle_indices) =
+          batch_provider->ReadNextBatchWithIndex(options_.batch_size);
 
       batch.is_last_batch = batch_items.empty();
 
       if (batch_items.empty()) {
         stop_flag = true;
-
       } else {
         items_count += batch_items.size();
         batch_count++;
+        if ((batch_count % 1000) == 0) {
+          SPDLOG_INFO("batch_count:{}", batch_count);
+        }
         local_batch_count = batch_count;
+        if (batch_items.size() < options_.batch_size) {
+          SPDLOG_INFO("*** debug batch_items.size():{}", batch_items.size());
+        }
       }
 
       omp_unset_lock(&lck_read);
@@ -150,21 +156,39 @@ size_t EcdhOprfPsiServer::FullEvaluateAndSend(
         batch.flatten_bytes.append(masked_item);
       }
 
-      // Send x^a.
       omp_set_lock(&lck_send);
 
-      options_.link0->SendAsync(
-          options_.link0->NextRank(), batch.Serialize(),
-          fmt::format("EcdhOprfPSI:FinalEvaluatedItems:{}", local_batch_count));
+      if (send_flag) {
+        // Send x^a.
+        options_.link0->SendAsync(
+            options_.link0->NextRank(), batch.Serialize(),
+            fmt::format("EcdhOprfPSI:FinalEvaluatedItems:{}",
+                        local_batch_count));
+      }
+
+      if (ub_cache != nullptr) {
+        for (size_t i = 0; i < batch_items.size(); i++) {
+          std::string cache_data =
+              batch.flatten_bytes.substr(i * compare_length, compare_length);
+          ub_cache->SaveData(cache_data, batch_indices[i], shuffle_indices[i]);
+        }
+      }
 
       omp_unset_lock(&lck_send);
     }
   }
-  batch.is_last_batch = true;
-  options_.link0->SendAsync(
-      options_.link0->NextRank(), batch.Serialize(),
-      fmt::format("EcdhOprfPSI last batch,FinalEvaluatedItems:{}",
-                  batch_count));
+
+  if (send_flag) {
+    batch.is_last_batch = true;
+    batch.flatten_bytes.resize(0);
+    options_.link0->SendAsync(
+        options_.link0->NextRank(), batch.Serialize(),
+        fmt::format("EcdhOprfPSI last batch,FinalEvaluatedItems:{}",
+                    batch_count));
+  }
+  if (ub_cache != nullptr) {
+    ub_cache->Flush();
+  }
 
   SPDLOG_INFO("{} finished, batch_count={} items_count={}", __func__,
               batch_count, items_count);
@@ -232,9 +256,13 @@ void EcdhOprfPsiClient::RecvFinalEvaluatedItems(
   while (true) {
     const auto tag =
         fmt::format("EcdhOprfPSI:FinalEvaluatedItems:{}", batch_count);
+
+    // Fetch y^b.
     PsiDataBatch masked_batch = PsiDataBatch::Deserialize(
         options_.link0->Recv(options_.link0->NextRank(), tag));
-    // Fetch y^b.
+
+    SPDLOG_INFO("***debug batch_count:{} masked_batch: {}", batch_count,
+                masked_batch.flatten_bytes.length());
 
     if (masked_batch.is_last_batch) {
       SPDLOG_INFO("{} Last batch triggered, batch_count={}", __func__,
@@ -247,8 +275,9 @@ void EcdhOprfPsiClient::RecvFinalEvaluatedItems(
 
     std::vector<std::string> evaluated_items(num_items);
     for (size_t idx = 0; idx < num_items; ++idx) {
-      evaluated_items[idx] = masked_batch.flatten_bytes.substr(
-          idx * compare_length_, compare_length_);
+      evaluated_items[idx] =
+          absl::BytesToHexString(masked_batch.flatten_bytes.substr(
+              idx * compare_length_, compare_length_));
     }
     cipher_store->SavePeer(evaluated_items);
 
@@ -376,8 +405,8 @@ void EcdhOprfPsiClient::RecvEvaluatedItems(
 
     yacl::parallel_for(0, items.size(), 1, [&](int64_t begin, int64_t end) {
       for (int64_t idx = begin; idx < end; ++idx) {
-        oprf_items[idx] =
-            oprf_clients[idx]->Finalize(items[idx], evaluate_items[idx]);
+        oprf_items[idx] = absl::BytesToHexString(
+            oprf_clients[idx]->Finalize(items[idx], evaluate_items[idx]));
       }
     });
 

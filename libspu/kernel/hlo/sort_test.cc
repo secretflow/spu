@@ -27,13 +27,8 @@ namespace spu::kernel::hlo {
 
 TEST(SortTest, Simple) {
   HalContext ctx = hal::test::makeRefHalContext();
-  xt::xarray<float> x{{0.05, 0.5, 0.24},
-                      {
-                          5,
-                          50,
-                          2,
-                      }};
-  xt::xarray<float> sorted_x{{0.05, 0.24, 0.5}, {2, 5, 50}};
+  xt::xarray<float> x = {{0.05, 0.5, 0.24}, {5, 50, 2}};
+  xt::xarray<float> sorted_x = {{0.05, 0.24, 0.5}, {2, 5, 50}};
 
   Value x_v = hal::const_secret(&ctx, x);
 
@@ -56,14 +51,8 @@ TEST(SortTest, Simple) {
 
 TEST(SortTest, SimpleWithNoPadding) {
   HalContext ctx = hal::test::makeRefHalContext();
-  xt::xarray<float> x{{0.05, 0.5, 0.24, 0.5},
-                      {
-                          2,
-                          5,
-                          50,
-                          2,
-                      }};
-  xt::xarray<float> sorted_x{{0.05, 0.24, 0.5, 0.5}, {2, 2, 5, 50}};
+  xt::xarray<float> x = {{0.05, 0.5, 0.24, 0.5}, {2, 5, 50, 2}};
+  xt::xarray<float> sorted_x = {{0.05, 0.24, 0.5, 0.5}, {2, 2, 5, 50}};
 
   Value x_v = hal::const_secret(&ctx, x);
 
@@ -86,16 +75,10 @@ TEST(SortTest, SimpleWithNoPadding) {
 
 TEST(SortTest, MultiInputs) {
   HalContext ctx = hal::test::makeRefHalContext();
-  xt::xarray<float> x1{
-      {0.5, 0.05, 0.5, 0.24, 0.5, 0.5, 0.5},
-  };
-
-  xt::xarray<float> x2{
-      {5, 1, 2, 1, 2, 3, 4},
-  };
-  xt::xarray<float> sorted_x1{{0.05, 0.24, 0.5, 0.5, 0.5, 0.5, 0.5}};
-
-  xt::xarray<float> sorted_x2{{1, 1, 2, 2, 3, 4, 5}};
+  xt::xarray<float> x1 = {{0.5, 0.05, 0.5, 0.24, 0.5, 0.5, 0.5}};
+  xt::xarray<float> x2 = {{5, 1, 2, 1, 2, 3, 4}};
+  xt::xarray<float> sorted_x1 = {{0.05, 0.24, 0.5, 0.5, 0.5, 0.5, 0.5}};
+  xt::xarray<float> sorted_x2 = {{1, 1, 2, 2, 3, 4, 5}};
 
   Value x1_v = hal::const_secret(&ctx, x1);
   Value x2_v = hal::const_secret(&ctx, x2);
@@ -127,11 +110,11 @@ TEST(SortTest, MultiInputs) {
 
 TEST(SortTest, MultiOperands) {
   HalContext ctx = hal::test::makeRefHalContext();
-  xt::xarray<float> k1{6, 6, 3, 4, 4, 5, 4};
-  xt::xarray<float> k2{0.5, 0.1, 3.1, 6.5, 4.1, 6.7, 2.5};
+  xt::xarray<float> k1 = {6, 6, 3, 4, 4, 5, 4};
+  xt::xarray<float> k2 = {0.5, 0.1, 3.1, 6.5, 4.1, 6.7, 2.5};
 
-  xt::xarray<float> sorted_k1{3, 4, 4, 4, 5, 6, 6};
-  xt::xarray<float> sorted_k2{3.1, 2.5, 4.1, 6.5, 6.7, 0.1, 0.5};
+  xt::xarray<float> sorted_k1 = {3, 4, 4, 4, 5, 6, 6};
+  xt::xarray<float> sorted_k2 = {3.1, 2.5, 4.1, 6.5, 6.7, 0.1, 0.5};
 
   Value k1_v = hal::const_secret(&ctx, k1);
   Value k2_v = hal::const_secret(&ctx, k2);

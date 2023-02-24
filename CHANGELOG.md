@@ -11,10 +11,13 @@
 - [Feature] Expose ssl/tls options
 - [Feature] Add EpsilonOp
 - [Feature] Support CaseOp
+- [Feature] Improve sort performance
 - [bugfix] Fix boolean ConstantOp
 - [3p] Relax TensorFlow version in requirements.txt
-- [API] Move C++ API from spu to libspu
 - [3p] Move to OpenXLA
+- [API] Move C++ API from spu to libspu
+- [PSI] Add ecdh-oprf 2-party two stage mode.
+
 
 
 ## 20230104

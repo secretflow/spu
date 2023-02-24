@@ -29,6 +29,18 @@
 
 namespace spu::psi {
 
+MemoryBatchProvider::MemoryBatchProvider(const std::vector<std::string>& items,
+                                         bool shuffle)
+    : items_(items), shuffle_(shuffle) {
+  shuffled_indices_.resize(items.size());
+  std::iota(shuffled_indices_.begin(), shuffled_indices_.end(), 0);
+
+  if (shuffle_) {
+    std::mt19937 rng(yacl::crypto::SecureRandU64());
+    std::shuffle(shuffled_indices_.begin(), shuffled_indices_.end(), rng);
+  }
+}
+
 std::vector<std::string> MemoryBatchProvider::ReadNextBatch(size_t batch_size) {
   std::vector<std::string> batch;
   SPU_ENFORCE(cursor_index_ <= items_.size());
@@ -39,8 +51,32 @@ std::vector<std::string> MemoryBatchProvider::ReadNextBatch(size_t batch_size) {
   return batch;
 }
 
+std::tuple<std::vector<std::string>, std::vector<size_t>, std::vector<size_t>>
+MemoryBatchProvider::ReadNextBatchWithIndex(size_t batch_size) {
+  std::vector<std::string> batch_data;
+  std::vector<size_t> batch_indices;
+  std::vector<size_t> shuffle_indices;
+
+  SPU_ENFORCE(cursor_index_ <= items_.size());
+  size_t n_items = std::min(batch_size, items_.size() - cursor_index_);
+  for (size_t i = 0; i < n_items; ++i) {
+    size_t shuffled_index = shuffled_indices_[cursor_index_ + i];
+    batch_data.push_back(items_[shuffled_index]);
+    batch_indices.push_back(cursor_index_ + i);
+    shuffle_indices.push_back(shuffled_index);
+  }
+
+  cursor_index_ += n_items;
+
+  return std::make_tuple(batch_data, batch_indices, shuffle_indices);
+}
+
 const std::vector<std::string>& MemoryBatchProvider::items() const {
   return items_;
+}
+
+const std::vector<size_t>& MemoryBatchProvider::shuffled_indices() const {
+  return shuffled_indices_;
 }
 
 CsvBatchProvider::CsvBatchProvider(
@@ -84,60 +120,82 @@ CachedCsvBatchProvider::CachedCsvBatchProvider(
   }
 }
 
-std::vector<std::string> CachedCsvBatchProvider::ReadNextBatch(
-    size_t batch_size) {
-  std::vector<std::string> batch;
+std::tuple<std::vector<std::string>, std::vector<size_t>, std::vector<size_t>>
+CachedCsvBatchProvider::ReadNextBatchWithIndex(size_t batch_size) {
+  std::vector<std::string> batch_data;
+  std::vector<size_t> batch_indices;
+  std::vector<size_t> shuffle_indices;
 
   if (file_end_flag_ && (bucket_items_[bucket_index_].size() == 0)) {
     SPDLOG_INFO("bucket_index_:{}, {}-{}", bucket_index_,
                 bucket_items_[0].size(), bucket_items_[1].size());
-    return batch;
+    return std::make_tuple(batch_data, batch_indices, shuffle_indices);
   }
   SPU_ENFORCE(cursor_index_ <= bucket_items_[bucket_index_].size());
 
   size_t n_items =
       std::min(batch_size, bucket_items_[bucket_index_].size() - cursor_index_);
-  batch.insert(batch.end(),
-               bucket_items_[bucket_index_].begin() + cursor_index_,
-               bucket_items_[bucket_index_].begin() + cursor_index_ + n_items);
-  cursor_index_ += n_items;
 
-  // SPDLOG_INFO("n_items:{}, batch_size:{}", n_items, batch_size);
-
-  if (n_items < batch_size) {
-    size_t next_index = 1 - bucket_index_;
-
-    std::unique_lock lk(bucket_mutex_[next_index]);
-    SPDLOG_INFO("lock idx:{}", next_index);
-
-    if (bucket_items_[next_index].size() > 0) {
-      size_t left_size = batch_size - n_items;
-
-      cursor_index_ = 0;
-      size_t m_items = std::min(left_size, bucket_items_[next_index].size());
-      batch.insert(batch.end(),
-                   bucket_items_[next_index].begin() + cursor_index_,
-                   bucket_items_[next_index].begin() + cursor_index_ + m_items);
-      if (m_items == bucket_items_[next_index].size()) {
-        cursor_index_ = 0;
-        bucket_items_[next_index].resize(0);
-      } else {
-        cursor_index_ += m_items;
-      }
-      n_items += m_items;
-
-      // read
-      SPDLOG_INFO("read next bucket, n_items:{} m_items:{}", n_items, m_items);
-      if (!file_end_flag_) {
-        ReadAndShuffle(bucket_index_, true);
-      }
-
-      bucket_index_ = next_index;
-      SPDLOG_INFO("unlock idx:{}", next_index);
-    }
+  for (size_t i = 0; i < n_items; ++i) {
+    size_t shuffled_index = shuffled_indices_[bucket_index_][cursor_index_ + i];
+    batch_data.push_back(bucket_items_[bucket_index_][shuffled_index]);
+    batch_indices.push_back(bucket_count_ * bucket_size_ + cursor_index_ + i);
+    shuffle_indices.push_back(bucket_count_ * bucket_size_ + shuffled_index);
   }
 
-  return batch;
+  cursor_index_ += n_items;
+
+  if (cursor_index_ == bucket_items_[bucket_index_].size()) {
+    SPDLOG_INFO("cursor_index_:{} n_items:{} batch_size:{}", cursor_index_,
+                n_items, batch_size);
+    std::unique_lock lk(bucket_mutex_[bucket_index_]);
+    bucket_items_[bucket_index_].resize(0);
+    cursor_index_ = 0;
+  }
+
+  if (n_items == batch_size) {
+    return std::make_tuple(batch_data, batch_indices, shuffle_indices);
+  }
+
+  size_t next_index = 1 - bucket_index_;
+  if (bucket_items_[next_index].size() > 0) {
+    std::unique_lock lk(bucket_mutex_[next_index]);
+
+    SPDLOG_INFO("lock idx:{}", next_index);
+
+    size_t left_size = batch_size - n_items;
+
+    cursor_index_ = 0;
+    bucket_count_++;
+    size_t m_items = std::min(left_size, bucket_items_[next_index].size());
+
+    for (size_t i = 0; i < m_items; ++i) {
+      size_t shuffled_index = shuffled_indices_[next_index][cursor_index_ + i];
+      batch_data.push_back(bucket_items_[next_index][shuffled_index]);
+      batch_indices.push_back(bucket_count_ * bucket_size_ + cursor_index_ + i);
+      shuffle_indices.push_back(bucket_count_ * bucket_size_ + shuffled_index);
+    }
+
+    if (m_items == bucket_items_[next_index].size()) {
+      cursor_index_ = 0;
+      bucket_items_[next_index].resize(0);
+    } else {
+      cursor_index_ += m_items;
+    }
+    n_items += m_items;
+
+    // read
+    SPDLOG_INFO("read next bucket, n_items:{} m_items:{}", n_items, m_items);
+    if (!file_end_flag_) {
+      ReadAndShuffle(bucket_index_, true);
+    }
+
+    bucket_index_ = next_index;
+
+    SPDLOG_INFO("unlock idx:{}", next_index);
+  }
+
+  return std::make_tuple(batch_data, batch_indices, shuffle_indices);
 }
 
 void CachedCsvBatchProvider::ReadAndShuffle(size_t read_index,
@@ -160,14 +218,20 @@ void CachedCsvBatchProvider::ReadAndShuffle(size_t read_index,
           (bucket_items_[idx].size() < bucket_size_)) {
         file_end_flag_ = true;
       }
+
+      shuffled_indices_[idx].resize(bucket_items_[idx].size());
+      std::iota(shuffled_indices_[idx].begin(), shuffled_indices_[idx].end(),
+                0);
     }
 
     if (shuffle_ && !bucket_items_[idx].empty()) {
       std::mt19937 rng(yacl::crypto::SecureRandU64());
-      std::shuffle(bucket_items_[idx].begin(), bucket_items_[idx].end(), rng);
+      std::shuffle(shuffled_indices_[idx].begin(), shuffled_indices_[idx].end(),
+                   rng);
     }
     SPDLOG_INFO("unlock idx:{}", idx);
-    SPDLOG_INFO("End thread ReadAndShuffle next bucket[idx] {}", idx,
+
+    SPDLOG_INFO("End thread ReadAndShuffle next bucket[{}] {}", idx,
                 bucket_items_[idx].size());
   };
 

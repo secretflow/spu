@@ -15,6 +15,7 @@
 load("//bazel:spu.bzl", "spu_cc_library", "spu_cc_test")
 load("@rules_proto//proto:defs.bzl", "proto_library")
 load("@rules_cc//cc:defs.bzl", "cc_proto_library")
+load("@yacl//bazel:yacl.bzl", "EMP_COPT_FLAGS")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -93,6 +94,10 @@ spu_cc_library(
     name = "cipher_store",
     srcs = ["cipher_store.cc"],
     hdrs = ["cipher_store.h"],
+    linkopts = select({
+        "@bazel_tools//src/conditions:darwin": [],
+        "//conditions:default": ["-fopenmp"],
+    }),
     deps = [
         ":hash_bucket_cache",
     ] + select({
@@ -147,6 +152,49 @@ spu_cc_library(
         ":serialize",
         "//libspu/core:prelude",
         "//libspu/psi/io",
+        "@yacl//yacl/crypto/utils:rand",
         "@yacl//yacl/link",
+    ],
+)
+
+spu_cc_library(
+    name = "emp_io_adapter",
+    srcs = ["emp_io_adapter.cc"],
+    hdrs = [
+        "emp_io_adapter.h",
+    ],
+    deps = [
+        "@com_github_emptoolkit_emp_tool//:emp-tool",
+        "@yacl//yacl/link",
+    ],
+)
+
+spu_cc_test(
+    name = "emp_io_adapter_test",
+    srcs = ["emp_io_adapter_test.cc"],
+    copts = EMP_COPT_FLAGS,
+    deps = [
+        "emp_io_adapter",
+    ],
+)
+
+spu_cc_library(
+    name = "ub_psi_cache",
+    srcs = ["ub_psi_cache.cc"],
+    hdrs = ["ub_psi_cache.h"],
+    deps = [
+        ":batch_provider",
+        "//libspu/core:prelude",
+        "//libspu/psi/io",
+    ],
+)
+
+spu_cc_test(
+    name = "ub_psi_cache_test",
+    srcs = ["ub_psi_cache_test.cc"],
+    deps = [
+        ":ub_psi_cache",
+        "@com_google_absl//absl/time",
+        "@yacl//yacl/crypto/utils:rand",
     ],
 )

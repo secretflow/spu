@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <map>
 #include <memory>
 #include <shared_mutex>
 
@@ -89,28 +90,49 @@ class CheetahDotState : public State {
 
 class CheetahOTState : public State {
  private:
-  std::shared_ptr<BasicOTProtocols> basic_ot_prot_;
-  explicit CheetahOTState(std::unique_ptr<BasicOTProtocols> basic_ot_prot)
-      : basic_ot_prot_(std::move(basic_ot_prot)) {}
+  using ProtPtr = std::shared_ptr<BasicOTProtocols>;
+
+  std::shared_mutex lock_;
+  std::map<size_t, ProtPtr> basic_ot_prot_;
 
  public:
   static constexpr char kBindName[] = "CheetahOT";
+  static constexpr size_t kParallel = 16;
 
-  explicit CheetahOTState(Communicator* conn) {
-    // NOTE(juhou): we create a seperated link for OT
-    auto _conn = std::make_shared<Communicator>(conn->lctx()->Spawn());
-    basic_ot_prot_ = std::make_shared<BasicOTProtocols>(_conn);
-  }
+  explicit CheetahOTState() {}
 
   ~CheetahOTState() override = default;
 
-  std::shared_ptr<BasicOTProtocols> get() { return basic_ot_prot_; }
+  size_t parallel_size() const { return kParallel; }
 
-  bool hasLowCostFork() const override { return true; }
+  void LazyInit(Communicator* comm, size_t idx = 0) {
+    SPU_ENFORCE(idx < parallel_size());
+    {
+      std::shared_lock<std::shared_mutex> guard(lock_);
+      auto kv = basic_ot_prot_.find(idx);
+      if (kv != basic_ot_prot_.end()) {
+        return;
+      }
+    }
+    // double check
+    std::unique_lock<std::shared_mutex> guard(lock_);
+    auto kv = basic_ot_prot_.find(idx);
+    if (kv != basic_ot_prot_.end()) {
+      return;
+    }
 
-  std::unique_ptr<State> fork() override {
-    auto ptr = new CheetahOTState(basic_ot_prot_->Fork());
-    return std::unique_ptr<State>(ptr);
+    // NOTE: create a seperated link for OT
+    auto _comm = std::make_shared<Communicator>(comm->lctx()->Spawn());
+    auto ptr = std::make_shared<BasicOTProtocols>(std::move(_comm));
+    basic_ot_prot_.emplace(idx, ptr);
+  }
+
+  std::shared_ptr<BasicOTProtocols> get(size_t idx = 0) {
+    SPU_ENFORCE(idx < parallel_size());
+    std::shared_lock<std::shared_mutex> guard(lock_);
+    auto kv = basic_ot_prot_.find(idx);
+    SPU_ENFORCE(kv != basic_ot_prot_.end(), "call LazyInit first");
+    return kv->second;
   }
 };
 

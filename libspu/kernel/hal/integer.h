@@ -37,6 +37,10 @@ Value i_mul(HalContext* ctx, const Value& x, const Value& y);
 
 Value i_mmul(HalContext* ctx, const Value& x, const Value& y);
 
+Value i_conv2d(HalContext* ctx, const Value& x, const Value& y,
+               absl::Span<const int64_t> window_strides,
+               absl::Span<const int64_t> result_shape);
+
 Value i_equal(HalContext* ctx, const Value& x, const Value& y);
 
 Value i_less(HalContext* ctx, const Value& x, const Value& y);

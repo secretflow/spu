@@ -44,9 +44,7 @@ class TruncA : public TruncAKernel {
  public:
   static constexpr char kBindName[] = "trunc_a";
 
-  ce::CExpr latency() const override { return ce::Const(0); }
-
-  ce::CExpr comm() const override { return ce::Const(0); }
+  Kind kind() const override { return Kind::Dynamic; }
 
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& x,
                 size_t bits) const override;
@@ -62,11 +60,27 @@ class MsbA2B : public UnaryKernel {
  public:
   static constexpr char kBindName[] = "msb_a2b";
 
-  ce::CExpr latency() const override { return ce::Const(0); }
-
-  ce::CExpr comm() const override { return ce::Const(0); }
-
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& x) const override;
+};
+
+class EqualAA : public BinaryKernel {
+ public:
+  static constexpr char kBindName[] = "equal_aa";
+
+  Kind kind() const override { return Kind::Dynamic; }
+
+  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& x,
+                const ArrayRef& y) const override;
+};
+
+class EqualAP : public BinaryKernel {
+ public:
+  static constexpr char kBindName[] = "equal_ap";
+
+  Kind kind() const override { return Kind::Dynamic; }
+
+  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& x,
+                const ArrayRef& y) const override;
 };
 
 class MulA1B : public BinaryKernel {
@@ -74,10 +88,6 @@ class MulA1B : public BinaryKernel {
   static constexpr char kBindName[] = "mul_a1b";
 
   Kind kind() const override { return Kind::Dynamic; }
-
-  ce::CExpr latency() const override { return ce::Const(1); }
-
-  ce::CExpr comm() const override { return 2 * ce::K(); }
 
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& ashr,
                 const ArrayRef& bshr) const override;
@@ -96,10 +106,6 @@ class MulAA : public BinaryKernel {
 
   Kind kind() const override { return Kind::Dynamic; }
 
-  ce::CExpr latency() const override { return ce::Const(1); }
-
-  ce::CExpr comm() const override { return ce::Const(0); }
-
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& x,
                 const ArrayRef& y) const override;
 };
@@ -110,15 +116,20 @@ class MatMulAA : public MatmulKernel {
 
   Kind kind() const override { return Kind::Dynamic; }
 
-  ce::CExpr latency() const override { return ce::Const(1); }
-
-  ce::CExpr comm() const override {
-    // TODO(jint) express M, N, K
-    return nullptr;
-  }
-
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& x, const ArrayRef& y,
                 size_t m, size_t n, size_t k) const override;
+};
+
+class Conv2DAA : public Conv2DKernel {
+ public:
+  static constexpr char kBindName[] = "conv2d_aa";
+
+  Kind kind() const override { return Kind::Dynamic; }
+
+  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& tensor,
+                const ArrayRef& filter, size_t N, size_t H, size_t W, size_t C,
+                size_t O, size_t h, size_t w, size_t stride_h,
+                size_t stride_w) const override;
 };
 
 }  // namespace spu::mpc::cheetah

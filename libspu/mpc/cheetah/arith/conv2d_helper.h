@@ -21,8 +21,74 @@
 
 namespace spu::mpc::cheetah {
 
+// A slice of a multi-dim tensor with zero padding.
+// The slice is defined by `offsets` and `extents`
+template <int Dim>
+struct SlicedTensor {
+ public:
+  using Shape = std::array<int64_t, Dim>;
+
+  SlicedTensor(const ArrayRef &base, const Shape &base_shape,
+               const Shape &offsets, const Shape &extents);
+
+  static SlicedTensor<Dim> Wrap(const ArrayRef &base, const Shape &base_shape,
+                                const Shape &offsets, const Shape &extents);
+
+  SlicedTensor(const SlicedTensor<Dim> &oth) = default;
+
+  SlicedTensor(SlicedTensor<Dim> &&oth) = default;
+
+  SlicedTensor<Dim> &operator=(const SlicedTensor<Dim> &oth) = delete;
+
+  template <typename T>
+  T at(absl::Span<const int64_t> idx) const {
+    // sementic check
+    SPU_ENFORCE(idx.size() == static_cast<size_t>(Dim));
+    for (int i = 0; i < Dim; ++i) {
+      SPU_ENFORCE(idx[i] >= 0 && zero_pad_extents_[i]);
+    }
+
+    // zero padding
+    std::array<int64_t, Dim> index;
+    for (int i = 0; i < Dim; ++i) {
+      if (idx[i] >= extents_[i]) return static_cast<T>(0);
+      index[i] = idx[i] + offsets_[i];
+    }
+    int64_t offset = calcFlattenOffset(index, base_shape_, flatten_strides_);
+    SPU_ENFORCE(offset >= 0 && offset < base_.numel());
+    return base_.at<T>(offset);
+  }
+
+  Shape shape() const { return zero_pad_extents_; }
+
+  int64_t numel() const { return calcNumel(shape()); }
+
+  FieldType field() const {
+    const Type &eltype = base_.eltype();
+    return eltype.as<Ring2k>()->field();
+  }
+
+  void ZeroPadAs(const Shape &extents) {
+    for (size_t d = 0; d < Dim; ++d) {
+      SPU_ENFORCE(extents[d] > 0);
+    }
+    zero_pad_extents_ = extents;
+  }
+
+ private:
+  const ArrayRef &base_;
+  Shape base_shape_;
+  Shape offsets_;
+  Shape extents_;
+  Shape flatten_strides_;
+
+  Shape zero_pad_extents_;
+};
+
 // forward
-struct Sliced3DTensor;
+using Sliced3DTensor = SlicedTensor<3>;
+using Sliced4DTensor = SlicedTensor<4>;
+
 struct InputIndexer;
 struct KernelIndexer;
 
@@ -52,78 +118,6 @@ class Conv2DHelper {
   Shape3D partition_windows_;
 
   Shape3D slices_;
-};
-
-// A slice of a 3D tensor with zero padding.
-// The slice is defined by `offsets` and `extents`
-struct Sliced3DTensor {
- private:
-  Sliced3DTensor(const ArrayRef &base, const Shape3D &base_shape,
-                 const Shape3D &offsets, const Shape3D &extents);
-
- public:
-  static Sliced3DTensor Wrap(const ArrayRef &base, const Shape3D &base_shape,
-                             const Shape3D &offsets, const Shape3D &extents);
-
-  Sliced3DTensor(const Sliced3DTensor &oth) = default;
-
-  Sliced3DTensor(Sliced3DTensor &&oth) = default;
-
-  Sliced3DTensor &operator=(const Sliced3DTensor &oth) = delete;
-
-  template <typename T>
-  T at(int64_t h, int64_t w, int64_t c) const {
-    // NOTE: HxWxC order
-    constexpr int kH = 0;
-    constexpr int kW = 1;
-    constexpr int kC = 2;
-
-    // sementic check
-    SPU_ENFORCE(h >= 0 && h < zero_pad_extents_[kH]);
-    SPU_ENFORCE(w >= 0 && w < zero_pad_extents_[kW]);
-    SPU_ENFORCE(c >= 0 && c < zero_pad_extents_[kC]);
-
-    // zero padding
-    if (c >= extents_[kC]) {
-      return static_cast<T>(0);
-    }
-    if (h < 0 || h >= extents_[kH]) {
-      return static_cast<T>(0);
-    }
-    if (w < 0 || w >= extents_[kW]) {
-      return static_cast<T>(0);
-    }
-
-    std::array<int64_t, 3> index = {h + offsets_[kH], w + offsets_[kW],
-                                    c + offsets_[kC]};
-    // see core/ndarray_ref.h
-    int64_t offset =
-        spu::detail::calcFlattenOffset(index, base_shape_, flatten_strides_);
-    SPU_ENFORCE(offset >= 0 && offset < base_.numel());
-    return base_.at<T>(offset);
-  }
-
-  Shape3D shape() const { return zero_pad_extents_; }
-
-  int64_t numel() const { return calcNumel(shape()); }
-
-  FieldType field() const;
-
-  void ZeroPadAs(const Shape3D &extents) {
-    for (size_t d = 0; d < 3; ++d) {
-      SPU_ENFORCE(extents[d] > 0);
-    }
-    zero_pad_extents_ = extents;
-  }
-
- private:
-  const ArrayRef &base_;
-  Shape3D base_shape_;
-  Shape3D offsets_;
-  Shape3D extents_;
-  Shape3D flatten_strides_;
-
-  Shape3D zero_pad_extents_;
 };
 
 struct InputIndexer {

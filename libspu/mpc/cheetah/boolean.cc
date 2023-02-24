@@ -16,41 +16,41 @@
 
 #include "libspu/core/trace.h"
 #include "libspu/mpc/cheetah/object.h"
-#include "libspu/mpc/common/communicator.h"
 #include "libspu/mpc/common/pub2k.h"
-#include "libspu/mpc/semi2k/type.h"
 #include "libspu/mpc/utils/ring_ops.h"
 
 namespace spu::mpc::cheetah {
+constexpr size_t kMinWorkSize = 5000;
 
 ArrayRef AndBB::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
                      const ArrayRef& rhs) const {
   SPU_TRACE_MPC_LEAF(ctx, lhs, rhs);
   SPU_ENFORCE_EQ(lhs.numel(), rhs.numel());
 
-  const auto field = ctx->getState<Z2kState>()->getDefaultField();
-  const auto* const shareType = lhs.eltype().as<semi2k::BShrTy>();
-  const size_t size = lhs.numel();
-
   auto* comm = ctx->getState<Communicator>();
-  auto ot_prot = ctx->getState<CheetahOTState>()->get();
-  // Create `size` AND triples, each contains shareType->nbits() bits
-  // and stored in the low-end bits of the ring element.
-  auto [a, b, c] = ot_prot->AndTriple(field, size, shareType->nbits());
-  // open x^a, y^b
-  auto res =
-      vectorize({ring_xor(lhs, a), ring_xor(rhs, b)}, [&](const ArrayRef& s) {
-        return comm->allReduce(ReduceOp::XOR, s, kBindName);
-      });
-  auto x_a = std::move(res[0]);
-  auto y_b = std::move(res[1]);
-
-  // Zi = Ci ^ ((X ^ A) & Bi) ^ ((Y ^ B) & Ai) ^ <(X ^ A) & (Y ^ B)>
-  auto z = ring_xor(ring_xor(ring_and(x_a, b), ring_and(y_b, a)), c);
-  if (comm->getRank() == 0) {
-    ring_xor_(z, ring_and(x_a, y_b));
+  auto* ot_state = ctx->getState<CheetahOTState>();
+  size_t n = lhs.numel();
+  size_t nworker =
+      std::min(ot_state->parallel_size(), CeilDiv(n, kMinWorkSize));
+  size_t work_load = CeilDiv(n, nworker);
+  for (size_t w = 0; w < nworker; ++w) {
+    ot_state->LazyInit(comm, w);
   }
 
+  ArrayRef z(lhs.eltype(), n);
+  yacl::parallel_for(0, nworker, 1, [&](size_t bgn, size_t end) {
+    for (size_t job = bgn; job < end; ++job) {
+      size_t slice_bgn = std::min(n, job * work_load);
+      size_t slice_end = std::min(n, slice_bgn + work_load);
+      if (slice_bgn == slice_end) {
+        break;
+      }
+      auto out_slice = ot_state->get(job)->BitwiseAnd(
+          lhs.slice(slice_bgn, slice_end), rhs.slice(slice_bgn, slice_end));
+      std::memcpy(&z.at(slice_bgn), &out_slice.at(0),
+                  out_slice.elsize() * out_slice.numel());
+    }
+  });
   return z.as(lhs.eltype());
 }
 

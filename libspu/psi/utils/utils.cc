@@ -15,6 +15,7 @@
 #include "libspu/psi/utils/utils.h"
 
 #include "spdlog/spdlog.h"
+#include "yacl/crypto/utils/rand.h"
 
 #include "libspu/core/prelude.h"
 #include "libspu/psi/io/io.h"
@@ -143,6 +144,16 @@ std::vector<size_t> AllGatherItemsSize(
   }
 
   return items_size_list;
+}
+
+std::vector<size_t> GetShuffledIdx(size_t items_size) {
+  std::mt19937 rng(yacl::crypto::RandU64());
+
+  std::vector<size_t> shuffled_idx_vec(items_size);
+  std::iota(shuffled_idx_vec.begin(), shuffled_idx_vec.end(), 0);
+  std::shuffle(shuffled_idx_vec.begin(), shuffled_idx_vec.end(), rng);
+
+  return shuffled_idx_vec;
 }
 
 }  // namespace spu::psi

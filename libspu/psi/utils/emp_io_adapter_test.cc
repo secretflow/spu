@@ -12,23 +12,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "libspu/psi/utils/emp_io_adapter.h"
+
 #include <future>
 #include <thread>
 
 #include "gtest/gtest.h"
 #include "yacl/link/test_util.h"
 
-#include "libspu/crypto/ot/silent/cheetah_io_channel.h"
-
 namespace spu {
 
-TEST(CheetahIoTest, Test) {
+TEST(EmpIoAdapterTest, Test) {
   const int kWorldSize = 2;
   auto contexts = yacl::link::test::SetupWorld(kWorldSize);
 
   std::future<void> player1 = std::async([&] {
     char msg[100];
-    CheetahIo io(contexts[0]);
+    EmpIoAdapter io(contexts[0]);
     io.send_data("hello", 5);
     io.send_data(" world", 6);
 
@@ -39,7 +39,7 @@ TEST(CheetahIoTest, Test) {
 
   std::future<void> player2 = std::async([&] {
     char msg[100];
-    CheetahIo io(contexts[1]);
+    EmpIoAdapter io(contexts[1]);
     io.recv_data(msg, 11);
 
     io.send_data("goodbye", 7);
@@ -51,13 +51,13 @@ TEST(CheetahIoTest, Test) {
   player2.get();
 }
 
-TEST(CheetahIoTest, TestPartial) {
+TEST(EmpIoAdapterTest, TestPartial) {
   const int kWorldSize = 2;
   auto contexts = yacl::link::test::SetupWorld(kWorldSize);
 
   std::future<void> player1 = std::async([&] {
     uint64_t a[4] = {0x284, 0xf3a, 0x97e4, 0x8fa};
-    CheetahIo io(contexts[0]);
+    EmpIoAdapter io(contexts[0]);
     io.send_data_partial(a, 4, 12);
 
     std::cout << "player1 sends: " << a[0] << ", " << a[1] << ", "
@@ -66,7 +66,7 @@ TEST(CheetahIoTest, TestPartial) {
 
   std::future<void> player2 = std::async([&] {
     uint64_t a[4];
-    CheetahIo io(contexts[1]);
+    EmpIoAdapter io(contexts[1]);
     io.recv_data_partial(a, 4, 12);
     std::cout << "player2 receives: " << a[0] << ", " << a[1] << ", " << a[2]
               << ", " << a[3] << std::endl;

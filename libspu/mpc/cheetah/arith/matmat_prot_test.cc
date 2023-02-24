@@ -172,7 +172,7 @@ TEST_P(MatMatProtTest, EncLHS) {
 
   auto lhs = CPRNG(field_, meta.dims[0] * meta.dims[1]);
   auto rhs = CPRNG(field_, meta.dims[1] * meta.dims[2]);
-  MatMatProtocol matmat_prot(*context_, *ms_helper_);
+  MatMatProtocol matmat_prot(*context_, *ms_helper_, /*mont*/ true);
 
   size_t lhs_n = matmat_prot.GetLeftSize(meta);
   size_t rhs_n = matmat_prot.GetRightSize(meta);
@@ -191,6 +191,7 @@ TEST_P(MatMatProtTest, EncLHS) {
   for (auto& p : rhs_poly) {
     NttInplace(p, *context_);
   }
+  matmat_prot.Montgomerize(absl::MakeSpan(rhs_poly));
 
   std::vector<RLWECt> out_ct(out_n);
   matmat_prot.Compute(absl::MakeSpan(enc_poly), absl::MakeSpan(rhs_poly), meta,

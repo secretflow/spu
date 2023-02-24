@@ -59,10 +59,10 @@ ArrayRef TruncateProtocol::ComputeWrap(const ArrayRef& inp, const Meta& meta) {
       ArrayRef wrap_bool;
       // w = 1{x_A + x_B > 2^k - 1}
       //   = 1{x_A > 2^k - 1 - x_B}
+      const auto field = inp.eltype().as<Ring2k>()->field();
       if (rank == 0) {
         wrap_bool = compare_prot.Compute(inp, true);
       } else {
-        const auto field = inp.eltype().as<Ring2k>()->field();
         auto adjusted = ring_neg(inp);
         DISPATCH_ALL_FIELDS(field, "", [&]() {
           ArrayView<ring2k_t> xadj(adjusted);
@@ -70,7 +70,8 @@ ArrayRef TruncateProtocol::ComputeWrap(const ArrayRef& inp, const Meta& meta) {
         });
         wrap_bool = compare_prot.Compute(adjusted, true);
       }
-      return basic_ot_prot_->B2A(wrap_bool);
+      return basic_ot_prot_->B2A(
+          wrap_bool.as(makeType<semi2k::BShrTy>(field, 1)));
       break;
     }
   }
@@ -199,11 +200,10 @@ ArrayRef TruncateProtocol::Compute(const ArrayRef& inp, Meta meta,
 
   const int rank = basic_ot_prot_->Rank();
 
-  ArrayRef upper_wrap;
+  ArrayRef wrap_ashr;
   ArrayRef out = ring_zeros(field, inp.numel());
 
   return DISPATCH_ALL_FIELDS(field, "", [&]() {
-    const ring2k_t maximum = static_cast<ring2k_t>(1) << (bit_width - shift);
     const ring2k_t component = (static_cast<ring2k_t>(1) << (bit_width - 1));
     ArrayView<const ring2k_t> xinp(inp);
 
@@ -215,22 +215,24 @@ ArrayRef TruncateProtocol::Compute(const ArrayRef& inp, Meta meta,
       ArrayView<ring2k_t> xtmp(tmp);
       pforeach(0, inp.numel(),
                [&](int64_t i) { xtmp[i] = xinp[i] + component; });
-      upper_wrap = ComputeWrap(tmp, meta);
+      wrap_ashr = ComputeWrap(tmp, meta);
     } else {
-      upper_wrap = ComputeWrap(inp, meta);
+      wrap_ashr = ComputeWrap(inp, meta);
     }
-    ArrayView<const ring2k_t> xupper_wrap(upper_wrap);
+    ArrayView<const ring2k_t> xwrap(wrap_ashr);
 
     // NOTE(juhou) We need logic right shift here
-    // m' = (m >> shift) - w * 2^{k - shift}
+    /// m' = (m >> shift) - wrap * 2^{k - shift}
+    // [m']_A = (m0 >> shift) - [wrap]_A * 2^{k - shift}
     ArrayView<ring2k_t> xout(out);
     if (meta.signed_arith && rank == 0) {
       pforeach(0, inp.numel(), [&](int64_t i) {
-        xout[i] = ((xinp[i] + component) >> shift) - maximum * xupper_wrap[i];
+        xout[i] = ((xinp[i] + component) >> shift);
+        xout[i] -= (xwrap[i] << (bit_width - shift));
       });
     } else {
       pforeach(0, inp.numel(), [&](int64_t i) {
-        xout[i] = (xinp[i] >> shift) - maximum * xupper_wrap[i];
+        xout[i] = (xinp[i] >> shift) - (xwrap[i] << (bit_width - shift));
       });
     }
 

@@ -72,7 +72,7 @@ Value i_equal(HalContext* ctx, const Value& x, const Value& y) {
   SPU_ENFORCE(x.isInt());
   SPU_ENFORCE(y.isInt());
 
-  return _eqz(ctx, i_sub(ctx, x, y)).setDtype(DT_I1);
+  return _equal(ctx, x, y).setDtype(DT_I1);
 }
 
 Value i_sub(HalContext* ctx, const Value& x, const Value& y) {
@@ -81,6 +81,14 @@ Value i_sub(HalContext* ctx, const Value& x, const Value& y) {
   SPU_ENFORCE(x.isInt());
   SPU_ENFORCE(y.isInt());
   return i_add(ctx, x, i_negate(ctx, y));
+}
+
+Value i_conv2d(HalContext* ctx, const Value& x, const Value& y,
+               absl::Span<const int64_t> window_strides,
+               absl::Span<const int64_t> result_shape) {
+  SPU_TRACE_HAL_LEAF(ctx, x, y);
+  ENSURE_INT_AND_DTYPE_MATCH(x, y);
+  return _conv2d(ctx, x, y, window_strides, result_shape).setDtype(x.dtype());
 }
 
 }  // namespace spu::kernel::hal

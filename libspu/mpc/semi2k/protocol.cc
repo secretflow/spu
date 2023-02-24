@@ -32,7 +32,9 @@ std::unique_ptr<Object> makeSemi2kProtocol(
     const std::shared_ptr<yacl::link::Context>& lctx) {
   semi2k::registerTypes();
 
-  auto obj = std::make_unique<Object>("SEMI2K");
+  // FIXME: use same id for different rank
+  auto obj =
+      std::make_unique<Object>(fmt::format("{}-{}", lctx->Rank(), "SEMI2K"));
 
   // add communicator
   obj->addState<Communicator>(lctx);
@@ -66,8 +68,6 @@ std::unique_ptr<Object> makeSemi2kProtocol(
   obj->regKernel<semi2k::TruncAPr>();
 
   obj->regKernel<common::AddBB>();
-  obj->regKernel<common::BitIntlB>();
-  obj->regKernel<common::BitDeintlB>();
   obj->regKernel<semi2k::CommonTypeB>();
   obj->regKernel<semi2k::CastTypeB>();
   obj->regKernel<semi2k::ZeroB>();
@@ -88,6 +88,8 @@ std::unique_ptr<Object> makeSemi2kProtocol(
   obj->regKernel<semi2k::RShiftB>();
   obj->regKernel<semi2k::ARShiftB>();
   obj->regKernel<semi2k::BitrevB>();
+  obj->regKernel<semi2k::BitIntlB>();
+  obj->regKernel<semi2k::BitDeintlB>();
   obj->regKernel<semi2k::RandA>();
 
   return obj;

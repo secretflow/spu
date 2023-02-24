@@ -15,7 +15,6 @@
 #include "libspu/mpc/cheetah/arith/conv2d_prot.h"
 
 #include "seal/evaluator.h"
-#include "yacl/crypto/base/hash/blake3.h"
 
 #include "libspu/core/shape_util.h"
 #include "libspu/core/xt_helper.h"
@@ -28,14 +27,18 @@ template <>
 struct std::hash<spu::mpc::cheetah::Conv2DProtocol::Meta> {
   size_t operator()(
       const spu::mpc::cheetah::Conv2DProtocol::Meta &s) const noexcept {
+    // FIXME(juhou): use a better way for hash
     using namespace spu::mpc::cheetah;
-    yacl::crypto::Blake3Hash h(sizeof(size_t));
-    h.Update({&s.num_kernels, sizeof(int64_t)});
-    h.Update({s.input_shape.data(), sizeof(Shape3D)});
-    h.Update({s.kernel_shape.data(), sizeof(Shape3D)});
-    h.Update({s.window_strides.data(), sizeof(Shape2D)});
-    auto digest = h.CumulativeHash();
-    return *reinterpret_cast<const size_t *>(digest.data());
+    size_t h = std::hash<std::string>()("Conv2DProtocol::Meta");
+    h = (h << 1) ^ std::hash<int64_t>()(s.input_batch);
+    h = (h << 1) ^ std::hash<int64_t>()(s.num_kernels);
+    for (int i : {0, 1, 2}) {
+      h = (h << 1) ^ std::hash<int64_t>()(s.input_shape[i]);
+      h = (h << 1) ^ std::hash<int64_t>()(s.kernel_shape[i]);
+    }
+    h = (h << 1) ^ std::hash<int64_t>()(s.window_strides[0]);
+    h = (h << 1) ^ std::hash<int64_t>()(s.window_strides[1]);
+    return h;
   }
 };
 
@@ -109,12 +112,6 @@ Shape3D Conv2DProtocol::GetSubTensorShape(const Meta &meta) const {
   SPU_ENFORCE(Cw > 0, "kernel size out-of-bound poly_deg={}", poly_deg_);
 
   Shape3D input_shape = meta.input_shape;
-  for (int64_t d : {kH, kW}) {
-    if (meta.kernel_shape[d] == 1) {
-      SPU_ENFORCE(meta.window_strides[d] == 1, "To optimize it in mpc layer");
-    }
-  }
-
   Shape3D subshape = input_shape;
   const int64_t H = input_shape[kH];
   const int64_t W = input_shape[kW];
@@ -133,8 +130,8 @@ Shape3D Conv2DProtocol::GetSubTensorShape(const Meta &meta) const {
             continue;
           }
 
-          int64_t encode_input =
-              CeilDiv(input_shape[kH], h) * CeilDiv(input_shape[kW], w);
+          int64_t encode_input = CeilDiv(input_shape[kH], h) *
+                                 CeilDiv(input_shape[kW], w) * meta.input_batch;
 
           int64_t cost = CeilDiv(input_shape[kC], c) * encode_input;
 
@@ -395,8 +392,14 @@ void Conv2DProtocol::ExtractLWEsInplace(const Meta &meta,
 
 ArrayRef Conv2DProtocol::ParseResult(FieldType field, const Meta &meta,
                                      absl::Span<const RLWEPt> rlwe) const {
+  return ParseResult(field, meta, rlwe, tencoder_->ms_helper());
+}
+
+ArrayRef Conv2DProtocol::ParseResult(
+    FieldType field, const Meta &meta, absl::Span<const RLWEPt> rlwe,
+    const ModulusSwitchHelper &ms_helper) const {
   SPU_ENFORCE_EQ(rlwe.size(), GetOutSize(meta));
-  size_t expected_n = poly_deg_ * tencoder_->ms_helper().coeff_modulus_size();
+  size_t expected_n = poly_deg_ * ms_helper.coeff_modulus_size();
   SPU_ENFORCE(std::all_of(rlwe.data(), rlwe.data() + rlwe.size(),
                           [expected_n](const RLWEPt &pt) {
                             return pt.coeff_count() == expected_n;
@@ -426,8 +429,8 @@ ArrayRef Conv2DProtocol::ParseResult(FieldType field, const Meta &meta,
         SPU_ENFORCE_EQ(static_cast<int64_t>(coefficients.size()),
                        calcNumel(slice_shape));
 
-        auto computed = tencoder_->ms_helper().ModulusDownRNS(
-            field, MakeSpan(rlwe[poly_idx++]));
+        auto computed =
+            ms_helper.ModulusDownRNS(field, MakeSpan(rlwe[poly_idx++]));
         auto *coeff_iter = coefficients.data();
 
         DISPATCH_ALL_FIELDS(field, "ParseResult", [&]() {

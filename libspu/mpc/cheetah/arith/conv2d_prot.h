@@ -28,9 +28,10 @@ bool IsSameInputShape(const ArrayRef& base, const Shape3D& shape);
 class Conv2DProtocol {
  public:
   struct Meta {
-    int64_t num_kernels;   // O
-    Shape3D input_shape;   // HxWxC
-    Shape3D kernel_shape;  // hxwxI
+    int64_t input_batch = 1;  // N
+    int64_t num_kernels;      // O
+    Shape3D input_shape;      // HxWxC
+    Shape3D kernel_shape;     // hxwxI
     Shape2D window_strides;
   };
 
@@ -69,6 +70,10 @@ class Conv2DProtocol {
 
   ArrayRef ParseResult(FieldType field, const Meta& meta,
                        absl::Span<const RLWEPt> rlwe) const;
+
+  ArrayRef ParseResult(FieldType field, const Meta& meta,
+                       absl::Span<const RLWEPt> rlwe,
+                       const ModulusSwitchHelper& ms) const;
 
   void Compute(absl::Span<const RLWEPt> tensor, absl::Span<const RLWEPt> kernel,
                const Meta& meta, absl::Span<RLWEPt> out) const;

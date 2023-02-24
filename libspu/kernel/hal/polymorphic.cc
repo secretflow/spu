@@ -178,6 +178,15 @@ Value equal(HalContext* ctx, const Value& x, const Value& y) {
   SPU_TRACE_HAL_DISP(ctx, x, y);
   SPU_ENFORCE(x.shape() == y.shape(), "x = {}, y = {}", x, y);
 
+  if (ctx->rt_config().protocol() == ProtocolKind::CHEETAH &&
+      (x.isSecret() || y.isSecret())) {
+    // For 2PC, equal can be done with the same cost of half MSB.
+    //      x0 + x1 = y0 + y1 mod 2^k
+    // <=>  x0 - y0 = y1 - x1 mod 2^k
+    // <=>  [1{x = y}]_B <- EQ(x0 - y0, y1 - x1) where EQ is a 2PC protocol.
+    return dtypeBinaryDispatch<f_equal, i_equal>("equal", ctx, x, y);
+  }
+
   // Note: following method does work, but slower ...
   // With optimized msb kernel, A2B+PreOr is slower than 2*MSB
   // return _eqz(ctx, sub(ctx, x, y)).setDtype(DT_I1);
@@ -502,6 +511,23 @@ Value sign(HalContext* ctx, const Value& x) {
   SPU_TRACE_HAL_DISP(ctx, x);
 
   return _sign(ctx, x).setDtype(DT_I8);
+}
+
+Value conv2d(HalContext* ctx, const Value& x, const Value& y,
+             absl::Span<const int64_t> window_strides,
+             absl::Span<const int64_t> result_shape) {
+  SPU_TRACE_HAL_DISP(ctx, x, y);
+  if (x.isFxp() && y.isFxp()) {
+    return f_conv2d(ctx, x, y, window_strides, result_shape);
+  }
+
+  if (x.isInt() && y.isInt()) {
+    auto common_type = common_dtype(x.dtype(), y.dtype());
+    return i_conv2d(ctx, dtype_cast(ctx, x, common_type),
+                    dtype_cast(ctx, y, common_type), window_strides,
+                    result_shape);
+  }
+  SPU_THROW("unsupported op {} for x={}, y={}", "conv2d", x, y);
 }
 
 }  // namespace spu::kernel::hal

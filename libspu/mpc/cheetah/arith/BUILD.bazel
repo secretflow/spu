@@ -48,7 +48,6 @@ spu_cc_library(
     hdrs = ["matmat_prot.h"],
     deps = [
         ":arith_comm",
-        "@yacl//yacl/crypto/base/hash:blake3",
     ],
 )
 
@@ -67,7 +66,6 @@ spu_cc_library(
     deps = [
         ":arith_comm",
         "//libspu/core:ndarray_ref",
-        "@yacl//yacl/crypto/base/hash:blake3",
     ],
 )
 
@@ -104,7 +102,6 @@ spu_cc_test(
     srcs = ["conv2d_prot_test.cc"],
     deps = [
         ":conv2d_prot",
-        "//libspu/kernel/hlo",
         "@com_github_xtensor_xtensor//:xtensor",
     ],
 )
@@ -124,6 +121,18 @@ spu_cc_test(
     name = "cheetah_dot_test",
     size = "large",
     srcs = ["cheetah_dot_test.cc"],
+    deps = [
+        ":cheetah_dot",
+        "//libspu/mpc/utils:ring_ops",
+        "//libspu/mpc/utils:simulate",
+        "@com_github_xtensor_xtensor//:xtensor",
+    ],
+)
+
+spu_cc_test(
+    name = "cheetah_conv2d_test",
+    size = "large",
+    srcs = ["cheetah_conv2d_test.cc"],
     deps = [
         ":cheetah_dot",
         "//libspu/mpc/utils:ring_ops",

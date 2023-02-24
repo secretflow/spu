@@ -233,6 +233,9 @@ ArrayRef _Lazy2A(KernelEvalContext* ctx, const ArrayRef& in) {
 #define _MsbA(in) block_par_unary(ctx, "msb_a2b", in)
 #define _RandA(size) ctx->caller()->call("rand_a", size)
 #define _RandB(size) ctx->caller()->call("rand_b", size)
+#define _EqualAP(lhs, rhs) block_par_binary(ctx, "equal_ap", lhs, rhs)
+#define _EqualAA(lhs, rhs) block_par_binary(ctx, "equal_aa", lhs, rhs)
+
 // NOLINTEND(bugprone-reserved-identifier)
 
 class ABProtState : public State {
@@ -550,6 +553,38 @@ class ABProtXorSS : public BinaryKernel {
   }
 };
 
+class ABProtEqualSS : public BinaryKernel {
+ public:
+  static constexpr char kBindName[] = "equal_ss";
+
+  Kind kind() const override { return Kind::Dynamic; }
+
+  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& x,
+                const ArrayRef& y) const override {
+    SPU_TRACE_MPC_DISP(ctx, x, y);
+    if (_LAZY_AB) {
+      return _EqualAA(_2A(x), _2A(y));
+    }
+    return _EqualAA(x, y);
+  }
+};
+
+class ABProtEqualSP : public BinaryKernel {
+ public:
+  static constexpr char kBindName[] = "equal_sp";
+
+  Kind kind() const override { return Kind::Dynamic; }
+
+  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& x,
+                const ArrayRef& y) const override {
+    SPU_TRACE_MPC_DISP(ctx, x, y);
+    if (_LAZY_AB) {
+      return _EqualAP(_2A(x), y);
+    }
+    return _EqualAP(x, y);
+  }
+};
+
 class ABProtEqzS : public UnaryKernel {
  public:
   static constexpr char kBindName[] = "eqz_s";
@@ -758,6 +793,8 @@ void regABKernels(Object* obj) {
   obj->regKernel<ABProtXorSP>();
   obj->regKernel<ABProtXorSS>();
   obj->regKernel<ABProtEqzS>();
+  obj->regKernel<ABProtEqualSS>();
+  obj->regKernel<ABProtEqualSP>();
   obj->regKernel<ABProtLShiftS>();
   obj->regKernel<ABProtRShiftS>();
   obj->regKernel<ABProtARShiftS>();

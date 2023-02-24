@@ -76,4 +76,6 @@ T SyncWait(const std::shared_ptr<yacl::link::Context>& lctx,
   return f->get();
 }
 
+std::vector<size_t> GetShuffledIdx(size_t items_size);
+
 }  // namespace spu::psi

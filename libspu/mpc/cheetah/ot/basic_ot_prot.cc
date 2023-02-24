@@ -188,8 +188,13 @@ ArrayRef BasicOTProtocols::BitwiseAnd(const ArrayRef &lhs,
   auto [a, b, c] = AndTriple(field, size, shareType->nbits());
 
   // open x^a, y^b
-  auto x_a = conn_->allReduce(ReduceOp::XOR, ring_xor(lhs, a), "BitwiseAnd");
-  auto y_b = conn_->allReduce(ReduceOp::XOR, ring_xor(rhs, b), "BitwiseAnd");
+  auto res =
+      vectorize({ring_xor(lhs, a), ring_xor(rhs, b)}, [&](const ArrayRef &s) {
+        return conn_->allReduce(ReduceOp::XOR, s, "BitwiseAnd");
+      });
+  auto x_a = std::move(res[0]);
+  auto y_b = std::move(res[1]);
+
   // Zi = Ci ^ ((X ^ A) & Bi) ^ ((Y ^ B) & Ai) ^ <(X ^ A) & (Y ^ B)>
   auto z = ring_xor(ring_xor(ring_and(x_a, b), ring_and(y_b, a)), c);
   if (conn_->getRank() == 0) {
@@ -199,9 +204,67 @@ ArrayRef BasicOTProtocols::BitwiseAnd(const ArrayRef &lhs,
   return z.as(lhs.eltype());
 }
 
+std::array<ArrayRef, 2> BasicOTProtocols::CorrelatedBitwiseAnd(
+    const ArrayRef &lhs, const ArrayRef &rhs0, const ArrayRef &rhs1) {
+  SPU_ENFORCE_EQ(lhs.numel(), rhs0.numel());
+  SPU_ENFORCE(lhs.eltype() == rhs0.eltype());
+  SPU_ENFORCE_EQ(lhs.numel(), rhs1.numel());
+  SPU_ENFORCE(lhs.eltype() == rhs1.eltype());
+
+  auto field = lhs.eltype().as<Ring2k>()->field();
+  const auto *shareType = lhs.eltype().as<semi2k::BShrTy>();
+  SPU_ENFORCE_EQ(shareType->nbits(), 1UL);
+  size_t size = lhs.numel();
+  auto [a, b0, c0, b1, c1] = CorrelatedAndTriple(field, size);
+
+  // open x^a, y^b0, y1^b1
+  auto res =
+      vectorize({ring_xor(lhs, a), ring_xor(rhs0, b0), ring_xor(rhs1, b1)},
+                [&](const ArrayRef &s) {
+                  return conn_->allReduce(ReduceOp::XOR, s, "BitwiseAnd");
+                });
+  auto xa = std::move(res[0]);
+  auto y0b0 = std::move(res[1]);
+  auto y1b1 = std::move(res[2]);
+
+  // Zi = Ci ^ ((X ^ A) & Bi) ^ ((Y ^ B) & Ai) ^ <(X ^ A) & (Y ^ B)>
+  auto z0 = ring_xor(ring_xor(ring_and(xa, b0), ring_and(y0b0, a)), c0);
+  auto z1 = ring_xor(ring_xor(ring_and(xa, b1), ring_and(y1b1, a)), c1);
+  if (conn_->getRank() == 0) {
+    ring_xor_(z0, ring_and(xa, y0b0));
+    ring_xor_(z1, ring_and(xa, y1b1));
+  }
+
+  return {z0.as(lhs.eltype()), z1.as(lhs.eltype())};
+}
+
+// Ref: https://eprint.iacr.org/2013/552.pdf
+// Algorithm 1. AND triple using 1-of-2 ROT.
 std::array<ArrayRef, 3> BasicOTProtocols::AndTriple(FieldType field,
                                                     size_t numel,
                                                     size_t nbits_each) {
+  // ROT sender obtains x_0, x_1
+  // ROT recevier obtains x_a, a for a \in {0, 1}
+  //
+  // Sender set (b = x0 ^ x1, v = x0)
+  // Recevier set (a, u = x_a)
+  // a & b = a & (x0 ^ x1)
+  //       = a & (x0 ^ x1) ^ (x0 ^ x0) <- zero m0 ^ m0
+  //       = (a & (x0 ^ x1) ^ x0) ^ x0
+  //       = (x_a) ^ x0
+  //       = u ^ v
+  //
+  // P0 acts as S to obtain (a0, u0)
+  // P1 acts as R to obtain (b1, v1)
+  // such that a0 & b1 = u0 ^ v1
+  //
+  // Flip the role
+  // P1 obtains (a1, u1)
+  // P0 obtains (b0, v0)
+  // such that a1 & b0 = u1 ^ v0
+  //
+  // Pi sets ci = ai & bi ^ ui ^ vi
+  // such that (a0 ^ a1) & (b0 ^ b1) = (c0 ^ c1)
   SPU_ENFORCE(numel > 0);
   SPU_ENFORCE(nbits_each >= 1 && nbits_each <= SizeOf(field) * 8,
               "invalid packing load {} for one AND", nbits_each);
@@ -252,6 +315,61 @@ std::array<ArrayRef, 3> BasicOTProtocols::AndTriple(FieldType field,
   });
 
   return {AND_a, AND_b, AND_c};
+}
+
+std::array<ArrayRef, 5> BasicOTProtocols::CorrelatedAndTriple(FieldType field,
+                                                              size_t numel) {
+  SPU_ENFORCE(numel > 0);
+  // NOTE(juhou): we use uint8_t to store 2-bit ROT
+  constexpr size_t ot_msg_width = 2;
+  std::vector<uint8_t> a(numel);
+  std::vector<uint8_t> b(numel);
+  std::vector<uint8_t> v(numel);
+  std::vector<uint8_t> u(numel);
+  // random choice a is 1-bit
+  // random messages b, v and u are 2-bit
+  if (0 == Rank()) {
+    ferret_receiver_->RecvRMRC(/*choice*/ absl::MakeSpan(a), absl::MakeSpan(u),
+                               ot_msg_width);
+    ferret_sender_->SendRMRC(absl::MakeSpan(v), absl::MakeSpan(b),
+                             ot_msg_width);
+    ferret_sender_->Flush();
+  } else {
+    ferret_sender_->SendRMRC(absl::MakeSpan(v), absl::MakeSpan(b),
+                             ot_msg_width);
+    ferret_sender_->Flush();
+    ferret_receiver_->RecvRMRC(/*choice*/ absl::MakeSpan(a), absl::MakeSpan(u),
+                               ot_msg_width);
+  }
+
+  std::vector<uint8_t> c(numel);
+  pforeach(0, c.size(), [&](int64_t i) {
+    b[i] = b[i] ^ v[i];
+    // broadcast to 2-bit AND
+    c[i] = (((a[i] << 1) | a[i]) & b[i]) ^ u[i] ^ v[i];
+  });
+
+  ArrayRef AND_a = ring_zeros(field, numel);
+  ArrayRef AND_b0 = ring_zeros(field, numel);
+  ArrayRef AND_c0 = ring_zeros(field, numel);
+  ArrayRef AND_b1 = ring_zeros(field, numel);
+  ArrayRef AND_c1 = ring_zeros(field, numel);
+
+  DISPATCH_ALL_FIELDS(field, "AndTriple", [&]() {
+    auto AND_xa = ArrayView<ring2k_t>(AND_a);
+    auto AND_xb0 = ArrayView<ring2k_t>(AND_b0);
+    auto AND_xc0 = ArrayView<ring2k_t>(AND_c0);
+    auto AND_xb1 = ArrayView<ring2k_t>(AND_b1);
+    auto AND_xc1 = ArrayView<ring2k_t>(AND_c1);
+    pforeach(0, numel, [&](int64_t i) {
+      AND_xa[i] = a[i] & 1;
+      AND_xb0[i] = b[i] & 1;
+      AND_xc0[i] = c[i] & 1;
+      AND_xb1[i] = (b[i] >> 1) & 1;
+      AND_xc1[i] = (c[i] >> 1) & 1;
+    });
+  });
+  return {AND_a, AND_b0, AND_c0, AND_b1, AND_c1};
 }
 
 int BasicOTProtocols::Rank() const { return ferret_sender_->Rank(); }

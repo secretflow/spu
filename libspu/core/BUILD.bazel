@@ -253,9 +253,12 @@ spu_cc_library(
 
 spu_cc_library(
     name = "bit_utils",
+    srcs = ["bit_utils.cc"],
     hdrs = ["bit_utils.h"],
     deps = [
+        ":platform_utils",
         "@com_google_absl//absl/numeric:bits",
+        "@yacl//yacl/base:int128",
     ],
 )
 

@@ -227,11 +227,6 @@ TEST_P(BasicOTProtTest, AndTripleSparse) {
         ring2k_t e = (a0[i] ^ a1[i]) & (b0[i] ^ b1[i]);
         ring2k_t c = (c0[i] ^ c1[i]);
         EXPECT_EQ(e, c);
-        if (i < 8) {
-          std::cout << std::dec << "width "
-                    << absl::bit_width(static_cast<uint64_t>(e)) << " "
-                    << std::hex << e << "\n";
-        }
       }
     });
   }
@@ -377,4 +372,49 @@ TEST_P(BasicOTProtTest, Fork) {
     }
   });
 }
+
+TEST_P(BasicOTProtTest, CorrelatedAndTriple) {
+  size_t kWorldSize = 2;
+  size_t n = 10;
+  FieldType field = GetParam();
+
+  std::array<ArrayRef, 5> corr_triple[2];
+
+  utils::simulate(kWorldSize, [&](std::shared_ptr<yacl::link::Context> ctx) {
+    auto conn = std::make_shared<Communicator>(ctx);
+    BasicOTProtocols ot_prot(conn);
+    corr_triple[ctx->Rank()] = ot_prot.CorrelatedAndTriple(field, n);
+  });
+
+  DISPATCH_ALL_FIELDS(field, "", [&]() {
+    auto a0 = ArrayView<ring2k_t>(corr_triple[0][0]);
+    auto b0 = ArrayView<ring2k_t>(corr_triple[0][1]);
+    auto c0 = ArrayView<ring2k_t>(corr_triple[0][2]);
+    auto d0 = ArrayView<ring2k_t>(corr_triple[0][3]);
+    auto e0 = ArrayView<ring2k_t>(corr_triple[0][4]);
+
+    auto a1 = ArrayView<ring2k_t>(corr_triple[1][0]);
+    auto b1 = ArrayView<ring2k_t>(corr_triple[1][1]);
+    auto c1 = ArrayView<ring2k_t>(corr_triple[1][2]);
+    auto d1 = ArrayView<ring2k_t>(corr_triple[1][3]);
+    auto e1 = ArrayView<ring2k_t>(corr_triple[1][4]);
+
+    for (size_t i = 0; i < n; ++i) {
+      EXPECT_TRUE(a0[i] < 2 && a1[i] < 2);
+      EXPECT_TRUE(b0[i] < 2 && b1[i] < 2);
+      EXPECT_TRUE(c0[i] < 2 && c1[i] < 2);
+      EXPECT_TRUE(d0[i] < 2 && d1[i] < 2);
+      EXPECT_TRUE(e0[i] < 2 && e1[i] < 2);
+
+      ring2k_t e = (a0[i] ^ a1[i]) & (b0[i] ^ b1[i]);
+      ring2k_t c = (c0[i] ^ c1[i]);
+      EXPECT_EQ(e, c);
+
+      e = (a0[i] ^ a1[i]) & (d0[i] ^ d1[i]);
+      c = (e0[i] ^ e1[i]);
+      EXPECT_EQ(e, c);
+    }
+  });
+}
+
 }  // namespace spu::mpc::cheetah::test

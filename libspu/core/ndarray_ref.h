@@ -18,20 +18,16 @@
 #include <vector>
 
 #include "absl/types/span.h"
+#include "spdlog/spdlog.h"
 #include "yacl/base/buffer.h"
 
 #include "libspu/core/array_ref.h"
+#include "libspu/core/shape_util.h"
 #include "libspu/core/type.h"
 
+// #define ITER_DEBUG
+
 namespace spu {
-namespace detail {
-
-// This function assumes row major
-size_t calcFlattenOffset(absl::Span<const int64_t> indices,
-                         absl::Span<const int64_t> shape,
-                         absl::Span<const int64_t> strides);
-
-}  // namespace detail
 
 // N-dimensional array reference.
 //
@@ -120,17 +116,158 @@ class NdArrayRef {
   // Get element.
   template <typename T = std::byte>
   T& at(absl::Span<int64_t const> pos) {
-    auto fi = detail::calcFlattenOffset(pos, shape_, strides_);
+    auto fi = calcFlattenOffset(pos, shape_, strides_);
     return *reinterpret_cast<T*>(static_cast<std::byte*>(data()) +
                                  elsize() * fi);
   }
 
   template <typename T = std::byte>
   const T& at(absl::Span<int64_t const> pos) const {
-    auto fi = detail::calcFlattenOffset(pos, shape_, strides_);
+    auto fi = calcFlattenOffset(pos, shape_, strides_);
     return *reinterpret_cast<const T*>(static_cast<const std::byte*>(data()) +
                                        elsize() * fi);
   }
+
+  struct Iterator {
+   public:
+    using iterator_category = std::forward_iterator_tag;
+    using difference_type = std::ptrdiff_t;
+    using value_type = std::byte;
+    using pointer = std::byte*;
+    using reference = std::byte&;
+
+    explicit Iterator(const NdArrayRef& array, std::vector<int64_t> coord,
+                      bool invalid = false)
+        : coord_(std::move(coord)),
+          shape_(array.shape()),
+          strides_(array.strides()),
+          elsize_(array.elsize()),
+          invalid_(invalid) {
+      if (!invalid_) {
+        ptr_ = const_cast<std::byte*>(&array.at(coord_));
+      }
+    }
+
+    explicit Iterator(const NdArrayRef& array, absl::Span<const int64_t> coord,
+                      bool invalid = false)
+        : coord_(coord.begin(), coord.end()),
+          shape_(array.shape()),
+          strides_(array.strides()),
+          elsize_(array.elsize()),
+          invalid_(invalid) {
+      if (!invalid_) {
+        ptr_ = const_cast<std::byte*>(&array.at(coord_));
+      }
+    }
+
+    reference operator*() const { return *ptr_; }
+    pointer getRawPtr() { return ptr_; }
+    Iterator& operator++();
+    Iterator operator++(int) {
+      Iterator tmp = *this;
+      ++*this;
+      return tmp;
+    }
+
+    bool operator==(const Iterator& other) {
+      return invalid_ == other.invalid_ && coord_ == other.coord_ &&
+             shape_ == other.shape_ && strides_ == other.strides_;
+    }
+
+    bool operator!=(const Iterator& other) {
+      return invalid_ != other.invalid_ || coord_ != other.coord_ ||
+             shape_ != other.shape_ || strides_ != other.strides_;
+    }
+
+#ifdef ITER_DEBUG
+    friend std::ostream& operator<<(std::ostream& s, const Iterator& iter) {
+      auto fs = fmt::format("ptr = {} coord = {} shape={} strides={}",
+                            (void*)iter.ptr_, fmt::join(iter.coord_, "x"),
+                            fmt::join(iter.shape_, "x"),
+                            fmt::join(iter.strides_, "x"));
+      s << fs;
+      return s;
+    }
+
+    bool validate() const { return !invalid_; }
+#endif
+
+   private:
+    std::byte* ptr_ = nullptr;  // Exclude from equality check
+    std::vector<int64_t> coord_;
+    const std::vector<int64_t> shape_;
+    const std::vector<int64_t> strides_;
+    const int64_t elsize_;
+    bool invalid_ = false;
+  };
+
+  Iterator begin() {
+    return Iterator(*this, std::vector<int64_t>(shape().size(), 0));
+  }
+
+  Iterator end() {
+    return Iterator(*this, std::vector<int64_t>(shape().size(), 0), true);
+  }
+
+  Iterator cbegin() const {
+    return Iterator(*this, std::vector<int64_t>(shape().size(), 0));
+  }
+
+  Iterator cend() const {
+    return Iterator(*this, std::vector<int64_t>(shape().size(), 0), true);
+  }
+
+  void copy_slice(const NdArrayRef& src, absl::Span<const int64_t> src_base,
+                  absl::Span<const int64_t> dst_base, int64_t num_copy);
+
+  /// the broadcast function
+  /// Guarantee no copy
+  NdArrayRef broadcast_to(absl::Span<const int64_t> to_shape,
+                          absl::Span<const int64_t> in_dims) const;
+
+  /// the reshape function
+  /// No copy if can achieve through strides tricks
+  NdArrayRef reshape(absl::Span<const int64_t> to_shape) const;
+
+  /// the slice function
+  /// Guarantee no copy
+  NdArrayRef slice(absl::Span<const int64_t> start_indices,
+                   absl::Span<const int64_t> end_indices,
+                   absl::Span<const int64_t> slice_strides) const;
+
+  /// the transpose function
+  /// Guarantee no copy
+  NdArrayRef transpose(absl::Span<const int64_t> permutation) const;
+
+  /// the reverse function
+  /// Guarantee no copy
+  NdArrayRef reverse(absl::Span<const int64_t> dimensions) const;
+
+  /// Expand a scalar into to_shape.
+  /// Compare with broadcast, expand actually reallocates and assign memory
+  NdArrayRef expand(absl::Span<const int64_t> to_shape) const;
+
+  /// the concatenate function
+  /// Always results a new NdArrayRef
+  NdArrayRef concatenate(absl::Span<const NdArrayRef> others,
+                         const size_t& axis) const;
+
+  /// the pad function
+  /// Always results a new NdArrayRef
+  NdArrayRef pad(const NdArrayRef& padding_value,
+                 absl::Span<const int64_t> edge_padding_low,
+                 absl::Span<const int64_t> edge_padding_high,
+                 absl::Span<const int64_t> interior_padding) const;
+
+  /// Linear gather function
+  /// Always results a new NdArrayRef
+  NdArrayRef linear_gather(absl::Span<const int64_t> indices) const;
+
+  /// Scatter new values into indices
+  /// Update happens in-place
+  /// must be 1D array and indicies
+  NdArrayRef& linear_scatter(const NdArrayRef& new_values,
+                             absl::Span<const int64_t> indices);
 };
 
 // Unflatten a 1d-array to an ndarray.
