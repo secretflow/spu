@@ -52,8 +52,8 @@ spu_cc_library(
     copts = EMP_COPT_FLAGS,
     deps = [
         "//libspu/core:prelude",
-        "//libspu/crypto/ot/silent:cheetah_io",
         "//libspu/psi/core:communication",
+        "//libspu/psi/utils:emp_io_adapter",
         "//libspu/psi/utils:serialize",
         "@com_github_emptoolkit_emp_zk//:emp-zk",
         "@com_google_absl//absl/strings",

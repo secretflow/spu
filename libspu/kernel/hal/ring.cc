@@ -151,6 +151,7 @@ IMPL_COMMUTATIVE_BINARY_OP(_add, _add_pp, _add_sp, _add_ss)
 IMPL_COMMUTATIVE_BINARY_OP(_mul, _mul_pp, _mul_sp, _mul_ss)
 IMPL_COMMUTATIVE_BINARY_OP(_and, _and_pp, _and_sp, _and_ss)
 IMPL_COMMUTATIVE_BINARY_OP(_xor, _xor_pp, _xor_sp, _xor_ss)
+IMPL_COMMUTATIVE_BINARY_OP(_equal, _equal_pp, _equal_sp, _equal_ss)
 
 Value _sub(HalContext* ctx, const Value& x, const Value& y) {
   SPU_TRACE_HAL_LEAF(ctx, x, y);
@@ -171,6 +172,14 @@ Value _eqz(HalContext* ctx, const Value& x) {
   }
 
   return res;
+}
+
+Value _conv2d(HalContext* ctx, const Value& x, const Value& y,
+              absl::Span<const int64_t> window_strides,
+              absl::Span<const int64_t> result_shape) {
+  // s*p and p*p should call `dot`
+  SPU_ENFORCE(x.isSecret() && y.isSecret());
+  return _conv2d_ss(ctx, x, y, window_strides, result_shape);
 }
 
 Value _mmul(HalContext* ctx, const Value& x, const Value& y) {

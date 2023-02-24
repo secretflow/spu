@@ -154,25 +154,44 @@ ArrayRef MulAA::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
   auto* comm = ctx->caller()->getState<Communicator>();
   auto* beaver = ctx->caller()->getState<Semi2kState>()->beaver();
 
-  auto [a, b, c] = beaver->Mul(field, lhs.numel());
+  auto res = ArrayRef(makeType<AShrTy>(field), lhs.numel());
+  DISPATCH_ALL_FIELDS(field, kBindName, [&]() {
+    using U = ring2k_t;
+    auto [a, b, c] = beaver->Mul(field, lhs.numel());
 
-  // Open x-a & y-b
-  auto res =
-      vectorize({ring_sub(lhs, a), ring_sub(rhs, b)}, [&](const ArrayRef& s) {
-        return comm->allReduce(ReduceOp::ADD, s, kBindName);
-      });
+    auto _x = ArrayView<U>(lhs);
+    auto _y = ArrayView<U>(rhs);
+    auto _z = ArrayView<U>(res);
 
-  auto x_a = std::move(res[0]);
-  auto y_b = std::move(res[1]);
+    auto _a = ArrayView<U>(a);
+    auto _b = ArrayView<U>(b);
+    auto _c = ArrayView<U>(c);
 
-  // Zi = Ci + (X - A) * Bi + (Y - B) * Ai + <(X - A) * (Y - B)>
-  auto z = ring_add(ring_add(ring_mul(x_a, b), ring_mul(y_b, a)), c);
-  if (comm->getRank() == 0) {
-    // z += (X-A) * (Y-B);
-    ring_add_(z, ring_mul(x_a, y_b));
-  }
+    std::vector<U> eu(a.numel() * 2);
+    absl::Span<U> e(eu.data(), _x.numel());
+    absl::Span<U> u(eu.data() + _x.numel(), _x.numel());
 
-  return z.as(lhs.eltype());
+    pforeach(0, a.numel(), [&](int64_t idx) {
+      e[idx] = _x[idx] - _a[idx];  // e = x - a;
+      u[idx] = _y[idx] - _b[idx];  // u = y - b;
+    });
+
+    // open x-a & y-b
+    eu = comm->allReduce<U, std::plus>(eu, "open(x-a,y-b)");
+
+    e = absl::Span<U>(eu.data(), _x.numel());
+    u = absl::Span<U>(eu.data() + _x.numel(), _x.numel());
+
+    // Zi = Ci + (X - A) * Bi + (Y - B) * Ai + <(X - A) * (Y - B)>
+    pforeach(0, a.numel(), [&](int64_t idx) {
+      _z[idx] = _c[idx] + e[idx] * _b[idx] + u[idx] * _a[idx];
+      if (comm->getRank() == 0) {
+        // z += (X-A) * (Y-B);
+        _z[idx] += e[idx] * u[idx];
+      }
+    });
+  });
+  return res;
 }
 
 ////////////////////////////////////////////////////////////////////

@@ -46,6 +46,10 @@ Value _mul(HalContext* ctx, const Value& x, const Value& y);
 
 Value _mmul(HalContext* ctx, const Value& x, const Value& y);
 
+Value _conv2d(HalContext* ctx, const Value& x, const Value& y,
+              absl::Span<const int64_t> window_strides,
+              absl::Span<const int64_t> result_shape);
+
 Value _and(HalContext* ctx, const Value& x, const Value& y);
 
 Value _xor(HalContext* ctx, const Value& x, const Value& y);
@@ -56,6 +60,10 @@ Value _not(HalContext* ctx, const Value& in);
 
 Value _msb(HalContext* ctx, const Value& in);
 
+// Return 1{x == y}
+Value _equal(HalContext* ctx, const Value& x, const Value& y);
+
+// Return 1{x == 0}
 Value _eqz(HalContext* ctx, const Value& x);
 
 Value _less(HalContext* ctx, const Value& x, const Value& y);

@@ -20,7 +20,6 @@
 
 #include "seal/seal.h"
 #include "spdlog/spdlog.h"
-#include "yacl/crypto/base/hash/blake3.h"
 #include "yacl/utils/parallel.h"
 
 #include "libspu/core/shape_util.h"  //calcNumel
@@ -33,10 +32,12 @@ struct std::hash<spu::mpc::cheetah::MatMatProtocol::Meta> {
   size_t operator()(
       const spu::mpc::cheetah::MatMatProtocol::Meta& s) const noexcept {
     using namespace spu::mpc::cheetah;
-    yacl::crypto::Blake3Hash h(sizeof(size_t));
-    h.Update({s.dims.data(), sizeof(Shape3D)});
-    auto digest = h.CumulativeHash();
-    return *reinterpret_cast<const size_t*>(digest.data());
+    // FIXME(juhou): use a better way for hash
+    size_t h = std::hash<std::string>()("MatMatProtocol::Meta");
+    for (int i : {0, 1, 2}) {
+      h = (h << 1) ^ std::hash<int64_t>()(s.dims[i]);
+    }
+    return h;
   }
 };
 
@@ -113,13 +114,34 @@ ArrayRef ConcatSubMatrix(const ArrayRef& mat, const Shape2D& mat_shape,
 }
 
 MatMatProtocol::MatMatProtocol(const seal::SEALContext& context,
-                               const ModulusSwitchHelper& ms_helper)
-    : context_(context), ms_helper_(ms_helper) {
+                               const ModulusSwitchHelper& ms_helper,
+                               bool use_montgomery_fma)
+    : use_montgomery_fma_(use_montgomery_fma),
+      context_(context),
+      ms_helper_(ms_helper) {
   SPU_ENFORCE(context_.parameters_set());
   SPU_ENFORCE(context_.first_parms_id() == ms_helper_.parms_id());
 
   poly_deg_ = context_.first_context_data()->parms().poly_modulus_degree();
   vencoder_ = std::make_unique<VectorEncoder>(context_, ms_helper_);
+
+  if (use_montgomery_fma_) {
+    const auto& cntxt_data = context.first_context_data();
+    const auto& modulus = cntxt_data->parms().coeff_modulus();
+
+    for (const seal::Modulus& moduli : modulus) {
+      uint64_t prime_inv = [](uint64_t prime) {
+        uint64_t inv = 1;
+        for (int i = 0; i < 63; ++i) {
+          inv *= prime;
+          prime *= prime;
+        }
+        return inv;  // prime^{-1} mod 2^64
+      }(moduli.value());
+
+      montgomery_precond_.push_back(prime_inv);
+    }
+  }
 }
 
 bool MatMatProtocol::IsValidMeta(const Meta& meta) const {
@@ -158,7 +180,6 @@ size_t MatMatProtocol::GetOutSize(const Meta& meta,
 Shape3D MatMatProtocol::GetSubMatShape(const Meta& meta) const {
   static std::unordered_map<Meta, Shape3D> memo_;
   static std::shared_mutex lock_;
-
   {
     std::shared_lock<std::shared_mutex> guard(lock_);
     auto val = memo_.find(meta);
@@ -168,29 +189,38 @@ Shape3D MatMatProtocol::GetSubMatShape(const Meta& meta) const {
   auto val = memo_.find(meta);
   if (val != memo_.end()) return val->second;
 
+  constexpr int64_t enc_price = 3;
+  constexpr int64_t eval_price = 1;
+  constexpr int64_t dec_price = 2;
+
+  Shape3D blk;
   Shape3D subshape;
   int64_t min_cost = std::numeric_limits<int64_t>::max();
-  size_t pivot = meta.dims[0] < meta.dims[2] ? 0 : 2;
-  size_t loop = 2 - pivot;
-  Shape3D blk;
-  for (int64_t d0 = 1; d0 <= meta.dims[pivot]; ++d0) {
+
+  for (int64_t d0 = 1; d0 <= meta.dims[0]; ++d0) {
     if (d0 > poly_deg_) break;
-    blk[pivot] = CeilDiv(meta.dims[pivot], d0);
+    blk[0] = CeilDiv(meta.dims[0], d0);
+
     for (int64_t d1 = 1; d1 <= meta.dims[1]; ++d1) {
       if (d0 * d1 > poly_deg_) break;
       blk[1] = CeilDiv(meta.dims[1], d1);
 
-      for (int64_t d2 = 1; d2 <= meta.dims[loop]; ++d2) {
+      for (int64_t d2 = 1; d2 <= meta.dims[2]; ++d2) {
         if (d0 * d1 * d2 > poly_deg_) break;
-        blk[loop] = CeilDiv(meta.dims[loop], d2);
+        blk[2] = CeilDiv(meta.dims[2], d2);
 
-        int64_t cost = blk[loop] * (blk[1] + blk[pivot]);
+        int pivot = blk[0] < blk[2] ? 0 : 2;
+        int64_t enc_cost = blk[1] * blk[pivot] * enc_price;
+        int64_t eval_cost = blk[0] * blk[1] * blk[2] * eval_price;
+        int64_t dec_cost = blk[0] * blk[2] * dec_price;
+
+        int64_t cost = enc_cost + eval_cost + dec_cost;
 
         if (cost <= min_cost) {
           min_cost = cost;
-          subshape[pivot] = d0;
+          subshape[0] = d0;
           subshape[1] = d1;
-          subshape[loop] = d2;
+          subshape[2] = d2;
         }
       }
     }
@@ -274,9 +304,26 @@ void MatMatProtocol::FusedMulAddInplace(RLWECt& acc, const RLWECt& lhs,
     const auto* op0 = lhs.data(k);
     const auto* op1 = rhs.data();
     auto* dst = acc.data(k);
-    for (const auto& prime : modulus) {
-      for (size_t i = 0; i < coeff_count; ++i, ++dst) {
-        *dst = multiply_add_uint_mod(*op0++, *op1++, *dst, prime);
+    for (size_t j = 0; j < modulus.size(); ++j) {
+      if (use_montgomery_fma_) {
+        const uint64_t prime = modulus[j].value();
+        const uint64_t prime_inv = montgomery_precond_.at(j);
+        const uint64_t tbl[2]{prime, 0};
+
+        unsigned long long wide[2], H;
+        for (size_t i = 0; i < coeff_count; ++i) {
+          multiply_uint64(*op0++, *op1++, wide);
+          uint64_t R = wide[0] * prime_inv;
+          multiply_uint64_hw64(R, prime, &H);
+          uint64_t r = static_cast<uint64_t>(wide[1] - H) + prime;
+          r -= tbl[r < prime];
+          r += *dst;
+          *dst++ = (r - tbl[r < prime]);
+        }
+      } else {
+        for (size_t i = 0; i < coeff_count; ++i, ++dst) {
+          *dst = multiply_add_uint_mod(*op0++, *op1++, *dst, modulus[j]);
+        }
       }
     }
   }
@@ -316,8 +363,25 @@ void MatMatProtocol::FusedMulAddInplace(RLWEPt& acc, const RLWEPt& lhs,
   }
 }
 
-ArrayRef MatMatProtocol::ParseResult(FieldType field, const Meta& meta,
-                                     absl::Span<const RLWEPt> ans_poly) const {
+void TakeCoefficientsFromPoly(const RLWEPt& poly, size_t poly_degree,
+                              size_t num_modulus,
+                              absl::Span<const size_t> target_coeffs,
+                              absl::Span<uint64_t> out) {
+  SPU_ENFORCE_EQ(poly.coeff_count(), poly_degree * num_modulus);
+  size_t n = target_coeffs.size();
+  SPU_ENFORCE(n <= poly_degree);
+  SPU_ENFORCE_EQ(n * num_modulus, out.size());
+  for (size_t i = 0; i < n; ++i) {
+    size_t pos = target_coeffs[i];
+    for (size_t j = 0; j < num_modulus; ++j) {
+      out[j * n + i] = poly.data()[j * poly_degree + pos];
+    }
+  }
+}
+
+ArrayRef MatMatProtocol::ParseResult(
+    FieldType field, const Meta& meta, absl::Span<const RLWEPt> ans_poly,
+    const ModulusSwitchHelper& ms_helper) const {
   auto subdims = GetSubMatShape(meta);
   Shape2D out_blks = {CeilDiv(meta.dims[0], subdims[0]),
                       CeilDiv(meta.dims[2], subdims[2])};
@@ -346,26 +410,33 @@ ArrayRef MatMatProtocol::ParseResult(FieldType field, const Meta& meta,
       int64_t col_end = std::min(col_start + subdims[2], meta.dims[2]);
       int64_t col_ext = col_end - col_start;
 
-      auto result_poly = ring_zeros(field, poly_deg_);
-      ms_helper_.ModulusDownRNS(
-          absl::MakeSpan(this_ans[cb].data(), this_ans[cb].coeff_count()),
-          result_poly);
+      size_t num_modulus = this_ans[cb].coeff_count() / poly_deg_;
+      std::vector<uint64_t> subset(target_coeffs.size() * num_modulus);
+      TakeCoefficientsFromPoly(this_ans[cb], poly_deg_, num_modulus,
+                               absl::MakeSpan(target_coeffs),
+                               absl::MakeSpan(subset));
 
-      auto* coeff_iter = target_coeffs.data();
+      auto result_poly =
+          ms_helper.ModulusDownRNS(field, absl::MakeSpan(subset));
+
       for (int64_t r = 0; r < row_ext; ++r) {
         for (int64_t c = 0; c < col_ext; ++c) {
           int64_t dst_idx = (r + row_start) * meta.dims[2] + col_start + c;
           DISPATCH_ALL_FIELDS(field, "", [&]() {
             matmat.at<ring2k_t>(dst_idx) =
-                result_poly.at<ring2k_t>(coeff_iter[c]);
+                result_poly.at<ring2k_t>(r * subdims[2] + c);
           });
         }
-        coeff_iter += subdims[2];
       }
     }
   }
 
   return matmat;
+}
+
+ArrayRef MatMatProtocol::ParseResult(FieldType field, const Meta& meta,
+                                     absl::Span<const RLWEPt> ans_poly) const {
+  return ParseResult(field, meta, ans_poly, ms_helper_);
 }
 
 void MatMatProtocol::ExtractLWEsInplace(const Meta& meta,
@@ -432,44 +503,37 @@ void MatMatProtocol::DoCompute(absl::Span<const LHS> lhs,
     dims[d] = CeilDiv(meta.dims[d], subshape[d]);
   }
 
-  constexpr int kMaxThreads = 8;
   constexpr int kMinLoopDim2 = 4;
-
   if (dims[2] < kMinLoopDim2) {
     // k, i, j
     for (int64_t k = 0; k < dims[2]; ++k) {
-      yacl::parallel_for(
-          0, dims[0], std::max<int64_t>(1, dims[0] / kMaxThreads),
-          [&](size_t bgn, size_t end) {
-            for (size_t i = bgn; i < end; ++i) {
-              auto lhs_row = lhs.data() + i * dims[1];
-              auto out_row = out.data() + i * dims[2];
-              yacl::parallel_for(0, dims[1], 1, [&](size_t bgn, size_t end) {
-                for (size_t j = bgn; j < end; ++j) {
-                  auto rhs_row = rhs.data() + j * dims[2];
-                  FusedMulAddInplace<O, LHS, RHS>(out_row[k], lhs_row[j],
-                                                  rhs_row[k]);
-                }
-              });
+      yacl::parallel_for(0, dims[0], 1, [&](size_t bgn, size_t end) {
+        for (size_t i = bgn; i < end; ++i) {
+          auto lhs_row = lhs.data() + i * dims[1];
+          auto out_row = out.data() + i * dims[2];
+          yacl::parallel_for(0, dims[1], 1, [&](size_t bgn, size_t end) {
+            for (size_t j = bgn; j < end; ++j) {
+              auto rhs_row = rhs.data() + j * dims[2];
+              FusedMulAddInplace<O, LHS, RHS>(out_row[k], lhs_row[j],
+                                              rhs_row[k]);
             }
           });
+        }
+      });
     }
   } else {
     // i, k, j
     for (int64_t i = 0; i < dims[0]; ++i) {
       auto lhs_row = lhs.data() + i * dims[1];
       auto out_row = out.data() + i * dims[2];
-      yacl::parallel_for(0, dims[2],
-                         std::max<int64_t>(1, dims[2] / kMaxThreads),
-                         [&](size_t bgn, size_t end) {
-                           for (size_t k = bgn; k < end; ++k) {
-                             for (int64_t j = 0; j < dims[1]; ++j) {
-                               auto rhs_row = rhs.data() + j * dims[2];
-                               FusedMulAddInplace<O, LHS, RHS>(
-                                   out_row[k], lhs_row[j], rhs_row[k]);
-                             }
-                           }
-                         });
+      yacl::parallel_for(0, dims[2], 1, [&](size_t bgn, size_t end) {
+        for (size_t k = bgn; k < end; ++k) {
+          for (int64_t j = 0; j < dims[1]; ++j) {
+            auto rhs_row = rhs.data() + j * dims[2];
+            FusedMulAddInplace<O, LHS, RHS>(out_row[k], lhs_row[j], rhs_row[k]);
+          }
+        }
+      });
     }
   }
 }
@@ -490,6 +554,34 @@ void MatMatProtocol::Compute(absl::Span<const RLWEPt> lhs_mat,
                              absl::Span<const RLWECt> rhs_mat, const Meta& meta,
                              absl::Span<RLWECt> out_mat) const {
   DoCompute<RLWEPt, RLWECt, RLWECt>(lhs_mat, rhs_mat, meta, out_mat);
+}
+
+void MatMatProtocol::Montgomerize(absl::Span<RLWEPt> pt) const {
+  if (not use_montgomery_fma_) {
+    return;
+  }
+  size_t n = pt.size();
+  for (size_t i = 0; i < n; ++i) {
+    auto cntxt_data = context_.get_context_data(pt[i].parms_id());
+    SPU_ENFORCE(cntxt_data != nullptr);
+    const auto& modulus = cntxt_data->parms().coeff_modulus();
+
+    uint64_t* pt_rns = pt[i].data();
+    for (const auto& moduli : modulus) {
+      uint64_t prime = moduli.value();
+      uint64_t r0 = moduli.const_ratio()[0];  // r0 = hi64(2^128 / prime)
+      uint64_t r1 = moduli.const_ratio()[1];  // r1 = lo64(2^128 / prime)
+      // lazy Montgomery form, i.e., in the range [0, 2p).
+      std::transform(pt_rns, pt_rns + poly_deg_, pt_rns,
+                     [r0, r1, prime](uint64_t a) -> uint64_t {
+                       // SEAL requires explicit ULL type.
+                       unsigned long long hi;
+                       seal::util::multiply_uint64_hw64(a, r0, &hi);
+                       return -((a * r1) + static_cast<uint64_t>(hi)) * prime;
+                     });
+      pt_rns += poly_deg_;
+    }
+  }
 }
 
 }  // namespace spu::mpc::cheetah

@@ -153,9 +153,9 @@ class CachedCsvCipherStore : public ICipherStore {
 };
 
 // Get data Indices in csv file
-std::vector<size_t> GetIndicesByItems(
+std::vector<uint64_t> GetIndicesByItems(
     const std::string& input_path,
     const std::vector<std::string>& selected_fields,
-    const std::vector<std::string> items, size_t batch_size);
+    const std::vector<std::string>& items, size_t batch_size);
 
 }  // namespace spu::psi

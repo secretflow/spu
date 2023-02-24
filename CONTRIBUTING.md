@@ -21,7 +21,9 @@ Most of the code style is derived from the [Google C++ style guidelines](https:/
 
 * Exceptions are allowed and encouraged where appropriate.
 * Header guards should use `#pragma once`.
-* Adopts [camelBack](https://llvm.org/docs/Proposals/VariableNames.html#variable-names-coding-standard-options) for function names.
+* Adopt [camelBack](https://llvm.org/docs/Proposals/VariableNames.html#variable-names-coding-standard-options) for function names.
+* Use [fixed width integer types](https://en.cppreference.com/w/cpp/types/integer) whenever possible.
+* Avoid using size_t on interface APIs.
 
 The compiler portion of the project follows [MLIR style](https://mlir.llvm.org/getting_started/DeveloperGuide/#style-guide).
 
@@ -45,7 +47,7 @@ docker run -d -it --name spu-gcc11-anolis-dev-$(whoami) \
          --cap-add=SYS_PTRACE --security-opt seccomp=unconfined \
          --cap-add=NET_ADMIN \
          --privileged=true \
-         secretflow/secretflow-gcc11-anolis-dev:latest
+         secretflow/spu-ci:latest
 
 # attach to build container
 docker exec -it spu-gcc11-anolis-dev-$(whoami) bash
@@ -77,10 +79,10 @@ https://brew.sh/
 # Install dependencies
 # Be aware, brew may install a newer version of bazel, when that happens bazel will give an error message during build.
 # Please follow instructions in the error message to install the required version
-brew install bazel cmake ninja nasm libomp go
+brew install bazel cmake ninja libomp go
 
-# Extra setup step for Apple Silicon users
-conda install grpcio
+# For Intel mac only
+brew install nasm
 
 # Install python dependencies
 pip install -r requirements.txt

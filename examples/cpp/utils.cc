@@ -55,6 +55,5 @@ std::unique_ptr<spu::HalContext> MakeHalContext() {
 
   config.set_enable_action_trace(EngineTrace.getValue());
   config.set_enable_type_checker(EngineTrace.getValue());
-  config.set_enable_action_trace(EngineTrace.getValue());
   return std::make_unique<spu::HalContext>(config, lctx);
 }

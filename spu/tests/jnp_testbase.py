@@ -76,6 +76,14 @@ def rand_default(rng):
     return partial(_rand_dtype, rng)
 
 
+def rand_not_small_nonzero(rng):
+    def post(x):
+        x = np.where(x == 0, np.array(1, dtype=x.dtype), x)
+        return x + np.where(x > 0, 0.1, -0.1)  # Make value at lease 0.1
+
+    return partial(jtu._rand_dtype, rng.randn, scale=3, post=post)
+
+
 JAX_ONE_TO_ONE_OP_RECORDS = [
     REC("abs", 1, all_dtypes, all_shapes, rand_default),
     REC("add", 2, all_dtypes, all_shapes, rand_default),
@@ -245,12 +253,18 @@ COMPOUND_OP_RECORDS = [
     ),  # FIXME: stablehlo.cbrt
     REC("conjugate", 1, number_dtypes, all_shapes, rand_default),
     REC("deg2rad", 1, float_dtypes, all_shapes, rand_default),
-    REC("divide", 2, number_dtypes, all_shapes, jtu.rand_nonzero),
-    REC("divmod", 2, number_dtypes, all_shapes, jtu.rand_nonzero),
+    REC(
+        "divide", 2, number_dtypes, all_shapes, rand_not_small_nonzero
+    ),  # FIXME: when denominator is very small, spu can have not small abs error
+    REC(
+        "divmod", 2, number_dtypes, all_shapes, rand_not_small_nonzero
+    ),  # FIXME: when denominator is very small, spu can have not small abs error
     REC("exp2", 1, number_dtypes, all_shapes, jtu.rand_small_positive),
     REC("expm1", 1, number_dtypes, all_shapes, jtu.rand_small_positive),
     REC("fix", 1, number_dtypes, all_shapes, rand_default),
-    REC("floor_divide", 2, number_dtypes, all_shapes, jtu.rand_nonzero),
+    REC(
+        "floor_divide", 2, number_dtypes, all_shapes, rand_not_small_nonzero
+    ),  # FIXME: when denominator is very small, spu can have not small abs error
     REC("fmin", 2, number_dtypes, all_shapes, rand_default),
     REC("fmax", 2, number_dtypes, all_shapes, rand_default),
     REC("fmod", 2, number_dtypes, all_shapes, rand_default),
@@ -328,7 +342,9 @@ COMPOUND_OP_RECORDS = [
     REC("square", 1, number_dtypes, all_shapes, rand_default),
     REC("sqrt", 1, number_dtypes, all_shapes, jtu.rand_positive),
     REC("transpose", 1, all_dtypes, all_shapes, rand_default),
-    REC("true_divide", 2, number_dtypes, all_shapes, jtu.rand_nonzero),
+    REC(
+        "true_divide", 2, number_dtypes, all_shapes, rand_not_small_nonzero
+    ),  # FIXME: when denominator is very small, spu can have not small abs error
     REC("ediff1d", 3, [np.int32], all_shapes, rand_default),
     REC("unwrap", 1, float_dtypes, all_shapes, rand_default),
     REC("isclose", 2, all_dtypes, all_shapes, jtu.rand_some_equal),

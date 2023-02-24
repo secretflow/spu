@@ -22,6 +22,8 @@
 #include <string>
 #include <vector>
 
+#include "absl/time/clock.h"
+#include "absl/time/time.h"
 #include "benchmark/benchmark.h"
 #include "yacl/base/int128.h"
 #include "yacl/link/test_util.h"
@@ -38,6 +40,20 @@
 #include "libspu/psi/utils/test_utils.h"
 
 namespace spu::psi::bench {
+
+namespace {
+
+void WriteCsvFile(const std::string& file_name,
+                  const std::vector<std::string>& items) {
+  auto out = io::BuildOutputStream(io::FileIoOptions(file_name));
+  out->Write("id\n");
+  for (const auto& data : items) {
+    out->Write(fmt::format("{}\n", data));
+  }
+  out->Close();
+}
+
+}  // namespace
 
 class PsiBench : public benchmark::Fixture {
  public:
@@ -81,23 +97,48 @@ class PsiBench : public benchmark::Fixture {
 
 PSI_BM_DEFINE_ECDH()
 
-#define ECDH_OPRF_SENDER_OFFLINE()                                     \
-  {                                                                    \
-    /* offline: init */                                                \
-    auto memory_store = std::make_shared<MemoryCipherStore>();         \
-    auto item_provider = std::make_shared<MemoryBatchProvider>(items); \
-    offline_proc.FullEvaluate(item_provider, memory_store);            \
-    auto& evaluate_items = memory_store->self_results();               \
-                                                                       \
-    /* offline: shuffle */                                             \
-    std::random_device rd;                                             \
-    std::mt19937 rng(rd());                                            \
-    std::shuffle(evaluate_items.begin(), evaluate_items.end(), rng);   \
-                                                                       \
-    /* offline: finalize */                                            \
-    const auto cache_store =                                           \
-        std::make_shared<MemoryBatchProvider>(evaluate_items);         \
-    offline_proc.SendFinalEvaluatedItems(cache_store);                 \
+#define ECDH_OPRF_SENDER_OFFLINE()                                             \
+  {                                                                            \
+    /* offline: init */                                                        \
+    auto timestamp_str = std::to_string(absl::ToUnixNanos(absl::Now()));       \
+    /* server input */                                                         \
+    auto server_input_path =                                                   \
+        std::filesystem::path(fmt::format("server-input-{}", timestamp_str));  \
+                                                                               \
+    /* server output */                                                        \
+    auto server_tmp_cache_path =                                               \
+        std::filesystem::path(fmt::format("tmp-cache-{}", timestamp_str));     \
+    /* register remove of temp file. */                                        \
+    ON_SCOPE_EXIT([&] {                                                        \
+      std::error_code ec;                                                      \
+      std::filesystem::remove(server_input_path, ec);                          \
+      if (ec.value() != 0) {                                                   \
+        SPDLOG_WARN("can not remove tmp file: {}, msg: {}",                    \
+                    server_input_path.c_str(), ec.message());                  \
+      }                                                                        \
+      std::filesystem::remove(server_tmp_cache_path, ec);                      \
+      if (ec.value() != 0) {                                                   \
+        SPDLOG_WARN("can not remove tmp file: {}, msg: {}",                    \
+                    server_tmp_cache_path.c_str(), ec.message());              \
+      }                                                                        \
+    });                                                                        \
+                                                                               \
+    WriteCsvFile(server_input_path.string(), items);                           \
+    std::vector<std::string> cloumn_ids = {"id"};                              \
+    std::shared_ptr<CachedCsvBatchProvider> item_provider =                    \
+        std::make_shared<CachedCsvBatchProvider>(server_input_path.string(),   \
+                                                 cloumn_ids, 100000, true);    \
+                                                                               \
+    std::shared_ptr<IUbPsiCache> ub_cache = std::make_shared<UbPsiCache>(      \
+        server_tmp_cache_path.string(), offline_proc.GetCompareLength(),       \
+        cloumn_ids);                                                           \
+    offline_proc.FullEvaluate(item_provider, ub_cache);                        \
+                                                                               \
+    /* offline: finalize */                                                    \
+    std::shared_ptr<IBatchProvider> batch_provider =                           \
+        std::make_shared<UbPsiCacheProvider>(server_tmp_cache_path.string(),   \
+                                             offline_proc.GetCompareLength()); \
+    offline_proc.SendFinalEvaluatedItems(batch_provider);                      \
   }
 
 #define ECDH_OPRF_SENDER_ONLINE()           \

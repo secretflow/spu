@@ -534,7 +534,7 @@ TEST(UnbalancedPsiTest, EcdhOprfUnbalanced) {
        "1\nu,1\ni,1\no,1\np,1\n"},
       {"id,value\na,1\nc,1\ne,1\n", "id,value\na,1\nc,1\ne,1\n"},
       {{"id"}, {"id"}},
-      spu::psi::PsiType::ECDH_OPRF_UNBALANCED_PSI_2PC_OFFLINE,
+      spu::psi::PsiType::ECDH_OPRF_UB_PSI_2PC_OFFLINE,
       64,
       true,
       false,
@@ -619,7 +619,7 @@ TEST(UnbalancedPsiTest, EcdhOprfUnbalanced) {
     config.mutable_input_params()->set_precheck(true);
     config.mutable_output_params()->set_path(output_file_path);
     config.mutable_output_params()->set_need_sort(params.should_sort);
-    config.set_psi_type(spu::psi::PsiType::ECDH_OPRF_UNBALANCED_PSI_2PC_ONLINE);
+    config.set_psi_type(spu::psi::PsiType::ECDH_OPRF_UB_PSI_2PC_ONLINE);
     config.set_receiver_rank(receiver_rank);
     config.set_broadcast_result(false);
     config.set_bucket_size(1000000);

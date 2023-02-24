@@ -23,6 +23,8 @@
 #include <string>
 #include <vector>
 
+#include "absl/time/clock.h"
+#include "absl/time/time.h"
 #include "benchmark/benchmark.h"
 #include "llvm/Support/CommandLine.h"
 #include "yacl/base/int128.h"
@@ -34,6 +36,7 @@
 #include "libspu/psi/core/kkrt_psi.h"
 #include "libspu/psi/core/mini_psi.h"
 #include "libspu/psi/cryptor/cryptor_selector.h"
+#include "libspu/psi/io/io.h"
 #include "libspu/psi/utils/batch_provider.h"
 #include "libspu/psi/utils/cipher_store.h"
 #include "libspu/psi/utils/test_utils.h"
@@ -45,6 +48,20 @@ llvm::cl::opt<std::string> cli_parties(
     llvm::cl::desc("server list, format: host1:port1[,host2:port2, ...]"));
 
 namespace spu::psi::bench {
+
+namespace {
+
+void WriteCsvFile(const std::string& file_name,
+                  const std::vector<std::string>& items) {
+  auto out = io::BuildOutputStream(io::FileIoOptions(file_name));
+  out->Write("id\n");
+  for (const auto& data : items) {
+    out->Write(fmt::format("{}\n", data));
+  }
+  out->Close();
+}
+
+}  // namespace
 
 const char kTwoPartyHosts[] = "127.0.0.1:9540,127.0.0.1:9541";
 
@@ -82,83 +99,112 @@ std::shared_ptr<yacl::link::Context> PsiBench::bench_lctx = nullptr;
 
 PSI_BM_DEFINE_ECDH()
 
-#define PSI_BM_DEFINE_ECDH_OPRF_FULL(CurveType)                              \
-  BENCHMARK_DEFINE_F(PsiBench, EcdhPsiOprf_##CurveType)                      \
-  (benchmark::State & state) {                                               \
-    for (auto _ : state) {                                                   \
-      state.PauseTiming();                                                   \
-      size_t numel = state.range(0);                                         \
-      auto items = psi::test::CreateRangeItems(bench_lctx->Rank(), numel);   \
-                                                                             \
-      /* We let bob obtains the final result */                              \
-      state.ResumeTiming();                                                  \
-      if (bench_lctx->Rank() == 0) {                                         \
-        EcdhOprfPsiOptions options;                                          \
-        options.curve_type = (CurveType);                                    \
-        options.link0 = bench_lctx;                                          \
-        options.link1 = bench_lctx->Spawn();                                 \
-        auto memory_store = std::make_shared<MemoryCipherStore>();           \
-        auto offline_proc = EcdhOprfPsiServer(options);                      \
-        const auto sk = offline_proc.GetPrivateKey();                        \
-        auto online_proc = EcdhOprfPsiServer(options, sk);                   \
-                                                                             \
-        /* offline: init */                                                  \
-        auto item_provider = std::make_shared<MemoryBatchProvider>(items);   \
-        offline_proc.FullEvaluate(item_provider, memory_store);              \
-        auto& evaluate_items = memory_store->self_results();                 \
-                                                                             \
-        /* offline: shuffle */                                               \
-        std::random_device rd;                                               \
-        std::mt19937 rng(rd());                                              \
-        std::shuffle(evaluate_items.begin(), evaluate_items.end(), rng);     \
-                                                                             \
-        /* offline: finalize */                                              \
-        const auto cache_store =                                             \
-            std::make_shared<MemoryBatchProvider>(evaluate_items);           \
-        offline_proc.SendFinalEvaluatedItems(cache_store);                   \
-                                                                             \
-        /* online */                                                         \
-        online_proc.RecvBlindAndSendEvaluate();                              \
-      } else {                                                               \
-        EcdhOprfPsiOptions options;                                          \
-        options.curve_type = (CurveType);                                    \
-        options.link0 = bench_lctx;                                          \
-        options.link1 = bench_lctx->Spawn();                                 \
-        auto memory_store = std::make_shared<MemoryCipherStore>();           \
-        auto offline_proc = EcdhOprfPsiClient(options);                      \
-        auto online_proc = EcdhOprfPsiClient(options);                       \
-                                                                             \
-        /* offline: recv and evaluate */                                     \
-        offline_proc.RecvFinalEvaluatedItems(memory_store);                  \
-                                                                             \
-        /* online */                                                         \
-        auto proc_send = std::async([&] {                                    \
-          auto item_provider = std::make_shared<MemoryBatchProvider>(items); \
-          online_proc.SendBlindedItems(item_provider);                       \
-        });                                                                  \
-                                                                             \
-        auto proc_recv = std::async([&] {                                    \
-          auto item_provider = std::make_shared<MemoryBatchProvider>(items); \
-          online_proc.RecvEvaluatedItems(item_provider, memory_store);       \
-        });                                                                  \
-                                                                             \
-        proc_send.get();                                                     \
-        proc_recv.get();                                                     \
-                                                                             \
-        /* online: finalize */                                               \
-        auto& peer_results = memory_store->peer_results();                   \
-        auto& self_results = memory_store->self_results();                   \
-        std::sort(peer_results.begin(), peer_results.end());                 \
-                                                                             \
-        std::vector<std::string> final_result;                               \
-        for (size_t i = 0; i < self_results.size(); i++) {                   \
-          if (std::binary_search(peer_results.begin(), peer_results.end(),   \
-                                 self_results[i])) {                         \
-            final_result.push_back(std::to_string(i + 1));                   \
-          }                                                                  \
-        }                                                                    \
-      }                                                                      \
-    }                                                                        \
+#define PSI_BM_DEFINE_ECDH_OPRF_FULL(CurveType)                                \
+  BENCHMARK_DEFINE_F(PsiBench, EcdhPsiOprf_##CurveType)                        \
+  (benchmark::State & state) {                                                 \
+    for (auto _ : state) {                                                     \
+      state.PauseTiming();                                                     \
+      size_t numel = state.range(0);                                           \
+      auto items = psi::test::CreateRangeItems(bench_lctx->Rank(), numel);     \
+                                                                               \
+      /* We let bob obtains the final result */                                \
+      state.ResumeTiming();                                                    \
+      if (bench_lctx->Rank() == 0) {                                           \
+        EcdhOprfPsiOptions options;                                            \
+        options.curve_type = (CurveType);                                      \
+        options.link0 = bench_lctx;                                            \
+        options.link1 = bench_lctx->Spawn();                                   \
+        auto memory_store = std::make_shared<MemoryCipherStore>();             \
+        auto offline_proc = EcdhOprfPsiServer(options);                        \
+        const auto sk = offline_proc.GetPrivateKey();                          \
+        auto online_proc = EcdhOprfPsiServer(options, sk);                     \
+                                                                               \
+        /* offline: init */                                                    \
+        auto timestamp_str = std::to_string(absl::ToUnixNanos(absl::Now()));   \
+        /* server input */                                                     \
+        auto server_input_path = std::filesystem::path(                        \
+            fmt::format("server-input-{}", timestamp_str));                    \
+                                                                               \
+        /* server output */                                                    \
+        auto server_tmp_cache_path =                                           \
+            std::filesystem::path(fmt::format("tmp-cache-{}", timestamp_str)); \
+        /* register remove of temp file. */                                    \
+        ON_SCOPE_EXIT([&] {                                                    \
+          std::error_code ec;                                                  \
+          std::filesystem::remove(server_input_path, ec);                      \
+          if (ec.value() != 0) {                                               \
+            SPDLOG_WARN("can not remove tmp file: {}, msg: {}",                \
+                        server_input_path.c_str(), ec.message());              \
+          }                                                                    \
+          std::filesystem::remove(server_tmp_cache_path, ec);                  \
+          if (ec.value() != 0) {                                               \
+            SPDLOG_WARN("can not remove tmp file: {}, msg: {}",                \
+                        server_tmp_cache_path.c_str(), ec.message());          \
+          }                                                                    \
+        });                                                                    \
+                                                                               \
+        WriteCsvFile(server_input_path.string(), items);                       \
+        std::vector<std::string> cloumn_ids = {"id"};                          \
+        std::shared_ptr<CachedCsvBatchProvider> item_provider =                \
+            std::make_shared<CachedCsvBatchProvider>(                          \
+                server_input_path.string(), cloumn_ids, 100000, true);         \
+                                                                               \
+        std::shared_ptr<IUbPsiCache> ub_cache = std::make_shared<UbPsiCache>(  \
+            server_tmp_cache_path.string(), offline_proc.GetCompareLength(),   \
+            cloumn_ids);                                                       \
+                                                                               \
+        offline_proc.FullEvaluate(item_provider, ub_cache);                    \
+                                                                               \
+        /* offline: finalize */                                                \
+        std::shared_ptr<IBatchProvider> batch_provider =                       \
+            std::make_shared<UbPsiCacheProvider>(                              \
+                server_tmp_cache_path.string(),                                \
+                offline_proc.GetCompareLength());                              \
+        offline_proc.SendFinalEvaluatedItems(batch_provider);                  \
+                                                                               \
+        /* online */                                                           \
+        online_proc.RecvBlindAndSendEvaluate();                                \
+                                                                               \
+      } else {                                                                 \
+        EcdhOprfPsiOptions options;                                            \
+        options.curve_type = (CurveType);                                      \
+        options.link0 = bench_lctx;                                            \
+        options.link1 = bench_lctx->Spawn();                                   \
+        auto memory_store = std::make_shared<MemoryCipherStore>();             \
+        auto offline_proc = EcdhOprfPsiClient(options);                        \
+        auto online_proc = EcdhOprfPsiClient(options);                         \
+                                                                               \
+        /* offline: recv and evaluate */                                       \
+        offline_proc.RecvFinalEvaluatedItems(memory_store);                    \
+                                                                               \
+        /* online */                                                           \
+        auto proc_send = std::async([&] {                                      \
+          auto item_provider = std::make_shared<MemoryBatchProvider>(items);   \
+          online_proc.SendBlindedItems(item_provider);                         \
+        });                                                                    \
+                                                                               \
+        auto proc_recv = std::async([&] {                                      \
+          auto item_provider = std::make_shared<MemoryBatchProvider>(items);   \
+          online_proc.RecvEvaluatedItems(item_provider, memory_store);         \
+        });                                                                    \
+                                                                               \
+        proc_send.get();                                                       \
+        proc_recv.get();                                                       \
+                                                                               \
+        /* online: finalize */                                                 \
+        auto& peer_results = memory_store->peer_results();                     \
+        auto& self_results = memory_store->self_results();                     \
+        std::sort(peer_results.begin(), peer_results.end());                   \
+                                                                               \
+        std::vector<std::string> final_result;                                 \
+        for (size_t i = 0; i < self_results.size(); i++) {                     \
+          if (std::binary_search(peer_results.begin(), peer_results.end(),     \
+                                 self_results[i])) {                           \
+            final_result.push_back(std::to_string(i + 1));                     \
+          }                                                                    \
+        }                                                                      \
+      }                                                                        \
+    }                                                                          \
   }
 
 #define PSI_BM_DEFINE_ECDH_OPRF()            \

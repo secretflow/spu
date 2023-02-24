@@ -16,6 +16,7 @@
 
 #include <functional>
 
+#include "libspu/core/bit_utils.h"
 #include "libspu/core/trace.h"
 #include "libspu/mpc/common/ab_api.h"  // zero_b
 #include "libspu/mpc/common/communicator.h"
@@ -287,6 +288,48 @@ ArrayRef BitrevB::proc(KernelEvalContext* ctx, const ArrayRef& in, size_t start,
 
   // TODO: more accurate bits.
   return makeBShare(ring_bitrev(in, start, end), field, out_nbits);
+}
+
+void BitIntlB::evaluate(KernelEvalContext* ctx) const {
+  const auto& in = ctx->getParam<ArrayRef>(0);
+  const size_t stride = ctx->getParam<size_t>(1);
+
+  SPU_TRACE_MPC_LEAF(ctx, in, stride);
+
+  const auto field = in.eltype().as<Ring2k>()->field();
+  const auto nbits = getNumBits(in);
+  SPU_ENFORCE(absl::has_single_bit(nbits));
+
+  ArrayRef out = in.clone();
+  DISPATCH_ALL_FIELDS(field, "_", [&]() {
+    using T = ring2k_t;
+    pforeach(0, in.numel(), [&](int64_t idx) {
+      out.at<T>(idx) = BitIntl<T>(in.at<T>(idx), stride, nbits);
+    });
+  });
+
+  ctx->setOutput(out);
+}
+
+void BitDeintlB::evaluate(KernelEvalContext* ctx) const {
+  const auto& in = ctx->getParam<ArrayRef>(0);
+  const size_t stride = ctx->getParam<size_t>(1);
+
+  SPU_TRACE_MPC_LEAF(ctx, in, stride);
+
+  const auto field = in.eltype().as<Ring2k>()->field();
+  const auto nbits = getNumBits(in);
+  SPU_ENFORCE(absl::has_single_bit(nbits));
+
+  ArrayRef out = in.clone();
+  DISPATCH_ALL_FIELDS(field, "_", [&]() {
+    using T = ring2k_t;
+    pforeach(0, in.numel(), [&](int64_t idx) {
+      out.at<T>(idx) = BitDeintl<T>(in.at<T>(idx), stride, nbits);
+    });
+  });
+
+  ctx->setOutput(out);
 }
 
 }  // namespace spu::mpc::semi2k

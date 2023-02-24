@@ -106,4 +106,3 @@ std::array<ArrayRef, 3> CheetahMulState::TakeCachedBeaver(FieldType field,
 }
 
 }  // namespace spu::mpc::cheetah
-

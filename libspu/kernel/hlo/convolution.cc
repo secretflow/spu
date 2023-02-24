@@ -220,6 +220,18 @@ spu::Value Convolution2D(HalContext *ctx, spu::Value input,
   auto output_x = result_shape[1];
   auto output_y = result_shape[2];
 
+  if (ctx->rt_config().protocol() == ProtocolKind::CHEETAH &&
+      input.isSecret() && kernel.isSecret()) {
+    // NOTE(juhou): ad-hoc optimization for the current 2PC conv2d
+    // implementation. When input_batch is large or small kernel size, it would
+    // be better to compute im2col because the current conv2d implementation
+    // needs `input_batch` iterations to handle batched input.
+    if (input_batch <= kernel_x * kernel_y) {
+      return hal::conv2d(ctx, input, kernel, config.window_strides,
+                         result_shape);
+    }
+  }
+
   std::vector<int64_t> pre_contract_dims{output_y * output_x * input_batch,
                                          kernel_channels * kernel_y * kernel_x};
 

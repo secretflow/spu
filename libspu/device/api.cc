@@ -176,8 +176,10 @@ void printProfilingData(spu::HalContext *hctx, const std::string &name,
 
 void setupTrace(spu::HalContext *hctx, const spu::RuntimeConfig &rt_config) {
   int64_t tr_flag = 0;
-  if (rt_config.enable_action_trace()) {
-    tr_flag |= TR_LOG;
+  // TODO: Support tracing for parallel op execution
+  if (rt_config.enable_action_trace() &&
+      !rt_config.experimental_enable_intra_op_par()) {
+    tr_flag |= TR_LOG | TR_MODALL;
   }
 
   if (rt_config.enable_pphlo_profile()) {
@@ -190,7 +192,7 @@ void setupTrace(spu::HalContext *hctx, const spu::RuntimeConfig &rt_config) {
     tr_flag |= TR_REC;
   }
 
-  initTrace(tr_flag);
+  initTrace(hctx->id(), tr_flag);
   GET_TRACER(hctx)->getProfState()->clearRecords();
 }
 
@@ -287,7 +289,7 @@ void executeImpl(OpExecutor *executor, spu::HalContext *hctx,
   }
 
   comm_stats.diff(hctx->lctx());
-  if ((getGlobalTraceFlag() & TR_REC) != 0) {
+  if ((getGlobalTraceFlag(hctx->id()) & TR_REC) != 0) {
     printProfilingData(hctx, executable.name(), exec_stats, comm_stats);
   }
 }

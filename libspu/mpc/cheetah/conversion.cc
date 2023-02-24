@@ -20,12 +20,36 @@
 #include "libspu/mpc/semi2k/type.h"  // TODO: use cheetah type
 
 namespace spu::mpc::cheetah {
+constexpr size_t kMinWorkSize = 5000;
 
 ArrayRef B2A::proc(KernelEvalContext* ctx, const ArrayRef& x) const {
   SPU_TRACE_MPC_LEAF(ctx, x);
+  auto* comm = ctx->getState<Communicator>();
+  auto* ot_state = ctx->getState<CheetahOTState>();
+  size_t n = x.numel();
+  size_t nworker =
+      std::min(ot_state->parallel_size(), CeilDiv(n, kMinWorkSize));
+  size_t work_load = CeilDiv(n, nworker);
+  for (size_t w = 0; w < nworker; ++w) {
+    ot_state->LazyInit(comm, w);
+  }
+
   const auto field = ctx->getState<Z2kState>()->getDefaultField();
-  auto ty = makeType<semi2k::AShrTy>(field);
-  return ctx->getState<CheetahOTState>()->get()->B2A(x).as(ty);
+  ArrayRef out(x.eltype(), n);
+  yacl::parallel_for(0, nworker, 1, [&](size_t bgn, size_t end) {
+    for (size_t job = bgn; job < end; ++job) {
+      size_t slice_bgn = std::min(n, job * work_load);
+      size_t slice_end = std::min(n, slice_bgn + work_load);
+      if (slice_bgn == slice_end) {
+        break;
+      }
+      auto out_slice = ot_state->get(job)->B2A(x.slice(slice_bgn, slice_end));
+      std::memcpy(&out.at(slice_bgn), &out_slice.at(0),
+                  out_slice.elsize() * out_slice.numel());
+    }
+  });
+
+  return out.as(makeType<semi2k::AShrTy>(field));
 }
 
 }  // namespace spu::mpc::cheetah

@@ -170,4 +170,26 @@ class BitrevB : public BitrevKernel {
                 size_t end) const override;
 };
 
+class BitIntlB : public Kernel {
+ public:
+  static constexpr char kBindName[] = "bitintl_b";
+
+  ce::CExpr latency() const override { return ce::Const(0); }
+
+  ce::CExpr comm() const override { return ce::Const(0); }
+
+  void evaluate(KernelEvalContext* ctx) const override;
+};
+
+class BitDeintlB : public Kernel {
+ public:
+  static constexpr char kBindName[] = "bitdeintl_b";
+
+  ce::CExpr latency() const override { return ce::Const(0); }
+
+  ce::CExpr comm() const override { return ce::Const(0); }
+
+  void evaluate(KernelEvalContext* ctx) const override;
+};
+
 }  // namespace spu::mpc::semi2k

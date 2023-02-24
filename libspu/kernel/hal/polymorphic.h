@@ -56,6 +56,15 @@ Value bitwise_not(HalContext* ctx, const Value& in);
 // @param y, the second parameter
 Value matmul(HalContext* ctx, const Value& x, const Value& y);
 
+/// 2-dimensional convolution operator
+// @param x, the input tensor
+// @param y, the kernel weight
+// @param window_strides, sized-2 window strides
+// @param result_shape, output shape
+Value conv2d(HalContext* ctx, const Value& x, const Value& y,
+             absl::Span<const int64_t> window_strides,
+             absl::Span<const int64_t> result_shape);
+
 /// general element-wise bitwise equal operator
 // @param x, the first parameter
 // @param y, the second parameter

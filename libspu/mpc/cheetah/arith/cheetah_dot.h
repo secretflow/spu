@@ -48,13 +48,14 @@ class CheetahDot {
                   bool is_left_hand_side);
 
   ArrayRef Conv2dOLE(const ArrayRef& inp, yacl::link::Context* conn,
+                     int64_t num_input, const Shape3D& tensor_shape,
+                     int64_t num_kernels, const Shape3D& kernel_shape,
+                     const Shape2D& window_strides, bool is_tensor);
+
+  ArrayRef Conv2dOLE(const ArrayRef& inp, int64_t num_input,
                      const Shape3D& tensor_shape, int64_t num_kernels,
                      const Shape3D& kernel_shape, const Shape2D& window_strides,
                      bool is_tensor);
-
-  ArrayRef Conv2dOLE(const ArrayRef& inp, const Shape3D& tensor_shape,
-                     int64_t num_kernels, const Shape3D& kernel_shape,
-                     const Shape2D& window_strides, bool is_tensor);
 
   std::shared_ptr<yacl::link::Context> GetLink() const { return lctx_; }
 

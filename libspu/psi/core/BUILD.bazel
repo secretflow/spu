@@ -155,12 +155,17 @@ spu_cc_library(
     name = "ecdh_oprf_psi",
     srcs = ["ecdh_oprf_psi.cc"],
     hdrs = ["ecdh_oprf_psi.h"],
+    linkopts = select({
+        "@bazel_tools//src/conditions:darwin": [],
+        "//conditions:default": ["-fopenmp"],
+    }),
     deps = [
         ":communication",
         "//libspu/core:prelude",
         "//libspu/psi/core/ecdh_oprf:ecdh_oprf_selector",
         "//libspu/psi/utils:batch_provider",
         "//libspu/psi/utils:cipher_store",
+        "//libspu/psi/utils:ub_psi_cache",
         "@com_google_absl//absl/strings",
         "@yacl//yacl/link",
         "@yacl//yacl/utils:parallel",
@@ -176,6 +181,8 @@ spu_cc_test(
     srcs = ["ecdh_oprf_psi_test.cc"],
     deps = [
         ":ecdh_oprf_psi",
+        "//libspu/psi/utils:test_utils",
+        "@com_google_absl//absl/time",
         "@yacl//yacl/crypto/tools:prg",
         "@yacl//yacl/crypto/utils:rand",
     ],

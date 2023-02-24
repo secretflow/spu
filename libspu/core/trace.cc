@@ -130,7 +130,8 @@ namespace {
 // global variables.
 std::mutex g_tracer_map_mutex;
 std::unordered_map<std::string, std::shared_ptr<Tracer>> g_tracers;
-int64_t g_trace_flag;
+std::mutex g_trace_flags_map_mutex;
+std::unordered_map<std::string, int64_t> g_trace_flags;
 std::shared_ptr<spdlog::logger> g_trace_logger;
 
 std::shared_ptr<spdlog::logger> defaultTraceLogger() {
@@ -162,62 +163,75 @@ std::shared_ptr<spdlog::logger> getTraceLogger() {
 
 }  // namespace
 
-void Tracer::logActionBegin(int64_t id, const std::string& name,
+void Tracer::logActionBegin(int64_t id, const std::string& mod,
+                            const std::string& name,
                             const std::string& detail) const {
+  const auto indent = std::string(depth_ * 2, ' ');
+
   if ((flag_ & TR_LOGM) != 0) {
-    getTraceLogger()->info("[B] [M{}] {}({})", GetPeakMemUsage(), name, detail);
+    getTraceLogger()->info("[B] [M{}] {}{}.{}({})", GetPeakMemUsage(), indent,
+                           mod, name, detail);
   } else {
-    getTraceLogger()->info("[B] {}({})", name, detail);
+    getTraceLogger()->info("[B] {}{}.{}({})", indent, mod, name, detail);
   }
 }
 
-void Tracer::logActionEnd(int64_t id, const std::string& name,
+void Tracer::logActionEnd(int64_t id, const std::string& mod,
+                          const std::string& name,
                           const std::string& detail) const {
+  const auto indent = std::string(depth_ * 2, ' ');
   if ((flag_ & TR_LOGM) != 0) {
-    getTraceLogger()->info("[E] [M{}] {}({})", GetPeakMemUsage(), name, detail);
+    getTraceLogger()->info("[E] [M{}] {}{}.{}({})", GetPeakMemUsage(), indent,
+                           mod, name, detail);
   } else {
-    getTraceLogger()->info("[E] {}({})", name, detail);
+    getTraceLogger()->info("[E] {}{}.{}({})", indent, mod, name, detail);
   }
 }
 
-void initTrace(int64_t tr_flag,
+void initTrace(const std::string& ctx_id, int64_t tr_flag,
                const std::shared_ptr<spdlog::logger>& tr_logger) {
-  g_trace_flag = tr_flag;
+  std::unique_lock lock(g_trace_flags_map_mutex);
+  g_trace_flags.emplace(ctx_id, tr_flag);
 
   if (tr_logger) {
     setTraceLogger(tr_logger);
   }
 }
 
-int64_t getGlobalTraceFlag() { return g_trace_flag; }
+int64_t getGlobalTraceFlag(const std::string& id) {
+  std::unique_lock lock(g_trace_flags_map_mutex);
+  return g_trace_flags[id];
+}
 
-std::shared_ptr<Tracer> getTracer(const std::string& tid,
+std::shared_ptr<Tracer> getTracer(const std::string& id,
                                   const std::string& pid) {
   std::unique_lock lock(g_tracer_map_mutex);
-  auto itr = g_tracers.find(tid);
+  auto itr = g_tracers.find(id);
   if (itr != g_tracers.end()) {
     return itr->second;
   }
 
   if (pid.empty()) {
     // this is a new trace tree, use global trace flag.
-    auto tracer = std::make_shared<Tracer>(g_trace_flag);
-    g_tracers.emplace(tid, tracer);
+    auto trace_flag = getGlobalTraceFlag(id);
+    auto tracer = std::make_shared<Tracer>(trace_flag);
+    g_tracers.emplace(id, tracer);
     return tracer;
   } else {
     itr = g_tracers.find(pid);
     if (itr != g_tracers.end()) {
       // if not found and parent exist, clone from it.
       auto n_tracer = std::make_shared<Tracer>(*itr->second);
-      g_tracers.emplace(tid, n_tracer);
+      g_tracers.emplace(id, n_tracer);
       return n_tracer;
     } else {
       // parent has no tracer, maybe parent never traced an action.
       SPDLOG_WARN("parent({}) tracer never triggered", pid);
 
       // make a fresh tracer to let the program go.
-      auto tracer = std::make_shared<Tracer>(g_trace_flag);
-      g_tracers.emplace(tid, tracer);
+      auto trace_flag = getGlobalTraceFlag(id);
+      auto tracer = std::make_shared<Tracer>(trace_flag);
+      g_tracers.emplace(id, tracer);
       return tracer;
     }
   }

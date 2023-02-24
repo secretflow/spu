@@ -28,7 +28,8 @@ class MatMatProtocol {
   };
 
   explicit MatMatProtocol(const seal::SEALContext& context,
-                          const ModulusSwitchHelper& ms_helper);
+                          const ModulusSwitchHelper& ms_helper,
+                          bool use_montgomery_fma = false);
 
   size_t GetLeftSize(const Meta& meta) const {
     return GetLeftSize(meta, GetSubMatShape(meta));
@@ -55,6 +56,8 @@ class MatMatProtocol {
   void EncodeLHS(const ArrayRef& lhs_mat, const Meta& meta, bool need_encrypt,
                  absl::Span<RLWEPt> out) const;
 
+  void Montgomerize(absl::Span<RLWEPt> pt) const;
+
   // Set `need_encrypt=true` if the encoded polynoials are going to be
   // encrypted. Encoded polynomials are stored in non-NTT form.
   void EncodeRHS(const ArrayRef& rhs_mat, const Meta& meta, bool need_encrypt,
@@ -64,6 +67,10 @@ class MatMatProtocol {
 
   ArrayRef ParseResult(FieldType field, const Meta& meta,
                        absl::Span<const RLWEPt> ans_poly) const;
+
+  ArrayRef ParseResult(FieldType field, const Meta& meta,
+                       absl::Span<const RLWEPt> ans_poly,
+                       const ModulusSwitchHelper& helper) const;
 
   void ExtractLWEsInplace(const Meta& meta, absl::Span<RLWECt> rlwe) const;
 
@@ -100,9 +107,12 @@ class MatMatProtocol {
                     bool need_encrypt, absl::Span<RLWEPt> out) const;
 
   int64_t poly_deg_{0};
+  bool use_montgomery_fma_{false};
   seal::SEALContext context_;
   ModulusSwitchHelper ms_helper_;
   std::unique_ptr<VectorEncoder> vencoder_{nullptr};
+
+  std::vector<uint64_t> montgomery_precond_;
 };
 
 }  // namespace spu::mpc::cheetah

@@ -31,6 +31,7 @@ spu_cc_binary(
         "//libspu/psi/utils:test_utils",
         "@com_github_google_benchmark//:benchmark",
         "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/time",
         "@yacl//yacl/link:test_util",
     ],
 )
@@ -51,6 +52,7 @@ spu_cc_binary(
         "//libspu/psi/utils:test_utils",
         "@com_github_google_benchmark//:benchmark",
         "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/time",
         "@llvm-project//llvm:Support",
         "@yacl//yacl/base:int128",
         "@yacl//yacl/crypto/base/hash:hash_utils",

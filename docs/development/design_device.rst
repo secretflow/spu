@@ -110,7 +110,7 @@ A device is composed by one or more nodes, this section covers the common used d
 For CPU and MPC, it's easy.
 
 - A CPU device is composed by only one node.
-- A MPC device is composed by a list of nodes (unordered).
+- An MPC device is composed by a list of nodes (unordered).
 
 For HE device, it's a bit of complicated, it's composed by a pair of nodes `(location, key-owner)`
 

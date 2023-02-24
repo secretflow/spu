@@ -39,9 +39,10 @@ struct EnableCPRNG {
   // Uniform random on prime field
   void UniformPrime(const seal::Modulus& prime, absl::Span<uint64_t> dst);
 
-  // Uniform random poly from Rq where Rq is defined by
-  // context.first_context_data()
-  void UniformPoly(const seal::SEALContext& context, RLWEPt* poly);
+  // Uniform random poly from Rq where Rq is defined by pid
+  // If pid is none set to context.first_parms_id().
+  void UniformPoly(const seal::SEALContext& context, RLWEPt* poly,
+                   seal::parms_id_type pid = seal::parms_id_zero);
 
   // Uniform random on ring 2^k
   ArrayRef CPRNG(FieldType field, size_t size);
@@ -51,5 +52,10 @@ struct EnableCPRNG {
   uint128_t seed_;
   uint64_t prng_counter_;
 };
+
+ArrayRef ring_conv2d(const ArrayRef& tensor, const ArrayRef& filter,
+                     int64_t num_tensors, Shape3D tensor_shape,
+                     int64_t num_filters, Shape3D filter_shape,
+                     Shape2D window_strides);
 
 }  // namespace spu::mpc::cheetah

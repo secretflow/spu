@@ -76,3 +76,11 @@ spu_cc_test(
         ":bucket_psi",
     ],
 )
+
+spu_cc_test(
+    name = "bucket_unbalanced_psi_test",
+    srcs = ["bucket_unbalanced_psi_test.cc"],
+    deps = [
+        ":bucket_psi",
+    ],
+)

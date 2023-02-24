@@ -21,11 +21,8 @@
 
 #include "emp-tool/utils/aes_opt.h"
 
-// #ifdef __aarch64__
-// #include "sse2neon.h"
-// #endif
-
 namespace spu::mpc::cheetah {
+
 /*
  * With numKeys keys:
  * key 0 encrypts 1 block;
@@ -35,45 +32,12 @@ namespace spu::mpc::cheetah {
  * key i encrypts 2^i blocks
  */
 template <int numKeys>
-static inline void ParaEncExp(emp::block* blks, emp::AES_KEY* keys) {
-  emp::block* first = blks;
-  for (int i = 0; i < numKeys; ++i) {
-    emp::block K = keys[i].rd_key[0];
-    int numEncs = 1 << i;
-    for (int j = 0; j < numEncs; ++j) {
-      *blks = *blks ^ K;
-      ++blks;
-    }
-  }
-
-  for (unsigned int r = 1; r < 10; ++r) {
-    blks = first;
-    for (int i = 0; i < numKeys; ++i) {
-      emp::block K = keys[i].rd_key[r];
-      int numEncs = 1 << i;
-      for (int j = 0; j < numEncs; ++j) {
-        *blks = _mm_aesenc_si128(*blks, K);
-        ++blks;
-      }
-    }
-  }
-
-  blks = first;
-  for (int i = 0; i < numKeys; ++i) {
-    emp::block K = keys[i].rd_key[10];
-    int numEncs = 1 << i;
-    for (int j = 0; j < numEncs; ++j) {
-      *blks = _mm_aesenclast_si128(*blks, K);
-      ++blks;
-    }
-  }
-}
+static void ParaEncExp(emp::block* blks, emp::AES_KEY* keys);
 
 /*
  * [REF] Implementation of "Better Concrete Security for Half-Gates Garbling (in
  * the Multi-Instance Setting)" https://eprint.iacr.org/2019/1168.pdf
  */
-
 template <int BatchSize = 8>
 class MITCCRHExp {
  public:
@@ -151,19 +115,19 @@ class MITCCRHExp {
 
     switch (n) {
       case 1:
-        ParaEnc<1, 1>(out, scheduled_key);
+        emp::ParaEnc<1, 1>(out, scheduled_key);
         break;
       case 2:
-        ParaEnc<2, 1>(out, scheduled_key);
+        emp::ParaEnc<2, 1>(out, scheduled_key);
         break;
       case 3:
-        ParaEnc<3, 1>(out, scheduled_key);
+        emp::ParaEnc<3, 1>(out, scheduled_key);
         break;
       case 4:
-        ParaEnc<4, 1>(out, scheduled_key);
+        emp::ParaEnc<4, 1>(out, scheduled_key);
         break;
       case 8:
-        ParaEnc<8, 1>(out, scheduled_key);
+        emp::ParaEnc<8, 1>(out, scheduled_key);
         break;
       default:
         throw std::invalid_argument(std::string("MITCCRH not implemented: ") +
@@ -175,4 +139,40 @@ class MITCCRHExp {
     }
   }
 };
+
+template <int numKeys>
+void ParaEncExp(block* blks, AES_KEY* keys) {
+  emp::block* first = blks;
+  for (int i = 0; i < numKeys; ++i) {
+    emp::block K = keys[i].rd_key[0];
+    int numEncs = 1 << i;
+    for (int j = 0; j < numEncs; ++j) {
+      *blks = *blks ^ K;
+      ++blks;
+    }
+  }
+
+  for (unsigned int r = 1; r < 10; ++r) {
+    blks = first;
+    for (int i = 0; i < numKeys; ++i) {
+      emp::block K = keys[i].rd_key[r];
+      int numEncs = 1 << i;
+      for (int j = 0; j < numEncs; ++j) {
+        *blks = _mm_aesenc_si128(*blks, K);
+        ++blks;
+      }
+    }
+  }
+
+  blks = first;
+  for (int i = 0; i < numKeys; ++i) {
+    emp::block K = keys[i].rd_key[10];
+    int numEncs = 1 << i;
+    for (int j = 0; j < numEncs; ++j) {
+      *blks = _mm_aesenclast_si128(*blks, K);
+      ++blks;
+    }
+  }
+}
+
 }  // namespace spu::mpc::cheetah

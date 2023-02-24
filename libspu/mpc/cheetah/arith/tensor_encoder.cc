@@ -128,7 +128,7 @@ ArrayRef TensorEncoder::Tensor2Poly(const Shape3D &input_shape,
           long coeff_index = indexer(h, w, c);
           SPU_ENFORCE(coeff_index >= 0 && coeff_index < N,
                       fmt::format("invalid index at ({}, {}, {})", h, w, c));
-          flatten[coeff_index] = tensor.at<ring2k_t>(h, w, c);
+          flatten[coeff_index] = tensor.at<ring2k_t>({h, w, c});
         }
       }
     }

@@ -95,17 +95,13 @@ size_t UnzipArray(absl::Span<const T> inp, size_t bit_width,
   size_t shft = bit_width;
   size_t pack_load = width / shft;
   size_t packed_sze = inp.size();
-  size_t max_numel = pack_load * packed_sze;
-  // NOTE(the last block might contain only one element
-  SPU_ENFORCE(
-      oup.size() + (pack_load - 1) >= max_numel,
-      fmt::format("expect {} got {}x{}", oup.size() + pack_load - 1, pack_load, packed_sze));
+  size_t n = oup.size();
+  SPU_ENFORCE(n > 0 && n <= pack_load * packed_sze);
 
   const T mask = makeBitsMask<T>(bit_width);
-
   for (size_t i = 0; i < packed_sze; ++i) {
-    size_t j0 = i * pack_load;
-    size_t j1 = std::min(oup.size(), std::min(j0 + pack_load, max_numel));
+    size_t j0 = std::min(n, i * pack_load);
+    size_t j1 = std::min(n, j0 + pack_load);
     size_t this_batch = j1 - j0;
     T package = inp[i];
     // NOTE (reversed order)
@@ -115,7 +111,7 @@ size_t UnzipArray(absl::Span<const T> inp, size_t bit_width,
     }
   }
 
-  return std::min(oup.size(), max_numel);
+  return n;
 }
 
 template <typename T>

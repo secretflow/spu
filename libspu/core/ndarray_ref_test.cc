@@ -38,6 +38,46 @@ TEST(NdArrayRefTest, Empty) {
   EXPECT_EQ(a.elsize(), 0);
 }
 
+TEST(ArrayRefTest, Iterator) {
+  NdArrayRef a(std::make_shared<yacl::Buffer>(9 * sizeof(int32_t)),
+               makePtType(PT_I32), {3, 3}, {3, 1}, 0);
+
+  EXPECT_EQ(a.numel(), 9);
+
+  // Fill array with 0 1 2 3 4 5
+  std::iota(static_cast<int32_t *>(a.data()),
+            static_cast<int32_t *>(a.data()) + 9, 0);
+
+  int32_t counter = 0;
+  for (auto iter = a.begin(); iter != a.end(); ++iter) {
+    auto *ptr = reinterpret_cast<std::int32_t *>(iter.getRawPtr());
+    EXPECT_EQ(*ptr, counter++);
+    // If somehow iter goes into infinite loop, this is a safe guard
+    ASSERT_LT(counter, 10);
+  }
+}
+
+TEST(ArrayRefTest, StridedIterator) {
+  // Make 3x3 element, strides = 2x2 array
+  NdArrayRef a(std::make_shared<yacl::Buffer>(36 * sizeof(int32_t)),
+               makePtType(PT_I32), {3, 3}, {2L * 6, 2}, 0);
+
+  EXPECT_EQ(a.numel(), 9);
+
+  // Fill array with 0 1 2 3 4 5
+  std::iota(static_cast<int32_t *>(a.data()),
+            static_cast<int32_t *>(a.data()) + 36, 0);
+
+  std::vector<int32_t> expected = {0, 2, 4, 12, 14, 16, 24, 26, 28};
+  int64_t counter = 0;
+  for (auto iter = a.begin(); iter != a.end(); ++iter) {
+    auto *ptr = reinterpret_cast<std::int32_t *>(iter.getRawPtr());
+    EXPECT_EQ(*ptr, expected[counter++]);
+    // If somehow iter goes into infinite loop, this is a safe guard
+    ASSERT_LT(counter, 10);
+  }
+}
+
 TEST(ArrayRefTest, NdStrides) {
   // Make 3x3 element, strides = 2x2 array
   NdArrayRef a(std::make_shared<yacl::Buffer>(36 * sizeof(int32_t)),
@@ -46,8 +86,8 @@ TEST(ArrayRefTest, NdStrides) {
   EXPECT_EQ(a.numel(), 9);
 
   // Fill array with 0 1 2 3 4 5
-  std::iota(static_cast<int32_t*>(a.data()),
-            static_cast<int32_t*>(a.data()) + 36, 0);
+  std::iota(static_cast<int32_t *>(a.data()),
+            static_cast<int32_t *>(a.data()) + 36, 0);
 
   EXPECT_EQ(a.at<int32_t>({0, 0}), 0);
   EXPECT_EQ(a.at<int32_t>({0, 1}), 2);
@@ -70,7 +110,7 @@ TEST(ArrayRefTest, NdStrides) {
 TEST(ArrayRefTest, unflatten) {
   ArrayRef a(std::make_shared<yacl::Buffer>(sizeof(int32_t)),
              makePtType(PT_I32), 5, 0, 0);
-  *static_cast<int32_t*>(a.data()) = 1;
+  *static_cast<int32_t *>(a.data()) = 1;
 
   auto b = unflatten(a, {1, 1, 5});
 

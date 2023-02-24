@@ -32,6 +32,10 @@ Value _not_s(HalContext* ctx, const Value& in);
 Value _msb_p(HalContext* ctx, const Value& in);
 Value _msb_s(HalContext* ctx, const Value& in);
 
+Value _equal_pp(HalContext* ctx, const Value& x, const Value& y);
+Value _equal_sp(HalContext* ctx, const Value& x, const Value& y);
+Value _equal_ss(HalContext* ctx, const Value& x, const Value& y);
+
 Value _eqz_p(HalContext* ctx, const Value& in);
 Value _eqz_s(HalContext* ctx, const Value& in);
 
@@ -57,6 +61,10 @@ Value _mul_ss(HalContext* ctx, const Value& x, const Value& y);
 Value _mmul_pp(HalContext* ctx, const Value& x, const Value& y);
 Value _mmul_sp(HalContext* ctx, const Value& x, const Value& y);
 Value _mmul_ss(HalContext* ctx, const Value& x, const Value& y);
+
+Value _conv2d_ss(HalContext* ctx, Value x, const Value& y,
+                 absl::Span<const int64_t> window_strides,
+                 absl::Span<const int64_t> result_shape);
 
 Value _and_pp(HalContext* ctx, const Value& x, const Value& y);
 Value _and_sp(HalContext* ctx, const Value& x, const Value& y);

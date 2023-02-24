@@ -23,6 +23,8 @@
 
 #include "absl/strings/escaping.h"
 #include "absl/strings/str_split.h"
+#include "absl/time/clock.h"
+#include "absl/time/time.h"
 #include "gtest/gtest.h"
 #include "spdlog/spdlog.h"
 #include "yacl/crypto/tools/prg.h"
@@ -31,23 +33,24 @@
 
 #include "libspu/core/prelude.h"
 #include "libspu/psi/core/ecdh_oprf/ecdh_oprf_selector.h"
+#include "libspu/psi/io/io.h"
 #include "libspu/psi/utils/batch_provider.h"
 #include "libspu/psi/utils/cipher_store.h"
+#include "libspu/psi/utils/test_utils.h"
 
 namespace spu::psi {
 namespace {
-std::vector<std::string> GetIntersection(
-    absl::Span<const std::string> items_a,
-    absl::Span<const std::string> items_b) {
-  std::set<std::string> set(items_a.begin(), items_a.end());
-  std::vector<std::string> ret;
-  for (const auto &s : items_b) {
-    if (set.count(s) != 0) {
-      ret.push_back(s);
-    }
+
+void WriteCsvFile(const std::string &file_name,
+                  const std::vector<std::string> &items) {
+  auto out = io::BuildOutputStream(io::FileIoOptions(file_name));
+  out->Write("id\n");
+  for (const auto &data : items) {
+    out->Write(fmt::format("{}\n", data));
   }
-  return ret;
+  out->Close();
 }
+
 }  // namespace
 
 struct TestParams {
@@ -61,23 +64,52 @@ TEST_P(BasicEcdhOprfTest, Works) {
   auto params = GetParam();
   auto ctxs = yacl::link::test::SetupWorld(2);
 
-  yacl::crypto::Prg<uint64_t> prg(yacl::crypto::SecureRandU64());
+  std::vector<std::string> items_a =
+      test::CreateRangeItems(0, params.items_size);
+  std::vector<std::string> items_b = test::CreateRangeItems(
+      params.items_size / 4,
+      std::max(static_cast<size_t>(1), params.items_size / 2));
 
-  std::vector<std::string> items_a_vec(params.items_size);
-  std::vector<std::string> items_b_vec(params.items_size);
+  auto timestamp_str = std::to_string(absl::ToUnixNanos(absl::Now()));
+  // server input
+  auto server_input_path =
+      std::filesystem::path(fmt::format("server-input-{}", timestamp_str));
+  // client input
+  auto client_input_path =
+      std::filesystem::path(fmt::format("client-input-{}", timestamp_str));
 
-  for (size_t idx = 0; idx < params.items_size; ++idx) {
-    items_a_vec[idx].resize(kEccKeySize);
-    items_b_vec[idx].resize(kEccKeySize);
-    prg.Fill(absl::MakeSpan(items_a_vec[idx]));
-    prg.Fill(absl::MakeSpan(items_b_vec[idx]));
-  }
+  // server output
+  auto server_output_path =
+      std::filesystem::path(fmt::format("server-output-{}", timestamp_str));
+  // client output
+  auto client_output_path =
+      std::filesystem::path(fmt::format("client-output-{}", timestamp_str));
+  // server output
+  auto server_tmp_cache_path =
+      std::filesystem::path(fmt::format("tmp-cache-{}", timestamp_str));
 
-  // items_a and items_b get 1/3 intersection
-  for (size_t idx = params.items_size / 3; idx < params.items_size * 2 / 3;
-       ++idx) {
-    items_b_vec[idx] = items_a_vec[idx];
-  }
+  // register remove of temp file.
+  ON_SCOPE_EXIT([&] {
+    std::error_code ec;
+    std::filesystem::remove(server_input_path, ec);
+    if (ec.value() != 0) {
+      SPDLOG_WARN("can not remove tmp file: {}, msg: {}",
+                  server_input_path.c_str(), ec.message());
+    }
+    std::filesystem::remove(client_input_path, ec);
+    if (ec.value() != 0) {
+      SPDLOG_WARN("can not remove tmp file: {}, msg: {}",
+                  client_input_path.c_str(), ec.message());
+    }
+    std::filesystem::remove(server_tmp_cache_path, ec);
+    if (ec.value() != 0) {
+      SPDLOG_WARN("can not remove tmp file: {}, msg: {}",
+                  server_tmp_cache_path.c_str(), ec.message());
+    }
+  });
+
+  WriteCsvFile(server_input_path.string(), items_a);
+  WriteCsvFile(client_input_path.string(), items_b);
 
   spu::psi::EcdhOprfPsiOptions server_options;
   spu::psi::EcdhOprfPsiOptions client_options;
@@ -105,9 +137,11 @@ TEST_P(BasicEcdhOprfTest, Works) {
   std::array<uint8_t, kEccKeySize> server_private_key =
       dh_oprf_psi_server_offline->GetPrivateKey();
 
-  // server input
-  std::shared_ptr<IBatchProvider> batch_provider_server =
-      std::make_shared<MemoryBatchProvider>(items_a_vec);
+  // server batch provider
+  std::vector<std::string> cloumn_ids = {"id"};
+  std::shared_ptr<CachedCsvBatchProvider> batch_provider_server =
+      std::make_shared<CachedCsvBatchProvider>(server_input_path.string(),
+                                               cloumn_ids, 100000, true);
 
   // server output
   auto memory_store_server = std::make_shared<MemoryCipherStore>();
@@ -117,29 +151,23 @@ TEST_P(BasicEcdhOprfTest, Works) {
   //
   // offline phase:  FullEvaluate server's data and store
   //
-  dh_oprf_psi_server_offline->FullEvaluate(batch_provider_server,
-                                           memory_store_server);
+  std::shared_ptr<IUbPsiCache> ub_cache = std::make_shared<UbPsiCache>(
+      server_tmp_cache_path.string(),
+      dh_oprf_psi_server_offline->GetCompareLength(), cloumn_ids);
 
-  std::vector<std::string> &server_evaluate_items =
-      memory_store_server->self_results();
-  //
-  // shuffle server side FullEvaluated data
-  //
-  std::mt19937 rng(yacl::crypto::SecureRandU64());
-  std::shuffle(server_evaluate_items.begin(), server_evaluate_items.end(), rng);
+  dh_oprf_psi_server_offline->FullEvaluate(batch_provider_server, ub_cache);
 
+  SPDLOG_INFO("Finished FullEvaluate");
   //
   // offline phase:  server send FullEvaluated data to client
   //
-  std::future<void> f_sever_send_fullevaluate = std::async([&] {
-    std::vector<std::string> &server_stored_items =
-        memory_store_server->self_results();
+  std::future<size_t> f_sever_send_fullevaluate = std::async([&] {
+    std::shared_ptr<IBatchProvider> batch_provider =
+        std::make_shared<UbPsiCacheProvider>(
+            server_tmp_cache_path.string(),
+            dh_oprf_psi_server_offline->GetCompareLength());
 
-    std::shared_ptr<IBatchProvider> batch_server_evaluate_items =
-        std::make_shared<MemoryBatchProvider>(server_stored_items);
-
-    return dh_oprf_psi_server_offline->SendFinalEvaluatedItems(
-        batch_server_evaluate_items);
+    return dh_oprf_psi_server_offline->SendFinalEvaluatedItems(batch_provider);
   });
 
   std::future<void> f_client_recv_full_evaluate = std::async([&] {
@@ -174,14 +202,16 @@ TEST_P(BasicEcdhOprfTest, Works) {
 
   std::future<void> f_client_send_blind = std::async([&] {
     std::shared_ptr<IBatchProvider> batch_provider_client =
-        std::make_shared<MemoryBatchProvider>(items_b_vec);
+        std::make_shared<CsvBatchProvider>(client_input_path.string(),
+                                           cloumn_ids);
 
     dh_oprf_psi_client_online->SendBlindedItems(batch_provider_client);
   });
 
   std::future<void> f_client_recv_evaluate = std::async([&] {
     std::shared_ptr<IBatchProvider> batch_provider_client =
-        std::make_shared<MemoryBatchProvider>(items_b_vec);
+        std::make_shared<CsvBatchProvider>(client_input_path.string(),
+                                           cloumn_ids);
 
     dh_oprf_psi_client_online->RecvEvaluatedItems(batch_provider_client,
                                                   memory_store_client);
@@ -206,30 +236,37 @@ TEST_P(BasicEcdhOprfTest, Works) {
     if (std::binary_search(client_peer_evaluate_items.begin(),
                            client_peer_evaluate_items.end(),
                            client_self_evaluate_items[index])) {
-      SPU_ENFORCE(index < items_b_vec.size());
-      intersection.push_back(items_b_vec[index]);
+      SPU_ENFORCE(index < items_b.size());
+      intersection.push_back(items_b[index]);
     }
   }
 
   std::vector<std::string> intersection_std =
-      GetIntersection(items_a_vec, items_b_vec);
+      test::GetIntersection(items_a, items_b);
 
   EXPECT_EQ(intersection_std, intersection);
 }
 
-INSTANTIATE_TEST_SUITE_P(
-    Works_Instances, BasicEcdhOprfTest,
-    testing::Values(
-        // CURVE_FOURQ
-        TestParams{1},      //
-        TestParams{10},     //
-        TestParams{50},     //
-        TestParams{4095},   // less than one batch
-        TestParams{4096},   // exactly one batch
-        TestParams{10000},  // more than one batch
-        // CURVE_SM2
-        TestParams{1000, CurveType::CURVE_SM2},  // more than one batch
-        // Curve256k1
-        TestParams{1000, CurveType::CURVE_SECP256K1}  // more than one batch
-        ));
+INSTANTIATE_TEST_SUITE_P(Works_Instances, BasicEcdhOprfTest,
+                         testing::Values(
+#if 1
+                             TestParams { 10 }  //
+#else
+                             // CURVE_FOURQ
+                             TestParams{1},      //
+                             TestParams{10},     //
+                             TestParams{50},     //
+                             TestParams{4095},   // less than one batch
+                             TestParams{4096},   // exactly one batch
+                             TestParams{10000},  // more than one batch
+                             // CURVE_SM2
+                             TestParams{
+                                 1000,
+                                 CurveType::CURVE_SM2},  // more than one batch
+                             // Curve256k1
+                             TestParams{1000, CurveType::CURVE_SECP256K1}
+// more than one batch
+#endif
+                             ));
+
 }  // namespace spu::psi

@@ -85,7 +85,7 @@ bool isIntTy(const Type& type) {
 }
 
 Type Type::fromString(std::string_view repr) {
-  // Extact keyword
+  // Extract keyword
   auto less = repr.find_first_of('<');
   auto keyword = repr.substr(0, less);
   auto details = repr.substr(less + 1);

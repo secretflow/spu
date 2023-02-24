@@ -16,6 +16,8 @@
 
 #include "yacl/crypto/utils/rand.h"
 
+#include "libspu/core/ndarray_ref.h"
+#include "libspu/core/shape_util.h"
 #include "libspu/mpc/cheetah/rlwe/utils.h"
 #include "libspu/mpc/utils/ring_ops.h"
 namespace spu::mpc::cheetah {
@@ -47,10 +49,15 @@ void EnableCPRNG::UniformPrime(const seal::Modulus &prime,
                  });
 }
 
-void EnableCPRNG::UniformPoly(const seal::SEALContext &context, RLWEPt *poly) {
+void EnableCPRNG::UniformPoly(const seal::SEALContext &context, RLWEPt *poly,
+                              seal::parms_id_type pid) {
   SPU_ENFORCE(poly != nullptr);
   SPU_ENFORCE(context.parameters_set());
-  auto cntxt = context.first_context_data();
+  if (pid == seal::parms_id_zero) {
+    pid = context.first_parms_id();
+  }
+  auto cntxt = context.get_context_data(pid);
+  SPU_ENFORCE(cntxt != nullptr);
   size_t N = cntxt->parms().poly_modulus_degree();
   const auto &modulus = cntxt->parms().coeff_modulus();
   poly->parms_id() = seal::parms_id_zero;
@@ -75,4 +82,59 @@ ArrayRef EnableCPRNG::CPRNG(FieldType field, size_t size) {
   return ring_rand(field, size, seed_, &prng_counter_);
 }
 
+ArrayRef ring_conv2d(const ArrayRef &tensor, const ArrayRef &filter,
+                     int64_t num_tensors, Shape3D tensor_shape,
+                     int64_t num_filters, Shape3D filter_shape,
+                     Shape2D window_strides) {
+  auto field = tensor.eltype().as<Ring2k>()->field();
+  Shape4D result_shape;
+  result_shape[0] = num_tensors;
+  for (int s : {0, 1}) {
+    result_shape[s + 1] =
+        (tensor_shape[s] - filter_shape[s] + window_strides[s]) /
+        window_strides[s];
+  }
+  result_shape[3] = num_filters;
+
+  std::vector<int64_t> ts = {num_tensors, tensor_shape[0], tensor_shape[1],
+                             tensor_shape[2]};
+  std::vector<int64_t> fs = {filter_shape[0], filter_shape[1], filter_shape[2],
+                             num_filters};
+
+  NdArrayRef _tensor = unflatten(tensor, ts);
+  NdArrayRef _filter = unflatten(filter, fs);
+  NdArrayRef _ret =
+      unflatten(ring_zeros(field, calcNumel(result_shape)), result_shape);
+
+  DISPATCH_ALL_FIELDS(field, "ring_conv2d", [&]() {
+    // NOTE(juhou): valid padding so offset are always 0.
+    constexpr int64_t padh = 0;
+    constexpr int64_t padw = 0;
+
+    for (int64_t ib = 0; ib < ts[0]; ++ib) {
+      for (int64_t oc = 0; oc < fs[3]; ++oc) {
+        for (int64_t ih = -padh, oh = 0; oh < result_shape[1];
+             ih += window_strides[0], ++oh) {
+          for (int64_t iw = -padw, ow = 0; ow < result_shape[2];
+               iw += window_strides[1], ++ow) {
+            ring2k_t sum{0};
+
+            for (int64_t ic = 0; ic < filter_shape[2]; ++ic) {
+              for (int64_t fh = 0; fh < filter_shape[0]; ++fh) {
+                for (int64_t fw = 0; fw < filter_shape[1]; ++fw) {
+                  auto f = _filter.at<ring2k_t>({fh, fw, ic, oc});
+                  auto t = _tensor.at<ring2k_t>({ib, ih + fh, iw + fw, ic});
+                  sum += f * t;
+                }
+              }
+            }
+            _ret.at<ring2k_t>({ib, oh, ow, oc}) = sum;
+          }
+        }
+      }
+    }
+  });
+
+  return flatten(_ret);
+}
 }  // namespace spu::mpc::cheetah

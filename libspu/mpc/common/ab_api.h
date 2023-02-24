@@ -30,6 +30,10 @@ ArrayRef rand_b(Object* ctx, size_t);
 
 ArrayRef not_a(Object* ctx, const ArrayRef&);
 
+ArrayRef equal_pp(Object* ctx, const ArrayRef&, const ArrayRef&);
+ArrayRef equal_sp(Object* ctx, const ArrayRef&, const ArrayRef&);
+ArrayRef equal_ss(Object* ctx, const ArrayRef&, const ArrayRef&);
+
 ArrayRef add_ap(Object* ctx, const ArrayRef&, const ArrayRef&);
 ArrayRef add_aa(Object* ctx, const ArrayRef&, const ArrayRef&);
 

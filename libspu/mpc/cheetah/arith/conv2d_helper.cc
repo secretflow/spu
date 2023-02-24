@@ -61,33 +61,34 @@ int64_t KernelIndexer::operator()(int64_t h, int64_t w, int64_t c) const {
   return begin_ - c * offset_ - h * row_nskip_ - w;
 }
 
-Sliced3DTensor::Sliced3DTensor(const ArrayRef &base, const Shape3D &shape,
-                               const Shape3D &offsets, const Shape3D &extents)
+template <int Dim>
+SlicedTensor<Dim>::SlicedTensor(const ArrayRef &base, const Shape &base_shape,
+                                const Shape &offsets, const Shape &extents)
     : base_(base),
-      base_shape_(shape),
+      base_shape_(base_shape),
       offsets_(offsets),
       extents_(extents),
       zero_pad_extents_(extents) {
   SPU_ENFORCE_EQ(base_.numel(), calcNumel(base_shape_));
-  flatten_strides_ = {shape[1] * shape[2], shape[2], 1LL};
+  flatten_strides_[Dim - 1] = 1;
+  for (int d = Dim - 1; d > 0; --d) {
+    flatten_strides_[d - 1] = base_shape_[d] * flatten_strides_[d];
+  }
 }
 
-Sliced3DTensor Sliced3DTensor::Wrap(const ArrayRef &base, const Shape3D &shape,
-                                    const Shape3D &offsets,
-                                    const Shape3D &extents) {
+template <int Dim>
+SlicedTensor<Dim> SlicedTensor<Dim>::Wrap(const ArrayRef &base,
+                                          const Shape &shape,
+                                          const Shape &offsets,
+                                          const Shape &extents) {
   SPU_ENFORCE_EQ(base.numel(), calcNumel(shape));
 
-  for (int d = 0; d < 3; ++d) {
+  for (int d = 0; d < Dim; ++d) {
     SPU_ENFORCE(extents[d] > 0 && shape[d] >= extents[d]);
     SPU_ENFORCE(offsets[d] >= 0);
   }
 
-  return Sliced3DTensor(base, shape, offsets, extents);
-}
-
-FieldType Sliced3DTensor::field() const {
-  const Type &eltype = base_.eltype();
-  return eltype.as<Ring2k>()->field();
+  return SlicedTensor<Dim>(base, shape, offsets, extents);
 }
 
 Conv2DHelper::Conv2DHelper(const Conv2DProtocol::Meta &meta,

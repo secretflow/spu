@@ -30,7 +30,9 @@ std::unique_ptr<Object> makeSpdz2kProtocol(
     const std::shared_ptr<yacl::link::Context>& lctx) {
   spdz2k::registerTypes();
 
-  auto obj = std::make_unique<Object>("SPDZ2K");
+  // FIXME: use same id for different rank
+  auto obj =
+      std::make_unique<Object>(fmt::format("{}-{}", lctx->Rank(), "SPDZ2K"));
 
   // add communicator
   obj->addState<Communicator>(lctx);

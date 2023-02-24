@@ -58,15 +58,73 @@ def main(_):
             )
         )
 
+    cache_path = "server_cache.bin"
     link_ctx = setup_link(FLAGS.rank, 9827)
-    config = psi.BucketPsiConfig(
-        psi_type=psi.PsiType.Value('ECDH_OPRF_UNBALANCED_PSI_2PC_OFFLINE'),
+
+    # ===== gen cache phase =====
+    if FLAGS.receiver_rank != FLAGS.rank:
+        gen_cache_config = psi.BucketPsiConfig(
+            psi_type=psi.PsiType.Value('ECDH_OPRF_UB_PSI_2PC_GEN_CACHE'),
+            broadcast_result=False,
+            receiver_rank=FLAGS.receiver_rank,
+            input_params=psi.InputParams(
+                path=FLAGS.in_path,
+                select_fields=selected_fields,
+                precheck=False,
+            ),
+            output_params=psi.OutputParams(path=cache_path, need_sort=False),
+            bucket_size=10000000,
+            curve_type=psi.CurveType.CURVE_FOURQ,
+        )
+
+        gen_cache_config.ecdh_secret_key_path = secret_key_path
+
+        start = time.time()
+        report = psi.bucket_psi(None, gen_cache_config)
+        print(f"gen cache cost time: {time.time() - start}")
+        print(f"gen cache: rank: {FLAGS.rank} original_count: {report.original_count}")
+
+    # ===== transfer cache phase =====
+    print("===== Transfer Cache Phase =====")
+    transfer_cache_config = psi.BucketPsiConfig(
+        psi_type=psi.PsiType.Value('ECDH_OPRF_UB_PSI_2PC_TRANSFER_CACHE'),
         broadcast_result=broadcast_result,
         receiver_rank=FLAGS.receiver_rank,
         input_params=psi.InputParams(
             path=FLAGS.in_path,
             select_fields=selected_fields,
-            precheck=FLAGS.precheck_input,
+            precheck=False,
+        ),
+        output_params=psi.OutputParams(
+            path=FLAGS.out_path, need_sort=FLAGS.output_sort
+        ),
+        bucket_size=10000000,
+        curve_type=psi.CurveType.CURVE_FOURQ,
+    )
+
+    if FLAGS.receiver_rank == link_ctx.rank:
+        transfer_cache_config.preprocess_path = 'tmp/preprocess_path_transfer_cache.csv'
+        transfer_cache_config.input_params.path = 'fake.csv'
+    else:
+        transfer_cache_config.input_params.path = cache_path
+        transfer_cache_config.ecdh_secret_key_path = secret_key_path
+
+    start = time.time()
+    report = psi.bucket_psi(link_ctx, transfer_cache_config)
+    print(f"offline cost time: {time.time() - start}")
+    print(f"offline: rank: {FLAGS.rank} original_count: {report.original_count}")
+    print(f"intersection_count: {report.intersection_count}")
+
+    # ===== offline phase =====
+    print("===== UB Offline Phase =====")
+    config = psi.BucketPsiConfig(
+        psi_type=psi.PsiType.Value('ECDH_OPRF_UB_PSI_2PC_OFFLINE'),
+        broadcast_result=broadcast_result,
+        receiver_rank=FLAGS.receiver_rank,
+        input_params=psi.InputParams(
+            path=FLAGS.in_path,
+            select_fields=selected_fields,
+            precheck=False,
         ),
         output_params=psi.OutputParams(
             path=FLAGS.out_path, need_sort=FLAGS.output_sort
@@ -84,20 +142,19 @@ def main(_):
     start = time.time()
     report = psi.bucket_psi(link_ctx, config)
     print(f"offline cost time: {time.time() - start}")
-    print(
-        f"offline: rank: {FLAGS.rank} original_count: {report.original_count}, intersection_count: {report.intersection_count}"
-    )
+    print(f"offline: rank: {FLAGS.rank} original_count: {report.original_count}")
+    print(f"intersection_count: {report.intersection_count}")
 
+    # ===== offline phase =====
     print("===== online phase =====")
-
     config_offline = psi.BucketPsiConfig(
-        psi_type=psi.PsiType.Value('ECDH_OPRF_UNBALANCED_PSI_2PC_ONLINE'),
+        psi_type=psi.PsiType.Value('ECDH_OPRF_UB_PSI_2PC_ONLINE'),
         broadcast_result=broadcast_result,
         receiver_rank=FLAGS.receiver_rank,
         input_params=psi.InputParams(
             path=FLAGS.in_path,
             select_fields=selected_fields,
-            precheck=FLAGS.precheck_input,
+            precheck=False,
         ),
         output_params=psi.OutputParams(
             path=FLAGS.out_path, need_sort=FLAGS.output_sort
@@ -116,9 +173,8 @@ def main(_):
     start = time.time()
     report_online = psi.bucket_psi(link_ctx, config_offline)
     print(f"online cost time: {time.time() - start}")
-    print(
-        f"online: rank:{FLAGS.rank} original_count: {report_online.original_count}, intersection_count: {report_online.intersection_count}"
-    )
+    print(f"online: rank:{FLAGS.rank} original_count: {report_online.original_count}")
+    print(f"intersection_count: {report_online.intersection_count}")
 
 
 if __name__ == '__main__':

@@ -9,7 +9,7 @@ This is a high level overview of how the repository is laid out. Some major fold
 * [examples/](examples/): Contains both cpp and python examples of SPU.
 * [spu/](spu/): Core implementations of SPU.
     - [binding/](spu/binding/): Python binding of the SPU device.
-    - [compiler/](spu/compiler/): SPU's compiler stack. It accepts the standard XLA IR along with inputs mpc metadata and lowering the XLA IR to a mpc specific IR.
+    - [compiler/](spu/compiler/): SPU's compiler stack. It accepts the standard XLA IR along with inputs mpc metadata and lowering the XLA IR to an mpc specific IR.
     - [core/](spu/core/): Basic data structures used in SPU.
     - [crypto/](spu/crypto/): Crytographic primitives used in mpc protocols, say oblivious transfer.
     - [device/](spu/device/): SPU device `Runtime`.It consists of IO(infeed, outfeed), symbol tables(storage) and the IR executor.

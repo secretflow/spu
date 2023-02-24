@@ -27,6 +27,7 @@
 #include "libspu/psi/core/ecdh_oprf/ecdh_oprf_selector.h"
 #include "libspu/psi/utils/batch_provider.h"
 #include "libspu/psi/utils/cipher_store.h"
+#include "libspu/psi/utils/ub_psi_cache.h"
 
 // basic ecdh-oprf based psi
 // reference:
@@ -107,20 +108,24 @@ class EcdhOprfPsiServer {
    *
    * @param batch_provider input data batch provider
    * @param cipher_store   masked data store
+   * @param send_flag  default false, just save to cace,
+   *                           true, send and save cache
    */
-  size_t FullEvaluate(const std::shared_ptr<IBatchProvider>& batch_provider,
-                      const std::shared_ptr<ICipherStore>& cipher_store);
-
-  size_t FullEvaluateAndSend(
-      const std::shared_ptr<IBatchProvider>& batch_provider);
+  size_t FullEvaluate(
+      const std::shared_ptr<IShuffleBatchProvider>& batch_provider,
+      const std::shared_ptr<IUbPsiCache>& ub_cache, bool send_flag = false);
 
   /**
    * @brief send masked data
    *
    * @param batch_provider masked data batch provider
    */
-  void SendFinalEvaluatedItems(
+  size_t SendFinalEvaluatedItems(
       const std::shared_ptr<IBatchProvider>& batch_provider);
+
+  size_t FullEvaluateAndSend(
+      const std::shared_ptr<IShuffleBatchProvider>& batch_provider,
+      const std::shared_ptr<IUbPsiCache>& ub_cache = nullptr);
 
   /**
    * @brief
@@ -136,6 +141,8 @@ class EcdhOprfPsiServer {
   std::array<uint8_t, kEccKeySize> GetPrivateKey() {
     return oprf_server_->GetPrivateKey();
   }
+
+  size_t GetCompareLength() { return oprf_server_->GetCompareLength(); }
 
  private:
   EcdhOprfPsiOptions options_;

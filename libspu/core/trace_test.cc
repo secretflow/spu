@@ -34,7 +34,7 @@ std::shared_ptr<spdlog::logger> makeSStreamLogger(std::ostringstream& oss) {
 
 TEST(TraceTest, TracerLogWorks) {
   std::ostringstream oss;
-  initTrace(TR_MODALL | TR_LAR, makeSStreamLogger(oss));
+  initTrace("id", TR_MODALL | TR_LAR, makeSStreamLogger(oss));
 
   Tracer tracer(TR_MODALL | TR_LAR);
   tracer.logActionBegin(1, "f", "");
@@ -45,7 +45,7 @@ TEST(TraceTest, TracerLogWorks) {
 
 TEST(TraceTest, ActionWorks) {
   std::ostringstream oss;
-  initTrace(TR_MODALL | TR_LAR, makeSStreamLogger(oss));
+  initTrace("id", TR_MODALL | TR_LAR, makeSStreamLogger(oss));
 
   auto tracer = std::make_shared<Tracer>(TR_MODALL | TR_LAR);
   {
@@ -77,7 +77,7 @@ void f(Context* ctx) {
 
 TEST(TraceTest, Example) {
   std::ostringstream oss;
-  initTrace(TR_MODALL | TR_LAR, makeSStreamLogger(oss));
+  initTrace("id", TR_MODALL | TR_LAR, makeSStreamLogger(oss));
   Context ctx;
   f(&ctx);
 

@@ -20,7 +20,7 @@
 
 namespace spu {
 
-class CheetahIo : public emp::IOChannel<CheetahIo> {
+class EmpIoAdapter : public emp::IOChannel<EmpIoAdapter> {
  public:
   std::shared_ptr<yacl::link::Context> ctx_;
 
@@ -34,9 +34,9 @@ class CheetahIo : public emp::IOChannel<CheetahIo> {
   yacl::Buffer recv_buffer_;
   uint64_t recv_buffer_used_;
 
-  explicit CheetahIo(std::shared_ptr<yacl::link::Context> ctx);
+  explicit EmpIoAdapter(std::shared_ptr<yacl::link::Context> ctx);
 
-  ~CheetahIo();
+  ~EmpIoAdapter();
 
   void flush();
 

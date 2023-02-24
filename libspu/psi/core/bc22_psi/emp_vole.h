@@ -26,8 +26,8 @@
 #include "yacl/link/link.h"
 
 #include "libspu/core/prelude.h"
-#include "libspu/crypto/ot/silent/cheetah_io_channel.h"
 #include "libspu/psi/core/communication.h"
+#include "libspu/psi/utils/emp_io_adapter.h"
 #include "libspu/psi/utils/serialize.h"
 
 namespace spu::psi {
@@ -74,9 +74,9 @@ class WolverineVole {
 
   WolverineVoleFieldType delta_;
 
-  std::array<std::unique_ptr<CheetahIo>, kVoleSilentOTThreads> silent_ios_;
-  CheetahIo *ios_[kVoleSilentOTThreads];
-  std::unique_ptr<VoleTriple<CheetahIo>> emp_zk_vole_;
+  std::array<std::unique_ptr<EmpIoAdapter>, kVoleSilentOTThreads> silent_ios_;
+  EmpIoAdapter *ios_[kVoleSilentOTThreads];
+  std::unique_ptr<VoleTriple<EmpIoAdapter>> emp_zk_vole_;
 };
 
 std::vector<WolverineVoleFieldType> GetPolynomialCoefficients(

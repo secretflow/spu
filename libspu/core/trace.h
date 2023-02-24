@@ -87,9 +87,9 @@ int64_t genActionUuid();
 // call stack: f0 calls g0, g0 calls h0, etc.
 //
 //   |--- M1 ---|--- M2 ---|
-//   f0->g0->h0->r0->r0->t0
+//   f0->g0->h0->r0->s0->t0
 //
-// (f0, g0, h0) belongs to module 1, (r0, g0, h0) belongs to module 2.
+// (f0, g0, h0) belongs to module 1, (r0, s0, t0) belongs to module 2.
 //
 // The call stack looks like this:
 //
@@ -98,7 +98,7 @@ int64_t genActionUuid();
 // f0                 | M1|LOG,     ~0,     M1|M2|LOG|REC | M1|LOG
 // |- g0              | M1|REG,     ~M1,    M1|M2|LOG|REC | M1|LOG|REC
 // |  |- h0           | M1|LOG|REC, ~0,     M2|LOG|REC    | -
-// |  |  |- r1        | M2|LOG,     ~0,     M2|LOG|REC    | M2|LOG
+// |  |  |- r0        | M2|LOG,     ~0,     M2|LOG|REC    | M2|LOG
 // |  |  |  |- s0     | M2,         ~M2,    M2|LOG|REC    | M2
 // |  |  |  |  |- t0  | M2|REC,     ~0,     LOG|REC       | -
 // |  |  |  |  |- t1  | M2|REC,     ~0,     LOG|REC       | -
@@ -125,6 +125,14 @@ int64_t genActionUuid();
 #define TR_REC 0x0800               // record the action
 #define TR_LOG (TR_LOGB | TR_LOGE)  // log action begin & end
 #define TR_LAR (TR_LOG | TR_REC)    // log and record the action
+
+/////////////////////////////////////////////////////////////
+/// Helper macros for modules.
+/////////////////////////////////////////////////////////////
+
+#define TR_HLO TR_MOD1
+#define TR_HAL TR_MOD2
+#define TR_MPC TR_MOD3
 
 using TimePoint = std::chrono::time_point<std::chrono::high_resolution_clock>;
 using Duration = std::chrono::nanoseconds;
@@ -176,13 +184,18 @@ class Tracer final {
 
   int64_t getDepth() const { return depth_; }
 
+  void incDepth() { depth_++; }
+
+  void decDepth() { depth_--; }
+
   const std::shared_ptr<ProfState>& getProfState() { return prof_state_; }
 
   // TODO: drop these two functions.
-  void logActionBegin(int64_t id, const std::string& name,
+  void logActionBegin(int64_t id, const std::string& mod,
+                      const std::string& name,
                       const std::string& detail = "") const;
 
-  void logActionEnd(int64_t id, const std::string& name,
+  void logActionEnd(int64_t id, const std::string& mod, const std::string& name,
                     const std::string& detail = "") const;
 };
 
@@ -198,6 +211,9 @@ class TraceAction final {
 
   // the uuid of this action.
   int64_t id_;
+
+  // the module of this action.
+  std::string mod_;
 
   // name of the action.
   std::string name_;
@@ -218,7 +234,8 @@ class TraceAction final {
     const auto flag = flag_ & tracer_->getFlag();
     if ((flag & TR_MODALL) != 0 && (flag & TR_LOGB) != 0) {
       detail_ = internal::variadicToString(std::forward<Args>(args)...);
-      tracer_->logActionBegin(id_, name_, detail_);
+      tracer_->logActionBegin(id_, mod_, name_, detail_);
+      tracer_->incDepth();
     }
 
     // set new flag to the tracer.
@@ -236,7 +253,8 @@ class TraceAction final {
     const auto flag = flag_ & tracer_->getFlag();
     if ((flag & TR_MODALL) != 0) {
       if ((flag & TR_LOGE) != 0) {
-        tracer_->logActionEnd(id_, name_, detail_);
+        tracer_->decDepth();
+        tracer_->logActionEnd(id_, mod_, name_, detail_);
       }
       if ((flag & TR_REC) != 0) {
         tracer_->getProfState()->addRecord(
@@ -269,6 +287,13 @@ class TraceAction final {
         mask_(mask),
         name_(std::move(name)) {
     id_ = internal::genActionUuid();
+    if (flag_ & TR_MPC) {
+      mod_ = "mpc";
+    } else if (flag_ & TR_HAL) {
+      mod_ = "hal";
+    } else {
+      mod_ = "hlo";
+    }
     begin(std::forward<Args>(args)...);
   }
 
@@ -276,22 +301,21 @@ class TraceAction final {
 };
 
 // global setting
-void initTrace(int64_t global_tr_flag,
+void initTrace(const std::string& ctx_id, int64_t tr_flag,
                const std::shared_ptr<spdlog::logger>& tr_logger = nullptr);
 
-int64_t getGlobalTraceFlag();
+int64_t getGlobalTraceFlag(const std::string& id);
 
-// Get the trace state by current (virtual thread) id, if there is no
+// get the trace state by current (virtual thread) id, if there is no
 // corresponding Tracer found, try to clone a state from the Tracer
 // corresponding to the parent id.
-std::shared_ptr<Tracer> getTracer(const std::string& tid,
+std::shared_ptr<Tracer> getTracer(const std::string& id,
                                   const std::string& pid);
 
 /// The helper macros
 #define SPU_ENABLE_TRACE
 
 // TODO: support per-context trace.
-// #define GET_TRACER(CTX) "CTX:0"
 #define GET_TRACER(CTX) getTracer((CTX)->id(), (CTX)->pid())
 
 #ifdef SPU_ENABLE_TRACE
@@ -307,40 +331,32 @@ std::shared_ptr<Tracer> getTracer(const std::string& tid,
 
 #endif
 
-/////////////////////////////////////////////////////////////
-/// Helper macros for modules.
-/////////////////////////////////////////////////////////////
-
-#define TR_HLO TR_MOD1
-#define TR_HAL TR_MOD2
-#define TR_MPC TR_MOD3
-
-// trace a hal layer dispatch
+// trace an hal layer dispatch
 #define SPU_TRACE_HLO_DISP(CTX, ...)                                   \
   SPU_TRACE_ACTION(GET_TRACER(CTX), (TR_HLO | TR_LOG), (~0), __func__, \
                    ##__VA_ARGS__)
 
-// trace a hal layer leaf
+// trace an hal layer leaf
 #define SPU_TRACE_HLO_LEAF(CTX, ...)                                        \
   SPU_TRACE_ACTION(GET_TRACER(CTX), (TR_HLO | TR_LAR), (~TR_HLO), __func__, \
                    ##__VA_ARGS__)
 
-// trace a hal layer dispatch
+// trace an hal layer dispatch
 #define SPU_TRACE_HAL_DISP(CTX, ...)                                   \
   SPU_TRACE_ACTION(GET_TRACER(CTX), (TR_HAL | TR_LOG), (~0), __func__, \
                    ##__VA_ARGS__)
 
-// trace a hal layer leaf
+// trace an hal layer leaf
 #define SPU_TRACE_HAL_LEAF(CTX, ...)                                        \
   SPU_TRACE_ACTION(GET_TRACER(CTX), (TR_HAL | TR_LAR), (~TR_HAL), __func__, \
                    ##__VA_ARGS__)
 
-// trace a mpc layer dispatch
+// trace an mpc layer dispatch
 #define SPU_TRACE_MPC_DISP(CTX, ...)                                   \
   SPU_TRACE_ACTION(GET_TRACER(CTX->caller()), (TR_MPC | TR_LOG), (~0), \
                    kBindName, ##__VA_ARGS__)
 
-// trace a mpc layer leaf
+// trace an mpc layer leaf
 #define SPU_TRACE_MPC_LEAF(CTX, ...)                                        \
   SPU_TRACE_ACTION(GET_TRACER(CTX->caller()), (TR_MPC | TR_LAR), (~TR_MPC), \
                    kBindName, ##__VA_ARGS__)

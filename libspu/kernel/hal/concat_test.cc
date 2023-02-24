@@ -47,8 +47,8 @@ TYPED_TEST(ConcatTest, Concatenate) {
   using RhsVt = typename std::tuple_element<2, TypeParam>::type;
 
   // GIVEN
-  xt::xarray<DT> x = test::xt_random<DT>({1, 5});
-  xt::xarray<DT> y = test::xt_random<DT>({1, 5});
+  xt::xarray<DT> x = test::xt_random<DT>({3, 3});
+  xt::xarray<DT> y = test::xt_random<DT>({3, 3});
 
   auto concat_wrapper = [](HalContext* ctx, const Value& lhs,
                            const Value& rhs) {
@@ -60,6 +60,30 @@ TYPED_TEST(ConcatTest, Concatenate) {
   // THEN
   EXPECT_TRUE(
       xt::allclose(xt::concatenate(xt::xtuple(x, y), 0), z, 0.01, 0.001))
+      << x << std::endl
+      << y << std::endl
+      << z;
+}
+
+TYPED_TEST(ConcatTest, VConcatenate) {
+  using DT = typename std::tuple_element<0, TypeParam>::type;
+  using LhsVt = typename std::tuple_element<1, TypeParam>::type;
+  using RhsVt = typename std::tuple_element<2, TypeParam>::type;
+
+  // GIVEN
+  xt::xarray<DT> x = test::xt_random<DT>({3, 3});
+  xt::xarray<DT> y = test::xt_random<DT>({3, 3});
+
+  auto concat_wrapper = [](HalContext* ctx, const Value& lhs,
+                           const Value& rhs) {
+    return concatenate(ctx, {lhs, rhs}, 1);
+  };
+  // WHAT
+  auto z = test::evalBinaryOp<DT>(LhsVt(), RhsVt(), concat_wrapper, x, y);
+
+  // THEN
+  EXPECT_TRUE(
+      xt::allclose(xt::concatenate(xt::xtuple(x, y), 1), z, 0.01, 0.001))
       << x << std::endl
       << y << std::endl
       << z;

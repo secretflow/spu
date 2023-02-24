@@ -56,7 +56,7 @@ class Secret {
  protected:
   // When in colocated mode, the data-provider also host a piece of spu
   // evaluator, it can infeed a cleartext as a 'private-secret`, a secret which
-  // only know by itself. Some ops could benifit from this setting. i.e. If two
+  // only know by itself. Some ops could benefit from this setting. i.e. If two
   // secret are provided by the same owner, secret multiplication could be done
   // without communication.
   //
@@ -75,7 +75,7 @@ class Secret {
   //
   // Kernel implementation note:
   // This tag is `optional` for kernels, it's used to optimize certain kernels,
-  // but without the optimiazation, the semantic should still be correct. i.e.
+  // but without the optimization, the semantic should still be correct. i.e.
   //
   // Given four variables [x], [y], [z], [w] that [x] is a pure secret, [y] and
   // [z] are private-secret owned by Alice, [w] is a secret owned by Bob.

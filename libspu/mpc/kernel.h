@@ -53,9 +53,27 @@ class MatmulKernel : public Kernel {
                         ctx->getParam<ArrayRef>(1), ctx->getParam<size_t>(2),
                         ctx->getParam<size_t>(3), ctx->getParam<size_t>(4)));
   }
-  virtual ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& A,
-                        const ArrayRef& B, size_t M, size_t N,
-                        size_t K) const = 0;
+  virtual ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& a,
+                        const ArrayRef& b, size_t m, size_t n,
+                        size_t k) const = 0;
+};
+
+class Conv2DKernel : public Kernel {
+ public:
+  void evaluate(KernelEvalContext* ctx) const override {
+    ctx->setOutput(proc(ctx, ctx->getParam<ArrayRef>(0),
+                        ctx->getParam<ArrayRef>(1), ctx->getParam<size_t>(2),
+                        ctx->getParam<size_t>(3), ctx->getParam<size_t>(4),
+                        ctx->getParam<size_t>(5), ctx->getParam<size_t>(6),
+                        ctx->getParam<size_t>(7), ctx->getParam<size_t>(8),
+                        ctx->getParam<size_t>(9), ctx->getParam<size_t>(10)));
+  }
+  // tensor: NxHxWxC
+  // filter: hxwxCxO
+  virtual ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& tensor,
+                        const ArrayRef& filter, size_t N, size_t H, size_t W,
+                        size_t C, size_t O, size_t h, size_t w, size_t stride_h,
+                        size_t stride_w) const = 0;
 };
 
 class BitrevKernel : public Kernel {

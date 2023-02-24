@@ -21,6 +21,7 @@ spu_cc_library(
     name = "cheetah_nonlinear",
     deps = [
         ":compare_prot",
+        ":equal_prot",
         ":truncate_prot",
     ],
 )
@@ -29,6 +30,16 @@ spu_cc_library(
     name = "compare_prot",
     srcs = ["compare_prot.cc"],
     hdrs = ["compare_prot.h"],
+    deps = [
+        "//libspu/mpc/cheetah/ot:cheetah_ot",
+        "@yacl//yacl/link",
+    ],
+)
+
+spu_cc_library(
+    name = "equal_prot",
+    srcs = ["equal_prot.cc"],
+    hdrs = ["equal_prot.h"],
     deps = [
         "//libspu/mpc/cheetah/ot:cheetah_ot",
         "@yacl//yacl/link",
@@ -58,6 +69,15 @@ spu_cc_test(
     srcs = ["truncate_prot_test.cc"],
     deps = [
         ":truncate_prot",
+        "//libspu/mpc/utils:simulate",
+    ],
+)
+
+spu_cc_test(
+    name = "equal_prot_test",
+    srcs = ["equal_prot_test.cc"],
+    deps = [
+        ":equal_prot",
         "//libspu/mpc/utils:simulate",
     ],
 )
