@@ -21,4 +21,6 @@ for net in network_a network_b network_c network_d; do
         bazel run -c opt //examples/python/ml/stax_nn -- --model ${net} --optimizer ${opt} -e 1
         echo "Finish training "${net}" "${opt}" "${end_ts}""
     done
-done 
+done
+# adam is slow so run network_a only
+bazel run -c opt //examples/python/ml/stax_nn -- --model network_a --optimizer adam -e 1
