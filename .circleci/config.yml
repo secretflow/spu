@@ -190,9 +190,6 @@ jobs:
     resource_class: large
     steps:
       - checkout
-      - restore_cache:
-          name: "Restore build cache"
-          key: spu-build-{{ arch }}-
       - run:
           name: "Install homebrew dependencies"
           command: |
@@ -219,17 +216,15 @@ jobs:
 
   linux_publish:
     docker:
-      - image: registry.hub.docker.com/secretflow/secretflow-gcc11-centos7-release:0.1
+      - image: registry.hub.docker.com/secretflow/release-ci:0.2
     resource_class: xlarge
     steps:
       - checkout
-      - restore_cache:
-          name: "Restore build cache"
-          key: spu-build-{{ arch }}-
       - run:
           name: "build package and publish"
           command: |
             set +e
+            pip install numpy
             env BAZEL_MAX_JOBS=16 sh ./build_wheel_entrypoint.sh
             spu_wheel_name=$(<./spu_wheel.name)
             spu_wheel_path="./${spu_wheel_name//sf-spu/sf_spu}"
