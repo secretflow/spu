@@ -190,9 +190,6 @@ jobs:
     resource_class: large
     steps:
       - checkout
-      - restore_cache:
-          name: "Restore build cache"
-          key: spu-build-{{ arch }}-
       - run:
           name: "Install homebrew dependencies"
           command: |
@@ -223,9 +220,6 @@ jobs:
     resource_class: xlarge
     steps:
       - checkout
-      - restore_cache:
-          name: "Restore build cache"
-          key: spu-build-{{ arch }}-
       - run:
           name: "build package and publish"
           command: |
