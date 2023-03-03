@@ -298,7 +298,7 @@ message TTPBeaverConfig {
   string server_host = 1;
   // if empty, use link id as session id.
   string session_id = 2;
-  // witch rank do adjust rpc call, Usually choose the rank closer to the server.
+  // which rank do adjust rpc call, Usually choose the rank closer to the server.
   int32 adjust_rank = 3;
 
   // TODO: TLS & brpc options.
