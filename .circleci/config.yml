@@ -181,8 +181,7 @@ jobs:
             sh .ci/rename-junit-xml.sh
             find bazel-bin/ -perm +111 -type f -name "*_test"  -print0 | xargs -0 tar -cvzf test_binary.tar.gz
             find bazel-testlogs/ -type f -name "test.log"  -print0 | xargs -0 tar -cvzf test_logs.tar.gz
-            # mac test somehow is really unstable on CI machines, make it always pass for now
-            exit 0
+            exit ${test_status}
       - save_cache:
           key: spu-build-{{ arch }}-{{ .Environment.CIRCLE_BUILD_NUM }}
           paths:
@@ -193,7 +192,7 @@ jobs:
           path: test_binary.tar.gz
       - store_artifacts:
           path: test_logs.tar.gz
-  macOS_publish:
+  macOS_x64_publish:
     macos:
       xcode: 13.4.1
     environment:
@@ -224,7 +223,35 @@ jobs:
             spu_wheel_path="./${spu_wheel_name//sf-spu/sf_spu}"
             python3 -m pip install twine
             python3 -m twine upload -r pypi -u __token__ -p ${PYPI_TWINE_TOKEN} $spu_wheel_path
-
+  macOS_arm64_publish:
+    macos:
+      xcode: 14.2
+    environment:
+      HOMEBREW_NO_AUTO_UPDATE: 1
+    resource_class: macos.m1.large.gen1
+    steps:
+      - checkout
+      - run:
+          name: "Install homebrew dependencies"
+          command: |
+            brew install bazel cmake ninja libomp wget go
+            (cd "/opt/homebrew/Cellar/bazel/6.0.0/libexec/bin" && curl -fLO https://github.com/bazelbuild/bazel/releases/download/5.4.0/bazel-5.4.0-darwin-arm64 && chmod +x bazel-5.4.0-darwin-arm64)
+      - run:
+          name: "Install Miniconda"
+          command: |
+            wget https://repo.anaconda.com/miniconda/Miniconda3-py38_23.1.0-1-MacOSX-arm64.sh -O ~/miniconda.sh
+            source $HOME/miniconda/bin/activate
+            conda init zsh bash
+            pip install -r requirements.txt
+      - run:
+          name: "build package and publish"
+          command: |
+            set +e
+            sh ./build_wheel_entrypoint.sh
+            spu_wheel_name=$(<./spu_wheel.name)
+            spu_wheel_path="./${spu_wheel_name//sf-spu/sf_spu}"
+            python3 -m pip install twine
+            python3 -m twine upload -r pypi -u __token__ -p ${PYPI_TWINE_TOKEN} $spu_wheel_path
   linux_publish:
     docker:
       - image: registry.hub.docker.com/secretflow/release-ci:0.2
@@ -259,4 +286,5 @@ workflows:
     when: << pipeline.parameters.GHA_Action >>
     jobs:
       - linux_publish
-      - macOS_publish
+      - macOS_x64_publish
+      - macOS_arm64_publish
