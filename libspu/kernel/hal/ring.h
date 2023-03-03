@@ -63,9 +63,6 @@ Value _msb(HalContext* ctx, const Value& in);
 // Return 1{x == y}
 Value _equal(HalContext* ctx, const Value& x, const Value& y);
 
-// Return 1{x == 0}
-Value _eqz(HalContext* ctx, const Value& x);
-
 Value _less(HalContext* ctx, const Value& x, const Value& y);
 
 Value _lshift(HalContext* ctx, const Value& in, size_t bits);
@@ -75,6 +72,9 @@ Value _rshift(HalContext* ctx, const Value& in, size_t bits);
 Value _arshift(HalContext* ctx, const Value& in, size_t bits);
 
 Value _trunc(HalContext* ctx, const Value& x, size_t bits = 0);
+
+Value _trunc_with_sign(HalContext* ctx, const Value& x, size_t bits = 0,
+                       bool is_positive = true);
 
 Value _bitrev(HalContext* ctx, const Value&, size_t start_idx, size_t end_idx);
 
@@ -100,6 +100,15 @@ Value _prefix_or(HalContext* ctx, const Value& x);
 
 // separate even and odd bits. e.g.
 //   xAyBzCwD -> xyzwABCD
-Value _seperate_odd_even(HalContext* ctx, const Value& in);
+Value _bitdeintl(HalContext* ctx, const Value& in);
+
+// Return value in arithmetic shared form if it's not.
+//
+// Note: theoretically, we should not leak `share` concept to hal layer.
+Value _prefer_a(HalContext* ctx, const Value& x);
+
+// Return value in binary shared form if it's not.
+// Note: theoretically, we should not leak `share` concept to hal layer.
+Value _prefer_b(HalContext* ctx, const Value& x);
 
 }  // namespace spu::kernel::hal

@@ -232,7 +232,7 @@ class TraceAction final {
     start_ = std::chrono::high_resolution_clock::now();
 
     const auto flag = flag_ & tracer_->getFlag();
-    if ((flag & TR_MODALL) != 0 && (flag & TR_LOGB) != 0) {
+    if ((flag & TR_LOGB) != 0) {
       detail_ = internal::variadicToString(std::forward<Args>(args)...);
       tracer_->logActionBegin(id_, mod_, name_, detail_);
       tracer_->incDepth();
@@ -251,15 +251,13 @@ class TraceAction final {
     end_ = std::chrono::high_resolution_clock::now();
 
     const auto flag = flag_ & tracer_->getFlag();
-    if ((flag & TR_MODALL) != 0) {
-      if ((flag & TR_LOGE) != 0) {
-        tracer_->decDepth();
-        tracer_->logActionEnd(id_, mod_, name_, detail_);
-      }
-      if ((flag & TR_REC) != 0) {
-        tracer_->getProfState()->addRecord(
-            ActionRecord{id_, name_, std::move(detail_), flag_, start_, end_});
-      }
+    if ((flag & TR_LOGE) != 0) {
+      tracer_->decDepth();
+      tracer_->logActionEnd(id_, mod_, name_, detail_);
+    }
+    if ((flag & TR_REC) != 0 && (flag & TR_MODALL) != 0) {
+      tracer_->getProfState()->addRecord(
+          ActionRecord{id_, name_, std::move(detail_), flag_, start_, end_});
     }
   }
 
@@ -331,12 +329,12 @@ std::shared_ptr<Tracer> getTracer(const std::string& id,
 
 #endif
 
-// trace an hal layer dispatch
+// trace an hlo layer dispatch
 #define SPU_TRACE_HLO_DISP(CTX, ...)                                   \
   SPU_TRACE_ACTION(GET_TRACER(CTX), (TR_HLO | TR_LOG), (~0), __func__, \
                    ##__VA_ARGS__)
 
-// trace an hal layer leaf
+// trace an hlo layer leaf
 #define SPU_TRACE_HLO_LEAF(CTX, ...)                                        \
   SPU_TRACE_ACTION(GET_TRACER(CTX), (TR_HLO | TR_LAR), (~TR_HLO), __func__, \
                    ##__VA_ARGS__)

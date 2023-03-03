@@ -14,6 +14,7 @@
 import functools
 from enum import Enum
 from typing import Callable, Dict, List
+import warnings
 
 from cachetools import LRUCache, cached
 
@@ -43,6 +44,50 @@ def _jax_compilation(fn: Callable, static_argnums, args: List, kwargs: Dict):
     return cfn.as_serialized_hlo_module_proto(), output
 
 
+## Frontend patches
+
+
+def _patch_fcn(obj, func_name, wrapped_func):
+    if hasattr(obj, func_name):
+        old_fcn = getattr(obj, func_name)
+        setattr(obj, func_name, wrapped_func)
+        return old_fcn
+    else:
+        warnings.warn(f'Failed to patch {func_name} in {obj}')
+
+
+# This is a fix to float->int cast in lax.sort
+def _patched_lax_float_to_int_for_sort(x):
+    return x
+
+
+lax_patches = {
+    # lax sort has  float->int bitcast which is causing problems on MPC protocols using fixed-point
+    # Replace this function with a no-op
+    '_float_to_int_for_sort': _patched_lax_float_to_int_for_sort,
+}
+
+
+def _patch_jax():
+    import jax._src.lax.lax as lax
+
+    patch_history = {}
+    for fcn_name, fcn in lax_patches.items():
+        patch_history[fcn_name] = _patch_fcn(lax, fcn_name, fcn)
+
+    return patch_history
+
+
+def _restore_jax_patch(patch_history):
+    import jax._src.lax.lax as lax
+
+    for fcn_name, fcn in patch_history.items():
+        _patch_fcn(lax, fcn_name, fcn)
+
+
+##
+
+
 class Kind(Enum):
     JAX = 1
     Tensorflow = 2
@@ -62,9 +107,15 @@ def compile(
     if kind == Kind.JAX:
         import jax
 
+        patches = _patch_jax()
+
         ir_text, output = _jax_compilation(fn, static_argnums, args, kwargs)
+
+        _restore_jax_patch(patches)
+
         output_flat, _ = jax.tree_util.tree_flatten(output)
         output_names = outputNameGen(output_flat)
+
     elif kind == Kind.Tensorflow:
         import tensorflow as tf
 

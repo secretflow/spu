@@ -166,7 +166,7 @@ std::shared_ptr<spdlog::logger> getTraceLogger() {
 void Tracer::logActionBegin(int64_t id, const std::string& mod,
                             const std::string& name,
                             const std::string& detail) const {
-  const auto indent = std::string(depth_ * 2, ' ');
+  const auto indent = getIndentString(depth_);
 
   if ((flag_ & TR_LOGM) != 0) {
     getTraceLogger()->info("[B] [M{}] {}{}.{}({})", GetPeakMemUsage(), indent,
@@ -179,7 +179,8 @@ void Tracer::logActionBegin(int64_t id, const std::string& mod,
 void Tracer::logActionEnd(int64_t id, const std::string& mod,
                           const std::string& name,
                           const std::string& detail) const {
-  const auto indent = std::string(depth_ * 2, ' ');
+  const auto indent = getIndentString(depth_);
+
   if ((flag_ & TR_LOGM) != 0) {
     getTraceLogger()->info("[E] [M{}] {}{}.{}({})", GetPeakMemUsage(), indent,
                            mod, name, detail);
@@ -190,9 +191,15 @@ void Tracer::logActionEnd(int64_t id, const std::string& mod,
 
 void initTrace(const std::string& ctx_id, int64_t tr_flag,
                const std::shared_ptr<spdlog::logger>& tr_logger) {
-  std::unique_lock lock(g_trace_flags_map_mutex);
-  g_trace_flags.emplace(ctx_id, tr_flag);
-
+  {
+    std::unique_lock lock(g_trace_flags_map_mutex);
+    g_trace_flags[ctx_id] = tr_flag;
+  }
+  // we may trigger initTrace several times with different rt_config in python
+  {
+    std::unique_lock lock(g_tracer_map_mutex);
+    g_tracers.erase(ctx_id);
+  }
   if (tr_logger) {
     setTraceLogger(tr_logger);
   }

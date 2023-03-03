@@ -18,7 +18,8 @@
 
 #include "yacl/link/context.h"
 
-#include "libspu/mpc/semi2k/beaver/trusted_party.h"
+#include "libspu/mpc/common/prg_tensor.h"
+#include "libspu/mpc/semi2k/beaver/beaver_interface.h"
 
 namespace spu::mpc::semi2k {
 
@@ -28,10 +29,10 @@ namespace spu::mpc::semi2k {
 // NOT BE used in production.
 //
 // Check security implications before moving on.
-class BeaverTfpUnsafe final {
- protected:
+class BeaverTfpUnsafe final : public Beaver {
+ private:
   // Only for rank0 party.
-  TrustedParty tp_;
+  std::vector<PrgSeed> seeds_;
 
   std::shared_ptr<yacl::link::Context> lctx_;
 
@@ -40,32 +41,21 @@ class BeaverTfpUnsafe final {
   PrgCounter counter_;
 
  public:
-  using Triple = std::tuple<ArrayRef, ArrayRef, ArrayRef>;
-  using Pair = std::pair<ArrayRef, ArrayRef>;
-
- public:
   explicit BeaverTfpUnsafe(std::shared_ptr<yacl::link::Context> lctx);
 
-  Triple Mul(FieldType field, size_t size);
+  Triple Mul(FieldType field, size_t size) override;
 
-  Triple And(FieldType field, size_t size);
+  Triple And(FieldType field, size_t size) override;
 
-  Triple Dot(FieldType field, size_t M, size_t N, size_t K);
+  Triple Dot(FieldType field, size_t M, size_t N, size_t K) override;
 
-  Pair Trunc(FieldType field, size_t size, size_t bits);
+  Pair Trunc(FieldType field, size_t size, size_t bits) override;
 
-  // ret[0] = random value in ring 2k
-  // ret[1] = (ret[0] << 1) >> (1+bits)
-  //          as share of (ret[0] mod 2^(k-1)) / 2^bits
-  // ret[2] = ret[0] >> (k-1)
-  //          as share of MSB(ret[0]) randbit
-  // use for Probabilistic truncation over Z2K
-  // https://eprint.iacr.org/2020/338.pdf
-  Triple TruncPr(FieldType field, size_t size, size_t bits);
+  Triple TruncPr(FieldType field, size_t size, size_t bits) override;
 
-  ArrayRef RandBit(FieldType field, size_t size);
+  ArrayRef RandBit(FieldType field, size_t size) override;
 
-  std::shared_ptr<yacl::link::Context> GetLink() const { return lctx_; }
+  std::unique_ptr<Beaver> Spawn() override;
 };
 
 }  // namespace spu::mpc::semi2k

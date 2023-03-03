@@ -186,13 +186,12 @@ Value exp2_pade_approx_for_positive_pure_decimal(HalContext* ctx,
 Value exp2_pade_approx(HalContext* ctx, const Value& x) {
   const size_t fbits = ctx->getFxpBits();
   const auto k1 = constant(ctx, 1U, x.shape());
-  const auto k0 = constant(ctx, 0U, x.shape());
   const auto k2 = constant(ctx, 2U, x.shape());
   // TODO(junfeng): Make int_bits configurable.
   const size_t int_bits = 5;
   const size_t bit_width = SizeOf(ctx->getField()) * 8;
 
-  const auto x_bshare = _or(ctx, x, k0);  // noop, to bshare
+  const auto x_bshare = _prefer_b(ctx, x);
   const auto x_msb = _rshift(ctx, x_bshare, bit_width - 1);
   auto x_integer = _rshift(ctx, x_bshare, fbits);
   auto x_fraction = _sub(ctx, x, _lshift(ctx, x_integer, fbits)).asFxp();
@@ -201,7 +200,7 @@ Value exp2_pade_approx(HalContext* ctx, const Value& x) {
   for (size_t idx = 0; idx < int_bits; idx++) {
     auto a = _and(ctx, _rshift(ctx, x_integer, idx), k1);
     detail::hintNumberOfBits(a, 1);
-    a = _mul(ctx, k1, a);  // noop, to ashare
+    a = _prefer_a(ctx, a);
     const auto K = 1U << std::min(1UL << idx, bit_width - 2);
     ret = _mul(ctx, ret,
                _add(ctx, _mul(ctx, a, constant(ctx, K, x.shape())),
@@ -366,7 +365,7 @@ static Value rsqrt_comp(HalContext* ctx, const Value& x, const Value& z) {
   Value a;
   Value b;
   {
-    auto z_sep = _seperate_odd_even(ctx, z);
+    auto z_sep = _bitdeintl(ctx, z);
     auto lo_mask =
         _constant(ctx, (static_cast<uint128_t>(1) << (k / 2)) - 1, x.shape());
     auto z_even = _and(ctx, z_sep, lo_mask);

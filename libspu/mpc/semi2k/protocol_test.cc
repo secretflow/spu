@@ -14,8 +14,11 @@
 
 #include "libspu/mpc/semi2k/protocol.h"
 
+#include <mutex>
+
 #include "libspu/mpc/api_test.h"
 #include "libspu/mpc/common/ab_api_test.h"
+#include "libspu/mpc/semi2k/beaver/ttp_server/beaver_server.h"
 
 namespace spu::mpc::test {
 namespace {
@@ -26,54 +29,89 @@ RuntimeConfig makeConfig(FieldType field) {
   return conf;
 }
 
+std::once_flag init_server;
+std::unique_ptr<brpc::Server> server;
+std::string server_host;
+
+void InitBeaverServer() {
+  std::call_once(init_server, []() {
+    server = semi2k::beaver::ttp_server::RunServer(0);
+    server_host = fmt::format("127.0.0.1:{}", server->listen_address().port);
+  });
+}
+
+std::unique_ptr<Object> makeTTPSemi2kProtocol(
+    const RuntimeConfig& rt, const std::shared_ptr<yacl::link::Context>& lctx) {
+  InitBeaverServer();
+  RuntimeConfig ttp_rt = rt;
+
+  ttp_rt.set_beaver_type(RuntimeConfig_BeaverType_TrustedThirdParty);
+  auto* ttp = ttp_rt.mutable_ttp_beaver_config();
+  ttp->set_adjust_rank(lctx->WorldSize() - 1);
+  ttp->set_server_host(server_host);
+
+  return makeSemi2kProtocol(ttp_rt, lctx);
+}
+
 }  // namespace
 
 INSTANTIATE_TEST_SUITE_P(
     Semi2k, ApiTest,
-    testing::Combine(testing::Values(makeSemi2kProtocol),            //
+    testing::Combine(testing::Values(CreateObjectFn(makeSemi2kProtocol, "tfp"),
+                                     CreateObjectFn(makeTTPSemi2kProtocol,
+                                                    "ttp")),         //
                      testing::Values(makeConfig(FieldType::FM32),    //
                                      makeConfig(FieldType::FM64),    //
                                      makeConfig(FieldType::FM128)),  //
                      testing::Values(2, 3, 5)),                      //
     [](const testing::TestParamInfo<ApiTest::ParamType>& p) {
-      return fmt::format("{}x{}", std::get<1>(p.param).field(),
-                         std::get<2>(p.param));
+      return fmt::format("{}x{}x{}", std::get<0>(p.param).name(),
+                         std::get<1>(p.param).field(), std::get<2>(p.param));
     });
 
 INSTANTIATE_TEST_SUITE_P(
     Semi2k, ArithmeticTest,
-    testing::Combine(testing::Values(makeSemi2kProtocol),            //
+    testing::Combine(testing::Values(CreateObjectFn(makeSemi2kProtocol, "tfp"),
+                                     CreateObjectFn(makeTTPSemi2kProtocol,
+                                                    "ttp")),         //
                      testing::Values(makeConfig(FieldType::FM32),    //
                                      makeConfig(FieldType::FM64),    //
                                      makeConfig(FieldType::FM128)),  //
                      testing::Values(2, 3, 5)),                      //
     [](const testing::TestParamInfo<ArithmeticTest::ParamType>& p) {
-      return fmt::format("{}x{}", std::get<1>(p.param).field(),
-                         std::get<2>(p.param));
+      return fmt::format("{}x{}x{}", std::get<0>(p.param).name(),
+                         std::get<1>(p.param).field(), std::get<2>(p.param));
+      ;
     });
 
 INSTANTIATE_TEST_SUITE_P(
     Semi2k, BooleanTest,
-    testing::Combine(testing::Values(makeSemi2kProtocol),            //
+    testing::Combine(testing::Values(CreateObjectFn(makeSemi2kProtocol, "tfp"),
+                                     CreateObjectFn(makeTTPSemi2kProtocol,
+                                                    "ttp")),         //
                      testing::Values(makeConfig(FieldType::FM32),    //
                                      makeConfig(FieldType::FM64),    //
                                      makeConfig(FieldType::FM128)),  //
                      testing::Values(2, 3, 5)),                      //
     [](const testing::TestParamInfo<BooleanTest::ParamType>& p) {
-      return fmt::format("{}x{}", std::get<1>(p.param).field(),
-                         std::get<2>(p.param));
+      return fmt::format("{}x{}x{}", std::get<0>(p.param).name(),
+                         std::get<1>(p.param).field(), std::get<2>(p.param));
+      ;
     });
 
 INSTANTIATE_TEST_SUITE_P(
     Semi2k, ConversionTest,
-    testing::Combine(testing::Values(makeSemi2kProtocol),            //
+    testing::Combine(testing::Values(CreateObjectFn(makeSemi2kProtocol, "tfp"),
+                                     CreateObjectFn(makeTTPSemi2kProtocol,
+                                                    "ttp")),         //
                      testing::Values(makeConfig(FieldType::FM32),    //
                                      makeConfig(FieldType::FM64),    //
                                      makeConfig(FieldType::FM128)),  //
                      testing::Values(2, 3, 5)),                      //
     [](const testing::TestParamInfo<BooleanTest::ParamType>& p) {
-      return fmt::format("{}x{}", std::get<1>(p.param).field(),
-                         std::get<2>(p.param));
+      return fmt::format("{}x{}x{}", std::get<0>(p.param).name(),
+                         std::get<1>(p.param).field(), std::get<2>(p.param));
+      ;
     });
 
 }  // namespace spu::mpc::test

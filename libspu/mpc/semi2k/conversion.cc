@@ -20,7 +20,7 @@
 #include "libspu/mpc/common/ab_kernels.h"
 #include "libspu/mpc/common/communicator.h"
 #include "libspu/mpc/common/prg_state.h"
-#include "libspu/mpc/semi2k/object.h"
+#include "libspu/mpc/semi2k/state.h"
 #include "libspu/mpc/semi2k/type.h"
 #include "libspu/mpc/utils/ring_ops.h"
 
@@ -64,7 +64,7 @@ ArrayRef B2A::proc(KernelEvalContext* ctx, const ArrayRef& x) const {
 
   // evaluate adder circuit on x & r, and reveal x+r
   auto x_plus_r =
-      comm->allReduce(ReduceOp::XOR, and_bb(ctx->caller(), x, r_b), kBindName);
+      comm->allReduce(ReduceOp::XOR, add_bb(ctx->caller(), x, r_b), kBindName);
 
   // compute -r + (x+r)
   ring_neg_(r_a);

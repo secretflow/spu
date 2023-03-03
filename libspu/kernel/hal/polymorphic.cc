@@ -189,7 +189,6 @@ Value equal(HalContext* ctx, const Value& x, const Value& y) {
 
   // Note: following method does work, but slower ...
   // With optimized msb kernel, A2B+PreOr is slower than 2*MSB
-  // return _eqz(ctx, sub(ctx, x, y)).setDtype(DT_I1);
   return bitwise_and(ctx, logical_not(ctx, less(ctx, x, y)),
                      logical_not(ctx, less(ctx, y, x)));
 }

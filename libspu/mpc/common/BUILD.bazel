@@ -104,12 +104,22 @@ spu_cc_library(
 )
 
 spu_cc_library(
+    name = "api_test_params",
+    hdrs = ["api_test_params.h"],
+    deps = [
+        "//libspu/mpc:object",
+        "@yacl//yacl/link",
+    ],
+)
+
+spu_cc_library(
     name = "ab_api_test",
     testonly = 1,
     srcs = ["ab_api_test.cc"],
     hdrs = ["ab_api_test.h"],
     deps = [
         ":ab_api",
+        ":api_test_params",
         ":pub2k",
         "//libspu/mpc:object",
         "//libspu/mpc/common:communicator",

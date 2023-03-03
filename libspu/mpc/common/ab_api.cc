@@ -565,6 +565,7 @@ class ABProtEqualSS : public BinaryKernel {
     if (_LAZY_AB) {
       return _EqualAA(_2A(x), _2A(y));
     }
+    // TODO: equal could be done in boolean domain.
     return _EqualAA(x, y);
   }
 };
@@ -582,19 +583,6 @@ class ABProtEqualSP : public BinaryKernel {
       return _EqualAP(_2A(x), y);
     }
     return _EqualAP(x, y);
-  }
-};
-
-class ABProtEqzS : public UnaryKernel {
- public:
-  static constexpr char kBindName[] = "eqz_s";
-
-  Kind kind() const override { return Kind::Dynamic; }
-
-  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in) const override {
-    SPU_TRACE_MPC_DISP(ctx, in);
-    //
-    SPU_THROW("TODO");
   }
 };
 
@@ -792,7 +780,6 @@ void regABKernels(Object* obj) {
   obj->regKernel<ABProtAndSS>();
   obj->regKernel<ABProtXorSP>();
   obj->regKernel<ABProtXorSS>();
-  obj->regKernel<ABProtEqzS>();
   obj->regKernel<ABProtEqualSS>();
   obj->regKernel<ABProtEqualSP>();
   obj->regKernel<ABProtLShiftS>();

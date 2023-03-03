@@ -159,10 +159,12 @@ spu::Value Convolution(HalContext *ctx, const spu::Value &lhs,
                             rhs_dim_multipliers[kernel_output_z_dim];
         rhs_linear_index += rhs_iz * rhs_dim_multipliers[kernel_input_z_dim];
 
-        lhs_slice.copyElementFrom(lhs.getElementAt(lhs_linear_index), {},
-                                  output_index);
-        rhs_slice.copyElementFrom(rhs.getElementAt(rhs_linear_index), {},
-                                  output_index);
+        lhs_slice.data().update_slice(lhs.data().slice_scalar_at(unflattenIndex(
+                                          lhs_linear_index, lhs.shape())),
+                                      output_index);
+        rhs_slice.data().update_slice(rhs.data().slice_scalar_at(unflattenIndex(
+                                          rhs_linear_index, rhs.shape())),
+                                      output_index);
       }
     });
 

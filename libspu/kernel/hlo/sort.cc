@@ -17,6 +17,7 @@
 #include "libspu/kernel/hal/constants.h"
 #include "libspu/kernel/hal/debug.h"
 #include "libspu/kernel/hal/polymorphic.h"
+#include "libspu/kernel/hal/ring.h"
 #include "libspu/kernel/hlo/basic_binary.h"
 #include "libspu/kernel/hlo/utils.h"
 
@@ -36,7 +37,7 @@ void SliceCopy(spu::Value &dst, const spu::Value &src,
   auto copy_size = src.shape()[0];
   for (int64_t idx = 0; idx < copy_size; ++idx) {
     dst_indices[dim] = idx;
-    dst.copyElementFrom(src, {idx}, dst_indices);
+    dst.data().update_slice(src.data().slice_scalar_at({idx}), dst_indices);
   }
 }
 
@@ -85,9 +86,8 @@ void CmpSwap(HalContext *ctx, const CompFn &comparator_body,
                         values_to_sort[i].dtype());
   }
 
-  spu::Value predicate =
-      Add(ctx, comparator_body(values),
-          hal::zeros(ctx, values[0].vtype(), DT_I1, values[0].shape()));
+  spu::Value predicate = comparator_body(values);
+  predicate = hal::_prefer_a(ctx, predicate);
 
   for (size_t i = 0; i < num_operands; ++i) {
     auto fst = values[2 * i];

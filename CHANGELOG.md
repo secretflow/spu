@@ -8,11 +8,14 @@
 
 ## staging
 > please add your unreleased change here.
+- [Feature] Add TrustedThirdParty beaver provider for semi2k
 - [Feature] Expose ssl/tls options
 - [Feature] Add EpsilonOp
 - [Feature] Support CaseOp
 - [Feature] Improve sort performance
 - [bugfix] Fix boolean ConstantOp
+- [bugfix] Fix jnp.median
+- [bugfix] Fix jnp.sort on floating point inputs
 - [3p] Relax TensorFlow version in requirements.txt
 - [3p] Move to OpenXLA
 - [API] Move C++ API from spu to libspu

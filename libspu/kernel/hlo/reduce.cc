@@ -26,6 +26,7 @@
 #include "libspu/kernel/hal/concat.h"
 #include "libspu/kernel/hal/constants.h"
 #include "libspu/kernel/hal/polymorphic.h"
+#include "libspu/kernel/hal/ring.h"
 #include "libspu/kernel/hal/shape_ops.h"
 #include "libspu/kernel/hal/type_cast.h"
 #include "libspu/kernel/hlo/geometrical.h"
@@ -158,7 +159,8 @@ spu::Value ExpandStridedWindow(
               base_shape, base_dilations, window_count_index, window_index,
               absl::MakeSpan(base_index));
           if (!out_of_bound) {
-            expanded.copyElementFrom(base, base_index, expanded_index);
+            expanded.data().update_slice(
+                base.data().slice_scalar_at(base_index), expanded_index);
           }
           if (!bumpIndices<int64_t>(expanded_shape,
                                     absl::MakeSpan(expanded_index))) {
@@ -334,7 +336,7 @@ std::vector<spu::Value> ReduceWindowImpl(
       auto r = evaluate_impl(absl::MakeSpan(output_index));
       if (!r.empty()) {
         for (int64_t idx = 0; idx < nargs; ++idx) {
-          batchs[idx].copyElementFrom(r[idx], {}, output_index);
+          batchs[idx].data().update_slice(r[idx].data(), output_index);
         }
       }
     } while (
@@ -453,7 +455,6 @@ std::vector<spu::Value> Reduce(HalContext *ctx,
 std::pair<spu::Value, spu::Value> ArgMax1x2x2x1NoPaddingWithoutDilation(
     HalContext *ctx, const spu::Value &input,
     absl::Span<const int64_t> window_strides) {
-  const bool prefer_a = ctx->rt_config().protocol() != ProtocolKind::CHEETAH;
   auto input_shape = input.shape();
 
   spu::Value h_max;
@@ -476,11 +477,7 @@ std::pair<spu::Value, spu::Value> ArgMax1x2x2x1NoPaddingWithoutDilation(
     // Do a less comp
     auto h_comp = hal::less(ctx, rhs, lhs);
     // make comp an ashare
-    if (prefer_a) {
-      h_comp =
-          hal::add(ctx, h_comp,
-                   hal::zeros(ctx, VIS_PUBLIC, h_comp.dtype(), h_comp.shape()));
-    }
+    h_comp = hal::_prefer_a(ctx, h_comp);
 
     auto h_i_comp = hal::reshape(ctx, h_comp,
                                  {h_comp.shape()[0], h_comp.shape()[1],
@@ -510,12 +507,7 @@ std::pair<spu::Value, spu::Value> ArgMax1x2x2x1NoPaddingWithoutDilation(
       strides);
 
   auto v_comp = hal::less(ctx, bottom_value, upper_value);
-  if (prefer_a) {
-    // make comp an ashare
-    v_comp =
-        hal::add(ctx, v_comp,
-                 hal::zeros(ctx, VIS_PUBLIC, v_comp.dtype(), v_comp.shape()));
-  }
+  v_comp = hal::_prefer_a(ctx, v_comp);
 
   // Compute max value
   auto max_ret = hal::select(ctx, v_comp, upper_value, bottom_value);
@@ -583,7 +575,6 @@ std::pair<spu::Value, spu::Value> ArgMax(HalContext *ctx,
   xt::xarray<bool> e = xt::eye<bool>({window_size, window_size}, 0);
 
   auto mask = hal::constant(ctx, e);
-  const bool prefer_a = ctx->rt_config().protocol() != ProtocolKind::CHEETAH;
 
   auto result = ReduceWindowImpl(
       ctx, {input, mask}, {}, ret_shape, config, true, true,
@@ -591,11 +582,7 @@ std::pair<spu::Value, spu::Value> ArgMax(HalContext *ctx,
           absl::Span<spu::Value const> rhs) -> std::vector<spu::Value> {
         SPU_ENFORCE(lhs.size() == 2);
         auto c = hal::less(ctx, rhs[0], lhs[0]);
-        if (prefer_a) {
-          // make a share
-          c = hal::add(ctx, c,
-                       hal::zeros(ctx, VIS_PUBLIC, c.dtype(), c.shape()));
-        }
+        c = hal::_prefer_a(ctx, c);
         // Select value
         auto v = hal::select(ctx, c, lhs[0], rhs[0]);
         // Select index

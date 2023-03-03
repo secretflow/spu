@@ -159,11 +159,13 @@ void printProfilingData(spu::HalContext *hctx, const std::string &name,
           total_time += stat.getTotalTimeInSecond();
         }
       }
-      SPDLOG_INFO("{} profiling: total time {}", mod_name, total_time);
-      for (const auto &[key, stat] : stats) {
-        if ((key.flag & mod_flag) != 0) {
-          SPDLOG_INFO("- {}, executed {} times, duration {}s", key.name,
-                      stat.count, stat.getTotalTimeInSecond());
+      if ((tracer->getFlag() & mod_flag) != 0) {
+        SPDLOG_INFO("{} profiling: total time {}", mod_name, total_time);
+        for (const auto &[key, stat] : stats) {
+          if ((key.flag & mod_flag) != 0) {
+            SPDLOG_INFO("- {}, executed {} times, duration {}s", key.name,
+                        stat.count, stat.getTotalTimeInSecond());
+          }
         }
       }
     }
@@ -179,7 +181,7 @@ void setupTrace(spu::HalContext *hctx, const spu::RuntimeConfig &rt_config) {
   // TODO: Support tracing for parallel op execution
   if (rt_config.enable_action_trace() &&
       !rt_config.experimental_enable_intra_op_par()) {
-    tr_flag |= TR_LOG | TR_MODALL;
+    tr_flag |= TR_LOG;
   }
 
   if (rt_config.enable_pphlo_profile()) {

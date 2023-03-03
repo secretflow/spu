@@ -141,21 +141,6 @@ class Ref2kNotS : public UnaryKernel {
   }
 };
 
-class Ref2kEqzS : public UnaryKernel {
- public:
-  static constexpr char kBindName[] = "eqz_s";
-
-  ce::CExpr latency() const override { return ce::Const(0); }
-
-  ce::CExpr comm() const override { return ce::Const(0); }
-
-  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in) const override {
-    SPU_TRACE_MPC_LEAF(ctx, in);
-    const auto field = in.eltype().as<Ring2k>()->field();
-    return ring_equal(in, ring_zeros(field, in.numel())).as(in.eltype());
-  }
-};
-
 class Ref2kAddSS : public BinaryKernel {
  public:
   static constexpr char kBindName[] = "add_ss";
@@ -446,7 +431,6 @@ std::unique_ptr<Object> makeRef2kProtocol(
   obj->regKernel<Ref2kP2S>();
   obj->regKernel<Ref2kS2P>();
   obj->regKernel<Ref2kNotS>();
-  obj->regKernel<Ref2kEqzS>();
   obj->regKernel<Ref2kAddSS>();
   obj->regKernel<Ref2kAddSP>();
   obj->regKernel<Ref2kMulSS>();

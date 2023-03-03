@@ -83,9 +83,6 @@ ArrayRef equal_pp(Object* ctx, const ArrayRef&, const ArrayRef&);
 ArrayRef equal_sp(Object* ctx, const ArrayRef&, const ArrayRef&);
 ArrayRef equal_ss(Object* ctx, const ArrayRef&, const ArrayRef&);
 
-ArrayRef eqz_p(Object* ctx, const ArrayRef&);
-ArrayRef eqz_s(Object* ctx, const ArrayRef&);
-
 ArrayRef lshift_p(Object* ctx, const ArrayRef&, size_t);
 ArrayRef lshift_s(Object* ctx, const ArrayRef&, size_t);
 

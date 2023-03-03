@@ -21,12 +21,12 @@
 #include "libspu/mpc/cheetah/arithmetic.h"
 #include "libspu/mpc/cheetah/boolean.h"
 #include "libspu/mpc/cheetah/conversion.h"
-#include "libspu/mpc/cheetah/object.h"
+#include "libspu/mpc/cheetah/state.h"
 #include "libspu/mpc/common/ab_api.h"
 #include "libspu/mpc/common/ab_kernels.h"
 #include "libspu/mpc/common/pub2k.h"
 #include "libspu/mpc/object.h"
-#include "libspu/mpc/semi2k/object.h"
+#include "libspu/mpc/semi2k/state.h"
 #include "libspu/mpc/semi2k/type.h"
 
 namespace spu::mpc {
@@ -77,6 +77,7 @@ std::unique_ptr<Object> makeCheetahProtocol(
   obj->regKernel<cheetah::Conv2DAA>();
   obj->regKernel<cheetah::LShiftA>();
   obj->regKernel<cheetah::TruncA>();
+  obj->regKernel<cheetah::TruncAWithSign>();
   obj->regKernel<cheetah::MsbA2B>();
 
   obj->regKernel<common::AddBB>();

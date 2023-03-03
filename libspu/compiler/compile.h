@@ -26,6 +26,4 @@ class CompilationContext;
 std::string compile(CompilationContext *ctx, const std::string &serialized_ir,
                     const std::string &ir_type);
 
-std::string compile(CompilationContext *ctx, const std::filesystem::path &file);
-
 } // namespace spu::compiler

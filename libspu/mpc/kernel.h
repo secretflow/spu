@@ -109,4 +109,19 @@ class TruncAKernel : public ShiftKernel {
   virtual TruncLsbRounding lsbRounding() const = 0;
 };
 
+class TruncAWithSignKernel : public Kernel {
+ public:
+  void evaluate(KernelEvalContext* ctx) const override {
+    ctx->setOutput(proc(ctx, ctx->getParam<ArrayRef>(0),
+                        ctx->getParam<size_t>(1), ctx->getParam<bool>(2)));
+  }
+
+  virtual bool hasMsbError() const = 0;
+
+  virtual TruncLsbRounding lsbRounding() const = 0;
+
+  virtual ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in, size_t bits,
+                        bool is_positive) const = 0;
+};
+
 }  // namespace spu::mpc

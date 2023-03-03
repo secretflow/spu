@@ -20,7 +20,7 @@
 #include "libspu/mpc/common/pub2k.h"
 #include "libspu/mpc/object.h"
 #include "libspu/mpc/spdz2k/arithmetic.h"
-#include "libspu/mpc/spdz2k/object.h"
+#include "libspu/mpc/spdz2k/state.h"
 #include "libspu/mpc/spdz2k/type.h"
 
 namespace spu::mpc {

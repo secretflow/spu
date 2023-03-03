@@ -49,3 +49,29 @@ def bucket_psi(
     report = PsiResultReport()
     report.ParseFromString(report_str)
     return report
+
+
+def gen_cache_for_2pc_ub_psi(config: BucketPsiConfig) -> PsiResultReport:
+    """This API is still experimental.
+
+    Args:
+        config (BucketPsiConfig): only the following fields are required:
+            - input_params
+            - output_params
+            - bucket_size
+            - curve_type
+            - ecdh_secret_key_path
+
+        Other fields would be overwritten.
+
+    Returns:
+        PsiResultReport: statistical results
+    """
+    config.psi_type = PsiType.Value('ECDH_OPRF_UB_PSI_2PC_GEN_CACHE')
+    config.broadcast_result = False
+    config.output_params.need_sort = False
+    config.receiver_rank = 0
+    report_str = libspu.libs.bucket_psi(None, config.SerializeToString())
+    report = PsiResultReport()
+    report.ParseFromString(report_str)
+    return report

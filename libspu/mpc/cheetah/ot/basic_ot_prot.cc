@@ -187,13 +187,48 @@ ArrayRef BasicOTProtocols::BitwiseAnd(const ArrayRef &lhs,
   size_t size = lhs.numel();
   auto [a, b, c] = AndTriple(field, size, shareType->nbits());
 
-  // open x^a, y^b
-  auto res =
-      vectorize({ring_xor(lhs, a), ring_xor(rhs, b)}, [&](const ArrayRef &s) {
+  ArrayRef x_a = ring_xor(lhs, a);
+  ArrayRef y_b = ring_xor(rhs, b);
+  size_t pack_load = 8 * SizeOf(field) / shareType->nbits();
+
+  if (pack_load == 1) {
+    // Open x^a, y^b
+    auto res = vectorize({x_a, y_b}, [&](const ArrayRef &s) {
+      return conn_->allReduce(ReduceOp::XOR, s, "BitwiseAnd");
+    });
+    x_a = std::move(res[0]);
+    y_b = std::move(res[1]);
+  } else {
+    // Open x^a, y^b
+    // pack multiple nbits() into single field element before exchange
+    SPU_ENFORCE(x_a.isCompact() && y_b.isCompact());
+    size_t packed_sze = CeilDiv(size, pack_load);
+
+    ArrayRef packed_xa(x_a.eltype(), packed_sze);
+    ArrayRef packed_yb(y_b.eltype(), packed_sze);
+    DISPATCH_ALL_FIELDS(field, "", [&]() {
+      size_t used =
+          ZipArray<ring2k_t>({&x_a.at<ring2k_t>(0), size}, shareType->nbits(),
+                             {&packed_xa.at<ring2k_t>(0), packed_sze});
+      SPU_ENFORCE_EQ(used, packed_sze);
+
+      (void)ZipArray<ring2k_t>({&y_b.at<ring2k_t>(0), size}, shareType->nbits(),
+                               {&packed_yb.at<ring2k_t>(0), packed_sze});
+
+      // open x^a, y^b
+      auto res = vectorize({packed_xa, packed_yb}, [&](const ArrayRef &s) {
         return conn_->allReduce(ReduceOp::XOR, s, "BitwiseAnd");
       });
-  auto x_a = std::move(res[0]);
-  auto y_b = std::move(res[1]);
+
+      packed_xa = std::move(res[0]);
+      packed_yb = std::move(res[1]);
+      UnzipArray<ring2k_t>({&packed_xa.at<ring2k_t>(0), packed_sze},
+                           shareType->nbits(), {&x_a.at<ring2k_t>(0), size});
+
+      UnzipArray<ring2k_t>({&packed_yb.at<ring2k_t>(0), packed_sze},
+                           shareType->nbits(), {&y_b.at<ring2k_t>(0), size});
+    });
+  }
 
   // Zi = Ci ^ ((X ^ A) & Bi) ^ ((Y ^ B) & Ai) ^ <(X ^ A) & (Y ^ B)>
   auto z = ring_xor(ring_xor(ring_and(x_a, b), ring_and(y_b, a)), c);

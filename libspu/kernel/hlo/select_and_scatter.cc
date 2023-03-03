@@ -28,6 +28,7 @@
 #include "libspu/kernel/hal/debug.h"
 #include "libspu/kernel/hal/pad.h"
 #include "libspu/kernel/hal/polymorphic.h"  // for select
+#include "libspu/kernel/hal/ring.h"
 #include "libspu/kernel/hal/shape_ops.h"
 #include "libspu/kernel/hal/type_cast.h"
 #include "libspu/kernel/hlo/const.h"
@@ -150,8 +151,9 @@ spu::Value MaxPoolScatter(
                 absl::MakeSpan(tiled_index).subspan(0, ndim), window_index,
                 absl::MakeSpan(base_x_window_index).subspan(0, ndim));
             if (!out_of_bound) {
-              output.copyElementFrom(selected, tiled_index,
-                                     base_x_window_index);
+              output.data().update_slice(
+                  selected.data().slice_scalar_at(tiled_index),
+                  base_x_window_index);
             }
             bumpIndices<int64_t>(source.shape(),
                                  absl::MakeSpan(tiled_index).subspan(0, ndim));
@@ -210,9 +212,7 @@ spu::Value SelectAndScatterExpanded(
       ctx, {tiled_1d, indices}, tiled_1d_shape.size() - 1,
       [&](absl::Span<const spu::Value> lhs, absl::Span<const spu::Value> rhs) {
         auto pred = select_fn(lhs[0], rhs[0]);
-        pred =
-            hal::mul(ctx, pred,
-                     hal::constant(ctx, 1U, pred.shape()));  // noop, to ashare
+        pred = hal::_prefer_a(ctx, pred);
 
         std::vector<spu::Value> rets;
         for (size_t idx = 0; idx < lhs.size(); idx++) {
@@ -262,7 +262,8 @@ spu::Value SelectAndScatterExpanded(
           absl::MakeSpan(tiled_index).subspan(0, ndim), window_index,
           absl::MakeSpan(base_x_window_index).subspan(0, ndim));
       if (!out_of_bound) {
-        output.copyElementFrom(selected, tiled_index, base_x_window_index);
+        output.data().update_slice(selected.data().slice_scalar_at(tiled_index),
+                                   base_x_window_index);
       }
 
     } while (bumpIndices<int64_t>(
@@ -318,9 +319,11 @@ spu::Value SelectAndScatterNaive(
             window_shape, window_strides, dummy_window_dilation, window_padding,
             operand.shape(), dummy_base_dilation, output_index, window_index,
             [&](absl::Span<const int64_t> operand_index) {
-              current_val.copyElementFrom(operand, operand_index, output_index);
-              current_idx.copyElementFrom(idx_matrix, operand_index,
-                                          output_index);
+              current_val.data().update_slice(
+                  operand.data().slice_scalar_at(operand_index), output_index);
+              current_idx.data().update_slice(
+                  idx_matrix.data().slice_scalar_at(operand_index),
+                  output_index);
             });
       } while (
           bumpIndices<int64_t>(source.shape(), absl::MakeSpan(output_index)));
@@ -355,8 +358,10 @@ spu::Value SelectAndScatterNaive(
           window_shape, window_strides, dummy_window_dilation, window_padding,
           operand.shape(), dummy_base_dilation, output_index, window_index,
           [&](absl::Span<const int64_t> operand_index) {
-            idx_slice.copyElementFrom(idx_matrix, operand_index, output_index);
-            result_slice.copyElementFrom(result, operand_index, output_index);
+            idx_slice.data().update_slice(
+                idx_matrix.data().slice_scalar_at(operand_index), output_index);
+            result_slice.data().update_slice(
+                result.data().slice_scalar_at(operand_index), output_index);
           });
     } while (
         bumpIndices<int64_t>(source.shape(), absl::MakeSpan(output_index)));
@@ -370,12 +375,14 @@ spu::Value SelectAndScatterNaive(
     // Reset, copy window again...
     std::fill(output_index.begin(), output_index.end(), 0);
     do {
-      RunOnWindowIndex(
-          window_shape, window_strides, dummy_window_dilation, window_padding,
-          operand.shape(), dummy_base_dilation, output_index, window_index,
-          [&](absl::Span<const int64_t> operand_index) {
-            result.copyElementFrom(result_slice, output_index, operand_index);
-          });
+      RunOnWindowIndex(window_shape, window_strides, dummy_window_dilation,
+                       window_padding, operand.shape(), dummy_base_dilation,
+                       output_index, window_index,
+                       [&](absl::Span<const int64_t> operand_index) {
+                         result.data().update_slice(
+                             result_slice.data().slice_scalar_at(output_index),
+                             operand_index);
+                       });
     } while (
         bumpIndices<int64_t>(source.shape(), absl::MakeSpan(output_index)));
   } while (bumpIndices<int64_t>(window_shape, absl::MakeSpan(window_index)));

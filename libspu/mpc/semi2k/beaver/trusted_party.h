@@ -27,27 +27,23 @@ namespace spu::mpc::semi2k {
 
 class TrustedParty {
  private:
-  std::vector<std::optional<PrgSeed>> seeds_;
-  mutable std::shared_mutex mutex_;
+  using Seeds = absl::Span<const PrgSeed>;
+  using Descs = absl::Span<const PrgArrayDesc>;
 
  public:
-  void setSeed(size_t rank, size_t world_size, const PrgSeed& seed);
+  static ArrayRef adjustMul(Descs descs, Seeds seeds);
 
-  std::vector<PrgSeed> getSeeds() const;
+  static ArrayRef adjustDot(Descs descs, Seeds seeds, size_t M, size_t N,
+                            size_t K);
 
-  ArrayRef adjustMul(absl::Span<const PrgArrayDesc> descs) const;
+  static ArrayRef adjustAnd(Descs descs, Seeds seeds);
 
-  ArrayRef adjustDot(absl::Span<const PrgArrayDesc> descs, size_t M, size_t N,
-                     size_t K) const;
+  static ArrayRef adjustTrunc(Descs descs, Seeds seeds, size_t bits);
 
-  ArrayRef adjustAnd(absl::Span<const PrgArrayDesc> descs) const;
+  static std::pair<ArrayRef, ArrayRef> adjustTruncPr(Descs descs, Seeds seeds,
+                                                     size_t bits);
 
-  ArrayRef adjustTrunc(absl::Span<const PrgArrayDesc> descs, size_t bits) const;
-
-  std::pair<ArrayRef, ArrayRef> adjustTruncPr(
-      absl::Span<const PrgArrayDesc> descs, size_t bits) const;
-
-  ArrayRef adjustRandBit(const PrgArrayDesc& descs) const;
+  static ArrayRef adjustRandBit(Descs descs, Seeds seeds);
 };
 
 }  // namespace spu::mpc::semi2k

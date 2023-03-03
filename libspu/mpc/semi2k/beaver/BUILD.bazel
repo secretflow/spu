@@ -21,6 +21,7 @@ spu_cc_library(
     srcs = ["beaver_tfp.cc"],
     hdrs = ["beaver_tfp.h"],
     deps = [
+        ":beaver_interface",
         ":trusted_party",
         "//libspu/mpc/common:prg_tensor",
         "//libspu/mpc/utils:ring_ops",
@@ -31,10 +32,12 @@ spu_cc_library(
 )
 
 spu_cc_test(
-    name = "beaver_tfp_test",
-    srcs = ["beaver_tfp_test.cc"],
+    name = "beaver_test",
+    srcs = ["beaver_test.cc"],
     deps = [
         ":beaver_tfp",
+        ":beaver_ttp",
+        "//libspu/mpc/semi2k/beaver/ttp_server:beaver_server",
         "//libspu/mpc/utils:simulate",
         "@com_google_googletest//:gtest",
     ],
@@ -48,5 +51,28 @@ spu_cc_library(
         "//libspu/core:type_util",
         "//libspu/mpc/common:prg_tensor",
         "//libspu/mpc/utils:ring_ops",
+    ],
+)
+
+spu_cc_library(
+    name = "beaver_interface",
+    hdrs = ["beaver_interface.h"],
+    deps = [
+        "//libspu/core",
+    ],
+)
+
+spu_cc_library(
+    name = "beaver_ttp",
+    srcs = ["beaver_ttp.cc"],
+    hdrs = ["beaver_ttp.h"],
+    deps = [
+        ":beaver_interface",
+        "//libspu/mpc/common:prg_tensor",
+        "//libspu/mpc/semi2k/beaver/ttp_server:service_cc_proto",
+        "//libspu/mpc/utils:ring_ops",
+        "@com_github_microsoft_seal//:seal",
+        "@yacl//yacl/link",
+        "@yacl//yacl/utils:parallel",
     ],
 )

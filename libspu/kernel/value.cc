@@ -59,37 +59,11 @@ Value& Value::setDtype(DataType new_dtype, bool force) {
   return *this;
 }
 
-// #define SANITY_ELEWRITE
-
-void Value::copyElementFrom(const Value& v, absl::Span<const int64_t> input_idx,
-                            absl::Span<const int64_t> output_idx,
-                            int64_t elsize) {
-#ifdef SANITY_ELEWRITE
-  for (size_t idx = 0; idx < shape().size(); ++idx) {
-    if (shape()[idx] != 1) {
-      SPU_ENFORCE(strides()[idx] != 0,
-                  "Copy into a broadcast value is not safe");
-    }
-  }
-#endif
-  memcpy(&data_.at(output_idx), &v.data_.at(input_idx),
-         elsize == -1 ? data_.elsize() : elsize);
-}
-
 Value Value::getElementAt(absl::Span<const int64_t> index) const {
   // TODO: use NdArrayRef.slice to implement this function.
   SPU_ENFORCE(dtype() != DT_INVALID);
 
-  std::vector<int64_t> start_index(index.size(), 0);
-  const int64_t new_offset =
-      &data_.at(index) - &data_.at(start_index) + data_.offset();
-
-  NdArrayRef data = {data_.buf(),
-                     data_.eltype(),
-                     {},  // shape, empty as scalar
-                     {},  // stride
-                     new_offset};
-  return Value(data, dtype_);
+  return Value(data().slice_scalar_at(index), dtype_);
 }
 
 Value Value::getElementAt(int64_t idx) const {
@@ -155,7 +129,7 @@ Value Value::clone() const { return Value(data_.clone(), dtype()); }
 
 std::ostream& operator<<(std::ostream& out, const Value& v) {
   out << fmt::format("Value<{}x{}{},s={}>", fmt::join(v.shape(), "x"),
-                     v.vtype(), v.dtype(), fmt::join(v.strides(), "x"));
+                     v.vtype(), v.dtype(), fmt::join(v.strides(), ","));
   return out;
 }
 

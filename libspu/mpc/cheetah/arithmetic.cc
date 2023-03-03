@@ -22,7 +22,7 @@
 #include "libspu/mpc/cheetah/nonlinear/compare_prot.h"
 #include "libspu/mpc/cheetah/nonlinear/equal_prot.h"
 #include "libspu/mpc/cheetah/nonlinear/truncate_prot.h"
-#include "libspu/mpc/cheetah/object.h"
+#include "libspu/mpc/cheetah/state.h"
 #include "libspu/mpc/common/communicator.h"
 #include "libspu/mpc/common/pub2k.h"
 #include "libspu/mpc/semi2k/type.h"
@@ -30,6 +30,42 @@
 
 namespace spu::mpc::cheetah {
 constexpr size_t kMinWorkSize = 5000;
+
+ArrayRef TruncAWithSign::proc(KernelEvalContext* ctx, const ArrayRef& x,
+                              size_t bits, bool is_positive) const {
+  SPU_TRACE_MPC_LEAF(ctx, x);
+  auto* comm = ctx->getState<Communicator>();
+  auto* ot_state = ctx->getState<CheetahOTState>();
+  size_t n = x.numel();
+  size_t nworker =
+      std::min(ot_state->parallel_size(), CeilDiv(n, kMinWorkSize));
+  size_t work_load = CeilDiv(n, nworker);
+  for (size_t w = 0; w < nworker; ++w) {
+    ot_state->LazyInit(comm, w);
+  }
+
+  ArrayRef out(x.eltype(), n);
+  TruncateProtocol::Meta meta;
+  meta.signed_arith = true;
+  meta.msb = is_positive ? TruncateProtocol::MSB_st::zero
+                         : TruncateProtocol::MSB_st::one;
+  yacl::parallel_for(0, nworker, 1, [&](size_t bgn, size_t end) {
+    for (size_t job = bgn; job < end; ++job) {
+      size_t slice_bgn = std::min(bgn * work_load, n);
+      size_t slice_end = std::min(slice_bgn + work_load, n);
+      if (slice_end == slice_bgn) {
+        break;
+      }
+
+      TruncateProtocol prot(ctx->getState<CheetahOTState>()->get(job));
+      auto out_slice = prot.Compute(x.slice(slice_bgn, slice_end), meta, bits);
+      std::memcpy(&out.at(slice_bgn), &out_slice.at(0),
+                  out_slice.numel() * out_slice.elsize());
+    }
+  });
+
+  return out;
+}
 
 ArrayRef TruncA::proc(KernelEvalContext* ctx, const ArrayRef& x,
                       size_t bits) const {
@@ -47,6 +83,7 @@ ArrayRef TruncA::proc(KernelEvalContext* ctx, const ArrayRef& x,
   ArrayRef out(x.eltype(), n);
   TruncateProtocol::Meta meta;
   meta.signed_arith = true;
+  meta.msb = TruncateProtocol::MSB_st::unknown;
   yacl::parallel_for(0, nworker, 1, [&](size_t bgn, size_t end) {
     for (size_t job = bgn; job < end; ++job) {
       size_t slice_bgn = std::min(bgn * work_load, n);
