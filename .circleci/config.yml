@@ -158,16 +158,15 @@ jobs:
       - run:
           name: "Install homebrew dependencies"
           command: |
-            brew install bazel cmake ninja nasm libomp wget go md5sha1sum
-            (cd "/usr/local/Cellar/bazel/5.1.1/libexec/bin" && curl -fLO https://releases.bazel.build/5.4.0/release/bazel-5.4.0-darwin-x86_64 && chmod +x bazel-5.4.0-darwin-x86_64)
+            brew install bazel cmake ninja libomp wget go md5sha1sum
+            (cd "/opt/homebrew/Cellar/bazel/6.0.0/libexec/bin" && curl -fLO https://github.com/bazelbuild/bazel/releases/download/5.4.0/bazel-5.4.0-darwin-arm64 && chmod +x bazel-5.4.0-darwin-arm64)
       - run:
           name: "Install Miniconda"
           command: |
-            wget https://repo.anaconda.com/miniconda/Miniconda3-py38_22.11.1-1-MacOSX-x86_64.sh -O ~/miniconda.sh
+            wget https://repo.anaconda.com/miniconda/Miniconda3-py38_23.1.0-1-MacOSX-arm64.sh -O ~/miniconda.sh
             bash ~/miniconda.sh -b -p $HOME/miniconda
             source $HOME/miniconda/bin/activate
             conda init bash zsh
-            conda install -y grpcio
             pip install -r requirements.txt
       - run:
           name: "build"
