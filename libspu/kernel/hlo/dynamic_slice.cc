@@ -53,35 +53,8 @@ spu::Value DynamicUpdateSlice(
 void UpdateSliceInPlace(HalContext *ctx, spu::Value &operand,
                         const spu::Value &update,
                         absl::Span<const int64_t> start_indicies) {
-  // Basic idea here, get a ref slice and
-  // update the whole slice..
-  // Limit
-  std::vector<int64_t> limit(start_indicies.begin(), start_indicies.end());
-  for (size_t idx = 0; idx < limit.size(); ++idx) {
-    limit[idx] += update.shape()[idx];
-  }
-
-  if (!operand.data().isCompact()) {
-    operand = spu::Value(operand.data().clone(), operand.dtype());
-  }
-
-  // Strides is always 1
-  std::vector<int64_t> strides(limit.size(), 1);
-
-  // First get a slice
-  auto slice = hal::slice(ctx, operand, start_indicies, limit, strides);
-
-  // (xiaochen): I know it's hacky here, but make life easier
-  SPU_ENFORCE(slice.data().buf()->data() == operand.data().buf()->data(),
-              "slice needs to return a ref to input");
-  SPU_ENFORCE(slice.shape() == update.shape(),
-              "slice shape should equal to update shape");
-  auto u = hal::stype_cast(ctx, update, slice.storage_type());
-
-  std::vector<int64_t> indicies(slice.shape().size(), 0);
-  do {
-    slice.copyElementFrom(u, indicies, indicies);
-  } while (bumpIndices<int64_t>(slice.shape(), absl::MakeSpan(indicies)));
+  auto u = hal::stype_cast(ctx, update, operand.storage_type());
+  operand.data().update_slice(u.data(), start_indicies);
 }
 
 spu::Value DynamicSlice(HalContext *ctx, const spu::Value &operand,

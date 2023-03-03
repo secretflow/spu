@@ -274,12 +274,34 @@ message RuntimeConfig {
 
   /// - MPC protocol related definitions.
 
+  enum BeaverType {
+    // assume first party (rank0) as trusted party to generate beaver triple.
+    TrustedFirstParty = 0;
+    // generate beaver triple through an additional trusted third party.
+    TrustedThirdParty = 1;
+  }
+  // beaver config, works for semi2k only for now.
+  BeaverType beaver_type = 70;
+  // TrustedThirdParty configs.
+  TTPBeaverConfig ttp_beaver_config = 71;
+
   // Experimental: DO NOT USE
   bool experimental_disable_mmul_split = 100;
   // inter op parallel, aka. DAG level parallel.
   bool experimental_enable_inter_op_par = 101;
   // intra op parallel, aka, hal/mpc level parallel.
   bool experimental_enable_intra_op_par = 102;
+}
+
+message TTPBeaverConfig {
+  // TrustedThirdParty beaver server's remote ip:port or loadblance uri.
+  string server_host = 1;
+  // if empty, use link id as session id.
+  string session_id = 2;
+  // which rank do adjust rpc call, Usually choose the rank closer to the server.
+  int32 adjust_rank = 3;
+
+  // TODO: TLS & brpc options.
 }
 
 //////////////////////////////////////////////////////////////////////////

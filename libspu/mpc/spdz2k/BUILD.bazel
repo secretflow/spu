@@ -30,7 +30,7 @@ spu_cc_library(
     hdrs = ["protocol.h"],
     deps = [
         ":arithmetic",
-        ":object",
+        ":state",
         ":value",
         "//libspu/mpc/common:ab_api",
         "//libspu/mpc/common:prg_state",
@@ -47,8 +47,8 @@ spu_cc_test(
 )
 
 spu_cc_library(
-    name = "object",
-    hdrs = ["object.h"],
+    name = "state",
+    hdrs = ["state.h"],
     deps = [
         ":commitment",
         "//libspu/mpc/spdz2k/beaver:beaver_tfp",
@@ -60,7 +60,7 @@ spu_cc_library(
     srcs = ["arithmetic.cc"],
     hdrs = ["arithmetic.h"],
     deps = [
-        ":object",
+        ":state",
         ":type",
         ":value",
         "//libspu/core:vectorize",

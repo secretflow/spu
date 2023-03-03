@@ -69,11 +69,6 @@ class Value final {
   // Deserialize from protobuf.
   static Value fromProto(const ValueProto& proto);
 
-  /// Element-wise accessor, it's kind of anti-pattern.
-  void copyElementFrom(const Value& v, absl::Span<const int64_t> input_idx,
-                       absl::Span<const int64_t> output_idx,
-                       int64_t elsize = -1);
-
   Value getElementAt(absl::Span<const int64_t> index) const;
 
   // Linear index, this method does not handle strides, only use if you know

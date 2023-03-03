@@ -45,19 +45,4 @@ std::string compile(CompilationContext *ctx, const std::string &serialized_ir,
   return codegen.doit(mlir_module.get());
 }
 
-std::string compile(CompilationContext *ctx,
-                    const std::filesystem::path &file) {
-  if (!std::filesystem::exists(file)) {
-    SPU_THROW("File {} not found!", file.c_str());
-  }
-
-  // Start loading
-  spdlog::info("Loading module from {}", file.c_str());
-  std::ifstream in_xla_stream(file);
-  std::string xla_content((std::istreambuf_iterator<char>(in_xla_stream)),
-                          std::istreambuf_iterator<char>());
-
-  return compile(ctx, xla_content);
-}
-
 } // namespace spu::compiler

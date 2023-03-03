@@ -26,9 +26,9 @@ spu_cc_library(
 )
 
 spu_cc_library(
-    name = "object",
-    srcs = ["object.cc"],
-    hdrs = ["object.h"],
+    name = "state",
+    srcs = ["state.cc"],
+    hdrs = ["state.h"],
     copts = EMP_COPT_FLAGS,
     deps = [
         "//libspu/mpc/cheetah/arith:cheetah_arith",
@@ -44,7 +44,7 @@ spu_cc_library(
     hdrs = ["boolean.h"],
     copts = EMP_COPT_FLAGS,
     deps = [
-        ":object",
+        ":state",
         ":type",
         "//libspu/mpc/semi2k:boolean",
     ],
@@ -56,7 +56,7 @@ spu_cc_library(
     hdrs = ["conversion.h"],
     copts = EMP_COPT_FLAGS,
     deps = [
-        ":object",
+        ":state",
         ":type",
         "//libspu/mpc/semi2k:conversion",
     ],
@@ -68,7 +68,7 @@ spu_cc_library(
     hdrs = ["arithmetic.h"],
     copts = EMP_COPT_FLAGS,
     deps = [
-        ":object",
+        ":state",
         ":type",
         "//libspu/mpc/semi2k:arithmetic",
     ],
@@ -83,7 +83,7 @@ spu_cc_library(
         ":arithmetic",
         ":boolean",
         ":conversion",
-        ":object",
+        ":state",
         "//libspu/mpc/common:ab_api",
         "//libspu/mpc/common:ab_kernels",
         "//libspu/mpc/common:prg_state",

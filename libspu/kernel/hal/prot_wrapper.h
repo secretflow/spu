@@ -36,9 +36,6 @@ Value _equal_pp(HalContext* ctx, const Value& x, const Value& y);
 Value _equal_sp(HalContext* ctx, const Value& x, const Value& y);
 Value _equal_ss(HalContext* ctx, const Value& x, const Value& y);
 
-Value _eqz_p(HalContext* ctx, const Value& in);
-Value _eqz_s(HalContext* ctx, const Value& in);
-
 Value _lshift_p(HalContext* ctx, const Value& in, size_t bits);
 Value _lshift_s(HalContext* ctx, const Value& in, size_t bits);
 
@@ -49,6 +46,10 @@ Value _arshift_p(HalContext* ctx, const Value& in, size_t bits);
 Value _arshift_s(HalContext* ctx, const Value& in, size_t bits);
 Value _trunc_p(HalContext* ctx, const Value& in, size_t bits);
 Value _trunc_s(HalContext* ctx, const Value& in, size_t bits);
+Value _trunc_p_with_sign(HalContext* ctx, const Value& in, size_t bits,
+                         bool is_positive);
+Value _trunc_s_with_sign(HalContext* ctx, const Value& in, size_t bits,
+                         bool is_positive);
 
 Value _add_pp(HalContext* ctx, const Value& x, const Value& y);
 Value _add_sp(HalContext* ctx, const Value& x, const Value& y);

@@ -251,8 +251,6 @@ class UnitTests(unittest.TestCase):
 
                 gen_cache_config = psi.BucketPsiConfig(
                     psi_type=psi.PsiType.Value('ECDH_OPRF_UB_PSI_2PC_GEN_CACHE'),
-                    broadcast_result=False,
-                    receiver_rank=receiver_rank,
                     input_params=psi.InputParams(
                         path=offline_path,
                         select_fields=selected_fields,
@@ -267,7 +265,7 @@ class UnitTests(unittest.TestCase):
                 )
 
                 start = time.time()
-                gen_cache_report = psi.bucket_psi(None, gen_cache_config)
+                gen_cache_report = psi.gen_cache_for_2pc_ub_psi(gen_cache_config)
 
                 server_source_count = wc_count(offline_path)
                 self.assertEqual(

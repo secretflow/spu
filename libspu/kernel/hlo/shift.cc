@@ -63,7 +63,7 @@ spu::Value shift_imp(HalContext *ctx, const spu::Value &lhs,
   idx = 0;
   do {
     auto ret_el = hal::stype_cast(ctx, elements[idx++], common_type);
-    result.copyElementFrom(ret_el, {}, indicies);
+    result.data().update_slice(ret_el.data(), indicies);
   } while (bumpIndices<int64_t>(lhs.shape(), absl::MakeSpan(indicies)));
 
   return result;

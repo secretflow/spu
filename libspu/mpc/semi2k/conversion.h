@@ -43,9 +43,19 @@ class B2A : public UnaryKernel {
  public:
   static constexpr char kBindName[] = "b2a";
 
-  ce::CExpr latency() const override { return ce::Const(0); }
+  ce::CExpr latency() const override {
+    return (Log(ce::K()) + 1) * Log(ce::N())  // A2B
+           + Log(ce::K() + 1)                 // add_bb
+           + 1                                // reveal
+        ;
+  }
 
-  ce::CExpr comm() const override { return ce::Const(0); }
+  ce::CExpr comm() const override {
+    const auto n_1 = ce::N() - 1;
+    return (2 * Log(ce::K()) + 1) * 2 * ce::K() * n_1 * n_1  // A2B
+           + (2 * Log(ce::K()) + 1) * 2 * ce::K()            // add_bb
+        ;
+  }
 
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& x) const override;
 };

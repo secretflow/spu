@@ -158,7 +158,8 @@ Value _sub(HalContext* ctx, const Value& x, const Value& y) {
   return _add(ctx, x, _negate(ctx, y));
 }
 
-Value _eqz(HalContext* ctx, const Value& x) {
+// TODO: remove this kernel, the algorithm could be used for boolean equal test.
+[[maybe_unused]] Value _eqz(HalContext* ctx, const Value& x) {
   SPU_TRACE_HAL_LEAF(ctx, x);
 
   // eqz(x) = not(lsb(pre_or(x)))
@@ -289,6 +290,20 @@ Value _or(HalContext* ctx, const Value& x, const Value& y) {
   return _xor(ctx, x, _xor(ctx, y, _and(ctx, x, y)));
 }
 
+Value _trunc_with_sign(HalContext* ctx, const Value& x, size_t bits,
+                       bool is_positive) {
+  SPU_TRACE_HAL_LEAF(ctx, x, bits);
+  bits = (bits == 0) ? ctx->getFxpBits() : bits;
+
+  if (x.isPublic()) {
+    return _trunc_p_with_sign(ctx, x, bits, is_positive);
+  } else if (x.isSecret()) {
+    return _trunc_s_with_sign(ctx, x, bits, is_positive);
+  } else {
+    SPU_THROW("unsupport unary op={} for {}", "_trunc_with_sign", x);
+  }
+}
+
 Value _trunc(HalContext* ctx, const Value& x, size_t bits) {
   SPU_TRACE_HAL_LEAF(ctx, x, bits);
   bits = (bits == 0) ? ctx->getFxpBits() : bits;
@@ -362,7 +377,7 @@ Value _bit_parity(HalContext* ctx, const Value& x, size_t bits) {
   SPU_TRACE_HAL_LEAF(ctx, x);
 
   SPU_ENFORCE(absl::has_single_bit(bits), "currently only support power of 2");
-  auto ret = _xor(ctx, x, _constant(ctx, 0, x.shape()));  // nop, cast to bshr.
+  auto ret = _prefer_b(ctx, x);
   while (bits > 1) {
     ret = _xor(ctx, ret, _rshift(ctx, ret, bits / 2));
     bits /= 2;
@@ -403,7 +418,7 @@ Value _popcount(HalContext* ctx, const Value& x, size_t bits) {
 Value _prefix_or(HalContext* ctx, const Value& x) {
   SPU_TRACE_HAL_LEAF(ctx, x);
 
-  auto b0 = _xor(ctx, x, _constant(ctx, 0, x.shape()));  // nop, cast to bshr.
+  auto b0 = _prefer_b(ctx, x);
   const size_t bit_width = SizeOf(ctx->getField()) * 8;
   for (size_t idx = 0; idx < absl::bit_width(bit_width) - 1; idx++) {
     const size_t offset = 1UL << idx;
@@ -413,25 +428,8 @@ Value _prefix_or(HalContext* ctx, const Value& x) {
   return b0;
 }
 
-Value _seperate_odd_even(HalContext* ctx, const Value& in) {
+Value _bitdeintl(HalContext* ctx, const Value& in) {
   SPU_TRACE_HAL_LEAF(ctx, in);
-
-  constexpr std::array<uint128_t, 6> kSwapMasks = {{
-      yacl::MakeUint128(0x2222222222222222, 0x2222222222222222),  // 4bit
-      yacl::MakeUint128(0x0C0C0C0C0C0C0C0C, 0x0C0C0C0C0C0C0C0C),  // 8bit
-      yacl::MakeUint128(0x00F000F000F000F0, 0x00F000F000F000F0),  // 16bit
-      yacl::MakeUint128(0x0000FF000000FF00, 0x0000FF000000FF00),  // 32bit
-      yacl::MakeUint128(0x00000000FFFF0000, 0x00000000FFFF0000),  // 64bit
-      yacl::MakeUint128(0x0000000000000000, 0xFFFFFFFF00000000),  // 128bit
-  }};
-  constexpr std::array<uint128_t, 6> kKeepMasks = {{
-      yacl::MakeUint128(0x9999999999999999, 0x9999999999999999),  // 4bit
-      yacl::MakeUint128(0xC3C3C3C3C3C3C3C3, 0xC3C3C3C3C3C3C3C3),  // 8bit
-      yacl::MakeUint128(0xF00FF00FF00FF00F, 0xF00FF00FF00FF00F),  // 16bit
-      yacl::MakeUint128(0xFF0000FFFF0000FF, 0xFF0000FFFF0000FF),  // 32bit
-      yacl::MakeUint128(0xFFFF00000000FFFF, 0xFFFF00000000FFFF),  // 64bit
-      yacl::MakeUint128(0xFFFFFFFF00000000, 0x00000000FFFFFFFF),  // 128bit
-  }};
 
   // algorithm:
   //      0101010101010101
@@ -444,8 +442,8 @@ Value _seperate_odd_even(HalContext* ctx, const Value& in) {
   Value out = in;
   const size_t k = SizeOf(ctx->getField()) * 8;
   for (int64_t idx = 0; idx + 1 < Log2Ceil(k); idx++) {
-    auto keep = _constant(ctx, kKeepMasks[idx], in.shape());
-    auto move = _constant(ctx, kSwapMasks[idx], in.shape());
+    auto keep = _constant(ctx, detail::kBitIntlKeepMasks[idx], in.shape());
+    auto move = _constant(ctx, detail::kBitIntlSwapMasks[idx], in.shape());
     int64_t shift = 1 << idx;
     // out = (out & keep) ^ ((out >> shift) & move) ^ ((out & move) << shift);
     out = _xor(ctx,
@@ -454,6 +452,48 @@ Value _seperate_odd_even(HalContext* ctx, const Value& in) {
                _lshift(ctx, _and(ctx, out, move), shift));
   }
   return out;
+}
+
+// Assumption:
+//   let p: bshare
+//   z1 = select(p, x1, y1)
+//   z2 = select(p, x2, y2)
+// where
+//   select(p, x, y) = mul(p, y-x) + x
+//                   = mul(b2a(p), y-x) + x     (1)
+//                or = mula1b(p, y-x) + x       (2)
+// when the cost of
+// - b2a+2*mul < 2*mula2b, we prefer to convert p to ashare to avoid 2*b2a.
+// - b2a+2*mul > 2*mula2b, we prefer to leave p as bshare.
+//
+// Cheetah is the later case.
+Value _prefer_a(HalContext* ctx, const Value& x) {
+  if (x.storage_type().isa<BShare>()) {
+    if (ctx->rt_config().protocol() == ProtocolKind::CHEETAH &&
+        x.storage_type().as<BShare>()->nbits() == 1) {
+      return x;
+    }
+
+    // B2A
+    return _add(ctx, x, _constant(ctx, 0, x.shape())).setDtype(x.dtype());
+  }
+
+  return x;
+}
+
+// Assumption
+//   let v : ashare
+//   y1 = v >> c1
+//   y2 = v ^ c2
+// When a variable is followed by multiple binary operation, it's more efficient
+// to convert it to boolean share first.
+Value _prefer_b(HalContext* ctx, const Value& x) {
+  if (x.storage_type().isa<AShare>()) {
+    const auto k0 = _constant(ctx, 0U, x.shape());
+    return _or(ctx, x, k0).setDtype(x.dtype());  // noop, to bshare
+  }
+
+  return x;
 }
 
 }  // namespace spu::kernel::hal

@@ -175,14 +175,29 @@ Value _conv2d_ss(HalContext* ctx, Value input, const Value& kernel,
       result_shape);
 }
 
+Value _trunc_p_with_sign(HalContext* ctx, const Value& in, size_t bits,
+                         bool /*dummy*/) {
+  return _trunc_p(ctx, in, bits);
+}
+
+Value _trunc_s_with_sign(HalContext* ctx, const Value& in, size_t bits,
+                         bool is_positive) {
+  if (ctx->rt_config().protocol() == ProtocolKind::CHEETAH) {
+    return unflattenValue(
+        ctx->prot()->call("trunc_a_with_sign", flattenValue(in), bits,
+                          is_positive),
+        in.shape());
+  } else {
+    return _trunc_s(ctx, in, bits);
+  }
+}
+
 MAP_UNARY_OP(p2s)
 MAP_UNARY_OP(s2p)
 MAP_UNARY_OP(not_p)
 MAP_UNARY_OP(not_s)
 MAP_UNARY_OP(msb_p)
 MAP_UNARY_OP(msb_s)
-MAP_UNARY_OP(eqz_p)
-MAP_UNARY_OP(eqz_s)
 MAP_SHIFT_OP(lshift_p)
 MAP_SHIFT_OP(lshift_s)
 MAP_SHIFT_OP(rshift_p)

@@ -291,6 +291,11 @@ NdArrayRef NdArrayRef::slice(absl::Span<const int64_t> start_indices,
           &at(start_indices) - buf()->data<std::byte>()};
 }
 
+NdArrayRef NdArrayRef::slice_scalar_at(
+    absl::Span<const int64_t> indices) const {
+  return {buf(), eltype(), {}, {}, &at(indices) - buf()->data<std::byte>()};
+}
+
 NdArrayRef NdArrayRef::transpose(absl::Span<const int64_t> permutation) const {
   std::vector<int64_t> perm(shape().size());
   if (permutation.empty()) {
@@ -469,6 +474,58 @@ NdArrayRef& NdArrayRef::linear_scatter(const NdArrayRef& new_values,
   }
 
   return *this;
+}
+
+void NdArrayRef::eliminate_zero_stride() {
+  // If there is a 0 stride dim, expand...
+  if (std::none_of(strides_.begin(), strides_.end(),
+                   [](int64_t s) { return s == 0; })) {
+    return;
+  }
+
+  // Get a clone
+  auto clone = this->clone();
+
+  // Swap to cloned
+  std::swap(*this, clone);
+}
+
+void NdArrayRef::update_slice(const NdArrayRef& new_value,
+                              absl::Span<const int64_t> start_indicies) {
+  if (new_value.numel() == 0) {
+    return;
+  }
+
+  eliminate_zero_stride();
+
+  auto elsize = this->elsize();
+
+  // Fast path for scalar copy...
+  if (new_value.numel() == 1) {
+    NdArrayRef::Iterator in(*this, start_indicies);
+    std::memcpy(in.getRawPtr(), new_value.data(), elsize);
+    return;
+  }
+  // Slice copy
+  std::vector<int64_t> end_indices(start_indicies.begin(),
+                                   start_indicies.end());
+  for (size_t idx = 0; idx < end_indices.size(); ++idx) {
+    end_indices[idx] += new_value.shape()[idx];
+  }
+
+  auto slice = this->slice(start_indicies, end_indices,
+                           std::vector<int64_t>(start_indicies.size(), 1));
+
+  // Just a sanity check....
+  SPU_ENFORCE(slice.buf_->data() == this->buf_->data());
+
+  auto src_iter = new_value.cbegin();
+  auto src_end = new_value.cend();
+  auto dst_iter = slice.begin();
+  auto dst_end = slice.end();
+  for (; src_iter != src_end; ++src_iter, ++dst_iter) {
+    std::memcpy(dst_iter.getRawPtr(), src_iter.getRawPtr(), elsize);
+  }
 }
 
 NdArrayRef unflatten(const ArrayRef& arr, absl::Span<const int64_t> shape) {

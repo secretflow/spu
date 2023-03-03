@@ -42,3 +42,24 @@ spu_cc_binary(
         "@llvm-project//llvm:Support",
     ],
 )
+
+spu_cc_binary(
+    name = "benchmark",
+    srcs = [
+        "benchmark.cc",
+        "benchmark.h",
+    ],
+    deps = [
+        "//libspu/mpc:api",
+        "//libspu/mpc:object",
+        "//libspu/mpc/aby3",
+        "//libspu/mpc/common:communicator",
+        "//libspu/mpc/semi2k",
+        "//libspu/mpc/utils:simulate",
+        "@com_github_fmtlib_fmt//:fmtlib",
+        "@com_github_google_benchmark//:benchmark",
+        "@com_google_absl//absl/strings",
+        "@llvm-project//llvm:Support",
+        "@yacl//yacl/link:context",
+    ],
+)

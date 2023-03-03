@@ -235,6 +235,9 @@ class NdArrayRef {
                    absl::Span<const int64_t> end_indices,
                    absl::Span<const int64_t> slice_strides) const;
 
+  /// This is a special slice for single element at indices
+  NdArrayRef slice_scalar_at(absl::Span<const int64_t> indices) const;
+
   /// the transpose function
   /// Guarantee no copy
   NdArrayRef transpose(absl::Span<const int64_t> permutation) const;
@@ -268,6 +271,12 @@ class NdArrayRef {
   /// must be 1D array and indicies
   NdArrayRef& linear_scatter(const NdArrayRef& new_values,
                              absl::Span<const int64_t> indices);
+
+  void update_slice(const NdArrayRef& new_value,
+                    absl::Span<const int64_t> start_indicies);
+
+ private:
+  void eliminate_zero_stride();
 };
 
 // Unflatten a 1d-array to an ndarray.

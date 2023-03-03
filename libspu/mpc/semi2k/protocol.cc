@@ -18,11 +18,10 @@
 #include "libspu/mpc/common/ab_kernels.h"
 #include "libspu/mpc/common/prg_state.h"
 #include "libspu/mpc/common/pub2k.h"
-#include "libspu/mpc/object.h"
 #include "libspu/mpc/semi2k/arithmetic.h"
 #include "libspu/mpc/semi2k/boolean.h"
 #include "libspu/mpc/semi2k/conversion.h"
-#include "libspu/mpc/semi2k/object.h"
+#include "libspu/mpc/semi2k/state.h"
 #include "libspu/mpc/semi2k/type.h"
 
 namespace spu::mpc {
@@ -52,7 +51,7 @@ std::unique_ptr<Object> makeSemi2kProtocol(
   regABKernels(obj.get());
 
   // register arithmetic & binary kernels
-  obj->addState<Semi2kState>(lctx);
+  obj->addState<Semi2kState>(conf, lctx);
   obj->regKernel<semi2k::ZeroA>();
   obj->regKernel<semi2k::P2A>();
   obj->regKernel<semi2k::A2P>();

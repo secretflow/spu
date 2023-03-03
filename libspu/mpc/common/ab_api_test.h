@@ -15,15 +15,10 @@
 #include "gtest/gtest.h"
 #include "yacl/link/link.h"
 
+#include "libspu/mpc/common/api_test_params.h"
 #include "libspu/mpc/object.h"
 
 namespace spu::mpc::test {
-
-using CreateObjectFn = std::function<std::unique_ptr<Object>(
-    const RuntimeConfig& conf,
-    const std::shared_ptr<yacl::link::Context>& lctx)>;
-
-using OpTestParams = std::tuple<CreateObjectFn, RuntimeConfig, size_t>;
 
 class ArithmeticTest : public ::testing::TestWithParam<OpTestParams> {};
 

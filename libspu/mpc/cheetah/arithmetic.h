@@ -40,6 +40,22 @@ using MatMulAP = spu::mpc::semi2k::MatMulAP;
 
 using LShiftA = spu::mpc::semi2k::LShiftA;
 
+class TruncAWithSign : public TruncAWithSignKernel {
+ public:
+  static constexpr char kBindName[] = "trunc_a_with_sign";
+
+  Kind kind() const override { return Kind::Dynamic; }
+
+  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& x, size_t bits,
+                bool is_positive) const override;
+
+  bool hasMsbError() const override { return false; }
+
+  TruncLsbRounding lsbRounding() const override {
+    return TruncLsbRounding::Probabilistic;
+  }
+};
+
 class TruncA : public TruncAKernel {
  public:
   static constexpr char kBindName[] = "trunc_a";

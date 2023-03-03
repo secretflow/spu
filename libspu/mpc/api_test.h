@@ -17,6 +17,7 @@
 #include "gtest/gtest.h"
 #include "yacl/link/link.h"
 
+#include "libspu/mpc/common/api_test_params.h"
 #include "libspu/mpc/object.h"
 
 #include "libspu/spu.pb.h"
@@ -30,11 +31,6 @@ namespace spu::mpc::test {
 // [here](https://google.github.io/googletest/advanced.html#creating-value-parameterized-abstract-tests)
 // for more details.
 
-using CreateComputeFn = std::function<std::unique_ptr<Object>(
-    const RuntimeConfig& conf,
-    const std::shared_ptr<yacl::link::Context>& lctx)>;
-
-class ApiTest : public ::testing::TestWithParam<
-                    std::tuple<CreateComputeFn, RuntimeConfig, size_t>> {};
+class ApiTest : public ::testing::TestWithParam<OpTestParams> {};
 
 }  // namespace spu::mpc::test

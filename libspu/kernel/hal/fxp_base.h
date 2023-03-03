@@ -39,6 +39,11 @@ Value f_polynomial(HalContext* ctx, const Value& x,
 }  // namespace detail
 
 // This module defines the basic fixed-point arithmetics.
+enum class SignType {
+  UNKNOWN,
+  POSITIVE,
+  NEGATIVE,
+};
 
 Value f_negate(HalContext* ctx, const Value& x);
 
@@ -51,6 +56,9 @@ Value f_add(HalContext* ctx, const Value& x, const Value& y);
 Value f_sub(HalContext* ctx, const Value& x, const Value& y);
 
 Value f_mul(HalContext* ctx, const Value& x, const Value& y);
+
+Value f_mul_with_sign(HalContext* ctx, const Value& x, const Value& y,
+                      SignType sign = SignType::UNKNOWN);
 
 Value f_mmul(HalContext* ctx, const Value& x, const Value& y);
 

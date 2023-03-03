@@ -18,14 +18,6 @@ package(
     default_visibility = ["//visibility:public"],
 )
 
-spu_cc_binary(
-    name = "main",
-    srcs = ["main.cc"],
-    deps = [
-        ":compile",
-    ],
-)
-
 spu_cc_library(
     name = "compile",
     srcs = ["compile.cc"],

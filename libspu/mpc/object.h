@@ -38,6 +38,7 @@ class EvaluationContext final {
   using ParamType = std::variant<  //
       ArrayRef,                    // value type
       size_t,                      // represent size(mmul), shift_bits(shift)
+      bool,                        // binary flag
       Type,                        // type of type
       uint128_t                    // ring constant
       >;
@@ -110,7 +111,7 @@ class Kernel {
     // Typically, static kernel does not depend on runtime options, such like
     // selecting different kernels according to different configs.
     //
-    // By default, we should make kernels as 'atomic' as possible.
+    // By default, we should make kernels as 'Static' as possible.
     Static,
 
     // Indicate the kernel depends on runtime options, this kind of kernel is

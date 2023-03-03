@@ -376,7 +376,8 @@ spu::Value Gather(HalContext *ctx, const spu::Value &operand,
           input_index[i] = input_index_clamped[i] + input_window_index[i];
         }
 
-        result.copyElementFrom(operand, input_index, output_index);
+        result.data().update_slice(operand.data().slice_scalar_at(input_index),
+                                   output_index);
       };
 
   auto gather_outer_loop_body =

@@ -28,7 +28,7 @@ namespace spu::mpc::spdz2k {
 
 BeaverTfpUnsafe::BeaverTfpUnsafe(std::shared_ptr<yacl::link::Context> lctx)
     : lctx_(std::move(std::move(lctx))),
-      seed_(yacl::crypto::RandSeed()),
+      seed_(yacl::crypto::RandSeed(true)),
       counter_(0) {
   auto buf = yacl::SerializeUint128(seed_);
   std::vector<yacl::Buffer> all_bufs =
@@ -50,7 +50,7 @@ uint128_t BeaverTfpUnsafe::GetSpdzKey(FieldType field, size_t s) {
 
   if (lctx_->Rank() == 0) {
     auto t = tp_.adjustSpdzKey(desc);
-    global_key_ = yacl::crypto::RandSeed();
+    global_key_ = yacl::crypto::RandSeed(true);
     global_key_ &= (static_cast<uint128_t>(1) << s) - 1;
     a.at<uint128_t>(0) += global_key_ - t.at<uint128_t>(0);
   }

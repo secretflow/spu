@@ -431,6 +431,12 @@ ARGMINMAX_RECORDS = [
 ]
 
 
+SORT_RECORDS = [
+    REC("sort", 1, number_dtypes, all_shapes, jtu.rand_some_equal),
+    REC("median", 1, number_dtypes, all_shapes, jtu.rand_some_equal),
+]
+
+
 class JnpTests:
     class JnpTestBase(parameterized.TestCase):
         def setUp(self):
@@ -441,7 +447,10 @@ class JnpTests:
         @parameterized.parameters(
             (rec.name, rec.status, rec.nargs, dtype, shape, rec.rng_factory)
             for rec in itertools.chain(
-                JAX_ONE_TO_ONE_OP_RECORDS, BITWISE_OP_RECORDS, COMPOUND_OP_RECORDS
+                JAX_ONE_TO_ONE_OP_RECORDS,
+                BITWISE_OP_RECORDS,
+                COMPOUND_OP_RECORDS,
+                SORT_RECORDS,
             )
             for (dtype, shape) in itertools.product(rec.dtypes, rec.shapes)
         )

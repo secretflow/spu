@@ -15,7 +15,7 @@
 #include "libspu/mpc/cheetah/conversion.h"
 
 #include "libspu/core/trace.h"
-#include "libspu/mpc/cheetah/object.h"
+#include "libspu/mpc/cheetah/state.h"
 #include "libspu/mpc/common/pub2k.h"
 #include "libspu/mpc/semi2k/type.h"  // TODO: use cheetah type
 

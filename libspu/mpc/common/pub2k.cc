@@ -99,18 +99,21 @@ class Pub2kNotP : public UnaryKernel {
   }
 };
 
-class Pub2kEqzP : public UnaryKernel {
+class Pub2kEqualPP : public BinaryKernel {
  public:
-  static constexpr char kBindName[] = "eqz_p";
+  static constexpr char kBindName[] = "equal_pp";
 
   ce::CExpr latency() const override { return ce::Const(0); }
 
   ce::CExpr comm() const override { return ce::Const(0); }
 
-  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in) const override {
-    SPU_TRACE_MPC_LEAF(ctx, in);
-    const auto field = in.eltype().as<Ring2k>()->field();
-    return ring_equal(in, ring_zeros(field, in.numel())).as(in.eltype());
+  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& x,
+                const ArrayRef& y) const override {
+    SPU_TRACE_MPC_LEAF(ctx, x, y);
+    SPU_ENFORCE_EQ(x.eltype(), y.eltype());
+    SPU_ENFORCE(x.eltype().isa<Pub2kTy>());
+
+    return ring_equal(x, y).as(x.eltype());
   }
 };
 
@@ -309,7 +312,7 @@ void regPub2kKernels(Object* obj) {
   obj->regKernel<Pub2kMakeP>();
   obj->regKernel<Pub2kRandP>();
   obj->regKernel<Pub2kNotP>();
-  obj->regKernel<Pub2kEqzP>();
+  obj->regKernel<Pub2kEqualPP>();
   obj->regKernel<Pub2kAddPP>();
   obj->regKernel<Pub2kMulPP>();
   obj->regKernel<Pub2kMatMulPP>();

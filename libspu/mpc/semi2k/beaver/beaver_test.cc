@@ -12,14 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "libspu/mpc/semi2k/beaver/beaver_tfp.h"
-
+#include "fmt/format.h"
 #include "gtest/gtest.h"
 #include "xtensor/xarray.hpp"
 #include "yacl/link/link.h"
 
 #include "libspu/core/type_util.h"
 #include "libspu/core/xt_helper.h"
+#include "libspu/mpc/semi2k/beaver/beaver_tfp.h"
+#include "libspu/mpc/semi2k/beaver/beaver_ttp.h"
+#include "libspu/mpc/semi2k/beaver/ttp_server/beaver_server.h"
 #include "libspu/mpc/utils/ring_ops.h"
 #include "libspu/mpc/utils/simulate.h"
 
@@ -27,29 +29,63 @@ namespace spu::mpc::semi2k {
 
 class BeaverTest
     : public ::testing::TestWithParam<
-          std::tuple<std::function<std::unique_ptr<BeaverTfpUnsafe>(
-                         const std::shared_ptr<yacl::link::Context>& lctx)>,
-                     size_t, FieldType, long>> {
+          std::tuple<std::pair<std::function<std::unique_ptr<Beaver>(
+                                   const std::shared_ptr<yacl::link::Context>&,
+                                   const BeaverTtp::Options&)>,
+                               std::string>,
+                     size_t, FieldType, int64_t>> {
+ private:
+  static std::unique_ptr<brpc::Server> server_;
+
  public:
-  using Triple = typename BeaverTfpUnsafe::Triple;
-  using Pair = typename BeaverTfpUnsafe::Pair;
+  using Triple = typename Beaver::Triple;
+  using Pair = typename Beaver::Pair;
+
+  static void SetUpTestSuite() { server_ = beaver::ttp_server::RunServer(0); }
+
+  static void TearDownTestSuite() {
+    server_->Stop(0);
+    server_.reset();
+  }
+
+ protected:
+  BeaverTtp::Options ttp_options_;
+  void SetUp() override {
+    auto server_host =
+        fmt::format("127.0.0.1:{}", server_->listen_address().port);
+    ttp_options_.server_host = server_host;
+    ttp_options_.adjust_rank = 1;
+    ttp_options_.session_id = "beaver_test";
+  }
 };
+
+std::unique_ptr<brpc::Server> BeaverTest::server_;
 
 INSTANTIATE_TEST_SUITE_P(
     BeaverTfpUnsafeTest, BeaverTest,
     testing::Combine(
-        testing::Values([](const std::shared_ptr<yacl::link::Context>& lctx) {
-          return std::make_unique<BeaverTfpUnsafe>(lctx);
-        }),
+        testing::Values(std::make_pair(
+                            [](const std::shared_ptr<yacl::link::Context>& lctx,
+                               const BeaverTtp::Options&) {
+                              return std::make_unique<BeaverTfpUnsafe>(lctx);
+                            },
+                            "BeaverTfpUnsafe"),
+                        std::make_pair(
+                            [](const std::shared_ptr<yacl::link::Context>& lctx,
+                               const BeaverTtp::Options& ops) {
+                              return std::make_unique<BeaverTtp>(lctx, ops);
+                            },
+                            "BeaverTtp")),
         testing::Values(4, 3, 2),
         testing::Values(FieldType::FM32, FieldType::FM64, FieldType::FM128),
         testing::Values(0)),  // max beaver diff,
     [](const testing::TestParamInfo<BeaverTest::ParamType>& p) {
-      return fmt::format("{}x{}", std::get<1>(p.param), std::get<2>(p.param));
+      return fmt::format("{}x{}x{}", std::get<0>(p.param).second,
+                         std::get<1>(p.param), std::get<2>(p.param));
     });
 
 TEST_P(BeaverTest, Mul_large) {
-  const auto factory = std::get<0>(GetParam());
+  const auto factory = std::get<0>(GetParam()).first;
   const size_t kWorldSize = std::get<1>(GetParam());
   const FieldType kField = std::get<2>(GetParam());
   const int64_t kMaxDiff = std::get<3>(GetParam());
@@ -60,8 +96,9 @@ TEST_P(BeaverTest, Mul_large) {
 
   utils::simulate(kWorldSize,
                   [&](const std::shared_ptr<yacl::link::Context>& lctx) {
-                    auto beaver = factory(lctx);
+                    auto beaver = factory(lctx, ttp_options_);
                     triples[lctx->Rank()] = beaver->Mul(kField, kNumel);
+                    yacl::link::Barrier(lctx, "BeaverUT");
                   });
 
   auto sum_a = ring_zeros(kField, kNumel);
@@ -91,7 +128,7 @@ TEST_P(BeaverTest, Mul_large) {
 }
 
 TEST_P(BeaverTest, Mul) {
-  const auto factory = std::get<0>(GetParam());
+  const auto factory = std::get<0>(GetParam()).first;
   const size_t kWorldSize = std::get<1>(GetParam());
   const FieldType kField = std::get<2>(GetParam());
   const int64_t kMaxDiff = std::get<3>(GetParam());
@@ -102,8 +139,9 @@ TEST_P(BeaverTest, Mul) {
 
   utils::simulate(kWorldSize,
                   [&](const std::shared_ptr<yacl::link::Context>& lctx) {
-                    auto beaver = factory(lctx);
+                    auto beaver = factory(lctx, ttp_options_);
                     triples[lctx->Rank()] = beaver->Mul(kField, kNumel);
+                    yacl::link::Barrier(lctx, "BeaverUT");
                   });
 
   auto sum_a = ring_zeros(kField, kNumel);
@@ -133,7 +171,7 @@ TEST_P(BeaverTest, Mul) {
 }
 
 TEST_P(BeaverTest, And) {
-  const auto factory = std::get<0>(GetParam());
+  const auto factory = std::get<0>(GetParam()).first;
   const size_t kWorldSize = std::get<1>(GetParam());
   const FieldType kField = std::get<2>(GetParam());
   const size_t kNumel = 7;
@@ -143,8 +181,9 @@ TEST_P(BeaverTest, And) {
 
   utils::simulate(kWorldSize,
                   [&](const std::shared_ptr<yacl::link::Context>& lctx) {
-                    auto beaver = factory(lctx);
+                    auto beaver = factory(lctx, ttp_options_);
                     triples[lctx->Rank()] = beaver->And(kField, kNumel);
+                    yacl::link::Barrier(lctx, "BeaverUT");
                   });
 
   EXPECT_EQ(triples.size(), kWorldSize);
@@ -165,7 +204,7 @@ TEST_P(BeaverTest, And) {
 }
 
 TEST_P(BeaverTest, Dot) {
-  const auto factory = std::get<0>(GetParam());
+  const auto factory = std::get<0>(GetParam()).first;
   const size_t kWorldSize = std::get<1>(GetParam());
   const FieldType kField = std::get<2>(GetParam());
   const int64_t kMaxDiff = std::get<3>(GetParam());
@@ -179,8 +218,9 @@ TEST_P(BeaverTest, Dot) {
 
   utils::simulate(kWorldSize,
                   [&](const std::shared_ptr<yacl::link::Context>& lctx) {
-                    auto beaver = factory(lctx);
+                    auto beaver = factory(lctx, ttp_options_);
                     triples[lctx->Rank()] = beaver->Dot(kField, M, N, K);
+                    yacl::link::Barrier(lctx, "BeaverUT");
                   });
 
   EXPECT_EQ(triples.size(), kWorldSize);
@@ -210,7 +250,7 @@ TEST_P(BeaverTest, Dot) {
 }
 
 TEST_P(BeaverTest, Dot_large) {
-  const auto factory = std::get<0>(GetParam());
+  const auto factory = std::get<0>(GetParam()).first;
   const size_t kWorldSize = std::get<1>(GetParam());
   const FieldType kField = std::get<2>(GetParam());
   const int64_t kMaxDiff = std::get<3>(GetParam());
@@ -224,8 +264,9 @@ TEST_P(BeaverTest, Dot_large) {
 
   utils::simulate(kWorldSize,
                   [&](const std::shared_ptr<yacl::link::Context>& lctx) {
-                    auto beaver = factory(lctx);
+                    auto beaver = factory(lctx, ttp_options_);
                     triples[lctx->Rank()] = beaver->Dot(kField, M, N, K);
+                    yacl::link::Barrier(lctx, "BeaverUT");
                   });
 
   EXPECT_EQ(triples.size(), kWorldSize);
@@ -255,7 +296,7 @@ TEST_P(BeaverTest, Dot_large) {
 }
 
 TEST_P(BeaverTest, Trunc) {
-  const auto factory = std::get<0>(GetParam());
+  const auto factory = std::get<0>(GetParam()).first;
   const size_t kWorldSize = std::get<1>(GetParam());
   const FieldType kField = std::get<2>(GetParam());
   const size_t kNumel = 7;
@@ -266,8 +307,9 @@ TEST_P(BeaverTest, Trunc) {
 
   utils::simulate(kWorldSize,
                   [&](const std::shared_ptr<yacl::link::Context>& lctx) {
-                    auto beaver = factory(lctx);
+                    auto beaver = factory(lctx, ttp_options_);
                     pairs[lctx->Rank()] = beaver->Trunc(kField, kNumel, kBits);
+                    yacl::link::Barrier(lctx, "BeaverUT");
                   });
 
   EXPECT_EQ(pairs.size(), kWorldSize);
@@ -285,7 +327,7 @@ TEST_P(BeaverTest, Trunc) {
 }
 
 TEST_P(BeaverTest, TruncPr) {
-  const auto factory = std::get<0>(GetParam());
+  const auto factory = std::get<0>(GetParam()).first;
   const size_t kWorldSize = std::get<1>(GetParam());
   const FieldType kField = std::get<2>(GetParam());
   const size_t kNumel = 7;
@@ -297,8 +339,9 @@ TEST_P(BeaverTest, TruncPr) {
 
   utils::simulate(kWorldSize,
                   [&](const std::shared_ptr<yacl::link::Context>& lctx) {
-                    auto beaver = factory(lctx);
+                    auto beaver = factory(lctx, ttp_options_);
                     rets[lctx->Rank()] = beaver->TruncPr(kField, kNumel, kBits);
+                    yacl::link::Barrier(lctx, "BeaverUT");
                   });
 
   EXPECT_EQ(rets.size(), kWorldSize);
@@ -332,17 +375,18 @@ TEST_P(BeaverTest, TruncPr) {
 }
 
 TEST_P(BeaverTest, Randbit) {
-  const auto factory = std::get<0>(GetParam());
+  const auto factory = std::get<0>(GetParam()).first;
   const size_t kWorldSize = std::get<1>(GetParam());
   const FieldType kField = std::get<2>(GetParam());
-  const size_t kNumel = 7;
+  const size_t kNumel = 51;
 
   std::vector<ArrayRef> shares(kWorldSize);
 
   utils::simulate(kWorldSize,
                   [&](const std::shared_ptr<yacl::link::Context>& lctx) {
-                    auto beaver = factory(lctx);
+                    auto beaver = factory(lctx, ttp_options_);
                     shares[lctx->Rank()] = beaver->RandBit(kField, kNumel);
+                    yacl::link::Barrier(lctx, "BeaverUT");
                   });
 
   EXPECT_EQ(shares.size(), kWorldSize);

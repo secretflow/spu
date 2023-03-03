@@ -24,20 +24,17 @@ enum class RecOp : uint8_t {
   XOR = 1,
 };
 
-// reconstruct P0's data &
-std::pair<std::vector<ArrayRef>, std::vector<ArrayRef>> reconstruct(
-    RecOp op, absl::Span<const PrgSeed> seeds,
-    absl::Span<const PrgArrayDesc> descs) {
-  std::vector<ArrayRef> r0(descs.size());
+std::vector<ArrayRef> reconstruct(RecOp op, absl::Span<const PrgSeed> seeds,
+                                  absl::Span<const PrgArrayDesc> descs) {
   std::vector<ArrayRef> rs(descs.size());
 
   for (size_t rank = 0; rank < seeds.size(); rank++) {
     for (size_t idx = 0; idx < descs.size(); idx++) {
+      // FIXME: TTP adjuster server and client MUST have same endianness.
       auto t = prgReplayArray(seeds[rank], descs[idx]);
 
       if (rank == 0) {
-        r0[idx] = t;
-        rs[idx] = t.clone();
+        rs[idx] = t;
       } else {
         if (op == RecOp::ADD) {
           ring_add_(rs[idx], t);
@@ -50,7 +47,7 @@ std::pair<std::vector<ArrayRef>, std::vector<ArrayRef>> reconstruct(
     }
   }
 
-  return {r0, rs};
+  return rs;
 }
 
 void checkDescs(absl::Span<const PrgArrayDesc> descs) {
@@ -62,111 +59,70 @@ void checkDescs(absl::Span<const PrgArrayDesc> descs) {
 
 }  // namespace
 
-void TrustedParty::setSeed(size_t rank, size_t world_size,
-                           const PrgSeed& seed) {
-  SPU_ENFORCE(rank < world_size, "rank={} should be smaller then world_size={}",
-              rank, world_size);
-
-  std::unique_lock lock(mutex_);
-
-  if (seeds_.empty()) {
-    seeds_.resize(world_size);
-    seeds_[rank] = seed;
-  } else {
-    SPU_ENFORCE(world_size == seeds_.size(),
-                "parties claim different world_size, prev={}, cur={}",
-                seeds_.size(), world_size);
-
-    SPU_ENFORCE(!seeds_[rank].has_value() ||
-                seeds_[rank].value() == seed);  // NOLINT: checked
-
-    seeds_[rank] = seed;
-  }
-}
-
-std::vector<PrgSeed> TrustedParty::getSeeds() const {
-  std::shared_lock lock(mutex_);
-
-  std::vector<PrgSeed> seeds(seeds_.size());
-
-  for (size_t rank = 0; rank < seeds_.size(); rank++) {
-    SPU_ENFORCE(seeds_[rank].has_value(), "seed for rank={} not set", rank);
-    seeds[rank] = seeds_[rank].value();  // NOLINT: checked
-  }
-
-  return seeds;
-}
-
-ArrayRef TrustedParty::adjustMul(absl::Span<const PrgArrayDesc> descs) const {
+ArrayRef TrustedParty::adjustMul(Descs descs, Seeds seeds) {
   SPU_ENFORCE_EQ(descs.size(), 3U);
   checkDescs(descs);
 
-  auto [r0, rs] = reconstruct(RecOp::ADD, getSeeds(), descs);
-  // r0[2] += rs[0] * rs[1] - rs[2];
-  ring_add_(r0[2], ring_sub(ring_mul(rs[0], rs[1]), rs[2]));
-  return r0[2];
+  auto rs = reconstruct(RecOp::ADD, seeds, descs);
+  // adjust = rs[0] * rs[1] - rs[2];
+  return ring_sub(ring_mul(rs[0], rs[1]), rs[2]);
 }
 
-ArrayRef TrustedParty::adjustDot(absl::Span<const PrgArrayDesc> descs, size_t m,
-                                 size_t n, size_t k) const {
+ArrayRef TrustedParty::adjustDot(Descs descs, Seeds seeds, size_t m, size_t n,
+                                 size_t k) {
   SPU_ENFORCE_EQ(descs.size(), 3U);
-  SPU_ENFORCE(descs[0].numel == m * k);
-  SPU_ENFORCE(descs[1].numel == k * n);
-  SPU_ENFORCE(descs[2].numel == m * n);
+  SPU_ENFORCE_EQ(descs[0].numel, m * k);
+  SPU_ENFORCE_EQ(descs[1].numel, k * n);
+  SPU_ENFORCE_EQ(descs[2].numel, m * n);
 
-  auto [r0, rs] = reconstruct(RecOp::ADD, getSeeds(), descs);
-  // r0[2] += rs[0] dot rs[1] - rs[2];
-  ring_add_(r0[2], ring_sub(ring_mmul(rs[0], rs[1], m, n, k), rs[2]));
-  return r0[2];
+  auto rs = reconstruct(RecOp::ADD, seeds, descs);
+  // adjust = rs[0] dot rs[1] - rs[2];
+  return ring_sub(ring_mmul(rs[0], rs[1], m, n, k), rs[2]);
 }
 
-ArrayRef TrustedParty::adjustAnd(absl::Span<const PrgArrayDesc> descs) const {
+ArrayRef TrustedParty::adjustAnd(Descs descs, Seeds seeds) {
   SPU_ENFORCE_EQ(descs.size(), 3U);
   checkDescs(descs);
 
-  auto [r0, rs] = reconstruct(RecOp::XOR, getSeeds(), descs);
-  // r0[2] ^= (rs[0] & rs[1]) ^ rs[2];
-  ring_xor_(r0[2], ring_xor(ring_and(rs[0], rs[1]), rs[2]));
-  return r0[2];
+  auto rs = reconstruct(RecOp::XOR, seeds, descs);
+  // adjust = (rs[0] & rs[1]) ^ rs[2];
+  return ring_xor(ring_and(rs[0], rs[1]), rs[2]);
 }
 
-ArrayRef TrustedParty::adjustTrunc(absl::Span<const PrgArrayDesc> descs,
-                                   size_t bits) const {
+ArrayRef TrustedParty::adjustTrunc(Descs descs, Seeds seeds, size_t bits) {
   SPU_ENFORCE_EQ(descs.size(), 2U);
   checkDescs(descs);
 
-  auto [r0, rs] = reconstruct(RecOp::ADD, getSeeds(), descs);
-  // r0[1] += (rs[0] >> bits) - rs[1];
-  ring_add_(r0[1], ring_sub(ring_arshift(rs[0], bits), rs[1]));
-  return r0[1];
+  auto rs = reconstruct(RecOp::ADD, seeds, descs);
+  // adjust = (rs[0] >> bits) - rs[1];
+  return ring_sub(ring_arshift(rs[0], bits), rs[1]);
 }
 
-std::pair<ArrayRef, ArrayRef> TrustedParty::adjustTruncPr(
-    absl::Span<const PrgArrayDesc> descs, size_t bits) const {
+std::pair<ArrayRef, ArrayRef> TrustedParty::adjustTruncPr(Descs descs,
+                                                          Seeds seeds,
+                                                          size_t bits) {
   // descs[0] is r, descs[1] adjust to r[k-2, bits], descs[2] adjust to r[k-1]
   SPU_ENFORCE_EQ(descs.size(), 3U);
   checkDescs(descs);
 
-  auto [r0, rs] = reconstruct(RecOp::ADD, getSeeds(), descs);
+  auto rs = reconstruct(RecOp::ADD, seeds, descs);
 
-  // r0[1] += ((rs[0] << 1) >> (bits + 1)) - rs[1];
-  ring_add_(r0[1],
-            ring_sub(ring_rshift(ring_lshift(rs[0], 1), bits + 1), rs[1]));
+  // adjust1 = ((rs[0] << 1) >> (bits + 1)) - rs[1];
+  auto adjust1 = ring_sub(ring_rshift(ring_lshift(rs[0], 1), bits + 1), rs[1]);
 
-  // r0[2] += (rs[0] >> (k - 1)) - rs[2];
+  // adjust2 = (rs[0] >> (k - 1)) - rs[2];
   const size_t k = SizeOf(descs[0].field) * 8;
-  ring_add_(r0[2], ring_sub(ring_rshift(rs[0], k - 1), rs[2]));
+  auto adjust2 = ring_sub(ring_rshift(rs[0], k - 1), rs[2]);
 
-  return {r0[1], r0[2]};
+  return {adjust1, adjust2};
 }
 
-ArrayRef TrustedParty::adjustRandBit(const PrgArrayDesc& desc) const {
-  auto [r0, rs] = reconstruct(RecOp::ADD, getSeeds(), absl::MakeSpan(&desc, 1));
-  SPU_ENFORCE(r0.size() == 1 && rs.size() == 1);
+ArrayRef TrustedParty::adjustRandBit(Descs descs, Seeds seeds) {
+  SPU_ENFORCE_EQ(descs.size(), 1U);
+  auto rs = reconstruct(RecOp::ADD, seeds, descs);
 
-  // r0[0] += bitrev - rs[0];
-  ring_add_(r0[0], ring_sub(ring_randbit(desc.field, desc.numel), rs[0]));
-  return r0[0];
+  // adjust = bitrev - rs[0];
+  return ring_sub(ring_randbit(descs[0].field, descs[0].numel), rs[0]);
 }
 
 }  // namespace spu::mpc::semi2k
