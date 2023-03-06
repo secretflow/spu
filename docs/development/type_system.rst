@@ -10,7 +10,7 @@ Everything in SPU could be treated as an object, each object has a type.
 
 There are only two types of objects, *value* or *operator*, which means if a symbol is not a *value*, it's an *operator*.
 
-- **value**: an object that is managed by SPU runtime, represent a public/secret data.
+- **value**: an object that is managed by SPU runtime, representing a public/secret data.
 - **operator**: an object that takes one or more values and outputs a return value, i.e. `multiply` is an operator.
 
 Value type
@@ -20,7 +20,7 @@ A value type is a tuple (**V**, **D**, **S**), where:
 
 - **V** is *visibility*, could be one of *{public, private, secret}*
 - **D** is *data type*, could be one of *{int, fxp}*
-- **S** is *shape*, which make a value a tensor.
+- **S** is *shape*, which makes the value a tensor.
 
 We can define a hyper type function, which takes three parameters and return a concrete value type.
 
@@ -48,7 +48,7 @@ With this type function, we can define a list of types in the SPU type system.
 Operator type
 ~~~~~~~~~~~~~
 
-*Operators* takes a list of values as parameters and return exactly one value as result, operator's type is determined by the types of input parameters and return values.
+*Operators* takes a list of values as parameters and returns exactly one value as result, operator's type is determined by the types of input parameters and return values.
 
 In SPU IR, an operator could take a polymorphic typed parameter and the return type could be deduced from the parameters. For example:
 
@@ -89,7 +89,7 @@ Now we can represent the polymorphic mul op as:
 
 - the op takes two parameters, first type is :code:`type(V0, D0)`, second type is :code:`type(V1, D1)`.
 - the op returns :code:`type(narrow(V0, V1), promote(D0, D1))` as a result.
-- when applying the op to two arbitrary arguments, the result could be deduced from the above type expression.
+- when applying the op to two arbitrary arguments, the result could be deduced from the above type expressions.
 
 
 Use of type
@@ -97,7 +97,7 @@ Use of type
 
 There are many uses for types.
 
-- First, the most important one, type is self descriptive, with an accurate defined type system, we can describe *SPU IR* more accurate.
+- First, the most important one, type is self descriptive, with an accurate defined type system, we can describe *SPU IR* more accurately.
 - Second, runtime type information is used to do runtime dispatch, which is important for polymorphic operators.
 - Third, the type system could be used by static type checker, and could be used to double check runtime implementation.
 
@@ -147,7 +147,7 @@ A simple idea is to pattern match all these type combinations and dispatch to di
 Layered dispatch
 ~~~~~~~~~~~~~~~~
 
-A better way to is to dispatch layer by layer, for example, first dispatch by dtype, then dispatch by vtype.
+A better way is to dispatch layer by layer, for example, first dispatch by dtype, then dispatch by vtype.
 
 .. mermaid::
 
@@ -177,7 +177,7 @@ In the above diagram:
 - **imul** is integer multiplication method.
 - **fmul** is fixedpoint multiplication method.
 - **rmul** is untyped multiplication method over ring 2k.
-- **mulss** multiplies two secret, the domain and behavior are secure protocol dependent.
+- **mulss** multiplies two secrets, the domain and behavior are secure protocol dependent.
 
 The above idea can be expressed in code like:
 
@@ -216,7 +216,7 @@ The above idea can be expressed in code like:
 Fast dispatch
 ~~~~~~~~~~~~~
 
-In the above example, we observe that `i2f` and `truncation` could be optimized, the intuition is when a value is converted from `int` to `fxp` and later convert back, these two conversion introduce non-trivial computation overhead in MPC setting.
+In the above example, we observe that `i2f` and `truncation` could be optimized, the intuition is that when a value is converted from `int` to `fxp` and later convert back, these two conversion introduce non-trivial computation overhead in MPC setting.
 
 We use the so called *fast dispatch* to optimize it, when doing cross `int` and `fxp` multiplication, we could directly do `imul` without type lift and truncation.
 
@@ -282,4 +282,4 @@ Partial type
 
 In the type dispatch step, type information is used to select next op, and when partial of type information is used, it's *erased*. For example, when `dtype` is used to select `fmul` in the above example, dtype is useless in the future and could be erased, the lower level op does not distinguish dtype (via a generic type parameter). In a real implementation, we don't erase the type explicitly, just leave it there without further use.
 
-The return value takes the `reverse progress` of dispatch. The return type is filled from bottom to up. For example, in the above progress, when :code:`z=rmul(x,y)` is called, `rmul` knows `z`'s visibility type is `SECRET` but does not know its dtype yet, so here `z` has a partial type `type(SECRET, $UNKNOWN)`. The type will be filled step by step during stack popup, and eventually completed as a full type when the whole dispatch progress is done.
+The return value takes the `reverse progress` of dispatch. The return type is filled from bottom to up. For example, in the above progress, when :code:`z=rmul(x,y)` is called, `rmul` knows `z`'s visibility type is `SECRET` but does not know its dtype yet, so here `z` has a partial type `type(SECRET, $UNKNOWN)`. The type will be filled step by step during stack popup, and eventually be completed as a full type when the whole dispatch progress is done.

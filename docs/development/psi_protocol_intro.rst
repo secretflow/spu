@@ -50,7 +50,7 @@ Curve25519 [Ber06]_ offer a good balance between security and performance.
 5. Alice compares two set :math:`{\{\{H(x_i)\}^{\alpha\beta}\}}_{i=1}^{n_1}` 
    and :math:`{\{\{H(y_i)\}^{\beta\alpha}\}}_{i=1}^{n_2}`  and gets intersection.
 
-The Elliptic Curve groups, supported in secretflow SPU PSI moudule.
+The Elliptic Curve groups, supported in secretflow SPU PSI module.
 
 +-------------+------------------------+------------------------------------------------------+
 | EC group    | Reference              | CryptoLib                                            |
@@ -74,7 +74,7 @@ ECDH-PSI (3P)
 We implement our own three-party PSI protocol based on ECDH. Note that our implementation has known
 leakage, please use at your own risk.
 
-Assume Alice, Bob, Chalie (receiver) want to perform 3P PSI, in addition to the final output, our 
+Assume Alice, Bob, Charlie (receiver) want to perform 3P PSI, in addition to the final output, our 
 protocol leaks the intersection size of Alice's data and Bob's data to Charlie.
 
 .. figure:: ../imgs/dh_psi_3p.png
@@ -87,7 +87,7 @@ Protocol:
 1. For i-th element in its set, Alice calculates :math:`H(x_i)^\alpha` and sends to Bob.
 
 2. For i-th element, Bob calculates :math:`H(x_i)^{\alpha\beta}` and 
-   :math:`H(y_i)^\beta`, then random shuffles and sends them to Alice.
+   :math:`H(y_i)^\beta`, then shuffles them randomly and sends them to Alice.
 
 3. For i-th element, Alice calculates :math:`H(y_i)^{\alpha\beta}` and gets the intersection of 
    :math:`H(x_i)^{\alpha\beta} \cap H(y_i)^{\alpha\beta}` (we denote the intersection as 
@@ -97,7 +97,7 @@ Protocol:
    Alice :math:`H(z_i)^{\beta\gamma}`, finally Alice calculates and sends to 
    Charlie :math:`H(z_i)^{\alpha\beta\gamma}`.
 
-5. Chalie calculates :math:`I^{\alpha\beta\gamma}` and compares :math:`I^{\alpha\beta\gamma}` with
+5. Charlie calculates :math:`I^{\alpha\beta\gamma}` and compares :math:`I^{\alpha\beta\gamma}` with
    :math:`H(z_i)^{\alpha\beta\gamma}`.
 
 KKRT16-PSI
@@ -112,11 +112,11 @@ We use 3-way stash-less CuckooHash proposed in [PSZ18]_.
 .. figure:: ../imgs/kkrt16_psi.png
 
 1. Sender and Receiver Agree on CuckooHash :math:`h_1,h_2,h_3: {\{0,1\}}^{*} \rightarrow [m]`
-2. Receiver insert each x into bin :math:`h_1(x)`, :math:`h_2(x)` or :math:`h_3(x)`
-3. Sender insert each y into bin :math:`h_1(y)`, :math:`h_2(y)` and :math:`h_3(y)`
-4. Run BaRK-OPRF, Receiver get :math:`F_{s,k_i}(x)`,Sender get :math:`F_{s,k_i}(y)`, for :math:`bin_i`
+2. Receiver inserts each x into bin :math:`h_1(x)`, :math:`h_2(x)` or :math:`h_3(x)`
+3. Sender inserts each y into bin :math:`h_1(y)`, :math:`h_2(y)` and :math:`h_3(y)`
+4. Run BaRK-OPRF, Receiver gets :math:`F_{s,k_i}(x)`,Sender gets :math:`F_{s,k_i}(y)`, for :math:`bin_i`
 5. Sender sends all :math:`\{F_{s,k_i}(y)\}` values to Receiver
-6. Receiver compare two BaRK-OPRFs set, get intersection.
+6. Receiver compares two BaRK-OPRFs set and obtains the intersection.
 
  
 BC22 PCG-PSI
@@ -130,26 +130,26 @@ Boyle et al. have designed multiple concretely efficient PCGs
 for specific correlations, such as vector oblivious linear evaluation (VOLE) or batch oblivious linear
 evaluation (BOLE). These primitives are at the heart of modern secure computation protocols with low
 communication overhead.The VOLE functionality allows a receiver to learn a secret linear combination
-of two vectors held by a sender and it was constructed (with sublinear communication) under variants
+of two vectors held by a sender and it is constructed (with sublinear communication) under variants
 of the syndrome decoding assumption.
 
-[BC22]_ use PCG speeding up private set intersection protocols, minimizing computation and communication.
+[BC22]_ uses PCG to speed up private set intersection protocols, minimizing computation and communication.
 We implement semi-honest version psi in [BC22]_ and use PCG/VOLE from [WYKW21]_ . [BC22]_ PSI protocol 
-require only 30 seconds for the case of larger sets ( :math:`2^{24}` items each) of long strings (128 bits), 
-and reduce 1/3 communication than [KKRT16]_.
+requires only 30 seconds for the case of larger sets ( :math:`2^{24}` items each) of long strings (128 bits), 
+and reduces 1/3 communication than [KKRT16]_.
 
 .. figure:: ../imgs/pcg_psi.png
 
 1. Sender and Receiver agree on :math:`(3,2)`-Generalized CuckooHash :math:`h_1,h_2: {\{0,1\}}^{*} \rightarrow [m]`
 
-2. Receiver insert each x into bin :math:`h_1(x)` or :math:`h_2(x)`
+2. Receiver inserts each x into bin :math:`h_1(x)` or :math:`h_2(x)`
 
-3. Sender insert each y into bin :math:`h_1(y)` and :math:`h_2(y)`
+3. Sender inserts each y into bin :math:`h_1(y)` and :math:`h_2(y)`
 
-4. Run PCG/VOLE from [WYKW21]_, :math:`w_i = \Delta * u_i + v_i`,  Receiver get :math:`w_i` and :math:`\Delta`, 
-   Sender get :math:`u_i` and :math:`v_i`, for each :math:`bin_i`
+4. Run PCG/VOLE from [WYKW21]_, :math:`w_i = \Delta * u_i + v_i`,  Receiver gets :math:`w_i` and :math:`\Delta`, 
+   Sender gets :math:`u_i` and :math:`v_i`, for each :math:`bin_i`
 
-5. Receiver sends Masked Bin Polynomial Coefficients to Sender, and receive BaRK-OPRF values
+5. Receiver sends Masked Bin Polynomial Coefficients to Sender, and receives BaRK-OPRF values
 
 6. Sender sends all BaRK-OPRF values for each :math:`{\{y_i\}}_{i=1}^{n_2}` to Receiver
 
@@ -180,7 +180,7 @@ The protocol is listed below, assume Alice has a (hashed and shuffled) set
 
 .. figure:: ../imgs/dp_psi.png
 
-Note that we use encrypt to denote the process of calculating :math:`y\gets
+Note that we use "encrypt" to denote the process of calculating :math:`y\gets
 x^a`.
 
 Protocol:
@@ -190,27 +190,27 @@ Protocol:
    
 2. Alice sends :math:`X^a` to Bob.
    
-3. Bob performs random subsampling on :math:`Y^b`, gets :math:`Y_*^b` and send
+3. Bob performs random subsampling on :math:`Y^b`, gets :math:`Y_*^b` and sends it
    to Alice. In the meantime, on receiving :math:`X^a` from Alice, Bob
-   reencrypts it with :math:`b`, gets :math:`X^{ab}`. Then it samples a random
-   permutation :math:`\pi` to permute Alice's set, and send permuted
+   re-encrypts it with :math:`b`, gets :math:`X^{ab}`. Then it samples a random
+   permutation :math:`\pi` to permute Alice's set, and sends permuted
    :math:`\pi(X^{ab})` back to Alice.
    
-4. On receiving :math:`Y_*^b` and :math:`\pi(X^{ab})` from Bob, Alice reencrypts
-   :math:`Y_*^b` and gets :math:`Y_*^{ab}`, then calculate the intersection
+4. On receiving :math:`Y_*^b` and :math:`\pi(X^{ab})` from Bob, Alice re-encrypts
+   :math:`Y_*^b` and gets :math:`Y_*^{ab}`, then calculates the intersection
    :math:`I_*^{ab}\gets\pi(X^{ab})\cap Y_*^{ab}`.
    
 5. Alice randomly subsamples the intersection, gets :math:`I_{**}^{ab}`, and
-   then find-out their corresponding index in :math:`Y_*^b`. Then randomly add
+   then finds their corresponding index in :math:`Y_*^b`. Then randomly adds
    non-intersection index to this set.
    
-6. Alice sends the index set to Bob, then Bob reveal the final results.
+6. Alice sends the index set to Bob, then Bob reveals the final results.
 
 In the end, this scheme ensures that the receiver (Bob) only learns the noised
 intersection, without the ability of pointing out whether an element is in the
 actual set intersection or not.  
 
-Note that multiple invocation of DP-PSI inevitably weaken the privacy
+Note that multiple invocations of DP-PSI inevitably weaken the privacy
 protection, therefore, we strongly suggest that user should implement a
 protection mechanism to prevent multiple DP-PSI executions on the same input
 value.  
@@ -230,10 +230,10 @@ Unbalanced PSI
 Ecdh-OPRF based PSI
 >>>>>>>>>>>>>>>>>>>
 
-[RA18]_ section 3 introduce Basic Unbalanced PSI(Ecdh-OPRF based) protocol proposed in [BBCD+11]_ that relaxes 
+[RA18]_ section 3 introduces Basic Unbalanced PSI(Ecdh-OPRF based) protocol proposed in [BBCD+11]_ that relaxes 
 the security of the [JL10]_ to be secure against semi-honest adversaries. The protocol has two phases, the preprocessing phase and the online phase. The
 authors introduced many optimizations to push as much computation and communication cost to
-the preprocessing phase as possible
+the preprocessing phase as possible.
 
 An Oblivious Pseudorandom Function (OPRF) is a two-party protocol between client and server for computing the 
 output of a Pseudorandom Function (PRF). [draft-irtf-cfrg-voprf-10]_ specifies OPRF, VOPRF, and POPRF protocols 
@@ -246,7 +246,7 @@ built upon prime-order groups.
   1. For each element :math:`y_i` in its set, Bob applies PRF using 
      private key :math:`\beta`, i.e. computing :math:`H_2(y_i,{H_1(y_i)}^\beta)` . 
   
-  2. Bob sends :math:`\{\{H_2(y_i,{H_1(y_i)}^\beta)\}\}_{i=1}^{n_2}` to Alice in shuffled order
+  2. Bob sends :math:`\{\{H_2(y_i,{H_1(y_i)}^\beta)\}\}_{i=1}^{n_2}` to Alice in shuffled order.
    
 - Online Phase
   
@@ -256,8 +256,8 @@ built upon prime-order groups.
   2. For each element :math:`H_1(x_i)^{r_i}` received from Alice in the previous step, Bob exponentiates 
      it using its key :math:`\beta`, computing :math:`{H_1(x_i)}^{r_i\beta}`. 
      Bob sends :math:`{\{\{H_1(x_i)\}^{\{r_i\}\beta}\}}_{i=1}^{n_1}` to Alice.
-  3. Alice receive :math:`{\{\{H_1(x_i)\}^{r_i\beta}\}}_{i=1}^{n_1}` from Bob, and unblind it use :math:`r_i`,
-     Get :math:`\{\{\{H_1(x_i)\}^\beta\}\}_{i=1}^{n_1}`, compute OPRF :math:`\{\{H_2(x_i,{H_1(x_i)}^\beta)\}\}_{i=1}^{n_1}`.
+  3. Alice receives :math:`{\{\{H_1(x_i)\}^{r_i\beta}\}}_{i=1}^{n_1}` from Bob, and unblinds it using :math:`r_i`,
+     gets :math:`\{\{\{H_1(x_i)\}^\beta\}\}_{i=1}^{n_1}`, computes OPRF :math:`\{\{H_2(x_i,{H_1(x_i)}^\beta)\}\}_{i=1}^{n_1}`.
   4. Alice compares two sets :math:`\{\{H_2(x_i,{H_1(x_i)}^\beta)\}\}_{i=1}^{n_1}`
      and :math:`\{\{H_2(y_i,{H_1(y_i)}^\beta)\}\}_{i=1}^{n_2}` and gets intersection.
 
@@ -266,15 +266,15 @@ Labeled PSI
 
 Somewhat homomorphic encryption (SHE) can be used to build efficient (labeled) Private Set Intersection 
 protocols in the unbalanced setting, where one of the sets is much larger than the other. 
-[CMGD+21]_ introduce several optimizations and improvements to the protocols of 
-[CLR17]_, [CHLR18]_ that result in improved running time and improved communication complexity in the 
+[CMGD+21]_ introduces several optimizations and improvements to the protocols of 
+[CLR17]_, [CHLR18]_, resulting in improved running time and improved communication complexity in the 
 sender's set size.
 
-Microsoft `APSI (Asymmetric PSI) <https://github.com/microsoft/APSI>`_  library provide a PSI functionality 
+Microsoft `APSI (Asymmetric PSI) <https://github.com/microsoft/APSI>`_  library provides a PSI functionality 
 for asymmetric set sizes based on the latest [CMGD+21]_.  APSI uses the BFV([FV12]_) encryption scheme implemented 
 in the Microsoft [SEAL]_ library.
 
-SecretFlow SPU wrap `APSI <https://github.com/microsoft/APSI>`_ library, can be used for 
+SecretFlow SPU wraps `APSI <https://github.com/microsoft/APSI>`_ library, can be used for 
 
 - Unbalanced PSI
 - Malicious PSI
@@ -286,7 +286,7 @@ SecretFlow SPU wrap `APSI <https://github.com/microsoft/APSI>`_ library, can be 
 - Setup Phase
   
   1. **Choose ItemParams**, TableParams, QueryParams, SEALParams.
-  2. **Sender's OPRF**: The sender samples a key :math:`\beta` for the OPRF, update its items set 
+  2. **Sender's OPRF**: The sender samples a key :math:`\beta` for the OPRF, updates its items set 
      to :math:`\{\{H_2(s_i,{H_1(s_i)}^\beta)\}\}_{s_i\in S}`.
   3. **Sender's Hashing**: Sender inserts all :math:`s_i\in S` into the sets :math:`\mathcal{B}[h_0(s_i)]`,
      :math:`\mathcal{B}[h_1(s_i)]` and :math:`\mathcal{B}[h_2(s_i)]`.
@@ -307,15 +307,15 @@ SecretFlow SPU wrap `APSI <https://github.com/microsoft/APSI>`_ library, can be 
        :math:`\{\{H_2(r_i,{H_1(r_i)}^\beta)\}\}_{r_i\in R}`.
      - **Receiver's CuckooHash**: Receiver performs cuckoo hashing on the set :math:`R` into CuckooTable C with m bins
        using h1; h2; h3 has the hash functions.
-     - **Packing**: Receiver pack items in CuckooTable C into a FHE plaintext polynomial.
+     - **Packing**: Receiver packs items in CuckooTable C into a FHE plaintext polynomial.
      - **Windowsing**: the receiver computes the component-wise query powers.
      - **Encrypt**: The receiver uses *FHE.Encrypt* to encrypt query powers and sends the ciphertexts to the sender.
 
   2. **Sender Homomorphically evaluate Matching Polynomial**: The sender receives the collection of
-     ciphertexts homomorphically evaluates Matching Polynomial. If Labeled PSI is desired, Sender homomorphically evaluates 
-     Label Polynomial. The sender send evaluated ciphertexts to Receiver.
-  3. **Receiver Decrypt and Get result**: receiver receives and decrypts the matching ciphertexts, and label 
-     ciphertexts if needed. output the matching set and labels.
+     ciphertexts and homomorphically evaluates Matching Polynomial. If Labeled PSI is desired, Sender homomorphically evaluates 
+     Label Polynomial. The sender sends evaluated ciphertexts to Receiver.
+  3. **Receiver Decrypt and Get result**: receiver receives and decrypts the matching ciphertexts, and labels 
+     ciphertexts if needed, outputs the matching set and labels.
 
 Labeled PSI Parameters
 

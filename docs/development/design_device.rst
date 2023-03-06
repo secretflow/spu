@@ -2,17 +2,17 @@ Design: generic device
 ======================
 
 .. warning::
-   This is a design draft for using SPU from SecretFlow, not an accurate document for SPU itself. It could be treated as a reference to integrate SPU from other system.
+   This is a design draft for using SPU from SecretFlow, not an accurate document for SPU itself. It could be treated as a reference to integrate SPU from other systems.
 
 Overview
 --------
 
-This document discusses the trust chain design under an universal device concept.
+This document discusses the design of a trust chain under the general device concept.
 
 Concept
 -------
 
-**Device**, a virtual concept which can evaluate a piece of code, normally a specific device provides some specific ability, i.e. CPU is a device for general computation, GPU is a device for parallel computation, HE/MPC evaluator are devices for security computation. Formally, a device is a set of ops :math:`\left \{  OP_{i} \right \}`.
+**Device**, a virtual concept which can evaluate a piece of code, normally a specific device provides some specific abilities, i.e. CPU is a device for general computation, GPU is a device for parallel computation, HE/MPC evaluator are devices for security computation. Formally, a device is a set of ops :math:`\left \{  OP_{i} \right \}`.
 
 - *DeviceObject* an object which could be operated by the device, formally, it's a set of data :math:`\left \{  D_{i} \right \}`.
 - *Consistency property* is `if type(Di) == type(Dj) and OP works for Di, it also works for Dj`
@@ -20,11 +20,11 @@ Concept
 
 **Node**, a physical node which provides general computing environment, it could host devices.
 
-**Computation** or DAG, is a form to to represent logic function, with *node* as operator and *edge* as data.
+**Computation** or DAG, is a form to represent logic function, with *node* as operator and *edge* as data.
 
-**SecretFlow**, is a framework could schedule a *Computation* to a list of *Device*, with respect that:
+**SecretFlow**, is a framework that could schedule a *Computation* to a list of *Device*, with respect that:
 
-- **Securely data transferred** across devices, unless client explicitly make a unsafe transfer.
+- **Securely data transferred** across devices, unless the client explicitly makes an unsafe transfer.
 - Each op runs on exactly on one device, **there is no cross-device function**.
 
 
@@ -38,7 +38,7 @@ Notations
 - *empty shape* stands for **Node**
 - *colored shape* stands for **Device**
 - *dotted line* stands for **no trust** relation between devices.
-- *dotted line with arrow* stands for **weak trust** relation, one device could send its data encrypted to another without data loss.
+- *dotted line with arrow* stands for **weak trust** relation, one device could send its encrypted data to another without data loss.
 - *solid line with arrow* stands for **strong trust** relation, one device could send its raw data to another without data loss.
 
 |
@@ -51,52 +51,52 @@ Outsourcing (MPC)
 
 .. image:: ../imgs/device/outsourcing.svg
 
-In above deployment, we use 6 nodes to construct 4 devices, with circle devices having weak trusts to the triangle device.
+In above deployment, we use 6 nodes to construct 4 devices, where circle devices have weak trust to the triangle device.
 
 Colocated (MPC)
 ~~~~~~~~~~~~~~~
 
 .. image:: ../imgs/device/colocated.svg
 
-In above deployment, we use 3 nodes to construct 4 devices, with circle devices having weak trusts to the triangle device.
+In above deployment, we use 3 nodes to construct 4 devices, where circle devices have weak trust to the triangle device.
 
-Note, in this configuration, we use 3 nodes to build exactly the same device layout as the 6 node out-sourcing mode, the client code could run exactly the same without change. That is **write once, run anywhere**.
+Note, in this configuration, we use 3 nodes to build exactly the same device layout as the 6 node out-sourcing mode, the client code could run exactly the same without any changes. That is **write once, run anywhere**.
 
 Server-aided (MPC)
 ~~~~~~~~~~~~~~~~~~
 
 .. image:: ../imgs/device/server_aided.svg
 
-In this configuration, one server does not provide data but do participate in the computation, it's so called a `server-aided`.
+In this configuration, one server does not provide data but participates in the computation, it's so called a `server-aided`.
 
 HE device
 ~~~~~~~~~
 
 .. image:: ../imgs/device/single_he.svg
 
-In this mode, we use 2 nodes to virtualize 3 device, with that:
+In this mode, we use 2 nodes to virtualize 3 devices, with that:
 
 - The *magenta device* colocated with *yellow CPU device*, with a *strong trust* relationship.
 - The *red CPU device* and the *magenta HE device* forms a *weak trust* relationship.
 
 .. image:: ../imgs/device/double_he.svg
 
-In this configuration, we use 2 nodes to virtualize 4 device, with that:
+In this configuration, we use 2 nodes to virtualize 4 devices, with that:
 
-- each *circle device* has one *strong trust* with one *diamond device* while a *weak trust* to another *diamond device*
+- each *circle device* has one *strong trust* with one *diamond device* while a *weak trust* to another *diamond device*.
 
 .. image:: ../imgs/device/unsafe_device.svg
 
 In this configuration, we have 3 nodes. For clarity, we name upper one as Alice, lower-left as Bob, lower-right as Charlie.
 
-Both {Bob, Charlie} would encrypt their data and send it to Alice, we have to possible device abstractions.
+Both {Bob, Charlie} would encrypt their data and send it to Alice, we have to do possible device abstractions.
 
-In the middle, there is only one *HE device*, which could be used to compute all cipher-text.
+In the middle, there is only one *HE device*, which could be used to compute all cipher-texts.
 
 - pros: there is only one HE device per-node, which means if we have N parties, we have at most N HE-devices.
-- cons: it breaks the *Consistency property*, i.e. `add::([x], [y])` add two cipher-text could not be done if two cipher-text comes from different parties. Another example: when doing output, Bob may get a cipher-text from the *HE-device*, but he can not decrypt it, since he does not have the right key. @jint, IMHO, *Consistency* is the key-point to guide programmers, **it's confusing if an op sometime work, sometimes not**. 
+- cons: it breaks the *Consistency property*, i.e. `add::([x], [y])` add two cipher-texts could not be done if two cipher-texts come from different parties. Another example: when doing output, Bob may get a cipher-text from the *HE-device*, but he can not decrypt it, since he does not have the right key. @jint, IMHO, *Consistency* is the key-point to guide programmers, **it's confusing if an op sometime work, sometimes not**. 
 
-In the right configuration, there are 2 *HE device*, both resides on Alice, but one for Bob and one for Charlie.
+In the right configuration, there are 2 *HE device*, both reside on Alice, but one for Bob and one for Charlie.
 
 - pros: Consistency, the device concept is exactly the same as MPC/TEE.
 - cons: there will be at most :math:`N^2` HE devices for N nodes. This might not be a problem since it depicts the 2PC property of HE (@jint).
@@ -159,9 +159,9 @@ Let's ignore the SPU device for a moment, the CPU and HEU looks like this:
 
 In this example, `HEU` computation part is strait-forward, the non-trivial part is the IO (device-to-device transfer). Let's consider several IO cases.
 
-- First, transfer data from `P1` to `HEU`, in this case, from device concept level, `P1` **strong trust** on `HEU`, so it can send plaintext directly to `HEU`. In implementation, `P1` colocated with `HEU`, so it make sense for a plaintext transfer.
-- Second, transfer data from `P2` to `HEU`, in device concept, `P2` **weak trust** `HEU`, so it has to encrypt the data with SK, then send to `HEU`. From implementation point of view, `P2` has the private key, so it can do the encryption.
-- Third case, transfer data devices other than `P1` and `P2` to `HEU`, in this case, it's not colocated with `HEU` nor key-provider of `HEU`, it's just a participant, it has `weak trust` relationship with `HEU`, and will ask `PK` from the `HEU`.
+- First, transfer data from `P1` to `HEU`, in this case, from device concept level, `P1` **strong trust** on `HEU`, so it can send plaintext directly to `HEU`. In implementation, `P1` is colocated with `HEU`, so it makes sense for a plaintext transfer.
+- Second, transfer data from `P2` to `HEU`, in device concept, `P2` **weak trust** `HEU`, so it has to encrypt the data with SK, then sends it to `HEU`. From implementation point of view, `P2` has the private key, so it can do the encryption.
+- Third case, transfer data devices other than `P1` and `P2` to `HEU`, in this case, it's neither colocated with `HEU` nor key-provider of `HEU`, it's just a participant, which has a `weak trust` relationship with `HEU`, and will request `PK` from the `HEU`.
 
 .. mermaid::
 

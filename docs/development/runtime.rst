@@ -26,14 +26,14 @@ Inside SPU, there are multiple layers, from bottom to up:
   - **Ring 2^k** layer, just like normal CPU, hides cryptography layer's details and provides standard ring2k arithmetic.
   - **Fixed point** layer uses fixed point encoding to represent a fractional number and provides basic arithmetic operations over them.
 
-- **OPS layer** is designed to be extensible, in this layer we can define multiple modules based on *ALU layer* and finally exposed to VM clients via bindings or SPU IR.
+- **OPS layer** is designed to be extensible, in this layer we can define multiple modules based on *ALU layer* and finally expose to VM clients via bindings or SPU IR.
 
 Homogeneous and Heterogeneous
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Recall that SPU VM is composed of multiple physical engines, the definition of *homogeneous* and *heterogeneous* comes from *engines*' perspective.
+Recall that SPU VM is composed of multiple physical engines, the definitions of *homogeneous* and *heterogeneous* come from an *engines*' perspective.
 
-- **Homogeneous**: a layer is *homogeneous* means that all engines run exactly the same code in this layer. The user of this layer doesn't have to distinguish between engines, they cannot and should not send/recv messages between engines, in other words, they can treat all engines the same, and programming them as one machine.
+- **Homogeneous**: a layer is *homogeneous* means that all engines run exactly the same code in this layer. The user of this layer doesn't have to distinguish between engines, they cannot and should not send/recv messages between engines, in other words, they can treat all engines the same, and program them as one machine.
 - **Heterogeneous**: in contrast, a layer is *heterogeneous* means that engines in this layer behave differently (following some protocols). The author of this layer should take care of the behavior of each engine to make things correct.
 
 We want SPU VM to be *homogeneous*, so we can treat it as a normal virtual device when applying secure evaluation. For example, in the following computation graph, given `x`, `y`, we want to compute `f(x, y)`, the big circle represents a computing node which can evaluate f.
@@ -58,24 +58,24 @@ VM Layout
 SPU, as a virtual device, is hosted by multiple physical devices. The relationship between physical devices and SPU is very flexible. Now let's use some examples to illustrate the possible layouts.
 
 .. important::
-   Programmers coding toward the virtual layout, the underline physical is **transparent** from the programmer's perspective. It's free to use different physical layouts, without changing a line of code.
+   Programmers coding toward the virtual layout, the underline physical is **transparent** from the programmer's perspective. It's free to use different physical layouts, without changing a single line of code.
 
 Outsourcing
 ~~~~~~~~~~~
 
-In this mode, data providers send data shares to a group of non-colluding computing providers, and computing providers cooperate to evaluate secure computation.
+In this mode, data providers send data shares to a group of non-colluding computation providers who cooperate to evaluate secure computations.
 
 .. image:: ../imgs/device/outsourcing.svg
 
 The figure to left depicts the physical layout, there are 6 physical nodes, mutually connected but untrusted to each other.
 
 * The circle stands for data provider.
-* The triangle stands for computing provider, three triangle node agree on some MPC protocol.
+* The triangle stands for computing provider, three triangle nodes agree on some MPC protocol.
 
 The figure to the right depicts the virtual layout.
 
 * The circle has one-to-one relation to the physical nodes.
-* 3 triangle node is treated as a single virtual device.
+* 3 triangle nodes are treated as a single virtual device.
 
 Colocated
 ~~~~~~~~~
@@ -94,7 +94,7 @@ The number of computing nodes could be larger than that of data nodes in this mo
 
 |
 
-There two notable optimization in this mode.
+There are two notable optimizations in this mode.
 
 - The **private semantic**, a computing node may have private data manipulations to accelerate MPC computation, for example, in *HESS protocol*, we can do :code:`HShare x Private` without online communication.
 - The **zero share data infeed**, when a data provider tries to share data cross nodes, it can use :code:`ZeroShare + Private` trick to avoid online communication.
@@ -102,10 +102,10 @@ There two notable optimization in this mode.
 Hybrid
 ~~~~~~
 
-This is the most general form, some data provider participate in the secure computation while others do not. 
+This is the most general form, some data providers participate in the secure computation while others do not. 
 
 .. image:: ../imgs/device/hybrid.svg
 
 .. note::
-  the **private semantic** and **zero share data infeed** also applies for data providers that participate in the computation.
+  the **private semantic** and **zero share data infeed** also apply to data providers that participate in the computation.
 

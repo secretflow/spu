@@ -37,7 +37,7 @@ And please keep in mind that Cheetah protocol is a 2PC protocol.
 Do I need to remove duplicated keys locally before PSI?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Yes. Otherwise error would be raised.
+Yes. Otherwise an error would be raised.
 
 
 General
@@ -64,6 +64,6 @@ Could I convert any Jax code to XLA and run by SPU?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Well, first you must make sure your Jax code is **jitable**. You have to apply some tricks to achieve this actually.
-Then even your code is jitable, sometime we still will disappoint you since we haven't implemented all XLA ops. Please
+Then even your code is jitable, sometime we will still disappoint you since we haven't implemented all XLA ops. Please
 check :ref:`/reference/xla_status.md`. We are working hard to finish them, you have my word!
 

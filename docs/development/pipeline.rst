@@ -38,8 +38,8 @@ The horizontal part depicts the data pipeline, from left to right.
 
 1. Data providers use :ref:`SPU io <reference/py_api:Runtime IO>` module to encrypt input data.
 
-   * For SPU MPC backend, *encrypt* means split plaintext data into shares
-   * For floating point data, encoding to fixed-point is may also required.
+   * For SPU MPC backend, *encrypt* means to split plaintext data into shares.
+   * For floating point data, encoding to fixed-point may be also required.
 
 2. The encrypted data is send to :ref:`SPU runtime <reference/py_api:Runtime Setup>`.
 3. The output data is fetched *result owner*, and decrypted by the :ref:`SPU io <reference/py_api:Runtime IO>` module.

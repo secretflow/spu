@@ -8,7 +8,7 @@ Currently, SPU implements the following protocols.
 * `Semi2k-SPDZ* <https://eprint.iacr.org/2018/482.pdf>`_ : A **semi-honest** NPC-protocol similar to SPDZ but requires a trusted third party to generate offline randoms. By default this protocol now uses trusted first party. Hence, it should be used for debugging purposes only.
 * `Cheetah* <https://eprint.iacr.org/2022/207>`_ : A fast 2pc semi-honest protocol. Since this protocol does not require a trusted third party, it requires more computation effort.
 
-Currently, we mainly focused on bridging existing AI frameworks to SPU via XLA, an intermediate
+Currently, we mainly focus on bridging existing AI frameworks to SPU via XLA, an intermediate
 representation where we can hook Tensorflow, Torch and Jax.
 
 We welcome security experts to help contribute more security protocols.

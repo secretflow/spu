@@ -3,7 +3,7 @@
 Development
 ===========
 
-This part contains design principle of SPU and staging PSI documentation.
+This part contains design principles of SPU and staging PSI documentation.
 
 .. toctree::
    :maxdepth: 2
