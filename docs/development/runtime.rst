@@ -26,7 +26,7 @@ Inside SPU, there are multiple layers, from bottom to up:
   - **Ring 2^k** layer, just like normal CPU, hides cryptography layer's details and provides standard ring2k arithmetic.
   - **Fixed point** layer uses fixed point encoding to represent a fractional number and provides basic arithmetic operations over them.
 
-- **OPS layer** is designed to be extensible, in this layer we can define multiple modules based on *ALU layer* and finally expose to VM clients via bindings or SPU IR.
+- **OPS layer** is designed to be extensible, in this layer we can define multiple modules based on *ALU layer* and finally exposed to VM clients via bindings or SPU IR.
 
 Homogeneous and Heterogeneous
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

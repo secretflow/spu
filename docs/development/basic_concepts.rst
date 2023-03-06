@@ -69,6 +69,6 @@ The API hierarchy looks like:
    SPU API hierarchy
 
 .. important::
-   An important goal of SPU is to allow people to write secure programs using frameworks they are familiar with, so it's recommended to use Frontend API.
+   An important goal of SPU is to allow people to write secure programs with their familiar frameworks they are familiar with, so it's recommended to use Frontend API.
 
    Currently, only JAX frontend is supported for now. Please check :doc:`JAX on SPU <../getting_started/quick_start>`.

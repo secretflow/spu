@@ -130,7 +130,7 @@ Boyle et al. have designed multiple concretely efficient PCGs
 for specific correlations, such as vector oblivious linear evaluation (VOLE) or batch oblivious linear
 evaluation (BOLE). These primitives are at the heart of modern secure computation protocols with low
 communication overhead.The VOLE functionality allows a receiver to learn a secret linear combination
-of two vectors held by a sender and it is constructed (with sublinear communication) under variants
+of two vectors held by a sender and constructed (with sublinear communication) under variants
 of the syndrome decoding assumption.
 
 [BC22]_ uses PCG to speed up private set intersection protocols, minimizing computation and communication.

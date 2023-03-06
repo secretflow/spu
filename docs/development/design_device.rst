@@ -7,7 +7,7 @@ Design: generic device
 Overview
 --------
 
-This document discusses the design of a trust chain under the general device concept.
+This document discusses the design of a trust chain under an universal device concept.
 
 Concept
 -------

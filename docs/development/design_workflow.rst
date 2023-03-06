@@ -36,7 +36,7 @@ Kind of roles:
 Note, one party may have multiple roles, for example:
 
 - one party could provide data while also participate in the computation.
-- one party could host all compute engines and claim that engines will not collude with each other, that is the 'out-sourcing mode'.
+- one party could host all compute engines and claim that engines do not collude with each other, that is the 'out-sourcing mode'.
 
 Compare to classic architecture
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
