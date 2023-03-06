@@ -24,4 +24,4 @@ for net in network_a network_b network_c network_d; do
 done
 
 # adam is slow so run network_a only
-bazel-bin/examples/python/ml/stax_nn/stax_nn -- --model network_a --optimizer adam -e 1 -c .circleci/benchmark.json
+bazel-bin/examples/python/ml/stax_nn/stax_nn --model network_a --optimizer adam -e 1 -c .circleci/benchmark.json
