@@ -109,7 +109,7 @@ Run Streaming C++ PSI example
 
 Start two terminals.
 
-Use ECDH-PSI as example, protocol is 1. KKRT-PSI set protocol to 2, BC22 PCG-PSI set protocol to 3.
+Taking ECDH-PSI as an example, protocol is 1. KKRT-PSI sets protocol to 2, BC22 PCG-PSI sets protocol to 3.
 
 Get PSI result in rank 0.
 
@@ -283,4 +283,4 @@ Security Tips
 Warning:  `KKRT16 <https://eprint.iacr.org/2016/799.pdf>`_ and 
 `BC22 PCG <https://eprint.iacr.org/2022/334.pdf>`_ are semi-honest PSI protocols, 
 and may be attacked in malicious model.
-We suggest use KKRT16 and BC22_PCG PSI protocol as one-way PSI, i.e., one party get the final intersection result.
+We recommend using KKRT16 and BC22_PCG PSI protocol as one-way PSI, i.e., one party gets the final intersection result.

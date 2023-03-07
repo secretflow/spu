@@ -29,14 +29,14 @@ SPU components are typically hosted by several parties which do not trust each o
 
 Kind of roles:
 
-- **Data provider**: which host storage engine.
-- **Algorithm provider**: which provide the algorithm.
-- **Computing provider**: which host one or more compute engines.
+- **Data provider**: which hosts storage engine.
+- **Algorithm provider**: which provides the algorithm.
+- **Computing provider**: which hosts one or more compute engines.
 
 Note, one party may have multiple roles, for example:
 
 - one party could provide data while also participate in the computation.
-- one party could host all compute engines and claim engines do not collude with each other, that is the 'out-sourcing mode'.
+- one party could host all compute engines and claim that engines do not collude with each other, that is the 'out-sourcing mode'.
 
 Compare to classic architecture
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -100,7 +100,7 @@ A SPU component can be deployed:
 Deployment unit.
 
 - **SPU Daemon**: is a program that serves *compute engine* or *storage engine*
-- **SPU Compiler**: is a program that translate/optimize XLA IR to SPU IR.
+- **SPU Compiler**: is a program that translates/optimizes XLA IR to SPU IR.
 - **driver**: is a lib which drives compile/data-placement/run pipeline.
 
 
@@ -191,8 +191,8 @@ In the above steps, **step 4-5**, **step 10-19** are virtual steps, since both v
 
 The concrete steps is defined by the virtual machine and storage layout. For example:
 
-- suppose we have 2 data source *Alice* and *Bob*, where *Alice* also acts as a data sink.
-- suppose we have 3 compute engine, which compose a 3-PC virtual machine.
+- suppose we have 2 data sources *Alice* and *Bob*, where *Alice* also acts as a data sink.
+- suppose we have 3 compute engines, which compose a 3-PC virtual machine.
 - suppose input `x` comes from *Alice*, `y` comes from *Bob*, and the output `z` is revealed to *Alice*.
 
 Data load
@@ -220,8 +220,8 @@ Data load
     end
 
 
-- **step 1-2** *Alice* load symbol 'x' into it's local symbol table.
-- **step 3-4** *Bob* load symbol 'y' into it's local symbol table.
+- **step 1-2** *Alice* loads symbol 'x' into it's local symbol table.
+- **step 3-4** *Bob* loads symbol 'y' into it's local symbol table.
 
 
 Data infeed
@@ -267,8 +267,8 @@ The above **step 9-12** does data infeed, the concrete steps look like:
 
 
 - **step 1-5** and **step 6-10** ask *Alice* and *Bob* to do infeed simultaneously, and could be done in parallel.
-- **step 2**, *Alice* split `x` into shares `(x1, x2, x3)`, note: this progress is mpc-protocol dependent.
-- **step 3-5**, *Alice* send slices of `xi` to each of the engines, could be done in parallel.
+- **step 2**, *Alice* splits `x` into shares `(x1, x2, x3)`, note: this progress is mpc-protocol dependent.
+- **step 3-5**, *Alice* sends slices of `xi` to each of the engines, could be done in parallel.
 - **step 6-10**, *Bob* does the same thing as *Alice*.
 
 
@@ -301,8 +301,8 @@ Run
     Note right of Driver: all output and captured data are in engines' symbol table.
 
 
-- **step 1-2**, driver ask Engine-0 to run the compiled program, note, the input data is feed at this time.
-- **step 3-4, 5-6** driver ask Engine-1 & 2 to do the same thing.
+- **step 1-2**, driver asks Engine-0 to run the compiled program, note, the input data is feed at this time.
+- **step 3-4, 5-6** driver asks Engine-1 & 2 to do the same thing.
 
 
 Data outfeed
@@ -335,8 +335,8 @@ Note in this example, *Alice* also acts as the data sink, the output is revealed
 
     D0->>D0: Reconstruct z from (z1, z2, z3)
 
-- **step 2-7** *Alice* gather sharings of `z` from engines, note: this progress is mpc-protocol dependent.
-- **step 8** *Alice* local reconstruct the result.
+- **step 2-7** *Alice* gathers sharings of `z` from engines, note: this progress is mpc-protocol dependent.
+- **step 8** *Alice* reconstructs the result locally.
 
 
 Full workflow
