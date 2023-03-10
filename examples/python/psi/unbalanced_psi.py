@@ -80,9 +80,9 @@ def main(_):
         gen_cache_config.ecdh_secret_key_path = secret_key_path
 
         start = time.time()
-        report = psi.bucket_psi(None, gen_cache_config)
+        gen_cache_report = psi.bucket_psi(None, gen_cache_config)
         print(f"gen cache cost time: {time.time() - start}")
-        print(f"gen cache: rank: {FLAGS.rank} original_count: {report.original_count}")
+        print(f"gen cache: rank: {FLAGS.rank} original_count: {gen_cache_report.original_count}")
 
     # ===== transfer cache phase =====
     print("===== Transfer Cache Phase =====")
@@ -110,14 +110,49 @@ def main(_):
         transfer_cache_config.ecdh_secret_key_path = secret_key_path
 
     start = time.time()
-    report = psi.bucket_psi(link_ctx, transfer_cache_config)
-    print(f"offline cost time: {time.time() - start}")
-    print(f"offline: rank: {FLAGS.rank} original_count: {report.original_count}")
-    print(f"intersection_count: {report.intersection_count}")
+    transfer_cache_report = psi.bucket_psi(link_ctx, transfer_cache_config)
+    print(f"transfer cache cost time: {time.time() - start}")
+    print(f"transfer cache: rank: {FLAGS.rank} original_count: {transfer_cache_report.original_count}")
+    print(f"intersection_count: {transfer_cache_report.intersection_count}")
+
+    # ===== shuffle online phase =====
+    print("===== shuffle online phase =====")
+
+    server_rank = 1 - FLAGS.receiver_rank
+    print(f"shuffle online server_rank: {server_rank}")
+
+    config_shuffle_online = psi.BucketPsiConfig(
+        psi_type=psi.PsiType.Value('ECDH_OPRF_UB_PSI_2PC_SHUFFLE_ONLINE'),
+        broadcast_result=broadcast_result,
+        receiver_rank=server_rank,
+        input_params=psi.InputParams(
+            path=FLAGS.in_path,
+            select_fields=selected_fields,
+            precheck=False,
+        ),
+        output_params=psi.OutputParams(
+            path=FLAGS.out_path, need_sort=FLAGS.output_sort
+        ),
+        bucket_size=100000000,
+        curve_type=psi.CurveType.CURVE_FOURQ,
+    )
+
+    print(f"input path:{FLAGS.in_path}")
+    if server_rank == link_ctx.rank:
+        config_shuffle_online.preprocess_path = cache_path
+        config_shuffle_online.ecdh_secret_key_path = secret_key_path
+    else:
+        config_shuffle_online.preprocess_path = 'tmp/preprocess_path_transfer_cache.csv'
+
+    start = time.time()
+    report_shuffle_online = psi.bucket_psi(link_ctx, config_shuffle_online)
+    print(f"shuffle online cost time: {time.time() - start}")
+    print(f"shuffle online: rank:{FLAGS.rank} original_count: {report_shuffle_online.original_count}")
+    print(f"intersection_count: {report_shuffle_online.intersection_count}")
 
     # ===== offline phase =====
     print("===== UB Offline Phase =====")
-    config = psi.BucketPsiConfig(
+    config_offline = psi.BucketPsiConfig(
         psi_type=psi.PsiType.Value('ECDH_OPRF_UB_PSI_2PC_OFFLINE'),
         broadcast_result=broadcast_result,
         receiver_rank=FLAGS.receiver_rank,
@@ -134,20 +169,20 @@ def main(_):
     )
 
     if FLAGS.receiver_rank == link_ctx.rank:
-        config.preprocess_path = 'tmp/preprocess_path.csv'
-        config.input_params.path = 'fake.csv'
+        config_offline.preprocess_path = 'tmp/preprocess_path.csv'
+        config_offline.input_params.path = 'fake.csv'
     else:
-        config.ecdh_secret_key_path = secret_key_path
+        config_offline.ecdh_secret_key_path = secret_key_path
 
     start = time.time()
-    report = psi.bucket_psi(link_ctx, config)
+    offline_report = psi.bucket_psi(link_ctx, config_offline)
     print(f"offline cost time: {time.time() - start}")
-    print(f"offline: rank: {FLAGS.rank} original_count: {report.original_count}")
-    print(f"intersection_count: {report.intersection_count}")
+    print(f"offline: rank: {FLAGS.rank} original_count: {offline_report.original_count}")
+    print(f"intersection_count: {offline_report.intersection_count}")
 
-    # ===== offline phase =====
+    # ===== online phase =====
     print("===== online phase =====")
-    config_offline = psi.BucketPsiConfig(
+    config_online = psi.BucketPsiConfig(
         psi_type=psi.PsiType.Value('ECDH_OPRF_UB_PSI_2PC_ONLINE'),
         broadcast_result=broadcast_result,
         receiver_rank=FLAGS.receiver_rank,
@@ -165,13 +200,13 @@ def main(_):
 
     print(f"input path:{FLAGS.in_path}")
     if FLAGS.receiver_rank == link_ctx.rank:
-        config_offline.preprocess_path = 'tmp/preprocess_path.csv'
+        config_online.preprocess_path = 'tmp/preprocess_path.csv'
     else:
-        config_offline.input_params.path = 'fake.csv'
-        config_offline.ecdh_secret_key_path = secret_key_path
+        config_online.input_params.path = 'fake.csv'
+        config_online.ecdh_secret_key_path = secret_key_path
 
     start = time.time()
-    report_online = psi.bucket_psi(link_ctx, config_offline)
+    report_online = psi.bucket_psi(link_ctx, config_online)
     print(f"online cost time: {time.time() - start}")
     print(f"online: rank:{FLAGS.rank} original_count: {report_online.original_count}")
     print(f"intersection_count: {report_online.intersection_count}")

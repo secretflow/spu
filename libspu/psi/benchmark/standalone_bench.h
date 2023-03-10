@@ -153,21 +153,19 @@ PSI_BM_DEFINE_ECDH()
     offline_proc.RecvFinalEvaluatedItems(memory_store);        \
   }
 
-#define ECDH_OPRF_RECEIVER_ONLINE()                                      \
-  { /* online */                                                         \
-    auto memory_store = std::make_shared<MemoryCipherStore>();           \
-    auto proc_send = std::async([&] {                                    \
-      auto item_provider = std::make_shared<MemoryBatchProvider>(items); \
-      online_proc.SendBlindedItems(item_provider);                       \
-    });                                                                  \
-                                                                         \
-    auto proc_recv = std::async([&] {                                    \
-      auto item_provider = std::make_shared<MemoryBatchProvider>(items); \
-      online_proc.RecvEvaluatedItems(item_provider, memory_store);       \
-    });                                                                  \
-                                                                         \
-    proc_send.get();                                                     \
-    proc_recv.get();                                                     \
+#define ECDH_OPRF_RECEIVER_ONLINE()                                        \
+  { /* online */                                                           \
+    auto memory_store = std::make_shared<MemoryCipherStore>();             \
+    auto proc_send = std::async([&] {                                      \
+      auto item_provider = std::make_shared<MemoryBatchProvider>(items);   \
+      online_proc.SendBlindedItems(item_provider);                         \
+    });                                                                    \
+                                                                           \
+    auto proc_recv =                                                       \
+        std::async([&] { online_proc.RecvEvaluatedItems(memory_store); }); \
+                                                                           \
+    proc_send.get();                                                       \
+    proc_recv.get();                                                       \
   }
 
 #define PSI_BM_DEFINE_ECDH_OPRF_FULL(CurveType)                         \

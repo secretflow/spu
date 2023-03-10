@@ -658,7 +658,7 @@ TEST_P(LogisticTest, Logistic) {
     Value c = logistic(&ctx, a);
     EXPECT_EQ(c.dtype(), DT_FXP);
 
-    auto y = test::dump_public_as<float>(&ctx, c);
+    auto y = dump_public_as<float>(&ctx, c);
     EXPECT_TRUE(xt::allclose(1.0 / (1.0 + xt::exp(-x)), y, 0.1, 0.5))
         << 1.0 / (1.0 + xt::exp(-x)) << std::endl
         << y;
@@ -670,7 +670,7 @@ TEST_P(LogisticTest, Logistic) {
     Value c = logistic(&ctx, a);
     EXPECT_EQ(c.dtype(), DT_FXP);
 
-    auto y = test::dump_public_as<float>(&ctx, _s2p(&ctx, c).asFxp());
+    auto y = dump_public_as<float>(&ctx, _s2p(&ctx, c).asFxp());
     // low precision
     EXPECT_TRUE(xt::allclose(1.0 / (1.0 + xt::exp(-x)), y, 0.1, 0.5))
         << 1.0 / (1.0 + xt::exp(-x)) << std::endl

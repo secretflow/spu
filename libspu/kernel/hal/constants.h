@@ -41,9 +41,6 @@ Value zeros(HalContext* ctx, Visibility vis, DataType dtype,
 Value const_secret(HalContext* ctx, const PtBufferView& bv,
                    absl::Span<const int64_t> shape = {});
 
-// Export a value to a buffer.
-NdArrayRef dump_public(HalContext* ctx, const Value& v);
-
 // Deprecated:
 Value make_value(HalContext* ctx, Visibility vtype, const PtBufferView& bv);
 

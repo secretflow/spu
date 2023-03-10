@@ -21,7 +21,6 @@
 #include "libspu/kernel/context.h"
 #include "libspu/kernel/hal/test_util.h"
 #include "libspu/kernel/value.h"
-#include "libspu/mpc/utils/ring_ops.h"
 
 namespace spu::kernel::hlo {
 
@@ -40,7 +39,7 @@ TEST(ConstTest, Epsilon) {
 
   auto eps = Epsilon(&hctx);
 
-  auto v = hal::test::dump_public_as<float>(&hctx, eps);
+  auto v = hal::dump_public_as<float>(&hctx, eps);
 
   EXPECT_FLOAT_EQ(v[0], 1 / (std::pow(2, getDefaultFxpBits(hctx.rt_config()))));
 }

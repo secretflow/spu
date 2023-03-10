@@ -16,8 +16,8 @@
 
 #include "spdlog/spdlog.h"
 
-#include "libspu/kernel/hal/test_util.h"
-#include "libspu/kernel/hal/type_cast.h"  // For reveal
+#include "libspu/kernel/hal/public_helper.h"
+#include "libspu/kernel/hal/type_cast.h"
 
 namespace spu::kernel::hal {
 
@@ -25,10 +25,10 @@ void dbg_print(HalContext* ctx, const Value& v) {
   if (v.isPublic()) {
     std::stringstream ss;
     if (v.isFxp()) {
-      auto pt = test::dump_public_as<float>(ctx, v);
+      auto pt = dump_public_as<float>(ctx, v);
       ss << pt << std::endl;
     } else if (v.isInt()) {
-      auto pt = test::dump_public_as<int64_t>(ctx, v);
+      auto pt = dump_public_as<int64_t>(ctx, v);
       ss << pt << std::endl;
     } else {
       SPU_THROW("unsupport dtype={}", v.dtype());

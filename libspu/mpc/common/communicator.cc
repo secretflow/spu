@@ -19,7 +19,7 @@
 namespace spu::mpc {
 namespace {
 
-// When ArrayRef is transferred via network, it's suppused to be compact.
+// When ArrayRef is transferred via network, it's supposed to be compact.
 constexpr int64_t kStride = 1;
 constexpr int64_t kOffset = 0;
 

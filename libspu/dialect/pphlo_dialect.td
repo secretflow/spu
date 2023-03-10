@@ -47,7 +47,6 @@ def PPHlo_Dialect : Dialect {
     Type parseType(DialectAsmParser &parser) const override;
     void printType(Type type, DialectAsmPrinter &os) const override;
   }];
-  let useFoldAPI = kEmitFoldAdaptorFolder;
 }
 
 #endif  // SPU_DIALECT_PPHLO_DIALECT

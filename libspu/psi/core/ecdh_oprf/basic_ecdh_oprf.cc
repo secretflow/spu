@@ -46,7 +46,9 @@ std::string HashItem(absl::string_view item, absl::string_view masked_item,
       break;
   }
 
-  hash_algo->Update(item);
+  if (item.length() > 0) {
+    hash_algo->Update(item);
+  }
   hash_algo->Update(masked_item);
   std::vector<uint8_t> hash = hash_algo->CumulativeHash();
 
@@ -122,6 +124,28 @@ std::string ItemMul(absl::string_view sk_bytes, absl::string_view item_bytes,
   return point_bytes;
 }
 
+std::vector<uint8_t> EccPrivateKeyInv(int group_id,
+                                      yacl::ByteContainerView private_key) {
+  BnCtxPtr bn_ctx(yacl::CheckNotNull(BN_CTX_new()));
+  EcGroupSt ec_group(group_id);
+  BigNumSt bn_sk;
+
+  bn_sk.FromBytes(
+      absl::string_view(reinterpret_cast<const char *>(private_key.data()),
+                        kEccKeySize),
+      ec_group.bn_n);
+
+  BigNumSt bn_sk_inv = bn_sk.Inverse(ec_group.bn_n);
+
+  std::vector<uint8_t> sk_inv_bytes(kEccKeySize);
+  std::string sk_inv = bn_sk_inv.ToBytes();
+  SPU_ENFORCE(sk_inv_bytes.size() == sk_inv.length());
+
+  std::memcpy(sk_inv_bytes.data(), sk_inv.data(), sk_inv.length());
+
+  return sk_inv_bytes;
+}
+
 }  // namespace
 
 std::string BasicEcdhOprfServer::Evaluate(
@@ -144,6 +168,20 @@ std::string BasicEcdhOprfServer::FullEvaluate(
   return HashItem(input_sv, point_bytes, GetCompareLength(), hash_type_);
 }
 
+std::string BasicEcdhOprfServer::SimpleEvaluate(
+    yacl::ByteContainerView input) const {
+  absl::string_view input_sv = absl::string_view(
+      reinterpret_cast<const char *>(input.data()), input.size());
+
+  std::string point_bytes = ItemMul(
+      absl::string_view(reinterpret_cast<const char *>(&private_key_[0]),
+                        kEccKeySize),
+      input_sv, ec_group_nid_);
+
+  return HashItem(absl::string_view(), point_bytes, GetCompareLength(),
+                  hash_type_);
+}
+
 size_t BasicEcdhOprfServer::GetCompareLength() const {
   if (compare_length_ != 0) {
     return compare_length_;
@@ -157,23 +195,23 @@ size_t BasicEcdhOprfServer::GetEcPointLength() const {
 }
 
 BasicEcdhOprfClient::BasicEcdhOprfClient(CurveType type) : curve_type_(type) {
-  ec_group_nid_ = Sm2Cryptor::GetEcGroupId(type);
-  BnCtxPtr bn_ctx(yacl::CheckNotNull(BN_CTX_new()));
-  EcGroupSt ec_group(ec_group_nid_);
-  BigNumSt bn_sk;
+  ec_group_nid_ = Sm2Cryptor::GetEcGroupId(curve_type_);
 
-  bn_sk.FromBytes(
-      absl::string_view(reinterpret_cast<const char *>(&private_key_[0]),
-                        kEccKeySize),
-      ec_group.bn_n);
-
-  BigNumSt bn_sk_inv = bn_sk.Inverse(ec_group.bn_n);
-
-  std::string sk_inv = bn_sk_inv.ToBytes();
-  SPU_ENFORCE(sk_inv_.size() == sk_inv.length());
-
-  std::memcpy(sk_inv_.data(), sk_inv.data(), sk_inv.length());
+  sk_inv_ = EccPrivateKeyInv(ec_group_nid_,
+                             absl::MakeSpan(&private_key_[0], kEccKeySize));
   (void)curve_type_;
+}
+
+BasicEcdhOprfClient::BasicEcdhOprfClient(CurveType type,
+                                         yacl::ByteContainerView private_key)
+    : curve_type_(type) {
+  SPU_ENFORCE(private_key.size() == kEccKeySize);
+  std::memcpy(&private_key_[0], private_key.data(), private_key.size());
+
+  ec_group_nid_ = Sm2Cryptor::GetEcGroupId(curve_type_);
+
+  sk_inv_ = EccPrivateKeyInv(ec_group_nid_,
+                             absl::MakeSpan(&private_key_[0], kEccKeySize));
 }
 
 std::string BasicEcdhOprfClient::Blind(absl::string_view input) const {
@@ -190,6 +228,11 @@ std::string BasicEcdhOprfClient::Finalize(
   return HashItem(item, unblinded_element, GetCompareLength(), hash_type_);
 }
 
+std::string BasicEcdhOprfClient::Finalize(
+    absl::string_view evaluated_element) const {
+  return Finalize(absl::string_view(), evaluated_element);
+}
+
 std::string BasicEcdhOprfClient::Unblind(absl::string_view input) const {
   return EcPointMul(
       absl::string_view(reinterpret_cast<const char *>(sk_inv_.data()),
@@ -204,6 +247,7 @@ size_t BasicEcdhOprfClient::GetCompareLength() const {
 
   return kEc256CompareLength;
 }
+
 size_t BasicEcdhOprfClient::GetEcPointLength() const {
   return kEcPointCompressLength;
 }
@@ -260,6 +304,7 @@ void FourQHashToCurvePoint(absl::string_view input, point_t pt) {
 }
 
 }  // namespace
+
 std::string FourQBasicEcdhOprfServer::Evaluate(
     absl::string_view blinded_element) const {
   return FourQPointMul(
@@ -284,6 +329,22 @@ std::string FourQBasicEcdhOprfServer::FullEvaluate(
   return HashItem(input_sv, pt_mul_bytes, GetCompareLength(), hash_type_);
 }
 
+std::string FourQBasicEcdhOprfServer::SimpleEvaluate(
+    yacl::ByteContainerView input) const {
+  point_t pt;
+  absl::string_view input_sv = absl::string_view(
+      reinterpret_cast<const char *>(input.data()), input.size());
+  FourQHashToCurvePoint(input_sv, pt);
+
+  std::string pt_mul_bytes = FourQPointMul(
+      absl::string_view(reinterpret_cast<const char *>(&private_key_[0]),
+                        kEccKeySize),
+      pt);
+
+  return HashItem(absl::string_view(), pt_mul_bytes, GetCompareLength(),
+                  hash_type_);
+}
+
 size_t FourQBasicEcdhOprfServer::GetCompareLength() const {
   if (compare_length_ != 0) {
     return compare_length_;
@@ -296,6 +357,20 @@ size_t FourQBasicEcdhOprfServer::GetEcPointLength() const {
 }
 
 FourQBasicEcdhOprfClient::FourQBasicEcdhOprfClient() {
+  to_Montgomery(const_cast<digit_t *>(
+                    reinterpret_cast<const digit_t *>(&private_key_[0])),
+                reinterpret_cast<digit_t *>(sk_inv_.data()));
+  Montgomery_inversion_mod_order(reinterpret_cast<digit_t *>(sk_inv_.data()),
+                                 reinterpret_cast<digit_t *>(sk_inv_.data()));
+  from_Montgomery(reinterpret_cast<digit_t *>(sk_inv_.data()),
+                  reinterpret_cast<digit_t *>(sk_inv_.data()));
+}
+
+FourQBasicEcdhOprfClient::FourQBasicEcdhOprfClient(
+    yacl::ByteContainerView private_key) {
+  SPU_ENFORCE(private_key.size() == kEccKeySize);
+  std::memcpy(&private_key_[0], private_key.data(), private_key.size());
+
   to_Montgomery(const_cast<digit_t *>(
                     reinterpret_cast<const digit_t *>(&private_key_[0])),
                 reinterpret_cast<digit_t *>(sk_inv_.data()));
@@ -320,6 +395,11 @@ std::string FourQBasicEcdhOprfClient::Finalize(
   std::string unblinded_element = Unblind(evaluated_element);
 
   return HashItem(item, unblinded_element, GetCompareLength(), hash_type_);
+}
+
+std::string FourQBasicEcdhOprfClient::Finalize(
+    absl::string_view evaluated_element) const {
+  return Finalize(absl::string_view(), evaluated_element);
 }
 
 std::string FourQBasicEcdhOprfClient::Unblind(absl::string_view input) const {

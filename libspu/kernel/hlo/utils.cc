@@ -14,7 +14,7 @@
 
 #include "libspu/kernel/hlo/utils.h"
 
-#include "libspu/kernel/hal/test_util.h"
+#include "libspu/kernel/hal/public_helper.h"
 
 namespace spu::kernel {
 
@@ -23,7 +23,7 @@ bool getBooleanValue(HalContext *ctx, const spu::Value &value) {
   SPU_ENFORCE(value.dtype() == DT_I1, "Expect bool, got {}", value.dtype());
   SPU_ENFORCE(value.isPublic(), "Expect public value");
 
-  const auto public_val = kernel::hal::test::dump_public_as<bool>(ctx, value);
+  const auto public_val = kernel::hal::dump_public_as<bool>(ctx, value);
   return public_val.front();
 }
 
@@ -32,15 +32,14 @@ int32_t getI32Value(HalContext *ctx, const spu::Value &value) {
   SPU_ENFORCE(value.dtype() == DT_I32, "Expect bool, got {}", value.dtype());
   SPU_ENFORCE(value.isPublic(), "Expect public value");
 
-  const auto public_val =
-      kernel::hal::test::dump_public_as<int32_t>(ctx, value);
+  const auto public_val = kernel::hal::dump_public_as<int32_t>(ctx, value);
   return public_val.front();
 }
 
 xt::xarray<int64_t> getIndicies(HalContext *ctx, const spu::Value &value) {
   SPU_ENFORCE(value.isInt(), "indicies value must be integers.");
   SPU_ENFORCE(value.isPublic(), "indicies value must be public.");
-  return kernel::hal::test::dump_public_as<int64_t>(ctx, value);
+  return kernel::hal::dump_public_as<int64_t>(ctx, value);
 }
 
 }  // namespace spu::kernel

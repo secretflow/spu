@@ -45,8 +45,8 @@ TEST(UbPsiCacheTest, Simple) {
   });
 
   std::vector<std::vector<uint8_t>> items;
-  std::vector<std::string> selected_fields = {"id1", "id2"};
 
+  std::vector<std::string> selected_fields = {"id1", "id2"};
   UbPsiCache cache(tmp_file_path.string(), data_len, selected_fields);
 
   std::vector<uint8_t> rand_bytes = yacl::crypto::RandBytes(data_len);

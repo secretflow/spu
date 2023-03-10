@@ -46,8 +46,11 @@ TEST_P(BasicEcdhOprfTest, Works) {
   std::shared_ptr<IEcdhOprfServer> dh_oprf_server =
       CreateEcdhOprfServer(OprfType::Basic, params.type);
 
+  std::vector<uint8_t> client_sk(kEccKeySize);
+  prg.Fill(absl::MakeSpan(client_sk));
+
   std::shared_ptr<IEcdhOprfClient> dh_oprf_client =
-      CreateEcdhOprfClient(OprfType::Basic, params.type);
+      CreateEcdhOprfClient(client_sk, OprfType::Basic, params.type);
 
   std::vector<std::string> items_vec(params.items_size);
 
@@ -85,4 +88,5 @@ INSTANTIATE_TEST_SUITE_P(
                     TestParams{1, CurveType::CURVE_FOURQ},
                     TestParams{10, CurveType::CURVE_FOURQ},
                     TestParams{50, CurveType::CURVE_FOURQ}));
+
 }  // namespace spu::psi

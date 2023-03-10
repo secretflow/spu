@@ -150,8 +150,8 @@ void CachedCsvCipherStore::SavePeer(
   }
 }
 
-std::vector<uint64_t> CachedCsvCipherStore::FinalizeAndComputeIndices(
-    size_t bucket_size) {
+std::pair<std::vector<uint64_t>, std::vector<std::string>>
+CachedCsvCipherStore::FinalizeAndComputeIndices(size_t bucket_size) {
   if (!self_read_only_) {
     self_out_->Flush();
   }
@@ -159,8 +159,8 @@ std::vector<uint64_t> CachedCsvCipherStore::FinalizeAndComputeIndices(
 
   SPDLOG_INFO("Begin FinalizeAndComputeIndices");
 
-  std::unordered_set<uint64_t> indices_set;
   std::vector<uint64_t> indices;
+  std::vector<std::string> masked_items;
 
   std::vector<std::string> ids = {cipher_id_};
   CsvBatchProvider peer_provider(peer_csv_path_, ids);
@@ -179,17 +179,20 @@ std::vector<uint64_t> CachedCsvCipherStore::FinalizeAndComputeIndices(
     size_t compare_size = (batch_peer_data.size() + compare_thread_num_ - 1) /
                           compare_thread_num_;
 
-    std::vector<std::vector<size_t>> result(compare_thread_num_);
+    std::vector<std::vector<uint64_t>> batch_indices(compare_thread_num_);
+    std::vector<std::vector<std::string>> batch_masked_items(
+        compare_thread_num_);
 
     auto compare_proc = [&](int idx) -> void {
-      size_t begin = idx * compare_size;
-      size_t end =
-          std::min<size_t>(batch_peer_data.size(), begin + compare_size);
+      uint64_t begin = idx * compare_size;
+      uint64_t end =
+          std::min<uint64_t>(batch_peer_data.size(), begin + compare_size);
 
       for (size_t i = begin; i < end; i++) {
         auto search_ret = self_data_.find(batch_peer_data[i]);
         if (search_ret != self_data_.end()) {
-          result[idx].push_back(search_ret->second);
+          batch_indices[idx].push_back(search_ret->second);
+          batch_masked_items[idx].push_back(batch_peer_data[i]);
         }
       }
     };
@@ -205,16 +208,17 @@ std::vector<uint64_t> CachedCsvCipherStore::FinalizeAndComputeIndices(
 
     batch_count++;
 
-    for (const auto& r : result) {
-      indices_set.insert(r.begin(), r.end());
+    for (const auto& r : batch_indices) {
+      indices.insert(indices.end(), r.begin(), r.end());
+    }
+    for (const auto& r : batch_masked_items) {
+      masked_items.insert(masked_items.end(), r.begin(), r.end());
     }
     SPDLOG_INFO("FinalizeAndComputeIndices, batch_count:{}", batch_count);
   }
 
-  indices.insert(indices.end(), indices_set.begin(), indices_set.end());
-
   SPDLOG_INFO("End FinalizeAndComputeIndices, batch_count:{}", batch_count);
-  return indices;
+  return std::make_pair(indices, masked_items);
 }
 
 std::vector<uint64_t> GetIndicesByItems(

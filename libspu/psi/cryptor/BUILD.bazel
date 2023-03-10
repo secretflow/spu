@@ -99,6 +99,16 @@ spu_cc_library(
         "//libspu/core:prelude",
         "@com_github_openssl_openssl//:openssl",
         "@yacl//yacl/crypto/base/hash:hash_utils",
+        "@yacl//yacl/utils:parallel",
+    ],
+)
+
+spu_cc_test(
+    name = "ecc_utils_test",
+    srcs = ["ecc_utils_test.cc"],
+    deps = [
+        ":ecc_utils",
+        "@com_google_googletest//:gtest",
     ],
 )
 

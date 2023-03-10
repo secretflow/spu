@@ -45,5 +45,6 @@ spu_cc_binary(
     srcs = ["beaver_server_main.cc"],
     deps = [
         ":beaver_server",
+        "//libspu/core:logging",
     ],
 )

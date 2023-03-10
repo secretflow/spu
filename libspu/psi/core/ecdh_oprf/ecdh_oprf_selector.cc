@@ -117,4 +117,36 @@ std::unique_ptr<IEcdhOprfClient> CreateEcdhOprfClient(OprfType oprf_type,
   return client;
 }
 
+std::unique_ptr<IEcdhOprfClient> CreateEcdhOprfClient(
+    yacl::ByteContainerView private_key, OprfType oprf_type,
+    CurveType curve_type) {
+  std::unique_ptr<IEcdhOprfClient> client;
+
+  switch (oprf_type) {
+    case OprfType::Basic: {
+      switch (curve_type) {
+        case CurveType::CURVE_FOURQ: {
+          client = std::make_unique<FourQBasicEcdhOprfClient>(private_key);
+          break;
+        }
+        case CurveType::CURVE_SECP256K1:
+        case CurveType::CURVE_SM2: {
+          client =
+              std::make_unique<BasicEcdhOprfClient>(curve_type, private_key);
+          break;
+        }
+        default:
+          SPU_THROW("unknown support Curve type: {}",
+                    static_cast<int>(curve_type));
+          break;
+      }
+      break;
+    }
+  }
+
+  SPU_ENFORCE(client != nullptr, "EcdhOprfClient should not be nullptr");
+
+  return client;
+}
+
 }  // namespace spu::psi

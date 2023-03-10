@@ -52,7 +52,7 @@ class Simulator(object):
 
     @classmethod
     def simple(cls, wsize: int, prot: spu_pb2.ProtocolKind, field: spu_pb2.FieldType):
-        """helper method to create a SPU Simulator
+        """helper method to create an SPU Simulator
 
         Args:
             wsize (int): the world size.

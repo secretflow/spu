@@ -51,6 +51,7 @@ spu_cc_library(
         "//libspu/kernel:context",
         "//libspu/kernel:value",
         "//libspu/kernel/hal:constants",
+        "//libspu/kernel/hal:public_helper",
         "//libspu/mpc:factory",
     ],
 )

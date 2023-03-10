@@ -63,7 +63,7 @@ x = rand_from_alice()
 y = rand_from_bob()
 
 # x & y will be automatically fetch by SPU (as secret shares)
-# z will be evaluated as a SPU function.
+# z will be evaluated as an SPU function.
 z = compare(x, y)
 
 print(f"z({type(z)} is a device object ref, we can not access it directly.")

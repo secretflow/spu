@@ -16,7 +16,6 @@
 
 #include "gtest/gtest.h"
 
-#include "libspu/core/ndarray_ref.h"
 #include "libspu/kernel/context.h"
 #include "libspu/kernel/hal/test_util.h"
 #include "libspu/kernel/hlo/const.h"

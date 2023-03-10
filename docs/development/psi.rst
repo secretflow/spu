@@ -176,7 +176,7 @@ In the second terminal.
   simple_dp_psi -rank 1 -in_path ./examples/data/psi_2.csv -field_names id -out_path /tmp/p1.out 
 
 Run Unbalanced PSI python example
->>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 Start two terminals.
 

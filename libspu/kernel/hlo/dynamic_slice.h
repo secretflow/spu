@@ -20,18 +20,16 @@ namespace spu::kernel::hlo {
 
 spu::Value DynamicUpdateSlice(HalContext *ctx, const spu::Value &operand,
                               const spu::Value &update,
-                              absl::Span<const spu::Value> start_indicies);
+                              absl::Span<const spu::Value> start_indices);
 
 spu::Value DynamicSlice(HalContext *ctx, const spu::Value &operand,
                         absl::Span<const int64_t> slice_size,
-                        absl::Span<const spu::Value> start_indicies);
+                        absl::Span<const spu::Value> start_indices);
 
 /// ------------------- non-XLA APIs ------------------------------------
-/**
- * @brief Update slice in place.
- */
-void UpdateSliceInPlace(HalContext *ctx, spu::Value &operand,
-                        const spu::Value &update,
-                        absl::Span<const int64_t> start_indicies);
+// @brief Update slice
+spu::Value UpdateSlice(HalContext *ctx, const spu::Value &in,
+                       const spu::Value &update,
+                       absl::Span<const int64_t> start_indices);
 
 }  // namespace spu::kernel::hlo

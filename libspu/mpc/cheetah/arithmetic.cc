@@ -39,7 +39,7 @@ ArrayRef TruncAWithSign::proc(KernelEvalContext* ctx, const ArrayRef& x,
   size_t n = x.numel();
   size_t nworker =
       std::min(ot_state->parallel_size(), CeilDiv(n, kMinWorkSize));
-  size_t work_load = CeilDiv(n, nworker);
+  size_t work_load = nworker == 0 ? 0 : CeilDiv(n, nworker);
   for (size_t w = 0; w < nworker; ++w) {
     ot_state->LazyInit(comm, w);
   }
@@ -75,7 +75,7 @@ ArrayRef TruncA::proc(KernelEvalContext* ctx, const ArrayRef& x,
   size_t n = x.numel();
   size_t nworker =
       std::min(ot_state->parallel_size(), CeilDiv(n, kMinWorkSize));
-  size_t work_load = CeilDiv(n, nworker);
+  size_t work_load = nworker == 0 ? 0 : CeilDiv(n, nworker);
   for (size_t w = 0; w < nworker; ++w) {
     ot_state->LazyInit(comm, w);
   }
@@ -110,7 +110,7 @@ ArrayRef MsbA2B::proc(KernelEvalContext* ctx, const ArrayRef& x) const {
   size_t n = x.numel();
   size_t nworker =
       std::min(ot_state->parallel_size(), CeilDiv(n, kMinWorkSize));
-  size_t work_load = CeilDiv(n, nworker);
+  size_t work_load = nworker == 0 ? 0 : CeilDiv(n, nworker);
   for (size_t w = 0; w < nworker; ++w) {
     ot_state->LazyInit(comm, w);
   }
@@ -188,7 +188,7 @@ ArrayRef EqualAA::proc(KernelEvalContext* ctx, const ArrayRef& x,
   size_t n = x.numel();
   size_t nworker =
       std::min(ot_state->parallel_size(), CeilDiv(n, kMinWorkSize));
-  size_t work_load = CeilDiv(n, nworker);
+  size_t work_load = nworker == 0 ? 0 : CeilDiv(n, nworker);
   for (size_t w = 0; w < nworker; ++w) {
     ot_state->LazyInit(comm, w);
   }
@@ -235,7 +235,8 @@ ArrayRef MulA1B::proc(KernelEvalContext* ctx, const ArrayRef& x,
   size_t n = x.numel();
   size_t nworker =
       std::min(ot_state->parallel_size(), CeilDiv(n, kMinWorkSize));
-  size_t work_load = CeilDiv(n, nworker);
+  size_t work_load = nworker == 0 ? 0 : CeilDiv(n, nworker);
+
   for (size_t w = 0; w < nworker; ++w) {
     ot_state->LazyInit(comm, w);
   }
@@ -264,10 +265,11 @@ ArrayRef MulA1B::proc(KernelEvalContext* ctx, const ArrayRef& x,
 ArrayRef MulAA::proc(KernelEvalContext* ctx, const ArrayRef& x,
                      const ArrayRef& y) const {
   SPU_TRACE_MPC_LEAF(ctx, x, y);
+  SPU_ENFORCE_EQ(x.numel(), y.numel());
+
   size_t batch_sze = ctx->getState<CheetahMulState>()->get()->OLEBatchSize();
   size_t numel = x.numel();
   if (numel >= batch_sze) {
-    // TODO(juhou): combine mulWithBeaver and mulDirectly
     return mulDirectly(ctx, x, y);
   }
   return mulWithBeaver(ctx, x, y);
@@ -276,6 +278,10 @@ ArrayRef MulAA::proc(KernelEvalContext* ctx, const ArrayRef& x,
 ArrayRef MulAA::mulWithBeaver(KernelEvalContext* ctx, const ArrayRef& x,
                               const ArrayRef& y) const {
   const int64_t numel = x.numel();
+  if (numel == 0) {
+    return ArrayRef(x.eltype(), 0);
+  }
+
   const auto field = ctx->getState<Z2kState>()->getDefaultField();
   auto [a, b, c] =
       ctx->getState<CheetahMulState>()->TakeCachedBeaver(field, numel);
@@ -333,6 +339,9 @@ ArrayRef MulAA::mulDirectly(KernelEvalContext* ctx, const ArrayRef& x,
 ArrayRef MatMulAA::proc(KernelEvalContext* ctx, const ArrayRef& x,
                         const ArrayRef& y, size_t m, size_t n, size_t k) const {
   SPU_TRACE_MPC_LEAF(ctx, x, y);
+  if (0 == x.numel() || 0 == y.numel()) {
+    return ArrayRef(x.eltype(), 0);
+  }
 
   auto* comm = ctx->getState<Communicator>();
   auto* dot_prot = ctx->getState<CheetahDotState>()->get();
@@ -369,6 +378,10 @@ ArrayRef Conv2DAA::proc(KernelEvalContext* ctx, const ArrayRef& tensor,
                         size_t C, size_t O, size_t h, size_t w, size_t stride_h,
                         size_t stride_w) const {
   SPU_TRACE_MPC_LEAF(ctx, tensor, filter);
+  if (0 == tensor.numel() || 0 == filter.numel()) {
+    return ArrayRef(tensor.eltype(), 0);
+  }
+
   int64_t tensor_sze = N * H * W * C;
   int64_t filter_sze = h * w * C * O;
   SPU_ENFORCE_EQ(tensor.numel(), tensor_sze);

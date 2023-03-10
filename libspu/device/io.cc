@@ -18,6 +18,7 @@
 
 #include "libspu/core/encoding.h"
 #include "libspu/kernel/hal/constants.h"
+#include "libspu/kernel/hal/public_helper.h"
 #include "libspu/mpc/factory.h"
 
 namespace spu::device {

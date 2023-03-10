@@ -32,7 +32,7 @@ ArrayRef AndBB::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
   size_t n = lhs.numel();
   size_t nworker =
       std::min(ot_state->parallel_size(), CeilDiv(n, kMinWorkSize));
-  size_t work_load = CeilDiv(n, nworker);
+  size_t work_load = nworker == 0 ? 0 : CeilDiv(n, nworker);
   for (size_t w = 0; w < nworker; ++w) {
     ot_state->LazyInit(comm, w);
   }

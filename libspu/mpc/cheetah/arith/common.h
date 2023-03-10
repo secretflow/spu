@@ -30,6 +30,7 @@ using Shape4D = std::array<int64_t, 4>;
 
 template <typename T>
 inline T CeilDiv(T a, T b) {
+  SPU_ENFORCE(b > 0);
   return (a + b - 1) / b;
 }
 

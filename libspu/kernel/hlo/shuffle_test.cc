@@ -28,11 +28,11 @@ TEST(SortTest, Array) {
   std::vector<Value> x_v{hal::const_secret(&ctx, x)};
   spu::Value ret1 = Shuffle(&ctx, x_v, 0)[0];
   auto ret1_hat =
-      hal::test::dump_public_as<float>(&ctx, hal::_s2p(&ctx, ret1).asFxp());
+      hal::dump_public_as<float>(&ctx, hal::_s2p(&ctx, ret1).asFxp());
 
   spu::Value ret2 = Shuffle(&ctx, x_v, 0)[0];
   auto ret2_hat =
-      hal::test::dump_public_as<float>(&ctx, hal::_s2p(&ctx, ret2).asFxp());
+      hal::dump_public_as<float>(&ctx, hal::_s2p(&ctx, ret2).asFxp());
 
   EXPECT_TRUE(xt::allclose(xt::sort(x), xt::sort(ret1_hat), 0.01, 0.001))
       << xt::sort(x) << std::endl
@@ -51,11 +51,11 @@ TEST(SortTest, 2D) {
 
   spu::Value ret1 = Shuffle(&ctx, x_v, 1)[0];
   auto ret1_hat =
-      hal::test::dump_public_as<float>(&ctx, hal::_s2p(&ctx, ret1).asFxp());
+      hal::dump_public_as<float>(&ctx, hal::_s2p(&ctx, ret1).asFxp());
 
   spu::Value ret2 = Shuffle(&ctx, x_v, 1)[0];
   auto ret2_hat =
-      hal::test::dump_public_as<float>(&ctx, hal::_s2p(&ctx, ret2).asFxp());
+      hal::dump_public_as<float>(&ctx, hal::_s2p(&ctx, ret2).asFxp());
 
   EXPECT_TRUE(xt::allclose(xt::sort(x, 1), xt::sort(ret1_hat, 1), 0.01, 0.001))
       << xt::sort(x, 1) << std::endl

@@ -183,10 +183,8 @@ PSI_BM_DEFINE_ECDH()
           online_proc.SendBlindedItems(item_provider);                         \
         });                                                                    \
                                                                                \
-        auto proc_recv = std::async([&] {                                      \
-          auto item_provider = std::make_shared<MemoryBatchProvider>(items);   \
-          online_proc.RecvEvaluatedItems(item_provider, memory_store);         \
-        });                                                                    \
+        auto proc_recv =                                                       \
+            std::async([&] { online_proc.RecvEvaluatedItems(memory_store); }); \
                                                                                \
         proc_send.get();                                                       \
         proc_recv.get();                                                       \

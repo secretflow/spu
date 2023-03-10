@@ -26,59 +26,56 @@ namespace spu::kernel::hlo {
 spu::Value DynamicUpdateSlice(
     HalContext *ctx, const spu::Value &operand, const spu::Value &update,
     absl::Span<const spu::Value>
-        start_indicies) {  // Basic idea here, get a ref slice and
-                           // update the whole slice..
+        start_indices) {  // Basic idea here, get a ref slice and
+                          // update the whole slice..
   // Start indicies
-  std::vector<int64_t> start_indicies_i64(start_indicies.size());
-  for (const auto &idx : llvm::enumerate(start_indicies)) {
+  std::vector<int64_t> start_indices_i64(start_indices.size());
+  for (const auto &idx : llvm::enumerate(start_indices)) {
     auto v_idx = idx.value();
     if (v_idx.isSecret() && ctx->rt_config().reveal_secret_indicies()) {
       v_idx = hal::reveal(ctx, v_idx);
       SPDLOG_WARN("Reveal {}th start index of DynamicUpdateSlice", idx.index());
     }
-    start_indicies_i64[idx.index()] = getIndicies(ctx, v_idx)[0];
-    // Transform start_indicies
+    start_indices_i64[idx.index()] = getIndicies(ctx, v_idx)[0];
+    // Transform start_indices
     // start_indices[i] = clamp(start_indices[i], 0, operand.dimension_size[i] -
     // update.dimension_size[i])
-    start_indicies_i64[idx.index()] = std::min(
-        std::max(start_indicies_i64[idx.index()], static_cast<int64_t>(0)),
+    start_indices_i64[idx.index()] = std::min(
+        std::max(start_indices_i64[idx.index()], static_cast<int64_t>(0)),
         operand.shape()[idx.index()] - update.shape()[idx.index()]);
   }
 
-  auto ret = operand.clone();
-  UpdateSliceInPlace(ctx, ret, update, start_indicies_i64);
-  return ret;
+  return UpdateSlice(ctx, operand, update, start_indices_i64);
 }
 
-void UpdateSliceInPlace(HalContext *ctx, spu::Value &operand,
-                        const spu::Value &update,
-                        absl::Span<const int64_t> start_indicies) {
-  auto u = hal::stype_cast(ctx, update, operand.storage_type());
-  operand.data().update_slice(u.data(), start_indicies);
+spu::Value UpdateSlice(HalContext *ctx, const spu::Value &in,
+                       const spu::Value &update,
+                       absl::Span<const int64_t> start_indices) {
+  return hal::update_slice(ctx, in, update, start_indices);
 }
 
 spu::Value DynamicSlice(HalContext *ctx, const spu::Value &operand,
                         absl::Span<const int64_t> slice_size,
-                        absl::Span<const spu::Value> start_indicies) {
+                        absl::Span<const spu::Value> start_indices) {
   // Start indicies
-  std::vector<int64_t> start_indicies_i64(start_indicies.size());
-  for (const auto &idx : llvm::enumerate(start_indicies)) {
+  std::vector<int64_t> start_indices_i64(start_indices.size());
+  for (const auto &idx : llvm::enumerate(start_indices)) {
     auto v_idx = idx.value();
     if (v_idx.isSecret() && ctx->rt_config().reveal_secret_indicies()) {
       v_idx = hal::reveal(ctx, v_idx);
       SPDLOG_WARN("Reveal {}th start index of DynamicSlice", idx.index());
     }
-    start_indicies_i64[idx.index()] = getIndicies(ctx, v_idx)[0];
-    // Transform start_indicies
+    start_indices_i64[idx.index()] = getIndicies(ctx, v_idx)[0];
+    // Transform start_indices
     // start_indices[i] = clamp(start_indices[i], 0, operand.dimension_size[i] -
     // size_indices[i])
-    start_indicies_i64[idx.index()] = std::min(
-        std::max(start_indicies_i64[idx.index()], static_cast<int64_t>(0)),
+    start_indices_i64[idx.index()] = std::min(
+        std::max(start_indices_i64[idx.index()], static_cast<int64_t>(0)),
         operand.shape()[idx.index()] - slice_size[idx.index()]);
   }
 
   // Limit
-  std::vector<int64_t> limit(start_indicies_i64);
+  std::vector<int64_t> limit(start_indices_i64);
   for (size_t idx = 0; idx < limit.size(); ++idx) {
     limit[idx] += slice_size[idx];
   }
@@ -86,7 +83,7 @@ spu::Value DynamicSlice(HalContext *ctx, const spu::Value &operand,
   // Strides is always 1
   std::vector<int64_t> strides(limit.size(), 1);
 
-  return hal::slice(ctx, operand, start_indicies_i64, limit, strides);
+  return hal::slice(ctx, operand, start_indices_i64, limit, strides);
 }
 
 }  // namespace spu::kernel::hlo

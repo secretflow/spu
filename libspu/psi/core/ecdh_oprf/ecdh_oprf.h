@@ -15,8 +15,9 @@
 #pragma once
 
 #include <array>
-#include <cstring>
 #include <memory>
+#include <string>
+#include <vector>
 
 #include "absl/strings/escaping.h"
 #include "absl/types/span.h"
@@ -125,6 +126,15 @@ class IEcdhOprfServer : public IEcdhOprf {
    */
   virtual std::string FullEvaluate(yacl::ByteContainerView input) const = 0;
 
+  /**
+   * @brief SimpleEvaluate takes input values, and it is useful for applications
+   * that need to compute the whole OPRF protocol on the server side only.
+   *
+   * @param input   server's input data
+   * @return std::string   H2(H1(x)^sk)
+   */
+  virtual std::string SimpleEvaluate(yacl::ByteContainerView input) const = 0;
+
   virtual std::vector<std::string> FullEvaluate(
       absl::Span<const std::string> input) const;
 
@@ -153,6 +163,8 @@ class IEcdhOprfClient : public IEcdhOprf {
   virtual std::vector<std::string> Blind(
       absl::Span<const std::string> input) const;
 
+  virtual std::string Unblind(absl::string_view input) const = 0;
+
   /**
    * @brief unblind evaluated_element, and hash
    *
@@ -163,11 +175,21 @@ class IEcdhOprfClient : public IEcdhOprf {
   virtual std::string Finalize(absl::string_view item,
                                absl::string_view evaluated_element) const = 0;
 
+  virtual std::string Finalize(absl::string_view evaluated_element) const = 0;
+
+  /**
+   * @brief unblind evaluated_element, and hash
+   *
+   * @param item   client input data
+   * @param evaluated_element
+   * @return std::string masked data with server's private key
+   */
   virtual std::vector<std::string> Finalize(
       absl::Span<const std::string> items,
       absl::Span<const std::string> evaluated_element) const;
 
-  virtual std::string Unblind(absl::string_view input) const = 0;
+  virtual std::vector<std::string> Finalize(
+      absl::Span<const std::string> evaluated_element) const;
 };
 
 }  // namespace spu::psi

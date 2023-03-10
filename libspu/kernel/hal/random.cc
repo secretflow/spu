@@ -20,7 +20,8 @@
 
 #include "libspu/core/prelude.h"
 #include "libspu/kernel/hal/constants.h"
-#include "libspu/kernel/hal/test_util.h"
+#include "libspu/kernel/hal/prot_wrapper.h"
+#include "libspu/kernel/hal/public_helper.h"
 
 namespace spu::kernel::hal {
 
@@ -31,16 +32,16 @@ Value rng_uniform(HalContext* ctx, const Value& a, const Value& b,
   SPU_ENFORCE(a.dtype() == b.dtype());
   // FIXME: This is a hacky ref impl, fill a real proper impl later.
   if (a.isFxp()) {
-    auto pa = test::dump_public_as<float>(ctx, a);
-    auto pb = test::dump_public_as<float>(ctx, b);
+    auto pa = dump_public_as<float>(ctx, a);
+    auto pb = dump_public_as<float>(ctx, b);
     xt::xarray<float> randv =
         xt::random::rand(to_shape, pa[0], pb[0], ctx->rand_engine());
     return constant(ctx, randv);
   }
 
   SPU_ENFORCE(a.isInt());
-  auto pa = test::dump_public_as<int>(ctx, a);
-  auto pb = test::dump_public_as<int>(ctx, b);
+  auto pa = dump_public_as<int>(ctx, a);
+  auto pb = dump_public_as<int>(ctx, b);
   xt::xarray<int> randv =
       xt::random::randint(to_shape, pa[0], pb[0], ctx->rand_engine());
   return constant(ctx, randv);

@@ -15,8 +15,9 @@
 #pragma once
 
 #include <array>
-#include <cstring>
 #include <memory>
+#include <string>
+#include <vector>
 
 #include "absl/types/span.h"
 #include "openssl/crypto.h"
@@ -68,6 +69,7 @@ class BasicEcdhOprfServer : public IEcdhOprfServer {
   std::string Evaluate(absl::string_view blinded_element) const override;
 
   std::string FullEvaluate(yacl::ByteContainerView input) const override;
+  std::string SimpleEvaluate(yacl::ByteContainerView input) const override;
 
   size_t GetCompareLength() const override;
   size_t GetEcPointLength() const override;
@@ -85,6 +87,9 @@ class BasicEcdhOprfServer : public IEcdhOprfServer {
 class BasicEcdhOprfClient : public IEcdhOprfClient {
  public:
   explicit BasicEcdhOprfClient(CurveType type);
+  BasicEcdhOprfClient(CurveType type, yacl::ByteContainerView private_key);
+  BasicEcdhOprfClient(CurveType type, yacl::ByteContainerView private_key,
+                      yacl::ByteContainerView private_key_inv);
 
   ~BasicEcdhOprfClient() override = default;
 
@@ -94,6 +99,8 @@ class BasicEcdhOprfClient : public IEcdhOprfClient {
 
   std::string Finalize(absl::string_view item,
                        absl::string_view evaluated_element) const override;
+
+  std::string Finalize(absl::string_view evaluated_element) const override;
 
   size_t GetCompareLength() const override;
   size_t GetEcPointLength() const override;
@@ -108,7 +115,7 @@ class BasicEcdhOprfClient : public IEcdhOprfClient {
   CurveType curve_type_;
   int ec_group_nid_;
 
-  std::array<uint8_t, kEccKeySize> sk_inv_;
+  std::vector<uint8_t> sk_inv_;
 
   yacl::crypto::HashAlgorithm hash_type_ = yacl::crypto::HashAlgorithm::BLAKE3;
 };
@@ -117,7 +124,7 @@ class FourQBasicEcdhOprfServer : public IEcdhOprfServer {
  public:
   FourQBasicEcdhOprfServer() = default;
 
-  FourQBasicEcdhOprfServer(yacl::ByteContainerView private_key)
+  explicit FourQBasicEcdhOprfServer(yacl::ByteContainerView private_key)
       : IEcdhOprfServer(private_key) {}
 
   ~FourQBasicEcdhOprfServer() override = default;
@@ -127,6 +134,7 @@ class FourQBasicEcdhOprfServer : public IEcdhOprfServer {
   std::string Evaluate(absl::string_view blinded_element) const override;
 
   std::string FullEvaluate(yacl::ByteContainerView input) const override;
+  std::string SimpleEvaluate(yacl::ByteContainerView input) const override;
 
   size_t GetCompareLength() const override;
   size_t GetEcPointLength() const override;
@@ -142,6 +150,7 @@ class FourQBasicEcdhOprfServer : public IEcdhOprfServer {
 class FourQBasicEcdhOprfClient : public IEcdhOprfClient {
  public:
   FourQBasicEcdhOprfClient();
+  explicit FourQBasicEcdhOprfClient(yacl::ByteContainerView private_key);
 
   ~FourQBasicEcdhOprfClient() override = default;
 
@@ -151,6 +160,8 @@ class FourQBasicEcdhOprfClient : public IEcdhOprfClient {
 
   std::string Finalize(absl::string_view item,
                        absl::string_view evaluated_element) const override;
+
+  std::string Finalize(absl::string_view evaluated_element) const override;
 
   size_t GetCompareLength() const override;
   size_t GetEcPointLength() const override;
@@ -165,4 +176,5 @@ class FourQBasicEcdhOprfClient : public IEcdhOprfClient {
   std::array<uint8_t, kEccKeySize> sk_inv_;
   yacl::crypto::HashAlgorithm hash_type_ = yacl::crypto::HashAlgorithm::BLAKE3;
 };
+
 }  // namespace spu::psi

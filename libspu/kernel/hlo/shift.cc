@@ -18,9 +18,10 @@
 #include <cstddef>
 #include <optional>
 
-#include "libspu/kernel/hal/constants.h"
 #include "libspu/kernel/hal/polymorphic.h"
+#include "libspu/kernel/hal/public_helper.h"
 #include "libspu/kernel/hal/ring.h"
+#include "libspu/kernel/hal/shape_ops.h"
 #include "libspu/kernel/hal/type_cast.h"
 
 namespace spu::kernel::hlo {
@@ -45,8 +46,8 @@ spu::Value shift_imp(HalContext *ctx, const spu::Value &lhs,
   std::vector<spu::Value> elements(lhs.numel());
   size_t idx = 0;
   do {
-    auto bits = extractShiftBits(ctx, rhs.getElementAt(indicies));
-    const auto lhs_el = lhs.getElementAt(indicies);
+    auto bits = extractShiftBits(ctx, hal::slice_scalar_at(ctx, rhs, indicies));
+    const auto lhs_el = hal::slice_scalar_at(ctx, lhs, indicies);
     elements[idx++] = f(ctx, lhs_el, bits);
   } while (bumpIndices<int64_t>(lhs.shape(), absl::MakeSpan(indicies)));
 

@@ -35,7 +35,7 @@ TEST(FxpTest, ExponentialPublic) {
   Value c = f_exp(&ctx, a);
   EXPECT_EQ(c.dtype(), DT_FXP);
 
-  auto y = test::dump_public_as<float>(&ctx, c);
+  auto y = dump_public_as<float>(&ctx, c);
   EXPECT_TRUE(xt::allclose(xt::exp(x), y, 0.01, 0.001))
       << xt::exp(x) << std::endl
       << y;
@@ -56,7 +56,7 @@ TEST(FxpTest, ExponentialTaylorSeries) {
   Value c = detail::exp_taylor_series(&ctx, a);
   EXPECT_EQ(c.dtype(), DT_FXP);
 
-  auto y = test::dump_public_as<float>(&ctx, _s2p(&ctx, c).asFxp());
+  auto y = dump_public_as<float>(&ctx, _s2p(&ctx, c).asFxp());
   EXPECT_TRUE(xt::allclose(xt::exp(x), y, 0.01, 0.001))
       << xt::exp(x) << std::endl
       << y;
@@ -71,7 +71,7 @@ TEST(FxpTest, ExponentialPade) {
   Value c = detail::exp_pade_approx(&ctx, a);
   EXPECT_EQ(c.dtype(), DT_FXP);
 
-  auto y = test::dump_public_as<float>(&ctx, _s2p(&ctx, c).asFxp());
+  auto y = dump_public_as<float>(&ctx, _s2p(&ctx, c).asFxp());
   EXPECT_TRUE(xt::allclose(xt::exp(x), y, 0.01, 0.001))
       << xt::exp(x) << std::endl
       << y;
@@ -88,7 +88,7 @@ TEST(FxpTest, Log) {
     Value c = f_log(&ctx, a);
     EXPECT_EQ(c.dtype(), DT_FXP);
 
-    auto y = test::dump_public_as<float>(&ctx, c);
+    auto y = dump_public_as<float>(&ctx, c);
     EXPECT_TRUE(xt::allclose(xt::log(x), y, 0.01, 0.001))
         << xt::log(x) << std::endl
         << y;
@@ -100,7 +100,7 @@ TEST(FxpTest, Log) {
     Value c = f_log(&ctx, a);
     EXPECT_EQ(c.dtype(), DT_FXP);
 
-    auto y = test::dump_public_as<float>(&ctx, _s2p(&ctx, c).asFxp());
+    auto y = dump_public_as<float>(&ctx, _s2p(&ctx, c).asFxp());
     // low precision
     EXPECT_TRUE(xt::allclose(xt::log(x), y, 0.01, 0.001))
         << xt::log(x) << std::endl
@@ -119,7 +119,7 @@ TEST(FxpTest, Log2) {
     Value c = f_log2(&ctx, a);
     EXPECT_EQ(c.dtype(), DT_FXP);
 
-    auto y = test::dump_public_as<float>(&ctx, c);
+    auto y = dump_public_as<float>(&ctx, c);
     EXPECT_TRUE(xt::allclose(xt::log2(x), y, 0.01, 0.001))
         << xt::log2(x) << std::endl
         << y;
@@ -131,7 +131,7 @@ TEST(FxpTest, Log2) {
     Value c = f_log2(&ctx, a);
     EXPECT_EQ(c.dtype(), DT_FXP);
 
-    auto y = test::dump_public_as<float>(&ctx, _s2p(&ctx, c).asFxp());
+    auto y = dump_public_as<float>(&ctx, _s2p(&ctx, c).asFxp());
     // low precision
     EXPECT_TRUE(xt::allclose(xt::log2(x), y, 0.01, 0.001))
         << xt::log2(x) << std::endl
@@ -151,7 +151,7 @@ TEST(FxpTest, Log1p) {
     Value c = f_log1p(&ctx, a);
     EXPECT_EQ(c.dtype(), DT_FXP);
 
-    auto y = test::dump_public_as<float>(&ctx, c);
+    auto y = dump_public_as<float>(&ctx, c);
     EXPECT_TRUE(xt::allclose(xt::log1p(x), y, 0.01, 0.001))
         << xt::log1p(x) << std::endl;
   }
@@ -162,7 +162,7 @@ TEST(FxpTest, Log1p) {
     Value c = f_log1p(&ctx, a);
     EXPECT_EQ(c.dtype(), DT_FXP);
 
-    auto y = test::dump_public_as<float>(&ctx, _s2p(&ctx, c).asFxp());
+    auto y = dump_public_as<float>(&ctx, _s2p(&ctx, c).asFxp());
     // low precision
     EXPECT_TRUE(xt::allclose(xt::log1p(x), y, 0.01, 0.001))
         << xt::log1p(x) << std::endl
@@ -186,7 +186,7 @@ TEST(FxpTest, Exp2) {
     Value c = f_exp2(&ctx, a);
     EXPECT_EQ(c.dtype(), DT_FXP);
 
-    auto y = test::dump_public_as<float>(&ctx, _s2p(&ctx, c).asFxp());
+    auto y = dump_public_as<float>(&ctx, _s2p(&ctx, c).asFxp());
     EXPECT_TRUE(xt::allclose(xt::exp2(x), y, 0.01, 0.001))
         << xt::exp2(x) << std::endl
         << y;
@@ -206,7 +206,7 @@ TEST(FxpTest, Tanh) {
     Value c = f_tanh(&ctx, a);
     EXPECT_EQ(c.dtype(), DT_FXP);
 
-    auto y = test::dump_public_as<float>(&ctx, _s2p(&ctx, c).asFxp());
+    auto y = dump_public_as<float>(&ctx, _s2p(&ctx, c).asFxp());
     EXPECT_TRUE(xt::allclose(xt::tanh(x), y, 0.01, 0.001))
         << xt::tanh(x) << std::endl
         << y;
@@ -226,7 +226,7 @@ TEST(FxpTest, Rsqrt) {
     Value c = f_rsqrt(&ctx, a);
     EXPECT_EQ(c.dtype(), DT_FXP);
 
-    auto y = test::dump_public_as<float>(&ctx, _s2p(&ctx, c).asFxp());
+    auto y = dump_public_as<float>(&ctx, _s2p(&ctx, c).asFxp());
     EXPECT_TRUE(xt::allclose(expected_y, y, 0.01, 0.001))
         << expected_y << std::endl
         << y;
@@ -244,7 +244,7 @@ TEST(FxpTest, Rsqrt) {
     Value c = f_rsqrt(&ctx, a);
     EXPECT_EQ(c.dtype(), DT_FXP);
 
-    auto y = test::dump_public_as<float>(&ctx, _s2p(&ctx, c).asFxp());
+    auto y = dump_public_as<float>(&ctx, _s2p(&ctx, c).asFxp());
     EXPECT_TRUE(xt::allclose(expected_y, y, 0.01, 0.001))
         << expected_y << std::endl
         << y;
@@ -263,7 +263,7 @@ TEST(FxpTest, Rsqrt) {
     Value c = f_rsqrt(&ctx, a);
     EXPECT_EQ(c.dtype(), DT_FXP);
 
-    auto z = test::dump_public_as<float>(&ctx, _s2p(&ctx, c).asFxp());
+    auto z = dump_public_as<float>(&ctx, _s2p(&ctx, c).asFxp());
     auto e = 1.0F / xt::sqrt(x);
     auto r = xt::abs(z - e) / e * 100;
     auto mm = xt::minmax(r)();
@@ -284,7 +284,7 @@ TEST(FxpTest, Sqrt) {
     Value c = f_sqrt(&ctx, a);
     EXPECT_EQ(c.dtype(), DT_FXP);
 
-    auto y = test::dump_public_as<float>(&ctx, _s2p(&ctx, c).asFxp());
+    auto y = dump_public_as<float>(&ctx, _s2p(&ctx, c).asFxp());
     EXPECT_TRUE(xt::allclose(expected_y, y, 0.01, 0.001))
         << expected_y << std::endl
         << y;
@@ -302,7 +302,7 @@ TEST(FxpTest, Sqrt) {
     Value c = f_sqrt(&ctx, a);
     EXPECT_EQ(c.dtype(), DT_FXP);
 
-    auto y = test::dump_public_as<float>(&ctx, _s2p(&ctx, c).asFxp());
+    auto y = dump_public_as<float>(&ctx, _s2p(&ctx, c).asFxp());
     EXPECT_TRUE(xt::allclose(expected_y, y, 0.01, 0.001))
         << expected_y << std::endl
         << y;

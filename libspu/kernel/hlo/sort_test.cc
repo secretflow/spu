@@ -42,7 +42,7 @@ TEST(SortTest, Simple) {
   EXPECT_EQ(rets.size(), 1);
 
   auto sorted_x_hat =
-      hal::test::dump_public_as<float>(&ctx, hal::_s2p(&ctx, rets[0]).asFxp());
+      hal::dump_public_as<float>(&ctx, hal::_s2p(&ctx, rets[0]).asFxp());
 
   EXPECT_TRUE(xt::allclose(sorted_x, sorted_x_hat, 0.01, 0.001))
       << sorted_x << std::endl
@@ -66,7 +66,7 @@ TEST(SortTest, SimpleWithNoPadding) {
   EXPECT_EQ(rets.size(), 1);
 
   auto sorted_x_hat =
-      hal::test::dump_public_as<float>(&ctx, hal::_s2p(&ctx, rets[0]).asFxp());
+      hal::dump_public_as<float>(&ctx, hal::_s2p(&ctx, rets[0]).asFxp());
 
   EXPECT_TRUE(xt::allclose(sorted_x, sorted_x_hat, 0.01, 0.001))
       << sorted_x << std::endl
@@ -93,7 +93,7 @@ TEST(SortTest, MultiInputs) {
   EXPECT_EQ(rets.size(), 2);
 
   auto sorted_x1_hat =
-      hal::test::dump_public_as<float>(&ctx, hal::_s2p(&ctx, rets[0]).asFxp());
+      hal::dump_public_as<float>(&ctx, hal::_s2p(&ctx, rets[0]).asFxp());
 
   EXPECT_TRUE(xt::allclose(sorted_x1, sorted_x1_hat, 0.01, 0.001))
       << sorted_x1 << std::endl
@@ -101,7 +101,7 @@ TEST(SortTest, MultiInputs) {
 
   // NOTE: Secret sort is unstable, so rets[1] need to be sort before check.
   auto sorted_x2_hat = xt::sort(
-      hal::test::dump_public_as<float>(&ctx, hal::_s2p(&ctx, rets[1]).asFxp()));
+      hal::dump_public_as<float>(&ctx, hal::_s2p(&ctx, rets[1]).asFxp()));
 
   EXPECT_TRUE(xt::allclose(sorted_x2, sorted_x2_hat, 0.01, 0.001))
       << sorted_x2 << std::endl
@@ -133,9 +133,9 @@ TEST(SortTest, MultiOperands) {
   EXPECT_EQ(rets.size(), 2);
 
   auto sorted_k1_hat =
-      hal::test::dump_public_as<float>(&ctx, hal::_s2p(&ctx, rets[0]).asFxp());
+      hal::dump_public_as<float>(&ctx, hal::_s2p(&ctx, rets[0]).asFxp());
   auto sorted_k2_hat =
-      hal::test::dump_public_as<float>(&ctx, hal::_s2p(&ctx, rets[1]).asFxp());
+      hal::dump_public_as<float>(&ctx, hal::_s2p(&ctx, rets[1]).asFxp());
 
   EXPECT_TRUE(xt::allclose(sorted_k1, sorted_k1_hat, 0.01, 0.001))
       << sorted_k1 << std::endl
