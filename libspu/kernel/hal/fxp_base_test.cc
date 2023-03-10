@@ -85,7 +85,7 @@ TEST_P(FxpMmulTest, Works) {
     Value c = f_mmul(&ctx, a, b);
     EXPECT_EQ(c.dtype(), DT_FXP);
 
-    auto z = test::dump_public_as<float>(&ctx, c);
+    auto z = dump_public_as<float>(&ctx, c);
     EXPECT_TRUE(xt::allclose(t_z, z, 0.01, 0.001)) << t_z << std::endl << z;
   }
 
@@ -95,7 +95,7 @@ TEST_P(FxpMmulTest, Works) {
     Value c = f_mmul(&ctx, a, b);
     EXPECT_EQ(c.dtype(), DT_FXP);
 
-    auto z = test::dump_public_as<float>(&ctx, _s2p(&ctx, c).asFxp());
+    auto z = dump_public_as<float>(&ctx, _s2p(&ctx, c).asFxp());
     EXPECT_TRUE(xt::allclose(t_z, z, 0.01, 0.001)) << t_z << std::endl << z;
   }
 }
@@ -117,7 +117,7 @@ TEST(FxpTest, Reciprocal) {
     Value c = f_reciprocal(&ctx, a);
     EXPECT_EQ(c.dtype(), DT_FXP);
 
-    auto y = test::dump_public_as<float>(&ctx, c);
+    auto y = dump_public_as<float>(&ctx, c);
     EXPECT_TRUE(xt::allclose(1.0F / x, y, 0.001, 0.0001))
         << (1.0 / x) << std::endl
         << y;
@@ -129,7 +129,7 @@ TEST(FxpTest, Reciprocal) {
     Value c = f_reciprocal(&ctx, a);
     EXPECT_EQ(c.dtype(), DT_FXP);
 
-    auto y = test::dump_public_as<float>(&ctx, _s2p(&ctx, c).asFxp());
+    auto y = dump_public_as<float>(&ctx, _s2p(&ctx, c).asFxp());
     EXPECT_TRUE(xt::allclose(1.0F / x, y, 0.001, 0.0001))
         << (1.0 / x) << std::endl
         << y;
@@ -150,7 +150,7 @@ TEST(FxpTest, Div) {
     Value c = f_div(&ctx, a, b);
     EXPECT_EQ(c.dtype(), DT_FXP);
 
-    auto z = test::dump_public_as<float>(&ctx, c);
+    auto z = dump_public_as<float>(&ctx, c);
     EXPECT_TRUE(xt::allclose(x / y, z, 0.001, 0.0001)) << (x / y) << std::endl
                                                        << z;
   }
@@ -162,7 +162,7 @@ TEST(FxpTest, Div) {
     Value c = f_div(&ctx, a, b);
     EXPECT_EQ(c.dtype(), DT_FXP);
 
-    auto z = test::dump_public_as<float>(&ctx, _s2p(&ctx, c).asFxp());
+    auto z = dump_public_as<float>(&ctx, _s2p(&ctx, c).asFxp());
     EXPECT_TRUE(xt::allclose(x / y, z, 0.01, 0.001)) << (x / y) << std::endl
                                                      << z;
   }
@@ -175,7 +175,7 @@ TEST(FxpTest, Div) {
     Value c = f_div(&ctx, a, b);
     EXPECT_EQ(c.dtype(), DT_FXP);
 
-    auto z = test::dump_public_as<float>(&ctx, _s2p(&ctx, c).asFxp());
+    auto z = dump_public_as<float>(&ctx, _s2p(&ctx, c).asFxp());
     auto e = x / y;
     auto r = xt::abs(z - e) / e * 100;
     auto mm = xt::minmax(r)();
@@ -195,7 +195,7 @@ TEST(FxpTest, Abs) {
     Value c = f_abs(&ctx, a);
     EXPECT_EQ(c.dtype(), DT_FXP);
 
-    auto y = test::dump_public_as<float>(&ctx, c);
+    auto y = dump_public_as<float>(&ctx, c);
     EXPECT_TRUE(xt::allclose(xt::abs(x), y, 0.01, 0.05))
         << xt::abs(x) << std::endl
         << y;
@@ -207,7 +207,7 @@ TEST(FxpTest, Abs) {
     Value c = f_abs(&ctx, a);
     EXPECT_EQ(c.dtype(), DT_FXP);
 
-    auto y = test::dump_public_as<float>(&ctx, _s2p(&ctx, c).asFxp());
+    auto y = dump_public_as<float>(&ctx, _s2p(&ctx, c).asFxp());
     // low precision
     EXPECT_TRUE(xt::allclose(xt::abs(x), y, 0.1, 0.5))
         << xt::abs(x) << std::endl
@@ -227,7 +227,7 @@ TEST(FxpTest, Floor) {
     Value c = f_floor(&ctx, a);
     EXPECT_EQ(c.dtype(), DT_FXP);
 
-    auto y = test::dump_public_as<float>(&ctx, c);
+    auto y = dump_public_as<float>(&ctx, c);
     EXPECT_TRUE(xt::allclose(xt::floor(x), y, 0.01, 0.001))
         << xt::floor(x) << std::endl
         << y;
@@ -239,7 +239,7 @@ TEST(FxpTest, Floor) {
     Value c = f_floor(&ctx, a);
     EXPECT_EQ(c.dtype(), DT_FXP);
 
-    auto y = test::dump_public_as<float>(&ctx, _s2p(&ctx, c).asFxp());
+    auto y = dump_public_as<float>(&ctx, _s2p(&ctx, c).asFxp());
     // low precision
     EXPECT_TRUE(xt::allclose(xt::floor(x), y, 0.01, 0.001))
         << xt::floor(x) << std::endl
@@ -259,7 +259,7 @@ TEST(FxpTest, Ceil) {
     Value c = f_ceil(&ctx, a);
     EXPECT_EQ(c.dtype(), DT_FXP);
 
-    auto y = test::dump_public_as<float>(&ctx, c);
+    auto y = dump_public_as<float>(&ctx, c);
     EXPECT_TRUE(xt::allclose(xt::ceil(x), y, 0.01, 0.001))
         << xt::ceil(x) << std::endl
         << y;
@@ -271,7 +271,7 @@ TEST(FxpTest, Ceil) {
     Value c = f_ceil(&ctx, a);
     EXPECT_EQ(c.dtype(), DT_FXP);
 
-    auto y = test::dump_public_as<float>(&ctx, _s2p(&ctx, c).asFxp());
+    auto y = dump_public_as<float>(&ctx, _s2p(&ctx, c).asFxp());
     // low precision
     EXPECT_TRUE(xt::allclose(xt::ceil(x), y, 0.01, 0.001))
         << xt::ceil(x) << std::endl

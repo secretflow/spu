@@ -23,7 +23,6 @@
 #include "libspu/core/prelude.h"
 #include "libspu/core/shape_util.h"
 #include "libspu/core/type_util.h"
-#include "libspu/kernel/hal/shape_ops.h"
 #include "libspu/mpc/api.h"
 
 namespace spu::kernel::hal {
@@ -115,10 +114,11 @@ Value _cast_type_s(HalContext* ctx, const Value& in, const Type& to) {
   return unflattenValue(ret, in.shape());
 }
 
-Value _make_p(HalContext* ctx, uint128_t init) {
+Value _make_p(HalContext* ctx, uint128_t init,
+              absl::Span<const int64_t> shape) {
   SPU_TRACE_HAL_DISP(ctx, init);
-  auto res = mpc::make_p(ctx->prot(), init, 1);
-  return unflattenValue(res, {});
+  auto res = mpc::make_p(ctx->prot(), init, calcNumel(shape));
+  return unflattenValue(res, shape);
 }
 
 Value _rand_p(HalContext* ctx, absl::Span<const int64_t> shape) {
@@ -161,7 +161,9 @@ Value _conv2d_ss(HalContext* ctx, Value input, const Value& kernel,
 
   if (std::any_of(strides.begin(), strides.end(),
                   [](int64_t s) { return s > 1; })) {
-    input = hal::slice(ctx, input, {0, 0, 0, 0}, input.shape(), strides);
+    input = Value(input.data().slice({0, 0, 0, 0}, input.shape(), strides),
+                  input.dtype());
+
     stride_h = 1;
     stride_w = 1;
   }

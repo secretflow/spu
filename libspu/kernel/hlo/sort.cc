@@ -220,8 +220,10 @@ std::vector<spu::Value> Sort(HalContext *ctx,
                      std::vector<spu::Value> values;
                      values.reserve(2 * num_operands);
                      for (int64_t i = 0; i < num_operands; ++i) {
-                       values.push_back(values_to_sort[i].getElementAt(a));
-                       values.push_back(values_to_sort[i].getElementAt(b));
+                       values.push_back(
+                           hal::slice_scalar_at(ctx, values_to_sort[i], {a}));
+                       values.push_back(
+                           hal::slice_scalar_at(ctx, values_to_sort[i], {b}));
                      }
                      spu::Value ret = comparator_body(values);
                      return getBooleanValue(ctx, ret);

@@ -21,7 +21,6 @@
 #include "libspu/core/prelude.h"
 #include "libspu/core/shape_util.h"
 #include "libspu/kernel/hal/ring.h"
-#include "libspu/kernel/hal/shape_ops.h"
 
 namespace spu::kernel::hal {
 

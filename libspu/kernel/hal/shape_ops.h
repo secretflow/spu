@@ -44,6 +44,15 @@ Value slice(HalContext* ctx, const Value& input,
             absl::Span<const int64_t> end_indices,
             absl::Span<const int64_t> strides);
 
+/// This is a special slice for single element at indices
+// @returns a array with empty shape (scalar)
+Value slice_scalar_at(HalContext* ctx, const Value& input,
+                      absl::Span<const int64_t> indices);
+
+// TODO: test me
+Value update_slice(HalContext* ctx, const Value& in, const Value& update,
+                   absl::Span<const int64_t> start_indices);
+
 /// the transpose function
 // @param in, the param
 Value transpose(HalContext* ctx, const Value& in,

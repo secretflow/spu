@@ -19,6 +19,7 @@
 #include "libspu/kernel/hal/debug.h"
 #include "libspu/kernel/hal/pad.h"
 #include "libspu/kernel/hal/polymorphic.h"
+#include "libspu/kernel/hal/public_helper.h"
 #include "libspu/kernel/hal/random.h"
 #include "libspu/kernel/hal/shape_ops.h"
 #include "libspu/kernel/hal/type_cast.h"

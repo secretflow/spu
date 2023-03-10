@@ -16,7 +16,7 @@
 
 // Defines function/macros that nearly modules required.
 
-// SPU prefer exception instead of status code.
+// SPU prefer exception to status code.
 #include "yacl/base/exception.h"
 
 // forward macros

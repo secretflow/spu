@@ -4,9 +4,8 @@ Supported MPC Protocol
 Currently, SPU implements the following protocols.
 
 * `ABY3 <https://eprint.iacr.org/2018/403.pdf>`_: A **honest majority** 3PC-protocol, SPU provides **semi-honest** implementation, note, it's hard to resist collusion attacks if more than two computing nodes deployed together.
-
 * `Semi2k-SPDZ* <https://eprint.iacr.org/2018/482.pdf>`_ : A **semi-honest** NPC-protocol similar to SPDZ but requires a trusted third party to generate offline randoms. By default this protocol now uses trusted first party. Hence, it should be used for debugging purposes only.
-* `Cheetah* <https://eprint.iacr.org/2022/207>`_ : A fast 2pc semi-honest protocol. Since this protocol does not require a trusted third party, it requires more computation effort.
+* `Cheetah* <https://eprint.iacr.org/2022/207>`_ : A fast 2pc semi-honest protocol, which uses carefully designed homomorphic encryption-based protocols for arithmetic operations and `Ferret <https://eprint.iacr.org/2020/924.pdf>`_ for boolean operations.
 
 Currently, we mainly focus on bridging existing AI frameworks to SPU via XLA, an intermediate
 representation where we can hook Tensorflow, Torch and Jax.

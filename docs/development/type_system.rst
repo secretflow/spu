@@ -18,7 +18,7 @@ Value type
 
 A value type is a tuple (**V**, **D**, **S**), where:
 
-- **V** is *visibility*, could be one of *{public, private, secret}*
+- **V** is *visibility*, could be one of *{public, secret}*
 - **D** is *data type*, could be one of *{int, fxp}*
 - **S** is *shape*, which makes the value a tensor.
 
@@ -42,8 +42,6 @@ With this type function, we can define a list of types in the SPU type system.
   sfxp = type(secret, fxp)
   pint = type(public, int)
   pfxp = type(public, fxp)
-  vint = type(private, int)
-  vfxp = type(private, fxp)
 
 Operator type
 ~~~~~~~~~~~~~
@@ -61,7 +59,7 @@ In SPU IR, an operator could take a polymorphic typed parameter and the return t
   add (sfxp, pint) -> sfxp
   ...
 
-The `add` operator takes a pair of `type(V, D)` as parameter, which has 2x3x2x3 = 36 different kinds of combinations. To support this type of operators, we introduce the following *type functor*.
+The `add` operator takes a pair of `type(V, D)` as parameter, which has 2x2x2x2 = 16 different kinds of combinations. To support this type of operators, we introduce the following *type functor*.
 
 1. **dtype promotion**, which promotes two dtypes to a more relaxed type, in SPU system, *int* is always promoted to *fxp*.
 
@@ -105,7 +103,7 @@ There are many uses for types.
 Ops dispatch
 ------------
 
-As described above, type helps for dispatch, here we use `MUL` instruction as an example.
+As described above, type helps for dispatching, here we use `MUL` instruction as an example.
 
 .. code-block:: python
 
@@ -125,7 +123,7 @@ In this example, `%1` and `%2` are SPU values, each of them belongs one of four 
   \times
   \begin{Bmatrix} sint \\ pint \\ sfxp \\ pfxp \end{Bmatrix}
 
-**The problem is dispatch to correct kernel according to the arguments' type information**.
+**The problem is how to dispatch operations to correct kernel according to the arguments' type information**.
 
 A simple idea is to pattern match all these type combinations and dispatch to different kernels accordingly, with this way we got 4x4=16 different kernels.
 

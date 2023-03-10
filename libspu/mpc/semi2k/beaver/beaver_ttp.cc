@@ -25,6 +25,13 @@
 #include "libspu/mpc/common/prg_tensor.h"
 #include "libspu/mpc/utils/ring_ops.h"
 
+namespace brpc {
+
+DECLARE_uint64(max_body_size);
+DECLARE_int64(socket_max_unwritten_bytes);
+
+}  // namespace brpc
+
 namespace spu::mpc::semi2k {
 
 namespace {
@@ -135,6 +142,9 @@ BeaverTtp::BeaverTtp(std::shared_ptr<yacl::link::Context> lctx, Options ops)
       counter_(0),
       options_(std::move(ops)),
       child_counter_(0) {
+  brpc::FLAGS_max_body_size = std::numeric_limits<uint64_t>::max();
+  brpc::FLAGS_socket_max_unwritten_bytes =
+      std::numeric_limits<int64_t>::max() / 2;
   // init remote connection.
   SPU_ENFORCE(lctx_);
   SPU_ENFORCE_GT(lctx_->WorldSize(), options_.adjust_rank);

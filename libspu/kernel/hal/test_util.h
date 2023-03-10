@@ -16,9 +16,9 @@
 //
 #include "xtensor/xrandom.hpp"
 
-#include "libspu/core/xt_helper.h"
 #include "libspu/kernel/hal/constants.h"
 #include "libspu/kernel/hal/prot_wrapper.h"
+#include "libspu/kernel/hal/public_helper.h"
 
 namespace spu::kernel::hal::test {
 
@@ -37,26 +37,6 @@ auto xt_random(const std::vector<size_t>& shape, double min = -100,
   } else {
     SPU_THROW("unsupport xt_random type");
   }
-}
-
-// Export a value to a typed xarray.
-template <typename T>
-xt::xarray<T> dump_public_as(HalContext* ctx, const Value& in) {
-  auto arr = dump_public(ctx, in);
-
-#define CASE(NAME, TYPE, _)                  \
-  case NAME: {                               \
-    return xt::cast<T>(xt_adapt<TYPE>(arr)); \
-  }
-
-  switch (arr.eltype().as<PtTy>()->pt_type()) {
-    FOREACH_PT_TYPES(CASE)
-
-    default:
-      SPU_THROW("unexpected type={}", arr.eltype());
-  }
-
-#undef CASE
 }
 
 using UnaryOp = Value(HalContext*, const Value&);

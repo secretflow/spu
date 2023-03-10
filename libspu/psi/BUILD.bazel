@@ -53,15 +53,31 @@ spu_cc_test(
 )
 
 spu_cc_library(
+    name = "bucket_ub_psi",
+    srcs = ["bucket_ub_psi.cc"],
+    hdrs = [
+        "bucket_ub_psi.h",
+    ],
+    deps = [
+        ":psi_cc_proto",
+        "//libspu/psi/core:ecdh_oprf_psi",
+        "//libspu/psi/utils:batch_provider",
+        "//libspu/psi/utils:cipher_store",
+        "//libspu/psi/utils:csv_checker",
+        "//libspu/psi/utils:csv_header_analyzer",
+    ],
+)
+
+spu_cc_library(
     name = "bucket_psi",
     srcs = ["bucket_psi.cc"],
     hdrs = [
         "bucket_psi.h",
     ],
     deps = [
+        ":bucket_ub_psi",
         ":memory_psi",
         ":psi_cc_proto",
-        "//libspu/psi/core:ecdh_oprf_psi",
         "//libspu/psi/utils:batch_provider",
         "//libspu/psi/utils:cipher_store",
         "//libspu/psi/utils:csv_checker",
@@ -78,9 +94,10 @@ spu_cc_test(
 )
 
 spu_cc_test(
-    name = "bucket_unbalanced_psi_test",
-    srcs = ["bucket_unbalanced_psi_test.cc"],
+    name = "bucket_ub_psi_test",
+    srcs = ["bucket_ub_psi_test.cc"],
     deps = [
         ":bucket_psi",
+        "//libspu/psi/utils:test_utils",
     ],
 )

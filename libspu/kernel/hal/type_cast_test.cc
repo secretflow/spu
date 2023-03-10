@@ -34,7 +34,7 @@ TEST(TypeCastTest, int2fxp) {
     Value c = dtype_cast(&ctx, a, DT_FXP);
     EXPECT_EQ(c.dtype(), DT_FXP);
 
-    auto y = test::dump_public_as<float>(&ctx, c);
+    auto y = dump_public_as<float>(&ctx, c);
     EXPECT_TRUE(xt::allclose(expected, y, 0.1, 0.5)) << x << std::endl
                                                      << expected << std::endl
                                                      << y;
@@ -46,7 +46,7 @@ TEST(TypeCastTest, int2fxp) {
     Value c = dtype_cast(&ctx, a, DT_FXP);
     EXPECT_EQ(c.dtype(), DT_FXP);
 
-    auto y = test::dump_public_as<float>(&ctx, _s2p(&ctx, c).asFxp());
+    auto y = dump_public_as<float>(&ctx, _s2p(&ctx, c).asFxp());
     EXPECT_TRUE(xt::allclose(expected, y, 0.1, 0.5)) << x << std::endl
                                                      << expected << std::endl
                                                      << y;
@@ -66,7 +66,7 @@ TEST(TypeCastTest, fxp2int) {
     Value c = dtype_cast(&ctx, a, DT_I32);
     EXPECT_EQ(c.dtype(), DT_I32);
 
-    auto y = test::dump_public_as<int>(&ctx, c);
+    auto y = dump_public_as<int>(&ctx, c);
     EXPECT_TRUE(xt::allclose(expected, y, 0.1, 0.5)) << x << std::endl
                                                      << expected << std::endl
                                                      << y;
@@ -77,7 +77,7 @@ TEST(TypeCastTest, fxp2int) {
     Value c = dtype_cast(&ctx, a, DT_I32);
     EXPECT_EQ(c.dtype(), DT_I32);
 
-    auto y = test::dump_public_as<int>(&ctx, _s2p(&ctx, c).setDtype(DT_I32));
+    auto y = dump_public_as<int>(&ctx, _s2p(&ctx, c).setDtype(DT_I32));
     EXPECT_TRUE(xt::allclose(expected, y, 0.1, 0.5)) << x << std::endl
                                                      << expected << std::endl
                                                      << y;

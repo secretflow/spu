@@ -14,17 +14,20 @@
 
 #include "libspu/mpc/tools/benchmark.h"
 
+#include <fstream>
 #include <iostream>
 
+#include "absl/strings/match.h"
 #include "absl/strings/str_split.h"
 #include "llvm/Support/CommandLine.h"
+#include "llvm/Support/JSON.h"
 
 #include "libspu/mpc/aby3/protocol.h"
 #include "libspu/mpc/semi2k/protocol.h"
 
 namespace {
 
-static constexpr uint32_t kUnSetMagic = 0x123456;
+constexpr uint32_t kUnSetMagic = 0x123456;
 const std::string kTwoPartyHosts = "127.0.0.1:9540,127.0.0.1:9541";
 const std::string kThreePartyHosts =
     "127.0.0.1:9540,127.0.0.1:9541,127.0.0.1:9542";
@@ -44,18 +47,16 @@ llvm::cl::opt<uint32_t> cli_rank("rank", llvm::cl::init(0),
 llvm::cl::opt<std::string> cli_parties(
     "parties",
     llvm::cl::desc("server list, format: host1:port1[,host2:port2, ...]"));
-llvm::cl::opt<uint32_t> cli_party_num("party_num", llvm::cl::init(0),
-                                      llvm::cl::desc("server numbers"));
 llvm::cl::opt<std::string> cli_protocol(
     "protocol", llvm::cl::init("aby3"),
     llvm::cl::desc("benchmark protocol, supported protocols: semi2k / aby3, "
                    "default: aby3"));
 llvm::cl::opt<uint32_t> cli_numel(
     "numel", llvm::cl::init(kUnSetMagic),
-    llvm::cl::desc("number of benchmark elements, default: [10, 100, 1000]"));
+    llvm::cl::desc("number of benchmark elements, default: [2^10, 2^20]"));
 llvm::cl::opt<uint32_t> cli_shiftbit(
     "shiftbit", llvm::cl::init(kUnSetMagic),
-    llvm::cl::desc("benchmark shift bit, default: [2, 4, 8]"));
+    llvm::cl::desc("benchmark shift bit, default: 2"));
 llvm::cl::opt<std::string> cli_mode(
     "mode", llvm::cl::init("standalone"),
     llvm::cl::desc(
@@ -67,19 +68,25 @@ namespace spu::mpc::bench {
 void NumelAug(benchmark::internal::Benchmark* b) {
   b->ArgsProduct(
        {BenchConfig::bench_field_range, BenchConfig::bench_numel_range})
-      ->Iterations(100);
+      ->Iterations(100)
+      ->UseManualTime()
+      ->MeasureProcessCPUTime();
 }
 void NumelShiftAug(benchmark::internal::Benchmark* b) {
   b->ArgsProduct({BenchConfig::bench_field_range,
                   BenchConfig::bench_numel_range,
                   BenchConfig::bench_shift_range})
-      ->Iterations(100);
+      ->Iterations(100)
+      ->UseManualTime()
+      ->MeasureProcessCPUTime();
 }
 void MatrixSizeAug(benchmark::internal::Benchmark* b) {
   b->ArgsProduct({BenchConfig::bench_field_range,
                   BenchConfig::bench_matrix_m_range,
                   BenchConfig::bench_matrix_k_range})
-      ->Iterations(100);
+      ->Iterations(100)
+      ->UseManualTime()
+      ->MeasureProcessCPUTime();
 }
 
 // register benchmarks with arguments
@@ -107,14 +114,13 @@ BENCHMARK(MPCBenchMark<BenchTruncS>)->Apply(NumelShiftAug);
 BENCHMARK(MPCBenchMark<BenchMMulSP>)->Apply(MatrixSizeAug);
 BENCHMARK(MPCBenchMark<BenchMMulSS>)->Apply(MatrixSizeAug);
 
-}  // namespace spu::mpc::bench
-
 void PrepareSemi2k(std::string& parties, uint32_t& party_num) {
   using BenchInteral = spu::mpc::bench::BenchConfig;
   if (parties.empty() && party_num == 0) {
     parties = kTwoPartyHosts;  // default ips for semi2k
-    party_num = 2;
   }
+  party_num = std::count(parties.begin(), parties.end(), ',') + 1;
+
   SPU_ENFORCE(party_num >= 2);
   BenchInteral::bench_factory =
       spu::mpc::makeSemi2kProtocol;  // semi2k protocol factory
@@ -124,8 +130,9 @@ void PrepareAby3(std::string& parties, uint32_t& party_num) {
   using BenchInteral = spu::mpc::bench::BenchConfig;
   if (parties.empty() && party_num == 0) {
     parties = kThreePartyHosts;  // default ips for aby3
-    party_num = 3;
   }
+  party_num = std::count(parties.begin(), parties.end(), ',') + 1;
+
   SPU_ENFORCE(party_num == 3);
   BenchInteral::bench_factory = spu::mpc::makeAby3Protocol;
 }
@@ -134,7 +141,7 @@ void SetUpProtocol() {
   using BenchInteral = spu::mpc::bench::BenchConfig;
   auto protocol = cli_protocol.getValue();
   auto parties = cli_parties.getValue();
-  auto party_num = cli_party_num.getValue();
+  uint32_t party_num = 0;
   if (protocol == "semi2k") {
     PrepareSemi2k(parties, party_num);
   } else if (protocol == "aby3") {
@@ -202,17 +209,14 @@ void ParseCommandLineOptions(int argc, char** argv) {
   std::vector<char*> llvm_opts;
   std::vector<char*> google_bm_opts;
 
-  const char* google_bm_opt_prefix = "--benchmark";
   google_bm_opts.push_back(argv[0]);
   for (int i = 0; i != argc; ++i) {
-    if (strncmp(google_bm_opt_prefix, argv[i], strlen(google_bm_opt_prefix)) ==
-        0) {
+    if (absl::StartsWith(argv[i], "--benchmark")) {
       google_bm_opts.push_back(argv[i]);
     } else {
       llvm_opts.push_back(argv[i]);
     }
   }
-
   llvm::cl::ParseCommandLineOptions(llvm_opts.size(), llvm_opts.data());
 
   int google_bm_size = google_bm_opts.size();
@@ -221,11 +225,12 @@ void ParseCommandLineOptions(int argc, char** argv) {
                                                         google_bm_opts.data()));
 }
 
-// the main function
-int main(int argc, char** argv) {
-  ParseCommandLineOptions(argc, argv);
+}  // namespace spu::mpc::bench
 
-  PrepareBenchmark();
+int main(int argc, char** argv) {
+  spu::mpc::bench::ParseCommandLineOptions(argc, argv);
+
+  spu::mpc::bench::PrepareBenchmark();
 
   ::benchmark::RunSpecifiedBenchmarks();
   ::benchmark::Shutdown();

@@ -59,17 +59,6 @@ Value& Value::setDtype(DataType new_dtype, bool force) {
   return *this;
 }
 
-Value Value::getElementAt(absl::Span<const int64_t> index) const {
-  // TODO: use NdArrayRef.slice to implement this function.
-  SPU_ENFORCE(dtype() != DT_INVALID);
-
-  return Value(data().slice_scalar_at(index), dtype_);
-}
-
-Value Value::getElementAt(int64_t idx) const {
-  return getElementAt(unflattenIndex(idx, shape()));
-}
-
 ValueProto Value::toProto() const {
   SPU_ENFORCE(dtype_ != DT_INVALID && vtype() != VIS_INVALID);
 

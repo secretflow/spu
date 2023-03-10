@@ -210,8 +210,8 @@ class UnitTests(unittest.TestCase):
         print("----------test_ecdh_oprf_unbalanced-------------")
 
         offline_path = ["", "spu/tests/data/bob.csv"]
-        online_path = ["spu/tests/data/alice.csv", ""]
-        outputs = ["./alice-ecdh-unbalanced.csv", ""]
+        online_path = ["spu/tests/data/alice.csv", "spu/tests/data/bob.csv"]
+        outputs = ["./alice-ecdh-unbalanced.csv", "./bob-ecdh-unbalanced.csv"]
         preprocess_path = ["./alice-preprocess.csv", ""]
         secret_key_path = ["", "./secret_key.bin"]
         selected_fields = ["id", "idx"]
@@ -232,6 +232,8 @@ class UnitTests(unittest.TestCase):
             lctx_desc.add_party(f"id_{rank}", f"127.0.0.1:{port}")
 
         receiver_rank = 0
+        server_rank = 1
+        client_rank = 0
         # one-way PSI, just one party get result
         broadcast_result = False
 
@@ -241,7 +243,7 @@ class UnitTests(unittest.TestCase):
         global wrap
 
         def wrap(
-            rank, offline_path, online_path, out_path, preprocess_path, secret_key_path
+            rank, offline_path, online_path, out_path, preprocess_path, ub_secret_key_path
         ):
             link_ctx = link.create_brpc(lctx_desc, rank)
 
@@ -261,10 +263,11 @@ class UnitTests(unittest.TestCase):
                     ),
                     bucket_size=1000000,
                     curve_type=psi.CurveType.CURVE_FOURQ,
-                    ecdh_secret_key_path=secret_key_path,
+                    ecdh_secret_key_path=ub_secret_key_path,
                 )
 
                 start = time.time()
+
                 gen_cache_report = psi.gen_cache_for_2pc_ub_psi(gen_cache_config)
 
                 server_source_count = wc_count(offline_path)
@@ -287,17 +290,14 @@ class UnitTests(unittest.TestCase):
                     select_fields=selected_fields,
                     precheck=precheck_input,
                 ),
-                output_params=psi.OutputParams(path="fake.out", need_sort=False),
                 bucket_size=1000000,
                 curve_type=psi.CurveType.CURVE_FOURQ,
             )
 
             if receiver_rank == link_ctx.rank:
                 transfer_cache_config.preprocess_path = preprocess_path
-                # transfer_cache_config.input_params.path = "dummy.csv"
             else:
                 transfer_cache_config.input_params.path = server_cache_path
-                transfer_cache_config.ecdh_secret_key_path = secret_key_path
 
             print(
                 f"rank:{link_ctx.rank} file:{transfer_cache_config.input_params.path}"
@@ -312,16 +312,58 @@ class UnitTests(unittest.TestCase):
                     transfer_cache_report.original_count, server_source_count - 1
                 )
 
-            print(f"offline cost time: {time.time() - start}")
+            print(f"transfer cache cost time: {time.time() - start}")
             print(
-                f"offline: rank: {rank} original_count: {transfer_cache_report.original_count}"
+                f"transfer cache: rank: {rank} original_count: {transfer_cache_report.original_count}"
+            )
+
+            print("===== shuffle online phase =====")
+            shuffle_online_config = psi.BucketPsiConfig(
+                psi_type=psi.PsiType.Value('ECDH_OPRF_UB_PSI_2PC_SHUFFLE_ONLINE'),
+                broadcast_result=False,
+                receiver_rank=server_rank,
+                input_params=psi.InputParams(
+                    path=online_path,
+                    select_fields=selected_fields,
+                    precheck=precheck_input,
+                ),
+                output_params=psi.OutputParams(path=out_path, need_sort=False),
+                bucket_size=10000000,
+                curve_type=psi.CurveType.CURVE_FOURQ,
+            )
+
+            if client_rank == link_ctx.rank:
+                shuffle_online_config.preprocess_path = preprocess_path
+            else:
+                shuffle_online_config.preprocess_path = server_cache_path
+                shuffle_online_config.ecdh_secret_key_path = ub_secret_key_path
+
+            print(
+                f"rank:{link_ctx.rank} file:{shuffle_online_config.input_params.path}"
+            )
+
+            start = time.time()
+            shuffle_online_report = psi.bucket_psi(link_ctx, shuffle_online_config)
+
+            if server_rank == link_ctx.rank:
+                server_source_count = wc_count(offline_path)
+                self.assertEqual(
+                    shuffle_online_report.original_count, server_source_count - 1
+                )
+
+            print(f"shuffle online cost time: {time.time() - start}")
+            print(
+                f"shuffle online: rank: {rank} original_count: {shuffle_online_report.original_count}"
+            )
+            print(
+                f"shuffle online: rank: {rank} intersection: {shuffle_online_report.intersection_count}"
             )
 
             print("===== offline phase =====")
             offline_config = psi.BucketPsiConfig(
                 psi_type=psi.PsiType.Value('ECDH_OPRF_UB_PSI_2PC_OFFLINE'),
                 broadcast_result=broadcast_result,
-                receiver_rank=receiver_rank,
+                receiver_rank=client_rank,
                 input_params=psi.InputParams(
                     path=offline_path,
                     select_fields=selected_fields,
@@ -332,11 +374,11 @@ class UnitTests(unittest.TestCase):
                 curve_type=psi.CurveType.CURVE_FOURQ,
             )
 
-            if receiver_rank == link_ctx.rank:
+            if client_rank == link_ctx.rank:
                 offline_config.preprocess_path = preprocess_path
                 offline_config.input_params.path = "dummy.csv"
             else:
-                offline_config.ecdh_secret_key_path = secret_key_path
+                offline_config.ecdh_secret_key_path = ub_secret_key_path
 
             start = time.time()
             offline_report = psi.bucket_psi(link_ctx, offline_config)
@@ -357,7 +399,7 @@ class UnitTests(unittest.TestCase):
             online_config = psi.BucketPsiConfig(
                 psi_type=psi.PsiType.Value('ECDH_OPRF_UB_PSI_2PC_ONLINE'),
                 broadcast_result=broadcast_result,
-                receiver_rank=receiver_rank,
+                receiver_rank=client_rank,
                 input_params=psi.InputParams(
                     path=online_path,
                     select_fields=selected_fields,
@@ -371,7 +413,7 @@ class UnitTests(unittest.TestCase):
             if receiver_rank == link_ctx.rank:
                 online_config.preprocess_path = preprocess_path
             else:
-                online_config.ecdh_secret_key_path = secret_key_path
+                online_config.ecdh_secret_key_path = ub_secret_key_path
                 online_config.input_params.path = "dummy.csv"
 
             start = time.time()

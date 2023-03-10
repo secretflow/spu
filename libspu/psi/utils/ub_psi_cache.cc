@@ -14,6 +14,9 @@
 
 #include "libspu/psi/utils/ub_psi_cache.h"
 
+#include <algorithm>
+#include <tuple>
+
 #include "spdlog/spdlog.h"
 
 #include "libspu/core/prelude.h"
@@ -26,6 +29,7 @@ UbPsiCacheProvider::UbPsiCacheProvider(const std::string &file_path,
     : file_path_(file_path), data_len_(data_len) {
   in_ = io::BuildInputStream(io::FileIoOptions(file_path));
   file_size_ = in_->GetLength();
+
   data_index_len_ = data_len_ + 2 * sizeof(uint64_t);
 
   uint64_t ids_buffer_len;
@@ -41,36 +45,43 @@ UbPsiCacheProvider::UbPsiCacheProvider(const std::string &file_path,
   }
 }
 
-std::tuple<std::string, size_t, size_t> UbPsiCacheProvider::ReadData() {
-  std::vector<uint8_t> read_data(data_index_len_);
+std::vector<std::tuple<std::string, size_t, size_t>>
+UbPsiCacheProvider::ReadData(size_t read_count) {
+  std::vector<uint8_t> read_data(read_count * data_index_len_);
   std::string item(data_len_, '\0');
-  uint64_t index, shuffle_index;
+  size_t index, shuffle_index;
 
-  in_->Read(read_data.data(), data_index_len_);
+  std::vector<std::tuple<std::string, size_t, size_t>> ret;
 
-  std::memcpy(item.data(), read_data.data(), data_len_);
-  std::memcpy(&index, read_data.data() + data_len_, sizeof(uint64_t));
-  std::memcpy(&shuffle_index, read_data.data() + data_len_ + sizeof(uint64_t),
-              sizeof(uint64_t));
+  in_->Read(read_data.data(), read_count * data_index_len_);
+  for (size_t i = 0; i < read_count; ++i) {
+    size_t cur_pos = i * data_index_len_;
+    std::memcpy(item.data(), read_data.data() + cur_pos, data_len_);
+    std::memcpy(&index, read_data.data() + cur_pos + data_len_, sizeof(size_t));
+    std::memcpy(&shuffle_index,
+                read_data.data() + cur_pos + data_len_ + sizeof(size_t),
+                sizeof(size_t));
+    ret.push_back(std::make_tuple(item, index, shuffle_index));
+  }
 
-  return std::make_tuple(item, index, shuffle_index);
+  return ret;
 }
 
 std::vector<std::string> UbPsiCacheProvider::ReadNextBatch(size_t batch_size) {
   std::vector<std::string> ret;
 
-  while ((file_cursor_ != file_size_) && !in_->Eof()) {
-    std::string item;
-    size_t index, shuffle_index;
+  size_t read_bytes =
+      std::min<size_t>(batch_size * data_index_len_, file_size_ - file_cursor_);
+  size_t read_count = read_bytes / data_index_len_;
 
-    std::tie(item, index, shuffle_index) = ReadData();
-    file_cursor_ += data_index_len_;
+  if (read_bytes > 0) {
+    std::vector<std::tuple<std::string, size_t, size_t>> data =
+        ReadData(read_count);
 
-    ret.push_back(item);
-
-    if ((ret.size() == batch_size) || (file_cursor_ == file_size_)) {
-      break;
+    for (const auto &d : data) {
+      ret.push_back(std::get<0>(d));
     }
+    file_cursor_ += read_bytes;
   }
 
   return ret;
@@ -82,19 +93,19 @@ UbPsiCacheProvider::ReadNextBatchWithIndex(size_t batch_size) {
   std::vector<size_t> ret_indices;
   std::vector<size_t> shuffle_indices;
 
-  while ((file_cursor_ != file_size_) && !in_->Eof()) {
-    std::string item;
-    size_t index, shuffle_index;
-    std::tie(item, index, shuffle_index) = ReadData();
-    file_cursor_ += data_index_len_;
+  size_t read_bytes =
+      std::min<size_t>(batch_size * data_index_len_, file_size_ - file_cursor_);
+  size_t read_count = read_bytes / data_index_len_;
 
-    ret_data.push_back(item);
-    ret_indices.push_back(index);
-    shuffle_indices.push_back(shuffle_index);
-
-    if ((ret_data.size() == batch_size) || (file_cursor_ == file_size_)) {
-      break;
+  if (read_bytes > 0) {
+    std::vector<std::tuple<std::string, size_t, size_t>> data =
+        ReadData(read_count);
+    for (const auto &d : data) {
+      ret_data.push_back(std::get<0>(d));
+      ret_indices.push_back(std::get<1>(d));
+      shuffle_indices.push_back(std::get<2>(d));
     }
+    file_cursor_ += read_bytes;
   }
 
   return std::make_tuple(ret_data, ret_indices, shuffle_indices);
@@ -124,6 +135,7 @@ void UbPsiCache::SaveData(yacl::ByteContainerView item, size_t index,
   SPU_ENFORCE(item.size() == data_len_, "item size:{} data_len_:{}",
               item.size(), data_len_);
   std::string data_with_index(data_index_len_, '\0');
+
   std::memcpy(data_with_index.data(), item.data(), data_len_);
   std::memcpy(data_with_index.data() + data_len_, &index, sizeof(uint64_t));
   std::memcpy(data_with_index.data() + data_len_ + sizeof(uint64_t),

@@ -31,7 +31,6 @@
 
 #include "libspu/device/io.h"
 #include "libspu/kernel/hal/hal.h"
-#include "libspu/kernel/hal/test_util.h"
 #include "libspu/kernel/hal/type_cast.h"
 
 using namespace spu::kernel;
@@ -176,9 +175,9 @@ int main(int argc, char** argv) {
   const auto scores = inference(hctx.get(), x, w);
 
   xt::xarray<float> revealed_labels =
-      hal::test::dump_public_as<float>(hctx.get(), hal::reveal(hctx.get(), y));
-  xt::xarray<float> revealed_scores = hal::test::dump_public_as<float>(
-      hctx.get(), hal::reveal(hctx.get(), scores));
+      hal::dump_public_as<float>(hctx.get(), hal::reveal(hctx.get(), y));
+  xt::xarray<float> revealed_scores =
+      hal::dump_public_as<float>(hctx.get(), hal::reveal(hctx.get(), scores));
 
   auto mse = MSE(revealed_labels, revealed_scores);
   std::cout << "MSE = " << mse << "\n";

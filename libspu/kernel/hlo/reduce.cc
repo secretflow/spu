@@ -317,7 +317,9 @@ std::vector<spu::Value> ReduceWindowImpl(
         output_index, window_index,
         [&](absl::Span<const int64_t> operand_index) {
           for (int64_t idx = 0; idx < nargs; ++idx) {
-            ret.emplace_back(inputs[idx].getElementAt(operand_index));
+            auto element =
+                hal::slice_scalar_at(ctx, inputs[idx], operand_index);
+            ret.emplace_back(std::move(element));
           }
         });
     return ret;
@@ -326,7 +328,8 @@ std::vector<spu::Value> ReduceWindowImpl(
   // For each window index
   std::vector<spu::Value> batchs(nargs);
   for (int64_t idx = 0; idx < nargs; ++idx) {
-    batchs[idx] = hal::expand(ctx, inputs[idx].getElementAt({}), ret_shape);
+    batchs[idx] =
+        hal::expand(ctx, hal::slice_scalar_at(ctx, inputs[idx], {}), ret_shape);
   }
 
   do {

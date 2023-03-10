@@ -20,7 +20,6 @@
 #include "libspu/core/xt_helper.h"
 #include "libspu/kernel/hal/prot_wrapper.h"
 #include "libspu/kernel/hal/ring.h"
-#include "libspu/kernel/hal/shape_ops.h"
 #include "libspu/mpc/common/pub2k.h"
 
 namespace spu::kernel::hal {
@@ -53,19 +52,21 @@ Value constant(HalContext* ctx, const PtBufferView& bv,
     return Value(NdArrayRef(nullptr, pt.storage_type(), shape), pt.dtype());
   }
 
+  auto result = make_pub2k(ctx, bv);
+
   // If view shape is same as destination shape, just make public
   if (shape.empty() || shape == bv.shape) {
-    return make_pub2k(ctx, bv);
+    return result;
   }
 
   // Same calcNumel but shape is different, do a reshape
   if (calcNumel(bv.shape) == calcNumel(shape)) {
-    return reshape(ctx, make_pub2k(ctx, bv), shape);
+    return Value(result.data().reshape(shape), result.dtype());
   }
 
   // Other, do a broadcast, let broadcast handles the sanity check
   SPU_ENFORCE(calcNumel(bv.shape) <= calcNumel(shape));
-  return broadcast_to(ctx, make_pub2k(ctx, bv), shape);
+  return Value(result.data().broadcast_to(shape, {}), result.dtype());
 }
 
 Value const_secret(HalContext* ctx, const PtBufferView& bv,
@@ -74,15 +75,6 @@ Value const_secret(HalContext* ctx, const PtBufferView& bv,
 
   auto pv = constant(ctx, bv, shape);
   return _p2s(ctx, pv).setDtype(pv.dtype());
-}
-
-NdArrayRef dump_public(HalContext* ctx, const Value& v) {
-  SPU_TRACE_HAL_DISP(ctx, v);
-  SPU_ENFORCE(v.storage_type().isa<mpc::Pub2kTy>(), "got {}", v.storage_type());
-  const auto field = v.storage_type().as<Ring2k>()->field();
-  auto encoded = v.data().as(makeType<RingTy>(field));
-
-  return decodeFromRing(encoded, v.dtype(), ctx->getFxpBits());
 }
 
 Value make_value(HalContext* ctx, Visibility vtype, const PtBufferView& bv) {
@@ -148,7 +140,7 @@ spu::Value zeros(HalContext* ctx, Visibility vis, DataType dtype,
   if (shape.empty()) {
     return scalar;
   } else {
-    return hal::expand(ctx, scalar, shape);
+    return Value(scalar.data().expand(shape), scalar.dtype());
   }
 }
 

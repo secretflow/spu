@@ -18,8 +18,6 @@
 #include "xla/service/algebraic_simplifier.h"
 #include "xla/service/batch_dot_simplification.h"
 #include "xla/service/batchnorm_expander.h"
-#include "xla/service/bfloat16_normalization.h"
-#include "xla/service/bfloat16_support.h"
 #include "xla/service/bitcast_dtypes_expander.h"
 #include "xla/service/call_inliner.h"
 #include "xla/service/cholesky_expander.h"
@@ -28,6 +26,8 @@
 #include "xla/service/convolution_group_converter.h"
 #include "xla/service/dot_decomposer.h"
 #include "xla/service/dot_merger.h"
+#include "xla/service/float_normalization.h"
+#include "xla/service/float_support.h"
 #include "xla/service/gather_expander.h"
 #include "xla/service/hlo_constant_folding.h"
 #include "xla/service/hlo_dce.h"
@@ -80,8 +80,8 @@ void runHloPasses(xla::HloModule *module) {
   // Convert BF16 operations to F32 operations so that the SPU backend can
   // support BF16 operations without directly implementing a BF16 lowering for
   // most ops.
-  BFloat16Support bf16;
-  pipeline.AddPass<BFloat16Normalization>(&bf16);
+  FloatSupport bf16_support(BF16);
+  pipeline.AddPass<FloatNormalization>(&bf16_support);
   // After canonicalization, there may be more batch dots that can be
   // simplified.
   pipeline.AddPass<BatchDotSimplification>();

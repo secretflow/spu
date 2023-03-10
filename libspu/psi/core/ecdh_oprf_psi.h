@@ -18,6 +18,7 @@
 #include <memory>
 #include <queue>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "yacl/base/byte_container_view.h"
@@ -92,12 +93,12 @@ struct EcdhOprfPsiOptions {
 
 class EcdhOprfPsiServer {
  public:
-  explicit EcdhOprfPsiServer(EcdhOprfPsiOptions options)
+  explicit EcdhOprfPsiServer(const EcdhOprfPsiOptions& options)
       : options_(options),
         oprf_server_(
             CreateEcdhOprfServer(options.oprf_type, options.curve_type)) {}
 
-  EcdhOprfPsiServer(EcdhOprfPsiOptions options,
+  EcdhOprfPsiServer(const EcdhOprfPsiOptions& options,
                     yacl::ByteContainerView private_key)
       : options_(options),
         oprf_server_(CreateEcdhOprfServer(private_key, options.oprf_type,
@@ -128,10 +129,16 @@ class EcdhOprfPsiServer {
       const std::shared_ptr<IUbPsiCache>& ub_cache = nullptr);
 
   /**
-   * @brief
+   * @brief batch recv client blinded items and send evaluate
    *
    */
   void RecvBlindAndSendEvaluate();
+
+  /**
+   * @brief batch recv client blinded items and send shuffled evaluate
+   *
+   */
+  void RecvBlindAndShuffleSendEvaluate();
 
   /**
    * @brief Get the Private Key object
@@ -144,6 +151,10 @@ class EcdhOprfPsiServer {
 
   size_t GetCompareLength() { return oprf_server_->GetCompareLength(); }
 
+  std::pair<std::vector<uint64_t>, size_t> RecvIntersectionMaskedItems(
+      const std::shared_ptr<IShuffleBatchProvider>& cache_provider,
+      size_t batch_size);
+
  private:
   EcdhOprfPsiOptions options_;
 
@@ -152,11 +163,21 @@ class EcdhOprfPsiServer {
 
 class EcdhOprfPsiClient {
  public:
-  explicit EcdhOprfPsiClient(EcdhOprfPsiOptions options) : options_(options) {
+  explicit EcdhOprfPsiClient(const EcdhOprfPsiOptions& options)
+      : options_(options) {
     std::shared_ptr<IEcdhOprfClient> oprf_client =
         CreateEcdhOprfClient(options.oprf_type, options.curve_type);
     compare_length_ = oprf_client->GetCompareLength();
     ec_point_length_ = oprf_client->GetEcPointLength();
+  }
+
+  explicit EcdhOprfPsiClient(const EcdhOprfPsiOptions& options,
+                             yacl::ByteContainerView private_key)
+      : options_(options) {
+    oprf_client_ = CreateEcdhOprfClient(private_key, options.oprf_type,
+                                        options.curve_type);
+    compare_length_ = oprf_client_->GetCompareLength();
+    ec_point_length_ = oprf_client_->GetEcPointLength();
   }
 
   /**
@@ -181,8 +202,10 @@ class EcdhOprfPsiClient {
    * @param batch_provider  input data batch provider
    * @param cipher_store    store finalized data to self results
    */
-  void RecvEvaluatedItems(const std::shared_ptr<IBatchProvider>& batch_provider,
-                          const std::shared_ptr<ICipherStore>& cipher_store);
+  void RecvEvaluatedItems(const std::shared_ptr<ICipherStore>& cipher_store);
+
+  void SendIntersectionMaskedItems(
+      const std::shared_ptr<IBatchProvider>& batch_provider);
 
  private:
   EcdhOprfPsiOptions options_;
@@ -191,6 +214,7 @@ class EcdhOprfPsiClient {
   std::condition_variable queue_push_cv_;
   std::condition_variable queue_pop_cv_;
   std::queue<std::vector<std::shared_ptr<IEcdhOprfClient>>> oprf_client_queue_;
+  std::shared_ptr<IEcdhOprfClient> oprf_client_ = nullptr;
 
   size_t compare_length_;
   size_t ec_point_length_;

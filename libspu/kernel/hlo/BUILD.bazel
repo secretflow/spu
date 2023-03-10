@@ -119,6 +119,7 @@ spu_cc_test(
     deps = [
         ":casting",
         ":const",
+        "//libspu/kernel/hal:test_util",
     ],
 )
 
@@ -138,6 +139,7 @@ spu_cc_test(
     srcs = ["const_test.cc"],
     deps = [
         ":const",
+        "//libspu/kernel/hal:test_util",
     ],
 )
 
@@ -178,6 +180,7 @@ spu_cc_test(
     deps = [
         ":const",
         ":dynamic_slice",
+        "//libspu/kernel/hal:test_util",
     ],
 )
 
@@ -196,6 +199,7 @@ spu_cc_test(
     srcs = ["indexing_test.cc"],
     deps = [
         ":indexing",
+        "//libspu/kernel/hal:test_util",
     ],
 )
 
@@ -310,6 +314,7 @@ spu_cc_test(
     srcs = ["shuffle_test.cc"],
     deps = [
         ":shuffle",
+        "//libspu/kernel/hal:test_util",
     ],
 )
 

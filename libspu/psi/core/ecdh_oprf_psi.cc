@@ -16,8 +16,10 @@
 
 #include <omp.h>
 
+#include <algorithm>
 #include <chrono>
 #include <future>
+#include <unordered_set>
 #include <utility>
 
 #include "absl/strings/escaping.h"
@@ -48,8 +50,6 @@ size_t EcdhOprfPsiServer::SendFinalEvaluatedItems(
     PsiDataBatch batch;
     auto items = batch_provider->ReadNextBatch(options_.batch_size);
     batch.is_last_batch = items.empty();
-    SPDLOG_INFO("*** debug batch_count:{} items size:{}", batch_count,
-                items.size());
 
     if (!batch.is_last_batch) {
       batch.flatten_bytes.reserve(items.size() * compare_length);
@@ -137,9 +137,6 @@ size_t EcdhOprfPsiServer::FullEvaluate(
           SPDLOG_INFO("batch_count:{}", batch_count);
         }
         local_batch_count = batch_count;
-        if (batch_items.size() < options_.batch_size) {
-          SPDLOG_INFO("*** debug batch_items.size():{}", batch_items.size());
-        }
       }
 
       omp_unset_lock(&lck_read);
@@ -150,9 +147,9 @@ size_t EcdhOprfPsiServer::FullEvaluate(
 
       batch.flatten_bytes.reserve(batch_items.size() * compare_length);
 
-      batch.flatten_bytes = oprf_server_->FullEvaluate(batch_items[0]);
+      batch.flatten_bytes = oprf_server_->SimpleEvaluate(batch_items[0]);
       for (i = 1; i < batch_items.size(); i++) {
-        std::string masked_item = oprf_server_->FullEvaluate(batch_items[i]);
+        std::string masked_item = oprf_server_->SimpleEvaluate(batch_items[i]);
         batch.flatten_bytes.append(masked_item);
       }
 
@@ -248,6 +245,176 @@ void EcdhOprfPsiServer::RecvBlindAndSendEvaluate() {
   SPDLOG_INFO("{} finished, batch_count={}", __func__, batch_count);
 }
 
+void EcdhOprfPsiServer::RecvBlindAndShuffleSendEvaluate() {
+  size_t batch_count = 0;
+
+  size_t ec_point_length = oprf_server_->GetEcPointLength();
+
+  std::vector<std::string> evaluated_items;
+
+  while (true) {
+    const auto tag = fmt::format("EcdhOprfPSI:BlindItems:{}", batch_count);
+    PsiDataBatch blinded_batch = PsiDataBatch::Deserialize(
+        options_.link1->Recv(options_.link1->NextRank(), tag));
+
+    if (blinded_batch.is_last_batch) {
+      break;
+    }
+
+    // Fetch blinded y^r.
+    SPU_ENFORCE(blinded_batch.flatten_bytes.size() % ec_point_length == 0);
+    size_t num_items = blinded_batch.flatten_bytes.size() / ec_point_length;
+
+    std::vector<std::string> blinded_items(num_items);
+    for (size_t idx = 0; idx < num_items; ++idx) {
+      blinded_items[idx] = blinded_batch.flatten_bytes.substr(
+          idx * ec_point_length, ec_point_length);
+    }
+    // (x^r)^s
+    std::vector<std::string> batch_evaluated_items =
+        oprf_server_->Evaluate(blinded_items);
+
+    evaluated_items.insert(evaluated_items.end(), batch_evaluated_items.begin(),
+                           batch_evaluated_items.end());
+
+    batch_count++;
+  }
+  SPDLOG_INFO("recv Blind finished, batch_count={}", batch_count);
+
+  std::sort(evaluated_items.begin(), evaluated_items.end());
+
+  std::unique_ptr<IBatchProvider> provider =
+      std::make_unique<MemoryBatchProvider>(evaluated_items);
+
+  batch_count = 0;
+  while (true) {
+    std::vector<std::string> batch_evaluated_items =
+        provider->ReadNextBatch(options_.batch_size);
+
+    PsiDataBatch evaluated_batch;
+    evaluated_batch.is_last_batch = batch_evaluated_items.empty();
+
+    const auto tag_send =
+        fmt::format("EcdhOprfPSI:EvaluatedItems:{}", batch_count);
+
+    if (evaluated_batch.is_last_batch) {
+      SPDLOG_INFO("{} Last batch triggered, batch_count={}", __func__,
+                  batch_count);
+
+      options_.link1->SendAsync(options_.link1->NextRank(),
+                                evaluated_batch.Serialize(), tag_send);
+      break;
+    }
+
+    evaluated_batch.flatten_bytes.reserve(batch_evaluated_items.size() *
+                                          ec_point_length);
+    for (const auto& item : batch_evaluated_items) {
+      evaluated_batch.flatten_bytes.append(item);
+    }
+
+    options_.link1->SendAsync(options_.link1->NextRank(),
+                              evaluated_batch.Serialize(), tag_send);
+
+    batch_count++;
+  }
+  SPDLOG_INFO("send evaluated finished, batch_count={}", batch_count);
+}
+
+std::pair<std::vector<uint64_t>, size_t>
+EcdhOprfPsiServer::RecvIntersectionMaskedItems(
+    const std::shared_ptr<IShuffleBatchProvider>& cache_provider,
+    size_t batch_size) {
+  std::unordered_set<std::string> client_masked_items;
+
+  size_t compare_length = oprf_server_->GetCompareLength();
+  size_t batch_count = 0;
+
+  while (true) {
+    const auto tag = fmt::format("EcdhOprfPSI:batch_count:{}", batch_count);
+    PsiDataBatch masked_batch = PsiDataBatch::Deserialize(
+        options_.link1->Recv(options_.link1->NextRank(), tag));
+
+    if (masked_batch.is_last_batch) {
+      break;
+    }
+
+    // Fetch blinded y^r.
+    SPU_ENFORCE(masked_batch.flatten_bytes.size() % compare_length == 0);
+    size_t num_items = masked_batch.flatten_bytes.size() / compare_length;
+
+    std::vector<std::string> batch_masked_items(num_items);
+    for (size_t idx = 0; idx < num_items; ++idx) {
+      batch_masked_items[idx] = masked_batch.flatten_bytes.substr(
+          idx * compare_length, compare_length);
+    }
+
+    client_masked_items.insert(batch_masked_items.begin(),
+                               batch_masked_items.end());
+
+    batch_count++;
+  }
+  SPDLOG_INFO("Recv intersection masked finished, batch_count={}", batch_count);
+
+  std::vector<uint64_t> indices;
+
+  size_t item_index = 0;
+  batch_count = 0;
+  size_t compare_thread_num = omp_get_num_procs();
+
+  while (true) {
+    std::vector<std::string> server_masked_items;
+    std::vector<uint64_t> batch_indices;
+    std::vector<uint64_t> batch_shuffled_indices;
+
+    std::tie(server_masked_items, batch_indices, batch_shuffled_indices) =
+        cache_provider->ReadNextBatchWithIndex(batch_size);
+    if (server_masked_items.empty()) {
+      break;
+    }
+    SPU_ENFORCE(server_masked_items.size() == batch_shuffled_indices.size());
+
+    size_t compare_size =
+        (server_masked_items.size() + compare_thread_num - 1) /
+        compare_thread_num;
+
+    std::vector<std::vector<uint64_t>> batch_result(compare_thread_num);
+
+    auto compare_proc = [&](int idx) -> void {
+      uint64_t begin = idx * compare_size;
+      uint64_t end =
+          std::min<uint64_t>(server_masked_items.size(), begin + compare_size);
+
+      for (uint64_t i = begin; i < end; ++i) {
+        if (client_masked_items.find(server_masked_items[i]) !=
+            client_masked_items.end()) {
+          batch_result[idx].push_back(batch_shuffled_indices[i]);
+        }
+      }
+    };
+
+    std::vector<std::future<void>> f_compare(compare_thread_num);
+    for (size_t i = 0; i < compare_thread_num; i++) {
+      f_compare[i] = std::async(compare_proc, i);
+    }
+
+    for (size_t i = 0; i < compare_thread_num; i++) {
+      f_compare[i].get();
+    }
+
+    for (const auto& r : batch_result) {
+      indices.insert(indices.end(), r.begin(), r.end());
+    }
+
+    batch_count++;
+
+    item_index += server_masked_items.size();
+    SPDLOG_INFO("GetIndices batch count:{}, item_index:{}", batch_count,
+                item_index);
+  }
+
+  return std::make_pair(indices, item_index);
+}
+
 void EcdhOprfPsiClient::RecvFinalEvaluatedItems(
     const std::shared_ptr<ICipherStore>& cipher_store) {
   SPDLOG_INFO("Begin Recv FinalEvaluatedItems items");
@@ -260,9 +427,6 @@ void EcdhOprfPsiClient::RecvFinalEvaluatedItems(
     // Fetch y^b.
     PsiDataBatch masked_batch = PsiDataBatch::Deserialize(
         options_.link0->Recv(options_.link0->NextRank(), tag));
-
-    SPDLOG_INFO("***debug batch_count:{} masked_batch: {}", batch_count,
-                masked_batch.flatten_bytes.length());
 
     if (masked_batch.is_last_batch) {
       SPDLOG_INFO("{} Last batch triggered, batch_count={}", __func__,
@@ -315,12 +479,16 @@ size_t EcdhOprfPsiClient::SendBlindedItems(
 
     yacl::parallel_for(0, items.size(), 1, [&](int64_t begin, int64_t end) {
       for (int64_t idx = begin; idx < end; ++idx) {
-        std::shared_ptr<IEcdhOprfClient> oprf_client =
-            CreateEcdhOprfClient(options_.oprf_type, options_.curve_type);
+        if (oprf_client_ == nullptr) {
+          std::shared_ptr<IEcdhOprfClient> oprf_client_ptr =
+              CreateEcdhOprfClient(options_.oprf_type, options_.curve_type);
 
-        oprf_clients[idx] = oprf_client;
+          oprf_clients[idx] = oprf_client_ptr;
+        } else {
+          oprf_clients[idx] = oprf_client_;
+        }
 
-        blinded_items[idx] = oprf_client->Blind(items[idx]);
+        blinded_items[idx] = oprf_clients[idx]->Blind(items[idx]);
       }
     });
 
@@ -331,7 +499,7 @@ size_t EcdhOprfPsiClient::SendBlindedItems(
     }
 
     // push to oprf_client_queue_
-    {
+    if (oprf_client_ == nullptr) {
       std::unique_lock<std::mutex> lock(mutex_);
       queue_push_cv_.wait(lock, [&] {
         return (oprf_client_queue_.size() < options_.window_size);
@@ -354,7 +522,6 @@ size_t EcdhOprfPsiClient::SendBlindedItems(
 }
 
 void EcdhOprfPsiClient::RecvEvaluatedItems(
-    const std::shared_ptr<IBatchProvider>& batch_provider,
     const std::shared_ptr<ICipherStore>& cipher_store) {
   SPDLOG_INFO("Begin Recv EvaluatedItems items");
 
@@ -371,12 +538,9 @@ void EcdhOprfPsiClient::RecvEvaluatedItems(
                   batch_count);
       break;
     }
-    auto items = batch_provider->ReadNextBatch(options_.batch_size);
 
     SPU_ENFORCE(masked_batch.flatten_bytes.size() % ec_point_length_ == 0);
     size_t num_items = masked_batch.flatten_bytes.size() / ec_point_length_;
-
-    SPU_ENFORCE(items.size() % num_items == 0);
 
     std::vector<std::string> evaluate_items(num_items);
     for (size_t idx = 0; idx < num_items; ++idx) {
@@ -384,29 +548,31 @@ void EcdhOprfPsiClient::RecvEvaluatedItems(
           idx * ec_point_length_, ec_point_length_);
     }
 
-    std::vector<std::string> oprf_items(items.size());
+    std::vector<std::string> oprf_items(num_items);
     std::vector<std::shared_ptr<IEcdhOprfClient>> oprf_clients;
 
     // get oprf_clients
-    {
+    if (oprf_client_ == nullptr) {
       std::unique_lock<std::mutex> lock(mutex_);
-      queue_pop_cv_.wait(lock, [&] {
-        // SPDLOG_INFO("pop queue size:{}", oprf_client_queue_.size());
-        return (!oprf_client_queue_.empty());
-      });
+      queue_pop_cv_.wait(lock, [&] { return (!oprf_client_queue_.empty()); });
 
       oprf_clients = std::move(oprf_client_queue_.front());
       oprf_client_queue_.pop();
       queue_push_cv_.notify_one();
+    } else {
+      oprf_clients.resize(num_items);
+      for (size_t i = 0; i < oprf_clients.size(); ++i) {
+        oprf_clients[i] = oprf_client_;
+      }
     }
 
-    SPU_ENFORCE(oprf_clients.size() == items.size(),
+    SPU_ENFORCE(oprf_clients.size() == num_items,
                 "EcdhOprfServer should not be nullptr");
 
-    yacl::parallel_for(0, items.size(), 1, [&](int64_t begin, int64_t end) {
+    yacl::parallel_for(0, num_items, 1, [&](int64_t begin, int64_t end) {
       for (int64_t idx = begin; idx < end; ++idx) {
         oprf_items[idx] = absl::BytesToHexString(
-            oprf_clients[idx]->Finalize(items[idx], evaluate_items[idx]));
+            oprf_clients[idx]->Finalize(evaluate_items[idx]));
       }
     });
 
@@ -415,6 +581,48 @@ void EcdhOprfPsiClient::RecvEvaluatedItems(
     batch_count++;
   }
   SPDLOG_INFO("End Recv EvaluatedItems");
+}
+
+void EcdhOprfPsiClient::SendIntersectionMaskedItems(
+    const std::shared_ptr<IBatchProvider>& batch_provider) {
+  size_t batch_count = 0;
+  size_t items_count = 0;
+
+  SPDLOG_INFO("Begin Send IntersectionMaskedItems items");
+
+  while (true) {
+    auto items = batch_provider->ReadNextBatch(options_.batch_size);
+
+    PsiDataBatch blinded_batch;
+    blinded_batch.is_last_batch = items.empty();
+
+    const auto tag = fmt::format("EcdhOprfPSI:batch_count:{}", batch_count);
+
+    if (blinded_batch.is_last_batch) {
+      SPDLOG_INFO("{} Last batch triggered, batch_count={}", __func__,
+                  batch_count);
+
+      options_.link1->SendAsync(options_.link1->NextRank(),
+                                blinded_batch.Serialize(), tag);
+      break;
+    }
+
+    blinded_batch.flatten_bytes.reserve(items.size() * compare_length_);
+
+    for (uint64_t idx = 0; idx < items.size(); ++idx) {
+      blinded_batch.flatten_bytes.append(absl::HexStringToBytes(items[idx]));
+    }
+
+    options_.link1->SendAsync(options_.link1->NextRank(),
+                              blinded_batch.Serialize(), tag);
+
+    items_count += items.size();
+    batch_count++;
+  }
+  SPDLOG_INFO("{} finished, batch_count={} items_count={}", __func__,
+              batch_count, items_count);
+
+  return;
 }
 
 }  // namespace spu::psi

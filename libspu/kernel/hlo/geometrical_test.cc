@@ -19,7 +19,6 @@
 #include "libspu/core/ndarray_ref.h"
 #include "libspu/kernel/context.h"
 #include "libspu/kernel/hlo/basic_binary.h"
-#include "libspu/kernel/hlo/casting.h"
 #include "libspu/kernel/hlo/const.h"
 #include "libspu/kernel/hlo/test_utils.h"
 #include "libspu/kernel/value.h"

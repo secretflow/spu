@@ -26,7 +26,7 @@ enum ErrorCode {
 
 message CreateSessionRequest {
   int32 required_version = 1;
-  // witch rank do adjust rpc call, Usually choose the rank closer to the server.
+  // which rank do adjust rpc call, Usually choose the rank closer to the server.
   int32 adjust_rank = 2;
   // session represents a group of MPC computing participants
   string session_id = 3;

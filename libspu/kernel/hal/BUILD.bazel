@@ -27,6 +27,7 @@ spu_cc_library(
         ":integer",
         ":pad",
         ":polymorphic",
+        ":public_helper",
         ":random",
         ":shape_ops",
         ":type_cast",
@@ -39,7 +40,6 @@ spu_cc_library(
     srcs = ["prot_wrapper.cc"],
     hdrs = ["prot_wrapper.h"],
     deps = [
-        ":shape_ops",
         "//libspu/kernel:context",
     ],
 )
@@ -50,7 +50,6 @@ spu_cc_library(
     hdrs = ["ring.h"],
     deps = [
         ":prot_wrapper",
-        ":shape_ops",
         "//libspu/kernel:context",
     ],
 )
@@ -139,7 +138,6 @@ spu_cc_library(
     deps = [
         ":prot_wrapper",
         ":ring",
-        ":shape_ops",
         "//libspu/kernel:context",
     ],
 )
@@ -154,11 +152,24 @@ spu_cc_test(
 )
 
 spu_cc_library(
+    name = "public_helper",
+    srcs = ["public_helper.cc"],
+    hdrs = ["public_helper.h"],
+    deps = [
+        "//libspu/core:encoding",
+        "//libspu/kernel:context",
+        "//libspu/mpc/common:pub2k",  # TODO: this is a bad reference
+    ],
+)
+
+spu_cc_library(
     name = "test_util",
+    testonly = True,
     srcs = ["test_util.cc"],
     hdrs = ["test_util.h"],
     deps = [
         ":constants",
+        ":public_helper",
         "//libspu/kernel:context",
         "@com_google_googletest//:gtest",
     ],
@@ -169,7 +180,8 @@ spu_cc_library(
     srcs = ["debug.cc"],
     hdrs = ["debug.h"],
     deps = [
-        ":test_util",
+        ":constants",  # for dump_public_as
+        ":public_helper",
         ":type_cast",
         "//libspu/core:prelude",
     ],
@@ -235,7 +247,8 @@ spu_cc_library(
     srcs = ["random.cc"],
     hdrs = ["random.h"],
     deps = [
-        ":test_util",
+        ":constants",
+        ":public_helper",
         "//libspu/core:prelude",
         "//libspu/kernel:context",
     ],
@@ -246,6 +259,7 @@ spu_cc_library(
     srcs = ["shape_ops.cc"],
     hdrs = ["shape_ops.h"],
     deps = [
+        ":type_cast",
         "//libspu/core:prelude",
         "//libspu/core:vectorize",
         "//libspu/kernel:context",

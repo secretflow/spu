@@ -417,22 +417,16 @@ spu::Value FilterByMask(HalContext *ctx, const spu::Value &operand,
     }
   }
 
-  spu::Value result({operand.data().eltype(), {num_true}}, operand.dtype());
-
-  const auto *in_ptr = &operand.data().at({0});
-  auto *out_ptr = &result.data().at({0});
-  auto elsize = operand.elsize();
-
-  // Copy...
-  for (int64_t idx = 0; idx < operand.shape()[0]; ++idx) {
-    if (mask[idx] != 0) {
-      std::memcpy(out_ptr, in_ptr, elsize);
-      out_ptr += elsize;
+  std::vector<int64_t> indicies(num_true);
+  int64_t indicies_counter = 0;
+  for (int64_t mask_idx = 0; mask_idx != static_cast<int64_t>(mask.size());
+       ++mask_idx) {
+    if (mask[mask_idx] != 0) {
+      indicies[indicies_counter++] = mask_idx;
     }
-    in_ptr += operand.strides()[0] * elsize;
   }
 
-  return result;
+  return Value(operand.data().linear_gather(indicies), operand.dtype());
 }
 
 }  // namespace spu::kernel::hlo

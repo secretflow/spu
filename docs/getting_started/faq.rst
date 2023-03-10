@@ -46,7 +46,7 @@ General
 Does SPU support PyTorch?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-And this moment, we only ship SPU with JAX support. But theoretically, all the frontend languages which could be transferred into XLA could be
+At this moment, we only ship SPU with JAX support. But theoretically, all the frontend languages which could be transferred into XLA could be
 consumed by SPU compiler, please check other opensource projects which work on transferring other languages to XLA.
 
 I have met huge inconsistency between SPU result and Plaintext(JAX) result.

@@ -27,6 +27,13 @@
 
 #include "libspu/mpc/semi2k/beaver/ttp_server/service.pb.h"
 
+namespace brpc {
+
+DECLARE_uint64(max_body_size);
+DECLARE_int64(socket_max_unwritten_bytes);
+
+}  // namespace brpc
+
 namespace spu::mpc::semi2k::beaver::ttp_server {
 
 namespace {
@@ -264,7 +271,7 @@ class ServiceImpl final : public BeaverService {
       // FIXME: TTP adjuster server and client MUST have same endianness.
       rsp->add_adjust_outputs(a.data(), a.numel() * a.elsize());
       // how to move this buffer to pb ?
-      a.buf()->release();
+      a.buf()->reset();
     }
   }
 
@@ -306,6 +313,10 @@ class ServiceImpl final : public BeaverService {
 };
 
 std::unique_ptr<brpc::Server> RunServer(int32_t port) {
+  brpc::FLAGS_max_body_size = std::numeric_limits<uint64_t>::max();
+  brpc::FLAGS_socket_max_unwritten_bytes =
+      std::numeric_limits<int64_t>::max() / 2;
+
   auto server = std::make_unique<brpc::Server>();
   auto svc = std::make_unique<ServiceImpl>();
 

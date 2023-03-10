@@ -69,12 +69,6 @@ class Value final {
   // Deserialize from protobuf.
   static Value fromProto(const ValueProto& proto);
 
-  Value getElementAt(absl::Span<const int64_t> index) const;
-
-  // Linear index, this method does not handle strides, only use if you know
-  // what you are doing
-  Value getElementAt(int64_t idx) const;
-
   Value clone() const;
 };
 

@@ -76,4 +76,19 @@ std::vector<std::string> IEcdhOprfClient::Finalize(
 
   return output;
 }
+
+std::vector<std::string> IEcdhOprfClient::Finalize(
+    absl::Span<const std::string> evaluated_elements) const {
+  std::vector<std::string> output(evaluated_elements.size());
+
+  yacl::parallel_for(0, evaluated_elements.size(), 1,
+                     [&](int64_t begin, int64_t end) {
+                       for (int64_t idx = begin; idx < end; ++idx) {
+                         output[idx] = Finalize(evaluated_elements[idx]);
+                       }
+                     });
+
+  return output;
+}
+
 }  // namespace spu::psi

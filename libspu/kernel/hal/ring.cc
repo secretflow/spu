@@ -21,10 +21,8 @@
 #include "libspu/core/prelude.h"
 #include "libspu/core/shape_util.h"
 #include "libspu/kernel/hal/prot_wrapper.h"
-#include "libspu/kernel/hal/shape_ops.h"
 
 namespace spu::kernel::hal {
-
 namespace {
 
 std::tuple<int64_t, int64_t, int64_t> deduceMmulArgs(
@@ -69,6 +67,27 @@ std::tuple<int64_t, int64_t, int64_t> calcMmulTilingSize(int64_t m, int64_t n,
       std::max(expected_mn_step * n / (m + n), static_cast<int64_t>(1));
 
   return {m_step, n_step, k_step};
+}
+
+// FIXME: the bellow two functions are copied from shape_ops because of the
+// following dependency problem:
+//
+// shape_ops -> type_cast : concat/pad requires _common_type
+// ring -> shape_ops      : tiled_mmul(transpose/slice)
+// type_cast -> ring      : _p2s/arshift/shift
+Value transpose(HalContext* ctx, const Value& in) {
+  SPU_TRACE_HAL_DISP(ctx, in);
+  return Value(in.data().transpose({}), in.dtype());
+}
+
+Value slice(HalContext* ctx, const Value& in,
+            absl::Span<const int64_t> start_indices,
+            absl::Span<const int64_t> end_indices,
+            absl::Span<const int64_t> strides) {
+  SPU_TRACE_HAL_DISP(ctx, in, start_indices, end_indices, strides);
+
+  return Value(in.data().slice(start_indices, end_indices, strides),
+               in.dtype());
 }
 
 }  // namespace
@@ -183,30 +202,29 @@ Value _conv2d(HalContext* ctx, const Value& x, const Value& y,
   return _conv2d_ss(ctx, x, y, window_strides, result_shape);
 }
 
+static Value _mmul_impl(HalContext* ctx, const Value& x, const Value& y) {
+  if (x.isPublic() && y.isPublic()) {
+    return _mmul_pp(ctx, x, y);
+  } else if (x.isSecret() && y.isPublic()) {
+    return _mmul_sp(ctx, x, y);
+  } else if (x.isPublic() && y.isSecret()) {
+    return transpose(ctx, _mmul_sp(ctx, transpose(ctx, y), transpose(ctx, x)));
+  } else if (x.isSecret() && y.isSecret()) {
+    return _mmul_ss(ctx, x, y);
+  } else {
+    SPU_THROW("unsupported op {} for x={}, y={}", "_matmul", x, y);
+  }
+};
+
 Value _mmul(HalContext* ctx, const Value& x, const Value& y) {
   auto [m, n, k] = deduceMmulArgs(x.shape(), y.shape());
   auto [m_step, n_step, k_step] =
       calcMmulTilingSize(m, n, k, x.elsize(), 256UL * 1024 * 1024);
 
-  auto mmul_impl = [&](const Value& x, const Value& y) {
-    if (x.isPublic() && y.isPublic()) {
-      return _mmul_pp(ctx, x, y);
-    } else if (x.isSecret() && y.isPublic()) {
-      return _mmul_sp(ctx, x, y);
-    } else if (x.isPublic() && y.isSecret()) {
-      return transpose(ctx,
-                       _mmul_sp(ctx, transpose(ctx, y), transpose(ctx, x)));
-    } else if (x.isSecret() && y.isSecret()) {
-      return _mmul_ss(ctx, x, y);
-    } else {
-      SPU_THROW("unsupported op {} for x={}, y={}", "_matmul", x, y);
-    }
-  };
-
   if (ctx->rt_config().experimental_disable_mmul_split() ||
       (m_step == m && n_step == n && k_step == k)) {
     // no split
-    return mmul_impl(x, y);
+    return _mmul_impl(ctx, x, y);
   }
 
   int64_t m_blocks = (m + m_step - 1) / m_step;
@@ -242,7 +260,7 @@ Value _mmul(HalContext* ctx, const Value& x, const Value& y) {
           y_block = slice(ctx, y, {k_start, n_start}, {k_end, n_end}, {});
         }
 
-        auto mmul_ret = mmul_impl(x_block, y_block);
+        auto mmul_ret = _mmul_impl(ctx, x_block, y_block);
         if (i == 0) {
           ret_blocks[r][c] = std::move(mmul_ret);
         } else {
@@ -369,7 +387,7 @@ Value _mux(HalContext* ctx, const Value& pred, const Value& a, const Value& b) {
 
 Value _constant(HalContext* ctx, uint128_t init,
                 absl::Span<const int64_t> shape) {
-  return broadcast_to(ctx, _make_p(ctx, init), shape);
+  return _make_p(ctx, init, shape);
 }
 
 // TODO: test me.

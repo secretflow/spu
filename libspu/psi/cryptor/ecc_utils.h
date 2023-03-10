@@ -24,6 +24,8 @@
 #include "yacl/crypto/base/hash/hash_utils.h"
 #include "yacl/utils/parallel.h"
 
+#include "libspu/core/prelude.h"
+
 namespace spu::psi {
 
 inline constexpr size_t kEcPointCompressLength = 33;
@@ -160,7 +162,8 @@ struct EcPointSt {
     EcPointSt ec_point(ec_group);
 
     BigNumSt bn_x;
-    bn_x.FromBytes(m, ec_group.bn_p);
+
+    bn_x.FromBytes(yacl::crypto::Sha256(m), ec_group.bn_p);
 
     size_t counter = 0;
 

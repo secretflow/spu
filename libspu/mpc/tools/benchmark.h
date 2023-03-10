@@ -29,6 +29,18 @@
 
 namespace spu::mpc::bench {
 
+struct ParamEntry {
+  std::string name;
+  std::string value;
+  ParamEntry(std::string n, std::string v)
+      : name(std::move(n)), value(std::move(v)) {}
+};
+
+std::map<uint64_t, std::string> field_name{
+    {static_cast<uint64_t>(FieldType::FM32), "32"},
+    {static_cast<uint64_t>(FieldType::FM64), "64"},
+    {static_cast<uint64_t>(FieldType::FM128), "128"}};
+
 using CreateComputeFn = std::function<std::unique_ptr<Object>(
     const RuntimeConfig& conf,
     const std::shared_ptr<yacl::link::Context>& lctx)>;
@@ -40,22 +52,24 @@ class BenchConfig {
   inline static uint32_t bench_npc = 0;
   inline static std::string bench_mode = "standalone";
   inline static std::string bench_parties = {};
-  inline static std::vector<int64_t> bench_numel_range =
-      benchmark::CreateRange(10, 1000, /*multi=*/10);
-  inline static std::vector<int64_t> bench_shift_range =
-      benchmark::CreateRange(2, 8, /*multi=*/2);
-  inline static std::vector<int64_t> bench_matrix_m_range =
-      benchmark::CreateDenseRange(3, 9, /*step=*/3);
-  inline static std::vector<int64_t> bench_matrix_k_range =
-      benchmark::CreateDenseRange(4, 16, /*step=*/4);
-  inline static std::vector<int64_t> bench_field_range = {
-      FieldType::FM32, FieldType::FM64, FieldType::FM128};
+  inline static std::vector<int64_t> bench_numel_range = {1u << 10, 1u << 20};
+  inline static std::vector<int64_t> bench_shift_range = {2};
+  inline static std::vector<int64_t> bench_matrix_m_range = {10};
+  inline static std::vector<int64_t> bench_matrix_k_range = {10};
+  inline static std::vector<int64_t> bench_field_range = {FieldType::FM64,
+                                                          FieldType::FM128};
 };
 
 template <typename BenchOp>
 void MPCBenchMark(benchmark::State& state) {
+  std::string label = BenchOp::op_name;
+  label = std::string("op_name:") + label;
+  for (auto& entry : BenchOp::Paras(state)) {
+    label += '/' + entry.name + ':' + entry.value;
+  }
+  state.SetLabel(label);
+
   for (auto _ : state) {
-    state.PauseTiming();
     const size_t npc = BenchConfig::bench_npc;
     const auto field = static_cast<spu::FieldType>(state.range(0));
     RuntimeConfig conf;
@@ -69,19 +83,38 @@ void MPCBenchMark(benchmark::State& state) {
       /* WHEN */
       if (lctx->Rank() == 0) {
         auto prev = comm->getStats();
-        state.ResumeTiming();
-
+        // state.ResumeTiming() will record start time,
+        // and state.PauseTiming() uses now to substract start time.
+        // If we use state to manage time, we need call
+        // state.PauseTiming() in every iteration to avoid initialization
+        // overhand, so we need a state.ResumeTiming() to mathch it.
+        // If we call state.ResumeTiming() in this thread,
+        // time is more, because we record two pairs of state operation:
+        //  (this)   |------R--P---R--|
+        //  >----P---|                |----->
+        //  (other)  |----------------|
+        //  (another)|----------------|
+        // What if we call state.ResumeTiming() at the end of every thread? The
+        // last Resume will make the second pair insignificant, but under this
+        // condition:
+        //  (this)   |------R----P--R|
+        //  >----P---|         |---------->
+        //  (other)  |--------R|
+        //  (another)  |--------R|
+        // time is less. So we use manual time.
+        auto start = std::chrono::high_resolution_clock::now();
         benchmark::DoNotOptimize(op.Exec());
-
-        state.PauseTiming();
+        auto end = std::chrono::high_resolution_clock::now();
         auto cost = comm->getStats() - prev;
         state.counters["latency"] = cost.latency;
         state.counters["comm"] = cost.comm;
-        state.ResumeTiming();
+        auto elapsed_seconds =
+            std::chrono::duration_cast<std::chrono::duration<double>>(end -
+                                                                      start);
+        state.SetIterationTime(elapsed_seconds.count());
       } else {
         op.Exec();
-
-        state.ResumeTiming();
+        state.SetIterationTime(0);
       }
     };
 
@@ -110,120 +143,160 @@ class BenchOpSP {
     s0 = p2s(obj, p0);
     s1 = p2s(obj, p1);
   }
+  static std::vector<ParamEntry> Paras(benchmark::State& st) {
+    std::vector<ParamEntry> paras;
+    paras.emplace_back("field_type", field_name[st.range(0)]);
+    paras.emplace_back("buf_len", std::to_string(st.range(1)));
+    return paras;
+  }
 };
 
 class BenchAddSS : public BenchOpSP {
  public:
   using BenchOpSP::BenchOpSP;
   ArrayRef Exec() { return add_ss(obj_, s0, s1); };
+  static inline std::string op_name = "add_ss";
 };
 
 class BenchMulSS : public BenchOpSP {
  public:
   using BenchOpSP::BenchOpSP;
   ArrayRef Exec() { return mul_ss(obj_, s0, s1); }
+  static inline std::string op_name = "mul_ss";
 };
 
 class BenchAndSS : public BenchOpSP {
  public:
   using BenchOpSP::BenchOpSP;
   ArrayRef Exec() { return and_ss(obj_, s0, s1); }
+  static inline std::string op_name = "and_ss";
 };
 
 class BenchXorSS : public BenchOpSP {
  public:
   using BenchOpSP::BenchOpSP;
   ArrayRef Exec() { return xor_ss(obj_, s0, s1); }
+  static inline std::string op_name = "xor_ss";
 };
 
 class BenchAddSP : public BenchOpSP {
  public:
   using BenchOpSP::BenchOpSP;
   ArrayRef Exec() { return add_sp(obj_, s0, p1); }
+  static inline std::string op_name = "add_sp";
 };
 
 class BenchMulSP : public BenchOpSP {
  public:
   using BenchOpSP::BenchOpSP;
   ArrayRef Exec() { return mul_sp(obj_, s0, p1); }
+  static inline std::string op_name = "mul_sp";
 };
 
 class BenchAndSP : public BenchOpSP {
  public:
   using BenchOpSP::BenchOpSP;
   ArrayRef Exec() { return and_sp(obj_, s0, p1); }
+  static inline std::string op_name = "and_sp";
 };
 
 class BenchXorSP : public BenchOpSP {
  public:
   using BenchOpSP::BenchOpSP;
   ArrayRef Exec() { return xor_sp(obj_, s0, p1); }
+  static inline std::string op_name = "xor_sp";
 };
 
 class BenchNotS : public BenchOpSP {
  public:
   using BenchOpSP::BenchOpSP;
   ArrayRef Exec() { return not_s(obj_, s0); }
+  static inline std::string op_name = "not_s";
 };
 
 class BenchNotP : public BenchOpSP {
  public:
   using BenchOpSP::BenchOpSP;
   ArrayRef Exec() { return not_p(obj_, p0); }
+  static inline std::string op_name = "not_p";
 };
 
-class BenchLShiftS : public BenchOpSP {
+class BenchOpShift : public BenchOpSP {
  public:
   using BenchOpSP::BenchOpSP;
+  static std::vector<ParamEntry> Paras(benchmark::State& st) {
+    std::vector<ParamEntry> paras = BenchOpSP::Paras(st);
+    paras.emplace_back("shift_bit", std::to_string(st.range(2)));
+    return paras;
+  }
+};
+
+class BenchLShiftS : public BenchOpShift {
+ public:
+  using BenchOpShift::BenchOpShift;
   ArrayRef Exec() { return lshift_s(obj_, s0, state.range(2)); }
+  static inline std::string op_name = "lshift_s";
 };
 
-class BenchLShiftP : public BenchOpSP {
+class BenchLShiftP : public BenchOpShift {
  public:
-  using BenchOpSP::BenchOpSP;
+  using BenchOpShift::BenchOpShift;
   ArrayRef Exec() { return lshift_p(obj_, p0, state.range(2)); }
+  static inline std::string op_name = "lshift_p";
 };
 
-class BenchRShiftS : public BenchOpSP {
+class BenchRShiftS : public BenchOpShift {
  public:
-  using BenchOpSP::BenchOpSP;
+  using BenchOpShift::BenchOpShift;
   ArrayRef Exec() { return rshift_s(obj_, s0, state.range(2)); }
+  static inline std::string op_name = "rshift_s";
 };
 
-class BenchRShiftP : public BenchOpSP {
+class BenchRShiftP : public BenchOpShift {
  public:
-  using BenchOpSP::BenchOpSP;
+  using BenchOpShift::BenchOpShift;
   ArrayRef Exec() { return rshift_p(obj_, p0, state.range(2)); }
+  static inline std::string op_name = "rshift_p";
 };
 
-class BenchARShiftS : public BenchOpSP {
+class BenchARShiftS : public BenchOpShift {
  public:
-  using BenchOpSP::BenchOpSP;
+  using BenchOpShift::BenchOpShift;
   ArrayRef Exec() { return arshift_s(obj_, s0, state.range(2)); }
+  static inline std::string op_name = "arshift_s";
 };
 
-class BenchARShiftP : public BenchOpSP {
+class BenchARShiftP : public BenchOpShift {
  public:
-  using BenchOpSP::BenchOpSP;
+  using BenchOpShift::BenchOpShift;
   ArrayRef Exec() { return arshift_p(obj_, p0, state.range(2)); }
+  static inline std::string op_name = "arshift_p";
 };
 
 class BenchTruncS : public BenchOpSP {
  public:
   using BenchOpSP::BenchOpSP;
   ArrayRef Exec() { return trunc_s(obj_, s0, state.range(2)); }
+  static inline std::string op_name = "trunc_s";
+  static std::vector<ParamEntry> Paras(benchmark::State& st) {
+    std::vector<ParamEntry> paras = BenchOpSP::Paras(st);
+    paras.emplace_back("trunc_bit", std::to_string(st.range(2)));
+    return paras;
+  }
 };
 
 class BenchS2P : public BenchOpSP {
  public:
   using BenchOpSP::BenchOpSP;
   ArrayRef Exec() { return s2p(obj_, s0); }
+  static inline std::string op_name = "s2p";
 };
 
 class BenchP2S : public BenchOpSP {
  public:
   using BenchOpSP::BenchOpSP;
   ArrayRef Exec() { return p2s(obj_, p0); }
+  static inline std::string op_name = "p2s";
 };
 
 class BenchOpMat {
@@ -251,18 +324,27 @@ class BenchOpMat {
     s0 = p2s(obj_, p0);
     s1 = p2s(obj_, p1);
   }
+  static std::vector<ParamEntry> Paras(benchmark::State& st) {
+    std::vector<ParamEntry> paras;
+    paras.emplace_back("field_type", field_name[st.range(0)]);
+    paras.emplace_back("matrix_size", fmt::format("{{{0}, {1}}}*{{{1}, {0}}}",
+                                                  st.range(1), st.range(2)));
+    return paras;
+  }
 };
 
 class BenchMMulSP : public BenchOpMat {
  public:
   using BenchOpMat::BenchOpMat;
   ArrayRef Exec() { return mmul_sp(obj_, s0, p1, M, N, K); };
+  static inline std::string op_name = "mmul_sp";
 };
 
 class BenchMMulSS : public BenchOpMat {
  public:
   using BenchOpMat::BenchOpMat;
   ArrayRef Exec() { return mmul_ss(obj_, s0, s1, M, N, K); };
+  static inline std::string op_name = "mmul_ss";
 };
 
 }  // namespace spu::mpc::bench

@@ -24,6 +24,7 @@
 #include "libspu/core/parallel_utils.h"
 #include "libspu/core/shape_util.h"
 #include "libspu/core/vectorize.h"
+#include "libspu/kernel/hal/type_cast.h"
 
 namespace spu::kernel::hal {
 
@@ -45,6 +46,19 @@ Value slice(HalContext* ctx, const Value& in,
 
   return Value(in.data().slice(start_indices, end_indices, strides),
                in.dtype());
+}
+
+Value slice_scalar_at(HalContext* ctx, const Value& input,
+                      absl::Span<const int64_t> indices) {
+  return Value(input.data().slice_scalar_at(indices), input.dtype());
+}
+
+Value update_slice(HalContext* ctx, const Value& in, const Value& update,
+                   absl::Span<const int64_t> start_indices) {
+  auto ret = in.clone();
+  auto u = stype_cast(ctx, update, ret.storage_type());
+  ret.data().update_slice(u.data(), start_indices);
+  return ret;
 }
 
 Value reshape(HalContext* ctx, const Value& in,

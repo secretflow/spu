@@ -56,6 +56,7 @@ void WriteCsvFile(const std::string &file_name,
 struct TestParams {
   size_t items_size;
   CurveType curve_type = CurveType::CURVE_FOURQ;
+  bool shuffle_online = false;
 };
 
 class BasicEcdhOprfTest : public ::testing::TestWithParam<TestParams> {};
@@ -177,96 +178,150 @@ TEST_P(BasicEcdhOprfTest, Works) {
   f_sever_send_fullevaluate.get();
   f_client_recv_full_evaluate.get();
 
+  std::vector<std::string> intersection_std =
+      test::GetIntersection(items_a, items_b);
+
+  SPDLOG_INFO("a:{} b:{} intersection_std:{}", items_a.size(), items_b.size(),
+              intersection_std.size());
+
   // online phase
-  /*
-  auto ctxs_online = yacl::link::test::SetupWorld(2);
-
-  server_options.link0 = ctxs_online[0];
-  server_options.link1 = ctxs_online[0]->Spawn();
-  server_options.curve_type = params.curve_type;
-
-  client_options.link0 = ctxs_online[1];
-  client_options.link1 = ctxs_online[1]->Spawn();
-  client_options.curve_type = params.curve_type;
-  */
-
   // online server, load private key saved by offline phase
   std::shared_ptr<EcdhOprfPsiServer> dh_oprf_psi_server_online =
       std::make_shared<EcdhOprfPsiServer>(server_options, server_private_key);
 
-  std::shared_ptr<EcdhOprfPsiClient> dh_oprf_psi_client_online =
-      std::make_shared<EcdhOprfPsiClient>(client_options);
+  if (params.shuffle_online) {
+    std::vector<uint8_t> client_private_key =
+        yacl::crypto::RandBytes(kEccKeySize);
 
-  std::future<void> f_sever_recv_blind = std::async(
-      [&] { dh_oprf_psi_server_online->RecvBlindAndSendEvaluate(); });
+    std::shared_ptr<EcdhOprfPsiClient> dh_oprf_psi_client_online =
+        std::make_shared<EcdhOprfPsiClient>(client_options, client_private_key);
 
-  std::future<void> f_client_send_blind = std::async([&] {
-    std::shared_ptr<IBatchProvider> batch_provider_client =
-        std::make_shared<CsvBatchProvider>(client_input_path.string(),
-                                           cloumn_ids);
+    std::future<void> f_sever_recv_blind_shuffle = std::async(
+        [&] { dh_oprf_psi_server_online->RecvBlindAndShuffleSendEvaluate(); });
 
-    dh_oprf_psi_client_online->SendBlindedItems(batch_provider_client);
-  });
+    std::future<void> f_client_send_blind = std::async([&] {
+      std::shared_ptr<IBatchProvider> batch_provider_client =
+          std::make_shared<CsvBatchProvider>(client_input_path.string(),
+                                             cloumn_ids);
 
-  std::future<void> f_client_recv_evaluate = std::async([&] {
-    std::shared_ptr<IBatchProvider> batch_provider_client =
-        std::make_shared<CsvBatchProvider>(client_input_path.string(),
-                                           cloumn_ids);
+      dh_oprf_psi_client_online->SendBlindedItems(batch_provider_client);
+      dh_oprf_psi_client_online->RecvEvaluatedItems(memory_store_client);
+    });
 
-    dh_oprf_psi_client_online->RecvEvaluatedItems(batch_provider_client,
-                                                  memory_store_client);
-  });
+    f_sever_recv_blind_shuffle.get();
+    f_client_send_blind.get();
 
-  f_sever_recv_blind.get();
-  f_client_send_blind.get();
-  f_client_recv_evaluate.get();
+    std::vector<std::string> &client_peer_evaluate_items =
+        memory_store_client->peer_results();
 
-  std::vector<std::string> &client_peer_evaluate_items =
-      memory_store_client->peer_results();
+    std::vector<std::string> &client_self_evaluate_items =
+        memory_store_client->self_results();
 
-  std::vector<std::string> &client_self_evaluate_items =
-      memory_store_client->self_results();
+    std::sort(client_peer_evaluate_items.begin(),
+              client_peer_evaluate_items.end());
 
-  std::sort(client_peer_evaluate_items.begin(),
-            client_peer_evaluate_items.end());
-
-  // intersection
-  std::vector<std::string> intersection;
-  for (size_t index = 0; index < client_self_evaluate_items.size(); ++index) {
-    if (std::binary_search(client_peer_evaluate_items.begin(),
-                           client_peer_evaluate_items.end(),
-                           client_self_evaluate_items[index])) {
-      SPU_ENFORCE(index < items_b.size());
-      intersection.push_back(items_b[index]);
+    for (size_t index = 0; index < client_self_evaluate_items.size(); ++index) {
+      SPDLOG_INFO("{}: {} {}", index,
+                  absl::BytesToHexString(client_self_evaluate_items[index]),
+                  client_self_evaluate_items[index].length());
     }
+
+    // intersection
+    std::vector<std::string> intersection;
+    for (size_t index = 0; index < client_self_evaluate_items.size(); ++index) {
+      if (std::binary_search(client_peer_evaluate_items.begin(),
+                             client_peer_evaluate_items.end(),
+                             client_self_evaluate_items[index])) {
+        intersection.push_back(client_self_evaluate_items[index]);
+      }
+    }
+
+    SPDLOG_INFO("intersection: {}", intersection.size());
+
+    std::future<void> f_send_intersection_mask = std::async([&] {
+      std::shared_ptr<IBatchProvider> batch_provider =
+          std::make_shared<MemoryBatchProvider>(intersection);
+      dh_oprf_psi_client_online->SendIntersectionMaskedItems(batch_provider);
+    });
+
+    std::future<std::pair<std::vector<uint64_t>, size_t>>
+        f_recv_intersection_mask = std::async([&] {
+          std::shared_ptr<IShuffleBatchProvider> batch_provider =
+              std::make_shared<UbPsiCacheProvider>(
+                  server_tmp_cache_path.string(),
+                  dh_oprf_psi_server_offline->GetCompareLength());
+          return dh_oprf_psi_server_online->RecvIntersectionMaskedItems(
+              batch_provider, 30000);
+        });
+
+    f_send_intersection_mask.get();
+    std::vector<uint64_t> indices;
+    size_t server_items_size;
+    std::tie(indices, server_items_size) = f_recv_intersection_mask.get();
+    SPDLOG_INFO("indices: {} server_items_size:{}", indices.size(),
+                server_items_size);
+  } else {
+    std::shared_ptr<EcdhOprfPsiClient> dh_oprf_psi_client_online =
+        std::make_shared<EcdhOprfPsiClient>(client_options);
+
+    std::future<void> f_sever_recv_blind = std::async(
+        [&] { dh_oprf_psi_server_online->RecvBlindAndSendEvaluate(); });
+
+    std::future<void> f_client_send_blind = std::async([&] {
+      std::shared_ptr<IBatchProvider> batch_provider_client =
+          std::make_shared<CsvBatchProvider>(client_input_path.string(),
+                                             cloumn_ids);
+
+      dh_oprf_psi_client_online->SendBlindedItems(batch_provider_client);
+    });
+
+    std::future<void> f_client_recv_evaluate = std::async([&] {
+      dh_oprf_psi_client_online->RecvEvaluatedItems(memory_store_client);
+    });
+
+    f_sever_recv_blind.get();
+    f_client_send_blind.get();
+    f_client_recv_evaluate.get();
+
+    std::vector<std::string> &client_peer_evaluate_items =
+        memory_store_client->peer_results();
+
+    std::vector<std::string> &client_self_evaluate_items =
+        memory_store_client->self_results();
+
+    std::sort(client_peer_evaluate_items.begin(),
+              client_peer_evaluate_items.end());
+
+    // intersection
+    std::vector<std::string> intersection;
+    for (size_t index = 0; index < client_self_evaluate_items.size(); ++index) {
+      if (std::binary_search(client_peer_evaluate_items.begin(),
+                             client_peer_evaluate_items.end(),
+                             client_self_evaluate_items[index])) {
+        SPU_ENFORCE(index < items_b.size());
+        intersection.push_back(items_b[index]);
+      }
+    }
+
+    EXPECT_EQ(intersection_std, intersection);
   }
-
-  std::vector<std::string> intersection_std =
-      test::GetIntersection(items_a, items_b);
-
-  EXPECT_EQ(intersection_std, intersection);
 }
 
-INSTANTIATE_TEST_SUITE_P(Works_Instances, BasicEcdhOprfTest,
-                         testing::Values(
-#if 1
-                             TestParams { 10 }  //
-#else
-                             // CURVE_FOURQ
-                             TestParams{1},      //
-                             TestParams{10},     //
-                             TestParams{50},     //
-                             TestParams{4095},   // less than one batch
-                             TestParams{4096},   // exactly one batch
-                             TestParams{10000},  // more than one batch
-                             // CURVE_SM2
-                             TestParams{
-                                 1000,
-                                 CurveType::CURVE_SM2},  // more than one batch
-                             // Curve256k1
-                             TestParams{1000, CurveType::CURVE_SECP256K1}
-// more than one batch
-#endif
-                             ));
+INSTANTIATE_TEST_SUITE_P(
+    Works_Instances, BasicEcdhOprfTest,
+    testing::Values(
+        // CURVE_FOURQ
+        TestParams{1},      //
+        TestParams{10},     //
+        TestParams{50},     //
+        TestParams{4095},   // less than one batch
+        TestParams{4096},   // exactly one batch
+        TestParams{10000},  // more than one batch
+        // CURVE_SM2
+        TestParams{1000, CurveType::CURVE_SM2},  // more than one batch
+        // Curve256k1
+        TestParams{1000, CurveType::CURVE_SECP256K1}  // more than one batch
+        )                                             //
+);
 
 }  // namespace spu::psi

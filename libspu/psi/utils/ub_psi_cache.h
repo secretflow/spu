@@ -40,9 +40,9 @@ class UbPsiCacheProvider : public IBatchProvider, public IShuffleBatchProvider {
   const std::vector<std::string> &GetSelectedFields();
 
  private:
-  std::tuple<std::string, size_t, size_t> ReadData();
+  std::vector<std::tuple<std::string, size_t, size_t>> ReadData(
+      size_t read_count);
 
- private:
   std::string file_path_;
   size_t file_size_;
   size_t file_cursor_ = 0;
@@ -67,6 +67,7 @@ class UbPsiCache : public IUbPsiCache {
  public:
   UbPsiCache(const std::string &file_path, size_t data_len,
              const std::vector<std::string> &ids);
+
   ~UbPsiCache() { out_stream_->Close(); }
 
   void SaveData(yacl::ByteContainerView item, size_t index,
