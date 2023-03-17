@@ -112,7 +112,7 @@ jobs:
           key: spu-build-comp-{{ arch }}-
       - run:
           name: Decompress cache
-          command: test -f ~/.cache/spu_build_cache.tar.gz && cd ~/.cache && tar -xzf spu_build_cache.tar.gz
+          command: sh .ci/decompress-build-cache.sh
       - run:
           name: "Install dependencies"
           command: |
@@ -139,10 +139,7 @@ jobs:
             - /usr/local/lib64/python3.8/site-packages
       - run:
           name: Compress cache
-          command: |
-            mkdir -p ~/.cache
-            cd ~/.cache
-            tar -zcf spu_build_cache.tar.gz spu_build_cache
+          command: sh .ci/compress-build-cache.sh
       - save_cache:
           key: spu-build-comp-{{ arch }}-{{ .Environment.CIRCLE_BUILD_NUM }}
           paths:

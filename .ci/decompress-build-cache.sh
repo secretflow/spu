@@ -15,15 +15,10 @@
 # limitations under the License.
 #
 
-rm -rf test-results
-mkdir -p test-results
+CACHE_FILE=~/.cache/spu_build_cache.tar.gz
 
-# renaming junit xml file to satisfy ci's requirement
-for path in $(find bazel-testlogs/ -name "test.xml"); do
-    dir_name=$(dirname ${path})
-    file_name=$(basename ${path})
-    path_md5=$(echo ${path} | md5sum | cut -f1 -d ' ')
-    target="test-results/TEST-${path_md5}.xml"
-    echo "mv $path to ${target} ..."
-    mv ${path} ${target}
-done
+if test -f "$CACHE_FILE"; then
+    echo "$CACHE_FILE exists."
+    cd ~/.cache
+    tar -xzf spu_build_cache.tar.gz
+fi
