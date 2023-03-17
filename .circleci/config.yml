@@ -111,6 +111,11 @@ jobs:
           name: "Restore build cache"
           key: spu-build-{{ arch }}-
       - run:
+          name: Decompress caache
+          command: |
+            cd ~/.cache
+            tar -xzf spu_build_cache.tar.gz
+      - run:
           name: "Install dependencies"
           command: |
             python3 -m pip install -U pip
@@ -134,10 +139,15 @@ jobs:
           key: *pip-cache
           paths:
             - /usr/local/lib64/python3.8/site-packages
+      - run:
+          name: Compress caache
+          command: |
+            cd ~/.cache
+            tar -zcf spu_build_cache.tar.gz spu_build_cache
       - save_cache:
           key: spu-build-{{ arch }}-{{ .Environment.CIRCLE_BUILD_NUM }}
           paths:
-            - /root/.cache/spu_build_cache
+            - /root/.cache/spu_build_cache.tar.gz
       - store_test_results:
           path: test-results
       - store_artifacts:
