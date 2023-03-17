@@ -109,12 +109,12 @@ jobs:
           key: &pip-cache pip-{{ checksum "requirements.txt" }}-{{ checksum "requirements-dev.txt" }}
       - restore_cache:
           name: "Restore build cache"
-          key: spu-build-{{ arch }}-
+          key: spu-build-comp-{{ arch }}-
       - run:
           name: Decompress cache
           command: |
             cd ~/.cache
-            [ -f spu_build_cache.tar.gz ] tar -xzf spu_build_cache.tar.gz
+            test -f spu_build_cache.tar.gz && tar -xzf spu_build_cache.tar.gz
       - run:
           name: "Install dependencies"
           command: |
@@ -145,7 +145,7 @@ jobs:
             cd ~/.cache
             tar -zcf spu_build_cache.tar.gz spu_build_cache
       - save_cache:
-          key: spu-build-{{ arch }}-{{ .Environment.CIRCLE_BUILD_NUM }}
+          key: spu-build-comp-{{ arch }}-{{ .Environment.CIRCLE_BUILD_NUM }}
           paths:
             - /root/.cache/spu_build_cache.tar.gz
       - store_test_results:
