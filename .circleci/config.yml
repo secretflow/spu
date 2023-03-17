@@ -112,11 +112,7 @@ jobs:
           key: spu-build-comp-{{ arch }}-
       - run:
           name: Decompress cache
-          command: |
-            set +e
-            mkdir -p ~/.cache
-            cd ~/.cache
-            test -f spu_build_cache.tar.gz && tar -xzf spu_build_cache.tar.gz
+          command: test -f ~/.cache/spu_build_cache.tar.gz && cd ~/.cache && tar -xzf spu_build_cache.tar.gz
       - run:
           name: "Install dependencies"
           command: |
