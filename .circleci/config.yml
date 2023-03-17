@@ -111,10 +111,10 @@ jobs:
           name: "Restore build cache"
           key: spu-build-{{ arch }}-
       - run:
-          name: Decompress caache
+          name: Decompress cache
           command: |
             cd ~/.cache
-            tar -xzf spu_build_cache.tar.gz
+            [ -f spu_build_cache.tar.gz ] tar -xzf spu_build_cache.tar.gz
       - run:
           name: "Install dependencies"
           command: |
@@ -140,7 +140,7 @@ jobs:
           paths:
             - /usr/local/lib64/python3.8/site-packages
       - run:
-          name: Compress caache
+          name: Compress cache
           command: |
             cd ~/.cache
             tar -zcf spu_build_cache.tar.gz spu_build_cache
