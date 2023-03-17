@@ -15,10 +15,10 @@
 #include "libspu/kernel/hlo/convolution.h"
 
 #include "libspu/kernel/context.h"
-#include "libspu/kernel/hal/concat.h"
 #include "libspu/kernel/hal/constants.h"
 #include "libspu/kernel/hal/polymorphic.h"
 #include "libspu/kernel/hal/shape_ops.h"
+#include "libspu/kernel/hal/type_cast.h"
 #include "libspu/kernel/hlo/utils.h"
 #include "libspu/kernel/value.h"
 
@@ -90,10 +90,15 @@ spu::Value Convolution(HalContext *ctx, const spu::Value &lhs,
   std::vector<int64_t> window_index(config.kernelSpatialDimensions.size(), 0);
 
   do {
-    spu::Value lhs_slice =
-        hal::zeros(ctx, lhs.vtype(), lhs.dtype(), result_shape);
-    spu::Value rhs_slice =
-        hal::zeros(ctx, rhs.vtype(), rhs.dtype(), result_shape);
+    spu::Value lhs_slice = hal::zeros(ctx, lhs.dtype(), result_shape);
+    spu::Value rhs_slice = hal::zeros(ctx, rhs.dtype(), result_shape);
+
+    if (lhs.isSecret()) {
+      lhs_slice = hal::seal(ctx, lhs_slice);
+    }
+    if (rhs.isSecret()) {
+      rhs_slice = hal::seal(ctx, rhs_slice);
+    }
 
     forEachIndex(result_shape, [&](absl::Span<const int64_t> output_index) {
       // Calculate the group index to which the current output index
@@ -159,6 +164,7 @@ spu::Value Convolution(HalContext *ctx, const spu::Value &lhs,
                             rhs_dim_multipliers[kernel_output_z_dim];
         rhs_linear_index += rhs_iz * rhs_dim_multipliers[kernel_input_z_dim];
 
+        // TODO: anti-pattern, do not use .data(), use ops instead.
         lhs_slice.data().update_slice(lhs.data().slice_scalar_at(unflattenIndex(
                                           lhs_linear_index, lhs.shape())),
                                       output_index);

@@ -30,7 +30,7 @@ TEST(SortTest, Simple) {
   xt::xarray<float> x = {{0.05, 0.5, 0.24}, {5, 50, 2}};
   xt::xarray<float> sorted_x = {{0.05, 0.24, 0.5}, {2, 5, 50}};
 
-  Value x_v = hal::const_secret(&ctx, x);
+  Value x_v = hal::test::makeValue(&ctx, x, VIS_SECRET);
 
   std::vector<spu::Value> rets = Sort(
       &ctx, {x_v}, 1, false,
@@ -54,7 +54,7 @@ TEST(SortTest, SimpleWithNoPadding) {
   xt::xarray<float> x = {{0.05, 0.5, 0.24, 0.5}, {2, 5, 50, 2}};
   xt::xarray<float> sorted_x = {{0.05, 0.24, 0.5, 0.5}, {2, 2, 5, 50}};
 
-  Value x_v = hal::const_secret(&ctx, x);
+  Value x_v = hal::test::makeValue(&ctx, x, VIS_SECRET);
 
   std::vector<spu::Value> rets = Sort(
       &ctx, {x_v}, 1, false,
@@ -80,8 +80,8 @@ TEST(SortTest, MultiInputs) {
   xt::xarray<float> sorted_x1 = {{0.05, 0.24, 0.5, 0.5, 0.5, 0.5, 0.5}};
   xt::xarray<float> sorted_x2 = {{1, 1, 2, 2, 3, 4, 5}};
 
-  Value x1_v = hal::const_secret(&ctx, x1);
-  Value x2_v = hal::const_secret(&ctx, x2);
+  Value x1_v = hal::test::makeValue(&ctx, x1, VIS_SECRET);
+  Value x2_v = hal::test::makeValue(&ctx, x2, VIS_SECRET);
 
   std::vector<spu::Value> rets = Sort(
       &ctx, {x1_v, x2_v}, 1, false,
@@ -116,8 +116,8 @@ TEST(SortTest, MultiOperands) {
   xt::xarray<float> sorted_k1 = {3, 4, 4, 4, 5, 6, 6};
   xt::xarray<float> sorted_k2 = {3.1, 2.5, 4.1, 6.5, 6.7, 0.1, 0.5};
 
-  Value k1_v = hal::const_secret(&ctx, k1);
-  Value k2_v = hal::const_secret(&ctx, k2);
+  Value k1_v = hal::test::makeValue(&ctx, k1, VIS_SECRET);
+  Value k2_v = hal::test::makeValue(&ctx, k2, VIS_SECRET);
 
   std::vector<spu::Value> rets = Sort(
       &ctx, {k1_v, k2_v}, 0, false,

@@ -17,7 +17,7 @@
 #include <memory>
 
 #include "libspu/device/executor.h"
-#include "libspu/device/pphlo/xla_verifier.h"
+#include "libspu/device/pphlo/pphlo_verifier.h"
 #include "libspu/dialect/pphlo_ops.h"
 #include "libspu/dialect/pphlo_types.h"
 #include "libspu/kernel/context.h"

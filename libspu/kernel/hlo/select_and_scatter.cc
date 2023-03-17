@@ -26,7 +26,6 @@
 #include "libspu/kernel/context.h"
 #include "libspu/kernel/hal/constants.h"
 #include "libspu/kernel/hal/debug.h"
-#include "libspu/kernel/hal/pad.h"
 #include "libspu/kernel/hal/polymorphic.h"  // for select
 #include "libspu/kernel/hal/ring.h"
 #include "libspu/kernel/hal/shape_ops.h"
@@ -57,7 +56,10 @@ spu::Value MaxPoolScatter1x2x2x1NoPaddingNoDialation(
 
   // Improvement idea: If window strides is >= window size (no overlap), we
   // should be able to compute scatter result with just one multiply
-  auto z = hal::zeros(ctx, slices[0].vtype(), slices[0].dtype());
+  auto z = hal::zeros(ctx, slices[0].dtype());
+  if (slices[0].isSecret()) {
+    z = hal::seal(ctx, z);
+  }
 
   std::vector<std::future<spu::Value>> f_slices(4);
   f_slices[0] = std::async(
@@ -127,8 +129,10 @@ spu::Value MaxPoolScatter(
                                            base_shape.end());
   base_x_window_shape.insert(base_x_window_shape.end(), window_shape.begin(),
                              window_shape.end());
-  auto output =
-      hal::zeros(ctx, source.vtype(), source.dtype(), base_x_window_shape);
+  auto output = hal::zeros(ctx, source.dtype(), base_x_window_shape);
+  if (source.isSecret()) {
+    output = hal::seal(ctx, output);
+  }
 
   const std::vector<int64_t> window_dilations(window_shape.size(), 1);
   const std::vector<int64_t> base_dilations(source.shape().size(), 1);
@@ -151,6 +155,7 @@ spu::Value MaxPoolScatter(
                 absl::MakeSpan(tiled_index).subspan(0, ndim), window_index,
                 absl::MakeSpan(base_x_window_index).subspan(0, ndim));
             if (!out_of_bound) {
+              // TODO: anti-pattern, do not use .data(), use ops instead.
               output.data().update_slice(
                   selected.data().slice_scalar_at(tiled_index),
                   base_x_window_index);
@@ -203,7 +208,7 @@ spu::Value SelectAndScatterExpanded(
   auto tiled_1d = hal::reshape(ctx, tiled, tiled_1d_shape);
 
   //
-  auto indices = Iota<int64_t>(ctx, window_numel, VIS_PUBLIC);
+  auto indices = Iota(ctx, DT_I64, window_numel);
   indices = hal::broadcast_to(ctx, indices, tiled_1d_shape);
 
   // Apply the reduce with indices.
@@ -290,9 +295,11 @@ spu::Value SelectAndScatterNaive(
     absl::Span<const std::pair<int64_t, int64_t>> window_padding,
     const ValueBinaryFn &select_fn, const ValueBinaryFn &scatter_fn) {
   // Create an index matrix
-  auto idx_matrix =
-      hal::reshape(ctx, Iota<int64_t>(ctx, operand.numel(), operand.vtype()),
-                   operand.shape());
+  auto idx_matrix = hal::iota(ctx, DT_I64, operand.numel());
+  if (operand.isSecret()) {
+    idx_matrix = hal::seal(ctx, idx_matrix);
+  }
+  idx_matrix = hal::reshape(ctx, idx_matrix, operand.shape());
 
   const auto rank = window_shape.size();
   std::vector<int64_t> window_index(rank, 0);

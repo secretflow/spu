@@ -14,10 +14,8 @@
 
 #pragma once
 
-#include "libspu/kernel/hal/concat.h"
 #include "libspu/kernel/hal/constants.h"
 #include "libspu/kernel/hal/debug.h"
-#include "libspu/kernel/hal/pad.h"
 #include "libspu/kernel/hal/polymorphic.h"
 #include "libspu/kernel/hal/public_helper.h"
 #include "libspu/kernel/hal/random.h"

@@ -55,8 +55,12 @@ class Runner {
     executable_.add_input_names(name);
   }
 
-  static std::string compileMHlo(const std::string &mhlo) {
+  static std::string compileMHlo(const std::string &mhlo,
+                                 const std::string &vis = {}) {
     compiler::CompilationContext ctx;
+    if (!vis.empty()) {
+      ctx.setInputVisibilityString(vis);
+    }
     return compiler::compile(&ctx, mhlo, "mhlo");
   }
 
@@ -148,6 +152,19 @@ func.func @main() -> (tensor<!pphlo.pub<i32>>) {
 
   int32_t expected = 1;
   r.verifyOutput(&expected);
+}
+
+TEST_P(ExecutorTest, EmptyConstant) {
+  Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
+           std::get<2>(GetParam()));
+
+  r.run(R"(
+func.func @main() -> tensor<0x!pphlo.pub<f32>> {
+  %0 = "pphlo.constant"() {value = dense<> : tensor<0xf32>} : () -> tensor<0x!pphlo.pub<f32>>
+  return %0 : tensor<0x!pphlo.pub<f32>>
+})");
+
+  r.verifyOutput<float>(nullptr);
 }
 
 TEST_P(ExecutorTest, BoolConstant) {
@@ -708,7 +725,7 @@ TEST_P(ExecutorTest, If) {
 
 TEST_P(ExecutorTest, SecretControlFlow) {
   const auto *prog = R"(
-func.func @main(%arg0: tensor<!pphlo.pub<f32>>) -> tensor<!pphlo.pub<f32>> {
+func.func @main(%arg0: tensor<!pphlo.pub<f32>>) -> tensor<!pphlo.sec<f32>> {
   %0 = "pphlo.constant"() {value = dense<1.000000e+01> : tensor<f32>} : () -> tensor<!pphlo.pub<f32>>
   %1 = "pphlo.convert"(%arg0) : (tensor<!pphlo.pub<f32>>) -> tensor<!pphlo.sec<f32>>
   %2 = "pphlo.less"(%1, %0) : (tensor<!pphlo.sec<f32>>, tensor<!pphlo.pub<f32>>) -> tensor<!pphlo.sec<i1>>
@@ -718,8 +735,8 @@ func.func @main(%arg0: tensor<!pphlo.pub<f32>>) -> tensor<!pphlo.pub<f32>> {
   },  {
     %4 = "pphlo.add"(%arg0, %arg0) : (tensor<!pphlo.pub<f32>>, tensor<!pphlo.pub<f32>>) -> tensor<!pphlo.pub<f32>>
     "pphlo.return"(%4) : (tensor<!pphlo.pub<f32>>) -> ()
-  }) : (tensor<!pphlo.sec<i1>>) -> tensor<!pphlo.pub<f32>>
-  return %3 : tensor<!pphlo.pub<f32>>
+  }) : (tensor<!pphlo.sec<i1>>) -> tensor<!pphlo.sec<f32>>
+  return %3 : tensor<!pphlo.sec<f32>>
 }
 )";
 
@@ -1262,7 +1279,6 @@ TEST_P(ExecutorTest, Sort1D) {
              std::get<2>(GetParam()));
 
     r.addInput(op);
-    r.getConfig().set_reveal_secret_condition(true);
 
     r.run(R"(
 func.func @main(%arg0: tensor<4x!pphlo.pub<f32>>) -> tensor<4x!pphlo.pub<f32>> {
@@ -1281,7 +1297,6 @@ func.func @main(%arg0: tensor<4x!pphlo.pub<f32>>) -> tensor<4x!pphlo.pub<f32>> {
              std::get<2>(GetParam()));
 
     r.addInput(op, VIS_SECRET);
-    r.getConfig().set_reveal_secret_condition(false);
 
     r.run(R"(
 func.func @main(%arg0: tensor<4x!pphlo.sec<f32>>) -> tensor<4x!pphlo.sec<f32>> {
@@ -1307,7 +1322,6 @@ TEST_P(ExecutorTest, Sort2DRow) {
     Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
              std::get<2>(GetParam()));
     // Row sort
-    r.getConfig().set_reveal_secret_condition(true);
     r.addInput(op);
     r.run(R"(
 func.func @main(%arg0: tensor<2x5x!pphlo.pub<f32>>) -> tensor<2x5x!pphlo.pub<f32>> {
@@ -1325,7 +1339,6 @@ func.func @main(%arg0: tensor<2x5x!pphlo.pub<f32>>) -> tensor<2x5x!pphlo.pub<f32
     Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
              std::get<2>(GetParam()));
     // Row sort
-    r.getConfig().set_reveal_secret_condition(false);
     r.addInput(op, VIS_SECRET);
     r.run(R"(
 func.func @main(%arg0: tensor<2x5x!pphlo.sec<f32>>) -> tensor<2x5x!pphlo.sec<f32>> {
@@ -1350,7 +1363,6 @@ TEST_P(ExecutorTest, Sort2DCol) {
     Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
              std::get<2>(GetParam()));
     r.addInput(op);
-    r.getConfig().set_reveal_secret_condition(true);
 
     // Column sort
     r.run(R"(
@@ -1369,7 +1381,6 @@ func.func @main(%arg0: tensor<2x4x!pphlo.pub<f32>>) -> tensor<2x4x!pphlo.pub<f32
   {
     Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
              std::get<2>(GetParam()));
-    r.getConfig().set_reveal_secret_condition(false);
     r.addInput(op, VIS_SECRET);
 
     // Column sort
@@ -1399,7 +1410,6 @@ TEST_P(ExecutorTest, SortMultiOperands) {
   {
     Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
              std::get<2>(GetParam()));
-    r.getConfig().set_reveal_secret_condition(true);
 
     r.addInput(x);
     r.addInput(y);
@@ -1425,7 +1435,6 @@ func.func @main(%arg0: tensor<2x!pphlo.pub<i32>>, %arg1: tensor<2x!pphlo.pub<i32
   {
     Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
              std::get<2>(GetParam()));
-    r.getConfig().set_reveal_secret_condition(false);
     r.addInput(x, VIS_SECRET);
     r.addInput(y, VIS_SECRET);
     r.addInput(z, VIS_SECRET);
@@ -1457,7 +1466,6 @@ TEST_P(ExecutorTest, SortComplicatedComparator) {
   {
     Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
              std::get<2>(GetParam()));
-    r.getConfig().set_reveal_secret_condition(true);
 
     r.addInput(x);
     r.addInput(y);
@@ -1484,7 +1492,6 @@ func.func @main(%arg0: tensor<4x!pphlo.pub<i32>>, %arg1: tensor<4x!pphlo.pub<i32
     Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
              std::get<2>(GetParam()));
 
-    r.getConfig().set_reveal_secret_condition(false);
     r.addInput(x, VIS_SECRET);
     r.addInput(y, VIS_SECRET);
 
@@ -1660,6 +1667,26 @@ TEST_P(ExecutorTest, ShiftRightArithmeticU32) {
 func.func @main(%arg0: tensor<8x!pphlo.pub<ui32>>, %arg1: tensor<8x!pphlo.pub<ui32>>) -> (tensor<8x!pphlo.pub<ui32>>) {
   %0 = "pphlo.shift_right_arithmetic"(%arg0, %arg1) : (tensor<8x!pphlo.pub<ui32>>, tensor<8x!pphlo.pub<ui32>>) -> tensor<8x!pphlo.pub<ui32>>
   return %0 : tensor<8x!pphlo.pub<ui32>>
+})");
+
+  std::vector<uint32_t> expected{0x09234567, 0x00100010, 0, 0, 19, 0, ~3U, 0};
+  r.verifyOutput(expected.data());
+}
+
+TEST_P(ExecutorTest, ARShift_Secret) {
+  Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
+           std::get<2>(GetParam()));
+
+  r.addInput(
+      std::vector<uint32_t>{0x92345678, 0x10001000, 1, 3, 77, 1, ~3U, 77},
+      VIS_SECRET);
+  r.addInput(std::vector<uint32_t>{4, 8, 2, 7, 2, 32, /*100*/ 0, ~0U},
+             VIS_SECRET);
+
+  r.run(R"(
+func.func @main(%arg0: tensor<8x!pphlo.sec<ui32>>, %arg1: tensor<8x!pphlo.sec<ui32>>) -> (tensor<8x!pphlo.sec<ui32>>) {
+  %0 = "pphlo.shift_right_arithmetic"(%arg0, %arg1) : (tensor<8x!pphlo.sec<ui32>>, tensor<8x!pphlo.sec<ui32>>) -> tensor<8x!pphlo.sec<ui32>>
+  return %0 : tensor<8x!pphlo.sec<ui32>>
 })");
 
   std::vector<uint32_t> expected{0x09234567, 0x00100010, 0, 0, 19, 0, ~3U, 0};
@@ -2128,6 +2155,36 @@ TEST_P(ExecutorTest, CasePrivate) {
     r.verifyScalarOutput(static_cast<int32_t>(3), 0);
     r.verifyScalarOutput(static_cast<int32_t>(13), 1);
   }
+}
+
+TEST_P(ExecutorTest, MixedPayload) {
+  xt::xarray<int32_t> op = {10, 9, 8, 7, 6,  5,  4,  3,  2,  1,
+                            99, 7, 8, 9, 10, 11, 12, 13, 14, 15};
+  xt::xarray<int32_t> expected_ret0 = {1, 2, 3,  4,  5,  6,  7,  7,  8,  8,
+                                       9, 9, 10, 10, 11, 12, 13, 14, 15, 99};
+  xt::xarray<int32_t> expected_ret1 = {9, 8,  7,  6, 5,  4,  3,  11, 12, 2,
+                                       1, 13, 14, 0, 15, 16, 17, 18, 19, 10};
+
+  Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
+           std::get<2>(GetParam()));
+
+  r.addInput(op, VIS_SECRET);
+
+  r.run(spu::device::Runner::compileMHlo(
+            R"(
+func.func @main(%arg0: tensor<20xi32>) -> (tensor<20xi32>, tensor<20xi32>) {
+    %0 = "mhlo.iota"() {iota_dimension = 0 : i64} : () -> tensor<20xi32>
+    %1:2 = "mhlo.sort"(%arg0, %0) ({
+    ^bb0(%arg1: tensor<i32>, %arg2: tensor<i32>, %arg3: tensor<i32>, %arg4: tensor<i32>):
+      %2 = mhlo.compare  LT, %arg1, %arg2 : (tensor<i32>, tensor<i32>) -> tensor<i1>
+      mhlo.return %2 : tensor<i1>
+    }) {dimension = 0 : i64, is_stable = true} : (tensor<20xi32>, tensor<20xi32>) -> (tensor<20xi32>, tensor<20xi32>)
+    return %1#0, %1#1: tensor<20xi32>, tensor<20xi32>
+})",
+            R"({"inputs":["VIS_SECRET"]})"),
+        2);
+  r.verifyOutput(expected_ret0.data(), 0);
+  r.verifyOutput(expected_ret1.data(), 1);
 }
 
 INSTANTIATE_TEST_SUITE_P(

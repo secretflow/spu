@@ -14,8 +14,6 @@
 
 #include "libspu/kernel/hlo/geometrical.h"
 
-#include "libspu/kernel/hal/concat.h"
-#include "libspu/kernel/hal/pad.h"
 #include "libspu/kernel/hal/shape_ops.h"
 
 namespace spu::kernel::hlo {

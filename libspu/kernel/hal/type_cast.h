@@ -26,7 +26,7 @@ Value dtype_cast(HalContext* ctx, const Value& in, DataType to_type);
 
 /// cast public to secret
 // @param in, the input value
-Value p2s(HalContext* ctx, const Value& x);
+Value seal(HalContext* ctx, const Value& x);
 
 /// reveal a secret
 // @param in, the input value

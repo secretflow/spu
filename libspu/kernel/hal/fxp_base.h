@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include "libspu/core/pt_buffer_view.h"
 #include "libspu/kernel/context.h"
 #include "libspu/kernel/value.h"
 

@@ -287,7 +287,7 @@ Clamp operator
 
 Clamps an operand to within the range between a minimum and maximum value.
 
-Note: All three arrays must have the same shape. Alternatively, as a
+Note: All three arrays must be the same shape. Alternatively, as a
       restricted form of broadcasting, min and/or max can be a scalar (0D
       tensor) of the element type of the tensor operand.
 
@@ -1754,7 +1754,7 @@ Effects: MemoryEffects::Effect{}
 
 The dynamic shape version of SliceOp. Extracts a sub-array from the input
 array according to start_indices, limit_indices and strides. Expect
-start_indices/limit_indices/strides to be statically shaped and match
+start_indices/limit_indices/strides to be statically shaped and matching
 the rank of the input.
 
 See https://www.tensorflow.org/xla/operation_semantics#slice

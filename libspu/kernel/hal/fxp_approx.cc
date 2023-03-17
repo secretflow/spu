@@ -24,6 +24,17 @@
 #include "libspu/kernel/hal/ring.h"
 
 namespace spu::kernel::hal {
+
+namespace {
+
+// simple convenient function.
+Value f_constant(HalContext* ctx, const PtBufferView& init,
+                 absl::Span<int64_t const> shape) {
+  return constant(ctx, init, DT_FXP, shape);
+}
+
+}  // namespace
+
 namespace detail {
 
 // Pade approximation fo x belongs to [0.5, 1]:
@@ -42,15 +53,15 @@ Value log2_pade_approx_for_normalized(HalContext* ctx, const Value& x) {
   const auto x2 = f_square(ctx, x);
   const auto x3 = f_mul(ctx, x2, x);
 
-  const auto p0 = constant(ctx, -0.205466671951 * 10, x.shape());
-  const auto p1 = constant(ctx, -0.88626599391 * 10, x.shape());
-  const auto p2 = constant(ctx, 0.610585199015 * 10, x.shape());
-  const auto p3 = constant(ctx, 0.481147460989 * 10, x.shape());
+  const auto p0 = f_constant(ctx, -0.205466671951 * 10, x.shape());
+  const auto p1 = f_constant(ctx, -0.88626599391 * 10, x.shape());
+  const auto p2 = f_constant(ctx, 0.610585199015 * 10, x.shape());
+  const auto p3 = f_constant(ctx, 0.481147460989 * 10, x.shape());
 
-  const auto q0 = constant(ctx, 0.353553425277, x.shape());
-  const auto q1 = constant(ctx, 0.454517087629 * 10, x.shape());
-  const auto q2 = constant(ctx, 0.642784209029 * 10, x.shape());
-  const auto q3 = constant(ctx, 0.1 * 10, x.shape());
+  const auto q0 = f_constant(ctx, 0.353553425277, x.shape());
+  const auto q1 = f_constant(ctx, 0.454517087629 * 10, x.shape());
+  const auto q2 = f_constant(ctx, 0.642784209029 * 10, x.shape());
+  const auto q3 = f_constant(ctx, 0.1 * 10, x.shape());
 
   auto p2524 = _mul(ctx, x, p1);
   p2524 = _add(ctx, p2524, _mul(ctx, x2, p2));
@@ -86,12 +97,10 @@ Value log2_pade_approx(HalContext* ctx, const Value& x) {
   // log2(x) = log2(x_norm * factor)
   //         = log2(x_norm) + log2(factor)
   //         = log2(x_norm) + (k-fxp_bits)
-  return _add(ctx, log2_pade_approx_for_normalized(ctx, norm),
-              _lshift(ctx,
-                      _sub(ctx, k,
-                           constant(ctx, static_cast<uint64_t>(num_fxp_bits),
-                                    x.shape())),
-                      num_fxp_bits))
+  return _add(
+             ctx, log2_pade_approx_for_normalized(ctx, norm),
+             _lshift(ctx, _sub(ctx, k, _constant(ctx, num_fxp_bits, x.shape())),
+                     num_fxp_bits))
       .asFxp();
 }
 
@@ -102,28 +111,28 @@ Value log2_pade_approx(HalContext* ctx, const Value& x) {
 // Householder iterations. This approximation is accurate within 2% relative
 // error on [0.0001, 250].
 Value log_householder_approx(HalContext* ctx, const Value& x) {
-  Value term_1 = f_div(ctx, x, constant(ctx, 120.0, x.shape()));
+  Value term_1 = f_div(ctx, x, f_constant(ctx, 120.0, x.shape()));
   Value term_2 = f_mul(
       ctx,
-      f_exp(
-          ctx,
-          f_negate(ctx, f_add(ctx, f_mul(ctx, x, constant(ctx, 2.0, x.shape())),
-                              constant(ctx, 1.0, x.shape())))),
-      constant(ctx, 20.0, x.shape()));
+      f_exp(ctx,
+            f_negate(ctx,
+                     f_add(ctx, f_mul(ctx, x, f_constant(ctx, 2.0, x.shape())),
+                           f_constant(ctx, 1.0, x.shape())))),
+      f_constant(ctx, 20.0, x.shape()));
   Value y =
-      f_add(ctx, f_sub(ctx, term_1, term_2), constant(ctx, 3.0, x.shape()));
+      f_add(ctx, f_sub(ctx, term_1, term_2), f_constant(ctx, 3.0, x.shape()));
 
   std::vector<Value> coeffs;
   const size_t config_orders = ctx->rt_config().fxp_log_orders();
   const size_t num_order = config_orders == 0 ? 8 : config_orders;
   for (size_t i = 0; i < num_order; i++) {
-    coeffs.emplace_back(constant(ctx, 1.0 / (1.0 + i), x.shape()));
+    coeffs.emplace_back(f_constant(ctx, 1.0 / (1.0 + i), x.shape()));
   }
 
   const size_t config_iters = ctx->rt_config().fxp_log_iters();
   const size_t num_iters = config_iters == 0 ? 3 : config_iters;
   for (size_t i = 0; i < num_iters; i++) {
-    Value h = f_sub(ctx, constant(ctx, 1.0, x.shape()),
+    Value h = f_sub(ctx, f_constant(ctx, 1.0, x.shape()),
                     f_mul(ctx, x, f_exp(ctx, f_negate(ctx, y))));
     y = f_sub(ctx, y, detail::f_polynomial(ctx, h, coeffs));
   }
@@ -138,7 +147,7 @@ Value exp_taylor_series(HalContext* ctx, const Value& x) {
   const size_t num_iters = config_iters == 0 ? 8 : config_iters;
 
   Value res = f_add(ctx, _trunc(ctx, x, num_iters).asFxp(),
-                    constant(ctx, 1.0, x.shape()));
+                    f_constant(ctx, 1.0, x.shape()));
 
   for (size_t i = 0; i < num_iters; i++) {
     res = f_square(ctx, res);
@@ -161,12 +170,12 @@ Value exp2_pade_approx_for_positive_pure_decimal(HalContext* ctx,
   auto x4 = f_mul(ctx, x, x3);
   auto x5 = f_mul(ctx, x, x4);
 
-  const auto p0 = constant(ctx, 0.100000007744302 * 10, x.shape());
-  const auto p1 = constant(ctx, 0.693147180426163, x.shape());
-  const auto p2 = constant(ctx, 0.240226510710170, x.shape());
-  const auto p3 = constant(ctx, 0.555040686204663 / 10, x.shape());
-  const auto p4 = constant(ctx, 0.961834122588046 / 100, x.shape());
-  const auto p5 = constant(ctx, 0.133273035928143 / 100, x.shape());
+  const auto p0 = f_constant(ctx, 0.100000007744302 * 10, x.shape());
+  const auto p1 = f_constant(ctx, 0.693147180426163, x.shape());
+  const auto p2 = f_constant(ctx, 0.240226510710170, x.shape());
+  const auto p3 = f_constant(ctx, 0.555040686204663 / 10, x.shape());
+  const auto p4 = f_constant(ctx, 0.961834122588046 / 100, x.shape());
+  const auto p5 = f_constant(ctx, 0.133273035928143 / 100, x.shape());
 
   auto res = _mul(ctx, x, p1);
   res = _add(ctx, res, _mul(ctx, x2, p2));
@@ -185,8 +194,7 @@ Value exp2_pade_approx_for_positive_pure_decimal(HalContext* ctx,
 // incorrect.
 Value exp2_pade_approx(HalContext* ctx, const Value& x) {
   const size_t fbits = ctx->getFxpBits();
-  const auto k1 = constant(ctx, 1U, x.shape());
-  const auto k2 = constant(ctx, 2U, x.shape());
+  const auto k1 = _constant(ctx, 1U, x.shape());
   // TODO(junfeng): Make int_bits configurable.
   const size_t int_bits = 5;
   const size_t bit_width = SizeOf(ctx->getField()) * 8;
@@ -203,7 +211,7 @@ Value exp2_pade_approx(HalContext* ctx, const Value& x) {
     a = _prefer_a(ctx, a);
     const auto K = 1U << std::min(1UL << idx, bit_width - 2);
     ret = _mul(ctx, ret,
-               _add(ctx, _mul(ctx, a, constant(ctx, K, x.shape())),
+               _add(ctx, _mul(ctx, a, _constant(ctx, K, x.shape())),
                     _sub(ctx, k1, a)))
               .asFxp();
   }
@@ -224,7 +232,7 @@ Value exp2_pade_approx(HalContext* ctx, const Value& x) {
 
 Value exp_pade_approx(HalContext* ctx, const Value& x) {
   return f_exp2(
-      ctx, f_mul(ctx, x, constant(ctx, std::log2(std::exp(1)), x.shape())));
+      ctx, f_mul(ctx, x, f_constant(ctx, std::log2(std::exp(1)), x.shape())));
 }
 
 // Refer to
@@ -239,13 +247,13 @@ Value tanh_pade_approx(HalContext* ctx, const Value& x) {
 
   const auto dividend =
       f_add(ctx, x,
-            f_add(ctx, f_div(ctx, x_3, constant(ctx, 9.0, x.shape())),
-                  f_div(ctx, x_5, constant(ctx, 945.0, x.shape()))));
+            f_add(ctx, f_div(ctx, x_3, f_constant(ctx, 9.0, x.shape())),
+                  f_div(ctx, x_5, f_constant(ctx, 945.0, x.shape()))));
 
   const auto divisor =
-      f_add(ctx, constant(ctx, 1.0, x.shape()),
-            f_add(ctx, f_div(ctx, x_2, constant(ctx, 9.0 / 4.0, x.shape())),
-                  f_div(ctx, x_4, constant(ctx, 63.0, x.shape()))));
+      f_add(ctx, f_constant(ctx, 1.0, x.shape()),
+            f_add(ctx, f_div(ctx, x_2, f_constant(ctx, 9.0 / 4.0, x.shape())),
+                  f_div(ctx, x_4, f_constant(ctx, 63.0, x.shape()))));
 
   return f_div(ctx, dividend, divisor);
 }
@@ -285,7 +293,7 @@ Value f_log(HalContext* ctx, const Value& x) {
   switch (ctx->rt_config().fxp_log_mode()) {
     case RuntimeConfig::LOG_DEFAULT:
     case RuntimeConfig::LOG_PADE:
-      return f_mul(ctx, constant(ctx, std::log(2.0), x.shape()),
+      return f_mul(ctx, f_constant(ctx, std::log(2.0), x.shape()),
                    f_log2(ctx, x));
     case RuntimeConfig::LOG_NEWTON:
       return detail::log_householder_approx(ctx, x);
@@ -300,7 +308,7 @@ Value f_log1p(HalContext* ctx, const Value& x) {
 
   SPU_ENFORCE(x.isFxp());
 
-  return f_log(ctx, f_add(ctx, constant(ctx, 1.0, x.shape()), x));
+  return f_log(ctx, f_add(ctx, f_constant(ctx, 1.0, x.shape()), x));
 }
 
 Value f_log2(HalContext* ctx, const Value& x) {
@@ -337,17 +345,17 @@ static Value rsqrt_init_guess(HalContext* ctx, const Value& x, const Value& z) {
   // - 15.47994394 * u + 4.14285016
   spu::Value r;
   if (!ctx->rt_config().enable_lower_accuracy_rsqrt()) {
-    std::vector<Value> coeffs = {constant(ctx, -15.47994394, x.shape()),
-                                 constant(ctx, 38.4714796, x.shape()),
-                                 constant(ctx, -49.86605845, x.shape()),
-                                 constant(ctx, 26.02942339, x.shape())};
+    std::vector<Value> coeffs = {f_constant(ctx, -15.47994394, x.shape()),
+                                 f_constant(ctx, 38.4714796, x.shape()),
+                                 f_constant(ctx, -49.86605845, x.shape()),
+                                 f_constant(ctx, 26.02942339, x.shape())};
     r = f_add(ctx, detail::f_polynomial(ctx, u, coeffs),
-              constant(ctx, 4.14285016, x.shape()));
+              f_constant(ctx, 4.14285016, x.shape()));
   } else {
-    std::vector<Value> coeffs = {constant(ctx, -5.9417, x.shape()),
-                                 constant(ctx, 4.7979, x.shape())};
+    std::vector<Value> coeffs = {f_constant(ctx, -5.9417, x.shape()),
+                                 f_constant(ctx, 4.7979, x.shape())};
     r = f_add(ctx, detail::f_polynomial(ctx, u, coeffs),
-              constant(ctx, 3.1855, x.shape()));
+              f_constant(ctx, 3.1855, x.shape()));
   }
 
   return r;
@@ -358,7 +366,6 @@ static Value rsqrt_comp(HalContext* ctx, const Value& x, const Value& z) {
 
   const size_t k = SizeOf(ctx->getField()) * 8;
   const size_t f = ctx->getFxpBits();
-  const auto k1 = constant(ctx, 1U, x.shape());
 
   // let a = 2^((e+f)/2), that is a[i] = 1 for i = (e+f)/2 else 0
   // let b = lsb(e+f)
@@ -392,13 +399,13 @@ static Value rsqrt_comp(HalContext* ctx, const Value& x, const Value& z) {
   Value c0;
   Value c1;
   if (f % 2 == 1) {
-    c0 = constant(ctx, 1 << ((f + 3) / 2), x.shape());  // f+e even
-    c1 = _trunc(ctx, constant(ctx, (1 << (f / 2 + 1)) * std::sqrt(2),
-                              x.shape()));  // f+e odd
+    c0 = _constant(ctx, 1 << ((f + 3) / 2), x.shape());  // f+e even
+    c1 = _constant(ctx, (1 << (f / 2 + 1)) * std::sqrt(2),
+                   x.shape());  // f+e odd
   } else {
-    c0 = _trunc(ctx, constant(ctx, (1 << (f / 2)) * std::sqrt(2),
-                              x.shape()));        // f+e even
-    c1 = constant(ctx, 1 << (f / 2), x.shape());  // f+e odd
+    c0 = _constant(ctx, (1 << (f / 2)) * std::sqrt(2),
+                   x.shape());                     // f+e even
+    c1 = _constant(ctx, 1 << (f / 2), x.shape());  // f+e odd
   }
 
   // let comp = 2^(-(e-1)/2) = mux(b, c1, c0) * a_rev
@@ -449,8 +456,8 @@ Value f_rsqrt(HalContext* ctx, const Value& x) {
 Value f_sqrt(HalContext* ctx, const Value& x) {
   SPU_TRACE_HAL_LEAF(ctx, x);
 
-  const auto c0 = constant(ctx, 0.5, x.shape());
-  const auto c1 = constant(ctx, 1.5, x.shape());
+  const auto c0 = f_constant(ctx, 0.5, x.shape());
+  const auto c1 = f_constant(ctx, 1.5, x.shape());
 
   Value y0 = f_rsqrt(ctx, x);
   Value g = f_mul(ctx, x, y0);

@@ -13,9 +13,12 @@
 - [Feature] Add EpsilonOp
 - [Feature] Support CaseOp
 - [Feature] Improve sort performance
+- [Feature] Improve shift performance
+- [Feature] Support shift by secret number of bits
 - [bugfix] Fix boolean ConstantOp
 - [bugfix] Fix jnp.median
 - [bugfix] Fix jnp.sort on floating point inputs
+- [bugfix] Fix secret sort with public payloads
 - [3p] Relax TensorFlow version in requirements.txt
 - [3p] Move to OpenXLA
 - [API] Move C++ API from spu to libspu

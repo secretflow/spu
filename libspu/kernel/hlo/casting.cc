@@ -26,7 +26,7 @@ spu::Value Cast(HalContext *ctx, const spu::Value &in, Visibility dst_vtype,
     if (dst_vtype == VIS_PUBLIC) {
       ret = hal::reveal(ctx, ret);
     } else {
-      ret = hal::p2s(ctx, ret);
+      ret = hal::seal(ctx, ret);
     }
   }
   if (ret.dtype() != dst_dtype) {
@@ -44,7 +44,7 @@ spu::Value Reveal(HalContext *ctx, const spu::Value &in) {
 }
 
 spu::Value Seal(HalContext *ctx, const spu::Value &in) {
-  return hal::p2s(ctx, in);
+  return hal::seal(ctx, in);
 }
 
 }  // namespace spu::kernel::hlo

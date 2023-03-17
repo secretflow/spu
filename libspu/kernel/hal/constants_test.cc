@@ -16,56 +16,71 @@
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
-#include "xtensor/xio.hpp"
 
 #include "libspu/kernel/hal/test_util.h"
 
 namespace spu::kernel::hal {
 
-TEST(ConstantsTest, Constant) {
+TEST(ConstantsTest, Scalar) {
   HalContext ctx = test::makeRefHalContext();
 
-  // int scalar
-  {
-    Value x = constant(&ctx, 0);
-    EXPECT_TRUE(x.shape().empty());
-    EXPECT_TRUE(x.strides().empty());
-    EXPECT_EQ(x.numel(), 1);
-    EXPECT_TRUE(x.isPublic());
-    EXPECT_TRUE(x.isInt());
-  }
+  Value i = constant(&ctx, 0, DT_I32);
+  EXPECT_TRUE(i.shape().empty());
+  EXPECT_TRUE(i.strides().empty());
+  EXPECT_EQ(i.numel(), 1);
+  EXPECT_TRUE(i.isPublic());
+  EXPECT_TRUE(i.isInt());
 
-  // fxp scalar
-  {
-    Value x = constant(&ctx, 0.0F);
-    EXPECT_TRUE(x.shape().empty());
-    EXPECT_TRUE(x.strides().empty());
-    EXPECT_EQ(x.numel(), 1);
-    EXPECT_TRUE(x.isPublic());
-    EXPECT_TRUE(x.isFxp());
-  }
+  Value f = constant(&ctx, 0.0, DT_FXP);
+  EXPECT_TRUE(f.shape().empty());
+  EXPECT_TRUE(f.strides().empty());
+  EXPECT_EQ(f.numel(), 1);
+  EXPECT_TRUE(f.isPublic());
+  EXPECT_TRUE(f.isFxp());
+}
 
-  // tensor
-  {
-    xt::xarray<float> raw{1.0F};
-    Value x = constant(&ctx, raw);
-    EXPECT_THAT(x.shape(), testing::ElementsAre(1));
-    EXPECT_THAT(x.strides(), testing::ElementsAre(0));
-    EXPECT_EQ(x.numel(), 1);
-    EXPECT_TRUE(x.isPublic());
-    EXPECT_TRUE(x.isFxp());
-  }
+TEST(ConstantsTest, Tensor) {
+  HalContext ctx = test::makeRefHalContext();
 
-  // tensor broadcast
-  {
-    xt::xarray<float> raw{{1.0F, 2.0F}};
-    Value x = constant(&ctx, raw, {6, 2});
-    EXPECT_THAT(x.shape(), testing::ElementsAre(6, 2));
-    EXPECT_THAT(x.strides(), testing::ElementsAre(0, 1));
-    EXPECT_EQ(x.numel(), 12);
-    EXPECT_TRUE(x.isPublic());
-    EXPECT_TRUE(x.isFxp());
-  }
+  xt::xarray<float> raw = {1.0F};
+  Value x = constant(&ctx, raw, DT_FXP);
+  EXPECT_THAT(x.shape(), testing::ElementsAre(1));
+  EXPECT_THAT(x.strides(), testing::ElementsAre(0));
+  EXPECT_EQ(x.numel(), 1);
+  EXPECT_TRUE(x.isPublic());
+  EXPECT_TRUE(x.isFxp());
+}
+
+TEST(ConstantsTest, TensorBroadcast) {
+  HalContext ctx = test::makeRefHalContext();
+
+  xt::xarray<float> raw = {
+      {1.0, 2.0},
+  };
+
+  Value x = constant(&ctx, raw, DT_FXP, {6, 2});
+  EXPECT_THAT(x.shape(), testing::ElementsAre(6, 2));
+  EXPECT_THAT(x.strides(), testing::ElementsAre(0, 1));
+  EXPECT_EQ(x.numel(), 12);
+  EXPECT_TRUE(x.isPublic());
+  EXPECT_TRUE(x.isFxp());
+}
+
+TEST(ConstantsTest, Initializer) {
+  HalContext ctx = test::makeRefHalContext();
+
+  // FIXME: the dtype is determined by the C++ literal type.
+  // EXPECT_EQ(constant(&ctx, 0, DT_I1).dtype(), DT_I1);  // FIXME
+  // EXPECT_EQ(constant(&ctx, 0, DT_I8).dtype(), DT_I8);  // FIXME
+  // EXPECT_EQ(constant(&ctx, 0, DT_U8).dtype(), DT_U8);  // FIXME
+  // EXPECT_EQ(constant(&ctx, 0, DT_I16).dtype(), DT_I16); // FIXME
+  // EXPECT_EQ(constant(&ctx, 0, DT_U16).dtype(), DT_U16); // FIXME
+  EXPECT_EQ(constant(&ctx, 0, DT_I32).dtype(), DT_I32);
+  // EXPECT_EQ(constant(&ctx, 0, DT_U32).dtype(), DT_U32); // FIXME
+  // EXPECT_EQ(constant(&ctx, 0, DT_I64).dtype(), DT_I64); // FIXME
+  // EXPECT_EQ(constant(&ctx, 0, DT_U64).dtype(), DT_U64); // FIXME
+  // EXPECT_EQ(constant(&ctx, 0, DT_FXP).dtype(), DT_FXP); // FIXME
+  EXPECT_EQ(constant(&ctx, 0.0, DT_FXP).dtype(), DT_FXP);
 }
 
 }  // namespace spu::kernel::hal

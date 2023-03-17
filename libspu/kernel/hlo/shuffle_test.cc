@@ -25,7 +25,7 @@ namespace spu::kernel::hlo {
 TEST(SortTest, Array) {
   HalContext ctx = hal::test::makeRefHalContext();
   xt::xarray<float> x = xt::random::rand<float>({10});
-  std::vector<Value> x_v{hal::const_secret(&ctx, x)};
+  std::vector<Value> x_v = {hal::test::makeValue(&ctx, x, VIS_SECRET)};
   spu::Value ret1 = Shuffle(&ctx, x_v, 0)[0];
   auto ret1_hat =
       hal::dump_public_as<float>(&ctx, hal::_s2p(&ctx, ret1).asFxp());
@@ -47,7 +47,7 @@ TEST(SortTest, Array) {
 TEST(SortTest, 2D) {
   HalContext ctx = hal::test::makeRefHalContext();
   xt::xarray<float> x = xt::random::rand<float>({10, 15});
-  std::vector<Value> x_v{hal::const_secret(&ctx, x)};
+  std::vector<Value> x_v = {hal::test::makeValue(&ctx, x, VIS_SECRET)};
 
   spu::Value ret1 = Shuffle(&ctx, x_v, 1)[0];
   auto ret1_hat =

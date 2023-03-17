@@ -58,19 +58,19 @@ std::vector<spu::Value> Case(HalContext *ctx, const spu::Value &index,
     return branches[idx]();
   } else {
     // Clamp value first
-    auto lower_bound = hal::zeros(ctx, VIS_PUBLIC, index.dtype());
+    auto lower_bound = hal::zeros(ctx, index.dtype());
     auto upper_bound =
-        hal::constant(ctx, static_cast<int32_t>(branches.size() - 1));
+        hal::constant(ctx, static_cast<int32_t>(branches.size() - 1), DT_I32);
     auto p = hal::bitwise_or(ctx, hal::less(ctx, index, lower_bound),
                              hal::greater(ctx, index, upper_bound));
     auto normalized_index = hal::select(ctx, p, upper_bound, index);
 
     // create 0,...,N-1
-    auto indicies = hlo::Iota<int32_t>(ctx, branches.size(), VIS_PUBLIC);
+    auto indices = hlo::Iota(ctx, DT_I32, branches.size());
     // Build mask
     auto masks =
-        hal::equal(ctx, indicies,
-                   hal::broadcast_to(ctx, normalized_index, indicies.shape()));
+        hal::equal(ctx, indices,
+                   hal::broadcast_to(ctx, normalized_index, indices.shape()));
 
     std::vector<std::vector<spu::Value>> values;
     for (int64_t branch_id = 0;

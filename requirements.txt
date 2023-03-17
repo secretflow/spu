@@ -1,5 +1,4 @@
-# Avoid thead pool fork issue, see https://github.com/grpc/grpc/issues/31772
-grpcio>=1.42.0,!=1.48.0,<=1.49.1
+grpcio>=1.42.0,!=1.48.0
 numpy>=1.22.0
 protobuf>=3.19, <4
 cloudpickle>=2.0.0

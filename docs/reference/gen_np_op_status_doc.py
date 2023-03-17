@@ -42,7 +42,7 @@ def main():
 
     mdFile.new_paragraph(
         "Just keep in mind, if you couldn't find a **jax.numpy** operator in this list, "
-        "it doesn't mean it's not supported. We just did't test it, e.g. jax.numpy.sort. "
+        "it doesn't mean it's not supported. We just haven't test it, e.g. jax.numpy.sort. "
         "And we don't test other **JAX** modules at this moment."
     )
 
@@ -50,7 +50,7 @@ def main():
     mdFile.new_list(
         items=[
             "You need to confirm the status of another **jax.numpy** operator not listed here.",
-            "You found a **jax.numpy** is not working even it is marked as **PASS**. e.g. The precision is bad.",
+            "You find a **jax.numpy** is not working even it is marked as **PASS**. e.g. The precision is bad.",
         ]
     )
 

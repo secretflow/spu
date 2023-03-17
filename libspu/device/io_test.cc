@@ -15,8 +15,8 @@
 #include "libspu/device/io.h"
 
 #include "gtest/gtest.h"
-#include "xtensor/xarray.hpp"
 
+#include "libspu/core/xt_helper.h"
 #include "libspu/mpc/utils/simulate.h"
 
 namespace spu::device {

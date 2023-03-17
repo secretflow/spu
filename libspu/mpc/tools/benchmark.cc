@@ -23,6 +23,7 @@
 #include "llvm/Support/JSON.h"
 
 #include "libspu/mpc/aby3/protocol.h"
+#include "libspu/mpc/cheetah/protocol.h"
 #include "libspu/mpc/semi2k/protocol.h"
 
 namespace {
@@ -49,14 +50,18 @@ llvm::cl::opt<std::string> cli_parties(
     llvm::cl::desc("server list, format: host1:port1[,host2:port2, ...]"));
 llvm::cl::opt<std::string> cli_protocol(
     "protocol", llvm::cl::init("aby3"),
-    llvm::cl::desc("benchmark protocol, supported protocols: semi2k / aby3, "
-                   "default: aby3"));
+    llvm::cl::desc(
+        "benchmark protocol, supported protocols: semi2k / aby3 / cheetah, "
+        "default: aby3"));
 llvm::cl::opt<uint32_t> cli_numel(
     "numel", llvm::cl::init(kUnSetMagic),
     llvm::cl::desc("number of benchmark elements, default: [2^10, 2^20]"));
 llvm::cl::opt<uint32_t> cli_shiftbit(
     "shiftbit", llvm::cl::init(kUnSetMagic),
     llvm::cl::desc("benchmark shift bit, default: 2"));
+llvm::cl::opt<uint32_t> cli_iteration(
+    "iteration", llvm::cl::init(10),
+    llvm::cl::desc("benchmark iteration, default: 10"));
 llvm::cl::opt<std::string> cli_mode(
     "mode", llvm::cl::init("standalone"),
     llvm::cl::desc(
@@ -65,54 +70,140 @@ llvm::cl::opt<std::string> cli_mode(
 
 namespace spu::mpc::bench {
 
-void NumelAug(benchmark::internal::Benchmark* b) {
-  b->ArgsProduct(
-       {BenchConfig::bench_field_range, BenchConfig::bench_numel_range})
-      ->Iterations(100)
-      ->UseManualTime()
-      ->MeasureProcessCPUTime();
-}
-void NumelShiftAug(benchmark::internal::Benchmark* b) {
-  b->ArgsProduct({BenchConfig::bench_field_range,
-                  BenchConfig::bench_numel_range,
-                  BenchConfig::bench_shift_range})
-      ->Iterations(100)
-      ->UseManualTime()
-      ->MeasureProcessCPUTime();
-}
-void MatrixSizeAug(benchmark::internal::Benchmark* b) {
-  b->ArgsProduct({BenchConfig::bench_field_range,
-                  BenchConfig::bench_matrix_m_range,
-                  BenchConfig::bench_matrix_k_range})
-      ->Iterations(100)
-      ->UseManualTime()
-      ->MeasureProcessCPUTime();
-}
+class BenchArgs {
+ protected:
+  std::string label_;
+  benchmark::State& state;
+
+ public:
+  BenchArgs(const std::string& op_name, benchmark::State& st) : state(st) {
+    label_ = "op_name:" + op_name;
+  }
+  virtual std::string StateInfo(benchmark::State& st) { return ""; }
+  std::string Label() { return label_ + StateInfo(state); }
+  virtual ~BenchArgs() = default;
+};
+
+class NumelArgs : public BenchArgs {
+ public:
+  using BenchArgs::BenchArgs;
+  std::string StateInfo(benchmark::State& st) override {
+    std::string ret;
+    ret += "/field_type:" +
+           std::to_string(8 * SizeOf(static_cast<FieldType>(st.range(0))));
+    ret += "/buf_len:" + std::to_string(st.range(1));
+    return ret;
+  }
+  static void AddArgs(benchmark::internal::Benchmark* b) {
+    b->ArgsProduct(
+         {BenchConfig::bench_field_range, BenchConfig::bench_numel_range})
+        ->Iterations(cli_iteration.getValue())
+        ->UseManualTime()
+        ->MeasureProcessCPUTime();
+  }
+};
+
+class NumelShiftArgs : public BenchArgs {
+ public:
+  using BenchArgs::BenchArgs;
+  std::string StateInfo(benchmark::State& st) override {
+    std::string ret;
+    ret += "/field_type:" +
+           std::to_string(8 * SizeOf(static_cast<FieldType>(st.range(0))));
+    ret += "/buf_len:" + std::to_string(st.range(1));
+    ret += "/shift_bit:" + std::to_string(st.range(2));
+    return ret;
+  }
+  static void AddArgs(benchmark::internal::Benchmark* b) {
+    b->ArgsProduct({BenchConfig::bench_field_range,
+                    BenchConfig::bench_numel_range,
+                    BenchConfig::bench_shift_range})
+        ->Iterations(cli_iteration.getValue())
+        ->UseManualTime()
+        ->MeasureProcessCPUTime();
+  }
+};
+
+class MatrixSizeArgs : public BenchArgs {
+ public:
+  using BenchArgs::BenchArgs;
+  std::string StateInfo(benchmark::State& st) override {
+    std::string ret;
+    ret += "/field_type:" +
+           std::to_string(8 * SizeOf(static_cast<FieldType>(st.range(0))));
+    ret +=
+        "/matrix_size:" + fmt::format("{{{0}, {0}}}*{{{0}, {0}}}", st.range(1));
+    return ret;
+  }
+  static void AddArgs(benchmark::internal::Benchmark* b) {
+    b->ArgsProduct(
+         {BenchConfig::bench_field_range, BenchConfig::bench_matrix_range})
+        ->Iterations(cli_iteration.getValue())
+        ->UseManualTime()
+        ->MeasureProcessCPUTime();
+  }
+};
 
 // register benchmarks with arguments
-BENCHMARK(MPCBenchMark<BenchAddSS>)->Apply(NumelAug);
-BENCHMARK(MPCBenchMark<BenchMulSS>)->Apply(NumelAug);
-BENCHMARK(MPCBenchMark<BenchAndSS>)->Apply(NumelAug);
-BENCHMARK(MPCBenchMark<BenchXorSS>)->Apply(NumelAug);
-BENCHMARK(MPCBenchMark<BenchAddSP>)->Apply(NumelAug);
-BENCHMARK(MPCBenchMark<BenchMulSP>)->Apply(NumelAug);
-BENCHMARK(MPCBenchMark<BenchAndSP>)->Apply(NumelAug);
-BENCHMARK(MPCBenchMark<BenchXorSP>)->Apply(NumelAug);
-BENCHMARK(MPCBenchMark<BenchS2P>)->Apply(NumelAug);
-BENCHMARK(MPCBenchMark<BenchP2S>)->Apply(NumelAug);
-BENCHMARK(MPCBenchMark<BenchNotS>)->Apply(NumelAug);
-BENCHMARK(MPCBenchMark<BenchNotP>)->Apply(NumelAug);
+#define DEFINE_BENCHMARK(OP, ARGS) \
+  BENCHMARK(MPCBenchMark<OP, ARGS>)->Apply(ARGS::AddArgs)
 
-BENCHMARK(MPCBenchMark<BenchLShiftS>)->Apply(NumelShiftAug);
-BENCHMARK(MPCBenchMark<BenchLShiftP>)->Apply(NumelShiftAug);
-BENCHMARK(MPCBenchMark<BenchRShiftS>)->Apply(NumelShiftAug);
-BENCHMARK(MPCBenchMark<BenchRShiftP>)->Apply(NumelShiftAug);
-BENCHMARK(MPCBenchMark<BenchARShiftP>)->Apply(NumelShiftAug);
-BENCHMARK(MPCBenchMark<BenchARShiftS>)->Apply(NumelShiftAug);
-BENCHMARK(MPCBenchMark<BenchTruncS>)->Apply(NumelShiftAug);
+DEFINE_BENCHMARK(BenchAddSS, NumelArgs);
+DEFINE_BENCHMARK(BenchMulSS, NumelArgs);
+DEFINE_BENCHMARK(BenchAndSS, NumelArgs);
+DEFINE_BENCHMARK(BenchXorSS, NumelArgs);
+DEFINE_BENCHMARK(BenchAddSP, NumelArgs);
+DEFINE_BENCHMARK(BenchMulSP, NumelArgs);
+DEFINE_BENCHMARK(BenchAndSP, NumelArgs);
+DEFINE_BENCHMARK(BenchXorSP, NumelArgs);
+DEFINE_BENCHMARK(BenchS2P, NumelArgs);
+DEFINE_BENCHMARK(BenchP2S, NumelArgs);
+DEFINE_BENCHMARK(BenchNotS, NumelArgs);
+DEFINE_BENCHMARK(BenchNotP, NumelArgs);
 
-BENCHMARK(MPCBenchMark<BenchMMulSP>)->Apply(MatrixSizeAug);
-BENCHMARK(MPCBenchMark<BenchMMulSS>)->Apply(MatrixSizeAug);
+DEFINE_BENCHMARK(BenchLShiftS, NumelShiftArgs);
+DEFINE_BENCHMARK(BenchLShiftP, NumelShiftArgs);
+DEFINE_BENCHMARK(BenchRShiftS, NumelShiftArgs);
+DEFINE_BENCHMARK(BenchRShiftP, NumelShiftArgs);
+DEFINE_BENCHMARK(BenchARShiftP, NumelShiftArgs);
+DEFINE_BENCHMARK(BenchARShiftS, NumelShiftArgs);
+DEFINE_BENCHMARK(BenchTruncS, NumelShiftArgs);
+
+DEFINE_BENCHMARK(BenchMMulSP, MatrixSizeArgs);
+DEFINE_BENCHMARK(BenchMMulSS, MatrixSizeArgs);
+
+DEFINE_BENCHMARK(BenchRandA, NumelArgs);
+DEFINE_BENCHMARK(BenchZeroA, NumelArgs);
+DEFINE_BENCHMARK(BenchRandB, NumelArgs);
+DEFINE_BENCHMARK(BenchZeroB, NumelArgs);
+DEFINE_BENCHMARK(BenchP2A, NumelArgs);
+DEFINE_BENCHMARK(BenchA2P, NumelArgs);
+DEFINE_BENCHMARK(BenchMsbA2b, NumelArgs);
+DEFINE_BENCHMARK(BenchNotA, NumelArgs);
+DEFINE_BENCHMARK(BenchAddAP, NumelArgs);
+DEFINE_BENCHMARK(BenchMulAP, NumelArgs);
+DEFINE_BENCHMARK(BenchAddAA, NumelArgs);
+DEFINE_BENCHMARK(BenchMulAA, NumelArgs);
+DEFINE_BENCHMARK(BenchMulA1B, NumelArgs);
+DEFINE_BENCHMARK(BenchLShiftA, NumelShiftArgs);
+DEFINE_BENCHMARK(BenchTruncA, NumelShiftArgs);
+DEFINE_BENCHMARK(BenchMMulAP, MatrixSizeArgs);
+DEFINE_BENCHMARK(BenchMMulAA, MatrixSizeArgs);
+DEFINE_BENCHMARK(BenchB2P, NumelArgs);
+DEFINE_BENCHMARK(BenchP2B, NumelArgs);
+DEFINE_BENCHMARK(BenchA2B, NumelArgs);
+DEFINE_BENCHMARK(BenchB2A, NumelArgs);
+DEFINE_BENCHMARK(BenchAddBB, NumelArgs);
+DEFINE_BENCHMARK(BenchAndBP, NumelArgs);
+DEFINE_BENCHMARK(BenchAndBB, NumelArgs);
+DEFINE_BENCHMARK(BenchXorBP, NumelArgs);
+DEFINE_BENCHMARK(BenchXorBB, NumelArgs);
+DEFINE_BENCHMARK(BenchLShiftB, NumelShiftArgs);
+DEFINE_BENCHMARK(BenchRShiftB, NumelShiftArgs);
+DEFINE_BENCHMARK(BenchARShiftB, NumelShiftArgs);
+DEFINE_BENCHMARK(BenchBitRevB, NumelArgs);
+DEFINE_BENCHMARK(BenchBitIntlB, NumelArgs);
+DEFINE_BENCHMARK(BenchBitDentlB, NumelArgs);
 
 void PrepareSemi2k(std::string& parties, uint32_t& party_num) {
   using BenchInteral = spu::mpc::bench::BenchConfig;
@@ -124,6 +215,16 @@ void PrepareSemi2k(std::string& parties, uint32_t& party_num) {
   SPU_ENFORCE(party_num >= 2);
   BenchInteral::bench_factory =
       spu::mpc::makeSemi2kProtocol;  // semi2k protocol factory
+}
+
+void PrepareCheetah(std::string& parties, uint32_t& party_num) {
+  using BenchInteral = spu::mpc::bench::BenchConfig;
+  if (parties.empty() && party_num == 0) {
+    parties = kTwoPartyHosts;
+  }
+  party_num = std::count(parties.begin(), parties.end(), ',') + 1;
+  SPU_ENFORCE(party_num == 2);
+  BenchInteral::bench_factory = spu::mpc::makeCheetahProtocol;
 }
 
 void PrepareAby3(std::string& parties, uint32_t& party_num) {
@@ -146,8 +247,11 @@ void SetUpProtocol() {
     PrepareSemi2k(parties, party_num);
   } else if (protocol == "aby3") {
     PrepareAby3(parties, party_num);
+  } else if (protocol == "cheetah") {
+    PrepareCheetah(parties, party_num);
   } else {
-    SPU_THROW("unknown protocol: {}, supported = semi2k/aby3", protocol);
+    SPU_THROW("unknown protocol: {}, supported = semi2k/aby3/cheetah",
+              protocol);
   }
   benchmark::AddCustomContext("Benchmark Protocol", protocol);
   BenchInteral::bench_npc = party_num;
@@ -168,6 +272,7 @@ void SetUpMode() {
     SPU_ENFORCE(host_ips.size() == BenchInteral::bench_npc);
 
     yacl::link::ContextDesc lctx_desc;
+    lctx_desc.recv_timeout_ms = 120 * 1000;
     for (size_t i = 0; i < BenchInteral::bench_npc; i++) {
       const std::string id = fmt::format("party{}", i);
       lctx_desc.parties.push_back({id, host_ips[i]});

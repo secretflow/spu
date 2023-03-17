@@ -193,7 +193,31 @@ void VisibilityInference::inferSort(Operation &op) {
     // Sort does not change result vis
     ValueVis_.setValueVisibility(op.getResult(in.index()), inputVis);
   }
+
   inferRegion(sortOp.getComparator());
+
+  // Get comparator visibility
+  auto &comp_ret = *sortOp.getComparator().front().getTerminator();
+  SPU_ENFORCE(llvm::isa<stablehlo::ReturnOp>(comp_ret));
+
+  if (ValueVis_.getValueVisibility(comp_ret.getOperand(0)) ==
+      Visibility::VIS_SECRET) {
+    // If comparator result is secret, all results are secrets
+    for (const auto &in : llvm::enumerate(op.getOperands())) {
+      ValueVis_.setValueVisibility(
+          sortOp.getComparator().getArgument(2 * in.index()),
+          Visibility::VIS_SECRET);
+      ValueVis_.setValueVisibility(
+          sortOp.getComparator().getArgument(2 * in.index() + 1),
+          Visibility::VIS_SECRET);
+
+      // Sort does not change result vis
+      ValueVis_.setValueVisibility(op.getResult(in.index()),
+                                   Visibility::VIS_SECRET);
+    }
+
+    inferRegion(sortOp.getComparator());
+  }
 }
 
 void VisibilityInference::inferSelectAndScatter(Operation &op) {

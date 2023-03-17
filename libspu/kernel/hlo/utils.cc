@@ -36,9 +36,9 @@ int32_t getI32Value(HalContext *ctx, const spu::Value &value) {
   return public_val.front();
 }
 
-xt::xarray<int64_t> getIndicies(HalContext *ctx, const spu::Value &value) {
-  SPU_ENFORCE(value.isInt(), "indicies value must be integers.");
-  SPU_ENFORCE(value.isPublic(), "indicies value must be public.");
+xt::xarray<int64_t> getIndices(HalContext *ctx, const spu::Value &value) {
+  SPU_ENFORCE(value.isInt(), "indices value must be integers.");
+  SPU_ENFORCE(value.isPublic(), "indices value must be public.");
   return kernel::hal::dump_public_as<int64_t>(ctx, value);
 }
 

@@ -16,8 +16,9 @@
 
 #include "libspu/core/encoding.h"
 #include "libspu/core/ndarray_ref.h"
+#include "libspu/core/pt_buffer_view.h"
 #include "libspu/core/shape_util.h"
-#include "libspu/core/xt_helper.h"
+#include "libspu/core/type_util.h"
 #include "libspu/kernel/hal/prot_wrapper.h"
 #include "libspu/kernel/hal/ring.h"
 #include "libspu/mpc/common/pub2k.h"
@@ -27,121 +28,95 @@ namespace {
 
 // make a public typed value.
 //
-// Note: there is a abstraction leakage, we should NOT touch Ring2kPubTy
-// directly.
+// FIXME: this is a abstraction leakage, we should NOT invoke Pub2kTy directly.
 Value make_pub2k(HalContext* ctx, const PtBufferView& bv) {
   SPU_TRACE_HAL_DISP(ctx, bv);
 
-  NdArrayRef raw = xt_to_ndarray(bv);
+  NdArrayRef raw = convertToNdArray(bv);
+
+  const auto field = ctx->getField();
+  const auto fxp_bits = ctx->getFxpBits();
 
   DataType dtype;
-  NdArrayRef encoded =
-      encodeToRing(raw, ctx->getField(), ctx->getFxpBits(), &dtype);
+  NdArrayRef encoded = encodeToRing(raw, field, fxp_bits, &dtype);
 
-  return Value(encoded.as(makeType<mpc::Pub2kTy>(ctx->getField())), dtype);
+  return Value(encoded.as(makeType<mpc::Pub2kTy>(field)), dtype);
+}
+
+// TODO: formalize and test it.
+// clang-format off
+// NOLINTBEGIN, readability-implicit-bool-conversion, modernize-use-bool-literals
+bool kCastFlags[DT_FXP+1][DT_FXP+1] = { 
+//{_,  I1, I8, U8, I16,U16,I32,U32,I64,U64,FXP}
+  {0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0  },  // _
+  {0,  1,  1,  1,  1,  1,  1,  1,  1,  1,  0  },  // I1
+  {0,  0,  1,  0,  1,  0,  1,  0,  1,  0,  0  },  // I8
+  {0,  0,  1,  1,  1,  1,  1,  1,  1,  1,  0  },  // U8
+  {0,  0,  0,  0,  1,  0,  1,  0,  1,  0,  0  },  // I16
+  {0,  0,  0,  0,  1,  1,  1,  1,  1,  1,  0  },  // U16
+  {0,  0,  0,  0,  0,  0,  1,  0,  1,  0,  0  },  // I32
+  {0,  0,  0,  0,  0,  0,  1,  1,  1,  1,  0  },  // U32
+  {0,  0,  0,  0,  0,  0,  0,  0,  1,  0,  0  },  // I64
+  {0,  0,  0,  0,  0,  0,  0,  0,  1,  1,  0  },  // U64
+  {0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  1  },  // FXP
+};
+// NOLINTEND
+// clang-format on
+
+bool canImplicitCastTo(DataType frm, DataType to) {
+  return kCastFlags[frm][to];
 }
 
 }  // namespace
 
-Value constant(HalContext* ctx, const PtBufferView& bv,
-               absl::Span<const int64_t> shape) {
-  SPU_TRACE_HAL_DISP(ctx, bv, shape);
+Value constant(HalContext* ctx, PtBufferView init, DataType dtype,
+               ShapeView shape) {
+  SPU_TRACE_HAL_DISP(ctx, init, dtype, shape);
+
+  const auto init_dtype = getEncodeType(init.pt_type);
+
+  // FIXME: semantically, this is casting from literal to type, not from one
+  // type to another type.
+  SPU_ENFORCE(canImplicitCastTo(init_dtype, dtype), "cast from {} to {} failed",
+              init_dtype, dtype);
+
+  auto result = make_pub2k(ctx, init).setDtype(dtype, true);
 
   if (isEmpty(shape)) {
-    auto pt = make_pub2k(ctx, bv);
-    return Value(NdArrayRef(nullptr, pt.storage_type(), shape), pt.dtype());
+    return Value(NdArrayRef(nullptr, result.storage_type(), shape),
+                 result.dtype());
   }
 
-  auto result = make_pub2k(ctx, bv);
-
   // If view shape is same as destination shape, just make public
-  if (shape.empty() || shape == bv.shape) {
+  if (shape.empty() || shape == init.shape) {
     return result;
   }
 
   // Same calcNumel but shape is different, do a reshape
-  if (calcNumel(bv.shape) == calcNumel(shape)) {
+  if (calcNumel(init.shape) == calcNumel(shape)) {
     return Value(result.data().reshape(shape), result.dtype());
   }
 
   // Other, do a broadcast, let broadcast handles the sanity check
-  SPU_ENFORCE(calcNumel(bv.shape) <= calcNumel(shape));
+  SPU_ENFORCE(calcNumel(init.shape) <= calcNumel(shape));
   return Value(result.data().broadcast_to(shape, {}), result.dtype());
 }
 
-Value const_secret(HalContext* ctx, const PtBufferView& bv,
-                   absl::Span<const int64_t> shape) {
-  SPU_TRACE_HAL_DISP(ctx, bv);
-
-  auto pv = constant(ctx, bv, shape);
-  return _p2s(ctx, pv).setDtype(pv.dtype());
-}
-
-Value make_value(HalContext* ctx, Visibility vtype, const PtBufferView& bv) {
-  switch (vtype) {
-    case VIS_PUBLIC:
-      return make_pub2k(ctx, bv);
-    case VIS_SECRET:
-      return const_secret(ctx, bv);
-    default:
-      SPU_THROW("not support vtype={}", vtype);
-  }
-}
-
-spu::Value zeros(HalContext* ctx, Visibility vis, DataType dtype,
+spu::Value zeros(HalContext* ctx, DataType dtype,
                  absl::Span<const int64_t> shape) {
-  spu::Value scalar;
-  switch (dtype) {
-    case DT_I1: {
-      scalar = hal::make_value(ctx, vis, false);
-      break;
-    }
-    case DT_I8: {
-      scalar = hal::make_value(ctx, vis, static_cast<std::int8_t>(0));
-      break;
-    }
-    case DT_U8: {
-      scalar = hal::make_value(ctx, vis, static_cast<std::uint8_t>(0));
-      break;
-    }
-    case DT_I16: {
-      scalar = hal::make_value(ctx, vis, static_cast<std::int16_t>(0));
-      break;
-    }
-    case DT_U16: {
-      scalar = hal::make_value(ctx, vis, static_cast<std::uint16_t>(0));
-      break;
-    }
-    case DT_I32: {
-      scalar = hal::make_value(ctx, vis, static_cast<std::int32_t>(0));
-      break;
-    }
-    case DT_U32: {
-      scalar = hal::make_value(ctx, vis, static_cast<std::uint32_t>(0));
-      break;
-    }
-    case DT_I64: {
-      scalar = hal::make_value(ctx, vis, static_cast<std::int64_t>(0));
-      break;
-    }
-    case DT_U64: {
-      scalar = hal::make_value(ctx, vis, static_cast<std::uint64_t>(0));
-      break;
-    }
-    case DT_FXP: {
-      scalar = hal::make_value(ctx, vis, 0.0F);
-      break;
-    }
-    default: {
-      SPU_THROW("Should not hit, dtype = {}", dtype);
-    }
-  }
-
-  if (shape.empty()) {
-    return scalar;
+  if (dtype == DT_FXP) {
+    return constant(ctx, 0.0, DT_FXP, shape);
   } else {
-    return Value(scalar.data().expand(shape), scalar.dtype());
+    return constant(ctx, static_cast<uint8_t>(0), dtype, shape);
   }
+}
+
+Value iota(HalContext* ctx, DataType dtype, int64_t numel) {
+  return DISPATCH_ALL_NONE_BOOL_PT_TYPES(getDecodeType(dtype), "iota", [&]() {
+    std::vector<ScalarT> arr(numel);
+    std::iota(arr.begin(), arr.end(), 0);
+    return constant(ctx, arr, dtype, {numel});
+  });
 }
 
 Value epsilon(HalContext* ctx, absl::Span<const int64_t> shape) {

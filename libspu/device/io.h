@@ -18,7 +18,7 @@
 #include <memory>
 #include <vector>
 
-#include "libspu/core/xt_helper.h"
+#include "libspu/core/pt_buffer_view.h"
 #include "libspu/device/symbol_table.h"
 #include "libspu/kernel/context.h"
 #include "libspu/kernel/value.h"

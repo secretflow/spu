@@ -96,10 +96,11 @@ def time_exchange(time_val, o_unit, n_unit):
 
 
 class TableFromat:
-    def __init__(self, rows: list, cols: list, values: list):
+    def __init__(self, rows: list, cols: list, values: list, pick_rows: list):
         self.rows = rows
         self.cols = cols
         self.values = values
+        self.pick_row = pick_rows
 
     def real_time_weight(self, df: pd.DataFrame, unit: str):
         a = []
@@ -112,7 +113,6 @@ class TableFromat:
         return (np.array(a) / 100).mean()
 
     def format_time(self, df: pd.DataFrame, unit: str):
-        print(df.shape)
         real_time = df['real_time']
         time_unit = df['time_unit']
         for i in real_time.index:
@@ -121,7 +121,16 @@ class TableFromat:
             )
         return df
 
+    def uniform_time(self, df: pd.DataFrame, unit: str):
+        df['time'] = pd.NA
+        df = self.format_time(df, unit)
+        df[self.cols[-1]] += '/' + unit
+        return df
+
     def _extra_work(self, df: pd.DataFrame):
+        return self.uniform_time(df, "ms")
+
+    def format_time_with_last_col(self, df: pd.DataFrame):
         df['time'] = pd.NA
         time_col_name = self.cols[-1]
         time_col_values = [i for i in df[time_col_name].unique().tolist() if i]
@@ -140,6 +149,22 @@ class TableFromat:
             )
         return df
 
+    def reorder(self, df: pd.DataFrame):
+        if not self.pick_row:
+            return df
+        cur_index = set()
+        if df.index.nlevels == 1:
+            cur_index = set([i for i in df.index])
+        else:
+            cur_index = set([i for i in df.index.get_level_values(0)])
+        reorder_index = []
+        for p in self.pick_row:
+            if p in cur_index:
+                reorder_index.append(p)
+                cur_index.discard(p)
+        reorder_index.extend([i for i in cur_index])
+        return df.loc[reorder_index, :]
+
     def format(self, df: pd.DataFrame):
         for r in self.rows + self.cols:
             df = df[df[r].notna()]
@@ -148,7 +173,9 @@ class TableFromat:
         resv = self.rows + self.cols + self.values
         drops = [col for col in df.columns if col not in resv]
         df.drop(columns=drops, inplace=True)
-        return df.pivot(index=self.rows, columns=self.cols, values=self.values)
+        return self.reorder(
+            df.pivot(index=self.rows, columns=self.cols, values=self.values)
+        )
 
 
 class BenchmarkTable:
@@ -253,6 +280,7 @@ class BenchmarkManager:
             for sheet, table in self.sheets.items():
                 print(f'\n{sheet}\n', file=ofile)
                 func(ofile, table)
+        print(f'output: {ofilename}')
 
 
 class ReportGen:
@@ -293,6 +321,7 @@ if __name__ == '__main__':
         '--columns', nargs=1, help='column labels, eg: --columns=label1,label2'
     )
     parse.add_argument('--rows', nargs=1, help='row labels, eg: --rows=label1,label2')
+    parse.add_argument('--pick_rows', nargs=1, help='values of row label1')
     parse.add_argument(
         '--values', nargs=1, help='value labels, eg: --values=label1,label2'
     )
@@ -300,12 +329,13 @@ if __name__ == '__main__':
 
     args = parse.parse_args(
         # [
-        #     '--output=report.xlsx',
+        #     '--output=report.md',
         #     '--input=../LAN.json,../WAN_300mbit_20msec.json',
         #     '--columns=env,buf_len',
         #     '--rows=op_name,field_type',
         #     '--values=time',
         #     '--sheet=Benchmark Protocol',
+        #     '--pick_rows=xor_ss,add_ss',
         # ]
     )
     gen = ReportGen()
@@ -317,5 +347,6 @@ if __name__ == '__main__':
         args.rows[0].split(','),
         args.columns[0].split(','),
         args.values[0].split(','),
+        args.pick_rows[0].split(','),
     )
     gen.dump(format, args.output[0])

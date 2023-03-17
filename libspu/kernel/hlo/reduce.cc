@@ -23,7 +23,7 @@
 
 #include "libspu/core/parallel_utils.h"
 #include "libspu/core/shape_util.h"
-#include "libspu/kernel/hal/concat.h"
+#include "libspu/core/xt_helper.h"
 #include "libspu/kernel/hal/constants.h"
 #include "libspu/kernel/hal/polymorphic.h"
 #include "libspu/kernel/hal/ring.h"
@@ -134,8 +134,10 @@ spu::Value ExpandStridedWindow(
   const std::vector<int64_t> window_dilations(window_shape.size(), 1);
   const std::vector<int64_t> base_dilations(base.shape().size(), 1);
   // expand it, assume padding & dialation element is zero.
-  spu::Value expanded =
-      hal::zeros(ctx, base.vtype(), base.dtype(), expanded_shape);
+  spu::Value expanded = hal::zeros(ctx, base.dtype(), expanded_shape);
+  if (base.isSecret()) {
+    expanded = hal::seal(ctx, expanded);
+  }
 
   auto numel = calcNumel(expanded_shape);
 
@@ -159,6 +161,7 @@ spu::Value ExpandStridedWindow(
               base_shape, base_dilations, window_count_index, window_index,
               absl::MakeSpan(base_index));
           if (!out_of_bound) {
+            // TODO: anti-pattern, do not use .data(), use ops instead.
             expanded.data().update_slice(
                 base.data().slice_scalar_at(base_index), expanded_index);
           }
@@ -515,7 +518,7 @@ std::pair<spu::Value, spu::Value> ArgMax1x2x2x1NoPaddingWithoutDilation(
   // Compute max value
   auto max_ret = hal::select(ctx, v_comp, upper_value, bottom_value);
 
-  // Compute max indicies
+  // Compute max indices
   auto v_comp_not = hal::logical_not(ctx, v_comp);
 
   auto v_i_comp = hal::reshape(ctx, v_comp,
@@ -550,9 +553,9 @@ std::pair<spu::Value, spu::Value> ArgMax1x2x2x1NoPaddingWithoutDilation(
   upper_slice = hal::mul(ctx, v_i_comp, upper_slice);
   bottom_slice = hal::mul(ctx, v_i_comp_not, bottom_slice);
 
-  auto max_indicies = hal::concatenate(ctx, {upper_slice, bottom_slice}, 4);
+  auto max_indices = hal::concatenate(ctx, {upper_slice, bottom_slice}, 4);
 
-  return {max_ret, max_indicies};
+  return {max_ret, max_indices};
 }
 
 std::pair<spu::Value, spu::Value> ArgMax(HalContext *ctx,
@@ -577,7 +580,7 @@ std::pair<spu::Value, spu::Value> ArgMax(HalContext *ctx,
                       std::multiplies<size_t>());
   xt::xarray<bool> e = xt::eye<bool>({window_size, window_size}, 0);
 
-  auto mask = hal::constant(ctx, e);
+  auto mask = hal::constant(ctx, e, DT_I1);
 
   auto result = ReduceWindowImpl(
       ctx, {input, mask}, {}, ret_shape, config, true, true,

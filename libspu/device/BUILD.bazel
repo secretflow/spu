@@ -47,7 +47,7 @@ spu_cc_library(
         ":device_cc_proto",
         ":symbol_table",
         "//libspu:spu_cc_proto",
-        "//libspu/core:xt_helper",
+        "//libspu/core:pt_buffer_view",
         "//libspu/kernel:context",
         "//libspu/kernel:value",
         "//libspu/kernel/hal:constants",
@@ -112,7 +112,7 @@ spu_cc_library(
     hdrs = ["symbol_table.h"],
     deps = [
         ":device_cc_proto",
-        "//libspu/core:xt_helper",
+        "//libspu/core:pt_buffer_view",
         "//libspu/kernel:value",
     ],
 )

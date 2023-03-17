@@ -17,6 +17,7 @@
 #include <utility>
 
 #include "libspu/core/encoding.h"
+#include "libspu/core/pt_buffer_view.h"
 #include "libspu/kernel/hal/constants.h"
 #include "libspu/kernel/hal/public_helper.h"
 #include "libspu/mpc/factory.h"
@@ -37,7 +38,7 @@ std::vector<spu::Value> IoClient::makeShares(const PtBufferView &bv,
   if (bv.pt_type == PT_BOOL && vtype == VIS_SECRET &&
       base_io_->hasBitSecretSupport()) {
     // handle boolean type encoding.
-    NdArrayRef arr = xt_to_ndarray(bv);
+    NdArrayRef arr = convertToNdArray(bv);
 
     auto flat_shares = base_io_->makeBitSecret(flatten(arr));
 
@@ -53,7 +54,7 @@ std::vector<spu::Value> IoClient::makeShares(const PtBufferView &bv,
   // encode to ring.
   DataType dtype;
   NdArrayRef encoded =
-      encodeToRing(xt_to_ndarray(bv), config_.field(), fxp_bits, &dtype);
+      encodeToRing(convertToNdArray(bv), config_.field(), fxp_bits, &dtype);
 
   // make shares.
   std::vector<NdArrayRef> shares;
@@ -106,7 +107,7 @@ ColocatedIo::ColocatedIo(HalContext *hctx) : hctx_(hctx) {}
 
 void ColocatedIo::hostSetVar(const std::string &name, const PtBufferView &bv,
                              Visibility vtype) {
-  unsynced_[name] = {xt_to_ndarray(bv), vtype};
+  unsynced_[name] = {convertToNdArray(bv), vtype};
 }
 
 NdArrayRef ColocatedIo::hostGetVar(const std::string &name) const {

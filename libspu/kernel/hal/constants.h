@@ -14,37 +14,35 @@
 
 #pragma once
 
-#include "libspu/core/xt_helper.h"  // TODO: PtBufferView
+#include "libspu/core/pt_buffer_view.h"
 #include "libspu/kernel/context.h"
 #include "libspu/kernel/value.h"
 
 namespace spu::kernel::hal {
 
-// TODO(jint) PtBufferView is too implicit, we should make it more obvious since
-// it will affect the value's dtype.
-//
-// Create a public value from a given buffer view.
-//
-// if shape is specified, the value will be broadcasted to given shape.
-Value constant(HalContext* ctx, const PtBufferView& bv,
-               absl::Span<const int64_t> shape = {});
+// TODO: move this to shape_utils.
+using ShapeView = absl::Span<int64_t const>;
 
-Value zeros(HalContext* ctx, Visibility vis, DataType dtype,
-            absl::Span<const int64_t> shape = {});
-
-// Deprecated:
+// Returns a SPU value from given C/C++ buffer.
 //
-// Warn: this is ANTI-PATTERN, it will not make a `true secret`, but a
-// `secret-typed` value that all parties knowns, debug purpose only.
+// The result visibility is public.
+Value constant(HalContext* ctx, PtBufferView init, DataType dtype,
+               ShapeView shape = {});
+
+// Returns a SPU zero value, which is equal to
+//  constant(ctx, 0, dtype, shape);
 //
-// Make a secret from a plaintext buffer.
-Value const_secret(HalContext* ctx, const PtBufferView& bv,
-                   absl::Span<const int64_t> shape = {});
+// The result visibility is public.
+Value zeros(HalContext* ctx, DataType dtype, ShapeView shape = {});
 
-// Deprecated:
-Value make_value(HalContext* ctx, Visibility vtype, const PtBufferView& bv);
+// Returns a one-dimentional value.
+//
+// The result visibility is public.
+Value iota(HalContext* ctx, DataType dtype, int64_t numel);
 
-// Return eps
+// Returns the SPU epsilon, the positive distance between two fixed point value.
+//
+// The result visibility is public.
 Value epsilon(HalContext* ctx, absl::Span<const int64_t> shape = {});
 
 }  // namespace spu::kernel::hal

@@ -46,7 +46,8 @@ spu::Value Expm1(HalContext *ctx, const spu::Value &in) {
   // FIXME: By numpy spec, expm1 should have a higher numeric accuracy compare
   // with exp(x) - 1. SPU is not doing so right now, rethink about what we
   // should do here.
-  return hal::sub(ctx, hal::exp(ctx, in), hal::constant(ctx, 1.0F, in.shape()));
+  return hal::sub(ctx, hal::exp(ctx, in),
+                  hal::constant(ctx, 1.0, DT_FXP, in.shape()));
 }
 
 spu::Value Not(HalContext *ctx, const spu::Value &in) {
@@ -60,10 +61,13 @@ spu::Value Not(HalContext *ctx, const spu::Value &in) {
 }
 
 spu::Value Sign(HalContext *ctx, const spu::Value &in) {
+  // get the (-1, 1) sign
   auto s = hal::sign(ctx, in);
-  auto zero =
-      hal::dtype_cast(ctx, hal::constant(ctx, 0, in.shape()), s.dtype());
-  s = hal::select(ctx, hal::equal(ctx, in, zero), zero, s);
+
+  // s = (in == 0) ? 0 : s
+  s = hal::select(ctx,
+                  hal::equal(ctx, in, hal::zeros(ctx, in.dtype(), in.shape())),
+                  hal::zeros(ctx, s.dtype(), in.shape()), s);
   return hal::dtype_cast(ctx, s, in.dtype());
 }
 
@@ -73,7 +77,7 @@ spu::Value Round_AFZ(HalContext *ctx, const spu::Value &in) {
   SPU_ENFORCE(in.isFxp(), "Round only supports fxp");
 
   auto sign_in = hal::sign(ctx, in);
-  auto p_half = hal::constant(ctx, 0.5, in.shape());
+  auto p_half = hal::constant(ctx, 0.5, DT_FXP, in.shape());
   p_half = hal::mul(ctx, sign_in, p_half);
 
   auto round = hal::add(ctx, in, p_half);

@@ -164,9 +164,12 @@ The algorithm type of psi.
 | ECDH_PSI_3PC | 4 | Multi-party PSI based on ECDH (Say A, B, C (receiver)) notice: two-party intersection cardinarlity leak (|A intersect B|) |
 | ECDH_PSI_NPC | 5 | Iterative running 2-party ecdh psi to get n-party PSI. Notice: two-party intersection leak |
 | KKRT_PSI_NPC | 6 | Iterative running 2-party kkrt psi to get n-party PSI. Notice: two-party intersection leak |
-| ECDH_OPRF_UB_PSI_2PC_OFFLINE | 7 | ecdh-oprf 2-party Unbalanced-PSI offline phase. |
-| ECDH_OPRF_UB_PSI_2PC_ONLINE | 8 | ecdh-oprf 2-party Unbalanced-PSI online phase. |
-| DP_PSI_2PC | 9 | Differentially-Private PSI https://arxiv.org/pdf/2208.13249.pdf bases on ECDH-PSI, and provides: Differentially private PSI results. |
+| ECDH_OPRF_UB_PSI_2PC_GEN_CACHE | 7 | ecdh-oprf 2-party Unbalanced-PSI Generate CACHE. |
+| ECDH_OPRF_UB_PSI_2PC_TRANSFER_CACHE | 8 | ecdh-oprf 2-party Unbalanced-PSI transfer CACHE. |
+| ECDH_OPRF_UB_PSI_2PC_OFFLINE | 9 | ecdh-oprf 2-party Unbalanced-PSI offline phase. |
+| ECDH_OPRF_UB_PSI_2PC_ONLINE | 10 | ecdh-oprf 2-party Unbalanced-PSI online phase. |
+| ECDH_OPRF_UB_PSI_2PC_SHUFFLE_ONLINE | 11 | ecdh-oprf 2-party Unbalanced-PSI with shuffling online phase. large set party get intersection result |
+| DP_PSI_2PC | 12 | Differentially-Private PSI https://arxiv.org/pdf/2208.13249.pdf bases on ECDH-PSI, and provides: Differentially private PSI results. |
 
 
  <!-- end Enums -->

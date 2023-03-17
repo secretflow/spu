@@ -18,6 +18,7 @@
 #include "mlir/IR/BuiltinAttributes.h"
 #include "mlir/IR/Location.h"
 
+#include "libspu/core/encoding.h"
 #include "libspu/dialect/pphlo_base_enums.h"
 #include "libspu/dialect/pphlo_ops.h"
 #include "libspu/kernel/hlo/basic_binary.h"
@@ -131,10 +132,8 @@ spu::Visibility convertVisibility(mlir::pphlo::Visibility vis) {
 namespace spu::device::pphlo {
 namespace {
 
-spu::Value lookupValue(SymbolScope *scope, mlir::Value key,
-                       const ExecutionOptions &opts) {
-  auto val = scope->lookupValue(key);
-
+void do_type_checker(mlir::Value key, const spu::Value &val,
+                     const ExecutionOptions &opts) {
   if (opts.do_type_check) {
     const auto mlir_type = key.getType();
     {
@@ -168,7 +167,25 @@ spu::Value lookupValue(SymbolScope *scope, mlir::Value key,
       SPU_ENFORCE("Unknown vtype");
     }
   }
+}
+
+spu::Value lookupValue(SymbolScope *scope, mlir::Value key,
+                       const ExecutionOptions &opts) {
+  auto val = scope->lookupValue(key);
+  do_type_checker(key, val, opts);
   return val;
+}
+
+void addValue(SymbolScope *scope, mlir::Value key, const spu::Value &val,
+              const ExecutionOptions &opts) {
+  do_type_checker(key, val, opts);
+  scope->addValue(key, val);
+}
+
+void addValue(SymbolScope *scope, mlir::Value key, spu::Value &&val,
+              const ExecutionOptions &opts) {
+  do_type_checker(key, val, opts);
+  scope->addValue(key, val);
 }
 
 //
@@ -177,7 +194,7 @@ spu::Value lookupValue(SymbolScope *scope, mlir::Value key,
                mlir::pphlo::OpName &op, const ExecutionOptions &opts) {     \
     const auto in = lookupValue(sscope, op.getOperand(), opts);             \
     auto ret = kernel::hlo::KernelName(hctx, in);                           \
-    sscope->addValue(op.getResult(), std::move(ret));                       \
+    addValue(sscope, op.getResult(), std::move(ret), opts);                 \
   }
 
 STANDARD_UNARY_OP_EXEC_IMPL(ReciprocalOp, Reciprocal)
@@ -201,10 +218,11 @@ STANDARD_UNARY_OP_EXEC_IMPL(RoundOp, Round_AFZ)
 #define STANDARD_BINARY_OP_EXEC_IMPL(OpName, KernelName)                      \
   void execute(OpExecutor *executor, HalContext *hctx, SymbolScope *sscope,   \
                mlir::pphlo::OpName &op, const ExecutionOptions &opts) {       \
-    sscope->addValue(                                                         \
-        op.getResult(),                                                       \
+    addValue(                                                                 \
+        sscope, op.getResult(),                                               \
         kernel::hlo::KernelName(hctx, lookupValue(sscope, op.getLhs(), opts), \
-                                lookupValue(sscope, op.getRhs(), opts)));     \
+                                lookupValue(sscope, op.getRhs(), opts)),      \
+        opts);                                                                \
   }
 
 STANDARD_BINARY_OP_EXEC_IMPL(AddOp, Add)
@@ -237,7 +255,8 @@ void execute(OpExecutor *executor, HalContext *hctx, SymbolScope *sscope,
   const auto ret_shape =
       op.getResult().getType().dyn_cast<mlir::TensorType>().getShape();
 
-  sscope->addValue(op.getResult(), kernel::hlo::Reshape(hctx, ret, ret_shape));
+  addValue(sscope, op.getResult(), kernel::hlo::Reshape(hctx, ret, ret_shape),
+           opts);
 }
 
 void execute(OpExecutor *executor, HalContext *hctx, SymbolScope *sscope,
@@ -292,7 +311,7 @@ void execute(OpExecutor *executor, HalContext *hctx, SymbolScope *sscope,
   auto ret = kernel::hlo::Reshape(
       hctx, kernel::hlo::Concatenate(hctx, results, 0), ret_type.getShape());
 
-  sscope->addValue(op.getResult(), std::move(ret));
+  addValue(sscope, op.getResult(), std::move(ret), opts);
 }
 
 void execute(OpExecutor *executor, HalContext *hctx, SymbolScope *sscope,
@@ -339,50 +358,52 @@ void execute(OpExecutor *executor, HalContext *hctx, SymbolScope *sscope,
     result = kernel::hlo::Convolution(hctx, lhs, rhs, config, ret_shape);
   }
 
-  sscope->addValue(op.getResult(), std::move(result));
+  addValue(sscope, op.getResult(), std::move(result), opts);
 }
 
 void execute(OpExecutor *executor, HalContext *hctx, SymbolScope *sscope,
              mlir::pphlo::DynamicUpdateSliceOp &op,
              const ExecutionOptions &opts) {
   // Basic idea here, get a ref slice and update the whole slice..
-  // Start indicies
-  std::vector<spu::Value> start_indicies(op.getStartIndices().size());
+  // Start indices
+  std::vector<spu::Value> start_indices(op.getStartIndices().size());
   const auto &operand = lookupValue(sscope, op.getOperand(), opts);
   const auto &update = lookupValue(sscope, op.getUpdate(), opts);
 
   for (const auto &idx : llvm::enumerate(op.getStartIndices())) {
-    start_indicies[idx.index()] = lookupValue(sscope, idx.value(), opts);
+    start_indices[idx.index()] = lookupValue(sscope, idx.value(), opts);
   }
 
-  sscope->addValue(op.getResult(), kernel::hlo::DynamicUpdateSlice(
-                                       hctx, operand, update, start_indicies));
+  addValue(
+      sscope, op.getResult(),
+      kernel::hlo::DynamicUpdateSlice(hctx, operand, update, start_indices),
+      opts);
 }
 
 void execute(OpExecutor *executor, HalContext *hctx, SymbolScope *sscope,
              mlir::pphlo::DynamicSliceOp &op, const ExecutionOptions &opts) {
-  // Start indicies
+  // Start indices
   auto iter = op.getSliceSizes().getValues<int64_t>();
   std::vector<int64_t> slice_size{iter.begin(), iter.end()};
   const auto &operand = lookupValue(sscope, op.getOperand(), opts);
-  std::vector<spu::Value> start_indicies(op.getStartIndices().size());
+  std::vector<spu::Value> start_indices(op.getStartIndices().size());
 
   for (const auto &idx : llvm::enumerate(op.getStartIndices())) {
-    start_indicies[idx.index()] = lookupValue(sscope, idx.value(), opts);
+    start_indices[idx.index()] = lookupValue(sscope, idx.value(), opts);
   }
 
-  sscope->addValue(
-      op.getResult(),
-      kernel::hlo::DynamicSlice(hctx, operand, slice_size, start_indicies));
+  addValue(sscope, op.getResult(),
+           kernel::hlo::DynamicSlice(hctx, operand, slice_size, start_indices),
+           opts);
 }
 
 void execute(OpExecutor *executor, HalContext *hctx, SymbolScope *sscope,
              mlir::pphlo::GatherOp &op, const ExecutionOptions &opts) {
   // If input is empty, short circuit
   auto operand = lookupValue(sscope, op.getOperand(), opts);
-  auto start_indicies = lookupValue(sscope, op.getStartIndices(), opts);
+  auto start_indices = lookupValue(sscope, op.getStartIndices(), opts);
   if (operand.numel() == 0) {
-    sscope->addValue(op.getResult(), operand);
+    addValue(sscope, op.getResult(), operand, opts);
     return;
   }
 
@@ -399,9 +420,10 @@ void execute(OpExecutor *executor, HalContext *hctx, SymbolScope *sscope,
   config.collapsedSliceDims = dim_numbers.getCollapsedSliceDims();
   config.startIndexMap = dim_numbers.getStartIndexMap();
 
-  sscope->addValue(
-      op.getResult(),
-      kernel::hlo::Gather(hctx, operand, start_indicies, config, output_shape));
+  addValue(
+      sscope, op.getResult(),
+      kernel::hlo::Gather(hctx, operand, start_indices, config, output_shape),
+      opts);
 }
 
 void execute(OpExecutor *executor, HalContext *hctx, SymbolScope *sscope,
@@ -444,7 +466,7 @@ void execute(OpExecutor *executor, HalContext *hctx, SymbolScope *sscope,
       spu_return_vis);
 
   for (int64_t idx = 0; idx < op->getNumResults(); ++idx) {
-    sscope->addValue(op->getResult(idx), std::move(ret[idx]));
+    addValue(sscope, op->getResult(idx), std::move(ret[idx]), opts);
   }
 }
 
@@ -493,7 +515,7 @@ void execute(OpExecutor *executor, HalContext *hctx, SymbolScope *sscope,
         return ret[0];
       });
 
-  sscope->addValue(op.getResult(), std::move(ret));
+  addValue(sscope, op.getResult(), std::move(ret), opts);
 }
 
 void execute(OpExecutor *executor, HalContext *hctx, SymbolScope *sscope,
@@ -532,7 +554,7 @@ void execute(OpExecutor *executor, HalContext *hctx, SymbolScope *sscope,
       kernel::hlo::MaxPoolScatter(hctx, scatter_indices, update, window_shape,
                                   base_shape, window_strides, window_padding);
 
-  sscope->addValue(op.getResult(), std::move(ret));
+  addValue(sscope, op.getResult(), std::move(ret), opts);
 }
 
 void execute(OpExecutor *executor, HalContext *hctx, SymbolScope *sscope,
@@ -548,7 +570,7 @@ void execute(OpExecutor *executor, HalContext *hctx, SymbolScope *sscope,
 
   // Copy output
   for (const auto &ret : llvm::enumerate(op->getResults())) {
-    sscope->addValue(ret.value(), results[ret.index()]);
+    addValue(sscope, ret.value(), results[ret.index()], opts);
   }
 }
 
@@ -567,7 +589,7 @@ void execute(OpExecutor *executor, HalContext *hctx, SymbolScope *sscope,
 
   // Copy output
   for (const auto &ret : llvm::enumerate(op->getResults())) {
-    sscope->addValue(ret.value(), results[ret.index()]);
+    addValue(sscope, ret.value(), results[ret.index()], opts);
   }
 }
 
@@ -592,7 +614,7 @@ void execute(OpExecutor *executor, HalContext *hctx, SymbolScope *sscope,
       });
 
   for (size_t idx = 0; idx < op->getNumResults(); ++idx) {
-    sscope->addValue(op->getResult(idx), std::move(ret[idx]));
+    addValue(sscope, op->getResult(idx), std::move(ret[idx]), opts);
   }
 }
 
@@ -606,17 +628,14 @@ void execute(OpExecutor *executor, HalContext *hctx, SymbolScope *sscope,
   auto ret_el_type = type_tools.getExpressedType(ret_type);
   auto pt_type = getPtTypeFromMlirType(ret_el_type);
 
-  spu::Value iota_ret;
-  DISPATCH_ALL_NONE_BOOL_PT_TYPES(pt_type, "_", [&] {
-    iota_ret = kernel::hlo::Iota<ScalarT>(hctx, numel, VIS_PUBLIC);
-  });
+  spu::Value iota_ret = kernel::hlo::Iota(hctx, getEncodeType(pt_type), numel);
 
   if (ret_type.getShape().size() > 1) {
     // Need a broadcast
     iota_ret = kernel::hlo::Broadcast(hctx, iota_ret, ret_type.getShape(), {});
   }
 
-  sscope->addValue(op.getOutput(), std::move(iota_ret));
+  addValue(sscope, op.getOutput(), std::move(iota_ret), opts);
 }
 
 void execute(OpExecutor *executor, HalContext *hctx, SymbolScope *sscope,
@@ -626,34 +645,35 @@ void execute(OpExecutor *executor, HalContext *hctx, SymbolScope *sscope,
   auto rhs = lookupValue(sscope, op.getRhs(), opts);
 
   auto ret = kernel::hlo::Remainder(hctx, lhs, rhs);
-  sscope->addValue(op.getResult(), std::move(ret));
+  addValue(sscope, op.getResult(), std::move(ret), opts);
 }
 
 void execute(OpExecutor *executor, HalContext *hctx, SymbolScope *sscope,
              mlir::pphlo::TransposeOp &op, const ExecutionOptions &opts) {
-  sscope->addValue(
-      op.getResult(),
+  addValue(
+      sscope, op.getResult(),
       kernel::hlo::Transpose(hctx, lookupValue(sscope, op.getOperand(), opts),
-                             convertDenseIntElementAttr(op.getPermutation())));
+                             convertDenseIntElementAttr(op.getPermutation())),
+      opts);
 }
 
 void execute(OpExecutor *executor, HalContext *hctx, SymbolScope *sscope,
              mlir::pphlo::BroadcastOp &op, const ExecutionOptions &opts) {
   auto to_shape = op.getType().dyn_cast<mlir::RankedTensorType>().getShape();
-  sscope->addValue(
-      op.getResult(),
-      kernel::hlo::Broadcast(
-          hctx, lookupValue(sscope, op.getOperand(), opts), to_shape,
-          convertDenseIntElementAttr(op.getBroadcastDimensions())));
+  addValue(sscope, op.getResult(),
+           kernel::hlo::Broadcast(
+               hctx, lookupValue(sscope, op.getOperand(), opts), to_shape,
+               convertDenseIntElementAttr(op.getBroadcastDimensions())),
+           opts);
 }
 
 void execute(OpExecutor *executor, HalContext *hctx, SymbolScope *sscope,
              mlir::pphlo::ReshapeOp &op, const ExecutionOptions &opts) {
   auto to_shape = op.getType().dyn_cast<mlir::RankedTensorType>().getShape();
-  sscope->addValue(
-      op.getResult(),
-      kernel::hlo::Reshape(hctx, lookupValue(sscope, op.getOperand(), opts),
-                           to_shape));
+  addValue(sscope, op.getResult(),
+           kernel::hlo::Reshape(
+               hctx, lookupValue(sscope, op.getOperand(), opts), to_shape),
+           opts);
 }
 
 void execute(OpExecutor *executor, HalContext *hctx, SymbolScope *sscope,
@@ -665,18 +685,18 @@ void execute(OpExecutor *executor, HalContext *hctx, SymbolScope *sscope,
   }
 
   // set result
-  sscope->addValue(op.getResult(),
-                   kernel::hlo::Concatenate(hctx, values, op.getDimension()));
+  addValue(sscope, op.getResult(),
+           kernel::hlo::Concatenate(hctx, values, op.getDimension()), opts);
 }
 
 void execute(OpExecutor *executor, HalContext *hctx, SymbolScope *sscope,
              mlir::pphlo::SliceOp &op, const ExecutionOptions &opts) {
-  sscope->addValue(
-      op.getResult(),
-      kernel::hlo::Slice(hctx, lookupValue(sscope, op.getOperand(), opts),
-                         convertDenseIntElementAttr(op.getStartIndices()),
-                         convertDenseIntElementAttr(op.getLimitIndices()),
-                         convertDenseIntElementAttr(op.getStrides())));
+  addValue(sscope, op.getResult(),
+           kernel::hlo::Slice(hctx, lookupValue(sscope, op.getOperand(), opts),
+                              convertDenseIntElementAttr(op.getStartIndices()),
+                              convertDenseIntElementAttr(op.getLimitIndices()),
+                              convertDenseIntElementAttr(op.getStrides())),
+           opts);
 }
 
 void execute(OpExecutor *executor, HalContext *hctx, SymbolScope *sscope,
@@ -695,18 +715,19 @@ void execute(OpExecutor *executor, HalContext *hctx, SymbolScope *sscope,
   SPU_ENFORCE(std::all_of(interior_padding.begin(), interior_padding.end(),
                           [](int64_t i) { return i >= 0; }));
 
-  sscope->addValue(
-      op.getResult(),
-      kernel::hlo::Pad(hctx, operand, padding_value, edge_padding_low,
-                       edge_padding_high, interior_padding));
+  addValue(sscope, op.getResult(),
+           kernel::hlo::Pad(hctx, operand, padding_value, edge_padding_low,
+                            edge_padding_high, interior_padding),
+           opts);
 }
 
 void execute(OpExecutor *executor, HalContext *hctx, SymbolScope *sscope,
              mlir::pphlo::ReverseOp &op, const ExecutionOptions &opts) {
-  sscope->addValue(
-      op.getResult(),
+  addValue(
+      sscope, op.getResult(),
       kernel::hlo::Reverse(hctx, lookupValue(sscope, op.getOperand(), opts),
-                           convertDenseIntElementAttr(op.getDimensions())));
+                           convertDenseIntElementAttr(op.getDimensions())),
+      opts);
 }
 
 void execute(OpExecutor *executor, HalContext *hctx, SymbolScope *sscope,
@@ -735,8 +756,8 @@ void execute(OpExecutor *executor, HalContext *hctx, SymbolScope *sscope,
   const auto &output_shape =
       op->getResultTypes()[0].dyn_cast<mlir::RankedTensorType>().getShape();
   for (size_t idx = 0; idx < op->getNumResults(); ++idx) {
-    sscope->addValue(op->getResult(idx),
-                     kernel::hlo::Reshape(hctx, ret[idx], output_shape));
+    addValue(sscope, op->getResult(idx),
+             kernel::hlo::Reshape(hctx, ret[idx], output_shape), opts);
   }
 }
 
@@ -811,7 +832,7 @@ void execute(OpExecutor *executor, HalContext *hctx, SymbolScope *sscope,
       });
 
   for (int64_t idx = 0; idx < op->getNumResults(); ++idx) {
-    sscope->addValue(op->getResults()[idx], std::move(rets[idx]));
+    addValue(sscope, op->getResults()[idx], std::move(rets[idx]), opts);
   }
 }
 
@@ -869,9 +890,9 @@ void execute(OpExecutor *executor, HalContext *hctx, SymbolScope *sscope,
   auto ret = kernel::hlo::ArgMax(hctx, lookupValue(sscope, op.getInput(), opts),
                                  ret_shape, config);
 
-  sscope->addValue(op.getResult(0), ret.first);
+  addValue(sscope, op.getResult(0), ret.first, opts);
 
-  sscope->addValue(op.getResult(1), ret.second);
+  addValue(sscope, op.getResult(1), ret.second, opts);
 }
 
 void execute(OpExecutor *executor, HalContext *hctx, SymbolScope *sscope,
@@ -881,17 +902,18 @@ void execute(OpExecutor *executor, HalContext *hctx, SymbolScope *sscope,
   auto on_true = lookupValue(sscope, op.getOnTrue(), opts);
   auto on_false = lookupValue(sscope, op.getOnFalse(), opts);
 
-  sscope->addValue(op.getResult(),
-                   kernel::hlo::Select(hctx, pred, on_true, on_false));
+  addValue(sscope, op.getResult(),
+           kernel::hlo::Select(hctx, pred, on_true, on_false), opts);
 }
 
 void execute(OpExecutor *executor, HalContext *hctx, SymbolScope *sscope,
              mlir::pphlo::RngOp &op, const ExecutionOptions &opts) {
   auto to_shape = op.getType().dyn_cast<mlir::RankedTensorType>().getShape();
-  sscope->addValue(op.getResult(),
-                   kernel::hlo::Uniform_rand(
-                       hctx, lookupValue(sscope, op.getA(), opts),
-                       lookupValue(sscope, op.getB(), opts), to_shape));
+  addValue(
+      sscope, op.getResult(),
+      kernel::hlo::Uniform_rand(hctx, lookupValue(sscope, op.getA(), opts),
+                                lookupValue(sscope, op.getB(), opts), to_shape),
+      opts);
 }
 
 void execute(OpExecutor *executor, HalContext *hctx, SymbolScope *sscope,
@@ -903,8 +925,8 @@ void execute(OpExecutor *executor, HalContext *hctx, SymbolScope *sscope,
                        : VIS_SECRET;
   auto in = lookupValue(sscope, op.getOperand(), opts);
 
-  sscope->addValue(op.getResult(),
-                   kernel::hlo::Cast(hctx, in, dst_vtype, dst_dtype));
+  addValue(sscope, op.getResult(),
+           kernel::hlo::Cast(hctx, in, dst_vtype, dst_dtype), opts);
 }
 
 void execute(OpExecutor *executor, HalContext *hctx, SymbolScope *sscope,
@@ -913,18 +935,18 @@ void execute(OpExecutor *executor, HalContext *hctx, SymbolScope *sscope,
   if (hctx->rt_config().protocol() == ProtocolKind::CHEETAH) {
     // NOTE(juhou): For 2PC, MulAB uses COT which is efficient and accurate than
     // MulAA that needs HE. Thus we just by-pass the PreferAOp for 2PC.
-    sscope->addValue(op.getResult(), in);
+    addValue(sscope, op.getResult(), in, opts);
     return;
   }
   auto k0 = kernel::hlo::Cast(hctx, kernel::hlo::Constant(hctx, 0, in.shape()),
                               VIS_PUBLIC, in.dtype());
-  sscope->addValue(op.getResult(), kernel::hlo::Add(hctx, in, k0));
+  addValue(sscope, op.getResult(), kernel::hlo::Add(hctx, in, k0), opts);
 }
 
 void execute(OpExecutor *executor, HalContext *hctx, SymbolScope *sscope,
              mlir::pphlo::SignOp &op, const ExecutionOptions &opts) {
   auto in = lookupValue(sscope, op.getOperand(), opts);
-  sscope->addValue(op.getResult(), kernel::hlo::Sign(hctx, in));
+  addValue(sscope, op.getResult(), kernel::hlo::Sign(hctx, in), opts);
 }
 
 void execute(OpExecutor *executor, HalContext *hctx, SymbolScope *sscope,
@@ -940,10 +962,11 @@ void execute(OpExecutor *executor, HalContext *hctx, SymbolScope *sscope,
   SPU_ENFORCE(in_type.getShape() == out_type.getShape(),
               "bitcast with different size is not supported yet");
 
-  sscope->addValue(
-      op.getResult(),
+  addValue(
+      sscope, op.getResult(),
       kernel::hlo::Bitcast(hctx, lookupValue(sscope, op.getOperand(), opts),
-                           getDtypeFromMlirType(out_type)));
+                           getDtypeFromMlirType(out_type)),
+      opts);
 }
 
 void execute(OpExecutor *executor, HalContext *hctx, SymbolScope *sscope,
@@ -960,9 +983,10 @@ void execute(OpExecutor *executor, HalContext *hctx, SymbolScope *sscope,
   // We need to normalize the value to 0,1
   if (dea.getElementType().isInteger(1)) {
     if (dea.isSplat()) {
-      sscope->addValue(
-          op.getResult(),
-          kernel::hlo::Constant(hctx, dea.getSplatValue<bool>(), dst_shape));
+      addValue(
+          sscope, op.getResult(),
+          kernel::hlo::Constant(hctx, dea.getSplatValue<bool>(), dst_shape),
+          opts);
     } else {
       std::vector<uint8_t> buf(type.getNumElements());
       for (const auto &v : llvm::enumerate(dea.getValues<bool>())) {
@@ -971,8 +995,8 @@ void execute(OpExecutor *executor, HalContext *hctx, SymbolScope *sscope,
       PtBufferView view(reinterpret_cast<const bool *>(buf.data()), pt_type,
                         dst_shape, makeCompactStrides(dst_shape));
 
-      sscope->addValue(op.getResult(),
-                       kernel::hlo::Constant(hctx, view, dst_shape));
+      addValue(sscope, op.getResult(),
+               kernel::hlo::Constant(hctx, view, dst_shape), opts);
     }
   } else {
     PtBufferView view(
@@ -980,8 +1004,8 @@ void execute(OpExecutor *executor, HalContext *hctx, SymbolScope *sscope,
         dea.isSplat() ? llvm::ArrayRef<int64_t>() : dst_shape,
         dea.isSplat() ? std::vector<int64_t>() : makeCompactStrides(dst_shape));
 
-    sscope->addValue(op.getResult(),
-                     kernel::hlo::Constant(hctx, view, dst_shape));
+    addValue(sscope, op.getResult(),
+             kernel::hlo::Constant(hctx, view, dst_shape), opts);
   }
 }
 
@@ -990,16 +1014,17 @@ void execute(OpExecutor *executor, HalContext *hctx, SymbolScope *sscope,
   auto e = kernel::hlo::Epsilon(hctx);
   auto shape =
       op->getResultTypes()[0].dyn_cast<mlir::RankedTensorType>().getShape();
-  sscope->addValue(op.getResult(), kernel::hlo::Broadcast(hctx, e, shape, {}));
+  addValue(sscope, op.getResult(), kernel::hlo::Broadcast(hctx, e, shape, {}),
+           opts);
 }
 
 void execute(OpExecutor *executor, HalContext *hctx, SymbolScope *sscope,
              mlir::pphlo::ClampOp &op, const ExecutionOptions &opts) {
-  sscope->addValue(
-      op.getResult(),
-      kernel::hlo::Clamp(hctx, lookupValue(sscope, op.getOperand(), opts),
-                         lookupValue(sscope, op.getMin(), opts),
-                         lookupValue(sscope, op.getMax(), opts)));
+  addValue(sscope, op.getResult(),
+           kernel::hlo::Clamp(hctx, lookupValue(sscope, op.getOperand(), opts),
+                              lookupValue(sscope, op.getMin(), opts),
+                              lookupValue(sscope, op.getMax(), opts)),
+           opts);
 }
 
 void execute(OpExecutor *executor, HalContext *hctx, SymbolScope *sscope,
@@ -1054,7 +1079,7 @@ static void dispatchOp(OpExecutor *executor, HalContext *hctx,
     // currently we only support config verifier statically.
     constexpr bool kEnableXlaVerifier = false;
     if (kEnableXlaVerifier) {
-      XlaVerifier verifier(hctx);
+      PPHloVerifier verifier(hctx);
       // handle mixed (int, fxp) multiplication
       if constexpr (std::is_same_v<OpT, mlir::pphlo::MulOp> or
                     std::is_same_v<OpT, mlir::pphlo::DotOp> or

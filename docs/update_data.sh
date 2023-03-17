@@ -24,14 +24,14 @@ bash reference/update_pphlo_doc.sh
 echo "3. Update runtime config doc."
 # runtime_config_md.tmpl is adapted from https://github.com/pseudomuto/protoc-gen-doc/blob/master/examples/templates/grpc-md.tmpl.
 docker run --rm -v $(pwd)/reference/:/out \
-                -v $(pwd)/../spu:/protos \
+                -v $(pwd)/../libspu:/protos \
                 pseudomuto/protoc-gen-doc \
                 --doc_opt=/out/runtime_config_md.tmpl,runtime_config.md spu.proto
 
 echo "4. Update psi config doc."
 # psi_config_md.tmpl is adapted from https://github.com/pseudomuto/protoc-gen-doc/blob/master/examples/templates/grpc-md.tmpl.
 docker run --rm -v $(pwd)/reference/:/out \
-                -v $(pwd)/../spu/psi:/protos \
+                -v $(pwd)/../libspu/psi:/protos \
                 pseudomuto/protoc-gen-doc \
                 --doc_opt=/out/psi_config_md.tmpl,psi_config.md psi.proto
 

@@ -14,19 +14,26 @@
 
 #include "libspu/kernel/hlo/const.h"
 
+#include "libspu/core/encoding.h"  // FIXME: getEncodeType
 #include "libspu/kernel/hal/constants.h"
 #include "libspu/kernel/hal/shape_ops.h"
 
 namespace spu::kernel::hlo {
 
+// TODO: pass DataType as a parameter?
 spu::Value Constant(HalContext *ctx, const PtBufferView &view,
                     absl::Span<const int64_t> out_shape) {
+  const auto dtype = getEncodeType(view.pt_type);
   if (view.shape == out_shape) {
-    return hal::constant(ctx, view);
+    return hal::constant(ctx, view, dtype);
   } else {
-    auto s = hal::constant(ctx, view);
+    auto s = hal::constant(ctx, view, dtype);
     return hal::broadcast_to(ctx, s, out_shape);
   }
+}
+
+spu::Value Iota(HalContext *ctx, DataType dtype, int64_t numel) {
+  return hal::iota(ctx, dtype, numel);
 }
 
 spu::Value Epsilon(HalContext *ctx) { return hal::epsilon(ctx); }

@@ -22,6 +22,7 @@
 #include "libspu/core/bit_utils.h"
 #include "libspu/core/shape_util.h"  // calcNumel
 #include "libspu/mpc/api.h"
+#include "libspu/mpc/common/ab_api.h"
 #include "libspu/mpc/common/communicator.h"
 #include "libspu/mpc/object.h"
 #include "libspu/mpc/utils/ring_ops.h"
@@ -36,11 +37,6 @@ struct ParamEntry {
       : name(std::move(n)), value(std::move(v)) {}
 };
 
-std::map<uint64_t, std::string> field_name{
-    {static_cast<uint64_t>(FieldType::FM32), "32"},
-    {static_cast<uint64_t>(FieldType::FM64), "64"},
-    {static_cast<uint64_t>(FieldType::FM128), "128"}};
-
 using CreateComputeFn = std::function<std::unique_ptr<Object>(
     const RuntimeConfig& conf,
     const std::shared_ptr<yacl::link::Context>& lctx)>;
@@ -54,20 +50,14 @@ class BenchConfig {
   inline static std::string bench_parties = {};
   inline static std::vector<int64_t> bench_numel_range = {1u << 10, 1u << 20};
   inline static std::vector<int64_t> bench_shift_range = {2};
-  inline static std::vector<int64_t> bench_matrix_m_range = {10};
-  inline static std::vector<int64_t> bench_matrix_k_range = {10};
+  inline static std::vector<int64_t> bench_matrix_range = {10, 100};
   inline static std::vector<int64_t> bench_field_range = {FieldType::FM64,
                                                           FieldType::FM128};
 };
 
-template <typename BenchOp>
+template <typename OpData, typename ArgsInfo>
 void MPCBenchMark(benchmark::State& state) {
-  std::string label = BenchOp::op_name;
-  label = std::string("op_name:") + label;
-  for (auto& entry : BenchOp::Paras(state)) {
-    label += '/' + entry.name + ':' + entry.value;
-  }
-  state.SetLabel(label);
+  state.SetLabel(ArgsInfo(OpData::op_name, state).Label());
 
   for (auto _ : state) {
     const size_t npc = BenchConfig::bench_npc;
@@ -76,9 +66,13 @@ void MPCBenchMark(benchmark::State& state) {
     conf.set_field(field);
     auto func = [&](std::shared_ptr<yacl::link::Context> lctx) {
       auto obj = BenchConfig::bench_factory(conf, lctx);
+      if (!obj->hasKernel(OpData::op_name)) {
+        return;
+      }
+
       auto* comm = obj->getState<Communicator>();
 
-      BenchOp op(obj.get(), state);
+      OpData op(obj.get(), state);
 
       /* WHEN */
       if (lctx->Rank() == 0) {
@@ -126,225 +120,143 @@ void MPCBenchMark(benchmark::State& state) {
   }
 }
 
-class BenchOpSP {
+#define MPC_BENCH_DEFINE(CLASS, DATA, OP, ...)        \
+  class CLASS : public DATA {                         \
+   public:                                            \
+    using DATA::DATA;                                 \
+    static inline std::string op_name = #OP;          \
+    ArrayRef Exec() { return OP(obj_, __VA_ARGS__); } \
+  };
+
+template <size_t P = 0, size_t S = 0, size_t A = 0, size_t B = 0, size_t MP = 0,
+          size_t MS = 0, size_t MA = 0, size_t MB = 0, size_t B1 = 0>
+class OpData {
  protected:
-  ArrayRef p0;
-  ArrayRef p1;
-  ArrayRef s0;
-  ArrayRef s1;
   Object* obj_{nullptr};
   benchmark::State& state;
+  std::array<ArrayRef, P> ps;
+  std::array<ArrayRef, S> ss;
+  std::array<ArrayRef, A> as;
+  std::array<ArrayRef, B> bs;
+  std::array<ArrayRef, MP> mps;
+  std::array<ArrayRef, MS> mss;
+  std::array<ArrayRef, MA> mas;
+  std::array<ArrayRef, MB> mbs;
+  std::array<ArrayRef, B1> b1s;
 
  public:
-  BenchOpSP(Object* obj, benchmark::State& st) : obj_(obj), state(st) {
-    /* GIVEN */
-    p0 = rand_p(obj, state.range(1));
-    p1 = rand_p(obj, state.range(1));
-    s0 = p2s(obj, p0);
-    s1 = p2s(obj, p1);
+  OpData(Object* obj, benchmark::State& st) : obj_(obj), state(st) {
+    for (auto& p : ps) {
+      p = rand_p(obj_, state.range(1));
+    }
+    for (auto& s : ss) {
+      s = p2s(obj_, rand_p(obj, state.range(1)));
+    }
+    for (auto& a : as) {
+      a = p2a(obj_, rand_p(obj_, state.range(1)));
+    }
+    for (auto& b : bs) {
+      b = p2b(obj_, rand_p(obj_, state.range(1)));
+    }
+    auto matrix_size = calcNumel({state.range(1), state.range(1)});
+    for (auto& mp : mps) {
+      mp = rand_p(obj_, matrix_size);
+    }
+    for (auto& ms : mss) {
+      ms = p2s(obj_, rand_p(obj_, matrix_size));
+    }
+    for (auto& ma : mas) {
+      ma = p2a(obj_, rand_p(obj_, matrix_size));
+    }
+    for (auto& mb : mbs) {
+      mb = p2b(obj_, rand_p(obj_, matrix_size));
+    }
+    for (auto& b1 : b1s) {
+      b1 = p2b(obj_, rand_p(obj_, state.range(1)));
+      b1 = lshift_b(obj_, b1,
+                    SizeOf(static_cast<FieldType>(state.range(0))) * 8 - 1);
+      b1 = rshift_b(obj_, b1,
+                    SizeOf(static_cast<FieldType>(state.range(0))) * 8 - 1);
+    }
   }
-  static std::vector<ParamEntry> Paras(benchmark::State& st) {
-    std::vector<ParamEntry> paras;
-    paras.emplace_back("field_type", field_name[st.range(0)]);
-    paras.emplace_back("buf_len", std::to_string(st.range(1)));
-    return paras;
-  }
+  virtual ~OpData() = default;
 };
 
-class BenchAddSS : public BenchOpSP {
- public:
-  using BenchOpSP::BenchOpSP;
-  ArrayRef Exec() { return add_ss(obj_, s0, s1); };
-  static inline std::string op_name = "add_ss";
-};
+using OpDataBasic = OpData<>;
+using OpData1P = OpData<1>;
+using OpData1S = OpData<0, 1>;
+using OpData2S = OpData<0, 2>;
+using OpData1S1P = OpData<1, 1>;
+using OpData1A = OpData<0, 0, 1>;
+using OpData2A = OpData<0, 0, 2>;
+using OpData1A1P = OpData<1, 0, 1>;
+using OpData1B = OpData<0, 0, 0, 1>;
+using OpData2B = OpData<0, 0, 0, 2>;
+using OpData1B1P = OpData<1, 0, 0, 1>;
+using OpData2MS = OpData<0, 0, 0, 0, 0, 2>;
+using OpData2MA = OpData<0, 0, 0, 0, 0, 0, 2>;
+using OpData1MS1MP = OpData<0, 0, 0, 0, 1, 1>;
+using OpData1MA1MP = OpData<0, 0, 0, 0, 1, 0, 1>;
+using OpData1A1B1 = OpData<0, 0, 1, 0, 0, 0, 0, 0, 1>;
 
-class BenchMulSS : public BenchOpSP {
- public:
-  using BenchOpSP::BenchOpSP;
-  ArrayRef Exec() { return mul_ss(obj_, s0, s1); }
-  static inline std::string op_name = "mul_ss";
-};
+MPC_BENCH_DEFINE(BenchAddSS, OpData2S, add_ss, ss[0], ss[1])
+MPC_BENCH_DEFINE(BenchMulSS, OpData2S, mul_ss, ss[0], ss[1])
+MPC_BENCH_DEFINE(BenchAndSS, OpData2S, and_ss, ss[0], ss[1])
+MPC_BENCH_DEFINE(BenchXorSS, OpData2S, xor_ss, ss[0], ss[1])
+MPC_BENCH_DEFINE(BenchAddSP, OpData1S1P, add_sp, ss[0], ps[0])
+MPC_BENCH_DEFINE(BenchMulSP, OpData1S1P, mul_sp, ss[0], ps[0])
+MPC_BENCH_DEFINE(BenchAndSP, OpData1S1P, and_sp, ss[0], ps[0])
+MPC_BENCH_DEFINE(BenchXorSP, OpData1S1P, xor_sp, ss[0], ps[0])
+MPC_BENCH_DEFINE(BenchNotS, OpData1S, not_s, ss[0])
+MPC_BENCH_DEFINE(BenchNotP, OpData1P, not_p, ps[0])
+MPC_BENCH_DEFINE(BenchLShiftS, OpData1S, lshift_s, ss[0], state.range(2))
+MPC_BENCH_DEFINE(BenchLShiftP, OpData1P, lshift_p, ps[0], state.range(2))
+MPC_BENCH_DEFINE(BenchRShiftS, OpData1S, rshift_s, ss[0], state.range(2))
+MPC_BENCH_DEFINE(BenchRShiftP, OpData1P, rshift_p, ps[0], state.range(2))
+MPC_BENCH_DEFINE(BenchARShiftS, OpData1S, arshift_s, ss[0], state.range(2))
+MPC_BENCH_DEFINE(BenchARShiftP, OpData1P, arshift_p, ps[0], state.range(2))
+MPC_BENCH_DEFINE(BenchTruncS, OpData1S, trunc_s, ss[0], state.range(2))
+MPC_BENCH_DEFINE(BenchS2P, OpData1S, s2p, ss[0])
+MPC_BENCH_DEFINE(BenchP2S, OpData1P, p2s, ps[0])
+MPC_BENCH_DEFINE(BenchMMulSP, OpData1MS1MP, mmul_sp, mss[0], mps[0],
+                 state.range(1), state.range(1), state.range(1))
+MPC_BENCH_DEFINE(BenchMMulSS, OpData2MS, mmul_ss, mss[0], mss[1],
+                 state.range(1), state.range(1), state.range(1))
 
-class BenchAndSS : public BenchOpSP {
- public:
-  using BenchOpSP::BenchOpSP;
-  ArrayRef Exec() { return and_ss(obj_, s0, s1); }
-  static inline std::string op_name = "and_ss";
-};
-
-class BenchXorSS : public BenchOpSP {
- public:
-  using BenchOpSP::BenchOpSP;
-  ArrayRef Exec() { return xor_ss(obj_, s0, s1); }
-  static inline std::string op_name = "xor_ss";
-};
-
-class BenchAddSP : public BenchOpSP {
- public:
-  using BenchOpSP::BenchOpSP;
-  ArrayRef Exec() { return add_sp(obj_, s0, p1); }
-  static inline std::string op_name = "add_sp";
-};
-
-class BenchMulSP : public BenchOpSP {
- public:
-  using BenchOpSP::BenchOpSP;
-  ArrayRef Exec() { return mul_sp(obj_, s0, p1); }
-  static inline std::string op_name = "mul_sp";
-};
-
-class BenchAndSP : public BenchOpSP {
- public:
-  using BenchOpSP::BenchOpSP;
-  ArrayRef Exec() { return and_sp(obj_, s0, p1); }
-  static inline std::string op_name = "and_sp";
-};
-
-class BenchXorSP : public BenchOpSP {
- public:
-  using BenchOpSP::BenchOpSP;
-  ArrayRef Exec() { return xor_sp(obj_, s0, p1); }
-  static inline std::string op_name = "xor_sp";
-};
-
-class BenchNotS : public BenchOpSP {
- public:
-  using BenchOpSP::BenchOpSP;
-  ArrayRef Exec() { return not_s(obj_, s0); }
-  static inline std::string op_name = "not_s";
-};
-
-class BenchNotP : public BenchOpSP {
- public:
-  using BenchOpSP::BenchOpSP;
-  ArrayRef Exec() { return not_p(obj_, p0); }
-  static inline std::string op_name = "not_p";
-};
-
-class BenchOpShift : public BenchOpSP {
- public:
-  using BenchOpSP::BenchOpSP;
-  static std::vector<ParamEntry> Paras(benchmark::State& st) {
-    std::vector<ParamEntry> paras = BenchOpSP::Paras(st);
-    paras.emplace_back("shift_bit", std::to_string(st.range(2)));
-    return paras;
-  }
-};
-
-class BenchLShiftS : public BenchOpShift {
- public:
-  using BenchOpShift::BenchOpShift;
-  ArrayRef Exec() { return lshift_s(obj_, s0, state.range(2)); }
-  static inline std::string op_name = "lshift_s";
-};
-
-class BenchLShiftP : public BenchOpShift {
- public:
-  using BenchOpShift::BenchOpShift;
-  ArrayRef Exec() { return lshift_p(obj_, p0, state.range(2)); }
-  static inline std::string op_name = "lshift_p";
-};
-
-class BenchRShiftS : public BenchOpShift {
- public:
-  using BenchOpShift::BenchOpShift;
-  ArrayRef Exec() { return rshift_s(obj_, s0, state.range(2)); }
-  static inline std::string op_name = "rshift_s";
-};
-
-class BenchRShiftP : public BenchOpShift {
- public:
-  using BenchOpShift::BenchOpShift;
-  ArrayRef Exec() { return rshift_p(obj_, p0, state.range(2)); }
-  static inline std::string op_name = "rshift_p";
-};
-
-class BenchARShiftS : public BenchOpShift {
- public:
-  using BenchOpShift::BenchOpShift;
-  ArrayRef Exec() { return arshift_s(obj_, s0, state.range(2)); }
-  static inline std::string op_name = "arshift_s";
-};
-
-class BenchARShiftP : public BenchOpShift {
- public:
-  using BenchOpShift::BenchOpShift;
-  ArrayRef Exec() { return arshift_p(obj_, p0, state.range(2)); }
-  static inline std::string op_name = "arshift_p";
-};
-
-class BenchTruncS : public BenchOpSP {
- public:
-  using BenchOpSP::BenchOpSP;
-  ArrayRef Exec() { return trunc_s(obj_, s0, state.range(2)); }
-  static inline std::string op_name = "trunc_s";
-  static std::vector<ParamEntry> Paras(benchmark::State& st) {
-    std::vector<ParamEntry> paras = BenchOpSP::Paras(st);
-    paras.emplace_back("trunc_bit", std::to_string(st.range(2)));
-    return paras;
-  }
-};
-
-class BenchS2P : public BenchOpSP {
- public:
-  using BenchOpSP::BenchOpSP;
-  ArrayRef Exec() { return s2p(obj_, s0); }
-  static inline std::string op_name = "s2p";
-};
-
-class BenchP2S : public BenchOpSP {
- public:
-  using BenchOpSP::BenchOpSP;
-  ArrayRef Exec() { return p2s(obj_, p0); }
-  static inline std::string op_name = "p2s";
-};
-
-class BenchOpMat {
- protected:
-  int64_t M{};
-  int64_t K{};
-  int64_t N{};
-  ArrayRef p0;
-  ArrayRef p1;
-  ArrayRef s0;
-  ArrayRef s1;
-  Object* obj_{nullptr};
-  benchmark::State& state;
-
- public:
-  BenchOpMat(Object* obj, benchmark::State& st) : obj_(obj), state(st) {
-    /* GIVEN */
-    M = state.range(1);
-    K = state.range(2);
-    N = state.range(1);
-    const std::vector<int64_t> shape_A{M, K};
-    const std::vector<int64_t> shape_B{K, N};
-    p0 = rand_p(obj_, calcNumel(shape_A));
-    p1 = rand_p(obj_, calcNumel(shape_B));
-    s0 = p2s(obj_, p0);
-    s1 = p2s(obj_, p1);
-  }
-  static std::vector<ParamEntry> Paras(benchmark::State& st) {
-    std::vector<ParamEntry> paras;
-    paras.emplace_back("field_type", field_name[st.range(0)]);
-    paras.emplace_back("matrix_size", fmt::format("{{{0}, {1}}}*{{{1}, {0}}}",
-                                                  st.range(1), st.range(2)));
-    return paras;
-  }
-};
-
-class BenchMMulSP : public BenchOpMat {
- public:
-  using BenchOpMat::BenchOpMat;
-  ArrayRef Exec() { return mmul_sp(obj_, s0, p1, M, N, K); };
-  static inline std::string op_name = "mmul_sp";
-};
-
-class BenchMMulSS : public BenchOpMat {
- public:
-  using BenchOpMat::BenchOpMat;
-  ArrayRef Exec() { return mmul_ss(obj_, s0, s1, M, N, K); };
-  static inline std::string op_name = "mmul_ss";
-};
+MPC_BENCH_DEFINE(BenchRandA, OpDataBasic, rand_a, state.range(1))
+MPC_BENCH_DEFINE(BenchZeroA, OpDataBasic, zero_a, state.range(1))
+MPC_BENCH_DEFINE(BenchRandB, OpDataBasic, rand_b, state.range(1))
+MPC_BENCH_DEFINE(BenchZeroB, OpDataBasic, zero_b, state.range(1))
+MPC_BENCH_DEFINE(BenchP2A, OpData1P, p2a, ps[0])
+MPC_BENCH_DEFINE(BenchA2P, OpData1A, a2p, as[0])
+MPC_BENCH_DEFINE(BenchMsbA2b, OpData1A, msb_a2b, as[0])
+MPC_BENCH_DEFINE(BenchNotA, OpData1A, not_a, as[0])
+MPC_BENCH_DEFINE(BenchAddAP, OpData1A1P, add_ap, as[0], ps[0])
+MPC_BENCH_DEFINE(BenchMulAP, OpData1A1P, mul_ap, as[0], ps[0])
+MPC_BENCH_DEFINE(BenchAddAA, OpData2A, add_aa, as[0], as[1])
+MPC_BENCH_DEFINE(BenchMulAA, OpData2A, mul_aa, as[0], as[1])
+MPC_BENCH_DEFINE(BenchMulA1B, OpData1A1B1, mul_a1b, as[0], b1s[0])
+MPC_BENCH_DEFINE(BenchLShiftA, OpData1A, lshift_a, as[0], state.range(2))
+MPC_BENCH_DEFINE(BenchTruncA, OpData1A, trunc_a, as[0], state.range(2))
+MPC_BENCH_DEFINE(BenchMMulAP, OpData1MA1MP, mmul_ap, mas[0], mps[0],
+                 state.range(1), state.range(1), state.range(1))
+MPC_BENCH_DEFINE(BenchMMulAA, OpData2MA, mmul_aa, mas[0], mas[1],
+                 state.range(1), state.range(1), state.range(1))
+MPC_BENCH_DEFINE(BenchB2P, OpData1B, b2p, bs[0])
+MPC_BENCH_DEFINE(BenchP2B, OpData1P, p2b, ps[0])
+MPC_BENCH_DEFINE(BenchA2B, OpData1A, a2b, as[0])
+MPC_BENCH_DEFINE(BenchB2A, OpData1B, b2a, bs[0])
+MPC_BENCH_DEFINE(BenchAndBP, OpData1B1P, and_bp, bs[0], ps[0])
+MPC_BENCH_DEFINE(BenchAndBB, OpData2B, and_bb, bs[0], bs[1])
+MPC_BENCH_DEFINE(BenchXorBP, OpData1B1P, xor_bp, bs[0], ps[0])
+MPC_BENCH_DEFINE(BenchXorBB, OpData2B, xor_bb, bs[0], bs[1])
+MPC_BENCH_DEFINE(BenchLShiftB, OpData1B, lshift_b, bs[0], state.range(2))
+MPC_BENCH_DEFINE(BenchRShiftB, OpData1B, rshift_b, bs[0], state.range(2))
+MPC_BENCH_DEFINE(BenchARShiftB, OpData1B, arshift_b, bs[0], state.range(2))
+MPC_BENCH_DEFINE(BenchBitRevB, OpData1B, bitrev_b, bs[0], 0,
+                 SizeOf(static_cast<FieldType>(state.range(0))))
+MPC_BENCH_DEFINE(BenchBitIntlB, OpData1B, bitintl_b, bs[0], 0)
+MPC_BENCH_DEFINE(BenchBitDentlB, OpData1B, bitdeintl_b, bs[0], 0)
+MPC_BENCH_DEFINE(BenchAddBB, OpData2B, add_bb, bs[0], bs[1])
 
 }  // namespace spu::mpc::bench

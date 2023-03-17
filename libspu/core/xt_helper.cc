@@ -14,46 +14,8 @@
 
 #include "libspu/core/xt_helper.h"
 
-#include <random>
-
 namespace spu {
-namespace {
 
-template <typename T>
-NdArrayRef make_ndarray_impl(PtBufferView bv) {
-  // make a compact ndarray
-  auto arr = NdArrayRef(makePtType(bv.pt_type), bv.shape);
-
-  // assign to it.
-  xt_mutable_adapt<T>(arr) =
-      xt::adapt(static_cast<T const*>(bv.ptr), calcNumel(bv.shape),
-                xt::no_ownership(), bv.shape, bv.strides);
-
-  return arr;
-}
-
-}  // namespace
-
-NdArrayRef xt_to_ndarray(const PtBufferView& bv) {
-#define CASE(NAME, CTYPE, _)             \
-  case NAME: {                           \
-    return make_ndarray_impl<CTYPE>(bv); \
-  }
-
-  switch (bv.pt_type) {
-    FOREACH_PT_TYPES(CASE)
-    default:
-      SPU_THROW("should not be here, pt_type={}", bv.pt_type);
-  }
-
-#undef CASE
-}
-
-std::ostream& operator<<(std::ostream& out, const PtBufferView& v) {
-  out << fmt::format("PtBufferView<{},{}x{},{}>", v.ptr,
-                     fmt::join(v.shape, "x"), v.pt_type,
-                     fmt::join(v.strides, "x"));
-  return out;
-}
+//
 
 }  // namespace spu

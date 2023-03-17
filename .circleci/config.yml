@@ -149,7 +149,7 @@ jobs:
       xcode: 14.2
     environment:
       HOMEBREW_NO_AUTO_UPDATE: 1
-    resource_class: macos.m1.large.gen1	
+    resource_class: macos.m1.large.gen1
     steps:
       - checkout
       - restore_cache:
