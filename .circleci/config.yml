@@ -142,6 +142,7 @@ jobs:
       - run:
           name: Compress cache
           command: |
+            mkdir -p ~/.cache
             cd ~/.cache
             tar -zcf spu_build_cache.tar.gz spu_build_cache
       - save_cache:
