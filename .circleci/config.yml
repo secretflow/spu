@@ -138,8 +138,10 @@ jobs:
           paths:
             - /usr/local/lib64/python3.8/site-packages
       - run:
-          name: Compress cache
-          command: sh .ci/compress-build-cache.sh
+          name: Cleanup and compress cache
+          command: |
+            sh .ci/clean_disk_cache.sh
+            sh .ci/compress-build-cache.sh
       - save_cache:
           key: spu-build-comp-{{ arch }}-{{ .Environment.CIRCLE_BUILD_NUM }}
           paths:
