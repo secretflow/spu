@@ -243,7 +243,12 @@ class UnitTests(unittest.TestCase):
         global wrap
 
         def wrap(
-            rank, offline_path, online_path, out_path, preprocess_path, ub_secret_key_path
+            rank,
+            offline_path,
+            online_path,
+            out_path,
+            preprocess_path,
+            ub_secret_key_path,
         ):
             link_ctx = link.create_brpc(lctx_desc, rank)
 

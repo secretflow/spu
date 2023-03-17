@@ -30,7 +30,7 @@ TEST(TypeCastTest, int2fxp) {
   HalContext ctx = test::makeRefHalContext();
 
   {
-    Value a = constant(&ctx, x);
+    Value a = constant(&ctx, x, DT_I32);
     Value c = dtype_cast(&ctx, a, DT_FXP);
     EXPECT_EQ(c.dtype(), DT_FXP);
 
@@ -38,11 +38,10 @@ TEST(TypeCastTest, int2fxp) {
     EXPECT_TRUE(xt::allclose(expected, y, 0.1, 0.5)) << x << std::endl
                                                      << expected << std::endl
                                                      << y;
-    ;
   }
 
   {
-    Value a = const_secret(&ctx, x);
+    Value a = test::makeValue(&ctx, x, VIS_SECRET);
     Value c = dtype_cast(&ctx, a, DT_FXP);
     EXPECT_EQ(c.dtype(), DT_FXP);
 
@@ -62,7 +61,7 @@ TEST(TypeCastTest, fxp2int) {
   HalContext ctx = test::makeRefHalContext();
 
   {
-    Value a = constant(&ctx, x);
+    Value a = constant(&ctx, x, DT_FXP);
     Value c = dtype_cast(&ctx, a, DT_I32);
     EXPECT_EQ(c.dtype(), DT_I32);
 
@@ -73,7 +72,7 @@ TEST(TypeCastTest, fxp2int) {
   }
 
   {
-    Value a = const_secret(&ctx, x);
+    Value a = test::makeValue(&ctx, x, VIS_SECRET);
     Value c = dtype_cast(&ctx, a, DT_I32);
     EXPECT_EQ(c.dtype(), DT_I32);
 

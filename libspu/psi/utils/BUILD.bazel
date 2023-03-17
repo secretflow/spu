@@ -157,8 +157,6 @@ spu_cc_library(
     ],
 )
 
-
-    
 spu_cc_library(
     name = "emp_io_adapter",
     srcs = ["emp_io_adapter.cc"],

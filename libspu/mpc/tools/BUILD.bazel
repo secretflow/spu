@@ -53,6 +53,7 @@ spu_cc_binary(
         "//libspu/mpc:api",
         "//libspu/mpc:object",
         "//libspu/mpc/aby3",
+        "//libspu/mpc/cheetah",
         "//libspu/mpc/common:communicator",
         "//libspu/mpc/semi2k",
         "//libspu/mpc/utils:simulate",

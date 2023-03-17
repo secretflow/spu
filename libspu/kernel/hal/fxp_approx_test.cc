@@ -31,7 +31,7 @@ TEST(FxpTest, ExponentialPublic) {
       6.7,    8.0,    10.5,  12.5,  14.3,  16.7,  18.0, 20.0,
   };
 
-  Value a = constant(&ctx, x);
+  Value a = constant(&ctx, x, DT_FXP);
   Value c = f_exp(&ctx, a);
   EXPECT_EQ(c.dtype(), DT_FXP);
 
@@ -52,7 +52,7 @@ TEST(FxpTest, ExponentialTaylorSeries) {
       // 2.2 fail
   };
 
-  Value a = const_secret(&ctx, x);
+  Value a = test::makeValue(&ctx, x, VIS_SECRET);
   Value c = detail::exp_taylor_series(&ctx, a);
   EXPECT_EQ(c.dtype(), DT_FXP);
 
@@ -67,7 +67,7 @@ TEST(FxpTest, ExponentialPade) {
 
   xt::xarray<float> x = xt::linspace<float>(-22., 22., 4000);
 
-  Value a = const_secret(&ctx, x);
+  Value a = test::makeValue(&ctx, x, VIS_SECRET);
   Value c = detail::exp_pade_approx(&ctx, a);
   EXPECT_EQ(c.dtype(), DT_FXP);
 
@@ -84,7 +84,7 @@ TEST(FxpTest, Log) {
   xt::xarray<float> x = {{0.05, 0.5}, {5, 50}};
   // public log
   {
-    Value a = constant(&ctx, x);
+    Value a = constant(&ctx, x, DT_FXP);
     Value c = f_log(&ctx, a);
     EXPECT_EQ(c.dtype(), DT_FXP);
 
@@ -96,7 +96,7 @@ TEST(FxpTest, Log) {
 
   // secret log
   {
-    Value a = const_secret(&ctx, x);
+    Value a = test::makeValue(&ctx, x, VIS_SECRET);
     Value c = f_log(&ctx, a);
     EXPECT_EQ(c.dtype(), DT_FXP);
 
@@ -115,7 +115,7 @@ TEST(FxpTest, Log2) {
   xt::xarray<float> x = {{0.05, 0.5}, {5, 50}};
   // public log
   {
-    Value a = constant(&ctx, x);
+    Value a = constant(&ctx, x, DT_FXP);
     Value c = f_log2(&ctx, a);
     EXPECT_EQ(c.dtype(), DT_FXP);
 
@@ -127,7 +127,7 @@ TEST(FxpTest, Log2) {
 
   // secret log
   {
-    Value a = const_secret(&ctx, x);
+    Value a = test::makeValue(&ctx, x, VIS_SECRET);
     Value c = f_log2(&ctx, a);
     EXPECT_EQ(c.dtype(), DT_FXP);
 
@@ -147,7 +147,7 @@ TEST(FxpTest, Log1p) {
 
   // public log1p
   {
-    Value a = constant(&ctx, x);
+    Value a = constant(&ctx, x, DT_FXP);
     Value c = f_log1p(&ctx, a);
     EXPECT_EQ(c.dtype(), DT_FXP);
 
@@ -158,7 +158,7 @@ TEST(FxpTest, Log1p) {
 
   // secret log1p
   {
-    Value a = const_secret(&ctx, x);
+    Value a = test::makeValue(&ctx, x, VIS_SECRET);
     Value c = f_log1p(&ctx, a);
     EXPECT_EQ(c.dtype(), DT_FXP);
 
@@ -182,7 +182,7 @@ TEST(FxpTest, Exp2) {
 
   // secret exp
   {
-    Value a = const_secret(&ctx, x);
+    Value a = test::makeValue(&ctx, x, VIS_SECRET);
     Value c = f_exp2(&ctx, a);
     EXPECT_EQ(c.dtype(), DT_FXP);
 
@@ -202,7 +202,7 @@ TEST(FxpTest, Tanh) {
 
   // secret exp
   {
-    Value a = const_secret(&ctx, x);
+    Value a = test::makeValue(&ctx, x, VIS_SECRET);
     Value c = f_tanh(&ctx, a);
     EXPECT_EQ(c.dtype(), DT_FXP);
 
@@ -222,7 +222,7 @@ TEST(FxpTest, Rsqrt) {
   {
     HalContext ctx = test::makeRefHalContext();
 
-    Value a = const_secret(&ctx, x);
+    Value a = test::makeValue(&ctx, x, VIS_SECRET);
     Value c = f_rsqrt(&ctx, a);
     EXPECT_EQ(c.dtype(), DT_FXP);
 
@@ -240,7 +240,7 @@ TEST(FxpTest, Rsqrt) {
     config.set_fxp_fraction_bits(17);
     HalContext ctx = test::makeRefHalContext(config);
 
-    Value a = const_secret(&ctx, x);
+    Value a = test::makeValue(&ctx, x, VIS_SECRET);
     Value c = f_rsqrt(&ctx, a);
     EXPECT_EQ(c.dtype(), DT_FXP);
 
@@ -259,7 +259,7 @@ TEST(FxpTest, Rsqrt) {
 
     xt::random::seed(0);
     xt::xarray<float> x = xt::random::rand<float>({200, 1}, 256, 4096);
-    Value a = const_secret(&ctx, x);
+    Value a = test::makeValue(&ctx, x, VIS_SECRET);
     Value c = f_rsqrt(&ctx, a);
     EXPECT_EQ(c.dtype(), DT_FXP);
 
@@ -280,7 +280,7 @@ TEST(FxpTest, Sqrt) {
   {
     HalContext ctx = test::makeRefHalContext();
 
-    Value a = const_secret(&ctx, x);
+    Value a = test::makeValue(&ctx, x, VIS_SECRET);
     Value c = f_sqrt(&ctx, a);
     EXPECT_EQ(c.dtype(), DT_FXP);
 
@@ -298,7 +298,7 @@ TEST(FxpTest, Sqrt) {
     config.set_fxp_fraction_bits(17);
     HalContext ctx = test::makeRefHalContext(config);
 
-    Value a = const_secret(&ctx, x);
+    Value a = test::makeValue(&ctx, x, VIS_SECRET);
     Value c = f_sqrt(&ctx, a);
     EXPECT_EQ(c.dtype(), DT_FXP);
 

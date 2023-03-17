@@ -19,10 +19,6 @@
 
 namespace spu::kernel::hal {
 
-/// return the identity representation of in value.
-// Useful to normalize stateful value (like lazy value).
-Value identity(HalContext* ctx, const Value& x);
-
 /// the element-wise absolute value function
 // @param in, the value to negate
 Value abs(HalContext* ctx, const Value& x);
@@ -167,10 +163,10 @@ Value select(HalContext* ctx, const Value& pred, const Value& a,
 Value sub(HalContext* ctx, const Value& x, const Value& y);
 
 /// general element-wise clamp operator
-// @param min, the first parameter
-// @param x, the second parameter
+// @param x, the first parameter
+// @param min, the second parameter
 // @param max, the third parameter
-Value clamp(HalContext* ctx, const Value& min, const Value& x,
+Value clamp(HalContext* ctx, const Value& x, const Value& min,
             const Value& max);
 
 /// element-wise bitcast (reinterpret_cast)

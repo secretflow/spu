@@ -202,6 +202,9 @@ class NdArrayRef {
   };
 
   Iterator begin() {
+    if (isEmpty(shape_)) {
+      return Iterator(*this, std::vector<int64_t>(shape().size(), 0), true);
+    }
     return Iterator(*this, std::vector<int64_t>(shape().size(), 0));
   }
 
@@ -210,6 +213,9 @@ class NdArrayRef {
   }
 
   Iterator cbegin() const {
+    if (isEmpty(shape_)) {
+      return Iterator(*this, std::vector<int64_t>(shape().size(), 0), true);
+    }
     return Iterator(*this, std::vector<int64_t>(shape().size(), 0));
   }
 
@@ -268,12 +274,12 @@ class NdArrayRef {
 
   /// Scatter new values into indices
   /// Update happens in-place
-  /// must be 1D array and indicies
+  /// must be 1D array and indices
   NdArrayRef& linear_scatter(const NdArrayRef& new_values,
                              absl::Span<const int64_t> indices);
 
   void update_slice(const NdArrayRef& new_value,
-                    absl::Span<const int64_t> start_indicies);
+                    absl::Span<const int64_t> start_indices);
 
  private:
   void eliminate_zero_stride();

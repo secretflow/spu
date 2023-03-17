@@ -49,7 +49,7 @@ Value fxp2int(HalContext* ctx, const Value& x, DataType to_type) {
   SPU_ENFORCE(x.dtype() == DataType::DT_FXP);
 
   const size_t fxp_bits = ctx->getFxpBits();
-  const Value kOneMinusEps = constant(ctx, (1 << fxp_bits) - 1, x.shape());
+  const Value kOneMinusEps = _constant(ctx, (1 << fxp_bits) - 1, x.shape());
 
   // (x + 0.99 * (x < 0)) >> fxp_bits
   return _arshift(ctx, _add(ctx, x, _mul(ctx, kOneMinusEps, _msb(ctx, x))),
@@ -59,8 +59,8 @@ Value fxp2int(HalContext* ctx, const Value& x, DataType to_type) {
 
 }  // namespace
 
-// TODO: move p2s/reveal into a new header file.
-Value p2s(HalContext* ctx, const Value& x) {
+// TODO: move seal/reveal into a new header file.
+Value seal(HalContext* ctx, const Value& x) {
   SPU_TRACE_HAL_LEAF(ctx, x);
   return _p2s(ctx, x).setDtype(x.dtype());
 }

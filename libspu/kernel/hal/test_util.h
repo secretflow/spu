@@ -12,10 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "libspu/core/xt_helper.h"
-//
 #include "xtensor/xrandom.hpp"
 
+#include "libspu/core/xt_helper.h"
 #include "libspu/kernel/hal/constants.h"
 #include "libspu/kernel/hal/prot_wrapper.h"
 #include "libspu/kernel/hal/public_helper.h"
@@ -25,6 +24,10 @@ namespace spu::kernel::hal::test {
 HalContext makeRefHalContext(RuntimeConfig config);
 
 HalContext makeRefHalContext();
+
+Value makeValue(HalContext* ctx, PtBufferView init,
+                Visibility vtype = VIS_PUBLIC, DataType dtype = DT_INVALID,
+                ShapeView shape = {});
 
 template <typename T>
 auto xt_random(const std::vector<size_t>& shape, double min = -100,
@@ -50,9 +53,9 @@ xt::xarray<T> evalTernaryOp(Visibility in1_vtype, Visibility in2_vtype,
                             PtBufferView in3) {
   HalContext ctx = makeRefHalContext();
 
-  Value a = make_value(&ctx, in1_vtype, in1);
-  Value b = make_value(&ctx, in2_vtype, in2);
-  Value c = make_value(&ctx, in3_vtype, in3);
+  Value a = makeValue(&ctx, in1, in1_vtype);
+  Value b = makeValue(&ctx, in2, in2_vtype);
+  Value c = makeValue(&ctx, in3, in3_vtype);
 
   Value d = op(&ctx, a, b, c);
 
@@ -69,8 +72,8 @@ xt::xarray<T> evalBinaryOp(Visibility lhs_vtype, Visibility rhs_vtype,
                            BinaryOp* op, PtBufferView lhs, PtBufferView rhs) {
   HalContext ctx = makeRefHalContext();
 
-  Value a = make_value(&ctx, lhs_vtype, lhs);
-  Value b = make_value(&ctx, rhs_vtype, rhs);
+  Value a = makeValue(&ctx, lhs, lhs_vtype);
+  Value b = makeValue(&ctx, rhs, rhs_vtype);
 
   Value c = op(&ctx, a, b);
 
@@ -86,7 +89,7 @@ template <typename T>
 xt::xarray<T> evalUnaryOp(Visibility in_vtype, UnaryOp* op, PtBufferView in) {
   HalContext ctx = makeRefHalContext();
 
-  Value a = make_value(&ctx, in_vtype, in);
+  Value a = makeValue(&ctx, in, in_vtype);
 
   Value b = op(&ctx, a);
 

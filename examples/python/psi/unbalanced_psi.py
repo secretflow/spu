@@ -82,7 +82,9 @@ def main(_):
         start = time.time()
         gen_cache_report = psi.bucket_psi(None, gen_cache_config)
         print(f"gen cache cost time: {time.time() - start}")
-        print(f"gen cache: rank: {FLAGS.rank} original_count: {gen_cache_report.original_count}")
+        print(
+            f"gen cache: rank: {FLAGS.rank} original_count: {gen_cache_report.original_count}"
+        )
 
     # ===== transfer cache phase =====
     print("===== Transfer Cache Phase =====")
@@ -112,7 +114,9 @@ def main(_):
     start = time.time()
     transfer_cache_report = psi.bucket_psi(link_ctx, transfer_cache_config)
     print(f"transfer cache cost time: {time.time() - start}")
-    print(f"transfer cache: rank: {FLAGS.rank} original_count: {transfer_cache_report.original_count}")
+    print(
+        f"transfer cache: rank: {FLAGS.rank} original_count: {transfer_cache_report.original_count}"
+    )
     print(f"intersection_count: {transfer_cache_report.intersection_count}")
 
     # ===== shuffle online phase =====
@@ -147,7 +151,9 @@ def main(_):
     start = time.time()
     report_shuffle_online = psi.bucket_psi(link_ctx, config_shuffle_online)
     print(f"shuffle online cost time: {time.time() - start}")
-    print(f"shuffle online: rank:{FLAGS.rank} original_count: {report_shuffle_online.original_count}")
+    print(
+        f"shuffle online: rank:{FLAGS.rank} original_count: {report_shuffle_online.original_count}"
+    )
     print(f"intersection_count: {report_shuffle_online.intersection_count}")
 
     # ===== offline phase =====
@@ -177,7 +183,9 @@ def main(_):
     start = time.time()
     offline_report = psi.bucket_psi(link_ctx, config_offline)
     print(f"offline cost time: {time.time() - start}")
-    print(f"offline: rank: {FLAGS.rank} original_count: {offline_report.original_count}")
+    print(
+        f"offline: rank: {FLAGS.rank} original_count: {offline_report.original_count}"
+    )
     print(f"intersection_count: {offline_report.intersection_count}")
 
     # ===== online phase =====

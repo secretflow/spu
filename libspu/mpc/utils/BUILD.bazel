@@ -42,6 +42,15 @@ spu_cc_library(
     ],
 )
 
+spu_cc_test(
+    name = "simulate_test",
+    srcs = ["simulate_test.cc"],
+    deps = [
+        ":simulate",
+        "//libspu/core:prelude",
+    ],
+)
+
 spu_cc_library(
     name = "cexpr",
     srcs = ["cexpr.cc"],

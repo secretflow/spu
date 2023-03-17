@@ -28,7 +28,7 @@ bool getBooleanValue(HalContext *ctx, const spu::Value &value);
 
 int32_t getI32Value(HalContext *ctx, const spu::Value &value);
 
-xt::xarray<int64_t> getIndicies(HalContext *ctx, const spu::Value &value);
+xt::xarray<int64_t> getIndices(HalContext *ctx, const spu::Value &value);
 
 template <typename FnTy>
 void forEachIndex(absl::Span<const int64_t> shape,

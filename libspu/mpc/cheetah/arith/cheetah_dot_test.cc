@@ -17,7 +17,6 @@
 #include "gtest/gtest.h"
 
 #include "libspu/core/type_util.h"
-#include "libspu/core/xt_helper.h"
 #include "libspu/mpc/utils/ring_ops.h"
 #include "libspu/mpc/utils/simulate.h"
 

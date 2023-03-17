@@ -302,7 +302,7 @@ spu::Value reshapedGatherIndices(spu::HalContext *ctx, int64_t index_vector_dim,
 namespace spu::kernel::hlo {
 
 spu::Value Gather(HalContext *ctx, const spu::Value &operand,
-                  const spu::Value &start_indicies, const GatherConfig &config,
+                  const spu::Value &start_indices, const GatherConfig &config,
                   absl::Span<const int64_t> result_shape) {
   // If input is empty, short circuit
   if (operand.numel() == 0) {
@@ -310,15 +310,15 @@ spu::Value Gather(HalContext *ctx, const spu::Value &operand,
   }
 
   auto start_indices_value =
-      reshapedGatherIndices(ctx, config.indexVectorDim, start_indicies);
+      reshapedGatherIndices(ctx, config.indexVectorDim, start_indices);
 
   if (start_indices_value.isSecret() &&
-      ctx->rt_config().reveal_secret_indicies()) {
+      ctx->rt_config().reveal_secret_indices()) {
     start_indices_value = hal::reveal(ctx, start_indices_value);
-    SPDLOG_WARN("Reveal start indicies value of GatherOp");
+    SPDLOG_WARN("Reveal start indices value of GatherOp");
   }
 
-  auto start_induces = getIndicies(ctx, start_indices_value);
+  auto start_induces = getIndices(ctx, start_indices_value);
 
   // We iterate over the gather dimensions in the output shape in an outer
   // loop nest, and iterate over the window dimensions in the output shape in
@@ -417,16 +417,16 @@ spu::Value FilterByMask(HalContext *ctx, const spu::Value &operand,
     }
   }
 
-  std::vector<int64_t> indicies(num_true);
-  int64_t indicies_counter = 0;
+  std::vector<int64_t> indices(num_true);
+  int64_t indices_counter = 0;
   for (int64_t mask_idx = 0; mask_idx != static_cast<int64_t>(mask.size());
        ++mask_idx) {
     if (mask[mask_idx] != 0) {
-      indicies[indicies_counter++] = mask_idx;
+      indices[indices_counter++] = mask_idx;
     }
   }
 
-  return Value(operand.data().linear_gather(indicies), operand.dtype());
+  return Value(operand.data().linear_gather(indices), operand.dtype());
 }
 
 }  // namespace spu::kernel::hlo

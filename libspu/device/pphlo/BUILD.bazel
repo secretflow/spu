@@ -21,7 +21,7 @@ spu_cc_library(
     srcs = ["pphlo_executor.cc"],
     hdrs = ["pphlo_executor.h"],
     deps = [
-        ":xla_verifier",
+        ":pphlo_verifier",
         "//libspu/device:executor",
         "//libspu/dialect:pphlo_dialect",
         "//libspu/kernel/hlo",
@@ -41,27 +41,23 @@ spu_cc_test(
 )
 
 spu_cc_library(
-    name = "xla_verifier",
-    srcs = ["xla_verifier.cc"],
-    hdrs = ["xla_verifier.h"],
-    copts = [
-        # TF headers have lots of warnings, disable warning-as-error for this compilation unit
-        "-Wno-error",
-    ],
+    name = "pphlo_verifier",
+    srcs = ["pphlo_verifier.cc"],
+    hdrs = ["pphlo_verifier.h"],
     deps = [
         "//libspu/dialect:pphlo_dialect",
         "//libspu/kernel:context",
         "//libspu/kernel:value",
         "//libspu/kernel/hlo",
-        "@xla//xla/hlo/evaluator:hlo_evaluator",
+        "@stablehlo//:reference_ops",
     ],
 )
 
 spu_cc_test(
-    name = "xla_verifier_test",
-    srcs = ["xla_verifier_test.cc"],
+    name = "pphlo_verifier_test",
+    srcs = ["pphlo_verifier_test.cc"],
     deps = [
-        ":xla_verifier",
+        ":pphlo_verifier",
         "//libspu/device:test_utils",
         "//libspu/mpc/utils:simulate",
         "@llvm-project//mlir:Parser",

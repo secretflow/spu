@@ -16,73 +16,86 @@
 
 #include <algorithm>
 #include <cstddef>
-#include <optional>
 
+#include "libspu/kernel/hal/constants.h"
 #include "libspu/kernel/hal/polymorphic.h"
 #include "libspu/kernel/hal/public_helper.h"
-#include "libspu/kernel/hal/ring.h"
 #include "libspu/kernel/hal/shape_ops.h"
-#include "libspu/kernel/hal/type_cast.h"
 
 namespace spu::kernel::hlo {
 
-size_t extractShiftBits(HalContext *ctx, const spu::Value &v) {
-  SPU_ENFORCE(v.isInt());
-  const auto arr = hal::dump_public(ctx, v);
-  return DISPATCH_ALL_PT_TYPES(arr.eltype().as<PtTy>()->pt_type(), "", [&] {
-    return static_cast<size_t>(arr.at<ScalarT>({}));
-  });
+template <typename Fn>
+spu::Value shift_impl_p(HalContext *ctx, const spu::Value &lhs,
+                        const spu::Value &rhs, const Fn &f) {
+  auto shift_bits = hal::dump_public_as<int8_t>(ctx, rhs);
+  if (std::all_of(rhs.strides().begin(), rhs.strides().end(),
+                  [](int64_t s) { return s == 0; })) {
+    // rhs is a splat
+    return f(ctx, lhs, shift_bits[0]);
+  }
+
+  // Not a splat...
+  spu::Value ret =
+      hal::constant(ctx, static_cast<uint8_t>(0), lhs.dtype(), lhs.shape());
+  auto dtype_size = getWidth(lhs.dtype());
+  for (size_t bits = 0; bits < dtype_size; ++bits) {
+    if (std::none_of(shift_bits.begin(), shift_bits.end(), [&bits](int8_t b) {
+          return b == static_cast<int8_t>(bits);
+        })) {
+      continue;
+    }
+    auto current_bits = hal::constant(ctx, static_cast<uint8_t>(bits),
+                                      rhs.dtype(), rhs.shape());
+    auto mask = hal::equal(ctx, rhs, current_bits);
+    auto shifted = f(ctx, lhs, bits);
+    ret = hal::add(ctx, ret, hal::mul(ctx, mask, shifted));
+  }
+
+  return ret;
 }
 
 template <typename Fn>
-spu::Value shift_imp(HalContext *ctx, const spu::Value &lhs,
-                     const spu::Value &rhs, const Fn &f) {
-  SPU_ENFORCE(rhs.isPublic(), "shift bit value needs to be a public");
-  SPU_ENFORCE(rhs.shape() == lhs.shape());
-  std::vector<int64_t> indicies(lhs.shape().size(), 0);
-  // Depend on protocol, shift result might be different, AShr vs BShr.
-  // So delay the preallocation
-  // FIXME: maybe we can do something better?
-  std::vector<spu::Value> elements(lhs.numel());
-  size_t idx = 0;
-  do {
-    auto bits = extractShiftBits(ctx, hal::slice_scalar_at(ctx, rhs, indicies));
-    const auto lhs_el = hal::slice_scalar_at(ctx, lhs, indicies);
-    elements[idx++] = f(ctx, lhs_el, bits);
-  } while (bumpIndices<int64_t>(lhs.shape(), absl::MakeSpan(indicies)));
-
-  // Compute common type
-  auto common_type = elements.front().storage_type();
-  for (size_t idx = 1; idx < elements.size(); ++idx) {
-    common_type =
-        hal::_common_type(ctx, common_type, elements[idx].storage_type());
+spu::Value shift_impl_s(HalContext *ctx, const spu::Value &lhs,
+                        const spu::Value &rhs, const Fn &f) {
+  spu::Value ret =
+      hal::constant(ctx, static_cast<uint8_t>(0), lhs.dtype(), lhs.shape());
+  auto dtype_size = getWidth(lhs.dtype());
+  for (size_t bits = 0; bits < dtype_size; ++bits) {
+    auto current_bits = hal::constant(ctx, static_cast<uint8_t>(bits),
+                                      rhs.dtype(), rhs.shape());
+    auto mask = hal::equal(ctx, rhs, current_bits);
+    auto shifted = f(ctx, lhs, bits);
+    ret = hal::add(ctx, ret, hal::mul(ctx, mask, shifted));
   }
 
-  spu::Value result({common_type, lhs.shape()}, lhs.dtype());
-  // reset indicies
-  std::fill(indicies.begin(), indicies.end(), 0);
-  idx = 0;
-  do {
-    auto ret_el = hal::stype_cast(ctx, elements[idx++], common_type);
-    result.data().update_slice(ret_el.data(), indicies);
-  } while (bumpIndices<int64_t>(lhs.shape(), absl::MakeSpan(indicies)));
+  return ret;
+}
 
-  return result;
+template <typename Fn>
+spu::Value shift_impl(HalContext *ctx, const spu::Value &lhs,
+                      const spu::Value &rhs, const Fn &f) {
+  SPU_ENFORCE(rhs.shape() == lhs.shape());
+
+  if (rhs.isPublic()) {
+    return shift_impl_p(ctx, lhs, rhs, f);
+  }
+
+  return shift_impl_s(ctx, lhs, rhs, f);
 }
 
 spu::Value Lshift(HalContext *ctx, const spu::Value &operand,
                   const spu::Value &bits_to_shift) {
-  return shift_imp(ctx, operand, bits_to_shift, hal::left_shift);
+  return shift_impl(ctx, operand, bits_to_shift, hal::left_shift);
 }
 
 spu::Value ARshift(HalContext *ctx, const spu::Value &operand,
                    const spu::Value &bits_to_shift) {
-  return shift_imp(ctx, operand, bits_to_shift, hal::right_shift_arithmetic);
+  return shift_impl(ctx, operand, bits_to_shift, hal::right_shift_arithmetic);
 }
 
 spu::Value Rshift(HalContext *ctx, const spu::Value &operand,
                   const spu::Value &bits_to_shift) {
-  return shift_imp(ctx, operand, bits_to_shift, hal::right_shift_logical);
+  return shift_impl(ctx, operand, bits_to_shift, hal::right_shift_logical);
 }
 
 }  // namespace spu::kernel::hlo

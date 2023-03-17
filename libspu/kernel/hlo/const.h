@@ -16,7 +16,7 @@
 
 #include <algorithm>
 
-#include "libspu/core/xt_helper.h"
+#include "libspu/core/pt_buffer_view.h"
 #include "libspu/kernel/hlo/casting.h"
 #include "libspu/kernel/hlo/utils.h"
 
@@ -25,18 +25,11 @@ namespace spu::kernel::hlo {
 spu::Value Constant(HalContext *ctx, const PtBufferView &view,
                     absl::Span<const int64_t> out_shape);
 
-template <typename T>
-spu::Value Iota(HalContext *ctx, int64_t numel, Visibility vis) {
-  std::vector<T> tmp(numel);
-  std::iota(tmp.begin(), tmp.end(), 0);
-  auto c = Constant(ctx, tmp, {numel});
-  if (vis == VIS_PUBLIC) {
-    return c;
-  } else {
-    return Seal(ctx, c);
-  }
-}
+spu::Value Iota(HalContext *ctx, DataType dtype, int64_t numel);
 
+// Returns the SPU epsilon, the positive distance between two fixed point value.
+//
+// The result visibility is public.
 spu::Value Epsilon(HalContext *ctx);
 
 }  // namespace spu::kernel::hlo

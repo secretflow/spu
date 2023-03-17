@@ -69,4 +69,25 @@ Value reverse(HalContext* ctx, const Value& in,
 Value expand(HalContext* ctx, const Value& in,
              absl::Span<const int64_t> to_shape);
 
+//// the pad function
+// @param in, the param
+// @param padding_value, to fill in the added padding
+// @param edge_padding_low, the amount of padding added at the
+//        low-end (next to index 0) of each dimension
+// @param edge_padding_high, the amount of padding added at the high-end
+//        (next to the highest index) of each dimension
+// @param interior_padding, the amount of padding added between any two elements
+//        in each dimension
+Value pad(HalContext* ctx, const Value& in, const Value& padding_value,
+          absl::Span<const int64_t> edge_padding_low,
+          absl::Span<const int64_t> edge_padding_high,
+          absl::Span<const int64_t> interior_padding);
+
+/// the concatenate function
+// @param first, the first param
+// @param second, the second param
+// @param axis, the axis
+Value concatenate(HalContext* ctx, absl::Span<const Value> values,
+                  const size_t& axis);
+
 }  // namespace spu::kernel::hal

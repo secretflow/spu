@@ -81,7 +81,7 @@ Value _bitrev(HalContext* ctx, const Value&, size_t start_idx, size_t end_idx);
 // Expect pred is either {0, 1}.
 Value _mux(HalContext* ctx, const Value& pred, const Value& a, const Value& b);
 
-// Make a constant(public) from uint128_t init value.
+// Make a public value from uint128_t init value.
 //
 // If the current working field has less than 128bit, the lower sizeof(field)
 // bits are used.

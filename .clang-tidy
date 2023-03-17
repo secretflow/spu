@@ -73,3 +73,7 @@ CheckOptions:
 
   - key: readability-identifier-naming.FunctionCase
     value: "CamelBack"
+
+  - key:   performance-unnecessary-value-param.AllowedTypes
+    value: PtBufferView
+

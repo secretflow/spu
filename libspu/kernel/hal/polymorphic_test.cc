@@ -654,7 +654,7 @@ TEST_P(LogisticTest, Logistic) {
 
   // public logistic
   {
-    Value a = constant(&ctx, x);
+    Value a = constant(&ctx, x, DT_FXP);
     Value c = logistic(&ctx, a);
     EXPECT_EQ(c.dtype(), DT_FXP);
 
@@ -666,7 +666,7 @@ TEST_P(LogisticTest, Logistic) {
 
   // secret logistic
   {
-    Value a = const_secret(&ctx, x);
+    Value a = test::makeValue(&ctx, x, VIS_SECRET);
     Value c = logistic(&ctx, a);
     EXPECT_EQ(c.dtype(), DT_FXP);
 

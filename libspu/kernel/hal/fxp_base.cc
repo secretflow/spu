@@ -115,12 +115,12 @@ Value div_goldschmidt(HalContext* ctx, const Value& a, const Value& b) {
 
   // initial guess:
   //   w = 1/c ≈ 2.9142 - 2c when c >= 0.5 and c < 1
-  const auto k2 = constant(ctx, 2, c.shape());
-  const auto k2_9142 = constant(ctx, 2.9142F, c.shape());
+  const auto k2 = _constant(ctx, 2, c.shape());
+  const auto k2_9142 = constant(ctx, 2.9142F, DT_FXP, c.shape());
   auto w = f_sub(ctx, k2_9142, _mul(ctx, k2, c).asFxp());
 
   // init r=w, e=1-c*w
-  const auto& k1_ = constant(ctx, 1.0F, c.shape());
+  const auto& k1_ = constant(ctx, 1.0F, DT_FXP, c.shape());
   auto r = w;
   auto e = f_sub(ctx, k1_, f_mul_with_sign(ctx, c, w, SignType::POSITIVE));
 
@@ -155,12 +155,12 @@ Value reciprocal_goldschmidt_positive(HalContext* ctx, const Value& b_abs) {
 
   // initial guess:
   //   w = 1/b = 2.9142 - 2c when c >= 0.5 and c < 1
-  const auto k2 = constant(ctx, 2, c.shape());
-  const auto k2_9142 = constant(ctx, 2.9142F, c.shape());
+  const auto k2 = _constant(ctx, 2, c.shape());
+  const auto k2_9142 = constant(ctx, 2.9142F, DT_FXP, c.shape());
   auto w = f_mul(ctx, f_sub(ctx, k2_9142, _mul(ctx, k2, c).asFxp()), factor);
 
   // init r=a*w, e=1-b*w
-  const auto& k1_ = constant(ctx, 1.0F, c.shape());
+  const auto& k1_ = constant(ctx, 1.0F, DT_FXP, c.shape());
   auto r = w;
   auto e = f_sub(ctx, k1_, f_mul_with_sign(ctx, b_abs, w, SignType::POSITIVE));
 
@@ -347,7 +347,7 @@ Value f_ceil(HalContext* ctx, const Value& x) {
   SPU_ENFORCE(x.isFxp());
 
   // ceil(x) = floor(x + 1.0 - epsilon)
-  const auto& k1 = constant(ctx, 1.0F, x.shape());
+  const auto k1 = constant(ctx, 1.0F, DT_FXP, x.shape());
   return f_floor(ctx, f_add(ctx, x, f_sub(ctx, k1, epsilon(ctx, x.shape()))));
 }
 

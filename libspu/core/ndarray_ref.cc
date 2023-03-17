@@ -461,6 +461,9 @@ NdArrayRef NdArrayRef::linear_gather(absl::Span<const int64_t> indices) const {
 NdArrayRef& NdArrayRef::linear_scatter(const NdArrayRef& new_values,
                                        absl::Span<const int64_t> indices) {
   SPU_ENFORCE(shape().size() == 1);
+  SPU_ENFORCE(new_values.eltype() == eltype(),
+              "new value eltype = {}, expected = {}", new_values.eltype(),
+              eltype());
 
   auto new_values_iter = new_values.cbegin();
 
@@ -491,7 +494,7 @@ void NdArrayRef::eliminate_zero_stride() {
 }
 
 void NdArrayRef::update_slice(const NdArrayRef& new_value,
-                              absl::Span<const int64_t> start_indicies) {
+                              absl::Span<const int64_t> start_indices) {
   if (new_value.numel() == 0) {
     return;
   }
@@ -502,19 +505,18 @@ void NdArrayRef::update_slice(const NdArrayRef& new_value,
 
   // Fast path for scalar copy...
   if (new_value.numel() == 1) {
-    NdArrayRef::Iterator in(*this, start_indicies);
+    NdArrayRef::Iterator in(*this, start_indices);
     std::memcpy(in.getRawPtr(), new_value.data(), elsize);
     return;
   }
   // Slice copy
-  std::vector<int64_t> end_indices(start_indicies.begin(),
-                                   start_indicies.end());
+  std::vector<int64_t> end_indices(start_indices.begin(), start_indices.end());
   for (size_t idx = 0; idx < end_indices.size(); ++idx) {
     end_indices[idx] += new_value.shape()[idx];
   }
 
-  auto slice = this->slice(start_indicies, end_indices,
-                           std::vector<int64_t>(start_indicies.size(), 1));
+  auto slice = this->slice(start_indices, end_indices,
+                           std::vector<int64_t>(start_indices.size(), 1));
 
   // Just a sanity check....
   SPU_ENFORCE(slice.buf_->data() == this->buf_->data());

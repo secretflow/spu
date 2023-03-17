@@ -80,8 +80,8 @@ TEST_P(FxpMmulTest, Works) {
   auto t_z = xarrayMMul(x, y);
 
   {  // public
-    Value a = constant(&ctx, x);
-    Value b = constant(&ctx, y);
+    Value a = constant(&ctx, x, DT_FXP);
+    Value b = constant(&ctx, y, DT_FXP);
     Value c = f_mmul(&ctx, a, b);
     EXPECT_EQ(c.dtype(), DT_FXP);
 
@@ -90,8 +90,8 @@ TEST_P(FxpMmulTest, Works) {
   }
 
   {  // secret
-    Value a = const_secret(&ctx, x);
-    Value b = const_secret(&ctx, y);
+    Value a = test::makeValue(&ctx, x, VIS_SECRET);
+    Value b = test::makeValue(&ctx, y, VIS_SECRET);
     Value c = f_mmul(&ctx, a, b);
     EXPECT_EQ(c.dtype(), DT_FXP);
 
@@ -113,7 +113,7 @@ TEST(FxpTest, Reciprocal) {
 
   // public reciprocal
   {
-    Value a = constant(&ctx, x);
+    Value a = constant(&ctx, x, DT_FXP);
     Value c = f_reciprocal(&ctx, a);
     EXPECT_EQ(c.dtype(), DT_FXP);
 
@@ -125,7 +125,7 @@ TEST(FxpTest, Reciprocal) {
 
   // secret reciprocal
   {
-    Value a = const_secret(&ctx, x);
+    Value a = test::makeValue(&ctx, x, VIS_SECRET);
     Value c = f_reciprocal(&ctx, a);
     EXPECT_EQ(c.dtype(), DT_FXP);
 
@@ -145,8 +145,8 @@ TEST(FxpTest, Div) {
 
   // public div
   {
-    Value a = constant(&ctx, x);
-    Value b = constant(&ctx, y);
+    Value a = constant(&ctx, x, DT_FXP);
+    Value b = constant(&ctx, y, DT_FXP);
     Value c = f_div(&ctx, a, b);
     EXPECT_EQ(c.dtype(), DT_FXP);
 
@@ -157,8 +157,8 @@ TEST(FxpTest, Div) {
 
   // secret div
   {
-    Value a = const_secret(&ctx, x);
-    Value b = const_secret(&ctx, y);
+    Value a = test::makeValue(&ctx, x, VIS_SECRET);
+    Value b = test::makeValue(&ctx, y, VIS_SECRET);
     Value c = f_div(&ctx, a, b);
     EXPECT_EQ(c.dtype(), DT_FXP);
 
@@ -170,8 +170,8 @@ TEST(FxpTest, Div) {
     xt::random::seed(0);
     xt::xarray<float> x = xt::random::rand<float>({200, 1}, 1, 128);
     xt::xarray<float> y = xt::random::rand<float>({200, 1}, 256, 4096);
-    Value a = const_secret(&ctx, x);
-    Value b = const_secret(&ctx, y);
+    Value a = test::makeValue(&ctx, x, VIS_SECRET);
+    Value b = test::makeValue(&ctx, y, VIS_SECRET);
     Value c = f_div(&ctx, a, b);
     EXPECT_EQ(c.dtype(), DT_FXP);
 
@@ -191,7 +191,7 @@ TEST(FxpTest, Abs) {
 
   // public abs
   {
-    Value a = constant(&ctx, x);
+    Value a = constant(&ctx, x, DT_FXP);
     Value c = f_abs(&ctx, a);
     EXPECT_EQ(c.dtype(), DT_FXP);
 
@@ -203,7 +203,7 @@ TEST(FxpTest, Abs) {
 
   // secret abs
   {
-    Value a = const_secret(&ctx, x);
+    Value a = test::makeValue(&ctx, x, VIS_SECRET);
     Value c = f_abs(&ctx, a);
     EXPECT_EQ(c.dtype(), DT_FXP);
 
@@ -223,7 +223,7 @@ TEST(FxpTest, Floor) {
 
   // public floor
   {
-    Value a = constant(&ctx, x);
+    Value a = constant(&ctx, x, DT_FXP);
     Value c = f_floor(&ctx, a);
     EXPECT_EQ(c.dtype(), DT_FXP);
 
@@ -235,7 +235,7 @@ TEST(FxpTest, Floor) {
 
   // secret floor
   {
-    Value a = const_secret(&ctx, x);
+    Value a = test::makeValue(&ctx, x, VIS_SECRET);
     Value c = f_floor(&ctx, a);
     EXPECT_EQ(c.dtype(), DT_FXP);
 
@@ -255,7 +255,7 @@ TEST(FxpTest, Ceil) {
 
   // public ceil
   {
-    Value a = constant(&ctx, x);
+    Value a = constant(&ctx, x, DT_FXP);
     Value c = f_ceil(&ctx, a);
     EXPECT_EQ(c.dtype(), DT_FXP);
 
@@ -267,7 +267,7 @@ TEST(FxpTest, Ceil) {
 
   // secret ceil
   {
-    Value a = const_secret(&ctx, x);
+    Value a = test::makeValue(&ctx, x, VIS_SECRET);
     Value c = f_ceil(&ctx, a);
     EXPECT_EQ(c.dtype(), DT_FXP);
 

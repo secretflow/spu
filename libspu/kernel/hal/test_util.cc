@@ -14,6 +14,8 @@
 
 #include "libspu/kernel/hal/test_util.h"
 
+#include "libspu/core/encoding.h"
+
 namespace spu::kernel::hal::test {
 
 HalContext makeRefHalContext(RuntimeConfig config) {
@@ -32,6 +34,22 @@ HalContext makeRefHalContext() {
   config.set_field(FieldType::FM64);
   config.set_sigmoid_mode(RuntimeConfig::SIGMOID_REAL);
   return makeRefHalContext(config);
+}
+
+Value makeValue(HalContext* ctx, PtBufferView init, Visibility vtype,
+                DataType dtype, ShapeView shape) {
+  if (dtype == DT_INVALID) {
+    dtype = getEncodeType(init.pt_type);
+  }
+  auto res = constant(ctx, init, dtype, shape);
+  switch (vtype) {
+    case VIS_PUBLIC:
+      return res;
+    case VIS_SECRET:
+      return _p2s(ctx, res).setDtype(res.dtype());
+    default:
+      SPU_THROW("not supported vtype={}", vtype);
+  }
 }
 
 }  // namespace spu::kernel::hal::test

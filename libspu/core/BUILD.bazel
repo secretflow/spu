@@ -175,15 +175,33 @@ spu_cc_test(
 )
 
 spu_cc_library(
+    name = "pt_buffer_view",
+    srcs = ["pt_buffer_view.cc"],
+    hdrs = ["pt_buffer_view.h"],
+    deps = [
+        ":ndarray_ref",
+        ":shape_util",
+    ],
+)
+
+spu_cc_test(
+    name = "pt_buffer_view_test",
+    srcs = ["pt_buffer_view_test.cc"],
+    deps = [
+        ":pt_buffer_view",
+    ],
+)
+
+spu_cc_library(
     name = "xt_helper",
     srcs = ["xt_helper.cc"],
     hdrs = ["xt_helper.h"],
     deps = [
         ":array_ref",
         ":ndarray_ref",
+        ":pt_buffer_view",
         ":shape_util",
         "@com_github_xtensor_xtensor//:xtensor",
-        "@yacl//yacl/crypto/tools:prg",
     ],
 )
 

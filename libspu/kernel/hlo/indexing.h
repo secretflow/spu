@@ -30,7 +30,7 @@ struct GatherConfig {
 // This is ported from
 // https://github.com/tensorflow/tensorflow/blob/bf4c6ad46dac1f7f69911e2bfc48e141a39b40af/tensorflow/compiler/xla/service/hlo_evaluator.cc#L1774
 spu::Value Gather(HalContext *ctx, const spu::Value &operand,
-                  const spu::Value &start_indicies, const GatherConfig &config,
+                  const spu::Value &start_indices, const GatherConfig &config,
                   absl::Span<const int64_t> result_shape);
 
 spu::Value FilterByMask(HalContext *ctx, const spu::Value &operand,

@@ -36,7 +36,7 @@ TEST_P(GeoTest, EmptySlice) {
   mpc::utils::simulate(3,
                        [&](const std::shared_ptr<yacl::link::Context> &lctx) {
                          HalContext hctx(cfg, lctx);
-                         auto in = Iota<int64_t>(&hctx, 10, VIS_PUBLIC);
+                         auto in = Iota(&hctx, DT_I64, 10);
 
                          auto ret = Slice(&hctx, in, {1}, {1}, {1});
 
@@ -58,7 +58,8 @@ TEST_P(GeoTest, MixedStoragePad) {
   mpc::utils::simulate(
       3, [&](const std::shared_ptr<yacl::link::Context> &lctx) {
         HalContext hctx(cfg, lctx);
-        auto in = Iota<int64_t>(&hctx, 10, VIS_SECRET);
+        auto in = Iota(&hctx, DT_I64, 10);
+        in = Seal(&hctx, in);
         auto pv = Constant(&hctx, static_cast<int64_t>(0), {1});
         pv = Xor(&hctx, pv, pv);  // Force a bshr
 

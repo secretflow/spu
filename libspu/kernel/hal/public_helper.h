@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "libspu/core/xt_helper.h"  // TODO: PtBufferView
+#include "libspu/core/xt_helper.h"
 #include "libspu/kernel/context.h"
 #include "libspu/kernel/value.h"
 

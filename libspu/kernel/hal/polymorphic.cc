@@ -82,8 +82,8 @@ Value logisticMM1(HalContext* ctx, const Value& x) {
   SPU_TRACE_HAL_DISP(ctx, x);
 
   // SigmoidMM1: f(x) = 0.5 + 0.125 * x
-  const auto c1 = constant(ctx, 0.5F, x.shape());
-  const auto c2 = constant(ctx, 0.125F, x.shape());
+  const auto c1 = constant(ctx, 0.5, DT_FXP, x.shape());
+  const auto c2 = constant(ctx, 0.125, DT_FXP, x.shape());
   return add(ctx, c1, mul(ctx, c2, x));
 }
 
@@ -91,7 +91,7 @@ Value logisticReal(HalContext* ctx, const Value& x) {
   SPU_TRACE_HAL_DISP(ctx, x);
 
   // f(x) = 1/(1+exp(-x))
-  const auto c1 = constant(ctx, 1.0F, x.shape());
+  const auto c1 = constant(ctx, 1.0F, DT_FXP, x.shape());
   return reciprocal(ctx, add(ctx, c1, exp(ctx, negate(ctx, x))));
 }
 
@@ -102,24 +102,18 @@ Value logisticSEG3(HalContext* ctx, const Value& x) {
   //        1            if       x > 4
   //        0            if  -4 > x
   // Rounds = Gt + Mux*2 = 4 + Log(K)
-  auto upper = constant(ctx, 1.0F, x.shape());
-  auto lower = constant(ctx, 0.0F, x.shape());
+  auto upper = constant(ctx, 1.0F, DT_FXP, x.shape());
+  auto lower = constant(ctx, 0.0F, DT_FXP, x.shape());
   auto middle = logisticMM1(ctx, x);
 
-  auto upper_bound = constant(ctx, 4.0F, x.shape());
-  auto lower_bound = constant(ctx, -4.0F, x.shape());
+  auto upper_bound = constant(ctx, 4.0F, DT_FXP, x.shape());
+  auto lower_bound = constant(ctx, -4.0F, DT_FXP, x.shape());
 
   auto ret = select(ctx, greater(ctx, x, upper_bound), upper, middle);
   return select(ctx, less(ctx, x, lower_bound), lower, ret);
 }
 
 }  // namespace
-
-Value identity(HalContext* ctx, const Value& x) {
-  // FIXME: constant should be the same dtype as input.
-  auto zeros = constant(ctx, 0, x.shape());
-  return add(ctx, x, zeros);
-}
 
 Value add(HalContext* ctx, const Value& x, const Value& y) {
   SPU_TRACE_HAL_DISP(ctx, x, y);
@@ -164,7 +158,7 @@ Value matmul(HalContext* ctx, const Value& x, const Value& y) {
 Value logical_not(HalContext* ctx, const Value& in) {
   SPU_TRACE_HAL_LEAF(ctx, in);
 
-  auto _k1 = constant(ctx, true, in.shape());
+  auto _k1 = _constant(ctx, 1, in.shape());
 
   // TODO: we should NOT dispatch according to AShr/BShr trait here.
   if (in.storage_type().isa<BShare>()) {
@@ -250,14 +244,12 @@ Value exp(HalContext* ctx, const Value& in) {
     case RuntimeConfig::EXP_TAYLOR:
       return f_exp(ctx, dtype_cast(ctx, in, DT_FXP));
     case RuntimeConfig::EXP_PADE: {
-      // The valid input for exp_pade_approx is [-exp_input_limit,
-      // exp_input_limit].
-      // TODO(junfeng): We should merge clamp into exp_pade_approx to save msb
-      // ops.
-      const float exp_input_limit = 32 / std::log2(std::exp(1));
-      const auto x = clamp(ctx, constant(ctx, -exp_input_limit, in.shape()),
-                           dtype_cast(ctx, in, DT_FXP),
-                           constant(ctx, exp_input_limit, in.shape()));
+      // The valid input for exp_pade_approx is [-kInputLimit, kInputLimit].
+      // TODO(junfeng): should merge clamp into exp_pade_approx to save msb ops.
+      const float kInputLimit = 32 / std::log2(std::exp(1));
+      const auto x = clamp(ctx, dtype_cast(ctx, in, DT_FXP),
+                           constant(ctx, -kInputLimit, DT_FXP, in.shape()),
+                           constant(ctx, kInputLimit, DT_FXP, in.shape()));
       return f_exp(ctx, x);
     }
     default:
@@ -441,9 +433,9 @@ Value div(HalContext* ctx, const Value& x, const Value& y) {
   return res_f;
 }
 
-Value clamp(HalContext* ctx, const Value& minv, const Value& x,
+Value clamp(HalContext* ctx, const Value& x, const Value& minv,
             const Value& maxv) {
-  SPU_TRACE_HAL_DISP(ctx, minv, x, maxv);
+  SPU_TRACE_HAL_DISP(ctx, x, minv, maxv);
 
   SPU_ENFORCE(minv.dtype() == maxv.dtype());
   SPU_ENFORCE(minv.dtype() == x.dtype());

@@ -14,11 +14,8 @@
 
 #include "libspu/kernel/hal/random.h"
 
-#include "xtensor/xarray.hpp"
-#include "xtensor/xio.hpp"
-#include "xtensor/xrandom.hpp"
-
 #include "libspu/core/prelude.h"
+#include "libspu/core/xt_helper.h"
 #include "libspu/kernel/hal/constants.h"
 #include "libspu/kernel/hal/prot_wrapper.h"
 #include "libspu/kernel/hal/public_helper.h"
@@ -36,7 +33,7 @@ Value rng_uniform(HalContext* ctx, const Value& a, const Value& b,
     auto pb = dump_public_as<float>(ctx, b);
     xt::xarray<float> randv =
         xt::random::rand(to_shape, pa[0], pb[0], ctx->rand_engine());
-    return constant(ctx, randv);
+    return constant(ctx, randv, DT_FXP);
   }
 
   SPU_ENFORCE(a.isInt());
@@ -44,7 +41,7 @@ Value rng_uniform(HalContext* ctx, const Value& a, const Value& b,
   auto pb = dump_public_as<int>(ctx, b);
   xt::xarray<int> randv =
       xt::random::randint(to_shape, pa[0], pb[0], ctx->rand_engine());
-  return constant(ctx, randv);
+  return constant(ctx, randv, DT_FXP);
 }
 
 Value random(HalContext* ctx, Visibility vis, DataType dtype,

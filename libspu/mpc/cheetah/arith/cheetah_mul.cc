@@ -40,6 +40,7 @@
 #include "libspu/mpc/cheetah/rlwe/modswitch_helper.h"
 #include "libspu/mpc/cheetah/rlwe/utils.h"
 #include "libspu/mpc/utils/ring_ops.h"
+
 namespace spu::mpc::cheetah {
 
 struct CheetahMul::Impl : public EnableCPRNG {

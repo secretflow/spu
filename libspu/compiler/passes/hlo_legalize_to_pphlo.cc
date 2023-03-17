@@ -961,9 +961,27 @@ public:
       sig_conversion.addInputs(arg.getArgNumber(), lower_t);
     }
 
+    // materialize inputs
+    auto materialize = [&](mlir::Value v, Visibility vis) {
+      auto new_type = HloToPPHloTypeConverter::getTypeWithVisibility(
+          this->getTypeConverter()->convertType(v.getType()), vis);
+      return this->getTypeConverter()->materializeTargetConversion(
+          rewriter, op.getLoc(), new_type, v);
+    };
+    llvm::SmallVector<mlir::Value, 2> new_operands;
+    for (int64_t idx = 0; idx < op->getNumOperands(); ++idx) {
+      auto ret_vis = vis_.getValueVisibility(op.getResult(idx));
+      auto operand_vis = vis_.getValueVisibility(op->getOperand(idx));
+      if (ret_vis == operand_vis) {
+        new_operands.emplace_back(adaptor.getOperands()[idx]);
+      } else {
+        new_operands.emplace_back(
+            materialize(adaptor.getOperands()[idx], ret_vis));
+      }
+    }
+
     auto new_op = rewriter.replaceOpWithNewOp<pphlo::SortOp>(
-        op, ret_types, adaptor.getOperands(), op.getDimension(),
-        op.getIsStable());
+        op, ret_types, new_operands, op.getDimension(), op.getIsStable());
 
     // Copy over the operations inside the region.
     rewriter.inlineRegionBefore(op.getComparator(), new_op.getComparator(),
@@ -1434,6 +1452,7 @@ public:
     // To pphlo dialect, ModuleOp is also a thing that we won't handle.
     target.addLegalDialect<PPHloDialect>();
     target.addLegalOp<mlir::ModuleOp>();
+    target.addLegalOp<mlir::UnrealizedConversionCastOp>();
     // After conversion, there shouldn't be any mhlo dialect thingy left.
     target.addIllegalDialect<stablehlo::StablehloDialect>();
 

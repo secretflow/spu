@@ -30,8 +30,8 @@ TEST(IntegralTest, Add) {
   int rb = 4;
 
   // WHAT
-  Value a = constant(&ctx, ra);
-  Value b = constant(&ctx, rb);
+  Value a = constant(&ctx, ra, DT_I32);
+  Value b = constant(&ctx, rb, DT_I32);
   ASSERT_TRUE(a.isInt()) << a.dtype();
   ASSERT_TRUE(b.isInt()) << b.dtype();
 
@@ -56,8 +56,8 @@ TEST(IntegralTest, Sub) {
   int rb = 4;
 
   // WHAT
-  Value a = constant(&ctx, ra);
-  Value b = constant(&ctx, rb);
+  Value a = constant(&ctx, ra, DT_I32);
+  Value b = constant(&ctx, rb, DT_I32);
   ASSERT_TRUE(a.isInt()) << a.dtype();
   ASSERT_TRUE(b.isInt()) << b.dtype();
 

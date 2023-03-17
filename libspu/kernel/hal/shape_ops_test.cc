@@ -228,4 +228,197 @@ TEST(ShapeOpsUnaryTest, BroadcastAfterReshape) {
   EXPECT_EQ(z, expected) << z << std::endl << expected;
 }
 
+TEST(ShapeOpsUnaryTest, Pad) {
+  // GIVEN
+  xt::xarray<int32_t> x = {{{
+      {1, 2},  // row 0
+      {3, 4},  // row 1
+      {5, 6},  // row 2
+  }}};
+
+  using P_VT = public_v::type;
+  auto pad_wrapper = [](HalContext* ctx, const Value& in) {
+    return pad(ctx, in, test::makeValue(ctx, 35, P_VT()), {1, 0, 0, 0},
+               {0, 2, 0, 0}, {2, 1, 0, 0});
+  };
+
+  // WHAT
+  auto z = test::evalUnaryOp<int32_t>(P_VT(), pad_wrapper, x);
+
+  // THEN
+  auto expected = xt::xarray<int32_t>({{{{35, 35}, {35, 35}, {35, 35}},
+                                        {{35, 35}, {35, 35}, {35, 35}},
+                                        {{35, 35}, {35, 35}, {35, 35}}},
+                                       {{{1, 2}, {3, 4}, {5, 6}},
+                                        {{35, 35}, {35, 35}, {35, 35}},
+                                        {{35, 35}, {35, 35}, {35, 35}}}});
+  EXPECT_TRUE(xt::allclose(z, expected, 0.01, 0.001)) << z << std::endl
+                                                      << expected;
+}
+
+TEST(ShapeOpsUnaryTest, InteriorPadding) {
+  // GIVEN
+  xt::xarray<int32_t> x = {{1, 2, 3, 4, 5},
+                           {6, 7, 8, 9, 10},
+                           {11, 12, 13, 14, 15},
+                           {16, 17, 18, 19, 20}};
+
+  using P_VT = public_v::type;
+  auto pad_wrapper = [](HalContext* ctx, const Value& in) {
+    return pad(ctx, in, test::makeValue(ctx, 0, P_VT()), {0, 0}, {0, 0},
+               {1, 1});
+  };
+
+  // WHAT
+  auto z = test::evalUnaryOp<int32_t>(P_VT(), pad_wrapper, x);
+
+  // THEN
+  xt::xarray<int32_t> expected = {{1, 0, 2, 0, 3, 0, 4, 0, 5},   //
+                                  {0, 0, 0, 0, 0, 0, 0, 0, 0},   //
+                                  {6, 0, 7, 0, 8, 0, 9, 0, 10},  //
+                                  {0, 0, 0, 0, 0, 0, 0, 0, 0},   //
+                                  {11, 0, 12, 0, 13, 0, 14, 0, 15},
+                                  {0, 0, 0, 0, 0, 0, 0, 0, 0},  //
+                                  {16, 0, 17, 0, 18, 0, 19, 0, 20}};
+  EXPECT_EQ(z, expected) << z << std::endl << expected;
+}
+
+TEST(ShapeOpsUnaryTest, NegativeEdgePad) {
+  // GIVEN
+  xt::xarray<int32_t> x = {{1, 2, 3, 4, 5},
+                           {6, 7, 8, 9, 10},
+                           {11, 12, 13, 14, 15},
+                           {16, 17, 18, 19, 20}};
+
+  using P_VT = public_v::type;
+  auto pad_wrapper = [](HalContext* ctx, const Value& in) {
+    return pad(ctx, in, test::makeValue(ctx, 0, P_VT()), {-1, -1}, {-1, -1},
+               {0, 0});
+  };
+
+  // WHAT
+  auto z = test::evalUnaryOp<int32_t>(P_VT(), pad_wrapper, x);
+
+  // THEN
+  xt::xarray<int32_t> expected = {{7, 8, 9},  //
+                                  {12, 13, 14}};
+  EXPECT_EQ(z, expected) << z << std::endl << expected;
+}
+
+TEST(ShapeOpsUnaryTest, NegativeEdgePadWithInteriorPad) {
+  // GIVEN
+  xt::xarray<int32_t> x = {{1, 2, 3, 4, 5},
+                           {6, 7, 8, 9, 10},
+                           {11, 12, 13, 14, 15},
+                           {16, 17, 18, 19, 20}};
+
+  using P_VT = public_v::type;
+  auto pad_wrapper = [](HalContext* ctx, const Value& in) {
+    return pad(ctx, in, test::makeValue(ctx, 0, P_VT()), {-1, -1}, {-1, -1},
+               {1, 1});
+  };
+
+  // WHAT
+  auto z = test::evalUnaryOp<int32_t>(P_VT(), pad_wrapper, x);
+
+  // THEN
+  xt::xarray<int32_t> expected = {{0, 0, 0, 0, 0, 0, 0},     //
+                                  {0, 7, 0, 8, 0, 9, 0},     //
+                                  {0, 0, 0, 0, 0, 0, 0},     //
+                                  {0, 12, 0, 13, 0, 14, 0},  //
+                                  {0, 0, 0, 0, 0, 0, 0}};
+  EXPECT_EQ(z, expected) << z << std::endl << expected;
+}
+
+TEST(ShapeOpsUnaryTest, HighNegativeEdgePadWithInteriorPad) {
+  // GIVEN
+  xt::xarray<int32_t> x = {{1, 2, 3, 4, 5},
+                           {6, 7, 8, 9, 10},
+                           {11, 12, 13, 14, 15},
+                           {16, 17, 18, 19, 20}};
+
+  using P_VT = public_v::type;
+  auto pad_wrapper = [](HalContext* ctx, const Value& in) {
+    return pad(ctx, in, test::makeValue(ctx, 0, P_VT()), {-3, -3}, {-1, -1},
+               {1, 1});
+  };
+
+  // WHAT
+  auto z = test::evalUnaryOp<int32_t>(P_VT(), pad_wrapper, x);
+
+  // THEN
+  xt::xarray<int32_t> expected = {{0, 0, 0, 0, 0},  //
+                                  {0, 13, 0, 14, 0},
+                                  {0, 0, 0, 0, 0}};
+  EXPECT_EQ(z, expected) << z << std::endl << expected;
+}
+
+using SecretV = std::integral_constant<Visibility, VIS_SECRET>;
+using PublicV = std::integral_constant<Visibility, VIS_PUBLIC>;
+
+using ConcatTestTypes = ::testing::Types<   //
+    std::tuple<float, SecretV, SecretV>,    // concat(s, s)
+    std::tuple<float, PublicV, PublicV>,    // concat(p, p)
+    std::tuple<float, SecretV, PublicV>,    // concat(s, p)
+    std::tuple<float, PublicV, SecretV>,    // concat(p, s)
+                                            //
+    std::tuple<int16_t, SecretV, SecretV>,  // concat(s, s)
+    std::tuple<int16_t, PublicV, PublicV>,  // concat(p, p)
+    std::tuple<int16_t, SecretV, PublicV>,  // concat(s, p)
+    std::tuple<int16_t, PublicV, SecretV>   // concat(p, s)
+    >;
+
+template <typename S>
+class ConcatTest : public ::testing::Test {};
+
+TYPED_TEST_SUITE(ConcatTest, ConcatTestTypes);
+
+TYPED_TEST(ConcatTest, Concatenate) {
+  using DT = typename std::tuple_element<0, TypeParam>::type;
+  using LhsVt = typename std::tuple_element<1, TypeParam>::type;
+  using RhsVt = typename std::tuple_element<2, TypeParam>::type;
+
+  // GIVEN
+  xt::xarray<DT> x = test::xt_random<DT>({3, 3});
+  xt::xarray<DT> y = test::xt_random<DT>({3, 3});
+
+  auto concat_wrapper = [](HalContext* ctx, const Value& lhs,
+                           const Value& rhs) {
+    return concatenate(ctx, {lhs, rhs}, 0);
+  };
+  // WHAT
+  auto z = test::evalBinaryOp<DT>(LhsVt(), RhsVt(), concat_wrapper, x, y);
+
+  // THEN
+  EXPECT_TRUE(
+      xt::allclose(xt::concatenate(xt::xtuple(x, y), 0), z, 0.01, 0.001))
+      << x << std::endl
+      << y << std::endl
+      << z;
+}
+
+TYPED_TEST(ConcatTest, VConcatenate) {
+  using DT = typename std::tuple_element<0, TypeParam>::type;
+  using LhsVt = typename std::tuple_element<1, TypeParam>::type;
+  using RhsVt = typename std::tuple_element<2, TypeParam>::type;
+
+  // GIVEN
+  xt::xarray<DT> x = test::xt_random<DT>({3, 3});
+  xt::xarray<DT> y = test::xt_random<DT>({3, 3});
+
+  auto concat_wrapper = [](HalContext* ctx, const Value& lhs,
+                           const Value& rhs) {
+    return concatenate(ctx, {lhs, rhs}, 1);
+  };
+  // WHAT
+  auto z = test::evalBinaryOp<DT>(LhsVt(), RhsVt(), concat_wrapper, x, y);
+
+  // THEN
+  EXPECT_TRUE(
+      xt::allclose(xt::concatenate(xt::xtuple(x, y), 1), z, 0.01, 0.001))
+      << x << std::endl
+      << y << std::endl
+      << z;
+}
+
 }  // namespace spu::kernel::hal

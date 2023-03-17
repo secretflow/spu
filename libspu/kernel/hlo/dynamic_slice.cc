@@ -28,15 +28,15 @@ spu::Value DynamicUpdateSlice(
     absl::Span<const spu::Value>
         start_indices) {  // Basic idea here, get a ref slice and
                           // update the whole slice..
-  // Start indicies
+  // Start indices
   std::vector<int64_t> start_indices_i64(start_indices.size());
   for (const auto &idx : llvm::enumerate(start_indices)) {
     auto v_idx = idx.value();
-    if (v_idx.isSecret() && ctx->rt_config().reveal_secret_indicies()) {
+    if (v_idx.isSecret() && ctx->rt_config().reveal_secret_indices()) {
       v_idx = hal::reveal(ctx, v_idx);
       SPDLOG_WARN("Reveal {}th start index of DynamicUpdateSlice", idx.index());
     }
-    start_indices_i64[idx.index()] = getIndicies(ctx, v_idx)[0];
+    start_indices_i64[idx.index()] = getIndices(ctx, v_idx)[0];
     // Transform start_indices
     // start_indices[i] = clamp(start_indices[i], 0, operand.dimension_size[i] -
     // update.dimension_size[i])
@@ -57,15 +57,15 @@ spu::Value UpdateSlice(HalContext *ctx, const spu::Value &in,
 spu::Value DynamicSlice(HalContext *ctx, const spu::Value &operand,
                         absl::Span<const int64_t> slice_size,
                         absl::Span<const spu::Value> start_indices) {
-  // Start indicies
+  // Start indices
   std::vector<int64_t> start_indices_i64(start_indices.size());
   for (const auto &idx : llvm::enumerate(start_indices)) {
     auto v_idx = idx.value();
-    if (v_idx.isSecret() && ctx->rt_config().reveal_secret_indicies()) {
+    if (v_idx.isSecret() && ctx->rt_config().reveal_secret_indices()) {
       v_idx = hal::reveal(ctx, v_idx);
       SPDLOG_WARN("Reveal {}th start index of DynamicSlice", idx.index());
     }
-    start_indices_i64[idx.index()] = getIndicies(ctx, v_idx)[0];
+    start_indices_i64[idx.index()] = getIndices(ctx, v_idx)[0];
     // Transform start_indices
     // start_indices[i] = clamp(start_indices[i], 0, operand.dimension_size[i] -
     // size_indices[i])

@@ -25,6 +25,6 @@ spu::Value Select(HalContext *ctx, const spu::Value &pred,
 
 spu::Value Clamp(HalContext *ctx, const spu::Value &operand,
                  const spu::Value &min, const spu::Value &max) {
-  return hal::clamp(ctx, min, operand, max);
+  return hal::clamp(ctx, operand, min, max);
 }
 }  // namespace spu::kernel::hlo

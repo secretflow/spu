@@ -14,18 +14,17 @@
 
 #include "libspu/kernel/hal/fxp_cleartext.h"
 
+#include <cmath>
+
 #include "libspu/core/encoding.h"
-#include "libspu/core/xt_helper.h"
 
 namespace spu::kernel::hal {
 namespace {
 
-Value applyFloatingPointFn(
-    HalContext* ctx, const Value& in,
-    const std::function<NdArrayRef(const xt::xarray<float>&)>& fn) {
+template <typename FN>
+Value applyFloatingPointFn(HalContext* ctx, const Value& in, FN&& fn) {
   SPU_TRACE_HAL_DISP(ctx, in);
-  SPU_ENFORCE(in.isPublic(), "float intrinsic, expected public, got {}",
-              in.storage_type());
+  SPU_ENFORCE(in.isPublic(), "expected public, got {}", in.storage_type());
   SPU_ENFORCE(in.dtype() == DT_FXP, "expected fxp, got={}", in.dtype());
 
   const size_t fxp_bits = ctx->getFxpBits();
@@ -33,36 +32,47 @@ Value applyFloatingPointFn(
   const Type ring_ty = makeType<RingTy>(field);
 
   // decode to floating point
-  const auto raw = decodeFromRing(in.data().as(ring_ty), in.dtype(), fxp_bits);
+  auto f32_arr = decodeFromRing(in.data().as(ring_ty), in.dtype(), fxp_bits);
+
+  for (auto iter = f32_arr.begin(); iter != f32_arr.end(); ++iter) {
+    auto* ptr = reinterpret_cast<float*>(iter.getRawPtr());
+    *ptr = fn(*ptr);
+  }
 
   DataType dtype;
-  const auto out =
-      encodeToRing(fn(xt_adapt<float>(raw)), field, fxp_bits, &dtype);
+  const auto out = encodeToRing(f32_arr, field, fxp_bits, &dtype);
+
   SPU_ENFORCE(dtype == DT_FXP, "sanity failed");
   return Value(out.as(in.storage_type()), dtype);
 }
 
-Value applyFloatingPointFn(
-    HalContext* ctx, const Value& x, const Value& y,
-    const std::function<NdArrayRef(const xt::xarray<float>&,
-                                   const xt::xarray<float>&)>& fn) {
+template <typename FN>
+Value applyFloatingPointFn(HalContext* ctx, const Value& x, const Value& y,
+                           FN&& fn) {
   SPU_TRACE_HAL_DISP(ctx, x, y);
-  SPU_ENFORCE(x.isPublic() && y.isPublic());
-  SPU_ENFORCE((x.dtype() == DT_FXP) && (y.dtype() == DT_FXP));
-  SPU_ENFORCE(x.dtype() == DT_FXP, "expected fxp, got={}", x.dtype());
+  SPU_ENFORCE(x.isPublic() && y.isPublic(), "expect public, got {}, {}",
+              x.vtype(), y.vtype());
+  SPU_ENFORCE((x.dtype() == DT_FXP) && (y.dtype() == DT_FXP),
+              "expected fxp, got={} {}", x.dtype(), y.dtype());
+  SPU_ENFORCE(x.shape() == y.shape());
 
   const auto field = x.storage_type().as<Ring2k>()->field();
   const size_t fxp_bits = ctx->getFxpBits();
   const Type ring_ty = makeType<RingTy>(field);
 
   // decode to floating point
-  const auto flp_x = decodeFromRing(x.data().as(ring_ty), x.dtype(), fxp_bits);
-  const auto flp_y = decodeFromRing(y.data().as(ring_ty), y.dtype(), fxp_bits);
+  auto flp_x = decodeFromRing(x.data().as(ring_ty), x.dtype(), fxp_bits);
+  auto flp_y = decodeFromRing(y.data().as(ring_ty), y.dtype(), fxp_bits);
+
+  for (auto itr_x = flp_x.begin(), itr_y = flp_y.begin(); itr_x != flp_x.end();
+       itr_x++, itr_y++) {
+    auto* ptr_x = reinterpret_cast<float*>(itr_x.getRawPtr());
+    auto* ptr_y = reinterpret_cast<float*>(itr_y.getRawPtr());
+    *ptr_x = fn(*ptr_x, *ptr_y);
+  }
 
   DataType dtype;
-  const auto out =
-      encodeToRing(fn(xt_adapt<float>(flp_x), xt_adapt<float>(flp_y)), field,
-                   fxp_bits, &dtype);
+  const auto out = encodeToRing(flp_x, field, fxp_bits, &dtype);
   SPU_ENFORCE(dtype == DT_FXP, "sanity failed");
   return Value(out.as(x.storage_type()), dtype);
 }
@@ -72,31 +82,23 @@ Value applyFloatingPointFn(
 Value f_reciprocal_p(HalContext* ctx, const Value& in) {
   SPU_TRACE_HAL_DISP(ctx, in);
 
-  return applyFloatingPointFn(ctx, in, [&](const xt::xarray<float>& farr) {
-    return xt_to_ndarray(1.0 / farr);
-  });
+  return applyFloatingPointFn(ctx, in, [](float x) { return 1.0 / x; });
 }
 
 Value f_log_p(HalContext* ctx, const Value& in) {
   SPU_TRACE_HAL_DISP(ctx, in);
-  return applyFloatingPointFn(ctx, in, [&](const xt::xarray<float>& farr) {
-    return xt_to_ndarray(xt::log(farr));
-  });
+  return applyFloatingPointFn(ctx, in, [](float x) { return std::log(x); });
 }
 
 Value f_exp_p(HalContext* ctx, const Value& in) {
   SPU_TRACE_HAL_DISP(ctx, in);
-  return applyFloatingPointFn(ctx, in, [&](const xt::xarray<float>& farr) {
-    return xt_to_ndarray(xt::exp(farr));
-  });
+  return applyFloatingPointFn(ctx, in, [](float x) { return std::exp(x); });
 }
 
 Value f_div_p(HalContext* ctx, const Value& x, const Value& y) {
   SPU_TRACE_HAL_DISP(ctx, x, y);
-  return applyFloatingPointFn(
-      ctx, x, y, [&](const xt::xarray<float>& a, const xt::xarray<float>& b) {
-        return xt_to_ndarray(a / b);
-      });
+  return applyFloatingPointFn(ctx, x, y,
+                              [](float a, float b) { return a / b; });
 }
 
 }  // namespace spu::kernel::hal

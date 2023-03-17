@@ -51,7 +51,7 @@ ArrayRef TruncAWithSign::proc(KernelEvalContext* ctx, const ArrayRef& x,
                          : TruncateProtocol::MSB_st::one;
   yacl::parallel_for(0, nworker, 1, [&](size_t bgn, size_t end) {
     for (size_t job = bgn; job < end; ++job) {
-      size_t slice_bgn = std::min(bgn * work_load, n);
+      size_t slice_bgn = std::min(job * work_load, n);
       size_t slice_end = std::min(slice_bgn + work_load, n);
       if (slice_end == slice_bgn) {
         break;
@@ -86,7 +86,7 @@ ArrayRef TruncA::proc(KernelEvalContext* ctx, const ArrayRef& x,
   meta.msb = TruncateProtocol::MSB_st::unknown;
   yacl::parallel_for(0, nworker, 1, [&](size_t bgn, size_t end) {
     for (size_t job = bgn; job < end; ++job) {
-      size_t slice_bgn = std::min(bgn * work_load, n);
+      size_t slice_bgn = std::min(job * work_load, n);
       size_t slice_end = std::min(slice_bgn + work_load, n);
       if (slice_end == slice_bgn) {
         break;

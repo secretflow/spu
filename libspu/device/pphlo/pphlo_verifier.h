@@ -22,13 +22,14 @@
 
 namespace spu::device::pphlo {
 
-class XlaVerifier {
+class PPHloVerifier {
  private:
   HalContext *ctx_{nullptr};
+  mlir::MLIRContext mlir_ctx_;
   std::function<void(bool)> mismatch_handler_{[](bool) {}};
 
  public:
-  explicit XlaVerifier(HalContext *ctx) : ctx_(ctx) {}
+  explicit PPHloVerifier(HalContext *ctx);
 
   void setMismatchHandler(std::function<void(bool)> f) {
     mismatch_handler_ = std::move(f);
@@ -53,6 +54,7 @@ class XlaVerifier {
   VERIFY_DECL(Expm1Op)
   VERIFY_DECL(RsqrtOp)
   VERIFY_DECL(SignOp)
+  VERIFY_DECL(SqrtOp)
   VERIFY_DECL(RoundOp)
 
   // Simple binary
@@ -69,7 +71,6 @@ class XlaVerifier {
   VERIFY_DECL(RemOp)
   VERIFY_DECL(DotOp)
   VERIFY_DECL(DotGeneralOp)
-  VERIFY_DECL(SqrtOp)
 
   // Comparison
   VERIFY_DECL(EqualOp)

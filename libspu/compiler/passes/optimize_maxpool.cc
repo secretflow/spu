@@ -100,7 +100,7 @@ public:
     auto uses = input.getUses();
 
     LogicalResult status = failure();
-    Value selected_indicies;
+    Value selected_indices;
     bool rewritten = false;
 
     auto isAllOne = [](const DenseIntElementsAttr &attr) {
@@ -148,7 +148,7 @@ public:
           continue;
         }
 
-        selected_indicies =
+        selected_indices =
             rewriteReduceWindow(previous_reduce_window, rewriter);
         rewritten = true;
 
@@ -161,7 +161,7 @@ public:
     }
 
     rewriter.replaceOpWithNewOp<pphlo::MaxPoolScatterOp>(
-        op, op->getResultTypes()[0], selected_indicies, op.getSource(),
+        op, op->getResultTypes()[0], selected_indices, op.getSource(),
         op.getWindowDimensions(), op.getWindowStrides().value_or(nullptr),
         op.getPadding().value_or(nullptr));
 
