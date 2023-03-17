@@ -363,8 +363,8 @@ EcdhOprfPsiServer::RecvIntersectionMaskedItems(
 
   while (true) {
     std::vector<std::string> server_masked_items;
-    std::vector<uint64_t> batch_indices;
-    std::vector<uint64_t> batch_shuffled_indices;
+    std::vector<size_t> batch_indices;
+    std::vector<size_t> batch_shuffled_indices;
 
     std::tie(server_masked_items, batch_indices, batch_shuffled_indices) =
         cache_provider->ReadNextBatchWithIndex(batch_size);
