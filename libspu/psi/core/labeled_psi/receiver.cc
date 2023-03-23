@@ -35,6 +35,7 @@
 #include "libspu/psi/core/ecdh_oprf/ecdh_oprf_selector.h"
 #include "libspu/psi/core/labeled_psi/package.h"
 #include "libspu/psi/core/labeled_psi/psi_params.h"
+#include "libspu/psi/utils/utils.h"
 
 namespace spu::psi {
 
@@ -550,9 +551,12 @@ LabelPsiReceiver::ProcessQueryResult(
               encrypted_label, label_keys[item_idx], nonce_byte_count);
         }
 
-        std::string label_str(label.size(), '\0');
-        std::memcpy(label_str.data(), label.data(), label.size());
-        match_ids.emplace_back(item_idx, label_str);
+        std::string label_str;
+        if (label.size() > 0) {
+          label_str = UnPaddingData(label);
+        }
+
+        match_ids.push_back(std::make_pair(item_idx, label_str));
       });
 
   std::sort(match_ids.begin(), match_ids.end(),

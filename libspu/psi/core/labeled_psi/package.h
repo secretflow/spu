@@ -37,7 +37,7 @@ struct PlainResultPackage {
 
 class ResultPackage {
  public:
-  PlainResultPackage extract(const apsi::CryptoContext &crypto_context);
+  PlainResultPackage extract(const apsi::CryptoContext& crypto_context);
 
   std::uint32_t bundle_idx;
 

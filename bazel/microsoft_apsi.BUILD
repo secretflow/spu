@@ -30,6 +30,7 @@ spu_cmake_external(
     copts = [
         "-DAPSI_DISABLE_JSON",
         "-I$EXT_BUILD_DEPS/gsl/include",
+        "-I$EXT_BUILD_ROOT/external/com_google_flatbuffers/include",
     ],
     lib_source = "@com_github_microsoft_apsi//:all",
     out_include_dir = "include/APSI-0.8",
@@ -39,5 +40,7 @@ spu_cmake_external(
         "@com_github_microsoft_gsl//:gsl",
         "@com_github_microsoft_kuku//:kuku",
         "@com_github_microsoft_seal//:seal",
+        "@com_google_flatbuffers//:flatbuffers",
+        "@zlib",
     ],
 )

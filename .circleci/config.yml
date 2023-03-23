@@ -51,7 +51,7 @@ jobs:
             set +e 
             declare -i build_status
             sed -i "s/tensorflow /tensorflow-cpu /g" ./requirements-dev.txt
-            docker run --name spu-build --mount type=bind,source="$(pwd)",target=/home/admin/dev/ secretflow/spu-ci:0.2 \
+            docker run --name spu-build --mount type=bind,source="$(pwd)",target=/home/admin/dev/ secretflow/spu-ci:0.3 \
                 sh -c "cd /home/admin/dev && \
                         python3 -m pip install -U pip && \
                         python3 -m pip install -r requirements.txt && \
@@ -90,7 +90,7 @@ jobs:
     # Specify the execution environment. You can specify an image from Dockerhub or use one of our Convenience Images from CircleCI's Developer Hub.
     # See: https://circleci.com/docs/2.0/configuration-reference/#docker-machine-macos-windows-executor
     docker:
-      - image: registry.hub.docker.com/secretflow/spu-ci:0.2
+      - image: registry.hub.docker.com/secretflow/spu-ci:0.3
     resource_class: 2xlarge
     # Add steps to the job
     # See: https://circleci.com/docs/2.0/configuration-reference/#steps
@@ -109,10 +109,7 @@ jobs:
           key: &pip-cache pip-{{ checksum "requirements.txt" }}-{{ checksum "requirements-dev.txt" }}
       - restore_cache:
           name: "Restore build cache"
-          key: spu-build-comp-{{ arch }}-
-      - run:
-          name: Decompress cache
-          command: sh .ci/decompress-build-cache.sh
+          key: spu-build-{{ arch }}-
       - run:
           name: "Install dependencies"
           command: |
@@ -122,7 +119,9 @@ jobs:
             python3 -m pip install -r requirements-dev.txt
       - run:
           name: "build"
-          command: bazel build //spu/... -c opt --ui_event_filters=-info,-debug,-warning --jobs=16 --disk_cache=~/.cache/spu_build_cache
+          command: |
+            bazel build //spu/... -c opt --ui_event_filters=-info,-debug,-warning --jobs=16 --disk_cache=~/.cache/spu_build_cache
+            sh .ci/ensure_binary_safety.sh bazel-bin/spu/libspu.so
       - run:
           name: "test"
           command: |
@@ -137,15 +136,10 @@ jobs:
           key: *pip-cache
           paths:
             - /usr/local/lib64/python3.8/site-packages
-      - run:
-          name: Cleanup and compress cache
-          command: |
-            sh .ci/clean_disk_cache.sh
-            sh .ci/compress-build-cache.sh
       - save_cache:
-          key: spu-build-comp-{{ arch }}-{{ .Environment.CIRCLE_BUILD_NUM }}
+          key: spu-build-{{ arch }}-{{ .Environment.CIRCLE_BUILD_NUM }}
           paths:
-            - /root/.cache/spu_build_cache.tar.gz
+            - /root/.cache/spu_build_cache
       - store_test_results:
           path: test-results
       - store_artifacts:
@@ -162,10 +156,7 @@ jobs:
       - checkout
       - restore_cache:
           name: "Restore build cache"
-          key: spu-build-comp-{{ arch }}-
-      - run:
-          name: Decompress cache
-          command: sh .ci/decompress-build-cache.sh
+          key: spu-build-{{ arch }}-
       - run:
           name: "Install homebrew dependencies"
           command: |
@@ -193,15 +184,10 @@ jobs:
             find bazel-bin/ -perm +111 -type f -name "*_test"  -print0 | xargs -0 tar -cvzf test_binary.tar.gz
             find bazel-testlogs/ -type f -name "test.log"  -print0 | xargs -0 tar -cvzf test_logs.tar.gz
             exit ${test_status}
-      - run:
-          name: Cleanup and compress cache
-          command: |
-            sh .ci/clean_disk_cache.sh
-            sh .ci/compress-build-cache.sh
       - save_cache:
-          key: spu-build-comp-{{ arch }}-{{ .Environment.CIRCLE_BUILD_NUM }}
+          key: spu-build-{{ arch }}-{{ .Environment.CIRCLE_BUILD_NUM }}
           paths:
-            - ~/.cache/spu_build_cache.tar.gz
+            - ~/.cache/spu_build_cache
       - store_test_results:
           path: test-results
       - store_artifacts:

@@ -33,6 +33,20 @@ spu::Value Gather(HalContext *ctx, const spu::Value &operand,
                   const spu::Value &start_indices, const GatherConfig &config,
                   absl::Span<const int64_t> result_shape);
 
+spu::Value DynamicUpdateSlice(HalContext *ctx, const spu::Value &operand,
+                              const spu::Value &update,
+                              absl::Span<const spu::Value> start_indices);
+
+spu::Value DynamicSlice(HalContext *ctx, const spu::Value &operand,
+                        absl::Span<const int64_t> slice_size,
+                        absl::Span<const spu::Value> start_indices);
+
+/// ------------------- non-XLA APIs ------------------------------------
+// @brief Update slice
+spu::Value UpdateSlice(HalContext *ctx, const spu::Value &in,
+                       const spu::Value &update,
+                       absl::Span<const int64_t> start_indices);
+
 spu::Value FilterByMask(HalContext *ctx, const spu::Value &operand,
                         absl::Span<const uint8_t> mask);
 

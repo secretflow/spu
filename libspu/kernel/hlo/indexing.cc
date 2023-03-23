@@ -16,10 +16,16 @@
 
 #include <cstring>
 
+#include "llvm/ADT/STLExtras.h"
+
 #include "libspu/core/ndarray_ref.h"
 #include "libspu/kernel/hal/hal.h"
 #include "libspu/kernel/hlo/utils.h"
 #include "libspu/kernel/value.h"
+
+// Allow runtime to reveal `secret variable` use as indices, debug purpose
+// only.
+#define ENABLE_DEBUG_ONLY_REVEAL_SECRET_INDICES false
 
 namespace {
 struct IndexIterationSpace {
@@ -313,7 +319,7 @@ spu::Value Gather(HalContext *ctx, const spu::Value &operand,
       reshapedGatherIndices(ctx, config.indexVectorDim, start_indices);
 
   if (start_indices_value.isSecret() &&
-      ctx->rt_config().reveal_secret_indices()) {
+      ENABLE_DEBUG_ONLY_REVEAL_SECRET_INDICES) {
     start_indices_value = hal::reveal(ctx, start_indices_value);
     SPDLOG_WARN("Reveal start indices value of GatherOp");
   }
@@ -400,6 +406,69 @@ spu::Value Gather(HalContext *ctx, const spu::Value &operand,
                gather_outer_loop_body);
 
   return result;
+}
+
+spu::Value DynamicUpdateSlice(HalContext *ctx, const spu::Value &operand,
+                              const spu::Value &update,
+                              absl::Span<const spu::Value> start_indices) {
+  // Basic idea here, get a ref slice and
+  // update the whole slice..
+  // Start indices
+  std::vector<int64_t> start_indices_i64(start_indices.size());
+  for (const auto &idx : llvm::enumerate(start_indices)) {
+    auto v_idx = idx.value();
+    if (v_idx.isSecret() && ENABLE_DEBUG_ONLY_REVEAL_SECRET_INDICES) {
+      v_idx = hal::reveal(ctx, v_idx);
+      SPDLOG_WARN("Reveal {}th start index of DynamicUpdateSlice", idx.index());
+    }
+    start_indices_i64[idx.index()] = getIndices(ctx, v_idx)[0];
+    // Transform start_indices
+    // start_indices[i] = clamp(start_indices[i], 0, operand.dimension_size[i] -
+    // update.dimension_size[i])
+    start_indices_i64[idx.index()] = std::min(
+        std::max(start_indices_i64[idx.index()], static_cast<int64_t>(0)),
+        operand.shape()[idx.index()] - update.shape()[idx.index()]);
+  }
+
+  return UpdateSlice(ctx, operand, update, start_indices_i64);
+}
+
+spu::Value UpdateSlice(HalContext *ctx, const spu::Value &in,
+                       const spu::Value &update,
+                       absl::Span<const int64_t> start_indices) {
+  return hal::update_slice(ctx, in, update, start_indices);
+}
+
+spu::Value DynamicSlice(HalContext *ctx, const spu::Value &operand,
+                        absl::Span<const int64_t> slice_size,
+                        absl::Span<const spu::Value> start_indices) {
+  // Start indices
+  std::vector<int64_t> start_indices_i64(start_indices.size());
+  for (const auto &idx : llvm::enumerate(start_indices)) {
+    auto v_idx = idx.value();
+    if (v_idx.isSecret() && ENABLE_DEBUG_ONLY_REVEAL_SECRET_INDICES) {
+      v_idx = hal::reveal(ctx, v_idx);
+      SPDLOG_WARN("Reveal {}th start index of DynamicSlice", idx.index());
+    }
+    start_indices_i64[idx.index()] = getIndices(ctx, v_idx)[0];
+    // Transform start_indices
+    // start_indices[i] = clamp(start_indices[i], 0, operand.dimension_size[i] -
+    // size_indices[i])
+    start_indices_i64[idx.index()] = std::min(
+        std::max(start_indices_i64[idx.index()], static_cast<int64_t>(0)),
+        operand.shape()[idx.index()] - slice_size[idx.index()]);
+  }
+
+  // Limit
+  std::vector<int64_t> limit(start_indices_i64);
+  for (size_t idx = 0; idx < limit.size(); ++idx) {
+    limit[idx] += slice_size[idx];
+  }
+
+  // Strides is always 1
+  std::vector<int64_t> strides(limit.size(), 1);
+
+  return hal::slice(ctx, operand, start_indices_i64, limit, strides);
 }
 
 spu::Value FilterByMask(HalContext *ctx, const spu::Value &operand,

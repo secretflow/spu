@@ -28,7 +28,6 @@
 #include "libspu/kernel/hlo/const.h"
 #include "libspu/kernel/hlo/control_flow.h"
 #include "libspu/kernel/hlo/convolution.h"
-#include "libspu/kernel/hlo/dynamic_slice.h"
 #include "libspu/kernel/hlo/geometrical.h"
 #include "libspu/kernel/hlo/indexing.h"
 #include "libspu/kernel/hlo/rand.h"

@@ -22,6 +22,10 @@
 #include "libspu/kernel/hlo/const.h"
 #include "libspu/kernel/hlo/utils.h"
 
+// Allow runtime to reveal `secret variable` use as while
+// condition result, debug purpose only.
+#define ENABLE_DEBUG_ONLY_REVEAL_SECRET_CONDITION false
+
 namespace spu::kernel::hlo {
 
 std::vector<spu::Value> IfElse(HalContext *ctx, const spu::Value &condition,
@@ -119,7 +123,7 @@ std::vector<spu::Value> While(HalContext *ctx,
     spu::Value c = cond(inputs);
 
     if (c.isSecret()) {
-      if (ctx->rt_config().reveal_secret_condition()) {
+      if constexpr (ENABLE_DEBUG_ONLY_REVEAL_SECRET_CONDITION) {
         c = hal::reveal(ctx, c);
         if (!warned) {
           SPDLOG_WARN("Reveal condition region result of While");

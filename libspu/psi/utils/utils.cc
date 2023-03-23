@@ -156,4 +156,31 @@ std::vector<size_t> GetShuffledIdx(size_t items_size) {
   return shuffled_idx_vec;
 }
 
+std::vector<uint8_t> PaddingData(yacl::ByteContainerView data, size_t max_len) {
+  SPU_ENFORCE((data.size() + 4) < max_len, "data_size:{} max_len:{}",
+              data.size(), max_len);
+  std::string padding(max_len - data.size() - 4, '\0');
+  proto::DataPaddingProto proto;
+
+  proto.set_data(data.data(), data.length());
+  proto.set_padding(padding.data(), padding.length());
+
+  std::vector<uint8_t> data_with_padding(proto.ByteSizeLong());
+
+  proto.SerializePartialToArray(&data_with_padding[0],
+                                data_with_padding.size());
+
+  return data_with_padding;
+}
+
+std::string UnPaddingData(yacl::ByteContainerView data) {
+  proto::DataPaddingProto proto;
+
+  SPU_ENFORCE(proto.ParseFromArray(data.data(), data.size()));
+
+  std::string ret(proto.data());
+
+  return ret;
+}
+
 }  // namespace spu::psi

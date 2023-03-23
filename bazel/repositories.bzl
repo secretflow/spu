@@ -18,7 +18,7 @@ load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
 
 SECRETFLOW_GIT = "https://github.com/secretflow"
 
-YACL_COMMIT_ID = "a89508b0ed10f35f849cb83d00c48ebb304e1726"
+YACL_COMMIT_ID = "fb847dd19c45ba1167533edb5ff30a27b8e3d467"
 
 def spu_deps():
     _rule_python()
@@ -41,6 +41,7 @@ def spu_deps():
     _com_github_microsoft_gsl()
     _com_github_microsoft_kuku()
     _com_github_emptoolkit_emp_zk()
+    _com_google_flatbuffers()
 
     maybe(
         git_repository,
@@ -351,4 +352,16 @@ def _com_github_emptoolkit_emp_zk():
             "https://github.com/emp-toolkit/emp-zk/archive/208195554595603c6a3f922e8318bc5b0fa67d82.zip",
         ],
         build_file = "@spulib//bazel:emp-zk.BUILD",
+    )
+
+def _com_google_flatbuffers():
+    maybe(
+        http_archive,
+        name = "com_google_flatbuffers",
+        sha256 = "bb75869b19064f5efad16057e75a2925dc45659af4203d98187a34a5fc1558d8",
+        strip_prefix = "flatbuffers-6e2791640e789459078eece008d6200c18dda5da",
+        type = "zip",
+        urls = [
+            "https://github.com/google/flatbuffers/archive/6e2791640e789459078eece008d6200c18dda5da.zip",
+        ],
     )

@@ -62,3 +62,26 @@ message QueryResultProto {
 message QueryResponseProto {
   repeated QueryResultProto results = 1;
 }
+
+message AlgItemProto {
+  repeated uint64 item = 1;
+}
+
+message AlgItemLabelPairProto {
+  uint64 item = 1;
+  repeated uint64 label = 2;
+}
+
+message AlgItemLabelProto {
+  repeated AlgItemLabelPairProto item_label = 1;
+}
+
+message DataWithIndicesProto {
+  AlgItemProto data = 1;
+  uint64 index = 2;
+}
+
+message DataLabelWithIndicesProto {
+  AlgItemLabelProto data = 1;
+  uint64 index = 2;
+}

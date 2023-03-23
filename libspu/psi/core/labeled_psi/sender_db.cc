@@ -37,8 +37,11 @@
 #include "apsi/util/utils.h"
 #include "spdlog/spdlog.h"
 
+#include "libspu/core/prelude.h"
 #include "libspu/psi/core/ecdh_oprf/ecdh_oprf_selector.h"
 #include "libspu/psi/core/labeled_psi/sender_db.h"
+#include "libspu/psi/core/labeled_psi/serialize.h"
+#include "libspu/psi/utils/utils.h"
 
 // Kuku
 #include "kuku/locfunc.h"
@@ -47,6 +50,7 @@
 #include "absl/strings/escaping.h"
 #include "seal/util/common.h"
 #include "seal/util/streambuf.h"
+#include "yacl/crypto/utils/rand.h"
 
 namespace spu::psi {
 
@@ -118,7 +122,8 @@ std::vector<std::pair<apsi::util::AlgItemLabel, size_t>> PreprocessLabeledData(
         std::pair<apsi::HashedItem, apsi::EncryptedLabel>>::const_iterator end,
     const apsi::PSIParams &params) {
   STOPWATCH(sender_stopwatch, "preprocess_labeled_data");
-  SPDLOG_DEBUG("Start preprocessing {} labeled items", distance(begin, end));
+  SPDLOG_DEBUG("Start preprocessing {} labeled items",
+               std::distance(begin, end));
 
   // Some variables we'll need
   size_t bins_per_item = params.item_params().felts_per_item;
@@ -154,7 +159,8 @@ std::vector<std::pair<apsi::util::AlgItemLabel, size_t>> PreprocessLabeledData(
     }
   }
 
-  SPDLOG_DEBUG("Finished preprocessing {} labeled items", distance(begin, end));
+  SPDLOG_DEBUG("Finished preprocessing {} labeled items",
+               std::distance(begin, end));
 
   return data_with_indices;
 }
@@ -168,7 +174,8 @@ std::vector<std::pair<apsi::util::AlgItem, size_t>> PreprocessUnlabeledData(
     const std::vector<apsi::HashedItem>::const_iterator end,
     const apsi::PSIParams &params) {
   STOPWATCH(sender_stopwatch, "preprocess_unlabeled_data");
-  SPDLOG_DEBUG("Start preprocessing {} unlabeled items", distance(begin, end));
+  SPDLOG_DEBUG("Start preprocessing {} unlabeled items",
+               std::distance(begin, end));
 
   // Some variables we'll need
   size_t bins_per_item = params.item_params().felts_per_item;
@@ -202,20 +209,72 @@ std::vector<std::pair<apsi::util::AlgItem, size_t>> PreprocessUnlabeledData(
   }
 
   SPDLOG_DEBUG("Finished preprocessing {} unlabeled items",
-               distance(begin, end));
+               std::distance(begin, end));
 
   return data_with_indices;
 }
 
-/**
-Converts given Item into its algebraic form, i.e., a sequence of felt-monostate
-pairs. Also computes the Item's cuckoo index.
-*/
+std::vector<std::pair<apsi::util::AlgItemLabel, size_t>> PreprocessLabeledData(
+    const std::pair<apsi::HashedItem, apsi::EncryptedLabel> &item_label_pair,
+    const apsi::PSIParams &params) {
+  SPDLOG_DEBUG("Start preprocessing {} labeled items", distance(begin, end));
+
+  // Some variables we'll need
+  size_t bins_per_item = params.item_params().felts_per_item;
+  size_t item_bit_count = params.item_bit_count();
+
+  // Set up Kuku hash functions
+  auto hash_funcs = HashFunctions(params);
+
+  std::vector<std::pair<apsi::util::AlgItemLabel, size_t>> data_with_indices;
+
+  // Serialize the data into field elements
+  const apsi::HashedItem &item = item_label_pair.first;
+  const apsi::EncryptedLabel &label = item_label_pair.second;
+  apsi::util::AlgItemLabel alg_item_label = algebraize_item_label(
+      item, label, item_bit_count, params.seal_params().plain_modulus());
+
+  // Get the cuckoo table locations for this item and add to data_with_indices
+  for (auto location : AllLocations(hash_funcs, item)) {
+    // The current hash value is an index into a table of Items. In reality
+    // our BinBundles are tables of bins, which contain chunks of items. How
+    // many chunks? bins_per_item many chunks
+    size_t bin_idx = location * bins_per_item;
+
+    // Store the data along with its index
+    data_with_indices.push_back(std::make_pair(alg_item_label, bin_idx));
+  }
+
+  return data_with_indices;
+}
+
 std::vector<std::pair<apsi::util::AlgItem, size_t>> PreprocessUnlabeledData(
-    const apsi::HashedItem &item, const apsi::PSIParams &params) {
-  std::vector<apsi::HashedItem> item_singleton{item};
-  return PreprocessUnlabeledData(item_singleton.begin(), item_singleton.end(),
-                                 params);
+    const apsi::HashedItem &hashed_item, const apsi::PSIParams &params) {
+  // Some variables we'll need
+  size_t bins_per_item = params.item_params().felts_per_item;
+  size_t item_bit_count = params.item_bit_count();
+
+  // Set up Kuku hash functions
+  auto hash_funcs = HashFunctions(params);
+
+  std::vector<std::pair<apsi::util::AlgItem, size_t>> data_with_indices;
+
+  // Serialize the data into field elements
+  apsi::util::AlgItem alg_item = algebraize_item(
+      hashed_item, item_bit_count, params.seal_params().plain_modulus());
+
+  // Get the cuckoo table locations for this item and add to data_with_indices
+  for (auto location : AllLocations(hash_funcs, hashed_item)) {
+    // The current hash value is an index into a table of Items. In reality
+    // our BinBundles are tables of bins, which contain chunks of items. How
+    // many chunks? bins_per_item many chunks
+    size_t bin_idx = location * bins_per_item;
+
+    // Store the data along with its index
+    data_with_indices.emplace_back(std::make_pair(alg_item, bin_idx));
+  }
+
+  return data_with_indices;
 }
 
 /**
@@ -229,7 +288,8 @@ the labels if it finds an AlgItemLabel that matches the input perfectly.
 template <typename T>
 void InsertOrAssignWorker(
     const std::vector<std::pair<T, size_t>> &data_with_indices,
-    std::vector<std::vector<apsi::sender::BinBundle>> *bin_bundles,
+    std::vector<std::shared_ptr<yacl::io::IndexStore>> *bundles_store,
+    std::vector<size_t> *bundles_store_idx,
     const apsi::CryptoContext &crypto_context, uint32_t bundle_index,
     uint32_t bins_per_bundle, size_t label_size, size_t max_bin_size,
     size_t ps_low_degree, bool overwrite, bool compressed) {
@@ -237,6 +297,9 @@ void InsertOrAssignWorker(
   SPDLOG_DEBUG(
       "Insert-or-Assign worker for bundle index {}; mode of operation: {}",
       bundle_index, overwrite ? "overwriting existing" : "inserting new");
+
+  // Create the bundle set at the given bundle index
+  std::vector<apsi::sender::BinBundle> bundle_set;
 
   // Iteratively insert each item-label pair at the given cuckoo index
   for (auto &data_with_idx : data_with_indices) {
@@ -256,13 +319,13 @@ void InsertOrAssignWorker(
       continue;
     }
 
-    // Get the bundle set at the given bundle index
-    std::vector<apsi::sender::BinBundle> &bundle_set =
-        (*bin_bundles)[bundle_idx];
+    // SPDLOG_INFO("*** debug overwrite:{} bundle_set size:{}", overwrite,
+    //             bundle_set.size());
 
     // Try to insert or overwrite these field elements in an existing BinBundle
     // at this bundle index. Keep track of whether or not we succeed.
     bool written = false;
+
     for (auto bundle_it = bundle_set.rbegin(); bundle_it != bundle_set.rend();
          bundle_it++) {
       // If we're supposed to overwrite, try to overwrite. One of these
@@ -270,6 +333,7 @@ void InsertOrAssignWorker(
       if (overwrite) {
         // If we successfully overwrote, we're done with this bundle
         written = bundle_it->try_multi_overwrite(data, bin_idx);
+        SPDLOG_INFO("*** debug written:{}", written);
         if (written) {
           break;
         }
@@ -324,24 +388,226 @@ void InsertOrAssignWorker(
     }
   }
 
+  for (auto &bundle : bundle_set) {
+    std::stringstream stream;
+    std::hash<std::thread::id> hasher;
+
+    SPDLOG_INFO("*** debug thread_id:{}  begin regen cache, bundle_set:{}",
+                hasher(std::this_thread::get_id()), bundle_set.size());
+    // Generate the BinBundle caches
+    bundle.regen_cache();
+    SPDLOG_INFO("*** debug thread_id:{} end regen cache",
+                hasher(std::this_thread::get_id()));
+
+    size_t store_idx = (*bundles_store_idx)[bundle_index]++;
+    bundle.save(stream, store_idx);
+
+    (*bundles_store)[bundle_index]->Put(store_idx, stream.str());
+  }
+
+  SPDLOG_DEBUG("Insert-or-Assign worker: finished processing bundle index {}",
+               bundle_index);
+}
+
+void InsertOrAssignWorker(
+    const std::shared_ptr<yacl::io::IndexStore> &indices_store,
+    size_t indices_count,
+    std::vector<std::shared_ptr<yacl::io::IndexStore>> *bundles_store,
+    std::vector<size_t> *bundles_store_idx, bool is_labeled,
+    const apsi::CryptoContext &crypto_context, uint32_t bundle_index,
+    uint32_t bins_per_bundle, size_t label_size, size_t max_bin_size,
+
+    size_t ps_low_degree, bool overwrite, bool compressed) {
+  STOPWATCH(sender_stopwatch, "insert_or_assign_worker");
+
+  SPDLOG_DEBUG(
+      "Insert-or-Assign worker for bundle index {}; mode of operation: {}",
+      bundle_index, overwrite ? "overwriting existing" : "inserting new");
+
+  // Create the bundle set at the given bundle index
+  std::vector<apsi::sender::BinBundle> bundle_set;
+
+  // Iteratively insert each item-label pair at the given cuckoo index
+  for (size_t i = 0; i < indices_count; ++i) {
+    yacl::Buffer value;
+    bool get_status = indices_store->Get(i, &value);
+    SPU_ENFORCE(get_status, "get_status:{}", get_status);
+
+    size_t cuckoo_idx;
+
+    std::pair<apsi::util::AlgItemLabel, size_t> datalabel_with_idx;
+    std::pair<apsi::util::AlgItem, size_t> data_with_idx;
+
+    if (is_labeled) {
+      datalabel_with_idx = DeserializeDataLabelWithIndices(std::string_view(
+          reinterpret_cast<char *>(value.data()), value.size()));
+
+      cuckoo_idx = datalabel_with_idx.second;
+    } else {
+      data_with_idx = DeserializeDataWithIndices(std::string_view(
+          reinterpret_cast<char *>(value.data()), value.size()));
+      cuckoo_idx = data_with_idx.second;
+    }
+
+    // const apsi::util::AlgItem &data = data_with_idx.first;
+
+    // Get the bundle index
+    size_t bin_idx, bundle_idx;
+    std::tie(bin_idx, bundle_idx) =
+        UnpackCuckooIdx(cuckoo_idx, bins_per_bundle);
+
+    // If the bundle_idx isn't in the prescribed range, don't try to insert
+    // this data
+    if (bundle_idx != bundle_index) {
+      // Dealing with this bundle index is not our job
+      continue;
+    }
+
+    // Try to insert or overwrite these field elements in an existing
+    // BinBundle at this bundle index. Keep track of whether or not we
+    // succeed.
+    bool written = false;
+
+    for (auto bundle_it = bundle_set.rbegin(); bundle_it != bundle_set.rend();
+         bundle_it++) {
+      // If we're supposed to overwrite, try to overwrite. One of these
+      // BinBundles has to have the data we're trying to overwrite.
+      if (overwrite) {
+        // If we successfully overwrote, we're done with this bundle
+        // written = bundle_it->try_multi_overwrite(data, bin_idx);
+        if (is_labeled) {
+          written =
+              bundle_it->try_multi_overwrite(datalabel_with_idx.first, bin_idx);
+
+        } else {
+          written =
+              bundle_it->try_multi_overwrite(data_with_idx.first, bin_idx);
+        }
+
+        if (written) {
+          break;
+        }
+      }
+
+      // Do a dry-run insertion and see if the new largest bin size in the
+      // range exceeds the limit
+      // int32_t new_largest_bin_size = bundle_it->multi_insert_dry_run(data,
+      // bin_idx);
+      int32_t new_largest_bin_size;
+      if (is_labeled) {
+        new_largest_bin_size =
+            bundle_it->multi_insert_dry_run(datalabel_with_idx.first, bin_idx);
+
+      } else {
+        new_largest_bin_size =
+            bundle_it->multi_insert_dry_run(data_with_idx.first, bin_idx);
+      }
+
+      // Check if inserting would violate the max bin size constraint
+      if (new_largest_bin_size > 0 &&
+          seal::util::safe_cast<size_t>(new_largest_bin_size) < max_bin_size) {
+        // All good
+        // bundle_it->multi_insert_for_real(data, bin_idx);
+        if (is_labeled) {
+          bundle_it->multi_insert_for_real(datalabel_with_idx.first, bin_idx);
+
+        } else {
+          bundle_it->multi_insert_for_real(data_with_idx.first, bin_idx);
+        }
+        written = true;
+        break;
+      }
+    }
+
+    // We tried to overwrite an item that doesn't exist. This should never
+    // happen
+    if (overwrite && !written) {
+      SPDLOG_ERROR(
+          "Insert-or-Assign worker: "
+          "failed to overwrite item at bundle index {} because the item was "
+          "not found",
+          bundle_idx);
+      SPU_THROW("tried to overwrite non-existent item");
+    }
+
+    // If we had conflicts everywhere when trying to insert, then we need to
+    // make a new BinBundle and insert the data there
+    if (!written) {
+      // Make a fresh BinBundle and insert
+      apsi::sender::BinBundle new_bin_bundle(
+          crypto_context, label_size, max_bin_size, ps_low_degree,
+          bins_per_bundle, compressed, false);
+
+      // int res = new_bin_bundle.multi_insert_for_real(data, bin_idx);
+      int res;
+      if (is_labeled) {
+        res = new_bin_bundle.multi_insert_for_real(datalabel_with_idx.first,
+                                                   bin_idx);
+
+      } else {
+        res =
+            new_bin_bundle.multi_insert_for_real(data_with_idx.first, bin_idx);
+      }
+
+      // If even that failed, I don't know what could've happened
+      if (res < 0) {
+        SPDLOG_ERROR(
+            "Insert-or-Assign worker: "
+            "failed to insert item into a new BinBundle at bundle index {}",
+            bundle_idx);
+        SPU_THROW("failed to insert item into a new BinBundle");
+      }
+
+      // Push a new BinBundle to the set of BinBundles at this bundle index
+      bundle_set.push_back(std::move(new_bin_bundle));
+    }
+  }
+
+  for (auto &bundle : bundle_set) {
+    std::stringstream stream;
+    std::hash<std::thread::id> hasher;
+
+    SPDLOG_INFO("*** debug thread_id:{}  begin regen cache, bundle_set:{}",
+                hasher(std::this_thread::get_id()), bundle_set.size());
+    // Generate the BinBundle caches
+    bundle.regen_cache();
+    SPDLOG_INFO("*** debug thread_id:{} end regen cache",
+                hasher(std::this_thread::get_id()));
+
+    size_t store_idx = (*bundles_store_idx)[bundle_index]++;
+    size_t save_size = bundle.save(stream, store_idx);
+
+    SPDLOG_INFO("*** debug thread_id:{} num_bins:{}",
+                hasher(std::this_thread::get_id()), bundle.get_num_bins());
+
+    (*bundles_store)[bundle_index]->Put(store_idx, stream.str());
+
+    SPDLOG_INFO("*** debug save_size:{} bundle_idx:{} store_idx:{}", save_size,
+                bundle_index, (*bundles_store_idx)[bundle_index]);
+    // SPDLOG_INFO("hex:{}", absl::BytesToHexString(stream.str()));
+  }
+
   SPDLOG_DEBUG("Insert-or-Assign worker: finished processing bundle index {}",
                bundle_index);
 }
 
 /**
-Takes algebraized data to be inserted, splits it up, and distributes it so that
-thread_count many threads can all insert in parallel. If overwrite is set, this
-will overwrite the labels if it finds an AlgItemLabel that matches the input
-perfectly.
+Takes algebraized data to be inserted, splits it up, and distributes it so
+that thread_count many threads can all insert in parallel. If overwrite is
+set, this will overwrite the labels if it finds an AlgItemLabel that matches
+the input perfectly.
 */
 template <typename T>
 void DispatchInsertOrAssign(
     const std::vector<std::pair<T, size_t>> &data_with_indices,
-    std::vector<std::vector<apsi::sender::BinBundle>> *bin_bundles,
+    std::vector<std::shared_ptr<yacl::io::IndexStore>> *bundles_store,
+    std::vector<size_t> *bundles_store_idx,
     const apsi::CryptoContext &crypto_context, uint32_t bins_per_bundle,
     size_t label_size, uint32_t max_bin_size, uint32_t ps_low_degree,
     bool overwrite, bool compressed) {
   apsi::ThreadPoolMgr tpm;
+
+  SPDLOG_INFO("*** debug data_with_indices size:{}", data_with_indices.size());
 
   // Collect the bundle indices and partition them into thread_count many
   // partitions. By some uniformity assumption, the number of things to insert
@@ -361,8 +627,8 @@ void DispatchInsertOrAssign(
   // range of indices
   std::vector<size_t> bundle_indices;
   bundle_indices.reserve(bundle_indices_set.size());
-  copy(bundle_indices_set.begin(), bundle_indices_set.end(),
-       back_inserter(bundle_indices));
+  std::copy(bundle_indices_set.begin(), bundle_indices_set.end(),
+            std::back_inserter(bundle_indices));
   std::sort(bundle_indices.begin(), bundle_indices.end());
 
   // Run the threads on the partitions
@@ -372,7 +638,48 @@ void DispatchInsertOrAssign(
   size_t future_idx = 0;
   for (auto &bundle_idx : bundle_indices) {
     futures[future_idx++] = tpm.thread_pool().enqueue([&, bundle_idx]() {
-      InsertOrAssignWorker(data_with_indices, bin_bundles, crypto_context,
+      InsertOrAssignWorker(data_with_indices, bundles_store, bundles_store_idx,
+                           crypto_context, static_cast<uint32_t>(bundle_idx),
+                           bins_per_bundle, label_size, max_bin_size,
+                           ps_low_degree, overwrite, compressed);
+    });
+  }
+
+  // Wait for the tasks to finish
+  for (auto &f : futures) {
+    f.get();
+  }
+
+  SPDLOG_INFO("Finished insert-or-assign worker tasks");
+}
+
+void DispatchInsertOrAssign(
+    const std::shared_ptr<yacl::io::IndexStore> &indices_store,
+    size_t indices_count, const std::set<size_t> &bundle_indices_set,
+    std::vector<std::shared_ptr<yacl::io::IndexStore>> *bundles_store,
+    std::vector<size_t> *bundles_store_idx, bool is_labeled,
+    const apsi::CryptoContext &crypto_context, uint32_t bins_per_bundle,
+    size_t label_size, uint32_t max_bin_size, uint32_t ps_low_degree,
+    bool overwrite, bool compressed) {
+  apsi::ThreadPoolMgr tpm;
+
+  SPDLOG_INFO("*** debug data_with_indices size:{}", indices_count);
+
+  std::vector<size_t> bundle_indices;
+  bundle_indices.reserve(bundle_indices_set.size());
+  std::copy(bundle_indices_set.begin(), bundle_indices_set.end(),
+            std::back_inserter(bundle_indices));
+  std::sort(bundle_indices.begin(), bundle_indices.end());
+
+  // Run the threads on the partitions
+  std::vector<std::future<void>> futures(bundle_indices.size());
+  SPDLOG_INFO("Launching {} insert-or-assign worker tasks",
+              bundle_indices.size());
+  size_t future_idx = 0;
+  for (auto &bundle_idx : bundle_indices) {
+    futures[future_idx++] = tpm.thread_pool().enqueue([&, bundle_idx]() {
+      InsertOrAssignWorker(indices_store, indices_count, bundles_store,
+                           bundles_store_idx, is_labeled, crypto_context,
                            static_cast<uint32_t>(bundle_idx), bins_per_bundle,
                            label_size, max_bin_size, ps_low_degree, overwrite,
                            compressed);
@@ -387,143 +694,18 @@ void DispatchInsertOrAssign(
   SPDLOG_INFO("Finished insert-or-assign worker tasks");
 }
 
-/**
-Removes the given items and corresponding labels from bin_bundles at their
-respective cuckoo indices.
-*/
-void RemoveWorker(
-    const std::vector<std::pair<apsi::util::AlgItem, size_t>>
-        &data_with_indices,
-    std::vector<std::vector<apsi::sender::BinBundle>> *bin_bundles,
-    uint32_t bundle_index, uint32_t bins_per_bundle) {
-  STOPWATCH(sender_stopwatch, "remove_worker");
-  SPDLOG_INFO("Remove worker [{}]", bundle_index);
-
-  // Iteratively remove each item-label pair at the given cuckoo index
-  for (const auto &data_with_idx : data_with_indices) {
-    // Get the bundle index
-    size_t cuckoo_idx = data_with_idx.second;
-    size_t bin_idx;
-    size_t bundle_idx;
-    std::tie(bin_idx, bundle_idx) =
-        UnpackCuckooIdx(cuckoo_idx, bins_per_bundle);
-
-    // If the bundle_idx isn't in the prescribed range, don't try to remove this
-    // data
-    if (bundle_idx != bundle_index) {
-      // Dealing with this bundle index is not our job
-      continue;
-    }
-
-    // Get the bundle set at the given bundle index
-    std::vector<apsi::sender::BinBundle> &bundle_set =
-        (*bin_bundles)[bundle_idx];
-
-    // Try to remove these field elements from an existing BinBundle at this
-    // bundle index. Keep track of whether or not we succeed.
-    bool removed = false;
-    for (apsi::sender::BinBundle &bundle : bundle_set) {
-      // If we successfully removed, we're done with this bundle
-      removed = bundle.try_multi_remove(data_with_idx.first, bin_idx);
-      if (removed) {
-        break;
-      }
-    }
-
-    // We may have produced some empty BinBundles so just remove them all
-    auto rem_it = std::remove_if(bundle_set.begin(), bundle_set.end(),
-                                 [](auto &bundle) { return bundle.empty(); });
-    bundle_set.erase(rem_it, bundle_set.end());
-
-    // We tried to remove an item that doesn't exist. This should never happen
-    if (!removed) {
-      SPDLOG_ERROR(
-          "Remove worker: "
-          "failed to remove item at bundle index {} because the item was not "
-          "found",
-          bundle_idx);
-      SPU_THROW("failed to remove item");
-    }
-  }
-
-  SPDLOG_INFO("Remove worker: finished processing bundle index {}",
-              bundle_index);
-}
-
-/**
-Takes algebraized data to be removed, splits it up, and distributes it so that
-thread_count many threads can all remove in parallel.
-*/
-void DispatchRemove(
-    const std::vector<std::pair<apsi::util::AlgItem, size_t>>
-        &data_with_indices,
-    std::vector<std::vector<apsi::sender::BinBundle>> *bin_bundles,
-    uint32_t bins_per_bundle) {
-  apsi::ThreadPoolMgr tpm;
-
-  // Collect the bundle indices and partition them into thread_count many
-  // partitions. By some uniformity assumption, the number of things to remove
-  // per partition should be roughly the same. Note that the contents of
-  // bundle_indices is always sorted (increasing order).
-  std::set<size_t> bundle_indices_set;
-  for (const auto &data_with_idx : data_with_indices) {
-    size_t cuckoo_idx = data_with_idx.second;
-    size_t bin_idx;
-    size_t bundle_idx;
-    std::tie(bin_idx, bundle_idx) =
-        UnpackCuckooIdx(cuckoo_idx, bins_per_bundle);
-    bundle_indices_set.insert(bundle_idx);
-  }
-
-  // Copy the set of indices into a vector and sort so each thread processes a
-  // range of indices
-  std::vector<size_t> bundle_indices;
-  bundle_indices.reserve(bundle_indices_set.size());
-  copy(bundle_indices_set.begin(), bundle_indices_set.end(),
-       back_inserter(bundle_indices));
-  sort(bundle_indices.begin(), bundle_indices.end());
-
-  // Run the threads on the partitions
-  std::vector<std::future<void>> futures(bundle_indices.size());
-  SPDLOG_INFO("Launching {} remove worker tasks", bundle_indices.size());
-  size_t future_idx = 0;
-  for (auto &bundle_idx : bundle_indices) {
-    futures[future_idx++] = tpm.thread_pool().enqueue([&]() {
-      RemoveWorker(data_with_indices, bin_bundles,
-                   static_cast<uint32_t>(bundle_idx), bins_per_bundle);
-    });
-  }
-
-  // Wait for the tasks to finish
-  for (auto &f : futures) {
-    f.get();
-  }
-}
-
-/**
-Returns a set of DB cache references corresponding to the bundles in the given
-set
-*/
-std::vector<std::reference_wrapper<const apsi::sender::BinBundleCache>>
-CollectCaches(std::vector<apsi::sender::BinBundle> *bin_bundles) {
-  std::vector<std::reference_wrapper<const apsi::sender::BinBundleCache>>
-      result;
-  for (const auto &bundle : (*bin_bundles)) {
-    result.emplace_back(std::cref(bundle.get_cache()));
-  }
-
-  return result;
-}
 }  // namespace
 
-SenderDB::SenderDB(const apsi::PSIParams &params, size_t label_byte_count,
+SenderDB::SenderDB(const apsi::PSIParams &params,
+                   std::string_view kv_store_path, size_t label_byte_count,
                    size_t nonce_byte_count, bool compressed)
     : params_(params),
       crypto_context_(params_),
       label_byte_count_(label_byte_count),
       nonce_byte_count_(label_byte_count_ != 0 ? nonce_byte_count : 0),
       item_count_(0),
-      compressed_(compressed) {
+      compressed_(compressed),
+      kv_store_path_(kv_store_path) {
   // The labels cannot be more than 1 KB.
   if (label_byte_count_ > 1024) {
     SPDLOG_ERROR("Requested label byte count {} exceeds the maximum (1024)",
@@ -556,12 +738,45 @@ SenderDB::SenderDB(const apsi::PSIParams &params, size_t label_byte_count,
 
   // Reset the SenderDB data structures
   clear();
+
+  bundles_store_.resize(params_.bundle_idx_count());
+  bundles_store_idx_.resize(params_.bundle_idx_count());
+
+  std::string meta_store_name = fmt::format("{}/meta_info", kv_store_path);
+  meta_info_store_ =
+      std::make_shared<yacl::io::LeveldbKVStore>(false, meta_store_name);
+
+  for (size_t i = 0; i < bundles_store_.size(); ++i) {
+    std::string bundle_store_name =
+        fmt::format("{}/bundle_{}", kv_store_path_, i);
+
+    std::shared_ptr<yacl::io::KVStore> kv_store =
+        std::make_shared<yacl::io::LeveldbKVStore>(false, bundle_store_name);
+
+    bundles_store_[i] = std::make_shared<yacl::io::IndexStore>(kv_store);
+  }
+
+  yacl::Buffer temp_value;
+  try {
+    meta_info_store_->Get("item_count", &temp_value);
+    item_count_ = std::stoul(std::string(std::string_view(
+        reinterpret_cast<char *>(temp_value.data()), temp_value.size())));
+
+    for (size_t i = 0; i < bundles_store_idx_.size(); ++i) {
+      bundles_store_idx_[i] = bundles_store_[i]->Count();
+    }
+
+  } catch (const std::exception &e) {
+    SPDLOG_INFO("key item_count no value");
+  }
 }
 
 SenderDB::SenderDB(const apsi::PSIParams &params,
-                   yacl::ByteContainerView oprf_key, size_t label_byte_count,
+                   yacl::ByteContainerView oprf_key,
+                   std::string_view kv_store_path, size_t label_byte_count,
                    size_t nonce_byte_count, bool compressed)
-    : SenderDB(params, label_byte_count, nonce_byte_count, compressed) {
+    : SenderDB(params, kv_store_path, label_byte_count, nonce_byte_count,
+               compressed) {
   oprf_key_.resize(oprf_key.size());
   std::memcpy(oprf_key_.data(), oprf_key.data(), oprf_key.size());
 
@@ -582,7 +797,7 @@ SenderDB::SenderDB(SenderDB &&source) noexcept
   auto lock = source.GetWriterLock();
 
   hashed_items_ = std::move(source.hashed_items_);
-  bin_bundles_ = std::move(source.bin_bundles_);
+  // bin_bundles_ = std::move(source.bin_bundles_);
 
   std::vector<uint8_t> oprf_key = source.GetOprfKey();
   oprf_key_.resize(oprf_key.size());
@@ -616,7 +831,7 @@ SenderDB &SenderDB::operator=(SenderDB &&source) noexcept {
   auto source_lock = source.GetWriterLock();
 
   hashed_items_ = std::move(source.hashed_items_);
-  bin_bundles_ = std::move(source.bin_bundles_);
+  // bin_bundles_ = std::move(source.bin_bundles_);
 
   std::vector<uint8_t> oprf_key = source.GetOprfKey();
   oprf_key_.resize(oprf_key.size());
@@ -635,7 +850,8 @@ size_t SenderDB::GetBinBundleCount(uint32_t bundle_idx) const {
   // Lock the database for reading
   auto lock = GetReaderLock();
 
-  return bin_bundles_.at(seal::util::safe_cast<size_t>(bundle_idx)).size();
+  // return bin_bundles_.at(seal::util::safe_cast<size_t>(bundle_idx)).size();
+  return bundles_store_idx_[seal::util::safe_cast<size_t>(bundle_idx)];
 }
 
 size_t SenderDB::GetBinBundleCount() const {
@@ -643,9 +859,12 @@ size_t SenderDB::GetBinBundleCount() const {
   auto lock = GetReaderLock();
 
   // Compute the total number of BinBundles
-  return std::accumulate(bin_bundles_.cbegin(), bin_bundles_.cend(),
+  // return std::accumulate(bin_bundles_.cbegin(), bin_bundles_.cend(),
+  // static_cast<size_t>(0),
+  //                       [&](auto &a, auto &b) { return a + b.size(); });
+  return std::accumulate(bundles_store_idx_.cbegin(), bundles_store_idx_.cend(),
                          static_cast<size_t>(0),
-                         [&](auto &a, auto &b) { return a + b.size(); });
+                         [&](auto &a, auto &b) { return a + b; });
 }
 
 double SenderDB::GetPackingRate() const {
@@ -672,10 +891,6 @@ void SenderDB::ClearInternal() {
   hashed_items_.clear();
   item_count_ = 0;
 
-  // Clear the BinBundles
-  bin_bundles_.clear();
-  bin_bundles_.resize(params_.bundle_idx_count());
-
   // Reset the stripped_ flag
   stripped_ = false;
 }
@@ -695,19 +910,54 @@ void SenderDB::GenerateCaches() {
   STOPWATCH(sender_stopwatch, "SenderDB::GenerateCaches");
   SPDLOG_INFO("Start generating bin bundle caches");
 
-  for (auto &bundle_idx : bin_bundles_) {
-    for (auto &bb : bundle_idx) {
-      bb.regen_cache();
-    }
-  }
-
   SPDLOG_INFO("Finished generating bin bundle caches");
 }
 
-std::vector<std::reference_wrapper<const apsi::sender::BinBundleCache>>
-SenderDB::GetCacheAt(uint32_t bundle_idx) {
-  return CollectCaches(
-      &(bin_bundles_.at(seal::util::safe_cast<size_t>(bundle_idx))));
+std::shared_ptr<apsi::sender::BinBundle> SenderDB::GetCacheAt(
+    uint32_t bundle_idx, size_t cache_idx) {
+  yacl::Buffer value;
+  bool get_status = bundles_store_[bundle_idx]->Get(cache_idx, &value);
+
+  SPU_ENFORCE(get_status);
+
+  size_t label_size =
+      ComputeLabelSize(nonce_byte_count_ + label_byte_count_, params_);
+
+  uint32_t bins_per_bundle = params_.bins_per_bundle();
+  uint32_t max_bin_size = params_.table_params().max_items_per_bin;
+  uint32_t ps_low_degree = params_.query_params().ps_low_degree;
+
+  bool compressed = false;
+
+  std::shared_ptr<apsi::sender::BinBundle> load_bin_bundle =
+      std::make_shared<apsi::sender::BinBundle>(
+          crypto_context_, label_size, max_bin_size, ps_low_degree,
+          bins_per_bundle, compressed, false);
+
+  std::string bundle_str(
+      std::string_view(reinterpret_cast<char *>(value.data()), value.size()));
+  std::stringstream stream(bundle_str);
+
+  std::pair<std::uint32_t, std::size_t> load_ret =
+      load_bin_bundle->load(stream);
+
+  SPU_ENFORCE(load_ret.first == cache_idx);
+
+  // check cache is valid
+  if (load_bin_bundle->cache_invalid()) {
+    std::hash<std::thread::id> hasher;
+
+    SPDLOG_INFO(
+        "*** debug thread_id:{}  begin regen cache, bundle_idx:{} cache_idx:{}",
+        hasher(std::this_thread::get_id()), bundle_idx, cache_idx);
+
+    load_bin_bundle->regen_cache();
+
+    SPDLOG_INFO("*** debug thread_id:{}  end regen cache",
+                hasher(std::this_thread::get_id()));
+  }
+
+  return load_bin_bundle;
 }
 
 void SenderDB::strip() {
@@ -720,18 +970,6 @@ void SenderDB::strip() {
   hashed_items_.clear();
 
   apsi::ThreadPoolMgr tpm;
-
-  std::vector<std::future<void>> futures;
-  for (auto &bundle_idx : bin_bundles_) {
-    for (auto &bb : bundle_idx) {
-      futures.push_back(tpm.thread_pool().enqueue([&bb]() { bb.strip(); }));
-    }
-  }
-
-  // Wait for the tasks to finish
-  for (auto &f : futures) {
-    f.get();
-  }
 
   SPDLOG_INFO("SenderDB has been stripped");
 }
@@ -780,7 +1018,7 @@ void SenderDB::InsertOrAssign(
     std::memcpy(key.data(), &oprf_out[i][hashed_item.value().size()],
                 key.size());
 
-    apsi::EncryptedLabel encrypted_label = encrypt_label(
+    apsi::EncryptedLabel encrypted_label = apsi::util::encrypt_label(
         data[i].second, key, label_byte_count_, nonce_byte_count_);
 
     hashed_data.emplace_back(hashed_item, encrypted_label);
@@ -817,8 +1055,8 @@ void SenderDB::InsertOrAssign(
   size_t label_size =
       ComputeLabelSize(nonce_byte_count_ + label_byte_count_, params_);
 
-  auto new_item_count = distance(hashed_data.begin(), new_data_end);
-  auto existing_item_count = distance(new_data_end, hashed_data.end());
+  auto new_item_count = std::distance(hashed_data.begin(), new_data_end);
+  auto existing_item_count = std::distance(new_data_end, hashed_data.end());
 
   if (existing_item_count != 0) {
     SPDLOG_INFO("Found {} existing items to replace in SenderDB",
@@ -829,7 +1067,8 @@ void SenderDB::InsertOrAssign(
     std::vector<std::pair<apsi::util::AlgItemLabel, size_t>> data_with_indices =
         PreprocessLabeledData(new_data_end, hashed_data.end(), params_);
 
-    DispatchInsertOrAssign(data_with_indices, &bin_bundles_, crypto_context_,
+    DispatchInsertOrAssign(data_with_indices, &bundles_store_,
+                           &bundles_store_idx_, crypto_context_,
                            bins_per_bundle, label_size, max_bin_size,
                            ps_low_degree, true, /* overwrite items */
                            compressed_);
@@ -846,14 +1085,15 @@ void SenderDB::InsertOrAssign(
     std::vector<std::pair<apsi::util::AlgItemLabel, size_t>> data_with_indices =
         PreprocessLabeledData(hashed_data.begin(), hashed_data.end(), params_);
 
-    DispatchInsertOrAssign(data_with_indices, &bin_bundles_, crypto_context_,
+    DispatchInsertOrAssign(data_with_indices, &bundles_store_,
+                           &bundles_store_idx_, crypto_context_,
                            bins_per_bundle, label_size, max_bin_size,
                            ps_low_degree, false, /* don't overwrite items */
                            compressed_);
   }
 
   // Generate the BinBundle caches
-  GenerateCaches();
+  // GenerateCaches();
 
   SPDLOG_INFO("Finished inserting {} items in SenderDB", data.size());
 }
@@ -923,11 +1163,11 @@ void SenderDB::InsertOrAssign(const std::vector<apsi::Item> &data) {
   uint32_t max_bin_size = params_.table_params().max_items_per_bin;
   uint32_t ps_low_degree = params_.query_params().ps_low_degree;
 
-  DispatchInsertOrAssign(data_with_indices, &bin_bundles_, crypto_context_,
-                         bins_per_bundle, 0, /* label size */
-                         max_bin_size, ps_low_degree,
-                         false, /* don't overwrite items */
-                         compressed_);
+  DispatchInsertOrAssign(
+      data_with_indices, &bundles_store_, &bundles_store_idx_, crypto_context_,
+      bins_per_bundle, 0,                 /* label size */
+      max_bin_size, ps_low_degree, false, /* don't overwrite items */
+      compressed_);
 
   // Generate the BinBundle caches
   GenerateCaches();
@@ -935,70 +1175,130 @@ void SenderDB::InsertOrAssign(const std::vector<apsi::Item> &data) {
   SPDLOG_INFO("Finished inserting {} items in SenderDB", data.size());
 }
 
-void SenderDB::remove(const std::vector<apsi::Item> &data) {
-  if (stripped_) {
-    SPDLOG_ERROR("Cannot remove data from a stripped SenderDB");
-    SPU_THROW("failed to remove data");
-  }
+void SenderDB::InsertOrAssign(
+    const std::shared_ptr<IBatchProvider> &batch_provider, size_t batch_size) {
+  size_t batch_count = 0;
+  size_t indices_count = 0;
 
-  STOPWATCH(sender_stopwatch, "SenderDB::remove");
-  SPDLOG_INFO("Start removing {} items from SenderDB", data.size());
+  std::shared_ptr<yacl::io::KVStore> kv_store =
+      std::make_shared<yacl::io::LeveldbKVStore>(false);
 
-  // First compute the hashes for the input data
-  // auto hashed_data = OPRFSender::ComputeHashes(data, oprf_key_);
-  std::vector<std::string> data_str(data.size());
-  for (size_t i = 0; i < data.size(); ++i) {
-    data_str[i].reserve(data[i].value().size());
-    std::memcpy(data_str[i].data(), data[i].value().data(),
-                data[i].value().size());
-  }
-  std::vector<std::string> oprf_out = oprf_server_->FullEvaluate(data_str);
-  std::vector<apsi::HashedItem> hashed_data;
-  for (const auto &out : oprf_out) {
-    apsi::Item::value_type value{};
-    std::memcpy(value.data(), out.data(), value.size());
+  std::shared_ptr<yacl::io::IndexStore> items_oprf_store =
+      std::make_shared<yacl::io::IndexStore>(kv_store);
 
-    hashed_data.emplace_back(value);
-  }
+  std::set<size_t> bundle_indices_set;
 
-  // Lock the database for writing
-  auto lock = GetWriterLock();
+  // Dispatch the insertion
+  uint32_t bins_per_bundle = params_.bins_per_bundle();
+  uint32_t max_bin_size = params_.table_params().max_items_per_bin;
+  uint32_t ps_low_degree = params_.query_params().ps_low_degree;
 
-  // Remove items that do not exist in the database.
-  auto existing_data_end = std::remove_if(
-      hashed_data.begin(), hashed_data.end(), [&](const auto &item) {
-        bool found = hashed_items_.find(item) != hashed_items_.end();
-        if (found) {
-          // Remove from hashed_items_ already at this point!
-          hashed_items_.erase(item);
-          item_count_--;
+  while (true) {
+    std::vector<std::string> batch_items;
+    std::vector<std::string> batch_labels;
+
+    if (IsLabeled()) {
+      std::tie(batch_items, batch_labels) =
+          batch_provider->ReadNextBatchWithLabel(batch_size);
+    } else {
+      batch_items = batch_provider->ReadNextBatch(batch_size);
+    }
+
+    if (batch_items.empty()) {
+      break;
+    }
+
+    std::vector<std::string> oprf_out = oprf_server_->FullEvaluate(batch_items);
+
+    for (size_t i = 0; i < oprf_out.size(); ++i) {
+      //
+      apsi::Item::value_type value{};
+      std::memcpy(value.data(), &oprf_out[i][0], value.size());
+
+      apsi::HashedItem hashed_item(value);
+      if (IsLabeled()) {
+        apsi::LabelKey key;
+        std::memcpy(key.data(), &oprf_out[i][hashed_item.value().size()],
+                    key.size());
+
+        apsi::Label label_with_padding =
+            PaddingData(batch_labels[i], label_byte_count_);
+
+        apsi::EncryptedLabel encrypted_label = apsi::util::encrypt_label(
+            label_with_padding, key, label_byte_count_, nonce_byte_count_);
+
+        std::pair<apsi::HashedItem, apsi::EncryptedLabel> item_label_pair =
+            std::make_pair(hashed_item, encrypted_label);
+
+        std::vector<std::pair<apsi::util::AlgItemLabel, size_t>>
+            data_with_indices = PreprocessLabeledData(item_label_pair, params_);
+        // SPDLOG_INFO("i:{}, data_with_indices size:{}", i,
+        //             data_with_indices.size());
+        for (size_t j = 0; j < data_with_indices.size(); ++j) {
+          std::string indices_buffer =
+              SerializeDataLabelWithIndices(data_with_indices[j]);
+
+          items_oprf_store->Put(indices_count + j, indices_buffer);
+
+          size_t cuckoo_idx = data_with_indices[j].second;
+          size_t bin_idx, bundle_idx;
+          std::tie(bin_idx, bundle_idx) =
+              UnpackCuckooIdx(cuckoo_idx, bins_per_bundle);
+          bundle_indices_set.insert(bundle_idx);
         }
 
-        // Remove those that were not found
-        return !found;
-      });
+        indices_count += data_with_indices.size();
+      } else {
+        std::vector<std::pair<apsi::util::AlgItem, size_t>> data_with_indices =
+            PreprocessUnlabeledData(hashed_item, params_);
+        // SPDLOG_INFO("*** debug i:{}, data_with_indices size:{}", i,
+        //             data_with_indices.size());
+        for (size_t j = 0; j < data_with_indices.size(); ++j) {
+          std::string indices_buffer =
+              SerializeDataWithIndices(data_with_indices[j]);
 
-  // This distance is always non-negative
-  auto existing_item_count =
-      static_cast<size_t>(distance(existing_data_end, hashed_data.end()));
-  if (existing_item_count != 0) {
-    SPDLOG_WARN("Ignoring {} items that are not present in the SenderDB",
-                existing_item_count);
+          items_oprf_store->Put(indices_count + j, indices_buffer);
+
+          size_t cuckoo_idx = data_with_indices[j].second;
+          // SPDLOG_INFO(
+          //     "*** debug cuckoo_idx:{} indices_buffer:{} "
+          //     "data_with_indices[j]:{}",
+          //     cuckoo_idx, indices_buffer.length(),
+          //     data_with_indices[j].first.size());
+
+          size_t bin_idx, bundle_idx;
+          std::tie(bin_idx, bundle_idx) =
+              UnpackCuckooIdx(cuckoo_idx, bins_per_bundle);
+          // SPDLOG_INFO("*** debug j:{}/{} bin_idx:{},bundle_idx:{}", j,
+          //             data_with_indices.size(), bin_idx, bundle_idx);
+          bundle_indices_set.insert(bundle_idx);
+          // SPDLOG_INFO("*** debug ");
+        }
+        indices_count += data_with_indices.size();
+      }
+    }
+
+    item_count_ += batch_items.size();
+
+    batch_count++;
   }
 
-  // Break the data down into its field element representation. Also compute the
-  // items' cuckoo indices.
-  std::vector<std::pair<apsi::util::AlgItem, size_t>> data_with_indices =
-      PreprocessUnlabeledData(hashed_data.begin(), hashed_data.end(), params_);
+  meta_info_store_->Put("item_count", fmt::format("{}", item_count_));
 
-  // Dispatch the removal
-  uint32_t bins_per_bundle = params_.bins_per_bundle();
-  DispatchRemove(data_with_indices, &bin_bundles_, bins_per_bundle);
+  size_t label_size = 0;
+  if (IsLabeled()) {
+    label_size =
+        ComputeLabelSize(nonce_byte_count_ + label_byte_count_, params_);
+  }
 
-  // Generate the BinBundle caches
-  GenerateCaches();
+  DispatchInsertOrAssign(
+      items_oprf_store, indices_count, bundle_indices_set, &bundles_store_,
+      &bundles_store_idx_, IsLabeled(), crypto_context_, bins_per_bundle,
+      label_size,                         /* label size */
+      max_bin_size, ps_low_degree, false, /* don't overwrite items */
+      compressed_);
 
-  SPDLOG_INFO("Finished removing {} items from SenderDB", data.size());
+  SPDLOG_INFO("Finished inserting {} items in SenderDB", indices_count);
 }
 
 bool SenderDB::HasItem(const apsi::Item &item) const {
@@ -1022,90 +1322,6 @@ bool SenderDB::HasItem(const apsi::Item &item) const {
   auto lock = GetReaderLock();
 
   return hashed_items_.find(hashed_item) != hashed_items_.end();
-}
-
-apsi::Label SenderDB::GetLabel(const apsi::Item &item) const {
-  if (stripped_) {
-    SPDLOG_ERROR("Cannot retrieve a label from a stripped SenderDB");
-    SPU_THROW("failed to retrieve label");
-  }
-  if (!IsLabeled()) {
-    SPDLOG_ERROR(
-        "Attempted to retrieve a label but this is an unlabeled SenderDB");
-    SPU_THROW("failed to retrieve label");
-  }
-
-  // First compute the hash for the input item
-  apsi::HashedItem hashed_item;
-  apsi::LabelKey key;
-  // tie(hashed_item, key) = OPRFSender::GetItemHash(item, oprf_key_);
-
-  std::string item_str;
-  item_str.reserve(item.value().size());
-  std::memcpy(item_str.data(), item.value().data(), item.value().size());
-  std::string oprf_out = oprf_server_->FullEvaluate(item_str);
-  std::memcpy(hashed_item.value().data(), oprf_out.data(),
-              hashed_item.value().size());
-
-  // Lock the database for reading
-  auto lock = GetReaderLock();
-
-  // Check if this item is in the DB. If not, throw an exception
-  if (hashed_items_.find(hashed_item) == hashed_items_.end()) {
-    SPDLOG_ERROR(
-        "Cannot retrieve label for an item that is not in the SenderDB");
-    SPU_THROW("failed to retrieve label");
-  }
-
-  uint32_t bins_per_bundle = params_.bins_per_bundle();
-
-  // Preprocess a single element. This algebraizes the item and gives back its
-  // field element representation as well as its cuckoo hash. We only read one
-  // of the locations because the labels are the same in each location.
-  apsi::util::AlgItem alg_item;
-  size_t cuckoo_idx;
-  std::tie(alg_item, cuckoo_idx) =
-      PreprocessUnlabeledData(hashed_item, params_)[0];
-
-  // Now figure out where to look to get the label
-  size_t bin_idx;
-  size_t bundle_idx;
-  std::tie(bin_idx, bundle_idx) = UnpackCuckooIdx(cuckoo_idx, bins_per_bundle);
-
-  // Retrieve the algebraic labels from one of the BinBundles at this index
-  const std::vector<apsi::sender::BinBundle> &bundle_set =
-      bin_bundles_[bundle_idx];
-  std::vector<felt_t> alg_label;
-  bool got_labels = false;
-  for (const apsi::sender::BinBundle &bundle : bundle_set) {
-    // Try to retrieve the contiguous labels from this BinBundle
-    if (bundle.try_get_multi_label(alg_item, bin_idx, alg_label)) {
-      got_labels = true;
-      break;
-    }
-  }
-
-  // It shouldn't be possible to have items in your set but be unable to
-  // retrieve the associated label. Throw an exception because something is
-  // terribly wrong.
-  if (!got_labels) {
-    SPDLOG_ERROR(
-        "Failed to retrieve label for an item that was supposed to be in the "
-        "SenderDB");
-    SPU_THROW("failed to retrieve label");
-  }
-
-  // All good. Now just reconstruct the big label from its split-up parts
-  apsi::EncryptedLabel encrypted_label = dealgebraize_label(
-      alg_label,
-      alg_label.size() * static_cast<size_t>(params_.item_bit_count_per_felt()),
-      params_.seal_params().plain_modulus());
-
-  // Resize down to the effective byte count
-  encrypted_label.resize(nonce_byte_count_ + label_byte_count_);
-
-  // Decrypt the label
-  return decrypt_label(encrypted_label, key, nonce_byte_count_);
 }
 
 }  // namespace spu::psi

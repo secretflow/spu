@@ -33,15 +33,19 @@ spu_cc_library(
         "receiver.h",
         "sender.h",
         "sender_db.h",
+        "serialize.h",
     ],
     deps = [
         ":serializable_cc_proto",
         "//libspu/core:prelude",
         "//libspu/psi/core/ecdh_oprf:ecdh_oprf_selector",
+        "//libspu/psi/utils:batch_provider",
         "@com_github_microsoft_apsi//:apsi",
         "@com_google_absl//absl/strings",
         "@yacl//yacl/crypto/tools:prg",
         "@yacl//yacl/link",
+        "@yacl//yacl/io/kv:leveldb_kvstore",
+        "@yacl//yacl/io/kv:memory_kvstore",
         "@yacl//yacl/utils:parallel",
     ],
 )
@@ -67,3 +71,17 @@ spu_cc_test(
         "@yacl//yacl/crypto/tools:prg",
     ],
 )
+
+spu_cc_test(
+    name = "kv_test",
+    srcs = [
+        "kv_test.cc",
+    ],
+    deps = [
+        ":labeled_psi",
+        "//libspu/psi/utils:utils",
+        "@com_google_absl//absl/strings",
+        "@yacl//yacl/crypto/tools:prg",
+    ],
+)
+

@@ -747,6 +747,8 @@ def PPHLO_ReduceOp : PPHLO_Op<"reduce", [
       "DenseIntElementsAttr":$dimensions)>];
 
   let regions = (region SizedRegion<1> : $body);
+
+  let hasVerifier = 1;
 }
 
 def PPHLO_ReduceWindowOp : PPHLO_Op<"reduce_window", [
@@ -823,6 +825,8 @@ def PPHLO_TransposeOp
   let arguments = (ins PPHLO_Tensor : $operand, I64ElementsAttr : $permutation);
   let results = (outs PPHLO_Tensor);
   let hasFolder = 1;
+
+  let hasVerifier = 1;
 }
 
 def PPHLO_SliceOp : PPHLO_Op<"slice", [
@@ -924,6 +928,8 @@ def PPHLO_ReverseOp
   let results = (outs PPHLO_Tensor);
 
   let hasFolder = 1;
+
+  let hasVerifier = 1;
 }
 
 def HLO_PadOp

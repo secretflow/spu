@@ -23,11 +23,15 @@
 
 #include "yacl/link/link.h"
 
+#include "libspu/psi/utils/serializable.pb.h"
+
 namespace spu::psi {
 
 namespace {
+
 static const std::string kFinishedFlag = "p_finished";
 static const std::string kUnFinishedFlag = "p_unfinished";
+
 }  // namespace
 
 // Multiple-Key out-of-core sort.
@@ -77,5 +81,8 @@ T SyncWait(const std::shared_ptr<yacl::link::Context>& lctx,
 }
 
 std::vector<size_t> GetShuffledIdx(size_t items_size);
+
+std::vector<uint8_t> PaddingData(yacl::ByteContainerView data, size_t max_len);
+std::string UnPaddingData(yacl::ByteContainerView data);
 
 }  // namespace spu::psi
