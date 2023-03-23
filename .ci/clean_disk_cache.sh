@@ -1,4 +1,4 @@
-#!/usr/bin/bash
+#!/usr/bin/env bash
 #
 # Copyright 2023 Ant Group Co., Ltd.
 # 
@@ -15,15 +15,14 @@
 # limitations under the License.
 #
 
-rm -rf test-results
-mkdir -p test-results
+set -eu
 
-# renaming junit xml file to satisfy ci's requirement
-for path in $(find bazel-testlogs/ -name "test.xml"); do
-    dir_name=$(dirname ${path})
-    file_name=$(basename ${path})
-    path_md5=$(echo ${path} | md5sum | cut -f1 -d ' ')
-    target="test-results/TEST-${path_md5}.xml"
-    echo "mv $path to ${target} ..."
-    mv ${path} ${target}
-done
+: ${BAZEL_DISK_CACHE_PATH:=~/.cache/spu_build_cache}
+
+# As a courtesy, compute and print some approximate stats.
+total_file_count=$(find "$BAZEL_DISK_CACHE_PATH" -type f | wc -l)
+stale_file_count=$(find "$BAZEL_DISK_CACHE_PATH" -type f -atime +5 | wc -l)
+echo "Removing $stale_file_count files out of $total_file_count total."
+
+# Just re-running the find is simpler than managing any state.
+#find "$BAZEL_DISK_CACHE_PATH" -type f -atime +30 -delete
