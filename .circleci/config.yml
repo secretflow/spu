@@ -146,6 +146,7 @@ jobs:
           key: spu-build-comp-{{ arch }}-{{ .Environment.CIRCLE_BUILD_NUM }}
           paths:
             - /root/.cache/spu_build_cache.tar.gz
+          when: always
       - store_test_results:
           path: test-results
       - store_artifacts:
@@ -202,6 +203,7 @@ jobs:
           key: spu-build-comp-{{ arch }}-{{ .Environment.CIRCLE_BUILD_NUM }}
           paths:
             - ~/.cache/spu_build_cache.tar.gz
+          when: always
       - store_test_results:
           path: test-results
       - store_artifacts:
