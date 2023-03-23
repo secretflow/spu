@@ -21,4 +21,5 @@ if test -f "$CACHE_FILE"; then
     echo "$CACHE_FILE exists."
     cd ~/.cache
     tar -xzf spu_build_cache.tar.gz
+    rm -f spu_build_cache.tar.gz
 fi
