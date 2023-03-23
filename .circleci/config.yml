@@ -142,6 +142,7 @@ jobs:
           command: |
             sh .ci/clean_disk_cache.sh
             sh .ci/compress-build-cache.sh
+          when: always
       - save_cache:
           key: spu-build-comp-{{ arch }}-{{ .Environment.CIRCLE_BUILD_NUM }}
           paths:
@@ -199,6 +200,7 @@ jobs:
           command: |
             sh .ci/clean_disk_cache.sh
             sh .ci/compress-build-cache.sh
+          when: always
       - save_cache:
           key: spu-build-comp-{{ arch }}-{{ .Environment.CIRCLE_BUILD_NUM }}
           paths:
