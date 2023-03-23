@@ -267,7 +267,7 @@ void ComputePowers(const std::shared_ptr<spu::psi::SenderDB> &sender_db,
 void ProcessBinBundleCache(
     const std::shared_ptr<spu::psi::SenderDB> &sender_db,
     const apsi::CryptoContext &crypto_context,
-    std::reference_wrapper<const apsi::sender::BinBundleCache> cache,
+    const std::shared_ptr<apsi::sender::BinBundle> &bundle,
     std::vector<CiphertextPowers> *all_powers, uint32_t bundle_idx,
     seal::compr_mode_type compr_mode, seal::MemoryPoolHandle *pool,
     const std::shared_ptr<ResultPackage> &result);
@@ -352,30 +352,44 @@ std::vector<std::shared_ptr<ResultPackage>> SenderRunQuery(
   std::vector<std::shared_ptr<ResultPackage>> query_results;
   std::vector<std::future<void>> futures;
   for (size_t bundle_idx = 0; bundle_idx < bundle_idx_count; bundle_idx++) {
+#if 0
     auto bundle_caches =
         sender_db->GetCacheAt(static_cast<uint32_t>(bundle_idx));
 
     for (auto &cache : bundle_caches) {
-      query_results.push_back(std::make_shared<ResultPackage>());
-      std::shared_ptr<ResultPackage> result = *(query_results.rbegin());
+#else
+    size_t cache_count =
+        sender_db->GetBinBundleCount(static_cast<uint32_t>(bundle_idx));
+    for (size_t cache_idx = 0; cache_idx < cache_count; ++cache_idx) {
+      std::shared_ptr<apsi::sender::BinBundle> bundle =
+          sender_db->GetCacheAt(static_cast<uint32_t>(bundle_idx), cache_idx);
 
-      futures.push_back(
-          tpm.thread_pool().enqueue([&, bundle_idx, cache, result]() {
-            ProcessBinBundleCache(sender_db, crypto_context, cache, &all_powers,
-                                  static_cast<uint32_t>(bundle_idx),
-                                  query.compr_mode(), &pool, result);
-          }));
-    }
+      // std::reference_wrapper<const apsi::sender::BinBundleCache> cache =
+      //     std::cref(bundle.get_cache());
+#endif
+    query_results.push_back(std::make_shared<ResultPackage>());
+    std::shared_ptr<ResultPackage> result = *(query_results.rbegin());
+
+    futures.push_back(
+        // tpm.thread_pool().enqueue([&, bundle_idx, cache, result]() {
+        tpm.thread_pool().enqueue([&, bundle_idx, bundle, result]() {
+          // ProcessBinBundleCache(sender_db, crypto_context, cache,
+          // &all_powers,
+          ProcessBinBundleCache(sender_db, crypto_context, bundle, &all_powers,
+                                static_cast<uint32_t>(bundle_idx),
+                                query.compr_mode(), &pool, result);
+        }));
   }
+}
 
-  // Wait until all bin bundle caches have been processed
-  for (auto &f : futures) {
-    f.get();
-  }
+// Wait until all bin bundle caches have been processed
+for (auto &f : futures) {
+  f.get();
+}
 
-  SPDLOG_INFO("Finished processing query request");
+SPDLOG_INFO("Finished processing query request");
 
-  return query_results;
+return query_results;
 }
 
 void ComputePowers(const std::shared_ptr<spu::psi::SenderDB> &sender_db,
@@ -384,10 +398,10 @@ void ComputePowers(const std::shared_ptr<spu::psi::SenderDB> &sender_db,
                    const apsi::PowersDag &pd, uint32_t bundle_idx,
                    seal::MemoryPoolHandle *pool) {
   SPDLOG_DEBUG("Sender::ComputePowers");
-  auto bundle_caches = sender_db->GetCacheAt(bundle_idx);
-  if (bundle_caches.empty()) {
-    return;
-  }
+  // auto bundle_caches = sender_db->GetCacheAt(bundle_idx);
+  // if (bundle_caches.empty()) {
+  //   return;
+  // }
 
   // Compute all powers of the query
   SPDLOG_DEBUG("Computing all query ciphertext powers for bundle index {}",
@@ -475,11 +489,14 @@ void ComputePowers(const std::shared_ptr<spu::psi::SenderDB> &sender_db,
 void ProcessBinBundleCache(
     const std::shared_ptr<spu::psi::SenderDB> &sender_db,
     const apsi::CryptoContext &crypto_context,
-    std::reference_wrapper<const apsi::sender::BinBundleCache> cache,
+    const std::shared_ptr<apsi::sender::BinBundle> &bundle,
     std::vector<CiphertextPowers> *all_powers, uint32_t bundle_idx,
     seal::compr_mode_type compr_mode, seal::MemoryPoolHandle *pool,
     const std::shared_ptr<ResultPackage> &result) {
   SPDLOG_DEBUG("Sender::ProcessBinBundleCache");
+
+  std::reference_wrapper<const apsi::sender::BinBundleCache> cache =
+      std::cref(bundle->get_cache());
 
   // Package for the result data
   result->compr_mode = compr_mode;

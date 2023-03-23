@@ -31,3 +31,8 @@ message PsiDataBatchProto {
 message StrItemsProto {
   repeated string items = 1;
 }
+
+message DataPaddingProto {
+  bytes data = 1;
+  bytes padding = 2;
+}

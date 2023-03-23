@@ -17,3 +17,8 @@
 
 
 python setup.py bdist_wheel
+
+# Ensure binary safety
+if [ "$(expr substr $(uname -s) 1 5)" == "Linux" ]; then
+    sh .ci/ensure_binary_safety.sh bazel-bin/spu/libspu.so
+fi

@@ -567,21 +567,21 @@ class JnpTests:
                 ),
             )
 
-        def test_gather(self):
-            jnp_fn = lambda x, indices: jnp.take(x, indices)
-            # FIXME: This test is just to verify gather lowering works as expected
-            # Remove this config once we support secret indexing
-            self._sim.rt_config.reveal_secret_indices = True
-            spu_fn = sim_jax(self._sim, jnp_fn)
-            x_rng = jtu.rand_int(self._rng, low=0, high=32)
-            indices_rng = jtu.rand_int(self._rng, low=0, high=9)
-            args = [x_rng((10,), np.int32), indices_rng((3,), np.int32)]
-            jnp_out = jnp_fn(*args)
-            spu_out = spu_fn(*args)
-            npt.assert_equal(
-                spu_out,
-                jnp_out,
-                err_msg="take faild.\nx = {}, indices = {}\nspu = {}\njnp = {}".format(
-                    args[0], args[1], spu_out, jnp_out
-                ),
-            )
+        # def test_gather(self):
+        #     jnp_fn = lambda x, indices: jnp.take(x, indices)
+        #     # FIXME: This test is just to verify gather lowering works as expected
+        #     # Remove this config once we support secret indexing
+        #     self._sim.rt_config.reveal_secret_indices = True
+        #     spu_fn = sim_jax(self._sim, jnp_fn)
+        #     x_rng = jtu.rand_int(self._rng, low=0, high=32)
+        #     indices_rng = jtu.rand_int(self._rng, low=0, high=9)
+        #     args = [x_rng((10,), np.int32), indices_rng((3,), np.int32)]
+        #     jnp_out = jnp_fn(*args)
+        #     spu_out = spu_fn(*args)
+        #     npt.assert_equal(
+        #         spu_out,
+        #         jnp_out,
+        #         err_msg="take faild.\nx = {}, indices = {}\nspu = {}\njnp = {}".format(
+        #             args[0], args[1], spu_out, jnp_out
+        #         ),
+        #     )

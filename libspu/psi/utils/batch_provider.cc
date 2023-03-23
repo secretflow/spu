@@ -31,7 +31,7 @@ namespace spu::psi {
 
 MemoryBatchProvider::MemoryBatchProvider(const std::vector<std::string>& items,
                                          bool shuffle)
-    : items_(items), shuffle_(shuffle) {
+    : items_(items), shuffle_(shuffle), labels_(items) {
   shuffled_indices_.resize(items.size());
   std::iota(shuffled_indices_.begin(), shuffled_indices_.end(), 0);
 
@@ -39,6 +39,7 @@ MemoryBatchProvider::MemoryBatchProvider(const std::vector<std::string>& items,
     std::mt19937 rng(yacl::crypto::SecureRandU64());
     std::shuffle(shuffled_indices_.begin(), shuffled_indices_.end(), rng);
   }
+  is_labeled_ = true;
 }
 
 std::vector<std::string> MemoryBatchProvider::ReadNextBatch(size_t batch_size) {
@@ -49,6 +50,28 @@ std::vector<std::string> MemoryBatchProvider::ReadNextBatch(size_t batch_size) {
                items_.begin() + cursor_index_ + n_items);
   cursor_index_ += n_items;
   return batch;
+}
+
+std::pair<std::vector<std::string>, std::vector<std::string>>
+MemoryBatchProvider::ReadNextBatchWithLabel(size_t batch_size) {
+  std::vector<std::string> batch_items;
+  std::vector<std::string> batch_labels;
+
+  if (!is_labeled_) {
+    return std::make_pair(batch_items, batch_labels);
+  }
+
+  SPU_ENFORCE(cursor_index_ <= items_.size());
+  size_t n_items = std::min(batch_size, items_.size() - cursor_index_);
+
+  batch_items.insert(batch_items.end(), items_.begin() + cursor_index_,
+                     items_.begin() + cursor_index_ + n_items);
+
+  batch_labels.insert(batch_labels.end(), labels_.begin() + cursor_index_,
+                      labels_.begin() + cursor_index_ + n_items);
+
+  cursor_index_ += n_items;
+  return std::make_pair(batch_items, batch_labels);
 }
 
 std::tuple<std::vector<std::string>, std::vector<size_t>, std::vector<size_t>>
@@ -75,17 +98,41 @@ const std::vector<std::string>& MemoryBatchProvider::items() const {
   return items_;
 }
 
+const std::vector<std::string>& MemoryBatchProvider::labels() const {
+  if (is_labeled_) {
+    return labels_;
+  } else {
+    SPU_THROW("Not in Labeled model");
+  }
+}
+
 const std::vector<size_t>& MemoryBatchProvider::shuffled_indices() const {
   return shuffled_indices_;
 }
 
 CsvBatchProvider::CsvBatchProvider(
     const std::string& path, const std::vector<std::string>& target_fields)
-    : path_(path), analyzer_(path, target_fields) {
+    : path_(path),
+      analyzer_(path, target_fields),
+      label_analyzer_(path, target_fields) {
   in_ = io::BuildInputStream(io::FileIoOptions(path_));
   // skip header
   std::string line;
   in_->GetLine(&line);
+}
+
+CsvBatchProvider::CsvBatchProvider(const std::string& path,
+                                   const std::vector<std::string>& item_fields,
+                                   const std::vector<std::string>& label_fields)
+    : path_(path),
+      analyzer_(path, item_fields),
+      label_analyzer_(path, label_fields) {
+  in_ = io::BuildInputStream(io::FileIoOptions(path_));
+  // skip header
+  std::string line;
+  in_->GetLine(&line);
+
+  is_labeled_ = true;
 }
 
 std::vector<std::string> CsvBatchProvider::ReadNextBatch(size_t batch_size) {
@@ -105,6 +152,43 @@ std::vector<std::string> CsvBatchProvider::ReadNextBatch(size_t batch_size) {
       break;
     }
   }
+  return ret;
+}
+
+std::pair<std::vector<std::string>, std::vector<std::string>>
+CsvBatchProvider::ReadNextBatchWithLabel(size_t batch_size) {
+  std::pair<std::vector<std::string>, std::vector<std::string>> ret;
+  std::string line;
+
+  if (!is_labeled_) {
+    return ret;
+  }
+
+  while (in_->GetLine(&line)) {
+    std::vector<absl::string_view> tokens = absl::StrSplit(line, ',');
+    std::vector<absl::string_view> items;
+    std::vector<absl::string_view> labels;
+    for (size_t fidx : analyzer_.target_indices()) {
+      SPU_ENFORCE(fidx < tokens.size(),
+                  "Illegal line due to no field at index={}, line={}", fidx,
+                  line);
+      items.push_back(absl::StripAsciiWhitespace(tokens[fidx]));
+    }
+    for (size_t fidx : label_analyzer_.target_indices()) {
+      SPU_ENFORCE(fidx < tokens.size(),
+                  "Illegal line due to no field at index={}, line={}", fidx,
+                  line);
+      labels.push_back(absl::StripAsciiWhitespace(tokens[fidx]));
+    }
+
+    ret.first.push_back(KeysJoin(items));
+    ret.second.push_back(KeysJoin(labels));
+
+    if (ret.first.size() == batch_size) {
+      break;
+    }
+  }
+
   return ret;
 }
 

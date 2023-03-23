@@ -35,6 +35,21 @@ class IBatchProvider {
   // Read at most `batch_size` items and return them. An empty returned vector
   // is treated as the end of stream.
   virtual std::vector<std::string> ReadNextBatch(size_t batch_size) = 0;
+
+  // Read at most `batch_size` items&labels and return them. An empty returned
+  // vector is treated as the end of stream.
+  virtual std::pair<std::vector<std::string>, std::vector<std::string>>
+  ReadNextBatchWithLabel(size_t batch_size) {
+    std::vector<std::string> batch_items;
+    std::vector<std::string> batch_labels;
+
+    return std::make_pair(batch_items, batch_labels);
+  }
+
+  bool IsLabeled() const { return is_labeled_; }
+
+ protected:
+  bool is_labeled_ = false;
 };
 
 class IShuffleBatchProvider {
@@ -53,12 +68,24 @@ class MemoryBatchProvider : public IBatchProvider,
  public:
   explicit MemoryBatchProvider(const std::vector<std::string>& items,
                                bool shuffle = false);
+
+  MemoryBatchProvider(const std::vector<std::string>& items,
+                      const std::vector<std::string>& labels)
+      : items_(items), labels_(labels) {
+    is_labeled_ = true;
+  }
+
   std::vector<std::string> ReadNextBatch(size_t batch_size) override;
+
+  std::pair<std::vector<std::string>, std::vector<std::string>>
+  ReadNextBatchWithLabel(size_t batch_size) override;
+
+  const std::vector<std::string>& items() const;
+
+  const std::vector<std::string>& labels() const;
 
   std::tuple<std::vector<std::string>, std::vector<size_t>, std::vector<size_t>>
   ReadNextBatchWithIndex(size_t batch_size) override;
-
-  const std::vector<std::string>& items() const;
 
   const std::vector<size_t>& shuffled_indices() const;
 
@@ -66,6 +93,9 @@ class MemoryBatchProvider : public IBatchProvider,
   const std::vector<std::string>& items_;
   std::vector<size_t> shuffled_indices_;
   bool shuffle_;
+
+  const std::vector<std::string>& labels_;
+
   size_t cursor_index_ = 0;
 };
 
@@ -74,12 +104,20 @@ class CsvBatchProvider : public IBatchProvider {
   explicit CsvBatchProvider(const std::string& path,
                             const std::vector<std::string>& target_fields);
 
+  CsvBatchProvider(const std::string& path,
+                   const std::vector<std::string>& item_fields,
+                   const std::vector<std::string>& label_fields);
+
   std::vector<std::string> ReadNextBatch(size_t batch_size) override;
+
+  std::pair<std::vector<std::string>, std::vector<std::string>>
+  ReadNextBatchWithLabel(size_t batch_size) override;
 
  private:
   const std::string path_;
   std::unique_ptr<io::InputStream> in_;
   CsvHeaderAnalyzer analyzer_;
+  CsvHeaderAnalyzer label_analyzer_;
 };
 
 class CachedCsvBatchProvider : public IShuffleBatchProvider {

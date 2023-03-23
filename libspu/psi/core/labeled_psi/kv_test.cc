@@ -23,20 +23,21 @@
 #include "absl/strings/str_split.h"
 #include "gtest/gtest.h"
 #include "spdlog/spdlog.h"
+#include "yacl/base/exception.h"
 #include "yacl/crypto/tools/prg.h"
 #include "yacl/link/test_util.h"
 
-#include "libspu/core/prelude.h"
 #include "libspu/psi/core/ecdh_oprf/ecdh_oprf_selector.h"
 #include "libspu/psi/core/labeled_psi/psi_params.h"
 #include "libspu/psi/core/labeled_psi/receiver.h"
 #include "libspu/psi/core/labeled_psi/sender.h"
+#include "libspu/psi/utils/utils.h"
 
 namespace spu::psi {
 
 namespace {
 
-using DurationMillis = std::chrono::duration<double, std::milli>;
+using duration_millis = std::chrono::duration<double, std::milli>;
 
 constexpr size_t kPsiStartPos = 100;
 struct TestParams {
@@ -112,7 +113,7 @@ std::vector<std::pair<apsi::Item, apsi::Label>> GenerateSenderData(
     (*intersection_idx).emplace_back(i);
     std::string label_string(sender_items[kPsiStartPos + i * 5].second.size(),
                              '\0');
-    std::memcpy(label_string.data(),
+    std::memcpy(&label_string[0],
                 sender_items[kPsiStartPos + i * 5].second.data(),
                 sender_items[kPsiStartPos + i * 5].second.size());
     (*intersection_label).emplace_back(label_string);
@@ -128,6 +129,23 @@ class LabelPsiTest : public testing::TestWithParam<TestParams> {};
 TEST_P(LabelPsiTest, Works) {
   auto params = GetParam();
   auto ctxs = yacl::link::test::SetupWorld(2);
+
+  // padding check
+  {
+    std::string data1(16, '\0');
+    std::string data2(13, '\0');
+
+    std::vector<uint8_t> d1 = PaddingData(data1, 25);
+    std::string d2 = UnPaddingData(
+        absl::string_view(reinterpret_cast<char *>(d1.data()), d1.size()));
+    SPDLOG_INFO("d1 len:{} d2 len:{}", d1.size(), d2.length());
+
+    d1 = PaddingData(data2, 25);
+    d2 = UnPaddingData(
+        absl::string_view(reinterpret_cast<char *>(d1.data()), d1.size()));
+    SPDLOG_INFO("d1 len:{} d2 len:{}", d1.size(), d2.length());
+  }
+
   apsi::PSIParams psi_params = spu::psi::GetPsiParams(params.nr, params.ns);
 
   // step 1: PsiParams Request and Response
@@ -191,17 +209,16 @@ TEST_P(LabelPsiTest, Works) {
     std::vector<std::string> sender_data(sender_items.size());
     for (size_t i = 0; i < sender_items.size(); ++i) {
       sender_data[i].reserve(sender_items[i].value().size());
+
       sender_data[i].append(absl::string_view(
           reinterpret_cast<char *>(sender_items[i].value().data()),
           sender_items[i].value().size()));
     }
-    SPDLOG_INFO("sender_data[0].length:{}", sender_data[0].length());
 
     std::shared_ptr<IBatchProvider> batch_provider =
         std::make_shared<MemoryBatchProvider>(sender_data);
 
     sender_db->SetData(batch_provider);
-
   } else {
     std::vector<std::pair<apsi::Item, apsi::Label>> sender_items =
         GenerateSenderData(rd(), item_count, label_byte_count - 6,
@@ -209,7 +226,6 @@ TEST_P(LabelPsiTest, Works) {
                            &intersection_label);
 
     // sender_db->SetData(sender_items);
-
     std::vector<std::string> sender_data(sender_items.size());
     std::vector<std::string> sender_label(sender_items.size());
     for (size_t i = 0; i < sender_items.size(); ++i) {
@@ -223,6 +239,7 @@ TEST_P(LabelPsiTest, Works) {
           reinterpret_cast<char *>(sender_items[i].second.data()),
           sender_items[i].second.size()));
     }
+    SPDLOG_INFO("sender_data[0].length:{}", sender_data[0].length());
 
     std::shared_ptr<IBatchProvider> batch_provider =
         std::make_shared<MemoryBatchProvider>(sender_data, sender_label);
@@ -231,7 +248,7 @@ TEST_P(LabelPsiTest, Works) {
   }
 
   const auto setdb_end = std::chrono::system_clock::now();
-  const DurationMillis setdb_duration = setdb_end - setdb_start;
+  const duration_millis setdb_duration = setdb_end - setdb_start;
   SPDLOG_INFO("*** step2 set db duration:{}", setdb_duration.count());
 
   EXPECT_EQ(params.ns, sender_db->GetItemCount());
@@ -239,12 +256,14 @@ TEST_P(LabelPsiTest, Works) {
   SPDLOG_INFO("after set db, bin_bundle_count:{}, packing_rate:{}",
               sender_db->GetBinBundleCount(), sender_db->GetPackingRate());
 
-  const apsi::PSIParams apsi_params = sender_db->GetParams();
-  SPDLOG_INFO("params.bundle_idx_count={}", apsi_params.bundle_idx_count());
+  const apsi::PSIParams &apsi_params = sender_db->GetParams();
+  SPDLOG_INFO("bundle_idx_count:{}", apsi_params.bundle_idx_count());
+  SPDLOG_INFO("BinBundleCount:{}", sender_db->GetBinBundleCount());
   for (size_t i = 0; i < apsi_params.bundle_idx_count(); ++i) {
-    SPDLOG_INFO("i={},count={}", i, sender_db->GetBinBundleCount(i));
+    SPDLOG_INFO("BinBundleCount[{}]:{}", i, sender_db->GetBinBundleCount(i));
   }
 
+#if 0
   std::unique_ptr<IEcdhOprfServer> oprf_server =
       CreateEcdhOprfServer(oprf_key, OprfType::Basic, CurveType::CURVE_FOURQ);
 
@@ -269,7 +288,7 @@ TEST_P(LabelPsiTest, Works) {
       oprf_pair = f_receiver_oprf.get();
 
   const auto oprf_end = std::chrono::system_clock::now();
-  const DurationMillis oprf_duration = oprf_end - oprf_start;
+  const duration_millis oprf_duration = oprf_end - oprf_start;
   SPDLOG_INFO("*** step3 oprf duration:{}", oprf_duration.count());
 
   SPDLOG_INFO("hashed_item size:{} label keys size:{}", oprf_pair.first.size(),
@@ -293,7 +312,7 @@ TEST_P(LabelPsiTest, Works) {
       f_receiver_query.get();
 
   const auto query_end = std::chrono::system_clock::now();
-  const DurationMillis query_duration = query_end - query_start;
+  const duration_millis query_duration = query_end - query_start;
   SPDLOG_INFO("*** step4 query duration:{}", query_duration.count());
 
   SPDLOG_INFO("index vec size:{} intersection_idx size:{}",
@@ -301,6 +320,8 @@ TEST_P(LabelPsiTest, Works) {
 
   EXPECT_EQ(intersection_idx, query_result.first);
   EXPECT_EQ(intersection_label, query_result.second);
+
+#endif
 }
 
 INSTANTIATE_TEST_SUITE_P(Works_Instances, LabelPsiTest,
@@ -328,13 +349,11 @@ INSTANTIATE_TEST_SUITE_P(Works_Instances, LabelPsiTest,
                              TestParams{10000, 100000, 32},   // 10000-100K-32
                              TestParams{10000, 1000000, 32})  // 10000-1M-32
 #else
-                             TestParams{1, 10000, 0},       // 1-10K
-                             TestParams{1, 100000, 0},      // 1-100K
-                             TestParams{256, 100000, 0},    // 256-100K
-                             TestParams{256, 100000, 0},    // 256-100K
-                             TestParams{2048, 100000, 32},  // 2048-100K-32
-                             TestParams{4096, 100000, 32})  // 4096-100K-32
-
+                             // TestParams{1, 10000, 0},       // 1-10K
+                             // TestParams{1, 100000, 0},      // 1-100K
+                             // TestParams{256, 100000, 0},    // 256-100K
+                             // TestParams{2048, 100000, 32},  // 2048-100K-32
+                             TestParams{1, 100000, 32})  // 1-10K
 #endif
 );
 

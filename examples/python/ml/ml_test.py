@@ -14,6 +14,7 @@
 
 
 import json
+import logging
 import sys
 import unittest
 
@@ -26,6 +27,9 @@ import spu.utils.distributed as ppd
 
 with open("examples/python/conf/3pc.json", 'r') as file:
     conf = json.load(file)
+
+logger = logging.getLogger(ppd.__name__)
+logger.setLevel(level=logging.WARN)
 
 
 class UnitTests(unittest.TestCase):
@@ -43,6 +47,9 @@ class UnitTests(unittest.TestCase):
         # wait for all process serving.
         time.sleep(0.05)
 
+        rt_config = conf["devices"]["SPU"]["config"]["runtime_config"]
+        rt_config["enable_pphlo_profile"] = False
+        rt_config["enable_hal_profile"] = False
         ppd.init(conf["nodes"], conf["devices"])
 
     @classmethod

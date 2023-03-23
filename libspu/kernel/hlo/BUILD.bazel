@@ -26,7 +26,6 @@ spu_cc_library(
         ":const",
         ":control_flow",
         ":convolution",
-        ":dynamic_slice",
         ":geometrical",
         ":indexing",
         ":rand",
@@ -165,26 +164,6 @@ spu_cc_library(
 )
 
 spu_cc_library(
-    name = "dynamic_slice",
-    srcs = ["dynamic_slice.cc"],
-    hdrs = ["dynamic_slice.h"],
-    deps = [
-        ":utils",
-        "//libspu/kernel/hal",
-    ],
-)
-
-spu_cc_test(
-    name = "dynamic_slice_test",
-    srcs = ["dynamic_slice_test.cc"],
-    deps = [
-        ":const",
-        ":dynamic_slice",
-        "//libspu/kernel/hal:test_util",
-    ],
-)
-
-spu_cc_library(
     name = "indexing",
     srcs = ["indexing.cc"],
     hdrs = ["indexing.h"],
@@ -198,6 +177,7 @@ spu_cc_test(
     name = "indexing_test",
     srcs = ["indexing_test.cc"],
     deps = [
+        ":const",
         ":indexing",
         "//libspu/kernel/hal:test_util",
     ],

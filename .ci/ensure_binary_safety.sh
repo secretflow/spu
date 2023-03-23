@@ -15,6 +15,18 @@
 # limitations under the License.
 #
 
+set -e
+set -o pipefail
 
-cd ~/.cache
-tar -zcf spu_build_cache.tar.gz spu_build_cache
+pip install pwntools
+
+BINARY=$1
+
+CHECK_STATUS=$(pwn checksec $1 2>&1)
+
+(echo "$CHECK_STATUS" | grep -Eq  "RELRO:\s*Full\sRELRO") && echo "relro enabled" || exit 1
+(echo "$CHECK_STATUS" | grep -Eq  "Stack:\s*Canary\sfound") && echo "has canary" || exit 1
+(echo "$CHECK_STATUS" | grep -Eq  "NX:\s*NX\senabled") && echo "nx enabled" || exit 1
+(echo "$CHECK_STATUS" | grep -Eq  "PIE:\s*PIE\senabled") && echo "pie enabled" || exit 1
+(echo "$CHECK_STATUS" | grep -Eq  "FORTIFY:\s*Enabled") && echo "FORTIFY enabled" || exit 1
+

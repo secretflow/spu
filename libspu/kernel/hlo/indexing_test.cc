@@ -18,6 +18,9 @@
 
 #include "libspu/core/ndarray_ref.h"
 #include "libspu/core/type.h"
+#include "libspu/kernel/context.h"
+#include "libspu/kernel/hal/test_util.h"
+#include "libspu/kernel/hlo/const.h"
 #include "libspu/kernel/value.h"
 
 namespace spu::kernel::hlo {
@@ -60,6 +63,34 @@ TEST(IndexingTest, Take2) {
   EXPECT_EQ(r.shape()[0], 2);
   EXPECT_EQ(r.data().at<int64_t>({0}), 2);
   EXPECT_EQ(r.data().at<int64_t>({1}), 4);
+}
+
+TEST(DynamicUpdateSliceTest, UpdateSliceScalar) {
+  HalContext hctx = hal::test::makeRefHalContext();
+  auto input = Constant(&hctx, static_cast<int64_t>(1), {5});
+  auto update = Constant(&hctx, static_cast<int64_t>(2), {1});
+
+  auto output = UpdateSlice(&hctx, input, update, {1});
+
+  EXPECT_EQ(output.numel(), input.numel());
+
+  auto p_ret = hal::dump_public_as<int64_t>(&hctx, output);
+  xt::xarray<int64_t> expected{1, 2, 1, 1, 1};
+  EXPECT_EQ(p_ret, expected);
+}
+
+TEST(DynamicUpdateSliceTest, UpdateSliceMultiValues) {
+  HalContext hctx = hal::test::makeRefHalContext();
+  auto input = Constant(&hctx, static_cast<int64_t>(1), {5});
+  auto update = Constant(&hctx, static_cast<int64_t>(2), {2});
+
+  auto output = UpdateSlice(&hctx, input, update, {3});
+
+  EXPECT_EQ(output.numel(), input.numel());
+
+  auto p_ret = hal::dump_public_as<int64_t>(&hctx, output);
+  xt::xarray<int64_t> expected{1, 1, 1, 2, 2};
+  EXPECT_EQ(p_ret, expected);
 }
 
 }  // namespace spu::kernel::hlo

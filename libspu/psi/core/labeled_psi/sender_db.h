@@ -23,6 +23,7 @@
 #include <cstdint>
 #include <iostream>
 #include <memory>
+#include <string>
 #include <unordered_set>
 #include <utility>
 #include <vector>
@@ -36,8 +37,11 @@
 #include "apsi/item.h"
 #include "apsi/psi_params.h"
 #include "yacl/base/byte_container_view.h"
+#include "yacl/io/kv/leveldb_kvstore.h"
+#include "yacl/io/kv/memory_kvstore.h"
 
 #include "libspu/psi/core/ecdh_oprf/basic_ecdh_oprf.h"
+#include "libspu/psi/utils/batch_provider.h"
 
 // SEAL
 #include "seal/plaintext.h"
@@ -51,23 +55,23 @@ A SenderDB maintains an in-memory representation of the sender's set of items
 and labels (in labeled mode). This data is not simply copied into the SenderDB
 data structures, but also preprocessed heavily to allow for faster online
 computation time. Since inserting a large number of new items into a SenderDB
-can take time, it is not recommended to recreate the SenderDB when the database
-changes a little bit. Instead, the class supports fast update and deletion
-operations that should be preferred: SenderDB::InsertOrAssign and
+can take time, it is not recommended to recreate the SenderDB when the
+database changes a little bit. Instead, the class supports fast update and
+deletion operations that should be preferred: SenderDB::InsertOrAssign and
 SenderDB::remove.
 
-The SenderDB constructor allows the label byte count to be specified; unlabeled
-mode is activated by setting the label byte count to zero. It is possible to
-optionally specify the size of the nonce used in encrypting the labels, but this
-is best left to its default value unless the user is absolutely sure of what
-they are doing.
+The SenderDB constructor allows the label byte count to be specified;
+unlabeled mode is activated by setting the label byte count to zero. It is
+possible to optionally specify the size of the nonce used in encrypting the
+labels, but this is best left to its default value unless the user is
+absolutely sure of what they are doing.
 
-The SenderDB requires substantially more memory than the raw data would. Part of
-that memory can automatically be compressed when it is not in use; this feature
-is enabled by default, and can be disabled when constructing the SenderDB. The
-downside of in-memory compression is a performance reduction from decompressing
-parts of the data when they are used, and recompressing them if they are
-updated.
+The SenderDB requires substantially more memory than the raw data would. Part
+of that memory can automatically be compressed when it is not in use; this
+feature is enabled by default, and can be disabled when constructing the
+SenderDB. The downside of in-memory compression is a performance reduction
+from decompressing parts of the data when they are used, and recompressing
+them if they are updated.
 */
 class SenderDB {
  public:
@@ -75,6 +79,7 @@ class SenderDB {
   Creates a new SenderDB.
   */
   explicit SenderDB(const apsi::PSIParams &params,
+                    std::string_view kv_store_path,
                     std::size_t label_byte_count = 0,
                     std::size_t nonce_byte_count = 16, bool compressed = true);
 
@@ -82,6 +87,7 @@ class SenderDB {
   Creates a new SenderDB.
   */
   SenderDB(const apsi::PSIParams &params, yacl::ByteContainerView oprf_key,
+           std::string_view kv_store_path = "",
            std::size_t label_byte_count = 0, std::size_t nonce_byte_count = 16,
            bool compressed = true);
 
@@ -124,20 +130,20 @@ class SenderDB {
   bool IsCompressed() const { return compressed_; }
 
   /**
-  Indicates whether the SenderDB has been stripped of all information not needed
-  for serving a query.
+  Indicates whether the SenderDB has been stripped of all information not
+  needed for serving a query.
   */
   bool IsStripped() const { return stripped_; }
 
   /**
-  Strips the SenderDB of all information not needed for serving a query. Returns
-  a copy of the OPRF key and clears it from the SenderDB.
+  Strips the SenderDB of all information not needed for serving a query.
+  Returns a copy of the OPRF key and clears it from the SenderDB.
   */
   void strip();
 
   /**
-  Inserts the given data into the database. This function can be used only on a
-  labeled SenderDB instance. If an item already exists in the database, its
+  Inserts the given data into the database. This function can be used only on
+  a labeled SenderDB instance. If an item already exists in the database, its
   label is overwritten with the new label.
   */
   void InsertOrAssign(
@@ -145,8 +151,8 @@ class SenderDB {
 
   /**
   Inserts the given (hashed) item-label pair into the database. This function
-  can be used only on a labeled SenderDB instance. If the item already exists in
-  the database, its label is overwritten with the new label.
+  can be used only on a labeled SenderDB instance. If the item already exists
+  in the database, its label is overwritten with the new label.
   */
   void InsertOrAssign(const std::pair<apsi::Item, apsi::Label> &data) {
     std::vector<std::pair<apsi::Item, apsi::Label>> data_singleton{data};
@@ -154,23 +160,22 @@ class SenderDB {
   }
 
   /**
-  Inserts the given data into the database. This function can be used only on an
-  unlabeled SenderDB instance.
+  Inserts the given data into the database. This function can be used only on
+  an unlabeled SenderDB instance.
   */
   void InsertOrAssign(const std::vector<apsi::Item> &data);
 
   /**
-  Inserts the given (hashed) item into the database. This function can be used
-  only on an unlabeled SenderDB instance.
-  */
-  void InsertOrAssign(const apsi::Item &data) {
-    std::vector<apsi::Item> data_singleton{data};
-    InsertOrAssign(data_singleton);
-  }
+   * @brief Insert data from BatchProvider
+   *
+   * @param batch_provider
+   */
+  void InsertOrAssign(const std::shared_ptr<IBatchProvider> &batch_provider,
+                      size_t batch_size);
 
   /**
-  Clears the database and inserts the given data. This function can be used only
-  on a labeled SenderDB instance.
+  Clears the database and inserts the given data. This function can be used
+  only on a labeled SenderDB instance.
   */
   void SetData(const std::vector<std::pair<apsi::Item, apsi::Label>> &data) {
     clear();
@@ -178,25 +183,18 @@ class SenderDB {
   }
 
   /**
-  Clears the database and inserts the given data. This function can be used only
-  on an unlabeled SenderDB instance.
+  Clears the database and inserts the given data. This function can be used
+  only on an unlabeled SenderDB instance.
   */
   void SetData(const std::vector<apsi::Item> &data) {
     clear();
     InsertOrAssign(data);
   }
 
-  /**
-  Removes the given data from the database, using at most thread_count threads.
-  */
-  void remove(const std::vector<apsi::Item> &data);
-
-  /**
-  Removes the given (hashed) item from the database.
-  */
-  void remove(const apsi::Item &data) {
-    std::vector<apsi::Item> data_singleton{data};
-    remove(data_singleton);
+  void SetData(const std::shared_ptr<IBatchProvider> &batch_provider,
+               size_t batch_size = 4096) {
+    clear();
+    InsertOrAssign(batch_provider, batch_size);
   }
 
   /**
@@ -205,18 +203,10 @@ class SenderDB {
   bool HasItem(const apsi::Item &item) const;
 
   /**
-  Returns the label associated to the given item in the database. Throws
-  std::invalid_argument if the item does not appear in the database.
+  Returns the bundle at the given bundle index.
   */
-  apsi::Label GetLabel(const apsi::Item &item) const;
-
-  /**
-  Returns a set of cache references corresponding to the bundles at the given
-  bundle index. Even though this function returns a vector, the order has no
-  significance. This function is meant for internal use.
-  */
-  auto GetCacheAt(std::uint32_t bundle_idx) -> std::vector<
-      std::reference_wrapper<const apsi::sender::BinBundleCache>>;
+  std::shared_ptr<apsi::sender::BinBundle> GetCacheAt(std::uint32_t bundle_idx,
+                                                      size_t cache_idx);
 
   /**
   Returns a reference to the PSI parameters for this SenderDB.
@@ -238,7 +228,8 @@ class SenderDB {
   }
 
   /**
-  Returns a reference to a set of item hashes already existing in the SenderDB.
+  Returns a reference to a set of item hashes already existing in the
+  SenderDB.
   */
   const std::unordered_set<apsi::HashedItem> &GetHashedItems() const {
     return hashed_items_;
@@ -303,8 +294,8 @@ class SenderDB {
   mutable seal::util::ReaderWriterLocker db_lock_;
 
   /**
-  Indicates the size of the label in bytes. A zero value indicates an unlabeled
-  SenderDB.
+  Indicates the size of the label in bytes. A zero value indicates an
+  unlabeled SenderDB.
   */
   std::size_t label_byte_count_;
 
@@ -327,8 +318,8 @@ class SenderDB {
   bool compressed_;
 
   /**
-  Indicates whether the SenderDB has been stripped of all information not needed
-  for serving a query.
+  Indicates whether the SenderDB has been stripped of all information not
+  needed for serving a query.
   */
   bool stripped_;
 
@@ -337,7 +328,13 @@ class SenderDB {
   (represented by a vector internally) at bundle index i contains all the
   BinBundles with bundle index i.
   */
-  std::vector<std::vector<apsi::sender::BinBundle>> bin_bundles_;
+  // std::vector<std::vector<apsi::sender::BinBundle>> bin_bundles_;
+
+  std::string kv_store_path_;
+  std::shared_ptr<yacl::io::KVStore> meta_info_store_;
+
+  std::vector<std::shared_ptr<yacl::io::IndexStore>> bundles_store_;
+  std::vector<size_t> bundles_store_idx_;
 
   /**
   Holds the OPRF key for this SenderDB.
