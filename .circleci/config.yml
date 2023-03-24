@@ -56,7 +56,7 @@ jobs:
                         python3 -m pip install -U pip && \
                         python3 -m pip install -r requirements.txt && \
                         python3 -m pip install -r requirements-dev.txt && \
-                        bazel build //examples/python/... -c opt --ui_event_filters=-info,-debug,-warning --jobs=16 --disk_cache=/home/admin/dev/.cache/spu_build_cache" | tee build_results.log; build_status=${PIPESTATUS[0]}
+                        bazel build //examples/python/... -c opt --ui_event_filters=-info,-debug,-warning --disk_cache=/home/admin/dev/.cache/spu_build_cache" | tee build_results.log; build_status=${PIPESTATUS[0]}
             exit ${build_status}
       - run:
           name: Save image
@@ -122,13 +122,13 @@ jobs:
             python3 -m pip install -r requirements-dev.txt
       - run:
           name: "build"
-          command: bazel build //spu/... -c opt --ui_event_filters=-info,-debug,-warning --jobs=16 --disk_cache=~/.cache/spu_build_cache
+          command: bazel build //spu/... -c opt --ui_event_filters=-info,-debug,-warning --disk_cache=~/.cache/spu_build_cache
       - run:
           name: "test"
           command: |
             set +e
             declare -i test_status
-            bazel test //spu/... -c opt --ui_event_filters=-info,-debug,-warning --jobs=16 --test_output=errors --disk_cache=~/.cache/spu_build_cache | tee test_result.log; test_status=${PIPESTATUS[0]}
+            bazel test //spu/... -c opt --ui_event_filters=-info,-debug,-warning --test_output=errors --disk_cache=~/.cache/spu_build_cache | tee test_result.log; test_status=${PIPESTATUS[0]}
             sh .ci/rename-junit-xml.sh
             find bazel-bin/ -executable -type f -name "*_test"  -print0 | xargs -0 tar -cvzf test_binary.tar.gz
             find bazel-testlogs/ -type f -name "test.log"  -print0 | xargs -0 tar -cvzf test_logs.tar.gz
@@ -190,7 +190,7 @@ jobs:
           command: |
             set +e
             declare -i test_status
-            bazel test //spu/... -c opt --ui_event_filters=-info,-debug,-warning --test_output=errors --disk_cache=~/.cache/spu_build_cache --jobs=4 | tee test_result.log; test_status=${PIPESTATUS[0]}
+            bazel test //spu/... -c opt --ui_event_filters=-info,-debug,-warning --test_output=errors --disk_cache=~/.cache/spu_build_cache | tee test_result.log; test_status=${PIPESTATUS[0]}
             sh .ci/rename-junit-xml.sh
             find bazel-bin/ -perm +111 -type f -name "*_test"  -print0 | xargs -0 tar -cvzf test_binary.tar.gz
             find bazel-testlogs/ -type f -name "test.log"  -print0 | xargs -0 tar -cvzf test_logs.tar.gz
@@ -274,7 +274,7 @@ jobs:
             python3 -m twine upload -r pypi -u __token__ -p ${PYPI_TWINE_TOKEN} $spu_wheel_path
   linux_publish:
     docker:
-      - image: registry.hub.docker.com/secretflow/release-ci:0.2
+      - image: registry.hub.docker.com/secretflow/release-ci:0.4
     resource_class: xlarge
     steps:
       - checkout
