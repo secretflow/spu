@@ -282,8 +282,7 @@ jobs:
           name: "build package and publish"
           command: |
             set +e
-            pip install numpy
-            env BAZEL_MAX_JOBS=16 sh ./build_wheel_entrypoint.sh
+            env sh ./build_wheel_entrypoint.sh
             spu_wheel_name=$(<./spu_wheel.name)
             spu_wheel_path="./${spu_wheel_name//sf-spu/sf_spu}"
             python3 -m pip install twine
