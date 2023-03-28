@@ -29,9 +29,6 @@ KkrtPsiOperator::Options KkrtPsiOperator::ParseConfig(
   return {lctx, config.receiver_rank()};
 }
 
-KkrtPsiOperator::KkrtPsiOperator(const Options& options)
-    : PsiBaseOperator(options.link_ctx), options_(options) {}
-
 std::vector<std::string> KkrtPsiOperator::OnRun(
     const std::vector<std::string>& inputs) {
   std::vector<std::string> res;
@@ -45,22 +42,16 @@ std::vector<std::string> KkrtPsiOperator::OnRun(
   });
 
   if (options_.receiver_rank == link_ctx_->Rank()) {
-    yacl::crypto::OtSendStore send_opts;
-
-    GetKkrtOtReceiverOptions(options_.link_ctx, options_.num_ot, &send_opts);
-
+    auto ot_send = GetKkrtOtReceiverOptions(options_.link_ctx, options_.num_ot);
     std::vector<size_t> kkrt_psi_result =
-        KkrtPsiRecv(options_.link_ctx, send_opts, items_hash);
+        KkrtPsiRecv(options_.link_ctx, ot_send, items_hash);
 
     for (auto index : kkrt_psi_result) {
       res.emplace_back(inputs[index]);
     }
   } else {
-    yacl::crypto::OtRecvStore recv_opts;
-
-    GetKkrtOtSenderOptions(options_.link_ctx, options_.num_ot, &recv_opts);
-
-    KkrtPsiSend(options_.link_ctx, recv_opts, items_hash);
+    auto ot_recv = GetKkrtOtSenderOptions(options_.link_ctx, options_.num_ot);
+    KkrtPsiSend(options_.link_ctx, ot_recv, items_hash);
   }
 
   return res;

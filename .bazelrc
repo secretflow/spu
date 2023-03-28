@@ -36,6 +36,10 @@ test --test_output=errors
 build:benchmark --copt -O3
 build:benchmark --copt -march=native
 
+# static link runtime libraries on Linux
+build:linux-release --action_env=BAZEL_LINKOPTS=-static-libstdc++:-static-libgcc
+build:linux-release --action_env=BAZEL_LINKLIBS=-l%:libstdc++.a:-l%:libgcc.a
+
 # platform specific config
 # Bazel will automatic pick platform config since we have enable_platform_specific_config set
 build:macos --copt="-Xpreprocessor -fopenmp"
@@ -46,11 +50,8 @@ build:macos --cxxopt -Wno-deprecated-anon-enum-enum-conversion
 build:macos --macos_minimum_os=11.0
 build:macos --host_macos_minimum_os=11.0
 
-# static link libstdc++ & libgcc on Linux
 build:linux --copt=-fopenmp
 build:linux --linkopt=-fopenmp
-build:linux --action_env=BAZEL_LINKOPTS=-static-libstdc++:-static-libgcc
-build:linux --action_env=BAZEL_LINKLIBS=-l%:libstdc++.a:-l%:libgcc.a
 
 build:asan --strip=never
 build:asan --copt -fno-sanitize-recover=all

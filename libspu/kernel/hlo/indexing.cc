@@ -20,12 +20,14 @@
 
 #include "libspu/core/ndarray_ref.h"
 #include "libspu/kernel/hal/hal.h"
+#include "libspu/kernel/hlo/basic_binary.h"
+#include "libspu/kernel/hlo/basic_ternary.h"
+#include "libspu/kernel/hlo/basic_unary.h"
+#include "libspu/kernel/hlo/const.h"
+#include "libspu/kernel/hlo/geometrical.h"
+#include "libspu/kernel/hlo/reduce.h"
 #include "libspu/kernel/hlo/utils.h"
 #include "libspu/kernel/value.h"
-
-// Allow runtime to reveal `secret variable` use as indices, debug purpose
-// only.
-#define ENABLE_DEBUG_ONLY_REVEAL_SECRET_INDICES false
 
 namespace {
 struct IndexIterationSpace {
@@ -303,6 +305,143 @@ spu::Value reshapedGatherIndices(spu::HalContext *ctx, int64_t index_vector_dim,
   return spu::kernel::hal::reshape(ctx, start_indices, new_shape);
 }
 
+spu::Value SecretLinearIndexing(spu::HalContext *ctx, const spu::Value &operand,
+                                const spu::Value &linear_idx) {
+  // TODO: Consider utilizing DLP to improve performance
+  SPU_ENFORCE(operand.shape().size() == 1, "operand must be a 1D tensor");
+  SPU_ENFORCE(linear_idx.numel() == 1, "index must be a 1D indexing");
+
+  // Basic idea here:
+  // eq(iota, idx) * operand -> reduce to scalar
+  auto linear_idx_broadcasted =
+      spu::kernel::hlo::Broadcast(ctx, linear_idx, {operand.numel()}, {});
+  spu::Value idx_iota =
+      spu::kernel::hlo::Iota(ctx, spu::DT_I64, operand.numel());
+  auto mask = spu::kernel::hlo::Equal(ctx, linear_idx_broadcasted, idx_iota);
+
+  auto c0 = spu::kernel::hlo::Constant(ctx, static_cast<int64_t>(0), {});
+  auto i0 = spu::kernel::hlo::Cast(ctx, c0, c0.vtype(), operand.dtype());
+
+  std::vector<spu::Value> reduced = spu::kernel::hlo::Reduce(
+      ctx, {spu::kernel::hlo::Mul(ctx, operand, mask)}, {i0}, {0},
+      [&](absl::Span<const spu::Value> lhs, absl::Span<const spu::Value> rhs) {
+        return std::vector<spu::Value>{
+            spu::kernel::hlo::Add(ctx, lhs[0], rhs[0])};
+      });
+
+  return reduced[0];
+}
+
+spu::Value SecretLinearUpdateIndexing(spu::HalContext *ctx,
+                                      const spu::Value &operand,
+                                      const spu::Value &update,
+                                      const spu::Value &linear_idx) {
+  // TODO: Consider utilizing DLP to improve performance
+  SPU_ENFORCE(operand.shape().size() == 1, "operand must be a 1D tensor");
+  SPU_ENFORCE(linear_idx.numel() == 1, "index must be a 1D indexing");
+  SPU_ENFORCE(update.numel() == 1, "update must be a scalar");
+
+  // Basic idea here:
+  // eq(iota, idx) * update + !eq(iota, idx) * operand
+  auto linear_idx_broadcasted =
+      spu::kernel::hlo::Broadcast(ctx, linear_idx, {operand.numel()}, {});
+  spu::Value idx_iota =
+      spu::kernel::hlo::Iota(ctx, spu::DT_I64, operand.numel());
+  auto mask = spu::kernel::hlo::Equal(ctx, linear_idx_broadcasted, idx_iota);
+
+  auto c0 = spu::kernel::hlo::Constant(ctx, static_cast<int64_t>(0), {});
+  auto i0 = spu::kernel::hlo::Cast(ctx, c0, c0.vtype(), operand.dtype());
+
+  auto reverse_mask = spu::kernel::hlo::Not(ctx, mask);
+
+  auto broadcast_update =
+      spu::kernel::hlo::Broadcast(ctx, update, operand.shape(), {0});
+
+  return spu::kernel::hlo::Add(
+      ctx, spu::kernel::hlo::Mul(ctx, operand, reverse_mask),
+      spu::kernel::hlo::Mul(ctx, broadcast_update, mask));
+}
+
+std::vector<spu::Value> ClampAndFlattenIndex(
+    spu::HalContext *ctx, absl::Span<const spu::Value> start_indices,
+    absl::Span<const int64_t> iterate_shape,
+    absl::Span<const int64_t> limit_shape) {
+  // Transform start_indices
+  // start_indices[i] = clamp(start_indices[i], 0, operand.dimension_size[i]
+  // - size_indices[i])
+
+  std::vector<spu::Value> clamped_start(start_indices.size());
+  {
+    std::vector<spu::Value> reshaped_start_indices;
+    std::transform(start_indices.cbegin(), start_indices.cend(),
+                   std::back_inserter(reshaped_start_indices),
+                   [&](const spu::Value &x) {
+                     return spu::kernel::hlo::Reshape(ctx, x, {1});
+                   });
+
+    auto concat_idx =
+        spu::kernel::hlo::Concatenate(ctx, reshaped_start_indices, 0);
+    auto lower_bound = spu::kernel::hlo::Constant(ctx, static_cast<int64_t>(0),
+                                                  concat_idx.shape());
+    lower_bound = spu::kernel::hlo::Cast(ctx, lower_bound, lower_bound.vtype(),
+                                         concat_idx.dtype());
+
+    std::vector<int64_t> upper_bound_pt(start_indices.size());
+    for (size_t idx = 0; idx < upper_bound_pt.size(); ++idx) {
+      upper_bound_pt[idx] = limit_shape[idx] - iterate_shape[idx];
+    }
+    auto upper_bound =
+        spu::kernel::hlo::Constant(ctx, upper_bound_pt, concat_idx.shape());
+    upper_bound = spu::kernel::hlo::Cast(ctx, upper_bound, upper_bound.vtype(),
+                                         concat_idx.dtype());
+
+    auto c = spu::kernel::hlo::Clamp(ctx, concat_idx, lower_bound, upper_bound);
+    for (int64_t idx = 0; idx < static_cast<int64_t>(clamped_start.size());
+         ++idx) {
+      clamped_start[idx] = spu::kernel::hlo::Reshape(
+          ctx, spu::kernel::hlo::Slice(ctx, c, {idx}, {idx + 1}, {1}), {});
+    }
+  }
+
+  // Now flatten start index
+  auto linear_idx =
+      spu::kernel::hlo::Constant(ctx, static_cast<int64_t>(0), {});
+  int64_t stride = 1;
+  for (int64_t idx = iterate_shape.size() - 1; idx >= 0; --idx) {
+    linear_idx = spu::kernel::hlo::Add(
+        ctx, linear_idx,
+        spu::kernel::hlo::Mul(ctx, clamped_start[idx],
+                              spu::kernel::hlo::Constant(ctx, stride, {})));
+    stride *= limit_shape[idx];
+  }
+
+  // Now compute offsets of each index
+  std::vector<int64_t> base(iterate_shape.size(), 0);
+  std::vector<int64_t> incr(iterate_shape.size(), 1);
+
+  std::vector<int64_t> flatten_idx;
+  spu::kernel::forEachIndex(
+      limit_shape, base, iterate_shape, incr,
+      [&flatten_idx, &limit_shape](absl::Span<const int64_t> idx) {
+        flatten_idx.emplace_back(spu::flattenIndex(idx, limit_shape));
+      });
+
+  auto num_index = spu::calcNumel(iterate_shape);
+  std::vector<spu::Value> linear_indices;
+  linear_indices.reserve(num_index);
+  auto added = spu::kernel::hlo::Add(
+      ctx,
+      spu::kernel::hlo::Broadcast(
+          ctx, spu::kernel::hlo::Reshape(ctx, linear_idx, {1}), {num_index},
+          {0}),
+      spu::kernel::hlo::Constant(ctx, flatten_idx, {num_index}));
+  for (int64_t idx = 0; idx < num_index; ++idx) {
+    linear_indices.emplace_back(spu::kernel::hlo::Reshape(
+        ctx, spu::kernel::hlo::Slice(ctx, added, {idx}, {idx + 1}, {1}), {}));
+  }
+  return linear_indices;
+}
+
 }  // namespace
 
 namespace spu::kernel::hlo {
@@ -318,11 +457,7 @@ spu::Value Gather(HalContext *ctx, const spu::Value &operand,
   auto start_indices_value =
       reshapedGatherIndices(ctx, config.indexVectorDim, start_indices);
 
-  if (start_indices_value.isSecret() &&
-      ENABLE_DEBUG_ONLY_REVEAL_SECRET_INDICES) {
-    start_indices_value = hal::reveal(ctx, start_indices_value);
-    SPDLOG_WARN("Reveal start indices value of GatherOp");
-  }
+  SPU_ENFORCE(start_indices.isPublic());
 
   auto start_induces = getIndices(ctx, start_indices_value);
 
@@ -411,26 +546,53 @@ spu::Value Gather(HalContext *ctx, const spu::Value &operand,
 spu::Value DynamicUpdateSlice(HalContext *ctx, const spu::Value &operand,
                               const spu::Value &update,
                               absl::Span<const spu::Value> start_indices) {
-  // Basic idea here, get a ref slice and
-  // update the whole slice..
-  // Start indices
-  std::vector<int64_t> start_indices_i64(start_indices.size());
-  for (const auto &idx : llvm::enumerate(start_indices)) {
-    auto v_idx = idx.value();
-    if (v_idx.isSecret() && ENABLE_DEBUG_ONLY_REVEAL_SECRET_INDICES) {
-      v_idx = hal::reveal(ctx, v_idx);
-      SPDLOG_WARN("Reveal {}th start index of DynamicUpdateSlice", idx.index());
-    }
-    start_indices_i64[idx.index()] = getIndices(ctx, v_idx)[0];
-    // Transform start_indices
-    // start_indices[i] = clamp(start_indices[i], 0, operand.dimension_size[i] -
-    // update.dimension_size[i])
-    start_indices_i64[idx.index()] = std::min(
-        std::max(start_indices_i64[idx.index()], static_cast<int64_t>(0)),
-        operand.shape()[idx.index()] - update.shape()[idx.index()]);
-  }
+  // Basic idea here, get a ref slice and update the whole slice..
+  SPU_ENFORCE_EQ(start_indices.size(), operand.shape().size());
+  SPU_ENFORCE_EQ(start_indices.size(), update.shape().size());
+  SPU_ENFORCE(!start_indices.empty());
 
-  return UpdateSlice(ctx, operand, update, start_indices_i64);
+  if (start_indices[0].isSecret()) {
+    // flatten first
+    spu::Value flattened_operand =
+        hal::reshape(ctx, operand, {operand.numel()});
+
+    spu::Value flattened_update = Reshape(ctx, update, {update.numel()});
+
+    auto flattened_indices = ClampAndFlattenIndex(
+        ctx, start_indices, update.shape(), operand.shape());
+
+    spu::Value ret = flattened_operand;
+
+    for (int64_t n = 0; n < static_cast<int64_t>(flattened_indices.size());
+         ++n) {
+      auto update_slice = Slice(ctx, flattened_update, {n}, {n + 1}, {1});
+      ret = SecretLinearUpdateIndexing(ctx, ret, update_slice,
+                                       flattened_indices[n]);
+    }
+
+    return Reshape(ctx, ret, operand.shape());
+
+  } else {
+    // Start indices
+    std::vector<int64_t> start_indices_i64(start_indices.size());
+    for (const auto &idx : llvm::enumerate(start_indices)) {
+      auto v_idx = idx.value();
+      if (v_idx.isSecret()) {
+        v_idx = hal::reveal(ctx, v_idx);
+        SPDLOG_WARN("Reveal {}th start index of DynamicUpdateSlice",
+                    idx.index());
+      }
+      start_indices_i64[idx.index()] = getIndices(ctx, v_idx)[0];
+      // Transform start_indices
+      // start_indices[i] = clamp(start_indices[i], 0, operand.dimension_size[i]
+      // - update.dimension_size[i])
+      start_indices_i64[idx.index()] = std::min(
+          std::max(start_indices_i64[idx.index()], static_cast<int64_t>(0)),
+          operand.shape()[idx.index()] - update.shape()[idx.index()]);
+    }
+
+    return UpdateSlice(ctx, operand, update, start_indices_i64);
+  }
 }
 
 spu::Value UpdateSlice(HalContext *ctx, const spu::Value &in,
@@ -442,33 +604,52 @@ spu::Value UpdateSlice(HalContext *ctx, const spu::Value &in,
 spu::Value DynamicSlice(HalContext *ctx, const spu::Value &operand,
                         absl::Span<const int64_t> slice_size,
                         absl::Span<const spu::Value> start_indices) {
-  // Start indices
-  std::vector<int64_t> start_indices_i64(start_indices.size());
-  for (const auto &idx : llvm::enumerate(start_indices)) {
-    auto v_idx = idx.value();
-    if (v_idx.isSecret() && ENABLE_DEBUG_ONLY_REVEAL_SECRET_INDICES) {
-      v_idx = hal::reveal(ctx, v_idx);
-      SPDLOG_WARN("Reveal {}th start index of DynamicSlice", idx.index());
+  SPU_ENFORCE_EQ(slice_size.size(), start_indices.size());
+  SPU_ENFORCE_EQ(slice_size.size(), operand.shape().size());
+  SPU_ENFORCE(!start_indices.empty());
+
+  if (start_indices[0].isSecret()) {
+    // flatten...
+    spu::Value flattened_operand =
+        hal::reshape(ctx, operand, {operand.numel()});
+
+    auto flattened_indices =
+        ClampAndFlattenIndex(ctx, start_indices, slice_size, operand.shape());
+
+    std::vector<spu::Value> ret_values(flattened_indices.size());
+
+    for (size_t n = 0; n < flattened_indices.size(); ++n) {
+      ret_values[n] =
+          SecretLinearIndexing(ctx, flattened_operand, flattened_indices[n]);
     }
-    start_indices_i64[idx.index()] = getIndices(ctx, v_idx)[0];
-    // Transform start_indices
-    // start_indices[i] = clamp(start_indices[i], 0, operand.dimension_size[i] -
-    // size_indices[i])
-    start_indices_i64[idx.index()] = std::min(
-        std::max(start_indices_i64[idx.index()], static_cast<int64_t>(0)),
-        operand.shape()[idx.index()] - slice_size[idx.index()]);
+
+    return Reshape(ctx, Concatenate(ctx, ret_values, 0), slice_size);
+
+  } else {
+    // Start indices
+    std::vector<int64_t> start_indices_i64(start_indices.size());
+    for (const auto &idx : llvm::enumerate(start_indices)) {
+      auto v_idx = idx.value();
+      start_indices_i64[idx.index()] = getIndices(ctx, v_idx)[0];
+      // Transform start_indices
+      // start_indices[i] = clamp(start_indices[i], 0, operand.dimension_size[i]
+      // - size_indices[i])
+      start_indices_i64[idx.index()] = std::min(
+          std::max(start_indices_i64[idx.index()], static_cast<int64_t>(0)),
+          operand.shape()[idx.index()] - slice_size[idx.index()]);
+    }
+
+    // Limit
+    std::vector<int64_t> limit(start_indices_i64);
+    for (size_t idx = 0; idx < limit.size(); ++idx) {
+      limit[idx] += slice_size[idx];
+    }
+
+    // Strides is always 1
+    std::vector<int64_t> strides(limit.size(), 1);
+
+    return hal::slice(ctx, operand, start_indices_i64, limit, strides);
   }
-
-  // Limit
-  std::vector<int64_t> limit(start_indices_i64);
-  for (size_t idx = 0; idx < limit.size(); ++idx) {
-    limit[idx] += slice_size[idx];
-  }
-
-  // Strides is always 1
-  std::vector<int64_t> strides(limit.size(), 1);
-
-  return hal::slice(ctx, operand, start_indices_i64, limit, strides);
 }
 
 spu::Value FilterByMask(HalContext *ctx, const spu::Value &operand,

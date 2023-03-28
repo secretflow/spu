@@ -17,9 +17,14 @@
 
 pip install numpy
 
+pip install numpy
+
 python setup.py bdist_wheel
 
 # Ensure binary safety
-if [ "$(expr substr $(uname -s) 1 5)" == "Linux" ]; then
-    sh .ci/ensure_binary_safety.sh bazel-bin/spu/libspu.so
+if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+    UTIL_DIR="devtools"
+    git clone https://github.com/secretflow/devtools.git
+    sh $UTIL_DIR/check-binary.sh bazel-bin/spu/libspu.so
+    rm -rf $UTIL_DIR
 fi

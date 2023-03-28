@@ -8,6 +8,9 @@
 
 ## staging
 > please add your unreleased change here.
+
+## 20230328
+- [SPU] 0.3.2 release
 - [Feature] Add TrustedThirdParty beaver provider for semi2k
 - [Feature] Expose ssl/tls options
 - [Feature] Add EpsilonOp
@@ -15,6 +18,7 @@
 - [Feature] Improve sort performance
 - [Feature] Improve shift performance
 - [Feature] Support shift by secret number of bits
+- [Feature] Support secret indexing
 - [bugfix] Fix boolean ConstantOp
 - [bugfix] Fix jnp.median
 - [bugfix] Fix jnp.sort on floating point inputs
@@ -23,8 +27,7 @@
 - [3p] Move to OpenXLA
 - [API] Move C++ API from spu to libspu
 - [PSI] Add ecdh-oprf 2-party two stage mode.
-
-
+- [API] Deprecate connect_retry_times config for link
 
 ## 20230104
 - [SPU] 0.3.1 release
@@ -66,12 +69,10 @@
 - [API] Added rsqrt support
 - [bugfix] Fixed some crashes and wrong answers
 
-
 ## 20220527
 - [SPU] 0.1.0 release
 - [API] Add exp/log approximation configurations.
 - [API] Change SigmoidMode enum value.
-
 
 ## 20220513
 - [SPU] 0.0.10
@@ -114,7 +115,6 @@
 - [bugfix] Fixed several macOS build issues.
 
 ## 20220412
-
 - [SPU] 0.0.6 release
 - [API] Add storage_type/data_type, remove type_data.
 - [Experimental] Log(natural logarithm) is calculated with Pade approximation instead of Householder's approximation.
@@ -122,12 +122,10 @@
 - [Improvement] fxp div, improvement accuracy with normal distributed inputs.
 
 ## 20220325
-
 - [SPU] 0.0.5.1 release
 - [Bugfix] Fix SEMI2K divivsion wrong answer
 
 ## 20220324
-
 - [SPU] 0.0.5 release
 - [Improvement] Lift Convolution limitations.
 - [Improvement] Optimize maximum/minimum speed, with MPC B2A single bit conversion.
@@ -136,7 +134,6 @@
 - [API] change RuntimeConfig.fxp_reciprocal_goldschmdit_iters to fxp_div_goldschmdit_iters.
 
 ## 20220308
-
 - [SPU] 0.0.4 release
 - [Feature] add silent ot support for various ot scenarios (chosen/correlated/random messages, chosen/correlated/random choices, 1o2/1oN)
 - [Feature] add non-linear computation protocols based on silent ot (comparison, truncation, b2a, triple, randbit, etc)
@@ -156,24 +153,19 @@
 - [Feature] Left/right shift now properly supports non-scalar inputs
 
 ## 20220217
-
 - [spu] 0.0.2.3 release
 
 ## 20220211
-
 - [spu] 0.0.2.2 release
 - [Bugfix] Fix exception when kkrt psi input is too small
 
 ## 20220210
-
 - [spu] 0.0.2.1 release
 - [Bugfix] Fix exception when streaming psi output directory already exists
 
 ## 20220209
-
 - [spu] 0.0.2 release.
 - [Feature] Support multi-parties psi
 
 ## 20210930
-
 - [spu] Init release.

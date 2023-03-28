@@ -13,7 +13,6 @@
 # limitations under the License.
 
 load("//bazel:spu.bzl", "spu_cc_library", "spu_cc_test")
-load("@yacl//bazel:yacl.bzl", "EMP_COPT_FLAGS")
 
 package(default_visibility = ["//visibility:public"])
 

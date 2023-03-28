@@ -34,21 +34,15 @@ std::vector<uint128_t> CreateRangeItems(size_t begin, size_t size) {
 
 void KkrtPsiSend(const std::shared_ptr<yacl::link::Context>& link_ctx,
                  const std::vector<uint128_t>& items_hash) {
-  yacl::crypto::OtRecvStore recv_opts;
-
-  spu::psi::GetKkrtOtSenderOptions(link_ctx, 512, &recv_opts);
-
-  return spu::psi::KkrtPsiSend(link_ctx, recv_opts, items_hash);
+  auto ot_recv = spu::psi::GetKkrtOtSenderOptions(link_ctx, 512);
+  return spu::psi::KkrtPsiSend(link_ctx, ot_recv, items_hash);
 }
 
 std::vector<std::size_t> KkrtPsiRecv(
     const std::shared_ptr<yacl::link::Context>& link_ctx,
     const std::vector<uint128_t>& items_hash) {
-  yacl::crypto::OtSendStore send_opts;
-
-  spu::psi::GetKkrtOtReceiverOptions(link_ctx, 512, &send_opts);
-
-  return spu::psi::KkrtPsiRecv(link_ctx, send_opts, items_hash);
+  auto ot_send = spu::psi::GetKkrtOtReceiverOptions(link_ctx, 512);
+  return spu::psi::KkrtPsiRecv(link_ctx, ot_send, items_hash);
 }
 
 }  // namespace

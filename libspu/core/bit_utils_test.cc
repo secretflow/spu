@@ -48,9 +48,14 @@ TEST(BitUtilsTest, Log2Ceil) {
   ASSERT_EQ(Log2Ceil((1U << 31) + 1), 32);
 }
 
-// TODO:
 TEST(BitUtilsTest, BitWidth) {
-  //
+  EXPECT_EQ(BitWidth(0u), 0);
+  EXPECT_EQ(BitWidth(1u), 1);
+  EXPECT_EQ(BitWidth(1u << 3), 3 + 1);
+  EXPECT_EQ(BitWidth(1ull << 3), 3 + 1);
+  EXPECT_EQ(BitWidth(1ull << 40), 40 + 1);
+  EXPECT_EQ(BitWidth(yacl::MakeInt128(0, 1ull << 3)), 3 + 1);
+  EXPECT_EQ(BitWidth(yacl::MakeInt128(1ull << 3, 0)), 3 + 1 + 64);
 }
 
 TEST(BitUtilsTest, BitDeintl32) {

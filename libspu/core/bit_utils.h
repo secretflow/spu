@@ -36,9 +36,8 @@ template <typename T>
 size_t BitWidth(const T& v) {
   if constexpr (sizeof(T) == 16) {
     auto [hi, lo] = yacl::DecomposeUInt128(v);
-    size_t hi_width = absl::bit_width(hi);
-    if (hi_width != 0) {
-      return hi_width + 64;
+    if (hi != 0) {
+      return absl::bit_width(hi) + 64;
     } else {
       return absl::bit_width(lo);
     }

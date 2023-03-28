@@ -23,6 +23,7 @@ import subprocess
 import sys
 import setuptools
 import setuptools.command.build_ext
+import platform
 
 logger = logging.getLogger(__name__)
 
@@ -132,6 +133,9 @@ def build(build_python, build_cpp):
     bazel_targets += ["//spu:api"] if build_cpp else []
 
     bazel_flags.extend(["-c", "opt"])
+
+    if sys.platform == "linux":
+        bazel_flags.extend(["--config=linux-release"])
 
     return bazel_invoke(
         subprocess.check_call,

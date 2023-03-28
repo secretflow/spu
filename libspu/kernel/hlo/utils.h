@@ -42,13 +42,13 @@ void forEachIndex(absl::Span<const int64_t> shape,
   const auto rank = static_cast<int64_t>(shape.size());
   // Allows handling R0 arrays, such that the visitor function will be called
   // once with the proper empty indexes.
-  int64_t n = -1;
+  int64_t n = rank - 1;
   std::vector<int64_t> indexes(base.begin(), base.end());
 
-  while (n < rank) {
+  while (n >= 0) {
     visitor_function(indexes);
     // Increments dimensions in minor to major order.
-    for (n = 0; n < rank; ++n) {
+    for (n = rank - 1; n >= 0; --n) {
       indexes[n] += incr[n];
       if (indexes[n] < base[n] + count[n]) {
         break;

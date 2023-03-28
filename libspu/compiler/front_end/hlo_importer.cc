@@ -115,6 +115,9 @@ void runHloPasses(xla::HloModule *module) {
     // elimination has to come after that pass.
     pipeline.AddPass<ZeroSizedHloElimination>();
 
+    // FIXME: For public gather, this might actually slower
+    pipeline.AddPass<GatherExpander>(GatherExpander::kEliminateAllGathers);
+
     pipeline.AddPass<TupleSimplifier>();
     pipeline.AddPass<WhileLoopSimplifier>();
 

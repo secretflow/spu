@@ -120,4 +120,33 @@ TEST(ArrayRefTest, unflatten) {
   EXPECT_EQ(b.strides(), expected_strides);
 }
 
+TEST(ArrayRefTest, UpdateSlice) {
+  // Make 3x3 element, strides = 2x2 array
+  NdArrayRef a(std::make_shared<yacl::Buffer>(9 * sizeof(int32_t)),
+               makePtType(PT_I32), {3, 3}, {3, 1}, 0);
+  NdArrayRef b(std::make_shared<yacl::Buffer>(4 * sizeof(int32_t)),
+               makePtType(PT_I32), {2, 2}, {2, 1}, 0);
+  // a : 0,1,2
+  //     3,4,5
+  //     6,7,8
+  // b : 0,1
+  //     2,3
+  std::iota(static_cast<int32_t *>(a.data()),
+            static_cast<int32_t *>(a.data()) + 9, 0);
+  std::iota(static_cast<int32_t *>(b.data()),
+            static_cast<int32_t *>(b.data()) + 4, 0);
+
+  a.update_slice(b, {0, 1});
+  // a : 0,0,1
+  //     3,2,3
+  //     6,7,8
+  EXPECT_EQ(a.at<int32_t>({0, 0}), 0);
+  EXPECT_EQ(a.at<int32_t>({0, 1}), 0);
+  EXPECT_EQ(a.at<int32_t>({0, 2}), 1);
+  EXPECT_EQ(a.at<int32_t>({1, 0}), 3);
+  EXPECT_EQ(a.at<int32_t>({1, 1}), 2);
+
+  EXPECT_THROW(a.update_slice(b, {0, 2}), ::yacl::EnforceNotMet);
+}
+
 }  // namespace spu
