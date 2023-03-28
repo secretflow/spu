@@ -286,7 +286,7 @@ jobs:
   linux_publish:
     docker:
       - image: registry.hub.docker.com/secretflow/release-ci:0.4
-    resource_class: xlarge
+    resource_class: 2xlarge
     steps:
       - checkout
       - run:
