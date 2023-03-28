@@ -100,7 +100,7 @@ class Spdz2kState : public State {
       public_seed += seed;
     }
 
-    yacl::crypto::FillPseudoRandom(
+    yacl::crypto::FillPRand(
         kAesType, public_seed, 0, 0,
         absl::MakeSpan(static_cast<char*>(res.data()), res.buf()->size()));
 

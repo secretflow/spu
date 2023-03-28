@@ -223,13 +223,11 @@ BENCHMARK_DEFINE_F(PsiBench, KkrtPsi)
     state.ResumeTiming();
 
     if (bench_lctx->Rank() == 0) { /* Sender */
-      yacl::crypto::OtRecvStore recv_opts;
-      psi::GetKkrtOtSenderOptions(bench_lctx, 512, &recv_opts);
-      psi::KkrtPsiSend(bench_lctx, recv_opts, items);
+      auto ot_recv = psi::GetKkrtOtSenderOptions(bench_lctx, 512);
+      psi::KkrtPsiSend(bench_lctx, ot_recv, items);
     } else { /* Receiver */
-      yacl::crypto::OtSendStore send_opts;
-      psi::GetKkrtOtReceiverOptions(bench_lctx, 512, &send_opts);
-      psi::KkrtPsiRecv(bench_lctx, send_opts, items);
+      auto ot_send = psi::GetKkrtOtReceiverOptions(bench_lctx, 512);
+      psi::KkrtPsiRecv(bench_lctx, ot_send, items);
     }
   }
 }

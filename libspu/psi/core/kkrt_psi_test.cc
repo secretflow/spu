@@ -16,6 +16,7 @@
 
 #include <future>
 #include <iostream>
+#include <set>
 
 #include "gtest/gtest.h"
 #include "yacl/crypto/base/hash/hash_utils.h"
@@ -32,21 +33,16 @@ namespace spu::psi {
 
 void KkrtPsiSend(const std::shared_ptr<yacl::link::Context>& link_ctx,
                  const std::vector<uint128_t>& items_hash) {
-  yacl::crypto::OtRecvStore recv_opts;
-
-  GetKkrtOtSenderOptions(link_ctx, 512, &recv_opts);
-
-  return KkrtPsiSend(link_ctx, recv_opts, items_hash);
+  auto ot_recv = GetKkrtOtSenderOptions(link_ctx, 512);
+  return KkrtPsiSend(link_ctx, ot_recv, items_hash);
 }
 
 std::vector<std::size_t> KkrtPsiRecv(
     const std::shared_ptr<yacl::link::Context>& link_ctx,
     const std::vector<uint128_t>& items_hash) {
-  yacl::crypto::OtSendStore send_opts;
+  auto ot_send = GetKkrtOtReceiverOptions(link_ctx, 512);
 
-  GetKkrtOtReceiverOptions(link_ctx, 512, &send_opts);
-
-  return KkrtPsiRecv(link_ctx, send_opts, items_hash);
+  return KkrtPsiRecv(link_ctx, ot_send, items_hash);
 }
 
 std::vector<size_t> GetIntersection(const TestParams& params) {

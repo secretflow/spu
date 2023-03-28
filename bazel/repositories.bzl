@@ -151,24 +151,10 @@ def _com_github_xtensor_xtl():
     )
 
 def _com_github_openxla_xla():
-    LLVM_COMMIT = "5cb8381aea5630a2d8d11d53e3a9f9ed7d5fbb52"
-    LLVM_SHA256 = "3a23a0498e55842a242e1b41f67ace724e388cace1f71931748bf2210b3350fa"
-
-    OPENXLA_COMMIT = "94c49e60fc4fee94a544dcf5b607a2fd575ba614"
-    OPENXLA_SHA256 = "c35e3a0e6c3dffd860c967df62e341a3f8be0319ceb5e6de37700190c2a09182"
+    OPENXLA_COMMIT = "6aee72ed08290623ff68742e146750ea0e7ddf8c"
+    OPENXLA_SHA256 = "dc13148b1e27d8fbc5a60bf4055595f3f7708bb339400a0ba19d9923b6f642fc"
 
     SKYLIB_VERSION = "1.3.0"
-
-    maybe(
-        http_archive,
-        name = "llvm-raw",
-        build_file_content = "#empty",
-        sha256 = LLVM_SHA256,
-        strip_prefix = "llvm-project-" + LLVM_COMMIT,
-        urls = [
-            "https://github.com/llvm/llvm-project/archive/{commit}.tar.gz".format(commit = LLVM_COMMIT),
-        ],
-    )
 
     maybe(
         http_archive,
@@ -290,11 +276,11 @@ def _com_github_eigenteam_eigen():
     maybe(
         http_archive,
         name = "com_github_eigenteam_eigen",
-        sha256 = "c1b115c153c27c02112a0ecbf1661494295d9dcff6427632113f2e4af9f3174d",
+        sha256 = "8586084f71f9bde545ee7fa6d00288b264a2b7ac3607b974e54d13e7162c1c72",
         build_file = "@spulib//bazel:eigen.BUILD",
-        strip_prefix = "eigen-3.4",
+        strip_prefix = "eigen-3.4.0",
         urls = [
-            "https://gitlab.com/libeigen/eigen/-/archive/3.4/eigen-3.4.tar.gz",
+            "https://gitlab.com/libeigen/eigen/-/archive/3.4.0/eigen-3.4.0.tar.gz",
         ],
     )
 

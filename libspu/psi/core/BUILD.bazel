@@ -111,7 +111,7 @@ spu_cc_test(
     srcs = ["cuckoo_index_test.cc"],
     deps = [
         ":cuckoo_index",
-        "@yacl//yacl/crypto/base:symmetric_crypto",
+        "@yacl//yacl/crypto/utils:rand",
     ],
 )
 

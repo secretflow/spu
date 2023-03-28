@@ -121,7 +121,7 @@ TEST(Verify, Abs) {
                            {xt::xarray<int64_t>{1, 2, 2, 1}});
 }
 
-TEST(Verify, DISABLED_Logisitc) {
+TEST(Verify, Logisitc) {
   runner<float, float>(
       [] { return mlir::pphlo::LogisticOp{}; }, {xt::xarray<float>{1, 2, 3, 4}},
       {xt::xarray<float>{0.73105858, 0.88079708, 0.95257413, 0.98201379}},
@@ -229,7 +229,7 @@ TEST(Verify, DISABLED_Dot) {
       {xt::xarray<int32_t>{{1, 2, 2}, {1, 2, 2}}});
 }
 
-TEST(Verify, DISABLED_Equal) {
+TEST(Verify, Equal) {
   runner<int32_t, bool>(
       [] { return mlir::pphlo::EqualOp{}; },
       {xt::xarray<int32_t>{1, 2, 3, 4}, xt::xarray<int32_t>{5, 2, 7, 4}},
@@ -237,7 +237,7 @@ TEST(Verify, DISABLED_Equal) {
       {xt::xarray<bool>{false, false, false, false}});
 }
 
-TEST(Verify, DISABLED_Less) {
+TEST(Verify, Less) {
   runner<int32_t, bool>(
       [] { return mlir::pphlo::LessOp{}; },
       {xt::xarray<int32_t>{1, 2, 3, 4}, xt::xarray<int32_t>{5, 2, 7, 4}},
@@ -245,7 +245,7 @@ TEST(Verify, DISABLED_Less) {
       {xt::xarray<bool>{false, false, false, false}});
 }
 
-TEST(Verify, DISABLED_Greater) {
+TEST(Verify, Greater) {
   runner<int32_t, bool>(
       [] { return mlir::pphlo::GreaterOp{}; },
       {xt::xarray<int32_t>{1, 2, 3, 4}, xt::xarray<int32_t>{5, 2, 7, 4}},

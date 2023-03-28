@@ -168,6 +168,12 @@ spu_cc_library(
     srcs = ["indexing.cc"],
     hdrs = ["indexing.h"],
     deps = [
+        ":basic_binary",
+        ":basic_ternary",
+        ":basic_unary",
+        ":const",
+        ":geometrical",
+        ":reduce",
         ":utils",
         "//libspu/kernel/hal",
     ],
@@ -177,7 +183,6 @@ spu_cc_test(
     name = "indexing_test",
     srcs = ["indexing_test.cc"],
     deps = [
-        ":const",
         ":indexing",
         "//libspu/kernel/hal:test_util",
     ],

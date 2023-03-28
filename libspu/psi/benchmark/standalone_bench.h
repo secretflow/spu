@@ -241,17 +241,15 @@ BENCHMARK_DEFINE_F(PsiBench, KkrtPsi)
     /* Sender */
     auto a_proc = [](const std::shared_ptr<yacl::link::Context>& ctx,
                      const std::vector<uint128_t>& items) {
-      yacl::crypto::OtRecvStore recv_opts;
-      psi::GetKkrtOtSenderOptions(ctx, 512, &recv_opts);
-      psi::KkrtPsiSend(ctx, recv_opts, items);
+      auto ot_recv = psi::GetKkrtOtSenderOptions(ctx, 512);
+      psi::KkrtPsiSend(ctx, ot_recv, items);
     };
 
     /* Receiver */
     auto b_proc = [](const std::shared_ptr<yacl::link::Context>& ctx,
                      const std::vector<uint128_t>& items) {
-      yacl::crypto::OtSendStore send_opts;
-      psi::GetKkrtOtReceiverOptions(ctx, 512, &send_opts);
-      return psi::KkrtPsiRecv(ctx, send_opts, items);
+      auto ot_send = psi::GetKkrtOtReceiverOptions(ctx, 512);
+      return psi::KkrtPsiRecv(ctx, ot_send, items);
     };
 
     state.ResumeTiming();

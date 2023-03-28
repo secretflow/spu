@@ -438,7 +438,7 @@ Value _prefix_or(HalContext* ctx, const Value& x) {
 
   auto b0 = _prefer_b(ctx, x);
   const size_t bit_width = SizeOf(ctx->getField()) * 8;
-  for (size_t idx = 0; idx < absl::bit_width(bit_width) - 1; idx++) {
+  for (int idx = 0; idx < absl::bit_width(bit_width) - 1; idx++) {
     const size_t offset = 1UL << idx;
     auto b1 = _rshift(ctx, b0, offset);
     b0 = _or(ctx, b0, b1);

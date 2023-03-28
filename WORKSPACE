@@ -38,10 +38,6 @@ rules_foreign_cc_dependencies(
     register_preinstalled_tools = True,
 )
 
-load("//bazel:llvm.bzl", "llvm_setup")
-
-llvm_setup(name = "llvm-project")
-
 load("@xla//:workspace4.bzl", "xla_workspace4")
 
 xla_workspace4()

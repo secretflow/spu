@@ -308,7 +308,9 @@ void PPHloVerifier::verify(mlir::pphlo::CeilOp op,
 void PPHloVerifier::verify(mlir::pphlo::LogisticOp op,
                            absl::Span<const spu::Value> operands,
                            absl::Span<const spu::Value> expected) {
-  SPU_THROW("Missing stablehlo interpreter support");
+  auto t1 = convertToStablehloTensor(&mlir_ctx_, ctx_, operands[0]);
+  auto ret = mlir::stablehlo::evalLogisticOp(t1, t1.getType());
+  mismatch_handler_(verifyEqual(ctx_, ret, expected[0]));
 }
 
 void PPHloVerifier::verify(mlir::pphlo::TanhOp op,
@@ -476,44 +478,78 @@ void PPHloVerifier::verify(mlir::pphlo::DotOp op,
 
 void PPHloVerifier::verify(mlir::pphlo::DotGeneralOp op,
                            absl::Span<const spu::Value> operands,
-                           absl::Span<const spu::Value> expected) {
-  SPU_THROW("Missing stablehlo interpreter support");
-}
+                           absl::Span<const spu::Value> expected) {}
 
 void PPHloVerifier::verify(mlir::pphlo::EqualOp op,
                            absl::Span<const spu::Value> operands,
                            absl::Span<const spu::Value> expected) {
-  SPU_THROW("Missing stablehlo interpreter support");
+  auto t1 = convertToStablehloTensor(&mlir_ctx_, ctx_, operands[0]);
+  auto t2 = convertToStablehloTensor(&mlir_ctx_, ctx_, operands[1]);
+  auto ret_type = mlir::RankedTensorType::get(
+      t1.getShape(), mlir::IntegerType::get(&mlir_ctx_, 1));
+  auto ret = mlir::stablehlo::evalCompareOp(
+      t1, t2, mlir::stablehlo::ComparisonDirection::EQ, ret_type);
+  mismatch_handler_(verifyEqual(ctx_, ret, expected[0]));
 }
 
 void PPHloVerifier::verify(mlir::pphlo::NotEqualOp op,
                            absl::Span<const spu::Value> operands,
                            absl::Span<const spu::Value> expected) {
-  SPU_THROW("Missing stablehlo interpreter support");
+  auto t1 = convertToStablehloTensor(&mlir_ctx_, ctx_, operands[0]);
+  auto t2 = convertToStablehloTensor(&mlir_ctx_, ctx_, operands[1]);
+  auto ret_type = mlir::RankedTensorType::get(
+      t1.getShape(), mlir::IntegerType::get(&mlir_ctx_, 1));
+  auto ret = mlir::stablehlo::evalCompareOp(
+      t1, t2, mlir::stablehlo::ComparisonDirection::NE, ret_type);
+  mismatch_handler_(verifyEqual(ctx_, ret, expected[0]));
 }
 
 void PPHloVerifier::verify(mlir::pphlo::LessOp op,
                            absl::Span<const spu::Value> operands,
                            absl::Span<const spu::Value> expected) {
-  SPU_THROW("Missing stablehlo interpreter support");
+  auto t1 = convertToStablehloTensor(&mlir_ctx_, ctx_, operands[0]);
+  auto t2 = convertToStablehloTensor(&mlir_ctx_, ctx_, operands[1]);
+  auto ret_type = mlir::RankedTensorType::get(
+      t1.getShape(), mlir::IntegerType::get(&mlir_ctx_, 1));
+  auto ret = mlir::stablehlo::evalCompareOp(
+      t1, t2, mlir::stablehlo::ComparisonDirection::LT, ret_type);
+  mismatch_handler_(verifyEqual(ctx_, ret, expected[0]));
 }
 
 void PPHloVerifier::verify(mlir::pphlo::LessEqualOp op,
                            absl::Span<const spu::Value> operands,
                            absl::Span<const spu::Value> expected) {
-  SPU_THROW("Missing stablehlo interpreter support");
+  auto t1 = convertToStablehloTensor(&mlir_ctx_, ctx_, operands[0]);
+  auto t2 = convertToStablehloTensor(&mlir_ctx_, ctx_, operands[1]);
+  auto ret_type = mlir::RankedTensorType::get(
+      t1.getShape(), mlir::IntegerType::get(&mlir_ctx_, 1));
+  auto ret = mlir::stablehlo::evalCompareOp(
+      t1, t2, mlir::stablehlo::ComparisonDirection::LE, ret_type);
+  mismatch_handler_(verifyEqual(ctx_, ret, expected[0]));
 }
 
 void PPHloVerifier::verify(mlir::pphlo::GreaterOp op,
                            absl::Span<const spu::Value> operands,
                            absl::Span<const spu::Value> expected) {
-  SPU_THROW("Missing stablehlo interpreter support");
+  auto t1 = convertToStablehloTensor(&mlir_ctx_, ctx_, operands[0]);
+  auto t2 = convertToStablehloTensor(&mlir_ctx_, ctx_, operands[1]);
+  auto ret_type = mlir::RankedTensorType::get(
+      t1.getShape(), mlir::IntegerType::get(&mlir_ctx_, 1));
+  auto ret = mlir::stablehlo::evalCompareOp(
+      t1, t2, mlir::stablehlo::ComparisonDirection::GT, ret_type);
+  mismatch_handler_(verifyEqual(ctx_, ret, expected[0]));
 }
 
 void PPHloVerifier::verify(mlir::pphlo::GreaterEqualOp op,
                            absl::Span<const spu::Value> operands,
                            absl::Span<const spu::Value> expected) {
-  SPU_THROW("Missing stablehlo interpreter support");
+  auto t1 = convertToStablehloTensor(&mlir_ctx_, ctx_, operands[0]);
+  auto t2 = convertToStablehloTensor(&mlir_ctx_, ctx_, operands[1]);
+  auto ret_type = mlir::RankedTensorType::get(
+      t1.getShape(), mlir::IntegerType::get(&mlir_ctx_, 1));
+  auto ret = mlir::stablehlo::evalCompareOp(
+      t1, t2, mlir::stablehlo::ComparisonDirection::GE, ret_type);
+  mismatch_handler_(verifyEqual(ctx_, ret, expected[0]));
 }
 
 void PPHloVerifier::verify(mlir::pphlo::SelectOp op,

@@ -49,7 +49,7 @@ Value slice(HalContext* ctx, const Value& input,
 Value slice_scalar_at(HalContext* ctx, const Value& input,
                       absl::Span<const int64_t> indices);
 
-// TODO: test me
+// update a block of in with update, start_indices is postion at in
 Value update_slice(HalContext* ctx, const Value& in, const Value& update,
                    absl::Span<const int64_t> start_indices);
 

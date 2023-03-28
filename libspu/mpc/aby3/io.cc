@@ -76,9 +76,6 @@ std::vector<ArrayRef> Aby3Io::makeBitSecret(const ArrayRef& in) const {
 
   const auto out_type = makeType<BShrTy>(PT_U8, /* out_nbits */ 1);
   const size_t numel = in.numel();
-  constexpr auto kCryptoType =
-      yacl::crypto::SymmetricCrypto::CryptoType::AES128_CTR;
-  constexpr uint128_t kAesIV = 0U;
 
   std::vector<ArrayRef> shares{
       {out_type, numel}, {out_type, numel}, {out_type, numel}};
@@ -91,11 +88,8 @@ std::vector<ArrayRef> Aby3Io::makeBitSecret(const ArrayRef& in) const {
     std::vector<BShrT> r0(numel);
     std::vector<BShrT> r1(numel);
 
-    uint64_t counter = 0;
-    yacl::crypto::FillPseudoRandom(kCryptoType, yacl::crypto::RandSeed(),
-                                   kAesIV, counter, absl::MakeSpan(r0));
-    yacl::crypto::FillPseudoRandom(kCryptoType, yacl::crypto::RandSeed(),
-                                   kAesIV, counter, absl::MakeSpan(r1));
+    yacl::crypto::PrgAesCtr(yacl::crypto::RandSeed(), absl::MakeSpan(r0));
+    yacl::crypto::PrgAesCtr(yacl::crypto::RandSeed(), absl::MakeSpan(r1));
 
     auto _s0 = ArrayView<std::array<BShrT, 2>>(shares[0]);
     auto _s1 = ArrayView<std::array<BShrT, 2>>(shares[1]);

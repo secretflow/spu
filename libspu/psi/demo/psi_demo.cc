@@ -42,7 +42,6 @@ std::shared_ptr<yacl::link::Context> CreateLinkContext(
   SPU_ENFORCE(ip_list.size() > 1);
 
   yacl::link::ContextDesc ctx_desc;
-  ctx_desc.connect_retry_times = 180;
   for (size_t i = 0; i < ip_list.size(); ++i) {
     ctx_desc.parties.push_back({std::to_string(i), ip_list[i]});
   }

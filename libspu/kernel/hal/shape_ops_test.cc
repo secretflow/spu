@@ -155,6 +155,22 @@ TEST(SliceTest, Slice) {
   EXPECT_EQ(xt::view(x, xt::range(2, 4), xt::range(1, 3)), z);
 }
 
+TEST(SliceTest, UpdateSlice) {
+  // GIVEN
+  xt::xarray<int32_t> x = {{0, 1, 2}, {3, 4, 5}, {6, 7, 8}};
+  xt::xarray<int32_t> y = {{0, 1}, {3, 4}};
+  using P_VT = public_v::type;
+
+  auto update_slice_wrapper = [](HalContext* ctx, const Value& in,
+                                 const Value& update) {
+    return update_slice(ctx, in, update, {1, 1});
+  };
+  auto z =
+      test::evalBinaryOp<int64_t>(P_VT(), P_VT(), update_slice_wrapper, x, y);
+
+  EXPECT_EQ(xt::view(z, xt::range(1, 3), xt::range(1, 3)), y);
+}
+
 TEST(SliceTest, SliceStride) {
   // GIVEN
   xt::xarray<int32_t> x = {0, 1, 2, 3};

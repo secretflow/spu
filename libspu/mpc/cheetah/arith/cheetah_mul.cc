@@ -285,12 +285,6 @@ void CheetahMul::Impl::LazyExpandSEALContexts(uint32_t field_bitlen,
 
   uint32_t num_seal_ctx = CeilDiv(target_plain_bitlen, kSmallPrimeBitLen);
   std::vector<int> crt_moduli_bits(num_seal_ctx, kSmallPrimeBitLen);
-  int last_plain = std::max<int>(
-      20, target_plain_bitlen - (num_seal_ctx - 1) * kSmallPrimeBitLen);
-  crt_moduli_bits.back() = last_plain;
-  SPDLOG_INFO(
-      "BeaverCheetah::Mul uses {} modulus ({} bit each) for {} bit ring",
-      num_seal_ctx, kSmallPrimeBitLen, field_bitlen);
 
   auto crt_modulus =
       seal::CoeffModulus::Create(parms_.poly_modulus_degree(), crt_moduli_bits);
@@ -309,6 +303,7 @@ void CheetahMul::Impl::LazyExpandSEALContexts(uint32_t field_bitlen,
   if (conn == nullptr) {
     conn = lctx_.get();
   }
+
   for (uint32_t idx = current_num_ctx; idx < num_seal_ctx; ++idx) {
     parms_.set_plain_modulus(crt_modulus[idx]);
     seal_cntxts_.emplace_back(parms_, true, seal::sec_level_type::tc128);
@@ -319,13 +314,19 @@ void CheetahMul::Impl::LazyExpandSEALContexts(uint32_t field_bitlen,
 
       auto pk = keygen.create_public_key();
       // NOTE(juhou): we patched seal/util/serializable.h
-      auto pk_buf = EncodeSEALObject(pk.obj());
+      auto pk_buf_send = EncodeSEALObject(pk.obj());
       // exchange the public key
       int nxt_rank = conn->NextRank();
-      conn->SendAsync(nxt_rank, pk_buf, "send Pk");
-      pk_buf = conn->Recv(nxt_rank, "recv pk");
+      yacl::Buffer pk_buf_recv;
+      if (0 == nxt_rank) {
+        conn->Send(nxt_rank, pk_buf_send, "rank1 send pk");
+        pk_buf_recv = conn->Recv(nxt_rank, "rank1 recv pk");
+      } else {
+        pk_buf_recv = conn->Recv(nxt_rank, "rank0 recv pk");
+        conn->Send(nxt_rank, pk_buf_send, "rank0 send pk");
+      }
       pair_public_key_ = std::make_shared<seal::PublicKey>();
-      DecodeSEALObject(pk_buf, seal_cntxts_[0], pair_public_key_.get());
+      DecodeSEALObject(pk_buf_recv, seal_cntxts_[0], pair_public_key_.get());
 
       // create the functors
       sym_encryptors_.push_back(
@@ -343,6 +344,9 @@ void CheetahMul::Impl::LazyExpandSEALContexts(uint32_t field_bitlen,
         std::make_shared<seal::BatchEncoder>(seal_cntxts_.back()));
   }
   current_crt_plain_bitlen_ = target_plain_bitlen;
+  SPDLOG_INFO(
+      "BeaverCheetah::Mul uses {} modulus ({} bit each) for {} bit ring",
+      num_seal_ctx, kSmallPrimeBitLen, field_bitlen);
 }
 
 ArrayRef CheetahMul::Impl::MulOLE(const ArrayRef &shr,

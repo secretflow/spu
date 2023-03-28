@@ -202,7 +202,7 @@ ArrayRef ring_rand(FieldType field, size_t size, uint128_t prg_seed,
   constexpr uint128_t kAesInitialVector = 0U;
 
   ArrayRef res(makeType<RingTy>(field), size);
-  *prg_counter = yacl::crypto::FillPseudoRandom(
+  *prg_counter = yacl::crypto::FillPRand(
       kCryptoType, prg_seed, kAesInitialVector, *prg_counter,
       absl::MakeSpan(static_cast<char*>(res.data()), res.buf()->size()));
 

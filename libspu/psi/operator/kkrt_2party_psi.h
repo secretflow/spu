@@ -28,20 +28,17 @@ class KkrtPsiOperator : public PsiBaseOperator {
  public:
   struct Options {
     std::shared_ptr<yacl::link::Context> link_ctx;
-
     size_t receiver_rank = 0;
-
     size_t num_ot = 512;
   };
 
   static Options ParseConfig(const MemoryPsiConfig& config,
                              const std::shared_ptr<yacl::link::Context>& lctx);
 
- public:
-  explicit KkrtPsiOperator(const Options& options);
+  explicit KkrtPsiOperator(const Options& options)
+      : PsiBaseOperator(options.link_ctx), options_(options) {}
 
-  std::vector<std::string> OnRun(
-      const std::vector<std::string>& inputs) override final;
+  std::vector<std::string> OnRun(const std::vector<std::string>& inputs) final;
 
  private:
   Options options_;
