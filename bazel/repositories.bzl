@@ -18,7 +18,7 @@ load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
 
 SECRETFLOW_GIT = "https://github.com/secretflow"
 
-YACL_COMMIT_ID = "262ad8cde797b24567d9d55184fbc3edee770584"
+YACL_COMMIT_ID = "b3507c2ad02b2da1aa7063417afd2cba0cb24ca0"
 
 def spu_deps():
     _rule_python()
@@ -276,11 +276,11 @@ def _com_github_eigenteam_eigen():
     maybe(
         http_archive,
         name = "com_github_eigenteam_eigen",
-        sha256 = "8586084f71f9bde545ee7fa6d00288b264a2b7ac3607b974e54d13e7162c1c72",
+        sha256 = "c1b115c153c27c02112a0ecbf1661494295d9dcff6427632113f2e4af9f3174d",
         build_file = "@spulib//bazel:eigen.BUILD",
-        strip_prefix = "eigen-3.4.0",
+        strip_prefix = "eigen-3.4",
         urls = [
-            "https://gitlab.com/libeigen/eigen/-/archive/3.4.0/eigen-3.4.0.tar.gz",
+            "https://gitlab.com/libeigen/eigen/-/archive/3.4/eigen-3.4.tar.gz",
         ],
     )
 
