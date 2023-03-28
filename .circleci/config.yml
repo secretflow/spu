@@ -249,10 +249,8 @@ jobs:
           command: |
             set +e
             sh ./build_wheel_entrypoint.sh
-            spu_wheel_name=$(<./spu_wheel.name)
-            spu_wheel_path="./${spu_wheel_name//sf-spu/sf_spu}"
             python3 -m pip install twine
-            python3 -m twine upload -r pypi -u __token__ -p ${PYPI_TWINE_TOKEN} $spu_wheel_path
+            python3 -m twine upload -r pypi -u __token__ -p ${PYPI_TWINE_TOKEN} dist/*.whl
   macOS_arm64_publish:
     macos:
       xcode: 14.2
@@ -279,10 +277,8 @@ jobs:
           command: |
             set +e
             sh ./build_wheel_entrypoint.sh
-            spu_wheel_name=$(<./spu_wheel.name)
-            spu_wheel_path="./${spu_wheel_name//sf-spu/sf_spu}"
             python3 -m pip install twine
-            python3 -m twine upload -r pypi -u __token__ -p ${PYPI_TWINE_TOKEN} $spu_wheel_path
+            python3 -m twine upload -r pypi -u __token__ -p ${PYPI_TWINE_TOKEN} dist/*.whl
   linux_publish:
     docker:
       - image: registry.hub.docker.com/secretflow/release-ci:0.4
@@ -294,10 +290,8 @@ jobs:
           command: |
             set +e
             env sh ./build_wheel_entrypoint.sh
-            spu_wheel_name=$(<./spu_wheel.name)
-            spu_wheel_path="./${spu_wheel_name//sf-spu/sf_spu}"
             python3 -m pip install twine
-            python3 -m twine upload -r pypi -u __token__ -p ${PYPI_TWINE_TOKEN} $spu_wheel_path
+            python3 -m twine upload -r pypi -u __token__ -p ${PYPI_TWINE_TOKEN} dist/*.whl
 
 # Invoke jobs via workflows
 # See: https://circleci.com/docs/2.0/configuration-reference/#workflows
