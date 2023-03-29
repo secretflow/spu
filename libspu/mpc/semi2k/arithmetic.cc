@@ -249,7 +249,7 @@ ArrayRef TruncA::proc(KernelEvalContext* ctx, const ArrayRef& x,
 
   // TODO: add truncation method to options.
   if (comm->getWorldSize() == 2) {
-    // SecurlML, local truncation.
+    // SecureML, local truncation.
     // Ref: Theorem 1. https://eprint.iacr.org/2017/396.pdf
     return ring_arshift(x, bits).as(x.eltype());
   } else {

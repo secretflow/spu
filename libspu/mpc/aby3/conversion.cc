@@ -28,7 +28,7 @@
 
 namespace spu::mpc::aby3 {
 
-// Referrence:
+// Reference:
 // ABY3: A Mixed Protocol Framework for Machine Learning
 // P16 5.3 Share Conversions, Bit Decomposition
 // https://eprint.iacr.org/2018/403.pdf
@@ -111,7 +111,7 @@ ArrayRef B2ASelector::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
   }
 }
 
-// Referrence:
+// Reference:
 // 5.3 Share Conversions
 // https://eprint.iacr.org/2018/403.pdf
 //
@@ -255,7 +255,7 @@ static std::vector<T> bitCompose(absl::Span<T const> in, size_t nbits) {
   return out;
 }
 
-// Referrence:
+// Reference:
 // 5.4.1 Semi-honest Security
 // https://eprint.iacr.org/2018/403.pdf
 //

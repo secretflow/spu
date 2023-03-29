@@ -446,7 +446,7 @@ Value f_rsqrt(HalContext* ctx, const Value& x) {
   }
 }
 
-// Referrence:
+// Reference:
 // 1. https://eprint.iacr.org/2012/405.pdf, section 6.1
 // 2.
 // https://github.com/tf-encrypted/tf-encrypted/blob/3b0f14d26e900caf12a92a9ea2284ccd4d58e683/tf_encrypted/protocol/aby3/fp.py#L35-L52
