@@ -129,7 +129,7 @@ void FilterFileByIndices(const std::string& input, const std::string& output,
 }
 
 std::string KeysJoin(const std::vector<absl::string_view>& keys) {
-  return absl::StrJoin(keys, "-");
+  return absl::StrJoin(keys, ",");
 }
 
 std::vector<size_t> AllGatherItemsSize(
