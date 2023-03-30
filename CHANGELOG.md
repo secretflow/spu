@@ -27,7 +27,6 @@
 - [3p] Move to OpenXLA
 - [API] Move C++ API from spu to libspu
 - [PSI] Add ecdh-oprf 2-party two stage mode.
-- [API] Deprecate connect_retry_times config for link
 
 ## 20230104
 - [SPU] 0.3.1 release

@@ -95,6 +95,8 @@ void BindLink(py::module& m) {
       .def_readwrite("id", &ContextDesc::id, "the uuid")
       .def_readonly("parties", &ContextDesc::parties,
                     "the parties that joins the computation")
+      .def_readwrite("connect_retry_times", &ContextDesc::connect_retry_times,
+                     "connect to mesh retry time")
       .def_readwrite("connect_retry_interval_ms",
                      &ContextDesc::connect_retry_interval_ms)
       .def_readwrite("recv_timeout_ms", &ContextDesc::recv_timeout_ms)
