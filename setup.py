@@ -229,7 +229,7 @@ setuptools.setup(
     long_description=io.open(
         os.path.join(ROOT_DIR, "README.md"), "r", encoding="utf-8"
     ).read(),
-    url="https://github.com/secretflow/secretflow/spu",
+    url="https://github.com/secretflow/spu",
     keywords=("spu mpc secretflow compiler vm ABY3 secure computation"),
     classifiers=[
         "Programming Language :: Python :: 3.8",

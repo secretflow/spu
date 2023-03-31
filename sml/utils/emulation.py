@@ -44,7 +44,7 @@ SAMPLE_DOCKER_COMPOSE_CONFIG = {
             "name": "spu-emulation",
             "ipam": {
                 "driver": "default",
-                "config": [{"subnet": SAMPLE_CIDR}],
+                "config": [{"subnet": SAMPLE_CIDR, "gateway": "172.16.238.1"}],
             },
         }
     },

@@ -42,7 +42,7 @@ void forEachIndex(absl::Span<const int64_t> shape,
   const auto rank = static_cast<int64_t>(shape.size());
   // Allows handling R0 arrays, such that the visitor function will be called
   // once with the proper empty indexes.
-  int64_t n = rank - 1;
+  int64_t n = rank;
   std::vector<int64_t> indexes(base.begin(), base.end());
 
   while (n >= 0) {
