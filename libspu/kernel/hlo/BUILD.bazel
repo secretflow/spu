@@ -284,6 +284,14 @@ spu_cc_library(
     ],
 )
 
+spu_cc_test(
+    name = "utils_test",
+    srcs = ["utils_test.cc"],
+    deps = [
+        ":utils",
+    ],
+)
+
 spu_cc_library(
     name = "shuffle",
     srcs = ["shuffle.cc"],

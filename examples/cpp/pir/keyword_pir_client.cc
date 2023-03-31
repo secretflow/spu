@@ -137,12 +137,12 @@ int main(int argc, char **argv) {
 
     for (size_t i = 0; i < query_result.first.size(); ++i) {
       std::vector<std::string> result_ids =
-          absl::StrSplit(query_batch_items[query_result.first[i]], ",");
+          absl::StrSplit(query_batch_items[query_result.first[i]], ',');
 
       SPU_ENFORCE(result_ids.size() == ids.size());
 
       std::vector<std::string> result_labels =
-          absl::StrSplit(query_result.second[i], ",");
+          absl::StrSplit(query_result.second[i], ',');
       SPU_ENFORCE(result_labels.size() == label_columns_name.size());
 
       for (size_t j = 0; j < result_ids.size(); ++j) {
