@@ -1,0 +1,108 @@
+//
+// Copyright 2022 Ant Group Co., Ltd.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//   http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
+
+syntax = "proto3";
+
+package spu.pir;
+
+// The kv-store type of pir.
+enum KvStoreType {
+  INVALID_STORE_TYPE = 0;
+
+  // based on memory
+  MEMORY_KV_STORE = 1;
+
+  // based on leveldb
+  LEVELDB_KV_STORE = 2;
+}
+
+// The algorithm type of pir.
+enum PirProtocol {
+  INVALID_PIR_TYPE = 0;
+
+  // based on labeled PSI
+  KEYWORD_PIR_LABELED_PSI = 1;
+
+  // based on SealPIR
+  INDEX_PIR_SEALPIR = 10;
+}
+
+// The Cfg Params of setup phase.
+message PirSetupConfig {
+
+  // The pir protocol.
+  PirProtocol pir_protocol = 1;
+
+  // type of kv-store
+  KvStoreType store_type = 2;
+
+  // The input csv file path of pir.
+  string input_path = 3;
+
+  // The key columns name of input data.
+  repeated string key_columns = 4;
+
+  // The label columns name of input data.
+  repeated string label_columns = 5;
+
+  // The number of per query.
+  uint32 num_per_query = 6;
+
+  // The max number bytes of label.
+  uint32 label_max_len = 7;
+
+  // The path of oprf_key file path.
+  string oprf_key_path = 8;
+
+  // The path of setup output leveldb path.
+  string setup_path = 9;
+}
+
+// The Server's Cfg Params of query phase.
+message PirServerConfig {
+  // The pir algorithm.
+  PirProtocol pir_protocol = 1;
+
+  // type of kv-store
+  KvStoreType store_type = 2;
+
+  // The path of setup output leveldb path.
+  string setup_path = 3;
+
+  // The path of oprf_key file path.
+  string oprf_key_path = 4;
+}
+
+// The Client's Cfg Params of query phase.
+message PirClientConfig {
+  // The pir algorithm.
+  PirProtocol pir_protocol = 1;
+
+  // The input csv file path of pir.
+  string input_path = 2;
+
+  // The key columns name of input data.
+  repeated string key_columns = 3;
+
+  // The path of query output csv file path.
+  string output_path = 4;
+}
+
+// The report of pir result.
+message PirResultReport {
+  // The data count of input/query.
+  int64 data_count = 1;
+}

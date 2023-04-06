@@ -319,9 +319,6 @@ void InsertOrAssignWorker(
       continue;
     }
 
-    // SPDLOG_INFO("*** debug overwrite:{} bundle_set size:{}", overwrite,
-    //             bundle_set.size());
-
     // Try to insert or overwrite these field elements in an existing BinBundle
     // at this bundle index. Keep track of whether or not we succeed.
     bool written = false;
@@ -333,7 +330,6 @@ void InsertOrAssignWorker(
       if (overwrite) {
         // If we successfully overwrote, we're done with this bundle
         written = bundle_it->try_multi_overwrite(data, bin_idx);
-        SPDLOG_INFO("*** debug written:{}", written);
         if (written) {
           break;
         }
@@ -390,14 +386,9 @@ void InsertOrAssignWorker(
 
   for (auto &bundle : bundle_set) {
     std::stringstream stream;
-    std::hash<std::thread::id> hasher;
 
-    SPDLOG_INFO("*** debug thread_id:{}  begin regen cache, bundle_set:{}",
-                hasher(std::this_thread::get_id()), bundle_set.size());
     // Generate the BinBundle caches
     bundle.regen_cache();
-    SPDLOG_INFO("*** debug thread_id:{} end regen cache",
-                hasher(std::this_thread::get_id()));
 
     size_t store_idx = (*bundles_store_idx)[bundle_index]++;
     bundle.save(stream, store_idx);
@@ -565,26 +556,14 @@ void InsertOrAssignWorker(
 
   for (auto &bundle : bundle_set) {
     std::stringstream stream;
-    std::hash<std::thread::id> hasher;
 
-    SPDLOG_INFO("*** debug thread_id:{}  begin regen cache, bundle_set:{}",
-                hasher(std::this_thread::get_id()), bundle_set.size());
     // Generate the BinBundle caches
     bundle.regen_cache();
-    SPDLOG_INFO("*** debug thread_id:{} end regen cache",
-                hasher(std::this_thread::get_id()));
 
     size_t store_idx = (*bundles_store_idx)[bundle_index]++;
-    size_t save_size = bundle.save(stream, store_idx);
-
-    SPDLOG_INFO("*** debug thread_id:{} num_bins:{}",
-                hasher(std::this_thread::get_id()), bundle.get_num_bins());
+    bundle.save(stream, store_idx);
 
     (*bundles_store)[bundle_index]->Put(store_idx, stream.str());
-
-    SPDLOG_INFO("*** debug save_size:{} bundle_idx:{} store_idx:{}", save_size,
-                bundle_index, (*bundles_store_idx)[bundle_index]);
-    // SPDLOG_INFO("hex:{}", absl::BytesToHexString(stream.str()));
   }
 
   SPDLOG_DEBUG("Insert-or-Assign worker: finished processing bundle index {}",
@@ -606,8 +585,6 @@ void DispatchInsertOrAssign(
     size_t label_size, uint32_t max_bin_size, uint32_t ps_low_degree,
     bool overwrite, bool compressed) {
   apsi::ThreadPoolMgr tpm;
-
-  SPDLOG_INFO("*** debug data_with_indices size:{}", data_with_indices.size());
 
   // Collect the bundle indices and partition them into thread_count many
   // partitions. By some uniformity assumption, the number of things to insert
@@ -663,8 +640,6 @@ void DispatchInsertOrAssign(
     bool overwrite, bool compressed) {
   apsi::ThreadPoolMgr tpm;
 
-  SPDLOG_INFO("*** debug data_with_indices size:{}", indices_count);
-
   std::vector<size_t> bundle_indices;
   bundle_indices.reserve(bundle_indices_set.size());
   std::copy(bundle_indices_set.begin(), bundle_indices_set.end(),
@@ -693,6 +668,9 @@ void DispatchInsertOrAssign(
 
   SPDLOG_INFO("Finished insert-or-assign worker tasks");
 }
+
+constexpr char kMetaInfoStoreName[] = "meta_info";
+constexpr char kServerDataCount[] = "server_data_count";
 
 }  // namespace
 
@@ -742,7 +720,8 @@ SenderDB::SenderDB(const apsi::PSIParams &params,
   bundles_store_.resize(params_.bundle_idx_count());
   bundles_store_idx_.resize(params_.bundle_idx_count());
 
-  std::string meta_store_name = fmt::format("{}/meta_info", kv_store_path);
+  std::string meta_store_name =
+      fmt::format("{}/{}", kv_store_path, kMetaInfoStoreName);
   meta_info_store_ =
       std::make_shared<yacl::io::LeveldbKVStore>(false, meta_store_name);
 
@@ -758,7 +737,7 @@ SenderDB::SenderDB(const apsi::PSIParams &params,
 
   yacl::Buffer temp_value;
   try {
-    meta_info_store_->Get("item_count", &temp_value);
+    meta_info_store_->Get(kServerDataCount, &temp_value);
     item_count_ = std::stoul(std::string(std::string_view(
         reinterpret_cast<char *>(temp_value.data()), temp_value.size())));
 
@@ -945,16 +924,7 @@ std::shared_ptr<apsi::sender::BinBundle> SenderDB::GetCacheAt(
 
   // check cache is valid
   if (load_bin_bundle->cache_invalid()) {
-    std::hash<std::thread::id> hasher;
-
-    SPDLOG_INFO(
-        "*** debug thread_id:{}  begin regen cache, bundle_idx:{} cache_idx:{}",
-        hasher(std::this_thread::get_id()), bundle_idx, cache_idx);
-
     load_bin_bundle->regen_cache();
-
-    SPDLOG_INFO("*** debug thread_id:{}  end regen cache",
-                hasher(std::this_thread::get_id()));
   }
 
   return load_bin_bundle;
@@ -1091,9 +1061,6 @@ void SenderDB::InsertOrAssign(
                            ps_low_degree, false, /* don't overwrite items */
                            compressed_);
   }
-
-  // Generate the BinBundle caches
-  // GenerateCaches();
 
   SPDLOG_INFO("Finished inserting {} items in SenderDB", data.size());
 }
@@ -1232,8 +1199,7 @@ void SenderDB::InsertOrAssign(
 
         std::vector<std::pair<apsi::util::AlgItemLabel, size_t>>
             data_with_indices = PreprocessLabeledData(item_label_pair, params_);
-        // SPDLOG_INFO("i:{}, data_with_indices size:{}", i,
-        //             data_with_indices.size());
+
         for (size_t j = 0; j < data_with_indices.size(); ++j) {
           std::string indices_buffer =
               SerializeDataLabelWithIndices(data_with_indices[j]);
@@ -1251,8 +1217,7 @@ void SenderDB::InsertOrAssign(
       } else {
         std::vector<std::pair<apsi::util::AlgItem, size_t>> data_with_indices =
             PreprocessUnlabeledData(hashed_item, params_);
-        // SPDLOG_INFO("*** debug i:{}, data_with_indices size:{}", i,
-        //             data_with_indices.size());
+
         for (size_t j = 0; j < data_with_indices.size(); ++j) {
           std::string indices_buffer =
               SerializeDataWithIndices(data_with_indices[j]);
@@ -1260,19 +1225,12 @@ void SenderDB::InsertOrAssign(
           items_oprf_store->Put(indices_count + j, indices_buffer);
 
           size_t cuckoo_idx = data_with_indices[j].second;
-          // SPDLOG_INFO(
-          //     "*** debug cuckoo_idx:{} indices_buffer:{} "
-          //     "data_with_indices[j]:{}",
-          //     cuckoo_idx, indices_buffer.length(),
-          //     data_with_indices[j].first.size());
 
           size_t bin_idx, bundle_idx;
           std::tie(bin_idx, bundle_idx) =
               UnpackCuckooIdx(cuckoo_idx, bins_per_bundle);
-          // SPDLOG_INFO("*** debug j:{}/{} bin_idx:{},bundle_idx:{}", j,
-          //             data_with_indices.size(), bin_idx, bundle_idx);
+
           bundle_indices_set.insert(bundle_idx);
-          // SPDLOG_INFO("*** debug ");
         }
         indices_count += data_with_indices.size();
       }
@@ -1282,8 +1240,6 @@ void SenderDB::InsertOrAssign(
 
     batch_count++;
   }
-
-  meta_info_store_->Put("item_count", fmt::format("{}", item_count_));
 
   size_t label_size = 0;
   if (IsLabeled()) {

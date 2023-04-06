@@ -31,6 +31,7 @@
 #include "libspu/device/pphlo/pphlo_executor.h"
 #include "libspu/kernel/context.h"
 #include "libspu/kernel/value.h"
+#include "libspu/pir/pir.h"
 #include "libspu/psi/bucket_psi.h"
 #include "libspu/psi/core/ecdh_psi.h"
 #include "libspu/psi/memory_psi.h"
@@ -454,6 +455,41 @@ void BindLibs(py::module& m) {
       py::arg("link_context"), py::arg("psi_config"),
       py::arg("ic_mode") = false,
       "Run bucket psi. ic_mode means run in interconnection mode");
+
+  m.def(
+      "pir_setup",
+      [](const std::string& config_pb) -> py::bytes {
+        pir::PirSetupConfig config;
+        SPU_ENFORCE(config.ParseFromString(config_pb));
+
+        auto r = pir::PirSetup(config);
+        return r.SerializeAsString();
+      },
+      py::arg("pir_config"), "Run pir setup.");
+
+  m.def(
+      "pir_server",
+      [](const std::shared_ptr<yacl::link::Context>& lctx,
+         const std::string& config_pb) -> py::bytes {
+        pir::PirServerConfig config;
+        SPU_ENFORCE(config.ParseFromString(config_pb));
+
+        auto r = pir::PirServer(lctx, config);
+        return r.SerializeAsString();
+      },
+      py::arg("link_context"), py::arg("pir_config"), "Run pir server");
+
+  m.def(
+      "pir_client",
+      [](const std::shared_ptr<yacl::link::Context>& lctx,
+         const std::string& config_pb) -> py::bytes {
+        pir::PirClientConfig config;
+        SPU_ENFORCE(config.ParseFromString(config_pb));
+
+        auto r = pir::PirClient(lctx, config);
+        return r.SerializeAsString();
+      },
+      py::arg("link_context"), py::arg("pir_config"), "Run pir client");
 }
 
 void BindLogging(py::module& m) {

@@ -16,17 +16,6 @@ load("//bazel:spu.bzl", "spu_cc_binary", "spu_cc_library")
 
 package(default_visibility = ["//visibility:public"])
 
-spu_cc_library(
-    name = "keyword_pir_utils",
-    srcs = ["keyword_pir_utils.cc"],
-    hdrs = ["keyword_pir_utils.h"],
-    deps = [
-        "//libspu/psi/core/labeled_psi:labeled_psi",
-        "//libspu/psi/io:io",
-        "//libspu/psi/utils:batch_provider",
-    ],
-)
-
 spu_cc_binary(
     name = "keyword_pir_setup",
     srcs = ["keyword_pir_setup.cc"],
@@ -34,8 +23,8 @@ spu_cc_binary(
         "//examples/data",
     ],
     deps = [
-        ":keyword_pir_utils",
         "//examples/cpp:utils",
+        "//libspu/pir:pir",
         "//libspu/psi/core/labeled_psi:labeled_psi",
         "//libspu/psi/utils:cipher_store",
         "@com_google_absl//absl/strings",
@@ -53,8 +42,8 @@ spu_cc_binary(
         "//examples/data",
     ],
     deps = [
-        ":keyword_pir_utils",
         "//examples/cpp:utils",
+        "//libspu/pir:pir",
         "//libspu/psi/core/labeled_psi:labeled_psi",
         "//libspu/psi/utils:cipher_store",
         "//libspu/psi/utils:serialize",
@@ -74,8 +63,8 @@ spu_cc_binary(
         "//examples/data",
     ],
     deps = [
-        ":keyword_pir_utils",
         "//examples/cpp:utils",
+        "//libspu/pir:pir",
         "//libspu/psi/core/labeled_psi:labeled_psi",
         "//libspu/psi/utils:cipher_store",
         "//libspu/psi/utils:serialize",

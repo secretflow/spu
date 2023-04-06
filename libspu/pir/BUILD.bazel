@@ -84,3 +84,25 @@ spu_cc_test(
         "@com_google_absl//absl/strings",
     ],
 )
+
+proto_library(
+    name = "pir_proto",
+    srcs = ["pir.proto"],
+)
+
+cc_proto_library(
+    name = "pir_cc_proto",
+    deps = [":pir_proto"],
+)
+
+spu_cc_library(
+    name = "pir",
+    srcs = ["pir.cc"],
+    hdrs = ["pir.h"],
+    deps = [
+        ":pir_cc_proto",
+        "//libspu/psi/core:cuckoo_index",
+        "//libspu/psi/core/labeled_psi:labeled_psi",
+        "@yacl//yacl/crypto/base:symmetric_crypto",
+    ],
+)

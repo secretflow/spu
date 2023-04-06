@@ -90,6 +90,7 @@ spu_lib_files = [
 generated_python_directories = [
     "bazel-bin/spu",
     "bazel-bin/libspu",
+    "bazel-bin/libspu/pir",
     "bazel-bin/libspu/psi",
     "bazel-bin/spu/utils",
 ]

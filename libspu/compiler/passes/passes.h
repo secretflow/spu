@@ -63,6 +63,8 @@ std::unique_ptr<OperationPass<func::FuncOp>> createOptimizeSelectPass();
 // Optimize 1/(sqrt(x) + very_small_const) -> rsqrt(x)
 std::unique_ptr<OperationPass<func::FuncOp>> createOptimizeSqrtToRsqrtPass();
 
+std::unique_ptr<OperationPass<func::FuncOp>> createExpandSecretGatherPass();
+
 } // namespace pphlo
 
 } // namespace mlir

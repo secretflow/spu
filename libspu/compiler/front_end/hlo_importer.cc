@@ -28,7 +28,6 @@
 #include "xla/service/dot_merger.h"
 #include "xla/service/float_normalization.h"
 #include "xla/service/float_support.h"
-#include "xla/service/gather_expander.h"
 #include "xla/service/hlo_constant_folding.h"
 #include "xla/service/hlo_dce.h"
 #include "xla/service/hlo_module_config.h"

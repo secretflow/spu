@@ -14,7 +14,6 @@
 
 #include "libspu/device/pphlo/pphlo_executor.h"
 
-#include "llvm/Support/raw_os_ostream.h"
 #include "mlir/IR/BuiltinAttributes.h"
 #include "mlir/IR/Location.h"
 

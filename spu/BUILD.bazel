@@ -47,6 +47,7 @@ pybind_extension(
         "//libspu/device:api",
         "//libspu/device:io",
         "//libspu/device/pphlo:pphlo_executor",
+        "//libspu/pir:pir",
         "//libspu/psi:bucket_psi",
         "//libspu/psi:memory_psi",
         "@yacl//yacl/link",
@@ -61,6 +62,11 @@ py_proto_library(
 py_proto_library(
     name = "psi_py_proto",
     deps = ["//libspu/psi:psi_proto"],
+)
+
+py_proto_library(
+    name = "pir_py_proto",
+    deps = ["//libspu/pir:pir_proto"],
 )
 
 py_library(
@@ -86,11 +92,24 @@ py_library(
 )
 
 py_library(
+    name = "pir",
+    srcs = ["pir.py"],
+    data = [
+        ":libspu.so",
+    ],
+    deps = [
+        ":pir_py_proto",
+    ],
+)
+
+py_library(
     name = "init",
     srcs = [
         "__init__.py",
         "version.py",
         ":api",
+        "pir",
+        ":pir_py_proto",
         ":psi",
         ":psi_py_proto",
         ":spu_py_proto",

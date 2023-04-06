@@ -75,3 +75,9 @@ def OptimizeSqrtToRsqrt: Pass<"optimize-sqrt-to-rsqrt", "func::FuncOp"> {
   let constructor = "createOptimizeSqrtToRsqrtPass()";
   let dependentDialects = ["pphlo::PPHloDialect"];
 }
+
+def ExpandSecretGather: Pass<"expand-secret-gather", "func::FuncOp"> {
+  let summary = "Rewrite Gather with secret indexing to loop with DynamicUpdateSlice";
+  let constructor = "createExpandSecretGatherPass()";
+  let dependentDialects = ["pphlo::PPHloDialect"];
+}

@@ -30,6 +30,7 @@ from .spu_pb2 import (  # type: ignore
 from .api import Io, Runtime, compile
 from .utils import simulation
 
+from . import pir
 from . import psi
 
 __all__ = [
@@ -51,5 +52,6 @@ __all__ = [
     # utils
     "simulation",
     # libs
+    "pir",
     "psi",
 ]

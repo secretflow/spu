@@ -8,8 +8,9 @@
 
 ## staging
 > please add your unreleased change here.
+- [bugfix] Reenable secret GatherOp support
 
-## 20230328
+## 20230406
 - [SPU] 0.3.2 release
 - [Feature] Add TrustedThirdParty beaver provider for semi2k
 - [Feature] Expose ssl/tls options
@@ -19,6 +20,7 @@
 - [Feature] Improve shift performance
 - [Feature] Support shift by secret number of bits
 - [Feature] Support secret indexing
+- [Feature] Add PIR python binding
 - [bugfix] Fix boolean ConstantOp
 - [bugfix] Fix jnp.median
 - [bugfix] Fix jnp.sort on floating point inputs

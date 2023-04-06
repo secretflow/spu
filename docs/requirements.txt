@@ -13,4 +13,4 @@ pytablewriter==0.64.2
 linkify-it-py==2.0.0
 mdutils==1.4.0
 spu>=0.3.1b0
-sf-pydata-sphinx-theme
+pydata-sphinx-theme
