@@ -28,6 +28,7 @@
 #include "mlir/IR/OpImplementation.h"
 #include "mlir/IR/PatternMatch.h"
 #include "mlir/IR/TypeUtilities.h"
+#include "stablehlo/dialect/TypeInference.h"
 
 #include "libspu/dialect/pphlo_attrs.h"
 #include "libspu/dialect/pphlo_ops.h.inc"
@@ -812,73 +813,36 @@ LogicalResult TransposeOp::verify() {
 }
 
 LogicalResult PadOp::inferReturnTypeComponents(
-    MLIRContext*, Optional<Location> location, ValueShapeRange operands,
-    DictionaryAttr attributes, RegionRange regions,
-    SmallVectorImpl<ShapedTypeComponents>& inferred_return_shapes) {
+    MLIRContext* context, std::optional<Location> location,
+    ValueShapeRange operands, DictionaryAttr attributes, RegionRange regions,
+    SmallVectorImpl<ShapedTypeComponents>& inferredReturnShapes) {
   PadOp::Adaptor adaptor(operands, attributes, regions);
-  auto inputType = adaptor.getOperand().getType().cast<RankedTensorType>();
-  auto padType = adaptor.getPaddingValue().getType().cast<RankedTensorType>();
+  SmallVector<Type> types;
+  auto status = hlo::inferPadOp(
+      location, adaptor.getOperand().getType(),
+      adaptor.getPaddingValue().getType(), adaptor.getEdgePaddingLow(),
+      adaptor.getEdgePaddingHigh(), adaptor.getInteriorPadding(), types);
 
-  if (padType.getRank() != 0) {
-    return emitOptionalError(
-        location, llvm::formatv("padding value type should be a rank-0 "
-                                "tensor, is rank {0}",
-                                padType.getRank()));
+  // Convert type to STC
+  for (auto& t : types) {
+    auto rt = t.dyn_cast<RankedTensorType>();
+    inferredReturnShapes.emplace_back(rt.getShape(), rt.getElementType());
   }
 
-  const auto& paddingLow = adaptor.getEdgePaddingLow();
-  if (paddingLow.getType().getNumElements() != inputType.getRank()) {
-    return emitOptionalError(
-        location,
-        llvm::formatv(
-            "edge_padding_low length ({0}) must match operand rank ({1})",
-            paddingLow.getType().getNumElements(), inputType.getRank()));
-  }
+  return status;
+}
 
-  const auto& paddingHigh = adaptor.getEdgePaddingHigh();
-  if (paddingHigh.getType().getNumElements() != inputType.getRank()) {
-    return emitOptionalError(
-        location,
-        llvm::formatv(
-            "edge_padding_high length ({0}) must match operand rank ({1})",
-            paddingHigh.getType().getNumElements(), inputType.getRank()));
-  }
-
-  const auto& paddingInterior = adaptor.getInteriorPadding();
-  if (paddingInterior.getType().getNumElements() != inputType.getRank()) {
-    return emitOptionalError(
-        location,
-        llvm::formatv(
-            "interior_padding length ({0}) must match operand rank ({1})",
-            paddingInterior.getType().getNumElements(), inputType.getRank()));
-  }
-
-  auto inputShape = inputType.getShape();
-  SmallVector<int64_t> resultShape;
-  for (int i = 0, e = inputShape.size(); i < e; i++) {
-    int64_t paddingLowVal = paddingLow.getValues<APInt>()[i].getSExtValue();
-    int64_t paddingHighVal = paddingHigh.getValues<APInt>()[i].getSExtValue();
-    int64_t paddingInteriorVal =
-        paddingInterior.getValues<APInt>()[i].getSExtValue();
-    if (paddingInteriorVal < 0) {
-      return emitOptionalError(
-          location, llvm::formatv("Interior padding cannot be negative: {0}",
-                                  paddingInteriorVal));
-    }
-    int64_t expectedOutput =
-        inputShape[i] + paddingLowVal + paddingHighVal +
-        std::max<int64_t>(inputShape[i] - 1, 0LL) * paddingInteriorVal;
-    if (expectedOutput < 0) {
-      return emitOptionalError(
-          location,
-          llvm::formatv("Padding result in negative size for dimension {0}",
-                        i));
-    }
-    resultShape.push_back(expectedOutput);
-  }
-  inferred_return_shapes.emplace_back(resultShape, inputType.getElementType());
-
-  return success();
+LogicalResult PadOp::inferReturnTypes(
+    ::mlir::MLIRContext* context, ::std::optional<::mlir::Location> location,
+    ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes,
+    ::mlir::RegionRange regions,
+    ::llvm::SmallVectorImpl<::mlir::Type>& inferredReturnTypes) {
+  PadOp::Adaptor adaptor(operands, attributes, regions);
+  return hlo::inferPadOp(location, adaptor.getOperand().getType(),
+                         adaptor.getPaddingValue().getType(),
+                         adaptor.getEdgePaddingLow(),
+                         adaptor.getEdgePaddingHigh(),
+                         adaptor.getInteriorPadding(), inferredReturnTypes);
 }
 
 LogicalResult ConcatenateOp::verify() {
@@ -932,6 +896,15 @@ LogicalResult ConcatenateOp::verify() {
     }
   }
   return success();
+}
+
+LogicalResult ConcatenateOp::inferReturnTypes(
+    MLIRContext*, std::optional<Location> location, ValueRange operands,
+    DictionaryAttr attributes, RegionRange regions,
+    SmallVectorImpl<Type>& inferredReturnTypes) {
+  ConcatenateOp::Adaptor adaptor(operands, attributes, regions);
+  return hlo::inferConcatenateOp(location, adaptor.getVal().getTypes(),
+                                 adaptor.getDimension(), inferredReturnTypes);
 }
 
 LogicalResult BroadcastOp::verify() {
@@ -1012,6 +985,120 @@ LogicalResult IotaOp::verify() {
            << "iota dimension cannot go beyond the output rank or be negative.";
   }
   return success();
+}
+
+LogicalResult inferDynamicSliceOp(std::optional<Location> location,
+                                  Type operandType, TypeRange startIndicesTypes,
+                                  DenseIntElementsAttr sliceSizes,
+                                  SmallVectorImpl<Type>& inferredReturnTypes) {
+  // dynamic_slice_i3
+  if (sliceSizes.getType().getRank() != 1) {
+    return emitOptionalError(location,
+                             "slice_sizes should be rank 1, but got rank ",
+                             sliceSizes.getType().getRank(), ".");
+  }
+  // dynamic_slice_c2
+  int numSliceSizes = sliceSizes.getNumElements();
+  int numStartIndices = startIndicesTypes.size();
+  if (numStartIndices != numSliceSizes) {
+    return emitOptionalError(location, "has mismatched number of slice sizes (",
+                             numSliceSizes, ") and number of start indices (",
+                             numStartIndices, ")");
+  }
+  auto rankedOperandType = operandType.dyn_cast<RankedTensorType>();
+  // dynamic_slice_c2
+  if (rankedOperandType.getRank() != numStartIndices) {
+    return emitOptionalError(
+        location, "has mismatched number of start indices (", numStartIndices,
+        ") and the rank of operand (", rankedOperandType.getRank(), ")");
+  }
+
+  // dynamic_slice_c4
+  for (int i = 0; i < numSliceSizes; ++i) {
+    int64_t sliceSize = sliceSizes.getValues<int64_t>()[i];
+    if (sliceSize < 0) {
+      return emitOptionalError(
+          location, "has negative size index to dynamic slice: ", sliceSize);
+    }
+    if (!rankedOperandType.isDynamicDim(i)) {
+      int64_t dimSize = rankedOperandType.getDimSize(i);
+      if (sliceSize > dimSize) {
+        return emitOptionalError(location, "has slice size ", sliceSize,
+                                 " greater than dimension size ", dimSize,
+                                 " in dimension ", i, " of operand");
+      }
+    }
+  }
+
+  std::vector<int64_t> slice_size(sliceSizes.getValues<int64_t>().begin(),
+                                  sliceSizes.getValues<int64_t>().end());
+  // dynamic_slice_c5
+  inferredReturnTypes.emplace_back(
+      RankedTensorType::get(slice_size, rankedOperandType.getElementType()));
+  return success();
+}
+
+LogicalResult DynamicSliceOp::inferReturnTypes(
+    MLIRContext* context, std::optional<Location> location, ValueRange operands,
+    DictionaryAttr attributes, RegionRange regions,
+    SmallVectorImpl<Type>& inferredReturnTypes) {
+  DynamicSliceOp::Adaptor adaptor(operands, attributes, regions);
+  return inferDynamicSliceOp(location, adaptor.getOperand().getType(),
+                             adaptor.getStartIndices().getTypes(),
+                             adaptor.getSliceSizes(), inferredReturnTypes);
+}
+
+LogicalResult inferDynamicUpdateSliceOp(
+    std::optional<Location> location, Value operand, Value update,
+    ValueRange startIndices, SmallVectorImpl<Type>& inferredReturnTypes) {
+  auto operandType = operand.getType().cast<ShapedType>();
+  auto updateType = update.getType().cast<ShapedType>();
+
+  // dynamic_update_slice_c3
+  if (updateType.hasRank() && operandType.hasRank() &&
+      updateType.getRank() != operandType.getRank()) {
+    return emitOptionalError(
+        location,
+        "update rank does not match operand rank: ", updateType.getRank(),
+        " vs ", operandType.getRank(), ".");
+  }
+
+  // dynamic_update_slice_c4
+  if (operandType.hasRank() &&
+      static_cast<int64_t>(startIndices.size()) != operandType.getRank()) {
+    return emitOptionalError(
+        location, "expects number of start_indices to match operand rank: ",
+        startIndices.size(), " vs ", operandType.getRank(), ".");
+  }
+
+  // dynamic_update_slice_c6
+  if (operandType.hasRank() && updateType.hasRank()) {
+    for (auto [index, dims] : llvm::enumerate(
+             llvm::zip(operandType.getShape(), updateType.getShape()))) {
+      auto [operandDim, updateDim] = dims;
+      if (updateDim < 0 || updateDim > operandDim) {
+        return emitOptionalError(location, "expects size at dimension ", index,
+                                 " of update to be in range [0, ", operandDim,
+                                 "]. Got: ", updateDim, ".");
+      }
+    }
+  }
+
+  // dynamic_update_slice_c1
+  inferredReturnTypes.emplace_back(RankedTensorType::get(
+      operandType.getShape(), operandType.getElementType()));
+  return success();
+}
+
+LogicalResult DynamicUpdateSliceOp::inferReturnTypes(
+    MLIRContext* context, std::optional<Location> location, ValueRange operands,
+    DictionaryAttr attributes, RegionRange regions,
+    SmallVectorImpl<Type>& inferredReturnTypes) {
+  DynamicUpdateSliceOp::Adaptor adaptor(operands, attributes, regions);
+
+  return inferDynamicUpdateSliceOp(
+      location, adaptor.getOperand(), adaptor.getUpdate(),
+      adaptor.getStartIndices(), inferredReturnTypes);
 }
 
 template <typename T>

@@ -38,7 +38,6 @@ spu_cc_library(
         "@xla//xla/service:dot_decomposer",
         "@xla//xla/service:dot_merger",
         "@xla//xla/service:float_normalization",
-        "@xla//xla/service:gather_expander",
         "@xla//xla/service:hlo_constant_folding",
         "@xla//xla/service:hlo_dce",
         "@xla//xla/service:hlo_pass_pipeline",

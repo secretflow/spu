@@ -14,7 +14,6 @@
 
 #include <iostream>
 
-#include "llvm/Support/raw_os_ostream.h"
 #include "mlir/IR/PatternMatch.h"
 #include "mlir/Pass/Pass.h"
 #include "mlir/Transforms/GreedyPatternRewriteDriver.h"

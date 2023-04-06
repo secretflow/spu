@@ -39,6 +39,10 @@ class PPHLO_Op<string mnemonic, list<Trait> traits>
     : Op<PPHlo_Dialect, mnemonic, traits> {
 }
 
+class PPHLO_WithShapeInferOp<string mnemonic, list<Trait> traits> :
+    PPHLO_Op<mnemonic, traits # [DeclareOpInterfaceMethods<InferTypeOpInterface>]> {
+}
+
 //===----------------------------------------------------------------------===//
 // pphlo nullary op definitions.
 //===----------------------------------------------------------------------===//
@@ -609,7 +613,7 @@ def PPHLO_ReshapeOp
 }
 
 def PPHLO_ConcatenateOp
-    : PPHLO_Op<"concatenate",
+    : PPHLO_WithShapeInferOp<"concatenate",
                [Pure, SameOperandsAndResultElementType]> {
   let summary = "Concatenate op";
   let description = [{
@@ -933,7 +937,7 @@ def PPHLO_ReverseOp
 }
 
 def HLO_PadOp
-    : PPHLO_Op<"pad", [Pure, SameOperandsAndResultElementType, InferTensorType]> {
+    : PPHLO_WithShapeInferOp<"pad", [Pure, SameOperandsAndResultElementType, InferTensorType]> {
   let summary = "Pad operator";
   let description = [{
     Pads the edges of `operand` with the `padding_value` and according to
@@ -1006,7 +1010,7 @@ def PPHLO_ConvolutionOp : PPHLO_Op<"convolution", [Pure]> {
   let hasCanonicalizer = 1;
 }
 
-def PPHLO_DynamicSliceOp: PPHLO_Op<"dynamic-slice", [Pure]> {
+def PPHLO_DynamicSliceOp: PPHLO_WithShapeInferOp<"dynamic-slice", [Pure]> {
   let summary = "Dynamic Slice operator";
   let description = [{
     Extracts a sub-array from the input array at dynamic start_indices.
@@ -1022,7 +1026,7 @@ def PPHLO_DynamicSliceOp: PPHLO_Op<"dynamic-slice", [Pure]> {
   let results = (outs PPHLO_Tensor:$result);
 }
 
-def PPHLO_DynamicUpdateSliceOp: PPHLO_Op<"dynamic-update-slice",
+def PPHLO_DynamicUpdateSliceOp: PPHLO_WithShapeInferOp<"dynamic-update-slice",
       [Pure, AllShapesMatch<["operand", "result"]>]> {
   let summary = "Dynamic Update Slice operator";
   let description = [{

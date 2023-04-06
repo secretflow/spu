@@ -18,10 +18,9 @@ load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
 
 SECRETFLOW_GIT = "https://github.com/secretflow"
 
-YACL_COMMIT_ID = "8108513d1203cc2d7e5b1d2e4429af2fee5d1d4d"
+YACL_COMMIT_ID = "8aef7c9076ee75e5467a921fad1c4a286eb2dc3a"
 
 def spu_deps():
-    _rule_python()
     _bazel_platform()
     _upb()
     _com_github_xtensor_xtensor()
@@ -61,17 +60,6 @@ def spu_deps():
         name = "local_homebrew_arm64",
         build_file = "@spulib//bazel:local_openmp_macos.BUILD",
         path = "/opt/homebrew/opt/libomp/",
-    )
-
-def _rule_python():
-    maybe(
-        http_archive,
-        name = "rules_python",
-        sha256 = "29a801171f7ca190c543406f9894abf2d483c206e14d6acbd695623662320097",
-        strip_prefix = "rules_python-0.18.1",
-        urls = [
-            "https://github.com/bazelbuild/rules_python/releases/download/0.18.1/rules_python-0.18.1.tar.gz",
-        ],
     )
 
 def _bazel_platform():
@@ -151,8 +139,8 @@ def _com_github_xtensor_xtl():
     )
 
 def _com_github_openxla_xla():
-    OPENXLA_COMMIT = "6aee72ed08290623ff68742e146750ea0e7ddf8c"
-    OPENXLA_SHA256 = "dc13148b1e27d8fbc5a60bf4055595f3f7708bb339400a0ba19d9923b6f642fc"
+    OPENXLA_COMMIT = "da6b60c1a1f31bf1194bcdfb138841902e413704"
+    OPENXLA_SHA256 = "cec02e7c0af001fd08ce89a47f21bbedb1908abf1144070f1228f525398d280b"
 
     SKYLIB_VERSION = "1.3.0"
 

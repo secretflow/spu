@@ -146,6 +146,7 @@ spu_cc_library(
         "@llvm-project//mlir:FuncDialect",
         "@llvm-project//mlir:IR",
         "@llvm-project//mlir:TensorDialect",
+        "@stablehlo//:stablehlo_type_inference",
     ],
 )
 

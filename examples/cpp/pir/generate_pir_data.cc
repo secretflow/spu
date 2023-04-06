@@ -78,7 +78,7 @@ int main(int argc, char **argv) {
   psi2_out_file << "id,id1" << '\r' << std::endl;
 
   for (size_t idx = 0; idx < alice_item_size; idx++) {
-    std::string a_item = fmt::format("{:010d}", idx);
+    std::string a_item = fmt::format("{:010d}{:08d}", idx, idx + 900000000);
     std::string b_item;
     if (dist1(rand)) {
       psi2_out_file << a_item << "," << id1_data << '\r' << std::endl;
