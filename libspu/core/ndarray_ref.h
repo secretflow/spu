@@ -195,9 +195,9 @@ class NdArrayRef {
    private:
     std::byte* ptr_ = nullptr;  // Exclude from equality check
     std::vector<int64_t> coord_;
-    const std::vector<int64_t> shape_;
-    const std::vector<int64_t> strides_;
-    const int64_t elsize_;
+    absl::Span<const int64_t> shape_;
+    absl::Span<const int64_t> strides_;
+    int64_t elsize_;
     bool invalid_ = false;
   };
 

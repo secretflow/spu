@@ -192,7 +192,7 @@ class SenderDB {
   }
 
   void SetData(const std::shared_ptr<IBatchProvider> &batch_provider,
-               size_t batch_size = 4096) {
+               size_t batch_size = 40960) {
     clear();
     InsertOrAssign(batch_provider, batch_size);
   }

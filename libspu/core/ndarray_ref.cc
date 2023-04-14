@@ -190,7 +190,7 @@ NdArrayRef NdArrayRef::clone() const {
 
   auto* ret_ptr = static_cast<std::byte*>(res.data());
 
-  for (int64_t idx = 0; idx < numel(); ++idx) {
+  for (int64_t idx = 0, e = numel(); idx < e; ++idx) {
     std::memcpy(ret_ptr + idx * elsize, src_iter.getRawPtr(), elsize);
     ++src_iter;
   }
@@ -480,9 +480,16 @@ NdArrayRef& NdArrayRef::linear_scatter(const NdArrayRef& new_values,
 }
 
 void NdArrayRef::eliminate_zero_stride() {
-  // If there is a 0 stride dim, expand...
-  if (std::none_of(strides_.begin(), strides_.end(),
-                   [](int64_t s) { return s == 0; })) {
+  bool has_valid_zero_stride = false;
+  // If shape[dim] == 1, 0 stride is fine
+  for (size_t idim = 0; idim < shape_.size(); ++idim) {
+    if (shape_[idim] != 1 && strides_[idim] == 0) {
+      has_valid_zero_stride = true;
+      break;
+    }
+  }
+
+  if (!has_valid_zero_stride) {
     return;
   }
 

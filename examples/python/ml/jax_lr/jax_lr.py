@@ -110,20 +110,9 @@ def run_on_cpu():
     w0, b0 = jax.jit(lr.fit_auto_grad)(x_train, y_train)
     print(w0, b0)
 
-    x_test, y_test = dsutil.breast_cancer(slice(None, None, None), False)
-    print(
-        "AUC(cpu, auto_grad)={}".format(
-            metrics.roc_auc_score(y_test, predict(x_test, w0, b0))
-        )
-    )
-
     w1, b1 = jax.jit(lr.fit_manual_grad)(x_train, y_train)
-    print(w1, b1)
-    print(
-        "AUC(cpu, manual_grad)={}".format(
-            metrics.roc_auc_score(y_test, predict(x_test, w1, b1))
-        )
-    )
+
+    return [w0, w1], [b0, b1]
 
 
 SPU_OBJECT_META_PATH = "/tmp/driver_spu_jax_lr_object.txt"
@@ -156,6 +145,13 @@ def save_and_load_model():
     )
 
 
+def compute_score(W_r, b_r, type):
+    x_test, y_test = dsutil.breast_cancer(slice(None, None, None), False)
+    score = metrics.roc_auc_score(y_test, predict(x_test, W_r, b_r))
+    print(f"AUC({type})={score}")
+    return score
+
+
 def run_on_spu():
     @ppd.device("SPU")
     def train(x1, x2, y):
@@ -170,17 +166,15 @@ def run_on_spu():
     W_r, b_r = ppd.get(W), ppd.get(b)
     print(W_r, b_r)
 
-    x_test, y_test = dsutil.breast_cancer(slice(None, None, None), False)
-    print(
-        "AUC(spu)={}".format(metrics.roc_auc_score(y_test, predict(x_test, W_r, b_r)))
-    )
-
-    return W, b
+    return W_r, b_r
 
 
 if __name__ == "__main__":
     print('Run on CPU\n------\n')
-    run_on_cpu()
+    w, b = run_on_cpu()
+    compute_score(w[0], b[0], 'cpu, auto_grad')
+    compute_score(w[1], b[1], 'cpu, manual_grad')
     print('Run on SPU\n------\n')
-    run_on_spu()
+    w, b = run_on_spu()
+    compute_score(w, b, 'spu')
     save_and_load_model()

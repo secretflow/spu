@@ -21,12 +21,11 @@
 #include "absl/strings/str_split.h"
 #include "benchmark/benchmark.h"
 #include "spdlog/spdlog.h"
-#include "yacl/link/test_util.h"
-
 #include "spu/psi/core/labeled_psi/psi_params.h"
 #include "spu/psi/core/labeled_psi/receiver.h"
 #include "spu/psi/core/labeled_psi/sender.h"
 #include "spu/psi/cryptor/ecdh_oprf/ecdh_oprf_selector.h"
+#include "yacl/link/test_util.h"
 
 namespace spu::psi {
 

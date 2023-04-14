@@ -283,11 +283,13 @@ def train():
         penalty=args.penalty,
         l2_norm=args.l2_norm,
     )
-    print(f"train time {time.time()- start}")
+    train_time = time.time() - start
+    print(f"train time {train_time}")
 
     start = time.time()
     yhat = ppd.get(sslr.predict(xs=xs, y=y, w=model, reg_type=REGTYPE))
-    print(f"predict time {time.time()- start}")
+    predict_time = time.time() - start
+    print(f"predict time {predict_time}")
 
     if REGTYPE == RegType.Linear.value:
         score = explained_variance_score(ppd.get(y), ppd.get(yhat))
@@ -295,7 +297,7 @@ def train():
     else:
         score = roc_auc_score(ppd.get(y), ppd.get(yhat))
         print(f"auc {score}")
-    return score
+    return score, train_time, predict_time
 
 
 if __name__ == '__main__':

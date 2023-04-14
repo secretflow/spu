@@ -49,11 +49,19 @@ llvm::cl::opt<std::string> OutPathOpt(
     "out_path", llvm::cl::init("."),
     llvm::cl::desc("[out] pir query output path for db setup data"));
 
+namespace {
+
+constexpr uint32_t kLinkRecvTimeout = 30 * 60 * 1000;
+
+}
+
 int main(int argc, char **argv) {
   llvm::cl::ParseCommandLineOptions(argc, argv);
 
   auto hctx = MakeHalContext();
   auto link_ctx = hctx->lctx();
+
+  link_ctx->SetRecvTimeout(kLinkRecvTimeout);
 
   std::vector<std::string> ids = absl::StrSplit(KeyColumnsOpt.getValue(), ',');
 

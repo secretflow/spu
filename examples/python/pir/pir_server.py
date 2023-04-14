@@ -28,6 +28,17 @@ flags.DEFINE_string("party_ips", "127.0.0.1:9307,127.0.0.1:9308", "party address
 flags.DEFINE_string("in_path", "data.csv", "data input path")
 flags.DEFINE_string("oprf_key_path", "oprf_key.bin", "oprf key file path")
 flags.DEFINE_string("setup_path", "setup_path", "data output path")
+flags.DEFINE_bool("enable_tls", False, "whether to enable tls for link")
+flags.DEFINE_string("link_server_certificate", "", "link server certificate file path")
+flags.DEFINE_string("link_server_private_key", "", "link server private key file path")
+flags.DEFINE_string(
+    "link_server_ca", "", "ca file used to verify other's link server certificate"
+)
+flags.DEFINE_string("link_client_certificate", "", "link client certificate file path")
+flags.DEFINE_string("link_client_private_key", "", "link client private key file path")
+flags.DEFINE_string(
+    "link_client_ca", "", "ca file used to verify other's link client certificate"
+)
 FLAGS = flags.FLAGS
 
 
@@ -35,13 +46,25 @@ def setup_link(rank):
     lctx_desc = link.Desc()
     lctx_desc.id = f"root"
 
-    lctx_desc.recv_timeout_ms = 2 * 60 * 1000
+    lctx_desc.recv_timeout_ms = 30 * 60 * 1000
     # lctx_desc.connect_retry_times = 180
 
     ips = FLAGS.party_ips.split(",")
     for i, ip in enumerate(ips):
         lctx_desc.add_party(f"id_{i}", ip)
         print(f"id_{i} = {ip}")
+
+    # config link tls
+    if FLAGS.enable_tls:
+        # two-way authentication
+        lctx_desc.server_ssl_opts.cert.certificate_path = FLAGS.link_server_certificate
+        lctx_desc.server_ssl_opts.cert.private_key_path = FLAGS.link_server_private_key
+        lctx_desc.server_ssl_opts.verify.ca_file_path = FLAGS.link_server_ca
+        lctx_desc.server_ssl_opts.verify.verify_depth = 1
+        lctx_desc.client_ssl_opts.cert.certificate_path = FLAGS.link_client_certificate
+        lctx_desc.client_ssl_opts.cert.private_key_path = FLAGS.link_client_private_key
+        lctx_desc.client_ssl_opts.verify.ca_file_path = FLAGS.link_client_ca
+        lctx_desc.client_ssl_opts.verify.verify_depth = 1
 
     return link.create_brpc(lctx_desc, rank)
 
@@ -60,7 +83,8 @@ def main(_):
         setup_path=FLAGS.setup_path,
     )
 
-    report = pir.pir_server(setup_link(FLAGS.rank), config)
+    link_ctx = setup_link(FLAGS.rank)
+    report = pir.pir_server(link_ctx, config)
 
     print(f"data_count: {report.data_count}")
 

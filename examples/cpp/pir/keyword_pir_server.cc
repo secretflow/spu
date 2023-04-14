@@ -49,6 +49,12 @@ llvm::cl::opt<std::string> SetupPathOpt(
     "setup_path", llvm::cl::init("."),
     llvm::cl::desc("[in] db setup data path"));
 
+namespace {
+
+constexpr uint32_t kLinkRecvTimeout = 30 * 60 * 1000;
+
+}
+
 int main(int argc, char **argv) {
   llvm::cl::ParseCommandLineOptions(argc, argv);
 
@@ -56,6 +62,8 @@ int main(int argc, char **argv) {
 
   auto hctx = MakeHalContext();
   auto link_ctx = hctx->lctx();
+
+  link_ctx->SetRecvTimeout(kLinkRecvTimeout);
 
   spu::pir::PirServerConfig config;
 

@@ -446,14 +446,16 @@ def main():
     start = time.time()
     ss_xgb = SSXgb(ppd.device("SPU"))
     model = ss_xgb.train(3, 3, 4, dataset, y)
-    print(f"train time {time.time()- start}")
+    train_time = time.time() - start
+    print(f"train time {train_time}")
 
     start = time.time()
     yhat = ppd.get(ss_xgb.predict(dataset, model))
-    print(f"predict time {time.time()- start}")
+    predict_time = time.time() - start
+    print(f"predict time {predict_time}")
     score = roc_auc_score(ppd.get(y), yhat)
     print(f"auc {score}")
-    return score
+    return score, train_time, predict_time
 
 
 if __name__ == '__main__':
