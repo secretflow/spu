@@ -43,9 +43,9 @@ spu_cc_library(
         "@com_github_microsoft_apsi//:apsi",
         "@com_google_absl//absl/strings",
         "@yacl//yacl/crypto/tools:prg",
-        "@yacl//yacl/link",
         "@yacl//yacl/io/kv:leveldb_kvstore",
         "@yacl//yacl/io/kv:memory_kvstore",
+        "@yacl//yacl/link",
         "@yacl//yacl/utils:parallel",
     ],
 )
@@ -79,9 +79,8 @@ spu_cc_test(
     ],
     deps = [
         ":labeled_psi",
-        "//libspu/psi/utils:utils",
+        "//libspu/psi/utils",
         "@com_google_absl//absl/strings",
         "@yacl//yacl/crypto/tools:prg",
     ],
 )
-

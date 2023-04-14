@@ -161,11 +161,11 @@ std::vector<T> Communicator::allReduce(absl::Span<T const> in,
 
   std::vector<T> res(in.size(), 0);
   const FN<T> fn;
-  pforeach(0, in.size(), [&](int64_t idx) {
-    for (const auto& buf : bufs) {
+  for (const auto& buf : bufs) {
+    pforeach(0, in.size(), [&](int64_t idx) {
       res[idx] = fn(res[idx], (buf.data<T>())[idx]);
-    }
-  });
+    });
+  }
 
   stats_.latency += 1;
   stats_.comm += in.size() * sizeof(T) * (lctx_->WorldSize() - 1);

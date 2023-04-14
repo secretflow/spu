@@ -9,6 +9,7 @@
 ## staging
 > please add your unreleased change here.
 
+
 ## 20230406
 - [SPU] 0.3.2 release
 - [Feature] Add TrustedThirdParty beaver provider for semi2k
@@ -24,7 +25,6 @@
 - [bugfix] Fix jnp.median
 - [bugfix] Fix jnp.sort on floating point inputs
 - [bugfix] Fix secret sort with public payloads
-- [bugfix] Reenable secret GatherOp support
 - [3p] Relax TensorFlow version in requirements.txt
 - [3p] Move to OpenXLA
 - [API] Move C++ API from spu to libspu

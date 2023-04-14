@@ -102,7 +102,7 @@ spu_cc_library(
     deps = [
         ":pir_cc_proto",
         "//libspu/psi/core:cuckoo_index",
-        "//libspu/psi/core/labeled_psi:labeled_psi",
+        "//libspu/psi/core/labeled_psi",
         "@yacl//yacl/crypto/base:symmetric_crypto",
     ],
 )

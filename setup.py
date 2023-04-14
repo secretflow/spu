@@ -125,7 +125,7 @@ def build(build_python, build_cpp):
     bazel_flags = ["--verbose_failures"]
     if BAZEL_MAX_JOBS:
         n = int(BAZEL_MAX_JOBS)  # the value must be an int
-        bazel_flags.append(f"--local_cpu_resources={n}")
+        bazel_flags.append(f"--jobs={n}")
 
     bazel_precmd_flags = []
 

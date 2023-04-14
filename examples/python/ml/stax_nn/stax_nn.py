@@ -179,7 +179,7 @@ def train_mnist(model, run_on_spu: bool = False):
     return score
 
 
-def main():
+def run_model(model_name, run_cpu=True):
     print(f'The selected NN model is {args.model}.')
 
     MODEL_MAPS = {
@@ -189,18 +189,23 @@ def main():
         'network_d': models.chameleon,
     }
 
-    fn = partial(train_mnist, MODEL_MAPS.get(args.model))
-
-    if args.run_cpu:
+    fn = partial(train_mnist, MODEL_MAPS.get(model_name))
+    if run_cpu:
         print('Run on CPU\n------\n')
-        fn(run_on_spu=False)
+        return fn(run_on_spu=False)
 
     print('Run on SPU\n------\n')
+    return fn(run_on_spu=True)
+
+
+def main():
+    run_model(args.model, run_cpu=args.run_cpu)
+
     with open(args.config, 'r') as file:
         conf = json.load(file)
     ppd.init(conf["nodes"], conf["devices"])
 
-    return fn(run_on_spu=True)
+    return run_model(args.model, run_cpu=args.run_cpu)
 
 
 if __name__ == '__main__':

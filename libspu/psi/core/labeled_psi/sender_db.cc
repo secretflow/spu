@@ -51,6 +51,7 @@
 #include "seal/util/common.h"
 #include "seal/util/streambuf.h"
 #include "yacl/crypto/utils/rand.h"
+#include "yacl/utils/parallel.h"
 
 namespace spu::psi {
 
@@ -1177,44 +1178,65 @@ void SenderDB::InsertOrAssign(
 
     std::vector<std::string> oprf_out = oprf_server_->FullEvaluate(batch_items);
 
-    for (size_t i = 0; i < oprf_out.size(); ++i) {
-      //
-      apsi::Item::value_type value{};
-      std::memcpy(value.data(), &oprf_out[i][0], value.size());
+    std::vector<std::vector<std::pair<apsi::util::AlgItemLabel, size_t>>>
+        data_with_indices_vec;
 
-      apsi::HashedItem hashed_item(value);
-      if (IsLabeled()) {
-        apsi::LabelKey key;
-        std::memcpy(key.data(), &oprf_out[i][hashed_item.value().size()],
-                    key.size());
+    if (IsLabeled()) {
+      data_with_indices_vec.resize(oprf_out.size());
+      size_t key_offset_pos = sizeof(apsi::Item::value_type);
 
-        apsi::Label label_with_padding =
-            PaddingData(batch_labels[i], label_byte_count_);
+      yacl::parallel_for(
+          0, oprf_out.size(), 1, [&](int64_t begin, int64_t end) {
+            for (int64_t idx = begin; idx < end; ++idx) {
+              apsi::Item::value_type value{};
+              std::memcpy(value.data(), &oprf_out[idx][0], value.size());
 
-        apsi::EncryptedLabel encrypted_label = apsi::util::encrypt_label(
-            label_with_padding, key, label_byte_count_, nonce_byte_count_);
+              apsi::HashedItem hashed_item(value);
 
-        std::pair<apsi::HashedItem, apsi::EncryptedLabel> item_label_pair =
-            std::make_pair(hashed_item, encrypted_label);
+              apsi::LabelKey key;
+              std::memcpy(key.data(), &oprf_out[idx][key_offset_pos],
+                          apsi::label_key_byte_count);
 
-        std::vector<std::pair<apsi::util::AlgItemLabel, size_t>>
-            data_with_indices = PreprocessLabeledData(item_label_pair, params_);
+              apsi::Label label_with_padding =
+                  PaddingData(batch_labels[idx], label_byte_count_);
 
-        for (size_t j = 0; j < data_with_indices.size(); ++j) {
+              apsi::EncryptedLabel encrypted_label = apsi::util::encrypt_label(
+                  label_with_padding, key, label_byte_count_,
+                  nonce_byte_count_);
+
+              std::pair<apsi::HashedItem, apsi::EncryptedLabel>
+                  item_label_pair =
+                      std::make_pair(hashed_item, encrypted_label);
+
+              data_with_indices_vec[idx] =
+                  PreprocessLabeledData(item_label_pair, params_);
+            }
+          });
+
+      for (size_t i = 0; i < oprf_out.size(); ++i) {
+        for (size_t j = 0; j < data_with_indices_vec[i].size(); ++j) {
           std::string indices_buffer =
-              SerializeDataLabelWithIndices(data_with_indices[j]);
+              SerializeDataLabelWithIndices(data_with_indices_vec[i][j]);
 
           items_oprf_store->Put(indices_count + j, indices_buffer);
 
-          size_t cuckoo_idx = data_with_indices[j].second;
+          size_t cuckoo_idx = data_with_indices_vec[i][j].second;
           size_t bin_idx, bundle_idx;
           std::tie(bin_idx, bundle_idx) =
               UnpackCuckooIdx(cuckoo_idx, bins_per_bundle);
           bundle_indices_set.insert(bundle_idx);
         }
 
-        indices_count += data_with_indices.size();
-      } else {
+        indices_count += data_with_indices_vec[i].size();
+      }
+    } else {
+      for (size_t i = 0; i < oprf_out.size(); ++i) {
+        //
+        apsi::Item::value_type value{};
+        std::memcpy(value.data(), &oprf_out[i][0], value.size());
+
+        apsi::HashedItem hashed_item(value);
+
         std::vector<std::pair<apsi::util::AlgItem, size_t>> data_with_indices =
             PreprocessUnlabeledData(hashed_item, params_);
 
@@ -1235,7 +1257,6 @@ void SenderDB::InsertOrAssign(
         indices_count += data_with_indices.size();
       }
     }
-
     item_count_ += batch_items.size();
 
     batch_count++;

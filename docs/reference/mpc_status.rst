@@ -21,12 +21,15 @@ Complexity
 
 Notation:
 
-* **n** is short for the *number of parties*.
-* **k** is short for the *k in module 2^k*.
+* **N** is short for the *number of parties*.
+* **K** is short for the *k in module 2^k*.
+* **m** is short for *rows of mmul lhs operand*.
+* **n** is short for *cols of mmul rhs operand*.
 
 Naming convention:
 
 * **a** for *arithmetic share*.
+* **b** for *boolean share*.
 * **p** for *public value*.
 
 For example, `mul_aa` is short for multiply of two arithmetic shares.

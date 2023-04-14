@@ -88,6 +88,14 @@ with open(args.config, 'r') as file:
 ppd.init(conf["nodes"], conf["devices"])
 
 
+def compute_score(w, b, type):
+    x_test, y_test = dsutil.breast_cancer(slice(None, None, None), False)
+    y_test = jnp.where(y_test <= 0, -1, 1)
+    score = metrics.accuracy_score(y_test, predict(x_test, w, b))
+    print(f"AUC({type})={score}")
+    return score
+
+
 def run_on_cpu():
     x_train, y_train = dsutil.breast_cancer(slice(None, None, None), True)
 
@@ -96,11 +104,7 @@ def run_on_cpu():
     w, b = jax.jit(svm.fit)(x_train, y_train)
     print(w, b)
 
-    x_test, y_test = dsutil.breast_cancer(slice(None, None, None), False)
-    y_test = jnp.where(y_test <= 0, -1, 1)
-    score = metrics.accuracy_score(y_test, predict(x_test, w, b))
-    print("AUC(cpu)={}".format(score))
-    return score
+    return w, b
 
 
 def run_on_spu():
@@ -118,15 +122,13 @@ def run_on_spu():
     w_r, b_r = ppd.get(w), ppd.get(b)
     print(w_r, b_r)
 
-    x_test, y_test = dsutil.breast_cancer(slice(None, None, None), False)
-    y_test = jnp.where(y_test <= 0, -1, 1)
-    score = metrics.accuracy_score(y_test, predict(x_test, w_r, b_r))
-    print("AUC(spu)={}".format(score))
-    return score
+    return w_r, b_r
 
 
 if __name__ == "__main__":
     print('Run on CPU\n------\n')
-    run_on_cpu()
+    w, b = run_on_cpu()
+    compute_score(w, b, 'cpu')
     print('Run on SPU\n------\n')
-    run_on_spu()
+    w, b = run_on_spu()
+    compute_score(w, b, 'spu')

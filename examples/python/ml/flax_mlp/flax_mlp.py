@@ -109,6 +109,14 @@ import cloudpickle as pickle
 import tempfile
 
 
+def compute_score(param, type):
+    x_test, y_test = dsutil.breast_cancer(slice(None, None, None), False)
+    y_predict = predict(param, x_test)
+    score = metrics.roc_auc_score(y_test, y_predict)
+    print(f"AUC({type})={score}")
+    return score
+
+
 def run_on_spu():
     @ppd.device("SPU")
     def main(x1, x2, y, params):
@@ -122,11 +130,7 @@ def run_on_spu():
     params = main(x1, x2, y, params)
     params_r = ppd.get(params)
 
-    x_test, y_test = dsutil.breast_cancer(slice(None, None, None), False)
-    y_predict = predict(params_r, x_test)
-    print("AUC(spu)={}".format(metrics.roc_auc_score(y_test, y_predict)))
-
-    return params
+    return params_r
 
 
 def save_and_load_model():
@@ -156,7 +160,9 @@ def save_and_load_model():
 
 if __name__ == '__main__':
     print('\n------\nRun on CPU')
-    run_on_cpu()
+    p = run_on_cpu()
+    compute_score(p, 'cpu')
     print('\n------\nRun on SPU')
-    run_on_spu()
+    p = run_on_spu()
+    compute_score(p, 'spu')
     save_and_load_model()
