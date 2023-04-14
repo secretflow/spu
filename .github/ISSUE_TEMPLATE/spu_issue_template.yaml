@@ -109,7 +109,7 @@ body:
       description: Provide a reproducible test case that is the bare minimum necessary to generate the problem. If possible, please share a link to Jupyter/any notebook.
       placeholder: Tell us what you see!
       value: "echo bug"
-      render: "sh"
+      render: Python
     validations:
       required: true
 
@@ -118,4 +118,4 @@ body:
     attributes:
       label: Relevant log output
       description: Please copy and paste any relevant log output. This will be automatically formatted into code, so no need for backticks.
-      render: "sh"
+      render: Shell
