@@ -1,4 +1,5 @@
 name: SecretFlow/SPU Issue Template
+description: To report any SPU related issue please use this template.
 body:
   - type: dropdown
     id: issue-type
