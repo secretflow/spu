@@ -1,4 +1,4 @@
-name: SecretFlow/SPU Issue Template
+name: SPU Issue Template
 description: To report any SPU related issue please use this template.
 body:
   - type: dropdown
@@ -22,9 +22,9 @@ body:
   - type: dropdown
     id: sub-area
     attributes:
-      label: Relative area
-      description: Sub-area of interest
-      multiple: false
+      label: Modules Involved
+      description: What modules are involved in this issue?
+      multiple: true
       options:
         - MPC protocol
         - SPU runtime
@@ -51,7 +51,7 @@ body:
   - type: dropdown
     id: installation-type
     attributes:
-      label: Source
+      label: Installation Kind
       description: SPU installed from
       options:
         - source
@@ -78,7 +78,7 @@ body:
   - type: input
     id: Python
     attributes:
-      label: Python version
+      label: Python Version
       placeholder: e.g., 3.8
     validations:
       required: false
@@ -86,7 +86,7 @@ body:
   - type: input
     id: Compiler
     attributes:
-      label: Compiler version
+      label: Compiler Version
       description: if compiling from source
       placeholder: e.g., GCC 11.2.1
     validations:
