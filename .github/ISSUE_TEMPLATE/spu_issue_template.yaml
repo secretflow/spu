@@ -31,7 +31,7 @@ body:
         - SPU compiler
         - PSI
         - PIR
-        - Documentation/tutorial/Example
+        - Documentation/Tutorial/Example
         - Others
     validations:
       required: true
@@ -63,7 +63,7 @@ body:
     attributes:
       label: SPU Version
       description: pip version if installed from package, commit id if build from source
-      placeholder: ex,. spu 0.3.2b12
+      placeholder: e.g., spu 0.3.2b12
     validations:
       required: true
 
