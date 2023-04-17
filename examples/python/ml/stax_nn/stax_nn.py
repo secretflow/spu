@@ -199,13 +199,14 @@ def run_model(model_name, run_cpu=True):
 
 
 def main():
-    run_model(args.model, run_cpu=args.run_cpu)
+    if args.run_cpu:
+        run_model(args.model, run_cpu=True)
 
     with open(args.config, 'r') as file:
         conf = json.load(file)
     ppd.init(conf["nodes"], conf["devices"])
 
-    return run_model(args.model, run_cpu=args.run_cpu)
+    return run_model(args.model, run_cpu=False)
 
 
 if __name__ == '__main__':
