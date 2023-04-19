@@ -54,13 +54,15 @@ std::vector<spu::Value> ReduceWindow(HalContext *ctx,
                                      absl::Span<const spu::Value> init_values,
                                      absl::Span<const int64_t> ret_shape,
                                      const ReduceWindowConfig &config,
-                                     const BatchedValueBinaryFn &reducer);
+                                     const BatchedValueBinaryFn &reducer,
+                                     bool ignore_init_values = false);
 
 std::vector<spu::Value> Reduce(HalContext *ctx,
                                absl::Span<const spu::Value> inputs,
                                absl::Span<const spu::Value> init_values,
                                absl::Span<const int64_t> dims_to_reduce,
-                               const BatchedValueBinaryFn &reducer);
+                               const BatchedValueBinaryFn &reducer,
+                               bool ignore_init_values = false);
 
 std::pair<spu::Value, spu::Value> ArgMax(HalContext *ctx,
                                          const spu::Value &input,

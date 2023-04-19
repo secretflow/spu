@@ -741,6 +741,10 @@ void execute(OpExecutor *executor, HalContext *hctx, SymbolScope *sscope,
     init_values[i] = lookupValue(sscope, op.getInitValues()[i], opts);
   }
 
+  bool canIgnoreInitialValue =
+      std::none_of(dimensions_to_reduce.begin(), dimensions_to_reduce.end(),
+                   [](int64_t d) { return d == 0; });
+
   std::vector<spu::Value> ret = kernel::hlo::Reduce(
       hctx, input_args, init_values, dimensions_to_reduce,
       [&](absl::Span<const spu::Value> lhs, absl::Span<const spu::Value> rhs) {
@@ -749,7 +753,8 @@ void execute(OpExecutor *executor, HalContext *hctx, SymbolScope *sscope,
         operands.insert(operands.end(), lhs.begin(), lhs.end());
         operands.insert(operands.end(), rhs.begin(), rhs.end());
         return runRegion(executor, hctx, sscope, op.getBody(), operands);
-      });
+      },
+      canIgnoreInitialValue);
 
   const auto &output_shape =
       op->getResultTypes()[0].dyn_cast<mlir::RankedTensorType>().getShape();
@@ -827,7 +832,9 @@ void execute(OpExecutor *executor, HalContext *hctx, SymbolScope *sscope,
         operands.insert(operands.end(), lhs.begin(), lhs.end());
         operands.insert(operands.end(), rhs.begin(), rhs.end());
         return runRegion(executor, hctx, sscope, op.getBody(), operands);
-      });
+      },
+      std::none_of(window_shape.begin(), window_shape.end(),
+                   [](int64_t ws) { return ws == 0; }));
 
   for (int64_t idx = 0; idx < op->getNumResults(); ++idx) {
     addValue(sscope, op->getResults()[idx], std::move(rets[idx]), opts);

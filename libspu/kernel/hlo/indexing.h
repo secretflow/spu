@@ -50,4 +50,11 @@ spu::Value UpdateSlice(HalContext *ctx, const spu::Value &in,
 spu::Value FilterByMask(HalContext *ctx, const spu::Value &operand,
                         absl::Span<const uint8_t> mask);
 
+spu::Value LinearGather(HalContext *ctx, const spu::Value &in,
+                        absl::Span<const int64_t> indices);
+
+void LinearScatterInPlace(HalContext *ctx, spu::Value &in,
+                          const spu::Value &update,
+                          absl::Span<const int64_t> indices);
+
 }  // namespace spu::kernel::hlo

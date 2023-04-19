@@ -44,14 +44,10 @@ def _spu_copts():
 def spu_cc_binary(
         linkopts = [],
         copts = [],
-        deps = [],
         **kargs):
     cc_binary(
         linkopts = linkopts,
         copts = copts + _spu_copts(),
-        deps = deps + [
-            "@com_github_gperftools_gperftools//:gperftools",
-        ],
         **kargs
     )
 
@@ -59,12 +55,16 @@ def spu_cc_library(
         linkopts = [],
         copts = [],
         deps = [],
+        local_defines = [],
         **kargs):
     cc_library(
         linkopts = linkopts,
         copts = _spu_copts() + copts,
         deps = deps + [
             "@com_github_gabime_spdlog//:spdlog",
+        ],
+        local_defines = local_defines + [
+            "SPU_BUILD",
         ],
         **kargs
     )
@@ -99,18 +99,17 @@ def spu_cc_test(
         linkopts = [],
         copts = [],
         deps = [],
-        linkstatic = True,
+        local_defines = [],
         **kwargs):
     cc_test(
         # -lm for tcmalloc
         linkopts = linkopts + ["-lm"],
         copts = _spu_copts() + copts,
         deps = deps + [
-            # use tcmalloc same as release bins. make them has same behavior on mem.
-            "@com_github_gperftools_gperftools//:gperftools",
             "@com_google_googletest//:gtest_main",
         ],
-        # static link for tcmalloc
-        linkstatic = True,
+        local_defines = local_defines + [
+            "SPU_BUILD",
+        ],
         **kwargs
     )
