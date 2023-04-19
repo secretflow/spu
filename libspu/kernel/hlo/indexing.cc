@@ -20,6 +20,7 @@
 
 #include "libspu/core/ndarray_ref.h"
 #include "libspu/kernel/hal/hal.h"
+#include "libspu/kernel/hal/ring.h"
 #include "libspu/kernel/hlo/basic_binary.h"
 #include "libspu/kernel/hlo/basic_ternary.h"
 #include "libspu/kernel/hlo/basic_unary.h"
@@ -677,6 +678,27 @@ spu::Value FilterByMask(HalContext *ctx, const spu::Value &operand,
   }
 
   return Value(operand.data().linear_gather(indices), operand.dtype());
+}
+
+spu::Value LinearGather(HalContext *ctx, const spu::Value &in,
+                        absl::Span<const int64_t> indices) {
+  return Value(in.data().linear_gather(indices), in.dtype());
+}
+
+void LinearScatterInPlace(HalContext *ctx, spu::Value &in,
+                          const spu::Value &update,
+                          absl::Span<const int64_t> indices) {
+  if (in.data().eltype() != update.data().eltype()) {
+    auto common_type =
+        hal::_common_type(ctx, in.data().eltype(), update.data().eltype());
+    in = hal::_cast_type(ctx, in, common_type).setDtype(in.dtype());
+    LinearScatterInPlace(
+        ctx, in,
+        hal::_cast_type(ctx, update, common_type).setDtype(update.dtype()),
+        indices);
+    return;
+  }
+  in.data().linear_scatter(update.data(), indices);
 }
 
 }  // namespace spu::kernel::hlo

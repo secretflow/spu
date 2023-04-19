@@ -226,6 +226,13 @@ class NdArrayRef {
   void copy_slice(const NdArrayRef& src, absl::Span<const int64_t> src_base,
                   absl::Span<const int64_t> dst_base, int64_t num_copy);
 
+// The following APIs are not safe to directly use by downstream components.
+// SPU_BUILD is only defined when building SPU itself.
+#ifdef SPU_BUILD
+ public:
+#else
+ private:
+#endif
   /// the broadcast function
   /// Guarantee no copy
   NdArrayRef broadcast_to(absl::Span<const int64_t> to_shape,

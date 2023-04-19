@@ -390,7 +390,6 @@ Value _constant(HalContext* ctx, uint128_t init,
   return _make_p(ctx, init, shape);
 }
 
-// TODO: test me.
 Value _bit_parity(HalContext* ctx, const Value& x, size_t bits) {
   SPU_TRACE_HAL_LEAF(ctx, x);
 
@@ -406,7 +405,6 @@ Value _bit_parity(HalContext* ctx, const Value& x, size_t bits) {
 }
 
 // TODO(jint): OPTIMIZE ME, this impl seems to be super slow.
-// TODO: test me.
 Value _popcount(HalContext* ctx, const Value& x, size_t bits) {
   SPU_TRACE_HAL_LEAF(ctx, x);
 

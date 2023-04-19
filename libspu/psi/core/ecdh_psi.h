@@ -33,6 +33,11 @@ namespace spu::psi {
 
 using FinishBatchHook = std::function<void(size_t)>;
 
+struct EcdhPsiStatistics {
+  size_t self_item_count = 0;
+  size_t peer_item_count = 0;
+};
+
 struct EcdhPsiOptions {
   // Provides the link for the rank world.
   std::shared_ptr<yacl::link::Context> link_ctx;
@@ -61,6 +66,9 @@ struct EcdhPsiOptions {
 
   // Finish batch callback. Could be used for logging or update progress.
   FinishBatchHook on_batch_finished;
+
+  // Collect information such as the input size of psi.
+  EcdhPsiStatistics* statistics = nullptr;
 };
 
 // batch handler for 2-party ecdh psi

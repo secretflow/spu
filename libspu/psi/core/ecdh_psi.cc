@@ -58,6 +58,7 @@ void EcdhPsiContext::CheckConfig() {
 void EcdhPsiContext::MaskSelf(
     const std::shared_ptr<IBatchProvider>& batch_provider) {
   size_t batch_count = 0;
+  size_t item_count = 0;
   while (true) {
     // NOTE: we still need to send one batch even there is no data.
     // This dummy batch is used to notify peer the end of data stream.
@@ -71,10 +72,14 @@ void EcdhPsiContext::MaskSelf(
     const auto tag = fmt::format("ECDHPSI:X^A:{}", batch_count);
     SendBatch(masked_items, batch_count, tag);
     if (batch_items.empty()) {
-      SPDLOG_INFO("MaskSelf:{}--finished, batch_count={}",
-                  options_.link_ctx->Id(), batch_count);
+      SPDLOG_INFO("MaskSelf:{}--finished, batch_count={}, self_item_count={}",
+                  options_.link_ctx->Id(), batch_count, item_count);
+      if (options_.statistics) {
+        options_.statistics->self_item_count = item_count;
+      }
       break;
     }
+    item_count += batch_items.size();
     ++batch_count;
   }
 }
@@ -82,6 +87,7 @@ void EcdhPsiContext::MaskSelf(
 void EcdhPsiContext::MaskPeer(
     const std::shared_ptr<ICipherStore>& cipher_store) {
   size_t batch_count = 0;
+  size_t item_count = 0;
   while (true) {
     // Fetch y^b.
     std::vector<std::string> peer_items;
@@ -110,10 +116,14 @@ void EcdhPsiContext::MaskPeer(
       SendDualMaskedBatch(dual_masked_peers, batch_count, tag);
     }
     if (peer_items.empty()) {
-      SPDLOG_INFO("MaskPeer:{}--finished, batch_count={}",
-                  options_.link_ctx->Id(), batch_count);
+      SPDLOG_INFO("MaskPeer:{}--finished, batch_count={}, peer_item_count={}",
+                  options_.link_ctx->Id(), batch_count, item_count);
+      if (options_.statistics) {
+        options_.statistics->peer_item_count = item_count;
+      }
       break;
     }
+    item_count += peer_items.size();
     batch_count++;
   }
 }

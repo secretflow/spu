@@ -72,6 +72,16 @@ spu_cc_test(
     ],
 )
 
+spu_cc_test(
+    name = "ring_test",
+    srcs = ["ring_test.cc"],
+    deps = [
+        ":constants",
+        ":ring",
+        ":test_util",
+    ],
+)
+
 spu_cc_library(
     name = "fxp_cleartext",
     srcs = ["fxp_cleartext.cc"],

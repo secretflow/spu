@@ -362,16 +362,18 @@ std::vector<spu::Value> ReduceWindow(HalContext *ctx,
                                      absl::Span<const spu::Value> init_values,
                                      absl::Span<const int64_t> ret_shape,
                                      const ReduceWindowConfig &config,
-                                     const BatchedValueBinaryFn &reducer) {
+                                     const BatchedValueBinaryFn &reducer,
+                                     bool ignore_init_values) {
   return ReduceWindowImpl(ctx, inputs, init_values, ret_shape, config, false,
-                          false, reducer);
+                          ignore_init_values, reducer);
 }
 
 std::vector<spu::Value> Reduce(HalContext *ctx,
                                absl::Span<const spu::Value> inputs,
                                absl::Span<const spu::Value> init_values,
                                absl::Span<const int64_t> dims_to_reduce,
-                               const BatchedValueBinaryFn &reducer) {
+                               const BatchedValueBinaryFn &reducer,
+                               bool ignore_init_values) {
   // Reduce multiple dimension
   //
   // The straight-forward method iterates dimension_to_reduce with each dim a
@@ -443,8 +445,12 @@ std::vector<spu::Value> Reduce(HalContext *ctx,
     result = hal::reshape(ctx, result, out_shape);
   }
 
-  // init_values are scalars, broadcast to return shape first.
+  if (ignore_init_values) {
+    return results;
+  }
+
   std::vector<spu::Value> broadcasted_init_values;
+  // init_values are scalars, broadcast to return shape first.
   for (const auto &v : init_values) {
     broadcasted_init_values.push_back(hal::broadcast_to(ctx, v, out_shape));
   }
