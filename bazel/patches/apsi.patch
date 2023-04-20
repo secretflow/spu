@@ -1,7 +1,7 @@
-diff --git APSI-a0/CMakeLists.txt APSI-b0/CMakeLists.txt
-index 64a394b..ec15273 100644
---- APSI-a0/CMakeLists.txt
-+++ APSI-b0/CMakeLists.txt
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 94da4aa..de53dc0 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
 @@ -107,7 +107,7 @@ set(APSI_INCLUDES_INSTALL_DIR ${CMAKE_INSTALL_INCLUDEDIR}/APSI-${APSI_VERSION_MA
  # find_package might throw a FATAL_ERROR before"xxx: not found", e.g. with vcpkg.cmake.
  
@@ -89,10 +89,20 @@ index 64a394b..ec15273 100644
  if(APSI_USE_LOG4CPLUS)
      target_link_libraries(apsi PUBLIC log4cplus::log4cplus)
  endif()
-diff --git APSI-a0/common/apsi/CMakeLists.txt APSI-b0/common/apsi/CMakeLists.txt
+@@ -282,9 +262,6 @@ else()
+     target_compile_options(apsi PUBLIC -D_GENERIC_)
+     message(STATUS "FourQlib optimization: arch=GENERIC")
+ endif()
+-if(NOT MSVC AND NOT APSI_FOURQ_ARM64)
+-    target_compile_options(apsi PUBLIC -march=native)
+-endif()
+ 
+ # Set AVX or AVX2 if not generic
+ if(APSI_FOURQ_AMD64 OR APSI_FOURQ_ARM64)
+diff --git a/common/apsi/CMakeLists.txt b/common/apsi/CMakeLists.txt
 index 3b6d410..cc273ff 100644
---- APSI-a0/common/apsi/CMakeLists.txt
-+++ APSI-b0/common/apsi/CMakeLists.txt
+--- a/common/apsi/CMakeLists.txt
++++ b/common/apsi/CMakeLists.txt
 @@ -30,7 +30,5 @@ install(
  )
  
@@ -101,10 +111,10 @@ index 3b6d410..cc273ff 100644
 -add_subdirectory(oprf)
  add_subdirectory(util)
  set(APSI_SOURCE_FILES ${APSI_SOURCE_FILES} PARENT_SCOPE)
-diff --git APSI-a0/common/apsi/fourq/CMakeLists.txt APSI-b0/common/apsi/fourq/CMakeLists.txt
+diff --git a/common/apsi/fourq/CMakeLists.txt b/common/apsi/fourq/CMakeLists.txt
 index a60d831..952d91c 100644
---- APSI-a0/common/apsi/fourq/CMakeLists.txt
-+++ APSI-b0/common/apsi/fourq/CMakeLists.txt
+--- a/common/apsi/fourq/CMakeLists.txt
++++ b/common/apsi/fourq/CMakeLists.txt
 @@ -3,23 +3,13 @@
  
  # Source files in this directory
@@ -130,10 +140,10 @@ index a60d831..952d91c 100644
      DESTINATION
          ${APSI_INCLUDES_INSTALL_DIR}/apsi/fourq
  )
-diff --git APSI-a0/common/apsi/psi_params.cpp APSI-b0/common/apsi/psi_params.cpp
+diff --git a/common/apsi/psi_params.cpp b/common/apsi/psi_params.cpp
 index dc74d46..c92403d 100644
---- APSI-a0/common/apsi/psi_params.cpp
-+++ APSI-b0/common/apsi/psi_params.cpp
+--- a/common/apsi/psi_params.cpp
++++ b/common/apsi/psi_params.cpp
 @@ -9,7 +9,9 @@
  
  // APSI
@@ -161,10 +171,10 @@ index dc74d46..c92403d 100644
  #ifndef APSI_DISABLE_JSON
      PSIParams PSIParams::Load(const string &in)
      {
-diff --git APSI-a0/common/apsi/psi_params.h APSI-b0/common/apsi/psi_params.h
+diff --git a/common/apsi/psi_params.h b/common/apsi/psi_params.h
 index 53d5cd4..69c7450 100644
---- APSI-a0/common/apsi/psi_params.h
-+++ APSI-b0/common/apsi/psi_params.h
+--- a/common/apsi/psi_params.h
++++ b/common/apsi/psi_params.h
 @@ -184,6 +184,7 @@ namespace apsi {
                      item_params_.felts_per_item);
          }
@@ -182,10 +192,10 @@ index 53d5cd4..69c7450 100644
          /**
          Reads the PSIParams from a JSON string
          */
-diff --git APSI-a0/receiver/apsi/CMakeLists.txt APSI-b0/receiver/apsi/CMakeLists.txt
+diff --git a/receiver/apsi/CMakeLists.txt b/receiver/apsi/CMakeLists.txt
 index afce298..7757b68 100644
---- APSI-a0/receiver/apsi/CMakeLists.txt
-+++ APSI-b0/receiver/apsi/CMakeLists.txt
+--- a/receiver/apsi/CMakeLists.txt
++++ b/receiver/apsi/CMakeLists.txt
 @@ -4,7 +4,6 @@
  # Source files in this directory
  set(APSI_SOURCE_FILES ${APSI_SOURCE_FILES}
@@ -202,10 +212,10 @@ index afce298..7757b68 100644
          ${CMAKE_CURRENT_LIST_DIR}/receiver.h
      DESTINATION
          ${APSI_INCLUDES_INSTALL_DIR}/apsi
-diff --git APSI-a0/receiver/apsi/itt.h APSI-b0/receiver/apsi/itt.h
+diff --git a/receiver/apsi/itt.h b/receiver/apsi/itt.h
 index e683045..105e14c 100644
---- APSI-a0/receiver/apsi/itt.h
-+++ APSI-b0/receiver/apsi/itt.h
+--- a/receiver/apsi/itt.h
++++ b/receiver/apsi/itt.h
 @@ -20,7 +20,15 @@ namespace apsi {
              create this query. If the given table index was not populated, i.e., there is no
              translation, then this function returns the number of items encoded by this query.
@@ -232,10 +242,10 @@ index e683045..105e14c 100644
              IndexTranslationTable() = default;
  
              std::unordered_map<std::size_t, std::size_t> table_idx_to_item_idx_;
-diff --git APSI-a0/sender/apsi/CMakeLists.txt APSI-b0/sender/apsi/CMakeLists.txt
+diff --git a/sender/apsi/CMakeLists.txt b/sender/apsi/CMakeLists.txt
 index fd245d7..3cbf684 100644
---- APSI-a0/sender/apsi/CMakeLists.txt
-+++ APSI-b0/sender/apsi/CMakeLists.txt
+--- a/sender/apsi/CMakeLists.txt
++++ b/sender/apsi/CMakeLists.txt
 @@ -4,25 +4,16 @@
  # Source files in this directory
  set(APSI_SOURCE_FILES ${APSI_SOURCE_FILES}
@@ -262,10 +272,10 @@ index fd245d7..3cbf684 100644
 -    add_subdirectory(zmq)
 -endif()
  set(APSI_SOURCE_FILES ${APSI_SOURCE_FILES} PARENT_SCOPE)
-diff --git APSI-a0/sender/apsi/bin_bundle.cpp APSI-b0/sender/apsi/bin_bundle.cpp
+diff --git a/sender/apsi/bin_bundle.cpp b/sender/apsi/bin_bundle.cpp
 index bb36ef2..203cec2 100644
---- APSI-a0/sender/apsi/bin_bundle.cpp
-+++ APSI-b0/sender/apsi/bin_bundle.cpp
+--- a/sender/apsi/bin_bundle.cpp
++++ b/sender/apsi/bin_bundle.cpp
 @@ -354,7 +354,7 @@ namespace apsi {
              bool compressed)
              : crypto_context(move(context))
@@ -275,10 +285,10 @@ index bb36ef2..203cec2 100644
  
              // Find the highest degree polynomial in the list. The max degree determines how many
              // Plaintexts we need to make
-diff --git APSI-a0/sender/apsi/bin_bundle.h APSI-b0/sender/apsi/bin_bundle.h
+diff --git a/sender/apsi/bin_bundle.h b/sender/apsi/bin_bundle.h
 index 5a0bcf2..35613a0 100644
---- APSI-a0/sender/apsi/bin_bundle.h
-+++ APSI-b0/sender/apsi/bin_bundle.h
+--- a/sender/apsi/bin_bundle.h
++++ b/sender/apsi/bin_bundle.h
 @@ -438,6 +438,6 @@ namespace apsi {
              Loads the BinBundle from a stream.
              */
