@@ -51,7 +51,7 @@ jobs:
             set +e 
             declare -i build_status
             sed -i "s/tensorflow /tensorflow-cpu /g" ./requirements-dev.txt
-            docker run --name spu-build --mount type=bind,source="$(pwd)",target=/home/admin/dev/ secretflow/spu-ci:0.6 \
+            docker run --name spu-build --mount type=bind,source="$(pwd)",target=/home/admin/dev/ secretflow/spu-ci:0.7 \
                 sh -c "cd /home/admin/dev && \
                         python3 -m pip install -U pip && \
                         python3 -m pip install -r requirements.txt && \
@@ -90,7 +90,7 @@ jobs:
     # Specify the execution environment. You can specify an image from Dockerhub or use one of our Convenience Images from CircleCI's Developer Hub.
     # See: https://circleci.com/docs/2.0/configuration-reference/#docker-machine-macos-windows-executor
     docker:
-      - image: registry.hub.docker.com/secretflow/spu-ci:0.6
+      - image: registry.hub.docker.com/secretflow/spu-ci:0.7
     resource_class: 2xlarge
     # Add steps to the job
     # See: https://circleci.com/docs/2.0/configuration-reference/#steps
@@ -180,7 +180,7 @@ jobs:
           name: "Install homebrew dependencies"
           command: |
             brew install bazel cmake ninja libomp wget go md5sha1sum
-            (cd /opt/homebrew/Cellar/bazel/*.*.*/libexec/bin && curl -fLO https://github.com/bazelbuild/bazel/releases/download/5.4.0/bazel-5.4.0-darwin-arm64 && chmod +x bazel-5.4.0-darwin-arm64)
+            (cd /opt/homebrew/Cellar/bazel/*.*.*/libexec/bin && curl -fLO https://github.com/bazelbuild/bazel/releases/download/5.4.1/bazel-5.4.1-darwin-arm64 && chmod +x bazel-5.4.1-darwin-arm64)
       - run:
           name: "Install Miniconda"
           command: |
@@ -234,7 +234,7 @@ jobs:
           name: "Install homebrew dependencies"
           command: |
             brew install bazel cmake ninja nasm libomp wget go
-            (cd "/usr/local/Cellar/bazel/5.1.1/libexec/bin" && curl -fLO https://releases.bazel.build/5.4.0/release/bazel-5.4.0-darwin-x86_64 && chmod +x bazel-5.4.0-darwin-x86_64)
+            (cd "/usr/local/Cellar/bazel/5.1.1/libexec/bin" && curl -fLO https://releases.bazel.build/5.4.1/release/bazel-5.4.1-darwin-x86_64 && chmod +x bazel-5.4.1-darwin-x86_64)
       - run:
           name: "Install Miniconda"
           command: |
@@ -263,7 +263,7 @@ jobs:
           name: "Install homebrew dependencies"
           command: |
             brew install bazel cmake ninja libomp wget go
-            (cd /opt/homebrew/Cellar/bazel/*.*.*/libexec/bin && curl -fLO https://github.com/bazelbuild/bazel/releases/download/5.4.0/bazel-5.4.0-darwin-arm64 && chmod +x bazel-5.4.0-darwin-arm64)
+            (cd /opt/homebrew/Cellar/bazel/*.*.*/libexec/bin && curl -fLO https://github.com/bazelbuild/bazel/releases/download/5.4.1/bazel-5.4.1-darwin-arm64 && chmod +x bazel-5.4.1-darwin-arm64)
       - run:
           name: "Install Miniconda"
           command: |
@@ -281,7 +281,7 @@ jobs:
             python3 -m twine upload -r pypi -u __token__ -p ${PYPI_TWINE_TOKEN} dist/*.whl
   linux_publish:
     docker:
-      - image: registry.hub.docker.com/secretflow/release-ci:0.4
+      - image: registry.hub.docker.com/secretflow/release-ci:0.6
     resource_class: 2xlarge
     steps:
       - checkout
