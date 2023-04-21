@@ -228,6 +228,9 @@ jobs:
     environment:
       HOMEBREW_NO_AUTO_UPDATE: 1
     resource_class: large
+    parameters:
+      python_ver:
+        type: string
     steps:
       - checkout
       - run:
@@ -248,15 +251,20 @@ jobs:
           name: "build package and publish"
           command: |
             set +e
+            conda create -n build python=<< parameters.python_ver >> -y
             sh ./build_wheel_entrypoint.sh
             python3 -m pip install twine
-            python3 -m twine upload -r pypi -u __token__ -p ${PYPI_TWINE_TOKEN} dist/*.whl
+            ls dist/*.whl
+            # python3 -m twine upload -r pypi -u __token__ -p ${PYPI_TWINE_TOKEN} dist/*.whl
   macOS_arm64_publish:
     macos:
       xcode: 14.2
     environment:
       HOMEBREW_NO_AUTO_UPDATE: 1
     resource_class: macos.m1.large.gen1
+    parameters:
+      python_ver:
+        type: string
     steps:
       - checkout
       - run:
@@ -276,9 +284,11 @@ jobs:
           name: "build package and publish"
           command: |
             set +e
+            conda create -n build python=<< parameters.python_ver >> -y
             sh ./build_wheel_entrypoint.sh
             python3 -m pip install twine
-            python3 -m twine upload -r pypi -u __token__ -p ${PYPI_TWINE_TOKEN} dist/*.whl
+            ls dist/*.whl
+            # python3 -m twine upload -r pypi -u __token__ -p ${PYPI_TWINE_TOKEN} dist/*.whl
   linux_publish:
     docker:
       - image: registry.hub.docker.com/secretflow/release-ci:0.6
@@ -307,7 +317,9 @@ workflows:
       - nn_benchmark
   ut:
     when:
-      not: << pipeline.parameters.run-schedule >>
+      and:
+        - not: << pipeline.parameters.run-schedule >>
+        - not: << pipeline.parameters.GHA_Action >>
     jobs:
       - linux_ut
       - macOS_ut
@@ -318,5 +330,11 @@ workflows:
           matrix:
             parameters:
               python_ver: ['3.8', '3.9', '3.10', '3.11']
-      - macOS_x64_publish
-      - macOS_arm64_publish
+      - macOS_x64_publish:
+          matrix:
+            parameters:
+              python_ver: ['3.8', '3.9', '3.10', '3.11']
+      - macOS_arm64_publish:
+          matrix:
+            parameters:
+              python_ver: ['3.8', '3.9', '3.10', '3.11']
