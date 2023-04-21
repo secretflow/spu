@@ -283,15 +283,20 @@ jobs:
     docker:
       - image: registry.hub.docker.com/secretflow/release-ci:0.6
     resource_class: 2xlarge
+    parameters:
+      python_ver:
+        type: string
     steps:
       - checkout
       - run:
           name: "build package and publish"
           command: |
             set +e
+            conda create -n build python=<< parameters.python_ver >> -y
             env sh ./build_wheel_entrypoint.sh
             python3 -m pip install twine
-            python3 -m twine upload -r pypi -u __token__ -p ${PYPI_TWINE_TOKEN} dist/*.whl
+            ls dist/*.whl
+            # python3 -m twine upload -r pypi -u __token__ -p ${PYPI_TWINE_TOKEN} dist/*.whl
 
 # Invoke jobs via workflows
 # See: https://circleci.com/docs/2.0/configuration-reference/#workflows
@@ -309,6 +314,9 @@ workflows:
   publish:
     when: << pipeline.parameters.GHA_Action >>
     jobs:
-      - linux_publish
+      - linux_publish:
+          matrix:
+            parameters:
+              python_ver: ['3.8', '3.9', '3.10', '3.11']
       - macOS_x64_publish
       - macOS_arm64_publish
