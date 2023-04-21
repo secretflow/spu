@@ -308,8 +308,7 @@ jobs:
       - run:
           name: "build package and publish"
           command: |
-            env
-            source ~/.bashrc
+            source /root/.bashrc
             conda activate build
             env sh ./build_wheel_entrypoint.sh
             python3 -m pip install twine
