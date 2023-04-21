@@ -252,6 +252,7 @@ jobs:
           command: |
             set +e
             conda create -n build python=<< parameters.python_ver >> -y
+            conda activate build
             sh ./build_wheel_entrypoint.sh
             python3 -m pip install twine
             ls dist/*.whl
@@ -285,6 +286,7 @@ jobs:
           command: |
             set +e
             conda create -n build python=<< parameters.python_ver >> -y
+            conda activate build
             sh ./build_wheel_entrypoint.sh
             python3 -m pip install twine
             ls dist/*.whl
@@ -303,6 +305,7 @@ jobs:
           command: |
             set +e
             conda create -n build python=<< parameters.python_ver >> -y
+            conda activate build
             env sh ./build_wheel_entrypoint.sh
             python3 -m pip install twine
             ls dist/*.whl
