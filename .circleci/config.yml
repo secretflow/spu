@@ -302,7 +302,9 @@ jobs:
       - checkout
       - run:
           name: conda setup
-          command: conda create -n build python=<< parameters.python_ver >> -y
+          command: |
+            conda update -n base -c defaults conda -y
+            conda create -n build python=<< parameters.python_ver >> -y
       - run:
           name: "build package and publish"
           command: |
