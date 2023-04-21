@@ -301,12 +301,10 @@ jobs:
     steps:
       - checkout
       - run:
-          name: "Conda init"
-          command: conda init bash
-      - run:
           name: "build package and publish"
           command: |
             set +e
+            echo "$SHELL"
             conda create -n build python=<< parameters.python_ver >> -y
             conda activate build
             env sh ./build_wheel_entrypoint.sh
@@ -335,12 +333,12 @@ workflows:
       - linux_publish:
           matrix:
             parameters:
-              python_ver: ['3.8', '3.9', '3.10', '3.11']
-      - macOS_x64_publish:
-          matrix:
-            parameters:
-              python_ver: ['3.8', '3.9', '3.10', '3.11']
-      - macOS_arm64_publish:
-          matrix:
-            parameters:
-              python_ver: ['3.8', '3.9', '3.10', '3.11']
+              python_ver: ["3.8", "3.9", "3.10", "3.11"]
+      # - macOS_x64_publish:
+      #     matrix:
+      #       parameters:
+      #         python_ver: ['3.8', '3.9', '3.10', '3.11']
+      # - macOS_arm64_publish:
+      #     matrix:
+      #       parameters:
+      #         python_ver: ['3.8', '3.9', '3.10', '3.11']
