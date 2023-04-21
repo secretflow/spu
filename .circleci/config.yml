@@ -308,6 +308,7 @@ jobs:
       - run:
           name: "build package and publish"
           command: |
+            env
             source ~/.bashrc
             conda activate build
             env sh ./build_wheel_entrypoint.sh
