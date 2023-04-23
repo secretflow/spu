@@ -301,16 +301,11 @@ jobs:
     steps:
       - checkout
       - run:
-          name: conda setup
+          name: "build package and publish"
+          shell: /bin/bash --login -eo pipefail
           command: |
-            bash
             conda update -n base -c defaults conda -y
             conda create -n build python=<< parameters.python_ver >> -y
-            conda info
-      - run:
-          name: "build package and publish"
-          command: |
-            bash
             conda info
             conda activate build
             # bash .circleci/build_package.sh
