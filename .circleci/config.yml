@@ -40,6 +40,7 @@ jobs:
     machine:
       image: ubuntu-2004:2022.07.1
     resource_class: 2xlarge
+    shell: /bin/bash --login -eo pipefail
     steps:
       - checkout
       - restore_cache:
@@ -68,13 +69,10 @@ jobs:
           name: Launch benchmark task
           no_output_timeout: 30m
           command: |
-            set +e
-            declare -i benchmark_status
             sleep 60
             # TODO: run all stax_nn models with different optimizers
             docker run --rm --mount type=bind,source="$(pwd)",target=/home/admin/dev/ --network nn-benchmark spu-build:v1 \
-                sh -c "cd /home/admin/dev && bash .circleci/run-nn.sh" | tee benchmark_results.log; benchmark_status=${PIPESTATUS[0]}
-            exit ${benchmark_status}
+                sh -c "cd /home/admin/dev && bash .circleci/run-nn.sh" | tee benchmark_results.log
       - run:
           name: Shutdown docker-compose cluster
           command: docker-compose -f .circleci/benchmark.yml down
@@ -92,6 +90,7 @@ jobs:
     docker:
       - image: registry.hub.docker.com/secretflow/spu-ci:0.7
     resource_class: 2xlarge
+    shell: /bin/bash --login -eo pipefail
     # Add steps to the job
     # See: https://circleci.com/docs/2.0/configuration-reference/#steps
     steps:
@@ -298,17 +297,23 @@ jobs:
     parameters:
       python_ver:
         type: string
+    shell: /bin/bash --login -eo pipefail
     steps:
       - checkout
       - run:
           name: "build package and publish"
-          shell: /bin/bash --login -eo pipefail
           command: |
             conda update -n base -c defaults conda -y
             conda create -n build python=<< parameters.python_ver >> -y
-            conda info
             conda activate build
-            # bash .circleci/build_package.sh
+
+            conda info
+
+            sh ./build_wheel_entrypoint.sh
+            python3 -m pip install twine
+            ls dist/*.whl
+
+            # python3 -m twine upload -r pypi -u __token__ -p ${PYPI_TWINE_TOKEN} dist/*.whl
 
 # Invoke jobs via workflows
 # See: https://circleci.com/docs/2.0/configuration-reference/#workflows
