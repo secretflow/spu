@@ -293,7 +293,7 @@ jobs:
             # python3 -m twine upload -r pypi -u __token__ -p ${PYPI_TWINE_TOKEN} dist/*.whl
   linux_publish:
     docker:
-      - image: registry.hub.docker.com/secretflow/release-ci:0.6
+      - image: registry.hub.docker.com/secretflow/release-ci:0.7
     resource_class: 2xlarge
     parameters:
       python_ver:
@@ -308,8 +308,6 @@ jobs:
       - run:
           name: "build package and publish"
           command: |
-            less  /root/.bashrc
-            source /root/.bashrc
             conda activate build
             env sh ./build_wheel_entrypoint.sh
             python3 -m pip install twine
