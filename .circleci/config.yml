@@ -310,7 +310,8 @@ jobs:
             sh ./build_wheel_entrypoint.sh
             python3 -m pip install twine
             ls dist/*.whl
-            #python3 -m twine upload -r pypi -u __token__ -p ${PYPI_TWINE_TOKEN} dist/*.whl
+            
+            python3 -m twine upload -r pypi -u __token__ -p ${PYPI_TWINE_TOKEN} dist/*.whl
 
 # Invoke jobs via workflows
 # See: https://circleci.com/docs/2.0/configuration-reference/#workflows
@@ -334,11 +335,11 @@ workflows:
           matrix:
             parameters:
               python_ver: ["3.8", "3.9", "3.10", "3.11"]
-      # - macOS_x64_publish:
-      #     matrix:
-      #       parameters:
-      #         python_ver: ['3.8', '3.9', '3.10', '3.11']
-      # - macOS_arm64_publish:
-      #     matrix:
-      #       parameters:
-      #         python_ver: ['3.8', '3.9', '3.10', '3.11']
+      - macOS_x64_publish:
+          matrix:
+            parameters:
+              python_ver: ['3.8', '3.9', '3.10', '3.11']
+      - macOS_arm64_publish:
+          matrix:
+            parameters:
+              python_ver: ['3.8', '3.9', '3.10', '3.11']
