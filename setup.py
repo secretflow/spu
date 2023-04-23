@@ -234,6 +234,9 @@ setuptools.setup(
     keywords=("spu mpc secretflow compiler vm ABY3 secure computation"),
     classifiers=[
         "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.11",
     ],
     packages=setup_spec.get_packages(),
     cmdclass={"build_ext": build_ext},
