@@ -252,10 +252,12 @@ jobs:
             set +e
             conda create -n build python=<< parameters.python_ver >> -y
             conda activate build
+
             sh ./build_wheel_entrypoint.sh
             python3 -m pip install twine
             ls dist/*.whl
-            # python3 -m twine upload -r pypi -u __token__ -p ${PYPI_TWINE_TOKEN} dist/*.whl
+
+            python3 -m twine upload -r pypi -u __token__ -p ${PYPI_TWINE_TOKEN} dist/*.whl
   macOS_arm64_publish:
     macos:
       xcode: 14.2
@@ -286,10 +288,12 @@ jobs:
             set +e
             conda create -n build python=<< parameters.python_ver >> -y
             conda activate build
+
             sh ./build_wheel_entrypoint.sh
             python3 -m pip install twine
             ls dist/*.whl
-            # python3 -m twine upload -r pypi -u __token__ -p ${PYPI_TWINE_TOKEN} dist/*.whl
+
+            python3 -m twine upload -r pypi -u __token__ -p ${PYPI_TWINE_TOKEN} dist/*.whl
   linux_publish:
     docker:
       - image: registry.hub.docker.com/secretflow/release-ci:0.7
