@@ -303,14 +303,17 @@ jobs:
       - run:
           name: conda setup
           command: |
+            bash
             conda update -n base -c defaults conda -y
             conda create -n build python=<< parameters.python_ver >> -y
             conda info
       - run:
           name: "build package and publish"
           command: |
+            bash
             conda info
-            bash .circleci/build_package.sh
+            conda activate build
+            # bash .circleci/build_package.sh
 
 # Invoke jobs via workflows
 # See: https://circleci.com/docs/2.0/configuration-reference/#workflows
