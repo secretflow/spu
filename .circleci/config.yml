@@ -223,10 +223,10 @@ jobs:
           path: test_logs.tar.gz
   macOS_x64_publish:
     macos:
-      xcode: 13.4.1
+      xcode: 14.2
     environment:
       HOMEBREW_NO_AUTO_UPDATE: 1
-    resource_class: large
+    resource_class: macos.x86.medium.gen2
     parameters:
       python_ver:
         type: string
@@ -236,7 +236,7 @@ jobs:
           name: "Install homebrew dependencies"
           command: |
             brew install bazel cmake ninja nasm libomp wget go
-            (cd "/usr/local/Cellar/bazel/5.1.1/libexec/bin" && curl -fLO https://releases.bazel.build/5.4.1/release/bazel-5.4.1-darwin-x86_64 && chmod +x bazel-5.4.1-darwin-x86_64)
+            (cd "/usr/local/Cellar/bazel/5.3.2/libexec/bin" && curl -fLO https://releases.bazel.build/5.4.1/release/bazel-5.4.1-darwin-x86_64 && chmod +x bazel-5.4.1-darwin-x86_64)
       - run:
           name: "Install Miniconda"
           command: |
@@ -244,8 +244,6 @@ jobs:
             bash ~/miniconda.sh -b -p $HOME/miniconda
             source $HOME/miniconda/bin/activate
             conda init zsh bash
-            conda install -y grpcio
-            pip install -r requirements.txt
       - run:
           name: "build package and publish"
           command: |
@@ -281,7 +279,6 @@ jobs:
             bash ~/miniconda.sh -b -p $HOME/miniconda
             source $HOME/miniconda/bin/activate
             conda init zsh bash
-            pip install -r requirements.txt
       - run:
           name: "build package and publish"
           command: |
