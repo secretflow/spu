@@ -71,7 +71,7 @@ class SetupSpec:
 
 setup_spec = SetupSpec(
     "spu",
-    "SPU aims to be a `provable`, `measurable` secure computation device.",
+    "SPU aims to be a 'provable', 'measurable' secure computation device.",
 )
 
 # Ideally, we could include these files by putting them in a
@@ -230,6 +230,7 @@ setuptools.setup(
     long_description=io.open(
         os.path.join(ROOT_DIR, "README.md"), "r", encoding="utf-8"
     ).read(),
+    long_description_content_type='text/markdown',
     url="https://github.com/secretflow/spu",
     keywords=("spu mpc secretflow compiler vm ABY3 secure computation"),
     classifiers=[
