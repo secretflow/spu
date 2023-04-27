@@ -63,5 +63,5 @@ workflows:
     when: << pipeline.parameters.GHA_Action >>
     jobs:
       - continuation/continue:
-            configuration_path: .circleci/release_config.yml
+          configuration_path: .circleci/release_config.yml
 
