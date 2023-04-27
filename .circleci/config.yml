@@ -166,61 +166,65 @@ jobs:
     resource_class: macos.m1.large.gen1
     steps:
       - checkout
-      - restore_cache:
-          name: "Restore build cache"
-          key: spu-build-comp-{{ arch }}-
-      - run:
-          name: Checkout devtools
-          command: git clone https://github.com/secretflow/devtools.git
-      - run:
-          name: Decompress cache
-          command: sh devtools/decompress-build-cache.sh spu_build_cache
-      - run:
-          name: "Install homebrew dependencies"
-          command: |
-            brew install bazel cmake ninja libomp wget go md5sha1sum
-            (cd /opt/homebrew/Cellar/bazel/*.*.*/libexec/bin && curl -fLO https://github.com/bazelbuild/bazel/releases/download/5.4.1/bazel-5.4.1-darwin-arm64 && chmod +x bazel-5.4.1-darwin-arm64)
-      - run:
-          name: "Install Miniconda"
-          command: |
-            wget https://repo.anaconda.com/miniconda/Miniconda3-py38_23.1.0-1-MacOSX-arm64.sh -O ~/miniconda.sh
-            bash ~/miniconda.sh -b -p $HOME/miniconda
-            source $HOME/miniconda/bin/activate
-            conda init bash zsh
-            pip install -r requirements.txt
-            pip install -r requirements-dev.txt
-      - run:
-          name: "build"
-          command: bazel build //spu/... -c opt --ui_event_filters=-info,-debug,-warning --disk_cache=~/.cache/spu_build_cache
-      - run:
-          name: "test"
-          command: |
-            set +e
-            declare -i test_status
-            bazel test //spu/... -c opt --ui_event_filters=-info,-debug,-warning --test_output=errors --disk_cache=~/.cache/spu_build_cache | tee test_result.log; test_status=${PIPESTATUS[0]}
+      - when:
+            condition:
+              equal: [ main, << pipeline.git.branch >> ]
+            steps:
+              - restore_cache:
+                  name: "Restore build cache"
+                  key: spu-build-comp-{{ arch }}-
+              - run:
+                  name: Checkout devtools
+                  command: git clone https://github.com/secretflow/devtools.git
+              - run:
+                  name: Decompress cache
+                  command: sh devtools/decompress-build-cache.sh spu_build_cache
+              - run:
+                  name: "Install homebrew dependencies"
+                  command: |
+                    brew install bazel cmake ninja libomp wget go md5sha1sum
+                    (cd /opt/homebrew/Cellar/bazel/*.*.*/libexec/bin && curl -fLO https://github.com/bazelbuild/bazel/releases/download/5.4.1/bazel-5.4.1-darwin-arm64 && chmod +x bazel-5.4.1-darwin-arm64)
+              - run:
+                  name: "Install Miniconda"
+                  command: |
+                    wget https://repo.anaconda.com/miniconda/Miniconda3-py38_23.1.0-1-MacOSX-arm64.sh -O ~/miniconda.sh
+                    bash ~/miniconda.sh -b -p $HOME/miniconda
+                    source $HOME/miniconda/bin/activate
+                    conda init bash zsh
+                    pip install -r requirements.txt
+                    pip install -r requirements-dev.txt
+              - run:
+                  name: "build"
+                  command: bazel build //spu/... -c opt --ui_event_filters=-info,-debug,-warning --disk_cache=~/.cache/spu_build_cache
+              - run:
+                  name: "test"
+                  command: |
+                    set +e
+                    declare -i test_status
+                    bazel test //spu/... -c opt --ui_event_filters=-info,-debug,-warning --test_output=errors --disk_cache=~/.cache/spu_build_cache | tee test_result.log; test_status=${PIPESTATUS[0]}
 
-            sh devtools/rename-junit-xml.sh
-            find bazel-bin/ -perm +111 -type f -name "*_test"  -print0 | xargs -0 tar -cvzf test_binary.tar.gz
-            find bazel-testlogs/ -type f -name "test.log"  -print0 | xargs -0 tar -cvzf test_logs.tar.gz
+                    sh devtools/rename-junit-xml.sh
+                    find bazel-bin/ -perm +111 -type f -name "*_test"  -print0 | xargs -0 tar -cvzf test_binary.tar.gz
+                    find bazel-testlogs/ -type f -name "test.log"  -print0 | xargs -0 tar -cvzf test_logs.tar.gz
 
-            exit ${test_status}
-      - run:
-          name: Cleanup and compress cache
-          command: |
-            sh devtools/clean_disk_cache.sh ~/.cache/spu_build_cache
-            sh devtools/compress-build-cache.sh spu_build_cache
-          when: always
-      - save_cache:
-          key: spu-build-comp-{{ arch }}-{{ .Environment.CIRCLE_BUILD_NUM }}
-          paths:
-            - ~/.cache/spu_build_cache.tar.gz
-          when: always
-      - store_test_results:
-          path: test-results
-      - store_artifacts:
-          path: test_binary.tar.gz
-      - store_artifacts:
-          path: test_logs.tar.gz
+                    exit ${test_status}
+              - run:
+                  name: Cleanup and compress cache
+                  command: |
+                    sh devtools/clean_disk_cache.sh ~/.cache/spu_build_cache
+                    sh devtools/compress-build-cache.sh spu_build_cache
+                  when: always
+              - save_cache:
+                  key: spu-build-comp-{{ arch }}-{{ .Environment.CIRCLE_BUILD_NUM }}
+                  paths:
+                    - ~/.cache/spu_build_cache.tar.gz
+                  when: always
+              - store_test_results:
+                  path: test-results
+              - store_artifacts:
+                  path: test_binary.tar.gz
+              - store_artifacts:
+                  path: test_logs.tar.gz
   macOS_x64_publish:
     macos:
       xcode: 14.2
