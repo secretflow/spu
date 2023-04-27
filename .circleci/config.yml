@@ -38,7 +38,7 @@ parameters:
     default: false
 
 workflows:
-  filtered-workflow:
+  unittest-workflow:
     when:
       and:
         - not: << pipeline.parameters.run-schedule >>
