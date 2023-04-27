@@ -48,12 +48,20 @@ workflows:
           base-revision: main
           config-path: .circleci/continue-config.yml
           mapping: |
-            project1/.* project-one true
-            project2/.* project-two true
-            project3/.* project-three true
-            shared-things/.* run-them-all true
-  benchmark:
+            spu/.* build-and-run true
+            libspu/.* build-and-run true
+            exmaples/.* build-and-run true
+            .bazelrc build-and-run true
+            requirements.txt build-and-run true
+            requirements-dev.txt build-and-run true
+  benchmark-workflow:
     when: << pipeline.parameters.run-schedule >>
     jobs:
       - continuation/continue:
-          configuration_path: ./configB.yml
+          configuration_path: ./benchmark_config.yml
+  publish-workflow:
+    when: << pipeline.parameters.GHA_Action >>
+    jobs:
+      - continuation/continue:
+            configuration_path: ./release_config.yml
+
