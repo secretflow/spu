@@ -58,10 +58,10 @@ workflows:
     when: << pipeline.parameters.run-schedule >>
     jobs:
       - continuation/continue:
-          configuration_path: .circleci/benchmark_config.yml
+          configuration_path: .circleci/benchmark-config.yml
   publish-workflow:
     when: << pipeline.parameters.GHA_Action >>
     jobs:
       - continuation/continue:
-          configuration_path: .circleci/release_config.yml
+          configuration_path: .circleci/release-config.yml
 
