@@ -248,6 +248,8 @@ spu_cc_library(
         "//libspu/core:prelude",
         "@com_github_brpc_brpc//:butil",
         "@com_github_fmtlib_fmt//:fmtlib",
+        "@com_google_absl//absl/strings",
+        "@yacl//yacl/link:trace",
     ],
 )
 

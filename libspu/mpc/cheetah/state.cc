@@ -86,7 +86,7 @@ void CheetahMulState::makeSureCacheSize(FieldType field, int64_t numel) {
 std::array<ArrayRef, 3> CheetahMulState::TakeCachedBeaver(FieldType field,
                                                           int64_t numel) {
   SPU_ENFORCE(numel > 0);
-  std::unique_lock<std::shared_mutex> guard(lock_);
+  std::unique_lock guard(lock_);
   makeSureCacheSize(field, numel);
 
   std::array<ArrayRef, 3> ret;

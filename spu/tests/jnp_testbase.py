@@ -166,7 +166,7 @@ JAX_ONE_TO_ONE_OP_RECORDS = [
         "stablehlo.cosine",
     ),  # FIXME: stablehlo.cosine
     REC("cosh", 1, number_dtypes, all_shapes, jtu.rand_small),
-    REC("tanh", 1, number_dtypes, all_shapes, jtu.rand_small),
+    REC("tanh", 1, number_dtypes, all_shapes, jtu.rand_default),
     REC(
         "arcsin",
         1,

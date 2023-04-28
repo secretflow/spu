@@ -78,7 +78,7 @@ struct CheetahMul::Impl : public EnableCPRNG {
   std::unique_ptr<Impl> Fork() {
     using namespace seal;
     auto f = std::make_unique<Impl>(lctx_->Spawn());
-    std::unique_lock<std::shared_mutex> guard(context_lock_);
+    std::unique_lock guard(context_lock_);
 
     f->current_crt_plain_bitlen_ = current_crt_plain_bitlen_;
     if (seal_cntxts_.empty()) {
@@ -193,7 +193,7 @@ struct CheetahMul::Impl : public EnableCPRNG {
   uint32_t current_crt_plain_bitlen_{0};
 
   // SEAL's contexts for ZZ_{2^k}
-  mutable std::shared_mutex context_lock_;
+  mutable std::mutex context_lock_;
   std::vector<seal::SEALContext> seal_cntxts_;
 
   // own secret key
@@ -272,13 +272,7 @@ void CheetahMul::Impl::LocalExpandSEALContexts(size_t target) {
 void CheetahMul::Impl::LazyExpandSEALContexts(uint32_t field_bitlen,
                                               yacl::link::Context *conn) {
   uint32_t target_plain_bitlen = TotalCRTBitLen(field_bitlen);
-  {
-    std::shared_lock<std::shared_mutex> guard(context_lock_);
-    if (current_crt_plain_bitlen_ >= target_plain_bitlen) {
-      return;
-    }
-  }
-  std::unique_lock<std::shared_mutex> guard(context_lock_);
+  std::unique_lock guard(context_lock_);
   if (current_crt_plain_bitlen_ >= target_plain_bitlen) {
     return;
   }

@@ -73,6 +73,7 @@ def setup_link(rank):
 def main(_):
     opts = logging.LogOptions()
     opts.system_log_path = "./tmp/spu.log"
+    opts.trace_log_path = "./tmp/trace.log"
     opts.enable_console_logger = True
     opts.log_level = logging.LogLevel.INFO
     logging.setup_logging(opts)

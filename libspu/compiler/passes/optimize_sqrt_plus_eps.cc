@@ -32,28 +32,22 @@ bool isSmallerThanEps(T v) {
   return std::numeric_limits<T>::epsilon() >= v;
 }
 
-struct SqrtRewriter : public OpRewritePattern<DivOp> {
+struct SqrtRewriter : public OpRewritePattern<AddOp> {
   explicit SqrtRewriter(MLIRContext *context)
-      : OpRewritePattern<DivOp>(context) {}
+      : OpRewritePattern<AddOp>(context) {}
 
-  LogicalResult matchAndRewrite(DivOp op,
+  LogicalResult matchAndRewrite(AddOp op,
                                 PatternRewriter &rewriter) const override {
     // Pattern
-    // y/(sqrt(x) + small_const)
+    // (sqrt(x) + small_const)
     // Into
-    // y*rsqrt(x + small_const)
-    auto rhs = op.getRhs();
-    auto rhs_add = rhs.getDefiningOp<AddOp>();
-    if (!rhs_add) {
-      return failure();
-    }
-
-    auto added_const = rhs_add.getRhs().getDefiningOp<ConstantOp>();
+    // sqrt(x + small_const)
+    auto added_const = op.getRhs().getDefiningOp<ConstantOp>();
     if (!added_const) {
       return failure();
     }
 
-    auto added_sqrt = rhs_add.getLhs().getDefiningOp<SqrtOp>();
+    auto added_sqrt = op.getLhs().getDefiningOp<SqrtOp>();
     if (!added_sqrt) {
       return failure();
     }
@@ -79,17 +73,14 @@ struct SqrtRewriter : public OpRewritePattern<DivOp> {
     auto add = rewriter.create<AddOp>(added_sqrt.getLoc(),
                                       added_sqrt->getResultTypes(),
                                       added_sqrt->getOperand(0), eps);
-    auto rsqrt = rewriter.create<RsqrtOp>(added_sqrt.getLoc(),
-                                          added_sqrt->getResultTypes(), add);
-    rewriter.replaceOpWithNewOp<MulOp>(op, op->getResultTypes(), op.getLhs(),
-                                       rsqrt);
+    rewriter.replaceOpWithNewOp<SqrtOp>(op, op->getResultTypes(), add);
 
     return success();
   }
 };
 
-struct OptimizeSqrtToRsqrt
-    : public OptimizeSqrtToRsqrtBase<OptimizeSqrtToRsqrt> {
+struct OptimizeSqrtPlusEps
+    : public OptimizeSqrtPlusEpsBase<OptimizeSqrtPlusEps> {
   void runOnOperation() override {
     RewritePatternSet patterns(&getContext());
     populateOwningPatterns(&patterns, &getContext());
@@ -104,8 +95,8 @@ private:
 };
 } // namespace
 
-std::unique_ptr<OperationPass<func::FuncOp>> createOptimizeSqrtToRsqrtPass() {
-  return std::make_unique<OptimizeSqrtToRsqrt>();
+std::unique_ptr<OperationPass<func::FuncOp>> createOptimizeSqrtPlusEps() {
+  return std::make_unique<OptimizeSqrtPlusEps>();
 }
 
 } // namespace mlir::pphlo

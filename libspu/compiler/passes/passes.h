@@ -60,10 +60,13 @@ std::unique_ptr<OperationPass<func::FuncOp>> createOptimizeMaxPoolingPass();
 // Optimize SelectOp
 std::unique_ptr<OperationPass<func::FuncOp>> createOptimizeSelectPass();
 
-// Optimize 1/(sqrt(x) + very_small_const) -> rsqrt(x)
-std::unique_ptr<OperationPass<func::FuncOp>> createOptimizeSqrtToRsqrtPass();
+// Optimize sqrt(x) + very_small_const) -> sqrt(x + eps)
+std::unique_ptr<OperationPass<func::FuncOp>> createOptimizeSqrtPlusEps();
 
 std::unique_ptr<OperationPass<func::FuncOp>> createExpandSecretGatherPass();
+
+// Rewrite x/sqrt(x+eps) -> x*rsqrt(x+eps)
+std::unique_ptr<OperationPass<func::FuncOp>> createRewriteDivSqrtPatterns();
 
 } // namespace pphlo
 

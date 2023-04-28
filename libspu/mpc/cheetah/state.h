@@ -14,9 +14,8 @@
 
 #pragma once
 
-#include <map>
 #include <memory>
-#include <shared_mutex>
+#include <mutex>
 
 #include "libspu/mpc/cheetah/arith/cheetah_dot.h"
 #include "libspu/mpc/cheetah/arith/cheetah_mul.h"
@@ -27,7 +26,7 @@ namespace spu::mpc::cheetah {
 
 class CheetahMulState : public State {
  private:
-  std::shared_mutex lock_;
+  mutable std::mutex lock_;
   // a[2] = a[0] * a[1]
   mutable int64_t cached_sze_{0};
   FieldType field_{FT_INVALID};
@@ -92,47 +91,34 @@ class CheetahOTState : public State {
  private:
   using ProtPtr = std::shared_ptr<BasicOTProtocols>;
 
-  std::shared_mutex lock_;
-  std::map<size_t, ProtPtr> basic_ot_prot_;
+  mutable std::mutex lock_;
+  std::vector<ProtPtr> basic_ot_prot_;
 
  public:
   static constexpr char kBindName[] = "CheetahOT";
   static constexpr size_t kParallel = 16;
 
-  explicit CheetahOTState() {}
+  explicit CheetahOTState() : basic_ot_prot_(kParallel) {}
 
   ~CheetahOTState() override = default;
 
-  size_t parallel_size() const { return kParallel; }
+  constexpr size_t parallel_size() const { return kParallel; }
 
   void LazyInit(Communicator* comm, size_t idx = 0) {
-    SPU_ENFORCE(idx < parallel_size());
-    {
-      std::shared_lock<std::shared_mutex> guard(lock_);
-      auto kv = basic_ot_prot_.find(idx);
-      if (kv != basic_ot_prot_.end()) {
-        return;
-      }
-    }
-    // double check
-    std::unique_lock<std::shared_mutex> guard(lock_);
-    auto kv = basic_ot_prot_.find(idx);
-    if (kv != basic_ot_prot_.end()) {
+    SPU_ENFORCE(idx < parallel_size(), "idx={} out-of-bound", idx);
+    if (basic_ot_prot_[idx]) {
       return;
     }
-
+    std::unique_lock guard(lock_);
     // NOTE: create a seperated link for OT
     auto _comm = std::make_shared<Communicator>(comm->lctx()->Spawn());
-    auto ptr = std::make_shared<BasicOTProtocols>(std::move(_comm));
-    basic_ot_prot_.emplace(idx, ptr);
+    basic_ot_prot_[idx] = std::make_shared<BasicOTProtocols>(std::move(_comm));
   }
 
   std::shared_ptr<BasicOTProtocols> get(size_t idx = 0) {
-    SPU_ENFORCE(idx < parallel_size());
-    std::shared_lock<std::shared_mutex> guard(lock_);
-    auto kv = basic_ot_prot_.find(idx);
-    SPU_ENFORCE(kv != basic_ot_prot_.end(), "call LazyInit first");
-    return kv->second;
+    SPU_ENFORCE(idx < parallel_size(), "idx={} out-of-bound", idx);
+    SPU_ENFORCE(basic_ot_prot_[idx], "call LazyInit first");
+    return basic_ot_prot_[idx];
   }
 };
 

@@ -483,7 +483,14 @@ Value exp2(HalContext* ctx, const Value& x) {
 Value tanh(HalContext* ctx, const Value& x) {
   SPU_TRACE_HAL_DISP(ctx, x);
 
-  return f_tanh(ctx, dtype_cast(ctx, x, DT_FXP));
+  // For tanh inputs beyond [-3, 3], result is infinitely close to -1, 1
+  // pade approximation has a relative ok result between [-3, 3], so clamp
+  // inputs to this range.
+  auto normalized_x = clamp(ctx, dtype_cast(ctx, x, DT_FXP),
+                            constant(ctx, -3.F, DT_FXP, x.shape()),
+                            constant(ctx, 3.F, DT_FXP, x.shape()));
+
+  return f_tanh(ctx, normalized_x);
 }
 
 Value rsqrt(HalContext* ctx, const Value& x) {

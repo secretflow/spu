@@ -10,6 +10,7 @@ Tutorials
 
    spu_inside
    cpp_lr_example
-
+   develop_your_first_mpc_application
+   policy_sgd_insight
 
 

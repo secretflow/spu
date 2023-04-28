@@ -8,6 +8,10 @@
 
 ## staging
 > please add your unreleased change here.
+- [Feature] Improve secret dynamic slicing performance
+- [Feature] Improve accuracy of tanh approximation
+- [Example] Add flax GPT2
+- [Example] Add ResNet
 
 
 ## 20230406
