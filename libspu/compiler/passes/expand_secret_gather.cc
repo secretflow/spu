@@ -89,8 +89,8 @@ ComputePermutedShape(llvm::ArrayRef<int64_t> shape,
   return result_shape;
 }
 
-TypedValue<TensorType>
-TransposeIndexVectorDimToLast(TypedValue<TensorType> &start_indices,
+TypedValue<RankedTensorType>
+TransposeIndexVectorDimToLast(TypedValue<RankedTensorType> &start_indices,
                               int64_t index_vector_dim) {
   const auto start_indices_shape = start_indices.getType().getShape();
 
@@ -130,8 +130,8 @@ TransposeIndexVectorDimToLast(TypedValue<TensorType> &start_indices,
   return transpose.getResult();
 }
 
-TypedValue<TensorType> PrependDegenerateDims(TypedValue<TensorType> operand,
-                                             int64_t n) {
+TypedValue<RankedTensorType>
+PrependDegenerateDims(TypedValue<RankedTensorType> operand, int64_t n) {
   SPU_ENFORCE(n > 0);
   std::vector<int64_t> new_shape_dims;
   const auto operand_shape = operand.getType().getShape();
@@ -155,8 +155,8 @@ TypedValue<TensorType> PrependDegenerateDims(TypedValue<TensorType> operand,
   return reshape.getResult();
 }
 
-TypedValue<TensorType> CollapseFirstNDims(TypedValue<TensorType> operand,
-                                          int64_t n) {
+TypedValue<RankedTensorType>
+CollapseFirstNDims(TypedValue<RankedTensorType> operand, int64_t n) {
   SPU_ENFORCE(n > 0);
 
   const auto operand_shape = operand.getType().getShape();
@@ -194,8 +194,8 @@ TypedValue<TensorType> CollapseFirstNDims(TypedValue<TensorType> operand,
 // specific cases in the while loop that does the heavy lifting.
 //
 // See the "High Level Algorithm" section for a broader picture.
-TypedValue<TensorType>
-CanonicalizeGatherIndices(TypedValue<TensorType> &start_indices,
+TypedValue<RankedTensorType>
+CanonicalizeGatherIndices(TypedValue<RankedTensorType> &start_indices,
                           int64_t index_vector_dim) {
   // Transpose the non-index-vector dimensions to the front.
   auto transposed_start_indices =
@@ -222,7 +222,7 @@ CanonicalizeGatherIndices(TypedValue<TensorType> &start_indices,
   }
 }
 
-TypedValue<TensorType> CreateGatherLoopAccumulatorInitValue(
+TypedValue<RankedTensorType> CreateGatherLoopAccumulatorInitValue(
     GatherOp op, Type element_type, DenseIntElementsAttr slice_sizes,
     int64_t gather_loop_trip_count,
     const GatherDimensionNumbersAttr &dim_numbers) {
@@ -256,8 +256,8 @@ TypedValue<TensorType> CreateGatherLoopAccumulatorInitValue(
   }
 }
 
-TypedValue<TensorType>
-ExpandFirstDimIntoNDims(TypedValue<TensorType> operand,
+TypedValue<RankedTensorType>
+ExpandFirstDimIntoNDims(TypedValue<RankedTensorType> operand,
                         llvm::ArrayRef<int64_t> expanded_dims) {
   SPU_ENFORCE_GT(operand.getType().getShape().size(), size_t(0));
   SPU_ENFORCE_EQ(operand.getType().getShape()[0],
@@ -287,8 +287,8 @@ ExpandFirstDimIntoNDims(TypedValue<TensorType> operand,
   return reshaped.getResult();
 }
 
-TypedValue<TensorType>
-ElideDegenerateDims(OpBuilder *builder, TypedValue<TensorType> operand,
+TypedValue<RankedTensorType>
+ElideDegenerateDims(OpBuilder *builder, TypedValue<RankedTensorType> operand,
                     absl::Span<const int64_t> dims_to_elide) {
   std::unordered_set<int64_t> dims_to_elide_set(dims_to_elide.begin(),
                                                 dims_to_elide.end());
@@ -309,9 +309,9 @@ ElideDegenerateDims(OpBuilder *builder, TypedValue<TensorType> operand,
 
 // Expands out or contracts away the gather dimensions in the accumulator
 // produced by the while loop.
-TypedValue<TensorType> AdjustBatchDimsInAccumulator(
+TypedValue<RankedTensorType> AdjustBatchDimsInAccumulator(
     OpBuilder *builder, llvm::ArrayRef<int64_t> start_indices_shape,
-    TypedValue<TensorType> accumulator, int64_t index_vector_dim) {
+    TypedValue<RankedTensorType> accumulator, int64_t index_vector_dim) {
   std::vector<int64_t> batch_dim_bounds;
   batch_dim_bounds.reserve(start_indices_shape.size());
   for (int64_t i = 0, e = start_indices_shape.size(); i < e; i++) {
@@ -355,7 +355,7 @@ int64_t FindIndex(llvm::ArrayRef<int64_t> c, int64_t value) {
 // Expand an index vector from the start_indices tensor into a vector that can
 // be used to dynamic-slice out of the gather operand.
 llvm::SmallVector<Value> ExpandIndexVectorIntoOperandSpace(
-    OpBuilder *builder, TypedValue<TensorType> index_vector,
+    OpBuilder *builder, TypedValue<RankedTensorType> index_vector,
     const GatherDimensionNumbersAttr &dim_numbers, int64_t operand_rank) {
 
   TypeTools typetool;
@@ -414,8 +414,8 @@ llvm::SmallVector<Value> ExpandIndexVectorIntoOperandSpace(
 // This generates the body of the while that implements the main data movement
 // behavior of gather using dynamic-slice and dynamic-update-slice.
 void GatherLoopBody(GatherOp gather, Region &body,
-                    TypedValue<TensorType> operand,
-                    TypedValue<TensorType> start_indices) {
+                    TypedValue<RankedTensorType> operand,
+                    TypedValue<RankedTensorType> start_indices) {
   OpBuilder builder(body);
 
   auto induction_var = body.getArgument(0);
@@ -448,7 +448,7 @@ void GatherLoopBody(GatherOp gather, Region &body,
       gather->getLoc(),
       builder.getZeroAttr(RankedTensorType::get({}, index_type)));
 
-  TypedValue<TensorType> index_vector;
+  TypedValue<RankedTensorType> index_vector;
 
   if (has_scalar_indices) {
     // In this case start_indices has rank 1 and induction_var_as_vector (of
@@ -592,7 +592,7 @@ struct GatherConverter : public OpRewritePattern<GatherOp> {
     auto accumulator_with_batch_dims_decanonicalized =
         AdjustBatchDimsInAccumulator(
             &builder, start_indices.getType().getShape(),
-            cast<mlir::TypedValue<TensorType>>(accumulator_result),
+            cast<mlir::TypedValue<RankedTensorType>>(accumulator_result),
             dim_numbers.getIndexVectorDim());
 
     std::vector<int64_t> permutation;

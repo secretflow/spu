@@ -16,6 +16,8 @@
 
 #include <filesystem>
 
+#include "absl/strings/escaping.h"
+
 // TODO: we should not include brpc here.
 #include "butil/logging.h"
 #include "fmt/format.h"
@@ -26,6 +28,22 @@
 
 namespace spu::logging {
 
+namespace internal {
+
+SpuTraceLogger::SpuTraceLogger(const std::shared_ptr<spdlog::logger>& logger,
+                               size_t content_length)
+    : logger_(logger), content_length_(content_length) {}
+
+void SpuTraceLogger::LinkTraceImpl(std::string_view event, std::string_view tag,
+                                   std::string_view content) {
+  if (logger_) {
+    SPDLOG_LOGGER_INFO(
+        logger_, "[spu link] key={}, tag={}, value={}", event, tag,
+        absl::BytesToHexString(content.substr(0, content_length_)));
+  }
+}
+}  // namespace internal
+
 namespace {
 // clang-format off
 /// custom formatting:
@@ -35,6 +53,9 @@ namespace {
 const char* kFormatPattern = "%Y-%m-%d %H:%M:%S.%e [%l] [%s:%!:%#] %v";
 
 const char* kBrpcUnknownFuncname = "BRPC";
+
+const size_t kDefaultMaxLogFileSize = 500 * 1024 * 1024;
+const size_t kDefaultMaxLogFileCount = 3;
 
 spdlog::level::level_enum FromBrpcLogSeverity(int severity) {
   spdlog::level::level_enum level = spdlog::level::off;
@@ -86,6 +107,7 @@ void SinkBrpcLogWithDefaultLogger() {
   ::logging::SetLogSink(&log_sink);
   ::logging::SetMinLogLevel(::logging::BLOG_ERROR);
 }
+
 }  // namespace
 
 void SetupLogging(const LogOptions& options) {
@@ -118,6 +140,15 @@ void SetupLogging(const LogOptions& options) {
   spdlog::set_default_logger(root_logger);
 
   SinkBrpcLogWithDefaultLogger();
+
+  if (!options.trace_log_path.empty()) {
+    auto trace_logger = spdlog::rotating_logger_mt(
+        "trace", options.trace_log_path, kDefaultMaxLogFileSize,
+        kDefaultMaxLogFileCount);
+    yacl::link::TraceLogger::SetLogger(
+        std::make_shared<internal::SpuTraceLogger>(
+            trace_logger, options.trace_content_length));
+  }
 }
 
 }  // namespace spu::logging

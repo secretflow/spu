@@ -264,7 +264,7 @@ void PPHloVerifier::verify(mlir::pphlo::AbsOp op,
 void PPHloVerifier::verify(mlir::pphlo::ReciprocalOp op,
                            absl::Span<const spu::Value> operands,
                            absl::Span<const spu::Value> expected) {
-  SPU_THROW("Missing stablehlo interpreter support");
+  SPDLOG_WARN("Missing stablehlo interpreter support");
 }
 
 void PPHloVerifier::verify(mlir::pphlo::NegOp op,
@@ -286,7 +286,7 @@ void PPHloVerifier::verify(mlir::pphlo::LogOp op,
 void PPHloVerifier::verify(mlir::pphlo::Log1pOp op,
                            absl::Span<const spu::Value> operands,
                            absl::Span<const spu::Value> expected) {
-  SPU_THROW("Missing stablehlo interpreter support");
+  SPDLOG_WARN("Missing stablehlo interpreter support");
 }
 
 void PPHloVerifier::verify(mlir::pphlo::FloorOp op,
@@ -340,7 +340,7 @@ void PPHloVerifier::verify(mlir::pphlo::ExpOp op,
 void PPHloVerifier::verify(mlir::pphlo::Expm1Op op,
                            absl::Span<const spu::Value> operands,
                            absl::Span<const spu::Value> expected) {
-  SPU_THROW("Missing stablehlo interpreter support");
+  SPDLOG_WARN("Missing stablehlo interpreter support");
 }
 
 void PPHloVerifier::verify(mlir::pphlo::RsqrtOp op,
@@ -362,13 +362,13 @@ void PPHloVerifier::verify(mlir::pphlo::SqrtOp op,
 void PPHloVerifier::verify(mlir::pphlo::SignOp op,
                            absl::Span<const spu::Value> operands,
                            absl::Span<const spu::Value> expected) {
-  SPU_THROW("Missing stablehlo interpreter support");
+  SPDLOG_WARN("Missing stablehlo interpreter support");
 }
 
 void PPHloVerifier::verify(mlir::pphlo::RoundOp op,
                            absl::Span<const spu::Value> operands,
                            absl::Span<const spu::Value> expected) {
-  SPU_THROW("Missing stablehlo interpreter support");
+  SPDLOG_WARN("Missing stablehlo interpreter support");
 }
 
 void PPHloVerifier::verify(mlir::pphlo::AddOp op,
@@ -473,7 +473,7 @@ void PPHloVerifier::verify(mlir::pphlo::RemOp op,
 void PPHloVerifier::verify(mlir::pphlo::DotOp op,
                            absl::Span<const spu::Value> operands,
                            absl::Span<const spu::Value> expected) {
-  SPU_THROW("Missing stablehlo interpreter support");
+  SPDLOG_WARN("Missing stablehlo interpreter support");
 }
 
 void PPHloVerifier::verify(mlir::pphlo::DotGeneralOp op,
@@ -575,19 +575,19 @@ void PPHloVerifier::verify(mlir::pphlo::ClampOp op,
 void PPHloVerifier::verify(mlir::pphlo::BitcastConvertOp op,
                            absl::Span<const spu::Value> operands,
                            absl::Span<const spu::Value> expected) {
-  SPU_THROW("Missing stablehlo interpreter support");
+  SPDLOG_WARN("Missing stablehlo interpreter support");
 }
 
 void PPHloVerifier::verify(mlir::pphlo::ConvertOp op,
                            absl::Span<const spu::Value> operands,
                            absl::Span<const spu::Value> expected) {
-  SPU_THROW("Missing stablehlo interpreter support");
+  SPDLOG_INFO("Missing stablehlo interpreter support");
 }
 
 void PPHloVerifier::verify(mlir::pphlo::ConvolutionOp op,
                            absl::Span<const spu::Value> operands,
                            absl::Span<const spu::Value> expected) {
-  SPU_THROW("Missing stablehlo interpreter support");
+  SPDLOG_WARN("Missing stablehlo interpreter support");
 }
 
 void PPHloVerifier::verify(mlir::pphlo::DynamicSliceOp op,
@@ -624,7 +624,7 @@ void PPHloVerifier::verify(mlir::pphlo::DynamicUpdateSliceOp op,
 void PPHloVerifier::verify(mlir::pphlo::GatherOp op,
                            absl::Span<const spu::Value> operands,
                            absl::Span<const spu::Value> expected) {
-  SPU_THROW("Missing stablehlo interpreter support");
+  SPDLOG_WARN("Missing stablehlo interpreter support");
 }
 
 void PPHloVerifier::verify(mlir::pphlo::PadOp op,
@@ -718,43 +718,46 @@ void PPHloVerifier::verify(mlir::pphlo::IotaOp op,
 void PPHloVerifier::verify(mlir::pphlo::ReduceOp op,
                            absl::Span<const spu::Value> operands,
                            absl::Span<const spu::Value> expected) {
-  SPU_THROW("Missing stablehlo interpreter support");
+  SPDLOG_WARN("Missing stablehlo interpreter support");
 }
 
 void PPHloVerifier::verify(mlir::pphlo::ReduceWindowOp op,
                            absl::Span<const spu::Value> operands,
                            absl::Span<const spu::Value> expected) {
-  SPU_THROW("Missing stablehlo interpreter support");
+  SPDLOG_WARN("Missing stablehlo interpreter support");
 }
 
 void PPHloVerifier::verify(mlir::pphlo::SelectAndScatterOp op,
                            absl::Span<const spu::Value> operands,
                            absl::Span<const spu::Value> expected) {
-  SPU_THROW("Missing stablehlo interpreter support");
+  SPDLOG_WARN("Missing stablehlo interpreter support");
 }
 
 void PPHloVerifier::verify(mlir::pphlo::ShiftLeftOp op,
                            absl::Span<const spu::Value> operands,
                            absl::Span<const spu::Value> expected) {
-  SPU_THROW("Missing stablehlo interpreter support");
+  auto t1 = convertToStablehloTensor(&mlir_ctx_, ctx_, operands[0]);
+  auto t2 = convertToStablehloTensor(&mlir_ctx_, ctx_, operands[1]);
+  auto ret = mlir::stablehlo::evalShiftLeftOp(t1, t2, t1.getType());
+  mismatch_handler_(verifyEqual(ctx_, ret, expected[0]));
 }
 
 void PPHloVerifier::verify(mlir::pphlo::ShiftRightArithmeticOp op,
                            absl::Span<const spu::Value> operands,
                            absl::Span<const spu::Value> expected) {
-  SPU_THROW("Missing stablehlo interpreter support");
+  SPDLOG_WARN("Missing stablehlo interpreter support");
 }
 
 void PPHloVerifier::verify(mlir::pphlo::ShiftRightLogicalOp op,
                            absl::Span<const spu::Value> operands,
                            absl::Span<const spu::Value> expected) {
-  SPU_THROW("Missing stablehlo interpreter support");
+  SPDLOG_WARN("Missing stablehlo interpreter support");
 }
 
 void PPHloVerifier::verify(mlir::pphlo::SortOp op,
                            absl::Span<const spu::Value> operands,
                            absl::Span<const spu::Value> expected) {
-  SPU_THROW("Missing stablehlo interpreter support");
+  SPDLOG_WARN("Missing stablehlo interpreter support");
 }
 
 }  // namespace spu::device::pphlo

@@ -12,5 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+load("@rules_python//python:defs.bzl", "py_binary")
 
-__version__ = "0.3.3b1"
+package(default_visibility = ["//visibility:public"])
+
+py_binary(
+    name = "flax_gpt2",
+    srcs = ["flax_gpt2.py"],
+    data = [
+        "//examples/python/ml/flax_gpt2:3pc.json",
+    ],
+    deps = [
+        "//spu/utils:distributed",
+    ],
+)

@@ -12,5 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+load("@rules_python//python:defs.bzl", "py_binary", "py_library")
 
-__version__ = "0.3.3b1"
+package(default_visibility = ["//visibility:public"])
+
+py_library(
+    name = "models",
+    srcs = ["models.py"],
+)
+
+py_binary(
+    name = "flax_resnet",
+    srcs = ["flax_resnet.py"],
+    data = [
+        "//examples/python/ml/flax_resnet:3pc.json",
+    ],
+    deps = [
+        ":models",
+        "//spu/utils:distributed",
+    ],
+)

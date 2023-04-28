@@ -12,6 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "libspu/psi/core/ecdh_oprf/ecdh_oprf_selector.h"
+
+#include "libspu/core/platform_utils.h"
 #include "libspu/psi/core/ecdh_oprf/basic_ecdh_oprf.h"
 #include "libspu/psi/core/ecdh_oprf/ecdh_oprf.h"
 
@@ -27,10 +30,17 @@ std::unique_ptr<IEcdhOprfServer> CreateEcdhOprfServer(
       switch (curve_type) {
         case CurveType::CURVE_FOURQ: {
           SPDLOG_INFO("use fourq");
-          server = std::make_unique<FourQBasicEcdhOprfServer>(private_key);
+#ifdef __x86_64__
+          if (hasAVX2()) {
+#endif
+            server = std::make_unique<FourQBasicEcdhOprfServer>(private_key);
+#ifdef __x86_64__
+          }
+#endif
           break;
         }
         case CurveType::CURVE_SECP256K1:
+          [[fallthrough]];
         case CurveType::CURVE_SM2: {
           SPDLOG_INFO("use curve sm2/secp256k1");
           server =
@@ -63,10 +73,17 @@ std::unique_ptr<IEcdhOprfServer> CreateEcdhOprfServer(OprfType oprf_type,
       switch (curve_type) {
         case CurveType::CURVE_FOURQ: {
           SPDLOG_INFO("use fourq");
-          server = std::make_unique<FourQBasicEcdhOprfServer>();
+#ifdef __x86_64__
+          if (hasAVX2()) {
+#endif
+            server = std::make_unique<FourQBasicEcdhOprfServer>();
+#ifdef __x86_64__
+          }
+#endif
           break;
         }
         case CurveType::CURVE_SECP256K1:
+          [[fallthrough]];
         case CurveType::CURVE_SM2: {
           SPDLOG_INFO("use curve sm2/secp256k1");
           server = std::make_unique<BasicEcdhOprfServer>(curve_type);
@@ -95,10 +112,17 @@ std::unique_ptr<IEcdhOprfClient> CreateEcdhOprfClient(OprfType oprf_type,
     case OprfType::Basic: {
       switch (curve_type) {
         case CurveType::CURVE_FOURQ: {
-          client = std::make_unique<FourQBasicEcdhOprfClient>();
+#ifdef __x86_64__
+          if (hasAVX2()) {
+#endif
+            client = std::make_unique<FourQBasicEcdhOprfClient>();
+#ifdef __x86_64__
+          }
+#endif
           break;
         }
         case CurveType::CURVE_SECP256K1:
+          [[fallthrough]];
         case CurveType::CURVE_SM2: {
           client = std::make_unique<BasicEcdhOprfClient>(curve_type);
           break;
@@ -126,10 +150,17 @@ std::unique_ptr<IEcdhOprfClient> CreateEcdhOprfClient(
     case OprfType::Basic: {
       switch (curve_type) {
         case CurveType::CURVE_FOURQ: {
-          client = std::make_unique<FourQBasicEcdhOprfClient>(private_key);
+#ifdef __x86_64__
+          if (hasAVX2()) {
+#endif
+            client = std::make_unique<FourQBasicEcdhOprfClient>(private_key);
+#ifdef __x86_64__
+          }
+#endif
           break;
         }
         case CurveType::CURVE_SECP256K1:
+          [[fallthrough]];
         case CurveType::CURVE_SM2: {
           client =
               std::make_unique<BasicEcdhOprfClient>(curve_type, private_key);

@@ -33,8 +33,8 @@ spu_cmake_external(
         "-I$EXT_BUILD_ROOT/external/com_google_flatbuffers/include",
     ],
     lib_source = "@com_github_microsoft_apsi//:all",
-    out_include_dir = "include/APSI-0.8",
-    out_static_libs = ["libapsi-0.8.a"],
+    out_include_dir = "include/APSI-0.11",
+    out_static_libs = ["libapsi-0.11.a"],
     deps = [
         "@com_github_facebook_zstd//:zstd",
         "@com_github_microsoft_gsl//:gsl",

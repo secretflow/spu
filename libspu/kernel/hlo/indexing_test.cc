@@ -149,7 +149,7 @@ TEST(DynamicSliceTest, DynamicSliceWithPublicIndices) {
 
 TEST(DynamicSliceTest, DynamicSliceWithSecretIndices) {
   HalContext hctx = hal::test::makeRefHalContext();
-  xt::xarray<float> x = {{0.05, 0.24, 0.5}, {2, 5, 50}};
+  xt::xarray<float> x = {{0.05, 0.24, 0.5}, {2, 5, 50}, {7, 9, 10.1}};
   auto input = hal::test::makeValue(&hctx, x, VIS_SECRET);
 
   auto start_indices = std::vector<spu::Value>{
@@ -160,6 +160,24 @@ TEST(DynamicSliceTest, DynamicSliceWithSecretIndices) {
 
   auto p_ret = hal::dump_public_as<float>(&hctx, Reveal(&hctx, output));
   xt::xarray<float> expected{{0.24, 0.5}, {5, 50}};
+  EXPECT_TRUE(xt::allclose(p_ret, expected, 0.01, 0.001))
+      << p_ret << std::endl
+      << expected << std::endl;
+}
+
+TEST(DynamicSliceTest, DynamicSliceWithSecretIndicesFull) {
+  HalContext hctx = hal::test::makeRefHalContext();
+  xt::xarray<float> x = {{0.05, 0.24, 0.5}, {2, 5, 50}, {7, 9, 10.1}};
+  auto input = hal::test::makeValue(&hctx, x, VIS_SECRET);
+
+  auto start_indices = std::vector<spu::Value>{
+      Seal(&hctx, Constant(&hctx, static_cast<int64_t>(0), {})),
+      Seal(&hctx, Constant(&hctx, static_cast<int64_t>(0), {}))};
+
+  auto output = DynamicSlice(&hctx, input, {2, 3}, start_indices);
+
+  auto p_ret = hal::dump_public_as<float>(&hctx, Reveal(&hctx, output));
+  xt::xarray<float> expected{{0.05, 0.24, 0.5}, {2, 5, 50}};
   EXPECT_TRUE(xt::allclose(p_ret, expected, 0.01, 0.001))
       << p_ret << std::endl
       << expected << std::endl;

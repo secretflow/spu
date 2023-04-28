@@ -509,21 +509,24 @@ void BindLogging(py::module& m) {
       .def_readwrite("enable_console_logger",
                      &logging::LogOptions::enable_console_logger)
       .def_readwrite("system_log_path", &logging::LogOptions::system_log_path)
+      .def_readwrite("trace_log_path", &logging::LogOptions::trace_log_path)
       .def_readwrite("log_level", &logging::LogOptions::log_level)
       .def_readwrite("max_log_file_size",
                      &logging::LogOptions::max_log_file_size)
       .def_readwrite("max_log_file_count",
                      &logging::LogOptions::max_log_file_count)
+      .def_readwrite("trace_content_length",
+                     &logging::LogOptions::trace_content_length)
       .def(py::pickle(
           [](const logging::LogOptions& opts) {  // __getstate__
             /* Return a tuple that fully encodes the state of the object */
-            return py::make_tuple(opts.enable_console_logger,
-                                  opts.system_log_path, opts.log_level,
-                                  opts.max_log_file_size,
-                                  opts.max_log_file_count);
+            return py::make_tuple(
+                opts.enable_console_logger, opts.system_log_path,
+                opts.trace_log_path, opts.log_level, opts.max_log_file_size,
+                opts.max_log_file_count, opts.trace_content_length);
           },
           [](const py::tuple& t) {  // __setstate__
-            if (t.size() != 5) {
+            if (t.size() != 7) {
               throw std::runtime_error("Invalid serialized data!");
             }
 
@@ -531,9 +534,11 @@ void BindLogging(py::module& m) {
             logging::LogOptions opts = logging::LogOptions();
             opts.enable_console_logger = t[0].cast<bool>();
             opts.system_log_path = t[1].cast<std::string>();
-            opts.log_level = t[2].cast<logging::LogLevel>();
-            opts.max_log_file_size = t[3].cast<size_t>();
-            opts.max_log_file_count = t[4].cast<size_t>();
+            opts.trace_log_path = t[2].cast<std::string>();
+            opts.log_level = t[3].cast<logging::LogLevel>();
+            opts.max_log_file_size = t[4].cast<size_t>();
+            opts.max_log_file_count = t[5].cast<size_t>();
+            opts.trace_content_length = t[6].cast<size_t>();
 
             return opts;
           }));

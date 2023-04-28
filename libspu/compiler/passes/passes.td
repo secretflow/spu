@@ -70,9 +70,15 @@ def OptimizeSelect: Pass<"optimize-select", "func::FuncOp"> {
   let dependentDialects = ["pphlo::PPHloDialect"];
 }
 
-def OptimizeSqrtToRsqrt: Pass<"optimize-sqrt-to-rsqrt", "func::FuncOp"> {
-  let summary = "Rewrite 1/(sqrt(x)+small_const) into rsqrt(x+small_const)";
-  let constructor = "createOptimizeSqrtToRsqrtPass()";
+def OptimizeSqrtPlusEps: Pass<"optimize-sqrt-plus-eps", "func::FuncOp"> {
+  let summary = "Rewrite sqrt(x)+small_const into sqrt(x+small_const)";
+  let constructor = "createOptimizeSqrtPlusEps()";
+  let dependentDialects = ["pphlo::PPHloDialect"];
+}
+
+def RewriteDivSqrtPatterns: Pass<"rewrite-div-sqrt-pattern", "func::FuncOp"> {
+  let summary = "Rewrite x/sqrt(x+eps) -> x*rsqrt(x+eps)";
+  let constructor = "createRewriteDivSqrtPatterns()";
   let dependentDialects = ["pphlo::PPHloDialect"];
 }
 

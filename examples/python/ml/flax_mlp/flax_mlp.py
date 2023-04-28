@@ -94,6 +94,7 @@ def run_on_cpu():
     x_test, y_test = dsutil.breast_cancer(slice(None, None, None), False)
     y_predict = predict(params, x_test)
     print("AUC(cpu)={}".format(metrics.roc_auc_score(y_test, y_predict)))
+    return params
 
 
 parser = argparse.ArgumentParser(description='distributed driver.')
@@ -128,9 +129,8 @@ def run_on_spu():
 
     params = model_init()
     params = main(x1, x2, y, params)
-    params_r = ppd.get(params)
 
-    return params_r
+    return params
 
 
 def save_and_load_model():
@@ -163,6 +163,6 @@ if __name__ == '__main__':
     p = run_on_cpu()
     compute_score(p, 'cpu')
     print('\n------\nRun on SPU')
-    p = run_on_spu()
+    p = ppd.get(run_on_spu())
     compute_score(p, 'spu')
     save_and_load_model()

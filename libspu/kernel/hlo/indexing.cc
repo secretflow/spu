@@ -306,33 +306,6 @@ spu::Value reshapedGatherIndices(spu::HalContext *ctx, int64_t index_vector_dim,
   return spu::kernel::hal::reshape(ctx, start_indices, new_shape);
 }
 
-spu::Value SecretLinearIndexing(spu::HalContext *ctx, const spu::Value &operand,
-                                const spu::Value &linear_idx) {
-  // TODO: Consider utilizing DLP to improve performance
-  SPU_ENFORCE(operand.shape().size() == 1, "operand must be a 1D tensor");
-  SPU_ENFORCE(linear_idx.numel() == 1, "index must be a 1D indexing");
-
-  // Basic idea here:
-  // eq(iota, idx) * operand -> reduce to scalar
-  auto linear_idx_broadcasted =
-      spu::kernel::hlo::Broadcast(ctx, linear_idx, {operand.numel()}, {});
-  spu::Value idx_iota =
-      spu::kernel::hlo::Iota(ctx, spu::DT_I64, operand.numel());
-  auto mask = spu::kernel::hlo::Equal(ctx, linear_idx_broadcasted, idx_iota);
-
-  auto c0 = spu::kernel::hlo::Constant(ctx, static_cast<int64_t>(0), {});
-  auto i0 = spu::kernel::hlo::Cast(ctx, c0, c0.vtype(), operand.dtype());
-
-  std::vector<spu::Value> reduced = spu::kernel::hlo::Reduce(
-      ctx, {spu::kernel::hlo::Mul(ctx, operand, mask)}, {i0}, {0},
-      [&](absl::Span<const spu::Value> lhs, absl::Span<const spu::Value> rhs) {
-        return std::vector<spu::Value>{
-            spu::kernel::hlo::Add(ctx, lhs[0], rhs[0])};
-      });
-
-  return reduced[0];
-}
-
 spu::Value SecretLinearUpdateIndexing(spu::HalContext *ctx,
                                       const spu::Value &operand,
                                       const spu::Value &update,
@@ -602,6 +575,108 @@ spu::Value UpdateSlice(HalContext *ctx, const spu::Value &in,
   return hal::update_slice(ctx, in, update, start_indices);
 }
 
+spu::Value SecretDynamicSlice(
+    HalContext *ctx, const spu::Value &operand,
+    absl::Span<const int64_t> slice_size,
+    absl::Span<const spu::Value> start_indices,
+    std::vector<std::optional<spu::Value>>::iterator index_cache_mask) {
+  if (slice_size[0] == operand.shape()[0]) {
+    // Fully indexed dimension
+    if (operand.shape().size() == 1) {
+      return operand;
+    }
+    // For each dim
+    std::vector<spu::Value> results(operand.shape()[0]);
+    std::vector<int64_t> start(operand.shape().size(), 0);
+    std::vector<int64_t> end = operand.shape();
+    std::vector<int64_t> strides(operand.shape().size(), 1);
+    std::vector<int64_t> result_size(slice_size.begin(), slice_size.end());
+    result_size[0] = 1;
+
+    for (int64_t idx = 0; idx < operand.shape()[0]; ++idx) {
+      start[0] = idx;
+      end[0] = idx + 1;
+      auto slice = hal::slice(ctx, operand, start, end, strides);
+      slice = hal::reshape(ctx, slice,
+                           absl::Span<const int64_t>(operand.shape().data(),
+                                                     operand.shape().size())
+                               .subspan(1));
+      auto r =
+          SecretDynamicSlice(ctx, slice, slice_size.subspan(1),
+                             start_indices.subspan(1), index_cache_mask + 1);
+      results[idx] = hal::reshape(ctx, r, result_size);
+    }
+
+    return hal::concatenate(ctx, results, 0);
+  }
+  // Not full
+  // adjusted_start_indices = clamp(0, start_indices, shape(operand) -
+  // slice_sizes)
+  auto lower_bound = spu::kernel::hlo::Constant(ctx, static_cast<int64_t>(0),
+                                                start_indices[0].shape());
+  auto upper_bound = spu::kernel::hlo::Constant(
+      ctx, operand.shape()[0] - slice_size[0], start_indices[0].shape());
+  lower_bound = spu::kernel::hlo::Cast(ctx, lower_bound, lower_bound.vtype(),
+                                       start_indices[0].dtype());
+  upper_bound = spu::kernel::hlo::Cast(ctx, upper_bound, upper_bound.vtype(),
+                                       start_indices[0].dtype());
+
+  auto adjusted_start_indices = hal::broadcast_to(
+      ctx, hal::clamp(ctx, start_indices[0], lower_bound, upper_bound),
+      {operand.shape()[0]});
+
+  // equal(adjusted, iota)
+  spu::Value mask;
+  if (!index_cache_mask->has_value()) {
+    spu::Value idx_iota = spu::kernel::hal::iota(
+        ctx, adjusted_start_indices.dtype(), operand.shape()[0]);
+
+    mask = hal::equal(ctx, adjusted_start_indices, idx_iota);
+    mask = hal::pad(ctx, mask,
+                    hal::seal(ctx, hal::constant(ctx, false, mask.dtype())),
+                    {operand.shape()[0]}, {0}, {0});
+    *index_cache_mask = std::optional<spu::Value>(mask);
+  } else {
+    mask = **index_cache_mask;  // NOLINT
+  }
+
+  // foreach
+  std::vector<spu::Value> results(slice_size[0]);
+  std::vector<int64_t> reduced_size(slice_size.begin(), slice_size.end());
+  reduced_size[0] = 1;
+  for (int64_t idx = 0; idx < slice_size[0]; ++idx) {
+    auto mask_slice =
+        hal::slice(ctx, mask, {mask.numel() - idx - operand.shape()[0]},
+                   {mask.numel() - idx}, {1});
+    mask_slice = hal::reshape(ctx, mask_slice, {mask_slice.numel(), 1});
+    mask_slice = hal::broadcast_to(ctx, mask_slice, operand.shape(), {0});
+
+    auto mul_mask = hal::mul(ctx, operand, mask_slice);
+
+    auto reduced = spu::kernel::hlo::Reduce(
+        ctx, {mul_mask}, {}, {0},
+        [&](absl::Span<const spu::Value> lhs,
+            absl::Span<const spu::Value> rhs) {
+          return std::vector<spu::Value>{
+              spu::kernel::hlo::Add(ctx, lhs[0], rhs[0])};
+        },
+        true)[0];
+    if (slice_size.size() > 1) {
+      reduced = hal::reshape(ctx, reduced,
+                             absl::Span<const int64_t>(reduced.shape().data(),
+                                                       reduced.shape().size())
+                                 .subspan(1));
+      reduced =
+          SecretDynamicSlice(ctx, reduced, slice_size.subspan(1),
+                             start_indices.subspan(1), index_cache_mask + 1);
+      reduced = hal::reshape(ctx, reduced, reduced_size);
+    }
+    results[idx] = reduced;
+  }
+
+  return hal::concatenate(ctx, results, 0);
+}
+
 spu::Value DynamicSlice(HalContext *ctx, const spu::Value &operand,
                         absl::Span<const int64_t> slice_size,
                         absl::Span<const spu::Value> start_indices) {
@@ -610,22 +685,10 @@ spu::Value DynamicSlice(HalContext *ctx, const spu::Value &operand,
   SPU_ENFORCE(!start_indices.empty());
 
   if (start_indices[0].isSecret()) {
-    // flatten...
-    spu::Value flattened_operand =
-        hal::reshape(ctx, operand, {operand.numel()});
-
-    auto flattened_indices =
-        ClampAndFlattenIndex(ctx, start_indices, slice_size, operand.shape());
-
-    std::vector<spu::Value> ret_values(flattened_indices.size());
-
-    for (size_t n = 0; n < flattened_indices.size(); ++n) {
-      ret_values[n] =
-          SecretLinearIndexing(ctx, flattened_operand, flattened_indices[n]);
-    }
-
-    return Reshape(ctx, Concatenate(ctx, ret_values, 0), slice_size);
-
+    std::vector<std::optional<spu::Value>> index_mask_cache(
+        operand.shape().size());
+    return SecretDynamicSlice(ctx, operand, slice_size, start_indices,
+                              index_mask_cache.begin());
   } else {
     // Start indices
     std::vector<int64_t> start_indices_i64(start_indices.size());

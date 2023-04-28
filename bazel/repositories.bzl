@@ -18,7 +18,7 @@ load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
 
 SECRETFLOW_GIT = "https://github.com/secretflow"
 
-YACL_COMMIT_ID = "ed095f04255fe8c4466184b46c31531270220f18"
+YACL_COMMIT_ID = "687df2bf74dcf92ee31dd2cebc87fa362a31d4c6"
 
 def spu_deps():
     _bazel_platform()
@@ -139,8 +139,8 @@ def _com_github_xtensor_xtl():
     )
 
 def _com_github_openxla_xla():
-    OPENXLA_COMMIT = "da6b60c1a1f31bf1194bcdfb138841902e413704"
-    OPENXLA_SHA256 = "cec02e7c0af001fd08ce89a47f21bbedb1908abf1144070f1228f525398d280b"
+    OPENXLA_COMMIT = "09878be2d6bc1ad0baf6219d6a996db58d6fff1f"
+    OPENXLA_SHA256 = "9d877b82d8801f00ca136d4c9ad37724236ee921f2a84e7871668915967dfe68"
 
     SKYLIB_VERSION = "1.3.0"
 
@@ -276,11 +276,10 @@ def _com_github_microsoft_apsi():
     maybe(
         http_archive,
         name = "com_github_microsoft_apsi",
-        sha256 = "e80fdc9489cf1223ef19e1c1e0eb36d1be83170911087099b92f27bca768d8af",
-        strip_prefix = "APSI-2b61950707ca8759e31eb889081fdcd48f0a1e6c",
-        type = "zip",
+        sha256 = "82c0f9329c79222675109d4a3682d204acd3ea9a724bcd98fa58eabe53851333",
+        strip_prefix = "APSI-0.11.0",
         urls = [
-            "https://github.com/microsoft/APSI/archive/2b61950707ca8759e31eb889081fdcd48f0a1e6c.zip",
+            "https://github.com/microsoft/APSI/archive/refs/tags/v0.11.0.tar.gz",
         ],
         build_file = "@spulib//bazel:microsoft_apsi.BUILD",
         patch_args = ["-p1"],
@@ -332,10 +331,9 @@ def _com_google_flatbuffers():
     maybe(
         http_archive,
         name = "com_google_flatbuffers",
-        sha256 = "bb75869b19064f5efad16057e75a2925dc45659af4203d98187a34a5fc1558d8",
-        strip_prefix = "flatbuffers-6e2791640e789459078eece008d6200c18dda5da",
-        type = "zip",
+        sha256 = "8aff985da30aaab37edf8e5b02fda33ed4cbdd962699a8e2af98fdef306f4e4d",
+        strip_prefix = "flatbuffers-23.3.3",
         urls = [
-            "https://github.com/google/flatbuffers/archive/6e2791640e789459078eece008d6200c18dda5da.zip",
+            "https://github.com/google/flatbuffers/archive/refs/tags/v23.3.3.tar.gz",
         ],
     )

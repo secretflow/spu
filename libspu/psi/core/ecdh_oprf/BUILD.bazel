@@ -55,6 +55,7 @@ spu_cc_library(
     hdrs = ["ecdh_oprf_selector.h"],
     deps = [
         ":basic_ecdh_oprf",
+        "//libspu/core:platform_utils",
     ],
 )
 

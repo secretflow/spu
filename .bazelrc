@@ -74,20 +74,3 @@ build:ubsan --linkopt -static-libubsan
 build:macos-asan --features=asan
 build:macos-ubsan --features=ubsan
 
-test:asan --strip=never
-test:asan --copt -fno-sanitize-recover=all
-test:asan --copt -fsanitize=address
-test:asan --copt -O0
-test:asan --copt -g
-test:asan --copt -fno-omit-frame-pointer
-test:asan --linkopt -fsanitize=address
-test:asan --linkopt -static-libasan
-
-test:ubsan --strip=never
-test:ubsan --copt -fno-sanitize-recover=all
-test:ubsan --copt -fsanitize=undefined
-test:ubsan --copt -O0
-test:ubsan --copt -g
-test:ubsan --copt -fno-omit-frame-pointer
-test:ubsan --linkopt -fsanitize=undefined
-test:ubsan --linkopt -static-libubsan

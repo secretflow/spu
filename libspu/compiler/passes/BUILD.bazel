@@ -186,8 +186,8 @@ spu_cc_library(
 )
 
 spu_cc_library(
-    name = "optimize_sqrt_to_rsqrt",
-    srcs = ["optimize_sqrt_to_rsqrt.cc"],
+    name = "optimize_sqrt_plus_eps",
+    srcs = ["optimize_sqrt_plus_eps.cc"],
     hdrs = ["passes.h"],
     deps = [
         ":pass_details",
@@ -210,6 +210,18 @@ spu_cc_library(
 )
 
 spu_cc_library(
+    name = "rewrite_div_sqrt_patterns",
+    srcs = ["rewrite_div_sqrt_patterns.cc"],
+    hdrs = ["passes.h"],
+    deps = [
+        ":pass_details",
+        "//libspu/dialect:pphlo_dialect",
+        "@llvm-project//mlir:IR",
+        "@llvm-project//mlir:TransformUtils",
+    ],
+)
+
+spu_cc_library(
     name = "all_passes",
     hdrs = ["register_passes.h"],
     deps = [
@@ -221,7 +233,8 @@ spu_cc_library(
         ":lower_mixed_type_op",
         ":optimize_maxpool",
         ":optimize_select",
-        ":optimize_sqrt_to_rsqrt",
+        ":optimize_sqrt_plus_eps",
         ":reduce_truncation",
+        ":rewrite_div_sqrt_patterns",
     ],
 )
