@@ -218,8 +218,6 @@ std::vector<std::pair<apsi::util::AlgItem, size_t>> PreprocessUnlabeledData(
 std::vector<std::pair<apsi::util::AlgItemLabel, size_t>> PreprocessLabeledData(
     const std::pair<apsi::HashedItem, apsi::EncryptedLabel> &item_label_pair,
     const apsi::PSIParams &params) {
-  SPDLOG_DEBUG("Start preprocessing {} labeled items", distance(begin, end));
-
   // Some variables we'll need
   size_t bins_per_item = params.item_params().felts_per_item;
   size_t item_bit_count = params.item_bit_count();
