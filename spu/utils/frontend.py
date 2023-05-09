@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 
 import functools
+import cloudpickle
+
 from enum import Enum
 from typing import Callable, Dict, List
 import warnings
@@ -27,11 +29,8 @@ def _jax_compilation_key(fn: Callable, static_argnums, args: List, kwargs: Dict)
 
     flat_args, _ = jax.tree_util.tree_flatten((args, kwargs))
     types = [(a.dtype, a.shape) if hasattr(a, 'dtype') else type(a) for a in flat_args]
-    # A lambda capture can be constant in compiled XLA, so add to hash
-    if hasattr(fn, '__closure__'):
-        return f'{fn}-{static_argnums}-{types}-{fn.__closure__}'
-    else:
-        return f'{fn}-{static_argnums}-{types}'
+    hash_str = f'{hash(cloudpickle.dumps(fn))}-{static_argnums}-{types}'
+    return hash_str
 
 
 @cached(cache=LRUCache(maxsize=128), key=_jax_compilation_key)

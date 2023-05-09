@@ -12,6 +12,7 @@
 - [Feature] Improve accuracy of tanh approximation
 - [Example] Add flax GPT2
 - [Example] Add ResNet
+- [Bugfix] Fix possible compilation cache collision
 
 
 ## 20230406
