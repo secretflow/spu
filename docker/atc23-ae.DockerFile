@@ -16,11 +16,13 @@ RUN apt-get update \
     && ln -s /usr/bin/ld.lld-15 /usr/bin/ld.lld
 
 # install conda
+COPY requirements.txt /tmp/requirements.txt
+RUN  sed -i "s/tensorflow=/tensorflow-cpu=/g" /tmp/requirements.txt
 RUN wget https://repo.anaconda.com/miniconda/Miniconda3-py38_23.1.0-1-Linux-x86_64.sh \
     && bash Miniconda3-py38_23.1.0-1-Linux-x86_64.sh -b \
     && rm -f Miniconda3-py38_23.1.0-1-Linux-x86_64.sh \
     && /root/miniconda3/bin/conda init \
-    && /root/miniconda3/bin/pip install -r requirements.txt \
+    && /root/miniconda3/bin/pip install -r /tmp/requirements.txt \
     && /root/miniconda3/bin/pip cache purge
 
 # Add conda to path
