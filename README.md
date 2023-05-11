@@ -84,7 +84,7 @@ The other two nodes (i.e., node3 and node4) act as data providers.
 We place `node0` on server0, `node1` and `node3` on server1, `node2` and `node4` on server2.
 You should replace nodes' IPs with your servers' IPs in **each server's configuration**.
 Both `nodes` and `spu_internal_addrs` fields should be modified.
-Besides, you should guarantee that the specified ports are not used and blocked by your servers' network firewall.
+Besides, you should guarantee that the specified ports are not used or blocked by your servers' network firewall.
 
 ### 3.6 Launch SPU cluster
 
@@ -196,6 +196,7 @@ If each node log prints something like blow, that means the SPU cluster has been
     > Training under WAN is far more slow. It may take several days to run all the experimental settings. You can simply verify SPU's performance results by running several iterations.
     
     **If you cancel the training task during running with `Crtl` + `c`, please kill the `nodectl` process on each server and launch the SPU cluster again.**
+    
     Run on server0, server1, and server2:
     ```console
     $ kill -9 `ps -ef | grep nodectl | grep -v grep | awk '{print $2}'`
@@ -226,6 +227,7 @@ If each node log prints something like blow, that means the SPU cluster has been
 
 
 4. Check results
+
     When training is finished, you can check the generated images in the specified `output_dir` and compare the results of SPU and CPU versions.
 
 ### 4.3 Run LSTM training experiment
@@ -253,6 +255,7 @@ If each node log prints something like blow, that means the SPU cluster has been
 
 
 4. Check results
+
     When training is finished, you can check the generated images in the specified `output_dir` and compare the results to CPU versions.
 
 ### 4.4 Run TensorFlow experiment
