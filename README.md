@@ -19,6 +19,7 @@ The CPU model is Intel(R) Xeon(R) Platinum 8369B CPU @ 2.70GHz.
 We evaluated SPU on Ubuntu 20.04.5 LTS with Linux kernel 5.4.0-125-generic.
 Technically, SPU is supported to run on any Linux servers with software requirements described in [CONTRIBUTING.md](./CONTRIBUTING.md#linux).
 The testing servers should at least have `git` and `docker` installed as we provides users with a docker image which has pre-installed most dependencies of SPU.
+The docker file is located at [atc23-ae.DockerFile](./docker/atc23-ae.DockerFile).
 
 ## 3. Getting Started
 
