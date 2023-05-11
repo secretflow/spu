@@ -1,11 +1,11 @@
 {
     "id": "outsourcing.3pc",
     "nodes": {
-        "node:0": "127.0.0.1:9920",
-        "node:1": "127.0.0.1:9921",
-        "node:2": "127.0.0.1:9922",
-        "node:3": "127.0.0.1:9923",
-        "node:4": "127.0.0.1:9924"
+        "node:0": "172.19.245.237:9920",
+        "node:1": "172.19.245.238:9920",
+        "node:2": "172.19.245.236:9920",
+        "node:3": "172.19.245.238:9921",
+        "node:4": "172.19.245.236:9921"
     },
     "devices": {
         "SPU": {
@@ -17,9 +17,9 @@
                     "node:2"
                 ],
                 "spu_internal_addrs": [
-                    "127.0.0.1:9930",
-                    "127.0.0.1:9931",
-                    "127.0.0.1:9932"
+                    "172.19.245.237:9930",
+                    "172.19.245.238:9930",
+                    "172.19.245.236:9930"
                 ],
                 "experimental_data_folder": [
                     "/tmp/spu_data_0/",
@@ -31,7 +31,12 @@
                     "field": "FM64",
                     "enable_pphlo_profile": true,
                     "enable_hal_profile": true,
-                    "enable_pphlo_trace": false
+                    "experimental_disable_mmul_split": true,
+                    "enable_pphlo_trace": false,
+                    "experimental_enable_intra_op_par": true,
+                    "experimental_enable_inner_op_par": true,
+                    "enable_lower_accuracy_rsqrt": false,
+                    "fxp_fraction_bits": 18
                 }
             }
         },

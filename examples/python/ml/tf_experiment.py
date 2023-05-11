@@ -18,6 +18,7 @@
 
 import argparse
 import json
+import time
 
 import numpy as np
 import tensorflow as tf
@@ -63,22 +64,18 @@ class LogitRegression:
         remainder = feature.shape[0] % self.n_iters
 
         xs = tf.split(
-            feature[
-                :-remainder,
-            ],
+            feature[:-remainder,],
             self.n_iters,
             axis=0,
         )
         ys = tf.split(
-            label[
-                :-remainder,
-            ],
+            label[:-remainder,],
             self.n_iters,
             axis=0,
         )
 
         for _ in range(self.n_epochs):
-            for (x, y) in zip(xs, ys):
+            for x, y in zip(xs, ys):
                 with tf.GradientTape() as t:
                     current_loss = loss(x, y, self.w)
 
@@ -96,22 +93,18 @@ class LogitRegression:
         remainder = feature.shape[0] % self.n_iters
 
         xs = tf.split(
-            feature[
-                :-remainder,
-            ],
+            feature[:-remainder,],
             self.n_iters,
             axis=0,
         )
         ys = tf.split(
-            label[
-                :-remainder,
-            ],
+            label[:-remainder,],
             self.n_iters,
             axis=0,
         )
 
         for _ in range(self.n_epochs):
-            for (x, y) in zip(xs, ys):
+            for x, y in zip(xs, ys):
                 pred = predict(x, self.w)
                 err = pred - y
                 dw = tf.linalg.matvec(tf.transpose(x), err)
@@ -128,22 +121,18 @@ class LogitRegression:
         remainder = feature.shape[0] % self.n_iters
 
         xs = tf.split(
-            feature[
-                :-remainder,
-            ],
+            feature[:-remainder,],
             self.n_iters,
             axis=0,
         )
         ys = tf.split(
-            label[
-                :-remainder,
-            ],
+            label[:-remainder,],
             self.n_iters,
             axis=0,
         )
 
         for _ in range(self.n_epochs):
-            for (x, y) in zip(xs, ys):
+            for x, y in zip(xs, ys):
                 pred = predict(x, w)
                 err = pred - y
                 dw = tf.linalg.matvec(tf.transpose(x), err)
@@ -236,11 +225,13 @@ def run_fit_manual_grad_cpu():
     print('Run on CPU\n------\n')
     x, y = breast_cancer()
     x1, x2 = x[:, :15], x[:, 15:]
+    t1 = time.time()
     params = LogitRegression().fit_manual_grad(x1, x2, y)
+    t2 = time.time()
 
     x_test, y_test = breast_cancer(slice(None, None, None), False)
     auc = metrics.roc_auc_score(y_test, predict(x_test, params))
-    print(f"AUC(cpu)={auc}")
+    print(f"AUC(cpu)={auc}, time={t2-t1}")
 
 
 def run_fit_manual_grad_spu():
@@ -248,12 +239,14 @@ def run_fit_manual_grad_spu():
     x1, y = ppd.device("P1")(breast_cancer)(slice(None, 15), True)
     x2, _ = ppd.device("P2")(breast_cancer)(slice(15, None), True)
 
-    print(x1, x2, y)
+    # print(x1, x2, y)
 
+    t1 = time.time()
     W = ppd.device('SPU')(LogitRegression().fit_manual_grad_no_captures)(x1, x2, y)
+    t2 = time.time()
 
     W_r = ppd.get(W)
-    print(W_r)
+    # print(W_r)
     x_test, y_test = breast_cancer(slice(None, None, None), False)
 
     print(
@@ -261,9 +254,10 @@ def run_fit_manual_grad_spu():
             metrics.roc_auc_score(y_test, predict(x_test, W_r.astype(dtype=np.float64)))
         )
     )
+    print(f"time ={t2-t1}")
 
 
 if __name__ == '__main__':
-    tf_to_xla()
+    # tf_to_xla()
     run_fit_manual_grad_cpu()
     run_fit_manual_grad_spu()
