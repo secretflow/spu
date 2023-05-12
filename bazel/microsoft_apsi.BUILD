@@ -25,7 +25,10 @@ spu_cmake_external(
     name = "apsi",
     cache_entries = {
         "APSI_USE_LOG4CPLUS": "OFF",
+        "APSI_USE_ZMQ": "OFF",
         "CMAKE_INSTALL_LIBDIR": "lib",
+        "CpuFeatures_DIR": "$EXT_BUILD_DEPS/cpu_features/lib/cmake/CpuFeatures/",
+        "EXT_BUILD_DEPS": "$EXT_BUILD_DEPS",
     },
     copts = [
         "-DAPSI_DISABLE_JSON",

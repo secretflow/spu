@@ -164,6 +164,7 @@ message RuntimeConfig {
   FieldType field = 2;
 
   // Number of fraction bits of fixed-point number.
+  // 0(default) indicates implementation defined.
   int64 fxp_fraction_bits = 3;
 
   ///////////////////////////////////////

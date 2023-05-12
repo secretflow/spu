@@ -34,37 +34,38 @@ struct DivRewriter : public OpRewritePattern<DivOp> {
   LogicalResult matchAndRewrite(DivOp op,
                                 PatternRewriter &rewriter) const override {
     // Pattern 1:
-    // y/sqrt(x)
+    // y/sqrt(x + eps)
     auto denominator = op.getRhs();
     if (auto sqrt = denominator.getDefiningOp<SqrtOp>()) {
-      auto rsqrt = rewriter.create<RsqrtOp>(
+      auto newRsqrt = rewriter.create<RsqrtOp>(
           denominator.getLoc(), denominator.getType(), sqrt.getOperand());
-      rewriter.replaceOpWithNewOp<MulOp>(op, op.getType(), op.getLhs(), rsqrt);
+      rewriter.replaceOpWithNewOp<MulOp>(op, op.getType(), op.getLhs(),
+                                         newRsqrt);
       return success();
-    }
-    // Pattern 2:
-    // y/(k*sqrt(x))
-    if (auto mul = denominator.getDefiningOp<MulOp>()) {
-      auto sqrt = mul.getLhs().getDefiningOp<SqrtOp>();
-      auto k = mul.getRhs();
-      // Try rhs
-      if (sqrt == nullptr) {
-        sqrt = mul.getRhs().getDefiningOp<SqrtOp>();
-        k = mul.getLhs();
+    } else {
+      // Pattern 2:
+      // y/(k*sqrt(x + eps)) -> y/k*rsqrt(x+eps)
+      if (auto mulOp = denominator.getDefiningOp<MulOp>()) {
+        auto sqrtOp = mulOp.getRhs().getDefiningOp<SqrtOp>();
+        auto k = mulOp.getLhs();
+        if (sqrtOp == nullptr) {
+          sqrtOp = mulOp.getLhs().getDefiningOp<SqrtOp>();
+          k = mulOp.getRhs();
+        }
+        if (sqrtOp) {
+          // y/k
+          auto newDiv = rewriter.create<DivOp>(
+              op.getLoc(), op->getResultTypes(), op.getLhs(), k);
+          // rsqrt(x+eps)
+          auto newRsqrt = rewriter.create<RsqrtOp>(
+              op->getLoc(), sqrtOp->getResultTypes(), sqrtOp->getOperand(0));
+          // y/k*rsqrt(x+eps)
+          rewriter.replaceOpWithNewOp<MulOp>(op, op.getType(), newDiv,
+                                             newRsqrt);
+          return success();
+        }
       }
-      // Still not...bailout
-      if (sqrt == nullptr) {
-        return failure();
-      }
-
-      auto div =
-          rewriter.create<DivOp>(op.getLoc(), op.getType(), op.getLhs(), k);
-      auto rsqrt = rewriter.create<RsqrtOp>(sqrt->getLoc(), sqrt.getType(),
-                                            sqrt->getOperands()[0]);
-      rewriter.replaceOpWithNewOp<MulOp>(op, op.getType(), div, rsqrt);
-      return success();
     }
-
     return failure();
   }
 };

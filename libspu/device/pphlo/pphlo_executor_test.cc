@@ -936,11 +936,11 @@ TEST_P(ExecutorTest, Simple4x4Conv2DWith2x2Kernel) {
 
   auto ir = spu::device::Runner::compileMHlo(R"(
 func.func @main(%arg0: tensor<1x1x4x4xf32>, %arg1: tensor<1x1x2x2xf32>) -> (tensor<1x1x4x4xf32>) {
-    %0 = mhlo.convolution(%arg0, %arg1) 
-            dim_numbers = [b, f, 0, 1]x[o, i, 0, 1]->[b, f, 0, 1], 
-            window = {stride = [1, 1], pad = [[0, 1], [0, 1]], lhs_dilate = [1, 1], rhs_dilate = [1, 1]} 
+    %0 = mhlo.convolution(%arg0, %arg1)
+            dim_numbers = [b, f, 0, 1]x[o, i, 0, 1]->[b, f, 0, 1],
+            window = {stride = [1, 1], pad = [[0, 1], [0, 1]], lhs_dilate = [1, 1], rhs_dilate = [1, 1]}
             {
-              batch_group_count = 1 : i64, 
+              batch_group_count = 1 : i64,
               feature_group_count = 1 : i64
             } : (tensor<1x1x4x4xf32>, tensor<1x1x2x2xf32>) -> tensor<1x1x4x4xf32>
     return %0 : tensor<1x1x4x4xf32>
@@ -974,9 +974,9 @@ TEST_P(ExecutorTest, Conv2DGeneralDimensions) {
 
   auto ir = spu::device::Runner::compileMHlo(R"(
 func.func @main(%arg0: tensor<2x3x1x4xf32>, %arg1:tensor<1x3x2x3xf32>) -> (tensor<1x1x1x2xf32>) {
-    %0 = mhlo.convolution(%arg0, %arg1) 
-          dim_numbers = [f, 0, b, 1]x[o, 1, i,0]->[f, 0, b, 1], 
-          window = {stride = [1, 1], pad = [[0, 0], [0, 0]], lhs_dilate = [1, 1], rhs_dilate = [1, 1]} 
+    %0 = mhlo.convolution(%arg0, %arg1)
+          dim_numbers = [f, 0, b, 1]x[o, 1, i,0]->[f, 0, b, 1],
+          window = {stride = [1, 1], pad = [[0, 0], [0, 0]], lhs_dilate = [1, 1], rhs_dilate = [1, 1]}
           {
             batch_group_count = 1 : i64,
             feature_group_count = 1 : i64
@@ -1011,11 +1011,11 @@ TEST_P(ExecutorTest, DilatedBaseConv2DWithHighPadding) {
 
   auto ir = spu::device::Runner::compileMHlo(R"(
 func.func @main(%arg0: tensor<1x1x4x4xf32>, %arg1: tensor<1x1x2x2xf32>) -> (tensor<1x1x7x7xf32>) {
-    %0 = mhlo.convolution(%arg0, %arg1) 
-          dim_numbers = [b, f, 0, 1]x[o, i, 0, 1]->[b, f, 0, 1], 
-          window = {stride = [1, 1], pad = [[0, 1], [0, 1]], lhs_dilate = [2, 2], rhs_dilate = [1, 1]} 
+    %0 = mhlo.convolution(%arg0, %arg1)
+          dim_numbers = [b, f, 0, 1]x[o, i, 0, 1]->[b, f, 0, 1],
+          window = {stride = [1, 1], pad = [[0, 1], [0, 1]], lhs_dilate = [2, 2], rhs_dilate = [1, 1]}
           {
-            batch_group_count = 1 : i64, 
+            batch_group_count = 1 : i64,
             feature_group_count = 1 : i64
           } : (tensor<1x1x4x4xf32>, tensor<1x1x2x2xf32>) -> tensor<1x1x7x7xf32>
     return %0 : tensor<1x1x7x7xf32>
@@ -1054,11 +1054,11 @@ TEST_P(ExecutorTest, DilatedBaseConv2DWithLowAndHighPadding) {
 
   auto ir = spu::device::Runner::compileMHlo(R"(
 func.func @main(%arg0: tensor<1x1x4x4xf32>, %arg1: tensor<1x1x2x2xf32>) -> (tensor<1x1x8x8xf32>) {
-    %0 = mhlo.convolution(%arg0, %arg1) 
-          dim_numbers = [b, f, 0, 1]x[o, i, 0, 1]->[b, f, 0, 1], 
-          window = {stride = [1, 1], pad = [[1, 1], [1, 1]], lhs_dilate = [2, 2], rhs_dilate = [1, 1]} 
+    %0 = mhlo.convolution(%arg0, %arg1)
+          dim_numbers = [b, f, 0, 1]x[o, i, 0, 1]->[b, f, 0, 1],
+          window = {stride = [1, 1], pad = [[1, 1], [1, 1]], lhs_dilate = [2, 2], rhs_dilate = [1, 1]}
           {
-            batch_group_count = 1 : i64, 
+            batch_group_count = 1 : i64,
             feature_group_count = 1 : i64
           } : (tensor<1x1x4x4xf32>, tensor<1x1x2x2xf32>) -> tensor<1x1x8x8xf32>
     return %0 : tensor<1x1x8x8xf32>
@@ -1099,11 +1099,11 @@ TEST_P(ExecutorTest, FlatRhsDilation) {
 
   auto ir = spu::device::Runner::compileMHlo(R"(
 func.func @main(%arg0: tensor<1x1x4x6xf32>, %arg1: tensor<1x1x2x3xf32>) -> (tensor<1x1x2x2xf32>) {
-    %0 = mhlo.convolution(%arg0, %arg1) 
-          dim_numbers = [b, f, 0, 1]x[o, i, 0, 1]->[b, f, 0, 1], 
-          window = {stride = [1, 1], pad = [[0, 0], [0, 0]], lhs_dilate = [1, 1], rhs_dilate = [2, 2]} 
+    %0 = mhlo.convolution(%arg0, %arg1)
+          dim_numbers = [b, f, 0, 1]x[o, i, 0, 1]->[b, f, 0, 1],
+          window = {stride = [1, 1], pad = [[0, 0], [0, 0]], lhs_dilate = [1, 1], rhs_dilate = [2, 2]}
           {
-            batch_group_count = 1 : i64, 
+            batch_group_count = 1 : i64,
             feature_group_count = 1 : i64
           } : (tensor<1x1x4x6xf32>, tensor<1x1x2x3xf32>) -> tensor<1x1x2x2xf32>
     return %0 : tensor<1x1x2x2xf32>
@@ -1544,7 +1544,7 @@ TEST_P(ExecutorTest, RemainderFxp) {
 
   r.run(R"(
 func.func @main(%arg0: tensor<3x!pphlo.pub<f32>>, %arg1: tensor<3x!pphlo.pub<f32>>) -> (tensor<3x!pphlo.pub<f32>>) {
-  %0 = "pphlo.remainder"(%arg0, %arg1) : (tensor<3x!pphlo.pub<f32>>, tensor<3x!pphlo.pub<f32>>) -> tensor<3x!pphlo.pub<f32>> 
+  %0 = "pphlo.remainder"(%arg0, %arg1) : (tensor<3x!pphlo.pub<f32>>, tensor<3x!pphlo.pub<f32>>) -> tensor<3x!pphlo.pub<f32>>
   return %0 : tensor<3x!pphlo.pub<f32>>
 })");
 
@@ -1952,7 +1952,7 @@ func.func @main(%arg0: tensor<4x6xi32>, %arg1: tensor<2x2xi32>) -> (tensor<2x2xi
     ^bb0(%arg2: tensor<i32>, %arg3: tensor<i32>):
       %3 = mhlo.maximum %arg2, %arg3 : tensor<i32>
       "mhlo.return"(%3) : (tensor<i32>) -> ()
-    }) {base_dilations = dense<1> : tensor<2xi64>, padding = dense<0> : tensor<2x2xi64>, window_dilations = dense<1> : tensor<2xi64>, 
+    }) {base_dilations = dense<1> : tensor<2xi64>, padding = dense<0> : tensor<2x2xi64>, window_dilations = dense<1> : tensor<2xi64>,
         window_dimensions = dense<[2,3]> : tensor<2xi64>, window_strides = dense<[2, 3]> : tensor<2xi64>} : (tensor<4x6xi32>, tensor<i32>) -> tensor<2x2xi32>
   %2 = "mhlo.select_and_scatter"(%arg0, %arg1, %0) ({
     ^bb0(%arg3: tensor<i32>, %arg4: tensor<i32>):
@@ -2057,7 +2057,7 @@ func.func @main() -> (tensor<!pphlo.pub<i32>>, tensor<!pphlo.pub<i1>>) {
 
 TEST_P(ExecutorTest, Case) {
   const auto *prog = R"(
- func.func @main(%arg0: tensor<!pphlo.pub<i32>>) -> (tensor<!pphlo.pub<i32>>,tensor<!pphlo.pub<i32>>) {  
+ func.func @main(%arg0: tensor<!pphlo.pub<i32>>) -> (tensor<!pphlo.pub<i32>>,tensor<!pphlo.pub<i32>>) {
   %0:2 = "pphlo.case"(%arg0) ({
     %1 = "pphlo.constant"() {value = dense<1> : tensor<i32>} : () -> tensor<!pphlo.pub<i32>>
     %2 = "pphlo.constant"() {value = dense<11> : tensor<i32>} : () -> tensor<!pphlo.pub<i32>>
@@ -2116,7 +2116,7 @@ TEST_P(ExecutorTest, Case) {
 
 TEST_P(ExecutorTest, CasePrivate) {
   const auto *prog = R"(
- func.func @main(%arg0: tensor<!pphlo.sec<i32>>) -> (tensor<!pphlo.sec<i32>>, tensor<!pphlo.sec<i32>>) {  
+ func.func @main(%arg0: tensor<!pphlo.sec<i32>>) -> (tensor<!pphlo.sec<i32>>, tensor<!pphlo.sec<i32>>) {
   %0:2 = "pphlo.case"(%arg0) ({
     %1 = "pphlo.constant"() {value = dense<1> : tensor<i32>} : () -> tensor<!pphlo.pub<i32>>
     %2 = "pphlo.convert"(%1) : (tensor<!pphlo.pub<i32>>) -> tensor<!pphlo.sec<i32>>

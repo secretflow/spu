@@ -220,7 +220,7 @@ def train(run_on_spu: bool = True):
     train_ds = train_ds.map(prepare_image)
     train_ds = train_ds.cache()
     train_ds = train_ds.repeat()
-    train_ds = train_ds.shuffle(50000)
+    train_ds = train_ds.shuffle(50000, seed=10)
     train_ds = train_ds.batch(args.batch_size)
     train_ds = iter(tfds.as_numpy(train_ds))
 

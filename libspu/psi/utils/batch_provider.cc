@@ -206,6 +206,8 @@ CachedCsvBatchProvider::CachedCsvBatchProvider(
 
 std::tuple<std::vector<std::string>, std::vector<size_t>, std::vector<size_t>>
 CachedCsvBatchProvider::ReadNextBatchWithIndex(size_t batch_size) {
+  std::unique_lock lk(read_mutex_);
+
   std::vector<std::string> batch_data;
   std::vector<size_t> batch_indices;
   std::vector<size_t> shuffle_indices;
@@ -242,41 +244,47 @@ CachedCsvBatchProvider::ReadNextBatchWithIndex(size_t batch_size) {
   }
 
   size_t next_index = 1 - bucket_index_;
-  if (bucket_items_[next_index].size() > 0) {
+  {
+    // get next_index lock
     std::unique_lock lk(bucket_mutex_[next_index]);
 
-    SPDLOG_INFO("lock idx:{}", next_index);
+    if (bucket_items_[next_index].size() > 0) {
+      SPDLOG_INFO("lock idx:{}", next_index);
 
-    size_t left_size = batch_size - n_items;
+      size_t left_size = batch_size - n_items;
 
-    cursor_index_ = 0;
-    bucket_count_++;
-    size_t m_items = std::min(left_size, bucket_items_[next_index].size());
-
-    for (size_t i = 0; i < m_items; ++i) {
-      size_t shuffled_index = shuffled_indices_[next_index][cursor_index_ + i];
-      batch_data.push_back(bucket_items_[next_index][shuffled_index]);
-      batch_indices.push_back(bucket_count_ * bucket_size_ + cursor_index_ + i);
-      shuffle_indices.push_back(bucket_count_ * bucket_size_ + shuffled_index);
-    }
-
-    if (m_items == bucket_items_[next_index].size()) {
       cursor_index_ = 0;
-      bucket_items_[next_index].resize(0);
-    } else {
-      cursor_index_ += m_items;
+      bucket_count_++;
+      size_t m_items = std::min(left_size, bucket_items_[next_index].size());
+
+      for (size_t i = 0; i < m_items; ++i) {
+        size_t shuffled_index =
+            shuffled_indices_[next_index][cursor_index_ + i];
+        batch_data.push_back(bucket_items_[next_index][shuffled_index]);
+        batch_indices.push_back(bucket_count_ * bucket_size_ + cursor_index_ +
+                                i);
+        shuffle_indices.push_back(bucket_count_ * bucket_size_ +
+                                  shuffled_index);
+      }
+
+      if (m_items == bucket_items_[next_index].size()) {
+        cursor_index_ = 0;
+        bucket_items_[next_index].resize(0);
+      } else {
+        cursor_index_ += m_items;
+      }
+      n_items += m_items;
+
+      // read
+      SPDLOG_INFO("read next bucket, n_items:{} m_items:{}", n_items, m_items);
+      if (!file_end_flag_) {
+        ReadAndShuffle(bucket_index_, true);
+      }
+
+      bucket_index_ = next_index;
+
+      SPDLOG_INFO("unlock idx:{}", next_index);
     }
-    n_items += m_items;
-
-    // read
-    SPDLOG_INFO("read next bucket, n_items:{} m_items:{}", n_items, m_items);
-    if (!file_end_flag_) {
-      ReadAndShuffle(bucket_index_, true);
-    }
-
-    bucket_index_ = next_index;
-
-    SPDLOG_INFO("unlock idx:{}", next_index);
   }
 
   return std::make_tuple(batch_data, batch_indices, shuffle_indices);

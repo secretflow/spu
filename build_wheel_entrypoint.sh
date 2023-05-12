@@ -17,8 +17,6 @@
 
 pip install numpy
 
-pip install numpy
-
 python setup.py bdist_wheel
 
 # Ensure binary safety

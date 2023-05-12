@@ -147,6 +147,7 @@ class CachedCsvBatchProvider : public IShuffleBatchProvider {
   std::array<std::future<void>, 2> f_read_;
 
   std::array<std::mutex, 2> bucket_mutex_;
+  std::mutex read_mutex_;
   std::mutex file_mutex_;
   bool file_end_flag_ = false;
 };

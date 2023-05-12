@@ -20,6 +20,7 @@
 #include "libspu/core/encoding.h"
 #include "libspu/dialect/pphlo_base_enums.h"
 #include "libspu/dialect/pphlo_ops.h"
+#include "libspu/kernel/hal/ring.h"
 #include "libspu/kernel/hlo/basic_binary.h"
 #include "libspu/kernel/hlo/basic_ternary.h"
 #include "libspu/kernel/hlo/basic_unary.h"
@@ -123,6 +124,16 @@ spu::Visibility convertVisibility(mlir::pphlo::Visibility vis) {
       return spu::Visibility::VIS_SECRET;
   }
   SPU_THROW("Should not hit");
+}
+
+int64_t findTwoK(double in) {
+  uint64_t N = 1;
+  int64_t count = 0;
+  while (N < in) {
+    N <<= 1;
+    ++count;
+  }
+  return --count;
 }
 
 }  // namespace
@@ -231,7 +242,6 @@ STANDARD_BINARY_OP_EXEC_IMPL(GreaterEqualOp, GreaterEqual)
 STANDARD_BINARY_OP_EXEC_IMPL(SubtractOp, Sub)
 STANDARD_BINARY_OP_EXEC_IMPL(LessOp, Less)
 STANDARD_BINARY_OP_EXEC_IMPL(GreaterOp, Greater)
-STANDARD_BINARY_OP_EXEC_IMPL(MulOp, Mul)
 STANDARD_BINARY_OP_EXEC_IMPL(PowOp, Power)
 STANDARD_BINARY_OP_EXEC_IMPL(MaxOp, Max)
 STANDARD_BINARY_OP_EXEC_IMPL(MinOp, Min)
@@ -244,6 +254,61 @@ STANDARD_BINARY_OP_EXEC_IMPL(ShiftRightArithmeticOp, ARshift)
 STANDARD_BINARY_OP_EXEC_IMPL(ShiftRightLogicalOp, Rshift)
 
 #undef STANDARD_BINARY_OP_EXEC_IMPL
+
+void execute(OpExecutor *executor, HalContext *hctx, SymbolScope *sscope,
+             mlir::pphlo::MulOp &op, const ExecutionOptions &opts) {
+  auto smallConst = op.getRhs().getDefiningOp<mlir::pphlo::ConstantOp>();
+  auto multiplier = op.getLhs();
+  if (!smallConst) {
+    // Try lhs
+    smallConst = op.getLhs().getDefiningOp<mlir::pphlo::ConstantOp>();
+    multiplier = op.getRhs();
+  }
+
+  if (smallConst && smallConst.getValue().isSplat()) {
+    auto elType = smallConst.getValue().getElementType();
+    if (elType.isF32() || elType.isF64()) {
+      auto fValue = std::abs(smallConst.getValue()
+                                 .getSplatValue<mlir::APFloat>()
+                                 .convertToFloat());
+      auto eps = kernel::hal::dump_public_as<float>(
+          hctx, kernel::hlo::Epsilon(hctx))[0];
+
+      // Amplify eps to 1/(2^(fxp_bits-2))
+      // TODO: Maybe make it configurable?
+      eps = eps * 4;
+
+      if (fValue < eps && fValue > 0) {
+        // Handle x * (very_small_const)
+        // return truncate(x * n/N, k); n = 2^k
+        // Compute N -> 1/fValue
+        auto N = 1 / fValue;
+        auto k = findTwoK(N);
+        auto n = std::pow(2, k);
+
+        // n/N
+        auto newRhs = kernel::hlo::Constant(hctx, static_cast<float>(n) / N,
+                                            smallConst.getType().getShape());
+        // x*n/N
+        auto kv = lookupValue(sscope, multiplier, opts);
+        // To merge truncation in multiply with next k-bits one, we
+        // deliberately pick the ring mul to do a mul *without* truncation
+        auto mulRet = kernel::hal::_mul(hctx, kv, newRhs).setDtype(kv.dtype());
+        // truncate(x*n/N, k)
+        addValue(sscope, op.getResult(),
+                 kernel::hal::_trunc(hctx, mulRet, hctx->getFxpBits() + k)
+                     .setDtype(mulRet.dtype()),
+                 opts);
+        return;
+      }
+    }
+  }
+
+  addValue(sscope, op.getResult(),
+           kernel::hlo::Mul(hctx, lookupValue(sscope, op.getLhs(), opts),
+                            lookupValue(sscope, op.getRhs(), opts)),
+           opts);
+}
 
 void execute(OpExecutor *executor, HalContext *hctx, SymbolScope *sscope,
              mlir::pphlo::DotOp &op, const ExecutionOptions &opts) {

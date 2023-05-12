@@ -19,6 +19,7 @@
 
 #include "yacl/link/link.h"
 
+#include "libspu/core/prelude.h"
 #include "libspu/core/trace.h"
 #include "libspu/mpc/object.h"
 
@@ -33,8 +34,6 @@ class HalContext final {
   std::shared_ptr<yacl::link::Context> lctx_;
 
   std::unique_ptr<mpc::Object> prot_;
-
-  std::default_random_engine rand_engine_;
 
   HalContext() = default;
 
@@ -59,16 +58,17 @@ class HalContext final {
   mpc::Object* prot() const { return prot_.get(); }
 
   // Return current working fixed point fractional bits.
-  size_t getFxpBits() const { return getDefaultFxpBits(rt_config_); }
+  size_t getFxpBits() const {
+    auto fbits = rt_config_.fxp_fraction_bits();
+    SPU_ENFORCE(fbits != 0);
+    return fbits;
+  }
 
   // Return current working field of MPC engine.
   FieldType getField() const { return rt_config_.field(); }
 
   // Return current working runtime config.
   const RuntimeConfig& rt_config() const { return rt_config_; }
-
-  //
-  std::default_random_engine& rand_engine() { return rand_engine_; }
 };
 
 }  // namespace spu

@@ -1,0 +1,163 @@
+diff --git a/emp-tool/utils/aes.h b/emp-tool/utils/aes.h
+index 0235544..75a8486 100644
+--- a/emp-tool/utils/aes.h
++++ b/emp-tool/utils/aes.h
+@@ -54,6 +54,10 @@
+ 
+ #include "emp-tool/utils/block.h"
+ 
++#ifdef __aarch64__
++#include "emp-tool/utils/sse2neon.h"
++#endif
++
+ namespace emp {
+ 
+ typedef struct { block rd_key[11]; unsigned int rounds; } AES_KEY;
+@@ -103,6 +107,7 @@ AES_set_encrypt_key(const block userkey, AES_KEY *key) {
+ 
+ #ifdef __x86_64__
+ __attribute__((target("aes,sse2")))
++#endif
+ inline void AES_ecb_encrypt_blks(block *blks, unsigned int nblks, const AES_KEY *key) {
+    for (unsigned int i = 0; i < nblks; ++i)
+       blks[i] = _mm_xor_si128(blks[i], key->rd_key[0]);
+@@ -112,22 +117,6 @@ inline void AES_ecb_encrypt_blks(block *blks, unsigned int nblks, const AES_KEY
+    for (unsigned int i = 0; i < nblks; ++i)
+       blks[i] = _mm_aesenclast_si128(blks[i], key->rd_key[key->rounds]);
+ }
+-#elif __aarch64__
+-inline void AES_ecb_encrypt_blks(block *_blks, unsigned int nblks, const AES_KEY *key) {
+-   uint8x16_t * blks = (uint8x16_t*)(_blks);
+-   uint8x16_t * keys = (uint8x16_t*)(key->rd_key);
+-   auto * first = blks;
+-   for (unsigned int j = 0; j < key->rounds-1; ++j) {
+-		uint8x16_t key_j = (uint8x16_t)keys[j];
+-      blks = first;
+-      for (unsigned int i = 0; i < nblks; ++i, ++blks)
+-	       *blks = vaesmcq_u8(vaeseq_u8(*blks, key_j));
+-   }
+-	uint8x16_t last_key = (uint8x16_t)keys[key->rounds-1];
+-	for (unsigned int i = 0; i < nblks; ++i, ++first)
+-		 *first = vaeseq_u8(*first, last_key) ^ (uint8x16_t)keys[key->rounds];
+-}
+-#endif
+ 
+ #ifdef __GNUC__
+ 	#ifndef __clang__
+diff --git a/emp-tool/utils/aes_opt.h b/emp-tool/utils/aes_opt.h
+index 2594e32..6a78b75 100644
+--- a/emp-tool/utils/aes_opt.h
++++ b/emp-tool/utils/aes_opt.h
+@@ -58,7 +58,6 @@ static inline void AES_opt_key_schedule(block* user_key, AES_KEY *keys) {
+ /*
+  * With numKeys keys, use each key to encrypt numEncs blocks.
+  */
+-#ifdef __x86_64__
+ template<int numKeys, int numEncs>
+ static inline void ParaEnc(block *blks, AES_KEY *keys) {
+ 	block * first = blks;
+@@ -90,29 +89,6 @@ static inline void ParaEnc(block *blks, AES_KEY *keys) {
+ 		}
+ 	}
+ }
+-#elif __aarch64__
+-template<int numKeys, int numEncs>
+-static inline void ParaEnc(block *_blks, AES_KEY *keys) {
+-	uint8x16_t * first = (uint8x16_t*)(_blks);
+-
+-	for (unsigned int r = 0; r < 9; ++r) { 
+-		auto blks = first;
+-		for(size_t i = 0; i < numKeys; ++i) {
+-			uint8x16_t K = vreinterpretq_u8_m128i(keys[i].rd_key[r]);
+-			for(size_t j = 0; j < numEncs; ++j, ++blks)
+-			   *blks = vaesmcq_u8(vaeseq_u8(*blks, K));
+-		}
+-	}
+-	
+-	auto blks = first;
+-	for(size_t i = 0; i < numKeys; ++i) {
+-		uint8x16_t K = vreinterpretq_u8_m128i(keys[i].rd_key[9]);
+-		uint8x16_t K2 = vreinterpretq_u8_m128i(keys[i].rd_key[10]);
+-		for(size_t j = 0; j < numEncs; ++j, ++blks)
+-			*blks = vaeseq_u8(*blks, K) ^ K2;
+-	}
+-}
+-#endif
+ 
+ }
+ #endif
+diff --git a/emp-tool/utils/block.h b/emp-tool/utils/block.h
+index f7d3d34..fcc21c1 100644
+--- a/emp-tool/utils/block.h
++++ b/emp-tool/utils/block.h
+@@ -5,16 +5,7 @@
+ #include <immintrin.h>
+ #elif __aarch64__
+ #include "sse2neon.h"
+-inline __m128i _mm_aesimc_si128(__m128i a) {
+-	return vreinterpretq_m128i_u8(vaesimcq_u8(vreinterpretq_u8_m128i(a)));
+-}
+-
+-inline __m128i _mm_aesdeclast_si128 (__m128i a, __m128i RoundKey)
+-{
+-    return vreinterpretq_m128i_u8(vaesdq_u8(vreinterpretq_u8_m128i(a), vdupq_n_u8(0)) ^ vreinterpretq_u8_m128i(RoundKey));
+-}
+ #endif
+-
+ #include <assert.h>
+ #include <cstring>
+ #include <iostream>
+diff --git a/emp-tool/utils/f2k.h b/emp-tool/utils/f2k.h
+index 7fe1b1b..f6186a1 100644
+--- a/emp-tool/utils/f2k.h
++++ b/emp-tool/utils/f2k.h
+@@ -6,6 +6,7 @@ namespace emp {
+ 	/* multiplication in galois field without reduction */
+ 	#ifdef __x86_64__
+ 	__attribute__((target("sse2,pclmul")))
++	#endif
+ 	inline void mul128(__m128i a, __m128i b, __m128i *res1, __m128i *res2) {
+ 		__m128i tmp3, tmp4, tmp5, tmp6;
+ 		tmp3 = _mm_clmulepi64_si128(a, b, 0x00);
+@@ -22,28 +23,6 @@ namespace emp {
+ 		*res1 = tmp3;
+ 		*res2 = tmp6;
+ 	}
+-	#elif __aarch64__
+-	inline void mul128(__m128i a, __m128i b, __m128i *res1, __m128i *res2) {
+-		__m128i tmp3, tmp4, tmp5, tmp6;
+-		poly64_t a_lo = (poly64_t)vget_low_u64(vreinterpretq_u64_m128i(a));
+-		poly64_t a_hi = (poly64_t)vget_high_u64(vreinterpretq_u64_m128i(a));
+-		poly64_t b_lo = (poly64_t)vget_low_u64(vreinterpretq_u64_m128i(b));
+-		poly64_t b_hi = (poly64_t)vget_high_u64(vreinterpretq_u64_m128i(b));
+-		tmp3 = (__m128i)vmull_p64(a_lo, b_lo);
+-		tmp4 = (__m128i)vmull_p64(a_hi, b_lo);
+-		tmp5 = (__m128i)vmull_p64(a_lo, b_hi);
+-		tmp6 = (__m128i)vmull_p64(a_hi, b_hi);
+-
+-		tmp4 = _mm_xor_si128(tmp4, tmp5);
+-		tmp5 = _mm_slli_si128(tmp4, 8);
+-		tmp4 = _mm_srli_si128(tmp4, 8);
+-		tmp3 = _mm_xor_si128(tmp3, tmp5);
+-		tmp6 = _mm_xor_si128(tmp6, tmp4);
+-		// initial mul now in tmp3, tmp6
+-		*res1 = tmp3;
+-		*res2 = tmp6;
+-	}
+-	#endif
+ 
+ 	/* multiplication in galois field with reduction */
+ 	#ifdef __x86_64__
+diff --git a/emp-tool/utils/prg.h b/emp-tool/utils/prg.h
+index 23bbf42..5101d7e 100644
+--- a/emp-tool/utils/prg.h
++++ b/emp-tool/utils/prg.h
+@@ -82,7 +82,7 @@ class PRG { public:
+ 		} else {
+ 			block tmp[2];
+ 			random_block(tmp, 2);
+-			memcpy(data, tmp, nbytes);
++			memcpy(data, tmp, nbytes <= 32? nbytes : 32);
+ 		}
+ 	}
+ 

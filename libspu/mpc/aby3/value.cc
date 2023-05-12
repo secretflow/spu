@@ -27,13 +27,13 @@ ArrayRef getShare(const ArrayRef& in, int64_t share_idx) {
   if (in.eltype().isa<AShrTy>()) {
     const auto field = in.eltype().as<AShrTy>()->field();
     const auto ty = makeType<RingTy>(field);
-    return {in.buf(), ty, in.numel(), in.stride() * 2,
-            in.offset() + share_idx * static_cast<int64_t>(ty.size())};
+    return ArrayRef(in.buf(), ty, in.numel(), in.stride() * 2,
+                    in.offset() + share_idx * static_cast<int64_t>(ty.size()));
   } else if (in.eltype().isa<BShrTy>()) {
     const auto stype = in.eltype().as<BShrTy>()->getBacktype();
     const auto ty = makeType<PtTy>(stype);
-    return {in.buf(), ty, in.numel(), in.stride() * 2,
-            in.offset() + share_idx * static_cast<int64_t>(ty.size())};
+    return ArrayRef(in.buf(), ty, in.numel(), in.stride() * 2,
+                    in.offset() + share_idx * static_cast<int64_t>(ty.size()));
   } else {
     SPU_THROW("unsupported type {}", in.eltype());
   }

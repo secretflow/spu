@@ -102,7 +102,7 @@ class IoClient {
   std::unique_ptr<mpc::IoInterface> base_io_;
 
  public:
-  explicit IoClient(size_t world_size, RuntimeConfig config);
+  explicit IoClient(size_t world_size, const RuntimeConfig &config);
 
   // Make shares from plaintext buffer view.
   // Valid owner must be >= 0, and -1 indicates outsourcing model.

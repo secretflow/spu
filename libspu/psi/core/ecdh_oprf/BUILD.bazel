@@ -36,12 +36,26 @@ spu_cc_library(
     name = "basic_ecdh_oprf",
     srcs = ["basic_ecdh_oprf.cc"],
     hdrs = ["basic_ecdh_oprf.h"],
+    defines = [
+        "__LINUX__",
+    ] + select({
+        "@bazel_tools//src/conditions:linux_x86_64": [
+            "_AMD64_",
+            "_ASM_",
+        ],
+        "@bazel_tools//src/conditions:darwin_arm64": [
+            "_ARM64_",
+        ],
+        "//conditions:default": [
+            "_AMD64_",
+        ],
+    }),
     deps = [
         ":ecdh_oprf",
         "//libspu/core:prelude",
         "//libspu/psi/cryptor:ecc_utils",
         "//libspu/psi/cryptor:sm2_cryptor",
-        "@com_github_microsoft_fourqlib//:fourqlib",
+        "@com_github_microsoft_apsi//:apsi",
         "@com_google_absl//absl/types:span",
         "@yacl//yacl/crypto/base/hash:blake3",
         "@yacl//yacl/crypto/base/hash:hash_utils",

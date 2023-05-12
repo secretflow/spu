@@ -222,11 +222,25 @@ MAP_BINARY_OP(and_ss)
 MAP_BINARY_OP(xor_pp)
 MAP_BINARY_OP(xor_sp)
 MAP_BINARY_OP(xor_ss)
-MAP_BINARY_OP(equal_ss)
-MAP_BINARY_OP(equal_sp)
-MAP_BINARY_OP(equal_pp)
 MAP_MMUL_OP(mmul_pp)
 MAP_MMUL_OP(mmul_sp)
 MAP_MMUL_OP(mmul_ss)
+
+#define MAP_OPTIONAL_BINARY_OP(NAME)                                     \
+  std::optional<Value> _##NAME(HalContext* ctx, const Value& x,          \
+                               const Value& y) {                         \
+    SPU_TRACE_HAL_DISP(ctx, x, y);                                       \
+    SPU_ENFORCE(x.shape() == y.shape(), "shape mismatch: x={}, y={}",    \
+                x.shape(), y.shape());                                   \
+    auto ret = mpc::NAME(ctx->prot(), flattenValue(x), flattenValue(y)); \
+    if (!ret.has_value()) {                                              \
+      return std::nullopt;                                               \
+    }                                                                    \
+    return unflattenValue(ret.value(), x.shape());                       \
+  }
+
+MAP_OPTIONAL_BINARY_OP(equal_ss)
+MAP_OPTIONAL_BINARY_OP(equal_sp)
+MAP_BINARY_OP(equal_pp)
 
 }  // namespace spu::kernel::hal

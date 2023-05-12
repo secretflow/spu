@@ -1,5 +1,4 @@
-//
-// Copyright 2022 Ant Group Co., Ltd.
+// Copyright 2023 Ant Group Co., Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,22 +11,26 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-//
 
-syntax = "proto3";
+#include "libspu/core/platform_utils.h"
 
-package spu.psi.proto;
+#include <array>
 
-message SizeProto {
-  uint64 input_size = 1;
+#include "gmock/gmock.h"
+#include "gtest/gtest.h"
+
+namespace spu {
+
+TEST(PlatformUtils, pdep_u64) {
+  auto x = pdep_u64(19, 19);
+
+  GTEST_ASSERT_GT(x, 0);
 }
 
-message PsiDataBatchProto {
-  uint32 item_num = 1;
-  bytes flatten_bytes = 2;
-  bool is_last_batch = 3;
+TEST(PlatformUtils, pext_u64) {
+  auto x = pext_u64(19, 19);
+
+  GTEST_ASSERT_GT(x, 0);
 }
 
-message StrItemsProto {
-  repeated string items = 1;
-}
+}  // namespace spu

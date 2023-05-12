@@ -27,6 +27,7 @@ from jax._src import test_util as jtu
 from spu.utils.simulation import sim_jax
 
 all_shapes = [(4,), (2, 3, 4)]
+extra_large_shapes = [(100000000,)]
 
 float_dtypes = [np.float32]
 int32_dtypes = [np.int16, np.uint16, np.int32, np.uint32]
@@ -46,6 +47,8 @@ class Status(Enum):
     SysError = 3
     """ Result error """
     Failed = 4
+    """ DO NOT generate report """
+    PassNoGen = 5
 
 
 OpRecord = collections.namedtuple(
@@ -366,6 +369,7 @@ BITWISE_OP_RECORDS = [
 
 REDUCER_RECORDS = [
     REC("mean", 1, number_dtypes, all_shapes, rand_default),
+    REC("mean", 1, float_dtypes, extra_large_shapes, jtu.rand_small, Status.PassNoGen),
     REC("prod", 1, all_dtypes, all_shapes, jtu.rand_small_positive),
     REC("sum", 1, int_dtypes, all_shapes, rand_default),
     REC(
@@ -491,7 +495,7 @@ class JnpTests:
             for keepdims in [False, True]
         )
         def test_reducer(self, name, status, dtype, shape, rnd_factory, axis, keepdims):
-            if status != Status.Pass:
+            if status != Status.Pass or status != Status.PassNoGen:
                 return
             jnp_op = getattr(jnp, name)
             jnp_fn = lambda x: jnp_op(x, axis=axis, keepdims=keepdims)

@@ -45,9 +45,15 @@ namespace spu::mpc::cheetah {
 
 struct CheetahMul::Impl : public EnableCPRNG {
  public:
-  static constexpr uint32_t kSmallPrimeBitLen = 36;
+  // RLWE parameters: N = 8192, Q \approx 2^{109}, t \approx 2^{40}
+  // NOTE(juhou): Under this parameters, the Mul() might introduce 1-bit error
+  // within a small chance Pr = 2^{-32}.
   static constexpr size_t kPolyDegree = 8192;
+  static constexpr size_t kCipherModulusBits = 109;
+  static constexpr uint32_t kSmallPrimeBitLen = 40;
+
   static constexpr int kNoiseFloodRandomBits = 50;
+
   static constexpr size_t kParallelGrain = 1;
 
   explicit Impl(std::shared_ptr<yacl::link::Context> lctx)
@@ -60,14 +66,14 @@ struct CheetahMul::Impl : public EnableCPRNG {
   constexpr size_t OLEBatchSize() const { return kPolyDegree; }
 
   int Rank() const { return lctx_->Rank(); }
-
   static seal::EncryptionParameters DecideSEALParameters(uint32_t ring_bitlen) {
     size_t poly_deg = kPolyDegree;
     auto scheme_type = seal::scheme_type::bfv;
     auto parms = seal::EncryptionParameters(scheme_type);
     std::vector<int> modulus_bits;
-    // NOTE(juhou): 109bit should be enough for one multiplication under the
-    // `kSmallPrimeBitLen`
+    // NOTE(juhou): We set the 2nd modulus a bit larger than
+    // `kSmallPrimeBitLen`. We will drop the 2nd modulus during the H2A step.
+    // Also, it helps reducing the noise in the BFV ciphertext.
     modulus_bits = {60, 49};
     parms.set_use_special_prime(false);
     parms.set_poly_modulus_degree(poly_deg);
@@ -111,8 +117,20 @@ struct CheetahMul::Impl : public EnableCPRNG {
   static inline uint32_t FieldBitLen(FieldType f) { return 8 * SizeOf(f); }
 
   static inline uint32_t TotalCRTBitLen(uint32_t field_bitlen) {
-    const int margins_for_full_random = 15;
-    return 2 * field_bitlen + margins_for_full_random;
+    if (field_bitlen < 26) {
+      // 1 <= k < 26 uses P = 80bit
+      return 2 * kSmallPrimeBitLen;
+    } else if (field_bitlen < 64) {
+      // 26 <= k < 64 uses P = 120bit
+      return 3 * kSmallPrimeBitLen;
+    } else if (field_bitlen < 128) {
+      // 64 <= k < 128 uses P = 160bit
+      // The Pr(1bit error) < 2^{-32}
+      return 4 * kSmallPrimeBitLen;
+    }
+    // k == 128 uses P = 280bit
+    SPU_ENFORCE_EQ(field_bitlen, 128U);
+    return 7 * kSmallPrimeBitLen;
   }
 
   void LazyInitModSwitchHelper(uint32_t field_bitlen);
@@ -565,11 +583,13 @@ ArrayRef CheetahMul::Impl::MuThenResponse(
             // Multiply step
             CATCH_SEAL_ERROR(
                 evaluator.multiply_plain_inplace(ct, plains[offset + idx]));
+            // re-randomize the ciphertext (e.g., noise flood)
+            RandomizeCipherForDecryption(ct, cidx);
             // H2A
             CATCH_SEAL_ERROR(
                 evaluator.sub_plain_inplace(ct, ecd_random[offset + idx]));
-            // re-randomize the ciphertext (e.g., noise flood)
-            RandomizeCipherForDecryption(ct, cidx);
+            // Truncate for a smaller communication
+            TruncateBFVForDecryption(ct, seal_cntxt);
             response[offset + idx] = EncodeSEALObject(ct);
           }
         }
@@ -698,9 +718,6 @@ void CheetahMul::Impl::RandomizeCipherForDecryption(RLWECt &ct, size_t cidx) {
   RLWECt zero_enc;
   CATCH_SEAL_ERROR(pk_encryptors_[cidx]->encrypt_zero(ct.parms_id(), zero_enc));
   CATCH_SEAL_ERROR(evaluator.add_inplace(ct, zero_enc));
-
-  // 4. Truncate for smaller communication
-  TruncateBFVForDecryption(ct, seal_cntxt);
 }
 
 CheetahMul::CheetahMul(std::shared_ptr<yacl::link::Context> lctx) {

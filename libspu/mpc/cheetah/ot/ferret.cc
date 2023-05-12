@@ -219,7 +219,7 @@ struct FerretOT::Impl {
     }
 
     ferret_ = std::make_shared<emp::FerretCOT<CheetahIO>>(
-        role, thread, io_holder_.data(), malicious, run_setup, save_file);
+        role, thread, io_holder_.data(), malicious, run_setup);
 
     OtBaseTyp seed;
     if (is_sender_) {

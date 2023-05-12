@@ -154,28 +154,4 @@ FieldType PtTypeToField(PtType pt_type) {
 #undef CASE
 }
 
-static size_t makeDefaultFractionalBits(FieldType field) {
-  switch (field) {
-    case FieldType::FM32: {
-      return 8;
-    }
-    case FieldType::FM64: {
-      return 18;
-    }
-    case FieldType::FM128: {
-      return 26;
-    }
-    default: {
-      SPU_THROW("unsupported field={}", field);
-    }
-  }
-}
-
-size_t getDefaultFxpBits(const RuntimeConfig& config) {
-  if (config.fxp_fraction_bits() == 0) {
-    return makeDefaultFractionalBits(config.field());
-  }
-  return config.fxp_fraction_bits();
-}
-
 }  // namespace spu

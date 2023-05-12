@@ -25,7 +25,7 @@
 #include "libspu/core/parallel_utils.h"
 
 namespace spu {
-namespace detail {
+namespace {
 
 std::vector<int64_t> deducePadShape(
     absl::Span<const int64_t> input_shape,
@@ -121,7 +121,7 @@ static bool attempt_nocopy_reshape(const NdArrayRef& old,
   return true;
 }
 
-}  // namespace detail
+}  // namespace
 
 // full constructor
 NdArrayRef::NdArrayRef(std::shared_ptr<yacl::Buffer> buf, Type eltype,
@@ -162,7 +162,7 @@ NdArrayRef NdArrayRef::as(const Type& new_ty, bool force) const {
   if (!force) {
     SPU_ENFORCE(elsize() == new_ty.size(),
                 "viewed type={} not equal to origin type={}", new_ty, eltype());
-    return {buf(), new_ty, shape(), strides(), offset()};
+    return NdArrayRef(buf(), new_ty, shape(), strides(), offset());
   }
   // Force view, we need to adjust strides
   auto distance = ((strides().empty() ? 1 : strides().back()) * elsize());
@@ -172,7 +172,7 @@ NdArrayRef NdArrayRef::as(const Type& new_ty, bool force) const {
   std::transform(new_strides.begin(), new_strides.end(), new_strides.begin(),
                  [&](int64_t s) { return (elsize() * s) / new_ty.size(); });
 
-  return {buf(), new_ty, shape(), new_strides, offset()};
+  return NdArrayRef(buf(), new_ty, shape(), new_strides, offset());
 }
 
 int64_t NdArrayRef::numel() const { return calcNumel(shape()); }
@@ -238,7 +238,7 @@ NdArrayRef NdArrayRef::broadcast_to(absl::Span<const int64_t> to_shape,
     }
   }
 
-  return {buf(), eltype(), to_shape, new_strides, offset()};
+  return NdArrayRef(buf(), eltype(), to_shape, new_strides, offset());
 }
 
 NdArrayRef NdArrayRef::reshape(absl::Span<const int64_t> to_shape) const {
@@ -251,13 +251,13 @@ NdArrayRef NdArrayRef::reshape(absl::Span<const int64_t> to_shape) const {
               "reshape from {} to {} is changing numel", shape(), to_shape);
 
   std::vector<int64_t> new_strides(to_shape.size(), 0);
-  if (detail::attempt_nocopy_reshape(*this, to_shape, new_strides)) {
+  if (attempt_nocopy_reshape(*this, to_shape, new_strides)) {
     // No copy reshape
-    return {buf(), eltype(), to_shape, new_strides, offset()};
+    return NdArrayRef(buf(), eltype(), to_shape, new_strides, offset());
   }
 
   auto compact_clone = clone();
-  return {compact_clone.buf(), compact_clone.eltype(), to_shape};
+  return NdArrayRef(compact_clone.buf(), compact_clone.eltype(), to_shape);
 }
 
 NdArrayRef NdArrayRef::slice(absl::Span<const int64_t> start_indices,
@@ -287,13 +287,14 @@ NdArrayRef NdArrayRef::slice(absl::Span<const int64_t> start_indices,
     }
   }
 
-  return {buf(), eltype(), new_shape, new_strides,
-          &at(start_indices) - buf()->data<std::byte>()};
+  return NdArrayRef(buf(), eltype(), new_shape, new_strides,
+                    &at(start_indices) - buf()->data<std::byte>());
 }
 
 NdArrayRef NdArrayRef::slice_scalar_at(
     absl::Span<const int64_t> indices) const {
-  return {buf(), eltype(), {}, {}, &at(indices) - buf()->data<std::byte>()};
+  return NdArrayRef(buf(), eltype(), {}, {},
+                    &at(indices) - buf()->data<std::byte>());
 }
 
 NdArrayRef NdArrayRef::transpose(absl::Span<const int64_t> permutation) const {
@@ -400,7 +401,7 @@ NdArrayRef NdArrayRef::pad(const NdArrayRef& padding_value,
                            absl::Span<const int64_t> edge_padding_low,
                            absl::Span<const int64_t> edge_padding_high,
                            absl::Span<const int64_t> interior_padding) const {
-  auto result = padding_value.expand(detail::deducePadShape(
+  auto result = padding_value.expand(deducePadShape(
       shape(), edge_padding_low, edge_padding_high, interior_padding));
 
   const auto& result_shape = result.shape();
@@ -543,8 +544,8 @@ NdArrayRef unflatten(const ArrayRef& arr, absl::Span<const int64_t> shape) {
               arr.numel());
 
   if (arr.stride() == 0) {
-    return {arr.buf(), arr.eltype(), shape,
-            std::vector<int64_t>(shape.size(), 0), arr.offset()};
+    return NdArrayRef(arr.buf(), arr.eltype(), shape,
+                      std::vector<int64_t>(shape.size(), 0), arr.offset());
   }
 
   // FIXME: due to the current implementation,
@@ -552,7 +553,8 @@ NdArrayRef unflatten(const ArrayRef& arr, absl::Span<const int64_t> shape) {
               arr);
 
   auto strides = makeCompactStrides(shape);
-  return {arr.buf(), arr.eltype(), shape, std::move(strides), arr.offset()};
+  return NdArrayRef(arr.buf(), arr.eltype(), shape, std::move(strides),
+                    arr.offset());
 }
 
 namespace {
@@ -596,7 +598,8 @@ ArrayRef flatten(const NdArrayRef& ndarr) {
   // create a compact clone, it's save here since underline layer will never
   // modify inplace.
   auto compact = ndarr.clone();
-  return {compact.buf(), ndarr.eltype(), ndarr.numel(), 1, compact.offset()};
+  return ArrayRef(compact.buf(), ndarr.eltype(), ndarr.numel(), 1,
+                  compact.offset());
 }
 
 NdArrayRef::Iterator& NdArrayRef::Iterator::operator++() {

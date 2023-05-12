@@ -14,13 +14,10 @@
 
 #include "libspu/psi/cryptor/fourq_cryptor.h"
 
-extern "C" {
-#include "FourQ_api.h"
-#include "FourQ_internal.h"
-}
-
 #include <vector>
 
+#include "apsi/fourq/FourQ_api.h"
+#include "apsi/fourq/FourQ_internal.h"
 #include "yacl/crypto/base/hash/hash_utils.h"
 #include "yacl/utils/parallel.h"
 

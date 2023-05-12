@@ -14,16 +14,16 @@
 
 #include "libspu/kernel/context.h"
 
+#include "libspu/core/config.h"
 #include "libspu/mpc/factory.h"
 
 namespace spu {
 
 HalContext::HalContext(const RuntimeConfig& config,
                        const std::shared_ptr<yacl::link::Context>& lctx)
-    : rt_config_(config),
+    : rt_config_(makeFullRuntimeConfig(config)),
       lctx_(lctx),
-      prot_(mpc::Factory::CreateCompute(config, lctx)),
-      rand_engine_(config.public_random_seed()) {}
+      prot_(mpc::Factory::CreateCompute(rt_config_, lctx)) {}
 
 std::unique_ptr<HalContext> HalContext::fork() {
   auto new_hctx = std::unique_ptr<HalContext>(new HalContext);
@@ -33,7 +33,6 @@ std::unique_ptr<HalContext> HalContext::fork() {
     new_hctx->lctx_ = lctx_->Spawn();
   }
   new_hctx->prot_ = prot_->fork();
-  new_hctx->rand_engine_.seed(rand_engine_());
 
   return new_hctx;
 }

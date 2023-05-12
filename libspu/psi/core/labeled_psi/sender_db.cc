@@ -1145,7 +1145,7 @@ void SenderDB::InsertOrAssign(const std::vector<apsi::Item> &data) {
 
 void SenderDB::InsertOrAssign(
     const std::shared_ptr<IBatchProvider> &batch_provider, size_t batch_size) {
-  size_t batch_count = 0;
+  [[maybe_unused]] size_t batch_count = 0;
   size_t indices_count = 0;
 
   std::shared_ptr<yacl::io::KVStore> kv_store =

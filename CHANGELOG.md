@@ -12,7 +12,9 @@
 - [Feature] Improve accuracy of tanh approximation
 - [Example] Add flax GPT2
 - [Example] Add ResNet
+- [Bugfix] Fix gen cache in unbalanced psi
 - [Bugfix] Fix possible compilation cache collision
+- [Improvement] Improve accuracy of mean with large size input
 
 
 ## 20230406

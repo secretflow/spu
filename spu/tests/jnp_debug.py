@@ -29,10 +29,12 @@ if __name__ == "__main__":
 
     sim = ppsim.Simulator.simple(3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM64)
 
-    x = np.random.randint(low=-100, high=100, size=(3, 5))
-    fn = lambda x: jnp.argmax(x, axis=0)
+    x = np.random.randn(3, 4)
+    fn = lambda x: jnp.mean(x)
     spu_fn = ppsim.sim_jax(sim, fn)
     z = spu_fn(x)
+
+    print(spu_fn.pphlo)
 
     print(f'spu out = {z}')
     print(f'cpu out = {fn(x)}')

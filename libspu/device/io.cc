@@ -16,6 +16,7 @@
 
 #include <utility>
 
+#include "libspu/core/config.h"
 #include "libspu/core/encoding.h"
 #include "libspu/core/pt_buffer_view.h"
 #include "libspu/kernel/hal/constants.h"
@@ -24,15 +25,14 @@
 
 namespace spu::device {
 
-IoClient::IoClient(size_t world_size, RuntimeConfig config)
-    : world_size_(world_size), config_(std::move(config)) {
+IoClient::IoClient(size_t world_size, const RuntimeConfig &config)
+    : world_size_(world_size), config_(makeFullRuntimeConfig(config)) {
   base_io_ = mpc::Factory::CreateIO(config_, world_size_);
 }
 
 std::vector<spu::Value> IoClient::makeShares(const PtBufferView &bv,
                                              Visibility vtype, int owner_rank) {
-  // FIXME(jint), this should be in the io context.
-  const size_t fxp_bits = getDefaultFxpBits(config_);
+  const size_t fxp_bits = config_.fxp_fraction_bits();
   SPU_ENFORCE(fxp_bits != 0, "fxp should never be zero, please check default");
 
   if (bv.pt_type == PT_BOOL && vtype == VIS_SECRET &&
@@ -81,8 +81,7 @@ NdArrayRef IoClient::combineShares(absl::Span<spu::Value const> values) {
               "wrong number of shares, got={}, expect={}", values.size(),
               world_size_);
 
-  // FIXME(jint), this should be in the io context.
-  const size_t fxp_bits = getDefaultFxpBits(config_);
+  const size_t fxp_bits = config_.fxp_fraction_bits();
   SPU_ENFORCE(fxp_bits != 0, "fxp should never be zero, please check default");
 
   // reconstruct to ring buffer.

@@ -123,14 +123,15 @@ Value log_householder_approx(HalContext* ctx, const Value& x) {
       f_add(ctx, f_sub(ctx, term_1, term_2), f_constant(ctx, 3.0, x.shape()));
 
   std::vector<Value> coeffs;
-  const size_t config_orders = ctx->rt_config().fxp_log_orders();
-  const size_t num_order = config_orders == 0 ? 8 : config_orders;
-  for (size_t i = 0; i < num_order; i++) {
+  const size_t fxp_log_orders = ctx->rt_config().fxp_log_orders();
+  SPU_ENFORCE(fxp_log_orders != 0, "fxp_log_orders should not be {}",
+              fxp_log_orders);
+  for (size_t i = 0; i < fxp_log_orders; i++) {
     coeffs.emplace_back(f_constant(ctx, 1.0 / (1.0 + i), x.shape()));
   }
 
-  const size_t config_iters = ctx->rt_config().fxp_log_iters();
-  const size_t num_iters = config_iters == 0 ? 3 : config_iters;
+  const size_t num_iters = ctx->rt_config().fxp_log_iters();
+  SPU_ENFORCE(num_iters != 0, "fxp_log_iters should not be {}", num_iters);
   for (size_t i = 0; i < num_iters; i++) {
     Value h = f_sub(ctx, f_constant(ctx, 1.0, x.shape()),
                     f_mul(ctx, x, f_exp(ctx, f_negate(ctx, y))));
@@ -143,13 +144,14 @@ Value log_householder_approx(HalContext* ctx, const Value& x) {
 // see https://lvdmaaten.github.io/publications/papers/crypten.pdf
 //   exp(x) = (1 + x / n) ^ n, when n is infinite large.
 Value exp_taylor_series(HalContext* ctx, const Value& x) {
-  const size_t config_iters = ctx->rt_config().fxp_exp_iters();
-  const size_t num_iters = config_iters == 0 ? 8 : config_iters;
+  const size_t fxp_exp_iters = ctx->rt_config().fxp_exp_iters();
+  SPU_ENFORCE(fxp_exp_iters != 0, "fxp_exp_iters should not be {}",
+              fxp_exp_iters);
 
-  Value res = f_add(ctx, _trunc(ctx, x, num_iters).asFxp(),
+  Value res = f_add(ctx, _trunc(ctx, x, fxp_exp_iters).asFxp(),
                     f_constant(ctx, 1.0, x.shape()));
 
-  for (size_t i = 0; i < num_iters; i++) {
+  for (size_t i = 0; i < fxp_exp_iters; i++) {
     res = f_square(ctx, res);
   }
 
@@ -273,8 +275,16 @@ Value f_exp(HalContext* ctx, const Value& x) {
     case RuntimeConfig::EXP_DEFAULT:
     case RuntimeConfig::EXP_TAYLOR:
       return detail::exp_taylor_series(ctx, x);
-    case RuntimeConfig::EXP_PADE:
-      return detail::exp_pade_approx(ctx, x);
+    case RuntimeConfig::EXP_PADE: {
+      // The valid input for exp_pade_approx is [-kInputLimit, kInputLimit].
+      // TODO(junfeng): should merge clamp into exp_pade_approx to save msb ops.
+      const float kInputLimit = 32 / std::log2(std::exp(1));
+      const auto clampped_x =
+          _clamp(ctx, x, f_constant(ctx, -kInputLimit, x.shape()),
+                 f_constant(ctx, kInputLimit, x.shape()))
+              .setDtype(x.dtype());
+      return detail::exp_pade_approx(ctx, clampped_x);
+    }
     default:
       SPU_THROW("unexpected exp approxmation method {}",
                 ctx->rt_config().fxp_exp_mode());
@@ -473,6 +483,61 @@ Value f_sqrt(HalContext* ctx, const Value& x) {
   }
 
   return g;
+}
+
+namespace {
+
+Value sigmiod_real(HalContext* ctx, const Value& x) {
+  // f(x) = 1/(1+exp(-x))
+  const auto c1 = f_constant(ctx, 1.0F, x.shape());
+  return f_reciprocal(ctx, f_add(ctx, c1, f_exp(ctx, f_negate(ctx, x))));
+}
+
+Value sigmiod_mm1(HalContext* ctx, const Value& x) {
+  // SigmoidMM1: f(x) = 0.5 + 0.125 * x
+  const auto c1 = f_constant(ctx, 0.5, x.shape());
+  const auto c2 = f_constant(ctx, 0.125, x.shape());
+  return f_add(ctx, c1, f_mul(ctx, c2, x));
+}
+
+Value sigmiod_seg3(HalContext* ctx, const Value& x) {
+  // f(x) = 0.5 + 0.125x if -4 <= x <= 4
+  //        1            if       x > 4
+  //        0            if  -4 > x
+  // Rounds = Gt + Mux*2 = 4 + Log(K)
+  auto upper = f_constant(ctx, 1.0F, x.shape());
+  auto lower = f_constant(ctx, 0.0F, x.shape());
+  auto middle = sigmiod_mm1(ctx, x);
+
+  auto upper_bound = f_constant(ctx, 4.0F, x.shape());
+  auto lower_bound = f_constant(ctx, -4.0F, x.shape());
+
+  auto ret = _mux(ctx, f_less(ctx, upper_bound, x), upper, middle);
+  return _mux(ctx, f_less(ctx, x, lower_bound), lower, ret).asFxp();
+}
+
+}  // namespace
+
+Value f_sigmoid(HalContext* ctx, const Value& x) {
+  SPU_TRACE_HAL_DISP(ctx, x);
+
+  SPU_ENFORCE(x.isFxp());
+
+  switch (ctx->rt_config().sigmoid_mode()) {
+    case RuntimeConfig::SIGMOID_DEFAULT:
+    case RuntimeConfig::SIGMOID_MM1: {
+      return sigmiod_mm1(ctx, x);
+    }
+    case RuntimeConfig::SIGMOID_SEG3: {
+      return sigmiod_seg3(ctx, x);
+    }
+    case RuntimeConfig::SIGMOID_REAL: {
+      return sigmiod_real(ctx, x);
+    }
+    default: {
+      SPU_THROW("Should not hit");
+    }
+  }
 }
 
 }  // namespace spu::kernel::hal

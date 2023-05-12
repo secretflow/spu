@@ -14,8 +14,6 @@
 
 #include "libspu/core/platform_utils.h"
 
-#include "spdlog/spdlog.h"
-
 #ifdef __x86_64__
 #include <immintrin.h>
 
@@ -30,7 +28,11 @@ namespace impl {
 // https://gcc.gnu.org/pipermail/gcc-patches/2017-June/475893.html
 
 // Reference pdep_u64 impl
-inline uint64_t pdep_u64_impl(uint64_t x, uint64_t m) {
+inline uint64_t
+#if defined(__x86_64__) && defined(__GNUC__)
+    __attribute__((target("arch=sandybridge")))
+#endif
+    pdep_u64_impl(uint64_t x, uint64_t m) {
   uint64_t result = 0x0UL;
   const uint64_t mask = 0x8000000000000000UL;
   uint64_t c;
@@ -55,7 +57,11 @@ inline uint64_t pdep_u64_impl(uint64_t x, uint64_t m) {
 }
 
 // Reference pext_u64 impl
-inline uint64_t pext_u64_impl(uint64_t x, uint64_t m) {
+inline uint64_t
+#if defined(__x86_64__) && defined(__GNUC__)
+    __attribute__((target("arch=sandybridge")))
+#endif
+    pext_u64_impl(uint64_t x, uint64_t m) {
   // initial bit permute control
   uint64_t p = 0x4040404040404040UL;
   const uint64_t mask = 0x8000000000000000UL;
@@ -84,32 +90,32 @@ inline uint64_t pext_u64_impl(uint64_t x, uint64_t m) {
 
 #ifdef __x86_64__
 static const auto kCpuFeatures = cpu_features::GetX86Info().features;
-
-bool hasAVX2() { return kCpuFeatures.avx2; }
-bool hasAVX512ifma() { return kCpuFeatures.avx512ifma; }
-
+static const bool kHasBMI2 = kCpuFeatures.bmi2;
+static const bool kHasAVX512 = kCpuFeatures.avx512ifma;
+static const bool kHasAVX2 = kCpuFeatures.avx2;
 #else
-bool hasAVX2() { return false; }
-bool hasAVX512ifma() { return false; }
+static const bool kHasBMI2 = false;
+static const bool kHasAVX512 = false;
+static const bool kHasAVX2 = false;
 #endif
+
+bool hasAVX2() { return kHasAVX2; }
+bool hasBMI2() { return kHasBMI2; }
+bool hasAVX512ifma() { return kHasAVX512; }
 
 // There are no bmi2 intrinsics on platforms other than x86, so directly
 // redirect them to ref implementations
 uint64_t pdep_u64(uint64_t a, uint64_t b) {
-#ifdef __x86_64__
-  if (kCpuFeatures.avx2) {
+  if (hasBMI2()) {
     return _pdep_u64(a, b);
   }
-#endif
   return impl::pdep_u64_impl(a, b);
 }
 
 uint64_t pext_u64(uint64_t a, uint64_t b) {
-#ifdef __x86_64__
-  if (kCpuFeatures.avx2) {
+  if (hasBMI2()) {
     return _pext_u64(a, b);
   }
-#endif
   return impl::pext_u64_impl(a, b);
 }
 

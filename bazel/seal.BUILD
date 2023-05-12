@@ -28,12 +28,17 @@ spu_cmake_external(
         "SEAL_BUILD_DEPS": "OFF",
         "SEAL_USE_ZSTD": "ON",
         "SEAL_USE_ZLIB": "OFF",
-        "SEAL_INTEL_HEXL": "ON",
+        "SEAL_USE_INTEL_HEXL": "ON",
         "SEAL_THROW_ON_TRANSPARENT_CIPHERTEXT": "OFF",  #NOTE(juhou) required by apsi
         "CMAKE_INSTALL_LIBDIR": "lib",
+        "CpuFeatures_DIR": "$EXT_BUILD_DEPS/cpu_features/lib/cmake/CpuFeatures/",
+        "EXT_BUILD_DEPS": "$EXT_BUILD_DEPS",
     },
     lib_source = "@com_github_microsoft_seal//:all",
     out_include_dir = "include/SEAL-4.0",
     out_static_libs = ["libseal-4.0.a"],
-    deps = ["@com_github_facebook_zstd//:zstd"],
+    deps = [
+        "@com_github_facebook_zstd//:zstd",
+        "@com_intel_hexl//:hexl",
+    ],
 )

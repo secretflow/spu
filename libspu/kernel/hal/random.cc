@@ -20,28 +20,40 @@
 #include "libspu/kernel/hal/prot_wrapper.h"
 #include "libspu/kernel/hal/public_helper.h"
 
-namespace spu::kernel::hal {
+//
+#include "libspu/mpc/common/prg_state.h"  // TODO: bad reference.
 
-Value rng_uniform(HalContext* ctx, const Value& a, const Value& b,
+namespace spu::kernel::hal {
+namespace {
+
+uint64_t genPublicRandSeed(HalContext* hctx) {
+  auto* prg_state = hctx->prot()->getState<mpc::PrgState>();
+  uint64_t seed;
+  prg_state->fillPubl(absl::MakeSpan(&seed, 1));
+  return seed;
+}
+
+}  // namespace
+
+Value rng_uniform(HalContext* ctx, const Value& lo, const Value& hi,
                   absl::Span<const int64_t> to_shape) {
-  SPU_TRACE_HAL_LEAF(ctx, a, b, to_shape);
-  SPU_ENFORCE(a.isPublic() && b.isPublic());
-  SPU_ENFORCE(a.dtype() == b.dtype());
-  // FIXME: This is a hacky ref impl, fill a real proper impl later.
-  if (a.isFxp()) {
-    auto pa = dump_public_as<float>(ctx, a);
-    auto pb = dump_public_as<float>(ctx, b);
-    xt::xarray<float> randv =
-        xt::random::rand(to_shape, pa[0], pb[0], ctx->rand_engine());
-    return constant(ctx, randv, DT_FXP);
+  SPU_TRACE_HAL_LEAF(ctx, lo, hi, to_shape);
+  SPU_ENFORCE(lo.isPublic() && hi.isPublic());
+  SPU_ENFORCE(lo.numel() == 1 && hi.numel() == 1);
+
+  const auto f_lo = getScalarValue<float>(ctx, lo);
+  const auto f_hi = getScalarValue<float>(ctx, hi);
+
+  // TODO: support more random generator.
+  std::mt19937 gen(genPublicRandSeed(ctx));
+  std::uniform_real_distribution<> dist(f_lo, f_hi);
+
+  std::vector<float> buffer(calcNumel(to_shape));
+  for (float& ele : buffer) {
+    ele = dist(gen);
   }
 
-  SPU_ENFORCE(a.isInt());
-  auto pa = dump_public_as<int>(ctx, a);
-  auto pb = dump_public_as<int>(ctx, b);
-  xt::xarray<int> randv =
-      xt::random::randint(to_shape, pa[0], pb[0], ctx->rand_engine());
-  return constant(ctx, randv, DT_FXP);
+  return constant(ctx, buffer, DT_FXP);
 }
 
 Value random(HalContext* ctx, Visibility vis, DataType dtype,

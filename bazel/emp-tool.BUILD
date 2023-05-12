@@ -12,22 +12,27 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@llvm-raw//utils/bazel:configure.bzl", "llvm_configure", "llvm_disable_optional_support_deps")
+load("@yacl//bazel:yacl.bzl", "yacl_cmake_external")
 
-# The subset of LLVM targets that SPU cares about.
-_LLVM_TARGETS = [
-    "NVPTX",  # Somehow mlir tests need this....
-    "X86",
-    "AArch64",
-]
+package(default_visibility = ["//visibility:public"])
 
-def llvm_setup(name):
-    # Disable terminfo and zlib that are bundled with LLVM.
-    llvm_disable_optional_support_deps()
+filegroup(
+    name = "all_srcs",
+    srcs = glob(["**"]),
+)
 
-    # Build @llvm-project from @llvm-raw using overlays.
-    llvm_configure(
-        name = name,
-        repo_mapping = {"@python_runtime": "@local_config_python"},
-        targets = _LLVM_TARGETS,
-    )
+yacl_cmake_external(
+    name = "emp-tool",
+    cache_entries = {
+        "OPENSSL_ROOT_DIR": "$EXT_BUILD_DEPS/openssl",
+        "BUILD_TESTING": "OFF",
+    },
+    lib_source = ":all_srcs",
+    out_data_dirs = ["cmake"],
+    out_static_libs = [
+        "libemp-tool.a",
+    ],
+    deps = [
+        "@com_github_openssl_openssl//:openssl",
+    ],
+)
