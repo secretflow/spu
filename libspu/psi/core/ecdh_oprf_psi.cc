@@ -106,10 +106,10 @@ size_t EcdhOprfPsiServer::FullEvaluate(
   SPDLOG_INFO("omp_get_num_threads:{} cpus:{}", nthreads, mcpus);
   omp_set_num_threads(mcpus);
 
-#pragma omp parallel private(tid, nthreads, i, batch_items, batch_indices, \
-                             shuffle_indices, batch, local_batch_count)    \
-    shared(lck_read, lck_send, batch_count, items_count, compare_length,   \
-           stop_flag)
+#pragma omp parallel private(tid, nthreads, i, batch_items, batch_indices,  \
+                                 shuffle_indices, batch, local_batch_count) \
+    shared(lck_read, lck_send, batch_count, items_count, compare_length,    \
+               stop_flag)
   {
     tid = omp_get_thread_num();
     if ((tid == 0) && (batch_count == 0)) {
@@ -440,7 +440,7 @@ void EcdhOprfPsiClient::RecvFinalEvaluatedItems(
     std::vector<std::string> evaluated_items(num_items);
     for (size_t idx = 0; idx < num_items; ++idx) {
       evaluated_items[idx] =
-          absl::BytesToHexString(masked_batch.flatten_bytes.substr(
+          absl::Base64Escape(masked_batch.flatten_bytes.substr(
               idx * compare_length_, compare_length_));
     }
     cipher_store->SavePeer(evaluated_items);
@@ -571,7 +571,7 @@ void EcdhOprfPsiClient::RecvEvaluatedItems(
 
     yacl::parallel_for(0, num_items, 1, [&](int64_t begin, int64_t end) {
       for (int64_t idx = begin; idx < end; ++idx) {
-        oprf_items[idx] = absl::BytesToHexString(
+        oprf_items[idx] = absl::Base64Escape(
             oprf_clients[idx]->Finalize(evaluate_items[idx]));
       }
     });
@@ -610,7 +610,10 @@ void EcdhOprfPsiClient::SendIntersectionMaskedItems(
     blinded_batch.flatten_bytes.reserve(items.size() * compare_length_);
 
     for (uint64_t idx = 0; idx < items.size(); ++idx) {
-      blinded_batch.flatten_bytes.append(absl::HexStringToBytes(items[idx]));
+      std::string b64_dest;
+      absl::Base64Unescape(items[idx], &b64_dest);
+
+      blinded_batch.flatten_bytes.append(b64_dest);
     }
 
     options_.link1->SendAsync(options_.link1->NextRank(),

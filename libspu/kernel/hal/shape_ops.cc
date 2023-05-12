@@ -127,6 +127,7 @@ Value concatenate(HalContext* ctx, absl::Span<const Value> values,
       std::all_of(values.begin() + 1, values.end(), [&](const Value& v) {
         return v.storage_type() == values.begin()->storage_type();
       });
+
   if (!all_same_stype) {
     Type common_type = values[0].storage_type();
     for (size_t idx = 1; idx < values.size(); idx++) {

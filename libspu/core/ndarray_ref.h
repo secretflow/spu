@@ -51,21 +51,21 @@ class NdArrayRef {
   NdArrayRef() = default;
 
   // full constructor
-  NdArrayRef(std::shared_ptr<yacl::Buffer> buf, Type eltype,
-             std::vector<int64_t> shape, std::vector<int64_t> strides,
-             int64_t offset);
+  explicit NdArrayRef(std::shared_ptr<yacl::Buffer> buf, Type eltype,
+                      std::vector<int64_t> shape, std::vector<int64_t> strides,
+                      int64_t offset);
 
   // constructor, view buf as a compact buffer with given shape.
-  NdArrayRef(std::shared_ptr<yacl::Buffer> buf, Type eltype,
-             absl::Span<const int64_t> shape);
+  explicit NdArrayRef(std::shared_ptr<yacl::Buffer> buf, Type eltype,
+                      absl::Span<const int64_t> shape);
 
   // constructor, create a new buffer of elements and ref to it.
-  NdArrayRef(const Type& eltype, absl::Span<const int64_t> shape);
+  explicit NdArrayRef(const Type& eltype, absl::Span<const int64_t> shape);
 
   // convenient constructor to accept shape/strides from xtensor.
   template <typename ShapeT, typename StridesT>
-  NdArrayRef(std::shared_ptr<yacl::Buffer> buf, Type eltype, ShapeT&& shape,
-             StridesT&& strides, int64_t offset)
+  explicit NdArrayRef(std::shared_ptr<yacl::Buffer> buf, Type eltype,
+                      ShapeT&& shape, StridesT&& strides, int64_t offset)
       : NdArrayRef(std::move(buf), std::move(eltype),
                    {shape.begin(), shape.end()},
                    {strides.begin(), strides.end()}, offset) {}

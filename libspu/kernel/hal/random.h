@@ -20,10 +20,10 @@
 namespace spu::kernel::hal {
 
 /// Uniform rand
-// @param a, lower limit (include)
-// @param b, upper limit (exclude)
+// @param lo, lower limit (include)
+// @param hi, upper limit (exclude)
 // @param to_shape, the target shape
-Value rng_uniform(HalContext* ctx, const Value& a, const Value& b,
+Value rng_uniform(HalContext* ctx, const Value& lo, const Value& hi,
                   absl::Span<const int64_t> to_shape);
 
 /// Make a random value.

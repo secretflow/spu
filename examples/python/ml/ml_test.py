@@ -135,13 +135,13 @@ class UnitTests(unittest.TestCase):
         from examples.python.ml.flax_vae import flax_vae
 
         flax_vae.args.num_epochs = 1
-        flax_vae.args.num_steps = 1
+        flax_vae.args.num_steps = 10
         metrics = profile_test_point(flax_vae.train)
 
-        self.assertTrue(530 < metrics['loss'] < 540)
-        self.assertTrue(530 < metrics['bce'] < 540)
-        self.assertTrue(0.8 < metrics['kld'] < 1)
-    
+        self.assertTrue(260 < metrics['loss'] < 270)
+        self.assertTrue(240 < metrics['bce'] < 247)
+        self.assertTrue(20 < metrics['kld'] < 23)
+
     def test_flax_resnet(self):
         from examples.python.ml.flax_resnet import flax_resnet
 

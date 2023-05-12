@@ -16,6 +16,7 @@
 
 #include <cmath>
 
+#include "libspu/core/prelude.h"
 #include "libspu/kernel/hal/constants.h"
 #include "libspu/kernel/hal/fxp_cleartext.h"
 #include "libspu/kernel/hal/ring.h"
@@ -124,8 +125,9 @@ Value div_goldschmidt(HalContext* ctx, const Value& a, const Value& b) {
   auto r = w;
   auto e = f_sub(ctx, k1_, f_mul_with_sign(ctx, c, w, SignType::POSITIVE));
 
-  const size_t config_num_iters = ctx->rt_config().fxp_div_goldschmidt_iters();
-  const size_t num_iters = config_num_iters == 0 ? 2 : config_num_iters;
+  const size_t num_iters = ctx->rt_config().fxp_div_goldschmidt_iters();
+  SPU_ENFORCE(num_iters != 0, "fxp_div_goldschmidt_iters should not be {}",
+              num_iters);
 
   // iterate, r=r(1+e), e=e*e
   for (size_t itr = 0; itr < num_iters; itr++) {
@@ -164,8 +166,9 @@ Value reciprocal_goldschmidt_positive(HalContext* ctx, const Value& b_abs) {
   auto r = w;
   auto e = f_sub(ctx, k1_, f_mul_with_sign(ctx, b_abs, w, SignType::POSITIVE));
 
-  const size_t config_num_iters = ctx->rt_config().fxp_div_goldschmidt_iters();
-  const size_t num_iters = config_num_iters == 0 ? 2 : config_num_iters;
+  const size_t num_iters = ctx->rt_config().fxp_div_goldschmidt_iters();
+  SPU_ENFORCE(num_iters != 0, "fxp_div_goldschmidt_iters should not be {}",
+              num_iters);
 
   // iterate, r=r(1+e), e=e*e
   for (size_t itr = 0; itr < num_iters; itr++) {

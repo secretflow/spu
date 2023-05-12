@@ -77,8 +77,9 @@ std::vector<ArrayRef> Aby3Io::makeBitSecret(const ArrayRef& in) const {
   const auto out_type = makeType<BShrTy>(PT_U8, /* out_nbits */ 1);
   const size_t numel = in.numel();
 
-  std::vector<ArrayRef> shares{
-      {out_type, numel}, {out_type, numel}, {out_type, numel}};
+  std::vector<ArrayRef> shares = {ArrayRef(out_type, numel),
+                                  ArrayRef(out_type, numel),
+                                  ArrayRef(out_type, numel)};
   return DISPATCH_UINT_PT_TYPES(in_pt_type, "_", [&]() {
     using InT = ScalarT;
     using BShrT = uint8_t;

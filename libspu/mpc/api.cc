@@ -64,11 +64,11 @@ SPU_MPC_DEF_BINARY_OP(and_ss)
 SPU_MPC_DEF_BINARY_OP(xor_pp)
 SPU_MPC_DEF_BINARY_OP(xor_sp)
 SPU_MPC_DEF_BINARY_OP(xor_ss)
-SPU_MPC_DEF_BINARY_OP(equal_pp)
-SPU_MPC_DEF_BINARY_OP(equal_sp)
-SPU_MPC_DEF_BINARY_OP(equal_ss)
 SPU_MPC_DEF_MMUL(mmul_pp)
 SPU_MPC_DEF_MMUL(mmul_sp)
 SPU_MPC_DEF_MMUL(mmul_ss)
+SPU_MPC_DEF_BINARY_OP(equal_pp);
+SPU_MPC_DEF_OPTIONAL_BINARY_OP(equal_sp);
+SPU_MPC_DEF_OPTIONAL_BINARY_OP(equal_ss);
 
 }  // namespace spu::mpc

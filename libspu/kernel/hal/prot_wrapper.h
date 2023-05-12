@@ -33,8 +33,8 @@ Value _msb_p(HalContext* ctx, const Value& in);
 Value _msb_s(HalContext* ctx, const Value& in);
 
 Value _equal_pp(HalContext* ctx, const Value& x, const Value& y);
-Value _equal_sp(HalContext* ctx, const Value& x, const Value& y);
-Value _equal_ss(HalContext* ctx, const Value& x, const Value& y);
+std::optional<Value> _equal_sp(HalContext* ctx, const Value& x, const Value& y);
+std::optional<Value> _equal_ss(HalContext* ctx, const Value& x, const Value& y);
 
 Value _lshift_p(HalContext* ctx, const Value& in, size_t bits);
 Value _lshift_s(HalContext* ctx, const Value& in, size_t bits);

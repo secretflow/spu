@@ -11,9 +11,9 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-//
 
 #pragma once
+
 #include "libspu/core/array_ref.h"
 #include "libspu/core/ndarray_ref.h"
 #include "libspu/core/shape_util.h"
@@ -36,7 +36,7 @@ struct SlicedTensor {
 
   SlicedTensor(const SlicedTensor<Dim> &oth) = default;
 
-  SlicedTensor(SlicedTensor<Dim> &&oth) = default;
+  SlicedTensor(SlicedTensor<Dim> &&oth) noexcept = default;
 
   SlicedTensor<Dim> &operator=(const SlicedTensor<Dim> &oth) = delete;
 

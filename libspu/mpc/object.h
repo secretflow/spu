@@ -16,6 +16,7 @@
 
 #include <map>
 #include <memory>
+#include <optional>
 #include <string>
 #include <variant>
 
@@ -36,11 +37,13 @@ template <typename CallerT>
 class EvaluationContext final {
   // Please keep param types as less as possible.
   using ParamType = std::variant<  //
-      ArrayRef,                    // value type
-      size_t,                      // represent size(mmul), shift_bits(shift)
-      bool,                        // binary flag
-      Type,                        // type of type
-      uint128_t                    // ring constant
+      std::optional<ArrayRef>,  // for kernel evaluation failure, give a change
+                                // for the caller to handle failed case.
+      ArrayRef,                 // value type
+      size_t,                   // represent size(mmul), shift_bits(shift)
+      bool,                     // binary flag
+      Type,                     // type of type
+      uint128_t                 // ring constant
       >;
 
   CallerT* caller_;
@@ -71,16 +74,11 @@ class EvaluationContext final {
   // Get the caller's pointer.
   //
   // * usually called by kernel callee.
-  CallerT* caller() {
+  CallerT* caller() const {
     if (auto caller = dynamic_cast<CallerT*>(caller_)) {
       return caller;
     }
     SPU_THROW("cast failed");
-  }
-
-  template <typename StateT>
-  StateT* getState() {
-    return caller()->template getState<StateT>();
   }
 
   // Get the i'th parameter.
@@ -99,6 +97,24 @@ class EvaluationContext final {
   template <typename T = ArrayRef>
   void setOutput(T&& out) {
     output_ = std::forward<T>(out);
+  }
+
+  // helper function, forward to caller.
+  template <typename StateT>
+  StateT* getState() {
+    return caller()->template getState<StateT>();
+  }
+
+  // helper function, forward to caller
+  bool hasKernel(std::string_view name) const {
+    return caller()->hasKernel(name);
+  }
+
+  // helper function, forward to caller
+  template <typename Ret = ArrayRef, typename... Args>
+  Ret call(std::string_view name, Args&&... args) {
+    return caller()->template call<Ret, Args...>(name,
+                                                 std::forward<Args>(args)...);
   }
 };
 
@@ -220,13 +236,13 @@ class Object final {
     return names;
   }
 
-  template <typename Ret = ArrayRef>
+  template <typename Ret>
   Ret callImpl(Kernel* kernel, EvaluationContext<Object>* ctx) {
     kernel->evaluate(ctx);
     return ctx->stealOutput<Ret>();
   }
 
-  template <typename Ret = ArrayRef, typename First, typename... Args>
+  template <typename Ret, typename First, typename... Args>
   Ret callImpl(Kernel* kernel, EvaluationContext<Object>* ctx, First&& head,
                Args&&... tail) {
     ctx->bindParam(std::forward<First>(head));

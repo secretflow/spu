@@ -78,41 +78,6 @@ bool isCrossIntFxp(const Value& x, const Value& y) {
   return (x.isFxp() && y.isInt()) || (x.isInt() && y.isFxp());
 }
 
-Value logisticMM1(HalContext* ctx, const Value& x) {
-  SPU_TRACE_HAL_DISP(ctx, x);
-
-  // SigmoidMM1: f(x) = 0.5 + 0.125 * x
-  const auto c1 = constant(ctx, 0.5, DT_FXP, x.shape());
-  const auto c2 = constant(ctx, 0.125, DT_FXP, x.shape());
-  return add(ctx, c1, mul(ctx, c2, x));
-}
-
-Value logisticReal(HalContext* ctx, const Value& x) {
-  SPU_TRACE_HAL_DISP(ctx, x);
-
-  // f(x) = 1/(1+exp(-x))
-  const auto c1 = constant(ctx, 1.0F, DT_FXP, x.shape());
-  return reciprocal(ctx, add(ctx, c1, exp(ctx, negate(ctx, x))));
-}
-
-Value logisticSEG3(HalContext* ctx, const Value& x) {
-  SPU_TRACE_HAL_DISP(ctx, x);
-
-  // f(x) = 0.5 + 0.125x if -4 <= x <= 4
-  //        1            if       x > 4
-  //        0            if  -4 > x
-  // Rounds = Gt + Mux*2 = 4 + Log(K)
-  auto upper = constant(ctx, 1.0F, DT_FXP, x.shape());
-  auto lower = constant(ctx, 0.0F, DT_FXP, x.shape());
-  auto middle = logisticMM1(ctx, x);
-
-  auto upper_bound = constant(ctx, 4.0F, DT_FXP, x.shape());
-  auto lower_bound = constant(ctx, -4.0F, DT_FXP, x.shape());
-
-  auto ret = select(ctx, greater(ctx, x, upper_bound), upper, middle);
-  return select(ctx, less(ctx, x, lower_bound), lower, ret);
-}
-
 }  // namespace
 
 Value add(HalContext* ctx, const Value& x, const Value& y) {
@@ -172,19 +137,7 @@ Value equal(HalContext* ctx, const Value& x, const Value& y) {
   SPU_TRACE_HAL_DISP(ctx, x, y);
   SPU_ENFORCE(x.shape() == y.shape(), "x = {}, y = {}", x, y);
 
-  if (ctx->rt_config().protocol() == ProtocolKind::CHEETAH &&
-      (x.isSecret() || y.isSecret())) {
-    // For 2PC, equal can be done with the same cost of half MSB.
-    //      x0 + x1 = y0 + y1 mod 2^k
-    // <=>  x0 - y0 = y1 - x1 mod 2^k
-    // <=>  [1{x = y}]_B <- EQ(x0 - y0, y1 - x1) where EQ is a 2PC protocol.
-    return dtypeBinaryDispatch<f_equal, i_equal>("equal", ctx, x, y);
-  }
-
-  // Note: following method does work, but slower ...
-  // With optimized msb kernel, A2B+PreOr is slower than 2*MSB
-  return bitwise_and(ctx, logical_not(ctx, less(ctx, x, y)),
-                     logical_not(ctx, less(ctx, y, x)));
+  return dtypeBinaryDispatch<f_equal, i_equal>("equal", ctx, x, y);
 }
 
 Value not_equal(HalContext* ctx, const Value& x, const Value& y) {
@@ -239,23 +192,7 @@ Value abs(HalContext* ctx, const Value& x) {
 Value exp(HalContext* ctx, const Value& in) {
   SPU_TRACE_HAL_DISP(ctx, in);
 
-  switch (ctx->rt_config().fxp_exp_mode()) {
-    case RuntimeConfig::EXP_DEFAULT:
-    case RuntimeConfig::EXP_TAYLOR:
-      return f_exp(ctx, dtype_cast(ctx, in, DT_FXP));
-    case RuntimeConfig::EXP_PADE: {
-      // The valid input for exp_pade_approx is [-kInputLimit, kInputLimit].
-      // TODO(junfeng): should merge clamp into exp_pade_approx to save msb ops.
-      const float kInputLimit = 32 / std::log2(std::exp(1));
-      const auto x = clamp(ctx, dtype_cast(ctx, in, DT_FXP),
-                           constant(ctx, -kInputLimit, DT_FXP, in.shape()),
-                           constant(ctx, kInputLimit, DT_FXP, in.shape()));
-      return f_exp(ctx, x);
-    }
-    default:
-      SPU_THROW("unexpected exp approximation method {}",
-                ctx->rt_config().fxp_exp_mode());
-  }
+  return f_exp(ctx, dtype_cast(ctx, in, DT_FXP));
 }
 
 Value select(HalContext* ctx, const Value& pred, const Value& a,
@@ -307,22 +244,7 @@ Value logistic(HalContext* ctx, const Value& in) {
   SPU_TRACE_HAL_DISP(ctx, in);
 
   SPU_ENFORCE(in.isFxp());
-
-  switch (ctx->rt_config().sigmoid_mode()) {
-    case RuntimeConfig::SIGMOID_DEFAULT:
-    case RuntimeConfig::SIGMOID_MM1: {
-      return logisticMM1(ctx, in);
-    }
-    case RuntimeConfig::SIGMOID_SEG3: {
-      return logisticSEG3(ctx, in);
-    }
-    case RuntimeConfig::SIGMOID_REAL: {
-      return logisticReal(ctx, in);
-    }
-    default: {
-      SPU_THROW("Should not hit");
-    }
-  }
+  return f_sigmoid(ctx, in);
 }
 
 Value log(HalContext* ctx, const Value& in) {
@@ -437,6 +359,7 @@ Value clamp(HalContext* ctx, const Value& x, const Value& minv,
             const Value& maxv) {
   SPU_TRACE_HAL_DISP(ctx, x, minv, maxv);
 
+  // TODO(jint) are these type contraint required?
   SPU_ENFORCE(minv.dtype() == maxv.dtype());
   SPU_ENFORCE(minv.dtype() == x.dtype());
 

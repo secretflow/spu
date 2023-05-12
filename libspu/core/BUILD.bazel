@@ -20,6 +20,7 @@ spu_cc_library(
     name = "core",
     deps = [
         ":array_ref",
+        ":config",
         ":encoding",
         ":ndarray_ref",
         ":shape_util",
@@ -86,10 +87,21 @@ spu_cc_library(
     ],
 )
 
+spu_cc_library(
+    name = "config",
+    srcs = ["config.cc"],
+    hdrs = ["config.h"],
+    deps = [
+        "//libspu:spu_cc_proto",
+        "//libspu/core:prelude",
+    ],
+)
+
 spu_cc_test(
     name = "encoding_test",
     srcs = ["encoding_test.cc"],
     deps = [
+        ":config",
         ":encoding",
         ":xt_helper",
     ],
@@ -269,6 +281,15 @@ spu_cc_library(
         ],
         "//conditions:default": [],
     }),
+)
+
+spu_cc_test(
+    name = "platform_utils_test",
+    srcs = ["platform_utils_test.cc"],
+    linkstatic = True,
+    deps = [
+        ":platform_utils",
+    ],
 )
 
 spu_cc_library(

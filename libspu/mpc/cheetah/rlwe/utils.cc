@@ -21,6 +21,8 @@
 
 namespace spu::mpc::cheetah {
 
+#define ALLOW_BFV_DECRYPTION_FAIL 1
+
 void RemoveCoefficientsInplace(RLWECt& ciphertext,
                                const std::set<size_t>& to_remove) {
   SPU_ENFORCE(!ciphertext.is_ntt_form());
@@ -119,6 +121,10 @@ void TruncateBFVForDecryption(seal::Ciphertext& ct,
   std::transform(ct.data(0), ct.data(0) + poly_n, ct.data(0),
                  [mask0](uint64_t u) { return u & mask0; });
 
+  // NOTE(juhou): The following truncation might lead to a decryption failure.
+  // For for error sensitive computation (eg Beaver's triples), we just skip
+  // this truncation.
+#if ALLOW_BFV_DECRYPTION_FAIL
   // Norm |c1 * s|_infty < |c1|_infty * |s|_infty.
   // The value of |c1|_infty * |s|_infty is heuristically bounded by 12. *
   // Std(|c1|_infty) * Std(|s|_infty) Assume |c1| < B is B-bounded uniform. Then
@@ -132,6 +138,7 @@ void TruncateBFVForDecryption(seal::Ciphertext& ct,
   const uint64_t mask1 = make_bits_mask(n_delta_bits - n_var_bits);
   std::transform(ct.data(1), ct.data(1) + poly_n, ct.data(1),
                  [mask1](uint64_t u) { return u & mask1; });
+#endif
 }
 
 void NttInplace(seal::Plaintext& pt, const seal::SEALContext& context) {

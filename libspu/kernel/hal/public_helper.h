@@ -43,4 +43,13 @@ xt::xarray<T> dump_public_as(HalContext* ctx, const Value& in) {
 #undef CASE
 }
 
+template <typename T>
+T getScalarValue(HalContext* ctx, const spu::Value& value) {
+  SPU_ENFORCE(value.numel() == 1, "{} is not a scalar tensor.", value);
+  SPU_ENFORCE(value.isPublic(), "{} is not a public value", value);
+
+  const auto pvar = kernel::hal::dump_public_as<T>(ctx, value);
+  return pvar.front();
+}
+
 }  // namespace spu::kernel::hal

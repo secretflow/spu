@@ -41,7 +41,7 @@ struct SqrtRewriter : public OpRewritePattern<AddOp> {
     // Pattern
     // (sqrt(x) + small_const)
     // Into
-    // sqrt(x + small_const)
+    // sqrt(x + eps)
     auto added_const = op.getRhs().getDefiningOp<ConstantOp>();
     if (!added_const) {
       return failure();

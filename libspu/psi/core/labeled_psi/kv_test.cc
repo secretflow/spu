@@ -324,8 +324,9 @@ TEST_P(LabelPsiTest, Works) {
 #endif
 }
 
-INSTANTIATE_TEST_SUITE_P(Works_Instances, LabelPsiTest,
-                         testing::Values(  //
+INSTANTIATE_TEST_SUITE_P(
+    Works_Instances, LabelPsiTest,
+    testing::Values(  //
 #if 0
                              TestParams{1, 10000, 0},         // 1-10K
                              TestParams{1, 100000, 0},        // 1-100K
@@ -349,11 +350,11 @@ INSTANTIATE_TEST_SUITE_P(Works_Instances, LabelPsiTest,
                              TestParams{10000, 100000, 32},   // 10000-100K-32
                              TestParams{10000, 1000000, 32})  // 10000-1M-32
 #else
-                             // TestParams{1, 10000, 0},       // 1-10K
-                             // TestParams{1, 100000, 0},      // 1-100K
-                             // TestParams{256, 100000, 0},    // 256-100K
-                             // TestParams{2048, 100000, 32},  // 2048-100K-32
-                             TestParams{1, 100000, 32})  // 1-10K
+                      // TestParams{1, 10000, 0},       // 1-10K
+                      // TestParams{1, 100000, 0},      // 1-100K
+                      // TestParams{256, 100000, 0},    // 256-100K
+                      // TestParams{2048, 100000, 32},  // 2048-100K-32
+        TestParams{1, 100000, 32})  // 1-10K
 #endif
 );
 

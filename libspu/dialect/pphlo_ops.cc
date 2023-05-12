@@ -814,9 +814,10 @@ LogicalResult TransposeOp::verify() {
 
 LogicalResult PadOp::inferReturnTypeComponents(
     MLIRContext* context, std::optional<Location> location,
-    ValueShapeRange operands, DictionaryAttr attributes, RegionRange regions,
+    ValueShapeRange operands, DictionaryAttr attributes,
+    OpaqueProperties properties, RegionRange regions,
     SmallVectorImpl<ShapedTypeComponents>& inferredReturnShapes) {
-  PadOp::Adaptor adaptor(operands, attributes, regions);
+  PadOp::Adaptor adaptor(operands, attributes, {}, regions);
   SmallVector<Type> types;
   auto status = hlo::inferPadOp(
       location, adaptor.getOperand().getType(),
@@ -833,11 +834,11 @@ LogicalResult PadOp::inferReturnTypeComponents(
 }
 
 LogicalResult PadOp::inferReturnTypes(
-    ::mlir::MLIRContext* context, ::std::optional<::mlir::Location> location,
-    ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes,
-    ::mlir::RegionRange regions,
+    MLIRContext* context, std::optional<::mlir::Location> location,
+    ValueRange operands, DictionaryAttr attributes, OpaqueProperties properties,
+    RegionRange regions,
     ::llvm::SmallVectorImpl<::mlir::Type>& inferredReturnTypes) {
-  PadOp::Adaptor adaptor(operands, attributes, regions);
+  PadOp::Adaptor adaptor(operands, attributes, {}, regions);
   return hlo::inferPadOp(location, adaptor.getOperand().getType(),
                          adaptor.getPaddingValue().getType(),
                          adaptor.getEdgePaddingLow(),
@@ -900,9 +901,9 @@ LogicalResult ConcatenateOp::verify() {
 
 LogicalResult ConcatenateOp::inferReturnTypes(
     MLIRContext*, std::optional<Location> location, ValueRange operands,
-    DictionaryAttr attributes, RegionRange regions,
+    DictionaryAttr attributes, OpaqueProperties properties, RegionRange regions,
     SmallVectorImpl<Type>& inferredReturnTypes) {
-  ConcatenateOp::Adaptor adaptor(operands, attributes, regions);
+  ConcatenateOp::Adaptor adaptor(operands, attributes, {}, regions);
   return hlo::inferConcatenateOp(location, adaptor.getVal().getTypes(),
                                  adaptor.getDimension(), inferredReturnTypes);
 }
@@ -1040,9 +1041,9 @@ LogicalResult inferDynamicSliceOp(std::optional<Location> location,
 
 LogicalResult DynamicSliceOp::inferReturnTypes(
     MLIRContext* context, std::optional<Location> location, ValueRange operands,
-    DictionaryAttr attributes, RegionRange regions,
+    DictionaryAttr attributes, OpaqueProperties properties, RegionRange regions,
     SmallVectorImpl<Type>& inferredReturnTypes) {
-  DynamicSliceOp::Adaptor adaptor(operands, attributes, regions);
+  DynamicSliceOp::Adaptor adaptor(operands, attributes, {}, regions);
   return inferDynamicSliceOp(location, adaptor.getOperand().getType(),
                              adaptor.getStartIndices().getTypes(),
                              adaptor.getSliceSizes(), inferredReturnTypes);
@@ -1092,9 +1093,9 @@ LogicalResult inferDynamicUpdateSliceOp(
 
 LogicalResult DynamicUpdateSliceOp::inferReturnTypes(
     MLIRContext* context, std::optional<Location> location, ValueRange operands,
-    DictionaryAttr attributes, RegionRange regions,
+    DictionaryAttr attributes, OpaqueProperties properties, RegionRange regions,
     SmallVectorImpl<Type>& inferredReturnTypes) {
-  DynamicUpdateSliceOp::Adaptor adaptor(operands, attributes, regions);
+  DynamicUpdateSliceOp::Adaptor adaptor(operands, attributes, {}, regions);
 
   return inferDynamicUpdateSliceOp(
       location, adaptor.getOperand(), adaptor.getUpdate(),

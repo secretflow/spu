@@ -46,7 +46,7 @@ ArrayRef getValueShare(const ArrayRef& in) {
   auto ty = makeType<RingTy>(field);
 
   SPU_ENFORCE(in.stride() != 0);
-  return {in.buf(), ty, in.numel(), in.stride() * 2, in.offset()};
+  return ArrayRef(in.buf(), ty, in.numel(), in.stride() * 2, in.offset());
 }
 
 ArrayRef getMacShare(const ArrayRef& in) {
@@ -54,8 +54,8 @@ ArrayRef getMacShare(const ArrayRef& in) {
   auto ty = makeType<RingTy>(field);
 
   SPU_ENFORCE(in.stride() != 0);
-  return {in.buf(), ty, in.numel(), in.stride() * 2,
-          in.offset() + static_cast<int64_t>(ty.size())};
+  return ArrayRef(in.buf(), ty, in.numel(), in.stride() * 2,
+                  in.offset() + static_cast<int64_t>(ty.size()));
 }
 
 ArrayRef makeAShare(const ArrayRef& s1, const ArrayRef& s2, FieldType field) {

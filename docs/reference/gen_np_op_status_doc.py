@@ -63,12 +63,15 @@ def main():
 
     for op in status_doc:
         name = op['name']
+        status = op['status']
+        if status == "Status.PassNoGen":
+            continue
+
         mdFile.new_header(level=2, title=name)
         mdFile.new_line(
             f"JAX NumPy Document link: https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.{name}.html"
         )
         mdFile.new_header(level=3, title='Status')
-        status = op['status']
 
         if status == "Status.Pass":
             mdFile.new_line("**PASS**")

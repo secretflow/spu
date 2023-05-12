@@ -18,8 +18,9 @@
 
 namespace spu {
 
-bool hasAVX2();
-bool hasAVX512ifma();
+extern bool hasAVX2();
+extern bool hasBMI2();
+extern bool hasAVX512ifma();
 
 // bmi2 wrapper
 uint64_t pdep_u64(uint64_t a, uint64_t b);

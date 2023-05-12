@@ -428,7 +428,7 @@ class ABProtMulSP : public BinaryKernel {
 
 class ABProtMulSS : public BinaryKernel {
   static bool hasMulA1B(KernelEvalContext* ctx) {
-    return ctx->caller()->hasKernel("mul_a1b");
+    return ctx->hasKernel("mul_a1b");
   }
 
  public:
@@ -553,36 +553,72 @@ class ABProtXorSS : public BinaryKernel {
   }
 };
 
-class ABProtEqualSS : public BinaryKernel {
+class ABProtEqualSS : public Kernel {
  public:
   static constexpr char kBindName[] = "equal_ss";
 
   Kind kind() const override { return Kind::Dynamic; }
 
-  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& x,
-                const ArrayRef& y) const override {
+  void evaluate(KernelEvalContext* ctx) const override {
+    const auto& x = ctx->getParam<ArrayRef>(0);
+    const auto& y = ctx->getParam<ArrayRef>(1);
+
     SPU_TRACE_MPC_DISP(ctx, x, y);
-    if (_LAZY_AB) {
-      return _EqualAA(_2A(x), _2A(y));
+
+    // TODO: use mandatory lazyAB pattern.
+    SPU_ENFORCE(_LAZY_AB);
+
+    ctx->setOutput(std::nullopt);
+
+    // try fast path
+    // TODO: use cost model instead of hand-coded priority.
+    if (_IsA(x) && _IsA(y)) {
+      if (ctx->hasKernel("equal_aa")) {
+        ctx->setOutput(ctx->call("equal_aa", x, y));
+      }
+    } else if (_IsB(x) && _IsB(y)) {
+      if (ctx->hasKernel("equal_bb")) {
+        ctx->setOutput(ctx->call("equal_bb", x, y));
+      }
+    } else {
+      // mixed A and B
+      SPU_ENFORCE((_IsA(x) && _IsB(y)) || (_IsB(x) && _IsA(y)));
+
+      if (ctx->hasKernel("equal_aa")) {
+        ctx->setOutput(ctx->call("equal_aa", _2A(x), _2A(y)));
+      }
+
+      if (ctx->hasKernel("equal_bb")) {
+        ctx->setOutput(ctx->call("equal_bb", _2B(x), _2B(y)));
+      }
     }
-    // TODO: equal could be done in boolean domain.
-    return _EqualAA(x, y);
+
+    // fall through, no kernel found.
   }
 };
 
-class ABProtEqualSP : public BinaryKernel {
+class ABProtEqualSP : public Kernel {
  public:
   static constexpr char kBindName[] = "equal_sp";
 
   Kind kind() const override { return Kind::Dynamic; }
 
-  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& x,
-                const ArrayRef& y) const override {
+  void evaluate(KernelEvalContext* ctx) const override {
+    const auto& x = ctx->getParam<ArrayRef>(0);
+    const auto& y = ctx->getParam<ArrayRef>(1);
+
     SPU_TRACE_MPC_DISP(ctx, x, y);
-    if (_LAZY_AB) {
-      return _EqualAP(_2A(x), y);
+
+    // TODO: use mandatory lazyAB.
+    SPU_ENFORCE(_LAZY_AB);
+
+    ctx->setOutput(std::nullopt);
+
+    if (_IsA(x) && ctx->hasKernel("equal_ap")) {
+      ctx->setOutput(ctx->call("equal_ap", x, y));
+    } else if (_IsB(x) && ctx->hasKernel("equal_bp")) {
+      ctx->setOutput(ctx->call("equal_bp", x, y));
     }
-    return _EqualAP(x, y);
   }
 };
 
@@ -686,7 +722,7 @@ class ABProtMsbS : public UnaryKernel {
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in) const override {
     SPU_TRACE_MPC_DISP(ctx, in);
     const auto field = in.eltype().as<Ring2k>()->field();
-    if (ctx->caller()->hasKernel("msb_a2b")) {
+    if (ctx->hasKernel("msb_a2b")) {
       if (_LAZY_AB) {
         if (in.eltype().isa<BShare>()) {
           return _RShiftB(in, SizeOf(field) * 8 - 1);

@@ -21,7 +21,6 @@
 #include "absl/types/span.h"
 #include "emp-tool/utils/block.h"
 #include "emp-tool/utils/f2k.h"
-#include "emp-zk/emp-vole/constants.h"
 #include "emp-zk/emp-vole/emp-vole.h"
 #include "yacl/link/link.h"
 

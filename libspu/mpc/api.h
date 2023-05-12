@@ -14,6 +14,8 @@
 
 #pragma once
 
+#include <optional>
+
 #include "libspu/core/array_ref.h"
 #include "libspu/mpc/object.h"
 
@@ -80,8 +82,9 @@ ArrayRef msb_p(Object* ctx, const ArrayRef&);
 ArrayRef msb_s(Object* ctx, const ArrayRef&);
 
 ArrayRef equal_pp(Object* ctx, const ArrayRef&, const ArrayRef&);
-ArrayRef equal_sp(Object* ctx, const ArrayRef&, const ArrayRef&);
-ArrayRef equal_ss(Object* ctx, const ArrayRef&, const ArrayRef&);
+// Optional API, return nullopt if no valid kernel found.
+std::optional<ArrayRef> equal_sp(Object* ctx, const ArrayRef&, const ArrayRef&);
+std::optional<ArrayRef> equal_ss(Object* ctx, const ArrayRef&, const ArrayRef&);
 
 ArrayRef lshift_p(Object* ctx, const ArrayRef&, size_t);
 ArrayRef lshift_s(Object* ctx, const ArrayRef&, size_t);
@@ -141,6 +144,15 @@ ArrayRef mmul_ss(Object* ctx, const ArrayRef&, const ArrayRef&, size_t, size_t,
 #define SPU_MPC_DEF_BINARY_OP(NAME)                                  \
   ArrayRef NAME(Object* ctx, const ArrayRef& x, const ArrayRef& y) { \
     return ctx->call(#NAME, x, y);                                   \
+  }
+
+#define SPU_MPC_DEF_OPTIONAL_BINARY_OP(NAME)                   \
+  std::optional<ArrayRef> NAME(Object* ctx, const ArrayRef& x, \
+                               const ArrayRef& y) {            \
+    if (!ctx->hasKernel(#NAME)) {                              \
+      return std::nullopt;                                     \
+    }                                                          \
+    return ctx->call<std::optional<ArrayRef>>(#NAME, x, y);    \
   }
 
 #define SPU_MPC_DEF_MMUL(NAME)                                                 \

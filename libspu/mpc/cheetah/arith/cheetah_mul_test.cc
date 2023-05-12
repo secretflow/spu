@@ -29,7 +29,7 @@ INSTANTIATE_TEST_SUITE_P(
     Cheetah, CheetahMulTest,
     testing::Combine(testing::Values(FieldType::FM32, FieldType::FM64,
                                      FieldType::FM128),
-                     testing::Values(15, 1023)),
+                     testing::Values(1024, 10000)),
     [](const testing::TestParamInfo<CheetahMulTest::ParamType>& p) {
       return fmt::format("{}x{}", std::get<0>(p.param), std::get<1>(p.param));
     });
@@ -39,78 +39,97 @@ TEST_P(CheetahMulTest, Basic) {
   auto field = std::get<0>(GetParam());
   auto n = std::get<1>(GetParam());
 
-  std::vector<ArrayRef> arr(kWorldSize);
-  // NOTE(juhou): now Cheetah supports strided ArrayRef
-  for (size_t stride : {1, 2, 3}) {
-    for (size_t i = 0; i < kWorldSize; ++i) {
-      arr[i] = ring_rand(field, n);
-      arr[i] = arr[i].slice(1, n, stride);
+  ArrayRef a_bits = ring_rand(field, n);
+  ArrayRef b_bits = ring_rand(field, n);
+
+  std::vector<ArrayRef> a_shr(kWorldSize);
+  std::vector<ArrayRef> b_shr(kWorldSize);
+  a_shr[0] = ring_rand(field, n);
+  b_shr[0] = ring_rand(field, n);
+  a_shr[1] = ring_sub(a_bits, a_shr[0]);
+  b_shr[1] = ring_sub(b_bits, b_shr[0]);
+
+  std::vector<ArrayRef> result(kWorldSize);
+  utils::simulate(kWorldSize, [&](std::shared_ptr<yacl::link::Context> lctx) {
+    int rank = lctx->Rank();
+    // (a0 + a1) * (b0 + b1)
+    // a0*b0 + a0*b1 + a1*b0 + a1*b1
+    auto mul = std::make_shared<CheetahMul>(lctx);
+
+    ArrayRef cross0, cross1;
+    if (rank == 0) {
+      cross0 = mul->MulOLE(a_shr[0], true);
+      cross1 = mul->MulOLE(b_shr[0], true);
+    } else {
+      cross0 = mul->MulOLE(b_shr[1], false);
+      cross1 = mul->MulOLE(a_shr[1], false);
     }
 
-    std::vector<ArrayRef> result(kWorldSize);
-    utils::simulate(kWorldSize, [&](std::shared_ptr<yacl::link::Context> lctx) {
-      int rank = lctx->Rank();
-      auto mul = std::make_shared<CheetahMul>(lctx);
-      result[rank] = mul->MulOLE(arr[rank], rank == 0);
-    });
+    result[rank] = ring_mul(a_shr[rank], b_shr[rank]);
+    ring_add_(result[rank], cross0);
+    ring_add_(result[rank], cross1);
+  });
 
-    auto expected = ring_mul(arr[0], arr[1]);
-    auto computed = ring_add(result[0], result[1]);
+  auto expected = ring_mul(a_bits, b_bits);
+  auto computed = ring_add(result[0], result[1]);
 
-    const int64_t kMaxDiff = 1;
-    DISPATCH_ALL_FIELDS(field, "_", [&]() {
-      auto e = ArrayView<ring2k_t>(expected);
-      auto c = ArrayView<ring2k_t>(computed);
+  const int64_t kMaxDiff = 0;
+  DISPATCH_ALL_FIELDS(field, "_", [&]() {
+    auto e = ArrayView<ring2k_t>(expected);
+    auto c = ArrayView<ring2k_t>(computed);
 
-      for (auto idx = 0; idx < expected.numel(); idx++) {
-        EXPECT_NEAR(e[idx], c[idx], kMaxDiff);
-      }
-    });
-  }
+    for (auto idx = 0; idx < expected.numel(); idx++) {
+      EXPECT_NEAR(e[idx], c[idx], kMaxDiff);
+    }
+  });
 }
 
-TEST_P(CheetahMulTest, Fork) {
+TEST_P(CheetahMulTest, BasicBinary) {
   size_t kWorldSize = 2;
   auto field = std::get<0>(GetParam());
   auto n = std::get<1>(GetParam());
 
-  std::vector<ArrayRef> arr(kWorldSize);
-  for (size_t i = 0; i < kWorldSize; ++i) {
-    arr[i] = ring_rand(field, n);
-  }
+  ArrayRef a_bits = ring_rand_range(field, n, 0, 1);
+  ArrayRef b_bits = ring_rand_range(field, n, 0, 1);
 
-  std::vector<ArrayRef> result0(kWorldSize);
-  std::vector<ArrayRef> result1(kWorldSize);
-  std::vector<ArrayRef> result2(kWorldSize);
+  std::vector<ArrayRef> a_shr(kWorldSize);
+  std::vector<ArrayRef> b_shr(kWorldSize);
+  a_shr[0] = ring_rand(field, n);
+  b_shr[0] = ring_rand(field, n);
+  a_shr[1] = ring_sub(a_bits, a_shr[0]);
+  b_shr[1] = ring_sub(b_bits, b_shr[0]);
 
+  std::vector<ArrayRef> result(kWorldSize);
   utils::simulate(kWorldSize, [&](std::shared_ptr<yacl::link::Context> lctx) {
     int rank = lctx->Rank();
+    // (a0 + a1) * (b0 + b1)
+    // a0*b0 + a0*b1 + a1*b0 + a1*b1
     auto mul = std::make_shared<CheetahMul>(lctx);
-    auto fork0 = mul->Fork();  // fork before warm up
 
-    result0[rank] = mul->MulOLE(arr[rank], rank == 0);
-    result1[rank] = fork0->MulOLE(arr[rank], rank == 1);
+    ArrayRef cross0, cross1;
+    if (rank == 0) {
+      cross0 = mul->MulOLE(a_shr[0], true);
+      cross1 = mul->MulOLE(b_shr[0], true);
+    } else {
+      cross0 = mul->MulOLE(b_shr[1], false);
+      cross1 = mul->MulOLE(a_shr[1], false);
+    }
 
-    auto fork1 = mul->Fork();  // fork after warm up
-    result2[rank] = fork1->MulOLE(arr[rank], rank == 0);
+    result[rank] = ring_mul(a_shr[rank], b_shr[rank]);
+    ring_add_(result[rank], cross0);
+    ring_add_(result[rank], cross1);
   });
 
-  auto expected = ring_mul(arr[0], arr[1]);
-  auto computed0 = ring_add(result0[0], result0[1]);
-  auto computed1 = ring_add(result1[0], result1[1]);
-  auto computed2 = ring_add(result2[0], result2[1]);
+  auto expected = ring_mul(a_bits, b_bits);
+  auto computed = ring_add(result[0], result[1]);
 
-  const int64_t kMaxDiff = 1;
+  const int64_t kMaxDiff = 0;
   DISPATCH_ALL_FIELDS(field, "_", [&]() {
     auto e = ArrayView<ring2k_t>(expected);
-    auto c0 = ArrayView<ring2k_t>(computed0);
-    auto c1 = ArrayView<ring2k_t>(computed1);
-    auto c2 = ArrayView<ring2k_t>(computed2);
+    auto c = ArrayView<ring2k_t>(computed);
 
-    for (auto idx = 1; idx < expected.numel(); idx++) {
-      EXPECT_NEAR(c0[idx], e[idx], kMaxDiff);
-      EXPECT_NEAR(c1[idx], e[idx], kMaxDiff);
-      EXPECT_NEAR(c2[idx], e[idx], kMaxDiff);
+    for (auto idx = 0; idx < expected.numel(); idx++) {
+      EXPECT_NEAR(e[idx], c[idx], kMaxDiff);
     }
   });
 }

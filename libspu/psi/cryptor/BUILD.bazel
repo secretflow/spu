@@ -64,10 +64,24 @@ spu_cc_library(
     name = "fourq_cryptor",
     srcs = ["fourq_cryptor.cc"],
     hdrs = ["fourq_cryptor.h"],
+    defines = [
+        "__LINUX__",
+    ] + select({
+        "@bazel_tools//src/conditions:linux_x86_64": [
+            "_AMD64_",
+            "_ASM_",
+        ],
+        "@bazel_tools//src/conditions:darwin_arm64": [
+            "_ARM64_",
+        ],
+        "//conditions:default": [
+            "_AMD64_",
+        ],
+    }),
     deps = [
         ":ecc_cryptor",
         "//libspu/core:prelude",
-        "@com_github_microsoft_fourqlib//:fourqlib",
+        "@com_github_microsoft_apsi//:apsi",
         "@com_github_openssl_openssl//:openssl",
         "@yacl//yacl/utils:parallel",
     ],

@@ -103,7 +103,7 @@ ArrayRef ArrayRef::as(const Type& new_ty, bool force) const {
                 "viewed type={} not equal to origin type={}", new_ty, eltype());
   }
 
-  return {buf(), new_ty, numel(), stride(), offset()};
+  return ArrayRef(buf(), new_ty, numel(), stride(), offset());
 }
 
 ArrayRef ArrayRef::slice(int64_t start, int64_t stop, int64_t stride) const {
@@ -124,7 +124,7 @@ ArrayRef ArrayRef::slice(int64_t start, int64_t stop, int64_t stride) const {
   const int64_t n_stride = stride_ * stride;
   const int64_t n_offset = offset_ + start * stride_ * elsize();
 
-  return {buf(), eltype_, m, n_stride, n_offset};
+  return ArrayRef(buf(), eltype_, m, n_stride, n_offset);
 }
 
 bool ArrayRef::operator==(const ArrayRef& other) const {

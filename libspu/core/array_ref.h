@@ -52,11 +52,11 @@ class ArrayRef {
   ArrayRef() = default;
 
   // full constructor
-  ArrayRef(std::shared_ptr<yacl::Buffer> buf, Type eltype, int64_t numel,
-           int64_t stride, int64_t offset);
+  explicit ArrayRef(std::shared_ptr<yacl::Buffer> buf, Type eltype,
+                    int64_t numel, int64_t stride, int64_t offset);
 
   // create a new buffer of uninitialized elements and ref to it.
-  ArrayRef(const Type& eltype, size_t numel);
+  explicit ArrayRef(const Type& eltype, size_t numel);
 
   // Return total number of elements.
   int64_t numel() const { return numel_; }

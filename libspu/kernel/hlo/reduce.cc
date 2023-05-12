@@ -160,11 +160,13 @@ spu::Value ExpandStridedWindow(
               window_shape, window_strides, window_dilations, padding,
               base_shape, base_dilations, window_count_index, window_index,
               absl::MakeSpan(base_index));
+
           if (!out_of_bound) {
             // TODO: anti-pattern, do not use .data(), use ops instead.
             expanded.data().update_slice(
                 base.data().slice_scalar_at(base_index), expanded_index);
           }
+
           if (!bumpIndices<int64_t>(expanded_shape,
                                     absl::MakeSpan(expanded_index))) {
             break;
@@ -312,7 +314,7 @@ std::vector<spu::Value> ReduceWindowImpl(
 
   // For each resulting dimension, calculate and assign computed value.
   auto evaluate_impl =
-      [&](absl::Span<int64_t> output_index) -> std::vector<spu::Value> {
+      [&](absl::Span<int64_t const> output_index) -> std::vector<spu::Value> {
     std::vector<spu::Value> ret;
     RunOnWindowIndex(
         config.window_shape, config.window_strides, config.window_dilations,
@@ -329,9 +331,9 @@ std::vector<spu::Value> ReduceWindowImpl(
   };
 
   // For each window index
-  std::vector<spu::Value> batchs(nargs);
+  std::vector<spu::Value> batches(nargs);
   for (int64_t idx = 0; idx < nargs; ++idx) {
-    batchs[idx] =
+    batches[idx] =
         hal::expand(ctx, hal::slice_scalar_at(ctx, inputs[idx], {}), ret_shape);
   }
 
@@ -339,20 +341,18 @@ std::vector<spu::Value> ReduceWindowImpl(
     // Collect one element from each window
     std::vector<int64_t> output_index(ret_shape.size(), 0);
     do {
-      auto r = evaluate_impl(absl::MakeSpan(output_index));
+      auto r = evaluate_impl(output_index);
       if (!r.empty()) {
         for (int64_t idx = 0; idx < nargs; ++idx) {
-          batchs[idx].data().update_slice(r[idx].data(), output_index);
+          batches[idx].data().update_slice(r[idx].data(), output_index);
         }
       }
-    } while (
-        bumpIndices(absl::MakeSpan(ret_shape), absl::MakeSpan(output_index)));
+    } while (bumpIndices(ret_shape, absl::MakeSpan(output_index)));
 
     // Now run the batch
-    rets = reducer(rets, batchs);
+    rets = reducer(rets, batches);
 
-  } while (
-      bumpIndices<int64_t>(config.window_shape, absl::MakeSpan(window_index)));
+  } while (bumpIndices(config.window_shape, absl::MakeSpan(window_index)));
 
   return rets;
 }

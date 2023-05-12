@@ -250,7 +250,4 @@ inline size_t SizeOf(FieldType field) { return SizeOf(GetStorageType(field)); }
     }                                                               \
   }()
 
-// Return the default number of fractional bits.
-size_t getDefaultFxpBits(const RuntimeConfig& config);
-
 }  // namespace spu

@@ -170,7 +170,6 @@ IMPL_COMMUTATIVE_BINARY_OP(_add, _add_pp, _add_sp, _add_ss)
 IMPL_COMMUTATIVE_BINARY_OP(_mul, _mul_pp, _mul_sp, _mul_ss)
 IMPL_COMMUTATIVE_BINARY_OP(_and, _and_pp, _and_sp, _and_ss)
 IMPL_COMMUTATIVE_BINARY_OP(_xor, _xor_pp, _xor_sp, _xor_ss)
-IMPL_COMMUTATIVE_BINARY_OP(_equal, _equal_pp, _equal_sp, _equal_ss)
 
 Value _sub(HalContext* ctx, const Value& x, const Value& y) {
   SPU_TRACE_HAL_LEAF(ctx, x, y);
@@ -308,6 +307,42 @@ Value _or(HalContext* ctx, const Value& x, const Value& y) {
   return _xor(ctx, x, _xor(ctx, y, _and(ctx, x, y)));
 }
 
+static std::optional<Value> _equal_impl(HalContext* ctx, const Value& x,
+                                        const Value& y) {
+  SPU_TRACE_HAL_LEAF(ctx, x, y);
+
+  if (x.isPublic() && y.isPublic()) {
+    return _equal_pp(ctx, x, y);
+  } else if (x.isSecret() && y.isPublic()) {
+    return _equal_sp(ctx, x, y);
+  } else if (x.isPublic() && y.isSecret()) { /* commutative, swap args */
+    return _equal_sp(ctx, y, x);
+  } else if (x.isSecret() && y.isSecret()) {
+    return _equal_ss(ctx, y, x);
+  }
+
+  return std::nullopt;
+}
+
+Value _equal(HalContext* ctx, const Value& x, const Value& y) {
+  // First try use equal kernel, i.e. for 2PC , equal can be done with the same
+  // cost of half MSB.
+  //      x0 + x1 = y0 + y1 mod 2^k
+  // <=>  x0 - y0 = y1 - x1 mod 2^k
+  // <=>  [1{x = y}]_B <- EQ(x0 - y0, y1 - x1) where EQ is a 2PC protocol.
+  auto z = _equal_impl(ctx, x, y);
+  if (z.has_value()) {
+    return z.value();
+  }
+
+  // Note: With optimized msb kernel, A2B+PreOr is slower than 2*MSB
+  // eq(x, y) = !lt(x, y) & !lt(y, x)
+  //          = xor(a, 1) & xor(b, 1)  // let a = lt(x, y), b = lt(y, x)
+  const auto _k1 = _constant(ctx, 1, x.shape());
+  return _and(ctx, _xor(ctx, _less(ctx, x, y), _k1),
+              _xor(ctx, _less(ctx, y, x), _k1));
+}
+
 Value _trunc_with_sign(HalContext* ctx, const Value& x, size_t bits,
                        bool is_positive) {
   SPU_TRACE_HAL_LEAF(ctx, x, bits);
@@ -361,6 +396,7 @@ Value _sign(HalContext* ctx, const Value& x) {
 Value _less(HalContext* ctx, const Value& x, const Value& y) {
   SPU_TRACE_HAL_LEAF(ctx, x, y);
 
+  // Note: the impl assume inputs are signed with two's complement encoding.
   // test msb(x-y) == 1
   return _msb(ctx, _sub(ctx, x, y));
 }
@@ -383,6 +419,17 @@ Value _mux(HalContext* ctx, const Value& pred, const Value& a, const Value& b) {
 
   // b + pred*(a-b)
   return _add(ctx, b, _mul(ctx, pred, _sub(ctx, a, b)));
+}
+
+Value _clamp(HalContext* ctx, const Value& x, const Value& minv,
+             const Value& maxv) {
+  SPU_TRACE_HAL_LEAF(ctx, x, minv, maxv);
+
+  // clamp lower bound, res = x < minv ? minv : x
+  auto res = _mux(ctx, _less(ctx, x, minv), minv, x);
+
+  // clamp upper bound, res = res < maxv ? res, maxv
+  return _mux(ctx, _less(ctx, res, maxv), res, maxv);
 }
 
 Value _constant(HalContext* ctx, uint128_t init,
@@ -506,7 +553,7 @@ Value _prefer_a(HalContext* ctx, const Value& x) {
 Value _prefer_b(HalContext* ctx, const Value& x) {
   if (x.storage_type().isa<AShare>()) {
     const auto k0 = _constant(ctx, 0U, x.shape());
-    return _or(ctx, x, k0).setDtype(x.dtype());  // noop, to bshare
+    return _xor(ctx, x, k0).setDtype(x.dtype());  // noop, to bshare
   }
 
   return x;

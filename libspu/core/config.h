@@ -1,5 +1,4 @@
-//
-// Copyright 2022 Ant Group Co., Ltd.
+// Copyright 2023 Ant Group Co., Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,22 +11,20 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
+#pragma once
+
+#include "libspu/spu.pb.h"
+
+namespace spu {
+
+// Fill attribute with default value with a implementation defined value.
 //
+// Required field must be filled, or exception will be raised.
+// Optional field will not be touched.
+// Field with (implementation defined) default value will be changed
+void populateRuntimecConfig(RuntimeConfig& cfg);
 
-syntax = "proto3";
+RuntimeConfig makeFullRuntimeConfig(const RuntimeConfig& cfg);
 
-package spu.psi.proto;
-
-message SizeProto {
-  uint64 input_size = 1;
-}
-
-message PsiDataBatchProto {
-  uint32 item_num = 1;
-  bytes flatten_bytes = 2;
-  bool is_last_batch = 3;
-}
-
-message StrItemsProto {
-  repeated string items = 1;
-}
+}  // namespace spu

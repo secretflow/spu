@@ -86,7 +86,7 @@ KkrtPsiOptions GetDefaultKkrtPsiOptions() {
 
 // first use baseOT get 128 ots
 // then, use iknpOtExtension get 512 ots
-std::shared_ptr<yacl::crypto::OtRecvStore> GetKkrtOtSenderOptions(
+yacl::crypto::OtRecvStore GetKkrtOtSenderOptions(
     const std::shared_ptr<yacl::link::Context>& link_ctx, const size_t num_ot) {
   // use base ot get 128 ots
   auto base_ot = yacl::crypto::BaseOtSend(link_ctx, 128);
@@ -95,7 +95,7 @@ std::shared_ptr<yacl::crypto::OtRecvStore> GetKkrtOtSenderOptions(
   return yacl::crypto::IknpOtExtRecv(link_ctx, base_ot, choice, num_ot);
 }
 
-std::shared_ptr<yacl::crypto::OtSendStore> GetKkrtOtReceiverOptions(
+yacl::crypto::OtSendStore GetKkrtOtReceiverOptions(
     const std::shared_ptr<yacl::link::Context>& link_ctx, const size_t num_ot) {
   // use base ot get 128 ots
   size_t base_ot_num = 128;
@@ -107,12 +107,12 @@ std::shared_ptr<yacl::crypto::OtSendStore> GetKkrtOtReceiverOptions(
 
 void KkrtPsiSend(const std::shared_ptr<yacl::link::Context>& link_ctx,
                  const KkrtPsiOptions& kkrt_psi_options,  // with kkrt options
-                 const std::shared_ptr<yacl::crypto::OtRecvStore>& ot_recv,
+                 const yacl::crypto::OtRecvStore& ot_recv,
                  const std::vector<uint128_t>& items_hash) {
   SPU_ENFORCE((kkrt_psi_options.cuckoo_hash_num == 3) &&
                   (kkrt_psi_options.stash_size == 0),
               "now only support cuckoo HashNum = 3 , stash size = 0");
-  SPU_ENFORCE(ot_recv->Size() == 512,
+  SPU_ENFORCE(ot_recv.Size() == 512,
               "now only support baseRecvOption block size 512");
 
   size_t self_size = items_hash.size();
@@ -301,13 +301,13 @@ void KkrtPsiSend(const std::shared_ptr<yacl::link::Context>& link_ctx,
 std::vector<std::size_t> KkrtPsiRecv(
     const std::shared_ptr<yacl::link::Context>& link_ctx,
     const KkrtPsiOptions& kkrt_psi_options,  // with kkrt options
-    const std::shared_ptr<yacl::crypto::OtSendStore>& ot_send,
+    const yacl::crypto::OtSendStore& ot_send,
     const std::vector<uint128_t>& items_hash) {
   SPU_ENFORCE((kkrt_psi_options.cuckoo_hash_num == 3) &&
                   (kkrt_psi_options.stash_size == 0),
               "now only support cuckoo HashNum = 3 , stash size = 0");
 
-  SPU_ENFORCE(ot_send->Size() == 512,
+  SPU_ENFORCE(ot_send.Size() == 512,
               "now only support yacl::OtSendStore block size 512");
 
   std::vector<std::size_t> ret_intersection;

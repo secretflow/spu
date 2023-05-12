@@ -51,4 +51,6 @@ Value f_rsqrt(HalContext* ctx, const Value& x);
 
 Value f_sqrt(HalContext* ctx, const Value& x);
 
+Value f_sigmoid(HalContext* ctx, const Value& x);
+
 }  // namespace spu::kernel::hal

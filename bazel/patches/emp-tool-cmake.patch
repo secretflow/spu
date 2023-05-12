@@ -1,0 +1,22 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index d9abb31..4c2c171 100755
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -56,11 +56,14 @@ find_package(OpenSSL REQUIRED)
+ include_directories(${OPENSSL_INCLUDE_DIR})
+ 
+ 
+-add_library(${NAME} SHARED ${sources})
++add_library(${NAME} STATIC ${sources})
+ 
+ install(DIRECTORY emp-tool DESTINATION include/)
+ install(DIRECTORY cmake/ DESTINATION cmake/)
+ install(TARGETS ${NAME} DESTINATION lib)
+ 
+-ENABLE_TESTING()
+-ADD_SUBDIRECTORY(test)
++option(ENABLE_TESTS "Enable tests" OFF)
++if (${ENABLE_TESTS})
++    ENABLE_TESTING()
++    ADD_SUBDIRECTORY(test)
++endif()

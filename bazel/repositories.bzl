@@ -18,7 +18,7 @@ load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
 
 SECRETFLOW_GIT = "https://github.com/secretflow"
 
-YACL_COMMIT_ID = "fac5d9f3b2419f45cacc42fd6ba7f482c19e5318"
+YACL_COMMIT_ID = "3ad8dc2c4e00b0e7a2873b96501e1a6f096efd64"
 
 def spu_deps():
     _bazel_platform()
@@ -30,16 +30,15 @@ def spu_deps():
     _com_github_pybind11_bazel()
     _com_github_pybind11()
     _com_intel_hexl()
-    _com_github_amrayn_easyloggingpp()
+    _com_github_emptoolkit_emp_tool()
     _com_github_emptoolkit_emp_ot()
+    _com_github_emptoolkit_emp_zk()
     _com_github_facebook_zstd()
     _com_github_microsoft_seal()
-    _com_github_microsoft_fourqlib()
     _com_github_eigenteam_eigen()
     _com_github_microsoft_apsi()
     _com_github_microsoft_gsl()
     _com_github_microsoft_kuku()
-    _com_github_emptoolkit_emp_zk()
     _com_google_flatbuffers()
 
     maybe(
@@ -139,8 +138,8 @@ def _com_github_xtensor_xtl():
     )
 
 def _com_github_openxla_xla():
-    OPENXLA_COMMIT = "09878be2d6bc1ad0baf6219d6a996db58d6fff1f"
-    OPENXLA_SHA256 = "9d877b82d8801f00ca136d4c9ad37724236ee921f2a84e7871668915967dfe68"
+    OPENXLA_COMMIT = "6d294f24babbadbe7a42fbd91e9bead178acaa10"
+    OPENXLA_SHA256 = "9ead425b1159d32c42b4f5c3cbf48b9ec6331a288ceab6a034e419d0204a6229"
 
     SKYLIB_VERSION = "1.3.0"
 
@@ -202,32 +201,53 @@ def _com_intel_hexl():
         ],
     )
 
-def _com_github_amrayn_easyloggingpp():
+def _com_github_emptoolkit_emp_tool():
     maybe(
         http_archive,
-        name = "com_github_amrayn_easyloggingpp",
+        name = "com_github_emptoolkit_emp_tool",
+        sha256 = "b9ab2380312e78020346b5d2db3d0244c7bd8098cb50f8b3620532ef491808d0",
+        strip_prefix = "emp-tool-0.2.5",
         type = "tar.gz",
-        strip_prefix = "easyloggingpp-9.97.0",
-        sha256 = "9110638e21ef02428254af8688bf9e766483db8cc2624144aa3c59006907ce22",
-        build_file = "@spulib//bazel:easyloggingpp.BUILD",
-        urls = [
-            "https://github.com/amrayn/easyloggingpp/archive/refs/tags/v9.97.0.tar.gz",
+        patch_args = ["-p1"],
+        patches = [
+            "@spulib//bazel:patches/emp-tool.patch",
+            "@spulib//bazel:patches/emp-tool-cmake.patch",
+            "@spulib//bazel:patches/emp-tool-sse2neon.patch",
         ],
+        urls = [
+            "https://github.com/emp-toolkit/emp-tool/archive/refs/tags/0.2.5.tar.gz",
+        ],
+        build_file = "@spulib//bazel:emp-tool.BUILD",
     )
 
 def _com_github_emptoolkit_emp_ot():
     maybe(
         http_archive,
         name = "com_github_emptoolkit_emp_ot",
-        sha256 = "9c1198e04e2a081386814e9bea672fa6b4513829961c4ee150634354da609a91",
-        strip_prefix = "emp-ot-0.2.2",
+        sha256 = "358036e5d18143720ee17103f8172447de23014bcfc1f8e7d5849c525ca928ac",
+        strip_prefix = "emp-ot-0.2.4",
         type = "tar.gz",
         patch_args = ["-p1"],
         patches = ["@spulib//bazel:patches/emp-ot.patch"],
         urls = [
-            "https://github.com/emp-toolkit/emp-ot/archive/refs/tags/0.2.2.tar.gz",
+            "https://github.com/emp-toolkit/emp-ot/archive/refs/tags/0.2.4.tar.gz",
         ],
         build_file = "@spulib//bazel:emp-ot.BUILD",
+    )
+
+def _com_github_emptoolkit_emp_zk():
+    maybe(
+        http_archive,
+        name = "com_github_emptoolkit_emp_zk",
+        sha256 = "e02e6abc6ee14ca0e69e6f5f0efe24cab7da1bc905fc7c86a3e5a529114e489a",
+        strip_prefix = "emp-zk-0.2.1",
+        type = "tar.gz",
+        patch_args = ["-p1"],
+        patches = ["@spulib//bazel:patches/emp-zk.patch"],
+        urls = [
+            "https://github.com/emp-toolkit/emp-zk/archive/refs/tags/0.2.1.tar.gz",
+        ],
+        build_file = "@spulib//bazel:emp-zk.BUILD",
     )
 
 def _com_github_microsoft_seal():
@@ -243,21 +263,6 @@ def _com_github_microsoft_seal():
             "https://github.com/microsoft/SEAL/archive/refs/tags/v4.0.0.tar.gz",
         ],
         build_file = "@spulib//bazel:seal.BUILD",
-    )
-
-def _com_github_microsoft_fourqlib():
-    maybe(
-        http_archive,
-        name = "com_github_microsoft_fourqlib",
-        type = "zip",
-        strip_prefix = "FourQlib-ff61f680505c98c98e33387962223ce0b5e620bc",
-        sha256 = "59f1ebc35735217fc8c8f02c41765560ce3c5a8abd3937b0e2f4db45c49b6e73",
-        build_file = "@spulib//bazel:microsoft_fourqlib.BUILD",
-        patch_args = ["-p1"],
-        patches = ["@spulib//bazel:patches/fourq.patch"],
-        urls = [
-            "https://github.com/microsoft/FourQlib/archive/ff61f680505c98c98e33387962223ce0b5e620bc.zip",
-        ],
     )
 
 def _com_github_eigenteam_eigen():
@@ -283,7 +288,10 @@ def _com_github_microsoft_apsi():
         ],
         build_file = "@spulib//bazel:microsoft_apsi.BUILD",
         patch_args = ["-p1"],
-        patches = ["@spulib//bazel:patches/apsi.patch"],
+        patches = [
+            "@spulib//bazel:patches/apsi.patch",
+            "@spulib//bazel:patches/apsi-gen.patch",
+        ],
     )
 
 def _com_github_microsoft_gsl():
@@ -310,21 +318,6 @@ def _com_github_microsoft_kuku():
             "https://github.com/microsoft/Kuku/archive/refs/tags/v2.1.0.tar.gz",
         ],
         build_file = "@spulib//bazel:microsoft_kuku.BUILD",
-    )
-
-def _com_github_emptoolkit_emp_zk():
-    maybe(
-        http_archive,
-        name = "com_github_emptoolkit_emp_zk",
-        sha256 = "c03508b653fdc4b1251231c4c99c7240b858c598f228d66e85d61a5ba7fad39e",
-        strip_prefix = "emp-zk-208195554595603c6a3f922e8318bc5b0fa67d82",
-        type = "zip",
-        patch_args = ["-p1"],
-        patches = ["@spulib//bazel:patches/emp-zk.patch"],
-        urls = [
-            "https://github.com/emp-toolkit/emp-zk/archive/208195554595603c6a3f922e8318bc5b0fa67d82.zip",
-        ],
-        build_file = "@spulib//bazel:emp-zk.BUILD",
     )
 
 def _com_google_flatbuffers():
