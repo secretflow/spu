@@ -39,3 +39,15 @@ py_binary(
         "//spu/utils:distributed",
     ],
 )
+
+py_binary(
+    name = "mem_psi",
+    srcs = ["mem_psi.py"],
+    data = [
+        "//examples/data",
+    ],
+    deps = [
+        "//spu:psi",
+        "//spu/utils:distributed",
+    ],
+)
