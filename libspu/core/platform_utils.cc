@@ -106,16 +106,20 @@ bool hasAVX512ifma() { return kHasAVX512; }
 // There are no bmi2 intrinsics on platforms other than x86, so directly
 // redirect them to ref implementations
 uint64_t pdep_u64(uint64_t a, uint64_t b) {
+#ifdef __x86_64__
   if (hasBMI2()) {
     return _pdep_u64(a, b);
   }
+#endif
   return impl::pdep_u64_impl(a, b);
 }
 
 uint64_t pext_u64(uint64_t a, uint64_t b) {
+#ifdef __x86_64__
   if (hasBMI2()) {
     return _pext_u64(a, b);
   }
+#endif
   return impl::pext_u64_impl(a, b);
 }
 
