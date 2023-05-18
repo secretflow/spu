@@ -27,6 +27,7 @@ from jax.example_libraries.stax import (
     BatchNorm,
 )
 
+
 # Network A
 # Ref: https://eprint.iacr.org/2017/396.pdf
 def secureml():
@@ -40,16 +41,17 @@ def secureml():
     )
     return nn_init, nn_apply
 
+
 # Network B
 # Ref: https://eprint.iacr.org/2017/452.pdf
 def minionn():
     nn_init, nn_apply = stax.serial(
         Conv(out_chan=16, filter_shape=(5, 5), strides=(1, 1), padding='valid'),
-        Relu,
         MaxPool(window_shape=(2, 2), strides=(2, 2)),
+        Relu,
         Conv(out_chan=16, filter_shape=(5, 5), strides=(1, 1), padding='valid'),
-        Relu,
         MaxPool(window_shape=(2, 2), strides=(2, 2)),
+        Relu,
         Flatten,
         Dense(100),
         Relu,
@@ -57,22 +59,24 @@ def minionn():
     )
     return nn_init, nn_apply
 
+
 # Network C
 # Ref: https://eprint.iacr.org/2018/442.pdf
 def lenet():
     nn_init, nn_apply = stax.serial(
         Conv(out_chan=20, filter_shape=(5, 5), strides=(1, 1), padding='valid'),
-        Relu,
         MaxPool(window_shape=(2, 2), strides=(2, 2)),
+        Relu,
         Conv(out_chan=50, filter_shape=(5, 5), strides=(1, 1), padding='valid'),
-        Relu,
         MaxPool(window_shape=(2, 2), strides=(2, 2)),
+        Relu,
         Flatten,
         Dense(500),
         Relu,
         Dense(10),
     )
     return nn_init, nn_apply
+
 
 # Network D
 # Ref: https://eprint.iacr.org/2017/1164.pdf
@@ -86,6 +90,7 @@ def chameleon():
         Dense(10),
     )
     return nn_init, nn_apply
+
 
 def alexnet(num_class=10):
     nn_init, nn_apply = stax.serial(
@@ -208,6 +213,7 @@ def vgg16(num_class=10):
     )
     return nn_init, nn_apply
 
+
 def custom_model():
     nn_init, nn_apply = stax.serial(
         Conv(2, (1, 1)),
@@ -216,6 +222,7 @@ def custom_model():
         Dense(10),
     )
     return nn_init, nn_apply
+
 
 def LR():
     nn_init, nn_apply = stax.serial(

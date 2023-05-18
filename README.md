@@ -124,7 +124,7 @@ $ tail node2.log
 $ tail node4.log
 ```
 
-If each node log prints something like blow, that means the SPU cluster has been launched successfully:
+If each node log prints something like below, that means the SPU cluster has been launched successfully:
 ```console
 [2023-05-09 10:46:00,098] [MainProcess] Starting grpc server at 172.19.245.237:9920
 ```
