@@ -16,7 +16,7 @@
 
 #include "llvm/Support/CommandLine.h"
 
-#include "libspu/kernel/context.h"
+#include "libspu/core/context.h"
 
 extern llvm::cl::opt<std::string> Parties;
 extern llvm::cl::opt<uint32_t> Rank;
@@ -29,4 +29,4 @@ std::shared_ptr<yacl::link::Context> MakeLink(const std::string& parties,
                                               size_t rank);
 
 // Create an evaluator with setting flags.
-std::unique_ptr<spu::HalContext> MakeHalContext();
+std::unique_ptr<spu::SPUContext> MakeSPUContext();

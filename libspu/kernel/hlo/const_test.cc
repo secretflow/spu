@@ -17,17 +17,17 @@
 #include "gtest/gtest.h"
 #include "spdlog/fmt/bin_to_hex.h"
 
+#include "libspu/core/context.h"
 #include "libspu/core/ndarray_ref.h"
-#include "libspu/kernel/context.h"
-#include "libspu/kernel/hal/test_util.h"
-#include "libspu/kernel/value.h"
+#include "libspu/core/value.h"
+#include "libspu/kernel/test_util.h"
 
 namespace spu::kernel::hlo {
 
 TEST(ConstTest, Empty) {
-  HalContext hctx = hal::test::makeRefHalContext();
+  SPUContext sctx = test::makeSPUContext();
 
-  auto empty_c = Constant(&hctx, true, {0});
+  auto empty_c = Constant(&sctx, true, {0});
 
   EXPECT_EQ(empty_c.numel(), 0);
   EXPECT_EQ(empty_c.shape().size(), 1);
@@ -35,14 +35,13 @@ TEST(ConstTest, Empty) {
 }
 
 TEST(ConstTest, Epsilon) {
-  HalContext hctx = hal::test::makeRefHalContext();
+  SPUContext sctx = test::makeSPUContext();
 
-  auto eps = Epsilon(&hctx);
+  auto eps = Epsilon(&sctx);
 
-  auto v = hal::dump_public_as<float>(&hctx, eps);
+  auto v = hal::dump_public_as<float>(&sctx, eps);
 
-  EXPECT_FLOAT_EQ(v[0],
-                  1 / (std::pow(2, hctx.rt_config().fxp_fraction_bits())));
+  EXPECT_FLOAT_EQ(v[0], 1 / (std::pow(2, sctx.config().fxp_fraction_bits())));
 }
 
 }  // namespace spu::kernel::hlo

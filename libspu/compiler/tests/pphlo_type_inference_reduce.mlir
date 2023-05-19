@@ -1,4 +1,4 @@
-// RUN: mlir-pphlo-opt --hlo-legalize-to-pphlo='io-visibility-json={"inputs":["VIS_SECRET"]}' %s --split-input-file  | FileCheck %s
+// RUN: mlir-pphlo-opt --hlo-legalize-to-pphlo=input_vis_list=VIS_SECRET %s --split-input-file  | FileCheck %s
 
 // CHECK: func @main(%arg0: tensor<1024x1x!pphlo.sec<f32>>) -> tensor<1024x!pphlo.sec<f32>> { 
 func.func @main(%arg1: tensor<1024x1xf32>) -> (tensor<1024xf32>) {

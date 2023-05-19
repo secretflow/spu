@@ -14,8 +14,8 @@
 
 #pragma once
 
-#include "libspu/kernel/context.h"
-#include "libspu/kernel/value.h"
+#include "libspu/core/context.h"
+#include "libspu/core/value.h"
 
 // !!please read [README.md] for api naming conventions.
 namespace spu::kernel::hal {
@@ -23,12 +23,12 @@ namespace spu::kernel::hal {
 // This module decode public fxp back to flp and use std math function for
 // evaluation.
 
-Value f_reciprocal_p(HalContext* ctx, const Value& in);
+Value f_reciprocal_p(SPUContext* ctx, const Value& in);
 
-Value f_log_p(HalContext* ctx, const Value& in);
+Value f_log_p(SPUContext* ctx, const Value& in);
 
-Value f_exp_p(HalContext* ctx, const Value& in);
+Value f_exp_p(SPUContext* ctx, const Value& in);
 
-Value f_div_p(HalContext* ctx, const Value& x, const Value& y);
+Value f_div_p(SPUContext* ctx, const Value& x, const Value& y);
 
 }  // namespace spu::kernel::hal

@@ -21,8 +21,8 @@
 #include "yacl/link/link.h"
 
 #include "libspu/core/array_ref.h"
+#include "libspu/core/object.h"
 #include "libspu/mpc/common/communicator.h"
-#include "libspu/mpc/object.h"
 #include "libspu/mpc/spdz2k/beaver/beaver_tfp.h"
 #include "libspu/mpc/spdz2k/commitment.h"
 

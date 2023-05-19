@@ -37,7 +37,7 @@ spu_cc_library(
     srcs = ["utils.cc"],
     hdrs = ["utils.h"],
     deps = [
-        "//libspu/kernel:context",
+        "//libspu/core:context",
         "@com_google_absl//absl/strings",
         "@llvm-project//llvm:Support",
         "@yacl//yacl/link:factory",

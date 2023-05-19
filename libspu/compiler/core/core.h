@@ -34,7 +34,7 @@ public:
 private:
   CompilationContext *ctx_;
 
-  static void buildPipeline(mlir::PassManager *pm);
+  void buildPipeline(mlir::PassManager *pm);
 };
 
 } // namespace spu::compiler

@@ -19,7 +19,7 @@
 namespace spu::kernel::hlo {
 
 #define SIMPLE_UNARY_KERNEL_DECL(NAME) \
-  spu::Value NAME(HalContext *ctx, const spu::Value &in);
+  spu::Value NAME(SPUContext *ctx, const spu::Value &in);
 
 SIMPLE_UNARY_KERNEL_DECL(Reciprocal)
 SIMPLE_UNARY_KERNEL_DECL(Neg)

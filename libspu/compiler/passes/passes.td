@@ -23,8 +23,7 @@ def HloLegalizeToPPHloPass : Pass<"hlo-legalize-to-pphlo", "ModuleOp"> {
   let constructor = "createLegalizeToPPHloPass()";
   let dependentDialects = ["pphlo::PPHloDialect"];
   let options = [
-    Option<"io_visibility_json_", "io-visibility-json", "std::string", "",
-           "io visibility of this module">,
+    ListOption<"input_vis_list_", "input_vis_list", "std::string", "input visibilities to entry point function">,
   ];
 }
 

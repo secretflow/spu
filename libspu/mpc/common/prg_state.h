@@ -19,7 +19,7 @@
 #include "yacl/link/link.h"
 
 #include "libspu/core/array_ref.h"
-#include "libspu/mpc/object.h"
+#include "libspu/core/object.h"
 
 namespace spu::mpc {
 

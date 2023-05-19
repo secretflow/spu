@@ -16,8 +16,11 @@
 
 #include <memory>
 
-namespace mlir {
+namespace spu::compiler {
+class CompilationContext;
+}
 
+namespace mlir {
 namespace func {
 class FuncOp;
 }
@@ -29,12 +32,8 @@ class OperationPass;
 
 namespace pphlo {
 
-/// Lowers from HLO dialect to pphlo dialect with cli io_vis
+/// Lowers from HLO dialect to pphlo dialect
 std::unique_ptr<OperationPass<ModuleOp>> createLegalizeToPPHloPass();
-
-/// Lower from HLO dialect to pphlo dialect with a json io_vis string
-std::unique_ptr<OperationPass<ModuleOp>>
-createLegalizeToPPHloPass(const std::string &io_visibility_json);
 
 // Decompose comparison into lower ops when possible
 std::unique_ptr<OperationPass<func::FuncOp>> createDecomposeComparisonPass();

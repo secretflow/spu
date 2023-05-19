@@ -19,7 +19,7 @@
 
 #include "libspu/core/parallel_utils.h"
 #include "libspu/kernel/hal/constants.h"
-#include "libspu/kernel/hal/test_util.h"
+#include "libspu/kernel/test_util.h"
 
 namespace spu::kernel::hal {
 namespace {
@@ -67,7 +67,7 @@ INSTANTIATE_TEST_SUITE_P(
 // too slowly, disable for now. wait for linalg::matmul optimization.
 TEST_P(FxpMmulTest, Works) {
   // GIVEN
-  HalContext ctx = test::makeRefHalContext();
+  SPUContext ctx = test::makeSPUContext();
 
   size_t m = std::get<0>(GetParam());
   size_t n = std::get<1>(GetParam());
@@ -102,7 +102,7 @@ TEST_P(FxpMmulTest, Works) {
 
 TEST(FxpTest, Reciprocal) {
   // GIVEN
-  HalContext ctx = test::makeRefHalContext();
+  SPUContext ctx = test::makeSPUContext();
 
   // default fxp bits is 18 for FM64.
   xt::xarray<float> x = {
@@ -138,7 +138,7 @@ TEST(FxpTest, Reciprocal) {
 
 TEST(FxpTest, Div) {
   // GIVEN
-  HalContext ctx = test::makeRefHalContext();
+  SPUContext ctx = test::makeSPUContext();
 
   xt::xarray<float> x = {{1.0, -200000.0, 7000000, -0.5, 314000, 1.5}};
   xt::xarray<float> y = {{1.0, 200000.0, 200000, 100, 3.14, 0.003}};
@@ -185,7 +185,7 @@ TEST(FxpTest, Div) {
 
 TEST(FxpTest, Abs) {
   // GIVEN
-  HalContext ctx = test::makeRefHalContext();
+  SPUContext ctx = test::makeSPUContext();
 
   xt::xarray<float> x = {{0.5, -2.0}, {0.9, -1.8}};
 
@@ -217,7 +217,7 @@ TEST(FxpTest, Abs) {
 
 TEST(FxpTest, Floor) {
   // GIVEN
-  HalContext ctx = test::makeRefHalContext();
+  SPUContext ctx = test::makeSPUContext();
 
   xt::xarray<float> x = {{0.5, -0.5}, {-20.0, 31.8}, {0, 5.0}, {-5.0, -31.8}};
 
@@ -249,7 +249,7 @@ TEST(FxpTest, Floor) {
 
 TEST(FxpTest, Ceil) {
   // GIVEN
-  HalContext ctx = test::makeRefHalContext();
+  SPUContext ctx = test::makeSPUContext();
 
   xt::xarray<float> x = {{0.5, -0.5}, {-20.0, 31.8}, {0, 5.0}, {-5.0, -31.8}};
 

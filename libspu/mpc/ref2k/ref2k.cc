@@ -60,21 +60,19 @@ class Ref2kCommonTypeS : public Kernel {
   }
 };
 
-class Ref2kCastTypeS : public Kernel {
+class Ref2kCastTypeS : public CastTypeKernel {
  public:
   static constexpr char kBindName[] = "cast_type_s";
 
   Kind kind() const override { return Kind::Dynamic; }
 
-  void evaluate(KernelEvalContext* ctx) const override {
-    const auto& in = ctx->getParam<ArrayRef>(0);
-    const auto& to_type = ctx->getParam<Type>(1);
-
+  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in,
+                const Type& to_type) const override {
     SPU_TRACE_MPC_DISP(ctx, in, to_type);
     SPU_ENFORCE(in.eltype() == to_type,
                 "semi2k always use same bshare type, lhs={}, rhs={}",
                 in.eltype(), to_type);
-    ctx->setOutput(in);
+    return in;
   }
 };
 
@@ -104,7 +102,7 @@ class Ref2kS2P : public UnaryKernel {
   }
 };
 
-class Ref2kRandS : public Kernel {
+class Ref2kRandS : public RandKernel {
  public:
   static constexpr char kBindName[] = "rand_s";
 
@@ -112,12 +110,7 @@ class Ref2kRandS : public Kernel {
 
   ce::CExpr comm() const override { return ce::Const(0); }
 
-  void evaluate(KernelEvalContext* ctx) const override {
-    ctx->setOutput(proc(ctx, ctx->getParam<size_t>(0)));
-  }
-
-  static ArrayRef proc(KernelEvalContext* ctx, size_t size) {
-    SPU_TRACE_MPC_LEAF(ctx, size);
+  ArrayRef proc(KernelEvalContext* ctx, size_t size) const override {
     auto* state = ctx->getState<PrgState>();
     const auto field = ctx->getState<Z2kState>()->getDefaultField();
 
@@ -409,47 +402,52 @@ class Ref2kMsbS : public UnaryKernel {
 
 }  // namespace
 
-std::unique_ptr<Object> makeRef2kProtocol(
-    const RuntimeConfig& conf,
-    const std::shared_ptr<yacl::link::Context>& lctx) {
+void regRef2kProtocol(SPUContext* ctx,
+                      const std::shared_ptr<yacl::link::Context>& lctx) {
   registerTypes();
 
-  auto obj = std::make_unique<Object>("REF2K");
-
   // register random states & kernels.
-  obj->addState<PrgState>();
+  ctx->prot()->addState<PrgState>();
 
   // add Z2k state.
-  obj->addState<Z2kState>(conf.field());
+  ctx->prot()->addState<Z2kState>(ctx->config().field());
 
   // register public kernels.
-  regPub2kKernels(obj.get());
+  regPub2kKernels(ctx->prot());
 
   // register compute kernels
-  obj->regKernel<Ref2kCommonTypeS>();
-  obj->regKernel<Ref2kCastTypeS>();
-  obj->regKernel<Ref2kP2S>();
-  obj->regKernel<Ref2kS2P>();
-  obj->regKernel<Ref2kNotS>();
-  obj->regKernel<Ref2kAddSS>();
-  obj->regKernel<Ref2kAddSP>();
-  obj->regKernel<Ref2kMulSS>();
-  obj->regKernel<Ref2kMulSP>();
-  obj->regKernel<Ref2kMatMulSS>();
-  obj->regKernel<Ref2kMatMulSP>();
-  obj->regKernel<Ref2kAndSS>();
-  obj->regKernel<Ref2kAndSP>();
-  obj->regKernel<Ref2kXorSS>();
-  obj->regKernel<Ref2kXorSP>();
-  obj->regKernel<Ref2kLShiftS>();
-  obj->regKernel<Ref2kRShiftS>();
-  obj->regKernel<Ref2kBitrevS>();
-  obj->regKernel<Ref2kARShiftS>();
-  obj->regKernel<Ref2kTruncS>();
-  obj->regKernel<Ref2kMsbS>();
-  obj->regKernel<Ref2kRandS>();
+  ctx->prot()->regKernel<Ref2kCommonTypeS>();
+  ctx->prot()->regKernel<Ref2kCastTypeS>();
+  ctx->prot()->regKernel<Ref2kP2S>();
+  ctx->prot()->regKernel<Ref2kS2P>();
+  ctx->prot()->regKernel<Ref2kNotS>();
+  ctx->prot()->regKernel<Ref2kAddSS>();
+  ctx->prot()->regKernel<Ref2kAddSP>();
+  ctx->prot()->regKernel<Ref2kMulSS>();
+  ctx->prot()->regKernel<Ref2kMulSP>();
+  ctx->prot()->regKernel<Ref2kMatMulSS>();
+  ctx->prot()->regKernel<Ref2kMatMulSP>();
+  ctx->prot()->regKernel<Ref2kAndSS>();
+  ctx->prot()->regKernel<Ref2kAndSP>();
+  ctx->prot()->regKernel<Ref2kXorSS>();
+  ctx->prot()->regKernel<Ref2kXorSP>();
+  ctx->prot()->regKernel<Ref2kLShiftS>();
+  ctx->prot()->regKernel<Ref2kRShiftS>();
+  ctx->prot()->regKernel<Ref2kBitrevS>();
+  ctx->prot()->regKernel<Ref2kARShiftS>();
+  ctx->prot()->regKernel<Ref2kTruncS>();
+  ctx->prot()->regKernel<Ref2kMsbS>();
+  ctx->prot()->regKernel<Ref2kRandS>();
+}
 
-  return obj;
+std::unique_ptr<SPUContext> makeRef2kProtocol(
+    const RuntimeConfig& conf,
+    const std::shared_ptr<yacl::link::Context>& lctx) {
+  auto ctx = std::make_unique<SPUContext>(conf, lctx);
+
+  regRef2kProtocol(ctx.get(), lctx);
+
+  return ctx;
 }
 
 std::vector<ArrayRef> Ref2kIo::toShares(const ArrayRef& raw, Visibility vis,

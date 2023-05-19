@@ -29,7 +29,7 @@ namespace detail {
 //
 // Coefficients should be ordered from the order 1 (linear) term first, ending
 // with the highest order term. (Constant is not included).
-Value f_polynomial(HalContext* ctx, const Value& x,
+Value f_polynomial(SPUContext* ctx, const Value& x,
                    const std::vector<Value>& coeffs) {
   SPU_TRACE_HAL_DISP(ctx, x);
   SPU_ENFORCE(x.isFxp());
@@ -52,7 +52,7 @@ Value f_polynomial(HalContext* ctx, const Value& x,
   return _trunc(ctx, res).asFxp();
 }
 
-Value highestOneBit(HalContext* ctx, const Value& x) {
+Value highestOneBit(SPUContext* ctx, const Value& x) {
   auto y = _prefix_or(ctx, x);
   auto y1 = _rshift(ctx, y, 1);
   return _xor(ctx, y, y1);
@@ -93,7 +93,7 @@ void hintNumberOfBits(const Value& a, size_t nbits) {
 //   return r * a * 2^{-m}
 //
 // Precision is decided by magic number, i.e 2.9142 and f.
-Value div_goldschmidt(HalContext* ctx, const Value& a, const Value& b) {
+Value div_goldschmidt(SPUContext* ctx, const Value& a, const Value& b) {
   SPU_TRACE_HAL_DISP(ctx, a, b);
 
   // We prefer  b_abs = b < 0 ? -b : b over b_abs = sign(b) * b
@@ -125,7 +125,7 @@ Value div_goldschmidt(HalContext* ctx, const Value& a, const Value& b) {
   auto r = w;
   auto e = f_sub(ctx, k1_, f_mul_with_sign(ctx, c, w, SignType::POSITIVE));
 
-  const size_t num_iters = ctx->rt_config().fxp_div_goldschmidt_iters();
+  const size_t num_iters = ctx->config().fxp_div_goldschmidt_iters();
   SPU_ENFORCE(num_iters != 0, "fxp_div_goldschmidt_iters should not be {}",
               num_iters);
 
@@ -144,7 +144,7 @@ Value div_goldschmidt(HalContext* ctx, const Value& a, const Value& b) {
   return _mux(ctx, is_negative, _negate(ctx, r), r).asFxp();
 }
 
-Value reciprocal_goldschmidt_positive(HalContext* ctx, const Value& b_abs) {
+Value reciprocal_goldschmidt_positive(SPUContext* ctx, const Value& b_abs) {
   auto b_msb = detail::highestOneBit(ctx, b_abs);
 
   // factor = 2^{2f-m} = 2^{f-m} * 2^f, the fixed point repr of 2^{f-m}
@@ -166,7 +166,7 @@ Value reciprocal_goldschmidt_positive(HalContext* ctx, const Value& b_abs) {
   auto r = w;
   auto e = f_sub(ctx, k1_, f_mul_with_sign(ctx, b_abs, w, SignType::POSITIVE));
 
-  const size_t num_iters = ctx->rt_config().fxp_div_goldschmidt_iters();
+  const size_t num_iters = ctx->config().fxp_div_goldschmidt_iters();
   SPU_ENFORCE(num_iters != 0, "fxp_div_goldschmidt_iters should not be {}",
               num_iters);
 
@@ -183,7 +183,7 @@ Value reciprocal_goldschmidt_positive(HalContext* ctx, const Value& b_abs) {
 
 // NOTE(junfeng): we have a seperate reciprocal_goldschmidt is to avoid
 // unnecessary f_mul for y initiation in div_goldschmidt.
-Value reciprocal_goldschmidt(HalContext* ctx, const Value& b) {
+Value reciprocal_goldschmidt(SPUContext* ctx, const Value& b) {
   SPU_TRACE_HAL_DISP(ctx, b);
 
   auto is_negative = _msb(ctx, b);
@@ -196,14 +196,14 @@ Value reciprocal_goldschmidt(HalContext* ctx, const Value& b) {
 
 }  // namespace detail
 
-Value f_negate(HalContext* ctx, const Value& x) {
+Value f_negate(SPUContext* ctx, const Value& x) {
   SPU_TRACE_HAL_LEAF(ctx, x);
 
   SPU_ENFORCE(x.isFxp());
   return _negate(ctx, x).asFxp();
 }
 
-Value f_abs(HalContext* ctx, const Value& x) {
+Value f_abs(SPUContext* ctx, const Value& x) {
   SPU_TRACE_HAL_LEAF(ctx, x);
 
   SPU_ENFORCE(x.isFxp());
@@ -212,7 +212,7 @@ Value f_abs(HalContext* ctx, const Value& x) {
   return _mul(ctx, sign, x).asFxp();
 }
 
-Value f_reciprocal(HalContext* ctx, const Value& x) {
+Value f_reciprocal(SPUContext* ctx, const Value& x) {
   SPU_TRACE_HAL_LEAF(ctx, x);
 
   SPU_ENFORCE(x.isFxp());
@@ -223,7 +223,7 @@ Value f_reciprocal(HalContext* ctx, const Value& x) {
   return detail::reciprocal_goldschmidt(ctx, x);
 }
 
-Value f_add(HalContext* ctx, const Value& x, const Value& y) {
+Value f_add(SPUContext* ctx, const Value& x, const Value& y) {
   SPU_TRACE_HAL_LEAF(ctx, x, y);
 
   SPU_ENFORCE(x.isFxp());
@@ -232,7 +232,7 @@ Value f_add(HalContext* ctx, const Value& x, const Value& y) {
   return _add(ctx, x, y).asFxp();
 }
 
-Value f_sub(HalContext* ctx, const Value& x, const Value& y) {
+Value f_sub(SPUContext* ctx, const Value& x, const Value& y) {
   SPU_TRACE_HAL_LEAF(ctx, x, y);
 
   SPU_ENFORCE(x.isFxp());
@@ -240,7 +240,7 @@ Value f_sub(HalContext* ctx, const Value& x, const Value& y) {
   return f_add(ctx, x, f_negate(ctx, y));
 }
 
-Value f_mul(HalContext* ctx, const Value& x, const Value& y) {
+Value f_mul(SPUContext* ctx, const Value& x, const Value& y) {
   SPU_TRACE_HAL_LEAF(ctx, x, y);
 
   SPU_ENFORCE(x.isFxp());
@@ -248,7 +248,7 @@ Value f_mul(HalContext* ctx, const Value& x, const Value& y) {
   return _trunc(ctx, _mul(ctx, x, y)).asFxp();
 }
 
-Value f_mul_with_sign(HalContext* ctx, const Value& x, const Value& y,
+Value f_mul_with_sign(SPUContext* ctx, const Value& x, const Value& y,
                       SignType sign) {
   SPU_TRACE_HAL_LEAF(ctx, x, y);
 
@@ -273,7 +273,7 @@ Value f_mul_with_sign(HalContext* ctx, const Value& x, const Value& y,
   }
 }
 
-Value f_mmul(HalContext* ctx, const Value& x, const Value& y) {
+Value f_mmul(SPUContext* ctx, const Value& x, const Value& y) {
   SPU_TRACE_HAL_LEAF(ctx, x, y);
 
   SPU_ENFORCE(x.isFxp());
@@ -282,7 +282,7 @@ Value f_mmul(HalContext* ctx, const Value& x, const Value& y) {
   return _trunc(ctx, _mmul(ctx, x, y)).asFxp();
 }
 
-Value f_conv2d(HalContext* ctx, const Value& x, const Value& y,
+Value f_conv2d(SPUContext* ctx, const Value& x, const Value& y,
                absl::Span<const int64_t> window_strides,
                absl::Span<const int64_t> result_shape) {
   SPU_TRACE_HAL_LEAF(ctx, x, y);
@@ -293,7 +293,7 @@ Value f_conv2d(HalContext* ctx, const Value& x, const Value& y,
   return _trunc(ctx, _conv2d(ctx, x, y, window_strides, result_shape)).asFxp();
 }
 
-Value f_div(HalContext* ctx, const Value& x, const Value& y) {
+Value f_div(SPUContext* ctx, const Value& x, const Value& y) {
   SPU_TRACE_HAL_LEAF(ctx, x, y);
 
   SPU_ENFORCE(x.isFxp());
@@ -306,7 +306,7 @@ Value f_div(HalContext* ctx, const Value& x, const Value& y) {
   return detail::div_goldschmidt(ctx, x, y);
 }
 
-Value f_equal(HalContext* ctx, const Value& x, const Value& y) {
+Value f_equal(SPUContext* ctx, const Value& x, const Value& y) {
   SPU_TRACE_HAL_LEAF(ctx, x, y);
 
   SPU_ENFORCE(x.isFxp());
@@ -315,7 +315,7 @@ Value f_equal(HalContext* ctx, const Value& x, const Value& y) {
   return _equal(ctx, x, y).setDtype(DT_I1);
 }
 
-Value f_less(HalContext* ctx, const Value& x, const Value& y) {
+Value f_less(SPUContext* ctx, const Value& x, const Value& y) {
   SPU_TRACE_HAL_LEAF(ctx, x, y);
 
   SPU_ENFORCE(x.isFxp());
@@ -324,7 +324,7 @@ Value f_less(HalContext* ctx, const Value& x, const Value& y) {
   return _less(ctx, x, y).setDtype(DT_I1);
 }
 
-Value f_square(HalContext* ctx, const Value& x) {
+Value f_square(SPUContext* ctx, const Value& x) {
   SPU_TRACE_HAL_LEAF(ctx, x);
 
   SPU_ENFORCE(x.isFxp());
@@ -335,7 +335,7 @@ Value f_square(HalContext* ctx, const Value& x) {
       .asFxp();
 }
 
-Value f_floor(HalContext* ctx, const Value& x) {
+Value f_floor(SPUContext* ctx, const Value& x) {
   SPU_TRACE_HAL_LEAF(ctx, x);
 
   SPU_ENFORCE(x.isFxp());
@@ -344,7 +344,7 @@ Value f_floor(HalContext* ctx, const Value& x) {
   return _lshift(ctx, _arshift(ctx, x, fbits), fbits).asFxp();
 }
 
-Value f_ceil(HalContext* ctx, const Value& x) {
+Value f_ceil(SPUContext* ctx, const Value& x) {
   SPU_TRACE_HAL_LEAF(ctx, x);
 
   SPU_ENFORCE(x.isFxp());

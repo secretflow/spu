@@ -18,12 +18,12 @@
 #include <vector>
 
 #include "absl/types/span.h"
-#include "spdlog/spdlog.h"
 #include "yacl/base/buffer.h"
 
 #include "libspu/core/array_ref.h"
 #include "libspu/core/shape_util.h"
 #include "libspu/core/type.h"
+#include "libspu/core/vectorize.h"
 
 // #define ITER_DEBUG
 
@@ -87,6 +87,7 @@ class NdArrayRef {
 
   // Return the element type.
   const Type& eltype() const { return eltype_; }
+  Type& eltype() { return eltype_; }
 
   // Return the element size.
   size_t elsize() const { return eltype_.size(); }
@@ -130,11 +131,13 @@ class NdArrayRef {
 
   struct Iterator {
    public:
+    // NOLINTBEGIN, readability-identifier-naming
     using iterator_category = std::forward_iterator_tag;
     using difference_type = std::ptrdiff_t;
     using value_type = std::byte;
     using pointer = std::byte*;
     using reference = std::byte&;
+    // NOLINTEND
 
     explicit Iterator(const NdArrayRef& array, std::vector<int64_t> coord,
                       bool invalid = false)
@@ -290,6 +293,57 @@ class NdArrayRef {
 
  private:
   void eliminate_zero_stride();
+};
+
+template <>
+struct SimdTrait<NdArrayRef> {
+  using Shape = std::vector<int64_t>;  // TODO: use a formal shape definition.
+  using PackInfo = std::vector<Shape>;
+
+  template <typename InputIt>
+  static NdArrayRef pack(InputIt first, InputIt last, PackInfo& pi) {
+    SPU_ENFORCE(first != last);
+
+    int64_t total_numel = 0;
+    const Type ty = first->eltype();
+    for (auto itr = first; itr != last; ++itr) {
+      SPU_ENFORCE(itr->eltype() == ty, "type mismatch {} != {}", itr->eltype(),
+                  ty);
+      total_numel += itr->numel();
+    }
+    NdArrayRef result(first->eltype(), {total_numel});
+    int64_t offset = 0;
+    for (; first != last; ++first) {
+      NdArrayRef slice(result.buf(), ty, first->shape(),
+                       makeCompactStrides(first->shape()), offset);
+      const std::vector<int64_t> start_index(first->ndim(), 0);
+      slice.copy_slice(*first, start_index, start_index, first->numel());
+      pi.push_back(first->shape());
+      offset += first->numel() * ty.size();
+    }
+    return result;
+  }
+
+  template <typename OutputIt>
+  static OutputIt unpack(const NdArrayRef& v, OutputIt result,
+                         const PackInfo& pi) {
+    int64_t total_num = 0;
+    for (const auto& shape : pi) {
+      total_num += calcNumel(shape);
+    }
+
+    SPU_ENFORCE(v.numel() == total_num, "split number mismatch {} != {}",
+                v.numel(), total_num);
+
+    int64_t offset = 0;
+    for (const auto& shape : pi) {
+      *result++ = NdArrayRef(v.buf(), v.eltype(), shape,
+                             makeCompactStrides(shape), offset);
+      offset += calcNumel(shape) * v.elsize();
+    }
+
+    return result;
+  }
 };
 
 // Unflatten a 1d-array to an ndarray.

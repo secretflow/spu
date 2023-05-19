@@ -131,25 +131,19 @@ class Io(object):
 
 
 @cached(cache=LRUCache(maxsize=128))
-def _spu_compilation(ir_text: str, ir_type: str, json_meta: str):
-    pp_dir = os.getenv('SPU_IR_DUMP_DIR')
-    return libspu.compile(ir_text, ir_type, json_meta, pp_dir or "")
+def _spu_compilation(source: str, options_str: str):
+    return libspu.compile(source, options_str)
 
 
-def compile(ir_text: str, ir_type: str, vis: List[spu_pb2.Visibility]) -> str:
+def compile(source: spu_pb2.CompilationSource, copts: spu_pb2.CompilerOptions) -> str:
     """Compile from textual HLO/MHLO IR to SPU bytecode.
 
     Args:
-        ir_text (str): textual HLO/MHLO IR protobuf binary format.
-        ir_type (str): "hlo" or "mhlo".
-        vtype (spu_pb2.Visibility): Visbilities .
+        source (spu_pb2.CompilationSource): input to compiler.
+        copts (spu_pb2.CompilerOptions): compiler options.
 
     Returns:
         [spu_pb2.ValueProto]: output.
     """
-    from google.protobuf.json_format import MessageToJson
 
-    # todo: rename spu_pb2.XlaMeta to IrMeta?
-    return _spu_compilation(
-        ir_text, ir_type, MessageToJson(spu_pb2.XlaMeta(inputs=vis))
-    )
+    return _spu_compilation(source.SerializeToString(), copts.SerializeToString())

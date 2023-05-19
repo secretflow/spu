@@ -12,15 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "libspu/mpc/object.h"
+#include "libspu/core/object.h"
 
-namespace spu::mpc {
+namespace spu {
 
 std::unique_ptr<State> State::fork() {
   SPU_THROW("Not implemented, the sub class should override this");
 }
 
-std::unique_ptr<Object> Object::fork() {
+std::unique_ptr<Object> Object::fork() const {
   auto new_id = fmt::format("{}-{}", id_, child_counter_++);
   auto new_obj = std::make_unique<Object>(new_id, id_);
   new_obj->kernels_ = kernels_;
@@ -39,21 +39,22 @@ bool Object::hasLowCostFork() const {
   return true;
 }
 
-void Object::regKernel(std::string_view name, std::unique_ptr<Kernel> kernel) {
+void Object::regKernel(const std::string& name,
+                       std::unique_ptr<Kernel> kernel) {
   const auto itr = kernels_.find(name);
   SPU_ENFORCE(itr == kernels_.end(), "kernel={} already exist", name);
   kernels_.insert({name, std::move(kernel)});
 }
 
-Kernel* Object::getKernel(std::string_view name) {
+Kernel* Object::getKernel(const std::string& name) const {
   const auto itr = kernels_.find(name);
   SPU_ENFORCE(itr != kernels_.end(), "kernel={} not found", name);
   return itr->second.get();
 }
 
-bool Object::hasKernel(std::string_view name) const {
+bool Object::hasKernel(const std::string& name) const {
   const auto itr = kernels_.find(name);
   return itr != kernels_.end();
 }
 
-}  // namespace spu::mpc
+}  // namespace spu

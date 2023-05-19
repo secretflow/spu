@@ -21,8 +21,8 @@
 #include "mlir/IR/BuiltinOps.h"
 #include "mlir/IR/MLIRContext.h"
 
-#include "libspu/kernel/context.h"
-#include "libspu/kernel/value.h"
+#include "libspu/core/context.h"
+#include "libspu/core/value.h"
 
 namespace spu::device {
 
@@ -71,28 +71,28 @@ class OpExecutor {
   virtual bool hasKernel(mlir::Operation &op) const = 0;
 
   // run a kernel in a given region.
-  virtual void runKernelImpl(HalContext *hctx, SymbolScope *sscope,
+  virtual void runKernelImpl(SPUContext *sctx, SymbolScope *sscope,
                              mlir::Operation &op,
                              const ExecutionOptions &opts) = 0;
 
-  void runKernel(HalContext *hctx, SymbolScope *sscope, mlir::Operation &op,
+  void runKernel(SPUContext *sctx, SymbolScope *sscope, mlir::Operation &op,
                  const ExecutionOptions &opts = {}) {
-    return runKernelImpl(hctx, sscope, op, opts);
+    return runKernelImpl(sctx, sscope, op, opts);
   }
 };
 
-std::vector<spu::Value> runRegion(OpExecutor *executor, HalContext *hctx,
+std::vector<spu::Value> runRegion(OpExecutor *executor, SPUContext *sctx,
                                   SymbolScope *parent_scope,
                                   mlir::Region &region,
                                   absl::Span<spu::Value const> params,
                                   const ExecutionOptions &opts = {});
 
-std::vector<spu::Value> runBlock(OpExecutor *executor, HalContext *hctx,
+std::vector<spu::Value> runBlock(OpExecutor *executor, SPUContext *sctx,
                                  SymbolScope *symbols, mlir::Block &block,
                                  absl::Span<spu::Value const> params,
                                  const ExecutionOptions &opts);
 
-std::vector<spu::Value> runBlockParallel(OpExecutor *executor, HalContext *hctx,
+std::vector<spu::Value> runBlockParallel(OpExecutor *executor, SPUContext *sctx,
                                          SymbolScope *symbols,
                                          mlir::Block &block,
                                          absl::Span<spu::Value const> params,

@@ -27,27 +27,26 @@
 
 namespace spu::mpc {
 
-std::unique_ptr<Object> Factory::CreateCompute(
-    const RuntimeConfig& conf,
-    const std::shared_ptr<yacl::link::Context>& lctx) {
-  switch (conf.protocol()) {
+void Factory::RegisterProtocol(
+    SPUContext* ctx, const std::shared_ptr<yacl::link::Context>& lctx) {
+  // TODO: support multi-protocols.
+  switch (ctx->config().protocol()) {
     case ProtocolKind::REF2K: {
-      return makeRef2kProtocol(conf, lctx);
+      return regRef2kProtocol(ctx, lctx);
     }
     case ProtocolKind::SEMI2K: {
-      return makeSemi2kProtocol(conf, lctx);
+      return regSemi2kProtocol(ctx, lctx);
     }
     case ProtocolKind::ABY3: {
-      return makeAby3Protocol(conf, lctx);
+      return regAby3Protocol(ctx, lctx);
     }
     case ProtocolKind::CHEETAH: {
-      return makeCheetahProtocol(conf, lctx);
+      return regCheetahProtocol(ctx, lctx);
     }
     default: {
-      SPU_THROW("Invalid protocol kind {}", conf.protocol());
+      SPU_THROW("Invalid protocol kind {}", ctx->config().protocol());
     }
   }
-  return nullptr;
 }
 
 std::unique_ptr<IoInterface> Factory::CreateIO(const RuntimeConfig& conf,

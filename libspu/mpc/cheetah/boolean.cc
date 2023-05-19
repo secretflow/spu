@@ -14,7 +14,6 @@
 
 #include "libspu/mpc/cheetah/boolean.h"
 
-#include "libspu/core/trace.h"
 #include "libspu/mpc/cheetah/state.h"
 #include "libspu/mpc/common/pub2k.h"
 #include "libspu/mpc/utils/ring_ops.h"
@@ -24,7 +23,6 @@ constexpr size_t kMinWorkSize = 5000;
 
 ArrayRef AndBB::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
                      const ArrayRef& rhs) const {
-  SPU_TRACE_MPC_LEAF(ctx, lhs, rhs);
   SPU_ENFORCE_EQ(lhs.numel(), rhs.numel());
 
   auto* comm = ctx->getState<Communicator>();

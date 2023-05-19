@@ -13,6 +13,7 @@
 # limitations under the License.
 
 load("//bazel:glob_lit_test.bzl", "glob_lit_tests")
+load("//bazel:spu.bzl", "spu_cc_test")
 
 glob_lit_tests(
     data = [":test_utilities"],
@@ -28,5 +29,14 @@ filegroup(
         "lit.cfg",
         "//libspu/compiler/tools:mlir-pphlo-opt",
         "@llvm-project//llvm:FileCheck",
+    ],
+)
+
+spu_cc_test(
+    name = "enum_conversion_test",
+    srcs = ["enum_conversion_test.cc"],
+    deps = [
+        "//libspu:spu_cc_proto",
+        "//libspu/dialect:pphlo_dialect",
     ],
 )

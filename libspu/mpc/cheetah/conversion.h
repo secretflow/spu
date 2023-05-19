@@ -16,7 +16,6 @@
 
 #include "libspu/mpc/kernel.h"
 #include "libspu/mpc/semi2k/conversion.h"
-#include "libspu/mpc/utils/cexpr.h"
 
 namespace spu::mpc::cheetah {
 

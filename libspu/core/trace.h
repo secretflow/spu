@@ -351,13 +351,13 @@ std::shared_ptr<Tracer> getTracer(const std::string& id,
 
 // trace an mpc layer dispatch
 #define SPU_TRACE_MPC_DISP(CTX, ...)                                   \
-  SPU_TRACE_ACTION(GET_TRACER(CTX->caller()), (TR_MPC | TR_LOG), (~0), \
-                   kBindName, ##__VA_ARGS__)
+  SPU_TRACE_ACTION(GET_TRACER(CTX), (TR_MPC | TR_LOG), (~0), __func__, \
+                   ##__VA_ARGS__)
 
 // trace an mpc layer leaf
 #define SPU_TRACE_MPC_LEAF(CTX, ...)                                        \
-  SPU_TRACE_ACTION(GET_TRACER(CTX->caller()), (TR_MPC | TR_LAR), (~TR_MPC), \
-                   kBindName, ##__VA_ARGS__)
+  SPU_TRACE_ACTION(GET_TRACER(CTX), (TR_MPC | TR_LAR), (~TR_MPC), __func__, \
+                   ##__VA_ARGS__)
 
 // Debug purpose only.
 class MemProfilingGuard {

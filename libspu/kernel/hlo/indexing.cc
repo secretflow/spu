@@ -19,6 +19,7 @@
 #include "llvm/ADT/STLExtras.h"
 
 #include "libspu/core/ndarray_ref.h"
+#include "libspu/core/value.h"
 #include "libspu/kernel/hal/hal.h"
 #include "libspu/kernel/hal/ring.h"
 #include "libspu/kernel/hlo/basic_binary.h"
@@ -28,7 +29,6 @@
 #include "libspu/kernel/hlo/geometrical.h"
 #include "libspu/kernel/hlo/reduce.h"
 #include "libspu/kernel/hlo/utils.h"
-#include "libspu/kernel/value.h"
 
 namespace {
 struct IndexIterationSpace {
@@ -294,7 +294,7 @@ class OutputOffsetIndexToInputIndex {
   std::vector<int64_t> input_index_;
 };
 
-spu::Value reshapedGatherIndices(spu::HalContext *ctx, int64_t index_vector_dim,
+spu::Value reshapedGatherIndices(spu::SPUContext *ctx, int64_t index_vector_dim,
                                  const spu::Value &start_indices) {
   if (start_indices.shape().size() != static_cast<size_t>(index_vector_dim)) {
     return start_indices;
@@ -306,7 +306,7 @@ spu::Value reshapedGatherIndices(spu::HalContext *ctx, int64_t index_vector_dim,
   return spu::kernel::hal::reshape(ctx, start_indices, new_shape);
 }
 
-spu::Value SecretLinearUpdateIndexing(spu::HalContext *ctx,
+spu::Value SecretLinearUpdateIndexing(spu::SPUContext *ctx,
                                       const spu::Value &operand,
                                       const spu::Value &update,
                                       const spu::Value &linear_idx) {
@@ -337,7 +337,7 @@ spu::Value SecretLinearUpdateIndexing(spu::HalContext *ctx,
 }
 
 std::vector<spu::Value> ClampAndFlattenIndex(
-    spu::HalContext *ctx, absl::Span<const spu::Value> start_indices,
+    spu::SPUContext *ctx, absl::Span<const spu::Value> start_indices,
     absl::Span<const int64_t> iterate_shape,
     absl::Span<const int64_t> limit_shape) {
   // Transform start_indices
@@ -420,7 +420,7 @@ std::vector<spu::Value> ClampAndFlattenIndex(
 
 namespace spu::kernel::hlo {
 
-spu::Value Gather(HalContext *ctx, const spu::Value &operand,
+spu::Value Gather(SPUContext *ctx, const spu::Value &operand,
                   const spu::Value &start_indices, const GatherConfig &config,
                   absl::Span<const int64_t> result_shape) {
   // If input is empty, short circuit
@@ -517,7 +517,7 @@ spu::Value Gather(HalContext *ctx, const spu::Value &operand,
   return result;
 }
 
-spu::Value DynamicUpdateSlice(HalContext *ctx, const spu::Value &operand,
+spu::Value DynamicUpdateSlice(SPUContext *ctx, const spu::Value &operand,
                               const spu::Value &update,
                               absl::Span<const spu::Value> start_indices) {
   // Basic idea here, get a ref slice and update the whole slice..
@@ -569,14 +569,14 @@ spu::Value DynamicUpdateSlice(HalContext *ctx, const spu::Value &operand,
   }
 }
 
-spu::Value UpdateSlice(HalContext *ctx, const spu::Value &in,
+spu::Value UpdateSlice(SPUContext *ctx, const spu::Value &in,
                        const spu::Value &update,
                        absl::Span<const int64_t> start_indices) {
   return hal::update_slice(ctx, in, update, start_indices);
 }
 
 spu::Value SecretDynamicSlice(
-    HalContext *ctx, const spu::Value &operand,
+    SPUContext *ctx, const spu::Value &operand,
     absl::Span<const int64_t> slice_size,
     absl::Span<const spu::Value> start_indices,
     std::vector<std::optional<spu::Value>>::iterator index_cache_mask) {
@@ -677,7 +677,7 @@ spu::Value SecretDynamicSlice(
   return hal::concatenate(ctx, results, 0);
 }
 
-spu::Value DynamicSlice(HalContext *ctx, const spu::Value &operand,
+spu::Value DynamicSlice(SPUContext *ctx, const spu::Value &operand,
                         absl::Span<const int64_t> slice_size,
                         absl::Span<const spu::Value> start_indices) {
   SPU_ENFORCE_EQ(slice_size.size(), start_indices.size());
@@ -716,7 +716,7 @@ spu::Value DynamicSlice(HalContext *ctx, const spu::Value &operand,
   }
 }
 
-spu::Value FilterByMask(HalContext *ctx, const spu::Value &operand,
+spu::Value FilterByMask(SPUContext *ctx, const spu::Value &operand,
                         absl::Span<const uint8_t> mask) {
   // Sanity
   SPU_ENFORCE(operand.shape().size() == 1, "Operand must be a vector");
@@ -743,12 +743,12 @@ spu::Value FilterByMask(HalContext *ctx, const spu::Value &operand,
   return Value(operand.data().linear_gather(indices), operand.dtype());
 }
 
-spu::Value LinearGather(HalContext *ctx, const spu::Value &in,
+spu::Value LinearGather(SPUContext *ctx, const spu::Value &in,
                         absl::Span<const int64_t> indices) {
   return Value(in.data().linear_gather(indices), in.dtype());
 }
 
-void LinearScatterInPlace(HalContext *ctx, spu::Value &in,
+void LinearScatterInPlace(SPUContext *ctx, spu::Value &in,
                           const spu::Value &update,
                           absl::Span<const int64_t> indices) {
   if (in.data().eltype() != update.data().eltype()) {

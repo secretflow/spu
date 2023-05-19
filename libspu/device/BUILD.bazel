@@ -47,9 +47,9 @@ spu_cc_library(
         ":device_cc_proto",
         ":symbol_table",
         "//libspu:spu_cc_proto",
+        "//libspu/core:context",
         "//libspu/core:pt_buffer_view",
-        "//libspu/kernel:context",
-        "//libspu/kernel:value",
+        "//libspu/core:value",
         "//libspu/kernel/hal:constants",
         "//libspu/kernel/hal:public_helper",
         "//libspu/mpc:factory",
@@ -73,9 +73,9 @@ spu_cc_library(
         ":device_cc_proto",
         ":symbol_table",
         "//libspu:spu_cc_proto",
+        "//libspu/core:context",
+        "//libspu/core:value",
         "//libspu/dialect:pphlo_dialect",
-        "//libspu/kernel:context",
-        "//libspu/kernel:value",
         "@llvm-project//mlir:IR",
     ],
 )
@@ -113,6 +113,6 @@ spu_cc_library(
     deps = [
         ":device_cc_proto",
         "//libspu/core:pt_buffer_view",
-        "//libspu/kernel:value",
+        "//libspu/core:value",
     ],
 )

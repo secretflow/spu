@@ -14,18 +14,24 @@
 
 #include "xtensor/xrandom.hpp"
 
+#include "libspu/core/context.h"
+#include "libspu/core/shape_util.h"
+#include "libspu/core/value.h"
 #include "libspu/core/xt_helper.h"
-#include "libspu/kernel/hal/constants.h"
-#include "libspu/kernel/hal/prot_wrapper.h"
-#include "libspu/kernel/hal/public_helper.h"
+#include "libspu/kernel/hal/prot_wrapper.h"   // bad reference
+#include "libspu/kernel/hal/public_helper.h"  // bad reference
 
-namespace spu::kernel::hal::test {
+namespace spu::kernel::test {
 
-HalContext makeRefHalContext(RuntimeConfig config);
+SPUContext makeSPUContext(RuntimeConfig config,
+                          const std::shared_ptr<yacl::link::Context>& lctx);
 
-HalContext makeRefHalContext();
+SPUContext makeSPUContext(
+    ProtocolKind prot_kind = ProtocolKind::REF2K,
+    FieldType field = FieldType::FM64,
+    const std::shared_ptr<yacl::link::Context>& lctx = nullptr);
 
-Value makeValue(HalContext* ctx, PtBufferView init,
+Value makeValue(SPUContext* ctx, PtBufferView init,
                 Visibility vtype = VIS_PUBLIC, DataType dtype = DT_INVALID,
                 ShapeView shape = {});
 
@@ -42,16 +48,16 @@ auto xt_random(const std::vector<size_t>& shape, double min = -100,
   }
 }
 
-using UnaryOp = Value(HalContext*, const Value&);
-using BinaryOp = Value(HalContext*, const Value&, const Value&);
-using TernaryOp = Value(HalContext*, const Value&, const Value&, const Value&);
+using UnaryOp = Value(SPUContext*, const Value&);
+using BinaryOp = Value(SPUContext*, const Value&, const Value&);
+using TernaryOp = Value(SPUContext*, const Value&, const Value&, const Value&);
 
 template <typename T>
 xt::xarray<T> evalTernaryOp(Visibility in1_vtype, Visibility in2_vtype,
                             Visibility in3_vtype, TernaryOp* op,
                             PtBufferView in1, PtBufferView in2,
                             PtBufferView in3) {
-  HalContext ctx = makeRefHalContext();
+  SPUContext ctx = makeSPUContext();
 
   Value a = makeValue(&ctx, in1, in1_vtype);
   Value b = makeValue(&ctx, in2, in2_vtype);
@@ -60,17 +66,17 @@ xt::xarray<T> evalTernaryOp(Visibility in1_vtype, Visibility in2_vtype,
   Value d = op(&ctx, a, b, c);
 
   if (d.isSecret()) {
-    d = _s2p(&ctx, d);
+    d = hal::_s2p(&ctx, d);
   }
   SPU_ENFORCE(d.isPublic());
 
-  return dump_public_as<T>(&ctx, d);
+  return hal::dump_public_as<T>(&ctx, d);
 }
 
 template <typename T>
 xt::xarray<T> evalBinaryOp(Visibility lhs_vtype, Visibility rhs_vtype,
                            BinaryOp* op, PtBufferView lhs, PtBufferView rhs) {
-  HalContext ctx = makeRefHalContext();
+  SPUContext ctx = makeSPUContext();
 
   Value a = makeValue(&ctx, lhs, lhs_vtype);
   Value b = makeValue(&ctx, rhs, rhs_vtype);
@@ -78,27 +84,27 @@ xt::xarray<T> evalBinaryOp(Visibility lhs_vtype, Visibility rhs_vtype,
   Value c = op(&ctx, a, b);
 
   if (c.isSecret()) {
-    c = _s2p(&ctx, c).setDtype(c.dtype());
+    c = hal::_s2p(&ctx, c).setDtype(c.dtype());
   }
   SPU_ENFORCE(c.isPublic());
 
-  return dump_public_as<T>(&ctx, c);
+  return hal::dump_public_as<T>(&ctx, c);
 }
 
 template <typename T>
 xt::xarray<T> evalUnaryOp(Visibility in_vtype, UnaryOp* op, PtBufferView in) {
-  HalContext ctx = makeRefHalContext();
+  SPUContext ctx = makeSPUContext();
 
   Value a = makeValue(&ctx, in, in_vtype);
 
   Value b = op(&ctx, a);
 
   if (b.isSecret()) {
-    b = _s2p(&ctx, b).setDtype(b.dtype());
+    b = hal::_s2p(&ctx, b).setDtype(b.dtype());
   }
   SPU_ENFORCE(b.isPublic());
 
-  return dump_public_as<T>(&ctx, b);
+  return hal::dump_public_as<T>(&ctx, b);
 }
 
-}  // namespace spu::kernel::hal::test
+}  // namespace spu::kernel::test

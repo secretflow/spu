@@ -19,16 +19,16 @@
 
 #include "absl/types/span.h"
 
+#include "libspu/core/context.h"
 #include "libspu/core/ndarray_ref.h"
-#include "libspu/kernel/context.h"
+#include "libspu/core/value.h"
 #include "libspu/kernel/hal/shape_ops.h"
-#include "libspu/kernel/value.h"
 
 namespace spu::kernel::hlo {
 
 using CompFn = std::function<spu::Value(absl::Span<const spu::Value>)>;
 
-std::vector<spu::Value> Sort(HalContext* ctx,
+std::vector<spu::Value> Sort(SPUContext* ctx,
                              absl::Span<const spu::Value> inputs,
                              int64_t sort_dim, bool is_stable,
                              const CompFn& comparator_body,

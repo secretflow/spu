@@ -57,7 +57,7 @@ llvm::cl::opt<double> DPPsiEpsilonOpt("epsilon", llvm::cl::init(3),
 int main(int argc, char** argv) {
   llvm::cl::ParseCommandLineOptions(argc, argv);
 
-  auto hctx = MakeHalContext();
+  auto sctx = MakeSPUContext();
 
   auto field_list = absl::StrSplit(FieldNamesOpt.getValue(), ',');
 
@@ -83,11 +83,11 @@ int main(int argc, char** argv) {
   config.set_curve_type(spu::psi::CurveType::CURVE_25519);
 
   try {
-    spu::psi::BucketPsi bucket_psi(config, hctx->lctx());
+    spu::psi::BucketPsi bucket_psi(config, sctx->lctx());
     auto report = bucket_psi.Run();
 
     SPDLOG_INFO("rank:{} original_count:{} intersection_count:{}",
-                hctx->lctx()->Rank(), report.original_count(),
+                sctx->lctx()->Rank(), report.original_count(),
                 report.intersection_count());
   } catch (const std::exception& e) {
     SPDLOG_ERROR("run psi failed: {}", e.what());

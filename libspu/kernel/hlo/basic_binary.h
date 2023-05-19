@@ -14,16 +14,16 @@
 
 #pragma once
 
-#include "libspu/kernel/value.h"
+#include "libspu/core/value.h"
 
 namespace spu {
-class HalContext;
+class SPUContext;
 }
 
 namespace spu::kernel::hlo {
 
 #define SIMPLE_BINARY_KERNEL_DECL(NAME)                   \
-  spu::Value NAME(HalContext *ctx, const spu::Value &lhs, \
+  spu::Value NAME(SPUContext *ctx, const spu::Value &lhs, \
                   const spu::Value &rhs);
 
 SIMPLE_BINARY_KERNEL_DECL(Add)

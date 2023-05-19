@@ -23,9 +23,9 @@
 #include "yacl/base/buffer.h"
 #include "yacl/link/link.h"
 
+#include "libspu/core/object.h"
 #include "libspu/core/parallel_utils.h"
 #include "libspu/core/prelude.h"
-#include "libspu/mpc/object.h"
 
 // This module defines the protocol comm pattern used for all
 // protocols.

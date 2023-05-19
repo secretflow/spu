@@ -14,8 +14,8 @@
 
 #pragma once
 
+#include "libspu/core/object.h"
 #include "libspu/core/type.h"
-#include "libspu/mpc/object.h"
 
 namespace spu::mpc {
 

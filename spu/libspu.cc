@@ -24,13 +24,15 @@
 
 #include "libspu/compiler/common/compilation_context.h"
 #include "libspu/compiler/compile.h"
+#include "libspu/core/config.h"
+#include "libspu/core/context.h"
 #include "libspu/core/logging.h"
 #include "libspu/core/type_util.h"
+#include "libspu/core/value.h"
 #include "libspu/device/api.h"
 #include "libspu/device/io.h"
 #include "libspu/device/pphlo/pphlo_executor.h"
-#include "libspu/kernel/context.h"
-#include "libspu/kernel/value.h"
+#include "libspu/mpc/factory.h"
 #include "libspu/pir/pir.h"
 #include "libspu/psi/bucket_psi.h"
 #include "libspu/psi/core/ecdh_psi.h"
@@ -251,7 +253,7 @@ void BindLink(py::module& m) {
 
 // Wrap Runtime, it's workaround for protobuf pybind11/protoc conflict.
 class RuntimeWrapper {
-  std::unique_ptr<spu::HalContext> hctx_;
+  std::unique_ptr<spu::SPUContext> sctx_;
 
   // the golbals, could be used to cross session stuffs.
   spu::device::SymbolTable env_;
@@ -262,7 +264,11 @@ class RuntimeWrapper {
     spu::RuntimeConfig config;
     SPU_ENFORCE(config.ParseFromString(config_pb));
 
-    hctx_ = std::make_unique<spu::HalContext>(config, lctx);
+    // first, fill protobuf default value with implementation defined value.
+    populateRuntimecConfig(config);
+
+    sctx_ = std::make_unique<spu::SPUContext>(config, lctx);
+    mpc::Factory::RegisterProtocol(sctx_.get(), lctx);
   }
 
   void Run(const py::bytes& exec_pb) {
@@ -270,7 +276,7 @@ class RuntimeWrapper {
     SPU_ENFORCE(exec.ParseFromString(exec_pb));
 
     spu::device::pphlo::PPHloExecutor executor;
-    spu::device::execute(&executor, hctx_.get(), exec, &env_);
+    spu::device::execute(&executor, sctx_.get(), exec, &env_);
   }
 
   void SetVar(const std::string& name, const py::bytes& value) {
@@ -591,24 +597,18 @@ PYBIND11_MODULE(libspu, m) {
   // bind compiler.
   m.def(
       "compile",
-      [](const py::bytes& ir_text, const std::string& ir_type,
-         const std::string& input_visiblity_map, const std::string& dump_path) {
+      [](const py::bytes& source, const std::string& copts) {
         py::scoped_ostream_redirect stream(
             std::cout,                                 // std::ostream&
             py::module_::import("sys").attr("stdout")  // Python output
         );
 
         spu::compiler::CompilationContext ctx;
-        ctx.setInputVisibilityString(input_visiblity_map);
+        ctx.setCompilerOptions(copts);
 
-        if (!dump_path.empty()) {
-          ctx.enablePrettyPrintWithDir(dump_path);
-        }
-
-        return py::bytes(spu::compiler::compile(&ctx, ir_text, ir_type));
+        return py::bytes(spu::compiler::compile(&ctx, source));
       },
-      "spu compile.", py::arg("ir_text"), py::arg("ir_type"),
-      py::arg("vis_map"), py::arg("dump_path"));
+      "spu compile.", py::arg("source"), py::arg("copts"));
 
   // bind spu libs.
   py::module link_m = m.def_submodule("link");

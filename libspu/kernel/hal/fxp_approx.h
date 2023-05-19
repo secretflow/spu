@@ -14,43 +14,43 @@
 
 #pragma once
 
-#include "libspu/kernel/context.h"
-#include "libspu/kernel/value.h"
+#include "libspu/core/context.h"
+#include "libspu/core/value.h"
 
 // !!please read [README.md] for api naming conventions.
 namespace spu::kernel::hal {
 namespace detail {
 
-Value log2_pade_approx(HalContext* ctx, const Value& x);
+Value log2_pade_approx(SPUContext* ctx, const Value& x);
 
-Value log_householder_approx(HalContext* ctx, const Value& x);
+Value log_householder_approx(SPUContext* ctx, const Value& x);
 
 // Works for range [-500, 2.1]
-Value exp_taylor_series(HalContext* ctx, const Value& x);
+Value exp_taylor_series(SPUContext* ctx, const Value& x);
 
-Value exp2_pade_approx(HalContext* ctx, const Value& x);
+Value exp2_pade_approx(SPUContext* ctx, const Value& x);
 
 // Works for range [-12.0, 18.0]
-Value exp_pade_approx(HalContext* ctx, const Value& x);
+Value exp_pade_approx(SPUContext* ctx, const Value& x);
 
 }  // namespace detail
 
-Value f_exp(HalContext* ctx, const Value& x);
+Value f_exp(SPUContext* ctx, const Value& x);
 
-Value f_log1p(HalContext* ctx, const Value& x);
+Value f_log1p(SPUContext* ctx, const Value& x);
 
-Value f_log(HalContext* ctx, const Value& x);
+Value f_log(SPUContext* ctx, const Value& x);
 
-Value f_log2(HalContext* ctx, const Value& x);
+Value f_log2(SPUContext* ctx, const Value& x);
 
-Value f_exp2(HalContext* ctx, const Value& x);
+Value f_exp2(SPUContext* ctx, const Value& x);
 
-Value f_tanh(HalContext* ctx, const Value& x);
+Value f_tanh(SPUContext* ctx, const Value& x);
 
-Value f_rsqrt(HalContext* ctx, const Value& x);
+Value f_rsqrt(SPUContext* ctx, const Value& x);
 
-Value f_sqrt(HalContext* ctx, const Value& x);
+Value f_sqrt(SPUContext* ctx, const Value& x);
 
-Value f_sigmoid(HalContext* ctx, const Value& x);
+Value f_sigmoid(SPUContext* ctx, const Value& x);
 
 }  // namespace spu::kernel::hal

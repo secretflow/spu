@@ -16,12 +16,15 @@
 
 #include "yacl/link/link.h"
 
-#include "libspu/mpc/object.h"
+#include "libspu/core/context.h"
 
 namespace spu::mpc {
 
-std::unique_ptr<Object> makeAby3Protocol(
+std::unique_ptr<SPUContext> makeAby3Protocol(
     const RuntimeConfig& conf,
     const std::shared_ptr<yacl::link::Context>& lctx);
+
+void regAby3Protocol(SPUContext* ctx,
+                     const std::shared_ptr<yacl::link::Context>& lctx);
 
 }  // namespace spu::mpc

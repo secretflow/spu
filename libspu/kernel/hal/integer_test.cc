@@ -17,14 +17,14 @@
 #include "gtest/gtest.h"
 
 #include "libspu/kernel/hal/constants.h"
-#include "libspu/kernel/hal/test_util.h"
+#include "libspu/kernel/test_util.h"
 
 namespace spu::kernel::hal {
 
 // TODO: UT is too cumbersome.
 TEST(IntegralTest, Add) {
   // GIVEN
-  HalContext ctx = test::makeRefHalContext();
+  SPUContext ctx = test::makeSPUContext();
 
   int ra = 3;
   int rb = 4;
@@ -50,7 +50,7 @@ TEST(IntegralTest, Add) {
 
 TEST(IntegralTest, Sub) {
   // GIVEN
-  HalContext ctx = test::makeRefHalContext();
+  SPUContext ctx = test::makeSPUContext();
 
   int ra = 3;
   int rb = 4;

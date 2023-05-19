@@ -39,22 +39,39 @@ FE::FE(CompilationContext *ctx) : ctx_(ctx) {
                     mlir::func::FuncDialect>();
 }
 
-mlir::OwningOpRef<mlir::ModuleOp> FE::doit(const std::string &input,
-                                           const std::string &type) {
+mlir::OwningOpRef<mlir::ModuleOp> FE::doit(const std::string &source_str) {
+  CompilationSource source;
+  source.ParseFromString(source_str);
+
   mlir::OwningOpRef<mlir::ModuleOp> module;
-  if (type == "hlo") { // Import hlo
+  switch (source.ir_type()) {
+  case spu::SourceIRType::XLA: {
     HloImporter importer(ctx_);
-    module = importer.parseXlaModuleFromString(input);
-  } else if (type == "mhlo") { // Import mhlo
-    module =
-        mlir::parseSourceString<mlir::ModuleOp>(input, ctx_->getMLIRContext());
-  } else {
-    SPU_THROW("Unsupported input IR type");
+    module = importer.parseXlaModuleFromString(source.ir_txt());
+    break;
+  }
+  case spu::SourceIRType::MLIR_HLO: {
+    module = mlir::parseSourceString<mlir::ModuleOp>(source.ir_txt(),
+                                                     ctx_->getMLIRContext());
+    break;
+  }
+  default: {
+    SPU_THROW("Unsupported input IR type = {}", source.ir_type());
+  }
+  }
+
+  std::string input_vis_str;
+  {
+    std::vector<std::string> input_vis;
+    for (const auto &v : source.input_visibility()) {
+      input_vis.emplace_back(Visibility_Name(v));
+    }
+    input_vis_str = fmt::format("input_vis_list={}", fmt::join(input_vis, ","));
   }
 
   // Run pipeline
   mlir::PassManager pm(ctx_->getMLIRContext());
-  buildFrontEndPipeline(&pm);
+  buildFrontEndPipeline(&pm, input_vis_str);
 
   ctx_->setupPrettyPrintConfigurations(&pm);
 
@@ -67,7 +84,7 @@ mlir::OwningOpRef<mlir::ModuleOp> FE::doit(const std::string &input,
   return module;
 }
 
-void FE::buildFrontEndPipeline(mlir::PassManager *pm) {
+void FE::buildFrontEndPipeline(mlir::PassManager *pm, const std::string &args) {
 
   // mhlo side
   {
@@ -89,11 +106,12 @@ void FE::buildFrontEndPipeline(mlir::PassManager *pm) {
 
   // stablehlo now
   // Dialect conversion
-  auto vis_str = ctx_->getInputVisibilityString();
-  if (vis_str.empty()) {
-    pm->addPass(mlir::pphlo::createLegalizeToPPHloPass());
-  } else {
-    pm->addPass(mlir::pphlo::createLegalizeToPPHloPass(vis_str));
+  {
+    auto l = mlir::pphlo::createLegalizeToPPHloPass();
+    if (!args.empty()) {
+      SPU_ENFORCE(l->initializeOptions(args).succeeded());
+    }
+    pm->addPass(std::move(l));
   }
   auto &optPM = pm->nest<mlir::func::FuncOp>();
   optPM.addPass(mlir::pphlo::createLowerConversionCastPass());

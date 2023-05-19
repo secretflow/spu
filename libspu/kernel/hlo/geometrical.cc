@@ -18,41 +18,41 @@
 
 namespace spu::kernel::hlo {
 
-spu::Value Transpose(HalContext *ctx, const spu::Value &in,
+spu::Value Transpose(SPUContext *ctx, const spu::Value &in,
                      absl::Span<const int64_t> permutation) {
   return hal::transpose(ctx, in, permutation);
 }
 
-spu::Value Broadcast(HalContext *ctx, const spu::Value &in,
+spu::Value Broadcast(SPUContext *ctx, const spu::Value &in,
                      absl::Span<const int64_t> to_shape,
                      absl::Span<const int64_t> in_dims) {
   return hal::broadcast_to(ctx, in, to_shape, in_dims);
 }
 
-spu::Value Reshape(HalContext *ctx, const spu::Value &in,
+spu::Value Reshape(SPUContext *ctx, const spu::Value &in,
                    absl::Span<const int64_t> to_shape) {
   return hal::reshape(ctx, in, to_shape);
 }
 
-spu::Value Concatenate(HalContext *ctx, absl::Span<const spu::Value> operands,
+spu::Value Concatenate(SPUContext *ctx, absl::Span<const spu::Value> operands,
                        int64_t axis) {
   return hal::concatenate(ctx, operands, axis);
 }
 
-spu::Value Slice(HalContext *ctx, const spu::Value &in,
+spu::Value Slice(SPUContext *ctx, const spu::Value &in,
                  absl::Span<const int64_t> start, absl::Span<const int64_t> end,
                  absl::Span<const int64_t> strides) {
   return hal::slice(ctx, in, start, end, strides);
 }
 
-spu::Value Pad(HalContext *ctx, const spu::Value &in,
+spu::Value Pad(SPUContext *ctx, const spu::Value &in,
                const spu::Value &pad_value, absl::Span<const int64_t> edge_low,
                absl::Span<const int64_t> edge_high,
                absl::Span<const int64_t> inner) {
   return hal::pad(ctx, in, pad_value, edge_low, edge_high, inner);
 }
 
-spu::Value Reverse(HalContext *ctx, const spu::Value &in,
+spu::Value Reverse(SPUContext *ctx, const spu::Value &in,
                    absl::Span<const int64_t> dims) {
   return hal::reverse(ctx, in, dims);
 }

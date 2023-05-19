@@ -29,7 +29,7 @@ spu_cc_library(
         ":random",
         ":shape_ops",
         ":type_cast",
-        "//libspu/kernel:value",
+        "//libspu/core:value",
     ],
 )
 
@@ -38,7 +38,9 @@ spu_cc_library(
     srcs = ["prot_wrapper.cc"],
     hdrs = ["prot_wrapper.h"],
     deps = [
-        "//libspu/kernel:context",
+        "//libspu/core:context",
+        "//libspu/core:value",
+        "//libspu/mpc:api",
     ],
 )
 
@@ -48,7 +50,7 @@ spu_cc_library(
     hdrs = ["ring.h"],
     deps = [
         ":prot_wrapper",
-        "//libspu/kernel:context",
+        "//libspu/core:context",
     ],
 )
 
@@ -68,7 +70,7 @@ spu_cc_test(
     deps = [
         ":constants",
         ":integer",
-        ":test_util",
+        "//libspu/kernel:test_util",
     ],
 )
 
@@ -78,7 +80,7 @@ spu_cc_test(
     deps = [
         ":constants",
         ":ring",
-        ":test_util",
+        "//libspu/kernel:test_util",
     ],
 )
 
@@ -87,7 +89,9 @@ spu_cc_library(
     srcs = ["fxp_cleartext.cc"],
     hdrs = ["fxp_cleartext.h"],
     deps = [
-        "//libspu/kernel:context",
+        "//libspu/core:context",
+        "//libspu/core:encoding",
+        "//libspu/core:value",
     ],
 )
 
@@ -106,7 +110,7 @@ spu_cc_test(
     srcs = ["fxp_base_test.cc"],
     deps = [
         ":fxp_base",
-        ":test_util",
+        "//libspu/kernel:test_util",
     ],
 )
 
@@ -126,7 +130,7 @@ spu_cc_test(
     srcs = ["fxp_approx_test.cc"],
     deps = [
         ":fxp_approx",
-        ":test_util",
+        "//libspu/kernel:test_util",
     ],
 )
 
@@ -146,8 +150,11 @@ spu_cc_library(
     deps = [
         ":prot_wrapper",
         ":ring",
+        "//libspu/core:context",
+        "//libspu/core:encoding",
         "//libspu/core:pt_buffer_view",
-        "//libspu/kernel:context",
+        "//libspu/core:value",
+        "//libspu/mpc/common:pub2k",  # TODO: this is a bad reference
     ],
 )
 
@@ -156,7 +163,7 @@ spu_cc_test(
     srcs = ["constants_test.cc"],
     deps = [
         ":constants",
-        ":test_util",
+        "//libspu/kernel:test_util",
     ],
 )
 
@@ -165,22 +172,10 @@ spu_cc_library(
     srcs = ["public_helper.cc"],
     hdrs = ["public_helper.h"],
     deps = [
+        "//libspu/core:context",
         "//libspu/core:encoding",
-        "//libspu/kernel:context",
+        "//libspu/core:value",
         "//libspu/mpc/common:pub2k",  # TODO: this is a bad reference
-    ],
-)
-
-spu_cc_library(
-    name = "test_util",
-    testonly = True,
-    srcs = ["test_util.cc"],
-    hdrs = ["test_util.h"],
-    deps = [
-        ":constants",
-        ":public_helper",
-        "//libspu/kernel:context",
-        "@com_google_googletest//:gtest",
     ],
 )
 
@@ -215,8 +210,8 @@ spu_cc_test(
     srcs = ["polymorphic_test.cc"],
     deps = [
         ":polymorphic",
-        ":test_util",
-        "//libspu/kernel:context",
+        "//libspu/core:context",
+        "//libspu/kernel:test_util",
         "//libspu/mpc/utils:linalg",
     ],
 )
@@ -226,8 +221,8 @@ spu_cc_test(
     srcs = ["array_element_wise_test.cc"],
     deps = [
         ":polymorphic",
-        ":test_util",
-        "//libspu/kernel:context",
+        "//libspu/core:context",
+        "//libspu/kernel:test_util",
     ],
 )
 
@@ -246,8 +241,8 @@ spu_cc_test(
     name = "type_cast_test",
     srcs = ["type_cast_test.cc"],
     deps = [
-        ":test_util",
         ":type_cast",
+        "//libspu/kernel:test_util",
     ],
 )
 
@@ -258,8 +253,8 @@ spu_cc_library(
     deps = [
         ":constants",
         ":public_helper",
+        "//libspu/core:context",
         "//libspu/core:prelude",
-        "//libspu/kernel:context",
     ],
 )
 
@@ -270,9 +265,9 @@ spu_cc_library(
     deps = [
         ":ring",
         ":type_cast",
+        "//libspu/core:context",
         "//libspu/core:prelude",
         "//libspu/core:vectorize",
-        "//libspu/kernel:context",
     ],
 )
 
@@ -281,6 +276,6 @@ spu_cc_test(
     srcs = ["shape_ops_test.cc"],
     deps = [
         ":shape_ops",
-        ":test_util",
+        "//libspu/kernel:test_util",
     ],
 )

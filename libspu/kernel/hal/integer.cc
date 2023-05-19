@@ -25,7 +25,7 @@ namespace spu::kernel::hal {
   SPU_ENFORCE((Y).isInt(), "expect rhs int, got {]", (X).dtype());
 
 #define DEF_UNARY_OP(Name, Fn2K)                             \
-  Value Name(HalContext* ctx, const Value& x) {              \
+  Value Name(SPUContext* ctx, const Value& x) {              \
     SPU_TRACE_HAL_LEAF(ctx, x);                              \
                                                              \
     SPU_ENFORCE(x.isInt(), "expect Int, got {]", x.dtype()); \
@@ -38,7 +38,7 @@ DEF_UNARY_OP(i_negate, _negate)
 #undef DEF_UNARY_OP
 
 #define DEF_BINARY_OP(Name, Fn2K)                               \
-  Value Name(HalContext* ctx, const Value& x, const Value& y) { \
+  Value Name(SPUContext* ctx, const Value& x, const Value& y) { \
     SPU_TRACE_HAL_LEAF(ctx, x, y);                              \
     ENSURE_INT_AND_DTYPE_MATCH(x, y);                           \
     return Fn2K(ctx, x, y).setDtype(x.dtype());                 \
@@ -48,7 +48,7 @@ DEF_BINARY_OP(i_add, _add)
 DEF_BINARY_OP(i_mul, _mul)
 DEF_BINARY_OP(i_mmul, _mmul)
 
-Value i_less(HalContext* ctx, const Value& x, const Value& y) {
+Value i_less(SPUContext* ctx, const Value& x, const Value& y) {
   SPU_TRACE_HAL_LEAF(ctx, x, y);
   ENSURE_INT_AND_DTYPE_MATCH(x, y);
 
@@ -57,7 +57,7 @@ Value i_less(HalContext* ctx, const Value& x, const Value& y) {
 
 #undef DEF_BINARY_OP
 
-Value i_abs(HalContext* ctx, const Value& x) {
+Value i_abs(SPUContext* ctx, const Value& x) {
   SPU_TRACE_HAL_LEAF(ctx, x);
 
   SPU_ENFORCE(x.isInt());
@@ -66,7 +66,7 @@ Value i_abs(HalContext* ctx, const Value& x) {
   return _mul(ctx, _sign(ctx, x), x).setDtype(x.dtype());
 }
 
-Value i_equal(HalContext* ctx, const Value& x, const Value& y) {
+Value i_equal(SPUContext* ctx, const Value& x, const Value& y) {
   SPU_TRACE_HAL_LEAF(ctx, x, y);
 
   SPU_ENFORCE(x.isInt());
@@ -75,7 +75,7 @@ Value i_equal(HalContext* ctx, const Value& x, const Value& y) {
   return _equal(ctx, x, y).setDtype(DT_I1);
 }
 
-Value i_sub(HalContext* ctx, const Value& x, const Value& y) {
+Value i_sub(SPUContext* ctx, const Value& x, const Value& y) {
   SPU_TRACE_HAL_LEAF(ctx, x, y);
 
   SPU_ENFORCE(x.isInt());
@@ -83,7 +83,7 @@ Value i_sub(HalContext* ctx, const Value& x, const Value& y) {
   return i_add(ctx, x, i_negate(ctx, y));
 }
 
-Value i_conv2d(HalContext* ctx, const Value& x, const Value& y,
+Value i_conv2d(SPUContext* ctx, const Value& x, const Value& y,
                absl::Span<const int64_t> window_strides,
                absl::Span<const int64_t> result_shape) {
   SPU_TRACE_HAL_LEAF(ctx, x, y);

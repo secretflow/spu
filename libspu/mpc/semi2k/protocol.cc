@@ -14,8 +14,6 @@
 
 #include "libspu/mpc/semi2k/protocol.h"
 
-#include "libspu/mpc/common/ab_api.h"
-#include "libspu/mpc/common/ab_kernels.h"
 #include "libspu/mpc/common/prg_state.h"
 #include "libspu/mpc/common/pub2k.h"
 #include "libspu/mpc/semi2k/arithmetic.h"
@@ -26,72 +24,71 @@
 
 namespace spu::mpc {
 
-std::unique_ptr<Object> makeSemi2kProtocol(
+void regSemi2kProtocol(SPUContext* ctx,
+                       const std::shared_ptr<yacl::link::Context>& lctx) {
+  semi2k::registerTypes();
+
+  // add communicator
+  ctx->prot()->addState<Communicator>(lctx);
+
+  // register random states & kernels.
+  ctx->prot()->addState<PrgState>(lctx);
+
+  // add Z2k state.
+  ctx->prot()->addState<Z2kState>(ctx->config().field());
+
+  // register public kernels.
+  regPub2kKernels(ctx->prot());
+
+  // register arithmetic & binary kernels
+  ctx->prot()->addState<Semi2kState>(ctx->config(), lctx);
+  ctx->prot()->regKernel<semi2k::P2A>();
+  ctx->prot()->regKernel<semi2k::A2P>();
+  ctx->prot()->regKernel<semi2k::NotA>();
+  ctx->prot()->regKernel<semi2k::AddAP>();
+  ctx->prot()->regKernel<semi2k::AddAA>();
+  ctx->prot()->regKernel<semi2k::MulAP>();
+  ctx->prot()->regKernel<semi2k::MulAA>();
+  ctx->prot()->regKernel<semi2k::MatMulAP>();
+  ctx->prot()->regKernel<semi2k::MatMulAA>();
+  ctx->prot()->regKernel<semi2k::LShiftA>();
+  // ctx->prot()->regKernel<semi2k::TruncA>();
+  ctx->prot()->regKernel<semi2k::TruncAPr>();
+
+  ctx->prot()->regKernel<semi2k::CommonTypeB>();
+  ctx->prot()->regKernel<semi2k::CastTypeB>();
+  ctx->prot()->regKernel<semi2k::B2P>();
+  ctx->prot()->regKernel<semi2k::P2B>();
+  ctx->prot()->regKernel<semi2k::A2B>();
+
+  if (lctx->WorldSize() == 2) {
+    ctx->prot()->regKernel<semi2k::MsbA2B>();
+  }
+  // ctx->prot()->regKernel<semi2k::B2A>();
+  ctx->prot()->regKernel<semi2k::B2A_Randbit>();
+  ctx->prot()->regKernel<semi2k::AndBP>();
+  ctx->prot()->regKernel<semi2k::AndBB>();
+  ctx->prot()->regKernel<semi2k::XorBP>();
+  ctx->prot()->regKernel<semi2k::XorBB>();
+  ctx->prot()->regKernel<semi2k::LShiftB>();
+  ctx->prot()->regKernel<semi2k::RShiftB>();
+  ctx->prot()->regKernel<semi2k::ARShiftB>();
+  ctx->prot()->regKernel<semi2k::BitrevB>();
+  ctx->prot()->regKernel<semi2k::BitIntlB>();
+  ctx->prot()->regKernel<semi2k::BitDeintlB>();
+  ctx->prot()->regKernel<semi2k::RandA>();
+}
+
+std::unique_ptr<SPUContext> makeSemi2kProtocol(
     const RuntimeConfig& conf,
     const std::shared_ptr<yacl::link::Context>& lctx) {
   semi2k::registerTypes();
 
-  // FIXME: use same id for different rank
-  auto obj =
-      std::make_unique<Object>(fmt::format("{}-{}", lctx->Rank(), "SEMI2K"));
+  auto ctx = std::make_unique<SPUContext>(conf, lctx);
 
-  // add communicator
-  obj->addState<Communicator>(lctx);
+  regSemi2kProtocol(ctx.get(), lctx);
 
-  // register random states & kernels.
-  obj->addState<PrgState>(lctx);
-
-  // add Z2k state.
-  obj->addState<Z2kState>(conf.field());
-
-  // register public kernels.
-  regPub2kKernels(obj.get());
-
-  // register compute kernels
-  regABKernels(obj.get());
-
-  // register arithmetic & binary kernels
-  obj->addState<Semi2kState>(conf, lctx);
-  obj->regKernel<semi2k::ZeroA>();
-  obj->regKernel<semi2k::P2A>();
-  obj->regKernel<semi2k::A2P>();
-  obj->regKernel<semi2k::NotA>();
-  obj->regKernel<semi2k::AddAP>();
-  obj->regKernel<semi2k::AddAA>();
-  obj->regKernel<semi2k::MulAP>();
-  obj->regKernel<semi2k::MulAA>();
-  obj->regKernel<semi2k::MatMulAP>();
-  obj->regKernel<semi2k::MatMulAA>();
-  obj->regKernel<semi2k::LShiftA>();
-  // obj->regKernel<semi2k::TruncA>();
-  obj->regKernel<semi2k::TruncAPr>();
-
-  obj->regKernel<common::AddBB>();
-  obj->regKernel<semi2k::CommonTypeB>();
-  obj->regKernel<semi2k::CastTypeB>();
-  obj->regKernel<semi2k::ZeroB>();
-  obj->regKernel<semi2k::B2P>();
-  obj->regKernel<semi2k::P2B>();
-  obj->regKernel<semi2k::A2B>();
-
-  if (lctx->WorldSize() == 2) {
-    obj->regKernel<semi2k::MsbA2B>();
-  }
-  // obj->regKernel<semi2k::B2A>();
-  obj->regKernel<semi2k::B2A_Randbit>();
-  obj->regKernel<semi2k::AndBP>();
-  obj->regKernel<semi2k::AndBB>();
-  obj->regKernel<semi2k::XorBP>();
-  obj->regKernel<semi2k::XorBB>();
-  obj->regKernel<semi2k::LShiftB>();
-  obj->regKernel<semi2k::RShiftB>();
-  obj->regKernel<semi2k::ARShiftB>();
-  obj->regKernel<semi2k::BitrevB>();
-  obj->regKernel<semi2k::BitIntlB>();
-  obj->regKernel<semi2k::BitDeintlB>();
-  obj->regKernel<semi2k::RandA>();
-
-  return obj;
+  return ctx;
 }
 
 }  // namespace spu::mpc

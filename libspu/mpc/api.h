@@ -16,10 +16,15 @@
 
 #include <optional>
 
-#include "libspu/core/array_ref.h"
-#include "libspu/mpc/object.h"
+#include "libspu/core/context.h"
+#include "libspu/core/value.h"
 
 namespace spu::mpc {
+
+// TODO: add to naming conventions.
+// - use x,y,z for value
+// - use a,b,c for type
+// - follow current module style.
 
 // Convert a public to a secret.
 //
@@ -27,12 +32,12 @@ namespace spu::mpc {
 // 1. This only convert the 'type' to secret, but partipants still knows its
 //    value at the moment.
 // 2. Nearly all ops has public parameter overload, we should use it directly.
-ArrayRef p2s(Object* ctx, const ArrayRef&);
+Value p2s(SPUContext* ctx, const Value& x);
 
 // Convert a secret to a public, aka, reveal.
 //
 // Note: this API indicates information leak.
-ArrayRef s2p(Object* ctx, const ArrayRef&);
+Value s2p(SPUContext* ctx, const Value& x);
 
 // Import will be called on all parameters at the beginning program.
 //
@@ -43,7 +48,7 @@ ArrayRef s2p(Object* ctx, const ArrayRef&);
 // @param ctx, the evaluation context.
 // @param in, the type may not be of current protocol's type, but
 //            it should be a Secret type.
-ArrayRef import_s(Object* ctx, const ArrayRef& in);
+Value import_s(SPUContext* ctx, const Value& in);
 
 // Export a secret value as a given type.
 //
@@ -54,7 +59,7 @@ ArrayRef import_s(Object* ctx, const ArrayRef& in);
 // @param ctx, the evaluation context.
 // @param in, the input should be one of current protocol's type.
 // @param as_type, the target type, it should be a Secret type.
-ArrayRef export_s(Object* ctx, const ArrayRef& in, const Type& as_type);
+Value export_s(SPUContext* ctx, const Value& in, const Type& as_type);
 
 // Get the common type of secrets.
 //
@@ -62,101 +67,66 @@ ArrayRef export_s(Object* ctx, const ArrayRef& in, const Type& as_type);
 // formats, like AShare/BShare, which make them not concatable.
 //
 // This api calculate the common type.
-Type common_type_s(Object* ctx, const Type& a, const Type& b);
-ArrayRef cast_type_s(Object* ctx, const ArrayRef& a, const Type& to_type);
+Type common_type_s(SPUContext* ctx, const Type& a, const Type& b);
+Value cast_type_s(SPUContext* ctx, const Value& frm, const Type& to_type);
 
 // Make a public variable with given plaintext input.
 //
 // All parties knowns the value.
-ArrayRef make_p(Object* ctx, uint128_t init, size_t size);
+Value make_p(SPUContext* ctx, uint128_t init, const Shape& shape);
 
 // parties random a public together.
-ArrayRef rand_p(Object* ctx, size_t);
-ArrayRef rand_s(Object* ctx, size_t);
+Value rand_p(SPUContext* ctx, const Shape& shape);
+Value rand_s(SPUContext* ctx, const Shape& shape);
 
 // Compute bitwise_not(invert) of a value in ring 2k space.
-ArrayRef not_s(Object* ctx, const ArrayRef&);
-ArrayRef not_p(Object* ctx, const ArrayRef&);
+Value not_p(SPUContext* ctx, const Value& x);
+Value not_s(SPUContext* ctx, const Value& x);
 
-ArrayRef msb_p(Object* ctx, const ArrayRef&);
-ArrayRef msb_s(Object* ctx, const ArrayRef&);
+Value msb_p(SPUContext* ctx, const Value& x);
+Value msb_s(SPUContext* ctx, const Value& x);
 
-ArrayRef equal_pp(Object* ctx, const ArrayRef&, const ArrayRef&);
+Value equal_pp(SPUContext* ctx, const Value& x, const Value& y);
 // Optional API, return nullopt if no valid kernel found.
-std::optional<ArrayRef> equal_sp(Object* ctx, const ArrayRef&, const ArrayRef&);
-std::optional<ArrayRef> equal_ss(Object* ctx, const ArrayRef&, const ArrayRef&);
+std::optional<Value> equal_sp(SPUContext* ctx, const Value& x, const Value& y);
+std::optional<Value> equal_ss(SPUContext* ctx, const Value& x, const Value& y);
 
-ArrayRef lshift_p(Object* ctx, const ArrayRef&, size_t);
-ArrayRef lshift_s(Object* ctx, const ArrayRef&, size_t);
+Value add_pp(SPUContext* ctx, const Value& x, const Value& y);
+Value add_sp(SPUContext* ctx, const Value& x, const Value& y);
+Value add_ss(SPUContext* ctx, const Value& x, const Value& y);
 
-ArrayRef rshift_p(Object* ctx, const ArrayRef&, size_t);
-ArrayRef rshift_s(Object* ctx, const ArrayRef&, size_t);
+Value mul_pp(SPUContext* ctx, const Value& x, const Value& y);
+Value mul_sp(SPUContext* ctx, const Value& x, const Value& y);
+Value mul_ss(SPUContext* ctx, const Value& x, const Value& y);
 
-ArrayRef arshift_p(Object* ctx, const ArrayRef&, size_t);
-ArrayRef arshift_s(Object* ctx, const ArrayRef&, size_t);
-ArrayRef trunc_p(Object* ctx, const ArrayRef&, size_t);
-ArrayRef trunc_s(Object* ctx, const ArrayRef&, size_t);
+Value and_pp(SPUContext* ctx, const Value& x, const Value& y);
+Value and_sp(SPUContext* ctx, const Value& x, const Value& y);
+Value and_ss(SPUContext* ctx, const Value& x, const Value& y);
+
+Value xor_pp(SPUContext* ctx, const Value& x, const Value& y);
+Value xor_sp(SPUContext* ctx, const Value& x, const Value& y);
+Value xor_ss(SPUContext* ctx, const Value& x, const Value& y);
+
+Value mmul_pp(SPUContext* ctx, const Value& x, const Value& y, size_t m,
+              size_t n, size_t k);
+Value mmul_sp(SPUContext* ctx, const Value& x, const Value& y, size_t m,
+              size_t n, size_t k);
+Value mmul_ss(SPUContext* ctx, const Value& x, const Value& y, size_t m,
+              size_t n, size_t k);
+
+Value lshift_p(SPUContext* ctx, const Value& x, size_t nbits);
+Value lshift_s(SPUContext* ctx, const Value& x, size_t nbits);
+
+Value rshift_p(SPUContext* ctx, const Value& x, size_t nbits);
+Value rshift_s(SPUContext* ctx, const Value& x, size_t nbits);
+
+Value arshift_p(SPUContext* ctx, const Value& x, size_t nbits);
+Value arshift_s(SPUContext* ctx, const Value& x, size_t nbits);
+Value trunc_p(SPUContext* ctx, const Value& x, size_t nbits);
+Value trunc_s(SPUContext* ctx, const Value& x, size_t nbits);
 
 // Reverse bit, like MISP BITREV instruction, and linux bitrev library.
-ArrayRef bitrev_s(Object* ctx, const ArrayRef&, size_t, size_t);
-ArrayRef bitrev_p(Object* ctx, const ArrayRef&, size_t, size_t);
-
-ArrayRef add_pp(Object* ctx, const ArrayRef&, const ArrayRef&);
-ArrayRef add_sp(Object* ctx, const ArrayRef&, const ArrayRef&);
-ArrayRef add_ss(Object* ctx, const ArrayRef&, const ArrayRef&);
-
-ArrayRef mul_pp(Object* ctx, const ArrayRef&, const ArrayRef&);
-ArrayRef mul_sp(Object* ctx, const ArrayRef&, const ArrayRef&);
-ArrayRef mul_ss(Object* ctx, const ArrayRef&, const ArrayRef&);
-
-ArrayRef and_pp(Object* ctx, const ArrayRef&, const ArrayRef&);
-ArrayRef and_sp(Object* ctx, const ArrayRef&, const ArrayRef&);
-ArrayRef and_ss(Object* ctx, const ArrayRef&, const ArrayRef&);
-
-ArrayRef xor_pp(Object* ctx, const ArrayRef&, const ArrayRef&);
-ArrayRef xor_sp(Object* ctx, const ArrayRef&, const ArrayRef&);
-ArrayRef xor_ss(Object* ctx, const ArrayRef&, const ArrayRef&);
-
-ArrayRef mmul_pp(Object* ctx, const ArrayRef&, const ArrayRef&, size_t, size_t,
-                 size_t);
-ArrayRef mmul_sp(Object* ctx, const ArrayRef&, const ArrayRef&, size_t, size_t,
-                 size_t);
-ArrayRef mmul_ss(Object* ctx, const ArrayRef&, const ArrayRef&, size_t, size_t,
-                 size_t);
+Value bitrev_s(SPUContext* ctx, const Value& x, size_t start, size_t end);
+Value bitrev_p(SPUContext* ctx, const Value& x, size_t start, size_t end);
 
 }  // namespace spu::mpc
-
-#define SPU_MPC_DEF_UNARY_OP(NAME)                 \
-  ArrayRef NAME(Object* ctx, const ArrayRef& in) { \
-    return ctx->call(#NAME, in);                   \
-  }
-
-#define SPU_MPC_DEF_UNARY_OP_WITH_SIZE(NAME)                  \
-  ArrayRef NAME(Object* ctx, const ArrayRef& in, size_t sz) { \
-    return ctx->call(#NAME, in, sz);                          \
-  }
-
-#define SPU_MPC_DEF_UNARY_OP_WITH_2SIZE(NAME)                              \
-  ArrayRef NAME(Object* ctx, const ArrayRef& in, size_t sz1, size_t sz2) { \
-    return ctx->call(#NAME, in, sz1, sz2);                                 \
-  }
-
-#define SPU_MPC_DEF_BINARY_OP(NAME)                                  \
-  ArrayRef NAME(Object* ctx, const ArrayRef& x, const ArrayRef& y) { \
-    return ctx->call(#NAME, x, y);                                   \
-  }
-
-#define SPU_MPC_DEF_OPTIONAL_BINARY_OP(NAME)                   \
-  std::optional<ArrayRef> NAME(Object* ctx, const ArrayRef& x, \
-                               const ArrayRef& y) {            \
-    if (!ctx->hasKernel(#NAME)) {                              \
-      return std::nullopt;                                     \
-    }                                                          \
-    return ctx->call<std::optional<ArrayRef>>(#NAME, x, y);    \
-  }
-
-#define SPU_MPC_DEF_MMUL(NAME)                                                 \
-  ArrayRef NAME(Object* ctx, const ArrayRef& x, const ArrayRef& y, size_t sz1, \
-                size_t sz2, size_t sz3) {                                      \
-    return ctx->call(#NAME, x, y, sz1, sz2, sz3);                              \
-  }

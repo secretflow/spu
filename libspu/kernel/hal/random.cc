@@ -26,8 +26,8 @@
 namespace spu::kernel::hal {
 namespace {
 
-uint64_t genPublicRandSeed(HalContext* hctx) {
-  auto* prg_state = hctx->prot()->getState<mpc::PrgState>();
+uint64_t genPublicRandSeed(SPUContext* sctx) {
+  auto* prg_state = sctx->prot()->getState<mpc::PrgState>();
   uint64_t seed;
   prg_state->fillPubl(absl::MakeSpan(&seed, 1));
   return seed;
@@ -35,7 +35,7 @@ uint64_t genPublicRandSeed(HalContext* hctx) {
 
 }  // namespace
 
-Value rng_uniform(HalContext* ctx, const Value& lo, const Value& hi,
+Value rng_uniform(SPUContext* ctx, const Value& lo, const Value& hi,
                   absl::Span<const int64_t> to_shape) {
   SPU_TRACE_HAL_LEAF(ctx, lo, hi, to_shape);
   SPU_ENFORCE(lo.isPublic() && hi.isPublic());
@@ -56,7 +56,7 @@ Value rng_uniform(HalContext* ctx, const Value& lo, const Value& hi,
   return constant(ctx, buffer, DT_FXP);
 }
 
-Value random(HalContext* ctx, Visibility vis, DataType dtype,
+Value random(SPUContext* ctx, Visibility vis, DataType dtype,
              absl::Span<const int64_t> shape) {
   Value ret;
   if (vis == VIS_PUBLIC) {

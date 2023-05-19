@@ -14,22 +14,22 @@
 
 #pragma once
 
+#include "libspu/core/context.h"
+#include "libspu/core/value.h"
 #include "libspu/dialect/pphlo_dialect.h"
 #include "libspu/dialect/pphlo_ops.h"
 #include "libspu/dialect/pphlo_types.h"
-#include "libspu/kernel/context.h"
-#include "libspu/kernel/value.h"
 
 namespace spu::device::pphlo {
 
 class PPHloVerifier {
  private:
-  HalContext *ctx_{nullptr};
+  SPUContext *ctx_{nullptr};
   mlir::MLIRContext mlir_ctx_;
   std::function<void(bool)> mismatch_handler_{[](bool) {}};
 
  public:
-  explicit PPHloVerifier(HalContext *ctx);
+  explicit PPHloVerifier(SPUContext *ctx);
 
   void setMismatchHandler(std::function<void(bool)> f) {
     mismatch_handler_ = std::move(f);

@@ -12,13 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "libspu/mpc/utils/cexpr.h"
+#include "libspu/core/cexpr.h"
 
 #include <cmath>
 
 #include "gtest/gtest.h"
 
-namespace spu::mpc::cexpr {
+namespace spu::ce {
 
 TEST(CExprTest, K) {
   EXPECT_EQ(K()->expr(), "K");
@@ -56,4 +56,4 @@ TEST(CExprTest, Samples) {
   EXPECT_EQ(c->eval({{"K", 32}, {"N", 2}}), 2 * (std::log2(32) - 1) + 3 * 2);
 }
 
-}  // namespace spu::mpc::cexpr
+}  // namespace spu::ce

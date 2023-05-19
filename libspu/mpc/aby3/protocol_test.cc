@@ -14,14 +14,15 @@
 
 #include "libspu/mpc/aby3/protocol.h"
 
+#include "libspu/mpc/ab_api_test.h"
 #include "libspu/mpc/api_test.h"
-#include "libspu/mpc/common/ab_api_test.h"
 
 namespace spu::mpc::test {
 namespace {
 
 RuntimeConfig makeConfig(FieldType field) {
   RuntimeConfig conf;
+  conf.set_protocol(ProtocolKind::ABY3);
   conf.set_field(field);
   return conf;
 }

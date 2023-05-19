@@ -25,7 +25,7 @@
 namespace spu::kernel::hlo {
 
 template <typename Fn>
-spu::Value shift_impl_p(HalContext *ctx, const spu::Value &lhs,
+spu::Value shift_impl_p(SPUContext *ctx, const spu::Value &lhs,
                         const spu::Value &rhs, const Fn &f) {
   auto shift_bits = hal::dump_public_as<int8_t>(ctx, rhs);
   if (std::all_of(rhs.strides().begin(), rhs.strides().end(),
@@ -55,7 +55,7 @@ spu::Value shift_impl_p(HalContext *ctx, const spu::Value &lhs,
 }
 
 template <typename Fn>
-spu::Value shift_impl_s(HalContext *ctx, const spu::Value &lhs,
+spu::Value shift_impl_s(SPUContext *ctx, const spu::Value &lhs,
                         const spu::Value &rhs, const Fn &f) {
   spu::Value ret =
       hal::constant(ctx, static_cast<uint8_t>(0), lhs.dtype(), lhs.shape());
@@ -72,7 +72,7 @@ spu::Value shift_impl_s(HalContext *ctx, const spu::Value &lhs,
 }
 
 template <typename Fn>
-spu::Value shift_impl(HalContext *ctx, const spu::Value &lhs,
+spu::Value shift_impl(SPUContext *ctx, const spu::Value &lhs,
                       const spu::Value &rhs, const Fn &f) {
   SPU_ENFORCE(rhs.shape() == lhs.shape());
 
@@ -83,17 +83,17 @@ spu::Value shift_impl(HalContext *ctx, const spu::Value &lhs,
   return shift_impl_s(ctx, lhs, rhs, f);
 }
 
-spu::Value Lshift(HalContext *ctx, const spu::Value &operand,
+spu::Value Lshift(SPUContext *ctx, const spu::Value &operand,
                   const spu::Value &bits_to_shift) {
   return shift_impl(ctx, operand, bits_to_shift, hal::left_shift);
 }
 
-spu::Value ARshift(HalContext *ctx, const spu::Value &operand,
+spu::Value ARshift(SPUContext *ctx, const spu::Value &operand,
                    const spu::Value &bits_to_shift) {
   return shift_impl(ctx, operand, bits_to_shift, hal::right_shift_arithmetic);
 }
 
-spu::Value Rshift(HalContext *ctx, const spu::Value &operand,
+spu::Value Rshift(SPUContext *ctx, const spu::Value &operand,
                   const spu::Value &bits_to_shift) {
   return shift_impl(ctx, operand, bits_to_shift, hal::right_shift_logical);
 }

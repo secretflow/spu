@@ -34,7 +34,7 @@
 
 namespace spu::kernel::hlo {
 
-std::vector<spu::Value> TreeReduce(HalContext *ctx,
+std::vector<spu::Value> TreeReduce(SPUContext *ctx,
                                    absl::Span<const spu::Value> inputs,
                                    int64_t axis,
                                    const BatchedValueBinaryFn &reducer) {
@@ -110,7 +110,7 @@ std::vector<spu::Value> TreeReduce(HalContext *ctx,
 }
 
 spu::Value ExpandStridedWindow(
-    HalContext *ctx, const spu::Value &base,
+    SPUContext *ctx, const spu::Value &base,
     absl::Span<const int64_t> window_shape,
     absl::Span<const int64_t> window_strides,
     absl::Span<const std::pair<int64_t, int64_t>> padding) {
@@ -177,7 +177,7 @@ spu::Value ExpandStridedWindow(
   return expanded;
 }
 
-spu::Value ConvertToTiledLayout(HalContext *ctx, const spu::Value &in,
+spu::Value ConvertToTiledLayout(SPUContext *ctx, const spu::Value &in,
                                 absl::Span<const int64_t> block_shape) {
   // Note(jint): use pad+reshape+transpose to convert from column layout to
   // tiled layout.
@@ -201,7 +201,7 @@ spu::Value ConvertToTiledLayout(HalContext *ctx, const spu::Value &in,
 }
 
 std::vector<spu::Value> ReduceWindowWithoutDilation(
-    HalContext *ctx, absl::Span<const spu::Value> inputs,
+    SPUContext *ctx, absl::Span<const spu::Value> inputs,
     absl::Span<const spu::Value> init_values,
     absl::Span<const int64_t> window_shape,
     absl::Span<const int64_t> window_strides,
@@ -284,7 +284,7 @@ std::vector<spu::Value> ReduceWindowWithoutDilation(
 }
 
 std::vector<spu::Value> ReduceWindowImpl(
-    HalContext *ctx, absl::Span<const spu::Value> inputs,
+    SPUContext *ctx, absl::Span<const spu::Value> inputs,
     absl::Span<const spu::Value> init_values,
     absl::Span<const int64_t> ret_shape, const ReduceWindowConfig &config,
     bool last_operand_is_window_mask, bool ignore_init_value,
@@ -357,7 +357,7 @@ std::vector<spu::Value> ReduceWindowImpl(
   return rets;
 }
 
-std::vector<spu::Value> ReduceWindow(HalContext *ctx,
+std::vector<spu::Value> ReduceWindow(SPUContext *ctx,
                                      absl::Span<const spu::Value> inputs,
                                      absl::Span<const spu::Value> init_values,
                                      absl::Span<const int64_t> ret_shape,
@@ -368,7 +368,7 @@ std::vector<spu::Value> ReduceWindow(HalContext *ctx,
                           ignore_init_values, reducer);
 }
 
-std::vector<spu::Value> Reduce(HalContext *ctx,
+std::vector<spu::Value> Reduce(SPUContext *ctx,
                                absl::Span<const spu::Value> inputs,
                                absl::Span<const spu::Value> init_values,
                                absl::Span<const int64_t> dims_to_reduce,
@@ -465,7 +465,7 @@ std::vector<spu::Value> Reduce(HalContext *ctx,
 // And without dilation and padding, this can be achieved through just slicing
 // FIXME: This is a super special case...consider generalize it a little bit
 std::pair<spu::Value, spu::Value> ArgMax1x2x2x1NoPaddingWithoutDilation(
-    HalContext *ctx, const spu::Value &input,
+    SPUContext *ctx, const spu::Value &input,
     absl::Span<const int64_t> window_strides) {
   auto input_shape = input.shape();
 
@@ -564,7 +564,7 @@ std::pair<spu::Value, spu::Value> ArgMax1x2x2x1NoPaddingWithoutDilation(
   return {max_ret, max_indices};
 }
 
-std::pair<spu::Value, spu::Value> ArgMax(HalContext *ctx,
+std::pair<spu::Value, spu::Value> ArgMax(SPUContext *ctx,
                                          const spu::Value &input,
                                          absl::Span<const int64_t> ret_shape,
                                          const ReduceWindowConfig &config) {

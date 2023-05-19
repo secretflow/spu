@@ -14,18 +14,18 @@
 
 #pragma once
 
+#include "libspu/core/context.h"
+#include "libspu/core/value.h"
 #include "libspu/core/xt_helper.h"
-#include "libspu/kernel/context.h"
-#include "libspu/kernel/value.h"
 
 namespace spu::kernel::hal {
 
 // Export a value to a buffer.
-NdArrayRef dump_public(HalContext* ctx, const Value& v);
+NdArrayRef dump_public(SPUContext* ctx, const Value& v);
 
 // TODO: Find a more proper space.
 template <typename T>
-xt::xarray<T> dump_public_as(HalContext* ctx, const Value& in) {
+xt::xarray<T> dump_public_as(SPUContext* ctx, const Value& in) {
   auto arr = dump_public(ctx, in);
 
 #define CASE(NAME, TYPE, _)                  \
@@ -44,7 +44,7 @@ xt::xarray<T> dump_public_as(HalContext* ctx, const Value& in) {
 }
 
 template <typename T>
-T getScalarValue(HalContext* ctx, const spu::Value& value) {
+T getScalarValue(SPUContext* ctx, const spu::Value& value) {
   SPU_ENFORCE(value.numel() == 1, "{} is not a scalar tensor.", value);
   SPU_ENFORCE(value.isPublic(), "{} is not a public value", value);
 

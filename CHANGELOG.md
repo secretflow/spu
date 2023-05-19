@@ -15,6 +15,7 @@
 - [Bugfix] Fix gen cache in unbalanced psi
 - [Bugfix] Fix possible compilation cache collision
 - [Improvement] Improve accuracy of mean with large size input
+- [API] Add compiler options
 
 
 ## 20230406

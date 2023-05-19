@@ -16,13 +16,13 @@
 
 #include "absl/types/span.h"
 
-#include "libspu/kernel/context.h"
-#include "libspu/kernel/value.h"
+#include "libspu/core/context.h"
+#include "libspu/core/value.h"
 
 namespace spu::kernel::hlo {
 
 // secret shuffle which means the order is kept secret between parties.
-std::vector<spu::Value> Shuffle(HalContext* ctx,
+std::vector<spu::Value> Shuffle(SPUContext* ctx,
                                 absl::Span<const spu::Value> inputs,
                                 int64_t axis = 0);
 

@@ -16,12 +16,12 @@
 
 #include "gtest/gtest.h"
 
+#include "libspu/core/context.h"
 #include "libspu/core/ndarray_ref.h"
-#include "libspu/kernel/context.h"
+#include "libspu/core/value.h"
 #include "libspu/kernel/hlo/casting.h"
 #include "libspu/kernel/hlo/const.h"
-#include "libspu/kernel/hlo/test_utils.h"
-#include "libspu/kernel/value.h"
+#include "libspu/kernel/test_util.h"
 #include "libspu/mpc/utils/simulate.h"
 
 namespace spu::kernel::hlo {
@@ -29,19 +29,19 @@ namespace spu::kernel::hlo {
 class UnaryTest
     : public ::testing::TestWithParam<std::tuple<FieldType, ProtocolKind>> {};
 
-#define UNARY_EMPTY_TEST(NAME)                                                 \
-  TEST_P(UnaryTest, Empty_##NAME) {                                            \
-    auto cfg =                                                                 \
-        test::makeRefConfig(std::get<0>(GetParam()), std::get<1>(GetParam())); \
-    mpc::utils::simulate(                                                      \
-        3, [&](const std::shared_ptr<yacl::link::Context> &lctx) {             \
-          HalContext hctx(cfg, lctx);                                          \
-          auto empty_c = Constant(&hctx, 1.0F, {0});                           \
-          auto s_empty = NAME(&hctx, empty_c);                                 \
-          EXPECT_EQ(s_empty.numel(), 0);                                       \
-          EXPECT_EQ(s_empty.shape().size(), 1);                                \
-          EXPECT_EQ(s_empty.shape()[0], 0);                                    \
-        });                                                                    \
+#define UNARY_EMPTY_TEST(NAME)                                       \
+  TEST_P(UnaryTest, Empty_##NAME) {                                  \
+    FieldType field = std::get<0>(GetParam());                       \
+    ProtocolKind prot = std::get<1>(GetParam());                     \
+    mpc::utils::simulate(                                            \
+        3, [&](const std::shared_ptr<yacl::link::Context> &lctx) {   \
+          SPUContext sctx = test::makeSPUContext(prot, field, lctx); \
+          auto empty_c = Constant(&sctx, 1.0F, {0});                 \
+          auto s_empty = NAME(&sctx, empty_c);                       \
+          EXPECT_EQ(s_empty.numel(), 0);                             \
+          EXPECT_EQ(s_empty.shape().size(), 1);                      \
+          EXPECT_EQ(s_empty.shape()[0], 0);                          \
+        });                                                          \
   }
 
 UNARY_EMPTY_TEST(Reciprocal)

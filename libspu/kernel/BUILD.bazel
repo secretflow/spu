@@ -17,33 +17,17 @@ load("//bazel:spu.bzl", "spu_cc_library", "spu_cc_test")
 package(default_visibility = ["//visibility:public"])
 
 spu_cc_library(
-    name = "value",
-    srcs = ["value.cc"],
-    hdrs = ["value.h"],
+    name = "test_util",
+    testonly = True,
+    srcs = ["test_util.cc"],
+    hdrs = ["test_util.h"],
     deps = [
-        "//libspu/core:ndarray_ref",
-        "//libspu/core:prelude",
-        "//libspu/core:shape_util",
-    ],
-)
-
-spu_cc_test(
-    name = "value_test",
-    srcs = ["value_test.cc"],
-    deps = [
-        "//libspu/kernel:value",
-    ],
-)
-
-spu_cc_library(
-    name = "context",
-    srcs = ["context.cc"],
-    hdrs = ["context.h"],
-    deps = [
-        "//libspu/core",
-        "//libspu/core:trace",
-        "//libspu/kernel:value",  # FIXME: each module depends on value
+        "//libspu/core:context",
+        "//libspu/core:value",
+        "//libspu/kernel/hal:constants",  # BAD
+        "//libspu/kernel/hal:prot_wrapper",  # BAD
+        "//libspu/kernel/hal:public_helper",  # BAD
         "//libspu/mpc:factory",
-        "@yacl//yacl/link",
+        "@com_google_googletest//:gtest",
     ],
 )

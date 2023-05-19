@@ -20,11 +20,9 @@
 #include "spdlog/spdlog.h"
 
 #include "libspu/core/array_ref.h"
-#include "libspu/core/trace.h"
 #include "libspu/mpc/aby3/ot.h"
 #include "libspu/mpc/aby3/type.h"
 #include "libspu/mpc/aby3/value.h"
-#include "libspu/mpc/common/ab_api.h"
 #include "libspu/mpc/common/communicator.h"
 #include "libspu/mpc/common/prg_state.h"
 #include "libspu/mpc/common/pub2k.h"
@@ -116,9 +114,7 @@ std::vector<uint8_t> ring_cast_boolean(const ArrayRef& x) {
 
 }  // namespace
 
-ArrayRef RandA::proc(KernelEvalContext* ctx, size_t size) {
-  SPU_TRACE_MPC_LEAF(ctx, size);
-
+ArrayRef RandA::proc(KernelEvalContext* ctx, size_t size) const {
   auto* prg_state = ctx->getState<PrgState>();
   const auto field = ctx->getState<Z2kState>()->getDefaultField();
 
@@ -149,8 +145,6 @@ ArrayRef RandA::proc(KernelEvalContext* ctx, size_t size) {
 }
 
 ArrayRef A2P::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
-  SPU_TRACE_MPC_LEAF(ctx, in);
-
   auto* comm = ctx->getState<Communicator>();
   const auto field = in.eltype().as<AShrTy>()->field();
 
@@ -179,8 +173,6 @@ ArrayRef A2P::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
 }
 
 ArrayRef P2A::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
-  SPU_TRACE_MPC_LEAF(ctx, in);
-
   auto* comm = ctx->getState<Communicator>();
 
   // TODO: we should expect Pub2kTy instead of Ring2k
@@ -225,8 +217,6 @@ ArrayRef P2A::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
 }
 
 ArrayRef NotA::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
-  SPU_TRACE_MPC_LEAF(ctx, in);
-
   auto* comm = ctx->getState<Communicator>();
   const auto* in_ty = in.eltype().as<AShrTy>();
   const auto field = in_ty->field();
@@ -261,8 +251,6 @@ ArrayRef NotA::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
 ////////////////////////////////////////////////////////////////////
 ArrayRef AddAP::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
                      const ArrayRef& rhs) const {
-  SPU_TRACE_MPC_LEAF(ctx, lhs, rhs);
-
   auto* comm = ctx->getState<Communicator>();
   const auto* lhs_ty = lhs.eltype().as<AShrTy>();
   const auto* rhs_ty = rhs.eltype().as<Pub2kTy>();
@@ -293,8 +281,6 @@ ArrayRef AddAP::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
 
 ArrayRef AddAA::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
                      const ArrayRef& rhs) const {
-  SPU_TRACE_MPC_LEAF(ctx, lhs, rhs);
-
   const auto* lhs_ty = lhs.eltype().as<AShrTy>();
   const auto* rhs_ty = rhs.eltype().as<AShrTy>();
 
@@ -323,8 +309,6 @@ ArrayRef AddAA::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
 ////////////////////////////////////////////////////////////////////
 ArrayRef MulAP::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
                      const ArrayRef& rhs) const {
-  SPU_TRACE_MPC_LEAF(ctx, lhs, rhs);
-
   const auto* lhs_ty = lhs.eltype().as<AShrTy>();
   const auto* rhs_ty = rhs.eltype().as<Pub2kTy>();
 
@@ -350,8 +334,6 @@ ArrayRef MulAP::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
 
 ArrayRef MulAA::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
                      const ArrayRef& rhs) const {
-  SPU_TRACE_MPC_LEAF(ctx, lhs, rhs);
-
   const auto field = lhs.eltype().as<Ring2k>()->field();
   auto* comm = ctx->getState<Communicator>();
   auto* prg_state = ctx->getState<PrgState>();
@@ -394,8 +376,6 @@ ArrayRef MulAA::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
 // - https://eprint.iacr.org/2018/403.pdf
 ArrayRef MulA1B::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
                       const ArrayRef& rhs) const {
-  SPU_TRACE_MPC_LEAF(ctx, lhs, rhs);
-
   SPU_ENFORCE(lhs.numel() == rhs.numel());
   SPU_ENFORCE(lhs.eltype().isa<AShrTy>());
   SPU_ENFORCE(rhs.eltype().isa<BShrTy>() &&
@@ -539,8 +519,6 @@ ArrayRef MulA1B::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
 ////////////////////////////////////////////////////////////////////
 ArrayRef MatMulAP::proc(KernelEvalContext* ctx, const ArrayRef& x,
                         const ArrayRef& y, size_t m, size_t n, size_t k) const {
-  SPU_TRACE_MPC_LEAF(ctx, x, y);
-
   const auto field = x.eltype().as<Ring2k>()->field();
 
   ArrayRef z(makeType<AShrTy>(field), m * n);
@@ -559,8 +537,6 @@ ArrayRef MatMulAP::proc(KernelEvalContext* ctx, const ArrayRef& x,
 
 ArrayRef MatMulAA::proc(KernelEvalContext* ctx, const ArrayRef& x,
                         const ArrayRef& y, size_t m, size_t n, size_t k) const {
-  SPU_TRACE_MPC_LEAF(ctx, x, y);
-
   const auto field = x.eltype().as<Ring2k>()->field();
   auto* comm = ctx->getState<Communicator>();
   auto* prg_state = ctx->getState<PrgState>();
@@ -595,8 +571,6 @@ ArrayRef MatMulAA::proc(KernelEvalContext* ctx, const ArrayRef& x,
 
 ArrayRef LShiftA::proc(KernelEvalContext* ctx, const ArrayRef& in,
                        size_t bits) const {
-  SPU_TRACE_MPC_LEAF(ctx, in, bits);
-
   const auto* in_ty = in.eltype().as<AShrTy>();
   const auto field = in_ty->field();
 
@@ -622,8 +596,6 @@ ArrayRef LShiftA::proc(KernelEvalContext* ctx, const ArrayRef& in,
 // - https://eprint.iacr.org/2018/403.pdf
 ArrayRef TruncA::proc(KernelEvalContext* ctx, const ArrayRef& in,
                       size_t bits) const {
-  SPU_TRACE_MPC_LEAF(ctx, in, bits);
-
   const auto field = in.eltype().as<Ring2k>()->field();
   auto* prg_state = ctx->getState<PrgState>();
   auto* comm = ctx->getState<Communicator>();
@@ -687,8 +659,6 @@ std::vector<T> openWith(Communicator* comm, size_t peer_rank,
 // - https://arxiv.org/pdf/1910.12435.pdf
 ArrayRef TruncAPr::proc(KernelEvalContext* ctx, const ArrayRef& in,
                         size_t bits) const {
-  SPU_TRACE_MPC_LEAF(ctx, in, bits);
-
   const auto field = in.eltype().as<AShrTy>()->field();
   const auto numel = in.numel();
   const size_t k = SizeOf(field) * 8;

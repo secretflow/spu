@@ -17,7 +17,7 @@
 #include "xtensor/xmath.hpp"
 
 #include "libspu/kernel/hal/polymorphic.h"
-#include "libspu/kernel/hal/test_util.h"
+#include "libspu/kernel/test_util.h"
 
 namespace spu::kernel::hal {
 

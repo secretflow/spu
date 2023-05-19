@@ -18,13 +18,13 @@
 
 namespace spu::kernel::hlo {
 
-spu::Value Lshift(HalContext *ctx, const spu::Value &operand,
+spu::Value Lshift(SPUContext *ctx, const spu::Value &operand,
                   const spu::Value &bits_to_shift);
 
-spu::Value Rshift(HalContext *ctx, const spu::Value &operand,
+spu::Value Rshift(SPUContext *ctx, const spu::Value &operand,
                   const spu::Value &bits_to_shift);
 
-spu::Value ARshift(HalContext *ctx, const spu::Value &operand,
+spu::Value ARshift(SPUContext *ctx, const spu::Value &operand,
                    const spu::Value &bits_to_shift);
 
 }  // namespace spu::kernel::hlo

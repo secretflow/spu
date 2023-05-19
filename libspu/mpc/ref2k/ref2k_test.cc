@@ -22,6 +22,7 @@ namespace {
 
 RuntimeConfig makeConfig(FieldType field) {
   RuntimeConfig conf;
+  conf.set_protocol(ProtocolKind::REF2K);
   conf.set_field(field);
   return conf;
 }

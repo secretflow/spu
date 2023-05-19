@@ -19,8 +19,8 @@
 
 #include "absl/types/span.h"
 
-#include "libspu/kernel/context.h"
-#include "libspu/kernel/value.h"
+#include "libspu/core/context.h"
+#include "libspu/core/value.h"
 
 namespace spu::kernel::hlo {
 
@@ -28,14 +28,14 @@ using ValueBinaryFn =
     std::function<spu::Value(spu::Value const &lhs, spu::Value const &rhs)>;
 
 spu::Value SelectAndScatterExpanded(
-    HalContext *ctx, const spu::Value &base, const spu::Value &source,
+    SPUContext *ctx, const spu::Value &base, const spu::Value &source,
     const spu::Value &init_val, absl::Span<const int64_t> window_shape,
     absl::Span<const int64_t> window_strides,
     absl::Span<const std::pair<int64_t, int64_t>> window_padding,
     const ValueBinaryFn &select_fn, const ValueBinaryFn &scatter_fn);
 
 spu::Value SelectAndScatterNaive(
-    HalContext *ctx, const spu::Value &operand, const spu::Value &source,
+    SPUContext *ctx, const spu::Value &operand, const spu::Value &source,
     const spu::Value &init_val, absl::Span<const int64_t> window_shape,
     absl::Span<const int64_t> window_strides,
     absl::Span<const std::pair<int64_t, int64_t>> window_padding,
@@ -54,7 +54,7 @@ spu::Value SelectAndScatterNaive(
  * @return spu::Value
  */
 spu::Value MaxPoolScatter(
-    HalContext *ctx, const spu::Value &scatter_indices,
+    SPUContext *ctx, const spu::Value &scatter_indices,
     const spu::Value &source, absl::Span<const int64_t> window_shape,
     absl::Span<const int64_t> base_shape,
     absl::Span<const int64_t> window_strides,

@@ -22,86 +22,80 @@
 #include "libspu/mpc/cheetah/boolean.h"
 #include "libspu/mpc/cheetah/conversion.h"
 #include "libspu/mpc/cheetah/state.h"
-#include "libspu/mpc/common/ab_api.h"
-#include "libspu/mpc/common/ab_kernels.h"
 #include "libspu/mpc/common/pub2k.h"
-#include "libspu/mpc/object.h"
 #include "libspu/mpc/semi2k/state.h"
 #include "libspu/mpc/semi2k/type.h"
 
 namespace spu::mpc {
 
-std::unique_ptr<Object> makeCheetahProtocol(
+void regCheetahProtocol(SPUContext* ctx,
+                        const std::shared_ptr<yacl::link::Context>& lctx) {
+  semi2k::registerTypes();
+
+  // add communicator
+  ctx->prot()->addState<Communicator>(lctx);
+
+  // register random states & kernels.
+  ctx->prot()->addState<PrgState>(lctx);
+
+  // add Z2k state.
+  ctx->prot()->addState<Z2kState>(ctx->config().field());
+
+  // add Cheetah states
+  ctx->prot()->addState<cheetah::CheetahMulState>(lctx);
+  ctx->prot()->addState<cheetah::CheetahDotState>(lctx);
+  ctx->prot()->addState<cheetah::CheetahOTState>();
+
+  // register public kernels.
+  regPub2kKernels(ctx->prot());
+
+  // register arithmetic & binary kernels
+  ctx->prot()->regKernel<cheetah::P2A>();
+  ctx->prot()->regKernel<cheetah::A2P>();
+  ctx->prot()->regKernel<cheetah::NotA>();
+  ctx->prot()->regKernel<cheetah::AddAP>();
+  ctx->prot()->regKernel<cheetah::AddAA>();
+  ctx->prot()->regKernel<cheetah::MulAP>();
+  ctx->prot()->regKernel<cheetah::MulAA>();
+  ctx->prot()->regKernel<cheetah::MulA1B>();
+  ctx->prot()->regKernel<cheetah::EqualAA>();
+  ctx->prot()->regKernel<cheetah::EqualAP>();
+  ctx->prot()->regKernel<cheetah::MatMulAP>();
+  ctx->prot()->regKernel<cheetah::MatMulAA>();
+  ctx->prot()->regKernel<cheetah::Conv2DAA>();
+  ctx->prot()->regKernel<cheetah::LShiftA>();
+  ctx->prot()->regKernel<cheetah::TruncA>();
+  ctx->prot()->regKernel<cheetah::TruncAWithSign>();
+  ctx->prot()->regKernel<cheetah::MsbA2B>();
+
+  ctx->prot()->regKernel<cheetah::CommonTypeB>();
+  ctx->prot()->regKernel<cheetah::CastTypeB>();
+  ctx->prot()->regKernel<cheetah::B2P>();
+  ctx->prot()->regKernel<cheetah::P2B>();
+  ctx->prot()->regKernel<cheetah::A2B>();
+  ctx->prot()->regKernel<cheetah::B2A>();
+
+  ctx->prot()->regKernel<cheetah::AndBP>();
+  ctx->prot()->regKernel<cheetah::AndBB>();
+  ctx->prot()->regKernel<cheetah::XorBP>();
+  ctx->prot()->regKernel<cheetah::XorBB>();
+  ctx->prot()->regKernel<cheetah::LShiftB>();
+  ctx->prot()->regKernel<cheetah::RShiftB>();
+  ctx->prot()->regKernel<cheetah::ARShiftB>();
+  ctx->prot()->regKernel<cheetah::BitrevB>();
+  ctx->prot()->regKernel<cheetah::RandA>();
+}
+
+std::unique_ptr<SPUContext> makeCheetahProtocol(
     const RuntimeConfig& conf,
     const std::shared_ptr<yacl::link::Context>& lctx) {
   semi2k::registerTypes();
 
-  // FIXME: use same id for different rank
-  auto obj =
-      std::make_unique<Object>(fmt::format("{}-{}", lctx->Rank(), "CHEETAH"));
+  auto ctx = std::make_unique<SPUContext>(conf, lctx);
 
-  // add communicator
-  obj->addState<Communicator>(lctx);
+  regCheetahProtocol(ctx.get(), lctx);
 
-  // register random states & kernels.
-  obj->addState<PrgState>(lctx);
-
-  // add Z2k state.
-  obj->addState<Z2kState>(conf.field());
-
-  // add Cheetah states
-  obj->addState<cheetah::CheetahMulState>(lctx);
-  obj->addState<cheetah::CheetahDotState>(lctx);
-  obj->addState<cheetah::CheetahOTState>();
-
-  // register public kernels.
-  regPub2kKernels(obj.get());
-
-  // register compute kernels
-  regABKernels(obj.get());
-
-  // register arithmetic & binary kernels
-  obj->regKernel<cheetah::ZeroA>();
-  obj->regKernel<cheetah::P2A>();
-  obj->regKernel<cheetah::A2P>();
-  obj->regKernel<cheetah::NotA>();
-  obj->regKernel<cheetah::AddAP>();
-  obj->regKernel<cheetah::AddAA>();
-  obj->regKernel<cheetah::MulAP>();
-  obj->regKernel<cheetah::MulAA>();
-  obj->regKernel<cheetah::MulA1B>();
-  obj->regKernel<cheetah::EqualAA>();
-  obj->regKernel<cheetah::EqualAP>();
-  obj->regKernel<cheetah::MatMulAP>();
-  obj->regKernel<cheetah::MatMulAA>();
-  obj->regKernel<cheetah::Conv2DAA>();
-  obj->regKernel<cheetah::LShiftA>();
-  obj->regKernel<cheetah::TruncA>();
-  obj->regKernel<cheetah::TruncAWithSign>();
-  obj->regKernel<cheetah::MsbA2B>();
-
-  obj->regKernel<common::AddBB>();
-  obj->regKernel<common::BitIntlB>();
-  obj->regKernel<common::BitDeintlB>();
-  obj->regKernel<cheetah::CommonTypeB>();
-  obj->regKernel<cheetah::CastTypeB>();
-  obj->regKernel<cheetah::ZeroB>();
-  obj->regKernel<cheetah::B2P>();
-  obj->regKernel<cheetah::P2B>();
-  obj->regKernel<cheetah::A2B>();
-  obj->regKernel<cheetah::B2A>();
-
-  obj->regKernel<cheetah::AndBP>();
-  obj->regKernel<cheetah::AndBB>();
-  obj->regKernel<cheetah::XorBP>();
-  obj->regKernel<cheetah::XorBB>();
-  obj->regKernel<cheetah::LShiftB>();
-  obj->regKernel<cheetah::RShiftB>();
-  obj->regKernel<cheetah::ARShiftB>();
-  obj->regKernel<cheetah::BitrevB>();
-  obj->regKernel<cheetah::RandA>();
-
-  return obj;
+  return ctx;
 }
 
 }  // namespace spu::mpc

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "libspu/mpc/utils/cexpr.h"
+#include "libspu/core/cexpr.h"
 
 #include <cmath>
 #include <functional>
@@ -23,7 +23,7 @@
 
 #include "libspu/core/prelude.h"
 
-namespace spu::mpc::cexpr {
+namespace spu::ce {
 namespace {
 
 class ConstantExpr : public BaseExpr {
@@ -145,4 +145,4 @@ CExpr operator*(const CExpr& x, const CExpr& y) { return Mul(x, y); }
 CExpr operator*(const CExpr& x, Value y) { return Mul(x, Const(y)); }
 CExpr operator*(Value x, const CExpr& y) { return Mul(Const(x), y); }
 
-}  // namespace spu::mpc::cexpr
+}  // namespace spu::ce

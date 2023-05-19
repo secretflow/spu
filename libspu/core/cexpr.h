@@ -19,7 +19,7 @@
 #include <string>
 
 // The complexity expression library
-namespace spu::mpc::cexpr {
+namespace spu::ce {
 
 using Value = size_t;
 using Params = std::map<std::string, Value>;
@@ -59,8 +59,4 @@ CExpr operator*(const CExpr& x, const CExpr& y);
 CExpr operator*(const CExpr& x, Value y);
 CExpr operator*(Value x, const CExpr& y);
 
-}  // namespace spu::mpc::cexpr
-
-namespace spu {
-namespace ce = mpc::cexpr;
-}
+}  // namespace spu::ce

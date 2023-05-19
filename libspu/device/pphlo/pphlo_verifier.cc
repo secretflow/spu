@@ -62,7 +62,7 @@ mlir::TensorType buildMLIRType(mlir::MLIRContext *mlir_ctx,
 }
 
 mlir::stablehlo::Tensor convertToStablehloTensor(mlir::MLIRContext *mlir_ctx,
-                                                 HalContext *ctx,
+                                                 SPUContext *ctx,
                                                  const spu::Value &v) {
   NdArrayRef arr;
   if (v.isSecret()) {
@@ -192,7 +192,7 @@ std::string mlirTypeToString(mlir::Type type) {
   return os.str();
 }
 
-bool verifyEqual(HalContext *ctx, const mlir::stablehlo::Tensor &xla_ret,
+bool verifyEqual(SPUContext *ctx, const mlir::stablehlo::Tensor &xla_ret,
                  const mlir::stablehlo::Tensor &spu_ret) {
   if (xla_ret.getType() != spu_ret.getType()) {
     SPDLOG_INFO("Answer has a type mismatch, xla type = {}, spu type = {}",
@@ -238,7 +238,7 @@ bool verifyEqual(HalContext *ctx, const mlir::stablehlo::Tensor &xla_ret,
 
 }  // namespace
 
-PPHloVerifier::PPHloVerifier(HalContext *ctx) : ctx_(ctx) {
+PPHloVerifier::PPHloVerifier(SPUContext *ctx) : ctx_(ctx) {
   mlir_ctx_.getOrLoadDialect<mlir::stablehlo::StablehloDialect>();
 }
 

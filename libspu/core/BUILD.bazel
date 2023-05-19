@@ -321,3 +321,62 @@ spu_cc_binary(
         "@com_github_google_benchmark//:benchmark_main",
     ],
 )
+
+spu_cc_library(
+    name = "object",
+    srcs = ["object.cc"],
+    hdrs = ["object.h"],
+    deps = [
+        "//libspu/core:cexpr",
+        "//libspu/core:type",
+        "//libspu/core:value",
+    ],
+)
+
+spu_cc_library(
+    name = "cexpr",
+    srcs = ["cexpr.cc"],
+    hdrs = ["cexpr.h"],
+    deps = [
+        "//libspu/core:prelude",
+    ],
+)
+
+spu_cc_test(
+    name = "cexpr_test",
+    srcs = ["cexpr_test.cc"],
+    deps = [
+        ":cexpr",
+    ],
+)
+
+spu_cc_library(
+    name = "context",
+    srcs = ["context.cc"],
+    hdrs = ["context.h"],
+    deps = [
+        "//libspu/core:config",
+        "//libspu/core:object",
+        "//libspu/core:trace",
+        "@yacl//yacl/link",
+    ],
+)
+
+spu_cc_library(
+    name = "value",
+    srcs = ["value.cc"],
+    hdrs = ["value.h"],
+    deps = [
+        "//libspu/core:ndarray_ref",
+        "//libspu/core:prelude",
+        "//libspu/core:shape_util",
+    ],
+)
+
+spu_cc_test(
+    name = "value_test",
+    srcs = ["value_test.cc"],
+    deps = [
+        "//libspu/core:value",
+    ],
+)

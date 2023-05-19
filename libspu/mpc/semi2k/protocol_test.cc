@@ -16,8 +16,8 @@
 
 #include <mutex>
 
+#include "libspu/mpc/ab_api_test.h"
 #include "libspu/mpc/api_test.h"
-#include "libspu/mpc/common/ab_api_test.h"
 #include "libspu/mpc/semi2k/beaver/ttp_server/beaver_server.h"
 
 namespace spu::mpc::test {
@@ -25,6 +25,7 @@ namespace {
 
 RuntimeConfig makeConfig(FieldType field) {
   RuntimeConfig conf;
+  conf.set_protocol(ProtocolKind::SEMI2K);
   conf.set_field(field);
   return conf;
 }
@@ -40,7 +41,7 @@ void InitBeaverServer() {
   });
 }
 
-std::unique_ptr<Object> makeTTPSemi2kProtocol(
+std::unique_ptr<SPUContext> makeTTPSemi2kProtocol(
     const RuntimeConfig& rt, const std::shared_ptr<yacl::link::Context>& lctx) {
   InitBeaverServer();
   RuntimeConfig ttp_rt = rt;

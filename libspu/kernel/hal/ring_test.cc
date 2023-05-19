@@ -17,12 +17,12 @@
 #include "gtest/gtest.h"
 #include "xtensor/xarray.hpp"
 
-#include "libspu/kernel/hal/test_util.h"
+#include "libspu/kernel/test_util.h"
 
 namespace spu::kernel::hal {
 
 TEST(RingTest, _bit_parity) {
-  auto ctx = test::makeRefHalContext();
+  auto ctx = test::makeSPUContext();
   std::vector<std::pair<uint64_t, int>> para = {
       {0x0505, 0},
       {0x10505, 1},
@@ -42,7 +42,7 @@ TEST(RingTest, _bit_parity) {
 }
 
 TEST(RingTest, _popcount) {
-  auto ctx = test::makeRefHalContext();
+  auto ctx = test::makeSPUContext();
   std::vector<std::pair<uint64_t, int>> para = {
       {0x0505, 4},
       {0x10505, 5},

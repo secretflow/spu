@@ -94,6 +94,7 @@ spu_cc_library(
         ":map_stablehlo_to_pphlo_op",
         ":pass_details",
         ":visibility_inference",
+        "//libspu/compiler/common:compilation_context",
         "//libspu/core:prelude",
         "//libspu/dialect:pphlo_dialect",
         "@llvm-project//mlir:IR",

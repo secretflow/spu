@@ -15,11 +15,11 @@
 #include "gtest/gtest.h"
 #include "yacl/link/link.h"
 
-#include "libspu/mpc/object.h"
+#include "libspu/core/context.h"
 
 namespace spu::mpc::test {
 
-using CreateObjectFn = std::function<std::unique_ptr<Object>(
+using CreateObjectFn = std::function<std::unique_ptr<SPUContext>(
     const RuntimeConfig& conf,
     const std::shared_ptr<yacl::link::Context>& lctx)>;
 

@@ -20,11 +20,11 @@
 #include "yacl/link/link.h"
 
 #include "libspu/core/bit_utils.h"
+#include "libspu/core/context.h"
 #include "libspu/core/shape_util.h"  // calcNumel
+#include "libspu/mpc/ab_api.h"
 #include "libspu/mpc/api.h"
-#include "libspu/mpc/common/ab_api.h"
 #include "libspu/mpc/common/communicator.h"
-#include "libspu/mpc/object.h"
 #include "libspu/mpc/utils/ring_ops.h"
 #include "libspu/mpc/utils/simulate.h"
 
@@ -37,7 +37,7 @@ struct ParamEntry {
       : name(std::move(n)), value(std::move(v)) {}
 };
 
-using CreateComputeFn = std::function<std::unique_ptr<Object>(
+using CreateComputeFn = std::function<std::unique_ptr<SPUContext>(
     const RuntimeConfig& conf,
     const std::shared_ptr<yacl::link::Context>& lctx)>;
 
@@ -48,7 +48,7 @@ class BenchConfig {
   inline static uint32_t bench_npc = 0;
   inline static std::string bench_mode = "standalone";
   inline static std::string bench_parties = {};
-  inline static std::vector<int64_t> bench_numel_range = {1u << 10, 1u << 20};
+  inline static std::vector<int64_t> bench_numel_range = {1U << 10, 1U << 20};
   inline static std::vector<int64_t> bench_shift_range = {2};
   inline static std::vector<int64_t> bench_matrix_range = {10, 100};
   inline static std::vector<int64_t> bench_field_range = {FieldType::FM64,
@@ -120,59 +120,59 @@ void MPCBenchMark(benchmark::State& state) {
   }
 }
 
-#define MPC_BENCH_DEFINE(CLASS, DATA, OP, ...)        \
-  class CLASS : public DATA {                         \
-   public:                                            \
-    using DATA::DATA;                                 \
-    static inline std::string op_name = #OP;          \
-    ArrayRef Exec() { return OP(obj_, __VA_ARGS__); } \
+#define MPC_BENCH_DEFINE(CLASS, DATA, OP, ...)     \
+  class CLASS : public DATA {                      \
+   public:                                         \
+    using DATA::DATA;                              \
+    static inline std::string op_name = #OP;       \
+    Value Exec() { return OP(obj_, __VA_ARGS__); } \
   };
 
 template <size_t P = 0, size_t S = 0, size_t A = 0, size_t B = 0, size_t MP = 0,
           size_t MS = 0, size_t MA = 0, size_t MB = 0, size_t B1 = 0>
 class OpData {
  protected:
-  Object* obj_{nullptr};
+  SPUContext* obj_{nullptr};
   benchmark::State& state;
-  std::array<ArrayRef, P> ps;
-  std::array<ArrayRef, S> ss;
-  std::array<ArrayRef, A> as;
-  std::array<ArrayRef, B> bs;
-  std::array<ArrayRef, MP> mps;
-  std::array<ArrayRef, MS> mss;
-  std::array<ArrayRef, MA> mas;
-  std::array<ArrayRef, MB> mbs;
-  std::array<ArrayRef, B1> b1s;
+  std::array<Value, P> ps;
+  std::array<Value, S> ss;
+  std::array<Value, A> as;
+  std::array<Value, B> bs;
+  std::array<Value, MP> mps;
+  std::array<Value, MS> mss;
+  std::array<Value, MA> mas;
+  std::array<Value, MB> mbs;
+  std::array<Value, B1> b1s;
 
  public:
-  OpData(Object* obj, benchmark::State& st) : obj_(obj), state(st) {
+  OpData(SPUContext* obj, benchmark::State& st) : obj_(obj), state(st) {
     for (auto& p : ps) {
-      p = rand_p(obj_, state.range(1));
+      p = rand_p(obj_, Shape{state.range(1)});
     }
     for (auto& s : ss) {
-      s = p2s(obj_, rand_p(obj, state.range(1)));
+      s = p2s(obj_, rand_p(obj, Shape{state.range(1)}));
     }
     for (auto& a : as) {
-      a = p2a(obj_, rand_p(obj_, state.range(1)));
+      a = p2a(obj_, rand_p(obj_, Shape{state.range(1)}));
     }
     for (auto& b : bs) {
-      b = p2b(obj_, rand_p(obj_, state.range(1)));
+      b = p2b(obj_, rand_p(obj_, Shape{state.range(1)}));
     }
     auto matrix_size = calcNumel({state.range(1), state.range(1)});
     for (auto& mp : mps) {
-      mp = rand_p(obj_, matrix_size);
+      mp = rand_p(obj_, Shape{matrix_size});
     }
     for (auto& ms : mss) {
-      ms = p2s(obj_, rand_p(obj_, matrix_size));
+      ms = p2s(obj_, rand_p(obj_, Shape{matrix_size}));
     }
     for (auto& ma : mas) {
-      ma = p2a(obj_, rand_p(obj_, matrix_size));
+      ma = p2a(obj_, rand_p(obj_, Shape{matrix_size}));
     }
     for (auto& mb : mbs) {
-      mb = p2b(obj_, rand_p(obj_, matrix_size));
+      mb = p2b(obj_, rand_p(obj_, Shape{matrix_size}));
     }
     for (auto& b1 : b1s) {
-      b1 = p2b(obj_, rand_p(obj_, state.range(1)));
+      b1 = p2b(obj_, rand_p(obj_, Shape{state.range(1)}));
       b1 = lshift_b(obj_, b1,
                     SizeOf(static_cast<FieldType>(state.range(0))) * 8 - 1);
       b1 = rshift_b(obj_, b1,
@@ -223,10 +223,8 @@ MPC_BENCH_DEFINE(BenchMMulSP, OpData1MS1MP, mmul_sp, mss[0], mps[0],
 MPC_BENCH_DEFINE(BenchMMulSS, OpData2MS, mmul_ss, mss[0], mss[1],
                  state.range(1), state.range(1), state.range(1))
 
-MPC_BENCH_DEFINE(BenchRandA, OpDataBasic, rand_a, state.range(1))
-MPC_BENCH_DEFINE(BenchZeroA, OpDataBasic, zero_a, state.range(1))
-MPC_BENCH_DEFINE(BenchRandB, OpDataBasic, rand_b, state.range(1))
-MPC_BENCH_DEFINE(BenchZeroB, OpDataBasic, zero_b, state.range(1))
+MPC_BENCH_DEFINE(BenchRandA, OpDataBasic, rand_a, Shape{state.range(1)})
+MPC_BENCH_DEFINE(BenchRandB, OpDataBasic, rand_b, Shape{state.range(1)})
 MPC_BENCH_DEFINE(BenchP2A, OpData1P, p2a, ps[0])
 MPC_BENCH_DEFINE(BenchA2P, OpData1A, a2p, as[0])
 MPC_BENCH_DEFINE(BenchMsbA2b, OpData1A, msb_a2b, as[0])

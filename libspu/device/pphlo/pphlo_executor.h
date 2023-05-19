@@ -16,11 +16,11 @@
 
 #include <memory>
 
+#include "libspu/core/context.h"
 #include "libspu/device/executor.h"
 #include "libspu/device/pphlo/pphlo_verifier.h"
 #include "libspu/dialect/pphlo_ops.h"
 #include "libspu/dialect/pphlo_types.h"
-#include "libspu/kernel/context.h"
 #include "libspu/kernel/hlo/casting.h"
 
 namespace spu::device::pphlo {
@@ -33,7 +33,7 @@ class PPHloExecutor : public OpExecutor {
   bool hasKernel(mlir::Operation &op) const override;
 
   // run a kernel in a given region.
-  void runKernelImpl(HalContext *hctx, SymbolScope *sscope, mlir::Operation &op,
+  void runKernelImpl(SPUContext *sctx, SymbolScope *sscope, mlir::Operation &op,
                      const ExecutionOptions &opts) override;
 };
 

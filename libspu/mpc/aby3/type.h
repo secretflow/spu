@@ -15,7 +15,6 @@
 #pragma once
 
 #include "libspu/core/type.h"
-#include "libspu/mpc/object.h"
 
 namespace spu::mpc::aby3 {
 

@@ -105,8 +105,8 @@ TEST_P(ColocatedIoTest, Works) {
   hconf.set_field(std::get<2>(GetParam()));
 
   mpc::utils::simulate(kWorldSize, [&](auto lctx) {
-    HalContext hctx(hconf, lctx);
-    ColocatedIo cio(&hctx);
+    SPUContext sctx(hconf, lctx);
+    ColocatedIo cio(&sctx);
 
     // WHEN
     if (lctx->Rank() == 0) {

@@ -18,8 +18,8 @@
 
 #include "yacl/link/link.h"
 
+#include "libspu/core/context.h"
 #include "libspu/mpc/io_interface.h"
-#include "libspu/mpc/object.h"
 
 #include "libspu/spu.pb.h"
 
@@ -27,13 +27,12 @@ namespace spu::mpc {
 
 class Factory final {
  public:
-  // Create a computation context with given link.
+  // Add a protocol to a context.
   //
-  // @param kind, the protocol kind.
+  // @param config, a runtime config.
   // @param lctx, the inter party link context.
-  static std::unique_ptr<Object> CreateCompute(
-      const RuntimeConfig& conf,
-      const std::shared_ptr<yacl::link::Context>& lctx);
+  static void RegisterProtocol(
+      SPUContext* ctx, const std::shared_ptr<yacl::link::Context>& lctx);
 
   // Create a io context.
   //

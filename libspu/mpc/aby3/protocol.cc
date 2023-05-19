@@ -18,81 +18,78 @@
 #include "libspu/mpc/aby3/boolean.h"
 #include "libspu/mpc/aby3/conversion.h"
 #include "libspu/mpc/aby3/type.h"
-#include "libspu/mpc/common/ab_api.h"
-#include "libspu/mpc/common/ab_kernels.h"
 #include "libspu/mpc/common/communicator.h"
 #include "libspu/mpc/common/prg_state.h"
 #include "libspu/mpc/common/pub2k.h"
 
 namespace spu::mpc {
 
-std::unique_ptr<Object> makeAby3Protocol(
-    const RuntimeConfig& conf,
-    const std::shared_ptr<yacl::link::Context>& lctx) {
+void regAby3Protocol(SPUContext* ctx,
+                     const std::shared_ptr<yacl::link::Context>& lctx) {
   aby3::registerTypes();
 
-  // FIXME: use same id for different rank
-  auto obj =
-      std::make_unique<Object>(fmt::format("{}-{}", lctx->Rank(), "ABY3"));
-
-  obj->addState<Z2kState>(conf.field());
+  ctx->prot()->addState<Z2kState>(ctx->config().field());
 
   // add communicator
-  obj->addState<Communicator>(lctx);
+  ctx->prot()->addState<Communicator>(lctx);
 
   // register random states & kernels.
-  obj->addState<PrgState>(lctx);
+  ctx->prot()->addState<PrgState>(lctx);
 
   // register public kernels.
-  regPub2kKernels(obj.get());
-
-  // register api kernels
-  regABKernels(obj.get());
+  regPub2kKernels(ctx->prot());
 
   // register arithmetic & binary kernels
-  obj->regKernel<aby3::P2A>();
-  obj->regKernel<aby3::A2P>();
-  obj->regKernel<aby3::NotA>();
-  obj->regKernel<aby3::AddAP>();
-  obj->regKernel<aby3::AddAA>();
-  obj->regKernel<aby3::MulAP>();
-  obj->regKernel<aby3::MulAA>();
-  obj->regKernel<aby3::MulA1B>();
-  obj->regKernel<aby3::MatMulAP>();
-  obj->regKernel<aby3::MatMulAA>();
-  obj->regKernel<aby3::LShiftA>();
+  ctx->prot()->regKernel<aby3::P2A>();
+  ctx->prot()->regKernel<aby3::A2P>();
+  ctx->prot()->regKernel<aby3::NotA>();
+  ctx->prot()->regKernel<aby3::AddAP>();
+  ctx->prot()->regKernel<aby3::AddAA>();
+  ctx->prot()->regKernel<aby3::MulAP>();
+  ctx->prot()->regKernel<aby3::MulAA>();
+  ctx->prot()->regKernel<aby3::MulA1B>();
+  ctx->prot()->regKernel<aby3::MatMulAP>();
+  ctx->prot()->regKernel<aby3::MatMulAA>();
+  ctx->prot()->regKernel<aby3::LShiftA>();
 
 #define ENABLE_PRECISE_ABY3_TRUNCPR
 #ifdef ENABLE_PRECISE_ABY3_TRUNCPR
-  obj->regKernel<aby3::TruncAPr>();
+  ctx->prot()->regKernel<aby3::TruncAPr>();
 #else
-  obj->regKernel<aby3::TruncA>();
+  ctx->prot()->regKernel<aby3::TruncA>();
 #endif
 
-  obj->regKernel<aby3::MsbA2B>();
+  ctx->prot()->regKernel<aby3::MsbA2B>();
 
-  obj->regKernel<aby3::CommonTypeB>();
-  obj->regKernel<aby3::CastTypeB>();
-  obj->regKernel<aby3::B2P>();
-  obj->regKernel<aby3::P2B>();
-  obj->regKernel<common::AddBB>();
-  obj->regKernel<aby3::A2B>();
-  obj->regKernel<aby3::B2ASelector>();
-  // obj->regKernel<aby3::B2AByOT>();
-  // obj->regKernel<aby3::B2AByPPA>();
-  obj->regKernel<aby3::AndBP>();
-  obj->regKernel<aby3::AndBB>();
-  obj->regKernel<aby3::XorBP>();
-  obj->regKernel<aby3::XorBB>();
-  obj->regKernel<aby3::LShiftB>();
-  obj->regKernel<aby3::RShiftB>();
-  obj->regKernel<aby3::ARShiftB>();
-  obj->regKernel<aby3::BitrevB>();
-  obj->regKernel<aby3::BitIntlB>();
-  obj->regKernel<aby3::BitDeintlB>();
-  obj->regKernel<aby3::RandA>();
+  ctx->prot()->regKernel<aby3::CommonTypeB>();
+  ctx->prot()->regKernel<aby3::CastTypeB>();
+  ctx->prot()->regKernel<aby3::B2P>();
+  ctx->prot()->regKernel<aby3::P2B>();
+  ctx->prot()->regKernel<aby3::A2B>();
+  ctx->prot()->regKernel<aby3::B2ASelector>();
+  // ctx->prot()->regKernel<aby3::B2AByOT>();
+  // ctx->prot()->regKernel<aby3::B2AByPPA>();
+  ctx->prot()->regKernel<aby3::AndBP>();
+  ctx->prot()->regKernel<aby3::AndBB>();
+  ctx->prot()->regKernel<aby3::XorBP>();
+  ctx->prot()->regKernel<aby3::XorBB>();
+  ctx->prot()->regKernel<aby3::LShiftB>();
+  ctx->prot()->regKernel<aby3::RShiftB>();
+  ctx->prot()->regKernel<aby3::ARShiftB>();
+  ctx->prot()->regKernel<aby3::BitrevB>();
+  ctx->prot()->regKernel<aby3::BitIntlB>();
+  ctx->prot()->regKernel<aby3::BitDeintlB>();
+  ctx->prot()->regKernel<aby3::RandA>();
+}
 
-  return obj;
+std::unique_ptr<SPUContext> makeAby3Protocol(
+    const RuntimeConfig& conf,
+    const std::shared_ptr<yacl::link::Context>& lctx) {
+  auto ctx = std::make_unique<SPUContext>(conf, lctx);
+
+  regAby3Protocol(ctx.get(), lctx);
+
+  return ctx;
 }
 
 }  // namespace spu::mpc

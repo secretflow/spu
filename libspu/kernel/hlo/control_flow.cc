@@ -28,7 +28,7 @@
 
 namespace spu::kernel::hlo {
 
-std::vector<spu::Value> IfElse(HalContext *ctx, const spu::Value &condition,
+std::vector<spu::Value> IfElse(SPUContext *ctx, const spu::Value &condition,
                                const BranchFcnT &on_true,
                                const BranchFcnT &on_false) {
   if (condition.isSecret()) {
@@ -51,7 +51,7 @@ std::vector<spu::Value> IfElse(HalContext *ctx, const spu::Value &condition,
   }
 }
 
-std::vector<spu::Value> Case(HalContext *ctx, const spu::Value &index,
+std::vector<spu::Value> Case(SPUContext *ctx, const spu::Value &index,
                              absl::Span<const BranchFcnT> branches) {
   SPU_ENFORCE(index.isInt());
   if (index.isPublic()) {
@@ -112,7 +112,7 @@ std::vector<spu::Value> Case(HalContext *ctx, const spu::Value &index,
   }
 }
 
-std::vector<spu::Value> While(HalContext *ctx,
+std::vector<spu::Value> While(SPUContext *ctx,
                               absl::Span<const spu::Value> inputs,
                               const ConditionFcnT &cond, const BodyFcnT &body) {
   bool warned = false;

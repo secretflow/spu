@@ -75,12 +75,12 @@ std::tuple<int64_t, int64_t, int64_t> calcMmulTilingSize(int64_t m, int64_t n,
 // shape_ops -> type_cast : concat/pad requires _common_type
 // ring -> shape_ops      : tiled_mmul(transpose/slice)
 // type_cast -> ring      : _p2s/arshift/shift
-Value transpose(HalContext* ctx, const Value& in) {
+Value transpose(SPUContext* ctx, const Value& in) {
   SPU_TRACE_HAL_DISP(ctx, in);
   return Value(in.data().transpose({}), in.dtype());
 }
 
-Value slice(HalContext* ctx, const Value& in,
+Value slice(SPUContext* ctx, const Value& in,
             absl::Span<const int64_t> start_indices,
             absl::Span<const int64_t> end_indices,
             absl::Span<const int64_t> strides) {
@@ -92,7 +92,7 @@ Value slice(HalContext* ctx, const Value& in,
 
 }  // namespace
 
-Type _common_type(HalContext* ctx, const Type& a, const Type& b) {
+Type _common_type(SPUContext* ctx, const Type& a, const Type& b) {
   if (a.isa<Secret>() && b.isa<Secret>()) {
     return _common_type_s(ctx, a, b);
   } else if (a.isa<Secret>()) {
@@ -105,7 +105,7 @@ Type _common_type(HalContext* ctx, const Type& a, const Type& b) {
   }
 }
 
-Value _cast_type(HalContext* ctx, const Value& x, const Type& to) {
+Value _cast_type(SPUContext* ctx, const Value& x, const Type& to) {
   if (x.isPublic() && to.isa<Public>()) {
     return x;
   } else if (x.isPublic() && to.isa<Secret>()) {
@@ -119,7 +119,7 @@ Value _cast_type(HalContext* ctx, const Value& x, const Type& to) {
 }
 
 #define IMPL_UNARY_OP(Name, FnP, FnS)                       \
-  Value Name(HalContext* ctx, const Value& in) {            \
+  Value Name(SPUContext* ctx, const Value& in) {            \
     SPU_TRACE_HAL_LEAF(ctx, in);                            \
     if (in.isPublic()) {                                    \
       return FnP(ctx, in);                                  \
@@ -131,7 +131,7 @@ Value _cast_type(HalContext* ctx, const Value& x, const Type& to) {
   }
 
 #define IMPL_SHIFT_OP(Name, FnP, FnS)                         \
-  Value Name(HalContext* ctx, const Value& in, size_t bits) { \
+  Value Name(SPUContext* ctx, const Value& in, size_t bits) { \
     SPU_TRACE_HAL_LEAF(ctx, in, bits);                        \
     if (in.isPublic()) {                                      \
       return FnP(ctx, in, bits);                              \
@@ -143,7 +143,7 @@ Value _cast_type(HalContext* ctx, const Value& x, const Type& to) {
   }
 
 #define IMPL_COMMUTATIVE_BINARY_OP(Name, FnPP, FnSP, FnSS)        \
-  Value Name(HalContext* ctx, const Value& x, const Value& y) {   \
+  Value Name(SPUContext* ctx, const Value& x, const Value& y) {   \
     SPU_TRACE_HAL_LEAF(ctx, x, y);                                \
     if (x.isPublic() && y.isPublic()) {                           \
       return FnPP(ctx, x, y);                                     \
@@ -171,13 +171,13 @@ IMPL_COMMUTATIVE_BINARY_OP(_mul, _mul_pp, _mul_sp, _mul_ss)
 IMPL_COMMUTATIVE_BINARY_OP(_and, _and_pp, _and_sp, _and_ss)
 IMPL_COMMUTATIVE_BINARY_OP(_xor, _xor_pp, _xor_sp, _xor_ss)
 
-Value _sub(HalContext* ctx, const Value& x, const Value& y) {
+Value _sub(SPUContext* ctx, const Value& x, const Value& y) {
   SPU_TRACE_HAL_LEAF(ctx, x, y);
   return _add(ctx, x, _negate(ctx, y));
 }
 
 // TODO: remove this kernel, the algorithm could be used for boolean equal test.
-[[maybe_unused]] Value _eqz(HalContext* ctx, const Value& x) {
+[[maybe_unused]] Value _eqz(SPUContext* ctx, const Value& x) {
   SPU_TRACE_HAL_LEAF(ctx, x);
 
   // eqz(x) = not(lsb(pre_or(x)))
@@ -193,7 +193,7 @@ Value _sub(HalContext* ctx, const Value& x, const Value& y) {
   return res;
 }
 
-Value _conv2d(HalContext* ctx, const Value& x, const Value& y,
+Value _conv2d(SPUContext* ctx, const Value& x, const Value& y,
               absl::Span<const int64_t> window_strides,
               absl::Span<const int64_t> result_shape) {
   // s*p and p*p should call `dot`
@@ -201,7 +201,7 @@ Value _conv2d(HalContext* ctx, const Value& x, const Value& y,
   return _conv2d_ss(ctx, x, y, window_strides, result_shape);
 }
 
-static Value _mmul_impl(HalContext* ctx, const Value& x, const Value& y) {
+static Value _mmul_impl(SPUContext* ctx, const Value& x, const Value& y) {
   if (x.isPublic() && y.isPublic()) {
     return _mmul_pp(ctx, x, y);
   } else if (x.isSecret() && y.isPublic()) {
@@ -215,12 +215,12 @@ static Value _mmul_impl(HalContext* ctx, const Value& x, const Value& y) {
   }
 };
 
-Value _mmul(HalContext* ctx, const Value& x, const Value& y) {
+Value _mmul(SPUContext* ctx, const Value& x, const Value& y) {
   auto [m, n, k] = deduceMmulArgs(x.shape(), y.shape());
   auto [m_step, n_step, k_step] =
       calcMmulTilingSize(m, n, k, x.elsize(), 256UL * 1024 * 1024);
 
-  if (ctx->rt_config().experimental_disable_mmul_split() ||
+  if (ctx->config().experimental_disable_mmul_split() ||
       (m_step == m && n_step == n && k_step == k)) {
     // no split
     return _mmul_impl(ctx, x, y);
@@ -302,12 +302,12 @@ Value _mmul(HalContext* ctx, const Value& x, const Value& y) {
   return ret;
 }
 
-Value _or(HalContext* ctx, const Value& x, const Value& y) {
+Value _or(SPUContext* ctx, const Value& x, const Value& y) {
   // X or Y = X xor Y xor (X and Y)
   return _xor(ctx, x, _xor(ctx, y, _and(ctx, x, y)));
 }
 
-static std::optional<Value> _equal_impl(HalContext* ctx, const Value& x,
+static std::optional<Value> _equal_impl(SPUContext* ctx, const Value& x,
                                         const Value& y) {
   SPU_TRACE_HAL_LEAF(ctx, x, y);
 
@@ -324,7 +324,7 @@ static std::optional<Value> _equal_impl(HalContext* ctx, const Value& x,
   return std::nullopt;
 }
 
-Value _equal(HalContext* ctx, const Value& x, const Value& y) {
+Value _equal(SPUContext* ctx, const Value& x, const Value& y) {
   // First try use equal kernel, i.e. for 2PC , equal can be done with the same
   // cost of half MSB.
   //      x0 + x1 = y0 + y1 mod 2^k
@@ -343,7 +343,7 @@ Value _equal(HalContext* ctx, const Value& x, const Value& y) {
               _xor(ctx, _less(ctx, y, x), _k1));
 }
 
-Value _trunc_with_sign(HalContext* ctx, const Value& x, size_t bits,
+Value _trunc_with_sign(SPUContext* ctx, const Value& x, size_t bits,
                        bool is_positive) {
   SPU_TRACE_HAL_LEAF(ctx, x, bits);
   bits = (bits == 0) ? ctx->getFxpBits() : bits;
@@ -357,7 +357,7 @@ Value _trunc_with_sign(HalContext* ctx, const Value& x, size_t bits,
   }
 }
 
-Value _trunc(HalContext* ctx, const Value& x, size_t bits) {
+Value _trunc(SPUContext* ctx, const Value& x, size_t bits) {
   SPU_TRACE_HAL_LEAF(ctx, x, bits);
   bits = (bits == 0) ? ctx->getFxpBits() : bits;
 
@@ -370,14 +370,14 @@ Value _trunc(HalContext* ctx, const Value& x, size_t bits) {
   }
 }
 
-Value _negate(HalContext* ctx, const Value& x) {
+Value _negate(SPUContext* ctx, const Value& x) {
   SPU_TRACE_HAL_LEAF(ctx, x);
 
   // negate(x) = not(x) + 1
   return _add(ctx, _not(ctx, x), _constant(ctx, 1, x.shape()));
 }
 
-Value _sign(HalContext* ctx, const Value& x) {
+Value _sign(SPUContext* ctx, const Value& x) {
   SPU_TRACE_HAL_LEAF(ctx, x);
 
   // is_negative = x < 0 ? 1 : 0;
@@ -393,7 +393,7 @@ Value _sign(HalContext* ctx, const Value& x) {
   return _sub(ctx, one, _mul(ctx, two, is_negative));
 }
 
-Value _less(HalContext* ctx, const Value& x, const Value& y) {
+Value _less(SPUContext* ctx, const Value& x, const Value& y) {
   SPU_TRACE_HAL_LEAF(ctx, x, y);
 
   // Note: the impl assume inputs are signed with two's complement encoding.
@@ -402,7 +402,7 @@ Value _less(HalContext* ctx, const Value& x, const Value& y) {
 }
 
 // swap bits of [start, end)
-Value _bitrev(HalContext* ctx, const Value& x, size_t start, size_t end) {
+Value _bitrev(SPUContext* ctx, const Value& x, size_t start, size_t end) {
   SPU_TRACE_HAL_LEAF(ctx, x, start, end);
 
   if (x.isPublic()) {
@@ -414,14 +414,14 @@ Value _bitrev(HalContext* ctx, const Value& x, size_t start, size_t end) {
   SPU_THROW("unsupport op={} for {}", "_bitrev", x);
 }
 
-Value _mux(HalContext* ctx, const Value& pred, const Value& a, const Value& b) {
+Value _mux(SPUContext* ctx, const Value& pred, const Value& a, const Value& b) {
   SPU_TRACE_HAL_LEAF(ctx, pred, a, b);
 
   // b + pred*(a-b)
   return _add(ctx, b, _mul(ctx, pred, _sub(ctx, a, b)));
 }
 
-Value _clamp(HalContext* ctx, const Value& x, const Value& minv,
+Value _clamp(SPUContext* ctx, const Value& x, const Value& minv,
              const Value& maxv) {
   SPU_TRACE_HAL_LEAF(ctx, x, minv, maxv);
 
@@ -432,12 +432,12 @@ Value _clamp(HalContext* ctx, const Value& x, const Value& minv,
   return _mux(ctx, _less(ctx, res, maxv), res, maxv);
 }
 
-Value _constant(HalContext* ctx, uint128_t init,
+Value _constant(SPUContext* ctx, uint128_t init,
                 absl::Span<const int64_t> shape) {
   return _make_p(ctx, init, shape);
 }
 
-Value _bit_parity(HalContext* ctx, const Value& x, size_t bits) {
+Value _bit_parity(SPUContext* ctx, const Value& x, size_t bits) {
   SPU_TRACE_HAL_LEAF(ctx, x);
 
   SPU_ENFORCE(absl::has_single_bit(bits), "currently only support power of 2");
@@ -452,7 +452,7 @@ Value _bit_parity(HalContext* ctx, const Value& x, size_t bits) {
 }
 
 // TODO(jint): OPTIMIZE ME, this impl seems to be super slow.
-Value _popcount(HalContext* ctx, const Value& x, size_t bits) {
+Value _popcount(SPUContext* ctx, const Value& x, size_t bits) {
   SPU_TRACE_HAL_LEAF(ctx, x);
 
   Value ret = _constant(ctx, 0, x.shape());
@@ -478,7 +478,7 @@ Value _popcount(HalContext* ctx, const Value& x, size_t bits) {
 //   x2:  011110000   ; x1 | (x1>>2)
 //   x3:  011111111   ; x2 | (x2>>4)
 //
-Value _prefix_or(HalContext* ctx, const Value& x) {
+Value _prefix_or(SPUContext* ctx, const Value& x) {
   SPU_TRACE_HAL_LEAF(ctx, x);
 
   auto b0 = _prefer_b(ctx, x);
@@ -491,7 +491,7 @@ Value _prefix_or(HalContext* ctx, const Value& x) {
   return b0;
 }
 
-Value _bitdeintl(HalContext* ctx, const Value& in) {
+Value _bitdeintl(SPUContext* ctx, const Value& in) {
   SPU_TRACE_HAL_LEAF(ctx, in);
 
   // algorithm:
@@ -530,9 +530,9 @@ Value _bitdeintl(HalContext* ctx, const Value& in) {
 // - b2a+2*mul > 2*mula2b, we prefer to leave p as bshare.
 //
 // Cheetah is the later case.
-Value _prefer_a(HalContext* ctx, const Value& x) {
+Value _prefer_a(SPUContext* ctx, const Value& x) {
   if (x.storage_type().isa<BShare>()) {
-    if (ctx->rt_config().protocol() == ProtocolKind::CHEETAH &&
+    if (ctx->config().protocol() == ProtocolKind::CHEETAH &&
         x.storage_type().as<BShare>()->nbits() == 1) {
       return x;
     }
@@ -550,7 +550,7 @@ Value _prefer_a(HalContext* ctx, const Value& x) {
 //   y2 = v ^ c2
 // When a variable is followed by multiple binary operation, it's more efficient
 // to convert it to boolean share first.
-Value _prefer_b(HalContext* ctx, const Value& x) {
+Value _prefer_b(SPUContext* ctx, const Value& x) {
   if (x.storage_type().isa<AShare>()) {
     const auto k0 = _constant(ctx, 0U, x.shape());
     return _xor(ctx, x, k0).setDtype(x.dtype());  // noop, to bshare

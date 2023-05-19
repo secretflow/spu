@@ -14,13 +14,13 @@
 
 #pragma once
 
-#include "libspu/kernel/context.h"
-#include "libspu/kernel/value.h"
+#include "libspu/core/context.h"
+#include "libspu/core/value.h"
 
 namespace spu::kernel::hal {
 
 /// Debug print a value, this action may reveal secret.
 // @param v, value to print
-void dbg_print(HalContext* ctx, const Value& v);
+void dbg_print(SPUContext* ctx, const Value& v);
 
 }  // namespace spu::kernel::hal

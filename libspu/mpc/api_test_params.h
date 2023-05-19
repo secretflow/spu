@@ -16,7 +16,7 @@
 
 #include "yacl/link/link.h"
 
-#include "libspu/mpc/object.h"
+#include "libspu/core/context.h"
 
 namespace spu::mpc::test {
 
@@ -34,7 +34,7 @@ class NamedFunction : public std::function<Func> {
   const std::string& name() const { return name_; }
 };
 
-using CreateObjectFn = NamedFunction<std::unique_ptr<Object>(
+using CreateObjectFn = NamedFunction<std::unique_ptr<SPUContext>(
     const RuntimeConfig& conf,
     const std::shared_ptr<yacl::link::Context>& lctx)>;
 

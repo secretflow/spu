@@ -21,7 +21,15 @@ filegroup(
     srcs = glob(["**"]),
 )
 
-arm64_config = {
+config_setting(
+    name = "can_use_hexl",
+    constraint_values = [
+        "@platforms//cpu:x86_64",
+    ],
+    values = {"compilation_mode": "opt"},
+)
+
+default_config = {
     "SEAL_USE_MSGSL": "OFF",
     "SEAL_BUILD_DEPS": "OFF",
     "SEAL_USE_ZSTD": "ON",
@@ -30,7 +38,7 @@ arm64_config = {
     "CMAKE_INSTALL_LIBDIR": "lib",
 }
 
-x64_config = {
+x64_hexl_config = {
     "SEAL_USE_MSGSL": "OFF",
     "SEAL_BUILD_DEPS": "OFF",
     "SEAL_USE_ZSTD": "ON",
@@ -45,8 +53,8 @@ x64_config = {
 spu_cmake_external(
     name = "seal",
     cache_entries = select({
-        "@platforms//cpu:x86_64": x64_config,
-        "//conditions:default": arm64_config,
+        ":can_use_hexl": x64_hexl_config,
+        "//conditions:default": default_config,
     }),
     lib_source = "@com_github_microsoft_seal//:all",
     out_include_dir = "include/SEAL-4.0",

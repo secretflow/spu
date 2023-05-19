@@ -36,12 +36,12 @@ struct ConvolutionConfig {
 // This is a port of hlo evaluator's HandleConvolutionWithLiterals, which can
 // handle general convolution. See
 // https://github.com/tensorflow/tensorflow/blob/master/tensorflow/compiler/xla/service/hlo_evaluator_typed_visitor.h
-spu::Value Convolution(HalContext *ctx, const spu::Value &lhs,
+spu::Value Convolution(SPUContext *ctx, const spu::Value &lhs,
                        const spu::Value &rhs, const ConvolutionConfig &config,
                        absl::Span<const int64_t> result_shape);
 
 // This is an optimized conv2D with im2col
-spu::Value Convolution2D(HalContext *ctx, spu::Value input,
+spu::Value Convolution2D(SPUContext *ctx, spu::Value input,
                          const spu::Value &kernel,
                          const ConvolutionConfig &config,
                          absl::Span<const int64_t> result_shape);

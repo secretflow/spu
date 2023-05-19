@@ -14,58 +14,56 @@
 
 #include "libspu/mpc/spdz2k/protocol.h"
 
-#include "libspu/mpc/common/ab_api.h"
+#include "libspu/core/context.h"
 #include "libspu/mpc/common/communicator.h"
 #include "libspu/mpc/common/prg_state.h"
 #include "libspu/mpc/common/pub2k.h"
-#include "libspu/mpc/object.h"
 #include "libspu/mpc/spdz2k/arithmetic.h"
 #include "libspu/mpc/spdz2k/state.h"
 #include "libspu/mpc/spdz2k/type.h"
 
 namespace spu::mpc {
 
-std::unique_ptr<Object> makeSpdz2kProtocol(
-    const RuntimeConfig& conf,
-    const std::shared_ptr<yacl::link::Context>& lctx) {
+void regSpdz2kProtocol(SPUContext* ctx,
+                       const std::shared_ptr<yacl::link::Context>& lctx) {
   spdz2k::registerTypes();
 
-  // FIXME: use same id for different rank
-  auto obj =
-      std::make_unique<Object>(fmt::format("{}-{}", lctx->Rank(), "SPDZ2K"));
-
   // add communicator
-  obj->addState<Communicator>(lctx);
+  ctx->prot()->addState<Communicator>(lctx);
 
   // register random states & kernels.
-  obj->addState<PrgState>(lctx);
+  ctx->prot()->addState<PrgState>(lctx);
 
   // add Z2k state.
-  obj->addState<Z2kState>(conf.field());
+  ctx->prot()->addState<Z2kState>(ctx->config().field());
 
   // register public kernels.
-  regPub2kKernels(obj.get());
-
-  // register compute kernels
-  regABKernels(obj.get());
+  regPub2kKernels(ctx->prot());
 
   // register arithmetic kernels
-  obj->addState<Spdz2kState>(lctx);
-  obj->regKernel<spdz2k::ZeroA>();
-  obj->regKernel<spdz2k::P2A>();
-  obj->regKernel<spdz2k::A2P>();
-  obj->regKernel<spdz2k::NotA>();
-  obj->regKernel<spdz2k::AddAP>();
-  obj->regKernel<spdz2k::AddAA>();
-  obj->regKernel<spdz2k::MulAP>();
-  obj->regKernel<spdz2k::MulAA>();
-  obj->regKernel<spdz2k::MatMulAP>();
-  obj->regKernel<spdz2k::MatMulAA>();
-  obj->regKernel<spdz2k::LShiftA>();
-  obj->regKernel<spdz2k::TruncA>();
-  obj->regKernel<spdz2k::RandA>();
+  ctx->prot()->addState<Spdz2kState>(lctx);
+  ctx->prot()->regKernel<spdz2k::P2A>();
+  ctx->prot()->regKernel<spdz2k::A2P>();
+  ctx->prot()->regKernel<spdz2k::NotA>();
+  ctx->prot()->regKernel<spdz2k::AddAP>();
+  ctx->prot()->regKernel<spdz2k::AddAA>();
+  ctx->prot()->regKernel<spdz2k::MulAP>();
+  ctx->prot()->regKernel<spdz2k::MulAA>();
+  ctx->prot()->regKernel<spdz2k::MatMulAP>();
+  ctx->prot()->regKernel<spdz2k::MatMulAA>();
+  ctx->prot()->regKernel<spdz2k::LShiftA>();
+  ctx->prot()->regKernel<spdz2k::TruncA>();
+  ctx->prot()->regKernel<spdz2k::RandA>();
+}
 
-  return obj;
+std::unique_ptr<SPUContext> makeSpdz2kProtocol(
+    const RuntimeConfig& conf,
+    const std::shared_ptr<yacl::link::Context>& lctx) {
+  auto ctx = std::make_unique<SPUContext>(conf, lctx);
+
+  regSpdz2kProtocol(ctx.get(), lctx);
+
+  return ctx;
 }
 
 }  // namespace spu::mpc

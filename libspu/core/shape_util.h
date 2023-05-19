@@ -71,4 +71,33 @@ inline size_t calcFlattenOffset(absl::Span<const int64_t> indices,
   return offset;
 }
 
+using ShapeView = absl::Span<int64_t const>;
+
+class Shape : public std::vector<int64_t> {
+  using Base = std::vector<int64_t>;
+
+ public:
+  Shape() = default;
+  Shape(const Shape &other) = default;
+  Shape &operator=(const Shape &other) = default;
+
+  Shape(std::initializer_list<int64_t> list) : Base(list) {}
+  Shape(iterator begin, iterator end) : Base(begin, end) {}
+  explicit Shape(size_t size, int64_t element = 0) : Base(size, element) {}
+  explicit Shape(const std::vector<int64_t> &other) : Base(other) {}
+  explicit Shape(absl::Span<int64_t const> other)
+      : Base(other.begin(), other.end()) {}
+
+  int64_t ndim() const { return static_cast<int64_t>(size()); }
+
+  int64_t dim(int64_t idx) const {
+    SPU_ENFORCE(idx < ndim(), "invalid idx={}, ndim={}", idx, ndim());
+    return at(idx);
+  }
+
+  int64_t numel() const {
+    return calcNumel(absl::MakeConstSpan(data(), size()));
+  }
+};
+
 }  // namespace spu

@@ -1,4 +1,4 @@
-// RUN: mlir-pphlo-opt -hlo-legalize-to-pphlo %s --split-input-file  | FileCheck %s
+// RUN: mlir-pphlo-opt -hlo-legalize-to-pphlo=input_vis_list=VIS_PUBLIC %s --split-input-file  | FileCheck %s
 
 func.func @main(%arg0: tensor<i64>) -> tensor<i64> {
   //CHECK: %0 = "pphlo.while"(%arg0) ({

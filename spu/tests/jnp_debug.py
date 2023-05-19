@@ -28,10 +28,13 @@ if __name__ == "__main__":
     """
 
     sim = ppsim.Simulator.simple(3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM64)
+    copts = spu_pb2.CompilerOptions()
+    # Tweak compiler options
+    copts.disable_div_sqrt_rewrite = True
 
     x = np.random.randn(3, 4)
-    fn = lambda x: jnp.mean(x)
-    spu_fn = ppsim.sim_jax(sim, fn)
+    fn = lambda x: x / (jnp.sqrt(x) + 1e-9)
+    spu_fn = ppsim.sim_jax(sim, fn, copts=copts)
     z = spu_fn(x)
 
     print(spu_fn.pphlo)

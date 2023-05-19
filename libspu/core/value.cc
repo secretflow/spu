@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "libspu/kernel/value.h"
+#include "libspu/core/value.h"
 
 #include <algorithm>
 #include <cstdint>
@@ -120,6 +120,16 @@ std::ostream& operator<<(std::ostream& out, const Value& v) {
   out << fmt::format("Value<{}x{}{},s={}>", fmt::join(v.shape(), "x"),
                      v.vtype(), v.dtype(), fmt::join(v.strides(), ","));
   return out;
+}
+
+std::tuple<ArrayRef, Shape, DataType> UnwrapValue(const Value& val) {
+  return std::make_tuple(flatten(val.data()), Shape(val.shape()), val.dtype());
+}
+
+Value WrapValue(const ArrayRef& arr, absl::Span<int64_t const> shape,
+                DataType dtype) {
+  auto ndarr = unflatten(arr, shape);
+  return Value(ndarr, dtype);
 }
 
 }  // namespace spu
