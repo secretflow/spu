@@ -19,8 +19,8 @@
 
 #include "absl/types/span.h"
 
-#include "libspu/kernel/context.h"
-#include "libspu/kernel/value.h"
+#include "libspu/core/context.h"
+#include "libspu/core/value.h"
 
 namespace spu::kernel::hlo {
 
@@ -28,15 +28,15 @@ using BatchedValueBinaryFn = std::function<std::vector<spu::Value>(
     absl::Span<spu::Value const> lhs, absl::Span<spu::Value const> rhs)>;
 
 spu::Value ExpandStridedWindow(
-    HalContext *ctx, const spu::Value &base,
+    SPUContext *ctx, const spu::Value &base,
     absl::Span<const int64_t> window_shape,
     absl::Span<const int64_t> window_strides,
     absl::Span<const std::pair<int64_t, int64_t>> padding);
 
-spu::Value ConvertToTiledLayout(HalContext *ctx, const spu::Value &in,
+spu::Value ConvertToTiledLayout(SPUContext *ctx, const spu::Value &in,
                                 absl::Span<const int64_t> block_shape);
 
-std::vector<spu::Value> TreeReduce(HalContext *ctx,
+std::vector<spu::Value> TreeReduce(SPUContext *ctx,
                                    absl::Span<const spu::Value> inputs,
                                    int64_t axis,
                                    const BatchedValueBinaryFn &reducer);
@@ -49,7 +49,7 @@ struct ReduceWindowConfig {
   absl::Span<const int64_t> base_dilations;
 };
 
-std::vector<spu::Value> ReduceWindow(HalContext *ctx,
+std::vector<spu::Value> ReduceWindow(SPUContext *ctx,
                                      absl::Span<const spu::Value> inputs,
                                      absl::Span<const spu::Value> init_values,
                                      absl::Span<const int64_t> ret_shape,
@@ -57,14 +57,14 @@ std::vector<spu::Value> ReduceWindow(HalContext *ctx,
                                      const BatchedValueBinaryFn &reducer,
                                      bool ignore_init_values = false);
 
-std::vector<spu::Value> Reduce(HalContext *ctx,
+std::vector<spu::Value> Reduce(SPUContext *ctx,
                                absl::Span<const spu::Value> inputs,
                                absl::Span<const spu::Value> init_values,
                                absl::Span<const int64_t> dims_to_reduce,
                                const BatchedValueBinaryFn &reducer,
                                bool ignore_init_values = false);
 
-std::pair<spu::Value, spu::Value> ArgMax(HalContext *ctx,
+std::pair<spu::Value, spu::Value> ArgMax(SPUContext *ctx,
                                          const spu::Value &input,
                                          absl::Span<const int64_t> ret_shape,
                                          const ReduceWindowConfig &config);

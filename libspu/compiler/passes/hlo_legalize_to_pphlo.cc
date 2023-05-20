@@ -21,9 +21,6 @@
 #include <utility>
 #include <vector>
 
-#include "llvm/Support/JSON.h"
-#include "llvm/Support/Path.h"
-#include "llvm/Support/raw_os_ostream.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"
 #include "mlir/IR/BuiltinOps.h"
 #include "mlir/IR/PatternMatch.h"
@@ -31,6 +28,7 @@
 #include "mlir/Transforms/DialectConversion.h"
 #include "stablehlo/dialect/StablehloOps.h"
 
+#include "libspu/compiler/common/compilation_context.h"
 #include "libspu/compiler/passes/map_stablehlo_to_pphlo_op.h"
 #include "libspu/compiler/passes/pass_details.h"
 #include "libspu/compiler/passes/value_visibility_map.h"
@@ -44,38 +42,23 @@
 namespace mlir::pphlo {
 namespace {
 
-/// This struct carries information of io visibility
-struct IoVisibilityInfo {
-  std::vector<Visibility> inputs;
-
-  void convertFromStrings(llvm::ArrayRef<std::string> data) {
-    for (const auto &s : data) {
-      const auto symbolized = symbolizeEnum<Visibility>(s);
-      SPU_ENFORCE(symbolized.has_value());
-      inputs.emplace_back(*symbolized);
-    }
-  }
-
-  Visibility getInputVisibility(size_t idx) const {
-    if (idx >= inputs.size()) {
-      return Visibility::VIS_PUBLIC;
-    }
-    return inputs[idx];
-  }
-};
-
-ValueVisibilityMap VisibilityDiscovery(ModuleOp op,
-                                       const IoVisibilityInfo &input_vis) {
+ValueVisibilityMap
+VisibilityDiscovery(const llvm::ArrayRef<std::string> input_vis_list,
+                    ModuleOp op) {
   // Get the main function
   auto entry_func = op.lookupSymbol<mlir::func::FuncOp>("main");
 
-  SPU_ENFORCE(entry_func != nullptr);
+  SPU_ENFORCE(entry_func != nullptr, "Cannot find main entry point");
 
   ValueVisibilityMap vis_map;
   // Populate top level io visibility
   for (const auto &blockargs : entry_func.getBody().getArguments()) {
-    vis_map.setValueVisibility(
-        blockargs, input_vis.getInputVisibility(blockargs.getArgNumber()));
+    SPU_ENFORCE(blockargs.getArgNumber() < input_vis_list.size(),
+                "Input visibility list does not match actual inputs.");
+    auto v =
+        symbolizeEnum<Visibility>(input_vis_list[blockargs.getArgNumber()]);
+    SPU_ENFORCE(v.has_value(), "Input visibility list has invalid value.");
+    vis_map.setValueVisibility(blockargs, *v);
   }
 
   VisibilityInference inference(vis_map);
@@ -1407,42 +1390,11 @@ private:
         HloToPPHloOpConverter<stablehlo::XorOp>>(converter, context, vis_map);
   }
 
-  IoVisibilityInfo vis_info_;
-
-  void parseVisibilityString() {
-    if (io_visibility_json_.empty()) {
-      return;
-    }
-    llvm::raw_os_ostream os(std::cout);
-    if (auto json_v = llvm::json::parse(io_visibility_json_)) {
-      llvm::json::Path::Root r;
-      llvm::json::ObjectMapper map(*json_v, r);
-      std::vector<std::string> str_vis;
-      if (map && map.map("inputs", str_vis)) {
-        vis_info_.convertFromStrings(str_vis);
-      } else {
-        r.printErrorContext(*json_v, os);
-      }
-    } else {
-      handleAllErrors(json_v.takeError(), [&](const llvm::ErrorInfoBase &e) {
-        os << "Failed to parse visibility JSON >>> " << io_visibility_json_
-           << " <<<: " << e.message();
-      });
-    }
-    os.flush();
-  }
-
 public:
   HloLegalizeToPPHlo(const HloLegalizeToPPHlo &) = default;
   HloLegalizeToPPHlo() = default;
-  explicit HloLegalizeToPPHlo(const std::string &io_visibility_json) {
-    io_visibility_json_ = io_visibility_json;
-  }
 
   void runOnOperation() override {
-    // This is a must step for cli workflow
-    parseVisibilityString();
-
     auto &context = getContext();
 
     RewritePatternSet patterns(&context);
@@ -1469,7 +1421,8 @@ public:
         });
 
     // Stage 1: Run a visibility discover pass to tag all Values' visibility
-    ValueVisibilityMap vis_map = VisibilityDiscovery(getOperation(), vis_info_);
+    ValueVisibilityMap vis_map =
+        VisibilityDiscovery(input_vis_list_, getOperation());
 
     // Stage 2: Do an actual dialect conversion.
     populateHLOToPPHloConversionPattern(converter, patterns, vis_map);
@@ -1481,11 +1434,6 @@ public:
   }
 };
 } // namespace
-
-std::unique_ptr<OperationPass<ModuleOp>>
-createLegalizeToPPHloPass(const std::string &io_visibility_json) {
-  return std::make_unique<HloLegalizeToPPHlo>(io_visibility_json);
-}
 
 std::unique_ptr<OperationPass<ModuleOp>> createLegalizeToPPHloPass() {
   return std::make_unique<HloLegalizeToPPHlo>();

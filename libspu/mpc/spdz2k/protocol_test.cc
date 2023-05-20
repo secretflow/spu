@@ -21,6 +21,7 @@ namespace {
 
 RuntimeConfig makeConfig(FieldType field) {
   RuntimeConfig conf;
+  conf.set_protocol(ProtocolKind::SEMI2K);  // FIXME:
   conf.set_field(field);
   return conf;
 }

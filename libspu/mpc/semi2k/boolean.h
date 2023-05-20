@@ -15,7 +15,6 @@
 #pragma once
 
 #include "libspu/mpc/kernel.h"
-#include "libspu/mpc/utils/cexpr.h"
 
 namespace spu::mpc::semi2k {
 
@@ -28,28 +27,16 @@ class CommonTypeB : public Kernel {
   void evaluate(KernelEvalContext* ctx) const override;
 };
 
-class CastTypeB : public Kernel {
+class CastTypeB : public CastTypeKernel {
  public:
   static constexpr char kBindName[] = "cast_type_b";
-
-  Kind kind() const override { return Kind::Dynamic; }
-
-  void evaluate(KernelEvalContext* ctx) const override;
-};
-
-class ZeroB : public Kernel {
- public:
-  static constexpr char kBindName[] = "zero_b";
 
   ce::CExpr latency() const override { return ce::Const(0); }
 
   ce::CExpr comm() const override { return ce::Const(0); }
 
-  void evaluate(KernelEvalContext* ctx) const override {
-    ctx->setOutput(proc(ctx, ctx->getParam<size_t>(0)));
-  }
-
-  static ArrayRef proc(KernelEvalContext* ctx, size_t size);
+  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in,
+                const Type& to_type) const override;
 };
 
 class B2P : public UnaryKernel {
@@ -170,7 +157,7 @@ class BitrevB : public BitrevKernel {
                 size_t end) const override;
 };
 
-class BitIntlB : public Kernel {
+class BitIntlB : public BitSplitKernel {
  public:
   static constexpr char kBindName[] = "bitintl_b";
 
@@ -178,10 +165,11 @@ class BitIntlB : public Kernel {
 
   ce::CExpr comm() const override { return ce::Const(0); }
 
-  void evaluate(KernelEvalContext* ctx) const override;
+  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in,
+                size_t stride) const override;
 };
 
-class BitDeintlB : public Kernel {
+class BitDeintlB : public BitSplitKernel {
  public:
   static constexpr char kBindName[] = "bitdeintl_b";
 
@@ -189,7 +177,8 @@ class BitDeintlB : public Kernel {
 
   ce::CExpr comm() const override { return ce::Const(0); }
 
-  void evaluate(KernelEvalContext* ctx) const override;
+  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in,
+                size_t stride) const override;
 };
 
 }  // namespace spu::mpc::semi2k

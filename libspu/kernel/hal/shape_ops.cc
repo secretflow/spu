@@ -29,7 +29,7 @@
 
 namespace spu::kernel::hal {
 
-Value transpose(HalContext* ctx, const Value& in,
+Value transpose(SPUContext* ctx, const Value& in,
                 absl::Span<const int64_t> permutation) {
   SPU_TRACE_HAL_DISP(ctx, in);
 
@@ -39,7 +39,7 @@ Value transpose(HalContext* ctx, const Value& in,
   return Value(in.data().transpose(permutation), in.dtype()).clone();
 }
 
-Value slice(HalContext* ctx, const Value& in,
+Value slice(SPUContext* ctx, const Value& in,
             absl::Span<const int64_t> start_indices,
             absl::Span<const int64_t> end_indices,
             absl::Span<const int64_t> strides) {
@@ -49,12 +49,12 @@ Value slice(HalContext* ctx, const Value& in,
                in.dtype());
 }
 
-Value slice_scalar_at(HalContext* ctx, const Value& input,
+Value slice_scalar_at(SPUContext* ctx, const Value& input,
                       absl::Span<const int64_t> indices) {
   return Value(input.data().slice_scalar_at(indices), input.dtype());
 }
 
-Value update_slice(HalContext* ctx, const Value& in, const Value& update,
+Value update_slice(SPUContext* ctx, const Value& in, const Value& update,
                    absl::Span<const int64_t> start_indices) {
   auto ret = in.clone();
   auto u = stype_cast(ctx, update, ret.storage_type());
@@ -62,14 +62,14 @@ Value update_slice(HalContext* ctx, const Value& in, const Value& update,
   return ret;
 }
 
-Value reshape(HalContext* ctx, const Value& in,
+Value reshape(SPUContext* ctx, const Value& in,
               absl::Span<const int64_t> to_shape) {
   SPU_TRACE_HAL_DISP(ctx, in, to_shape);
 
   return Value(in.data().reshape(to_shape), in.dtype());
 }
 
-Value broadcast_to(HalContext* ctx, const Value& in,
+Value broadcast_to(SPUContext* ctx, const Value& in,
                    absl::Span<const int64_t> to_shape,
                    absl::Span<const int64_t> in_dims) {
   SPU_TRACE_HAL_DISP(ctx, in, to_shape);
@@ -77,19 +77,19 @@ Value broadcast_to(HalContext* ctx, const Value& in,
   return Value(in.data().broadcast_to(to_shape, in_dims), in.dtype());
 }
 
-Value reverse(HalContext* ctx, const Value& in,
+Value reverse(SPUContext* ctx, const Value& in,
               absl::Span<const int64_t> dimensions) {
   SPU_TRACE_HAL_DISP(ctx, in, dimensions);
 
   return Value(in.data().reverse(dimensions), in.dtype());
 }
 
-Value expand(HalContext* ctx, const Value& in,
+Value expand(SPUContext* ctx, const Value& in,
              absl::Span<const int64_t> to_shape) {
   return Value(in.data().expand(to_shape), in.dtype());
 }
 
-Value pad(HalContext* ctx, const Value& in, const Value& padding_value,
+Value pad(SPUContext* ctx, const Value& in, const Value& padding_value,
           absl::Span<const int64_t> edge_padding_low,
           absl::Span<const int64_t> edge_padding_high,
           absl::Span<const int64_t> interior_padding) {
@@ -108,7 +108,7 @@ Value pad(HalContext* ctx, const Value& in, const Value& padding_value,
                in.dtype());
 }
 
-Value concatenate(HalContext* ctx, absl::Span<const Value> values,
+Value concatenate(SPUContext* ctx, absl::Span<const Value> values,
                   const size_t& axis) {
   SPU_TRACE_HAL_DISP(ctx, axis);
   SPU_ENFORCE(!values.empty(), "got={}", values.size());

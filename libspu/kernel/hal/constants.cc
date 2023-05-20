@@ -29,7 +29,7 @@ namespace {
 // make a public typed value.
 //
 // FIXME: this is a abstraction leakage, we should NOT invoke Pub2kTy directly.
-Value make_pub2k(HalContext* ctx, const PtBufferView& bv) {
+Value make_pub2k(SPUContext* ctx, const PtBufferView& bv) {
   SPU_TRACE_HAL_DISP(ctx, bv);
 
   NdArrayRef raw = convertToNdArray(bv);
@@ -69,7 +69,7 @@ bool canImplicitCastTo(DataType frm, DataType to) {
 
 }  // namespace
 
-Value constant(HalContext* ctx, PtBufferView init, DataType dtype,
+Value constant(SPUContext* ctx, PtBufferView init, DataType dtype,
                ShapeView shape) {
   SPU_TRACE_HAL_DISP(ctx, init, dtype, shape);
 
@@ -102,7 +102,7 @@ Value constant(HalContext* ctx, PtBufferView init, DataType dtype,
   return Value(result.data().broadcast_to(shape, {}), result.dtype());
 }
 
-spu::Value zeros(HalContext* ctx, DataType dtype,
+spu::Value zeros(SPUContext* ctx, DataType dtype,
                  absl::Span<const int64_t> shape) {
   if (dtype == DT_FXP) {
     return constant(ctx, 0.0, DT_FXP, shape);
@@ -111,7 +111,7 @@ spu::Value zeros(HalContext* ctx, DataType dtype,
   }
 }
 
-Value iota(HalContext* ctx, DataType dtype, int64_t numel) {
+Value iota(SPUContext* ctx, DataType dtype, int64_t numel) {
   return DISPATCH_ALL_NONE_BOOL_PT_TYPES(getDecodeType(dtype), "iota", [&]() {
     std::vector<ScalarT> arr(numel);
     std::iota(arr.begin(), arr.end(), 0);
@@ -119,7 +119,7 @@ Value iota(HalContext* ctx, DataType dtype, int64_t numel) {
   });
 }
 
-Value epsilon(HalContext* ctx, absl::Span<const int64_t> shape) {
+Value epsilon(SPUContext* ctx, absl::Span<const int64_t> shape) {
   return _constant(ctx, static_cast<int128_t>(1), shape).asFxp();
 }
 

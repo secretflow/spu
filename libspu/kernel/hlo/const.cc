@@ -21,7 +21,7 @@
 namespace spu::kernel::hlo {
 
 // TODO: pass DataType as a parameter?
-spu::Value Constant(HalContext *ctx, const PtBufferView &view,
+spu::Value Constant(SPUContext *ctx, const PtBufferView &view,
                     absl::Span<const int64_t> out_shape) {
   const auto dtype = getEncodeType(view.pt_type);
   if (view.shape == out_shape) {
@@ -32,10 +32,10 @@ spu::Value Constant(HalContext *ctx, const PtBufferView &view,
   }
 }
 
-spu::Value Iota(HalContext *ctx, DataType dtype, int64_t numel) {
+spu::Value Iota(SPUContext *ctx, DataType dtype, int64_t numel) {
   return hal::iota(ctx, dtype, numel);
 }
 
-spu::Value Epsilon(HalContext *ctx) { return hal::epsilon(ctx); }
+spu::Value Epsilon(SPUContext *ctx) { return hal::epsilon(ctx); }
 
 }  // namespace spu::kernel::hlo

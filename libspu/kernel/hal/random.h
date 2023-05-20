@@ -14,8 +14,8 @@
 
 #pragma once
 
-#include "libspu/kernel/context.h"
-#include "libspu/kernel/value.h"
+#include "libspu/core/context.h"
+#include "libspu/core/value.h"
 
 namespace spu::kernel::hal {
 
@@ -23,13 +23,13 @@ namespace spu::kernel::hal {
 // @param lo, lower limit (include)
 // @param hi, upper limit (exclude)
 // @param to_shape, the target shape
-Value rng_uniform(HalContext* ctx, const Value& lo, const Value& hi,
+Value rng_uniform(SPUContext* ctx, const Value& lo, const Value& hi,
                   absl::Span<const int64_t> to_shape);
 
 /// Make a random value.
 //
 // The value is uniformly distributed in value's range.
-Value random(HalContext* ctx, Visibility vis, DataType dtype,
+Value random(SPUContext* ctx, Visibility vis, DataType dtype,
              absl::Span<const int64_t> shape);
 
 }  // namespace spu::kernel::hal

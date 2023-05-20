@@ -16,12 +16,12 @@
 
 #include "gtest/gtest.h"
 
+#include "libspu/core/context.h"
 #include "libspu/core/ndarray_ref.h"
-#include "libspu/kernel/context.h"
+#include "libspu/core/value.h"
 #include "libspu/kernel/hlo/casting.h"
 #include "libspu/kernel/hlo/const.h"
-#include "libspu/kernel/hlo/test_utils.h"
-#include "libspu/kernel/value.h"
+#include "libspu/kernel/test_util.h"
 #include "libspu/mpc/utils/simulate.h"
 
 namespace spu::kernel::hlo {
@@ -30,17 +30,17 @@ class TernaryTest
     : public ::testing::TestWithParam<std::tuple<FieldType, ProtocolKind>> {};
 
 TEST_P(TernaryTest, SelectEmpty) {
-  auto cfg =
-      test::makeRefConfig(std::get<0>(GetParam()), std::get<1>(GetParam()));
+  FieldType field = std::get<0>(GetParam());
+  ProtocolKind prot = std::get<1>(GetParam());
 
   mpc::utils::simulate(
       3, [&](const std::shared_ptr<yacl::link::Context> &lctx) {
-        HalContext hctx(cfg, lctx);
-        auto empty_p = Seal(&hctx, Constant(&hctx, true, {0}));
-        auto empty_true = Seal(&hctx, Constant(&hctx, 1, {0}));
-        auto empty_false = Seal(&hctx, Constant(&hctx, 2, {0}));
+        SPUContext sctx = test::makeSPUContext(prot, field, lctx);
+        auto empty_p = Seal(&sctx, Constant(&sctx, true, {0}));
+        auto empty_true = Seal(&sctx, Constant(&sctx, 1, {0}));
+        auto empty_false = Seal(&sctx, Constant(&sctx, 2, {0}));
 
-        auto ret = Select(&hctx, empty_p, empty_true, empty_false);
+        auto ret = Select(&sctx, empty_p, empty_true, empty_false);
 
         EXPECT_EQ(ret.numel(), 0);
         EXPECT_EQ(ret.shape().size(), 1);
@@ -49,17 +49,17 @@ TEST_P(TernaryTest, SelectEmpty) {
 }
 
 TEST_P(TernaryTest, ClampEmpty) {
-  auto cfg =
-      test::makeRefConfig(std::get<0>(GetParam()), std::get<1>(GetParam()));
+  FieldType field = std::get<0>(GetParam());
+  ProtocolKind prot = std::get<1>(GetParam());
 
   mpc::utils::simulate(
       3, [&](const std::shared_ptr<yacl::link::Context> &lctx) {
-        HalContext hctx(cfg, lctx);
-        auto empty_in = Seal(&hctx, Constant(&hctx, 0, {0}));
-        auto empty_min = Seal(&hctx, Constant(&hctx, 1, {0}));
-        auto empty_max = Seal(&hctx, Constant(&hctx, 2, {0}));
+        SPUContext sctx = test::makeSPUContext(prot, field, lctx);
+        auto empty_in = Seal(&sctx, Constant(&sctx, 0, {0}));
+        auto empty_min = Seal(&sctx, Constant(&sctx, 1, {0}));
+        auto empty_max = Seal(&sctx, Constant(&sctx, 2, {0}));
 
-        auto ret = Clamp(&hctx, empty_in, empty_min, empty_max);
+        auto ret = Clamp(&sctx, empty_in, empty_min, empty_max);
 
         EXPECT_EQ(ret.numel(), 0);
         EXPECT_EQ(ret.shape().size(), 1);

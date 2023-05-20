@@ -14,18 +14,18 @@
 
 #pragma once
 
-#include "libspu/kernel/context.h"
-#include "libspu/kernel/value.h"
+#include "libspu/core/context.h"
+#include "libspu/core/value.h"
 
 namespace spu::kernel::hlo {
 
 using BranchFcnT = std::function<std::vector<spu::Value>()>;
 
-std::vector<spu::Value> IfElse(HalContext *ctx, const spu::Value &condition,
+std::vector<spu::Value> IfElse(SPUContext *ctx, const spu::Value &condition,
                                const BranchFcnT &on_true,
                                const BranchFcnT &on_false);
 
-std::vector<spu::Value> Case(HalContext *ctx, const spu::Value &index,
+std::vector<spu::Value> Case(SPUContext *ctx, const spu::Value &index,
                              absl::Span<const BranchFcnT> branches);
 
 /// While evaluation order:
@@ -36,7 +36,7 @@ std::vector<spu::Value> Case(HalContext *ctx, const spu::Value &index,
 using ConditionFcnT = std::function<spu::Value(absl::Span<const spu::Value>)>;
 using BodyFcnT =
     std::function<std::vector<spu::Value>(absl::Span<const spu::Value>)>;
-std::vector<spu::Value> While(HalContext *ctx,
+std::vector<spu::Value> While(SPUContext *ctx,
                               absl::Span<const spu::Value> inputs,
                               const ConditionFcnT &cond, const BodyFcnT &body);
 

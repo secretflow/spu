@@ -16,11 +16,8 @@
 
 #include "libspu/mpc/kernel.h"
 #include "libspu/mpc/semi2k/arithmetic.h"
-#include "libspu/mpc/utils/cexpr.h"
 
 namespace spu::mpc::cheetah {
-
-using ZeroA = spu::mpc::semi2k::ZeroA;
 
 using RandA = spu::mpc::semi2k::RandA;
 

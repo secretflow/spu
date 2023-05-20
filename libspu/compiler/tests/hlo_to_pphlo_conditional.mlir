@@ -1,4 +1,4 @@
-// RUN: mlir-pphlo-opt -hlo-legalize-to-pphlo %s --split-input-file  | FileCheck %s
+// RUN: mlir-pphlo-opt -hlo-legalize-to-pphlo=input_vis_list=VIS_PUBLIC %s --split-input-file  | FileCheck %s
 
 func.func @main(%arg0: tensor<f32>) -> tensor<f32> {
   //CHECK: %2 = "pphlo.if"(%1) ({

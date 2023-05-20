@@ -173,9 +173,7 @@ DEFINE_BENCHMARK(BenchMMulSP, MatrixSizeArgs);
 DEFINE_BENCHMARK(BenchMMulSS, MatrixSizeArgs);
 
 DEFINE_BENCHMARK(BenchRandA, NumelArgs);
-DEFINE_BENCHMARK(BenchZeroA, NumelArgs);
 DEFINE_BENCHMARK(BenchRandB, NumelArgs);
-DEFINE_BENCHMARK(BenchZeroB, NumelArgs);
 DEFINE_BENCHMARK(BenchP2A, NumelArgs);
 DEFINE_BENCHMARK(BenchA2P, NumelArgs);
 DEFINE_BENCHMARK(BenchMsbA2b, NumelArgs);

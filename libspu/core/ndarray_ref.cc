@@ -548,13 +548,11 @@ NdArrayRef unflatten(const ArrayRef& arr, absl::Span<const int64_t> shape) {
                       std::vector<int64_t>(shape.size(), 0), arr.offset());
   }
 
-  // FIXME: due to the current implementation,
-  SPU_ENFORCE(arr.isCompact(), "FIXME: impl assume array is flatten, got {}",
-              arr);
+  ArrayRef compact = arr.isCompact() ? arr : arr.clone();
 
   auto strides = makeCompactStrides(shape);
-  return NdArrayRef(arr.buf(), arr.eltype(), shape, std::move(strides),
-                    arr.offset());
+  return NdArrayRef(compact.buf(), compact.eltype(), shape, std::move(strides),
+                    compact.offset());
 }
 
 namespace {

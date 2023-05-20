@@ -17,12 +17,12 @@
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 
-#include "libspu/kernel/hal/test_util.h"
+#include "libspu/kernel/test_util.h"
 
 namespace spu::kernel::hal {
 
 TEST(ConstantsTest, Scalar) {
-  HalContext ctx = test::makeRefHalContext();
+  SPUContext ctx = test::makeSPUContext();
 
   Value i = constant(&ctx, 0, DT_I32);
   EXPECT_TRUE(i.shape().empty());
@@ -40,7 +40,7 @@ TEST(ConstantsTest, Scalar) {
 }
 
 TEST(ConstantsTest, Tensor) {
-  HalContext ctx = test::makeRefHalContext();
+  SPUContext ctx = test::makeSPUContext();
 
   xt::xarray<float> raw = {1.0F};
   Value x = constant(&ctx, raw, DT_FXP);
@@ -52,7 +52,7 @@ TEST(ConstantsTest, Tensor) {
 }
 
 TEST(ConstantsTest, TensorBroadcast) {
-  HalContext ctx = test::makeRefHalContext();
+  SPUContext ctx = test::makeSPUContext();
 
   xt::xarray<float> raw = {
       {1.0, 2.0},
@@ -67,7 +67,7 @@ TEST(ConstantsTest, TensorBroadcast) {
 }
 
 TEST(ConstantsTest, Initializer) {
-  HalContext ctx = test::makeRefHalContext();
+  SPUContext ctx = test::makeSPUContext();
 
   // FIXME: the dtype is determined by the C++ literal type.
   // EXPECT_EQ(constant(&ctx, 0, DT_I1).dtype(), DT_I1);  // FIXME

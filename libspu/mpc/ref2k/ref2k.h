@@ -16,8 +16,8 @@
 
 #include "yacl/link/link.h"
 
+#include "libspu/core/context.h"
 #include "libspu/mpc/io_interface.h"
-#include "libspu/mpc/object.h"
 
 namespace spu::mpc {
 
@@ -31,9 +31,11 @@ class Ref2kIo final : public BaseIo {
   ArrayRef fromShares(const std::vector<ArrayRef>& shares) const override;
 };
 
-std::unique_ptr<Object> makeRef2kProtocol(
+std::unique_ptr<SPUContext> makeRef2kProtocol(
     const RuntimeConfig& conf,
     const std::shared_ptr<yacl::link::Context>& lctx);
+void regRef2kProtocol(SPUContext* ctx,
+                      const std::shared_ptr<yacl::link::Context>& lctx);
 
 std::unique_ptr<Ref2kIo> makeRef2kIo(FieldType field, size_t npc);
 

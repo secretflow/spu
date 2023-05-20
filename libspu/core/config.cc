@@ -79,7 +79,7 @@ void populateRuntimecConfig(RuntimeConfig& cfg) {
   }
 
   if (cfg.sigmoid_mode() == RuntimeConfig::SIGMOID_DEFAULT) {
-    cfg.set_sigmoid_mode(RuntimeConfig::SIGMOID_MM1);
+    cfg.set_sigmoid_mode(RuntimeConfig::SIGMOID_REAL);
   }
 }
 

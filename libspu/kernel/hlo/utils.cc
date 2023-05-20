@@ -18,7 +18,7 @@
 
 namespace spu::kernel {
 
-bool getBooleanValue(HalContext *ctx, const spu::Value &value) {
+bool getBooleanValue(SPUContext *ctx, const spu::Value &value) {
   SPU_ENFORCE(value.numel() == 1, "Condition value must be a scalar tensor.");
   SPU_ENFORCE(value.dtype() == DT_I1, "Expect bool, got {}", value.dtype());
   SPU_ENFORCE(value.isPublic(), "Expect public value");
@@ -27,7 +27,7 @@ bool getBooleanValue(HalContext *ctx, const spu::Value &value) {
   return public_val.front();
 }
 
-int32_t getI32Value(HalContext *ctx, const spu::Value &value) {
+int32_t getI32Value(SPUContext *ctx, const spu::Value &value) {
   SPU_ENFORCE(value.numel() == 1, "Index value must be a scalar tensor.");
   SPU_ENFORCE(value.dtype() == DT_I32, "Expect bool, got {}", value.dtype());
   SPU_ENFORCE(value.isPublic(), "Expect public value");
@@ -36,7 +36,7 @@ int32_t getI32Value(HalContext *ctx, const spu::Value &value) {
   return public_val.front();
 }
 
-xt::xarray<int64_t> getIndices(HalContext *ctx, const spu::Value &value) {
+xt::xarray<int64_t> getIndices(SPUContext *ctx, const spu::Value &value) {
   SPU_ENFORCE(value.isInt(), "indices value must be integers.");
   SPU_ENFORCE(value.isPublic(), "indices value must be public.");
   return kernel::hal::dump_public_as<int64_t>(ctx, value);

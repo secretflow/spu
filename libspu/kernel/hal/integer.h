@@ -14,8 +14,8 @@
 
 #pragma once
 
-#include "libspu/kernel/context.h"
-#include "libspu/kernel/value.h"
+#include "libspu/core/context.h"
+#include "libspu/core/value.h"
 
 namespace spu::kernel::hal {
 
@@ -25,24 +25,24 @@ namespace spu::kernel::hal {
 // security semantics, it dispatches functionality by value's security type to
 // the underline mpc module.
 
-Value i_negate(HalContext* ctx, const Value& x);
+Value i_negate(SPUContext* ctx, const Value& x);
 
-Value i_abs(HalContext* ctx, const Value& x);
+Value i_abs(SPUContext* ctx, const Value& x);
 
-Value i_add(HalContext* ctx, const Value& x, const Value& y);
+Value i_add(SPUContext* ctx, const Value& x, const Value& y);
 
-Value i_sub(HalContext* ctx, const Value& x, const Value& y);
+Value i_sub(SPUContext* ctx, const Value& x, const Value& y);
 
-Value i_mul(HalContext* ctx, const Value& x, const Value& y);
+Value i_mul(SPUContext* ctx, const Value& x, const Value& y);
 
-Value i_mmul(HalContext* ctx, const Value& x, const Value& y);
+Value i_mmul(SPUContext* ctx, const Value& x, const Value& y);
 
-Value i_conv2d(HalContext* ctx, const Value& x, const Value& y,
+Value i_conv2d(SPUContext* ctx, const Value& x, const Value& y,
                absl::Span<const int64_t> window_strides,
                absl::Span<const int64_t> result_shape);
 
-Value i_equal(HalContext* ctx, const Value& x, const Value& y);
+Value i_equal(SPUContext* ctx, const Value& x, const Value& y);
 
-Value i_less(HalContext* ctx, const Value& x, const Value& y);
+Value i_less(SPUContext* ctx, const Value& x, const Value& y);
 
 }  // namespace spu::kernel::hal

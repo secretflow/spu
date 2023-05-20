@@ -16,12 +16,12 @@
 
 #include "gtest/gtest.h"
 
+#include "libspu/core/context.h"
 #include "libspu/core/ndarray_ref.h"
-#include "libspu/kernel/context.h"
+#include "libspu/core/value.h"
 #include "libspu/kernel/hlo/basic_binary.h"
 #include "libspu/kernel/hlo/const.h"
-#include "libspu/kernel/hlo/test_utils.h"
-#include "libspu/kernel/value.h"
+#include "libspu/kernel/test_util.h"
 #include "libspu/mpc/utils/simulate.h"
 
 namespace spu::kernel::hlo {
@@ -30,40 +30,40 @@ class GeoTest
     : public ::testing::TestWithParam<std::tuple<FieldType, ProtocolKind>> {};
 
 TEST_P(GeoTest, EmptySlice) {
-  auto cfg =
-      test::makeRefConfig(std::get<0>(GetParam()), std::get<1>(GetParam()));
-
-  mpc::utils::simulate(3,
-                       [&](const std::shared_ptr<yacl::link::Context> &lctx) {
-                         HalContext hctx(cfg, lctx);
-                         auto in = Iota(&hctx, DT_I64, 10);
-
-                         auto ret = Slice(&hctx, in, {1}, {1}, {1});
-
-                         EXPECT_EQ(ret.numel(), 0);
-                         EXPECT_EQ(ret.shape().size(), 1);
-                         EXPECT_EQ(ret.shape()[0], 0);
-
-                         ret = Slice(&hctx, in, {2}, {1}, {1});
-                         EXPECT_EQ(ret.numel(), 0);
-                         EXPECT_EQ(ret.shape().size(), 1);
-                         EXPECT_EQ(ret.shape()[0], 0);
-                       });
-}
-
-TEST_P(GeoTest, MixedStoragePad) {
-  auto cfg =
-      test::makeRefConfig(std::get<0>(GetParam()), std::get<1>(GetParam()));
+  FieldType field = std::get<0>(GetParam());
+  ProtocolKind prot = std::get<1>(GetParam());
 
   mpc::utils::simulate(
       3, [&](const std::shared_ptr<yacl::link::Context> &lctx) {
-        HalContext hctx(cfg, lctx);
-        auto in = Iota(&hctx, DT_I64, 10);
-        in = Seal(&hctx, in);
-        auto pv = Constant(&hctx, static_cast<int64_t>(0), {1});
-        pv = Xor(&hctx, pv, pv);  // Force a bshr
+        SPUContext sctx = test::makeSPUContext(prot, field, lctx);
+        auto in = Iota(&sctx, DT_I64, 10);
 
-        auto ret = Pad(&hctx, in, pv, {1}, {0}, {0});
+        auto ret = Slice(&sctx, in, {1}, {1}, {1});
+
+        EXPECT_EQ(ret.numel(), 0);
+        EXPECT_EQ(ret.shape().size(), 1);
+        EXPECT_EQ(ret.shape()[0], 0);
+
+        ret = Slice(&sctx, in, {2}, {1}, {1});
+        EXPECT_EQ(ret.numel(), 0);
+        EXPECT_EQ(ret.shape().size(), 1);
+        EXPECT_EQ(ret.shape()[0], 0);
+      });
+}
+
+TEST_P(GeoTest, MixedStoragePad) {
+  FieldType field = std::get<0>(GetParam());
+  ProtocolKind prot = std::get<1>(GetParam());
+
+  mpc::utils::simulate(
+      3, [&](const std::shared_ptr<yacl::link::Context> &lctx) {
+        SPUContext sctx = test::makeSPUContext(prot, field, lctx);
+        auto in = Iota(&sctx, DT_I64, 10);
+        in = Seal(&sctx, in);
+        auto pv = Constant(&sctx, static_cast<int64_t>(0), {1});
+        pv = Xor(&sctx, pv, pv);  // Force a bshr
+
+        auto ret = Pad(&sctx, in, pv, {1}, {0}, {0});
 
         EXPECT_EQ(ret.numel(), 11);
         EXPECT_EQ(ret.vtype(), VIS_SECRET);
@@ -72,20 +72,20 @@ TEST_P(GeoTest, MixedStoragePad) {
 }
 
 TEST_P(GeoTest, Pad) {
-  auto cfg =
-      test::makeRefConfig(std::get<0>(GetParam()), std::get<1>(GetParam()));
+  FieldType field = std::get<0>(GetParam());
+  ProtocolKind prot = std::get<1>(GetParam());
 
   mpc::utils::simulate(
       3, [&](const std::shared_ptr<yacl::link::Context> &lctx) {
-        HalContext hctx(cfg, lctx);
+        SPUContext sctx = test::makeSPUContext(prot, field, lctx);
         auto in = Seal(
-            &hctx, Cast(&hctx, Constant(&hctx, std::vector<uint8_t>(2, 0), {2}),
+            &sctx, Cast(&sctx, Constant(&sctx, std::vector<uint8_t>(2, 0), {2}),
                         VIS_PUBLIC, DT_I1));
         auto pv = Seal(
-            &hctx, Cast(&hctx, Constant(&hctx, static_cast<uint8_t>(0), {1}),
+            &sctx, Cast(&sctx, Constant(&sctx, static_cast<uint8_t>(0), {1}),
                         VIS_PUBLIC, DT_I1));
 
-        auto ret = Pad(&hctx, in, pv, {0}, {1}, {0});
+        auto ret = Pad(&sctx, in, pv, {0}, {1}, {0});
 
         EXPECT_EQ(ret.numel(), 3);
         EXPECT_EQ(ret.vtype(), VIS_SECRET);

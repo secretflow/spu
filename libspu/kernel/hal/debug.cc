@@ -21,7 +21,7 @@
 
 namespace spu::kernel::hal {
 
-void dbg_print(HalContext* ctx, const Value& v) {
+void dbg_print(SPUContext* ctx, const Value& v) {
   if (v.isPublic()) {
     std::stringstream ss;
     if (v.isFxp()) {

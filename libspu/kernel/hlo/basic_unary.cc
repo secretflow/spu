@@ -14,16 +14,16 @@
 
 #include "libspu/kernel/hlo/basic_unary.h"
 
-#include "libspu/kernel/context.h"
+#include "libspu/core/context.h"
+#include "libspu/core/value.h"
 #include "libspu/kernel/hal/constants.h"
 #include "libspu/kernel/hal/polymorphic.h"
 #include "libspu/kernel/hal/type_cast.h"
-#include "libspu/kernel/value.h"
 
 namespace spu::kernel::hlo {
 
 #define SIMPLE_UNARY_KERNEL_DEFN(NAME, HalFcn)             \
-  spu::Value NAME(HalContext *ctx, const spu::Value &in) { \
+  spu::Value NAME(SPUContext *ctx, const spu::Value &in) { \
     return HalFcn(ctx, in);                                \
   }
 
@@ -42,7 +42,7 @@ SIMPLE_UNARY_KERNEL_DEFN(Sqrt, hal::sqrt)
 
 #undef SIMPLE_UNARY_KERNEL_DEFN
 
-spu::Value Expm1(HalContext *ctx, const spu::Value &in) {
+spu::Value Expm1(SPUContext *ctx, const spu::Value &in) {
   // FIXME: By numpy spec, expm1 should have a higher numeric accuracy compare
   // with exp(x) - 1. SPU is not doing so right now, rethink about what we
   // should do here.
@@ -50,7 +50,7 @@ spu::Value Expm1(HalContext *ctx, const spu::Value &in) {
                   hal::constant(ctx, 1.0, DT_FXP, in.shape()));
 }
 
-spu::Value Not(HalContext *ctx, const spu::Value &in) {
+spu::Value Not(SPUContext *ctx, const spu::Value &in) {
   if (in.dtype() == DT_I1) {
     return hal::logical_not(ctx, in);
   } else {
@@ -60,7 +60,7 @@ spu::Value Not(HalContext *ctx, const spu::Value &in) {
   }
 }
 
-spu::Value Sign(HalContext *ctx, const spu::Value &in) {
+spu::Value Sign(SPUContext *ctx, const spu::Value &in) {
   // get the (-1, 1) sign
   auto s = hal::sign(ctx, in);
 
@@ -71,7 +71,7 @@ spu::Value Sign(HalContext *ctx, const spu::Value &in) {
   return hal::dtype_cast(ctx, s, in.dtype());
 }
 
-spu::Value Round_AFZ(HalContext *ctx, const spu::Value &in) {
+spu::Value Round_AFZ(SPUContext *ctx, const spu::Value &in) {
   // select(x < 0, (int)(x-0.5), (int)(x+0.5))
   // -> (float)(int)(x + sign(x) * 0.5)
   SPU_ENFORCE(in.isFxp(), "Round only supports fxp");

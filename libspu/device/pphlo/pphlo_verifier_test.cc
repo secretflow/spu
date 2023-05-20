@@ -21,6 +21,7 @@
 #include "xtensor/xarray.hpp"
 
 #include "libspu/device/test_utils.h"
+#include "libspu/kernel/test_util.h"
 #include "libspu/mpc/utils/simulate.h"
 
 namespace spu::device::pphlo {
@@ -49,8 +50,8 @@ void runner(const OpFcn &f, absl::Span<const xt::xarray<InT>> inputs,
 
   ::spu::mpc::utils::simulate(
       2, [&](const std::shared_ptr<yacl::link::Context> &lctx) {
-        HalContext hctx(conf, lctx);
-        PPHloVerifier verifier(&hctx);
+        SPUContext sctx = kernel::test::makeSPUContext(conf, lctx);
+        PPHloVerifier verifier(&sctx);
         verifier.setMismatchHandler(failed);
         auto *table = io_->GetSymbolTable(lctx->Rank());
 
@@ -267,8 +268,8 @@ TEST(Verify, Select) {
 
   ::spu::mpc::utils::simulate(
       2, [&](const std::shared_ptr<yacl::link::Context> &lctx) {
-        HalContext hctx(conf, lctx);
-        PPHloVerifier verifier(&hctx);
+        SPUContext sctx = kernel::test::makeSPUContext(conf, lctx);
+        PPHloVerifier verifier(&sctx);
         verifier.setMismatchHandler(failed);
         auto *table = io_->GetSymbolTable(lctx->Rank());
 

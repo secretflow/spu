@@ -35,7 +35,7 @@
 
 using namespace spu::kernel;
 
-spu::Value train_step(spu::HalContext* ctx, const spu::Value& x,
+spu::Value train_step(spu::SPUContext* ctx, const spu::Value& x,
                       const spu::Value& y, const spu::Value& w) {
   // Padding x
   auto padding = hal::constant(ctx, 1.0F, spu::DT_FXP, {x.shape()[0], 1});
@@ -61,7 +61,7 @@ spu::Value train_step(spu::HalContext* ctx, const spu::Value& x,
   return new_w;
 }
 
-spu::Value train(spu::HalContext* ctx, const spu::Value& x, const spu::Value& y,
+spu::Value train(spu::SPUContext* ctx, const spu::Value& x, const spu::Value& y,
                  size_t num_epoch, size_t bsize) {
   const size_t num_iter = x.shape()[0] / bsize;
   auto w = hal::constant(ctx, 0.0F, spu::DT_FXP, {x.shape()[1] + 1, 1});
@@ -87,7 +87,7 @@ spu::Value train(spu::HalContext* ctx, const spu::Value& x, const spu::Value& y,
   return w;
 }
 
-spu::Value inference(spu::HalContext* ctx, const spu::Value& x,
+spu::Value inference(spu::SPUContext* ctx, const spu::Value& x,
                      const spu::Value& weight) {
   auto padding = hal::constant(ctx, 1.0F, spu::DT_FXP, {x.shape()[0], 1});
   auto padded_x = hal::concatenate(ctx, {x, hal::seal(ctx, padding)}, 1);
@@ -124,10 +124,10 @@ llvm::cl::opt<uint32_t> BatchSize("batch_size", llvm::cl::init(21),
 llvm::cl::opt<uint32_t> NumEpoch("num_epoch", llvm::cl::init(1),
                                  llvm::cl::desc("number of epoch"));
 
-std::pair<spu::Value, spu::Value> infeed(spu::HalContext* hctx,
+std::pair<spu::Value, spu::Value> infeed(spu::SPUContext* sctx,
                                          const xt::xarray<float>& ds,
                                          bool self_has_label) {
-  spu::device::ColocatedIo cio(hctx);
+  spu::device::ColocatedIo cio(sctx);
   if (self_has_label) {
     // the last column is label.
     using namespace xt::placeholders;  // required for `_` to work
@@ -135,17 +135,17 @@ std::pair<spu::Value, spu::Value> infeed(spu::HalContext* hctx,
         xt::view(ds, xt::all(), xt::range(_, ds.shape(1) - 1));
     xt::xarray<float> dy =
         xt::view(ds, xt::all(), xt::range(ds.shape(1) - 1, _));
-    cio.hostSetVar(fmt::format("x-{}", hctx->lctx()->Rank()), dx);
+    cio.hostSetVar(fmt::format("x-{}", sctx->lctx()->Rank()), dx);
     cio.hostSetVar("label", dy);
   } else {
-    cio.hostSetVar(fmt::format("x-{}", hctx->lctx()->Rank()), ds);
+    cio.hostSetVar(fmt::format("x-{}", sctx->lctx()->Rank()), ds);
   }
   cio.sync();
 
   auto x = cio.deviceGetVar("x-0");
   // Concatnate all slices
   for (size_t idx = 1; idx < cio.getWorldSize(); ++idx) {
-    x = hal::concatenate(hctx, {x, cio.deviceGetVar(fmt::format("x-{}", idx))},
+    x = hal::concatenate(sctx, {x, cio.deviceGetVar(fmt::format("x-{}", idx))},
                          1);
   }
   auto y = cio.deviceGetVar("label");
@@ -166,19 +166,19 @@ int main(int argc, char** argv) {
     ds = xt::load_csv<float>(file, ',', SkipRows.getValue());
   }
 
-  auto hctx = MakeHalContext();
+  auto sctx = MakeSPUContext();
 
-  const auto& [x, y] = infeed(hctx.get(), ds, HasLabel.getValue());
+  const auto& [x, y] = infeed(sctx.get(), ds, HasLabel.getValue());
 
   const auto w =
-      train(hctx.get(), x, y, NumEpoch.getValue(), BatchSize.getValue());
+      train(sctx.get(), x, y, NumEpoch.getValue(), BatchSize.getValue());
 
-  const auto scores = inference(hctx.get(), x, w);
+  const auto scores = inference(sctx.get(), x, w);
 
   xt::xarray<float> revealed_labels =
-      hal::dump_public_as<float>(hctx.get(), hal::reveal(hctx.get(), y));
+      hal::dump_public_as<float>(sctx.get(), hal::reveal(sctx.get(), y));
   xt::xarray<float> revealed_scores =
-      hal::dump_public_as<float>(hctx.get(), hal::reveal(hctx.get(), scores));
+      hal::dump_public_as<float>(sctx.get(), hal::reveal(sctx.get(), scores));
 
   auto mse = MSE(revealed_labels, revealed_scores);
   std::cout << "MSE = " << mse << "\n";

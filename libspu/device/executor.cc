@@ -24,9 +24,9 @@
 #include "mlir/IR/BuiltinOps.h"
 #include "mlir/IR/Value.h"
 
+#include "libspu/core/context.h"
 #include "libspu/core/prelude.h"
-#include "libspu/kernel/context.h"
-#include "libspu/kernel/value.h"
+#include "libspu/core/value.h"
 
 namespace spu::device {
 
@@ -98,7 +98,7 @@ void SymbolScope::addValue(mlir::Value key, spu::Value &&val) {
 }
 
 std::vector<spu::Value> runRegion(OpExecutor *executor,                 //
-                                  HalContext *hctx,                     //
+                                  SPUContext *sctx,                     //
                                   SymbolScope *parent_scope,            //
                                   mlir::Region &region,                 //
                                   absl::Span<spu::Value const> params,  //
@@ -117,19 +117,19 @@ std::vector<spu::Value> runRegion(OpExecutor *executor,                 //
 
   SPU_ENFORCE(region.hasOneBlock());
   if (opts.do_parallel) {
-    return runBlockParallel(executor, hctx, &sscope, region.front(), params,
+    return runBlockParallel(executor, sctx, &sscope, region.front(), params,
                             opts);
   } else {
-    return runBlock(executor, hctx, &sscope, region.front(), params, opts);
+    return runBlock(executor, sctx, &sscope, region.front(), params, opts);
   }
 }
 
-std::vector<spu::Value> runBlock(OpExecutor *executor, HalContext *hctx,
+std::vector<spu::Value> runBlock(OpExecutor *executor, SPUContext *sctx,
                                  SymbolScope *symbols, mlir::Block &block,
                                  absl::Span<spu::Value const> params,
                                  const ExecutionOptions &opts) {
   for (auto &op : block.without_terminator()) {
-    executor->runKernel(hctx, symbols, op, opts);
+    executor->runKernel(sctx, symbols, op, opts);
   }
 
   if (auto *termOp = block.getTerminator()) {
@@ -152,7 +152,7 @@ struct SymbolTableEvent {
 };
 
 class OpExecTask final {
-  std::unique_ptr<HalContext> hctx_ = nullptr;
+  std::unique_ptr<SPUContext> sctx_ = nullptr;
   // here we assume executor is thread-safe (stateless)
   OpExecutor *executor_ = nullptr;
   SymbolScope *sscope_ = nullptr;
@@ -162,10 +162,10 @@ class OpExecTask final {
 
  public:
   OpExecTask() = default;
-  explicit OpExecTask(std::unique_ptr<HalContext> hctx, OpExecutor *executor,
+  explicit OpExecTask(std::unique_ptr<SPUContext> sctx, OpExecutor *executor,
                       SymbolScope *sscope, mlir::Operation *op,
                       SymbolTableEvent *event)
-      : hctx_(std::move(hctx)),
+      : sctx_(std::move(sctx)),
         executor_(executor),
         sscope_(sscope),
         op_(op),
@@ -199,13 +199,13 @@ class OpExecTask final {
       event_->cv.wait(lk, [this] { return ready(); });
     }
 
-    executor_->runKernel(hctx_.get(), sscope_, *op_);
+    executor_->runKernel(sctx_.get(), sscope_, *op_);
     std::unique_lock lk(event_->mutex);
     event_->cv.notify_all();
   }
 };
 
-std::vector<spu::Value> runBlockParallel(OpExecutor *executor, HalContext *hctx,
+std::vector<spu::Value> runBlockParallel(OpExecutor *executor, SPUContext *sctx,
                                          SymbolScope *symbols,
                                          mlir::Block &block,
                                          absl::Span<spu::Value const> params,
@@ -217,7 +217,7 @@ std::vector<spu::Value> runBlockParallel(OpExecutor *executor, HalContext *hctx,
   std::vector<OpExecTask> tasks;
   std::vector<std::future<void>> futures;
   for (auto &op : block.without_terminator()) {
-    tasks.emplace_back(hctx->fork(), executor, symbols, &op, &st_event);
+    tasks.emplace_back(sctx->fork(), executor, symbols, &op, &st_event);
   }
 
   futures.reserve(tasks.size());

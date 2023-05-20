@@ -18,15 +18,24 @@
 
 #include "libspu/core/parallel_utils.h"
 #include "libspu/core/platform_utils.h"
-#include "libspu/core/trace.h"
+#include "libspu/core/prelude.h"
+#include "libspu/mpc/ab_api.h"
 #include "libspu/mpc/aby3/type.h"
 #include "libspu/mpc/aby3/value.h"
-#include "libspu/mpc/common/ab_api.h"
 #include "libspu/mpc/common/communicator.h"
 #include "libspu/mpc/common/prg_state.h"
 #include "libspu/mpc/common/pub2k.h"
 
 namespace spu::mpc::aby3 {
+
+static ArrayRef wrap_add_bb(SPUContext* ctx, const ArrayRef& x,
+                            const ArrayRef& y) {
+  SPU_ENFORCE(x.numel() == y.numel());
+  const Shape shape = {x.numel()};
+  auto [res, _s, _t] =
+      UnwrapValue(add_bb(ctx, WrapValue(x, shape), WrapValue(y, shape)));
+  return res;
+}
 
 // Reference:
 // ABY3: A Mixed Protocol Framework for Machine Learning
@@ -35,8 +44,6 @@ namespace spu::mpc::aby3 {
 //
 // Latency: 2 + log(nbits) from 1 rotate and 1 ppa.
 ArrayRef A2B::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
-  SPU_TRACE_MPC_LEAF(ctx, in);
-
   const auto field = in.eltype().as<Ring2k>()->field();
 
   auto* comm = ctx->getState<Communicator>();
@@ -95,7 +102,7 @@ ArrayRef A2B::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
     });
   });
 
-  return add_bb(ctx->caller(), m, n);  // comm => log(k) + 1, 2k(logk) + k
+  return wrap_add_bb(ctx->sctx(), m, n);  // comm => log(k) + 1, 2k(logk) + k
 }
 
 ArrayRef B2ASelector::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
@@ -125,8 +132,6 @@ ArrayRef B2ASelector::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
 //
 // TODO: convert to single share, will reduce number of rotate.
 ArrayRef B2AByPPA::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
-  SPU_TRACE_MPC_LEAF(ctx, in);
-
   const auto field = ctx->getState<Z2kState>()->getDefaultField();
   const auto* in_ty = in.eltype().as<BShrTy>();
   const size_t in_nbits = in_ty->nbits();
@@ -194,7 +199,7 @@ ArrayRef B2AByPPA::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
       });
 
       // comm => log(k) + 1, 2k(logk) + k
-      auto x_plus_r = add_bb(ctx->caller(), x, r);
+      auto x_plus_r = wrap_add_bb(ctx->sctx(), x, r);
       auto _x_plus_r = ArrayView<std::array<AShrT, 2>>(x_plus_r);
 
       // reveal
@@ -284,8 +289,6 @@ static std::vector<T> bitCompose(absl::Span<T const> in, size_t nbits) {
 // (the receiver) with input bit b2 learns the message c2 (not m[b2]) in the
 // first round, totaling 6k bits and 1 round.
 ArrayRef B2AByOT::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
-  SPU_TRACE_MPC_LEAF(ctx, in);
-
   const auto field = ctx->getState<Z2kState>()->getDefaultField();
   const auto* in_ty = in.eltype().as<BShrTy>();
   const size_t in_nbits = in_ty->nbits();
@@ -424,10 +427,10 @@ ArrayRef B2AByOT::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
   return out;
 }
 
-namespace {
+// TODO: Accelerate bit scatter.
 // split even and odd bits. e.g.
 //   xAyBzCwD -> (xyzw, ABCD)
-std::pair<ArrayRef, ArrayRef> bit_split(const ArrayRef& in) {
+[[maybe_unused]] std::pair<ArrayRef, ArrayRef> bit_split(const ArrayRef& in) {
   constexpr std::array<uint128_t, 6> kSwapMasks = {{
       yacl::MakeUint128(0x2222222222222222, 0x2222222222222222),  // 4bit
       yacl::MakeUint128(0x0C0C0C0C0C0C0C0C, 0x0C0C0C0C0C0C0C0C),  // 8bit
@@ -507,44 +510,7 @@ std::pair<ArrayRef, ArrayRef> bit_split(const ArrayRef& in) {
   return std::make_pair(hi, lo);
 }
 
-// compute the k'th bit of x + y
-ArrayRef carry_out(Object* ctx, const ArrayRef& x, const ArrayRef& y,
-                   size_t k) {
-  // init P & G
-  auto P = xor_bb(ctx, x, y);
-  auto G = and_bb(ctx, x, y);
-
-  // Use kogge stone layout.
-  while (k > 1) {
-    if (k % 2 != 0) {
-      k += 1;
-      P = lshift_b(ctx, P, 1);
-      G = lshift_b(ctx, G, 1);
-    }
-    auto [P1, P0] = bit_split(P);
-    auto [G1, G0] = bit_split(G);
-
-    // Calculate next-level of P, G
-    //   P = P1 & P0
-    //   G = G1 | (P1 & G0)
-    //     = G1 ^ (P1 & G0)
-    std::vector<ArrayRef> v = vectorize(
-        {P0, G0}, {P1, P1}, [&](const ArrayRef& xx, const ArrayRef& yy) {
-          return and_bb(ctx, xx, yy);
-        });
-    P = std::move(v[0]);
-    G = xor_bb(ctx, G1, v[1]);
-    k >>= 1;
-  }
-
-  return G;
-}
-
-}  // namespace
-
 ArrayRef MsbA2B::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
-  SPU_TRACE_MPC_LEAF(ctx, in);
-
   const auto field = in.eltype().as<AShrTy>()->field();
   const auto numel = in.numel();
   auto* comm = ctx->getState<Communicator>();
@@ -596,12 +562,22 @@ ArrayRef MsbA2B::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
 
   // Compute the k-1'th carry bit.
   size_t nbits = SizeOf(field) * 8 - 1;
-  auto carry = carry_out(ctx->caller(), m, n, nbits);
+  auto* sctx = ctx->sctx();
 
-  // Compute the k'th bit.
-  //   (m^n)[k] ^ carry
-  auto* obj = ctx->caller();
-  return xor_bb(obj, rshift_b(obj, xor_bb(obj, m, n), nbits), carry);
+  const Shape shape = {in.numel()};
+  auto wrap_m = WrapValue(m, shape);
+  auto wrap_n = WrapValue(n, shape);
+  {
+    auto carry = carry_out(sctx, wrap_m, wrap_n, nbits);
+
+    // Compute the k'th bit.
+    //   (m^n)[k] ^ carry
+    auto msb = xor_bb(sctx, rshift_b(sctx, xor_bb(sctx, wrap_m, wrap_n), nbits),
+                      carry);
+
+    auto [msb_data, _shape, _dtype] = UnwrapValue(msb);
+    return msb_data;
+  }
 }
 
 }  // namespace spu::mpc::aby3

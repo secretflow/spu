@@ -47,11 +47,11 @@ def secureml():
 def minionn():
     nn_init, nn_apply = stax.serial(
         Conv(out_chan=16, filter_shape=(5, 5), strides=(1, 1), padding='valid'),
-        Relu,
         MaxPool(window_shape=(2, 2), strides=(2, 2)),
+        Relu,
         Conv(out_chan=16, filter_shape=(5, 5), strides=(1, 1), padding='valid'),
-        Relu,
         MaxPool(window_shape=(2, 2), strides=(2, 2)),
+        Relu,
         Flatten,
         Dense(100),
         Relu,
@@ -65,11 +65,11 @@ def minionn():
 def lenet():
     nn_init, nn_apply = stax.serial(
         Conv(out_chan=20, filter_shape=(5, 5), strides=(1, 1), padding='valid'),
-        Relu,
         MaxPool(window_shape=(2, 2), strides=(2, 2)),
+        Relu,
         Conv(out_chan=50, filter_shape=(5, 5), strides=(1, 1), padding='valid'),
-        Relu,
         MaxPool(window_shape=(2, 2), strides=(2, 2)),
+        Relu,
         Flatten,
         Dense(500),
         Relu,

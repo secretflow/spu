@@ -42,23 +42,40 @@ void Core::doit(mlir::ModuleOp module) {
 }
 
 void Core::buildPipeline(mlir::PassManager *pm) {
+  const auto &options = ctx_->getCompilerOptions();
+
   // lowering
   auto &optPM = pm->nest<mlir::func::FuncOp>();
-  optPM.addPass(mlir::pphlo::createOptimizeMaxPoolingPass());
+  if (!options.disable_maxpooling_optimization()) {
+    optPM.addPass(mlir::pphlo::createOptimizeMaxPoolingPass());
+  }
   optPM.addPass(mlir::pphlo::createDecomposeComparisonPass());
   optPM.addPass(mlir::pphlo::createDecomposeMinMaxPass());
-  optPM.addPass(mlir::pphlo::createOptimizeSqrtPlusEps());
-  optPM.addPass(mlir::pphlo::createRewriteDivSqrtPatterns());
+
+  if (!options.disable_sqrt_plus_epsilon_rewrite()) {
+    optPM.addPass(mlir::pphlo::createOptimizeSqrtPlusEps());
+  }
+  if (!options.disable_div_sqrt_rewrite()) {
+    optPM.addPass(mlir::pphlo::createRewriteDivSqrtPatterns());
+  }
+
   optPM.addPass(mlir::pphlo::createExpandSecretGatherPass());
 
   optPM.addPass(mlir::createCSEPass());
 
-  optPM.addPass(mlir::pphlo::createReduceTruncationPass());
-  optPM.addPass(mlir::pphlo::createLowerMixedTypeOpPass());
+  if (!options.disable_reduce_truncation_optimization()) {
+    optPM.addPass(mlir::pphlo::createReduceTruncationPass());
+  }
+
+  if (!options.disallow_mix_types_opts()) {
+    optPM.addPass(mlir::pphlo::createLowerMixedTypeOpPass());
+  }
 
   optPM.addPass(mlir::createCanonicalizerPass());
 
-  optPM.addPass(mlir::pphlo::createOptimizeSelectPass());
+  if (!options.disable_select_optimization()) {
+    optPM.addPass(mlir::pphlo::createOptimizeSelectPass());
+  }
 
   optPM.addPass(mlir::createLoopInvariantCodeMotionPass());
   optPM.addPass(mlir::createCSEPass());

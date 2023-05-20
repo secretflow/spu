@@ -16,15 +16,12 @@
 
 #include "libspu/mpc/kernel.h"
 #include "libspu/mpc/semi2k/boolean.h"
-#include "libspu/mpc/utils/cexpr.h"
 
 namespace spu::mpc::cheetah {
 
 using CommonTypeB = spu::mpc::semi2k::CommonTypeB;
 
 using CastTypeB = spu::mpc::semi2k::CastTypeB;
-
-using ZeroB = spu::mpc::semi2k::ZeroB;
 
 using B2P = spu::mpc::semi2k::B2P;
 

@@ -22,14 +22,14 @@
 
 namespace spu::kernel::hlo {
 
-spu::Value Constant(HalContext *ctx, const PtBufferView &view,
+spu::Value Constant(SPUContext *ctx, const PtBufferView &view,
                     absl::Span<const int64_t> out_shape);
 
-spu::Value Iota(HalContext *ctx, DataType dtype, int64_t numel);
+spu::Value Iota(SPUContext *ctx, DataType dtype, int64_t numel);
 
 // Returns the SPU epsilon, the positive distance between two fixed point value.
 //
 // The result visibility is public.
-spu::Value Epsilon(HalContext *ctx);
+spu::Value Epsilon(SPUContext *ctx);
 
 }  // namespace spu::kernel::hlo

@@ -69,7 +69,6 @@ ArrayRef TruncAWithSign::proc(KernelEvalContext* ctx, const ArrayRef& x,
 
 ArrayRef TruncA::proc(KernelEvalContext* ctx, const ArrayRef& x,
                       size_t bits) const {
-  SPU_TRACE_MPC_LEAF(ctx, x);
   auto* comm = ctx->getState<Communicator>();
   auto* ot_state = ctx->getState<CheetahOTState>();
   size_t n = x.numel();
@@ -103,8 +102,6 @@ ArrayRef TruncA::proc(KernelEvalContext* ctx, const ArrayRef& x,
 }
 
 ArrayRef MsbA2B::proc(KernelEvalContext* ctx, const ArrayRef& x) const {
-  SPU_TRACE_MPC_LEAF(ctx, x);
-
   auto* comm = ctx->getState<Communicator>();
   auto* ot_state = ctx->getState<CheetahOTState>();
   size_t n = x.numel();
@@ -228,7 +225,6 @@ ArrayRef EqualAA::proc(KernelEvalContext* ctx, const ArrayRef& x,
 
 ArrayRef MulA1B::proc(KernelEvalContext* ctx, const ArrayRef& x,
                       const ArrayRef& y) const {
-  SPU_TRACE_MPC_LEAF(ctx, x, y);
   SPU_ENFORCE_EQ(x.numel(), y.numel());
   auto* comm = ctx->getState<Communicator>();
   auto* ot_state = ctx->getState<CheetahOTState>();
@@ -264,7 +260,6 @@ ArrayRef MulA1B::proc(KernelEvalContext* ctx, const ArrayRef& x,
 
 ArrayRef MulAA::proc(KernelEvalContext* ctx, const ArrayRef& x,
                      const ArrayRef& y) const {
-  SPU_TRACE_MPC_LEAF(ctx, x, y);
   SPU_ENFORCE_EQ(x.numel(), y.numel());
 
   size_t batch_sze = ctx->getState<CheetahMulState>()->get()->OLEBatchSize();
@@ -287,7 +282,7 @@ ArrayRef MulAA::mulWithBeaver(KernelEvalContext* ctx, const ArrayRef& x,
       ctx->getState<CheetahMulState>()->TakeCachedBeaver(field, numel);
   YACL_ENFORCE_EQ(a.numel(), numel);
 
-  auto* comm = ctx->caller()->getState<Communicator>();
+  auto* comm = ctx->getState<Communicator>();
   // Open x - a & y - b
   auto res =
       vectorize({ring_sub(x, a), ring_sub(y, b)}, [&](const ArrayRef& s) {
@@ -338,7 +333,6 @@ ArrayRef MulAA::mulDirectly(KernelEvalContext* ctx, const ArrayRef& x,
 // A is (M, K); B is (K, N)
 ArrayRef MatMulAA::proc(KernelEvalContext* ctx, const ArrayRef& x,
                         const ArrayRef& y, size_t m, size_t n, size_t k) const {
-  SPU_TRACE_MPC_LEAF(ctx, x, y);
   if (0 == x.numel() || 0 == y.numel()) {
     return ArrayRef(x.eltype(), 0);
   }

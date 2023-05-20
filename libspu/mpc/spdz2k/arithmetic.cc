@@ -26,7 +26,7 @@
 #include "libspu/core/array_ref.h"
 #include "libspu/core/trace.h"
 #include "libspu/core/vectorize.h"
-#include "libspu/mpc/common/ab_api.h"
+#include "libspu/mpc/ab_api.h"
 #include "libspu/mpc/common/communicator.h"
 #include "libspu/mpc/common/prg_state.h"
 #include "libspu/mpc/common/pub2k.h"
@@ -37,10 +37,9 @@
 #include "libspu/mpc/utils/ring_ops.h"
 
 namespace spu::mpc::spdz2k {
+namespace {
 
-ArrayRef ZeroA::proc(KernelEvalContext* ctx, size_t size) {
-  SPU_TRACE_MPC_LEAF(ctx, size);
-
+ArrayRef zero_a_impl(KernelEvalContext* ctx, size_t size) {
   auto* prg_state = ctx->getState<PrgState>();
   const auto field = ctx->getState<Z2kState>()->getDefaultField();
 
@@ -59,7 +58,9 @@ ArrayRef ZeroA::proc(KernelEvalContext* ctx, size_t size) {
   return makeAShare(x, x_mac, field);
 }
 
-ArrayRef RandA::proc(KernelEvalContext* ctx, size_t size) {
+}  // namespace
+
+ArrayRef RandA::proc(KernelEvalContext* ctx, size_t size) const {
   SPU_TRACE_MPC_LEAF(ctx, size);
   SPU_THROW("NotImplemented");
 }
@@ -70,7 +71,7 @@ ArrayRef P2A::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
   auto* comm = ctx->getState<Communicator>();
   const auto key = ctx->getState<Spdz2kState>()->key();
 
-  auto res = zero_a(ctx->caller(), in.numel());
+  auto res = zero_a_impl(ctx, in.numel());
   auto z = getValueShare(res);
   auto z_mac = getMacShare(res);
 
@@ -231,6 +232,21 @@ bool SingleCheck(KernelEvalContext* ctx, const ArrayRef& in) {
   return ret;
 }
 
+static ArrayRef wrap_lshift_a(SPUContext* ctx, const ArrayRef& x, size_t k) {
+  const Shape shape = {x.numel()};
+  auto [res, _s, _t] = UnwrapValue(lshift_a(ctx, WrapValue(x, shape), k));
+  return res;
+}
+
+static ArrayRef wrap_add_aa(SPUContext* ctx, const ArrayRef& x,
+                            const ArrayRef& y) {
+  SPU_ENFORCE(x.numel() == y.numel());
+  const Shape shape = {x.numel()};
+  auto [res, _s, _t] =
+      UnwrapValue(add_aa(ctx, WrapValue(x, shape), WrapValue(y, shape)));
+  return res;
+}
+
 // Refer to:
 // Procedure BatchCheck, 3.2 Batch MAC Checking with Random Linear
 // Combinations, SPDZ2k: Efficient MPC mod 2k for Dishonest Majority
@@ -262,8 +278,8 @@ bool BatchCheck(KernelEvalContext* ctx, const std::vector<ArrayRef>& ins) {
     auto rmac = makeAShare(r, r_mac, field);
 
     // 2. [x_hat] = [x] + 2^k * [r]
-    auto l_rmac = lshift_a(ctx->caller(), rmac, k);
-    auto _in = add_aa(ctx->caller(), in, l_rmac);
+    auto l_rmac = wrap_lshift_a(ctx->sctx(), rmac, k);
+    auto _in = wrap_add_aa(ctx->sctx(), in, l_rmac);
 
     const auto& x_hat = getValueShare(_in);
     x_hat_v.emplace_back(x_hat);

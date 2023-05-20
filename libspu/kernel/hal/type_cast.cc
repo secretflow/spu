@@ -22,7 +22,7 @@
 namespace spu::kernel::hal {
 namespace {
 
-Value int2fxp(HalContext* ctx, const Value& x) {
+Value int2fxp(SPUContext* ctx, const Value& x) {
   SPU_TRACE_HAL_LEAF(ctx, x);
   SPU_ENFORCE(x.isInt(), "expect integer, got {}", x.dtype());
 
@@ -44,7 +44,7 @@ Value int2fxp(HalContext* ctx, const Value& x) {
 //   fxp2int(-1.0) = floor(-1+0.999999) = -1
 //   fxp2int(-1.2) = floor(-1.2+0.9999999) = -1
 //
-Value fxp2int(HalContext* ctx, const Value& x, DataType to_type) {
+Value fxp2int(SPUContext* ctx, const Value& x, DataType to_type) {
   SPU_TRACE_HAL_LEAF(ctx, x);
   SPU_ENFORCE(x.dtype() == DataType::DT_FXP);
 
@@ -60,17 +60,17 @@ Value fxp2int(HalContext* ctx, const Value& x, DataType to_type) {
 }  // namespace
 
 // TODO: move seal/reveal into a new header file.
-Value seal(HalContext* ctx, const Value& x) {
+Value seal(SPUContext* ctx, const Value& x) {
   SPU_TRACE_HAL_LEAF(ctx, x);
   return _p2s(ctx, x).setDtype(x.dtype());
 }
 
-Value reveal(HalContext* ctx, const Value& x) {
+Value reveal(SPUContext* ctx, const Value& x) {
   SPU_TRACE_HAL_LEAF(ctx, x);
   return _s2p(ctx, x).setDtype(x.dtype());
 }
 
-Value dtype_cast(HalContext* ctx, const Value& in, DataType to_type) {
+Value dtype_cast(SPUContext* ctx, const Value& in, DataType to_type) {
   SPU_TRACE_HAL_DISP(ctx, in, to_type);
 
   if (to_type == in.dtype()) {
@@ -102,7 +102,7 @@ Value dtype_cast(HalContext* ctx, const Value& in, DataType to_type) {
   SPU_THROW("should not be here");
 }
 
-Value stype_cast(HalContext* ctx, const Value& in, const Type& to) {
+Value stype_cast(SPUContext* ctx, const Value& in, const Type& to) {
   if (in.storage_type() == to) {
     return in;
   }

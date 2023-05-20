@@ -21,8 +21,8 @@ spu_cc_library(
     srcs = ["ref2k.cc"],
     hdrs = ["ref2k.h"],
     deps = [
+        "//libspu/core:context",
         "//libspu/mpc:io_interface",
-        "//libspu/mpc:object",
         "//libspu/mpc/common:prg_state",
         "//libspu/mpc/common:pub2k",
         "@yacl//yacl/link",

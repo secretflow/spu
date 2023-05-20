@@ -40,8 +40,8 @@ spu_cc_library(
     deps = [
         ":state",
         ":type",
+        "//libspu/mpc:ab_api",
         "//libspu/mpc:kernel",
-        "//libspu/mpc/common:ab_api",
         "//libspu/mpc/common:communicator",
     ],
 )
@@ -54,9 +54,8 @@ spu_cc_library(
         ":state",
         ":type",
         "//libspu/core:vectorize",
+        "//libspu/mpc:ab_api",
         "//libspu/mpc:kernel",
-        "//libspu/mpc/common:ab_api",
-        "//libspu/mpc/common:ab_kernels",
         "//libspu/mpc/common:communicator",
     ],
 )
@@ -69,8 +68,8 @@ spu_cc_library(
         ":state",
         ":type",
         "//libspu/core:vectorize",
+        "//libspu/mpc:ab_api",
         "//libspu/mpc:kernel",
-        "//libspu/mpc/common:ab_api",
         "//libspu/mpc/common:communicator",
         "//libspu/mpc/utils:circuits",
         "//libspu/mpc/utils:ring_ops",
@@ -86,8 +85,6 @@ spu_cc_library(
         ":boolean",
         ":conversion",
         ":state",
-        "//libspu/mpc/common:ab_api",
-        "//libspu/mpc/common:ab_kernels",
         "//libspu/mpc/common:prg_state",
     ],
 )
@@ -97,8 +94,8 @@ spu_cc_test(
     srcs = ["protocol_test.cc"],
     deps = [
         ":protocol",
+        "//libspu/mpc:ab_api_test",
         "//libspu/mpc:api_test",
-        "//libspu/mpc/common:ab_api_test",
         "//libspu/mpc/semi2k/beaver/ttp_server:beaver_server",
     ],
 )

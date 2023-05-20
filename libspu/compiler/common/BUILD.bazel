@@ -33,6 +33,7 @@ spu_cc_library(
     hdrs = ["compilation_context.h"],
     deps = [
         ":ir_printer_config",
+        "//libspu:spu_cc_proto",
         "//libspu/core:prelude",
     ],
 )

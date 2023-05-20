@@ -17,8 +17,7 @@
 #include <functional>
 
 #include "libspu/core/bit_utils.h"
-#include "libspu/core/trace.h"
-#include "libspu/mpc/common/ab_api.h"  // zero_b
+#include "libspu/mpc/ab_api.h"
 #include "libspu/mpc/common/communicator.h"
 #include "libspu/mpc/common/prg_state.h"
 #include "libspu/mpc/common/pub2k.h"
@@ -75,41 +74,21 @@ void CommonTypeB::evaluate(KernelEvalContext* ctx) const {
   const Type& lhs = ctx->getParam<Type>(0);
   const Type& rhs = ctx->getParam<Type>(1);
 
-  SPU_TRACE_MPC_DISP(ctx, lhs, rhs);
-
   SPU_ENFORCE(lhs == rhs, "semi2k always use same bshare type, lhs={}, rhs={}",
               lhs, rhs);
 
   ctx->setOutput(lhs);
 }
 
-void CastTypeB::evaluate(KernelEvalContext* ctx) const {
-  const auto& in = ctx->getParam<ArrayRef>(0);
-  const auto& to_type = ctx->getParam<Type>(1);
-
-  SPU_TRACE_MPC_DISP(ctx, in, to_type);
-
+ArrayRef CastTypeB::proc(KernelEvalContext* ctx, const ArrayRef& in,
+                         const Type& to_type) const {
   SPU_ENFORCE(in.eltype() == to_type,
               "semi2k always use same bshare type, lhs={}, rhs={}", in.eltype(),
               to_type);
-
-  ctx->setOutput(in);
-}
-
-ArrayRef ZeroB::proc(KernelEvalContext* ctx, size_t size) {
-  SPU_TRACE_MPC_LEAF(ctx, size);
-
-  // TODO: semantically, we should not use field for boolean share.
-  const auto field = ctx->getState<Z2kState>()->getDefaultField();
-  auto* prg_state = ctx->getState<PrgState>();
-  auto [r0, r1] = prg_state->genPrssPair(field, size);
-
-  return makeBShare(ring_xor(r0, r1), field, 0);
+  return in;
 }
 
 ArrayRef B2P::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
-  SPU_TRACE_MPC_LEAF(ctx, in);
-
   const auto field = in.eltype().as<Ring2k>()->field();
   auto* comm = ctx->getState<Communicator>();
   auto out = comm->allReduce(ReduceOp::XOR, in, kBindName);
@@ -117,11 +96,13 @@ ArrayRef B2P::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
 }
 
 ArrayRef P2B::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
-  SPU_TRACE_MPC_LEAF(ctx, in);
-
   const auto field = in.eltype().as<Ring2k>()->field();
+  auto* prg_state = ctx->getState<PrgState>();
+
   auto* comm = ctx->getState<Communicator>();
-  auto x = zero_b(ctx->caller(), in.numel());
+
+  auto [r0, r1] = prg_state->genPrssPair(field, in.numel());
+  auto x = ring_xor(r0, r1).as(makeType<BShrTy>(field, 0));
 
   if (comm->getRank() == 0) {
     ring_xor_(x, in);
@@ -132,7 +113,6 @@ ArrayRef P2B::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
 
 ArrayRef AndBP::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
                      const ArrayRef& rhs) const {
-  SPU_TRACE_MPC_LEAF(ctx, lhs, rhs);
   SPU_ENFORCE(lhs.numel() == rhs.numel());
 
   const auto field = ctx->getState<Z2kState>()->getDefaultField();
@@ -153,7 +133,6 @@ ArrayRef AndBP::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
 
 ArrayRef AndBB::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
                      const ArrayRef& rhs) const {
-  SPU_TRACE_MPC_LEAF(ctx, lhs, rhs);
   SPU_ENFORCE(lhs.numel() == rhs.numel());
 
   auto* comm = ctx->getState<Communicator>();
@@ -213,7 +192,6 @@ ArrayRef AndBB::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
 
 ArrayRef XorBP::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
                      const ArrayRef& rhs) const {
-  SPU_TRACE_MPC_LEAF(ctx, lhs, rhs);
   SPU_ENFORCE(lhs.numel() == rhs.numel());
 
   auto* comm = ctx->getState<Communicator>();
@@ -230,7 +208,6 @@ ArrayRef XorBP::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
 
 ArrayRef XorBB::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
                      const ArrayRef& rhs) const {
-  SPU_TRACE_MPC_LEAF(ctx, lhs, rhs);
   SPU_ENFORCE(lhs.numel() == rhs.numel());
 
   const auto field = ctx->getState<Z2kState>()->getDefaultField();
@@ -240,8 +217,6 @@ ArrayRef XorBB::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
 
 ArrayRef LShiftB::proc(KernelEvalContext* ctx, const ArrayRef& in,
                        size_t shift) const {
-  SPU_TRACE_MPC_LEAF(ctx, in, shift);
-
   const auto field = in.eltype().as<Ring2k>()->field();
   shift %= SizeOf(field) * 8;
 
@@ -253,8 +228,6 @@ ArrayRef LShiftB::proc(KernelEvalContext* ctx, const ArrayRef& in,
 
 ArrayRef RShiftB::proc(KernelEvalContext* ctx, const ArrayRef& in,
                        size_t shift) const {
-  SPU_TRACE_MPC_LEAF(ctx, in, shift);
-
   const auto field = in.eltype().as<Ring2k>()->field();
   shift %= SizeOf(field) * 8;
 
@@ -267,8 +240,6 @@ ArrayRef RShiftB::proc(KernelEvalContext* ctx, const ArrayRef& in,
 
 ArrayRef ARShiftB::proc(KernelEvalContext* ctx, const ArrayRef& in,
                         size_t shift) const {
-  SPU_TRACE_MPC_LEAF(ctx, in, shift);
-
   const auto field = in.eltype().as<Ring2k>()->field();
   shift %= SizeOf(field) * 8;
 
@@ -279,7 +250,6 @@ ArrayRef ARShiftB::proc(KernelEvalContext* ctx, const ArrayRef& in,
 
 ArrayRef BitrevB::proc(KernelEvalContext* ctx, const ArrayRef& in, size_t start,
                        size_t end) const {
-  SPU_TRACE_MPC_LEAF(ctx, in, start, end);
   const auto field = in.eltype().as<Ring2k>()->field();
 
   SPU_ENFORCE(start <= end);
@@ -290,12 +260,8 @@ ArrayRef BitrevB::proc(KernelEvalContext* ctx, const ArrayRef& in, size_t start,
   return makeBShare(ring_bitrev(in, start, end), field, out_nbits);
 }
 
-void BitIntlB::evaluate(KernelEvalContext* ctx) const {
-  const auto& in = ctx->getParam<ArrayRef>(0);
-  const size_t stride = ctx->getParam<size_t>(1);
-
-  SPU_TRACE_MPC_LEAF(ctx, in, stride);
-
+ArrayRef BitIntlB::proc(KernelEvalContext* ctx, const ArrayRef& in,
+                        size_t stride) const {
   const auto field = in.eltype().as<Ring2k>()->field();
   const auto nbits = getNumBits(in);
   SPU_ENFORCE(absl::has_single_bit(nbits));
@@ -308,15 +274,11 @@ void BitIntlB::evaluate(KernelEvalContext* ctx) const {
     });
   });
 
-  ctx->setOutput(out);
+  return out;
 }
 
-void BitDeintlB::evaluate(KernelEvalContext* ctx) const {
-  const auto& in = ctx->getParam<ArrayRef>(0);
-  const size_t stride = ctx->getParam<size_t>(1);
-
-  SPU_TRACE_MPC_LEAF(ctx, in, stride);
-
+ArrayRef BitDeintlB::proc(KernelEvalContext* ctx, const ArrayRef& in,
+                          size_t stride) const {
   const auto field = in.eltype().as<Ring2k>()->field();
   const auto nbits = getNumBits(in);
   SPU_ENFORCE(absl::has_single_bit(nbits));
@@ -329,7 +291,7 @@ void BitDeintlB::evaluate(KernelEvalContext* ctx) const {
     });
   });
 
-  ctx->setOutput(out);
+  return out;
 }
 
 }  // namespace spu::mpc::semi2k

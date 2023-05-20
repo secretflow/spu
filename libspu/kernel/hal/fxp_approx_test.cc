@@ -18,12 +18,12 @@
 #include "xtensor/xio.hpp"
 
 #include "libspu/kernel/hal/constants.h"
-#include "libspu/kernel/hal/test_util.h"
+#include "libspu/kernel/test_util.h"
 
 namespace spu::kernel::hal {
 
 TEST(FxpTest, ExponentialPublic) {
-  HalContext ctx = test::makeRefHalContext();
+  SPUContext ctx = test::makeSPUContext();
 
   xt::xarray<float> x = {
       -500.0, -100.0, -16.7, -14.3, -12.5, -11.0, -9.9, -6.7,
@@ -42,7 +42,7 @@ TEST(FxpTest, ExponentialPublic) {
 }
 
 TEST(FxpTest, ExponentialTaylorSeries) {
-  HalContext ctx = test::makeRefHalContext();
+  SPUContext ctx = test::makeSPUContext();
 
   // GIVEN
   xt::xarray<float> x = {
@@ -63,7 +63,7 @@ TEST(FxpTest, ExponentialTaylorSeries) {
 }
 
 TEST(FxpTest, ExponentialPade) {
-  HalContext ctx = test::makeRefHalContext();
+  SPUContext ctx = test::makeSPUContext();
 
   xt::xarray<float> x = xt::linspace<float>(-22., 22., 4000);
 
@@ -79,7 +79,7 @@ TEST(FxpTest, ExponentialPade) {
 
 TEST(FxpTest, Log) {
   // GIVEN
-  HalContext ctx = test::makeRefHalContext();
+  SPUContext ctx = test::makeSPUContext();
 
   xt::xarray<float> x = {{0.05, 0.5}, {5, 50}};
   // public log
@@ -110,7 +110,7 @@ TEST(FxpTest, Log) {
 
 TEST(FxpTest, Log2) {
   // GIVEN
-  HalContext ctx = test::makeRefHalContext();
+  SPUContext ctx = test::makeSPUContext();
 
   xt::xarray<float> x = {{0.05, 0.5}, {5, 50}};
   // public log
@@ -141,7 +141,7 @@ TEST(FxpTest, Log2) {
 
 TEST(FxpTest, Log1p) {
   // GIVEN
-  HalContext ctx = test::makeRefHalContext();
+  SPUContext ctx = test::makeSPUContext();
 
   xt::xarray<float> x = {{0.5, 2.0}, {0.9, 1.8}};
 
@@ -172,7 +172,7 @@ TEST(FxpTest, Log1p) {
 
 TEST(FxpTest, Exp2) {
   // GIVEN
-  HalContext ctx = test::makeRefHalContext();
+  SPUContext ctx = test::makeSPUContext();
 
   xt::xarray<float> x = {{0.1, 0.2, 0.5, 0.7, 0.9},
                          {-0.1, -0.2, -0.5, -0.7, -0.9},
@@ -195,7 +195,7 @@ TEST(FxpTest, Exp2) {
 
 TEST(FxpTest, Tanh) {
   // GIVEN
-  HalContext ctx = test::makeRefHalContext();
+  SPUContext ctx = test::makeSPUContext();
 
   xt::xarray<float> x = {{0.1, 0.2, 0.5, 0.7, 0.9, 2.1, 2.5, 4.0},
                          {-0.1, -0.2, -0.5, -0.7, -0.9, -2.1, -2.5, -4.0}};
@@ -220,7 +220,7 @@ TEST(FxpTest, Rsqrt) {
 
   // fxp_fraction_bits = 18(default value for FM64)
   {
-    HalContext ctx = test::makeRefHalContext();
+    SPUContext ctx = test::makeSPUContext();
 
     Value a = test::makeValue(&ctx, x, VIS_SECRET);
     Value c = f_rsqrt(&ctx, a);
@@ -238,7 +238,7 @@ TEST(FxpTest, Rsqrt) {
     config.set_protocol(ProtocolKind::REF2K);
     config.set_field(FieldType::FM64);
     config.set_fxp_fraction_bits(17);
-    HalContext ctx = test::makeRefHalContext(config);
+    SPUContext ctx = test::makeSPUContext(config, nullptr);
 
     Value a = test::makeValue(&ctx, x, VIS_SECRET);
     Value c = f_rsqrt(&ctx, a);
@@ -255,7 +255,7 @@ TEST(FxpTest, Rsqrt) {
     config.set_protocol(ProtocolKind::REF2K);
     config.set_field(FieldType::FM64);
     config.set_fxp_fraction_bits(16);
-    HalContext ctx = test::makeRefHalContext(config);
+    SPUContext ctx = test::makeSPUContext(config, nullptr);
 
     xt::random::seed(0);
     xt::xarray<float> x = xt::random::rand<float>({200, 1}, 256, 4096);
@@ -278,7 +278,7 @@ TEST(FxpTest, Sqrt) {
 
   // fxp_fraction_bits = 18(default value for FM64)
   {
-    HalContext ctx = test::makeRefHalContext();
+    SPUContext ctx = test::makeSPUContext();
 
     Value a = test::makeValue(&ctx, x, VIS_SECRET);
     Value c = f_sqrt(&ctx, a);
@@ -296,7 +296,7 @@ TEST(FxpTest, Sqrt) {
     config.set_protocol(ProtocolKind::REF2K);
     config.set_field(FieldType::FM64);
     config.set_fxp_fraction_bits(17);
-    HalContext ctx = test::makeRefHalContext(config);
+    SPUContext ctx = test::makeSPUContext(config, nullptr);
 
     Value a = test::makeValue(&ctx, x, VIS_SECRET);
     Value c = f_sqrt(&ctx, a);

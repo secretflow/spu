@@ -18,12 +18,12 @@
 
 namespace spu::kernel::hlo {
 
-spu::Value Select(HalContext *ctx, const spu::Value &pred,
+spu::Value Select(SPUContext *ctx, const spu::Value &pred,
                   const spu::Value &on_true, const spu::Value &on_false) {
   return hal::select(ctx, pred, on_true, on_false);
 }
 
-spu::Value Clamp(HalContext *ctx, const spu::Value &operand,
+spu::Value Clamp(SPUContext *ctx, const spu::Value &operand,
                  const spu::Value &min, const spu::Value &max) {
   return hal::clamp(ctx, operand, min, max);
 }

@@ -17,20 +17,20 @@
 #include <string>
 #include <vector>
 
+#include "libspu/core/context.h"
+#include "libspu/core/value.h"
 #include "libspu/device/executor.h"
 #include "libspu/device/symbol_table.h"
-#include "libspu/kernel/context.h"
-#include "libspu/kernel/value.h"
 
 #include "libspu/spu.pb.h"
 
 namespace spu::device {
 
-void execute(OpExecutor *executor, HalContext *hctx,
+void execute(OpExecutor *executor, SPUContext *sctx,
              const ExecutableProto &executable, SymbolTable *env);
 
 ///
-void execute(OpExecutor *executor, spu::HalContext *hctx,
+void execute(OpExecutor *executor, spu::SPUContext *sctx,
              const std::string &text,
              const std::vector<std::string> &input_names,
              const std::vector<std::string> &output_names, SymbolTable *env);

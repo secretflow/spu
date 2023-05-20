@@ -17,8 +17,7 @@
 #include "gtest/gtest.h"
 #include "yacl/link/link.h"
 
-#include "libspu/mpc/common/api_test_params.h"
-#include "libspu/mpc/object.h"
+#include "libspu/mpc/api_test_params.h"
 
 #include "libspu/spu.pb.h"
 

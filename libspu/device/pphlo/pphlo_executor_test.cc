@@ -30,6 +30,7 @@
 #include "libspu/device/api.h"
 #include "libspu/device/symbol_table.h"
 #include "libspu/device/test_utils.h"
+#include "libspu/kernel/test_util.h"
 #include "libspu/mpc/ref2k/ref2k.h"
 #include "libspu/mpc/utils/simulate.h"
 
@@ -56,12 +57,16 @@ class Runner {
   }
 
   static std::string compileMHlo(const std::string &mhlo,
-                                 const std::string &vis = {}) {
-    compiler::CompilationContext ctx;
-    if (!vis.empty()) {
-      ctx.setInputVisibilityString(vis);
+                                 const std::vector<spu::Visibility> &vis) {
+    CompilationSource source;
+    source.set_ir_type(SourceIRType::MLIR_HLO);
+    source.set_ir_txt(mhlo);
+    for (const auto v : vis) {
+      source.add_input_visibility(v);
     }
-    return compiler::compile(&ctx, mhlo, "mhlo");
+
+    compiler::CompilationContext ctx;
+    return compiler::compile(&ctx, source.SerializeAsString());
   }
 
   void run(const std::string &mlir, size_t num_output = 1) {
@@ -76,10 +81,10 @@ class Runner {
           if (lctx->Rank() == 0) {
             // conf.set_enable_action_trace(true);
           }
-          HalContext hctx(conf, lctx);
+          SPUContext sctx = kernel::test::makeSPUContext(conf, lctx);
           auto *env = io_->GetSymbolTable(lctx->Rank());
           pphlo::PPHloExecutor executor;
-          execute(&executor, &hctx, executable_, env);
+          execute(&executor, &sctx, executable_, env);
         });
   }
 
@@ -809,7 +814,7 @@ void testGatherImpl(size_t world_size, FieldType field, ProtocolKind protocol,
     // Start indices
     r.addInput(indices);
 
-    auto compiled = r.compileMHlo(mhlo);
+    auto compiled = r.compileMHlo(mhlo, {VIS_PUBLIC, VIS_PUBLIC});
 
     EXPECT_THAT(compiled, testing::HasSubstr("pphlo.gather"));
 
@@ -826,8 +831,7 @@ void testGatherImpl(size_t world_size, FieldType field, ProtocolKind protocol,
     // Start indices
     r.addInput(indices, VIS_SECRET);
 
-    auto compiled =
-        r.compileMHlo(mhlo, R"({"inputs":["VIS_PUBLIC","VIS_SECRET"]})");
+    auto compiled = r.compileMHlo(mhlo, {VIS_PUBLIC, VIS_SECRET});
 
     EXPECT_THAT(compiled, testing::Not(testing::HasSubstr("pphlo.gather")));
 
@@ -944,7 +948,8 @@ func.func @main(%arg0: tensor<1x1x4x4xf32>, %arg1: tensor<1x1x2x2xf32>) -> (tens
               feature_group_count = 1 : i64
             } : (tensor<1x1x4x4xf32>, tensor<1x1x2x2xf32>) -> tensor<1x1x4x4xf32>
     return %0 : tensor<1x1x4x4xf32>
-})");
+})",
+                                             {VIS_PUBLIC, VIS_PUBLIC});
 
   r.run(ir);
 
@@ -982,7 +987,8 @@ func.func @main(%arg0: tensor<2x3x1x4xf32>, %arg1:tensor<1x3x2x3xf32>) -> (tenso
             feature_group_count = 1 : i64
           } : (tensor<2x3x1x4xf32>,tensor<1x3x2x3xf32>) -> tensor<1x1x1x2xf32>
     return %0 : tensor<1x1x1x2xf32>
-})");
+})",
+                                             {VIS_PUBLIC, VIS_PUBLIC});
 
   r.run(ir);
 
@@ -1019,7 +1025,8 @@ func.func @main(%arg0: tensor<1x1x4x4xf32>, %arg1: tensor<1x1x2x2xf32>) -> (tens
             feature_group_count = 1 : i64
           } : (tensor<1x1x4x4xf32>, tensor<1x1x2x2xf32>) -> tensor<1x1x7x7xf32>
     return %0 : tensor<1x1x7x7xf32>
-})");
+})",
+                                             {VIS_PUBLIC, VIS_PUBLIC});
 
   r.run(ir);
 
@@ -1062,7 +1069,8 @@ func.func @main(%arg0: tensor<1x1x4x4xf32>, %arg1: tensor<1x1x2x2xf32>) -> (tens
             feature_group_count = 1 : i64
           } : (tensor<1x1x4x4xf32>, tensor<1x1x2x2xf32>) -> tensor<1x1x8x8xf32>
     return %0 : tensor<1x1x8x8xf32>
-})");
+})",
+                                             {VIS_PUBLIC, VIS_PUBLIC});
 
   r.run(ir);
 
@@ -1107,7 +1115,8 @@ func.func @main(%arg0: tensor<1x1x4x6xf32>, %arg1: tensor<1x1x2x3xf32>) -> (tens
             feature_group_count = 1 : i64
           } : (tensor<1x1x4x6xf32>, tensor<1x1x2x3xf32>) -> tensor<1x1x2x2xf32>
     return %0 : tensor<1x1x2x2xf32>
-})");
+})",
+                                             {VIS_PUBLIC, VIS_PUBLIC});
 
   r.run(ir);
 
@@ -1964,7 +1973,8 @@ func.func @main(%arg0: tensor<4x6xi32>, %arg1: tensor<2x2xi32>) -> (tensor<2x2xi
       "mhlo.return"(%3) : (tensor<i32>) -> ()
     }) {padding = dense<0> : tensor<2x2xi64>, window_dimensions = dense<[2,3]> : tensor<2xi64>, window_strides = dense<[2,3]> : tensor<2xi64>} : (tensor<4x6xi32>, tensor<2x2xi32>, tensor<i32>) -> tensor<4x6xi32>
     return %1, %2 : tensor<2x2xi32>, tensor<4x6xi32>
-})");
+})",
+                                             {VIS_PUBLIC, VIS_PUBLIC});
 
   EXPECT_THAT(ir, testing::HasSubstr("pphlo.maxpool_scatter"));
 
@@ -2203,7 +2213,7 @@ func.func @main(%arg0: tensor<20xi32>) -> (tensor<20xi32>, tensor<20xi32>) {
     }) {dimension = 0 : i64, is_stable = true} : (tensor<20xi32>, tensor<20xi32>) -> (tensor<20xi32>, tensor<20xi32>)
     return %1#0, %1#1: tensor<20xi32>, tensor<20xi32>
 })",
-            R"({"inputs":["VIS_SECRET"]})"),
+            {VIS_SECRET}),
         2);
   r.verifyOutput(expected_ret0.data(), 0);
   r.verifyOutput(expected_ret1.data(), 1);

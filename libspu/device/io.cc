@@ -102,7 +102,7 @@ NdArrayRef IoClient::combineShares(absl::Span<spu::Value const> values) {
   return decodeFromRing(encoded, dtype, fxp_bits);
 }
 
-ColocatedIo::ColocatedIo(HalContext *hctx) : hctx_(hctx) {}
+ColocatedIo::ColocatedIo(SPUContext *sctx) : sctx_(sctx) {}
 
 void ColocatedIo::hostSetVar(const std::string &name, const PtBufferView &bv,
                              Visibility vtype) {
@@ -118,7 +118,7 @@ NdArrayRef ColocatedIo::hostGetVar(const std::string &name) const {
   const spu::Value &v = symbols_.getVar(name);
 
   if (v.isPublic()) {
-    return kernel::hal::dump_public(hctx_, v);
+    return kernel::hal::dump_public(sctx_, v);
   } else if (v.isSecret()) {
     SPU_THROW("not implemented");
     // TODO: test the secret's owner is self,
@@ -199,9 +199,9 @@ void ColocatedIo::sync() {
   // Currently, we implement the naive method, that is, using hal link context
   // to send all shares to others.
 
-  const auto &lctx = hctx_->lctx();
+  const auto &lctx = sctx_->lctx();
 
-  IoClient io(lctx->WorldSize(), hctx_->rt_config());
+  IoClient io(lctx->WorldSize(), sctx_->config());
   std::vector<SymbolTableProto> shares_per_party(lctx->WorldSize());
   for (const auto &[name, priv] : unsynced_) {
     const auto &arr = priv.arr;

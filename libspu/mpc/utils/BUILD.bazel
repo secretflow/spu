@@ -52,23 +52,6 @@ spu_cc_test(
 )
 
 spu_cc_library(
-    name = "cexpr",
-    srcs = ["cexpr.cc"],
-    hdrs = ["cexpr.h"],
-    deps = [
-        "//libspu/core",
-    ],
-)
-
-spu_cc_test(
-    name = "cexpr_test",
-    srcs = ["cexpr_test.cc"],
-    deps = [
-        ":cexpr",
-    ],
-)
-
-spu_cc_library(
     name = "ring_ops",
     srcs = ["ring_ops.cc"],
     hdrs = ["ring_ops.h"],
@@ -118,5 +101,14 @@ spu_cc_test(
     srcs = ["linalg_test.cc"],
     deps = [
         ":linalg",
+    ],
+)
+
+spu_cc_library(
+    name = "tiling_util",
+    hdrs = ["tiling_util.h"],
+    deps = [
+        "//libspu/core:context",
+        "//libspu/core:parallel_utils",
     ],
 )

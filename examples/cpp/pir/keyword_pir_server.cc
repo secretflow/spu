@@ -60,8 +60,8 @@ int main(int argc, char **argv) {
 
   SPDLOG_INFO("setup");
 
-  auto hctx = MakeHalContext();
-  auto link_ctx = hctx->lctx();
+  auto sctx = MakeSPUContext();
+  auto link_ctx = sctx->lctx();
 
   link_ctx->SetRecvTimeout(kLinkRecvTimeout);
 

@@ -644,16 +644,17 @@ class SPU(Device):
     class JaxFunction(Device.Function):
         device: SPU
 
-        def __init__(self, device: SPU, pyfunc: Callable, static_argnums):
+        def __init__(self, device: SPU, pyfunc: Callable, static_argnums, copts):
             super().__init__(device, pyfunc)
             self.static_argnums = static_argnums
+            self.copts = copts
 
         def __call__(self, *args, **kwargs):
             args, kwargs = self.device._place_arguments(*args, **kwargs)
 
             # now, all object are either PyObject or SPU.DeviceObject
             executable, args_flat, out_tree = self._compile_jax_func(
-                self.pyfunc, self.static_argnums, *args, **kwargs
+                self.pyfunc, self.static_argnums, self.copts, *args, **kwargs
             )
 
             def get_share_ref(idx, obj):
@@ -688,11 +689,11 @@ class SPU(Device):
         def dump_pphlo(self, *args, **kwargs):
             args, kwargs = self.device._place_arguments(*args, **kwargs)
             executable, *_ = self._compile_jax_func(
-                self.pyfunc, self.static_argnums, *args, **kwargs
+                self.pyfunc, self.static_argnums, self.copts, *args, **kwargs
             )
             return executable.code.decode('utf-8')
 
-        def _compile_jax_func(self, fn, static_argnums, *args, **kwargs):
+        def _compile_jax_func(self, fn, static_argnums, copts, *args, **kwargs):
             def mock_parameters(obj: Union[SPU.Object, np.ndarray]):
                 if isinstance(obj, SPU.Object):
                     return np.zeros(shape=obj.shape, dtype=obj.dtype)
@@ -716,6 +717,7 @@ class SPU(Device):
                 else spu_pb2.Visibility.VIS_PUBLIC
                 for arg in args_flat
             ]
+
             in_names = [f'{id(fn_name)}-in{idx}' for idx in range(len(args_flat))]
 
             def outputNameGen(out_flat: List):
@@ -730,6 +732,7 @@ class SPU(Device):
                 in_vis,
                 outputNameGen,
                 static_argnums=static_argnums,
+                copts=copts,
             )
 
             _, output_tree = jax.tree_util.tree_flatten(output)
@@ -738,15 +741,18 @@ class SPU(Device):
     class TensorFlowFunction(Device.Function):
         device: SPU
 
-        def __init__(self, device: Device, pyfunc: Callable):
+        def __init__(
+            self, device: Device, pyfunc: Callable, copts: spu_pb2.CompilerOptions
+        ):
             super().__init__(device, pyfunc)
+            self.copts = copts
 
         def __call__(self, *args, **kwargs):
             args, kwargs = self.device._place_arguments(*args, **kwargs)
 
             # now, all object are either PyObject or SPU.DeviceObject
             pphlo_ir, args_flat, structured_outputs = self._compile_tf_func(
-                self.pyfunc, *args, **kwargs
+                self.pyfunc, self.copts, *args, **kwargs
             )
 
             def get_share_ref(idx, obj):
@@ -784,7 +790,7 @@ class SPU(Device):
                 structured_outputs, ret_flat, expand_composites=True
             )
 
-        def _compile_tf_func(self, fn, *args, **kwargs):
+        def _compile_tf_func(self, fn, copts, *args, **kwargs):
             def mock_parameters(obj: Union[SPU.Object, np.ndarray]):
                 if isinstance(obj, SPU.Object):
                     return np.zeros(shape=obj.shape, dtype=obj.dtype)
@@ -806,6 +812,7 @@ class SPU(Device):
                 else spu_pb2.Visibility.VIS_PUBLIC
                 for arg in args_flat
             ]
+
             in_names = [f'{id(fn_name)}-in{idx}' for idx in range(len(args_flat))]
 
             def outputNameGen(out_flat: List):
@@ -819,6 +826,7 @@ class SPU(Device):
                 in_names,
                 in_vis,
                 outputNameGen,
+                copts=copts,
             )
             return executable, args_flat, output_tree
 
@@ -949,11 +957,16 @@ class SPU(Device):
         hosts = [nc.addr for nc in self.node_clients]
         return f"name: {self.name}\nhosted by: {hosts}\ninternal addrs: {self.internal_addrs}\n{self.runtime_config}"
 
-    def compile(self, fn: Callable, static_argnums=()) -> Callable:
+    def compile(
+        self,
+        fn: Callable,
+        static_argnums=(),
+        copts=spu_pb2.CompilerOptions(),
+    ) -> Callable:
         if _FRAMEWORK == Framework.EXP_TF:
-            return SPU.TensorFlowFunction(self, fn)
+            return SPU.TensorFlowFunction(self, fn, copts)
         elif _FRAMEWORK == Framework.JAX:
-            return SPU.JaxFunction(self, fn, static_argnums)
+            return SPU.JaxFunction(self, fn, static_argnums, copts)
         elif _FRAMEWORK == Framework.EXP_TORCH:
             return SPU.TorchFunction(self, fn)
         else:

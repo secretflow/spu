@@ -21,12 +21,12 @@
 #include "llvm/Support/CommandLine.h"
 #include "spdlog/spdlog.h"
 
+#include "libspu/core/value.h"
 #include "libspu/device/api.h"
 #include "libspu/device/pphlo/pphlo_executor.h"
 #include "libspu/device/symbol_table.h"
 #include "libspu/device/test_utils.h"
 #include "libspu/kernel/hal/debug.h"
-#include "libspu/kernel/value.h"
 #include "libspu/mpc/utils/simulate.h"
 
 llvm::cl::opt<std::string> SnapshotDir(
@@ -64,11 +64,11 @@ std::shared_ptr<yacl::link::Context> MakeLink(const std::string &parties,
   return lctx;
 }
 
-std::unique_ptr<spu::HalContext> MakeHalContext(
+std::unique_ptr<spu::SPUContext> MakeSPUContext(
     const spu::device::SnapshotProto &snapshot) {
   auto lctx = MakeLink(Parties.getValue(), Rank.getValue());
 
-  return std::make_unique<spu::HalContext>(snapshot.runtime_cfg(), lctx);
+  return std::make_unique<spu::SPUContext>(snapshot.runtime_cfg(), lctx);
 }
 
 spu::device::SnapshotProto ParseSnapshotFile(
@@ -92,16 +92,16 @@ void RpcBasedRunner(const std::filesystem::path &snapshot_dir) {
   auto snapshot_file =
       snapshot_dir / fmt::format("snapshot_{}.spu", Rank.getValue());
   spu::device::SnapshotProto snapshot = ParseSnapshotFile(snapshot_file);
-  auto hctx = MakeHalContext(snapshot);
+  auto sctx = MakeSPUContext(snapshot);
 
   spu::device::SymbolTable table =
       spu::device::SymbolTable::fromProto(snapshot.environ());
 
   spu::device::pphlo::PPHloExecutor executor;
 
-  SPDLOG_INFO("Run with config {}", hctx->rt_config().DebugString());
+  SPDLOG_INFO("Run with config {}", sctx->config().DebugString());
 
-  spu::device::execute(&executor, hctx.get(), snapshot.executable(), &table);
+  spu::device::execute(&executor, sctx.get(), snapshot.executable(), &table);
 }
 
 void MemBasedRunner(const std::filesystem::path &snapshot_dir) {
@@ -114,12 +114,12 @@ void MemBasedRunner(const std::filesystem::path &snapshot_dir) {
 
         spu::device::SnapshotProto snapshot = ParseSnapshotFile(snapshot_file);
 
-        spu::HalContext hctx(snapshot.runtime_cfg(), lctx);
+        spu::SPUContext sctx(snapshot.runtime_cfg(), lctx);
 
         spu::device::pphlo::PPHloExecutor executor;
         spu::device::SymbolTable table =
             spu::device::SymbolTable::fromProto(snapshot.environ());
-        spu::device::execute(&executor, &hctx, snapshot.executable(), &table);
+        spu::device::execute(&executor, &sctx, snapshot.executable(), &table);
       });
 }
 

@@ -22,6 +22,8 @@
 #include "mlir/IR/MLIRContext.h"
 #include "mlir/Pass/PassManager.h"
 
+#include "libspu/spu.pb.h"
+
 namespace mlir {
 class PassManager;
 }
@@ -36,18 +38,14 @@ public:
 
   mlir::MLIRContext *getMLIRContext() { return &context_; }
 
-  /// Enable pretty print and set folder
-  /// If dir does not exist, this api will create new folder
-  void enablePrettyPrintWithDir(std::string_view dir);
-
   /// Setup pretty print for a pass manager
   void setupPrettyPrintConfigurations(mlir::PassManager *pm);
 
-  void setInputVisibilityString(const std::string &vis) { input_vis_ = vis; }
+  void setCompilerOptions(const std::string &serialized_copts);
 
-  std::string getInputVisibilityString() const { return input_vis_; }
+  const CompilerOptions &getCompilerOptions() const { return options_; }
 
-  bool hasPrettyPrintEnabled() const { return pp_config_ != nullptr; }
+  bool hasPrettyPrintEnabled() const { return options_.enable_pretty_print(); }
 
   std::filesystem::path getPrettyPrintDir() const;
 
@@ -58,7 +56,7 @@ private:
   mlir::MLIRContext context_;
   std::unique_ptr<mlir::PassManager::IRPrinterConfig> pp_config_;
 
-  std::string input_vis_;
+  CompilerOptions options_;
 };
 
 } // namespace spu::compiler

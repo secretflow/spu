@@ -17,6 +17,7 @@
 #include "mlir/Dialect/Func/IR/FuncOps.h"
 
 #include "libspu/compiler/passes/passes.h"
+#include "libspu/dialect/pphlo_base_enums.h"
 #include "libspu/dialect/pphlo_dialect.h"
 
 namespace mlir::pphlo {

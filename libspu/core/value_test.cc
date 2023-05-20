@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "libspu/kernel/value.h"
+#include "libspu/core/value.h"
 
 #include "gtest/gtest.h"
 

@@ -16,11 +16,14 @@
 
 #include "yacl/link/link.h"
 
-#include "libspu/mpc/object.h"
+#include "libspu/core/context.h"
 
 namespace spu::mpc {
 
-std::unique_ptr<Object> makeSemi2kProtocol(
+void regSemi2kProtocol(SPUContext* ctx,
+                       const std::shared_ptr<yacl::link::Context>& lctx);
+
+std::unique_ptr<SPUContext> makeSemi2kProtocol(
     const RuntimeConfig& conf,
     const std::shared_ptr<yacl::link::Context>& lctx);
 

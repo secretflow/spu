@@ -303,10 +303,44 @@ message TTPBeaverConfig {
 //////////////////////////////////////////////////////////////////////////
 // Compiler relate definition
 //////////////////////////////////////////////////////////////////////////
+enum SourceIRType {
+  XLA = 0;
+  MLIR_HLO = 1;
+}
 
-// Internal representation used by compiler
-message XlaMeta {
-  repeated Visibility inputs = 1;
+message CompilationSource {
+  // Input IR type
+  SourceIRType ir_type = 1;
+
+  // IR
+  bytes ir_txt = 2;
+
+  // Input visibilities
+  repeated Visibility input_visibility = 3;
+}
+
+message CompilerOptions {
+  // Pretty print
+  bool enable_pretty_print = 1;
+  string pretty_print_dump_dir = 2;
+  
+  // Disable sqrt(x) + eps to sqrt(x+eps) rewrite
+  bool disable_sqrt_plus_epsilon_rewrite = 3;
+
+  // Disable x/sqrt(y) to x*rsqrt(y) rewrite
+  bool disable_div_sqrt_rewrite = 4;
+
+  // Disable reduce truncation optimization
+  bool disable_reduce_truncation_optimization = 5;
+
+  // Disable maxpooling optimization
+  bool disable_maxpooling_optimization = 6;
+
+  // Disallow mix type operations
+  bool disallow_mix_types_opts = 7;
+
+  // Disable SelectOp optimization
+  bool disable_select_optimization = 8;
 }
 
 // The executable format accepted by SPU runtime.

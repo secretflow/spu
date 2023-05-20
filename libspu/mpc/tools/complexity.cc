@@ -23,10 +23,10 @@
 #include "llvm/Support/CommandLine.h"
 #include "spdlog/spdlog.h"
 
+#include "libspu/mpc/ab_api.h"
 #include "libspu/mpc/api.h"
 #include "libspu/mpc/common/communicator.h"
 #include "libspu/mpc/factory.h"
-#include "libspu/mpc/object.h"
 #include "libspu/mpc/utils/simulate.h"
 
 #include "libspu/mpc/tools/complexity.pb.h"
@@ -50,16 +50,18 @@ internal::SingleComplexityReport dumpComplexityReport(
 
   RuntimeConfig rt_conf;
   rt_conf.set_protocol(protocol);
+  rt_conf.set_field(FM64);
 
   utils::simulate(
       party_cnt, [&](const std::shared_ptr<yacl::link::Context>& lctx) -> void {
-        auto prot = Factory::CreateCompute(rt_conf, lctx);
+        SPUContext sctx(rt_conf, lctx);
+        Factory::RegisterProtocol(&sctx, lctx);
         if (lctx->Rank() != 0) {
           return;
         }
 
         for (auto name : kWhitelist) {
-          auto* kernel = prot->getKernel(name);
+          auto* kernel = sctx.getKernel(name);
           auto latency = kernel->latency();
           auto comm = kernel->comm();
 

@@ -18,14 +18,14 @@
 #include "xtensor/xio.hpp"
 #include "xtensor/xsort.hpp"
 
-#include "libspu/kernel/hal/test_util.h"
+#include "libspu/kernel/test_util.h"
 
 namespace spu::kernel::hlo {
 
 TEST(SortTest, Array) {
-  HalContext ctx = hal::test::makeRefHalContext();
+  SPUContext ctx = test::makeSPUContext();
   xt::xarray<float> x = xt::random::rand<float>({10});
-  std::vector<Value> x_v = {hal::test::makeValue(&ctx, x, VIS_SECRET)};
+  std::vector<Value> x_v = {test::makeValue(&ctx, x, VIS_SECRET)};
   spu::Value ret1 = Shuffle(&ctx, x_v, 0)[0];
   auto ret1_hat =
       hal::dump_public_as<float>(&ctx, hal::_s2p(&ctx, ret1).asFxp());
@@ -45,9 +45,9 @@ TEST(SortTest, Array) {
 }
 
 TEST(SortTest, 2D) {
-  HalContext ctx = hal::test::makeRefHalContext();
+  SPUContext ctx = test::makeSPUContext();
   xt::xarray<float> x = xt::random::rand<float>({10, 15});
-  std::vector<Value> x_v = {hal::test::makeValue(&ctx, x, VIS_SECRET)};
+  std::vector<Value> x_v = {test::makeValue(&ctx, x, VIS_SECRET)};
 
   spu::Value ret1 = Shuffle(&ctx, x_v, 1)[0];
   auto ret1_hat =

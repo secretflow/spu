@@ -14,25 +14,25 @@
 
 #pragma once
 
-#include "libspu/kernel/context.h"
-#include "libspu/kernel/value.h"
+#include "libspu/core/context.h"
+#include "libspu/core/value.h"
 
 namespace spu::kernel::hal {
 
 /// cast dtype
 // @param in, the input value
 // @param to_type, destination dtype
-Value dtype_cast(HalContext* ctx, const Value& in, DataType to_type);
+Value dtype_cast(SPUContext* ctx, const Value& in, DataType to_type);
 
 /// cast public to secret
 // @param in, the input value
-Value seal(HalContext* ctx, const Value& x);
+Value seal(SPUContext* ctx, const Value& x);
 
 /// reveal a secret
 // @param in, the input value
-Value reveal(HalContext* ctx, const Value& x);
+Value reveal(SPUContext* ctx, const Value& x);
 
 /// cast in storage type to dest type
-Value stype_cast(HalContext* ctx, const Value& in, const Type& to);
+Value stype_cast(SPUContext* ctx, const Value& in, const Type& to);
 
 }  // namespace spu::kernel::hal

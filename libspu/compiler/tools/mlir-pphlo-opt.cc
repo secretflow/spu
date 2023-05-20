@@ -32,6 +32,6 @@ int main(int argc, char **argv) {
   registry.insert<mlir::mhlo::MhloDialect, mlir::stablehlo::StablehloDialect,
                   mlir::pphlo::PPHloDialect, mlir::func::FuncDialect>();
 
-  return static_cast<int>(failed(
-      mlir::MlirOptMain(argc, argv, "MLIR pphlo pass driver\n", registry)));
+  return mlir::asMainReturnCode(
+      mlir::MlirOptMain(argc, argv, "MLIR pphlo pass driver\n", registry));
 }

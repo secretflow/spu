@@ -14,13 +14,13 @@
 
 #include "libspu/kernel/hlo/convolution.h"
 
-#include "libspu/kernel/context.h"
+#include "libspu/core/context.h"
+#include "libspu/core/value.h"
 #include "libspu/kernel/hal/constants.h"
 #include "libspu/kernel/hal/polymorphic.h"
 #include "libspu/kernel/hal/shape_ops.h"
 #include "libspu/kernel/hal/type_cast.h"
 #include "libspu/kernel/hlo/utils.h"
-#include "libspu/kernel/value.h"
 
 namespace {
 
@@ -38,7 +38,7 @@ std::vector<int64_t> MakeDimMultipliers(absl::Span<const int64_t> shape) {
 
 namespace spu::kernel::hlo {
 
-spu::Value Convolution(HalContext *ctx, const spu::Value &lhs,
+spu::Value Convolution(SPUContext *ctx, const spu::Value &lhs,
                        const spu::Value &rhs, const ConvolutionConfig &config,
                        absl::Span<const int64_t> result_shape) {
   const size_t num_spatial_dims = config.outputSpatialDimensions.size();
@@ -186,7 +186,7 @@ spu::Value Convolution(HalContext *ctx, const spu::Value &lhs,
   return ret;
 }
 
-spu::Value extractImagePatches(HalContext *ctx, spu::Value &input,
+spu::Value extractImagePatches(SPUContext *ctx, spu::Value &input,
                                int64_t kernel_x, int64_t kernel_y,
                                int64_t stride_x, int64_t stride_y) {
   auto input_batch = input.shape()[0];
@@ -214,7 +214,7 @@ spu::Value extractImagePatches(HalContext *ctx, spu::Value &input,
 }
 
 // This is an optimized conv2D with im2col
-spu::Value Convolution2D(HalContext *ctx, spu::Value input,
+spu::Value Convolution2D(SPUContext *ctx, spu::Value input,
                          const spu::Value &kernel,
                          const ConvolutionConfig &config,
                          absl::Span<const int64_t> result_shape) {
@@ -228,8 +228,8 @@ spu::Value Convolution2D(HalContext *ctx, spu::Value input,
   auto output_x = result_shape[1];
   auto output_y = result_shape[2];
 
-  if (ctx->rt_config().protocol() == ProtocolKind::CHEETAH &&
-      input.isSecret() && kernel.isSecret()) {
+  if (ctx->config().protocol() == ProtocolKind::CHEETAH && input.isSecret() &&
+      kernel.isSecret()) {
     // NOTE(juhou): ad-hoc optimization for the current 2PC conv2d
     // implementation. When input_batch is large or small kernel size, it would
     // be better to compute im2col because the current conv2d implementation

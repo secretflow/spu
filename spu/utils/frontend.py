@@ -102,6 +102,7 @@ def compile(
     input_vis: List,
     outputNameGen: Callable,
     static_argnums=(),
+    copts=spu_pb2.CompilerOptions(),
 ):
     if kind == Kind.JAX:
         import jax
@@ -167,13 +168,16 @@ def compile(
     else:
         raise NameError(f"Unknown frontend type {kind}")
 
+    source = spu_pb2.CompilationSource()
+    source.ir_txt = ir_text
+    source.input_visibility.extend(input_vis)
     if kind in [Kind.JAX, Kind.Tensorflow]:
-        ir_type = "hlo"
+        source.ir_type = spu_pb2.SourceIRType.XLA
         name = fn.func.__name__ if isinstance(fn, functools.partial) else fn.__name__
     elif kind == Kind.Torch:
-        ir_type = "mhlo"
+        source.ir_type = spu_pb2.SourceIRType.MLIR_HLO
         name = repr(fn)
-    mlir = spu_api.compile(ir_text, ir_type, input_vis)
+    mlir = spu_api.compile(source, copts)
     executable = spu_pb2.ExecutableProto(
         name=name,
         input_names=input_names,

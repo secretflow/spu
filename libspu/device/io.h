@@ -18,10 +18,10 @@
 #include <memory>
 #include <vector>
 
+#include "libspu/core/context.h"
 #include "libspu/core/pt_buffer_view.h"
+#include "libspu/core/value.h"
 #include "libspu/device/symbol_table.h"
-#include "libspu/kernel/context.h"
-#include "libspu/kernel/value.h"
 #include "libspu/mpc/io_interface.h"
 
 namespace spu::device {
@@ -115,7 +115,7 @@ class IoClient {
 
 class ColocatedIo {
   // The hardware context.
-  HalContext *hctx_;
+  SPUContext *sctx_;
 
   // the place that variables will be store/load.
   SymbolTable symbols_;
@@ -128,11 +128,11 @@ class ColocatedIo {
   std::map<std::string, PrivData> unsynced_;
 
  public:
-  explicit ColocatedIo(HalContext *hctx);
+  explicit ColocatedIo(SPUContext *sctx);
 
-  size_t getWorldSize() const { return hctx_->lctx()->WorldSize(); }
+  size_t getWorldSize() const { return sctx_->lctx()->WorldSize(); }
 
-  size_t getRank() const { return hctx_->lctx()->Rank(); }
+  size_t getRank() const { return sctx_->lctx()->Rank(); }
 
   void hostSetVar(const std::string &name, const PtBufferView &bv,
                   Visibility vtype = VIS_SECRET);

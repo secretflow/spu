@@ -18,7 +18,7 @@
 
 namespace spu::kernel::hlo {
 
-spu::Value Uniform_rand(HalContext *ctx, const spu::Value &lo,
+spu::Value Uniform_rand(SPUContext *ctx, const spu::Value &lo,
                         const spu::Value &hi,
                         absl::Span<const int64_t> to_shape) {
   return hal::rng_uniform(ctx, lo, hi, to_shape);

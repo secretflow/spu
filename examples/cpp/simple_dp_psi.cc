@@ -104,7 +104,7 @@ llvm::cl::opt<int> BucketSizeOpt("bucket_size", llvm::cl::init(1 << 20),
 int main(int argc, char** argv) {  // NOLINT
   llvm::cl::ParseCommandLineOptions(argc, argv);
 
-  auto hctx = MakeHalContext();
+  auto sctx = MakeSPUContext();
 
   auto field_list = absl::StrSplit(FieldNamesOpt.getValue(), ',');
   auto batch_provider = std::make_shared<spu::psi::CsvBatchProvider>(
@@ -123,14 +123,14 @@ int main(int argc, char** argv) {  // NOLINT
 
   std::vector<size_t> intersection_idx;
 
-  auto link_ctx = hctx->lctx();
+  auto link_ctx = sctx->lctx();
 
   link_ctx->SetThrottleWindowSize(kLinkWindowSize);
 
   link_ctx->SetRecvTimeout(kLinkRecvTimeout);
 
   if (Rank.getValue() == 0) {
-    yacl::Buffer bob_items_size_buffer = hctx->lctx()->Recv(
+    yacl::Buffer bob_items_size_buffer = sctx->lctx()->Recv(
         link_ctx->NextRank(), fmt::format("peer items number"));
     size_t bob_items_size =
         spu::psi::utils::DeserializeSize(bob_items_size_buffer);

@@ -16,23 +16,23 @@
 
 #include "gtest/gtest.h"
 
-#include "libspu/kernel/context.h"
-#include "libspu/kernel/hal/test_util.h"
+#include "libspu/core/context.h"
+#include "libspu/core/value.h"
 #include "libspu/kernel/hlo/const.h"
-#include "libspu/kernel/value.h"
+#include "libspu/kernel/test_util.h"
 
 namespace spu::kernel::hlo {
 
 TEST(ConstTest, Empty) {
-  HalContext hctx = hal::test::makeRefHalContext();
+  SPUContext sctx = test::makeSPUContext();
 
-  auto empty_c = Constant(&hctx, true, {0});
+  auto empty_c = Constant(&sctx, true, {0});
 
   // Seal
-  auto s_empty = Seal(&hctx, empty_c);
+  auto s_empty = Seal(&sctx, empty_c);
 
   // Reveal
-  auto p_empty = Reveal(&hctx, s_empty);
+  auto p_empty = Reveal(&sctx, s_empty);
 
   EXPECT_EQ(p_empty.numel(), 0);
   EXPECT_EQ(p_empty.shape().size(), 1);

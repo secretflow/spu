@@ -14,7 +14,6 @@
 
 #include "libspu/mpc/cheetah/conversion.h"
 
-#include "libspu/core/trace.h"
 #include "libspu/mpc/cheetah/state.h"
 #include "libspu/mpc/common/pub2k.h"
 #include "libspu/mpc/semi2k/type.h"  // TODO: use cheetah type
@@ -23,7 +22,6 @@ namespace spu::mpc::cheetah {
 constexpr size_t kMinWorkSize = 5000;
 
 ArrayRef B2A::proc(KernelEvalContext* ctx, const ArrayRef& x) const {
-  SPU_TRACE_MPC_LEAF(ctx, x);
   auto* comm = ctx->getState<Communicator>();
   auto* ot_state = ctx->getState<CheetahOTState>();
   size_t n = x.numel();

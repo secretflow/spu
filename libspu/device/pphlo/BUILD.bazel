@@ -37,6 +37,7 @@ spu_cc_test(
         "//libspu/device:api",
         "//libspu/device:io",
         "//libspu/device:test_utils",
+        "//libspu/kernel:test_util",
     ],
 )
 
@@ -45,9 +46,9 @@ spu_cc_library(
     srcs = ["pphlo_verifier.cc"],
     hdrs = ["pphlo_verifier.h"],
     deps = [
+        "//libspu/core:context",
+        "//libspu/core:value",
         "//libspu/dialect:pphlo_dialect",
-        "//libspu/kernel:context",
-        "//libspu/kernel:value",
         "//libspu/kernel/hlo",
         "@stablehlo//:reference_ops",
     ],
@@ -59,6 +60,7 @@ spu_cc_test(
     deps = [
         ":pphlo_verifier",
         "//libspu/device:test_utils",
+        "//libspu/kernel:test_util",
         "//libspu/mpc/utils:simulate",
         "@llvm-project//mlir:Parser",
     ],

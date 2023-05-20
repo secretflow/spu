@@ -19,7 +19,7 @@
 
 namespace spu::kernel::hlo {
 
-spu::Value Cast(HalContext *ctx, const spu::Value &in, Visibility dst_vtype,
+spu::Value Cast(SPUContext *ctx, const spu::Value &in, Visibility dst_vtype,
                 DataType dst_dtype) {
   spu::Value ret = in;
   if (ret.vtype() != dst_vtype) {
@@ -35,15 +35,15 @@ spu::Value Cast(HalContext *ctx, const spu::Value &in, Visibility dst_vtype,
   return ret;
 }
 
-spu::Value Bitcast(HalContext *ctx, const spu::Value &in, DataType dst_dtype) {
+spu::Value Bitcast(SPUContext *ctx, const spu::Value &in, DataType dst_dtype) {
   return hal::bitcast(ctx, in, dst_dtype);
 }
 
-spu::Value Reveal(HalContext *ctx, const spu::Value &in) {
+spu::Value Reveal(SPUContext *ctx, const spu::Value &in) {
   return hal::reveal(ctx, in);
 }
 
-spu::Value Seal(HalContext *ctx, const spu::Value &in) {
+spu::Value Seal(SPUContext *ctx, const spu::Value &in) {
   return hal::seal(ctx, in);
 }
 

@@ -46,7 +46,7 @@ std::shared_ptr<yacl::link::Context> MakeLink(const std::string& parties,
   return lctx;
 }
 
-std::unique_ptr<spu::HalContext> MakeHalContext() {
+std::unique_ptr<spu::SPUContext> MakeSPUContext() {
   auto lctx = MakeLink(Parties.getValue(), Rank.getValue());
 
   spu::RuntimeConfig config;
@@ -55,5 +55,5 @@ std::unique_ptr<spu::HalContext> MakeHalContext() {
 
   config.set_enable_action_trace(EngineTrace.getValue());
   config.set_enable_type_checker(EngineTrace.getValue());
-  return std::make_unique<spu::HalContext>(config, lctx);
+  return std::make_unique<spu::SPUContext>(config, lctx);
 }

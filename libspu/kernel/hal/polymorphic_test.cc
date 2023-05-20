@@ -23,7 +23,8 @@
 #include "xtensor/xmath.hpp"
 #include "xtensor/xvectorize.hpp"
 
-#include "libspu/kernel/hal/test_util.h"
+#include "libspu/kernel/hal/constants.h"
+#include "libspu/kernel/test_util.h"
 #include "libspu/mpc/utils/linalg.h"
 
 namespace spu::kernel::hal {
@@ -543,6 +544,7 @@ TYPED_TEST(MathUnaryTest, Log) {
   EXPECT_TRUE(xt::allclose(log_x, z, 0.1, 0.001)) << log_x << std::endl << z;
 }
 
+// TODO: can not pass MM1 & SEG3 test.
 TYPED_TEST(MathUnaryTest, Logistic) {
   using IN_DT = typename std::tuple_element<0, TypeParam>::type;
   using IN_VT = typename std::tuple_element<1, TypeParam>::type;
@@ -648,7 +650,7 @@ TEST_P(LogisticTest, Logistic) {
   config.set_protocol(ProtocolKind::REF2K);
   config.set_field(FieldType::FM64);
   config.set_sigmoid_mode(GetParam());
-  HalContext ctx = test::makeRefHalContext(config);
+  SPUContext ctx = test::makeSPUContext(config, nullptr);
 
   xt::xarray<float> x{{1.0, 2.0}, {0.5, 1.8}};
 

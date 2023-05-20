@@ -19,7 +19,7 @@
 #include "xtensor/xio.hpp"
 #include "xtensor/xshape.hpp"
 
-#include "libspu/kernel/hal/test_util.h"
+#include "libspu/kernel/test_util.h"
 
 namespace spu::kernel::hal {
 
@@ -48,7 +48,7 @@ TYPED_TEST(ShapeOpsUnaryTest, Transpose) {
   xt::xarray<IN_DT> x = test::xt_random<IN_DT>({2, 3, 4});
 
   // WHAT
-  auto transpose_wrapper = [](HalContext* ctx, const Value& x) {
+  auto transpose_wrapper = [](SPUContext* ctx, const Value& x) {
     return transpose(ctx, x);
   };
   auto z = test::evalUnaryOp<RES_DT>(IN_VT(), transpose_wrapper, x);
@@ -66,7 +66,7 @@ TYPED_TEST(ShapeOpsUnaryTest, TransposeWithPermutation) {
   // GIVEN
   xt::xarray<IN_DT> x = test::xt_random<IN_DT>({2, 2, 4});
 
-  auto transpose_wrapper = [](HalContext* ctx, const Value& x) {
+  auto transpose_wrapper = [](SPUContext* ctx, const Value& x) {
     return transpose(ctx, x, {1, 2, 0});
   };
 
@@ -87,7 +87,7 @@ TYPED_TEST(ShapeOpsUnaryTest, BroadcastTo) {
   // GIVEN
   xt::xarray<IN_DT> x = test::xt_random<IN_DT>({5, 1, 6});
 
-  auto broadcast_to_wrapper = [](HalContext* ctx, const Value& in) {
+  auto broadcast_to_wrapper = [](SPUContext* ctx, const Value& in) {
     return broadcast_to(ctx, in, {5, 4, 6});
   };
 
@@ -107,7 +107,7 @@ TYPED_TEST(ShapeOpsUnaryTest, BroadcastScalar) {
   // GIVEN
   xt::xarray<IN_DT> x = test::xt_random<IN_DT>({});
 
-  auto broadcast_to_wrapper = [](HalContext* ctx, const Value& in) {
+  auto broadcast_to_wrapper = [](SPUContext* ctx, const Value& in) {
     return broadcast_to(ctx, in, {1, 1});
   };
 
@@ -126,7 +126,7 @@ TYPED_TEST(ShapeOpsUnaryTest, BroadcastInDims) {
   // GIVEN
   xt::xarray<IN_DT> x = {1, 2, 3, 4};
 
-  auto broadcast_to_wrapper = [](HalContext* ctx, const Value& in) {
+  auto broadcast_to_wrapper = [](SPUContext* ctx, const Value& in) {
     return broadcast_to(ctx, in, {4, 2}, {0});
   };
 
@@ -144,7 +144,7 @@ TEST(SliceTest, Slice) {
   xt::xarray<int32_t> x = {{0, 1, 2}, {3, 4, 5}, {6, 7, 8}, {9, 10, 11}};
   using P_VT = public_v::type;
 
-  auto slice_wrapper = [](HalContext* ctx, const Value& in) {
+  auto slice_wrapper = [](SPUContext* ctx, const Value& in) {
     return slice(ctx, in, {2, 1}, {4, 3}, {});
   };
   auto z = test::evalUnaryOp<int64_t>(P_VT(), slice_wrapper, x);
@@ -161,7 +161,7 @@ TEST(SliceTest, UpdateSlice) {
   xt::xarray<int32_t> y = {{0, 1}, {3, 4}};
   using P_VT = public_v::type;
 
-  auto update_slice_wrapper = [](HalContext* ctx, const Value& in,
+  auto update_slice_wrapper = [](SPUContext* ctx, const Value& in,
                                  const Value& update) {
     return update_slice(ctx, in, update, {1, 1});
   };
@@ -176,7 +176,7 @@ TEST(SliceTest, SliceStride) {
   xt::xarray<int32_t> x = {0, 1, 2, 3};
   using P_VT = public_v::type;
 
-  auto slice_wrapper = [](HalContext* ctx, const Value& in) {
+  auto slice_wrapper = [](SPUContext* ctx, const Value& in) {
     return slice(ctx, in, {0}, {4}, {3});
   };
   auto z = test::evalUnaryOp<int64_t>(P_VT(), slice_wrapper, x);
@@ -193,7 +193,7 @@ TEST(ReshapeTest, Reshape) {
   xt::xarray<int32_t> x = {1, 2, 3, 4};
   using P_VT = public_v::type;
 
-  auto reshape_wrapper = [](HalContext* ctx, const Value& in) {
+  auto reshape_wrapper = [](SPUContext* ctx, const Value& in) {
     return reshape(ctx, in, {2, 2});
   };
   auto z = test::evalUnaryOp<int64_t>(P_VT(), reshape_wrapper, x);
@@ -210,7 +210,7 @@ TEST(ShapeOpsUnaryTest, Reverse) {
   };
   using P_VT = public_v::type;
 
-  auto reverse_wrapper = [](HalContext* ctx, const Value& in) {
+  auto reverse_wrapper = [](SPUContext* ctx, const Value& in) {
     return reverse(ctx, in, {0, 1, 2});
   };
 
@@ -231,7 +231,7 @@ TEST(ShapeOpsUnaryTest, BroadcastAfterReshape) {
   xt::xarray<int32_t> x = {{1, 2}, {3, 4}};
 
   using P_VT = public_v::type;
-  auto pad_wrapper = [](HalContext* ctx, const Value& in) {
+  auto pad_wrapper = [](SPUContext* ctx, const Value& in) {
     auto x1 = reshape(ctx, in, {1, 2, 2});
     return broadcast_to(ctx, x1, {2, 2, 2});
   };
@@ -253,7 +253,7 @@ TEST(ShapeOpsUnaryTest, Pad) {
   }}};
 
   using P_VT = public_v::type;
-  auto pad_wrapper = [](HalContext* ctx, const Value& in) {
+  auto pad_wrapper = [](SPUContext* ctx, const Value& in) {
     return pad(ctx, in, test::makeValue(ctx, 35, P_VT()), {1, 0, 0, 0},
                {0, 2, 0, 0}, {2, 1, 0, 0});
   };
@@ -280,7 +280,7 @@ TEST(ShapeOpsUnaryTest, InteriorPadding) {
                            {16, 17, 18, 19, 20}};
 
   using P_VT = public_v::type;
-  auto pad_wrapper = [](HalContext* ctx, const Value& in) {
+  auto pad_wrapper = [](SPUContext* ctx, const Value& in) {
     return pad(ctx, in, test::makeValue(ctx, 0, P_VT()), {0, 0}, {0, 0},
                {1, 1});
   };
@@ -307,7 +307,7 @@ TEST(ShapeOpsUnaryTest, NegativeEdgePad) {
                            {16, 17, 18, 19, 20}};
 
   using P_VT = public_v::type;
-  auto pad_wrapper = [](HalContext* ctx, const Value& in) {
+  auto pad_wrapper = [](SPUContext* ctx, const Value& in) {
     return pad(ctx, in, test::makeValue(ctx, 0, P_VT()), {-1, -1}, {-1, -1},
                {0, 0});
   };
@@ -329,7 +329,7 @@ TEST(ShapeOpsUnaryTest, NegativeEdgePadWithInteriorPad) {
                            {16, 17, 18, 19, 20}};
 
   using P_VT = public_v::type;
-  auto pad_wrapper = [](HalContext* ctx, const Value& in) {
+  auto pad_wrapper = [](SPUContext* ctx, const Value& in) {
     return pad(ctx, in, test::makeValue(ctx, 0, P_VT()), {-1, -1}, {-1, -1},
                {1, 1});
   };
@@ -354,7 +354,7 @@ TEST(ShapeOpsUnaryTest, HighNegativeEdgePadWithInteriorPad) {
                            {16, 17, 18, 19, 20}};
 
   using P_VT = public_v::type;
-  auto pad_wrapper = [](HalContext* ctx, const Value& in) {
+  auto pad_wrapper = [](SPUContext* ctx, const Value& in) {
     return pad(ctx, in, test::makeValue(ctx, 0, P_VT()), {-3, -3}, {-1, -1},
                {1, 1});
   };
@@ -398,7 +398,7 @@ TYPED_TEST(ConcatTest, Concatenate) {
   xt::xarray<DT> x = test::xt_random<DT>({3, 3});
   xt::xarray<DT> y = test::xt_random<DT>({3, 3});
 
-  auto concat_wrapper = [](HalContext* ctx, const Value& lhs,
+  auto concat_wrapper = [](SPUContext* ctx, const Value& lhs,
                            const Value& rhs) {
     return concatenate(ctx, {lhs, rhs}, 0);
   };
@@ -422,7 +422,7 @@ TYPED_TEST(ConcatTest, VConcatenate) {
   xt::xarray<DT> x = test::xt_random<DT>({3, 3});
   xt::xarray<DT> y = test::xt_random<DT>({3, 3});
 
-  auto concat_wrapper = [](HalContext* ctx, const Value& lhs,
+  auto concat_wrapper = [](SPUContext* ctx, const Value& lhs,
                            const Value& rhs) {
     return concatenate(ctx, {lhs, rhs}, 1);
   };

@@ -84,8 +84,6 @@ spu_cc_library(
         ":boolean",
         ":conversion",
         ":state",
-        "//libspu/mpc/common:ab_api",
-        "//libspu/mpc/common:ab_kernels",
         "//libspu/mpc/common:prg_state",
         "//libspu/mpc/common:pub2k",
     ],
@@ -98,8 +96,8 @@ spu_cc_test(
     srcs = ["protocol_test.cc"],
     deps = [
         ":protocol",
+        "//libspu/mpc:ab_api_test",
         "//libspu/mpc:api_test",
-        "//libspu/mpc/common:ab_api_test",
     ],
 )
 

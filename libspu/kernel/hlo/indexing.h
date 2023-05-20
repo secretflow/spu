@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "libspu/kernel/context.h"
+#include "libspu/core/context.h"
 #include "libspu/kernel/hlo/utils.h"
 
 namespace spu::kernel::hlo {
@@ -29,31 +29,31 @@ struct GatherConfig {
 
 // This is ported from
 // https://github.com/tensorflow/tensorflow/blob/bf4c6ad46dac1f7f69911e2bfc48e141a39b40af/tensorflow/compiler/xla/service/hlo_evaluator.cc#L1774
-spu::Value Gather(HalContext *ctx, const spu::Value &operand,
+spu::Value Gather(SPUContext *ctx, const spu::Value &operand,
                   const spu::Value &start_indices, const GatherConfig &config,
                   absl::Span<const int64_t> result_shape);
 
-spu::Value DynamicUpdateSlice(HalContext *ctx, const spu::Value &operand,
+spu::Value DynamicUpdateSlice(SPUContext *ctx, const spu::Value &operand,
                               const spu::Value &update,
                               absl::Span<const spu::Value> start_indices);
 
-spu::Value DynamicSlice(HalContext *ctx, const spu::Value &operand,
+spu::Value DynamicSlice(SPUContext *ctx, const spu::Value &operand,
                         absl::Span<const int64_t> slice_size,
                         absl::Span<const spu::Value> start_indices);
 
 /// ------------------- non-XLA APIs ------------------------------------
 // @brief Update slice
-spu::Value UpdateSlice(HalContext *ctx, const spu::Value &in,
+spu::Value UpdateSlice(SPUContext *ctx, const spu::Value &in,
                        const spu::Value &update,
                        absl::Span<const int64_t> start_indices);
 
-spu::Value FilterByMask(HalContext *ctx, const spu::Value &operand,
+spu::Value FilterByMask(SPUContext *ctx, const spu::Value &operand,
                         absl::Span<const uint8_t> mask);
 
-spu::Value LinearGather(HalContext *ctx, const spu::Value &in,
+spu::Value LinearGather(SPUContext *ctx, const spu::Value &in,
                         absl::Span<const int64_t> indices);
 
-void LinearScatterInPlace(HalContext *ctx, spu::Value &in,
+void LinearScatterInPlace(SPUContext *ctx, spu::Value &in,
                           const spu::Value &update,
                           absl::Span<const int64_t> indices);
 

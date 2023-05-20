@@ -26,7 +26,7 @@
 #include "libspu/device/pphlo/pphlo_executor.h"
 
 // This example demostrates the basic compute functionality of spu vm.
-void constant_add(spu::HalContext* hctx) {
+void constant_add(spu::SPUContext* sctx) {
   // Write the assembly, this code simple add two numbers.
   // - `%1` is a constant public integer, with dtype int32 and value 1.
   // - `%2` is a constant public integer, with dtype int32 and value 2.
@@ -44,14 +44,14 @@ func.func @main() -> () {
   // Run it, with no input and output, (since the program does not contain IO)
   spu::device::SymbolTable env;
   spu::device::pphlo::PPHloExecutor executor;
-  spu::device::execute(&executor, hctx, code, {}, {}, &env);
+  spu::device::execute(&executor, sctx, code, {}, {}, &env);
 }
 
 // This example demostrates how to pass parameters.
-void parameters(spu::HalContext* hctx) {
+void parameters(spu::SPUContext* sctx) {
   // In this example, data owner also participates the computation progress,
   // which is called "colocated mode" in spu system.
-  spu::device::ColocatedIo cio(hctx);
+  spu::device::ColocatedIo cio(sctx);
 
   if (cio.getRank() == 0) {
     // rank-0, set a float variable 3.14 as 'x' to the device.
@@ -84,18 +84,18 @@ func.func @main(%arg0: tensor<!pphlo.sec<f32>>, %arg1: tensor<!pphlo.sec<i32>>) 
   // - "y" binding to the second parameter (position 1).
   // - there is no output bindings.
   spu::device::pphlo::PPHloExecutor executor;
-  spu::device::execute(&executor, hctx, code, {"x", "y"}, {},
+  spu::device::execute(&executor, sctx, code, {"x", "y"}, {},
                        &cio.deviceSymbols());
 }
 
 int main(int argc, char** argv) {
   llvm::cl::ParseCommandLineOptions(argc, argv);
 
-  auto hctx = MakeHalContext();
+  auto sctx = MakeSPUContext();
 
-  parameters(hctx.get());
+  parameters(sctx.get());
 
-  constant_add(hctx.get());
+  constant_add(sctx.get());
 
   return 0;
 }

@@ -28,19 +28,6 @@
 namespace spu::kernel::hal {
 namespace {
 
-Value unflattenValue(const ArrayRef& arr, absl::Span<const int64_t> shape) {
-  // The underline MPC engine does not take care of dtype information, so we
-  // should set it as INVALID and let the upper layer to handle it.
-  return Value(unflatten(arr, shape), DT_INVALID);
-}
-
-ArrayRef flattenValue(const Value& v) {
-  // TODO: optimization point.
-  // we can set number of valids bits (according to dtype) to inform lower layer
-  // for optimization. Currently dtype information is not used.
-  return flatten(v.data());
-}
-
 std::tuple<int64_t, int64_t, int64_t> deduceMmulArgs(
     const std::vector<int64_t>& lhs, const std::vector<int64_t>& rhs) {
   SPU_ENFORCE(!lhs.empty() && lhs.size() <= 2);
@@ -64,76 +51,74 @@ std::tuple<int64_t, int64_t, int64_t> deduceMmulArgs(
 
 }  // namespace
 
-#define MAP_UNARY_OP(NAME)                               \
-  Value _##NAME(HalContext* ctx, const Value& in) {      \
-    SPU_TRACE_HAL_DISP(ctx, in);                         \
-    auto ret = mpc::NAME(ctx->prot(), flattenValue(in)); \
-    return unflattenValue(ret, in.shape());              \
+#define MAP_UNARY_OP(NAME)                          \
+  Value _##NAME(SPUContext* ctx, const Value& in) { \
+    SPU_TRACE_HAL_DISP(ctx, in);                    \
+    return mpc::NAME(ctx, in);                      \
   }
 
 #define MAP_SHIFT_OP(NAME)                                       \
-  Value _##NAME(HalContext* ctx, const Value& in, size_t bits) { \
+  Value _##NAME(SPUContext* ctx, const Value& in, size_t bits) { \
     SPU_TRACE_HAL_DISP(ctx, in, bits);                           \
-    auto ret = mpc::NAME(ctx->prot(), flattenValue(in), bits);   \
-    return unflattenValue(ret, in.shape());                      \
+    auto ret = mpc::NAME(ctx, in, bits);                         \
+    return ret;                                                  \
   }
 
 #define MAP_BITREV_OP(NAME)                                                   \
-  Value _##NAME(HalContext* ctx, const Value& in, size_t start, size_t end) { \
+  Value _##NAME(SPUContext* ctx, const Value& in, size_t start, size_t end) { \
     SPU_TRACE_HAL_DISP(ctx, in, start, end);                                  \
-    auto ret = mpc::NAME(ctx->prot(), flattenValue(in), start, end);          \
-    return unflattenValue(ret, in.shape());                                   \
+    auto ret = mpc::NAME(ctx, in, start, end);                                \
+    return ret;                                                               \
   }
 
-#define MAP_BINARY_OP(NAME)                                              \
-  Value _##NAME(HalContext* ctx, const Value& x, const Value& y) {       \
-    SPU_TRACE_HAL_DISP(ctx, x, y);                                       \
-    SPU_ENFORCE(x.shape() == y.shape(), "shape mismatch: x={}, y={}",    \
-                x.shape(), y.shape());                                   \
-    auto ret = mpc::NAME(ctx->prot(), flattenValue(x), flattenValue(y)); \
-    return unflattenValue(ret, x.shape());                               \
+#define MAP_BINARY_OP(NAME)                                           \
+  Value _##NAME(SPUContext* ctx, const Value& x, const Value& y) {    \
+    SPU_TRACE_HAL_DISP(ctx, x, y);                                    \
+    SPU_ENFORCE(x.shape() == y.shape(), "shape mismatch: x={}, y={}", \
+                x.shape(), y.shape());                                \
+    auto ret = mpc::NAME(ctx, x, y);                                  \
+    return ret;                                                       \
   }
 
-#define MAP_MMUL_OP(NAME)                                                  \
-  Value _##NAME(HalContext* ctx, const Value& x, const Value& y) {         \
-    SPU_TRACE_HAL_DISP(ctx, x, y);                                         \
-    auto [m, n, k] = deduceMmulArgs(x.shape(), y.shape());                 \
-    auto ret =                                                             \
-        mpc::NAME(ctx->prot(), flattenValue(x), flattenValue(y), m, n, k); \
-    return unflattenValue(ret, {m, n});                                    \
+#define MAP_MMUL_OP(NAME)                                          \
+  Value _##NAME(SPUContext* ctx, const Value& x, const Value& y) { \
+    SPU_TRACE_HAL_DISP(ctx, x, y);                                 \
+    auto [m, n, k] = deduceMmulArgs(x.shape(), y.shape());         \
+    auto ret = mpc::NAME(ctx, x, y, m, n, k);                      \
+    return ret;                                                    \
   }
 
-Type _common_type_s(HalContext* ctx, const Type& a, const Type& b) {
+Type _common_type_s(SPUContext* ctx, const Type& a, const Type& b) {
   SPU_TRACE_HAL_DISP(ctx, a, b);
-  return mpc::common_type_s(ctx->prot(), a, b);
+  return mpc::common_type_s(ctx, a, b);
 }
 
-Value _cast_type_s(HalContext* ctx, const Value& in, const Type& to) {
+Value _cast_type_s(SPUContext* ctx, const Value& in, const Type& to) {
   SPU_TRACE_HAL_DISP(ctx, in, to);
-  auto ret = mpc::cast_type_s(ctx->prot(), flattenValue(in), to);
-  return unflattenValue(ret, in.shape());
+  auto ret = mpc::cast_type_s(ctx, in, to);
+  return ret;
 }
 
-Value _make_p(HalContext* ctx, uint128_t init,
+Value _make_p(SPUContext* ctx, uint128_t init,
               absl::Span<const int64_t> shape) {
   SPU_TRACE_HAL_DISP(ctx, init);
-  auto res = mpc::make_p(ctx->prot(), init, calcNumel(shape));
-  return unflattenValue(res, shape);
+  auto res = mpc::make_p(ctx, init, Shape(shape));
+  return res;
 }
 
-Value _rand_p(HalContext* ctx, absl::Span<const int64_t> shape) {
+Value _rand_p(SPUContext* ctx, absl::Span<const int64_t> shape) {
   SPU_TRACE_HAL_DISP(ctx, shape);
-  auto rnd = mpc::rand_p(ctx->prot(), calcNumel(shape));
-  return unflattenValue(rnd, shape);
+  auto rnd = mpc::rand_p(ctx, Shape(shape));
+  return rnd;
 }
 
-Value _rand_s(HalContext* ctx, absl::Span<const int64_t> shape) {
+Value _rand_s(SPUContext* ctx, absl::Span<const int64_t> shape) {
   SPU_TRACE_HAL_DISP(ctx, shape);
-  auto rnd = mpc::rand_s(ctx->prot(), calcNumel(shape));
-  return unflattenValue(rnd, shape);
+  auto rnd = mpc::rand_s(ctx, Shape(shape));
+  return rnd;
 }
 
-Value _conv2d_ss(HalContext* ctx, Value input, const Value& kernel,
+Value _conv2d_ss(SPUContext* ctx, Value input, const Value& kernel,
                  absl::Span<const int64_t> window_strides,
                  absl::Span<const int64_t> result_shape) {
   SPU_TRACE_HAL_DISP(ctx, input, kernel, window_strides, result_shape);
@@ -171,24 +156,19 @@ Value _conv2d_ss(HalContext* ctx, Value input, const Value& kernel,
   size_t H = input.shape()[1];
   size_t W = input.shape()[2];
   // FIXME(juhou): define conv2d_ss in api.h to capture this
-  return unflattenValue(
-      ctx->prot()->call("conv2d_aa", flattenValue(input), flattenValue(kernel),
-                        N, H, W, C, O, h, w, stride_h, stride_w),
-      result_shape);
+  return dynDispatch(ctx, "conv2d_aa", input, kernel, N, H, W, C, O, h, w,
+                     stride_h, stride_w);
 }
 
-Value _trunc_p_with_sign(HalContext* ctx, const Value& in, size_t bits,
+Value _trunc_p_with_sign(SPUContext* ctx, const Value& in, size_t bits,
                          bool /*dummy*/) {
   return _trunc_p(ctx, in, bits);
 }
 
-Value _trunc_s_with_sign(HalContext* ctx, const Value& in, size_t bits,
+Value _trunc_s_with_sign(SPUContext* ctx, const Value& in, size_t bits,
                          bool is_positive) {
-  if (ctx->rt_config().protocol() == ProtocolKind::CHEETAH) {
-    return unflattenValue(
-        ctx->prot()->call("trunc_a_with_sign", flattenValue(in), bits,
-                          is_positive),
-        in.shape());
+  if (ctx->config().protocol() == ProtocolKind::CHEETAH) {
+    return dynDispatch(ctx, "trunc_a_with_sign", in, bits, is_positive);
   } else {
     return _trunc_s(ctx, in, bits);
   }
@@ -226,17 +206,17 @@ MAP_MMUL_OP(mmul_pp)
 MAP_MMUL_OP(mmul_sp)
 MAP_MMUL_OP(mmul_ss)
 
-#define MAP_OPTIONAL_BINARY_OP(NAME)                                     \
-  std::optional<Value> _##NAME(HalContext* ctx, const Value& x,          \
-                               const Value& y) {                         \
-    SPU_TRACE_HAL_DISP(ctx, x, y);                                       \
-    SPU_ENFORCE(x.shape() == y.shape(), "shape mismatch: x={}, y={}",    \
-                x.shape(), y.shape());                                   \
-    auto ret = mpc::NAME(ctx->prot(), flattenValue(x), flattenValue(y)); \
-    if (!ret.has_value()) {                                              \
-      return std::nullopt;                                               \
-    }                                                                    \
-    return unflattenValue(ret.value(), x.shape());                       \
+#define MAP_OPTIONAL_BINARY_OP(NAME)                                  \
+  std::optional<Value> _##NAME(SPUContext* ctx, const Value& x,       \
+                               const Value& y) {                      \
+    SPU_TRACE_HAL_DISP(ctx, x, y);                                    \
+    SPU_ENFORCE(x.shape() == y.shape(), "shape mismatch: x={}, y={}", \
+                x.shape(), y.shape());                                \
+    auto ret = mpc::NAME(ctx, x, y);                                  \
+    if (!ret.has_value()) {                                           \
+      return std::nullopt;                                            \
+    }                                                                 \
+    return ret.value();                                               \
   }
 
 MAP_OPTIONAL_BINARY_OP(equal_ss)

@@ -57,19 +57,45 @@ spu_cc_library(
     srcs = ["kernel.cc"],
     hdrs = ["kernel.h"],
     deps = [
-        ":object",
+        "//libspu/core:context",
     ],
 )
 
 spu_cc_library(
-    name = "object",
-    srcs = ["object.cc"],
-    hdrs = ["object.h"],
+    name = "ab_api",
+    srcs = ["ab_api.cc"],
+    hdrs = ["ab_api.h"],
     deps = [
-        "//libspu/core:array_ref",
-        "//libspu/core:type",
-        "//libspu/mpc/utils:cexpr",
+        "//libspu/core:context",
+        "//libspu/core:vectorize",
+        "//libspu/mpc/utils:tiling_util",  # TODO: drop bad reference
     ],
+)
+
+spu_cc_library(
+    name = "api_test_params",
+    hdrs = ["api_test_params.h"],
+    deps = [
+        "//libspu/core:context",
+    ],
+)
+
+spu_cc_library(
+    name = "ab_api_test",
+    testonly = 1,
+    srcs = ["ab_api_test.cc"],
+    hdrs = ["ab_api_test.h"],
+    deps = [
+        ":ab_api",
+        ":api",
+        ":api_test_params",
+        "//libspu/core:context",
+        "//libspu/mpc:kernel",
+        "//libspu/mpc/common:communicator",
+        "//libspu/mpc/utils:simulate",
+        "@com_google_googletest//:gtest",
+    ],
+    alwayslink = True,
 )
 
 spu_cc_library(
@@ -77,8 +103,9 @@ spu_cc_library(
     srcs = ["api.cc"],
     hdrs = ["api.h"],
     deps = [
-        ":object",
+        ":ab_api",
         "//libspu/core:array_ref",
+        "//libspu/core:context",
     ],
 )
 
@@ -89,8 +116,8 @@ spu_cc_library(
     hdrs = ["api_test.h"],
     deps = [
         ":api",
-        ":object",
-        "//libspu/mpc/common:api_test_params",
+        "//libspu/core:context",
+        "//libspu/mpc:api_test_params",
         "//libspu/mpc/common:communicator",
         "//libspu/mpc/utils:simulate",
         "@com_google_googletest//:gtest",

@@ -22,7 +22,7 @@
 
 namespace spu::kernel::hlo {
 
-std::vector<spu::Value> Shuffle(HalContext* ctx,
+std::vector<spu::Value> Shuffle(SPUContext* ctx,
                                 absl::Span<const spu::Value> inputs,
                                 int64_t axis) {
   SPU_ENFORCE_GT(inputs.size(), 0U);

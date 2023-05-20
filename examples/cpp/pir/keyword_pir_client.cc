@@ -58,8 +58,8 @@ constexpr uint32_t kLinkRecvTimeout = 30 * 60 * 1000;
 int main(int argc, char **argv) {
   llvm::cl::ParseCommandLineOptions(argc, argv);
 
-  auto hctx = MakeHalContext();
-  auto link_ctx = hctx->lctx();
+  auto sctx = MakeSPUContext();
+  auto link_ctx = sctx->lctx();
 
   link_ctx->SetRecvTimeout(kLinkRecvTimeout);
 

@@ -15,7 +15,6 @@
 #pragma once
 
 #include "libspu/mpc/kernel.h"
-#include "libspu/mpc/utils/cexpr.h"
 
 namespace spu::mpc::semi2k {
 

@@ -1,4 +1,4 @@
-// RUN: mlir-pphlo-opt --hlo-legalize-to-pphlo --split-input-file %s | FileCheck %s
+// RUN: mlir-pphlo-opt --hlo-legalize-to-pphlo=input_vis_list=VIS_PUBLIC,VIS_PUBLIC,VIS_PUBLIC,VIS_PUBLIC,VIS_PUBLIC --split-input-file %s | FileCheck %s
 
 func.func @main(%arg0: tensor<16xf32>,%arg1: tensor<1024x1xi1>, %arg2: tensor<1024x1xf32>, %arg3: tensor<1024x1xf32>, %arg4: tensor<3x4xi32>) -> (tensor<1024x16xf32>) {
     // CHECK: %0 = "pphlo.broadcast"(%arg0) {broadcast_dimensions = dense<1> : tensor<1xi64>} : (tensor<16x!pphlo.pub<f32>>) -> tensor<1024x16x!pphlo.pub<f32>>

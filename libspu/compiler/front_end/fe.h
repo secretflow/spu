@@ -33,11 +33,10 @@ class FE final {
 public:
   explicit FE(CompilationContext *ctx);
 
-  mlir::OwningOpRef<mlir::ModuleOp> doit(const std::string &input,
-                                         const std::string &type);
+  mlir::OwningOpRef<mlir::ModuleOp> doit(const std::string &source);
 
 private:
-  void buildFrontEndPipeline(mlir::PassManager *pm);
+  void buildFrontEndPipeline(mlir::PassManager *pm, const std::string &args);
 
   CompilationContext *ctx_;
 };

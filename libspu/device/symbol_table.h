@@ -17,7 +17,7 @@
 #include <string>
 #include <unordered_map>
 
-#include "libspu/kernel/value.h"
+#include "libspu/core/value.h"
 
 #include "libspu/device/device.pb.h"
 

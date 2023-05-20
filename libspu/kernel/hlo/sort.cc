@@ -26,7 +26,7 @@
 namespace spu::kernel::hlo {
 namespace {
 
-Value permute1D(HalContext *ctx, const Value &x,
+Value permute1D(SPUContext *ctx, const Value &x,
                 absl::Span<const int64_t> indices) {
   SPU_ENFORCE(x.shape().size() == 1);
   return Value(x.data().linear_gather(indices), x.dtype());
@@ -42,7 +42,7 @@ void SliceCopy(spu::Value &dst, const spu::Value &src,
 }
 
 // Sort will be inplace, so always make a copy here.
-std::vector<spu::Value> GetValuesToSort(HalContext *ctx,
+std::vector<spu::Value> GetValuesToSort(SPUContext *ctx,
                                         absl::Span<const spu::Value> inputs,
                                         const std::vector<int64_t> &indices,
                                         int64_t sort_dim,
@@ -71,7 +71,7 @@ std::vector<spu::Value> GetValuesToSort(HalContext *ctx,
 using SequenceT =
     std::vector<std::pair<std::vector<int64_t>, std::vector<int64_t>>>;
 
-void CmpSwap(HalContext *ctx, const CompFn &comparator_body,
+void CmpSwap(SPUContext *ctx, const CompFn &comparator_body,
              std::vector<spu::Value> &values_to_sort,
              absl::Span<const int64_t> lhs_indices,
              absl::Span<const int64_t> rhs_indices) {
@@ -162,7 +162,7 @@ void BuildCmpSwapSequence(SequenceT &seq, int64_t numel) {
   SortSequence(seq, 0, numel, true, depth);
 }
 
-void BitonicSort(HalContext *ctx, const CompFn &comparator_body,
+void BitonicSort(SPUContext *ctx, const CompFn &comparator_body,
                  std::vector<spu::Value> &values_to_sort) {
   // Build a sorting network...
   SequenceT sequence;
@@ -178,7 +178,7 @@ void BitonicSort(HalContext *ctx, const CompFn &comparator_body,
 
 }  // namespace
 
-std::vector<spu::Value> Sort(HalContext *ctx,
+std::vector<spu::Value> Sort(SPUContext *ctx,
                              absl::Span<const spu::Value> inputs,
                              int64_t sort_dim, bool is_stable,
                              const CompFn &comparator_body,

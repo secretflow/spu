@@ -35,9 +35,10 @@ spu_cc_binary(
     srcs = ["complexity.cc"],
     deps = [
         ":complexity_cc_proto",
+        "//libspu/core:context",
+        "//libspu/mpc:api",
         "//libspu/mpc:factory",
         "//libspu/mpc:kernel",
-        "//libspu/mpc:object",
         "//libspu/mpc/utils:simulate",
         "@llvm-project//llvm:Support",
     ],
@@ -50,8 +51,8 @@ spu_cc_binary(
         "benchmark.h",
     ],
     deps = [
+        "//libspu/core:context",
         "//libspu/mpc:api",
-        "//libspu/mpc:object",
         "//libspu/mpc/aby3",
         "//libspu/mpc/cheetah",
         "//libspu/mpc/common:communicator",

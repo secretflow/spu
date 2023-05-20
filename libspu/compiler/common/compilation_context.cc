@@ -49,10 +49,6 @@ CompilationContext::getIRPrinterConfig() const {
   return std::make_unique<mlir::pphlo::IRPrinterConfig>(*config);
 }
 
-void CompilationContext::enablePrettyPrintWithDir(std::string_view dir) {
-  pp_config_ = std::make_unique<mlir::pphlo::IRPrinterConfig>(dir);
-}
-
 void CompilationContext::setupPrettyPrintConfigurations(mlir::PassManager *pm) {
   if (hasPrettyPrintEnabled()) {
     getMLIRContext()->disableMultithreading();
@@ -64,6 +60,18 @@ std::filesystem::path CompilationContext::getPrettyPrintDir() const {
   SPU_ENFORCE(hasPrettyPrintEnabled());
   return static_cast<const mlir::pphlo::IRPrinterConfig *>(pp_config_.get())
       ->GetPrettyPrintDir();
+}
+
+void CompilationContext::setCompilerOptions(
+    const std::string &serialized_copts) {
+  auto status = options_.ParseFromString(serialized_copts);
+
+  SPU_ENFORCE(status, "Parse compiler options failed");
+
+  if (options_.enable_pretty_print()) {
+    pp_config_ = std::make_unique<mlir::pphlo::IRPrinterConfig>(
+        options_.pretty_print_dump_dir());
+  }
 }
 
 } // namespace spu::compiler

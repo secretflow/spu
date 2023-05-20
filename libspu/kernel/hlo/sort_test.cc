@@ -21,16 +21,16 @@
 
 #include "libspu/kernel/hal/constants.h"
 #include "libspu/kernel/hal/polymorphic.h"
-#include "libspu/kernel/hal/test_util.h"
+#include "libspu/kernel/test_util.h"
 
 namespace spu::kernel::hlo {
 
 TEST(SortTest, Simple) {
-  HalContext ctx = hal::test::makeRefHalContext();
+  SPUContext ctx = test::makeSPUContext();
   xt::xarray<float> x = {{0.05, 0.5, 0.24}, {5, 50, 2}};
   xt::xarray<float> sorted_x = {{0.05, 0.24, 0.5}, {2, 5, 50}};
 
-  Value x_v = hal::test::makeValue(&ctx, x, VIS_SECRET);
+  Value x_v = test::makeValue(&ctx, x, VIS_SECRET);
 
   std::vector<spu::Value> rets = Sort(
       &ctx, {x_v}, 1, false,
@@ -50,11 +50,11 @@ TEST(SortTest, Simple) {
 }
 
 TEST(SortTest, SimpleWithNoPadding) {
-  HalContext ctx = hal::test::makeRefHalContext();
+  SPUContext ctx = test::makeSPUContext();
   xt::xarray<float> x = {{0.05, 0.5, 0.24, 0.5}, {2, 5, 50, 2}};
   xt::xarray<float> sorted_x = {{0.05, 0.24, 0.5, 0.5}, {2, 2, 5, 50}};
 
-  Value x_v = hal::test::makeValue(&ctx, x, VIS_SECRET);
+  Value x_v = test::makeValue(&ctx, x, VIS_SECRET);
 
   std::vector<spu::Value> rets = Sort(
       &ctx, {x_v}, 1, false,
@@ -74,14 +74,14 @@ TEST(SortTest, SimpleWithNoPadding) {
 }
 
 TEST(SortTest, MultiInputs) {
-  HalContext ctx = hal::test::makeRefHalContext();
+  SPUContext ctx = test::makeSPUContext();
   xt::xarray<float> x1 = {{0.5, 0.05, 0.5, 0.24, 0.5, 0.5, 0.5}};
   xt::xarray<float> x2 = {{5, 1, 2, 1, 2, 3, 4}};
   xt::xarray<float> sorted_x1 = {{0.05, 0.24, 0.5, 0.5, 0.5, 0.5, 0.5}};
   xt::xarray<float> sorted_x2 = {{1, 1, 2, 2, 3, 4, 5}};
 
-  Value x1_v = hal::test::makeValue(&ctx, x1, VIS_SECRET);
-  Value x2_v = hal::test::makeValue(&ctx, x2, VIS_SECRET);
+  Value x1_v = test::makeValue(&ctx, x1, VIS_SECRET);
+  Value x2_v = test::makeValue(&ctx, x2, VIS_SECRET);
 
   std::vector<spu::Value> rets = Sort(
       &ctx, {x1_v, x2_v}, 1, false,
@@ -109,15 +109,15 @@ TEST(SortTest, MultiInputs) {
 }
 
 TEST(SortTest, MultiOperands) {
-  HalContext ctx = hal::test::makeRefHalContext();
+  SPUContext ctx = test::makeSPUContext();
   xt::xarray<float> k1 = {6, 6, 3, 4, 4, 5, 4};
   xt::xarray<float> k2 = {0.5, 0.1, 3.1, 6.5, 4.1, 6.7, 2.5};
 
   xt::xarray<float> sorted_k1 = {3, 4, 4, 4, 5, 6, 6};
   xt::xarray<float> sorted_k2 = {3.1, 2.5, 4.1, 6.5, 6.7, 0.1, 0.5};
 
-  Value k1_v = hal::test::makeValue(&ctx, k1, VIS_SECRET);
-  Value k2_v = hal::test::makeValue(&ctx, k2, VIS_SECRET);
+  Value k1_v = test::makeValue(&ctx, k1, VIS_SECRET);
+  Value k2_v = test::makeValue(&ctx, k2, VIS_SECRET);
 
   std::vector<spu::Value> rets = Sort(
       &ctx, {k1_v, k2_v}, 0, false,
