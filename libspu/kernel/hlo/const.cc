@@ -36,6 +36,8 @@ spu::Value Iota(SPUContext *ctx, DataType dtype, int64_t numel) {
   return hal::iota(ctx, dtype, numel);
 }
 
-spu::Value Epsilon(SPUContext *ctx) { return hal::epsilon(ctx); }
+spu::Value Epsilon(SPUContext *ctx, DataType dtype) {
+  return hal::epsilon(ctx, dtype);
+}
 
 }  // namespace spu::kernel::hlo

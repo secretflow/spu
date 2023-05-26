@@ -50,7 +50,7 @@ TEST(ValueTest, Empty) {
 //    EXPECT_EQ(a.GetBuffer()->data<int>()[0], 1);
 //  }
 
-//  Value b(VIS_SECRET, DT_FXP, {}, yacl::Buffer(&dval, sizeof(double)));
+//  Value b(VIS_SECRET, DT_F32, {}, yacl::Buffer(&dval, sizeof(double)));
 //  {
 //    b.GetBuffer()->data<double>()[0] = 1;
 
@@ -58,7 +58,7 @@ TEST(ValueTest, Empty) {
 //    EXPECT_FALSE(b.isPublic());
 //    EXPECT_TRUE(b.isSecret());
 
-//    EXPECT_EQ(b.dtype(), DT_FXP);
+//    EXPECT_EQ(b.dtype(), DT_F32);
 //    EXPECT_TRUE(b.isFxp());
 //    EXPECT_FALSE(b.isInt());
 //    EXPECT_EQ(b.GetBuffer()->data<double>()[0], 1);
@@ -84,7 +84,7 @@ TEST(ValueTest, Empty) {
 //    EXPECT_FALSE(d.isPublic());
 //    EXPECT_TRUE(d.isSecret());
 
-//    EXPECT_EQ(d.dtype(), DT_FXP);
+//    EXPECT_EQ(d.dtype(), DT_F32);
 //    EXPECT_TRUE(d.isFxp());
 //    EXPECT_FALSE(d.isInt());
 

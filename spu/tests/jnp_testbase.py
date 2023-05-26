@@ -15,6 +15,7 @@
 
 import collections
 import itertools
+from os import getenv
 from enum import Enum
 from functools import partial
 
@@ -26,10 +27,17 @@ from jax._src import test_util as jtu
 
 from spu.utils.simulation import sim_jax
 
+if getenv("ENABLE_X64_TEST"):
+    from jax import config
+
+    config.update("jax_enable_x64", True)
+    float_dtypes = [np.float64]
+else:
+    float_dtypes = [np.float32]
+
 all_shapes = [(4,), (2, 3, 4)]
 extra_large_shapes = [(100000000,)]
 
-float_dtypes = [np.float32]
 int32_dtypes = [np.int16, np.uint16, np.int32, np.uint32]
 # Note: less by subtract+msb does not work for int64 when Ring=64
 int64_dtypes = [np.int64, np.uint64]

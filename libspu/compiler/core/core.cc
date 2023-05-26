@@ -61,6 +61,10 @@ void Core::buildPipeline(mlir::PassManager *pm) {
 
   optPM.addPass(mlir::pphlo::createExpandSecretGatherPass());
 
+  if (options.enable_optimize_denominator_with_broadcast()) {
+    optPM.addPass(mlir::pphlo::createOptimizeDenominatorWithBroadcast());
+  }
+
   optPM.addPass(mlir::createCSEPass());
 
   if (!options.disable_reduce_truncation_optimization()) {

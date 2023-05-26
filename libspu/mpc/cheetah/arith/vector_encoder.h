@@ -29,7 +29,7 @@ class VectorEncoder {
   // clang-format off
   // Math:
   //    Forward(x) * Backward(y) mod X^N + 1 gives the inner product <x, y>
-  // When doing in encryption, we need the encrypted part to be scaled up by some fixed `Delta` 
+  // When doing in encryption, we need the encrypted part to be scaled up by some fixed `Delta`
   // For example Enc(Forward(Delta*x)) * Backward(y) can give the <x,  y> without error.
   // Or we can encrypt the backward part, i.e., Enc(Backward(Delta*y)) * Forward(x) also gives the <x, y> without error.
   // clang-format on
@@ -38,6 +38,8 @@ class VectorEncoder {
   void Backward(const ArrayRef &vec, RLWEPt *out, bool scaleup = false) const;
 
   const ModulusSwitchHelper &ms_helper() const { return *ms_helper_; }
+
+  size_t poly_degree() const { return poly_deg_; }
 
  private:
   size_t poly_deg_{0};

@@ -5,14 +5,15 @@
 
 
 - Messages
+    - [CompilationSource](#compilationsource)
+    - [CompilerOptions](#compileroptions)
     - [ExecutableProto](#executableproto)
     - [RuntimeConfig](#runtimeconfig)
     - [ShapeProto](#shapeproto)
     - [TTPBeaverConfig](#ttpbeaverconfig)
     - [ValueMeta](#valuemeta)
     - [ValueProto](#valueproto)
-    - [XlaMeta](#xlameta)
-  
+
 
 
 - Enums
@@ -24,8 +25,10 @@
     - [RuntimeConfig.ExpMode](#runtimeconfigexpmode)
     - [RuntimeConfig.LogMode](#runtimeconfiglogmode)
     - [RuntimeConfig.SigmoidMode](#runtimeconfigsigmoidmode)
+    - [SourceIRType](#sourceirtype)
     - [Visibility](#visibility)
-  
+    - [XLAPrettyPrintKind](#xlaprettyprintkind)
+
 
 
 - [Scalar Value Types](#scalar-value-types)
@@ -35,6 +38,39 @@
  <!-- end services -->
 
 ## Messages
+
+
+### CompilationSource
+
+
+
+| Field | Type | Description |
+| ----- | ---- | ----------- |
+| ir_type | [ SourceIRType](#sourceirtype) | Input IR type |
+| ir_txt | [ bytes](#bytes) | IR |
+| input_visibility | [repeated Visibility](#visibility) | Input visibilities |
+ <!-- end Fields -->
+ <!-- end HasFields -->
+
+
+### CompilerOptions
+
+
+
+| Field | Type | Description |
+| ----- | ---- | ----------- |
+| enable_pretty_print | [ bool](#bool) | Pretty print |
+| pretty_print_dump_dir | [ string](#string) | none |
+| xla_pp_kind | [ XLAPrettyPrintKind](#xlaprettyprintkind) | none |
+| disable_sqrt_plus_epsilon_rewrite | [ bool](#bool) | Disable sqrt(x) + eps to sqrt(x+eps) rewrite |
+| disable_div_sqrt_rewrite | [ bool](#bool) | Disable x/sqrt(y) to x*rsqrt(y) rewrite |
+| disable_reduce_truncation_optimization | [ bool](#bool) | Disable reduce truncation optimization |
+| disable_maxpooling_optimization | [ bool](#bool) | Disable maxpooling optimization |
+| disallow_mix_types_opts | [ bool](#bool) | Disallow mix type operations |
+| disable_select_optimization | [ bool](#bool) | Disable SelectOp optimization |
+| enable_optimize_denominator_with_broadcast | [ bool](#bool) | Enable optimize x/bcast(y) -> x * bcast(1/y) |
+ <!-- end Fields -->
+ <!-- end HasFields -->
 
 
 ### ExecutableProto
@@ -74,7 +110,7 @@ The SPU runtime configuration.
 | ----- | ---- | ----------- |
 | protocol | [ ProtocolKind](#protocolkind) | The protocol kind. |
 | field | [ FieldType](#fieldtype) | The field type. |
-| fxp_fraction_bits | [ int64](#int64) | Number of fraction bits of fixed-point number. |
+| fxp_fraction_bits | [ int64](#int64) | Number of fraction bits of fixed-point number. 0(default) indicates implementation defined. |
 | enable_action_trace | [ bool](#bool) | When enabled, runtime prints verbose info of the call stack, debug purpose only. |
 | enable_type_checker | [ bool](#bool) | When enabled, runtime checks runtime type infos against the compile-time ones, exceptions are raised if mismatches happen. Note: Runtime outputs prefer runtime type infos even when flag is on. |
 | enable_pphlo_trace | [ bool](#bool) | When enabled, runtime prints executed pphlo list, debug purpose only. |
@@ -148,17 +184,6 @@ The spu Value proto, used for spu value serialization.
 | shape | [ ShapeProto](#shapeproto) | The shape of the value. |
 | storage_type | [ string](#string) | The storage type, defined by the underline evaluation engine. i.e. `aby3.AShr<FM64>` means an aby3 arithmetic share in FM64. usually, the application does not care about this attribute. |
 | content | [ bytes](#bytes) | The runtime/protocol dependent value data. |
- <!-- end Fields -->
- <!-- end HasFields -->
-
-
-### XlaMeta
-Internal representation used by compiler
-
-
-| Field | Type | Description |
-| ----- | ---- | ----------- |
-| inputs | [repeated Visibility](#visibility) | none |
  <!-- end Fields -->
  <!-- end HasFields -->
  <!-- end messages -->
@@ -290,6 +315,18 @@ The sigmoid approximation method.
 
 
 
+### SourceIRType
+Compiler relate definition
+////////////////////////////////////////////////////////////////////////
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| XLA | 0 | none |
+| MLIR_HLO | 1 | none |
+
+
+
+
 ### Visibility
 The visibility type.
 
@@ -302,6 +339,18 @@ performance significantly.
 | VIS_INVALID | 0 | none |
 | VIS_SECRET | 1 | Invisible(unknown) for all or some of the parties. |
 | VIS_PUBLIC | 2 | Visible(public) for all parties. |
+
+
+
+
+### XLAPrettyPrintKind
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| TEXT | 0 | none |
+| DOT | 1 | none |
+| HTML | 2 | none |
 
 
  <!-- end Enums -->

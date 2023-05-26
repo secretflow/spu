@@ -21,6 +21,7 @@
 
 #include "libspu/kernel/hal/constants.h"
 #include "libspu/kernel/hal/polymorphic.h"
+#include "libspu/kernel/hal/type_cast.h"
 #include "libspu/kernel/test_util.h"
 
 namespace spu::kernel::hlo {
@@ -42,7 +43,7 @@ TEST(SortTest, Simple) {
   EXPECT_EQ(rets.size(), 1);
 
   auto sorted_x_hat =
-      hal::dump_public_as<float>(&ctx, hal::_s2p(&ctx, rets[0]).asFxp());
+      hal::dump_public_as<float>(&ctx, hal::reveal(&ctx, rets[0]));
 
   EXPECT_TRUE(xt::allclose(sorted_x, sorted_x_hat, 0.01, 0.001))
       << sorted_x << std::endl
@@ -66,7 +67,7 @@ TEST(SortTest, SimpleWithNoPadding) {
   EXPECT_EQ(rets.size(), 1);
 
   auto sorted_x_hat =
-      hal::dump_public_as<float>(&ctx, hal::_s2p(&ctx, rets[0]).asFxp());
+      hal::dump_public_as<float>(&ctx, hal::reveal(&ctx, rets[0]));
 
   EXPECT_TRUE(xt::allclose(sorted_x, sorted_x_hat, 0.01, 0.001))
       << sorted_x << std::endl
@@ -93,15 +94,15 @@ TEST(SortTest, MultiInputs) {
   EXPECT_EQ(rets.size(), 2);
 
   auto sorted_x1_hat =
-      hal::dump_public_as<float>(&ctx, hal::_s2p(&ctx, rets[0]).asFxp());
+      hal::dump_public_as<float>(&ctx, hal::reveal(&ctx, rets[0]));
 
   EXPECT_TRUE(xt::allclose(sorted_x1, sorted_x1_hat, 0.01, 0.001))
       << sorted_x1 << std::endl
       << sorted_x1_hat << std::endl;
 
   // NOTE: Secret sort is unstable, so rets[1] need to be sort before check.
-  auto sorted_x2_hat = xt::sort(
-      hal::dump_public_as<float>(&ctx, hal::_s2p(&ctx, rets[1]).asFxp()));
+  auto sorted_x2_hat =
+      xt::sort(hal::dump_public_as<float>(&ctx, hal::reveal(&ctx, rets[1])));
 
   EXPECT_TRUE(xt::allclose(sorted_x2, sorted_x2_hat, 0.01, 0.001))
       << sorted_x2 << std::endl
@@ -133,9 +134,9 @@ TEST(SortTest, MultiOperands) {
   EXPECT_EQ(rets.size(), 2);
 
   auto sorted_k1_hat =
-      hal::dump_public_as<float>(&ctx, hal::_s2p(&ctx, rets[0]).asFxp());
+      hal::dump_public_as<float>(&ctx, hal::reveal(&ctx, rets[0]));
   auto sorted_k2_hat =
-      hal::dump_public_as<float>(&ctx, hal::_s2p(&ctx, rets[1]).asFxp());
+      hal::dump_public_as<float>(&ctx, hal::reveal(&ctx, rets[1]));
 
   EXPECT_TRUE(xt::allclose(sorted_k1, sorted_k1_hat, 0.01, 0.001))
       << sorted_k1 << std::endl

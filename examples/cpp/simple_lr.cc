@@ -32,13 +32,14 @@
 #include "libspu/device/io.h"
 #include "libspu/kernel/hal/hal.h"
 #include "libspu/kernel/hal/type_cast.h"
+#include "libspu/mpc/factory.h"
 
 using namespace spu::kernel;
 
 spu::Value train_step(spu::SPUContext* ctx, const spu::Value& x,
                       const spu::Value& y, const spu::Value& w) {
   // Padding x
-  auto padding = hal::constant(ctx, 1.0F, spu::DT_FXP, {x.shape()[0], 1});
+  auto padding = hal::constant(ctx, 1.0F, spu::DT_F32, {x.shape()[0], 1});
   auto padded_x = hal::concatenate(ctx, {x, hal::seal(ctx, padding)}, 1);
   auto pred = hal::logistic(ctx, hal::matmul(ctx, padded_x, w));
 
@@ -49,9 +50,9 @@ spu::Value train_step(spu::SPUContext* ctx, const spu::Value& x,
   auto grad = hal::matmul(ctx, hal::transpose(ctx, padded_x), err);
 
   SPDLOG_DEBUG("[SSLR] Step = LR / B * Grad");
-  auto lr = hal::constant(ctx, 0.0001F, spu::DT_FXP);
+  auto lr = hal::constant(ctx, 0.0001F, spu::DT_F32);
   auto msize =
-      hal::constant(ctx, static_cast<float>(y.shape()[0]), spu::DT_FXP);
+      hal::constant(ctx, static_cast<float>(y.shape()[0]), spu::DT_F32);
   auto p1 = hal::mul(ctx, lr, hal::reciprocal(ctx, msize));
   auto step = hal::mul(ctx, hal::broadcast_to(ctx, p1, grad.shape()), grad);
 
@@ -64,7 +65,7 @@ spu::Value train_step(spu::SPUContext* ctx, const spu::Value& x,
 spu::Value train(spu::SPUContext* ctx, const spu::Value& x, const spu::Value& y,
                  size_t num_epoch, size_t bsize) {
   const size_t num_iter = x.shape()[0] / bsize;
-  auto w = hal::constant(ctx, 0.0F, spu::DT_FXP, {x.shape()[1] + 1, 1});
+  auto w = hal::constant(ctx, 0.0F, spu::DT_F32, {x.shape()[1] + 1, 1});
 
   // Run train loop
   for (size_t epoch = 0; epoch < num_epoch; ++epoch) {
@@ -89,7 +90,7 @@ spu::Value train(spu::SPUContext* ctx, const spu::Value& x, const spu::Value& y,
 
 spu::Value inference(spu::SPUContext* ctx, const spu::Value& x,
                      const spu::Value& weight) {
-  auto padding = hal::constant(ctx, 1.0F, spu::DT_FXP, {x.shape()[0], 1});
+  auto padding = hal::constant(ctx, 1.0F, spu::DT_F32, {x.shape()[0], 1});
   auto padded_x = hal::concatenate(ctx, {x, hal::seal(ctx, padding)}, 1);
   return hal::matmul(ctx, padded_x, weight);
 }
@@ -167,6 +168,8 @@ int main(int argc, char** argv) {
   }
 
   auto sctx = MakeSPUContext();
+
+  spu::mpc::Factory::RegisterProtocol(sctx.get(), sctx->lctx());
 
   const auto& [x, y] = infeed(sctx.get(), ds, HasLabel.getValue());
 

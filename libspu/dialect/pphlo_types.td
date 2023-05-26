@@ -53,16 +53,16 @@ def PPHLO_SecretType : PPHLO_BaseType<"Secret", "sec"> {
     let summary = "PPHlo secret type";
 }
 
-def PPHLO_PublicIntType : Type<And<[PPHLO_PublicType.predicate, 
+def PPHLO_PublicIntType : Type<And<[PPHLO_PublicType.predicate,
     CPred<"$_self.cast<::mlir::pphlo::PublicType>().getBase().isa<::mlir::IntegerType>()">]>, "public integer type", "::pphlo::PubIntType">;
 
-def PPHLO_SecretIntType : Type<And<[PPHLO_SecretType.predicate, 
+def PPHLO_SecretIntType : Type<And<[PPHLO_SecretType.predicate,
     CPred<"$_self.cast<::mlir::pphlo::SecretType>().getBase().isa<::mlir::IntegerType>()">]>, "secret integer type", "::pphlo::SecIntType">;
 
-def PPHLO_PublicFpType : Type<And<[PPHLO_PublicType.predicate, 
+def PPHLO_PublicFpType : Type<And<[PPHLO_PublicType.predicate,
     CPred<"$_self.cast<::mlir::pphlo::PublicType>().getBase().isa<::mlir::FloatType>()">]>, "public fixed-point type", "::pphlo::PubFpType">;
 
-def PPHLO_SecretFpType : Type<And<[PPHLO_SecretType.predicate, 
+def PPHLO_SecretFpType : Type<And<[PPHLO_SecretType.predicate,
     CPred<"$_self.cast<::mlir::pphlo::SecretType>().getBase().isa<::mlir::FloatType>()">]>, "secret fixed-point type", "::pphlo::SecFpType">;
 
 def PPHLO_Tensor : StaticShapeTensorOf<[PPHLO_PublicType, PPHLO_SecretType]>;

@@ -33,7 +33,7 @@ def PPHlo_Dialect : Dialect {
   string description = [{
     PPHLO represents a high level abstraction for language use by SPU.
     It implements a subset of mlir mhlo ops with it's own privacy-preserving focused type system.
-    
+
     Learn more about mlir hlo at https://github.com/tensorflow/mlir-hlo
   }];
   let name = "pphlo";

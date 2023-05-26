@@ -35,10 +35,10 @@ TEST(EnumConversion, Public) {
 }
 
 TEST(EnumConversion, ProtoKinds) {
-  Visibility v;
+  Visibility v = Visibility::VIS_PUBLIC;
   // This is basically a compile time check...that there is no new field
   switch (v) {
-  case Visibility::VIS_SECRET:
+  case Visibility::VIS_SECRET: // NOLINT
     break;
   case Visibility::VIS_PUBLIC:
     break;
@@ -52,10 +52,10 @@ TEST(EnumConversion, ProtoKinds) {
 }
 
 TEST(EnumConversion, TdKinds) {
-  mlir::pphlo::Visibility v;
+  mlir::pphlo::Visibility v = mlir::pphlo::Visibility::VIS_PUBLIC;
   // This is basically a compile time check...that there is no new field
   switch (v) {
-  case mlir::pphlo::Visibility::VIS_SECRET:
+  case mlir::pphlo::Visibility::VIS_SECRET: // NOLINT
     break;
   case mlir::pphlo::Visibility::VIS_PUBLIC:
     break;

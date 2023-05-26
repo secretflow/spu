@@ -28,9 +28,11 @@ spu_cc_library(
     ],
 )
 
-spu_cc_test(
-    name = "pphlo_executor_test",
-    srcs = ["pphlo_executor_test.cc"],
+spu_cc_library(
+    name = "pphlo_executor_test_runner",
+    testonly = True,
+    srcs = ["pphlo_executor_test_runner.cc"],
+    hdrs = ["pphlo_executor_test_runner.h"],
     deps = [
         ":pphlo_executor",
         "//libspu/compiler:compile",
@@ -38,6 +40,14 @@ spu_cc_test(
         "//libspu/device:io",
         "//libspu/device:test_utils",
         "//libspu/kernel:test_util",
+    ],
+)
+
+spu_cc_test(
+    name = "pphlo_executor_test",
+    srcs = ["pphlo_executor_test.cc"],
+    deps = [
+        ":pphlo_executor_test_runner",
     ],
 )
 

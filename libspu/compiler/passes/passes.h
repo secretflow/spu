@@ -67,6 +67,10 @@ std::unique_ptr<OperationPass<func::FuncOp>> createExpandSecretGatherPass();
 // Rewrite x/sqrt(x+eps) -> x*rsqrt(x+eps)
 std::unique_ptr<OperationPass<func::FuncOp>> createRewriteDivSqrtPatterns();
 
+// Optimize x/broadcast(y) into x*broadcast(1/y)
+std::unique_ptr<OperationPass<func::FuncOp>>
+createOptimizeDenominatorWithBroadcast();
+
 } // namespace pphlo
 
 } // namespace mlir

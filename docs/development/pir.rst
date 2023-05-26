@@ -30,6 +30,7 @@ setup phase
 Generate test usage oprf_key.bin
 
 .. code-block:: bash
+
     dd if=/dev/urandom of=oprf_key.bin bs=32 count=1
 
 Start server's terminal.

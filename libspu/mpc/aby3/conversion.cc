@@ -568,7 +568,7 @@ ArrayRef MsbA2B::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
   auto wrap_m = WrapValue(m, shape);
   auto wrap_n = WrapValue(n, shape);
   {
-    auto carry = carry_out(sctx, wrap_m, wrap_n, nbits);
+    auto carry = carry_a2b(sctx, wrap_m, wrap_n, nbits);
 
     // Compute the k'th bit.
     //   (m^n)[k] ^ carry

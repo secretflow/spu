@@ -323,7 +323,7 @@ See https://www.tensorflow.org/xla/operation_semantics#concatenate.
 
 Traits: AlwaysSpeculatableImplTrait, SameOperandsAndResultElementType
 
-Interfaces: ConditionallySpeculatable, NoMemoryEffect (MemoryEffectOpInterface)
+Interfaces: ConditionallySpeculatable, InferTypeOpInterface, NoMemoryEffect (MemoryEffectOpInterface)
 
 Effects: MemoryEffects::Effect{}
 
@@ -553,7 +553,7 @@ See https://www.tensorflow.org/xla/operation_semantics#dynamicslice.
 
 Traits: AlwaysSpeculatableImplTrait
 
-Interfaces: ConditionallySpeculatable, NoMemoryEffect (MemoryEffectOpInterface)
+Interfaces: ConditionallySpeculatable, InferTypeOpInterface, NoMemoryEffect (MemoryEffectOpInterface)
 
 Effects: MemoryEffects::Effect{}
 
@@ -587,7 +587,7 @@ See https://www.tensorflow.org/xla/operation_semantics#dynamicupdateslice.
 
 Traits: AlwaysSpeculatableImplTrait
 
-Interfaces: ConditionallySpeculatable, NoMemoryEffect (MemoryEffectOpInterface)
+Interfaces: ConditionallySpeculatable, InferTypeOpInterface, NoMemoryEffect (MemoryEffectOpInterface)
 
 Effects: MemoryEffects::Effect{}
 
@@ -1434,7 +1434,7 @@ Effects: MemoryEffects::Effect{}
 
 
     The `pphlo.return` operation terminates a region and returns values.
-  
+
 
 
 Traits: AlwaysSpeculatableImplTrait, Terminator

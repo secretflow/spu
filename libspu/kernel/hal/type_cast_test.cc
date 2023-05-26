@@ -32,8 +32,8 @@ TEST(TypeCastTest, int2fxp) {
 
   {
     Value a = constant(&ctx, x, DT_I32);
-    Value c = dtype_cast(&ctx, a, DT_FXP);
-    EXPECT_EQ(c.dtype(), DT_FXP);
+    Value c = dtype_cast(&ctx, a, DT_F32);
+    EXPECT_EQ(c.dtype(), DT_F32);
 
     auto y = dump_public_as<float>(&ctx, c);
     EXPECT_TRUE(xt::allclose(expected, y, 0.1, 0.5)) << x << std::endl
@@ -43,10 +43,10 @@ TEST(TypeCastTest, int2fxp) {
 
   {
     Value a = test::makeValue(&ctx, x, VIS_SECRET);
-    Value c = dtype_cast(&ctx, a, DT_FXP);
-    EXPECT_EQ(c.dtype(), DT_FXP);
+    Value c = dtype_cast(&ctx, a, DT_F32);
+    EXPECT_EQ(c.dtype(), DT_F32);
 
-    auto y = dump_public_as<float>(&ctx, _s2p(&ctx, c).asFxp());
+    auto y = dump_public_as<float>(&ctx, _s2p(&ctx, c).setDtype(DT_F32));
     EXPECT_TRUE(xt::allclose(expected, y, 0.1, 0.5)) << x << std::endl
                                                      << expected << std::endl
                                                      << y;
@@ -62,7 +62,7 @@ TEST(TypeCastTest, fxp2int) {
   SPUContext ctx = test::makeSPUContext();
 
   {
-    Value a = constant(&ctx, x, DT_FXP);
+    Value a = constant(&ctx, x, DT_F32);
     Value c = dtype_cast(&ctx, a, DT_I32);
     EXPECT_EQ(c.dtype(), DT_I32);
 

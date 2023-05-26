@@ -25,8 +25,6 @@ class BasicOTProtocols {
 
   ~BasicOTProtocols();
 
-  std::unique_ptr<BasicOTProtocols> Fork();
-
   int Rank() const;
 
   ArrayRef B2A(const ArrayRef &inp);

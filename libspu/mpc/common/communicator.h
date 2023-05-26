@@ -23,6 +23,7 @@
 #include "yacl/base/buffer.h"
 #include "yacl/link/link.h"
 
+#include "libspu/core/array_ref.h"
 #include "libspu/core/object.h"
 #include "libspu/core/parallel_utils.h"
 #include "libspu/core/prelude.h"

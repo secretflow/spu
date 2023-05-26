@@ -55,6 +55,7 @@ struct CheetahMul::Impl : public EnableCPRNG {
   static constexpr int kNoiseFloodRandomBits = 50;
 
   static constexpr size_t kParallelGrain = 1;
+  static constexpr size_t kCtAsyncParallel = 8;
 
   explicit Impl(std::shared_ptr<yacl::link::Context> lctx)
       : lctx_(std::move(lctx)) {
@@ -79,28 +80,6 @@ struct CheetahMul::Impl : public EnableCPRNG {
     parms.set_poly_modulus_degree(poly_deg);
     parms.set_coeff_modulus(seal::CoeffModulus::Create(poly_deg, modulus_bits));
     return parms;
-  }
-
-  std::unique_ptr<Impl> Fork() {
-    using namespace seal;
-    auto f = std::make_unique<Impl>(lctx_->Spawn());
-    std::unique_lock guard(context_lock_);
-
-    f->current_crt_plain_bitlen_ = current_crt_plain_bitlen_;
-    if (seal_cntxts_.empty()) {
-      return f;
-    }
-
-    f->seal_cntxts_ = seal_cntxts_;
-    f->ms_helpers_ = ms_helpers_;
-    // NOTE(juhou): just take the pointer
-    f->secret_key_ = secret_key_;
-    f->pair_public_key_ = pair_public_key_;
-    f->sym_encryptors_ = sym_encryptors_;
-    f->decryptors_ = decryptors_;
-    f->pk_encryptors_ = pk_encryptors_;
-    f->bfv_encoders_ = bfv_encoders_;
-    return f;
   }
 
   size_t num_slots() const { return parms_.poly_modulus_degree(); }
@@ -228,7 +207,7 @@ struct CheetahMul::Impl : public EnableCPRNG {
 };
 
 void CheetahMul::Impl::LazyInitModSwitchHelper(uint32_t field_bitlen) {
-  // TODO(juhou): multi-thread safe for ModulusSwitchHelper ?
+  std::unique_lock guard(context_lock_);
   if (ms_helpers_.count(field_bitlen) > 0) {
     return;
   }
@@ -251,6 +230,7 @@ void CheetahMul::Impl::LazyInitModSwitchHelper(uint32_t field_bitlen) {
   parms.set_coeff_modulus(crt_modulus);
 
   seal::SEALContext crt_context(parms, false, seal::sec_level_type::none);
+  SPU_ENFORCE(crt_context.parameters_set());
   ms_helpers_.emplace(field_bitlen,
                       ModulusSwitchHelper(crt_context, field_bitlen));
 }
@@ -300,6 +280,11 @@ void CheetahMul::Impl::LazyExpandSEALContexts(uint32_t field_bitlen,
 
   auto crt_modulus =
       seal::CoeffModulus::Create(parms_.poly_modulus_degree(), crt_moduli_bits);
+  // NOTE(juhou): sort the primes to make sure new primes are placed in the back
+  std::sort(crt_modulus.begin(), crt_modulus.end(),
+            [](const seal::Modulus &p, const seal::Modulus &q) {
+              return p.value() > q.value();
+            });
   uint32_t current_num_ctx = seal_cntxts_.size();
 
   for (uint32_t i = current_num_ctx; i < num_seal_ctx; ++i) {
@@ -446,9 +431,14 @@ size_t CheetahMul::Impl::EncryptArrayThenSend(const ArrayRef &array,
   if (conn == nullptr) {
     conn = lctx_.get();
   }
+
   int nxt_rank = conn->NextRank();
-  for (auto &ct : payload) {
-    conn->SendAsync(nxt_rank, ct, "");
+  for (size_t i = 0; i < payload.size(); i += kCtAsyncParallel) {
+    size_t this_batch = std::min(payload.size() - i, kCtAsyncParallel);
+    conn->Send(nxt_rank, payload[i], "");
+    for (size_t j = 1; j < this_batch; ++j) {
+      conn->SendAsync(nxt_rank, payload[i + j], "");
+    }
   }
   return payload.size();
 }
@@ -598,9 +588,14 @@ ArrayRef CheetahMul::Impl::MuThenResponse(
   if (conn == nullptr) {
     conn = lctx_.get();
   }
+
   int nxt_rank = conn->NextRank();
-  for (auto &ct : response) {
-    conn->SendAsync(nxt_rank, ct, fmt::format("Send to P{}", nxt_rank));
+  for (size_t i = 0; i < response.size(); i += kCtAsyncParallel) {
+    size_t this_batch = std::min(response.size() - i, kCtAsyncParallel);
+    conn->Send(nxt_rank, response[i], "");
+    for (size_t j = 1; j < this_batch; ++j) {
+      conn->SendAsync(nxt_rank, response[i + j], "");
+    }
   }
 
   for (auto &pt : ecd_random) {
@@ -724,16 +719,9 @@ CheetahMul::CheetahMul(std::shared_ptr<yacl::link::Context> lctx) {
   impl_ = std::make_unique<Impl>(lctx);
 }
 
-CheetahMul::CheetahMul(std::unique_ptr<Impl> impl) { impl_ = std::move(impl); }
-
 CheetahMul::~CheetahMul() = default;
 
 int CheetahMul::Rank() const { return impl_->Rank(); }
-
-std::unique_ptr<CheetahMul> CheetahMul::Fork() {
-  auto ptr = new CheetahMul(impl_->Fork());
-  return std::unique_ptr<CheetahMul>(ptr);
-}
 
 size_t CheetahMul::OLEBatchSize() const {
   SPU_ENFORCE(impl_ != nullptr);

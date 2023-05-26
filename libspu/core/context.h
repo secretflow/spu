@@ -15,6 +15,7 @@
 #pragma once
 
 #include <memory>
+#include <variant>
 
 #include "yacl/link/link.h"
 
@@ -87,14 +88,12 @@ using HalContext [[deprecated("Use SPUContext instead.")]] = SPUContext;
 class KernelEvalContext final {
   // Please keep param types as less as possible.
   using ParamType = std::variant<  //
-      std::optional<Value>,  // for kernel evaluation failure, give a change
-                             // for the caller to handle failed case.
-      Value,                 // value type
-      Shape,                 //
-      size_t,                // represent size(mmul), shift_bits(shift)
-      bool,                  // binary flag
-      Type,                  // type of type
-      uint128_t              // ring constant
+      Value,                       // value type
+      Shape,                       //
+      size_t,                      // represent size(mmul), shift_bits(shift)
+      bool,                        // binary flag
+      Type,                        // type of type
+      uint128_t                    // ring constant
       >;
 
   SPUContext* sctx_;

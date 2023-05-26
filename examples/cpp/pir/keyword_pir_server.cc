@@ -17,7 +17,7 @@
 // > bazel build //examples/cpp/pir:keyword_pir_server -c opt
 //
 // To run the example, start terminals:
-// > ./keyword_pir_server -rank 0 -setup_path pir_setup_dir  
+// > ./keyword_pir_server -rank 0 -setup_path pir_setup_dir
 // >        -oprf_key_path secret_key.bin
 // clang-format on
 

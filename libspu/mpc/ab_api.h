@@ -103,6 +103,6 @@ Value bitdeintl_b(SPUContext* ctx, const Value& x, size_t stride);
 Value add_bb(SPUContext* ctx, const Value& x, const Value& y);
 
 // compute the k'th bit of x + y
-Value carry_out(SPUContext* ctx, const Value& x, const Value& y, size_t k);
+Value carry_a2b(SPUContext* ctx, const Value& x, const Value& y, size_t k);
 
 }  // namespace spu::mpc

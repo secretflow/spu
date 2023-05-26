@@ -12,12 +12,12 @@ SPU has been tested with the following settings:
 
 ### MacOS
 
-We have conducted some successful preliminary testings on macOS Monterey 12.4 with Intel processors and Apple Silicon.
+We have conducted some successful preliminary testings on
+macOS Monterey 12.4 with Intel processors and Apple Silicon.
 
 ### Docker Image
 
 Please check [official Docker image](https://registry.hub.docker.com/r/secretflow/secretflow-gcc11-anolis-dev).
-
 
 ## Binaries
 
@@ -28,7 +28,6 @@ You could install SPU via the [official PyPI package](https://pypi.org/project/s
 ```bash
 pip install spu
 ```
-
 
 ### From Source
 

@@ -1,8 +1,8 @@
 // RUN: mlir-pphlo-opt --hlo-legalize-to-pphlo=input_vis_list=VIS_SECRET %s --split-input-file  | FileCheck %s
 
-// CHECK: func @main(%arg0: tensor<1024x1x!pphlo.sec<f32>>) -> tensor<1024x!pphlo.sec<f32>> { 
+// CHECK: func @main(%arg0: tensor<1024x1x!pphlo.sec<f32>>) -> tensor<1024x!pphlo.sec<f32>> {
 func.func @main(%arg1: tensor<1024x1xf32>) -> (tensor<1024xf32>) {
-    // CHECK: %0 = "pphlo.constant"() {value = dense<0.000000e+00> : tensor<f32>} : () -> tensor<!pphlo.pub<f32>> 
+    // CHECK: %0 = "pphlo.constant"() {value = dense<0.000000e+00> : tensor<f32>} : () -> tensor<!pphlo.pub<f32>>
     %0 = "stablehlo.constant"() {value = dense<0.000000e+00> : tensor<f32>} : () -> tensor<f32>
     // CHECK: %2 = "pphlo.reduce"(%arg0, %1) ({
     // CHECK:       ^bb0(%arg1: tensor<!pphlo.sec<f32>>, %arg2: tensor<!pphlo.sec<f32>>):

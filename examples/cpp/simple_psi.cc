@@ -14,7 +14,7 @@
 
 // clang-format off
 // To run the example, start two terminals:
-// > bazel run //examples/cpp:simple_psi -- -rank 0 -protocol 1 -in_path examples/data/psi_1.csv -field_names id -out_path /tmp/p1.out 
+// > bazel run //examples/cpp:simple_psi -- -rank 0 -protocol 1 -in_path examples/data/psi_1.csv -field_names id -out_path /tmp/p1.out
 // > bazel run //examples/cpp:simple_psi -- -rank 1 -protocol 1 -in_path examples/data/psi_2.csv -field_names id -out_path /tmp/p2.out
 // clang-format on
 

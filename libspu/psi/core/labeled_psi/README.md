@@ -1,6 +1,9 @@
-# Introduction
+# LabelPSI
 
-Fully homomorphic encryption (FHE) can be used to build efficient (labeled) Private Set Intersection protocols in the unbalanced setting, where one of the sets is much larger than the other.
+## Introduction
+
+Fully homomorphic encryption (FHE) can be used to build efficient (labeled) Private Set Intersection protocols in the unbalanced setting,
+where one of the sets is much larger than the other.
 
 Reference:
 
@@ -10,15 +13,17 @@ Reference:
 - [FHE and Private Set Intersection](https://simons.berkeley.edu/talks/fhe-and-private-set-intersection)
 - [Private set intersection via somewhat homomorphic encryption by Ilia Iliashenko](https://fhe.org/talks/private-set-intersection)
 
-Microsoft [APSI (Asymmetric PSI) library](https://github.com/microsoft/APSI) provides a PSI functionality for asymmetric set sizes based on the latest [Labeled PSI protocol](https://eprint.iacr.org/2021/1116).
+Microsoft [APSI (Asymmetric PSI) library](https://github.com/microsoft/APSI) provides a PSI functionality for asymmetric set sizes based
+on the latest [Labeled PSI protocol](https://eprint.iacr.org/2021/1116).
 
-This is a wrap of [APSI library](https://github.com/microsoft/APSI), can be used for 
+This is a wrap of [APSI library](https://github.com/microsoft/APSI), can be used for
+
 - Unbalanced PSI
 - Malicious PSI
 - Labeled PSI
 - Keyword PIR
 
-# LabelPSI Protocol dataflow
+## LabelPSI Protocol dataflow
 
 |        | Client(Receiver) |         | Server(Sender)  |
 | ------ | ---------------- | ------- | --------------- |
@@ -30,7 +35,7 @@ This is a wrap of [APSI library](https://github.com/microsoft/APSI), can be used
 | Step 4 | Request Query    | ------> |                 |
 |        |                  | <------ | Response Query  |
 
-# LabelPSI source code
+## LabelPSI source code
 
 |     | file            | class              | function            |
 | --- | --------------- | ------------------ | ------------------- |
@@ -55,7 +60,7 @@ This is a wrap of [APSI library](https://github.com/microsoft/APSI), can be used
 |     |                 |                    | GetBinBundleCount   |
 |     |                 |                    | GetPackingRate      |
 
-# LabelPSI Parameters
+## LabelPSI Parameters
 
 |     | file        | class                | function                                                            |
 | --- | ----------- | -------------------- | ------------------------------------------------------------------- |
@@ -83,8 +88,7 @@ This is a wrap of [APSI library](https://github.com/microsoft/APSI), can be used
 
 We select three SEALParams from [APSI parameters](https://github.com/microsoft/APSI/tree/main/parameters) for different receiver and sender items size.
 
-# Security Tips
+## Security Tips
 
 Warning:  Labeled PSI are malicious PSI protocols, but malicious sender may do attack with his CuckooHash Table.
 We suggest use Labeled PSI protocol as one-way PSI, i.e., just Client(Receiver) gets the final intersection result.
-

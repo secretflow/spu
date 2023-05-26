@@ -51,13 +51,6 @@ class CheetahMulState : public State {
 
   CheetahMul* get() { return mul_prot_.get(); }
 
-  bool hasLowCostFork() const override { return true; }
-
-  std::unique_ptr<State> fork() override {
-    auto ptr = new CheetahMulState(mul_prot_->Fork());
-    return std::unique_ptr<State>(ptr);
-  }
-
   std::array<ArrayRef, 3> TakeCachedBeaver(FieldType field, int64_t num);
 };
 
@@ -78,13 +71,6 @@ class CheetahDotState : public State {
   ~CheetahDotState() override = default;
 
   CheetahDot* get() { return dot_prot_.get(); }
-
-  bool hasLowCostFork() const override { return true; }
-
-  std::unique_ptr<State> fork() override {
-    auto ptr = new CheetahDotState(dot_prot_->Fork());
-    return std::unique_ptr<State>(ptr);
-  }
 };
 
 class CheetahOTState : public State {

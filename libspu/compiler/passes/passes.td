@@ -86,3 +86,9 @@ def ExpandSecretGather: Pass<"expand-secret-gather", "func::FuncOp"> {
   let constructor = "createExpandSecretGatherPass()";
   let dependentDialects = ["pphlo::PPHloDialect"];
 }
+
+def OptimizeDenominatorWithBcast: Pass<"optimize-denominator-with-broadcast", "func::FuncOp"> {
+  let summary = "Optimize x/broadcast(y) into x*broadcast(1/y)";
+  let constructor = "createOptimizeDenominatorWithBroadcast()";
+  let dependentDialects = ["pphlo::PPHloDialect"];
+}

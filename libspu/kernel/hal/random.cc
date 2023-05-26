@@ -53,7 +53,7 @@ Value rng_uniform(SPUContext* ctx, const Value& lo, const Value& hi,
     ele = dist(gen);
   }
 
-  return constant(ctx, buffer, DT_FXP);
+  return constant(ctx, buffer, lo.dtype());
 }
 
 Value random(SPUContext* ctx, Visibility vis, DataType dtype,

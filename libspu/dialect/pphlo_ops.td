@@ -339,7 +339,7 @@ def PPHLO_MinOp
   let summary = "Minimum operator";
   let description = [{
     Returns `min(lhs, rhs)` element-wise.
-    
+
     See
     https://www.tensorflow.org/xla/operation_semantics#element-wise_binary_arithmetic_operations.
     }];
@@ -349,7 +349,7 @@ def PPHLO_DivOp : PPHLO_BinaryElementwiseOp<"divide", [Pure]> {
   let summary = "Division operator";
   let description = [{
     Returns `lhs / rhs` element-wise.
-    
+
     See
     https://www.tensorflow.org/xla/operation_semantics#element-wise_binary_arithmetic_operations.
   }];
@@ -360,7 +360,7 @@ def PPHLO_AddOp
   let summary = "Addition operator";
   let description = [{
     Returns `lhs + rhs` element-wise.
-    
+
     See
     https://www.tensorflow.org/xla/operation_semantics#element-wise_binary_arithmetic_operations.
   }];
@@ -371,7 +371,7 @@ def PPHLO_MulOp
   let summary = "Multiplication operator";
   let description = [{
     Returns `lhs * rhs` element-wise.
-    
+
     See
     https://www.tensorflow.org/xla/operation_semantics#element-wise_binary_arithmetic_operations.
   }];
@@ -381,7 +381,7 @@ def PPHLO_PowOp : PPHLO_BinaryElementwiseOp<"power", [Pure]> {
   let summary = "Power operator";
   let description = [{
     Returns `lhs ^ rhs` element-wise.
-    
+
     See
     https://www.tensorflow.org/xla/operation_semantics#element-wise_binary_arithmetic_operations.
   }];
@@ -403,7 +403,7 @@ def PPHLO_ShiftLeftOp
   let summary = "Shift Left operator";
   let description = [{
     Returns `lhs << rhs` element-wise.
-    
+
     See
     https://www.tensorflow.org/xla/operation_semantics#element-wise_binary_arithmetic_operations.
   }];
@@ -415,7 +415,7 @@ def PPHLO_ShiftRightLogicalOp
   let summary = "Shift right logical operator";
   let description = [{
     Returns logical `lhs >> rhs` element-wise.
-    
+
     See
     https://www.tensorflow.org/xla/operation_semantics#element-wise_binary_arithmetic_operations.
   }];
@@ -427,7 +427,7 @@ def PPHLO_ShiftRightArithmeticOp
   let summary = "Shift right arithmetic operator";
   let description = [{
     Returns arithmetic `lhs >> rhs` element-wise.
-    
+
     See
     https://www.tensorflow.org/xla/operation_semantics#element-wise_binary_arithmetic_operations.
   }];
@@ -446,7 +446,7 @@ def PPHLO_AndOp : PPHLO_BinaryLogicalElementwiseOp<"and"> {
   let summary = "Logical and";
   let description = [{
     Returns `logical_and(lhs, rhs)` element-wise.
-    
+
     See
     https://www.tensorflow.org/xla/operation_semantics#element-wise_binary_arithmetic_operations.
   }];
@@ -456,7 +456,7 @@ def PPHLO_OrOp : PPHLO_BinaryLogicalElementwiseOp<"or"> {
   let summary = "Logical or";
   let description = [{
     Returns `logical_or(lhs, rhs)` element-wise.
-    
+
     See
     https://www.tensorflow.org/xla/operation_semantics#element-wise_binary_arithmetic_operations.
   }];
@@ -466,7 +466,7 @@ def PPHLO_XorOp : PPHLO_BinaryLogicalElementwiseOp<"xor"> {
   let summary = "Logical xor";
   let description = [{
     Returns `logical_xor(lhs, rhs)` element-wise.
-    
+
     See
     https://www.tensorflow.org/xla/operation_semantics#element-wise_binary_arithmetic_operations.
   }];
@@ -481,7 +481,7 @@ def PPHLO_EqualOp
   let summary = "Equal comparison operator";
   let description = [{
     Returns `lhs` == `rhs` element-wise.
-    
+
     See
     https://www.tensorflow.org/xla/operation_semantics#element-wise_comparison_operations.
   }];
@@ -495,7 +495,7 @@ def PPHLO_NotEqualOp
   let summary = "Not-equal comparison operator";
   let description = [{
     Returns `lhs` != `rhs` element-wise.
-  
+
     See
     https://www.tensorflow.org/xla/operation_semantics#element-wise_comparison_operations.
   }];
@@ -509,7 +509,7 @@ def PPHLO_GreaterEqualOp
   let summary = "greater_equal comparison operator";
   let description = [{
     Returns `lhs` >= `rhs` element-wise.
-    
+
     See
     https://www.tensorflow.org/xla/operation_semantics#element-wise_comparison_operations.
   }];
@@ -541,7 +541,7 @@ def PPHLO_LessOp
   let summary = "less comparison operator";
   let description = [{
     Returns `lhs` < `rhs` element-wise.
-    
+
     See
     https://www.tensorflow.org/xla/operation_semantics#element-wise_comparison_operations.
   }];
@@ -590,7 +590,7 @@ def PPHLO_BroadcastOp
 
     See https://www.tensorflow.org/xla/broadcasting.
   }];
-  let arguments = (ins PPHLO_Tensor: $operand, 
+  let arguments = (ins PPHLO_Tensor: $operand,
                       I64ElementsAttr: $broadcast_dimensions);
 
   let results = (outs PPHLO_Tensor);
@@ -670,9 +670,9 @@ def PPHLO_SelectOp
 
     See https://www.tensorflow.org/xla/operation_semantics#select.
   }];
-  let arguments = (ins 
-                  PPHLO_IntTensor: $pred, 
-                  PPHLO_Tensor: $on_true, 
+  let arguments = (ins
+                  PPHLO_IntTensor: $pred,
+                  PPHLO_Tensor: $on_true,
                   PPHLO_Tensor: $on_false);
 
   let results = (outs PPHLO_Tensor);
@@ -852,6 +852,8 @@ def PPHLO_SliceOp : PPHLO_Op<"slice", [
                    : $strides);
 
   let results = (outs PPHLO_Tensor);
+
+  let hasVerifier = 1;
 }
 
 def PPHLO_DbgPrintOp : PPHLO_Op<"dbg_print", []> {

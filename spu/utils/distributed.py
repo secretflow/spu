@@ -371,7 +371,8 @@ def shape_spu_to_np(spu_shape):
 
 def dtype_spu_to_np(spu_dtype):
     MAP = {
-        spu_pb2.DataType.DT_FXP: np.float32,
+        spu_pb2.DataType.DT_F32: np.float32,
+        spu_pb2.DataType.DT_F64: np.float64,
         spu_pb2.DataType.DT_I1: np.bool_,
         spu_pb2.DataType.DT_I8: np.int8,
         spu_pb2.DataType.DT_U8: np.uint8,
