@@ -18,6 +18,7 @@
 #include "xtensor/xio.hpp"
 #include "xtensor/xsort.hpp"
 
+#include "libspu/kernel/hal/type_cast.h"
 #include "libspu/kernel/test_util.h"
 
 namespace spu::kernel::hlo {
@@ -27,12 +28,10 @@ TEST(SortTest, Array) {
   xt::xarray<float> x = xt::random::rand<float>({10});
   std::vector<Value> x_v = {test::makeValue(&ctx, x, VIS_SECRET)};
   spu::Value ret1 = Shuffle(&ctx, x_v, 0)[0];
-  auto ret1_hat =
-      hal::dump_public_as<float>(&ctx, hal::_s2p(&ctx, ret1).asFxp());
+  auto ret1_hat = hal::dump_public_as<float>(&ctx, hal::reveal(&ctx, ret1));
 
   spu::Value ret2 = Shuffle(&ctx, x_v, 0)[0];
-  auto ret2_hat =
-      hal::dump_public_as<float>(&ctx, hal::_s2p(&ctx, ret2).asFxp());
+  auto ret2_hat = hal::dump_public_as<float>(&ctx, hal::reveal(&ctx, ret2));
 
   EXPECT_TRUE(xt::allclose(xt::sort(x), xt::sort(ret1_hat), 0.01, 0.001))
       << xt::sort(x) << std::endl
@@ -50,12 +49,10 @@ TEST(SortTest, 2D) {
   std::vector<Value> x_v = {test::makeValue(&ctx, x, VIS_SECRET)};
 
   spu::Value ret1 = Shuffle(&ctx, x_v, 1)[0];
-  auto ret1_hat =
-      hal::dump_public_as<float>(&ctx, hal::_s2p(&ctx, ret1).asFxp());
+  auto ret1_hat = hal::dump_public_as<float>(&ctx, hal::reveal(&ctx, ret1));
 
   spu::Value ret2 = Shuffle(&ctx, x_v, 1)[0];
-  auto ret2_hat =
-      hal::dump_public_as<float>(&ctx, hal::_s2p(&ctx, ret2).asFxp());
+  auto ret2_hat = hal::dump_public_as<float>(&ctx, hal::reveal(&ctx, ret2));
 
   EXPECT_TRUE(xt::allclose(xt::sort(x, 1), xt::sort(ret1_hat, 1), 0.01, 0.001))
       << xt::sort(x, 1) << std::endl

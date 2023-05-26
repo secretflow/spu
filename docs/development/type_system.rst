@@ -105,7 +105,7 @@ Ops dispatch
 
 As described above, type helps for dispatching, here we use `MUL` instruction as an example.
 
-.. code-block:: python
+.. code-block:: text
 
   %3 = MUL %1 %2
 
@@ -180,7 +180,7 @@ In the above diagram:
 The above idea can be expressed in code like:
 
 .. code-block:: cpp
-  :linenos:
+  :linenos:  
 
   Value i2f(Value); // convert int to fxp
 
@@ -257,7 +257,7 @@ With *type functor*, we have the following op definitions in `mul` dispatch chai
 
 In dispatch phrase, SPU runtime uses type information to select next dispatch op. In this example, `(x:sfxp, y:sfxp)` is applied op `mul`, via pattern matching we got `(V0=SECRET,D0=FXP), (V1=SECRET,D1=FXP)`, and the dispatch stack looks like:
 
-.. code-block:: python
+.. code-block:: text
 
   mul(x:sfxp, y:sfxp)            # dtype dispatch, use D0=FXP, D1=FXP to select fmul
     fmul(x:sfxp, y:sfxp)         # fixed point arithmetic implementation,

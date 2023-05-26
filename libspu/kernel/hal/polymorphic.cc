@@ -51,9 +51,9 @@ Value dtypeBinaryDispatch(std::string_view op_name, SPUContext* ctx,
     return FnInt(ctx, dtype_cast(ctx, x, common_type),
                  dtype_cast(ctx, y, common_type));
   } else if (x.isInt() && y.isFxp()) {
-    return FnFxp(ctx, dtype_cast(ctx, x, DT_FXP), y);
+    return FnFxp(ctx, dtype_cast(ctx, x, y.dtype()), y);
   } else if (x.isFxp() && y.isInt()) {
-    return FnFxp(ctx, x, dtype_cast(ctx, y, DT_FXP));
+    return FnFxp(ctx, x, dtype_cast(ctx, y, x.dtype()));
   } else if (x.isFxp() && y.isFxp()) {
     return FnFxp(ctx, x, y);
   } else {
@@ -92,12 +92,14 @@ Value sub(SPUContext* ctx, const Value& x, const Value& y) {
 
 Value mixed_mul(SPUContext* ctx, const Value& x, const Value& y) {
   SPU_TRACE_HAL_LEAF(ctx, x, y);
-  return _mul(ctx, x, y).asFxp();
+  auto new_dtype = x.isFxp() ? x.dtype() : y.dtype();
+  return _mul(ctx, x, y).setDtype(new_dtype);
 }
 
 Value mixed_mmul(SPUContext* ctx, const Value& x, const Value& y) {
   SPU_TRACE_HAL_LEAF(ctx, x, y);
-  return _mmul(ctx, x, y).asFxp();
+  auto new_dtype = x.isFxp() ? x.dtype() : y.dtype();
+  return _mmul(ctx, x, y).setDtype(new_dtype);
 }
 
 Value mul(SPUContext* ctx, const Value& x, const Value& y) {
@@ -192,7 +194,9 @@ Value abs(SPUContext* ctx, const Value& x) {
 Value exp(SPUContext* ctx, const Value& in) {
   SPU_TRACE_HAL_DISP(ctx, in);
 
-  return f_exp(ctx, dtype_cast(ctx, in, DT_FXP));
+  SPU_ENFORCE(in.isFxp());
+
+  return f_exp(ctx, in);
 }
 
 Value select(SPUContext* ctx, const Value& pred, const Value& a,
@@ -244,19 +248,24 @@ Value logistic(SPUContext* ctx, const Value& in) {
   SPU_TRACE_HAL_DISP(ctx, in);
 
   SPU_ENFORCE(in.isFxp());
+
   return f_sigmoid(ctx, in);
 }
 
 Value log(SPUContext* ctx, const Value& in) {
   SPU_TRACE_HAL_DISP(ctx, in);
 
-  return f_log(ctx, dtype_cast(ctx, in, DT_FXP));
+  SPU_ENFORCE(in.isFxp());
+
+  return f_log(ctx, in);
 }
 
 Value log1p(SPUContext* ctx, const Value& in) {
   SPU_TRACE_HAL_DISP(ctx, in);
 
-  return f_log1p(ctx, dtype_cast(ctx, in, DT_FXP));
+  SPU_ENFORCE(in.isFxp());
+
+  return f_log1p(ctx, in);
 }
 
 Value reciprocal(SPUContext* ctx, const Value& in) {
@@ -300,6 +309,14 @@ Value min(SPUContext* ctx, const Value& x, const Value& y) {
 
 Value power(SPUContext* ctx, const Value& x, const Value& y) {
   SPU_TRACE_HAL_DISP(ctx, x, y);
+
+  if (x.isInt() && y.isInt()) {
+    auto x_f = dtype_cast(ctx, x, DT_F32);
+    auto y_f = dtype_cast(ctx, y, DT_F32);
+    auto ret = power(ctx, x_f, y_f);
+    return dtype_cast(ctx, ret, x.dtype());
+  }
+
   // x^y = e^(y*ln(x))
   return exp(ctx, mul(ctx, y, log(ctx, x)));
 }
@@ -313,8 +330,8 @@ Value idiv(SPUContext* ctx, const Value& x, const Value& y) {
 
   Value q;
   {
-    const auto x_f = dtype_cast(ctx, abs_x, DT_FXP);
-    const auto y_f = dtype_cast(ctx, abs_y, DT_FXP);
+    const auto x_f = dtype_cast(ctx, abs_x, DT_F32);
+    const auto y_f = dtype_cast(ctx, abs_y, DT_F32);
 
     auto approx_q = div(ctx, x_f, y_f);
 
@@ -342,8 +359,11 @@ Value div(SPUContext* ctx, const Value& x, const Value& y) {
     return idiv(ctx, x, y);
   }
 
-  const auto x_f = dtype_cast(ctx, x, DT_FXP);
-  const auto y_f = dtype_cast(ctx, y, DT_FXP);
+  // Kind of a hack to compute max dtype
+  auto dtype = std::max(x.dtype(), y.dtype());
+
+  const auto x_f = dtype_cast(ctx, x, dtype);
+  const auto y_f = dtype_cast(ctx, y, dtype);
 
 #define F_DIV_WITH_DIRECT_GOLDSCHMIDT_METHOD
 #ifdef F_DIV_WITH_DIRECT_GOLDSCHMIDT_METHOD
@@ -394,24 +414,29 @@ Value right_shift_arithmetic(SPUContext* ctx, const Value& x, size_t bits) {
 Value log2(SPUContext* ctx, const Value& in) {
   SPU_TRACE_HAL_DISP(ctx, in);
 
-  return f_log2(ctx, dtype_cast(ctx, in, DT_FXP));
+  SPU_ENFORCE(in.isFxp());
+
+  return f_log2(ctx, in);
 }
 
 Value exp2(SPUContext* ctx, const Value& x) {
   SPU_TRACE_HAL_DISP(ctx, x);
 
-  return f_exp2(ctx, dtype_cast(ctx, x, DT_FXP));
+  SPU_ENFORCE(x.isFxp());
+
+  return f_exp2(ctx, x);
 }
 
 Value tanh(SPUContext* ctx, const Value& x) {
   SPU_TRACE_HAL_DISP(ctx, x);
 
+  SPU_ENFORCE(x.isFxp());
+
   // For tanh inputs beyond [-3, 3], result is infinitely close to -1, 1
   // pade approximation has a relative ok result between [-3, 3], so clamp
   // inputs to this range.
-  auto normalized_x = clamp(ctx, dtype_cast(ctx, x, DT_FXP),
-                            constant(ctx, -3.F, DT_FXP, x.shape()),
-                            constant(ctx, 3.F, DT_FXP, x.shape()));
+  auto normalized_x = clamp(ctx, x, constant(ctx, -3.F, x.dtype(), x.shape()),
+                            constant(ctx, 3.F, x.dtype(), x.shape()));
 
   return f_tanh(ctx, normalized_x);
 }
@@ -419,13 +444,17 @@ Value tanh(SPUContext* ctx, const Value& x) {
 Value rsqrt(SPUContext* ctx, const Value& x) {
   SPU_TRACE_HAL_DISP(ctx, x);
 
-  return f_rsqrt(ctx, dtype_cast(ctx, x, DT_FXP));
+  SPU_ENFORCE(x.isFxp());
+
+  return f_rsqrt(ctx, x);
 }
 
 Value sqrt(SPUContext* ctx, const Value& x) {
   SPU_TRACE_HAL_DISP(ctx, x);
 
-  return f_sqrt(ctx, dtype_cast(ctx, x, DT_FXP));
+  SPU_ENFORCE(x.isFxp());
+
+  return f_sqrt(ctx, x);
 }
 
 Value sign(SPUContext* ctx, const Value& x) {

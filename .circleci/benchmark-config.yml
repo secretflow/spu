@@ -38,7 +38,7 @@ jobs:
       - run:
           name: Build SPU
           command: |
-            set +e 
+            set +e
             declare -i build_status
             sed -i "s/tensorflow /tensorflow-cpu /g" ./requirements-dev.txt
             docker run --name spu-build --mount type=bind,source="$(pwd)",target=/home/admin/dev/ secretflow/spu-ci:0.7 \

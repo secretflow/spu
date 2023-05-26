@@ -145,11 +145,11 @@ Count: Total = 2, fully supported = 2
 | `clamp`        | fully                       |
 | `concatenate`  | fully                       |
 | `collective_permute` | no                    |
-| `convolution`  | fully                       | 
+| `convolution`  | fully                       |
 | `copy`         | no                          |
 | `cross-replica-sum` | no                     |
 | `custom_call`  | no                          |
-| `dot`          | fully                       | 
+| `dot`          | fully                       |
 | `dot_general`  | fully                       |
 | `einsum`       | fully                       |
 | `unary_einsum` | fully                       |

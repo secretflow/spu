@@ -26,7 +26,7 @@ services:
       - -c
       - |
         cd /home/admin/dev
-        bazel-bin/examples/python/utils/nodectl -c .circleci/benchmark.json start --node_id node:0 
+        bazel-bin/examples/python/utils/nodectl -c .circleci/benchmark.json start --node_id node:0
     image: spu-build:v1
     networks:
       nn-benchmark:
@@ -39,7 +39,7 @@ services:
       - -c
       - |
         cd /home/admin/dev
-        bazel-bin/examples/python/utils/nodectl -c .circleci/benchmark.json start --node_id node:1 
+        bazel-bin/examples/python/utils/nodectl -c .circleci/benchmark.json start --node_id node:1
     image: spu-build:v1
     networks:
       nn-benchmark:

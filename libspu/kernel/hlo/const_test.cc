@@ -37,7 +37,7 @@ TEST(ConstTest, Empty) {
 TEST(ConstTest, Epsilon) {
   SPUContext sctx = test::makeSPUContext();
 
-  auto eps = Epsilon(&sctx);
+  auto eps = Epsilon(&sctx, DT_F32);
 
   auto v = hal::dump_public_as<float>(&sctx, eps);
 

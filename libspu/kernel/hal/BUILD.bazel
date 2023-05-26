@@ -110,6 +110,7 @@ spu_cc_test(
     srcs = ["fxp_base_test.cc"],
     deps = [
         ":fxp_base",
+        ":type_cast",
         "//libspu/kernel:test_util",
     ],
 )

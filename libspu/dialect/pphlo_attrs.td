@@ -25,10 +25,10 @@ def PPHloDim : ArrayRefParameter<"int64_t", "Dimension">;
 def GatherDimensionNumbers : AttrDef<PPHlo_Dialect, "GatherDimensionNumbers"> {
   let mnemonic = "gather";
   let summary = "Attribute that models the dimension information for gather";
-  let parameters = (ins 
-              PPHloDim: $offsetDims, 
-              PPHloDim: $collapsedSliceDims, 
-              PPHloDim: $startIndexMap, 
+  let parameters = (ins
+              PPHloDim: $offsetDims,
+              PPHloDim: $collapsedSliceDims,
+              PPHloDim: $startIndexMap,
               "int64_t": $indexVectorDim);
   let hasCustomAssemblyFormat = 1;
 }

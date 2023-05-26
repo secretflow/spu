@@ -16,11 +16,8 @@
 
 #include <map>
 #include <memory>
-#include <optional>
 #include <string>
-#include <variant>
 
-#include "libspu/core/array_ref.h"
 #include "libspu/core/cexpr.h"
 #include "libspu/core/prelude.h"
 

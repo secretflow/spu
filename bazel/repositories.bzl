@@ -138,8 +138,8 @@ def _com_github_xtensor_xtl():
     )
 
 def _com_github_openxla_xla():
-    OPENXLA_COMMIT = "6d294f24babbadbe7a42fbd91e9bead178acaa10"
-    OPENXLA_SHA256 = "9ead425b1159d32c42b4f5c3cbf48b9ec6331a288ceab6a034e419d0204a6229"
+    OPENXLA_COMMIT = "fbb42427fbc5acdb838ef66680b38ed5e2391211"
+    OPENXLA_SHA256 = "5b711639d527325e2b5068792af2862a0746adbab4a0c6291d73348402f242f8"
 
     SKYLIB_VERSION = "1.3.0"
 
@@ -193,11 +193,11 @@ def _com_intel_hexl():
         http_archive,
         name = "com_intel_hexl",
         type = "tar.gz",
-        strip_prefix = "hexl-1.2.3",
-        sha256 = "f2cf33ee2035d12996d10b69d2f41a586b9954a29b99c70a852495cf5758878c",
+        strip_prefix = "hexl-1.2.4",
+        sha256 = "f91dd158e3faa8795035f618286cdef7dacbf488fd0ba4f44409880997b4549f",
         build_file = "@spulib//bazel:hexl.BUILD",
         urls = [
-            "https://github.com/intel/hexl/archive/refs/tags/v1.2.3.tar.gz",
+            "https://github.com/intel/hexl/archive/refs/tags/v1.2.4.tar.gz",
         ],
     )
 
@@ -254,13 +254,13 @@ def _com_github_microsoft_seal():
     maybe(
         http_archive,
         name = "com_github_microsoft_seal",
-        sha256 = "616653498ba8f3e0cd23abef1d451c6e161a63bd88922f43de4b3595348b5c7e",
-        strip_prefix = "SEAL-4.0.0",
+        sha256 = "af9bf0f0daccda2a8b7f344f13a5692e0ee6a45fea88478b2b90c35648bf2672",
+        strip_prefix = "SEAL-4.1.1",
         type = "tar.gz",
         patch_args = ["-p1"],
         patches = ["@spulib//bazel:patches/seal.patch"],
         urls = [
-            "https://github.com/microsoft/SEAL/archive/refs/tags/v4.0.0.tar.gz",
+            "https://github.com/microsoft/SEAL/archive/refs/tags/v4.1.1.tar.gz",
         ],
         build_file = "@spulib//bazel:seal.BUILD",
     )

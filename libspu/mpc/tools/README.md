@@ -4,7 +4,7 @@
 
 You can get help info like this:
 
-```
+```sh
 $ bazel run -c opt libspu/mpc/tools/benchmark -- --help
 USAGE: benchmark [options]
 
@@ -36,14 +36,14 @@ Generic Options:
 Because many parameters have default parameters, we don't have to specify each parameter.
 If you want run it with **standalone mode**, you can do this:
 
-```bash
+```sh
 bazel run -c opt libspu/mpc/tools/benchmark -- --benchmark_counters_tabular=true
 ```
 
 If you want **mparty mode** on localhost, you need start multi processes to simulate different parties, and we only care output of rank 0.
 eg: run **aby3** **mparty** benchmark as follows, you can create a script.:
 
-```
+```sh
 $ cat run_mpart_bench.sh
 #!/bin/sh
 bazel run -c opt //libspu/mpc/tools/benchmark -- --mode=mparty --rank=1 2>&1 >/dev/null &
@@ -54,7 +54,7 @@ $ sh run_mpart_bench.sh
 
 or
 
-```
+```sh
 sh docs/reference/run_benchmark.sh --output LAN.json --mode mparty
 ```
 
@@ -62,14 +62,14 @@ sh docs/reference/run_benchmark.sh --output LAN.json --mode mparty
 
 You can use **--benchmark_out=*.json --benchmark_out_format=json** to specify the output json or **docs/reference/run_benchmark.sh**, eg:
 
-```
+```sh
 $ bazel run -c opt //libspu/mpc/tools:benchmark -- --mode=standalone \
   --benchmark_out=standalone.json --benchmark_out_format=json
 ```
 
 or
 
-```
+```sh
 sh docs/reference/run_benchmark.sh --output standalone.json
 ```
 
@@ -80,7 +80,7 @@ To set network limitation manually, execute following commands on each docker or
 then specify ip with `parties` parameter, eg:
 set 300Mbps bandwidth，add 20ms latency:
 
-```
+```sh
 $ tc qdisc del dev eth0 root
 $ tc qdisc add dev eth0 root handle 1: tbf rate 300mbit burst 256kb latency 800ms
 $ tc qdisc add dev eth0 parent 1:1 handle 10: netem delay 20msec limit 8000
@@ -96,7 +96,7 @@ You can always specify output json filename with **--output**.
 
 ### - standalone
 
-```
+```sh
 sh docs/reference/run_benchmark.sh
 ```
 
@@ -107,7 +107,7 @@ This will generate standalone.json.
 For example, you can run this on 172.17.0.8, and use 172.17.0.1 as rank 1&2.
 This outputs WAN.json. Before run this script, you need **ssh-copy-id** to remote machine.
 
-```
+```sh
 sh docs/reference/run_benchmark.sh --mode mparty --remote huocun@172.17.0.1 --remote_dir /home/ssd0/huocun/ppu --remote_python_env /home/ssd0/huocun/ppu/venv/bin/activate --parties 172.17.0.8:9444,172.17.0.1:9445,172.17.0.1:9446 --output LAN.json
 ```
 
@@ -118,7 +118,7 @@ New round-trip delay will be old round-trip delay add delay values you set.
 Tool tc needs to be installed. (You can run `yum install -y iproute-tc` to install tc.)
 This will generate WAN_300mbit_20msec.json.
 
-```
+```sh
 sh docs/reference/run_benchmark.sh --mode mparty --remote huocun@172.17.0.1 --remote_dir /home/ssd0/huocun/ppu --remote_python_env /home/ssd0/huocun/ppu/venv/bin/activate --parties 172.17.0.8:9444,172.17.0.1:9445,172.17.0.1:9446 --rate 300mbit --delay 20msec
 ```
 
@@ -137,7 +137,8 @@ python docs/reference/gen_benchmark_report.py --output=report.md
     --sheet="Benchmark Protocol"
 ```
 
-This command can generate a xlsx report(/csv/md/html is also supported), rows will be grouped by **op_name** and **field_type**, columns with **env**, **buf_len**.
+This command can generate a xlsx report(/csv/md/html is also supported), rows will be grouped by **op_name** and **field_type**,
+columns with **env**, **buf_len**.
 **env** is from **input** filenames, add different protocol will be in different sheets when we specify
 **--output=*.md**.
 **time** is formated by reasonable unit, raw data is "real_time".

@@ -316,63 +316,6 @@ TEST_P(BasicOTProtTest, Multiplexer) {
   });
 }
 
-TEST_P(BasicOTProtTest, Fork) {
-  size_t kWorldSize = 2;
-  size_t n = 101;
-  FieldType field = GetParam();
-
-  std::array<ArrayRef, 3> triple[2];
-  std::array<ArrayRef, 3> packed_triple[2];
-
-  utils::simulate(kWorldSize, [&](std::shared_ptr<yacl::link::Context> ctx) {
-    auto conn = std::make_shared<Communicator>(ctx);
-    BasicOTProtocols ot_prot(conn);
-    packed_triple[ctx->Rank()] = ot_prot.AndTriple(field, n, 8 * SizeOf(field));
-    auto fork = ot_prot.Fork();
-
-    triple[ctx->Rank()] = fork->AndTriple(field, n, 1);
-  });
-
-  DISPATCH_ALL_FIELDS(field, "", [&]() {
-    {
-      auto a0 = xt_adapt<ring2k_t>(triple[0][0]);
-      auto b0 = xt_adapt<ring2k_t>(triple[0][1]);
-      auto c0 = xt_adapt<ring2k_t>(triple[0][2]);
-
-      auto a1 = xt_adapt<ring2k_t>(triple[1][0]);
-      auto b1 = xt_adapt<ring2k_t>(triple[1][1]);
-      auto c1 = xt_adapt<ring2k_t>(triple[1][2]);
-
-      for (size_t i = 0; i < n; ++i) {
-        EXPECT_TRUE(a0[i] < 2 && a1[i] < 2);
-        EXPECT_TRUE(b0[i] < 2 && b1[i] < 2);
-        EXPECT_TRUE(c0[i] < 2 && c1[i] < 2);
-
-        ring2k_t e = (a0[i] ^ a1[i]) & (b0[i] ^ b1[i]);
-        ring2k_t c = (c0[i] ^ c1[i]);
-        EXPECT_EQ(e, c);
-      }
-    }
-    {
-      auto a0 = xt_adapt<ring2k_t>(packed_triple[0][0]);
-      auto b0 = xt_adapt<ring2k_t>(packed_triple[0][1]);
-      auto c0 = xt_adapt<ring2k_t>(packed_triple[0][2]);
-      auto a1 = xt_adapt<ring2k_t>(packed_triple[1][0]);
-      auto b1 = xt_adapt<ring2k_t>(packed_triple[1][1]);
-      auto c1 = xt_adapt<ring2k_t>(packed_triple[1][2]);
-
-      size_t nn = a0.size();
-      EXPECT_TRUE(nn * 8 * SizeOf(field) >= n);
-
-      for (size_t i = 0; i < nn; ++i) {
-        ring2k_t e = (a0[i] ^ a1[i]) & (b0[i] ^ b1[i]);
-        ring2k_t c = (c0[i] ^ c1[i]);
-        EXPECT_EQ(e, c);
-      }
-    }
-  });
-}
-
 TEST_P(BasicOTProtTest, CorrelatedAndTriple) {
   size_t kWorldSize = 2;
   size_t n = 10;

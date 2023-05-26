@@ -47,6 +47,10 @@ public:
 
   bool hasPrettyPrintEnabled() const { return options_.enable_pretty_print(); }
 
+  XLAPrettyPrintKind getXlaPrettyPrintKind() const {
+    return options_.xla_pp_kind();
+  }
+
   std::filesystem::path getPrettyPrintDir() const;
 
 private:

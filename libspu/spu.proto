@@ -37,7 +37,8 @@ enum DataType {
   DT_U32 = 7;   // uint32
   DT_I64 = 8;   // int64
   DT_U64 = 9;   // uint64
-  DT_FXP = 10;  // Fixed point type.
+  DT_F32 = 10;  // float
+  DT_F64 = 11;  // double
 }
 
 // The visibility type.
@@ -319,28 +320,38 @@ message CompilationSource {
   repeated Visibility input_visibility = 3;
 }
 
+enum XLAPrettyPrintKind {
+  TEXT = 0;
+  DOT = 1;
+  HTML = 2;
+}
+
 message CompilerOptions {
   // Pretty print
   bool enable_pretty_print = 1;
   string pretty_print_dump_dir = 2;
+  XLAPrettyPrintKind xla_pp_kind = 3;
   
   // Disable sqrt(x) + eps to sqrt(x+eps) rewrite
-  bool disable_sqrt_plus_epsilon_rewrite = 3;
+  bool disable_sqrt_plus_epsilon_rewrite = 10;
 
   // Disable x/sqrt(y) to x*rsqrt(y) rewrite
-  bool disable_div_sqrt_rewrite = 4;
+  bool disable_div_sqrt_rewrite = 11;
 
   // Disable reduce truncation optimization
-  bool disable_reduce_truncation_optimization = 5;
+  bool disable_reduce_truncation_optimization = 12;
 
   // Disable maxpooling optimization
-  bool disable_maxpooling_optimization = 6;
+  bool disable_maxpooling_optimization = 13;
 
   // Disallow mix type operations
-  bool disallow_mix_types_opts = 7;
+  bool disallow_mix_types_opts = 14;
 
   // Disable SelectOp optimization
-  bool disable_select_optimization = 8;
+  bool disable_select_optimization = 15;
+
+  // Enable optimize x/bcast(y) -> x * bcast(1/y)
+  bool enable_optimize_denominator_with_broadcast = 16;
 }
 
 // The executable format accepted by SPU runtime.

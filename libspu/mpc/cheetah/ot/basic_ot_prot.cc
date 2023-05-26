@@ -35,12 +35,6 @@ BasicOTProtocols::BasicOTProtocols(std::shared_ptr<Communicator> conn)
   }
 }
 
-std::unique_ptr<BasicOTProtocols> BasicOTProtocols::Fork() {
-  // TODO(juhou) we can take from cached ROTs from the caller
-  auto conn = std::make_shared<Communicator>(conn_->lctx()->Spawn());
-  return std::make_unique<BasicOTProtocols>(conn);
-}
-
 BasicOTProtocols::~BasicOTProtocols() { Flush(); }
 
 void BasicOTProtocols::Flush() {

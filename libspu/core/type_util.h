@@ -51,7 +51,9 @@ std::ostream& operator<<(std::ostream& os, const Visibility& vtype);
   FN(DT_I64, I64, 64)          \
   FN(DT_U64, U64, 64)
 
-#define FOREACH_FXP_DTYPES(FN) FN(DT_FXP, FXP, 64)
+#define FOREACH_FXP_DTYPES(FN) \
+  FN(DT_F32, F32, 32)          \
+  FN(DT_F64, F64, 64)
 
 #define FOREACH_DTYPES(FN) \
   FOREACH_INT_DTYPES(FN)   \

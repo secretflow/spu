@@ -108,3 +108,18 @@ func.func @main(%arg0: tensor<10x!pphlo.pub<i32>>) -> (tensor<!pphlo.pub<i32>>) 
   return %1 :  tensor<!pphlo.pub<i32>>
 }
 
+// -----
+
+func.func @main() -> tensor<!pphlo.pub<i32>> {
+    %0 = "pphlo.constant"() {value = dense<127> : tensor<i8>} : () -> tensor<!pphlo.pub<i8>>
+    %1 = "pphlo.slice"(%0) {limit_indices = dense<> : tensor<0xi64>, start_indices = dense<> : tensor<0xi64>, strides = dense<> : tensor<0xi64>} : (tensor<!pphlo.pub<i8>>) -> tensor<!pphlo.pub<i8>>
+    %2 = "pphlo.slice"(%1) {limit_indices = dense<> : tensor<0xi64>, start_indices = dense<> : tensor<0xi64>, strides = dense<> : tensor<0xi64>} : (tensor<!pphlo.pub<i8>>) -> tensor<!pphlo.pub<i8>>
+    %3 = "pphlo.slice"(%0) {limit_indices = dense<> : tensor<0xi64>, start_indices = dense<> : tensor<0xi64>, strides = dense<> : tensor<0xi64>} : (tensor<!pphlo.pub<i8>>) -> tensor<!pphlo.pub<i8>>
+    %4 = "pphlo.constant"() {value = dense<-1.7976931344453863E+308> : tensor<1x1xf64>} : () -> tensor<1x1x!pphlo.pub<f64>>
+    // expected-error @+1 {{op negative start index -9220555925398487041 in dimension 0}}
+    %5 = "pphlo.slice"(%4) {limit_indices = dense<[-9220555925398487041, 0]> : tensor<2xi64>, start_indices = dense<[-9220555925398487041, 0]> : tensor<2xi64>, strides = dense<[-9220555925398487041, 0]> : tensor<2xi64>} : (tensor<1x1x!pphlo.pub<f64>>) -> tensor<1x1x!pphlo.pub<f64>>
+    %6 = "pphlo.slice"(%4) {limit_indices = dense<[-8502447508339815911, -9223371558496411295]> : tensor<2xi64>, start_indices = dense<[-8502447508339815911, -9223371558496411295]> : tensor<2xi64>, strides = dense<[-8502447508339815911, -9223371558496411295]> : tensor<2xi64>} : (tensor<1x1x!pphlo.pub<f64>>) -> tensor<1x1x!pphlo.pub<f64>>
+    %7 = "pphlo.constant"() {value = dense<5> : tensor<i32>} : () -> tensor<!pphlo.pub<i32>>
+    "pphlo.return"(%7) : (tensor<!pphlo.pub<i32>>) -> ()
+  }
+

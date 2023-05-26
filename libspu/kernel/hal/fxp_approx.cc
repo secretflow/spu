@@ -28,9 +28,9 @@ namespace spu::kernel::hal {
 namespace {
 
 // simple convenient function.
-Value f_constant(SPUContext* ctx, const PtBufferView& init,
+Value f_constant(SPUContext* ctx, const PtBufferView& init, DataType dtype,
                  absl::Span<int64_t const> shape) {
-  return constant(ctx, init, DT_FXP, shape);
+  return constant(ctx, init, dtype, shape);
 }
 
 }  // namespace
@@ -53,25 +53,25 @@ Value log2_pade_approx_for_normalized(SPUContext* ctx, const Value& x) {
   const auto x2 = f_square(ctx, x);
   const auto x3 = f_mul(ctx, x2, x);
 
-  const auto p0 = f_constant(ctx, -0.205466671951 * 10, x.shape());
-  const auto p1 = f_constant(ctx, -0.88626599391 * 10, x.shape());
-  const auto p2 = f_constant(ctx, 0.610585199015 * 10, x.shape());
-  const auto p3 = f_constant(ctx, 0.481147460989 * 10, x.shape());
+  const auto p0 = f_constant(ctx, -0.205466671951F * 10, x.dtype(), x.shape());
+  const auto p1 = f_constant(ctx, -0.88626599391F * 10, x.dtype(), x.shape());
+  const auto p2 = f_constant(ctx, 0.610585199015F * 10, x.dtype(), x.shape());
+  const auto p3 = f_constant(ctx, 0.481147460989F * 10, x.dtype(), x.shape());
 
-  const auto q0 = f_constant(ctx, 0.353553425277, x.shape());
-  const auto q1 = f_constant(ctx, 0.454517087629 * 10, x.shape());
-  const auto q2 = f_constant(ctx, 0.642784209029 * 10, x.shape());
-  const auto q3 = f_constant(ctx, 0.1 * 10, x.shape());
+  const auto q0 = f_constant(ctx, 0.353553425277F, x.dtype(), x.shape());
+  const auto q1 = f_constant(ctx, 0.454517087629F * 10, x.dtype(), x.shape());
+  const auto q2 = f_constant(ctx, 0.642784209029F * 10, x.dtype(), x.shape());
+  const auto q3 = f_constant(ctx, 0.1F * 10, x.dtype(), x.shape());
 
   auto p2524 = _mul(ctx, x, p1);
   p2524 = _add(ctx, p2524, _mul(ctx, x2, p2));
   p2524 = _add(ctx, p2524, _mul(ctx, x3, p3));
-  p2524 = _add(ctx, _trunc(ctx, p2524), p0).asFxp();
+  p2524 = _add(ctx, _trunc(ctx, p2524), p0).setDtype(x.dtype());
 
   auto q2524 = _mul(ctx, x, q1);
   q2524 = _add(ctx, q2524, _mul(ctx, x2, q2));
   q2524 = _add(ctx, q2524, _mul(ctx, x3, q3));
-  q2524 = _add(ctx, _trunc(ctx, q2524), q0).asFxp();
+  q2524 = _add(ctx, _trunc(ctx, q2524), q0).setDtype(x.dtype());
 
   return detail::div_goldschmidt(ctx, p2524, q2524);
 }
@@ -90,7 +90,7 @@ Value log2_pade_approx(SPUContext* ctx, const Value& x) {
 
   // let x = x_norm * factor, where x in [0.5, 1.0)
   auto msb = detail::highestOneBit(ctx, x);
-  auto factor = _bitrev(ctx, msb, 0, 2 * num_fxp_bits).asFxp();
+  auto factor = _bitrev(ctx, msb, 0, 2 * num_fxp_bits).setDtype(x.dtype());
   detail::hintNumberOfBits(factor, 2 * num_fxp_bits);
   auto norm = f_mul(ctx, x, factor);
 
@@ -101,7 +101,7 @@ Value log2_pade_approx(SPUContext* ctx, const Value& x) {
              ctx, log2_pade_approx_for_normalized(ctx, norm),
              _lshift(ctx, _sub(ctx, k, _constant(ctx, num_fxp_bits, x.shape())),
                      num_fxp_bits))
-      .asFxp();
+      .setDtype(x.dtype());
 }
 
 // See P11, A.2.4 Logarithm and Exponent,
@@ -111,29 +111,31 @@ Value log2_pade_approx(SPUContext* ctx, const Value& x) {
 // Householder iterations. This approximation is accurate within 2% relative
 // error on [0.0001, 250].
 Value log_householder_approx(SPUContext* ctx, const Value& x) {
-  Value term_1 = f_div(ctx, x, f_constant(ctx, 120.0, x.shape()));
+  Value term_1 = f_div(ctx, x, f_constant(ctx, 120.0, x.dtype(), x.shape()));
   Value term_2 = f_mul(
       ctx,
       f_exp(ctx,
-            f_negate(ctx,
-                     f_add(ctx, f_mul(ctx, x, f_constant(ctx, 2.0, x.shape())),
-                           f_constant(ctx, 1.0, x.shape())))),
-      f_constant(ctx, 20.0, x.shape()));
-  Value y =
-      f_add(ctx, f_sub(ctx, term_1, term_2), f_constant(ctx, 3.0, x.shape()));
+            f_negate(
+                ctx,
+                f_add(ctx,
+                      f_mul(ctx, x, f_constant(ctx, 2.0, x.dtype(), x.shape())),
+                      f_constant(ctx, 1.0, x.dtype(), x.shape())))),
+      f_constant(ctx, 20.0, x.dtype(), x.shape()));
+  Value y = f_add(ctx, f_sub(ctx, term_1, term_2),
+                  f_constant(ctx, 3.0, x.dtype(), x.shape()));
 
   std::vector<Value> coeffs;
   const size_t fxp_log_orders = ctx->config().fxp_log_orders();
   SPU_ENFORCE(fxp_log_orders != 0, "fxp_log_orders should not be {}",
               fxp_log_orders);
   for (size_t i = 0; i < fxp_log_orders; i++) {
-    coeffs.emplace_back(f_constant(ctx, 1.0 / (1.0 + i), x.shape()));
+    coeffs.emplace_back(f_constant(ctx, 1.0 / (1.0 + i), x.dtype(), x.shape()));
   }
 
   const size_t num_iters = ctx->config().fxp_log_iters();
   SPU_ENFORCE(num_iters != 0, "fxp_log_iters should not be {}", num_iters);
   for (size_t i = 0; i < num_iters; i++) {
-    Value h = f_sub(ctx, f_constant(ctx, 1.0, x.shape()),
+    Value h = f_sub(ctx, f_constant(ctx, 1.0, x.dtype(), x.shape()),
                     f_mul(ctx, x, f_exp(ctx, f_negate(ctx, y))));
     y = f_sub(ctx, y, detail::f_polynomial(ctx, h, coeffs));
   }
@@ -148,8 +150,8 @@ Value exp_taylor_series(SPUContext* ctx, const Value& x) {
   SPU_ENFORCE(fxp_exp_iters != 0, "fxp_exp_iters should not be {}",
               fxp_exp_iters);
 
-  Value res = f_add(ctx, _trunc(ctx, x, fxp_exp_iters).asFxp(),
-                    f_constant(ctx, 1.0, x.shape()));
+  Value res = f_add(ctx, _trunc(ctx, x, fxp_exp_iters).setDtype(x.dtype()),
+                    f_constant(ctx, 1.0F, x.dtype(), x.shape()));
 
   for (size_t i = 0; i < fxp_exp_iters; i++) {
     res = f_square(ctx, res);
@@ -172,12 +174,16 @@ Value exp2_pade_approx_for_positive_pure_decimal(SPUContext* ctx,
   auto x4 = f_mul(ctx, x, x3);
   auto x5 = f_mul(ctx, x, x4);
 
-  const auto p0 = f_constant(ctx, 0.100000007744302 * 10, x.shape());
-  const auto p1 = f_constant(ctx, 0.693147180426163, x.shape());
-  const auto p2 = f_constant(ctx, 0.240226510710170, x.shape());
-  const auto p3 = f_constant(ctx, 0.555040686204663 / 10, x.shape());
-  const auto p4 = f_constant(ctx, 0.961834122588046 / 100, x.shape());
-  const auto p5 = f_constant(ctx, 0.133273035928143 / 100, x.shape());
+  const auto p0 =
+      f_constant(ctx, 0.100000007744302F * 10, x.dtype(), x.shape());
+  const auto p1 = f_constant(ctx, 0.693147180426163F, x.dtype(), x.shape());
+  const auto p2 = f_constant(ctx, 0.240226510710170F, x.dtype(), x.shape());
+  const auto p3 =
+      f_constant(ctx, 0.555040686204663F / 10, x.dtype(), x.shape());
+  const auto p4 =
+      f_constant(ctx, 0.961834122588046F / 100, x.dtype(), x.shape());
+  const auto p5 =
+      f_constant(ctx, 0.133273035928143F / 100, x.dtype(), x.shape());
 
   auto res = _mul(ctx, x, p1);
   res = _add(ctx, res, _mul(ctx, x2, p2));
@@ -185,7 +191,7 @@ Value exp2_pade_approx_for_positive_pure_decimal(SPUContext* ctx,
   res = _add(ctx, res, _mul(ctx, x4, p4));
   res = _add(ctx, res, _mul(ctx, x5, p5));
 
-  return _add(ctx, _trunc(ctx, res), p0).asFxp();
+  return _add(ctx, _trunc(ctx, res), p0).setDtype(x.dtype());
 }
 
 // Refer to
@@ -204,7 +210,8 @@ Value exp2_pade_approx(SPUContext* ctx, const Value& x) {
   const auto x_bshare = _prefer_b(ctx, x);
   const auto x_msb = _rshift(ctx, x_bshare, bit_width - 1);
   auto x_integer = _rshift(ctx, x_bshare, fbits);
-  auto x_fraction = _sub(ctx, x, _lshift(ctx, x_integer, fbits)).asFxp();
+  auto x_fraction =
+      _sub(ctx, x, _lshift(ctx, x_integer, fbits)).setDtype(x.dtype());
   auto ret = exp2_pade_approx_for_positive_pure_decimal(ctx, x_fraction);
 
   for (size_t idx = 0; idx < int_bits; idx++) {
@@ -215,7 +222,7 @@ Value exp2_pade_approx(SPUContext* ctx, const Value& x) {
     ret = _mul(ctx, ret,
                _add(ctx, _mul(ctx, a, _constant(ctx, K, x.shape())),
                     _sub(ctx, k1, a)))
-              .asFxp();
+              .setDtype(ret.dtype());
   }
 
   // If we could ensure the integer bits of x is 5.
@@ -225,16 +232,19 @@ Value exp2_pade_approx(SPUContext* ctx, const Value& x) {
   //            (x_hat) - 32 = -x
   //  exp2(x_hat) / exp2(32) = exp(-x)
   //  so exp(-x) = exp2(x_hat) / exp2(32)
-  auto ret_reciprocal = _trunc(ctx, ret, std::pow(2, int_bits)).asFxp();
+  auto ret_reciprocal =
+      _trunc(ctx, ret, std::pow(2, int_bits)).setDtype(ret.dtype());
 
   // ret + msb * (reciprocal - ret)
-  return f_add(ctx, ret,
-               _mul(ctx, x_msb, f_sub(ctx, ret_reciprocal, ret)).asFxp());
+  return f_add(
+      ctx, ret,
+      _mul(ctx, x_msb, f_sub(ctx, ret_reciprocal, ret)).setDtype(ret.dtype()));
 }
 
 Value exp_pade_approx(SPUContext* ctx, const Value& x) {
-  return f_exp2(
-      ctx, f_mul(ctx, x, f_constant(ctx, std::log2(std::exp(1)), x.shape())));
+  return f_exp2(ctx, f_mul(ctx, x,
+                           f_constant(ctx, std::log2(std::exp(1.0F)), x.dtype(),
+                                      x.shape())));
 }
 
 // Refer to
@@ -247,15 +257,16 @@ Value tanh_pade_approx(SPUContext* ctx, const Value& x) {
   const auto x_4 = f_square(ctx, x_2);
   const auto x_5 = f_mul(ctx, x_2, x_3);
 
-  const auto dividend =
-      f_add(ctx, x,
-            f_add(ctx, f_div(ctx, x_3, f_constant(ctx, 9.0, x.shape())),
-                  f_div(ctx, x_5, f_constant(ctx, 945.0, x.shape()))));
+  const auto dividend = f_add(
+      ctx, x,
+      f_add(ctx, f_div(ctx, x_3, f_constant(ctx, 9.0F, x.dtype(), x.shape())),
+            f_div(ctx, x_5, f_constant(ctx, 945.0F, x.dtype(), x.shape()))));
 
-  const auto divisor =
-      f_add(ctx, f_constant(ctx, 1.0, x.shape()),
-            f_add(ctx, f_div(ctx, x_2, f_constant(ctx, 9.0 / 4.0, x.shape())),
-                  f_div(ctx, x_4, f_constant(ctx, 63.0, x.shape()))));
+  const auto divisor = f_add(
+      ctx, f_constant(ctx, 1.0F, x.dtype(), x.shape()),
+      f_add(ctx,
+            f_div(ctx, x_2, f_constant(ctx, 9.0F / 4.0F, x.dtype(), x.shape())),
+            f_div(ctx, x_4, f_constant(ctx, 63.0F, x.dtype(), x.shape()))));
 
   return f_div(ctx, dividend, divisor);
 }
@@ -279,14 +290,14 @@ Value f_exp(SPUContext* ctx, const Value& x) {
       // The valid input for exp_pade_approx is [-kInputLimit, kInputLimit].
       // TODO(junfeng): should merge clamp into exp_pade_approx to save msb ops.
       const float kInputLimit = 32 / std::log2(std::exp(1));
-      const auto clampped_x =
-          _clamp(ctx, x, f_constant(ctx, -kInputLimit, x.shape()),
-                 f_constant(ctx, kInputLimit, x.shape()))
+      const auto clamped_x =
+          _clamp(ctx, x, f_constant(ctx, -kInputLimit, x.dtype(), x.shape()),
+                 f_constant(ctx, kInputLimit, x.dtype(), x.shape()))
               .setDtype(x.dtype());
-      return detail::exp_pade_approx(ctx, clampped_x);
+      return detail::exp_pade_approx(ctx, clamped_x);
     }
     default:
-      SPU_THROW("unexpected exp approxmation method {}",
+      SPU_THROW("unexpected exp approximation method {}",
                 ctx->config().fxp_exp_mode());
   }
 }
@@ -303,12 +314,12 @@ Value f_log(SPUContext* ctx, const Value& x) {
   switch (ctx->config().fxp_log_mode()) {
     case RuntimeConfig::LOG_DEFAULT:
     case RuntimeConfig::LOG_PADE:
-      return f_mul(ctx, f_constant(ctx, std::log(2.0), x.shape()),
+      return f_mul(ctx, f_constant(ctx, std::log(2.0F), x.dtype(), x.shape()),
                    f_log2(ctx, x));
     case RuntimeConfig::LOG_NEWTON:
       return detail::log_householder_approx(ctx, x);
     default:
-      SPU_THROW("unlogected log approxmation method {}",
+      SPU_THROW("unexpected log approximation method {}",
                 ctx->config().fxp_log_mode());
   }
 }
@@ -318,7 +329,7 @@ Value f_log1p(SPUContext* ctx, const Value& x) {
 
   SPU_ENFORCE(x.isFxp());
 
-  return f_log(ctx, f_add(ctx, f_constant(ctx, 1.0, x.shape()), x));
+  return f_log(ctx, f_add(ctx, f_constant(ctx, 1.0F, x.dtype(), x.shape()), x));
 }
 
 Value f_log2(SPUContext* ctx, const Value& x) {
@@ -326,7 +337,7 @@ Value f_log2(SPUContext* ctx, const Value& x) {
 
   SPU_ENFORCE(x.isFxp());
 
-  return detail::log2_pade_approx(ctx, x).asFxp();
+  return detail::log2_pade_approx(ctx, x).setDtype(x.dtype());
 }
 
 Value f_exp2(SPUContext* ctx, const Value& x) {
@@ -349,23 +360,25 @@ static Value rsqrt_init_guess(SPUContext* ctx, const Value& x, const Value& z) {
   auto z_rev = _bitrev(ctx, z, 0, 2 * f);
   detail::hintNumberOfBits(z_rev, 2 * f);
 
-  auto u = _trunc(ctx, _mul(ctx, x, z_rev)).asFxp();
+  auto u = _trunc(ctx, _mul(ctx, x, z_rev)).setDtype(x.dtype());
 
   // let rsqrt(u) = 26.02942339 * u^4 - 49.86605845 * u^3 + 38.4714796 * u^2
   // - 15.47994394 * u + 4.14285016
   spu::Value r;
   if (!ctx->config().enable_lower_accuracy_rsqrt()) {
-    std::vector<Value> coeffs = {f_constant(ctx, -15.47994394, x.shape()),
-                                 f_constant(ctx, 38.4714796, x.shape()),
-                                 f_constant(ctx, -49.86605845, x.shape()),
-                                 f_constant(ctx, 26.02942339, x.shape())};
+    std::vector<Value> coeffs = {
+        f_constant(ctx, -15.47994394F, x.dtype(), x.shape()),
+        f_constant(ctx, 38.4714796F, x.dtype(), x.shape()),
+        f_constant(ctx, -49.86605845F, x.dtype(), x.shape()),
+        f_constant(ctx, 26.02942339F, x.dtype(), x.shape())};
     r = f_add(ctx, detail::f_polynomial(ctx, u, coeffs),
-              f_constant(ctx, 4.14285016, x.shape()));
+              f_constant(ctx, 4.14285016F, x.dtype(), x.shape()));
   } else {
-    std::vector<Value> coeffs = {f_constant(ctx, -5.9417, x.shape()),
-                                 f_constant(ctx, 4.7979, x.shape())};
+    std::vector<Value> coeffs = {
+        f_constant(ctx, -5.9417F, x.dtype(), x.shape()),
+        f_constant(ctx, 4.7979F, x.dtype(), x.shape())};
     r = f_add(ctx, detail::f_polynomial(ctx, u, coeffs),
-              f_constant(ctx, 3.1855, x.shape()));
+              f_constant(ctx, 3.1855F, x.dtype(), x.shape()));
   }
 
   return r;
@@ -449,11 +462,11 @@ Value f_rsqrt(SPUContext* ctx, const Value& x) {
     auto r = std::async(rsqrt_init_guess,
                         dynamic_cast<SPUContext*>(sub_ctx.get()), x, z);
     auto comp = rsqrt_comp(ctx, x, z);
-    return _trunc(ctx, _mul(ctx, r.get(), comp)).asFxp();
+    return _trunc(ctx, _mul(ctx, r.get(), comp)).setDtype(x.dtype());
   } else {
     auto r = rsqrt_init_guess(ctx, x, z);
     auto comp = rsqrt_comp(ctx, x, z);
-    return _trunc(ctx, _mul(ctx, r, comp)).asFxp();
+    return _trunc(ctx, _mul(ctx, r, comp)).setDtype(x.dtype());
   }
 }
 
@@ -467,8 +480,8 @@ Value f_rsqrt(SPUContext* ctx, const Value& x) {
 Value f_sqrt(SPUContext* ctx, const Value& x) {
   SPU_TRACE_HAL_LEAF(ctx, x);
 
-  const auto c0 = f_constant(ctx, 0.5, x.shape());
-  const auto c1 = f_constant(ctx, 1.5, x.shape());
+  const auto c0 = f_constant(ctx, 0.5F, x.dtype(), x.shape());
+  const auto c1 = f_constant(ctx, 1.5F, x.dtype(), x.shape());
 
   Value y0 = f_rsqrt(ctx, x);
   Value g = f_mul(ctx, x, y0);
@@ -490,14 +503,14 @@ namespace {
 
 Value sigmiod_real(SPUContext* ctx, const Value& x) {
   // f(x) = 1/(1+exp(-x))
-  const auto c1 = f_constant(ctx, 1.0F, x.shape());
+  const auto c1 = f_constant(ctx, 1.0F, x.dtype(), x.shape());
   return f_reciprocal(ctx, f_add(ctx, c1, f_exp(ctx, f_negate(ctx, x))));
 }
 
 Value sigmiod_mm1(SPUContext* ctx, const Value& x) {
   // SigmoidMM1: f(x) = 0.5 + 0.125 * x
-  const auto c1 = f_constant(ctx, 0.5, x.shape());
-  const auto c2 = f_constant(ctx, 0.125, x.shape());
+  const auto c1 = f_constant(ctx, 0.5F, x.dtype(), x.shape());
+  const auto c2 = f_constant(ctx, 0.125F, x.dtype(), x.shape());
   return f_add(ctx, c1, f_mul(ctx, c2, x));
 }
 
@@ -506,15 +519,15 @@ Value sigmiod_seg3(SPUContext* ctx, const Value& x) {
   //        1            if       x > 4
   //        0            if  -4 > x
   // Rounds = Gt + Mux*2 = 4 + Log(K)
-  auto upper = f_constant(ctx, 1.0F, x.shape());
-  auto lower = f_constant(ctx, 0.0F, x.shape());
+  auto upper = f_constant(ctx, 1.0F, x.dtype(), x.shape());
+  auto lower = f_constant(ctx, 0.0F, x.dtype(), x.shape());
   auto middle = sigmiod_mm1(ctx, x);
 
-  auto upper_bound = f_constant(ctx, 4.0F, x.shape());
-  auto lower_bound = f_constant(ctx, -4.0F, x.shape());
+  auto upper_bound = f_constant(ctx, 4.0F, x.dtype(), x.shape());
+  auto lower_bound = f_constant(ctx, -4.0F, x.dtype(), x.shape());
 
   auto ret = _mux(ctx, f_less(ctx, upper_bound, x), upper, middle);
-  return _mux(ctx, f_less(ctx, x, lower_bound), lower, ret).asFxp();
+  return _mux(ctx, f_less(ctx, x, lower_bound), lower, ret).setDtype(x.dtype());
 }
 
 }  // namespace

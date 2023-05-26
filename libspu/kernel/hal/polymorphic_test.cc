@@ -24,6 +24,7 @@
 #include "xtensor/xvectorize.hpp"
 
 #include "libspu/kernel/hal/constants.h"
+#include "libspu/kernel/hal/type_cast.h"
 #include "libspu/kernel/test_util.h"
 #include "libspu/mpc/utils/linalg.h"
 
@@ -440,6 +441,17 @@ template <typename S>
 class MathUnaryTest : public ::testing::Test {};
 TYPED_TEST_SUITE(MathUnaryTest, MathUnaryTestTypes);
 
+using FpOnlyMathUnaryTestTypes = ::testing::Types<
+    // s
+    std::tuple<float, secret_v, float>,  // (sfxp)
+    // p
+    std::tuple<float, public_v, float>  // (pfxp)
+    >;
+
+template <typename S>
+class FpOnlyMathUnaryTest : public ::testing::Test {};
+TYPED_TEST_SUITE(FpOnlyMathUnaryTest, FpOnlyMathUnaryTestTypes);
+
 TYPED_TEST(MathUnaryTest, Negate) {
   using IN_DT = typename std::tuple_element<0, TypeParam>::type;
   using IN_VT = typename std::tuple_element<1, TypeParam>::type;
@@ -470,7 +482,7 @@ TYPED_TEST(MathUnaryTest, Abs) {
   EXPECT_TRUE(xt::allclose(xt::abs(x), z, 0.01, 0.001));
 }
 
-TYPED_TEST(MathUnaryTest, Exp) {
+TYPED_TEST(FpOnlyMathUnaryTest, Exp) {
   using IN_DT = typename std::tuple_element<0, TypeParam>::type;
   using IN_VT = typename std::tuple_element<1, TypeParam>::type;
   using RES_DT = float;
@@ -528,7 +540,7 @@ TYPED_TEST(MathUnaryTest, Reciprocal) {
   EXPECT_TRUE(xt::allclose(log_x, z, 0.1, 0.05)) << log_x << std::endl << z;
 }
 
-TYPED_TEST(MathUnaryTest, Log) {
+TYPED_TEST(FpOnlyMathUnaryTest, Log) {
   using IN_DT = typename std::tuple_element<0, TypeParam>::type;
   using IN_VT = typename std::tuple_element<1, TypeParam>::type;
   using RES_DT = float;
@@ -568,7 +580,7 @@ TYPED_TEST(MathUnaryTest, Logistic) {
       << z;
 }
 
-TYPED_TEST(MathUnaryTest, Tanh) {
+TYPED_TEST(FpOnlyMathUnaryTest, Tanh) {
   using IN_DT = typename std::tuple_element<0, TypeParam>::type;
   using IN_VT = typename std::tuple_element<1, TypeParam>::type;
   using RES_DT = float;
@@ -585,7 +597,7 @@ TYPED_TEST(MathUnaryTest, Tanh) {
       << z;
 }
 
-TYPED_TEST(MathUnaryTest, SqrtInv) {
+TYPED_TEST(FpOnlyMathUnaryTest, RSqrt) {
   using IN_DT = typename std::tuple_element<0, TypeParam>::type;
   using IN_VT = typename std::tuple_element<1, TypeParam>::type;
   using RES_DT = float;
@@ -603,7 +615,7 @@ TYPED_TEST(MathUnaryTest, SqrtInv) {
       << y;
 }
 
-TYPED_TEST(MathUnaryTest, Sqrt) {
+TYPED_TEST(FpOnlyMathUnaryTest, Sqrt) {
   using IN_DT = typename std::tuple_element<0, TypeParam>::type;
   using IN_VT = typename std::tuple_element<1, TypeParam>::type;
   using RES_DT = float;
@@ -656,9 +668,9 @@ TEST_P(LogisticTest, Logistic) {
 
   // public logistic
   {
-    Value a = constant(&ctx, x, DT_FXP);
+    Value a = constant(&ctx, x, DT_F32);
     Value c = logistic(&ctx, a);
-    EXPECT_EQ(c.dtype(), DT_FXP);
+    EXPECT_EQ(c.dtype(), DT_F32);
 
     auto y = dump_public_as<float>(&ctx, c);
     EXPECT_TRUE(xt::allclose(1.0 / (1.0 + xt::exp(-x)), y, 0.1, 0.5))
@@ -670,9 +682,9 @@ TEST_P(LogisticTest, Logistic) {
   {
     Value a = test::makeValue(&ctx, x, VIS_SECRET);
     Value c = logistic(&ctx, a);
-    EXPECT_EQ(c.dtype(), DT_FXP);
+    EXPECT_EQ(c.dtype(), DT_F32);
 
-    auto y = dump_public_as<float>(&ctx, _s2p(&ctx, c).asFxp());
+    auto y = dump_public_as<float>(&ctx, reveal(&ctx, c));
     // low precision
     EXPECT_TRUE(xt::allclose(1.0 / (1.0 + xt::exp(-x)), y, 0.1, 0.5))
         << 1.0 / (1.0 + xt::exp(-x)) << std::endl

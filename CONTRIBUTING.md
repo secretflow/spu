@@ -17,28 +17,30 @@ part of the project.
 
 In general, please use clang-format to format code, and follow clang-tidy tips.
 
-Most of the code style is derived from the [Google C++ style guidelines](https://google.github.io/styleguide/cppguide.html), except:
+Most of the code style is derived from the
+[Google C++ style guidelines](https://google.github.io/styleguide/cppguide.html), except:
 
-* Exceptions are allowed and encouraged where appropriate.
-* Header guards should use `#pragma once`.
-* Adopt [camelBack](https://llvm.org/docs/Proposals/VariableNames.html#variable-names-coding-standard-options) for function names.
-* Use [fixed width integer types](https://en.cppreference.com/w/cpp/types/integer) whenever possible.
-* Avoid using size_t on interface APIs.
+- Exceptions are allowed and encouraged where appropriate.
+- Header guards should use `#pragma once`.
+- Adopt [camelBack](https://llvm.org/docs/Proposals/VariableNames.html#variable-names-coding-standard-options)
+    for function names.
+- Use [fixed width integer types](https://en.cppreference.com/w/cpp/types/integer) whenever possible.
+- Avoid using size_t on interface APIs.
 
 The compiler portion of the project follows [MLIR style](https://mlir.llvm.org/getting_started/DeveloperGuide/#style-guide).
 
 ### Other tips
 
-* Git commit message should be meaningful, we suggest imperative [keywords](https://github.com/joelparkerhenderson/git_commit_message#summary-keywords).
-* Developer must write unit-test (line coverage must be greater than 80%), tests should be deterministic.
-* Read awesome [Abseil Tips](https://abseil.io/tips/)
+- Git commit message should be meaningful, we suggest imperative [keywords](https://github.com/joelparkerhenderson/git_commit_message#summary-keywords).
+- Developer must write unit-test (line coverage must be greater than 80%), tests should be deterministic.
+- Read awesome [Abseil Tips](https://abseil.io/tips/)
 
 ## Build
 
 ### Prerequisite
 
-
 #### Docker
+
 ```sh
 ## start container
 docker run -d -it --name spu-gcc11-anolis-dev-$(whoami) \
@@ -90,6 +92,7 @@ pip install -r requirements-dev.txt
 ```
 
 ### Build & UnitTest
+
 ``` sh
 # build as debug
 bazel build //... -c dbg
@@ -114,15 +117,15 @@ bazel test //... --config=[macos-]ubsan
 
 ```sh
 # prerequisite
-pip install -U docs/requirements.txt
+pip install -U -r docs/requirements.txt
 
-cd docs & make html  # html docs will be in docs/_build/html
+cd docs && make html  # html docs will be in docs/_build/html
 ```
-
 
 ## Release cycle
 
-SPU recommends users "live-at-head" like [abseil-cpp](https://github.com/abseil/abseil-cpp), just like abseil, spu also provide Long Term Support Releases to which we backport fixes for severe bugs.
+SPU recommends users "live-at-head" like [abseil-cpp](https://github.com/abseil/abseil-cpp),
+just like abseil, spu also provide Long Term Support Releases to which we backport fixes for severe bugs.
 
 We use the release date as the version number, see [change log](CHANGELOG.md) for example.
 
@@ -130,5 +133,6 @@ We use the release date as the version number, see [change log](CHANGELOG.md) fo
 
 Please keep updating changes to the staging area of [change log](CHANGELOG.md)
 Changelog should contain:
+
 - all public API changes, including new features, breaking changes and deprecations.
 - notable internal changes, like performance improvement.

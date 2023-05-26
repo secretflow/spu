@@ -49,8 +49,10 @@ mlir::Type getElementType(mlir::MLIRContext *mlir_ctx, const spu::Value &v) {
       return mlir::IntegerType::get(mlir_ctx, 64);
     case DT_U64:
       return mlir::IntegerType::get(mlir_ctx, 64, mlir::IntegerType::Unsigned);
-    case DT_FXP:
+    case DT_F32:
       return mlir::Float32Type::get(mlir_ctx);
+    case DT_F64:
+      return mlir::Float64Type::get(mlir_ctx);
     default:
       SPU_THROW("Should not hit");
   }
@@ -265,6 +267,8 @@ UNARY_VERIFIER(RsqrtOp, evalRsqrtOp)
 UNARY_VERIFIER(SqrtOp, evalSqrtOp)
 UNARY_VERIFIER(RoundOp, evalRoundOp)
 UNARY_VERIFIER(SignOp, evalSignOp)
+UNARY_VERIFIER(Log1pOp, evalLog1pOp)
+UNARY_VERIFIER(Expm1Op, evalExpm1Op)
 
 #undef UNARY_VERIFIER
 
@@ -509,18 +513,6 @@ void PPHloVerifier::verify(mlir::pphlo::ConvolutionOp op,
 }
 
 void PPHloVerifier::verify(mlir::pphlo::ReciprocalOp op,
-                           absl::Span<const spu::Value> operands,
-                           absl::Span<const spu::Value> expected) {
-  SPDLOG_WARN("Missing stablehlo interpreter support");
-}
-
-void PPHloVerifier::verify(mlir::pphlo::Log1pOp op,
-                           absl::Span<const spu::Value> operands,
-                           absl::Span<const spu::Value> expected) {
-  SPDLOG_WARN("Missing stablehlo interpreter support");
-}
-
-void PPHloVerifier::verify(mlir::pphlo::Expm1Op op,
                            absl::Span<const spu::Value> operands,
                            absl::Span<const spu::Value> expected) {
   SPDLOG_WARN("Missing stablehlo interpreter support");

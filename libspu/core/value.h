@@ -62,7 +62,6 @@ class Value final {
   // By default, we can only set dtype when it's not set yet(=DT_INVALID),
   // unless we forcely do it.
   Value& setDtype(DataType new_dtype, bool force = false);
-  Value& asFxp() { return setDtype(DT_FXP); }
 
   // Serialize to protobuf.
   ValueProto toProto() const;

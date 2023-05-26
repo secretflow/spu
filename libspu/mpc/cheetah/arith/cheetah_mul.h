@@ -32,8 +32,6 @@ class CheetahMul {
 
   ~CheetahMul();
 
-  std::unique_ptr<CheetahMul> Fork();
-
   CheetahMul& operator=(const CheetahMul&) = delete;
 
   CheetahMul(const CheetahMul&) = delete;
@@ -51,9 +49,6 @@ class CheetahMul {
 
  private:
   struct Impl;
-
-  // Used by Fork
-  explicit CheetahMul(std::unique_ptr<Impl> impl);
 
   std::unique_ptr<Impl> impl_{nullptr};
 };

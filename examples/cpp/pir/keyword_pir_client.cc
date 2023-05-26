@@ -17,7 +17,7 @@
 // > bazel build //examples/cpp/pir:keyword_pir_client -c opt
 //
 // To run the example, start terminals:
-// > ./keyword_pir_client -rank 1 -in_path ../../data/psi_client_data.csv.csv 
+// > ./keyword_pir_client -rank 1 -in_path ../../data/psi_client_data.csv.csv
 // >       -key_columns id -out_path pir_out.csv
 // clang-format on
 

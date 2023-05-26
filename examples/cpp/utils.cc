@@ -17,10 +17,12 @@
 #include "absl/strings/match.h"
 #include "absl/strings/str_split.h"
 
+#include "libspu/core/config.h"
+
 #include "libspu/spu.pb.h"
 
 llvm::cl::opt<std::string> Parties(
-    "parties", llvm::cl::init("127.0.0.1:9530,127.0.0.1:9531"),
+    "parties", llvm::cl::init("127.0.0.1:39530,127.0.0.1:39531"),
     llvm::cl::desc("server list, format: host1:port1[,host2:port2, ...]"));
 llvm::cl::opt<uint32_t> Rank("rank", llvm::cl::init(0),
                              llvm::cl::desc("self rank"));
@@ -53,7 +55,10 @@ std::unique_ptr<spu::SPUContext> MakeSPUContext() {
   config.set_protocol(static_cast<spu::ProtocolKind>(ProtocolKind.getValue()));
   config.set_field(static_cast<spu::FieldType>(Field.getValue()));
 
+  populateRuntimecConfig(config);
+
   config.set_enable_action_trace(EngineTrace.getValue());
   config.set_enable_type_checker(EngineTrace.getValue());
+
   return std::make_unique<spu::SPUContext>(config, lctx);
 }

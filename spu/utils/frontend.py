@@ -96,8 +96,8 @@ class Kind(Enum):
 def compile(
     kind: Kind,
     fn: Callable,
-    args: List,
-    kwargs: Dict,
+    m_args: List,
+    m_kwargs: Dict,
     input_names: List[str],
     input_vis: List,
     outputNameGen: Callable,
@@ -109,7 +109,7 @@ def compile(
 
         patches = _patch_jax()
 
-        ir_text, output = _jax_compilation(fn, static_argnums, args, kwargs)
+        ir_text, output = _jax_compilation(fn, static_argnums, m_args, m_kwargs)
 
         _restore_jax_patch(patches)
 
@@ -120,11 +120,11 @@ def compile(
         import tensorflow as tf
 
         tf_fn = tf.function(fn, jit_compile=True, experimental_relax_shapes=True)
-        ir_text = tf_fn.experimental_get_compiler_ir(*args, **kwargs)(
+        ir_text = tf_fn.experimental_get_compiler_ir(*m_args, **m_kwargs)(
             stage="hlo_serialized",
         )
 
-        cf = tf_fn.get_concrete_function(*args, **kwargs)
+        cf = tf_fn.get_concrete_function(*m_args, **m_kwargs)
 
         # TODO(junfeng): support input captures.
         assert (
@@ -144,7 +144,7 @@ def compile(
         ), "currently only torch.nn.Module is supported"
 
         # convert numpy.ndarray to torch tensor as torch_mlir required
-        arg_tensors = [torch.Tensor(arg) for arg in args]
+        arg_tensors = [torch.Tensor(arg) for arg in m_args]
         # get mlir module
         module = torch_mlir.compile(
             fn, arg_tensors, output_type=torch_mlir.OutputType.MHLO

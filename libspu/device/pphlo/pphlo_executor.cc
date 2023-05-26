@@ -110,7 +110,14 @@ spu::DataType getDtypeFromMlirType(mlir::Type mlir_ty) {
         SPU_THROW("unsupported int type {}", mlirObjectToString(mlir_ty));
     }
   } else if (auto flp_ty = express_type.dyn_cast<mlir::FloatType>()) {
-    return spu::DT_FXP;
+    switch (flp_ty.getWidth()) {
+      case 32:
+        return spu::DT_F32;
+      case 64:
+        return spu::DT_F64;
+      default:
+        SPU_THROW("unsupported fp type {}", mlirObjectToString(flp_ty));
+    }
   }
   SPU_THROW("invalid type {}", mlirObjectToString(mlir_ty));
 }
@@ -272,7 +279,7 @@ void execute(OpExecutor *executor, SPUContext *sctx, SymbolScope *sscope,
                                  .getSplatValue<mlir::APFloat>()
                                  .convertToFloat());
       auto eps = kernel::hal::dump_public_as<float>(
-          sctx, kernel::hlo::Epsilon(sctx))[0];
+          sctx, kernel::hlo::Epsilon(sctx, DT_F32))[0];
 
       // Amplify eps to 1/(2^(fxp_bits-2))
       // TODO: Maybe make it configurable?
@@ -1081,7 +1088,7 @@ void execute(OpExecutor *executor, SPUContext *sctx, SymbolScope *sscope,
 
 void execute(OpExecutor *executor, SPUContext *sctx, SymbolScope *sscope,
              mlir::pphlo::EpsilonOp &op, const ExecutionOptions &opts) {
-  auto e = kernel::hlo::Epsilon(sctx);
+  auto e = kernel::hlo::Epsilon(sctx, getDtypeFromMlirType(op.getType()));
   auto shape =
       op->getResultTypes()[0].dyn_cast<mlir::RankedTensorType>().getShape();
   addValue(sscope, op.getResult(), kernel::hlo::Broadcast(sctx, e, shape, {}),

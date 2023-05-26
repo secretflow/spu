@@ -20,6 +20,6 @@ SCRIPTPATH=`dirname $SCRIPT`
 REPOPATH=`realpath $SCRIPTPATH/../../`
 
 bazel run //libspu/mpc/tools:complexity -- --out="$REPOPATH/docs/reference/complexity.json"
-python $REPOPATH/docs/reference/gen_complexity_md.py --in="$REPOPATH/docs/reference/complexity.json" --out="$REPOPATH/docs/reference/complexity.md" 
+python $REPOPATH/docs/reference/gen_complexity_md.py --in="$REPOPATH/docs/reference/complexity.json" --out="$REPOPATH/docs/reference/complexity.md"
 
 # echo $REPOPATH

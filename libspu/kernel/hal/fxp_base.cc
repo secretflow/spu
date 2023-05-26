@@ -49,7 +49,7 @@ Value f_polynomial(SPUContext* ctx, const Value& x,
     res = _add(ctx, res, _mul(ctx, x_pow, coeffs[i]));
   }
 
-  return _trunc(ctx, res).asFxp();
+  return _trunc(ctx, res).setDtype(x.dtype());
 }
 
 Value highestOneBit(SPUContext* ctx, const Value& x) {
@@ -102,13 +102,13 @@ Value div_goldschmidt(SPUContext* ctx, const Value& a, const Value& b) {
   auto is_negative = _msb(ctx, b);
   // insert ``prefer_a'' because the msb bit are used twice.
   is_negative = _prefer_a(ctx, is_negative);
-  auto b_abs = _mux(ctx, is_negative, _negate(ctx, b), b).asFxp();
+  auto b_abs = _mux(ctx, is_negative, _negate(ctx, b), b).setDtype(b.dtype());
 
   auto b_msb = detail::highestOneBit(ctx, b_abs);
 
   // factor = 2^{2f-m} = 2^{f-m} * 2^f, the fixed point repr of 2^{f-m}
   const size_t num_fxp_bits = ctx->getFxpBits();
-  auto factor = _bitrev(ctx, b_msb, 0, 2 * num_fxp_bits).asFxp();
+  auto factor = _bitrev(ctx, b_msb, 0, 2 * num_fxp_bits).setDtype(b.dtype());
   detail::hintNumberOfBits(factor, 2 * num_fxp_bits);
 
   // compute normalize x_abs, [0.5, 1)
@@ -117,11 +117,11 @@ Value div_goldschmidt(SPUContext* ctx, const Value& a, const Value& b) {
   // initial guess:
   //   w = 1/c ≈ 2.9142 - 2c when c >= 0.5 and c < 1
   const auto k2 = _constant(ctx, 2, c.shape());
-  const auto k2_9142 = constant(ctx, 2.9142F, DT_FXP, c.shape());
-  auto w = f_sub(ctx, k2_9142, _mul(ctx, k2, c).asFxp());
+  const auto k2_9142 = constant(ctx, 2.9142F, b.dtype(), c.shape());
+  auto w = f_sub(ctx, k2_9142, _mul(ctx, k2, c).setDtype(b.dtype()));
 
   // init r=w, e=1-c*w
-  const auto& k1_ = constant(ctx, 1.0F, DT_FXP, c.shape());
+  const auto& k1_ = constant(ctx, 1.0F, b.dtype(), c.shape());
   auto r = w;
   auto e = f_sub(ctx, k1_, f_mul_with_sign(ctx, c, w, SignType::POSITIVE));
 
@@ -141,7 +141,7 @@ Value div_goldschmidt(SPUContext* ctx, const Value& a, const Value& b) {
   // However, it might overflow when the input x is too small.
   r = f_mul(ctx, r, a);
   r = f_mul(ctx, r, factor);
-  return _mux(ctx, is_negative, _negate(ctx, r), r).asFxp();
+  return _mux(ctx, is_negative, _negate(ctx, r), r).setDtype(a.dtype());
 }
 
 Value reciprocal_goldschmidt_positive(SPUContext* ctx, const Value& b_abs) {
@@ -149,7 +149,8 @@ Value reciprocal_goldschmidt_positive(SPUContext* ctx, const Value& b_abs) {
 
   // factor = 2^{2f-m} = 2^{f-m} * 2^f, the fixed point repr of 2^{f-m}
   const size_t num_fxp_bits = ctx->getFxpBits();
-  auto factor = _bitrev(ctx, b_msb, 0, 2 * num_fxp_bits).asFxp();
+  auto factor =
+      _bitrev(ctx, b_msb, 0, 2 * num_fxp_bits).setDtype(b_abs.dtype());
   detail::hintNumberOfBits(factor, 2 * num_fxp_bits);
 
   // compute normalize x_abs, [0.5, 1)
@@ -158,11 +159,13 @@ Value reciprocal_goldschmidt_positive(SPUContext* ctx, const Value& b_abs) {
   // initial guess:
   //   w = 1/b = 2.9142 - 2c when c >= 0.5 and c < 1
   const auto k2 = _constant(ctx, 2, c.shape());
-  const auto k2_9142 = constant(ctx, 2.9142F, DT_FXP, c.shape());
-  auto w = f_mul(ctx, f_sub(ctx, k2_9142, _mul(ctx, k2, c).asFxp()), factor);
+  const auto k2_9142 = constant(ctx, 2.9142F, b_abs.dtype(), c.shape());
+  auto w =
+      f_mul(ctx, f_sub(ctx, k2_9142, _mul(ctx, k2, c).setDtype(b_abs.dtype())),
+            factor);
 
   // init r=a*w, e=1-b*w
-  const auto& k1_ = constant(ctx, 1.0F, DT_FXP, c.shape());
+  const auto& k1_ = constant(ctx, 1.0F, b_abs.dtype(), c.shape());
   auto r = w;
   auto e = f_sub(ctx, k1_, f_mul_with_sign(ctx, b_abs, w, SignType::POSITIVE));
 
@@ -189,9 +192,9 @@ Value reciprocal_goldschmidt(SPUContext* ctx, const Value& b) {
   auto is_negative = _msb(ctx, b);
   is_negative = _prefer_a(ctx, is_negative);
 
-  auto b_abs = _mux(ctx, is_negative, _negate(ctx, b), b).asFxp();
+  auto b_abs = _mux(ctx, is_negative, _negate(ctx, b), b).setDtype(b.dtype());
   auto r = reciprocal_goldschmidt_positive(ctx, b_abs);
-  return _mux(ctx, is_negative, _negate(ctx, r), r).asFxp();
+  return _mux(ctx, is_negative, _negate(ctx, r), r).setDtype(b.dtype());
 }
 
 }  // namespace detail
@@ -200,7 +203,7 @@ Value f_negate(SPUContext* ctx, const Value& x) {
   SPU_TRACE_HAL_LEAF(ctx, x);
 
   SPU_ENFORCE(x.isFxp());
-  return _negate(ctx, x).asFxp();
+  return _negate(ctx, x).setDtype(x.dtype());
 }
 
 Value f_abs(SPUContext* ctx, const Value& x) {
@@ -209,7 +212,7 @@ Value f_abs(SPUContext* ctx, const Value& x) {
   SPU_ENFORCE(x.isFxp());
   const Value sign = _sign(ctx, x);
 
-  return _mul(ctx, sign, x).asFxp();
+  return _mul(ctx, sign, x).setDtype(x.dtype());
 }
 
 Value f_reciprocal(SPUContext* ctx, const Value& x) {
@@ -226,45 +229,43 @@ Value f_reciprocal(SPUContext* ctx, const Value& x) {
 Value f_add(SPUContext* ctx, const Value& x, const Value& y) {
   SPU_TRACE_HAL_LEAF(ctx, x, y);
 
-  SPU_ENFORCE(x.isFxp());
-  SPU_ENFORCE(y.isFxp());
+  SPU_ENFORCE(x.isFxp() && y.isFxp() && x.dtype() == y.dtype());
 
-  return _add(ctx, x, y).asFxp();
+  return _add(ctx, x, y).setDtype(x.dtype());
 }
 
 Value f_sub(SPUContext* ctx, const Value& x, const Value& y) {
   SPU_TRACE_HAL_LEAF(ctx, x, y);
 
-  SPU_ENFORCE(x.isFxp());
-  SPU_ENFORCE(y.isFxp());
+  SPU_ENFORCE(x.isFxp() && y.isFxp() && x.dtype() == y.dtype());
+
   return f_add(ctx, x, f_negate(ctx, y));
 }
 
 Value f_mul(SPUContext* ctx, const Value& x, const Value& y) {
   SPU_TRACE_HAL_LEAF(ctx, x, y);
 
-  SPU_ENFORCE(x.isFxp());
-  SPU_ENFORCE(y.isFxp());
-  return _trunc(ctx, _mul(ctx, x, y)).asFxp();
+  SPU_ENFORCE(x.isFxp() && y.isFxp() && x.dtype() == y.dtype());
+
+  return _trunc(ctx, _mul(ctx, x, y)).setDtype(x.dtype());
 }
 
 Value f_mul_with_sign(SPUContext* ctx, const Value& x, const Value& y,
                       SignType sign) {
   SPU_TRACE_HAL_LEAF(ctx, x, y);
 
-  SPU_ENFORCE(x.isFxp());
-  SPU_ENFORCE(y.isFxp());
+  SPU_ENFORCE(x.isFxp() && y.isFxp() && x.dtype() == y.dtype());
 
   switch (sign) {
     case SignType::POSITIVE:
       return _trunc_with_sign(ctx, _mul(ctx, x, y), ctx->getFxpBits(),
                               /*positive*/ true)
-          .asFxp();
+          .setDtype(x.dtype());
       break;
     case SignType::NEGATIVE:
       return _trunc_with_sign(ctx, _mul(ctx, x, y), ctx->getFxpBits(),
                               /*positive*/ false)
-          .asFxp();
+          .setDtype(x.dtype());
       break;
     case SignType::UNKNOWN:
     default:
@@ -276,10 +277,9 @@ Value f_mul_with_sign(SPUContext* ctx, const Value& x, const Value& y,
 Value f_mmul(SPUContext* ctx, const Value& x, const Value& y) {
   SPU_TRACE_HAL_LEAF(ctx, x, y);
 
-  SPU_ENFORCE(x.isFxp());
-  SPU_ENFORCE(y.isFxp());
+  SPU_ENFORCE(x.isFxp() && y.isFxp() && x.dtype() == y.dtype());
 
-  return _trunc(ctx, _mmul(ctx, x, y)).asFxp();
+  return _trunc(ctx, _mmul(ctx, x, y)).setDtype(x.dtype());
 }
 
 Value f_conv2d(SPUContext* ctx, const Value& x, const Value& y,
@@ -287,17 +287,16 @@ Value f_conv2d(SPUContext* ctx, const Value& x, const Value& y,
                absl::Span<const int64_t> result_shape) {
   SPU_TRACE_HAL_LEAF(ctx, x, y);
 
-  SPU_ENFORCE(x.isFxp());
-  SPU_ENFORCE(y.isFxp());
+  SPU_ENFORCE(x.isFxp() && y.isFxp() && x.dtype() == y.dtype());
 
-  return _trunc(ctx, _conv2d(ctx, x, y, window_strides, result_shape)).asFxp();
+  return _trunc(ctx, _conv2d(ctx, x, y, window_strides, result_shape))
+      .setDtype(x.dtype());
 }
 
 Value f_div(SPUContext* ctx, const Value& x, const Value& y) {
   SPU_TRACE_HAL_LEAF(ctx, x, y);
 
-  SPU_ENFORCE(x.isFxp());
-  SPU_ENFORCE(y.isFxp());
+  SPU_ENFORCE(x.isFxp() && y.isFxp() && x.dtype() == y.dtype());
 
   if (x.isPublic() && y.isPublic()) {
     return f_div_p(ctx, x, y);
@@ -309,8 +308,7 @@ Value f_div(SPUContext* ctx, const Value& x, const Value& y) {
 Value f_equal(SPUContext* ctx, const Value& x, const Value& y) {
   SPU_TRACE_HAL_LEAF(ctx, x, y);
 
-  SPU_ENFORCE(x.isFxp());
-  SPU_ENFORCE(y.isFxp());
+  SPU_ENFORCE(x.isFxp() && y.isFxp() && x.dtype() == y.dtype());
 
   return _equal(ctx, x, y).setDtype(DT_I1);
 }
@@ -318,8 +316,7 @@ Value f_equal(SPUContext* ctx, const Value& x, const Value& y) {
 Value f_less(SPUContext* ctx, const Value& x, const Value& y) {
   SPU_TRACE_HAL_LEAF(ctx, x, y);
 
-  SPU_ENFORCE(x.isFxp());
-  SPU_ENFORCE(y.isFxp());
+  SPU_ENFORCE(x.isFxp() && y.isFxp() && x.dtype() == y.dtype());
 
   return _less(ctx, x, y).setDtype(DT_I1);
 }
@@ -332,7 +329,7 @@ Value f_square(SPUContext* ctx, const Value& x) {
   // TODO(juhou) can use truncate with msb=0
 
   return _trunc_with_sign(ctx, _mul(ctx, x, x), ctx->getFxpBits(), true)
-      .asFxp();
+      .setDtype(x.dtype());
 }
 
 Value f_floor(SPUContext* ctx, const Value& x) {
@@ -341,7 +338,7 @@ Value f_floor(SPUContext* ctx, const Value& x) {
   SPU_ENFORCE(x.isFxp());
 
   const size_t fbits = ctx->getFxpBits();
-  return _lshift(ctx, _arshift(ctx, x, fbits), fbits).asFxp();
+  return _lshift(ctx, _arshift(ctx, x, fbits), fbits).setDtype(x.dtype());
 }
 
 Value f_ceil(SPUContext* ctx, const Value& x) {
@@ -350,8 +347,9 @@ Value f_ceil(SPUContext* ctx, const Value& x) {
   SPU_ENFORCE(x.isFxp());
 
   // ceil(x) = floor(x + 1.0 - epsilon)
-  const auto k1 = constant(ctx, 1.0F, DT_FXP, x.shape());
-  return f_floor(ctx, f_add(ctx, x, f_sub(ctx, k1, epsilon(ctx, x.shape()))));
+  const auto k1 = constant(ctx, 1.0F, x.dtype(), x.shape());
+  return f_floor(
+      ctx, f_add(ctx, x, f_sub(ctx, k1, epsilon(ctx, x.dtype(), x.shape()))));
 }
 
 }  // namespace spu::kernel::hal

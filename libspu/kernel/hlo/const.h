@@ -30,6 +30,6 @@ spu::Value Iota(SPUContext *ctx, DataType dtype, int64_t numel);
 // Returns the SPU epsilon, the positive distance between two fixed point value.
 //
 // The result visibility is public.
-spu::Value Epsilon(SPUContext *ctx);
+spu::Value Epsilon(SPUContext *ctx, DataType dtype);
 
 }  // namespace spu::kernel::hlo

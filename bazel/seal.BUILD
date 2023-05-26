@@ -57,8 +57,8 @@ spu_cmake_external(
         "//conditions:default": default_config,
     }),
     lib_source = "@com_github_microsoft_seal//:all",
-    out_include_dir = "include/SEAL-4.0",
-    out_static_libs = ["libseal-4.0.a"],
+    out_include_dir = "include/SEAL-4.1",
+    out_static_libs = ["libseal-4.1.a"],
     deps = [
         "@com_github_facebook_zstd//:zstd",
     ] + select({

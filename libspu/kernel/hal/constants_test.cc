@@ -31,7 +31,7 @@ TEST(ConstantsTest, Scalar) {
   EXPECT_TRUE(i.isPublic());
   EXPECT_TRUE(i.isInt());
 
-  Value f = constant(&ctx, 0.0, DT_FXP);
+  Value f = constant(&ctx, 0.0F, DT_F32);
   EXPECT_TRUE(f.shape().empty());
   EXPECT_TRUE(f.strides().empty());
   EXPECT_EQ(f.numel(), 1);
@@ -43,7 +43,7 @@ TEST(ConstantsTest, Tensor) {
   SPUContext ctx = test::makeSPUContext();
 
   xt::xarray<float> raw = {1.0F};
-  Value x = constant(&ctx, raw, DT_FXP);
+  Value x = constant(&ctx, raw, DT_F32);
   EXPECT_THAT(x.shape(), testing::ElementsAre(1));
   EXPECT_THAT(x.strides(), testing::ElementsAre(0));
   EXPECT_EQ(x.numel(), 1);
@@ -58,7 +58,7 @@ TEST(ConstantsTest, TensorBroadcast) {
       {1.0, 2.0},
   };
 
-  Value x = constant(&ctx, raw, DT_FXP, {6, 2});
+  Value x = constant(&ctx, raw, DT_F32, {6, 2});
   EXPECT_THAT(x.shape(), testing::ElementsAre(6, 2));
   EXPECT_THAT(x.strides(), testing::ElementsAre(0, 1));
   EXPECT_EQ(x.numel(), 12);
@@ -79,8 +79,8 @@ TEST(ConstantsTest, Initializer) {
   // EXPECT_EQ(constant(&ctx, 0, DT_U32).dtype(), DT_U32); // FIXME
   // EXPECT_EQ(constant(&ctx, 0, DT_I64).dtype(), DT_I64); // FIXME
   // EXPECT_EQ(constant(&ctx, 0, DT_U64).dtype(), DT_U64); // FIXME
-  // EXPECT_EQ(constant(&ctx, 0, DT_FXP).dtype(), DT_FXP); // FIXME
-  EXPECT_EQ(constant(&ctx, 0.0, DT_FXP).dtype(), DT_FXP);
+  EXPECT_EQ(constant(&ctx, 0.0F, DT_F32).dtype(), DT_F32);
+  EXPECT_EQ(constant(&ctx, 0.0, DT_F64).dtype(), DT_F64);
 }
 
 }  // namespace spu::kernel::hal

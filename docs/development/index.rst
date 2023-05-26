@@ -17,3 +17,4 @@ This part contains design principles of SPU and staging PSI documentation.
    psi_protocol_intro
    pir
    add_protocols
+   ir_dump

@@ -41,6 +41,7 @@ Value iota(SPUContext* ctx, DataType dtype, int64_t numel);
 // Returns the SPU epsilon, the positive distance between two fixed point value.
 //
 // The result visibility is public.
-Value epsilon(SPUContext* ctx, absl::Span<const int64_t> shape = {});
+Value epsilon(SPUContext* ctx, DataType dtype,
+              absl::Span<const int64_t> shape = {});
 
 }  // namespace spu::kernel::hal

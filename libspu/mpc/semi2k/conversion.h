@@ -79,12 +79,12 @@ class MsbA2B : public UnaryKernel {
   static constexpr char kBindName[] = "msb_a2b";
 
   ce::CExpr latency() const override {
-    // 1 * carry_out : log(k) + 1
+    // 1 * carry: log(k) + 1
     return Log(ce::K()) + 1;
   }
 
   ce::CExpr comm() const override {
-    // 1 * carry_out: k + 4 * k
+    // 1 * carry: k + 4 * k
     return ce::K() * 5;
   }
 

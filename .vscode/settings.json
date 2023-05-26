@@ -36,5 +36,6 @@
         "editor.formatOnSave": false,
     },
     "python.formatting.provider": "black",
-    "esbonio.sphinx.confDir": ""
+    "esbonio.sphinx.confDir": "",
+    "git.ignoreLimitWarning": true
 }

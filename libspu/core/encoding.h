@@ -63,8 +63,8 @@ namespace spu {
   FN(PT_I64, DT_I64)            \
   FN(PT_U64, DT_U64)            \
   FN(PT_BOOL, DT_I1)            \
-  FN(PT_F32, DT_FXP)            \
-  FN(PT_F64, DT_FXP)
+  FN(PT_F32, DT_F32)            \
+  FN(PT_F64, DT_F64)
 
 #define MAP_DTYPE_TO_PTTYPE(FN) \
   FN(DT_I8, PT_I8)              \
@@ -76,7 +76,8 @@ namespace spu {
   FN(DT_I64, PT_I64)            \
   FN(DT_U64, PT_U64)            \
   FN(DT_I1, PT_BOOL)            \
-  FN(DT_FXP, PT_F32)
+  FN(DT_F32, PT_F32)            \
+  FN(DT_F64, PT_F64)
 
 DataType getEncodeType(PtType pt_type);
 

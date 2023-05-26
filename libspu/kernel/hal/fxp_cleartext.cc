@@ -25,7 +25,7 @@ template <typename FN>
 Value applyFloatingPointFn(SPUContext* ctx, const Value& in, FN&& fn) {
   SPU_TRACE_HAL_DISP(ctx, in);
   SPU_ENFORCE(in.isPublic(), "expected public, got {}", in.storage_type());
-  SPU_ENFORCE(in.dtype() == DT_FXP, "expected fxp, got={}", in.dtype());
+  SPU_ENFORCE(in.isFxp(), "expected fxp, got={}", in.dtype());
 
   const size_t fxp_bits = ctx->getFxpBits();
   const auto field = in.storage_type().as<Ring2k>()->field();
@@ -42,7 +42,7 @@ Value applyFloatingPointFn(SPUContext* ctx, const Value& in, FN&& fn) {
   DataType dtype;
   const auto out = encodeToRing(f32_arr, field, fxp_bits, &dtype);
 
-  SPU_ENFORCE(dtype == DT_FXP, "sanity failed");
+  SPU_ENFORCE(dtype == DT_F32 || dtype == DT_F64, "sanity failed");
   return Value(out.as(in.storage_type()), dtype);
 }
 
@@ -52,8 +52,8 @@ Value applyFloatingPointFn(SPUContext* ctx, const Value& x, const Value& y,
   SPU_TRACE_HAL_DISP(ctx, x, y);
   SPU_ENFORCE(x.isPublic() && y.isPublic(), "expect public, got {}, {}",
               x.vtype(), y.vtype());
-  SPU_ENFORCE((x.dtype() == DT_FXP) && (y.dtype() == DT_FXP),
-              "expected fxp, got={} {}", x.dtype(), y.dtype());
+  SPU_ENFORCE((x.isFxp()) && (y.isFxp()), "expected fxp, got={} {}", x.dtype(),
+              y.dtype());
   SPU_ENFORCE(x.shape() == y.shape());
 
   const auto field = x.storage_type().as<Ring2k>()->field();
@@ -73,7 +73,7 @@ Value applyFloatingPointFn(SPUContext* ctx, const Value& x, const Value& y,
 
   DataType dtype;
   const auto out = encodeToRing(flp_x, field, fxp_bits, &dtype);
-  SPU_ENFORCE(dtype == DT_FXP, "sanity failed");
+  SPU_ENFORCE(dtype == DT_F32 || dtype == DT_F64, "sanity failed");
   return Value(out.as(x.storage_type()), dtype);
 }
 

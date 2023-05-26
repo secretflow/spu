@@ -161,7 +161,7 @@ ArrayRef decodeFromRing(const ArrayRef& src, DataType in_dtype, size_t fxp_bits,
         pforeach(0, numel, [&](int64_t idx) {
           dst_ptr[idx * dst_stride] = !((src_ptr[idx * src_stride] & 0x1) == 0);
         });
-      } else if (in_dtype == DT_FXP) {
+      } else if (in_dtype == DT_F32 || in_dtype == DT_F64) {
         const T kScale = T(1) << fxp_bits;
         pforeach(0, numel, [&](int64_t idx) {
           dst_ptr[idx * dst_stride] =

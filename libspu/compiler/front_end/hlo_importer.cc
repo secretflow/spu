@@ -150,7 +150,20 @@ HloImporter::parseXlaModuleFromString(const std::string &content) {
   if (context_->hasPrettyPrintEnabled()) {
     debug_options.set_xla_dump_hlo_pass_re(".*");
     debug_options.set_xla_dump_to(context_->getPrettyPrintDir().string());
-    debug_options.set_xla_dump_hlo_as_text(true);
+    switch (context_->getXlaPrettyPrintKind()) {
+    case spu::XLAPrettyPrintKind::DOT: {
+      debug_options.set_xla_dump_hlo_as_dot(true);
+      break;
+    }
+    case spu::XLAPrettyPrintKind::HTML: {
+      debug_options.set_xla_dump_hlo_as_html(true);
+      break;
+    }
+    default: {
+      debug_options.set_xla_dump_hlo_as_text(true);
+      break;
+    }
+    }
     debug_options.set_xla_detailed_logging_and_dumping(true);
   }
 

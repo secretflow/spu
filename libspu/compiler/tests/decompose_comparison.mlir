@@ -42,4 +42,3 @@ func.func @main(%arg0: tensor<2x2x!pphlo.pub<i32>>, %arg1: tensor<2x2x!pphlo.pub
     %5 = "pphlo.greater_equal"(%arg0, %arg1) : (tensor<2x2x!pphlo.pub<i32>>, tensor<2x2x!pphlo.pub<i32>>) -> tensor<2x2x!pphlo.pub<i1>>
     return %0, %1, %2, %3, %4, %5 : tensor<2x2x!pphlo.pub<i1>>, tensor<2x2x!pphlo.pub<i1>>, tensor<2x2x!pphlo.pub<i1>>, tensor<2x2x!pphlo.pub<i1>>, tensor<2x2x!pphlo.pub<i1>>, tensor<2x2x!pphlo.pub<i1>>
   }
-  

@@ -25,102 +25,11 @@
 #include "gtest/gtest.h"
 #include "xtensor/xrandom.hpp"
 
-#include "libspu/compiler/common/compilation_context.h"
-#include "libspu/compiler/compile.h"
-#include "libspu/device/api.h"
+#include "libspu/device/pphlo/pphlo_executor_test_runner.h"
 #include "libspu/device/symbol_table.h"
-#include "libspu/device/test_utils.h"
-#include "libspu/kernel/test_util.h"
 #include "libspu/mpc/ref2k/ref2k.h"
-#include "libspu/mpc/utils/simulate.h"
 
-namespace spu::device {
-namespace {
-
-class Runner {
- public:
-  Runner(size_t world_size, FieldType field, ProtocolKind protocol)
-      : world_size_(world_size) {
-    config_.set_field(field);
-    config_.set_protocol(protocol);
-    config_.set_enable_type_checker(true);
-    io_ = std::make_unique<LocalIo>(world_size_, config_);
-  }
-
-  auto &getConfig() { return config_; }
-
-  template <typename T>
-  void addInput(const T &input, Visibility vis = Visibility::VIS_PUBLIC) {
-    const std::string name = fmt::format("input{}", input_idx_++);
-    io_->InFeed(name, input, vis);
-    executable_.add_input_names(name);
-  }
-
-  static std::string compileMHlo(const std::string &mhlo,
-                                 const std::vector<spu::Visibility> &vis) {
-    CompilationSource source;
-    source.set_ir_type(SourceIRType::MLIR_HLO);
-    source.set_ir_txt(mhlo);
-    for (const auto v : vis) {
-      source.add_input_visibility(v);
-    }
-
-    compiler::CompilationContext ctx;
-    return compiler::compile(&ctx, source.SerializeAsString());
-  }
-
-  void run(const std::string &mlir, size_t num_output = 1) {
-    for (size_t idx = 0; idx < num_output; ++idx) {
-      executable_.add_output_names(fmt::format("output{}", idx));
-    }
-    executable_.set_code(mlir);
-    ::spu::mpc::utils::simulate(
-        world_size_, [&](const std::shared_ptr<yacl::link::Context> &lctx) {
-          RuntimeConfig conf;
-          conf.CopyFrom(config_);
-          if (lctx->Rank() == 0) {
-            // conf.set_enable_action_trace(true);
-          }
-          SPUContext sctx = kernel::test::makeSPUContext(conf, lctx);
-          auto *env = io_->GetSymbolTable(lctx->Rank());
-          pphlo::PPHloExecutor executor;
-          execute(&executor, &sctx, executable_, env);
-        });
-  }
-
-  template <typename T>
-  void verifyOutput(const T *expected, size_t idx = 0) {
-    const auto &out = io_->OutFeed(fmt::format("output{}", idx));
-
-    size_t numel = out.numel();
-    const auto *in_ptr = static_cast<const T *>(out.data());
-
-    // TODO: handle strides
-    for (size_t i = 0; i < numel; ++i) {
-      if constexpr (std::is_integral_v<T>) {
-        EXPECT_EQ(in_ptr[i], expected[i]) << "i = " << i << "\n";
-      } else {
-        EXPECT_TRUE(std::abs(in_ptr[i] - expected[i]) <= 1e-2)
-            << "i = " << i << " in = " << in_ptr[i]
-            << " expected = " << expected[i] << "\n";
-      }
-    }
-  }
-
-  template <typename T, std::enable_if_t<std::is_scalar_v<T>, bool> = true>
-  void verifyScalarOutput(T expected, size_t idx = 0) {
-    verifyOutput(&expected, idx);
-  }
-
- private:
-  size_t world_size_;
-  RuntimeConfig config_;
-  std::unique_ptr<LocalIo> io_;
-  size_t input_idx_{0};
-  ExecutableProto executable_;
-};
-
-}  // namespace
+namespace spu::device::pphlo::test {
 
 class ExecutorTest : public ::testing::TestWithParam<
                          std::tuple<size_t, FieldType, ProtocolKind>> {};
@@ -938,7 +847,7 @@ TEST_P(ExecutorTest, Simple4x4Conv2DWith2x2Kernel) {
   }}};
   r.addInput(rhs);
 
-  auto ir = spu::device::Runner::compileMHlo(R"(
+  auto ir = r.compileMHlo(R"(
 func.func @main(%arg0: tensor<1x1x4x4xf32>, %arg1: tensor<1x1x2x2xf32>) -> (tensor<1x1x4x4xf32>) {
     %0 = mhlo.convolution(%arg0, %arg1)
             dim_numbers = [b, f, 0, 1]x[o, i, 0, 1]->[b, f, 0, 1],
@@ -949,7 +858,7 @@ func.func @main(%arg0: tensor<1x1x4x4xf32>, %arg1: tensor<1x1x2x2xf32>) -> (tens
             } : (tensor<1x1x4x4xf32>, tensor<1x1x2x2xf32>) -> tensor<1x1x4x4xf32>
     return %0 : tensor<1x1x4x4xf32>
 })",
-                                             {VIS_PUBLIC, VIS_PUBLIC});
+                          {VIS_PUBLIC, VIS_PUBLIC});
 
   r.run(ir);
 
@@ -977,7 +886,7 @@ TEST_P(ExecutorTest, Conv2DGeneralDimensions) {
 
   r.addInput(rhs);
 
-  auto ir = spu::device::Runner::compileMHlo(R"(
+  auto ir = r.compileMHlo(R"(
 func.func @main(%arg0: tensor<2x3x1x4xf32>, %arg1:tensor<1x3x2x3xf32>) -> (tensor<1x1x1x2xf32>) {
     %0 = mhlo.convolution(%arg0, %arg1)
           dim_numbers = [f, 0, b, 1]x[o, 1, i,0]->[f, 0, b, 1],
@@ -988,7 +897,7 @@ func.func @main(%arg0: tensor<2x3x1x4xf32>, %arg1:tensor<1x3x2x3xf32>) -> (tenso
           } : (tensor<2x3x1x4xf32>,tensor<1x3x2x3xf32>) -> tensor<1x1x1x2xf32>
     return %0 : tensor<1x1x1x2xf32>
 })",
-                                             {VIS_PUBLIC, VIS_PUBLIC});
+                          {VIS_PUBLIC, VIS_PUBLIC});
 
   r.run(ir);
 
@@ -1015,7 +924,7 @@ TEST_P(ExecutorTest, DilatedBaseConv2DWithHighPadding) {
 
   r.addInput(rhs);
 
-  auto ir = spu::device::Runner::compileMHlo(R"(
+  auto ir = r.compileMHlo(R"(
 func.func @main(%arg0: tensor<1x1x4x4xf32>, %arg1: tensor<1x1x2x2xf32>) -> (tensor<1x1x7x7xf32>) {
     %0 = mhlo.convolution(%arg0, %arg1)
           dim_numbers = [b, f, 0, 1]x[o, i, 0, 1]->[b, f, 0, 1],
@@ -1026,7 +935,7 @@ func.func @main(%arg0: tensor<1x1x4x4xf32>, %arg1: tensor<1x1x2x2xf32>) -> (tens
           } : (tensor<1x1x4x4xf32>, tensor<1x1x2x2xf32>) -> tensor<1x1x7x7xf32>
     return %0 : tensor<1x1x7x7xf32>
 })",
-                                             {VIS_PUBLIC, VIS_PUBLIC});
+                          {VIS_PUBLIC, VIS_PUBLIC});
 
   r.run(ir);
 
@@ -1059,7 +968,7 @@ TEST_P(ExecutorTest, DilatedBaseConv2DWithLowAndHighPadding) {
 
   r.addInput(rhs);
 
-  auto ir = spu::device::Runner::compileMHlo(R"(
+  auto ir = r.compileMHlo(R"(
 func.func @main(%arg0: tensor<1x1x4x4xf32>, %arg1: tensor<1x1x2x2xf32>) -> (tensor<1x1x8x8xf32>) {
     %0 = mhlo.convolution(%arg0, %arg1)
           dim_numbers = [b, f, 0, 1]x[o, i, 0, 1]->[b, f, 0, 1],
@@ -1070,7 +979,7 @@ func.func @main(%arg0: tensor<1x1x4x4xf32>, %arg1: tensor<1x1x2x2xf32>) -> (tens
           } : (tensor<1x1x4x4xf32>, tensor<1x1x2x2xf32>) -> tensor<1x1x8x8xf32>
     return %0 : tensor<1x1x8x8xf32>
 })",
-                                             {VIS_PUBLIC, VIS_PUBLIC});
+                          {VIS_PUBLIC, VIS_PUBLIC});
 
   r.run(ir);
 
@@ -1105,7 +1014,7 @@ TEST_P(ExecutorTest, FlatRhsDilation) {
 
   r.addInput(rhs);
 
-  auto ir = spu::device::Runner::compileMHlo(R"(
+  auto ir = r.compileMHlo(R"(
 func.func @main(%arg0: tensor<1x1x4x6xf32>, %arg1: tensor<1x1x2x3xf32>) -> (tensor<1x1x2x2xf32>) {
     %0 = mhlo.convolution(%arg0, %arg1)
           dim_numbers = [b, f, 0, 1]x[o, i, 0, 1]->[b, f, 0, 1],
@@ -1116,7 +1025,7 @@ func.func @main(%arg0: tensor<1x1x4x6xf32>, %arg1: tensor<1x1x2x3xf32>) -> (tens
           } : (tensor<1x1x4x6xf32>, tensor<1x1x2x3xf32>) -> tensor<1x1x2x2xf32>
     return %0 : tensor<1x1x2x2xf32>
 })",
-                                             {VIS_PUBLIC, VIS_PUBLIC});
+                          {VIS_PUBLIC, VIS_PUBLIC});
 
   r.run(ir);
 
@@ -1954,7 +1863,7 @@ TEST_P(ExecutorTest, OptimizedMaxPool1) {
       {3, 1}   //
   });
 
-  auto ir = spu::device::Runner::compileMHlo(R"(
+  auto ir = r.compileMHlo(R"(
 func.func @main(%arg0: tensor<4x6xi32>, %arg1: tensor<2x2xi32>) -> (tensor<2x2xi32>, tensor<4x6xi32>) {
   %0 = mhlo.constant dense<0> : tensor<i32>
   %1 = "mhlo.reduce_window"(%arg0, %0) ({
@@ -1974,7 +1883,7 @@ func.func @main(%arg0: tensor<4x6xi32>, %arg1: tensor<2x2xi32>) -> (tensor<2x2xi
     }) {padding = dense<0> : tensor<2x2xi64>, window_dimensions = dense<[2,3]> : tensor<2xi64>, window_strides = dense<[2,3]> : tensor<2xi64>} : (tensor<4x6xi32>, tensor<2x2xi32>, tensor<i32>) -> tensor<4x6xi32>
     return %1, %2 : tensor<2x2xi32>, tensor<4x6xi32>
 })",
-                                             {VIS_PUBLIC, VIS_PUBLIC});
+                          {VIS_PUBLIC, VIS_PUBLIC});
 
   EXPECT_THAT(ir, testing::HasSubstr("pphlo.maxpool_scatter"));
 
@@ -2202,7 +2111,7 @@ TEST_P(ExecutorTest, MixedPayload) {
 
   r.addInput(op, VIS_SECRET);
 
-  r.run(spu::device::Runner::compileMHlo(
+  r.run(r.compileMHlo(
             R"(
 func.func @main(%arg0: tensor<20xi32>) -> (tensor<20xi32>, tensor<20xi32>) {
     %0 = "mhlo.iota"() {iota_dimension = 0 : i64} : () -> tensor<20xi32>
@@ -2241,4 +2150,4 @@ INSTANTIATE_TEST_SUITE_P(
                          std::get<2>(p.param));
     });
 
-}  // namespace spu::device
+}  // namespace spu::device::pphlo::test

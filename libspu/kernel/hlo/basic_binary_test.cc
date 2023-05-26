@@ -55,7 +55,6 @@ BINARY_EMPTY_TEST(Sub)
 BINARY_EMPTY_TEST(Less)
 BINARY_EMPTY_TEST(Greater)
 BINARY_EMPTY_TEST(Mul)
-BINARY_EMPTY_TEST(Power)
 BINARY_EMPTY_TEST(Max)
 BINARY_EMPTY_TEST(Min)
 BINARY_EMPTY_TEST(And)
@@ -63,6 +62,21 @@ BINARY_EMPTY_TEST(Or)
 BINARY_EMPTY_TEST(Xor)
 BINARY_EMPTY_TEST(Div)
 BINARY_EMPTY_TEST(Remainder)
+
+TEST_P(BinaryTest, Empty_Power) {
+  FieldType field = std::get<0>(GetParam());
+  ProtocolKind prot = std::get<1>(GetParam());
+  mpc::utils::simulate(
+      3, [&](const std::shared_ptr<yacl::link::Context> &lctx) {
+        SPUContext sctx = test::makeSPUContext(prot, field, lctx);
+        auto empty_c0 = Seal(&sctx, Constant(&sctx, 1.0, {0}));
+        auto empty_c1 = Seal(&sctx, Constant(&sctx, 1.0, {0}));
+        auto s_empty = Power(&sctx, empty_c0, empty_c1);
+        EXPECT_EQ(s_empty.numel(), 0);
+        EXPECT_EQ(s_empty.shape().size(), 1);
+        EXPECT_EQ(s_empty.shape()[0], 0);
+      });
+}
 
 TEST_P(BinaryTest, Empty_Dot) {
   FieldType field = std::get<0>(GetParam());

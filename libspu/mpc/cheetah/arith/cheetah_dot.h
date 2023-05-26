@@ -33,8 +33,6 @@ class CheetahDot {
 
   ~CheetahDot();
 
-  std::unique_ptr<CheetahDot> Fork();
-
   CheetahDot& operator=(const CheetahDot&) = delete;
 
   CheetahDot(const CheetahDot&) = delete;
@@ -61,8 +59,6 @@ class CheetahDot {
 
  private:
   struct Impl;
-
-  explicit CheetahDot(std::unique_ptr<Impl> impl);
 
   std::unique_ptr<Impl> impl_{nullptr};
 

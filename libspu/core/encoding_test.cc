@@ -32,8 +32,8 @@ TEST(EncodingTypeTest, EncodeDecodeMap) {
   EXPECT_EQ(getEncodeType(PT_I64), DT_I64);
   EXPECT_EQ(getEncodeType(PT_U64), DT_U64);
   EXPECT_EQ(getEncodeType(PT_BOOL), DT_I1);
-  EXPECT_EQ(getEncodeType(PT_F32), DT_FXP);
-  EXPECT_EQ(getEncodeType(PT_F64), DT_FXP);
+  EXPECT_EQ(getEncodeType(PT_F32), DT_F32);
+  EXPECT_EQ(getEncodeType(PT_F64), DT_F64);
 
   EXPECT_EQ(getDecodeType(DT_I8), PT_I8);
   EXPECT_EQ(getDecodeType(DT_U8), PT_U8);
@@ -44,7 +44,8 @@ TEST(EncodingTypeTest, EncodeDecodeMap) {
   EXPECT_EQ(getDecodeType(DT_I64), PT_I64);
   EXPECT_EQ(getDecodeType(DT_U64), PT_U64);
   EXPECT_EQ(getDecodeType(DT_I1), PT_BOOL);
-  EXPECT_EQ(getDecodeType(DT_FXP), PT_F32);
+  EXPECT_EQ(getDecodeType(DT_F32), PT_F32);
+  EXPECT_EQ(getDecodeType(DT_F64), PT_F64);
 }
 
 using Field64 = std::integral_constant<FieldType, FM64>;
@@ -107,17 +108,25 @@ TYPED_TEST(FloatEncodingTest, Works) {
 
   DataType encoded_dtype;
   auto encoded = encodeToRing(frm, kField, kFxpBits, &encoded_dtype);
-  EXPECT_EQ(encoded_dtype, DT_FXP);
 
+  if constexpr (std::is_same_v<FloatT, float>) {
+    EXPECT_EQ(encoded_dtype, DT_F32);
+  } else {
+    EXPECT_EQ(encoded_dtype, DT_F64);
+  }
   PtType out_pt_type;
   auto decoded = decodeFromRing(encoded, encoded_dtype, kFxpBits, &out_pt_type);
-  EXPECT_EQ(out_pt_type, PT_F32);
 
-  float* out_ptr = &decoded.at<float>(0);
+  if constexpr (std::is_same_v<FloatT, float>) {
+    EXPECT_EQ(encoded_dtype, DT_F32);
+  } else {
+    EXPECT_EQ(encoded_dtype, DT_F64);
+  }
+  auto* out_ptr = &decoded.at<FloatT>(0);
   const int64_t kReprBits = SizeOf(kField) * 8 - 2;
   const int64_t kScale = 1LL << kFxpBits;
-  EXPECT_EQ(out_ptr[0], -static_cast<float>((1LL << kReprBits)) / kScale);
-  EXPECT_EQ(out_ptr[1], static_cast<float>((1LL << kReprBits) - 1) / kScale);
+  EXPECT_EQ(out_ptr[0], -static_cast<FloatT>((1LL << kReprBits)) / kScale);
+  EXPECT_EQ(out_ptr[1], static_cast<FloatT>((1LL << kReprBits) - 1) / kScale);
   EXPECT_EQ(out_ptr[2], -1.0);
   EXPECT_EQ(out_ptr[3], 0.0);
   EXPECT_EQ(out_ptr[4], 1.0);
