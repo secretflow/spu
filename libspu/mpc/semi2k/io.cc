@@ -14,7 +14,7 @@
 
 #include "libspu/mpc/semi2k/io.h"
 
-#include "libspu/mpc/common/pub2k.h"
+#include "libspu/mpc/common/pv2k.h"
 #include "libspu/mpc/semi2k/type.h"
 #include "libspu/mpc/utils/ring_ops.h"
 
@@ -32,29 +32,37 @@ std::vector<ArrayRef> Semi2kIo::toShares(const ArrayRef& raw, Visibility vis,
     const auto share = raw.as(makeType<Pub2kTy>(field));
     return std::vector<ArrayRef>(world_size_, share);
   } else if (vis == VIS_SECRET) {
-    // by default, make as arithmetic share.
-    std::vector<ArrayRef> shares;
-    const auto ty = makeType<semi2k::AShrTy>(field, owner_rank);
+#if !defined(SPU_ENABLE_PRIVATE_TYPE)
+    owner_rank = -1;
+#endif
 
     if (owner_rank >= 0 && owner_rank < static_cast<int>(world_size_)) {
-      // colocation optimization
-      for (auto i = 0; i < static_cast<int>(world_size_); i++) {
-        if (i == owner_rank) {
-          shares.emplace_back(raw.as(ty));
+      // indicates private
+      std::vector<ArrayRef> shares;
+      const auto ty = makeType<Priv2kTy>(field, owner_rank);
+      for (int idx = 0; idx < static_cast<int>(world_size_); idx++) {
+        if (idx == owner_rank) {
+          shares.push_back(raw.as(ty));
         } else {
-          // if compression for [0, 0, ..., 0] is enabled at seriaization level
-          // we can directly use ring_zeros here.
-          shares.emplace_back(ring_zeros_packed(field, raw.numel()).as(ty));
+          shares.push_back(makeConstantArrayRef(ty, raw.numel()));
         }
       }
+      return shares;
     } else {
-      // no colocation optmization
+      // normal secret
+      SPU_ENFORCE(owner_rank == -1, "not a valid owner {}", owner_rank);
+
+      std::vector<ArrayRef> shares;
+      const auto ty = makeType<semi2k::AShrTy>(field);
+
+      // by default, make as arithmetic share.
       const auto splits = ring_rand_additive_splits(raw, world_size_);
+      shares.reserve(splits.size());
       for (const auto& split : splits) {
         shares.emplace_back(split.as(ty));
       }
+      return shares;
     }
-    return shares;
   }
   SPU_THROW("unsupported vis type {}", vis);
 }
@@ -65,6 +73,10 @@ ArrayRef Semi2kIo::fromShares(const std::vector<ArrayRef>& shares) const {
 
   if (eltype.isa<Public>()) {
     return shares[0].as(makeType<RingTy>(field));
+  } else if (eltype.isa<Priv2kTy>()) {
+    SPU_ENFORCE(field_ == eltype.as<Ring2k>()->field());
+    const size_t owner = eltype.as<Private>()->owner();
+    return shares[owner].as(makeType<RingTy>(field_));
   } else if (eltype.isa<Secret>()) {
     ArrayRef res = ring_zeros(field, shares[0].numel());
 

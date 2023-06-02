@@ -12,30 +12,65 @@
 # See the License for the specific language governing permissions and
 
 import functools
-import cloudpickle
-
-from enum import Enum
-from typing import Callable, Dict, List
 import warnings
+from enum import Enum
+from typing import Callable, Dict, Iterable, List
 
+import cloudpickle
 from cachetools import LRUCache, cached
 
 from .. import api as spu_api
 from .. import spu_pb2
 
 
-def _jax_compilation_key(fn: Callable, static_argnums, args: List, kwargs: Dict):
+def _jax_compilation_key(
+    fn: Callable, static_argnums, static_argnames, args: List, kwargs: Dict
+):
     import jax
 
     flat_args, _ = jax.tree_util.tree_flatten((args, kwargs))
     types = [(a.dtype, a.shape) if hasattr(a, 'dtype') else type(a) for a in flat_args]
-    hash_str = f'{hash(cloudpickle.dumps(fn))}-{static_argnums}-{types}'
+    hash_str = (
+        f'{hash(cloudpickle.dumps(fn))}-{static_argnums}-{static_argnames}-{types}'
+    )
     return hash_str
 
 
+def _argnames_partial_except(fn, static_argnames, kwargs):
+    if static_argnames is None:
+        return fn, kwargs
+
+    assert isinstance(
+        static_argnames, (str, Iterable)
+    ), f'type of static_argnames is {type(static_argnames)} while str or Iterable is required here.'
+    if isinstance(static_argnames, str):
+        static_argnames = (static_argnames,)
+
+    static_kwargs = {k: kwargs.pop(k) for k in static_argnames if k in kwargs}
+    return functools.partial(fn, **static_kwargs), kwargs
+
+
+def _argnames_partial_except(fn, static_argnames, kwargs):
+    if static_argnames is None:
+        return fn, kwargs
+
+    assert isinstance(
+        static_argnames, (str, Iterable)
+    ), f'type of static_argnames is {type(static_argnames)} while str or Iterable is required here.'
+    if isinstance(static_argnames, str):
+        static_argnames = (static_argnames,)
+
+    static_kwargs = {k: kwargs.pop(k) for k in static_argnames if k in kwargs}
+    return functools.partial(fn, **static_kwargs), kwargs
+
+
 @cached(cache=LRUCache(maxsize=128), key=_jax_compilation_key)
-def _jax_compilation(fn: Callable, static_argnums, args: List, kwargs: Dict):
+def _jax_compilation(
+    fn: Callable, static_argnums, static_argnames, args: List, kwargs: Dict
+):
     import jax
+
+    fn, kwargs = _argnames_partial_except(fn, static_argnames, kwargs)
 
     cfn, output = jax.xla_computation(
         fn, return_shape=True, static_argnums=static_argnums, backend="interpreter"
@@ -102,6 +137,7 @@ def compile(
     input_vis: List,
     outputNameGen: Callable,
     static_argnums=(),
+    static_argnames=None,
     copts=spu_pb2.CompilerOptions(),
 ):
     if kind == Kind.JAX:
@@ -109,7 +145,9 @@ def compile(
 
         patches = _patch_jax()
 
-        ir_text, output = _jax_compilation(fn, static_argnums, m_args, m_kwargs)
+        ir_text, output = _jax_compilation(
+            fn, static_argnums, static_argnames, m_args, m_kwargs
+        )
 
         _restore_jax_patch(patches)
 

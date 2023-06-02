@@ -23,7 +23,7 @@ namespace spu::kernel::test {
 
 SPUContext makeSPUContext(RuntimeConfig config,
                           const std::shared_ptr<yacl::link::Context>& lctx) {
-  populateRuntimecConfig(config);
+  populateRuntimeConfig(config);
 
   SPUContext ctx(config, lctx);
   mpc::Factory::RegisterProtocol(&ctx, lctx);

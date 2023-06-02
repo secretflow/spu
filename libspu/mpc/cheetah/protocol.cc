@@ -22,7 +22,7 @@
 #include "libspu/mpc/cheetah/boolean.h"
 #include "libspu/mpc/cheetah/conversion.h"
 #include "libspu/mpc/cheetah/state.h"
-#include "libspu/mpc/common/pub2k.h"
+#include "libspu/mpc/common/pv2k.h"
 #include "libspu/mpc/semi2k/state.h"
 #include "libspu/mpc/semi2k/type.h"
 
@@ -47,11 +47,13 @@ void regCheetahProtocol(SPUContext* ctx,
   ctx->prot()->addState<cheetah::CheetahOTState>();
 
   // register public kernels.
-  regPub2kKernels(ctx->prot());
+  regPV2kKernels(ctx->prot());
 
   // register arithmetic & binary kernels
   ctx->prot()->regKernel<cheetah::P2A>();
   ctx->prot()->regKernel<cheetah::A2P>();
+  ctx->prot()->regKernel<cheetah::V2A>();
+  ctx->prot()->regKernel<cheetah::A2V>();
   ctx->prot()->regKernel<cheetah::NotA>();
   ctx->prot()->regKernel<cheetah::AddAP>();
   ctx->prot()->regKernel<cheetah::AddAA>();

@@ -17,9 +17,10 @@
 #include "yacl/crypto/tools/prg.h"
 #include "yacl/crypto/utils/rand.h"
 
+#include "libspu/core/context.h"
 #include "libspu/mpc/aby3/type.h"
 #include "libspu/mpc/aby3/value.h"
-#include "libspu/mpc/common/pub2k.h"
+#include "libspu/mpc/common/pv2k.h"
 #include "libspu/mpc/utils/ring_ops.h"
 
 namespace spu::mpc::aby3 {
@@ -36,29 +37,38 @@ std::vector<ArrayRef> Aby3Io::toShares(const ArrayRef& raw, Visibility vis,
     const auto share = raw.as(makeType<Pub2kTy>(field));
     return std::vector<ArrayRef>(world_size_, share);
   } else if (vis == VIS_SECRET) {
-    // by default, make as arithmetic share.
-    std::vector<ArrayRef> splits;
+#if !defined(SPU_ENABLE_PRIVATE_TYPE)
+    owner_rank = -1;
+#endif
+
     if (owner_rank >= 0 && owner_rank <= 2) {
-      // enable colocation optimization
-      splits = ring_rand_additive_splits(raw, 2);
-      size_t insertion_index = (owner_rank + 2) % 3;
-      // currently, we have to use makeAShare to combine 2 array ref into 1
-      // using 0-strided array become ill-defined.
-      // One approach is to do compression at serialization level, we leave this
-      // to later work so here we use ring_zeros instead of ring_zeros_packed
-      // for aby3
-      splits.insert(splits.begin() + insertion_index,
-                    ring_zeros(field, raw.numel()));
+      // indicates private
+      std::vector<ArrayRef> shares;
+
+      const auto ty = makeType<Priv2kTy>(field, owner_rank);
+      for (int idx = 0; idx < 3; idx++) {
+        if (idx == owner_rank) {
+          shares.push_back(raw.as(ty));
+        } else {
+          shares.push_back(makeConstantArrayRef(ty, raw.numel()));
+        }
+      }
+      return shares;
     } else {
-      splits = ring_rand_additive_splits(raw, world_size_);
+      // normal secret
+      SPU_ENFORCE(owner_rank == -1, "not a valid owner {}", owner_rank);
+
+      // by default, make as arithmetic share.
+      std::vector<ArrayRef> splits =
+          ring_rand_additive_splits(raw, world_size_);
+
+      SPU_ENFORCE(splits.size() == 3, "expect 3PC, got={}", splits.size());
+      std::vector<ArrayRef> shares;
+      for (std::size_t i = 0; i < 3; i++) {
+        shares.push_back(makeAShare(splits[i], splits[(i + 1) % 3], field));
+      }
+      return shares;
     }
-    SPU_ENFORCE(splits.size() == 3, "expect 3PC, got={}", splits.size());
-    std::vector<ArrayRef> shares;
-    for (std::size_t i = 0; i < 3; i++) {
-      shares.push_back(
-          makeAShare(splits[i], splits[(i + 1) % 3], field, owner_rank));
-    }
-    return shares;
   }
 
   SPU_THROW("unsupported vis type {}", vis);
@@ -118,6 +128,10 @@ ArrayRef Aby3Io::fromShares(const std::vector<ArrayRef>& shares) const {
   if (eltype.isa<Pub2kTy>()) {
     SPU_ENFORCE(field_ == eltype.as<Ring2k>()->field());
     return shares[0].as(makeType<RingTy>(field_));
+  } else if (eltype.isa<Priv2kTy>()) {
+    SPU_ENFORCE(field_ == eltype.as<Ring2k>()->field());
+    const size_t owner = eltype.as<Private>()->owner();
+    return shares[owner].as(makeType<RingTy>(field_));
   } else if (eltype.isa<AShrTy>()) {
     SPU_ENFORCE(field_ == eltype.as<Ring2k>()->field());
     ArrayRef out(makeType<Pub2kTy>(field_), shares[0].numel());

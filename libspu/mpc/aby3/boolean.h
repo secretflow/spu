@@ -71,6 +71,24 @@ class P2B : public UnaryKernel {
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in) const override;
 };
 
+class B2V : public RevealToKernel {
+ public:
+  static constexpr char kBindName[] = "b2v";
+
+  ce::CExpr latency() const override {
+    // 1 * send/recv: 1
+    return ce::Const(1);
+  }
+
+  ce::CExpr comm() const override {
+    // 1 * rotate: k
+    return ce::K();
+  }
+
+  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in,
+                size_t rank) const override;
+};
+
 class AndBP : public BinaryKernel {
  public:
   static constexpr char kBindName[] = "and_bp";

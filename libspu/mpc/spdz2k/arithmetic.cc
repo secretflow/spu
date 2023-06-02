@@ -29,7 +29,7 @@
 #include "libspu/mpc/ab_api.h"
 #include "libspu/mpc/common/communicator.h"
 #include "libspu/mpc/common/prg_state.h"
-#include "libspu/mpc/common/pub2k.h"
+#include "libspu/mpc/common/pv2k.h"
 #include "libspu/mpc/spdz2k/commitment.h"
 #include "libspu/mpc/spdz2k/state.h"
 #include "libspu/mpc/spdz2k/type.h"

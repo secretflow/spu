@@ -20,11 +20,21 @@
 #include "libspu/mpc/ab_api.h"
 
 namespace spu::mpc {
+namespace {
 
-#define IsA(x) x.storage_type().isa<AShare>()
-#define IsB(x) x.storage_type().isa<BShare>()
-#define IsP(x) x.storage_type().isa<Public>()
-#define NBits(x) x.storage_type().as<BShare>()->nbits()
+inline bool IsA(const Value& x) { return x.storage_type().isa<AShare>(); }
+inline bool IsB(const Value& x) { return x.storage_type().isa<BShare>(); }
+inline bool IsP(const Value& x) { return x.storage_type().isa<Public>(); }
+inline bool IsV(const Value& x) { return x.storage_type().isa<Private>(); }
+inline size_t NBits(const Value& x) {
+  return x.storage_type().as<BShare>()->nbits();
+}
+inline int64_t getOwner(const Value& x) {
+  return x.storage_type().as<Private>()->owner();
+}
+inline bool hasSameOwner(const Value& x, const Value& y) {
+  return getOwner(x) == getOwner(y);
+}
 
 // NOLINTBEGIN(readability-identifier-naming)
 Value _2b(SPUContext* ctx, const Value& x) {
@@ -44,15 +54,77 @@ Value _2a(SPUContext* ctx, const Value& x) {
     return x;
   }
 }
-
 // NOLINTEND(readability-identifier-naming)
 
-// TODO: Unify these macros.
-#define FORCE_DISPATCH(CTX, ...)                      \
-  {                                                   \
-    SPU_TRACE_MPC_LEAF(CTX, __VA_ARGS__);             \
-    return dynDispatch((CTX), __func__, __VA_ARGS__); \
+// FIXME: move me to some where elese.
+#define IsS(X) false
+
+// VSP dispath rule.
+// all,     commutative,  MPC aware
+// f_ss,    f_ss,         f_ss
+// f_sp,    f_sp,         f_sp
+// f_sv,    f_sv,         f_sv(optional)
+// f_ps,    _,            _
+// f_pp,    f_pp,         _
+// f_pv,    f_pv,         _
+// f_vs,    _,            _
+// f_vp,    _,            _
+// f_vv,    f_vv,         f_vv or f_ss
+template <typename FSS, typename FSV, typename FSP, typename FVV, typename FVP,
+          typename FPP, typename... Args>
+Value SvpBinaryDisp(SPUContext* ctx, const Value& x, const Value& y,
+                    Args&&... args) {
+  if (IsS(x)) {
+    if (IsS(y)) {
+      return FSS(ctx, x, y, std::forward<Args>(args)...);
+    } else if (IsP(y)) {
+      return FSP(ctx, x, y, std::forward<Args>(args)...);
+    } else if (IsV(y)) {
+      return FSV(ctx, x, y, std::forward<Args>(args)...);
+    }
+  } else if (IsV(x)) {
+    if (IsS(y)) {
+      return FSV(ctx, y, x, std::forward<Args>(args)...);
+    } else if (IsP(y)) {
+      return FVP(ctx, x, y, std::forward<Args>(args)...);
+    } else if (IsV(y)) {
+      return FVV(ctx, x, y, std::forward<Args>(args)...);
+    }
+  } else {
+    SPU_ENFORCE(IsP(x));
+    if (IsS(y)) {
+      return FSP(ctx, y, x, std::forward<Args>(args)...);
+    } else if (IsP(y)) {
+      return FPP(ctx, x, y, std::forward<Args>(args)...);
+    } else if (IsV(y)) {
+      return FVP(ctx, y, x, std::forward<Args>(args)...);
+    }
   }
+}
+
+template <typename FS, typename FV, typename FP, typename... Args>
+Value SvpUnaryDisp(SPUContext* ctx, const Value& x, Args&&... args) {
+  if (IsS(x)) {
+    return FS(ctx, x, std::forward<Args>(args)...);
+  } else if (IsV(x)) {
+    return FV(ctx, x, std::forward<Args>(args)...);
+  } else {
+    SPU_ENFORCE(IsP(x));
+    return FP(ctx, x, std::forward<Args>(args)...);
+  }
+}
+
+}  // namespace
+
+// TODO: Unify these macros.
+#define FORCE_NAMED_DISPATCH(CTX, NAME, ...)      \
+  {                                               \
+    SPU_TRACE_MPC_LEAF(CTX, __VA_ARGS__);         \
+    return dynDispatch((CTX), NAME, __VA_ARGS__); \
+  }
+
+#define FORCE_DISPATCH(CTX, ...) \
+  FORCE_NAMED_DISPATCH(CTX, __func__, __VA_ARGS__)
 
 #define TRY_NAMED_DISPATCH(CTX, FNAME, ...)        \
   if ((CTX)->hasKernel(__func__)) {                \
@@ -70,6 +142,31 @@ Value p2s(SPUContext* ctx, const Value& x) {
   return p2a(ctx, x);
 }
 
+Value p2v(SPUContext* ctx, const Value& x, size_t owner) {
+  FORCE_DISPATCH(ctx, x, owner);
+}
+
+Value v2s(SPUContext* ctx, const Value& x) {
+  SPU_TRACE_MPC_DISP(ctx, x);
+  TRY_DISPATCH(ctx, x);
+
+  return v2a(ctx, x);
+}
+
+Value v2p(SPUContext* ctx, const Value& x) { FORCE_DISPATCH(ctx, x); }
+
+Value s2v(SPUContext* ctx, const Value& x, size_t owner) {
+  SPU_TRACE_MPC_DISP(ctx, x);
+  TRY_DISPATCH(ctx, x, owner);
+
+  if (IsA(x)) {
+    return a2v(ctx, x, owner);
+  } else {
+    SPU_ENFORCE(IsB(x));
+    return b2v(ctx, x, owner);
+  }
+}
+
 Value s2p(SPUContext* ctx, const Value& x) {
   SPU_TRACE_MPC_DISP(ctx, x);
 
@@ -78,7 +175,7 @@ Value s2p(SPUContext* ctx, const Value& x) {
   if (IsA(x)) {
     return a2p(ctx, x);
   } else {
-    SPU_ENFORCE(IsB(x));
+    SPU_ENFORCE(IsB(x), "invalid type {}", x.storage_type());
     return b2p(ctx, x);
   }
 }
@@ -91,10 +188,10 @@ Value import_s(SPUContext* ctx, const Value& x) {
   SPU_THROW("TODO: import_s not implemented");
 }
 
-Value export_s(SPUContext* ctx, const Value& x, const Type& as_type) {
-  SPU_TRACE_MPC_DISP(ctx, x, as_type);
+Value export_s(SPUContext* ctx, const Value& x, const Type& t) {
+  SPU_TRACE_MPC_DISP(ctx, x, t);
 
-  TRY_DISPATCH(ctx, x, as_type);
+  TRY_DISPATCH(ctx, x, t);
 
   SPU_THROW("TODO: export_s not implemented");
 }
@@ -158,8 +255,6 @@ Value rand_s(SPUContext* ctx, const Shape& shape) {
   return rand_a(ctx, shape);
 }
 
-Value not_p(SPUContext* ctx, const Value& x) { FORCE_DISPATCH(ctx, x); }
-
 Value not_s(SPUContext* ctx, const Value& x) {
   SPU_TRACE_MPC_DISP(ctx, x);
   TRY_DISPATCH(ctx, x);
@@ -173,7 +268,11 @@ Value not_s(SPUContext* ctx, const Value& x) {
   return not_a(ctx, _2a(ctx, x));
 }
 
-Value msb_p(SPUContext* ctx, const Value& x) { FORCE_DISPATCH(ctx, x); }
+Value not_v(SPUContext* ctx, const Value& x) { FORCE_DISPATCH(ctx, x); }
+
+Value not_p(SPUContext* ctx, const Value& x) { FORCE_DISPATCH(ctx, x); }
+
+//////////////////////////////////////////////////////////////////////////////
 
 Value msb_s(SPUContext* ctx, const Value& x) {
   SPU_TRACE_MPC_DISP(ctx, x);
@@ -194,11 +293,17 @@ Value msb_s(SPUContext* ctx, const Value& x) {
   }
 }
 
+Value msb_v(SPUContext* ctx, const Value& x) { FORCE_DISPATCH(ctx, x); }
+
+Value msb_p(SPUContext* ctx, const Value& x) { FORCE_DISPATCH(ctx, x); }
+
+//////////////////////////////////////////////////////////////////////////////
+
 Value equal_pp(SPUContext* ctx, const Value& x, const Value& y) {
   FORCE_DISPATCH(ctx, x, y);
 }
 
-std::optional<Value> equal_sp(SPUContext* ctx, const Value& x, const Value& y) {
+OptionalAPI<Value> equal_sp(SPUContext* ctx, const Value& x, const Value& y) {
   SPU_TRACE_MPC_DISP(ctx, x, y);
   TRY_DISPATCH(ctx, x, y);
 
@@ -208,10 +313,10 @@ std::optional<Value> equal_sp(SPUContext* ctx, const Value& x, const Value& y) {
     return dynDispatch(ctx, "equal_bp", x, y);
   }
 
-  return std::nullopt;
+  return NotAvailable;
 }
 
-std::optional<Value> equal_ss(SPUContext* ctx, const Value& x, const Value& y) {
+OptionalAPI<Value> equal_ss(SPUContext* ctx, const Value& x, const Value& y) {
   SPU_TRACE_MPC_DISP(ctx, x, y);
   TRY_DISPATCH(ctx, x, y);
 
@@ -231,11 +336,30 @@ std::optional<Value> equal_ss(SPUContext* ctx, const Value& x, const Value& y) {
     }
   }
 
-  return std::nullopt;
+  return NotAvailable;
 }
 
-Value add_pp(SPUContext* ctx, const Value& x, const Value& y) {
-  FORCE_DISPATCH(ctx, x, y);
+//////////////////////////////////////////////////////////////////////////////
+
+Value add_ss(SPUContext* ctx, const Value& x, const Value& y) {
+  SPU_TRACE_MPC_DISP(ctx, x, y);
+  TRY_DISPATCH(ctx, x, y);
+  return add_aa(ctx, _2a(ctx, x), _2a(ctx, y));
+}
+
+Value add_sv(SPUContext* ctx, const Value& x, const Value& y) {
+  SPU_TRACE_MPC_DISP(ctx, x, y);
+  TRY_DISPATCH(ctx, x, y);
+  // We can not use
+  //   res = add_av(ctx, _2a(x), y)
+  // since add_av is an optional API, so use `_2a` conversion to probe it is
+  // not a good choice, i.e. if failed, a b2a maybe wasted.
+  if (IsA(x)) {
+    if (auto res = add_av(ctx, x, y)) {
+      return res.value();
+    }
+  }
+  return add_ss(ctx, x, v2s(ctx, y));
 }
 
 Value add_sp(SPUContext* ctx, const Value& x, const Value& y) {
@@ -244,21 +368,24 @@ Value add_sp(SPUContext* ctx, const Value& x, const Value& y) {
   return add_ap(ctx, _2a(ctx, x), y);
 }
 
-Value add_ss(SPUContext* ctx, const Value& x, const Value& y) {
-  SPU_TRACE_MPC_DISP(ctx, x, y);
-  TRY_DISPATCH(ctx, x, y);
-  return add_aa(ctx, _2a(ctx, x), _2a(ctx, y));
+Value add_vv(SPUContext* ctx, const Value& x, const Value& y) {
+  if (hasSameOwner(x, y)) {
+    FORCE_NAMED_DISPATCH(ctx, "add_vvv", x, y);
+  } else {
+    TRY_NAMED_DISPATCH(ctx, "add_vvs", x, y);
+    return add_ss(ctx, v2s(ctx, x), v2s(ctx, y));
+  }
 }
 
-Value mul_pp(SPUContext* ctx, const Value& x, const Value& y) {
+Value add_vp(SPUContext* ctx, const Value& x, const Value& y) {
   FORCE_DISPATCH(ctx, x, y);
 }
 
-Value mul_sp(SPUContext* ctx, const Value& x, const Value& y) {
-  SPU_TRACE_MPC_DISP(ctx, x, y);
-  TRY_DISPATCH(ctx, x, y);
-  return mul_ap(ctx, _2a(ctx, x), y);
+Value add_pp(SPUContext* ctx, const Value& x, const Value& y) {
+  FORCE_DISPATCH(ctx, x, y);
 }
+
+//////////////////////////////////////////////////////////////////////////////
 
 static bool hasMulA1B(SPUContext* ctx) { return ctx->hasKernel("mul_a1b"); }
 
@@ -280,9 +407,59 @@ Value mul_ss(SPUContext* ctx, const Value& x, const Value& y) {
   return mul_aa(ctx, _2a(ctx, x), _2a(ctx, y));
 }
 
-Value mmul_pp(SPUContext* ctx, const Value& x, const Value& y, size_t m,
+Value mul_sv(SPUContext* ctx, const Value& x, const Value& y) {
+  SPU_TRACE_MPC_DISP(ctx, x, y);
+  TRY_DISPATCH(ctx, x, y);
+  if (IsA(x)) {
+    if (auto res = mul_av(ctx, x, y)) {
+      return res.value();
+    }
+  }
+  return mul_ss(ctx, x, v2s(ctx, y));
+}
+
+Value mul_sp(SPUContext* ctx, const Value& x, const Value& y) {
+  SPU_TRACE_MPC_DISP(ctx, x, y);
+  TRY_DISPATCH(ctx, x, y);
+  return mul_ap(ctx, _2a(ctx, x), y);
+}
+
+Value mul_vv(SPUContext* ctx, const Value& x, const Value& y) {
+  if (hasSameOwner(x, y)) {
+    FORCE_NAMED_DISPATCH(ctx, "mul_vvv", x, y);
+  } else {
+    TRY_NAMED_DISPATCH(ctx, "mul_vvs", x, y);
+    return mul_ss(ctx, v2s(ctx, x), v2s(ctx, y));
+  }
+}
+
+Value mul_vp(SPUContext* ctx, const Value& x, const Value& y) {
+  FORCE_DISPATCH(ctx, x, y);
+}
+
+Value mul_pp(SPUContext* ctx, const Value& x, const Value& y) {
+  FORCE_DISPATCH(ctx, x, y);
+}
+
+//////////////////////////////////////////////////////////////////////////////
+
+Value mmul_ss(SPUContext* ctx, const Value& x, const Value& y, size_t m,
               size_t n, size_t k) {
-  FORCE_DISPATCH(ctx, x, y, m, n, k);
+  SPU_TRACE_MPC_DISP(ctx, x, y);
+  TRY_DISPATCH(ctx, x, y, m, n, k);
+  return mmul_aa(ctx, _2a(ctx, x), _2a(ctx, y), m, n, k);
+}
+
+Value mmul_sv(SPUContext* ctx, const Value& x, const Value& y, size_t m,
+              size_t n, size_t k) {
+  SPU_TRACE_MPC_DISP(ctx, x, y, m, n, k);
+  TRY_DISPATCH(ctx, x, y, m, n, k);
+  if (IsA(x)) {
+    if (auto res = mmul_av(ctx, x, y, m, n, k)) {
+      return res.value();
+    }
+  }
+  return mmul_ss(ctx, x, v2s(ctx, y), m, n, k);
 }
 
 Value mmul_sp(SPUContext* ctx, const Value& x, const Value& y, size_t m,
@@ -292,15 +469,43 @@ Value mmul_sp(SPUContext* ctx, const Value& x, const Value& y, size_t m,
   return mmul_ap(ctx, _2a(ctx, x), y, m, n, k);
 }
 
-Value mmul_ss(SPUContext* ctx, const Value& x, const Value& y, size_t m,
+Value mmul_vv(SPUContext* ctx, const Value& x, const Value& y, size_t m,
               size_t n, size_t k) {
-  SPU_TRACE_MPC_DISP(ctx, x, y);
-  TRY_DISPATCH(ctx, x, y, m, n, k);
-  return mmul_aa(ctx, _2a(ctx, x), _2a(ctx, y), m, n, k);
+  if (hasSameOwner(x, y)) {
+    FORCE_NAMED_DISPATCH(ctx, "mmul_vvv", x, y, m, n, k);
+  } else {
+    TRY_NAMED_DISPATCH(ctx, "mmul_vvs", x, y, m, n, k);
+    return mmul_ss(ctx, v2s(ctx, x), v2s(ctx, y), m, n, k);
+  }
 }
 
-Value and_pp(SPUContext* ctx, const Value& x, const Value& y) {
-  FORCE_DISPATCH(ctx, x, y);
+Value mmul_vp(SPUContext* ctx, const Value& x, const Value& y, size_t m,
+              size_t n, size_t k) {
+  FORCE_DISPATCH(ctx, x, y, m, n, k);
+}
+
+Value mmul_pp(SPUContext* ctx, const Value& x, const Value& y, size_t m,
+              size_t n, size_t k) {
+  FORCE_DISPATCH(ctx, x, y, m, n, k);
+}
+
+//////////////////////////////////////////////////////////////////////////////
+
+Value and_ss(SPUContext* ctx, const Value& x, const Value& y) {
+  SPU_TRACE_MPC_DISP(ctx, x, y);
+  TRY_DISPATCH(ctx, x, y);
+  return and_bb(ctx, _2b(ctx, x), _2b(ctx, y));
+}
+
+Value and_sv(SPUContext* ctx, const Value& x, const Value& y) {
+  SPU_TRACE_MPC_DISP(ctx, x, y);
+  TRY_DISPATCH(ctx, x, y);
+  if (IsA(x)) {
+    if (auto res = and_bv(ctx, x, y)) {
+      return res.value();
+    }
+  }
+  return and_ss(ctx, x, v2s(ctx, y));
 }
 
 Value and_sp(SPUContext* ctx, const Value& x, const Value& y) {
@@ -309,14 +514,40 @@ Value and_sp(SPUContext* ctx, const Value& x, const Value& y) {
   return and_bp(ctx, _2b(ctx, x), y);
 }
 
-Value and_ss(SPUContext* ctx, const Value& x, const Value& y) {
-  SPU_TRACE_MPC_DISP(ctx, x, y);
-  TRY_DISPATCH(ctx, x, y);
-  return and_bb(ctx, _2b(ctx, x), _2b(ctx, y));
+Value and_vv(SPUContext* ctx, const Value& x, const Value& y) {
+  if (hasSameOwner(x, y)) {
+    FORCE_NAMED_DISPATCH(ctx, "and_vvv", x, y);
+  } else {
+    TRY_NAMED_DISPATCH(ctx, "and_vvs", x, y);
+    return and_ss(ctx, v2s(ctx, x), v2s(ctx, y));
+  }
 }
 
-Value xor_pp(SPUContext* ctx, const Value& x, const Value& y) {
+Value and_vp(SPUContext* ctx, const Value& x, const Value& y) {
   FORCE_DISPATCH(ctx, x, y);
+}
+
+Value and_pp(SPUContext* ctx, const Value& x, const Value& y) {
+  FORCE_DISPATCH(ctx, x, y);
+}
+
+//////////////////////////////////////////////////////////////////////////////
+
+Value xor_ss(SPUContext* ctx, const Value& x, const Value& y) {
+  SPU_TRACE_MPC_DISP(ctx, x, y);
+  TRY_DISPATCH(ctx, x, y);
+  return xor_bb(ctx, _2b(ctx, x), _2b(ctx, y));
+}
+
+Value xor_sv(SPUContext* ctx, const Value& x, const Value& y) {
+  SPU_TRACE_MPC_DISP(ctx, x, y);
+  TRY_DISPATCH(ctx, x, y);
+  if (IsA(x)) {
+    if (auto res = xor_bv(ctx, x, y)) {
+      return res.value();
+    }
+  }
+  return xor_ss(ctx, x, v2s(ctx, y));
 }
 
 Value xor_sp(SPUContext* ctx, const Value& x, const Value& y) {
@@ -325,15 +556,24 @@ Value xor_sp(SPUContext* ctx, const Value& x, const Value& y) {
   return xor_bp(ctx, _2b(ctx, x), y);
 }
 
-Value xor_ss(SPUContext* ctx, const Value& x, const Value& y) {
-  SPU_TRACE_MPC_DISP(ctx, x, y);
-  TRY_DISPATCH(ctx, x, y);
-  return xor_bb(ctx, _2b(ctx, x), _2b(ctx, y));
+Value xor_vv(SPUContext* ctx, const Value& x, const Value& y) {
+  if (hasSameOwner(x, y)) {
+    FORCE_NAMED_DISPATCH(ctx, "xor_vvv", x, y);
+  } else {
+    TRY_NAMED_DISPATCH(ctx, "xor_vvs", x, y);
+    return xor_ss(ctx, v2s(ctx, x), v2s(ctx, y));
+  }
 }
 
-Value lshift_p(SPUContext* ctx, const Value& x, size_t nbits) {
-  FORCE_DISPATCH(ctx, x, nbits);
+Value xor_vp(SPUContext* ctx, const Value& x, const Value& y) {
+  FORCE_DISPATCH(ctx, x, y);
 }
+
+Value xor_pp(SPUContext* ctx, const Value& x, const Value& y) {
+  FORCE_DISPATCH(ctx, x, y);
+}
+
+//////////////////////////////////////////////////////////////////////////////
 
 Value lshift_s(SPUContext* ctx, const Value& x, size_t bits) {
   SPU_TRACE_MPC_DISP(ctx, x, bits);
@@ -347,9 +587,15 @@ Value lshift_s(SPUContext* ctx, const Value& x, size_t bits) {
   }
 }
 
-Value rshift_p(SPUContext* ctx, const Value& x, size_t nbits) {
+Value lshift_v(SPUContext* ctx, const Value& x, size_t nbits) {
   FORCE_DISPATCH(ctx, x, nbits);
 }
+
+Value lshift_p(SPUContext* ctx, const Value& x, size_t nbits) {
+  FORCE_DISPATCH(ctx, x, nbits);
+}
+
+//////////////////////////////////////////////////////////////////////////////
 
 Value rshift_s(SPUContext* ctx, const Value& x, size_t bits) {
   SPU_TRACE_MPC_DISP(ctx, x, bits);
@@ -357,9 +603,15 @@ Value rshift_s(SPUContext* ctx, const Value& x, size_t bits) {
   return rshift_b(ctx, _2b(ctx, x), bits);
 }
 
-Value arshift_p(SPUContext* ctx, const Value& x, size_t nbits) {
+Value rshift_v(SPUContext* ctx, const Value& x, size_t nbits) {
   FORCE_DISPATCH(ctx, x, nbits);
 }
+
+Value rshift_p(SPUContext* ctx, const Value& x, size_t nbits) {
+  FORCE_DISPATCH(ctx, x, nbits);
+}
+
+//////////////////////////////////////////////////////////////////////////////
 
 Value arshift_s(SPUContext* ctx, const Value& x, size_t bits) {
   SPU_TRACE_MPC_DISP(ctx, x, bits);
@@ -367,9 +619,15 @@ Value arshift_s(SPUContext* ctx, const Value& x, size_t bits) {
   return arshift_b(ctx, _2b(ctx, x), bits);
 }
 
-Value trunc_p(SPUContext* ctx, const Value& x, size_t nbits) {
+Value arshift_v(SPUContext* ctx, const Value& x, size_t nbits) {
   FORCE_DISPATCH(ctx, x, nbits);
 }
+
+Value arshift_p(SPUContext* ctx, const Value& x, size_t nbits) {
+  FORCE_DISPATCH(ctx, x, nbits);
+}
+
+//////////////////////////////////////////////////////////////////////////////
 
 Value trunc_s(SPUContext* ctx, const Value& x, size_t bits) {
   SPU_TRACE_MPC_DISP(ctx, x, bits);
@@ -377,14 +635,28 @@ Value trunc_s(SPUContext* ctx, const Value& x, size_t bits) {
   return trunc_a(ctx, _2a(ctx, x), bits);
 }
 
-Value bitrev_p(SPUContext* ctx, const Value& x, size_t start, size_t end) {
-  FORCE_DISPATCH(ctx, x, start, end);
+Value trunc_v(SPUContext* ctx, const Value& x, size_t nbits) {
+  FORCE_DISPATCH(ctx, x, nbits);
 }
+
+Value trunc_p(SPUContext* ctx, const Value& x, size_t nbits) {
+  FORCE_DISPATCH(ctx, x, nbits);
+}
+
+//////////////////////////////////////////////////////////////////////////////
 
 Value bitrev_s(SPUContext* ctx, const Value& x, size_t start, size_t end) {
   SPU_TRACE_MPC_DISP(ctx, x, start, end);
   TRY_DISPATCH(ctx, x, start, end);
   return bitrev_b(ctx, _2b(ctx, x), start, end);
+}
+
+Value bitrev_v(SPUContext* ctx, const Value& x, size_t start, size_t end) {
+  FORCE_DISPATCH(ctx, x, start, end);
+}
+
+Value bitrev_p(SPUContext* ctx, const Value& x, size_t start, size_t end) {
+  FORCE_DISPATCH(ctx, x, start, end);
 }
 
 }  // namespace spu::mpc

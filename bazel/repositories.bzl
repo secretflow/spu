@@ -291,6 +291,7 @@ def _com_github_microsoft_apsi():
         patches = [
             "@spulib//bazel:patches/apsi.patch",
             "@spulib//bazel:patches/apsi-gen.patch",
+            "@spulib//bazel:patches/apsi_bin_bundle.patch",
         ],
     )
 

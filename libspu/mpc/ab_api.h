@@ -21,6 +21,9 @@ namespace spu::mpc {
 
 Value a2p(SPUContext* ctx, const Value& x);
 Value p2a(SPUContext* ctx, const Value& x);
+Value a2v(SPUContext* ctx, const Value& x, size_t owner);
+Value v2a(SPUContext* ctx, const Value& x);
+
 Value msb_a2b(SPUContext* ctx, const Value& x);
 
 Value rand_a(SPUContext* ctx, const Shape& shape);
@@ -33,9 +36,12 @@ Value equal_aa(SPUContext* ctx, const Value& x, const Value& y);
 
 Value add_ap(SPUContext* ctx, const Value& x, const Value& y);
 Value add_aa(SPUContext* ctx, const Value& x, const Value&);
+OptionalAPI<Value> add_av(SPUContext* ctx, const Value& x, const Value& y);
 
 Value mul_ap(SPUContext* ctx, const Value& x, const Value& y);
 Value mul_aa(SPUContext* ctx, const Value& x, const Value& y);
+OptionalAPI<Value> mul_av(SPUContext* ctx, const Value& x, const Value& y);
+
 Value mul_a1b(SPUContext* ctx, const Value& x, const Value& y);
 
 Value lshift_a(SPUContext* ctx, const Value& x, size_t nbits);
@@ -45,21 +51,27 @@ Value mmul_ap(SPUContext* ctx, const Value& x, const Value& y, size_t m,
               size_t n, size_t k);
 Value mmul_aa(SPUContext* ctx, const Value& x, const Value& y, size_t m,
               size_t n, size_t k);
+OptionalAPI<Value> mmul_av(SPUContext* ctx, const Value& x, const Value& y,
+                           size_t m, size_t n, size_t k);
 
 Type common_type_b(SPUContext* ctx, const Type& a, const Type& b);
 Value cast_type_b(SPUContext* ctx, const Value& a, const Type& to_type);
 
 Value b2p(SPUContext* ctx, const Value& x);
 Value p2b(SPUContext* ctx, const Value& x);
+Value b2v(SPUContext* ctx, const Value& x, size_t owner);
 
 Value a2b(SPUContext* ctx, const Value& x);
 Value b2a(SPUContext* ctx, const Value& x);
 
 Value and_bp(SPUContext* ctx, const Value& x, const Value& y);
 Value and_bb(SPUContext* ctx, const Value& x, const Value& y);
+OptionalAPI<Value> and_bv(SPUContext* ctx, const Value& x, const Value& y);
 
 Value xor_bp(SPUContext* ctx, const Value& x, const Value& y);
 Value xor_bb(SPUContext* ctx, const Value& x, const Value& y);
+OptionalAPI<Value> xor_bv(SPUContext* ctx, const Value& x,
+                          const Value& y);  // TODO
 
 Value lshift_b(SPUContext* ctx, const Value& x, size_t nbits);
 Value rshift_b(SPUContext* ctx, const Value& x, size_t nbits);

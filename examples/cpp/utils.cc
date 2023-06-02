@@ -55,7 +55,7 @@ std::unique_ptr<spu::SPUContext> MakeSPUContext() {
   config.set_protocol(static_cast<spu::ProtocolKind>(ProtocolKind.getValue()));
   config.set_field(static_cast<spu::FieldType>(Field.getValue()));
 
-  populateRuntimecConfig(config);
+  populateRuntimeConfig(config);
 
   config.set_enable_action_trace(EngineTrace.getValue());
   config.set_enable_type_checker(EngineTrace.getValue());

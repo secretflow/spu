@@ -15,7 +15,7 @@
 #include "libspu/mpc/cheetah/boolean.h"
 
 #include "libspu/mpc/cheetah/state.h"
-#include "libspu/mpc/common/pub2k.h"
+#include "libspu/mpc/common/pv2k.h"
 #include "libspu/mpc/utils/ring_ops.h"
 
 namespace spu::mpc::cheetah {

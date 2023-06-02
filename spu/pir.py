@@ -44,6 +44,14 @@ def pir_server(link: libspu.link.Context, config: PirServerConfig) -> List[str]:
     return report
 
 
+def pir_memory_server(link: libspu.link.Context, config: PirSetupConfig) -> List[str]:
+    report_str = libspu.libs.pir_memory_server(link, config.SerializeToString())
+
+    report = PirResultReport()
+    report.ParseFromString(report_str)
+    return report
+
+
 def pir_client(link: libspu.link.Context, config: PirClientConfig) -> List[str]:
     report_str = libspu.libs.pir_client(link, config.SerializeToString())
 

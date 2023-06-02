@@ -20,6 +20,7 @@
 #include <utility>
 #include <vector>
 
+#include "yacl/crypto/utils/rand.h"
 #include "yacl/io/kv/leveldb_kvstore.h"
 #include "yacl/io/rw/csv_writer.h"
 
@@ -208,6 +209,78 @@ PirResultReport LabeledPirSetup(const PirSetupConfig &config) {
 
 PirResultReport LabeledPirServer(
     const std::shared_ptr<yacl::link::Context> &link_ctx,
+    const std::shared_ptr<spu::psi::SenderDB> &sender_db,
+    const std::vector<uint8_t> &oprf_key, const apsi::PSIParams &psi_params,
+    const std::vector<std::string> &label_columns, size_t server_data_count,
+    size_t count_per_query, size_t label_byte_count) {
+  // send count_per_query
+  link_ctx->SendAsync(link_ctx->NextRank(),
+                      spu::psi::utils::SerializeSize(count_per_query),
+                      fmt::format("count_per_query:{}", count_per_query));
+
+  yacl::Buffer labels_buffer =
+      spu::psi::utils::SerializeStrItems(label_columns);
+  // send labels column name
+  link_ctx->SendAsync(link_ctx->NextRank(), labels_buffer,
+                      fmt::format("send label columns name"));
+
+  // send psi params
+  yacl::Buffer params_buffer = spu::psi::PsiParamsToBuffer(psi_params);
+  link_ctx->SendAsync(link_ctx->NextRank(), params_buffer,
+                      fmt::format("send psi params"));
+
+  // const auto total_query_start = std::chrono::system_clock::now();
+
+  size_t query_count = 0;
+  size_t data_count = 0;
+
+  spu::psi::LabelPsiSender sender(sender_db);
+
+  SPDLOG_INFO("LabelPsiSender");
+
+  while (true) {
+    // recv current batch_size
+    size_t batch_data_size = spu::psi::utils::DeserializeSize(
+        link_ctx->Recv(link_ctx->NextRank(), fmt::format("batch_data_size")));
+
+    SPDLOG_INFO("client data size: {}", batch_data_size);
+    if (batch_data_size == 0) {
+      break;
+    }
+    data_count += batch_data_size;
+
+    // oprf
+    std::unique_ptr<spu::psi::IEcdhOprfServer> oprf_server =
+        spu::psi::CreateEcdhOprfServer(oprf_key, spu::psi::OprfType::Basic,
+                                       spu::psi::CurveType::CURVE_FOURQ);
+
+    // const auto oprf_start = std::chrono::system_clock::now();
+    sender.RunOPRF(std::move(oprf_server), link_ctx);
+
+    // const auto oprf_end = std::chrono::system_clock::now();
+    // const DurationMillis oprf_duration = oprf_end - oprf_start;
+    // SPDLOG_INFO("*** server oprf duration:{}", oprf_duration.count());
+
+    // const auto query_start = std::chrono::system_clock::now();
+
+    sender.RunQuery(link_ctx);
+
+    // const auto query_end = std::chrono::system_clock::now();
+    // const DurationMillis query_duration = query_end - query_start;
+    // SPDLOG_INFO("*** server query duration:{}", query_duration.count());
+
+    query_count++;
+  }
+  SPDLOG_INFO("query_count:{},data_count:{}", query_count, data_count);
+
+  PirResultReport report;
+  report.set_data_count(data_count);
+
+  return report;
+}
+
+PirResultReport LabeledPirServer(
+    const std::shared_ptr<yacl::link::Context> &link_ctx,
     const PirServerConfig &config) {
   size_t server_data_count;
   size_t count_per_query;
@@ -296,6 +369,50 @@ PirResultReport LabeledPirServer(
 
   PirResultReport report;
   report.set_data_count(data_count);
+
+  return report;
+}
+
+PirResultReport LabeledPirMemoryServer(
+    const std::shared_ptr<yacl::link::Context> &link_ctx,
+    const PirSetupConfig &config) {
+  std::vector<std::string> key_columns;
+  key_columns.insert(key_columns.end(), config.key_columns().begin(),
+                     config.key_columns().end());
+
+  std::vector<std::string> label_columns;
+  label_columns.insert(label_columns.end(), config.label_columns().begin(),
+                       config.label_columns().end());
+
+  size_t server_data_count = CsvFileDataCount(config.input_path(), key_columns);
+  size_t count_per_query = config.num_per_query();
+  SPDLOG_INFO("server_data_count:{}", server_data_count);
+
+  apsi::PSIParams psi_params =
+      spu::psi::GetPsiParams(count_per_query, server_data_count);
+
+  std::vector<uint8_t> oprf_key =
+      yacl::crypto::RandBytes(spu::psi::kEccKeySize);
+
+  size_t label_byte_count = config.label_max_len();
+  size_t nonce_byte_count = 16;
+
+  std::shared_ptr<spu::psi::SenderDB> sender_db =
+      std::make_shared<spu::psi::SenderDB>(psi_params, oprf_key, "::memory",
+                                           label_byte_count, nonce_byte_count,
+                                           false);
+
+  std::shared_ptr<spu::psi::IBatchProvider> batch_provider =
+      std::make_shared<spu::psi::CsvBatchProvider>(config.input_path(),
+                                                   key_columns, label_columns);
+
+  sender_db->SetData(batch_provider);
+
+  SPDLOG_INFO("sender_db->GetItemCount:{}", sender_db->GetItemCount());
+
+  PirResultReport report = LabeledPirServer(
+      link_ctx, sender_db, oprf_key, psi_params, label_columns,
+      sender_db->GetItemCount(), count_per_query, label_byte_count);
 
   return report;
 }
@@ -451,6 +568,16 @@ PirResultReport PirServer(const std::shared_ptr<yacl::link::Context> &link_ctx,
   }
 
   return LabeledPirServer(link_ctx, config);
+}
+
+PirResultReport PirMemoryServer(
+    const std::shared_ptr<yacl::link::Context> &link_ctx,
+    const PirSetupConfig &config) {
+  if (config.pir_protocol() != KEYWORD_PIR_LABELED_PSI) {
+    SPU_THROW("Unsupported pir protocol {}", config.pir_protocol());
+  }
+
+  return LabeledPirMemoryServer(link_ctx, config);
 }
 
 PirResultReport PirClient(const std::shared_ptr<yacl::link::Context> &link_ctx,

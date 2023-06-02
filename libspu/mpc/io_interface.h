@@ -28,9 +28,13 @@ class IoInterface {
 
   // Make shares (public/secret) from plaintext encoded in ring.
   //
-  // @param  raw, with type as RingTy.
+  // @param raw, with type as RingTy.
+  // @param vis, visibility the result.
+  // @param owner_rank, only valid when vis is VIS_SECRET
   // @return a list of random values, each of which could be send to one mpc
   //         engine.
+  //
+  // TODO: currently, the `private type` is transprent to compiler.
   //
   // This function deos NOT handle encoding stuffs, it's the upper layer(hal)'s
   // resposibility to encode to it to ring.

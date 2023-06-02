@@ -41,6 +41,18 @@ py_binary(
 )
 
 py_binary(
+    name = "pir_mem_server",
+    srcs = ["pir_mem_server.py"],
+    data = [
+        "//examples/data",
+    ],
+    deps = [
+        "//spu:pir",
+        "//spu/utils:distributed",
+    ],
+)
+
+py_binary(
     name = "pir_client",
     srcs = ["pir_client.py"],
     data = [

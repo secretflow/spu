@@ -20,7 +20,7 @@
 #include "libspu/mpc/aby3/type.h"
 #include "libspu/mpc/common/communicator.h"
 #include "libspu/mpc/common/prg_state.h"
-#include "libspu/mpc/common/pub2k.h"
+#include "libspu/mpc/common/pv2k.h"
 
 namespace spu::mpc {
 
@@ -37,11 +37,13 @@ void regAby3Protocol(SPUContext* ctx,
   ctx->prot()->addState<PrgState>(lctx);
 
   // register public kernels.
-  regPub2kKernels(ctx->prot());
+  regPV2kKernels(ctx->prot());
 
   // register arithmetic & binary kernels
   ctx->prot()->regKernel<aby3::P2A>();
+  ctx->prot()->regKernel<aby3::V2A>();
   ctx->prot()->regKernel<aby3::A2P>();
+  ctx->prot()->regKernel<aby3::A2V>();
   ctx->prot()->regKernel<aby3::NotA>();
   ctx->prot()->regKernel<aby3::AddAP>();
   ctx->prot()->regKernel<aby3::AddAA>();

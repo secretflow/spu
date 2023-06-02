@@ -94,6 +94,8 @@ class Communicator : public State {
 
   size_t getRank() const { return lctx_->Rank(); }
 
+  size_t prevRank() const { return lctx_->PrevRank(); }
+
   size_t nextRank() const { return lctx_->NextRank(); }
 
   ArrayRef allReduce(ReduceOp op, const ArrayRef& in, std::string_view tag);
@@ -118,6 +120,15 @@ class Communicator : public State {
 
   template <typename T, template <typename> typename FN>
   std::vector<T> allReduce(absl::Span<T const> in, std::string_view tag);
+
+  // TODO: test me
+  template <typename T>
+  std::vector<T> bcast(absl::Span<T const> in, size_t root,
+                       std::string_view tag);
+
+  template <typename T>
+  std::vector<std::vector<T>> gather(absl::Span<T const> in, size_t root,
+                                     std::string_view tag);
 };
 
 template <typename T>
@@ -171,6 +182,43 @@ std::vector<T> Communicator::allReduce(absl::Span<T const> in,
   stats_.latency += 1;
   stats_.comm += in.size() * sizeof(T) * (lctx_->WorldSize() - 1);
 
+  return res;
+}
+
+template <typename T>
+std::vector<T> Communicator::bcast(absl::Span<T const> in, size_t root,
+                                   std::string_view tag) {
+  yacl::ByteContainerView bv(reinterpret_cast<uint8_t const*>(in.data()),
+                             sizeof(T) * in.size());
+  yacl::Buffer buf = yacl::link::Broadcast(lctx_, bv, root, tag);
+
+  stats_.latency += 1;
+  stats_.comm += in.size() * sizeof(T);
+
+  // TODO: steal the buffer.
+  std::vector<T> res(in.size(), 0);
+  std::memcpy(res.data(), buf.data(), in.size() * sizeof(T));
+  return res;
+}
+
+template <typename T>
+std::vector<std::vector<T>> Communicator::gather(absl::Span<T const> in,
+                                                 size_t root,
+                                                 std::string_view tag) {
+  yacl::ByteContainerView bv(reinterpret_cast<uint8_t const*>(in.data()),
+                             sizeof(T) * in.size());
+  std::vector<yacl::Buffer> bufs = yacl::link::Gather(lctx_, bv, root, tag);
+
+  stats_.latency += 1;
+  stats_.comm += in.size() * sizeof(T);
+
+  // TODO: steal the buffer.
+  std::vector<std::vector<T>> res;
+  for (const auto& buf : bufs) {
+    std::vector<T> vi(in.size());
+    std::memcpy(vi.data(), buf.data(), in.size() * sizeof(T));
+    res.push_back(std::move(vi));
+  }
   return res;
 }
 

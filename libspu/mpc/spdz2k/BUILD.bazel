@@ -112,7 +112,7 @@ spu_cc_library(
     hdrs = ["type.h"],
     deps = [
         "//libspu/core:type",
-        "//libspu/mpc/common:pub2k",
+        "//libspu/mpc/common:pv2k",
     ],
 )
 
@@ -144,7 +144,7 @@ spu_cc_library(
         "//libspu/mpc:ab_api",
         "//libspu/mpc:api",
         "//libspu/mpc/common:communicator",
-        "//libspu/mpc/common:pub2k",
+        "//libspu/mpc/common:pv2k",
         "//libspu/mpc/utils:simulate",
         "@com_google_googletest//:gtest",
     ],

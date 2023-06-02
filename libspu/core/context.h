@@ -15,6 +15,7 @@
 #pragma once
 
 #include <memory>
+#include <optional>
 #include <variant>
 
 #include "yacl/link/link.h"
@@ -187,5 +188,16 @@ Ret dynDispatch(SPUContext* sctx, const std::string& name, Args&&... args) {
   // 4. steal the result and return it.
   return ectx.stealOutput<Ret>();
 }
+
+// helper class
+template <typename T>
+using OptionalAPI = std::optional<T>;
+inline constexpr std::nullopt_t NotAvailable = std::nullopt;
+
+// TODO: currently unstable, statically config it.
+// When it's stable move it to RuntimeConfig or even enable it by default.
+// #define SPU_ENABLE_PRIVATE_TYPE
+
+void setupTrace(spu::SPUContext* sctx, const spu::RuntimeConfig& rt_config);
 
 }  // namespace spu

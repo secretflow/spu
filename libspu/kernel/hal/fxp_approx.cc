@@ -253,22 +253,29 @@ Value exp_pade_approx(SPUContext* ctx, const Value& x) {
 //           (1 + 4 * x^2 / 9.0 + x^4 / 63.0)
 Value tanh_pade_approx(SPUContext* ctx, const Value& x) {
   const auto x_2 = f_square(ctx, x);
-  const auto x_3 = f_mul(ctx, x_2, x);
   const auto x_4 = f_square(ctx, x_2);
-  const auto x_5 = f_mul(ctx, x_2, x_3);
 
-  const auto dividend = f_add(
-      ctx, x,
-      f_add(ctx, f_div(ctx, x_3, f_constant(ctx, 9.0F, x.dtype(), x.shape())),
-            f_div(ctx, x_5, f_constant(ctx, 945.0F, x.dtype(), x.shape()))));
+  // Idea here...
+  // transform formula into
+  // x * (1 + x^2  / 9 + x^4 / 945) / (1 + 4 * x^2 / 9 + x^4 / 63)
+  // = x * (945 + 105 * x^2 + x^4) / (945 + 420 * x^2 + 15 * x^4)
+  // This can save some truncations
 
-  const auto divisor = f_add(
-      ctx, f_constant(ctx, 1.0F, x.dtype(), x.shape()),
-      f_add(ctx,
-            f_div(ctx, x_2, f_constant(ctx, 9.0F / 4.0F, x.dtype(), x.shape())),
-            f_div(ctx, x_4, f_constant(ctx, 63.0F, x.dtype(), x.shape()))));
+  const auto c_945 = f_constant(ctx, 945.0F, x.dtype(), x.shape());
+  const auto c_105 = constant(ctx, 105, DT_I32, x.shape());
+  const auto c_420 = constant(ctx, 420, DT_I32, x.shape());
+  const auto c_15 = constant(ctx, 15, DT_I32, x.shape());
 
-  return f_div(ctx, dividend, divisor);
+  const auto x_2_m_105 = _mul(ctx, x_2, c_105).setDtype(x_2.dtype());
+  const auto x_2_m_420 = _mul(ctx, x_2, c_420).setDtype(x_2.dtype());
+  const auto x_4_m_15 = _mul(ctx, x_4, c_15).setDtype(x_4.dtype());
+
+  const auto nominator =
+      f_mul(ctx, x, f_add(ctx, c_945, f_add(ctx, x_2_m_105, x_4)));
+
+  const auto denominator = f_add(ctx, c_945, f_add(ctx, x_2_m_420, x_4_m_15));
+
+  return f_div(ctx, nominator, denominator);
 }
 
 }  // namespace detail

@@ -53,6 +53,11 @@ class Public {
 //
 // The value of this type is a secret, invisible for parties.
 class Secret {
+ public:
+  virtual ~Secret() = default;
+};
+
+class Private {
  protected:
   // When in colocated mode, the data-provider also host a piece of spu
   // evaluator, it can infeed a cleartext as a 'private-secret`, a secret which
@@ -99,7 +104,7 @@ class Secret {
   int64_t owner_ = -1;
 
  public:
-  virtual ~Secret() = default;
+  virtual ~Private() = default;
 
   int64_t owner() const { return owner_; }
 };

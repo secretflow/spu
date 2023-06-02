@@ -120,7 +120,14 @@ uint32_t reset_powers_dag(apsi::PowersDag *pd, const apsi::PSIParams &params,
 
 LabelPsiSender::LabelPsiSender(std::shared_ptr<spu::psi::SenderDB> sender_db)
     : sender_db_(std::move(sender_db)) {
+  apsi::PSIParams params(sender_db_->GetParams());
+
   crypto_context_ = apsi::CryptoContext(sender_db_->GetParams());
+
+  SPDLOG_INFO("begin set PowersDag");
+  reset_powers_dag(&pd_, params, params.query_params().query_powers);
+
+  SPDLOG_INFO("pd_ is_configured:{}", pd_.is_configured());
 }
 
 void LabelPsiSender::RunPsiParams(
@@ -178,7 +185,8 @@ void LabelPsiSender::RunOPRF(
 
 std::vector<std::shared_ptr<ResultPackage>> SenderRunQuery(
     const QueryRequest &query,
-    const std::shared_ptr<spu::psi::SenderDB> &sender_db);
+    const std::shared_ptr<spu::psi::SenderDB> &sender_db,
+    const apsi::PowersDag &pd);
 
 void LabelPsiSender::RunQuery(
     const std::shared_ptr<yacl::link::Context> &link_ctx) {
@@ -226,7 +234,7 @@ void LabelPsiSender::RunQuery(
   QueryRequest request(&relin_keys, encrypted_powers, sender_db_);
 
   std::vector<std::shared_ptr<ResultPackage>> query_result =
-      SenderRunQuery(request, sender_db_);
+      SenderRunQuery(request, sender_db_, pd_);
 
   proto::QueryResponseProto response_proto;
   for (auto &result : query_result) {
@@ -274,7 +282,8 @@ void ProcessBinBundleCache(
 
 std::vector<std::shared_ptr<ResultPackage>> SenderRunQuery(
     const QueryRequest &query,
-    const std::shared_ptr<spu::psi::SenderDB> &sender_db) {
+    const std::shared_ptr<spu::psi::SenderDB> &sender_db,
+    const apsi::PowersDag &pd) {
   // We use a custom SEAL memory that is freed after the query is done
   auto pool = seal::MemoryManager::GetPool(seal::mm_force_new);
 
@@ -301,11 +310,6 @@ std::vector<std::shared_ptr<ResultPackage>> SenderRunQuery(
   uint32_t bundle_idx_count = params.bundle_idx_count();
 
   uint32_t max_items_per_bin = params.table_params().max_items_per_bin;
-
-  // Extract the PowersDag
-  // PowersDag pd = query.pd();
-  apsi::PowersDag pd;
-  reset_powers_dag(&pd, params, params.query_params().query_powers);
 
   // For each bundle index i, we need a vector of powers of the query Qᵢ. We
   // need powers all the way up to Qᵢ^max_items_per_bin. We don't store the
@@ -346,8 +350,8 @@ std::vector<std::shared_ptr<ResultPackage>> SenderRunQuery(
                   static_cast<uint32_t>(bundle_idx), &pool);
   }
 
-  SPDLOG_DEBUG("Finished computing powers for all bundle indices");
-  SPDLOG_DEBUG("Start processing bin bundle caches");
+  SPDLOG_INFO("Finished computing powers for all bundle indices");
+  SPDLOG_INFO("Start processing bin bundle caches");
 
   std::vector<std::shared_ptr<ResultPackage>> query_results;
 

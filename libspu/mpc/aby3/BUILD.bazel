@@ -147,7 +147,7 @@ spu_cc_library(
     hdrs = ["type.h"],
     deps = [
         "//libspu/core:type",
-        "//libspu/mpc/common:pub2k",
+        "//libspu/mpc/common:pv2k",
     ],
 )
 

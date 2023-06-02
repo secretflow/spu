@@ -16,6 +16,7 @@
 
 #include <memory>
 
+#include "apsi/powers.h"
 #include "apsi/psi_params.h"
 #include "apsi/seal_object.h"
 #include "seal/seal.h"
@@ -63,6 +64,8 @@ class LabelPsiSender {
 
   apsi::CryptoContext crypto_context_;
   seal::compr_mode_type compr_mode_ = seal::Serialization::compr_mode_default;
+
+  apsi::PowersDag pd_;
 };
 
 }  // namespace spu::psi

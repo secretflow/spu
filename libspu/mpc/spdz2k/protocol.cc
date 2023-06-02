@@ -17,7 +17,7 @@
 #include "libspu/core/context.h"
 #include "libspu/mpc/common/communicator.h"
 #include "libspu/mpc/common/prg_state.h"
-#include "libspu/mpc/common/pub2k.h"
+#include "libspu/mpc/common/pv2k.h"
 #include "libspu/mpc/spdz2k/arithmetic.h"
 #include "libspu/mpc/spdz2k/state.h"
 #include "libspu/mpc/spdz2k/type.h"
@@ -38,7 +38,7 @@ void regSpdz2kProtocol(SPUContext* ctx,
   ctx->prot()->addState<Z2kState>(ctx->config().field());
 
   // register public kernels.
-  regPub2kKernels(ctx->prot());
+  regPV2kKernels(ctx->prot());
 
   // register arithmetic kernels
   ctx->prot()->addState<Spdz2kState>(lctx);

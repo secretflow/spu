@@ -21,6 +21,7 @@
 
 // STD
 #include <algorithm>
+#include <chrono>
 #include <future>
 #include <iterator>
 #include <memory>
@@ -56,6 +57,9 @@
 namespace spu::psi {
 
 namespace {
+
+using DurationMillis = std::chrono::duration<double, std::milli>;
+
 /**
 Creates and returns the vector of hash functions similarly to how Kuku 2.x sets
 them internally.
@@ -385,17 +389,24 @@ void InsertOrAssignWorker(
     }
   }
 
+  const auto db_save_start = std::chrono::system_clock::now();
+
   for (auto &bundle : bundle_set) {
     std::stringstream stream;
 
     // Generate the BinBundle caches
-    bundle.regen_cache();
+    // bundle.regen_cache();
+    bundle.strip();
 
     size_t store_idx = (*bundles_store_idx)[bundle_index]++;
     bundle.save(stream, store_idx);
 
     (*bundles_store)[bundle_index]->Put(store_idx, stream.str());
   }
+
+  const auto db_save_end = std::chrono::system_clock::now();
+  const DurationMillis db_save_duration = db_save_end - db_save_start;
+  SPDLOG_INFO("*** step leveldb put duration:{}", db_save_duration.count());
 
   SPDLOG_DEBUG("Insert-or-Assign worker: finished processing bundle index {}",
                bundle_index);
@@ -555,17 +566,23 @@ void InsertOrAssignWorker(
     }
   }
 
+  const auto db_save_start = std::chrono::system_clock::now();
+
   for (auto &bundle : bundle_set) {
     std::stringstream stream;
 
     // Generate the BinBundle caches
-    bundle.regen_cache();
+    // bundle.regen_cache();
+    bundle.strip();
 
     size_t store_idx = (*bundles_store_idx)[bundle_index]++;
     bundle.save(stream, store_idx);
 
     (*bundles_store)[bundle_index]->Put(store_idx, stream.str());
   }
+  const auto db_save_end = std::chrono::system_clock::now();
+  const DurationMillis db_save_duration = db_save_end - db_save_start;
+  SPDLOG_INFO("*** step leveldb put duration:{}", db_save_duration.count());
 
   SPDLOG_DEBUG("Insert-or-Assign worker: finished processing bundle index {}",
                bundle_index);
@@ -673,6 +690,8 @@ void DispatchInsertOrAssign(
 constexpr char kMetaInfoStoreName[] = "meta_info";
 constexpr char kServerDataCount[] = "server_data_count";
 
+constexpr char kMemoryStoreFlag[] = "::memory";
+
 }  // namespace
 
 SenderDB::SenderDB(const apsi::PSIParams &params,
@@ -721,23 +740,35 @@ SenderDB::SenderDB(const apsi::PSIParams &params,
   bundles_store_.resize(params_.bundle_idx_count());
   bundles_store_idx_.resize(params_.bundle_idx_count());
 
-  std::string meta_store_name =
-      fmt::format("{}/{}", kv_store_path, kMetaInfoStoreName);
-  meta_info_store_ =
-      std::make_shared<yacl::io::LeveldbKVStore>(false, meta_store_name);
+  if (kv_store_path == kMemoryStoreFlag) {
+    meta_info_store_ = std::make_shared<yacl::io::MemoryKVStore>();
 
-  for (size_t i = 0; i < bundles_store_.size(); ++i) {
-    std::string bundle_store_name =
-        fmt::format("{}/bundle_{}", kv_store_path_, i);
+    for (size_t i = 0; i < bundles_store_.size(); ++i) {
+      std::shared_ptr<yacl::io::KVStore> kv_store =
+          std::make_shared<yacl::io::MemoryKVStore>();
 
-    std::shared_ptr<yacl::io::KVStore> kv_store =
-        std::make_shared<yacl::io::LeveldbKVStore>(false, bundle_store_name);
+      bundles_store_[i] = std::make_shared<yacl::io::IndexStore>(kv_store);
+    }
+  } else {
+    std::string meta_store_name =
+        fmt::format("{}/{}", kv_store_path, kMetaInfoStoreName);
+    meta_info_store_ =
+        std::make_shared<yacl::io::LeveldbKVStore>(false, meta_store_name);
 
-    bundles_store_[i] = std::make_shared<yacl::io::IndexStore>(kv_store);
+    for (size_t i = 0; i < bundles_store_.size(); ++i) {
+      std::string bundle_store_name =
+          fmt::format("{}/bundle_{}", kv_store_path_, i);
+
+      std::shared_ptr<yacl::io::KVStore> kv_store =
+          std::make_shared<yacl::io::LeveldbKVStore>(false, bundle_store_name);
+
+      bundles_store_[i] = std::make_shared<yacl::io::IndexStore>(kv_store);
+    }
   }
 
-  yacl::Buffer temp_value;
   try {
+    yacl::Buffer temp_value;
+
     meta_info_store_->Get(kServerDataCount, &temp_value);
     item_count_ = std::stoul(std::string(std::string_view(
         reinterpret_cast<char *>(temp_value.data()), temp_value.size())));
@@ -896,6 +927,7 @@ void SenderDB::GenerateCaches() {
 std::shared_ptr<apsi::sender::BinBundle> SenderDB::GetCacheAt(
     uint32_t bundle_idx, size_t cache_idx) {
   yacl::Buffer value;
+
   bool get_status = bundles_store_[bundle_idx]->Get(cache_idx, &value);
 
   SPU_ENFORCE(get_status);
@@ -914,12 +946,11 @@ std::shared_ptr<apsi::sender::BinBundle> SenderDB::GetCacheAt(
           crypto_context_, label_size, max_bin_size, ps_low_degree,
           bins_per_bundle, compressed, false);
 
-  std::string bundle_str(
-      std::string_view(reinterpret_cast<char *>(value.data()), value.size()));
-  std::stringstream stream(bundle_str);
-
+  gsl::span<unsigned char> value_span = {
+      reinterpret_cast<unsigned char *>(value.data()),
+      gsl::narrow_cast<gsl::span<unsigned char>::size_type>(value.size())};
   std::pair<std::uint32_t, std::size_t> load_ret =
-      load_bin_bundle->load(stream);
+      load_bin_bundle->load(value_span);
 
   SPU_ENFORCE(load_ret.first == cache_idx);
 
@@ -1033,8 +1064,8 @@ void SenderDB::InsertOrAssign(
     SPDLOG_INFO("Found {} existing items to replace in SenderDB",
                 existing_item_count);
 
-    // Break the data into field element representation. Also compute the items'
-    // cuckoo indices.
+    // Break the data into field element representation. Also compute the
+    // items' cuckoo indices.
     std::vector<std::pair<apsi::util::AlgItemLabel, size_t>> data_with_indices =
         PreprocessLabeledData(new_data_end, hashed_data.end(), params_);
 
@@ -1121,8 +1152,8 @@ void SenderDB::InsertOrAssign(const std::vector<apsi::Item> &data) {
 
   SPDLOG_INFO("Found {} new items to insert in SenderDB", hashed_data.size());
 
-  // Break the new data down into its field element representation. Also compute
-  // the items' cuckoo indices.
+  // Break the new data down into its field element representation. Also
+  // compute the items' cuckoo indices.
   std::vector<std::pair<apsi::util::AlgItem, size_t>> data_with_indices =
       PreprocessUnlabeledData(hashed_data.begin(), hashed_data.end(), params_);
 
@@ -1148,8 +1179,13 @@ void SenderDB::InsertOrAssign(
   [[maybe_unused]] size_t batch_count = 0;
   size_t indices_count = 0;
 
-  std::shared_ptr<yacl::io::KVStore> kv_store =
-      std::make_shared<yacl::io::LeveldbKVStore>(false);
+  std::shared_ptr<yacl::io::KVStore> kv_store;
+
+  if (kv_store_path_ == kMemoryStoreFlag) {
+    kv_store = std::make_shared<yacl::io::MemoryKVStore>();
+  } else {
+    kv_store = std::make_shared<yacl::io::LeveldbKVStore>(true);
+  }
 
   std::shared_ptr<yacl::io::IndexStore> items_oprf_store =
       std::make_shared<yacl::io::IndexStore>(kv_store);

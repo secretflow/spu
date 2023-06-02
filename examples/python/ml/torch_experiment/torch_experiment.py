@@ -97,7 +97,7 @@ def breast_cancer(
         x_ = x_test
         y_ = y_test
     x_ = x_[:, col_slicer]
-    return x_, y_
+    return x_.astype(dtype=np.float32), y_.astype(dtype=np.float32)
 
 
 import time

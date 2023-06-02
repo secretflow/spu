@@ -16,7 +16,7 @@
 
 #include "libspu/core/encoding.h"
 #include "libspu/core/ndarray_ref.h"
-#include "libspu/mpc/common/pub2k.h"
+#include "libspu/mpc/common/pv2k.h"
 
 namespace spu::kernel::hal {
 

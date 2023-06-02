@@ -21,7 +21,7 @@
 #include "libspu/mpc/ab_api.h"
 #include "libspu/mpc/common/communicator.h"
 #include "libspu/mpc/common/prg_state.h"
-#include "libspu/mpc/common/pub2k.h"
+#include "libspu/mpc/common/pv2k.h"
 #include "libspu/mpc/semi2k/state.h"
 #include "libspu/mpc/semi2k/type.h"
 #include "libspu/mpc/utils/ring_ops.h"
@@ -63,6 +63,52 @@ ArrayRef A2P::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
   auto* comm = ctx->getState<Communicator>();
   auto out = comm->allReduce(ReduceOp::ADD, in, kBindName);
   return out.as(makeType<Pub2kTy>(field));
+}
+
+ArrayRef A2V::proc(KernelEvalContext* ctx, const ArrayRef& in,
+                   size_t rank) const {
+  auto* comm = ctx->getState<Communicator>();
+  const auto field = in.eltype().as<AShrTy>()->field();
+  auto out_ty = makeType<Priv2kTy>(field, rank);
+  return DISPATCH_ALL_FIELDS(field, "_", [&]() {
+    std::vector<ring2k_t> share(in.numel());
+    pforeach(0, in.numel(),
+             [&](int64_t idx) { share[idx] = in.at<ring2k_t>(idx); });
+
+    std::vector<std::vector<ring2k_t>> shares =
+        comm->gather<ring2k_t>(share, rank, "a2v");  // comm => 1, k
+    if (comm->getRank() == rank) {
+      SPU_ENFORCE(shares.size() == comm->getWorldSize());
+      ArrayRef out(out_ty, in.numel());
+      auto _out = ArrayView<ring2k_t>(out);
+      pforeach(0, in.numel(), [&](int64_t idx) {
+        _out[idx] = 0;
+        for (auto& share : shares) {
+          _out[idx] += share[idx];
+        }
+      });
+      return out;
+    } else {
+      return makeConstantArrayRef(out_ty, in.numel());
+    }
+  });
+}
+
+ArrayRef V2A::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
+  const auto* in_ty = in.eltype().as<Priv2kTy>();
+  const size_t owner_rank = in_ty->owner();
+  const auto field = in_ty->field();
+  auto* prg_state = ctx->getState<PrgState>();
+  auto* comm = ctx->getState<Communicator>();
+
+  auto [r0, r1] = prg_state->genPrssPair(field, in.numel());
+  auto x = ring_sub(r0, r1).as(makeType<AShrTy>(field));
+
+  if (comm->getRank() == owner_rank) {
+    ring_add_(x, in);
+  }
+
+  return x.as(makeType<AShrTy>(field));
 }
 
 ArrayRef NotA::proc(KernelEvalContext* ctx, const ArrayRef& in) const {

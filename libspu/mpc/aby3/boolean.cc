@@ -23,7 +23,7 @@
 #include "libspu/mpc/aby3/value.h"
 #include "libspu/mpc/common/communicator.h"
 #include "libspu/mpc/common/prg_state.h"
-#include "libspu/mpc/common/pub2k.h"
+#include "libspu/mpc/common/pv2k.h"
 
 namespace spu::mpc::aby3 {
 
@@ -116,6 +116,47 @@ ArrayRef P2B::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
         }
       });
       return out;
+    });
+  });
+}
+
+ArrayRef B2V::proc(KernelEvalContext* ctx, const ArrayRef& in,
+                   size_t rank) const {
+  auto* comm = ctx->getState<Communicator>();
+  const PtType btype = in.eltype().as<BShrTy>()->getBacktype();
+  const auto field = ctx->getState<Z2kState>()->getDefaultField();
+
+  return DISPATCH_UINT_PT_TYPES(btype, "aby3.b2v", [&]() {
+    using BShrT = ScalarT;
+    auto _in = ArrayView<std::array<BShrT, 2>>(in);
+
+    return DISPATCH_ALL_FIELDS(field, "_", [&]() {
+      using VShrT = ring2k_t;
+
+      auto out_ty = makeType<Priv2kTy>(field, rank);
+
+      if (comm->getRank() == rank) {
+        auto x3 = comm->recv<BShrT>(comm->nextRank(), "b2v");  // comm => 1, k
+
+        ArrayRef out(out_ty, in.numel());
+        auto _out = ArrayView<VShrT>(out);
+        pforeach(0, in.numel(), [&](int64_t idx) {
+          _out[idx] = _in[idx][0] ^ _in[idx][1] ^ x3[idx];
+        });
+        return out;
+      } else if (comm->getRank() == (rank + 1) % 3) {
+        std::vector<BShrT> x2(in.numel());
+
+        pforeach(0, in.numel(), [&](int64_t idx) {  //
+          x2[idx] = _in[idx][1];
+        });
+
+        comm->sendAsync<BShrT>(comm->prevRank(), x2, "b2v");  // comm => 1, k
+
+        return makeConstantArrayRef(out_ty, in.numel());
+      } else {
+        return makeConstantArrayRef(out_ty, in.numel());
+      }
     });
   });
 }
