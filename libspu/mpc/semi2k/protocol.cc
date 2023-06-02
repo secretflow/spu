@@ -15,7 +15,7 @@
 #include "libspu/mpc/semi2k/protocol.h"
 
 #include "libspu/mpc/common/prg_state.h"
-#include "libspu/mpc/common/pub2k.h"
+#include "libspu/mpc/common/pv2k.h"
 #include "libspu/mpc/semi2k/arithmetic.h"
 #include "libspu/mpc/semi2k/boolean.h"
 #include "libspu/mpc/semi2k/conversion.h"
@@ -38,12 +38,14 @@ void regSemi2kProtocol(SPUContext* ctx,
   ctx->prot()->addState<Z2kState>(ctx->config().field());
 
   // register public kernels.
-  regPub2kKernels(ctx->prot());
+  regPV2kKernels(ctx->prot());
 
   // register arithmetic & binary kernels
   ctx->prot()->addState<Semi2kState>(ctx->config(), lctx);
   ctx->prot()->regKernel<semi2k::P2A>();
   ctx->prot()->regKernel<semi2k::A2P>();
+  ctx->prot()->regKernel<semi2k::A2V>();
+  ctx->prot()->regKernel<semi2k::V2A>();
   ctx->prot()->regKernel<semi2k::NotA>();
   ctx->prot()->regKernel<semi2k::AddAP>();
   ctx->prot()->regKernel<semi2k::AddAA>();

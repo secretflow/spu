@@ -85,7 +85,7 @@ spu_cc_library(
         ":conversion",
         ":state",
         "//libspu/mpc/common:prg_state",
-        "//libspu/mpc/common:pub2k",
+        "//libspu/mpc/common:pv2k",
     ],
 )
 

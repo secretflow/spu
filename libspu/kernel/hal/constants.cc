@@ -21,7 +21,7 @@
 #include "libspu/core/type_util.h"
 #include "libspu/kernel/hal/prot_wrapper.h"
 #include "libspu/kernel/hal/ring.h"
-#include "libspu/mpc/common/pub2k.h"
+#include "libspu/mpc/common/pv2k.h"
 
 namespace spu::kernel::hal {
 namespace {

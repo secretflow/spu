@@ -1,0 +1,94 @@
+diff --git a/sender/apsi/bin_bundle.cpp b/sender/apsi/bin_bundle.cpp
+index bb36ef2..51c32c0 100644
+--- a/sender/apsi/bin_bundle.cpp
++++ b/sender/apsi/bin_bundle.cpp
+@@ -1192,24 +1192,25 @@ namespace apsi {
+             // The loaded label size must match the label size for this BinBundle
+             size_t label_size = get_label_size();
+ 
+-            for (size_t bin_idx = 0; !stripped_ && (bin_idx < num_bins); bin_idx++) {
+-                auto &item_bin = *item_bins[static_cast<flatbuffers::uoffset_t>(bin_idx)]->felts();
++            std::vector<std::future<void>> futures;
+ 
+-                // Check that the sizes of the bins are at most max_bin_size_
+-                if (item_bin.size() > max_bin_size_) {
+-                    APSI_LOG_ERROR(
+-                        "The loaded BinBundle has an item bin of size "
+-                        << item_bin.size() << " but this BinBundle has a maximum bin size "
+-                        << max_bin_size_);
+-                    throw runtime_error("failed to load BinBundle");
+-                }
+-
+-                // All is good; copy over the item data
+-                transform(
+-                    item_bin.begin(),
+-                    item_bin.end(),
+-                    back_inserter(item_bins_[bin_idx]),
+-                    [&](auto felt_item) {
++	    auto item_bin_proc = [&](size_t begin, size_t end) -> void {
++               for (size_t bin_idx = begin; !stripped_ && (bin_idx < end); bin_idx++) {
++		       auto &item_bin = *item_bins[static_cast<flatbuffers::uoffset_t>(bin_idx)]->felts();
++		       if (item_bin.size() > max_bin_size_) {
++                            APSI_LOG_ERROR(
++                                "The loaded BinBundle has an item bin of size "
++                                << item_bin.size() << " but this BinBundle has a maximum bin size "
++                                << max_bin_size_);
++                            throw runtime_error("failed to load BinBundle");
++                       }
++
++		       // All is good; copy over the item data
++		       std::transform(
++                            item_bin.begin(),
++                            item_bin.end(),
++                            std::back_inserter(item_bins_[bin_idx]),
++                            [&](auto felt_item) {
+ #ifdef APSI_DEBUG
+                         if (label_size &&
+                             is_present(item_bins_[bin_idx], filters_[bin_idx], felt_item)) {
+@@ -1225,6 +1226,16 @@ namespace apsi {
+                         // Return to add the item to item_bins_[bin_idx]
+                         return felt_item;
+                     });
++	       }
++	    };
++
++	    size_t bin_step = std::max<size_t>(1, num_bins/5);
++	    for(size_t begin=0; begin<num_bins; begin+=bin_step) {
++                futures.push_back(std::async(item_bin_proc, begin, std::min<size_t>(num_bins,begin+bin_step)));
++	    }
++
++	    for (auto &f : futures) {
++                f.get();
+             }
+ 
+             // We are now done with the item data; next check that the label size is correct
+@@ -1259,8 +1270,10 @@ namespace apsi {
+                     throw runtime_error("failed to load BinBundle");
+                 }
+ 
+-                // Check that each bin has the same size as the corresponding items bin
+-                for (size_t bin_idx = 0; bin_idx < num_bins; bin_idx++) {
++		futures.clear();
++
++                auto label_bin_proc = [&](size_t begin, size_t end) -> void {
++                   for (size_t bin_idx = begin; bin_idx < end; bin_idx++) {
+                     size_t item_bin_size = item_bins_[bin_idx].size();
+                     auto &label_bin =
+                         *label_bins[static_cast<flatbuffers::uoffset_t>(bin_idx)]->felts();
+@@ -1277,6 +1290,16 @@ namespace apsi {
+                         label_bin.begin(),
+                         label_bin.end(),
+                         back_inserter(label_bins_[label_idx][bin_idx]));
++                  }
++                };
++
++		size_t step = std::max<size_t>(1, num_bins/5);
++		for(size_t begin=0; begin<num_bins; begin+=step) {
++                    futures.push_back(std::async(label_bin_proc, begin, std::min<size_t>(num_bins,begin+step)));
++		}
++
++                for (auto &f : futures) {
++                    f.get();
+                 }
+             }
+ 

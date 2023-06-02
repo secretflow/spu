@@ -44,8 +44,7 @@ ArrayRef getFirstShare(const ArrayRef& in);
 
 ArrayRef getSecondShare(const ArrayRef& in);
 
-ArrayRef makeAShare(const ArrayRef& s1, const ArrayRef& s2, FieldType field,
-                    int owner_rank = -1);
+ArrayRef makeAShare(const ArrayRef& s1, const ArrayRef& s2, FieldType field);
 
 PtType calcBShareBacktype(size_t nbits);
 

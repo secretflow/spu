@@ -25,7 +25,7 @@
 #include "libspu/mpc/aby3/value.h"
 #include "libspu/mpc/common/communicator.h"
 #include "libspu/mpc/common/prg_state.h"
-#include "libspu/mpc/common/pub2k.h"
+#include "libspu/mpc/common/pv2k.h"
 #include "libspu/mpc/utils/linalg.h"
 #include "libspu/mpc/utils/ring_ops.h"
 
@@ -128,14 +128,8 @@ ArrayRef RandA::proc(KernelEvalContext* ctx, size_t size) const {
 
     auto _out = ArrayView<std::array<AShrT, 2>>(out);
     pforeach(0, size, [&](int64_t idx) {
-      // NOTES for ring_rshift to 2 bits.
-      //
-      // Refer to: New Primitives for Actively-Secure MPC over Rings with
-      // Applications to Private Machine Learning
-      // - https://eprint.iacr.org/2019/599.pdf
-      //
-      // It's safer to keep the number within [-2**(k-2), 2**(k-2)) for
-      // comparsion operations.
+      // Comparison only works for [-2^(k-2), 2^(k-2)).
+      // TODO: Move this constrait to upper layer, saturate it here.
       _out[idx][0] = r0[idx] >> 2;
       _out[idx][1] = r1[idx] >> 2;
     });
@@ -175,8 +169,7 @@ ArrayRef A2P::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
 ArrayRef P2A::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
   auto* comm = ctx->getState<Communicator>();
 
-  // TODO: we should expect Pub2kTy instead of Ring2k
-  const auto* in_ty = in.eltype().as<Ring2k>();
+  const auto* in_ty = in.eltype().as<Pub2kTy>();
   const auto field = in_ty->field();
 
   auto rank = comm->getRank();
@@ -204,13 +197,90 @@ ArrayRef P2A::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
     for (int64_t idx = 0; idx < in.numel(); idx++) {
       r0[idx] = r0[idx] - r1[idx];
     }
-    r1 = comm->rotate<AShrT>(r0, "p2b.zero");
+    r1 = comm->rotate<AShrT>(r0, "p2a.zero");
 
     for (int64_t idx = 0; idx < in.numel(); idx++) {
       _out[idx][0] += r0[idx];
       _out[idx][1] += r1[idx];
     }
 #endif
+
+    return out;
+  });
+}
+
+ArrayRef A2V::proc(KernelEvalContext* ctx, const ArrayRef& in,
+                   size_t rank) const {
+  auto* comm = ctx->getState<Communicator>();
+  const auto field = in.eltype().as<AShrTy>()->field();
+
+  return DISPATCH_ALL_FIELDS(field, "_", [&]() {
+    using VShrT = ring2k_t;
+    using AShrT = ring2k_t;
+
+    auto _in = ArrayView<std::array<AShrT, 2>>(in);
+    auto out_ty = makeType<Priv2kTy>(field, rank);
+
+    if (comm->getRank() == rank) {
+      auto x3 = comm->recv<AShrT>(comm->nextRank(), "a2v");  // comm => 1, k
+                                                             //
+      ArrayRef out(out_ty, in.numel());
+      auto _out = ArrayView<VShrT>(out);
+      pforeach(0, in.numel(), [&](int64_t idx) {
+        _out[idx] = _in[idx][0] + _in[idx][1] + x3[idx];
+      });
+      return out;
+
+    } else if (comm->getRank() == (rank + 1) % 3) {
+      std::vector<AShrT> x2(in.numel());
+
+      pforeach(0, in.numel(), [&](int64_t idx) {  //
+        x2[idx] = _in[idx][1];
+      });
+
+      comm->sendAsync<AShrT>(comm->prevRank(), x2, "a2v");  // comm => 1, k
+      return makeConstantArrayRef(out_ty, in.numel());
+    } else {
+      return makeConstantArrayRef(out_ty, in.numel());
+    }
+  });
+}
+
+ArrayRef V2A::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
+  auto* comm = ctx->getState<Communicator>();
+
+  const auto* in_ty = in.eltype().as<Priv2kTy>();
+  const auto field = in_ty->field();
+
+  size_t owner_rank = in_ty->owner();
+
+  return DISPATCH_ALL_FIELDS(field, "_", [&]() {
+    using AShrT = ring2k_t;
+
+    ArrayRef out(makeType<AShrTy>(field), in.numel());
+    auto _out = ArrayView<std::array<AShrT, 2>>(out);
+    if (comm->getRank() == owner_rank) {
+      auto splits = ring_rand_additive_splits(in, 2);
+      comm->sendAsync(comm->nextRank(), splits[1], "v2a");  // comm => 1, k
+      comm->sendAsync(comm->prevRank(), splits[0], "v2a");  // comm => 1, k
+
+      pforeach(0, in.numel(), [&](int64_t idx) {
+        _out[idx][0] = splits[0].at<AShrT>(idx);
+        _out[idx][1] = splits[1].at<AShrT>(idx);
+      });
+    } else if (comm->getRank() == (owner_rank + 1) % 3) {
+      auto x0 = comm->recv<AShrT>(comm->prevRank(), "v2a");  // comm => 1, k
+      pforeach(0, in.numel(), [&](int64_t idx) {
+        _out[idx][0] = x0[idx];
+        _out[idx][1] = 0;
+      });
+    } else {
+      auto x1 = comm->recv<AShrT>(comm->nextRank(), "v2a");  // comm => 1, k
+      pforeach(0, in.numel(), [&](int64_t idx) {
+        _out[idx][0] = 0;
+        _out[idx][1] = x1[idx];
+      });
+    }
 
     return out;
   });
@@ -511,7 +581,7 @@ ArrayRef MulA1B::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
 
   auto ret = parallel_online(0, data1, 2, data2);
 
-  return makeAShare(ret.first, ret.second, field, self_rank);
+  return makeAShare(ret.first, ret.second, field);
 }
 
 ////////////////////////////////////////////////////////////////////

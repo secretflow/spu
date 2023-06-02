@@ -24,7 +24,7 @@
 #include "libspu/mpc/cheetah/nonlinear/truncate_prot.h"
 #include "libspu/mpc/cheetah/state.h"
 #include "libspu/mpc/common/communicator.h"
-#include "libspu/mpc/common/pub2k.h"
+#include "libspu/mpc/common/pv2k.h"
 #include "libspu/mpc/semi2k/type.h"
 #include "libspu/mpc/utils/ring_ops.h"
 

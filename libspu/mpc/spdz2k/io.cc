@@ -14,7 +14,7 @@
 
 #include "libspu/mpc/spdz2k/io.h"
 
-#include "libspu/mpc/common/pub2k.h"
+#include "libspu/mpc/common/pv2k.h"
 #include "libspu/mpc/spdz2k/type.h"
 #include "libspu/mpc/spdz2k/value.h"
 #include "libspu/mpc/utils/ring_ops.h"

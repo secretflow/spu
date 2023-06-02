@@ -16,12 +16,12 @@
 
 #include <mutex>
 
-#include "libspu/mpc/common/pub2k.h"
+#include "libspu/mpc/common/pv2k.h"
 
 namespace spu::mpc::semi2k {
 
 void registerTypes() {
-  regPub2kTypes();
+  regPV2kTypes();
 
   static std::once_flag flag;
   std::call_once(flag, []() {

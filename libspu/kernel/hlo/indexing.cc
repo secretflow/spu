@@ -575,106 +575,148 @@ spu::Value UpdateSlice(SPUContext *ctx, const spu::Value &in,
   return hal::update_slice(ctx, in, update, start_indices);
 }
 
-spu::Value SecretDynamicSlice(
-    SPUContext *ctx, const spu::Value &operand,
-    absl::Span<const int64_t> slice_size,
-    absl::Span<const spu::Value> start_indices,
-    std::vector<std::optional<spu::Value>>::iterator index_cache_mask) {
+spu::Value SecretDynamicSliceImpl(SPUContext *ctx, const spu::Value &operand,
+                                  absl::Span<const int64_t> slice_size,
+                                  absl::Span<const spu::Value> start_indices) {
   if (slice_size[0] == operand.shape()[0]) {
-    // Fully indexed dimension
-    if (operand.shape().size() == 1) {
+    if (slice_size.size() == 1) {
       return operand;
     }
-    // For each dim
-    std::vector<spu::Value> results(operand.shape()[0]);
-    std::vector<int64_t> start(operand.shape().size(), 0);
-    std::vector<int64_t> end = operand.shape();
-    std::vector<int64_t> strides(operand.shape().size(), 1);
-    std::vector<int64_t> result_size(slice_size.begin(), slice_size.end());
-    result_size[0] = 1;
 
+    // Full dimension
+    std::vector<int64_t> start(operand.shape().size(), 0);
+    std::vector<int64_t> limit = operand.shape();
+    std::vector<int64_t> strides(operand.shape().size(), 1);
+
+    std::vector<spu::Value> results(operand.shape()[0]);
     for (int64_t idx = 0; idx < operand.shape()[0]; ++idx) {
       start[0] = idx;
-      end[0] = idx + 1;
-      auto slice = hal::slice(ctx, operand, start, end, strides);
-      slice = hal::reshape(ctx, slice,
-                           absl::Span<const int64_t>(operand.shape().data(),
-                                                     operand.shape().size())
-                               .subspan(1));
-      auto r =
-          SecretDynamicSlice(ctx, slice, slice_size.subspan(1),
-                             start_indices.subspan(1), index_cache_mask + 1);
-      results[idx] = hal::reshape(ctx, r, result_size);
+      limit[0] = idx + 1;
+      // Slice one...
+      auto sliced = hal::slice(ctx, operand, start, limit, strides);
+      // Remove leading one
+      auto reshaped =
+          hal::reshape(ctx, sliced, absl::MakeSpan(sliced.shape()).subspan(1));
+      // Do indexing
+      auto indexed = SecretDynamicSliceImpl(
+          ctx, reshaped, slice_size.subspan(1), start_indices.subspan(1));
+      // Add leading one dimension back
+      std::vector<int64_t> result_shape(indexed.shape().size() + 1, 1);
+      for (size_t idx = 0; idx < indexed.shape().size(); ++idx) {
+        result_shape[idx + 1] = indexed.shape()[idx];
+      }
+      results[idx] = hal::reshape(ctx, indexed, result_shape);
     }
 
+    if (results.size() == 1) {
+      return results[0];
+    }
     return hal::concatenate(ctx, results, 0);
   }
-  // Not full
-  // adjusted_start_indices = clamp(0, start_indices, shape(operand) -
-  // slice_sizes)
-  auto lower_bound = spu::kernel::hlo::Constant(ctx, static_cast<int64_t>(0),
-                                                start_indices[0].shape());
-  auto upper_bound = spu::kernel::hlo::Constant(
-      ctx, operand.shape()[0] - slice_size[0], start_indices[0].shape());
-  lower_bound = spu::kernel::hlo::Cast(ctx, lower_bound, lower_bound.vtype(),
-                                       start_indices[0].dtype());
-  upper_bound = spu::kernel::hlo::Cast(ctx, upper_bound, upper_bound.vtype(),
-                                       start_indices[0].dtype());
-
-  auto adjusted_start_indices = hal::broadcast_to(
-      ctx, hal::clamp(ctx, start_indices[0], lower_bound, upper_bound),
-      {operand.shape()[0]});
 
   // equal(adjusted, iota)
   spu::Value mask;
-  if (!index_cache_mask->has_value()) {
-    spu::Value idx_iota = spu::kernel::hal::iota(
-        ctx, adjusted_start_indices.dtype(), operand.shape()[0]);
+  spu::Value idx_iota =
+      hal::iota(ctx, start_indices[0].dtype(), operand.shape()[0]);
 
-    mask = hal::equal(ctx, adjusted_start_indices, idx_iota);
-    mask = hal::pad(ctx, mask,
-                    hal::seal(ctx, hal::constant(ctx, false, mask.dtype())),
-                    {operand.shape()[0]}, {0}, {0});
-    *index_cache_mask = std::optional<spu::Value>(mask);
-  } else {
-    mask = **index_cache_mask;  // NOLINT
+  mask = hal::equal(ctx,
+                    hal::broadcast_to(ctx, start_indices[0], idx_iota.shape()),
+                    idx_iota);
+
+  if (slice_size[0] >= 1) {
+    auto pad_value = hal::seal(ctx, hal::constant(ctx, false, mask.dtype()));
+    pad_value = hal::_cast_type(ctx, pad_value, mask.storage_type());
+    mask = hal::pad(ctx, mask, pad_value, {slice_size[0]}, {0}, {0});
   }
 
   // foreach
   std::vector<spu::Value> results(slice_size[0]);
-  std::vector<int64_t> reduced_size(slice_size.begin(), slice_size.end());
-  reduced_size[0] = 1;
+
+  // Do collapse inner dims when necessary
+  auto collapsed_operand = operand;
+  if (collapsed_operand.shape().size() > 2) {
+    // Reshape from XxYxZ to Xx(Y*Z)
+    collapsed_operand =
+        hal::reshape(ctx, collapsed_operand,
+                     {operand.shape()[0],
+                      calcNumel(absl::MakeSpan(operand.shape()).subspan(1))});
+  }
+
+  std::vector<int64_t> indexed_shape = operand.shape();
+  indexed_shape[0] = 1;
+
   for (int64_t idx = 0; idx < slice_size[0]; ++idx) {
     auto mask_slice =
         hal::slice(ctx, mask, {mask.numel() - idx - operand.shape()[0]},
                    {mask.numel() - idx}, {1});
-    mask_slice = hal::reshape(ctx, mask_slice, {mask_slice.numel(), 1});
-    mask_slice = hal::broadcast_to(ctx, mask_slice, operand.shape(), {0});
+    mask_slice = hal::reshape(ctx, mask_slice, {1, mask_slice.numel()});
 
-    auto mul_mask = hal::mul(ctx, operand, mask_slice);
+    results[idx] = hal::matmul(ctx, mask_slice, collapsed_operand);
 
-    auto reduced = spu::kernel::hlo::Reduce(
-        ctx, {mul_mask}, {}, {0},
-        [&](absl::Span<const spu::Value> lhs,
-            absl::Span<const spu::Value> rhs) {
-          return std::vector<spu::Value>{
-              spu::kernel::hlo::Add(ctx, lhs[0], rhs[0])};
-        },
-        true)[0];
-    if (slice_size.size() > 1) {
-      reduced = hal::reshape(ctx, reduced,
-                             absl::Span<const int64_t>(reduced.shape().data(),
-                                                       reduced.shape().size())
-                                 .subspan(1));
-      reduced =
-          SecretDynamicSlice(ctx, reduced, slice_size.subspan(1),
-                             start_indices.subspan(1), index_cache_mask + 1);
-      reduced = hal::reshape(ctx, reduced, reduced_size);
+    results[idx] = hal::reshape(ctx, results[idx], indexed_shape);
+  }
+
+  if (slice_size.size() > 1) {
+    std::vector<int64_t> result_shape(slice_size.begin(), slice_size.end());
+    result_shape[0] = 1;
+    // Keep indexing deeper
+    for (int64_t idx = 0; idx < slice_size[0]; ++idx) {
+      results[idx] = hal::reshape(
+          ctx, results[idx], absl::MakeSpan(results[idx].shape()).subspan(1));
+      results[idx] = SecretDynamicSliceImpl(
+          ctx, results[idx], slice_size.subspan(1), start_indices.subspan(1));
+      results[idx] = hal::reshape(ctx, results[idx], result_shape);
     }
-    results[idx] = reduced;
+  }
+
+  if (results.size() == 1) {
+    return results[0];
   }
 
   return hal::concatenate(ctx, results, 0);
+}
+
+spu::Value SecretDynamicSlice(SPUContext *ctx, const spu::Value &operand,
+                              absl::Span<const int64_t> slice_size,
+                              absl::Span<const spu::Value> start_indices) {
+  // Clamp all indices
+  auto lower_bound =
+      hlo::Constant(ctx, std::vector<int64_t>(slice_size.size(), 0),
+                    {static_cast<int64_t>(slice_size.size())});
+
+  std::vector<int64_t> limit = operand.shape();
+  for (size_t idx = 0; idx < limit.size(); ++idx) {
+    limit[idx] -= slice_size[idx];
+  }
+  auto upper_bound =
+      hlo::Constant(ctx, limit, {static_cast<int64_t>(slice_size.size())});
+
+  // Cast to proper type
+  lower_bound = hlo::Cast(ctx, lower_bound, lower_bound.vtype(),
+                          start_indices[0].dtype());
+  upper_bound = hlo::Cast(ctx, upper_bound, upper_bound.vtype(),
+                          start_indices[0].dtype());
+
+  // Reshape from scalar to {1} to make concat happy
+  std::vector<spu::Value> adjusted_start_indices;
+  std::transform(start_indices.cbegin(), start_indices.cend(),
+                 std::back_inserter(adjusted_start_indices),
+                 [&](const Value &x) { return hal::reshape(ctx, x, {1}); });
+
+  auto adjusted_all_indices = hal::broadcast_to(
+      ctx,
+      hal::clamp(ctx, hal::concatenate(ctx, adjusted_start_indices, 0),
+                 lower_bound, upper_bound),
+      {operand.shape()[0]});
+
+  for (int64_t idx = 0;
+       idx < static_cast<int64_t>(adjusted_start_indices.size()); ++idx) {
+    adjusted_start_indices[idx] =
+        hal::slice(ctx, adjusted_all_indices, {idx}, {idx + 1}, {1});
+  }
+
+  return SecretDynamicSliceImpl(ctx, operand, slice_size,
+                                adjusted_start_indices);
 }
 
 spu::Value DynamicSlice(SPUContext *ctx, const spu::Value &operand,
@@ -685,10 +727,7 @@ spu::Value DynamicSlice(SPUContext *ctx, const spu::Value &operand,
   SPU_ENFORCE(!start_indices.empty());
 
   if (start_indices[0].isSecret()) {
-    std::vector<std::optional<spu::Value>> index_mask_cache(
-        operand.shape().size());
-    return SecretDynamicSlice(ctx, operand, slice_size, start_indices,
-                              index_mask_cache.begin());
+    return SecretDynamicSlice(ctx, operand, slice_size, start_indices);
   } else {
     // Start indices
     std::vector<int64_t> start_indices_i64(start_indices.size());

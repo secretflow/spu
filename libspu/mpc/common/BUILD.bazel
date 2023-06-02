@@ -17,23 +17,24 @@ load("//bazel:spu.bzl", "spu_cc_library", "spu_cc_test")
 package(default_visibility = ["//visibility:public"])
 
 spu_cc_library(
-    name = "pub2k",
-    srcs = ["pub2k.cc"],
-    hdrs = ["pub2k.h"],
+    name = "pv2k",
+    srcs = ["pv2k.cc"],
+    hdrs = ["pv2k.h"],
     deps = [
         "//libspu/core",
         "//libspu/core:trace",
         "//libspu/mpc:kernel",
+        "//libspu/mpc/common:communicator",
         "//libspu/mpc/common:prg_state",
         "//libspu/mpc/utils:ring_ops",
     ],
 )
 
 spu_cc_test(
-    name = "pub2k_test",
-    srcs = ["pub2k_test.cc"],
+    name = "pv2k_test",
+    srcs = ["pv2k_test.cc"],
     deps = [
-        ":pub2k",
+        ":pv2k",
     ],
 )
 

@@ -35,7 +35,7 @@ INSTANTIATE_TEST_SUITE_P(
                      testing::Values(makeConfig(FieldType::FM32),    //
                                      makeConfig(FieldType::FM64),    //
                                      makeConfig(FieldType::FM128)),  //
-                     testing::Values(2, 3, 5)),                      //
+                     testing::Values(1, 2, 3, 5)),                   //
     [](const testing::TestParamInfo<ApiTest::ParamType>& p) {
       return fmt::format("{}x{}", std::get<1>(p.param).field(),
                          std::get<2>(p.param));
@@ -44,7 +44,7 @@ INSTANTIATE_TEST_SUITE_P(
 INSTANTIATE_TEST_SUITE_P(
     Ref2kIoTest, IoTest,
     testing::Combine(testing::Values(makeRef2kIo),        //
-                     testing::Values(2, 3, 5),            //
+                     testing::Values(1, 2, 3, 5),         //
                      testing::Values(FieldType::FM32,     //
                                      FieldType::FM64,     //
                                      FieldType::FM128)),  //

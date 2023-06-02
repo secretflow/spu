@@ -59,6 +59,23 @@ Value a2p(SPUContext* ctx, const Value& x) { FORCE_DISPATCH(ctx, x); }
 
 Value p2a(SPUContext* ctx, const Value& x) { FORCE_DISPATCH(ctx, x); }
 
+Value a2v(SPUContext* ctx, const Value& x, size_t owner) {
+  // Note: Private is not mandatory for now, it's the protocol author's
+  // responsibility to decide if private should be supported. He/she can:
+  // 1. Do not support private from IO interface, then all computation should be
+  //    in Secret/Public domain, Private related kernel will never be
+  //    dispatched.
+  // 2. Support private in IO interface, then the private computation/conversion
+  //    interface should also be supported.
+  FORCE_DISPATCH(ctx, x, owner);
+}
+
+Value v2a(SPUContext* ctx, const Value& x) {
+  // Note: it's the protocol author's responsibility to ensure private is
+  // supported
+  FORCE_DISPATCH(ctx, x);
+}
+
 Value msb_a2b(SPUContext* ctx, const Value& x) { TILED_DISPATCH(ctx, x); }
 
 Value rand_a(SPUContext* ctx, const Shape& shape) {
@@ -87,12 +104,22 @@ Value add_aa(SPUContext* ctx, const Value& x, const Value& y) {
   FORCE_DISPATCH(ctx, x, y);
 }
 
+OptionalAPI<Value> add_av(SPUContext* ctx, const Value& x, const Value& y) {
+  TRY_DISPATCH(ctx, x, y);
+  return NotAvailable;
+}
+
 Value mul_ap(SPUContext* ctx, const Value& x, const Value& y) {
   FORCE_DISPATCH(ctx, x, y);
 }
 
 Value mul_aa(SPUContext* ctx, const Value& x, const Value& y) {
   TILED_DISPATCH(ctx, x, y);
+}
+
+OptionalAPI<Value> mul_av(SPUContext* ctx, const Value& x, const Value& y) {
+  TRY_DISPATCH(ctx, x, y);
+  return NotAvailable;
 }
 
 Value mul_a1b(SPUContext* ctx, const Value& x, const Value& y) {
@@ -117,6 +144,12 @@ Value mmul_aa(SPUContext* ctx, const Value& x, const Value& y, size_t m,
   FORCE_DISPATCH(ctx, x, y, m, n, k);
 }
 
+OptionalAPI<Value> mmul_av(SPUContext* ctx, const Value& x, const Value& y,
+                           size_t m, size_t n, size_t k) {
+  TRY_DISPATCH(ctx, x, y, m, n, k);
+  return NotAvailable;
+}
+
 Type common_type_b(SPUContext* ctx, const Type& a, const Type& b) {
   SPU_TRACE_MPC_LEAF(ctx, a, b);
   return dynDispatch<Type>(ctx, __func__, a, b);
@@ -130,6 +163,10 @@ Value b2p(SPUContext* ctx, const Value& x) { FORCE_DISPATCH(ctx, x); }
 
 Value p2b(SPUContext* ctx, const Value& x) { FORCE_DISPATCH(ctx, x); }
 
+Value b2v(SPUContext* ctx, const Value& x, size_t owner) {
+  FORCE_DISPATCH(ctx, x, owner);
+}
+
 Value a2b(SPUContext* ctx, const Value& x) { TILED_DISPATCH(ctx, x); }
 
 Value b2a(SPUContext* ctx, const Value& x) { TILED_DISPATCH(ctx, x); }
@@ -142,12 +179,22 @@ Value and_bb(SPUContext* ctx, const Value& x, const Value& y) {
   TILED_DISPATCH(ctx, x, y);
 }
 
+OptionalAPI<Value> and_bv(SPUContext* ctx, const Value& x, const Value& y) {
+  TRY_DISPATCH(ctx, x, y);
+  return NotAvailable;
+}
+
 Value xor_bp(SPUContext* ctx, const Value& x, const Value& y) {
   FORCE_DISPATCH(ctx, x, y);
 }
 
 Value xor_bb(SPUContext* ctx, const Value& x, const Value& y) {
   FORCE_DISPATCH(ctx, x, y);
+}
+
+OptionalAPI<Value> xor_bv(SPUContext* ctx, const Value& x, const Value& y) {
+  TRY_DISPATCH(ctx, x, y);
+  return NotAvailable;
 }
 
 Value lshift_b(SPUContext* ctx, const Value& x, size_t nbits) {

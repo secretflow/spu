@@ -43,4 +43,26 @@ std::unique_ptr<SPUContext> SPUContext::fork() const {
   return new_sctx;
 }
 
+void setupTrace(spu::SPUContext* sctx, const spu::RuntimeConfig& rt_config) {
+  int64_t tr_flag = 0;
+  // TODO: Support tracing for parallel op execution
+  if (rt_config.enable_action_trace() &&
+      !rt_config.experimental_enable_intra_op_par()) {
+    tr_flag |= TR_LOG;
+  }
+
+  if (rt_config.enable_pphlo_profile()) {
+    tr_flag |= TR_HLO;
+    tr_flag |= TR_REC;
+  }
+
+  if (rt_config.enable_hal_profile()) {
+    tr_flag |= TR_HAL | TR_MPC;
+    tr_flag |= TR_REC;
+  }
+
+  initTrace(sctx->id(), tr_flag);
+  GET_TRACER(sctx)->getProfState()->clearRecords();
+}
+
 }  // namespace spu

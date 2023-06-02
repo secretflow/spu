@@ -44,7 +44,7 @@ auto xt_random(const std::vector<size_t>& shape, double min = -100,
   } else if constexpr (std::is_floating_point_v<T>) {
     return xt::random::rand<T>(shape, static_cast<T>(min), static_cast<T>(max));
   } else {
-    SPU_THROW("unsupport xt_random type");
+    SPU_THROW("unsupported xt_random type");
   }
 }
 

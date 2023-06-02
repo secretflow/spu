@@ -23,7 +23,48 @@ import spu.utils.frontend as spu_fe
 from spu import spu_pb2
 
 
+def test_jax_add(*args, **kwargs):
+    ret = jnp.zeros((2,))
+    for arg in args:
+        ret = jnp.add(ret, arg)
+    for _, value in kwargs.items():
+        ret = jnp.add(ret, value)
+    return ret
+
+
 class UnitTests(unittest.TestCase):
+    def test_jax_compile_static_args(self):
+        executable, output = spu_fe.compile(
+            spu_fe.Kind.JAX,
+            test_jax_add,
+            (1, np.array([2, 4])),
+            {"in3": 2, "in4": np.array([2, 4])},
+            ["in1", "in2", "in3", "in4"],
+            [
+                spu_pb2.VIS_PUBLIC,
+                spu_pb2.VIS_PUBLIC,
+                spu_pb2.VIS_PUBLIC,
+                spu_pb2.VIS_PUBLIC,
+            ],
+            lambda out_flat: [f'test-out{idx}' for idx in range(len(out_flat))],
+            static_argnums=(0,),
+            static_argnames=["in3"],
+        )
+        self.assertEqual(executable.name, "test_jax_add")
+        self.assertEqual(executable.input_names, ["in1", "in2", "in3", "in4"])
+        self.assertEqual(executable.output_names, ["test-out0"])
+        self.assertTrue(
+            "  func.func @main(%arg0: tensor<2x!pphlo.pub<i32>>, %arg1: tensor<2x!pphlo.pub<i32>>) -> tensor<2x!pphlo.pub<f32>> {\n"
+            "    %0 = \"pphlo.constant\"() {value = dense<3.000000e+00> : tensor<2xf32>} : () -> tensor<2x!pphlo.pub<f32>>\n"
+            "    %1 = \"pphlo.convert\"(%arg0) : (tensor<2x!pphlo.pub<i32>>) -> tensor<2x!pphlo.pub<f32>>\n"
+            "    %2 = \"pphlo.add\"(%1, %0) : (tensor<2x!pphlo.pub<f32>>, tensor<2x!pphlo.pub<f32>>) -> tensor<2x!pphlo.pub<f32>>\n"
+            "    %3 = \"pphlo.convert\"(%arg1) : (tensor<2x!pphlo.pub<i32>>) -> tensor<2x!pphlo.pub<f32>>\n"
+            "    %4 = \"pphlo.add\"(%2, %3) : (tensor<2x!pphlo.pub<f32>>, tensor<2x!pphlo.pub<f32>>) -> tensor<2x!pphlo.pub<f32>>\n"
+            "    return %4 : tensor<2x!pphlo.pub<f32>>\n" in executable.code.decode()
+        )
+        self.assertEqual(output.shape, (2,))
+        self.assertEqual(output.dtype, np.dtype("float32"))
+
     def test_jax_compile(self):
         executable, output = spu_fe.compile(
             spu_fe.Kind.JAX,

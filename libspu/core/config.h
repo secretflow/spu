@@ -23,7 +23,7 @@ namespace spu {
 // Required field must be filled, or exception will be raised.
 // Optional field will not be touched.
 // Field with (implementation defined) default value will be changed
-void populateRuntimecConfig(RuntimeConfig& cfg);
+void populateRuntimeConfig(RuntimeConfig& cfg);
 
 RuntimeConfig makeFullRuntimeConfig(const RuntimeConfig& cfg);
 

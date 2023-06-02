@@ -32,10 +32,18 @@ PirResultReport PirServer(const std::shared_ptr<yacl::link::Context> &link_ctx,
 PirResultReport PirClient(const std::shared_ptr<yacl::link::Context> &link_ctx,
                           const PirClientConfig &config);
 
+PirResultReport PirMemoryServer(
+    const std::shared_ptr<yacl::link::Context> &link_ctx,
+    const PirSetupConfig &config);
+
 // pir protocol based on labeled psi
 PirResultReport LabeledPirSetup(const PirSetupConfig &config);
 
 PirResultReport LabeledPirServer(
+    const std::shared_ptr<yacl::link::Context> &link_ctx,
+    const PirServerConfig &config);
+
+PirResultReport LabeledPirMemoryServer(
     const std::shared_ptr<yacl::link::Context> &link_ctx,
     const PirServerConfig &config);
 

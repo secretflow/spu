@@ -43,9 +43,8 @@ ArrayRef getFirstShare(const ArrayRef& in) { return getShare(in, 0); }
 
 ArrayRef getSecondShare(const ArrayRef& in) { return getShare(in, 1); }
 
-ArrayRef makeAShare(const ArrayRef& s1, const ArrayRef& s2, FieldType field,
-                    int owner_rank) {
-  const Type ty = makeType<AShrTy>(field, owner_rank);
+ArrayRef makeAShare(const ArrayRef& s1, const ArrayRef& s2, FieldType field) {
+  const Type ty = makeType<AShrTy>(field);
 
   SPU_ENFORCE(s2.eltype().as<Ring2k>()->field() == field);
   SPU_ENFORCE(s1.eltype().as<Ring2k>()->field() == field);

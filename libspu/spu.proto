@@ -331,7 +331,7 @@ message CompilerOptions {
   bool enable_pretty_print = 1;
   string pretty_print_dump_dir = 2;
   XLAPrettyPrintKind xla_pp_kind = 3;
-  
+
   // Disable sqrt(x) + eps to sqrt(x+eps) rewrite
   bool disable_sqrt_plus_epsilon_rewrite = 10;
 

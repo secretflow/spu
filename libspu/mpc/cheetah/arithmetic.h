@@ -25,6 +25,10 @@ using P2A = spu::mpc::semi2k::P2A;
 
 using A2P = spu::mpc::semi2k::A2P;
 
+using V2A = spu::mpc::semi2k::V2A;
+
+using A2V = spu::mpc::semi2k::A2V;
+
 using NotA = spu::mpc::semi2k::NotA;
 
 using AddAP = spu::mpc::semi2k::AddAP;

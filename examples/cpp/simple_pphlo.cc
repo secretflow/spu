@@ -25,7 +25,7 @@
 #include "libspu/device/io.h"
 #include "libspu/device/pphlo/pphlo_executor.h"
 
-// This example demostrates the basic compute functionality of spu vm.
+// This example demonstrates the basic compute functionality of spu vm.
 void constant_add(spu::SPUContext* sctx) {
   // Write the assembly, this code simple add two numbers.
   // - `%1` is a constant public integer, with dtype int32 and value 1.
@@ -47,7 +47,7 @@ func.func @main() -> () {
   spu::device::execute(&executor, sctx, code, {}, {}, &env);
 }
 
-// This example demostrates how to pass parameters.
+// This example demonstrates how to pass parameters.
 void parameters(spu::SPUContext* sctx) {
   // In this example, data owner also participates the computation progress,
   // which is called "colocated mode" in spu system.
@@ -63,7 +63,7 @@ void parameters(spu::SPUContext* sctx) {
     cio.hostSetVar("y", y);
   }
 
-  // syncrhonize, after this step, all device engines share the same knowledge
+  // synchronize, after this step, all device engines share the same knowledge
   // of cio environment.
   cio.sync();
 

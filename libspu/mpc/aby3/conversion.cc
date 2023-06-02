@@ -24,7 +24,7 @@
 #include "libspu/mpc/aby3/value.h"
 #include "libspu/mpc/common/communicator.h"
 #include "libspu/mpc/common/prg_state.h"
-#include "libspu/mpc/common/pub2k.h"
+#include "libspu/mpc/common/pv2k.h"
 
 namespace spu::mpc::aby3 {
 

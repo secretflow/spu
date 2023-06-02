@@ -155,7 +155,7 @@ spu_cc_library(
         "//libspu/core:encoding",
         "//libspu/core:pt_buffer_view",
         "//libspu/core:value",
-        "//libspu/mpc/common:pub2k",  # TODO: this is a bad reference
+        "//libspu/mpc/common:pv2k",  # TODO: this is a bad reference
     ],
 )
 
@@ -176,7 +176,7 @@ spu_cc_library(
         "//libspu/core:context",
         "//libspu/core:encoding",
         "//libspu/core:value",
-        "//libspu/mpc/common:pub2k",  # TODO: this is a bad reference
+        "//libspu/mpc/common:pv2k",  # TODO: this is a bad reference
     ],
 )
 

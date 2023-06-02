@@ -18,8 +18,9 @@
 
 #include "libspu/core/trace.h"
 #include "libspu/core/type.h"
+#include "libspu/mpc/common/communicator.h"
 #include "libspu/mpc/common/prg_state.h"
-#include "libspu/mpc/common/pub2k.h"
+#include "libspu/mpc/common/pv2k.h"
 #include "libspu/mpc/kernel.h"
 #include "libspu/mpc/utils/ring_ops.h"
 
@@ -36,7 +37,7 @@ class Ref2kSecrTy : public TypeImpl<Ref2kSecrTy, RingTy, Secret> {
 };
 
 void registerTypes() {
-  regPub2kTypes();
+  regPV2kTypes();
 
   static std::once_flag flag;
   std::call_once(
@@ -99,6 +100,56 @@ class Ref2kS2P : public UnaryKernel {
 
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in) const override {
     return in.as(makeType<Pub2kTy>(in.eltype().as<Ring2k>()->field()));
+  }
+};
+
+class Ref2kS2V : public RevealToKernel {
+ public:
+  static constexpr char kBindName[] = "s2v";
+
+  ce::CExpr latency() const override { return ce::Const(0); }
+
+  ce::CExpr comm() const override { return ce::Const(0); }
+
+  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in,
+                size_t rank) const override {
+    auto* comm = ctx->getState<Communicator>();
+    const auto field = in.eltype().as<Ring2k>()->field();
+    const auto out_ty = makeType<Priv2kTy>(field, rank);
+    if (comm->getRank() == rank) {  // owner
+      return in.as(out_ty);
+    } else {
+      return makeConstantArrayRef(out_ty, in.numel());
+    }
+  }
+};
+
+class Ref2kV2S : public UnaryKernel {
+ public:
+  static constexpr char kBindName[] = "v2s";
+  Kind kind() const override { return Kind::Dynamic; }
+
+  ce::CExpr latency() const override { return ce::Const(0); }
+  ce::CExpr comm() const override { return ce::Const(0); }
+
+  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in) const override {
+    auto* comm = ctx->getState<Communicator>();
+    const auto field = in.eltype().as<Ring2k>()->field();
+    const size_t owner = in.eltype().as<Priv2kTy>()->owner();
+
+    const auto out_ty = makeType<Ref2kSecrTy>(field);
+    ArrayRef out(out_ty, in.numel());
+    DISPATCH_ALL_FIELDS(field, "v2s", [&]() {
+      std::vector<ring2k_t> _in(in.numel());
+      for (size_t idx = 0; idx < _in.size(); idx++) {
+        _in[idx] = in.at<ring2k_t>(idx);
+      }
+      std::vector<ring2k_t> _out = comm->bcast<ring2k_t>(_in, owner, "v2s");
+      for (size_t idx = 0; idx < _in.size(); idx++) {
+        out.at<ring2k_t>(idx) = _out[idx];
+      }
+    });
+    return out;
   }
 };
 
@@ -409,17 +460,22 @@ void regRef2kProtocol(SPUContext* ctx,
   // register random states & kernels.
   ctx->prot()->addState<PrgState>();
 
+  // add communicator
+  ctx->prot()->addState<Communicator>(lctx);
+
   // add Z2k state.
   ctx->prot()->addState<Z2kState>(ctx->config().field());
 
   // register public kernels.
-  regPub2kKernels(ctx->prot());
+  regPV2kKernels(ctx->prot());
 
   // register compute kernels
   ctx->prot()->regKernel<Ref2kCommonTypeS>();
   ctx->prot()->regKernel<Ref2kCastTypeS>();
   ctx->prot()->regKernel<Ref2kP2S>();
   ctx->prot()->regKernel<Ref2kS2P>();
+  ctx->prot()->regKernel<Ref2kV2S>();
+  ctx->prot()->regKernel<Ref2kS2V>();
   ctx->prot()->regKernel<Ref2kNotS>();
   ctx->prot()->regKernel<Ref2kAddSS>();
   ctx->prot()->regKernel<Ref2kAddSP>();

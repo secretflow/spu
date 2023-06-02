@@ -144,7 +144,7 @@ std::pair<spu::Value, spu::Value> infeed(spu::SPUContext* sctx,
   cio.sync();
 
   auto x = cio.deviceGetVar("x-0");
-  // Concatnate all slices
+  // Concatenate all slices
   for (size_t idx = 1; idx < cio.getWorldSize(); ++idx) {
     x = hal::concatenate(sctx, {x, cio.deviceGetVar(fmt::format("x-{}", idx))},
                          1);

@@ -13,14 +13,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "libspu/mpc/common/pub2k.h"
+#include "libspu/mpc/common/pv2k.h"
 
 #include "gtest/gtest.h"
 
 namespace spu::mpc {
 
 TEST(Pub2kTest, TypeWorks) {
-  regPub2kTypes();
+  regPV2kTypes();
 
   {
     Type ty = makeType<Pub2kTy>(FM32);
@@ -44,6 +44,38 @@ TEST(Pub2kTest, TypeWorks) {
     EXPECT_FALSE(ty.isa<Secret>());
 
     EXPECT_EQ(ty.toString(), "Pub2k<FM128>");
+
+    EXPECT_EQ(Type::fromString(ty.toString()), ty);
+  }
+}
+
+TEST(Priv2kTest, TypeWorks) {
+  regPV2kTypes();
+
+  {
+    Type ty = makeType<Priv2kTy>(FM32, -1);
+    EXPECT_EQ(ty.size(), 4);
+
+    EXPECT_TRUE(ty.isa<Private>());
+    EXPECT_TRUE(ty.isa<Ring2k>());
+    EXPECT_FALSE(ty.isa<Secret>());
+
+    EXPECT_EQ(ty.toString(), "Priv2k<FM32,-1>");
+
+    const Type ty1 = Type::fromString(ty.toString());
+    EXPECT_EQ(ty1.as<Priv2kTy>()->owner(), -1);
+    EXPECT_EQ(ty1, ty);
+  }
+
+  {
+    Type ty = makeType<Priv2kTy>(FM128, 1);
+    EXPECT_EQ(ty.size(), 16);
+
+    EXPECT_TRUE(ty.isa<Private>());
+    EXPECT_TRUE(ty.isa<Ring2k>());
+    EXPECT_FALSE(ty.isa<Secret>());
+
+    EXPECT_EQ(ty.toString(), "Priv2k<FM128,1>");
 
     EXPECT_EQ(Type::fromString(ty.toString()), ty);
   }

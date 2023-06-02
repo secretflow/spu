@@ -51,6 +51,35 @@ class A2P : public UnaryKernel {
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in) const override;
 };
 
+class A2V : public RevealToKernel {
+ public:
+  static constexpr char kBindName[] = "a2v";
+
+  // TODO: communication is unbalanced
+  Kind kind() const override { return Kind::Dynamic; }
+
+  ce::CExpr latency() const override { return ce::Const(1); }
+
+  ce::CExpr comm() const override { return ce::K(); }
+
+  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in,
+                size_t rank) const override;
+};
+
+class V2A : public UnaryKernel {
+ public:
+  static constexpr char kBindName[] = "v2a";
+
+  // TODO: communication is unbalanced
+  Kind kind() const override { return Kind::Dynamic; }
+
+  ce::CExpr latency() const override { return ce::Const(1); }
+
+  ce::CExpr comm() const override { return ce::K(); }
+
+  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in) const override;
+};
+
 class NotA : public UnaryKernel {
  public:
   static constexpr char kBindName[] = "not_a";

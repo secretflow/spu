@@ -141,7 +141,7 @@ This function will be called by the factory class described in previous step.
     obj->addState<PrgState>(lctx);
 
     // register public kernels and api kernels
-    regPub2kKernels(obj.get());
+    regPV2kKernels(obj.get());
     regABKernels(obj.get());
 
     // register arithmetic & binary kernels
@@ -165,7 +165,7 @@ Inside the **makeAby3Protocol** function, it does three things.
   pseudorandom number generator for protocol implementation. 
 
 - The third is to register the protocol kernels (functions). We can see that three types of kernels are registered. \
-  The first type is the kernels implemented in the `pub2k.cc <https://github.com/secretflow/spu/blob/main/libspu/mpc/common/pub2k.cc>`_ \
+  The first type is the kernels implemented in the `pv2k.cc <https://github.com/secretflow/spu/blob/main/libspu/mpc/common/pv2k.cc>`_ \
   file, using **Pub2k** as the naming prefix of kernel classes. The second type is the kernels implemented in the \
   `ab_api.cc <https://github.com/secretflow/spu/blob/main/libspu/mpc/common/ab_api.cc>`_ file, using **ABProt** as the \ 
   naming prefix of kernel classes. The third type is implemented in `arithmetic.cc <https://github.com/secretflow/spu/blob/main/libspu/mpc/aby3/arithmetic.cc>`_, \
@@ -193,12 +193,12 @@ to run high-level applications, e.g., training complex neural network models.
 
 Among the basic APIs, some protocols working on Rings share the same logic on some operations processing public operands, 
 so SPU developers pre-implement these APIs as kernels and place them in the common directory. 
-As a result, the ABY3 developer can directly register these kernels through the **regPub2kKernels** function.
+As a result, the ABY3 developer can directly register these kernels through the **regPV2kKernels** function.
 
 .. code-block:: c++
   :caption: Pre-implemented *and_pp* kernel
 
-  class Pub2kAndPP : public BinaryKernel {
+  class AndPP : public BinaryKernel {
    public:
     // kernel name for dynamic binding
     static constexpr char kBindName[] = "and_pp";
@@ -220,14 +220,14 @@ As a result, the ABY3 developer can directly register these kernels through the 
 
 
 .. code-block:: c++
-  :caption: Register *and_pp* kernel in regPub2kKernels function
+  :caption: Register *and_pp* kernel in regPV2kKernels function
 
   ...
-  obj->regKernel<Pub2kMulPP>();
-  obj->regKernel<Pub2kMatMulPP>();
-  // and_pp kernel is implemented as a Pub2kAndPP class
-  obj->regKernel<Pub2kAndPP>();
-  obj->regKernel<Pub2kXorPP>();
+  obj->regKernel<MulPP>();
+  obj->regKernel<MatMulPP>();
+  // and_pp kernel is implemented as a AndPP class
+  obj->regKernel<AndPP>();
+  obj->regKernel<XorPP>();
   ...
 
 Moreover, as we can see that the basic APIs do not have (arithmetic/boolean) secret sharing semantics. 

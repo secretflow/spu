@@ -277,7 +277,7 @@ void execute(OpExecutor *executor, SPUContext *sctx, SymbolScope *sscope,
     if (elType.isF32() || elType.isF64()) {
       auto fValue = std::abs(smallConst.getValue()
                                  .getSplatValue<mlir::APFloat>()
-                                 .convertToFloat());
+                                 .convertToDouble());
       auto eps = kernel::hal::dump_public_as<float>(
           sctx, kernel::hlo::Epsilon(sctx, DT_F32))[0];
 

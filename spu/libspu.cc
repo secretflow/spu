@@ -265,7 +265,7 @@ class RuntimeWrapper {
     SPU_ENFORCE(config.ParseFromString(config_pb));
 
     // first, fill protobuf default value with implementation defined value.
-    populateRuntimecConfig(config);
+    populateRuntimeConfig(config);
 
     sctx_ = std::make_unique<spu::SPUContext>(config, lctx);
     mpc::Factory::RegisterProtocol(sctx_.get(), lctx);
@@ -484,6 +484,19 @@ void BindLibs(py::module& m) {
         return r.SerializeAsString();
       },
       py::arg("link_context"), py::arg("pir_config"), "Run pir server");
+
+  m.def(
+      "pir_memory_server",
+      [](const std::shared_ptr<yacl::link::Context>& lctx,
+         const std::string& config_pb) -> py::bytes {
+        pir::PirSetupConfig config;
+        SPU_ENFORCE(config.ParseFromString(config_pb));
+        SPU_ENFORCE(config.setup_path() == "::memory");
+
+        auto r = pir::PirMemoryServer(lctx, config);
+        return r.SerializeAsString();
+      },
+      py::arg("link_context"), py::arg("pir_config"), "Run pir memory server");
 
   m.def(
       "pir_client",

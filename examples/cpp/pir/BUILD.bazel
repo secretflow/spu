@@ -57,6 +57,27 @@ spu_cc_binary(
 )
 
 spu_cc_binary(
+    name = "keyword_pir_mem_server",
+    srcs = ["keyword_pir_mem_server.cc"],
+    data = [
+        "//examples/data",
+    ],
+    linkopts = [
+        "-lm",
+    ],
+    deps = [
+        "//examples/cpp:utils",
+        "//libspu/pir",
+        "//libspu/psi/core/labeled_psi",
+        "//libspu/psi/utils",
+        "//libspu/psi/utils:cipher_store",
+        "//libspu/psi/utils:serialize",
+        "@com_google_absl//absl/strings",
+        "@yacl//yacl/crypto/utils:rand",
+    ],
+)
+
+spu_cc_binary(
     name = "keyword_pir_client",
     srcs = ["keyword_pir_client.cc"],
     data = [

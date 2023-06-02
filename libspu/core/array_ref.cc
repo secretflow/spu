@@ -72,7 +72,9 @@ ArrayRef::ArrayRef(const Type& eltype, size_t numel)
       ) {}
 
 ArrayRef makeConstantArrayRef(const Type& eltype, size_t numel) {
-  return ArrayRef(std::make_shared<yacl::Buffer>(eltype.size()),
+  auto buf = std::make_shared<yacl::Buffer>(eltype.size());
+  memset(buf->data(), 0, eltype.size());
+  return ArrayRef(buf,     // buf
                   eltype,  // eltype
                   numel,   // numel
                   0,       // stride,
