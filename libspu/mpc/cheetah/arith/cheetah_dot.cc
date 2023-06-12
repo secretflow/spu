@@ -586,7 +586,7 @@ ArrayRef CheetahDot::Impl::doConv2dOLEForEncryptor(
             for (size_t k = bgn; k < end; ++k) {
               auto ct =
                   this_encryptor->encrypt_symmetric(poly_ntt[i + k]).obj();
-              ct_to_send[bgn] = EncodeSEALObject(ct);
+              ct_to_send[k] = EncodeSEALObject(ct);
             }
           });
 

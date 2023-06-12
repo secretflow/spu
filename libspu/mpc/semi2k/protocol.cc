@@ -54,8 +54,11 @@ void regSemi2kProtocol(SPUContext* ctx,
   ctx->prot()->regKernel<semi2k::MatMulAP>();
   ctx->prot()->regKernel<semi2k::MatMulAA>();
   ctx->prot()->regKernel<semi2k::LShiftA>();
-  // ctx->prot()->regKernel<semi2k::TruncA>();
-  ctx->prot()->regKernel<semi2k::TruncAPr>();
+  if (ctx->config().trunc_allow_msb_error()) {
+    ctx->prot()->regKernel<semi2k::TruncA>();
+  } else {
+    ctx->prot()->regKernel<semi2k::TruncAPr>();
+  }
 
   ctx->prot()->regKernel<semi2k::CommonTypeB>();
   ctx->prot()->regKernel<semi2k::CastTypeB>();

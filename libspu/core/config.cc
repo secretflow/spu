@@ -81,6 +81,9 @@ void populateRuntimeConfig(RuntimeConfig& cfg) {
   if (cfg.sigmoid_mode() == RuntimeConfig::SIGMOID_DEFAULT) {
     cfg.set_sigmoid_mode(RuntimeConfig::SIGMOID_REAL);
   }
+
+  // MPC related configurations
+  // trunc_allow_msb_error           // by pass.
 }
 
 RuntimeConfig makeFullRuntimeConfig(const RuntimeConfig& cfg) {

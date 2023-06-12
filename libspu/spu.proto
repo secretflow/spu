@@ -276,10 +276,18 @@ message RuntimeConfig {
     // generate beaver triple through an additional trusted third party.
     TrustedThirdParty = 1;
   }
+
   // beaver config, works for semi2k only for now.
   BeaverType beaver_type = 70;
+
   // TrustedThirdParty configs.
   TTPBeaverConfig ttp_beaver_config = 71;
+
+  // For protocol like SecureML, the most significant bit may have error with
+  // low probability, which lead to huge calculation error.
+  bool trunc_allow_msb_error = 72;
+
+  /// System related configurations start.
 
   // Experimental: DO NOT USE
   bool experimental_disable_mmul_split = 100;
@@ -287,6 +295,8 @@ message RuntimeConfig {
   bool experimental_enable_inter_op_par = 101;
   // intra op parallel, aka, hal/mpc level parallel.
   bool experimental_enable_intra_op_par = 102;
+  // disable kernel level vectorization.
+  bool experimental_disable_vectorization = 103;
 }
 
 message TTPBeaverConfig {

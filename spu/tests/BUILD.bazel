@@ -242,6 +242,9 @@ py_test(
 py_test(
     name = "distributed_test",
     srcs = ["distributed_test.py"],
+    tags = [
+        "exclusive",
+    ],
     deps = [
         "//spu/utils:distributed",
     ],

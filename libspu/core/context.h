@@ -182,7 +182,7 @@ Ret dynDispatch(SPUContext* sctx, const std::string& name, Args&&... args) {
   detail::bindParams(&ectx, std::forward<Args>(args)...);
 
   // 3. call a visitor, visit a kernel with params.
-  // TODO: use a visitor to call differnet stage of a kernel
+  // TODO: use a visitor to call different stage of a kernel
   kernel->evaluate(&ectx);
 
   // 4. steal the result and return it.
