@@ -54,6 +54,9 @@ spu_cc_test(
     name = "basic_ot_prot_test",
     size = "large",
     srcs = ["basic_ot_prot_test.cc"],
+    tags = [
+        "exclusive",
+    ],
     deps = [
         ":cheetah_ot",
         "//libspu/mpc/utils:simulate",

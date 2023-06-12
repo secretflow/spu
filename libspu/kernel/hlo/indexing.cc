@@ -30,6 +30,11 @@
 #include "libspu/kernel/hlo/reduce.h"
 #include "libspu/kernel/hlo/utils.h"
 
+// forward
+namespace spu::kernel::hal::detail {
+void hintNumberOfBits(const Value &a, size_t nbits);
+}
+
 namespace {
 struct IndexIterationSpace {
   std::vector<int64_t> index_base;
@@ -627,6 +632,11 @@ spu::Value SecretDynamicSliceImpl(SPUContext *ctx, const spu::Value &operand,
     auto pad_value = hal::seal(ctx, hal::constant(ctx, false, mask.dtype()));
     pad_value = hal::_cast_type(ctx, pad_value, mask.storage_type());
     mask = hal::pad(ctx, mask, pad_value, {slice_size[0]}, {0}, {0});
+    // FIXME(juhou): we should avoid setting the BShr here
+    // However mask.storage_type().as<BShare>->nbits() is not 1 after the
+    // padding. We implicitly set mask as a 1-bit BShr so that the following
+    // hal::matmul can use a much lighter B2A proc for both ABY3 and CHEETAH.
+    hal::detail::hintNumberOfBits(mask, 1);
   }
 
   // foreach

@@ -198,7 +198,14 @@ ArrayRef MulAA::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
     });
 
     // open x-a & y-b
-    eu = comm->allReduce<U, std::plus>(eu, "open(x-a,y-b)");
+    if (ctx->sctx()->config().experimental_disable_vectorization()) {
+      auto ee = comm->allReduce<U, std::plus>(e, "open(x-a)");
+      auto uu = comm->allReduce<U, std::plus>(u, "open(y-b)");
+      std::copy(ee.begin(), ee.end(), e.begin());
+      std::copy(uu.begin(), uu.end(), u.begin());
+    } else {
+      eu = comm->allReduce<U, std::plus>(eu, "open(x-a,y-b)");
+    }
 
     e = absl::Span<U>(eu.data(), _x.numel());
     u = absl::Span<U>(eu.data() + _x.numel(), _x.numel());
@@ -233,12 +240,20 @@ ArrayRef MatMulAA::proc(KernelEvalContext* ctx, const ArrayRef& x,
   auto [a, b, c] = beaver->Dot(field, m, n, k);
 
   // Open x-a & y-b
-  auto res =
-      vectorize({ring_sub(x, a), ring_sub(y, b)}, [&](const ArrayRef& s) {
-        return comm->allReduce(ReduceOp::ADD, s, kBindName);
-      });
-  auto x_a = std::move(res[0]);
-  auto y_b = std::move(res[1]);
+  ArrayRef x_a;
+  ArrayRef y_b;
+
+  if (ctx->sctx()->config().experimental_disable_vectorization()) {
+    x_a = comm->allReduce(ReduceOp::ADD, ring_sub(x, a), "open(x-a)");
+    y_b = comm->allReduce(ReduceOp::ADD, ring_sub(y, b), "open(y-b)");
+  } else {
+    auto res =
+        vectorize({ring_sub(x, a), ring_sub(y, b)}, [&](const ArrayRef& s) {
+          return comm->allReduce(ReduceOp::ADD, s, "open(x-a,y-b)");
+        });
+    x_a = std::move(res[0]);
+    y_b = std::move(res[1]);
+  }
 
   // Zi = Ci + (X - A) dot Bi + Ai dot (Y - B) + <(X - A) dot (Y - B)>
   auto z = ring_add(

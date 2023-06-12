@@ -94,6 +94,9 @@ spu_cc_test(
     size = "large",
     timeout = "moderate",
     srcs = ["protocol_test.cc"],
+    tags = [
+        "exclusive",
+    ],
     deps = [
         ":protocol",
         "//libspu/mpc:ab_api_test",

@@ -20,17 +20,15 @@
 
 namespace spu::mpc {
 
-// Inituition: some of the ops has complicated (compute, communication, compute,
+// Intuition: some of the ops has complicated (compute, communication, compute,
 // communication ...) behaviour, when the input is large, CPU will wait for comm
 // interleavely. Pipeline is a software instruction level parallelism that use
 // tiling+concurrent to reduce the waiting time.
 //
 // Tiling+concurrent could be treated as the opposite of fusion+vectorization.
 
-namespace detail {
-
 template <typename Fn, typename... Args>
-ArrayRef tiled(Fn&& fn, SPUContext* ctx, const ArrayRef& x, Args&&... args) {
+Value tiled(Fn&& fn, SPUContext* ctx, const Value& x, Args&&... args) {
   const int64_t kBlockSize = kMinTaskSize;
   if (!ctx->config().experimental_enable_intra_op_par()  //
       || !ctx->prot()->hasLowCostFork()                  //
@@ -39,49 +37,111 @@ ArrayRef tiled(Fn&& fn, SPUContext* ctx, const ArrayRef& x, Args&&... args) {
     return fn(ctx, x, std::forward<Args>(args)...);
   }
 
+  // from inner to outer, find an outermost dimension whose all inner
+  // dimensions has elements less than kBlockSize
+  int64_t slicing_dim = -1;
+  int64_t slice_numel = 1;
+  for (int64_t dim = x.shape().size() - 1; dim >= 0; dim--) {
+    slice_numel *= x.shape()[dim];
+    if (slice_numel > kBlockSize) {
+      slice_numel /= x.shape()[dim];
+      slicing_dim = dim;
+      break;
+    }
+  }
+
+  // get the slice stride in the slicing dimension
+  int64_t slice_stride = std::lround(kBlockSize / slice_numel);
+
+  if (slice_stride == 0) {
+    return fn(ctx, x, std::forward<Args>(args)...);
+  }
+
+  // get the slice num in the slicing dimension
+  int64_t num_slice_dim =
+      x.shape()[slicing_dim] / slice_stride +
+      ((x.shape()[slicing_dim] % slice_stride) != 0 ? 1 : 0);
+
+  // get the slice num in the left outer dimensions
+  int64_t num_slice = 1;
+  for (int64_t dim = 0; dim < slicing_dim; dim++) {
+    num_slice *= x.shape()[dim];
+  }
+
   std::vector<std::unique_ptr<SPUContext>> sub_ctxs;
-
-  const int64_t numBlocks =
-      x.numel() / kBlockSize + ((x.numel() % kBlockSize) != 0 ? 1 : 0);
-
-  for (int64_t blk_idx = 0; blk_idx < numBlocks; blk_idx++) {
+  for (int64_t slice_idx = 0; slice_idx < num_slice_dim * num_slice;
+       slice_idx++) {
     sub_ctxs.push_back(ctx->fork());
   }
 
-  std::vector<std::future<ArrayRef>> futures;
-  for (int64_t blk_idx = 0; blk_idx < numBlocks; blk_idx++) {
+  std::vector<std::future<Value>> futures;
+
+  // initialize slice indices
+  std::vector<int64_t> start_indices(x.shape().size());
+  std::vector<int64_t> end_indices(x.shape());
+  end_indices[slicing_dim] = slice_stride;
+  for (int64_t dim = slicing_dim - 1; dim >= 0; dim--) {
+    end_indices[dim] = 1;
+  }
+
+  auto data = x.data();
+  for (int64_t slice_idx = 0; slice_idx < num_slice_dim * num_slice;
+       slice_idx++) {
     auto async_res = std::async(
-        [&](int64_t index) {
-          int64_t begin = index * kBlockSize;
-          int64_t end = std::min(begin + kBlockSize, x.numel());
+        [&](int64_t index, std::vector<int64_t> s_indices,
+            std::vector<int64_t> e_indices) {
+          NdArrayRef slice_data = data.slice(s_indices, e_indices, {});
 
-          return fn(sub_ctxs[index].get(), x.slice(begin, end), args...);
+          auto ret =
+              fn(sub_ctxs[index].get(), Value(slice_data, DT_INVALID), args...);
+
+          return ret;
         },
-        blk_idx);
+        slice_idx, start_indices, end_indices);
     futures.push_back(std::move(async_res));
+
+    // update indices
+    if (end_indices[slicing_dim] == x.shape()[slicing_dim]) {  // carry_out
+      start_indices[slicing_dim] = 0;
+      end_indices[slicing_dim] = slice_stride;
+      for (int64_t dim = slicing_dim - 1; dim >= 0; dim--) {
+        start_indices[dim] = (start_indices[dim] + 1) % data.shape()[dim];
+        end_indices[dim] = (end_indices[dim] + 1) % data.shape()[dim] + 1;
+        if (end_indices[dim] != 1) break;
+      }
+    } else {
+      start_indices[slicing_dim] += slice_stride;
+      end_indices[slicing_dim] += slice_stride;
+      if (end_indices[slicing_dim] > x.shape()[slicing_dim])
+        end_indices[slicing_dim] = x.shape()[slicing_dim];
+    }
   }
 
-  std::vector<ArrayRef> out_slices;
-  for (int64_t blk_idx = 0; blk_idx < numBlocks; blk_idx++) {
-    out_slices.push_back(futures[blk_idx].get());
+  std::vector<Value> out_slices;
+  for (int64_t slice_idx = 0; slice_idx < num_slice_dim * num_slice;
+       slice_idx++) {
+    out_slices.push_back(futures[slice_idx].get());
   }
 
-  // Assume out.numel = x.numel
-  ArrayRef out(out_slices[0].eltype(), x.numel());
-  for (int64_t blk_idx = 0; blk_idx < numBlocks; blk_idx++) {
-    int64_t begin = blk_idx * kBlockSize;
-    int64_t end = std::min(begin + kBlockSize, x.numel());
-    std::memcpy(&out.at(begin), &out_slices[blk_idx].at(0),
-                (end - begin) * out.elsize());
+  // Assume out.shape = x.shape
+  NdArrayRef out(out_slices[0].storage_type(), x.shape());
+  int64_t offset = 0;
+  for (int64_t slice_idx = 0; slice_idx < num_slice_dim * num_slice;
+       slice_idx++) {
+    std::memcpy(static_cast<std::byte*>(out.data()) + offset,
+                out_slices[slice_idx].data().data(),
+                out_slices[slice_idx].numel() * out.elsize());
+    offset += out_slices[slice_idx].numel() * out.elsize();
   }
 
-  return out;
+  return Value(out, DT_INVALID);
 }
 
 template <typename Fn, typename... Args>
-ArrayRef tiled_2(Fn&& fn, SPUContext* ctx, const ArrayRef& x, const ArrayRef& y,
-                 Args&&... args) {
-  SPU_ENFORCE(x.numel() == y.numel());
+Value tiled(Fn&& fn, SPUContext* ctx, const Value& x, const Value& y,
+            Args&&... args) {
+  SPU_ENFORCE(x.shape() == y.shape());
+
   const int64_t kBlockSize = kMinTaskSize;
   if (!ctx->config().experimental_enable_intra_op_par()  //
       || !ctx->prot()->hasLowCostFork()                  //
@@ -90,92 +150,107 @@ ArrayRef tiled_2(Fn&& fn, SPUContext* ctx, const ArrayRef& x, const ArrayRef& y,
     return fn(ctx, x, y, std::forward<Args>(args)...);
   }
 
-  const int64_t numel = x.numel();
+  // from inner to outer, find an outermost dimension whose all inner
+  // dimensions has elements less than kBlockSize
+  int64_t slicing_dim = -1;
+  int64_t slice_numel = 1;
+  for (int64_t dim = x.shape().size() - 1; dim >= 0; dim--) {
+    slice_numel *= x.shape()[dim];
+    if (slice_numel > kBlockSize) {
+      slice_numel /= x.shape()[dim];
+      slicing_dim = dim;
+      break;
+    }
+  }
+
+  // get the slice stride in the slicing dimension
+  int64_t slice_stride = std::lround(kBlockSize / slice_numel);
+
+  if (slice_stride == 0) {
+    return fn(ctx, x, y, std::forward<Args>(args)...);
+  }
+
+  // get the slice num in the slicing dimension
+  int64_t num_slice_dim =
+      x.shape()[slicing_dim] / slice_stride +
+      ((x.shape()[slicing_dim] % slice_stride) != 0 ? 1 : 0);
+
+  // get the slice num in the left outer dimensions
+  int64_t num_slice = 1;
+  for (int64_t dim = 0; dim < slicing_dim; dim++) {
+    num_slice *= x.shape()[dim];
+  }
 
   std::vector<std::unique_ptr<SPUContext>> sub_ctxs;
-
-  const int64_t numBlocks =
-      numel / kBlockSize + ((numel % kBlockSize) != 0 ? 1 : 0);
-
-  for (int64_t blk_idx = 0; blk_idx < numBlocks; blk_idx++) {
+  for (int64_t slice_idx = 0; slice_idx < num_slice_dim * num_slice;
+       slice_idx++) {
     sub_ctxs.push_back(ctx->fork());
   }
 
-  std::vector<std::future<ArrayRef>> futures;
-  for (int64_t blk_idx = 0; blk_idx < numBlocks; blk_idx++) {
+  std::vector<std::future<Value>> futures;
+
+  // initialize slice indices
+  std::vector<int64_t> start_indices(x.shape().size());
+  std::vector<int64_t> end_indices(x.shape());
+  end_indices[slicing_dim] = slice_stride;
+  for (int64_t dim = slicing_dim - 1; dim >= 0; dim--) {
+    end_indices[dim] = 1;
+  }
+
+  auto data_x = x.data();
+  auto data_y = y.data();
+  for (int64_t slice_idx = 0; slice_idx < num_slice_dim * num_slice;
+       slice_idx++) {
     auto async_res = std::async(
-        [&](int64_t index) {
-          int64_t begin = index * kBlockSize;
-          int64_t end = std::min(begin + kBlockSize, numel);
+        [&](int64_t index, std::vector<int64_t> s_indices,
+            std::vector<int64_t> e_indices) {
+          NdArrayRef slice_data_x = data_x.slice(s_indices, e_indices, {});
+          NdArrayRef slice_data_y = data_y.slice(s_indices, e_indices, {});
 
-          return fn(sub_ctxs[index].get(), x.slice(begin, end),
-                    y.slice(begin, end), args...);
+          auto ret = fn(sub_ctxs[index].get(), Value(slice_data_x, DT_INVALID),
+                        Value(slice_data_y, DT_INVALID), args...);
+
+          return ret;
         },
-        blk_idx);
+        slice_idx, start_indices, end_indices);
     futures.push_back(std::move(async_res));
+
+    // update indices
+    if (end_indices[slicing_dim] == x.shape()[slicing_dim]) {  // carry_out
+      start_indices[slicing_dim] = 0;
+      end_indices[slicing_dim] = slice_stride;
+      for (int64_t dim = slicing_dim - 1; dim >= 0; dim--) {
+        start_indices[dim] = (start_indices[dim] + 1) % data_x.shape()[dim];
+        end_indices[dim] = (end_indices[dim] + 1) % data_x.shape()[dim] + 1;
+        if (end_indices[dim] != 1) break;
+      }
+    } else {
+      start_indices[slicing_dim] += slice_stride;
+      end_indices[slicing_dim] += slice_stride;
+      if (end_indices[slicing_dim] > x.shape()[slicing_dim])
+        end_indices[slicing_dim] = x.shape()[slicing_dim];
+    }
   }
 
-  std::vector<ArrayRef> out_slices;
-  for (int64_t blk_idx = 0; blk_idx < numBlocks; blk_idx++) {
-    out_slices.push_back(futures[blk_idx].get());
+  std::vector<Value> out_slices;
+  for (int64_t slice_idx = 0; slice_idx < num_slice_dim * num_slice;
+       slice_idx++) {
+    out_slices.push_back(futures[slice_idx].get());
   }
 
-  // Assume out.numel = numel
-  ArrayRef out(out_slices[0].eltype(), numel);
-  for (int64_t blk_idx = 0; blk_idx < numBlocks; blk_idx++) {
-    int64_t begin = blk_idx * kBlockSize;
-    int64_t end = std::min(begin + kBlockSize, numel);
-    std::memcpy(&out.at(begin), &out_slices[blk_idx].at(0),
-                (end - begin) * out.elsize());
+  // Assume out.shape = x.shape
+  NdArrayRef out(out_slices[0].storage_type(), x.shape());
+  int64_t offset = 0;
+  for (int64_t slice_idx = 0; slice_idx < num_slice_dim * num_slice;
+       slice_idx++) {
+    std::memcpy(static_cast<std::byte*>(out.data()) + offset,
+                out_slices[slice_idx].data().data(),
+                out_slices[slice_idx].numel() * out.elsize());
+
+    offset += out_slices[slice_idx].numel() * out.elsize();
   }
 
-  return out;
-}
-
-}  // namespace detail
-
-template <typename Fn, typename... Args>
-Value tiled(Fn&& fn, SPUContext* ctx, const Value& x, Args&&... args) {
-  // TODO: using nd-slice for tiling.
-  ArrayRef flat_x = flatten(x.data());
-
-  auto wrap_fn = [fn](SPUContext* wctx, const ArrayRef& wx,
-                      Args&&... wargs) -> ArrayRef {
-    auto res =
-        fn(wctx, WrapValue(wx, {wx.numel()}), std::forward<Args>(wargs)...);
-    auto [res_arr, res_shape, res_dtype] = UnwrapValue(res);
-    return res_arr;
-  };
-
-  auto flat_z =
-      detail::tiled(wrap_fn, ctx, flat_x, std::forward<Args>(args)...);
-  return WrapValue(flat_z, x.shape());
-}
-
-template <typename Fn, typename... Args>
-Value tiled(Fn&& fn, SPUContext* ctx, const Value& x, const Value& y,
-            Args&&... args) {
-  SPU_ENFORCE(x.shape() == y.shape());
-
-  // TODO: using nd-slice for tiling.
-  ArrayRef flat_x = flatten(x.data());
-  SPU_ENFORCE(flat_x.numel() == x.numel());
-  ArrayRef flat_y = flatten(y.data());
-  SPU_ENFORCE(flat_y.numel() == y.numel());
-
-  auto wrap_fn = [fn](SPUContext* wctx, const ArrayRef& wx, const ArrayRef& wy,
-                      Args&&... wargs) -> ArrayRef {
-    auto res = fn(wctx, WrapValue(wx, {wx.numel()}),
-                  WrapValue(wy, {wy.numel()}), std::forward<Args>(wargs)...);
-    auto [res_arr, res_shape, res_dtype] = UnwrapValue(res);
-    return res_arr;
-  };
-
-  // FIXME: if not rename to tile_2, it will select the first (less specialized)
-  // candidate.
-  auto flat_z = detail::tiled_2(wrap_fn, ctx, flat_x, flat_y,
-                                std::forward<Args>(args)...);
-  return WrapValue(flat_z, x.shape());
+  return Value(out, DT_INVALID);
 }
 
 }  // namespace spu::mpc
