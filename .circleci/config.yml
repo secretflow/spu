@@ -54,6 +54,7 @@ workflows:
             .bazelrc build-and-run true
             requirements.txt build-and-run true
             requirements-dev.txt build-and-run true
+            .circleci/continue-config.yml build-and-run true
   benchmark-workflow:
     when: << pipeline.parameters.run-schedule >>
     jobs:
