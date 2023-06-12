@@ -64,7 +64,7 @@ jobs:
             python3 -m pip install -r requirements-dev.txt
       - run:
           name: "build"
-          command: bazel build //spu/... -c opt --ui_event_filters=-info,-debug,-warning --disk_cache=~/.cache/spu_build_cache
+          command: bazel build //... -c opt --ui_event_filters=-info,-debug,-warning --disk_cache=~/.cache/spu_build_cache
       - run:
           name: "test"
           command: |
@@ -135,7 +135,7 @@ jobs:
                     pip install -r requirements-dev.txt
               - run:
                   name: "build"
-                  command: bazel build //spu/... -c opt --ui_event_filters=-info,-debug,-warning --disk_cache=~/.cache/spu_build_cache
+                  command: bazel build //... -c opt --ui_event_filters=-info,-debug,-warning --disk_cache=~/.cache/spu_build_cache
               - run:
                   name: "test"
                   command: |
