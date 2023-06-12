@@ -24,8 +24,12 @@ namespace {
 
 inline bool IsA(const Value& x) { return x.storage_type().isa<AShare>(); }
 inline bool IsB(const Value& x) { return x.storage_type().isa<BShare>(); }
-inline bool IsP(const Value& x) { return x.storage_type().isa<Public>(); }
-inline bool IsV(const Value& x) { return x.storage_type().isa<Private>(); }
+[[maybe_unused]] inline bool IsP(const Value& x) {
+  return x.storage_type().isa<Public>();
+}
+[[maybe_unused]] inline bool IsV(const Value& x) {
+  return x.storage_type().isa<Private>();
+}
 inline size_t NBits(const Value& x) {
   return x.storage_type().as<BShare>()->nbits();
 }
