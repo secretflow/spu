@@ -79,20 +79,25 @@ class FerretOT {
 
   // correlated additive message, chosen choice
   // (x, x + corr * choice) <- (corr, choice)
-  void SendCAMCC(absl::Span<const uint8_t> corr, absl::Span<uint8_t> output);
-  void SendCAMCC(absl::Span<const uint32_t> corr, absl::Span<uint32_t> output);
-  void SendCAMCC(absl::Span<const uint64_t> corr, absl::Span<uint64_t> output);
-  void SendCAMCC(absl::Span<const uint128_t> corr,
-                 absl::Span<uint128_t> output);
+  // Can use bit_width to further indicate output ring. `bit_width = 0` means to
+  // use the full range.
+  void SendCAMCC(absl::Span<const uint8_t> corr, absl::Span<uint8_t> output,
+                 int bit_width = 0);
+  void SendCAMCC(absl::Span<const uint32_t> corr, absl::Span<uint32_t> output,
+                 int bit_width = 0);
+  void SendCAMCC(absl::Span<const uint64_t> corr, absl::Span<uint64_t> output,
+                 int bit_width = 0);
+  void SendCAMCC(absl::Span<const uint128_t> corr, absl::Span<uint128_t> output,
+                 int bit_width = 0);
 
   void RecvCAMCC(absl::Span<const uint8_t> binary_choices,
-                 absl::Span<uint8_t> output);
+                 absl::Span<uint8_t> output, int bit_width = 0);
   void RecvCAMCC(absl::Span<const uint8_t> binary_choices,
-                 absl::Span<uint32_t> output);
+                 absl::Span<uint32_t> output, int bit_width = 0);
   void RecvCAMCC(absl::Span<const uint8_t> binary_choices,
-                 absl::Span<uint64_t> output);
+                 absl::Span<uint64_t> output, int bit_width = 0);
   void RecvCAMCC(absl::Span<const uint8_t> binary_choices,
-                 absl::Span<uint128_t> output);
+                 absl::Span<uint128_t> output, int bit_width = 0);
 };
 
 }  // namespace spu::mpc::cheetah

@@ -296,15 +296,26 @@ struct FerretOT::Impl {
 
   template <typename T>
   void RecvCorrelatedMsgChosenChoice(absl::Span<const uint8_t> choices,
-                                     absl::Span<T> output) {
+                                     absl::Span<T> output, int bit_width) {
     size_t n = choices.size();
     SPU_ENFORCE_EQ(n, output.size());
+    if (bit_width == 0) {
+      bit_width = 8 * sizeof(T);
+    }
+    SPU_ENFORCE(bit_width > 0 && bit_width <= (int)(8 * sizeof(T)),
+                "bit_width={} out-of-range T={} bits", bit_width,
+                sizeof(T) * 8);
 
     std::vector<OtBaseTyp> rcm_output(n);
     RecvRandCorrelatedMsgChosenChoice(choices, absl::MakeSpan(rcm_output));
 
+    size_t pack_load = 8 * sizeof(T) / bit_width;
     std::array<OtBaseTyp, kOTBatchSize> pad;
     std::vector<T> corr_output(kOTBatchSize);
+    std::vector<T> packed_corr_output;
+    if (pack_load > 1) {
+      packed_corr_output.resize(CeilDiv(corr_output.size(), pack_load));
+    }
 
     for (size_t i = 0; i < n; i += kOTBatchSize) {
       size_t this_batch = std::min(kOTBatchSize, n - i);
@@ -312,7 +323,15 @@ struct FerretOT::Impl {
       std::memcpy(pad.data(), rcm_output.data() + i,
                   this_batch * sizeof(OtBaseTyp));
       ferret_->mitccrh.template hash<kOTBatchSize, 1>(pad.data());
-      io_->recv_data(corr_output.data(), sizeof(T) * this_batch);
+
+      if (pack_load > 1) {
+        size_t used = CeilDiv(this_batch, pack_load);
+        io_->recv_data(packed_corr_output.data(), sizeof(T) * used);
+        UnzipArray<T>({packed_corr_output.data(), used}, bit_width,
+                      {corr_output.data(), this_batch});
+      } else {
+        io_->recv_data(corr_output.data(), sizeof(T) * this_batch);
+      }
 
       for (size_t j = 0; j < this_batch; ++j) {
         output[i + j] = ConvFromBlock<T>(pad[j]);
@@ -415,15 +434,27 @@ struct FerretOT::Impl {
 
   template <typename T>
   void SendCorrelatedMsgChosenChoice(absl::Span<const T> corr,
-                                     absl::Span<T> output) {
+                                     absl::Span<T> output, int bit_width) {
     size_t n = corr.size();
     SPU_ENFORCE_EQ(n, output.size());
+    if (bit_width == 0) {
+      bit_width = 8 * sizeof(T);
+    }
+    SPU_ENFORCE(bit_width > 0 && bit_width <= (int)(8 * sizeof(T)),
+                "bit_width={} out-of-range T={} bits", bit_width,
+                sizeof(T) * 8);
     std::unique_ptr<OtBaseTyp[]> rcm_output(new OtBaseTyp[n]);
 
     SendRandCorrelatedMsgChosenChoice(rcm_output.get(), n);
 
+    size_t pack_load = 8 * sizeof(T) / bit_width;
     std::array<OtBaseTyp, 2 * kOTBatchSize> pad;
     std::vector<T> corr_output(kOTBatchSize);
+    std::vector<T> packed_corr_output;
+    if (pack_load > 1) {
+      packed_corr_output.resize(CeilDiv(corr_output.size(), pack_load));
+    }
+
     for (size_t i = 0; i < n; i += kOTBatchSize) {
       size_t this_batch = std::min(kOTBatchSize, n - i);
       for (size_t j = 0; j < this_batch; ++j) {
@@ -439,7 +470,14 @@ struct FerretOT::Impl {
         corr_output[j] += corr[i + j] + output[i + j];
       }
 
-      io_->send_data(corr_output.data(), sizeof(T) * this_batch);
+      if (pack_load > 1) {
+        size_t used = ZipArray<T>({corr_output.data(), this_batch}, bit_width,
+                                  absl::MakeSpan(packed_corr_output));
+        SPU_ENFORCE(used == CeilDiv(this_batch, pack_load));
+        io_->send_data(packed_corr_output.data(), used * sizeof(T));
+      } else {
+        io_->send_data(corr_output.data(), sizeof(T) * this_batch);
+      }
     }
   }
 
@@ -498,6 +536,7 @@ struct FerretOT::Impl {
     // Recv:  c_j \in {0, 1}
     std::unique_ptr<OtBaseTyp[]> rm_data0(new OtBaseTyp[n * logN]);
     std::unique_ptr<OtBaseTyp[]> rm_data1(new OtBaseTyp[n * logN]);
+
     SendRandMsgChosenChoice(rm_data0.get(), rm_data1.get(), n * logN);
 
     std::vector<OtBaseTyp> hash_in0(N - 1);
@@ -659,12 +698,13 @@ size_t CheckBitWidth(size_t bw) {
 }
 
 #define DEF_SEND_RECV(T)                                                     \
-  void FerretOT::SendCAMCC(absl::Span<const T> corr, absl::Span<T> output) { \
-    impl_->SendCorrelatedMsgChosenChoice<T>(corr, output);                   \
+  void FerretOT::SendCAMCC(absl::Span<const T> corr, absl::Span<T> output,   \
+                           int bw) {                                         \
+    impl_->SendCorrelatedMsgChosenChoice<T>(corr, output, bw);               \
   }                                                                          \
   void FerretOT::RecvCAMCC(absl::Span<const uint8_t> choices,                \
-                           absl::Span<T> output) {                           \
-    impl_->RecvCorrelatedMsgChosenChoice<T>(choices, output);                \
+                           absl::Span<T> output, int bw) {                   \
+    impl_->RecvCorrelatedMsgChosenChoice<T>(choices, output, bw);            \
   }                                                                          \
   void FerretOT::SendRMRC(absl::Span<T> output0, absl::Span<T> output1,      \
                           size_t bit_width) {                                \

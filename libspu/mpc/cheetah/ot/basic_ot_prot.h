@@ -29,6 +29,10 @@ class BasicOTProtocols {
 
   ArrayRef B2A(const ArrayRef &inp);
 
+  // NOTE(lwj): compute the B2A(b) and output to the specified ring
+  // Require: input is 1-bit boolean and 1 <= bit_width < k.
+  ArrayRef B2ASingleBitWithSize(const ArrayRef &inp, int bit_width);
+
   ArrayRef RandBits(FieldType filed, size_t numel);
 
   // msg * select for select \in {0, 1}
@@ -59,7 +63,7 @@ class BasicOTProtocols {
   ArrayRef Compare(const ArrayRef &inp, bool greater_than, bool equality,
                    int radix_base);
 
-  ArrayRef SingleB2A(const ArrayRef &inp);
+  ArrayRef SingleB2A(const ArrayRef &inp, int bit_width = 0);
 
   ArrayRef PackedB2A(const ArrayRef &inp);
 

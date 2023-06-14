@@ -1676,9 +1676,8 @@ void printWindowAttribute(OpAsmPrinter& p, DenseElementsAttr attribute) {
 
 }  // namespace
 
-void printWindowAttributes(
-    OpAsmPrinter& p, Operation* op,
-    llvm::Optional<DenseIntElementsAttr> window_strides) {
+void printWindowAttributes(OpAsmPrinter& p, Operation* op,
+                           std::optional<DenseIntElementsAttr> window_strides) {
   using PairT = std::pair<DenseElementsAttr, StringRef>;
   std::array<PairT, 1> printed_attributes = {{
       {window_strides ? *window_strides : nullptr, "stride"},
@@ -1702,7 +1701,7 @@ ParseResult parseWindowAttributes(OpAsmParser& parser,
 
   // Helper to parse an array of the form [ e0, e1, .. ]
   auto parse_array = [&](const std::function<ParseResult(void)>& parse_element,
-                         llvm::Optional<size_t> expected_size =
+                         std::optional<size_t> expected_size =
                              std::nullopt) -> ParseResult {
     if (parser.parseLSquare()) {
       return failure();

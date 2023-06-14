@@ -36,20 +36,20 @@ ArrayRef TruncateProtocol::ComputeWrap(const ArrayRef& inp, const Meta& meta) {
     case MSB_st::zero: {
       if (!meta.signed_arith) {
         // without sign flip
-        return MSB0ToWrap(inp);
+        return MSB0ToWrap(inp, meta.shift_bits);
       } else {
         // MSB=0 with sign flip equals to MSB=1
-        return MSB1ToWrap(inp);
+        return MSB1ToWrap(inp, meta.shift_bits);
       }
       break;
     }
     case MSB_st::one: {
       if (!meta.signed_arith) {
         // without sign flip
-        return MSB1ToWrap(inp);
+        return MSB1ToWrap(inp, meta.shift_bits);
       } else {
         // MSB=1 with sign flip equals to MSB=0
-        return MSB0ToWrap(inp);
+        return MSB0ToWrap(inp, meta.shift_bits);
       }
       break;
     }
@@ -70,8 +70,8 @@ ArrayRef TruncateProtocol::ComputeWrap(const ArrayRef& inp, const Meta& meta) {
         });
         wrap_bool = compare_prot.Compute(adjusted, true);
       }
-      return basic_ot_prot_->B2A(
-          wrap_bool.as(makeType<semi2k::BShrTy>(field, 1)));
+      return basic_ot_prot_->B2ASingleBitWithSize(
+          wrap_bool.as(makeType<semi2k::BShrTy>(field, 1)), meta.shift_bits);
       break;
     }
   }
@@ -83,7 +83,7 @@ ArrayRef TruncateProtocol::ComputeWrap(const ArrayRef& inp, const Meta& meta) {
 // COT msg corr=msb(xA) on choice msb(xB)
 //    - msb(xB) = 0: get(-x, x) => 0
 //    - msb(xB) = 1: get(-x, x + msb(xA)) => msb(xA)
-ArrayRef TruncateProtocol::MSB1ToWrap(const ArrayRef& inp) {
+ArrayRef TruncateProtocol::MSB1ToWrap(const ArrayRef& inp, size_t shift_bits) {
   const auto field = inp.eltype().as<Ring2k>()->field();
   const size_t numel = inp.numel();
   const int rank = basic_ot_prot_->Rank();
@@ -102,7 +102,7 @@ ArrayRef TruncateProtocol::MSB1ToWrap(const ArrayRef& inp) {
 
       auto sender = basic_ot_prot_->GetSenderCOT();
       sender->SendCAMCC(absl::MakeSpan(cot_input),
-                        {xout.data(), (size_t)xout.numel()});
+                        {xout.data(), (size_t)xout.numel()}, shift_bits);
       sender->Flush();
       pforeach(0, numel, [&](int64_t i) { xout[i] = -xout[i]; });
     } else {
@@ -111,7 +111,8 @@ ArrayRef TruncateProtocol::MSB1ToWrap(const ArrayRef& inp) {
                [&](int64_t i) { cot_input[i] = ((xinp[i] >> (bw - 1)) & 1); });
 
       basic_ot_prot_->GetReceiverCOT()->RecvCAMCC(
-          absl::MakeSpan(cot_input), {xout.data(), (size_t)xout.numel()});
+          absl::MakeSpan(cot_input), {xout.data(), (size_t)xout.numel()},
+          shift_bits);
     }
   });
 
@@ -131,7 +132,7 @@ ArrayRef TruncateProtocol::MSB1ToWrap(const ArrayRef& inp) {
 // 1-of-2 OT msg (r^msb(xA), r^1) on choice msb(xB)
 //   - msb(xB) = 0: get (r, r^msb(xA)) => msb(xA)
 //   - msb(xB) = 1: get (r, r^1) => 1
-ArrayRef TruncateProtocol::MSB0ToWrap(const ArrayRef& inp) {
+ArrayRef TruncateProtocol::MSB0ToWrap(const ArrayRef& inp, size_t shift_bits) {
   const auto field = inp.eltype().as<Ring2k>()->field();
   const size_t numel = inp.numel();
   const int rank = basic_ot_prot_->Rank();
@@ -184,11 +185,12 @@ ArrayRef TruncateProtocol::MSB0ToWrap(const ArrayRef& inp) {
     });
   }
 
-  return basic_ot_prot_->B2A(outp.as(makeType<semi2k::BShrTy>(field, 1)));
+  return basic_ot_prot_->B2ASingleBitWithSize(
+      outp.as(makeType<semi2k::BShrTy>(field, 1)), (int)shift_bits);
 }
 
-ArrayRef TruncateProtocol::Compute(const ArrayRef& inp, Meta meta,
-                                   size_t shift) {
+ArrayRef TruncateProtocol::Compute(const ArrayRef& inp, Meta meta) {
+  size_t shift = meta.shift_bits;
   if (shift == 0) return inp;
   auto field = inp.eltype().as<Ring2k>()->field();
   const size_t bit_width = SizeOf(field) * 8;

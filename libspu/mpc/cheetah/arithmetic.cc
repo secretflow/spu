@@ -49,6 +49,7 @@ ArrayRef TruncAWithSign::proc(KernelEvalContext* ctx, const ArrayRef& x,
   meta.signed_arith = true;
   meta.msb = is_positive ? TruncateProtocol::MSB_st::zero
                          : TruncateProtocol::MSB_st::one;
+  meta.shift_bits = bits;
   yacl::parallel_for(0, nworker, 1, [&](size_t bgn, size_t end) {
     for (size_t job = bgn; job < end; ++job) {
       size_t slice_bgn = std::min(job * work_load, n);
@@ -58,7 +59,7 @@ ArrayRef TruncAWithSign::proc(KernelEvalContext* ctx, const ArrayRef& x,
       }
 
       TruncateProtocol prot(ctx->getState<CheetahOTState>()->get(job));
-      auto out_slice = prot.Compute(x.slice(slice_bgn, slice_end), meta, bits);
+      auto out_slice = prot.Compute(x.slice(slice_bgn, slice_end), meta);
       std::memcpy(&out.at(slice_bgn), &out_slice.at(0),
                   out_slice.numel() * out_slice.elsize());
     }
@@ -83,6 +84,7 @@ ArrayRef TruncA::proc(KernelEvalContext* ctx, const ArrayRef& x,
   TruncateProtocol::Meta meta;
   meta.signed_arith = true;
   meta.msb = TruncateProtocol::MSB_st::unknown;
+  meta.shift_bits = bits;
   yacl::parallel_for(0, nworker, 1, [&](size_t bgn, size_t end) {
     for (size_t job = bgn; job < end; ++job) {
       size_t slice_bgn = std::min(job * work_load, n);
@@ -92,7 +94,7 @@ ArrayRef TruncA::proc(KernelEvalContext* ctx, const ArrayRef& x,
       }
 
       TruncateProtocol prot(ctx->getState<CheetahOTState>()->get(job));
-      auto out_slice = prot.Compute(x.slice(slice_bgn, slice_end), meta, bits);
+      auto out_slice = prot.Compute(x.slice(slice_bgn, slice_end), meta);
       std::memcpy(&out.at(slice_bgn), &out_slice.at(0),
                   out_slice.numel() * out_slice.elsize());
     }

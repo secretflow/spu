@@ -65,6 +65,9 @@ spu_cc_test(
     srcs = [
         "apsi_test.cc",
     ],
+    tags = [
+        "exclusive",
+    ],
     deps = [
         ":labeled_psi",
         "@com_google_absl//absl/strings",
