@@ -121,7 +121,17 @@ ArrayRef BasicOTProtocols::PackedB2A(const ArrayRef &inp) {
   return oup;
 }
 
-ArrayRef BasicOTProtocols::SingleB2A(const ArrayRef &inp) {
+ArrayRef BasicOTProtocols::B2ASingleBitWithSize(const ArrayRef &inp,
+                                                int bit_width) {
+  const auto *share_t = inp.eltype().as<BShrTy>();
+  SPU_ENFORCE(share_t->nbits() == 1, "Support for 1bit boolean only");
+  auto field = inp.eltype().as<Ring2k>()->field();
+  SPU_ENFORCE(bit_width > 1 && bit_width < (int)(8 * SizeOf(field)),
+              "bit_width={} is invalid", bit_width);
+  return SingleB2A(inp, bit_width);
+}
+
+ArrayRef BasicOTProtocols::SingleB2A(const ArrayRef &inp, int bit_width) {
   // Math:
   //   b0^b1 = b0 + b1 - 2*b0*b1
   // Sender set corr = -2*b0
@@ -134,6 +144,9 @@ ArrayRef BasicOTProtocols::SingleB2A(const ArrayRef &inp) {
   const auto *share_t = inp.eltype().as<BShrTy>();
   SPU_ENFORCE_EQ(share_t->nbits(), 1UL);
   auto field = inp.eltype().as<Ring2k>()->field();
+  if (bit_width == 0) {
+    bit_width = SizeOf(field) * 8;
+  }
   const size_t n = inp.numel();
 
   ArrayRef oup = ring_zeros(field, n);
@@ -150,7 +163,8 @@ ArrayRef BasicOTProtocols::SingleB2A(const ArrayRef &inp) {
         // corr=-2*xi
         corr_data[i] = -((xinp[i] & 1) << 1);
       }
-      ferret_sender_->SendCAMCC(absl::MakeSpan(corr_data), {xoup.data(), n});
+      ferret_sender_->SendCAMCC(absl::MakeSpan(corr_data), {xoup.data(), n},
+                                bit_width);
       ferret_sender_->Flush();
 
       for (size_t i = 0; i < n; ++i) {
@@ -161,14 +175,14 @@ ArrayRef BasicOTProtocols::SingleB2A(const ArrayRef &inp) {
       for (size_t i = 0; i < n; ++i) {
         choices[i] = static_cast<uint8_t>(xinp[i] & 1);
       }
-      ferret_receiver_->RecvCAMCC(absl::MakeSpan(choices), {xoup.data(), n});
+      ferret_receiver_->RecvCAMCC(absl::MakeSpan(choices), {xoup.data(), n},
+                                  bit_width);
 
       for (size_t i = 0; i < n; ++i) {
         xoup[i] = (xinp[i] & 1) + xoup[i];
       }
     }
   });
-
   return oup;
 }
 

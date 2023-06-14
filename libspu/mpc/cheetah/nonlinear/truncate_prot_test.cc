@@ -51,7 +51,7 @@ bool SignBit(T x) {
 
 TEST_P(TruncateProtTest, Basic) {
   size_t kWorldSize = 2;
-  size_t n = 16;
+  size_t n = 1024;
   size_t shift = 13;
   FieldType field = std::get<0>(GetParam());
   bool signed_arith = std::get<1>(GetParam());
@@ -92,7 +92,8 @@ TEST_P(TruncateProtTest, Basic) {
     TruncateProtocol::Meta meta;
     meta.msb = msb_t;
     meta.signed_arith = signed_arith;
-    oup[rank] = trunc_prot.Compute(inp[rank], meta, shift);
+    meta.shift_bits = shift;
+    oup[rank] = trunc_prot.Compute(inp[rank], meta);
   });
 
   DISPATCH_ALL_FIELDS(field, "", [&]() {

@@ -45,23 +45,29 @@ class TruncateProtocol {
     MSB_st msb;
     bool use_heuristic;  // not implemented yet
     bool signed_arith;
-    Meta() : msb(MSB_st::unknown), use_heuristic(false), signed_arith(true) {}
+    size_t shift_bits;
+
+    Meta()
+        : msb(MSB_st::unknown),
+          use_heuristic(false),
+          signed_arith(true),
+          shift_bits(0) {}
   };
 
   explicit TruncateProtocol(std::shared_ptr<BasicOTProtocols> base);
 
   ~TruncateProtocol();
 
-  ArrayRef Compute(const ArrayRef &inp, Meta meta, size_t shift_bits);
+  ArrayRef Compute(const ArrayRef &inp, Meta meta);
 
  private:
   ArrayRef ComputeWrap(const ArrayRef &inp, const Meta &meta);
 
   // w = msbA | msbB
-  ArrayRef MSB0ToWrap(const ArrayRef &inp);
+  ArrayRef MSB0ToWrap(const ArrayRef &inp, size_t shift_bits);
 
   // w = msbA & msbB
-  ArrayRef MSB1ToWrap(const ArrayRef &inp);
+  ArrayRef MSB1ToWrap(const ArrayRef &inp, size_t shift_bits);
 
   std::shared_ptr<BasicOTProtocols> basic_ot_prot_{nullptr};
 };
