@@ -11,6 +11,7 @@
 > please add your unreleased change here.
 
 ## 20230614
+
 - [SPU] 0.4.0 release
 - [Feature] Improve secret dynamic slicing performance
 - [Feature] Improve accuracy of tanh approximation
