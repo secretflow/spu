@@ -59,13 +59,6 @@ jobs:
           command: ../tools/lint-whitespace.sh
 
 workflows:
-  lint-workflow:
-    when:
-      and:
-        - not: << pipeline.parameters.run-schedule >>
-        - not: << pipeline.parameters.GHA_Action >>
-    jobs:
-      - lint
   unittest-workflow:
     when:
       and:
@@ -83,6 +76,7 @@ workflows:
             requirements.txt build-and-run true
             requirements-dev.txt build-and-run true
             .circleci/continue-config.yml build-and-run true
+      - lint
   benchmark-workflow:
     when: << pipeline.parameters.run-schedule >>
     jobs:
