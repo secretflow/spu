@@ -43,7 +43,7 @@ jobs:
   lint:
     # Use machine executor for convenient data sharing between the host and docker-compose cluster
     docker:
-      - image: registry.hub.docker.com/secretflow/lint-ci:latest
+      - image: secretflow/lint-ci:latest
     resource_class: medium
     shell: /bin/bash --login -eo pipefail
     steps:
