@@ -53,13 +53,10 @@ jobs:
           command: git clone https://github.com/secretflow/devtools.git ../tools
       - run:
           name: C/C++ format check
-          command: |
-            ls
-            ls ../tools
-            ../tools/lint-clang-format.sh
+          command: bash ../tools/lint-clang-format.sh
       - run:
           name: Whitespace check
-          command: ../tools/lint-whitespace.sh
+          command: bash ../tools/lint-whitespace.sh
 
 workflows:
   unittest-workflow:
