@@ -37,6 +37,27 @@ parameters:
     type: boolean
     default: false
 
+# Define a job to be invoked later in a workflow.
+# See: https://circleci.com/docs/2.0/configuration-reference/#jobs
+jobs:
+  lint:
+    # Use machine executor for convenient data sharing between the host and docker-compose cluster
+    machine:
+      image: registry.hub.docker.com/secretflow/lint-ci:latest
+    resource_class: medium
+    shell: /bin/bash --login -eo pipefail
+    steps:
+      - checkout
+      - run:
+          name: Checkout devtools
+          command: git clone https://github.com/secretflow/devtools.git ../tools
+      - run:
+          name: C/C++ format check
+          command: ../tools/lint-clang-format.sh
+      - run:
+          name: Whitespace check
+          command: ../tools/lint-whitespace.sh
+
 workflows:
   lint-workflow:
     when:
@@ -44,8 +65,7 @@ workflows:
         - not: << pipeline.parameters.run-schedule >>
         - not: << pipeline.parameters.GHA_Action >>
     jobs:
-      - continuation/continue:
-          configuration_path: .circleci/lint-config.yml
+      - lint
   unittest-workflow:
     when:
       and:
