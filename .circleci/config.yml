@@ -38,6 +38,14 @@ parameters:
     default: false
 
 workflows:
+  lint-workflow:
+    when:
+      and:
+        - not: << pipeline.parameters.run-schedule >>
+        - not: << pipeline.parameters.GHA_Action >>
+    jobs:
+      - continuation/continue:
+          configuration_path: .circleci/lint-config.yml
   unittest-workflow:
     when:
       and:
