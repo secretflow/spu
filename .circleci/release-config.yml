@@ -103,7 +103,7 @@ jobs:
             python3 -m twine upload -r pypi -u __token__ -p ${PYPI_TWINE_TOKEN} dist/*.whl
   linux_publish:
     docker:
-      - image: registry.hub.docker.com/secretflow/release-ci:0.7
+      - image: secretflow/release-ci:latest
     resource_class: 2xlarge
     parameters:
       python_ver:
