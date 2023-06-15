@@ -50,14 +50,12 @@ jobs:
       - checkout
       - run:
           name: Checkout devtools
-          command: |
-            git clone https://github.com/secretflow/devtools.git ../tools
-            ls ..
+          command: git clone https://github.com/secretflow/devtools.git ../tools
       - run:
           name: C/C++ format check
           command: |
             ls
-            ls ..
+            ls ../tools
             ../tools/lint-clang-format.sh
       - run:
           name: Whitespace check
