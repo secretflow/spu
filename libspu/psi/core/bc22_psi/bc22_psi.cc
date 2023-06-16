@@ -69,8 +69,9 @@ void Bc22PcgPsi::ExchangeItemsNumber(size_t self_item_num) {
   // oprf compare bits: 40 + log2(n1) + log2(n2)
 
   yacl::Buffer self_count_buffer = utils::SerializeSize(self_item_num);
-  link_ctx_->SendAsync(link_ctx_->NextRank(), self_count_buffer,
-                       fmt::format("send items count: {}", self_item_num));
+  link_ctx_->SendAsyncThrottled(
+      link_ctx_->NextRank(), self_count_buffer,
+      fmt::format("send items count: {}", self_item_num));
 
   yacl::Buffer peer_items_num_buffer =
       link_ctx_->Recv(link_ctx_->NextRank(), fmt::format("peer items number"));
@@ -388,8 +389,9 @@ std::vector<std::string> Bc22PcgPsi::RunmBaRKOprfReceiver(
           }
         });
 
-    link_ctx_->SendAsync(link_ctx_->NextRank(), masked_coeff_buffer,
-                         fmt::format("send {} bin", current_batch_size));
+    link_ctx_->SendAsyncThrottled(
+        link_ctx_->NextRank(), masked_coeff_buffer,
+        fmt::format("send {} bin", current_batch_size));
   }
   SPDLOG_INFO("after send receiver's masked coeff");
 
@@ -421,7 +423,7 @@ void Bc22PcgPsi::PcgPsiSendOprf(absl::Span<const std::string> items,
     yacl::Buffer oprf_buffer(proto.ByteSizeLong());
     proto.SerializeToArray(oprf_buffer.data(), oprf_buffer.size());
 
-    link_ctx_->SendAsync(
+    link_ctx_->SendAsyncThrottled(
         link_ctx_->NextRank(), oprf_buffer,
         fmt::format("send oprf buffer, bytes: {}", oprf_buffer.size()));
   }

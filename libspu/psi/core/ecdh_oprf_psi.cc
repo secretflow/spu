@@ -62,8 +62,8 @@ size_t EcdhOprfPsiServer::SendFinalEvaluatedItems(
     // Send x^a.
     const auto tag =
         fmt::format("EcdhOprfPSI:FinalEvaluatedItems:{}", batch_count);
-    options_.link0->SendAsync(options_.link0->NextRank(), batch.Serialize(),
-                              tag);
+    options_.link0->SendAsyncThrottled(options_.link0->NextRank(),
+                                       batch.Serialize(), tag);
 
     if (batch.is_last_batch) {
       SPDLOG_INFO("{} Last batch triggered, batch_count={}", __func__,
@@ -157,7 +157,7 @@ size_t EcdhOprfPsiServer::FullEvaluate(
 
       if (send_flag) {
         // Send x^a.
-        options_.link0->SendAsync(
+        options_.link0->SendAsyncThrottled(
             options_.link0->NextRank(), batch.Serialize(),
             fmt::format("EcdhOprfPSI:FinalEvaluatedItems:{}",
                         local_batch_count));
@@ -178,7 +178,7 @@ size_t EcdhOprfPsiServer::FullEvaluate(
   if (send_flag) {
     batch.is_last_batch = true;
     batch.flatten_bytes.resize(0);
-    options_.link0->SendAsync(
+    options_.link0->SendAsyncThrottled(
         options_.link0->NextRank(), batch.Serialize(),
         fmt::format("EcdhOprfPSI last batch,FinalEvaluatedItems:{}",
                     batch_count));
@@ -213,8 +213,8 @@ void EcdhOprfPsiServer::RecvBlindAndSendEvaluate() {
       SPDLOG_INFO("{} Last batch triggered, batch_count={}", __func__,
                   batch_count);
 
-      options_.link1->SendAsync(options_.link1->NextRank(),
-                                evaluated_batch.Serialize(), tag_send);
+      options_.link1->SendAsyncThrottled(options_.link1->NextRank(),
+                                         evaluated_batch.Serialize(), tag_send);
       break;
     }
 
@@ -237,8 +237,8 @@ void EcdhOprfPsiServer::RecvBlindAndSendEvaluate() {
       evaluated_batch.flatten_bytes.append(item);
     }
 
-    options_.link1->SendAsync(options_.link1->NextRank(),
-                              evaluated_batch.Serialize(), tag_send);
+    options_.link1->SendAsyncThrottled(options_.link1->NextRank(),
+                                       evaluated_batch.Serialize(), tag_send);
 
     batch_count++;
   }
@@ -301,8 +301,8 @@ void EcdhOprfPsiServer::RecvBlindAndShuffleSendEvaluate() {
       SPDLOG_INFO("{} Last batch triggered, batch_count={}", __func__,
                   batch_count);
 
-      options_.link1->SendAsync(options_.link1->NextRank(),
-                                evaluated_batch.Serialize(), tag_send);
+      options_.link1->SendAsyncThrottled(options_.link1->NextRank(),
+                                         evaluated_batch.Serialize(), tag_send);
       break;
     }
 
@@ -312,8 +312,8 @@ void EcdhOprfPsiServer::RecvBlindAndShuffleSendEvaluate() {
       evaluated_batch.flatten_bytes.append(item);
     }
 
-    options_.link1->SendAsync(options_.link1->NextRank(),
-                              evaluated_batch.Serialize(), tag_send);
+    options_.link1->SendAsyncThrottled(options_.link1->NextRank(),
+                                       evaluated_batch.Serialize(), tag_send);
 
     batch_count++;
   }
@@ -469,8 +469,8 @@ size_t EcdhOprfPsiClient::SendBlindedItems(
       SPDLOG_INFO("{} Last batch triggered, batch_count={}", __func__,
                   batch_count);
 
-      options_.link1->SendAsync(options_.link1->NextRank(),
-                                blinded_batch.Serialize(), tag);
+      options_.link1->SendAsyncThrottled(options_.link1->NextRank(),
+                                         blinded_batch.Serialize(), tag);
       break;
     }
 
@@ -509,8 +509,8 @@ size_t EcdhOprfPsiClient::SendBlindedItems(
       // SPDLOG_INFO("push to queue size:{}", oprf_client_queue_.size());
     }
 
-    options_.link1->SendAsync(options_.link1->NextRank(),
-                              blinded_batch.Serialize(), tag);
+    options_.link1->SendAsyncThrottled(options_.link1->NextRank(),
+                                       blinded_batch.Serialize(), tag);
 
     items_count += items.size();
     batch_count++;
@@ -602,8 +602,8 @@ void EcdhOprfPsiClient::SendIntersectionMaskedItems(
       SPDLOG_INFO("{} Last batch triggered, batch_count={}", __func__,
                   batch_count);
 
-      options_.link1->SendAsync(options_.link1->NextRank(),
-                                blinded_batch.Serialize(), tag);
+      options_.link1->SendAsyncThrottled(options_.link1->NextRank(),
+                                         blinded_batch.Serialize(), tag);
       break;
     }
 
@@ -616,8 +616,8 @@ void EcdhOprfPsiClient::SendIntersectionMaskedItems(
       blinded_batch.flatten_bytes.append(b64_dest);
     }
 
-    options_.link1->SendAsync(options_.link1->NextRank(),
-                              blinded_batch.Serialize(), tag);
+    options_.link1->SendAsyncThrottled(options_.link1->NextRank(),
+                                       blinded_batch.Serialize(), tag);
 
     items_count += items.size();
     batch_count++;

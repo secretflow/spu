@@ -118,8 +118,9 @@ apsi::PSIParams LabelPsiReceiver::RequestPsiParams(
     size_t items_size, const std::shared_ptr<yacl::link::Context> &link_ctx) {
   yacl::Buffer buffer(&items_size, sizeof(items_size));
 
-  link_ctx->SendAsync(link_ctx->NextRank(), buffer,
-                      fmt::format("send client items size:{}", items_size));
+  link_ctx->SendAsyncThrottled(
+      link_ctx->NextRank(), buffer,
+      fmt::format("send client items size:{}", items_size));
 
   yacl::Buffer psi_params_buffer = link_ctx->Recv(
       link_ctx->NextRank(), fmt::format("recv psi params message"));
@@ -152,7 +153,7 @@ LabelPsiReceiver::RequestOPRF(
   yacl::Buffer blind_buffer(oprf_proto.ByteSizeLong());
   oprf_proto.SerializePartialToArray(blind_buffer.data(), blind_buffer.size());
 
-  link_ctx->SendAsync(
+  link_ctx->SendAsyncThrottled(
       link_ctx->NextRank(), blind_buffer,
       fmt::format("send oprf blind items buffer size:{}", blind_buffer.size()));
 
@@ -329,7 +330,7 @@ LabelPsiReceiver::RequestQuery(
   yacl::Buffer query_buffer(query_proto.ByteSizeLong());
   query_proto.SerializePartialToArray(query_buffer.data(), query_buffer.size());
 
-  link_ctx->SendAsync(
+  link_ctx->SendAsyncThrottled(
       link_ctx->NextRank(), query_buffer,
       fmt::format("send query buffer size:{}", query_buffer.size()));
 

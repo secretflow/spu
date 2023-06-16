@@ -42,6 +42,8 @@ class UnitTests(unittest.TestCase):
 
             self.assertEqual(res, ['hello', 'world'])
 
+            lctx.stop_link()
+
         # launch with multiprocess
         jobs = [
             multiprocess.Process(target=proc, args=(0,)),
@@ -58,22 +60,30 @@ class UnitTests(unittest.TestCase):
         desc.add_party("alice", "thread_0")
         desc.add_party("bob", "thread_1")
 
-        def proc(rank):
-            data = "hello" if rank == 0 else "world"
+        def proc():
+            def thread(rank):
+                data = "hello" if rank == 0 else "world"
 
-            lctx = link.create_mem(desc, rank)
-            res = lctx.all_gather(data)
+                lctx = link.create_mem(desc, rank)
+                res = lctx.all_gather(data)
 
-            self.assertEqual(res, ['hello', 'world'])
+                self.assertEqual(res, ['hello', 'world'])
 
-        # launch with threading
-        jobs = [
-            threading.Thread(target=proc, args=(0,)),
-            threading.Thread(target=proc, args=(1,)),
-        ]
+                lctx.stop_link()
 
-        [job.start() for job in jobs]
-        [job.join() for job in jobs]
+            # launch with threading
+            jobs = [
+                threading.Thread(target=thread, args=(0,)),
+                threading.Thread(target=thread, args=(1,)),
+            ]
+
+            [job.start() for job in jobs]
+            [job.join() for job in jobs]
+
+        job = multiprocess.Process(target=proc)
+        job.start()
+        job.join()
+        self.assertEqual(job.exitcode, 0)
 
     def test_link_send_recv(self):
         desc = link.Desc()
@@ -91,6 +101,8 @@ class UnitTests(unittest.TestCase):
             else:
                 s = lctx.recv(0)
                 self.assertEqual(s, b"hello world")
+
+            lctx.stop_link()
 
         # launch with multiprocess
         jobs = [
@@ -118,6 +130,8 @@ class UnitTests(unittest.TestCase):
             lctx.send_async(dst_rank, f"hello world {rank}".encode())
             self.assertEqual(lctx.recv(dst_rank), f"hello world {dst_rank}".encode())
 
+            lctx.stop_link()
+
         # launch with multiprocess
         jobs = [
             multiprocess.Process(target=proc, args=(0,)),
@@ -143,6 +157,8 @@ class UnitTests(unittest.TestCase):
             next_rank = (rank + 1) % 2
             self.assertEqual(lctx.next_rank(), next_rank)
             self.assertEqual(lctx.next_rank(2), rank)
+
+            lctx.stop_link()
 
         # launch with multiprocess
         jobs = [

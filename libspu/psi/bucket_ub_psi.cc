@@ -421,7 +421,7 @@ std::pair<std::vector<uint64_t>, size_t> UbPsiClientOnline(
 
   if (config.broadcast_result()) {
     // send intersection size
-    lctx->SendAsync(
+    lctx->SendAsyncThrottled(
         lctx->NextRank(), utils::SerializeSize(results.size()),
         fmt::format("EC-OPRF:PSI:INTERSECTION_SIZE={}", results.size()));
 

@@ -172,8 +172,9 @@ void SendBatchImpl(const std::vector<T>& batch_items,
     }
   }
 
-  link_ctx->SendAsync(link_ctx->NextRank(),
-                      IcPsiBatchSerializer::Serialize(std::move(batch)), tag);
+  link_ctx->SendAsyncThrottled(
+      link_ctx->NextRank(), IcPsiBatchSerializer::Serialize(std::move(batch)),
+      tag);
 }
 
 void RecvBatchImpl(const std::shared_ptr<yacl::link::Context>& link_ctx,

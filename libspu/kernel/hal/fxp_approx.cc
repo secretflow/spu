@@ -356,7 +356,14 @@ Value f_exp2(SPUContext* ctx, const Value& x) {
 Value f_tanh(SPUContext* ctx, const Value& x) {
   SPU_TRACE_HAL_LEAF(ctx, x);
 
-  return detail::tanh_pade_approx(ctx, x);
+  // For tanh inputs beyond [-3, 3], result is infinitely close to -1, 1
+  // pade approximation has a relative ok result between [-3, 3], so clamp
+  // inputs to this range.
+  auto normalized_x = _clamp(ctx, x, constant(ctx, -3.F, x.dtype(), x.shape()),
+                             constant(ctx, 3.F, x.dtype(), x.shape()))
+                          .setDtype(x.dtype());
+
+  return detail::tanh_pade_approx(ctx, normalized_x);
 }
 
 static Value rsqrt_init_guess(SPUContext* ctx, const Value& x, const Value& z) {

@@ -432,13 +432,7 @@ Value tanh(SPUContext* ctx, const Value& x) {
 
   SPU_ENFORCE(x.isFxp());
 
-  // For tanh inputs beyond [-3, 3], result is infinitely close to -1, 1
-  // pade approximation has a relative ok result between [-3, 3], so clamp
-  // inputs to this range.
-  auto normalized_x = clamp(ctx, x, constant(ctx, -3.F, x.dtype(), x.shape()),
-                            constant(ctx, 3.F, x.dtype(), x.shape()));
-
-  return f_tanh(ctx, normalized_x);
+  return f_tanh(ctx, x);
 }
 
 Value rsqrt(SPUContext* ctx, const Value& x) {

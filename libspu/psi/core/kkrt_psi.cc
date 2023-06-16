@@ -49,8 +49,9 @@ size_t ExchangeSetSize(const std::shared_ptr<yacl::link::Context>& link_ctx,
                        size_t items_size) {
   size_t input_size = items_size;
 
-  link_ctx->SendAsync(link_ctx->NextRank(), utils::SerializeSize(input_size),
-                      fmt::format("KKRT:PSI:SELF_SIZE={}", items_size));
+  link_ctx->SendAsyncThrottled(
+      link_ctx->NextRank(), utils::SerializeSize(input_size),
+      fmt::format("KKRT:PSI:SELF_SIZE={}", items_size));
 
   size_t peer_size = utils::DeserializeSize(
       link_ctx->Recv(link_ctx->NextRank(), fmt::format("KKRT:PSI:PEER_SIZE")));
@@ -287,15 +288,15 @@ void KkrtPsiSend(const std::shared_ptr<yacl::link::Context>& link_ctx,
       batch.is_last_batch = true;
     }
 
-    link_ctx->SendAsync(
+    link_ctx->SendAsyncThrottled(
         link_ctx->NextRank(), batch.Serialize(),
         fmt::format("KKRT:PSI:SENDER OPRF:{}", curr_step_item_num));
   }
 
   const char* finish_str = "kkrt finish";
 
-  link_ctx->SendAsync(link_ctx->NextRank(), finish_str,
-                      fmt::format("KKRT:PSI:Finished"));
+  link_ctx->SendAsyncThrottled(link_ctx->NextRank(), finish_str,
+                               fmt::format("KKRT:PSI:Finished"));
 }
 
 std::vector<std::size_t> KkrtPsiRecv(
@@ -367,8 +368,9 @@ std::vector<std::size_t> KkrtPsiRecv(
       }
     }
     auto send_buf = receiver.ShiftCorrection(num_this_batch);
-    link_ctx->SendAsync(link_ctx->NextRank(), send_buf,
-                        fmt::format("KKRT_PSI:sendCorrection:{}", batch_idx));
+    link_ctx->SendAsyncThrottled(
+        link_ctx->NextRank(), send_buf,
+        fmt::format("KKRT_PSI:sendCorrection:{}", batch_idx));
   }
 
   size_t batch_count = 0;

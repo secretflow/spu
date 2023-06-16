@@ -42,6 +42,7 @@ constexpr size_t kPsiStartPos = 100;
 struct TestParams {
   size_t nr;
   size_t ns;
+  size_t label_bytes = 16;
 };
 
 std::vector<std::string> GenerateData(size_t seed, size_t item_count) {
@@ -58,27 +59,37 @@ std::vector<std::string> GenerateData(size_t seed, size_t item_count) {
   return items;
 }
 
-std::vector<apsi::Item> GenerateSenderData(
-    size_t seed, size_t item_count,
+std::vector<std::pair<apsi::Item, apsi::Label>> GenerateSenderData(
+    size_t seed, size_t item_count, size_t label_byte_count,
     const absl::Span<std::string> &receiver_items,
-    std::vector<size_t> *intersection_idx) {
-  std::vector<apsi::Item> sender_items;
+    std::vector<size_t> *intersection_idx,
+    std::vector<std::string> *intersection_label) {
+  std::vector<std::pair<apsi::Item, apsi::Label>> sender_items;
 
   yacl::crypto::Prg<uint128_t> prg(seed);
 
   for (size_t i = 0; i < item_count; ++i) {
-    apsi::Item::value_type value{};
-    prg.Fill(absl::MakeSpan(value));
-    sender_items.emplace_back(value);
+    apsi::Item item;
+    apsi::Label label;
+    label.resize(label_byte_count);
+    prg.Fill(absl::MakeSpan(item.value()));
+    prg.Fill(absl::MakeSpan(label));
+    sender_items.emplace_back(item, label);
   }
 
   for (size_t i = 0; i < receiver_items.size(); i += 3) {
-    apsi::Item::value_type value{};
-    std::memcpy(value.data(), receiver_items[i].data(),
+    apsi::Item item;
+    std::memcpy(item.value().data(), receiver_items[i].data(),
                 receiver_items[i].length());
-    apsi::Item item(value);
-    sender_items[kPsiStartPos + i * 5] = item;
+
+    sender_items[kPsiStartPos + i * 5].first = item;
     (*intersection_idx).emplace_back(i);
+    std::string label_string(sender_items[kPsiStartPos + i * 5].second.size(),
+                             '\0');
+    std::memcpy(label_string.data(),
+                sender_items[kPsiStartPos + i * 5].second.data(),
+                sender_items[kPsiStartPos + i * 5].second.size());
+    (*intersection_label).emplace_back(label_string);
   }
 
   return sender_items;
@@ -107,6 +118,7 @@ TEST_P(LabelPsiTest, Works) {
             psi_params2.table_params().table_size);
 
   size_t item_count = params.ns;
+  size_t label_byte_count = params.label_bytes;
   size_t nonce_byte_count = 16;
 
   std::random_device rd;
@@ -132,7 +144,8 @@ TEST_P(LabelPsiTest, Works) {
   bool compressed = false;
   std::shared_ptr<spu::psi::SenderDB> sender_db =
       std::make_shared<spu::psi::SenderDB>(psi_params, oprf_key, kv_store_path,
-                                           0, nonce_byte_count, compressed);
+                                           label_byte_count, nonce_byte_count,
+                                           compressed);
 
   std::vector<std::string> receiver_items = GenerateData(rd(), params.nr);
 
@@ -143,22 +156,29 @@ TEST_P(LabelPsiTest, Works) {
 
   const auto setdb_start = std::chrono::system_clock::now();
 
-  std::vector<apsi::Item> sender_items = GenerateSenderData(
-      rd(), item_count, absl::MakeSpan(receiver_items), &intersection_idx);
+  std::vector<std::pair<apsi::Item, apsi::Label>> sender_items =
+      GenerateSenderData(rd(), item_count, label_byte_count - 6,
+                         absl::MakeSpan(receiver_items), &intersection_idx,
+                         &intersection_label);
 
   // sender_db->SetData(sender_items);
 
   std::vector<std::string> sender_data(sender_items.size());
+  std::vector<std::string> sender_label(sender_items.size());
   for (size_t i = 0; i < sender_items.size(); ++i) {
-    sender_data[i].reserve(sender_items[i].value().size());
+    sender_data[i].reserve(sender_items[i].first.value().size());
     sender_data[i].append(absl::string_view(
-        reinterpret_cast<char *>(sender_items[i].value().data()),
-        sender_items[i].value().size()));
+        reinterpret_cast<char *>(sender_items[i].first.value().data()),
+        sender_items[i].first.value().size()));
+
+    sender_label[i].reserve(sender_items[i].second.size());
+    sender_label[i].append(absl::string_view(
+        reinterpret_cast<char *>(sender_items[i].second.data()),
+        sender_items[i].second.size()));
   }
-  SPDLOG_INFO("sender_data[0].length:{}", sender_data[0].length());
 
   std::shared_ptr<IBatchProvider> batch_provider =
-      std::make_shared<MemoryBatchProvider>(sender_data);
+      std::make_shared<MemoryBatchProvider>(sender_data, sender_label);
 
   sender_db->SetData(batch_provider);
 
@@ -182,7 +202,7 @@ TEST_P(LabelPsiTest, Works) {
 
   LabelPsiSender sender(sender_db);
 
-  LabelPsiReceiver receiver(psi_params, false);
+  LabelPsiReceiver receiver(psi_params, params.label_bytes > 0);
 
   // step 3: oprf request and response
 
@@ -232,27 +252,26 @@ TEST_P(LabelPsiTest, Works) {
               query_result.first.size(), intersection_idx.size());
 
   EXPECT_EQ(intersection_idx, query_result.first);
+  EXPECT_EQ(intersection_label, query_result.second);
 }
 
 INSTANTIATE_TEST_SUITE_P(Works_Instances, LabelPsiTest,
                          testing::Values(  //
 #if 0
-                             TestParams{1, 10000},         // 1-10K
-                             TestParams{1, 100000},        // 1-100K
-                             TestParams{1, 256000},        // 1-256K
-                             TestParams{1, 512000},        // 1-512K
-                             TestParams{1, 1000000},       // 1-1M
-                             TestParams{256, 100000},      // 256-100K
-                             TestParams{512, 100000},      // 512-100K
-                             TestParams{1024, 100000},     // 1024-100K
-                             TestParams{2048, 100000},     // 2048-100K
-                             TestParams{4096, 100000},     // 4096-100K
-                             TestParams{10000, 100000},    // 10000-100K
+                             TestParams{1, 100000, 32},       // 1-100K-32
+                             TestParams{1, 256000, 32},       // 1-256K-32
+                             TestParams{1, 1000000, 32},      // 1-1M-32
+                             TestParams{256, 100000, 32},     // 256-100K-32
+                             TestParams{512, 100000, 32},     // 512-100K-32
+                             TestParams{1024, 100000, 32},    // 1024-100K-32
+                             TestParams{2048, 100000, 32},    // 2048-100K-32
+                             TestParams{4096, 100000, 32},    // 4096-100K-32
+                             TestParams{10000, 100000, 32},   // 10000-100K-32
+                             TestParams{10000, 1000000, 32})  // 10000-1M-32
 #else
-                             TestParams{1, 10000},     // 1-10K
-                             TestParams{1, 100000},    // 1-100K
-                             TestParams{256, 100000},  // 256-100K
-                             TestParams{256, 100000})  // 256-100K
+                             TestParams{2048, 100000, 32},  // 2048-100K-32
+                             TestParams{4096, 100000, 32})  // 4096-100K-32
+
 #endif
 );
 
