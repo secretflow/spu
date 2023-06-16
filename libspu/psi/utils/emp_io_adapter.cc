@@ -47,7 +47,7 @@ void EmpIoAdapter::flush() {
     return;
   }
 
-  ctx_->SendAsync(
+  ctx_->SendAsyncThrottled(
       ctx_->NextRank(),
       yacl::ByteContainerView(send_buffer_.data(), send_buffer_used_),
       fmt::format("Cheetah send:{}", send_op_++));

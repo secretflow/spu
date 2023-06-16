@@ -163,8 +163,9 @@ size_t RunDpEcdhPsiAlice(const DpPsiOptions& dp_psi_options,
   // if size==0 report intersection 0
   if (non_intersection_idx.empty()) {
     yacl::Buffer intersection_idx_size_buffer = utils::SerializeSize(0);
-    link_ctx->SendAsync(link_ctx->NextRank(), intersection_idx_size_buffer,
-                        fmt::format("intersection_idx size: {}", 0));
+    link_ctx->SendAsyncThrottled(link_ctx->NextRank(),
+                                 intersection_idx_size_buffer,
+                                 fmt::format("intersection_idx size: {}", 0));
 
     SPDLOG_WARN("non_intersection_idx size 0");
 
@@ -189,7 +190,7 @@ size_t RunDpEcdhPsiAlice(const DpPsiOptions& dp_psi_options,
 
   yacl::Buffer intersection_idx_size_buffer =
       utils::SerializeSize(sub_sample_idx.size());
-  link_ctx->SendAsync(
+  link_ctx->SendAsyncThrottled(
       link_ctx->NextRank(), intersection_idx_size_buffer,
       fmt::format("intersection_idx size: {}", sub_sample_idx.size()));
 
@@ -209,8 +210,8 @@ size_t RunDpEcdhPsiAlice(const DpPsiOptions& dp_psi_options,
                 current_batch_size * sizeof(size_t));
 
     data_batch.flatten_bytes = flatten_bytes;
-    link_ctx->SendAsync(link_ctx->NextRank(), data_batch.Serialize(),
-                        "batch send idx");
+    link_ctx->SendAsyncThrottled(link_ctx->NextRank(), data_batch.Serialize(),
+                                 "batch send idx");
   }
 
   return sub_sample_idx.size();

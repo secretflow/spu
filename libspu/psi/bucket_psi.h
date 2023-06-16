@@ -22,6 +22,7 @@
 
 #include "libspu/core/prelude.h"
 #include "libspu/psi/memory_psi.h"
+#include "libspu/psi/utils/csv_checker.h"
 #include "libspu/psi/utils/hash_bucket_cache.h"
 
 #include "libspu/psi/psi.pb.h"
@@ -39,17 +40,20 @@ class BucketPsi {
 
   PsiResultReport Run();
 
- private:
-  void Init();
-
   // unbalanced get items_count when RunPSI
   // other psi use sanity check get items_count
   // TODO: sanity check affects performance maybe optional
   std::vector<uint64_t> RunPsi(uint64_t& self_items_count);
 
-  std::vector<uint64_t> RunBucketPsi(uint64_t self_items_count);
+  std::unique_ptr<CsvChecker> CheckInput();
 
-  void Handshake(uint64_t self_items_count);
+  void ProduceOutput(bool digest_equal, std::vector<uint64_t>& indices,
+                     PsiResultReport& report);
+
+ private:
+  void Init();
+
+  std::vector<uint64_t> RunBucketPsi(uint64_t self_items_count);
 
   // the item order of `item_data_list` and `item_list` needs to be the same
   static void GetResultIndices(

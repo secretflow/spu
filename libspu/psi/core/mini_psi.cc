@@ -172,7 +172,8 @@ struct MiniPsiSendCtx {
       }
       // Send x^a.
       const auto tag = fmt::format("MINI-PSI:X^A:{}", batch_count);
-      link_ctx->SendAsync(link_ctx->NextRank(), batch.Serialize(), tag);
+      link_ctx->SendAsyncThrottled(link_ctx->NextRank(), batch.Serialize(),
+                                   tag);
       if (batch.is_last_batch) {
         SPDLOG_INFO("Last batch triggered, batch_count={}", batch_count);
         break;
@@ -273,7 +274,8 @@ struct MiniPsiRecvCtx {
       }
       // Send x^a.
       const auto tag = fmt::format("MINI-PSI:X^A:{}", batch_count);
-      link_ctx->SendAsync(link_ctx->NextRank(), batch.Serialize(), tag);
+      link_ctx->SendAsyncThrottled(link_ctx->NextRank(), batch.Serialize(),
+                                   tag);
       if (batch.is_last_batch) {
         SPDLOG_INFO("Last batch triggered, batch_count={}", batch_count);
         break;
@@ -384,7 +386,7 @@ void MiniPsiSend(const std::shared_ptr<yacl::link::Context>& link_ctx,
   //    MiniPSI code use zk prove public_key (discrete logarithm)
   //    in the origin paper no use zk
   //
-  link_ctx->SendAsync(
+  link_ctx->SendAsyncThrottled(
       link_ctx->NextRank(),
       yacl::Buffer(send_ctx.public_key.data(), send_ctx.public_key.size()),
       "MINI-PSI:X^A");
@@ -516,8 +518,8 @@ std::vector<std::string> MiniPsiRecvBatch(
     const std::shared_ptr<yacl::link::Context>& link_ctx,
     const std::vector<std::string>& items) {
   // send size to peer
-  link_ctx->SendAsync(link_ctx->NextRank(), utils::SerializeSize(items.size()),
-                      "RECV SIZE");
+  link_ctx->SendAsyncThrottled(link_ctx->NextRank(),
+                               utils::SerializeSize(items.size()), "RECV SIZE");
 
   std::vector<std::string> items_hash = HashInputs(items);
   std::vector<uint128_t> items_hash_u128(items.size());

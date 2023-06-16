@@ -58,8 +58,9 @@ std::vector<uint8_t> SodiumCurve25519Cryptor::KeyExchange(
   std::array<uint8_t, kEccKeySize> self_public_key;
   crypto_scalarmult_curve25519_base(self_public_key.data(), this->private_key_);
   yacl::Buffer self_pubkey_buf(self_public_key.data(), self_public_key.size());
-  link_ctx->SendAsync(link_ctx->NextRank(), self_pubkey_buf,
-                      fmt::format("send rank-{} public key", link_ctx->Rank()));
+  link_ctx->SendAsyncThrottled(
+      link_ctx->NextRank(), self_pubkey_buf,
+      fmt::format("send rank-{} public key", link_ctx->Rank()));
   yacl::Buffer peer_pubkey_buf = link_ctx->Recv(
       link_ctx->NextRank(),
       fmt::format("recv rank-{} public key", link_ctx->NextRank()));

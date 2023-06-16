@@ -143,7 +143,7 @@ void LabelPsiSender::RunPsiParams(
 
   yacl::Buffer params_buffer = PsiParamsToBuffer(psi_params);
 
-  link_ctx->SendAsync(
+  link_ctx->SendAsyncThrottled(
       link_ctx->NextRank(), params_buffer,
       fmt::format("send psi params buffer size:{}", params_buffer.size()));
 }
@@ -178,9 +178,10 @@ void LabelPsiSender::RunOPRF(
   evaluated_proto.SerializePartialToArray(evaluated_buffer.data(),
                                           evaluated_buffer.size());
 
-  link_ctx->SendAsync(link_ctx->NextRank(), evaluated_buffer,
-                      fmt::format("send evaluated items buffer size:{}",
-                                  evaluated_buffer.size()));
+  link_ctx->SendAsyncThrottled(
+      link_ctx->NextRank(), evaluated_buffer,
+      fmt::format("send evaluated items buffer size:{}",
+                  evaluated_buffer.size()));
 }
 
 std::vector<std::shared_ptr<ResultPackage>> SenderRunQuery(
@@ -261,7 +262,7 @@ void LabelPsiSender::RunQuery(
   SPDLOG_DEBUG("response_buffer size:{}, query_result size:{}",
                response_buffer.size(), query_result.size());
 
-  link_ctx->SendAsync(
+  link_ctx->SendAsyncThrottled(
       link_ctx->NextRank(), response_buffer,
       fmt::format("send query response size:{}", response_buffer.size()));
 }

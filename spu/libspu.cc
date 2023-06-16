@@ -188,6 +188,12 @@ void BindLink(py::module& m) {
           "Broadcasts a message from the party with rank 'root' to all other "
           "parties, aka MPI_Bcast")
       .def(
+          "stop_link",
+          [](const std::shared_ptr<Context>& self) -> void {
+            return self->WaitLinkTaskFinish();
+          },
+          NO_GIL, "Blocks until all link is safely stoped")
+      .def(
           "scatter",
           [&PY_CALL_TAG](const std::shared_ptr<Context>& self,
                          const std::vector<std::string>& in,

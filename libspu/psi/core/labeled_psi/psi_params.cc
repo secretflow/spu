@@ -31,16 +31,16 @@ std::vector<SEALParams> kSealParams = {
     {2048, 65537, 0, {48}},               // 0  *
     {4096, 40961, 0, {40, 32, 32}},       // 1
     {4096, 65537, 0, {40, 34, 30}},       // 2
-    {4096, 65537, 0, {48, 30, 30}},       // 3  *
+    {4096, 65537, 0, {48, 30, 30}},       // 3
     {4096, 65537, 0, {48, 32, 24}},       // 4
     {4096, 65537, 0, {48, 34, 27}},       // 5
-    {4096, 0, 18, {48, 32, 24}},          // 6
+    {4096, 0, 18, {48, 32, 24}},          // 6  *
     {8192, 0, 21, {56, 56, 24, 24}},      // 7
     {8192, 0, 21, {56, 56, 56, 50}},      // 8
     {8192, 0, 21, {48, 56, 56, 48}},      // 9
     {8192, 0, 22, {56, 56, 56, 32}},      // 10
-    {8192, 0, 22, {56, 56, 56, 50}},      // 11 *
-    {8192, 0, 26, {50, 50, 50, 38, 30}},  // 12
+    {8192, 0, 22, {56, 56, 56, 50}},      // 11
+    {8192, 0, 26, {50, 50, 50, 38, 30}},  // 12 *
     {8192, 65537, 0, {56, 48, 48}},       // 13
     {8192, 65537, 0, {56, 56, 30}},       // 14
 };
@@ -61,7 +61,7 @@ yacl::Buffer PsiParamsToBuffer(const apsi::PSIParams &psi_params) {
 
   psi_params_proto.set_ps_low_degree(psi_params.query_params().ps_low_degree);
 
-  if (psi_params.query_params().ps_low_degree != 0) {
+  if (psi_params.query_params().query_powers.size() > 0) {
     for (const auto &power : psi_params.query_params().query_powers) {
       psi_params_proto.add_query_powers(power);
     }
@@ -108,7 +108,7 @@ apsi::PSIParams ParsePsiParamsProto(
 
   query_params.ps_low_degree = psi_params_proto.ps_low_degree();
 
-  if (query_params.ps_low_degree != 0) {
+  if (psi_params_proto.query_powers_size() > 0) {
     for (int idx = 0; idx < psi_params_proto.query_powers_size(); ++idx) {
       query_params.query_powers.insert(psi_params_proto.query_powers(idx));
     }
@@ -160,14 +160,14 @@ SEALParams GetSealParams(size_t nr, size_t ns) {
     if (ns <= 3000000) {  // 3M
       return kSealParams[0];
     } else {
-      return kSealParams[11];
+      return kSealParams[12];
     }
   }
   if ((nr <= 4096) && (ns <= 1000000)) {  // 1M
-    return kSealParams[3];
+    return kSealParams[6];
   }
 
-  return kSealParams[11];
+  return kSealParams[12];
 }
 
 apsi::PSIParams GetPsiParams(size_t nr, size_t ns) {
@@ -203,7 +203,6 @@ apsi::PSIParams GetPsiParams(size_t nr, size_t ns) {
   // receiver has just one item
   // sender's items size < 3 million
   if ((nr == 1) && (seal_params.poly_modulus_degree == 2048)) {
-    query_params.ps_low_degree = 0;
     if (ns <= 100000) {
       table_params.max_items_per_bin = 20;
     } else if (ns <= 256000) {
@@ -211,33 +210,31 @@ apsi::PSIParams GetPsiParams(size_t nr, size_t ns) {
     } else {
       table_params.max_items_per_bin = 55;
     }
+
+    query_params.ps_low_degree = 0;
+    for (size_t idx = 0; idx < table_params.max_items_per_bin; ++idx) {
+      query_params.query_powers.insert(idx + 1);
+    }
   }
 
   // query_powers reference Challis and Robinson (2010)
   // http://emis.library.cornell.edu/journals/JIS/VOL13/Challis/challis6.pdf
   if (seal_params.poly_modulus_degree == 4096) {
-    query_params.ps_low_degree = 5;
-    query_params.query_powers = {1, 2, 3, 4, 5, 6, 18, 30, 42, 54, 60};
-  } else if (seal_params.poly_modulus_degree == 8192) {
-    if (ns < 3000000) {                // 3M
-      query_params.ps_low_degree = 8;  //
-      query_params.query_powers = {1, 3, 4, 9, 27};
-    } else if (ns < 48000000) {         // 48M
-      query_params.ps_low_degree = 44;  //
-      query_params.query_powers = {1, 3, 11, 18, 45, 225};
-    } else {
-      query_params.ps_low_degree = 310;
-      query_params.query_powers = {1,  4,   10,  11,  28,  33,
-                                   78, 118, 143, 311, 1555};
-    }
-  }
+    // 1M-256-288.json
+    table_params.max_items_per_bin = 512;
 
-  if (query_params.ps_low_degree != 0) {
-    table_params.max_items_per_bin = 12 * query_params.ps_low_degree;
-  } else {
-    for (size_t idx = 0; idx < table_params.max_items_per_bin; ++idx) {
-      query_params.query_powers.insert(idx + 1);
-    }
+    query_params.ps_low_degree = 0;
+    query_params.query_powers = {
+        1,   3,   4,   6,   10,  13,  15,  21,  29,  37,  45,  53,  61,  69,
+        75,  77,  80,  84,  86,  87,  89,  90,  181, 183, 188, 190, 195, 197,
+        206, 213, 214, 222, 230, 238, 246, 254, 261, 337, 338, 345, 353, 361,
+        370, 372, 377, 379, 384, 386, 477, 479, 486, 487, 495, 503, 511};
+  } else if (seal_params.poly_modulus_degree == 8192) {
+    // 256M-4096.json
+    table_params.max_items_per_bin = 4000;
+
+    query_params.ps_low_degree = 310;
+    query_params.query_powers = {1, 4, 10, 11, 28, 33, 78, 118, 143, 311, 1555};
   }
 
   // seal param

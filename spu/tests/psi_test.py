@@ -92,6 +92,8 @@ class UnitTests(unittest.TestCase):
             self.assertEqual(report.original_count, source_count - 1)
             self.assertEqual(report.intersection_count, output_count - 1)
 
+            lctx.stop_link()
+
         # launch with multiprocess
         jobs = [
             multiprocess.Process(
@@ -431,6 +433,8 @@ class UnitTests(unittest.TestCase):
             print(f"online cost time: {time.time() - start}")
             print(f"online: rank:{rank} original_count: {report_online.original_count}")
             print(f"intersection_count: {report_online.intersection_count}")
+
+            link_ctx.stop_link()
 
         # launch with multiprocess
         jobs = [
