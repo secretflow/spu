@@ -220,21 +220,17 @@ apsi::PSIParams GetPsiParams(size_t nr, size_t ns) {
   // query_powers reference Challis and Robinson (2010)
   // http://emis.library.cornell.edu/journals/JIS/VOL13/Challis/challis6.pdf
   if (seal_params.poly_modulus_degree == 4096) {
-    // 1M-256-288.json
-    table_params.max_items_per_bin = 512;
+    // 256K-512.json
+    table_params.max_items_per_bin = 64;
 
     query_params.ps_low_degree = 0;
-    query_params.query_powers = {
-        1,   3,   4,   6,   10,  13,  15,  21,  29,  37,  45,  53,  61,  69,
-        75,  77,  80,  84,  86,  87,  89,  90,  181, 183, 188, 190, 195, 197,
-        206, 213, 214, 222, 230, 238, 246, 254, 261, 337, 338, 345, 353, 361,
-        370, 372, 377, 379, 384, 386, 477, 479, 486, 487, 495, 503, 511};
+    query_params.query_powers = {1, 3, 4, 9, 11, 16, 21, 23, 28, 29, 31, 32};
   } else if (seal_params.poly_modulus_degree == 8192) {
-    // 256M-4096.json
-    table_params.max_items_per_bin = 4000;
+    // 1M-1-32.json
+    table_params.max_items_per_bin = 228;
 
-    query_params.ps_low_degree = 310;
-    query_params.query_powers = {1, 4, 10, 11, 28, 33, 78, 118, 143, 311, 1555};
+    query_params.ps_low_degree = 0;
+    query_params.query_powers = {1, 3, 8, 19, 33, 39, 92, 102};
   }
 
   // seal param

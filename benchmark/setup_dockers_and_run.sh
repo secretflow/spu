@@ -28,7 +28,7 @@ echo -e "${COLOR_GREEN}Cleanup old docker${COLOR_END}"
 docker rm -f spu-build
 
 echo -e "${COLOR_GREEN}Build spu-build${COLOR_END}"
-docker run --name spu-build --mount type=bind,source="$(pwd)",target=/home/admin/dev/ secretflow/spu-ci:0.6 \
+docker run --name spu-build --mount type=bind,source="$(pwd)",target=/home/admin/dev/ secretflow/spu-ci:latest \
     sh -c "cd /home/admin/dev && \
             python3 -m pip install -U pip && \
             python3 -m pip install -r requirements.txt && \
@@ -42,7 +42,7 @@ sleep 10
 
 echo -e "${COLOR_GREEN}Run benchmark${COLOR_END}"
 docker run --rm --mount type=bind,source="$(pwd)",target=/home/admin/dev/ --network nn-benchmark spu-build:v1 \
-    sh -c "cd /home/admin/dev && bash benchmark/run_bench.sh $@" | tee benchmark_results.log
+                sh -c "cd /home/admin/dev && bash benchmark/run_bench.sh $@" | tee benchmark_results.log;
 
 echo -e "${COLOR_GREEN}Shutdown docker compose${COLOR_END}"
 docker-compose -f .circleci/benchmark.yml down
