@@ -27,6 +27,23 @@ This documentation also contains instructions for [build and testing](CONTRIBUTI
 
 Please follow [Installation Guidelines](INSTALLATION.md) to install SPU.
 
+## Citing SPU
+
+If you think SPU helpful for your research or development, please consider citing our [paper](https://www.usenix.org/conference/atc23/presentation/ma):
+
+```text
+@inproceedings {288747,
+    author = {Junming Ma and Yancheng Zheng and Jun Feng and Derun Zhao and Haoqi Wu and Wenjing Fang and Jin Tan and Chaofan Yu and Benyu Zhang and Lei Wang},
+    title = {{SecretFlow-SPU}: A Performant and {User-Friendly} Framework for {Privacy-Preserving} Machine Learning},
+    booktitle = {2023 USENIX Annual Technical Conference (USENIX ATC 23)},
+    year = {2023},
+    address = {Boston, MA},
+    url = {https://www.usenix.org/conference/atc23/presentation/ma},
+    publisher = {USENIX Association},
+    month = jul,
+}
+```
+
 ## Acknowledgement
 
 We thank the significant contributions made by [Alibaba Gemini Lab](https://alibaba-gemini-lab.github.io).
