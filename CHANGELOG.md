@@ -10,6 +10,10 @@
 >
 > please add your unreleased change here.
 
+## 20230705
+- [SPU] 0.4.1 release
+- [Improvement] Improve tanh performance
+
 ## 20230614
 
 - [SPU] 0.4.0 release
