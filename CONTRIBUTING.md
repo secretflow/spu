@@ -39,7 +39,6 @@ The compiler portion of the project follows [MLIR style](https://mlir.llvm.org/g
 
 ### Prerequisite
 
-
 #### Docker
 
 ```sh
@@ -93,9 +92,6 @@ pip install -r requirements-dev.txt
 ```
 
 ### Build & UnitTest
-
-
-
 
 ``` sh
 # build as debug

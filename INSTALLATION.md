@@ -29,11 +29,6 @@ You could install SPU via the [official PyPI package](https://pypi.org/project/s
 pip install spu
 ```
 
-
-
-
-
-
 ### From Source
 
 At the root of repo, run
