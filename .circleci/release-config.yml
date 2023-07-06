@@ -133,11 +133,23 @@ workflows:
           matrix:
             parameters:
               python_ver: ["3.8", "3.9", "3.10", "3.11"]
+          # This is mandatory to trigger a pipeline when pushing a tag
+          filters:
+            tags:
+                only: /.*/
       - macOS_x64_publish:
           matrix:
             parameters:
               python_ver: ['3.8', '3.9', '3.10', '3.11']
+          # This is mandatory to trigger a pipeline when pushing a tag
+          filters:
+            tags:
+                only: /.*/
       - macOS_arm64_publish:
           matrix:
             parameters:
               python_ver: ['3.8', '3.9', '3.10', '3.11']
+          # This is mandatory to trigger a pipeline when pushing a tag
+          filters:
+            tags:
+                only: /.*/
