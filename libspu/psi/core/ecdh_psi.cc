@@ -113,7 +113,8 @@ void EcdhPsiContext::MaskPeer(
     // Should send out the dual masked items to peer.
     if (PeerCanTouchResults()) {
       const auto tag = fmt::format("ECDHPSI:Y^B^A:{}", batch_count);
-      SendDualMaskedBatch(dual_masked_peers, batch_count, tag);
+      // call non-block to avoid blocking each other with MaskSelf
+      SendDualMaskedBatchNonBlock(dual_masked_peers, batch_count, tag);
     }
     if (peer_items.empty()) {
       SPDLOG_INFO("MaskPeer:{}--finished, batch_count={}, peer_item_count={}",
@@ -156,10 +157,8 @@ void EcdhPsiContext::RecvDualMaskedSelf(
 namespace {
 
 template <typename T>
-void SendBatchImpl(const std::vector<T>& batch_items,
-                   const std::shared_ptr<yacl::link::Context>& link_ctx,
-                   std::string_view type, int32_t batch_idx,
-                   std::string_view tag) {
+PsiDataBatch BatchData(const std::vector<T>& batch_items, std::string_view type,
+                       int32_t batch_idx, std::string_view tag) {
   PsiDataBatch batch;
   batch.is_last_batch = batch_items.empty();
   batch.item_num = batch_items.size();
@@ -171,10 +170,28 @@ void SendBatchImpl(const std::vector<T>& batch_items,
       batch.flatten_bytes.append(item);
     }
   }
+  return batch;
+}
 
+template <typename T>
+void SendBatchImpl(const std::vector<T>& batch_items,
+                   const std::shared_ptr<yacl::link::Context>& link_ctx,
+                   std::string_view type, int32_t batch_idx,
+                   std::string_view tag) {
+  auto batch = BatchData<T>(batch_items, type, batch_idx, tag);
   link_ctx->SendAsyncThrottled(
       link_ctx->NextRank(), IcPsiBatchSerializer::Serialize(std::move(batch)),
       tag);
+}
+
+template <typename T>
+void SendBatchNonBlockImpl(const std::vector<T>& batch_items,
+                           const std::shared_ptr<yacl::link::Context>& link_ctx,
+                           std::string_view type, int32_t batch_idx,
+                           std::string_view tag) {
+  auto batch = BatchData<T>(batch_items, type, batch_idx, tag);
+  link_ctx->SendAsync(link_ctx->NextRank(),
+                      IcPsiBatchSerializer::Serialize(std::move(batch)), tag);
 }
 
 void RecvBatchImpl(const std::shared_ptr<yacl::link::Context>& link_ctx,
@@ -220,6 +237,13 @@ void EcdhPsiContext::SendDualMaskedBatch(
     const std::vector<std::string_view>& batch_items, int32_t batch_idx,
     std::string_view tag) {
   SendBatchImpl(batch_items, dual_mask_link_ctx_, "dual.enc", batch_idx, tag);
+}
+
+void EcdhPsiContext::SendDualMaskedBatchNonBlock(
+    const std::vector<std::string>& batch_items, int32_t batch_idx,
+    std::string_view tag) {
+  SendBatchNonBlockImpl(batch_items, dual_mask_link_ctx_, "dual.enc", batch_idx,
+                        tag);
 }
 
 void EcdhPsiContext::RecvDualMaskedBatch(std::vector<std::string>* items,

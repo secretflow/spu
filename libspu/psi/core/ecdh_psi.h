@@ -113,6 +113,10 @@ class EcdhPsiContext {
   void SendDualMaskedBatch(const std::vector<std::string_view>& batch_items,
                            int32_t batch_idx, std::string_view tag = "");
 
+  void SendDualMaskedBatchNonBlock(const std::vector<std::string>& batch_items,
+                                   int32_t batch_idx,
+                                   std::string_view tag = "");
+
   void RecvDualMaskedBatch(std::vector<std::string>* items, int32_t batch_idx,
                            std::string_view tag = "");
 
