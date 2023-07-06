@@ -83,7 +83,8 @@ workflows:
       - continuation/continue:
           configuration_path: .circleci/benchmark-config.yml
   publish-workflow:
-    when: << pipeline.parameters.GHA_Action >>
+    when:
+      equal: [ "release", << pipeline.parameters.GHA_Event >> ]
     jobs:
       - continuation/continue:
           configuration_path: .circleci/release-config.yml
