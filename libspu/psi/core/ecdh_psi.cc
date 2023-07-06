@@ -158,7 +158,7 @@ namespace {
 
 template <typename T>
 PsiDataBatch BatchData(const std::vector<T>& batch_items, std::string_view type,
-                       int32_t batch_idx, std::string_view tag) {
+                       int32_t batch_idx) {
   PsiDataBatch batch;
   batch.is_last_batch = batch_items.empty();
   batch.item_num = batch_items.size();
@@ -178,7 +178,7 @@ void SendBatchImpl(const std::vector<T>& batch_items,
                    const std::shared_ptr<yacl::link::Context>& link_ctx,
                    std::string_view type, int32_t batch_idx,
                    std::string_view tag) {
-  auto batch = BatchData<T>(batch_items, type, batch_idx, tag);
+  auto batch = BatchData<T>(batch_items, type, batch_idx);
   link_ctx->SendAsyncThrottled(
       link_ctx->NextRank(), IcPsiBatchSerializer::Serialize(std::move(batch)),
       tag);
@@ -189,7 +189,7 @@ void SendBatchNonBlockImpl(const std::vector<T>& batch_items,
                            const std::shared_ptr<yacl::link::Context>& link_ctx,
                            std::string_view type, int32_t batch_idx,
                            std::string_view tag) {
-  auto batch = BatchData<T>(batch_items, type, batch_idx, tag);
+  auto batch = BatchData<T>(batch_items, type, batch_idx);
   link_ctx->SendAsync(link_ctx->NextRank(),
                       IcPsiBatchSerializer::Serialize(std::move(batch)), tag);
 }
