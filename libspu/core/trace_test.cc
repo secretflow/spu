@@ -49,10 +49,11 @@ TEST(TraceTest, ActionWorks) {
 
   auto tracer = std::make_shared<Tracer>(TR_MODALL | TR_LAR);
   {
-    TraceAction ta0(tracer, (TR_MOD1 | TR_LOG), ~0, "f");
-    TraceAction ta1(tracer, (TR_MOD1 | TR_LAR), ~TR_MOD1, "g", 10);
-    TraceAction ta2(tracer, (TR_MOD1 | TR_LAR), ~TR_MOD1, "ignored", 10);
-    TraceAction ta3(tracer, (TR_MOD2 | TR_LAR), ~0, "h", 10, 20);
+    TraceAction ta0(tracer, nullptr, (TR_MOD1 | TR_LOG), ~0, "f");
+    TraceAction ta1(tracer, nullptr, (TR_MOD1 | TR_LAR), ~TR_MOD1, "g", 10);
+    TraceAction ta2(tracer, nullptr, (TR_MOD1 | TR_LAR), ~TR_MOD1, "ignored",
+                    10);
+    TraceAction ta3(tracer, nullptr, (TR_MOD2 | TR_LAR), ~0, "h", 10, 20);
   }
 
   ASSERT_EQ(tracer->getProfState()->getRecords().size(), 2);
@@ -64,6 +65,7 @@ TEST(TraceTest, ActionWorks) {
 struct Context {
   static std::string id() { return "id"; }
   static std::string pid() { return ""; }
+  static std::shared_ptr<yacl::link::Context> lctx() { return nullptr; }
 };
 void g(Context* ctx) { SPU_TRACE_HAL_LEAF(ctx); }
 

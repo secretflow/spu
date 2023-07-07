@@ -33,7 +33,7 @@ namespace spu {
 class SPUContext final {
   RuntimeConfig config_;
 
-  // A dynamic object for polymophic(multi-stage) operations.
+  // A dynamic object for polymorphic(multi-stage) operations.
   std::unique_ptr<Object> prot_;
 
   // TODO(jint): do we really need a link here? how about a FHE context.
@@ -106,6 +106,10 @@ class KernelEvalContext final {
   explicit KernelEvalContext(SPUContext* sctx) : sctx_(sctx) {}
 
   SPUContext* sctx() { return sctx_; }
+
+  const std::shared_ptr<yacl::link::Context>& lctx() const {
+    return sctx_->lctx();
+  }
 
   const std::string& id() { return sctx_->id(); }
   const std::string& pid() { return sctx_->pid(); }

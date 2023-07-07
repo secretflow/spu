@@ -506,6 +506,16 @@ std::unique_ptr<SPUContext> makeRef2kProtocol(
   return ctx;
 }
 
+Type Ref2kIo::getShareType(Visibility vis, int owner_rank) const {
+  if (vis == VIS_PUBLIC) {
+    return makeType<Pub2kTy>(field_);
+  } else if (vis == VIS_SECRET) {
+    return makeType<Ref2kSecrTy>(field_);
+  }
+
+  SPU_THROW("unsupported vis type {}", vis);
+}
+
 std::vector<ArrayRef> Ref2kIo::toShares(const ArrayRef& raw, Visibility vis,
                                         int owner_rank) const {
   SPU_ENFORCE(raw.eltype().isa<RingTy>(), "expected RingTy, got {}",

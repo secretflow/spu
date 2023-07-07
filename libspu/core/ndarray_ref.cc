@@ -250,6 +250,11 @@ NdArrayRef NdArrayRef::reshape(absl::Span<const int64_t> to_shape) const {
   SPU_ENFORCE(calcNumel(shape()) == calcNumel(to_shape),
               "reshape from {} to {} is changing numel", shape(), to_shape);
 
+  // Reshape empty is always a noop
+  if (calcNumel(to_shape) == 0) {
+    return NdArrayRef(buf(), eltype(), to_shape, strides(), offset());
+  }
+
   std::vector<int64_t> new_strides(to_shape.size(), 0);
   if (attempt_nocopy_reshape(*this, to_shape, new_strides)) {
     // No copy reshape
@@ -548,11 +553,16 @@ NdArrayRef unflatten(const ArrayRef& arr, absl::Span<const int64_t> shape) {
                       std::vector<int64_t>(shape.size(), 0), arr.offset());
   }
 
-  ArrayRef compact = arr.isCompact() ? arr : arr.clone();
-
   auto strides = makeCompactStrides(shape);
-  return NdArrayRef(compact.buf(), compact.eltype(), shape, std::move(strides),
-                    compact.offset());
+
+  if (arr.stride() != 1) {
+    for (auto& s : strides) {
+      s *= arr.stride();
+    }
+  }
+
+  return NdArrayRef(arr.buf(), arr.eltype(), shape, std::move(strides),
+                    arr.offset());
 }
 
 namespace {

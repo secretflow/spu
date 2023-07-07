@@ -4,6 +4,5 @@ protobuf>=3.19, <4
 cloudpickle>=2.0.0
 multiprocess>=0.70.12.2
 cachetools>=5.0.0
-jax>=0.3.15,<=0.4.12  # Last version that supports numpy 1.9
-jaxlib>=0.3.15,<=0.4.12
+jax[cpu]>=0.3.15  # Last version that supports numpy 1.9
 termcolor>=2.0.0

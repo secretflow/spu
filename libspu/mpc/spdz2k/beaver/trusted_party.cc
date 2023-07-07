@@ -106,10 +106,33 @@ ArrayRef TrustedParty::adjustSpdzKey(const PrgArrayDesc& desc) const {
 
 std::vector<ArrayRef> TrustedParty::adjustAuthCoinTossing(
     const PrgArrayDesc& desc, const PrgArrayDesc& mac_desc,
+    uint128_t global_key, size_t k, size_t s) const {
+  SPU_ENFORCE(s <= SizeOf(desc.field) * 8);
+
+  auto [r0, rs] = reconstruct(RecOp::ADD, getSeeds(), absl::MakeSpan(&desc, 1));
+  SPU_ENFORCE(r0.size() == 1 && rs.size() == 1);
+  auto r = ring_bitmask(ring_rand(desc.field, desc.numel), 0, k);
+  ring_add_(r0[0], ring_sub(r, rs[0]));
+
+  auto [mac_r0, mac_rs] =
+      reconstruct(RecOp::ADD, getSeeds(), absl::MakeSpan(&mac_desc, 1));
+  SPU_ENFORCE(mac_r0.size() == 1 && mac_rs.size() == 1);
+
+  // mac_r0[0] += r * global_key - mac_rs[0];
+  auto mac = ring_mul(r, global_key);
+  ring_add_(mac_r0[0], ring_sub(mac, mac_rs[0]));
+
+  return {r0[0], mac_r0[0]};
+}
+
+std::vector<ArrayRef> TrustedParty::adjustAuthRandBit(
+    const PrgArrayDesc& desc, const PrgArrayDesc& mac_desc,
     uint128_t global_key, size_t s) const {
   auto [r0, rs] = reconstruct(RecOp::ADD, getSeeds(), absl::MakeSpan(&desc, 1));
   SPU_ENFORCE(r0.size() == 1 && rs.size() == 1);
-  auto r = ring_bitmask(ring_rand(FM128, desc.numel), 0, s);
+
+  // r0[0] += r - rs[0];
+  auto r = ring_bitmask(ring_rand(desc.field, desc.numel), 0, 1);
   ring_add_(r0[0], ring_sub(r, rs[0]));
 
   auto [mac_r0, mac_rs] =
@@ -181,26 +204,65 @@ std::vector<ArrayRef> TrustedParty::adjustAuthDot(
   return {r0[2], mac_r0[0], mac_r0[1], mac_r0[2]};
 }
 
-std::vector<ArrayRef> TrustedParty::adjustAuthTrunc(
+std::vector<ArrayRef> TrustedParty::adjustAuthAnd(
     absl::Span<const PrgArrayDesc> descs,
-    absl::Span<const PrgArrayDesc> mac_descs, size_t bits,
-    uint128_t global_key) const {
-  SPU_ENFORCE_EQ(descs.size(), 2U);
+    absl::Span<const PrgArrayDesc> mac_descs, uint128_t global_key) const {
+  SPU_ENFORCE_EQ(descs.size(), 3U);
   checkDescs(descs);
 
+  SPU_ENFORCE_EQ(mac_descs.size(), 3U);
+  checkDescs(mac_descs);
+
   auto [r0, rs] = reconstruct(RecOp::ADD, getSeeds(), descs);
-  // r0[1] += (rs[0] >> bits) - rs[1];
-  ring_add_(r0[1], ring_sub(ring_arshift(rs[0], bits), rs[1]));
+  // r0[2] += rs[0] * rs[1] - rs[2];
+  ring_add_(r0[2], ring_sub(ring_mul(rs[0], rs[1]), rs[2]));
 
   auto [mac_r0, mac_rs] = reconstruct(RecOp::ADD, getSeeds(), mac_descs);
-  // mac_r0[0] += rs[0] * global_key - mac_rs[1];
-  auto mac = ring_mul(ring_arshift(rs[0], bits), global_key);
+  // mac_r0[0] += rs[0] * global_key - mac_rs[0];
+  auto amac = ring_mul(rs[0], global_key);
+  ring_add_(mac_r0[0], ring_sub(amac, mac_rs[0]));
+
+  // mac_r0[1] += rs[1] * global_key - mac_rs[1];
+  auto bmac = ring_mul(rs[1], global_key);
+  ring_add_(mac_r0[1], ring_sub(bmac, mac_rs[1]));
+
+  // mac_r0[2] += rs[0] * rs[1] * global_key - mac_rs[2];
+  auto c = ring_mul(rs[0], rs[1]);
+  auto cmac = ring_mul(c, global_key);
+  ring_add_(mac_r0[2], ring_sub(cmac, mac_rs[2]));
+  return {r0[2], mac_r0[0], mac_r0[1], mac_r0[2]};
+}
+
+std::vector<ArrayRef> TrustedParty::adjustAuthTrunc(
+    absl::Span<const PrgArrayDesc> descs,
+    absl::Span<const PrgArrayDesc> mac_descs, size_t bits, uint128_t global_key,
+    size_t k, size_t s) const {
+  SPU_ENFORCE_EQ(descs.size(), 2U);
+  checkDescs(descs);
+  const auto field = descs[0].field;
+
+  auto [r0, rs] = reconstruct(RecOp::ADD, getSeeds(), descs);
+  // r0[0] += (rs[0] & ((1 << k) - 1)) - rs[0];
+  auto t_rs = rs[0].clone();
+  ring_bitmask_(rs[0], 0, k);
+  ring_add_(r0[0], ring_sub(rs[0], t_rs));
+
+  // r0[1] += (rs[0] >> bits) - rs[1];
+  const size_t bit_len = SizeOf(field) * 8;
+  auto tr_rs0 =
+      ring_arshift(ring_lshift(rs[0], bit_len - k), bit_len - k + bits);
+  ring_bitmask_(tr_rs0, 0, k);
+  ring_add_(r0[1], ring_sub(tr_rs0, rs[1]));
+
+  auto [mac_r0, mac_rs] = reconstruct(RecOp::ADD, getSeeds(), mac_descs);
+  // mac_r0[0] += rs[0] * global_key - mac_rs[0];
+  auto mac = ring_mul(rs[0], global_key);
   ring_add_(mac_r0[0], ring_sub(mac, mac_rs[0]));
 
   // mac_r0[1] += (rs[0] >> bits) * global_key - mac_rs[1];
-  auto tr_mac = ring_mul(ring_arshift(rs[0], bits), global_key);
+  auto tr_mac = ring_mul(tr_rs0, global_key);
   ring_add_(mac_r0[1], ring_sub(tr_mac, mac_rs[1]));
-  return {r0[1], mac_r0[0], mac_r0[1]};
+  return {r0[0], r0[1], mac_r0[0], mac_r0[1]};
 }
 
 }  // namespace spu::mpc::spdz2k

@@ -44,37 +44,48 @@ class Runtime(object):
         """
         return self._vm.Run(executable.SerializeToString())
 
-    def set_var(self, name: str, value: bytes) -> None:
+    def set_var(self, name: str, value: libspu.Share) -> None:
         """Set an SPU value.
 
         Args:
             name (str): Id of value.
-            value (spu_pb2.ValueProto): value data.
+            value (libspu.Share): value data.
 
         """
         return self._vm.SetVar(name, value)
 
-    def get_var(self, name: str) -> bytes:
+    def get_var(self, name: str) -> libspu.Share:
         """Get an SPU value.
 
         Args:
             name (str): Id of value.
 
         Returns:
-            spu_pb2.ValueProto: Data data.
+            libspu.Share: Data data.
         """
         return self._vm.GetVar(name)
 
-    def get_var_meta(self, name: str) -> spu_pb2.ValueMeta:
+    def get_var_chunk_count(self, name: str) -> int:
+        """Get an SPU value.
+
+        Args:
+            name (str): Id of value.
+
+        Returns:
+            int: chunks count in libspu.Share
+        """
+        return self._vm.GetVarChunksCount(name)
+
+    def get_var_meta(self, name: str) -> spu_pb2.ValueMetaProto:
         """Get an SPU value without content.
 
         Args:
             name (str): Id of value.
 
         Returns:
-            spu_pb2.ValueProto: Data with out content.
+            spu_pb2.ValueMeta: Data meta with out content.
         """
-        ret = spu_pb2.ValueProto()
+        ret = spu_pb2.ValueMetaProto()
         ret.ParseFromString(self._vm.GetVarMeta(name))
         return ret
 
@@ -103,9 +114,14 @@ class Io(object):
         """
         self._io = libspu.IoWrapper(world_size, config.SerializeToString())
 
+    def get_share_chunk_count(
+        self, x: 'np.ndarray', vtype: spu_pb2.Visibility, owner_rank: int = -1
+    ) -> int:
+        return self._io.GetShareChunkCount(x, vtype, owner_rank)
+
     def make_shares(
         self, x: 'np.ndarray', vtype: spu_pb2.Visibility, owner_rank: int = -1
-    ) -> List[bytes]:
+    ) -> List[libspu.Share]:
         """Convert from NumPy array to list of SPU value(s).
 
         Args:
@@ -114,20 +130,20 @@ class Io(object):
             owner_rank (int): the index of the trusted piece. if >= 0, colocation optimization may be applied.
 
         Returns:
-            [spu_pb2.ValueProto]: output.
+            [libspu.Share]: output.
         """
         return self._io.MakeShares(x, vtype, owner_rank)
 
-    def reconstruct(self, str_shares: List[bytes]) -> 'np.ndarray':
+    def reconstruct(self, shares: List[libspu.Share]) -> 'np.ndarray':
         """Convert from list of SPU value(s) to NumPy array.
 
         Args:
-            xs (spu_pb2.ValueProto]): input.
+            xs ([libspu.Share]): input.
 
         Returns:
             np.ndarray: output.
         """
-        return self._io.Reconstruct(str_shares)
+        return self._io.Reconstruct(shares)
 
 
 @cached(cache=LRUCache(maxsize=128))

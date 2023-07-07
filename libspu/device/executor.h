@@ -48,6 +48,7 @@ class SymbolScope final {
   spu::Value lookupValue(mlir::Value key) const;
   void addValue(::mlir::Value key, const spu::Value &val);
   void addValue(::mlir::Value key, spu::Value &&val);
+  void removeValue(::mlir::Value key);
 
  protected:
   bool hasValueUnsafe(mlir::Value key) const;

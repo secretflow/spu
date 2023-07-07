@@ -29,8 +29,8 @@ namespace detail {
 //
 // Coefficients should be ordered from the order 1 (linear) term first, ending
 // with the highest order term. (Constant is not included).
-Value f_polynomial(SPUContext* ctx, const Value& x,
-                   const std::vector<Value>& coeffs) {
+Value polynomial(SPUContext* ctx, const Value& x,
+                 absl::Span<Value const> coeffs) {
   SPU_TRACE_HAL_DISP(ctx, x);
   SPU_ENFORCE(x.isFxp());
   SPU_ENFORCE(!coeffs.empty());
@@ -39,7 +39,7 @@ Value f_polynomial(SPUContext* ctx, const Value& x,
   Value res = _mul(ctx, x_pow, coeffs[0]);
 
   for (size_t i = 1; i < coeffs.size(); i++) {
-    if (i & 1) {
+    if ((i & 1) != 0U) {
       // x^{even order} is always positive
       x_pow =
           _trunc_with_sign(ctx, _mul(ctx, x_pow, x), ctx->getFxpBits(), true);
@@ -50,6 +50,16 @@ Value f_polynomial(SPUContext* ctx, const Value& x,
   }
 
   return _trunc(ctx, res).setDtype(x.dtype());
+}
+
+Value polynomial(SPUContext* ctx, const Value& x,
+                 absl::Span<float const> coeffs) {
+  std::vector<Value> cs;
+  cs.reserve(coeffs.size());
+  for (const auto& c : coeffs) {
+    cs.push_back(constant(ctx, c, x.dtype(), x.shape()));
+  }
+  return polynomial(ctx, x, cs);
 }
 
 Value highestOneBit(SPUContext* ctx, const Value& x) {

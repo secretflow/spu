@@ -54,7 +54,7 @@ TEST(FxpTest, ExponentialTaylorSeries) {
   };
 
   Value a = test::makeValue(&ctx, x, VIS_SECRET);
-  Value c = detail::exp_taylor_series(&ctx, a);
+  Value c = detail::exp_taylor(&ctx, a);
   EXPECT_EQ(c.dtype(), DT_F32);
 
   auto y = dump_public_as<float>(&ctx, reveal(&ctx, c));
@@ -69,7 +69,7 @@ TEST(FxpTest, ExponentialPade) {
   xt::xarray<float> x = xt::linspace<float>(-22., 22., 4000);
 
   Value a = test::makeValue(&ctx, x, VIS_SECRET);
-  Value c = detail::exp_pade_approx(&ctx, a);
+  Value c = detail::exp_pade(&ctx, a);
   EXPECT_EQ(c.dtype(), DT_F32);
 
   auto y = dump_public_as<float>(&ctx, reveal(&ctx, c));

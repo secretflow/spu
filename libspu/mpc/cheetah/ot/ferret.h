@@ -30,7 +30,8 @@ class FerretOT {
   std::shared_ptr<Impl> impl_;
 
  public:
-  FerretOT(std::shared_ptr<Communicator> conn, bool is_sender);
+  FerretOT(std::shared_ptr<Communicator> conn, bool is_sender,
+           bool malicious = false);
 
   ~FerretOT();
 
@@ -98,6 +99,25 @@ class FerretOT {
                  absl::Span<uint64_t> output, int bit_width = 0);
   void RecvCAMCC(absl::Span<const uint8_t> binary_choices,
                  absl::Span<uint128_t> output, int bit_width = 0);
+
+  // Random Message Chosen Choice
+  void SendRMCC(absl::Span<uint8_t> output0, absl::Span<uint8_t> output1,
+                size_t bit_width = 0);
+  void SendRMCC(absl::Span<uint32_t> output0, absl::Span<uint32_t> output1,
+                size_t bit_width = 0);
+  void SendRMCC(absl::Span<uint64_t> output0, absl::Span<uint64_t> output1,
+                size_t bit_width = 0);
+  void SendRMCC(absl::Span<uint128_t> output0, absl::Span<uint128_t> output1,
+                size_t bit_width = 0);
+
+  void RecvRMCC(absl::Span<const uint8_t> binary_choices,
+                absl::Span<uint8_t> output, size_t bit_width = 0);
+  void RecvRMCC(absl::Span<const uint8_t> binary_choices,
+                absl::Span<uint32_t> output, size_t bit_width = 0);
+  void RecvRMCC(absl::Span<const uint8_t> binary_choices,
+                absl::Span<uint64_t> output, size_t bit_width = 0);
+  void RecvRMCC(absl::Span<const uint8_t> binary_choices,
+                absl::Span<uint128_t> output, size_t bit_width = 0);
 };
 
 }  // namespace spu::mpc::cheetah

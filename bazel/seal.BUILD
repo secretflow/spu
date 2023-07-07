@@ -59,5 +59,5 @@ spu_cmake_external(
     out_static_libs = ["libseal-4.1.a"],
     deps = [
         "@com_github_facebook_zstd//:zstd",
-    ]
+    ],
 )

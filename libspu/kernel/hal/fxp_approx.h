@@ -21,17 +21,19 @@
 namespace spu::kernel::hal {
 namespace detail {
 
-Value log2_pade_approx(SPUContext* ctx, const Value& x);
+Value log2_pade(SPUContext* ctx, const Value& x);
 
-Value log_householder_approx(SPUContext* ctx, const Value& x);
+Value log_householder(SPUContext* ctx, const Value& x);
 
 // Works for range [-500, 2.1]
-Value exp_taylor_series(SPUContext* ctx, const Value& x);
+Value exp_taylor(SPUContext* ctx, const Value& x);
 
-Value exp2_pade_approx(SPUContext* ctx, const Value& x);
+Value exp2_pade(SPUContext* ctx, const Value& x);
 
 // Works for range [-12.0, 18.0]
-Value exp_pade_approx(SPUContext* ctx, const Value& x);
+Value exp_pade(SPUContext* ctx, const Value& x);
+
+Value tanh_chebyshev(SPUContext* ctx, const Value& x);
 
 }  // namespace detail
 

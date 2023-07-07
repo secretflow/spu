@@ -235,6 +235,18 @@ spu_cc_library(
 )
 
 spu_cc_library(
+    name = "insert_deallocation",
+    srcs = ["insert_deallocation.cc"],
+    hdrs = ["passes.h"],
+    deps = [
+        ":pass_details",
+        "//libspu/dialect:pphlo_dialect",
+        "@llvm-project//mlir:IR",
+        "@llvm-project//mlir:TransformUtils",
+    ],
+)
+
+spu_cc_library(
     name = "all_passes",
     hdrs = ["register_passes.h"],
     deps = [
@@ -242,6 +254,7 @@ spu_cc_library(
         ":decompose_minmax",
         ":expand_secret_gather",
         ":hlo_legalize_to_pphlo",
+        ":insert_deallocation",
         ":lower_conversion_cast",
         ":lower_mixed_type_op",
         ":optimize_denominator_with_broadcast",

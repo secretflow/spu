@@ -86,9 +86,9 @@ spu_cc_library(
     srcs = ["linalg.cc"],
     hdrs = ["linalg.h"],
     deps = [
-        "@com_github_eigenteam_eigen//:eigen3",
         "//libspu/core:parallel_utils",
         "//libspu/core:prelude",
+        "@com_github_eigenteam_eigen//:eigen3",
     ] + select({
         "@bazel_tools//src/conditions:darwin_x86_64": ["@local_homebrew_x64//:openmp"],
         "@bazel_tools//src/conditions:darwin_arm64": ["@local_homebrew_arm64//:openmp"],

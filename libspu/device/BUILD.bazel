@@ -26,25 +26,11 @@ spu_cc_library(
     ],
 )
 
-proto_library(
-    name = "device_proto",
-    srcs = ["device.proto"],
-    deps = [
-        "//libspu:spu_proto",
-    ],
-)
-
-cc_proto_library(
-    name = "device_cc_proto",
-    deps = [":device_proto"],
-)
-
 spu_cc_library(
     name = "io",
     srcs = ["io.cc"],
     hdrs = ["io.h"],
     deps = [
-        ":device_cc_proto",
         ":symbol_table",
         "//libspu:spu_cc_proto",
         "//libspu/core:context",
@@ -70,7 +56,6 @@ spu_cc_library(
     srcs = ["executor.cc"],
     hdrs = ["executor.h"],
     deps = [
-        ":device_cc_proto",
         ":symbol_table",
         "//libspu:spu_cc_proto",
         "//libspu/core:context",
@@ -111,7 +96,6 @@ spu_cc_library(
     srcs = ["symbol_table.cc"],
     hdrs = ["symbol_table.h"],
     deps = [
-        ":device_cc_proto",
         "//libspu/core:pt_buffer_view",
         "//libspu/core:value",
     ],

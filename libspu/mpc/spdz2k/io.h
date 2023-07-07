@@ -24,6 +24,7 @@ class Spdz2kIo final : public BaseIo {
 
   std::vector<ArrayRef> toShares(const ArrayRef& raw, Visibility vis,
                                  int owner_rank = -1) const override;
+  Type getShareType(Visibility vis, int owner_rank = -1) const override;
 
   ArrayRef fromShares(const std::vector<ArrayRef>& shares) const override;
 };

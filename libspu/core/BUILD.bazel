@@ -38,6 +38,7 @@ spu_cc_library(
     deps = [
         "//libspu/core:prelude",
         "@com_google_absl//absl/types:span",
+        "@yacl//yacl/link",
         "@yacl//yacl/utils:scope_guard",
     ],
 )

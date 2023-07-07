@@ -15,7 +15,6 @@
 # limitations under the License.
 #
 
-
 pip install numpy
 
 python setup.py bdist_wheel

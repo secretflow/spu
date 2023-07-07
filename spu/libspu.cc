@@ -257,12 +257,45 @@ void BindLink(py::module& m) {
         });
 }
 
+struct PyBindShare {
+  py::bytes meta;
+  std::vector<py::bytes> share_chunks;
+};
+
+static spu::Value ValueFromPyBindShare(const PyBindShare& py_share) {
+  spu::ValueProto value;
+  spu::ValueMetaProto meta;
+  SPU_ENFORCE(meta.ParseFromString(py_share.meta));
+  value.meta.Swap(&meta);
+  for (const auto& s : py_share.share_chunks) {
+    spu::ValueChunkProto chunk;
+    SPU_ENFORCE(chunk.ParseFromString(s));
+    value.chunks.emplace_back(std::move(chunk));
+  }
+  return Value::fromProto(value);
+}
+
+static PyBindShare ValueToPyBindShare(const spu::Value& value,
+                                      size_t max_chunk_size) {
+  PyBindShare ret;
+
+  const auto value_pb = value.toProto(max_chunk_size);
+  ret.meta = value_pb.meta.SerializeAsString();
+  ret.share_chunks.reserve(value_pb.chunks.size());
+  for (const auto& s : value_pb.chunks) {
+    ret.share_chunks.emplace_back(s.SerializeAsString());
+  }
+  return ret;
+}
+
 // Wrap Runtime, it's workaround for protobuf pybind11/protoc conflict.
 class RuntimeWrapper {
   std::unique_ptr<spu::SPUContext> sctx_;
 
   // the golbals, could be used to cross session stuffs.
   spu::device::SymbolTable env_;
+
+  size_t max_chunk_size_;
 
  public:
   explicit RuntimeWrapper(const std::shared_ptr<yacl::link::Context>& lctx,
@@ -275,6 +308,10 @@ class RuntimeWrapper {
 
     sctx_ = std::make_unique<spu::SPUContext>(config, lctx);
     mpc::Factory::RegisterProtocol(sctx_.get(), lctx);
+    max_chunk_size_ = config.share_max_chunk_size();
+    if (max_chunk_size_ == 0) {
+      max_chunk_size_ = 128UL * 1024 * 1024;
+    }
   }
 
   void Run(const py::bytes& exec_pb) {
@@ -285,15 +322,16 @@ class RuntimeWrapper {
     spu::device::execute(&executor, sctx_.get(), exec, &env_);
   }
 
-  void SetVar(const std::string& name, const py::bytes& value) {
-    ValueProto proto;
-    SPU_ENFORCE(proto.ParseFromString(value));
-
-    env_.setVar(name, spu::Value::fromProto(proto));
+  void SetVar(const std::string& name, const PyBindShare& share) {
+    env_.setVar(name, ValueFromPyBindShare(share));
   }
 
-  py::bytes GetVar(const std::string& name) const {
-    return env_.getVar(name).toProto().SerializeAsString();
+  PyBindShare GetVar(const std::string& name) const {
+    return ValueToPyBindShare(env_.getVar(name), max_chunk_size_);
+  }
+
+  size_t GetVarChunksCount(const std::string& name) {
+    return env_.getVar(name).chunksCount(max_chunk_size_);
   }
 
   py::bytes GetVarMeta(const std::string& name) const {
@@ -368,7 +406,9 @@ constexpr void SizeCheck() {
 }
 
 class IoWrapper {
+ private:
   std::unique_ptr<spu::device::IoClient> ptr_;
+  size_t max_chunk_size_;
 
  public:
   IoWrapper(size_t world_size, const std::string& config_pb) {
@@ -376,10 +416,30 @@ class IoWrapper {
     SPU_ENFORCE(config.ParseFromString(config_pb));
 
     ptr_ = std::make_unique<spu::device::IoClient>(world_size, config);
+    max_chunk_size_ = config.share_max_chunk_size();
+    if (max_chunk_size_ == 0) {
+      max_chunk_size_ = 128UL * 1024 * 1024;
+    }
   }
 
-  std::vector<py::bytes> MakeShares(const py::array& arr, int visibility,
-                                    int owner_rank = -1) {
+  size_t GetShareChunkCount(const py::array& arr, int visibility,
+                            int owner_rank) {
+    const py::buffer_info& binfo = arr.request();
+    const PtType pt_type = PyFormatToPtType(binfo.format);
+
+    spu::PtBufferView view(
+        binfo.ptr, pt_type,
+        std::vector<int64_t>(binfo.shape.begin(), binfo.shape.end()),
+        ByteToElementStrides(binfo.strides.begin(), binfo.strides.end(),
+                             binfo.itemsize));
+    const size_t share_size = ptr_->getShareSize(
+        view, static_cast<spu::Visibility>(visibility), owner_rank);
+    size_t num_chunks = (share_size + max_chunk_size_ - 1) / max_chunk_size_;
+    return num_chunks;
+  }
+
+  std::vector<PyBindShare> MakeShares(const py::array& arr, int visibility,
+                                      int owner_rank = -1) {
     // When working with Python, do a static size check, this has no runtime
     // cost
     SizeCheck();
@@ -393,29 +453,27 @@ class IoWrapper {
         ByteToElementStrides(binfo.strides.begin(), binfo.strides.end(),
                              binfo.itemsize));
 
-    auto shares = ptr_->makeShares(
+    const auto shares = ptr_->makeShares(
         view, static_cast<spu::Visibility>(visibility), owner_rank);
-    std::vector<py::bytes> serialized(shares.size());
-    for (size_t idx = 0; idx < shares.size(); ++idx) {
-      std::string s;
-      SPU_ENFORCE(shares[idx].toProto().SerializeToString(&s));
-      serialized[idx] = py::bytes(s);
+
+    std::vector<PyBindShare> serialized;
+    serialized.reserve(shares.size());
+    for (const auto& share : shares) {
+      serialized.emplace_back(ValueToPyBindShare(share, max_chunk_size_));
     }
 
     return serialized;
   }
 
-  py::array reconstruct(const std::vector<std::string>& vals) {
+  py::array Reconstruct(const std::vector<PyBindShare>& vals) {
     std::vector<spu::Value> shares;
     SPU_ENFORCE(!vals.empty());
-    for (const auto& val_str : vals) {
-      spu::ValueProto vp;
-      SPU_ENFORCE(vp.ParseFromString(val_str));
-      shares.push_back(spu::Value::fromProto(vp));
+    shares.reserve(vals.size());
+    for (const auto& val : vals) {
+      shares.emplace_back(ValueFromPyBindShare(val));
     }
-
     // sanity
-    for (size_t idx = 1; idx < vals.size(); ++idx) {
+    for (size_t idx = 1; idx < shares.size(); ++idx) {
       const auto& cur = shares[idx];
       const auto& prev = shares[idx - 1];
       SPU_ENFORCE(cur.storage_type() == prev.storage_type(),
@@ -593,6 +651,19 @@ PYBIND11_MODULE(libspu, m) {
         }
       });
 
+  py::class_<PyBindShare>(m, "Share", "Share in python runtime")
+      .def(py::init<>(), NO_GIL)
+      .def_readwrite("share_chunks", &PyBindShare::share_chunks, "share chunks")
+      .def_readwrite("meta", &PyBindShare::meta, "meta of share")
+      .def(py::pickle(
+          [](const PyBindShare& s) {  // dump
+            return py::make_tuple(s.meta, s.share_chunks);
+          },
+          [](const py::tuple& t) {  // load
+            return PyBindShare{t[0].cast<py::bytes>(),
+                               t[1].cast<std::vector<py::bytes>>()};
+          }));
+
   // bind spu virtual machine.
   py::class_<RuntimeWrapper>(m, "RuntimeWrapper", "SPU virtual device")
       .def(py::init<std::shared_ptr<yacl::link::Context>, std::string>(),
@@ -604,6 +675,7 @@ PYBIND11_MODULE(libspu, m) {
                         // SetVar & GetVar are using
                         // py::byte, so they must acquire gil...
       .def("GetVar", &RuntimeWrapper::GetVar)
+      .def("GetVarChunksCount", &RuntimeWrapper::GetVarChunksCount)
       .def("GetVarMeta", &RuntimeWrapper::GetVarMeta)
       .def("DelVar", &RuntimeWrapper::DelVar);
 
@@ -611,7 +683,8 @@ PYBIND11_MODULE(libspu, m) {
   py::class_<IoWrapper>(m, "IoWrapper", "SPU VM IO")
       .def(py::init<size_t, std::string>())
       .def("MakeShares", &IoWrapper::MakeShares)
-      .def("Reconstruct", &IoWrapper::reconstruct);
+      .def("GetShareChunkCount", &IoWrapper::GetShareChunkCount)
+      .def("Reconstruct", &IoWrapper::Reconstruct);
 
   // bind compiler.
   m.def(

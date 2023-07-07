@@ -25,6 +25,7 @@
 #include "fmt/format.h"
 #include "fmt/ostream.h"
 #include "spdlog/spdlog.h"
+#include "yacl/link/link.h"
 
 namespace std {
 
@@ -149,6 +150,9 @@ struct ActionRecord final {
   // the action timing information.
   TimePoint start;
   TimePoint end;
+  // the communication bytes information.
+  size_t send_bytes_start;
+  size_t send_bytes_end;
 };
 
 class ProfState final {
@@ -203,6 +207,9 @@ class TraceAction final {
   // The tracer.
   std::shared_ptr<Tracer> const tracer_;
 
+  // The link context.
+  std::shared_ptr<yacl::link::Context> const lctx_;
+
   // The static expected behavior of this action.
   int64_t const flag_;
 
@@ -225,12 +232,18 @@ class TraceAction final {
   TimePoint start_;
   TimePoint end_;
 
+  // the action communication information.
+  size_t send_bytes_start_;
+  size_t send_bytes_end_;
+
   int64_t saved_tracer_flag_;
 
   template <typename... Args>
   void begin(Args&&... args) {
     start_ = std::chrono::high_resolution_clock::now();
-
+    if (lctx_) {
+      send_bytes_start_ = lctx_->GetStats()->sent_bytes.load();
+    }
     const auto flag = flag_ & tracer_->getFlag();
     if ((flag & TR_LOGB) != 0) {
       detail_ = internal::variadicToString(std::forward<Args>(args)...);
@@ -249,7 +262,9 @@ class TraceAction final {
 
     //
     end_ = std::chrono::high_resolution_clock::now();
-
+    if (lctx_) {
+      send_bytes_end_ = lctx_->GetStats()->sent_bytes.load();
+    }
     const auto flag = flag_ & tracer_->getFlag();
     if ((flag & TR_LOGE) != 0) {
       tracer_->decDepth();
@@ -257,7 +272,8 @@ class TraceAction final {
     }
     if ((flag & TR_REC) != 0 && (flag & TR_MODALL) != 0) {
       tracer_->getProfState()->addRecord(
-          ActionRecord{id_, name_, std::move(detail_), flag_, start_, end_});
+          ActionRecord{id_, name_, std::move(detail_), flag_, start_, end_,
+                       send_bytes_start_, send_bytes_end_});
     }
   }
 
@@ -275,12 +291,14 @@ class TraceAction final {
   //   mask = ~TR_MOD2,       means disable further TR_MOD2 tracing.
   template <typename... Args>
   explicit TraceAction(
-      std::shared_ptr<Tracer> tracer,  //
+      std::shared_ptr<Tracer> tracer,             //
+      std::shared_ptr<yacl::link::Context> lctx,  //
       int64_t flag,      // the static expected behaviour flag of action.
       int64_t mask,      // the suppress mask of the action.
       std::string name,  // name of this action.
       Args&&... args)
       : tracer_(std::move(tracer)),
+        lctx_(std::move(lctx)),
         flag_(flag),
         mask_(mask),
         name_(std::move(name)) {
@@ -320,8 +338,8 @@ std::shared_ptr<Tracer> getTracer(const std::string& id,
 
 // Why add `##` to __VA_ARGS__, please see
 // https://stackoverflow.com/questions/5891221/variadic-macros-with-zero-arguments
-#define SPU_TRACE_ACTION(TRACER, FLAG, MASK, NAME, ...) \
-  TraceAction __trace_action(TRACER, FLAG, MASK, NAME, ##__VA_ARGS__);
+#define SPU_TRACE_ACTION(TRACER, LINK, FLAG, MASK, NAME, ...) \
+  TraceAction __trace_action(TRACER, LINK, FLAG, MASK, NAME, ##__VA_ARGS__);
 
 #else
 
@@ -330,34 +348,34 @@ std::shared_ptr<Tracer> getTracer(const std::string& id,
 #endif
 
 // trace an hlo layer dispatch
-#define SPU_TRACE_HLO_DISP(CTX, ...)                                   \
-  SPU_TRACE_ACTION(GET_TRACER(CTX), (TR_HLO | TR_LOG), (~0), __func__, \
-                   ##__VA_ARGS__)
+#define SPU_TRACE_HLO_DISP(CTX, ...)                                        \
+  SPU_TRACE_ACTION(GET_TRACER(CTX), (CTX)->lctx(), (TR_HLO | TR_LOG), (~0), \
+                   __func__, ##__VA_ARGS__)
 
 // trace an hlo layer leaf
-#define SPU_TRACE_HLO_LEAF(CTX, ...)                                        \
-  SPU_TRACE_ACTION(GET_TRACER(CTX), (TR_HLO | TR_LAR), (~TR_HLO), __func__, \
-                   ##__VA_ARGS__)
+#define SPU_TRACE_HLO_LEAF(CTX, ...)                                  \
+  SPU_TRACE_ACTION(GET_TRACER(CTX), (CTX)->lctx(), (TR_HLO | TR_LAR), \
+                   (~TR_HLO), __func__, ##__VA_ARGS__)
 
 // trace an hal layer dispatch
-#define SPU_TRACE_HAL_DISP(CTX, ...)                                   \
-  SPU_TRACE_ACTION(GET_TRACER(CTX), (TR_HAL | TR_LOG), (~0), __func__, \
-                   ##__VA_ARGS__)
+#define SPU_TRACE_HAL_DISP(CTX, ...)                                        \
+  SPU_TRACE_ACTION(GET_TRACER(CTX), (CTX)->lctx(), (TR_HAL | TR_LOG), (~0), \
+                   __func__, ##__VA_ARGS__)
 
 // trace an hal layer leaf
-#define SPU_TRACE_HAL_LEAF(CTX, ...)                                        \
-  SPU_TRACE_ACTION(GET_TRACER(CTX), (TR_HAL | TR_LAR), (~TR_HAL), __func__, \
-                   ##__VA_ARGS__)
+#define SPU_TRACE_HAL_LEAF(CTX, ...)                                  \
+  SPU_TRACE_ACTION(GET_TRACER(CTX), (CTX)->lctx(), (TR_HAL | TR_LAR), \
+                   (~TR_HAL), __func__, ##__VA_ARGS__)
 
 // trace an mpc layer dispatch
-#define SPU_TRACE_MPC_DISP(CTX, ...)                                   \
-  SPU_TRACE_ACTION(GET_TRACER(CTX), (TR_MPC | TR_LOG), (~0), __func__, \
-                   ##__VA_ARGS__)
+#define SPU_TRACE_MPC_DISP(CTX, ...)                                        \
+  SPU_TRACE_ACTION(GET_TRACER(CTX), (CTX)->lctx(), (TR_MPC | TR_LOG), (~0), \
+                   __func__, ##__VA_ARGS__)
 
 // trace an mpc layer leaf
-#define SPU_TRACE_MPC_LEAF(CTX, ...)                                        \
-  SPU_TRACE_ACTION(GET_TRACER(CTX), (TR_MPC | TR_LAR), (~TR_MPC), __func__, \
-                   ##__VA_ARGS__)
+#define SPU_TRACE_MPC_LEAF(CTX, ...)                                  \
+  SPU_TRACE_ACTION(GET_TRACER(CTX), (CTX)->lctx(), (TR_MPC | TR_LAR), \
+                   (~TR_MPC), __func__, ##__VA_ARGS__)
 
 // Debug purpose only.
 class MemProfilingGuard {

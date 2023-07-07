@@ -30,7 +30,7 @@ spu_cc_library(
 
 cc_proto_library(
     name = "ic_protocol_psi_cc_proto",
-    deps = ["@org_interconnection//interconnection/algos:psi"],
+    deps = ["@org_interconnection//interconnection/runtime:ecdh_psi"],
 )
 
 spu_cc_library(

@@ -19,8 +19,6 @@
 
 #include "libspu/core/value.h"
 
-#include "libspu/device/device.pb.h"
-
 namespace spu::device {
 
 class SymbolTable {
@@ -39,8 +37,10 @@ class SymbolTable {
   auto begin() { return data_.begin(); }
   auto end() { return data_.end(); }
 
-  SymbolTableProto toProto() const;
-  static SymbolTable fromProto(const SymbolTableProto &proto);
+  // @shantang / @wuju
+  // TODO: temporary remove, need to adapt value slice change
+  // SymbolTableProto toProto() const;
+  // static SymbolTable fromProto(const SymbolTableProto &proto);
 };
 
 }  // namespace spu::device

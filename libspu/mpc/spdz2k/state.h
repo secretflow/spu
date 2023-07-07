@@ -24,6 +24,7 @@
 #include "libspu/core/object.h"
 #include "libspu/mpc/common/communicator.h"
 #include "libspu/mpc/spdz2k/beaver/beaver_tfp.h"
+#include "libspu/mpc/spdz2k/beaver/beaver_tinyot.h"
 #include "libspu/mpc/spdz2k/commitment.h"
 
 namespace spu::mpc {
@@ -41,71 +42,73 @@ template <typename T>
 using Share = std::complex<T>;
 
 class Spdz2kState : public State {
-  std::unique_ptr<spdz2k::BeaverTfpUnsafe> beaver_;
+  // #ifdef TINYOT
+  //   using Beaver = spdz2k::BeaverTinyOt;
+  // #else
+  //   using Beaver = spdz2k::BeaverTfpUnsafe;
+  // #endif
+
+  std::unique_ptr<spdz2k::Beaver> beaver_;
 
   std::shared_ptr<yacl::link::Context> lctx_;
 
   // share of global key, share key has length of 128 bit
-  uint128_t key_;
+  uint128_t key_ = 0;
 
-  // shares to be checked
-  std::unique_ptr<std::vector<ArrayRef>> arr_ref_v_;
+  // plaintext ring size, default set to half field bit length
+  size_t k_ = 0;
 
-  // plaintext ring size
-  const size_t k_ = 64;
+  // statistical security parameter, default set to half field bit length
+  size_t s_ = 0;
 
-  // statistical security parameter
-  const size_t s_ = 64;
+  FieldType data_field_ = FT_INVALID;
 
-  // default in FM128
-  const FieldType field_ = FM128;
+  FieldType runtime_field_ = FT_INVALID;
+
+ private:
+  FieldType getRuntimeField(FieldType data_field) {
+    switch (data_field) {
+      case FM32:
+        return FM64;
+      case FM64:
+        return FM128;
+      default:
+        SPU_THROW("unsupported data field {} for spdz2k", data_field);
+    }
+    return FT_INVALID;
+  }
 
  public:
   static constexpr char kBindName[] = "Spdz2kState";
   static constexpr auto kAesType =
       yacl::crypto::SymmetricCrypto::CryptoType::AES128_CTR;
 
-  explicit Spdz2kState(std::shared_ptr<yacl::link::Context> lctx) {
-    beaver_ = std::make_unique<spdz2k::BeaverTfpUnsafe>(lctx);
+  explicit Spdz2kState(const RuntimeConfig& conf,
+                       std::shared_ptr<yacl::link::Context> lctx)
+      : data_field_(conf.field()) {
+    if (conf.beaver_type() == RuntimeConfig_BeaverType_TrustedFirstParty) {
+      beaver_ = std::make_unique<spdz2k::BeaverTfpUnsafe>(lctx);
+    } else if (conf.beaver_type() == RuntimeConfig_BeaverType_MultiParty) {
+      beaver_ = std::make_unique<spdz2k::BeaverTinyOt>(lctx);
+    } else {
+      SPU_THROW("unsupported beaver type {}", conf.beaver_type());
+    }
     lctx_ = lctx;
-    key_ = beaver_->GetSpdzKey(field_, s_);
-    arr_ref_v_ = std::make_unique<std::vector<ArrayRef>>();
+    runtime_field_ = getRuntimeField(data_field_);
+    k_ = SizeOf(data_field_) * 8;
+    s_ = k_;
+    key_ = beaver_->InitSpdzKey(runtime_field_, s_);
   }
 
-  spdz2k::BeaverTfpUnsafe* beaver() { return beaver_.get(); }
+  FieldType getDefaultField() const { return runtime_field_; }
+
+  spdz2k::Beaver* beaver() { return beaver_.get(); }
 
   uint128_t key() const { return key_; }
 
   size_t k() const { return k_; }
 
   size_t s() const { return s_; }
-
-  std::vector<ArrayRef>* arr_ref_v() { return arr_ref_v_.get(); }
-
-  // public coin, used in malicious model, all party generate new seed, then
-  // get exactly the same random variable.
-  ArrayRef genPublCoin(FieldType field, size_t numel) {
-    ArrayRef res(makeType<RingTy>(field), numel);
-
-    // generate new seed
-    uint128_t self_pk = yacl::crypto::RandSeed(true);
-    std::vector<std::string> all_strs;
-
-    std::string self_pk_str(reinterpret_cast<char*>(&self_pk), sizeof(self_pk));
-    YACL_ENFORCE(commit_and_open(lctx_, self_pk_str, &all_strs));
-
-    uint128_t public_seed = 0;
-    for (const auto& str : all_strs) {
-      uint128_t seed = *(reinterpret_cast<const uint128_t*>(str.data()));
-      public_seed += seed;
-    }
-
-    yacl::crypto::FillPRand(
-        kAesType, public_seed, 0, 0,
-        absl::MakeSpan(static_cast<char*>(res.data()), res.buf()->size()));
-
-    return res;
-  }
 };
 
 }  // namespace spu::mpc

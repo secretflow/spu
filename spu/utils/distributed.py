@@ -516,11 +516,13 @@ class PYU(Device):
 class ValueWrapper:
     """Workarounds for ValueProto could not be pickled."""
 
-    def __init__(self, shape: Sequence[int], dtype: np.dtype, vtype, value_str: str):
+    def __init__(
+        self, shape: Sequence[int], dtype: np.dtype, vtype, spu_share: libspu.Share
+    ):
         self.shape = shape
         self.dtype = dtype
         self.vtype = vtype
-        self.value_str = value_str
+        self.spu_share = spu_share
 
     def __repr__(self):
         return f"ValueWrapper({self.shape},{self.dtype},{self.vtype})"
@@ -569,7 +571,7 @@ def builtin_spu_run(
     # do infeed.
     for idx, arg in enumerate(args_flat):
         if isinstance(arg, ValueWrapper):
-            rt.set_var(spu_exec.input_names[idx], arg.value_str)
+            rt.set_var(spu_exec.input_names[idx], arg.spu_share)
         else:
             arg = np.asarray(jax.numpy.asarray(arg))
             fst, *_ = io.make_shares(arg, spu_pb2.Visibility.VIS_PUBLIC)
@@ -586,9 +588,9 @@ def builtin_spu_run(
             shape_spu_to_np(value_meta.shape),
             dtype_spu_to_np(value_meta.data_type),
             value_meta.visibility,
-            value_str,
+            spu_share,
         )
-        for value_str, value_meta in zip(values_str, values_meta)
+        for spu_share, value_meta in zip(values_str, values_meta)
     ]
 
     # cleanup
@@ -976,7 +978,7 @@ class SPU(Device):
     def get(self, obj: SPU.Object):
         value_wrappers = [nc.get(ref) for nc, ref in zip(self.node_clients, obj.refs)]
         io = spu_api.Io(len(self.internal_addrs), self.runtime_config)
-        return io.reconstruct([w.value_str for w in value_wrappers])
+        return io.reconstruct([w.spu_share for w in value_wrappers])
 
     def save(self, spu_objects: List[SPU.Object], filename: str):
         assert (
@@ -1199,13 +1201,7 @@ def SPU2PYU(to: PYU, obj: SPU.Object):
         spu_config.ParseFromString(spu_config_str)
         spu_io = spu_api.Io(wsize, spu_config)
 
-        protos = []
-        for share in shares:
-            proto = spu_pb2.ValueProto()
-            proto.ParseFromString(share.value_str)
-            protos.append(proto)
-
-        return spu_io.reconstruct([s.value_str for s in shares])
+        return spu_io.reconstruct([share.spu_share for share in shares])
 
     return to(reconstruct)(
         len(obj.device.node_clients),

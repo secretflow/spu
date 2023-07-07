@@ -25,8 +25,9 @@ void registerTypes() {
 
   static std::once_flag flag;
 
-  std::call_once(flag,
-                 []() { TypeContext::getTypeContext()->addTypes<AShrTy>(); });
+  std::call_once(flag, []() {
+    TypeContext::getTypeContext()->addTypes<AShrTy, BShrTy>();
+  });
 }
 
 }  // namespace spu::mpc::spdz2k

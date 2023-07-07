@@ -18,6 +18,8 @@
 
 namespace spu::mpc::spdz2k {
 
+ArrayRef GetMacShare(KernelEvalContext* ctx, const ArrayRef& in);
+
 class RandA : public RandKernel {
  public:
   static constexpr char kBindName[] = "rand_a";
@@ -44,9 +46,34 @@ class A2P : public UnaryKernel {
  public:
   static constexpr char kBindName[] = "a2p";
 
-  ce::CExpr latency() const override { return ce::Const(4); }
+  Kind kind() const override { return Kind::Dynamic; }
 
-  ce::CExpr comm() const override { return ce::K() * 3 * (ce::N() - 1); }
+  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in) const override;
+};
+
+class A2V : public RevealToKernel {
+ public:
+  static constexpr char kBindName[] = "a2v";
+
+  Kind kind() const override { return Kind::Dynamic; }
+
+  ce::CExpr latency() const override { return ce::Const(1); }
+
+  ce::CExpr comm() const override { return ce::K(); }
+
+  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in,
+                size_t rank) const override;
+};
+
+class V2A : public UnaryKernel {
+ public:
+  static constexpr char kBindName[] = "v2a";
+
+  Kind kind() const override { return Kind::Dynamic; }
+
+  ce::CExpr latency() const override { return ce::Const(1); }
+
+  ce::CExpr comm() const override { return ce::K(); }
 
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in) const override;
 };
@@ -92,9 +119,6 @@ class AddAA : public BinaryKernel {
 ////////////////////////////////////////////////////////////////////
 // multiply family
 ////////////////////////////////////////////////////////////////////
-bool SingleCheck(KernelEvalContext* ctx, const ArrayRef& in);
-bool BatchCheck(KernelEvalContext* ctx, const std::vector<ArrayRef>& ins);
-
 class MulAP : public BinaryKernel {
  public:
   static constexpr char kBindName[] = "mul_ap";
@@ -111,9 +135,7 @@ class MulAA : public BinaryKernel {
  public:
   static constexpr char kBindName[] = "mul_aa";
 
-  ce::CExpr latency() const override { return ce::Const(1); }
-
-  ce::CExpr comm() const override { return ce::K() * 2 * (ce::N() - 1); }
+  Kind kind() const override { return Kind::Dynamic; }
 
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& lhs,
                 const ArrayRef& rhs) const override;
@@ -163,22 +185,21 @@ class LShiftA : public ShiftKernel {
                 size_t bits) const override;
 };
 
+// Refer to:
+// New Primitives for Actively-Secure MPC over Rings with Applications to
+// Private Machine Learning, Appedix C. Probabilistic Truncation
+// - https://eprint.iacr.org/2019/599.pdf
 class TruncA : public TruncAKernel {
  public:
   static constexpr char kBindName[] = "trunc_a";
 
   Kind kind() const override { return Kind::Dynamic; }
 
-  ce::CExpr latency() const override { return ce::Const(0); }
-
-  ce::CExpr comm() const override { return ce::Const(0); }
-
   ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in,
                 size_t bits) const override;
 
   bool hasMsbError() const override { return true; }
 
-  // FIXME(shangqi) what the type?
   TruncLsbRounding lsbRounding() const override {
     return TruncLsbRounding::Random;
   }

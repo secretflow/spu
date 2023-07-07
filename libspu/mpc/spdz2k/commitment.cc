@@ -19,8 +19,9 @@
 #include "yacl/crypto/base/hash/hash_utils.h"
 #include "yacl/crypto/utils/rand.h"
 
+#include "libspu/core/prelude.h"
+
 namespace spu::mpc {
-// TODO: Maybe we need a better commit scheme
 std::string commit(size_t send_player, absl::string_view msg,
                    absl::string_view r, size_t hash_len,
                    yacl::crypto::HashAlgorithm hash_type) {
@@ -30,14 +31,14 @@ std::string commit(size_t send_player, absl::string_view msg,
       hash_algo = std::make_unique<yacl::crypto::Blake3Hash>();
       break;
     default:
-      YACL_THROW("Unsupported hash algo in commitment scheme");
+      SPU_THROW("Unsupported hash algo in commitment scheme");
   }
 
   hash_algo->Update(std::to_string(send_player));
   hash_algo->Update(msg);
   hash_algo->Update(r);
   std::vector<uint8_t> hash = hash_algo->CumulativeHash();
-  YACL_ENFORCE(hash_len <= hash.size());
+  SPU_ENFORCE(hash_len <= hash.size());
 
   std::string hash_str(reinterpret_cast<char*>(hash.data()), hash_len);
 

@@ -20,6 +20,20 @@
 
 namespace spu::mpc::semi2k {
 
+Type Semi2kIo::getShareType(Visibility vis, int owner_rank) const {
+  if (vis == VIS_PUBLIC) {
+    return makeType<Pub2kTy>(field_);
+  } else if (vis == VIS_SECRET) {
+    if (owner_rank >= 0 && owner_rank < static_cast<int>(world_size_)) {
+      return makeType<Priv2kTy>(field_, owner_rank);
+    } else {
+      return makeType<semi2k::AShrTy>(field_);
+    }
+  }
+
+  SPU_THROW("unsupported vis type {}", vis);
+}
+
 std::vector<ArrayRef> Semi2kIo::toShares(const ArrayRef& raw, Visibility vis,
                                          int owner_rank) const {
   SPU_ENFORCE(raw.eltype().isa<RingTy>(), "expected RingTy, got {}",

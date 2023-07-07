@@ -27,8 +27,6 @@
 #include "libspu/device/pphlo/pphlo_executor.h"
 #include "libspu/dialect/pphlo_dialect.h"
 
-#include "libspu/device/device.pb.h"
-
 namespace spu::device {
 namespace {
 
@@ -99,6 +97,8 @@ struct ActionStats {
   size_t count = 0;
   // total duration time.
   Duration total_time = {};
+  // total send bytes.
+  size_t send_bytes = 0;
 
   inline double getTotalTimeInSecond() const {
     return std::chrono::duration_cast<std::chrono::duration<double>>(total_time)
@@ -106,8 +106,12 @@ struct ActionStats {
   }
 };
 
+/*
+ @shantang / @wuju
+ TODO: temporary remove, need to adapt value slice change
 void takeSnapshot(size_t rank, const RuntimeConfig &rt_config,
                   const ExecutableProto &executable, const SymbolTable &env) {
+
   const std::string &dump_dir = rt_config.processor_dump_dir();
   // Naming convention for dumped files must align with debug runner.
   std::filesystem::path dump_folder(dump_dir);
@@ -123,6 +127,7 @@ void takeSnapshot(size_t rank, const RuntimeConfig &rt_config,
   std::ofstream dump_file(dump_path, std::ios::binary | std::ios::out);
   dump_file << snapshot.SerializeAsString();
 }
+*/
 
 void printProfilingData(spu::SPUContext *sctx, const std::string &name,
                         const ExecutionStats &exec_stats,
@@ -147,6 +152,7 @@ void printProfilingData(spu::SPUContext *sctx, const std::string &name,
       stat.count++;
       stat.total_time +=
           std::chrono::duration_cast<Duration>(rec.end - rec.start);
+      stat.send_bytes += (rec.send_bytes_end - rec.send_bytes_start);
     }
 
     static std::map<int64_t, std::string> kModules = {
@@ -163,8 +169,9 @@ void printProfilingData(spu::SPUContext *sctx, const std::string &name,
         SPDLOG_INFO("{} profiling: total time {}", mod_name, total_time);
         for (const auto &[key, stat] : stats) {
           if ((key.flag & mod_flag) != 0) {
-            SPDLOG_INFO("- {}, executed {} times, duration {}s", key.name,
-                        stat.count, stat.getTotalTimeInSecond());
+            SPDLOG_INFO("- {}, executed {} times, duration {}s, send bytes {}",
+                        key.name, stat.count, stat.getTotalTimeInSecond(),
+                        stat.send_bytes);
           }
         }
       }
@@ -217,11 +224,16 @@ void executeImpl(OpExecutor *executor, spu::SPUContext *sctx,
 
   // TODO: rename this flag, enable_execution_dump?
   const RuntimeConfig rt_config = sctx->config();
+  /*
+  @shantang / @wuju
+  TODO: temporary remove, need to adapt value slice change
   if (rt_config.enable_processor_dump()) {
     const bool isRefHal = sctx->lctx() == nullptr;
     const size_t rank = isRefHal ? 0 : sctx->lctx()->Rank();
     takeSnapshot(rank, rt_config, executable, *env);
+
   }
+  */
 
   // execution
   std::vector<spu::Value> outputs;

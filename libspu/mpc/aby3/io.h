@@ -25,9 +25,12 @@ class Aby3Io final : public BaseIo {
   std::vector<ArrayRef> toShares(const ArrayRef& raw, Visibility vis,
                                  int owner_rank) const override;
 
+  Type getShareType(Visibility vis, int owner_rank = -1) const override;
+
   ArrayRef fromShares(const std::vector<ArrayRef>& shares) const override;
 
   std::vector<ArrayRef> makeBitSecret(const ArrayRef& in) const override;
+  size_t getBitSecretShareSize(size_t numel) const override;
   bool hasBitSecretSupport() const override { return true; }
 };
 

@@ -71,6 +71,8 @@ std::unique_ptr<OperationPass<func::FuncOp>> createRewriteDivSqrtPatterns();
 std::unique_ptr<OperationPass<func::FuncOp>>
 createOptimizeDenominatorWithBroadcast();
 
+std::unique_ptr<OperationPass<func::FuncOp>> createInsertDeallocationOp();
+
 } // namespace pphlo
 
 } // namespace mlir
