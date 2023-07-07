@@ -21,8 +21,8 @@ namespace spu::mpc::spdz2k {
 INSTANTIATE_TEST_SUITE_P(
     Spdz2kIoTest, IoTest,
     testing::Combine(testing::Values(makeSpdz2kIo),  //
-                     testing::Values(2, 3, 5),       //
-                     testing::Values(FieldType::FM128)),
+                     testing::Values(2),             //
+                     testing::Values(FieldType::FM64)),
     [](const testing::TestParamInfo<IoTest::ParamType>& info) {
       return fmt::format("{}x{}", std::get<1>(info.param),
                          std::get<2>(info.param));

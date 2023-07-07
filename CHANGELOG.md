@@ -10,6 +10,8 @@
 >
 > please add your unreleased change here.
 
+- [API] Change IO interface, split share into chunk
+
 ## 20230705
 - [SPU] 0.4.1 release
 - [Improvement] Improve tanh performance

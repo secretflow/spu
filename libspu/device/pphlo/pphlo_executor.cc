@@ -204,6 +204,11 @@ void addValue(SymbolScope *scope, mlir::Value key, spu::Value &&val,
   scope->addValue(key, val);
 }
 
+void removeValue(SymbolScope *scope, mlir::Value key,
+                 const ExecutionOptions &) {
+  scope->removeValue(key);
+}
+
 //
 #define STANDARD_UNARY_OP_EXEC_IMPL(OpName, KernelName)                     \
   void execute(OpExecutor *executor, SPUContext *sctx, SymbolScope *sscope, \
@@ -1109,6 +1114,25 @@ void execute(OpExecutor *executor, SPUContext *sctx, SymbolScope *sscope,
   kernel::hal::dbg_print(sctx, lookupValue(sscope, op.getOperand(), opts));
 }
 
+void execute(OpExecutor *executor, SPUContext *sctx, SymbolScope *sscope,
+             mlir::pphlo::FreeOp &op, const ExecutionOptions &opts) {
+  if (opts.do_parallel) {
+    // Think about the following case
+    // %a = def
+    // use(%a)
+    // use(%a)
+    // free(%a)
+    // Here free is also a consider a use...so under parallel execution free
+    // will be invoked once a is defined.
+    // This will make %a randomly dealloced after defined.
+    // FreeOp has an implicit requirement that it needs to be invoked after all
+    // other uses are done.
+    // FIXME(xiaochen): Enable this...
+    return;
+  }
+  removeValue(sscope, op.getOperand(), opts);
+}
+
 #define DEFINE_UNIMPLEMENTED_OP(OpName)                                     \
   void execute(OpExecutor *executor, SPUContext *sctx, SymbolScope *sscope, \
                mlir::pphlo::OpName &, const ExecutionOptions &opts) {       \
@@ -1149,7 +1173,8 @@ static void dispatchOp(OpExecutor *executor, SPUContext *sctx,
     // Execute op
     {
       const auto fn_name = op.getName().getStringRef().str();
-      SPU_TRACE_ACTION(GET_TRACER(sctx), (TR_HLO | TR_LAR), ~TR_HLO, fn_name);
+      SPU_TRACE_ACTION(GET_TRACER(sctx), sctx->lctx(), (TR_HLO | TR_LAR),
+                       ~TR_HLO, fn_name);
       execute(executor, sctx, sscope, casted, opts);
     }
 

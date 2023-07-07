@@ -44,8 +44,6 @@
 #include "libspu/psi/utils/serialize.h"
 #include "libspu/psi/utils/utils.h"
 
-#include "interconnection/algos/psi.pb.h"
-
 namespace spu::psi {
 
 namespace {

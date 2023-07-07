@@ -860,6 +860,10 @@ def PPHLO_DbgPrintOp : PPHLO_Op<"dbg_print", []> {
   let arguments = (ins PPHLO_Tensor : $operand);
 }
 
+def PPHLO_FreeOp : PPHLO_Op<"free", []> {
+  let arguments = (ins PPHLO_Tensor : $operand);
+}
+
 def PPHLO_ClampOp
     : PPHLO_Op<"clamp", [Pure, SameOperandsAndResultShape]> {
   let summary = "Clamp operator";

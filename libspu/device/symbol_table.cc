@@ -34,10 +34,12 @@ void SymbolTable::delVar(const std::string &name) { data_.erase(name); }
 
 void SymbolTable::clear() { data_.clear(); }
 
+/*
 SymbolTableProto SymbolTable::toProto() const {
+  const static size_t max_slice_size = 128UL * 1024 * 1024;
   SymbolTableProto proto;
   for (const auto &[name, value] : data_) {
-    proto.mutable_symbols()->insert({name, value.toProto()});
+    proto.mutable_symbols()->insert({name, value.toProto(max_slice_size)});
   }
   return proto;
 }
@@ -49,5 +51,6 @@ SymbolTable SymbolTable::fromProto(const SymbolTableProto &proto) {
   }
   return st;
 }
+*/
 
 }  // namespace spu::device

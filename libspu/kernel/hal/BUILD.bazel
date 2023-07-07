@@ -122,6 +122,7 @@ spu_cc_library(
     deps = [
         ":fxp_base",
         ":fxp_cleartext",
+        ":shape_ops",
         ":type_cast",
     ],
 )

@@ -16,6 +16,8 @@
 
 #include "libspu/core/array_ref.h"
 #include "libspu/core/type_util.h"
+#include "libspu/mpc/spdz2k/beaver/beaver_tfp.h"
+#include "libspu/mpc/spdz2k/beaver/beaver_tinyot.h"
 
 namespace spu::mpc::spdz2k {
 
@@ -33,15 +35,46 @@ namespace spu::mpc::spdz2k {
 //   a[n-1].share0    (n-1)*2*k+0
 //   a[n-1].share1    (n-1)*2*k+k
 //
-// you can treat spdz2k share as std::complex<T>, where
-//   real(x) is the first share piece.
-//   imag(x) is the second share piece.
+// you can imagine spdz2k share as std::complex<T>, where
+//   real(x) is the value share piece.
+//   imag(x) is the mac share piece.
 
-ArrayRef getValueShare(const ArrayRef& in);
+// Different with other protocls!
+// Only output values of valid bits for optimal memory usage
+const ArrayRef getValueShare(const ArrayRef& in);
 
-ArrayRef getMacShare(const ArrayRef& in);
+// Only output macs of valid bits for optimal memory usage
+const ArrayRef getMacShare(const ArrayRef& in);
 
-ArrayRef makeAShare(const ArrayRef& s1, const ArrayRef& s2, FieldType field);
+ArrayRef makeAShare(const ArrayRef& s1, const ArrayRef& s2, FieldType field,
+                    bool has_mac = true);
+
+// Different with other protocls!
+// input s1: value shares of valid bits
+// input s2: mac shares of valid bits
+// output: boolean shares of fixed length
+ArrayRef makeBShare(const ArrayRef& s1, const ArrayRef& s2, FieldType field,
+                    size_t nbits);
+
+size_t maxNumBits(const ArrayRef& lhs, const ArrayRef& rhs);
+size_t minNumBits(const ArrayRef& lhs, const ArrayRef& rhs);
+
+size_t minNumBits(const ArrayRef& lhs, const ArrayRef& rhs);
+
+// Convert a BShare in new_nbits
+// then output the corresponding value and mac
+std::pair<ArrayRef, ArrayRef> BShareSwitch2Nbits(const ArrayRef& in,
+                                                 size_t new_nbits);
+
+PtType calcBShareBacktype(size_t nbits);
+
+template <typename T>
+size_t maxBitWidth(ArrayView<T> av) {
+  // TODO: use av.maxBitWidth to improve performance
+  return sizeof(T) * 8;
+}
+
+ArrayRef getShare(const ArrayRef& in, int64_t share_idx);
 
 #define PFOR_GRAIN_SIZE 8192
 

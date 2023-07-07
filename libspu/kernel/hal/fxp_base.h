@@ -34,8 +34,11 @@ Value reciprocal_goldschmidt_positive(SPUContext* ctx, const Value& b_abs);
 
 Value reciprocal_goldschmidt(SPUContext* ctx, const Value& b);
 
-Value f_polynomial(SPUContext* ctx, const Value& x,
-                   const std::vector<Value>& coeffs);
+Value polynomial(SPUContext* ctx, const Value& x,
+                 absl::Span<Value const> coeffs);
+
+Value polynomial(SPUContext* ctx, const Value& x,
+                 absl::Span<float const> coeffs);
 
 }  // namespace detail
 

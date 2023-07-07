@@ -109,6 +109,9 @@ class IoClient {
   std::vector<spu::Value> makeShares(const PtBufferView &bv, Visibility vtype,
                                      int owner_rank = -1);
 
+  size_t getShareSize(const PtBufferView &bv, Visibility vtype,
+                      int owner_rank = -1);
+
   // Combine shares to a plaintext ndarray.
   NdArrayRef combineShares(absl::Span<spu::Value const> values);
 };

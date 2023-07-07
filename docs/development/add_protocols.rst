@@ -167,7 +167,7 @@ Inside the **makeAby3Protocol** function, it does three things.
 - The third is to register the protocol kernels (functions). We can see that three types of kernels are registered. \
   The first type is the kernels implemented in the `pv2k.cc <https://github.com/secretflow/spu/blob/main/libspu/mpc/common/pv2k.cc>`_ \
   file, using **Pub2k** as the naming prefix of kernel classes. The second type is the kernels implemented in the \
-  `ab_api.cc <https://github.com/secretflow/spu/blob/main/libspu/mpc/common/ab_api.cc>`_ file, using **ABProt** as the \ 
+  `ab_api.cc <https://github.com/secretflow/spu/blob/main/libspu/mpc/ab_api.cc>`_ file, using **ABProt** as the \
   naming prefix of kernel classes. The third type is implemented in `arithmetic.cc <https://github.com/secretflow/spu/blob/main/libspu/mpc/aby3/arithmetic.cc>`_, \
   `boolean.cc <https://github.com/secretflow/spu/blob/main/libspu/mpc/aby3/boolean.cc>`_ and other files under the aby3 directory.
 

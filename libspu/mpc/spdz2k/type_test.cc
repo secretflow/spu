@@ -36,4 +36,31 @@ TEST(AShrTy, Simple) {
   }
 }
 
+TEST(BShrTy, Simple) {
+  // spdz2k::BShr constructor with field and nbits.
+  {
+    Type ty = makeType<BShrTy>(PT_U128, 127, FM128);
+    EXPECT_EQ(ty.size(), 16 * 128);
+
+    EXPECT_TRUE(ty.isa<Secret>());
+    EXPECT_FALSE(ty.isa<Public>());
+    EXPECT_FALSE(ty.isa<AShare>());
+    EXPECT_TRUE(ty.isa<BShare>());
+
+    EXPECT_EQ(ty.toString(), "spdz2k.BShr<PT_U128,127,FM128>");
+
+    EXPECT_EQ(Type::fromString(ty.toString()), ty);
+
+    // clone
+    Type cty = ty;
+    EXPECT_EQ(cty, ty);
+    EXPECT_TRUE(cty.isa<Secret>());
+    EXPECT_FALSE(cty.isa<Public>());
+    EXPECT_FALSE(cty.isa<AShare>());
+    EXPECT_TRUE(cty.isa<BShare>());
+
+    EXPECT_EQ(cty.toString(), "spdz2k.BShr<PT_U128,127,FM128>");
+  }
+}
+
 }  // namespace spu::mpc::spdz2k

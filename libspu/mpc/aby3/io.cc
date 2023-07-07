@@ -25,6 +25,20 @@
 
 namespace spu::mpc::aby3 {
 
+Type Aby3Io::getShareType(Visibility vis, int owner_rank) const {
+  if (vis == VIS_PUBLIC) {
+    return makeType<Pub2kTy>(field_);
+  } else if (vis == VIS_SECRET) {
+    if (owner_rank >= 0 && owner_rank <= 2) {
+      return makeType<Priv2kTy>(field_, owner_rank);
+    } else {
+      return makeType<AShrTy>(field_);
+    }
+  }
+
+  SPU_THROW("unsupported vis type {}", vis);
+}
+
 std::vector<ArrayRef> Aby3Io::toShares(const ArrayRef& raw, Visibility vis,
                                        int owner_rank) const {
   SPU_ENFORCE(raw.eltype().isa<RingTy>(), "expected RingTy, got {}",
@@ -72,6 +86,11 @@ std::vector<ArrayRef> Aby3Io::toShares(const ArrayRef& raw, Visibility vis,
   }
 
   SPU_THROW("unsupported vis type {}", vis);
+}
+
+size_t Aby3Io::getBitSecretShareSize(size_t numel) const {
+  const auto type = makeType<BShrTy>(PT_U8, 1);
+  return numel * type.size();
 }
 
 std::vector<ArrayRef> Aby3Io::makeBitSecret(const ArrayRef& in) const {

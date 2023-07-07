@@ -14,7 +14,8 @@
 
 #include "libspu/mpc/spdz2k/protocol.h"
 
-#include "libspu/mpc/spdz2k/abprotocol_spdz2k_test.h"
+#include "libspu/mpc/ab_api_test.h"
+#include "libspu/mpc/api_test.h"
 
 namespace spu::mpc::test {
 namespace {
@@ -26,16 +27,58 @@ RuntimeConfig makeConfig(FieldType field) {
   return conf;
 }
 
+std::unique_ptr<SPUContext> makeMpcSpdz2kProtocol(
+    const RuntimeConfig& rt, const std::shared_ptr<yacl::link::Context>& lctx) {
+  RuntimeConfig mpc_rt = rt;
+  mpc_rt.set_beaver_type(RuntimeConfig_BeaverType_MultiParty);
+
+  return makeSpdz2kProtocol(mpc_rt, lctx);
+}
 }  // namespace
 
 INSTANTIATE_TEST_SUITE_P(
-    Spdz2kArithmeticTest, ArithmeticTest,
-    testing::Combine(testing::Values(makeSpdz2kProtocol),            //
-                     testing::Values(makeConfig(FieldType::FM128)),  //
-                     testing::Values(2, 3, 5)),                      //
+    Spdz2k, ApiTest,
+    testing::Combine(testing::Values(CreateObjectFn(makeSpdz2kProtocol,
+                                                    "tfp")),        //
+                     testing::Values(makeConfig(FieldType::FM64)),  //
+                     testing::Values(2)),                           //
+    [](const testing::TestParamInfo<ApiTest::ParamType>& p) {
+      return fmt::format("{}x{}x{}", std::get<0>(p.param).name(),
+                         std::get<1>(p.param).field(), std::get<2>(p.param));
+    });
+
+INSTANTIATE_TEST_SUITE_P(
+    Spdz2k, ArithmeticTest,
+    testing::Values(std::tuple{CreateObjectFn(makeSpdz2kProtocol, "tfp"),
+                               makeConfig(FieldType::FM64), 2},
+                    std::tuple{CreateObjectFn(makeMpcSpdz2kProtocol, "mpc"),
+                               makeConfig(FieldType::FM32), 2}),
     [](const testing::TestParamInfo<ArithmeticTest::ParamType>& p) {
-      return fmt::format("{}x{}", std::get<1>(p.param).field(),
-                         std::get<2>(p.param));
+      return fmt::format("{}x{}x{}", std::get<0>(p.param).name(),
+                         std::get<1>(p.param).field(), std::get<2>(p.param));
+    });
+
+// TODO : improve performance of boolean share and conversion in offline phase
+INSTANTIATE_TEST_SUITE_P(
+    Spdz2k, BooleanTest,
+    testing::Combine(testing::Values(CreateObjectFn(makeSpdz2kProtocol,
+                                                    "tfp")),        //
+                     testing::Values(makeConfig(FieldType::FM64)),  //
+                     testing::Values(2)),                           //
+    [](const testing::TestParamInfo<BooleanTest::ParamType>& p) {
+      return fmt::format("{}x{}x{}", std::get<0>(p.param).name(),
+                         std::get<1>(p.param).field(), std::get<2>(p.param));
+    });
+
+INSTANTIATE_TEST_SUITE_P(
+    Spdz2k, ConversionTest,
+    testing::Combine(testing::Values(CreateObjectFn(makeSpdz2kProtocol,
+                                                    "tfp")),        //
+                     testing::Values(makeConfig(FieldType::FM64)),  //
+                     testing::Values(2)),                           //
+    [](const testing::TestParamInfo<BooleanTest::ParamType>& p) {
+      return fmt::format("{}x{}x{}", std::get<0>(p.param).name(),
+                         std::get<1>(p.param).field(), std::get<2>(p.param));
     });
 
 }  // namespace spu::mpc::test

@@ -97,6 +97,11 @@ void SymbolScope::addValue(mlir::Value key, spu::Value &&val) {
   symbols_[key] = std::move(val);
 }
 
+void SymbolScope::removeValue(mlir::Value key) {
+  std::lock_guard<std::shared_mutex> lk(mu_);
+  symbols_.erase(key);
+}
+
 std::vector<spu::Value> runRegion(OpExecutor *executor,                 //
                                   SPUContext *sctx,                     //
                                   SymbolScope *parent_scope,            //

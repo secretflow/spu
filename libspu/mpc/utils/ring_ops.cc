@@ -155,7 +155,11 @@ void ring_bitmask_impl(ArrayRef& ret, const ArrayRef& x, size_t low,
 
   return DISPATCH_ALL_FIELDS(field, kModule, [&]() {
     using U = ring2k_t;
-    U mask = (((U)1U << (high - low)) - 1) << low;
+    U mask = 0;
+    if (high - low < SizeOf(field) * 8) {
+      mask = (U)1U << (high - low);
+    }
+    mask = (mask - 1) << low;
 
     auto mark_fn = [&](U el) { return el & mask; };
 

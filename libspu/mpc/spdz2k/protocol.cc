@@ -19,6 +19,8 @@
 #include "libspu/mpc/common/prg_state.h"
 #include "libspu/mpc/common/pv2k.h"
 #include "libspu/mpc/spdz2k/arithmetic.h"
+#include "libspu/mpc/spdz2k/boolean.h"
+#include "libspu/mpc/spdz2k/conversion.h"
 #include "libspu/mpc/spdz2k/state.h"
 #include "libspu/mpc/spdz2k/type.h"
 
@@ -41,9 +43,11 @@ void regSpdz2kProtocol(SPUContext* ctx,
   regPV2kKernels(ctx->prot());
 
   // register arithmetic kernels
-  ctx->prot()->addState<Spdz2kState>(lctx);
+  ctx->prot()->addState<Spdz2kState>(ctx->config(), lctx);
   ctx->prot()->regKernel<spdz2k::P2A>();
   ctx->prot()->regKernel<spdz2k::A2P>();
+  ctx->prot()->regKernel<spdz2k::A2V>();
+  ctx->prot()->regKernel<spdz2k::V2A>();
   ctx->prot()->regKernel<spdz2k::NotA>();
   ctx->prot()->regKernel<spdz2k::AddAP>();
   ctx->prot()->regKernel<spdz2k::AddAA>();
@@ -54,6 +58,34 @@ void regSpdz2kProtocol(SPUContext* ctx,
   ctx->prot()->regKernel<spdz2k::LShiftA>();
   ctx->prot()->regKernel<spdz2k::TruncA>();
   ctx->prot()->regKernel<spdz2k::RandA>();
+
+  // register boolean kernels
+  ctx->prot()->regKernel<spdz2k::CommonTypeB>();
+  ctx->prot()->regKernel<spdz2k::B2P>();
+  ctx->prot()->regKernel<spdz2k::P2B>();
+
+  ctx->prot()->regKernel<spdz2k::NotB>();
+  ctx->prot()->regKernel<spdz2k::BitrevB>();
+  ctx->prot()->regKernel<spdz2k::XorBB>();
+  ctx->prot()->regKernel<spdz2k::XorBP>();
+  ctx->prot()->regKernel<spdz2k::AndBB>();
+  ctx->prot()->regKernel<spdz2k::AndBP>();
+  ctx->prot()->regKernel<spdz2k::LShiftB>();
+  ctx->prot()->regKernel<spdz2k::RShiftB>();
+  ctx->prot()->regKernel<spdz2k::ARShiftB>();
+  ctx->prot()->regKernel<spdz2k::BitIntlB>();
+  ctx->prot()->regKernel<spdz2k::BitDeintlB>();
+
+  // register conversion kernels
+  ctx->prot()->regKernel<spdz2k::AddBB>();
+  ctx->prot()->regKernel<spdz2k::AddBP>();
+  ctx->prot()->regKernel<spdz2k::BitLTBB>();
+  ctx->prot()->regKernel<spdz2k::BitLEBB>();
+  ctx->prot()->regKernel<spdz2k::A2Bit>();
+  ctx->prot()->regKernel<spdz2k::Bit2A>();
+  ctx->prot()->regKernel<spdz2k::MSB>();
+  ctx->prot()->regKernel<spdz2k::A2B>();
+  ctx->prot()->regKernel<spdz2k::B2A>();
 }
 
 std::unique_ptr<SPUContext> makeSpdz2kProtocol(

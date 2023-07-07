@@ -110,6 +110,48 @@ TEST_P(FerretCOTTest, RndMsgRndChoice) {
   });
 }
 
+TEST_P(FerretCOTTest, RndMsgChosenChoice) {
+  size_t kWorldSize = 2;
+  auto field = GetParam();
+  constexpr size_t bw = 2;
+
+  size_t n = 10;
+  DISPATCH_ALL_FIELDS(field, "", [&]() {
+    std::vector<ring2k_t> msg0(n);
+    std::vector<ring2k_t> msg1(n);
+    ring2k_t max = static_cast<ring2k_t>(1) << bw;
+
+    std::vector<uint8_t> choices(n);
+    std::default_random_engine rdv;
+    std::uniform_int_distribution<uint64_t> uniform(0, -1);
+    std::generate_n(choices.begin(), n, [&]() -> uint8_t {
+      return static_cast<uint8_t>(uniform(rdv) & 1);
+    });
+
+    std::vector<ring2k_t> selected(n);
+
+    utils::simulate(kWorldSize, [&](std::shared_ptr<yacl::link::Context> ctx) {
+      auto conn = std::make_shared<Communicator>(ctx);
+      int rank = ctx->Rank();
+      FerretOT ferret(conn, rank == 0);
+      if (rank == 0) {
+        ferret.SendRMCC(absl::MakeSpan(msg0), absl::MakeSpan(msg1), bw);
+        ferret.Flush();
+      } else {
+        ferret.RecvRMCC(absl::MakeSpan(choices), absl::MakeSpan(selected), bw);
+      }
+    });
+
+    for (size_t i = 0; i < n; ++i) {
+      ring2k_t e = choices[i] ? msg1[i] : msg0[i];
+      ring2k_t c = selected[i];
+      EXPECT_LT(e, max);
+      EXPECT_LT(c, max);
+      EXPECT_EQ(e, c);
+    }
+  });
+}
+
 TEST_P(FerretCOTTest, ChosenMsgChosenChoice) {
   size_t kWorldSize = 2;
   size_t n = 106;

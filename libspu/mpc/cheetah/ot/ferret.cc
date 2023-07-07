@@ -194,11 +194,10 @@ struct FerretOT::Impl {
   }
 
  public:
-  Impl(std::shared_ptr<Communicator> conn, bool is_sender)
+  Impl(std::shared_ptr<Communicator> conn, bool is_sender, bool malicious)
       : is_sender_(is_sender) {
     SPU_ENFORCE(conn != nullptr);
     constexpr int thread = 1;
-    constexpr bool malicious = false;
     constexpr bool run_setup = true;
     int role = is_sender ? emp::ALICE : emp::BOB;
     io_ = std::make_shared<CheetahIO>(conn);
@@ -675,10 +674,46 @@ struct FerretOT::Impl {
       }
     }
   }
+
+  template <typename T>
+  void SendRMCC(absl::Span<T> output0, absl::Span<T> output1,
+                size_t bit_width) {
+    size_t n = output0.size();
+    SPU_ENFORCE(n > 0);
+    SPU_ENFORCE_EQ(n, output1.size());
+
+    std::vector<OtBaseTyp> rm_data(2 * n);
+    auto* rm_data0 = rm_data.data();
+    auto* rm_data1 = rm_data.data() + n;
+    SendRandMsgChosenChoice(rm_data0, rm_data1, n);
+
+    const T msg_mask = makeBitsMask<T>(bit_width);
+    for (size_t i = 0; i < n; ++i) {
+      output0[i] = ConvFromBlock<T>(rm_data[i]) & msg_mask;
+      output1[i] = ConvFromBlock<T>(rm_data1[i]) & msg_mask;
+    }
+  }
+
+  template <typename T>
+  void RecvRMCC(absl::Span<const uint8_t> choices, absl::Span<T> output,
+                size_t bit_width) {
+    size_t n = choices.size();
+    SPU_ENFORCE(n > 0);
+    SPU_ENFORCE_EQ(n, output.size());
+
+    std::vector<OtBaseTyp> rm_data(n);
+    RecvRandMsgChosenChoice(choices, absl::MakeSpan(rm_data));
+
+    const T msg_mask = makeBitsMask<T>(bit_width);
+    for (size_t i = 0; i < n; ++i) {
+      output[i] = ConvFromBlock<T>(rm_data[i]) & msg_mask;
+    }
+  }
 };
 
-FerretOT::FerretOT(std::shared_ptr<Communicator> conn, bool is_sender) {
-  impl_ = std::make_shared<Impl>(conn, is_sender);
+FerretOT::FerretOT(std::shared_ptr<Communicator> conn, bool is_sender,
+                   bool malicious) {
+  impl_ = std::make_shared<Impl>(conn, is_sender, malicious);
 }
 
 int FerretOT::Rank() const { return impl_->Rank(); }
@@ -725,6 +760,16 @@ size_t CheckBitWidth(size_t bw) {
                           absl::Span<T> output, size_t bit_width) {          \
     bit_width = CheckBitWidth<T>(bit_width);                                 \
     impl_->RecvChosenMsgChosenChoice<T>(choices, N, output, bit_width);      \
+  }                                                                          \
+  void FerretOT::SendRMCC(absl::Span<T> output0, absl::Span<T> output1,      \
+                          size_t bit_width) {                                \
+    bit_width = CheckBitWidth<T>(bit_width);                                 \
+    impl_->SendRMCC<T>(output0, output1, bit_width);                         \
+  }                                                                          \
+  void FerretOT::RecvRMCC(absl::Span<const uint8_t> choices,                 \
+                          absl::Span<T> output, size_t bit_width) {          \
+    bit_width = CheckBitWidth<T>(bit_width);                                 \
+    impl_->RecvRMCC<T>(choices, output, bit_width);                          \
   }
 
 DEF_SEND_RECV(uint8_t)

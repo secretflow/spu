@@ -17,12 +17,23 @@ load("//bazel:spu.bzl", "spu_cc_library", "spu_cc_test")
 package(default_visibility = ["//visibility:public"])
 
 spu_cc_library(
+    name = "beaver_interface",
+    hdrs = ["beaver_interface.h"],
+    deps = [
+        "//libspu/core",
+    ],
+)
+
+spu_cc_library(
     name = "beaver_tfp",
     srcs = ["beaver_tfp.cc"],
     hdrs = ["beaver_tfp.h"],
     deps = [
+        ":beaver_interface",
         ":trusted_party",
+        "//libspu/mpc/common:communicator",
         "//libspu/mpc/common:prg_tensor",
+        "//libspu/mpc/spdz2k:commitment",
         "//libspu/mpc/utils:ring_ops",
         "@com_github_microsoft_seal//:seal",
         "@yacl//yacl/link",
@@ -31,10 +42,11 @@ spu_cc_library(
 )
 
 spu_cc_test(
-    name = "beaver_tfp_test",
-    srcs = ["beaver_tfp_test.cc"],
+    name = "beaver_test",
+    srcs = ["beaver_test.cc"],
     deps = [
         ":beaver_tfp",
+        ":beaver_tinyot",
         "//libspu/mpc/utils:simulate",
         "@com_google_googletest//:gtest",
     ],
@@ -49,4 +61,25 @@ spu_cc_library(
         "//libspu/mpc/common:prg_tensor",
         "//libspu/mpc/utils:ring_ops",
     ],
+)
+
+spu_cc_library(
+    name = "beaver_tinyot",
+    srcs = ["beaver_tinyot.cc"],
+    hdrs = ["beaver_tinyot.h"],
+    deps = [
+        ":beaver_interface",
+        ":trusted_party",
+        "//libspu/mpc/spdz2k:commitment",
+        "//libspu/mpc/spdz2k/ot:basic_ot_prot",
+        "//libspu/mpc/spdz2k/ot:kos_ote",
+        "//libspu/mpc/spdz2k/ot:tiny_ot",
+        "//libspu/mpc/common:prg_state",
+        "//libspu/mpc/utils:ring_ops",
+        "@yacl//yacl/link",
+        "@yacl//yacl/utils:serialize",
+        "@yacl//yacl/crypto/primitives/ot:base_ot",
+        "@yacl//yacl/crypto/tools:prg",
+        "@yacl//yacl/utils:matrix_utils",
+    ]
 )

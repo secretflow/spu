@@ -18,7 +18,7 @@
 
 #include "libspu/core/prelude.h"
 
-#include "interconnection/algos/psi.pb.h"
+#include "interconnection/runtime/ecdh_psi.pb.h"
 
 namespace spu::psi {
 
@@ -46,7 +46,7 @@ std::shared_ptr<yacl::link::Context> CreateP2PLinkCtx(
 }
 
 yacl::Buffer IcPsiBatchSerializer::Serialize(PsiDataBatch&& batch) {
-  org::interconnection::algos::psi::EcdhPsiCipherBatch proto;
+  org::interconnection::v2::runtime::EcdhPsiCipherBatch proto;
   proto.set_type(batch.type);
   proto.set_batch_index(batch.batch_index);
   proto.set_is_last_batch(batch.is_last_batch);
@@ -60,7 +60,7 @@ yacl::Buffer IcPsiBatchSerializer::Serialize(PsiDataBatch&& batch) {
 }
 
 PsiDataBatch IcPsiBatchSerializer::Deserialize(yacl::ByteContainerView buf) {
-  org::interconnection::algos::psi::EcdhPsiCipherBatch proto;
+  org::interconnection::v2::runtime::EcdhPsiCipherBatch proto;
   SPU_ENFORCE(proto.ParseFromArray(buf.data(), buf.size()),
               "parse EcdhPsiCipherBatch proto fail");
 

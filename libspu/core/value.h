@@ -25,6 +25,15 @@
 
 namespace spu {
 
+// In order to prevent a single protobuf from being larger than 2gb, a spu
+// runtime value is represented by multiple chunked protobuf + meta, and
+// std::vector is used to organize multiple chunks instead of repeated in
+// protobuf.
+struct ValueProto {
+  ValueMetaProto meta;
+  std::vector<ValueChunkProto> chunks;
+};
+
 class Value final {
   NdArrayRef data_;
   DataType dtype_ = DT_INVALID;
@@ -64,11 +73,12 @@ class Value final {
   Value& setDtype(DataType new_dtype, bool force = false);
 
   // Serialize to protobuf.
-  ValueProto toProto() const;
-  ValueMeta toMetaProto() const;
+  ValueProto toProto(size_t max_chunk_size) const;
+  size_t chunksCount(size_t max_chunk_size) const;
+  ValueMetaProto toMetaProto() const;
 
   // Deserialize from protobuf.
-  static Value fromProto(const ValueProto& proto);
+  static Value fromProto(const ValueProto& value);
 
   Value clone() const;
 };

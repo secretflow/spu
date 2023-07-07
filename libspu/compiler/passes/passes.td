@@ -92,3 +92,9 @@ def OptimizeDenominatorWithBcast: Pass<"optimize-denominator-with-broadcast", "f
   let constructor = "createOptimizeDenominatorWithBroadcast()";
   let dependentDialects = ["pphlo::PPHloDialect"];
 }
+
+def InsertDeallocation: Pass<"insert-deallocation", "func::FuncOp"> {
+  let summary = "Insert deallocation ops";
+  let constructor = "createInsertDeallocationOp()";
+  let dependentDialects = ["pphlo::PPHloDialect"];
+}

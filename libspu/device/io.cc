@@ -30,6 +30,17 @@ IoClient::IoClient(size_t world_size, const RuntimeConfig &config)
   base_io_ = mpc::Factory::CreateIO(config_, world_size_);
 }
 
+size_t IoClient::getShareSize(const PtBufferView &bv, Visibility vtype,
+                              int owner_rank) {
+  if (bv.pt_type == PT_BOOL && vtype == VIS_SECRET &&
+      base_io_->hasBitSecretSupport()) {
+    return base_io_->getBitSecretShareSize(calcNumel(bv.shape));
+  } else {
+    return base_io_->getShareType(vtype, owner_rank).size() *
+           calcNumel(bv.shape);
+  }
+}
+
 std::vector<spu::Value> IoClient::makeShares(const PtBufferView &bv,
                                              Visibility vtype, int owner_rank) {
   const size_t fxp_bits = config_.fxp_fraction_bits();
@@ -149,18 +160,41 @@ bool ColocatedIo::deviceHasVar(const std::string &name) const {
 //   Alice: {x0, y0, z0}
 //   Bob:   {x1, y1, z1}
 //   Carol: {x2, y2, z2}
+
+using SymbolTableProto = std::unordered_map<std::string, ValueProto>;
+
 static std::vector<SymbolTableProto> all2all(
     const std::shared_ptr<yacl::link::Context> &lctx,
     const std::vector<SymbolTableProto> &rows) {
-  // TODO: implement all2all in yacl::link
+  std::vector<size_t> party_var_count;
+  {
+    const auto party_var_count_str = yacl::link::AllGather(
+        lctx, std::to_string(rows[0].size()), "all2all_var_count");
+
+    for (const auto &c : party_var_count_str) {
+      size_t count = 0;
+      SPU_ENFORCE(absl::SimpleAtoi(c, &count));
+      party_var_count.push_back(count);
+    }
+  }
+
   for (size_t idx = 0; idx < lctx->WorldSize(); idx++) {
     if (idx == lctx->Rank()) {
       continue;
     }
-    yacl::Buffer buf;
-    buf.resize(rows[idx].ByteSizeLong());
-    SPU_ENFORCE(rows[idx].SerializeToArray(buf.data(), buf.size()));
-    lctx->SendAsync(idx, std::move(buf), "all2all");
+    for (const auto &[key, value] : rows[idx]) {
+      // send var key
+      lctx->SendAsync(idx, key, "all2all_var_key");
+      // send var meta
+      lctx->SendAsync(idx, value.meta.SerializeAsString(), "all2all_var_meta");
+      // send chunks count
+      lctx->SendAsync(idx, std::to_string(value.chunks.size()),
+                      "all2all_var_chunks_count");
+      for (const auto &s : value.chunks) {
+        // send chunks
+        lctx->SendAsync(idx, s.SerializeAsString(), "all2all_var_chunk");
+      }
+    }
   }
 
   std::vector<SymbolTableProto> cols;
@@ -169,10 +203,30 @@ static std::vector<SymbolTableProto> all2all(
       cols.push_back(rows[idx]);
       continue;
     }
-    auto data = lctx->Recv(idx, "all2all");
-    SymbolTableProto vars;
-    SPU_ENFORCE(vars.ParseFromArray(data.data(), data.size()));
-    cols.push_back(std::move(vars));
+    SymbolTableProto st_proto;
+    for (size_t msg_idx = 0; msg_idx < party_var_count[idx]; msg_idx++) {
+      auto key = lctx->Recv(idx, "all2all_var_key");
+      ValueProto proto;
+      {
+        auto data = lctx->Recv(idx, "all2all_var_meta");
+        SPU_ENFORCE(proto.meta.ParseFromArray(data.data(), data.size()));
+      }
+      size_t chunk_count = 0;
+      {
+        auto data = lctx->Recv(idx, "all2all_var_chunks_count");
+        SPU_ENFORCE(absl::SimpleAtoi(data, &chunk_count));
+      }
+      proto.chunks.resize(chunk_count);
+      for (size_t s_idx = 0; s_idx < chunk_count; s_idx++) {
+        auto data = lctx->Recv(idx, "all2all_var_chunk");
+        SPU_ENFORCE(
+            proto.chunks[s_idx].ParseFromArray(data.data(), data.size()));
+      }
+      st_proto.insert(
+          {std::string(static_cast<const char *>(key.data()), key.size()),
+           std::move(proto)});
+    }
+    cols.push_back(std::move(st_proto));
   }
 
   return cols;
@@ -214,8 +268,8 @@ void ColocatedIo::sync() {
     SPU_ENFORCE(shares.size() == lctx->WorldSize());
 
     for (size_t idx = 0; idx < shares.size(); idx++) {
-      shares_per_party[idx].mutable_symbols()->insert(
-          {name, shares[idx].toProto()});
+      shares_per_party[idx].insert(
+          {name, shares[idx].toProto(128UL * 1024 * 1024)});
     }
   }
 
@@ -224,7 +278,7 @@ void ColocatedIo::sync() {
 
   std::set<std::string> all_names;
   for (const auto &values : values_per_party) {
-    for (const auto &[name, _] : values.symbols()) {
+    for (const auto &[name, _] : values) {
       SPU_ENFORCE(all_names.find(name) == all_names.end(), "name duplicated {}",
                   name);
       all_names.insert(name);
@@ -232,7 +286,7 @@ void ColocatedIo::sync() {
   }
 
   for (const auto &values : values_per_party) {
-    for (const auto &[name, proto] : values.symbols()) {
+    for (const auto &[name, proto] : values) {
       symbols_.setVar(name, spu::Value::fromProto(proto));
     }
   }

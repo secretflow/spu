@@ -40,12 +40,14 @@ class IoInterface {
   // resposibility to encode to it to ring.
   virtual std::vector<ArrayRef> toShares(const ArrayRef& raw, Visibility vis,
                                          int owner_rank = -1) const = 0;
+  virtual Type getShareType(Visibility vis, int owner_rank = -1) const = 0;
 
   // Make a secret from a bit array, if the element type is large than one bit,
   // only the lsb is considered.
   //
   // @param raw, with type as PtType.
   virtual std::vector<ArrayRef> makeBitSecret(const ArrayRef& raw) const = 0;
+  virtual size_t getBitSecretShareSize(size_t numel) const = 0;
   virtual bool hasBitSecretSupport() const = 0;
 
   // Reconstruct shares into a RingTy value.
@@ -66,6 +68,9 @@ class BaseIo : public IoInterface {
       : field_(field), world_size_(world_size) {}
 
   std::vector<ArrayRef> makeBitSecret(const ArrayRef& raw) const override {
+    SPU_THROW("should not be here");
+  }
+  size_t getBitSecretShareSize(size_t numel) const override {
     SPU_THROW("should not be here");
   }
   bool hasBitSecretSupport() const override { return false; }

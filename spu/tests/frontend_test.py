@@ -53,13 +53,18 @@ class UnitTests(unittest.TestCase):
         self.assertEqual(executable.name, "test_jax_add")
         self.assertEqual(executable.input_names, ["in1", "in2", "in3", "in4"])
         self.assertEqual(executable.output_names, ["test-out0"])
+        print(executable.code.decode())
         self.assertTrue(
             "  func.func @main(%arg0: tensor<2x!pphlo.pub<i32>>, %arg1: tensor<2x!pphlo.pub<i32>>) -> tensor<2x!pphlo.pub<f32>> {\n"
             "    %0 = \"pphlo.constant\"() {value = dense<3.000000e+00> : tensor<2xf32>} : () -> tensor<2x!pphlo.pub<f32>>\n"
             "    %1 = \"pphlo.convert\"(%arg0) : (tensor<2x!pphlo.pub<i32>>) -> tensor<2x!pphlo.pub<f32>>\n"
             "    %2 = \"pphlo.add\"(%1, %0) : (tensor<2x!pphlo.pub<f32>>, tensor<2x!pphlo.pub<f32>>) -> tensor<2x!pphlo.pub<f32>>\n"
+            "    \"pphlo.free\"(%0) : (tensor<2x!pphlo.pub<f32>>) -> ()\n"
+            "    \"pphlo.free\"(%1) : (tensor<2x!pphlo.pub<f32>>) -> ()\n"
             "    %3 = \"pphlo.convert\"(%arg1) : (tensor<2x!pphlo.pub<i32>>) -> tensor<2x!pphlo.pub<f32>>\n"
             "    %4 = \"pphlo.add\"(%2, %3) : (tensor<2x!pphlo.pub<f32>>, tensor<2x!pphlo.pub<f32>>) -> tensor<2x!pphlo.pub<f32>>\n"
+            "    \"pphlo.free\"(%3) : (tensor<2x!pphlo.pub<f32>>) -> ()\n"
+            "    \"pphlo.free\"(%2) : (tensor<2x!pphlo.pub<f32>>) -> ()\n"
             "    return %4 : tensor<2x!pphlo.pub<f32>>\n" in executable.code.decode()
         )
         self.assertEqual(output.shape, (2,))

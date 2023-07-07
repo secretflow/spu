@@ -70,6 +70,23 @@ def _jax_compilation(
 ):
     import jax
 
+    from jax._src.xla_bridge import register_backend_factory, _backend_lock, _backends
+    from jax._src.lib import xla_client
+
+    # Register interpreter backend since we don't want any cpu/gpu/tpu specific optimization
+    try:
+        has_interpreter_backend = False
+        with _backend_lock:
+            if 'interpreter' in _backends:
+                has_interpreter_backend = True
+
+        if not has_interpreter_backend:
+            register_backend_factory(
+                'interpreter', xla_client.make_interpreter_client, priority=-100
+            )
+    finally:
+        pass  # Silent re-register error....
+
     fn, kwargs = _argnames_partial_except(fn, static_argnames, kwargs)
 
     cfn, output = jax.xla_computation(

@@ -115,8 +115,7 @@ enum ProtocolKind {
   CHEETAH = 4;
 }
 
-// The spu Value proto, used for spu value serialization.
-message ValueProto {
+message ValueMetaProto {
   // The data type.
   DataType data_type = 1;
 
@@ -130,20 +129,15 @@ message ValueProto {
   // i.e. `aby3.AShr<FM64>` means an aby3 arithmetic share in FM64.
   // usually, the application does not care about this attribute.
   string storage_type = 4;
-
-  // The runtime/protocol dependent value data.
-  bytes content = 5;
 }
 
-message ValueMeta {
-  // The data type.
-  DataType data_type = 1;
-
-  // The data visibility.
-  Visibility visibility = 2;
-
-  // The shape of the value.
-  ShapeProto shape = 3;
+// The spu Value proto, used for spu value serialization.
+message ValueChunkProto {
+  // chunk info
+  uint64 total_bytes = 1;
+  uint64 chunk_offset = 2;
+  // chunk bytes
+  bytes content = 3;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -194,9 +188,15 @@ message RuntimeConfig {
 
   // When enabled, runtime records detailed pphlo timing data, debug purpose
   // only.
+  // WARNING: the `send bytes` information is only accurate when
+  // `experimental_enable_inter_op_par` and `experimental_enable_intra_op_par`
+  // options are disabled.
   bool enable_pphlo_profile = 15;
 
   // When enabled, runtime records detailed hal timing data, debug purpose only.
+  // WARNING: the `send bytes` information is only accurate when
+  // `experimental_enable_inter_op_par` and `experimental_enable_intra_op_par`
+  // options are disabled.
   bool enable_hal_profile = 16;
 
   reserved 17, 18;
@@ -206,6 +206,10 @@ message RuntimeConfig {
   // Note: this seed only applies to `public variable` only, it has nothing
   // to do with security.
   uint64 public_random_seed = 19;
+
+  // max chunk size for Value::toProto
+  // default: 128 * 1024 * 1024
+  uint64 share_max_chunk_size = 20;
 
   // @exclude
   // Fixed-point arithmetic related, reserved for [50, 100)
@@ -275,9 +279,10 @@ message RuntimeConfig {
     TrustedFirstParty = 0;
     // generate beaver triple through an additional trusted third party.
     TrustedThirdParty = 1;
+    // generate beaver triple through multi-party.
+    MultiParty = 2;
   }
-
-  // beaver config, works for semi2k only for now.
+  // beaver config, works for semi2k and spdz2k for now.
   BeaverType beaver_type = 70;
 
   // TrustedThirdParty configs.
