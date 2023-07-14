@@ -36,7 +36,7 @@ class UnitTests(unittest.TestCase):
         # Test fit_transform
         def proc_transform(X):
             model = SimplePCA(
-                method='full',
+                method='power_iteration',
                 n_components=2,
             )
 
@@ -75,7 +75,7 @@ class UnitTests(unittest.TestCase):
         # Test inverse_transform
         def proc_reconstruct(X):
             model = SimplePCA(
-                method='full',
+                method='power_iteration',
                 n_components=2,
             )
 

@@ -33,7 +33,7 @@ from sml.pca.simple_pca import SimplePCA
 def emul_SimplePCA(mode: emulation.Mode.MULTIPROCESS):
     def proc(X):
             model = SimplePCA(
-                method='full',
+                method='power_iteration',
                 n_components=2,
             )
 
@@ -45,7 +45,7 @@ def emul_SimplePCA(mode: emulation.Mode.MULTIPROCESS):
     
     def proc_reconstruct(X):
             model = SimplePCA(
-                method='full',
+                method='power_iteration',
                 n_components=2,
             )
 

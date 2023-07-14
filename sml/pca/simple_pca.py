@@ -17,7 +17,7 @@ import jax.numpy as jnp
 from enum import Enum
 
 class Method(Enum):
-    PCA = 'full'
+    PCA = 'power_iteration'
 
 
 class SimplePCA:
@@ -25,7 +25,26 @@ class SimplePCA:
         self,
         method: str,
         n_components: int,
+        max_iter: int = 100,
     ):
+        """A PCA estimator implemented with Power Iteration.
+
+        Parameters
+        ----------
+        method : str
+            The method to compute the principal components. 
+            'power_iteration' uses Power Iteration to compute the eigenvalues and eigenvectors.
+
+        n_components : int
+            Number of components to keep.
+
+        max_iter : int, default=100
+            Maximum number of iterations for Power Iteration.
+
+        References
+        ----------
+        Power Iteration: https://en.wikipedia.org/wiki/Power_iteration
+        """
         # parameter check.
         assert n_components > 0, f"n_components should >0"
         assert method in [
@@ -33,13 +52,32 @@ class SimplePCA:
         ], f"method should in {[e.value for e in Method]}, but got {method}"
 
         self._n_components = n_components
+        self._max_iter = max_iter
         self._mean = None
         self._components = None
         self._variances = None
         self._method = Method(method)
 
     def fit(self, X):
-        """Fit the estimator to the data."""
+        """Fit the estimator to the data.
+
+        In the 'power_iteration' method, we use the Power Iteration algorithm to compute the eigenvalues and eigenvectors.
+        The Power Iteration algorithm works by repeatedly multiplying a vector by the matrix to inflate the largest eigenvalue,
+        and then normalizing to keep numerical stability.
+        After finding the largest eigenvalue and eigenvector, we deflate the matrix by subtracting the outer product of the 
+        eigenvector and itself, scaled by the eigenvalue. This leaves a matrix with the same eigenvectors, but the largest 
+        eigenvalue is replaced by zero.
+
+        Parameters
+        ----------
+        X : {array-like}, shape (n_samples, n_features)
+            Training data.
+
+        Returns
+        -------
+        self : object
+            Returns an instance of self.
+        """
         assert len(X.shape) == 2, f"Expected X to be 2 dimensional array, got {X.shape}"
 
         self._mean = jnp.mean(X, axis=0)
@@ -56,7 +94,7 @@ class SimplePCA:
             # Initialize a random vector
             vec = jnp.ones((X_centered.shape[1],))
 
-            for _ in range(100):  # Max iterations
+            for _ in range(self._max_iter):  # Max iterations
                 # Power iteration
                 vec = jnp.dot(cov_matrix, vec)
                 vec /= jnp.linalg.norm(vec)
