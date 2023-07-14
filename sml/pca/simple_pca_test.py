@@ -33,8 +33,8 @@ class UnitTests(unittest.TestCase):
         sim = spsim.Simulator.simple(
             3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM64
         )
-
-        def proc(X):
+        # Test fit_transform
+        def proc_transform(X):
             model = SimplePCA(
                 method='full',
                 n_components=2,
@@ -50,7 +50,7 @@ class UnitTests(unittest.TestCase):
         X = random.normal(random.PRNGKey(0), (15, 5))
 
         # Run the simulation
-        result = spsim.sim_jax(sim, proc)(X)
+        result = spsim.sim_jax(sim, proc_transform)(X)
 
         # The transformed data should have 2 dimensions
         self.assertEqual(result[0].shape[1], 2)
@@ -60,19 +60,42 @@ class UnitTests(unittest.TestCase):
 
         X_np = np.array(X)
 
-        # Run PCA using sklearn
+        # Run fit_transform using sklearn
         sklearn_pca = SklearnPCA(n_components=2)
         X_transformed_sklearn = sklearn_pca.fit_transform(X_np)
 
-        # Compare the results
-        # Note: the signs of the components can be different between different PCA implementations,
-        # so we need to compare the absolute values
+        # Compare the transform results
         print("X_transformed_sklearn: ", X_transformed_sklearn)
         print("X_transformed_jax", result[0])
 
-        # compare variance
+        # Compare the variance results
         print("X_transformed_sklearn.explained_variance_: ", sklearn_pca.explained_variance_)
         print("X_transformed_jax.explained_variance_: ", result[1])
+
+        # Test inverse_transform
+        def proc_reconstruct(X):
+            model = SimplePCA(
+                method='full',
+                n_components=2,
+            )
+
+            model.fit(X)
+            X_reconstructed = model.inverse_transform(model.transform(X))
+
+            return X_reconstructed
+
+        # Run the simulation
+        result = spsim.sim_jax(sim, proc_reconstruct)(X)
+
+        # Run inverse_transform using sklearn
+        X_reconstructed_sklearn = sklearn_pca.inverse_transform(X_transformed_sklearn)
+
+        # Compare the results
+        self.assertTrue(np.allclose(X_reconstructed_sklearn, result, atol=1e-4))
+
+
+
+
 
 
 

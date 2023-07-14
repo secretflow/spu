@@ -42,6 +42,17 @@ def emul_SimplePCA(mode: emulation.Mode.MULTIPROCESS):
             X_variances = model._variances
 
             return X_transformed, X_variances
+    
+    def proc_reconstruct(X):
+            model = SimplePCA(
+                method='full',
+                n_components=2,
+            )
+
+            model.fit(X)
+            X_reconstructed = model.inverse_transform(model.transform(X))
+
+            return X_reconstructed
 
     try:
         # bandwidth and latency only work for docker mode
@@ -67,6 +78,19 @@ def emul_SimplePCA(mode: emulation.Mode.MULTIPROCESS):
 
         print("X_transformed_sklearn: ", X_transformed)
         print("X_variances_sklearn: ", X_variances)
+
+        result = emulator.run(proc_reconstruct)(X)
+
+        print("X_reconstructed_jax: ", result)
+
+        # Compare with sklearn
+        model = SklearnPCA(n_components=2)
+        model.fit(X)
+        X_reconstructed = model.inverse_transform(model.transform(X))
+
+        print("X_reconstructed_sklearn: ", X_reconstructed)
+
+        assert np.allclose(X_reconstructed, result, atol=1e-4)
 
     finally:
         emulator.down()

@@ -39,43 +39,40 @@ class SimplePCA:
         self._method = Method(method)
 
     def fit(self, X):
-        """Fit the estimator to the data.
-
-        Parameters
-        ----------
-        X : {array-like}, shape (n_samples, n_features)
-            Training data.
-
-        Returns
-        -------
-        self : object
-            Returns an instance of self.
-        """
+        """Fit the estimator to the data."""
         assert len(X.shape) == 2, f"Expected X to be 2 dimensional array, got {X.shape}"
 
         self._mean = jnp.mean(X, axis=0)
-        X = X - self._mean
+        X_centered = X - self._mean
 
         # The covariance matrix
-        cov_matrix = jnp.cov(X, rowvar=False)
+        cov_matrix = jnp.cov(X_centered, rowvar=False)
 
-        # Cholesky decomposition
-        L = jnp.linalg.cholesky(cov_matrix)
+        # Initialization
+        components = []
+        variances = []
 
-        # QR decomposition on L
-        q, r = jnp.linalg.qr(L)
+        for _ in range(self._n_components):
+            # Initialize a random vector
+            vec = jnp.ones((X_centered.shape[1],))
 
-        # We get eigenvalues from r
-        eigvals = jnp.square(jnp.diag(r))   # Take square of diagonal elements
+            for _ in range(100):  # Max iterations
+                # Power iteration
+                vec = jnp.dot(cov_matrix, vec)
+                vec /= jnp.linalg.norm(vec)
 
-        # Get indices of the largest eigenvalues
-        idx = jnp.argsort(eigvals)[::-1][:self._n_components]
+            # Compute the corresponding eigenvalue
+            eigval = jnp.dot(vec.T, jnp.dot(cov_matrix, vec))
 
-        # Get the sorted eigenvectors using indices
-        self._components = q[:, idx]
+            components.append(vec)
+            variances.append(eigval)
 
-        # Save the variances of the principal components
-        self._variances = eigvals[idx]
+            # Remove the component from the covariance matrix
+            cov_matrix -= eigval * jnp.outer(vec, vec)
+
+        self._components = jnp.column_stack(components)
+        self._variances = jnp.array(variances)
+
         return self
 
     def transform(self, X):
@@ -95,3 +92,22 @@ class SimplePCA:
 
         X = X - self._mean
         return jnp.dot(X, self._components)
+
+    def inverse_transform(self, X_transformed):
+        """Transform the data back to the original space.
+
+        Parameters
+        ----------
+        X_transformed : {array-like}, shape (n_samples, n_components)
+            Data in the transformed space.
+
+        Returns
+        -------
+        X_original : array, shape (n_samples, n_features)
+            Data in the original space.
+        """
+        assert len(X_transformed.shape) == 2, f"Expected X_transformed to be 2 dimensional array, got {X_transformed.shape}"
+
+        X_original = jnp.dot(X_transformed, self._components.T) + self._mean
+
+        return X_original
