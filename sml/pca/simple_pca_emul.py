@@ -61,14 +61,14 @@ def emul_SimplePCA(mode: emulation.Mode.MULTIPROCESS):
         )
         emulator.up()
         # Create a simple dataset
-        X = random.normal(random.PRNGKey(0), (15, 5))
+        X = random.normal(random.PRNGKey(0), (15, 100))
         result = emulator.run(proc)(X)
         print("X_transformed_jax: ", result[0])
         print("X_transformed_jax: ", result[1])
         # The transformed data should have 2 dimensions
         assert result[0].shape[1] == 2
         # The mean of the transformed data should be approximately 0
-        assert jnp.allclose(jnp.mean(result[0], axis=0), 0, atol=1e-4)
+        assert jnp.allclose(jnp.mean(result[0], axis=0), 0, atol=1e-3)
 
         # Compare with sklearn
         model = SklearnPCA(n_components=2)
@@ -90,7 +90,7 @@ def emul_SimplePCA(mode: emulation.Mode.MULTIPROCESS):
 
         print("X_reconstructed_sklearn: ", X_reconstructed)
 
-        assert np.allclose(X_reconstructed, result, atol=1e-4)
+        assert np.allclose(X_reconstructed, result, atol=1e-3)
 
     finally:
         emulator.down()

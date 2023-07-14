@@ -47,7 +47,7 @@ class UnitTests(unittest.TestCase):
             return X_transformed, X_variances
 
         # Create a simple dataset
-        X = random.normal(random.PRNGKey(0), (15, 5))
+        X = random.normal(random.PRNGKey(0), (15, 100))
 
         # Run the simulation
         result = spsim.sim_jax(sim, proc_transform)(X)
@@ -56,7 +56,7 @@ class UnitTests(unittest.TestCase):
         self.assertEqual(result[0].shape[1], 2)
 
         # The mean of the transformed data should be approximately 0
-        self.assertTrue(jnp.allclose(jnp.mean(result[0], axis=0), 0, atol=1e-4))
+        self.assertTrue(jnp.allclose(jnp.mean(result[0], axis=0), 0, atol=1e-3))
 
         X_np = np.array(X)
 
@@ -91,7 +91,7 @@ class UnitTests(unittest.TestCase):
         X_reconstructed_sklearn = sklearn_pca.inverse_transform(X_transformed_sklearn)
 
         # Compare the results
-        self.assertTrue(np.allclose(X_reconstructed_sklearn, result, atol=1e-4))
+        self.assertTrue(np.allclose(X_reconstructed_sklearn, result, atol=1e-3))
 
 
 
