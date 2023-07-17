@@ -97,7 +97,9 @@ generated_python_directories = [
 
 setup_spec.install_requires = read_requirements('requirements.txt')
 
-files_to_remove = []
+files_to_remove = [
+    "spu/intrinsic/add_new_intrinsic.py"
+]
 
 
 # Calls Bazel in PATH

@@ -197,14 +197,14 @@ class OpExecTask final {
            sscope_->hasValues(extra_dependencies_);
   }
 
-  void run() {
+  void run(const ExecutionOptions &opts) {
     // wait for this operation ready.
     if (op_->getNumOperands() > 0) {
       std::unique_lock lk(event_->mutex);
       event_->cv.wait(lk, [this] { return ready(); });
     }
 
-    executor_->runKernel(sctx_.get(), sscope_, *op_);
+    executor_->runKernel(sctx_.get(), sscope_, *op_, opts);
     std::unique_lock lk(event_->mutex);
     event_->cv.notify_all();
   }
@@ -228,7 +228,7 @@ std::vector<spu::Value> runBlockParallel(OpExecutor *executor, SPUContext *sctx,
   futures.reserve(tasks.size());
   for (auto &task : tasks) {
     futures.emplace_back(
-        std::async(std::launch::async, &OpExecTask::run, &task));
+        std::async(std::launch::async, &OpExecTask::run, &task, opts));
   }
 
   // Long story short....

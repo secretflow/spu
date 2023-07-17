@@ -20,6 +20,7 @@ import numpy as np
 
 import spu.utils.simulation as ppsim
 import spu.spu_pb2 as spu_pb2
+import spu.intrinsic as si
 
 if __name__ == "__main__":
     """
@@ -33,11 +34,13 @@ if __name__ == "__main__":
     copts.disable_div_sqrt_rewrite = True
 
     x = np.random.randn(3, 4)
-    fn = lambda x: x / (jnp.sqrt(x) + 1e-9)
+    y = np.random.randn(5, 6)
+    fn = lambda x, y: si.example_binary(x, y)
+    # fn = lambda x, y: jnp.matmul(x, y)
     spu_fn = ppsim.sim_jax(sim, fn, copts=copts)
-    z = spu_fn(x)
+    z = spu_fn(x, y)
 
     print(spu_fn.pphlo)
 
-    print(f'spu out = {z}')
-    print(f'cpu out = {fn(x)}')
+    print(f"spu out = {z}")
+    print(f"cpu out = {fn(x, y)}")

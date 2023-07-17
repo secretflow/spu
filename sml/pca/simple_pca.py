@@ -16,6 +16,7 @@ import jax
 import jax.numpy as jnp
 from enum import Enum
 
+
 class Method(Enum):
     PCA = 'power_iteration'
 
@@ -32,7 +33,7 @@ class SimplePCA:
         Parameters
         ----------
         method : str
-            The method to compute the principal components. 
+            The method to compute the principal components.
             'power_iteration' uses Power Iteration to compute the eigenvalues and eigenvectors.
 
         n_components : int
@@ -64,8 +65,8 @@ class SimplePCA:
         In the 'power_iteration' method, we use the Power Iteration algorithm to compute the eigenvalues and eigenvectors.
         The Power Iteration algorithm works by repeatedly multiplying a vector by the matrix to inflate the largest eigenvalue,
         and then normalizing to keep numerical stability.
-        After finding the largest eigenvalue and eigenvector, we deflate the matrix by subtracting the outer product of the 
-        eigenvector and itself, scaled by the eigenvalue. This leaves a matrix with the same eigenvectors, but the largest 
+        After finding the largest eigenvalue and eigenvector, we deflate the matrix by subtracting the outer product of the
+        eigenvector and itself, scaled by the eigenvalue. This leaves a matrix with the same eigenvectors, but the largest
         eigenvalue is replaced by zero.
 
         Parameters
@@ -144,7 +145,9 @@ class SimplePCA:
         X_original : array, shape (n_samples, n_features)
             Data in the original space.
         """
-        assert len(X_transformed.shape) == 2, f"Expected X_transformed to be 2 dimensional array, got {X_transformed.shape}"
+        assert (
+            len(X_transformed.shape) == 2
+        ), f"Expected X_transformed to be 2 dimensional array, got {X_transformed.shape}"
 
         X_original = jnp.dot(X_transformed, self._components.T) + self._mean
 

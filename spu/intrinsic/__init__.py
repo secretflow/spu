@@ -12,5 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from .example_impl import example
 
-__version__ = "0.4.2b1"
+from .example_binary_impl import example_binary
+
+# DO-NOT-EDIT:ADD_IMPORT
+
+__all__ = [
+    "example",
+    "example_binary",
+    # DO-NOT-EDIT:EOL
+]

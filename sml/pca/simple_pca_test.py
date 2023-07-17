@@ -19,13 +19,13 @@ import jax.numpy as jnp
 import numpy as np
 from jax import random
 from sklearn.decomposition import PCA as SklearnPCA
-import spu.spu_pb2 as spu_pb2  
+import spu.spu_pb2 as spu_pb2
 import spu.utils.simulation as spsim
 
 # Add the sml directory to the path
 sys.path.append(os.path.join(os.path.dirname(__file__), '../../'))
 
-from sml.pca.simple_pca  import SimplePCA
+from sml.pca.simple_pca import SimplePCA
 
 
 class UnitTests(unittest.TestCase):
@@ -33,6 +33,7 @@ class UnitTests(unittest.TestCase):
         sim = spsim.Simulator.simple(
             3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM64
         )
+
         # Test fit_transform
         def proc_transform(X):
             model = SimplePCA(
@@ -69,7 +70,10 @@ class UnitTests(unittest.TestCase):
         print("X_transformed_jax", result[0])
 
         # Compare the variance results
-        print("X_transformed_sklearn.explained_variance_: ", sklearn_pca.explained_variance_)
+        print(
+            "X_transformed_sklearn.explained_variance_: ",
+            sklearn_pca.explained_variance_,
+        )
         print("X_transformed_jax.explained_variance_: ", result[1])
 
         # Test inverse_transform
@@ -92,11 +96,6 @@ class UnitTests(unittest.TestCase):
 
         # Compare the results
         self.assertTrue(np.allclose(X_reconstructed_sklearn, result, atol=1e-3))
-
-
-
-
-
 
 
 if __name__ == "__main__":

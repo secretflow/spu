@@ -1115,5 +1115,37 @@ def PPHLO_CaseOp: PPHLO_Op<"case", [
   let results = (outs Variadic<PPHLO_Tensor>);
 }
 
+def PPHLO_CustomCallOp: PPHLO_Op<"custom_call",
+    [DeclareOpInterfaceMethods<MemoryEffectsOpInterface>]> {
+  let summary = "CustomCall operation";
+  let description = [{
+    Encapsulates an implementation-defined operation `call_target_name` that
+    takes `inputs` and `called_computations` and produces `results`.
+
+    See:
+    https://github.com/openxla/stablehlo/blob/main/docs/spec.md#custom_call
+
+    Example:
+    ```mlir
+    %results = stablehlo.custom_call @foo(%input0) {
+      backend_config = "bar",
+      called_computations = [@foo]
+    } : (tensor<f64>) -> tensor<f64>
+    ```
+  }];
+
+  let arguments = (ins
+    Variadic<PPHLO_Tensor>:$inputs,
+    StrAttr:$call_target_name,
+    DefaultValuedOptionalAttr<BoolAttr, "false">:$has_side_effect
+  );
+  let results = (outs Variadic<PPHLO_Tensor>);
+
+  let assemblyFormat = [{
+    custom<CustomCallTarget>($call_target_name) `(` $inputs `)`
+      attr-dict `:` functional-type(operands, results)
+  }];
+}
+
 
 #endif  // SPU_DIALECT_PPHLO_OPS

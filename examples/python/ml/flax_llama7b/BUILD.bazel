@@ -12,5 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+load("@rules_python//python:defs.bzl", "py_binary")
 
-__version__ = "0.4.2b1"
+package(default_visibility = ["//visibility:public"])
+
+py_binary(
+    name = "flax_llama7b",
+    srcs = ["flax_llama7b.py"],
+    data = [
+        "//examples/python/ml/flax_llama7b:3pc.json",
+    ],
+    deps = [
+        "//spu:api",
+        "//spu/intrinsic:all_intrinsics",
+        "//spu/utils:distributed",
+        "//spu/utils:simulation",
+    ],
+)

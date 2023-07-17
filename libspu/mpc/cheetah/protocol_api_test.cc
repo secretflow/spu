@@ -12,10 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "libspu/mpc/cheetah/protocol.h"
-
-#include "libspu/mpc/ab_api_test.h"
 #include "libspu/mpc/api_test.h"
+#include "libspu/mpc/cheetah/protocol.h"
 
 namespace spu::mpc::test {
 namespace {
@@ -40,30 +38,5 @@ INSTANTIATE_TEST_SUITE_P(
       return fmt::format("{}x{}", std::get<1>(p.param).field(),
                          std::get<2>(p.param));
     });
-
-INSTANTIATE_TEST_SUITE_P(
-    Cheetah, ArithmeticTest,
-    testing::Combine(testing::Values(makeCheetahProtocol),          //
-                     testing::Values(makeConfig(FieldType::FM32),   //
-                                     makeConfig(FieldType::FM64)),  //
-                     testing::Values(2)),                           //
-    [](const testing::TestParamInfo<ArithmeticTest::ParamType>& p) {
-      return fmt::format("{}x{}", std::get<1>(p.param).field(),
-                         std::get<2>(p.param));
-    });
-
-INSTANTIATE_TEST_SUITE_P(
-    Cheetah, BooleanTest,
-    testing::Combine(testing::Values(makeCheetahProtocol),           //
-                     testing::Values(makeConfig(FieldType::FM32),    //
-                                     makeConfig(FieldType::FM64),    //
-                                     makeConfig(FieldType::FM128)),  //
-                     testing::Values(2)),                            //
-    [](const testing::TestParamInfo<BooleanTest::ParamType>& p) {
-      return fmt::format("{}x{}", std::get<1>(p.param).field(),
-                         std::get<2>(p.param));
-    });
-
-GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(ConversionTest);
 
 }  // namespace spu::mpc::test

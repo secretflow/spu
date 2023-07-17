@@ -24,10 +24,12 @@ from .spu_pb2 import (  # type: ignore
     ShapeProto,
     RuntimeConfig,
     ExecutableProto,
+    CompilerOptions
 )
 
 from .api import Io, Runtime, compile
 from .utils import simulation
+from .intrinsic import *
 
 from . import pir
 from . import psi
@@ -43,6 +45,7 @@ __all__ = [
     "ShapeProto",
     "RuntimeConfig",
     "ExecutableProto",
+    "CompilerOptions",
     # spu_api
     "Io",
     "Runtime",
@@ -52,4 +55,5 @@ __all__ = [
     # libs
     "pir",
     "psi",
-]
+    # intrinsic
+] + intrinsic.__all__

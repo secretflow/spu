@@ -833,19 +833,6 @@ LogicalResult PadOp::inferReturnTypeComponents(
   return status;
 }
 
-LogicalResult PadOp::inferReturnTypes(
-    MLIRContext* context, std::optional<::mlir::Location> location,
-    ValueRange operands, DictionaryAttr attributes, OpaqueProperties properties,
-    RegionRange regions,
-    ::llvm::SmallVectorImpl<::mlir::Type>& inferredReturnTypes) {
-  PadOp::Adaptor adaptor(operands, attributes, {}, regions);
-  return hlo::inferPadOp(location, adaptor.getOperand().getType(),
-                         adaptor.getPaddingValue().getType(),
-                         adaptor.getEdgePaddingLow(),
-                         adaptor.getEdgePaddingHigh(),
-                         adaptor.getInteriorPadding(), inferredReturnTypes);
-}
-
 LogicalResult ConcatenateOp::verify() {
   RankedTensorType firstRankedType;
   int firstRankedIndex;
@@ -1764,6 +1751,29 @@ ParseResult parseWindowAttributes(OpAsmParser& parser,
     }
   }
   return success();
+}
+
+void printCustomCallTarget(AsmPrinter& p, Operation*, StringAttr target) {
+  p.printSymbolName(target.getValue());
+}
+
+ParseResult parseCustomCallTarget(AsmParser& parser, StringAttr& target) {
+  return parser.parseSymbolName(target);
+}
+
+void CustomCallOp::getEffects(
+    SmallVectorImpl<SideEffects::EffectInstance<MemoryEffects::Effect>>&
+        effects) {
+  // CustomCall has "all possible effects" unless the has_side_effect is present
+  // and set to false.
+  auto hasSideEffect = (*this)->getAttrOfType<BoolAttr>("has_side_effect");
+  if (hasSideEffect && !hasSideEffect.getValue()) {
+    return;
+  }
+  effects.emplace_back(MemoryEffects::Allocate::get());
+  effects.emplace_back(MemoryEffects::Free::get());
+  effects.emplace_back(MemoryEffects::Write::get());
+  effects.emplace_back(MemoryEffects::Read::get());
 }
 
 }  // namespace mlir::pphlo
