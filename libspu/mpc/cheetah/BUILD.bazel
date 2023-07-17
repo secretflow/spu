@@ -90,17 +90,30 @@ spu_cc_library(
 )
 
 spu_cc_test(
-    name = "protocol_test",
+    name = "protocol_api_test",
     size = "large",
     timeout = "moderate",
-    srcs = ["protocol_test.cc"],
+    srcs = ["protocol_api_test.cc"],
     tags = [
-        "exclusive",
+        "exclusive-if-local",
+    ],
+    deps = [
+        ":protocol",
+        "//libspu/mpc:api_test",
+    ],
+)
+
+spu_cc_test(
+    name = "protocol_ab_test",
+    size = "large",
+    timeout = "moderate",
+    srcs = ["protocol_ab_test.cc"],
+    tags = [
+        "exclusive-if-local",
     ],
     deps = [
         ":protocol",
         "//libspu/mpc:ab_api_test",
-        "//libspu/mpc:api_test",
     ],
 )
 

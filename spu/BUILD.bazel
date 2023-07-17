@@ -113,6 +113,7 @@ py_library(
         ":psi",
         ":psi_py_proto",
         ":spu_py_proto",
+        "//spu/intrinsic:all_intrinsics",
         "//spu/utils:simulation",
     ],
 )

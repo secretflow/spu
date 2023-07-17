@@ -39,6 +39,7 @@ private:
   void inferCase(Operation &op);
   void inferSort(Operation &op);
   void inferSelectAndScatter(Operation &op);
+  void inferIntrinsic(Operation &op);
 
   template <class T>
   void inferReduce(Operation &op) {

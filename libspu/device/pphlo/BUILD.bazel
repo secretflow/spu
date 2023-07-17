@@ -21,10 +21,22 @@ spu_cc_library(
     srcs = ["pphlo_executor.cc"],
     hdrs = ["pphlo_executor.h"],
     deps = [
+        ":pphlo_intrinsic_executor",
         ":pphlo_verifier",
         "//libspu/device:executor",
         "//libspu/dialect:pphlo_dialect",
         "//libspu/kernel/hlo",
+    ],
+)
+
+spu_cc_library(
+    name = "pphlo_intrinsic_executor",
+    srcs = ["pphlo_intrinsic_executor.cc"],
+    hdrs = ["pphlo_intrinsic_executor.h"],
+    deps = [
+        "//libspu/core:context",
+        "//libspu/kernel/hlo",
+        "@llvm-project//llvm:Support",
     ],
 )
 

@@ -58,7 +58,7 @@ spu_cc_test(
     name = "compare_prot_test",
     srcs = ["compare_prot_test.cc"],
     tags = [
-        "exclusive",
+        "exclusive-if-local",
     ],
     deps = [
         ":compare_prot",

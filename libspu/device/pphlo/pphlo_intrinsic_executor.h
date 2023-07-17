@@ -1,4 +1,4 @@
-// Copyright 2022 Ant Group Co., Ltd.
+// Copyright 2023 Ant Group Co., Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,21 +14,13 @@
 
 #pragma once
 
+#include "llvm/ADT/StringRef.h"
+
 #include "libspu/core/context.h"
-#include "libspu/device/executor.h"
 
 namespace spu::device::pphlo {
 
-class PPHloExecutor : public OpExecutor {
- public:
-  void checkType(mlir::Type mlir_type, const spu::Value &v) const override;
-
-  // return true if the operation has a corresponding kernel.
-  bool hasKernel(mlir::Operation &op) const override;
-
-  // run a kernel in a given region.
-  void runKernelImpl(SPUContext *sctx, SymbolScope *sscope, mlir::Operation &op,
-                     const ExecutionOptions &opts) override;
-};
+std::vector<Value> intrinsic_dispatcher(SPUContext* ctx, llvm::StringRef name,
+                                        absl::Span<const Value> inputs);
 
 }  // namespace spu::device::pphlo

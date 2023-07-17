@@ -263,6 +263,33 @@ void VisibilityInference::inferSelectAndScatter(Operation &op) {
       ValueVis_.getValueVisibility(scatter_return.getOperand(0)));
 }
 
+void VisibilityInference::inferIntrinsic(Operation &op) {
+  [[maybe_unused]] auto c_op = llvm::dyn_cast<stablehlo::CustomCallOp>(op);
+  // if (c_op.getCallTargetName() == "bla") {
+  //    ... special inference rule
+  //    return;
+  // }
+
+  // Default rule
+  if (op.getNumResults() == 1) {
+    SmallVector<Visibility, 2> operand_vis;
+    for (auto operand : op.getOperands()) {
+      operand_vis.emplace_back(ValueVis_.getValueVisibility(operand));
+    }
+    auto ret_vis = TypeTools::inferResultVisibility(operand_vis);
+    ValueVis_.setValueVisibility(op.getResult(0), ret_vis);
+  } else {
+    SPU_ENFORCE(op.getNumResults() == op.getNumOperands(),
+                "Default intrinsic inference can only handle single output or "
+                "#output matches #input");
+
+    for (int64_t idx = 0; idx < op.getNumResults(); ++idx) {
+      ValueVis_.setValueVisibility(
+          op.getResult(idx), ValueVis_.getValueVisibility(op.getOperand(idx)));
+    }
+  }
+}
+
 void VisibilityInference::inferOperation(Operation &op) {
   if (llvm::isa<stablehlo::ReduceOp>(op)) {
     inferReduce<stablehlo::ReduceOp>(op);
@@ -289,6 +316,8 @@ void VisibilityInference::inferOperation(Operation &op) {
         TypeTools::inferResultVisibility({operand_vis, indices_vis}));
   } else if (llvm::isa<stablehlo::SelectAndScatterOp>(op)) {
     inferSelectAndScatter(op);
+  } else if (llvm::isa<stablehlo::CustomCallOp>(op)) {
+    inferIntrinsic(op);
   } else if (op.getNumResults() == 1) {
     SmallVector<Visibility, 2> operand_vis;
     for (auto operand : op.getOperands()) {

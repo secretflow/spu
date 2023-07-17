@@ -32,12 +32,14 @@ Please follow [Installation Guidelines](INSTALLATION.md) to install SPU.
 If you think SPU helpful for your research or development, please consider citing our [paper](https://www.usenix.org/conference/atc23/presentation/ma):
 
 ```text
-@inproceedings {288747,
+@inproceedings {spu,
     author = {Junming Ma and Yancheng Zheng and Jun Feng and Derun Zhao and Haoqi Wu and Wenjing Fang and Jin Tan and Chaofan Yu and Benyu Zhang and Lei Wang},
     title = {{SecretFlow-SPU}: A Performant and {User-Friendly} Framework for {Privacy-Preserving} Machine Learning},
     booktitle = {2023 USENIX Annual Technical Conference (USENIX ATC 23)},
     year = {2023},
+    isbn = {978-1-939133-35-9},
     address = {Boston, MA},
+    pages = {17--33},
     url = {https://www.usenix.org/conference/atc23/presentation/ma},
     publisher = {USENIX Association},
     month = jul,

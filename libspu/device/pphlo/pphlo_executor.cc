@@ -18,6 +18,8 @@
 #include "mlir/IR/Location.h"
 
 #include "libspu/core/encoding.h"
+#include "libspu/device/pphlo/pphlo_intrinsic_executor.h"
+#include "libspu/device/pphlo/pphlo_verifier.h"
 #include "libspu/dialect/pphlo_base_enums.h"
 #include "libspu/dialect/pphlo_ops.h"
 #include "libspu/kernel/hal/ring.h"
@@ -1107,6 +1109,19 @@ void execute(OpExecutor *executor, SPUContext *sctx, SymbolScope *sscope,
                               lookupValue(sscope, op.getMin(), opts),
                               lookupValue(sscope, op.getMax(), opts)),
            opts);
+}
+
+void execute(OpExecutor *executor, SPUContext *sctx, SymbolScope *sscope,
+             mlir::pphlo::CustomCallOp &op, const ExecutionOptions &opt) {
+  std::vector<Value> inputs(op->getNumOperands());
+  for (size_t idx = 0; idx < inputs.size(); ++idx) {
+    inputs[idx] = lookupValue(sscope, op->getOperand(idx), opt);
+  }
+  auto ret = intrinsic_dispatcher(sctx, op.getCallTargetName(), inputs);
+
+  for (size_t idx = 0; idx < op->getNumResults(); ++idx) {
+    addValue(sscope, op->getResult(idx), std::move(ret[idx]), opt);
+  }
 }
 
 void execute(OpExecutor *executor, SPUContext *sctx, SymbolScope *sscope,

@@ -1323,6 +1323,39 @@ public:
   }
 };
 
+struct CustomCallConverter
+    : public OpConversionPattern<stablehlo::CustomCallOp> {
+private:
+  const ValueVisibilityMap &vis_;
+
+public:
+  CustomCallConverter(TypeConverter &type_converter, MLIRContext *context,
+                      const ValueVisibilityMap &vis)
+      : OpConversionPattern<stablehlo::CustomCallOp>(type_converter, context),
+        vis_(vis) {}
+
+  LogicalResult
+  matchAndRewrite(stablehlo::CustomCallOp op,
+                  stablehlo::CustomCallOpAdaptor adaptor,
+                  ConversionPatternRewriter &rewriter) const override {
+
+    llvm::SmallVector<Type> result_types;
+    for (int64_t idx = 0; idx < op->getNumResults(); ++idx) {
+      auto result_vis = vis_.getValueVisibility(op.getResult(idx));
+
+      result_types.emplace_back(HloToPPHloTypeConverter::getTypeWithVisibility(
+          this->getTypeConverter()->convertType(op.getResult(idx).getType()),
+          result_vis));
+    }
+
+    rewriter.replaceOpWithNewOp<pphlo::CustomCallOp>(
+        op, result_types, adaptor.getOperands(), op.getCallTargetName(),
+        op.getHasSideEffect());
+
+    return success();
+  }
+};
+
 struct HloLegalizeToPPHlo
     : public HloLegalizeToPPHloPassBase<HloLegalizeToPPHlo> {
 private:
@@ -1334,7 +1367,7 @@ private:
 
     patterns.insert<
         FuncOpConverter, ReturnOpConverter, HloCompToPPHloOpConverter,
-        ReduceOpConverter<stablehlo::ReduceOp>,
+        CustomCallConverter, ReduceOpConverter<stablehlo::ReduceOp>,
         ReduceOpConverter<stablehlo::ReduceWindowOp>, WhileOpConverter,
         IfOpConverter, CaseOpConverter, HloToPPHloOpConverter<stablehlo::AbsOp>,
         HloToPPHloOpConverter<stablehlo::AddOp>,

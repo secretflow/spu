@@ -138,8 +138,8 @@ def _com_github_xtensor_xtl():
     )
 
 def _com_github_openxla_xla():
-    OPENXLA_COMMIT = "7949c6d44bbc6ae5d1c36a8cdcd27520de509d74"
-    OPENXLA_SHA256 = "39951250ae922fdf22f370ebb63f3a8d1b54fcfa822a324538be12238c899fde"
+    OPENXLA_COMMIT = "f23282956725050dd07996d3b80d6788ad8aaeba"
+    OPENXLA_SHA256 = "6e87093f550573de12af247edfa590d76adc6e931da6b551e78dc2c0c2bbd04d"
 
     SKYLIB_VERSION = "1.3.0"
 

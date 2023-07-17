@@ -19,6 +19,7 @@ import jax.numpy as jnp
 import jax.random as random
 import numpy as np
 from sklearn.decomposition import PCA as SklearnPCA
+
 # from sklearn.metrics import roc_auc_score, explained_variance_score
 
 # Add the library directory to the path
@@ -32,27 +33,27 @@ from sml.pca.simple_pca import SimplePCA
 # all emulation action should begin with `emul_` (for reflection)
 def emul_SimplePCA(mode: emulation.Mode.MULTIPROCESS):
     def proc(X):
-            model = SimplePCA(
-                method='power_iteration',
-                n_components=2,
-            )
+        model = SimplePCA(
+            method='power_iteration',
+            n_components=2,
+        )
 
-            model.fit(X)
-            X_transformed = model.transform(X)
-            X_variances = model._variances
+        model.fit(X)
+        X_transformed = model.transform(X)
+        X_variances = model._variances
 
-            return X_transformed, X_variances
-    
+        return X_transformed, X_variances
+
     def proc_reconstruct(X):
-            model = SimplePCA(
-                method='power_iteration',
-                n_components=2,
-            )
+        model = SimplePCA(
+            method='power_iteration',
+            n_components=2,
+        )
 
-            model.fit(X)
-            X_reconstructed = model.inverse_transform(model.transform(X))
+        model.fit(X)
+        X_reconstructed = model.inverse_transform(model.transform(X))
 
-            return X_reconstructed
+        return X_reconstructed
 
     try:
         # bandwidth and latency only work for docker mode

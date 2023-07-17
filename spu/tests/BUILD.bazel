@@ -171,6 +171,7 @@ py_binary(
     srcs = ["jnp_debug.py"],
     deps = [
         "//spu:api",
+        "//spu/intrinsic:all_intrinsics",
         "//spu/utils:simulation",
     ],
 )
@@ -243,7 +244,7 @@ py_test(
     name = "distributed_test",
     srcs = ["distributed_test.py"],
     tags = [
-        "exclusive",
+        "exclusive-if-local",
     ],
     deps = [
         "//spu/utils:distributed",

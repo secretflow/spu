@@ -55,7 +55,7 @@ spu_cc_test(
     size = "large",
     srcs = ["basic_ot_prot_test.cc"],
     tags = [
-        "exclusive",
+        "exclusive-if-local",
     ],
     deps = [
         ":cheetah_ot",

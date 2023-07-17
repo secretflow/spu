@@ -142,6 +142,7 @@ class PPHloVerifier {
   NO_VERIFY_DEFN(PreferAOp)
   NO_VERIFY_DEFN(ArgMaxOp)
   NO_VERIFY_DEFN(EpsilonOp)
+  NO_VERIFY_DEFN(CustomCallOp)
   NO_VERIFY_DEFN(FreeOp)
 
 #undef NO_VERIFY_DEFN
