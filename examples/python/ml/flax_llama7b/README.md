@@ -1,7 +1,7 @@
 # Flax Llama-7B Example with Puma
 
 This example demonstrates how to use SPU to run secure inference on a pre-trained
-[Llama-7B](https://research.facebook.com/publications/llama-open-and-efficient-foundation-language-models/) model.
+[Llama-7B](https://research.facebook.com/publications/llama-open-and-efficient-foundation-language-models/) model using [Puma](https://arxiv.org/abs/2307.12533)
 
 1. Install huggingface transformers library
 
@@ -47,20 +47,6 @@ This example demonstrates how to use SPU to run secure inference on a pre-traine
     bazel run -c opt //examples/python/ml/flax_llama7b -- --config `pwd`/examples/python/ml/flax_llama7b/3pc.json
     ```
 
-5. Run `secure inferce of GPT2 with Puma`:
+5. To reproduce the benchmarks results in the [Puma paper](https://arxiv.org/abs/2307.12533), please check [here](https://github.com/AntCPLab/puma_benchmarks).
 
-    load gpt2 model, replace line 55-57 as follows:
-
-    ```python
-    tokenizer = AutoTokenizer.from_pretrained("gpt2")
-    pretrained_model = FlaxGPT2LMHeadModel.from_pretrained("gpt2")
-    ```
-
-    prepare the configuration, replace line 128-129 as follows:
-
-    ```python
-    config = GPT2Config()
-    model = FlaxGPT2LMHeadModel(config=config)
-    ```
-
-    The other parts are similar to run `Flax-Llama7B`.
+   
