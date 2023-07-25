@@ -14,10 +14,13 @@
 
 #pragma once
 
+#include <utility>
+
 #include "absl/types/span.h"
 
 #include "libspu/core/ndarray_ref.h"
 #include "libspu/core/prelude.h"
+#include "libspu/core/shape.h"
 
 #include "libspu/spu.pb.h"  // PtType
 
@@ -41,18 +44,17 @@ constexpr bool
 //
 // Please do not direct use this class if possible.
 struct PtBufferView {
-  void const* const ptr;               // Pointer to the underlying storage
-  PtType const pt_type;                // Plaintext data type.
-  std::vector<int64_t> const shape;    // Shape of the tensor.
-  std::vector<int64_t> const strides;  // Strides in byte.
+  void const* const ptr;  // Pointer to the underlying storage
+  PtType const pt_type;   // Plaintext data type.
+  Shape const shape;      // Shape of the tensor.
+  Strides const strides;  // Strides in byte.
 
   // We have to take a concrete buffer as a view.
   PtBufferView() = delete;
 
   // full constructor
-  explicit PtBufferView(void const* ptr, PtType pt_type,
-                        std::vector<int64_t> shape,
-                        std::vector<int64_t> strides)
+  explicit PtBufferView(void const* ptr, PtType pt_type, Shape shape,
+                        Strides strides)
       : ptr(ptr),
         pt_type(pt_type),
         shape(std::move(shape)),
@@ -82,10 +84,10 @@ struct PtBufferView {
       : ptr(static_cast<void const*>(t.data())),
         pt_type(PtTypeToEnum<typename T::value_type>::value),
         shape(t.shape().begin(), t.shape().end()),
-        strides({t.strides().begin(), t.strides().end()}) {}
+        strides(t.strides().begin(), t.strides().end()) {}
 
   template <typename T = std::byte>
-  const T* get(absl::Span<int64_t const> indices) const {
+  const T* get(const Index& indices) const {
     auto fi = calcFlattenOffset(indices, shape, strides);
     const auto* addr =
         static_cast<const std::byte*>(ptr) + SizeOf(pt_type) * fi;

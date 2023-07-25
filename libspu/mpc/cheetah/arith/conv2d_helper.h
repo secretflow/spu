@@ -14,10 +14,9 @@
 
 #pragma once
 
-#include "libspu/core/array_ref.h"
 #include "libspu/core/ndarray_ref.h"
-#include "libspu/core/shape_util.h"
 #include "libspu/mpc/cheetah/arith/conv2d_prot.h"
+#include "libspu/mpc/cheetah/array_ref.h"
 
 namespace spu::mpc::cheetah {
 
@@ -49,12 +48,14 @@ struct SlicedTensor {
     }
 
     // zero padding
-    std::array<int64_t, Dim> index;
+    Index index(Dim);
     for (int i = 0; i < Dim; ++i) {
       if (idx[i] >= extents_[i]) return static_cast<T>(0);
       index[i] = idx[i] + offsets_[i];
     }
-    int64_t offset = calcFlattenOffset(index, base_shape_, flatten_strides_);
+    int64_t offset = calcFlattenOffset(
+        index, ::spu::Shape(base_shape_.begin(), base_shape_.end()),
+        ::spu::Strides(flatten_strides_.begin(), flatten_strides_.end()));
     SPU_ENFORCE(offset >= 0 && offset < base_.numel());
     return base_.at<T>(offset);
   }

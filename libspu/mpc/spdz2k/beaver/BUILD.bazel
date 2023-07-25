@@ -70,16 +70,16 @@ spu_cc_library(
     deps = [
         ":beaver_interface",
         ":trusted_party",
+        "//libspu/mpc/common:prg_state",
         "//libspu/mpc/spdz2k:commitment",
         "//libspu/mpc/spdz2k/ot:basic_ot_prot",
         "//libspu/mpc/spdz2k/ot:kos_ote",
         "//libspu/mpc/spdz2k/ot:tiny_ot",
-        "//libspu/mpc/common:prg_state",
         "//libspu/mpc/utils:ring_ops",
-        "@yacl//yacl/link",
-        "@yacl//yacl/utils:serialize",
         "@yacl//yacl/crypto/primitives/ot:base_ot",
         "@yacl//yacl/crypto/tools:prg",
+        "@yacl//yacl/link",
         "@yacl//yacl/utils:matrix_utils",
-    ]
+        "@yacl//yacl/utils:serialize",
+    ],
 )

@@ -20,6 +20,7 @@
 #include "yacl/base/buffer.h"
 
 #include "libspu/core/bit_utils.h"
+#include "libspu/core/ndarray_ref.h"
 #include "libspu/core/parallel_utils.h"
 #include "libspu/core/type.h"
 #include "libspu/core/vectorize.h"
@@ -189,7 +190,7 @@ class ArrayView {
 
   int64_t stride() const { return stride_; }
 
-  bool isCompact() const { return stride_ == 1; }
+  bool isCompact() const { return stride_ == 1 || numel_ == 1; }
 
   ArrayRef clone() const {
     ArrayRef res(makePtType<T>(), numel_);
@@ -228,5 +229,12 @@ class ArrayView {
     return res;
   }
 };
+
+// This function is not free, miht have cost...do not use it in a loop
+ArrayRef flatten(const NdArrayRef& in);
+
+// These two functions are free cast from ArrayRef to NdArrayRef
+NdArrayRef unflatten(const ArrayRef& in, const Shape& shape);
+NdArrayRef toNdArray(const ArrayRef& in);
 
 }  // namespace spu

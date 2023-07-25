@@ -32,11 +32,11 @@ TEST_P(CommTest, AllReduce) {
   const FieldType kField = std::get<1>(GetParam());
   const int64_t kNumel = 1000;
 
-  std::vector<ArrayRef> xs(kWorldSize);
-  ArrayRef sum_x = ring_zeros(kField, kNumel);
-  ArrayRef xor_x = ring_zeros(kField, kNumel);
+  std::vector<NdArrayRef> xs(kWorldSize);
+  auto sum_x = ring_zeros(kField, {kNumel});
+  auto xor_x = ring_zeros(kField, {kNumel});
   for (size_t idx = 0; idx < kWorldSize; idx++) {
-    xs[idx] = ring_rand(kField, kNumel);
+    xs[idx] = ring_rand(kField, {kNumel});
     ring_add_(sum_x, xs[idx]);
     ring_xor_(xor_x, xs[idx]);
   }
@@ -58,11 +58,11 @@ TEST_P(CommTest, Reduce) {
   const FieldType kField = std::get<1>(GetParam());
   const int64_t kNumel = 1000;
 
-  std::vector<ArrayRef> xs(kWorldSize);
-  ArrayRef sum_x = ring_zeros(kField, kNumel);
-  ArrayRef xor_x = ring_zeros(kField, kNumel);
+  std::vector<NdArrayRef> xs(kWorldSize);
+  auto sum_x = ring_zeros(kField, {kNumel});
+  auto xor_x = ring_zeros(kField, {kNumel});
   for (size_t idx = 0; idx < kWorldSize; idx++) {
-    xs[idx] = ring_rand(kField, kNumel);
+    xs[idx] = ring_rand(kField, {kNumel});
     ring_add_(sum_x, xs[idx]);
     ring_xor_(xor_x, xs[idx]);
   }
@@ -92,9 +92,9 @@ TEST_P(CommTest, Rotate) {
   const FieldType kField = std::get<1>(GetParam());
   const int64_t kNumel = 1000;
 
-  std::vector<ArrayRef> xs(kWorldSize);
+  std::vector<NdArrayRef> xs(kWorldSize);
   for (size_t idx = 0; idx < kWorldSize; idx++) {
-    xs[idx] = ring_rand(kField, kNumel);
+    xs[idx] = ring_rand(kField, {kNumel});
   }
 
   utils::simulate(kWorldSize, [&](std::shared_ptr<yacl::link::Context> lctx) {

@@ -459,10 +459,10 @@ ArrayRef ModulusSwitchHelper::ModulusDownRNS(
     FieldType field, absl::Span<const uint64_t> src) const {
   yacl::CheckNotNull(impl_.get());
   size_t num_modulus = impl_->coeff_modulus_size();
-  size_t num_elt = src.size() / num_modulus;
+  int64_t num_elt = src.size() / num_modulus;
   SPU_ENFORCE_EQ(num_elt * num_modulus, src.size());
 
-  auto out = ring_zeros(field, num_elt);
+  auto out = flatten(ring_zeros(field, {num_elt}));
   ModulusDownRNS(src, out);
   return out;
 }

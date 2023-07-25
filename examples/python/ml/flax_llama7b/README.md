@@ -1,7 +1,7 @@
 # Flax Llama-7B Example with Puma
 
 This example demonstrates how to use SPU to run secure inference on a pre-trained
-[Llama-7B](https://research.facebook.com/publications/llama-open-and-efficient-foundation-language-models/) model using [Puma](https://arxiv.org/abs/2307.12533)
+[Llama-7B](https://research.facebook.com/publications/llama-open-and-efficient-foundation-language-models/) model using [Puma](https://arxiv.org/abs/2307.12533).
 
 1. Install huggingface transformers library
 

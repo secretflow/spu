@@ -31,7 +31,6 @@
 #include "spdlog/spdlog.h"
 #include "yacl/link/link.h"
 
-#include "libspu/core/shape_util.h"
 #include "libspu/mpc/cheetah/arith/common.h"
 #include "libspu/mpc/cheetah/arith/conv2d_prot.h"
 #include "libspu/mpc/cheetah/arith/matmat_prot.h"
@@ -712,7 +711,7 @@ ArrayRef CheetahDot::Impl::parseBatchedConv2dResult(
   oshape[3] = meta.prot_meta.num_kernels;
 
   const size_t n_poly_per_out = meta.n_output_poly / meta.prot_meta.input_batch;
-  ArrayRef ret = ring_zeros(field, calcNumel(oshape));
+  ArrayRef ret = flatten(ring_zeros(field, {calcNumel(oshape)}));
   int64_t offset = 0;
   for (int64_t ib = 0; ib < meta.prot_meta.input_batch; ++ib) {
     // NxHxWxC layout for tensor

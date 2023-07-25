@@ -22,7 +22,6 @@
 
 #include "libspu/core/ndarray_ref.h"
 #include "libspu/core/prelude.h"
-#include "libspu/core/shape_util.h"
 
 namespace spu {
 namespace {
@@ -132,8 +131,7 @@ Value Value::fromProto(const ValueProto& value) {
               "visibility {} does not match storage_type {}", meta.visibility(),
               eltype);
 
-  std::vector<int64_t> shape(meta.shape().dims().begin(),
-                             meta.shape().dims().end());
+  Shape shape(meta.shape().dims().begin(), meta.shape().dims().end());
 
   const auto& chunks = value.chunks;
   const size_t total_bytes = chunks.empty() ? 0 : chunks[0].total_bytes();
@@ -167,16 +165,6 @@ std::ostream& operator<<(std::ostream& out, const Value& v) {
   out << fmt::format("Value<{}x{}{},s={}>", fmt::join(v.shape(), "x"),
                      v.vtype(), v.dtype(), fmt::join(v.strides(), ","));
   return out;
-}
-
-std::tuple<ArrayRef, Shape, DataType> UnwrapValue(const Value& val) {
-  return std::make_tuple(flatten(val.data()), Shape(val.shape()), val.dtype());
-}
-
-Value WrapValue(const ArrayRef& arr, absl::Span<int64_t const> shape,
-                DataType dtype) {
-  auto ndarr = unflatten(arr, shape);
-  return Value(ndarr, dtype);
 }
 
 }  // namespace spu

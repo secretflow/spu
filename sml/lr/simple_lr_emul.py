@@ -48,7 +48,7 @@ def emul_SGDClassifier(mode: emulation.Mode.MULTIPROCESS):
         )
         emulator.up()
 
-        # Create dataset        
+        # Create dataset
         X, y = load_breast_cancer(return_X_y=True, as_frame=True)
         scalar = MinMaxScaler(feature_range=(-2, 2))
         cols = X.columns

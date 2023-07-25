@@ -18,7 +18,7 @@
 
 namespace spu::mpc::spdz2k {
 
-ArrayRef GetMacShare(KernelEvalContext* ctx, const ArrayRef& in);
+NdArrayRef GetMacShare(KernelEvalContext* ctx, const NdArrayRef& in);
 
 class RandA : public RandKernel {
  public:
@@ -28,7 +28,7 @@ class RandA : public RandKernel {
 
   ce::CExpr comm() const override { return ce::Const(0); }
 
-  ArrayRef proc(KernelEvalContext* ctx, size_t size) const override;
+  NdArrayRef proc(KernelEvalContext* ctx, const Shape& shape) const override;
 };
 
 class P2A : public UnaryKernel {
@@ -39,7 +39,7 @@ class P2A : public UnaryKernel {
 
   ce::CExpr comm() const override { return ce::Const(0); }
 
-  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in) const override;
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in) const override;
 };
 
 class A2P : public UnaryKernel {
@@ -48,7 +48,7 @@ class A2P : public UnaryKernel {
 
   Kind kind() const override { return Kind::Dynamic; }
 
-  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in) const override;
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in) const override;
 };
 
 class A2V : public RevealToKernel {
@@ -61,8 +61,8 @@ class A2V : public RevealToKernel {
 
   ce::CExpr comm() const override { return ce::K(); }
 
-  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in,
-                size_t rank) const override;
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in,
+                  size_t rank) const override;
 };
 
 class V2A : public UnaryKernel {
@@ -75,7 +75,7 @@ class V2A : public UnaryKernel {
 
   ce::CExpr comm() const override { return ce::K(); }
 
-  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in) const override;
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in) const override;
 };
 
 class NotA : public UnaryKernel {
@@ -86,7 +86,7 @@ class NotA : public UnaryKernel {
 
   ce::CExpr comm() const override { return ce::Const(0); }
 
-  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in) const override;
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in) const override;
 };
 
 ////////////////////////////////////////////////////////////////////
@@ -100,8 +100,8 @@ class AddAP : public BinaryKernel {
 
   ce::CExpr comm() const override { return ce::Const(0); }
 
-  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& lhs,
-                const ArrayRef& rhs) const override;
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
+                  const NdArrayRef& rhs) const override;
 };
 
 class AddAA : public BinaryKernel {
@@ -112,8 +112,8 @@ class AddAA : public BinaryKernel {
 
   ce::CExpr comm() const override { return ce::Const(0); }
 
-  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& lhs,
-                const ArrayRef& rhs) const override;
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
+                  const NdArrayRef& rhs) const override;
 };
 
 ////////////////////////////////////////////////////////////////////
@@ -127,8 +127,8 @@ class MulAP : public BinaryKernel {
 
   ce::CExpr comm() const override { return ce::Const(0); }
 
-  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& lhs,
-                const ArrayRef& rhs) const override;
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
+                  const NdArrayRef& rhs) const override;
 };
 
 class MulAA : public BinaryKernel {
@@ -137,8 +137,8 @@ class MulAA : public BinaryKernel {
 
   Kind kind() const override { return Kind::Dynamic; }
 
-  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& lhs,
-                const ArrayRef& rhs) const override;
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
+                  const NdArrayRef& rhs) const override;
 };
 
 ////////////////////////////////////////////////////////////////////
@@ -152,9 +152,8 @@ class MatMulAP : public MatmulKernel {
 
   ce::CExpr comm() const override { return ce::Const(0); }
 
-  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& lhs,
-                const ArrayRef& rhs, size_t m, size_t n,
-                size_t k) const override;
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
+                  const NdArrayRef& rhs) const override;
 };
 
 class MatMulAA : public MatmulKernel {
@@ -168,9 +167,8 @@ class MatMulAA : public MatmulKernel {
 
   ce::CExpr comm() const override { return nullptr; }
 
-  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& lhs,
-                const ArrayRef& rhs, size_t m, size_t n,
-                size_t k) const override;
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
+                  const NdArrayRef& rhs) const override;
 };
 
 class LShiftA : public ShiftKernel {
@@ -181,8 +179,8 @@ class LShiftA : public ShiftKernel {
 
   ce::CExpr comm() const override { return ce::Const(0); }
 
-  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in,
-                size_t bits) const override;
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in,
+                  size_t bits) const override;
 };
 
 // Refer to:
@@ -195,8 +193,8 @@ class TruncA : public TruncAKernel {
 
   Kind kind() const override { return Kind::Dynamic; }
 
-  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in,
-                size_t bits) const override;
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in,
+                  size_t bits) const override;
 
   bool hasMsbError() const override { return true; }
 

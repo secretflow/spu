@@ -39,8 +39,8 @@ class AndBB : public BinaryKernel {
 
   ce::CExpr comm() const override { return ce::K() * 2 * (ce::N() - 1); }
 
-  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& lhs,
-                const ArrayRef& rhs) const override;
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
+                  const NdArrayRef& rhs) const override;
 };
 
 using XorBP = spu::mpc::semi2k::XorBP;

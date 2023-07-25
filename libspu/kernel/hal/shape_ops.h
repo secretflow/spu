@@ -24,50 +24,43 @@ namespace spu::kernel::hal {
 /// the broadcast function
 // @param in, the input
 // @param to_shape, the target shape
-Value broadcast_to(SPUContext* ctx, const Value& in,
-                   absl::Span<const int64_t> to_shape,
-                   absl::Span<const int64_t> in_dims = {});
+Value broadcast_to(SPUContext* ctx, const Value& in, const Shape& to_shape,
+                   const Axes& in_dims = {});
 
 /// the reshape function
 // @param in, the input
 // @param to_shape, the target shape
-Value reshape(SPUContext* ctx, const Value& in,
-              absl::Span<const int64_t> to_shape);
+Value reshape(SPUContext* ctx, const Value& in, const Shape& to_shape);
 
 /// the slice function
 // @param input, the param
 // @param start_indices, the start indices
 // @param end_indices, the end indices
 // @param strides, the strides
-Value slice(SPUContext* ctx, const Value& input,
-            absl::Span<const int64_t> start_indices,
-            absl::Span<const int64_t> end_indices,
-            absl::Span<const int64_t> strides);
+Value slice(SPUContext* ctx, const Value& input, const Index& start_indices,
+            const Index& end_indices, const Strides& strides);
 
 /// This is a special slice for single element at indices
 // @returns a array with empty shape (scalar)
 Value slice_scalar_at(SPUContext* ctx, const Value& input,
-                      absl::Span<const int64_t> indices);
+                      const Index& indices);
 
 // update a block of in with update, start_indices is postion at in
 Value update_slice(SPUContext* ctx, const Value& in, const Value& update,
-                   absl::Span<const int64_t> start_indices);
+                   const Index& start_indices);
 
 /// the transpose function
 // @param in, the param
-Value transpose(SPUContext* ctx, const Value& in,
-                absl::Span<const int64_t> permutation = {});
+Value transpose(SPUContext* ctx, const Value& in, const Axes& permutation = {});
 
 //// the reverse function
 // @param in, the param
 // @param dimensions, dimensions to reverse
-Value reverse(SPUContext* ctx, const Value& in,
-              absl::Span<const int64_t> dimensions);
+Value reverse(SPUContext* ctx, const Value& in, const Axes& dimensions);
 
 /// Expand a scalar into to_shape.
 /// Compare with broadcast, expand actually reallocates and assign memory
-Value expand(SPUContext* ctx, const Value& in,
-             absl::Span<const int64_t> to_shape);
+Value expand(SPUContext* ctx, const Value& in, const Shape& to_shape);
 
 //// the pad function
 // @param in, the param
@@ -79,15 +72,14 @@ Value expand(SPUContext* ctx, const Value& in,
 // @param interior_padding, the amount of padding added between any two elements
 //        in each dimension
 Value pad(SPUContext* ctx, const Value& in, const Value& padding_value,
-          absl::Span<const int64_t> edge_padding_low,
-          absl::Span<const int64_t> edge_padding_high,
-          absl::Span<const int64_t> interior_padding);
+          const Sizes& edge_padding_low, const Sizes& edge_padding_high,
+          const Sizes& interior_padding);
 
 /// the concatenate function
 // @param first, the first param
 // @param second, the second param
 // @param axis, the axis
 Value concatenate(SPUContext* ctx, absl::Span<const Value> values,
-                  const size_t& axis);
+                  int64_t axis);
 
 }  // namespace spu::kernel::hal

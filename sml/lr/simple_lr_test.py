@@ -19,7 +19,7 @@ import pandas as pd
 import sys
 import os
 import spu.utils.simulation as spsim
-import spu.spu_pb2 as spu_pb2 
+import spu.spu_pb2 as spu_pb2
 from sklearn.metrics import roc_auc_score
 from sklearn.datasets import load_breast_cancer
 from sklearn.preprocessing import MinMaxScaler
@@ -47,14 +47,14 @@ class UnitTests(unittest.TestCase):
                 multi_class='ovr'
             )
             return model.fit(x, y).predict_proba(x)
-        
+
         # Create dataset
         X, y = load_breast_cancer(return_X_y=True, as_frame=True)
         scalar = MinMaxScaler(feature_range=(-2, 2))
         cols = X.columns
         X = scalar.fit_transform(X)
         X = pd.DataFrame(X, columns=cols)
-        
+
         # Run
         result = spsim.sim_jax(sim, proc)(X.values, y.values.reshape(-1, 1))  # X, y should be two-dimension array
         print("Predict result: ", result)

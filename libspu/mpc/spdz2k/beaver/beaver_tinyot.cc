@@ -19,7 +19,6 @@
 #include <cstddef>
 #include <random>
 
-#include "Eigen/Core"
 #include "yacl/base/dynamic_bitset.h"
 #include "yacl/crypto/primitives/ot/ot_store.h"
 #include "yacl/crypto/tools/prg.h"
@@ -63,22 +62,19 @@ uint128_t inline Sqrt2k(uint128_t residue, uint128_t bits) {
   return std::min({l(x), l(x + half_mod), l(-x), l(-x + half_mod)});
 }
 
-ArrayRef ring_sqrt2k(const ArrayRef& x, size_t bits = 0) {
+NdArrayRef ring_sqrt2k(const NdArrayRef& x, size_t bits = 0) {
   const auto field = x.eltype().as<Ring2k>()->field();
   const auto numel = x.numel();
   if (bits == 0) {
     bits = SizeOf(field) * 8;
   }
 
-  ArrayRef ret = ring_zeros(field, x.numel());
+  auto ret = ring_zeros(field, x.shape());
   DISPATCH_ALL_FIELDS(field, "_", [&]() {
     using U = std::make_unsigned<ring2k_t>::type;
-
-    auto x_data = ArrayView<U>(x);
-    auto ret_data = ArrayView<U>(ret);
     yacl::parallel_for(0, numel, 4096, [&](int64_t beg, int64_t end) {
       for (int64_t idx = beg; idx < end; ++idx) {
-        ret_data[idx] = Sqrt2k(x_data[idx], bits);
+        ret.at<U>(idx) = Sqrt2k(x.at<U>(idx), bits);
       }
     });
   });
@@ -97,40 +93,33 @@ uint128_t inline Invert2k(const uint128_t value, const size_t bits) {
   return ret;
 }
 
-ArrayRef ring_inv2k(const ArrayRef& x, size_t bits = 0) {
+NdArrayRef ring_inv2k(const NdArrayRef& x, size_t bits = 0) {
   const auto field = x.eltype().as<Ring2k>()->field();
   const auto numel = x.numel();
   if (bits == 0) {
     bits = SizeOf(field) * 8;
   }
 
-  ArrayRef ret = ring_zeros(field, x.numel());
+  auto ret = ring_zeros(field, x.shape());
   DISPATCH_ALL_FIELDS(field, "_", [&]() {
     using U = std::make_unsigned<ring2k_t>::type;
-
-    auto x_data = ArrayView<U>(x);
-    auto ret_data = ArrayView<U>(ret);
     yacl::parallel_for(0, numel, 4096, [&](int64_t beg, int64_t end) {
       for (int64_t idx = beg; idx < end; ++idx) {
-        ret_data[idx] = Invert2k(x_data[idx], bits);
+        ret.at<U>(idx) = Invert2k(x.at<U>(idx), bits);
       }
     });
   });
   return ret;
 }
 
-std::vector<bool> ring_cast_vector_boolean(const ArrayRef& x) {
+std::vector<bool> ring_cast_vector_boolean(const NdArrayRef& x) {
   const auto field = x.eltype().as<Ring2k>()->field();
 
   std::vector<bool> res(x.numel());
   DISPATCH_ALL_FIELDS(field, "RingOps", [&]() {
-    auto x_eigen = Eigen::Map<const Eigen::VectorX<ring2k_t>, 0,
-                              Eigen::InnerStride<Eigen::Dynamic>>(
-        &x.at<ring2k_t>(0), x.numel(),
-        Eigen::InnerStride<Eigen::Dynamic>(x.stride()));
     yacl::parallel_for(0, x.numel(), 4096, [&](size_t start, size_t end) {
       for (size_t i = start; i < end; i++) {
-        res[i] = static_cast<bool>(x_eigen[i] & 0x1);
+        res[i] = static_cast<bool>(x.at<ring2k_t>(i) & 0x1);
       }
     });
   });
@@ -198,8 +187,8 @@ uint128_t BeaverTinyOt::InitSpdzKey(FieldType field, size_t s) {
 // Fig. 11 Protocol for authenticating secret-shared values
 // SPDZ2k: Efficient MPC mod 2k for Dishonest Majority
 // - https://eprint.iacr.org/2018/482.pdf
-ArrayRef BeaverTinyOt::AuthArrayRef(const ArrayRef& x, FieldType field,
-                                    size_t k, size_t s) {
+NdArrayRef BeaverTinyOt::AuthArrayRef(const NdArrayRef& x, FieldType field,
+                                      size_t k, size_t s) {
   return DISPATCH_ALL_FIELDS(field, "_", [&]() {
     using T = ring2k_t;
 
@@ -214,9 +203,9 @@ ArrayRef BeaverTinyOt::AuthArrayRef(const ArrayRef& x, FieldType field,
 
     // 2. sample random masks
     int64_t t = x.numel();
-    size_t new_numel = t + 1;
-    ArrayRef x_hat(x.eltype(), new_numel);
-    auto x_mask = ring_rand(field, 1);
+    int64_t new_numel = t + 1;
+    NdArrayRef x_hat(x.eltype(), {new_numel});
+    auto x_mask = ring_rand(field, {1});
     for (int i = 0; i < t; ++i) {
       x_hat.at<T>(i) = x.at<T>(i);
     }
@@ -226,8 +215,8 @@ ArrayRef BeaverTinyOt::AuthArrayRef(const ArrayRef& x, FieldType field,
     size_t WorldSize = comm_->getWorldSize();
     size_t rank = comm_->getRank();
 
-    std::vector<ArrayRef> a, b;
-    auto alpha = ring_mul(ring_ones(field, new_numel), spdz_key_);
+    std::vector<NdArrayRef> a, b;
+    auto alpha = ring_mul(ring_ones(field, {new_numel}), spdz_key_);
     for (size_t i = 0; i < WorldSize; ++i) {
       for (size_t j = 0; j < WorldSize; ++j) {
         if (i == j) {
@@ -246,7 +235,7 @@ ArrayRef BeaverTinyOt::AuthArrayRef(const ArrayRef& x, FieldType field,
     }
 
     // 5. each party defines the MAC share
-    auto a_b = ring_zeros(field, new_numel);
+    auto a_b = ring_zeros(field, {new_numel});
     for (size_t i = 0; i < WorldSize - 1; ++i) {
       ring_add_(a_b, ring_sub(a[i], b[i]));
     }
@@ -255,7 +244,7 @@ ArrayRef BeaverTinyOt::AuthArrayRef(const ArrayRef& x, FieldType field,
 
     // Consistency check
     // 6. get l public random values
-    auto pub_r = prg_state_->genPubl(field, new_numel);
+    auto pub_r = prg_state_->genPubl(field, {new_numel});
     std::vector<int> rv;
     size_t numel = x.numel();
     for (size_t i = 0; i < numel; ++i) {
@@ -266,7 +255,7 @@ ArrayRef BeaverTinyOt::AuthArrayRef(const ArrayRef& x, FieldType field,
     // 7. caculate x_angle && 8. caculate m_angle
     T x_angle = 0;
     T m_angle = 0;
-    for (size_t i = 0; i < new_numel; ++i) {
+    for (int64_t i = 0; i < new_numel; ++i) {
       // x_hat, not x
       x_angle += rv[i] * x_hat.at<T>(i);
       m_angle += rv[i] * m.at<T>(i);
@@ -292,13 +281,14 @@ ArrayRef BeaverTinyOt::AuthArrayRef(const ArrayRef& x, FieldType field,
     SPU_ENFORCE(plain_z == 0);
 
     // 11. output MAC share
-    return m.slice(0, m.numel() - 1);
+    return m.slice({0}, {m.numel() - 1}, {1}).reshape(x.shape());
   });
 }
 
-BeaverTinyOt::Pair BeaverTinyOt::AuthCoinTossing(FieldType field, size_t size,
-                                                 size_t k, size_t s) {
-  auto rand = ring_rand(field, size);
+BeaverTinyOt::Pair BeaverTinyOt::AuthCoinTossing(FieldType field,
+                                                 const Shape& shape, size_t k,
+                                                 size_t s) {
+  auto rand = ring_rand(field, shape);
   auto mac = AuthArrayRef(rand, field, k, s);
   return {rand, mac};
 }
@@ -308,12 +298,12 @@ BeaverTinyOt::Pair BeaverTinyOt::AuthCoinTossing(FieldType field, size_t size,
 // Private Machine Learning.
 // Figure 2: TinyOT share to binary SPDZ2K share conversion.
 // - https://eprint.iacr.org/2019/599.pdf
-BeaverTinyOt::Triple_Pair BeaverTinyOt::AuthAnd(FieldType field, size_t size,
-                                                size_t s) {
+BeaverTinyOt::Triple_Pair BeaverTinyOt::AuthAnd(FieldType field,
+                                                const Shape& shape, size_t s) {
   const size_t elsize = SizeOf(field);
-  const size_t tinyot_num = size;
+  const int64_t tinyot_num = shape.numel();
   // extra sigma bits = 64
-  const size_t sigma = 64;
+  const int64_t sigma = 64;
 
   auto [auth_a, auth_b, auth_c] =
       TinyMul(comm_, send_opts_, recv_opts_, tinyot_num, tinyot_key_);
@@ -327,12 +317,12 @@ BeaverTinyOt::Triple_Pair BeaverTinyOt::AuthAnd(FieldType field, size_t size,
   AuthBit auth_abcr{std::vector<bool>(3 * tinyot_num + sigma, false),
                     std::vector<uint128_t>(3 * tinyot_num + sigma, 0),
                     tinyot_key_};
-  for (size_t i = 0; i < tinyot_num; ++i) {
+  for (int64_t i = 0; i < tinyot_num; ++i) {
     auth_abcr.choices[i] = auth_a.choices[i];
     auth_abcr.choices[tinyot_num + i] = auth_b.choices[i];
     auth_abcr.choices[tinyot_num * 2 + i] = auth_c.choices[i];
   }
-  for (size_t i = 0; i < sigma; ++i) {
+  for (int64_t i = 0; i < sigma; ++i) {
     auth_abcr.choices[tinyot_num * 3 + i] = auth_r.choices[i];
   }
   std::memcpy(&auth_abcr.mac[0], &auth_a.mac[0],
@@ -345,27 +335,25 @@ BeaverTinyOt::Triple_Pair BeaverTinyOt::AuthAnd(FieldType field, size_t size,
               sigma * sizeof(uint128_t));
 
   // Generate authorize bits in the form of B-Share
-  ArrayRef spdz_choices(makeType<RingTy>(field), tinyot_num * 3 + sigma);
+  NdArrayRef spdz_choices(makeType<RingTy>(field), {tinyot_num * 3 + sigma});
 
   DISPATCH_ALL_FIELDS(field, "_", [&]() {
     using U = std::make_unsigned<ring2k_t>::type;
-
-    auto _choices = ArrayView<U>(spdz_choices);
     auto _size = auth_abcr.choices.size();
     // copy authbit choices
     yacl::parallel_for(0, _size, 4096, [&](int64_t beg, int64_t end) {
       for (int64_t idx = beg; idx < end; ++idx) {
-        _choices[idx] = auth_abcr.choices[idx];
+        spdz_choices.at<U>(idx) = auth_abcr.choices[idx];
       }
     });
   });
 
-  ArrayRef spdz_mac(makeType<RingTy>(field), tinyot_num * 3 + sigma);
-  ArrayRef mask0(makeType<RingTy>(field), tinyot_num * 3 + sigma);
-  ArrayRef mask1(makeType<RingTy>(field), tinyot_num * 3 + sigma);
-  ArrayRef t(makeType<RingTy>(field), tinyot_num * 3 + sigma);
+  NdArrayRef spdz_mac(makeType<RingTy>(field), {tinyot_num * 3 + sigma});
+  NdArrayRef mask0(makeType<RingTy>(field), {tinyot_num * 3 + sigma});
+  NdArrayRef mask1(makeType<RingTy>(field), {tinyot_num * 3 + sigma});
+  NdArrayRef t(makeType<RingTy>(field), {tinyot_num * 3 + sigma});
   auto ext_spdz_key =
-      ring_mul(ring_ones(field, tinyot_num * 3 + sigma), spdz_key_);
+      ring_mul(ring_ones(field, {tinyot_num * 3 + sigma}), spdz_key_);
 
   if (comm_->getRank() == 0) {
     rotRecv(field, spdz_choices, &t);
@@ -389,33 +377,28 @@ BeaverTinyOt::Triple_Pair BeaverTinyOt::AuthAnd(FieldType field, size_t size,
 
   AuthBit check_tiny_bit = {std::vector<bool>(sigma, false),
                             std::vector<uint128_t>(sigma, 0), tinyot_key_};
-  ArrayRef check_spdz_bit = ring_zeros(field, sigma);
-  ArrayRef check_spdz_mac = ring_zeros(field, sigma);
+  auto check_spdz_bit = ring_zeros(field, {sigma});
+  auto check_spdz_mac = ring_zeros(field, {sigma});
   auto seed = GenSharedSeed(comm_);
   auto prg = yacl::crypto::Prg<uint64_t>(seed);
 
   DISPATCH_ALL_FIELDS(field, "_", [&]() {
     using U = std::make_unsigned<ring2k_t>::type;
 
-    auto _spdz_bit = ArrayView<U>(spdz_choices);
-    auto _spdz_mac = ArrayView<U>(spdz_mac);
-    auto _check_spdz_bit = ArrayView<U>(check_spdz_bit);
-    auto _check_spdz_mac = ArrayView<U>(check_spdz_mac);
-
-    for (size_t i = 0; i < sigma; ++i) {
-      _check_spdz_bit[i] = _spdz_bit[3 * tinyot_num + i];
-      _check_spdz_mac[i] = _spdz_mac[3 * tinyot_num + i];
+    for (int64_t i = 0; i < sigma; ++i) {
+      check_spdz_bit.at<U>(i) = spdz_choices.at<U>(3 * tinyot_num + i);
+      check_spdz_mac.at<U>(i) = spdz_mac.at<U>(3 * tinyot_num + i);
       check_tiny_bit.mac[i] = auth_abcr.mac[tinyot_num * 3 + i];
     }
-    for (size_t j = 0; j < tinyot_num * 3; ++j) {
+    for (int64_t j = 0; j < tinyot_num * 3; ++j) {
       // we can ignore check_tiny_bit.choices
       uint64_t ceof = prg();
       // sigma = 64
       for (size_t i = 0; i < sigma; ++i) {
         if (ceof & 1) {
           check_tiny_bit.mac[i] ^= auth_abcr.mac[j];
-          _check_spdz_bit[i] += _spdz_bit[j];
-          _check_spdz_mac[i] += _spdz_mac[j];
+          check_spdz_bit.at<U>(i) += spdz_choices.at<U>(j);
+          check_spdz_mac.at<U>(i) += spdz_mac.at<U>(j);
         }
         ceof >>= 1;
       }
@@ -432,37 +415,39 @@ BeaverTinyOt::Triple_Pair BeaverTinyOt::AuthAnd(FieldType field, size_t size,
   SPU_ENFORCE(BatchMacCheck(open_bit, zero_mac, k, s));
 
   // Pack a,b,c and their mac
-  auto a =
-      ArrayRef(spdz_choices.buf(), spdz_choices.eltype(), tinyot_num, 1, 0);
-  auto b = ArrayRef(spdz_choices.buf(), spdz_choices.eltype(), tinyot_num, 1,
-                    tinyot_num * elsize);
-  auto c = ArrayRef(spdz_choices.buf(), spdz_choices.eltype(), tinyot_num, 1,
-                    2 * tinyot_num * elsize);
+  auto compact_strides = makeCompactStrides(shape);
+  auto a = NdArrayRef(spdz_choices.buf(), spdz_choices.eltype(), shape,
+                      compact_strides, 0);
+  auto b = NdArrayRef(spdz_choices.buf(), spdz_choices.eltype(), shape,
+                      compact_strides, tinyot_num * elsize);
+  auto c = NdArrayRef(spdz_choices.buf(), spdz_choices.eltype(), shape,
+                      compact_strides, 2 * tinyot_num * elsize);
 
-  auto a_mac = ArrayRef(spdz_mac.buf(), spdz_mac.eltype(), tinyot_num, 1, 0);
-  auto b_mac = ArrayRef(spdz_mac.buf(), spdz_mac.eltype(), tinyot_num, 1,
-                        tinyot_num * elsize);
-  auto c_mac = ArrayRef(spdz_mac.buf(), spdz_mac.eltype(), tinyot_num, 1,
-                        2 * tinyot_num * elsize);
+  auto a_mac =
+      NdArrayRef(spdz_mac.buf(), spdz_mac.eltype(), shape, compact_strides, 0);
+  auto b_mac = NdArrayRef(spdz_mac.buf(), spdz_mac.eltype(), shape,
+                          compact_strides, tinyot_num * elsize);
+  auto c_mac = NdArrayRef(spdz_mac.buf(), spdz_mac.eltype(), shape,
+                          compact_strides, 2 * tinyot_num * elsize);
 
   return {{a, b, c}, {a_mac, b_mac, c_mac}};
 }
 
-BeaverTinyOt::Triple BeaverTinyOt::dot(FieldType field, size_t M, size_t N,
-                                       size_t K, size_t k, size_t s) {
+BeaverTinyOt::Triple BeaverTinyOt::dot(FieldType field, int64_t M, int64_t N,
+                                       int64_t K, size_t k, size_t s) {
   size_t WorldSize = comm_->getWorldSize();
   size_t rank = comm_->getRank();
 
-  auto a = ring_rand(field, M * K);
-  auto b = ring_rand(field, K * N);
+  auto a = ring_rand(field, {M, K});
+  auto b = ring_rand(field, {K, N});
   ring_bitmask_(a, 0, k);
   ring_bitmask_(b, 0, k);
 
-  auto c = ring_mmul(a, b, M, N, K);
+  auto c = ring_mmul(a, b);
 
   // w = a * b + v
-  std::vector<ArrayRef> w;
-  std::vector<ArrayRef> v;
+  std::vector<NdArrayRef> w;
+  std::vector<NdArrayRef> v;
   // every pair calls voleDot
   for (size_t i = 0; i < WorldSize; ++i) {
     for (size_t j = 0; j < WorldSize; ++j) {
@@ -490,8 +475,8 @@ BeaverTinyOt::Triple BeaverTinyOt::dot(FieldType field, size_t M, size_t N,
 // 6 PreProcessing: Creating Multiplication Triples,
 // SPDZ2k: Efficient MPC mod 2k for Dishonest Majority
 // - https://eprint.iacr.org/2018/482.pdf
-BeaverTinyOt::Triple_Pair BeaverTinyOt::AuthDot(FieldType field, size_t M,
-                                                size_t N, size_t K, size_t k,
+BeaverTinyOt::Triple_Pair BeaverTinyOt::AuthDot(FieldType field, int64_t M,
+                                                int64_t N, int64_t K, size_t k,
                                                 size_t s) {
   // Dot
   auto [a_ext, b, c_ext] = dot(field, 2 * M, N, K, k, s);
@@ -501,29 +486,29 @@ BeaverTinyOt::Triple_Pair BeaverTinyOt::AuthDot(FieldType field, size_t M,
   auto b_mac = AuthArrayRef(b, field, k, s);
   auto c_ext_mac = AuthArrayRef(c_ext, field, k, s);
 
-  auto a = a_ext.slice(0, M * K, 1);
-  auto a_mac = a_ext_mac.slice(0, M * K, 1);
-  auto c = c_ext.slice(0, M * N, 1);
-  auto c_mac = c_ext_mac.slice(0, M * N, 1);
+  auto a = a_ext.slice({0, 0}, {M, K}, {1, 1});
+  auto a_mac = a_ext_mac.slice({0, 0}, {M, K}, {1, 1});
+  auto c = c_ext.slice({0, 0}, {M, N}, {1, 1});
+  auto c_mac = c_ext_mac.slice({0, 0}, {M, N}, {1, 1});
 
   // Sacrifice
-  auto a2 = a_ext.slice(M * K, 2 * M * K, 1);
-  auto a2_mac = a_ext_mac.slice(M * K, 2 * M * K, 1);
-  auto c2 = c_ext.slice(M * N, 2 * M * N, 1);
-  auto c2_mac = c_ext_mac.slice(M * N, 2 * M * N, 1);
+  auto a2 = a_ext.slice({M, 0}, {2 * M, K}, {1, 1});
+  auto a2_mac = a_ext_mac.slice({M, 0}, {2 * M, K}, {1, 1});
+  auto c2 = c_ext.slice({M, 0}, {2 * M, N}, {1, 1});
+  auto c2_mac = c_ext_mac.slice({M, 0}, {2 * M, N}, {1, 1});
 
-  auto t = prg_state_->genPubl(field, M * M);
-  auto rou = ring_sub(ring_mmul(t, a, M, K, M), a2);
-  auto rou_mac = ring_sub(ring_mmul(t, a_mac, M, K, M), a2_mac);
+  auto t = prg_state_->genPubl(field, {M, M});
+  auto rou = ring_sub(ring_mmul(t, a), a2);
+  auto rou_mac = ring_sub(ring_mmul(t, a_mac), a2_mac);
 
   auto [pub_rou, check_rou_mac] = BatchOpen(rou, rou_mac, k, s);
   SPU_ENFORCE(BatchMacCheck(pub_rou, check_rou_mac, k, s));
 
-  auto t_delta = ring_sub(ring_mmul(t, c, M, N, M), c2);
-  auto delta = ring_sub(t_delta, ring_mmul(pub_rou, b, M, N, K));
+  auto t_delta = ring_sub(ring_mmul(t, c), c2);
+  auto delta = ring_sub(t_delta, ring_mmul(pub_rou, b));
 
-  auto t_delta_mac = ring_sub(ring_mmul(t, c_mac, M, N, M), c2_mac);
-  auto delta_mac = ring_sub(t_delta_mac, ring_mmul(pub_rou, b_mac, M, N, K));
+  auto t_delta_mac = ring_sub(ring_mmul(t, c_mac), c2_mac);
+  auto delta_mac = ring_sub(t_delta_mac, ring_mmul(pub_rou, b_mac));
 
   auto [pub_delta, check_delta_mac] = BatchOpen(delta, delta_mac, k, s);
   SPU_ENFORCE(BatchMacCheck(pub_delta, check_delta_mac, k, s));
@@ -532,27 +517,29 @@ BeaverTinyOt::Triple_Pair BeaverTinyOt::AuthDot(FieldType field, size_t M,
   return {{a, b, c}, {a_mac, b_mac, c_mac}};
 }
 
-BeaverTinyOt::Pair_Pair BeaverTinyOt::AuthTrunc(FieldType field, size_t size,
-                                                size_t bits, size_t k,
-                                                size_t s) {
+BeaverTinyOt::Pair_Pair BeaverTinyOt::AuthTrunc(FieldType field,
+                                                const Shape& shape, size_t bits,
+                                                size_t k, size_t s) {
   size_t nbits = k;
 
-  auto [b_val, b_mac] = AuthRandBit(field, nbits * size, k, s);
+  int64_t size = shape.numel();
+  NdArrayRef b_val, b_mac;
+  std::tie(b_val, b_mac) = AuthRandBit(field, {(int64_t)nbits * size}, k, s);
 
   // compose
-  ArrayRef r_val(b_val.eltype(), size);
-  ArrayRef r_mac(b_val.eltype(), size);
-  ArrayRef tr_val(b_val.eltype(), size);
-  ArrayRef tr_mac(b_val.eltype(), size);
+  NdArrayRef r_val(b_val.eltype(), shape);
+  NdArrayRef r_mac(b_val.eltype(), shape);
+  NdArrayRef tr_val(b_val.eltype(), shape);
+  NdArrayRef tr_mac(b_val.eltype(), shape);
 
   DISPATCH_ALL_FIELDS(field, "_", [&]() {
     using PShrT = ring2k_t;
-    auto _val = ArrayView<PShrT>(b_val);
-    auto _mac = ArrayView<PShrT>(b_mac);
-    auto _r_val = ArrayView<PShrT>(r_val);
-    auto _r_mac = ArrayView<PShrT>(r_mac);
-    auto _tr_val = ArrayView<PShrT>(tr_val);
-    auto _tr_mac = ArrayView<PShrT>(tr_mac);
+    auto _val = b_val.data<PShrT>();
+    auto _mac = b_mac.data<PShrT>();
+    auto _r_val = r_val.data<PShrT>();
+    auto _r_mac = r_mac.data<PShrT>();
+    auto _tr_val = tr_val.data<PShrT>();
+    auto _tr_mac = tr_mac.data<PShrT>();
     pforeach(0, size, [&](int64_t idx) {
       _r_val[idx] = 0;
       _r_mac[idx] = 0;
@@ -585,15 +572,16 @@ BeaverTinyOt::Pair_Pair BeaverTinyOt::AuthTrunc(FieldType field, size_t size,
 // Private Machine Learning.
 // Figure 5: Protocol for obtaining authenticated shared bits
 // - https://eprint.iacr.org/2019/599.pdf
-BeaverTinyOt::Pair BeaverTinyOt::AuthRandBit(FieldType field, size_t size,
-                                             size_t k, size_t s) {
-  auto u = ring_rand(field, size);
+BeaverTinyOt::Pair BeaverTinyOt::AuthRandBit(FieldType field,
+                                             const Shape& shape, size_t k,
+                                             size_t s) {
+  auto u = ring_rand(field, shape);
   ring_bitmask_(u, 0, k + 2);
   auto u_mac = AuthArrayRef(u, field, k + 2, s);
 
   auto y = ring_mul(u, 2);
   auto y_mac = ring_mul(u_mac, 2);
-  auto ones = ring_ones(field, size);
+  auto ones = ring_ones(field, shape);
   auto ones_mac = ring_mul(ones, spdz_key_);
 
   if (comm_->getRank() == 0) {
@@ -601,7 +589,7 @@ BeaverTinyOt::Pair BeaverTinyOt::AuthRandBit(FieldType field, size_t size,
   }
   ring_add_(y_mac, ones_mac);
 
-  auto [beaver_vec, beaver_mac] = AuthMul(field, size, k, s);
+  auto [beaver_vec, beaver_mac] = AuthMul(field, shape, k, s);
   auto& [a, b, c] = beaver_vec;
   auto& [a_mac, b_mac, c_mac] = beaver_mac;
 
@@ -654,8 +642,8 @@ BeaverTinyOt::Pair BeaverTinyOt::AuthRandBit(FieldType field, size_t size,
   return {d, d_mac};
 }
 
-ArrayRef BeaverTinyOt::genPublCoin(FieldType field, size_t numel) {
-  ArrayRef res(makeType<RingTy>(field), numel);
+NdArrayRef BeaverTinyOt::genPublCoin(FieldType field, int64_t num) {
+  NdArrayRef res(makeType<RingTy>(field), {num});
 
   // generate new seed
   uint128_t seed = yacl::crypto::SecureRandSeed();
@@ -684,23 +672,23 @@ ArrayRef BeaverTinyOt::genPublCoin(FieldType field, size_t numel) {
 // - https://eprint.iacr.org/2018/482.pdf
 //
 // Check the opened value only
-bool BeaverTinyOt::BatchMacCheck(const ArrayRef& open_value,
-                                 const ArrayRef& mac, size_t k, size_t s) {
+bool BeaverTinyOt::BatchMacCheck(const NdArrayRef& open_value,
+                                 const NdArrayRef& mac, size_t k, size_t s) {
   SPDLOG_DEBUG("BatchMacCheck start...");
-  SPU_ENFORCE(open_value.numel() == mac.numel());
+  SPU_ENFORCE(open_value.shape() == mac.shape());
   const auto field = open_value.eltype().as<Ring2k>()->field();
   const size_t mac_bits = k + s;
   const size_t key = spdz_key_;
-  size_t num = open_value.numel();
+  int64_t num = open_value.numel();
 
   // 1. Generate ceof
-  auto coef = genPublCoin(field, num);
+  auto coef = genPublCoin(field, num).reshape({1, num});
   ring_bitmask_(coef, 0, s);
 
   // 3. check_value = coef * open_value
   //    check_mac = coef * mac
-  auto check_value = ring_mmul(coef, open_value, 1, 1, num);
-  auto check_mac = ring_mmul(coef, mac, 1, 1, num);
+  auto check_value = ring_mmul(coef, open_value.reshape({num, 1}));
+  auto check_mac = ring_mmul(coef, mac.reshape({num, 1}));
 
   // 4. local_mac = check_mac - check_value * key
   auto local_mac = ring_sub(check_mac, ring_mul(check_value, key));
@@ -712,12 +700,12 @@ bool BeaverTinyOt::BatchMacCheck(const ArrayRef& open_value,
   SPU_ENFORCE(all_mac_strs.size() == comm_->getWorldSize());
 
   // 5. compute the sum of all macs
-  auto zero_mac = ring_zeros(field, 1);
+  auto zero_mac = ring_zeros(field, {1});
   for (size_t i = 0; i < comm_->getWorldSize(); ++i) {
     const auto& _mac_str = all_mac_strs[i];
     auto buf = std::make_shared<yacl::Buffer>(_mac_str.data(), _mac_str.size());
-    ArrayRef _mac(buf, zero_mac.eltype(), _mac_str.size() / SizeOf(field), 1,
-                  0);
+    NdArrayRef _mac(buf, zero_mac.eltype(),
+                    {(int64_t)(_mac_str.size() / SizeOf(field))}, {1}, 0);
     ring_add_(zero_mac, _mac);
   }
 
@@ -727,7 +715,7 @@ bool BeaverTinyOt::BatchMacCheck(const ArrayRef& open_value,
   }
 
   // 7. verify whether the sum of all macs is zero
-  auto res = ring_all_equal(zero_mac, ring_zeros(field, 1));
+  auto res = ring_all_equal(zero_mac, ring_zeros(field, {1}));
   SPDLOG_DEBUG("BatchMacCheck end with ret {}.", res);
   return res;
 }
@@ -740,14 +728,13 @@ bool BeaverTinyOt::BatchMacCheck(const ArrayRef& open_value,
 // Open the value only
 // Notice return { open_val , zero_mac = open_val * \sum spdz_key_ }
 // the last kth bits in open_val is valid
-std::pair<ArrayRef, ArrayRef> BeaverTinyOt::BatchOpen(const ArrayRef& value,
-                                                      const ArrayRef& mac,
-                                                      size_t k, size_t s) {
+std::pair<NdArrayRef, NdArrayRef> BeaverTinyOt::BatchOpen(
+    const NdArrayRef& value, const NdArrayRef& mac, size_t k, size_t s) {
   static constexpr char kBindName[] = "batch_open";
-  SPU_ENFORCE(value.numel() == mac.numel());
+  SPU_ENFORCE(value.shape() == mac.shape());
   const auto field = value.eltype().as<Ring2k>()->field();
-  size_t field_bits = std::min(SizeOf(field) * 8, (size_t)64);
-  auto [r_val, r_mac] = AuthCoinTossing(field, value.numel(), field_bits, s);
+  size_t field_bits = std::min<size_t>(SizeOf(field) * 8, 64);
+  auto [r_val, r_mac] = AuthCoinTossing(field, value.shape(), field_bits, s);
   // Open the low k_bits only
   // value = value + r * 2^k
   // mac = mac + r_mac * 2^k
@@ -760,7 +747,7 @@ std::pair<ArrayRef, ArrayRef> BeaverTinyOt::BatchOpen(const ArrayRef& value,
   return {open_val, masked_mac};
 }
 
-void BeaverTinyOt::rotSend(FieldType field, ArrayRef* q0, ArrayRef* q1) {
+void BeaverTinyOt::rotSend(FieldType field, NdArrayRef* q0, NdArrayRef* q1) {
   DISPATCH_ALL_FIELDS(field, "_", [&]() {
     using T = ring2k_t;
 
@@ -782,7 +769,8 @@ void BeaverTinyOt::rotSend(FieldType field, ArrayRef* q0, ArrayRef* q1) {
 }
 
 // todo: use dynamic_bitset instead of ArrayRef for `a` to improve performance
-void BeaverTinyOt::rotRecv(FieldType field, const ArrayRef& a, ArrayRef* s) {
+void BeaverTinyOt::rotRecv(FieldType field, const NdArrayRef& a,
+                           NdArrayRef* s) {
   DISPATCH_ALL_FIELDS(field, "_", [&]() {
     using T = ring2k_t;
 
@@ -810,38 +798,36 @@ void BeaverTinyOt::rotRecv(FieldType field, const ArrayRef& a, ArrayRef* s) {
 // Appendix C. Implementing Vector-OLE mod 2^l, P35
 // SPDZ2k: Efficient MPC mod 2k for Dishonest Majority
 // - https://eprint.iacr.org/2018/482.pdf
-ArrayRef BeaverTinyOt::voleSend(FieldType field, const ArrayRef& x) {
+NdArrayRef BeaverTinyOt::voleSend(FieldType field, const NdArrayRef& x) {
   return DISPATCH_ALL_FIELDS(field, "_", [&]() {
     using T = ring2k_t;
 
     SPU_ENFORCE(spdz2k_ot_primitives_ != nullptr);
     SPU_ENFORCE(spdz2k_ot_primitives_->GetSenderCOT() != nullptr);
 
-    size_t numel = x.numel();
-    ArrayRef res(x.eltype(), numel);
+    NdArrayRef res(x.eltype(), x.shape());
     T* data = reinterpret_cast<T*>(res.data());
     spdz2k_ot_primitives_->GetSenderCOT()->SendVole(
-        absl::MakeConstSpan(reinterpret_cast<const T*>(x.data()), numel),
-        absl::MakeSpan(data, numel));
+        absl::MakeConstSpan(reinterpret_cast<const T*>(x.data()), x.numel()),
+        absl::MakeSpan(data, x.numel()));
 
     return res;
   });
 }
 
-ArrayRef BeaverTinyOt::voleRecv(FieldType field, const ArrayRef& alpha) {
+NdArrayRef BeaverTinyOt::voleRecv(FieldType field, const NdArrayRef& alpha) {
   return DISPATCH_ALL_FIELDS(field, "_", [&]() {
     using T = ring2k_t;
 
     SPU_ENFORCE(spdz2k_ot_primitives_ != nullptr);
     SPU_ENFORCE(spdz2k_ot_primitives_->GetReceiverCOT() != nullptr);
 
-    size_t size = alpha.numel();
-    ArrayRef res(makeType<RingTy>(field), size);
+    NdArrayRef res(makeType<RingTy>(field), alpha.shape());
     T* data = reinterpret_cast<T*>(res.data());
     spdz2k_ot_primitives_->GetReceiverCOT()->RecvVole(
         absl::MakeConstSpan(reinterpret_cast<const T*>(alpha.data()),
                             alpha.numel()),
-        absl::MakeSpan(data, size));
+        absl::MakeSpan(data, alpha.numel()));
 
     return res;
   });
@@ -853,23 +839,23 @@ ArrayRef BeaverTinyOt::voleRecv(FieldType field, const ArrayRef& alpha) {
 //
 // Input: (M, K) matrix
 // Output: (M, N) matrix
-ArrayRef BeaverTinyOt::voleSendDot(FieldType field, const ArrayRef& x, size_t M,
-                                   size_t N, size_t K) {
-  SPU_ENFORCE(x.numel() == static_cast<int64_t>(M * K));
+NdArrayRef BeaverTinyOt::voleSendDot(FieldType field, const NdArrayRef& x,
+                                     int64_t M, int64_t N, int64_t K) {
+  SPU_ENFORCE(x.shape() == (std::vector<int64_t>{M, K}));
 
-  auto ret = ring_zeros(field, M * N);
-  for (size_t i = 0; i < N; ++i) {
+  auto ret = ring_zeros(field, {M * N});
+  for (int64_t i = 0; i < N; ++i) {
     // t: (M, K) matrix
-    auto t = voleSend(field, x);
+    auto t = voleSend(field, x).reshape({M * K});
 
     // process the matrix
-    auto ret_col = ret.slice(i, M * N, N);
-    for (size_t j = 0; j < K; ++j) {
-      ring_add_(ret_col, t.slice(j, M * K, K));
+    auto ret_col = ret.slice({i}, {M * N}, {N});
+    for (int64_t j = 0; j < K; ++j) {
+      ring_add_(ret_col, t.slice({j}, {M * K}, {K}));
     }
   }
 
-  return ret;
+  return ret.reshape({M, N});
 }
 
 // Private Matrix Multiplication by VOLE
@@ -878,17 +864,18 @@ ArrayRef BeaverTinyOt::voleSendDot(FieldType field, const ArrayRef& x, size_t M,
 //
 // Input: (K, N) matrix
 // Output: (M, N) matrix
-ArrayRef BeaverTinyOt::voleRecvDot(FieldType field, const ArrayRef& alpha,
-                                   size_t M, size_t N, size_t K) {
-  SPU_ENFORCE(alpha.numel() == static_cast<int64_t>(K * N));
+NdArrayRef BeaverTinyOt::voleRecvDot(FieldType field, const NdArrayRef& alpha,
+                                     int64_t M, int64_t N, int64_t K) {
+  SPU_ENFORCE(alpha.shape() == (std::vector<int64_t>{K, N}));
 
-  auto ret = ring_zeros(field, M * N);
-  for (size_t i = 0; i < N; ++i) {
-    auto alpha_col = alpha.slice(i, K * N, N);
+  auto ret = ring_zeros(field, {M * N});
+  auto f_alpha = alpha.reshape({alpha.numel()});
+  for (int64_t i = 0; i < N; ++i) {
+    auto alpha_col = f_alpha.slice({i}, {K * N}, {N});
 
-    ArrayRef alpha_ext(alpha.eltype(), M * K);
-    for (size_t i = 0; i < M; ++i) {
-      auto alpha_ext_row = alpha_ext.slice(i * K, (i + 1) * K, 1);
+    NdArrayRef alpha_ext(alpha.eltype(), {M * K});
+    for (int64_t i = 0; i < M; ++i) {
+      auto alpha_ext_row = alpha_ext.slice({i * K}, {(i + 1) * K}, {1});
       ring_assign(alpha_ext_row, alpha_col);
     }
 
@@ -896,43 +883,46 @@ ArrayRef BeaverTinyOt::voleRecvDot(FieldType field, const ArrayRef& alpha,
     auto t = voleRecv(field, alpha_ext);
 
     // process the matrix
-    auto ret_col = ret.slice(i, M * N, N);
-    for (size_t j = 0; j < K; ++j) {
-      ring_add_(ret_col, t.slice(j, M * K, K));
+    auto ret_col = ret.slice({i}, {M * N}, {N});
+    for (int64_t j = 0; j < K; ++j) {
+      ring_add_(ret_col, t.slice({j}, {M * K}, {K}));
     }
   }
 
-  return ret;
+  return ret.reshape({M, N});
 }
 
 // Refer to:
 // 6 PreProcessing: Creating Multiplication Triples,
 // SPDZ2k: Efficient MPC mod 2k for Dishonest Majority
 // - https://eprint.iacr.org/2018/482.pdf
-BeaverTinyOt::Triple_Pair BeaverTinyOt::AuthMul(FieldType field, size_t size,
-                                                size_t k, size_t s) {
+BeaverTinyOt::Triple_Pair BeaverTinyOt::AuthMul(FieldType field,
+                                                const Shape& shape, size_t k,
+                                                size_t s) {
+  auto _size = shape.numel();
+
   return DISPATCH_ALL_FIELDS(field, "_", [&]() {
     using T = ring2k_t;
 
     SPDLOG_DEBUG("AuthMul start...");
-    size_t tao = 4 * s + 2 * k;
-    size_t expand_tao = tao * size;
-    auto a = ring_randbit(field, expand_tao);
+    int64_t tao = 4 * s + 2 * k;
+    int64_t expand_tao = tao * _size;
+    auto a = ring_randbit(field, {expand_tao});
 
-    auto b = ring_rand(field, size);
-    auto b_arr = ring_zeros(field, expand_tao);
-    for (size_t i = 0; i < expand_tao; ++i) {
+    auto b = ring_rand(field, {_size});
+    auto b_arr = ring_zeros(field, {expand_tao});
+    for (int64_t i = 0; i < expand_tao; ++i) {
       b_arr.at<T>(i) = b.at<T>(i / tao);
     }
 
     // Every ordered pair does following
     size_t WorldSize = comm_->getWorldSize();
     size_t rank = comm_->getRank();
-    ArrayRef q0(makeType<RingTy>(field), expand_tao);
-    ArrayRef q1(makeType<RingTy>(field), expand_tao);
-    ArrayRef t_s(makeType<RingTy>(field), expand_tao);
+    NdArrayRef q0(makeType<RingTy>(field), {expand_tao});
+    NdArrayRef q1(makeType<RingTy>(field), {expand_tao});
+    NdArrayRef t_s(makeType<RingTy>(field), {expand_tao});
 
-    std::vector<ArrayRef> ci, cj;
+    std::vector<NdArrayRef> ci, cj;
 
     for (size_t i = 0; i < WorldSize; ++i) {
       for (size_t j = 0; j < WorldSize; ++j) {
@@ -943,8 +933,8 @@ BeaverTinyOt::Triple_Pair BeaverTinyOt::AuthMul(FieldType field, size_t size,
         if (i == rank) {
           rotRecv(field, a, &t_s);
           auto tmp = comm_->lctx()->Recv(j, "recv_d");
-          ArrayRef recv_d(std::make_shared<yacl::Buffer>(tmp), a.eltype(),
-                          a.numel(), a.stride(), a.offset());
+          NdArrayRef recv_d(std::make_shared<yacl::Buffer>(tmp), a.eltype(),
+                            a.shape(), a.strides(), a.offset());
           auto t = ring_add(t_s, ring_mul(a, recv_d));
           ci.emplace_back(t);
         }
@@ -958,8 +948,8 @@ BeaverTinyOt::Triple_Pair BeaverTinyOt::AuthMul(FieldType field, size_t size,
       }
     }
 
-    auto cij = ring_zeros(field, expand_tao);
-    auto cji = ring_zeros(field, expand_tao);
+    auto cij = ring_zeros(field, {expand_tao});
+    auto cji = ring_zeros(field, {expand_tao});
     for (size_t i = 0; i < WorldSize - 1; ++i) {
       ring_add_(cij, ci[i]);
       ring_add_(cji, cj[i]);
@@ -971,19 +961,19 @@ BeaverTinyOt::Triple_Pair BeaverTinyOt::AuthMul(FieldType field, size_t size,
     ring_add_(c, other_c);
 
     // Combine
-    auto r = prg_state_->genPubl(field, expand_tao);
-    auto r_hat = prg_state_->genPubl(field, expand_tao);
+    auto r = prg_state_->genPubl(field, {expand_tao});
+    auto r_hat = prg_state_->genPubl(field, {expand_tao});
     auto ra = ring_mul(r, a);
     auto ra_hat = ring_mul(r_hat, a);
     auto rc = ring_mul(r, c);
     auto rc_hat = ring_mul(r_hat, c);
 
-    ArrayRef cra = ring_zeros(field, size);
-    ArrayRef cra_hat = ring_zeros(field, size);
-    ArrayRef crc = ring_zeros(field, size);
-    ArrayRef crc_hat = ring_zeros(field, size);
+    NdArrayRef cra = ring_zeros(field, {_size});
+    NdArrayRef cra_hat = ring_zeros(field, {_size});
+    NdArrayRef crc = ring_zeros(field, {_size});
+    NdArrayRef crc_hat = ring_zeros(field, {_size});
 
-    for (size_t i = 0; i < expand_tao; ++i) {
+    for (int64_t i = 0; i < expand_tao; ++i) {
       cra.at<T>(i / tao) += ra.at<T>(i);
       cra_hat.at<T>(i / tao) += ra_hat.at<T>(i);
 
@@ -1000,7 +990,7 @@ BeaverTinyOt::Triple_Pair BeaverTinyOt::AuthMul(FieldType field, size_t size,
     auto c_hat_mac = AuthArrayRef(crc_hat, field, k, s);
 
     // Sacrifice
-    auto t = prg_state_->genPubl(field, size);
+    auto t = prg_state_->genPubl(field, {_size});
     auto rou = ring_sub(ring_mul(t, cra), cra_hat);
     auto rou_mac = ring_sub(ring_mul(t, a_mac), a_hat_mac);
 
@@ -1018,7 +1008,9 @@ BeaverTinyOt::Triple_Pair BeaverTinyOt::AuthMul(FieldType field, size_t size,
 
     SPDLOG_DEBUG("AuthMul end");
     // Output
-    return BeaverTinyOt::Triple_Pair{{cra, b, crc}, {a_mac, b_mac, c_mac}};
+    return BeaverTinyOt::Triple_Pair{
+        {cra.reshape(shape), b.reshape(shape), crc.reshape(shape)},
+        {a_mac.reshape(shape), b_mac.reshape(shape), c_mac.reshape(shape)}};
   });
 }
 

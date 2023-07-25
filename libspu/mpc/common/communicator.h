@@ -23,7 +23,7 @@
 #include "yacl/base/buffer.h"
 #include "yacl/link/link.h"
 
-#include "libspu/core/array_ref.h"
+#include "libspu/core/ndarray_ref.h"
 #include "libspu/core/object.h"
 #include "libspu/core/parallel_utils.h"
 #include "libspu/core/prelude.h"
@@ -98,16 +98,16 @@ class Communicator : public State {
 
   size_t nextRank() const { return lctx_->NextRank(); }
 
-  ArrayRef allReduce(ReduceOp op, const ArrayRef& in, std::string_view tag);
+  NdArrayRef allReduce(ReduceOp op, const NdArrayRef& in, std::string_view tag);
 
-  ArrayRef reduce(ReduceOp op, const ArrayRef& in, size_t root,
-                  std::string_view tag);
+  NdArrayRef reduce(ReduceOp op, const NdArrayRef& in, size_t root,
+                    std::string_view tag);
 
-  ArrayRef rotate(const ArrayRef& in, std::string_view tag);
+  NdArrayRef rotate(const NdArrayRef& in, std::string_view tag);
 
-  void sendAsync(size_t dst_rank, const ArrayRef& in, std::string_view tag);
+  void sendAsync(size_t dst_rank, const NdArrayRef& in, std::string_view tag);
 
-  ArrayRef recv(size_t src_rank, const Type& eltype, std::string_view tag);
+  NdArrayRef recv(size_t src_rank, const Type& eltype, std::string_view tag);
 
   template <typename T>
   std::vector<T> rotate(absl::Span<T const> in, std::string_view tag);

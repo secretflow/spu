@@ -43,7 +43,7 @@ void forEachIndex(absl::Span<const int64_t> shape,
   // Allows handling R0 arrays, such that the visitor function will be called
   // once with the proper empty indexes.
   int64_t n = rank;
-  std::vector<int64_t> indexes(base.begin(), base.end());
+  Index indexes(base.begin(), base.end());
 
   while (n >= 0) {
     visitor_function(indexes);
@@ -118,8 +118,8 @@ inline void RunOnWindowIndex(
     absl::Span<const int64_t> base_dilation,
     absl::Span<const int64_t> window_count_index,
     absl::Span<const int64_t> window_index,
-    const std::function<void(absl::Span<const int64_t>)> &f) {
-  std::vector<int64_t> base_index(base_shape.size());
+    const std::function<void(const Index &)> &f) {
+  Index base_index(base_shape.size());
   bool out_of_bound = getBaseIndexFromWindowIndex(
       window_shape, window_strides, window_dilation, window_padding, base_shape,
       base_dilation, window_count_index, window_index,

@@ -616,7 +616,8 @@ ArrayRef CheetahMul::Impl::DecryptArray(
               "BeaverCheetah: cipher size mismatch");
   SPU_ENFORCE(ms_helpers_.count(field_bitlen) > 0);
 
-  auto rns_temp = ring_zeros(FieldType::FM64, size * num_seal_ctx);
+  auto rns_temp =
+      ring_zeros(FieldType::FM64, {static_cast<int64_t>(size * num_seal_ctx)});
   auto xrns_temp = xt_mutable_adapt<uint64_t>(rns_temp);
 
   yacl::parallel_for(
@@ -671,9 +672,9 @@ void CheetahMul::Impl::NoiseFloodCiphertext(RLWECt &ct,
 
   // sample random from [0, 2^{kStatRandom})
   auto random = CPRNG(FieldType::FM64, num_coeffs);
-  auto xrandom = xt_mutable_adapt<uint64_t>(random);
-  std::transform(xrandom.data(), xrandom.data() + xrandom.size(),
-                 xrandom.data(), [](uint64_t x) { return x & range_mask; });
+  for (int64_t idx = 0; idx < random.numel(); ++idx) {
+    random.at<uint64_t>(idx) &= range_mask;
+  }
   AutoMemGuard guard(&random);
 
   // add random to each modulus of ct.data(0)
@@ -683,13 +684,14 @@ void CheetahMul::Impl::NoiseFloodCiphertext(RLWECt &ct,
     if (modulus[l].bit_count() > kNoiseFloodRandomBits) {
       // When prime[l] > 2^{kNoiseFloodRandomBits} then we add directly add
       // the random
-      add_poly_coeffmod(xrandom.data(), dst_ptr, num_coeffs, modulus[l],
-                        dst_ptr);
+      add_poly_coeffmod(reinterpret_cast<uint64_t *>(random.data()), dst_ptr,
+                        num_coeffs, modulus[l], dst_ptr);
     } else {
       // When prime[l] < 2^{kNoiseFloodRandomBits} we need to compute mod
       // prime[l] first
       std::vector<uint64_t> tmp(num_coeffs);
-      modulo_poly_coeffs(xrandom.data(), num_coeffs, modulus[l], tmp.data());
+      modulo_poly_coeffs(reinterpret_cast<uint64_t *>(random.data()),
+                         num_coeffs, modulus[l], tmp.data());
       add_poly_coeffmod(tmp.data(), dst_ptr, num_coeffs, modulus[l], dst_ptr);
     }
     dst_ptr += num_coeffs;

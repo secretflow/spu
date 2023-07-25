@@ -39,8 +39,8 @@ Type Aby3Io::getShareType(Visibility vis, int owner_rank) const {
   SPU_THROW("unsupported vis type {}", vis);
 }
 
-std::vector<ArrayRef> Aby3Io::toShares(const ArrayRef& raw, Visibility vis,
-                                       int owner_rank) const {
+std::vector<NdArrayRef> Aby3Io::toShares(const NdArrayRef& raw, Visibility vis,
+                                         int owner_rank) const {
   SPU_ENFORCE(raw.eltype().isa<RingTy>(), "expected RingTy, got {}",
               raw.eltype());
   const auto field = raw.eltype().as<Ring2k>()->field();
@@ -49,7 +49,7 @@ std::vector<ArrayRef> Aby3Io::toShares(const ArrayRef& raw, Visibility vis,
 
   if (vis == VIS_PUBLIC) {
     const auto share = raw.as(makeType<Pub2kTy>(field));
-    return std::vector<ArrayRef>(world_size_, share);
+    return std::vector<NdArrayRef>(world_size_, share);
   } else if (vis == VIS_SECRET) {
 #if !defined(SPU_ENABLE_PRIVATE_TYPE)
     owner_rank = -1;
@@ -57,14 +57,14 @@ std::vector<ArrayRef> Aby3Io::toShares(const ArrayRef& raw, Visibility vis,
 
     if (owner_rank >= 0 && owner_rank <= 2) {
       // indicates private
-      std::vector<ArrayRef> shares;
+      std::vector<NdArrayRef> shares;
 
       const auto ty = makeType<Priv2kTy>(field, owner_rank);
       for (int idx = 0; idx < 3; idx++) {
         if (idx == owner_rank) {
           shares.push_back(raw.as(ty));
         } else {
-          shares.push_back(makeConstantArrayRef(ty, raw.numel()));
+          shares.push_back(makeConstantArrayRef(ty, raw.shape()));
         }
       }
       return shares;
@@ -73,11 +73,11 @@ std::vector<ArrayRef> Aby3Io::toShares(const ArrayRef& raw, Visibility vis,
       SPU_ENFORCE(owner_rank == -1, "not a valid owner {}", owner_rank);
 
       // by default, make as arithmetic share.
-      std::vector<ArrayRef> splits =
+      std::vector<NdArrayRef> splits =
           ring_rand_additive_splits(raw, world_size_);
 
       SPU_ENFORCE(splits.size() == 3, "expect 3PC, got={}", splits.size());
-      std::vector<ArrayRef> shares;
+      std::vector<NdArrayRef> shares;
       for (std::size_t i = 0; i < 3; i++) {
         shares.push_back(makeAShare(splits[i], splits[(i + 1) % 3], field));
       }
@@ -93,7 +93,7 @@ size_t Aby3Io::getBitSecretShareSize(size_t numel) const {
   return numel * type.size();
 }
 
-std::vector<ArrayRef> Aby3Io::makeBitSecret(const ArrayRef& in) const {
+std::vector<NdArrayRef> Aby3Io::makeBitSecret(const NdArrayRef& in) const {
   SPU_ENFORCE(in.eltype().isa<PtTy>(), "expected PtType, got {}", in.eltype());
   PtType in_pt_type = in.eltype().as<PtTy>()->pt_type();
   SPU_ENFORCE(in_pt_type == PT_BOOL);
@@ -106,14 +106,13 @@ std::vector<ArrayRef> Aby3Io::makeBitSecret(const ArrayRef& in) const {
   const auto out_type = makeType<BShrTy>(PT_U8, /* out_nbits */ 1);
   const size_t numel = in.numel();
 
-  std::vector<ArrayRef> shares = {ArrayRef(out_type, numel),
-                                  ArrayRef(out_type, numel),
-                                  ArrayRef(out_type, numel)};
+  std::vector<NdArrayRef> shares = {NdArrayRef(out_type, in.shape()),
+                                    NdArrayRef(out_type, in.shape()),
+                                    NdArrayRef(out_type, in.shape())};
+
   return DISPATCH_UINT_PT_TYPES(in_pt_type, "_", [&]() {
     using InT = ScalarT;
     using BShrT = uint8_t;
-
-    auto _in = ArrayView<InT>(in);
 
     std::vector<BShrT> r0(numel);
     std::vector<BShrT> r1(numel);
@@ -121,12 +120,12 @@ std::vector<ArrayRef> Aby3Io::makeBitSecret(const ArrayRef& in) const {
     yacl::crypto::PrgAesCtr(yacl::crypto::RandSeed(), absl::MakeSpan(r0));
     yacl::crypto::PrgAesCtr(yacl::crypto::RandSeed(), absl::MakeSpan(r1));
 
-    auto _s0 = ArrayView<std::array<BShrT, 2>>(shares[0]);
-    auto _s1 = ArrayView<std::array<BShrT, 2>>(shares[1]);
-    auto _s2 = ArrayView<std::array<BShrT, 2>>(shares[2]);
+    auto _s0 = shares[0].data<std::array<BShrT, 2>>();
+    auto _s1 = shares[1].data<std::array<BShrT, 2>>();
+    auto _s2 = shares[2].data<std::array<BShrT, 2>>();
 
     for (int64_t idx = 0; idx < in.numel(); idx++) {
-      const BShrT r2 = static_cast<BShrT>(_in[idx]) - r0[idx] - r1[idx];
+      const BShrT r2 = static_cast<BShrT>(in.at<InT>(idx)) - r0[idx] - r1[idx];
 
       _s0[idx][0] = r0[idx] & 0x1;
       _s0[idx][1] = r1[idx] & 0x1;
@@ -141,7 +140,7 @@ std::vector<ArrayRef> Aby3Io::makeBitSecret(const ArrayRef& in) const {
   });
 }
 
-ArrayRef Aby3Io::fromShares(const std::vector<ArrayRef>& shares) const {
+NdArrayRef Aby3Io::fromShares(const std::vector<NdArrayRef>& shares) const {
   const auto& eltype = shares.at(0).eltype();
 
   if (eltype.isa<Pub2kTy>()) {
@@ -153,35 +152,35 @@ ArrayRef Aby3Io::fromShares(const std::vector<ArrayRef>& shares) const {
     return shares[owner].as(makeType<RingTy>(field_));
   } else if (eltype.isa<AShrTy>()) {
     SPU_ENFORCE(field_ == eltype.as<Ring2k>()->field());
-    ArrayRef out(makeType<Pub2kTy>(field_), shares[0].numel());
+    NdArrayRef out(makeType<Pub2kTy>(field_), shares[0].shape());
+
     DISPATCH_ALL_FIELDS(field_, "_", [&]() {
-      auto _out = ArrayView<ring2k_t>(out);
+      auto _out = out.data<ring2k_t>();
       for (size_t si = 0; si < shares.size(); si++) {
-        auto _share = ArrayView<std::array<ring2k_t, 2>>(shares[si]);
-        for (auto idx = 0; idx < shares[0].numel(); idx++) {
+        for (auto idx = 0; idx < shares[0].numel(); ++idx) {
           if (si == 0) {
             _out[idx] = 0;
           }
-          _out[idx] += _share[idx][0];
+          _out[idx] += shares[si].at<std::array<ring2k_t, 2>>(idx)[0];
         }
       }
     });
     return out;
   } else if (eltype.isa<BShrTy>()) {
-    ArrayRef out(makeType<Pub2kTy>(field_), shares[0].numel());
+    NdArrayRef out(makeType<Pub2kTy>(field_), shares[0].shape());
 
     DISPATCH_ALL_FIELDS(field_, "_", [&]() {
       using OutT = ring2k_t;
-      auto _out = ArrayView<OutT>(out);
+      auto _out = out.data<OutT>();
+
       DISPATCH_UINT_PT_TYPES(eltype.as<BShrTy>()->getBacktype(), "_", [&] {
         using BShrT = ScalarT;
         for (size_t si = 0; si < shares.size(); si++) {
-          auto _share = ArrayView<std::array<BShrT, 2>>(shares[si]);
-          for (auto idx = 0; idx < shares[0].numel(); idx++) {
+          for (auto idx = 0; idx < shares[0].numel(); ++idx) {
             if (si == 0) {
               _out[idx] = 0;
             }
-            _out[idx] ^= _share[idx][0];
+            _out[idx] ^= shares[si].at<std::array<BShrT, 2>>(idx)[0];
           }
         }
       });

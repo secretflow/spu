@@ -77,8 +77,8 @@ Value tiled(Fn&& fn, SPUContext* ctx, const Value& x, Args&&... args) {
   std::vector<std::future<Value>> futures;
 
   // initialize slice indices
-  std::vector<int64_t> start_indices(x.shape().size());
-  std::vector<int64_t> end_indices(x.shape());
+  Index start_indices(x.shape().size());
+  Index end_indices(x.shape().begin(), x.shape().end());
   end_indices[slicing_dim] = slice_stride;
   for (int64_t dim = slicing_dim - 1; dim >= 0; dim--) {
     end_indices[dim] = 1;
@@ -88,8 +88,7 @@ Value tiled(Fn&& fn, SPUContext* ctx, const Value& x, Args&&... args) {
   for (int64_t slice_idx = 0; slice_idx < num_slice_dim * num_slice;
        slice_idx++) {
     auto async_res = std::async(
-        [&](int64_t index, std::vector<int64_t> s_indices,
-            std::vector<int64_t> e_indices) {
+        [&](int64_t index, const Index& s_indices, const Index& e_indices) {
           NdArrayRef slice_data = data.slice(s_indices, e_indices, {});
 
           auto ret =
@@ -106,14 +105,17 @@ Value tiled(Fn&& fn, SPUContext* ctx, const Value& x, Args&&... args) {
       end_indices[slicing_dim] = slice_stride;
       for (int64_t dim = slicing_dim - 1; dim >= 0; dim--) {
         start_indices[dim] = (start_indices[dim] + 1) % data.shape()[dim];
-        end_indices[dim] = (end_indices[dim] + 1) % data.shape()[dim] + 1;
-        if (end_indices[dim] != 1) break;
+        end_indices[dim] = end_indices[dim] % data.shape()[dim] + 1;
+        if (end_indices[dim] != 1) {
+          break;
+        }
       }
     } else {
       start_indices[slicing_dim] += slice_stride;
       end_indices[slicing_dim] += slice_stride;
-      if (end_indices[slicing_dim] > x.shape()[slicing_dim])
+      if (end_indices[slicing_dim] > x.shape()[slicing_dim]) {
         end_indices[slicing_dim] = x.shape()[slicing_dim];
+      }
     }
   }
 
@@ -190,8 +192,8 @@ Value tiled(Fn&& fn, SPUContext* ctx, const Value& x, const Value& y,
   std::vector<std::future<Value>> futures;
 
   // initialize slice indices
-  std::vector<int64_t> start_indices(x.shape().size());
-  std::vector<int64_t> end_indices(x.shape());
+  Index start_indices(x.shape().size());
+  Index end_indices(x.shape().begin(), x.shape().end());
   end_indices[slicing_dim] = slice_stride;
   for (int64_t dim = slicing_dim - 1; dim >= 0; dim--) {
     end_indices[dim] = 1;
@@ -202,8 +204,7 @@ Value tiled(Fn&& fn, SPUContext* ctx, const Value& x, const Value& y,
   for (int64_t slice_idx = 0; slice_idx < num_slice_dim * num_slice;
        slice_idx++) {
     auto async_res = std::async(
-        [&](int64_t index, std::vector<int64_t> s_indices,
-            std::vector<int64_t> e_indices) {
+        [&](int64_t index, const Index& s_indices, const Index& e_indices) {
           NdArrayRef slice_data_x = data_x.slice(s_indices, e_indices, {});
           NdArrayRef slice_data_y = data_y.slice(s_indices, e_indices, {});
 
@@ -221,14 +222,17 @@ Value tiled(Fn&& fn, SPUContext* ctx, const Value& x, const Value& y,
       end_indices[slicing_dim] = slice_stride;
       for (int64_t dim = slicing_dim - 1; dim >= 0; dim--) {
         start_indices[dim] = (start_indices[dim] + 1) % data_x.shape()[dim];
-        end_indices[dim] = (end_indices[dim] + 1) % data_x.shape()[dim] + 1;
-        if (end_indices[dim] != 1) break;
+        end_indices[dim] = end_indices[dim] % data_x.shape()[dim] + 1;
+        if (end_indices[dim] != 1) {
+          break;
+        }
       }
     } else {
       start_indices[slicing_dim] += slice_stride;
       end_indices[slicing_dim] += slice_stride;
-      if (end_indices[slicing_dim] > x.shape()[slicing_dim])
+      if (end_indices[slicing_dim] > x.shape()[slicing_dim]) {
         end_indices[slicing_dim] = x.shape()[slicing_dim];
+      }
     }
   }
 

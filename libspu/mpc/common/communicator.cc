@@ -20,7 +20,6 @@ namespace spu::mpc {
 namespace {
 
 // When ArrayRef is transferred via network, it's supposed to be compact.
-constexpr int64_t kStride = 1;
 constexpr int64_t kOffset = 0;
 
 std::shared_ptr<yacl::Buffer> stealBuffer(yacl::Buffer&& buf) {
@@ -29,21 +28,21 @@ std::shared_ptr<yacl::Buffer> stealBuffer(yacl::Buffer&& buf) {
 
 }  // namespace
 
-ArrayRef Communicator::allReduce(ReduceOp op, const ArrayRef& in,
-                                 std::string_view tag) {
+NdArrayRef Communicator::allReduce(ReduceOp op, const NdArrayRef& in,
+                                   std::string_view tag) {
   const auto buf = in.getOrCreateCompactBuf();
 
   std::vector<yacl::Buffer> bufs = yacl::link::AllGather(lctx_, *buf, tag);
 
   SPU_ENFORCE(bufs.size() == getWorldSize());
-  ArrayRef res = in.clone();
+  auto res = in.clone();
   for (size_t idx = 0; idx < bufs.size(); idx++) {
     if (idx == getRank()) {
       continue;
     }
 
-    auto arr = ArrayRef(stealBuffer(std::move(bufs[idx])), in.eltype(),
-                        in.numel(), kStride, kOffset);
+    auto arr = NdArrayRef(stealBuffer(std::move(bufs[idx])), in.eltype(),
+                          in.shape(), makeCompactStrides(in.shape()), kOffset);
     if (op == ReduceOp::ADD) {
       ring_add_(res, arr);
     } else if (op == ReduceOp::XOR) {
@@ -59,22 +58,23 @@ ArrayRef Communicator::allReduce(ReduceOp op, const ArrayRef& in,
   return res;
 }
 
-ArrayRef Communicator::reduce(ReduceOp op, const ArrayRef& in, size_t root,
-                              std::string_view tag) {
+NdArrayRef Communicator::reduce(ReduceOp op, const NdArrayRef& in, size_t root,
+                                std::string_view tag) {
   SPU_ENFORCE(root < lctx_->WorldSize());
   const auto buf = in.getOrCreateCompactBuf();
 
   std::vector<yacl::Buffer> bufs = yacl::link::Gather(lctx_, *buf, root, tag);
 
-  ArrayRef res = in.clone();
+  auto res = in.clone();
   if (getRank() == root) {
     for (size_t idx = 0; idx < bufs.size(); idx++) {
       if (idx == getRank()) {
         continue;
       }
 
-      auto arr = ArrayRef(stealBuffer(std::move(bufs[idx])), in.eltype(),
-                          in.numel(), kStride, kOffset);
+      auto arr =
+          NdArrayRef(stealBuffer(std::move(bufs[idx])), in.eltype(), in.shape(),
+                     makeCompactStrides(in.shape()), kOffset);
       if (op == ReduceOp::ADD) {
         ring_add_(res, arr);
       } else if (op == ReduceOp::XOR) {
@@ -91,7 +91,7 @@ ArrayRef Communicator::reduce(ReduceOp op, const ArrayRef& in, size_t root,
   return res;
 }
 
-ArrayRef Communicator::rotate(const ArrayRef& in, std::string_view tag) {
+NdArrayRef Communicator::rotate(const NdArrayRef& in, std::string_view tag) {
   const auto buf = in.getOrCreateCompactBuf();
 
   lctx_->SendAsync(lctx_->PrevRank(), *buf, tag);
@@ -101,23 +101,23 @@ ArrayRef Communicator::rotate(const ArrayRef& in, std::string_view tag) {
   stats_.latency += 1;
   stats_.comm += buf->size();
 
-  return ArrayRef(stealBuffer(std::move(res_buf)), in.eltype(), in.numel(),
-                  kStride, kOffset);
+  return NdArrayRef(stealBuffer(std::move(res_buf)), in.eltype(), in.shape(),
+                    makeCompactStrides(in.shape()), kOffset);
 }
 
-void Communicator::sendAsync(size_t dst_rank, const ArrayRef& in,
+void Communicator::sendAsync(size_t dst_rank, const NdArrayRef& in,
                              std::string_view tag) {
   const auto buf = in.getOrCreateCompactBuf();
 
   lctx_->SendAsync(dst_rank, *buf, tag);
 }
 
-ArrayRef Communicator::recv(size_t src_rank, const Type& eltype,
-                            std::string_view tag) {
+NdArrayRef Communicator::recv(size_t src_rank, const Type& eltype,
+                              std::string_view tag) {
   auto buf = lctx_->Recv(src_rank, tag);
 
-  auto numel = buf.size() / eltype.size();
-  return ArrayRef(stealBuffer(std::move(buf)), eltype, numel, kStride, kOffset);
+  int64_t numel = buf.size() / eltype.size();
+  return NdArrayRef(stealBuffer(std::move(buf)), eltype, {numel}, {1}, kOffset);
 }
 
 }  // namespace spu::mpc

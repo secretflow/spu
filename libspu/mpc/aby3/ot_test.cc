@@ -28,8 +28,8 @@ TEST_P(OTTest, OT3Party) {
   const FieldType field = std::get<1>(GetParam());
   const Ot3::RoleRanks roles = std::get<2>(GetParam());
 
-  ArrayRef m0 = ring_zeros(field, numel);
-  ArrayRef m1 = ring_ones(field, numel);
+  auto m0 = ring_zeros(field, {numel});
+  auto m1 = ring_ones(field, {numel});
   std::vector<uint8_t> choices(numel);
   for (int64_t idx = 0; idx < numel; idx++) {
     choices[idx] = static_cast<uint8_t>(idx % 2);
@@ -39,7 +39,7 @@ TEST_P(OTTest, OT3Party) {
     Communicator comm(lctx);
     PrgState prg_state(lctx);
 
-    Ot3 ot(field, numel, roles, &comm, &prg_state);
+    Ot3 ot(field, {numel}, roles, &comm, &prg_state);
 
     if (comm.getRank() == roles.sender) {
       ot.send(m0, m1);

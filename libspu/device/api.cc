@@ -261,6 +261,7 @@ void executeImpl(OpExecutor *executor, spu::SPUContext *sctx,
     opts.do_log_execution = rt_config.enable_pphlo_trace();
     opts.do_parallel = rt_config.experimental_enable_inter_op_par();
     if (opts.do_parallel) {
+      opts.concurrency = rt_config.experimental_inter_op_concurrency();
       mlir_ctx.enableMultithreading();
       mlir_ctx.enterMultiThreadedExecution();
     }

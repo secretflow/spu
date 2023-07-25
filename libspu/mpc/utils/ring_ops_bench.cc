@@ -21,12 +21,13 @@
 
 namespace spu::mpc::utils {
 
-static ArrayRef makeRandomArray(FieldType field, size_t numel, size_t stride) {
+static NdArrayRef makeRandomArray(FieldType field, int64_t numel,
+                                  int64_t stride) {
   const Type ty = makeType<RingTy>(field);
   const size_t buf_size = SizeOf(field) * numel * stride;
   auto buf = std::make_shared<yacl::Buffer>(buf_size);
   const int64_t offset = 0;
-  return ArrayRef(buf, ty, numel, stride, offset);
+  return NdArrayRef(buf, ty, {numel}, {stride}, offset);
 }
 
 static void makeUnaryArgs(benchmark::internal::Benchmark* b) {
@@ -42,8 +43,8 @@ static void BM_RingAdd(benchmark::State& state) {
   const int64_t stride = state.range(1);
   const auto field = static_cast<spu::FieldType>(state.range(2));
 
-  const ArrayRef x = makeRandomArray(field, numel, stride);
-  const ArrayRef y = makeRandomArray(field, numel, stride);
+  const auto x = makeRandomArray(field, numel, stride);
+  const auto y = makeRandomArray(field, numel, stride);
 
   for (auto _ : state) {
     ring_add(x, y);
@@ -55,8 +56,8 @@ static void BM_RingAdd_(benchmark::State& state) {  // NOLINT
   const int64_t stride = state.range(1);
   const auto field = static_cast<spu::FieldType>(state.range(2));
 
-  const ArrayRef y = makeRandomArray(field, numel, stride);
-  ArrayRef x = makeRandomArray(field, numel, stride);
+  const auto y = makeRandomArray(field, numel, stride);
+  auto x = makeRandomArray(field, numel, stride);
 
   for (auto _ : state) {
     ring_add_(x, y);

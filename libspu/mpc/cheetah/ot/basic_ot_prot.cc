@@ -54,8 +54,8 @@ ArrayRef BasicOTProtocols::B2A(const ArrayRef &inp) {
 // Random bit r \in {0, 1} and return as AShr
 ArrayRef BasicOTProtocols::RandBits(FieldType filed, size_t numel) {
   // TODO(juhou): profile ring_randbit performance
-  auto r = ring_randbit(filed, numel).as(makeType<BShrTy>(filed, 1));
-  return SingleB2A(r);
+  auto r = ring_randbit(filed, {(int64_t)numel}).as(makeType<BShrTy>(filed, 1));
+  return SingleB2A(flatten(r));
 }
 
 ArrayRef BasicOTProtocols::PackedB2A(const ArrayRef &inp) {
@@ -65,14 +65,14 @@ ArrayRef BasicOTProtocols::PackedB2A(const ArrayRef &inp) {
   SPU_ENFORCE(nbits > 0 && nbits <= 8 * SizeOf(field));
 
   auto convert_from_bits_form = [&](ArrayRef bform) {
-    const size_t n = bform.numel() / nbits;
+    const int64_t n = bform.numel() / nbits;
     // init as all 0s.
-    auto iform = ring_zeros(field, n);
+    auto iform = flatten(ring_zeros(field, {n}));
     DISPATCH_ALL_FIELDS(field, "", [&]() {
       auto xb = ArrayView<const ring2k_t>(bform);
       auto xi = ArrayView<ring2k_t>(iform);
       SPU_ENFORCE(xb.isCompact());
-      for (size_t i = 0; i < n; ++i) {
+      for (int64_t i = 0; i < n; ++i) {
         // LSB is bits[0]; MSB is bits[nbits - 1]
         // We use reverse_iterator to iterate the bits.
         auto bits = xb.data() + i * nbits;
@@ -87,17 +87,18 @@ ArrayRef BasicOTProtocols::PackedB2A(const ArrayRef &inp) {
     return iform;
   };
 
-  const size_t n = inp.numel();
+  const int64_t n = inp.numel();
   auto rand_bits = RandBits(field, n * nbits);
   auto rand = convert_from_bits_form(rand_bits);
 
   // open c = x ^ r
   // FIXME(juhou): Actually, we only want to exchange the low-end bits.
-  auto opened =
-      conn_->allReduce(ReduceOp::XOR, ring_xor(inp, rand), "B2AFull_open");
+  auto opened = flatten(
+      conn_->allReduce(ReduceOp::XOR, ring_xor(toNdArray(inp), toNdArray(rand)),
+                       "B2AFull_open"));
 
   // compute c + (1 - 2*c)*<r>
-  ArrayRef oup = ring_zeros(field, n);
+  ArrayRef oup = flatten(ring_zeros(field, {n}));
   DISPATCH_ALL_FIELDS(field, "", [&]() {
     using u2k = std::make_unsigned<ring2k_t>::type;
     int rank = Rank();
@@ -105,7 +106,7 @@ ArrayRef BasicOTProtocols::PackedB2A(const ArrayRef &inp) {
     auto xc = ArrayView<const u2k>(opened);
     auto xo = ArrayView<ring2k_t>(oup);
 
-    for (size_t i = 0; i < n; ++i) {
+    for (int64_t i = 0; i < n; ++i) {
       auto rbits = xr.data() + i * nbits;
       u2k this_elt = xc[i];
       for (size_t j = 0; j < nbits; ++j, this_elt >>= 1) {
@@ -147,9 +148,9 @@ ArrayRef BasicOTProtocols::SingleB2A(const ArrayRef &inp, int bit_width) {
   if (bit_width == 0) {
     bit_width = SizeOf(field) * 8;
   }
-  const size_t n = inp.numel();
+  const int64_t n = inp.numel();
 
-  ArrayRef oup = ring_zeros(field, n);
+  ArrayRef oup = flatten(ring_zeros(field, {n}));
   DISPATCH_ALL_FIELDS(field, "", [&]() {
     using u2k = std::make_unsigned<ring2k_t>::type;
     auto xinp = ArrayView<const u2k>(inp);
@@ -159,26 +160,26 @@ ArrayRef BasicOTProtocols::SingleB2A(const ArrayRef &inp, int bit_width) {
     if (Rank() == 0) {
       std::vector<u2k> corr_data(n);
       // NOTE(juhou): Masking to make sure there is only single bit.
-      for (size_t i = 0; i < n; ++i) {
+      for (int64_t i = 0; i < n; ++i) {
         // corr=-2*xi
         corr_data[i] = -((xinp[i] & 1) << 1);
       }
-      ferret_sender_->SendCAMCC(absl::MakeSpan(corr_data), {xoup.data(), n},
-                                bit_width);
+      ferret_sender_->SendCAMCC(absl::MakeSpan(corr_data),
+                                {xoup.data(), (size_t)n}, bit_width);
       ferret_sender_->Flush();
 
-      for (size_t i = 0; i < n; ++i) {
+      for (int64_t i = 0; i < n; ++i) {
         xoup[i] = (xinp[i] & 1) - xoup[i];
       }
     } else {
       std::vector<uint8_t> choices(n);
-      for (size_t i = 0; i < n; ++i) {
+      for (int64_t i = 0; i < n; ++i) {
         choices[i] = static_cast<uint8_t>(xinp[i] & 1);
       }
-      ferret_receiver_->RecvCAMCC(absl::MakeSpan(choices), {xoup.data(), n},
-                                  bit_width);
+      ferret_receiver_->RecvCAMCC(absl::MakeSpan(choices),
+                                  {xoup.data(), (size_t)n}, bit_width);
 
-      for (size_t i = 0; i < n; ++i) {
+      for (int64_t i = 0; i < n; ++i) {
         xoup[i] = (xinp[i] & 1) + xoup[i];
       }
     }
@@ -195,21 +196,24 @@ ArrayRef BasicOTProtocols::BitwiseAnd(const ArrayRef &lhs,
   size_t size = lhs.numel();
   auto [a, b, c] = AndTriple(field, size, shareType->nbits());
 
-  ArrayRef x_a = ring_xor(lhs, a);
-  ArrayRef y_b = ring_xor(rhs, b);
+  ArrayRef x_a = flatten(ring_xor(toNdArray(lhs), toNdArray(a)));
+  ArrayRef y_b = flatten(ring_xor(toNdArray(rhs), toNdArray(b)));
   size_t pack_load = 8 * SizeOf(field) / shareType->nbits();
 
   if (pack_load == 1) {
     // Open x^a, y^b
     auto res = vectorize({x_a, y_b}, [&](const ArrayRef &s) {
-      return conn_->allReduce(ReduceOp::XOR, s, "BitwiseAnd");
+      return flatten(
+          conn_->allReduce(ReduceOp::XOR, toNdArray(s), "BitwiseAnd"));
     });
     x_a = std::move(res[0]);
     y_b = std::move(res[1]);
   } else {
     // Open x^a, y^b
     // pack multiple nbits() into single field element before exchange
-    SPU_ENFORCE(x_a.isCompact() && y_b.isCompact());
+    SPU_ENFORCE(x_a.isCompact() && y_b.isCompact(),
+                "x_a numel = {}, stride = {}, y_b numel = {}, stride = {}",
+                x_a.numel(), x_a.stride(), y_b.numel(), y_b.stride());
     size_t packed_sze = CeilDiv(size, pack_load);
 
     ArrayRef packed_xa(x_a.eltype(), packed_sze);
@@ -225,7 +229,8 @@ ArrayRef BasicOTProtocols::BitwiseAnd(const ArrayRef &lhs,
 
       // open x^a, y^b
       auto res = vectorize({packed_xa, packed_yb}, [&](const ArrayRef &s) {
-        return conn_->allReduce(ReduceOp::XOR, s, "BitwiseAnd");
+        return flatten(
+            conn_->allReduce(ReduceOp::XOR, toNdArray(s), "BitwiseAnd"));
       });
 
       packed_xa = std::move(res[0]);
@@ -239,9 +244,12 @@ ArrayRef BasicOTProtocols::BitwiseAnd(const ArrayRef &lhs,
   }
 
   // Zi = Ci ^ ((X ^ A) & Bi) ^ ((Y ^ B) & Ai) ^ <(X ^ A) & (Y ^ B)>
-  auto z = ring_xor(ring_xor(ring_and(x_a, b), ring_and(y_b, a)), c);
+  auto z = flatten(ring_xor(ring_xor(ring_and(toNdArray(x_a), toNdArray(b)),
+                                     ring_and(toNdArray(y_b), toNdArray(a))),
+                            toNdArray(c)));
   if (conn_->getRank() == 0) {
-    ring_xor_(z, ring_and(x_a, y_b));
+    auto _z = toNdArray(z);
+    ring_xor_(_z, ring_and(toNdArray(x_a), toNdArray(y_b)));
   }
 
   return z.as(lhs.eltype());
@@ -262,8 +270,10 @@ std::array<ArrayRef, 2> BasicOTProtocols::CorrelatedBitwiseAnd(
 
   // open x^a, y^b0, y1^b1
   auto res =
-      vectorize({ring_xor(lhs, a), ring_xor(rhs0, b0), ring_xor(rhs1, b1)},
-                [&](const ArrayRef &s) {
+      vectorize({ring_xor(toNdArray(lhs), toNdArray(a)),
+                 ring_xor(toNdArray(rhs0), toNdArray(b0)),
+                 ring_xor(toNdArray(rhs1), toNdArray(b1))},
+                [&](const NdArrayRef &s) {
                   return conn_->allReduce(ReduceOp::XOR, s, "BitwiseAnd");
                 });
   auto xa = std::move(res[0]);
@@ -271,14 +281,18 @@ std::array<ArrayRef, 2> BasicOTProtocols::CorrelatedBitwiseAnd(
   auto y1b1 = std::move(res[2]);
 
   // Zi = Ci ^ ((X ^ A) & Bi) ^ ((Y ^ B) & Ai) ^ <(X ^ A) & (Y ^ B)>
-  auto z0 = ring_xor(ring_xor(ring_and(xa, b0), ring_and(y0b0, a)), c0);
-  auto z1 = ring_xor(ring_xor(ring_and(xa, b1), ring_and(y1b1, a)), c1);
+  auto z0 = ring_xor(
+      ring_xor(ring_and(xa, toNdArray(b0)), ring_and(y0b0, toNdArray(a))),
+      toNdArray(c0));
+  auto z1 = ring_xor(
+      ring_xor(ring_and(xa, toNdArray(b1)), ring_and(y1b1, toNdArray(a))),
+      toNdArray(c1));
   if (conn_->getRank() == 0) {
     ring_xor_(z0, ring_and(xa, y0b0));
     ring_xor_(z1, ring_and(xa, y1b1));
   }
 
-  return {z0.as(lhs.eltype()), z1.as(lhs.eltype())};
+  return {flatten(z0).as(lhs.eltype()), flatten(z1).as(lhs.eltype())};
 }
 
 // Ref: https://eprint.iacr.org/2013/552.pdf
@@ -339,9 +353,9 @@ std::array<ArrayRef, 3> BasicOTProtocols::AndTriple(FieldType field,
   });
 
   // init as zero
-  ArrayRef AND_a = ring_zeros(field, numel);
-  ArrayRef AND_b = ring_zeros(field, numel);
-  ArrayRef AND_c = ring_zeros(field, numel);
+  auto AND_a = flatten(ring_zeros(field, {static_cast<int64_t>(numel)}));
+  auto AND_b = flatten(ring_zeros(field, {static_cast<int64_t>(numel)}));
+  auto AND_c = flatten(ring_zeros(field, {static_cast<int64_t>(numel)}));
   DISPATCH_ALL_FIELDS(field, "AndTriple", [&]() {
     auto AND_xa = ArrayView<ring2k_t>(AND_a);
     auto AND_xb = ArrayView<ring2k_t>(AND_b);
@@ -392,11 +406,11 @@ std::array<ArrayRef, 5> BasicOTProtocols::CorrelatedAndTriple(FieldType field,
     c[i] = (((a[i] << 1) | a[i]) & b[i]) ^ u[i] ^ v[i];
   });
 
-  ArrayRef AND_a = ring_zeros(field, numel);
-  ArrayRef AND_b0 = ring_zeros(field, numel);
-  ArrayRef AND_c0 = ring_zeros(field, numel);
-  ArrayRef AND_b1 = ring_zeros(field, numel);
-  ArrayRef AND_c1 = ring_zeros(field, numel);
+  auto AND_a = flatten(ring_zeros(field, {static_cast<int64_t>(numel)}));
+  auto AND_b0 = flatten(ring_zeros(field, {static_cast<int64_t>(numel)}));
+  auto AND_c0 = flatten(ring_zeros(field, {static_cast<int64_t>(numel)}));
+  auto AND_b1 = flatten(ring_zeros(field, {static_cast<int64_t>(numel)}));
+  auto AND_c1 = flatten(ring_zeros(field, {static_cast<int64_t>(numel)}));
 
   DISPATCH_ALL_FIELDS(field, "AndTriple", [&]() {
     auto AND_xa = ArrayView<ring2k_t>(AND_a);
@@ -424,11 +438,11 @@ ArrayRef BasicOTProtocols::Multiplexer(const ArrayRef &msg,
   SPU_ENFORCE_EQ(shareType->nbits(), 1UL);
 
   const auto field = msg.eltype().as<Ring2k>()->field();
-  const size_t size = msg.numel();
+  const int64_t size = msg.numel();
 
-  ArrayRef _corr_data = ring_zeros(field, size);
-  ArrayRef _sent = ring_zeros(field, size);
-  ArrayRef _recv = ring_zeros(field, size);
+  auto _corr_data = flatten(ring_zeros(field, {size}));
+  auto _sent = flatten(ring_zeros(field, {size}));
+  auto _recv = flatten(ring_zeros(field, {size}));
   std::vector<uint8_t> sel(size);
   // Compute (x0 + x1) * (b0 ^ b1)
   // Also b0 ^ b1 = 1 - 2*b0*b1
@@ -445,12 +459,16 @@ ArrayRef BasicOTProtocols::Multiplexer(const ArrayRef &msg,
     });
 
     if (Rank() == 0) {
-      ferret_sender_->SendCAMCC({corr_data.data(), size}, {sent.data(), size});
+      ferret_sender_->SendCAMCC({corr_data.data(), (size_t)size},
+                                {sent.data(), (size_t)size});
       ferret_sender_->Flush();
-      ferret_receiver_->RecvCAMCC(absl::MakeSpan(sel), {recv.data(), size});
+      ferret_receiver_->RecvCAMCC(absl::MakeSpan(sel),
+                                  {recv.data(), (size_t)size});
     } else {
-      ferret_receiver_->RecvCAMCC(absl::MakeSpan(sel), {recv.data(), size});
-      ferret_sender_->SendCAMCC({corr_data.data(), size}, {sent.data(), size});
+      ferret_receiver_->RecvCAMCC(absl::MakeSpan(sel),
+                                  {recv.data(), (size_t)size});
+      ferret_sender_->SendCAMCC({corr_data.data(), (size_t)size},
+                                {sent.data(), (size_t)size});
       ferret_sender_->Flush();
     }
 

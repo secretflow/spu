@@ -65,7 +65,6 @@ spu_cc_library(
     deps = [
         "//libspu/core",
         "//libspu/core:object",
-        "//libspu/mpc:kernel",
         "@yacl//yacl/crypto/tools:prg",
         "@yacl//yacl/crypto/utils:rand",
         "@yacl//yacl/link",
@@ -85,7 +84,7 @@ spu_cc_library(
     name = "prg_tensor",
     hdrs = ["prg_tensor.h"],
     deps = [
-        "//libspu/core:array_ref",
+        "//libspu/core:ndarray_ref",
         "//libspu/mpc/utils:ring_ops",
         "@yacl//yacl/crypto/tools:prg",
     ],

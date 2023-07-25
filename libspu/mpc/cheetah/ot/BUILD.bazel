@@ -32,7 +32,7 @@ spu_cc_library(
     ],
     copts = AES_COPT_FLAGS + ["-Wno-ignored-attributes"],
     deps = [
-        "//libspu/core:array_ref",
+        "//libspu/mpc/cheetah:array_ref",
         "//libspu/mpc/semi2k:conversion",
         "@com_github_emptoolkit_emp_ot//:emp-ot",
         "@com_github_emptoolkit_emp_tool//:emp-tool",

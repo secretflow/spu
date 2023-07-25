@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "libspu/core/array_ref.h"
+#include "libspu/core/ndarray_ref.h"
 #include "libspu/mpc/utils/ring_ops.h"
 
 namespace spu::mpc {
@@ -23,20 +23,21 @@ using PrgSeed = uint128_t;
 using PrgCounter = uint64_t;
 
 struct PrgArrayDesc {
-  size_t numel;
+  Shape shape;
   FieldType field;
   PrgCounter prg_counter;
 };
 
-inline ArrayRef prgCreateArray(FieldType field, size_t size, PrgSeed seed,
-                               PrgCounter* counter, PrgArrayDesc* desc) {
-  *desc = {size, field, *counter};
-  return ring_rand(field, size, seed, counter);
+inline NdArrayRef prgCreateArray(FieldType field, const Shape& shape,
+                                 PrgSeed seed, PrgCounter* counter,
+                                 PrgArrayDesc* desc) {
+  *desc = {Shape(shape.begin(), shape.end()), field, *counter};
+  return ring_rand(field, shape, seed, counter);
 }
 
-inline ArrayRef prgReplayArray(PrgSeed seed, const PrgArrayDesc& desc) {
+inline NdArrayRef prgReplayArray(PrgSeed seed, const PrgArrayDesc& desc) {
   PrgCounter counter = desc.prg_counter;
-  return ring_rand(desc.field, desc.numel, seed, &counter);
+  return ring_rand(desc.field, desc.shape, seed, &counter);
 }
 
 }  // namespace spu::mpc

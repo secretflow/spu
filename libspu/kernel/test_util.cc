@@ -42,7 +42,7 @@ SPUContext makeSPUContext(ProtocolKind prot_kind, FieldType field,
 }
 
 Value makeValue(SPUContext* ctx, PtBufferView init, Visibility vtype,
-                DataType dtype, ShapeView shape) {
+                DataType dtype, const Shape& shape) {
   if (dtype == DT_INVALID) {
     dtype = getEncodeType(init.pt_type);
   }

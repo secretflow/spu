@@ -23,15 +23,14 @@ import re
 import subprocess
 import time
 from enum import Enum
+from typing import Callable
 
 import multiprocess
 import yaml
 
-# FIXME: remove this.
-import examples.python.utils.dataset_utils as dsutil
 import spu.utils.distributed as ppd
+from spu import spu_pb2
 
-DATASET_MOCK_REGRESSION_BASIC = "examples/python/conf/ds_mock_regression_basic.json"
 CLUSTER_ABY3_3PC = "examples/python/conf/3pc.json"
 SML_HOME = pathlib.Path(__file__).resolve().parent.parent
 SAMPLE_CIDR = "172.16.238.0/24"
@@ -127,23 +126,6 @@ class Emulator:
         for worker in self.workers:
             worker.terminate()
 
-    @staticmethod
-    def prepare_dataset(dataset_config_path: str):
-        with open(dataset_config_path, "r") as f:
-            dataset_config = json.load(f)
-
-        # Mock: load dataset to this python runtime
-        x1, x2, y = dsutil.load_dataset_by_config(dataset_config)
-
-        # send (x1, y) from P1
-        x1, y = ppd.device("P1")(dsutil.load_feature_r1)(x1, y)
-
-        # send (x2, ) from P1
-        x2 = ppd.device("P2")(dsutil.load_feature_r2)(x2)
-
-        # return the references.
-        return (x1, x2), y
-
     def _mode_docker_up(self):
         logger.info("Start docker cluster...")
         self._gen_config_file()
@@ -169,10 +151,20 @@ class Emulator:
             ]
         )
 
-    def run(self, func):
+    @staticmethod
+    def seal(*args):
+        ret = [ppd.device("P1")(lambda x: x)(arg) for arg in args]
+        return ret if len(ret) > 1 else ret[0]
+
+    def run(
+        self,
+        func: Callable,
+        static_argnums=(),
+        copts=spu_pb2.CompilerOptions(),
+    ):
         def wrapper(*args, **kwargs):
             # run the func on SPU.
-            res = ppd.device("SPU")(func)(*args, **kwargs)
+            res = ppd.device("SPU")(func, static_argnums, copts)(*args, **kwargs)
             # reveal and return the result to caller.
             return ppd.get(res)
 

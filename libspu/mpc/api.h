@@ -118,19 +118,12 @@ Value mul_vv(SPUContext* ctx, const Value& x, const Value& y);
 Value mul_vp(SPUContext* ctx, const Value& x, const Value& y);
 Value mul_pp(SPUContext* ctx, const Value& x, const Value& y);
 
-// TODO: drop (m, n, k)
-Value mmul_ss(SPUContext* ctx, const Value& x, const Value& y, size_t m,
-              size_t n, size_t k);
-Value mmul_sv(SPUContext* ctx, const Value& x, const Value& y, size_t m,
-              size_t n, size_t k);
-Value mmul_sp(SPUContext* ctx, const Value& x, const Value& y, size_t m,
-              size_t n, size_t k);
-Value mmul_vv(SPUContext* ctx, const Value& x, const Value& y, size_t m,
-              size_t n, size_t k);
-Value mmul_vp(SPUContext* ctx, const Value& x, const Value& y, size_t m,
-              size_t n, size_t k);
-Value mmul_pp(SPUContext* ctx, const Value& x, const Value& y, size_t m,
-              size_t n, size_t k);
+Value mmul_ss(SPUContext* ctx, const Value& x, const Value& y);
+Value mmul_sv(SPUContext* ctx, const Value& x, const Value& y);
+Value mmul_sp(SPUContext* ctx, const Value& x, const Value& y);
+Value mmul_vv(SPUContext* ctx, const Value& x, const Value& y);
+Value mmul_vp(SPUContext* ctx, const Value& x, const Value& y);
+Value mmul_pp(SPUContext* ctx, const Value& x, const Value& y);
 
 Value and_ss(SPUContext* ctx, const Value& x, const Value& y);
 Value and_sv(SPUContext* ctx, const Value& x, const Value& y);

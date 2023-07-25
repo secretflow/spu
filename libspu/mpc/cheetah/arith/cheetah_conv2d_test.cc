@@ -62,33 +62,33 @@ TEST_P(CheetahConv2dTest, Basic) {
   kshape[2] = tshape[2];
   auto window_strides = std::get<4>(GetParam());
 
-  ArrayRef tensor = ring_rand(field, calcNumel(tshape) * N);
-  ArrayRef kernel = ring_rand(field, calcNumel(kshape) * O);
+  NdArrayRef tensor = ring_rand(field, {calcNumel(tshape) * N});
+  NdArrayRef kernel = ring_rand(field, {calcNumel(kshape) * O});
 
   std::vector<ArrayRef> result(kWorldSize);
   utils::simulate(kWorldSize, [&](std::shared_ptr<yacl::link::Context> lctx) {
     int rank = lctx->Rank();
     auto dot = std::make_shared<CheetahDot>(lctx);
     if (rank == 0) {
-      result[rank] =
-          dot->Conv2dOLE(tensor, N, tshape, O, kshape, window_strides, true);
+      result[rank] = dot->Conv2dOLE(flatten(tensor), N, tshape, O, kshape,
+                                    window_strides, true);
     } else {
-      result[rank] =
-          dot->Conv2dOLE(kernel, N, tshape, O, kshape, window_strides, false);
+      result[rank] = dot->Conv2dOLE(flatten(kernel), N, tshape, O, kshape,
+                                    window_strides, false);
     }
   });
 
-  ArrayRef expected =
+  NdArrayRef expected =
       ring_conv2d(tensor, kernel, N, tshape, O, kshape, window_strides);
-  ArrayRef computed = ring_add(result[0], result[1]);
+  ArrayRef computed =
+      flatten(ring_add(toNdArray(result[0]), toNdArray(result[1])));
 
   const int64_t kMaxDiff = 1;
   DISPATCH_ALL_FIELDS(field, "_", [&]() {
-    auto e = ArrayView<ring2k_t>(expected);
     auto c = ArrayView<ring2k_t>(computed);
 
     for (auto idx = 0; idx < expected.numel(); idx++) {
-      EXPECT_NEAR(c[idx], e[idx], kMaxDiff);
+      EXPECT_NEAR(c[idx], expected.at<ring2k_t>(idx), kMaxDiff);
     }
   });
 }

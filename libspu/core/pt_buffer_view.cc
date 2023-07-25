@@ -14,7 +14,7 @@
 
 #include "libspu/core/pt_buffer_view.h"
 
-#include "libspu/core/shape_util.h"
+#include "libspu/core/shape.h"
 
 namespace spu {
 
@@ -29,16 +29,16 @@ NdArrayRef convertToNdArray(PtBufferView bv) {
   const auto type = makePtType(bv.pt_type);
   auto out = NdArrayRef(type, bv.shape);
 
-  if (!isEmpty(bv.shape)) {
+  if (bv.shape.numel() > 0) {
     auto* out_ptr = static_cast<std::byte*>(out.data());
 
     size_t elsize = SizeOf(bv.pt_type);
 
-    std::vector<int64_t> indices(bv.shape.size(), 0);
+    Index indices(bv.shape.size(), 0);
     do {
       std::memcpy(out_ptr, bv.get(indices), elsize);
       out_ptr += elsize;
-    } while (bumpIndices<int64_t>(bv.shape, absl::MakeSpan(indices)));
+    } while (bumpIndices(bv.shape, absl::MakeSpan(indices)));
   }
 
   return out;

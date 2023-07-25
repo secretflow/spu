@@ -151,6 +151,11 @@ void EcdhPsiContext::RecvDualMaskedSelf(
       break;
     }
     batch_count++;
+
+    // Call the hook.
+    if (options_.on_batch_finished) {
+      options_.on_batch_finished(batch_count);
+    }
   }
 }
 

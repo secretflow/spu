@@ -20,7 +20,6 @@
 #include "xtensor/xio.hpp"
 #include "xtensor/xrandom.hpp"
 
-#include "libspu/core/array_ref.h"
 #include "libspu/core/ndarray_ref.h"
 #include "libspu/core/prelude.h"
 #include "libspu/core/pt_buffer_view.h"
@@ -28,40 +27,16 @@
 
 namespace spu {
 
-// This module tries to unify all xt::adapt usage, to avoid potential abuse.
-template <typename T>
-auto xt_adapt(const ArrayRef& aref) {
-  SPU_ENFORCE(aref.elsize() == sizeof(T), "adapt eltype={} with size={}",
-              aref.eltype(), sizeof(T));
-
-  std::vector<int64_t> shape = {aref.numel()};
-  std::vector<int64_t> strides = {aref.stride()};
-
-  return xt::adapt(static_cast<const T*>(aref.data()),
-                   static_cast<size_t>(aref.numel()), xt::no_ownership(), shape,
-                   strides);
-}
-
-template <typename T>
-auto xt_mutable_adapt(ArrayRef& aref) {
-  SPU_ENFORCE(aref.elsize() == sizeof(T), "adapt eltype={} with size={}",
-              aref.eltype(), sizeof(T));
-
-  std::vector<int64_t> shape = {aref.numel()};
-  std::vector<int64_t> strides = {aref.stride()};
-
-  return xt::adapt(static_cast<T*>(aref.data()),
-                   static_cast<size_t>(aref.numel()), xt::no_ownership(), shape,
-                   strides);
-}
-
 template <typename T>
 auto xt_mutable_adapt(NdArrayRef& aref) {
   SPU_ENFORCE(aref.elsize() == sizeof(T), "adapt eltype={} with size={}",
               aref.eltype(), sizeof(T));
 
+  std::vector<int64_t> shape(aref.shape().begin(), aref.shape().end());
+  std::vector<int64_t> stride(aref.strides().begin(), aref.strides().end());
+
   return xt::adapt(static_cast<T*>(aref.data()), aref.numel(),
-                   xt::no_ownership(), aref.shape(), aref.strides());
+                   xt::no_ownership(), shape, stride);
 }
 
 template <typename T>
@@ -69,8 +44,11 @@ auto xt_adapt(const NdArrayRef& aref) {
   SPU_ENFORCE(aref.elsize() == sizeof(T), "adapt eltype={} with size={}",
               aref.eltype(), sizeof(T));
 
+  std::vector<int64_t> shape(aref.shape().begin(), aref.shape().end());
+  std::vector<int64_t> stride(aref.strides().begin(), aref.strides().end());
+
   return xt::adapt(static_cast<const T*>(aref.data()), aref.numel(),
-                   xt::no_ownership(), aref.shape(), aref.strides());
+                   xt::no_ownership(), shape, stride);
 }
 
 // Make a NdArrayRef from an xt expression.
@@ -81,8 +59,7 @@ NdArrayRef xt_to_ndarray(const xt::xexpression<E>& e) {
   auto&& ee = xt::eval(e.derived_cast());
 
   const Type eltype = makePtType<T>();
-  auto arr = NdArrayRef(
-      eltype, std::vector<int64_t>(ee.shape().begin(), ee.shape().end()));
+  auto arr = NdArrayRef(eltype, Shape(ee.shape().begin(), ee.shape().end()));
   xt_mutable_adapt<T>(arr) = ee;
 
   return arr;

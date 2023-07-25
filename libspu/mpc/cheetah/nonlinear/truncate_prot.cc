@@ -63,7 +63,7 @@ ArrayRef TruncateProtocol::ComputeWrap(const ArrayRef& inp, const Meta& meta) {
       if (rank == 0) {
         wrap_bool = compare_prot.Compute(inp, true);
       } else {
-        auto adjusted = ring_neg(inp);
+        auto adjusted = flatten(ring_neg(toNdArray(inp)));
         DISPATCH_ALL_FIELDS(field, "", [&]() {
           ArrayView<ring2k_t> xadj(adjusted);
           pforeach(0, inp.numel(), [&](int64_t i) { xadj[i] -= 1; });
@@ -85,11 +85,11 @@ ArrayRef TruncateProtocol::ComputeWrap(const ArrayRef& inp, const Meta& meta) {
 //    - msb(xB) = 1: get(-x, x + msb(xA)) => msb(xA)
 ArrayRef TruncateProtocol::MSB1ToWrap(const ArrayRef& inp, size_t shift_bits) {
   const auto field = inp.eltype().as<Ring2k>()->field();
-  const size_t numel = inp.numel();
+  const int64_t numel = inp.numel();
   const int rank = basic_ot_prot_->Rank();
   const size_t bw = SizeOf(field) * 8;
 
-  ArrayRef cot_output = ring_zeros(field, numel);
+  ArrayRef cot_output = flatten(ring_zeros(field, {numel}));
   DISPATCH_ALL_FIELDS(field, "", [&]() {
     using u2k = std::make_unsigned<ring2k_t>::type;
     ArrayView<const u2k> xinp(inp);
@@ -134,7 +134,7 @@ ArrayRef TruncateProtocol::MSB1ToWrap(const ArrayRef& inp, size_t shift_bits) {
 //   - msb(xB) = 1: get (r, r^1) => 1
 ArrayRef TruncateProtocol::MSB0ToWrap(const ArrayRef& inp, size_t shift_bits) {
   const auto field = inp.eltype().as<Ring2k>()->field();
-  const size_t numel = inp.numel();
+  const int64_t numel = inp.numel();
   const int rank = basic_ot_prot_->Rank();
   const size_t bw = SizeOf(field) * 8;
 
@@ -143,7 +143,7 @@ ArrayRef TruncateProtocol::MSB0ToWrap(const ArrayRef& inp, size_t shift_bits) {
 
   ArrayRef outp;
   if (0 == rank) {
-    outp = ring_randbit(field, numel);
+    outp = flatten(ring_randbit(field, {numel}));
     std::vector<uint8_t> send(numel * N);
 
     DISPATCH_ALL_FIELDS(field, "", [&]() {
@@ -153,7 +153,7 @@ ArrayRef TruncateProtocol::MSB0ToWrap(const ArrayRef& inp, size_t shift_bits) {
       // when msb(xA) = 0, set (r, 1^r)
       //  ow. msb(xA) = 1, set (1^r, 1^r)
       // Equals to (r^msb(xA), r^1)
-      for (size_t i = 0; i < numel; ++i) {
+      for (int64_t i = 0; i < numel; ++i) {
         send[2 * i + 0] = xrnd[i] ^ ((xinp[i] >> (bw - 1)) & 1);
         send[2 * i + 1] = xrnd[i] ^ 1;
       }
@@ -167,7 +167,7 @@ ArrayRef TruncateProtocol::MSB0ToWrap(const ArrayRef& inp, size_t shift_bits) {
     DISPATCH_ALL_FIELDS(field, "", [&]() {
       using u2k = std::make_unsigned<ring2k_t>::type;
       ArrayView<const u2k> xinp(inp);
-      for (size_t i = 0; i < numel; ++i) {
+      for (int64_t i = 0; i < numel; ++i) {
         choices[i] = (xinp[i] >> (bw - 1)) & 1;
       }
     });
@@ -176,7 +176,7 @@ ArrayRef TruncateProtocol::MSB0ToWrap(const ArrayRef& inp, size_t shift_bits) {
     basic_ot_prot_->GetReceiverCOT()->RecvCMCC(absl::MakeSpan(choices), N,
                                                absl::MakeSpan(recv), nbits);
 
-    outp = ring_zeros(field, numel);
+    outp = flatten(ring_zeros(field, {numel}));
     DISPATCH_ALL_FIELDS(field, "", [&]() {
       ArrayView<ring2k_t> xoup(outp);
       pforeach(0, numel, [&](int64_t i) {
@@ -203,7 +203,7 @@ ArrayRef TruncateProtocol::Compute(const ArrayRef& inp, Meta meta) {
   const int rank = basic_ot_prot_->Rank();
 
   ArrayRef wrap_ashr;
-  ArrayRef out = ring_zeros(field, inp.numel());
+  ArrayRef out = flatten(ring_zeros(field, {inp.numel()}));
 
   return DISPATCH_ALL_FIELDS(field, "", [&]() {
     const ring2k_t component = (static_cast<ring2k_t>(1) << (bit_width - 1));
@@ -213,7 +213,7 @@ ArrayRef TruncateProtocol::Compute(const ArrayRef& inp, Meta meta) {
     if (meta.signed_arith && rank == 0) {
       // For signed arith right shift, we convert to unsigned logic right shift
       // by convert to two-component form.
-      auto tmp = ring_zeros(field, inp.numel());
+      auto tmp = flatten(ring_zeros(field, {inp.numel()}));
       ArrayView<ring2k_t> xtmp(tmp);
       pforeach(0, inp.numel(),
                [&](int64_t i) { xtmp[i] = xinp[i] + component; });

@@ -27,12 +27,10 @@
 namespace spu {
 namespace {
 
-std::vector<int64_t> deducePadShape(
-    absl::Span<const int64_t> input_shape,
-    absl::Span<const int64_t> edge_padding_low,
-    absl::Span<const int64_t> edge_padding_high,
-    absl::Span<const int64_t> interior_padding) {
-  std::vector<int64_t> dims;
+Shape deducePadShape(const Shape& input_shape, const Sizes& edge_padding_low,
+                     const Sizes& edge_padding_high,
+                     const Sizes& interior_padding) {
+  Shape dims;
   SPU_ENFORCE(edge_padding_low.size() == input_shape.size());
   SPU_ENFORCE(edge_padding_high.size() == input_shape.size());
   SPU_ENFORCE(interior_padding.size() == input_shape.size());
@@ -121,21 +119,61 @@ static bool attempt_nocopy_reshape(const NdArrayRef& old,
   return true;
 }
 
+std::pair<bool, int64_t> can_use_fast_indexing(const Shape& shape,
+                                               const Strides& strides) {
+  Shape stripped_shape;
+  Strides stripped_strides;
+
+  for (size_t idx = 0; idx < shape.size(); ++idx) {
+    // Strip all dim == 1
+    if (shape[idx] == 1) {
+      continue;
+    }
+    stripped_shape.emplace_back(shape[idx]);
+    stripped_strides.emplace_back(strides[idx]);
+  }
+
+  if (stripped_shape.isScalar()) {
+    return {true, 0};  // This is eventually a scalar...
+  }
+
+  auto linear_strides = stripped_strides.back();
+  auto compact_strides = makeCompactStrides(stripped_shape);
+
+  // So idea here:
+  // Let's say there is an array with shape (3,4), with strides (4, 1), it is a
+  // compact array But with (8, 2), which means we are only skipping certain
+  // columns, it is still capable to do fast indexing.
+  // But when the strides is (16, 2), which means we also skipping certain rows,
+  // to compute actual offset, we have to use a slow path.
+
+  // See NdArrayRefTest.Indexing test point.
+  for (size_t idx = 0; idx < compact_strides.size(); ++idx) {
+    if (linear_strides * compact_strides[idx] != stripped_strides[idx]) {
+      return {false, 0};
+    }
+  }
+  return {true, linear_strides};
+}
+
 }  // namespace
 
 // full constructor
 NdArrayRef::NdArrayRef(std::shared_ptr<yacl::Buffer> buf, Type eltype,
-                       std::vector<int64_t> shape, std::vector<int64_t> strides,
+                       const Shape& shape, const Strides& strides,
                        int64_t offset)
     : buf_(std::move(buf)),
       eltype_(std::move(eltype)),
-      shape_(std::move(shape)),
-      strides_(std::move(strides)),
-      offset_(offset) {}
+      shape_(shape.begin(), shape.end()),
+      strides_(strides.begin(), strides.end()),
+      offset_(offset) {
+  std::tie(use_fast_indexing_, fast_indexing_stride_) =
+      can_use_fast_indexing(shape_, strides_);
+}
 
 // constructor, view buf as a compact buffer with given shape.
 NdArrayRef::NdArrayRef(std::shared_ptr<yacl::Buffer> buf, Type eltype,
-                       absl::Span<const int64_t> shape)
+                       const Shape& shape)
     : NdArrayRef(std::move(buf),             // buf
                  std::move(eltype),          // eltype
                  shape,                      // shape
@@ -144,19 +182,14 @@ NdArrayRef::NdArrayRef(std::shared_ptr<yacl::Buffer> buf, Type eltype,
       ) {}
 
 // constructor, create a new buffer of elements and ref to it.
-NdArrayRef::NdArrayRef(const Type& eltype, absl::Span<const int64_t> shape)
-    : NdArrayRef(std::make_shared<yacl::Buffer>(calcNumel(shape) *
-                                                eltype.size()),  // buf
-                 eltype,                                         // eltype
-                 shape,                                          // shape
-                 makeCompactStrides(shape),                      // strides
-                 0                                               // offset
+NdArrayRef::NdArrayRef(const Type& eltype, const Shape& shape)
+    : NdArrayRef(
+          std::make_shared<yacl::Buffer>(shape.numel() * eltype.size()),  // buf
+          eltype,                     // eltype
+          shape,                      // shape
+          makeCompactStrides(shape),  // strides
+          0                           // offset
       ) {}
-
-size_t NdArrayRef::dim(size_t idx) const {
-  SPU_ENFORCE(idx < ndim());
-  return shape_[idx];
-}
 
 NdArrayRef NdArrayRef::as(const Type& new_ty, bool force) const {
   if (!force) {
@@ -168,17 +201,11 @@ NdArrayRef NdArrayRef::as(const Type& new_ty, bool force) const {
   auto distance = ((strides().empty() ? 1 : strides().back()) * elsize());
   SPU_ENFORCE(distance % new_ty.size() == 0);
 
-  std::vector<int64_t> new_strides = strides();
+  Strides new_strides = strides();
   std::transform(new_strides.begin(), new_strides.end(), new_strides.begin(),
                  [&](int64_t s) { return (elsize() * s) / new_ty.size(); });
 
   return NdArrayRef(buf(), new_ty, shape(), new_strides, offset());
-}
-
-int64_t NdArrayRef::numel() const { return calcNumel(shape()); }
-
-bool NdArrayRef::isCompact() const {
-  return makeCompactStrides(shape()) == strides();
 }
 
 NdArrayRef NdArrayRef::clone() const {
@@ -190,18 +217,23 @@ NdArrayRef NdArrayRef::clone() const {
 
   auto* ret_ptr = static_cast<std::byte*>(res.data());
 
-  for (int64_t idx = 0, e = numel(); idx < e; ++idx) {
+  for (int64_t idx = 0, e = numel(); idx < e; ++idx, ++src_iter) {
     std::memcpy(ret_ptr + idx * elsize, src_iter.getRawPtr(), elsize);
-    ++src_iter;
   }
 
   return res;
+  return {};
 }
 
-void NdArrayRef::copy_slice(const NdArrayRef& src,
-                            absl::Span<const int64_t> src_base,
-                            absl::Span<const int64_t> dst_base,
-                            int64_t num_copy) {
+std::shared_ptr<yacl::Buffer> NdArrayRef::getOrCreateCompactBuf() const {
+  if (isCompact() && offset_ == 0) {
+    return buf();
+  }
+  return clone().buf();
+}
+
+void NdArrayRef::copy_slice(const NdArrayRef& src, const Index& src_base,
+                            const Index& dst_base, int64_t num_copy) {
   NdArrayRef::Iterator src_iter(src, src_base);
   NdArrayRef::Iterator dst_iter(*this, dst_base);
   auto elsize = this->elsize();
@@ -213,19 +245,19 @@ void NdArrayRef::copy_slice(const NdArrayRef& src,
     // SPDLOG_INFO(src_iter);
     // SPDLOG_INFO(dst_iter);
 #endif
-    std::memcpy(dst_iter.getRawPtr(), src_iter.getRawPtr(), elsize);
+    std::memcpy(&*dst_iter, &*src_iter, elsize);
   }
 }
 
-NdArrayRef NdArrayRef::broadcast_to(absl::Span<const int64_t> to_shape,
-                                    absl::Span<const int64_t> in_dims) const {
+NdArrayRef NdArrayRef::broadcast_to(const Shape& to_shape,
+                                    const Axes& in_dims) const {
   for (auto d : in_dims) {
     SPU_ENFORCE(d < (int64_t)to_shape.size() && d >= 0,
                 "Broadcast dim {} out of valid range [0, {})", d,
                 to_shape.size());
   }
 
-  std::vector<int64_t> new_strides(to_shape.size(), 0);
+  Strides new_strides(to_shape.size(), 0);
 
   if (!in_dims.empty()) {
     for (size_t idx = 0; idx < in_dims.size(); ++idx) {
@@ -241,21 +273,22 @@ NdArrayRef NdArrayRef::broadcast_to(absl::Span<const int64_t> to_shape,
   return NdArrayRef(buf(), eltype(), to_shape, new_strides, offset());
 }
 
-NdArrayRef NdArrayRef::reshape(absl::Span<const int64_t> to_shape) const {
+NdArrayRef NdArrayRef::reshape(const Shape& to_shape) const {
   // Nothing to reshape
   if (shape() == to_shape) {
     return *this;
   }
 
-  SPU_ENFORCE(calcNumel(shape()) == calcNumel(to_shape),
+  SPU_ENFORCE(shape().numel() == to_shape.numel(),
               "reshape from {} to {} is changing numel", shape(), to_shape);
 
   // Reshape empty is always a noop
-  if (calcNumel(to_shape) == 0) {
-    return NdArrayRef(buf(), eltype(), to_shape, strides(), offset());
+  if (to_shape.numel() == 0) {
+    return NdArrayRef(buf(), eltype(), to_shape, makeCompactStrides(to_shape),
+                      offset());
   }
 
-  std::vector<int64_t> new_strides(to_shape.size(), 0);
+  Strides new_strides(to_shape.size(), 0);
   if (attempt_nocopy_reshape(*this, to_shape, new_strides)) {
     // No copy reshape
     return NdArrayRef(buf(), eltype(), to_shape, new_strides, offset());
@@ -265,16 +298,16 @@ NdArrayRef NdArrayRef::reshape(absl::Span<const int64_t> to_shape) const {
   return NdArrayRef(compact_clone.buf(), compact_clone.eltype(), to_shape);
 }
 
-NdArrayRef NdArrayRef::slice(absl::Span<const int64_t> start_indices,
-                             absl::Span<const int64_t> end_indices,
-                             absl::Span<const int64_t> slice_strides) const {
+NdArrayRef NdArrayRef::slice(const Index& start_indices,
+                             const Index& end_indices,
+                             const Strides& slice_strides) const {
   SPU_ENFORCE(shape().size() == start_indices.size());
   SPU_ENFORCE(shape().size() == end_indices.size());
   SPU_ENFORCE(slice_strides.empty() ||
               (shape().size() == slice_strides.size()));
 
-  std::vector<int64_t> new_shape(shape().size(), 0);
-  std::vector<int64_t> new_strides(strides());
+  Shape new_shape(shape().size(), 0);
+  Strides new_strides(strides());
   for (size_t idx = 0; idx < shape().size(); ++idx) {
     SPU_ENFORCE(end_indices[idx] <= shape()[idx],
                 "Slice end at axis {} = {} is larger than input shape {}", idx,
@@ -296,13 +329,12 @@ NdArrayRef NdArrayRef::slice(absl::Span<const int64_t> start_indices,
                     &at(start_indices) - buf()->data<std::byte>());
 }
 
-NdArrayRef NdArrayRef::slice_scalar_at(
-    absl::Span<const int64_t> indices) const {
+NdArrayRef NdArrayRef::slice_scalar_at(const Index& indices) const {
   return NdArrayRef(buf(), eltype(), {}, {},
                     &at(indices) - buf()->data<std::byte>());
 }
 
-NdArrayRef NdArrayRef::transpose(absl::Span<const int64_t> permutation) const {
+NdArrayRef NdArrayRef::transpose(const Axes& permutation) const {
   std::vector<int64_t> perm(shape().size());
   if (permutation.empty()) {
     for (size_t i = 0; i < perm.size(); ++i) {
@@ -312,7 +344,7 @@ NdArrayRef NdArrayRef::transpose(absl::Span<const int64_t> permutation) const {
     std::vector<int64_t> reverse_permutation(shape().size(), -1);
     SPU_ENFORCE(permutation.size() == shape().size(),
                 "axes don't match array, permutation = {}, input shape = {}",
-                fmt::join(permutation, "x"), fmt::join(shape(), "x"));
+                permutation, shape());
 
     for (size_t i = 0; i < permutation.size(); i++) {
       auto axis = permutation[i];
@@ -323,8 +355,8 @@ NdArrayRef NdArrayRef::transpose(absl::Span<const int64_t> permutation) const {
     }
   }
 
-  std::vector<int64_t> ret_shape(shape().size());
-  std::vector<int64_t> ret_strides(strides().size());
+  Shape ret_shape(shape().size());
+  Strides ret_strides(strides().size());
 
   for (size_t i = 0; i < shape().size(); i++) {
     ret_shape[i] = shape()[perm[i]];
@@ -334,8 +366,8 @@ NdArrayRef NdArrayRef::transpose(absl::Span<const int64_t> permutation) const {
   return NdArrayRef{buf(), eltype(), ret_shape, ret_strides, offset()};
 }
 
-NdArrayRef NdArrayRef::reverse(absl::Span<const int64_t> dimensions) const {
-  std::vector<int64_t> new_strides = strides();
+NdArrayRef NdArrayRef::reverse(const Axes& dimensions) const {
+  Strides new_strides = strides();
   int64_t el_offset = 0;
 
   for (int64_t axis : dimensions) {
@@ -348,7 +380,7 @@ NdArrayRef NdArrayRef::reverse(absl::Span<const int64_t> dimensions) const {
                     offset() + el_offset * elsize());
 }
 
-NdArrayRef NdArrayRef::expand(absl::Span<const int64_t> to_shape) const {
+NdArrayRef NdArrayRef::expand(const Shape& to_shape) const {
   SPU_ENFORCE(numel() == 1, "Only support expanding scalar");
   NdArrayRef ret(eltype(), to_shape);
   // compute number of elements need to copy
@@ -369,8 +401,8 @@ NdArrayRef NdArrayRef::expand(absl::Span<const int64_t> to_shape) const {
 }
 
 NdArrayRef NdArrayRef::concatenate(absl::Span<const NdArrayRef> others,
-                                   const size_t& axis) const {
-  std::vector<int64_t> result_shape = shape();
+                                   int64_t axis) const {
+  Shape result_shape = shape();
   for (const auto& o : others) {
     result_shape[axis] += o.shape()[axis];
   }
@@ -379,17 +411,14 @@ NdArrayRef NdArrayRef::concatenate(absl::Span<const NdArrayRef> others,
   NdArrayRef result(eltype(), result_shape);
 
   // Copy self
-  std::vector<int64_t> base(shape().size(), 0);
+  Index base(shape().size(), 0);
+  Index slice_start(shape().size(), 0);
+  Index slice_end(shape().begin(), shape().end());
+  Strides slice_stride(shape().size(), 1);
 
-  std::vector<int64_t> slice_start(shape().size(), 0);
-  std::vector<int64_t> slice_end = shape();
-  std::vector<int64_t> slice_stride(shape().size(), 1);
-
-  {
-    auto r1 = result.slice(slice_start, slice_end, slice_stride);
-    r1.copy_slice(*this, base, base, numel());
-    slice_start[axis] = slice_end[axis];
-  }
+  auto r1 = result.slice(slice_start, slice_end, slice_stride);
+  r1.copy_slice(*this, base, base, numel());
+  slice_start[axis] = slice_end[axis];
 
   // Copy other slices
   for (const auto& o : others) {
@@ -403,9 +432,9 @@ NdArrayRef NdArrayRef::concatenate(absl::Span<const NdArrayRef> others,
 }
 
 NdArrayRef NdArrayRef::pad(const NdArrayRef& padding_value,
-                           absl::Span<const int64_t> edge_padding_low,
-                           absl::Span<const int64_t> edge_padding_high,
-                           absl::Span<const int64_t> interior_padding) const {
+                           const Sizes& edge_padding_low,
+                           const Sizes& edge_padding_high,
+                           const Sizes& interior_padding) const {
   auto result = padding_value.expand(deducePadShape(
       shape(), edge_padding_low, edge_padding_high, interior_padding));
 
@@ -415,9 +444,9 @@ NdArrayRef NdArrayRef::pad(const NdArrayRef& padding_value,
   // auto elsize = result.elsize();
 
   yacl::parallel_for(0, numel(), 1024, [&](int64_t begin, int64_t end) {
-    std::vector<int64_t> unflatten = unflattenIndex(begin, input_shape);
+    auto unflatten = unflattenIndex(begin, input_shape);
 
-    std::vector<int64_t> target_index(result_shape.size());
+    Index target_index(result_shape.size());
     for (int64_t idx = begin; idx < end; ++idx) {
       bool valid = true;
       for (size_t i = 0; i < unflatten.size(); ++i) {
@@ -437,14 +466,14 @@ NdArrayRef NdArrayRef::pad(const NdArrayRef& padding_value,
       if (valid) {
         std::memcpy(&result.at(target_index), &at(unflatten), elsize());
       }
-      bumpIndices<int64_t>(shape(), absl::MakeSpan(unflatten));
+      bumpIndices(shape(), absl::MakeSpan(unflatten));
     }
   });
 
   return result;
 }
 
-NdArrayRef NdArrayRef::linear_gather(absl::Span<const int64_t> indices) const {
+NdArrayRef NdArrayRef::linear_gather(const Index& indices) const {
   SPU_ENFORCE(shape().size() == 1);
 
   NdArrayRef result(eltype(), {static_cast<int64_t>(indices.size())});
@@ -456,8 +485,7 @@ NdArrayRef NdArrayRef::linear_gather(absl::Span<const int64_t> indices) const {
   auto elsize = this->elsize();
 
   for (const auto& idx : indices) {
-    std::memcpy(result_iter.getRawPtr(), src_ptr + idx * strides_[0] * elsize,
-                elsize);
+    std::memcpy(&*result_iter, src_ptr + idx * strides_[0] * elsize, elsize);
     ++result_iter;
   }
 
@@ -465,7 +493,7 @@ NdArrayRef NdArrayRef::linear_gather(absl::Span<const int64_t> indices) const {
 }
 
 NdArrayRef& NdArrayRef::linear_scatter(const NdArrayRef& new_values,
-                                       absl::Span<const int64_t> indices) {
+                                       const Index& indices) {
   SPU_ENFORCE(shape().size() == 1);
   SPU_ENFORCE(new_values.eltype() == eltype(),
               "new value eltype = {}, expected = {}", new_values.eltype(),
@@ -477,8 +505,8 @@ NdArrayRef& NdArrayRef::linear_scatter(const NdArrayRef& new_values,
   auto elsize = this->elsize();
 
   for (const auto& idx : indices) {
-    std::memcpy(dst_ptr + idx * strides_[0] * elsize,
-                new_values_iter.getRawPtr(), elsize);
+    std::memcpy(dst_ptr + idx * strides_[0] * elsize, &*new_values_iter,
+                elsize);
     ++new_values_iter;
   }
 
@@ -507,7 +535,7 @@ void NdArrayRef::eliminate_zero_stride() {
 }
 
 void NdArrayRef::update_slice(const NdArrayRef& new_value,
-                              absl::Span<const int64_t> start_indices) {
+                              const Index& start_indices) {
   if (new_value.numel() == 0) {
     return;
   }
@@ -519,17 +547,17 @@ void NdArrayRef::update_slice(const NdArrayRef& new_value,
   // Fast path for scalar copy...
   if (new_value.numel() == 1) {
     NdArrayRef::Iterator in(*this, start_indices);
-    std::memcpy(in.getRawPtr(), new_value.data(), elsize);
+    std::memcpy(&*in, new_value.data(), elsize);
     return;
   }
   // Slice copy
-  std::vector<int64_t> end_indices(start_indices.begin(), start_indices.end());
+  Index end_indices(start_indices.begin(), start_indices.end());
   for (size_t idx = 0; idx < end_indices.size(); ++idx) {
     end_indices[idx] += new_value.shape()[idx];
   }
 
-  auto slice = this->slice(start_indices, end_indices,
-                           std::vector<int64_t>(start_indices.size(), 1));
+  auto slice =
+      this->slice(start_indices, end_indices, Strides(start_indices.size(), 1));
 
   // Just a sanity check....
   SPU_ENFORCE(slice.buf_->data() == this->buf_->data());
@@ -539,84 +567,17 @@ void NdArrayRef::update_slice(const NdArrayRef& new_value,
   auto dst_iter = slice.begin();
   auto dst_end = slice.end();
   for (; src_iter != src_end; ++src_iter, ++dst_iter) {
-    std::memcpy(dst_iter.getRawPtr(), src_iter.getRawPtr(), elsize);
+    std::memcpy(&*dst_iter, &*src_iter, elsize);
   }
-}
-
-NdArrayRef unflatten(const ArrayRef& arr, absl::Span<const int64_t> shape) {
-  SPU_ENFORCE(arr.numel() == calcNumel(shape),
-              "unflatten numel mismatch, expected={}, got={}", calcNumel(shape),
-              arr.numel());
-
-  if (arr.stride() == 0) {
-    return NdArrayRef(arr.buf(), arr.eltype(), shape,
-                      std::vector<int64_t>(shape.size(), 0), arr.offset());
-  }
-
-  auto strides = makeCompactStrides(shape);
-
-  if (arr.stride() != 1) {
-    for (auto& s : strides) {
-      s *= arr.stride();
-    }
-  }
-
-  return NdArrayRef(arr.buf(), arr.eltype(), shape, std::move(strides),
-                    arr.offset());
-}
-
-namespace {
-bool onlyStrideInnerMostDim(absl::Span<const int64_t> shape,
-                            absl::Span<const int64_t> strides) {
-  auto expect_stride = strides.back() * shape.back();
-  for (int64_t dim = strides.size() - 2; dim >= 0; --dim) {
-    if (strides[dim] != expect_stride) {
-      return false;
-    }
-    expect_stride *= shape[dim];
-  }
-  return true;
-}
-}  // namespace
-
-ArrayRef flatten(const NdArrayRef& ndarr) {
-  if (ndarr.isCompact()) {
-    // if compact, direct treat it as a 1D array.
-    // TODO: optimize me, in some cases, we may treat it as a strided 1d-array
-    // even ndarray is not compact.
-    return ArrayRef(ndarr.buf(), ndarr.eltype(), ndarr.numel(), 1,
-                    ndarr.offset());
-  }
-
-  // Basically it's a scalar broadcasted into some shape
-  if (std::all_of(ndarr.strides().begin(), ndarr.strides().end(),
-                  [](int64_t in) { return in == 0; })) {
-    // SPDLOG_INFO("fast zero stride flatten");
-    return ArrayRef(ndarr.buf(), ndarr.eltype(), ndarr.numel(), 0,
-                    ndarr.offset());
-  }
-
-  // Check if only inner most dim has strides
-  if (onlyStrideInnerMostDim(ndarr.shape(), ndarr.strides())) {
-    // SPDLOG_INFO("fast innermost only stride flatten");
-    return ArrayRef(ndarr.buf(), ndarr.eltype(), ndarr.numel(),
-                    ndarr.strides().back(), ndarr.offset());
-  }
-
-  // create a compact clone, it's save here since underline layer will never
-  // modify inplace.
-  auto compact = ndarr.clone();
-  return ArrayRef(compact.buf(), ndarr.eltype(), ndarr.numel(), 1,
-                  compact.offset());
 }
 
 NdArrayRef::Iterator& NdArrayRef::Iterator::operator++() {
-  if (!invalid_) {
+  if (index_) {
     int64_t idim;
     for (idim = shape_.size() - 1; idim >= 0; --idim) {
-      if (++coord_[idim] == shape_[idim]) {
+      if (++(*index_)[idim] == shape_[idim]) {  // NOLINT
         // Once a dimension is done, just unwind by strides
-        coord_[idim] = 0;
+        (*index_)[idim] = 0;  // NOLINT
         ptr_ -= (shape_[idim] - 1) * strides_[idim] * elsize_;
       } else {
         ptr_ += strides_[idim] * elsize_;
@@ -625,15 +586,33 @@ NdArrayRef::Iterator& NdArrayRef::Iterator::operator++() {
     }
     // Mark invalid
     if (idim == -1) {
-      invalid_ = true;
+      index_.reset();
+      ptr_ = nullptr;
     }
   }
   return *this;
 }
 
+NdArrayRef::Iterator NdArrayRef::Iterator::operator++(int) {
+  NdArrayRef::Iterator tempIter = *this;
+  ++*this;
+  return tempIter;
+}
+
+NdArrayRef makeConstantArrayRef(const Type& eltype, const Shape& shape) {
+  auto buf = std::make_shared<yacl::Buffer>(eltype.size());
+  memset(buf->data(), 0, eltype.size());
+  return NdArrayRef(buf,                       // buf
+                    eltype,                    // eltype
+                    shape,                     // numel
+                    Strides(shape.size(), 0),  // stride,
+                    0                          // offset
+  );
+}
+
 std::ostream& operator<<(std::ostream& out, const NdArrayRef& v) {
-  out << fmt::format("NdArrayRef<{}x{}>", fmt::join(v.shape(), "x"),
-                     v.eltype().toString());
+  out << fmt::format("NdArrayRef<{}x{}S={}ptr={}>", v.shape(), v.eltype(),
+                     v.strides(), v.data());
   return out;
 }
 

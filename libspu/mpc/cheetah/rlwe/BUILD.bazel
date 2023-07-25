@@ -55,7 +55,7 @@ spu_cc_library(
         "utils.h",
     ],
     deps = [
-        "//libspu/core:array_ref",
+        "//libspu/mpc/cheetah:array_ref",
         "//libspu/mpc/utils:ring_ops",
         "@com_github_microsoft_seal//:seal",
     ],

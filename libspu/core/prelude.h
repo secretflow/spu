@@ -41,5 +41,11 @@
   YACL_ENFORCE((COND),         \
                __VA_ARGS__)  // NOLINT, readability-simplify-boolean-expr
 
+#ifdef NDEBUG
+#define SPU_DEBUG_ONLY_THROW static_cast<void>
+#else
+#define SPU_DEBUG_ONLY_THROW YACL_THROW
+#endif
+
 // forward scope guard related macros
 #include "yacl/utils/scope_guard.h"

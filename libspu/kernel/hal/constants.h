@@ -16,7 +16,7 @@
 
 #include "libspu/core/context.h"
 #include "libspu/core/pt_buffer_view.h"
-#include "libspu/core/shape_util.h"
+#include "libspu/core/shape.h"
 #include "libspu/core/value.h"
 
 namespace spu::kernel::hal {
@@ -25,13 +25,13 @@ namespace spu::kernel::hal {
 //
 // The result visibility is public.
 Value constant(SPUContext* ctx, PtBufferView init, DataType dtype,
-               ShapeView shape = {});
+               const Shape& shape = {});
 
 // Returns a SPU zero value, which is equal to
 //  constant(ctx, 0, dtype, shape);
 //
 // The result visibility is public.
-Value zeros(SPUContext* ctx, DataType dtype, ShapeView shape = {});
+Value zeros(SPUContext* ctx, DataType dtype, const Shape& shape = {});
 
 // Returns a one-dimentional value.
 //
@@ -41,7 +41,6 @@ Value iota(SPUContext* ctx, DataType dtype, int64_t numel);
 // Returns the SPU epsilon, the positive distance between two fixed point value.
 //
 // The result visibility is public.
-Value epsilon(SPUContext* ctx, DataType dtype,
-              absl::Span<const int64_t> shape = {});
+Value epsilon(SPUContext* ctx, DataType dtype, const Shape& shape = {});
 
 }  // namespace spu::kernel::hal

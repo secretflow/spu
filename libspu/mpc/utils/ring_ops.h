@@ -14,94 +14,96 @@
 
 #pragma once
 
-#include "libspu/core/array_ref.h"
+#include "libspu/core/ndarray_ref.h"
 #include "libspu/core/type.h"
 
 namespace spu::mpc {
 
-void ring_print(const ArrayRef& x, std::string_view name = "_");
+void ring_print(const NdArrayRef& x, std::string_view name = "_");
 
-ArrayRef ring_rand(FieldType field, size_t size);
-ArrayRef ring_rand(FieldType field, size_t size, uint128_t prg_seed,
-                   uint64_t* prg_counter);
-ArrayRef ring_rand_range(FieldType field, size_t size, int32_t min,
-                         int32_t max);
+NdArrayRef ring_rand(FieldType field, const Shape& shape);
+NdArrayRef ring_rand(FieldType field, const Shape& shape, uint128_t prg_seed,
+                     uint64_t* prg_counter);
+NdArrayRef ring_rand_range(FieldType field, const Shape& shape, int32_t min,
+                           int32_t max);
 
-ArrayRef ring_zeros(FieldType field, size_t size);
-ArrayRef ring_zeros_packed(FieldType field, size_t size);
+NdArrayRef ring_zeros(FieldType field, const Shape& shape);
 
-ArrayRef ring_ones(FieldType field, size_t size);
+NdArrayRef ring_ones(FieldType field, const Shape& shape);
 
-ArrayRef ring_randbit(FieldType field, size_t size);
+NdArrayRef ring_randbit(FieldType field, const Shape& shape);
 
-void ring_assign(ArrayRef& x, const ArrayRef& y);
+void ring_assign(NdArrayRef& x, const NdArrayRef& y);
 
 // signed 2's complement negation.
-ArrayRef ring_neg(const ArrayRef& x);
-void ring_neg_(ArrayRef& x);
+NdArrayRef ring_neg(const NdArrayRef& x);
+void ring_neg_(NdArrayRef& x);
 
-ArrayRef ring_add(const ArrayRef& x, const ArrayRef& y);
-void ring_add_(ArrayRef& x, const ArrayRef& y);
+NdArrayRef ring_add(const NdArrayRef& x, const NdArrayRef& y);
+void ring_add_(NdArrayRef& x, const NdArrayRef& y);
 
-ArrayRef ring_sub(const ArrayRef& x, const ArrayRef& y);
-void ring_sub_(ArrayRef& x, const ArrayRef& y);
+NdArrayRef ring_sub(const NdArrayRef& x, const NdArrayRef& y);
+void ring_sub_(NdArrayRef& x, const NdArrayRef& y);
 
-ArrayRef ring_mul(const ArrayRef& x, const ArrayRef& y);
-void ring_mul_(ArrayRef& x, const ArrayRef& y);
+NdArrayRef ring_mul(const NdArrayRef& x, const NdArrayRef& y);
+void ring_mul_(NdArrayRef& x, const NdArrayRef& y);
 
-ArrayRef ring_mul(const ArrayRef& x, uint128_t y);
-void ring_mul_(ArrayRef& x, uint128_t y);
+NdArrayRef ring_mul(const NdArrayRef& x, uint128_t y);
+void ring_mul_(NdArrayRef& x, uint128_t y);
 
-ArrayRef ring_mmul(const ArrayRef& lhs, const ArrayRef& rhs, size_t M, size_t N,
-                   size_t K);
+NdArrayRef ring_mmul(const NdArrayRef& lhs, const NdArrayRef& rhs);
+void ring_mmul_(NdArrayRef& out, const NdArrayRef& lhs, const NdArrayRef& rhs);
 
-void ring_mmul_(ArrayRef& z, const ArrayRef& lhs, const ArrayRef& rhs, size_t M,
-                size_t N, size_t K);
+NdArrayRef ring_not(const NdArrayRef& x);
+void ring_not_(NdArrayRef& x);
 
-ArrayRef ring_not(const ArrayRef& x);
-void ring_not_(ArrayRef& x);
+NdArrayRef ring_and(const NdArrayRef& x, const NdArrayRef& y);
+void ring_and_(NdArrayRef& x, const NdArrayRef& y);
 
-ArrayRef ring_and(const ArrayRef& x, const ArrayRef& y);
-void ring_and_(ArrayRef& x, const ArrayRef& y);
+NdArrayRef ring_xor(const NdArrayRef& x, const NdArrayRef& y);
+void ring_xor_(NdArrayRef& x, const NdArrayRef& y);
 
-ArrayRef ring_xor(const ArrayRef& x, const ArrayRef& y);
-void ring_xor_(ArrayRef& x, const ArrayRef& y);
+NdArrayRef ring_equal(const NdArrayRef& x, const NdArrayRef& y);
+NdArrayRef ring_equal_(const NdArrayRef& x);
 
-ArrayRef ring_equal(const ArrayRef& x, const ArrayRef& y);
-ArrayRef ring_equal_(const ArrayRef& x);
+NdArrayRef ring_arshift(const NdArrayRef& x, size_t bits);
+void ring_arshift_(NdArrayRef& x, size_t bits);
 
-ArrayRef ring_arshift(const ArrayRef& x, size_t bits);
-void ring_arshift_(ArrayRef& x, size_t bits);
+NdArrayRef ring_rshift(const NdArrayRef& x, size_t bits);
+void ring_rshift_(NdArrayRef& x, size_t bits);
 
-ArrayRef ring_rshift(const ArrayRef& x, size_t bits);
-void ring_rshift_(ArrayRef& x, size_t bits);
+NdArrayRef ring_lshift(const NdArrayRef& x, size_t bits);
+void ring_lshift_(NdArrayRef& x, size_t bits);
 
-ArrayRef ring_lshift(const ArrayRef& x, size_t bits);
-void ring_lshift_(ArrayRef& x, size_t bits);
+NdArrayRef ring_bitrev(const NdArrayRef& x, size_t start, size_t end);
+void ring_bitrev_(NdArrayRef& x, size_t start, size_t end);
 
-ArrayRef ring_bitrev(const ArrayRef& x, size_t start, size_t end);
-void ring_bitrev_(ArrayRef& x, size_t start, size_t end);
+NdArrayRef ring_sum(absl::Span<NdArrayRef const> arrs);
 
-ArrayRef ring_sum(absl::Span<ArrayRef const> arrs);
-
-bool ring_all_equal(const ArrayRef& x, const ArrayRef& y, size_t abs_err = 0);
+bool ring_all_equal(const NdArrayRef& x, const NdArrayRef& y,
+                    size_t abs_err = 0);
 
 // Note: here we use uint8_t instead of bool because most of the time the casted
 // boolean will participate in arithmetic computation in the future.
-std::vector<uint8_t> ring_cast_boolean(const ArrayRef& x);
+std::vector<uint8_t> ring_cast_boolean(const NdArrayRef& x);
 
 // x & bits[low, high)
-ArrayRef ring_bitmask(const ArrayRef& x, size_t low, size_t high);
-void ring_bitmask_(ArrayRef& x, size_t low, size_t high);
+NdArrayRef ring_bitmask(const NdArrayRef& x, size_t low, size_t high);
+void ring_bitmask_(NdArrayRef& x, size_t low, size_t high);
 
-ArrayRef ring_select(const std::vector<uint8_t>& c, const ArrayRef& x,
-                     const ArrayRef& y);
+NdArrayRef ring_select(const std::vector<uint8_t>& c, const NdArrayRef& x,
+                       const NdArrayRef& y);
 
 // random additive splits.
-std::vector<ArrayRef> ring_rand_additive_splits(const ArrayRef& arr,
-                                                size_t num_splits);
+std::vector<NdArrayRef> ring_rand_additive_splits(const NdArrayRef& arr,
+                                                  size_t num_splits);
 // random boolean splits.
-std::vector<ArrayRef> ring_rand_boolean_splits(const ArrayRef& arr,
-                                               size_t num_splits);
+std::vector<NdArrayRef> ring_rand_boolean_splits(const NdArrayRef& arr,
+                                                 size_t num_splits);
+
+template <typename T>
+void ring_set_value(NdArrayRef& in, const T& value) {
+  pforeach(0, in.numel(), [&](int64_t idx) { in.at<T>(idx) = value; });
+}
 
 }  // namespace spu::mpc

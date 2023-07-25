@@ -26,14 +26,13 @@
 namespace spu::kernel::hlo {
 namespace {
 
-Value permute1D(SPUContext *ctx, const Value &x,
-                absl::Span<const int64_t> indices) {
+Value permute1D(SPUContext *ctx, const Value &x, const Index &indices) {
   SPU_ENFORCE(x.shape().size() == 1);
   return Value(x.data().linear_gather(indices), x.dtype());
 }
 
-void SliceCopy(spu::Value &dst, const spu::Value &src,
-               std::vector<int64_t> dst_indices, size_t dim) {
+void SliceCopy(spu::Value &dst, const spu::Value &src, Index dst_indices,
+               size_t dim) {
   auto copy_size = src.shape()[0];
   for (int64_t idx = 0; idx < copy_size; ++idx) {
     dst_indices[dim] = idx;
@@ -44,11 +43,10 @@ void SliceCopy(spu::Value &dst, const spu::Value &src,
 // Sort will be inplace, so always make a copy here.
 std::vector<spu::Value> GetValuesToSort(SPUContext *ctx,
                                         absl::Span<const spu::Value> inputs,
-                                        const std::vector<int64_t> &indices,
-                                        int64_t sort_dim,
+                                        const Index &indices, int64_t sort_dim,
                                         int64_t sort_dim_elements,
                                         int64_t num_operands) {
-  std::vector<int64_t> limit_indices(indices.begin(), indices.end());
+  Index limit_indices(indices.begin(), indices.end());
   std::for_each(limit_indices.begin(), limit_indices.end(),
                 [](int64_t &index) { ++index; });
   limit_indices[sort_dim] = sort_dim_elements;
@@ -68,13 +66,11 @@ std::vector<spu::Value> GetValuesToSort(SPUContext *ctx,
   return values_to_sort;
 }
 
-using SequenceT =
-    std::vector<std::pair<std::vector<int64_t>, std::vector<int64_t>>>;
+using SequenceT = std::vector<std::pair<Index, Index>>;
 
 void CmpSwap(SPUContext *ctx, const CompFn &comparator_body,
-             std::vector<spu::Value> &values_to_sort,
-             absl::Span<const int64_t> lhs_indices,
-             absl::Span<const int64_t> rhs_indices) {
+             std::vector<spu::Value> &values_to_sort, const Index &lhs_indices,
+             const Index &rhs_indices) {
   size_t num_operands = values_to_sort.size();
 
   std::vector<spu::Value> values;
@@ -205,53 +201,50 @@ std::vector<spu::Value> Sort(SPUContext *ctx,
 
   if (comparator_ret_vis == VIS_PUBLIC) {
     // Iterate through each dimension except 'sort_dim'.
-    forEachIndex(key_shape, zero_base, key_shape, increment,
-                 [&](const std::vector<int64_t> &indices) {
-                   // Extract a slice from each operand literal that corresponds
-                   // to exactly the row in dimension 'sort_dim'.
-                   std::vector<spu::Value> values_to_sort =
-                       GetValuesToSort(ctx, inputs, indices, sort_dim,
-                                       sort_dim_elements, num_operands);
+    forEachIndex(
+        key_shape, zero_base, key_shape, increment, [&](const Index &indices) {
+          // Extract a slice from each operand literal that corresponds
+          // to exactly the row in dimension 'sort_dim'.
+          std::vector<spu::Value> values_to_sort = GetValuesToSort(
+              ctx, inputs, indices, sort_dim, sort_dim_elements, num_operands);
 
-                   std::vector<int64_t> indices_to_sort(sort_dim_elements);
-                   std::iota(indices_to_sort.begin(), indices_to_sort.end(), 0);
-                   auto comparator = [&comparator_body, &num_operands, &ctx,
-                                      &values_to_sort](int64_t a, int64_t b) {
-                     std::vector<spu::Value> values;
-                     values.reserve(2 * num_operands);
-                     for (int64_t i = 0; i < num_operands; ++i) {
-                       values.push_back(
-                           hal::slice_scalar_at(ctx, values_to_sort[i], {a}));
-                       values.push_back(
-                           hal::slice_scalar_at(ctx, values_to_sort[i], {b}));
-                     }
-                     spu::Value ret = comparator_body(values);
-                     return getBooleanValue(ctx, ret);
-                   };
+          Index indices_to_sort(sort_dim_elements);
+          std::iota(indices_to_sort.begin(), indices_to_sort.end(), 0);
+          auto comparator = [&comparator_body, &num_operands, &ctx,
+                             &values_to_sort](int64_t a, int64_t b) {
+            std::vector<spu::Value> values;
+            values.reserve(2 * num_operands);
+            for (int64_t i = 0; i < num_operands; ++i) {
+              values.push_back(
+                  hal::slice_scalar_at(ctx, values_to_sort[i], {a}));
+              values.push_back(
+                  hal::slice_scalar_at(ctx, values_to_sort[i], {b}));
+            }
+            spu::Value ret = comparator_body(values);
+            return getBooleanValue(ctx, ret);
+          };
 
-                   if (is_stable) {
-                     std::stable_sort(indices_to_sort.begin(),
-                                      indices_to_sort.end(), comparator);
-                   } else {
-                     std::sort(indices_to_sort.begin(), indices_to_sort.end(),
-                               comparator);
-                   }
+          if (is_stable) {
+            std::stable_sort(indices_to_sort.begin(), indices_to_sort.end(),
+                             comparator);
+          } else {
+            std::sort(indices_to_sort.begin(), indices_to_sort.end(),
+                      comparator);
+          }
 
-                   std::vector<int64_t> start_indices(rank, 0);
-                   for (int64_t i = 0; i < num_operands; ++i) {
-                     auto sorted_value =
-                         permute1D(ctx, values_to_sort[i], indices_to_sort);
-                     SliceCopy(results[i], sorted_value, indices, sort_dim);
-                   }
-                 });
+          for (int64_t i = 0; i < num_operands; ++i) {
+            auto sorted_value =
+                permute1D(ctx, values_to_sort[i], indices_to_sort);
+            SliceCopy(results[i], sorted_value, indices, sort_dim);
+          }
+        });
   } else {
     SPU_ENFORCE(!is_stable,
                 "Stable sort is unsupported if comparator return is secret.");
 
     // Iterate through each dimension except 'sort_dim'.
     forEachIndex(
-        key_shape, zero_base, key_shape, increment,
-        [&](const std::vector<int64_t> &indices) {
+        key_shape, zero_base, key_shape, increment, [&](const Index &indices) {
           std::vector<spu::Value> values_to_sort = GetValuesToSort(
               ctx, inputs, indices, sort_dim, sort_dim_elements, num_operands);
 

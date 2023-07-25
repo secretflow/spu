@@ -24,9 +24,9 @@ enum class RecOp : uint8_t {
   XOR = 1,
 };
 
-std::vector<ArrayRef> reconstruct(RecOp op, absl::Span<const PrgSeed> seeds,
-                                  absl::Span<const PrgArrayDesc> descs) {
-  std::vector<ArrayRef> rs(descs.size());
+std::vector<NdArrayRef> reconstruct(RecOp op, absl::Span<const PrgSeed> seeds,
+                                    absl::Span<const PrgArrayDesc> descs) {
+  std::vector<NdArrayRef> rs(descs.size());
 
   for (size_t rank = 0; rank < seeds.size(); rank++) {
     for (size_t idx = 0; idx < descs.size(); idx++) {
@@ -53,13 +53,13 @@ std::vector<ArrayRef> reconstruct(RecOp op, absl::Span<const PrgSeed> seeds,
 void checkDescs(absl::Span<const PrgArrayDesc> descs) {
   for (size_t idx = 1; idx < descs.size(); idx++) {
     SPU_ENFORCE(descs[0].field == descs[idx].field);
-    SPU_ENFORCE(descs[0].numel == descs[idx].numel);
+    SPU_ENFORCE(descs[0].shape == descs[idx].shape);
   }
 }
 
 }  // namespace
 
-ArrayRef TrustedParty::adjustMul(Descs descs, Seeds seeds) {
+NdArrayRef TrustedParty::adjustMul(Descs descs, Seeds seeds) {
   SPU_ENFORCE_EQ(descs.size(), 3U);
   checkDescs(descs);
 
@@ -68,19 +68,19 @@ ArrayRef TrustedParty::adjustMul(Descs descs, Seeds seeds) {
   return ring_sub(ring_mul(rs[0], rs[1]), rs[2]);
 }
 
-ArrayRef TrustedParty::adjustDot(Descs descs, Seeds seeds, size_t m, size_t n,
-                                 size_t k) {
+NdArrayRef TrustedParty::adjustDot(Descs descs, Seeds seeds, int64_t m,
+                                   int64_t n, int64_t k) {
   SPU_ENFORCE_EQ(descs.size(), 3U);
-  SPU_ENFORCE_EQ(descs[0].numel, m * k);
-  SPU_ENFORCE_EQ(descs[1].numel, k * n);
-  SPU_ENFORCE_EQ(descs[2].numel, m * n);
+  SPU_ENFORCE_EQ(descs[0].shape, (std::vector<int64_t>{m, k}));
+  SPU_ENFORCE_EQ(descs[1].shape, (std::vector<int64_t>{k, n}));
+  SPU_ENFORCE_EQ(descs[2].shape, (std::vector<int64_t>{m, n}));
 
   auto rs = reconstruct(RecOp::ADD, seeds, descs);
   // adjust = rs[0] dot rs[1] - rs[2];
-  return ring_sub(ring_mmul(rs[0], rs[1], m, n, k), rs[2]);
+  return ring_sub(ring_mmul(rs[0], rs[1]), rs[2]);
 }
 
-ArrayRef TrustedParty::adjustAnd(Descs descs, Seeds seeds) {
+NdArrayRef TrustedParty::adjustAnd(Descs descs, Seeds seeds) {
   SPU_ENFORCE_EQ(descs.size(), 3U);
   checkDescs(descs);
 
@@ -89,7 +89,7 @@ ArrayRef TrustedParty::adjustAnd(Descs descs, Seeds seeds) {
   return ring_xor(ring_and(rs[0], rs[1]), rs[2]);
 }
 
-ArrayRef TrustedParty::adjustTrunc(Descs descs, Seeds seeds, size_t bits) {
+NdArrayRef TrustedParty::adjustTrunc(Descs descs, Seeds seeds, size_t bits) {
   SPU_ENFORCE_EQ(descs.size(), 2U);
   checkDescs(descs);
 
@@ -98,9 +98,9 @@ ArrayRef TrustedParty::adjustTrunc(Descs descs, Seeds seeds, size_t bits) {
   return ring_sub(ring_arshift(rs[0], bits), rs[1]);
 }
 
-std::pair<ArrayRef, ArrayRef> TrustedParty::adjustTruncPr(Descs descs,
-                                                          Seeds seeds,
-                                                          size_t bits) {
+std::pair<NdArrayRef, NdArrayRef> TrustedParty::adjustTruncPr(Descs descs,
+                                                              Seeds seeds,
+                                                              size_t bits) {
   // descs[0] is r, descs[1] adjust to r[k-2, bits], descs[2] adjust to r[k-1]
   SPU_ENFORCE_EQ(descs.size(), 3U);
   checkDescs(descs);
@@ -117,12 +117,12 @@ std::pair<ArrayRef, ArrayRef> TrustedParty::adjustTruncPr(Descs descs,
   return {adjust1, adjust2};
 }
 
-ArrayRef TrustedParty::adjustRandBit(Descs descs, Seeds seeds) {
+NdArrayRef TrustedParty::adjustRandBit(Descs descs, Seeds seeds) {
   SPU_ENFORCE_EQ(descs.size(), 1U);
   auto rs = reconstruct(RecOp::ADD, seeds, descs);
 
   // adjust = bitrev - rs[0];
-  return ring_sub(ring_randbit(descs[0].field, descs[0].numel), rs[0]);
+  return ring_sub(ring_randbit(descs[0].field, descs[0].shape), rs[0]);
 }
 
 }  // namespace spu::mpc::semi2k

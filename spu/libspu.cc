@@ -16,6 +16,8 @@
 #include <utility>
 
 #include "fmt/format.h"
+#include "pybind11/complex.h"
+#include "pybind11/functional.h"
 #include "pybind11/iostream.h"
 #include "pybind11/numpy.h"
 #include "pybind11/pybind11.h"
@@ -114,6 +116,7 @@ void BindLink(py::module& m) {
       .def_readwrite("enable_ssl", &ContextDesc::enable_ssl)
       .def_readwrite("client_ssl_opts", &ContextDesc::client_ssl_opts)
       .def_readwrite("server_ssl_opts", &ContextDesc::server_ssl_opts)
+      .def_readwrite("link_type", &ContextDesc::link_type)
       .def(
           "add_party",
           [](ContextDesc& desc, std::string id, std::string host) {
@@ -354,6 +357,7 @@ class RuntimeWrapper {
   FN("I", PT_U32)          \
   FN("L", PT_U64)          \
   FN("Q", PT_U64)          \
+  FN("e", PT_F16)          \
   FN("f", PT_F32)          \
   FN("d", PT_F64)          \
   FN("?", PT_BOOL)
@@ -387,9 +391,9 @@ std::string PtTypeToPyFormat(spu::PtType pt_type) {
 }
 
 template <typename Iter>
-std::vector<int64_t> ByteToElementStrides(const Iter& begin, const Iter& end,
-                                          size_t elsize) {
-  std::vector<int64_t> ret(std::distance(begin, end));
+Strides ByteToElementStrides(const Iter& begin, const Iter& end,
+                             size_t elsize) {
+  Strides ret(std::distance(begin, end));
   std::transform(begin, end, ret.begin(), [&](int64_t c) -> int64_t {
     SPU_ENFORCE(c % elsize == 0);
     return c / elsize;
@@ -428,8 +432,7 @@ class IoWrapper {
     const PtType pt_type = PyFormatToPtType(binfo.format);
 
     spu::PtBufferView view(
-        binfo.ptr, pt_type,
-        std::vector<int64_t>(binfo.shape.begin(), binfo.shape.end()),
+        binfo.ptr, pt_type, Shape(binfo.shape.begin(), binfo.shape.end()),
         ByteToElementStrides(binfo.strides.begin(), binfo.strides.end(),
                              binfo.itemsize));
     const size_t share_size = ptr_->getShareSize(
@@ -448,8 +451,7 @@ class IoWrapper {
     const PtType pt_type = PyFormatToPtType(binfo.format);
 
     spu::PtBufferView view(
-        binfo.ptr, pt_type,
-        std::vector<int64_t>(binfo.shape.begin(), binfo.shape.end()),
+        binfo.ptr, pt_type, Shape(binfo.shape.begin(), binfo.shape.end()),
         ByteToElementStrides(binfo.strides.begin(), binfo.strides.end(),
                              binfo.itemsize));
 
@@ -498,6 +500,19 @@ void BindLibs(py::module& m) {
               SPU Mixed Library
                   )pbdoc";
 
+  py::class_<psi::Progress::Data>(m, "ProgressData", "The progress data")
+      .def(py::init<>())
+      .def_readonly("total", &psi::Progress::Data::total,
+                    "the number of all subjobs")
+      .def_readonly("finished", &psi::Progress::Data::finished,
+                    "the number of finished subjobs")
+      .def_readonly("running", &psi::Progress::Data::running,
+                    "the number of running subjobs")
+      .def_readonly("percentage", &psi::Progress::Data::percentage,
+                    "the percentage of the task progress")
+      .def_readonly("description", &psi::Progress::Data::description,
+                    "description of the current running subjob");
+
   m.def(
       "mem_psi",
       [](const std::shared_ptr<yacl::link::Context>& lctx,
@@ -514,17 +529,20 @@ void BindLibs(py::module& m) {
   m.def(
       "bucket_psi",
       [](const std::shared_ptr<yacl::link::Context>& lctx,
-         const std::string& config_pb, bool ic_mode) -> py::bytes {
+         const std::string& config_pb,
+         psi::ProgressCallbacks progress_callbacks,
+         int64_t callbacks_interval_ms, bool ic_mode) -> py::bytes {
         psi::BucketPsiConfig config;
         SPU_ENFORCE(config.ParseFromString(config_pb));
 
         psi::BucketPsi psi(config, lctx, ic_mode);
-        auto r = psi.Run();
+        auto r = psi.Run(progress_callbacks, callbacks_interval_ms);
         return r.SerializeAsString();
       },
       py::arg("link_context"), py::arg("psi_config"),
-      py::arg("ic_mode") = false,
-      "Run bucket psi. ic_mode means run in interconnection mode");
+      py::arg("progress_callbacks") = nullptr,
+      py::arg("callbacks_interval_ms") = 5 * 1000, py::arg("ic_mode") = false,
+      "Run bucket psi. ic_mode means run in interconnection mode", NO_GIL);
 
   m.def(
       "pir_setup",

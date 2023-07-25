@@ -65,6 +65,9 @@ spu_cc_library(
         "//libspu/psi/utils:cipher_store",
         "//libspu/psi/utils:csv_checker",
         "//libspu/psi/utils:csv_header_analyzer",
+        "//libspu/psi/utils:progress",
+        "@com_google_absl//absl/synchronization",
+        "@com_google_absl//absl/time",
     ],
 )
 

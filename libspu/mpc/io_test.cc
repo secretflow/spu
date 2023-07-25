@@ -20,7 +20,7 @@
 
 namespace spu::mpc {
 
-const size_t kNumel = 7;
+const Shape kNumel = {7};
 
 TEST_P(IoTest, MakePublicAndReconstruct) {
   const auto create_io = std::get<0>(GetParam());

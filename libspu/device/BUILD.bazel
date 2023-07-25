@@ -86,7 +86,7 @@ spu_cc_library(
         ":io",
         ":symbol_table",
         "//libspu:spu_cc_proto",
-        "//libspu/core:array_ref",
+        "//libspu/core:ndarray_ref",
         "//libspu/mpc/utils:simulate",
     ],
 )

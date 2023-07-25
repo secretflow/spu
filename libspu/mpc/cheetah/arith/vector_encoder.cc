@@ -82,8 +82,9 @@ void VectorEncoder::Backward(const ArrayRef &vec, RLWEPt *out,
   const auto field = eltype.as<Ring2k>()->field();
 
   DISPATCH_ALL_FIELDS(field, "Backward", [&]() {
-    ArrayRef tmp_buff = ring_zeros(field, poly_deg_);
-    auto xvec = xt_adapt<ring2k_t>(vec);
+    auto tmp_buff = ring_zeros(field, {(int64_t)poly_deg_});
+    auto nd_vec = toNdArray(vec);
+    auto xvec = xt_adapt<ring2k_t>(nd_vec);
     auto xtmp = xt_mutable_adapt<ring2k_t>(tmp_buff);
 
     xtmp[0] = xvec[0];
@@ -98,9 +99,9 @@ void VectorEncoder::Backward(const ArrayRef &vec, RLWEPt *out,
       absl::Span<uint64_t> dst_wrap(dst, poly_deg_);
 
       if (scale_delta) {
-        ms_helper_->ModulusUpAt(tmp_buff, mod_idx, dst_wrap);
+        ms_helper_->ModulusUpAt(flatten(tmp_buff), mod_idx, dst_wrap);
       } else {
-        ms_helper_->CenteralizeAt(tmp_buff, mod_idx, dst_wrap);
+        ms_helper_->CenteralizeAt(flatten(tmp_buff), mod_idx, dst_wrap);
       }
       dst += poly_deg_;
     }

@@ -22,15 +22,13 @@
 
 #include "libspu/core/ndarray_ref.h"
 #include "libspu/core/parallel_utils.h"
-#include "libspu/core/shape_util.h"
 #include "libspu/core/vectorize.h"
 #include "libspu/kernel/hal/ring.h"
 #include "libspu/kernel/hal/type_cast.h"
 
 namespace spu::kernel::hal {
 
-Value transpose(SPUContext* ctx, const Value& in,
-                absl::Span<const int64_t> permutation) {
+Value transpose(SPUContext* ctx, const Value& in, const Axes& permutation) {
   SPU_TRACE_HAL_DISP(ctx, in);
 
   // compact clone is a rather expensive memory operation.
@@ -39,10 +37,8 @@ Value transpose(SPUContext* ctx, const Value& in,
   return Value(in.data().transpose(permutation), in.dtype()).clone();
 }
 
-Value slice(SPUContext* ctx, const Value& in,
-            absl::Span<const int64_t> start_indices,
-            absl::Span<const int64_t> end_indices,
-            absl::Span<const int64_t> strides) {
+Value slice(SPUContext* ctx, const Value& in, const Index& start_indices,
+            const Index& end_indices, const Strides& strides) {
   SPU_TRACE_HAL_DISP(ctx, in, start_indices, end_indices, strides);
 
   return Value(in.data().slice(start_indices, end_indices, strides),
@@ -50,49 +46,44 @@ Value slice(SPUContext* ctx, const Value& in,
 }
 
 Value slice_scalar_at(SPUContext* ctx, const Value& input,
-                      absl::Span<const int64_t> indices) {
+                      const Index& indices) {
   return Value(input.data().slice_scalar_at(indices), input.dtype());
 }
 
 Value update_slice(SPUContext* ctx, const Value& in, const Value& update,
-                   absl::Span<const int64_t> start_indices) {
+                   const Index& start_indices) {
   auto ret = in.clone();
   auto u = stype_cast(ctx, update, ret.storage_type());
   ret.data().update_slice(u.data(), start_indices);
   return ret;
 }
 
-Value reshape(SPUContext* ctx, const Value& in,
-              absl::Span<const int64_t> to_shape) {
+Value reshape(SPUContext* ctx, const Value& in, const Shape& to_shape) {
   SPU_TRACE_HAL_DISP(ctx, in, to_shape);
 
   return Value(in.data().reshape(to_shape), in.dtype());
 }
 
-Value broadcast_to(SPUContext* ctx, const Value& in,
-                   absl::Span<const int64_t> to_shape,
-                   absl::Span<const int64_t> in_dims) {
+Value broadcast_to(SPUContext* ctx, const Value& in, const Shape& to_shape,
+                   const Axes& in_dims) {
   SPU_TRACE_HAL_DISP(ctx, in, to_shape);
 
   return Value(in.data().broadcast_to(to_shape, in_dims), in.dtype());
 }
 
-Value reverse(SPUContext* ctx, const Value& in,
-              absl::Span<const int64_t> dimensions) {
+Value reverse(SPUContext* ctx, const Value& in, const Axes& dimensions) {
   SPU_TRACE_HAL_DISP(ctx, in, dimensions);
 
   return Value(in.data().reverse(dimensions), in.dtype());
 }
 
-Value expand(SPUContext* ctx, const Value& in,
-             absl::Span<const int64_t> to_shape) {
+Value expand(SPUContext* ctx, const Value& in, const Shape& to_shape) {
   return Value(in.data().expand(to_shape), in.dtype());
 }
 
 Value pad(SPUContext* ctx, const Value& in, const Value& padding_value,
-          absl::Span<const int64_t> edge_padding_low,
-          absl::Span<const int64_t> edge_padding_high,
-          absl::Span<const int64_t> interior_padding) {
+          const Sizes& edge_padding_low, const Sizes& edge_padding_high,
+          const Sizes& interior_padding) {
   if (in.storage_type() != padding_value.storage_type()) {
     auto ct =
         _common_type(ctx, in.storage_type(), padding_value.storage_type());
@@ -109,7 +100,7 @@ Value pad(SPUContext* ctx, const Value& in, const Value& padding_value,
 }
 
 Value concatenate(SPUContext* ctx, absl::Span<const Value> values,
-                  const size_t& axis) {
+                  int64_t axis) {
   SPU_TRACE_HAL_DISP(ctx, axis);
   SPU_ENFORCE(!values.empty(), "got={}", values.size());
 

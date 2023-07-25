@@ -134,3 +134,26 @@ spu_cc_library(
         "//libspu/mpc/semi2k:type",
     ],
 )
+
+spu_cc_library(
+    name = "array_ref",
+    srcs = ["array_ref.cc"],
+    hdrs = ["array_ref.h"],
+    deps = [
+        "//libspu/core:bit_utils",
+        "//libspu/core:ndarray_ref",
+        "//libspu/core:parallel_utils",
+        "//libspu/core:prelude",
+        "//libspu/core:type",
+        "//libspu/core:vectorize",
+        "@yacl//yacl/base:buffer",
+    ],
+)
+
+spu_cc_test(
+    name = "array_ref_test",
+    srcs = ["array_ref_test.cc"],
+    deps = [
+        ":array_ref",
+    ],
+)

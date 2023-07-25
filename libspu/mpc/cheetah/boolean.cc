@@ -21,9 +21,9 @@
 namespace spu::mpc::cheetah {
 constexpr size_t kMinWorkSize = 5000;
 
-ArrayRef AndBB::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
-                     const ArrayRef& rhs) const {
-  SPU_ENFORCE_EQ(lhs.numel(), rhs.numel());
+NdArrayRef AndBB::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
+                       const NdArrayRef& rhs) const {
+  SPU_ENFORCE_EQ(lhs.shape(), rhs.shape());
 
   auto* comm = ctx->getState<Communicator>();
   auto* ot_state = ctx->getState<CheetahOTState>();
@@ -35,7 +35,9 @@ ArrayRef AndBB::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
     ot_state->LazyInit(comm, w);
   }
 
-  ArrayRef z(lhs.eltype(), n);
+  NdArrayRef z(lhs.eltype(), lhs.shape());
+  auto flat_lhs = flatten(lhs);
+  auto flat_rhs = flatten(rhs);
   yacl::parallel_for(0, nworker, 1, [&](size_t bgn, size_t end) {
     for (size_t job = bgn; job < end; ++job) {
       size_t slice_bgn = std::min(n, job * work_load);
@@ -43,8 +45,9 @@ ArrayRef AndBB::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
       if (slice_bgn == slice_end) {
         break;
       }
-      auto out_slice = ot_state->get(job)->BitwiseAnd(
-          lhs.slice(slice_bgn, slice_end), rhs.slice(slice_bgn, slice_end));
+      auto out_slice =
+          ot_state->get(job)->BitwiseAnd(flat_lhs.slice(slice_bgn, slice_end),
+                                         flat_rhs.slice(slice_bgn, slice_end));
       std::memcpy(&z.at(slice_bgn), &out_slice.at(0),
                   out_slice.elsize() * out_slice.numel());
     }

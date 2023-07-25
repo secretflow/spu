@@ -75,14 +75,14 @@ std::unique_ptr<State> PrgState::fork() {
   return new_prg;
 }
 
-std::pair<ArrayRef, ArrayRef> PrgState::genPrssPair(FieldType field,
-                                                    size_t size,
-                                                    bool ignore_first,
-                                                    bool ignore_second) {
+std::pair<NdArrayRef, NdArrayRef> PrgState::genPrssPair(FieldType field,
+                                                        const Shape& shape,
+                                                        bool ignore_first,
+                                                        bool ignore_second) {
   const Type ty = makeType<RingTy>(field);
 
-  ArrayRef r_self(ty, size);
-  ArrayRef r_next(ty, size);
+  NdArrayRef r_self(ty, shape);
+  NdArrayRef r_next(ty, shape);
 
   uint64_t new_counter = prss_counter_;
   if (!ignore_first) {
@@ -109,8 +109,8 @@ std::pair<ArrayRef, ArrayRef> PrgState::genPrssPair(FieldType field,
   return std::make_pair(r_self, r_next);
 }
 
-ArrayRef PrgState::genPriv(FieldType field, size_t numel) {
-  ArrayRef res(makeType<RingTy>(field), numel);
+NdArrayRef PrgState::genPriv(FieldType field, const Shape& shape) {
+  NdArrayRef res(makeType<RingTy>(field), shape);
   priv_counter_ = yacl::crypto::FillPRand(
       kAesType, priv_seed_, 0, priv_counter_,
       absl::MakeSpan(static_cast<char*>(res.data()), res.buf()->size()));
@@ -118,8 +118,8 @@ ArrayRef PrgState::genPriv(FieldType field, size_t numel) {
   return res;
 }
 
-ArrayRef PrgState::genPubl(FieldType field, size_t numel) {
-  ArrayRef res(makeType<RingTy>(field), numel);
+NdArrayRef PrgState::genPubl(FieldType field, const Shape& shape) {
+  NdArrayRef res(makeType<RingTy>(field), shape);
   pub_counter_ = yacl::crypto::FillPRand(
       kAesType, pub_seed_, 0, pub_counter_,
       absl::MakeSpan(static_cast<char*>(res.data()), res.buf()->size()));

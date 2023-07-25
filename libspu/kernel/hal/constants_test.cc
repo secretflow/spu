@@ -25,14 +25,14 @@ TEST(ConstantsTest, Scalar) {
   SPUContext ctx = test::makeSPUContext();
 
   Value i = constant(&ctx, 0, DT_I32);
-  EXPECT_TRUE(i.shape().empty());
+  EXPECT_TRUE(i.shape().isScalar());
   EXPECT_TRUE(i.strides().empty());
   EXPECT_EQ(i.numel(), 1);
   EXPECT_TRUE(i.isPublic());
   EXPECT_TRUE(i.isInt());
 
   Value f = constant(&ctx, 0.0F, DT_F32);
-  EXPECT_TRUE(f.shape().empty());
+  EXPECT_TRUE(f.shape().isScalar());
   EXPECT_TRUE(f.strides().empty());
   EXPECT_EQ(f.numel(), 1);
   EXPECT_TRUE(f.isPublic());

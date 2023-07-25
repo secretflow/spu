@@ -34,10 +34,9 @@ size_t IoClient::getShareSize(const PtBufferView &bv, Visibility vtype,
                               int owner_rank) {
   if (bv.pt_type == PT_BOOL && vtype == VIS_SECRET &&
       base_io_->hasBitSecretSupport()) {
-    return base_io_->getBitSecretShareSize(calcNumel(bv.shape));
+    return base_io_->getBitSecretShareSize(bv.shape.numel());
   } else {
-    return base_io_->getShareType(vtype, owner_rank).size() *
-           calcNumel(bv.shape);
+    return base_io_->getShareType(vtype, owner_rank).size() * bv.shape.numel();
   }
 }
 
@@ -51,13 +50,13 @@ std::vector<spu::Value> IoClient::makeShares(const PtBufferView &bv,
     // handle boolean type encoding.
     NdArrayRef arr = convertToNdArray(bv);
 
-    auto flat_shares = base_io_->makeBitSecret(flatten(arr));
+    auto shares = base_io_->makeBitSecret(arr);
+    SPU_ENFORCE(shares.size() == world_size_);
 
-    SPU_ENFORCE(flat_shares.size() == world_size_);
     std::vector<spu::Value> result;
     result.reserve(world_size_);
-    for (const auto &flat_share : flat_shares) {
-      result.emplace_back(unflatten(flat_share, arr.shape()), DataType::DT_I1);
+    for (const auto &share : shares) {
+      result.emplace_back(share, DataType::DT_I1);
     }
     return result;
   }
@@ -68,15 +67,7 @@ std::vector<spu::Value> IoClient::makeShares(const PtBufferView &bv,
       encodeToRing(convertToNdArray(bv), config_.field(), fxp_bits, &dtype);
 
   // make shares.
-  std::vector<NdArrayRef> shares;
-  {
-    auto flat_shares = base_io_->toShares(flatten(encoded), vtype);
-    SPU_ENFORCE(flat_shares.size() == world_size_);
-    shares.reserve(world_size_);
-    for (const auto &flat_share : flat_shares) {
-      shares.push_back(unflatten(flat_share, encoded.shape()));
-    }
-  }
+  std::vector<NdArrayRef> shares = base_io_->toShares(encoded, vtype);
 
   // build value.
   std::vector<spu::Value> result;
@@ -99,13 +90,12 @@ NdArrayRef IoClient::combineShares(absl::Span<spu::Value const> values) {
   NdArrayRef encoded;
   {
     // get all flatten shares.
-    std::vector<ArrayRef> flat_shares;
+    std::vector<NdArrayRef> shares;
     for (const auto &val : values) {
-      flat_shares.push_back(flatten(val.data()));
+      shares.push_back(val.data());
     }
 
-    ArrayRef flat_encoded = base_io_->fromShares(flat_shares);
-    encoded = unflatten(flat_encoded, values.at(0).shape());
+    encoded = base_io_->fromShares(shares);
   }
 
   // decode from ring.

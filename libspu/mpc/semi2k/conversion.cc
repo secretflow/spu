@@ -24,30 +24,25 @@
 
 namespace spu::mpc::semi2k {
 
-static ArrayRef wrap_add_bb(SPUContext* ctx, const ArrayRef& x,
-                            const ArrayRef& y) {
-  SPU_ENFORCE(x.numel() == y.numel());
-  const Shape shape = {x.numel()};
-  auto [res, _s, _t] =
-      UnwrapValue(add_bb(ctx, WrapValue(x, shape), WrapValue(y, shape)));
-  return res;
+static NdArrayRef wrap_add_bb(SPUContext* ctx, const NdArrayRef& x,
+                              const NdArrayRef& y) {
+  SPU_ENFORCE(x.shape() == y.shape());
+  return UnwrapValue(add_bb(ctx, WrapValue(x), WrapValue(y)));
 }
 
-static ArrayRef wrap_a2b(SPUContext* ctx, const ArrayRef& x) {
-  const Shape shape = {x.numel()};
-  auto [res, _s, _t] = UnwrapValue(a2b(ctx, WrapValue(x, shape)));
-  return res;
+static NdArrayRef wrap_a2b(SPUContext* ctx, const NdArrayRef& x) {
+  return UnwrapValue(a2b(ctx, WrapValue(x)));
 }
 
-ArrayRef A2B::proc(KernelEvalContext* ctx, const ArrayRef& x) const {
+NdArrayRef A2B::proc(KernelEvalContext* ctx, const NdArrayRef& x) const {
   const auto field = x.eltype().as<Ring2k>()->field();
   auto* comm = ctx->getState<Communicator>();
   auto* prg_state = ctx->getState<PrgState>();
 
-  std::vector<ArrayRef> bshrs;
+  std::vector<NdArrayRef> bshrs;
   const auto bty = makeType<BShrTy>(field);
   for (size_t idx = 0; idx < comm->getWorldSize(); idx++) {
-    auto [r0, r1] = prg_state->genPrssPair(field, x.numel());
+    auto [r0, r1] = prg_state->genPrssPair(field, x.shape());
     auto b = ring_xor(r0, r1).as(bty);
 
     if (idx == comm->getRank()) {
@@ -56,19 +51,20 @@ ArrayRef A2B::proc(KernelEvalContext* ctx, const ArrayRef& x) const {
     bshrs.push_back(b.as(bty));
   }
 
-  ArrayRef res = vectorizedReduce(bshrs.begin(), bshrs.end(),
-                                  [&](const ArrayRef& xx, const ArrayRef& yy) {
-                                    return wrap_add_bb(ctx->sctx(), xx, yy);
-                                  });
+  NdArrayRef res =
+      vectorizedReduce(bshrs.begin(), bshrs.end(),
+                       [&](const NdArrayRef& xx, const NdArrayRef& yy) {
+                         return wrap_add_bb(ctx->sctx(), xx, yy);
+                       });
   return res.as(bty);
 }
 
-ArrayRef B2A::proc(KernelEvalContext* ctx, const ArrayRef& x) const {
+NdArrayRef B2A::proc(KernelEvalContext* ctx, const NdArrayRef& x) const {
   const auto field = x.eltype().as<Ring2k>()->field();
   auto* comm = ctx->getState<Communicator>();
   auto* prg_state = ctx->getState<PrgState>();
 
-  auto r_v = prg_state->genPriv(field, x.numel());
+  auto r_v = prg_state->genPriv(field, x.shape());
   auto r_a = r_v.as(makeType<AShrTy>(field));
 
   // convert r to boolean share.
@@ -86,51 +82,53 @@ ArrayRef B2A::proc(KernelEvalContext* ctx, const ArrayRef& x) const {
   return r_a;
 }
 
-ArrayRef B2A_Randbit::proc(KernelEvalContext* ctx, const ArrayRef& x) const {
+NdArrayRef B2A_Randbit::proc(KernelEvalContext* ctx,
+                             const NdArrayRef& x) const {
   const auto field = x.eltype().as<Ring2k>()->field();
   auto* comm = ctx->getState<Communicator>();
   auto* beaver = ctx->getState<Semi2kState>()->beaver();
 
-  const size_t nbits = x.eltype().as<BShare>()->nbits();
-  SPU_ENFORCE(nbits <= SizeOf(field) * 8, "invalid nbits={}", nbits);
+  const int64_t nbits = x.eltype().as<BShare>()->nbits();
+  SPU_ENFORCE((size_t)nbits <= SizeOf(field) * 8, "invalid nbits={}", nbits);
   if (nbits == 0) {
     // special case, it's known to be zero.
-    return ring_zeros(field, x.numel()).as(makeType<AShrTy>(field));
+    return ring_zeros(field, x.shape()).as(makeType<AShrTy>(field));
   }
 
-  auto randbits = beaver->RandBit(field, x.numel() * nbits);
-  auto res = ArrayRef(makeType<AShrTy>(field), x.numel());
+  auto numel = x.numel();
+
+  auto randbits = beaver->RandBit(field, {numel * static_cast<int64_t>(nbits)});
+  auto res = NdArrayRef(makeType<AShrTy>(field), x.shape());
 
   DISPATCH_ALL_FIELDS(field, kBindName, [&]() {
     using U = ring2k_t;
 
-    auto _x = ArrayView<U>(x);
-    auto _r = ArrayView<U>(randbits);
-
     // algorithm begins.
     // Ref: III.D @ https://eprint.iacr.org/2019/599.pdf (SPDZ-2K primitives)
-    std::vector<U> x_xor_r(x.numel(), 0);
-    pforeach(0, _x.numel(), [&](int64_t idx) {
+    std::vector<U> x_xor_r(numel);
+
+    pforeach(0, numel, [&](int64_t idx) {
       // use _r[i*nbits, (i+1)*nbits) to construct rb[i]
       U mask = 0;
-      for (size_t bit = 0; bit < nbits; bit++) {
-        mask += (_r[idx * nbits + bit] & 0x1) << bit;
+      for (int64_t bit = 0; bit < nbits; ++bit) {
+        mask += (randbits.at<U>(idx * nbits + bit) & 0x1) << bit;
       }
-      x_xor_r[idx] = _x[idx] ^ mask;
+      x_xor_r[idx] = x.at<U>(idx) ^ mask;
     });
 
     // open c = x ^ r
     x_xor_r = comm->allReduce<U, std::bit_xor>(x_xor_r, "open(x^r)");
 
-    auto _res = ArrayView<U>(res);
-    pforeach(0, _x.numel(), [&](int64_t idx) {
-      _res[idx] = 0;
-      for (size_t bit = 0; bit < nbits; bit++) {
+    pforeach(0, numel, [&](int64_t idx) {
+      res.at<U>(idx) = 0;
+      for (int64_t bit = 0; bit < nbits; bit++) {
         auto c_i = (x_xor_r[idx] >> bit) & 0x1;
         if (comm->getRank() == 0) {
-          _res[idx] += (c_i + (1 - c_i * 2) * _r[idx * nbits + bit]) << bit;
+          res.at<U>(idx) +=
+              (c_i + (1 - c_i * 2) * randbits.at<U>(idx * nbits + bit)) << bit;
         } else {
-          _res[idx] += ((1 - c_i * 2) * _r[idx * nbits + bit]) << bit;
+          res.at<U>(idx) += ((1 - c_i * 2) * randbits.at<U>(idx * nbits + bit))
+                            << bit;
         }
       }
     });
@@ -139,7 +137,7 @@ ArrayRef B2A_Randbit::proc(KernelEvalContext* ctx, const ArrayRef& x) const {
   return res;
 }
 
-ArrayRef MsbA2B::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
+NdArrayRef MsbA2B::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   const auto field = in.eltype().as<Ring2k>()->field();
   auto* comm = ctx->getState<Communicator>();
   auto* prg_state = ctx->getState<PrgState>();
@@ -149,10 +147,10 @@ ArrayRef MsbA2B::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
   SPU_ENFORCE(comm->getWorldSize() == 2, "only support for 2PC, got={}",
               comm->getWorldSize());
 
-  std::vector<ArrayRef> bshrs;
+  std::vector<NdArrayRef> bshrs;
   const auto bty = makeType<BShrTy>(field);
   for (size_t idx = 0; idx < comm->getWorldSize(); idx++) {
-    auto [r0, r1] = prg_state->genPrssPair(field, in.numel());
+    auto [r0, r1] = prg_state->genPrssPair(field, in.shape());
     auto b = ring_xor(r0, r1).as(bty);
     if (idx == comm->getRank()) {
       ring_xor_(b, in);
@@ -168,8 +166,8 @@ ArrayRef MsbA2B::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
 
   auto* sctx = ctx->sctx();
   const Shape shape = {in.numel()};
-  auto m = WrapValue(bshrs[0], shape);
-  auto n = WrapValue(bshrs[1], shape);
+  auto m = WrapValue(bshrs[0]);
+  auto n = WrapValue(bshrs[1]);
   {
     auto carry = carry_a2b(sctx, m, n, k);
 
@@ -177,8 +175,7 @@ ArrayRef MsbA2B::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
     //   (m^n)[k] ^ carry
     auto msb = xor_bb(sctx, rshift_b(sctx, xor_bb(sctx, m, n), k), carry);
 
-    auto [msb_data, _shape, _dtype] = UnwrapValue(msb);
-    return msb_data;
+    return UnwrapValue(msb);
   }
 }
 

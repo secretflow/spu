@@ -47,8 +47,8 @@ class TruncAWithSign : public TruncAWithSignKernel {
 
   Kind kind() const override { return Kind::Dynamic; }
 
-  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& x, size_t bits,
-                bool is_positive) const override;
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& x, size_t bits,
+                  bool is_positive) const override;
 
   bool hasMsbError() const override { return false; }
 
@@ -63,8 +63,8 @@ class TruncA : public TruncAKernel {
 
   Kind kind() const override { return Kind::Dynamic; }
 
-  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& x,
-                size_t bits) const override;
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& x,
+                  size_t bits) const override;
 
   bool hasMsbError() const override { return false; }
 
@@ -77,7 +77,7 @@ class MsbA2B : public UnaryKernel {
  public:
   static constexpr char kBindName[] = "msb_a2b";
 
-  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& x) const override;
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& x) const override;
 };
 
 class EqualAA : public BinaryKernel {
@@ -86,8 +86,8 @@ class EqualAA : public BinaryKernel {
 
   Kind kind() const override { return Kind::Dynamic; }
 
-  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& x,
-                const ArrayRef& y) const override;
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& x,
+                  const NdArrayRef& y) const override;
 };
 
 class EqualAP : public BinaryKernel {
@@ -96,8 +96,8 @@ class EqualAP : public BinaryKernel {
 
   Kind kind() const override { return Kind::Dynamic; }
 
-  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& x,
-                const ArrayRef& y) const override;
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& x,
+                  const NdArrayRef& y) const override;
 };
 
 class MulA1B : public BinaryKernel {
@@ -106,25 +106,25 @@ class MulA1B : public BinaryKernel {
 
   Kind kind() const override { return Kind::Dynamic; }
 
-  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& ashr,
-                const ArrayRef& bshr) const override;
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& ashr,
+                  const NdArrayRef& bshr) const override;
 };
 
 class MulAA : public BinaryKernel {
  private:
-  ArrayRef mulDirectly(KernelEvalContext* ctx, const ArrayRef& lhs,
-                       const ArrayRef& rhs) const;
+  NdArrayRef mulDirectly(KernelEvalContext* ctx, const NdArrayRef& lhs,
+                         const NdArrayRef& rhs) const;
 
-  ArrayRef mulWithBeaver(KernelEvalContext* ctx, const ArrayRef& lhs,
-                         const ArrayRef& rhs) const;
+  NdArrayRef mulWithBeaver(KernelEvalContext* ctx, const NdArrayRef& lhs,
+                           const NdArrayRef& rhs) const;
 
  public:
   static constexpr char kBindName[] = "mul_aa";
 
   Kind kind() const override { return Kind::Dynamic; }
 
-  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& x,
-                const ArrayRef& y) const override;
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& x,
+                  const NdArrayRef& y) const override;
 };
 
 class MatMulAA : public MatmulKernel {
@@ -133,8 +133,8 @@ class MatMulAA : public MatmulKernel {
 
   Kind kind() const override { return Kind::Dynamic; }
 
-  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& x, const ArrayRef& y,
-                size_t m, size_t n, size_t k) const override;
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& x,
+                  const NdArrayRef& y) const override;
 };
 
 class Conv2DAA : public Conv2DKernel {
@@ -143,10 +143,10 @@ class Conv2DAA : public Conv2DKernel {
 
   Kind kind() const override { return Kind::Dynamic; }
 
-  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& tensor,
-                const ArrayRef& filter, size_t N, size_t H, size_t W, size_t C,
-                size_t O, size_t h, size_t w, size_t stride_h,
-                size_t stride_w) const override;
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& tensor,
+                  const NdArrayRef& filter, size_t N, size_t H, size_t W,
+                  size_t C, size_t O, size_t h, size_t w, size_t stride_h,
+                  size_t stride_w) const override;
 };
 
 }  // namespace spu::mpc::cheetah

@@ -21,7 +21,7 @@
 namespace spu::mpc::cheetah {
 constexpr size_t kMinWorkSize = 5000;
 
-ArrayRef B2A::proc(KernelEvalContext* ctx, const ArrayRef& x) const {
+NdArrayRef B2A::proc(KernelEvalContext* ctx, const NdArrayRef& x) const {
   auto* comm = ctx->getState<Communicator>();
   auto* ot_state = ctx->getState<CheetahOTState>();
   size_t n = x.numel();
@@ -33,7 +33,7 @@ ArrayRef B2A::proc(KernelEvalContext* ctx, const ArrayRef& x) const {
   }
 
   const auto field = ctx->getState<Z2kState>()->getDefaultField();
-  ArrayRef out(x.eltype(), n);
+  NdArrayRef out(x.eltype(), x.shape());
   yacl::parallel_for(0, nworker, 1, [&](size_t bgn, size_t end) {
     for (size_t job = bgn; job < end; ++job) {
       size_t slice_bgn = std::min(n, job * work_load);
@@ -41,7 +41,8 @@ ArrayRef B2A::proc(KernelEvalContext* ctx, const ArrayRef& x) const {
       if (slice_bgn == slice_end) {
         break;
       }
-      auto out_slice = ot_state->get(job)->B2A(x.slice(slice_bgn, slice_end));
+      auto out_slice =
+          ot_state->get(job)->B2A(flatten(x).slice(slice_bgn, slice_end));
       std::memcpy(&out.at(slice_bgn), &out_slice.at(0),
                   out_slice.elsize() * out_slice.numel());
     }

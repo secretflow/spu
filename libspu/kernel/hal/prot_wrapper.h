@@ -21,6 +21,8 @@
 
 namespace spu::kernel::hal {
 
+// NOLINTBEGIN(readability-identifier-naming)
+
 // !!please read [README.md] for api naming conventions.
 Type _common_type_s(SPUContext* ctx, const Type& a, const Type& b);
 Value _cast_type_s(SPUContext* ctx, const Value& in, const Type& to);
@@ -66,8 +68,7 @@ Value _mmul_sp(SPUContext* ctx, const Value& x, const Value& y);
 Value _mmul_ss(SPUContext* ctx, const Value& x, const Value& y);
 
 Value _conv2d_ss(SPUContext* ctx, Value x, const Value& y,
-                 absl::Span<const int64_t> window_strides,
-                 absl::Span<const int64_t> result_shape);
+                 const Strides& window_strides, const Shape& result_shape);
 
 Value _and_pp(SPUContext* ctx, const Value& x, const Value& y);
 Value _and_sp(SPUContext* ctx, const Value& x, const Value& y);
@@ -80,9 +81,11 @@ Value _xor_ss(SPUContext* ctx, const Value& x, const Value& y);
 Value _bitrev_p(SPUContext* ctx, const Value& in, size_t start, size_t end);
 Value _bitrev_s(SPUContext* ctx, const Value& in, size_t start, size_t end);
 
-Value _make_p(SPUContext* ctx, uint128_t init, absl::Span<const int64_t> shape);
+Value _make_p(SPUContext* ctx, uint128_t init, const Shape& shape);
 
-Value _rand_p(SPUContext* ctx, absl::Span<const int64_t> shape);
-Value _rand_s(SPUContext* ctx, absl::Span<const int64_t> shape);
+Value _rand_p(SPUContext* ctx, const Shape& shape);
+Value _rand_s(SPUContext* ctx, const Shape& shape);
+
+// NOLINTEND(readability-identifier-naming)
 
 }  // namespace spu::kernel::hal

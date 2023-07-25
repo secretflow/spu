@@ -112,7 +112,9 @@ ArrayRef EqualProtocol::Compute(const ArrayRef& inp) {
 
   using BShrTy = semi2k::BShrTy;
   auto boolean_t = makeType<BShrTy>(field, 1);
-  ArrayRef prev_eq = ring_zeros(field, num_digits * num_cmp).as(boolean_t);
+  ArrayRef prev_eq =
+      flatten(ring_zeros(field, {static_cast<int64_t>(num_digits * num_cmp)}))
+          .as(boolean_t);
 
   // Transpose from msg-major order
   // m0[0], m0[1], ..., m0[M],

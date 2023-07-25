@@ -19,38 +19,35 @@ namespace spu::mpc {
 void RandKernel::evaluate(KernelEvalContext* ctx) const {
   const auto& shape = ctx->getParam<Shape>(0);
 
-  ArrayRef res = proc(ctx, shape.numel());
+  auto res = proc(ctx, shape);
 
-  ctx->setOutput(WrapValue(res, shape));
+  ctx->setOutput(WrapValue(res));
 }
 
 void UnaryKernel::evaluate(KernelEvalContext* ctx) const {
   const auto& in = ctx->getParam<Value>(0);
-  auto [arr, shape, dtype] = UnwrapValue(in);
 
-  ArrayRef res = proc(ctx, arr);
+  auto res = proc(ctx, UnwrapValue(in));
 
-  ctx->setOutput(WrapValue(res, shape));
+  ctx->setOutput(WrapValue(res));
 }
 
 void RevealToKernel::evaluate(KernelEvalContext* ctx) const {
   const auto& in = ctx->getParam<Value>(0);
   const auto rank = ctx->getParam<size_t>(1);
-  auto [arr, shape, dtype] = UnwrapValue(in);
 
-  ArrayRef res = proc(ctx, arr, rank);
+  auto res = proc(ctx, UnwrapValue(in), rank);
 
-  ctx->setOutput(WrapValue(res, shape));
+  ctx->setOutput(WrapValue(res));
 }
 
 void ShiftKernel::evaluate(KernelEvalContext* ctx) const {
   const auto& in = ctx->getParam<Value>(0);
   size_t bits = ctx->getParam<size_t>(1);
-  auto [arr, shape, dtype] = UnwrapValue(in);
 
-  ArrayRef res = proc(ctx, arr, bits);
+  auto res = proc(ctx, UnwrapValue(in), bits);
 
-  ctx->setOutput(WrapValue(res, shape));
+  ctx->setOutput(WrapValue(res));
 }
 
 void BinaryKernel::evaluate(KernelEvalContext* ctx) const {
@@ -60,37 +57,19 @@ void BinaryKernel::evaluate(KernelEvalContext* ctx) const {
   SPU_ENFORCE(lhs.shape() == rhs.shape(), "shape mismatch {} {}", lhs.shape(),
               rhs.shape());
 
-  auto [x, shape, dtype] = UnwrapValue(lhs);
-  auto [y, _, _1] = UnwrapValue(rhs);
+  auto z = proc(ctx, UnwrapValue(lhs), UnwrapValue(rhs));
 
-  auto z = proc(ctx, x, y);
-
-  ctx->setOutput(WrapValue(z, shape));
+  ctx->setOutput(WrapValue(z));
 }
 
 void MatmulKernel::evaluate(KernelEvalContext* ctx) const {
   const auto& lhs = ctx->getParam<Value>(0);
   const auto& rhs = ctx->getParam<Value>(1);
 
-  // TODO: drop (m, n, k)
-  auto m = static_cast<int64_t>(ctx->getParam<size_t>(2));
-  auto n = static_cast<int64_t>(ctx->getParam<size_t>(3));
-  auto k = static_cast<int64_t>(ctx->getParam<size_t>(4));
+  SPU_ENFORCE(lhs.shape()[1] == rhs.shape()[0], "invalid shape {} {}", lhs,
+              rhs);
 
-  // SPU_ENFORCE(lhs.shape().size() == 2 && rhs.shape().size() == 2 &&
-  //                 lhs.shape()[0] == m && lhs.shape()[1] == k &&
-  //                 rhs.shape()[0] == k && rhs.shape()[1] == n,
-  //             "invalid shape {} {}", lhs.shape(), rhs.shape());
-  SPU_ENFORCE(
-      calcNumel(lhs.shape()) == m * k && calcNumel(rhs.shape()) == k * n,
-      "invalid shape {} {}", lhs.shape(), rhs.shape());
-
-  auto [x, shape, dtype] = UnwrapValue(lhs);
-  auto [y, _, _1] = UnwrapValue(rhs);
-
-  auto z = proc(ctx, x, y, m, n, k);
-
-  ctx->setOutput(WrapValue(z, Shape{m, n}));
+  ctx->setOutput(WrapValue(proc(ctx, lhs.data(), rhs.data())));
 }
 
 void Conv2DKernel::evaluate(KernelEvalContext* ctx) const {
@@ -106,12 +85,10 @@ void Conv2DKernel::evaluate(KernelEvalContext* ctx) const {
   size_t stride_h = ctx->getParam<size_t>(9);
   size_t stride_w = ctx->getParam<size_t>(10);
 
-  auto [x, shape, dtype] = UnwrapValue(lhs);
-  auto [y, _, _1] = UnwrapValue(rhs);
+  auto z = proc(ctx, UnwrapValue(lhs), UnwrapValue(rhs), N, H, W, C, O, h, w,
+                stride_h, stride_w);
 
-  auto z = proc(ctx, x, y, N, H, W, C, O, h, w, stride_h, stride_w);
-
-  ctx->setOutput(WrapValue(z, shape));
+  ctx->setOutput(WrapValue(z));
 }
 
 void BitrevKernel::evaluate(KernelEvalContext* ctx) const {
@@ -119,11 +96,9 @@ void BitrevKernel::evaluate(KernelEvalContext* ctx) const {
   size_t start = ctx->getParam<size_t>(1);
   size_t end = ctx->getParam<size_t>(2);
 
-  auto [x, shape, dtype] = UnwrapValue(in);
+  auto z = proc(ctx, UnwrapValue(in), start, end);
 
-  auto z = proc(ctx, x, start, end);
-
-  ctx->setOutput(WrapValue(z, shape));
+  ctx->setOutput(WrapValue(z));
 }
 
 void TruncAWithSignKernel::evaluate(KernelEvalContext* ctx) const {
@@ -131,31 +106,27 @@ void TruncAWithSignKernel::evaluate(KernelEvalContext* ctx) const {
   size_t bits = ctx->getParam<size_t>(1);
   bool positive = ctx->getParam<bool>(2);
 
-  auto [x, shape, dtype] = UnwrapValue(in);
-  auto z = proc(ctx, x, bits, positive);
+  auto z = proc(ctx, UnwrapValue(in), bits, positive);
 
-  ctx->setOutput(WrapValue(z, shape));
+  ctx->setOutput(WrapValue(z));
 }
 
 void BitSplitKernel::evaluate(KernelEvalContext* ctx) const {
   const auto& in = ctx->getParam<Value>(0);
   size_t stride = ctx->getParam<size_t>(1);
-  auto [arr, shape, dtype] = UnwrapValue(in);
 
-  ArrayRef res = proc(ctx, arr, stride);
+  auto res = proc(ctx, UnwrapValue(in), stride);
 
-  ctx->setOutput(WrapValue(res, shape));
+  ctx->setOutput(WrapValue(res));
 }
 
 void CastTypeKernel::evaluate(KernelEvalContext* ctx) const {
   const auto& val = ctx->getParam<Value>(0);
   const auto& to_type = ctx->getParam<Type>(1);
 
-  auto [arr, shape, dtype] = UnwrapValue(val);
+  auto res = proc(ctx, UnwrapValue(val), to_type);
 
-  ArrayRef res = proc(ctx, arr, to_type);
-
-  ctx->setOutput(WrapValue(res, shape));
+  ctx->setOutput(WrapValue(res));
 }
 
 }  // namespace spu::mpc

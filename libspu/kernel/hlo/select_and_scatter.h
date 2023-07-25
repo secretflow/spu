@@ -29,15 +29,15 @@ using ValueBinaryFn =
 
 spu::Value SelectAndScatterExpanded(
     SPUContext *ctx, const spu::Value &base, const spu::Value &source,
-    const spu::Value &init_val, absl::Span<const int64_t> window_shape,
-    absl::Span<const int64_t> window_strides,
+    const spu::Value &init_val, const Shape &window_shape,
+    const Strides &window_strides,
     absl::Span<const std::pair<int64_t, int64_t>> window_padding,
     const ValueBinaryFn &select_fn, const ValueBinaryFn &scatter_fn);
 
 spu::Value SelectAndScatterNaive(
     SPUContext *ctx, const spu::Value &operand, const spu::Value &source,
-    const spu::Value &init_val, absl::Span<const int64_t> window_shape,
-    absl::Span<const int64_t> window_strides,
+    const spu::Value &init_val, const Shape &window_shape,
+    const Strides &window_strides,
     absl::Span<const std::pair<int64_t, int64_t>> window_padding,
     const ValueBinaryFn &select_fn, const ValueBinaryFn &scatter_fn);
 
@@ -55,9 +55,8 @@ spu::Value SelectAndScatterNaive(
  */
 spu::Value MaxPoolScatter(
     SPUContext *ctx, const spu::Value &scatter_indices,
-    const spu::Value &source, absl::Span<const int64_t> window_shape,
-    absl::Span<const int64_t> base_shape,
-    absl::Span<const int64_t> window_strides,
+    const spu::Value &source, const Shape &window_shape,
+    const Shape &base_shape, const Strides &window_strides,
     absl::Span<const std::pair<int64_t, int64_t>> window_padding);
 
 }  // namespace spu::kernel::hlo

@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "libspu/core/shape_util.h"
 #include "libspu/mpc/ab_api.h"
 #include "libspu/mpc/ab_api_test.h"
 #include "libspu/mpc/api.h"
@@ -27,22 +26,18 @@ namespace {
 Shape kShape = {30, 40};
 const std::vector<size_t> kShiftBits = {0, 1, 2, 31, 32, 33, 64, 1000};
 
-#define EXPECT_VALUE_EQ(X, Y)                         \
-  {                                                   \
-    EXPECT_EQ((X).dtype(), (Y).dtype());              \
-    EXPECT_EQ((X).shape(), (Y).shape());              \
-    auto [x_data, x_shape, x_dtype] = UnwrapValue(X); \
-    auto [y_data, y_shape, y_dtype] = UnwrapValue(Y); \
-    EXPECT_TRUE(ring_all_equal(x_data, y_data));      \
+#define EXPECT_VALUE_EQ(X, Y)                            \
+  {                                                      \
+    EXPECT_EQ((X).dtype(), (Y).dtype());                 \
+    EXPECT_EQ((X).shape(), (Y).shape());                 \
+    EXPECT_TRUE(ring_all_equal((X).data(), (Y).data())); \
   }
 
-#define EXPECT_VALUE_ALMOST_EQ(X, Y, ERR)             \
-  {                                                   \
-    EXPECT_EQ((X).dtype(), (Y).dtype());              \
-    EXPECT_EQ((X).shape(), (Y).shape());              \
-    auto [x_data, x_shape, x_dtype] = UnwrapValue(X); \
-    auto [y_data, y_shape, y_dtype] = UnwrapValue(Y); \
-    EXPECT_TRUE(ring_all_equal(x_data, y_data));      \
+#define EXPECT_VALUE_ALMOST_EQ(X, Y, ERR)                \
+  {                                                      \
+    EXPECT_EQ((X).dtype(), (Y).dtype());                 \
+    EXPECT_EQ((X).shape(), (Y).shape());                 \
+    EXPECT_TRUE(ring_all_equal((X).data(), (Y).data())); \
   }
 
 bool verifyCost(Kernel* kernel, std::string_view name, FieldType field,
@@ -210,7 +205,6 @@ TEST_P(ConversionTest, A2Bit) {
 
     /* WHEN */
     auto a = p2a(obj.get(), p0);
-    p2b(obj.get(), p0);
     auto prev = obj->prot()->getState<Communicator>()->getStats();
     auto b = dynDispatch(obj.get(), "a2bit", a);
     auto cost = obj->prot()->getState<Communicator>()->getStats() - prev;
@@ -252,14 +246,16 @@ TEST_P(ConversionTest, BitLT) {
       using U = std::make_unsigned<ring2k_t>::type;
       size_t numel = kShape.numel();
 
-      auto p0_data = ArrayView<U>(flatten(p0.data()));
-      auto p1_data = ArrayView<U>(flatten(p1.data()));
-      auto re_data = ArrayView<U>(flatten(re.data()));
+      auto p0_data = p0.data().data<U>();
+      auto p1_data = p1.data().data<U>();
+      auto re_data = re.data().data<U>();
       for (size_t i = 0; i < numel; ++i) {
         if ((p0_data[i] < p1_data[i])) {
-          SPU_ENFORCE((re_data[i] == 1));
+          SPU_ENFORCE((re_data[i] == 1), "i {}, p0 {}, p1 {}", i, p0_data[i],
+                      p1_data[i]);
         } else {
-          SPU_ENFORCE((re_data[i] == 0));
+          SPU_ENFORCE((re_data[i] == 0), "i {}, p0 {}, p1 {}", i, p0_data[i],
+                      p1_data[i]);
         }
       }
     });
@@ -283,7 +279,7 @@ TEST_P(ConversionTest, BitLE) {
     }
     /* GIVEN */
     auto p0 = rand_p(obj.get(), kShape);
-    auto p1 = p0.clone();
+    auto p1 = rand_p(obj.get(), kShape);
 
     /* WHEN */
     auto b0 = p2b(obj.get(), p0);
@@ -298,20 +294,23 @@ TEST_P(ConversionTest, BitLE) {
     DISPATCH_ALL_FIELDS(field, "_", [&]() {
       using U = std::make_unsigned<ring2k_t>::type;
       size_t numel = kShape.numel();
-      auto p0_data = ArrayView<U>(flatten(p0.data()));
-      auto p1_data = ArrayView<U>(flatten(p1.data()));
-      auto re_data = ArrayView<U>(flatten(re.data()));
+      auto p0_data = p0.data().data<U>();
+      auto p1_data = p1.data().data<U>();
+      auto re_data = re.data().data<U>();
+
       for (size_t i = 0; i < numel; ++i) {
         if ((p0_data[i] <= p1_data[i])) {
-          SPU_ENFORCE((re_data[i] == 1));
+          SPU_ENFORCE((re_data[i] == 1), "i {}, p0 {}, p1 {}", i, p0_data[i],
+                      p1_data[i]);
         } else {
-          SPU_ENFORCE((re_data[i] == 0));
+          SPU_ENFORCE((re_data[i] == 0), "i {}, p0 {}, p1 {}", i, p0_data[i],
+                      p1_data[i]);
         }
       }
     });
 
     /* THEN */
-    EXPECT_TRUE(verifyCost(obj->getKernel("bitlt_bb"), "bitlt_bb", conf.field(),
+    EXPECT_TRUE(verifyCost(obj->getKernel("bitle_bb"), "bitle_bb", conf.field(),
                            kShape, npc, cost));
   });
 }

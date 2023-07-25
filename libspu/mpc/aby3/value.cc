@@ -14,45 +14,51 @@
 
 #include "libspu/mpc/aby3/value.h"
 
-#include "libspu/core/array_ref.h"
 #include "libspu/core/prelude.h"
 #include "libspu/mpc/aby3/type.h"
 #include "libspu/mpc/utils/ring_ops.h"
 
 namespace spu::mpc::aby3 {
 
-ArrayRef getShare(const ArrayRef& in, int64_t share_idx) {
+NdArrayRef getShare(const NdArrayRef& in, int64_t share_idx) {
   SPU_ENFORCE(share_idx == 0 || share_idx == 1);
+
+  auto new_strides = in.strides();
+  std::transform(new_strides.cbegin(), new_strides.cend(), new_strides.begin(),
+                 [](int64_t s) { return 2 * s; });
 
   if (in.eltype().isa<AShrTy>()) {
     const auto field = in.eltype().as<AShrTy>()->field();
     const auto ty = makeType<RingTy>(field);
-    return ArrayRef(in.buf(), ty, in.numel(), in.stride() * 2,
-                    in.offset() + share_idx * static_cast<int64_t>(ty.size()));
+
+    return NdArrayRef(
+        in.buf(), ty, in.shape(), new_strides,
+        in.offset() + share_idx * static_cast<int64_t>(ty.size()));
   } else if (in.eltype().isa<BShrTy>()) {
     const auto stype = in.eltype().as<BShrTy>()->getBacktype();
     const auto ty = makeType<PtTy>(stype);
-    return ArrayRef(in.buf(), ty, in.numel(), in.stride() * 2,
-                    in.offset() + share_idx * static_cast<int64_t>(ty.size()));
+    return NdArrayRef(
+        in.buf(), ty, in.shape(), new_strides,
+        in.offset() + share_idx * static_cast<int64_t>(ty.size()));
   } else {
     SPU_THROW("unsupported type {}", in.eltype());
   }
 }
 
-ArrayRef getFirstShare(const ArrayRef& in) { return getShare(in, 0); }
+NdArrayRef getFirstShare(const NdArrayRef& in) { return getShare(in, 0); }
 
-ArrayRef getSecondShare(const ArrayRef& in) { return getShare(in, 1); }
+NdArrayRef getSecondShare(const NdArrayRef& in) { return getShare(in, 1); }
 
-ArrayRef makeAShare(const ArrayRef& s1, const ArrayRef& s2, FieldType field) {
+NdArrayRef makeAShare(const NdArrayRef& s1, const NdArrayRef& s2,
+                      FieldType field) {
   const Type ty = makeType<AShrTy>(field);
 
   SPU_ENFORCE(s2.eltype().as<Ring2k>()->field() == field);
   SPU_ENFORCE(s1.eltype().as<Ring2k>()->field() == field);
-  SPU_ENFORCE(s1.numel() == s2.numel(), "got s1={}, s2={}", s1.numel(),
-              s2.numel());
+  SPU_ENFORCE(s1.shape() == s2.shape(), "got s1={}, s2={}", s1, s2);
   SPU_ENFORCE(ty.size() == 2 * s1.elsize());
 
-  ArrayRef res(ty, s1.numel());
+  NdArrayRef res(ty, s1.shape());
 
   if (res.numel() != 0) {
     auto res_s1 = getFirstShare(res);

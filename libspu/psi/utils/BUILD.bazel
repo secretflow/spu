@@ -198,3 +198,21 @@ spu_cc_test(
         "@yacl//yacl/crypto/utils:rand",
     ],
 )
+
+spu_cc_library(
+    name = "progress",
+    srcs = ["progress.cc"],
+    hdrs = ["progress.h"],
+    deps = [
+        "@com_github_fmtlib_fmt//:fmtlib",
+    ],
+)
+
+spu_cc_test(
+    name = "progress_test",
+    srcs = ["progress_test.cc"],
+    deps = [
+        ":progress",
+        "@com_google_googletest//:gtest",
+    ],
+)

@@ -21,16 +21,16 @@ namespace spu::kernel::hlo {
 struct ConvolutionConfig {
   int64_t featureGroupCount;
   int64_t batchGroupCount;
-  absl::Span<const int64_t> window_strides;
+  Strides window_strides;
   int64_t inputBatchDimension;
   int64_t inputFeatureDimension;
-  absl::Span<const int64_t> inputSpatialDimensions;
+  Axes inputSpatialDimensions;
   int64_t kernelInputFeatureDimension;
   int64_t kernelOutputFeatureDimension;
-  absl::Span<const int64_t> kernelSpatialDimensions;
+  Axes kernelSpatialDimensions;
   int64_t outputBatchDimension;
   int64_t outputFeatureDimension;
-  absl::Span<const int64_t> outputSpatialDimensions;
+  Axes outputSpatialDimensions;
 };
 
 // This is a port of hlo evaluator's HandleConvolutionWithLiterals, which can
@@ -38,12 +38,12 @@ struct ConvolutionConfig {
 // https://github.com/tensorflow/tensorflow/blob/master/tensorflow/compiler/xla/service/hlo_evaluator_typed_visitor.h
 spu::Value Convolution(SPUContext *ctx, const spu::Value &lhs,
                        const spu::Value &rhs, const ConvolutionConfig &config,
-                       absl::Span<const int64_t> result_shape);
+                       const Shape &result_shape);
 
 // This is an optimized conv2D with im2col
 spu::Value Convolution2D(SPUContext *ctx, spu::Value input,
                          const spu::Value &kernel,
                          const ConvolutionConfig &config,
-                         absl::Span<const int64_t> result_shape);
+                         const Shape &result_shape);
 
 }  // namespace spu::kernel::hlo

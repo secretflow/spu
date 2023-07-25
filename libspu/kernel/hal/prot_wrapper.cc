@@ -18,38 +18,12 @@
 #include <tuple>
 #include <vector>
 
-#include "libspu/core/array_ref.h"
 #include "libspu/core/ndarray_ref.h"
 #include "libspu/core/prelude.h"
-#include "libspu/core/shape_util.h"
 #include "libspu/core/type_util.h"
 #include "libspu/mpc/api.h"
 
 namespace spu::kernel::hal {
-namespace {
-
-std::tuple<int64_t, int64_t, int64_t> deduceMmulArgs(
-    const std::vector<int64_t>& lhs, const std::vector<int64_t>& rhs) {
-  SPU_ENFORCE(!lhs.empty() && lhs.size() <= 2);
-  SPU_ENFORCE(!rhs.empty() && rhs.size() <= 2);
-
-  if (lhs.size() == 1 && rhs.size() == 1) {
-    SPU_ENFORCE(lhs[0] == rhs[0]);
-    return std::make_tuple(1, 1, rhs[0]);
-  }
-  if (lhs.size() == 1 && rhs.size() == 2) {
-    SPU_ENFORCE(lhs[0] == rhs[0]);
-    return std::make_tuple(1, rhs[1], rhs[0]);
-  }
-  if (lhs.size() == 2 && rhs.size() == 1) {
-    SPU_ENFORCE(lhs[1] == rhs[0]);
-    return std::make_tuple(lhs[0], 1, rhs[0]);
-  }
-  SPU_ENFORCE(lhs[1] == rhs[0]);
-  return std::make_tuple(lhs[0], rhs[1], rhs[0]);
-}
-
-}  // namespace
 
 #define MAP_UNARY_OP(NAME)                          \
   Value _##NAME(SPUContext* ctx, const Value& in) { \
@@ -83,8 +57,7 @@ std::tuple<int64_t, int64_t, int64_t> deduceMmulArgs(
 #define MAP_MMUL_OP(NAME)                                          \
   Value _##NAME(SPUContext* ctx, const Value& x, const Value& y) { \
     SPU_TRACE_HAL_DISP(ctx, x, y);                                 \
-    auto [m, n, k] = deduceMmulArgs(x.shape(), y.shape());         \
-    auto ret = mpc::NAME(ctx, x, y, m, n, k);                      \
+    auto ret = mpc::NAME(ctx, x, y);                               \
     return ret;                                                    \
   }
 
@@ -99,28 +72,26 @@ Value _cast_type_s(SPUContext* ctx, const Value& in, const Type& to) {
   return ret;
 }
 
-Value _make_p(SPUContext* ctx, uint128_t init,
-              absl::Span<const int64_t> shape) {
+Value _make_p(SPUContext* ctx, uint128_t init, const Shape& shape) {
   SPU_TRACE_HAL_DISP(ctx, init);
-  auto res = mpc::make_p(ctx, init, Shape(shape));
+  auto res = mpc::make_p(ctx, init, shape);
   return res;
 }
 
-Value _rand_p(SPUContext* ctx, absl::Span<const int64_t> shape) {
+Value _rand_p(SPUContext* ctx, const Shape& shape) {
   SPU_TRACE_HAL_DISP(ctx, shape);
-  auto rnd = mpc::rand_p(ctx, Shape(shape));
+  auto rnd = mpc::rand_p(ctx, shape);
   return rnd;
 }
 
-Value _rand_s(SPUContext* ctx, absl::Span<const int64_t> shape) {
+Value _rand_s(SPUContext* ctx, const Shape& shape) {
   SPU_TRACE_HAL_DISP(ctx, shape);
-  auto rnd = mpc::rand_s(ctx, Shape(shape));
+  auto rnd = mpc::rand_s(ctx, shape);
   return rnd;
 }
 
 Value _conv2d_ss(SPUContext* ctx, Value input, const Value& kernel,
-                 absl::Span<const int64_t> window_strides,
-                 absl::Span<const int64_t> result_shape) {
+                 const Strides& window_strides, const Shape& result_shape) {
   SPU_TRACE_HAL_DISP(ctx, input, kernel, window_strides, result_shape);
   SPU_ENFORCE_EQ(window_strides.size(), 2UL);
   size_t N = input.shape()[0];
@@ -136,7 +107,7 @@ Value _conv2d_ss(SPUContext* ctx, Value input, const Value& kernel,
   SPU_ENFORCE_EQ(kernel.shape()[2], static_cast<int64_t>(C));
 
   // ad-hoc optimization for strided conv2d when h=1
-  std::vector<int64_t> strides = {1, 1, 1, 1};
+  Strides strides = {1, 1, 1, 1};
   if (h == 1) {
     strides[1] = stride_h;
   }
@@ -146,8 +117,11 @@ Value _conv2d_ss(SPUContext* ctx, Value input, const Value& kernel,
 
   if (std::any_of(strides.begin(), strides.end(),
                   [](int64_t s) { return s > 1; })) {
-    input = Value(input.data().slice({0, 0, 0, 0}, input.shape(), strides),
-                  input.dtype());
+    input =
+        Value(input.data().slice(
+                  {0, 0, 0, 0},
+                  Index(input.shape().begin(), input.shape().end()), strides),
+              input.dtype());
 
     stride_h = 1;
     stride_w = 1;

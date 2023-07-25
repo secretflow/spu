@@ -40,7 +40,7 @@ namespace spu::kernel::hlo {
 
 spu::Value Convolution(SPUContext *ctx, const spu::Value &lhs,
                        const spu::Value &rhs, const ConvolutionConfig &config,
-                       absl::Span<const int64_t> result_shape) {
+                       const Shape &result_shape) {
   const size_t num_spatial_dims = config.outputSpatialDimensions.size();
   SPU_ENFORCE(num_spatial_dims == config.inputSpatialDimensions.size());
   SPU_ENFORCE(num_spatial_dims == config.kernelSpatialDimensions.size());
@@ -100,7 +100,7 @@ spu::Value Convolution(SPUContext *ctx, const spu::Value &lhs,
       rhs_slice = hal::seal(ctx, rhs_slice);
     }
 
-    forEachIndex(result_shape, [&](absl::Span<const int64_t> output_index) {
+    forEachIndex(result_shape, [&](const Index &output_index) {
       // Calculate the group index to which the current output index
       // belongs.
       const int64_t feature_group_index =
@@ -181,7 +181,7 @@ spu::Value Convolution(SPUContext *ctx, const spu::Value &lhs,
     } else {
       ret = hal::add(ctx, mul_ret, ret);
     }
-  } while (bumpIndices<int64_t>(window_shape, absl::MakeSpan(window_index)));
+  } while (bumpIndices(window_shape, absl::MakeSpan(window_index)));
 
   return ret;
 }
@@ -217,7 +217,7 @@ spu::Value extractImagePatches(SPUContext *ctx, spu::Value &input,
 spu::Value Convolution2D(SPUContext *ctx, spu::Value input,
                          const spu::Value &kernel,
                          const ConvolutionConfig &config,
-                         absl::Span<const int64_t> result_shape) {
+                         const Shape &result_shape) {
   auto input_batch = input.shape()[0];
 
   auto kernel_x = kernel.shape()[0];
@@ -240,11 +240,10 @@ spu::Value Convolution2D(SPUContext *ctx, spu::Value input,
     }
   }
 
-  std::vector<int64_t> pre_contract_dims{output_y * output_x * input_batch,
-                                         kernel_channels * kernel_y * kernel_x};
+  Shape pre_contract_dims{output_y * output_x * input_batch,
+                          kernel_channels * kernel_y * kernel_x};
 
-  std::vector<int64_t> kernel_dims{kernel_channels * kernel_y * kernel_x,
-                                   kernel_filters};
+  Shape kernel_dims{kernel_channels * kernel_y * kernel_x, kernel_filters};
 
   spu::Value extracted_patches =
       extractImagePatches(ctx, input, kernel_x, kernel_y,

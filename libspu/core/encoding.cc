@@ -49,27 +49,22 @@ PtType getDecodeType(DataType dtype) {
 #undef CASE
 }
 
-ArrayRef encodeToRing(const ArrayRef& src, FieldType field, size_t fxp_bits,
-                      DataType* out_dtype) {
+NdArrayRef encodeToRing(const NdArrayRef& src, FieldType field, size_t fxp_bits,
+                        DataType* out_dtype) {
   SPU_ENFORCE(src.eltype().isa<PtTy>(), "expect PtType, got={}", src.eltype());
   const PtType pt_type = src.eltype().as<PtTy>()->pt_type();
   const size_t numel = src.numel();
-  ArrayRef dst(makeType<RingTy>(field), numel);
+  NdArrayRef dst(makeType<RingTy>(field), src.shape());
 
   if (out_dtype != nullptr) {
     *out_dtype = getEncodeType(pt_type);
   }
 
-  auto src_stride = src.stride();
-  auto dst_stride = dst.stride();
-
-  if (pt_type == PT_F32 || pt_type == PT_F64) {
+  if (pt_type == PT_F32 || pt_type == PT_F64 || pt_type == PT_F16) {
     DISPATCH_FLOAT_PT_TYPES(pt_type, "_", [&]() {
       DISPATCH_ALL_FIELDS(field, "_", [&]() {
         using Float = ScalarT;
         using T = std::make_signed_t<ring2k_t>;
-        T* dst_ptr = &dst.at<T>(0);
-        Float const* src_ptr = &src.at<Float>(0);
 
         // Reference: https://eprint.iacr.org/2019/599.pdf
         // To make `msb based comparison` work, the safe range is
@@ -78,26 +73,30 @@ ArrayRef encodeToRing(const ArrayRef& src, FieldType field, size_t fxp_bits,
         const T kScale = T(1) << fxp_bits;
         const T kFxpLower = -(T)std::pow(2, k - 2);
         const T kFxpUpper = (T)std::pow(2, k - 2) - 1;
-        const Float kFlpUpper = static_cast<Float>(kFxpUpper) / kScale;
-        const Float kFlpLower = static_cast<Float>(kFxpLower) / kScale;
+        const Float kFlpUpper =
+            static_cast<Float>(static_cast<double>(kFxpUpper) / kScale);
+        const Float kFlpLower =
+            static_cast<Float>(static_cast<double>(kFxpLower) / kScale);
 
         pforeach(0, numel, [&](int64_t idx) {
-          auto src_value = src_ptr[idx * src_stride];
+          const auto src_value = src.at<Float>(idx);
+          auto& dst_value = dst.at<T>(idx);
           if (std::isnan(src_value)) {
             // see numpy.nan_to_num
             // note(jint) I dont know why nan could be
             // encoded as zero..
-            dst_ptr[idx * dst_stride] = 0;
+            dst_value = 0;
           } else if (src_value >= kFlpUpper) {
-            dst_ptr[idx * dst_stride] = kFxpUpper;
+            dst_value = kFxpUpper;
           } else if (src_value <= kFlpLower) {
-            dst_ptr[idx * dst_stride] = kFxpLower;
+            dst_value = kFxpLower;
           } else {
-            dst_ptr[idx * dst_stride] = static_cast<T>(src_value * kScale);
+            dst_value = static_cast<T>(src_value * kScale);
           }
         });
       });
     });
+
     return dst;
   } else {
     // handle integer & boolean
@@ -110,10 +109,10 @@ ArrayRef encodeToRing(const ArrayRef& src, FieldType field, size_t fxp_bits,
 
         using T = std::make_signed_t<ring2k_t>;
         // TODO: encoding integer in range [-2^(k-2),2^(k-2))
-        T* dst_ptr = &dst.at<T>(0);
-        Integer const* src_ptr = &src.at<Integer>(0);
         pforeach(0, numel, [&](int64_t idx) {
-          dst_ptr[idx * dst_stride] = static_cast<T>(src_ptr[idx * src_stride]);
+          const auto src_value = src.at<Integer>(idx);
+          auto& dst_value = dst.at<T>(idx);
+          dst_value = static_cast<T>(src_value);  // NOLINT
         });
       });
     });
@@ -124,14 +123,8 @@ ArrayRef encodeToRing(const ArrayRef& src, FieldType field, size_t fxp_bits,
   SPU_THROW("shold not be here");
 }
 
-NdArrayRef encodeToRing(const NdArrayRef& src, FieldType field, size_t fxp_bits,
-                        DataType* out_dtype) {
-  return unflatten(encodeToRing(flatten(src), field, fxp_bits, out_dtype),
-                   src.shape());
-}
-
-ArrayRef decodeFromRing(const ArrayRef& src, DataType in_dtype, size_t fxp_bits,
-                        PtType* out_pt_type) {
+NdArrayRef decodeFromRing(const NdArrayRef& src, DataType in_dtype,
+                          size_t fxp_bits, PtType* out_pt_type) {
   const Type& src_type = src.eltype();
   const FieldType field = src_type.as<Ring2k>()->field();
   const PtType pt_type = getDecodeType(in_dtype);
@@ -144,46 +137,34 @@ ArrayRef decodeFromRing(const ArrayRef& src, DataType in_dtype, size_t fxp_bits,
     *out_pt_type = pt_type;
   }
 
-  ArrayRef dst(makePtType(pt_type), src.numel());
-
-  auto src_stride = src.stride();
-  auto dst_stride = dst.stride();
+  NdArrayRef dst(makePtType(pt_type), src.shape());
 
   DISPATCH_ALL_FIELDS(field, "field", [&]() {
     DISPATCH_ALL_PT_TYPES(pt_type, "pt_type", [&]() {
       using T = std::make_signed_t<ring2k_t>;
-      T const* src_ptr = &src.at<T>(0);
-      ScalarT* dst_ptr = &dst.at<ScalarT>(0);
 
       if (in_dtype == DT_I1) {
         constexpr bool kSanity = std::is_same_v<ScalarT, bool>;
         SPU_ENFORCE(kSanity);
         pforeach(0, numel, [&](int64_t idx) {
-          dst_ptr[idx * dst_stride] = !((src_ptr[idx * src_stride] & 0x1) == 0);
+          dst.at<ScalarT>(idx) = !((src.at<T>(idx) & 0x1) == 0);
         });
-      } else if (in_dtype == DT_F32 || in_dtype == DT_F64) {
+      } else if (in_dtype == DT_F32 || in_dtype == DT_F64 ||
+                 in_dtype == DT_F16) {
         const T kScale = T(1) << fxp_bits;
         pforeach(0, numel, [&](int64_t idx) {
-          dst_ptr[idx * dst_stride] =
-              static_cast<ScalarT>(src_ptr[idx * src_stride]) / kScale;
+          dst.at<ScalarT>(idx) = static_cast<ScalarT>(
+              static_cast<double>(src.at<T>(idx)) / kScale);
         });
       } else {
         pforeach(0, numel, [&](int64_t idx) {
-          dst_ptr[idx * dst_stride] =
-              static_cast<ScalarT>(src_ptr[idx * src_stride]);
+          dst.at<ScalarT>(idx) = static_cast<ScalarT>(src.at<T>(idx));
         });
       }
     });
   });
 
   return dst;
-}
-
-NdArrayRef decodeFromRing(const NdArrayRef& src, DataType in_dtype,
-                          size_t fxp_bits, PtType* out_pt_type) {
-  return unflatten(
-      decodeFromRing(flatten(src), in_dtype, fxp_bits, out_pt_type),
-      src.shape());
 }
 
 }  // namespace spu

@@ -15,7 +15,6 @@
 #include "libspu/mpc/ab_api_test.h"
 
 #include "libspu/core/prelude.h"
-#include "libspu/core/shape_util.h"
 #include "libspu/mpc/ab_api.h"
 #include "libspu/mpc/api.h"
 #include "libspu/mpc/common/communicator.h"
@@ -29,20 +28,16 @@ namespace {
 Shape kShape = {30, 40};
 const std::vector<size_t> kShiftBits = {0, 1, 2, 31, 32, 33, 64, 1000};
 
-#define EXPECT_VALUE_EQ(X, Y)                         \
-  {                                                   \
-    EXPECT_EQ((X).shape(), (Y).shape());              \
-    auto [x_data, x_shape, x_dtype] = UnwrapValue(X); \
-    auto [y_data, y_shape, y_dtype] = UnwrapValue(Y); \
-    EXPECT_TRUE(ring_all_equal(x_data, y_data));      \
+#define EXPECT_VALUE_EQ(X, Y)                            \
+  {                                                      \
+    EXPECT_EQ((X).shape(), (Y).shape());                 \
+    EXPECT_TRUE(ring_all_equal((X).data(), (Y).data())); \
   }
 
-#define EXPECT_VALUE_ALMOST_EQ(X, Y, ERR)             \
-  {                                                   \
-    EXPECT_EQ((X).shape(), (Y).shape());              \
-    auto [x_data, x_shape, x_dtype] = UnwrapValue(X); \
-    auto [y_data, y_shape, y_dtype] = UnwrapValue(Y); \
-    EXPECT_TRUE(ring_all_equal(x_data, y_data, ERR)); \
+#define EXPECT_VALUE_ALMOST_EQ(X, Y, ERR)                     \
+  {                                                           \
+    EXPECT_EQ((X).shape(), (Y).shape());                      \
+    EXPECT_TRUE(ring_all_equal((X).data(), (Y).data(), ERR)); \
   }
 
 bool verifyCost(Kernel* kernel, std::string_view name, const ce::Params& params,
@@ -219,11 +214,12 @@ TEST_P(ArithmeticTest, MatMulAP) {
 
     /* WHEN */
     auto prev = obj->prot()->getState<Communicator>()->getStats();
-    auto tmp = mmul_ap(obj.get(), a0, p1, M, N, K);
+    auto tmp = mmul_ap(obj.get(), a0, p1);
     auto cost = obj->prot()->getState<Communicator>()->getStats() - prev;
 
     auto r_aa = a2p(obj.get(), tmp);
-    auto r_pp = mmul_pp(obj.get(), p0, p1, M, N, K);
+
+    auto r_pp = mmul_pp(obj.get(), p0, p1);
 
     /* THEN */
     EXPECT_VALUE_EQ(r_aa, r_pp);
@@ -260,11 +256,11 @@ TEST_P(ArithmeticTest, MatMulAA) {
 
     /* WHEN */
     auto prev = obj->prot()->getState<Communicator>()->getStats();
-    auto tmp = mmul_aa(obj.get(), a0, a1, M, N, K);
+    auto tmp = mmul_aa(obj.get(), a0, a1);
     auto cost = obj->prot()->getState<Communicator>()->getStats() - prev;
 
     auto r_aa = a2p(obj.get(), tmp);
-    auto r_pp = mmul_pp(obj.get(), p0, p1, M, N, K);
+    auto r_pp = mmul_pp(obj.get(), p0, p1);
 
     /* THEN */
     EXPECT_VALUE_EQ(r_aa, r_pp);

@@ -17,7 +17,7 @@ macOS Monterey 12.4 with Intel processors and Apple Silicon.
 
 ### Docker Image
 
-Please check [official Docker image](https://registry.hub.docker.com/r/secretflow/secretflow-gcc11-anolis-dev).
+Please check [official Docker image](https://registry.hub.docker.com/r/secretflow/spu-ci).
 
 ## Binaries
 
@@ -34,5 +34,6 @@ pip install spu
 At the root of repo, run
 
 ```bash
-sh build_and_packaging.sh -i
+python setup.py bdist_wheel
+pip install dist/*.whl --force-reinstall
 ```

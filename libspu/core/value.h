@@ -19,6 +19,7 @@
 #include "absl/types/span.h"
 
 #include "libspu/core/ndarray_ref.h"
+#include "libspu/core/shape.h"
 #include "libspu/core/type.h"
 #include "libspu/core/type_util.h"
 #include "libspu/core/vectorize.h"
@@ -45,8 +46,8 @@ class Value final {
   /// Forward ndarray methods.
   inline int64_t numel() const { return data_.numel(); }
   inline size_t elsize() const { return data_.elsize(); }
-  std::vector<int64_t> const& strides() const { return data_.strides(); }
-  std::vector<int64_t> const& shape() const { return data_.shape(); }
+  Strides const& strides() const { return data_.strides(); }
+  Shape const& shape() const { return data_.shape(); }
 
   // Get the concrete storage type.
   const Type& storage_type() const { return data_.eltype(); }
@@ -83,14 +84,8 @@ class Value final {
   Value clone() const;
 };
 
-// Helper function to legacy kernels. TODO: drop this wraps.
-std::tuple<ArrayRef, Shape, DataType> UnwrapValue(const Value& val);
-Value WrapValue(const ArrayRef& arr, absl::Span<int64_t const> shape,
-                DataType dtype = DT_INVALID);
-
 template <>
 struct SimdTrait<Value> {
-  using Shape = std::vector<int64_t>;  // TODO: use a formal shape definition.
   using PackInfo = std::vector<Shape>;
 
   template <typename InputIt>
@@ -112,7 +107,7 @@ struct SimdTrait<Value> {
     for (; first != last; ++first) {
       NdArrayRef slice(result.buf(), ty, first->shape(),
                        makeCompactStrides(first->shape()), offset);
-      const std::vector<int64_t> start_index(first->shape().size(), 0);
+      const Index start_index(first->shape().size(), 0);
       slice.copy_slice(first->data(), start_index, start_index, first->numel());
       pi.push_back(first->shape());
       offset += first->numel() * ty.size();
@@ -124,7 +119,7 @@ struct SimdTrait<Value> {
   static OutputIt unpack(const Value& v, OutputIt result, const PackInfo& pi) {
     int64_t total_num = 0;
     for (const auto& shape : pi) {
-      total_num += calcNumel(shape);
+      total_num += shape.numel();
     }
 
     SPU_ENFORCE(v.numel() == total_num, "split number mismatch {} != {}",
@@ -135,7 +130,7 @@ struct SimdTrait<Value> {
       auto arr = NdArrayRef(v.data().buf(), v.storage_type(), shape,
                             makeCompactStrides(shape), offset);
       *result++ = Value(arr, v.dtype());
-      offset += calcNumel(shape) * v.elsize();
+      offset += shape.numel() * v.elsize();
     }
 
     return result;

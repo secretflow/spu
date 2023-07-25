@@ -80,8 +80,8 @@ spu_cc_library(
         "vector_encoder.h",
     ],
     deps = [
-        "//libspu/core:array_ref",
         "//libspu/core:prelude",
+        "//libspu/mpc/cheetah:array_ref",
         "//libspu/mpc/cheetah/rlwe:cheetah_rlwe",
         "@yacl//yacl/link",
     ],

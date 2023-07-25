@@ -12,10 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "libspu/mpc/spdz2k/protocol.h"
-
 #include "libspu/mpc/ab_api_test.h"
-#include "libspu/mpc/api_test.h"
+#include "libspu/mpc/spdz2k/protocol.h"
 
 namespace spu::mpc::test {
 namespace {
@@ -35,17 +33,6 @@ std::unique_ptr<SPUContext> makeMpcSpdz2kProtocol(
   return makeSpdz2kProtocol(mpc_rt, lctx);
 }
 }  // namespace
-
-INSTANTIATE_TEST_SUITE_P(
-    Spdz2k, ApiTest,
-    testing::Combine(testing::Values(CreateObjectFn(makeSpdz2kProtocol,
-                                                    "tfp")),        //
-                     testing::Values(makeConfig(FieldType::FM64)),  //
-                     testing::Values(2)),                           //
-    [](const testing::TestParamInfo<ApiTest::ParamType>& p) {
-      return fmt::format("{}x{}x{}", std::get<0>(p.param).name(),
-                         std::get<1>(p.param).field(), std::get<2>(p.param));
-    });
 
 INSTANTIATE_TEST_SUITE_P(
     Spdz2k, ArithmeticTest,

@@ -120,19 +120,19 @@ ArrayRef TensorEncoder::Tensor2Poly(const Shape3D &input_shape,
 
   const auto field = tensor.field();
   return DISPATCH_ALL_FIELDS(field, "Tensor2Poly", [&]() {
-    ArrayRef _flatten = ring_zeros(field, N);
-    auto flatten = xt_mutable_adapt<ring2k_t>(_flatten);
+    NdArrayRef _flatten = ring_zeros(field, {N});
+    auto f = xt_mutable_adapt<ring2k_t>(_flatten);
     for (long c = 0; c < shape[kC]; ++c) {
       for (long h = 0; h < shape[kH]; ++h) {
         for (long w = 0; w < shape[kW]; ++w) {
           long coeff_index = indexer(h, w, c);
           SPU_ENFORCE(coeff_index >= 0 && coeff_index < N,
                       fmt::format("invalid index at ({}, {}, {})", h, w, c));
-          flatten[coeff_index] = tensor.at<ring2k_t>({h, w, c});
+          f[coeff_index] = tensor.at<ring2k_t>({h, w, c});
         }
       }
     }
-    return _flatten;
+    return flatten(_flatten);
   });
 }
 

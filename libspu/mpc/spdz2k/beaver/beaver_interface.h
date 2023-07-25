@@ -16,14 +16,14 @@
 
 #include <memory>
 
-#include "libspu/core/array_ref.h"
+#include "libspu/core/ndarray_ref.h"
 
 namespace spu::mpc::spdz2k {
 
 class Beaver {
  public:
-  using Triple = std::tuple<ArrayRef, ArrayRef, ArrayRef>;
-  using Pair = std::pair<ArrayRef, ArrayRef>;
+  using Triple = std::tuple<NdArrayRef, NdArrayRef, NdArrayRef>;
+  using Pair = std::pair<NdArrayRef, NdArrayRef>;
   using Pair_Pair = std::pair<Pair, Pair>;
   using Triple_Pair = std::pair<Triple, Triple>;
 
@@ -31,38 +31,39 @@ class Beaver {
 
   virtual uint128_t InitSpdzKey(FieldType field, size_t s) = 0;
 
-  virtual ArrayRef AuthArrayRef(const ArrayRef& value, FieldType field,
-                                size_t k, size_t s) = 0;
+  virtual NdArrayRef AuthArrayRef(const NdArrayRef& value, FieldType field,
+                                  size_t k, size_t s) = 0;
 
-  virtual Pair AuthCoinTossing(FieldType field, size_t size, size_t k,
+  virtual Pair AuthCoinTossing(FieldType field, const Shape& shape, size_t k,
                                size_t s) = 0;
 
-  virtual Triple_Pair AuthMul(FieldType field, size_t size, size_t k,
+  virtual Triple_Pair AuthMul(FieldType field, const Shape& shape, size_t k,
                               size_t s) = 0;
 
-  virtual Triple_Pair AuthDot(FieldType field, size_t M, size_t N, size_t K,
+  virtual Triple_Pair AuthDot(FieldType field, int64_t M, int64_t N, int64_t K,
                               size_t k, size_t s) = 0;
 
-  virtual Triple_Pair AuthAnd(FieldType field, size_t size, size_t s) = 0;
+  virtual Triple_Pair AuthAnd(FieldType field, const Shape& shape,
+                              size_t s) = 0;
 
-  virtual Pair_Pair AuthTrunc(FieldType field, size_t size, size_t bits,
+  virtual Pair_Pair AuthTrunc(FieldType field, const Shape& shape, size_t bits,
                               size_t k, size_t s) = 0;
 
-  virtual Pair AuthRandBit(FieldType field, size_t size, size_t k,
+  virtual Pair AuthRandBit(FieldType field, const Shape& shape, size_t k,
                            size_t s) = 0;
 
   // Check the opened value only
-  virtual bool BatchMacCheck(const ArrayRef& open_value, const ArrayRef& mac,
-                             size_t k, size_t s) = 0;
+  virtual bool BatchMacCheck(const NdArrayRef& open_value,
+                             const NdArrayRef& mac, size_t k, size_t s) = 0;
 
   // Open the low k_bits of value only
-  virtual std::pair<ArrayRef, ArrayRef> BatchOpen(const ArrayRef& value,
-                                                  const ArrayRef& mac, size_t k,
-                                                  size_t s) = 0;
+  virtual std::pair<NdArrayRef, NdArrayRef> BatchOpen(const NdArrayRef& value,
+                                                      const NdArrayRef& mac,
+                                                      size_t k, size_t s) = 0;
 
   // public coin, used in malicious model, all party generate new seed, then
   // get exactly the same random variable.
-  virtual ArrayRef genPublCoin(FieldType field, size_t numel) = 0;
+  virtual NdArrayRef genPublCoin(FieldType field, int64_t numel) = 0;
 };
 
 }  // namespace spu::mpc::spdz2k

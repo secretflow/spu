@@ -169,8 +169,8 @@ DEFINE_BENCHMARK(BenchARShiftP, NumelShiftArgs);
 DEFINE_BENCHMARK(BenchARShiftS, NumelShiftArgs);
 DEFINE_BENCHMARK(BenchTruncS, NumelShiftArgs);
 
-DEFINE_BENCHMARK(BenchMMulSP, MatrixSizeArgs);
-DEFINE_BENCHMARK(BenchMMulSS, MatrixSizeArgs);
+// DEFINE_BENCHMARK(BenchMMulSP, MatrixSizeArgs);
+// DEFINE_BENCHMARK(BenchMMulSS, MatrixSizeArgs);
 
 DEFINE_BENCHMARK(BenchRandA, NumelArgs);
 DEFINE_BENCHMARK(BenchRandB, NumelArgs);
@@ -185,8 +185,8 @@ DEFINE_BENCHMARK(BenchMulAA, NumelArgs);
 DEFINE_BENCHMARK(BenchMulA1B, NumelArgs);
 DEFINE_BENCHMARK(BenchLShiftA, NumelShiftArgs);
 DEFINE_BENCHMARK(BenchTruncA, NumelShiftArgs);
-DEFINE_BENCHMARK(BenchMMulAP, MatrixSizeArgs);
-DEFINE_BENCHMARK(BenchMMulAA, MatrixSizeArgs);
+// DEFINE_BENCHMARK(BenchMMulAP, MatrixSizeArgs);
+// DEFINE_BENCHMARK(BenchMMulAA, MatrixSizeArgs);
 DEFINE_BENCHMARK(BenchB2P, NumelArgs);
 DEFINE_BENCHMARK(BenchP2B, NumelArgs);
 DEFINE_BENCHMARK(BenchA2B, NumelArgs);

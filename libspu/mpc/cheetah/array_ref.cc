@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "libspu/core/array_ref.h"
+#include "libspu/mpc/cheetah/array_ref.h"
 
 #include <numeric>
 
@@ -82,7 +82,7 @@ ArrayRef makeConstantArrayRef(const Type& eltype, size_t numel) {
   );
 }
 
-bool ArrayRef::isCompact() const { return stride_ == 1 || numel_ == 0; }
+bool ArrayRef::isCompact() const { return stride_ == 1 || numel_ == 1; }
 
 std::shared_ptr<yacl::Buffer> ArrayRef::getOrCreateCompactBuf() const {
   if (isCompact() && offset_ == 0) {
@@ -149,6 +149,20 @@ bool ArrayRef::operator==(const ArrayRef& other) const {
 std::ostream& operator<<(std::ostream& out, const ArrayRef& v) {
   out << fmt::format("ArrayRef<{}x{}>", v.numel(), v.eltype().toString());
   return out;
+}
+
+ArrayRef flatten(const NdArrayRef& in) {
+  auto f = in.reshape({in.numel()});
+  return ArrayRef(f.buf(), f.eltype(), in.numel(), f.strides()[0], f.offset());
+}
+
+NdArrayRef toNdArray(const ArrayRef& in) {
+  return NdArrayRef(in.buf(), in.eltype(), {in.numel()}, {in.stride()},
+                    in.offset());
+}
+
+NdArrayRef unflatten(const ArrayRef& in, const Shape& shape) {
+  return toNdArray(in).reshape(shape);
 }
 
 }  // namespace spu

@@ -20,10 +20,13 @@
 #include <filesystem>
 #include <fstream>
 #include <numeric>
+#include <thread>
 #include <type_traits>
 #include <unordered_set>
 #include <utility>
 
+#include "absl/synchronization/mutex.h"
+#include "absl/synchronization/notification.h"
 #include "absl/time/clock.h"
 #include "absl/time/time.h"
 #include "spdlog/spdlog.h"
@@ -64,6 +67,62 @@ bool HashListEqualTest(const std::vector<yacl::Buffer>& hash_list) {
   return true;
 }
 
+class ProgressLoop {
+ public:
+  // Starts the background thread which will be calling the function
+  ProgressLoop(const std::shared_ptr<Progress>& progress,
+               ProgressCallbacks function, int64_t interval_ms)
+      : progress_(progress),
+        function_(function),
+        interval_ms_(std::max(static_cast<int64_t>(1), interval_ms)) {
+    thread_.reset(new std::thread([this]() { RunLoop(); }));
+  }
+
+  ~ProgressLoop() {
+    NotifyStop();
+    // wait for thread_ to complete and cleanup.
+    thread_->join();
+    thread_.reset();
+  }
+
+ private:
+  // Notifies the background thread to stop
+  void NotifyStop() {
+    if (!stop_event_.HasBeenNotified()) {
+      stop_event_.Notify();
+    }
+  }
+
+  // Loops forever calling `function_` every `interval_ms_`.
+  void RunLoop() {
+    while (!stop_event_.HasBeenNotified()) {
+      const int64_t begin = absl::ToUnixMillis(absl::Now());
+      function_(progress_->Get());
+      const int64_t end = absl::ToUnixMillis(absl::Now());
+      const int64_t deadline = begin + interval_ms_;
+      if (deadline > end) {
+        if (stop_event_.WaitForNotificationWithTimeout(
+                absl::Milliseconds(deadline - end))) {
+          // notify end
+          break;
+        }
+      }
+    }
+    // last progress callback
+    function_(progress_->Get());
+  }
+
+  const std::shared_ptr<Progress> progress_;
+  const ProgressCallbacks function_;
+  const int64_t interval_ms_;
+
+  // Protects state below.
+  mutable absl::Mutex mutex_;
+  absl::Notification stop_event_;
+
+  std::unique_ptr<std::thread> thread_ = nullptr;
+};
+
 }  // namespace
 
 BucketPsi::BucketPsi(BucketPsiConfig config,
@@ -79,7 +138,21 @@ BucketPsi::BucketPsi(BucketPsiConfig config,
                           config_.input_params().select_fields().end());
 }
 
-PsiResultReport BucketPsi::Run() {
+PsiResultReport BucketPsi::Run(ProgressCallbacks progress_callbacks,
+                               int64_t callbacks_interval_ms) {
+  // init progress
+  auto progress = std::make_shared<Progress>();
+  progress->SetWeights({15, 65, 20});
+
+  // begin loop thread
+  std::unique_ptr<ProgressLoop> p_loop = nullptr;
+  if (progress_callbacks) {
+    SPDLOG_INFO("begin progress callback loop thread, interval:{}",
+                callbacks_interval_ms);
+    p_loop = std::make_unique<ProgressLoop>(progress, progress_callbacks,
+                                            callbacks_interval_ms);
+  }
+
   PsiResultReport report;
   std::vector<uint64_t> indices;
   bool digest_equal = false;
@@ -89,6 +162,7 @@ PsiResultReport BucketPsi::Run() {
       config_.psi_type() != PsiType::ECDH_OPRF_UB_PSI_2PC_TRANSFER_CACHE &&
       config_.psi_type() != PsiType::ECDH_OPRF_UB_PSI_2PC_ONLINE &&
       config_.psi_type() != PsiType::ECDH_OPRF_UB_PSI_2PC_SHUFFLE_ONLINE) {
+    progress->NextSubProgress("Precheck");
     auto checker = CheckInput();
     report.set_original_count(checker->data_count());
 
@@ -100,10 +174,10 @@ PsiResultReport BucketPsi::Run() {
     }
 
     // run psi
-
+    auto psi_progress = progress->NextSubProgress("RunPsi");
     if (!digest_equal) {
       uint64_t items_count = checker->data_count();
-      indices = RunPsi(items_count);
+      indices = RunPsi(psi_progress, items_count);
     } else {
       SPDLOG_INFO("Skip doing psi, because dataset has been aligned!");
       indices.resize(checker->data_count());
@@ -111,6 +185,8 @@ PsiResultReport BucketPsi::Run() {
     }
 
   } else {
+    progress->NextSubProgress("UB Precheck");
+
     if (config_.input_params().precheck() &&
         (config_.psi_type() == PsiType::ECDH_OPRF_UB_PSI_2PC_SHUFFLE_ONLINE) &&
         (lctx_->Rank() != config_.receiver_rank())) {
@@ -132,12 +208,18 @@ PsiResultReport BucketPsi::Run() {
       SPDLOG_INFO("End sanity check for input file: {}, size={}",
                   config_.input_params().path(), checker->data_count());
     }
+
+    auto psi_progress = progress->NextSubProgress("UB RunPsi");
     uint64_t items_count = 0;
-    indices = RunPsi(items_count);
+    indices = RunPsi(psi_progress, items_count);
     report.set_original_count(items_count);
   }
 
+  progress->NextSubProgress("ProduceOutput");
   ProduceOutput(digest_equal, indices, report);
+
+  progress->Done();
+
   return report;
 }
 
@@ -260,7 +342,8 @@ void BucketPsi::Init() {
               ec.message());
 }
 
-std::vector<uint64_t> BucketPsi::RunPsi(uint64_t& self_items_count) {
+std::vector<uint64_t> BucketPsi::RunPsi(std::shared_ptr<Progress>& progress,
+                                        uint64_t& self_items_count) {
   SPDLOG_INFO("Run psi protocol={}, self_items_count={}", config_.psi_type(),
               self_items_count);
 
@@ -283,6 +366,26 @@ std::vector<uint64_t> BucketPsi::RunPsi(uint64_t& self_items_count) {
         std::filesystem::path(config_.output_params().path()).parent_path(),
         64);
 
+    // Hook progress->
+    if (progress) {
+      psi_options.on_batch_finished = [progress, self_items_count,
+                                       psi_options](size_t batch_count) {
+        size_t last_percent = progress->Get().percentage;
+
+        size_t completed = batch_count * psi_options.batch_size;
+        size_t total = std::max<size_t>(1, self_items_count);
+        size_t curr_percent = 100 * completed / total;
+        progress->Update(curr_percent);
+
+        // Log something.
+        constexpr size_t kLogEveryNPercent = 5;
+        if (curr_percent != last_percent &&
+            curr_percent % kLogEveryNPercent == 0) {
+          SPDLOG_INFO("ECDH progress {}%", curr_percent);
+        }
+      };
+    }
+
     // Launch ECDH-PSI core.
     RunEcdhPsi(psi_options, batch_provider, cipher_store);
 
@@ -303,11 +406,12 @@ std::vector<uint64_t> BucketPsi::RunPsi(uint64_t& self_items_count) {
 
     return results;
   } else {
-    return RunBucketPsi(self_items_count);
+    return RunBucketPsi(progress, self_items_count);
   }
 }
 
-std::vector<uint64_t> BucketPsi::RunBucketPsi(uint64_t self_items_count) {
+std::vector<uint64_t> BucketPsi::RunBucketPsi(
+    std::shared_ptr<Progress>& progress, uint64_t self_items_count) {
   std::vector<uint64_t> ret;
 
   std::vector<size_t> items_size_list =
@@ -362,6 +466,11 @@ std::vector<uint64_t> BucketPsi::RunBucketPsi(uint64_t self_items_count) {
 
     // get result item indices
     GetResultIndices(item_data_list, bucket_items_list, result_list, &ret);
+
+    // count progress
+    if (progress) {
+      progress->Update(100 * (bucket_idx + 1) / bucket_store->BucketNum());
+    }
   }
 
   return ret;

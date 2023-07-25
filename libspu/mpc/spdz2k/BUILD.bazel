@@ -40,12 +40,20 @@ spu_cc_library(
 )
 
 spu_cc_test(
-    name = "protocol_test",
-    srcs = ["protocol_test.cc"],
+    name = "protocol_api_test",
+    srcs = ["protocol_api_test.cc"],
+    deps = [
+        ":protocol",
+        "//libspu/mpc:api_test",
+    ],
+)
+
+spu_cc_test(
+    name = "protocol_ab_test",
+    srcs = ["protocol_ab_test.cc"],
     deps = [
         ":abprotocol_spdz2k_test",
         ":protocol",
-        "//libspu/mpc:api_test",
         "//libspu/mpc:ab_api_test",
     ],
 )
@@ -87,27 +95,26 @@ spu_cc_library(
         ":state",
         ":type",
         ":value",
-        "//libspu/mpc:kernel",
         "//libspu/mpc:ab_api",
-        "//libspu/mpc/common:prg_state",
+        "//libspu/mpc:kernel",
         "//libspu/mpc/common:communicator",
+        "//libspu/mpc/common:prg_state",
     ],
 )
-
 
 spu_cc_library(
     name = "conversion",
     srcs = ["conversion.cc"],
     hdrs = ["conversion.h"],
     deps = [
+        ":arithmetic",
+        ":boolean",
         ":state",
         ":type",
-        ":boolean",
-        ":arithmetic",
         "//libspu/core:vectorize",
-        "//libspu/mpc:kernel",
         "//libspu/mpc:ab_api",
         "//libspu/mpc:api",
+        "//libspu/mpc:kernel",
         "//libspu/mpc/common:communicator",
         "//libspu/mpc/utils:circuits",
     ],
@@ -171,10 +178,9 @@ spu_cc_library(
     deps = [
         ":type",
         "//libspu/core",
+        "//libspu/mpc/cheetah:array_ref",
         "//libspu/mpc/common:pv2k",
         "//libspu/mpc/utils:ring_ops",
-        "//libspu/mpc/spdz2k/beaver:beaver_tfp",
-        "//libspu/mpc/spdz2k/beaver:beaver_tinyot",
     ],
 )
 
@@ -183,8 +189,8 @@ spu_cc_library(
     testonly = 1,
     srcs = ["abprotocol_spdz2k_test.cc"],
     deps = [
-        "//libspu/mpc:ab_api_test",
         "//libspu/mpc:ab_api",
+        "//libspu/mpc:ab_api_test",
         "//libspu/mpc:api",
         "//libspu/mpc/common:communicator",
         "//libspu/mpc/common:pv2k",

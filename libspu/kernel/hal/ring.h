@@ -26,6 +26,8 @@
 
 namespace spu::kernel::hal {
 
+// NOLINTBEGIN(readability-identifier-naming)
+
 Type _common_type(SPUContext* ctx, const Type& a, const Type& b);
 
 Value _cast_type(SPUContext* ctx, const Value& x, const Type& to);
@@ -47,8 +49,7 @@ Value _mul(SPUContext* ctx, const Value& x, const Value& y);
 Value _mmul(SPUContext* ctx, const Value& x, const Value& y);
 
 Value _conv2d(SPUContext* ctx, const Value& x, const Value& y,
-              absl::Span<const int64_t> window_strides,
-              absl::Span<const int64_t> result_shape);
+              const Strides& window_strides, const Shape& result_shape);
 
 Value _and(SPUContext* ctx, const Value& x, const Value& y);
 
@@ -88,8 +89,7 @@ Value _clamp(SPUContext* ctx, const Value& x, const Value& minv,
 //
 // If the current working field has less than 128bit, the lower sizeof(field)
 // bits are used.
-Value _constant(SPUContext* ctx, uint128_t init,
-                absl::Span<const int64_t> shape);
+Value _constant(SPUContext* ctx, uint128_t init, const Shape& shape);
 
 // Return the parity of bits, that is
 // - 1 if there are odd number of 1s.
@@ -113,5 +113,7 @@ Value _prefer_a(SPUContext* ctx, const Value& x);
 // Return value in binary shared form if it's not.
 // Note: theoretically, we should not leak `share` concept to hal layer.
 Value _prefer_b(SPUContext* ctx, const Value& x);
+
+// NOLINTEND(readability-identifier-naming)
 
 }  // namespace spu::kernel::hal

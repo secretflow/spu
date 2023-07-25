@@ -447,50 +447,44 @@ Value mul_pp(SPUContext* ctx, const Value& x, const Value& y) {
 
 //////////////////////////////////////////////////////////////////////////////
 
-Value mmul_ss(SPUContext* ctx, const Value& x, const Value& y, size_t m,
-              size_t n, size_t k) {
+Value mmul_ss(SPUContext* ctx, const Value& x, const Value& y) {
   SPU_TRACE_MPC_DISP(ctx, x, y);
-  TRY_DISPATCH(ctx, x, y, m, n, k);
-  return mmul_aa(ctx, _2a(ctx, x), _2a(ctx, y), m, n, k);
+  TRY_DISPATCH(ctx, x, y);
+  return mmul_aa(ctx, _2a(ctx, x), _2a(ctx, y));
 }
 
-Value mmul_sv(SPUContext* ctx, const Value& x, const Value& y, size_t m,
-              size_t n, size_t k) {
-  SPU_TRACE_MPC_DISP(ctx, x, y, m, n, k);
-  TRY_DISPATCH(ctx, x, y, m, n, k);
+Value mmul_sv(SPUContext* ctx, const Value& x, const Value& y) {
+  SPU_TRACE_MPC_DISP(ctx, x, y);
+  TRY_DISPATCH(ctx, x, y);
   if (IsA(x)) {
-    if (auto res = mmul_av(ctx, x, y, m, n, k)) {
+    if (auto res = mmul_av(ctx, x, y)) {
       return res.value();
     }
   }
-  return mmul_ss(ctx, x, v2s(ctx, y), m, n, k);
+  return mmul_ss(ctx, x, v2s(ctx, y));
 }
 
-Value mmul_sp(SPUContext* ctx, const Value& x, const Value& y, size_t m,
-              size_t n, size_t k) {
-  SPU_TRACE_MPC_DISP(ctx, x, y, m, n, k);
-  TRY_DISPATCH(ctx, x, y, m, n, k);
-  return mmul_ap(ctx, _2a(ctx, x), y, m, n, k);
+Value mmul_sp(SPUContext* ctx, const Value& x, const Value& y) {
+  SPU_TRACE_MPC_DISP(ctx, x, y);
+  TRY_DISPATCH(ctx, x, y);
+  return mmul_ap(ctx, _2a(ctx, x), y);
 }
 
-Value mmul_vv(SPUContext* ctx, const Value& x, const Value& y, size_t m,
-              size_t n, size_t k) {
+Value mmul_vv(SPUContext* ctx, const Value& x, const Value& y) {
   if (hasSameOwner(x, y)) {
-    FORCE_NAMED_DISPATCH(ctx, "mmul_vvv", x, y, m, n, k);
+    FORCE_NAMED_DISPATCH(ctx, "mmul_vvv", x, y);
   } else {
-    TRY_NAMED_DISPATCH(ctx, "mmul_vvs", x, y, m, n, k);
-    return mmul_ss(ctx, v2s(ctx, x), v2s(ctx, y), m, n, k);
+    TRY_NAMED_DISPATCH(ctx, "mmul_vvs", x, y);
+    return mmul_ss(ctx, v2s(ctx, x), v2s(ctx, y));
   }
 }
 
-Value mmul_vp(SPUContext* ctx, const Value& x, const Value& y, size_t m,
-              size_t n, size_t k) {
-  FORCE_DISPATCH(ctx, x, y, m, n, k);
+Value mmul_vp(SPUContext* ctx, const Value& x, const Value& y) {
+  FORCE_DISPATCH(ctx, x, y);
 }
 
-Value mmul_pp(SPUContext* ctx, const Value& x, const Value& y, size_t m,
-              size_t n, size_t k) {
-  FORCE_DISPATCH(ctx, x, y, m, n, k);
+Value mmul_pp(SPUContext* ctx, const Value& x, const Value& y) {
+  FORCE_DISPATCH(ctx, x, y);
 }
 
 //////////////////////////////////////////////////////////////////////////////

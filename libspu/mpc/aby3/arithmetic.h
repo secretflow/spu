@@ -14,12 +14,13 @@
 
 #pragma once
 
-#include "libspu/core/array_ref.h"
+#include "libspu/core/ndarray_ref.h"
 #include "libspu/mpc/kernel.h"
 
 namespace spu::mpc::aby3 {
 
 #define ENABLE_MASK_DURING_ABY3_P2A
+
 class A2P : public UnaryKernel {
  public:
   static constexpr char kBindName[] = "a2p";
@@ -34,7 +35,7 @@ class A2P : public UnaryKernel {
     return ce::K();
   }
 
-  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in) const override;
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in) const override;
 };
 
 class P2A : public UnaryKernel {
@@ -57,7 +58,7 @@ class P2A : public UnaryKernel {
 #endif
   }
 
-  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in) const override;
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in) const override;
 };
 
 class A2V : public RevealToKernel {
@@ -77,8 +78,8 @@ class A2V : public RevealToKernel {
     return ce::K();
   }
 
-  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in,
-                size_t rank) const override;
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in,
+                  size_t rank) const override;
 };
 
 class V2A : public UnaryKernel {
@@ -98,7 +99,7 @@ class V2A : public UnaryKernel {
     return ce::K();
   }
 
-  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in) const override;
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in) const override;
 };
 
 class RandA : public RandKernel {
@@ -109,7 +110,7 @@ class RandA : public RandKernel {
 
   ce::CExpr comm() const override { return ce::Const(0); }
 
-  ArrayRef proc(KernelEvalContext* ctx, size_t size) const override;
+  NdArrayRef proc(KernelEvalContext* ctx, const Shape& shape) const override;
 };
 
 class NotA : public UnaryKernel {
@@ -120,7 +121,7 @@ class NotA : public UnaryKernel {
 
   ce::CExpr comm() const override { return ce::Const(0); }
 
-  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in) const override;
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in) const override;
 };
 
 ////////////////////////////////////////////////////////////////////
@@ -134,8 +135,8 @@ class AddAP : public BinaryKernel {
 
   ce::CExpr comm() const override { return ce::Const(0); }
 
-  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& lhs,
-                const ArrayRef& rhs) const override;
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
+                  const NdArrayRef& rhs) const override;
 };
 
 class AddAA : public BinaryKernel {
@@ -146,8 +147,8 @@ class AddAA : public BinaryKernel {
 
   ce::CExpr comm() const override { return ce::Const(0); }
 
-  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& lhs,
-                const ArrayRef& rhs) const override;
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
+                  const NdArrayRef& rhs) const override;
 };
 
 ////////////////////////////////////////////////////////////////////
@@ -161,8 +162,8 @@ class MulAP : public BinaryKernel {
 
   ce::CExpr comm() const override { return ce::Const(0); }
 
-  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& lhs,
-                const ArrayRef& rhs) const override;
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
+                  const NdArrayRef& rhs) const override;
 };
 
 class MulAA : public BinaryKernel {
@@ -179,8 +180,8 @@ class MulAA : public BinaryKernel {
     return ce::K();
   }
 
-  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& lhs,
-                const ArrayRef& rhs) const override;
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
+                  const NdArrayRef& rhs) const override;
 };
 
 class MulA1B : public BinaryKernel {
@@ -191,8 +192,8 @@ class MulA1B : public BinaryKernel {
 
   ce::CExpr comm() const override { return 8 * ce::K(); }
 
-  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& lhs,
-                const ArrayRef& rhs) const override;
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
+                  const NdArrayRef& rhs) const override;
 };
 
 ////////////////////////////////////////////////////////////////////
@@ -206,8 +207,8 @@ class MatMulAP : public MatmulKernel {
 
   ce::CExpr comm() const override { return ce::Const(0); }
 
-  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& x, const ArrayRef& y,
-                size_t m, size_t n, size_t k) const override;
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& x,
+                  const NdArrayRef& y) const override;
 };
 
 class MatMulAA : public MatmulKernel {
@@ -226,8 +227,8 @@ class MatMulAA : public MatmulKernel {
     return ce::K() * m * n;
   }
 
-  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& x, const ArrayRef& y,
-                size_t m, size_t n, size_t k) const override;
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& x,
+                  const NdArrayRef& y) const override;
 };
 
 class LShiftA : public ShiftKernel {
@@ -238,8 +239,8 @@ class LShiftA : public ShiftKernel {
 
   ce::CExpr comm() const override { return ce::Const(0); }
 
-  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in,
-                size_t bits) const override;
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in,
+                  size_t bits) const override;
 };
 
 // Refer to:
@@ -254,8 +255,8 @@ class TruncA : public TruncAKernel {
 
   ce::CExpr comm() const override { return ce::K(); }
 
-  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in,
-                size_t bits) const override;
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in,
+                  size_t bits) const override;
 
   bool hasMsbError() const override { return true; }
 
@@ -276,8 +277,8 @@ class TruncAPr : public TruncAKernel {
 
   ce::CExpr comm() const override { return 4 * ce::K(); }
 
-  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in,
-                size_t bits) const override;
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in,
+                  size_t bits) const override;
 
   bool hasMsbError() const override { return false; }
 
