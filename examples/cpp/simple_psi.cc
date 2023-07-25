@@ -82,9 +82,14 @@ int main(int argc, char** argv) {
   config.set_bucket_size(BucketSizeOpt.getValue());
   config.set_curve_type(spu::psi::CurveType::CURVE_25519);
 
+  spu::psi::ProgressCallbacks progress_callbacks =
+      [](const spu::psi::Progress::Data& data) {
+        SPDLOG_INFO("progress callback-----percentage: {}", data.percentage);
+      };
+
   try {
     spu::psi::BucketPsi bucket_psi(config, sctx->lctx());
-    auto report = bucket_psi.Run();
+    auto report = bucket_psi.Run(progress_callbacks);
 
     SPDLOG_INFO("rank:{} original_count:{} intersection_count:{}",
                 sctx->lctx()->Rank(), report.original_count(),

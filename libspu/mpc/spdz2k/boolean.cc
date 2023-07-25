@@ -22,8 +22,10 @@
 #include "libspu/mpc/common/communicator.h"
 #include "libspu/mpc/common/prg_state.h"
 #include "libspu/mpc/common/pv2k.h"
+#include "libspu/mpc/spdz2k/state.h"
 #include "libspu/mpc/spdz2k/type.h"
 #include "libspu/mpc/spdz2k/value.h"
+#include "libspu/mpc/utils/ring_ops.h"
 
 namespace spu::mpc::spdz2k {
 
@@ -32,31 +34,31 @@ namespace {
 // Input a plaintext
 // Output the B-share without MAC
 // LSB first, MSB last
-ArrayRef P2Value(FieldType out_field, const ArrayRef& in, size_t k,
-                 size_t new_nbits = 0) {
+NdArrayRef P2Value(FieldType out_field, const NdArrayRef& in, size_t k,
+                   size_t new_nbits = 0) {
   const auto* in_ty = in.eltype().as<Pub2kTy>();
   const auto in_field = in_ty->field();
   return DISPATCH_ALL_FIELDS(in_field, "_", [&]() {
     using PShrT = ring2k_t;
-    auto _in = ArrayView<PShrT>(in);
-    size_t nbits = std::min(k, maxBitWidth(_in));
 
+    size_t valid_nbits = k;
     if (new_nbits == 0) {
-      new_nbits = nbits;
+      valid_nbits = std::min(k, maxBitWidth<PShrT>(in));
+    } else if (new_nbits < k) {
+      valid_nbits = new_nbits;
     }
 
-    size_t valid_nbits = new_nbits;
-    size_t min_nbits = std::min(nbits, new_nbits);
+    Shape out_shape = in.shape();
+    out_shape.back() *= valid_nbits;
 
-    const size_t out_numel = in.numel() * valid_nbits;
-    auto out = ring_zeros(out_field, out_numel);
+    auto out = ring_zeros(out_field, out_shape);
     return DISPATCH_ALL_FIELDS(out_field, "_", [&]() {
       using BShrT = ring2k_t;
-      auto _out = ArrayView<BShrT>(out);
       pforeach(0, in.numel(), [&](int64_t idx) {
-        pforeach(0, min_nbits, [&](int64_t jdx) {
+        pforeach(0, valid_nbits, [&](int64_t jdx) {
           size_t offset = idx * valid_nbits + jdx;
-          _out[offset] = static_cast<BShrT>((_in[idx] >> jdx) & 1);
+          out.at<BShrT>(offset) =
+              static_cast<BShrT>((in.at<PShrT>(idx) >> jdx) & 1);
         });
       });
 
@@ -66,19 +68,24 @@ ArrayRef P2Value(FieldType out_field, const ArrayRef& in, size_t k,
 }
 
 // RShift implementation
-std::pair<ArrayRef, ArrayRef> RShiftBImpl(const ArrayRef& in, size_t bits) {
+std::pair<NdArrayRef, NdArrayRef> RShiftBImpl(const NdArrayRef& in,
+                                              size_t bits) {
   const auto field = in.eltype().as<Ring2k>()->field();
   const auto old_nbits = in.eltype().as<BShrTy>()->nbits();
-  const size_t p_num = in.numel();
-  size_t new_nbits = old_nbits - bits;
+  int64_t new_nbits = old_nbits - bits;
 
   if (bits == 0) return {getValueShare(in), getMacShare(in)};
   if (new_nbits <= 0) {
-    return {ring_zeros(field, p_num), ring_zeros(field, p_num)};
+    return {ring_zeros(field, in.shape()), ring_zeros(field, in.shape())};
   }
 
-  auto out_val = ring_zeros(field, p_num * new_nbits);
-  auto out_mac = ring_zeros(field, p_num * new_nbits);
+  const size_t p_num = in.numel();
+
+  auto out_shape = in.shape();
+  out_shape.back() *= new_nbits;
+
+  auto out_val = ring_zeros(field, out_shape);
+  auto out_mac = ring_zeros(field, out_shape);
 
   size_t out_offset = 0;
   size_t in_offset = bits;
@@ -87,92 +94,120 @@ std::pair<ArrayRef, ArrayRef> RShiftBImpl(const ArrayRef& in, size_t bits) {
   auto in_mac = getMacShare(in).clone();
 
   for (size_t i = 0; i < p_num; ++i) {
-    auto _in_val = ArrayRef(in_val.buf(), makeType<RingTy>(field), new_nbits, 1,
-                            (i * old_nbits + in_offset) * SizeOf(field));
-    auto _in_mac = ArrayRef(in_mac.buf(), makeType<RingTy>(field), new_nbits, 1,
-                            (i * old_nbits + in_offset) * SizeOf(field));
-    auto _out_val = ArrayRef(out_val.buf(), makeType<RingTy>(field), new_nbits,
-                             1, (i * new_nbits + out_offset) * SizeOf(field));
-    auto _out_mac = ArrayRef(out_mac.buf(), makeType<RingTy>(field), new_nbits,
-                             1, (i * new_nbits + out_offset) * SizeOf(field));
+    auto _in_val =
+        NdArrayRef(in_val.buf(), makeType<RingTy>(field), {new_nbits}, {1},
+                   (i * old_nbits + in_offset) * SizeOf(field));
+    auto _in_mac =
+        NdArrayRef(in_mac.buf(), makeType<RingTy>(field), {new_nbits}, {1},
+                   (i * old_nbits + in_offset) * SizeOf(field));
+    auto _out_val =
+        NdArrayRef(out_val.buf(), makeType<RingTy>(field), {new_nbits}, {1},
+                   (i * new_nbits + out_offset) * SizeOf(field));
+    auto _out_mac =
+        NdArrayRef(out_mac.buf(), makeType<RingTy>(field), {new_nbits}, {1},
+                   (i * new_nbits + out_offset) * SizeOf(field));
     ring_add_(_out_val, _in_val);
     ring_add_(_out_mac, _in_mac);
   }
+
   return {out_val, out_mac};
 }
 
 // ARShift implementation
-std::pair<ArrayRef, ArrayRef> ARShiftBImpl(const ArrayRef& in, size_t bits,
-                                           size_t k) {
+std::pair<NdArrayRef, NdArrayRef> ARShiftBImpl(const NdArrayRef& in,
+                                               size_t bits, size_t k) {
   const auto old_nbits = in.eltype().as<BShrTy>()->nbits();
   // Only process negative number
   SPU_ENFORCE(old_nbits == k);
   const auto field = in.eltype().as<Ring2k>()->field();
+  const auto ty = makeType<RingTy>(field);
 
-  if (bits == 0) return {getValueShare(in), getMacShare(in)};
+  if (bits == 0) {
+    return {getValueShare(in), getMacShare(in)};
+  }
+
   size_t p_num = in.numel();
 
-  ArrayRef out_val(in.eltype(), p_num * old_nbits);
-  ArrayRef out_mac(in.eltype(), p_num * old_nbits);
+  auto out_shape = in.shape();
+  out_shape.back() *= old_nbits;
 
-  size_t offset1 = bits < old_nbits ? bits : old_nbits;
-  size_t offset2 = bits < old_nbits ? old_nbits - bits : 0;
+  NdArrayRef out_val(ty, out_shape);
+  NdArrayRef out_mac(ty, out_shape);
+
+  int64_t offset1 = bits < old_nbits ? bits : old_nbits;
+  int64_t offset2 = bits < old_nbits ? old_nbits - bits : 0;
 
   auto in_val = getValueShare(in).clone();
   auto in_mac = getMacShare(in).clone();
 
-  auto ones = ring_ones(field, offset1);
+  auto ones = ring_ones(field, {offset1});
 
   for (size_t i = 0; i < p_num; ++i) {
-    auto _in_val1 = ArrayRef(in_val.buf(), makeType<RingTy>(field), offset2, 1,
-                             (i * old_nbits + offset1) * SizeOf(field));
-    auto _in_mac1 = ArrayRef(in_mac.buf(), makeType<RingTy>(field), offset2, 1,
-                             (i * old_nbits + offset1) * SizeOf(field));
-    auto _out_val1 = ArrayRef(out_val.buf(), makeType<RingTy>(field), offset2,
-                              1, (i * old_nbits) * SizeOf(field));
-    auto _out_mac1 = ArrayRef(out_mac.buf(), makeType<RingTy>(field), offset2,
-                              1, (i * old_nbits) * SizeOf(field));
+    auto _in_val1 = NdArrayRef(in_val.buf(), makeType<RingTy>(field), {offset2},
+                               {1}, (i * old_nbits + offset1) * SizeOf(field));
+    auto _in_mac1 = NdArrayRef(in_mac.buf(), makeType<RingTy>(field), {offset2},
+                               {1}, (i * old_nbits + offset1) * SizeOf(field));
+    auto _out_val1 =
+        NdArrayRef(out_val.buf(), makeType<RingTy>(field), {offset2}, {1},
+                   (i * old_nbits) * SizeOf(field));
+    auto _out_mac1 =
+        NdArrayRef(out_mac.buf(), makeType<RingTy>(field), {offset2}, {1},
+                   (i * old_nbits) * SizeOf(field));
     ring_assign(_out_val1, _in_val1);
     ring_assign(_out_mac1, _in_mac1);
 
-    auto _in_val_sign = ArrayRef(in_val.buf(), makeType<RingTy>(field), 1, 1,
-                                 ((i + 1) * old_nbits - 1) * SizeOf(field));
-    auto _in_mac_sign = ArrayRef(in_mac.buf(), makeType<RingTy>(field), 1, 1,
-                                 ((i + 1) * old_nbits - 1) * SizeOf(field));
+    auto _in_val_sign =
+        NdArrayRef(in_val.buf(), makeType<RingTy>(field), {1}, {1},
+                   ((i + 1) * old_nbits - 1) * SizeOf(field));
+    auto _in_mac_sign =
+        NdArrayRef(in_mac.buf(), makeType<RingTy>(field), {1}, {1},
+                   ((i + 1) * old_nbits - 1) * SizeOf(field));
 
     // sign extension
-    auto _in_val2 = ring_mmul(_in_val_sign, ones, 1, offset1, 1);
-    auto _in_mac2 = ring_mmul(_in_mac_sign, ones, 1, offset1, 1);
-    auto _out_val2 = ArrayRef(out_val.buf(), makeType<RingTy>(field), offset1,
-                              1, (i * old_nbits + offset2) * SizeOf(field));
-    auto _out_mac2 = ArrayRef(out_mac.buf(), makeType<RingTy>(field), offset1,
-                              1, (i * old_nbits + offset2) * SizeOf(field));
-    ring_assign(_out_val2, _in_val2);
-    ring_assign(_out_mac2, _in_mac2);
+    auto _in_val2 =
+        ring_mmul(_in_val_sign.reshape({1, 1}), ones.reshape({1, offset1}));
+    auto _in_mac2 =
+        ring_mmul(_in_mac_sign.reshape({1, 1}), ones.reshape({1, offset1}));
+    auto _out_val2 =
+        NdArrayRef(out_val.buf(), makeType<RingTy>(field), {offset1}, {1},
+                   (i * old_nbits + offset2) * SizeOf(field));
+    auto _out_mac2 =
+        NdArrayRef(out_mac.buf(), makeType<RingTy>(field), {offset1}, {1},
+                   (i * old_nbits + offset2) * SizeOf(field));
+    ring_assign(_out_val2, _in_val2.reshape({offset1}));
+    ring_assign(_out_mac2, _in_mac2.reshape({offset1}));
   }
   return {out_val, out_mac};
 }
 
 // LShift implementation
-std::pair<ArrayRef, ArrayRef> LShiftBImpl(const ArrayRef& in, size_t bits,
-                                          size_t k) {
-  const auto old_nbits = in.eltype().as<BShrTy>()->nbits();
-  if (bits == 0) return {getValueShare(in), getMacShare(in)};
+std::pair<NdArrayRef, NdArrayRef> LShiftBImpl(const NdArrayRef& in, size_t bits,
+                                              size_t k) {
+  const auto field = in.eltype().as<Ring2k>()->field();
 
-  size_t p_num = in.numel();
+  if (bits == 0) {
+    return {getValueShare(in), getMacShare(in)};
+  }
+
+  if (bits >= k) {
+    return {ring_zeros(field, in.shape()), ring_zeros(field, in.shape())};
+  }
+
+  const auto old_nbits = in.eltype().as<BShrTy>()->nbits();
   size_t new_nbits = old_nbits + bits;
 
   if (new_nbits > k) {
     new_nbits = k;
   }
-  size_t min_nbits = new_nbits - bits;
+  int64_t min_nbits = new_nbits - bits;
 
-  const auto field = in.eltype().as<Ring2k>()->field();
-  auto out_val = ring_zeros(field, p_num * new_nbits);
-  auto out_mac = ring_zeros(field, p_num * new_nbits);
-  if (bits >= k) {
-    return {ring_zeros(field, in.numel()), ring_zeros(field, in.numel())};
-  }
+  size_t p_num = in.numel();
+
+  auto out_shape = in.shape();
+  out_shape.back() *= new_nbits;
+
+  auto out_val = ring_zeros(field, out_shape);
+  auto out_mac = ring_zeros(field, out_shape);
 
   size_t out_offset = bits;
   size_t in_offset = 0;
@@ -181,19 +216,24 @@ std::pair<ArrayRef, ArrayRef> LShiftBImpl(const ArrayRef& in, size_t bits,
   auto in_mac = getMacShare(in).clone();
 
   for (size_t i = 0; i < p_num; ++i) {
-    auto _in_val = ArrayRef(in_val.buf(), makeType<RingTy>(field), min_nbits, 1,
-                            (i * old_nbits + in_offset) * SizeOf(field));
-    auto _in_mac = ArrayRef(in_mac.buf(), makeType<RingTy>(field), min_nbits, 1,
-                            (i * old_nbits + in_offset) * SizeOf(field));
+    auto _in_val =
+        NdArrayRef(in_val.buf(), makeType<RingTy>(field), {min_nbits}, {1},
+                   (i * old_nbits + in_offset) * SizeOf(field));
+    auto _in_mac =
+        NdArrayRef(in_mac.buf(), makeType<RingTy>(field), {min_nbits}, {1},
+                   (i * old_nbits + in_offset) * SizeOf(field));
 
-    auto _out_val = ArrayRef(out_val.buf(), makeType<RingTy>(field), min_nbits,
-                             1, (i * new_nbits + out_offset) * SizeOf(field));
-    auto _out_mac = ArrayRef(out_mac.buf(), makeType<RingTy>(field), min_nbits,
-                             1, (i * new_nbits + out_offset) * SizeOf(field));
+    auto _out_val =
+        NdArrayRef(out_val.buf(), makeType<RingTy>(field), {min_nbits}, {1},
+                   (i * new_nbits + out_offset) * SizeOf(field));
+    auto _out_mac =
+        NdArrayRef(out_mac.buf(), makeType<RingTy>(field), {min_nbits}, {1},
+                   (i * new_nbits + out_offset) * SizeOf(field));
 
     ring_add_(_out_val, _in_val);
     ring_add_(_out_mac, _in_mac);
   }
+
   return {out_val, out_mac};
 }
 
@@ -211,15 +251,15 @@ void CommonTypeB::evaluate(KernelEvalContext* ctx) const {
   ctx->setOutput(lhs);
 }
 
-ArrayRef CastTypeB::proc(KernelEvalContext* ctx, const ArrayRef& in,
-                         const Type& to_type) const {
+NdArrayRef CastTypeB::proc(KernelEvalContext* ctx, const NdArrayRef& in,
+                           const Type& to_type) const {
   SPU_ENFORCE(in.eltype() == to_type,
               "spdz2k always use same bshare type, lhs={}, rhs={}", in.eltype(),
               to_type);
   return in;
 }
 
-ArrayRef B2P::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
+NdArrayRef B2P::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   SPU_TRACE_MPC_LEAF(ctx, in);
 
   auto* beaver_ptr = ctx->getState<Spdz2kState>()->beaver();
@@ -227,10 +267,10 @@ ArrayRef B2P::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
   const auto field = in.eltype().as<BShrTy>()->field();
   const auto out_field = ctx->getState<Z2kState>()->getDefaultField();
   const auto nbits = in.eltype().as<BShrTy>()->nbits();
-  const size_t out_numel = in.numel();
 
   // 1.  Open the least significant bit
-  auto [pub, mac] =
+  NdArrayRef pub, mac;
+  std::tie(pub, mac) =
       beaver_ptr->BatchOpen(getValueShare(in), getMacShare(in), 1, s);
 
   // 2. Maccheck
@@ -239,19 +279,18 @@ ArrayRef B2P::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
   return DISPATCH_ALL_FIELDS(field, "_", [&]() {
     using BShrT = ring2k_t;
     auto& value = pub;
-    auto _value = ArrayView<BShrT>(value);
     return DISPATCH_ALL_FIELDS(out_field, "_", [&]() {
       using PShrT = ring2k_t;
 
-      ArrayRef out(makeType<Pub2kTy>(out_field), out_numel);
-      auto _out = ArrayView<PShrT>(out);
+      NdArrayRef out(makeType<Pub2kTy>(out_field), in.shape());
 
-      pforeach(0, out_numel, [&](int64_t idx) {
+      pforeach(0, in.numel(), [&](int64_t idx) {
         PShrT t = 0;
         for (size_t jdx = 0; jdx < nbits; ++jdx) {
-          t |= static_cast<PShrT>((_value[idx * nbits + jdx] & 1) << jdx);
+          t |= static_cast<PShrT>((value.at<BShrT>(idx * nbits + jdx) & 1)
+                                  << jdx);
         }
-        _out[idx] = t;
+        out.at<PShrT>(idx) = t;
       });
 
       return out;
@@ -259,7 +298,7 @@ ArrayRef B2P::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
   });
 }
 
-ArrayRef P2B::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
+NdArrayRef P2B::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   SPU_TRACE_MPC_LEAF(ctx, in);
 
   auto* comm = ctx->getState<Communicator>();
@@ -270,18 +309,18 @@ ArrayRef P2B::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
 
   // 1. Convert plaintext into B-value
   auto p = P2Value(out_field, in, k);
-  auto out = ring_zeros(out_field, p.numel());
+  auto out = ring_zeros(out_field, p.shape());
 
   // 2. out = p
   if (comm->getRank() == 0) {
     ring_add_(out, p);
   }
-  ArrayRef& out_mac = p;
+  auto& out_mac = p;
   // 3. out_mac = p * key
   ring_mul_(p, key);
   // 4. add some random mask
-  auto [r0, r1] = prg_state->genPrssPair(out_field, out.numel());
-  auto [r2, r3] = prg_state->genPrssPair(out_field, out.numel());
+  auto [r0, r1] = prg_state->genPrssPair(out_field, out.shape());
+  auto [r2, r3] = prg_state->genPrssPair(out_field, out.shape());
   ring_add_(out, ring_sub(r0, r1));
   ring_add_(out_mac, ring_sub(r2, r3));
   // 5. makeBShare
@@ -289,19 +328,21 @@ ArrayRef P2B::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
   return makeBShare(out, out_mac, out_field, nbits);
 }
 
-ArrayRef NotB::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
+NdArrayRef NotB::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   SPU_TRACE_MPC_LEAF(ctx, in);
 
   const auto field = in.eltype().as<Ring2k>()->field();
   const auto nbits = in.eltype().as<BShrTy>()->nbits();
   const auto key = ctx->getState<Spdz2kState>()->key();
-  const auto numel = in.numel() * nbits;
   auto* comm = ctx->getState<Communicator>();
+
   // 1. convert B-share into x & x_mac
   auto [x, x_mac] = BShareSwitch2Nbits(in, nbits);
 
   // 2. create ones
-  auto ones = ring_ones(field, numel);
+  auto out_shape = in.shape();
+  out_shape.back() *= nbits;
+  auto ones = ring_ones(field, out_shape);
 
   // 3. ret = x + one
   auto ret = x.clone();
@@ -311,14 +352,14 @@ ArrayRef NotB::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
 
   // 4. z_mac = x_mac + ones * key
   ring_mul_(ones, key);
-  ArrayRef& ret_mac = ones;
+  auto& ret_mac = ones;
   ring_add_(ret_mac, x_mac);
 
   return makeBShare(ret, ret_mac, field, nbits);
 }
 
-ArrayRef BitrevB::proc(KernelEvalContext* ctx, const ArrayRef& in, size_t start,
-                       size_t end) const {
+NdArrayRef BitrevB::proc(KernelEvalContext* ctx, const NdArrayRef& in,
+                         size_t start, size_t end) const {
   SPU_TRACE_MPC_LEAF(ctx, in);
 
   const auto field = in.eltype().as<Ring2k>()->field();
@@ -334,14 +375,12 @@ ArrayRef BitrevB::proc(KernelEvalContext* ctx, const ArrayRef& in, size_t start,
   auto ret_mac = x_mac.clone();
 
   DISPATCH_ALL_FIELDS(field, "_", [&]() {
-    auto _x = ArrayView<ring2k_t>(x);
-    auto _x_mac = ArrayView<ring2k_t>(x_mac);
-    auto _ret = ArrayView<ring2k_t>(ret);
-    auto _ret_mac = ArrayView<ring2k_t>(ret_mac);
     for (size_t i = 0; i < static_cast<size_t>(numel); ++i) {
       for (size_t j = start; j < end; ++j) {
-        _ret[i * nbits + j] = _x[i * nbits + end + start - j - 1];
-        _ret_mac[i * nbits + j] = _x_mac[i * nbits + end + start - j - 1];
+        ret.at<ring2k_t>(i * nbits + j) =
+            x.at<ring2k_t>(i * nbits + end + start - j - 1);
+        ret_mac.at<ring2k_t>(i * nbits + j) =
+            x_mac.at<ring2k_t>(i * nbits + end + start - j - 1);
       }
     }
   });
@@ -349,8 +388,8 @@ ArrayRef BitrevB::proc(KernelEvalContext* ctx, const ArrayRef& in, size_t start,
   return makeBShare(ret, ret_mac, field, nbits);
 }
 
-ArrayRef XorBB::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
-                     const ArrayRef& rhs) const {
+NdArrayRef XorBB::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
+                       const NdArrayRef& rhs) const {
   SPU_TRACE_MPC_LEAF(ctx, lhs, rhs);
   const auto field = lhs.eltype().as<Ring2k>()->field();
   const auto nbits = maxNumBits(lhs, rhs);
@@ -367,8 +406,8 @@ ArrayRef XorBB::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
   return makeBShare(z, z_mac, field, nbits);
 }
 
-ArrayRef XorBP::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
-                     const ArrayRef& rhs) const {
+NdArrayRef XorBP::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
+                       const NdArrayRef& rhs) const {
   SPU_TRACE_MPC_LEAF(ctx, lhs, rhs);
 
   const auto field = lhs.eltype().as<Ring2k>()->field();
@@ -392,14 +431,14 @@ ArrayRef XorBP::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
 
   // z_mac = x_mac + p * key
   ring_mul_(p, key);
-  ArrayRef& z_mac = p;
+  auto& z_mac = p;
   ring_add_(z_mac, x_mac);
 
   return makeBShare(z, z_mac, field, nbits);
 }
 
-ArrayRef AndBB::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
-                     const ArrayRef& rhs) const {
+NdArrayRef AndBB::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
+                       const NdArrayRef& rhs) const {
   SPU_TRACE_MPC_LEAF(ctx, lhs, rhs);
 
   const auto field = lhs.eltype().as<Ring2k>()->field();
@@ -415,10 +454,9 @@ ArrayRef AndBB::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
   auto [x, x_mac] = BShareSwitch2Nbits(lhs, nbits);
   auto [y, y_mac] = BShareSwitch2Nbits(rhs, nbits);
 
-  SPU_ENFORCE(x.numel() == y.numel());
-  const auto numel = x.numel();
+  SPU_ENFORCE(x.shape() == y.shape());
   // e = x - a, f = y - b
-  auto [beaver_vec, beaver_mac] = beaver_ptr->AuthAnd(field, numel, s);
+  auto [beaver_vec, beaver_mac] = beaver_ptr->AuthAnd(field, x.shape(), s);
   auto& [a, b, c] = beaver_vec;
   auto& [a_mac, b_mac, c_mac] = beaver_mac;
 
@@ -455,9 +493,11 @@ ArrayRef AndBB::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
   return makeBShare(z, z_mac, field, nbits);
 }
 
-ArrayRef AndBP::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
-                     const ArrayRef& rhs) const {
+NdArrayRef AndBP::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
+                       const NdArrayRef& rhs) const {
   SPU_TRACE_MPC_LEAF(ctx, lhs, rhs);
+  SPU_ENFORCE(lhs.shape() == rhs.shape(), "lhs shape {}, rhs shape {}",
+              lhs.shape(), rhs.shape());
 
   const auto k = ctx->getState<Spdz2kState>()->k();
   const auto field = lhs.eltype().as<Ring2k>()->field();
@@ -468,7 +508,6 @@ ArrayRef AndBP::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
 
   // convert rhs to B-share value
   const auto p = P2Value(field, rhs, k, nbits);
-
   SPU_ENFORCE(x.numel() == p.numel(), "x {} p {}", x.numel(), p.numel());
   // ret
   // z = x * p
@@ -478,8 +517,8 @@ ArrayRef AndBP::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
   return makeBShare(z, z_mac, field, nbits);
 }
 
-ArrayRef LShiftB::proc(KernelEvalContext* ctx, const ArrayRef& in,
-                       size_t bits) const {
+NdArrayRef LShiftB::proc(KernelEvalContext* ctx, const NdArrayRef& in,
+                         size_t bits) const {
   const auto field = in.eltype().as<Ring2k>()->field();
   const auto k = ctx->getState<Spdz2kState>()->k();
   const size_t nbits = in.eltype().as<BShare>()->nbits();
@@ -494,28 +533,24 @@ ArrayRef LShiftB::proc(KernelEvalContext* ctx, const ArrayRef& in,
   return makeBShare(ret, ret_mac, field, res_nbits);
 }
 
-ArrayRef RShiftB::proc(KernelEvalContext* ctx, const ArrayRef& in,
-                       size_t bits) const {
+NdArrayRef RShiftB::proc(KernelEvalContext* ctx, const NdArrayRef& in,
+                         size_t bits) const {
   SPU_TRACE_MPC_LEAF(ctx, in, bits);
 
   const auto field = in.eltype().as<Ring2k>()->field();
   const auto nbits = in.eltype().as<BShare>()->nbits();
-  // size_t rbits = std::min(nbits, bits);
-  // nbits -= rbits;
-  // if (nbits <= 0) nbits = 1;
   size_t new_nbis = nbits > bits ? nbits - bits : 1;
   auto [ret, ret_mac] = RShiftBImpl(in, bits);
   return makeBShare(ret, ret_mac, field, new_nbis);
 }
 
-static ArrayRef wrap_rshift_b(SPUContext* ctx, const ArrayRef& x, size_t bits) {
-  const Shape shape = {x.numel()};
-  auto [res, _s, _t] = UnwrapValue(rshift_b(ctx, WrapValue(x, shape), bits));
-  return res;
+static NdArrayRef wrap_rshift_b(SPUContext* ctx, const NdArrayRef& x,
+                                size_t bits) {
+  return UnwrapValue(rshift_b(ctx, WrapValue(x), bits));
 }
 
-ArrayRef ARShiftB::proc(KernelEvalContext* ctx, const ArrayRef& in,
-                        size_t bits) const {
+NdArrayRef ARShiftB::proc(KernelEvalContext* ctx, const NdArrayRef& in,
+                          size_t bits) const {
   SPU_TRACE_MPC_LEAF(ctx, in, bits);
 
   const auto field = in.eltype().as<Ring2k>()->field();
@@ -524,9 +559,6 @@ ArrayRef ARShiftB::proc(KernelEvalContext* ctx, const ArrayRef& in,
 
   if (nbits != k) {
     return wrap_rshift_b(ctx->sctx(), in, bits);
-    // size_t new_nbis = nbits > bits ? nbits - bits : 1;
-    // auto [ret, ret_mac] = RShiftBImpl(in, bits);
-    // return makeBShare(ret, ret_mac, field, new_nbis);
   } else {
     auto [ret, ret_mac] = ARShiftBImpl(in, bits, k);
     return makeBShare(ret, ret_mac, field, k);
@@ -534,12 +566,12 @@ ArrayRef ARShiftB::proc(KernelEvalContext* ctx, const ArrayRef& in,
 }
 
 // Only process k bits at now.
-ArrayRef BitIntlB::proc(KernelEvalContext* ctx, const ArrayRef& in,
-                        size_t stride) const {
+NdArrayRef BitIntlB::proc(KernelEvalContext* ctx, const NdArrayRef& in,
+                          size_t stride) const {
   const auto field = in.eltype().as<Ring2k>()->field();
   const auto k = ctx->getState<Spdz2kState>()->k();
 
-  ArrayRef out = in.clone();
+  NdArrayRef out(in.eltype(), in.shape());
   DISPATCH_ALL_FIELDS(field, "_", [&]() {
     using T = ring2k_t;
 
@@ -548,11 +580,12 @@ ArrayRef BitIntlB::proc(KernelEvalContext* ctx, const ArrayRef& in,
         out.at<T>(idx) = BitIntl<T>(in.at<T>(idx), stride, k);
       });
     } else {
-      auto _in = ArrayView<std::array<T, 2>>(in);
-      auto _out = ArrayView<std::array<T, 2>>(out);
+      auto _in = in.data<std::array<T, 2>>();
+      auto _out = out.data<std::array<T, 2>>();
       size_t num_per_group = 1 << stride;
       size_t group_num = k / num_per_group + (k % num_per_group != 0);
       size_t half_group_num = (group_num + 1) / 2;
+
       pforeach(0, in.numel(), [&](size_t jdx) {
         size_t base_offset = jdx * k;
         pforeach(0, k, [&](size_t idx) {
@@ -560,18 +593,15 @@ ArrayRef BitIntlB::proc(KernelEvalContext* ctx, const ArrayRef& in,
           auto offset = idx % num_per_group;
           size_t src_idx = base_offset;
           size_t dest_idx = base_offset;
+          src_idx += idx;
           if (idx < (k + 1) / 2) {
-            src_idx += idx;
             dest_idx += 2 * group * num_per_group + offset;
-            _out[dest_idx][0] = _in[src_idx][0];
-            _out[dest_idx][1] = _in[src_idx][1];
           } else {
-            src_idx += idx;
             dest_idx +=
                 (2 * (group - half_group_num) + 1) * num_per_group + offset;
-            _out[dest_idx][0] = _in[src_idx][0];
-            _out[dest_idx][1] = _in[src_idx][1];
           }
+          _out[dest_idx][0] = _in[src_idx][0];
+          _out[dest_idx][1] = _in[src_idx][1];
         });
       });
     }
@@ -581,12 +611,12 @@ ArrayRef BitIntlB::proc(KernelEvalContext* ctx, const ArrayRef& in,
 }
 
 // Only process k bits at now.
-ArrayRef BitDeintlB::proc(KernelEvalContext* ctx, const ArrayRef& in,
-                          size_t stride) const {
+NdArrayRef BitDeintlB::proc(KernelEvalContext* ctx, const NdArrayRef& in,
+                            size_t stride) const {
   const auto field = in.eltype().as<Ring2k>()->field();
   const auto k = ctx->getState<Spdz2kState>()->k();
 
-  ArrayRef out = in.clone();
+  NdArrayRef out(in.eltype(), in.shape());
   DISPATCH_ALL_FIELDS(field, "_", [&]() {
     using T = ring2k_t;
 
@@ -595,8 +625,8 @@ ArrayRef BitDeintlB::proc(KernelEvalContext* ctx, const ArrayRef& in,
         out.at<T>(idx) = BitDeintl<T>(in.at<T>(idx), stride, k);
       });
     } else {
-      auto _in = ArrayView<std::array<T, 2>>(in);
-      auto _out = ArrayView<std::array<T, 2>>(out);
+      auto _in = in.data<std::array<T, 2>>();
+      auto _out = out.data<std::array<T, 2>>();
       size_t num_per_group = 1 << stride;
       size_t group_num = k / num_per_group + (k % num_per_group != 0);
       size_t half_group_num = (group_num + 1) / 2;
@@ -607,18 +637,15 @@ ArrayRef BitDeintlB::proc(KernelEvalContext* ctx, const ArrayRef& in,
           auto offset = idx % num_per_group;
           size_t src_idx = base_offset;
           size_t dest_idx = base_offset;
+          dest_idx += idx;
           if (idx < (k + 1) / 2) {
-            dest_idx += idx;
             src_idx += 2 * group * num_per_group + offset;
-            _out[dest_idx][0] = _in[src_idx][0];
-            _out[dest_idx][1] = _in[src_idx][1];
           } else {
-            dest_idx += idx;
             src_idx +=
                 (2 * (group - half_group_num) + 1) * num_per_group + offset;
-            _out[dest_idx][0] = _in[src_idx][0];
-            _out[dest_idx][1] = _in[src_idx][1];
           }
+          _out[dest_idx][0] = _in[src_idx][0];
+          _out[dest_idx][1] = _in[src_idx][1];
         });
       });
     }

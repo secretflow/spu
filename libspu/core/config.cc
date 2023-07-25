@@ -78,6 +78,14 @@ void populateRuntimeConfig(RuntimeConfig& cfg) {
     }
   }
 
+  // inter op concurrency
+  if (cfg.experimental_enable_inter_op_par()) {
+    cfg.set_experimental_inter_op_concurrency(
+        cfg.experimental_inter_op_concurrency() == 0
+            ? 8
+            : cfg.experimental_inter_op_concurrency());
+  }
+
   if (cfg.sigmoid_mode() == RuntimeConfig::SIGMOID_DEFAULT) {
     cfg.set_sigmoid_mode(RuntimeConfig::SIGMOID_REAL);
   }

@@ -323,6 +323,7 @@ extern Type I32;
 extern Type U32;
 extern Type I64;
 extern Type U64;
+extern Type F16;
 extern Type F32;
 extern Type F64;
 extern Type I128;

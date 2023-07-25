@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "libspu/core/array_ref.h"
+#include "libspu/mpc/cheetah/array_ref.h"
 #include "libspu/mpc/cheetah/ot/ferret.h"
 
 namespace spu::mpc::cheetah {

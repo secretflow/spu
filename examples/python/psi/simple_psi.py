@@ -54,6 +54,12 @@ def setup_link(rank):
     return link.create_brpc(lctx_desc, rank)
 
 
+def progress_callback(data: psi.ProgressData):
+    print(
+        f"progress callback ---- percentage: {data.percentage}, total: {data.total}, finished: {data.finished}, running: {data.running}, description: {data.description}"
+    )
+
+
 def main(_):
     opts = logging.LogOptions()
     opts.system_log_path = "./tmp/spu.log"
@@ -83,7 +89,9 @@ def main(_):
         config.dppsi_params.bob_sub_sampling = 0.9
         config.dppsi_params.epsilon = 3
 
-    report = psi.bucket_psi(setup_link(FLAGS.rank), config, FLAGS.ic_mode)
+    report = psi.bucket_psi(
+        setup_link(FLAGS.rank), config, progress_callback, 5 * 1000, FLAGS.ic_mode
+    )
     print(
         f"original_count: {report.original_count}, intersection_count: {report.intersection_count}"
     )

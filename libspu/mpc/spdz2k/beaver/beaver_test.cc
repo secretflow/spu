@@ -13,11 +13,9 @@
 // limitations under the License.
 
 #include "gtest/gtest.h"
-#include "xtensor/xarray.hpp"
 #include "yacl/link/link.h"
 
 #include "libspu/core/type_util.h"
-#include "libspu/core/xt_helper.h"
 #include "libspu/mpc/spdz2k/beaver/beaver_tfp.h"
 #include "libspu/mpc/spdz2k/beaver/beaver_tinyot.h"
 #include "libspu/mpc/utils/ring_ops.h"
@@ -75,7 +73,7 @@ TEST_P(BeaverTest, AuthAnd) {
   const FieldType kField = std::get<2>(GetParam());
   const int64_t kMaxDiff = std::get<3>(GetParam());
   const size_t s = std::get<5>(GetParam());
-  const size_t kNumel = 10;
+  const int64_t kNumel = 10;
 
   std::vector<uint128_t> keys(kWorldSize);
   std::vector<Beaver::Triple_Pair> triples(kWorldSize);
@@ -83,22 +81,23 @@ TEST_P(BeaverTest, AuthAnd) {
   utils::simulate(kWorldSize, [&](std::shared_ptr<yacl::link::Context> lctx) {
     auto beaver = factory(lctx);
     keys[lctx->Rank()] = beaver->InitSpdzKey(kField, s);
-    triples[lctx->Rank()] = beaver->AuthAnd(kField, kNumel, s);
+    triples[lctx->Rank()] = beaver->AuthAnd(kField, {kNumel}, s);
   });
 
   uint128_t sum_key = 0;
-  auto sum_a = ring_zeros(kField, kNumel);
-  auto sum_b = ring_zeros(kField, kNumel);
-  auto sum_c = ring_zeros(kField, kNumel);
-  auto sum_a_mac = ring_zeros(kField, kNumel);
-  auto sum_b_mac = ring_zeros(kField, kNumel);
-  auto sum_c_mac = ring_zeros(kField, kNumel);
+  auto sum_a = ring_zeros(kField, {kNumel});
+  auto sum_b = ring_zeros(kField, {kNumel});
+  auto sum_c = ring_zeros(kField, {kNumel});
+  auto sum_a_mac = ring_zeros(kField, {kNumel});
+  auto sum_b_mac = ring_zeros(kField, {kNumel});
+  auto sum_c_mac = ring_zeros(kField, {kNumel});
   for (Rank r = 0; r < kWorldSize; r++) {
     sum_key += keys[r];
 
     const auto& [vec, mac_vec] = triples[r];
     const auto& [a, b, c] = vec;
     const auto& [a_mac, b_mac, c_mac] = mac_vec;
+
     EXPECT_EQ(a.numel(), kNumel);
     EXPECT_EQ(b.numel(), kNumel);
     EXPECT_EQ(c.numel(), kNumel);
@@ -118,21 +117,20 @@ TEST_P(BeaverTest, AuthAnd) {
   auto valid_b = ring_bitmask(sum_b, 0, 1);
   auto valid_c = ring_bitmask(sum_c, 0, 1);
 
-  EXPECT_EQ(ring_mul(valid_a, valid_b), valid_c) << sum_a << sum_b << sum_c;
-  EXPECT_EQ(ring_mul(sum_a, sum_key), sum_a_mac)
+  EXPECT_TRUE(ring_all_equal(ring_mul(valid_a, valid_b), valid_c))
+      << sum_a << sum_b << sum_c;
+  EXPECT_TRUE(ring_all_equal(ring_mul(sum_a, sum_key), sum_a_mac))
       << sum_a << sum_key << sum_a_mac;
-  EXPECT_EQ(ring_mul(sum_b, sum_key), sum_b_mac)
+  EXPECT_TRUE(ring_all_equal(ring_mul(sum_b, sum_key), sum_b_mac))
       << sum_b << sum_key << sum_b_mac;
-  EXPECT_EQ(ring_mul(sum_c, sum_key), sum_c_mac)
+  EXPECT_TRUE(ring_all_equal(ring_mul(sum_c, sum_key), sum_c_mac))
       << sum_c << sum_key << sum_c_mac;
 
   DISPATCH_ALL_FIELDS(kField, "_", [&]() {
-    auto _a = ArrayView<ring2k_t>(valid_a);
-    auto _b = ArrayView<ring2k_t>(valid_b);
-    auto _c = ArrayView<ring2k_t>(valid_c);
     for (auto idx = 0; idx < sum_a.numel(); idx++) {
-      auto t = _a[idx] * _b[idx];
-      auto err = t > _c[idx] ? t - _c[idx] : _c[idx] - t;
+      auto t = valid_a.at<ring2k_t>(idx) * valid_b.at<ring2k_t>(idx);
+      auto err = t > valid_c.at<ring2k_t>(idx) ? t - valid_c.at<ring2k_t>(idx)
+                                               : valid_c.at<ring2k_t>(idx) - t;
       EXPECT_LE(err, kMaxDiff);
     }
   });
@@ -144,23 +142,23 @@ TEST_P(BeaverTest, AuthArrayRef) {
   const FieldType kField = std::get<2>(GetParam());
   const size_t k = std::get<4>(GetParam());
   const size_t s = std::get<5>(GetParam());
-  const size_t kNumel = 10;
+  const int64_t kNumel = 10;
 
-  std::vector<ArrayRef> values(kWorldSize);
+  std::vector<NdArrayRef> values(kWorldSize);
   std::vector<uint128_t> keys(kWorldSize);
-  std::vector<ArrayRef> macs(kWorldSize);
+  std::vector<NdArrayRef> macs(kWorldSize);
 
   utils::simulate(kWorldSize, [&](std::shared_ptr<yacl::link::Context> lctx) {
     auto beaver = factory(lctx);
     keys[lctx->Rank()] = beaver->InitSpdzKey(kField, s);
-    values[lctx->Rank()] = ring_rand(kField, kNumel);
+    values[lctx->Rank()] = ring_rand(kField, {kNumel});
     macs[lctx->Rank()] =
         beaver->AuthArrayRef(values[lctx->Rank()], kField, k, s);
   });
 
   uint128_t sum_key = 0;
-  auto sum_a = ring_zeros(kField, kNumel);
-  auto sum_a_mac = ring_zeros(kField, kNumel);
+  auto sum_a = ring_zeros(kField, {kNumel});
+  auto sum_a_mac = ring_zeros(kField, {kNumel});
   for (Rank r = 0; r < kWorldSize; r++) {
     sum_key += keys[r];
 
@@ -173,7 +171,7 @@ TEST_P(BeaverTest, AuthArrayRef) {
     ring_add_(sum_a_mac, a_mac);
   }
 
-  EXPECT_EQ(ring_mul(sum_a, sum_key), sum_a_mac)
+  EXPECT_TRUE(ring_all_equal(ring_mul(sum_a, sum_key), sum_a_mac))
       << sum_a << sum_key << sum_a_mac;
 }
 
@@ -183,7 +181,7 @@ TEST_P(BeaverTest, AuthCoinTossing) {
   const FieldType kField = std::get<2>(GetParam());
   const size_t k = std::get<4>(GetParam());
   const size_t s = std::get<5>(GetParam());
-  const size_t kNumel = 10;
+  const int64_t kNumel = 10;
 
   std::vector<uint128_t> keys(kWorldSize);
   std::vector<Beaver::Pair> pairs(kWorldSize);
@@ -191,12 +189,12 @@ TEST_P(BeaverTest, AuthCoinTossing) {
   utils::simulate(kWorldSize, [&](std::shared_ptr<yacl::link::Context> lctx) {
     auto beaver = factory(lctx);
     keys[lctx->Rank()] = beaver->InitSpdzKey(kField, s);
-    pairs[lctx->Rank()] = beaver->AuthCoinTossing(kField, kNumel, k, s);
+    pairs[lctx->Rank()] = beaver->AuthCoinTossing(kField, {kNumel}, k, s);
   });
 
   uint128_t sum_key = 0;
-  auto sum_a = ring_zeros(kField, kNumel);
-  auto sum_a_mac = ring_zeros(kField, kNumel);
+  auto sum_a = ring_zeros(kField, {kNumel});
+  auto sum_a_mac = ring_zeros(kField, {kNumel});
   for (Rank r = 0; r < kWorldSize; r++) {
     sum_key += keys[r];
 
@@ -208,7 +206,7 @@ TEST_P(BeaverTest, AuthCoinTossing) {
     ring_add_(sum_a_mac, a_mac);
   }
 
-  EXPECT_EQ(ring_mul(sum_a, sum_key), sum_a_mac)
+  EXPECT_TRUE(ring_all_equal(ring_mul(sum_a, sum_key), sum_a_mac))
       << sum_a << sum_key << sum_a_mac;
 }
 
@@ -218,7 +216,7 @@ TEST_P(BeaverTest, AuthMul) {
   const FieldType kField = std::get<2>(GetParam());
   const size_t k = std::get<4>(GetParam());
   const size_t s = std::get<5>(GetParam());
-  const size_t kNumel = 10;
+  const int64_t kNumel = 10;
 
   std::vector<uint128_t> keys(kWorldSize);
   std::vector<Beaver::Triple_Pair> triples(kWorldSize);
@@ -226,22 +224,23 @@ TEST_P(BeaverTest, AuthMul) {
   utils::simulate(kWorldSize, [&](std::shared_ptr<yacl::link::Context> lctx) {
     auto beaver = factory(lctx);
     keys[lctx->Rank()] = beaver->InitSpdzKey(kField, s);
-    triples[lctx->Rank()] = beaver->AuthMul(kField, kNumel, k, s);
+    triples[lctx->Rank()] = beaver->AuthMul(kField, {kNumel}, k, s);
   });
 
   uint128_t sum_key = 0;
-  auto sum_a = ring_zeros(kField, kNumel);
-  auto sum_b = ring_zeros(kField, kNumel);
-  auto sum_c = ring_zeros(kField, kNumel);
-  auto sum_a_mac = ring_zeros(kField, kNumel);
-  auto sum_b_mac = ring_zeros(kField, kNumel);
-  auto sum_c_mac = ring_zeros(kField, kNumel);
+  auto sum_a = ring_zeros(kField, {kNumel});
+  auto sum_b = ring_zeros(kField, {kNumel});
+  auto sum_c = ring_zeros(kField, {kNumel});
+  auto sum_a_mac = ring_zeros(kField, {kNumel});
+  auto sum_b_mac = ring_zeros(kField, {kNumel});
+  auto sum_c_mac = ring_zeros(kField, {kNumel});
   for (Rank r = 0; r < kWorldSize; r++) {
     sum_key += keys[r];
 
     const auto& [vec, mac_vec] = triples[r];
     const auto& [a, b, c] = vec;
     const auto& [a_mac, b_mac, c_mac] = mac_vec;
+
     EXPECT_EQ(a.numel(), kNumel);
     EXPECT_EQ(b.numel(), kNumel);
     EXPECT_EQ(c.numel(), kNumel);
@@ -257,12 +256,13 @@ TEST_P(BeaverTest, AuthMul) {
     ring_add_(sum_c_mac, c_mac);
   }
 
-  EXPECT_EQ(ring_mul(sum_a, sum_b), sum_c) << sum_a << sum_b << sum_c;
-  EXPECT_EQ(ring_mul(sum_a, sum_key), sum_a_mac)
+  EXPECT_TRUE(ring_all_equal(ring_mul(sum_a, sum_b), sum_c))
+      << sum_a << sum_b << sum_c;
+  EXPECT_TRUE(ring_all_equal(ring_mul(sum_a, sum_key), sum_a_mac))
       << sum_a << sum_key << sum_a_mac;
-  EXPECT_EQ(ring_mul(sum_b, sum_key), sum_b_mac)
+  EXPECT_TRUE(ring_all_equal(ring_mul(sum_b, sum_key), sum_b_mac))
       << sum_b << sum_key << sum_b_mac;
-  EXPECT_EQ(ring_mul(sum_c, sum_key), sum_c_mac)
+  EXPECT_TRUE(ring_all_equal(ring_mul(sum_c, sum_key), sum_c_mac))
       << sum_c << sum_key << sum_c_mac;
 }
 
@@ -272,7 +272,7 @@ TEST_P(BeaverTest, AuthTrunc) {
   const FieldType kField = std::get<2>(GetParam());
   const size_t k = std::get<4>(GetParam());
   const size_t s = std::get<5>(GetParam());
-  const size_t kNumel = 7;
+  const int64_t kNumel = 7;
   const size_t kBits = 4;
 
   std::vector<uint128_t> keys(kWorldSize);
@@ -282,15 +282,15 @@ TEST_P(BeaverTest, AuthTrunc) {
       kWorldSize, [&](const std::shared_ptr<yacl::link::Context>& lctx) {
         auto beaver = factory(lctx);
         keys[lctx->Rank()] = beaver->InitSpdzKey(kField, s);
-        pairs[lctx->Rank()] = beaver->AuthTrunc(kField, kNumel, kBits, k, s);
+        pairs[lctx->Rank()] = beaver->AuthTrunc(kField, {kNumel}, kBits, k, s);
       });
 
   EXPECT_EQ(pairs.size(), kWorldSize);
   uint128_t sum_key = 0;
-  auto sum_a = ring_zeros(kField, kNumel);
-  auto sum_b = ring_zeros(kField, kNumel);
-  auto sum_a_mac = ring_zeros(kField, kNumel);
-  auto sum_b_mac = ring_zeros(kField, kNumel);
+  auto sum_a = ring_zeros(kField, {kNumel});
+  auto sum_b = ring_zeros(kField, {kNumel});
+  auto sum_a_mac = ring_zeros(kField, {kNumel});
+  auto sum_b_mac = ring_zeros(kField, {kNumel});
   for (Rank r = 0; r < kWorldSize; r++) {
     sum_key += keys[r];
 
@@ -314,10 +314,11 @@ TEST_P(BeaverTest, AuthTrunc) {
       ring_arshift(ring_lshift(sum_a, bit_len - k), bit_len - k + kBits);
   ring_bitmask_(trunc_sum_a, 0, k);
 
-  EXPECT_EQ(trunc_sum_a, ring_bitmask(sum_b, 0, k)) << trunc_sum_a << sum_b;
-  EXPECT_EQ(ring_mul(sum_a, sum_key), sum_a_mac)
+  EXPECT_TRUE(ring_all_equal(trunc_sum_a, ring_bitmask(sum_b, 0, k)))
+      << trunc_sum_a << sum_b;
+  EXPECT_TRUE(ring_all_equal(ring_mul(sum_a, sum_key), sum_a_mac))
       << sum_a << sum_key << sum_a_mac;
-  EXPECT_EQ(ring_mul(sum_b, sum_key), sum_b_mac)
+  EXPECT_TRUE(ring_all_equal(ring_mul(sum_b, sum_key), sum_b_mac))
       << sum_b << sum_key << sum_b_mac;
 }
 
@@ -346,18 +347,19 @@ TEST_P(BeaverTest, AuthDot) {
 
   EXPECT_EQ(triples.size(), kWorldSize);
   uint128_t sum_key = 0;
-  auto sum_a = ring_zeros(kField, M * K);
-  auto sum_b = ring_zeros(kField, K * N);
-  auto sum_c = ring_zeros(kField, M * N);
-  auto sum_a_mac = ring_zeros(kField, M * K);
-  auto sum_b_mac = ring_zeros(kField, K * N);
-  auto sum_c_mac = ring_zeros(kField, M * N);
+  auto sum_a = ring_zeros(kField, {M, K});
+  auto sum_b = ring_zeros(kField, {K, N});
+  auto sum_c = ring_zeros(kField, {M, N});
+  auto sum_a_mac = ring_zeros(kField, {M, K});
+  auto sum_b_mac = ring_zeros(kField, {K, N});
+  auto sum_c_mac = ring_zeros(kField, {M, N});
   for (Rank r = 0; r < kWorldSize; r++) {
     sum_key += keys[r];
 
     const auto& [vec, mac_vec] = triples[r];
     const auto& [a, b, c] = vec;
     const auto& [a_mac, b_mac, c_mac] = mac_vec;
+
     EXPECT_EQ(a.numel(), M * K);
     EXPECT_EQ(b.numel(), K * N);
     EXPECT_EQ(c.numel(), M * N);
@@ -373,19 +375,19 @@ TEST_P(BeaverTest, AuthDot) {
     ring_add_(sum_c_mac, c_mac);
   }
 
-  EXPECT_EQ(ring_mul(sum_a, sum_key), sum_a_mac)
+  EXPECT_TRUE(ring_all_equal(ring_mul(sum_a, sum_key), sum_a_mac))
       << sum_a << sum_key << sum_a_mac;
-  EXPECT_EQ(ring_mul(sum_b, sum_key), sum_b_mac)
+  EXPECT_TRUE(ring_all_equal(ring_mul(sum_b, sum_key), sum_b_mac))
       << sum_b << sum_key << sum_b_mac;
-  EXPECT_EQ(ring_mul(sum_c, sum_key), sum_c_mac)
+  EXPECT_TRUE(ring_all_equal(ring_mul(sum_c, sum_key), sum_c_mac))
       << sum_c << sum_key << sum_c_mac;
 
-  auto res = ring_mmul(sum_a, sum_b, M, N, K);
+  auto res = ring_mmul(sum_a, sum_b);
   DISPATCH_ALL_FIELDS(kField, "_", [&]() {
-    auto _r = ArrayView<ring2k_t>(res);
-    auto _c = ArrayView<ring2k_t>(sum_c);
-    for (auto idx = 0; idx < _r.numel(); idx++) {
-      auto err = _r[idx] > _c[idx] ? _r[idx] - _c[idx] : _c[idx] - _r[idx];
+    for (auto idx = 0; idx < res.numel(); idx++) {
+      auto err = res.at<ring2k_t>(idx) > sum_c.at<ring2k_t>(idx)
+                     ? res.at<ring2k_t>(idx) - sum_c.at<ring2k_t>(idx)
+                     : sum_c.at<ring2k_t>(idx) - res.at<ring2k_t>(idx);
       EXPECT_LE(err, kMaxDiff);
     }
   });

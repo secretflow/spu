@@ -134,19 +134,16 @@ Value trunc_a(SPUContext* ctx, const Value& x, size_t nbits) {
   TILED_DISPATCH(ctx, x, nbits);
 }
 
-Value mmul_ap(SPUContext* ctx, const Value& x, const Value& y, size_t m,
-              size_t n, size_t k) {
-  FORCE_DISPATCH(ctx, x, y, m, n, k);
+Value mmul_ap(SPUContext* ctx, const Value& x, const Value& y) {
+  FORCE_DISPATCH(ctx, x, y);
 }
 
-Value mmul_aa(SPUContext* ctx, const Value& x, const Value& y, size_t m,
-              size_t n, size_t k) {
-  FORCE_DISPATCH(ctx, x, y, m, n, k);
+Value mmul_aa(SPUContext* ctx, const Value& x, const Value& y) {
+  FORCE_DISPATCH(ctx, x, y);
 }
 
-OptionalAPI<Value> mmul_av(SPUContext* ctx, const Value& x, const Value& y,
-                           size_t m, size_t n, size_t k) {
-  TRY_DISPATCH(ctx, x, y, m, n, k);
+OptionalAPI<Value> mmul_av(SPUContext* ctx, const Value& x, const Value& y) {
+  TRY_DISPATCH(ctx, x, y);
   return NotAvailable;
 }
 
@@ -224,9 +221,8 @@ static inline Value setNumBits(const Value& in, size_t nbits) {
 }
 
 // TODO: we can not ref api.h, circular reference
-static Value hack_make_p(SPUContext* ctx, uint128_t init,
-                         const std::vector<int64_t>& shape) {
-  return dynDispatch(ctx, "make_p", init, Shape(shape));
+static Value hack_make_p(SPUContext* ctx, uint128_t init, const Shape& shape) {
+  return dynDispatch(ctx, "make_p", init, shape);
 }
 
 Value bitintl_b(SPUContext* ctx, const Value& x, size_t stride) {

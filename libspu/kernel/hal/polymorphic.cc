@@ -55,7 +55,9 @@ Value dtypeBinaryDispatch(std::string_view op_name, SPUContext* ctx,
   } else if (x.isFxp() && y.isInt()) {
     return FnFxp(ctx, x, dtype_cast(ctx, y, x.dtype()));
   } else if (x.isFxp() && y.isFxp()) {
-    return FnFxp(ctx, x, y);
+    auto common_type = common_dtype(x.dtype(), y.dtype());
+    return FnFxp(ctx, dtype_cast(ctx, x, common_type),
+                 dtype_cast(ctx, y, common_type));
   } else {
     SPU_THROW("unsupported op {} for x={}, y={}", op_name, x, y);
   }
@@ -458,8 +460,7 @@ Value sign(SPUContext* ctx, const Value& x) {
 }
 
 Value conv2d(SPUContext* ctx, const Value& x, const Value& y,
-             absl::Span<const int64_t> window_strides,
-             absl::Span<const int64_t> result_shape) {
+             const Strides& window_strides, const Shape& result_shape) {
   SPU_TRACE_HAL_DISP(ctx, x, y);
   if (x.isFxp() && y.isFxp()) {
     return f_conv2d(ctx, x, y, window_strides, result_shape);

@@ -76,7 +76,8 @@ std::vector<std::string> MemoryPsi::Run(
   }
 
   if (config_.psi_type() == PsiType::ECDH_PSI_2PC) {
-    res = EcdhPsi(inputs);
+    auto run_f = std::async([&] { return EcdhPsi(inputs); });
+    res = SyncWait(lctx_, &run_f);
   } else {
     res = OperatorFactory::GetInstance()
               ->Create(config_, lctx_)

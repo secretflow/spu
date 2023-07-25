@@ -18,7 +18,7 @@
 
 #include "yacl/link/link.h"
 
-#include "libspu/core/array_ref.h"
+#include "libspu/core/ndarray_ref.h"
 #include "libspu/core/type_util.h"
 #include "libspu/mpc/common/communicator.h"
 #include "libspu/mpc/common/prg_state.h"
@@ -41,7 +41,7 @@ class Ot3 {
  protected:
   // public information of this blocking block.
   const FieldType field_;  // each msg has SizeOf(field_) bits
-  const int64_t numel_;    // total num of msgs
+  const Shape shape_;      // total num of msgs
   const RoleRanks roles_;
 
   // state information
@@ -50,8 +50,8 @@ class Ot3 {
 
   //
   bool reentrancy_;
-  std::optional<std::pair<ArrayRef, ArrayRef>> masks_;
-  std::pair<ArrayRef, ArrayRef> genMasks();
+  std::optional<std::pair<NdArrayRef, NdArrayRef>> masks_;
+  std::pair<NdArrayRef, NdArrayRef> genMasks();
 
  public:
   // reentrancy == true, gen marks by prg_state inside send/recv/help function.
@@ -65,12 +65,13 @@ class Ot3 {
   // FIXME: need PrgState::spawn & Communicator::spawn to replace reentrancy
   // option.
 
-  explicit Ot3(FieldType field, int64_t numel, const RoleRanks& roles,
-               Communicator* comm, PrgState* prg_state, bool reentrancy = true);
+  explicit Ot3(FieldType field, absl::Span<const int64_t> shape,
+               const RoleRanks& roles, Communicator* comm, PrgState* prg_state,
+               bool reentrancy = true);
 
-  void send(const ArrayRef& m0, const ArrayRef& m1);
+  void send(const NdArrayRef& m0, const NdArrayRef& m1);
 
-  ArrayRef recv(const std::vector<uint8_t>& choices);
+  NdArrayRef recv(const std::vector<uint8_t>& choices);
 
   void help(const std::vector<uint8_t>& choices);
 };

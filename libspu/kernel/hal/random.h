@@ -24,12 +24,12 @@ namespace spu::kernel::hal {
 // @param hi, upper limit (exclude)
 // @param to_shape, the target shape
 Value rng_uniform(SPUContext* ctx, const Value& lo, const Value& hi,
-                  absl::Span<const int64_t> to_shape);
+                  const Shape& to_shape);
 
 /// Make a random value.
 //
 // The value is uniformly distributed in value's range.
 Value random(SPUContext* ctx, Visibility vis, DataType dtype,
-             absl::Span<const int64_t> shape);
+             const Shape& shape);
 
 }  // namespace spu::kernel::hal

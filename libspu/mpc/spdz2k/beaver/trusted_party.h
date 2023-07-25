@@ -33,31 +33,32 @@ class TrustedParty {
 
   std::vector<PrgSeed> getSeeds() const;
 
-  ArrayRef adjustSpdzKey(const PrgArrayDesc& descs) const;
+  NdArrayRef adjustSpdzKey(const PrgArrayDesc& descs) const;
 
-  std::vector<ArrayRef> adjustAuthCoinTossing(const PrgArrayDesc& desc,
-                                              const PrgArrayDesc& mac_desc,
-                                              uint128_t global_key, size_t k,
-                                              size_t s) const;
+  std::vector<NdArrayRef> adjustAuthCoinTossing(const PrgArrayDesc& desc,
+                                                const PrgArrayDesc& mac_desc,
+                                                uint128_t global_key, size_t k,
+                                                size_t s) const;
 
-  std::vector<ArrayRef> adjustAuthRandBit(const PrgArrayDesc& desc,
-                                          const PrgArrayDesc& mac_desc,
-                                          uint128_t global_key, size_t s) const;
+  std::vector<NdArrayRef> adjustAuthRandBit(const PrgArrayDesc& desc,
+                                            const PrgArrayDesc& mac_desc,
+                                            uint128_t global_key,
+                                            size_t s) const;
 
-  std::vector<ArrayRef> adjustAuthMul(absl::Span<const PrgArrayDesc> descs,
-                                      absl::Span<const PrgArrayDesc> mac_descs,
-                                      uint128_t global_key) const;
+  std::vector<NdArrayRef> adjustAuthMul(
+      absl::Span<const PrgArrayDesc> descs,
+      absl::Span<const PrgArrayDesc> mac_descs, uint128_t global_key) const;
 
-  std::vector<ArrayRef> adjustAuthDot(absl::Span<const PrgArrayDesc> descs,
-                                      absl::Span<const PrgArrayDesc> mac_descs,
-                                      size_t m, size_t n, size_t k,
-                                      uint128_t global_key) const;
+  std::vector<NdArrayRef> adjustAuthDot(
+      absl::Span<const PrgArrayDesc> descs,
+      absl::Span<const PrgArrayDesc> mac_descs, int64_t m, int64_t n, int64_t k,
+      uint128_t global_key) const;
 
-  std::vector<ArrayRef> adjustAuthAnd(absl::Span<const PrgArrayDesc> descs,
-                                      absl::Span<const PrgArrayDesc> mac_descs,
-                                      uint128_t global_key) const;
+  std::vector<NdArrayRef> adjustAuthAnd(
+      absl::Span<const PrgArrayDesc> descs,
+      absl::Span<const PrgArrayDesc> mac_descs, uint128_t global_key) const;
 
-  std::vector<ArrayRef> adjustAuthTrunc(
+  std::vector<NdArrayRef> adjustAuthTrunc(
       absl::Span<const PrgArrayDesc> descs,
       absl::Span<const PrgArrayDesc> mac_descs, size_t bits,
       uint128_t global_key, size_t k, size_t s) const;

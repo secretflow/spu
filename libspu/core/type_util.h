@@ -22,6 +22,7 @@
 #include "fmt/ostream.h"
 #include "yacl/base/int128.h"
 
+#include "libspu/core/half.h"
 #include "libspu/core/prelude.h"
 
 #include "libspu/spu.pb.h"
@@ -52,6 +53,7 @@ std::ostream& operator<<(std::ostream& os, const Visibility& vtype);
   FN(DT_U64, U64, 64)
 
 #define FOREACH_FXP_DTYPES(FN) \
+  FN(DT_F16, F16, 16)          \
   FN(DT_F32, F32, 32)          \
   FN(DT_F64, F64, 64)
 
@@ -68,8 +70,9 @@ std::ostream& operator<<(std::ostream& os, const DataType& dtype);
 //////////////////////////////////////////////////////////////
 // Plaintext c++ utilities
 //////////////////////////////////////////////////////////////
-#define FOREACH_FLOAT_PT_TYPES(FN) \
-  FN(PT_F32, float, F32)           \
+#define FOREACH_FLOAT_PT_TYPES(FN)  \
+  FN(PT_F16, half_float::half, F16) \
+  FN(PT_F32, float, F32)            \
   FN(PT_F64, double, F64)
 
 #define FOREACH_INT_PT_TYPES(FN) \
@@ -101,6 +104,7 @@ std::ostream& operator<<(std::ostream& os, const DataType& dtype);
 #define DISPATCH_FLOAT_PT_TYPES(PT_TYPE, NAME, ...)                     \
   [&] {                                                                 \
     switch (PT_TYPE) {                                                  \
+      __CASE_PT_TYPE(spu::PT_F16, NAME, __VA_ARGS__)                    \
       __CASE_PT_TYPE(spu::PT_F32, NAME, __VA_ARGS__)                    \
       __CASE_PT_TYPE(spu::PT_F64, NAME, __VA_ARGS__)                    \
       default:                                                          \
@@ -150,6 +154,7 @@ std::ostream& operator<<(std::ostream& os, const DataType& dtype);
       __CASE_PT_TYPE(spu::PT_U32, NAME, __VA_ARGS__)                    \
       __CASE_PT_TYPE(spu::PT_I64, NAME, __VA_ARGS__)                    \
       __CASE_PT_TYPE(spu::PT_U64, NAME, __VA_ARGS__)                    \
+      __CASE_PT_TYPE(spu::PT_F16, NAME, __VA_ARGS__)                    \
       __CASE_PT_TYPE(spu::PT_F32, NAME, __VA_ARGS__)                    \
       __CASE_PT_TYPE(spu::PT_F64, NAME, __VA_ARGS__)                    \
       default:                                                          \
@@ -168,6 +173,7 @@ std::ostream& operator<<(std::ostream& os, const DataType& dtype);
       __CASE_PT_TYPE(spu::PT_U32, NAME, __VA_ARGS__)                    \
       __CASE_PT_TYPE(spu::PT_I64, NAME, __VA_ARGS__)                    \
       __CASE_PT_TYPE(spu::PT_U64, NAME, __VA_ARGS__)                    \
+      __CASE_PT_TYPE(spu::PT_F16, NAME, __VA_ARGS__)                    \
       __CASE_PT_TYPE(spu::PT_F32, NAME, __VA_ARGS__)                    \
       __CASE_PT_TYPE(spu::PT_F64, NAME, __VA_ARGS__)                    \
       default:                                                          \

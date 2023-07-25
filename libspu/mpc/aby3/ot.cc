@@ -24,10 +24,11 @@ inline bool inFrontOf(size_t a, size_t b) { return (a + 1) % 3 == b; }
 
 }  // namespace
 
-Ot3::Ot3(FieldType field, int64_t numel, const RoleRanks& roles,
-         Communicator* comm, PrgState* prg_state, bool reentrancy)
+Ot3::Ot3(FieldType field, absl::Span<const int64_t> shape,
+         const RoleRanks& roles, Communicator* comm, PrgState* prg_state,
+         bool reentrancy)
     : field_(field),
-      numel_(numel),
+      shape_(shape.begin(), shape.end()),
       roles_(roles),
       comm_(comm),
       prg_state_(prg_state),
@@ -37,47 +38,47 @@ Ot3::Ot3(FieldType field, int64_t numel, const RoleRanks& roles,
   }
 }
 
-std::pair<ArrayRef, ArrayRef> Ot3::genMasks() {
-  ArrayRef w0;
-  ArrayRef w1;
-  ArrayRef _;
+std::pair<NdArrayRef, NdArrayRef> Ot3::genMasks() {
+  NdArrayRef w0;
+  NdArrayRef w1;
+  NdArrayRef _;
 
   if (comm_->getRank() == roles_.sender) {
     if (inFrontOf(roles_.sender, roles_.helper)) {
-      std::tie(_, w0) = prg_state_->genPrssPair(field_, numel_, true, false);
-      std::tie(_, w1) = prg_state_->genPrssPair(field_, numel_, true, false);
+      std::tie(_, w0) = prg_state_->genPrssPair(field_, shape_, true, false);
+      std::tie(_, w1) = prg_state_->genPrssPair(field_, shape_, true, false);
     } else {
       SPU_ENFORCE(inFrontOf(roles_.helper, roles_.sender));
-      std::tie(w0, _) = prg_state_->genPrssPair(field_, numel_, false, true);
-      std::tie(w1, _) = prg_state_->genPrssPair(field_, numel_, false, true);
+      std::tie(w0, _) = prg_state_->genPrssPair(field_, shape_, false, true);
+      std::tie(w1, _) = prg_state_->genPrssPair(field_, shape_, false, true);
     }
   } else if (comm_->getRank() == roles_.helper) {
     if (inFrontOf(roles_.sender, roles_.helper)) {
-      std::tie(w0, _) = prg_state_->genPrssPair(field_, numel_, false, true);
-      std::tie(w1, _) = prg_state_->genPrssPair(field_, numel_, false, true);
+      std::tie(w0, _) = prg_state_->genPrssPair(field_, shape_, false, true);
+      std::tie(w1, _) = prg_state_->genPrssPair(field_, shape_, false, true);
     } else {
       SPU_ENFORCE(inFrontOf(roles_.helper, roles_.sender));
-      std::tie(_, w0) = prg_state_->genPrssPair(field_, numel_, true, false);
-      std::tie(_, w1) = prg_state_->genPrssPair(field_, numel_, true, false);
+      std::tie(_, w0) = prg_state_->genPrssPair(field_, shape_, true, false);
+      std::tie(_, w1) = prg_state_->genPrssPair(field_, shape_, true, false);
     }
   } else {
     SPU_ENFORCE(comm_->getRank() == roles_.receiver);
-    prg_state_->genPrssPair(field_, numel_, true, true);
-    prg_state_->genPrssPair(field_, numel_, true, true);
+    prg_state_->genPrssPair(field_, shape_, true, true);
+    prg_state_->genPrssPair(field_, shape_, true, true);
   }
 
   return {w0, w1};
 }
 
-void Ot3::send(const ArrayRef& m0, const ArrayRef& m1) {
+void Ot3::send(const NdArrayRef& m0, const NdArrayRef& m1) {
   // sanity check.
   SPU_ENFORCE(comm_->getRank() == roles_.sender);
-  SPU_ENFORCE(m0.numel() == numel_);
-  SPU_ENFORCE(m1.numel() == numel_);
+  SPU_ENFORCE(m0.shape() == shape_);
+  SPU_ENFORCE(m1.shape() == shape_);
 
   // generate masks
-  ArrayRef w0;
-  ArrayRef w1;
+  NdArrayRef w0;
+  NdArrayRef w1;
   if (!reentrancy_) {
     SPU_ENFORCE(masks_.has_value(), "this OT instance can only use once.");
     std::tie(w0, w1) = masks_.value();
@@ -85,8 +86,8 @@ void Ot3::send(const ArrayRef& m0, const ArrayRef& m1) {
   } else {
     std::tie(w0, w1) = genMasks();
   }
-  SPU_ENFORCE(w0.numel() == numel_);
-  SPU_ENFORCE(w1.numel() == numel_);
+  SPU_ENFORCE(w0.shape() == shape_);
+  SPU_ENFORCE(w1.shape() == shape_);
 
   // mask the values
   auto masked_m0 = ring_xor(m0, w0);
@@ -96,10 +97,10 @@ void Ot3::send(const ArrayRef& m0, const ArrayRef& m1) {
   comm_->sendAsync(roles_.receiver, masked_m1, "m1");
 }
 
-ArrayRef Ot3::recv(const std::vector<uint8_t>& choices) {
+NdArrayRef Ot3::recv(const std::vector<uint8_t>& choices) {
   // sanity check.
   SPU_ENFORCE(comm_->getRank() == roles_.receiver);
-  SPU_ENFORCE(choices.size() == static_cast<size_t>(numel_));
+  SPU_ENFORCE(choices.size() == static_cast<size_t>(shape_.numel()));
 
   const auto ty = makeType<RingTy>(field_);
 
@@ -129,11 +130,11 @@ ArrayRef Ot3::recv(const std::vector<uint8_t>& choices) {
 void Ot3::help(const std::vector<uint8_t>& choices) {
   // sanity check.
   SPU_ENFORCE(comm_->getRank() == roles_.helper);
-  SPU_ENFORCE(choices.size() == static_cast<size_t>(numel_));
+  SPU_ENFORCE(choices.size() == static_cast<size_t>(shape_.numel()));
 
   // generate masks, same as sender
-  ArrayRef w0;
-  ArrayRef w1;
+  NdArrayRef w0;
+  NdArrayRef w1;
   if (!reentrancy_) {
     SPU_ENFORCE(masks_.has_value(), "this OT instance can only use once.");
     std::tie(w0, w1) = masks_.value();
@@ -141,11 +142,11 @@ void Ot3::help(const std::vector<uint8_t>& choices) {
   } else {
     std::tie(w0, w1) = genMasks();
   }
-  SPU_ENFORCE(w0.numel() == numel_);
-  SPU_ENFORCE(w1.numel() == numel_);
+  SPU_ENFORCE(w0.shape() == shape_);
+  SPU_ENFORCE(w1.shape() == shape_);
 
   // gen chosen masks
-  ArrayRef wc = ring_select(choices, w0, w1);
+  auto wc = ring_select(choices, w0, w1);
 
   // send to receiver
   comm_->sendAsync(roles_.receiver, wc, "wc");

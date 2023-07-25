@@ -49,6 +49,8 @@ mlir::Type getElementType(mlir::MLIRContext *mlir_ctx, const spu::Value &v) {
       return mlir::IntegerType::get(mlir_ctx, 64);
     case DT_U64:
       return mlir::IntegerType::get(mlir_ctx, 64, mlir::IntegerType::Unsigned);
+    case DT_F16:
+      return mlir::Float16Type::get(mlir_ctx);
     case DT_F32:
       return mlir::Float32Type::get(mlir_ctx);
     case DT_F64:
@@ -78,7 +80,7 @@ mlir::stablehlo::Tensor convertToStablehloTensor(mlir::MLIRContext *mlir_ctx,
   if (v.isFxp()) {
     llvm::SmallVector<llvm::APFloat> buf;
     for (auto iter = arr.cbegin(); iter != arr.cend(); ++iter) {
-      buf.emplace_back(*reinterpret_cast<const float *>(iter.getRawPtr()));
+      buf.emplace_back(*reinterpret_cast<const float *>(&*iter));
     }
     return mlir::stablehlo::makeTensor(
         mlir::DenseElementsAttr::get(shaped_type, buf));
@@ -88,63 +90,63 @@ mlir::stablehlo::Tensor convertToStablehloTensor(mlir::MLIRContext *mlir_ctx,
 
   if (v.dtype() == DT_I1) {
     for (auto iter = arr.cbegin(); iter != arr.cend(); ++iter) {
-      uint64_t v = *reinterpret_cast<const bool *>(iter.getRawPtr());
+      uint64_t v = *reinterpret_cast<const bool *>(&*iter);
       buf.emplace_back(1, v);
     }
   }
 
   if (v.dtype() == DT_I8) {
     for (auto iter = arr.cbegin(); iter != arr.cend(); ++iter) {
-      uint64_t v = *reinterpret_cast<const int8_t *>(iter.getRawPtr());
+      uint64_t v = *reinterpret_cast<const int8_t *>(&*iter);
       buf.emplace_back(8, v, true);
     }
   }
 
   if (v.dtype() == DT_U8) {
     for (auto iter = arr.cbegin(); iter != arr.cend(); ++iter) {
-      uint64_t v = *reinterpret_cast<const uint8_t *>(iter.getRawPtr());
+      uint64_t v = *reinterpret_cast<const uint8_t *>(&*iter);
       buf.emplace_back(8, v);
     }
   }
 
   if (v.dtype() == DT_I16) {
     for (auto iter = arr.cbegin(); iter != arr.cend(); ++iter) {
-      uint64_t v = *reinterpret_cast<const int16_t *>(iter.getRawPtr());
+      uint64_t v = *reinterpret_cast<const int16_t *>(&*iter);
       buf.emplace_back(16, v, true);
     }
   }
 
   if (v.dtype() == DT_U16) {
     for (auto iter = arr.cbegin(); iter != arr.cend(); ++iter) {
-      uint64_t v = *reinterpret_cast<const uint16_t *>(iter.getRawPtr());
+      uint64_t v = *reinterpret_cast<const uint16_t *>(&*iter);
       buf.emplace_back(16, v);
     }
   }
 
   if (v.dtype() == DT_I32) {
     for (auto iter = arr.cbegin(); iter != arr.cend(); ++iter) {
-      uint64_t v = *reinterpret_cast<const int32_t *>(iter.getRawPtr());
+      uint64_t v = *reinterpret_cast<const int32_t *>(&*iter);
       buf.emplace_back(32, v, true);
     }
   }
 
   if (v.dtype() == DT_U32) {
     for (auto iter = arr.cbegin(); iter != arr.cend(); ++iter) {
-      uint64_t v = *reinterpret_cast<const uint32_t *>(iter.getRawPtr());
+      uint64_t v = *reinterpret_cast<const uint32_t *>(&*iter);
       buf.emplace_back(32, v);
     }
   }
 
   if (v.dtype() == DT_I64) {
     for (auto iter = arr.cbegin(); iter != arr.cend(); ++iter) {
-      uint64_t v = *reinterpret_cast<const int64_t *>(iter.getRawPtr());
+      uint64_t v = *reinterpret_cast<const int64_t *>(&*iter);
       buf.emplace_back(64, v, true);
     }
   }
 
   if (v.dtype() == DT_U64) {
     for (auto iter = arr.cbegin(); iter != arr.cend(); ++iter) {
-      uint64_t v = *reinterpret_cast<const uint64_t *>(iter.getRawPtr());
+      uint64_t v = *reinterpret_cast<const uint64_t *>(&*iter);
       buf.emplace_back(64, v);
     }
   }

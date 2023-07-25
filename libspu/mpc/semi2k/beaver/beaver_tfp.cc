@@ -44,12 +44,13 @@ BeaverTfpUnsafe::BeaverTfpUnsafe(std::shared_ptr<yacl::link::Context> lctx)
   }
 }
 
-BeaverTfpUnsafe::Triple BeaverTfpUnsafe::Mul(FieldType field, size_t size) {
+BeaverTfpUnsafe::Triple BeaverTfpUnsafe::Mul(FieldType field,
+                                             const Shape& shape) {
   std::vector<PrgArrayDesc> descs(3);
 
-  auto a = prgCreateArray(field, size, seed_, &counter_, descs.data());
-  auto b = prgCreateArray(field, size, seed_, &counter_, &descs[1]);
-  auto c = prgCreateArray(field, size, seed_, &counter_, &descs[2]);
+  auto a = prgCreateArray(field, shape, seed_, &counter_, descs.data());
+  auto b = prgCreateArray(field, shape, seed_, &counter_, &descs[1]);
+  auto c = prgCreateArray(field, shape, seed_, &counter_, &descs[2]);
 
   if (lctx_->Rank() == 0) {
     auto adjust = TrustedParty::adjustMul(descs, seeds_);
@@ -59,13 +60,13 @@ BeaverTfpUnsafe::Triple BeaverTfpUnsafe::Mul(FieldType field, size_t size) {
   return {a, b, c};
 }
 
-BeaverTfpUnsafe::Triple BeaverTfpUnsafe::Dot(FieldType field, size_t m,
-                                             size_t n, size_t k) {
+BeaverTfpUnsafe::Triple BeaverTfpUnsafe::Dot(FieldType field, int64_t m,
+                                             int64_t n, int64_t k) {
   std::vector<PrgArrayDesc> descs(3);
 
-  auto a = prgCreateArray(field, m * k, seed_, &counter_, descs.data());
-  auto b = prgCreateArray(field, k * n, seed_, &counter_, &descs[1]);
-  auto c = prgCreateArray(field, m * n, seed_, &counter_, &descs[2]);
+  auto a = prgCreateArray(field, {m, k}, seed_, &counter_, descs.data());
+  auto b = prgCreateArray(field, {k, n}, seed_, &counter_, &descs[1]);
+  auto c = prgCreateArray(field, {m, n}, seed_, &counter_, &descs[2]);
 
   if (lctx_->Rank() == 0) {
     auto adjust = TrustedParty::adjustDot(descs, seeds_, m, n, k);
@@ -75,12 +76,13 @@ BeaverTfpUnsafe::Triple BeaverTfpUnsafe::Dot(FieldType field, size_t m,
   return {a, b, c};
 }
 
-BeaverTfpUnsafe::Triple BeaverTfpUnsafe::And(FieldType field, size_t size) {
+BeaverTfpUnsafe::Triple BeaverTfpUnsafe::And(FieldType field,
+                                             const Shape& shape) {
   std::vector<PrgArrayDesc> descs(3);
 
-  auto a = prgCreateArray(field, size, seed_, &counter_, descs.data());
-  auto b = prgCreateArray(field, size, seed_, &counter_, &descs[1]);
-  auto c = prgCreateArray(field, size, seed_, &counter_, &descs[2]);
+  auto a = prgCreateArray(field, shape, seed_, &counter_, descs.data());
+  auto b = prgCreateArray(field, shape, seed_, &counter_, &descs[1]);
+  auto c = prgCreateArray(field, shape, seed_, &counter_, &descs[2]);
 
   if (lctx_->Rank() == 0) {
     auto adjust = TrustedParty::adjustAnd(descs, seeds_);
@@ -90,11 +92,11 @@ BeaverTfpUnsafe::Triple BeaverTfpUnsafe::And(FieldType field, size_t size) {
   return {a, b, c};
 }
 
-BeaverTfpUnsafe::Pair BeaverTfpUnsafe::Trunc(FieldType field, size_t size,
-                                             size_t bits) {
+BeaverTfpUnsafe::Pair BeaverTfpUnsafe::Trunc(FieldType field,
+                                             const Shape& shape, size_t bits) {
   std::vector<PrgArrayDesc> descs(2);
-  auto a = prgCreateArray(field, size, seed_, &counter_, descs.data());
-  auto b = prgCreateArray(field, size, seed_, &counter_, &descs[1]);
+  auto a = prgCreateArray(field, shape, seed_, &counter_, descs.data());
+  auto b = prgCreateArray(field, shape, seed_, &counter_, &descs[1]);
   if (lctx_->Rank() == 0) {
     auto adjust = TrustedParty::adjustTrunc(descs, seeds_, bits);
     ring_add_(b, adjust);
@@ -102,13 +104,14 @@ BeaverTfpUnsafe::Pair BeaverTfpUnsafe::Trunc(FieldType field, size_t size,
   return {a, b};
 }
 
-BeaverTfpUnsafe::Triple BeaverTfpUnsafe::TruncPr(FieldType field, size_t size,
+BeaverTfpUnsafe::Triple BeaverTfpUnsafe::TruncPr(FieldType field,
+                                                 const Shape& shape,
                                                  size_t bits) {
   std::vector<PrgArrayDesc> descs(3);
 
-  auto r = prgCreateArray(field, size, seed_, &counter_, descs.data());
-  auto rc = prgCreateArray(field, size, seed_, &counter_, &descs[1]);
-  auto rb = prgCreateArray(field, size, seed_, &counter_, &descs[2]);
+  auto r = prgCreateArray(field, shape, seed_, &counter_, descs.data());
+  auto rc = prgCreateArray(field, shape, seed_, &counter_, &descs[1]);
+  auto rb = prgCreateArray(field, shape, seed_, &counter_, &descs[2]);
 
   if (lctx_->Rank() == 0) {
     auto adjusts = TrustedParty::adjustTruncPr(descs, seeds_, bits);
@@ -119,9 +122,9 @@ BeaverTfpUnsafe::Triple BeaverTfpUnsafe::TruncPr(FieldType field, size_t size,
   return {r, rc, rb};
 }
 
-ArrayRef BeaverTfpUnsafe::RandBit(FieldType field, size_t size) {
+NdArrayRef BeaverTfpUnsafe::RandBit(FieldType field, const Shape& shape) {
   std::vector<PrgArrayDesc> descs(1);
-  auto a = prgCreateArray(field, size, seed_, &counter_, &descs[0]);
+  auto a = prgCreateArray(field, shape, seed_, &counter_, &descs[0]);
 
   if (lctx_->Rank() == 0) {
     auto adjust = TrustedParty::adjustRandBit(descs, seeds_);

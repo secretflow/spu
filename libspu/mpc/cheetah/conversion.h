@@ -29,7 +29,7 @@ class B2A : public UnaryKernel {
 
   ce::CExpr comm() const override { return ce::Const(0); }
 
-  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& x) const override;
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& x) const override;
 };
 
 }  // namespace spu::mpc::cheetah

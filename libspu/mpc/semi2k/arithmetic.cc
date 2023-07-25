@@ -28,7 +28,7 @@
 
 namespace spu::mpc::semi2k {
 
-ArrayRef RandA::proc(KernelEvalContext* ctx, size_t size) const {
+NdArrayRef RandA::proc(KernelEvalContext* ctx, const Shape& shape) const {
   auto* prg_state = ctx->getState<PrgState>();
   const auto field = ctx->getState<Z2kState>()->getDefaultField();
 
@@ -39,16 +39,16 @@ ArrayRef RandA::proc(KernelEvalContext* ctx, size_t size) const {
   // - https://eprint.iacr.org/2019/599.pdf
   // It's safer to keep the number within [-2**(k-2), 2**(k-2)) for comparison
   // operations.
-  return ring_rshift(prg_state->genPriv(field, size), 2)
+  return ring_rshift(prg_state->genPriv(field, shape), 2)
       .as(makeType<AShrTy>(field));
 }
 
-ArrayRef P2A::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
+NdArrayRef P2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   const auto field = in.eltype().as<Ring2k>()->field();
   auto* prg_state = ctx->getState<PrgState>();
   auto* comm = ctx->getState<Communicator>();
 
-  auto [r0, r1] = prg_state->genPrssPair(field, in.numel());
+  auto [r0, r1] = prg_state->genPrssPair(field, in.shape());
   auto x = ring_sub(r0, r1).as(makeType<AShrTy>(field));
 
   if (comm->getRank() == 0) {
@@ -58,50 +58,52 @@ ArrayRef P2A::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
   return x.as(makeType<AShrTy>(field));
 }
 
-ArrayRef A2P::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
+NdArrayRef A2P::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   const auto field = in.eltype().as<Ring2k>()->field();
   auto* comm = ctx->getState<Communicator>();
   auto out = comm->allReduce(ReduceOp::ADD, in, kBindName);
   return out.as(makeType<Pub2kTy>(field));
 }
 
-ArrayRef A2V::proc(KernelEvalContext* ctx, const ArrayRef& in,
-                   size_t rank) const {
+NdArrayRef A2V::proc(KernelEvalContext* ctx, const NdArrayRef& in,
+                     size_t rank) const {
   auto* comm = ctx->getState<Communicator>();
   const auto field = in.eltype().as<AShrTy>()->field();
   auto out_ty = makeType<Priv2kTy>(field, rank);
+
+  auto numel = in.numel();
+
   return DISPATCH_ALL_FIELDS(field, "_", [&]() {
-    std::vector<ring2k_t> share(in.numel());
-    pforeach(0, in.numel(),
-             [&](int64_t idx) { share[idx] = in.at<ring2k_t>(idx); });
+    std::vector<ring2k_t> share(numel);
+    pforeach(0, numel, [&](int64_t idx) { share[idx] = in.at<ring2k_t>(idx); });
 
     std::vector<std::vector<ring2k_t>> shares =
         comm->gather<ring2k_t>(share, rank, "a2v");  // comm => 1, k
     if (comm->getRank() == rank) {
       SPU_ENFORCE(shares.size() == comm->getWorldSize());
-      ArrayRef out(out_ty, in.numel());
-      auto _out = ArrayView<ring2k_t>(out);
-      pforeach(0, in.numel(), [&](int64_t idx) {
-        _out[idx] = 0;
+      NdArrayRef out(out_ty, in.shape());
+      pforeach(0, numel, [&](int64_t idx) {
+        ring2k_t s = 0;
         for (auto& share : shares) {
-          _out[idx] += share[idx];
+          s += share[idx];
         }
+        out.at<ring2k_t>(idx) = s;
       });
       return out;
     } else {
-      return makeConstantArrayRef(out_ty, in.numel());
+      return makeConstantArrayRef(out_ty, in.shape());
     }
   });
 }
 
-ArrayRef V2A::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
+NdArrayRef V2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   const auto* in_ty = in.eltype().as<Priv2kTy>();
   const size_t owner_rank = in_ty->owner();
   const auto field = in_ty->field();
   auto* prg_state = ctx->getState<PrgState>();
   auto* comm = ctx->getState<Communicator>();
 
-  auto [r0, r1] = prg_state->genPrssPair(field, in.numel());
+  auto [r0, r1] = prg_state->genPrssPair(field, in.shape());
   auto x = ring_sub(r0, r1).as(makeType<AShrTy>(field));
 
   if (comm->getRank() == owner_rank) {
@@ -111,7 +113,7 @@ ArrayRef V2A::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
   return x.as(makeType<AShrTy>(field));
 }
 
-ArrayRef NotA::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
+NdArrayRef NotA::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   auto* comm = ctx->getState<Communicator>();
 
   // First, let's show negate could be locally processed.
@@ -132,7 +134,7 @@ ArrayRef NotA::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
   auto res = ring_neg(in);
   if (comm->getRank() == 0) {
     const auto field = in.eltype().as<Ring2k>()->field();
-    ring_add_(res, ring_not(ring_zeros(field, in.numel())));
+    ring_add_(res, ring_not(ring_zeros(field, in.shape())));
   }
 
   return res.as(in.eltype());
@@ -141,8 +143,8 @@ ArrayRef NotA::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
 ////////////////////////////////////////////////////////////////////
 // add family
 ////////////////////////////////////////////////////////////////////
-ArrayRef AddAP::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
-                     const ArrayRef& rhs) const {
+NdArrayRef AddAP::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
+                       const NdArrayRef& rhs) const {
   SPU_ENFORCE(lhs.numel() == rhs.numel());
   auto* comm = ctx->getState<Communicator>();
 
@@ -153,8 +155,8 @@ ArrayRef AddAP::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
   return lhs;
 }
 
-ArrayRef AddAA::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
-                     const ArrayRef& rhs) const {
+NdArrayRef AddAA::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
+                       const NdArrayRef& rhs) const {
   SPU_ENFORCE(lhs.numel() == rhs.numel());
   SPU_ENFORCE(lhs.eltype() == rhs.eltype());
 
@@ -164,37 +166,38 @@ ArrayRef AddAA::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
 ////////////////////////////////////////////////////////////////////
 // multiply family
 ////////////////////////////////////////////////////////////////////
-ArrayRef MulAP::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
-                     const ArrayRef& rhs) const {
+NdArrayRef MulAP::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
+                       const NdArrayRef& rhs) const {
   return ring_mul(lhs, rhs).as(lhs.eltype());
 }
 
-ArrayRef MulAA::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
-                     const ArrayRef& rhs) const {
+NdArrayRef MulAA::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
+                       const NdArrayRef& rhs) const {
   const auto field = lhs.eltype().as<Ring2k>()->field();
   auto* comm = ctx->getState<Communicator>();
   auto* beaver = ctx->getState<Semi2kState>()->beaver();
 
-  auto res = ArrayRef(makeType<AShrTy>(field), lhs.numel());
+  auto res = NdArrayRef(makeType<AShrTy>(field), lhs.shape());
+
+  auto numel = lhs.numel();
+
   DISPATCH_ALL_FIELDS(field, kBindName, [&]() {
     using U = ring2k_t;
-    auto [a, b, c] = beaver->Mul(field, lhs.numel());
+    auto [a, b, c] = beaver->Mul(field, lhs.shape());
+    SPU_ENFORCE(a.isCompact() && b.isCompact() && c.isCompact(),
+                "beaver must be compact");
 
-    auto _x = ArrayView<U>(lhs);
-    auto _y = ArrayView<U>(rhs);
-    auto _z = ArrayView<U>(res);
+    auto _a = a.data<const U>();
+    auto _b = b.data<const U>();
+    auto _c = c.data<const U>();
 
-    auto _a = ArrayView<U>(a);
-    auto _b = ArrayView<U>(b);
-    auto _c = ArrayView<U>(c);
+    std::vector<U> eu(numel * 2);
+    absl::Span<U> e(eu.data(), numel);
+    absl::Span<U> u(eu.data() + numel, numel);
 
-    std::vector<U> eu(a.numel() * 2);
-    absl::Span<U> e(eu.data(), _x.numel());
-    absl::Span<U> u(eu.data() + _x.numel(), _x.numel());
-
-    pforeach(0, a.numel(), [&](int64_t idx) {
-      e[idx] = _x[idx] - _a[idx];  // e = x - a;
-      u[idx] = _y[idx] - _b[idx];  // u = y - b;
+    pforeach(0, numel, [&](int64_t idx) {
+      e[idx] = lhs.at<U>(idx) - _a[idx];  // e = x - a;
+      u[idx] = rhs.at<U>(idx) - _b[idx];  // u = y - b;
     });
 
     // open x-a & y-b
@@ -207,15 +210,15 @@ ArrayRef MulAA::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
       eu = comm->allReduce<U, std::plus>(eu, "open(x-a,y-b)");
     }
 
-    e = absl::Span<U>(eu.data(), _x.numel());
-    u = absl::Span<U>(eu.data() + _x.numel(), _x.numel());
+    e = absl::Span<U>(eu.data(), numel);
+    u = absl::Span<U>(eu.data() + numel, numel);
 
     // Zi = Ci + (X - A) * Bi + (Y - B) * Ai + <(X - A) * (Y - B)>
     pforeach(0, a.numel(), [&](int64_t idx) {
-      _z[idx] = _c[idx] + e[idx] * _b[idx] + u[idx] * _a[idx];
+      res.at<U>(idx) = _c[idx] + e[idx] * _b[idx] + u[idx] * _a[idx];
       if (comm->getRank() == 0) {
         // z += (X-A) * (Y-B);
-        _z[idx] += e[idx] * u[idx];
+        res.at<U>(idx) += e[idx] * u[idx];
       }
     });
   });
@@ -225,30 +228,30 @@ ArrayRef MulAA::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
 ////////////////////////////////////////////////////////////////////
 // matmul family
 ////////////////////////////////////////////////////////////////////
-ArrayRef MatMulAP::proc(KernelEvalContext* ctx, const ArrayRef& x,
-                        const ArrayRef& y, size_t m, size_t n, size_t k) const {
-  return ring_mmul(x, y, m, n, k).as(x.eltype());
+NdArrayRef MatMulAP::proc(KernelEvalContext* ctx, const NdArrayRef& x,
+                          const NdArrayRef& y) const {
+  return ring_mmul(x, y).as(x.eltype());
 }
 
-ArrayRef MatMulAA::proc(KernelEvalContext* ctx, const ArrayRef& x,
-                        const ArrayRef& y, size_t m, size_t n, size_t k) const {
+NdArrayRef MatMulAA::proc(KernelEvalContext* ctx, const NdArrayRef& x,
+                          const NdArrayRef& y) const {
   const auto field = x.eltype().as<Ring2k>()->field();
   auto* comm = ctx->getState<Communicator>();
   auto* beaver = ctx->getState<Semi2kState>()->beaver();
 
   // generate beaver multiple triple.
-  auto [a, b, c] = beaver->Dot(field, m, n, k);
+  auto [a, b, c] = beaver->Dot(field, x.shape()[0], y.shape()[1], x.shape()[1]);
 
   // Open x-a & y-b
-  ArrayRef x_a;
-  ArrayRef y_b;
+  NdArrayRef x_a;
+  NdArrayRef y_b;
 
   if (ctx->sctx()->config().experimental_disable_vectorization()) {
     x_a = comm->allReduce(ReduceOp::ADD, ring_sub(x, a), "open(x-a)");
     y_b = comm->allReduce(ReduceOp::ADD, ring_sub(y, b), "open(y-b)");
   } else {
     auto res =
-        vectorize({ring_sub(x, a), ring_sub(y, b)}, [&](const ArrayRef& s) {
+        vectorize({ring_sub(x, a), ring_sub(y, b)}, [&](const NdArrayRef& s) {
           return comm->allReduce(ReduceOp::ADD, s, "open(x-a,y-b)");
         });
     x_a = std::move(res[0]);
@@ -256,25 +259,24 @@ ArrayRef MatMulAA::proc(KernelEvalContext* ctx, const ArrayRef& x,
   }
 
   // Zi = Ci + (X - A) dot Bi + Ai dot (Y - B) + <(X - A) dot (Y - B)>
-  auto z = ring_add(
-      ring_add(ring_mmul(x_a, b, m, n, k), ring_mmul(a, y_b, m, n, k)), c);
+  auto z = ring_add(ring_add(ring_mmul(x_a, b), ring_mmul(a, y_b)), c);
   if (comm->getRank() == 0) {
     // z += (X-A) * (Y-B);
-    ring_add_(z, ring_mmul(x_a, y_b, m, n, k));
+    ring_add_(z, ring_mmul(x_a, y_b));
   }
   return z.as(x.eltype());
 }
 
-ArrayRef LShiftA::proc(KernelEvalContext* ctx, const ArrayRef& in,
-                       size_t bits) const {
+NdArrayRef LShiftA::proc(KernelEvalContext* ctx, const NdArrayRef& in,
+                         size_t bits) const {
   const auto field = in.eltype().as<Ring2k>()->field();
   bits %= SizeOf(field) * 8;
 
   return ring_lshift(in, bits).as(in.eltype());
 }
 
-ArrayRef TruncA::proc(KernelEvalContext* ctx, const ArrayRef& x,
-                      size_t bits) const {
+NdArrayRef TruncA::proc(KernelEvalContext* ctx, const NdArrayRef& x,
+                        size_t bits) const {
   auto* comm = ctx->getState<Communicator>();
 
   // TODO: add truncation method to options.
@@ -288,7 +290,7 @@ ArrayRef TruncA::proc(KernelEvalContext* ctx, const ArrayRef& x,
     auto* beaver = ctx->getState<Semi2kState>()->beaver();
 
     const auto field = x.eltype().as<Ring2k>()->field();
-    const auto& [r, rb] = beaver->Trunc(field, x.numel(), bits);
+    const auto& [r, rb] = beaver->Trunc(field, x.shape(), bits);
 
     // open x - r
     auto x_r = comm->allReduce(ReduceOp::ADD, ring_sub(x, r), kBindName);
@@ -302,20 +304,23 @@ ArrayRef TruncA::proc(KernelEvalContext* ctx, const ArrayRef& x,
   }
 }
 
-ArrayRef TruncAPr::proc(KernelEvalContext* ctx, const ArrayRef& in,
-                        size_t bits) const {
+NdArrayRef TruncAPr::proc(KernelEvalContext* ctx, const NdArrayRef& in,
+                          size_t bits) const {
   auto* comm = ctx->getState<Communicator>();
   auto* beaver = ctx->getState<Semi2kState>()->beaver();
   const auto numel = in.numel();
   const auto field = in.eltype().as<Ring2k>()->field();
   const size_t k = SizeOf(field) * 8;
 
-  ArrayRef r;
-  ArrayRef rc;
-  ArrayRef rb;
-  std::tie(r, rc, rb) = beaver->TruncPr(field, numel, bits);
+  NdArrayRef r;
+  NdArrayRef rc;
+  NdArrayRef rb;
+  std::tie(r, rc, rb) = beaver->TruncPr(field, in.shape(), bits);
 
-  ArrayRef out(in.eltype(), numel);
+  SPU_ENFORCE(r.isCompact() && rc.isCompact() && rb.isCompact(),
+              "beaver triple must be compact");
+
+  NdArrayRef out(in.eltype(), in.shape());
   DISPATCH_ALL_FIELDS(field, "semi2k.truncpr", [&]() {
     using U = ring2k_t;
 

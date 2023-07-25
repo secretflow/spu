@@ -22,7 +22,6 @@
 #include <vector>
 
 #include "libspu/core/parallel_utils.h"
-#include "libspu/core/shape_util.h"
 #include "libspu/core/xt_helper.h"
 #include "libspu/kernel/hal/constants.h"
 #include "libspu/kernel/hal/polymorphic.h"
@@ -47,9 +46,9 @@ std::vector<spu::Value> TreeReduce(SPUContext *ctx,
 
   std::stack<std::vector<spu::Value>> tails;
 
-  std::vector<int64_t> slice_begin(inputs.back().shape().size(), 0);
-  std::vector<int64_t> slice_end = inputs.back().shape();
-  std::vector<int64_t> slice_strides(inputs.back().shape().size(), 1);
+  Index slice_begin(inputs.back().shape().size(), 0);
+  Index slice_end(inputs.back().shape().begin(), inputs.back().shape().end());
+  Strides slice_strides(inputs.back().shape().size(), 1);
   int64_t len = outputs[0].shape()[axis];
   while (len > 1) {
     const int64_t half = len / 2;
@@ -58,20 +57,21 @@ std::vector<spu::Value> TreeReduce(SPUContext *ctx,
     for (size_t idx = 0; idx < outputs.size(); ++idx) {
       slice_begin[axis] = 0;
       slice_end[axis] = half;
+      auto len = outputs[idx].shape().size();
 
       lhs[idx] = hal::slice(
           ctx, outputs[idx],
-          absl::MakeSpan(slice_begin.data(), outputs[idx].shape().size()),
-          absl::MakeSpan(slice_end.data(), outputs[idx].shape().size()),
-          absl::MakeSpan(slice_strides.data(), outputs[idx].shape().size()));
+          Index(slice_begin.begin(), slice_begin.begin() + len),
+          Index(slice_end.begin(), slice_end.begin() + len),
+          Strides(slice_strides.begin(), slice_strides.begin() + len));
 
       slice_begin[axis] = half;
       slice_end[axis] = 2 * half;
       rhs[idx] = hal::slice(
           ctx, outputs[idx],
-          absl::MakeSpan(slice_begin.data(), outputs[idx].shape().size()),
-          absl::MakeSpan(slice_end.data(), outputs[idx].shape().size()),
-          absl::MakeSpan(slice_strides.data(), outputs[idx].shape().size()));
+          Index(slice_begin.begin(), slice_begin.begin() + len),
+          Index(slice_end.begin(), slice_end.begin() + len),
+          Strides(slice_strides.begin(), slice_strides.begin() + len));
     }
 
     // tail
@@ -80,11 +80,12 @@ std::vector<spu::Value> TreeReduce(SPUContext *ctx,
       slice_end[axis] = len;
       std::vector<spu::Value> &tail = tails.emplace(nargs);
       for (size_t idx = 0; idx < outputs.size(); ++idx) {
+        auto len = outputs[idx].shape().size();
         tail[idx] = hal::slice(
             ctx, outputs[idx],
-            absl::MakeSpan(slice_begin.data(), outputs[idx].shape().size()),
-            absl::MakeSpan(slice_end.data(), outputs[idx].shape().size()),
-            absl::MakeSpan(slice_strides.data(), outputs[idx].shape().size()));
+            Index(slice_begin.begin(), slice_begin.begin() + len),
+            Index(slice_end.begin(), slice_end.begin() + len),
+            Strides(slice_strides.begin(), slice_strides.begin() + len));
       }
     }
 
@@ -110,9 +111,8 @@ std::vector<spu::Value> TreeReduce(SPUContext *ctx,
 }
 
 spu::Value ExpandStridedWindow(
-    SPUContext *ctx, const spu::Value &base,
-    absl::Span<const int64_t> window_shape,
-    absl::Span<const int64_t> window_strides,
+    SPUContext *ctx, const spu::Value &base, const Shape &window_shape,
+    const Strides &window_strides,
     absl::Span<const std::pair<int64_t, int64_t>> padding) {
   const auto &base_shape = base.shape();
   const size_t ndim = base_shape.size();
@@ -122,7 +122,7 @@ spu::Value ExpandStridedWindow(
               ndim == padding.size());
 
   // calculate output shape
-  std::vector<int64_t> expanded_shape(ndim, 0);
+  Shape expanded_shape(ndim, 0);
   for (size_t dim = 0; dim < ndim; dim++) {
     int64_t padded_size =
         padding[dim].first + padding[dim].second + base_shape[dim];
@@ -139,12 +139,11 @@ spu::Value ExpandStridedWindow(
     expanded = hal::seal(ctx, expanded);
   }
 
-  auto numel = calcNumel(expanded_shape);
+  auto numel = expanded_shape.numel();
 
   yacl::parallel_for(
       0, numel, computeTaskSize(numel), [&](int64_t begin, int64_t end) {
-        std::vector<int64_t> expanded_index =
-            unflattenIndex(begin, expanded_shape);
+        auto expanded_index = unflattenIndex(begin, expanded_shape);
 
         std::vector<int64_t> window_count_index(ndim, 0);
         std::vector<int64_t> window_index(ndim, 0);
@@ -155,7 +154,7 @@ spu::Value ExpandStridedWindow(
             window_count_index[dim] = expanded_index[dim] / window_shape[dim];
           }
 
-          std::vector<int64_t> base_index(ndim, 0);
+          Index base_index(ndim, 0);
           bool out_of_bound = getBaseIndexFromWindowIndex(
               window_shape, window_strides, window_dilations, padding,
               base_shape, base_dilations, window_count_index, window_index,
@@ -167,8 +166,7 @@ spu::Value ExpandStridedWindow(
                 base.data().slice_scalar_at(base_index), expanded_index);
           }
 
-          if (!bumpIndices<int64_t>(expanded_shape,
-                                    absl::MakeSpan(expanded_index))) {
+          if (!bumpIndices(expanded_shape, absl::MakeSpan(expanded_index))) {
             break;
           }
         }
@@ -178,20 +176,20 @@ spu::Value ExpandStridedWindow(
 }
 
 spu::Value ConvertToTiledLayout(SPUContext *ctx, const spu::Value &in,
-                                absl::Span<const int64_t> block_shape) {
+                                const Shape &block_shape) {
   // Note(jint): use pad+reshape+transpose to convert from column layout to
   // tiled layout.
   //
   // For example, in shape = [6, 12], window = [2, 3]
   // The result is [3, 4, 2, 3]
   SPU_ENFORCE(in.shape().size() == block_shape.size());
-  std::vector<int64_t> tiled_shape;
+  Shape tiled_shape;
   for (size_t dim = 0; dim < in.shape().size(); dim++) {
     SPU_ENFORCE(in.shape()[dim] % block_shape[dim] == 0);
     tiled_shape.push_back(in.shape()[dim] / block_shape[dim]);
     tiled_shape.push_back(block_shape[dim]);
   }
-  std::vector<int64_t> perm(tiled_shape.size(), 0);
+  Axes perm(tiled_shape.size(), 0);
   std::iota(perm.begin(), perm.end(), 0);
   std::stable_partition(perm.begin(), perm.end(),
                         [](int64_t x) { return x % 2 == 0; });
@@ -202,12 +200,11 @@ spu::Value ConvertToTiledLayout(SPUContext *ctx, const spu::Value &in,
 
 std::vector<spu::Value> ReduceWindowWithoutDilation(
     SPUContext *ctx, absl::Span<const spu::Value> inputs,
-    absl::Span<const spu::Value> init_values,
-    absl::Span<const int64_t> window_shape,
-    absl::Span<const int64_t> window_strides,
+    absl::Span<const spu::Value> init_values, const Shape &window_shape,
+    const Strides &window_strides,
     absl::Span<const std::pair<int64_t, int64_t>> window_padding,
     bool last_operand_is_window_mask, bool ignore_init_value,
-    absl::Span<const int64_t> ret_shape, const BatchedValueBinaryFn &reducer) {
+    const Shape &ret_shape, const BatchedValueBinaryFn &reducer) {
   const size_t nargs =
       last_operand_is_window_mask ? inputs.size() - 1 : inputs.size();
 
@@ -225,7 +222,7 @@ std::vector<spu::Value> ReduceWindowWithoutDilation(
 
   if (last_operand_is_window_mask) {
     auto mask = inputs.back();
-    std::vector<int64_t> shape(expanded.back().shape().size() + 1, 1);
+    Shape shape(expanded.back().shape().size() + 1, 1);
     shape.back() = window_size;
 
     auto mask_idx = shape.size() - 2;
@@ -244,7 +241,7 @@ std::vector<spu::Value> ReduceWindowWithoutDilation(
   }
 
   // Flatten the window, to maximize parallel processing.
-  std::vector<int64_t> tiled_1d_shape(ret_shape.begin(), ret_shape.end());
+  Shape tiled_1d_shape(ret_shape.begin(), ret_shape.end());
   tiled_1d_shape.push_back(window_size);
   for (size_t idx = 0; idx < nargs; ++idx) {
     // reshape to tiled_1d
@@ -252,8 +249,7 @@ std::vector<spu::Value> ReduceWindowWithoutDilation(
   }
 
   if (last_operand_is_window_mask) {
-    std::vector<int64_t> tiled_1d_shape_mask(tiled_1d_shape.begin(),
-                                             tiled_1d_shape.end());
+    Shape tiled_1d_shape_mask(tiled_1d_shape.begin(), tiled_1d_shape.end());
     tiled_1d_shape_mask.emplace_back(window_size);
     expanded.back() = hal::reshape(ctx, expanded.back(), tiled_1d_shape_mask);
   }
@@ -266,7 +262,7 @@ std::vector<spu::Value> ReduceWindowWithoutDilation(
     outputs[idx] = hal::reshape(ctx, outputs[idx], ret_shape);
   }
   if (last_operand_is_window_mask) {
-    std::vector<int64_t> mask_ret_shape(ret_shape.begin(), ret_shape.end());
+    Shape mask_ret_shape(ret_shape.begin(), ret_shape.end());
     mask_ret_shape.emplace_back(window_size);
     outputs.back() = hal::reshape(ctx, outputs.back(), mask_ret_shape);
   }
@@ -285,10 +281,9 @@ std::vector<spu::Value> ReduceWindowWithoutDilation(
 
 std::vector<spu::Value> ReduceWindowImpl(
     SPUContext *ctx, absl::Span<const spu::Value> inputs,
-    absl::Span<const spu::Value> init_values,
-    absl::Span<const int64_t> ret_shape, const ReduceWindowConfig &config,
-    bool last_operand_is_window_mask, bool ignore_init_value,
-    const BatchedValueBinaryFn &reducer) {
+    absl::Span<const spu::Value> init_values, const Shape &ret_shape,
+    const ReduceWindowConfig &config, bool last_operand_is_window_mask,
+    bool ignore_init_value, const BatchedValueBinaryFn &reducer) {
   if (std::all_of(config.window_dilations.begin(),
                   config.window_dilations.end(),
                   [](const int64_t x) { return x == 1; }) &&
@@ -319,8 +314,7 @@ std::vector<spu::Value> ReduceWindowImpl(
     RunOnWindowIndex(
         config.window_shape, config.window_strides, config.window_dilations,
         config.window_padding, inputs[0].shape(), config.base_dilations,
-        output_index, window_index,
-        [&](absl::Span<const int64_t> operand_index) {
+        output_index, window_index, [&](const Index &operand_index) {
           for (int64_t idx = 0; idx < nargs; ++idx) {
             auto element =
                 hal::slice_scalar_at(ctx, inputs[idx], operand_index);
@@ -339,7 +333,7 @@ std::vector<spu::Value> ReduceWindowImpl(
 
   do {
     // Collect one element from each window
-    std::vector<int64_t> output_index(ret_shape.size(), 0);
+    Index output_index(ret_shape.size(), 0);
     do {
       auto r = evaluate_impl(output_index);
       if (!r.empty()) {
@@ -360,7 +354,7 @@ std::vector<spu::Value> ReduceWindowImpl(
 std::vector<spu::Value> ReduceWindow(SPUContext *ctx,
                                      absl::Span<const spu::Value> inputs,
                                      absl::Span<const spu::Value> init_values,
-                                     absl::Span<const int64_t> ret_shape,
+                                     const Shape &ret_shape,
                                      const ReduceWindowConfig &config,
                                      const BatchedValueBinaryFn &reducer,
                                      bool ignore_init_values) {
@@ -371,7 +365,7 @@ std::vector<spu::Value> ReduceWindow(SPUContext *ctx,
 std::vector<spu::Value> Reduce(SPUContext *ctx,
                                absl::Span<const spu::Value> inputs,
                                absl::Span<const spu::Value> init_values,
-                               absl::Span<const int64_t> dims_to_reduce,
+                               const Axes &dims_to_reduce,
                                const BatchedValueBinaryFn &reducer,
                                bool ignore_init_values) {
   // Reduce multiple dimension
@@ -403,9 +397,9 @@ std::vector<spu::Value> Reduce(SPUContext *ctx,
   // Note(jint): this `lowering` progress is easy to be ported to
   // compile-time.
 
-  const std::vector<int64_t> in_shape = inputs[0].shape();
+  const auto in_shape = inputs[0].shape();
 
-  std::vector<int64_t> perm(in_shape.size(), 0);
+  Axes perm(in_shape.size(), 0);
   std::iota(perm.begin(), perm.end(), 0);
   // swap axes, move the dims to reduce to inner most.
   std::stable_partition(perm.begin(), perm.end(), [&](int64_t axis) {
@@ -413,7 +407,7 @@ std::vector<spu::Value> Reduce(SPUContext *ctx,
            dims_to_reduce.end();
   });
 
-  std::vector<int64_t> flat_shape;
+  Shape flat_shape;
   int64_t numel_to_reduce = 1;
   for (size_t axis = 0; axis < in_shape.size(); axis++) {
     if (std::find(dims_to_reduce.begin(), dims_to_reduce.end(), axis) ==
@@ -436,7 +430,7 @@ std::vector<spu::Value> Reduce(SPUContext *ctx,
       TreeReduce(ctx, flattened, flattened[0].shape().size() - 1, reducer);
 
   // broadcast to origin shape.
-  std::vector<int64_t> out_shape = inputs[0].shape();
+  Shape out_shape = inputs[0].shape();
   for (const auto &axis : dims_to_reduce) {
     out_shape[axis] = 1;
   }
@@ -465,14 +459,13 @@ std::vector<spu::Value> Reduce(SPUContext *ctx,
 // And without dilation and padding, this can be achieved through just slicing
 // FIXME: This is a super special case...consider generalize it a little bit
 std::pair<spu::Value, spu::Value> ArgMax1x2x2x1NoPaddingWithoutDilation(
-    SPUContext *ctx, const spu::Value &input,
-    absl::Span<const int64_t> window_strides) {
+    SPUContext *ctx, const spu::Value &input, const Strides &window_strides) {
   auto input_shape = input.shape();
 
   spu::Value h_max;
   spu::Value h_idx_max;
 
-  std::vector<int64_t> strides(window_strides.size(), 1);
+  Strides strides(window_strides.size(), 1);
   {
     // Get to horizontal slices
     strides[2] = window_strides[2];
@@ -566,7 +559,7 @@ std::pair<spu::Value, spu::Value> ArgMax1x2x2x1NoPaddingWithoutDilation(
 
 std::pair<spu::Value, spu::Value> ArgMax(SPUContext *ctx,
                                          const spu::Value &input,
-                                         absl::Span<const int64_t> ret_shape,
+                                         const Shape &ret_shape,
                                          const ReduceWindowConfig &config) {
   // Add a fast 1x2x2x1, no padding fast reduce
   auto no_padding =
@@ -598,7 +591,7 @@ std::pair<spu::Value, spu::Value> ArgMax(SPUContext *ctx,
         // Select value
         auto v = hal::select(ctx, c, lhs[0], rhs[0]);
         // Select index
-        std::vector<int64_t> c_i_shape = c.shape();
+        auto c_i_shape = c.shape();
         c_i_shape.emplace_back(1);
         auto c_i = hal::reshape(ctx, c, c_i_shape);
         c_i_shape.back() = window_size;

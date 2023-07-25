@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "libspu/core/array_ref.h"
+#include "libspu/core/ndarray_ref.h"
 #include "libspu/mpc/aby3/value.h"
 #include "libspu/mpc/kernel.h"
 
@@ -43,7 +43,7 @@ class A2B : public UnaryKernel {
     return Log(ce::K()) * ce::K() + ce::K() * 2;
   }
 
-  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in) const override;
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in) const override;
 };
 
 class B2ASelector : public UnaryKernel {
@@ -52,7 +52,7 @@ class B2ASelector : public UnaryKernel {
 
   Kind kind() const override { return Kind::Dynamic; }
 
-  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in) const override;
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in) const override;
 };
 
 // Reference:
@@ -75,7 +75,7 @@ class B2AByPPA : public UnaryKernel {
     return Log(ce::K()) * ce::K() + 3 * ce::K();
   }
 
-  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in) const override;
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in) const override;
 };
 
 // Reference:
@@ -97,7 +97,7 @@ class B2AByOT : public UnaryKernel {
   // FIXME: bypass unittest.
   Kind kind() const override { return Kind::Dynamic; }
 
-  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in) const override;
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in) const override;
 };
 
 class MsbA2B : public UnaryKernel {
@@ -118,7 +118,7 @@ class MsbA2B : public UnaryKernel {
 
   float getCommTolerance() const override { return 0.2; }
 
-  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in) const override;
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in) const override;
 };
 
 }  // namespace spu::mpc::aby3

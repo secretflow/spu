@@ -37,10 +37,10 @@ INSTANTIATE_TEST_SUITE_P(
 
 TEST_P(FerretCOTTest, ChosenCorrelationChosenChoice) {
   size_t kWorldSize = 2;
-  size_t n = 10;
+  int64_t n = 10;
   auto field = GetParam();
 
-  auto _correlation = ring_rand(field, n);
+  auto _correlation = ring_rand(field, {n});
   std::vector<uint8_t> choices(n);
   std::default_random_engine rdv;
   std::uniform_int_distribution<uint64_t> uniform(0, -1);
@@ -65,7 +65,7 @@ TEST_P(FerretCOTTest, ChosenCorrelationChosenChoice) {
       }
     });
 
-    for (size_t i = 0; i < n; ++i) {
+    for (int64_t i = 0; i < n; ++i) {
       ring2k_t c = -computed[0][i] + computed[1][i];
       ring2k_t e = choices[i] ? correlation[i] : 0;
       EXPECT_EQ(e, c);
@@ -154,7 +154,7 @@ TEST_P(FerretCOTTest, RndMsgChosenChoice) {
 
 TEST_P(FerretCOTTest, ChosenMsgChosenChoice) {
   size_t kWorldSize = 2;
-  size_t n = 106;
+  int64_t n = 106;
   auto field = GetParam();
   DISPATCH_ALL_FIELDS(field, "", [&]() {
     using scalar_t = ring2k_t;
@@ -162,8 +162,8 @@ TEST_P(FerretCOTTest, ChosenMsgChosenChoice) {
     std::uniform_int_distribution<uint32_t> uniform(0, -1);
     for (size_t bw : {2UL, 4UL, sizeof(scalar_t) * 8}) {
       scalar_t mask = (static_cast<scalar_t>(1) << bw) - 1;
-      for (size_t N : {2, 3, 8}) {
-        auto _msg = ring_rand(field, N * n);
+      for (int64_t N : {2, 3, 8}) {
+        auto _msg = ring_rand(field, {N * n});
         auto msg = xt_mutable_adapt<scalar_t>(_msg);
         msg &= mask;
         std::vector<uint8_t> choices(n);
@@ -188,7 +188,7 @@ TEST_P(FerretCOTTest, ChosenMsgChosenChoice) {
                           }
                         });
 
-        for (size_t i = 0; i < n; ++i) {
+        for (int64_t i = 0; i < n; ++i) {
           scalar_t e = msg[i * N + choices[i]];
           scalar_t c = selected[i];
           EXPECT_EQ(e, c);

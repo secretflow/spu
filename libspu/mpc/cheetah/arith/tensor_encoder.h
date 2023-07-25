@@ -16,7 +16,6 @@
 
 #include "absl/types/span.h"
 
-#include "libspu/core/shape_util.h"
 #include "libspu/mpc/cheetah/arith/conv2d_helper.h"
 #include "libspu/mpc/cheetah/rlwe/modswitch_helper.h"
 #include "libspu/mpc/cheetah/rlwe/types.h"

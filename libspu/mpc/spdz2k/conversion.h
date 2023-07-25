@@ -14,10 +14,8 @@
 
 #pragma once
 
-#include "libspu/core/array_ref.h"
 #include "libspu/core/cexpr.h"
 #include "libspu/mpc/kernel.h"
-#include "libspu/mpc/spdz2k/value.h"
 
 namespace spu::mpc::spdz2k {
 
@@ -45,7 +43,7 @@ class A2B : public UnaryKernel {
     return Const(0);
   }
 
-  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in) const override;
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in) const override;
 };
 
 class A2Bit : public UnaryKernel {
@@ -66,7 +64,7 @@ class A2Bit : public UnaryKernel {
     return Const(0);
   }
 
-  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in) const override;
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in) const override;
 };
 
 class Bit2A : public UnaryKernel {
@@ -87,7 +85,7 @@ class Bit2A : public UnaryKernel {
     return Const(0);
   }
 
-  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in) const override;
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in) const override;
 };
 
 class BitDec : public UnaryKernel {
@@ -106,7 +104,7 @@ class BitDec : public UnaryKernel {
     return Log(K()) * K() * 2 + K() * 2;
   }
 
-  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in) const override;
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in) const override;
 };
 
 // Referrence:
@@ -130,7 +128,7 @@ class B2A : public UnaryKernel {
     return Const(0);
   }
 
-  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& x) const override;
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& x) const override;
 };
 
 class MSB : public UnaryKernel {
@@ -139,7 +137,7 @@ class MSB : public UnaryKernel {
 
   Kind kind() const override { return Kind::Dynamic; }
 
-  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& x) const override;
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& x) const override;
 };
 
 class AddBB : public BinaryKernel {
@@ -162,8 +160,8 @@ class AddBB : public BinaryKernel {
     return Const(0);
   }
 
-  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& lhs,
-                const ArrayRef& rhs) const override;
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
+                  const NdArrayRef& rhs) const override;
 };
 
 class AddBP : public BinaryKernel {
@@ -174,8 +172,8 @@ class AddBP : public BinaryKernel {
 
   CExpr comm() const override { return Const(0); }
 
-  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& x,
-                const ArrayRef& y) const override;
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& x,
+                  const NdArrayRef& y) const override;
 };
 
 class BitLTBB : public BinaryKernel {
@@ -186,8 +184,8 @@ class BitLTBB : public BinaryKernel {
 
   CExpr comm() const override { return Const(0); }
 
-  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& x,
-                const ArrayRef& y) const override;
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& x,
+                  const NdArrayRef& y) const override;
 };
 
 class BitLEBB : public BinaryKernel {
@@ -198,8 +196,8 @@ class BitLEBB : public BinaryKernel {
 
   CExpr comm() const override { return Const(0); }
 
-  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& x,
-                const ArrayRef& y) const override;
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& x,
+                  const NdArrayRef& y) const override;
 };
 
 }  // namespace spu::mpc::spdz2k

@@ -42,9 +42,10 @@ void CheetahMulState::makeSureCacheSize(FieldType field, int64_t numel) {
   //         c1 = a1*b1 + <a0*b1> + <a1*b0>
   const int rank = mul_prot_->Rank();
   const size_t ole_sze = mul_prot_->OLEBatchSize();
-  const size_t num_ole = CeilDiv<size_t>(2 * numel, ole_sze);
+  const auto num_ole = CeilDiv<size_t>(2 * numel, ole_sze);
   const size_t num_beaver = (num_ole * ole_sze) / 2;
-  auto rand = ring_rand(field, num_ole * ole_sze);
+  auto rand =
+      flatten(ring_rand(field, {static_cast<int64_t>(num_ole * ole_sze)}));
   auto cross = mul_prot_->MulOLE(rand, rank == 0);
 
   ArrayRef beaver[3];
@@ -59,13 +60,15 @@ void CheetahMulState::makeSureCacheSize(FieldType field, int64_t numel) {
   a0b1 = cross.slice(0, num_beaver);
   a1b0 = cross.slice(num_beaver, num_beaver * 2);
 
-  beaver[2] = ring_add(ring_add(cross.slice(0, num_beaver),
-                                cross.slice(num_beaver, 2 * num_beaver)),
-                       ring_mul(beaver[0], beaver[1]));
+  beaver[2] = flatten(
+      ring_add(ring_add(toNdArray(cross.slice(0, num_beaver)),
+                        toNdArray(cross.slice(num_beaver, 2 * num_beaver))),
+               ring_mul(toNdArray(beaver[0]), toNdArray(beaver[1]))));
 
   DISPATCH_ALL_FIELDS(field, "makeSureCacheSize", [&]() {
     for (size_t i : {0, 1, 2}) {
-      auto tmp = ring_zeros(field, num_beaver + cached_sze_);
+      auto tmp =
+          flatten(ring_zeros(field, {(int64_t)num_beaver + cached_sze_}));
       ArrayView<const ring2k_t> old_cache(cached_beaver_[i]);
       ArrayView<const ring2k_t> _beaver(beaver[i]);
       ArrayView<ring2k_t> new_cache(tmp);

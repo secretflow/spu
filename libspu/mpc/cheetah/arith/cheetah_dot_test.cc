@@ -46,11 +46,11 @@ TEST_P(CheetahDotTest, Basic) {
 
   std::vector<ArrayRef> mat(kWorldSize);
   // NOTE(juhou): now Cheetah supports strided ArrayRef
-  for (size_t stride : {1, 3}) {
-    mat[0] = ring_rand(field, stride * dim3[0] * dim3[1]);
+  for (int64_t stride : {1, 3}) {
+    mat[0] = flatten(ring_rand(field, {stride * dim3[0] * dim3[1]}));
     mat[0] = mat[0].slice(0, mat[0].numel(), stride);
 
-    mat[1] = ring_rand(field, 1 + stride * dim3[1] * dim3[2]);
+    mat[1] = flatten(ring_rand(field, {1 + stride * dim3[1] * dim3[2]}));
     mat[1] = mat[1].slice(1, mat[1].numel(), stride);
 
     std::vector<ArrayRef> result(kWorldSize);
@@ -60,8 +60,10 @@ TEST_P(CheetahDotTest, Basic) {
       result[rank] = dot->DotOLE(mat[rank], dim3, rank == 0);
     });
 
-    auto expected = ring_mmul(mat[0], mat[1], dim3[0], dim3[2], dim3[1]);
-    auto computed = ring_add(result[0], result[1]);
+    auto expected = flatten(ring_mmul(unflatten(mat[0], {dim3[0], dim3[1]}),
+                                      unflatten(mat[1], {dim3[1], dim3[2]})));
+    auto computed =
+        flatten(ring_add(toNdArray(result[0]), toNdArray(result[1])));
     EXPECT_EQ(expected.numel(), computed.numel());
 
     const int64_t kMaxDiff = 1;

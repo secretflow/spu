@@ -15,7 +15,6 @@
 #include "xtensor/xrandom.hpp"
 
 #include "libspu/core/context.h"
-#include "libspu/core/shape_util.h"
 #include "libspu/core/value.h"
 #include "libspu/core/xt_helper.h"
 #include "libspu/kernel/hal/prot_wrapper.h"   // bad reference
@@ -33,7 +32,7 @@ SPUContext makeSPUContext(
 
 Value makeValue(SPUContext* ctx, PtBufferView init,
                 Visibility vtype = VIS_PUBLIC, DataType dtype = DT_INVALID,
-                ShapeView shape = {});
+                const Shape& shape = {});
 
 template <typename T>
 auto xt_random(const std::vector<size_t>& shape, double min = -100,

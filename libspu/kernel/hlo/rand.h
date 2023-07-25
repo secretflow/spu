@@ -19,7 +19,6 @@
 namespace spu::kernel::hlo {
 
 spu::Value Uniform_rand(SPUContext *ctx, const spu::Value &lo,
-                        const spu::Value &hi,
-                        absl::Span<const int64_t> to_shape);
+                        const spu::Value &hi, const Shape &to_shape);
 
 }  // namespace spu::kernel::hlo

@@ -58,8 +58,7 @@ Value matmul(SPUContext* ctx, const Value& x, const Value& y);
 // @param window_strides, sized-2 window strides
 // @param result_shape, output shape
 Value conv2d(SPUContext* ctx, const Value& x, const Value& y,
-             absl::Span<const int64_t> window_strides,
-             absl::Span<const int64_t> result_shape);
+             const Strides& window_strides, const Shape& result_shape);
 
 /// general element-wise bitwise equal operator
 // @param x, the first parameter

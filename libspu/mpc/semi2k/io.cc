@@ -34,8 +34,9 @@ Type Semi2kIo::getShareType(Visibility vis, int owner_rank) const {
   SPU_THROW("unsupported vis type {}", vis);
 }
 
-std::vector<ArrayRef> Semi2kIo::toShares(const ArrayRef& raw, Visibility vis,
-                                         int owner_rank) const {
+std::vector<NdArrayRef> Semi2kIo::toShares(const NdArrayRef& raw,
+                                           Visibility vis,
+                                           int owner_rank) const {
   SPU_ENFORCE(raw.eltype().isa<RingTy>(), "expected RingTy, got {}",
               raw.eltype());
   const auto field = raw.eltype().as<Ring2k>()->field();
@@ -44,7 +45,7 @@ std::vector<ArrayRef> Semi2kIo::toShares(const ArrayRef& raw, Visibility vis,
 
   if (vis == VIS_PUBLIC) {
     const auto share = raw.as(makeType<Pub2kTy>(field));
-    return std::vector<ArrayRef>(world_size_, share);
+    return std::vector<NdArrayRef>(world_size_, share);
   } else if (vis == VIS_SECRET) {
 #if !defined(SPU_ENABLE_PRIVATE_TYPE)
     owner_rank = -1;
@@ -52,13 +53,13 @@ std::vector<ArrayRef> Semi2kIo::toShares(const ArrayRef& raw, Visibility vis,
 
     if (owner_rank >= 0 && owner_rank < static_cast<int>(world_size_)) {
       // indicates private
-      std::vector<ArrayRef> shares;
+      std::vector<NdArrayRef> shares;
       const auto ty = makeType<Priv2kTy>(field, owner_rank);
       for (int idx = 0; idx < static_cast<int>(world_size_); idx++) {
         if (idx == owner_rank) {
           shares.push_back(raw.as(ty));
         } else {
-          shares.push_back(makeConstantArrayRef(ty, raw.numel()));
+          shares.push_back(makeConstantArrayRef(ty, raw.shape()));
         }
       }
       return shares;
@@ -66,7 +67,7 @@ std::vector<ArrayRef> Semi2kIo::toShares(const ArrayRef& raw, Visibility vis,
       // normal secret
       SPU_ENFORCE(owner_rank == -1, "not a valid owner {}", owner_rank);
 
-      std::vector<ArrayRef> shares;
+      std::vector<NdArrayRef> shares;
       const auto ty = makeType<semi2k::AShrTy>(field);
 
       // by default, make as arithmetic share.
@@ -81,7 +82,7 @@ std::vector<ArrayRef> Semi2kIo::toShares(const ArrayRef& raw, Visibility vis,
   SPU_THROW("unsupported vis type {}", vis);
 }
 
-ArrayRef Semi2kIo::fromShares(const std::vector<ArrayRef>& shares) const {
+NdArrayRef Semi2kIo::fromShares(const std::vector<NdArrayRef>& shares) const {
   const auto& eltype = shares.at(0).eltype();
   const auto field = eltype.as<Ring2k>()->field();
 
@@ -92,7 +93,7 @@ ArrayRef Semi2kIo::fromShares(const std::vector<ArrayRef>& shares) const {
     const size_t owner = eltype.as<Private>()->owner();
     return shares[owner].as(makeType<RingTy>(field_));
   } else if (eltype.isa<Secret>()) {
-    ArrayRef res = ring_zeros(field, shares[0].numel());
+    auto res = ring_zeros(field, shares[0].shape());
 
     for (const auto& share : shares) {
       // Currently, only packed zeros are not compact, this is for colocation

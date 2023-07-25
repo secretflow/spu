@@ -23,7 +23,7 @@
 namespace spu::kernel::hlo {
 
 spu::Value Constant(SPUContext *ctx, const PtBufferView &view,
-                    absl::Span<const int64_t> out_shape);
+                    const Shape &out_shape);
 
 spu::Value Iota(SPUContext *ctx, DataType dtype, int64_t numel);
 

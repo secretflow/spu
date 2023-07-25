@@ -43,14 +43,14 @@ INSTANTIATE_TEST_SUITE_P(
 
 TEST_P(CompareProtTest, Basic) {
   size_t kWorldSize = 2;
-  size_t n = 16;
+  int64_t n = 16;
   FieldType field = std::get<0>(GetParam());
   size_t radix = std::get<2>(GetParam());
   bool greater_than = std::get<1>(GetParam());
 
-  ArrayRef inp[2];
-  inp[0] = ring_rand(field, n);
-  inp[1] = ring_rand(field, n);
+  NdArrayRef inp[2];
+  inp[0] = ring_rand(field, {n});
+  inp[1] = ring_rand(field, {n});
 
   DISPATCH_ALL_FIELDS(field, "", [&]() {
     auto xinp = xt_mutable_adapt<ring2k_t>(inp[0]);
@@ -70,17 +70,17 @@ TEST_P(CompareProtTest, Basic) {
     int rank = ctx->Rank();
     auto base = std::make_shared<BasicOTProtocols>(conn);
     CompareProtocol comp_prot(base, radix);
-    auto _c = comp_prot.Compute(inp[rank], greater_than);
+    auto _c = comp_prot.Compute(flatten(inp[rank]), greater_than);
     cmp_oup[rank] = _c;
   });
 
   DISPATCH_ALL_FIELDS(field, "", [&]() {
-    auto xout0 = xt_adapt<ring2k_t>(cmp_oup[0]);
-    auto xout1 = xt_adapt<ring2k_t>(cmp_oup[1]);
+    auto xout0 = ArrayView<ring2k_t>(cmp_oup[0]);
+    auto xout1 = ArrayView<ring2k_t>(cmp_oup[1]);
     auto xinp0 = xt_adapt<ring2k_t>(inp[0]);
     auto xinp1 = xt_adapt<ring2k_t>(inp[1]);
 
-    for (size_t i = 0; i < n; ++i) {
+    for (int64_t i = 0; i < n; ++i) {
       bool expected = greater_than ? xinp0[i] > xinp1[i] : xinp0[i] < xinp1[i];
       bool got_cmp = xout0[i] ^ xout1[i];
       EXPECT_EQ(expected, got_cmp);
@@ -90,14 +90,14 @@ TEST_P(CompareProtTest, Basic) {
 
 TEST_P(CompareProtTest, WithEq) {
   size_t kWorldSize = 2;
-  size_t n = 10;
+  int64_t n = 10;
   FieldType field = std::get<0>(GetParam());
   size_t radix = std::get<2>(GetParam());
   bool greater_than = std::get<1>(GetParam());
 
-  ArrayRef inp[2];
-  inp[0] = ring_rand(field, n);
-  inp[1] = ring_rand(field, n);
+  NdArrayRef inp[2];
+  inp[0] = ring_rand(field, {n});
+  inp[1] = ring_rand(field, {n});
 
   DISPATCH_ALL_FIELDS(field, "", [&]() {
     auto xinp = xt_mutable_adapt<ring2k_t>(inp[0]);
@@ -118,20 +118,20 @@ TEST_P(CompareProtTest, WithEq) {
     int rank = ctx->Rank();
     auto base = std::make_shared<BasicOTProtocols>(conn);
     CompareProtocol comp_prot(base, radix);
-    auto [_c, _e] = comp_prot.ComputeWithEq(inp[rank], greater_than);
+    auto [_c, _e] = comp_prot.ComputeWithEq(flatten(inp[rank]), greater_than);
     cmp_oup[rank] = _c;
     eq_oup[rank] = _e;
   });
 
   DISPATCH_ALL_FIELDS(field, "", [&]() {
-    auto xout0 = xt_adapt<ring2k_t>(cmp_oup[0]);
-    auto xout1 = xt_adapt<ring2k_t>(cmp_oup[1]);
-    auto xeq0 = xt_adapt<ring2k_t>(eq_oup[0]);
-    auto xeq1 = xt_adapt<ring2k_t>(eq_oup[1]);
+    auto xout0 = ArrayView<ring2k_t>(cmp_oup[0]);
+    auto xout1 = ArrayView<ring2k_t>(cmp_oup[1]);
+    auto xeq0 = ArrayView<ring2k_t>(eq_oup[0]);
+    auto xeq1 = ArrayView<ring2k_t>(eq_oup[1]);
     auto xinp0 = xt_adapt<ring2k_t>(inp[0]);
     auto xinp1 = xt_adapt<ring2k_t>(inp[1]);
 
-    for (size_t i = 0; i < n; ++i) {
+    for (int64_t i = 0; i < n; ++i) {
       bool expected = greater_than ? xinp0[i] > xinp1[i] : xinp0[i] < xinp1[i];
       bool got_cmp = xout0[i] ^ xout1[i];
       bool got_eq = xeq0[i] ^ xeq1[i];

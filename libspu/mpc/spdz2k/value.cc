@@ -20,16 +20,15 @@
 
 namespace spu::mpc::spdz2k {
 
-ArrayRef makeAShare(const ArrayRef& s1, const ArrayRef& s2, FieldType field,
-                    bool has_mac) {
+NdArrayRef makeAShare(const NdArrayRef& s1, const NdArrayRef& s2,
+                      FieldType field, bool has_mac) {
   SPU_ENFORCE(s2.eltype().as<Ring2k>()->field() == field);
   SPU_ENFORCE(s1.eltype().as<Ring2k>()->field() == field);
-  SPU_ENFORCE(s1.numel() == s2.numel(), "s1 numel ={}, s2 numel ={}",
-              s1.numel(), s2.numel());
+  SPU_ENFORCE(s1.shape() == s2.shape());
 
   const auto ty = makeType<AShrTy>(field, has_mac);
   SPU_ENFORCE(ty.size() == 2 * s1.elsize());
-  ArrayRef res(ty, s1.numel());
+  NdArrayRef res(ty, s1.shape());
 
   auto res_s1 = getValueShare(res);
   auto res_s2 = getMacShare(res);
@@ -39,27 +38,26 @@ ArrayRef makeAShare(const ArrayRef& s1, const ArrayRef& s2, FieldType field,
   return res;
 }
 
-ArrayRef makeBShare(const ArrayRef& s1, const ArrayRef& s2, FieldType field,
-                    size_t nbits) {
+NdArrayRef makeBShare(const NdArrayRef& s1, const NdArrayRef& s2,
+                      FieldType field, int64_t nbits) {
   SPU_ENFORCE(s2.eltype().as<Ring2k>()->field() == field);
   SPU_ENFORCE(s1.eltype().as<Ring2k>()->field() == field);
-  SPU_ENFORCE(s1.numel() == s2.numel(), "s1 numel ={}, s2 numel ={}",
-              s2.numel());
-  SPU_ENFORCE(s1.numel() % nbits == 0 && s1.numel() / nbits != 0,
-              "s1 numel = {}, nbits = {}", s1.numel(), nbits);
+  SPU_ENFORCE(s1.shape() == s2.shape());
+  SPU_ENFORCE(s1.shape().back() % nbits == 0 && s1.shape().back() / nbits != 0);
 
   const PtType btype = calcBShareBacktype(nbits);
   const auto ty = makeType<BShrTy>(btype, nbits, field);
-  const size_t k = ty.as<BShrTy>()->k();
+  const int64_t k = ty.as<BShrTy>()->k();
   SPU_ENFORCE(nbits <= k, "nbits = {}", nbits);
 
-  ArrayRef res(ty, s1.numel() / nbits);
+  Shape new_shape = s1.shape();
+  new_shape.back() /= nbits;
+
+  NdArrayRef res(ty, new_shape);
   size_t res_numel = res.numel();
 
   DISPATCH_ALL_FIELDS(field, "_", [&]() {
-    auto _res = ArrayView<std::array<ring2k_t, 2>>(res);
-    auto _s1 = ArrayView<ring2k_t>(s1);
-    auto _s2 = ArrayView<ring2k_t>(s2);
+    auto _res = res.data<std::array<ring2k_t, 2>>();
 
     pforeach(0, res_numel * k, [&](int64_t i) {
       _res[i][0] = 0;
@@ -68,41 +66,51 @@ ArrayRef makeBShare(const ArrayRef& s1, const ArrayRef& s2, FieldType field,
 
     pforeach(0, res_numel, [&](int64_t i) {
       pforeach(0, nbits, [&](int64_t j) {
-        _res[i * k + j][0] = _s1[i * nbits + j];
-        _res[i * k + j][1] = _s2[i * nbits + j];
+        _res[i * k + j][0] = s1.at<ring2k_t>(i * nbits + j);
+        _res[i * k + j][1] = s2.at<ring2k_t>(i * nbits + j);
       });
     });
   });
   return res;
 }
 
-ArrayRef getShare(const ArrayRef& in, int64_t share_idx) {
-  SPU_ENFORCE(in.stride() != 0);
+NdArrayRef getShare(const NdArrayRef& in, int64_t share_idx) {
   SPU_ENFORCE(share_idx == 0 || share_idx == 1);
 
   if (in.eltype().isa<AShrTy>()) {
+    Strides new_strides = in.strides();
+    std::transform(new_strides.cbegin(), new_strides.cend(),
+                   new_strides.begin(), [](int64_t s) { return 2 * s; });
     const auto field = in.eltype().as<AShrTy>()->field();
     const auto ty = makeType<RingTy>(field);
-    return ArrayRef{in.buf(), ty, in.numel(), in.stride() * 2,
-                    in.offset() + share_idx * static_cast<int64_t>(ty.size())};
+    return NdArrayRef{
+        in.buf(), ty, in.shape(), new_strides,
+        in.offset() + share_idx * static_cast<int64_t>(ty.size())};
   } else if (in.eltype().isa<BShrTy>()) {
     const auto field = in.eltype().as<BShrTy>()->field();
     const auto nbits = in.eltype().as<BShrTy>()->nbits();
     const auto k = in.eltype().as<BShrTy>()->k();
     const auto ty = makeType<RingTy>(field);
 
+    Shape new_shape = in.shape();
+    new_shape.back() *= nbits;
+
     if (nbits == k) {
-      return ArrayRef{
-          in.buf(), ty, in.numel() * static_cast<int64_t>(nbits),
-          in.stride() * 2,
+      Strides new_strides = in.strides();
+      std::transform(new_strides.cbegin(), new_strides.cend() - 1,
+                     new_strides.begin(), [k](int64_t s) { return 2 * s * k; });
+      new_strides.back() *= 2;
+      return NdArrayRef{
+          in.buf(), ty, new_shape, new_strides,
           in.offset() + share_idx * static_cast<int64_t>(ty.size())};
     } else {
-      ArrayRef ret(ty, in.numel() * static_cast<int64_t>(nbits));
+      NdArrayRef ret(ty, new_shape);
 
       DISPATCH_ALL_FIELDS(field, "_", [&]() {
-        auto _in = ArrayView<std::array<ring2k_t, 2>>(in);
-        auto _ret = ArrayView<ring2k_t>(ret);
         size_t numel = in.numel();
+        auto _ret = ret.data<ring2k_t>();
+        auto _in = in.data<std::array<ring2k_t, 2>>();
+
         pforeach(0, numel, [&](int64_t i) {
           pforeach(0, nbits, [&](int64_t j) {
             _ret[i * nbits + j] = _in[i * k + j][share_idx];
@@ -117,11 +125,11 @@ ArrayRef getShare(const ArrayRef& in, int64_t share_idx) {
   }
 }
 
-const ArrayRef getValueShare(const ArrayRef& in) { return getShare(in, 0); }
+const NdArrayRef getValueShare(const NdArrayRef& in) { return getShare(in, 0); }
 
-const ArrayRef getMacShare(const ArrayRef& in) { return getShare(in, 1); }
+const NdArrayRef getMacShare(const NdArrayRef& in) { return getShare(in, 1); }
 
-size_t maxNumBits(const ArrayRef& lhs, const ArrayRef& rhs) {
+size_t maxNumBits(const NdArrayRef& lhs, const NdArrayRef& rhs) {
   SPU_ENFORCE(lhs.eltype().isa<BShare>());
   SPU_ENFORCE(rhs.eltype().isa<BShare>() || rhs.eltype().isa<Public>());
 
@@ -133,12 +141,12 @@ size_t maxNumBits(const ArrayRef& lhs, const ArrayRef& rhs) {
   const auto rhs_field = rhs_ty->field();
   return DISPATCH_ALL_FIELDS(rhs_field, "_", [&]() {
     using PShrT = ring2k_t;
-    auto _rhs = ArrayView<PShrT>(rhs);
-    return std::max(lhs.eltype().as<BShare>()->nbits(), maxBitWidth(_rhs));
+    return std::max(lhs.eltype().as<BShare>()->nbits(),
+                    maxBitWidth<PShrT>(rhs));
   });
 }
 
-size_t minNumBits(const ArrayRef& lhs, const ArrayRef& rhs) {
+size_t minNumBits(const NdArrayRef& lhs, const NdArrayRef& rhs) {
   SPU_ENFORCE(lhs.eltype().isa<BShare>());
   SPU_ENFORCE(rhs.eltype().isa<BShare>() || rhs.eltype().isa<Public>());
 
@@ -150,40 +158,41 @@ size_t minNumBits(const ArrayRef& lhs, const ArrayRef& rhs) {
   const auto rhs_field = rhs_ty->field();
   return DISPATCH_ALL_FIELDS(rhs_field, "_", [&]() {
     using PShrT = ring2k_t;
-    auto _rhs = ArrayView<PShrT>(rhs);
-    return std::min(lhs.eltype().as<BShare>()->nbits(), maxBitWidth(_rhs));
+    return std::min(lhs.eltype().as<BShare>()->nbits(),
+                    maxBitWidth<PShrT>(rhs));
   });
 }
 
 // Convert a BShare in new_nbits
 // then output only the values and macs of valid bits
-std::pair<ArrayRef, ArrayRef> BShareSwitch2Nbits(const ArrayRef& in,
-                                                 size_t new_nbits) {
-  const auto old_nbits = in.eltype().as<BShrTy>()->nbits();
+std::pair<NdArrayRef, NdArrayRef> BShareSwitch2Nbits(const NdArrayRef& in,
+                                                     int64_t new_nbits) {
+  const int64_t old_nbits = in.eltype().as<BShrTy>()->nbits();
   if (old_nbits == new_nbits) {
     return {getValueShare(in), getMacShare(in)};
   }
 
-  // const size_t p_num = in.numel() / old_nbits;
-  const size_t p_num = in.numel();
+  const int64_t p_num = in.numel();
   const auto field = in.eltype().as<Ring2k>()->field();
-  auto out_val = ring_zeros(field, p_num * new_nbits);
-  auto out_mac = ring_zeros(field, p_num * new_nbits);
+  auto out_shape = in.shape();
+  out_shape.back() *= new_nbits;
+  auto out_val = ring_zeros(field, out_shape);
+  auto out_mac = ring_zeros(field, out_shape);
 
   auto in_val = getValueShare(in).clone();
   auto in_mac = getMacShare(in).clone();
   auto min_nbits = std::min(old_nbits, new_nbits);
 
-  for (size_t i = 0; i < p_num; ++i) {
-    auto _in_val = ArrayRef(in_val.buf(), makeType<RingTy>(field), min_nbits, 1,
-                            i * old_nbits * SizeOf(field));
-    auto _in_mac = ArrayRef(in_mac.buf(), makeType<RingTy>(field), min_nbits, 1,
-                            i * old_nbits * SizeOf(field));
+  for (int64_t i = 0; i < p_num; ++i) {
+    auto _in_val = NdArrayRef(in_val.buf(), makeType<RingTy>(field),
+                              {min_nbits}, {1}, i * old_nbits * SizeOf(field));
+    auto _in_mac = NdArrayRef(in_mac.buf(), makeType<RingTy>(field),
+                              {min_nbits}, {1}, i * old_nbits * SizeOf(field));
 
-    auto _out_val = ArrayRef(out_val.buf(), makeType<RingTy>(field), min_nbits,
-                             1, i * new_nbits * SizeOf(field));
-    auto _out_mac = ArrayRef(out_mac.buf(), makeType<RingTy>(field), min_nbits,
-                             1, i * new_nbits * SizeOf(field));
+    auto _out_val = NdArrayRef(out_val.buf(), makeType<RingTy>(field),
+                               {min_nbits}, {1}, i * new_nbits * SizeOf(field));
+    auto _out_mac = NdArrayRef(out_mac.buf(), makeType<RingTy>(field),
+                               {min_nbits}, {1}, i * new_nbits * SizeOf(field));
 
     ring_add_(_out_val, _in_val);
     ring_add_(_out_mac, _in_mac);

@@ -18,7 +18,7 @@
 #include "yacl/crypto/tools/prg.h"
 #include "yacl/link/link.h"
 
-#include "libspu/core/array_ref.h"
+#include "libspu/core/ndarray_ref.h"
 #include "libspu/core/object.h"
 
 namespace spu::mpc {
@@ -55,9 +55,9 @@ class PrgState : public State {
 
   std::unique_ptr<State> fork() override;
 
-  ArrayRef genPriv(FieldType field, size_t numel);
+  NdArrayRef genPriv(FieldType field, const Shape& shape);
 
-  ArrayRef genPubl(FieldType field, size_t numel);
+  NdArrayRef genPubl(FieldType field, const Shape& shape);
 
   // Generate a random pair (r0, r1), where
   //   r1 = next_party.r0
@@ -65,9 +65,10 @@ class PrgState : public State {
   // This correlation could be used to construct zero shares.
   //
   // Note: ignore_first, ignore_second is for perf improvement.
-  std::pair<ArrayRef, ArrayRef> genPrssPair(FieldType field, size_t size,
-                                            bool ignore_first = false,
-                                            bool ignore_second = false);
+  std::pair<NdArrayRef, NdArrayRef> genPrssPair(FieldType field,
+                                                const Shape& shape,
+                                                bool ignore_first = false,
+                                                bool ignore_second = false);
 
   template <typename T>
   void fillPubl(absl::Span<T> r) {

@@ -38,8 +38,7 @@ Value i_mul(SPUContext* ctx, const Value& x, const Value& y);
 Value i_mmul(SPUContext* ctx, const Value& x, const Value& y);
 
 Value i_conv2d(SPUContext* ctx, const Value& x, const Value& y,
-               absl::Span<const int64_t> window_strides,
-               absl::Span<const int64_t> result_shape);
+               const Strides& window_strides, const Shape& result_shape);
 
 Value i_equal(SPUContext* ctx, const Value& x, const Value& y);
 

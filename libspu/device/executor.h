@@ -59,6 +59,7 @@ struct ExecutionOptions {
   bool do_type_check = false;
   bool do_log_execution = false;
   bool do_parallel = false;
+  uint64_t concurrency = 0;
 };
 
 class OpExecutor {

@@ -21,7 +21,7 @@
 #include "absl/types/span.h"
 #include "seal/context.h"
 
-#include "libspu/core/array_ref.h"
+#include "libspu/mpc/cheetah/array_ref.h"
 
 namespace spu::mpc::cheetah {
 

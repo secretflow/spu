@@ -24,10 +24,13 @@
 #include "libspu/psi/memory_psi.h"
 #include "libspu/psi/utils/csv_checker.h"
 #include "libspu/psi/utils/hash_bucket_cache.h"
+#include "libspu/psi/utils/progress.h"
 
 #include "libspu/psi/psi.pb.h"
 
 namespace spu::psi {
+
+using ProgressCallbacks = std::function<void(const Progress::Data&)>;
 
 class BucketPsi {
  public:
@@ -38,12 +41,14 @@ class BucketPsi {
                      bool ic_mode = false);
   ~BucketPsi() = default;
 
-  PsiResultReport Run();
+  PsiResultReport Run(ProgressCallbacks progress_callbacks = nullptr,
+                      int64_t callbacks_interval_ms = 5 * 1000);
 
   // unbalanced get items_count when RunPSI
   // other psi use sanity check get items_count
   // TODO: sanity check affects performance maybe optional
-  std::vector<uint64_t> RunPsi(uint64_t& self_items_count);
+  std::vector<uint64_t> RunPsi(std::shared_ptr<Progress>& progress,
+                               uint64_t& self_items_count);
 
   std::unique_ptr<CsvChecker> CheckInput();
 
@@ -53,7 +58,8 @@ class BucketPsi {
  private:
   void Init();
 
-  std::vector<uint64_t> RunBucketPsi(uint64_t self_items_count);
+  std::vector<uint64_t> RunBucketPsi(std::shared_ptr<Progress>& progress,
+                                     uint64_t self_items_count);
 
   // the item order of `item_data_list` and `item_list` needs to be the same
   static void GetResultIndices(

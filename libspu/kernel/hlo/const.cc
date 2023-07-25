@@ -22,7 +22,7 @@ namespace spu::kernel::hlo {
 
 // TODO: pass DataType as a parameter?
 spu::Value Constant(SPUContext *ctx, const PtBufferView &view,
-                    absl::Span<const int64_t> out_shape) {
+                    const Shape &out_shape) {
   const auto dtype = getEncodeType(view.pt_type);
   if (view.shape == out_shape) {
     return hal::constant(ctx, view, dtype);

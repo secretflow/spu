@@ -84,8 +84,7 @@ Value i_sub(SPUContext* ctx, const Value& x, const Value& y) {
 }
 
 Value i_conv2d(SPUContext* ctx, const Value& x, const Value& y,
-               absl::Span<const int64_t> window_strides,
-               absl::Span<const int64_t> result_shape) {
+               const Strides& window_strides, const Shape& result_shape) {
   SPU_TRACE_HAL_LEAF(ctx, x, y);
   ENSURE_INT_AND_DTYPE_MATCH(x, y);
   return _conv2d(ctx, x, y, window_strides, result_shape).setDtype(x.dtype());

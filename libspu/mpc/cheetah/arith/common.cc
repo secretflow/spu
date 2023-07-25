@@ -17,7 +17,6 @@
 #include "yacl/crypto/utils/rand.h"
 
 #include "libspu/core/ndarray_ref.h"
-#include "libspu/core/shape_util.h"
 #include "libspu/mpc/cheetah/rlwe/utils.h"
 #include "libspu/mpc/utils/ring_ops.h"
 namespace spu::mpc::cheetah {
@@ -79,13 +78,14 @@ ArrayRef EnableCPRNG::CPRNG(FieldType field, size_t size) {
     seed_ = yacl::crypto::RandSeed(true);
     prng_counter_ = 0;
   }
-  return ring_rand(field, size, seed_, &prng_counter_);
+  return flatten(
+      ring_rand(field, {static_cast<int64_t>(size)}, seed_, &prng_counter_));
 }
 
-ArrayRef ring_conv2d(const ArrayRef &tensor, const ArrayRef &filter,
-                     int64_t num_tensors, Shape3D tensor_shape,
-                     int64_t num_filters, Shape3D filter_shape,
-                     Shape2D window_strides) {
+NdArrayRef ring_conv2d(const NdArrayRef &tensor, const NdArrayRef &filter,
+                       int64_t num_tensors, Shape3D tensor_shape,
+                       int64_t num_filters, Shape3D filter_shape,
+                       Shape2D window_strides) {
   auto field = tensor.eltype().as<Ring2k>()->field();
   Shape4D result_shape;
   result_shape[0] = num_tensors;
@@ -96,15 +96,12 @@ ArrayRef ring_conv2d(const ArrayRef &tensor, const ArrayRef &filter,
   }
   result_shape[3] = num_filters;
 
-  std::vector<int64_t> ts = {num_tensors, tensor_shape[0], tensor_shape[1],
-                             tensor_shape[2]};
-  std::vector<int64_t> fs = {filter_shape[0], filter_shape[1], filter_shape[2],
-                             num_filters};
+  Shape ts = {num_tensors, tensor_shape[0], tensor_shape[1], tensor_shape[2]};
+  Shape fs = {filter_shape[0], filter_shape[1], filter_shape[2], num_filters};
 
-  NdArrayRef _tensor = unflatten(tensor, ts);
-  NdArrayRef _filter = unflatten(filter, fs);
-  NdArrayRef _ret =
-      unflatten(ring_zeros(field, calcNumel(result_shape)), result_shape);
+  NdArrayRef _tensor = tensor.reshape(ts);
+  NdArrayRef _filter = filter.reshape(fs);
+  NdArrayRef _ret = ring_zeros(field, result_shape);
 
   DISPATCH_ALL_FIELDS(field, "ring_conv2d", [&]() {
     // NOTE(juhou): valid padding so offset are always 0.
@@ -135,6 +132,6 @@ ArrayRef ring_conv2d(const ArrayRef &tensor, const ArrayRef &filter,
     }
   });
 
-  return flatten(_ret);
+  return _ret;
 }
 }  // namespace spu::mpc::cheetah

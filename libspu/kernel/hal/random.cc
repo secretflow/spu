@@ -36,7 +36,7 @@ uint64_t genPublicRandSeed(SPUContext* sctx) {
 }  // namespace
 
 Value rng_uniform(SPUContext* ctx, const Value& lo, const Value& hi,
-                  absl::Span<const int64_t> to_shape) {
+                  const Shape& to_shape) {
   SPU_TRACE_HAL_LEAF(ctx, lo, hi, to_shape);
   SPU_ENFORCE(lo.isPublic() && hi.isPublic());
   SPU_ENFORCE(lo.numel() == 1 && hi.numel() == 1);
@@ -48,7 +48,7 @@ Value rng_uniform(SPUContext* ctx, const Value& lo, const Value& hi,
   std::mt19937 gen(genPublicRandSeed(ctx));
   std::uniform_real_distribution<> dist(f_lo, f_hi);
 
-  std::vector<float> buffer(calcNumel(to_shape));
+  std::vector<float> buffer(to_shape.numel());
   for (float& ele : buffer) {
     ele = dist(gen);
   }
@@ -57,7 +57,7 @@ Value rng_uniform(SPUContext* ctx, const Value& lo, const Value& hi,
 }
 
 Value random(SPUContext* ctx, Visibility vis, DataType dtype,
-             absl::Span<const int64_t> shape) {
+             const Shape& shape) {
   Value ret;
   if (vis == VIS_PUBLIC) {
     ret = _rand_p(ctx, shape).setDtype(dtype);

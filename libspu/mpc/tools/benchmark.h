@@ -21,7 +21,6 @@
 
 #include "libspu/core/bit_utils.h"
 #include "libspu/core/context.h"
-#include "libspu/core/shape_util.h"  // calcNumel
 #include "libspu/mpc/ab_api.h"
 #include "libspu/mpc/api.h"
 #include "libspu/mpc/common/communicator.h"
@@ -158,7 +157,7 @@ class OpData {
     for (auto& b : bs) {
       b = p2b(obj_, rand_p(obj_, Shape{state.range(1)}));
     }
-    auto matrix_size = calcNumel({state.range(1), state.range(1)});
+    auto matrix_size = Shape{state.range(1), state.range(1)}.numel();
     for (auto& mp : mps) {
       mp = rand_p(obj_, Shape{matrix_size});
     }
@@ -218,10 +217,10 @@ MPC_BENCH_DEFINE(BenchARShiftP, OpData1P, arshift_p, ps[0], state.range(2))
 MPC_BENCH_DEFINE(BenchTruncS, OpData1S, trunc_s, ss[0], state.range(2))
 MPC_BENCH_DEFINE(BenchS2P, OpData1S, s2p, ss[0])
 MPC_BENCH_DEFINE(BenchP2S, OpData1P, p2s, ps[0])
-MPC_BENCH_DEFINE(BenchMMulSP, OpData1MS1MP, mmul_sp, mss[0], mps[0],
-                 state.range(1), state.range(1), state.range(1))
-MPC_BENCH_DEFINE(BenchMMulSS, OpData2MS, mmul_ss, mss[0], mss[1],
-                 state.range(1), state.range(1), state.range(1))
+// MPC_BENCH_DEFINE(BenchMMulSP, OpData1MS1MP, mmul_sp, mss[0], mps[0],
+//  state.range(1), state.range(1), state.range(1))
+// MPC_BENCH_DEFINE(BenchMMulSS, OpData2MS, mmul_ss, mss[0], mss[1],
+//  state.range(1), state.range(1), state.range(1))
 
 MPC_BENCH_DEFINE(BenchRandA, OpDataBasic, rand_a, Shape{state.range(1)})
 MPC_BENCH_DEFINE(BenchRandB, OpDataBasic, rand_b, Shape{state.range(1)})
@@ -236,10 +235,10 @@ MPC_BENCH_DEFINE(BenchMulAA, OpData2A, mul_aa, as[0], as[1])
 MPC_BENCH_DEFINE(BenchMulA1B, OpData1A1B1, mul_a1b, as[0], b1s[0])
 MPC_BENCH_DEFINE(BenchLShiftA, OpData1A, lshift_a, as[0], state.range(2))
 MPC_BENCH_DEFINE(BenchTruncA, OpData1A, trunc_a, as[0], state.range(2))
-MPC_BENCH_DEFINE(BenchMMulAP, OpData1MA1MP, mmul_ap, mas[0], mps[0],
-                 state.range(1), state.range(1), state.range(1))
-MPC_BENCH_DEFINE(BenchMMulAA, OpData2MA, mmul_aa, mas[0], mas[1],
-                 state.range(1), state.range(1), state.range(1))
+// MPC_BENCH_DEFINE(BenchMMulAP, OpData1MA1MP, mmul_ap, mas[0], mps[0],
+//  state.range(1), state.range(1), state.range(1))
+// MPC_BENCH_DEFINE(BenchMMulAA, OpData2MA, mmul_aa, mas[0], mas[1],
+//  state.range(1), state.range(1), state.range(1))
 MPC_BENCH_DEFINE(BenchB2P, OpData1B, b2p, bs[0])
 MPC_BENCH_DEFINE(BenchP2B, OpData1P, p2b, ps[0])
 MPC_BENCH_DEFINE(BenchA2B, OpData1A, a2b, as[0])

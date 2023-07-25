@@ -12,11 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import json
+
 import jax.numpy as jnp
+
+import examples.python.utils.dataset_utils as dsutil
 
 # from sklearn.metrics import roc_auc_score, explained_variance_score
 import sml.utils.emulation as emulation
-
 from sml.linear_model.simple_sgd import SGDClassifier
 
 
@@ -38,13 +41,28 @@ def emul_SGDClassifier(mode: emulation.Mode.MULTIPROCESS):
 
         return model.fit(x, y).predict_proba(x)
 
+    def load_data():
+        with open("examples/python/conf/ds_mock_regression_basic.json", "r") as f:
+            dataset_config = json.load(f)
+
+        x1, x2, y = dsutil.load_dataset_by_config(dataset_config)
+
+        return x1, x2, y
+
     try:
         # bandwidth and latency only work for docker mode
         emulator = emulation.Emulator(
             emulation.CLUSTER_ABY3_3PC, mode, bandwidth=300, latency=20
         )
         emulator.up()
-        (x1, x2), y = emulator.prepare_dataset(emulation.DATASET_MOCK_REGRESSION_BASIC)
+
+        # load mock data
+        x1, x2, y = load_data()
+
+        # mark these data to be protected in SPU
+        x1, x2, y = emulator.seal(x1, x2, y)
+
+        # run
         result = emulator.run(proc)(x1, x2, y)
         print(result)
     finally:

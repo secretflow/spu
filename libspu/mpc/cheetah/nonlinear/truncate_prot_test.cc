@@ -51,21 +51,21 @@ bool SignBit(T x) {
 
 TEST_P(TruncateProtTest, Basic) {
   size_t kWorldSize = 2;
-  size_t n = 1024;
+  int64_t n = 1024;
   size_t shift = 13;
   FieldType field = std::get<0>(GetParam());
   bool signed_arith = std::get<1>(GetParam());
   std::string msb = std::get<2>(GetParam());
   TruncateProtocol::MSB_st msb_t;
 
-  ArrayRef inp[2];
-  inp[0] = ring_rand(field, n);
+  NdArrayRef inp[2];
+  inp[0] = ring_rand(field, {n});
 
   if (msb == "Unknown") {
-    inp[1] = ring_rand(field, n);
+    inp[1] = ring_rand(field, {n});
     msb_t = TruncateProtocol::MSB_st::unknown;
   } else {
-    auto msg = ring_rand(field, n);
+    auto msg = ring_rand(field, {n});
     DISPATCH_ALL_FIELDS(field, "", [&]() {
       auto xmsg = xt_mutable_adapt<ring2k_t>(msg);
       size_t bw = SizeOf(field) * 8;
@@ -93,7 +93,7 @@ TEST_P(TruncateProtTest, Basic) {
     meta.msb = msb_t;
     meta.signed_arith = signed_arith;
     meta.shift_bits = shift;
-    oup[rank] = trunc_prot.Compute(inp[rank], meta);
+    oup[rank] = trunc_prot.Compute(flatten(inp[rank]), meta);
   });
 
   DISPATCH_ALL_FIELDS(field, "", [&]() {
@@ -101,12 +101,12 @@ TEST_P(TruncateProtTest, Basic) {
     using usigned_t = std::make_unsigned<ring2k_t>::type;
 
     if (signed_arith) {
-      auto xout0 = xt_adapt<signed_t>(oup[0]);
-      auto xout1 = xt_adapt<signed_t>(oup[1]);
+      auto xout0 = ArrayView<signed_t>(oup[0]);
+      auto xout1 = ArrayView<signed_t>(oup[1]);
       auto xinp0 = xt_adapt<signed_t>(inp[0]);
       auto xinp1 = xt_adapt<signed_t>(inp[1]);
 
-      for (size_t i = 0; i < n; ++i) {
+      for (int64_t i = 0; i < n; ++i) {
         signed_t in = xinp0[i] + xinp1[i];
         signed_t expected = in >> shift;
         if (msb_t != TruncateProtocol::MSB_st::unknown) {
@@ -117,12 +117,12 @@ TEST_P(TruncateProtTest, Basic) {
         EXPECT_NEAR(expected, got, 1);
       }
     } else {
-      auto xout0 = xt_adapt<usigned_t>(oup[0]);
-      auto xout1 = xt_adapt<usigned_t>(oup[1]);
+      auto xout0 = ArrayView<usigned_t>(oup[0]);
+      auto xout1 = ArrayView<usigned_t>(oup[1]);
       auto xinp0 = xt_adapt<usigned_t>(inp[0]);
       auto xinp1 = xt_adapt<usigned_t>(inp[1]);
 
-      for (size_t i = 0; i < n; ++i) {
+      for (int64_t i = 0; i < n; ++i) {
         usigned_t in = xinp0[i] + xinp1[i];
         usigned_t expected = (in) >> shift;
         if (msb_t != TruncateProtocol::MSB_st::unknown) {

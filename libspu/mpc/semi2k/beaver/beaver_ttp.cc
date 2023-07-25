@@ -49,7 +49,9 @@ AdjustRequest BuildAdjustRequest(std::string_view session,
   for (const auto& desc : descs) {
     auto* input = ret.add_prg_inputs();
     input->set_prg_count(desc.prg_counter);
-    input->set_size(desc.numel * SizeOf(desc.field));
+    for (const auto s : desc.shape) {
+      input->add_shape(s);
+    }
   }
   ret.set_field(static_cast<int64_t>(descs[0].field));
   return ret;
@@ -59,8 +61,8 @@ template <class T>
 struct dependent_false : std::false_type {};
 
 template <class AdjustRequest>
-std::vector<ArrayRef> RpcCall(brpc::Channel& channel, AdjustRequest req,
-                              FieldType ret_field) {
+std::vector<NdArrayRef> RpcCall(brpc::Channel& channel, AdjustRequest req,
+                                FieldType ret_field) {
   brpc::Controller cntl;
   beaver::ttp_server::BeaverService::Stub stub(&channel);
   beaver::ttp_server::AdjustResponse rsp;
@@ -96,12 +98,12 @@ std::vector<ArrayRef> RpcCall(brpc::Channel& channel, AdjustRequest req,
               "Adjust server failed code={}, error={}", rsp.code(),
               rsp.message());
 
-  std::vector<ArrayRef> ret;
+  std::vector<NdArrayRef> ret;
   for (const auto& output : rsp.adjust_outputs()) {
     SPU_ENFORCE(output.size() % SizeOf(ret_field) == 0);
-    size_t size = output.size() / SizeOf(ret_field);
+    int64_t size = output.size() / SizeOf(ret_field);
     // FIXME: change beaver interface: change return type to buffer.
-    ArrayRef array(makeType<RingTy>(ret_field), size);
+    NdArrayRef array(makeType<RingTy>(ret_field), {size});
     // FIXME: TTP adjuster server and client MUST have same endianness.
     std::memcpy(array.data(), output.data(), output.size());
     ret.push_back(std::move(array));
@@ -121,7 +123,7 @@ BeaverTtp::~BeaverTtp() {
     brpc::Controller cntl;
     beaver::ttp_server::BeaverService::Stub stub(&channel_);
     beaver::ttp_server::DeleteSessionResponse rsp;
-    stub.DeleteSession(&cntl, &req, &rsp, NULL);
+    stub.DeleteSession(&cntl, &req, &rsp, nullptr);
 
     if (cntl.Failed()) {
       // we can do nothing more.
@@ -191,31 +193,31 @@ BeaverTtp::BeaverTtp(std::shared_ptr<yacl::link::Context> lctx, Options ops)
   yacl::link::Barrier(lctx_, "BeaverTtp Init");
 }
 
-BeaverTtp::Triple BeaverTtp::Mul(FieldType field, size_t size) {
+BeaverTtp::Triple BeaverTtp::Mul(FieldType field, const Shape& shape) {
   std::vector<PrgArrayDesc> descs(3);
 
-  auto a = prgCreateArray(field, size, seed_, &counter_, descs.data());
-  auto b = prgCreateArray(field, size, seed_, &counter_, &descs[1]);
-  auto c = prgCreateArray(field, size, seed_, &counter_, &descs[2]);
+  auto a = prgCreateArray(field, shape, seed_, &counter_, descs.data());
+  auto b = prgCreateArray(field, shape, seed_, &counter_, &descs[1]);
+  auto c = prgCreateArray(field, shape, seed_, &counter_, &descs[2]);
 
   if (lctx_->Rank() == options_.adjust_rank) {
     auto req = BuildAdjustRequest<beaver::ttp_server::AdjustMulRequest>(
         options_.session_id, descs);
     auto adjusts = RpcCall(channel_, req, field);
     SPU_ENFORCE_EQ(adjusts.size(), 1U);
-    ring_add_(c, adjusts[0]);
+    ring_add_(c, adjusts[0].reshape(shape));
   }
 
   return {a, b, c};
 }
 
-BeaverTtp::Triple BeaverTtp::Dot(FieldType field, size_t m, size_t n,
-                                 size_t k) {
+BeaverTtp::Triple BeaverTtp::Dot(FieldType field, int64_t m, int64_t n,
+                                 int64_t k) {
   std::vector<PrgArrayDesc> descs(3);
 
-  auto a = prgCreateArray(field, m * k, seed_, &counter_, descs.data());
-  auto b = prgCreateArray(field, k * n, seed_, &counter_, &descs[1]);
-  auto c = prgCreateArray(field, m * n, seed_, &counter_, &descs[2]);
+  auto a = prgCreateArray(field, {m, k}, seed_, &counter_, descs.data());
+  auto b = prgCreateArray(field, {k, n}, seed_, &counter_, &descs[1]);
+  auto c = prgCreateArray(field, {m, n}, seed_, &counter_, &descs[2]);
 
   if (lctx_->Rank() == options_.adjust_rank) {
     auto req = BuildAdjustRequest<beaver::ttp_server::AdjusDotRequest>(
@@ -225,35 +227,36 @@ BeaverTtp::Triple BeaverTtp::Dot(FieldType field, size_t m, size_t n,
     req.set_k(k);
     auto adjusts = RpcCall(channel_, req, field);
     SPU_ENFORCE_EQ(adjusts.size(), 1U);
-    ring_add_(c, adjusts[0]);
+    ring_add_(c, adjusts[0].reshape(c.shape()));
   }
 
   return {a, b, c};
 }
 
-BeaverTtp::Triple BeaverTtp::And(FieldType field, size_t size) {
+BeaverTtp::Triple BeaverTtp::And(FieldType field, const Shape& shape) {
   std::vector<PrgArrayDesc> descs(3);
 
-  auto a = prgCreateArray(field, size, seed_, &counter_, descs.data());
-  auto b = prgCreateArray(field, size, seed_, &counter_, &descs[1]);
-  auto c = prgCreateArray(field, size, seed_, &counter_, &descs[2]);
+  auto a = prgCreateArray(field, shape, seed_, &counter_, descs.data());
+  auto b = prgCreateArray(field, shape, seed_, &counter_, &descs[1]);
+  auto c = prgCreateArray(field, shape, seed_, &counter_, &descs[2]);
 
   if (lctx_->Rank() == options_.adjust_rank) {
     auto req = BuildAdjustRequest<beaver::ttp_server::AdjustAndRequest>(
         options_.session_id, descs);
     auto adjusts = RpcCall(channel_, req, field);
     SPU_ENFORCE_EQ(adjusts.size(), 1U);
-    ring_xor_(c, adjusts[0]);
+    ring_xor_(c, adjusts[0].reshape(c.shape()));
   }
 
   return {a, b, c};
 }
 
-BeaverTtp::Pair BeaverTtp::Trunc(FieldType field, size_t size, size_t bits) {
+BeaverTtp::Pair BeaverTtp::Trunc(FieldType field, const Shape& shape,
+                                 size_t bits) {
   std::vector<PrgArrayDesc> descs(2);
 
-  auto a = prgCreateArray(field, size, seed_, &counter_, descs.data());
-  auto b = prgCreateArray(field, size, seed_, &counter_, &descs[1]);
+  auto a = prgCreateArray(field, shape, seed_, &counter_, descs.data());
+  auto b = prgCreateArray(field, shape, seed_, &counter_, &descs[1]);
 
   if (lctx_->Rank() == options_.adjust_rank) {
     auto req = BuildAdjustRequest<beaver::ttp_server::AdjustTruncRequest>(
@@ -261,19 +264,19 @@ BeaverTtp::Pair BeaverTtp::Trunc(FieldType field, size_t size, size_t bits) {
     req.set_bits(bits);
     auto adjusts = RpcCall(channel_, req, field);
     SPU_ENFORCE_EQ(adjusts.size(), 1U);
-    ring_add_(b, adjusts[0]);
+    ring_add_(b, adjusts[0].reshape(b.shape()));
   }
 
   return {a, b};
 }
 
-BeaverTtp::Triple BeaverTtp::TruncPr(FieldType field, size_t size,
+BeaverTtp::Triple BeaverTtp::TruncPr(FieldType field, const Shape& shape,
                                      size_t bits) {
   std::vector<PrgArrayDesc> descs(3);
 
-  auto r = prgCreateArray(field, size, seed_, &counter_, descs.data());
-  auto rc = prgCreateArray(field, size, seed_, &counter_, &descs[1]);
-  auto rb = prgCreateArray(field, size, seed_, &counter_, &descs[2]);
+  auto r = prgCreateArray(field, shape, seed_, &counter_, descs.data());
+  auto rc = prgCreateArray(field, shape, seed_, &counter_, &descs[1]);
+  auto rb = prgCreateArray(field, shape, seed_, &counter_, &descs[2]);
 
   if (lctx_->Rank() == options_.adjust_rank) {
     auto req = BuildAdjustRequest<beaver::ttp_server::AdjustTruncPrRequest>(
@@ -281,23 +284,23 @@ BeaverTtp::Triple BeaverTtp::TruncPr(FieldType field, size_t size,
     req.set_bits(bits);
     auto adjusts = RpcCall(channel_, req, field);
     SPU_ENFORCE_EQ(adjusts.size(), 2U);
-    ring_add_(rc, adjusts[0]);
-    ring_add_(rb, adjusts[1]);
+    ring_add_(rc, adjusts[0].reshape(rc.shape()));
+    ring_add_(rb, adjusts[1].reshape(rb.shape()));
   }
 
   return {r, rc, rb};
 }
 
-ArrayRef BeaverTtp::RandBit(FieldType field, size_t size) {
+NdArrayRef BeaverTtp::RandBit(FieldType field, const Shape& shape) {
   std::vector<PrgArrayDesc> descs(1);
-  auto a = prgCreateArray(field, size, seed_, &counter_, &descs[0]);
+  auto a = prgCreateArray(field, shape, seed_, &counter_, descs.data());
 
   if (lctx_->Rank() == options_.adjust_rank) {
     auto req = BuildAdjustRequest<beaver::ttp_server::AdjustRandBitRequest>(
         options_.session_id, descs);
     auto adjusts = RpcCall(channel_, req, field);
     SPU_ENFORCE_EQ(adjusts.size(), 1U);
-    ring_add_(a, adjusts[0]);
+    ring_add_(a, adjusts[0].reshape(a.shape()));
   }
 
   return a;

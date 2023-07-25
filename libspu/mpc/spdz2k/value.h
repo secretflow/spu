@@ -14,10 +14,8 @@
 
 #pragma once
 
-#include "libspu/core/array_ref.h"
+#include "libspu/core/ndarray_ref.h"
 #include "libspu/core/type_util.h"
-#include "libspu/mpc/spdz2k/beaver/beaver_tfp.h"
-#include "libspu/mpc/spdz2k/beaver/beaver_tinyot.h"
 
 namespace spu::mpc::spdz2k {
 
@@ -41,40 +39,32 @@ namespace spu::mpc::spdz2k {
 
 // Different with other protocls!
 // Only output values of valid bits for optimal memory usage
-const ArrayRef getValueShare(const ArrayRef& in);
+const NdArrayRef getValueShare(const NdArrayRef& in);
 
 // Only output macs of valid bits for optimal memory usage
-const ArrayRef getMacShare(const ArrayRef& in);
+const NdArrayRef getMacShare(const NdArrayRef& in);
 
-ArrayRef makeAShare(const ArrayRef& s1, const ArrayRef& s2, FieldType field,
-                    bool has_mac = true);
+NdArrayRef makeAShare(const NdArrayRef& s1, const NdArrayRef& s2,
+                      FieldType field, bool has_mac = true);
 
 // Different with other protocls!
 // input s1: value shares of valid bits
 // input s2: mac shares of valid bits
 // output: boolean shares of fixed length
-ArrayRef makeBShare(const ArrayRef& s1, const ArrayRef& s2, FieldType field,
-                    size_t nbits);
+NdArrayRef makeBShare(const NdArrayRef& s1, const NdArrayRef& s2,
+                      FieldType field, int64_t nbits);
 
-size_t maxNumBits(const ArrayRef& lhs, const ArrayRef& rhs);
-size_t minNumBits(const ArrayRef& lhs, const ArrayRef& rhs);
-
-size_t minNumBits(const ArrayRef& lhs, const ArrayRef& rhs);
+size_t maxNumBits(const NdArrayRef& lhs, const NdArrayRef& rhs);
+size_t minNumBits(const NdArrayRef& lhs, const NdArrayRef& rhs);
 
 // Convert a BShare in new_nbits
 // then output the corresponding value and mac
-std::pair<ArrayRef, ArrayRef> BShareSwitch2Nbits(const ArrayRef& in,
-                                                 size_t new_nbits);
+std::pair<NdArrayRef, NdArrayRef> BShareSwitch2Nbits(const NdArrayRef& in,
+                                                     int64_t new_nbits);
 
 PtType calcBShareBacktype(size_t nbits);
 
-template <typename T>
-size_t maxBitWidth(ArrayView<T> av) {
-  // TODO: use av.maxBitWidth to improve performance
-  return sizeof(T) * 8;
-}
-
-ArrayRef getShare(const ArrayRef& in, int64_t share_idx);
+NdArrayRef getShare(const NdArrayRef& in, int64_t share_idx);
 
 #define PFOR_GRAIN_SIZE 8192
 

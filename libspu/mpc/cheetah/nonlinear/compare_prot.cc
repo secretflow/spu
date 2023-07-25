@@ -134,8 +134,12 @@ ArrayRef CompareProtocol::DoCompute(const ArrayRef& inp, bool greater_than,
 
   using BShrTy = semi2k::BShrTy;
   auto boolean_t = makeType<BShrTy>(field, 1);
-  ArrayRef prev_cmp = ring_zeros(field, num_digits * num_cmp).as(boolean_t);
-  ArrayRef prev_eq = ring_zeros(field, num_digits * num_cmp).as(boolean_t);
+  ArrayRef prev_cmp =
+      flatten(ring_zeros(field, {static_cast<int64_t>(num_digits * num_cmp)}))
+          .as(boolean_t);
+  ArrayRef prev_eq =
+      flatten(ring_zeros(field, {static_cast<int64_t>(num_digits * num_cmp)}))
+          .as(boolean_t);
   DISPATCH_ALL_FIELDS(field, "", [&]() {
     ArrayView<ring2k_t> xprev_cmp(prev_cmp);
     ArrayView<ring2k_t> xprev_eq(prev_eq);
@@ -183,7 +187,7 @@ std::array<ArrayRef, 2> CompareProtocol::TraversalANDWithEq(ArrayRef cmp,
     auto [_eq, _cmp] =
         basic_ot_prot_->CorrelatedBitwiseAnd(rhs_eq, lhs_eq, lhs_cmp);
     eq = _eq;
-    cmp = ring_xor(_cmp, rhs_cmp);
+    cmp = flatten(ring_xor(toNdArray(_cmp), toNdArray(rhs_cmp)));
   }
 
   return {cmp, eq};
@@ -226,7 +230,8 @@ ArrayRef CompareProtocol::TraversalAND(ArrayRef cmp, ArrayRef eq,
 
     if (current_num_digits == 2) {
       cmp = basic_ot_prot_->BitwiseAnd(lhs_cmp, rhs_eq);
-      ring_xor_(cmp, rhs_cmp);
+      auto nd_cmp = toNdArray(cmp);
+      ring_xor_(nd_cmp, toNdArray(rhs_cmp));
       // We skip the ANDs for eq on the last loop
       continue;
     }
@@ -280,7 +285,8 @@ ArrayRef CompareProtocol::TraversalAND(ArrayRef cmp, ArrayRef eq,
       }
     }
 
-    ring_xor_(cmp, rhs_cmp);
+    auto nd_cmp = toNdArray(cmp);
+    ring_xor_(nd_cmp, toNdArray(rhs_cmp));
   }
 
   return cmp;

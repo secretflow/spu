@@ -210,59 +210,76 @@ class OpExecTask final {
   }
 };
 
+class BlockParallelRunner final {
+  std::mutex queue_mtx_;
+
+  std::vector<std::thread> threads_;
+  std::queue<OpExecTask> task_queue_;
+
+  SPUContext *sctx_ = nullptr;
+  // here we assume executor is thread-safe (stateless)
+  OpExecutor *executor_ = nullptr;
+  SymbolScope *sscope_ = nullptr;
+  ExecutionOptions opts_;
+
+ public:
+  BlockParallelRunner() = default;
+  explicit BlockParallelRunner(SPUContext *sctx, OpExecutor *executor,
+                               SymbolScope *sscope,
+                               const ExecutionOptions &opts)
+      : sctx_(sctx), executor_(executor), sscope_(sscope), opts_(opts) {}
+
+  std::vector<spu::Value> run(mlir::Block &block) {
+    SymbolTableEvent st_event;
+    for (auto &op : block.without_terminator()) {
+      task_queue_.emplace(sctx_->fork(), executor_, sscope_, &op, &st_event);
+    }
+
+    threads_.reserve(opts_.concurrency);
+    for (uint64_t i = 0; i < opts_.concurrency; i++) {
+      threads_.emplace_back(std::thread(&BlockParallelRunner::run_task, this));
+    }
+
+    for (uint64_t i = 0; i < opts_.concurrency; i++) {
+      if (threads_[i].joinable()) {
+        threads_[i].join();
+      }
+    }
+
+    if (auto *termOp = block.getTerminator()) {
+      // TODO: enforce ReturnLike
+      std::vector<spu::Value> results;
+      results.reserve(termOp->getNumOperands());
+      for (const auto operand : termOp->getOperands()) {
+        results.emplace_back(sscope_->lookupValue(operand));
+      }
+      return results;
+    }
+
+    // No terminator
+    SPU_THROW("Should not be here");
+  }
+
+  void run_task(void) {
+    std::unique_lock queue_lock(queue_mtx_);
+
+    while (!task_queue_.empty()) {
+      auto op = std::move(task_queue_.front());
+      task_queue_.pop();
+      queue_lock.unlock();
+      op.run(opts_);
+      queue_lock.lock();
+    }
+  }
+};
+
 std::vector<spu::Value> runBlockParallel(OpExecutor *executor, SPUContext *sctx,
                                          SymbolScope *symbols,
                                          mlir::Block &block,
                                          absl::Span<spu::Value const> params,
                                          const ExecutionOptions &opts) {
-  // The strategy is try to execute operations without dependency as much as
-  // possible. For each (maybe) parallel operation we allocate a new hal
-  // context.
-  SymbolTableEvent st_event;
-  std::vector<OpExecTask> tasks;
-  std::vector<std::future<void>> futures;
-  for (auto &op : block.without_terminator()) {
-    tasks.emplace_back(sctx->fork(), executor, symbols, &op, &st_event);
-  }
-
-  futures.reserve(tasks.size());
-  for (auto &task : tasks) {
-    futures.emplace_back(
-        std::async(std::launch::async, &OpExecTask::run, &task, opts));
-  }
-
-  // Long story short....
-  // std::future A throws
-  // A.get() will propagate the exception to main thread.
-  // main thread starts stack unwinding and tries to destroy of futures
-  // std::vector<std::future>{...A...} all downstream of A is waiting on A...
-  // thus hang during unwinding, so if a future throws, the only choice we have
-  // is abort
-  for (size_t idx = 0; idx < futures.size(); ++idx) {
-    try {
-      futures[idx].get();
-    } catch (yacl::Exception &e) {
-      SPDLOG_ERROR("OpExecTask {} run failed, reason = {}, stacktrace = {}",
-                   idx, e.what(), e.stack_trace());
-      spdlog::shutdown();  // Make sure log printed out....
-      abort();
-    } catch (...) {
-      abort();  // WTF...jump the boat...
-    }
-  }
-
-  if (auto *termOp = block.getTerminator()) {
-    // TODO: enforce ReturnLike
-    std::vector<spu::Value> results;
-    results.reserve(termOp->getNumOperands());
-    for (const auto operand : termOp->getOperands()) {
-      results.emplace_back(symbols->lookupValue(operand));
-    }
-    return results;
-  }
-
-  // No terminator
-  SPU_THROW("Should not be here");
+  BlockParallelRunner runner(sctx, executor, symbols, opts);
+  return runner.run(block);
 }
 
 }  // namespace spu::device

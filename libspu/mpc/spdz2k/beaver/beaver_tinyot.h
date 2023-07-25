@@ -52,69 +52,67 @@ class BeaverTinyOt final : public Beaver {
   static constexpr int kappa_ = 128;
 
  public:
-  using Triple = std::tuple<ArrayRef, ArrayRef, ArrayRef>;
-  using Pair = std::pair<ArrayRef, ArrayRef>;
-  using Pair_Pair = std::pair<Pair, Pair>;
-  using Triple_Pair = std::pair<Triple, Triple>;
-
   BeaverTinyOt(std::shared_ptr<yacl::link::Context> lctx);
 
   uint128_t InitSpdzKey(FieldType field, size_t s) override;
 
-  ArrayRef AuthArrayRef(const ArrayRef& value, FieldType field, size_t k,
-                        size_t s) override;
+  NdArrayRef AuthArrayRef(const NdArrayRef& value, FieldType field, size_t k,
+                          size_t s) override;
 
-  Pair AuthCoinTossing(FieldType field, size_t size, size_t k,
+  Pair AuthCoinTossing(FieldType field, const Shape& shape, size_t k,
                        size_t s) override;
 
-  Triple_Pair AuthMul(FieldType field, size_t size, size_t k,
+  Triple_Pair AuthMul(FieldType field, const Shape& shape, size_t k,
                       size_t s) override;
 
-  Triple_Pair AuthDot(FieldType field, size_t M, size_t N, size_t K, size_t k,
-                      size_t s) override;
+  Triple_Pair AuthDot(FieldType field, int64_t M, int64_t N, int64_t K,
+                      size_t k, size_t s) override;
 
-  Triple_Pair AuthAnd(FieldType field, size_t size, size_t s) override;
+  Triple_Pair AuthAnd(FieldType field, const Shape& shape, size_t s) override;
 
-  Pair_Pair AuthTrunc(FieldType field, size_t size, size_t bits, size_t k,
-                      size_t s) override;
+  Pair_Pair AuthTrunc(FieldType field, const Shape& shape, size_t bits,
+                      size_t k, size_t s) override;
 
-  Pair AuthRandBit(FieldType field, size_t size, size_t k, size_t s) override;
+  Pair AuthRandBit(FieldType field, const Shape& shape, size_t k,
+                   size_t s) override;
 
   // Check the opened value only
-  bool BatchMacCheck(const ArrayRef& open_value, const ArrayRef& mac, size_t k,
-                     size_t s);
+  bool BatchMacCheck(const NdArrayRef& open_value, const NdArrayRef& mac,
+                     size_t k, size_t s) override;
+
   // Open the low k_bits of value only
-  std::pair<ArrayRef, ArrayRef> BatchOpen(const ArrayRef& value,
-                                          const ArrayRef& mac, size_t k,
-                                          size_t s);
+  std::pair<NdArrayRef, NdArrayRef> BatchOpen(const NdArrayRef& value,
+                                              const NdArrayRef& mac, size_t k,
+                                              size_t s) override;
 
   // public coin, used in malicious model, all party generate new seed, then
   // get exactly the same random variable.
-  ArrayRef genPublCoin(FieldType field, size_t numel);
+  NdArrayRef genPublCoin(FieldType field, int64_t numel) override;
 
   // ROT encapsulation
   // s[i] = (a[i] == 0) ? q0[i] : q1[i]
-  void rotSend(FieldType field, ArrayRef* q0, ArrayRef* q1);
-  void rotRecv(FieldType field, const ArrayRef& a, ArrayRef* s);
+  void rotSend(FieldType field, NdArrayRef* q0, NdArrayRef* q1);
+  void rotRecv(FieldType field, const NdArrayRef& a, NdArrayRef* s);
 
   // Vector-OLE encapsulation
   // a[i] = b[i] + x[i] * alpha[i]
   // Sender: input x, receive b
   // Receiver: input alpha, receive a
-  ArrayRef voleSend(FieldType field, const ArrayRef& x);
-  ArrayRef voleRecv(FieldType field, const ArrayRef& alpha);
+  NdArrayRef voleSend(FieldType field, const NdArrayRef& x);
+  NdArrayRef voleRecv(FieldType field, const NdArrayRef& alpha);
 
   // Private Matrix Multiplication by VOLE
   // W = V + A dot B
   // Sender: input A, receive V
   // Receiver: input B, receive W
-  ArrayRef voleSendDot(FieldType field, const ArrayRef& x, size_t M, size_t N,
-                       size_t K);
-  ArrayRef voleRecvDot(FieldType field, const ArrayRef& alpha, size_t M,
-                       size_t N, size_t K);
+  NdArrayRef voleSendDot(FieldType field, const NdArrayRef& x, int64_t M,
+                         int64_t N, int64_t K);
+  NdArrayRef voleRecvDot(FieldType field, const NdArrayRef& alpha, int64_t M,
+                         int64_t N, int64_t K);
 
   // Generate semi-honest dot triple
-  Triple dot(FieldType field, size_t M, size_t N, size_t K, size_t k, size_t s);
+  Triple dot(FieldType field, int64_t M, int64_t N, int64_t K, size_t k,
+             size_t s);
 };
 
 }  // namespace spu::mpc::spdz2k

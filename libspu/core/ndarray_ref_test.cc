@@ -33,12 +33,26 @@ TEST(NdArrayRefTest, Empty) {
   NdArrayRef a;
   EXPECT_EQ(a.numel(), 1);
   EXPECT_TRUE(a.strides().empty());
-  EXPECT_TRUE(a.shape().empty());
+  EXPECT_TRUE(a.shape().isScalar());
+  EXPECT_EQ(a.shape().ndim(), 0);
   EXPECT_EQ(a.offset(), 0);
   EXPECT_EQ(a.elsize(), 0);
 }
 
-TEST(ArrayRefTest, Iterator) {
+void verify_array(const NdArrayRef &in, const std::vector<int32_t> &expected) {
+  auto numel = in.numel();
+
+  EXPECT_EQ(numel, (int64_t)expected.size());
+
+  int32_t counter = 0;
+  for (auto iter = in.cbegin(); iter != in.cend(); ++iter, ++counter) {
+    EXPECT_EQ(iter.getScalarValue<std::int32_t>(), expected[counter]);
+    // If somehow iter goes into infinite loop, this is a safe guard
+    ASSERT_LT(counter, numel);
+  }
+}
+
+TEST(NdArrayRefTest, Iterator) {
   NdArrayRef a(std::make_shared<yacl::Buffer>(9 * sizeof(int32_t)),
                makePtType(PT_I32), {3, 3}, {3, 1}, 0);
 
@@ -48,16 +62,10 @@ TEST(ArrayRefTest, Iterator) {
   std::iota(static_cast<int32_t *>(a.data()),
             static_cast<int32_t *>(a.data()) + 9, 0);
 
-  int32_t counter = 0;
-  for (auto iter = a.begin(); iter != a.end(); ++iter) {
-    auto *ptr = reinterpret_cast<std::int32_t *>(iter.getRawPtr());
-    EXPECT_EQ(*ptr, counter++);
-    // If somehow iter goes into infinite loop, this is a safe guard
-    ASSERT_LT(counter, 10);
-  }
+  verify_array(a, std::vector<int32_t>{0, 1, 2, 3, 4, 5, 6, 7, 8});
 }
 
-TEST(ArrayRefTest, StridedIterator) {
+TEST(NdArrayRefTest, StridedIterator) {
   // Make 3x3 element, strides = 2x2 array
   NdArrayRef a(std::make_shared<yacl::Buffer>(36 * sizeof(int32_t)),
                makePtType(PT_I32), {3, 3}, {2L * 6, 2}, 0);
@@ -68,17 +76,10 @@ TEST(ArrayRefTest, StridedIterator) {
   std::iota(static_cast<int32_t *>(a.data()),
             static_cast<int32_t *>(a.data()) + 36, 0);
 
-  std::vector<int32_t> expected = {0, 2, 4, 12, 14, 16, 24, 26, 28};
-  int64_t counter = 0;
-  for (auto iter = a.begin(); iter != a.end(); ++iter) {
-    auto *ptr = reinterpret_cast<std::int32_t *>(iter.getRawPtr());
-    EXPECT_EQ(*ptr, expected[counter++]);
-    // If somehow iter goes into infinite loop, this is a safe guard
-    ASSERT_LT(counter, 10);
-  }
+  verify_array(a, std::vector<int32_t>{0, 2, 4, 12, 14, 16, 24, 26, 28});
 }
 
-TEST(ArrayRefTest, NdStrides) {
+TEST(NdArrayRefTest, NdStrides) {
   // Make 3x3 element, strides = 2x2 array
   NdArrayRef a(std::make_shared<yacl::Buffer>(36 * sizeof(int32_t)),
                makePtType(PT_I32), {3, 3}, {2L * 6, 2}, 0);
@@ -107,20 +108,7 @@ TEST(ArrayRefTest, NdStrides) {
   EXPECT_EQ(b.at<int32_t>({2, 2}), 28);
 }
 
-TEST(ArrayRefTest, unflatten) {
-  ArrayRef a(std::make_shared<yacl::Buffer>(sizeof(int32_t)),
-             makePtType(PT_I32), 5, 0, 0);
-  *static_cast<int32_t *>(a.data()) = 1;
-
-  auto b = unflatten(a, {1, 1, 5});
-
-  std::vector<int64_t> expected_shape = {1, 1, 5};
-  std::vector<int64_t> expected_strides = {0, 0, 0};
-  EXPECT_EQ(b.shape(), expected_shape);
-  EXPECT_EQ(b.strides(), expected_strides);
-}
-
-TEST(ArrayRefTest, UpdateSlice) {
+TEST(NdArrayRefTest, UpdateSlice) {
   // Make 3x3 element, strides = 2x2 array
   NdArrayRef a(std::make_shared<yacl::Buffer>(9 * sizeof(int32_t)),
                makePtType(PT_I32), {3, 3}, {3, 1}, 0);
@@ -147,6 +135,36 @@ TEST(ArrayRefTest, UpdateSlice) {
   EXPECT_EQ(a.at<int32_t>({1, 1}), 2);
 
   EXPECT_THROW(a.update_slice(b, {0, 2}), ::yacl::EnforceNotMet);
+}
+
+TEST(NdArrayRefTest, Indexing) {
+  auto buf = std::make_shared<yacl::Buffer>(24 * sizeof(int32_t));
+  // Fill array with 0 1 2 3 4 5
+  std::iota(static_cast<int32_t *>(buf->data()),
+            static_cast<int32_t *>(buf->data()) + 24, 0);
+  {
+    // 3x2 compact
+    NdArrayRef arr(buf, makePtType(PT_I32), {3, 2}, {2, 1}, 0);
+    EXPECT_TRUE(arr.canUseFastIndexing());
+
+    verify_array(arr, std::vector<int32_t>{0, 1, 2, 3, 4, 5});
+  }
+  {
+    // 3 x 2 non-compact, but can do fast indexing
+    // c x nc
+    NdArrayRef arr(buf, makePtType(PT_I32), {3, 2}, {4, 2}, 0);
+    EXPECT_TRUE(arr.canUseFastIndexing());
+
+    verify_array(arr, std::vector<int32_t>{0, 2, 4, 6, 8, 10});
+  }
+
+  {
+    // 3 x 2 non-compact, cannot do fast indexing
+    NdArrayRef arr(buf, makePtType(PT_I32), {3, 2}, {8, 2}, 0);
+    EXPECT_FALSE(arr.canUseFastIndexing());
+
+    verify_array(arr, std::vector<int32_t>{0, 2, 8, 10, 16, 18});
+  }
 }
 
 }  // namespace spu

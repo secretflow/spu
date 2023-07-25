@@ -50,47 +50,42 @@ class BeaverTfpUnsafe final : public Beaver {
   static constexpr int kappa_ = 128;
 
  public:
-  using Triple = std::tuple<ArrayRef, ArrayRef, ArrayRef>;
-  using Pair = std::pair<ArrayRef, ArrayRef>;
-  using Pair_Pair = std::pair<Pair, Pair>;
-  using Triple_Pair = std::pair<Triple, Triple>;
-
- public:
   explicit BeaverTfpUnsafe(std::shared_ptr<yacl::link::Context> lctx);
 
   uint128_t InitSpdzKey(FieldType field, size_t s) override;
 
-  ArrayRef AuthArrayRef(const ArrayRef& value, FieldType field, size_t k,
-                        size_t s) override;
+  NdArrayRef AuthArrayRef(const NdArrayRef& value, FieldType field, size_t k,
+                          size_t s) override;
 
-  Pair AuthCoinTossing(FieldType field, size_t size, size_t k,
+  Pair AuthCoinTossing(FieldType field, const Shape& shape, size_t k,
                        size_t s) override;
 
-  Triple_Pair AuthMul(FieldType field, size_t size, size_t k,
+  Triple_Pair AuthMul(FieldType field, const Shape& shape, size_t k,
                       size_t s) override;
 
-  Triple_Pair AuthDot(FieldType field, size_t M, size_t N, size_t K, size_t k,
-                      size_t s) override;
+  Triple_Pair AuthDot(FieldType field, int64_t M, int64_t N, int64_t K,
+                      size_t k, size_t s) override;
 
-  Triple_Pair AuthAnd(FieldType field, size_t size, size_t s) override;
+  Triple_Pair AuthAnd(FieldType field, const Shape& shape, size_t s) override;
 
-  Pair_Pair AuthTrunc(FieldType field, size_t size, size_t bits, size_t k,
-                      size_t s) override;
+  Pair_Pair AuthTrunc(FieldType field, const Shape& shape, size_t bits,
+                      size_t k, size_t s) override;
 
-  Pair AuthRandBit(FieldType field, size_t size, size_t k, size_t s) override;
+  Pair AuthRandBit(FieldType field, const Shape& shape, size_t k,
+                   size_t s) override;
 
   // Check the opened value only
-  bool BatchMacCheck(const ArrayRef& open_value, const ArrayRef& mac, size_t k,
-                     size_t s);
+  bool BatchMacCheck(const NdArrayRef& open_value, const NdArrayRef& mac,
+                     size_t k, size_t s) override;
 
   // Open the low k_bits of value only
-  std::pair<ArrayRef, ArrayRef> BatchOpen(const ArrayRef& value,
-                                          const ArrayRef& mac, size_t k,
-                                          size_t s);
+  std::pair<NdArrayRef, NdArrayRef> BatchOpen(const NdArrayRef& value,
+                                              const NdArrayRef& mac, size_t k,
+                                              size_t s) override;
 
   // public coin, used in malicious model, all party generate new seed, then
   // get exactly the same random variable.
-  ArrayRef genPublCoin(FieldType field, size_t numel);
+  NdArrayRef genPublCoin(FieldType field, int64_t numel) override;
 };
 
 }  // namespace spu::mpc::spdz2k

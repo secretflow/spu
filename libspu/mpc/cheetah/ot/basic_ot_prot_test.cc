@@ -32,21 +32,21 @@ class BasicOTProtTest : public ::testing::TestWithParam<FieldType> {
 INSTANTIATE_TEST_SUITE_P(
     Cheetah, BasicOTProtTest,
     testing::Values(FieldType::FM32, FieldType::FM64, FieldType::FM128),
-    [](const testing::TestParamInfo<BasicOTProtTest::ParamType> &p) {
+    [](const testing::TestParamInfo<BasicOTProtTest::ParamType>& p) {
       return fmt::format("{}", p.param);
     });
 
 TEST_P(BasicOTProtTest, SingleB2A) {
   size_t kWorldSize = 2;
-  size_t n = 7;
+  int64_t n = 7;
   FieldType field = GetParam();
 
   size_t nbits = 8 * SizeOf(field) - 1;
   size_t packed_nbits = 8 * SizeOf(field) - nbits;
   auto boolean_t = makeType<semi2k::BShrTy>(field, packed_nbits);
 
-  ArrayRef bshr0 = ring_rand(field, n).as(boolean_t);
-  ArrayRef bshr1 = ring_rand(field, n).as(boolean_t);
+  auto bshr0 = ring_rand(field, {n}).as(boolean_t);
+  auto bshr1 = ring_rand(field, {n}).as(boolean_t);
   DISPATCH_ALL_FIELDS(field, "", [&]() {
     auto mask = static_cast<ring2k_t>(-1);
     if (nbits > 0) {
@@ -60,14 +60,14 @@ TEST_P(BasicOTProtTest, SingleB2A) {
     }
   });
 
-  ArrayRef ashr0, ashr1;
+  NdArrayRef ashr0, ashr1;
   utils::simulate(kWorldSize, [&](std::shared_ptr<yacl::link::Context> ctx) {
     auto conn = std::make_shared<Communicator>(ctx);
     BasicOTProtocols ot_prot(conn);
     if (ctx->Rank() == 0) {
-      ashr0 = ot_prot.B2A(bshr0);
+      ashr0 = toNdArray(ot_prot.B2A(flatten(bshr0)));
     } else {
-      ashr1 = ot_prot.B2A(bshr1);
+      ashr1 = toNdArray(ot_prot.B2A(flatten(bshr1)));
     }
   });
 
@@ -80,7 +80,7 @@ TEST_P(BasicOTProtTest, SingleB2A) {
     if (nbits > 0) {
       mask = (static_cast<ring2k_t>(1) << packed_nbits) - 1;
     }
-    for (size_t i = 0; i < n; ++i) {
+    for (int64_t i = 0; i < n; ++i) {
       ring2k_t e = b0[i] ^ b1[i];
       ring2k_t c = (a0[i] + a1[i]) & mask;
       EXPECT_EQ(e, c);
@@ -90,15 +90,15 @@ TEST_P(BasicOTProtTest, SingleB2A) {
 
 TEST_P(BasicOTProtTest, PackedB2A) {
   size_t kWorldSize = 2;
-  size_t n = 7;
+  int64_t n = 7;
   FieldType field = GetParam();
 
   for (size_t nbits : {1, 2}) {
     size_t packed_nbits = 8 * SizeOf(field) - nbits;
     auto boolean_t = makeType<semi2k::BShrTy>(field, packed_nbits);
 
-    ArrayRef bshr0 = ring_rand(field, n).as(boolean_t);
-    ArrayRef bshr1 = ring_rand(field, n).as(boolean_t);
+    auto bshr0 = ring_rand(field, {n}).as(boolean_t);
+    auto bshr1 = ring_rand(field, {n}).as(boolean_t);
     DISPATCH_ALL_FIELDS(field, "", [&]() {
       auto mask = static_cast<ring2k_t>(-1);
       if (nbits > 0) {
@@ -112,14 +112,14 @@ TEST_P(BasicOTProtTest, PackedB2A) {
       }
     });
 
-    ArrayRef ashr0, ashr1;
+    NdArrayRef ashr0, ashr1;
     utils::simulate(kWorldSize, [&](std::shared_ptr<yacl::link::Context> ctx) {
       auto conn = std::make_shared<Communicator>(ctx);
       BasicOTProtocols ot_prot(conn);
       if (ctx->Rank() == 0) {
-        ashr0 = ot_prot.B2A(bshr0);
+        ashr0 = toNdArray(ot_prot.B2A(flatten(bshr0)));
       } else {
-        ashr1 = ot_prot.B2A(bshr1);
+        ashr1 = toNdArray(ot_prot.B2A(flatten(bshr1)));
       }
     });
 
@@ -132,7 +132,7 @@ TEST_P(BasicOTProtTest, PackedB2A) {
       if (nbits > 0) {
         mask = (static_cast<ring2k_t>(1) << packed_nbits) - 1;
       }
-      for (size_t i = 0; i < n; ++i) {
+      for (int64_t i = 0; i < n; ++i) {
         ring2k_t e = b0[i] ^ b1[i];
         ring2k_t c = (a0[i] + a1[i]) & mask;
         EXPECT_EQ(e, c);
@@ -143,15 +143,15 @@ TEST_P(BasicOTProtTest, PackedB2A) {
 
 TEST_P(BasicOTProtTest, PackedB2AFull) {
   size_t kWorldSize = 2;
-  size_t n = 7;
+  int64_t n = 7;
   FieldType field = GetParam();
 
   for (size_t nbits : {0}) {
     size_t packed_nbits = 8 * SizeOf(field) - nbits;
     auto boolean_t = makeType<semi2k::BShrTy>(field, packed_nbits);
 
-    ArrayRef bshr0 = ring_rand(field, n).as(boolean_t);
-    ArrayRef bshr1 = ring_rand(field, n).as(boolean_t);
+    auto bshr0 = ring_rand(field, {n}).as(boolean_t);
+    auto bshr1 = ring_rand(field, {n}).as(boolean_t);
     DISPATCH_ALL_FIELDS(field, "", [&]() {
       auto mask = static_cast<ring2k_t>(-1);
       if (nbits > 0) {
@@ -165,14 +165,14 @@ TEST_P(BasicOTProtTest, PackedB2AFull) {
       }
     });
 
-    ArrayRef ashr0, ashr1;
+    NdArrayRef ashr0, ashr1;
     utils::simulate(kWorldSize, [&](std::shared_ptr<yacl::link::Context> ctx) {
       auto conn = std::make_shared<Communicator>(ctx);
       BasicOTProtocols ot_prot(conn);
       if (ctx->Rank() == 0) {
-        ashr0 = ot_prot.B2A(bshr0);
+        ashr0 = toNdArray(ot_prot.B2A(flatten(bshr0)));
       } else {
-        ashr1 = ot_prot.B2A(bshr1);
+        ashr1 = toNdArray(ot_prot.B2A(flatten(bshr1)));
       }
     });
 
@@ -185,7 +185,7 @@ TEST_P(BasicOTProtTest, PackedB2AFull) {
       if (nbits > 0) {
         mask = (static_cast<ring2k_t>(1) << packed_nbits) - 1;
       }
-      for (size_t i = 0; i < n; ++i) {
+      for (int64_t i = 0; i < n; ++i) {
         ring2k_t e = b0[i] ^ b1[i];
         ring2k_t c = (a0[i] + a1[i]) & mask;
         EXPECT_EQ(e, c);
@@ -196,18 +196,21 @@ TEST_P(BasicOTProtTest, PackedB2AFull) {
 
 TEST_P(BasicOTProtTest, AndTripleSparse) {
   size_t kWorldSize = 2;
-  size_t n = 55;
+  int64_t n = 55;
   FieldType field = GetParam();
   size_t max_bit = 8 * SizeOf(field);
 
   for (size_t sparse : {1UL, 7UL, max_bit - 1}) {
     const size_t target_nbits = max_bit - sparse;
-    std::array<ArrayRef, 3> triple[2];
+    std::vector<NdArrayRef> triple[2];
 
     utils::simulate(kWorldSize, [&](std::shared_ptr<yacl::link::Context> ctx) {
       auto conn = std::make_shared<Communicator>(ctx);
       BasicOTProtocols ot_prot(conn);
-      triple[ctx->Rank()] = ot_prot.AndTriple(field, n, target_nbits);
+
+      for (const auto& t : ot_prot.AndTriple(field, n, target_nbits)) {
+        triple[ctx->Rank()].emplace_back(toNdArray(t));
+      }
     });
 
     DISPATCH_ALL_FIELDS(field, "", [&]() {
@@ -219,7 +222,7 @@ TEST_P(BasicOTProtTest, AndTripleSparse) {
       auto b1 = xt_adapt<ring2k_t>(triple[1][1]);
       auto c1 = xt_adapt<ring2k_t>(triple[1][2]);
 
-      for (size_t i = 0; i < n; ++i) {
+      for (int64_t i = 0; i < n; ++i) {
         EXPECT_TRUE(a0[i] < max && a1[i] < max);
         EXPECT_TRUE(b0[i] < max && b1[i] < max);
         EXPECT_TRUE(c0[i] < max && c1[i] < max);
@@ -234,15 +237,17 @@ TEST_P(BasicOTProtTest, AndTripleSparse) {
 
 TEST_P(BasicOTProtTest, AndTripleFull) {
   size_t kWorldSize = 2;
-  size_t n = 55;
+  int64_t n = 55;
   FieldType field = GetParam();
 
-  std::array<ArrayRef, 3> packed_triple[2];
+  std::vector<NdArrayRef> packed_triple[2];
 
   utils::simulate(kWorldSize, [&](std::shared_ptr<yacl::link::Context> ctx) {
     auto conn = std::make_shared<Communicator>(ctx);
     BasicOTProtocols ot_prot(conn);
-    packed_triple[ctx->Rank()] = ot_prot.AndTriple(field, n, SizeOf(field) * 8);
+    for (const auto& t : ot_prot.AndTriple(field, n, SizeOf(field) * 8)) {
+      packed_triple[ctx->Rank()].emplace_back(toNdArray(t));
+    }
   });
 
   DISPATCH_ALL_FIELDS(field, "", [&]() {
@@ -254,7 +259,7 @@ TEST_P(BasicOTProtTest, AndTripleFull) {
     auto c1 = xt_adapt<ring2k_t>(packed_triple[1][2]);
 
     size_t nn = a0.size();
-    EXPECT_TRUE(nn * 8 * SizeOf(field) >= n);
+    EXPECT_TRUE(nn * 8 * SizeOf(field) >= (size_t)n);
 
     for (size_t i = 0; i < nn; ++i) {
       ring2k_t e = (a0[i] ^ a1[i]) & (b0[i] ^ b1[i]);
@@ -267,15 +272,15 @@ TEST_P(BasicOTProtTest, AndTripleFull) {
 
 TEST_P(BasicOTProtTest, Multiplexer) {
   size_t kWorldSize = 2;
-  size_t n = 7;
+  int64_t n = 7;
   FieldType field = GetParam();
 
   auto boolean_t = makeType<semi2k::BShrTy>(field, 1);
 
-  ArrayRef ashr0 = ring_rand(field, n);
-  ArrayRef ashr1 = ring_rand(field, n);
-  ArrayRef bshr0 = ring_rand(field, n).as(boolean_t);
-  ArrayRef bshr1 = ring_rand(field, n).as(boolean_t);
+  auto ashr0 = ring_rand(field, {n});
+  auto ashr1 = ring_rand(field, {n});
+  auto bshr0 = ring_rand(field, {n}).as(boolean_t);
+  auto bshr1 = ring_rand(field, {n}).as(boolean_t);
 
   DISPATCH_ALL_FIELDS(field, "", [&]() {
     auto mask = static_cast<ring2k_t>(1);
@@ -287,14 +292,16 @@ TEST_P(BasicOTProtTest, Multiplexer) {
                    [&](auto x) { return x & mask; });
   });
 
-  ArrayRef computed[2];
+  NdArrayRef computed[2];
   utils::simulate(kWorldSize, [&](std::shared_ptr<yacl::link::Context> ctx) {
     auto conn = std::make_shared<Communicator>(ctx);
     BasicOTProtocols ot_prot(conn);
     if (ctx->Rank() == 0) {
-      computed[0] = ot_prot.Multiplexer(ashr0, bshr0);
+      computed[0] =
+          toNdArray(ot_prot.Multiplexer(flatten(ashr0), flatten(bshr0)));
     } else {
-      computed[1] = ot_prot.Multiplexer(ashr1, bshr1);
+      computed[1] =
+          toNdArray(ot_prot.Multiplexer(flatten(ashr1), flatten(bshr1)));
     }
   });
 
@@ -306,7 +313,7 @@ TEST_P(BasicOTProtTest, Multiplexer) {
     auto c0 = xt_adapt<ring2k_t>(computed[0]);
     auto c1 = xt_adapt<ring2k_t>(computed[1]);
 
-    for (size_t i = 0; i < n; ++i) {
+    for (int64_t i = 0; i < n; ++i) {
       ring2k_t msg = (a0[i] + a1[i]);
       ring2k_t sel = (b0[i] ^ b1[i]);
       ring2k_t exp = msg * sel;

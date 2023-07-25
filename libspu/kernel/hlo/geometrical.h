@@ -18,28 +18,24 @@
 namespace spu::kernel::hlo {
 
 spu::Value Transpose(SPUContext *ctx, const spu::Value &in,
-                     absl::Span<const int64_t> permutation);
+                     const Axes &permutation);
 
 spu::Value Broadcast(SPUContext *ctx, const spu::Value &in,
-                     absl::Span<const int64_t> to_shape,
-                     absl::Span<const int64_t> in_dims);
+                     const Shape &to_shape, const Axes &in_dims);
 
 spu::Value Reshape(SPUContext *ctx, const spu::Value &in,
-                   absl::Span<const int64_t> to_shape);
+                   const Shape &to_shape);
 
 spu::Value Concatenate(SPUContext *ctx, absl::Span<const spu::Value> operands,
                        int64_t axis);
 
-spu::Value Slice(SPUContext *ctx, const spu::Value &in,
-                 absl::Span<const int64_t> start, absl::Span<const int64_t> end,
-                 absl::Span<const int64_t> strides);
+spu::Value Slice(SPUContext *ctx, const spu::Value &in, const Index &start,
+                 const Index &end, const Strides &strides);
 
 spu::Value Pad(SPUContext *ctx, const spu::Value &in,
-               const spu::Value &pad_value, absl::Span<const int64_t> edge_low,
-               absl::Span<const int64_t> edge_high,
-               absl::Span<const int64_t> inner);
+               const spu::Value &pad_value, const Sizes &edge_low,
+               const Sizes &edge_high, const Sizes &inner);
 
-spu::Value Reverse(SPUContext *ctx, const spu::Value &in,
-                   absl::Span<const int64_t> dims);
+spu::Value Reverse(SPUContext *ctx, const spu::Value &in, const Axes &dims);
 
 }  // namespace spu::kernel::hlo

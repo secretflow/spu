@@ -14,7 +14,6 @@
 
 #pragma once
 
-#include "libspu/core/array_ref.h"
 #include "libspu/core/ndarray_ref.h"
 #include "libspu/core/type.h"
 
@@ -63,6 +62,7 @@ namespace spu {
   FN(PT_I64, DT_I64)            \
   FN(PT_U64, DT_U64)            \
   FN(PT_BOOL, DT_I1)            \
+  FN(PT_F16, DT_F16)            \
   FN(PT_F32, DT_F32)            \
   FN(PT_F64, DT_F64)
 
@@ -76,6 +76,7 @@ namespace spu {
   FN(DT_I64, PT_I64)            \
   FN(DT_U64, PT_U64)            \
   FN(DT_I1, PT_BOOL)            \
+  FN(DT_F16, PT_F16)            \
   FN(DT_F32, PT_F32)            \
   FN(DT_F64, PT_F64)
 
@@ -84,14 +85,10 @@ DataType getEncodeType(PtType pt_type);
 PtType getDecodeType(DataType dtype);
 
 // TODO: document me, verbosely
-ArrayRef encodeToRing(const ArrayRef& src, FieldType field, size_t fxp_bits,
-                      DataType* out_dtype = nullptr);
 NdArrayRef encodeToRing(const NdArrayRef& src, FieldType field, size_t fxp_bits,
                         DataType* out_dtype = nullptr);
 
 // TODO: document me, verbosely
-ArrayRef decodeFromRing(const ArrayRef& src, DataType in_dtype, size_t fxp_bits,
-                        PtType* out_pt_type = nullptr);
 NdArrayRef decodeFromRing(const NdArrayRef& src, DataType in_dtype,
                           size_t fxp_bits, PtType* out_pt_type = nullptr);
 

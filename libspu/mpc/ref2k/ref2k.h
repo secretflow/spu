@@ -25,12 +25,12 @@ class Ref2kIo final : public BaseIo {
  public:
   using BaseIo::BaseIo;
 
-  std::vector<ArrayRef> toShares(const ArrayRef& raw, Visibility vis,
-                                 int owner_rank) const override;
+  std::vector<NdArrayRef> toShares(const NdArrayRef& raw, Visibility vis,
+                                   int owner_rank) const override;
 
   Type getShareType(Visibility vis, int owner_rank = -1) const override;
 
-  ArrayRef fromShares(const std::vector<ArrayRef>& shares) const override;
+  NdArrayRef fromShares(const std::vector<NdArrayRef>& shares) const override;
 };
 
 std::unique_ptr<SPUContext> makeRef2kProtocol(

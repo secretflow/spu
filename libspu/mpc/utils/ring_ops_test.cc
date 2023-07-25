@@ -28,7 +28,8 @@ class RingArrayRefTest
                      int64_t   // stride of second param, if have
                      >> {};
 
-static ArrayRef makeRandomArray(FieldType field, size_t numel, size_t stride) {
+static NdArrayRef makeRandomArray(FieldType field, int64_t numel,
+                                  int64_t stride) {
   const Type ty = makeType<RingTy>(field);
   const size_t buf_size = SizeOf(field) * numel * stride;
   // make random buffer.
@@ -41,8 +42,7 @@ static ArrayRef makeRandomArray(FieldType field, size_t numel, size_t stride) {
     }
   }
 
-  const int64_t offset = 0;
-  return ArrayRef(buf, ty, numel, stride, offset);
+  return NdArrayRef(buf, ty, {numel}, {stride}, 0);
 }
 
 INSTANTIATE_TEST_SUITE_P(
@@ -65,8 +65,8 @@ TEST_P(RingArrayRefTest, Assign) {
   const Type ty = makeType<RingTy>(field);
 
   // GIVEN
-  const ArrayRef y = makeRandomArray(field, numel, stride);
-  ArrayRef x(ty, numel);
+  const auto y = makeRandomArray(field, numel, stride);
+  NdArrayRef x(ty, {numel});
 
   // WHEN
   ring_assign(x, y);  // x = y;
@@ -83,7 +83,7 @@ TEST_P(RingArrayRefTest, Negate) {
 
   {
     // GIVEN
-    const ArrayRef y = makeRandomArray(field, numel, stride);
+    const auto y = makeRandomArray(field, numel, stride);
 
     // WHEN
     auto x = ring_neg(y);
@@ -96,9 +96,9 @@ TEST_P(RingArrayRefTest, Negate) {
 
   {
     // GIVEN
-    ArrayRef z = makeRandomArray(field, numel, stride);
+    auto z = makeRandomArray(field, numel, stride);
     auto zbuf = z.buf();
-    const ArrayRef w = z.clone();
+    const auto w = z.clone();
 
     // THEN
     ring_neg_(z);
@@ -119,7 +119,7 @@ TEST_P(RingArrayRefTest, Not) {
 
   {
     // GIVEN
-    const ArrayRef y = makeRandomArray(field, numel, stride);
+    const auto y = makeRandomArray(field, numel, stride);
 
     // WHEN
     auto x = ring_not(y);
@@ -132,9 +132,9 @@ TEST_P(RingArrayRefTest, Not) {
 
   {
     // GIVEN
-    ArrayRef z = makeRandomArray(field, numel, stride);
+    auto z = makeRandomArray(field, numel, stride);
     auto zbuf = z.buf();
-    const ArrayRef w = z.clone();
+    const auto w = z.clone();
 
     // THEN
     ring_not_(z);
@@ -155,7 +155,7 @@ TEST_P(RingArrayRefTest, ReverseBit) {
 
   {
     // GIVEN
-    const ArrayRef y = makeRandomArray(field, numel, stride);
+    const auto y = makeRandomArray(field, numel, stride);
 
     // WHEN
     auto x = ring_bitrev(y, 10, 20);
@@ -167,9 +167,9 @@ TEST_P(RingArrayRefTest, ReverseBit) {
 
   {
     // GIVEN
-    ArrayRef z = makeRandomArray(field, numel, stride);
+    auto z = makeRandomArray(field, numel, stride);
     auto zbuf = z.buf();
-    const ArrayRef w = z.clone();
+    const auto w = z.clone();
 
     // THEN
     ring_bitrev_(z, 10, 20);
@@ -190,7 +190,7 @@ TEST_P(RingArrayRefTest, RingBitMask) {
 
   {
     // GIVEN
-    const ArrayRef x = makeRandomArray(field, numel, stride);
+    const auto x = makeRandomArray(field, numel, stride);
     const size_t step = SizeOf(field) * 8 / 4;
 
     // WHEN
@@ -209,11 +209,11 @@ TEST_P(RingArrayRefTest, RingBitMask) {
 
     // THEN
     EXPECT_TRUE(ring_all_equal(s, x));
-    EXPECT_TRUE(ring_all_equal(z, ring_zeros(field, numel)));
+    EXPECT_TRUE(ring_all_equal(z, ring_zeros(field, {numel})));
   }
   {
     // GIVEN
-    const ArrayRef x = makeRandomArray(field, numel, stride);
+    const auto x = makeRandomArray(field, numel, stride);
     const size_t step = SizeOf(field) * 8 / 4;
 
     // WHEN
@@ -234,7 +234,7 @@ TEST_P(RingArrayRefTest, RingBitMask) {
 
     // THEN
     EXPECT_TRUE(ring_all_equal(s, x));
-    EXPECT_TRUE(ring_all_equal(z, ring_zeros(field, numel)));
+    EXPECT_TRUE(ring_all_equal(z, ring_zeros(field, {numel})));
   }
 }
 

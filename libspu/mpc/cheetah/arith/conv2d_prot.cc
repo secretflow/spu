@@ -16,7 +16,6 @@
 
 #include "seal/evaluator.h"
 
-#include "libspu/core/shape_util.h"
 #include "libspu/core/xt_helper.h"
 #include "libspu/mpc/cheetah/arith/conv2d_helper.h"
 #include "libspu/mpc/cheetah/arith/tensor_encoder.h"
@@ -429,8 +428,8 @@ ArrayRef Conv2DProtocol::ParseResult(
         SPU_ENFORCE_EQ(static_cast<int64_t>(coefficients.size()),
                        calcNumel(slice_shape));
 
-        auto computed =
-            ms_helper.ModulusDownRNS(field, MakeSpan(rlwe[poly_idx++]));
+        auto computed = toNdArray(
+            ms_helper.ModulusDownRNS(field, MakeSpan(rlwe[poly_idx++])));
         auto *coeff_iter = coefficients.data();
 
         DISPATCH_ALL_FIELDS(field, "ParseResult", [&]() {

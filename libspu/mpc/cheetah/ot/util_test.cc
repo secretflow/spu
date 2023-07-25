@@ -34,17 +34,17 @@ INSTANTIATE_TEST_SUITE_P(
     });
 
 TEST_P(UtilTest, ZipArray) {
-  const size_t n = 20;
+  const int64_t n = 20;
   const auto field = GetParam();
   const size_t elsze = SizeOf(field);
 
-  auto unzip = ring_zeros(field, n);
+  auto unzip = ring_zeros(field, {n});
 
   DISPATCH_ALL_FIELDS(field, "", [&]() {
     for (size_t bw : {1, 2, 4, 7, 15, 16}) {
-      size_t pack_load = elsze * 8 / bw;
-      auto zip = ring_zeros(field, (n + pack_load - 1) / pack_load);
-      auto array = ring_rand(field, n);
+      int64_t pack_load = elsze * 8 / bw;
+      auto zip = ring_zeros(field, {(n + pack_load - 1) / pack_load});
+      auto array = ring_rand(field, {n});
       auto inp = xt_mutable_adapt<ring2k_t>(array);
       auto mask = makeBitsMask<ring2k_t>(bw);
       inp &= mask;
@@ -65,9 +65,9 @@ TEST_P(UtilTest, ZipArray) {
 }
 
 TEST_P(UtilTest, PackU8Array) {
-  const size_t num_bytes = 223;
+  const int64_t num_bytes = 223;
   const auto field = GetParam();
-  const size_t elsze = SizeOf(field);
+  const int64_t elsze = SizeOf(field);
 
   std::uniform_int_distribution<uint8_t> uniform(0, -1);
   std::default_random_engine rdv;
@@ -75,7 +75,7 @@ TEST_P(UtilTest, PackU8Array) {
   std::generate_n(u8array.data(), u8array.size(),
                   [&]() { return uniform(rdv); });
 
-  auto packed = ring_zeros(field, (num_bytes + elsze - 1) / elsze);
+  auto packed = ring_zeros(field, {(num_bytes + elsze - 1) / elsze});
 
   DISPATCH_ALL_FIELDS(field, "", [&]() {
     auto xp = xt_mutable_adapt<ring2k_t>(packed);

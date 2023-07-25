@@ -19,11 +19,10 @@ package(default_visibility = ["//visibility:public"])
 spu_cc_library(
     name = "core",
     deps = [
-        ":array_ref",
         ":config",
         ":encoding",
         ":ndarray_ref",
-        ":shape_util",
+        ":shape",
         ":type",
         ":type_util",
         ":xt_helper",
@@ -67,6 +66,7 @@ spu_cc_library(
     srcs = ["type_util.cc"],
     hdrs = ["type_util.h"],
     deps = [
+        ":half",
         "//libspu:spu_cc_proto",
         "//libspu/core:prelude",
         "@com_google_absl//absl/types:span",
@@ -79,7 +79,6 @@ spu_cc_library(
     srcs = ["encoding.cc"],
     hdrs = ["encoding.h"],
     deps = [
-        ":array_ref",
         ":ndarray_ref",
         ":parallel_utils",
         ":xt_helper",
@@ -109,19 +108,20 @@ spu_cc_test(
 )
 
 spu_cc_library(
-    name = "shape_util",
-    srcs = ["shape_util.cc"],
-    hdrs = ["shape_util.h"],
+    name = "shape",
+    srcs = ["shape.cc"],
+    hdrs = ["shape.h"],
     deps = [
         "//libspu/core:prelude",
+        "@llvm-project//llvm:Support",
     ],
 )
 
 spu_cc_test(
-    name = "shape_util_test",
-    srcs = ["shape_util_test.cc"],
+    name = "shape_test",
+    srcs = ["shape_test.cc"],
     deps = [
-        ":shape_util",
+        ":shape",
     ],
 )
 
@@ -144,36 +144,15 @@ spu_cc_test(
 )
 
 spu_cc_library(
-    name = "array_ref",
-    srcs = ["array_ref.cc"],
-    hdrs = ["array_ref.h"],
-    deps = [
-        ":bit_utils",
-        ":parallel_utils",
-        ":type",
-        ":vectorize",
-        "//libspu/core:prelude",
-        "@yacl//yacl/base:buffer",
-    ],
-)
-
-spu_cc_test(
-    name = "array_ref_test",
-    srcs = ["array_ref_test.cc"],
-    deps = [
-        ":array_ref",
-    ],
-)
-
-spu_cc_library(
     name = "ndarray_ref",
     srcs = ["ndarray_ref.cc"],
     hdrs = ["ndarray_ref.h"],
     deps = [
-        ":array_ref",
+        ":bit_utils",
         ":parallel_utils",
-        ":shape_util",
+        ":shape",
         ":type",
+        ":vectorize",
         "//libspu/core:prelude",
         "@yacl//yacl/base:buffer",
     ],
@@ -193,7 +172,7 @@ spu_cc_library(
     hdrs = ["pt_buffer_view.h"],
     deps = [
         ":ndarray_ref",
-        ":shape_util",
+        ":shape",
     ],
 )
 
@@ -210,10 +189,9 @@ spu_cc_library(
     srcs = ["xt_helper.cc"],
     hdrs = ["xt_helper.h"],
     deps = [
-        ":array_ref",
         ":ndarray_ref",
         ":pt_buffer_view",
-        ":shape_util",
+        ":shape",
         "@com_github_xtensor_xtensor//:xtensor",
     ],
 )
@@ -370,7 +348,7 @@ spu_cc_library(
     deps = [
         "//libspu/core:ndarray_ref",
         "//libspu/core:prelude",
-        "//libspu/core:shape_util",
+        "//libspu/core:shape",
     ],
 )
 
@@ -380,4 +358,9 @@ spu_cc_test(
     deps = [
         "//libspu/core:value",
     ],
+)
+
+spu_cc_library(
+    name = "half",
+    hdrs = ["half.h"],
 )

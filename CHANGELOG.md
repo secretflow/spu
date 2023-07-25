@@ -12,6 +12,8 @@
 
 - [API] Change IO interface, split share into chunk
 - [API] Add intrinsic support
+- [Feature] Support half type
+- [Feature] Add Psi Progress
 
 ## 20230705
 

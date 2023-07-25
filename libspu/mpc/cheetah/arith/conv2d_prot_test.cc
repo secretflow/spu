@@ -103,9 +103,9 @@ TEST_P(Conv2DProtTest, Plain) {
     meta.window_strides = std::get<3>(GetParam());
 
     auto tensor =
-        ring_rand(field_, calcNumel(meta.input_shape) * meta.input_batch);
+        ring_rand(field_, {calcNumel(meta.input_shape) * meta.input_batch});
     auto filter =
-        ring_rand(field_, calcNumel(meta.kernel_shape) * meta.num_kernels);
+        ring_rand(field_, {calcNumel(meta.kernel_shape) * meta.num_kernels});
     auto expected =
         ring_conv2d(tensor, filter, meta.input_batch, meta.input_shape,
                     meta.num_kernels, meta.kernel_shape, meta.window_strides);
@@ -114,8 +114,10 @@ TEST_P(Conv2DProtTest, Plain) {
     std::vector<RLWEPt> ecd_kernels(conv2d_prot.GetKernelSize(meta));
     std::vector<RLWEPt> out_poly(conv2d_prot.GetOutSize(meta));
 
-    conv2d_prot.EncodeInput(tensor, meta, true, absl::MakeSpan(ecd_tensor));
-    conv2d_prot.EncodeKernels(filter, meta, false, absl::MakeSpan(ecd_kernels));
+    conv2d_prot.EncodeInput(flatten(tensor), meta, true,
+                            absl::MakeSpan(ecd_tensor));
+    conv2d_prot.EncodeKernels(flatten(filter), meta, false,
+                              absl::MakeSpan(ecd_kernels));
 
     for (auto& poly : ecd_tensor) {
       NttInplace(poly, *context_);
@@ -132,7 +134,8 @@ TEST_P(Conv2DProtTest, Plain) {
 
     ArrayRef computed =
         conv2d_prot.ParseResult(field_, meta, absl::MakeSpan(out_poly));
-    EXPECT_TRUE(ring_all_equal(expected, computed));
+    EXPECT_TRUE(
+        ring_all_equal(expected, unflatten(computed, expected.shape())));
   });
 }
 

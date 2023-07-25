@@ -37,32 +37,36 @@ INSTANTIATE_TEST_SUITE_P(
 TEST_P(CheetahMulTest, Basic) {
   size_t kWorldSize = 2;
   auto field = std::get<0>(GetParam());
-  auto n = std::get<1>(GetParam());
+  int64_t n = std::get<1>(GetParam());
 
-  ArrayRef a_bits = ring_rand(field, n);
-  ArrayRef b_bits = ring_rand(field, n);
+  auto a_bits = ring_rand(field, {n});
+  auto b_bits = ring_rand(field, {n});
 
-  std::vector<ArrayRef> a_shr(kWorldSize);
-  std::vector<ArrayRef> b_shr(kWorldSize);
-  a_shr[0] = ring_rand(field, n);
-  b_shr[0] = ring_rand(field, n);
+  std::vector<NdArrayRef> a_shr(kWorldSize);
+  std::vector<NdArrayRef> b_shr(kWorldSize);
+  a_shr[0] = ring_rand(field, {n});
+  b_shr[0] = ring_rand(field, {n});
   a_shr[1] = ring_sub(a_bits, a_shr[0]);
   b_shr[1] = ring_sub(b_bits, b_shr[0]);
 
-  std::vector<ArrayRef> result(kWorldSize);
+  std::vector<NdArrayRef> result(kWorldSize);
   utils::simulate(kWorldSize, [&](std::shared_ptr<yacl::link::Context> lctx) {
     int rank = lctx->Rank();
     // (a0 + a1) * (b0 + b1)
     // a0*b0 + a0*b1 + a1*b0 + a1*b1
     auto mul = std::make_shared<CheetahMul>(lctx);
 
-    ArrayRef cross0, cross1;
+    NdArrayRef cross0, cross1;
     if (rank == 0) {
-      cross0 = mul->MulOLE(a_shr[0], true);
-      cross1 = mul->MulOLE(b_shr[0], true);
+      cross0 =
+          unflatten(mul->MulOLE(flatten(a_shr[0]), true), a_shr[0].shape());
+      cross1 =
+          unflatten(mul->MulOLE(flatten(b_shr[0]), true), a_shr[0].shape());
     } else {
-      cross0 = mul->MulOLE(b_shr[1], false);
-      cross1 = mul->MulOLE(a_shr[1], false);
+      cross0 =
+          unflatten(mul->MulOLE(flatten(b_shr[1]), false), a_shr[1].shape());
+      cross1 =
+          unflatten(mul->MulOLE(flatten(a_shr[1]), false), b_shr[1].shape());
     }
 
     result[rank] = ring_mul(a_shr[rank], b_shr[rank]);
@@ -74,45 +78,42 @@ TEST_P(CheetahMulTest, Basic) {
   auto computed = ring_add(result[0], result[1]);
 
   const int64_t kMaxDiff = 0;
-  DISPATCH_ALL_FIELDS(field, "_", [&]() {
-    auto e = ArrayView<ring2k_t>(expected);
-    auto c = ArrayView<ring2k_t>(computed);
-
-    for (auto idx = 0; idx < expected.numel(); idx++) {
-      EXPECT_NEAR(e[idx], c[idx], kMaxDiff);
-    }
-  });
+  EXPECT_TRUE(ring_all_equal(expected, computed, kMaxDiff));
 }
 
 TEST_P(CheetahMulTest, BasicBinary) {
   size_t kWorldSize = 2;
   auto field = std::get<0>(GetParam());
-  auto n = std::get<1>(GetParam());
+  int64_t n = std::get<1>(GetParam());
 
-  ArrayRef a_bits = ring_rand_range(field, n, 0, 1);
-  ArrayRef b_bits = ring_rand_range(field, n, 0, 1);
+  NdArrayRef a_bits = ring_rand_range(field, {n}, 0, 1);
+  NdArrayRef b_bits = ring_rand_range(field, {n}, 0, 1);
 
-  std::vector<ArrayRef> a_shr(kWorldSize);
-  std::vector<ArrayRef> b_shr(kWorldSize);
-  a_shr[0] = ring_rand(field, n);
-  b_shr[0] = ring_rand(field, n);
+  std::vector<NdArrayRef> a_shr(kWorldSize);
+  std::vector<NdArrayRef> b_shr(kWorldSize);
+  a_shr[0] = ring_rand(field, {n});
+  b_shr[0] = ring_rand(field, {n});
   a_shr[1] = ring_sub(a_bits, a_shr[0]);
   b_shr[1] = ring_sub(b_bits, b_shr[0]);
 
-  std::vector<ArrayRef> result(kWorldSize);
+  std::vector<NdArrayRef> result(kWorldSize);
   utils::simulate(kWorldSize, [&](std::shared_ptr<yacl::link::Context> lctx) {
     int rank = lctx->Rank();
     // (a0 + a1) * (b0 + b1)
     // a0*b0 + a0*b1 + a1*b0 + a1*b1
     auto mul = std::make_shared<CheetahMul>(lctx);
 
-    ArrayRef cross0, cross1;
+    NdArrayRef cross0, cross1;
     if (rank == 0) {
-      cross0 = mul->MulOLE(a_shr[0], true);
-      cross1 = mul->MulOLE(b_shr[0], true);
+      cross0 =
+          unflatten(mul->MulOLE(flatten(a_shr[0]), true), a_shr[0].shape());
+      cross1 =
+          unflatten(mul->MulOLE(flatten(b_shr[0]), true), b_shr[0].shape());
     } else {
-      cross0 = mul->MulOLE(b_shr[1], false);
-      cross1 = mul->MulOLE(a_shr[1], false);
+      cross0 =
+          unflatten(mul->MulOLE(flatten(b_shr[1]), false), a_shr[1].shape());
+      cross1 =
+          unflatten(mul->MulOLE(flatten(a_shr[1]), false), b_shr[1].shape());
     }
 
     result[rank] = ring_mul(a_shr[rank], b_shr[rank]);
@@ -124,20 +125,13 @@ TEST_P(CheetahMulTest, BasicBinary) {
   auto computed = ring_add(result[0], result[1]);
 
   const int64_t kMaxDiff = 0;
-  DISPATCH_ALL_FIELDS(field, "_", [&]() {
-    auto e = ArrayView<ring2k_t>(expected);
-    auto c = ArrayView<ring2k_t>(computed);
-
-    for (auto idx = 0; idx < expected.numel(); idx++) {
-      EXPECT_NEAR(e[idx], c[idx], kMaxDiff);
-    }
-  });
+  EXPECT_TRUE(ring_all_equal(expected, computed, kMaxDiff));
 }
 
 TEST_P(CheetahMulTest, MixedRingSizeMul) {
   size_t kWorldSize = 2;
   auto field = std::get<0>(GetParam());
-  auto n = std::get<1>(GetParam());
+  int64_t n = std::get<1>(GetParam());
   // Compute Mul on field then on field2
   FieldType field2;
   if (field == FM32) {
@@ -149,41 +143,45 @@ TEST_P(CheetahMulTest, MixedRingSizeMul) {
     std::swap(field, field2);
   }
 
-  ArrayRef a_bits = ring_rand(field, n);
-  ArrayRef b_bits = ring_rand(field, n);
-  ArrayRef c_bits = ring_rand(field2, n);
-  ArrayRef d_bits = ring_rand(field2, n);
+  auto a_bits = ring_rand(field, {n});
+  auto b_bits = ring_rand(field, {n});
+  auto c_bits = ring_rand(field2, {n});
+  auto d_bits = ring_rand(field2, {n});
 
-  std::vector<ArrayRef> a_shr(kWorldSize);
-  std::vector<ArrayRef> b_shr(kWorldSize);
-  std::vector<ArrayRef> c_shr(kWorldSize);
-  std::vector<ArrayRef> d_shr(kWorldSize);
+  std::vector<NdArrayRef> a_shr(kWorldSize);
+  std::vector<NdArrayRef> b_shr(kWorldSize);
+  std::vector<NdArrayRef> c_shr(kWorldSize);
+  std::vector<NdArrayRef> d_shr(kWorldSize);
 
-  a_shr[0] = ring_rand(field, n);
-  b_shr[0] = ring_rand(field, n);
+  a_shr[0] = ring_rand(field, {n});
+  b_shr[0] = ring_rand(field, {n});
   a_shr[1] = ring_sub(a_bits, a_shr[0]);
   b_shr[1] = ring_sub(b_bits, b_shr[0]);
 
-  c_shr[0] = ring_rand(field2, n);
-  d_shr[0] = ring_rand(field2, n);
+  c_shr[0] = ring_rand(field2, {n});
+  d_shr[0] = ring_rand(field2, {n});
   c_shr[1] = ring_sub(c_bits, c_shr[0]);
   d_shr[1] = ring_sub(d_bits, d_shr[0]);
 
-  std::vector<ArrayRef> result(kWorldSize);
-  std::vector<ArrayRef> result2(kWorldSize);
+  std::vector<NdArrayRef> result(kWorldSize);
+  std::vector<NdArrayRef> result2(kWorldSize);
   utils::simulate(kWorldSize, [&](std::shared_ptr<yacl::link::Context> lctx) {
     int rank = lctx->Rank();
     // (a0 + a1) * (b0 + b1)
     // a0*b0 + a0*b1 + a1*b0 + a1*b1
     auto mul = std::make_shared<CheetahMul>(lctx);
 
-    ArrayRef cross0, cross1;
+    NdArrayRef cross0, cross1;
     if (rank == 0) {
-      cross0 = mul->MulOLE(a_shr[0], true);
-      cross1 = mul->MulOLE(b_shr[0], true);
+      cross0 =
+          unflatten(mul->MulOLE(flatten(a_shr[0]), true), a_shr[0].shape());
+      cross1 =
+          unflatten(mul->MulOLE(flatten(b_shr[0]), true), b_shr[0].shape());
     } else {
-      cross0 = mul->MulOLE(b_shr[1], false);
-      cross1 = mul->MulOLE(a_shr[1], false);
+      cross0 =
+          unflatten(mul->MulOLE(flatten(b_shr[1]), false), a_shr[1].shape());
+      cross1 =
+          unflatten(mul->MulOLE(flatten(a_shr[1]), false), a_shr[1].shape());
     }
 
     result[rank] = ring_mul(a_shr[rank], b_shr[rank]);
@@ -191,11 +189,15 @@ TEST_P(CheetahMulTest, MixedRingSizeMul) {
     ring_add_(result[rank], cross1);
 
     if (rank == 0) {
-      cross0 = mul->MulOLE(c_shr[0], true);
-      cross1 = mul->MulOLE(d_shr[0], true);
+      cross0 =
+          unflatten(mul->MulOLE(flatten(c_shr[0]), true), c_shr[0].shape());
+      cross1 =
+          unflatten(mul->MulOLE(flatten(d_shr[0]), true), d_shr[0].shape());
     } else {
-      cross1 = mul->MulOLE(d_shr[1], false);
-      cross0 = mul->MulOLE(c_shr[1], false);
+      cross1 =
+          unflatten(mul->MulOLE(flatten(d_shr[1]), false), d_shr[1].shape());
+      cross0 =
+          unflatten(mul->MulOLE(flatten(c_shr[1]), false), c_shr[1].shape());
     }
 
     result2[rank] = ring_mul(c_shr[rank], d_shr[rank]);
@@ -210,23 +212,10 @@ TEST_P(CheetahMulTest, MixedRingSizeMul) {
   auto computed2 = ring_add(result2[0], result2[1]);
 
   const int64_t kMaxDiff = 0;
-  DISPATCH_ALL_FIELDS(field, "_", [&]() {
-    auto e = ArrayView<ring2k_t>(expected);
-    auto c = ArrayView<ring2k_t>(computed);
 
-    for (auto idx = 0; idx < expected.numel(); idx++) {
-      ASSERT_NEAR(e[idx], c[idx], kMaxDiff);
-    }
-  });
+  EXPECT_TRUE(ring_all_equal(expected, computed, kMaxDiff));
 
-  DISPATCH_ALL_FIELDS(field2, "_", [&]() {
-    auto e = ArrayView<ring2k_t>(expected2);
-    auto c = ArrayView<ring2k_t>(computed2);
-
-    for (auto idx = 0; idx < expected2.numel(); idx++) {
-      ASSERT_NEAR(e[idx], c[idx], kMaxDiff);
-    }
-  });
+  EXPECT_TRUE(ring_all_equal(expected2, computed2, kMaxDiff));
 }
 
 }  // namespace spu::mpc::cheetah::test

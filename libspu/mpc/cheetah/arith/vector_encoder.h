@@ -16,7 +16,7 @@
 
 #include "absl/types/span.h"
 
-#include "libspu/core/array_ref.h"
+#include "libspu/mpc/cheetah/array_ref.h"
 #include "libspu/mpc/cheetah/rlwe/modswitch_helper.h"
 #include "libspu/mpc/cheetah/rlwe/types.h"
 

@@ -25,11 +25,11 @@ enum class RecOp : uint8_t {
 };
 
 // reconstruct P0's data &
-std::pair<std::vector<ArrayRef>, std::vector<ArrayRef>> reconstruct(
+std::pair<std::vector<NdArrayRef>, std::vector<NdArrayRef>> reconstruct(
     RecOp op, absl::Span<const PrgSeed> seeds,
     absl::Span<const PrgArrayDesc> descs) {
-  std::vector<ArrayRef> r0(descs.size());
-  std::vector<ArrayRef> rs(descs.size());
+  std::vector<NdArrayRef> r0(descs.size());
+  std::vector<NdArrayRef> rs(descs.size());
 
   for (size_t rank = 0; rank < seeds.size(); rank++) {
     for (size_t idx = 0; idx < descs.size(); idx++) {
@@ -56,7 +56,7 @@ std::pair<std::vector<ArrayRef>, std::vector<ArrayRef>> reconstruct(
 void checkDescs(absl::Span<const PrgArrayDesc> descs) {
   for (size_t idx = 1; idx < descs.size(); idx++) {
     SPU_ENFORCE(descs[0].field == descs[idx].field);
-    SPU_ENFORCE(descs[0].numel == descs[idx].numel);
+    SPU_ENFORCE(descs[0].shape == descs[idx].shape);
   }
 }
 
@@ -97,21 +97,21 @@ std::vector<PrgSeed> TrustedParty::getSeeds() const {
   return seeds;
 }
 
-ArrayRef TrustedParty::adjustSpdzKey(const PrgArrayDesc& desc) const {
+NdArrayRef TrustedParty::adjustSpdzKey(const PrgArrayDesc& desc) const {
   auto [r0, rs] = reconstruct(RecOp::ADD, getSeeds(), absl::MakeSpan(&desc, 1));
   SPU_ENFORCE(r0.size() == 1 && rs.size() == 1);
 
   return rs[0];
 }
 
-std::vector<ArrayRef> TrustedParty::adjustAuthCoinTossing(
+std::vector<NdArrayRef> TrustedParty::adjustAuthCoinTossing(
     const PrgArrayDesc& desc, const PrgArrayDesc& mac_desc,
     uint128_t global_key, size_t k, size_t s) const {
   SPU_ENFORCE(s <= SizeOf(desc.field) * 8);
 
   auto [r0, rs] = reconstruct(RecOp::ADD, getSeeds(), absl::MakeSpan(&desc, 1));
   SPU_ENFORCE(r0.size() == 1 && rs.size() == 1);
-  auto r = ring_bitmask(ring_rand(desc.field, desc.numel), 0, k);
+  auto r = ring_bitmask(ring_rand(desc.field, desc.shape), 0, k);
   ring_add_(r0[0], ring_sub(r, rs[0]));
 
   auto [mac_r0, mac_rs] =
@@ -125,14 +125,14 @@ std::vector<ArrayRef> TrustedParty::adjustAuthCoinTossing(
   return {r0[0], mac_r0[0]};
 }
 
-std::vector<ArrayRef> TrustedParty::adjustAuthRandBit(
+std::vector<NdArrayRef> TrustedParty::adjustAuthRandBit(
     const PrgArrayDesc& desc, const PrgArrayDesc& mac_desc,
     uint128_t global_key, size_t s) const {
   auto [r0, rs] = reconstruct(RecOp::ADD, getSeeds(), absl::MakeSpan(&desc, 1));
   SPU_ENFORCE(r0.size() == 1 && rs.size() == 1);
 
   // r0[0] += r - rs[0];
-  auto r = ring_bitmask(ring_rand(desc.field, desc.numel), 0, 1);
+  auto r = ring_bitmask(ring_rand(desc.field, desc.shape), 0, 1);
   ring_add_(r0[0], ring_sub(r, rs[0]));
 
   auto [mac_r0, mac_rs] =
@@ -146,7 +146,7 @@ std::vector<ArrayRef> TrustedParty::adjustAuthRandBit(
   return {r0[0], mac_r0[0]};
 }
 
-std::vector<ArrayRef> TrustedParty::adjustAuthMul(
+std::vector<NdArrayRef> TrustedParty::adjustAuthMul(
     absl::Span<const PrgArrayDesc> descs,
     absl::Span<const PrgArrayDesc> mac_descs, uint128_t global_key) const {
   SPU_ENFORCE_EQ(descs.size(), 3U);
@@ -175,18 +175,18 @@ std::vector<ArrayRef> TrustedParty::adjustAuthMul(
   return {r0[2], mac_r0[0], mac_r0[1], mac_r0[2]};
 }
 
-std::vector<ArrayRef> TrustedParty::adjustAuthDot(
+std::vector<NdArrayRef> TrustedParty::adjustAuthDot(
     absl::Span<const PrgArrayDesc> descs,
-    absl::Span<const PrgArrayDesc> mac_descs, size_t m, size_t n, size_t k,
+    absl::Span<const PrgArrayDesc> mac_descs, int64_t m, int64_t n, int64_t k,
     uint128_t global_key) const {
   SPU_ENFORCE_EQ(descs.size(), 3U);
-  SPU_ENFORCE(descs[0].numel == m * k);
-  SPU_ENFORCE(descs[1].numel == k * n);
-  SPU_ENFORCE(descs[2].numel == m * n);
+  SPU_ENFORCE(descs[0].shape == (std::vector<int64_t>{m, k}));
+  SPU_ENFORCE(descs[1].shape == (std::vector<int64_t>{k, n}));
+  SPU_ENFORCE(descs[2].shape == (std::vector<int64_t>{m, n}));
 
   auto [r0, rs] = reconstruct(RecOp::ADD, getSeeds(), descs);
   // r0[2] += rs[0] dot rs[1] - rs[2];
-  ring_add_(r0[2], ring_sub(ring_mmul(rs[0], rs[1], m, n, k), rs[2]));
+  ring_add_(r0[2], ring_sub(ring_mmul(rs[0], rs[1]), rs[2]));
 
   auto [mac_r0, mac_rs] = reconstruct(RecOp::ADD, getSeeds(), mac_descs);
   // mac_r0[0] += rs[0] * global_key - mac_rs[0];
@@ -198,13 +198,13 @@ std::vector<ArrayRef> TrustedParty::adjustAuthDot(
   ring_add_(mac_r0[1], ring_sub(bmac, mac_rs[1]));
 
   // mac_r0[2] += rs[0] dot rs[1] * global_key - mac_rs[2];
-  auto c = ring_mmul(rs[0], rs[1], m, n, k);
+  auto c = ring_mmul(rs[0], rs[1]);
   auto cmac = ring_mul(c, global_key);
   ring_add_(mac_r0[2], ring_sub(cmac, mac_rs[2]));
   return {r0[2], mac_r0[0], mac_r0[1], mac_r0[2]};
 }
 
-std::vector<ArrayRef> TrustedParty::adjustAuthAnd(
+std::vector<NdArrayRef> TrustedParty::adjustAuthAnd(
     absl::Span<const PrgArrayDesc> descs,
     absl::Span<const PrgArrayDesc> mac_descs, uint128_t global_key) const {
   SPU_ENFORCE_EQ(descs.size(), 3U);
@@ -233,7 +233,7 @@ std::vector<ArrayRef> TrustedParty::adjustAuthAnd(
   return {r0[2], mac_r0[0], mac_r0[1], mac_r0[2]};
 }
 
-std::vector<ArrayRef> TrustedParty::adjustAuthTrunc(
+std::vector<NdArrayRef> TrustedParty::adjustAuthTrunc(
     absl::Span<const PrgArrayDesc> descs,
     absl::Span<const PrgArrayDesc> mac_descs, size_t bits, uint128_t global_key,
     size_t k, size_t s) const {

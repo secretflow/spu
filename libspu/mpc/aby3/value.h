@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "libspu/core/array_ref.h"
+#include "libspu/core/ndarray_ref.h"
 #include "libspu/core/parallel_utils.h"
 #include "libspu/core/type_util.h"
 
@@ -38,29 +38,30 @@ namespace spu::mpc::aby3 {
 //   real(x) is the first share piece.
 //   imag(x) is the second share piece.
 
-ArrayRef getShare(const ArrayRef& in, int64_t share_idx);
+NdArrayRef getShare(const NdArrayRef& in, int64_t share_idx);
 
-ArrayRef getFirstShare(const ArrayRef& in);
+NdArrayRef getFirstShare(const NdArrayRef& in);
 
-ArrayRef getSecondShare(const ArrayRef& in);
+NdArrayRef getSecondShare(const NdArrayRef& in);
 
-ArrayRef makeAShare(const ArrayRef& s1, const ArrayRef& s2, FieldType field);
+NdArrayRef makeAShare(const NdArrayRef& s1, const NdArrayRef& s2,
+                      FieldType field);
 
 PtType calcBShareBacktype(size_t nbits);
 
 template <typename T>
-std::vector<T> getShareAs(const ArrayRef& in, size_t share_idx) {
+std::vector<T> getShareAs(const NdArrayRef& in, size_t share_idx) {
   SPU_ENFORCE(share_idx == 0 || share_idx == 1);
 
-  ArrayRef share = getShare(in, share_idx);
+  NdArrayRef share = getShare(in, share_idx);
   SPU_ENFORCE(share.elsize() == sizeof(T));
 
-  std::vector<T> res(in.numel());
-  DISPATCH_UINT_PT_TYPES(share.eltype().as<PtTy>()->pt_type(), "_", [&]() {
-    ArrayView<ScalarT> _share(share);
+  auto numel = in.numel();
 
-    for (auto idx = 0; idx < in.numel(); idx++) {
-      res[idx] = _share[idx];
+  std::vector<T> res(numel);
+  DISPATCH_UINT_PT_TYPES(share.eltype().as<PtTy>()->pt_type(), "_", [&]() {
+    for (auto idx = 0; idx < numel; ++idx) {
+      res[idx] = share.at<ScalarT>(idx);
     }
   });
 

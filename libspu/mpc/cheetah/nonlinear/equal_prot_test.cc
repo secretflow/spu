@@ -39,12 +39,12 @@ INSTANTIATE_TEST_SUITE_P(
 
 TEST_P(EqualProtTest, Basic) {
   size_t kWorldSize = 2;
-  size_t n = 11;
+  int64_t n = 11;
   FieldType field = GetParam();
 
-  ArrayRef inp[2];
-  inp[0] = ring_rand(field, n);
-  inp[1] = ring_rand(field, n);
+  NdArrayRef inp[2];
+  inp[0] = ring_rand(field, {n});
+  inp[1] = ring_rand(field, {n});
 
   DISPATCH_ALL_FIELDS(field, "", [&]() {
     auto xinp0 = xt_mutable_adapt<ring2k_t>(inp[0]);
@@ -58,16 +58,16 @@ TEST_P(EqualProtTest, Basic) {
     int rank = ctx->Rank();
     auto base = std::make_shared<BasicOTProtocols>(conn);
     EqualProtocol eq_prot(base);
-    eq_oup[rank] = eq_prot.Compute(inp[rank]);
+    eq_oup[rank] = eq_prot.Compute(flatten(inp[rank]));
   });
 
   DISPATCH_ALL_FIELDS(field, "", [&]() {
-    auto xeq0 = xt_adapt<ring2k_t>(eq_oup[0]);
-    auto xeq1 = xt_adapt<ring2k_t>(eq_oup[1]);
+    auto xeq0 = ArrayView<ring2k_t>(eq_oup[0]);
+    auto xeq1 = ArrayView<ring2k_t>(eq_oup[1]);
     auto xinp0 = xt_adapt<ring2k_t>(inp[0]);
     auto xinp1 = xt_adapt<ring2k_t>(inp[1]);
 
-    for (size_t i = 0; i < n; ++i) {
+    for (int64_t i = 0; i < n; ++i) {
       bool expected = xinp0[i] == xinp1[i];
       bool got_eq = xeq0[i] ^ xeq1[i];
       EXPECT_EQ(expected, got_eq);

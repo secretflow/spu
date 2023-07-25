@@ -23,7 +23,6 @@
 #include "yacl/link/link.h"
 #include "yacl/utils/parallel.h"
 
-#include "libspu/core/array_ref.h"
 #include "libspu/core/trace.h"
 #include "libspu/core/vectorize.h"
 #include "libspu/mpc/ab_api.h"
@@ -42,19 +41,17 @@ namespace {
 // Input a plaintext
 // Output the B-share without MAC
 // LSB first, MSB last
-// ArrayRef CastToLargeRing(const ArrayRef& in, FieldType out_field) {
-ArrayRef CastRing(const ArrayRef& in, FieldType out_field) {
+// NdArrayRef CastToLargeRing(const NdArrayRef& in, FieldType out_field) {
+NdArrayRef CastRing(const NdArrayRef& in, FieldType out_field) {
   const auto* in_ty = in.eltype().as<Ring2k>();
   const auto in_field = in_ty->field();
   return DISPATCH_ALL_FIELDS(in_field, "_", [&]() {
-    auto _in = ArrayView<ring2k_t>(in);
-
-    const size_t out_numel = in.numel();
-    auto out = ring_zeros(out_field, out_numel);
+    using InT = ring2k_t;
+    auto out = ring_zeros(out_field, in.shape());
     return DISPATCH_ALL_FIELDS(out_field, "_", [&]() {
-      auto _out = ArrayView<ring2k_t>(out);
+      using OutT = ring2k_t;
       pforeach(0, in.numel(), [&](int64_t idx) {
-        _out[idx] = static_cast<ring2k_t>(_in[idx]);
+        out.at<OutT>(idx) = static_cast<ring2k_t>(in.at<InT>(idx));
       });
 
       return out;
@@ -62,12 +59,12 @@ ArrayRef CastRing(const ArrayRef& in, FieldType out_field) {
   });
 }
 
-ArrayRef zero_a_impl(KernelEvalContext* ctx, size_t size) {
+NdArrayRef zero_a_impl(KernelEvalContext* ctx, const Shape& shape) {
   auto* prg_state = ctx->getState<PrgState>();
   const auto field = ctx->getState<Spdz2kState>()->getDefaultField();
 
-  auto [r0, r1] = prg_state->genPrssPair(field, size);
-  auto [r2, r3] = prg_state->genPrssPair(field, size);
+  auto [r0, r1] = prg_state->genPrssPair(field, shape);
+  auto [r2, r3] = prg_state->genPrssPair(field, shape);
 
   auto x = ring_sub(r0, r1);
   auto x_mac = ring_sub(r2, r3);
@@ -75,14 +72,14 @@ ArrayRef zero_a_impl(KernelEvalContext* ctx, size_t size) {
 }
 }  // namespace
 
-ArrayRef GetMacShare(KernelEvalContext* ctx, const ArrayRef& in) {
+NdArrayRef GetMacShare(KernelEvalContext* ctx, const NdArrayRef& in) {
   const auto field = in.eltype().as<Ring2k>()->field();
   auto* beaver = ctx->getState<Spdz2kState>()->beaver();
   const size_t k = ctx->getState<Spdz2kState>()->k();
   const size_t s = ctx->getState<Spdz2kState>()->s();
 
   const auto& x = getValueShare(in);
-  ArrayRef x_mac;
+  NdArrayRef x_mac;
   if (in.eltype().as<AShrTy>()->hasMac()) {
     x_mac = getMacShare(in);
   } else {
@@ -92,8 +89,8 @@ ArrayRef GetMacShare(KernelEvalContext* ctx, const ArrayRef& in) {
   return x_mac;
 }
 
-ArrayRef RandA::proc(KernelEvalContext* ctx, size_t size) const {
-  SPU_TRACE_MPC_LEAF(ctx, size);
+NdArrayRef RandA::proc(KernelEvalContext* ctx, const Shape& shape) const {
+  SPU_TRACE_MPC_LEAF(ctx, shape);
 
   const auto field = ctx->getState<Spdz2kState>()->getDefaultField();
   auto* prg_state = ctx->getState<PrgState>();
@@ -108,20 +105,20 @@ ArrayRef RandA::proc(KernelEvalContext* ctx, size_t size) const {
   // - https://eprint.iacr.org/2019/599.pdf
   // It's safer to keep the number within [-2**(k-2), 2**(k-2)) for comparison
   // operations.
-  auto x = ring_rshift(prg_state->genPriv(field, size), 2)
+  auto x = ring_rshift(prg_state->genPriv(field, shape), 2)
                .as(makeType<AShrTy>(field));
   auto x_mac = beaver->AuthArrayRef(x, field, k, s);
   return makeAShare(x, x_mac, field);
 }
 
-ArrayRef P2A::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
+NdArrayRef P2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   SPU_TRACE_MPC_LEAF(ctx, in);
 
   const auto field = ctx->getState<Spdz2kState>()->getDefaultField();
   auto* comm = ctx->getState<Communicator>();
   const auto key = ctx->getState<Spdz2kState>()->key();
 
-  auto res = zero_a_impl(ctx, in.numel());
+  auto res = zero_a_impl(ctx, in.shape());
   auto z = getValueShare(res);
   auto z_mac = getMacShare(res);
 
@@ -135,7 +132,7 @@ ArrayRef P2A::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
   return res;
 }
 
-ArrayRef A2P::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
+NdArrayRef A2P::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   SPU_TRACE_MPC_LEAF(ctx, in);
 
   const auto out_field = ctx->getState<Z2kState>()->getDefaultField();
@@ -156,8 +153,8 @@ ArrayRef A2P::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
   return res.as(makeType<Pub2kTy>(out_field));
 }
 
-ArrayRef A2V::proc(KernelEvalContext* ctx, const ArrayRef& in,
-                   size_t rank) const {
+NdArrayRef A2V::proc(KernelEvalContext* ctx, const NdArrayRef& in,
+                     size_t rank) const {
   SPU_TRACE_MPC_LEAF(ctx, in);
 
   const auto field = ctx->getState<Spdz2kState>()->getDefaultField();
@@ -168,10 +165,10 @@ ArrayRef A2V::proc(KernelEvalContext* ctx, const ArrayRef& in,
   const auto s = ctx->getState<Spdz2kState>()->s();
 
   // generate mask
-  auto zero = zero_a_impl(ctx, in.numel());
+  auto zero = zero_a_impl(ctx, in.shape());
   auto z = getValueShare(zero);
   auto z_mac = getMacShare(zero);
-  auto r = ring_rand(field, in.numel());
+  auto r = ring_rand(field, in.shape());
   if (comm->getRank() == rank) {
     ring_add_(z, r);
   }
@@ -193,11 +190,11 @@ ArrayRef A2V::proc(KernelEvalContext* ctx, const ArrayRef& in,
     return res.as(makeType<Priv2kTy>(out_field, rank));
   } else {
     auto out_ty = makeType<Priv2kTy>(out_field, rank);
-    return makeConstantArrayRef(out_ty, in.numel());
+    return makeConstantArrayRef(out_ty, in.shape());
   }
 }
 
-ArrayRef V2A::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
+NdArrayRef V2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   const auto* in_ty = in.eltype().as<Priv2kTy>();
   const size_t owner_rank = in_ty->owner();
   const auto field = ctx->getState<Spdz2kState>()->getDefaultField();
@@ -206,7 +203,7 @@ ArrayRef V2A::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
   const size_t k = ctx->getState<Spdz2kState>()->k();
   const size_t s = ctx->getState<Spdz2kState>()->s();
 
-  auto res = zero_a_impl(ctx, in.numel());
+  auto res = zero_a_impl(ctx, in.shape());
   auto z = getValueShare(res);
   auto z_mac = getMacShare(res);
 
@@ -220,7 +217,7 @@ ArrayRef V2A::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
   return res;
 }
 
-ArrayRef NotA::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
+NdArrayRef NotA::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   SPU_TRACE_MPC_LEAF(ctx, in);
 
   const auto field = in.eltype().as<Ring2k>()->field();
@@ -236,11 +233,11 @@ ArrayRef NotA::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
   auto neg_x_mac = ring_neg(x_mac);
 
   // add public M-1
-  const auto& neg_ones = ring_not(ring_zeros(field, in.numel()));
+  const auto& neg_ones = ring_not(ring_zeros(field, in.shape()));
   if (comm->getRank() == 0) {
     ring_add_(neg_x, neg_ones);
   }
-  const auto& ones = ring_ones(field, in.numel());
+  const auto& ones = ring_ones(field, in.shape());
   ring_sub_(neg_x_mac, ring_mul(ones, key));
 
   return makeAShare(neg_x, neg_x_mac, field);
@@ -249,8 +246,8 @@ ArrayRef NotA::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
 ////////////////////////////////////////////////////////////////////
 // add family
 ////////////////////////////////////////////////////////////////////
-ArrayRef AddAP::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
-                     const ArrayRef& rhs) const {
+NdArrayRef AddAP::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
+                       const NdArrayRef& rhs) const {
   SPU_TRACE_MPC_LEAF(ctx, lhs, rhs);
 
   const auto field = lhs.eltype().as<Ring2k>()->field();
@@ -273,8 +270,8 @@ ArrayRef AddAP::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
   return makeAShare(z, z_mac, field);
 }
 
-ArrayRef AddAA::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
-                     const ArrayRef& rhs) const {
+NdArrayRef AddAA::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
+                       const NdArrayRef& rhs) const {
   SPU_TRACE_MPC_LEAF(ctx, lhs, rhs);
 
   const auto field = lhs.eltype().as<Ring2k>()->field();
@@ -303,7 +300,7 @@ ArrayRef AddAA::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
 // Procedure SingleCheck, 3.1 Opening Values and Checking MACs,
 // SPDZ2k: Efficient MPC mod 2k for Dishonest Majority
 // - https://eprint.iacr.org/2018/482.pdf
-bool SingleCheck(KernelEvalContext* ctx, const ArrayRef& in) {
+bool SingleCheck(KernelEvalContext* ctx, const NdArrayRef& in) {
   static constexpr char kBindName[] = "single_check";
 
   const auto field = in.eltype().as<Ring2k>()->field();
@@ -314,7 +311,7 @@ bool SingleCheck(KernelEvalContext* ctx, const ArrayRef& in) {
   const size_t s = ctx->getState<Spdz2kState>()->s();
 
   // 1. Generate a random, shared value [r]
-  auto [r, r_mac] = beaver->AuthCoinTossing(field, in.numel(), k, s);
+  auto [r, r_mac] = beaver->AuthCoinTossing(field, in.shape(), k, s);
 
   // 2. Locally construct [y]
   const auto& x = getValueShare(in);
@@ -332,32 +329,29 @@ bool SingleCheck(KernelEvalContext* ctx, const ArrayRef& in) {
   SPU_ENFORCE(commit_and_open(comm->lctx(), z_str, &z_strs));
   SPU_ENFORCE(z_strs.size() == comm->getWorldSize());
 
-  auto plain_z = ring_zeros(field, in.numel());
+  auto plain_z = ring_zeros(field, in.shape());
   for (size_t i = 0; i < comm->getWorldSize(); ++i) {
     const auto& _z_str = z_strs[i];
     auto mem = std::make_shared<yacl::Buffer>(_z_str.data(), _z_str.size());
-    ArrayRef a(mem, plain_z.eltype(), _z_str.size() / SizeOf(field), 1, 0);
-    ring_add_(plain_z, a);
+    NdArrayRef a(mem, plain_z.eltype(),
+                 {static_cast<int64_t>(_z_str.size() / SizeOf(field))}, {1}, 0);
+    ring_add_(plain_z, a.reshape(plain_z.shape()));
   }
 
-  auto ret = spu::mpc::ring_all_equal(plain_z, ring_zeros(field, in.numel()));
+  auto ret = spu::mpc::ring_all_equal(plain_z, ring_zeros(field, in.shape()));
   SPU_ENFORCE(ret, "single check fail");
   return ret;
 }
 
-static ArrayRef wrap_lshift_a(SPUContext* ctx, const ArrayRef& x, size_t k) {
-  const Shape shape = {x.numel()};
-  auto [res, _s, _t] = UnwrapValue(lshift_a(ctx, WrapValue(x, shape), k));
-  return res;
+static NdArrayRef wrap_lshift_a(SPUContext* ctx, const NdArrayRef& x,
+                                size_t k) {
+  return UnwrapValue(lshift_a(ctx, WrapValue(x), k));
 }
 
-static ArrayRef wrap_add_aa(SPUContext* ctx, const ArrayRef& x,
-                            const ArrayRef& y) {
-  SPU_ENFORCE(x.numel() == y.numel());
-  const Shape shape = {x.numel()};
-  auto [res, _s, _t] =
-      UnwrapValue(add_aa(ctx, WrapValue(x, shape), WrapValue(y, shape)));
-  return res;
+static NdArrayRef wrap_add_aa(SPUContext* ctx, const NdArrayRef& x,
+                              const NdArrayRef& y) {
+  SPU_ENFORCE(x.shape() == y.shape());
+  return UnwrapValue(add_aa(ctx, WrapValue(x), WrapValue(y)));
 }
 
 // Refer to:
@@ -367,12 +361,11 @@ static ArrayRef wrap_add_aa(SPUContext* ctx, const ArrayRef& x,
 //
 // TODO: 1. maybe all shared values using one check is better
 // 2. use DISPATCH_ALL_FIELDS to improve performance
-bool BatchCheck(KernelEvalContext* ctx, const std::vector<ArrayRef>& ins) {
+bool BatchCheck(KernelEvalContext* ctx, const std::vector<NdArrayRef>& ins) {
   static constexpr char kBindName[] = "batch_check";
 
   SPU_ENFORCE(!ins.empty());
   const auto field = ins[0].eltype().as<Ring2k>()->field();
-  const auto numel = ins[0].numel();
   auto* comm = ctx->getState<Communicator>();
   const auto& lctx = comm->lctx();
   auto* beaver = ctx->getState<Spdz2kState>()->beaver();
@@ -382,12 +375,12 @@ bool BatchCheck(KernelEvalContext* ctx, const std::vector<ArrayRef>& ins) {
 
   const size_t size = ins.size();
 
-  std::vector<ArrayRef> x_hat_v;
-  std::vector<ArrayRef> mac_v;
+  std::vector<NdArrayRef> x_hat_v;
+  std::vector<NdArrayRef> mac_v;
 
   for (const auto& in : ins) {
     // 1. get random r and r_mac
-    auto [r, r_mac] = beaver->AuthCoinTossing(field, numel, k, s);
+    auto [r, r_mac] = beaver->AuthCoinTossing(field, ins[0].shape(), k, s);
     auto rmac = makeAShare(r, r_mac, field);
 
     // 2. [x_hat] = [x] + 2^k * [r]
@@ -401,9 +394,9 @@ bool BatchCheck(KernelEvalContext* ctx, const std::vector<ArrayRef>& ins) {
   }
 
   // 3. broadcast x_hat && 4. open x_hat
-  std::vector<ArrayRef> plain_x_hat_v;
+  std::vector<NdArrayRef> plain_x_hat_v;
   vectorize(x_hat_v.begin(), x_hat_v.end(), std::back_inserter(plain_x_hat_v),
-            [&](const ArrayRef& s) {
+            [&](const NdArrayRef& s) {
               return comm->allReduce(ReduceOp::ADD, s, kBindName);
             });
 
@@ -415,13 +408,13 @@ bool BatchCheck(KernelEvalContext* ctx, const std::vector<ArrayRef>& ins) {
     rv.emplace_back(pub_r.at<uint128_t>(i) & mask);
   }
 
-  auto plain_y = ring_zeros(field, numel);
+  auto plain_y = ring_zeros(field, ins[0].shape());
   for (size_t i = 0; i < size; ++i) {
     ring_add_(plain_y, ring_mul(plain_x_hat_v[i], rv[i]));
   }
 
   // 6. compute z, commit and open z
-  auto m = ring_zeros(field, numel);
+  auto m = ring_zeros(field, ins[0].shape());
   for (size_t i = 0; i < size; ++i) {
     ring_add_(m, ring_mul(mac_v[i], rv[i]));
   }
@@ -443,20 +436,22 @@ bool BatchCheck(KernelEvalContext* ctx, const std::vector<ArrayRef>& ins) {
                              z_str.size() / size * (comm->getWorldSize() - 1));
 
   // 7. verify whether plain z is zero
-  auto plain_z = ring_zeros(field, numel);
+  auto plain_z = ring_zeros(field, ins[0].shape());
   for (size_t i = 0; i < comm->getWorldSize(); ++i) {
     const auto& _z_str = z_strs[i];
     auto mem = std::make_shared<yacl::Buffer>(_z_str.data(), _z_str.size());
-    ArrayRef a(mem, plain_z.eltype(), _z_str.size() / SizeOf(field), 1, 0);
-    ring_add_(plain_z, a);
+    NdArrayRef a(mem, plain_z.eltype(),
+                 {static_cast<int64_t>(_z_str.size() / SizeOf(field))}, {1}, 0);
+    ring_add_(plain_z, a.reshape(plain_z.shape()));
   }
 
-  auto ret = spu::mpc::ring_all_equal(plain_z, ring_zeros(field, numel));
+  auto ret =
+      spu::mpc::ring_all_equal(plain_z, ring_zeros(field, ins[0].shape()));
   return ret;
 }
 
-ArrayRef MulAP::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
-                     const ArrayRef& rhs) const {
+NdArrayRef MulAP::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
+                       const NdArrayRef& rhs) const {
   SPU_TRACE_MPC_LEAF(ctx, lhs, rhs);
 
   const auto field = lhs.eltype().as<Ring2k>()->field();
@@ -479,8 +474,8 @@ ArrayRef MulAP::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
 // - https://eprint.iacr.org/2018/482.pdf
 //
 // TODO: use DISPATCH_ALL_FIELDS instead of ring ops to improve performance
-ArrayRef MulAA::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
-                     const ArrayRef& rhs) const {
+NdArrayRef MulAA::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
+                       const NdArrayRef& rhs) const {
   SPU_TRACE_MPC_LEAF(ctx, lhs, rhs);
 
   const auto field = lhs.eltype().as<Ring2k>()->field();
@@ -497,7 +492,7 @@ ArrayRef MulAA::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
   const auto& y_mac = GetMacShare(ctx, rhs);
 
   // e = x - a, f = y - b
-  auto [vec, mac_vec] = beaver->AuthMul(field, lhs.numel(), k, s);
+  auto [vec, mac_vec] = beaver->AuthMul(field, lhs.shape(), k, s);
 
   auto [a, b, c] = vec;
   auto [a_mac, b_mac, c_mac] = mac_vec;
@@ -508,7 +503,7 @@ ArrayRef MulAA::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
   auto f_mac = ring_sub(y_mac, b_mac);
 
   // open e, f
-  auto res = vectorize({e, f}, [&](const ArrayRef& s) {
+  auto res = vectorize({e, f}, [&](const NdArrayRef& s) {
     return comm->allReduce(ReduceOp::ADD, s, kBindName);
   });
   auto p_e = std::move(res[0]);
@@ -541,9 +536,8 @@ ArrayRef MulAA::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
 ////////////////////////////////////////////////////////////////////
 // matmul family
 ////////////////////////////////////////////////////////////////////
-ArrayRef MatMulAP::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
-                        const ArrayRef& rhs, size_t m, size_t n,
-                        size_t k) const {
+NdArrayRef MatMulAP::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
+                          const NdArrayRef& rhs) const {
   SPU_TRACE_MPC_LEAF(ctx, lhs, rhs);
 
   const auto field = lhs.eltype().as<Ring2k>()->field();
@@ -554,14 +548,13 @@ ArrayRef MatMulAP::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
   const auto& y = CastRing(rhs, field);
 
   // ret
-  auto z = ring_mmul(x, y, m, n, k);
-  auto z_mac = ring_mmul(x_mac, y, m, n, k);
+  auto z = ring_mmul(x, y);
+  auto z_mac = ring_mmul(x_mac, y);
   return makeAShare(z, z_mac, field);
 }
 
-ArrayRef MatMulAA::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
-                        const ArrayRef& rhs, size_t m, size_t n,
-                        size_t k) const {
+NdArrayRef MatMulAA::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
+                          const NdArrayRef& rhs) const {
   SPU_TRACE_MPC_LEAF(ctx, lhs, rhs);
 
   const auto field = lhs.eltype().as<Ring2k>()->field();
@@ -575,38 +568,37 @@ ArrayRef MatMulAA::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
   const auto& y = getValueShare(rhs);
 
   // generate beaver multiple triple.
-  auto [vec, mac_vec] = beaver->AuthDot(field, m, n, k, k_bits, s_bits);
+  auto [vec, mac_vec] = beaver->AuthDot(field, lhs.shape()[0], rhs.shape()[1],
+                                        lhs.shape()[1], k_bits, s_bits);
   auto [a, b, c] = vec;
   auto [a_mac, b_mac, c_mac] = mac_vec;
 
   // open x-a & y-b
   auto res =
-      vectorize({ring_sub(x, a), ring_sub(y, b)}, [&](const ArrayRef& s) {
+      vectorize({ring_sub(x, a), ring_sub(y, b)}, [&](const NdArrayRef& s) {
         return comm->allReduce(ReduceOp::ADD, s, kBindName);
       });
   auto p_e = std::move(res[0]);
   auto p_f = std::move(res[1]);
-  auto p_ef = ring_mmul(p_e, p_f, m, n, k);
+  auto p_ef = ring_mmul(p_e, p_f);
 
   // z = p_e dot b + a dot p_f + c;
-  auto z = ring_add(
-      ring_add(ring_mmul(p_e, b, m, n, k), ring_mmul(a, p_f, m, n, k)), c);
+  auto z = ring_add(ring_add(ring_mmul(p_e, b), ring_mmul(a, p_f)), c);
   if (comm->getRank() == 0) {
     // z += p_e dot p_f;
-    ring_add_(z, ring_mmul(p_e, p_f, m, n, k));
+    ring_add_(z, ring_mmul(p_e, p_f));
   }
 
   // zmac = p_e dot b_mac + a_mac dot p_f + c_mac + (p_e dot p_f) * key;
-  auto zmac =
-      ring_add(ring_mmul(p_e, b_mac, m, n, k), ring_mmul(a_mac, p_f, m, n, k));
+  auto zmac = ring_add(ring_mmul(p_e, b_mac), ring_mmul(a_mac, p_f));
   ring_add_(zmac, c_mac);
   ring_add_(zmac, ring_mul(p_ef, key));
 
   return makeAShare(z, zmac, field);
 }
 
-ArrayRef LShiftA::proc(KernelEvalContext* ctx, const ArrayRef& in,
-                       size_t bits) const {
+NdArrayRef LShiftA::proc(KernelEvalContext* ctx, const NdArrayRef& in,
+                         size_t bits) const {
   SPU_TRACE_MPC_LEAF(ctx, in, bits);
 
   const auto field = in.eltype().as<Ring2k>()->field();
@@ -624,8 +616,8 @@ ArrayRef LShiftA::proc(KernelEvalContext* ctx, const ArrayRef& in,
 
 // ABY3, truncation pair method.
 // Ref: Section 5.1.2 https://eprint.iacr.org/2018/403.pdf
-ArrayRef TruncA::proc(KernelEvalContext* ctx, const ArrayRef& in,
-                      size_t bits) const {
+NdArrayRef TruncA::proc(KernelEvalContext* ctx, const NdArrayRef& in,
+                        size_t bits) const {
   SPU_TRACE_MPC_LEAF(ctx, in, bits);
 
   const auto key = ctx->getState<Spdz2kState>()->key();
@@ -637,7 +629,7 @@ ArrayRef TruncA::proc(KernelEvalContext* ctx, const ArrayRef& in,
 
   const auto& x = getValueShare(in);
   const auto& x_mac = getMacShare(in);
-  const auto& [vec, mac_vec] = beaver->AuthTrunc(field, x.numel(), bits, k, s);
+  const auto& [vec, mac_vec] = beaver->AuthTrunc(field, x.shape(), bits, k, s);
   const auto& [r, rb] = vec;
   const auto& [r_mac, rb_mac] = mac_vec;
 

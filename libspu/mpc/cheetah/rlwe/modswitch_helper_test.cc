@@ -44,7 +44,8 @@ class RLWE2LWETest : public testing::TestWithParam<FieldType> {
   inline uint32_t FieldBitLen(FieldType f) const { return 8 * SizeOf(f); }
 
   ArrayRef CPRNG(FieldType field, size_t size) {
-    return ring_rand(field, size, seed_, &prng_counter_);
+    return flatten(
+        ring_rand(field, {static_cast<int64_t>(size)}, seed_, &prng_counter_));
   }
 
   void UniformPoly(const seal::SEALContext &context, RLWEPt *pt) {
@@ -119,13 +120,13 @@ TEST_P(RLWE2LWETest, ModulusSwitch_UpDown) {
     }
     // e = round(r'/Delta) mod t \in R_t
     auto src = absl::MakeSpan(pt.data(), pt.coeff_count());
-    auto cmp = ring_zeros(field_, poly_deg);
+    auto cmp = flatten(ring_zeros(field_, {(int64_t)poly_deg}));
     ms_helper_->ModulusDownRNS(src, cmp);
     // check r =? e
     DISPATCH_ALL_FIELDS(field_, "", [&]() {
-      auto expected = xt_adapt<ring2k_t>(_vec);
-      auto computed = xt_adapt<ring2k_t>(cmp);
-      for (size_t i = 0; i < expected.size(); ++i) {
+      auto expected = ArrayView<ring2k_t>(_vec);
+      auto computed = ArrayView<ring2k_t>(cmp);
+      for (int64_t i = 0; i < expected.numel(); ++i) {
         EXPECT_EQ(expected[i], computed[i]);
       }
     });
@@ -158,8 +159,8 @@ TEST_P(RLWE2LWETest, ModulusSwitch_DownUp) {
 
   // r' = round(r/Delta) mod t \in R_t
   // b' = round(b/Delta) mod t \in R_t
-  auto shr0 = ring_zeros(field_, poly_deg);
-  auto shr1 = ring_zeros(field_, poly_deg);
+  auto shr0 = flatten(ring_zeros(field_, {(int64_t)poly_deg}));
+  auto shr1 = flatten(ring_zeros(field_, {(int64_t)poly_deg}));
   {
     auto src = absl::MakeSpan(rnd.data(), rnd.coeff_count());
     ms_helper_->ModulusDownRNS(src, shr0);
@@ -169,9 +170,9 @@ TEST_P(RLWE2LWETest, ModulusSwitch_DownUp) {
   }
 
   DISPATCH_ALL_FIELDS(field_, "", [&]() {
-    auto expected = xt_adapt<ring2k_t>(vec_a);
-    auto computed0 = xt_adapt<ring2k_t>(shr0);
-    auto computed1 = xt_adapt<ring2k_t>(shr1);
+    auto expected = ArrayView<ring2k_t>(vec_a);
+    auto computed0 = ArrayView<ring2k_t>(shr0);
+    auto computed1 = ArrayView<ring2k_t>(shr1);
 
     for (size_t i = 0; i < poly_deg; ++i) {
       auto cmp = computed0[i] + computed1[i];

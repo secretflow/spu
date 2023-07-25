@@ -101,7 +101,7 @@ TYPED_TEST(FloatEncodingTest, Works) {
       3.1415926,
   };
 
-  ArrayRef frm(makePtType(PtTypeToEnum<FloatT>::value), samples.size());
+  NdArrayRef frm(makePtType(PtTypeToEnum<FloatT>::value), {samples.size()});
   std::copy(samples.begin(), samples.end(), &frm.at<FloatT>(0));
 
   // std::cout << frm.at<FloatT>(0) << std::endl;
@@ -153,7 +153,7 @@ TYPED_TEST(IntEncodingTest, Works) {
       1,
   };
 
-  ArrayRef frm(makePtType(PtTypeToEnum<IntT>::value), samples.size());
+  NdArrayRef frm(makePtType(PtTypeToEnum<IntT>::value), {samples.size()});
   std::copy(samples.begin(), samples.end(), &frm.at<IntT>(0));
 
   // std::cout << frm.at<IntT>(0) << std::endl;

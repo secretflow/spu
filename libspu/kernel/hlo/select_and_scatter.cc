@@ -23,7 +23,6 @@
 #include "yacl/utils/parallel.h"
 
 #include "libspu/core/context.h"
-#include "libspu/core/shape_util.h"
 #include "libspu/core/value.h"
 #include "libspu/kernel/hal/constants.h"
 #include "libspu/kernel/hal/debug.h"
@@ -39,7 +38,7 @@ namespace spu::kernel::hlo {
 
 spu::Value MaxPoolScatter1x2x2x1NoPaddingNoDialation(
     SPUContext *ctx, const spu::Value &scatter_indices,
-    const spu::Value &source, absl::Span<const int64_t> window_strides) {
+    const spu::Value &source, const Strides &window_strides) {
   std::vector<spu::Value> slices(4);
   for (int64_t idx = 0; idx < 4; ++idx) {
     slices[idx] = hal::slice(
@@ -62,22 +61,22 @@ spu::Value MaxPoolScatter1x2x2x1NoPaddingNoDialation(
   }
 
   std::vector<std::future<spu::Value>> f_slices(4);
-  f_slices[0] = std::async(
-      std::launch::async, hal::pad, ctx, slices[0], z,
-      std::vector<int64_t>{0, 0, 0, 0}, std::vector<int64_t>{0, 1, 1, 0},
-      std::vector<int64_t>{0, window_strides[1] - 1, window_strides[2] - 1, 0});
-  f_slices[1] = std::async(
-      std::launch::async, hal::pad, ctx, slices[1], z,
-      std::vector<int64_t>{0, 0, 1, 0}, std::vector<int64_t>{0, 1, 0, 0},
-      std::vector<int64_t>{0, window_strides[1] - 1, window_strides[2] - 1, 0});
-  f_slices[2] = std::async(
-      std::launch::async, hal::pad, ctx, slices[2], z,
-      std::vector<int64_t>{0, 1, 0, 0}, std::vector<int64_t>{0, 0, 1, 0},
-      std::vector<int64_t>{0, window_strides[1] - 1, window_strides[2] - 1, 0});
-  f_slices[3] = std::async(
-      std::launch::async, hal::pad, ctx, slices[3], z,
-      std::vector<int64_t>{0, 1, 1, 0}, std::vector<int64_t>{0, 0, 0, 0},
-      std::vector<int64_t>{0, window_strides[1] - 1, window_strides[2] - 1, 0});
+  f_slices[0] =
+      std::async(std::launch::async, hal::pad, ctx, slices[0], z,
+                 Sizes{0, 0, 0, 0}, Sizes{0, 1, 1, 0},
+                 Sizes{0, window_strides[1] - 1, window_strides[2] - 1, 0});
+  f_slices[1] =
+      std::async(std::launch::async, hal::pad, ctx, slices[1], z,
+                 Sizes{0, 0, 1, 0}, Sizes{0, 1, 0, 0},
+                 Sizes{0, window_strides[1] - 1, window_strides[2] - 1, 0});
+  f_slices[2] =
+      std::async(std::launch::async, hal::pad, ctx, slices[2], z,
+                 Sizes{0, 1, 0, 0}, Sizes{0, 0, 1, 0},
+                 Sizes{0, window_strides[1] - 1, window_strides[2] - 1, 0});
+  f_slices[3] =
+      std::async(std::launch::async, hal::pad, ctx, slices[3], z,
+                 Sizes{0, 1, 1, 0}, Sizes{0, 0, 0, 0},
+                 Sizes{0, window_strides[1] - 1, window_strides[2] - 1, 0});
 
   spu::Value ret = f_slices[0].get();
   for (size_t idx = 1; idx < 4; ++idx) {
@@ -89,9 +88,8 @@ spu::Value MaxPoolScatter1x2x2x1NoPaddingNoDialation(
 
 spu::Value MaxPoolScatter(
     SPUContext *ctx, const spu::Value &scatter_indices,
-    const spu::Value &source, absl::Span<const int64_t> window_shape,
-    absl::Span<const int64_t> base_shape,
-    absl::Span<const int64_t> window_strides,
+    const spu::Value &source, const Shape &window_shape,
+    const Shape &base_shape, const Strides &window_strides,
     absl::Span<const std::pair<int64_t, int64_t>> window_padding) {
   // Add a fast 1x2x2x1, no padding fast reduce
   auto no_padding = std::all_of(window_padding.begin(), window_padding.end(),
@@ -103,12 +101,12 @@ spu::Value MaxPoolScatter(
                                                      source, window_strides);
   }
   //  source_shape * window_numel
-  std::vector<int64_t> tiled_1d_shape = source.shape();
+  auto tiled_1d_shape = source.shape();
   const int64_t window_numel = std::accumulate(
       window_shape.begin(), window_shape.end(), 1, std::multiplies<int64_t>());
   tiled_1d_shape.push_back(window_numel);
 
-  std::vector<int64_t> broadcast_dims(source.shape().size(), 0);
+  Axes broadcast_dims(source.shape().size(), 0);
   std::iota(broadcast_dims.begin(), broadcast_dims.end(), 0);
 
   auto tiled_1d_source =
@@ -117,16 +115,14 @@ spu::Value MaxPoolScatter(
   // selected_pos is the one hot encoding for each window.
   auto selected = hal::mul(ctx, tiled_1d_source, scatter_indices);
 
-  std::vector<int64_t> tiled_shape(source.shape().begin(),
-                                   source.shape().end());
+  Shape tiled_shape(source.shape().begin(), source.shape().end());
   tiled_shape.insert(tiled_shape.end(), window_shape.begin(),
                      window_shape.end());
 
   selected = hal::reshape(ctx, selected, tiled_shape);
 
   const size_t ndim = base_shape.size();
-  std::vector<int64_t> base_x_window_shape(base_shape.begin(),
-                                           base_shape.end());
+  auto base_x_window_shape = base_shape;
   base_x_window_shape.insert(base_x_window_shape.end(), window_shape.begin(),
                              window_shape.end());
   auto output = hal::zeros(ctx, source.dtype(), base_x_window_shape);
@@ -141,8 +137,8 @@ spu::Value MaxPoolScatter(
   do {
     yacl::parallel_for(
         0, source.numel(), 2048, [&](int64_t begin, int64_t end) {
-          std::vector<int64_t> tiled_index(2 * ndim, 0);
-          std::vector<int64_t> base_x_window_index(2 * ndim, 0);
+          Index tiled_index(2 * ndim, 0);
+          Index base_x_window_index(2 * ndim, 0);
           std::copy(window_index.begin(), window_index.end(),
                     base_x_window_index.begin() + ndim);
           std::copy(window_index.begin(), window_index.end(),
@@ -160,13 +156,13 @@ spu::Value MaxPoolScatter(
                   selected.data().slice_scalar_at(tiled_index),
                   base_x_window_index);
             }
-            bumpIndices<int64_t>(source.shape(),
-                                 absl::MakeSpan(tiled_index).subspan(0, ndim));
+            bumpIndices(source.shape(),
+                        absl::MakeSpan(tiled_index).subspan(0, ndim));
           }
         });
-  } while (bumpIndices<int64_t>(window_shape, absl::MakeSpan(window_index)));
+  } while (bumpIndices(window_shape, absl::MakeSpan(window_index)));
 
-  std::vector<int64_t> base_1d_shape(base_shape.begin(), base_shape.end());
+  auto base_1d_shape = base_shape;
   base_1d_shape.push_back(window_numel);
   output = hal::reshape(ctx, output, base_1d_shape);
 
@@ -181,8 +177,8 @@ spu::Value MaxPoolScatter(
 
 spu::Value SelectAndScatterExpanded(
     SPUContext *ctx, const spu::Value &base, const spu::Value &source,
-    const spu::Value &init_val, absl::Span<const int64_t> window_shape,
-    absl::Span<const int64_t> window_strides,
+    const spu::Value &init_val, const Shape &window_shape,
+    const Strides &window_strides,
     absl::Span<const std::pair<int64_t, int64_t>> window_padding,
     const ValueBinaryFn &select_fn, const ValueBinaryFn &scatter_fn) {
   const size_t ndim = base.shape().size();
@@ -201,7 +197,7 @@ spu::Value SelectAndScatterExpanded(
   auto tiled = ConvertToTiledLayout(ctx, expanded, window_shape);
 
   // collapse the tile to 1d for better reduce performance
-  std::vector<int64_t> tiled_1d_shape = source.shape();
+  auto tiled_1d_shape = source.shape();
   const int64_t window_numel = std::accumulate(
       window_shape.begin(), window_shape.end(), 1, std::multiplies<int64_t>());
   tiled_1d_shape.push_back(window_numel);
@@ -226,7 +222,7 @@ spu::Value SelectAndScatterExpanded(
         return rets;
       });
 
-  std::vector<int64_t> broadcast_dims(source.shape().size(), 0);
+  Axes broadcast_dims(source.shape().size(), 0);
   std::iota(broadcast_dims.begin(), broadcast_dims.end(), 0);
 
   // selected_pos is the one hot encoding for each window.
@@ -242,7 +238,7 @@ spu::Value SelectAndScatterExpanded(
   // [base.shape(), window_index] does not overlap with each other.
   selected = hal::reshape(ctx, selected, tiled.shape());
 
-  std::vector<int64_t> base_x_window_shape = base.shape();
+  auto base_x_window_shape = base.shape();
   base_x_window_shape.insert(base_x_window_shape.end(), window_shape.begin(),
                              window_shape.end());
   auto output = hal::expand(ctx, init_val, base_x_window_shape);
@@ -250,8 +246,8 @@ spu::Value SelectAndScatterExpanded(
   const std::vector<int64_t> window_dilations(window_shape.size(), 1);
   const std::vector<int64_t> base_dilations(source.shape().size(), 1);
   std::vector<int64_t> window_index(ndim, 0);
-  std::vector<int64_t> tiled_index(2 * ndim, 0);
-  std::vector<int64_t> base_x_window_index(2 * ndim, 0);
+  Index tiled_index(2 * ndim, 0);
+  Index base_x_window_index(2 * ndim, 0);
   std::vector<int64_t> base_index(ndim, 0);
   do {
     std::copy(window_index.begin(), window_index.end(),
@@ -271,11 +267,11 @@ spu::Value SelectAndScatterExpanded(
                                    base_x_window_index);
       }
 
-    } while (bumpIndices<int64_t>(
-        source.shape(), absl::MakeSpan(tiled_index).subspan(0, ndim)));
-  } while (bumpIndices<int64_t>(window_shape, absl::MakeSpan(window_index)));
+    } while (bumpIndices(source.shape(),
+                         absl::MakeSpan(tiled_index).subspan(0, ndim)));
+  } while (bumpIndices(window_shape, absl::MakeSpan(window_index)));
 
-  std::vector<int64_t> base_1d_shape = base.shape();
+  auto base_1d_shape = base.shape();
   base_1d_shape.push_back(window_numel);
   output = hal::reshape(ctx, output, base_1d_shape);
 
@@ -290,8 +286,8 @@ spu::Value SelectAndScatterExpanded(
 
 spu::Value SelectAndScatterNaive(
     SPUContext *ctx, const spu::Value &operand, const spu::Value &source,
-    const spu::Value &init_val, absl::Span<const int64_t> window_shape,
-    absl::Span<const int64_t> window_strides,
+    const spu::Value &init_val, const Shape &window_shape,
+    const Strides &window_strides,
     absl::Span<const std::pair<int64_t, int64_t>> window_padding,
     const ValueBinaryFn &select_fn, const ValueBinaryFn &scatter_fn) {
   // Create an index matrix
@@ -320,20 +316,19 @@ spu::Value SelectAndScatterNaive(
         idx_matrix.dtype());
 
     do {
-      std::vector<int64_t> output_index(source.shape().size(), 0);
+      Index output_index(source.shape().size(), 0);
       do {
         RunOnWindowIndex(
             window_shape, window_strides, dummy_window_dilation, window_padding,
             operand.shape(), dummy_base_dilation, output_index, window_index,
-            [&](absl::Span<const int64_t> operand_index) {
+            [&](const Index &operand_index) {
               current_val.data().update_slice(
                   operand.data().slice_scalar_at(operand_index), output_index);
               current_idx.data().update_slice(
                   idx_matrix.data().slice_scalar_at(operand_index),
                   output_index);
             });
-      } while (
-          bumpIndices<int64_t>(source.shape(), absl::MakeSpan(output_index)));
+      } while (bumpIndices(source.shape(), absl::MakeSpan(output_index)));
 
       if (first_iter) {
         // First iter, don't do the real compute, just copy to selected
@@ -345,7 +340,7 @@ spu::Value SelectAndScatterNaive(
         selected_val = hal::select(ctx, ret, selected_val, current_val);
         selected_idx = hal::select(ctx, ret, selected_idx, current_idx);
       }
-    } while (bumpIndices<int64_t>(window_shape, absl::MakeSpan(window_index)));
+    } while (bumpIndices(window_shape, absl::MakeSpan(window_index)));
   }
 
   // Scatter
@@ -359,19 +354,18 @@ spu::Value SelectAndScatterNaive(
                           result.dtype());
 
   do {
-    std::vector<int64_t> output_index(source.shape().size(), 0);
+    Index output_index(source.shape().size(), 0);
     do {
       RunOnWindowIndex(
           window_shape, window_strides, dummy_window_dilation, window_padding,
           operand.shape(), dummy_base_dilation, output_index, window_index,
-          [&](absl::Span<const int64_t> operand_index) {
+          [&](const Index &operand_index) {
             idx_slice.data().update_slice(
                 idx_matrix.data().slice_scalar_at(operand_index), output_index);
             result_slice.data().update_slice(
                 result.data().slice_scalar_at(operand_index), output_index);
           });
-    } while (
-        bumpIndices<int64_t>(source.shape(), absl::MakeSpan(output_index)));
+    } while (bumpIndices(source.shape(), absl::MakeSpan(output_index)));
 
     auto mask = hal::equal(ctx, selected_idx, idx_slice);
 
@@ -385,14 +379,13 @@ spu::Value SelectAndScatterNaive(
       RunOnWindowIndex(window_shape, window_strides, dummy_window_dilation,
                        window_padding, operand.shape(), dummy_base_dilation,
                        output_index, window_index,
-                       [&](absl::Span<const int64_t> operand_index) {
+                       [&](const Index &operand_index) {
                          result.data().update_slice(
                              result_slice.data().slice_scalar_at(output_index),
                              operand_index);
                        });
-    } while (
-        bumpIndices<int64_t>(source.shape(), absl::MakeSpan(output_index)));
-  } while (bumpIndices<int64_t>(window_shape, absl::MakeSpan(window_index)));
+    } while (bumpIndices(source.shape(), absl::MakeSpan(output_index)));
+  } while (bumpIndices(window_shape, absl::MakeSpan(window_index)));
 
   return result;
 }

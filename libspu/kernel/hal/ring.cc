@@ -19,7 +19,6 @@
 
 #include "libspu/core/bit_utils.h"
 #include "libspu/core/prelude.h"
-#include "libspu/core/shape_util.h"
 #include "libspu/kernel/hal/prot_wrapper.h"
 
 namespace spu::kernel::hal {
@@ -80,10 +79,8 @@ Value transpose(SPUContext* ctx, const Value& in) {
   return Value(in.data().transpose({}), in.dtype());
 }
 
-Value slice(SPUContext* ctx, const Value& in,
-            absl::Span<const int64_t> start_indices,
-            absl::Span<const int64_t> end_indices,
-            absl::Span<const int64_t> strides) {
+Value slice(SPUContext* ctx, const Value& in, const Index& start_indices,
+            const Index& end_indices, const Strides& strides) {
   SPU_TRACE_HAL_DISP(ctx, in, start_indices, end_indices, strides);
 
   return Value(in.data().slice(start_indices, end_indices, strides),
@@ -194,8 +191,7 @@ Value _sub(SPUContext* ctx, const Value& x, const Value& y) {
 }
 
 Value _conv2d(SPUContext* ctx, const Value& x, const Value& y,
-              absl::Span<const int64_t> window_strides,
-              absl::Span<const int64_t> result_shape) {
+              const Strides& window_strides, const Shape& result_shape) {
   // s*p and p*p should call `dot`
   SPU_ENFORCE(x.isSecret() && y.isSecret());
   return _conv2d_ss(ctx, x, y, window_strides, result_shape);
@@ -217,6 +213,12 @@ static Value _mmul_impl(SPUContext* ctx, const Value& x, const Value& y) {
 
 Value _mmul(SPUContext* ctx, const Value& x, const Value& y) {
   auto [m, n, k] = deduceMmulArgs(x.shape(), y.shape());
+
+  // Enforce no vector
+  if (x.shape() != Shape{m, k} || y.shape() != Shape{k, n}) {
+    return _mmul(ctx, Value(x.data().reshape({m, k}), x.dtype()),
+                 Value(y.data().reshape({k, n}), y.dtype()));
+  }
   auto [m_step, n_step, k_step] =
       calcMmulTilingSize(m, n, k, x.elsize(), 256UL * 1024 * 1024);
 
@@ -432,8 +434,7 @@ Value _clamp(SPUContext* ctx, const Value& x, const Value& minv,
   return _mux(ctx, _less(ctx, res, maxv), res, maxv);
 }
 
-Value _constant(SPUContext* ctx, uint128_t init,
-                absl::Span<const int64_t> shape) {
+Value _constant(SPUContext* ctx, uint128_t init, const Shape& shape) {
   return _make_p(ctx, init, shape);
 }
 

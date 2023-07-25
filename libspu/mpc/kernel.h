@@ -22,42 +22,42 @@ namespace spu::mpc {
 class RandKernel : public Kernel {
  public:
   void evaluate(KernelEvalContext* ctx) const override;
-  virtual ArrayRef proc(KernelEvalContext* ctx, size_t size) const = 0;
+  virtual NdArrayRef proc(KernelEvalContext* ctx, const Shape& shape) const = 0;
 };
 
 class UnaryKernel : public Kernel {
  public:
   void evaluate(KernelEvalContext* ctx) const override;
-  virtual ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in) const = 0;
+  virtual NdArrayRef proc(KernelEvalContext* ctx,
+                          const NdArrayRef& in) const = 0;
 };
 
 class RevealToKernel : public Kernel {
  public:
   void evaluate(KernelEvalContext* ctx) const override;
-  virtual ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in,
-                        size_t rank) const = 0;
+  virtual NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in,
+                          size_t rank) const = 0;
 };
 
 class ShiftKernel : public Kernel {
  public:
   void evaluate(KernelEvalContext* ctx) const override;
-  virtual ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in,
-                        size_t bits) const = 0;
+  virtual NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in,
+                          size_t bits) const = 0;
 };
 
 class BinaryKernel : public Kernel {
  public:
   void evaluate(KernelEvalContext* ctx) const override;
-  virtual ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& lhs,
-                        const ArrayRef& rhs) const = 0;
+  virtual NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
+                          const NdArrayRef& rhs) const = 0;
 };
 
 class MatmulKernel : public Kernel {
  public:
   void evaluate(KernelEvalContext* ctx) const override;
-  virtual ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& a,
-                        const ArrayRef& b, size_t m, size_t n,
-                        size_t k) const = 0;
+  virtual NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& a,
+                          const NdArrayRef& b) const = 0;
 };
 
 class Conv2DKernel : public Kernel {
@@ -66,18 +66,18 @@ class Conv2DKernel : public Kernel {
 
   // tensor: NxHxWxC
   // filter: hxwxCxO
-  virtual ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& tensor,
-                        const ArrayRef& filter, size_t N, size_t H, size_t W,
-                        size_t C, size_t O, size_t h, size_t w, size_t stride_h,
-                        size_t stride_w) const = 0;
+  virtual NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& tensor,
+                          const NdArrayRef& filter, size_t N, size_t H,
+                          size_t W, size_t C, size_t O, size_t h, size_t w,
+                          size_t stride_h, size_t stride_w) const = 0;
 };
 
 class BitrevKernel : public Kernel {
  public:
   void evaluate(KernelEvalContext* ctx) const override;
 
-  virtual ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in,
-                        size_t start, size_t end) const = 0;
+  virtual NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in,
+                          size_t start, size_t end) const = 0;
 };
 
 enum class TruncLsbRounding {
@@ -112,22 +112,22 @@ class TruncAWithSignKernel : public Kernel {
   virtual bool hasMsbError() const = 0;
   virtual TruncLsbRounding lsbRounding() const = 0;
 
-  virtual ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in, size_t bits,
-                        bool is_positive) const = 0;
+  virtual NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in,
+                          size_t bits, bool is_positive) const = 0;
 };
 
 class BitSplitKernel : public Kernel {
  public:
   void evaluate(KernelEvalContext* ctx) const override;
-  virtual ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in,
-                        size_t stride) const = 0;
+  virtual NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in,
+                          size_t stride) const = 0;
 };
 
 class CastTypeKernel : public Kernel {
   void evaluate(KernelEvalContext* ctx) const override;
 
-  virtual ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in,
-                        const Type& to_type) const = 0;
+  virtual NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in,
+                          const Type& to_type) const = 0;
 };
 
 }  // namespace spu::mpc

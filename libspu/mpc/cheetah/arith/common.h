@@ -15,7 +15,7 @@
 
 #include <mutex>
 
-#include "libspu/core/array_ref.h"
+#include "libspu/mpc/cheetah/array_ref.h"
 #include "libspu/mpc/cheetah/rlwe/types.h"
 
 namespace seal {
@@ -54,9 +54,14 @@ struct EnableCPRNG {
   uint64_t prng_counter_;
 };
 
-ArrayRef ring_conv2d(const ArrayRef& tensor, const ArrayRef& filter,
-                     int64_t num_tensors, Shape3D tensor_shape,
-                     int64_t num_filters, Shape3D filter_shape,
-                     Shape2D window_strides);
+NdArrayRef ring_conv2d(const NdArrayRef& tensor, const NdArrayRef& filter,
+                       int64_t num_tensors, Shape3D tensor_shape,
+                       int64_t num_filters, Shape3D filter_shape,
+                       Shape2D window_strides);
+
+inline int64_t calcNumel(absl::Span<const int64_t> shape) {
+  return std::accumulate(shape.begin(), shape.end(), static_cast<int64_t>(1),
+                         std::multiplies<>());
+}
 
 }  // namespace spu::mpc::cheetah

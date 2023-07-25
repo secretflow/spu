@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "libspu/core/array_ref.h"
+#include "libspu/mpc/cheetah/array_ref.h"
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"

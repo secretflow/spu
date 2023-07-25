@@ -16,7 +16,6 @@
 
 #include "gtest/gtest.h"
 
-#include "libspu/core/shape_util.h"
 #include "libspu/mpc/api.h"
 #include "libspu/mpc/common/communicator.h"
 #include "libspu/mpc/utils/ring_ops.h"
@@ -28,20 +27,16 @@ namespace {
 Shape kShape = {30, 40};
 const std::vector<size_t> kShiftBits = {0, 1, 2, 31, 32, 33, 64, 1000};
 
-#define EXPECT_VALUE_EQ(X, Y)                         \
-  {                                                   \
-    EXPECT_EQ((X).shape(), (Y).shape());              \
-    auto [x_data, x_shape, x_dtype] = UnwrapValue(X); \
-    auto [y_data, y_shape, y_dtype] = UnwrapValue(Y); \
-    EXPECT_TRUE(ring_all_equal(x_data, y_data));      \
+#define EXPECT_VALUE_EQ(X, Y)                            \
+  {                                                      \
+    EXPECT_EQ((X).shape(), (Y).shape());                 \
+    EXPECT_TRUE(ring_all_equal((X).data(), (Y).data())); \
   }
 
-#define EXPECT_VALUE_ALMOST_EQ(X, Y, ERR)             \
-  {                                                   \
-    EXPECT_EQ((X).shape(), (Y).shape());              \
-    auto [x_data, x_shape, x_dtype] = UnwrapValue(X); \
-    auto [y_data, y_shape, y_dtype] = UnwrapValue(Y); \
-    EXPECT_TRUE(ring_all_equal(x_data, y_data, ERR)); \
+#define EXPECT_VALUE_ALMOST_EQ(X, Y, ERR)                     \
+  {                                                           \
+    EXPECT_EQ((X).shape(), (Y).shape());                      \
+    EXPECT_TRUE(ring_all_equal((X).data(), (Y).data(), ERR)); \
   }
 
 }  // namespace
@@ -389,19 +384,21 @@ TEST_P(ApiTest, MatMulSS) {
     auto p1 = rand_p(sctx.get(), shape_B);
     auto p2 = rand_p(sctx.get(), shape_B2);
 
+    SPDLOG_INFO("{} {} {}", p0, p1, p2);
+
     auto s0 = p2s(sctx.get(), p0);
     auto s1 = p2s(sctx.get(), p1);
     auto s2 = p2s(sctx.get(), p2);
 
     /* WHEN */
-    auto tmp = mmul_ss(sctx.get(), s0, s1, M, N, K);
-    auto tmp2 = mmul_ss(sctx.get(), s0, s2, M, N2, K);
+    auto tmp = mmul_ss(sctx.get(), s0, s1);
+    auto tmp2 = mmul_ss(sctx.get(), s0, s2);
 
     auto r_ss = s2p(sctx.get(), tmp);
-    auto r_pp = mmul_pp(sctx.get(), p0, p1, M, N, K);
+    auto r_pp = mmul_pp(sctx.get(), p0, p1);
 
     auto r_ss2 = s2p(sctx.get(), tmp2);
-    auto r_pp2 = mmul_pp(sctx.get(), p0, p2, M, N2, K);
+    auto r_pp2 = mmul_pp(sctx.get(), p0, p2);
 
     /* THEN */
     EXPECT_VALUE_EQ(r_ss, r_pp);
@@ -428,9 +425,9 @@ TEST_P(ApiTest, MmulSP) {
     auto p1 = rand_p(sctx.get(), shape_B);
 
     /* WHEN */
-    auto tmp = mmul_sp(sctx.get(), p2s(sctx.get(), p0), p1, M, N, K);
+    auto tmp = mmul_sp(sctx.get(), p2s(sctx.get(), p0), p1);
     auto r_ss = s2p(sctx.get(), tmp);
-    auto r_pp = mmul_pp(sctx.get(), p0, p1, M, N, K);
+    auto r_pp = mmul_pp(sctx.get(), p0, p1);
 
     /* THEN */
     EXPECT_VALUE_EQ(r_ss, r_pp);

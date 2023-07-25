@@ -25,9 +25,9 @@ std::vector<Value> intrinsic_dispatcher(SPUContext* ctx, llvm::StringRef name,
     SPDLOG_INFO("Binary example, input0 = {}, input1 = {}", inputs[0],
                 inputs[1]);
 
-    std::vector<int64_t> result_shape = {
-        inputs[0].shape()[0] + inputs[1].shape()[0],
-        inputs[0].shape()[1] + inputs[1].shape()[1]};
+    Shape result_shape = {inputs[0].shape()[0] + inputs[1].shape()[0],
+                          inputs[0].shape()[1] + inputs[1].shape()[1]};
+
     auto zeros = kernel::hlo::Constant(ctx, 0, result_shape);
 
     if (inputs[0].isSecret() || inputs[1].isSecret()) {

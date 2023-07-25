@@ -45,8 +45,8 @@ BeaverTfpUnsafe::BeaverTfpUnsafe(std::shared_ptr<yacl::link::Context> lctx)
 
 uint128_t BeaverTfpUnsafe::InitSpdzKey(FieldType field, size_t s) {
   PrgArrayDesc desc{};
-  const size_t size = 1;
-  auto a = prgCreateArray(field, size, seed_, &counter_, &desc);
+  const int64_t size = 1;
+  auto a = prgCreateArray(field, {size}, seed_, &counter_, &desc);
 
   return DISPATCH_ALL_FIELDS(field, "_", [&]() {
     if (comm_->getRank() == 0) {
@@ -63,9 +63,9 @@ uint128_t BeaverTfpUnsafe::InitSpdzKey(FieldType field, size_t s) {
   });
 }
 
-ArrayRef BeaverTfpUnsafe::AuthArrayRef(const ArrayRef& value, FieldType field,
-                                       size_t k, size_t s) {
-  auto [r, r_mac] = AuthCoinTossing(field, value.numel(), k, s);
+NdArrayRef BeaverTfpUnsafe::AuthArrayRef(const NdArrayRef& value,
+                                         FieldType field, size_t k, size_t s) {
+  auto [r, r_mac] = AuthCoinTossing(field, value.shape(), k, s);
   auto x_r =
       comm_->reduce(ReduceOp::ADD, ring_sub(value, r), 0, "auth_arrayref");
 
@@ -77,13 +77,13 @@ ArrayRef BeaverTfpUnsafe::AuthArrayRef(const ArrayRef& value, FieldType field,
 }
 
 BeaverTfpUnsafe::Pair BeaverTfpUnsafe::AuthCoinTossing(FieldType field,
-                                                       size_t size, size_t k,
-                                                       size_t s) {
+                                                       const Shape& shape,
+                                                       size_t k, size_t s) {
   PrgArrayDesc desc{};
   PrgArrayDesc mac_desc{};
 
-  auto x = prgCreateArray(field, size, seed_, &counter_, &desc);
-  auto x_mac = prgCreateArray(field, size, seed_, &counter_, &mac_desc);
+  auto x = prgCreateArray(field, shape, seed_, &counter_, &desc);
+  auto x_mac = prgCreateArray(field, shape, seed_, &counter_, &mac_desc);
 
   if (comm_->getRank() == 0) {
     auto v = tp_.adjustAuthCoinTossing(desc, mac_desc, global_key_, k, s);
@@ -94,13 +94,14 @@ BeaverTfpUnsafe::Pair BeaverTfpUnsafe::AuthCoinTossing(FieldType field,
   return {x, x_mac};
 }
 
-BeaverTfpUnsafe::Pair BeaverTfpUnsafe::AuthRandBit(FieldType field, size_t size,
-                                                   size_t k, size_t s) {
+BeaverTfpUnsafe::Pair BeaverTfpUnsafe::AuthRandBit(FieldType field,
+                                                   const Shape& shape, size_t k,
+                                                   size_t s) {
   PrgArrayDesc desc{};
   PrgArrayDesc mac_desc{};
 
-  auto x = prgCreateArray(field, size, seed_, &counter_, &desc);
-  auto x_mac = prgCreateArray(field, size, seed_, &counter_, &mac_desc);
+  auto x = prgCreateArray(field, shape, seed_, &counter_, &desc);
+  auto x_mac = prgCreateArray(field, shape, seed_, &counter_, &mac_desc);
 
   if (comm_->getRank() == 0) {
     auto v = tp_.adjustAuthRandBit(desc, mac_desc, global_key_, s);
@@ -112,18 +113,18 @@ BeaverTfpUnsafe::Pair BeaverTfpUnsafe::AuthRandBit(FieldType field, size_t size,
 }
 
 BeaverTfpUnsafe::Triple_Pair BeaverTfpUnsafe::AuthMul(FieldType field,
-                                                      size_t size, size_t k,
-                                                      size_t s) {
+                                                      const Shape& shape,
+                                                      size_t k, size_t s) {
   std::vector<PrgArrayDesc> descs(3);
   std::vector<PrgArrayDesc> mac_descs(3);
 
-  auto a = prgCreateArray(field, size, seed_, &counter_, descs.data());
-  auto b = prgCreateArray(field, size, seed_, &counter_, &descs[1]);
-  auto c = prgCreateArray(field, size, seed_, &counter_, &descs[2]);
+  auto a = prgCreateArray(field, shape, seed_, &counter_, descs.data());
+  auto b = prgCreateArray(field, shape, seed_, &counter_, &descs[1]);
+  auto c = prgCreateArray(field, shape, seed_, &counter_, &descs[2]);
 
-  auto a_mac = prgCreateArray(field, size, seed_, &counter_, mac_descs.data());
-  auto b_mac = prgCreateArray(field, size, seed_, &counter_, &mac_descs[1]);
-  auto c_mac = prgCreateArray(field, size, seed_, &counter_, &mac_descs[2]);
+  auto a_mac = prgCreateArray(field, shape, seed_, &counter_, mac_descs.data());
+  auto b_mac = prgCreateArray(field, shape, seed_, &counter_, &mac_descs[1]);
+  auto c_mac = prgCreateArray(field, shape, seed_, &counter_, &mac_descs[2]);
 
   if (comm_->getRank() == 0) {
     auto v = tp_.adjustAuthMul(descs, mac_descs, global_key_);
@@ -136,20 +137,21 @@ BeaverTfpUnsafe::Triple_Pair BeaverTfpUnsafe::AuthMul(FieldType field,
   return {{a, b, c}, {a_mac, b_mac, c_mac}};
 }
 
-BeaverTfpUnsafe::Triple_Pair BeaverTfpUnsafe::AuthDot(FieldType field, size_t m,
-                                                      size_t n, size_t k,
-                                                      size_t k_bits,
+BeaverTfpUnsafe::Triple_Pair BeaverTfpUnsafe::AuthDot(FieldType field,
+                                                      int64_t m, int64_t n,
+                                                      int64_t k, size_t k_bits,
                                                       size_t s_bits) {
   std::vector<PrgArrayDesc> descs(3);
   std::vector<PrgArrayDesc> mac_descs(3);
 
-  auto a = prgCreateArray(field, m * k, seed_, &counter_, descs.data());
-  auto b = prgCreateArray(field, k * n, seed_, &counter_, &descs[1]);
-  auto c = prgCreateArray(field, m * n, seed_, &counter_, &descs[2]);
+  auto a = prgCreateArray(field, {m, k}, seed_, &counter_, descs.data());
+  auto b = prgCreateArray(field, {k, n}, seed_, &counter_, &descs[1]);
+  auto c = prgCreateArray(field, {m, n}, seed_, &counter_, &descs[2]);
 
-  auto a_mac = prgCreateArray(field, m * k, seed_, &counter_, mac_descs.data());
-  auto b_mac = prgCreateArray(field, k * n, seed_, &counter_, &mac_descs[1]);
-  auto c_mac = prgCreateArray(field, m * n, seed_, &counter_, &mac_descs[2]);
+  auto a_mac =
+      prgCreateArray(field, {m, k}, seed_, &counter_, mac_descs.data());
+  auto b_mac = prgCreateArray(field, {k, n}, seed_, &counter_, &mac_descs[1]);
+  auto c_mac = prgCreateArray(field, {m, n}, seed_, &counter_, &mac_descs[2]);
 
   if (comm_->getRank() == 0) {
     auto v = tp_.adjustAuthDot(descs, mac_descs, m, n, k, global_key_);
@@ -163,17 +165,18 @@ BeaverTfpUnsafe::Triple_Pair BeaverTfpUnsafe::AuthDot(FieldType field, size_t m,
 }
 
 BeaverTfpUnsafe::Triple_Pair BeaverTfpUnsafe::AuthAnd(FieldType field,
-                                                      size_t size, size_t s) {
+                                                      const Shape& shape,
+                                                      size_t s) {
   std::vector<PrgArrayDesc> descs(3);
   std::vector<PrgArrayDesc> mac_descs(3);
 
-  auto a = prgCreateArray(field, size, seed_, &counter_, descs.data());
-  auto b = prgCreateArray(field, size, seed_, &counter_, &descs[1]);
-  auto c = prgCreateArray(field, size, seed_, &counter_, &descs[2]);
+  auto a = prgCreateArray(field, shape, seed_, &counter_, descs.data());
+  auto b = prgCreateArray(field, shape, seed_, &counter_, &descs[1]);
+  auto c = prgCreateArray(field, shape, seed_, &counter_, &descs[2]);
 
-  auto a_mac = prgCreateArray(field, size, seed_, &counter_, mac_descs.data());
-  auto b_mac = prgCreateArray(field, size, seed_, &counter_, &mac_descs[1]);
-  auto c_mac = prgCreateArray(field, size, seed_, &counter_, &mac_descs[2]);
+  auto a_mac = prgCreateArray(field, shape, seed_, &counter_, mac_descs.data());
+  auto b_mac = prgCreateArray(field, shape, seed_, &counter_, &mac_descs[1]);
+  auto c_mac = prgCreateArray(field, shape, seed_, &counter_, &mac_descs[2]);
 
   if (comm_->getRank() == 0) {
     auto v = tp_.adjustAuthAnd(descs, mac_descs, global_key_);
@@ -187,15 +190,16 @@ BeaverTfpUnsafe::Triple_Pair BeaverTfpUnsafe::AuthAnd(FieldType field,
 }
 
 BeaverTfpUnsafe::Pair_Pair BeaverTfpUnsafe::AuthTrunc(FieldType field,
-                                                      size_t size, size_t bits,
-                                                      size_t k, size_t s) {
+                                                      const Shape& shape,
+                                                      size_t bits, size_t k,
+                                                      size_t s) {
   std::vector<PrgArrayDesc> descs(2);
   std::vector<PrgArrayDesc> mac_descs(2);
 
-  auto a = prgCreateArray(field, size, seed_, &counter_, descs.data());
-  auto b = prgCreateArray(field, size, seed_, &counter_, &descs[1]);
-  auto a_mac = prgCreateArray(field, size, seed_, &counter_, mac_descs.data());
-  auto b_mac = prgCreateArray(field, size, seed_, &counter_, &mac_descs[1]);
+  auto a = prgCreateArray(field, shape, seed_, &counter_, descs.data());
+  auto b = prgCreateArray(field, shape, seed_, &counter_, &descs[1]);
+  auto a_mac = prgCreateArray(field, shape, seed_, &counter_, mac_descs.data());
+  auto b_mac = prgCreateArray(field, shape, seed_, &counter_, &mac_descs[1]);
 
   if (comm_->getRank() == 0) {
     auto v = tp_.adjustAuthTrunc(descs, mac_descs, bits, global_key_, k, s);
@@ -208,8 +212,8 @@ BeaverTfpUnsafe::Pair_Pair BeaverTfpUnsafe::AuthTrunc(FieldType field,
   return {{a, b}, {a_mac, b_mac}};
 }
 
-ArrayRef BeaverTfpUnsafe::genPublCoin(FieldType field, size_t numel) {
-  ArrayRef res(makeType<RingTy>(field), numel);
+NdArrayRef BeaverTfpUnsafe::genPublCoin(FieldType field, int64_t numel) {
+  NdArrayRef res(makeType<RingTy>(field), {numel});
 
   // generate new seed
   uint128_t self_pk = yacl::crypto::SecureRandSeed();
@@ -240,16 +244,14 @@ ArrayRef BeaverTfpUnsafe::genPublCoin(FieldType field, size_t numel) {
 // Open the value only
 // Notice return { open_val , zero_mac = open_val * \sum spdz_key_ }
 // the last kth bits in open_val is valid
-std::pair<ArrayRef, ArrayRef> BeaverTfpUnsafe::BatchOpen(const ArrayRef& value,
-                                                         const ArrayRef& mac,
-                                                         size_t k, size_t s) {
+std::pair<NdArrayRef, NdArrayRef> BeaverTfpUnsafe::BatchOpen(
+    const NdArrayRef& value, const NdArrayRef& mac, size_t k, size_t s) {
   static constexpr char kBindName[] = "batch_open";
-  SPU_ENFORCE(value.numel() == mac.numel());
+  SPU_ENFORCE(value.shape() == mac.shape());
 
   const auto field = value.eltype().as<Ring2k>()->field();
-  const auto numel = value.numel();
 
-  auto [r_val, r_mac] = AuthCoinTossing(field, numel, k, s);
+  auto [r_val, r_mac] = AuthCoinTossing(field, value.shape(), k, s);
 
   // Open the low k_bits only
   // value = value + r_val * 2^k
@@ -267,10 +269,10 @@ std::pair<ArrayRef, ArrayRef> BeaverTfpUnsafe::BatchOpen(const ArrayRef& value,
 // - https://eprint.iacr.org/2018/482.pdf
 //
 // Check the opened value only
-bool BeaverTfpUnsafe::BatchMacCheck(const ArrayRef& open_value,
-                                    const ArrayRef& mac, size_t k, size_t s) {
+bool BeaverTfpUnsafe::BatchMacCheck(const NdArrayRef& open_value,
+                                    const NdArrayRef& mac, size_t k, size_t s) {
   const auto field = open_value.eltype().as<Ring2k>()->field();
-  const size_t numel = open_value.numel();
+  const int64_t numel = open_value.numel();
   const size_t mac_bits = k + s;
 
   auto* comm = comm_.get();
@@ -278,13 +280,13 @@ bool BeaverTfpUnsafe::BatchMacCheck(const ArrayRef& open_value,
   const auto key = spdz_key_;
 
   // 1. get l public random values, compute plain y
-  auto pub_r = genPublCoin(field, numel);
+  auto pub_r = genPublCoin(field, numel).reshape({1, numel});
   ring_bitmask_(pub_r, 0, s);
 
   // 2. check_value = pub_r * open_value
   //    check_mac = pub_r * mac
-  auto check_value = ring_mmul(pub_r, open_value, 1, 1, numel);
-  auto check_mac = ring_mmul(pub_r, mac, 1, 1, numel);
+  auto check_value = ring_mmul(pub_r, open_value.reshape({numel, 1}));
+  auto check_mac = ring_mmul(pub_r, mac.reshape({numel, 1}));
 
   // 3. compute z, commit and open z
   auto z = ring_sub(check_mac, ring_mul(check_value, key));
@@ -303,11 +305,12 @@ bool BeaverTfpUnsafe::BatchMacCheck(const ArrayRef& open_value,
                              z_str.size() / numel * (comm->getWorldSize() - 1));
 
   // 4. verify whether plain z is zero
-  auto plain_z = ring_zeros(field, 1);
+  auto plain_z = ring_zeros(field, {1});
   for (size_t i = 0; i < comm->getWorldSize(); ++i) {
     const auto& _z_str = z_strs[i];
     auto mem = std::make_shared<yacl::Buffer>(_z_str.data(), _z_str.size());
-    ArrayRef a(mem, plain_z.eltype(), _z_str.size() / SizeOf(field), 1, 0);
+    NdArrayRef a(mem, plain_z.eltype(),
+                 {(int64_t)(_z_str.size() / SizeOf(field))}, {1}, 0);
     ring_add_(plain_z, a);
   }
 
@@ -315,7 +318,7 @@ bool BeaverTfpUnsafe::BatchMacCheck(const ArrayRef& open_value,
     ring_bitmask_(plain_z, 0, mac_bits);
   }
 
-  return ring_all_equal(plain_z, ring_zeros(field, 1));
+  return ring_all_equal(plain_z, ring_zeros(field, {1}));
 }
 
 }  // namespace spu::mpc::spdz2k

@@ -67,8 +67,7 @@ Value f_mul_with_sign(SPUContext* ctx, const Value& x, const Value& y,
 Value f_mmul(SPUContext* ctx, const Value& x, const Value& y);
 
 Value f_conv2d(SPUContext* ctx, const Value& x, const Value& y,
-               absl::Span<const int64_t> window_strides,
-               absl::Span<const int64_t> result_shape);
+               const Strides& window_strides, const Shape& result_shape);
 
 Value f_div(SPUContext* ctx, const Value& x, const Value& y);
 

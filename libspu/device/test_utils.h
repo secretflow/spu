@@ -16,7 +16,6 @@
 
 #include <future>
 
-#include "libspu/core/array_ref.h"
 #include "libspu/core/config.h"
 #include "libspu/device/io.h"
 #include "libspu/device/symbol_table.h"
@@ -38,8 +37,7 @@ class LocalIo {
     auto shares = io_client_.makeShares(view, vtype);
     SPU_ENFORCE(shares.size() == symbol_tables_.size());
     for (size_t idx = 0; idx < symbol_tables_.size(); ++idx) {
-      // TODO: remove clone, pphlo_executor_test will fail.
-      symbol_tables_[idx].setVar(name, shares[idx].clone());
+      symbol_tables_[idx].setVar(name, shares[idx]);
     }
   }
 

@@ -17,7 +17,7 @@
 #include <utility>
 #include <vector>
 
-#include "libspu/core/array_ref.h"
+#include "libspu/core/ndarray_ref.h"
 
 namespace spu::mpc {
 
@@ -38,23 +38,29 @@ class IoInterface {
   //
   // This function deos NOT handle encoding stuffs, it's the upper layer(hal)'s
   // resposibility to encode to it to ring.
-  virtual std::vector<ArrayRef> toShares(const ArrayRef& raw, Visibility vis,
-                                         int owner_rank = -1) const = 0;
+  virtual std::vector<NdArrayRef> toShares(const NdArrayRef& raw,
+                                           Visibility vis,
+                                           int owner_rank = -1) const = 0;
+
   virtual Type getShareType(Visibility vis, int owner_rank = -1) const = 0;
 
   // Make a secret from a bit array, if the element type is large than one bit,
   // only the lsb is considered.
   //
   // @param raw, with type as PtType.
-  virtual std::vector<ArrayRef> makeBitSecret(const ArrayRef& raw) const = 0;
+  virtual std::vector<NdArrayRef> makeBitSecret(
+      const NdArrayRef& raw) const = 0;
+
   virtual size_t getBitSecretShareSize(size_t numel) const = 0;
+
   virtual bool hasBitSecretSupport() const = 0;
 
   // Reconstruct shares into a RingTy value.
   //
   // @param shares, a list of secret shares.
   // @return a revealed value in ring2k space.
-  virtual ArrayRef fromShares(const std::vector<ArrayRef>& shares) const = 0;
+  virtual NdArrayRef fromShares(
+      const std::vector<NdArrayRef>& shares) const = 0;
 };
 
 //
@@ -67,9 +73,10 @@ class BaseIo : public IoInterface {
   explicit BaseIo(FieldType field, size_t world_size)
       : field_(field), world_size_(world_size) {}
 
-  std::vector<ArrayRef> makeBitSecret(const ArrayRef& raw) const override {
+  std::vector<NdArrayRef> makeBitSecret(const NdArrayRef& raw) const override {
     SPU_THROW("should not be here");
   }
+
   size_t getBitSecretShareSize(size_t numel) const override {
     SPU_THROW("should not be here");
   }

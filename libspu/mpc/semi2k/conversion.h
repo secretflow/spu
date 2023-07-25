@@ -35,7 +35,7 @@ class A2B : public UnaryKernel {
         ;
   }
 
-  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& x) const override;
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& x) const override;
 };
 
 class B2A : public UnaryKernel {
@@ -56,7 +56,7 @@ class B2A : public UnaryKernel {
         ;
   }
 
-  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& x) const override;
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& x) const override;
 };
 
 class B2A_Randbit : public UnaryKernel {
@@ -70,7 +70,7 @@ class B2A_Randbit : public UnaryKernel {
         ;
   }
 
-  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& x) const override;
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& x) const override;
 };
 
 // Note: current only for 2PC.
@@ -90,7 +90,7 @@ class MsbA2B : public UnaryKernel {
 
   float getCommTolerance() const override { return 0.2; }
 
-  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in) const override;
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in) const override;
 };
 
 }  // namespace spu::mpc::semi2k

@@ -44,7 +44,7 @@ class MatMatProtTest
   inline uint32_t FieldBitLen(FieldType f) const { return 8 * SizeOf(f); }
 
   ArrayRef CPRNG(FieldType field, size_t size) {
-    return ring_rand(field, size, seed_, &prng_counter_);
+    return flatten(ring_rand(field, {(int64_t)size}, seed_, &prng_counter_));
   }
 
   void SetUp() override {
@@ -149,10 +149,11 @@ TEST_P(MatMatProtTest, Plain) {
       InvNttInplace(p, *context_);
     }
 
-    auto expected =
-        ring_mmul(lhs, rhs, meta.dims[0], meta.dims[2], meta.dims[1]);
-    auto computed =
-        matmat_prot.ParseResult(field_, meta, absl::MakeSpan(out_poly));
+    auto expected = ring_mmul(unflatten(lhs, {meta.dims[0], meta.dims[1]}),
+                              unflatten(rhs, {meta.dims[1], meta.dims[2]}));
+    auto computed = unflatten(
+        matmat_prot.ParseResult(field_, meta, absl::MakeSpan(out_poly)),
+        {meta.dims[0], meta.dims[2]});
 
     EXPECT_EQ(expected.numel(), computed.numel());
 
@@ -211,9 +212,11 @@ TEST_P(MatMatProtTest, EncLHS) {
     InvNttInplace(p, *context_);
   }
 
-  auto expected = ring_mmul(lhs, rhs, meta.dims[0], meta.dims[2], meta.dims[1]);
+  auto expected = ring_mmul(unflatten(lhs, {meta.dims[0], meta.dims[1]}),
+                            unflatten(rhs, {meta.dims[1], meta.dims[2]}));
   auto computed =
-      matmat_prot.ParseResult(field_, meta, absl::MakeSpan(out_poly));
+      unflatten(matmat_prot.ParseResult(field_, meta, absl::MakeSpan(out_poly)),
+                {meta.dims[0], meta.dims[2]});
 
   EXPECT_EQ(expected.numel(), computed.numel());
 
@@ -270,9 +273,11 @@ TEST_P(MatMatProtTest, EncRHS) {
     InvNttInplace(p, *context_);
   }
 
-  auto expected = ring_mmul(lhs, rhs, meta.dims[0], meta.dims[2], meta.dims[1]);
+  auto expected = ring_mmul(unflatten(lhs, {meta.dims[0], meta.dims[1]}),
+                            unflatten(rhs, {meta.dims[1], meta.dims[2]}));
   auto computed =
-      matmat_prot.ParseResult(field_, meta, absl::MakeSpan(out_poly));
+      unflatten(matmat_prot.ParseResult(field_, meta, absl::MakeSpan(out_poly)),
+                {meta.dims[0], meta.dims[2]});
 
   EXPECT_EQ(expected.numel(), computed.numel());
 

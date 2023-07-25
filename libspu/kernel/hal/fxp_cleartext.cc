@@ -35,7 +35,7 @@ Value applyFloatingPointFn(SPUContext* ctx, const Value& in, FN&& fn) {
   auto f32_arr = decodeFromRing(in.data().as(ring_ty), in.dtype(), fxp_bits);
 
   for (auto iter = f32_arr.begin(); iter != f32_arr.end(); ++iter) {
-    auto* ptr = reinterpret_cast<float*>(iter.getRawPtr());
+    auto* ptr = reinterpret_cast<float*>(&*iter);
     *ptr = fn(*ptr);
   }
 
@@ -66,8 +66,8 @@ Value applyFloatingPointFn(SPUContext* ctx, const Value& x, const Value& y,
 
   for (auto itr_x = flp_x.begin(), itr_y = flp_y.begin(); itr_x != flp_x.end();
        itr_x++, itr_y++) {
-    auto* ptr_x = reinterpret_cast<float*>(itr_x.getRawPtr());
-    auto* ptr_y = reinterpret_cast<float*>(itr_y.getRawPtr());
+    auto* ptr_x = reinterpret_cast<float*>(&*itr_x);
+    auto* ptr_y = reinterpret_cast<float*>(&*itr_y);
     *ptr_x = fn(*ptr_x, *ptr_y);
   }
 

@@ -58,6 +58,7 @@ Type I32 = makePtType(PT_I32);
 Type U32 = makePtType(PT_U32);
 Type I64 = makePtType(PT_I64);
 Type U64 = makePtType(PT_U64);
+Type F16 = makePtType(PT_F16);
 Type F32 = makePtType(PT_F32);
 Type F64 = makePtType(PT_F64);
 Type I128 = makePtType(PT_I128);
@@ -69,7 +70,7 @@ bool isFloatTy(const Type& type) {
     return false;
   }
 
-  return type == F32 || type == F64;
+  return type == F16 || type == F32 || type == F64;
 }
 
 bool isIntTy(const Type& type) {

@@ -37,8 +37,9 @@ enum DataType {
   DT_U32 = 7;   // uint32
   DT_I64 = 8;   // int64
   DT_U64 = 9;   // uint64
-  DT_F32 = 10;  // float
-  DT_F64 = 11;  // double
+  DT_F16 = 10;  // half
+  DT_F32 = 11;  // float
+  DT_F64 = 12;  // double
 }
 
 // The visibility type.
@@ -78,6 +79,7 @@ enum PtType {
   PT_I128 = 11;    // int128_t
   PT_U128 = 12;    // uint128_t
   PT_BOOL = 13;    // bool
+  PT_F16 = 14;     // half
 }
 
 // A security parameter type.
@@ -302,6 +304,8 @@ message RuntimeConfig {
   bool experimental_enable_intra_op_par = 102;
   // disable kernel level vectorization.
   bool experimental_disable_vectorization = 103;
+  // inter op concurrency.
+  uint64 experimental_inter_op_concurrency = 104;
 }
 
 message TTPBeaverConfig {

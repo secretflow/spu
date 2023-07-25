@@ -24,17 +24,20 @@ namespace spu {
 TEST(PtBufferView, Scalar) {
   PtBufferView bv_i32(0);
   EXPECT_EQ(bv_i32.pt_type, PT_I32);
-  EXPECT_TRUE(bv_i32.shape.empty());
+  EXPECT_TRUE(bv_i32.shape.isScalar());
+  EXPECT_EQ(bv_i32.shape.numel(), 1);
   EXPECT_TRUE(bv_i32.strides.empty());
 
   PtBufferView bv_u32(0U);
   EXPECT_EQ(bv_u32.pt_type, PT_U32);
-  EXPECT_TRUE(bv_u32.shape.empty());
+  EXPECT_TRUE(bv_u32.shape.isScalar());
+  EXPECT_EQ(bv_u32.shape.numel(), 1);
   EXPECT_TRUE(bv_u32.strides.empty());
 
   PtBufferView bv_f32(.0F);
   EXPECT_EQ(bv_f32.pt_type, PT_F32);
-  EXPECT_TRUE(bv_f32.shape.empty());
+  EXPECT_TRUE(bv_f32.shape.isScalar());
+  EXPECT_EQ(bv_f32.shape.numel(), 1);
   EXPECT_TRUE(bv_f32.strides.empty());
 }
 

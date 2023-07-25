@@ -44,8 +44,9 @@ Type Spdz2kIo::getShareType(Visibility vis, int owner_rank) const {
   SPU_THROW("unsupported vis type {}", vis);
 }
 
-std::vector<ArrayRef> Spdz2kIo::toShares(const ArrayRef& raw, Visibility vis,
-                                         int owner_rank) const {
+std::vector<NdArrayRef> Spdz2kIo::toShares(const NdArrayRef& raw,
+                                           Visibility vis,
+                                           int owner_rank) const {
   SPU_ENFORCE(raw.eltype().isa<RingTy>(), "expected RingTy, got {}",
               raw.eltype());
   const auto field = raw.eltype().as<Ring2k>()->field();
@@ -54,26 +55,24 @@ std::vector<ArrayRef> Spdz2kIo::toShares(const ArrayRef& raw, Visibility vis,
 
   if (vis == VIS_PUBLIC) {
     const auto share = raw.as(makeType<Pub2kTy>(field));
-    return std::vector<ArrayRef>(world_size_, share);
+    return std::vector<NdArrayRef>(world_size_, share);
   } else if (vis == VIS_SECRET) {
     const auto runtime_field = getRuntimeField(field);
-    ArrayRef x(makeType<Pub2kTy>(runtime_field), raw.numel());
+    NdArrayRef x(makeType<Pub2kTy>(runtime_field), raw.shape());
 
     DISPATCH_ALL_FIELDS(field, "_", [&]() {
-      auto _raw = ArrayView<ring2k_t>(raw);
+      using raw_t = ring2k_t;
       DISPATCH_ALL_FIELDS(runtime_field, "_", [&]() {
-        auto _x = ArrayView<ring2k_t>(x);
-
         pforeach(0, raw.numel(), [&](int64_t idx) {
-          _x[idx] = static_cast<ring2k_t>(_raw[idx]);
+          x.at<ring2k_t>(idx) = static_cast<ring2k_t>(raw.at<raw_t>(idx));
         });
       });
     });
 
-    const auto zeros = ring_zeros(runtime_field, x.numel());
+    const auto zeros = ring_zeros(runtime_field, x.shape());
     const auto splits = ring_rand_additive_splits(x, world_size_);
     bool has_mac = false;
-    std::vector<ArrayRef> shares;
+    std::vector<NdArrayRef> shares;
     shares.reserve(world_size_);
     for (const auto& split : splits) {
       // due to lack of information about key, MACs of data are set to zeros
@@ -85,14 +84,14 @@ std::vector<ArrayRef> Spdz2kIo::toShares(const ArrayRef& raw, Visibility vis,
   SPU_THROW("unsupported vis type {}", vis);
 }
 
-ArrayRef Spdz2kIo::fromShares(const std::vector<ArrayRef>& shares) const {
+NdArrayRef Spdz2kIo::fromShares(const std::vector<NdArrayRef>& shares) const {
   const auto& eltype = shares.at(0).eltype();
   const auto field = eltype.as<Ring2k>()->field();
 
   if (eltype.isa<Public>()) {
     return shares[0].as(makeType<RingTy>(field));
   } else if (eltype.isa<Secret>()) {
-    ArrayRef res = ring_zeros(field, shares.at(0).numel());
+    auto res = ring_zeros(field, shares.at(0).shape());
     for (const auto& share : shares) {
       if (eltype.isa<AShare>()) {
         ring_add_(res, getValueShare(share));
@@ -111,14 +110,13 @@ ArrayRef Spdz2kIo::fromShares(const std::vector<ArrayRef>& shares) const {
 
     // TODO(zxp): use export_s to extract FM64 value from FM128
     {
-      ArrayRef x(makeType<Pub2kTy>(field_), res.numel());
+      NdArrayRef x(makeType<Pub2kTy>(field_), res.shape());
 
       DISPATCH_ALL_FIELDS(field, "_", [&]() {
-        auto _res = ArrayView<ring2k_t>(res);
+        using res_t = ring2k_t;
         DISPATCH_ALL_FIELDS(field_, "_", [&]() {
-          auto _x = ArrayView<ring2k_t>(x);
           pforeach(0, x.numel(), [&](int64_t idx) {
-            _x[idx] = static_cast<ring2k_t>(_res[idx]);
+            x.at<ring2k_t>(idx) = static_cast<ring2k_t>(res.at<res_t>(idx));
           });
         });
       });

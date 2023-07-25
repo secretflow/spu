@@ -16,30 +16,30 @@
 
 #include <memory>
 
-#include "libspu/core/array_ref.h"
+#include "libspu/core/ndarray_ref.h"
 
 namespace spu::mpc::semi2k {
 
 class Beaver {
  public:
-  // TODO: replace ArrayRef with none-typed buffer
-  using Triple = std::tuple<ArrayRef, ArrayRef, ArrayRef>;
-  using Pair = std::pair<ArrayRef, ArrayRef>;
+  // TODO: replace NdArrayRef with none-typed buffer
+  using Triple = std::tuple<NdArrayRef, NdArrayRef, NdArrayRef>;
+  using Pair = std::pair<NdArrayRef, NdArrayRef>;
 
   virtual ~Beaver() = default;
 
-  virtual Triple Mul(FieldType field, size_t size) = 0;
+  virtual Triple Mul(FieldType field, const Shape& shape) = 0;
 
   // TODO: change And interface to buffer(size_t bits, size_t numel)
-  virtual Triple And(FieldType field, size_t size) = 0;
+  virtual Triple And(FieldType field, const Shape& shape) = 0;
 
-  virtual Triple Dot(FieldType field, size_t M, size_t N, size_t K) = 0;
+  virtual Triple Dot(FieldType field, int64_t M, int64_t N, int64_t K) = 0;
 
   // ret[0] = random value in ring 2k
   // ret[1] = ret[0] >> bits
   // ABY3, truncation pair method.
   // Ref: Section 5.1.2 https://eprint.iacr.org/2018/403.pdf
-  virtual Pair Trunc(FieldType field, size_t size, size_t bits) = 0;
+  virtual Pair Trunc(FieldType field, const Shape& shape, size_t bits) = 0;
 
   // ret[0] = random value in ring 2k
   // ret[1] = (ret[0] << 1) >> (1+bits)
@@ -48,9 +48,9 @@ class Beaver {
   //          as share of MSB(ret[0]) randbit
   // use for Probabilistic truncation over Z2K
   // https://eprint.iacr.org/2020/338.pdf
-  virtual Triple TruncPr(FieldType field, size_t size, size_t bits) = 0;
+  virtual Triple TruncPr(FieldType field, const Shape& shape, size_t bits) = 0;
 
-  virtual ArrayRef RandBit(FieldType field, size_t size) = 0;
+  virtual NdArrayRef RandBit(FieldType field, const Shape& shape) = 0;
 
   virtual std::unique_ptr<Beaver> Spawn() = 0;
 };

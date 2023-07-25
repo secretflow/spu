@@ -66,8 +66,8 @@ spu::Value Remainder(SPUContext *ctx, const spu::Value &lhs,
 }
 
 spu::Value Dot(SPUContext *ctx, const spu::Value &lhs, const spu::Value &rhs) {
-  SPU_ENFORCE(!lhs.shape().empty() && lhs.shape().size() <= 2);
-  SPU_ENFORCE(!rhs.shape().empty() && rhs.shape().size() <= 2);
+  SPU_ENFORCE(lhs.shape().isTensor() && lhs.shape().size() <= 2);
+  SPU_ENFORCE(rhs.shape().isTensor() && rhs.shape().size() <= 2);
 
   return hal::matmul(ctx, lhs, rhs);
 }

@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "libspu/core/array_ref.h"
+#include "libspu/core/ndarray_ref.h"
 #include "libspu/mpc/aby3/value.h"
 #include "libspu/mpc/kernel.h"
 
@@ -39,8 +39,8 @@ class CastTypeB : public CastTypeKernel {
 
   ce::CExpr comm() const override { return ce::Const(0); }
 
-  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in,
-                const Type& to_type) const override;
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in,
+                  const Type& to_type) const override;
 };
 
 class B2P : public UnaryKernel {
@@ -57,7 +57,7 @@ class B2P : public UnaryKernel {
     return ce::K();
   }
 
-  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in) const override;
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in) const override;
 };
 
 class P2B : public UnaryKernel {
@@ -68,7 +68,7 @@ class P2B : public UnaryKernel {
 
   ce::CExpr comm() const override { return ce::Const(0); }
 
-  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in) const override;
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in) const override;
 };
 
 class B2V : public RevealToKernel {
@@ -85,8 +85,8 @@ class B2V : public RevealToKernel {
     return ce::K();
   }
 
-  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in,
-                size_t rank) const override;
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in,
+                  size_t rank) const override;
 };
 
 class AndBP : public BinaryKernel {
@@ -97,8 +97,8 @@ class AndBP : public BinaryKernel {
 
   ce::CExpr comm() const override { return ce::Const(0); }
 
-  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& lhs,
-                const ArrayRef& rhs) const override;
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
+                  const NdArrayRef& rhs) const override;
 };
 
 class AndBB : public BinaryKernel {
@@ -115,8 +115,8 @@ class AndBB : public BinaryKernel {
     return ce::K();
   }
 
-  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& lhs,
-                const ArrayRef& rhs) const override;
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
+                  const NdArrayRef& rhs) const override;
 };
 
 class XorBP : public BinaryKernel {
@@ -127,8 +127,8 @@ class XorBP : public BinaryKernel {
 
   ce::CExpr comm() const override { return ce::Const(0); }
 
-  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& lhs,
-                const ArrayRef& rhs) const override;
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
+                  const NdArrayRef& rhs) const override;
 };
 
 class XorBB : public BinaryKernel {
@@ -139,8 +139,8 @@ class XorBB : public BinaryKernel {
 
   ce::CExpr comm() const override { return ce::Const(0); }
 
-  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& lhs,
-                const ArrayRef& rhs) const override;
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
+                  const NdArrayRef& rhs) const override;
 };
 
 class LShiftB : public ShiftKernel {
@@ -151,8 +151,8 @@ class LShiftB : public ShiftKernel {
 
   ce::CExpr comm() const override { return ce::Const(0); }
 
-  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in,
-                size_t bits) const override;
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in,
+                  size_t bits) const override;
 };
 
 class RShiftB : public ShiftKernel {
@@ -163,8 +163,8 @@ class RShiftB : public ShiftKernel {
 
   ce::CExpr comm() const override { return ce::Const(0); }
 
-  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in,
-                size_t bits) const override;
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in,
+                  size_t bits) const override;
 };
 
 class ARShiftB : public ShiftKernel {
@@ -175,8 +175,8 @@ class ARShiftB : public ShiftKernel {
 
   ce::CExpr comm() const override { return ce::Const(0); }
 
-  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in,
-                size_t bits) const override;
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in,
+                  size_t bits) const override;
 };
 
 class BitrevB : public BitrevKernel {
@@ -187,8 +187,8 @@ class BitrevB : public BitrevKernel {
 
   ce::CExpr comm() const override { return ce::Const(0); }
 
-  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in, size_t start,
-                size_t end) const override;
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in, size_t start,
+                  size_t end) const override;
 };
 
 class BitIntlB : public BitSplitKernel {
@@ -199,8 +199,8 @@ class BitIntlB : public BitSplitKernel {
 
   ce::CExpr comm() const override { return ce::Const(0); }
 
-  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in,
-                size_t stride) const override;
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in,
+                  size_t stride) const override;
 };
 
 class BitDeintlB : public BitSplitKernel {
@@ -211,8 +211,8 @@ class BitDeintlB : public BitSplitKernel {
 
   ce::CExpr comm() const override { return ce::Const(0); }
 
-  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in,
-                size_t stride) const override;
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in,
+                  size_t stride) const override;
 };
 
 }  // namespace spu::mpc::aby3

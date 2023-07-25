@@ -40,19 +40,19 @@ void CommonTypeB::evaluate(KernelEvalContext* ctx) const {
   ctx->setOutput(makeType<BShrTy>(out_btype, out_nbits));
 }
 
-ArrayRef CastTypeB::proc(KernelEvalContext* ctx, const ArrayRef& in,
-                         const Type& to_type) const {
-  ArrayRef out(to_type, in.numel());
+NdArrayRef CastTypeB::proc(KernelEvalContext* ctx, const NdArrayRef& in,
+                           const Type& to_type) const {
+  NdArrayRef out(to_type, in.shape());
   DISPATCH_UINT_PT_TYPES(in.eltype().as<BShrTy>()->getBacktype(), "_", [&]() {
     using InT = ScalarT;
     DISPATCH_UINT_PT_TYPES(to_type.as<BShrTy>()->getBacktype(), "_", [&]() {
       using OutT = ScalarT;
-      auto _in = ArrayView<std::array<InT, 2>>(in);
-      auto _out = ArrayView<std::array<OutT, 2>>(out);
+      auto _out = out.data<std::array<OutT, 2>>();
 
       pforeach(0, in.numel(), [&](int64_t idx) {
-        _out[idx][0] = static_cast<OutT>(_in[idx][0]);
-        _out[idx][1] = static_cast<OutT>(_in[idx][1]);
+        const auto& v = in.at<std::array<InT, 2>>(idx);
+        _out[idx][0] = static_cast<OutT>(v[0]);
+        _out[idx][1] = static_cast<OutT>(v[1]);
       });
     });
   });
@@ -60,7 +60,7 @@ ArrayRef CastTypeB::proc(KernelEvalContext* ctx, const ArrayRef& in,
   return out;
 }
 
-ArrayRef B2P::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
+NdArrayRef B2P::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   auto* comm = ctx->getState<Communicator>();
   const PtType btype = in.eltype().as<BShrTy>()->getBacktype();
   const auto field = ctx->getState<Z2kState>()->getDefaultField();
@@ -71,16 +71,16 @@ ArrayRef B2P::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
     return DISPATCH_ALL_FIELDS(field, "_", [&]() {
       using PShrT = ring2k_t;
 
-      ArrayRef out(makeType<Pub2kTy>(field), in.numel());
+      NdArrayRef out(makeType<Pub2kTy>(field), in.shape());
 
-      auto _in = ArrayView<std::array<BShrT, 2>>(in);
-      auto _out = ArrayView<PShrT>(out);
+      auto _out = out.data<PShrT>();
 
       auto x2 = getShareAs<BShrT>(in, 1);
       auto x3 = comm->rotate<BShrT>(x2, "b2p");  // comm => 1, k
 
       pforeach(0, in.numel(), [&](int64_t idx) {
-        _out[idx] = static_cast<PShrT>(_in[idx][0] ^ _in[idx][1] ^ x3[idx]);
+        const auto& v = in.at<std::array<BShrT, 2>>(idx);
+        _out[idx] = static_cast<PShrT>(v[0] ^ v[1] ^ x3[idx]);
       });
 
       return out;
@@ -88,31 +88,30 @@ ArrayRef B2P::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
   });
 }
 
-ArrayRef P2B::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
+NdArrayRef P2B::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   auto* comm = ctx->getState<Communicator>();
   const auto* in_ty = in.eltype().as<Pub2kTy>();
   const auto field = in_ty->field();
 
   return DISPATCH_ALL_FIELDS(field, "_", [&]() {
-    auto _in = ArrayView<ring2k_t>(in);
-    const size_t nbits = _in.maxBitWidth();
+    const size_t nbits = maxBitWidth<ring2k_t>(in);
     const PtType btype = calcBShareBacktype(nbits);
 
     return DISPATCH_UINT_PT_TYPES(btype, "_", [&]() {
       using BShrT = ScalarT;
-      ArrayRef out(makeType<BShrTy>(btype, nbits), in.numel());
-      auto _out = ArrayView<std::array<BShrT, 2>>(out);
+      NdArrayRef out(makeType<BShrTy>(btype, nbits), in.shape());
+      auto _out = out.data<std::array<BShrT, 2>>();
 
       pforeach(0, in.numel(), [&](int64_t idx) {
         if (comm->getRank() == 0) {
-          _out[idx][0] = static_cast<BShrT>(_in[idx]);
+          _out[idx][0] = static_cast<BShrT>(in.at<ring2k_t>(idx));
           _out[idx][1] = 0U;
         } else if (comm->getRank() == 1) {
           _out[idx][0] = 0U;
           _out[idx][1] = 0U;
         } else {
           _out[idx][0] = 0U;
-          _out[idx][1] = static_cast<BShrT>(_in[idx]);
+          _out[idx][1] = static_cast<BShrT>(in.at<ring2k_t>(idx));
         }
       });
       return out;
@@ -120,16 +119,14 @@ ArrayRef P2B::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
   });
 }
 
-ArrayRef B2V::proc(KernelEvalContext* ctx, const ArrayRef& in,
-                   size_t rank) const {
+NdArrayRef B2V::proc(KernelEvalContext* ctx, const NdArrayRef& in,
+                     size_t rank) const {
   auto* comm = ctx->getState<Communicator>();
   const PtType btype = in.eltype().as<BShrTy>()->getBacktype();
   const auto field = ctx->getState<Z2kState>()->getDefaultField();
 
   return DISPATCH_UINT_PT_TYPES(btype, "aby3.b2v", [&]() {
     using BShrT = ScalarT;
-    auto _in = ArrayView<std::array<BShrT, 2>>(in);
-
     return DISPATCH_ALL_FIELDS(field, "_", [&]() {
       using VShrT = ring2k_t;
 
@@ -138,53 +135,57 @@ ArrayRef B2V::proc(KernelEvalContext* ctx, const ArrayRef& in,
       if (comm->getRank() == rank) {
         auto x3 = comm->recv<BShrT>(comm->nextRank(), "b2v");  // comm => 1, k
 
-        ArrayRef out(out_ty, in.numel());
-        auto _out = ArrayView<VShrT>(out);
+        NdArrayRef out(out_ty, in.shape());
+
+        auto _out = out.data<VShrT>();
+
         pforeach(0, in.numel(), [&](int64_t idx) {
-          _out[idx] = _in[idx][0] ^ _in[idx][1] ^ x3[idx];
+          const auto& v = in.at<std::array<BShrT, 2>>(idx);
+          _out[idx] = v[0] ^ v[1] ^ x3[idx];
         });
         return out;
       } else if (comm->getRank() == (rank + 1) % 3) {
         std::vector<BShrT> x2(in.numel());
 
-        pforeach(0, in.numel(), [&](int64_t idx) {  //
-          x2[idx] = _in[idx][1];
+        pforeach(0, in.numel(), [&](int64_t idx) {
+          x2[idx] = in.at<std::array<BShrT, 2>>(idx)[1];
         });
 
         comm->sendAsync<BShrT>(comm->prevRank(), x2, "b2v");  // comm => 1, k
 
-        return makeConstantArrayRef(out_ty, in.numel());
+        return makeConstantArrayRef(out_ty, in.shape());
       } else {
-        return makeConstantArrayRef(out_ty, in.numel());
+        return makeConstantArrayRef(out_ty, in.shape());
       }
     });
   });
 }
 
-ArrayRef AndBP::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
-                     const ArrayRef& rhs) const {
+NdArrayRef AndBP::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
+                       const NdArrayRef& rhs) const {
   const auto* lhs_ty = lhs.eltype().as<BShrTy>();
   const auto* rhs_ty = rhs.eltype().as<Pub2kTy>();
 
   return DISPATCH_ALL_FIELDS(rhs_ty->field(), "_", [&]() {
     using RhsT = ring2k_t;
-    auto _rhs = ArrayView<RhsT>(rhs);
-    const size_t rhs_nbits = _rhs.maxBitWidth();
+    const size_t rhs_nbits = maxBitWidth<RhsT>(rhs);
     const size_t out_nbits = std::min(lhs_ty->nbits(), rhs_nbits);
     const PtType out_btype = calcBShareBacktype(out_nbits);
 
     return DISPATCH_UINT_PT_TYPES(lhs_ty->getBacktype(), "_", [&]() {
       using LhsT = ScalarT;
-      auto _lhs = ArrayView<std::array<LhsT, 2>>(lhs);
 
       return DISPATCH_UINT_PT_TYPES(out_btype, "_", [&]() {
         using OutT = ScalarT;
 
-        ArrayRef out(makeType<BShrTy>(out_btype, out_nbits), lhs.numel());
-        auto _out = ArrayView<std::array<OutT, 2>>(out);
+        NdArrayRef out(makeType<BShrTy>(out_btype, out_nbits), lhs.shape());
+        auto _out = out.data<std::array<OutT, 2>>();
+
         pforeach(0, lhs.numel(), [&](int64_t idx) {
-          _out[idx][0] = _lhs[idx][0] & _rhs[idx];
-          _out[idx][1] = _lhs[idx][1] & _rhs[idx];
+          const auto& l = lhs.at<std::array<LhsT, 2>>(idx);
+          const auto& r = rhs.at<RhsT>(idx);
+          _out[idx][0] = l[0] & r;
+          _out[idx][1] = l[1] & r;
         });
 
         return out;
@@ -193,8 +194,8 @@ ArrayRef AndBP::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
   });
 }
 
-ArrayRef AndBB::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
-                     const ArrayRef& rhs) const {
+NdArrayRef AndBB::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
+                       const NdArrayRef& rhs) const {
   auto* prg_state = ctx->getState<PrgState>();
   auto* comm = ctx->getState<Communicator>();
 
@@ -203,16 +204,12 @@ ArrayRef AndBB::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
 
   const size_t out_nbits = std::max(lhs_ty->nbits(), rhs_ty->nbits());
   const PtType out_btype = calcBShareBacktype(out_nbits);
-  ArrayRef out(makeType<BShrTy>(out_btype, out_nbits), lhs.numel());
+  NdArrayRef out(makeType<BShrTy>(out_btype, out_nbits), lhs.shape());
 
   return DISPATCH_UINT_PT_TYPES(rhs_ty->getBacktype(), "_", [&]() {
     using RhsT = ScalarT;
-    auto _rhs = ArrayView<std::array<RhsT, 2>>(rhs);
-
     return DISPATCH_UINT_PT_TYPES(lhs_ty->getBacktype(), "_", [&]() {
       using LhsT = ScalarT;
-      auto _lhs = ArrayView<std::array<LhsT, 2>>(lhs);
-
       return DISPATCH_UINT_PT_TYPES(out_btype, "_", [&]() {
         using OutT = ScalarT;
 
@@ -222,14 +219,15 @@ ArrayRef AndBB::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
 
         // z1 = (x1 & y1) ^ (x1 & y2) ^ (x2 & y1) ^ (r0 ^ r1);
         pforeach(0, lhs.numel(), [&](int64_t idx) {
-          r0[idx] = (_lhs[idx][0] & _rhs[idx][0]) ^
-                    (_lhs[idx][0] & _rhs[idx][1]) ^
-                    (_lhs[idx][1] & _rhs[idx][0]) ^ (r0[idx] ^ r1[idx]);
+          const auto& l = lhs.at<std::array<LhsT, 2>>(idx);
+          const auto& r = rhs.at<std::array<RhsT, 2>>(idx);
+          r0[idx] = (l[0] & r[0]) ^ (l[0] & r[1]) ^ (l[1] & r[0]) ^
+                    (r0[idx] ^ r1[idx]);
         });
 
         r1 = comm->rotate<OutT>(r0, "andbb");  // comm => 1, k
 
-        auto _out = ArrayView<std::array<OutT, 2>>(out);
+        auto _out = out.data<std::array<OutT, 2>>();
         pforeach(0, lhs.numel(), [&](int64_t idx) {
           _out[idx][0] = r0[idx];
           _out[idx][1] = r1[idx];
@@ -240,31 +238,32 @@ ArrayRef AndBB::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
   });
 }
 
-ArrayRef XorBP::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
-                     const ArrayRef& rhs) const {
+NdArrayRef XorBP::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
+                       const NdArrayRef& rhs) const {
   const auto* lhs_ty = lhs.eltype().as<BShrTy>();
   const auto* rhs_ty = rhs.eltype().as<Pub2kTy>();
 
   return DISPATCH_ALL_FIELDS(rhs_ty->field(), "_", [&]() {
     using RhsT = ring2k_t;
-    auto _rhs = ArrayView<RhsT>(rhs);
 
-    const size_t rhs_nbits = _rhs.maxBitWidth();
+    const size_t rhs_nbits = maxBitWidth<RhsT>(rhs);
     const size_t out_nbits = std::max(lhs_ty->nbits(), rhs_nbits);
     const PtType out_btype = calcBShareBacktype(out_nbits);
-    ArrayRef out(makeType<BShrTy>(out_btype, out_nbits), lhs.numel());
+
+    NdArrayRef out(makeType<BShrTy>(out_btype, out_nbits), lhs.shape());
 
     return DISPATCH_UINT_PT_TYPES(lhs_ty->getBacktype(), "_", [&]() {
       using LhsT = ScalarT;
-      auto _lhs = ArrayView<std::array<LhsT, 2>>(lhs);
 
       return DISPATCH_UINT_PT_TYPES(out_btype, "_", [&]() {
         using OutT = ScalarT;
 
-        auto _out = ArrayView<std::array<OutT, 2>>(out);
+        auto _out = out.data<std::array<OutT, 2>>();
         pforeach(0, lhs.numel(), [&](int64_t idx) {
-          _out[idx][0] = _lhs[idx][0] ^ _rhs[idx];
-          _out[idx][1] = _lhs[idx][1] ^ _rhs[idx];
+          const auto& l = lhs.at<std::array<LhsT, 2>>(idx);
+          const auto& r = rhs.at<RhsT>(idx);
+          _out[idx][0] = l[0] ^ r;
+          _out[idx][1] = l[1] ^ r;
         });
         return out;
       });
@@ -272,8 +271,8 @@ ArrayRef XorBP::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
   });
 }
 
-ArrayRef XorBB::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
-                     const ArrayRef& rhs) const {
+NdArrayRef XorBB::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
+                       const NdArrayRef& rhs) const {
   const auto* lhs_ty = lhs.eltype().as<BShrTy>();
   const auto* rhs_ty = rhs.eltype().as<BShrTy>();
 
@@ -282,21 +281,21 @@ ArrayRef XorBB::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
 
   return DISPATCH_UINT_PT_TYPES(rhs_ty->getBacktype(), "_", [&]() {
     using RhsT = ScalarT;
-    auto _rhs = ArrayView<std::array<RhsT, 2>>(rhs);
 
     return DISPATCH_UINT_PT_TYPES(lhs_ty->getBacktype(), "_", [&]() {
       using LhsT = ScalarT;
-      auto _lhs = ArrayView<std::array<LhsT, 2>>(lhs);
 
       return DISPATCH_UINT_PT_TYPES(out_btype, "_", [&]() {
         using OutT = ScalarT;
 
-        ArrayRef out(makeType<BShrTy>(out_btype, out_nbits), lhs.numel());
-        auto _out = ArrayView<std::array<OutT, 2>>(out);
+        NdArrayRef out(makeType<BShrTy>(out_btype, out_nbits), lhs.shape());
+        auto _out = out.data<std::array<OutT, 2>>();
 
         pforeach(0, lhs.numel(), [&](int64_t idx) {
-          _out[idx][0] = _lhs[idx][0] ^ _rhs[idx][0];
-          _out[idx][1] = _lhs[idx][1] ^ _rhs[idx][1];
+          const auto& l = lhs.at<std::array<LhsT, 2>>(idx);
+          const auto& r = rhs.at<std::array<RhsT, 2>>(idx);
+          _out[idx][0] = l[0] ^ r[0];
+          _out[idx][1] = l[1] ^ r[1];
         });
         return out;
       });
@@ -304,8 +303,8 @@ ArrayRef XorBB::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
   });
 }
 
-ArrayRef LShiftB::proc(KernelEvalContext* ctx, const ArrayRef& in,
-                       size_t bits) const {
+NdArrayRef LShiftB::proc(KernelEvalContext* ctx, const NdArrayRef& in,
+                         size_t bits) const {
   const auto* in_ty = in.eltype().as<BShrTy>();
 
   // TODO: the hal dtype should tell us about the max number of possible bits.
@@ -319,14 +318,13 @@ ArrayRef LShiftB::proc(KernelEvalContext* ctx, const ArrayRef& in,
     return DISPATCH_UINT_PT_TYPES(out_btype, "_", [&]() {
       using OutT = ScalarT;
 
-      ArrayRef out(makeType<BShrTy>(out_btype, out_nbits), in.numel());
-
-      auto _in = ArrayView<std::array<InT, 2>>(in);
-      auto _out = ArrayView<std::array<OutT, 2>>(out);
+      NdArrayRef out(makeType<BShrTy>(out_btype, out_nbits), in.shape());
+      auto _out = out.data<std::array<OutT, 2>>();
 
       pforeach(0, in.numel(), [&](int64_t idx) {
-        _out[idx][0] = static_cast<OutT>(_in[idx][0]) << bits;
-        _out[idx][1] = static_cast<OutT>(_in[idx][1]) << bits;
+        const auto& v = in.at<std::array<InT, 2>>(idx);
+        _out[idx][0] = static_cast<OutT>(v[0]) << bits;
+        _out[idx][1] = static_cast<OutT>(v[1]) << bits;
       });
 
       return out;
@@ -334,8 +332,8 @@ ArrayRef LShiftB::proc(KernelEvalContext* ctx, const ArrayRef& in,
   });
 }
 
-ArrayRef RShiftB::proc(KernelEvalContext* ctx, const ArrayRef& in,
-                       size_t bits) const {
+NdArrayRef RShiftB::proc(KernelEvalContext* ctx, const NdArrayRef& in,
+                         size_t bits) const {
   const auto* in_ty = in.eltype().as<BShrTy>();
 
   bits = std::min(in_ty->nbits(), bits);
@@ -349,14 +347,13 @@ ArrayRef RShiftB::proc(KernelEvalContext* ctx, const ArrayRef& in,
     return DISPATCH_UINT_PT_TYPES(out_btype, "_", [&]() {
       using OutT = ScalarT;
 
-      ArrayRef out(makeType<BShrTy>(out_btype, out_nbits), in.numel());
-
-      auto _in = ArrayView<std::array<InT, 2>>(in);
-      auto _out = ArrayView<std::array<OutT, 2>>(out);
+      NdArrayRef out(makeType<BShrTy>(out_btype, out_nbits), in.shape());
+      auto _out = out.data<std::array<OutT, 2>>();
 
       pforeach(0, in.numel(), [&](int64_t idx) {
-        _out[idx][0] = static_cast<OutT>(_in[idx][0] >> bits);
-        _out[idx][1] = static_cast<OutT>(_in[idx][1] >> bits);
+        const auto& v = in.at<std::array<InT, 2>>(idx);
+        _out[idx][0] = static_cast<OutT>(v[0] >> bits);
+        _out[idx][1] = static_cast<OutT>(v[1] >> bits);
       });
 
       return out;
@@ -364,8 +361,8 @@ ArrayRef RShiftB::proc(KernelEvalContext* ctx, const ArrayRef& in,
   });
 }
 
-ArrayRef ARShiftB::proc(KernelEvalContext* ctx, const ArrayRef& in,
-                        size_t bits) const {
+NdArrayRef ARShiftB::proc(KernelEvalContext* ctx, const NdArrayRef& in,
+                          size_t bits) const {
   const auto field = ctx->getState<Z2kState>()->getDefaultField();
   const auto* in_ty = in.eltype().as<BShrTy>();
 
@@ -378,22 +375,21 @@ ArrayRef ARShiftB::proc(KernelEvalContext* ctx, const ArrayRef& in,
 
   return DISPATCH_UINT_PT_TYPES(in_ty->getBacktype(), "_", [&]() {
     using T = std::make_signed_t<ScalarT>;
-    ArrayRef out(makeType<BShrTy>(out_btype, out_nbits), in.numel());
-
-    auto _in = ArrayView<std::array<T, 2>>(in);
-    auto _out = ArrayView<std::array<T, 2>>(out);
+    NdArrayRef out(makeType<BShrTy>(out_btype, out_nbits), in.shape());
+    auto _out = out.data<std::array<T, 2>>();
 
     pforeach(0, in.numel(), [&](int64_t idx) {
-      _out[idx][0] = _in[idx][0] >> bits;
-      _out[idx][1] = _in[idx][1] >> bits;
+      const auto& v = in.at<std::array<T, 2>>(idx);
+      _out[idx][0] = v[0] >> bits;
+      _out[idx][1] = v[1] >> bits;
     });
 
     return out;
   });
 }
 
-ArrayRef BitrevB::proc(KernelEvalContext* ctx, const ArrayRef& in, size_t start,
-                       size_t end) const {
+NdArrayRef BitrevB::proc(KernelEvalContext* ctx, const NdArrayRef& in,
+                         size_t start, size_t end) const {
   SPU_ENFORCE(start <= end && end <= 128);
 
   const auto* in_ty = in.eltype().as<BShrTy>();
@@ -406,10 +402,8 @@ ArrayRef BitrevB::proc(KernelEvalContext* ctx, const ArrayRef& in, size_t start,
     return DISPATCH_UINT_PT_TYPES(out_btype, "_", [&]() {
       using OutT = ScalarT;
 
-      ArrayRef out(makeType<BShrTy>(out_btype, out_nbits), in.numel());
-
-      auto _in = ArrayView<std::array<InT, 2>>(in);
-      auto _out = ArrayView<std::array<OutT, 2>>(out);
+      NdArrayRef out(makeType<BShrTy>(out_btype, out_nbits), in.shape());
+      auto _out = out.data<std::array<OutT, 2>>();
 
       auto bitrev_fn = [&](OutT el) -> OutT {
         OutT tmp = 0U;
@@ -424,8 +418,9 @@ ArrayRef BitrevB::proc(KernelEvalContext* ctx, const ArrayRef& in, size_t start,
       };
 
       pforeach(0, in.numel(), [&](int64_t idx) {
-        _out[idx][0] = bitrev_fn(static_cast<OutT>(_in[idx][0]));
-        _out[idx][1] = bitrev_fn(static_cast<OutT>(_in[idx][1]));
+        const auto& v = in.at<std::array<InT, 2>>(idx);
+        _out[idx][0] = bitrev_fn(static_cast<OutT>(v[0]));
+        _out[idx][1] = bitrev_fn(static_cast<OutT>(v[1]));
       });
 
       return out;
@@ -433,43 +428,43 @@ ArrayRef BitrevB::proc(KernelEvalContext* ctx, const ArrayRef& in, size_t start,
   });
 }
 
-ArrayRef BitIntlB::proc(KernelEvalContext* ctx, const ArrayRef& in,
-                        size_t stride) const {
+NdArrayRef BitIntlB::proc(KernelEvalContext* ctx, const NdArrayRef& in,
+                          size_t stride) const {
   // void BitIntlB::evaluate(KernelEvalContext* ctx) const {
   const auto* in_ty = in.eltype().as<BShrTy>();
   const size_t nbits = in_ty->nbits();
   SPU_ENFORCE(absl::has_single_bit(nbits));
 
-  ArrayRef out = in.clone();
+  NdArrayRef out(in.eltype(), in.shape());
   DISPATCH_UINT_PT_TYPES(in_ty->getBacktype(), "_", [&]() {
     using T = ScalarT;
-    auto _in = ArrayView<std::array<T, 2>>(in);
-    auto _out = ArrayView<std::array<T, 2>>(out);
+    auto _out = out.data<std::array<T, 2>>();
 
     pforeach(0, in.numel(), [&](int64_t idx) {
-      _out[idx][0] = BitIntl<T>(_in[idx][0], stride, nbits);
-      _out[idx][1] = BitIntl<T>(_in[idx][1], stride, nbits);
+      const auto& v = in.at<std::array<T, 2>>(idx);
+      _out[idx][0] = BitIntl<T>(v[0], stride, nbits);
+      _out[idx][1] = BitIntl<T>(v[1], stride, nbits);
     });
   });
 
   return out;
 }
 
-ArrayRef BitDeintlB::proc(KernelEvalContext* ctx, const ArrayRef& in,
-                          size_t stride) const {
+NdArrayRef BitDeintlB::proc(KernelEvalContext* ctx, const NdArrayRef& in,
+                            size_t stride) const {
   const auto* in_ty = in.eltype().as<BShrTy>();
   const size_t nbits = in_ty->nbits();
   SPU_ENFORCE(absl::has_single_bit(nbits));
 
-  ArrayRef out = in.clone();
+  NdArrayRef out(in.eltype(), in.shape());
   DISPATCH_UINT_PT_TYPES(in_ty->getBacktype(), "_", [&]() {
     using T = ScalarT;
-    auto _in = ArrayView<std::array<T, 2>>(in);
-    auto _out = ArrayView<std::array<T, 2>>(out);
+    auto _out = out.data<std::array<T, 2>>();
 
     pforeach(0, in.numel(), [&](int64_t idx) {
-      _out[idx][0] = BitDeintl<T>(_in[idx][0], stride, nbits);
-      _out[idx][1] = BitDeintl<T>(_in[idx][1], stride, nbits);
+      const auto& v = in.at<std::array<T, 2>>(idx);
+      _out[idx][0] = BitDeintl<T>(v[0], stride, nbits);
+      _out[idx][1] = BitDeintl<T>(v[1], stride, nbits);
     });
   });
 

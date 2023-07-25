@@ -17,7 +17,6 @@
 #include "libspu/core/encoding.h"
 #include "libspu/core/ndarray_ref.h"
 #include "libspu/core/pt_buffer_view.h"
-#include "libspu/core/shape_util.h"
 #include "libspu/core/type_util.h"
 #include "libspu/kernel/hal/prot_wrapper.h"
 #include "libspu/kernel/hal/ring.h"
@@ -47,19 +46,20 @@ Value make_pub2k(SPUContext* ctx, const PtBufferView& bv) {
 // clang-format off
 // NOLINTBEGIN, readability-implicit-bool-conversion, modernize-use-bool-literals
 bool kCastFlags[DT_F64+1][DT_F64+1] = {
-//{_,  I1, I8, U8, I16,U16,I32,U32,I64,U64,F32,F64}
-  {0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0  , 0},  // _
-  {0,  1,  1,  1,  1,  1,  1,  1,  1,  1,  0  , 0},  // I1
-  {0,  0,  1,  0,  1,  0,  1,  0,  1,  0,  0  , 0},  // I8
-  {0,  0,  1,  1,  1,  1,  1,  1,  1,  1,  0  , 0},  // U8
-  {0,  0,  0,  0,  1,  0,  1,  0,  1,  0,  0  , 0},  // I16
-  {0,  0,  0,  0,  1,  1,  1,  1,  1,  1,  0  , 0},  // U16
-  {0,  0,  0,  0,  0,  0,  1,  0,  1,  0,  0  , 0},  // I32
-  {0,  0,  0,  0,  0,  0,  1,  1,  1,  1,  0  , 0},  // U32
-  {0,  0,  0,  0,  0,  0,  0,  0,  1,  0,  0  , 0},  // I64
-  {0,  0,  0,  0,  0,  0,  0,  0,  1,  1,  0  , 0},  // U64
-  {0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  1  , 1},  // F32
-  {0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0  , 1},  // F64
+//{_,  I1, I8, U8, I16,U16,I32,U32,I64,U64, F16, F32,F64}
+  {0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 0  , 0},  // _
+  {0,  1,  1,  1,  1,  1,  1,  1,  1,  1,  0, 0  , 0},  // I1
+  {0,  0,  1,  0,  1,  0,  1,  0,  1,  0,  0, 0  , 0},  // I8
+  {0,  0,  1,  1,  1,  1,  1,  1,  1,  1,  0, 0  , 0},  // U8
+  {0,  0,  0,  0,  1,  0,  1,  0,  1,  0,  0, 0  , 0},  // I16
+  {0,  0,  0,  0,  1,  1,  1,  1,  1,  1,  0, 0  , 0},  // U16
+  {0,  0,  0,  0,  0,  0,  1,  0,  1,  0,  0, 0  , 0},  // I32
+  {0,  0,  0,  0,  0,  0,  1,  1,  1,  1,  0, 0  , 0},  // U32
+  {0,  0,  0,  0,  0,  0,  0,  0,  1,  0,  0, 0  , 0},  // I64
+  {0,  0,  0,  0,  0,  0,  0,  0,  1,  1,  0, 0  , 0},  // U64
+  {0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  1, 1  , 1},  // F16
+  {0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 1  , 1},  // F32
+  {0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 0  , 1},  // F64
 };
 // NOLINTEND
 // clang-format on
@@ -71,7 +71,7 @@ bool canImplicitCastTo(DataType frm, DataType to) {
 }  // namespace
 
 Value constant(SPUContext* ctx, PtBufferView init, DataType dtype,
-               ShapeView shape) {
+               const Shape& shape) {
   SPU_TRACE_HAL_DISP(ctx, init, dtype, shape);
 
   const auto init_dtype = getEncodeType(init.pt_type);
@@ -83,28 +83,27 @@ Value constant(SPUContext* ctx, PtBufferView init, DataType dtype,
 
   auto result = make_pub2k(ctx, init).setDtype(dtype, true);
 
-  if (isEmpty(shape)) {
+  if (shape.numel() == 0) {
     return Value(NdArrayRef(nullptr, result.storage_type(), shape),
                  result.dtype());
   }
 
   // If view shape is same as destination shape, just make public
-  if (shape.empty() || shape == init.shape) {
+  if (shape.isScalar() || shape == init.shape) {
     return result;
   }
 
   // Same calcNumel but shape is different, do a reshape
-  if (calcNumel(init.shape) == calcNumel(shape)) {
+  if (init.shape.numel() == shape.numel()) {
     return Value(result.data().reshape(shape), result.dtype());
   }
 
   // Other, do a broadcast, let broadcast handles the sanity check
-  SPU_ENFORCE(calcNumel(init.shape) <= calcNumel(shape));
+  SPU_ENFORCE(init.shape.numel() <= shape.numel());
   return Value(result.data().broadcast_to(shape, {}), result.dtype());
 }
 
-spu::Value zeros(SPUContext* ctx, DataType dtype,
-                 absl::Span<const int64_t> shape) {
+spu::Value zeros(SPUContext* ctx, DataType dtype, const Shape& shape) {
   if (dtype == DT_F32 || dtype == DT_F64) {
     return constant(ctx, 0.0F, dtype, shape);
   } else {
@@ -120,8 +119,7 @@ Value iota(SPUContext* ctx, DataType dtype, int64_t numel) {
   });
 }
 
-Value epsilon(SPUContext* ctx, DataType dtype,
-              absl::Span<const int64_t> shape) {
+Value epsilon(SPUContext* ctx, DataType dtype, const Shape& shape) {
   return _constant(ctx, static_cast<int128_t>(1), shape).setDtype(dtype);
 }
 

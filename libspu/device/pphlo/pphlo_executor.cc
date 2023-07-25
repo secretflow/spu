@@ -40,15 +40,13 @@
 
 namespace {
 
-std::vector<int64_t> convertDenseIntElementAttr(
-    const mlir::DenseIntElementsAttr &attr) {
-  std::vector<int64_t> ret;
-
+template <typename T>
+void convertDenseIntElementAttr(const mlir::DenseIntElementsAttr &attr,
+                                T &out) {
+  out.clear();
   for (const auto &v : attr.getValues<int64_t>()) {
-    ret.emplace_back(v);
+    out.emplace_back(v);
   }
-
-  return ret;
 }
 
 template <typename T>
@@ -66,6 +64,8 @@ spu::PtType getPtTypeFromMlirType(mlir::Type mlir_ty) {
 
   if (auto ft = express_type.dyn_cast<mlir::FloatType>()) {
     switch (ft.getWidth()) {
+      case 16:
+        return spu::PT_F16;
       case 32:
         return spu::PT_F32;
       case 64:
@@ -113,6 +113,8 @@ spu::DataType getDtypeFromMlirType(mlir::Type mlir_ty) {
     }
   } else if (auto flp_ty = express_type.dyn_cast<mlir::FloatType>()) {
     switch (flp_ty.getWidth()) {
+      case 16:
+        return spu::DT_F16;
       case 32:
         return spu::DT_F32;
       case 64:
@@ -357,15 +359,15 @@ void execute(OpExecutor *executor, SPUContext *sctx, SymbolScope *sscope,
   int64_t num_batch = lhs.shape()[0];
 
   std::vector<spu::Value> results(num_batch);
-  std::vector<int64_t> lhs_slice_begin(3, 0);
-  std::vector<int64_t> lhs_slice_end = lhs.shape();
-  std::vector<int64_t> rhs_slice_begin(3, 0);
-  std::vector<int64_t> rhs_slice_end = rhs.shape();
-  std::vector<int64_t> strides(lhs.shape().size(), 1);
+  Index lhs_slice_begin(3, 0);
+  Index lhs_slice_end(lhs.shape().begin(), lhs.shape().end());
+  Index rhs_slice_begin(3, 0);
+  Index rhs_slice_end(rhs.shape().begin(), rhs.shape().end());
+  Strides strides(lhs.shape().size(), 1);
 
-  std::vector<int64_t> lhs_slice_shape{lhs.shape()[1], lhs.shape()[2]};
-  std::vector<int64_t> rhs_slice_shape{rhs.shape()[1], rhs.shape()[2]};
-  std::vector<int64_t> ret_slice_shape{1, lhs.shape()[1], rhs.shape()[2]};
+  Shape lhs_slice_shape{lhs.shape()[1], lhs.shape()[2]};
+  Shape rhs_slice_shape{rhs.shape()[1], rhs.shape()[2]};
+  Shape ret_slice_shape{1, lhs.shape()[1], rhs.shape()[2]};
 
   for (int64_t batch_idx = 0; batch_idx < num_batch; ++batch_idx) {
     lhs_slice_begin[0] = batch_idx;
@@ -404,8 +406,7 @@ void execute(OpExecutor *executor, SPUContext *sctx, SymbolScope *sscope,
   auto lhs = lookupValue(sscope, op.getLhs(), opts);
   auto rhs = lookupValue(sscope, op.getRhs(), opts);
 
-  std::vector<int64_t> window_strides(dnums.getInputSpatialDimensions().size(),
-                                      1);
+  Strides window_strides(dnums.getInputSpatialDimensions().size(), 1);
   if (op.getWindowStrides().has_value()) {
     for (const auto &iter : llvm::enumerate(
              op.getWindowStrides()->getValues<int64_t>())) {  // NOLINT
@@ -461,7 +462,7 @@ void execute(OpExecutor *executor, SPUContext *sctx, SymbolScope *sscope,
              mlir::pphlo::DynamicSliceOp &op, const ExecutionOptions &opts) {
   // Start indices
   auto iter = op.getSliceSizes().getValues<int64_t>();
-  std::vector<int64_t> slice_size{iter.begin(), iter.end()};
+  Sizes slice_size{iter.begin(), iter.end()};
   const auto &operand = lookupValue(sscope, op.getOperand(), opts);
   std::vector<spu::Value> start_indices(op.getStartIndices().size());
 
@@ -490,7 +491,8 @@ void execute(OpExecutor *executor, SPUContext *sctx, SymbolScope *sscope,
   const auto &dim_numbers = op.getDimensionNumbers();
 
   kernel::hlo::GatherConfig config;
-  auto ss = convertDenseIntElementAttr(op.getSliceSizes());
+  Sizes ss;
+  convertDenseIntElementAttr(op.getSliceSizes(), ss);
   config.sliceSizes = ss;
   config.indexVectorDim = dim_numbers.getIndexVectorDim();
   config.offsetDims = dim_numbers.getOffsetDims();
@@ -554,13 +556,13 @@ void execute(OpExecutor *executor, SPUContext *sctx, SymbolScope *sscope,
   auto source = lookupValue(sscope, op.getSource(), opts);
   auto init_val = lookupValue(sscope, op.getInitValue(), opts);
 
-  auto window_shape = convertDenseIntElementAttr(op.getWindowDimensions());
+  Shape window_shape;
+  convertDenseIntElementAttr(op.getWindowDimensions(), window_shape);
 
   // build strides
-  std::vector<int64_t> window_strides(window_shape.size(), 1);
+  Strides window_strides(window_shape.size(), 1);
   if (op.getWindowStrides().has_value()) {
-    window_strides =
-        convertDenseIntElementAttr(*op.getWindowStrides());  // NOLINT
+    convertDenseIntElementAttr(*op.getWindowStrides(), window_strides);
   }
 
   // window padding
@@ -600,14 +602,13 @@ void execute(OpExecutor *executor, SPUContext *sctx, SymbolScope *sscope,
   auto scatter_indices = lookupValue(sscope, op.getScatterIndices(), opts);
   auto update = lookupValue(sscope, op.getUpdate(), opts);
 
-  auto window_shape =
-      convertDenseIntElementAttr(op.getWindowDimensions().value());  // NOLINT
+  Shape window_shape;
+  convertDenseIntElementAttr(op.getWindowDimensions().value(), window_shape);
 
   // build strides
-  std::vector<int64_t> window_strides(window_shape.size(), 1);
+  Strides window_strides(window_shape.size(), 1);
   if (op.getWindowStrides().has_value()) {
-    window_strides =
-        convertDenseIntElementAttr(*op.getWindowStrides());  // NOLINT
+    convertDenseIntElementAttr(*op.getWindowStrides(), window_strides);
   }
 
   // window padding
@@ -727,21 +728,25 @@ void execute(OpExecutor *executor, SPUContext *sctx, SymbolScope *sscope,
 
 void execute(OpExecutor *executor, SPUContext *sctx, SymbolScope *sscope,
              mlir::pphlo::TransposeOp &op, const ExecutionOptions &opts) {
-  addValue(
-      sscope, op.getResult(),
-      kernel::hlo::Transpose(sctx, lookupValue(sscope, op.getOperand(), opts),
-                             convertDenseIntElementAttr(op.getPermutation())),
-      opts);
+  Axes permu;
+  convertDenseIntElementAttr(op.getPermutation(), permu);
+
+  addValue(sscope, op.getResult(),
+           kernel::hlo::Transpose(
+               sctx, lookupValue(sscope, op.getOperand(), opts), permu),
+           opts);
 }
 
 void execute(OpExecutor *executor, SPUContext *sctx, SymbolScope *sscope,
              mlir::pphlo::BroadcastOp &op, const ExecutionOptions &opts) {
   auto to_shape = op.getType().dyn_cast<mlir::RankedTensorType>().getShape();
-  addValue(sscope, op.getResult(),
-           kernel::hlo::Broadcast(
-               sctx, lookupValue(sscope, op.getOperand(), opts), to_shape,
-               convertDenseIntElementAttr(op.getBroadcastDimensions())),
-           opts);
+  Axes in_dims;
+  convertDenseIntElementAttr(op.getBroadcastDimensions(), in_dims);
+  addValue(
+      sscope, op.getResult(),
+      kernel::hlo::Broadcast(sctx, lookupValue(sscope, op.getOperand(), opts),
+                             to_shape, in_dims),
+      opts);
 }
 
 void execute(OpExecutor *executor, SPUContext *sctx, SymbolScope *sscope,
@@ -768,11 +773,15 @@ void execute(OpExecutor *executor, SPUContext *sctx, SymbolScope *sscope,
 
 void execute(OpExecutor *executor, SPUContext *sctx, SymbolScope *sscope,
              mlir::pphlo::SliceOp &op, const ExecutionOptions &opts) {
+  Index start;
+  Index end;
+  Strides s;
+  convertDenseIntElementAttr(op.getStartIndices(), start);
+  convertDenseIntElementAttr(op.getLimitIndices(), end);
+  convertDenseIntElementAttr(op.getStrides(), s);
   addValue(sscope, op.getResult(),
            kernel::hlo::Slice(sctx, lookupValue(sscope, op.getOperand(), opts),
-                              convertDenseIntElementAttr(op.getStartIndices()),
-                              convertDenseIntElementAttr(op.getLimitIndices()),
-                              convertDenseIntElementAttr(op.getStrides())),
+                              start, end, s),
            opts);
 }
 
@@ -781,13 +790,18 @@ void execute(OpExecutor *executor, SPUContext *sctx, SymbolScope *sscope,
   const auto &operand = lookupValue(sscope, op.getOperand(), opts);
   const size_t operand_rank = operand.shape().size();
   const auto &padding_value = lookupValue(sscope, op.getPaddingValue(), opts);
-  SPU_ENFORCE(padding_value.shape().empty());
+  SPU_ENFORCE(padding_value.shape().isScalar());
 
-  auto edge_padding_low = convertDenseIntElementAttr(op.getEdgePaddingLow());
+  Sizes edge_padding_low;
+  convertDenseIntElementAttr(op.getEdgePaddingLow(), edge_padding_low);
   SPU_ENFORCE(edge_padding_low.size() == operand_rank);
-  auto edge_padding_high = convertDenseIntElementAttr(op.getEdgePaddingHigh());
+
+  Sizes edge_padding_high;
+  convertDenseIntElementAttr(op.getEdgePaddingHigh(), edge_padding_high);
   SPU_ENFORCE(edge_padding_high.size() == operand_rank);
-  auto interior_padding = convertDenseIntElementAttr(op.getInteriorPadding());
+
+  Sizes interior_padding;
+  convertDenseIntElementAttr(op.getInteriorPadding(), interior_padding);
   SPU_ENFORCE(interior_padding.size() == operand_rank);
   SPU_ENFORCE(std::all_of(interior_padding.begin(), interior_padding.end(),
                           [](int64_t i) { return i >= 0; }));
@@ -800,18 +814,19 @@ void execute(OpExecutor *executor, SPUContext *sctx, SymbolScope *sscope,
 
 void execute(OpExecutor *executor, SPUContext *sctx, SymbolScope *sscope,
              mlir::pphlo::ReverseOp &op, const ExecutionOptions &opts) {
-  addValue(
-      sscope, op.getResult(),
-      kernel::hlo::Reverse(sctx, lookupValue(sscope, op.getOperand(), opts),
-                           convertDenseIntElementAttr(op.getDimensions())),
-      opts);
+  Axes dims;
+  convertDenseIntElementAttr(op.getDimensions(), dims);
+  addValue(sscope, op.getResult(),
+           kernel::hlo::Reverse(
+               sctx, lookupValue(sscope, op.getOperand(), opts), dims),
+           opts);
 }
 
 void execute(OpExecutor *executor, SPUContext *sctx, SymbolScope *sscope,
              mlir::pphlo::ReduceOp &op, const ExecutionOptions &opts) {
   int64_t num_args = op->getNumOperands() / 2;
-  std::vector<int64_t> dimensions_to_reduce =
-      convertDenseIntElementAttr(op.getDimensions());
+  Axes dimensions_to_reduce;
+  convertDenseIntElementAttr(op.getDimensions(), dimensions_to_reduce);
 
   std::vector<spu::Value> input_args(num_args);
   std::vector<spu::Value> init_values(num_args);
@@ -859,20 +874,21 @@ void execute(OpExecutor *executor, SPUContext *sctx, SymbolScope *sscope,
                        .getType()
                        .dyn_cast<mlir::RankedTensorType>()
                        .getShape();
-  auto window_shape = convertDenseIntElementAttr(op.getWindowDimensions());
+  Shape window_shape;
+  convertDenseIntElementAttr(op.getWindowDimensions(), window_shape);
 
   // build strides
-  std::vector<int64_t> window_strides(window_shape.size(), 1);
+  Strides window_strides(window_shape.size(), 1);
   if (op.getWindowStrides().has_value()) {
-    window_strides =
-        convertDenseIntElementAttr(*op.getWindowStrides());  // NOLINT
+    convertDenseIntElementAttr(*op.getWindowStrides(),
+                               window_strides);  // NOLINT
   }
 
   // window dilation
-  std::vector<int64_t> window_dilations(window_shape.size(), 1);
+  Sizes window_dilations(window_shape.size(), 1);
   if (op.getWindowDilations().has_value()) {
-    window_dilations =
-        convertDenseIntElementAttr(*op.getWindowDilations());  // NOLINT
+    convertDenseIntElementAttr(*op.getWindowDilations(),
+                               window_dilations);  // NOLINT
   }
 
   // window padding
@@ -890,10 +906,10 @@ void execute(OpExecutor *executor, SPUContext *sctx, SymbolScope *sscope,
   }
 
   // base dilation
-  std::vector<int64_t> base_dilation(window_shape.size(), 1);
+  Sizes base_dilation(window_shape.size(), 1);
   if (op.getBaseDilations().has_value()) {
-    base_dilation =
-        convertDenseIntElementAttr(*op.getBaseDilations());  // NOLINT
+    convertDenseIntElementAttr(*op.getBaseDilations(),
+                               base_dilation);  // NOLINT
   }
 
   kernel::hlo::ReduceWindowConfig config;
@@ -922,20 +938,21 @@ void execute(OpExecutor *executor, SPUContext *sctx, SymbolScope *sscope,
 
 void execute(OpExecutor *executor, SPUContext *sctx, SymbolScope *sscope,
              mlir::pphlo::ArgMaxOp &op, const ExecutionOptions &opts) {
-  auto window_shape = convertDenseIntElementAttr(op.getWindowDimensions());
+  Shape window_shape;
+  convertDenseIntElementAttr(op.getWindowDimensions(), window_shape);
 
   // build strides
-  std::vector<int64_t> window_strides(window_shape.size(), 1);
+  Strides window_strides(window_shape.size(), 1);
   if (op.getWindowStrides().has_value()) {
-    window_strides =
-        convertDenseIntElementAttr(*op.getWindowStrides());  // NOLINT
+    convertDenseIntElementAttr(*op.getWindowStrides(),
+                               window_strides);  // NOLINT
   }
 
   // window dilation
-  std::vector<int64_t> window_dilations(window_shape.size(), 1);
+  Sizes window_dilations(window_shape.size(), 1);
   if (op.getWindowDilations().has_value()) {
-    window_dilations =
-        convertDenseIntElementAttr(*op.getWindowDilations());  // NOLINT
+    convertDenseIntElementAttr(*op.getWindowDilations(),
+                               window_dilations);  // NOLINT
   }
 
   // window padding
@@ -953,10 +970,10 @@ void execute(OpExecutor *executor, SPUContext *sctx, SymbolScope *sscope,
   }
 
   // base dilation
-  std::vector<int64_t> base_dilation(window_shape.size(), 1);
+  Sizes base_dilation(window_shape.size(), 1);
   if (op.getBaseDilations().has_value()) {
-    base_dilation =
-        convertDenseIntElementAttr(*op.getBaseDilations());  // NOLINT
+    convertDenseIntElementAttr(*op.getBaseDilations(),
+                               base_dilation);  // NOLINT
   }
 
   auto ret_shape = op->getResults()[0]
@@ -1058,7 +1075,7 @@ void execute(OpExecutor *executor, SPUContext *sctx, SymbolScope *sscope,
   const auto &val = op.getValue();
   const auto &dea = val.dyn_cast<mlir::DenseElementsAttr>();
   const auto &type = val.getType().dyn_cast<mlir::RankedTensorType>();
-  const auto &dst_shape = type.getShape();
+  const Shape &dst_shape = type.getShape();
   const auto &pt_type = getPtTypeFromMlirType(type.getElementType());
 
   // For 1-bit type, MLIR buffer is either 0 or 255
@@ -1084,9 +1101,8 @@ void execute(OpExecutor *executor, SPUContext *sctx, SymbolScope *sscope,
     }
   } else {
     PtBufferView view(
-        dea.getRawData().data(), pt_type,
-        dea.isSplat() ? llvm::ArrayRef<int64_t>() : dst_shape,
-        dea.isSplat() ? std::vector<int64_t>() : makeCompactStrides(dst_shape));
+        dea.getRawData().data(), pt_type, dea.isSplat() ? Shape() : dst_shape,
+        dea.isSplat() ? Strides() : makeCompactStrides(dst_shape));
 
     addValue(sscope, op.getResult(),
              kernel::hlo::Constant(sctx, view, dst_shape), opts);

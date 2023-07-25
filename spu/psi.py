@@ -27,6 +27,7 @@ from .psi_pb2 import (  # type: ignore
 )
 
 from . import libspu  # type: ignore
+from .libspu.libs import ProgressData
 
 
 def mem_psi(
@@ -36,16 +37,27 @@ def mem_psi(
 
 
 def bucket_psi(
-    link: libspu.link.Context, config: BucketPsiConfig, ic_mode: bool = False
+    link: libspu.link.Context,
+    config: BucketPsiConfig,
+    progress_callbacks: [[psi.ProgressData], None] = None,
+    callbacks_interval_ms: int = 5 * 1000,
+    ic_mode: bool = False,
 ) -> PsiResultReport:
     """
     Run bucket psi
     :param link: the transport layer
     :param config: psi config
+    :param progress_callbacks: callbacks func for psi progress. func defined: def progress_callbacks(data: ProgressData)
     :param ic_mode: Whether to run in interconnection mode
     :return: statistical results
     """
-    report_str = libspu.libs.bucket_psi(link, config.SerializeToString(), ic_mode)
+    report_str = libspu.libs.bucket_psi(
+        link,
+        config.SerializeToString(),
+        progress_callbacks,
+        callbacks_interval_ms,
+        ic_mode,
+    )
     report = PsiResultReport()
     report.ParseFromString(report_str)
     return report

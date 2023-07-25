@@ -279,7 +279,7 @@ class SGDClassifier:
             Returns the probability of the sample for each class in the model,
             where classes are ordered as they are in `self.classes_`.
         """
-        if self._multi_class == MultiClass.Ovr:   
+        if self._multi_class == MultiClass.Ovr:
             num_feat = x.shape[1]
             w = self._weights
             assert w.shape[0] == num_feat + 1, f"w shape is mismatch to x={x.shape}"

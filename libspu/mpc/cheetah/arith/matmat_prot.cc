@@ -22,7 +22,6 @@
 #include "spdlog/spdlog.h"
 #include "yacl/utils/parallel.h"
 
-#include "libspu/core/shape_util.h"  //calcNumel
 #include "libspu/mpc/cheetah/arith/vector_encoder.h"
 #include "libspu/mpc/cheetah/rlwe/utils.h"
 #include "libspu/mpc/utils/ring_ops.h"
@@ -99,18 +98,18 @@ ArrayRef ConcatSubMatrix(const ArrayRef& mat, const Shape2D& mat_shape,
 
   const auto field = eltype.as<Ring2k>()->field();
   // NOTE: zero padding via initialization
-  ArrayRef flatten = ring_zeros(field, num_el);
+  ArrayRef f = flatten(ring_zeros(field, {num_el}));
 
   DISPATCH_ALL_FIELDS(field, "", [&]() {
     for (int64_t r = 0, rr = starts[0]; r < extents[0]; ++r, ++rr) {
       for (int64_t c = 0, cc = starts[1]; c < extents[1]; ++c, ++cc) {
-        flatten.at<ring2k_t>(indexer(r, c)) =
+        f.at<ring2k_t>(indexer(r, c)) =
             mat.at<ring2k_t>(rr * mat_shape[1] + cc);
       }
     }
   });
 
-  return flatten;
+  return f;
 }
 
 MatMatProtocol::MatMatProtocol(const seal::SEALContext& context,
@@ -397,7 +396,7 @@ ArrayRef MatMatProtocol::ParseResult(
     }
   }
 
-  ArrayRef matmat = ring_zeros(field, meta.dims[0] * meta.dims[2]);
+  ArrayRef matmat = flatten(ring_zeros(field, {meta.dims[0] * meta.dims[2]}));
 
   for (int64_t rb = 0; rb < out_blks[0]; ++rb) {
     const auto* this_ans = ans_poly.data() + rb * out_blks[1];
