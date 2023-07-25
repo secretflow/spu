@@ -48,5 +48,3 @@ This example demonstrates how to use SPU to run secure inference on a pre-traine
     ```
 
 5. To reproduce the benchmarks results in the [Puma paper](https://arxiv.org/abs/2307.12533), please check [here](https://github.com/AntCPLab/puma_benchmarks).
-
-   
