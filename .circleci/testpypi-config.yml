@@ -65,7 +65,7 @@ jobs:
             python3 -m pip install twine
             ls dist/*.whl
 
-            python3 -m twine upload -r testpypi -u __token__ -p ${PYPI_TWINE_TOKEN} dist/*.whl
+            python3 -m twine upload -r testpypi -u __token__ -p ${TEST_PYPI_TWINE_TOKEN} dist/*.whl
   linux_publish:
     docker:
       - image: secretflow/release-ci:latest
@@ -84,7 +84,7 @@ jobs:
             python3 -m pip install twine
             ls dist/*.whl
 
-            python3 -m twine upload -r testpypi -u __token__ -p ${PYPI_TWINE_TOKEN} dist/*.whl
+            python3 -m twine upload -r testpypi -u __token__ -p ${TEST_PYPI_TWINE_TOKEN} dist/*.whl
 
 # Invoke jobs via workflows
 # See: https://circleci.com/docs/2.0/configuration-reference/#workflows
