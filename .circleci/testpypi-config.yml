@@ -70,9 +70,6 @@ jobs:
     docker:
       - image: secretflow/release-ci:latest
     resource_class: 2xlarge
-    parameters:
-      python_ver:
-        type: string
     shell: /bin/bash --login -eo pipefail
     steps:
       - checkout
