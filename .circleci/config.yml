@@ -93,4 +93,9 @@ workflows:
           filters:
             tags:
                 only: /.*/
-
+  testpypi-workflow:
+    when:
+      equal: [ "test_pypi", << pipeline.parameters.GHA_Meta >> ]
+    jobs:
+      - continuation/continue:
+          configuration_path: .circleci/testpypi-config.yml
