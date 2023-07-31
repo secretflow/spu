@@ -51,11 +51,10 @@ NdArrayRef A2B::proc(KernelEvalContext* ctx, const NdArrayRef& x) const {
     bshrs.push_back(b.as(bty));
   }
 
-  NdArrayRef res =
-      vectorizedReduce(bshrs.begin(), bshrs.end(),
-                       [&](const NdArrayRef& xx, const NdArrayRef& yy) {
-                         return wrap_add_bb(ctx->sctx(), xx, yy);
-                       });
+  NdArrayRef res = vreduce(bshrs.begin(), bshrs.end(),
+                           [&](const NdArrayRef& xx, const NdArrayRef& yy) {
+                             return wrap_add_bb(ctx->sctx(), xx, yy);
+                           });
   return res.as(bty);
 }
 

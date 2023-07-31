@@ -65,6 +65,7 @@ spu_cc_library(
         "//libspu/compiler/common:compilation_context",
         "//libspu/compiler/passes:hlo_legalize_to_pphlo",
         "//libspu/compiler/passes:lower_conversion_cast",
+        "@llvm-project//mlir:FuncExtensions",
         "@llvm-project//mlir:Parser",
         "@xla//xla/mlir_hlo:mhlo_passes",
     ],

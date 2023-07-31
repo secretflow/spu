@@ -7,7 +7,7 @@ To use SPU C++ API, we have to first :ref:`getting_started/install:From Source`,
 Logistic Regression
 -------------------
 
-.. literalinclude:: ../../../examples/cpp/simple_lr.cc
+.. literalinclude:: ../../examples/cpp/simple_lr.cc
   :language: cpp
 
 

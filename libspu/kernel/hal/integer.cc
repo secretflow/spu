@@ -84,10 +84,10 @@ Value i_sub(SPUContext* ctx, const Value& x, const Value& y) {
 }
 
 Value i_conv2d(SPUContext* ctx, const Value& x, const Value& y,
-               const Strides& window_strides, const Shape& result_shape) {
-  SPU_TRACE_HAL_LEAF(ctx, x, y);
+               const Strides& window_strides) {
+  SPU_TRACE_HAL_LEAF(ctx, x, y, window_strides);
   ENSURE_INT_AND_DTYPE_MATCH(x, y);
-  return _conv2d(ctx, x, y, window_strides, result_shape).setDtype(x.dtype());
+  return _conv2d(ctx, x, y, window_strides).setDtype(x.dtype());
 }
 
 }  // namespace spu::kernel::hal

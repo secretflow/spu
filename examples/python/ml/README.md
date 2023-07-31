@@ -17,6 +17,9 @@ This directory contains examples demonstrating how to use SPU to write privacy-p
 * [flax_gpt2](flax_gpt2/): Private inference of a pre-trained
                            [GPT2](https://cdn.openai.com/better-language-models/language_models_are_unsupervised_multitask_learners.pdf)
                            model with [Flax](https://github.com/google/flax) library.
+* [flax_llama7b](flax_llama7b/): Private inference of a pre-trained
+                           [Llama-7B](https://research.facebook.com/publications/llama-open-and-efficient-foundation-language-models/)
+                           model using [Puma](https://arxiv.org/abs/2307.12533).
 * [flax_vae](flax_vae/): Private training of a [VAE](http://arxiv.org/abs/1312.6114) model for MNIST digit reconstruction with
                          [Flax](https://github.com/google/flax) library.
 * [haiku_lstm](haiku_lstm/): Private training of an LSTM model with [Haiku](https://github.com/deepmind/dm-haiku).

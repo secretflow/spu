@@ -213,19 +213,21 @@ void BindLink(py::module& m) {
                          const std::string& in) {
             self->Send(dst_rank, in, PY_CALL_TAG);
           },
-          "Sends data to dst_rank")
+          NO_GIL, "Sends data to dst_rank")
       .def(
           "send_async",
           [&PY_CALL_TAG](const std::shared_ptr<Context>& self, size_t dst_rank,
                          const std::string& in) {
             self->SendAsync(dst_rank, yacl::Buffer(in), PY_CALL_TAG);
           },
-          "Sends data to dst_rank asynchronously")
+          NO_GIL, "Sends data to dst_rank asynchronously")
       .def(
           "recv",
           [&PY_CALL_TAG](const std::shared_ptr<Context>& self,
                          size_t src_rank) -> py::bytes {
-            auto buf = self->Recv(src_rank, PY_CALL_TAG);
+            py::gil_scoped_release release;
+            yacl::Buffer buf = self->Recv(src_rank, PY_CALL_TAG);
+            py::gil_scoped_acquire acquire;
             return py::bytes{buf.data<char>(), static_cast<size_t>(buf.size())};
           },  // Since it uses py bytes, we cannot release GIL here
           "Receives data from src_rank")

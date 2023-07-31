@@ -67,9 +67,8 @@ class Conv2DKernel : public Kernel {
   // tensor: NxHxWxC
   // filter: hxwxCxO
   virtual NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& tensor,
-                          const NdArrayRef& filter, size_t N, size_t H,
-                          size_t W, size_t C, size_t O, size_t h, size_t w,
-                          size_t stride_h, size_t stride_w) const = 0;
+                          const NdArrayRef& filter, int64_t stride_h,
+                          int64_t stride_w) const = 0;
 };
 
 class BitrevKernel : public Kernel {
@@ -92,8 +91,10 @@ enum class TruncLsbRounding {
   Nearest,
 };
 
-class TruncAKernel : public ShiftKernel {
+class TruncAKernel : public Kernel {
  public:
+  void evaluate(KernelEvalContext* ctx) const override;
+
   // For protocol like SecureML, the most significant bit may have error with
   // low probability, which lead to huge calculation error.
   //
@@ -101,19 +102,9 @@ class TruncAKernel : public ShiftKernel {
   virtual bool hasMsbError() const = 0;
 
   virtual TruncLsbRounding lsbRounding() const = 0;
-};
-
-class TruncAWithSignKernel : public Kernel {
- public:
-  void evaluate(KernelEvalContext* ctx) const override;
-
-  // TODO: proc function signature changed, so we can not inherit from
-  // TruncAKernel
-  virtual bool hasMsbError() const = 0;
-  virtual TruncLsbRounding lsbRounding() const = 0;
 
   virtual NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in,
-                          size_t bits, bool is_positive) const = 0;
+                          size_t bits, SignType sign) const = 0;
 };
 
 class BitSplitKernel : public Kernel {

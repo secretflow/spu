@@ -79,7 +79,7 @@ T kogge_stone(const CircuitBasicBlock<T>& ctx, T const& lhs, T const& rhs,
     // P1 = P & P1
     // G1 = G ^ (P & G1)
     if constexpr (HasSimdTrait<T>::value) {
-      std::vector<T> res = vectorize({P, P}, {P1, G1}, ctx._and);
+      std::vector<T> res = vmap({P, P}, {P1, G1}, ctx._and);
       P = std::move(res[0]);
       G = ctx._xor(G, std::move(res[1]));
     } else {
@@ -136,7 +136,7 @@ T sklansky(const CircuitBasicBlock<T>& ctx, T const& lhs, T const& rhs,
     // P = P & P1
     // G = G ^ (P & G1)
     if constexpr (HasSimdTrait<T>::value) {
-      std::vector<T> res = vectorize({P, P}, {P1, G1}, ctx._and);
+      std::vector<T> res = vmap({P, P}, {P1, G1}, ctx._and);
       P = std::move(res[0]);
       G = ctx._xor(G, std::move(res[1]));
     } else {
@@ -258,7 +258,7 @@ T carry_out(const CircuitBasicBlock<T>& ctx, const T& x, const T& y,
     //   G = G1 | (P1 & G0)
     //     = G1 ^ (P1 & G0)
     if constexpr (HasSimdTrait<T>::value) {
-      std::vector<T> v = vectorize({P0, G0}, {P1, P1}, ctx._and);
+      std::vector<T> v = vmap({P0, G0}, {P1, P1}, ctx._and);
       P = std::move(v[0]);
       G = ctx._xor(G1, std::move(v[1]));
     } else {

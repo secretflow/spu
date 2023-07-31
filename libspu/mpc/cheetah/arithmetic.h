@@ -41,30 +41,14 @@ using MatMulAP = spu::mpc::semi2k::MatMulAP;
 
 using LShiftA = spu::mpc::semi2k::LShiftA;
 
-class TruncAWithSign : public TruncAWithSignKernel {
- public:
-  static constexpr char kBindName[] = "trunc_a_with_sign";
-
-  Kind kind() const override { return Kind::Dynamic; }
-
-  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& x, size_t bits,
-                  bool is_positive) const override;
-
-  bool hasMsbError() const override { return false; }
-
-  TruncLsbRounding lsbRounding() const override {
-    return TruncLsbRounding::Probabilistic;
-  }
-};
-
 class TruncA : public TruncAKernel {
  public:
   static constexpr char kBindName[] = "trunc_a";
 
   Kind kind() const override { return Kind::Dynamic; }
 
-  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& x,
-                  size_t bits) const override;
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& x, size_t bits,
+                  SignType sign) const override;
 
   bool hasMsbError() const override { return false; }
 
@@ -144,9 +128,8 @@ class Conv2DAA : public Conv2DKernel {
   Kind kind() const override { return Kind::Dynamic; }
 
   NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& tensor,
-                  const NdArrayRef& filter, size_t N, size_t H, size_t W,
-                  size_t C, size_t O, size_t h, size_t w, size_t stride_h,
-                  size_t stride_w) const override;
+                  const NdArrayRef& filter, int64_t stride_h,
+                  int64_t stride_w) const override;
 };
 
 }  // namespace spu::mpc::cheetah

@@ -1,6 +1,7 @@
 Frequently Asked Questions (FAQ)
 ================================
 
+
 Installation
 ------------
 
@@ -52,7 +53,7 @@ consumed by SPU compiler, please check other opensource projects which work on t
 I have met huge inconsistency between SPU result and Plaintext(JAX) result.
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Arithmetic operation of SPU is based on Fxp. Please check :ref:`reference/fxp:pitfalls - fxp arithmetic`. In most cases, you have 
+Arithmetic operation of SPU is based on Fxp. Please check :doc:`/development/fxp`. In most cases, you have
 to choose:
 
 1. Use large field or modify fraction bits.

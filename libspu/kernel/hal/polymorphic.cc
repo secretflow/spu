@@ -104,6 +104,10 @@ Value mixed_mmul(SPUContext* ctx, const Value& x, const Value& y) {
   return _mmul(ctx, x, y).setDtype(new_dtype);
 }
 
+static Value f_mul_impl(SPUContext* ctx, const Value& x, const Value& y) {
+  return f_mul(ctx, x, y, SignType::Unknown);
+}
+
 Value mul(SPUContext* ctx, const Value& x, const Value& y) {
   SPU_TRACE_HAL_DISP(ctx, x, y);
   // fast dispatch, avoid truncation cost
@@ -111,7 +115,7 @@ Value mul(SPUContext* ctx, const Value& x, const Value& y) {
     return mixed_mul(ctx, x, y);
   }
 
-  return dtypeBinaryDispatch<f_mul, i_mul>("mul", ctx, x, y);
+  return dtypeBinaryDispatch<f_mul_impl, i_mul>("mul", ctx, x, y);
 }
 
 Value matmul(SPUContext* ctx, const Value& x, const Value& y) {
@@ -460,17 +464,16 @@ Value sign(SPUContext* ctx, const Value& x) {
 }
 
 Value conv2d(SPUContext* ctx, const Value& x, const Value& y,
-             const Strides& window_strides, const Shape& result_shape) {
-  SPU_TRACE_HAL_DISP(ctx, x, y);
+             const Strides& window_strides) {
+  SPU_TRACE_HAL_DISP(ctx, x, y, window_strides);
   if (x.isFxp() && y.isFxp()) {
-    return f_conv2d(ctx, x, y, window_strides, result_shape);
+    return f_conv2d(ctx, x, y, window_strides);
   }
 
   if (x.isInt() && y.isInt()) {
     auto common_type = common_dtype(x.dtype(), y.dtype());
     return i_conv2d(ctx, dtype_cast(ctx, x, common_type),
-                    dtype_cast(ctx, y, common_type), window_strides,
-                    result_shape);
+                    dtype_cast(ctx, y, common_type), window_strides);
   }
   SPU_THROW("unsupported op {} for x={}, y={}", "conv2d", x, y);
 }

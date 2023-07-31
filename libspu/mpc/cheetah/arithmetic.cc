@@ -29,16 +29,33 @@
 #include "libspu/mpc/utils/ring_ops.h"
 
 namespace spu::mpc::cheetah {
+namespace {
+
 constexpr int64_t kMinWorkSize = 5000;
 
-NdArrayRef TruncAWithSign::proc(KernelEvalContext* ctx, const NdArrayRef& x,
-                                size_t bits, bool is_positive) const {
+TruncateProtocol::MSB_st getMsbType(SignType sign) {
+  switch (sign) {
+    case SignType::Positive:
+      return TruncateProtocol::MSB_st::zero;
+    case SignType::Negative:
+      return TruncateProtocol::MSB_st::one;
+    case SignType::Unknown:
+      return TruncateProtocol::MSB_st::unknown;
+    default:
+      SPU_THROW("should not be here");
+  }
+}
+
+}  // namespace
+
+NdArrayRef TruncA::proc(KernelEvalContext* ctx, const NdArrayRef& x,
+                        size_t bits, SignType sign) const {
   SPU_TRACE_MPC_LEAF(ctx, x);
   auto* comm = ctx->getState<Communicator>();
   auto* ot_state = ctx->getState<CheetahOTState>();
   int64_t n = x.numel();
-  int64_t nworker =
-      std::min((int64_t)ot_state->parallel_size(), CeilDiv(n, kMinWorkSize));
+  int64_t nworker = std::min(static_cast<int64_t>(ot_state->parallel_size()),
+                             CeilDiv(n, kMinWorkSize));
   int64_t work_load = nworker == 0 ? 0 : CeilDiv(n, nworker);
   for (int64_t w = 0; w < nworker; ++w) {
     ot_state->LazyInit(comm, w);
@@ -47,47 +64,9 @@ NdArrayRef TruncAWithSign::proc(KernelEvalContext* ctx, const NdArrayRef& x,
   NdArrayRef out(x.eltype(), x.shape());
   TruncateProtocol::Meta meta;
   meta.signed_arith = true;
-  meta.msb = is_positive ? TruncateProtocol::MSB_st::zero
-                         : TruncateProtocol::MSB_st::one;
+  meta.msb = getMsbType(sign);
   meta.shift_bits = bits;
   auto f_x = flatten(x);
-  yacl::parallel_for(0, nworker, 1, [&](int64_t bgn, int64_t end) {
-    for (int64_t job = bgn; job < end; ++job) {
-      int64_t slice_bgn = std::min(job * work_load, n);
-      int64_t slice_end = std::min(slice_bgn + work_load, n);
-      if (slice_end == slice_bgn) {
-        break;
-      }
-
-      TruncateProtocol prot(ctx->getState<CheetahOTState>()->get(job));
-      auto out_slice = prot.Compute(f_x.slice(slice_bgn, slice_end), meta);
-      std::memcpy(&out.at(slice_bgn), &out_slice.at(0),
-                  out_slice.numel() * out_slice.elsize());
-    }
-  });
-
-  return out;
-}
-
-NdArrayRef TruncA::proc(KernelEvalContext* ctx, const NdArrayRef& x,
-                        size_t bits) const {
-  auto* comm = ctx->getState<Communicator>();
-  auto* ot_state = ctx->getState<CheetahOTState>();
-  int64_t n = x.numel();
-  int64_t nworker =
-      std::min((int64_t)ot_state->parallel_size(), CeilDiv(n, kMinWorkSize));
-  int64_t work_load = nworker == 0 ? 0 : CeilDiv(n, nworker);
-  for (int64_t w = 0; w < nworker; ++w) {
-    ot_state->LazyInit(comm, w);
-  }
-
-  NdArrayRef out(x.eltype(), x.shape());
-  TruncateProtocol::Meta meta;
-  meta.signed_arith = true;
-  meta.msb = TruncateProtocol::MSB_st::unknown;
-  meta.shift_bits = bits;
-  auto f_x = flatten(x);
-
   yacl::parallel_for(0, nworker, 1, [&](int64_t bgn, int64_t end) {
     for (int64_t job = bgn; job < end; ++job) {
       int64_t slice_bgn = std::min(job * work_load, n);
@@ -110,8 +89,8 @@ NdArrayRef MsbA2B::proc(KernelEvalContext* ctx, const NdArrayRef& x) const {
   auto* comm = ctx->getState<Communicator>();
   auto* ot_state = ctx->getState<CheetahOTState>();
   int64_t n = x.numel();
-  int64_t nworker =
-      std::min((int64_t)ot_state->parallel_size(), CeilDiv(n, kMinWorkSize));
+  int64_t nworker = std::min(static_cast<int64_t>(ot_state->parallel_size()),
+                             CeilDiv(n, kMinWorkSize));
   int64_t work_load = nworker == 0 ? 0 : CeilDiv(n, nworker);
   for (int64_t w = 0; w < nworker; ++w) {
     ot_state->LazyInit(comm, w);
@@ -126,7 +105,7 @@ NdArrayRef MsbA2B::proc(KernelEvalContext* ctx, const NdArrayRef& x) const {
   const int rank = comm->getRank();
   const size_t shft = SizeOf(field) * 8 - 1;
 
-  return DISPATCH_ALL_FIELDS(field, "", [&]() {
+  return DISPATCH_ALL_FIELDS(field, "_", [&]() {
     using u2k = std::make_unsigned<ring2k_t>::type;
     const u2k mask = (static_cast<u2k>(1) << shft) - 1;
     NdArrayRef adjusted = ring_zeros(field, {n});
@@ -194,8 +173,8 @@ NdArrayRef EqualAA::proc(KernelEvalContext* ctx, const NdArrayRef& x,
   auto* comm = ctx->getState<Communicator>();
   auto* ot_state = ctx->getState<CheetahOTState>();
   int64_t n = x.numel();
-  int64_t nworker =
-      std::min((int64_t)ot_state->parallel_size(), CeilDiv(n, kMinWorkSize));
+  int64_t nworker = std::min(static_cast<int64_t>(ot_state->parallel_size()),
+                             CeilDiv(n, kMinWorkSize));
   int64_t work_load = nworker == 0 ? 0 : CeilDiv(n, nworker);
   for (int64_t w = 0; w < nworker; ++w) {
     ot_state->LazyInit(comm, w);
@@ -241,8 +220,8 @@ NdArrayRef MulA1B::proc(KernelEvalContext* ctx, const NdArrayRef& x,
   auto* comm = ctx->getState<Communicator>();
   auto* ot_state = ctx->getState<CheetahOTState>();
   int64_t n = x.numel();
-  int64_t nworker =
-      std::min((int64_t)ot_state->parallel_size(), CeilDiv(n, kMinWorkSize));
+  int64_t nworker = std::min(static_cast<int64_t>(ot_state->parallel_size()),
+                             CeilDiv(n, kMinWorkSize));
   int64_t work_load = nworker == 0 ? 0 : CeilDiv(n, nworker);
 
   for (int64_t w = 0; w < nworker; ++w) {
@@ -298,11 +277,11 @@ NdArrayRef MulAA::mulWithBeaver(KernelEvalContext* ctx, const NdArrayRef& x,
 
   auto* comm = ctx->getState<Communicator>();
   // Open x - a & y - b
-  auto res = vectorize({ring_sub(x, unflatten(a, x.shape())),
-                        ring_sub(y, unflatten(b, y.shape()))},
-                       [&](const NdArrayRef& s) {
-                         return comm->allReduce(ReduceOp::ADD, s, kBindName);
-                       });
+  auto res = vmap({ring_sub(x, unflatten(a, x.shape())),
+                   ring_sub(y, unflatten(b, y.shape()))},
+                  [&](const NdArrayRef& s) {
+                    return comm->allReduce(ReduceOp::ADD, s, kBindName);
+                  });
   auto x_a = std::move(res[0]);
   auto y_b = std::move(res[1]);
 
@@ -390,13 +369,21 @@ NdArrayRef MatMulAA::proc(KernelEvalContext* ctx, const NdArrayRef& x,
 }
 
 NdArrayRef Conv2DAA::proc(KernelEvalContext* ctx, const NdArrayRef& tensor,
-                          const NdArrayRef& filter, size_t N, size_t H,
-                          size_t W, size_t C, size_t O, size_t h, size_t w,
-                          size_t stride_h, size_t stride_w) const {
+                          const NdArrayRef& filter, int64_t stride_h,
+                          int64_t stride_w) const {
   SPU_TRACE_MPC_LEAF(ctx, tensor, filter);
   if (0 == tensor.numel() || 0 == filter.numel()) {
     return NdArrayRef(tensor.eltype(), {0});
   }
+
+  auto N = tensor.shape()[0];
+  auto C = tensor.shape()[3];
+  auto H = tensor.shape()[1];
+  auto W = tensor.shape()[2];
+
+  auto h = filter.shape()[0];
+  auto w = filter.shape()[1];
+  auto O = filter.shape()[3];
 
   int64_t tensor_sze = N * H * W * C;
   int64_t filter_sze = h * w * C * O;
@@ -405,17 +392,10 @@ NdArrayRef Conv2DAA::proc(KernelEvalContext* ctx, const NdArrayRef& tensor,
   auto* comm = ctx->getState<Communicator>();
   const int rank = comm->getRank();
 
-  Shape3D tensor_shape;
-  Shape3D filter_shape;
-  Shape2D window_strides;
-  tensor_shape[0] = static_cast<int64_t>(H);
-  tensor_shape[1] = static_cast<int64_t>(W);
-  tensor_shape[2] = static_cast<int64_t>(C);
-  filter_shape[0] = static_cast<int64_t>(h);
-  filter_shape[1] = static_cast<int64_t>(w);
-  filter_shape[2] = static_cast<int64_t>(C);
-  window_strides[0] = static_cast<int64_t>(stride_h);
-  window_strides[1] = static_cast<int64_t>(stride_w);
+  Shape3D tensor_shape{H, W, C};
+  Shape3D filter_shape{h, w, C};
+  Shape2D window_strides{stride_h, stride_w};
+
   auto* conv2d_prot = ctx->getState<CheetahDotState>()->get();
 
   auto* conn = comm->lctx().get();

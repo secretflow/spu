@@ -186,7 +186,7 @@ spu::Value Convolution(SPUContext *ctx, const spu::Value &lhs,
   return ret;
 }
 
-spu::Value extractImagePatches(SPUContext *ctx, spu::Value &input,
+spu::Value extractImagePatches(SPUContext *ctx, const spu::Value &input,
                                int64_t kernel_x, int64_t kernel_y,
                                int64_t stride_x, int64_t stride_y) {
   auto input_batch = input.shape()[0];
@@ -214,19 +214,26 @@ spu::Value extractImagePatches(SPUContext *ctx, spu::Value &input,
 }
 
 // This is an optimized conv2D with im2col
-spu::Value Convolution2D(SPUContext *ctx, spu::Value input,
+spu::Value Convolution2D(SPUContext *ctx, const spu::Value &input,
                          const spu::Value &kernel,
                          const ConvolutionConfig &config,
                          const Shape &result_shape) {
-  auto input_batch = input.shape()[0];
+  // input  : NxHxWxC
+  // kernel : hxwxCxO
+  SPU_ENFORCE_EQ(kernel.shape()[2], input.shape()[3]);  // C match
+  SPU_ENFORCE_EQ(result_shape[0], input.shape()[0]);    // N
+  SPU_ENFORCE_EQ(result_shape[3], kernel.shape()[3]);   // O
+  SPU_ENFORCE_EQ(config.window_strides.size(), 2U);
 
+  auto input_batch = input.shape()[0];
   auto kernel_x = kernel.shape()[0];
   auto kernel_y = kernel.shape()[1];
   auto kernel_channels = kernel.shape()[2];
   auto kernel_filters = kernel.shape()[3];
-
   auto output_x = result_shape[1];
   auto output_y = result_shape[2];
+  int64_t stride_h = config.window_strides[0];
+  int64_t stride_w = config.window_strides[1];
 
   if (ctx->config().protocol() == ProtocolKind::CHEETAH && input.isSecret() &&
       kernel.isSecret()) {
@@ -235,8 +242,28 @@ spu::Value Convolution2D(SPUContext *ctx, spu::Value input,
     // be better to compute im2col because the current conv2d implementation
     // needs `input_batch` iterations to handle batched input.
     if (input_batch <= kernel_x * kernel_y) {
-      return hal::conv2d(ctx, input, kernel, config.window_strides,
-                         result_shape);
+      // ad-hoc optimization for strided conv2d when h=1
+      auto in = input;
+      {
+        Strides strides = {1, 1, 1, 1};
+        if (kernel.shape()[0] == 1) {
+          strides[1] = stride_h;
+        }
+        if (kernel.shape()[1] == 1) {
+          strides[2] = stride_w;
+        }
+
+        if (std::any_of(strides.begin(), strides.end(),
+                        [](int64_t s) { return s > 1; })) {
+          const Index start = {0, 0, 0, 0};
+          const Index end = Index(in.shape().begin(), in.shape().end());
+          in = hal::slice(ctx, in, start, end, strides);
+          stride_h = 1;
+          stride_w = 1;
+        }
+      }
+
+      return hal::conv2d(ctx, in, kernel, {stride_h, stride_w});
     }
   }
 
@@ -246,8 +273,7 @@ spu::Value Convolution2D(SPUContext *ctx, spu::Value input,
   Shape kernel_dims{kernel_channels * kernel_y * kernel_x, kernel_filters};
 
   spu::Value extracted_patches =
-      extractImagePatches(ctx, input, kernel_x, kernel_y,
-                          config.window_strides[0], config.window_strides[1]);
+      extractImagePatches(ctx, input, kernel_x, kernel_y, stride_w, stride_h);
 
   auto reshaped_patches =
       hal::reshape(ctx, extracted_patches, pre_contract_dims);

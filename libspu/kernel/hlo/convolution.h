@@ -41,7 +41,7 @@ spu::Value Convolution(SPUContext *ctx, const spu::Value &lhs,
                        const Shape &result_shape);
 
 // This is an optimized conv2D with im2col
-spu::Value Convolution2D(SPUContext *ctx, spu::Value input,
+spu::Value Convolution2D(SPUContext *ctx, const spu::Value &input,
                          const spu::Value &kernel,
                          const ConvolutionConfig &config,
                          const Shape &result_shape);

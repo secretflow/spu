@@ -75,18 +75,10 @@ void MatmulKernel::evaluate(KernelEvalContext* ctx) const {
 void Conv2DKernel::evaluate(KernelEvalContext* ctx) const {
   const auto& lhs = ctx->getParam<Value>(0);
   const auto& rhs = ctx->getParam<Value>(1);
-  size_t N = ctx->getParam<size_t>(2);
-  size_t H = ctx->getParam<size_t>(3);
-  size_t W = ctx->getParam<size_t>(4);
-  size_t C = ctx->getParam<size_t>(5);
-  size_t O = ctx->getParam<size_t>(6);
-  size_t h = ctx->getParam<size_t>(7);
-  size_t w = ctx->getParam<size_t>(8);
-  size_t stride_h = ctx->getParam<size_t>(9);
-  size_t stride_w = ctx->getParam<size_t>(10);
+  auto stride_h = ctx->getParam<int64_t>(2);
+  auto stride_w = ctx->getParam<int64_t>(3);
 
-  auto z = proc(ctx, UnwrapValue(lhs), UnwrapValue(rhs), N, H, W, C, O, h, w,
-                stride_h, stride_w);
+  auto z = proc(ctx, UnwrapValue(lhs), UnwrapValue(rhs), stride_h, stride_w);
 
   ctx->setOutput(WrapValue(z));
 }
@@ -101,12 +93,12 @@ void BitrevKernel::evaluate(KernelEvalContext* ctx) const {
   ctx->setOutput(WrapValue(z));
 }
 
-void TruncAWithSignKernel::evaluate(KernelEvalContext* ctx) const {
+void TruncAKernel::evaluate(KernelEvalContext* ctx) const {
   const auto& in = ctx->getParam<Value>(0);
   size_t bits = ctx->getParam<size_t>(1);
-  bool positive = ctx->getParam<bool>(2);
+  SignType sign = ctx->getParam<SignType>(2);
 
-  auto z = proc(ctx, UnwrapValue(in), bits, positive);
+  auto z = proc(ctx, UnwrapValue(in), bits, sign);
 
   ctx->setOutput(WrapValue(z));
 }

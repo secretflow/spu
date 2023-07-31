@@ -42,13 +42,6 @@ Value polynomial(SPUContext* ctx, const Value& x,
 
 }  // namespace detail
 
-// This module defines the basic fixed-point arithmetics.
-enum class SignType {
-  UNKNOWN,
-  POSITIVE,
-  NEGATIVE,
-};
-
 Value f_negate(SPUContext* ctx, const Value& x);
 
 Value f_abs(SPUContext* ctx, const Value& x);
@@ -59,15 +52,13 @@ Value f_add(SPUContext* ctx, const Value& x, const Value& y);
 
 Value f_sub(SPUContext* ctx, const Value& x, const Value& y);
 
-Value f_mul(SPUContext* ctx, const Value& x, const Value& y);
-
-Value f_mul_with_sign(SPUContext* ctx, const Value& x, const Value& y,
-                      SignType sign = SignType::UNKNOWN);
+Value f_mul(SPUContext* ctx, const Value& x, const Value& y,
+            SignType sign = SignType::Unknown);
 
 Value f_mmul(SPUContext* ctx, const Value& x, const Value& y);
 
 Value f_conv2d(SPUContext* ctx, const Value& x, const Value& y,
-               const Strides& window_strides, const Shape& result_shape);
+               const Strides& window_strides);
 
 Value f_div(SPUContext* ctx, const Value& x, const Value& y);
 

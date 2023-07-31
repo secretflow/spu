@@ -90,62 +90,22 @@ Value _rand_s(SPUContext* ctx, const Shape& shape) {
   return rnd;
 }
 
-Value _conv2d_ss(SPUContext* ctx, Value input, const Value& kernel,
-                 const Strides& window_strides, const Shape& result_shape) {
-  SPU_TRACE_HAL_DISP(ctx, input, kernel, window_strides, result_shape);
-  SPU_ENFORCE_EQ(window_strides.size(), 2UL);
-  size_t N = input.shape()[0];
-  size_t C = input.shape()[3];
-
-  size_t h = kernel.shape()[0];
-  size_t w = kernel.shape()[1];
-  size_t O = kernel.shape()[3];
-  size_t stride_w = window_strides[0];
-  size_t stride_h = window_strides[1];
-  SPU_ENFORCE_EQ(result_shape[0], static_cast<int64_t>(N));
-  SPU_ENFORCE_EQ(result_shape[3], static_cast<int64_t>(O));
-  SPU_ENFORCE_EQ(kernel.shape()[2], static_cast<int64_t>(C));
-
-  // ad-hoc optimization for strided conv2d when h=1
-  Strides strides = {1, 1, 1, 1};
-  if (h == 1) {
-    strides[1] = stride_h;
-  }
-  if (w == 1) {
-    strides[2] = stride_w;
-  }
-
-  if (std::any_of(strides.begin(), strides.end(),
-                  [](int64_t s) { return s > 1; })) {
-    input =
-        Value(input.data().slice(
-                  {0, 0, 0, 0},
-                  Index(input.shape().begin(), input.shape().end()), strides),
-              input.dtype());
-
-    stride_h = 1;
-    stride_w = 1;
-  }
-
-  size_t H = input.shape()[1];
-  size_t W = input.shape()[2];
+Value _conv2d_ss(SPUContext* ctx, const Value& input, const Value& kernel,
+                 const Strides& window_strides) {
+  SPU_TRACE_HAL_DISP(ctx, input, kernel, window_strides);
   // FIXME(juhou): define conv2d_ss in api.h to capture this
-  return dynDispatch(ctx, "conv2d_aa", input, kernel, N, H, W, C, O, h, w,
-                     stride_h, stride_w);
+  return dynDispatch(ctx, "conv2d_aa", input, kernel, window_strides[0],
+                     window_strides[1]);
 }
 
-Value _trunc_p_with_sign(SPUContext* ctx, const Value& in, size_t bits,
-                         bool /*dummy*/) {
-  return _trunc_p(ctx, in, bits);
+Value _trunc_p(SPUContext* ctx, const Value& in, size_t bits, SignType sign) {
+  SPU_TRACE_HAL_DISP(ctx, in, bits, sign);
+  return mpc::trunc_p(ctx, in, bits, sign);
 }
 
-Value _trunc_s_with_sign(SPUContext* ctx, const Value& in, size_t bits,
-                         bool is_positive) {
-  if (ctx->config().protocol() == ProtocolKind::CHEETAH) {
-    return dynDispatch(ctx, "trunc_a_with_sign", in, bits, is_positive);
-  } else {
-    return _trunc_s(ctx, in, bits);
-  }
+Value _trunc_s(SPUContext* ctx, const Value& in, size_t bits, SignType sign) {
+  SPU_TRACE_HAL_DISP(ctx, in, bits, sign);
+  return mpc::trunc_s(ctx, in, bits, sign);
 }
 
 MAP_UNARY_OP(p2s)
@@ -160,8 +120,6 @@ MAP_SHIFT_OP(rshift_p)
 MAP_SHIFT_OP(rshift_s)
 MAP_SHIFT_OP(arshift_p)
 MAP_SHIFT_OP(arshift_s)
-MAP_SHIFT_OP(trunc_p)
-MAP_SHIFT_OP(trunc_s)
 MAP_BITREV_OP(bitrev_p)
 MAP_BITREV_OP(bitrev_s)
 MAP_BINARY_OP(add_pp)

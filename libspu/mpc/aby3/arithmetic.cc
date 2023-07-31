@@ -660,7 +660,9 @@ NdArrayRef LShiftA::proc(KernelEvalContext* ctx, const NdArrayRef& in,
 // ABY3: A Mixed Protocol Framework for Machine Learning
 // - https://eprint.iacr.org/2018/403.pdf
 NdArrayRef TruncA::proc(KernelEvalContext* ctx, const NdArrayRef& in,
-                        size_t bits) const {
+                        size_t bits, SignType sign) const {
+  (void)sign;  // TODO: optimize me.
+
   const auto field = in.eltype().as<Ring2k>()->field();
   auto* prg_state = ctx->getState<PrgState>();
   auto* comm = ctx->getState<Communicator>();
@@ -723,7 +725,9 @@ std::vector<T> openWith(Communicator* comm, size_t peer_rank,
 // Secure Evaluation of Quantized Neural Networks
 // - https://arxiv.org/pdf/1910.12435.pdf
 NdArrayRef TruncAPr::proc(KernelEvalContext* ctx, const NdArrayRef& in,
-                          size_t bits) const {
+                          size_t bits, SignType sign) const {
+  (void)sign;  // TODO, optimize me.
+
   const auto field = in.eltype().as<AShrTy>()->field();
   const auto numel = in.numel();
   const size_t k = SizeOf(field) * 8;

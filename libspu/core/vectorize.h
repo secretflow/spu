@@ -115,7 +115,7 @@ struct HasSimdTrait<T, std::void_t<typename SimdTrait<T>::PackInfo>>
     : std::true_type {};
 
 template <typename InputIt, typename OutputIt, typename UnaryOp>
-OutputIt vectorize(InputIt first, InputIt last, OutputIt result, UnaryOp&& op) {
+OutputIt vmap(InputIt first, InputIt last, OutputIt result, UnaryOp&& op) {
   using T = typename std::iterator_traits<InputIt>::value_type;
   using PackInfo = typename SimdTrait<T>::PackInfo;
 
@@ -127,16 +127,16 @@ OutputIt vectorize(InputIt first, InputIt last, OutputIt result, UnaryOp&& op) {
 
 // another form of unary op vectorize
 template <typename T, typename UnaryOp>
-std::vector<T> vectorize(std::initializer_list<T> a, UnaryOp&& op) {
+std::vector<T> vmap(std::initializer_list<T> a, UnaryOp&& op) {
   std::vector<T> result;
-  vectorize(a.begin(), a.end(), std::back_inserter(result),
-            std::forward<UnaryOp>(op));
+  vmap(a.begin(), a.end(), std::back_inserter(result),
+       std::forward<UnaryOp>(op));
   return result;
 }
 
 template <typename InputIt, typename OutputIt, typename BinaryOp>
-OutputIt vectorize(InputIt a_first, InputIt a_last, InputIt b_first,
-                   InputIt b_last, OutputIt result, BinaryOp&& op) {
+OutputIt vmap(InputIt a_first, InputIt a_last, InputIt b_first, InputIt b_last,
+              OutputIt result, BinaryOp&& op) {
   using T = typename std::iterator_traits<InputIt>::value_type;
   using PackInfo = typename SimdTrait<T>::PackInfo;
 
@@ -150,11 +150,11 @@ OutputIt vectorize(InputIt a_first, InputIt a_last, InputIt b_first,
 
 // another form of binary op vectorize
 template <typename T, typename BinaryOp>
-std::vector<T> vectorize(std::initializer_list<T> a, std::initializer_list<T> b,
-                         BinaryOp&& op) {
+std::vector<T> vmap(std::initializer_list<T> a, std::initializer_list<T> b,
+                    BinaryOp&& op) {
   std::vector<T> result;
-  vectorize(a.begin(), a.end(), b.begin(), b.end(), std::back_inserter(result),
-            std::forward<BinaryOp>(op));
+  vmap(a.begin(), a.end(), b.begin(), b.end(), std::back_inserter(result),
+       std::forward<BinaryOp>(op));
   return result;
 }
 
@@ -185,7 +185,7 @@ std::vector<T> vectorize(std::initializer_list<T> a, std::initializer_list<T> b,
 //
 template <typename InputIt, typename BinaryFn,
           typename T = typename std::iterator_traits<InputIt>::value_type>
-T vectorizedReduce(InputIt first, InputIt last, BinaryFn&& op) {
+T vreduce(InputIt first, InputIt last, BinaryFn&& op) {
   size_t len = std::distance(first, last);
 
   std::vector<T> cur_level;
@@ -193,9 +193,9 @@ T vectorizedReduce(InputIt first, InputIt last, BinaryFn&& op) {
     const size_t half = len / 2;
 
     std::vector<T> next_level;
-    vectorize(first, first + half,             // lhs
-              first + half, first + 2 * half,  // rhs
-              std::back_inserter(next_level), op);
+    vmap(first, first + half,             // lhs
+         first + half, first + 2 * half,  // rhs
+         std::back_inserter(next_level), op);
 
     if (len % 2 == 1) {
       next_level.push_back(*(last - 1));

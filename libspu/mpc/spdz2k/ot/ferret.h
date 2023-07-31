@@ -35,9 +35,10 @@ class FerretOT : public cheetah::FerretOT {
 
  public:
   FerretOT(std::shared_ptr<Communicator> conn, bool is_sender,
-           bool malicious = true);
+           bool malicious = true)
+      : cheetah::FerretOT::FerretOT(conn, is_sender, malicious) {}
 
-  ~FerretOT();
+  ~FerretOT() = default;
 
   // VOLE, only for SPDZ2K
   // data[i] = data0[i] + a[i] * corr[i]
@@ -49,12 +50,6 @@ class FerretOT : public cheetah::FerretOT {
   template <typename T>
   void RecvVole(absl::Span<const T> a, absl::Span<T> data);
 };
-
-FerretOT::FerretOT(std::shared_ptr<Communicator> conn, bool is_sender,
-                   bool malicious)
-    : cheetah::FerretOT::FerretOT(conn, is_sender, malicious) {}
-
-FerretOT::~FerretOT() {}
 
 // Refer to:
 // Appendix C. Implementing Vector-OLE mod 2^l, P35
