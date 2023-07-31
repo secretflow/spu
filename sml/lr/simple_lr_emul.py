@@ -56,11 +56,10 @@ def emul_SGDClassifier(mode: emulation.Mode.MULTIPROCESS):
         X = pd.DataFrame(X, columns=cols)
         
         # mark these data to be protected in SPU
-        X,y = emulator.seal(X, y)
-        
+        X_spu,y_spu = emulator.seal(X.values, y.values.reshape(-1, 1))  # X, y should be two-dimension array
+
         # Run
-        result = emulator.run(proc)(X.values, y.values.reshape(-1, 1))  # X, y should be two-dimension array
-        print(result)
+        result = emulator.run(proc)(X_spu, y_spu)
         print("Predict result: ", result)
         print("ROC Score: ", roc_auc_score(y.values, result))
 
