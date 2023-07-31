@@ -151,9 +151,9 @@ Value arshift_s(SPUContext* ctx, const Value& x, size_t nbits);
 Value arshift_v(SPUContext* ctx, const Value& x, size_t nbits);
 Value arshift_p(SPUContext* ctx, const Value& x, size_t nbits);
 
-Value trunc_s(SPUContext* ctx, const Value& x, size_t nbits);
-Value trunc_v(SPUContext* ctx, const Value& x, size_t nbits);
-Value trunc_p(SPUContext* ctx, const Value& x, size_t nbits);
+Value trunc_s(SPUContext* ctx, const Value& x, size_t nbits, SignType sign);
+Value trunc_v(SPUContext* ctx, const Value& x, size_t nbits, SignType sign);
+Value trunc_p(SPUContext* ctx, const Value& x, size_t nbits, SignType sign);
 
 // Reverse bit, like MISP BITREV instruction, and linux bitrev library.
 Value bitrev_s(SPUContext* ctx, const Value& x, size_t start, size_t end);

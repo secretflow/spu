@@ -14,6 +14,7 @@
 
 #include "xla/mlir_hlo/mhlo/IR/hlo_ops.h"
 // #include "mlir-hlo/Dialect/mhlo/transforms/register_passes.h"
+#include "mlir/Dialect/Func/Extensions/InlinerExtension.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"
 #include "mlir/Tools/mlir-opt/MlirOptMain.h"
 #include "mlir/Transforms/Passes.h"
@@ -31,6 +32,7 @@ int main(int argc, char **argv) {
   mlir::DialectRegistry registry;
   registry.insert<mlir::mhlo::MhloDialect, mlir::stablehlo::StablehloDialect,
                   mlir::pphlo::PPHloDialect, mlir::func::FuncDialect>();
+  mlir::func::registerInlinerExtension(registry);
 
   return mlir::asMainReturnCode(
       mlir::MlirOptMain(argc, argv, "MLIR pphlo pass driver\n", registry));

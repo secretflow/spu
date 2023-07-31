@@ -190,11 +190,13 @@ Value _sub(SPUContext* ctx, const Value& x, const Value& y) {
   return res;
 }
 
-Value _conv2d(SPUContext* ctx, const Value& x, const Value& y,
-              const Strides& window_strides, const Shape& result_shape) {
-  // s*p and p*p should call `dot`
-  SPU_ENFORCE(x.isSecret() && y.isSecret());
-  return _conv2d_ss(ctx, x, y, window_strides, result_shape);
+Value _conv2d(SPUContext* ctx, const Value& input, const Value& kernel,
+              const Strides& window_strides) {
+  SPU_TRACE_HAL_DISP(ctx, input, kernel, window_strides);
+
+  // TODO: assume s*p and p*p should call `dot`
+  SPU_ENFORCE(input.isSecret() && kernel.isSecret());
+  return _conv2d_ss(ctx, input, kernel, window_strides);
 }
 
 static Value _mmul_impl(SPUContext* ctx, const Value& x, const Value& y) {
@@ -345,30 +347,17 @@ Value _equal(SPUContext* ctx, const Value& x, const Value& y) {
               _xor(ctx, _less(ctx, y, x), _k1));
 }
 
-Value _trunc_with_sign(SPUContext* ctx, const Value& x, size_t bits,
-                       bool is_positive) {
+// TODO:
+Value _trunc(SPUContext* ctx, const Value& x, size_t bits, SignType sign) {
   SPU_TRACE_HAL_LEAF(ctx, x, bits);
   bits = (bits == 0) ? ctx->getFxpBits() : bits;
 
   if (x.isPublic()) {
-    return _trunc_p_with_sign(ctx, x, bits, is_positive);
+    return _trunc_p(ctx, x, bits, sign);
   } else if (x.isSecret()) {
-    return _trunc_s_with_sign(ctx, x, bits, is_positive);
+    return _trunc_s(ctx, x, bits, sign);
   } else {
-    SPU_THROW("unsupport unary op={} for {}", "_trunc_with_sign", x);
-  }
-}
-
-Value _trunc(SPUContext* ctx, const Value& x, size_t bits) {
-  SPU_TRACE_HAL_LEAF(ctx, x, bits);
-  bits = (bits == 0) ? ctx->getFxpBits() : bits;
-
-  if (x.isPublic()) {
-    return _trunc_p(ctx, x, bits);
-  } else if (x.isSecret()) {
-    return _trunc_s(ctx, x, bits);
-  } else {
-    SPU_THROW("unsupport unary op={} for {}", "_rshift", x);
+    SPU_THROW("unsupport unary op={} for {}", __func__, x);
   }
 }
 

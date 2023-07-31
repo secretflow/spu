@@ -355,7 +355,8 @@ TEST_P(ApiTest, TruncS) {
     p0 = arshift_p(sctx.get(), p0, SizeOf(conf.field()) * 8 - 10);
 
     const size_t bits = 2;
-    auto r_s = s2p(sctx.get(), trunc_s(sctx.get(), p2s(sctx.get(), p0), bits));
+    auto r_s = s2p(sctx.get(), trunc_s(sctx.get(), p2s(sctx.get(), p0), bits,
+                                       SignType::Unknown));
     auto r_p = arshift_p(sctx.get(), p0, bits);
 
     /* THEN */

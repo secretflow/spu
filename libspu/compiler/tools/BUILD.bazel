@@ -26,6 +26,7 @@ spu_cc_binary(
     deps = [
         "//libspu/compiler/passes:all_passes",
         "@llvm-project//llvm:Support",
+        "@llvm-project//mlir:FuncExtensions",
         "@llvm-project//mlir:IR",
         "@llvm-project//mlir:MlirOptLib",
         "@llvm-project//mlir:Pass",

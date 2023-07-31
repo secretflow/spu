@@ -250,10 +250,9 @@ NdArrayRef MatMulAA::proc(KernelEvalContext* ctx, const NdArrayRef& x,
     x_a = comm->allReduce(ReduceOp::ADD, ring_sub(x, a), "open(x-a)");
     y_b = comm->allReduce(ReduceOp::ADD, ring_sub(y, b), "open(y-b)");
   } else {
-    auto res =
-        vectorize({ring_sub(x, a), ring_sub(y, b)}, [&](const NdArrayRef& s) {
-          return comm->allReduce(ReduceOp::ADD, s, "open(x-a,y-b)");
-        });
+    auto res = vmap({ring_sub(x, a), ring_sub(y, b)}, [&](const NdArrayRef& s) {
+      return comm->allReduce(ReduceOp::ADD, s, "open(x-a,y-b)");
+    });
     x_a = std::move(res[0]);
     y_b = std::move(res[1]);
   }
@@ -276,8 +275,10 @@ NdArrayRef LShiftA::proc(KernelEvalContext* ctx, const NdArrayRef& in,
 }
 
 NdArrayRef TruncA::proc(KernelEvalContext* ctx, const NdArrayRef& x,
-                        size_t bits) const {
+                        size_t bits, SignType sign) const {
   auto* comm = ctx->getState<Communicator>();
+
+  (void)sign;  // TODO: optimize me.
 
   // TODO: add truncation method to options.
   if (comm->getWorldSize() == 2) {
@@ -305,7 +306,9 @@ NdArrayRef TruncA::proc(KernelEvalContext* ctx, const NdArrayRef& x,
 }
 
 NdArrayRef TruncAPr::proc(KernelEvalContext* ctx, const NdArrayRef& in,
-                          size_t bits) const {
+                          size_t bits, SignType sign) const {
+  (void)sign;  // TODO: optimize me.
+
   auto* comm = ctx->getState<Communicator>();
   auto* beaver = ctx->getState<Semi2kState>()->beaver();
   const auto numel = in.numel();

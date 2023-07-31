@@ -61,8 +61,8 @@ TEST(VectorizeTest, Vector) {
   };
 
   std::vector<Vector> c;
-  vectorize(a.begin(), a.end(), b.begin(), b.end(), std::back_inserter(c),
-            vector_add);
+  vmap(a.begin(), a.end(), b.begin(), b.end(), std::back_inserter(c),
+       vector_add);
 
   EXPECT_EQ(num_calls, 1);
   EXPECT_EQ(c.size(), a.size());
@@ -75,7 +75,7 @@ TEST(VectorizeTest, Vector) {
     Vector x = {1, 2};
     Vector y = {3, 4, 5};
     num_calls = 0;
-    auto result = vectorize({x, y}, {x, y}, vector_add);
+    auto result = vmap({x, y}, {x, y}, vector_add);
     EXPECT_EQ(num_calls, 1);
     EXPECT_EQ(result.size(), 2);
     EXPECT_THAT(c[0], testing::ElementsAre(2, 4));
@@ -94,7 +94,7 @@ TEST(VectorizeTest, Reduce) {
     return a + b;
   };
 
-  auto res = vectorizedReduce(a.begin(), a.end(), vector_add);
+  auto res = vreduce(a.begin(), a.end(), vector_add);
 
   EXPECT_EQ(num_calls, std::ceil(std::log2(a.size())));
   EXPECT_EQ(res.size(), 2);

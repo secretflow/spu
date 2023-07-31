@@ -423,9 +423,11 @@ class Ref2kTruncS : public TruncAKernel {
 
   ce::CExpr comm() const override { return ce::Const(0); }
 
-  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in,
-                  size_t bits) const override {
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in, size_t bits,
+                  SignType sign) const override {
     SPU_TRACE_MPC_LEAF(ctx, in, bits);
+    (void)sign;  // ignore it.
+
     // Rounding
     // AxB = (AxB >> 14) + ((AxB >> 13) & 1);
     // See

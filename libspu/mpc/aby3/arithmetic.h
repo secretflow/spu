@@ -255,8 +255,8 @@ class TruncA : public TruncAKernel {
 
   ce::CExpr comm() const override { return ce::K(); }
 
-  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in,
-                  size_t bits) const override;
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in, size_t bits,
+                  SignType sign) const override;
 
   bool hasMsbError() const override { return true; }
 
@@ -277,8 +277,8 @@ class TruncAPr : public TruncAKernel {
 
   ce::CExpr comm() const override { return 4 * ce::K(); }
 
-  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in,
-                  size_t bits) const override;
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in, size_t bits,
+                  SignType sign) const override;
 
   bool hasMsbError() const override { return false; }
 

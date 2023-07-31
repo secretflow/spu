@@ -28,4 +28,3 @@ jobs:
           GHA_Meta: "test_pypi"
         env:
           CCI_TOKEN: ${{ secrets.CCI_TOKEN }}
-          

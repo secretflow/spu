@@ -32,15 +32,15 @@ TEST(IndexingTest, Take1) {
   std::iota(data_ptr, data_ptr + 5, 0);
 
   for (int64_t idx = 0; idx < 5; ++idx) {
-    auto v = a.data().at<int64_t>({idx});
+    auto v = a.data().at<int64_t>(idx);
     EXPECT_EQ(v, idx);
   }
 
   auto r = FilterByMask(nullptr, a, {0U, 1U, 1U, 0U, 0U});
 
   EXPECT_EQ(r.shape()[0], 2);
-  EXPECT_EQ(r.data().at<int64_t>({0}), 1);
-  EXPECT_EQ(r.data().at<int64_t>({1}), 2);
+  EXPECT_EQ(r.data().at<int64_t>(0), 1);
+  EXPECT_EQ(r.data().at<int64_t>(1), 2);
 }
 
 TEST(IndexingTest, Take2) {
@@ -54,15 +54,15 @@ TEST(IndexingTest, Take2) {
           a.dtype());
   // Sanity input...
   for (int64_t idx = 0; idx < 5; ++idx) {
-    auto v = b.data().at<int64_t>({idx});
+    auto v = b.data().at<int64_t>(idx);
     EXPECT_EQ(v, 2 * idx);
   }
 
   auto r = FilterByMask(nullptr, b, {0U, 1U, 1U, 0U, 0U});
 
   EXPECT_EQ(r.shape()[0], 2);
-  EXPECT_EQ(r.data().at<int64_t>({0}), 2);
-  EXPECT_EQ(r.data().at<int64_t>({1}), 4);
+  EXPECT_EQ(r.data().at<int64_t>(0), 2);
+  EXPECT_EQ(r.data().at<int64_t>(1), 4);
 }
 
 TEST(IndexingTest, DynamicUpdateSliceScalarWithPublicIndices) {

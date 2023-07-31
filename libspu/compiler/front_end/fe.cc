@@ -14,6 +14,7 @@
 
 #include "libspu/compiler/front_end/fe.h"
 
+#include "mlir/Dialect/Func/Extensions/InlinerExtension.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"
 #include "mlir/IR/BuiltinOps.h"
 #include "mlir/Parser/Parser.h"
@@ -37,6 +38,9 @@ FE::FE(CompilationContext *ctx) : ctx_(ctx) {
       ->loadDialect<mlir::pphlo::PPHloDialect, mlir::mhlo::MhloDialect,
                     mlir::stablehlo::StablehloDialect,
                     mlir::func::FuncDialect>();
+  mlir::DialectRegistry registry;
+  mlir::func::registerInlinerExtension(registry);
+  ctx_->getMLIRContext()->appendDialectRegistry(registry);
 }
 
 mlir::OwningOpRef<mlir::ModuleOp> FE::doit(const std::string &source_str) {

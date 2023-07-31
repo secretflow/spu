@@ -193,8 +193,8 @@ class TruncA : public TruncAKernel {
 
   Kind kind() const override { return Kind::Dynamic; }
 
-  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in,
-                  size_t bits) const override;
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in, size_t bits,
+                  SignType sign) const override;
 
   bool hasMsbError() const override { return true; }
 
