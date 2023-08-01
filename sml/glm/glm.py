@@ -13,14 +13,38 @@ DEBUG = 0
 # 使用JAX定义_GeneralizedLinearRegressor类
 class _GeneralizedLinearRegressor:
     def __init__(self,
-                 fit_intercept=True,
-                 alpha=0,
-                 solver="newton-cholesky",
-                 max_iter=20,
-                 warm_start=False,
-                 n_threads=2,
-                 tol=None, # deprecated
-                 verbose=0):
+                 fit_intercept=True,  # 是否拟合截距项，默认为True
+                 alpha=0,  # L2正则化强度，默认为0，不使用正则化
+                 solver="newton-cholesky",  # 优化算法，默认为Newton-Cholesky优化算法
+                 max_iter=20,  # 最大迭代次数，默认为20
+                 warm_start=False,  # 是否使用热启动，默认为False
+                 n_threads=2,  # 并行计算时的线程数，默认为2
+                 tol=None,  # 此参数已废弃，不再使用
+                 verbose=0  # 是否输出详细信息，默认为0，不输出
+                 ):
+        """
+        初始化广义线性回归模型。
+
+        Parameters:
+        ----------
+        fit_intercept : bool, optional
+            是否拟合截距项，默认为True。
+        alpha : float, optional
+            L2正则化强度，默认为0，不使用正则化。
+        solver : str, optional
+            优化算法，默认为Newton-Cholesky优化算法。可选值为 "lbfgs" 或 "newton-cholesky"。
+        max_iter : int, optional
+            最大迭代次数，默认为20。
+        warm_start : bool, optional
+            是否使用热启动，默认为False。
+        n_threads : int, optional
+            并行计算时的线程数，默认为2。
+        tol : deprecated
+            此参数已废弃，不再使用。过去用于设置early stop的阈值。
+        verbose : int, optional
+            是否输出详细信息，默认为0，不输出。
+
+        """
         self.l2_reg_strength = alpha
         self.fit_intercept = fit_intercept
         self.solver = solver
