@@ -6,124 +6,126 @@ import spu.utils.simulation as spsim
 
 n_samples, n_features = 100, 5
 
-def gen_data(noise=False):
+def generate_data(noise=False):
     """
-    生成随机数据作为测试数据。
+    Generate random data for testing.
 
     Parameters:
     ----------
     noise : bool, optional (default=False)
-        是否添加噪声。
+        Whether to add noise.
 
     Returns:
     -------
     X : array-like, shape (n_samples, n_features)
-        特征数据。
+        Feature data.
     y : array-like, shape (n_samples,)
-        目标数据。
+        Target data.
     coef : array-like, shape (n_features + 1,)
-        真实的系数，包括截距项和特征权重。
+        True coefficients, including the intercept term and feature weights.
 
     """
     np.random.seed(42)
     X = np.random.rand(n_samples, n_features)
-    coef = np.random.rand(n_features + 1)  # +1 是截距项
+    coef = np.random.rand(n_features + 1)  # +1 for the intercept term
     y = X @ coef[1:] + coef[0]
     if noise:
         noise = np.random.normal(loc=0, scale=0.05, size=num_samples)
         y += noise
-    return X, y, coef
+    sample_weight = np.random.rand(n_samples)
+    return X, y, coef, sample_weight
 
-def test(model, X, y, coef, num=5):
+def test(model, X, y, coef, sample_weight=None, num=5):
     """
-    测试广义线性回归模型的拟合、预测和评分功能。
+    Test the fitting, prediction, and scoring functionality of the generalized linear regression model.
 
     Parameters:
     ----------
     model : object
-        广义线性回归模型对象。
+        Generalized linear regression model object.
     X : array-like, shape (n_samples, n_features)
-        特征数据。
+        Feature data.
     y : array-like, shape (n_samples,)
-        目标数据。
+        Target data.
     coef : array-like, shape (n_features + 1,)
-        真实的系数，包括截距项和特征权重。
+        True coefficients, including the intercept term and feature weights.
     num : int, optional (default=5)
-        需要展示的系数数量。
+        Number of coefficients to display.
 
     Returns:
     -------
     None
 
     """
-    model.fit(X, y)
-    print('真实的系数:', coef[:num])
-    print("拟合的系数：", model.coef_[:num])
-    print("D^2评分：", model.score(X[:num], y[:num]))
+    model.fit(X, y, sample_weight)
+    print('True Coefficients:', coef[:num])
+    print("Fitted Coefficients:", model.coef_[:num])
+    print("D^2 Score:", model.score(X[:num], y[:num]))
     print("X:", X[:num])
-    print("样例：", y[:num])
-    print("预测:", model.predict(X[:num]))
+    print("Samples:", y[:num])
+    print("Predictions:", model.predict(X[:num]))
 
 def test_glm():
     """
-    测试_GeneralizedLinearRegressor模型的功能。
+    Test the functionality of the _GeneralizedLinearRegressor model.
 
     """
-    X, y, coef = gen_data()
+    X, y, coef, sample_weight = generate_data()
     from glm import _GeneralizedLinearRegressor
     model = _GeneralizedLinearRegressor()
-    test(model, X, y, coef)
+    test(model, X, y, coef, sample_weight)
 
 def test_lbfgs():
     """
-    测试使用LBFGS优化算法的_GeneralizedLinearRegressor模型的功能。
+    Test the functionality of the _GeneralizedLinearRegressor model using the LBFGS optimization algorithm.
 
     """
-    X, y, coef = gen_data()
+    X, y, coef, sample_weight = generate_data()
     from glm import _GeneralizedLinearRegressor
     model = _GeneralizedLinearRegressor(solver='lbfgs')
-    test(model, X, y, coef)
+    test(model, X, y, coef, sample_weight)
 
 def test_Poisson():
     """
-    测试PoissonRegressor模型的功能。
+    Test the functionality of the PoissonRegressor model.
 
     """
-    X, y, coef = gen_data()
+    X, y, coef, sample_weight = generate_data()
     y = jnp.round(jnp.exp(y))
     model = PoissonRegressor()
-    test(model, X, y, coef)
+    test(model, X, y, coef, sample_weight)
 
 def test_gamma():
     """
-    测试GammaRegressor模型的功能。
+    Test the functionality of the GammaRegressor model.
 
     """
-    X, y, coef = gen_data()
+    X, y, coef, sample_weight = generate_data()
     alpha = 10
     y = np.array([stats.gamma.rvs(a=alpha, scale=y_i/alpha) for y_i in y])
     y = jnp.exp(y)
     model = GammaRegressor()
-    test(model, X, y, coef)
+    test(model, X, y, coef, sample_weight)
 
 def test_Tweedie():
     """
-    测试TweedieRegressor模型的功能。
+    Test the functionality of the TweedieRegressor model.
 
     """
-    X, y, coef = gen_data()
+    X, y, coef, sample_weight = generate_data()
     y = jnp.round(jnp.exp(y))
     model = TweedieRegressor()
-    test(model, X, y, coef)
+    test(model, X, y, coef, sample_weight)
 
 def test_sim():
     """
-    使用模拟器测试_GeneralizedLinearRegressor模型的拟合功能。
+    Test the fitting functionality of the _GeneralizedLinearRegressor model using the simulator.
 
     """
     sim = spsim.Simulator.simple(
+            # 3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM128)
             3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM64)
-    X, y, coef = gen_data()
+    X, y, coef, sample_weight = generate_data()
 
     def proc(X, y):
         from glm import _GeneralizedLinearRegressor
@@ -136,9 +138,9 @@ def test_sim():
 
 if __name__ == '__main__':
     # Run the tests
-    test_gamma()
-    test_sim()
     test_glm()
+    test_gamma()
     test_lbfgs()
     test_Poisson()
     test_Tweedie()
+    test_sim()

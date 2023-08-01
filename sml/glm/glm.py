@@ -4,45 +4,44 @@ import jax.numpy as jnp
 from utils.solver import *
 from utils.loss import *
 from utils.link import *
-from utils._lbfgs import _minimize_lbfgs
 import warnings
-
+import os
 DEBUG = 0
 
-
-# 使用JAX定义_GeneralizedLinearRegressor类
+# Define the _GeneralizedLinearRegressor class using JAX
 class _GeneralizedLinearRegressor:
     def __init__(self,
-                 fit_intercept=True,  # 是否拟合截距项，默认为True
-                 alpha=0,  # L2正则化强度，默认为0，不使用正则化
-                 solver="newton-cholesky",  # 优化算法，默认为Newton-Cholesky优化算法
-                 max_iter=20,  # 最大迭代次数，默认为20
-                 warm_start=False,  # 是否使用热启动，默认为False
-                 n_threads=2,  # 并行计算时的线程数，默认为2
-                 tol=None,  # 此参数已废弃，不再使用
-                 verbose=0  # 是否输出详细信息，默认为0，不输出
+                 fit_intercept=True,  # Whether to fit the intercept term, default is True
+                 alpha=0,  # L2 regularization strength, default is 0 (no regularization)
+                 solver="newton-cholesky",  # Optimization algorithm, default is Newton-Cholesky
+                 max_iter=20,  # Maximum number of iterations, default is 20
+                 warm_start=False,  # Whether to use warm start, default is False
+                 n_threads=1,  # Number of threads for parallel computation, default is 1
+                 tol=None,  # Deprecated parameter (no longer used)
+                 verbose=0  # Level of verbosity, default is 0 (no output)
                  ):
         """
-        初始化广义线性回归模型。
+        Initialize the generalized linear regression model.
 
         Parameters:
         ----------
         fit_intercept : bool, optional
-            是否拟合截距项，默认为True。
+            Whether to fit the intercept term, default is True.
         alpha : float, optional
-            L2正则化强度，默认为0，不使用正则化。
+            L2 regularization strength, default is 0 (no regularization).
         solver : str, optional
-            优化算法，默认为Newton-Cholesky优化算法。可选值为 "lbfgs" 或 "newton-cholesky"。
+            Optimization algorithm, default is Newton-Cholesky. Supported values are "lbfgs" or "newton-cholesky".
         max_iter : int, optional
-            最大迭代次数，默认为20。
+            Maximum number of iterations, default is 20.
         warm_start : bool, optional
-            是否使用热启动，默认为False。
+            Whether to use warm start, default is False.
         n_threads : int, optional
-            并行计算时的线程数，默认为2。
+            Number of threads for parallel computation, default is 1.
+            If set to 0, it will detect all available CPUs for parallel computation.
         tol : deprecated
-            此参数已废弃，不再使用。过去用于设置early stop的阈值。
+            This parameter is deprecated and no longer used. It was used to set an early stop threshold.
         verbose : int, optional
-            是否输出详细信息，默认为0，不输出。
+            Level of verbosity, default is 0 (no output).
 
         """
         self.l2_reg_strength = alpha
@@ -51,19 +50,30 @@ class _GeneralizedLinearRegressor:
         self.max_iter = max_iter
         self.warm_start = warm_start
         self.verbose = verbose
-        self.n_threads = n_threads
+        if n_threads == 0:
+            os.environ["XLA_FLAGS"] = "--xla_cpu_multi_thread_eigen=true"
+        elif n_threads != 1:
+            assert isinstance(n_threads, int) and n_threads > 1, "n_threads should be an integer greater than 1."
+            os.environ["XLA_FLAGS"] = "--xla_force_host_platform_device_count=%d" % n_threads
+        if warm_start:
+            warnings.warn("Using minibatch in the second optimizer may cause problems.")
         if tol:
-            warnings.warn("spu不支持early stop.", category=DeprecationWarning,stacklevel=2)
-
+            warnings.warn("SPU does not support early stop.", category=DeprecationWarning, stacklevel=2)
 
     def fit(self, X, y, sample_weight=None):
+        if sample_weight is None:
+            sample_weight = jnp.ones(y.shape[0])
+        assert sample_weight.shape == y.shape
+        sample_weight = sample_weight / jnp.sum(sample_weight) # Normalize the sample weights
+
         self._check_solver_support()
         self.loss_model = self._get_loss()
         self.link_model = self._get_link()
+        self.loss_model.get_sampleweight(sample_weight)
         if not self.warm_start or not hasattr(self, "coef_"):
             self.coef_ = None
         if self.solver == "lbfgs":
-            warnings.warn("在SPU平台下无法准确实现lbfgs算法，只能近似实现", UserWarning)
+            warnings.warn("LBFGS algorithm cannot be accurately implemented on SPU platform, only approximate implementation is available.", UserWarning)
             self._fit_lbfgs(X, y)
         elif self.solver == "newton-cholesky":
             self._fit_newton_cholesky(X, y)
@@ -71,13 +81,13 @@ class _GeneralizedLinearRegressor:
             raise ValueError(f"Invalid solver={self.solver}.")
 
     def _get_loss(self):
-        return HalfSquaredLoss(self.n_threads)  # 根据需要选择损失函数
+        return HalfSquaredLoss()  # Choose the loss function as needed
 
     def _get_link(self):
         return IdentityLink()
 
     def _fit_newton_cholesky(self, X, y):
-        # 使用NewtonCholeskySolver类实现Newton-Cholesky优化算法
+        # Use the NewtonCholeskySolver class to implement the Newton-Cholesky optimization algorithm
         solver = NewtonCholeskySolver(loss_model=self.loss_model,
                                       l2_reg_strength=self.l2_reg_strength,
                                       max_iter=self.max_iter,
@@ -88,7 +98,7 @@ class _GeneralizedLinearRegressor:
         # print(self.coef_)
 
     def _fit_lbfgs(self, X, y):
-        # 使用LBFGSSolver类实现Newton-Cholesky优化算法
+        # Use the LBFGSSolver class to implement the Newton-Cholesky optimization algorithm
         solver = LBFGSSolver(loss_model=self.loss_model,
                              max_iter=self.max_iter,
                              l2_reg_strength=self.l2_reg_strength,
@@ -98,73 +108,79 @@ class _GeneralizedLinearRegressor:
         self.coef_ = solver.solve(X, y)
 
     def predict(self, X):
-        # 计算预测值
+        # Calculate the predictions
         if self.fit_intercept:
-            X = jnp.hstack([jnp.ones((X.shape[0], 1)), X])  # 添加截距项
+            X = jnp.hstack([jnp.ones((X.shape[0], 1)), X])  # Add the intercept term
         y_pred = self.link_model.inverse(X @ self.coef_)
         return y_pred
 
     def score(self, X, y, sample_weight=None):
         """
-        D^2是广义线性回归模型的评估指标。
+        D^2 is the evaluation metric for the generalized linear regression model.
         """
 
-        # 计算模型的预测值
+        # Calculate the model's predictions
         prediction = self.predict(X)
         squared_error = lambda y_true, prediction: jnp.mean(
             (y_true - prediction)**2)
-        # 计算模型的deviance
+        # Calculate the model's deviance
         deviance = squared_error(y_true=y, prediction=prediction)
-        # 计算null deviance
+        # Calculate the null deviance
         deviance_null = squared_error(y_true=y,
                                       prediction=jnp.tile(
                                           jnp.average(y), y.shape[0]))
-        # 计算D^2
+        # Calculate D^2
         d2 = 1 - (deviance) / (deviance_null)
         return d2
 
     def _check_solver_support(self):
-        supported_solvers = ["lbfgs", "newton-cholesky"]  # 支持的优化算法列表
+        supported_solvers = ["lbfgs", "newton-cholesky"]  # List of supported optimization algorithms
         if self.solver not in supported_solvers:
             raise ValueError(
                 f"Invalid solver={self.solver}. Supported solvers are {supported_solvers}."
             )
 
 
+# The PoissonRegressor class represents a generalized linear model with Poisson distribution using JAX.
 class PoissonRegressor(_GeneralizedLinearRegressor):
-    """具有泊松分布的广义线性模型，使用JAX实现。
+    """Generalized linear model with Poisson distribution, implemented using JAX.
 
-    该回归器使用'log'链接函数。
+    This regressor uses the 'log' link function.
     """
     def _get_loss(self):
-        return HalfPoissonLoss(self.n_threads)
+        return HalfPoissonLoss()
 
     def _get_link(self):
         return LogLink()
         # return IdentityLink()
 
 
+# The GammaRegressor class represents a generalized linear model with Gamma distribution using JAX.
 class GammaRegressor(_GeneralizedLinearRegressor):
     def _get_loss(self):
-        return HalfGammaLoss(self.n_threads)
+        return HalfGammaLoss()
 
     def _get_link(self):
         return LogLink()
 
-
+# The TweedieRegressor class represents a generalized linear model with Tweedie distribution using JAX.
 class TweedieRegressor(_GeneralizedLinearRegressor):
     def __init__(
         self,
         power=0.5,
     ):
         super().__init__()
-        if power > 0: power = -power
-        if power > 1: power = 1 / power
-        elif power == 1: power = 0.5
+        # Ensure that the power is within the valid range for the Tweedie distribution
+        if power > 0:
+            power = -power
+        if power > 1:
+            power = 1 / power
+        elif power == 1:
+            power = 0.5
         self.power = power
 
     def _get_loss(self):
-        return HalfTweedieLoss(self.power, self.n_threads)
+        return HalfTweedieLoss(self.power, )
 
     def _get_link(self):
         if self.power > 0:

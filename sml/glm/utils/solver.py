@@ -3,10 +3,8 @@ import jax
 from jax import vmap, jit
 import jax.numpy as jnp
 from jax.scipy.linalg import cho_solve, cho_factor
-from ._lbfgs import *
 
 DEBUG = 0
-
 
 class Solver(ABC):
     def __init__(self,
@@ -27,28 +25,23 @@ class Solver(ABC):
         self.l2_reg_strength = l2_reg_strength
         self.coef = coef
 
-
     def predict(self, X):
         return self.link.inverse(X @ self.coef)
 
     @abstractmethod
     def solve(self, X, y, sample_weight=None):
-        # 初始化参数
+        # Initialize parameters
         n_samples, n_features = X.shape
         rng_key = jax.random.PRNGKey(0)
         if self.fit_intercept:
-            X = jnp.hstack([jnp.ones((n_samples, 1)), X])  # 添加截距项
+            X = jnp.hstack([jnp.ones((n_samples, 1)), X])  # Add the intercept term
             if not self.coef:
-                self.coef = jnp.full(
-                (n_features + 1, ),
-                0.5)  # coef初始化np.random.rand函数生成的是从0到1之间均匀分布的随机数。
+                self.coef = jnp.full((n_features + 1, ), 0.5)  # Initialize coef using np.random.rand (uniform distribution between 0 and 1)
         else:
             if not self.coef:
-                self.coef = jnp.full(
-                (n_features, ),
-                0.5)  # coef初始化np.random.rand函数生成的是从0到1之间均匀分布的随机数。
+                self.coef = jnp.full((n_features, ), 0.5)  # Initialize coef using np.random.rand (uniform distribution between 0 and 1)
         self.objective = lambda coef: self.loss_model(
-            y, self.link.inverse(X @ coef)) + jnp.linalg.norm(coef)*self.l2_reg_strength/2
+            y, self.link.inverse(X @ coef)) + jnp.linalg.norm(coef) * self.l2_reg_strength / 2
         self.objective_grad = jit(jax.grad(self.objective))
         self.hessian_fn = jit(jax.hessian(self.objective))
         return X
@@ -58,7 +51,7 @@ class Solver(ABC):
         return self.max_iter
 
 
-# 使用JAX定义NewtonCholeskySolver类
+# Define NewtonCholeskySolver class using JAX
 class NewtonCholeskySolver(Solver):
     def __init__(self,
                  loss_model,
@@ -70,26 +63,26 @@ class NewtonCholeskySolver(Solver):
                  verbose=0,
                  coef=None):
         """
-        Newton-Cholesky优化算法的求解器。
+        Solver for Newton-Cholesky optimization algorithm.
 
         Parameters:
         ----------
         loss_model : BaseLoss
-            损失函数模型。
+            Loss function model.
         link : BaseLink
-            链接函数模型。
+            Link function model.
         l2_reg_strength : float, optional
-            L2正则化强度，默认为1.0。
+            L2 regularization strength. Default is 1.0.
         max_iter : int, optional
-            最大迭代次数，默认为100。
+            Maximum number of iterations. Default is 100.
         n_threads : int or None, optional
-            并行计算时的线程数。默认为None，表示不使用并行计算。
+            Number of threads for parallel computation. Default is None, meaning no parallel computation.
         fit_intercept : bool, optional
-            是否拟合截距项，默认为True。
+            Whether to fit the intercept term. Default is True.
         verbose : int, optional
-            是否输出详细信息，默认为0，不输出。
+            Verbosity level. Default is 0, no output.
         coef : array-like, shape (n_features,), optional
-            初始系数值，默认为None。
+            Initial coefficient values. Default is None.
 
         """
         super().__init__(loss_model, link, max_iter, l2_reg_strength, n_threads, fit_intercept,
@@ -97,30 +90,30 @@ class NewtonCholeskySolver(Solver):
 
     def solve(self, X, y, sample_weight=None):
         """
-        使用Newton-Cholesky算法求解广义线性回归模型的系数。
+        Solve generalized linear regression coefficients using Newton-Cholesky algorithm.
 
         Parameters:
         ----------
         X : array-like, shape (n_samples, n_features)
-            输入特征矩阵。
+            Input feature matrix.
         y : array-like, shape (n_samples,)
-            目标变量。
+            Target variable.
         sample_weight : array-like, shape (n_samples,), optional
-            样本权重，默认为None。
+            Sample weights. Default is None.
 
         Returns:
         -------
         coef : array-like, shape (n_features,)
-            求解得到的系数。
+            Solved coefficients.
 
         """
         X = super().solve(X, y)
 
-        # 使用Cholesky分解解决线性系统
+        # Use Cholesky factorization to solve linear systems
         def cho_solve_wrapper(a, b):
             return cho_solve(cho_factor(a), b[..., 0])
 
-        # 执行Newton-Raphson步骤
+        # Perform Newton-Raphson steps
         for i in range(self.max_iter):
             grad_value = self.objective_grad(self.coef)
             hessian_val = self.hessian_fn(self.coef)
@@ -141,35 +134,35 @@ class LBFGSSolver(Solver):
                  verbose=0,
                  coef=None):
         """
-        LBFGS优化算法求解广义线性回归的实现类。
+        Implementation of LBFGS optimization algorithm for generalized linear regression.
 
         Parameters:
         ----------
         loss_model : object
-            自定义的损失函数模型，需要继承自BaseLoss类。
+            Custom loss function model, should inherit from BaseLoss class.
         link : object
-            自定义的链接函数模型，需要继承自BaseLink类。
+            Custom link function model, should inherit from BaseLink class.
         max_iter : int, optional (default=100)
-            最大迭代次数。
+            Maximum number of iterations.
         l2_reg_strength : float, optional (default=1.0)
-            L2正则化项的强度。
+            Strength of L2 regularization term.
         n_threads : int or None, optional (default=None)
-            并行计算的线程数。None表示使用默认值。
+            Number of threads for parallel computation. None means using default value.
         fit_intercept : bool, optional (default=True)
-            是否拟合截距项。
+            Whether to fit the intercept term.
         verbose : int, optional (default=0)
-            控制输出信息的详细程度。0表示不输出详细信息，1表示输出部分信息。
+            Controls the level of detailed output. 0 means no output, 1 means partial output.
         coef : array-like, shape (n_features,) or None, optional (default=None)
-            初始化的模型系数。None表示使用默认初始化。
+            Initialized model coefficients. None means using default initialization.
 
         Attributes:
         ----------
         maxcor : int
-            BFGS算法的历史梯度和步长的存储数目。
+            The number of stored gradients and steps in BFGS algorithm.
         maxls : int
-            BFGS算法的线搜索的最大迭代次数。
+            The maximum number of line searches in BFGS algorithm.
         gamma : float
-            BFGS算法中的一种参数。
+            A parameter in BFGS algorithm.
 
         """
         super().__init__(loss_model, link, max_iter, l2_reg_strength, n_threads, fit_intercept, verbose, coef)
@@ -179,21 +172,21 @@ class LBFGSSolver(Solver):
 
     def solve(self, X, y, sample_weight=None):
         """
-        使用LBFGS优化算法求解广义线性回归。
+        Solve generalized linear regression using LBFGS optimization algorithm.
 
         Parameters:
         ----------
         X : array-like, shape (n_samples, n_features)
-            特征矩阵。
+            Feature matrix.
         y : array-like, shape (n_samples,)
-            目标值。
+            Target values.
         sample_weight : array-like, shape (n_samples,), optional (default=None)
-            样本权重。
+            Sample weights.
 
         Returns:
         -------
         coef : array-like, shape (n_features,)
-            最优的模型系数。
+            Optimal model coefficients.
 
         """
         X = super().solve(X, y)
@@ -221,7 +214,6 @@ class LBFGSSolver(Solver):
 
         return self.coef
 
-
     def _two_loop_recursion(self, g_k):
         his_size = len(self.rho_history)
         curr_size = his_size
@@ -244,12 +236,12 @@ class LBFGSSolver(Solver):
         return q / norm_q
 
     def _line_search(self, p_k, f_k, g_k):
-        a_k = 0.96**self.i
+        a_k = 0.96 ** self.i
 
-        # 通过拟牛顿法构建局部二次模型
+        # Build a local quadratic model using quasi-Newton method
         def quadratic_model(a):
             f_a = a * p_k @ g_k
-            return abs(abs(f_a) - abs(f_k)) / max(abs(f_a), abs(f_k))
+            return jnp.abs(jnp.abs(f_a) - jnp.abs(f_k)) / max(jnp.abs(f_a), jnp.abs(f_k))
 
         alpha = 0.9
         # alpha = quadratic_model(a_k)

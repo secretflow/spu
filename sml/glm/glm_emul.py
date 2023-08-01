@@ -12,14 +12,14 @@ from glm import _GeneralizedLinearRegressor, PoissonRegressor, GammaRegressor, T
 
 def emul_SGDClassifier(mode: emulation.Mode.MULTIPROCESS, num=5):
     """
-    使用模拟环境执行密文化SGD分类器，并输出结果。
+    Execute the encrypted SGD classifier in a simulation environment and output the results.
 
     Parameters:
     -----------
     mode : emulation.Mode.MULTIPROCESS
-        模拟环境的运行模式，使用多进程模式运行。
+        The running mode of the simulation environment, using multi-process mode.
     num : int, optional (default=5)
-        输出结果的前num个值。
+        The number of values to output.
 
     Returns:
     -------
@@ -28,23 +28,23 @@ def emul_SGDClassifier(mode: emulation.Mode.MULTIPROCESS, num=5):
 
     def proc_ncSolver(x1, x2, y):
         """
-        使用Newton-Cholesky算法拟合广义线性回归模型，并计算D^2评估指标和预测结果。
+        Fit the generalized linear regression model using the Newton-Cholesky algorithm and calculate the D^2 evaluation metric and prediction results.
 
         Parameters:
         ----------
         x1 : array-like, shape (n_samples, n_features1)
-            特征矩阵1。
+            Feature matrix 1.
         x2 : array-like, shape (n_samples, n_features2)
-            特征矩阵2。
+            Feature matrix 2.
         y : array-like, shape (n_samples,)
-            目标值。
+            Target values.
 
         Returns:
         -------
         float
-            D^2评估指标的结果。
+            The result of the D^2 evaluation metric.
         array-like, shape (n_samples,)
-            模型的预测结果。
+            Model's prediction results.
 
         """
         X = jnp.concatenate((x1, x2), axis=1)
@@ -71,10 +71,10 @@ def emul_SGDClassifier(mode: emulation.Mode.MULTIPROCESS, num=5):
         score, result = emulator.run(proc_ncSolver)(x1, x2, y)
 
         # Print the results
-        print("明文D^2: %.2f" % raw_score)
-        print("明文结果(前 %s)：" % num, jnp.round(raw_result[:num]))
-        print("密态D^2: %.2f" % score)
-        print("密态结果(前 %s)：" % num, jnp.round(result[:num]))
+        print("Plaintext D^2: %.2f" % raw_score)
+        print("Plaintext Result (Top %s):" % num, jnp.round(raw_result[:num]))
+        print("Encrypted D^2: %.2f" % score)
+        print("Encrypted Result (Top %s):" % num, jnp.round(result[:num]))
 
     finally:
         emulator.down()

@@ -2,149 +2,144 @@ import jax
 import jax.numpy as jnp
 
 class BaseLoss:
-    def __init__(self, n_threads=1):
+    def get_sampleweight(self, sample_weight):
         """
-        初始化BaseLoss类对象。
-
-        Parameters:
-        ----------
-        n_threads : int, optional (default=1)
-            线程数，用于并行计算损失函数。
-
-        Returns:
-        -------
-        None
-
+        Normalize sample_weight.
         """
-        self.n_threads = n_threads
+        # sample_weight /= jnp.sum(sample_weight)
+        self.sample_weight = sample_weight
 
     def __call__(self, y_true, y_pred, loss_single_sample):
         """
-        计算损失函数的平均值。
+        Calculate the average loss function.
 
         Parameters:
         ----------
         y_true : array-like
-            真实目标数据。
+            True target data.
         y_pred : array-like
-            预测目标数据。
+            Predicted target data.
         loss_single_sample : function
-            用于计算单个样本损失的函数。
+            Function to compute loss for a single sample.
 
         Returns:
         -------
         float
-            平均损失值。
+            Average loss value.
 
         """
-        loss_batch = jax.vmap(loss_single_sample, in_axes=(0, 0), n_threads=self.n_threads)
-        return jnp.mean(loss_batch(y_true, y_pred))
+        weighted_loss_batch = jax.vmap(lambda y_t, y_p, w: w * loss_single_sample(y_t, y_p),
+                                       in_axes=(0, 0, 0),
+                                       out_axes=0)
+        return jnp.sum(weighted_loss_batch(y_true, y_pred, self.sample_weight))
+
 
 class HalfSquaredLoss(BaseLoss):
     def __call__(self, y_true, y_pred):
         """
-        计算半二次平方损失函数。
+        Calculate the half squared loss function.
 
         Parameters:
         ----------
         y_true : array-like
-            真实目标数据。
+            True target data.
         y_pred : array-like
-            预测目标数据。
+            Predicted target data.
 
         Returns:
         -------
         float
-            平均半二次平方损失值。
+            Average half squared loss value.
 
         """
-        return jnp.mean((y_true - y_pred) ** 2) / 2
+        def loss_single_sample(y_t, y_p):
+            return jnp.mean((y_t - y_p) ** 2) / 2
+
+        return super().__call__(y_true, y_pred, loss_single_sample)
+
 
 class HalfPoissonLoss(BaseLoss):
     def __call__(self, y_true, y_pred):
         """
-        计算半泊松损失函数。
+        Calculate the half Poisson loss function.
 
         Parameters:
         ----------
         y_true : array-like
-            真实目标数据。
+            True target data.
         y_pred : array-like
-            预测目标数据。
+            Predicted target data.
 
         Returns:
         -------
         float
-            平均半泊松损失值。
+            Average half Poisson loss value.
 
         """
         def loss_single_sample(y_t, y_p):
             return jnp.mean(y_p - y_t * jnp.log(y_p))
 
-        return super(y_true, y_pred, loss_single_sample)
+        return super().__call__(y_true, y_pred, loss_single_sample)
 
 class HalfGammaLoss(BaseLoss):
     def __call__(self, y_true, y_pred):
         """
-        计算半伽马损失函数。
+        Calculate the half Gamma loss function.
 
         Parameters:
         ----------
         y_true : array-like
-            真实目标数据。
+            True target data.
         y_pred : array-like
-            预测目标数据。
+            Predicted target data.
 
         Returns:
         -------
         float
-            平均半伽马损失值。
+            Average half Gamma loss value.
 
         """
         def loss_single_sample(y_t, y_p):
             return jnp.mean(jnp.log(y_p / y_t) + y_t / y_p - 1)
 
-        return super(y_true, y_pred, loss_single_sample)
+        return super().__call__(y_true, y_pred, loss_single_sample)
 
 class HalfTweedieLoss(BaseLoss):
-    def __init__(self, power, n_threads=1):
+    def __init__(self, power):
         """
-        初始化HalfTweedieLoss类对象。
+        Initialize HalfTweedieLoss class.
 
         Parameters:
         ----------
         power : float
-            Tweedie损失函数的幂指数。
-        n_threads : int, optional (default=1)
-            线程数，用于并行计算损失函数。
+            The power index of the Tweedie loss function.
 
         Returns:
         -------
         None
 
         """
-        super().__init__(n_threads)
         self.power = power
 
     def __call__(self, y_true, y_pred):
         """
-        计算半Tweedie损失函数。
+        Calculate the half Tweedie loss function.
 
         Parameters:
         ----------
         y_true : array-like
-            真实目标数据。
+            True target data.
         y_pred : array-like
-            预测目标数据。
+            Predicted target data.
 
         Returns:
         -------
         float
-            平均半Tweedie损失值。
+            Average half Tweedie loss value.
 
         """
         def loss_single_sample(y_t, y_p):
             p = self.power
             return jnp.mean(y_p ** (2 - p) / (2 - p) - y_t * y_p ** (1 - p) / (1 - p))
 
-        return super(y_true, y_pred, loss_single_sample)
+        return super().__call__(y_true, y_pred, loss_single_sample)

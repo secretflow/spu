@@ -8,20 +8,20 @@ import inspect
 
 class TestGeneralizedLinearRegressor(unittest.TestCase):
     """
-    测试广义线性回归模型的拟合和预测功能。
+    Test the fitting and prediction functionality of Generalized Linear Regression models.
 
     """
 
     def setUp(self):
         """
-        设置测试所需的随机数据。
+        Set up random data for testing.
 
         """
         # Generate some random data
         seed = random.PRNGKey(0)
         n_samples, n_features = 100, 5
         X = random.uniform(seed, shape=(n_samples, n_features))
-        coef = random.uniform(seed, shape=(n_features + 1,))  # +1 是截距项
+        coef = random.uniform(seed, shape=(n_features + 1,))  # +1 for the intercept term
         y = X @ coef[1:] + coef[0]
         self.X = X
         self.y = y
@@ -30,7 +30,7 @@ class TestGeneralizedLinearRegressor(unittest.TestCase):
 
     def test_fit_predict(self):
         """
-        测试不同优化算法的广义线性回归模型的拟合和预测功能。
+        Test the fitting and prediction functionality of different optimization algorithms for Generalized Linear Regression models.
 
         """
         # Set up the simulator
@@ -38,12 +38,12 @@ class TestGeneralizedLinearRegressor(unittest.TestCase):
 
         def proc_ncSolver():
             """
-            使用Newton-Cholesky算法拟合广义线性回归模型，并返回模型的系数。
+            Fit Generalized Linear Regression model using Newton-Cholesky algorithm and return the model coefficients.
 
             Returns:
             -------
             array-like, shape (n_features + 1,)
-                模型的系数，包括截距项和特征权重。
+                Model coefficients, including the intercept term and feature weights.
 
             """
             model = _GeneralizedLinearRegressor(solver="newton-cholesky")
@@ -52,12 +52,12 @@ class TestGeneralizedLinearRegressor(unittest.TestCase):
 
         def test_Poisson():
             """
-            使用PoissonRegressor拟合广义线性回归模型，并返回模型的系数。
+            Fit Generalized Linear Regression model using PoissonRegressor and return the model coefficients.
 
             Returns:
             -------
             array-like, shape (n_features + 1,)
-                模型的系数，包括截距项和特征权重。
+                Model coefficients, including the intercept term and feature weights.
 
             """
             model = PoissonRegressor()
@@ -66,12 +66,12 @@ class TestGeneralizedLinearRegressor(unittest.TestCase):
 
         def test_Gamma():
             """
-            使用GammaRegressor拟合广义线性回归模型，并返回模型的系数。
+            Fit Generalized Linear Regression model using GammaRegressor and return the model coefficients.
 
             Returns:
             -------
             array-like, shape (n_features + 1,)
-                模型的系数，包括截距项和特征权重。
+                Model coefficients, including the intercept term and feature weights.
 
             """
             model = GammaRegressor()
@@ -80,12 +80,12 @@ class TestGeneralizedLinearRegressor(unittest.TestCase):
 
         def test_Tweedie():
             """
-            使用TweedieRegressor拟合广义线性回归模型，并返回模型的系数。
+            Fit Generalized Linear Regression model using TweedieRegressor and return the model coefficients.
 
             Returns:
             -------
             array-like, shape (n_features + 1,)
-                模型的系数，包括截距项和特征权重。
+                Model coefficients, including the intercept term and feature weights.
 
             """
             model = TweedieRegressor()
@@ -94,12 +94,12 @@ class TestGeneralizedLinearRegressor(unittest.TestCase):
 
         def proc_test(proc):
             """
-            测试指定的拟合算法的结果是否正确。
+            Test if the results of the specified fitting algorithm are correct.
 
             Parameters:
             ----------
             proc : function
-                拟合算法函数。
+                Fitting algorithm function.
 
             Returns:
             -------
