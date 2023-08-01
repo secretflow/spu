@@ -1,0 +1,157 @@
+!_TAG_FILE_FORMAT	2	/extended format; --format=1 will not append ;" to lines/
+!_TAG_FILE_SORTED	1	/0=unsorted, 1=sorted, 2=foldcase/
+!_TAG_PROGRAM_AUTHOR	Darren Hiebert	/dhiebert@users.sourceforge.net/
+!_TAG_PROGRAM_NAME	Exuberant Ctags	//
+!_TAG_PROGRAM_URL	http://ctags.sourceforge.net	/official site/
+!_TAG_PROGRAM_VERSION	5.8	//
+ABC	.\utils\link.py	/^from abc import ABC, abstractmethod$/;"	i
+ABC	.\utils\solver.py	/^from abc import ABC, abstractmethod$/;"	i
+Any	.\utils\_lbfgs.py	/^from typing import Any, Callable, NamedTuple, Optional, Union$/;"	i
+Array	.\utils\_lbfgs.py	/^Array = Any$/;"	v
+BaseLink	.\utils\link.py	/^class BaseLink(ABC):$/;"	c
+BaseLoss	.\utils\loss.py	/^class BaseLoss:$/;"	c
+Callable	.\utils\_lbfgs.py	/^from typing import Any, Callable, NamedTuple, Optional, Union$/;"	i
+DEBUG	.\glm.py	/^DEBUG = 0$/;"	v
+DEBUG	.\utils\solver.py	/^DEBUG = 0$/;"	v
+ExpLink	.\utils\link.py	/^class ExpLink(BaseLink):$/;"	c
+GammaRegressor	.\glm.py	/^class GammaRegressor(_GeneralizedLinearRegressor):$/;"	c
+HalfGammaLoss	.\utils\loss.py	/^class HalfGammaLoss(BaseLoss):$/;"	c
+HalfPoissonLoss	.\utils\loss.py	/^class HalfPoissonLoss(BaseLoss):$/;"	c
+HalfSquaredError	.\utils\loss.py	/^class HalfSquaredError(BaseLoss):$/;"	c
+HalfTweedieLoss	.\utils\loss.py	/^class HalfTweedieLoss(BaseLoss):$/;"	c
+IdentityLink	.\utils\link.py	/^class IdentityLink(BaseLink):$/;"	c
+Interval	.\utils\link.py	/^class Interval:$/;"	c
+LBFGSResults	.\utils\_lbfgs.py	/^class LBFGSResults(NamedTuple):$/;"	c
+LBFGSSolver	.\utils\solver.py	/^class LBFGSSolver(Solver):$/;"	c
+LogLink	.\utils\link.py	/^class LogLink(BaseLink):$/;"	c
+NamedTuple	.\utils\_lbfgs.py	/^from typing import Any, Callable, NamedTuple, Optional, Union$/;"	i
+NamedTuple	.\utils\line_search.py	/^from typing import NamedTuple, Union$/;"	i
+NewtonCholeskySolver	.\utils\solver.py	/^class NewtonCholeskySolver(Solver):$/;"	c
+Optional	.\utils\_lbfgs.py	/^from typing import Any, Callable, NamedTuple, Optional, Union$/;"	i
+PoissonRegressor	.\glm.py	/^class PoissonRegressor(_GeneralizedLinearRegressor):$/;"	c
+Solver	.\utils\solver.py	/^class Solver(ABC):$/;"	c
+TweedieRegressor	.\glm.py	/^class TweedieRegressor(_GeneralizedLinearRegressor):$/;"	c
+Union	.\utils\_lbfgs.py	/^from typing import Any, Callable, NamedTuple, Optional, Union$/;"	i
+Union	.\utils\line_search.py	/^from typing import NamedTuple, Union$/;"	i
+_GeneralizedLinearRegressor	.\glm.py	/^class _GeneralizedLinearRegressor:$/;"	c
+_GeneralizedLinearRegressor	.\glm_test.py	/^        from glm import _GeneralizedLinearRegressor$/;"	i
+_GeneralizedLinearRegressor	.\glm_test.py	/^    from glm import _GeneralizedLinearRegressor$/;"	i
+_LineSearchResults	.\utils\line_search.py	/^class _LineSearchResults(NamedTuple):$/;"	c
+_LineSearchState	.\utils\line_search.py	/^class _LineSearchState(NamedTuple):$/;"	c
+_ZoomState	.\utils\line_search.py	/^class _ZoomState(NamedTuple):$/;"	c
+__call__	.\utils\loss.py	/^    def __call__(self, y_true, prediction):$/;"	m	class:BaseLoss	file:
+__call__	.\utils\loss.py	/^    def __call__(self, y_true, prediction):$/;"	m	class:HalfSquaredError	file:
+__call__	.\utils\loss.py	/^    def __call__(self, y_true, y_pred):$/;"	m	class:HalfGammaLoss	file:
+__call__	.\utils\loss.py	/^    def __call__(self, y_true, y_pred):$/;"	m	class:HalfPoissonLoss	file:
+__call__	.\utils\loss.py	/^    def __call__(self, y_true, y_pred):$/;"	m	class:HalfTweedieLoss	file:
+__init__	.\glm.py	/^    def __init__($/;"	m	class:TweedieRegressor
+__init__	.\glm.py	/^    def __init__(self, alpha=1.0, fit_intercept=True, solver="lbfgs", max_iter=100, tol=1e-4,$/;"	m	class:_GeneralizedLinearRegressor
+__init__	.\utils\loss.py	/^    def __init__(self,power):$/;"	m	class:HalfTweedieLoss
+__init__	.\utils\solver.py	/^    def __init__(self, loss_model,link, l2_reg_strength=1.0, tol=1e-4, max_iter=100, n_threads=None,fit_intercept =True, verbose=0):$/;"	m	class:NewtonCholeskySolver
+__init__	.\utils\solver.py	/^    def __init__(self, loss_model,link, tol=1e-4, max_iter=100, n_threads=None, fit_intercept=True, verbose=0):$/;"	m	class:Solver
+__post_init__	.\utils\link.py	/^    def __post_init__(self):$/;"	m	class:Interval	file:
+_binary_replace	.\utils\line_search.py	/^def _binary_replace(replace_bit, original_dict, new_dict, keys=None):$/;"	f
+_check_solver_support	.\glm.py	/^    def _check_solver_support(self):$/;"	m	class:_GeneralizedLinearRegressor
+_cubicmin	.\utils\line_search.py	/^def _cubicmin(a, fa, fpa, b, fb, c, fc):$/;"	f
+_dot	.\utils\_lbfgs.py	/^_dot = partial(jnp.dot, precision=lax.Precision.HIGHEST)$/;"	v
+_dot	.\utils\line_search.py	/^_dot = partial(jnp.dot, precision=lax.Precision.HIGHEST)$/;"	v
+_fit_lbfgs	.\glm.py	/^    def _fit_lbfgs(self, X, y):$/;"	m	class:_GeneralizedLinearRegressor
+_fit_newton_cholesky	.\glm.py	/^    def _fit_newton_cholesky(self, X, y):$/;"	m	class:_GeneralizedLinearRegressor
+_get_link	.\glm.py	/^    def _get_link(self):$/;"	m	class:GammaRegressor
+_get_link	.\glm.py	/^    def _get_link(self):$/;"	m	class:PoissonRegressor
+_get_link	.\glm.py	/^    def _get_link(self):$/;"	m	class:TweedieRegressor
+_get_link	.\glm.py	/^    def _get_link(self):$/;"	m	class:_GeneralizedLinearRegressor
+_get_loss	.\glm.py	/^    def _get_loss(self):$/;"	m	class:GammaRegressor
+_get_loss	.\glm.py	/^    def _get_loss(self):$/;"	m	class:PoissonRegressor
+_get_loss	.\glm.py	/^    def _get_loss(self):$/;"	m	class:TweedieRegressor
+_get_loss	.\glm.py	/^    def _get_loss(self):$/;"	m	class:_GeneralizedLinearRegressor
+_minimize_lbfgs	.\glm.py	/^from utils._lbfgs import _minimize_lbfgs$/;"	i
+_minimize_lbfgs	.\utils\_lbfgs.py	/^def _minimize_lbfgs($/;"	f
+_minimize_lbfgs	.\utils\solver.py	/^from ._lbfgs import _minimize_lbfgs$/;"	i
+_quadmin	.\utils\line_search.py	/^def _quadmin(a, fa, fpa, b, fb):$/;"	f
+_two_loop_recursion	.\utils\_lbfgs.py	/^def _two_loop_recursion(state: LBFGSResults):$/;"	f
+_update_history_scalars	.\utils\_lbfgs.py	/^def _update_history_scalars(history, new):$/;"	f
+_update_history_vectors	.\utils\_lbfgs.py	/^def _update_history_vectors(history, new):$/;"	f
+_zoom	.\utils\line_search.py	/^def _zoom(restricted_func_and_grad, wolfe_one, wolfe_two, a_lo, phi_lo,$/;"	f
+abstractmethod	.\utils\link.py	/^from abc import ABC, abstractmethod$/;"	i
+abstractmethod	.\utils\solver.py	/^from abc import ABC, abstractmethod$/;"	i
+body	.\utils\line_search.py	/^  def body(state):$/;"	f	function:_zoom
+body	.\utils\line_search.py	/^  def body(state):$/;"	f	function:line_search
+body_fun	.\utils\_lbfgs.py	/^  def body_fun(state: LBFGSResults):$/;"	f
+body_fun1	.\utils\_lbfgs.py	/^  def body_fun1(j, carry):$/;"	f	function:_two_loop_recursion
+body_fun2	.\utils\_lbfgs.py	/^  def body_fun2(j, _q):$/;"	f	function:_two_loop_recursion
+cho_factor	.\utils\solver.py	/^from jax.scipy.linalg import cho_solve, cho_factor$/;"	i
+cho_solve	.\utils\solver.py	/^from jax.scipy.linalg import cho_solve, cho_factor$/;"	i
+cho_solve_wrapper	.\utils\solver.py	/^        def cho_solve_wrapper(a, b):$/;"	f	function:NewtonCholeskySolver.solve
+cond_fun	.\utils\_lbfgs.py	/^  def cond_fun(state: LBFGSResults):$/;"	f
+d	.\utils\_lbfgs.py	/^  d = len(x0)$/;"	v
+dataclass	.\utils\link.py	/^from dataclasses import dataclass$/;"	i
+dtype	.\utils\_lbfgs.py	/^  dtype = jnp.dtype(x0)$/;"	v
+fit	.\glm.py	/^    def fit(self, X, y, sample_weight=None):$/;"	m	class:_GeneralizedLinearRegressor
+gen_data	.\glm_test.py	/^def gen_data(noise = False):$/;"	f
+includes	.\utils\link.py	/^    def includes(self, x):$/;"	m	class:Interval
+interval_y_pred	.\utils\link.py	/^    interval_y_pred = Interval(-jnp.inf, jnp.inf, False, False)$/;"	v	class:BaseLink
+interval_y_pred	.\utils\link.py	/^    interval_y_pred = Interval(0, jnp.inf, False, False)$/;"	v	class:LogLink
+inverse	.\utils\link.py	/^    def inverse(self, raw_prediction):$/;"	m	class:ExpLink
+inverse	.\utils\link.py	/^    def inverse(self, raw_prediction, out=None):$/;"	m	class:BaseLink
+inverse	.\utils\link.py	/^    def inverse(self, raw_prediction, out=None):$/;"	m	class:LogLink
+inverse	.\utils\link.py	/^    inverse = link$/;"	v	class:IdentityLink
+iteration	.\utils\solver.py	/^    def iteration(self):$/;"	m	class:Solver
+jax	.\glm.py	/^import jax$/;"	i
+jax	.\glm.py	/^import jax.numpy as jnp$/;"	i
+jax	.\utils\_lbfgs.py	/^import jax$/;"	i
+jax	.\utils\_lbfgs.py	/^import jax.numpy as jnp$/;"	i
+jax	.\utils\line_search.py	/^import jax$/;"	i
+jax	.\utils\line_search.py	/^import jax.numpy as jnp$/;"	i
+jax	.\utils\link.py	/^import jax.numpy as jnp$/;"	i
+jax	.\utils\loss.py	/^import jax.numpy as jnp$/;"	i
+jax	.\utils\solver.py	/^import jax$/;"	i
+jax	.\utils\solver.py	/^import jax.numpy as jnp$/;"	i
+jit	.\utils\_lbfgs.py	/^from jax import jit$/;"	i
+jnp	.\glm.py	/^import jax.numpy as jnp$/;"	i
+jnp	.\utils\_lbfgs.py	/^import jax.numpy as jnp$/;"	i
+jnp	.\utils\line_search.py	/^import jax.numpy as jnp$/;"	i
+jnp	.\utils\link.py	/^import jax.numpy as jnp$/;"	i
+jnp	.\utils\loss.py	/^import jax.numpy as jnp$/;"	i
+jnp	.\utils\solver.py	/^import jax.numpy as jnp$/;"	i
+lax	.\utils\_lbfgs.py	/^from jax import lax$/;"	i
+lax	.\utils\line_search.py	/^from jax import lax$/;"	i
+line_search	.\utils\_lbfgs.py	/^from .line_search import line_search$/;"	i
+line_search	.\utils\line_search.py	/^def line_search(f, xk, pk, old_fval=None, old_old_fval=None, gfk=None, $/;"	f
+link	.\utils\link.py	/^    def link(self,  y_pred, out=None):$/;"	m	class:ExpLink
+link	.\utils\link.py	/^    def link(self,  y_pred, out=None):$/;"	m	class:IdentityLink
+link	.\utils\link.py	/^    def link(self, y_pred, out=None):$/;"	m	class:BaseLink
+link	.\utils\link.py	/^    def link(self, y_pred, out=None):$/;"	m	class:LogLink
+maxfun	.\utils\_lbfgs.py	/^    maxfun = jnp.inf$/;"	v
+maxgrad	.\utils\_lbfgs.py	/^    maxgrad = jnp.inf$/;"	v
+maxiter	.\utils\_lbfgs.py	/^    maxiter = d * 200$/;"	v
+maxiter	.\utils\_lbfgs.py	/^    maxiter = jnp.inf$/;"	v
+np	.\glm_test.py	/^import numpy as np$/;"	i
+partial	.\utils\_lbfgs.py	/^from functools import partial$/;"	i
+partial	.\utils\line_search.py	/^from functools import partial$/;"	i
+predict	.\glm.py	/^    def predict(self, X):$/;"	m	class:_GeneralizedLinearRegressor
+predict	.\utils\solver.py	/^    def predict(self,X):$/;"	m	class:Solver
+proc	.\glm_test.py	/^    def proc(X,y):$/;"	f	function:test_sim
+promote_dtypes_inexact	.\utils\line_search.py	/^from jax._src.numpy.util import promote_dtypes_inexact$/;"	i
+random	.\glm.py	/^from jax import random$/;"	i
+restricted_func_and_grad	.\utils\line_search.py	/^  def restricted_func_and_grad(t):$/;"	f	function:line_search
+scipy	.\glm_test.py	/^import scipy.stats as stats$/;"	i
+score	.\glm.py	/^    def score(self, X, y, sample_weight=None):$/;"	m	class:_GeneralizedLinearRegressor
+solve	.\utils\solver.py	/^    def solve(self, X, y, sample_weight=None):$/;"	m	class:NewtonCholeskySolver
+solve	.\utils\solver.py	/^    def solve(self, X, y, sample_weight=None):$/;"	m	class:Solver
+solve	.\utils\solver.py	/^    def solve(self,X,y, sample_weight=None):$/;"	m	class:LBFGSSolver
+spsim	.\glm_test.py	/^import spu.utils.simulation as spsim$/;"	i
+spu	.\glm_test.py	/^import spu.spu_pb2 as spu_pb2$/;"	i
+spu	.\glm_test.py	/^import spu.utils.simulation as spsim$/;"	i
+spu_pb2	.\glm_test.py	/^import spu.spu_pb2 as spu_pb2$/;"	i
+state_initial	.\utils\_lbfgs.py	/^  state_initial = LBFGSResults($/;"	v
+stats	.\glm_test.py	/^import scipy.stats as stats$/;"	i
+test	.\glm_test.py	/^def test(model,X,y,coef,num = 5):$/;"	f
+test_Poisson	.\glm_test.py	/^def test_Poisson():$/;"	f
+test_gamma	.\glm_test.py	/^def test_gamma():$/;"	f
+test_glm	.\glm_test.py	/^def test_glm():$/;"	f
+test_sim	.\glm_test.py	/^def test_sim():$/;"	f
+utils	.\glm_test.py	/^import spu.utils.simulation as spsim$/;"	i
+wolfe_one	.\utils\line_search.py	/^  def wolfe_one(a_i, phi_i):$/;"	f	function:line_search
+wolfe_two	.\utils\line_search.py	/^  def wolfe_two(dphi_i):$/;"	f	function:line_search
+x0	.\utils\_lbfgs.py	/^    x0 = jnp.array(x0)$/;"	v
