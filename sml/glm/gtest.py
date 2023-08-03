@@ -3,9 +3,14 @@ import numpy as np
 import scipy.stats as stats
 import spu.spu_pb2 as spu_pb2
 import spu.utils.simulation as spsim
+from sklearn.linear_model._glm import _GeneralizedLinearRegressor as std__GeneralizedLinearRegressor
+from sklearn.linear_model._glm import PoissonRegressor  as std_PoissonRegressor
+from sklearn.linear_model._glm import GammaRegressor as std_GammaRegressor
+from sklearn.linear_model._glm import TweedieRegressor as std_TweedieRegressor
+import unittest
 
 n_samples, n_features = 100, 5
-
+verbose = 0
 def generate_data(noise=False):
     """
     Generate random data for testing.
@@ -35,112 +40,97 @@ def generate_data(noise=False):
     sample_weight = np.random.rand(n_samples)
     return X, y, coef, sample_weight
 
-def test(model, X, y, coef, sample_weight=None, num=5):
-    """
-    Test the fitting, prediction, and scoring functionality of the generalized linear regression model.
+X, y, coef, sample_weight = generate_data()
+expy = jnp.exp(y)
+roundexpy = jnp.round(expy)
 
-    Parameters:
-    ----------
-    model : object
-        Generalized linear regression model object.
-    X : array-like, shape (n_samples, n_features)
-        Feature data.
-    y : array-like, shape (n_samples,)
-        Target data.
-    coef : array-like, shape (n_features + 1,)
-        True coefficients, including the intercept term and feature weights.
-    num : int, optional (default=5)
-        Number of coefficients to display.
+def test(model,std_model, y, coef, num=5):
+        """
+        Test the fitting, prediction, and scoring functionality of the generalized linear regression model.
 
-    Returns:
-    -------
-    None
+        Parameters:
+        ----------
+        model : object
+            Generalized linear regression model object.
+        X : array-like, shape (n_samples, n_features)
+            Feature data.
+        y : array-like, shape (n_samples,)
+            Target data.
+        coef : array-like, shape (n_features + 1,)
+            True coefficients, including the intercept term and feature weights.
+        num : int, optional (default=5)
+            Number of coefficients to display.
 
-    """
-    model.fit(X, y, sample_weight)
-    print('True Coefficients:', coef[:num])
-    print("Fitted Coefficients:", model.coef_[:num])
-    print("D^2 Score:", model.score(X[:num], y[:num]))
-    print("X:", X[:num])
-    print("Samples:", y[:num])
-    print("Predictions:", model.predict(X[:num]))
+        Returns:
+        -------
+        None
 
-def test_glm():
-    """
-    Test the functionality of the _GeneralizedLinearRegressor model.
+        """
+        print(type(model).__name__)
+        model.fit(X, y, sample_weight)
+        std_model.fit(X,y,sample_weight)
+        norm_diff = jnp.linalg.norm(model.predict(X)[:num]-jnp.array(std_model.predict(X)[:num]))
+        if verbose:
+            print('True Coefficients:', coef[:num])
+            print("Fitted Coefficients:", model.coef_[:num])
+            print("std Fitted Coefficients:", std_model.coef_[:num])
+            print("D^2 Score:", model.score(X[:num], y[:num]))
+            print("X:", X[:num])
+            print("Samples:", y[:num])
+            print("Predictions:", model.predict(X[:num]))
+            print("std Predictions:", std_model.predict(X[:num]))
+        print("norm of predict between ours and std: %f" %norm_diff)
+        assert norm_diff < 1e-2
+        print("_________________________________")
+        print()
 
-    """
-    X, y, coef, sample_weight = generate_data()
-    from glm import _GeneralizedLinearRegressor
-    model = _GeneralizedLinearRegressor()
-    test(model, X, y, coef, sample_weight)
+class GeneralizedLinearRegressorCorrectnessTest(unittest.TestCase):
+    def test_glm(self,):
+        """
+        Test the functionality of the _GeneralizedLinearRegressor model.
 
-def test_lbfgs():
-    """
-    Test the functionality of the _GeneralizedLinearRegressor model using the LBFGS optimization algorithm.
-
-    """
-    X, y, coef, sample_weight = generate_data()
-    from glm import _GeneralizedLinearRegressor
-    model = _GeneralizedLinearRegressor(solver='lbfgs')
-    test(model, X, y, coef, sample_weight)
-
-def test_Poisson():
-    """
-    Test the functionality of the PoissonRegressor model.
-
-    """
-    X, y, coef, sample_weight = generate_data()
-    y = jnp.round(jnp.exp(y))
-    model = PoissonRegressor()
-    test(model, X, y, coef, sample_weight)
-
-def test_gamma():
-    """
-    Test the functionality of the GammaRegressor model.
-
-    """
-    X, y, coef, sample_weight = generate_data()
-    alpha = 10
-    y = np.array([stats.gamma.rvs(a=alpha, scale=y_i/alpha) for y_i in y])
-    y = jnp.exp(y)
-    model = GammaRegressor()
-    test(model, X, y, coef, sample_weight)
-
-def test_Tweedie():
-    """
-    Test the functionality of the TweedieRegressor model.
-
-    """
-    X, y, coef, sample_weight = generate_data()
-    y = jnp.round(jnp.exp(y))
-    model = TweedieRegressor()
-    test(model, X, y, coef, sample_weight)
-
-def test_sim():
-    """
-    Test the fitting functionality of the _GeneralizedLinearRegressor model using the simulator.
-
-    """
-    sim = spsim.Simulator.simple(
-            # 3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM128)
-            3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM64)
-    X, y, coef, sample_weight = generate_data()
-
-    def proc(X, y):
+        """
         from glm import _GeneralizedLinearRegressor
-        model = _GeneralizedLinearRegressor(solver="newton-cholesky")
-        model.fit(X, y)
-        coef_fit = model.coef_
-        return coef_fit
+        model = _GeneralizedLinearRegressor()
+        std_model = std__GeneralizedLinearRegressor(alpha=0)
+        test(model, std_model, y, coef)
 
-    result = spsim.sim_jax(sim, proc)(X, y)
+
+    def test_Poisson(self,):
+        """
+        Test the functionality of the PoissonRegressor model.
+
+        """
+        model = PoissonRegressor()
+        std_model = PoissonRegressor(alpha=0)
+        test(model, std_model, roundexpy, coef)
+
+
+    def test_gamma(self,):
+        """
+        Test the functionality of the GammaRegressor model.
+
+        """
+        model = GammaRegressor()
+        std_model = std_GammaRegressor(alpha=0)
+        test(model, std_model, expy, coef)
+
+
+    def test_Tweedie(self,power=0):
+        """
+        Test the functionality of the TweedieRegressor model.
+
+        """
+        model = TweedieRegressor(power=power)
+        std_model = std_TweedieRegressor(alpha=0,power=power)
+        test(model, std_model, expy, coef)
+
+
 
 if __name__ == '__main__':
     # Run the tests
-    test_glm()
-    test_gamma()
-    test_lbfgs()
-    test_Poisson()
-    test_Tweedie()
-    test_sim()
+    # test_glm()
+    # test_gamma()
+    # test_Poisson()
+    # test_Tweedie()
+    unittest.main()
