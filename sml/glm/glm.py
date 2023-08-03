@@ -16,7 +16,7 @@ class _GeneralizedLinearRegressor:
                  solver="newton-cholesky",  # Optimization algorithm, default is Newton-Cholesky
                  max_iter=20,  # Maximum number of iterations, default is 20
                  warm_start=False,  # Whether to use warm start, default is False
-                 n_threads=1,  # Number of threads for parallel computation, default is 1
+                 n_threads=None,  # Deprecated parameter (no longer used)
                  tol=None,  # Deprecated parameter (no longer used)
                  verbose=0  # Level of verbosity, default is 0 (no output)
                  ):
@@ -50,11 +50,8 @@ class _GeneralizedLinearRegressor:
         self.max_iter = max_iter
         self.warm_start = warm_start
         self.verbose = verbose
-        if n_threads == 0:
-            os.environ["XLA_FLAGS"] = "--xla_cpu_multi_thread_eigen=true"
-        elif n_threads != 1:
-            assert isinstance(n_threads, int) and n_threads > 1, "n_threads should be an integer greater than 1."
-            os.environ["XLA_FLAGS"] = "--xla_force_host_platform_device_count=%d" % n_threads
+        if n_threads:
+            warnings.warn("SPU does not need n_threads.", category=DeprecationWarning, stacklevel=2)
         if warm_start:
             warnings.warn("Using minibatch in the second optimizer may cause problems.")
         if tol:
@@ -64,12 +61,12 @@ class _GeneralizedLinearRegressor:
         if sample_weight is None:
             sample_weight = jnp.ones(y.shape[0])
         assert sample_weight.shape == y.shape
-        sample_weight = sample_weight / jnp.sum(sample_weight) # Normalize the sample weights
 
         self._check_solver_support()
         self.loss_model = self._get_loss()
         self.link_model = self._get_link()
         self.loss_model.get_sampleweight(sample_weight)
+        # y=self.link_model.inverse(y)
         if not self.warm_start or not hasattr(self, "coef_"):
             self.coef_ = None
         if self.solver == "lbfgs":
@@ -95,7 +92,6 @@ class _GeneralizedLinearRegressor:
                                       link=self.link_model,
                                       coef=self.coef_)
         self.coef_ = solver.solve(X, y)
-        # print(self.coef_)
 
     def _fit_lbfgs(self, X, y):
         # Use the LBFGSSolver class to implement the Newton-Cholesky optimization algorithm
@@ -152,7 +148,6 @@ class PoissonRegressor(_GeneralizedLinearRegressor):
 
     def _get_link(self):
         return LogLink()
-        # return IdentityLink()
 
 
 # The GammaRegressor class represents a generalized linear model with Gamma distribution using JAX.
@@ -171,12 +166,7 @@ class TweedieRegressor(_GeneralizedLinearRegressor):
     ):
         super().__init__()
         # Ensure that the power is within the valid range for the Tweedie distribution
-        if power > 0:
-            power = -power
-        if power > 1:
-            power = 1 / power
-        elif power == 1:
-            power = 0.5
+        assert(power>=0 and power<=3)
         self.power = power
 
     def _get_loss(self):

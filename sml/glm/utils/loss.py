@@ -6,32 +6,8 @@ class BaseLoss:
         """
         Normalize sample_weight.
         """
-        # sample_weight /= jnp.sum(sample_weight)
+        sample_weight /= jnp.sum(sample_weight)
         self.sample_weight = sample_weight
-
-    def __call__(self, y_true, y_pred, loss_single_sample):
-        """
-        Calculate the average loss function.
-
-        Parameters:
-        ----------
-        y_true : array-like
-            True target data.
-        y_pred : array-like
-            Predicted target data.
-        loss_single_sample : function
-            Function to compute loss for a single sample.
-
-        Returns:
-        -------
-        float
-            Average loss value.
-
-        """
-        weighted_loss_batch = jax.vmap(lambda y_t, y_p, w: w * loss_single_sample(y_t, y_p),
-                                       in_axes=(0, 0, 0),
-                                       out_axes=0)
-        return jnp.sum(weighted_loss_batch(y_true, y_pred, self.sample_weight))
 
 
 class HalfSquaredLoss(BaseLoss):
@@ -52,10 +28,9 @@ class HalfSquaredLoss(BaseLoss):
             Average half squared loss value.
 
         """
-        def loss_single_sample(y_t, y_p):
-            return jnp.mean((y_t - y_p) ** 2) / 2
-
-        return super().__call__(y_true, y_pred, loss_single_sample)
+        y_t,y_p=y_true,y_pred
+        w = self.sample_weight
+        return jnp.sum(((y_t - y_p) ** 2 / 2) *w)
 
 
 class HalfPoissonLoss(BaseLoss):
@@ -76,10 +51,9 @@ class HalfPoissonLoss(BaseLoss):
             Average half Poisson loss value.
 
         """
-        def loss_single_sample(y_t, y_p):
-            return jnp.mean(y_p - y_t * jnp.log(y_p))
-
-        return super().__call__(y_true, y_pred, loss_single_sample)
+        y_t,y_p=y_true,y_pred
+        w = self.sample_weight
+        return jnp.sum((y_p - y_t * jnp.log(y_p))*w)
 
 class HalfGammaLoss(BaseLoss):
     def __call__(self, y_true, y_pred):
@@ -99,13 +73,12 @@ class HalfGammaLoss(BaseLoss):
             Average half Gamma loss value.
 
         """
-        def loss_single_sample(y_t, y_p):
-            return jnp.mean(jnp.log(y_p / y_t) + y_t / y_p - 1)
-
-        return super().__call__(y_true, y_pred, loss_single_sample)
+        y_t,y_p=y_true,y_pred
+        w = self.sample_weight
+        return jnp.sum(w *(jnp.log(y_p / y_t) + y_t / y_p - 1))
 
 class HalfTweedieLoss(BaseLoss):
-    def __init__(self, power):
+    def __init__(self, power=0.5):
         """
         Initialize HalfTweedieLoss class.
 
@@ -138,8 +111,8 @@ class HalfTweedieLoss(BaseLoss):
             Average half Tweedie loss value.
 
         """
-        def loss_single_sample(y_t, y_p):
-            p = self.power
-            return jnp.mean(y_p ** (2 - p) / (2 - p) - y_t * y_p ** (1 - p) / (1 - p))
+        p = self.power
+        y_t,y_p=y_true,y_pred
+        w = self.sample_weight
+        return jnp.sum((y_p ** (2 - p) / (2 - p) - y_t * y_p ** (1 - p) / (1 - p))*w)
 
-        return super().__call__(y_true, y_pred, loss_single_sample)
