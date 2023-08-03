@@ -1,0 +1,179 @@
+// Copyright 2023 Ant Group Co., Ltd.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//   http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package spu.mpc.securenn.beaver.ttp_server;
+
+option cc_generic_services = true;
+
+enum ErrorCode {
+  OK = 0;
+  SessionError = 1;
+  OpAdjustError = 2;
+}
+
+message CreateSessionRequest {
+  int32 required_version = 1;
+  // which rank do adjust rpc call, usually choose the rank closer to the server.
+  int32 adjust_rank = 2;
+  // session represents a group of MPC computing participants
+  string session_id = 3;
+  // how many parties in this session
+  int32 world_size = 4;
+  // Which participant is calling this rcp
+  int32 rank = 5;
+  // this rank(participant)'s PRG seed
+  bytes prg_seed = 6;
+}
+
+message CreateSessionResponse {
+  ErrorCode code = 1;
+  string message = 2;
+}
+
+message DeleteSessionRequest {
+  string session_id = 2;
+}
+
+message DeleteSessionResponse {
+  ErrorCode code = 1;
+  string message = 2;
+}
+
+// PRG generated buffer metainfo.
+// BeaverService replay PRG to generate same buffer using each party's prg_seed.
+// PrgBufferMeta represent {world_size} arithmetic/boolean shares for one random array.
+message PrgBufferMeta {
+  int64 prg_count = 1;
+  int64 size = 2;
+}
+
+// TTP Beaver service for securenn only.
+service BeaverService {
+  // Create
+  rpc CreateSession(CreateSessionRequest) returns (CreateSessionResponse);
+
+  // Delete
+  rpc DeleteSession(DeleteSessionRequest) returns (DeleteSessionResponse);
+
+  // V1 adjust ops 
+  rpc AdjustMul(AdjustMulRequest) returns (AdjustResponse);
+
+  rpc AdjustDot(AdjusDotRequest) returns (AdjustResponse);
+
+  rpc AdjustAnd(AdjustAndRequest) returns (AdjustResponse);
+
+  rpc AdjustTrunc(AdjustTruncRequest) returns (AdjustResponse);
+
+  rpc AdjustTruncPr(AdjustTruncPrRequest) returns (AdjustResponse);
+
+  rpc AdjustRandBit(AdjustRandBitRequest) returns (AdjustResponse);
+}
+
+message AdjustMulRequest {
+  string session_id = 1; 
+  // input three prg buffer
+  // reconstruct all parties' share get: ra / rb / rc
+  repeated PrgBufferMeta prg_inputs = 2;
+  // use which field to interprete buffer. details see: spu.FieldType
+  int32 field = 3;
+  // output 
+  // adjust_c = ra * rb - rc
+  // make
+  // ra * rb = (adjust_c + rc)
+}
+
+message AdjusDotRequest {
+  string session_id = 1; 
+  // input three prg buffer
+  // reconstruct all parties' share get: ra / rb / rc
+  repeated PrgBufferMeta prg_inputs = 2;
+  // use which field to interprete buffer. details see: spu.FieldType
+  int32 field = 3;
+  // ra's shape: (M, K), rb's shape: (K, N), rc's shape: (M, N)
+  int64 M = 4;
+  int64 N = 5;
+  int64 K = 6;
+  // output 
+  // adjust_c = matmul(ra, rb) - rc
+  // make
+  // matmul(ra, rb) = (adjust_c + rc)
+}
+
+message AdjustAndRequest {
+  string session_id = 1; 
+  // input three prg buffer
+  // reconstruct all parties' share get: ra / rb / rc
+  repeated PrgBufferMeta prg_inputs = 2;
+  // TODO: use bitwise format definition to describe boolean share's buffer
+  // use which field to interprete buffer. details see: spu.FieldType
+  int32 field = 3;
+  // output 
+  // adjust_c = (ra & rb) ^ rc
+  // make
+  // ra & rb = (adjust_c ^ rc)
+}
+
+message AdjustTruncRequest {
+  string session_id = 1; 
+  // input two prg buffer
+  // reconstruct all parties' share get: ra / rb 
+  repeated PrgBufferMeta prg_inputs = 2;
+  // use which field to interprete buffer. details see: spu.FieldType
+  int32 field = 3;
+  // how many bits need to truncate.
+  int32 bits = 4;
+  // output 
+  // adjust_b = (ra >> bits) - rb
+  // makes 
+  // ra >> bits = (adjust_b + rb)
+}
+
+message AdjustTruncPrRequest {
+  string session_id = 1;
+  // input two prg buffer
+  // reconstruct all parties' share get: ra / rb / rc
+  repeated PrgBufferMeta prg_inputs = 2;
+  // use which field to interprete buffer. details see: spu.FieldType
+  int32 field = 3;
+  // how many bits need to truncate.
+  int32 bits = 4;
+  // output 
+  // adjust1 = ((ra << 1) >> (bits + 1)) - rb
+  // adjust2 = msb(ra) - rc
+  // make 
+  // (adjust1 + rb) = (ra mod 2^(ring_size-1)) >> bits
+  // (adjust2 + rc) = msb(ra)
+}
+
+message AdjustRandBitRequest {
+  string session_id = 1; 
+  // input one prg buffer
+  // reconstruct all parties' share get: ra
+  repeated PrgBufferMeta prg_inputs = 2;
+  // use which field to interprete buffer. details see: spu.FieldType
+  int32 field = 3;
+  // output 
+  // adjust_a = server generated random 0/1 array - rb
+  // make 
+  // (adjust_a + ra) = random 0/1 array
+}
+
+message AdjustResponse {
+  ErrorCode code = 1;
+  string message = 2;
+  // Adjust output array buffer
+  repeated bytes adjust_outputs = 3;
+}
