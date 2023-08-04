@@ -149,7 +149,7 @@ Value Value::fromProto(const ValueProto& value) {
   for (const auto& [offset, chunk] : ordered_chunks) {
     SPU_ENFORCE(offset == chunk_end_pos,
                 "offset {} is not match to last chunk's end pos", offset);
-    memcpy(static_cast<uint8_t*>(data.data()) + offset, chunk->content().data(),
+    memcpy(data.data<uint8_t>() + offset, chunk->content().data(),
            chunk->content().size());
     chunk_end_pos += chunk->content().size();
   }

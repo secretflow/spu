@@ -72,9 +72,11 @@ NdArrayRef ring_sqrt2k(const NdArrayRef& x, size_t bits = 0) {
   auto ret = ring_zeros(field, x.shape());
   DISPATCH_ALL_FIELDS(field, "_", [&]() {
     using U = std::make_unsigned<ring2k_t>::type;
+    NdArrayView<U> _ret(ret);
+    NdArrayView<U> _x(x);
     yacl::parallel_for(0, numel, 4096, [&](int64_t beg, int64_t end) {
       for (int64_t idx = beg; idx < end; ++idx) {
-        ret.at<U>(idx) = Sqrt2k(x.at<U>(idx), bits);
+        _ret[idx] = Sqrt2k(_x[idx], bits);
       }
     });
   });
@@ -103,9 +105,11 @@ NdArrayRef ring_inv2k(const NdArrayRef& x, size_t bits = 0) {
   auto ret = ring_zeros(field, x.shape());
   DISPATCH_ALL_FIELDS(field, "_", [&]() {
     using U = std::make_unsigned<ring2k_t>::type;
+    NdArrayView<U> _ret(ret);
+    NdArrayView<U> _x(x);
     yacl::parallel_for(0, numel, 4096, [&](int64_t beg, int64_t end) {
       for (int64_t idx = beg; idx < end; ++idx) {
-        ret.at<U>(idx) = Invert2k(x.at<U>(idx), bits);
+        _ret[idx] = Invert2k(_x[idx], bits);
       }
     });
   });
@@ -117,9 +121,10 @@ std::vector<bool> ring_cast_vector_boolean(const NdArrayRef& x) {
 
   std::vector<bool> res(x.numel());
   DISPATCH_ALL_FIELDS(field, "RingOps", [&]() {
+    NdArrayView<ring2k_t> _x(x);
     yacl::parallel_for(0, x.numel(), 4096, [&](size_t start, size_t end) {
       for (size_t i = start; i < end; i++) {
-        res[i] = static_cast<bool>(x.at<ring2k_t>(i) & 0x1);
+        res[i] = static_cast<bool>(_x[i] & 0x1);
       }
     });
   });
@@ -206,10 +211,14 @@ NdArrayRef BeaverTinyOt::AuthArrayRef(const NdArrayRef& x, FieldType field,
     int64_t new_numel = t + 1;
     NdArrayRef x_hat(x.eltype(), {new_numel});
     auto x_mask = ring_rand(field, {1});
+
+    NdArrayView<T> _x_hat(x_hat);
+    NdArrayView<T> _x(x);
+    NdArrayView<T> _x_mask(x_mask);
     for (int i = 0; i < t; ++i) {
-      x_hat.at<T>(i) = x.at<T>(i);
+      _x_hat[i] = _x[i];
     }
-    x_hat.at<T>(t) = x_mask.at<T>(0);
+    _x_hat[t] = _x_mask[0];
 
     // 3. every pair calls vole && 4. receives vole output
     size_t WorldSize = comm_->getWorldSize();
@@ -241,14 +250,16 @@ NdArrayRef BeaverTinyOt::AuthArrayRef(const NdArrayRef& x, FieldType field,
     }
 
     auto m = ring_add(ring_mul(x_hat, spdz_key_), a_b);
+    NdArrayView<T> _m(m);
 
     // Consistency check
     // 6. get l public random values
     auto pub_r = prg_state_->genPubl(field, {new_numel});
+    NdArrayView<T> _pub_r(pub_r);
     std::vector<int> rv;
     size_t numel = x.numel();
     for (size_t i = 0; i < numel; ++i) {
-      rv.emplace_back(pub_r.at<T>(i));
+      rv.emplace_back(_pub_r[i]);
     }
     rv.emplace_back(1);
 
@@ -257,8 +268,8 @@ NdArrayRef BeaverTinyOt::AuthArrayRef(const NdArrayRef& x, FieldType field,
     T m_angle = 0;
     for (int64_t i = 0; i < new_numel; ++i) {
       // x_hat, not x
-      x_angle += rv[i] * x_hat.at<T>(i);
-      m_angle += rv[i] * m.at<T>(i);
+      x_angle += rv[i] * _x_hat[i];
+      m_angle += rv[i] * _m[i];
     }
 
     auto x_angle_sum =
@@ -340,10 +351,11 @@ BeaverTinyOt::Triple_Pair BeaverTinyOt::AuthAnd(FieldType field,
   DISPATCH_ALL_FIELDS(field, "_", [&]() {
     using U = std::make_unsigned<ring2k_t>::type;
     auto _size = auth_abcr.choices.size();
+    NdArrayView<U> _spdz_choices(spdz_choices);
     // copy authbit choices
     yacl::parallel_for(0, _size, 4096, [&](int64_t beg, int64_t end) {
       for (int64_t idx = beg; idx < end; ++idx) {
-        spdz_choices.at<U>(idx) = auth_abcr.choices[idx];
+        _spdz_choices[idx] = auth_abcr.choices[idx];
       }
     });
   });
@@ -384,10 +396,14 @@ BeaverTinyOt::Triple_Pair BeaverTinyOt::AuthAnd(FieldType field,
 
   DISPATCH_ALL_FIELDS(field, "_", [&]() {
     using U = std::make_unsigned<ring2k_t>::type;
+    NdArrayView<U> _check_spdz_bit(check_spdz_bit);
+    NdArrayView<U> _check_spdz_mac(check_spdz_mac);
+    NdArrayView<U> _spdz_choices(spdz_choices);
+    NdArrayView<U> _spdz_mac(spdz_mac);
 
     for (int64_t i = 0; i < sigma; ++i) {
-      check_spdz_bit.at<U>(i) = spdz_choices.at<U>(3 * tinyot_num + i);
-      check_spdz_mac.at<U>(i) = spdz_mac.at<U>(3 * tinyot_num + i);
+      _check_spdz_bit[i] = _spdz_choices[3 * tinyot_num + i];
+      _check_spdz_mac[i] = _spdz_mac[3 * tinyot_num + i];
       check_tiny_bit.mac[i] = auth_abcr.mac[tinyot_num * 3 + i];
     }
     for (int64_t j = 0; j < tinyot_num * 3; ++j) {
@@ -397,8 +413,8 @@ BeaverTinyOt::Triple_Pair BeaverTinyOt::AuthAnd(FieldType field,
       for (size_t i = 0; i < sigma; ++i) {
         if (ceof & 1) {
           check_tiny_bit.mac[i] ^= auth_abcr.mac[j];
-          check_spdz_bit.at<U>(i) += spdz_choices.at<U>(j);
-          check_spdz_mac.at<U>(i) += spdz_mac.at<U>(j);
+          _check_spdz_bit[i] += _spdz_choices[j];
+          _check_spdz_mac[i] += _spdz_mac[j];
         }
         ceof >>= 1;
       }
@@ -534,12 +550,12 @@ BeaverTinyOt::Pair_Pair BeaverTinyOt::AuthTrunc(FieldType field,
 
   DISPATCH_ALL_FIELDS(field, "_", [&]() {
     using PShrT = ring2k_t;
-    auto _val = b_val.data<PShrT>();
-    auto _mac = b_mac.data<PShrT>();
-    auto _r_val = r_val.data<PShrT>();
-    auto _r_mac = r_mac.data<PShrT>();
-    auto _tr_val = tr_val.data<PShrT>();
-    auto _tr_mac = tr_mac.data<PShrT>();
+    NdArrayView<PShrT> _val(b_val);
+    NdArrayView<PShrT> _mac(b_mac);
+    NdArrayView<PShrT> _r_val(r_val);
+    NdArrayView<PShrT> _r_mac(r_mac);
+    NdArrayView<PShrT> _tr_val(tr_val);
+    NdArrayView<PShrT> _tr_mac(tr_mac);
     pforeach(0, size, [&](int64_t idx) {
       _r_val[idx] = 0;
       _r_mac[idx] = 0;
@@ -659,9 +675,8 @@ NdArrayRef BeaverTinyOt::genPublCoin(FieldType field, int64_t num) {
   }
 
   const auto kAesType = yacl::crypto::SymmetricCrypto::CryptoType::AES128_CTR;
-  yacl::crypto::FillPRand(
-      kAesType, public_seed, 0, 0,
-      absl::MakeSpan(static_cast<char*>(res.data()), res.buf()->size()));
+  yacl::crypto::FillPRand(kAesType, public_seed, 0, 0,
+                          absl::MakeSpan(res.data<char>(), res.buf()->size()));
 
   return res;
 }
@@ -693,7 +708,7 @@ bool BeaverTinyOt::BatchMacCheck(const NdArrayRef& open_value,
   // 4. local_mac = check_mac - check_value * key
   auto local_mac = ring_sub(check_mac, ring_mul(check_value, key));
   // commit and reduce all macs
-  std::string mac_str(reinterpret_cast<char*>(local_mac.data()),
+  std::string mac_str(local_mac.data<char>(),
                       local_mac.numel() * local_mac.elsize());
   std::vector<std::string> all_mac_strs;
   SPU_ENFORCE(commit_and_open(comm_->lctx(), mac_str, &all_mac_strs));
@@ -754,8 +769,8 @@ void BeaverTinyOt::rotSend(FieldType field, NdArrayRef* q0, NdArrayRef* q1) {
     SPDLOG_DEBUG("rotSend start with numel {}", q0->numel());
     SPU_ENFORCE(q0->numel() == q1->numel());
     size_t numel = q0->numel();
-    T* data0 = reinterpret_cast<T*>(q0->data());
-    T* data1 = reinterpret_cast<T*>(q1->data());
+    auto* data0 = q0->data<T>();
+    auto* data1 = q1->data<T>();
 
     SPU_ENFORCE(spdz2k_ot_primitives_ != nullptr);
     SPU_ENFORCE(spdz2k_ot_primitives_->GetSenderCOT() != nullptr);
@@ -777,15 +792,17 @@ void BeaverTinyOt::rotRecv(FieldType field, const NdArrayRef& a,
     SPDLOG_DEBUG("rotRecv start with numel {}", a.numel());
     size_t numel = a.numel();
     std::vector<uint8_t> b_v(numel);
+
+    NdArrayView<T> _a(a);
     for (size_t i = 0; i < numel; ++i) {
-      b_v[i] = a.at<T>(i);
+      b_v[i] = _a[i];
     }
 
     SPU_ENFORCE(spdz2k_ot_primitives_ != nullptr);
     SPU_ENFORCE(spdz2k_ot_primitives_->GetSenderCOT() != nullptr);
     SPU_ENFORCE(spdz2k_ot_primitives_->GetReceiverCOT() != nullptr);
 
-    T* data = reinterpret_cast<T*>(s->data());
+    auto* data = s->data<T>();
     spdz2k_ot_primitives_->GetReceiverCOT()->RecvRMCC(
         b_v, absl::MakeSpan(data, numel));
     spdz2k_ot_primitives_->GetReceiverCOT()->Flush();
@@ -806,9 +823,9 @@ NdArrayRef BeaverTinyOt::voleSend(FieldType field, const NdArrayRef& x) {
     SPU_ENFORCE(spdz2k_ot_primitives_->GetSenderCOT() != nullptr);
 
     NdArrayRef res(x.eltype(), x.shape());
-    T* data = reinterpret_cast<T*>(res.data());
+    auto* data = res.data<T>();
     spdz2k_ot_primitives_->GetSenderCOT()->SendVole(
-        absl::MakeConstSpan(reinterpret_cast<const T*>(x.data()), x.numel()),
+        absl::MakeConstSpan(x.data<const T>(), x.numel()),
         absl::MakeSpan(data, x.numel()));
 
     return res;
@@ -823,10 +840,9 @@ NdArrayRef BeaverTinyOt::voleRecv(FieldType field, const NdArrayRef& alpha) {
     SPU_ENFORCE(spdz2k_ot_primitives_->GetReceiverCOT() != nullptr);
 
     NdArrayRef res(makeType<RingTy>(field), alpha.shape());
-    T* data = reinterpret_cast<T*>(res.data());
+    auto* data = res.data<T>();
     spdz2k_ot_primitives_->GetReceiverCOT()->RecvVole(
-        absl::MakeConstSpan(reinterpret_cast<const T*>(alpha.data()),
-                            alpha.numel()),
+        absl::MakeConstSpan(alpha.data<const T>(), alpha.numel()),
         absl::MakeSpan(data, alpha.numel()));
 
     return res;
@@ -911,8 +927,11 @@ BeaverTinyOt::Triple_Pair BeaverTinyOt::AuthMul(FieldType field,
 
     auto b = ring_rand(field, {_size});
     auto b_arr = ring_zeros(field, {expand_tao});
+
+    NdArrayView<T> _b(b);
+    NdArrayView<T> _b_arr(b_arr);
     for (int64_t i = 0; i < expand_tao; ++i) {
-      b_arr.at<T>(i) = b.at<T>(i / tao);
+      _b_arr[i] = _b[i / tao];
     }
 
     // Every ordered pair does following
@@ -973,12 +992,21 @@ BeaverTinyOt::Triple_Pair BeaverTinyOt::AuthMul(FieldType field,
     NdArrayRef crc = ring_zeros(field, {_size});
     NdArrayRef crc_hat = ring_zeros(field, {_size});
 
-    for (int64_t i = 0; i < expand_tao; ++i) {
-      cra.at<T>(i / tao) += ra.at<T>(i);
-      cra_hat.at<T>(i / tao) += ra_hat.at<T>(i);
+    NdArrayView<T> _cra(cra);
+    NdArrayView<T> _cra_hat(cra_hat);
+    NdArrayView<T> _crc(crc);
+    NdArrayView<T> _crc_hat(cra_hat);
+    NdArrayView<T> _ra(ra);
+    NdArrayView<T> _ra_hat(ra_hat);
+    NdArrayView<T> _rc(rc);
+    NdArrayView<T> _rc_hat(rc_hat);
 
-      crc.at<T>(i / tao) += rc.at<T>(i);
-      crc_hat.at<T>(i / tao) += rc_hat.at<T>(i);
+    for (int64_t i = 0; i < expand_tao; ++i) {
+      _cra[i / tao] += _ra[i];
+      _cra_hat[i / tao] += _ra_hat[i];
+
+      _crc[i / tao] += _rc[i];
+      _crc_hat[i / tao] += _rc_hat[i];
     }
 
     // Authenticate

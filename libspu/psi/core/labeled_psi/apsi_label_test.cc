@@ -31,6 +31,8 @@
 #include "libspu/psi/core/labeled_psi/psi_params.h"
 #include "libspu/psi/core/labeled_psi/receiver.h"
 #include "libspu/psi/core/labeled_psi/sender.h"
+#include "libspu/psi/core/labeled_psi/sender_kvdb.h"
+#include "libspu/psi/core/labeled_psi/sender_memdb.h"
 
 namespace spu::psi {
 
@@ -43,6 +45,7 @@ struct TestParams {
   size_t nr;
   size_t ns;
   size_t label_bytes = 16;
+  bool use_kvdb = true;
 };
 
 std::vector<std::string> GenerateData(size_t seed, size_t item_count) {
@@ -53,46 +56,43 @@ std::vector<std::string> GenerateData(size_t seed, size_t item_count) {
   for (size_t i = 0; i < item_count; ++i) {
     std::string item(16, '\0');
     prg.Fill(absl::MakeSpan(item.data(), item.length()));
-    items.emplace_back(item);
+    items.emplace_back(absl::BytesToHexString(item));
   }
 
   return items;
 }
 
-std::vector<std::pair<apsi::Item, apsi::Label>> GenerateSenderData(
-    size_t seed, size_t item_count, size_t label_byte_count,
-    const absl::Span<std::string> &receiver_items,
-    std::vector<size_t> *intersection_idx,
-    std::vector<std::string> *intersection_label) {
-  std::vector<std::pair<apsi::Item, apsi::Label>> sender_items;
+std::pair<std::vector<std::string>, std::vector<std::string>>
+GenerateSenderData(size_t seed, size_t item_count, size_t label_byte_count,
+                   const absl::Span<std::string> &receiver_items,
+                   std::vector<size_t> *intersection_idx,
+                   std::vector<std::string> *intersection_label) {
+  std::vector<std::string> sender_items;
+  std::vector<std::string> sender_labels;
 
   yacl::crypto::Prg<uint128_t> prg(seed);
 
   for (size_t i = 0; i < item_count; ++i) {
-    apsi::Item item;
-    apsi::Label label;
-    label.resize(label_byte_count);
-    prg.Fill(absl::MakeSpan(item.value()));
-    prg.Fill(absl::MakeSpan(label));
-    sender_items.emplace_back(item, label);
+    std::string item(16, '\0');
+    std::string label((label_byte_count - 1) / 2, '\0');
+
+    prg.Fill(absl::MakeSpan(item.data(), item.length()));
+    prg.Fill(absl::MakeSpan(label.data(), label.length()));
+    sender_items.emplace_back(absl::BytesToHexString(item));
+    sender_labels.emplace_back(absl::BytesToHexString(label));
   }
 
   for (size_t i = 0; i < receiver_items.size(); i += 3) {
-    apsi::Item item;
-    std::memcpy(item.value().data(), receiver_items[i].data(),
-                receiver_items[i].length());
-
-    sender_items[kPsiStartPos + i * 5].first = item;
+    if ((kPsiStartPos + i * 5) >= sender_items.size()) {
+      break;
+    }
+    sender_items[kPsiStartPos + i * 5] = receiver_items[i];
     (*intersection_idx).emplace_back(i);
-    std::string label_string(sender_items[kPsiStartPos + i * 5].second.size(),
-                             '\0');
-    std::memcpy(label_string.data(),
-                sender_items[kPsiStartPos + i * 5].second.data(),
-                sender_items[kPsiStartPos + i * 5].second.size());
-    (*intersection_label).emplace_back(label_string);
+
+    (*intersection_label).emplace_back(sender_labels[kPsiStartPos + i * 5]);
   }
 
-  return sender_items;
+  return std::make_pair(sender_items, sender_labels);
 }
 
 }  // namespace
@@ -127,7 +127,7 @@ TEST_P(LabelPsiTest, Works) {
   std::array<uint8_t, 32> oprf_key;
   prg.Fill(absl::MakeSpan(oprf_key));
 
-  std::string kv_store_path = fmt::format("data_{}", params.ns);
+  std::string kv_store_path = fmt::format("data_{}/", params.ns);
   std::filesystem::create_directory(kv_store_path);
   // register remove of temp dir.
   ON_SCOPE_EXIT([&] {
@@ -142,10 +142,15 @@ TEST_P(LabelPsiTest, Works) {
   });
 
   bool compressed = false;
-  std::shared_ptr<spu::psi::SenderDB> sender_db =
-      std::make_shared<spu::psi::SenderDB>(psi_params, oprf_key, kv_store_path,
-                                           label_byte_count, nonce_byte_count,
-                                           compressed);
+  std::shared_ptr<spu::psi::ISenderDB> sender_db;
+  if (params.use_kvdb) {
+    sender_db = std::make_shared<spu::psi::SenderKvDB>(
+        psi_params, oprf_key, kv_store_path, label_byte_count, nonce_byte_count,
+        compressed);
+  } else {
+    sender_db = std::make_shared<spu::psi::SenderMemDB>(
+        psi_params, oprf_key, label_byte_count, nonce_byte_count, compressed);
+  }
 
   std::vector<std::string> receiver_items = GenerateData(rd(), params.nr);
 
@@ -156,29 +161,15 @@ TEST_P(LabelPsiTest, Works) {
 
   const auto setdb_start = std::chrono::system_clock::now();
 
-  std::vector<std::pair<apsi::Item, apsi::Label>> sender_items =
-      GenerateSenderData(rd(), item_count, label_byte_count - 6,
-                         absl::MakeSpan(receiver_items), &intersection_idx,
-                         &intersection_label);
+  std::vector<std::string> sender_keys;
+  std::vector<std::string> sender_labels;
 
-  // sender_db->SetData(sender_items);
-
-  std::vector<std::string> sender_data(sender_items.size());
-  std::vector<std::string> sender_label(sender_items.size());
-  for (size_t i = 0; i < sender_items.size(); ++i) {
-    sender_data[i].reserve(sender_items[i].first.value().size());
-    sender_data[i].append(absl::string_view(
-        reinterpret_cast<char *>(sender_items[i].first.value().data()),
-        sender_items[i].first.value().size()));
-
-    sender_label[i].reserve(sender_items[i].second.size());
-    sender_label[i].append(absl::string_view(
-        reinterpret_cast<char *>(sender_items[i].second.data()),
-        sender_items[i].second.size()));
-  }
+  std::tie(sender_keys, sender_labels) = GenerateSenderData(
+      rd(), item_count, label_byte_count - 4, absl::MakeSpan(receiver_items),
+      &intersection_idx, &intersection_label);
 
   std::shared_ptr<IBatchProvider> batch_provider =
-      std::make_shared<MemoryBatchProvider>(sender_data, sender_label);
+      std::make_shared<MemoryBatchProvider>(sender_keys, sender_labels);
 
   sender_db->SetData(batch_provider);
 
@@ -193,12 +184,6 @@ TEST_P(LabelPsiTest, Works) {
 
   const apsi::PSIParams apsi_params = sender_db->GetParams();
   SPDLOG_INFO("params.bundle_idx_count={}", apsi_params.bundle_idx_count());
-  for (size_t i = 0; i < apsi_params.bundle_idx_count(); ++i) {
-    SPDLOG_INFO("i={},count={}", i, sender_db->GetBinBundleCount(i));
-  }
-
-  std::unique_ptr<IEcdhOprfServer> oprf_server =
-      CreateEcdhOprfServer(oprf_key, OprfType::Basic, CurveType::CURVE_FOURQ);
 
   LabelPsiSender sender(sender_db);
 
@@ -208,8 +193,12 @@ TEST_P(LabelPsiTest, Works) {
 
   const auto oprf_start = std::chrono::system_clock::now();
 
-  std::future<void> f_sender_oprf = std::async(
-      [&] { return sender.RunOPRF(std::move(oprf_server), ctxs[0]); });
+  std::future<void> f_sender_oprf = std::async([&] {
+    std::unique_ptr<IEcdhOprfServer> oprf_server =
+        CreateEcdhOprfServer(oprf_key, OprfType::Basic, CurveType::CURVE_FOURQ);
+
+    return sender.RunOPRF(std::move(oprf_server), ctxs[0]);
+  });
 
   std::future<
       std::pair<std::vector<apsi::HashedItem>, std::vector<apsi::LabelKey>>>
@@ -269,8 +258,9 @@ INSTANTIATE_TEST_SUITE_P(Works_Instances, LabelPsiTest,
                              TestParams{10000, 100000, 32},   // 10000-100K-32
                              TestParams{10000, 1000000, 32})  // 10000-1M-32
 #else
-                             TestParams{2048, 100000, 32},  // 2048-100K-32
-                             TestParams{4096, 100000, 32})  // 4096-100K-32
+                             TestParams{10, 10000, 32},           // 10-10K-32
+                             TestParams{2048, 10000, 32},         // 2048-10K-32
+                             TestParams{100, 100000, 32, false})  // 100-100K-32
 
 #endif
 );

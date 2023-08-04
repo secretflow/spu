@@ -6,7 +6,7 @@ _Pad operator_
 Pads the edges of `operand` with the `padding_value` and according to
 the passed configuration.
 
-See <https://www.tensorflow.org/xla/operation_semantics#pad>.
+See https://www.tensorflow.org/xla/operation_semantics#pad.
 
 Traits: AlwaysSpeculatableImplTrait, InferTensorType, SameOperandsAndResultElementType
 
@@ -14,7 +14,7 @@ Interfaces: ConditionallySpeculatable, InferShapedTypeOpInterface, InferTypeOpIn
 
 Effects: MemoryEffects::Effect{}
 
-#### Attributes
+#### Attributes:
 
 | Attribute | MLIR Type | Description |
 | :-------: | :-------: | ----------- |
@@ -22,14 +22,14 @@ Effects: MemoryEffects::Effect{}
 | `edge_padding_high` | ::mlir::DenseIntElementsAttr | 64-bit signless integer elements attribute
 | `interior_padding` | ::mlir::DenseIntElementsAttr | 64-bit signless integer elements attribute
 
-#### Operands
+#### Operands:
 
 | Operand | Description |
 | :-----: | ----------- |
 | `operand` | statically shaped tensor of PPHlo public type or PPHlo secret type values
 | `padding_value` | statically shaped tensor of PPHlo public type or PPHlo secret type values
 
-#### Results
+#### Results:
 
 | Result | Description |
 | :----: | ----------- |
@@ -42,7 +42,7 @@ _Absolute value operator_
 Returns `abs(operand)` element-wise.
 
 See
-<https://www.tensorflow.org/xla/operation_semantics#element-wise_unary_functions>.
+https://www.tensorflow.org/xla/operation_semantics#element-wise_unary_functions.
 
 Traits: AlwaysSpeculatableImplTrait, Elementwise, SameOperandsAndResultShape, SameOperandsAndResultType
 
@@ -50,13 +50,13 @@ Interfaces: ConditionallySpeculatable, InferTypeOpInterface, NoMemoryEffect (Mem
 
 Effects: MemoryEffects::Effect{}
 
-#### Operands
+#### Operands:
 
 | Operand | Description |
 | :-----: | ----------- |
 | `operand` | statically shaped tensor of PPHlo public type or PPHlo secret type values
 
-#### Results
+#### Results:
 
 | Result | Description |
 | :----: | ----------- |
@@ -69,7 +69,7 @@ _Addition operator_
 Returns `lhs + rhs` element-wise.
 
 See
-<https://www.tensorflow.org/xla/operation_semantics#element-wise_binary_arithmetic_operations>.
+https://www.tensorflow.org/xla/operation_semantics#element-wise_binary_arithmetic_operations.
 
 Traits: AlwaysSpeculatableImplTrait, Commutative, Elementwise, SameOperandsAndResultShape
 
@@ -77,14 +77,14 @@ Interfaces: ConditionallySpeculatable, NoMemoryEffect (MemoryEffectOpInterface)
 
 Effects: MemoryEffects::Effect{}
 
-#### Operands
+#### Operands:
 
 | Operand | Description |
 | :-----: | ----------- |
 | `lhs` | statically shaped tensor of PPHlo public type or PPHlo secret type values
 | `rhs` | statically shaped tensor of PPHlo public type or PPHlo secret type values
 
-#### Results
+#### Results:
 
 | Result | Description |
 | :----: | ----------- |
@@ -97,7 +97,7 @@ _Logical and_
 Returns `logical_and(lhs, rhs)` element-wise.
 
 See
-<https://www.tensorflow.org/xla/operation_semantics#element-wise_binary_arithmetic_operations>.
+https://www.tensorflow.org/xla/operation_semantics#element-wise_binary_arithmetic_operations.
 
 Traits: AlwaysSpeculatableImplTrait, Commutative, Elementwise, SameOperandsAndResultShape
 
@@ -105,14 +105,14 @@ Interfaces: ConditionallySpeculatable, NoMemoryEffect (MemoryEffectOpInterface)
 
 Effects: MemoryEffects::Effect{}
 
-#### Operands
+#### Operands:
 
 | Operand | Description |
 | :-----: | ----------- |
 | `lhs` | statically shaped tensor of public integer type or secret integer type values
 | `rhs` | statically shaped tensor of public integer type or secret integer type values
 
-#### Results
+#### Results:
 
 | Result | Description |
 | :----: | ----------- |
@@ -130,7 +130,7 @@ Interfaces: ConditionallySpeculatable, NoMemoryEffect (MemoryEffectOpInterface)
 
 Effects: MemoryEffects::Effect{}
 
-#### Attributes
+#### Attributes:
 
 | Attribute | MLIR Type | Description |
 | :-------: | :-------: | ----------- |
@@ -141,13 +141,13 @@ Effects: MemoryEffects::Effect{}
 | `padding` | ::mlir::DenseIntElementsAttr | 64-bit signless integer elements attribute
 | `onehot_index` | ::mlir::BoolAttr | bool attribute
 
-#### Operands
+#### Operands:
 
 | Operand | Description |
 | :-----: | ----------- |
 | `input` | statically shaped tensor of PPHlo public type or PPHlo secret type values
 
-#### Results
+#### Results:
 
 | Result | Description |
 | :----: | ----------- |
@@ -164,7 +164,7 @@ Similar to a 'tf.bitcast' in TensorFlow, performs an element-wise bitcast
  low-level cast, so machines with different floating-point representations
  will give different results.
 
- See <https://www.tensorflow.org/xla/operation_semantics#bitcastconverttype>.
+ See https://www.tensorflow.org/xla/operation_semantics#bitcastconverttype.
 
 Traits: AlwaysSpeculatableImplTrait
 
@@ -172,13 +172,13 @@ Interfaces: ConditionallySpeculatable, NoMemoryEffect (MemoryEffectOpInterface)
 
 Effects: MemoryEffects::Effect{}
 
-#### Operands
+#### Operands:
 
 | Operand | Description |
 | :-----: | ----------- |
 | `operand` | statically shaped tensor of PPHlo public type or PPHlo secret type values
 
-#### Results
+#### Results:
 
 | Result | Description |
 | :----: | ----------- |
@@ -201,7 +201,7 @@ broadcast from must be size 1 (degenerate broadcasting).
 For a scalar (0D tensor) operand, `broadcast_dimensions` must be empty. The
 The scalar value will be broadcast to every element in the target shape.
 
-See <https://www.tensorflow.org/xla/broadcasting>.
+See https://www.tensorflow.org/xla/broadcasting.
 
 Traits: AlwaysSpeculatableImplTrait, SameOperandsAndResultElementType
 
@@ -209,19 +209,19 @@ Interfaces: ConditionallySpeculatable, NoMemoryEffect (MemoryEffectOpInterface)
 
 Effects: MemoryEffects::Effect{}
 
-#### Attributes
+#### Attributes:
 
 | Attribute | MLIR Type | Description |
 | :-------: | :-------: | ----------- |
 | `broadcast_dimensions` | ::mlir::DenseIntElementsAttr | 64-bit signless integer elements attribute
 
-#### Operands
+#### Operands:
 
 | Operand | Description |
 | :-----: | ----------- |
 | `operand` | statically shaped tensor of PPHlo public type or PPHlo secret type values
 
-#### Results
+#### Results:
 
 | Result | Description |
 | :----: | ----------- |
@@ -242,13 +242,13 @@ of index, otherwise all branches will be executed and select results based on in
 
 Traits: RecursiveMemoryEffects, SingleBlockImplicitTerminator<ReturnOp>
 
-#### Operands
+#### Operands:
 
 | Operand | Description |
 | :-----: | ----------- |
 | `index` | statically shaped tensor of public integer type or secret integer type values
 
-#### Results
+#### Results:
 
 | Result | Description |
 | :----: | ----------- |
@@ -261,7 +261,7 @@ _Ceil operator_
 Returns `Ceil(operand)` element-wise.
 
 See
-<https://www.tensorflow.org/xla/operation_semantics#element-wise_unary_functions>.
+https://www.tensorflow.org/xla/operation_semantics#element-wise_unary_functions.
 
 Traits: AlwaysSpeculatableImplTrait, Elementwise, SameOperandsAndResultShape, SameOperandsAndResultType
 
@@ -269,13 +269,13 @@ Interfaces: ConditionallySpeculatable, InferTypeOpInterface, NoMemoryEffect (Mem
 
 Effects: MemoryEffects::Effect{}
 
-#### Operands
+#### Operands:
 
 | Operand | Description |
 | :-----: | ----------- |
 | `operand` | statically shaped tensor of public fixed-point type or secret fixed-point type values
 
-#### Results
+#### Results:
 
 | Result | Description |
 | :----: | ----------- |
@@ -291,7 +291,7 @@ Note: All three arrays must be the same shape. Alternatively, as a
       restricted form of broadcasting, min and/or max can be a scalar (0D
       tensor) of the element type of the tensor operand.
 
-See <https://www.tensorflow.org/xla/operation_semantics#clamp>.
+See https://www.tensorflow.org/xla/operation_semantics#clamp.
 
 Traits: AlwaysSpeculatableImplTrait, SameOperandsAndResultShape
 
@@ -299,7 +299,7 @@ Interfaces: ConditionallySpeculatable, NoMemoryEffect (MemoryEffectOpInterface)
 
 Effects: MemoryEffects::Effect{}
 
-#### Operands
+#### Operands:
 
 | Operand | Description |
 | :-----: | ----------- |
@@ -307,7 +307,7 @@ Effects: MemoryEffects::Effect{}
 | `operand` | statically shaped tensor of PPHlo public type or PPHlo secret type values
 | `max` | statically shaped tensor of PPHlo public type or PPHlo secret type values
 
-#### Results
+#### Results:
 
 | Result | Description |
 | :----: | ----------- |
@@ -319,7 +319,7 @@ _Concatenate op_
 
 Concatenates a set of tensors along the specified dimension.
 
-See <https://www.tensorflow.org/xla/operation_semantics#concatenate>.
+See https://www.tensorflow.org/xla/operation_semantics#concatenate.
 
 Traits: AlwaysSpeculatableImplTrait, SameOperandsAndResultElementType
 
@@ -327,19 +327,19 @@ Interfaces: ConditionallySpeculatable, InferTypeOpInterface, NoMemoryEffect (Mem
 
 Effects: MemoryEffects::Effect{}
 
-#### Attributes
+#### Attributes:
 
 | Attribute | MLIR Type | Description |
 | :-------: | :-------: | ----------- |
 | `dimension` | ::mlir::IntegerAttr | 64-bit signless integer attribute
 
-#### Operands
+#### Operands:
 
 | Operand | Description |
 | :-----: | ----------- |
 | `val` | statically shaped tensor of PPHlo public type or PPHlo secret type values
 
-#### Results
+#### Results:
 
 | Result | Description |
 | :----: | ----------- |
@@ -356,13 +356,13 @@ Interfaces: ConditionallySpeculatable, NoMemoryEffect (MemoryEffectOpInterface)
 
 Effects: MemoryEffects::Effect{}
 
-#### Attributes
+#### Attributes:
 
 | Attribute | MLIR Type | Description |
 | :-------: | :-------: | ----------- |
 | `value` | ::mlir::ElementsAttr | constant vector/tensor attribute
 
-#### Results
+#### Results:
 
 | Result | Description |
 | :----: | ----------- |
@@ -376,7 +376,7 @@ Performs element-wise conversion of values from one type to another,
 e.g.fxp to int.
 
 See
-<https://www.tensorflow.org/xla/operation_semantics#convertelementtype>.
+https://www.tensorflow.org/xla/operation_semantics#convertelementtype.
 
 Traits: AlwaysSpeculatableImplTrait, Elementwise, SameOperandsAndResultShape
 
@@ -384,13 +384,13 @@ Interfaces: ConditionallySpeculatable, NoMemoryEffect (MemoryEffectOpInterface)
 
 Effects: MemoryEffects::Effect{}
 
-#### Operands
+#### Operands:
 
 | Operand | Description |
 | :-----: | ----------- |
 | `operand` | statically shaped tensor of PPHlo public type or PPHlo secret type values
 
-#### Results
+#### Results:
 
 | Result | Description |
 | :----: | ----------- |
@@ -399,6 +399,7 @@ Effects: MemoryEffects::Effect{}
 ### `pphlo.convolution` (pphlo::ConvolutionOp)
 
 _Convolution operator_
+
 
 Syntax:
 
@@ -411,7 +412,7 @@ operation ::= `pphlo.convolution` `(`operands`)`
 
 Computes a convolution of the kind used in neural networks.
 
-See <https://www.tensorflow.org/xla/operation_semantics#conv_convolution>.
+See https://www.tensorflow.org/xla/operation_semantics#conv_convolution.
 
 Traits: AlwaysSpeculatableImplTrait
 
@@ -419,7 +420,7 @@ Interfaces: ConditionallySpeculatable, NoMemoryEffect (MemoryEffectOpInterface)
 
 Effects: MemoryEffects::Effect{}
 
-#### Attributes
+#### Attributes:
 
 | Attribute | MLIR Type | Description |
 | :-------: | :-------: | ----------- |
@@ -428,14 +429,14 @@ Effects: MemoryEffects::Effect{}
 | `feature_group_count` | ::mlir::IntegerAttr | 64-bit signless integer attribute
 | `batch_group_count` | ::mlir::IntegerAttr | 64-bit signless integer attribute
 
-#### Operands
+#### Operands:
 
 | Operand | Description |
 | :-----: | ----------- |
 | `lhs` | statically shaped tensor of PPHlo public type or PPHlo secret type values
 | `rhs` | statically shaped tensor of PPHlo public type or PPHlo secret type values
 
-#### Results
+#### Results:
 
 | Result | Description |
 | :----: | ----------- |
@@ -444,6 +445,7 @@ Effects: MemoryEffects::Effect{}
 ### `pphlo.custom_call` (pphlo::CustomCallOp)
 
 _CustomCall operation_
+
 
 Syntax:
 
@@ -456,10 +458,9 @@ Encapsulates an implementation-defined operation `call_target_name` that
 takes `inputs` and `called_computations` and produces `results`.
 
 See:
-<https://github.com/openxla/stablehlo/blob/main/docs/spec.md#custom_call>
+https://github.com/openxla/stablehlo/blob/main/docs/spec.md#custom_call
 
 Example:
-
 ```mlir
 %results = stablehlo.custom_call @foo(%input0) {
   backend_config = "bar",
@@ -469,20 +470,20 @@ Example:
 
 Interfaces: MemoryEffectOpInterface
 
-#### Attributes
+#### Attributes:
 
 | Attribute | MLIR Type | Description |
 | :-------: | :-------: | ----------- |
 | `call_target_name` | ::mlir::StringAttr | string attribute
 | `has_side_effect` | ::mlir::BoolAttr | bool attribute
 
-#### Operands
+#### Operands:
 
 | Operand | Description |
 | :-----: | ----------- |
 | `inputs` | statically shaped tensor of PPHlo public type or PPHlo secret type values
 
-#### Results
+#### Results:
 
 | Result | Description |
 | :----: | ----------- |
@@ -490,7 +491,7 @@ Interfaces: MemoryEffectOpInterface
 
 ### `pphlo.dbg_print` (pphlo::DbgPrintOp)
 
-#### Operands
+#### Operands:
 
 | Operand | Description |
 | :-----: | ----------- |
@@ -503,7 +504,7 @@ _Division operator_
 Returns `lhs / rhs` element-wise.
 
 See
-<https://www.tensorflow.org/xla/operation_semantics#element-wise_binary_arithmetic_operations>.
+https://www.tensorflow.org/xla/operation_semantics#element-wise_binary_arithmetic_operations.
 
 Traits: AlwaysSpeculatableImplTrait, Elementwise, SameOperandsAndResultShape
 
@@ -511,14 +512,14 @@ Interfaces: ConditionallySpeculatable, NoMemoryEffect (MemoryEffectOpInterface)
 
 Effects: MemoryEffects::Effect{}
 
-#### Operands
+#### Operands:
 
 | Operand | Description |
 | :-----: | ----------- |
 | `lhs` | statically shaped tensor of PPHlo public type or PPHlo secret type values
 | `rhs` | statically shaped tensor of PPHlo public type or PPHlo secret type values
 
-#### Results
+#### Results:
 
 | Result | Description |
 | :----: | ----------- |
@@ -531,7 +532,7 @@ _General Dot operator_
 Performs general dot products between vectors, vector/matrix and
 matrix/matrix multiplication.
 
-See <https://www.tensorflow.org/xla/operation_semantics#dotgeneral>.
+See https://www.tensorflow.org/xla/operation_semantics#dotgeneral.
 
 Traits: AlwaysSpeculatableImplTrait
 
@@ -539,20 +540,20 @@ Interfaces: ConditionallySpeculatable, NoMemoryEffect (MemoryEffectOpInterface)
 
 Effects: MemoryEffects::Effect{}
 
-#### Attributes
+#### Attributes:
 
 | Attribute | MLIR Type | Description |
 | :-------: | :-------: | ----------- |
 | `dot_dimension_numbers` | ::mlir::pphlo::DotDimensionNumbersAttr | Attribute that models the dimension information for dot.
 
-#### Operands
+#### Operands:
 
 | Operand | Description |
 | :-----: | ----------- |
 | `lhs` | statically shaped tensor of PPHlo public type or PPHlo secret type values
 | `rhs` | statically shaped tensor of PPHlo public type or PPHlo secret type values
 
-#### Results
+#### Results:
 
 | Result | Description |
 | :----: | ----------- |
@@ -565,7 +566,7 @@ _Dot operator_
 Performs dot products between vectors, vector/matrix and matrix/matrix
 multiplication.
 
-See <https://www.tensorflow.org/xla/operation_semantics#dot>.
+See https://www.tensorflow.org/xla/operation_semantics#dot.
 
 Traits: AlwaysSpeculatableImplTrait
 
@@ -573,14 +574,14 @@ Interfaces: ConditionallySpeculatable, NoMemoryEffect (MemoryEffectOpInterface)
 
 Effects: MemoryEffects::Effect{}
 
-#### Operands
+#### Operands:
 
 | Operand | Description |
 | :-----: | ----------- |
 | `lhs` | statically shaped tensor of PPHlo public type or PPHlo secret type values
 | `rhs` | statically shaped tensor of PPHlo public type or PPHlo secret type values
 
-#### Results
+#### Results:
 
 | Result | Description |
 | :----: | ----------- |
@@ -592,7 +593,7 @@ _Dynamic Slice operator_
 
 Extracts a sub-array from the input array at dynamic start_indices.
 
-See <https://www.tensorflow.org/xla/operation_semantics#dynamicslice>.
+See https://www.tensorflow.org/xla/operation_semantics#dynamicslice.
 
 Traits: AlwaysSpeculatableImplTrait
 
@@ -600,20 +601,20 @@ Interfaces: ConditionallySpeculatable, InferTypeOpInterface, NoMemoryEffect (Mem
 
 Effects: MemoryEffects::Effect{}
 
-#### Attributes
+#### Attributes:
 
 | Attribute | MLIR Type | Description |
 | :-------: | :-------: | ----------- |
 | `slice_sizes` | ::mlir::DenseIntElementsAttr | 64-bit signless integer elements attribute
 
-#### Operands
+#### Operands:
 
 | Operand | Description |
 | :-----: | ----------- |
 | `operand` | statically shaped tensor of PPHlo public type or PPHlo secret type values
 | `start_indices` | 0D tensor of public integer type or secret integer type values
 
-#### Results
+#### Results:
 
 | Result | Description |
 | :----: | ----------- |
@@ -626,7 +627,7 @@ _Dynamic Update Slice operator_
 DynamicUpdateSlice generates a result which is the value of the input array
 operand, with a slice update overwritten at start_indices.
 
-See <https://www.tensorflow.org/xla/operation_semantics#dynamicupdateslice>.
+See https://www.tensorflow.org/xla/operation_semantics#dynamicupdateslice.
 
 Traits: AlwaysSpeculatableImplTrait
 
@@ -634,7 +635,7 @@ Interfaces: ConditionallySpeculatable, InferTypeOpInterface, NoMemoryEffect (Mem
 
 Effects: MemoryEffects::Effect{}
 
-#### Operands
+#### Operands:
 
 | Operand | Description |
 | :-----: | ----------- |
@@ -642,7 +643,7 @@ Effects: MemoryEffects::Effect{}
 | `update` | statically shaped tensor of PPHlo public type or PPHlo secret type values
 | `start_indices` | 0D tensor of public integer type or secret integer type values
 
-#### Results
+#### Results:
 
 | Result | Description |
 | :----: | ----------- |
@@ -659,7 +660,7 @@ Interfaces: ConditionallySpeculatable, NoMemoryEffect (MemoryEffectOpInterface)
 
 Effects: MemoryEffects::Effect{}
 
-#### Results
+#### Results:
 
 | Result | Description |
 | :----: | ----------- |
@@ -672,7 +673,7 @@ _Equal comparison operator_
 Returns `lhs` == `rhs` element-wise.
 
 See
-<https://www.tensorflow.org/xla/operation_semantics#element-wise_comparison_operations>.
+https://www.tensorflow.org/xla/operation_semantics#element-wise_comparison_operations.
 
 Traits: AlwaysSpeculatableImplTrait, Elementwise, SameOperandsAndResultShape
 
@@ -680,14 +681,14 @@ Interfaces: ConditionallySpeculatable, NoMemoryEffect (MemoryEffectOpInterface)
 
 Effects: MemoryEffects::Effect{}
 
-#### Operands
+#### Operands:
 
 | Operand | Description |
 | :-----: | ----------- |
 | `lhs` | statically shaped tensor of PPHlo public type or PPHlo secret type values
 | `rhs` | statically shaped tensor of PPHlo public type or PPHlo secret type values
 
-#### Results
+#### Results:
 
 | Result | Description |
 | :----: | ----------- |
@@ -700,7 +701,7 @@ _Exponential operator_
 Returns `e ^ (operand)` element-wise.
 
 See
-<https://www.tensorflow.org/xla/operation_semantics#element-wise_unary_functions>.
+https://www.tensorflow.org/xla/operation_semantics#element-wise_unary_functions.
 
 Traits: AlwaysSpeculatableImplTrait, Elementwise, SameOperandsAndResultShape, SameOperandsAndResultType
 
@@ -708,13 +709,13 @@ Interfaces: ConditionallySpeculatable, InferTypeOpInterface, NoMemoryEffect (Mem
 
 Effects: MemoryEffects::Effect{}
 
-#### Operands
+#### Operands:
 
 | Operand | Description |
 | :-----: | ----------- |
 | `operand` | statically shaped tensor of public fixed-point type or secret fixed-point type values
 
-#### Results
+#### Results:
 
 | Result | Description |
 | :----: | ----------- |
@@ -727,7 +728,7 @@ _Exponential minus one operator_
 Returns `e^(operand) - 1` element-wise.
 
 See
-<https://www.tensorflow.org/xla/operation_semantics#element-wise_unary_functions>.
+https://www.tensorflow.org/xla/operation_semantics#element-wise_unary_functions.
 
 Traits: AlwaysSpeculatableImplTrait, Elementwise, SameOperandsAndResultShape, SameOperandsAndResultType
 
@@ -735,13 +736,13 @@ Interfaces: ConditionallySpeculatable, InferTypeOpInterface, NoMemoryEffect (Mem
 
 Effects: MemoryEffects::Effect{}
 
-#### Operands
+#### Operands:
 
 | Operand | Description |
 | :-----: | ----------- |
 | `operand` | statically shaped tensor of public fixed-point type or secret fixed-point type values
 
-#### Results
+#### Results:
 
 | Result | Description |
 | :----: | ----------- |
@@ -754,7 +755,7 @@ _Floor operator_
 Returns `Floor(operand)` element-wise.
 
 See
-<https://www.tensorflow.org/xla/operation_semantics#element-wise_unary_functions>.
+https://www.tensorflow.org/xla/operation_semantics#element-wise_unary_functions.
 
 Traits: AlwaysSpeculatableImplTrait, Elementwise, SameOperandsAndResultShape, SameOperandsAndResultType
 
@@ -762,13 +763,13 @@ Interfaces: ConditionallySpeculatable, InferTypeOpInterface, NoMemoryEffect (Mem
 
 Effects: MemoryEffects::Effect{}
 
-#### Operands
+#### Operands:
 
 | Operand | Description |
 | :-----: | ----------- |
 | `operand` | statically shaped tensor of public fixed-point type or secret fixed-point type values
 
-#### Results
+#### Results:
 
 | Result | Description |
 | :----: | ----------- |
@@ -776,7 +777,7 @@ Effects: MemoryEffects::Effect{}
 
 ### `pphlo.free` (pphlo::FreeOp)
 
-#### Operands
+#### Operands:
 
 | Operand | Description |
 | :-----: | ----------- |
@@ -789,7 +790,7 @@ _Gather operator_
 Stitches together several slices of `operand` from offsets specified in
 `start_indices` (each slice at a potentially different runtime offset).
 
-See <https://www.tensorflow.org/xla/operation_semantics#gather>.
+See https://www.tensorflow.org/xla/operation_semantics#gather.
 
 Traits: AlwaysSpeculatableImplTrait
 
@@ -797,7 +798,7 @@ Interfaces: ConditionallySpeculatable, NoMemoryEffect (MemoryEffectOpInterface)
 
 Effects: MemoryEffects::Effect{}
 
-#### Attributes
+#### Attributes:
 
 | Attribute | MLIR Type | Description |
 | :-------: | :-------: | ----------- |
@@ -805,14 +806,14 @@ Effects: MemoryEffects::Effect{}
 | `slice_sizes` | ::mlir::DenseIntElementsAttr | 64-bit signless integer elements attribute
 | `indices_are_sorted` | ::mlir::BoolAttr | bool attribute
 
-#### Operands
+#### Operands:
 
 | Operand | Description |
 | :-----: | ----------- |
 | `operand` | statically shaped tensor of PPHlo public type or PPHlo secret type values
 | `start_indices` | statically shaped tensor of public integer type or secret integer type values
 
-#### Results
+#### Results:
 
 | Result | Description |
 | :----: | ----------- |
@@ -825,7 +826,7 @@ _Greater_equal comparison operator_
 Returns `lhs` >= `rhs` element-wise.
 
 See
-<https://www.tensorflow.org/xla/operation_semantics#element-wise_comparison_operations>.
+https://www.tensorflow.org/xla/operation_semantics#element-wise_comparison_operations.
 
 Traits: AlwaysSpeculatableImplTrait, Elementwise, SameOperandsAndResultShape
 
@@ -833,14 +834,14 @@ Interfaces: ConditionallySpeculatable, NoMemoryEffect (MemoryEffectOpInterface)
 
 Effects: MemoryEffects::Effect{}
 
-#### Operands
+#### Operands:
 
 | Operand | Description |
 | :-----: | ----------- |
 | `lhs` | statically shaped tensor of PPHlo public type or PPHlo secret type values
 | `rhs` | statically shaped tensor of PPHlo public type or PPHlo secret type values
 
-#### Results
+#### Results:
 
 | Result | Description |
 | :----: | ----------- |
@@ -857,14 +858,14 @@ Interfaces: ConditionallySpeculatable, NoMemoryEffect (MemoryEffectOpInterface)
 
 Effects: MemoryEffects::Effect{}
 
-#### Operands
+#### Operands:
 
 | Operand | Description |
 | :-----: | ----------- |
 | `lhs` | statically shaped tensor of PPHlo public type or PPHlo secret type values
 | `rhs` | statically shaped tensor of PPHlo public type or PPHlo secret type values
 
-#### Results
+#### Results:
 
 | Result | Description |
 | :----: | ----------- |
@@ -877,17 +878,17 @@ _If operator_
 Returns the result of executing either a true or false function depending on
     the result of a condition function.
 
-See <https://www.tensorflow.org/xla/operation_semantics#conditional>.
+See https://www.tensorflow.org/xla/operation_semantics#conditional.
 
 Traits: RecursiveMemoryEffects, SingleBlockImplicitTerminator<ReturnOp>
 
-#### Operands
+#### Operands:
 
 | Operand | Description |
 | :-----: | ----------- |
 | `condition` | statically shaped tensor of public integer type or secret integer type values
 
-#### Results
+#### Results:
 
 | Result | Description |
 | :----: | ----------- |
@@ -899,7 +900,7 @@ _Iota operator_
 
 Creates a rank 1 array of values starting at zero and incrementing by one.
 
-See <https://www.tensorflow.org/xla/operation_semantics#iota>
+See https://www.tensorflow.org/xla/operation_semantics#iota
 
 Traits: AlwaysSpeculatableImplTrait
 
@@ -907,13 +908,13 @@ Interfaces: ConditionallySpeculatable, NoMemoryEffect (MemoryEffectOpInterface)
 
 Effects: MemoryEffects::Effect{}
 
-#### Attributes
+#### Attributes:
 
 | Attribute | MLIR Type | Description |
 | :-------: | :-------: | ----------- |
 | `iota_dimension` | ::mlir::IntegerAttr | 64-bit signless integer attribute
 
-#### Results
+#### Results:
 
 | Result | Description |
 | :----: | ----------- |
@@ -930,14 +931,14 @@ Interfaces: ConditionallySpeculatable, NoMemoryEffect (MemoryEffectOpInterface)
 
 Effects: MemoryEffects::Effect{}
 
-#### Operands
+#### Operands:
 
 | Operand | Description |
 | :-----: | ----------- |
 | `lhs` | statically shaped tensor of PPHlo public type or PPHlo secret type values
 | `rhs` | statically shaped tensor of PPHlo public type or PPHlo secret type values
 
-#### Results
+#### Results:
 
 | Result | Description |
 | :----: | ----------- |
@@ -950,7 +951,7 @@ _Less comparison operator_
 Returns `lhs` < `rhs` element-wise.
 
 See
-<https://www.tensorflow.org/xla/operation_semantics#element-wise_comparison_operations>.
+https://www.tensorflow.org/xla/operation_semantics#element-wise_comparison_operations.
 
 Traits: AlwaysSpeculatableImplTrait, Elementwise, SameOperandsAndResultShape
 
@@ -958,14 +959,14 @@ Interfaces: ConditionallySpeculatable, NoMemoryEffect (MemoryEffectOpInterface)
 
 Effects: MemoryEffects::Effect{}
 
-#### Operands
+#### Operands:
 
 | Operand | Description |
 | :-----: | ----------- |
 | `lhs` | statically shaped tensor of PPHlo public type or PPHlo secret type values
 | `rhs` | statically shaped tensor of PPHlo public type or PPHlo secret type values
 
-#### Results
+#### Results:
 
 | Result | Description |
 | :----: | ----------- |
@@ -978,7 +979,7 @@ _Log1p operator_
 Returns `log(operand + 1)` element-wise.
 
 See
-<https://www.tensorflow.org/xla/operation_semantics#element-wise_unary_functions>.
+https://www.tensorflow.org/xla/operation_semantics#element-wise_unary_functions.
 
 Traits: AlwaysSpeculatableImplTrait, Elementwise, SameOperandsAndResultShape, SameOperandsAndResultType
 
@@ -986,13 +987,13 @@ Interfaces: ConditionallySpeculatable, InferTypeOpInterface, NoMemoryEffect (Mem
 
 Effects: MemoryEffects::Effect{}
 
-#### Operands
+#### Operands:
 
 | Operand | Description |
 | :-----: | ----------- |
 | `operand` | statically shaped tensor of public fixed-point type or secret fixed-point type values
 
-#### Results
+#### Results:
 
 | Result | Description |
 | :----: | ----------- |
@@ -1005,7 +1006,7 @@ _Log operator_
 Returns `log(operand)` element-wise.
 
 See
-<https://www.tensorflow.org/xla/operation_semantics#element-wise_unary_functions>.
+https://www.tensorflow.org/xla/operation_semantics#element-wise_unary_functions.
 
 Traits: AlwaysSpeculatableImplTrait, Elementwise, SameOperandsAndResultShape, SameOperandsAndResultType
 
@@ -1013,13 +1014,13 @@ Interfaces: ConditionallySpeculatable, InferTypeOpInterface, NoMemoryEffect (Mem
 
 Effects: MemoryEffects::Effect{}
 
-#### Operands
+#### Operands:
 
 | Operand | Description |
 | :-----: | ----------- |
 | `operand` | statically shaped tensor of public fixed-point type or secret fixed-point type values
 
-#### Results
+#### Results:
 
 | Result | Description |
 | :----: | ----------- |
@@ -1032,7 +1033,7 @@ _Reciprocal operator_
 Returns `logistic(operand)` element-wise.
 
 See
-<https://www.tensorflow.org/xla/operation_semantics#element-wise_unary_functions>.
+https://www.tensorflow.org/xla/operation_semantics#element-wise_unary_functions.
 
 Traits: AlwaysSpeculatableImplTrait, Elementwise, SameOperandsAndResultShape, SameOperandsAndResultType
 
@@ -1040,13 +1041,13 @@ Interfaces: ConditionallySpeculatable, InferTypeOpInterface, NoMemoryEffect (Mem
 
 Effects: MemoryEffects::Effect{}
 
-#### Operands
+#### Operands:
 
 | Operand | Description |
 | :-----: | ----------- |
 | `operand` | statically shaped tensor of public fixed-point type or secret fixed-point type values
 
-#### Results
+#### Results:
 
 | Result | Description |
 | :----: | ----------- |
@@ -1059,7 +1060,7 @@ _Maximum operator_
 Returns `max(lhs, rhs)` element-wise.
 
 See
-<https://www.tensorflow.org/xla/operation_semantics#element-wise_binary_arithmetic_operations>.
+https://www.tensorflow.org/xla/operation_semantics#element-wise_binary_arithmetic_operations.
 
 Traits: AlwaysSpeculatableImplTrait, Commutative, Elementwise, SameOperandsAndResultShape
 
@@ -1067,14 +1068,14 @@ Interfaces: ConditionallySpeculatable, NoMemoryEffect (MemoryEffectOpInterface)
 
 Effects: MemoryEffects::Effect{}
 
-#### Operands
+#### Operands:
 
 | Operand | Description |
 | :-----: | ----------- |
 | `lhs` | statically shaped tensor of PPHlo public type or PPHlo secret type values
 | `rhs` | statically shaped tensor of PPHlo public type or PPHlo secret type values
 
-#### Results
+#### Results:
 
 | Result | Description |
 | :----: | ----------- |
@@ -1088,7 +1089,7 @@ Generates a result which is the value of the input array `operand`,
 with several slices (at indices specified by `scatter_indices`)
 updated with the values in `updates` using `update_computation`.
 
-See <https://www.tensorflow.org/xla/operation_semantics#scatter>.
+See https://www.tensorflow.org/xla/operation_semantics#scatter.
 
 Traits: AlwaysSpeculatableImplTrait
 
@@ -1096,7 +1097,7 @@ Interfaces: ConditionallySpeculatable, NoMemoryEffect (MemoryEffectOpInterface)
 
 Effects: MemoryEffects::Effect{}
 
-#### Attributes
+#### Attributes:
 
 | Attribute | MLIR Type | Description |
 | :-------: | :-------: | ----------- |
@@ -1104,14 +1105,14 @@ Effects: MemoryEffects::Effect{}
 | `window_strides` | ::mlir::DenseIntElementsAttr | 64-bit signless integer elements attribute
 | `padding` | ::mlir::DenseIntElementsAttr | 64-bit signless integer elements attribute
 
-#### Operands
+#### Operands:
 
 | Operand | Description |
 | :-----: | ----------- |
 | `scatter_indices` | statically shaped tensor of public integer type or secret integer type values
 | `update` | statically shaped tensor of PPHlo public type or PPHlo secret type values
 
-#### Results
+#### Results:
 
 | Result | Description |
 | :----: | ----------- |
@@ -1124,7 +1125,7 @@ _Minimum operator_
 Returns `min(lhs, rhs)` element-wise.
 
 See
-<https://www.tensorflow.org/xla/operation_semantics#element-wise_binary_arithmetic_operations>.
+https://www.tensorflow.org/xla/operation_semantics#element-wise_binary_arithmetic_operations.
 
 Traits: AlwaysSpeculatableImplTrait, Commutative, Elementwise, SameOperandsAndResultShape
 
@@ -1132,14 +1133,14 @@ Interfaces: ConditionallySpeculatable, NoMemoryEffect (MemoryEffectOpInterface)
 
 Effects: MemoryEffects::Effect{}
 
-#### Operands
+#### Operands:
 
 | Operand | Description |
 | :-----: | ----------- |
 | `lhs` | statically shaped tensor of PPHlo public type or PPHlo secret type values
 | `rhs` | statically shaped tensor of PPHlo public type or PPHlo secret type values
 
-#### Results
+#### Results:
 
 | Result | Description |
 | :----: | ----------- |
@@ -1152,7 +1153,7 @@ _Multiplication operator_
 Returns `lhs * rhs` element-wise.
 
 See
-<https://www.tensorflow.org/xla/operation_semantics#element-wise_binary_arithmetic_operations>.
+https://www.tensorflow.org/xla/operation_semantics#element-wise_binary_arithmetic_operations.
 
 Traits: AlwaysSpeculatableImplTrait, Commutative, Elementwise, SameOperandsAndResultShape
 
@@ -1160,14 +1161,14 @@ Interfaces: ConditionallySpeculatable, NoMemoryEffect (MemoryEffectOpInterface)
 
 Effects: MemoryEffects::Effect{}
 
-#### Operands
+#### Operands:
 
 | Operand | Description |
 | :-----: | ----------- |
 | `lhs` | statically shaped tensor of PPHlo public type or PPHlo secret type values
 | `rhs` | statically shaped tensor of PPHlo public type or PPHlo secret type values
 
-#### Results
+#### Results:
 
 | Result | Description |
 | :----: | ----------- |
@@ -1181,7 +1182,7 @@ Returns `- operand` element -
 wise.
 
 See
-<https://www.tensorflow.org/xla/operation_semantics#element-wise_unary_functions>.
+https://www.tensorflow.org/xla/operation_semantics#element-wise_unary_functions.
 
 Traits: AlwaysSpeculatableImplTrait, Elementwise, SameOperandsAndResultShape, SameOperandsAndResultType
 
@@ -1189,13 +1190,13 @@ Interfaces: ConditionallySpeculatable, InferTypeOpInterface, NoMemoryEffect (Mem
 
 Effects: MemoryEffects::Effect{}
 
-#### Operands
+#### Operands:
 
 | Operand | Description |
 | :-----: | ----------- |
 | `operand` | statically shaped tensor of PPHlo public type or PPHlo secret type values
 
-#### Results
+#### Results:
 
 | Result | Description |
 | :----: | ----------- |
@@ -1208,7 +1209,7 @@ _Not-equal comparison operator_
 Returns `lhs` != `rhs` element-wise.
 
 See
-<https://www.tensorflow.org/xla/operation_semantics#element-wise_comparison_operations>.
+https://www.tensorflow.org/xla/operation_semantics#element-wise_comparison_operations.
 
 Traits: AlwaysSpeculatableImplTrait, Elementwise, SameOperandsAndResultShape
 
@@ -1216,14 +1217,14 @@ Interfaces: ConditionallySpeculatable, NoMemoryEffect (MemoryEffectOpInterface)
 
 Effects: MemoryEffects::Effect{}
 
-#### Operands
+#### Operands:
 
 | Operand | Description |
 | :-----: | ----------- |
 | `lhs` | statically shaped tensor of PPHlo public type or PPHlo secret type values
 | `rhs` | statically shaped tensor of PPHlo public type or PPHlo secret type values
 
-#### Results
+#### Results:
 
 | Result | Description |
 | :----: | ----------- |
@@ -1236,7 +1237,7 @@ _Not operator_
 Returns `!operand` element-wise.
 
 See
-<https://www.tensorflow.org/xla/operation_semantics#element-wise_unary_functions>.
+https://www.tensorflow.org/xla/operation_semantics#element-wise_unary_functions.
 
 Traits: AlwaysSpeculatableImplTrait, Elementwise, SameOperandsAndResultShape, SameOperandsAndResultType
 
@@ -1244,13 +1245,13 @@ Interfaces: ConditionallySpeculatable, InferTypeOpInterface, NoMemoryEffect (Mem
 
 Effects: MemoryEffects::Effect{}
 
-#### Operands
+#### Operands:
 
 | Operand | Description |
 | :-----: | ----------- |
 | `operand` | statically shaped tensor of public integer type or secret integer type values
 
-#### Results
+#### Results:
 
 | Result | Description |
 | :----: | ----------- |
@@ -1263,7 +1264,7 @@ _Logical or_
 Returns `logical_or(lhs, rhs)` element-wise.
 
 See
-<https://www.tensorflow.org/xla/operation_semantics#element-wise_binary_arithmetic_operations>.
+https://www.tensorflow.org/xla/operation_semantics#element-wise_binary_arithmetic_operations.
 
 Traits: AlwaysSpeculatableImplTrait, Commutative, Elementwise, SameOperandsAndResultShape
 
@@ -1271,14 +1272,14 @@ Interfaces: ConditionallySpeculatable, NoMemoryEffect (MemoryEffectOpInterface)
 
 Effects: MemoryEffects::Effect{}
 
-#### Operands
+#### Operands:
 
 | Operand | Description |
 | :-----: | ----------- |
 | `lhs` | statically shaped tensor of public integer type or secret integer type values
 | `rhs` | statically shaped tensor of public integer type or secret integer type values
 
-#### Results
+#### Results:
 
 | Result | Description |
 | :----: | ----------- |
@@ -1291,7 +1292,7 @@ _Power operator_
 Returns `lhs ^ rhs` element-wise.
 
 See
-<https://www.tensorflow.org/xla/operation_semantics#element-wise_binary_arithmetic_operations>.
+https://www.tensorflow.org/xla/operation_semantics#element-wise_binary_arithmetic_operations.
 
 Traits: AlwaysSpeculatableImplTrait, Elementwise, SameOperandsAndResultShape
 
@@ -1299,14 +1300,14 @@ Interfaces: ConditionallySpeculatable, NoMemoryEffect (MemoryEffectOpInterface)
 
 Effects: MemoryEffects::Effect{}
 
-#### Operands
+#### Operands:
 
 | Operand | Description |
 | :-----: | ----------- |
 | `lhs` | statically shaped tensor of PPHlo public type or PPHlo secret type values
 | `rhs` | statically shaped tensor of PPHlo public type or PPHlo secret type values
 
-#### Results
+#### Results:
 
 | Result | Description |
 | :----: | ----------- |
@@ -1324,13 +1325,13 @@ Interfaces: ConditionallySpeculatable, InferTypeOpInterface, NoMemoryEffect (Mem
 
 Effects: MemoryEffects::Effect{}
 
-#### Operands
+#### Operands:
 
 | Operand | Description |
 | :-----: | ----------- |
 | `operand` | statically shaped tensor of PPHlo public type or PPHlo secret type values
 
-#### Results
+#### Results:
 
 | Result | Description |
 | :----: | ----------- |
@@ -1343,7 +1344,7 @@ _Reciprocal operator_
 Returns `1.0 / operand` element-wise.
 
 See
-<https://www.tensorflow.org/xla/operation_semantics#element-wise_unary_functions>.
+https://www.tensorflow.org/xla/operation_semantics#element-wise_unary_functions.
 
 Traits: AlwaysSpeculatableImplTrait, Elementwise, SameOperandsAndResultShape, SameOperandsAndResultType
 
@@ -1351,13 +1352,13 @@ Interfaces: ConditionallySpeculatable, InferTypeOpInterface, NoMemoryEffect (Mem
 
 Effects: MemoryEffects::Effect{}
 
-#### Operands
+#### Operands:
 
 | Operand | Description |
 | :-----: | ----------- |
 | `operand` | statically shaped tensor of public fixed-point type or secret fixed-point type values
 
-#### Results
+#### Results:
 
 | Result | Description |
 | :----: | ----------- |
@@ -1370,24 +1371,24 @@ _Reduce operator_
 Returns the result of executing a reduction function on one or more arrays
 in parallel.
 
-See <https://www.tensorflow.org/xla/operation_semantics#reduce>.
+See https://www.tensorflow.org/xla/operation_semantics#reduce.
 
 Traits: RecursiveMemoryEffects, SameVariadicOperandSize, SingleBlockImplicitTerminator<ReturnOp>
 
-#### Attributes
+#### Attributes:
 
 | Attribute | MLIR Type | Description |
 | :-------: | :-------: | ----------- |
 | `dimensions` | ::mlir::DenseIntElementsAttr | 64-bit signless integer elements attribute
 
-#### Operands
+#### Operands:
 
 | Operand | Description |
 | :-----: | ----------- |
 | `inputs` | statically shaped tensor of PPHlo public type or PPHlo secret type values
 | `init_values` | statically shaped tensor of PPHlo public type or PPHlo secret type values
 
-#### Results
+#### Results:
 
 | Result | Description |
 | :----: | ----------- |
@@ -1400,11 +1401,11 @@ _ReduceWindow operator_
 Returns the result of executing a reduction function over all elements in
 each window of one or more arrays.
 
-See <https://www.tensorflow.org/xla/operation_semantics#reducewindow>.
+See https://www.tensorflow.org/xla/operation_semantics#reducewindow.
 
 Traits: RecursiveMemoryEffects, SameVariadicOperandSize, SingleBlockImplicitTerminator<ReturnOp>
 
-#### Attributes
+#### Attributes:
 
 | Attribute | MLIR Type | Description |
 | :-------: | :-------: | ----------- |
@@ -1414,14 +1415,14 @@ Traits: RecursiveMemoryEffects, SameVariadicOperandSize, SingleBlockImplicitTerm
 | `window_dilations` | ::mlir::DenseIntElementsAttr | 64-bit signless integer elements attribute
 | `padding` | ::mlir::DenseIntElementsAttr | 64-bit signless integer elements attribute
 
-#### Operands
+#### Operands:
 
 | Operand | Description |
 | :-----: | ----------- |
 | `inputs` | statically shaped tensor of PPHlo public type or PPHlo secret type values
 | `init_values` | statically shaped tensor of PPHlo public type or PPHlo secret type values
 
-#### Results
+#### Results:
 
 | Result | Description |
 | :----: | ----------- |
@@ -1434,7 +1435,7 @@ _Remainder operator_
 Returns `lhs % rhs` element-wise.
 
 See
-<https://www.tensorflow.org/xla/operation_semantics#element-wise_binary_arithmetic_operations>.
+https://www.tensorflow.org/xla/operation_semantics#element-wise_binary_arithmetic_operations.
 
 Traits: AlwaysSpeculatableImplTrait, Elementwise, SameOperandsAndResultShape
 
@@ -1442,14 +1443,14 @@ Interfaces: ConditionallySpeculatable, NoMemoryEffect (MemoryEffectOpInterface)
 
 Effects: MemoryEffects::Effect{}
 
-#### Operands
+#### Operands:
 
 | Operand | Description |
 | :-----: | ----------- |
 | `lhs` | statically shaped tensor of PPHlo public type or PPHlo secret type values
 | `rhs` | statically shaped tensor of PPHlo public type or PPHlo secret type values
 
-#### Results
+#### Results:
 
 | Result | Description |
 | :----: | ----------- |
@@ -1461,7 +1462,7 @@ _Reshape operator_
 
 Reshapes the dimensions of `operand` into a new configuration.
 
-See <https://www.tensorflow.org/xla/operation_semantics#reshape>.
+See https://www.tensorflow.org/xla/operation_semantics#reshape.
 
 Traits: AlwaysSpeculatableImplTrait, SameOperandsAndResultElementType
 
@@ -1469,13 +1470,13 @@ Interfaces: ConditionallySpeculatable, NoMemoryEffect (MemoryEffectOpInterface)
 
 Effects: MemoryEffects::Effect{}
 
-#### Operands
+#### Operands:
 
 | Operand | Description |
 | :-----: | ----------- |
 | `operand` | statically shaped tensor of PPHlo public type or PPHlo secret type values
 
-#### Results
+#### Results:
 
 | Result | Description |
 | :----: | ----------- |
@@ -1487,13 +1488,14 @@ _
     The `pphlo.return` operation terminates a region and returns values.
   _
 
+
 Traits: AlwaysSpeculatableImplTrait, Terminator
 
 Interfaces: ConditionallySpeculatable, NoMemoryEffect (MemoryEffectOpInterface)
 
 Effects: MemoryEffects::Effect{}
 
-#### Operands
+#### Operands:
 
 | Operand | Description |
 | :-----: | ----------- |
@@ -1506,7 +1508,7 @@ _Reverse operator_
 Reverses the specified dimensions of `operand` according to the given
 `dimensions`.
 
-See <https://www.tensorflow.org/xla/operation_semantics#rev_reverse>.
+See https://www.tensorflow.org/xla/operation_semantics#rev_reverse.
 
 Traits: AlwaysSpeculatableImplTrait, SameOperandsAndResultType
 
@@ -1514,19 +1516,19 @@ Interfaces: ConditionallySpeculatable, InferTypeOpInterface, NoMemoryEffect (Mem
 
 Effects: MemoryEffects::Effect{}
 
-#### Attributes
+#### Attributes:
 
 | Attribute | MLIR Type | Description |
 | :-------: | :-------: | ----------- |
 | `dimensions` | ::mlir::DenseIntElementsAttr | 64-bit signless integer elements attribute
 
-#### Operands
+#### Operands:
 
 | Operand | Description |
 | :-----: | ----------- |
 | `operand` | statically shaped tensor of PPHlo public type or PPHlo secret type values
 
-#### Results
+#### Results:
 
 | Result | Description |
 | :----: | ----------- |
@@ -1541,18 +1543,18 @@ following the uniform distribution over the interval `[a,b)`. The parameters
 and output element type have to be an integral type or a
 fixed point type, and the types have to be consistent.
 
-See <https://www.tensorflow.org/xla/operation_semantics#rnguniform>.
+See https://www.tensorflow.org/xla/operation_semantics#rnguniform.
 
 Traits: SameOperandsAndResultElementType
 
-#### Operands
+#### Operands:
 
 | Operand | Description |
 | :-----: | ----------- |
 | `a` | statically shaped tensor of PPHlo public type or PPHlo secret type values
 | `b` | statically shaped tensor of PPHlo public type or PPHlo secret type values
 
-#### Results
+#### Results:
 
 | Result | Description |
 | :----: | ----------- |
@@ -1566,7 +1568,7 @@ Returns `Round(operand)` element-wise, rounding to nearest integer with
 half-way cases rounding away from zero.
 
 See
-<https://www.tensorflow.org/xla/operation_semantics#element-wise_unary_functions>.
+https://www.tensorflow.org/xla/operation_semantics#element-wise_unary_functions.
 
 Traits: AlwaysSpeculatableImplTrait, Elementwise, SameOperandsAndResultShape, SameOperandsAndResultType
 
@@ -1574,13 +1576,13 @@ Interfaces: ConditionallySpeculatable, InferTypeOpInterface, NoMemoryEffect (Mem
 
 Effects: MemoryEffects::Effect{}
 
-#### Operands
+#### Operands:
 
 | Operand | Description |
 | :-----: | ----------- |
 | `operand` | statically shaped tensor of public fixed-point type or secret fixed-point type values
 
-#### Results
+#### Results:
 
 | Result | Description |
 | :----: | ----------- |
@@ -1593,7 +1595,7 @@ _Reciprocal of square-root operator_
 Returns `rsqrt(operand)` element-wise.
 
 See
-<https://www.tensorflow.org/xla/operation_semantics#element-wise_unary_functions>.
+https://www.tensorflow.org/xla/operation_semantics#element-wise_unary_functions.
 
 Traits: AlwaysSpeculatableImplTrait, Elementwise, SameOperandsAndResultShape, SameOperandsAndResultType
 
@@ -1601,13 +1603,13 @@ Interfaces: ConditionallySpeculatable, InferTypeOpInterface, NoMemoryEffect (Mem
 
 Effects: MemoryEffects::Effect{}
 
-#### Operands
+#### Operands:
 
 | Operand | Description |
 | :-----: | ----------- |
 | `operand` | statically shaped tensor of public fixed-point type or secret fixed-point type values
 
-#### Results
+#### Results:
 
 | Result | Description |
 | :----: | ----------- |
@@ -1624,11 +1626,11 @@ to the output which is initialized with `init_value`.
 Multiple scattered elements which land in the same output location are
 combined using the `scatter` function.
 
-See <https://www.tensorflow.org/xla/operation_semantics#selectandscatter>.
+See https://www.tensorflow.org/xla/operation_semantics#selectandscatter.
 
 Traits: RecursiveMemoryEffects
 
-#### Attributes
+#### Attributes:
 
 | Attribute | MLIR Type | Description |
 | :-------: | :-------: | ----------- |
@@ -1636,7 +1638,7 @@ Traits: RecursiveMemoryEffects
 | `window_strides` | ::mlir::DenseIntElementsAttr | 64-bit signless integer elements attribute
 | `padding` | ::mlir::DenseIntElementsAttr | 64-bit signless integer elements attribute
 
-#### Operands
+#### Operands:
 
 | Operand | Description |
 | :-----: | ----------- |
@@ -1644,7 +1646,7 @@ Traits: RecursiveMemoryEffects
 | `source` | statically shaped tensor of PPHlo public type or PPHlo secret type values
 | `init_value` | statically shaped tensor of PPHlo public type or PPHlo secret type values
 
-#### Results
+#### Results:
 
 | Result | Description |
 | :----: | ----------- |
@@ -1659,7 +1661,7 @@ based on the values of `pred`. All three operands must be of the same shape
 with the exception of `pred`, which may also be a scalar in which case it is
 broadcasted.
 
-See <https://www.tensorflow.org/xla/operation_semantics#select>.
+See https://www.tensorflow.org/xla/operation_semantics#select.
 
 Traits: AlwaysSpeculatableImplTrait
 
@@ -1667,7 +1669,7 @@ Interfaces: ConditionallySpeculatable, NoMemoryEffect (MemoryEffectOpInterface)
 
 Effects: MemoryEffects::Effect{}
 
-#### Operands
+#### Operands:
 
 | Operand | Description |
 | :-----: | ----------- |
@@ -1675,7 +1677,7 @@ Effects: MemoryEffects::Effect{}
 | `on_true` | statically shaped tensor of PPHlo public type or PPHlo secret type values
 | `on_false` | statically shaped tensor of PPHlo public type or PPHlo secret type values
 
-#### Results
+#### Results:
 
 | Result | Description |
 | :----: | ----------- |
@@ -1688,7 +1690,7 @@ _Shift Left operator_
 Returns `lhs << rhs` element-wise.
 
 See
-<https://www.tensorflow.org/xla/operation_semantics#element-wise_binary_arithmetic_operations>.
+https://www.tensorflow.org/xla/operation_semantics#element-wise_binary_arithmetic_operations.
 
 Traits: AlwaysSpeculatableImplTrait, Elementwise, SameOperandsAndResultShape
 
@@ -1696,14 +1698,14 @@ Interfaces: ConditionallySpeculatable, NoMemoryEffect (MemoryEffectOpInterface)
 
 Effects: MemoryEffects::Effect{}
 
-#### Operands
+#### Operands:
 
 | Operand | Description |
 | :-----: | ----------- |
 | `lhs` | statically shaped tensor of PPHlo public type or PPHlo secret type values
 | `rhs` | statically shaped tensor of PPHlo public type or PPHlo secret type values
 
-#### Results
+#### Results:
 
 | Result | Description |
 | :----: | ----------- |
@@ -1716,7 +1718,7 @@ _Shift right arithmetic operator_
 Returns arithmetic `lhs >> rhs` element-wise.
 
 See
-<https://www.tensorflow.org/xla/operation_semantics#element-wise_binary_arithmetic_operations>.
+https://www.tensorflow.org/xla/operation_semantics#element-wise_binary_arithmetic_operations.
 
 Traits: AlwaysSpeculatableImplTrait, Elementwise, SameOperandsAndResultShape
 
@@ -1724,14 +1726,14 @@ Interfaces: ConditionallySpeculatable, NoMemoryEffect (MemoryEffectOpInterface)
 
 Effects: MemoryEffects::Effect{}
 
-#### Operands
+#### Operands:
 
 | Operand | Description |
 | :-----: | ----------- |
 | `lhs` | statically shaped tensor of PPHlo public type or PPHlo secret type values
 | `rhs` | statically shaped tensor of PPHlo public type or PPHlo secret type values
 
-#### Results
+#### Results:
 
 | Result | Description |
 | :----: | ----------- |
@@ -1744,7 +1746,7 @@ _Shift right logical operator_
 Returns logical `lhs >> rhs` element-wise.
 
 See
-<https://www.tensorflow.org/xla/operation_semantics#element-wise_binary_arithmetic_operations>.
+https://www.tensorflow.org/xla/operation_semantics#element-wise_binary_arithmetic_operations.
 
 Traits: AlwaysSpeculatableImplTrait, Elementwise, SameOperandsAndResultShape
 
@@ -1752,14 +1754,14 @@ Interfaces: ConditionallySpeculatable, NoMemoryEffect (MemoryEffectOpInterface)
 
 Effects: MemoryEffects::Effect{}
 
-#### Operands
+#### Operands:
 
 | Operand | Description |
 | :-----: | ----------- |
 | `lhs` | statically shaped tensor of PPHlo public type or PPHlo secret type values
 | `rhs` | statically shaped tensor of PPHlo public type or PPHlo secret type values
 
-#### Results
+#### Results:
 
 | Result | Description |
 | :----: | ----------- |
@@ -1778,7 +1780,7 @@ sign(x) = -1  : x < 0
 ```
 
 See
-<https://www.tensorflow.org/xla/operation_semantics#element-wise_unary_functions>.
+https://www.tensorflow.org/xla/operation_semantics#element-wise_unary_functions.
 
 Traits: AlwaysSpeculatableImplTrait, Elementwise, SameOperandsAndResultShape, SameOperandsAndResultType
 
@@ -1786,26 +1788,25 @@ Interfaces: ConditionallySpeculatable, InferTypeOpInterface, NoMemoryEffect (Mem
 
 Effects: MemoryEffects::Effect{}
 
-#### Operands
+#### Operands:
 
 | Operand | Description |
 | :-----: | ----------- |
 | `operand` | statically shaped tensor of PPHlo public type or PPHlo secret type values
 
-#### Results
+#### Results:
 
 | Result | Description |
 | :----: | ----------- |
 &laquo;unnamed&raquo; | statically shaped tensor of PPHlo public type or PPHlo secret type values
 
 ### `pphlo.slice` (pphlo::SliceOp)
-
 The dynamic shape version of SliceOp. Extracts a sub-array from the input
 array according to start_indices, limit_indices and strides. Expect
 start_indices/limit_indices/strides to be statically shaped and matching
 the rank of the input.
 
-See <https://www.tensorflow.org/xla/operation_semantics#slice>
+See https://www.tensorflow.org/xla/operation_semantics#slice
 
 Traits: AlwaysSpeculatableImplTrait, SameOperandsAndResultElementType
 
@@ -1813,7 +1814,7 @@ Interfaces: ConditionallySpeculatable, NoMemoryEffect (MemoryEffectOpInterface)
 
 Effects: MemoryEffects::Effect{}
 
-#### Attributes
+#### Attributes:
 
 | Attribute | MLIR Type | Description |
 | :-------: | :-------: | ----------- |
@@ -1821,13 +1822,13 @@ Effects: MemoryEffects::Effect{}
 | `limit_indices` | ::mlir::DenseIntElementsAttr | 64-bit signless integer elements attribute
 | `strides` | ::mlir::DenseIntElementsAttr | 64-bit signless integer elements attribute
 
-#### Operands
+#### Operands:
 
 | Operand | Description |
 | :-----: | ----------- |
 | `operand` | statically shaped tensor of PPHlo public type or PPHlo secret type values
 
-#### Results
+#### Results:
 
 | Result | Description |
 | :----: | ----------- |
@@ -1840,24 +1841,24 @@ _Sort operator_
 Sorts the given `operands` at the given `dimension` with the given
 `comparator`.
 
-See <https://www.tensorflow.org/xla/operation_semantics#sort>.
+See https://www.tensorflow.org/xla/operation_semantics#sort.
 
 Traits: RecursiveMemoryEffects, SameOperandsAndResultShape
 
-#### Attributes
+#### Attributes:
 
 | Attribute | MLIR Type | Description |
 | :-------: | :-------: | ----------- |
 | `dimension` | ::mlir::IntegerAttr | 64-bit signless integer attribute
 | `is_stable` | ::mlir::BoolAttr | bool attribute
 
-#### Operands
+#### Operands:
 
 | Operand | Description |
 | :-----: | ----------- |
 | `operands` | statically shaped tensor of PPHlo public type or PPHlo secret type values
 
-#### Results
+#### Results:
 
 | Result | Description |
 | :----: | ----------- |
@@ -1870,7 +1871,7 @@ _Square-root operator_
 Returns `sqrt(operand)` element-wise.
 
 See
-<https://www.tensorflow.org/xla/operation_semantics#element-wise_unary_functions>.
+https://www.tensorflow.org/xla/operation_semantics#element-wise_unary_functions.
 
 Traits: AlwaysSpeculatableImplTrait, Elementwise, SameOperandsAndResultShape, SameOperandsAndResultType
 
@@ -1878,13 +1879,13 @@ Interfaces: ConditionallySpeculatable, InferTypeOpInterface, NoMemoryEffect (Mem
 
 Effects: MemoryEffects::Effect{}
 
-#### Operands
+#### Operands:
 
 | Operand | Description |
 | :-----: | ----------- |
 | `operand` | statically shaped tensor of public fixed-point type or secret fixed-point type values
 
-#### Results
+#### Results:
 
 | Result | Description |
 | :----: | ----------- |
@@ -1897,7 +1898,7 @@ _Subtraction operator_
 Returns `lhs - rhs` element-wise.
 
 See
-<https://www.tensorflow.org/xla/operation_semantics#element-wise_binary_arithmetic_operations>.
+https://www.tensorflow.org/xla/operation_semantics#element-wise_binary_arithmetic_operations.
 
 Traits: AlwaysSpeculatableImplTrait, Elementwise, SameOperandsAndResultShape
 
@@ -1905,14 +1906,14 @@ Interfaces: ConditionallySpeculatable, NoMemoryEffect (MemoryEffectOpInterface)
 
 Effects: MemoryEffects::Effect{}
 
-#### Operands
+#### Operands:
 
 | Operand | Description |
 | :-----: | ----------- |
 | `lhs` | statically shaped tensor of PPHlo public type or PPHlo secret type values
 | `rhs` | statically shaped tensor of PPHlo public type or PPHlo secret type values
 
-#### Results
+#### Results:
 
 | Result | Description |
 | :----: | ----------- |
@@ -1925,7 +1926,7 @@ _Tanh operator_
 Returns `tanh(operand)` element-wise.
 
 See
-<https://www.tensorflow.org/xla/operation_semantics#element-wise_unary_functions>.
+https://www.tensorflow.org/xla/operation_semantics#element-wise_unary_functions.
 
 Traits: AlwaysSpeculatableImplTrait, Elementwise, SameOperandsAndResultShape, SameOperandsAndResultType
 
@@ -1933,13 +1934,13 @@ Interfaces: ConditionallySpeculatable, InferTypeOpInterface, NoMemoryEffect (Mem
 
 Effects: MemoryEffects::Effect{}
 
-#### Operands
+#### Operands:
 
 | Operand | Description |
 | :-----: | ----------- |
 | `operand` | statically shaped tensor of public fixed-point type or secret fixed-point type values
 
-#### Results
+#### Results:
 
 | Result | Description |
 | :----: | ----------- |
@@ -1953,7 +1954,7 @@ Permutes the dimensions of `operand` according to the given `permutation`.
 
 `res_dimensions[i] = operand_dimensions[permutation[i]]`
 
-See <https://www.tensorflow.org/xla/operation_semantics#transpose>.
+See https://www.tensorflow.org/xla/operation_semantics#transpose.
 
 Traits: AlwaysSpeculatableImplTrait, SameOperandsAndResultElementType
 
@@ -1961,19 +1962,19 @@ Interfaces: ConditionallySpeculatable, NoMemoryEffect (MemoryEffectOpInterface)
 
 Effects: MemoryEffects::Effect{}
 
-#### Attributes
+#### Attributes:
 
 | Attribute | MLIR Type | Description |
 | :-------: | :-------: | ----------- |
 | `permutation` | ::mlir::DenseIntElementsAttr | 64-bit signless integer elements attribute
 
-#### Operands
+#### Operands:
 
 | Operand | Description |
 | :-----: | ----------- |
 | `operand` | statically shaped tensor of PPHlo public type or PPHlo secret type values
 
-#### Results
+#### Results:
 
 | Result | Description |
 | :----: | ----------- |
@@ -1986,17 +1987,17 @@ _While operator_
 Returns the result of executing a body function until the cond body
     returns true.
 
-See <https://www.tensorflow.org/xla/operation_semantics#while>.
+See https://www.tensorflow.org/xla/operation_semantics#while.
 
 Traits: PPHLO_PairwiseSameOperandAndResultType, RecursiveMemoryEffects, SingleBlockImplicitTerminator<ReturnOp>
 
-#### Operands
+#### Operands:
 
 | Operand | Description |
 | :-----: | ----------- |
 | `args` | statically shaped tensor of PPHlo public type or PPHlo secret type values
 
-#### Results
+#### Results:
 
 | Result | Description |
 | :----: | ----------- |
@@ -2009,7 +2010,7 @@ _Logical xor_
 Returns `logical_xor(lhs, rhs)` element-wise.
 
 See
-<https://www.tensorflow.org/xla/operation_semantics#element-wise_binary_arithmetic_operations>.
+https://www.tensorflow.org/xla/operation_semantics#element-wise_binary_arithmetic_operations.
 
 Traits: AlwaysSpeculatableImplTrait, Commutative, Elementwise, SameOperandsAndResultShape
 
@@ -2017,14 +2018,14 @@ Interfaces: ConditionallySpeculatable, NoMemoryEffect (MemoryEffectOpInterface)
 
 Effects: MemoryEffects::Effect{}
 
-#### Operands
+#### Operands:
 
 | Operand | Description |
 | :-----: | ----------- |
 | `lhs` | statically shaped tensor of public integer type or secret integer type values
 | `rhs` | statically shaped tensor of public integer type or secret integer type values
 
-#### Results
+#### Results:
 
 | Result | Description |
 | :----: | ----------- |

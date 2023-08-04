@@ -73,209 +73,103 @@ SenderDB. The downside of in-memory compression is a performance reduction
 from decompressing parts of the data when they are used, and recompressing
 them if they are updated.
 */
-class SenderDB {
+class ISenderDB {
  public:
   /**
   Creates a new SenderDB.
   */
-  explicit SenderDB(const apsi::PSIParams &params,
-                    std::string_view kv_store_path,
-                    std::size_t label_byte_count = 0,
-                    std::size_t nonce_byte_count = 16, bool compressed = true);
+  ISenderDB(const apsi::PSIParams &params, yacl::ByteContainerView oprf_key,
+            std::size_t label_byte_count = 0, std::size_t nonce_byte_count = 16,
+            bool compressed = false);
 
-  /**
-  Creates a new SenderDB.
-  */
-  SenderDB(const apsi::PSIParams &params, yacl::ByteContainerView oprf_key,
-           std::string_view kv_store_path = "",
-           std::size_t label_byte_count = 0, std::size_t nonce_byte_count = 16,
-           bool compressed = true);
-
-  /**
-  Creates a new SenderDB by moving from an existing one.
-  */
-  SenderDB(SenderDB &&source) noexcept;
-
-  SenderDB(const SenderDB &copy) = delete;
-
-  /**
-  Moves an existing SenderDB to the current one.
-  */
-  SenderDB &operator=(SenderDB &&source) noexcept;
-
-  /**
-  Clears the database. Every item and label will be removed. The OPRF key is
-  unchanged.
-  */
-  void clear();
+  virtual ~ISenderDB() { std::memset(oprf_key_.data(), 0, oprf_key_.size()); }
 
   /**
   Returns whether this is a labeled SenderDB.
   */
-  bool IsLabeled() const { return 0 != label_byte_count_; }
+  virtual bool IsLabeled() const { return 0 != label_byte_count_; }
 
   /**
   Returns the label byte count. A zero value indicates an unlabeled SenderDB.
   */
-  std::size_t GetLabelByteCount() const { return label_byte_count_; }
+  virtual std::size_t GetLabelByteCount() const { return label_byte_count_; }
 
   /**
   Returns the nonce byte count used for encrypting labels.
   */
-  std::size_t GetNonceByteCount() const { return nonce_byte_count_; }
+  virtual std::size_t GetNonceByteCount() const { return nonce_byte_count_; }
 
   /**
   Indicates whether SEAL plaintexts are compressed in memory.
   */
-  bool IsCompressed() const { return compressed_; }
+  virtual bool IsCompressed() const { return compressed_; }
 
   /**
   Indicates whether the SenderDB has been stripped of all information not
   needed for serving a query.
   */
-  bool IsStripped() const { return stripped_; }
+  virtual bool IsStripped() const { return stripped_; }
 
-  /**
-  Strips the SenderDB of all information not needed for serving a query.
-  Returns a copy of the OPRF key and clears it from the SenderDB.
-  */
-  void strip();
-
-  /**
-  Inserts the given data into the database. This function can be used only on
-  a labeled SenderDB instance. If an item already exists in the database, its
-  label is overwritten with the new label.
-  */
-  void InsertOrAssign(
-      const std::vector<std::pair<apsi::Item, apsi::Label>> &data);
-
-  /**
-  Inserts the given (hashed) item-label pair into the database. This function
-  can be used only on a labeled SenderDB instance. If the item already exists
-  in the database, its label is overwritten with the new label.
-  */
-  void InsertOrAssign(const std::pair<apsi::Item, apsi::Label> &data) {
-    std::vector<std::pair<apsi::Item, apsi::Label>> data_singleton{data};
-    InsertOrAssign(data_singleton);
-  }
-
-  /**
-  Inserts the given data into the database. This function can be used only on
-  an unlabeled SenderDB instance.
-  */
-  void InsertOrAssign(const std::vector<apsi::Item> &data);
-
-  /**
-   * @brief Insert data from BatchProvider
-   *
-   * @param batch_provider
-   */
-  void InsertOrAssign(const std::shared_ptr<IBatchProvider> &batch_provider,
-                      size_t batch_size);
-
-  /**
-  Clears the database and inserts the given data. This function can be used
-  only on a labeled SenderDB instance.
-  */
-  void SetData(const std::vector<std::pair<apsi::Item, apsi::Label>> &data) {
-    clear();
-    InsertOrAssign(data);
-  }
-
-  /**
-  Clears the database and inserts the given data. This function can be used
-  only on an unlabeled SenderDB instance.
-  */
-  void SetData(const std::vector<apsi::Item> &data) {
-    clear();
-    InsertOrAssign(data);
-  }
-
-  void SetData(const std::shared_ptr<IBatchProvider> &batch_provider,
-               size_t batch_size = 40960) {
-    clear();
-    InsertOrAssign(batch_provider, batch_size);
-  }
-
-  /**
-  Returns whether the given item has been inserted in the SenderDB.
-  */
-  bool HasItem(const apsi::Item &item) const;
+  virtual void SetData(const std::shared_ptr<IBatchProvider> &batch_provider,
+                       size_t batch_size = 500000) = 0;
 
   /**
   Returns the bundle at the given bundle index.
   */
-  std::shared_ptr<apsi::sender::BinBundle> GetCacheAt(std::uint32_t bundle_idx,
-                                                      size_t cache_idx);
+  virtual std::shared_ptr<apsi::sender::BinBundle> GetBinBundleAt(
+      std::uint32_t bundle_idx, size_t cache_idx) = 0;
 
   /**
   Returns a reference to the PSI parameters for this SenderDB.
   */
-  const apsi::PSIParams &GetParams() const { return params_; }
+  virtual const apsi::PSIParams &GetParams() const { return params_; }
 
   /**
   Returns a reference to the CryptoContext for this SenderDB.
   */
-  const apsi::CryptoContext &GetCryptoContext() const {
+  virtual const apsi::CryptoContext &GetCryptoContext() const {
     return crypto_context_;
   }
 
   /**
   Returns a reference to the SEALContext for this SenderDB.
   */
-  std::shared_ptr<seal::SEALContext> GetSealContext() const {
+  virtual std::shared_ptr<seal::SEALContext> GetSealContext() const {
     return crypto_context_.seal_context();
-  }
-
-  /**
-  Returns a reference to a set of item hashes already existing in the
-  SenderDB.
-  */
-  const std::unordered_set<apsi::HashedItem> &GetHashedItems() const {
-    return hashed_items_;
   }
 
   /**
   Returns the number of items in this SenderDB.
   */
-  size_t GetItemCount() const { return item_count_; }
+  virtual size_t GetItemCount() const { return item_count_; }
 
   /**
   Returns the total number of bin bundles at a specific bundle index.
   */
-  std::size_t GetBinBundleCount(std::uint32_t bundle_idx) const;
+  virtual std::size_t GetBinBundleCount(std::uint32_t bundle_idx) const = 0;
 
   /**
   Returns the total number of bin bundles.
   */
-  std::size_t GetBinBundleCount() const;
+  virtual std::size_t GetBinBundleCount() const = 0;
 
   /**
   Returns how efficiently the SenderDB is packaged. A higher rate indicates
   better performance and a lower communication cost in a query execution.
   */
-  double GetPackingRate() const;
+  virtual double GetPackingRate() const;
 
   /**
   Obtains a scoped lock preventing the SenderDB from being changed.
   */
-  seal::util::ReaderLock GetReaderLock() const {
+  virtual seal::util::ReaderLock GetReaderLock() const {
     return db_lock_.acquire_read();
   }
 
-  std::vector<uint8_t> GetOprfKey() const;
+  virtual std::vector<uint8_t> GetOprfKey() const;
 
- private:
+ protected:
   seal::util::WriterLock GetWriterLock() { return db_lock_.acquire_write(); }
-
-  void ClearInternal();
-
-  void GenerateCaches();
-
-  /**
-  The set of all items that have been inserted into the database
-  */
-  std::unordered_set<apsi::HashedItem> hashed_items_;
 
   /**
   The PSI parameters define the SEAL parameters, base field, item size, table
@@ -324,23 +218,24 @@ class SenderDB {
   bool stripped_;
 
   /**
-  All the BinBundles in the database, indexed by bundle index. The set
-  (represented by a vector internally) at bundle index i contains all the
-  BinBundles with bundle index i.
-  */
-  // std::vector<std::vector<apsi::sender::BinBundle>> bin_bundles_;
-
-  std::string kv_store_path_;
-  std::shared_ptr<yacl::io::KVStore> meta_info_store_;
-
-  std::vector<std::shared_ptr<yacl::io::IndexStore>> bundles_store_;
-  std::vector<size_t> bundles_store_idx_;
-
-  /**
   Holds the OPRF key for this SenderDB.
   */
   std::vector<uint8_t> oprf_key_;
   std::unique_ptr<IEcdhOprfServer> oprf_server_;
 };  // class SenderDB
+
+namespace labeled_psi {
+
+std::vector<kuku::LocFunc> HashFunctions(const apsi::PSIParams &params);
+
+std::unordered_set<kuku::location_type> AllLocations(
+    const std::vector<kuku::LocFunc> &hash_funcs, const apsi::HashedItem &item);
+
+size_t ComputeLabelSize(size_t label_byte_count, const apsi::PSIParams &params);
+
+std::pair<size_t, size_t> UnpackCuckooIdx(size_t cuckoo_idx,
+                                          size_t bins_per_bundle);
+
+}  // namespace labeled_psi
 
 }  // namespace spu::psi

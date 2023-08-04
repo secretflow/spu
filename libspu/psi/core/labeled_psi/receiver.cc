@@ -269,7 +269,7 @@ LabelPsiReceiver::RequestQuery(
         // plain_modulus parts
         std::vector<uint64_t> alg_item = apsi::util::bits_to_field_elts(
             item_bits, psi_params_.seal_params().plain_modulus());
-        copy(alg_item.cbegin(), alg_item.cend(), back_inserter(alg_items));
+        std::copy(alg_item.cbegin(), alg_item.cend(), back_inserter(alg_items));
       }
 
       // Now that we have the algebraized items for this bundle index, we

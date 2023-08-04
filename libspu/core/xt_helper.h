@@ -35,8 +35,8 @@ auto xt_mutable_adapt(NdArrayRef& aref) {
   std::vector<int64_t> shape(aref.shape().begin(), aref.shape().end());
   std::vector<int64_t> stride(aref.strides().begin(), aref.strides().end());
 
-  return xt::adapt(static_cast<T*>(aref.data()), aref.numel(),
-                   xt::no_ownership(), shape, stride);
+  return xt::adapt(aref.data<T>(), aref.numel(), xt::no_ownership(), shape,
+                   stride);
 }
 
 template <typename T>
@@ -47,8 +47,8 @@ auto xt_adapt(const NdArrayRef& aref) {
   std::vector<int64_t> shape(aref.shape().begin(), aref.shape().end());
   std::vector<int64_t> stride(aref.strides().begin(), aref.strides().end());
 
-  return xt::adapt(static_cast<const T*>(aref.data()), aref.numel(),
-                   xt::no_ownership(), shape, stride);
+  return xt::adapt(aref.data<const T>(), aref.numel(), xt::no_ownership(),
+                   shape, stride);
 }
 
 // Make a NdArrayRef from an xt expression.

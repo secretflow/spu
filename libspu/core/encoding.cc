@@ -78,20 +78,22 @@ NdArrayRef encodeToRing(const NdArrayRef& src, FieldType field, size_t fxp_bits,
         const Float kFlpLower =
             static_cast<Float>(static_cast<double>(kFxpLower) / kScale);
 
+        auto _src = NdArrayView<Float>(src);
+        auto _dst = NdArrayView<T>(dst);
+
         pforeach(0, numel, [&](int64_t idx) {
-          const auto src_value = src.at<Float>(idx);
-          auto& dst_value = dst.at<T>(idx);
+          const auto src_value = _src[idx];
           if (std::isnan(src_value)) {
             // see numpy.nan_to_num
             // note(jint) I dont know why nan could be
             // encoded as zero..
-            dst_value = 0;
+            _dst[idx] = 0;
           } else if (src_value >= kFlpUpper) {
-            dst_value = kFxpUpper;
+            _dst[idx] = kFxpUpper;
           } else if (src_value <= kFlpLower) {
-            dst_value = kFxpLower;
+            _dst[idx] = kFxpLower;
           } else {
-            dst_value = static_cast<T>(src_value * kScale);
+            _dst[idx] = static_cast<T>(src_value * kScale);
           }
         });
       });
@@ -108,11 +110,11 @@ NdArrayRef encodeToRing(const NdArrayRef& src, FieldType field, size_t fxp_bits,
                     field, pt_type);
 
         using T = std::make_signed_t<ring2k_t>;
+        auto _src = NdArrayView<Integer>(src);
+        auto _dst = NdArrayView<T>(dst);
         // TODO: encoding integer in range [-2^(k-2),2^(k-2))
         pforeach(0, numel, [&](int64_t idx) {
-          const auto src_value = src.at<Integer>(idx);
-          auto& dst_value = dst.at<T>(idx);
-          dst_value = static_cast<T>(src_value);  // NOLINT
+          _dst[idx] = static_cast<T>(_src[idx]);  // NOLINT
         });
       });
     });
@@ -143,22 +145,24 @@ NdArrayRef decodeFromRing(const NdArrayRef& src, DataType in_dtype,
     DISPATCH_ALL_PT_TYPES(pt_type, "pt_type", [&]() {
       using T = std::make_signed_t<ring2k_t>;
 
+      auto _src = NdArrayView<T>(src);
+      auto _dst = NdArrayView<ScalarT>(dst);
+
       if (in_dtype == DT_I1) {
         constexpr bool kSanity = std::is_same_v<ScalarT, bool>;
         SPU_ENFORCE(kSanity);
-        pforeach(0, numel, [&](int64_t idx) {
-          dst.at<ScalarT>(idx) = !((src.at<T>(idx) & 0x1) == 0);
-        });
+        pforeach(0, numel,
+                 [&](int64_t idx) { _dst[idx] = !((_src[idx] & 0x1) == 0); });
       } else if (in_dtype == DT_F32 || in_dtype == DT_F64 ||
                  in_dtype == DT_F16) {
         const T kScale = T(1) << fxp_bits;
         pforeach(0, numel, [&](int64_t idx) {
-          dst.at<ScalarT>(idx) = static_cast<ScalarT>(
-              static_cast<double>(src.at<T>(idx)) / kScale);
+          _dst[idx] =
+              static_cast<ScalarT>(static_cast<double>(_src[idx]) / kScale);
         });
       } else {
         pforeach(0, numel, [&](int64_t idx) {
-          dst.at<ScalarT>(idx) = static_cast<ScalarT>(src.at<T>(idx));
+          _dst[idx] = static_cast<ScalarT>(_src[idx]);
         });
       }
     });

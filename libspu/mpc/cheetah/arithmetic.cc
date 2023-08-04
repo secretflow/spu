@@ -109,18 +109,15 @@ NdArrayRef MsbA2B::proc(KernelEvalContext* ctx, const NdArrayRef& x) const {
     using u2k = std::make_unsigned<ring2k_t>::type;
     const u2k mask = (static_cast<u2k>(1) << shft) - 1;
     NdArrayRef adjusted = ring_zeros(field, {n});
-    // auto xinp = ArrayView<const u2k>(x);
-    // auto xadj = ArrayView<u2k>(adjusted);
+    auto xinp = NdArrayView<const u2k>(x);
+    auto xadj = NdArrayView<u2k>(adjusted);
 
     if (rank == 0) {
       // x0
-      pforeach(0, n,
-               [&](int64_t i) { adjusted.at<u2k>(i) = x.at<u2k>(i) & mask; });
+      pforeach(0, n, [&](int64_t i) { xadj[i] = xinp[i] & mask; });
     } else {
       // 2^{k - 1} - 1 - x1
-      pforeach(0, n, [&](int64_t i) {
-        adjusted.at<u2k>(i) = (mask - x.at<u2k>(i)) & mask;
-      });
+      pforeach(0, n, [&](int64_t i) { xadj[i] = (mask - xinp[i]) & mask; });
     }
 
     NdArrayRef carry_bit(x.eltype(), x.shape());
@@ -145,9 +142,8 @@ NdArrayRef MsbA2B::proc(KernelEvalContext* ctx, const NdArrayRef& x) const {
     });
 
     // [msb(x)]_B <- [1{x0 + x1 > 2^{k- 1} - 1]_B ^ msb(x0)
-    pforeach(0, n, [&](int64_t i) {
-      carry_bit.at<u2k>(i) ^= (x.at<u2k>(i) >> shft);
-    });
+    NdArrayView<u2k> _carry_bit(carry_bit);
+    pforeach(0, n, [&](int64_t i) { _carry_bit[i] ^= (xinp[i] >> shft); });
 
     return carry_bit.as(makeType<semi2k::BShrTy>(field, 1));
   });

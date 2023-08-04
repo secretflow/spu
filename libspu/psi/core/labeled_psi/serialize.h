@@ -44,8 +44,6 @@ inline proto::AlgItemProto SerializeAlgItem(
 
 inline std::string SerializeAlgItemToString(
     const apsi::util::AlgItem& alg_items) {
-  std::string ret;
-
   proto::AlgItemProto proto = SerializeAlgItem(alg_items);
 
   std::string item_string(proto.ByteSizeLong(), '\0');
@@ -81,9 +79,9 @@ inline void SerializeAlgItemLabel(
     proto::AlgItemLabelPairProto* pair_proto = proto->add_item_label();
 
     pair_proto->set_item(item_label_pair[i].first);
-    for (auto& label : item_label_pair[i].second) {
-      pair_proto->add_label(label);
-    }
+    pair_proto->set_label_data(
+        item_label_pair[i].second.data(),
+        item_label_pair[i].second.size() * sizeof(uint64_t));
   }
 }
 
@@ -111,10 +109,13 @@ inline apsi::util::AlgItemLabel DeserializeAlgItemLabel(
 
   for (int i = 0; i < proto.item_label_size(); ++i) {
     auto pair_proto = proto.item_label(i);
-    std::vector<apsi::util::felt_t> labels(pair_proto.label_size());
-    for (int j = 0; j < pair_proto.label_size(); ++j) {
-      labels[j] = pair_proto.label(j);
-    }
+
+    auto label_data = pair_proto.label_data();
+
+    std::vector<apsi::util::felt_t> labels(label_data.size() /
+                                           sizeof(apsi::util::felt_t));
+
+    std::memcpy(labels.data(), label_data.data(), label_data.size());
     item_label_pair.emplace_back(pair_proto.item(), labels);
   }
 
@@ -142,10 +143,6 @@ inline std::string SerializeDataWithIndices(
   std::string item_string(proto.ByteSizeLong(), '\0');
   proto.SerializePartialToArray(item_string.data(), proto.ByteSizeLong());
 
-  // SPDLOG_INFO("*** debug item_size:{} bytes:{} proto size:{}",
-  //             item_proto->item_size(), item_proto->ByteSizeLong(),
-  //             proto.ByteSizeLong());
-
   return item_string;
 }
 
@@ -161,8 +158,6 @@ inline std::pair<apsi::util::AlgItem, size_t> DeserializeDataWithIndices(
 
 inline std::string SerializeDataLabelWithIndices(
     const std::pair<apsi::util::AlgItemLabel, size_t>& data_with_indices) {
-  std::string ret;
-
   proto::DataLabelWithIndicesProto proto;
 
   proto::AlgItemLabelProto* item_proto = new proto::AlgItemLabelProto();

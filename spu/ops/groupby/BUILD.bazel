@@ -12,5 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+load("@rules_python//python:defs.bzl", "py_binary", "py_library", "py_test")
 
-__version__ = "0.5.0b0.dev0"
+package(default_visibility = ["//visibility:public"])
+
+py_library(
+    name = "groupby",
+    srcs = ["groupby.py"],
+)
+
+py_test(
+    name = "groupby_test",
+    srcs = ["groupby_test.py"],
+    deps = [
+        ":groupby",
+        "//spu:init",
+        "//spu/utils:simulation",
+    ],
+)

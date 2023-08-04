@@ -111,21 +111,24 @@ std::vector<NdArrayRef> Aby3Io::makeBitSecret(const NdArrayRef& in) const {
                                     NdArrayRef(out_type, in.shape())};
 
   return DISPATCH_UINT_PT_TYPES(in_pt_type, "_", [&]() {
-    using InT = ScalarT;
-    using BShrT = uint8_t;
+    using in_el_t = ScalarT;
+    using bshr_el_t = uint8_t;
+    using bshr_t = std::array<bshr_el_t, 2>;
 
-    std::vector<BShrT> r0(numel);
-    std::vector<BShrT> r1(numel);
+    NdArrayView<in_el_t> _in(in);
+
+    std::vector<bshr_el_t> r0(numel);
+    std::vector<bshr_el_t> r1(numel);
 
     yacl::crypto::PrgAesCtr(yacl::crypto::RandSeed(), absl::MakeSpan(r0));
     yacl::crypto::PrgAesCtr(yacl::crypto::RandSeed(), absl::MakeSpan(r1));
 
-    auto _s0 = shares[0].data<std::array<BShrT, 2>>();
-    auto _s1 = shares[1].data<std::array<BShrT, 2>>();
-    auto _s2 = shares[2].data<std::array<BShrT, 2>>();
+    NdArrayView<bshr_t> _s0(shares[0]);
+    NdArrayView<bshr_t> _s1(shares[1]);
+    NdArrayView<bshr_t> _s2(shares[2]);
 
     for (int64_t idx = 0; idx < in.numel(); idx++) {
-      const BShrT r2 = static_cast<BShrT>(in.at<InT>(idx)) - r0[idx] - r1[idx];
+      const bshr_el_t r2 = static_cast<bshr_el_t>(_in[idx]) - r0[idx] - r1[idx];
 
       _s0[idx][0] = r0[idx] & 0x1;
       _s0[idx][1] = r1[idx] & 0x1;
@@ -155,13 +158,16 @@ NdArrayRef Aby3Io::fromShares(const std::vector<NdArrayRef>& shares) const {
     NdArrayRef out(makeType<Pub2kTy>(field_), shares[0].shape());
 
     DISPATCH_ALL_FIELDS(field_, "_", [&]() {
-      auto _out = out.data<ring2k_t>();
+      using el_t = ring2k_t;
+      using shr_t = std::array<el_t, 2>;
+      NdArrayView<ring2k_t> _out(out);
       for (size_t si = 0; si < shares.size(); si++) {
+        NdArrayView<shr_t> _s(shares[si]);
         for (auto idx = 0; idx < shares[0].numel(); ++idx) {
           if (si == 0) {
             _out[idx] = 0;
           }
-          _out[idx] += shares[si].at<std::array<ring2k_t, 2>>(idx)[0];
+          _out[idx] += _s[idx][0];
         }
       }
     });
@@ -170,17 +176,17 @@ NdArrayRef Aby3Io::fromShares(const std::vector<NdArrayRef>& shares) const {
     NdArrayRef out(makeType<Pub2kTy>(field_), shares[0].shape());
 
     DISPATCH_ALL_FIELDS(field_, "_", [&]() {
-      using OutT = ring2k_t;
-      auto _out = out.data<OutT>();
+      NdArrayView<ring2k_t> _out(out);
 
       DISPATCH_UINT_PT_TYPES(eltype.as<BShrTy>()->getBacktype(), "_", [&] {
-        using BShrT = ScalarT;
+        using shr_t = std::array<ScalarT, 2>;
         for (size_t si = 0; si < shares.size(); si++) {
+          NdArrayView<shr_t> _s(shares[si]);
           for (auto idx = 0; idx < shares[0].numel(); ++idx) {
             if (si == 0) {
               _out[idx] = 0;
             }
-            _out[idx] ^= shares[si].at<std::array<BShrT, 2>>(idx)[0];
+            _out[idx] ^= _s[idx][0];
           }
         }
       });

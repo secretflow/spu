@@ -127,10 +127,13 @@ TEST_P(BeaverTest, AuthAnd) {
       << sum_c << sum_key << sum_c_mac;
 
   DISPATCH_ALL_FIELDS(kField, "_", [&]() {
+    NdArrayView<ring2k_t> _valid_a(valid_a);
+    NdArrayView<ring2k_t> _valid_b(valid_b);
+    NdArrayView<ring2k_t> _valid_c(valid_c);
+
     for (auto idx = 0; idx < sum_a.numel(); idx++) {
-      auto t = valid_a.at<ring2k_t>(idx) * valid_b.at<ring2k_t>(idx);
-      auto err = t > valid_c.at<ring2k_t>(idx) ? t - valid_c.at<ring2k_t>(idx)
-                                               : valid_c.at<ring2k_t>(idx) - t;
+      auto t = _valid_a[idx] * _valid_b[idx];
+      auto err = t > _valid_c[idx] ? t - _valid_c[idx] : _valid_c[idx] - t;
       EXPECT_LE(err, kMaxDiff);
     }
   });
@@ -384,10 +387,13 @@ TEST_P(BeaverTest, AuthDot) {
 
   auto res = ring_mmul(sum_a, sum_b);
   DISPATCH_ALL_FIELDS(kField, "_", [&]() {
+    NdArrayView<ring2k_t> _sum_a(sum_a);
+    NdArrayView<ring2k_t> _sum_c(sum_c);
+    NdArrayView<ring2k_t> _res(res);
+
     for (auto idx = 0; idx < res.numel(); idx++) {
-      auto err = res.at<ring2k_t>(idx) > sum_c.at<ring2k_t>(idx)
-                     ? res.at<ring2k_t>(idx) - sum_c.at<ring2k_t>(idx)
-                     : sum_c.at<ring2k_t>(idx) - res.at<ring2k_t>(idx);
+      auto err = _res[idx] > _sum_c[idx] ? _res[idx] - _sum_c[idx]
+                                         : _sum_c[idx] - _res[idx];
       EXPECT_LE(err, kMaxDiff);
     }
   });
