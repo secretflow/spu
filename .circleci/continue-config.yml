@@ -64,7 +64,7 @@ jobs:
             python3 -m pip install -r requirements-dev.txt
       - run:
           name: "build"
-          command: bazel build //... -c opt --ui_event_filters=-info,-debug,-warning --disk_cache=~/.cache/spu_build_cache --jobs=16
+          command: bazel build //... -c opt --ui_event_filters=-info,-debug,-warning --disk_cache=~/.cache/spu_build_cache --jobs 16
       - run:
           name: "test"
           command: |
@@ -100,7 +100,7 @@ jobs:
           path: test_logs.tar.gz
   macOS_ut:
     macos:
-      xcode: 14.2
+      xcode: 14.3
     environment:
       HOMEBREW_NO_AUTO_UPDATE: 1
     resource_class: macos.m1.large.gen1
