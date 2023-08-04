@@ -31,6 +31,7 @@
 
 #include "libspu/psi/core/labeled_psi/package.h"
 #include "libspu/psi/core/labeled_psi/sender_db.h"
+#include "libspu/psi/core/labeled_psi/sender_kvdb.h"
 
 #include "libspu/psi/core/labeled_psi/serializable.pb.h"
 
@@ -44,7 +45,7 @@ class QueryRequest {
                std::unordered_map<
                    uint32_t, std::vector<apsi::SEALObject<seal::Ciphertext>>>
                    &encrypted_powers,
-               const std::shared_ptr<spu::psi::SenderDB> &sender_db) {
+               const std::shared_ptr<spu::psi::ISenderDB> &sender_db) {
     auto seal_context = sender_db->GetSealContext();
 
     for (auto &q : encrypted_powers) {
@@ -118,7 +119,7 @@ uint32_t reset_powers_dag(apsi::PowersDag *pd, const apsi::PSIParams &params,
 
 }  // namespace
 
-LabelPsiSender::LabelPsiSender(std::shared_ptr<spu::psi::SenderDB> sender_db)
+LabelPsiSender::LabelPsiSender(std::shared_ptr<spu::psi::ISenderDB> sender_db)
     : sender_db_(std::move(sender_db)) {
   apsi::PSIParams params(sender_db_->GetParams());
 
@@ -186,7 +187,7 @@ void LabelPsiSender::RunOPRF(
 
 std::vector<std::shared_ptr<ResultPackage>> SenderRunQuery(
     const QueryRequest &query,
-    const std::shared_ptr<spu::psi::SenderDB> &sender_db,
+    const std::shared_ptr<spu::psi::ISenderDB> &sender_db,
     const apsi::PowersDag &pd);
 
 void LabelPsiSender::RunQuery(
@@ -238,21 +239,29 @@ void LabelPsiSender::RunQuery(
       SenderRunQuery(request, sender_db_, pd_);
 
   proto::QueryResponseProto response_proto;
+
+  std::vector<std::future<void>> futures;
+  apsi::ThreadPoolMgr tpm;
+
   for (auto &result : query_result) {
     proto::QueryResultProto *result_proto = response_proto.add_results();
-    result_proto->set_bundle_idx(result->bundle_idx);
-    std::vector<uint8_t> temp;
-    temp.resize(result->psi_result.save_size(compr_mode_));
-    auto size = result->psi_result.save(temp, compr_mode_);
-    result_proto->set_ciphertext(temp.data(), temp.size());
-    result_proto->set_label_byte_count(result->label_byte_count);
-    result_proto->set_nonce_byte_count(result->nonce_byte_count);
+    futures.push_back(tpm.thread_pool().enqueue([&, result, result_proto]() {
+      result_proto->set_bundle_idx(result->bundle_idx);
+      std::vector<uint8_t> temp(result->psi_result.save_size(compr_mode_));
+      auto size = result->psi_result.save(temp, compr_mode_);
+      result_proto->set_ciphertext(temp.data(), temp.size());
+      result_proto->set_label_byte_count(result->label_byte_count);
+      result_proto->set_nonce_byte_count(result->nonce_byte_count);
 
-    for (auto &r : result->label_result) {
-      temp.resize(r.save_size(compr_mode_));
-      size = r.save(temp, compr_mode_);
-      result_proto->add_label_results(temp.data(), size);
-    }
+      for (auto &r : result->label_result) {
+        temp.resize(r.save_size(compr_mode_));
+        size = r.save(temp, compr_mode_);
+        result_proto->add_label_results(temp.data(), size);
+      }
+    }));
+  }
+  for (auto &f : futures) {
+    f.get();
   }
 
   yacl::Buffer response_buffer(response_proto.ByteSizeLong());
@@ -267,14 +276,14 @@ void LabelPsiSender::RunQuery(
       fmt::format("send query response size:{}", response_buffer.size()));
 }
 
-void ComputePowers(const std::shared_ptr<spu::psi::SenderDB> &sender_db,
+void ComputePowers(const std::shared_ptr<spu::psi::ISenderDB> &sender_db,
                    const apsi::CryptoContext &crypto_context,
                    std::vector<CiphertextPowers> *all_powers,
                    const apsi::PowersDag &pd, uint32_t bundle_idx,
                    seal::MemoryPoolHandle *pool);
 
 void ProcessBinBundleCache(
-    const std::shared_ptr<spu::psi::SenderDB> &sender_db,
+    const std::shared_ptr<spu::psi::ISenderDB> &sender_db,
     const apsi::CryptoContext &crypto_context,
     const std::shared_ptr<apsi::sender::BinBundle> &bundle,
     std::vector<CiphertextPowers> *all_powers, uint32_t bundle_idx,
@@ -283,7 +292,7 @@ void ProcessBinBundleCache(
 
 std::vector<std::shared_ptr<ResultPackage>> SenderRunQuery(
     const QueryRequest &query,
-    const std::shared_ptr<spu::psi::SenderDB> &sender_db,
+    const std::shared_ptr<spu::psi::ISenderDB> &sender_db,
     const apsi::PowersDag &pd) {
   // We use a custom SEAL memory that is freed after the query is done
   auto pool = seal::MemoryManager::GetPool(seal::mm_force_new);
@@ -364,7 +373,8 @@ std::vector<std::shared_ptr<ResultPackage>> SenderRunQuery(
 
     for (size_t cache_idx = 0; cache_idx < cache_count; ++cache_idx) {
       std::shared_ptr<apsi::sender::BinBundle> bundle =
-          sender_db->GetCacheAt(static_cast<uint32_t>(bundle_idx), cache_idx);
+          sender_db->GetBinBundleAt(static_cast<uint32_t>(bundle_idx),
+                                    cache_idx);
 
       query_results.push_back(std::make_shared<ResultPackage>());
       std::shared_ptr<ResultPackage> result = *(query_results.rbegin());
@@ -388,7 +398,7 @@ std::vector<std::shared_ptr<ResultPackage>> SenderRunQuery(
   return query_results;
 }
 
-void ComputePowers(const std::shared_ptr<spu::psi::SenderDB> &sender_db,
+void ComputePowers(const std::shared_ptr<spu::psi::ISenderDB> &sender_db,
                    const apsi::CryptoContext &crypto_context,
                    std::vector<CiphertextPowers> *all_powers,
                    const apsi::PowersDag &pd, uint32_t bundle_idx,
@@ -479,7 +489,7 @@ void ComputePowers(const std::shared_ptr<spu::psi::SenderDB> &sender_db,
 }
 
 void ProcessBinBundleCache(
-    const std::shared_ptr<spu::psi::SenderDB> &sender_db,
+    const std::shared_ptr<spu::psi::ISenderDB> &sender_db,
     const apsi::CryptoContext &crypto_context,
     const std::shared_ptr<apsi::sender::BinBundle> &bundle,
     std::vector<CiphertextPowers> *all_powers, uint32_t bundle_idx,

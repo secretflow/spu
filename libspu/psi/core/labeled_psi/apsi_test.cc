@@ -31,6 +31,8 @@
 #include "libspu/psi/core/labeled_psi/psi_params.h"
 #include "libspu/psi/core/labeled_psi/receiver.h"
 #include "libspu/psi/core/labeled_psi/sender.h"
+#include "libspu/psi/core/labeled_psi/sender_kvdb.h"
+#include "libspu/psi/core/labeled_psi/sender_memdb.h"
 
 namespace spu::psi {
 
@@ -42,6 +44,7 @@ constexpr size_t kPsiStartPos = 100;
 struct TestParams {
   size_t nr;
   size_t ns;
+  bool use_kvdb = true;
 };
 
 std::vector<std::string> GenerateData(size_t seed, size_t item_count) {
@@ -52,32 +55,31 @@ std::vector<std::string> GenerateData(size_t seed, size_t item_count) {
   for (size_t i = 0; i < item_count; ++i) {
     std::string item(16, '\0');
     prg.Fill(absl::MakeSpan(item.data(), item.length()));
-    items.emplace_back(item);
+    items.emplace_back(absl::BytesToHexString(item));
   }
 
   return items;
 }
 
-std::vector<apsi::Item> GenerateSenderData(
+std::vector<std::string> GenerateSenderData(
     size_t seed, size_t item_count,
     const absl::Span<std::string> &receiver_items,
     std::vector<size_t> *intersection_idx) {
-  std::vector<apsi::Item> sender_items;
+  std::vector<std::string> sender_items;
 
   yacl::crypto::Prg<uint128_t> prg(seed);
 
   for (size_t i = 0; i < item_count; ++i) {
-    apsi::Item::value_type value{};
-    prg.Fill(absl::MakeSpan(value));
-    sender_items.emplace_back(value);
+    std::string item(16, '\0');
+    prg.Fill(absl::MakeSpan(item.data(), item.size()));
+    sender_items.emplace_back(absl::BytesToHexString(item));
   }
 
   for (size_t i = 0; i < receiver_items.size(); i += 3) {
-    apsi::Item::value_type value{};
-    std::memcpy(value.data(), receiver_items[i].data(),
-                receiver_items[i].length());
-    apsi::Item item(value);
-    sender_items[kPsiStartPos + i * 5] = item;
+    if ((kPsiStartPos + i * 5) >= sender_items.size()) {
+      break;
+    }
+    sender_items[kPsiStartPos + i * 5] = receiver_items[i];
     (*intersection_idx).emplace_back(i);
   }
 
@@ -130,9 +132,14 @@ TEST_P(LabelPsiTest, Works) {
   });
 
   bool compressed = false;
-  std::shared_ptr<spu::psi::SenderDB> sender_db =
-      std::make_shared<spu::psi::SenderDB>(psi_params, oprf_key, kv_store_path,
-                                           0, nonce_byte_count, compressed);
+  std::shared_ptr<spu::psi::ISenderDB> sender_db;
+  if (params.use_kvdb) {
+    sender_db = std::make_shared<spu::psi::SenderKvDB>(
+        psi_params, oprf_key, kv_store_path, 0, nonce_byte_count, compressed);
+  } else {
+    sender_db = std::make_shared<spu::psi::SenderMemDB>(
+        psi_params, oprf_key, 0, nonce_byte_count, compressed);
+  }
 
   std::vector<std::string> receiver_items = GenerateData(rd(), params.nr);
 
@@ -143,22 +150,11 @@ TEST_P(LabelPsiTest, Works) {
 
   const auto setdb_start = std::chrono::system_clock::now();
 
-  std::vector<apsi::Item> sender_items = GenerateSenderData(
+  std::vector<std::string> sender_items = GenerateSenderData(
       rd(), item_count, absl::MakeSpan(receiver_items), &intersection_idx);
 
-  // sender_db->SetData(sender_items);
-
-  std::vector<std::string> sender_data(sender_items.size());
-  for (size_t i = 0; i < sender_items.size(); ++i) {
-    sender_data[i].reserve(sender_items[i].value().size());
-    sender_data[i].append(absl::string_view(
-        reinterpret_cast<char *>(sender_items[i].value().data()),
-        sender_items[i].value().size()));
-  }
-  SPDLOG_INFO("sender_data[0].length:{}", sender_data[0].length());
-
   std::shared_ptr<IBatchProvider> batch_provider =
-      std::make_shared<MemoryBatchProvider>(sender_data);
+      std::make_shared<MemoryBatchProvider>(sender_items);
 
   sender_db->SetData(batch_provider);
 
@@ -249,10 +245,10 @@ INSTANTIATE_TEST_SUITE_P(Works_Instances, LabelPsiTest,
                              TestParams{4096, 100000},     // 4096-100K
                              TestParams{10000, 100000},    // 10000-100K
 #else
-                             TestParams{1, 10000},     // 1-10K
-                             TestParams{1, 100000},    // 1-100K
-                             TestParams{256, 100000},  // 256-100K
-                             TestParams{256, 100000})  // 256-100K
+                             TestParams{1, 10000},            // 1-10K
+                             TestParams{1, 10000, false},     // 1-10K memdb
+                             TestParams{10, 10000},           // 1-10K
+                             TestParams{100, 100000, false})  // 100-100K
 #endif
 );
 

@@ -552,6 +552,9 @@ void BindLibs(py::module& m) {
         pir::PirSetupConfig config;
         SPU_ENFORCE(config.ParseFromString(config_pb));
 
+        config.set_bucket_size(1000000);
+        config.set_compressed(false);
+
         auto r = pir::PirSetup(config);
         return r.SerializeAsString();
       },
@@ -576,6 +579,9 @@ void BindLibs(py::module& m) {
         pir::PirSetupConfig config;
         SPU_ENFORCE(config.ParseFromString(config_pb));
         SPU_ENFORCE(config.setup_path() == "::memory");
+
+        config.set_bucket_size(1000000);
+        config.set_compressed(false);
 
         auto r = pir::PirMemoryServer(lctx, config);
         return r.SerializeAsString();

@@ -1,129 +1,8 @@
 import numpy as np
 import jax.numpy as jnp
 from enum import Enum
+from ..utils.fxp_approx import sigmoid, SigType
 
-def t1_sig(x, limit: bool = True):
-    '''
-    taylor series referenced from:
-    https://mortendahl.github.io/2017/04/17/private-deep-learning-with-mpc/
-    '''
-    T0 = 1.0 / 2
-    T1 = 1.0 / 4
-    ret = T0 + x * T1
-    if limit:
-        return jnp.select([ret < 0, ret > 1], [0, 1], ret)
-    else:
-        return ret
-
-
-def t3_sig(x, limit: bool = True):
-    '''
-    taylor series referenced from:
-    https://mortendahl.github.io/2017/04/17/private-deep-learning-with-mpc/
-    '''
-    T3 = -1.0 / 48
-    ret = t1_sig(x, False) + jnp.power(x, 3) * T3
-    if limit:
-        return jnp.select([x < -2, x > 2], [0, 1], ret)
-    else:
-        return ret
-
-
-def t5_sig(x, limit: bool = True):
-    '''
-    taylor series referenced from:
-    https://mortendahl.github.io/2017/04/17/private-deep-learning-with-mpc/
-    '''
-    T5 = 1.0 / 480
-    ret = t3_sig(x, False) + jnp.power(x, 5) * T5
-    if limit:
-        return jnp.select([ret < 0, ret > 1], [0, 1], ret)
-    else:
-        return ret
-
-
-def seg3_sig(x):
-    '''
-    f(x) = 0.5 + 0.125x if -4 <= x <= 4
-           1            if       x > 4
-           0            if  -4 > x
-    '''
-    return jnp.select([x < -4, x > 4], [0, 1], 0.5 + x * 0.125)
-
-
-def df_sig(x):
-    '''
-    https://dergipark.org.tr/en/download/article-file/54559
-    Dataflow implementation of sigmoid function:
-    F(x) = 0.5 * ( x / ( 1 + |x| ) ) + 0.5
-    df_sig has higher precision than sr_sig if x in [-2, 2]
-    '''
-    return 0.5 * (x / (1 + jnp.abs(x))) + 0.5
-
-
-def sr_sig(x):
-    '''
-    https://en.wikipedia.org/wiki/Sigmoid_function#Examples
-    Square Root approximation functions:
-    F(x) = 0.5 * ( x / ( 1 + x^2 )^0.5 ) + 0.5
-    sr_sig almost perfect fit to sigmoid if x out of range [-3,3]
-    '''
-    return 0.5 * (x / jnp.sqrt(1 + jnp.square(x))) + 0.5
-
-
-def ls7_sig(x):
-    '''Polynomial fitting'''
-    return (
-        5.00052959e-01
-        + 2.35176260e-01 * x
-        - 3.97212202e-05 * jnp.power(x, 2)
-        - 1.23407424e-02 * jnp.power(x, 3)
-        + 4.04588962e-06 * jnp.power(x, 4)
-        + 3.94330487e-04 * jnp.power(x, 5)
-        - 9.74060972e-08 * jnp.power(x, 6)
-        - 4.74674505e-06 * jnp.power(x, 7)
-    )
-
-
-def mix_sig(x):
-    '''
-    mix ls7 & sr sig, use ls7 if |x| < 4 , else use sr.
-    has higher precision in all input range.
-    NOTICE: this method is very expensive, only use for hessian matrix.
-    '''
-    ls7 = ls7_sig(x)
-    sr = sr_sig(x)
-    return jnp.select([x < -4, x > 4], [sr, sr], ls7)
-
-
-def real_sig(x):
-    return 1 / (1 + jnp.exp(-x))
-
-def sigmoid(x, sig_type):
-    if sig_type is SigType.REAL:
-        return real_sig(x)
-    elif sig_type is SigType.T1:
-        return t1_sig(x)
-    elif sig_type is SigType.T3:
-        return t3_sig(x)
-    elif sig_type is SigType.T5:
-        return t5_sig(x)
-    elif sig_type is SigType.DF:
-        return df_sig(x)
-    elif sig_type is SigType.SR:
-        return sr_sig(x)
-    elif sig_type is SigType.MIX:
-        return mix_sig(x)
-
-class SigType(Enum):
-    REAL = 'real'
-    T1 = 't1'
-    T3 = 't3'
-    T5 = 't5'
-    DF = 'df'
-    SR = 'sr'
-    # DO NOT use this except in hessian case.
-    MIX = 'mix'
 
 class Penalty(Enum):
     NONE = 'None'
@@ -132,27 +11,67 @@ class Penalty(Enum):
     Elastic = 'elasticnet' # not supported
 
 class MultiClass(Enum):
-    Ovr = 'ovr' # binary problem
-    Multy = 'multinomial' # multi_class problem not supported
+    Binary = 'binary'
+    Ovr = 'ovr' # not supported yet
+    Multy = 'multinomial' # not supported yet
 
 
-class SGDClassifier:
+class Solver(Enum):
+    SGD = 'sgd'
+
+class LogisticRegression:
+    """
+    Logistic Regression (aka logit, MaxEnt) classifier.
+
+    IMPORTANT: Something different between `LogisticRegression` in sklearn:
+        1. sigmoid will be computed with approximation
+        2. you must define multi_class because we can not inspect y to decision the problem type
+        3. for now, only 0-1 binary classification is supported; so if your label is {-1,1}, you must change it first!
+
+    Parameters
+    ----------
+    penalty: Specify the norm of the penalty:
+        {'l1', 'l2', 'elasticnet', 'None'}, default='l2' (current only support l2)
+
+    solver: Algorithm to use in the optimization problem, default='sgd'.
+
+    multi_class: specify whether and which multi-classification form
+        {'binary', 'ovr', 'multinomial'}, default='binary' (current only support binary)
+            - binary: binary problem
+            - ovr: for each label, will fit a binary problem
+            - multinomial: the loss minimised is the multinomial loss that fit across the entire probability distribution
+
+    class_weight: not support yet, for multi-class tasks, default=None
+
+    sig_type: the approximation method for sigmoid function, default='sr'
+        for all choices, refer to `SigType`
+
+    l2_norm: the strength of L2 norm, must be a positive float, default=0.01
+
+    epochs, learning_rate, batch_size: hyper-parameters for sgd solver
+        epochs: default=20
+        learning_rate: default=0.1
+        batch_size: default=512
+
+    """
     def __init__(
         self,
-        epochs: int,
-        learning_rate: float,
-        batch_size: int,
-        penalty: str,
-        sig_type: str,
-        l2_norm: float,
-        class_weight: None,
-        multi_class: str,
+        penalty: str='l2',
+        solver: str='sgd',
+        multi_class: str='binary',
+        class_weight=None,
+        sig_type: str='sr',
+        l2_norm: float=0.01,
+        epochs: int=20,
+        learning_rate: float=0.1,
+        batch_size: int=512,
     ):
         # parameter check.
         assert epochs > 0, f"epochs should >0"
         assert learning_rate > 0, f"learning_rate should >0"
         assert batch_size > 0, f"batch_size should >0"
         assert penalty == 'l2', "only support L2 penalty for now"
+        assert solver == 'sgd', "only support sgd solver for now"
         if penalty == Penalty.L2:
             assert l2_norm > 0, f"l2_norm should >0 if use L2 penalty"
         assert penalty in [
@@ -162,7 +81,7 @@ class SGDClassifier:
             e.value for e in SigType
         ], f"sig_type should in {[e.value for e in SigType]}, but got {sig_type}"
         assert class_weight == None, f"not support class_weight for now"
-        assert multi_class == 'ovr', f"only support binary problem for now"
+        assert multi_class == 'binary', f"only support binary problem for now"
 
         self._epochs = epochs
         self._learning_rate = learning_rate
@@ -212,9 +131,12 @@ class SGDClassifier:
                 )
                 grad = grad + w_with_zero_bias * self._l2_norm
             elif self._penalty == Penalty.L1:
-                pass
+                raise NotImplementedError
             elif self._penalty == Penalty.Elastic:
-                pass
+                raise NotImplementedError
+            else:
+                # None penalty
+                raise NotImplementedError
 
             step = (self._learning_rate * grad) / batch_size
 
@@ -230,7 +152,7 @@ class SGDClassifier:
         X : {array-like}, shape (n_samples, n_features)
             Training data.
 
-        y : ndarray of shape (n_samples,)
+        y : ndarray of shape (n_samples,), value MUST between {0,1,...k-1} (k is the number of classes)
             Target values.
 
         Returns
@@ -248,9 +170,9 @@ class SGDClassifier:
 
         # not support class_weight for now
         if isinstance(self._class_weight, dict):
-            pass
+            raise NotImplementedError
         elif self._class_weight == 'balanced':
-            pass
+            raise NotImplementedError
 
         # do train
         for _ in range(self._epochs):
@@ -277,9 +199,43 @@ class SGDClassifier:
         -------
         ndarray of shape (n_samples, n_classes)
             Returns the probability of the sample for each class in the model,
-            where classes are ordered as they are in `self.classes_`.
         """
-        if self._multi_class == MultiClass.Ovr:
+        pred = self.decision_function(x)
+
+        if self._multi_class == MultiClass.Binary:
+            prob = sigmoid(pred, self._sig_type)
+        else:
+            raise NotImplementedError
+
+        return prob
+
+
+    def predict(self, x):
+        """
+        Predict class labels for samples in X.
+
+        Parameters
+        ----------
+        X : {array-like, } of shape (n_samples, n_features)
+            The data matrix for which we want to get the predictions.
+
+        Returns
+        -------
+        y_pred : ndarray of shape (n_samples,)
+            Vector containing the class labels for each sample.
+        """
+        pred = self.decision_function(x)
+
+        if self._multi_class == MultiClass.Binary:
+            # for binary task, only check whether logit > 0 (prob > 0.5)
+            label = jnp.select([pred>0], [1], 0)
+        else:
+            raise NotImplementedError
+
+        return label
+
+    def decision_function(self, x):
+        if self._multi_class == MultiClass.Binary:
             num_feat = x.shape[1]
             w = self._weights
             assert w.shape[0] == num_feat + 1, f"w shape is mismatch to x={x.shape}"
@@ -289,8 +245,9 @@ class SGDClassifier:
             bias = w[-1, 0]
             w = jnp.resize(w, (num_feat, 1))
             pred = jnp.matmul(x, w) + bias
-            pred = sigmoid(pred, self._sig_type)
             return pred
-        elif self._multi_class == MultiClass.Multy:
-            # not support multi_class problem for now
-            pass
+        elif self._multi_class == MultiClass.Ovr:
+            raise NotImplementedError
+        else:
+            # Multy model here
+            raise NotImplementedError

@@ -103,7 +103,8 @@ std::vector<NdArrayRef> ring_rand_boolean_splits(const NdArrayRef& arr,
 
 template <typename T>
 void ring_set_value(NdArrayRef& in, const T& value) {
-  pforeach(0, in.numel(), [&](int64_t idx) { in.at<T>(idx) = value; });
+  NdArrayView<T> _in(in);
+  pforeach(0, in.numel(), [&](int64_t idx) { _in[idx] = value; });
 }
 
 }  // namespace spu::mpc

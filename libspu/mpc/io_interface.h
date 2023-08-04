@@ -34,10 +34,10 @@ class IoInterface {
   // @return a list of random values, each of which could be send to one mpc
   //         engine.
   //
-  // TODO: currently, the `private type` is transprent to compiler.
+  // TODO: currently, the `private type` is transparent to compiler.
   //
-  // This function deos NOT handle encoding stuffs, it's the upper layer(hal)'s
-  // resposibility to encode to it to ring.
+  // This function does NOT handle encoding stuffs, it's the upper layer(hal)'s
+  // responsibility to encode to it to ring.
   virtual std::vector<NdArrayRef> toShares(const NdArrayRef& raw,
                                            Visibility vis,
                                            int owner_rank = -1) const = 0;

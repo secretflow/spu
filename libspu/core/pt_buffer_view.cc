@@ -30,7 +30,7 @@ NdArrayRef convertToNdArray(PtBufferView bv) {
   auto out = NdArrayRef(type, bv.shape);
 
   if (bv.shape.numel() > 0) {
-    auto* out_ptr = static_cast<std::byte*>(out.data());
+    auto* out_ptr = out.data<std::byte>();
 
     size_t elsize = SizeOf(bv.pt_type);
 

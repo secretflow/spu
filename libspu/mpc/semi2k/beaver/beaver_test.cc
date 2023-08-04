@@ -116,9 +116,9 @@ TEST_P(BeaverTest, Mul_large) {
   }
 
   DISPATCH_ALL_FIELDS(kField, "_", [&]() {
-    auto _a = sum_a.data<const ring2k_t>();
-    auto _b = sum_b.data<const ring2k_t>();
-    auto _c = sum_c.data<const ring2k_t>();
+    NdArrayView<ring2k_t> _a(sum_a);
+    NdArrayView<ring2k_t> _b(sum_b);
+    NdArrayView<ring2k_t> _c(sum_c);
     for (auto idx = 0; idx < sum_a.numel(); idx++) {
       auto t = _a[idx] * _b[idx];
       auto err = t > _c[idx] ? t - _c[idx] : _c[idx] - t;
@@ -159,9 +159,9 @@ TEST_P(BeaverTest, Mul) {
   }
 
   DISPATCH_ALL_FIELDS(kField, "_", [&]() {
-    auto _a = sum_a.data<const ring2k_t>();
-    auto _b = sum_b.data<const ring2k_t>();
-    auto _c = sum_c.data<const ring2k_t>();
+    NdArrayView<ring2k_t> _a(sum_a);
+    NdArrayView<ring2k_t> _b(sum_b);
+    NdArrayView<ring2k_t> _c(sum_c);
     for (auto idx = 0; idx < sum_a.numel(); idx++) {
       auto t = _a[idx] * _b[idx];
       auto err = t > _c[idx] ? t - _c[idx] : _c[idx] - t;
@@ -241,8 +241,8 @@ TEST_P(BeaverTest, Dot) {
 
   auto res = ring_mmul(sum_a, sum_b);
   DISPATCH_ALL_FIELDS(kField, "_", [&]() {
-    auto _r = res.data<const ring2k_t>();
-    auto _c = sum_c.data<const ring2k_t>();
+    NdArrayView<ring2k_t> _r(res);
+    NdArrayView<ring2k_t> _c(sum_c);
     for (auto idx = 0; idx < res.numel(); idx++) {
       auto err = _r[idx] > _c[idx] ? _r[idx] - _c[idx] : _c[idx] - _r[idx];
       EXPECT_LE(err, kMaxDiff);
@@ -287,8 +287,8 @@ TEST_P(BeaverTest, Dot_large) {
 
   auto res = ring_mmul(sum_a, sum_b);
   DISPATCH_ALL_FIELDS(kField, "_", [&]() {
-    auto _r = res.data<const ring2k_t>();
-    auto _c = sum_c.data<const ring2k_t>();
+    NdArrayView<ring2k_t> _r(res);
+    NdArrayView<ring2k_t> _c(sum_c);
     for (auto idx = 0; idx < res.numel(); idx++) {
       auto err = _r[idx] > _c[idx] ? _r[idx] - _c[idx] : _c[idx] - _r[idx];
       EXPECT_LE(err, kMaxDiff);

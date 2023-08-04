@@ -130,7 +130,7 @@ Value tiled(Fn&& fn, SPUContext* ctx, const Value& x, Args&&... args) {
   int64_t offset = 0;
   for (int64_t slice_idx = 0; slice_idx < num_slice_dim * num_slice;
        slice_idx++) {
-    std::memcpy(static_cast<std::byte*>(out.data()) + offset,
+    std::memcpy(out.data<std::byte>() + offset,
                 out_slices[slice_idx].data().data(),
                 out_slices[slice_idx].numel() * out.elsize());
     offset += out_slices[slice_idx].numel() * out.elsize();
@@ -247,7 +247,7 @@ Value tiled(Fn&& fn, SPUContext* ctx, const Value& x, const Value& y,
   int64_t offset = 0;
   for (int64_t slice_idx = 0; slice_idx < num_slice_dim * num_slice;
        slice_idx++) {
-    std::memcpy(static_cast<std::byte*>(out.data()) + offset,
+    std::memcpy(out.data<std::byte>() + offset,
                 out_slices[slice_idx].data().data(),
                 out_slices[slice_idx].numel() * out.elsize());
 

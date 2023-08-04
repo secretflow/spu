@@ -119,8 +119,8 @@ static bool attempt_nocopy_reshape(const NdArrayRef& old,
   return true;
 }
 
-std::pair<bool, int64_t> can_use_fast_indexing(const Shape& shape,
-                                               const Strides& strides) {
+std::pair<bool, Stride> can_use_fast_indexing(const Shape& shape,
+                                              const Strides& strides) {
   Shape stripped_shape;
   Strides stripped_strides;
 
@@ -222,7 +222,6 @@ NdArrayRef NdArrayRef::clone() const {
   }
 
   return res;
-  return {};
 }
 
 std::shared_ptr<yacl::Buffer> NdArrayRef::getOrCreateCompactBuf() const {
