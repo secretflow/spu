@@ -95,7 +95,7 @@ workflows:
                 only: /.*/
   testpypi-workflow:
     when:
-      equal: [ "test_pypi", << pipeline.parameters.GHA_Meta >> ]
+      equal: [ "dev_publish", << pipeline.parameters.GHA_Meta >> ]
     jobs:
       - continuation/continue:
-          configuration_path: .circleci/testpypi-config.yml
+          configuration_path: .circleci/dev-release-config.yml
