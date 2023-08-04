@@ -101,8 +101,6 @@ jobs:
   macOS_ut:
     macos:
       xcode: 14.3
-    environment:
-      HOMEBREW_NO_AUTO_UPDATE: 1
     resource_class: macos.m1.large.gen1
     steps:
       - checkout
