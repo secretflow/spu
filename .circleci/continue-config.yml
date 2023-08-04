@@ -64,7 +64,7 @@ jobs:
             python3 -m pip install -r requirements-dev.txt
       - run:
           name: "build"
-          command: bazel build //... -c opt --ui_event_filters=-info,-debug,-warning --disk_cache=~/.cache/spu_build_cache --job=16
+          command: bazel build //... -c opt --ui_event_filters=-info,-debug,-warning --disk_cache=~/.cache/spu_build_cache --jobs=16
       - run:
           name: "test"
           command: |
