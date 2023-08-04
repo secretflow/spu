@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-name: "Publish TestPypi Package"
+name: "Publish Dev Package"
 
 on:
   workflow_dispatch:
@@ -21,10 +21,10 @@ jobs:
   trigger-circleci:
     runs-on: ubuntu-latest
     steps:
-      - name: secretflow-spu-testpypi
-        id: secretflow-spu-testpypi
+      - name: secretflow-spu-dev-publish
+        id: secretflow-spu-dev-publish
         uses: CircleCI-Public/trigger-circleci-pipeline-action@v1.1.0
         with:
-          GHA_Meta: "test_pypi"
+          GHA_Meta: "dev_publish"
         env:
           CCI_TOKEN: ${{ secrets.CCI_TOKEN }}
