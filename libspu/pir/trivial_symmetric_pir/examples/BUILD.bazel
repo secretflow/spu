@@ -1,0 +1,42 @@
+load("//bazel:spu.bzl", "spu_cc_binary", "spu_cc_library")
+
+package(default_visibility = ["//visibility:public"])
+
+spu_cc_binary(
+    name = "trivial_spir_fullyonline_client",
+    srcs = ["trivial_spir_fullyonline_client.cc"],
+    data = [
+        "//examples/data",
+    ],
+    linkopts = [
+        "-lm",
+    ],
+    deps = [
+        "//examples/cpp:utils",
+        "//libspu/pir/trivial_symmetric_pir:trivial_spir",
+        "//libspu/psi/utils",
+        "//libspu/psi/utils:cipher_store",
+        "//libspu/psi/utils:serialize",
+        "@com_google_absl//absl/strings",
+        "@yacl//yacl/crypto/utils:rand",
+    ],
+)
+
+spu_cc_binary(
+    name = "trivial_spir_fullyonline_server",
+    srcs = ["trivial_spir_fullyonline_server.cc"],
+    data = [
+        "//examples/data",
+    ],
+    linkopts = [
+        "-lm",
+    ],
+    deps = [
+        "//examples/cpp:utils",
+        "//libspu/pir/trivial_symmetric_pir:trivial_spir",
+        "//libspu/psi/utils",
+        "//libspu/psi/utils:serialize",
+        "@com_google_absl//absl/strings",
+        "@yacl//yacl/crypto/utils:rand",
+    ],
+)

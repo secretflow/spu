@@ -1,0 +1,52 @@
+load("//bazel:spu.bzl", "spu_cc_library", "spu_cc_test")
+load("@rules_proto//proto:defs.bzl", "proto_library")
+load("@rules_cc//cc:defs.bzl", "cc_proto_library")
+
+package(default_visibility = ["//visibility:public"])
+
+spu_cc_library(
+    name = "trivial_spir_components",
+    srcs = ["trivial_spir_components.cc"],
+    hdrs = ["trivial_spir_components.h"],
+    linkopts = select({
+        "@bazel_tools//src/conditions:darwin": [],
+        "//conditions:default": ["-fopenmp"],
+    }),
+    deps = [
+        "//libspu/psi/core:communication",
+        "//libspu/core:prelude",
+        "//libspu/psi/core/ecdh_oprf:ecdh_oprf_selector",
+		"//libspu/psi/core:ecdh_psi",
+		"//libspu/psi/core:ecdh_oprf_psi",
+        "//libspu/psi/utils:batch_provider",
+        "//libspu/psi/utils:cipher_store",
+        "//libspu/psi/utils:ub_psi_cache",
+        "@com_google_absl//absl/strings",
+        "@yacl//yacl/link",
+        "@yacl//yacl/utils:parallel",
+    ] + select({
+        "@bazel_tools//src/conditions:darwin_x86_64": ["@local_homebrew_x64//:openmp"],
+        "@bazel_tools//src/conditions:darwin_arm64": ["@local_homebrew_arm64//:openmp"],
+        "//conditions:default": [],
+    }),
+)
+
+spu_cc_library(
+    name = "trivial_spir",
+    srcs = ["trivial_spir.cc"],
+    hdrs = [
+        "trivial_spir.h",
+    ],
+    deps = [
+		"trivial_spir_components",
+        "//libspu/pir:pir_cc_proto",
+        "//libspu/psi/core:ecdh_oprf_psi",
+        "//libspu/psi/utils:batch_provider",
+        "//libspu/psi/utils:cipher_store",
+        "//libspu/psi/utils:csv_checker",
+        "//libspu/psi/utils:csv_header_analyzer",
+        "//libspu/psi/utils:progress",
+        "@com_google_absl//absl/synchronization",
+        "@com_google_absl//absl/time",
+    ],
+)
