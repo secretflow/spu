@@ -106,3 +106,12 @@ spu_cc_library(
         "@yacl//yacl/crypto/base:symmetric_crypto",
     ],
 )
+
+spu_cc_test(
+    name = "pir_test",
+    srcs = ["pir_test.cc"],
+    deps = [
+        ":pir",
+        "//libspu/psi/io:io",
+    ],
+)

@@ -56,7 +56,8 @@ struct SEALParams {
  * @param ns sender's items size
  * @return apsi::PSIParams
  */
-apsi::PSIParams GetPsiParams(size_t nr, size_t ns);
+apsi::PSIParams GetPsiParams(size_t nr, size_t ns,
+                             size_t max_items_per_bin = 0);
 
 /**
  * @brief Serialize apsi::PSIParams to yacl::Buffer

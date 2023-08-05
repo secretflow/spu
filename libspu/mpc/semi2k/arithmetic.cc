@@ -75,19 +75,21 @@ NdArrayRef A2V::proc(KernelEvalContext* ctx, const NdArrayRef& in,
 
   return DISPATCH_ALL_FIELDS(field, "_", [&]() {
     std::vector<ring2k_t> share(numel);
-    pforeach(0, numel, [&](int64_t idx) { share[idx] = in.at<ring2k_t>(idx); });
+    NdArrayView<ring2k_t> _in(in);
+    pforeach(0, numel, [&](int64_t idx) { share[idx] = _in[idx]; });
 
     std::vector<std::vector<ring2k_t>> shares =
         comm->gather<ring2k_t>(share, rank, "a2v");  // comm => 1, k
     if (comm->getRank() == rank) {
       SPU_ENFORCE(shares.size() == comm->getWorldSize());
       NdArrayRef out(out_ty, in.shape());
+      NdArrayView<ring2k_t> _out(out);
       pforeach(0, numel, [&](int64_t idx) {
         ring2k_t s = 0;
         for (auto& share : shares) {
           s += share[idx];
         }
-        out.at<ring2k_t>(idx) = s;
+        _out[idx] = s;
       });
       return out;
     } else {
@@ -187,17 +189,19 @@ NdArrayRef MulAA::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
     SPU_ENFORCE(a.isCompact() && b.isCompact() && c.isCompact(),
                 "beaver must be compact");
 
-    auto _a = a.data<const U>();
-    auto _b = b.data<const U>();
-    auto _c = c.data<const U>();
+    NdArrayView<U> _a(a);
+    NdArrayView<U> _b(b);
+    NdArrayView<U> _c(c);
+    NdArrayView<U> _lhs(lhs);
+    NdArrayView<U> _rhs(rhs);
 
     std::vector<U> eu(numel * 2);
     absl::Span<U> e(eu.data(), numel);
     absl::Span<U> u(eu.data() + numel, numel);
 
     pforeach(0, numel, [&](int64_t idx) {
-      e[idx] = lhs.at<U>(idx) - _a[idx];  // e = x - a;
-      u[idx] = rhs.at<U>(idx) - _b[idx];  // u = y - b;
+      e[idx] = _lhs[idx] - _a[idx];  // e = x - a;
+      u[idx] = _rhs[idx] - _b[idx];  // u = y - b;
     });
 
     // open x-a & y-b
@@ -213,12 +217,13 @@ NdArrayRef MulAA::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
     e = absl::Span<U>(eu.data(), numel);
     u = absl::Span<U>(eu.data() + numel, numel);
 
+    NdArrayView<U> _res(res);
     // Zi = Ci + (X - A) * Bi + (Y - B) * Ai + <(X - A) * (Y - B)>
     pforeach(0, a.numel(), [&](int64_t idx) {
-      res.at<U>(idx) = _c[idx] + e[idx] * _b[idx] + u[idx] * _a[idx];
+      _res[idx] = _c[idx] + e[idx] * _b[idx] + u[idx] * _a[idx];
       if (comm->getRank() == 0) {
         // z += (X-A) * (Y-B);
-        res.at<U>(idx) += e[idx] * u[idx];
+        _res[idx] += e[idx] * u[idx];
       }
     });
   });
@@ -327,11 +332,18 @@ NdArrayRef TruncAPr::proc(KernelEvalContext* ctx, const NdArrayRef& in,
   DISPATCH_ALL_FIELDS(field, "semi2k.truncpr", [&]() {
     using U = ring2k_t;
 
+    NdArrayView<U> _in(in);
+    NdArrayView<U> _r(r);
+    NdArrayView<U> _rb(rb);
+    NdArrayView<U> _rc(rc);
+    NdArrayView<U> _out(out);
+
     std::vector<U> c;
     {
       std::vector<U> x_plus_r(numel);
+
       pforeach(0, numel, [&](int64_t idx) {
-        auto x = in.at<U>(idx);
+        auto x = _in[idx];
         // handle negative number.
         // assume secret x in [-2^(k-2), 2^(k-2)), by
         // adding 2^(k-2) x' = x + 2^(k-2) in [0, 2^(k-1)), with msb(x') == 0
@@ -339,7 +351,7 @@ NdArrayRef TruncAPr::proc(KernelEvalContext* ctx, const NdArrayRef& in,
           x += U(1) << (k - 2);
         }
         // mask x with r
-        x_plus_r[idx] = x + r.at<U>(idx);
+        x_plus_r[idx] = x + _r[idx];
       });
       // open <x> + <r> = c
       c = comm->allReduce<U, std::plus>(x_plus_r, kBindName);
@@ -351,21 +363,21 @@ NdArrayRef TruncAPr::proc(KernelEvalContext* ctx, const NdArrayRef& in,
       U y;
       if (comm->getRank() == 0) {
         // <b> = <rb> ^ c{k-1} = <rb> + c{k-1} - 2*c{k-1}*<rb>
-        auto b = rb.at<U>(idx) + ck_1 - 2 * ck_1 * rb.at<U>(idx);
+        auto b = _rb[idx] + ck_1 - 2 * ck_1 * _rb[idx];
         // c_hat = c/2^m mod 2^(k-m-1) = (c << 1) >> (1+m)
         auto c_hat = (c[idx] << 1) >> (1 + bits);
         // y = c_hat - <rc> + <b> * 2^(k-m-1)
-        y = c_hat - rc.at<U>(idx) + (b << (k - 1 - bits));
+        y = c_hat - _rc[idx] + (b << (k - 1 - bits));
         // re-encode negative numbers.
         // from https://eprint.iacr.org/2020/338.pdf, section 5.1
         // y' = y - 2^(k-2-m)
         y -= (U(1) << (k - 2 - bits));
       } else {
-        auto b = rb.at<U>(idx) + 0 - 2 * ck_1 * rb.at<U>(idx);
-        y = 0 - rc.at<U>(idx) + (b << (k - 1 - bits));
+        auto b = _rb[idx] + 0 - 2 * ck_1 * _rb[idx];
+        y = 0 - _rc[idx] + (b << (k - 1 - bits));
       }
 
-      out.at<U>(idx) = y;
+      _out[idx] = y;
     });
   });
 

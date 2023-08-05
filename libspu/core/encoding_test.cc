@@ -102,9 +102,7 @@ TYPED_TEST(FloatEncodingTest, Works) {
   };
 
   NdArrayRef frm(makePtType(PtTypeToEnum<FloatT>::value), {samples.size()});
-  std::copy(samples.begin(), samples.end(), &frm.at<FloatT>(0));
-
-  // std::cout << frm.at<FloatT>(0) << std::endl;
+  std::copy(samples.begin(), samples.end(), &frm.at<FloatT>({0}));
 
   DataType encoded_dtype;
   auto encoded = encodeToRing(frm, kField, kFxpBits, &encoded_dtype);
@@ -122,7 +120,7 @@ TYPED_TEST(FloatEncodingTest, Works) {
   } else {
     EXPECT_EQ(encoded_dtype, DT_F64);
   }
-  auto* out_ptr = &decoded.at<FloatT>(0);
+  auto* out_ptr = &decoded.at<FloatT>({0});
   const int64_t kReprBits = SizeOf(kField) * 8 - 2;
   const int64_t kScale = 1LL << kFxpBits;
   EXPECT_EQ(out_ptr[0], -static_cast<FloatT>((1LL << kReprBits)) / kScale);
@@ -154,9 +152,7 @@ TYPED_TEST(IntEncodingTest, Works) {
   };
 
   NdArrayRef frm(makePtType(PtTypeToEnum<IntT>::value), {samples.size()});
-  std::copy(samples.begin(), samples.end(), &frm.at<IntT>(0));
-
-  // std::cout << frm.at<IntT>(0) << std::endl;
+  std::copy(samples.begin(), samples.end(), &frm.at<IntT>({0}));
 
   DataType encoded_dtype;
   auto encoded = encodeToRing(frm, kField, kFxpBits, &encoded_dtype);
@@ -166,7 +162,7 @@ TYPED_TEST(IntEncodingTest, Works) {
   auto decoded = decodeFromRing(encoded, encoded_dtype, kFxpBits, &out_pt_type);
   EXPECT_EQ(out_pt_type, frm_pt_type);
 
-  IntT* out_ptr = &decoded.at<IntT>(0);
+  IntT* out_ptr = &decoded.at<IntT>({0});
   EXPECT_EQ(out_ptr[0], samples[0]);
   EXPECT_EQ(out_ptr[1], samples[1]);
   EXPECT_EQ(out_ptr[2], static_cast<IntT>(-1));

@@ -49,15 +49,17 @@ uint128_t BeaverTfpUnsafe::InitSpdzKey(FieldType field, size_t s) {
   auto a = prgCreateArray(field, {size}, seed_, &counter_, &desc);
 
   return DISPATCH_ALL_FIELDS(field, "_", [&]() {
+    NdArrayView<ring2k_t> _a(a);
     if (comm_->getRank() == 0) {
       auto t = tp_.adjustSpdzKey(desc);
+      NdArrayView<ring2k_t> _t(t);
       global_key_ = yacl::crypto::SecureRandSeed();
       global_key_ &= (static_cast<uint128_t>(1) << s) - 1;
 
-      a.at<ring2k_t>(0) += global_key_ - t.at<ring2k_t>(0);
+      _a[0] += global_key_ - _t[0];
     }
 
-    spdz_key_ = a.at<ring2k_t>(0);
+    spdz_key_ = _a[0];
 
     return spdz_key_;
   });
@@ -229,9 +231,8 @@ NdArrayRef BeaverTfpUnsafe::genPublCoin(FieldType field, int64_t numel) {
   }
 
   auto kAesType = yacl::crypto::SymmetricCrypto::CryptoType::AES128_CTR;
-  yacl::crypto::FillPRand(
-      kAesType, public_seed, 0, 0,
-      absl::MakeSpan(static_cast<char*>(res.data()), res.buf()->size()));
+  yacl::crypto::FillPRand(kAesType, public_seed, 0, 0,
+                          absl::MakeSpan(res.data<char>(), res.buf()->size()));
 
   return res;
 }
@@ -291,7 +292,7 @@ bool BeaverTfpUnsafe::BatchMacCheck(const NdArrayRef& open_value,
   // 3. compute z, commit and open z
   auto z = ring_sub(check_mac, ring_mul(check_value, key));
 
-  std::string z_str(reinterpret_cast<char*>(z.data()), z.numel() * z.elsize());
+  std::string z_str(z.data<char>(), z.numel() * z.elsize());
   std::vector<std::string> z_strs;
   SPU_ENFORCE(commit_and_open(lctx, z_str, &z_strs));
   SPU_ENFORCE(z_strs.size() == comm->getWorldSize());
@@ -310,7 +311,7 @@ bool BeaverTfpUnsafe::BatchMacCheck(const NdArrayRef& open_value,
     const auto& _z_str = z_strs[i];
     auto mem = std::make_shared<yacl::Buffer>(_z_str.data(), _z_str.size());
     NdArrayRef a(mem, plain_z.eltype(),
-                 {(int64_t)(_z_str.size() / SizeOf(field))}, {1}, 0);
+                 {static_cast<int64_t>(_z_str.size() / SizeOf(field))}, {1}, 0);
     ring_add_(plain_z, a);
   }
 

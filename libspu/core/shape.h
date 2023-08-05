@@ -84,14 +84,16 @@ class Index : public std::vector<int64_t> {
   }
 };
 
-class Strides : public std::vector<int64_t> {
+using Stride = int64_t;
+
+class Strides : public std::vector<Stride> {
  private:
-  using Base = std::vector<int64_t>;
+  using Base = std::vector<Stride>;
 
  public:
   using Base::Base;
 
-  /*explicit*/ Strides(llvm::ArrayRef<int64_t> arr)
+  /*explicit*/ Strides(llvm::ArrayRef<Stride> arr)
       : Base(arr.begin(), arr.end()) {}
 
   friend std::ostream &operator<<(std::ostream &out, const Strides &s) {

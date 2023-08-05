@@ -45,15 +45,15 @@ class Runner {
     const auto &out = io_->OutFeed(fmt::format("output{}", idx));
 
     size_t numel = out.numel();
-    const auto *in_ptr = static_cast<const T *>(out.data());
+    NdArrayView<const T> _out(out);
 
     // TODO: handle strides
     for (size_t i = 0; i < numel; ++i) {
       if constexpr (std::is_integral_v<T>) {
-        EXPECT_EQ(in_ptr[i], expected[i]) << "i = " << i << "\n";
+        EXPECT_EQ(_out[i], expected[i]) << "i = " << i << "\n";
       } else {
-        EXPECT_TRUE(std::abs(in_ptr[i] - expected[i]) <= 1e-2)
-            << "i = " << i << " in = " << in_ptr[i]
+        EXPECT_TRUE(std::abs(_out[i] - expected[i]) <= 1e-2)
+            << "i = " << i << " in = " << _out[i]
             << " expected = " << expected[i] << "\n";
       }
     }

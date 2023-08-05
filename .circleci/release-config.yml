@@ -33,9 +33,7 @@ parameters:
 jobs:
   macOS_x64_publish:
     macos:
-      xcode: 14.2
-    environment:
-      HOMEBREW_NO_AUTO_UPDATE: 1
+      xcode: 14.3
     resource_class: macos.x86.medium.gen2
     parameters:
       python_ver:
@@ -68,9 +66,7 @@ jobs:
             python3 -m twine upload -r pypi -u __token__ -p ${PYPI_TWINE_TOKEN} dist/*.whl
   macOS_arm64_publish:
     macos:
-      xcode: 14.2
-    environment:
-      HOMEBREW_NO_AUTO_UPDATE: 1
+      xcode: 14.3
     resource_class: macos.m1.large.gen1
     parameters:
       python_ver:
@@ -104,7 +100,7 @@ jobs:
   linux_publish:
     docker:
       - image: secretflow/release-ci:latest
-    resource_class: 2xlarge
+    resource_class: 2xlarge+
     parameters:
       python_ver:
         type: string

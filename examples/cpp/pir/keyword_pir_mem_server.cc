@@ -59,6 +59,17 @@ llvm::cl::opt<int> LabelPadLengthOpt(
     "max_label_length", llvm::cl::init(288),
     llvm::cl::desc("pad label data to max len"));
 
+llvm::cl::opt<bool> CompressOpt("compress", llvm::cl::init(false),
+                                llvm::cl::desc("compress seal he plaintext"));
+
+llvm::cl::opt<int> BucketSizeOpt("bucket", llvm::cl::init(1000000),
+                                 llvm::cl::desc("bucket size of pir query"));
+
+llvm::cl::opt<int> MaxItemsPerBinOpt(
+    "max_items_per_bin", llvm::cl::init(0),
+    llvm::cl::desc(
+        "max items per bin, i.e. Interpolate polynomial max degree "));
+
 namespace {
 
 constexpr uint32_t kLinkRecvTimeout = 30 * 60 * 1000;
@@ -92,6 +103,9 @@ int main(int argc, char **argv) {
   config.set_label_max_len(LabelPadLengthOpt.getValue());
   config.set_oprf_key_path("");
   config.set_setup_path("::memory");
+  config.set_compressed(CompressOpt.getValue());
+  config.set_bucket_size(BucketSizeOpt.getValue());
+  config.set_max_items_per_bin(MaxItemsPerBinOpt.getValue());
 
   spu::pir::PirResultReport report =
       spu::pir::PirMemoryServer(link_ctx, config);

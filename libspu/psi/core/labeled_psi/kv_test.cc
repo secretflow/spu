@@ -31,6 +31,7 @@
 #include "libspu/psi/core/labeled_psi/psi_params.h"
 #include "libspu/psi/core/labeled_psi/receiver.h"
 #include "libspu/psi/core/labeled_psi/sender.h"
+#include "libspu/psi/core/labeled_psi/sender_kvdb.h"
 #include "libspu/psi/utils/utils.h"
 
 namespace spu::psi {
@@ -186,10 +187,10 @@ TEST_P(LabelPsiTest, Works) {
   });
 
   bool compressed = false;
-  std::shared_ptr<spu::psi::SenderDB> sender_db =
-      std::make_shared<spu::psi::SenderDB>(psi_params, oprf_key, kv_store_path,
-                                           label_byte_count, nonce_byte_count,
-                                           compressed);
+  std::shared_ptr<spu::psi::ISenderDB> sender_db =
+      std::make_shared<spu::psi::SenderKvDB>(psi_params, oprf_key,
+                                             kv_store_path, label_byte_count,
+                                             nonce_byte_count, compressed);
 
   std::vector<std::string> receiver_items = GenerateData(rd(), params.nr);
 
