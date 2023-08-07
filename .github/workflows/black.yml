@@ -9,5 +9,5 @@ jobs:
       - uses: actions/checkout@v3
       - uses: psf/black@stable
         with:
-        jupyter: true
-        version: "23.1"
+          jupyter: true
+          version: "23.1"
