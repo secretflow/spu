@@ -28,7 +28,7 @@ jobs:
     # Use machine executor for convenient data sharing between the host and docker-compose cluster
     machine:
       image: ubuntu-2004:2022.07.1
-    resource_class: 2xlarge
+    resource_class: 2xlarge+
     shell: /bin/bash --login -eo pipefail
     steps:
       - checkout
