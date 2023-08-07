@@ -24,10 +24,12 @@ class SecurennIo : public BaseIo {
 
   // when owner rank is valid (0 <= owner_rank < world_size), colocation
   // optization may be applied
-  std::vector<ArrayRef> toShares(const ArrayRef& raw, Visibility vis,
+  std::vector<NdArrayRef> toShares(const NdArrayRef& raw, Visibility vis,
                                  int owner_rank) const override;
+  
+  Type getShareType(Visibility vis, int owner_rank = -1) const override;
 
-  ArrayRef fromShares(const std::vector<ArrayRef>& shares) const override;
+  NdArrayRef fromShares(const std::vector<NdArrayRef>& shares) const override;
 };
 
 std::unique_ptr<SecurennIo> makeSecurennIo(FieldType field, size_t npc);

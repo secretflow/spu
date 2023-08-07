@@ -35,7 +35,7 @@ class A2B : public UnaryKernel {
         ;
   }
 
-  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& x) const override;
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& x) const override;
 };
 
 class B2A : public UnaryKernel {
@@ -56,7 +56,7 @@ class B2A : public UnaryKernel {
         ;
   }
 
-  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& x) const override;
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& x) const override;
 };
 
 class B2A_Randbit : public UnaryKernel {
@@ -70,7 +70,7 @@ class B2A_Randbit : public UnaryKernel {
         ;
   }
 
-  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& x) const override;
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& x) const override;
 };
 
 class Msb_a2b : public UnaryKernel {
@@ -92,7 +92,7 @@ class Msb_a2b : public UnaryKernel {
                  * (ce::N() - 1);  // (no-matter tree or ring) reduce
   }
 
-  ArrayRef proc(KernelEvalContext* ctx, const ArrayRef& in) const override;
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in) const override;
 };
 
 }  // namespace spu::mpc::securenn

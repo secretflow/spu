@@ -43,17 +43,17 @@ class BeaverTfpUnsafe final : public Beaver {
  public:
   explicit BeaverTfpUnsafe(std::shared_ptr<yacl::link::Context> lctx);
 
-  Triple Mul(FieldType field, size_t size) override;
+  Triple Mul(FieldType field, const Shape& shape) override;
 
-  Triple And(FieldType field, size_t size) override;
+  Triple And(FieldType field, const Shape& shape) override;
 
-  Triple Dot(FieldType field, size_t M, size_t N, size_t K) override;
+  Triple Dot(FieldType field, int64_t M, int64_t N, int64_t K) override;
 
-  Pair Trunc(FieldType field, size_t size, size_t bits) override;
+  Pair Trunc(FieldType field, const Shape& shape, size_t bits) override;
 
-  Triple TruncPr(FieldType field, size_t size, size_t bits) override;
+  Triple TruncPr(FieldType field, const Shape& shape, size_t bits) override;
 
-  ArrayRef RandBit(FieldType field, size_t size) override;
+  NdArrayRef RandBit(FieldType field, const Shape& shape) override;
 
   std::unique_ptr<Beaver> Spawn() override;
 };

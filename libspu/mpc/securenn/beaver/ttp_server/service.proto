@@ -57,7 +57,7 @@ message DeleteSessionResponse {
 // PrgBufferMeta represent {world_size} arithmetic/boolean shares for one random array.
 message PrgBufferMeta {
   int64 prg_count = 1;
-  int64 size = 2;
+  repeated int64 shape = 2;
 }
 
 // TTP Beaver service for securenn only.

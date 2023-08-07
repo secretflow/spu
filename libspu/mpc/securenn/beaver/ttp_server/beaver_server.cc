@@ -21,7 +21,7 @@
 #include "spdlog/spdlog.h"
 #include "yacl/utils/serialize.h"
 
-#include "libspu/core/array_ref.h"
+#include "libspu/core/ndarray_ref.h"
 #include "libspu/mpc/common/prg_tensor.h"
 #include "libspu/mpc/securenn/beaver/trusted_party.h"
 
@@ -49,10 +49,8 @@ std::vector<PrgArrayDesc> BuildDescs(const AdjustRequest& req) {
 
   for (const auto& p : req.prg_inputs()) {
     auto prg_count = static_cast<uint64_t>(p.prg_count());
-    auto size = static_cast<size_t>(p.size());
-    SPU_ENFORCE(size % SizeOf(type) == 0);
-    size_t numel = size / SizeOf(type);
-    ret.push_back(PrgArrayDesc{numel, type, prg_count});
+    Shape shape(p.shape().begin(), p.shape().end());
+    ret.push_back(PrgArrayDesc{shape, type, prg_count});
   }
 
   return ret;
@@ -62,9 +60,9 @@ template <class T>
 struct dependent_false : std::false_type {};
 
 template <class AdjustRequest>
-std::vector<ArrayRef> AdjustImpl(const AdjustRequest& req,
-                                 absl::Span<const PrgSeed> seeds) {
-  std::vector<ArrayRef> ret;
+std::vector<NdArrayRef> AdjustImpl(const AdjustRequest& req,
+                                   absl::Span<const PrgSeed> seeds) {
+  std::vector<NdArrayRef> ret;
   auto descs = BuildDescs(req);
   if constexpr (std::is_same_v<AdjustRequest, AdjustMulRequest>) {
     auto adjust = TrustedParty::adjustMul(descs, seeds);
@@ -115,7 +113,6 @@ class ServiceImpl final : public BeaverService {
   mutable std::shared_mutex mutex_;
   std::map<std::string, std::shared_ptr<Session>> sessions_;
 
- private:
   std::shared_ptr<Session> GetSession(const std::string& session_id,
                                       AdjustResponse* rsp) const {
     std::shared_lock lock(mutex_);
@@ -255,7 +252,7 @@ class ServiceImpl final : public BeaverService {
     // TODO: add rank & mac check, make sure this rpc is called by
     // ss->adjust_rank
 
-    std::vector<ArrayRef> adjusts;
+    std::vector<NdArrayRef> adjusts;
     try {
       adjusts = AdjustImpl(*req, ss->seeds);
     } catch (const std::exception& e) {

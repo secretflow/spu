@@ -29,13 +29,11 @@
 namespace spu::mpc::securenn {
 namespace {
 
-size_t getNumBits(const ArrayRef& in) {
+size_t getNumBits(const NdArrayRef& in) {
   if (in.eltype().isa<Pub2kTy>()) {
     const auto field = in.eltype().as<Pub2kTy>()->field();
-    return DISPATCH_ALL_FIELDS(field, "_", [&]() {
-      auto _in = ArrayView<ring2k_t>(in);
-      return _in.maxBitWidth();
-    });
+    return DISPATCH_ALL_FIELDS(field, "_",
+                               [&]() { return maxBitWidth<ring2k_t>(in); });
   } else if (in.eltype().isa<BShrTy>()) {
     return in.eltype().as<BShrTy>()->nbits();
   } else {
@@ -43,7 +41,7 @@ size_t getNumBits(const ArrayRef& in) {
   }
 }
 
-ArrayRef makeBShare(const ArrayRef& r, FieldType field, size_t nbits) {
+NdArrayRef makeBShare(const NdArrayRef& r, FieldType field, size_t nbits) {
   const auto ty = makeType<BShrTy>(field, nbits);
   return r.as(ty);
 }
@@ -80,28 +78,28 @@ void CommonTypeB::evaluate(KernelEvalContext* ctx) const {
   ctx->setOutput(lhs);
 }
 
-ArrayRef CastTypeB::proc(KernelEvalContext* ctx, const ArrayRef& in,
-                         const Type& to_type) const {
+NdArrayRef CastTypeB::proc(KernelEvalContext* ctx, const NdArrayRef& in,
+                           const Type& to_type) const {
   SPU_ENFORCE(in.eltype() == to_type,
               "securenn always use same bshare type, lhs={}, rhs={}",
               in.eltype(), to_type);
   return in;
 }
 
-ArrayRef B2P::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
+NdArrayRef B2P::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   const auto field = in.eltype().as<Ring2k>()->field();
   auto* comm = ctx->getState<Communicator>();
   auto out = comm->allReduce(ReduceOp::XOR, in, kBindName);
   return out.as(makeType<Pub2kTy>(field));
 }
 
-ArrayRef P2B::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
+NdArrayRef P2B::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   const auto field = in.eltype().as<Ring2k>()->field();
   auto* prg_state = ctx->getState<PrgState>();
 
   auto* comm = ctx->getState<Communicator>();
 
-  auto [r0, r1] = prg_state->genPrssPair(field, in.numel());
+  auto [r0, r1] = prg_state->genPrssPair(field, in.shape());
   auto x = ring_xor(r0, r1).as(makeType<BShrTy>(field, 0));
 
   if (comm->getRank() == 0) {
@@ -111,29 +109,28 @@ ArrayRef P2B::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
   return makeBShare(x, field, getNumBits(in));
 }
 
-ArrayRef AndBP::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
-                     const ArrayRef& rhs) const {
-  SPU_ENFORCE(lhs.numel() == rhs.numel());
+NdArrayRef AndBP::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
+                       const NdArrayRef& rhs) const {
+  SPU_ENFORCE(lhs.shape() == rhs.shape());
 
   const auto field = ctx->getState<Z2kState>()->getDefaultField();
   const size_t out_nbits = std::min(getNumBits(lhs), getNumBits(rhs));
-  ArrayRef out(makeType<BShrTy>(field, out_nbits), lhs.numel());
+  NdArrayRef out(makeType<BShrTy>(field, out_nbits), lhs.shape());
 
   DISPATCH_ALL_FIELDS(field, "_", [&]() {
-    using T = ring2k_t;
+    NdArrayView<ring2k_t> _lhs(lhs);
+    NdArrayView<ring2k_t> _rhs(rhs);
+    NdArrayView<ring2k_t> _out(out);
 
-    auto _lhs = ArrayView<T>(lhs);
-    auto _rhs = ArrayView<T>(rhs);
-    auto _out = ArrayView<T>(out);
     pforeach(0, lhs.numel(),
              [&](int64_t idx) { _out[idx] = _lhs[idx] & _rhs[idx]; });
   });
   return out;
 }
 
-ArrayRef AndBB::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
-                     const ArrayRef& rhs) const {
-  SPU_ENFORCE(lhs.numel() == rhs.numel());
+NdArrayRef AndBB::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
+                       const NdArrayRef& rhs) const {
+  SPU_ENFORCE(lhs.shape() == rhs.shape());
 
   auto* comm = ctx->getState<Communicator>();
   auto* beaver = ctx->getState<SecurennState>()->beaver();
@@ -141,41 +138,41 @@ ArrayRef AndBB::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
 
   const size_t out_nbits = std::min(getNumBits(lhs), getNumBits(rhs));
   const PtType backtype = getBacktype(out_nbits);
-  const size_t numel = lhs.numel();
+  const int64_t numel = lhs.numel();
 
   // securenn always use the same storage type.
-  ArrayRef out(makeType<BShrTy>(field, out_nbits), numel);
+  NdArrayRef out(makeType<BShrTy>(field, out_nbits), lhs.shape());
   DISPATCH_ALL_FIELDS(field, "_", [&]() {
     using T = ring2k_t;
+    NdArrayView<T> _lhs(lhs);
+    NdArrayView<T> _rhs(rhs);
+
     DISPATCH_UINT_PT_TYPES(backtype, "_", [&]() {
       using V = ScalarT;
 
       // TODO: redefine beaver interface, generate variadic beaver and bits.
-      size_t numBytes = numel * SizeOf(backtype);
-      size_t numField = numBytes / SizeOf(field);
+      int64_t numBytes = numel * SizeOf(backtype);
+      int64_t numField = numBytes / SizeOf(field);
       if (numBytes % SizeOf(field)) numField += 1;
 
-      auto [a, b, c] = beaver->And(field, numField);
+      auto [a, b, c] = beaver->And(field, {numField});
       SPU_ENFORCE(a.buf()->size() >= static_cast<int64_t>(numBytes));
 
-      ArrayView<V> _a(&a.at<V>(0), 1, numel);
-      ArrayView<V> _b(&b.at<V>(0), 1, numel);
-      ArrayView<V> _c(&c.at<V>(0), 1, numel);
-
-      ArrayView<T> _x(lhs);
-      ArrayView<T> _y(rhs);
-      ArrayView<T> _z(out);
+      NdArrayView<V> _a(a);
+      NdArrayView<V> _b(b);
+      NdArrayView<V> _c(c);
 
       // first half mask x^a, second half mask y^b.
       std::vector<V> mask(numel * 2, 0);
       pforeach(0, numel, [&](int64_t idx) {
-        mask[idx] = _x[idx] ^ _a[idx];
-        mask[numel + idx] = _y[idx] ^ _b[idx];
+        mask[idx] = _lhs[idx] ^ _a[idx];
+        mask[numel + idx] = _rhs[idx] ^ _b[idx];
       });
 
       mask = comm->allReduce<V, std::bit_xor>(mask, "open(x^a,y^b)");
 
       // Zi = Ci ^ ((X ^ A) & Bi) ^ ((Y ^ B) & Ai) ^ <(X ^ A) & (Y ^ B)>
+      NdArrayView<T> _z(out);
       pforeach(0, numel, [&](int64_t idx) {
         _z[idx] = _c[idx];
         _z[idx] ^= mask[idx] & _b[idx];
@@ -190,8 +187,8 @@ ArrayRef AndBB::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
   return out;
 }
 
-ArrayRef XorBP::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
-                     const ArrayRef& rhs) const {
+NdArrayRef XorBP::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
+                       const NdArrayRef& rhs) const {
   SPU_ENFORCE(lhs.numel() == rhs.numel());
 
   auto* comm = ctx->getState<Communicator>();
@@ -206,8 +203,8 @@ ArrayRef XorBP::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
   return makeBShare(lhs, field, out_nbits);
 }
 
-ArrayRef XorBB::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
-                     const ArrayRef& rhs) const {
+NdArrayRef XorBB::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
+                       const NdArrayRef& rhs) const {
   SPU_ENFORCE(lhs.numel() == rhs.numel());
 
   const auto field = ctx->getState<Z2kState>()->getDefaultField();
@@ -215,8 +212,8 @@ ArrayRef XorBB::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
   return makeBShare(ring_xor(lhs, rhs), field, out_nbits);
 }
 
-ArrayRef LShiftB::proc(KernelEvalContext* ctx, const ArrayRef& in,
-                       size_t shift) const {
+NdArrayRef LShiftB::proc(KernelEvalContext* ctx, const NdArrayRef& in,
+                         size_t shift) const {
   const auto field = in.eltype().as<Ring2k>()->field();
   shift %= SizeOf(field) * 8;
 
@@ -226,8 +223,8 @@ ArrayRef LShiftB::proc(KernelEvalContext* ctx, const ArrayRef& in,
   return makeBShare(ring_lshift(in, shift), field, out_nbits);
 }
 
-ArrayRef RShiftB::proc(KernelEvalContext* ctx, const ArrayRef& in,
-                       size_t shift) const {
+NdArrayRef RShiftB::proc(KernelEvalContext* ctx, const NdArrayRef& in,
+                         size_t shift) const {
   const auto field = in.eltype().as<Ring2k>()->field();
   shift %= SizeOf(field) * 8;
 
@@ -238,8 +235,8 @@ ArrayRef RShiftB::proc(KernelEvalContext* ctx, const ArrayRef& in,
   return makeBShare(ring_rshift(in, shift), field, out_nbits);
 }
 
-ArrayRef ARShiftB::proc(KernelEvalContext* ctx, const ArrayRef& in,
-                        size_t shift) const {
+NdArrayRef ARShiftB::proc(KernelEvalContext* ctx, const NdArrayRef& in,
+                          size_t shift) const {
   const auto field = in.eltype().as<Ring2k>()->field();
   shift %= SizeOf(field) * 8;
 
@@ -248,8 +245,8 @@ ArrayRef ARShiftB::proc(KernelEvalContext* ctx, const ArrayRef& in,
   return makeBShare(ring_arshift(in, shift), field, SizeOf(field) * 8);
 }
 
-ArrayRef BitrevB::proc(KernelEvalContext* ctx, const ArrayRef& in, size_t start,
-                       size_t end) const {
+NdArrayRef BitrevB::proc(KernelEvalContext* ctx, const NdArrayRef& in,
+                         size_t start, size_t end) const {
   const auto field = in.eltype().as<Ring2k>()->field();
 
   SPU_ENFORCE(start <= end);
@@ -260,34 +257,42 @@ ArrayRef BitrevB::proc(KernelEvalContext* ctx, const ArrayRef& in, size_t start,
   return makeBShare(ring_bitrev(in, start, end), field, out_nbits);
 }
 
-ArrayRef BitIntlB::proc(KernelEvalContext* ctx, const ArrayRef& in,
-                        size_t stride) const {
+NdArrayRef BitIntlB::proc(KernelEvalContext* ctx, const NdArrayRef& in,
+                          size_t stride) const {
   const auto field = in.eltype().as<Ring2k>()->field();
   const auto nbits = getNumBits(in);
   SPU_ENFORCE(absl::has_single_bit(nbits));
 
-  ArrayRef out = in.clone();
+  NdArrayRef out(in.eltype(), in.shape());
+  auto numel = in.numel();
+
   DISPATCH_ALL_FIELDS(field, "_", [&]() {
-    using T = ring2k_t;
-    pforeach(0, in.numel(), [&](int64_t idx) {
-      out.at<T>(idx) = BitIntl<T>(in.at<T>(idx), stride, nbits);
+    NdArrayView<ring2k_t> _in(in);
+    NdArrayView<ring2k_t> _out(out);
+
+    pforeach(0, numel, [&](int64_t idx) {
+      _out[idx] = BitIntl<ring2k_t>(_in[idx], stride, nbits);
     });
   });
 
   return out;
 }
 
-ArrayRef BitDeintlB::proc(KernelEvalContext* ctx, const ArrayRef& in,
-                          size_t stride) const {
+NdArrayRef BitDeintlB::proc(KernelEvalContext* ctx, const NdArrayRef& in,
+                            size_t stride) const {
   const auto field = in.eltype().as<Ring2k>()->field();
   const auto nbits = getNumBits(in);
   SPU_ENFORCE(absl::has_single_bit(nbits));
 
-  ArrayRef out = in.clone();
+  NdArrayRef out(in.eltype(), in.shape());
+  auto numel = in.numel();
+
   DISPATCH_ALL_FIELDS(field, "_", [&]() {
-    using T = ring2k_t;
-    pforeach(0, in.numel(), [&](int64_t idx) {
-      out.at<T>(idx) = BitDeintl<T>(in.at<T>(idx), stride, nbits);
+    NdArrayView<ring2k_t> _in(in);
+    NdArrayView<ring2k_t> _out(out);
+
+    pforeach(0, numel, [&](int64_t idx) {
+      _out[idx] = BitDeintl<ring2k_t>(_in[idx], stride, nbits);
     });
   });
 

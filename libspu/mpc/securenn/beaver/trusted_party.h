@@ -31,19 +31,20 @@ class TrustedParty {
   using Descs = absl::Span<const PrgArrayDesc>;
 
  public:
-  static ArrayRef adjustMul(Descs descs, Seeds seeds);
+  static NdArrayRef adjustMul(Descs descs, Seeds seeds);
 
-  static ArrayRef adjustDot(Descs descs, Seeds seeds, size_t M, size_t N,
-                            size_t K);
+  static NdArrayRef adjustDot(Descs descs, Seeds seeds, int64_t M, int64_t N,
+                              int64_t K);
 
-  static ArrayRef adjustAnd(Descs descs, Seeds seeds);
+  static NdArrayRef adjustAnd(Descs descs, Seeds seeds);
 
-  static ArrayRef adjustTrunc(Descs descs, Seeds seeds, size_t bits);
+  static NdArrayRef adjustTrunc(Descs descs, Seeds seeds, size_t bits);
 
-  static std::pair<ArrayRef, ArrayRef> adjustTruncPr(Descs descs, Seeds seeds,
-                                                     size_t bits);
+  static std::pair<NdArrayRef, NdArrayRef> adjustTruncPr(Descs descs,
+                                                         Seeds seeds,
+                                                         size_t bits);
 
-  static ArrayRef adjustRandBit(Descs descs, Seeds seeds);
+  static NdArrayRef adjustRandBit(Descs descs, Seeds seeds);
 };
 
 }  // namespace spu::mpc::securenn

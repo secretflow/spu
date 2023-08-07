@@ -89,7 +89,7 @@ TEST_P(BeaverTest, Mul_large) {
   const size_t kWorldSize = std::get<1>(GetParam());
   const FieldType kField = std::get<2>(GetParam());
   const int64_t kMaxDiff = std::get<3>(GetParam());
-  const size_t kNumel = 10000;
+  const int64_t kNumel = 10000;
 
   std::vector<Triple> triples;
   triples.resize(kWorldSize);
@@ -97,13 +97,13 @@ TEST_P(BeaverTest, Mul_large) {
   utils::simulate(kWorldSize,
                   [&](const std::shared_ptr<yacl::link::Context>& lctx) {
                     auto beaver = factory(lctx, ttp_options_);
-                    triples[lctx->Rank()] = beaver->Mul(kField, kNumel);
+                    triples[lctx->Rank()] = beaver->Mul(kField, {kNumel});
                     yacl::link::Barrier(lctx, "BeaverUT");
                   });
 
-  auto sum_a = ring_zeros(kField, kNumel);
-  auto sum_b = ring_zeros(kField, kNumel);
-  auto sum_c = ring_zeros(kField, kNumel);
+  auto sum_a = ring_zeros(kField, {kNumel});
+  auto sum_b = ring_zeros(kField, {kNumel});
+  auto sum_c = ring_zeros(kField, {kNumel});
   for (Rank r = 0; r < kWorldSize; r++) {
     const auto& [a, b, c] = triples[r];
     EXPECT_EQ(a.numel(), kNumel);
@@ -116,9 +116,9 @@ TEST_P(BeaverTest, Mul_large) {
   }
 
   DISPATCH_ALL_FIELDS(kField, "_", [&]() {
-    auto _a = ArrayView<ring2k_t>(sum_a);
-    auto _b = ArrayView<ring2k_t>(sum_b);
-    auto _c = ArrayView<ring2k_t>(sum_c);
+    NdArrayView<ring2k_t> _a(sum_a);
+    NdArrayView<ring2k_t> _b(sum_b);
+    NdArrayView<ring2k_t> _c(sum_c);
     for (auto idx = 0; idx < sum_a.numel(); idx++) {
       auto t = _a[idx] * _b[idx];
       auto err = t > _c[idx] ? t - _c[idx] : _c[idx] - t;
@@ -132,7 +132,7 @@ TEST_P(BeaverTest, Mul) {
   const size_t kWorldSize = std::get<1>(GetParam());
   const FieldType kField = std::get<2>(GetParam());
   const int64_t kMaxDiff = std::get<3>(GetParam());
-  const size_t kNumel = 7;
+  const int64_t kNumel = 7;
 
   std::vector<Triple> triples;
   triples.resize(kWorldSize);
@@ -140,13 +140,13 @@ TEST_P(BeaverTest, Mul) {
   utils::simulate(kWorldSize,
                   [&](const std::shared_ptr<yacl::link::Context>& lctx) {
                     auto beaver = factory(lctx, ttp_options_);
-                    triples[lctx->Rank()] = beaver->Mul(kField, kNumel);
+                    triples[lctx->Rank()] = beaver->Mul(kField, {kNumel});
                     yacl::link::Barrier(lctx, "BeaverUT");
                   });
 
-  auto sum_a = ring_zeros(kField, kNumel);
-  auto sum_b = ring_zeros(kField, kNumel);
-  auto sum_c = ring_zeros(kField, kNumel);
+  auto sum_a = ring_zeros(kField, {kNumel});
+  auto sum_b = ring_zeros(kField, {kNumel});
+  auto sum_c = ring_zeros(kField, {kNumel});
   for (Rank r = 0; r < kWorldSize; r++) {
     const auto& [a, b, c] = triples[r];
     EXPECT_EQ(a.numel(), kNumel);
@@ -159,9 +159,9 @@ TEST_P(BeaverTest, Mul) {
   }
 
   DISPATCH_ALL_FIELDS(kField, "_", [&]() {
-    auto _a = ArrayView<ring2k_t>(sum_a);
-    auto _b = ArrayView<ring2k_t>(sum_b);
-    auto _c = ArrayView<ring2k_t>(sum_c);
+    NdArrayView<ring2k_t> _a(sum_a);
+    NdArrayView<ring2k_t> _b(sum_b);
+    NdArrayView<ring2k_t> _c(sum_c);
     for (auto idx = 0; idx < sum_a.numel(); idx++) {
       auto t = _a[idx] * _b[idx];
       auto err = t > _c[idx] ? t - _c[idx] : _c[idx] - t;
@@ -174,7 +174,7 @@ TEST_P(BeaverTest, And) {
   const auto factory = std::get<0>(GetParam()).first;
   const size_t kWorldSize = std::get<1>(GetParam());
   const FieldType kField = std::get<2>(GetParam());
-  const size_t kNumel = 7;
+  const int64_t kNumel = 7;
 
   std::vector<Triple> triples;
   triples.resize(kWorldSize);
@@ -182,14 +182,14 @@ TEST_P(BeaverTest, And) {
   utils::simulate(kWorldSize,
                   [&](const std::shared_ptr<yacl::link::Context>& lctx) {
                     auto beaver = factory(lctx, ttp_options_);
-                    triples[lctx->Rank()] = beaver->And(kField, kNumel);
+                    triples[lctx->Rank()] = beaver->And(kField, {kNumel});
                     yacl::link::Barrier(lctx, "BeaverUT");
                   });
 
   EXPECT_EQ(triples.size(), kWorldSize);
-  auto sum_a = ring_zeros(kField, kNumel);
-  auto sum_b = ring_zeros(kField, kNumel);
-  auto sum_c = ring_zeros(kField, kNumel);
+  auto sum_a = ring_zeros(kField, {kNumel});
+  auto sum_b = ring_zeros(kField, {kNumel});
+  auto sum_c = ring_zeros(kField, {kNumel});
   for (Rank r = 0; r < kWorldSize; r++) {
     const auto& [a, b, c] = triples[r];
     EXPECT_EQ(a.numel(), kNumel);
@@ -200,7 +200,8 @@ TEST_P(BeaverTest, And) {
     ring_xor_(sum_b, b);
     ring_xor_(sum_c, c);
   }
-  EXPECT_EQ(ring_and(sum_a, sum_b), sum_c) << sum_a << sum_b << sum_c;
+  EXPECT_TRUE(ring_all_equal(ring_and(sum_a, sum_b), sum_c, 0))
+      << sum_a << sum_b << sum_c;
 }
 
 TEST_P(BeaverTest, Dot) {
@@ -209,9 +210,9 @@ TEST_P(BeaverTest, Dot) {
   const FieldType kField = std::get<2>(GetParam());
   const int64_t kMaxDiff = std::get<3>(GetParam());
   // M > N
-  const size_t M = 17;
-  const size_t N = 8;
-  const size_t K = 1024;
+  const int64_t M = 17;
+  const int64_t N = 8;
+  const int64_t K = 1024;
 
   std::vector<Triple> triples;
   triples.resize(kWorldSize);
@@ -224,9 +225,9 @@ TEST_P(BeaverTest, Dot) {
                   });
 
   EXPECT_EQ(triples.size(), kWorldSize);
-  auto sum_a = ring_zeros(kField, M * K);
-  auto sum_b = ring_zeros(kField, K * N);
-  auto sum_c = ring_zeros(kField, M * N);
+  auto sum_a = ring_zeros(kField, {M, K});
+  auto sum_b = ring_zeros(kField, {K, N});
+  auto sum_c = ring_zeros(kField, {M, N});
   for (Rank r = 0; r < kWorldSize; r++) {
     const auto& [a, b, c] = triples[r];
     EXPECT_EQ(a.numel(), M * K);
@@ -238,11 +239,11 @@ TEST_P(BeaverTest, Dot) {
     ring_add_(sum_c, c);
   }
 
-  auto res = ring_mmul(sum_a, sum_b, M, N, K);
+  auto res = ring_mmul(sum_a, sum_b);
   DISPATCH_ALL_FIELDS(kField, "_", [&]() {
-    auto _r = ArrayView<ring2k_t>(res);
-    auto _c = ArrayView<ring2k_t>(sum_c);
-    for (auto idx = 0; idx < _r.numel(); idx++) {
+    NdArrayView<ring2k_t> _r(res);
+    NdArrayView<ring2k_t> _c(sum_c);
+    for (auto idx = 0; idx < res.numel(); idx++) {
       auto err = _r[idx] > _c[idx] ? _r[idx] - _c[idx] : _c[idx] - _r[idx];
       EXPECT_LE(err, kMaxDiff);
     }
@@ -255,9 +256,9 @@ TEST_P(BeaverTest, Dot_large) {
   const FieldType kField = std::get<2>(GetParam());
   const int64_t kMaxDiff = std::get<3>(GetParam());
   // M < N
-  const size_t M = 11;
-  const size_t N = 20;
-  const size_t K = 1023;
+  const int64_t M = 11;
+  const int64_t N = 20;
+  const int64_t K = 1023;
 
   std::vector<Triple> triples;
   triples.resize(kWorldSize);
@@ -270,9 +271,9 @@ TEST_P(BeaverTest, Dot_large) {
                   });
 
   EXPECT_EQ(triples.size(), kWorldSize);
-  auto sum_a = ring_zeros(kField, M * K);
-  auto sum_b = ring_zeros(kField, K * N);
-  auto sum_c = ring_zeros(kField, M * N);
+  auto sum_a = ring_zeros(kField, {M, K});
+  auto sum_b = ring_zeros(kField, {K, N});
+  auto sum_c = ring_zeros(kField, {M, N});
   for (Rank r = 0; r < kWorldSize; r++) {
     const auto& [a, b, c] = triples[r];
     EXPECT_EQ(a.numel(), M * K);
@@ -284,11 +285,11 @@ TEST_P(BeaverTest, Dot_large) {
     ring_add_(sum_c, c);
   }
 
-  auto res = ring_mmul(sum_a, sum_b, M, N, K);
+  auto res = ring_mmul(sum_a, sum_b);
   DISPATCH_ALL_FIELDS(kField, "_", [&]() {
-    auto _r = ArrayView<ring2k_t>(res);
-    auto _c = ArrayView<ring2k_t>(sum_c);
-    for (auto idx = 0; idx < _r.numel(); idx++) {
+    NdArrayView<ring2k_t> _r(res);
+    NdArrayView<ring2k_t> _c(sum_c);
+    for (auto idx = 0; idx < res.numel(); idx++) {
       auto err = _r[idx] > _c[idx] ? _r[idx] - _c[idx] : _c[idx] - _r[idx];
       EXPECT_LE(err, kMaxDiff);
     }
@@ -299,22 +300,22 @@ TEST_P(BeaverTest, Trunc) {
   const auto factory = std::get<0>(GetParam()).first;
   const size_t kWorldSize = std::get<1>(GetParam());
   const FieldType kField = std::get<2>(GetParam());
-  const size_t kNumel = 7;
+  const int64_t kNumel = 7;
   const size_t kBits = 5;
 
   std::vector<Pair> pairs;
   pairs.resize(kWorldSize);
 
-  utils::simulate(kWorldSize,
-                  [&](const std::shared_ptr<yacl::link::Context>& lctx) {
-                    auto beaver = factory(lctx, ttp_options_);
-                    pairs[lctx->Rank()] = beaver->Trunc(kField, kNumel, kBits);
-                    yacl::link::Barrier(lctx, "BeaverUT");
-                  });
+  utils::simulate(
+      kWorldSize, [&](const std::shared_ptr<yacl::link::Context>& lctx) {
+        auto beaver = factory(lctx, ttp_options_);
+        pairs[lctx->Rank()] = beaver->Trunc(kField, {kNumel}, kBits);
+        yacl::link::Barrier(lctx, "BeaverUT");
+      });
 
   EXPECT_EQ(pairs.size(), kWorldSize);
-  auto sum_a = ring_zeros(kField, kNumel);
-  auto sum_b = ring_zeros(kField, kNumel);
+  auto sum_a = ring_zeros(kField, {kNumel});
+  auto sum_b = ring_zeros(kField, {kNumel});
   for (Rank r = 0; r < kWorldSize; r++) {
     const auto& [a, b] = pairs[r];
     EXPECT_EQ(a.numel(), kNumel);
@@ -323,31 +324,32 @@ TEST_P(BeaverTest, Trunc) {
     ring_add_(sum_a, a);
     ring_add_(sum_b, b);
   }
-  EXPECT_EQ(ring_arshift(sum_a, kBits), sum_b) << sum_a << sum_b;
+  EXPECT_TRUE(ring_all_equal(ring_arshift(sum_a, kBits), sum_b, 0))
+      << sum_a << sum_b;
 }
 
 TEST_P(BeaverTest, TruncPr) {
   const auto factory = std::get<0>(GetParam()).first;
   const size_t kWorldSize = std::get<1>(GetParam());
   const FieldType kField = std::get<2>(GetParam());
-  const size_t kNumel = 7;
+  const int64_t kNumel = 7;
   const size_t kBits = 5;
   const size_t kRingSize = SizeOf(kField) * 8;
 
   std::vector<Triple> rets;
   rets.resize(kWorldSize);
 
-  utils::simulate(kWorldSize,
-                  [&](const std::shared_ptr<yacl::link::Context>& lctx) {
-                    auto beaver = factory(lctx, ttp_options_);
-                    rets[lctx->Rank()] = beaver->TruncPr(kField, kNumel, kBits);
-                    yacl::link::Barrier(lctx, "BeaverUT");
-                  });
+  utils::simulate(
+      kWorldSize, [&](const std::shared_ptr<yacl::link::Context>& lctx) {
+        auto beaver = factory(lctx, ttp_options_);
+        rets[lctx->Rank()] = beaver->TruncPr(kField, {kNumel}, kBits);
+        yacl::link::Barrier(lctx, "BeaverUT");
+      });
 
   EXPECT_EQ(rets.size(), kWorldSize);
-  auto sum_r = ring_zeros(kField, kNumel);
-  auto sum_rc = ring_zeros(kField, kNumel);
-  auto sum_rb = ring_zeros(kField, kNumel);
+  auto sum_r = ring_zeros(kField, {kNumel});
+  auto sum_rc = ring_zeros(kField, {kNumel});
+  auto sum_rb = ring_zeros(kField, {kNumel});
   for (Rank rank = 0; rank < kWorldSize; rank++) {
     const auto& [r, rc, rb] = rets[rank];
     EXPECT_EQ(r.numel(), kNumel);
@@ -361,10 +363,15 @@ TEST_P(BeaverTest, TruncPr) {
 
   DISPATCH_ALL_FIELDS(kField, "securenn.truncpr.ut", [&]() {
     using T = ring2k_t;
-    for (int64_t i = 0; i < sum_r.numel(); i++) {
-      auto r = sum_r.at<T>(i);
-      auto rc = sum_rc.at<T>(i);
-      auto rb = sum_rb.at<T>(i);
+    auto sum_r_iter = sum_r.begin();
+    auto sum_rc_iter = sum_rc.begin();
+    auto sum_rb_iter = sum_rb.begin();
+
+    for (int64_t i = 0; i < sum_r.numel();
+         ++i, ++sum_r_iter, ++sum_rc_iter, ++sum_rb_iter) {
+      auto r = sum_r_iter.getScalarValue<T>();
+      auto rc = sum_rc_iter.getScalarValue<T>();
+      auto rb = sum_rb_iter.getScalarValue<T>();
 
       EXPECT_EQ((r << 1) >> (kBits + 1), rc)
           << fmt::format("error: {0:X} {1:X}\n", (r << 1) >> (kBits + 1), rc);
@@ -378,19 +385,19 @@ TEST_P(BeaverTest, Randbit) {
   const auto factory = std::get<0>(GetParam()).first;
   const size_t kWorldSize = std::get<1>(GetParam());
   const FieldType kField = std::get<2>(GetParam());
-  const size_t kNumel = 51;
+  const int64_t kNumel = 51;
 
-  std::vector<ArrayRef> shares(kWorldSize);
+  std::vector<NdArrayRef> shares(kWorldSize);
 
   utils::simulate(kWorldSize,
                   [&](const std::shared_ptr<yacl::link::Context>& lctx) {
                     auto beaver = factory(lctx, ttp_options_);
-                    shares[lctx->Rank()] = beaver->RandBit(kField, kNumel);
+                    shares[lctx->Rank()] = beaver->RandBit(kField, {kNumel});
                     yacl::link::Barrier(lctx, "BeaverUT");
                   });
 
   EXPECT_EQ(shares.size(), kWorldSize);
-  auto sum = ring_zeros(kField, kNumel);
+  auto sum = ring_zeros(kField, {kNumel});
   for (Rank r = 0; r < kWorldSize; r++) {
     EXPECT_EQ(shares[r].numel(), kNumel);
     ring_add_(sum, shares[r]);

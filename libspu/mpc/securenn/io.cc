@@ -20,8 +20,22 @@
 
 namespace spu::mpc::securenn {
 
-std::vector<ArrayRef> SecurennIo::toShares(const ArrayRef& raw, Visibility vis,
-                                           int owner_rank) const {
+Type SecurennIo::getShareType(Visibility vis, int owner_rank) const {
+  if (vis == VIS_PUBLIC) {
+    return makeType<Pub2kTy>(field_);
+  } else if (vis == VIS_SECRET) {
+    if (owner_rank >= 0 && owner_rank < static_cast<int>(world_size_)) {
+      return makeType<Priv2kTy>(field_, owner_rank);
+    } else {
+      return makeType<securenn::AShrTy>(field_);
+    }
+  }
+
+  SPU_THROW("unsupported vis type {}", vis);
+}
+std::vector<NdArrayRef> SecurennIo::toShares(const NdArrayRef& raw,
+                                             Visibility vis,
+                                             int owner_rank) const {
   SPU_ENFORCE(raw.eltype().isa<RingTy>(), "expected RingTy, got {}",
               raw.eltype());
   const auto field = raw.eltype().as<Ring2k>()->field();
@@ -30,7 +44,7 @@ std::vector<ArrayRef> SecurennIo::toShares(const ArrayRef& raw, Visibility vis,
 
   if (vis == VIS_PUBLIC) {
     const auto share = raw.as(makeType<Pub2kTy>(field));
-    return std::vector<ArrayRef>(world_size_, share);
+    return std::vector<NdArrayRef>(world_size_, share);
   } else if (vis == VIS_SECRET) {
 #if !defined(SPU_ENABLE_PRIVATE_TYPE)
     owner_rank = -1;
@@ -38,19 +52,19 @@ std::vector<ArrayRef> SecurennIo::toShares(const ArrayRef& raw, Visibility vis,
 
     if (owner_rank >= 0 && owner_rank < static_cast<int>(world_size_)) {
       // indicates private
-      std::vector<ArrayRef> shares;
+      std::vector<NdArrayRef> shares;
       const auto ty = makeType<Priv2kTy>(field, owner_rank);
       for (int idx = 0; idx < static_cast<int>(world_size_); idx++) {
         if (idx == owner_rank) {
           shares.push_back(raw.as(ty));
         } else {
-          shares.push_back(makeConstantArrayRef(ty, raw.numel()));
+          shares.push_back(makeConstantArrayRef(ty, raw.shape()));
         }
       }
       return shares;
     } else {
       // no colocation optmization
-      std::vector<ArrayRef> shares;
+      std::vector<NdArrayRef> shares;
       const auto ty = makeType<securenn::AShrTy>(field);
 
       const auto splits = ring_rand_additive_splits(raw, 2);
@@ -64,14 +78,18 @@ std::vector<ArrayRef> SecurennIo::toShares(const ArrayRef& raw, Visibility vis,
   SPU_THROW("unsupported vis type {}", vis);
 }
 
-ArrayRef SecurennIo::fromShares(const std::vector<ArrayRef>& shares) const {
+NdArrayRef SecurennIo::fromShares(const std::vector<NdArrayRef>& shares) const {
   const auto& eltype = shares.at(0).eltype();
   const auto field = eltype.as<Ring2k>()->field();
 
   if (eltype.isa<Public>()) {
     return shares[0].as(makeType<RingTy>(field));
+  } else if (eltype.isa<Priv2kTy>()) {
+    SPU_ENFORCE(field_ == eltype.as<Ring2k>()->field());
+    const size_t owner = eltype.as<Private>()->owner();
+    return shares[owner].as(makeType<RingTy>(field_));
   } else if (eltype.isa<Secret>()) {
-    ArrayRef res = ring_zeros(field, shares[0].numel());
+    auto res = ring_zeros(field, shares[0].shape());
 
     for (const auto& share : shares) {
       // Currently, only packed zeros are not compact, this is for colocation

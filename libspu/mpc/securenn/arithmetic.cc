@@ -14,6 +14,7 @@
 
 #include "libspu/mpc/securenn/arithmetic.h"
 
+#include <array>
 #include <functional>
 #include <random>
 
@@ -29,54 +30,48 @@
 
 namespace spu::mpc::securenn {
 
-ArrayRef ZeroA::proc(KernelEvalContext* ctx, size_t size) {
-  SPU_TRACE_MPC_LEAF(ctx, size);
-
-  auto* prg_state = ctx->getState<PrgState>();
-  const auto field = ctx->getState<Z2kState>()->getDefaultField();
-
-  auto [r0, r1] = prg_state->genPrssPair(field, size);
-  return ring_sub(r0, r1).as(makeType<AShrTy>(field));
-}
-
-ArrayRef A2V::proc(KernelEvalContext* ctx, const ArrayRef& in,
-                   size_t rank) const {
+NdArrayRef A2V::proc(KernelEvalContext* ctx, const NdArrayRef& in,
+                     size_t rank) const {
   auto* comm = ctx->getState<Communicator>();
   const auto field = in.eltype().as<AShrTy>()->field();
   auto out_ty = makeType<Priv2kTy>(field, rank);
+
+  auto numel = in.numel();
+
   return DISPATCH_ALL_FIELDS(field, "_", [&]() {
-    std::vector<ring2k_t> share(in.numel());
-    pforeach(0, in.numel(),
-             [&](int64_t idx) { share[idx] = in.at<ring2k_t>(idx); });
+    std::vector<ring2k_t> share(numel);
+    NdArrayView<ring2k_t> _in(in);
+    pforeach(0, numel, [&](int64_t idx) { share[idx] = _in[idx]; });
 
     std::vector<std::vector<ring2k_t>> shares =
         comm->gather<ring2k_t>(share, rank, "a2v");  // comm => 1, k
     if (comm->getRank() == rank) {
       SPU_ENFORCE(shares.size() == comm->getWorldSize());
-      ArrayRef out(out_ty, in.numel());
-      auto _out = ArrayView<ring2k_t>(out);
-      pforeach(0, in.numel(), [&](int64_t idx) {
-        _out[idx] = 0;
+      NdArrayRef out(out_ty, in.shape());
+      NdArrayView<ring2k_t> _out(out);
+      pforeach(0, numel, [&](int64_t idx) {
+        ring2k_t s = 0;
         for (auto& share : shares) {
-          _out[idx] += share[idx];
+          s += share[idx];
         }
+        _out[idx] = s;
       });
       return out;
     } else {
-      return makeConstantArrayRef(out_ty, in.numel());
+      return makeConstantArrayRef(out_ty, in.shape());
     }
   });
 }
 
-ArrayRef V2A::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
+NdArrayRef V2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   const auto* in_ty = in.eltype().as<Priv2kTy>();
   const size_t owner_rank = in_ty->owner();
   const auto field = in_ty->field();
   auto* prg_state = ctx->getState<PrgState>();
   auto* comm = ctx->getState<Communicator>();
-  auto res = ring_zeros(field, in.numel());
+  auto res = ring_zeros(field, in.shape());
 
-  auto [r0, r1] = prg_state->genPrssPair(field, in.numel());
+  auto [r0, r1] = prg_state->genPrssPair(field, in.shape());
   // SPU_ENFORCE(owner_rank != 2);
   if (owner_rank == 2) {
     auto x = ring_sub(r0, r1).as(makeType<AShrTy>(field));
@@ -85,6 +80,7 @@ ArrayRef V2A::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
     }
     if (comm->getRank() == 0) {
       auto tmp = comm->recv(2, makeType<AShrTy>(field), "s");
+      tmp = tmp.reshape(in.shape());
       res = ring_add(x, tmp);
     }
     if (comm->getRank() == 1) {
@@ -102,7 +98,7 @@ ArrayRef V2A::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
   return res.as(makeType<AShrTy>(field));
 }
 
-ArrayRef RandA::proc(KernelEvalContext* ctx, size_t size) const {
+NdArrayRef RandA::proc(KernelEvalContext* ctx, const Shape& shape) const {
   auto* prg_state = ctx->getState<PrgState>();
   const auto field = ctx->getState<Z2kState>()->getDefaultField();
 
@@ -113,18 +109,16 @@ ArrayRef RandA::proc(KernelEvalContext* ctx, size_t size) const {
   // - https://eprint.iacr.org/2019/599.pdf
   // It's safer to keep the number within [-2**(k-2), 2**(k-2)) for comparison
   // operations.
-  return ring_rshift(prg_state->genPriv(field, size), 2)
+  return ring_rshift(prg_state->genPriv(field, shape), 2)
       .as(makeType<AShrTy>(field));
 }
 
-ArrayRef P2A::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
-  SPU_TRACE_MPC_LEAF(ctx, in);
-
+NdArrayRef P2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   const auto field = in.eltype().as<Ring2k>()->field();
   auto* comm = ctx->getState<Communicator>();
   auto* prg_state = ctx->getState<PrgState>();
-  auto res = ring_zeros(field, in.numel());
-  auto [r0, r1] = prg_state->genPrssPair(field, in.numel());
+  auto res = ring_zeros(field, in.shape());
+  auto [r0, r1] = prg_state->genPrssPair(field, in.shape());
   // P0.r1 = P1.r0
   if (comm->getRank() == 0) res = r1;
   if (comm->getRank() == 1) res = ring_sub(in, r0);
@@ -132,18 +126,14 @@ ArrayRef P2A::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
   return res.as(makeType<AShrTy>(field));
 }
 
-ArrayRef A2P::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
-  SPU_TRACE_MPC_LEAF(ctx, in);
-
+NdArrayRef A2P::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   const auto field = in.eltype().as<Ring2k>()->field();
   auto* comm = ctx->getState<Communicator>();
   auto out = comm->allReduce(ReduceOp::ADD, in, kBindName);
   return out.as(makeType<Pub2kTy>(field));
 }
 
-ArrayRef NotA::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
-  SPU_TRACE_MPC_LEAF(ctx, in);
-
+NdArrayRef NotA::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   auto* comm = ctx->getState<Communicator>();
 
   // First, let's show negate could be locally processed.
@@ -164,7 +154,7 @@ ArrayRef NotA::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
   auto res = ring_neg(in);
   if (comm->getRank() == 0) {
     const auto field = in.eltype().as<Ring2k>()->field();
-    ring_add_(res, ring_not(ring_zeros(field, in.numel())));
+    ring_add_(res, ring_not(ring_zeros(field, in.shape())));
   }
 
   return res.as(in.eltype());
@@ -173,11 +163,9 @@ ArrayRef NotA::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
 ////////////////////////////////////////////////////////////////////
 // add family
 ////////////////////////////////////////////////////////////////////
-ArrayRef AddAP::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
-                     const ArrayRef& rhs) const {
-  SPU_TRACE_MPC_LEAF(ctx, lhs, rhs);
-
-  SPU_ENFORCE(lhs.numel() == rhs.numel());
+NdArrayRef AddAP::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
+                       const NdArrayRef& rhs) const {
+  SPU_ENFORCE(lhs.shape() == rhs.shape());
   auto* comm = ctx->getState<Communicator>();
 
   if (comm->getRank() == 0) {
@@ -186,11 +174,9 @@ ArrayRef AddAP::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
   return lhs;
 }
 
-ArrayRef AddAA::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
-                     const ArrayRef& rhs) const {
-  SPU_TRACE_MPC_LEAF(ctx, lhs, rhs);
-
-  SPU_ENFORCE(lhs.numel() == rhs.numel());
+NdArrayRef AddAA::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
+                       const NdArrayRef& rhs) const {
+  SPU_ENFORCE(lhs.shape() == rhs.shape());
   SPU_ENFORCE(lhs.eltype() == rhs.eltype());
 
   return ring_add(lhs, rhs).as(lhs.eltype());
@@ -199,34 +185,30 @@ ArrayRef AddAA::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
 ////////////////////////////////////////////////////////////////////
 // multiply family
 ////////////////////////////////////////////////////////////////////
-ArrayRef MulAP::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
-                     const ArrayRef& rhs) const {
-  SPU_TRACE_MPC_LEAF(ctx, lhs, rhs);
+NdArrayRef MulAP::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
+                       const NdArrayRef& rhs) const {
   return ring_mul(lhs, rhs).as(lhs.eltype());
 }
 
 ////////////////////////////////////////////////////////////////////
 // matmul family
 ////////////////////////////////////////////////////////////////////
-ArrayRef MatMulAP::proc(KernelEvalContext* ctx, const ArrayRef& x,
-                        const ArrayRef& y, size_t m, size_t n, size_t k) const {
-  SPU_TRACE_MPC_LEAF(ctx, x, y);
-  return ring_mmul(x, y, m, n, k).as(x.eltype());
+NdArrayRef MatMulAP::proc(KernelEvalContext* ctx, const NdArrayRef& x,
+                          const NdArrayRef& y) const {
+  return ring_mmul(x, y).as(x.eltype());
 }
 
-ArrayRef LShiftA::proc(KernelEvalContext* ctx, const ArrayRef& in,
-                       size_t bits) const {
-  SPU_TRACE_MPC_LEAF(ctx, in, bits);
-
+NdArrayRef LShiftA::proc(KernelEvalContext* ctx, const NdArrayRef& in,
+                         size_t bits) const {
   const auto field = in.eltype().as<Ring2k>()->field();
   bits %= SizeOf(field) * 8;
 
   return ring_lshift(in, bits).as(in.eltype());
 }
 
-ArrayRef TruncAPr::proc(KernelEvalContext* ctx, const ArrayRef& in,
-                        size_t bits) const {
-  SPU_TRACE_MPC_LEAF(ctx, in, bits);
+NdArrayRef TruncAPr::proc(KernelEvalContext* ctx, const NdArrayRef& in,
+                          size_t bits, SignType sign) const {
+  (void)sign;  // TODO: optimize me.
 
   auto* comm = ctx->getState<Communicator>();
   auto* beaver = ctx->getState<SecurennState>()->beaver();
@@ -234,19 +216,30 @@ ArrayRef TruncAPr::proc(KernelEvalContext* ctx, const ArrayRef& in,
   const auto field = in.eltype().as<Ring2k>()->field();
   const size_t k = SizeOf(field) * 8;
 
-  ArrayRef r;
-  ArrayRef rc;
-  ArrayRef rb;
-  std::tie(r, rc, rb) = beaver->TruncPr(field, numel, bits);
+  NdArrayRef r;
+  NdArrayRef rc;
+  NdArrayRef rb;
+  std::tie(r, rc, rb) = beaver->TruncPr(field, in.shape(), bits);
 
-  ArrayRef out(in.eltype(), numel);
+  SPU_ENFORCE(r.isCompact() && rc.isCompact() && rb.isCompact(),
+              "beaver triple must be compact");
+
+  NdArrayRef out(in.eltype(), in.shape());
   DISPATCH_ALL_FIELDS(field, "securenn.truncpr", [&]() {
     using U = ring2k_t;
+
+    NdArrayView<U> _in(in);
+    NdArrayView<U> _r(r);
+    NdArrayView<U> _rb(rb);
+    NdArrayView<U> _rc(rc);
+    NdArrayView<U> _out(out);
+
     std::vector<U> c;
     {
       std::vector<U> x_plus_r(numel);
+
       pforeach(0, numel, [&](int64_t idx) {
-        auto x = in.at<U>(idx);
+        auto x = _in[idx];
         // handle negative number.
         // assume secret x in [-2^(k-2), 2^(k-2)), by
         // adding 2^(k-2) x' = x + 2^(k-2) in [0, 2^(k-1)), with msb(x') == 0
@@ -254,7 +247,7 @@ ArrayRef TruncAPr::proc(KernelEvalContext* ctx, const ArrayRef& in,
           x += U(1) << (k - 2);
         }
         // mask x with r
-        x_plus_r[idx] = x + r.at<U>(idx);
+        x_plus_r[idx] = x + _r[idx];
       });
       // open <x> + <r> = c
       c = comm->allReduce<U, std::plus>(x_plus_r, kBindName);
@@ -266,21 +259,21 @@ ArrayRef TruncAPr::proc(KernelEvalContext* ctx, const ArrayRef& in,
       U y;
       if (comm->getRank() == 0) {
         // <b> = <rb> ^ c{k-1} = <rb> + c{k-1} - 2*c{k-1}*<rb>
-        auto b = rb.at<U>(idx) + ck_1 - 2 * ck_1 * rb.at<U>(idx);
+        auto b = _rb[idx] + ck_1 - 2 * ck_1 * _rb[idx];
         // c_hat = c/2^m mod 2^(k-m-1) = (c << 1) >> (1+m)
         auto c_hat = (c[idx] << 1) >> (1 + bits);
         // y = c_hat - <rc> + <b> * 2^(k-m-1)
-        y = c_hat - rc.at<U>(idx) + (b << (k - 1 - bits));
+        y = c_hat - _rc[idx] + (b << (k - 1 - bits));
         // re-encode negative numbers.
         // from https://eprint.iacr.org/2020/338.pdf, section 5.1
         // y' = y - 2^(k-2-m)
         y -= (U(1) << (k - 2 - bits));
       } else {
-        auto b = rb.at<U>(idx) + 0 - 2 * ck_1 * rb.at<U>(idx);
-        y = 0 - rc.at<U>(idx) + (b << (k - 1 - bits));
+        auto b = _rb[idx] + 0 - 2 * ck_1 * _rb[idx];
+        y = 0 - _rc[idx] + (b << (k - 1 - bits));
       }
 
-      out.at<U>(idx) = y;
+      _out[idx] = y;
     });
   });
   // P2 send share to P0
@@ -288,28 +281,28 @@ ArrayRef TruncAPr::proc(KernelEvalContext* ctx, const ArrayRef& in,
   comm->addCommStatsManually(1, kComm);
   if (comm->getRank() == 2) {
     comm->sendAsync(0, out, "out");
-    out = ring_zeros(field, in.numel()).as(makeType<AShrTy>(field));
+    out = ring_zeros(field, in.shape()).as(makeType<AShrTy>(field));
   }
   if (comm->getRank() == 0) {
     auto tmp = comm->recv(2, makeType<AShrTy>(field), "out");
+    tmp = tmp.reshape(in.shape());
     out = ring_add(out, tmp);
   }
 
   return out.as(makeType<AShrTy>(field));
 }
 
-ArrayRef MulAA::proc(KernelEvalContext* ctx, const ArrayRef& x,
-                     const ArrayRef& y) const {
-  SPU_TRACE_MPC_LEAF(ctx, x, y);
-
+NdArrayRef MulAA::proc(KernelEvalContext* ctx, const NdArrayRef& x,
+                       const NdArrayRef& y) const {
   auto* prg_state = ctx->getState<PrgState>();
   const auto field = x.eltype().as<Ring2k>()->field();
   auto* comm = ctx->getState<Communicator>();
   auto rank = comm->getRank();
+  SPU_ENFORCE(x.shape() == y.shape());
 
   auto size = x.numel();
   auto ty = makeType<AShrTy>(field);
-  auto z = ring_zeros(field, x.numel());
+  auto z = ring_zeros(field, x.shape());
 
   const auto kComm = x.elsize() * size;
   comm->addCommStatsManually(2, kComm * 5);
@@ -317,9 +310,9 @@ ArrayRef MulAA::proc(KernelEvalContext* ctx, const ArrayRef& x,
   if (rank == 2) {
     // P2 generate a0, a1, b0, b1, c0 by PRF
     // and calculate c1
-    auto [a1, a0] = prg_state->genPrssPair(field, size);
-    auto [b1, b0] = prg_state->genPrssPair(field, size);
-    auto c0 = prg_state->genPrssPair(field, size, true, false).second;
+    auto [a1, a0] = prg_state->genPrssPair(field, x.shape());
+    auto [b1, b0] = prg_state->genPrssPair(field, x.shape());
+    auto c0 = prg_state->genPrssPair(field, x.shape(), true, false).second;
 
     // c1 = (a0 + a1) * (b0 + b1) - c0
     auto c1 = ring_sub(ring_mul(ring_add(a0, a1), ring_add(b0, b1)), c0);
@@ -327,19 +320,20 @@ ArrayRef MulAA::proc(KernelEvalContext* ctx, const ArrayRef& x,
     comm->sendAsync(1, c1, "c");  // 1 latency, k
   }
   if (rank <= 1) {
-    ArrayRef a(ty, size);
-    ArrayRef b(ty, size);
-    ArrayRef c(ty, size);
+    NdArrayRef a(ty, x.shape());
+    NdArrayRef b(ty, x.shape());
+    NdArrayRef c(ty, x.shape());
     if (rank == 0) {
-      a = prg_state->genPrssPair(field, size, false, true).first;
-      b = prg_state->genPrssPair(field, size, false, true).first;
-      c = prg_state->genPrssPair(field, size, false, true).first;
+      a = prg_state->genPrssPair(field, x.shape(), false, true).first;
+      b = prg_state->genPrssPair(field, x.shape(), false, true).first;
+      c = prg_state->genPrssPair(field, x.shape(), false, true).first;
     }
     if (rank == 1) {
-      a = prg_state->genPrssPair(field, size, true, false).second;
-      b = prg_state->genPrssPair(field, size, true, false).second;
-      prg_state->genPrssPair(field, size, true, true);
+      a = prg_state->genPrssPair(field, x.shape(), true, false).second;
+      b = prg_state->genPrssPair(field, x.shape(), true, false).second;
+      prg_state->genPrssPair(field, x.shape(), true, true);
       c = comm->recv(2, ty, "c");
+      c = c.reshape(x.shape());
     }
 
     // Open x-a & y-b
@@ -350,6 +344,8 @@ ArrayRef MulAA::proc(KernelEvalContext* ctx, const ArrayRef& x,
     comm->sendAsync((rank + 1) % 2, send_y_b, "y_b");
     auto recv_x_a = comm->recv((rank + 1) % 2, ty, "x_a");
     auto recv_y_b = comm->recv((rank + 1) % 2, ty, "y_b");
+    recv_x_a = recv_x_a.reshape(x.shape());
+    recv_y_b = recv_y_b.reshape(x.shape());
     auto x_a = ring_add(send_x_a, recv_x_a);
     auto y_b = ring_add(send_y_b, recv_y_b);
 
@@ -363,7 +359,7 @@ ArrayRef MulAA::proc(KernelEvalContext* ctx, const ArrayRef& x,
 
   // P0 and P1 add the share of zero
   // P0.zero_1 = P1.zero_0
-  auto [zero_0, zero_1] = prg_state->genPrssPair(field, size);
+  auto [zero_0, zero_1] = prg_state->genPrssPair(field, x.shape());
   if (rank == 0) {
     z = ring_sub(z, zero_1);
   }
@@ -374,29 +370,32 @@ ArrayRef MulAA::proc(KernelEvalContext* ctx, const ArrayRef& x,
   return z.as(ty);
 }
 
-ArrayRef MatMulAA_simple::proc(KernelEvalContext* ctx, const ArrayRef& x,
-                               const ArrayRef& y, size_t m, size_t n,
-                               size_t k) const {
-  SPU_TRACE_MPC_LEAF(ctx, x, y);
-
+NdArrayRef MatMulAA_simple::proc(KernelEvalContext* ctx, const NdArrayRef& x,
+                                 const NdArrayRef& y) const {
   auto* prg_state = ctx->getState<PrgState>();
   const auto field = x.eltype().as<Ring2k>()->field();
   auto* comm = ctx->getState<Communicator>();
   auto rank = comm->getRank();
   auto ty = makeType<AShrTy>(field);
-  auto z = ring_zeros(field, m * n);
+  auto shape1 = x.shape();
+  auto shape2 = y.shape();
+  auto shape3 = ring_mmul(x, y).shape();
+  auto z = ring_zeros(field, shape3);
 
   const auto kComm = x.elsize();
-  comm->addCommStatsManually(2, 2 * (2 * m * k + 2 * k * n + m * n) * kComm);
+  comm->addCommStatsManually(
+      2, 2 *
+             (2 * shape1[0] * shape1[1] + 2 * shape2[0] * shape2[1] +
+              shape3[0] * shape3[1]) *
+             kComm);
   // P2 to be the beaver generator
   if (rank == 2) {
-    auto a0 = ring_rand(field, m * k);
-    auto a1 = ring_rand(field, m * k);
-    auto b0 = ring_rand(field, k * n);
-    auto b1 = ring_rand(field, k * n);
-    auto c0 = ring_rand(field, m * n);
-    auto c1 =
-        ring_sub(ring_mmul(ring_add(a0, a1), ring_add(b0, b1), m, n, k), c0);
+    auto a0 = ring_rand(field, shape1);
+    auto a1 = ring_rand(field, shape1);
+    auto b0 = ring_rand(field, shape2);
+    auto b1 = ring_rand(field, shape2);
+    auto c0 = ring_rand(field, shape3);
+    auto c1 = ring_sub(ring_mmul(ring_add(a0, a1), ring_add(b0, b1)), c0);
     // 1 latency, 2 * (m * n + m * k + n * k) * kComm
     comm->sendAsync(0, a0, "a");
     comm->sendAsync(0, b0, "b");
@@ -410,6 +409,9 @@ ArrayRef MatMulAA_simple::proc(KernelEvalContext* ctx, const ArrayRef& x,
     auto a = comm->recv(2, ty, "a");
     auto b = comm->recv(2, ty, "b");
     auto c = comm->recv(2, ty, "c");
+    a = a.reshape(shape1);
+    b = b.reshape(shape2);
+    c = c.reshape(shape3);
 
     // Open x-a & y-b
     auto send_x_a = ring_sub(x, a);
@@ -419,22 +421,23 @@ ArrayRef MatMulAA_simple::proc(KernelEvalContext* ctx, const ArrayRef& x,
     comm->sendAsync((rank + 1) % 2, send_y_b, "y_b");
     auto recv_x_a = comm->recv((rank + 1) % 2, ty, "x_a");
     auto recv_y_b = comm->recv((rank + 1) % 2, ty, "y_b");
+    recv_x_a = recv_x_a.reshape(shape1);
+    recv_y_b = recv_y_b.reshape(shape2);
 
     auto x_a = ring_add(send_x_a, recv_x_a);
     auto y_b = ring_add(send_y_b, recv_y_b);
 
     // Zi = Ci + (X - A) dot Bi + Ai dot (Y - B) + <(X - A) dot (Y - B)>
-    z = ring_add(
-        ring_add(ring_mmul(x_a, b, m, n, k), ring_mmul(a, y_b, m, n, k)), c);
+    z = ring_add(ring_add(ring_mmul(x_a, b), ring_mmul(a, y_b)), c);
     if (rank == 0) {
       // z += (X-A) * (Y-B);
-      z = ring_add(z, ring_mmul(x_a, y_b, m, n, k));
+      z = ring_add(z, ring_mmul(x_a, y_b));
     }
   }
 
   // P0 and P1 add the share of zero
   // P0.zero_1 = P1.zero_0
-  auto [zero_0, zero_1] = prg_state->genPrssPair(field, m * n);
+  auto [zero_0, zero_1] = prg_state->genPrssPair(field, shape3);
   if (rank == 0) {
     z = ring_sub(z, zero_1);
   }
@@ -445,48 +448,52 @@ ArrayRef MatMulAA_simple::proc(KernelEvalContext* ctx, const ArrayRef& x,
   return z.as(ty);
 }
 
-ArrayRef MatMulAA::proc(KernelEvalContext* ctx, const ArrayRef& x,
-                        const ArrayRef& y, size_t m, size_t n, size_t k) const {
-  SPU_TRACE_MPC_LEAF(ctx, x, y);
-
+NdArrayRef MatMulAA::proc(KernelEvalContext* ctx, const NdArrayRef& x,
+                          const NdArrayRef& y) const {
   auto* prg_state = ctx->getState<PrgState>();
   const auto field = x.eltype().as<Ring2k>()->field();
   auto* comm = ctx->getState<Communicator>();
   auto rank = comm->getRank();
+  auto shape1 = x.shape();
+  auto shape2 = y.shape();
+  auto shape3 = ring_mmul(x, y).shape();
   auto ty = makeType<AShrTy>(field);
-  auto z = ring_zeros(field, m * n);
+  auto z = ring_zeros(field, shape3);
 
   const auto kComm = x.elsize();
-  comm->addCommStatsManually(2, (2 * m * k + 2 * k * n + m * n) * kComm);
+  comm->addCommStatsManually(
+      2, (2 * shape1[0] * shape1[1] + 2 * shape2[0] * shape2[1] +
+          shape3[0] * shape3[1]) *
+             kComm);
   // P2 to be the beaver generator
   if (rank == 2) {
     // P2 generate a0, a1, b0, b1, c0 by PRF
     // and calculate c1
-    auto [a1, a0] = prg_state->genPrssPair(field, m * k);
-    auto [b1, b0] = prg_state->genPrssPair(field, k * n);
-    auto c0 = prg_state->genPrssPair(field, m * n, true, false).second;
+    auto [a1, a0] = prg_state->genPrssPair(field, shape1);
+    auto [b1, b0] = prg_state->genPrssPair(field, shape2);
+    auto c0 = prg_state->genPrssPair(field, shape3, true, false).second;
 
     // c1 = (a0 + a1) * (b0 + b1) - c0
-    auto c1 =
-        ring_sub(ring_mmul(ring_add(a0, a1), ring_add(b0, b1), m, n, k), c0);
+    auto c1 = ring_sub(ring_mmul(ring_add(a0, a1), ring_add(b0, b1)), c0);
     comm->sendAsync(1, c1, "c");  // 1 latency, m * n * kComm
   }
 
   if (rank <= 1) {
-    ArrayRef a(ty, m * k);
-    ArrayRef b(ty, k * n);
-    ArrayRef c(ty, m * n);
+    NdArrayRef a(ty, shape1);
+    NdArrayRef b(ty, shape2);
+    NdArrayRef c(ty, shape3);
     if (rank == 0) {
-      a = prg_state->genPrssPair(field, m * k, false, true).first;
-      b = prg_state->genPrssPair(field, k * n, false, true).first;
-      c = prg_state->genPrssPair(field, m * n, false, true).first;
+      a = prg_state->genPrssPair(field, shape1, false, true).first;
+      b = prg_state->genPrssPair(field, shape2, false, true).first;
+      c = prg_state->genPrssPair(field, shape3, false, true).first;
     }
     if (rank == 1) {
-      a = prg_state->genPrssPair(field, m * k, true, false).second;
-      b = prg_state->genPrssPair(field, k * n, true, false).second;
-      prg_state->genPrssPair(field, m * n, true, true);
+      a = prg_state->genPrssPair(field, shape1, true, false).second;
+      b = prg_state->genPrssPair(field, shape2, true, false).second;
+      prg_state->genPrssPair(field, shape3, true, true);
 
       c = comm->recv(2, ty, "c");
+      c = c.reshape(shape3);
     }
 
     // Open x-a & y-b
@@ -497,22 +504,23 @@ ArrayRef MatMulAA::proc(KernelEvalContext* ctx, const ArrayRef& x,
     comm->sendAsync((rank + 1) % 2, send_y_b, "y_b");
     auto recv_x_a = comm->recv((rank + 1) % 2, ty, "x_a");
     auto recv_y_b = comm->recv((rank + 1) % 2, ty, "y_b");
+    recv_x_a = recv_x_a.reshape(shape1);
+    recv_y_b = recv_y_b.reshape(shape2);
 
     auto x_a = ring_add(send_x_a, recv_x_a);
     auto y_b = ring_add(send_y_b, recv_y_b);
 
     // Zi = Ci + (X - A) dot Bi + Ai dot (Y - B) + <(X - A) dot (Y - B)>
-    z = ring_add(
-        ring_add(ring_mmul(x_a, b, m, n, k), ring_mmul(a, y_b, m, n, k)), c);
+    z = ring_add(ring_add(ring_mmul(x_a, b), ring_mmul(a, y_b)), c);
     if (rank == 0) {
       // z += (X-A) * (Y-B);
-      z = ring_add(z, ring_mmul(x_a, y_b, m, n, k));
+      z = ring_add(z, ring_mmul(x_a, y_b));
     }
   }
 
   // P0 and P1 add the share of zero
   // P0.zero_1 = P1.zero_0
-  auto [zero_0, zero_1] = prg_state->genPrssPair(field, m * n);
+  auto [zero_0, zero_1] = prg_state->genPrssPair(field, shape3);
   if (rank == 0) {
     z = ring_sub(z, zero_1);
   }
@@ -532,19 +540,19 @@ static std::vector<uint8_t> bitDecompose(T in, size_t nbits) {
   return res;
 }
 
-ArrayRef ShareConvert::proc(KernelEvalContext* ctx, const ArrayRef& a) const {
-  SPU_TRACE_MPC_LEAF(ctx, a);
+NdArrayRef ShareConvert::proc(KernelEvalContext* ctx,
+                              const NdArrayRef& a) const {
   auto* prg_state = ctx->getState<PrgState>();
   const auto field = a.eltype().as<AShrTy>()->field();
-  const size_t k = SizeOf(field) * 8;
+  const int64_t k = SizeOf(field) * 8;
   auto* comm = ctx->getState<Communicator>();
   auto rank = comm->getRank();
-  const size_t size = a.numel();
+  const int64_t size = a.numel();
   const int p = 131;
   const auto log_p = 9;
   const auto ty = makeType<AShrTy>(field);
-  const auto one = ring_ones(field, size);
-  auto res = ring_zeros(field, size).as(makeType<AShrTy>(field));
+  const auto one = ring_ones(field, a.shape());
+  auto res = ring_zeros(field, a.shape()).as(makeType<AShrTy>(field));
   const auto kComm = a.elsize() * size;
   comm->addCommStatsManually(4, 4 * log_p * kComm + 6 * kComm);
 
@@ -553,30 +561,32 @@ ArrayRef ShareConvert::proc(KernelEvalContext* ctx, const ArrayRef& a) const {
     const U L_1 = (U)(~0);  // 2^k - 1
     // P0 and P1 add the share of zero
     // P0.zero_1 = P1.zero_0
-    auto [zero_0, zero_1] = prg_state->genPrssPair(field, a.numel());
-    auto _zero_0 = ArrayView<U>(zero_0);
-    auto _zero_1 = ArrayView<U>(zero_1);
-    auto _res = ArrayView<U>(res);
+    auto [zero_0, zero_1] = prg_state->genPrssPair(field, a.shape());
+    NdArrayView<U> _zero_0(zero_0);
+    NdArrayView<U> _zero_1(zero_1);
+    NdArrayView<U> _res(res);
 
     // P0 and P1 hold eta__ by PRF
-    auto [eta__0, eta__1] = prg_state->genPrssPair(field, size);
+    auto [eta__0, eta__1] = prg_state->genPrssPair(field, a.shape());
     // P0 and P1 hold r and share  it into r0 and r1
     // which means P0 and P1 hold r0 and r1
     // P0.r0_1 = P1.r0_0 = r0
     // P0.r1_1 = P1.r1_0 = r1
-    auto [r0_0, r0_1] = prg_state->genPrssPair(field, size);
-    auto [r1_0, r1_1] = prg_state->genPrssPair(field, size);
+    auto [r0_0, r0_1] = prg_state->genPrssPair(field, a.shape());
+    auto [r1_0, r1_1] = prg_state->genPrssPair(field, a.shape());
 
     // random for PC
-    auto [s_r0, s_r1] = prg_state->genPrssPair(field, size * k);
-    auto [u_r0, u_r1] = prg_state->genPrssPair(field, size * k);
+    std::array<int64_t, 1> size1 = {size * k};
+    Shape size_plus_k(size1);
+    auto [s_r0, s_r1] = prg_state->genPrssPair(field, size_plus_k);
+    auto [u_r0, u_r1] = prg_state->genPrssPair(field, size_plus_k);
 
     if (rank <= 1) {
-      auto beta = ring_zeros(field, size);
-      ArrayRef r_share(ty, size);
-      ArrayRef r(ty, size);
-      auto alpha = ring_zeros(field, size);
-      auto _alpha = ArrayView<U>(alpha);
+      auto beta = ring_zeros(field, a.shape());
+      NdArrayRef r_share(ty, a.shape());
+      NdArrayRef r(ty, a.shape());
+      auto alpha = ring_zeros(field, a.shape());
+      NdArrayView<U> _alpha(alpha);
 
       if (rank == 0) {
         r_share = r0_1;
@@ -587,13 +597,14 @@ ArrayRef ShareConvert::proc(KernelEvalContext* ctx, const ArrayRef& a) const {
         r = ring_add(r0_0, r1_0);
       }
 
-      auto _r_share = ArrayView<U>(r_share);
-      auto _r = ArrayView<U>(r);
+      NdArrayView<U> _r_share(r_share);
+      NdArrayView<U> _r(r);
 
       auto a_ = ring_add(a, r_share);
-      auto _a = ArrayView<U>(a);
-      auto _a_ = ArrayView<U>(a_);
-      auto _beta = ArrayView<U>(beta);
+      NdArrayView<U> _a(a);
+      NdArrayView<U> _a_(a_);
+      NdArrayView<U> _beta(beta);
+
       // beta_rank = wrap(a_rank, r_rank, 2^k)
       // alpha = wrap(r_0, r_1, L)
       pforeach(0, size, [&](int64_t idx) {
@@ -605,25 +616,29 @@ ArrayRef ShareConvert::proc(KernelEvalContext* ctx, const ArrayRef& a) const {
 
       auto dp_x = comm->recv(2, ty, "dp_x");
       auto delta = comm->recv(2, ty, "delta");
-      auto _dp_x = ArrayView<U>(dp_x);
-      auto _delta = ArrayView<U>(delta);
+      dp_x = dp_x.reshape(size_plus_k);
+      delta = delta.reshape(a.shape());
+      NdArrayView<U> _dp_x(dp_x);
+      NdArrayView<U> _delta(delta);
 
-      ArrayRef eta__(makeType<RingTy>(field), size);
+      NdArrayRef eta__(makeType<RingTy>(field), a.shape());
       if (rank == 0) eta__ = eta__1;
       if (rank == 1) eta__ = eta__0;
 
-      auto _eta__ = ArrayView<U>(eta__);
-      for (size_t i = 0; i < size; i++) {
+      // & ring_ones
+      NdArrayView<U> _eta__(eta__);
+      for (int64_t i = 0; i < size; i++) {
         _eta__[i] = _eta__[i] & 0x1;
       }
+
       // Private Compare
       auto t = r;
       r = ring_sub(r, one);
 
-      auto _t = ArrayView<U>(t);
+      NdArrayView<U> _t(t);
 
-      ArrayRef u(ty, size * k);
-      ArrayRef s(ty, size * k);
+      NdArrayRef u(ty, size_plus_k);
+      NdArrayRef s(ty, size_plus_k);
       if (rank == 0) {
         u = u_r1;
         s = s_r1;
@@ -632,11 +647,11 @@ ArrayRef ShareConvert::proc(KernelEvalContext* ctx, const ArrayRef& a) const {
         u = u_r0;
         s = s_r0;
       }
-      auto _u = ArrayView<U>(u);
-      auto _s = ArrayView<U>(s);
+      NdArrayView<U> _u(u);
+      NdArrayView<U> _s(s);
 
-      ArrayRef c(ty, size * k);
-      auto _c = ArrayView<U>(c);
+      NdArrayRef c(ty, size_plus_k);
+      NdArrayView<U> _c(c);
 
       size_t w;
       size_t w_total;
@@ -685,12 +700,13 @@ ArrayRef ShareConvert::proc(KernelEvalContext* ctx, const ArrayRef& a) const {
       // Private Compare end
 
       auto eta_ = comm->recv(2, ty, "eta_");
-      auto _eta_ = ArrayView<U>(eta_);
+      eta_ = eta_.reshape(a.shape());
+      NdArrayView<U> _eta_(eta_);
 
-      ArrayRef eta(ty, size);
-      ArrayRef theta(ty, size);
-      auto _eta = ArrayView<U>(eta);
-      auto _theta = ArrayView<U>(theta);
+      NdArrayRef eta(ty, a.shape());
+      NdArrayRef theta(ty, a.shape());
+      NdArrayView<U> _eta(eta);
+      NdArrayView<U> _theta(theta);
 
       pforeach(0, size, [&](int64_t idx) {
         // eta = eta_ + (1 - rank) * eta__ - 2 * eta__ * eta_  mod L_1
@@ -733,35 +749,41 @@ ArrayRef ShareConvert::proc(KernelEvalContext* ctx, const ArrayRef& a) const {
 
       auto a_0 = comm->recv(0, ty, "a_");
       auto a_1 = comm->recv(1, ty, "a_");
+      a_0 = a_0.reshape(a.shape());
+      a_1 = a_1.reshape(a.shape());
       auto x = ring_add(a_0, a_1);
 
-      auto _a_0 = ArrayView<U>(a_0);
-      auto _x = ArrayView<U>(x);
+      NdArrayView<U> _a_0(a_0);
+      NdArrayView<U> _x(x);
 
-      auto delta = ring_zeros(field, size);
-      auto _delta = ArrayView<U>(delta);
+      auto delta = ring_zeros(field, a.shape());
+      NdArrayView<U> _delta(delta);
+
       // delta = wrap(a_0, a_1, 2^k)
       pforeach(0, size, [&](int64_t idx) {
         if (_x[idx] < _a_0[idx]) _delta[idx] = (U)1;
       });
 
-      ArrayRef dp_x_p0(ty, size * k);
-      ArrayRef dp_x_p1(ty, size * k);
-      auto _dp_x_p0 = ArrayView<U>(dp_x_p0);
-      auto _dp_x_p1 = ArrayView<U>(dp_x_p1);
+      NdArrayRef dp_x_p0(ty, size_plus_k);
+      NdArrayRef dp_x_p1(ty, size_plus_k);
+      NdArrayView<U> _dp_x_p0(dp_x_p0);
+      NdArrayView<U> _dp_x_p1(dp_x_p1);
 
-      ArrayRef delta_p0(ty, size);
-      ArrayRef delta_p1(ty, size);
-      auto _delta_p0 = ArrayView<U>(delta_p0);
-      auto _delta_p1 = ArrayView<U>(delta_p1);
+      NdArrayRef delta_p0(ty, a.shape());
+      NdArrayRef delta_p1(ty, a.shape());
+      NdArrayView<U> _delta_p0(delta_p0);
+      NdArrayView<U> _delta_p1(delta_p1);
 
       pforeach(0, size, [&](int64_t idx) {
         auto dp_x = bitDecompose(_x[idx], k);  // vector<uint8_t>
 
         // split bitDecompose(x) into dp_x_p0 and dp_x_p1
-        auto rand_Zp = ring_rand_range(field, k, 0, p - 1);
-        auto _rand_Zp = ArrayView<U>(rand_Zp);
-        for (size_t bit = 0; bit < k; bit++) {
+        std::array<int64_t, 1> size2 = {k};
+        Shape shape_k(size2);
+
+        auto rand_Zp = ring_rand_range(field, shape_k, 0, p - 1);
+        NdArrayView<U> _rand_Zp(rand_Zp);
+        for (int64_t bit = 0; bit < k; bit++) {
           _dp_x_p0[idx * k + bit] = (_rand_Zp[bit]);
           _dp_x_p1[idx * k + bit] =
               (U)(dp_x[bit] + p - _dp_x_p0[idx * k + bit]);
@@ -781,24 +803,25 @@ ArrayRef ShareConvert::proc(KernelEvalContext* ctx, const ArrayRef& a) const {
       comm->sendAsync(1, delta_p1, "delta");
 
       // split eta_ in Z_(L_1)
-      ArrayRef eta_p0(ty, size);
-      ArrayRef eta_p1(ty, size);
-      auto _eta_p0 = ArrayView<U>(eta_p0);
-      auto _eta_p1 = ArrayView<U>(eta_p1);
+      NdArrayRef eta_p0(ty, a.shape());
+      NdArrayRef eta_p1(ty, a.shape());
+      NdArrayView<U> _eta_p0(eta_p0);
+      NdArrayView<U> _eta_p1(eta_p1);
 
       // Private Compare
       auto d0 = comm->recv(0, ty, "d");
       auto d1 = comm->recv(1, ty, "d");
-      SPU_ENFORCE(d0.numel() == d1.numel());
-      auto _d0 = ArrayView<U>(d0);
-      auto _d1 = ArrayView<U>(d1);
+      d0 = d0.reshape(size_plus_k);
+      d1 = d1.reshape(size_plus_k);
+      NdArrayView<U> _d0(d0);
+      NdArrayView<U> _d1(d1);
 
-      auto eta_ = ring_zeros(field, size);
-      auto _eta_ = ArrayView<U>(eta_);
-      ArrayRef d(ty, size * k);
-      auto _d = ArrayView<U>(d);
+      auto eta_ = ring_zeros(field, a.shape());
+      NdArrayView<U> _eta_(eta_);
+      NdArrayRef d(ty, size_plus_k);
+      NdArrayView<U> _d(d);
       pforeach(0, size, [&](int64_t idx) {
-        for (size_t i = 0; i < k; i++) {
+        for (int64_t i = 0; i < k; i++) {
           _d[idx * k + i] = (_d0[idx * k + i] + _d1[idx * k + i]) % p;
           if (_d[idx * k + i] == 0) {
             _eta_[idx] = U(1);
@@ -823,19 +846,18 @@ ArrayRef ShareConvert::proc(KernelEvalContext* ctx, const ArrayRef& a) const {
   return res;
 }
 
-ArrayRef Msb::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
-  SPU_TRACE_MPC_LEAF(ctx, in);
+NdArrayRef Msb::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   auto* prg_state = ctx->getState<PrgState>();
   const auto field = in.eltype().as<AShrTy>()->field();
-  const size_t k = SizeOf(field) * 8;
+  const int64_t k = SizeOf(field) * 8;
   auto* comm = ctx->getState<Communicator>();
   auto rank = comm->getRank();
-  const size_t size = in.numel();
+  const int64_t size = in.numel();
   const int p = 131;
   const auto log_p = 9;
   const auto ty = makeType<AShrTy>(field);
-  const auto one = ring_ones(field, size);
-  auto res = ring_zeros(field, size).as(makeType<AShrTy>(field));
+  const auto one = ring_ones(field, in.shape());
+  auto res = ring_zeros(field, in.shape()).as(makeType<AShrTy>(field));
 
   const auto kComm = in.elsize() * size;
   comm->addCommStatsManually(5, 13 * kComm + 4 * kComm * log_p);
@@ -843,13 +865,15 @@ ArrayRef Msb::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
   DISPATCH_ALL_FIELDS(field, "securenn.msb", [&]() {
     using U = ring2k_t;
     const U L_1 = (U)(~0);
+    std::array<int64_t, 1> size1 = {size * k};
+    Shape size_plus_k(size1);
 
-    ArrayRef gamma(ty, size);
-    ArrayRef delta(ty, size);
+    NdArrayRef gamma(ty, in.shape());
+    NdArrayRef delta(ty, in.shape());
     // P0 and P1 hold beta by PRF
-    auto [beta0, beta1] = prg_state->genPrssPair(field, size);
-    auto [s_r0, s_r1] = prg_state->genPrssPair(field, size * k);
-    auto [u_r0, u_r1] = prg_state->genPrssPair(field, size * k);
+    auto [beta0, beta1] = prg_state->genPrssPair(field, in.shape());
+    auto [s_r0, s_r1] = prg_state->genPrssPair(field, size_plus_k);
+    auto [u_r0, u_r1] = prg_state->genPrssPair(field, size_plus_k);
     if (rank == 2) {
       std::random_device rd;
       std::mt19937 gen(rd());
@@ -858,36 +882,36 @@ ArrayRef Msb::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
       // random for beaver
       // P2 generate a0, a1, b0, b1, c0 by PRF
       // and calculate c1
-      auto [a1, a0] = prg_state->genPrssPair(field, size);
-      auto [b1, b0] = prg_state->genPrssPair(field, size);
-      auto c0 = prg_state->genPrssPair(field, size, true, false).second;
+      auto [a1, a0] = prg_state->genPrssPair(field, in.shape());
+      auto [b1, b0] = prg_state->genPrssPair(field, in.shape());
+      auto c0 = prg_state->genPrssPair(field, in.shape(), true, false).second;
       // c1 = (a0 + a1) * (b0 + b1) - c0
       auto c1 = ring_sub(ring_mul(ring_add(a0, a1), ring_add(b0, b1)), c0);
       // end beaver  (c1 will be sent with x to reduce one round latency)
 
-      ArrayRef x(ty, size);
-      auto _x = ArrayView<U>(x);
+      NdArrayRef x(ty, in.shape());
+      NdArrayView<U> _x(x);
 
       // split x into x_p0 and x_p1 in Z_(L-1), (L=2^k)
 
-      ArrayRef x_p0(ty, size);
-      ArrayRef x_p1(ty, size);
-      auto _x_p0 = ArrayView<U>(x_p0);
-      auto _x_p1 = ArrayView<U>(x_p1);
+      NdArrayRef x_p0(ty, in.shape());
+      NdArrayRef x_p1(ty, in.shape());
+      NdArrayView<U> _x_p0(x_p0);
+      NdArrayView<U> _x_p1(x_p1);
 
       // split bitDecompose(x) into dp_x_p0 and dp_x_p1 (vector<vector<size_t>>)
-      ArrayRef dp_x_p0(ty, size * k);
-      ArrayRef dp_x_p1(ty, size * k);
-      auto _dp_x_p0 = ArrayView<U>(dp_x_p0);
-      auto _dp_x_p1 = ArrayView<U>(dp_x_p1);
+      NdArrayRef dp_x_p0(ty, size_plus_k);
+      NdArrayRef dp_x_p1(ty, size_plus_k);
+      NdArrayView<U> _dp_x_p0(dp_x_p0);
+      NdArrayView<U> _dp_x_p1(dp_x_p1);
 
       // split lsb(x)
       // when you add / sub in ring2k_t,the overflow part will be thrown away,
       // which equivalents to mod 2^k, when you want to mod 2^k - 1:
       // add : if overflow : res = res + 1
       // sub : if overflow : res = res - 1
-      ArrayRef lsb_x(ty, size);
-      auto _lsb_x = ArrayView<U>(lsb_x);
+      NdArrayRef lsb_x(ty, in.shape());
+      NdArrayView<U> _lsb_x(lsb_x);
       pforeach(0, size, [&](int64_t idx) {
         _x[idx] = dis(gen);
         auto dp_x = bitDecompose(_x[idx], k);  // vector<uint8_t>
@@ -898,9 +922,11 @@ ArrayRef Msb::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
         if (_x[idx] < _x_p0[idx]) _x_p1[idx] -= (U)1;  // when overflow
 
         // split each bit of x
-        auto rand_Zp = ring_rand_range(field, k, 0, p - 1);
-        auto _rand_Zp = ArrayView<U>(rand_Zp);
-        for (size_t bit = 0; bit < k; bit++) {
+        std::array<int64_t, 1> size2 = {k};
+        Shape shape_k(size2);
+        auto rand_Zp = ring_rand_range(field, shape_k, 0, p - 1);
+        NdArrayView<U> _rand_Zp(rand_Zp);
+        for (int64_t bit = 0; bit < k; bit++) {
           _dp_x_p0[idx * k + bit] = (_rand_Zp[bit]);
           _dp_x_p1[idx * k + bit] =
               (U)(dp_x[bit] + p - _dp_x_p0[idx * k + bit]);
@@ -924,16 +950,16 @@ ArrayRef Msb::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
       // Private Compare
       auto d0 = comm->recv(0, ty, "d");
       auto d1 = comm->recv(1, ty, "d");
-      SPU_ENFORCE(d0.numel() == d1.numel());
-      auto _d0 = ArrayView<U>(d0);
-      auto _d1 = ArrayView<U>(d1);
+      SPU_ENFORCE(d0.shape() == d1.shape());
+      NdArrayView<U> _d0(d0);
+      NdArrayView<U> _d1(d1);
 
-      auto beta_ = ring_zeros(field, size);
-      auto _beta_ = ArrayView<U>(beta_);
-      ArrayRef d(ty, size * k);
-      auto _d = ArrayView<U>(d);
+      auto beta_ = ring_zeros(field, in.shape());
+      NdArrayView<U> _beta_(beta_);
+      NdArrayRef d(ty, size_plus_k);
+      NdArrayView<U> _d(d);
       pforeach(0, size, [&](int64_t idx) {
-        for (size_t i = 0; i < k; i++) {
+        for (int64_t i = 0; i < k; i++) {
           _d[idx * k + i] = (_d0[idx * k + i] + _d1[idx * k + i]) % p;
           if (_d[idx * k + i] == 0) {
             _beta_[idx] = U(1);
@@ -954,39 +980,45 @@ ArrayRef Msb::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
 
     if (rank <= 1) {
       // random for beaver
-      ArrayRef beaver_a(ty, size);
-      ArrayRef beaver_b(ty, size);
-      ArrayRef beaver_c(ty, size);
+      NdArrayRef beaver_a(ty, in.shape());
+      NdArrayRef beaver_b(ty, in.shape());
+      NdArrayRef beaver_c(ty, in.shape());
       if (rank == 0) {
-        beaver_a = prg_state->genPrssPair(field, size, false, true).first;
-        beaver_b = prg_state->genPrssPair(field, size, false, true).first;
-        beaver_c = prg_state->genPrssPair(field, size, false, true).first;
+        beaver_a = prg_state->genPrssPair(field, in.shape(), false, true).first;
+        beaver_b = prg_state->genPrssPair(field, in.shape(), false, true).first;
+        beaver_c = prg_state->genPrssPair(field, in.shape(), false, true).first;
       }
       if (rank == 1) {
-        beaver_a = prg_state->genPrssPair(field, size, true, false).second;
-        beaver_b = prg_state->genPrssPair(field, size, true, false).second;
-        prg_state->genPrssPair(field, size, true, true);
+        beaver_a =
+            prg_state->genPrssPair(field, in.shape(), true, false).second;
+        beaver_b =
+            prg_state->genPrssPair(field, in.shape(), true, false).second;
+        prg_state->genPrssPair(field, in.shape(), true, true);
         beaver_c = comm->recv(2, ty, "beaver_c");
+        beaver_c = beaver_c.reshape(in.shape());
       }
       // end beaver
 
       auto x = comm->recv(2, ty, "x");
       auto dp_x = comm->recv(2, ty, "dp_x");
       auto lsb_x = comm->recv(2, ty, "lsb_x");
+      x = x.reshape(in.shape());
+      dp_x = dp_x.reshape(size_plus_k);
+      lsb_x = lsb_x.reshape(in.shape());
 
-      ArrayRef y(ty, size);
-      ArrayRef r1(ty, size);
-      ArrayRef r(ty, size);
-      ArrayRef lsb_r(makeType<RingTy>(field), size);
-      auto _y = ArrayView<U>(y);
-      auto _r1 = ArrayView<U>(r1);
-      auto _r = ArrayView<U>(r);
-      auto _a = ArrayView<U>(in);
-      auto _x = ArrayView<U>(x);
-      auto _lsb_r = ArrayView<U>(lsb_r);
-      auto _dp_x = ArrayView<U>(dp_x);
+      NdArrayRef y(ty, in.shape());
+      NdArrayRef r1(ty, in.shape());
+      NdArrayRef r(ty, in.shape());
+      NdArrayRef lsb_r(makeType<RingTy>(field), in.shape());
+      NdArrayView<U> _y(y);
+      NdArrayView<U> _r1(r1);
+      NdArrayView<U> _r(r);
+      NdArrayView<U> _a(in);
+      NdArrayView<U> _x(x);
+      NdArrayView<U> _lsb_r(lsb_r);
+      NdArrayView<U> _dp_x(dp_x);
 
-      for (size_t i = 0; i < size; i++) {
+      for (int64_t i = 0; i < size; i++) {
         _y[i] = _a[i] * 2;
         if (_y[i] < _a[i]) _y[i] += (U)1;
         _r1[i] = _y[i] + _x[i];
@@ -997,28 +1029,29 @@ ArrayRef Msb::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
       // 1 latency, 2 * k
       comm->sendAsync((rank + 1) % 2, r1, "r1");
       auto r2 = comm->recv((rank + 1) % 2, ty, "r1");
-      auto _r2 = ArrayView<U>(r2);
-      for (size_t i = 0; i < size; i++) {
+      r2 = r2.reshape(in.shape());
+      NdArrayView<U> _r2(r2);
+      for (int64_t i = 0; i < size; i++) {
         _r[i] = _r1[i] + _r2[i];
         if (_r[i] < _r1[i]) _r[i] += (U)1;
       }
 
       // P0 and P1 hold beta by PRF
-      ArrayRef beta(makeType<RingTy>(field), size);
+      NdArrayRef beta(makeType<RingTy>(field), in.shape());
       if (rank == 0) beta = beta1;
       if (rank == 1) beta = beta0;
 
-      auto _beta = ArrayView<U>(beta);
-      for (size_t i = 0; i < size; i++) {
+      NdArrayView<U> _beta(beta);
+      for (int64_t i = 0; i < size; i++) {
         _beta[i] = _beta[i] & 0x1;
       }
 
       // Private Compare
       auto t = ring_add(r, one);
-      auto _t = ArrayView<U>(t);
+      NdArrayView<U> _t(t);
 
-      ArrayRef u(ty, size * k);
-      ArrayRef s(ty, size * k);
+      NdArrayRef u(ty, size_plus_k);
+      NdArrayRef s(ty, size_plus_k);
       if (rank == 0) {
         u = u_r1;
         s = s_r1;
@@ -1027,11 +1060,11 @@ ArrayRef Msb::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
         u = u_r0;
         s = s_r0;
       }
-      auto _u = ArrayView<U>(u);
-      auto _s = ArrayView<U>(s);
+      NdArrayView<U> _u(u);
+      NdArrayView<U> _s(s);
 
-      ArrayRef c(ty, size * k);
-      auto _c = ArrayView<U>(c);
+      NdArrayRef c(ty, size_plus_k);
+      NdArrayView<U> _c(c);
 
       size_t w;
       size_t w_total;
@@ -1081,6 +1114,7 @@ ArrayRef Msb::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
       // Private Compare end
 
       auto beta_ = comm->recv(2, ty, "beta_");
+      beta_ = beta_.reshape(in.shape());
 
       // gamma = beta_ + rank * beta - 2 * beta * beta_
       // delta = lsb(x) + rank * lsb(r) - 2 * lsb(x) * lsb(r)
@@ -1102,6 +1136,8 @@ ArrayRef Msb::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
       comm->sendAsync((rank + 1) % 2, send_delta_b, "delta_b");
       auto recv_gamma_a = comm->recv((rank + 1) % 2, ty, "gamma_a");
       auto recv_delta_b = comm->recv((rank + 1) % 2, ty, "delta_b");
+      recv_gamma_a = recv_gamma_a.reshape(in.shape());
+      recv_delta_b = recv_delta_b.reshape(in.shape());
       auto gamma_a = ring_add(send_gamma_a, recv_gamma_a);
       auto delta_b = ring_add(send_delta_b, recv_delta_b);
 
@@ -1121,7 +1157,7 @@ ArrayRef Msb::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
 
   // P0 and P1 add the share of zero
   // P0.zero_1 = P1.zero_0
-  auto [zero_0, zero_1] = prg_state->genPrssPair(field, size);
+  auto [zero_0, zero_1] = prg_state->genPrssPair(field, in.shape());
   if (rank == 0) {
     res = ring_sub(res, zero_1);
   }
@@ -1131,20 +1167,18 @@ ArrayRef Msb::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
   return res;
 }
 
-ArrayRef Msb_opt::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
-  SPU_TRACE_MPC_LEAF(ctx, in);
+NdArrayRef Msb_opt::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   auto* prg_state = ctx->getState<PrgState>();
   const auto field = in.eltype().as<AShrTy>()->field();
-  const size_t k = SizeOf(field) * 8;
+  const int64_t k = SizeOf(field) * 8;
   auto* comm = ctx->getState<Communicator>();
   auto rank = comm->getRank();
-  const size_t size = in.numel();
-  // const int p = 67;
+  const int64_t size = in.numel();
   const int p = 131;
   const auto log_p = 9;
   const auto ty = makeType<AShrTy>(field);
-  const auto one = ring_ones(field, size);
-  auto res = ring_zeros(field, size).as(makeType<AShrTy>(field));
+  const auto one = ring_ones(field, in.shape());
+  auto res = ring_zeros(field, in.shape()).as(makeType<AShrTy>(field));
 
   const auto kComm = in.elsize() * size;
   comm->addCommStatsManually(5, 9 * kComm + 3 * kComm * log_p);
@@ -1152,19 +1186,21 @@ ArrayRef Msb_opt::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
   DISPATCH_ALL_FIELDS(field, "securenn.msb", [&]() {
     using U = ring2k_t;
     const U L_1 = (U)(~0);
+    std::array<int64_t, 1> size1 = {size * k};
+    Shape size_plus_k(size1);
 
-    ArrayRef gamma(ty, size);
-    ArrayRef delta(ty, size);
+    NdArrayRef gamma(ty, in.shape());
+    NdArrayRef delta(ty, in.shape());
     // P0 and P1 hold beta by PRF
-    auto [beta0, beta1] = prg_state->genPrssPair(field, size);
+    auto [beta0, beta1] = prg_state->genPrssPair(field, in.shape());
     // random for pc
-    auto [s_r0, s_r1] = prg_state->genPrssPair(field, size * k);
-    auto [u_r0, u_r1] = prg_state->genPrssPair(field, size * k);
+    auto [s_r0, s_r1] = prg_state->genPrssPair(field, size_plus_k);
+    auto [u_r0, u_r1] = prg_state->genPrssPair(field, size_plus_k);
     // using PRF for reduce some comm
-    auto [prf_x0, prf_x1] = prg_state->genPrssPair(field, size);
-    auto [prf_dpx0, prf_dpx1] = prg_state->genPrssPair(field, size * k);
-    auto [prf_lsbx0, prf_lsbx1] = prg_state->genPrssPair(field, size);
-    auto [beta_0, beta_1] = prg_state->genPrssPair(field, size);
+    auto [prf_x0, prf_x1] = prg_state->genPrssPair(field, in.shape());
+    auto [prf_dpx0, prf_dpx1] = prg_state->genPrssPair(field, size_plus_k);
+    auto [prf_lsbx0, prf_lsbx1] = prg_state->genPrssPair(field, in.shape());
+    auto [beta_0, beta_1] = prg_state->genPrssPair(field, in.shape());
     if (rank == 2) {
       std::random_device rd;
       std::mt19937 gen(rd());
@@ -1173,36 +1209,36 @@ ArrayRef Msb_opt::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
       // random for beaver
       // P2 generate a0, a1, b0, b1, c0 by PRF
       // and calculate c1
-      auto [a1, a0] = prg_state->genPrssPair(field, size);
-      auto [b1, b0] = prg_state->genPrssPair(field, size);
-      auto c0 = prg_state->genPrssPair(field, size, true, false).second;
+      auto [a1, a0] = prg_state->genPrssPair(field, in.shape());
+      auto [b1, b0] = prg_state->genPrssPair(field, in.shape());
+      auto c0 = prg_state->genPrssPair(field, in.shape(), true, false).second;
       // c1 = (a0 + a1) * (b0 + b1) - c0
       auto c1 = ring_sub(ring_mul(ring_add(a0, a1), ring_add(b0, b1)), c0);
       // end beaver  (c1 will be sent with x to reduce one round latency)
 
-      ArrayRef x(ty, size);
-      auto _x = ArrayView<U>(x);
+      NdArrayRef x(ty, in.shape());
+      NdArrayView<U> _x(x);
 
       // split x into x_p0 and x_p1 in Z_(L-1), (L=2^k)
 
       auto x_p0 = prf_x0;
       auto x_p1 = prf_x1;
-      auto _x_p0 = ArrayView<U>(x_p0);
-      auto _x_p1 = ArrayView<U>(x_p1);
+      NdArrayView<U> _x_p0(x_p0);
+      NdArrayView<U> _x_p1(x_p1);
 
       // split bitDecompose(x) into dp_x_p0 and dp_x_p1 (vector<vector<size_t>>)
       auto dp_x_p0 = prf_dpx1;
-      ArrayRef dp_x_p1(ty, size * k);
-      auto _dp_x_p0 = ArrayView<U>(dp_x_p0);
-      auto _dp_x_p1 = ArrayView<U>(dp_x_p1);
+      NdArrayRef dp_x_p1(ty, size_plus_k);
+      NdArrayView<U> _dp_x_p0(dp_x_p0);
+      NdArrayView<U> _dp_x_p1(dp_x_p1);
 
       // split lsb(x)
       // when you add / sub in ring2k_t,the overflow part will be thrown away,
       // which equivalents to mod 2^k, when you want to mod 2^k - 1:
       // add : if overflow : res = res + 1
       // sub : if overflow : res = res - 1
-      ArrayRef lsb_x(ty, size);
-      auto _lsb_x = ArrayView<U>(lsb_x);
+      NdArrayRef lsb_x(ty, in.shape());
+      NdArrayView<U> _lsb_x(lsb_x);
       pforeach(0, size, [&](int64_t idx) {
         // reconstruct x
         if (_x_p0[idx] == L_1) _x_p0[idx] = (U)0;
@@ -1213,7 +1249,7 @@ ArrayRef Msb_opt::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
         // split each bit of x
         auto dp_x = bitDecompose(_x[idx], k);  // vector<uint8_t>
 
-        for (size_t bit = 0; bit < k; bit++) {
+        for (int64_t bit = 0; bit < k; bit++) {
           _dp_x_p0[idx * k + bit] = _dp_x_p0[idx * k + bit] % p;
           _dp_x_p1[idx * k + bit] =
               (U)(dp_x[bit] + p - _dp_x_p0[idx * k + bit]);
@@ -1234,16 +1270,17 @@ ArrayRef Msb_opt::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
       // Private Compare
       auto d0 = comm->recv(0, ty, "d");
       auto d1 = comm->recv(1, ty, "d");
-      SPU_ENFORCE(d0.numel() == d1.numel());
-      auto _d0 = ArrayView<U>(d0);
-      auto _d1 = ArrayView<U>(d1);
+      d0 = d0.reshape(size_plus_k);
+      d1 = d1.reshape(size_plus_k);
+      NdArrayView<U> _d0(d0);
+      NdArrayView<U> _d1(d1);
 
-      auto beta_ = ring_zeros(field, size);
-      auto _beta_ = ArrayView<U>(beta_);
-      ArrayRef d(ty, size * k);
-      auto _d = ArrayView<U>(d);
+      auto beta_ = ring_zeros(field, in.shape());
+      NdArrayView<U> _beta_(beta_);
+      NdArrayRef d(ty, size_plus_k);
+      NdArrayView<U> _d(d);
       pforeach(0, size, [&](int64_t idx) {
-        for (size_t i = 0; i < k; i++) {
+        for (int64_t i = 0; i < k; i++) {
           _d[idx * k + i] = (_d0[idx * k + i] + _d1[idx * k + i]) % p;
           if (_d[idx * k + i] == 0) {
             _beta_[idx] = U(1);
@@ -1264,47 +1301,56 @@ ArrayRef Msb_opt::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
 
     if (rank <= 1) {
       // random for beaver
-      ArrayRef beaver_a(ty, size);
-      ArrayRef beaver_b(ty, size);
-      ArrayRef beaver_c(ty, size);
+      NdArrayRef beaver_a(ty, in.shape());
+      NdArrayRef beaver_b(ty, in.shape());
+      NdArrayRef beaver_c(ty, in.shape());
       if (rank == 0) {
-        beaver_a = prg_state->genPrssPair(field, size, false, true).first;
-        beaver_b = prg_state->genPrssPair(field, size, false, true).first;
-        beaver_c = prg_state->genPrssPair(field, size, false, true).first;
+        beaver_a = prg_state->genPrssPair(field, in.shape(), false, true).first;
+        beaver_b = prg_state->genPrssPair(field, in.shape(), false, true).first;
+        beaver_c = prg_state->genPrssPair(field, in.shape(), false, true).first;
       }
       if (rank == 1) {
-        beaver_a = prg_state->genPrssPair(field, size, true, false).second;
-        beaver_b = prg_state->genPrssPair(field, size, true, false).second;
-        prg_state->genPrssPair(field, size, true, true);
+        beaver_a =
+            prg_state->genPrssPair(field, in.shape(), true, false).second;
+        beaver_b =
+            prg_state->genPrssPair(field, in.shape(), true, false).second;
+        prg_state->genPrssPair(field, in.shape(), true, true);
         beaver_c = comm->recv(2, ty, "beaver_c");
+        beaver_c = beaver_c.reshape(in.shape());
       }
       // end beaver
 
-      ArrayRef x(ty, size);
+      NdArrayRef x(ty, in.shape());
       if (rank == 0) x = prf_x0;
       if (rank == 1) x = prf_x1;
 
-      ArrayRef dp_x(ty, size * k);
-      if (rank == 1) dp_x = comm->recv(2, ty, "dp_x");
+      NdArrayRef dp_x(ty, size_plus_k);
+      if (rank == 1) {
+        dp_x = comm->recv(2, ty, "dp_x");
+        dp_x = dp_x.reshape(size_plus_k);
+      }
       if (rank == 0) dp_x = prf_dpx0;
-      auto _dp_x = ArrayView<U>(dp_x);
+      NdArrayView<U> _dp_x(dp_x);
 
-      ArrayRef lsb_x(ty, size);
+      NdArrayRef lsb_x(ty, in.shape());
       if (rank == 0) lsb_x = prf_lsbx0;
-      if (rank == 1) lsb_x = comm->recv(2, ty, "lsb_x");
+      if (rank == 1) {
+        lsb_x = comm->recv(2, ty, "lsb_x");
+        lsb_x = lsb_x.reshape(in.shape());
+      }
 
-      ArrayRef y(ty, size);
-      ArrayRef r1(ty, size);
-      ArrayRef r(ty, size);
-      ArrayRef lsb_r(makeType<RingTy>(field), size);
-      auto _y = ArrayView<U>(y);
-      auto _r1 = ArrayView<U>(r1);
-      auto _r = ArrayView<U>(r);
-      auto _a = ArrayView<U>(in);
-      auto _x = ArrayView<U>(x);
-      auto _lsb_r = ArrayView<U>(lsb_r);
+      NdArrayRef y(ty, in.shape());
+      NdArrayRef r1(ty, in.shape());
+      NdArrayRef r(ty, in.shape());
+      NdArrayRef lsb_r(makeType<RingTy>(field), in.shape());
+      NdArrayView<U> _y(y);
+      NdArrayView<U> _r1(r1);
+      NdArrayView<U> _r(r);
+      NdArrayView<U> _a(in);
+      NdArrayView<U> _x(x);
+      NdArrayView<U> _lsb_r(lsb_r);
 
-      for (size_t i = 0; i < size; i++) {
+      for (int64_t i = 0; i < size; i++) {
         _y[i] = _a[i] * 2;
         if (_y[i] < _a[i]) _y[i] += (U)1;
         if (_x[i] == L_1) _x[i] = (U)0;
@@ -1316,28 +1362,29 @@ ArrayRef Msb_opt::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
       // 1 latency, 2 * k
       comm->sendAsync((rank + 1) % 2, r1, "r1");
       auto r2 = comm->recv((rank + 1) % 2, ty, "r1");
-      auto _r2 = ArrayView<U>(r2);
-      for (size_t i = 0; i < size; i++) {
+      r2 = r2.reshape(in.shape());
+      NdArrayView<U> _r2(r2);
+      for (int64_t i = 0; i < size; i++) {
         _r[i] = _r1[i] + _r2[i];
         if (_r[i] < _r1[i]) _r[i] += (U)1;
       }
 
       // P0 and P1 hold beta by PRF
-      ArrayRef beta(makeType<RingTy>(field), size);
+      NdArrayRef beta(makeType<RingTy>(field), in.shape());
       if (rank == 0) beta = beta1;
       if (rank == 1) beta = beta0;
 
-      auto _beta = ArrayView<U>(beta);
-      for (size_t i = 0; i < size; i++) {
+      NdArrayView<U> _beta(beta);
+      for (int64_t i = 0; i < size; i++) {
         _beta[i] = _beta[i] & 0x1;
       }
 
       // Private Compare
       auto t = ring_add(r, one);
-      auto _t = ArrayView<U>(t);
+      NdArrayView<U> _t(t);
 
-      ArrayRef u(ty, size * k);
-      ArrayRef s(ty, size * k);
+      NdArrayRef u(ty, size_plus_k);
+      NdArrayRef s(ty, size_plus_k);
       if (rank == 0) {
         u = u_r1;
         s = s_r1;
@@ -1346,11 +1393,11 @@ ArrayRef Msb_opt::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
         u = u_r0;
         s = s_r0;
       }
-      auto _u = ArrayView<U>(u);
-      auto _s = ArrayView<U>(s);
+      NdArrayView<U> _u(u);
+      NdArrayView<U> _s(s);
 
-      ArrayRef c(ty, size * k);
-      auto _c = ArrayView<U>(c);
+      NdArrayRef c(ty, size_plus_k);
+      NdArrayView<U> _c(c);
 
       size_t w;
       size_t w_total;
@@ -1400,9 +1447,12 @@ ArrayRef Msb_opt::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
       comm->sendAsync(2, c, "d");
       // Private Compare end
 
-      ArrayRef beta_(ty, size);
+      NdArrayRef beta_(ty, in.shape());
       if (rank == 0) beta_ = beta_0;
-      if (rank == 1) beta_ = comm->recv(2, ty, "beta_");
+      if (rank == 1) {
+        beta_ = comm->recv(2, ty, "beta_");
+        beta_ = beta_.reshape(in.shape());
+      }
 
       // gamma = beta_ + rank * beta - 2 * beta * beta_
       // delta = lsb(x) + rank * lsb(r) - 2 * lsb(x) * lsb(r)
@@ -1424,6 +1474,8 @@ ArrayRef Msb_opt::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
       comm->sendAsync((rank + 1) % 2, send_delta_b, "delta_b");
       auto recv_gamma_a = comm->recv((rank + 1) % 2, ty, "gamma_a");
       auto recv_delta_b = comm->recv((rank + 1) % 2, ty, "delta_b");
+      recv_gamma_a = recv_gamma_a.reshape(in.shape());
+      recv_delta_b = recv_delta_b.reshape(in.shape());
       auto gamma_a = ring_add(send_gamma_a, recv_gamma_a);
       auto delta_b = ring_add(send_delta_b, recv_delta_b);
 
@@ -1443,7 +1495,7 @@ ArrayRef Msb_opt::proc(KernelEvalContext* ctx, const ArrayRef& in) const {
 
   // P0 and P1 add the share of zero
   // P0.zero_1 = P1.zero_0
-  auto [zero_0, zero_1] = prg_state->genPrssPair(field, size);
+  auto [zero_0, zero_1] = prg_state->genPrssPair(field, in.shape());
   if (rank == 0) {
     res = ring_sub(res, zero_1);
   }
