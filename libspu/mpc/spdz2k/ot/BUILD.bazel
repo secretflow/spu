@@ -42,17 +42,17 @@ spu_cc_library(
     copts = AES_COPT_FLAGS + ["-Wno-ignored-attributes"],
     deps = [
         "//libspu/core:prelude",
-        "@yacl//yacl/link",
-        "@yacl//yacl/utils:serialize",
-        "@yacl//yacl/crypto/primitives/ot:base_ot",
-        "@yacl//yacl/crypto/base/hash:hash_utils",
+        "@com_github_emptoolkit_emp_tool//:emp-tool",
         "@yacl//yacl/crypto/base/hash:hash_interface",
+        "@yacl//yacl/crypto/base/hash:hash_utils",
+        "@yacl//yacl/crypto/primitives/ot:base_ot",
         "@yacl//yacl/crypto/tools:prg",
         "@yacl//yacl/crypto/tools:random_oracle",
         "@yacl//yacl/crypto/tools:random_permutation",
+        "@yacl//yacl/link",
         "@yacl//yacl/utils:matrix_utils",
-        "@com_github_emptoolkit_emp_tool//:emp-tool",
-    ]
+        "@yacl//yacl/utils:serialize",
+    ],
 )
 
 spu_cc_library(
@@ -61,13 +61,13 @@ spu_cc_library(
     hdrs = ["tiny_ot.h"],
     copts = AES_COPT_FLAGS + ["-Wno-ignored-attributes"],
     deps = [
+        "//libspu/mpc/common:communicator",
         "//libspu/mpc/spdz2k:commitment",
         "//libspu/mpc/spdz2k/ot:kos_ote",
-        "//libspu/mpc/common:communicator",
         "//libspu/mpc/utils:ring_ops",
-        "@yacl//yacl/link",
+        "@com_github_emptoolkit_emp_tool//:emp-tool",
         "@yacl//yacl/crypto/primitives/ot:ot_store",
         "@yacl//yacl/crypto/tools:prg",
-        "@com_github_emptoolkit_emp_tool//:emp-tool",
-    ]
+        "@yacl//yacl/link",
+    ],
 )

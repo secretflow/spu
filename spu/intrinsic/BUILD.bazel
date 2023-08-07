@@ -25,7 +25,7 @@ py_library(
     deps = [
         ":example",
         ":example_binary",
-		# DO-NOT-EDIT:ADD_IMPORT
+        # DO-NOT-EDIT:ADD_IMPORT
     ],
 )
 
