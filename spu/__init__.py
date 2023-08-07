@@ -24,7 +24,7 @@ from .spu_pb2 import (  # type: ignore
     ShapeProto,
     RuntimeConfig,
     ExecutableProto,
-    CompilerOptions
+    CompilerOptions,
 )
 
 from .api import Io, Runtime, compile

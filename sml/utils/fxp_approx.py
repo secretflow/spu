@@ -28,6 +28,7 @@ class SigType(Enum):
     MIX = 'mix'
     REAL = 'real'
 
+
 # taylor series referenced from:
 # https://mortendahl.github.io/2017/04/17/private-deep-learning-with-mpc/
 def sigmoid_t1(x):

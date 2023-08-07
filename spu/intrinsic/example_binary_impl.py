@@ -22,8 +22,10 @@ def example_binary(in1, in2):
 # *  SUPPORT FOR JIT COMPILATION  *
 # *********************************
 
+
 def _compute_result_shape(shape1, shape2):
     return np.shape([shape1[0] + shape2[0], shape1[1] + shape2[1]])
+
 
 # For JIT compilation we need a function to evaluate the shape and dtype of the
 # outputs of our op for some given inputs
