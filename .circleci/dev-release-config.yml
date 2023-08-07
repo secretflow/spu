@@ -59,7 +59,7 @@ jobs:
 workflows:
   publish:
     jobs:
-      - linux_publish
+      - linux_publish:
         filters:
           tags:
             only: /.*/
