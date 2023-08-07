@@ -38,7 +38,9 @@ flags.DEFINE_string("setup_path", "setup_path", "data output path")
 
 flags.DEFINE_boolean("compressed", False, "compress seal he plaintext")
 flags.DEFINE_integer("bucket_size", 1000000, "bucket size of pir query")
-flags.DEFINE_integer("max_items_per_bin", 0, "max items per bin, i.e. Interpolate polynomial max degree")
+flags.DEFINE_integer(
+    "max_items_per_bin", 0, "max items per bin, i.e. Interpolate polynomial max degree"
+)
 
 FLAGS = flags.FLAGS
 
