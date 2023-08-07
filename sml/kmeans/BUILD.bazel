@@ -16,11 +16,9 @@ py_binary(
     deps = [
         ":kmeans",
         "//examples/python/utils:dataset_utils",  # FIXME: remove examples dependency
-        "//sml/utils:emulation"
+        "//sml/utils:emulation",
     ],
 )
-
-
 
 py_test(
     name = "kmeans_test",
