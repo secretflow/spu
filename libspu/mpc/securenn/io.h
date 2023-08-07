@@ -25,8 +25,8 @@ class SecurennIo : public BaseIo {
   // when owner rank is valid (0 <= owner_rank < world_size), colocation
   // optization may be applied
   std::vector<NdArrayRef> toShares(const NdArrayRef& raw, Visibility vis,
-                                 int owner_rank) const override;
-  
+                                   int owner_rank) const override;
+
   Type getShareType(Visibility vis, int owner_rank = -1) const override;
 
   NdArrayRef fromShares(const std::vector<NdArrayRef>& shares) const override;
