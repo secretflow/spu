@@ -39,8 +39,8 @@ body:
     id: head
     attributes:
       label: Have you reproduced the bug with SPU HEAD?
-      description: It is strongly suggested that you have reproduced the bug with
-        latest SPU code
+      description: It is strongly suggested that you have reproduced the bug
+        with latest SPU code
       options: [Yes, No]
     validations:
       required: true
@@ -56,8 +56,8 @@ body:
     id: version
     attributes:
       label: SPU Version
-      description: pip version if installed from package, commit id if build from
-        source
+      description: pip version if installed from package, commit id if build
+        from source
       placeholder: e.g., spu 0.3.2b12
     validations:
       required: true
@@ -96,8 +96,9 @@ body:
     id: code-to-reproduce
     attributes:
       label: Standalone code to reproduce the issue
-      description: Provide a reproducible test case that is the bare minimum necessary
-        to generate the problem. If possible, please share a link to Jupyter/any notebook.
+      description: Provide a reproducible test case that is the bare minimum
+        necessary to generate the problem. If possible, please share a link to
+        Jupyter/any notebook.
       placeholder: Tell us what you see!
       value: print("A bug")
       render: Python
@@ -107,6 +108,6 @@ body:
     id: logs
     attributes:
       label: Relevant log output
-      description: Please copy and paste any relevant log output. This will be automatically
-        formatted into code, so no need for backticks.
+      description: Please copy and paste any relevant log output. This will be
+        automatically formatted into code, so no need for backticks.
       render: Shell
