@@ -1,4 +1,4 @@
-name: Lint
+name: Python Lint
 
 on: [push, pull_request]
 
