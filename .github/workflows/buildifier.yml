@@ -6,7 +6,6 @@ jobs:
     name: Run buildifier check
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
-
-    - name: Run buildifier
-      uses: jbajic/buildifier@v1
+      - uses: actions/checkout@v3
+      - name: Run buildifier
+        uses: jbajic/buildifier@v1
