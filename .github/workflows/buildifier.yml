@@ -1,3 +1,4 @@
+---
 name: Bazel files check
 on: [push]
 jobs:

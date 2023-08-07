@@ -1,7 +1,6 @@
+---
 name: Run clang-format Linter
-
-on: [push, pull_request]
-
+on: [push]
 jobs:
   build:
     runs-on: ubuntu-latest
