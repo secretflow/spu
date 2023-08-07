@@ -8,3 +8,10 @@ jobs:
       - uses: actions/checkout@v3
       - name: yaml-lint
         uses: ibiqlik/action-yamllint@v3
+        with:
+          config_data: |
+            rules:
+              line-length:
+                max: 80
+                allow-non-breakable-words: true
+                allow-non-breakable-inline-mappings: true
