@@ -60,6 +60,6 @@ workflows:
   publish:
     jobs:
       - linux_publish:
-        filters:
-          tags:
-            only: /.*/
+          filters:
+            tags:
+              only: /.*/
