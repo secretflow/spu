@@ -8,16 +8,18 @@ class Penalty(Enum):
     NONE = 'None'
     L1 = 'l1'  # not supported
     L2 = 'l2'
-    Elastic = 'elasticnet' # not supported
+    Elastic = 'elasticnet'  # not supported
+
 
 class MultiClass(Enum):
     Binary = 'binary'
-    Ovr = 'ovr' # not supported yet
-    Multy = 'multinomial' # not supported yet
+    Ovr = 'ovr'  # not supported yet
+    Multy = 'multinomial'  # not supported yet
 
 
 class Solver(Enum):
     SGD = 'sgd'
+
 
 class LogisticRegression:
     """
@@ -54,17 +56,18 @@ class LogisticRegression:
         batch_size: default=512
 
     """
+
     def __init__(
         self,
-        penalty: str='l2',
-        solver: str='sgd',
-        multi_class: str='binary',
+        penalty: str = 'l2',
+        solver: str = 'sgd',
+        multi_class: str = 'binary',
         class_weight=None,
-        sig_type: str='sr',
-        l2_norm: float=0.01,
-        epochs: int=20,
-        learning_rate: float=0.1,
-        batch_size: int=512,
+        sig_type: str = 'sr',
+        l2_norm: float = 0.01,
+        epochs: int = 20,
+        learning_rate: float = 0.1,
+        batch_size: int = 512,
     ):
         # parameter check.
         assert epochs > 0, f"epochs should >0"
@@ -209,7 +212,6 @@ class LogisticRegression:
 
         return prob
 
-
     def predict(self, x):
         """
         Predict class labels for samples in X.
@@ -228,7 +230,7 @@ class LogisticRegression:
 
         if self._multi_class == MultiClass.Binary:
             # for binary task, only check whether logit > 0 (prob > 0.5)
-            label = jnp.select([pred>0], [1], 0)
+            label = jnp.select([pred > 0], [1], 0)
         else:
             raise NotImplementedError
 
