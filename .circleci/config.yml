@@ -89,10 +89,11 @@ workflows:
           # This is mandatory to trigger a pipeline when pushing a tag
           filters:
             tags:
-                only: /.*/
-  testpypi-workflow:
-    when:
-      equal: [ "dev_publish", << pipeline.parameters.GHA_Meta >> ]
-    jobs:
+              only: /.*(?<!dev\d)$/
       - continuation/continue:
           configuration_path: .circleci/dev-release-config.yml
+          # This is mandatory to trigger a pipeline when pushing a tag
+          filters:
+            tags:
+              only: /.*(?<=dev\d)$/
+

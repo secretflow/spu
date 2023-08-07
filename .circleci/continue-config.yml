@@ -29,7 +29,7 @@ jobs:
     # See: https://circleci.com/docs/2.0/configuration-reference/#docker-machine-macos-windows-executor
     docker:
       - image: secretflow/spu-ci:latest
-    resource_class: 2xlarge
+    resource_class: 2xlarge+
     shell: /bin/bash --login -eo pipefail
     # Add steps to the job
     # See: https://circleci.com/docs/2.0/configuration-reference/#steps
@@ -51,10 +51,10 @@ jobs:
           key: spu-build-comp-{{ arch }}-
       - run:
           name: Checkout devtools
-          command: git clone https://github.com/secretflow/devtools.git
+          command: git clone https://github.com/secretflow/devtools.git ../devtools
       - run:
           name: Decompress cache
-          command: sh devtools/decompress-build-cache.sh spu_build_cache
+          command: sh ../devtools/decompress-build-cache.sh spu_build_cache
       - run:
           name: "Install dependencies"
           command: |
@@ -64,7 +64,7 @@ jobs:
             python3 -m pip install -r requirements-dev.txt
       - run:
           name: "build"
-          command: bazel build //... -c opt --ui_event_filters=-info,-debug,-warning --disk_cache=~/.cache/spu_build_cache --jobs 16
+          command: bazel build //... -c opt --ui_event_filters=-info,-debug,-warning --disk_cache=~/.cache/spu_build_cache --jobs 20
       - run:
           name: "test"
           command: |
@@ -72,7 +72,7 @@ jobs:
             declare -i test_status
             bazel test //... -c opt --ui_event_filters=-info,-debug,-warning --test_output=errors --disk_cache=~/.cache/spu_build_cache | tee test_result.log; test_status=${PIPESTATUS[0]}
 
-            sh devtools/rename-junit-xml.sh
+            sh ../devtools/rename-junit-xml.sh
             find bazel-bin/ -executable -type f -name "*_test"  -print0 | xargs -0 tar -cvzf test_binary.tar.gz
             find bazel-testlogs/ -type f -name "test.log"  -print0 | xargs -0 tar -cvzf test_logs.tar.gz
 
@@ -84,8 +84,8 @@ jobs:
       - run:
           name: Cleanup and compress cache
           command: |
-            sh devtools/clean_disk_cache.sh ~/.cache/spu_build_cache
-            sh devtools/compress-build-cache.sh spu_build_cache
+            sh ../devtools/clean_disk_cache.sh ~/.cache/spu_build_cache
+            sh ../devtools/compress-build-cache.sh spu_build_cache
           when: always
       - save_cache:
           key: spu-build-comp-{{ arch }}-{{ .Environment.CIRCLE_BUILD_NUM }}
@@ -113,10 +113,10 @@ jobs:
                   key: spu-build-comp-{{ arch }}-
               - run:
                   name: Checkout devtools
-                  command: git clone https://github.com/secretflow/devtools.git
+                  command: git clone https://github.com/secretflow/devtools.git ../devtools
               - run:
                   name: Decompress cache
-                  command: sh devtools/decompress-build-cache.sh spu_build_cache
+                  command: sh ../devtools/decompress-build-cache.sh spu_build_cache
               - run:
                   name: "Install homebrew dependencies"
                   command: |
@@ -141,7 +141,7 @@ jobs:
                     declare -i test_status
                     bazel test //... -c opt --ui_event_filters=-info,-debug,-warning --test_output=errors --disk_cache=~/.cache/spu_build_cache | tee test_result.log; test_status=${PIPESTATUS[0]}
 
-                    sh devtools/rename-junit-xml.sh
+                    sh ../devtools/rename-junit-xml.sh
                     find bazel-bin/ -perm +111 -type f -name "*_test"  -print0 | xargs -0 tar -cvzf test_binary.tar.gz
                     find bazel-testlogs/ -type f -name "test.log"  -print0 | xargs -0 tar -cvzf test_logs.tar.gz
 
@@ -149,8 +149,8 @@ jobs:
               - run:
                   name: Cleanup and compress cache
                   command: |
-                    sh devtools/clean_disk_cache.sh ~/.cache/spu_build_cache
-                    sh devtools/compress-build-cache.sh spu_build_cache
+                    sh ../devtools/clean_disk_cache.sh ~/.cache/spu_build_cache
+                    sh ../devtools/compress-build-cache.sh spu_build_cache
                   when: always
               - save_cache:
                   key: spu-build-comp-{{ arch }}-{{ .Environment.CIRCLE_BUILD_NUM }}
