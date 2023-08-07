@@ -57,7 +57,7 @@ jobs:
 # Invoke jobs via workflows
 # See: https://circleci.com/docs/2.0/configuration-reference/#workflows
 workflows:
-  publish:
+  dev-publish:
     jobs:
       - linux_publish:
           filters:
