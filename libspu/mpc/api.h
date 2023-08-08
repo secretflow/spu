@@ -26,8 +26,8 @@ namespace spu::mpc {
 
 // Convert a public to a secret.
 //
-// In most of cases, you should not do this, becasue:
-// 1. This only convert the 'type' to secret, but partipants still knows its
+// In most of cases, you should not do this, because:
+// 1. This only convert the 'type' to secret, but participants still know its
 //    value at the moment.
 // 2. Nearly all ops has public parameter overload, we should use it directly.
 //
@@ -155,7 +155,7 @@ Value trunc_s(SPUContext* ctx, const Value& x, size_t nbits, SignType sign);
 Value trunc_v(SPUContext* ctx, const Value& x, size_t nbits, SignType sign);
 Value trunc_p(SPUContext* ctx, const Value& x, size_t nbits, SignType sign);
 
-// Reverse bit, like MISP BITREV instruction, and linux bitrev library.
+// Reverse bit, like MIPS BITREV instruction, and linux bitrev library.
 Value bitrev_s(SPUContext* ctx, const Value& x, size_t start, size_t end);
 Value bitrev_v(SPUContext* ctx, const Value& x, size_t start, size_t end);
 Value bitrev_p(SPUContext* ctx, const Value& x, size_t start, size_t end);

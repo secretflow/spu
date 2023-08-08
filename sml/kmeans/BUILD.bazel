@@ -15,7 +15,6 @@ py_binary(
     srcs = ["kmeans_emul.py"],
     deps = [
         ":kmeans",
-        "//examples/python/utils:dataset_utils",  # FIXME: remove examples dependency
         "//sml/utils:emulation",
     ],
 )
@@ -28,7 +27,6 @@ py_test(
     ],
     deps = [
         ":kmeans",
-        "//examples/python/utils:dataset_utils",  # FIXME: remove examples dependency
         "//spu:init",
         "//spu/utils:simulation",
     ],

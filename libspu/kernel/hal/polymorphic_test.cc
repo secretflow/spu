@@ -568,15 +568,15 @@ TYPED_TEST(MathUnaryTest, Logistic) {
 
   // GIVEN
   xt::xarray<IN_DT> x = test::xt_random<IN_DT>({5, 6}, -5, 10);
-  xt::xarray<float> x_logisitic = 1.0 / (1.0 + xt::exp(-xt::cast<float>(x)));
+  xt::xarray<float> x_logistic = 1.0 / (1.0 + xt::exp(-xt::cast<float>(x)));
 
   // WHAT
   auto z = test::evalUnaryOp<RES_DT>(IN_VT(), logistic, x);
 
   // THEN
-  EXPECT_TRUE(xt::allclose(x_logisitic, z, 0.01, 0.001))
+  EXPECT_TRUE(xt::allclose(x_logistic, z, 0.01, 0.001))
       << x << std::endl
-      << x_logisitic << std::endl
+      << x_logistic << std::endl
       << z;
 }
 

@@ -33,7 +33,7 @@ Value constant(SPUContext* ctx, PtBufferView init, DataType dtype,
 // The result visibility is public.
 Value zeros(SPUContext* ctx, DataType dtype, const Shape& shape = {});
 
-// Returns a one-dimentional value.
+// Returns a one-dimensional value.
 //
 // The result visibility is public.
 Value iota(SPUContext* ctx, DataType dtype, int64_t numel);

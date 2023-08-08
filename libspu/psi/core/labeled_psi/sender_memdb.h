@@ -193,7 +193,7 @@ class SenderMemDB : public ISenderDB {
   /**
   Returns the number of items in this SenderDB.
   */
-  size_t GetItemCount() const { return item_count_; }
+  size_t GetItemCount() const override { return item_count_; }
 
   /**
   Returns the total number of bin bundles at a specific bundle index.

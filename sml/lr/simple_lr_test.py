@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import unittest
-import json
 import jax.numpy as jnp
 import pandas as pd
 import sys

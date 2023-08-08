@@ -174,7 +174,7 @@ void bindParams(KernelEvalContext* ectx, First&& head, Args&&... tail) {
 
 }  // namespace detail
 
-// Dynamic dispath to a kernel according to a symbol name.
+// Dynamic dispatch to a kernel according to a symbol name.
 template <typename Ret = Value, typename... Args>
 Ret dynDispatch(SPUContext* sctx, const std::string& name, Args&&... args) {
   /// Steps of dynamic dispatch.

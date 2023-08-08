@@ -16,7 +16,6 @@ import unittest
 import json
 import jax.numpy as jnp
 
-# from sklearn.metrics import roc_auc_score, explained_variance_score
 import spu.utils.simulation as spsim
 import spu.spu_pb2 as spu_pb2  # type: ignore
 

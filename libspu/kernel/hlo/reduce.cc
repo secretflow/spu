@@ -133,7 +133,7 @@ spu::Value ExpandStridedWindow(
 
   const std::vector<int64_t> window_dilations(window_shape.size(), 1);
   const std::vector<int64_t> base_dilations(base.shape().size(), 1);
-  // expand it, assume padding & dialation element is zero.
+  // expand it, assume padding & dilation element is zero.
   spu::Value expanded = hal::zeros(ctx, base.dtype(), expanded_shape);
   if (base.isSecret()) {
     expanded = hal::seal(ctx, expanded);

@@ -95,7 +95,8 @@ spu_cc_library(
         ":fourq_cryptor",
         ":sm2_cryptor",
         ":sodium_curve25519_cryptor",
-        "//libspu/core:platform_utils",
+        "//libspu/psi:prelude",
+        "@yacl//yacl/utils:platform_utils",
     ] + select({
         "@platforms//cpu:x86_64": [
             ":ipp_ecc_cryptor",

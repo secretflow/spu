@@ -52,7 +52,7 @@ def ReduceTrunc : Pass<"reduce-truncation", "func::FuncOp"> {
 }
 
 def LowerMixedTypeOp : Pass<"lower-mixed-type-op", "func::FuncOp"> {
-  let summary = "Lower into mixed-type dot/mul to help reduce number of trunctions";
+  let summary = "Lower into mixed-type dot/mul to help reduce number of truncations";
   let constructor = "createLowerMixedTypeOpPass()";
   let dependentDialects = ["pphlo::PPHloDialect"];
 }

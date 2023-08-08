@@ -67,6 +67,8 @@ class Shape : public std::vector<int64_t> {
   bool empty() const { return Base::empty(); }
 };
 
+inline auto format_as(const Shape &s) { return fmt::streamed(s); }
+
 class Index : public std::vector<int64_t> {
  private:
   using Base = std::vector<int64_t>;
@@ -83,6 +85,8 @@ class Index : public std::vector<int64_t> {
     return out;
   }
 };
+
+inline auto format_as(const Index &idx) { return fmt::streamed(idx); }
 
 using Stride = int64_t;
 
@@ -102,6 +106,8 @@ class Strides : public std::vector<Stride> {
   }
 };
 
+inline auto format_as(const Strides &s) { return fmt::streamed(s); }
+
 class Sizes : public std::vector<int64_t> {
  private:
   using Base = std::vector<int64_t>;
@@ -114,6 +120,8 @@ class Sizes : public std::vector<int64_t> {
     return out;
   }
 };
+
+inline auto format_as(const Sizes &s) { return fmt::streamed(s); }
 
 class Axes : public std::vector<int64_t> {
  private:
@@ -130,6 +138,8 @@ class Axes : public std::vector<int64_t> {
     return out;
   }
 };
+
+inline auto format_as(const Axes &axes) { return fmt::streamed(axes); }
 
 Strides makeCompactStrides(const Shape &shape);
 

@@ -14,7 +14,8 @@
 
 #include "libspu/psi/core/ecdh_oprf/ecdh_oprf_selector.h"
 
-#include "libspu/core/platform_utils.h"
+#include "yacl/utils/platform_utils.h"
+
 #include "libspu/psi/core/ecdh_oprf/basic_ecdh_oprf.h"
 #include "libspu/psi/core/ecdh_oprf/ecdh_oprf.h"
 
@@ -31,7 +32,7 @@ std::unique_ptr<IEcdhOprfServer> CreateEcdhOprfServer(
         case CurveType::CURVE_FOURQ: {
           SPDLOG_INFO("use fourq");
 #ifdef __x86_64__
-          if (hasAVX2()) {
+          if (yacl::hasAVX2()) {
 #endif
             server = std::make_unique<FourQBasicEcdhOprfServer>(private_key);
 #ifdef __x86_64__
@@ -74,7 +75,7 @@ std::unique_ptr<IEcdhOprfServer> CreateEcdhOprfServer(OprfType oprf_type,
         case CurveType::CURVE_FOURQ: {
           SPDLOG_INFO("use fourq");
 #ifdef __x86_64__
-          if (hasAVX2()) {
+          if (yacl::hasAVX2()) {
 #endif
             server = std::make_unique<FourQBasicEcdhOprfServer>();
 #ifdef __x86_64__
@@ -113,7 +114,7 @@ std::unique_ptr<IEcdhOprfClient> CreateEcdhOprfClient(OprfType oprf_type,
       switch (curve_type) {
         case CurveType::CURVE_FOURQ: {
 #ifdef __x86_64__
-          if (hasAVX2()) {
+          if (yacl::hasAVX2()) {
 #endif
             client = std::make_unique<FourQBasicEcdhOprfClient>();
 #ifdef __x86_64__
@@ -151,7 +152,7 @@ std::unique_ptr<IEcdhOprfClient> CreateEcdhOprfClient(
       switch (curve_type) {
         case CurveType::CURVE_FOURQ: {
 #ifdef __x86_64__
-          if (hasAVX2()) {
+          if (yacl::hasAVX2()) {
 #endif
             client = std::make_unique<FourQBasicEcdhOprfClient>(private_key);
 #ifdef __x86_64__

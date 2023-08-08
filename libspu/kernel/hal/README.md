@@ -83,7 +83,7 @@ output dtype will set to CtType::UNKNOWN.
 
 The approximation progress depends on other exp/square/add/mul/div, the tracing result is listed below.
 
-Note: `secret reciprocal` may dependends on `divide to public`, while general divide depends on reciprocal, to break the dependenty chain,
+Note: `secret reciprocal` may depend on `divide to public`, while general divide depends on reciprocal, to break the dependent chain,
 the typed dispatch schema is import.
 
 Please see [spu/modules/fxp.cc] for details.
@@ -103,7 +103,7 @@ f_reciprocal(value<SFXP>)                  # Value c = f_reciprocal(&ctx, a);
                                            # exp iteration begins, exp(x) = (1 + x / n) ^ n
   f_exp(value<SFXP>)                       #  %2 = f_exp(%1)
     constant(BufferView)                   #  constant(256)
-    f_div(value<SFXP>, value<PFXP>)        #    f_div(%1, 256)           # fxp divition
+    f_div(value<SFXP>, value<PFXP>)        #    f_div(%1, 256)           # fxp division
       reciprocal_p(value<PFXP>)            #      t = reciprocal(256)    # public reciprocal
       f_mul(value<SFXP>, value<PFXP>)      #      f_mul(%1, t)
         _mul_sp(value<SFXP>, value<PFXP>)  #        _mul_sp(%1, t)       # ring multiply secret to public

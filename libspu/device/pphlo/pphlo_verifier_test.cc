@@ -122,7 +122,7 @@ TEST(Verify, Abs) {
                            {xt::xarray<int64_t>{1, 2, 2, 1}});
 }
 
-TEST(Verify, Logisitc) {
+TEST(Verify, Logistic) {
   runner<float, float>(
       [] { return mlir::pphlo::LogisticOp{}; }, {xt::xarray<float>{1, 2, 3, 4}},
       {xt::xarray<float>{0.73105858, 0.88079708, 0.95257413, 0.98201379}},

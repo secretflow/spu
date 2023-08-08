@@ -60,10 +60,10 @@ Value _2a(SPUContext* ctx, const Value& x) {
 }
 // NOLINTEND(readability-identifier-naming)
 
-// FIXME: move me to some where elese.
+// FIXME: move me to some where else.
 #define IsS(X) false
 
-// VSP dispath rule.
+// VSP dispatch rule.
 // all,     commutative,  MPC aware
 // f_ss,    f_ss,         f_ss
 // f_sp,    f_sp,         f_sp

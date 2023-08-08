@@ -18,6 +18,7 @@
 #include <vector>
 
 #include "absl/types/span.h"
+#include "fmt/ostream.h"
 #include "spdlog/spdlog.h"
 #include "yacl/base/buffer.h"
 
@@ -381,6 +382,7 @@ struct SimdTrait<NdArrayRef> {
 NdArrayRef makeConstantArrayRef(const Type& eltype, const Shape& shape);
 
 std::ostream& operator<<(std::ostream& out, const NdArrayRef& v);
+inline auto format_as(const spu::NdArrayRef& f) { return fmt::streamed(f); }
 
 template <typename T>
 class NdArrayView {

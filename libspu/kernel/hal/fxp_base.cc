@@ -78,7 +78,7 @@ void hintNumberOfBits(const Value& a, size_t nbits) {
 }
 
 // Reference:
-//   Charpter 3.4 Division @ Secure Computation With Fixed Point Number
+//   Chapter 3.4 Division @ Secure Computation With Fixed Point Number
 //   http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.221.1305&rep=rep1&type=pdf
 //
 // Goldschmidt main idea:
@@ -194,7 +194,7 @@ Value reciprocal_goldschmidt_positive(SPUContext* ctx, const Value& b_abs) {
   return r;
 }
 
-// NOTE(junfeng): we have a seperate reciprocal_goldschmidt is to avoid
+// NOTE(junfeng): we have a separate reciprocal_goldschmidt is to avoid
 // unnecessary f_mul for y initiation in div_goldschmidt.
 Value reciprocal_goldschmidt(SPUContext* ctx, const Value& b) {
   SPU_TRACE_HAL_DISP(ctx, b);

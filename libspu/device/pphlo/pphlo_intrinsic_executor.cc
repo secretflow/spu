@@ -45,7 +45,7 @@ std::vector<Value> intrinsic_dispatcher(SPUContext* ctx, llvm::StringRef name,
     SPDLOG_INFO("Calling example intrinsic");
     return {inputs.begin(), inputs.end()};
   }
-  SPU_THROW("Unhandled intrinsic call {}", name);
+  SPU_THROW("Unhandled intrinsic call {}", name.str());
 }
 
 }  // namespace spu::device::pphlo

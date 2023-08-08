@@ -1155,7 +1155,7 @@ void execute(OpExecutor *executor, SPUContext *sctx, SymbolScope *sscope,
     // free(%a)
     // Here free is also a consider a use...so under parallel execution free
     // will be invoked once a is defined.
-    // This will make %a randomly dealloced after defined.
+    // This will make %a randomly deallocated after defined.
     // FreeOp has an implicit requirement that it needs to be invoked after all
     // other uses are done.
     // FIXME(xiaochen): Enable this...

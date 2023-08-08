@@ -129,7 +129,7 @@ NdArrayRef RandA::proc(KernelEvalContext* ctx, const Shape& shape) const {
 
     pforeach(0, out.numel(), [&](int64_t idx) {
       // Comparison only works for [-2^(k-2), 2^(k-2)).
-      // TODO: Move this constrait to upper layer, saturate it here.
+      // TODO: Move this constraint to upper layer, saturate it here.
       _out[idx][0] = r0[idx] >> 2;
       _out[idx][1] = r1[idx] >> 2;
     });
