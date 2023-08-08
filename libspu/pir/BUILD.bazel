@@ -112,6 +112,6 @@ spu_cc_test(
     srcs = ["pir_test.cc"],
     deps = [
         ":pir",
-        "//libspu/psi/io:io",
+        "//libspu/psi/io",
     ],
 )

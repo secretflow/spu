@@ -132,7 +132,7 @@ workflows:
           # This is mandatory to trigger a pipeline when pushing a tag
           filters:
             tags:
-                only: /.*/
+              only: /.*/
       - macOS_x64_publish:
           matrix:
             parameters:
@@ -140,7 +140,7 @@ workflows:
           # This is mandatory to trigger a pipeline when pushing a tag
           filters:
             tags:
-                only: /.*/
+              only: /.*/
       - macOS_arm64_publish:
           matrix:
             parameters:
@@ -148,4 +148,4 @@ workflows:
           # This is mandatory to trigger a pipeline when pushing a tag
           filters:
             tags:
-                only: /.*/
+              only: /.*/

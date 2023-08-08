@@ -28,6 +28,7 @@ from sklearn.preprocessing import MinMaxScaler
 sys.path.append(os.path.join(os.path.dirname(__file__), '../../'))
 from sml.lr.simple_lr import LogisticRegression
 
+
 class UnitTests(unittest.TestCase):
     def test_simple(self):
         sim = spsim.Simulator.simple(
@@ -45,10 +46,10 @@ class UnitTests(unittest.TestCase):
                 sig_type='sr',
                 l2_norm=1.0,
                 class_weight=None,
-                multi_class='binary'
+                multi_class='binary',
             )
 
-            model = model.fit(x,y)
+            model = model.fit(x, y)
 
             prob = model.predict_proba(x)
             pred = model.predict(x)
@@ -62,13 +63,13 @@ class UnitTests(unittest.TestCase):
         X = pd.DataFrame(X, columns=cols)
 
         # Run
-        result = spsim.sim_jax(sim, proc)(X.values, y.values.reshape(-1, 1))  # X, y should be two-dimension array
+        result = spsim.sim_jax(sim, proc)(
+            X.values, y.values.reshape(-1, 1)
+        )  # X, y should be two-dimension array
         print("Predict result prob: ", result[0])
         print("Predict result label: ", result[1])
 
-
         print("ROC Score: ", roc_auc_score(y.values, result[0]))
-
 
 
 if __name__ == "__main__":
