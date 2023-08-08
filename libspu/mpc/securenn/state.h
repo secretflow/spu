@@ -26,7 +26,7 @@
 namespace spu::mpc {
 
 class SecurennState : public State {
-  std::unique_ptr<securenn::Beaver> beaver_;
+  std::unique_ptr<semi2k::Beaver> beaver_;
 
  private:
   SecurennState() = default;
@@ -37,21 +37,21 @@ class SecurennState : public State {
   explicit SecurennState(const RuntimeConfig& conf,
                          const std::shared_ptr<yacl::link::Context>& lctx) {
     if (conf.beaver_type() == RuntimeConfig_BeaverType_TrustedFirstParty) {
-      beaver_ = std::make_unique<securenn::BeaverTfpUnsafe>(lctx);
+      beaver_ = std::make_unique<semi2k::BeaverTfpUnsafe>(lctx);
     } else if (conf.beaver_type() ==
                RuntimeConfig_BeaverType_TrustedThirdParty) {
-      securenn::BeaverTtp::Options ops;
+      semi2k::BeaverTtp::Options ops;
       ops.server_host = conf.ttp_beaver_config().server_host();
       ops.adjust_rank = conf.ttp_beaver_config().adjust_rank();
       const auto& sid = conf.ttp_beaver_config().session_id();
       ops.session_id = sid.empty() ? lctx->Id() : sid;
-      beaver_ = std::make_unique<securenn::BeaverTtp>(lctx, std::move(ops));
+      beaver_ = std::make_unique<semi2k::BeaverTtp>(lctx, std::move(ops));
     } else {
       SPU_THROW("unsupported beaver type {}", conf.beaver_type());
     }
   }
 
-  securenn::Beaver* beaver() { return beaver_.get(); }
+  semi2k::Beaver* beaver() { return beaver_.get(); }
 
   std::unique_ptr<State> fork() override {
     auto ret = std::unique_ptr<SecurennState>(new SecurennState);
