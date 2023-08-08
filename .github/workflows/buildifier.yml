@@ -1,6 +1,12 @@
 ---
-name: Bazel files check
-on: [push]
+name: Bazel files linter
+on:
+  push:
+    branches:
+    - main
+  pull_request:
+    branches:
+    - main
 jobs:
   formatting-check:
     name: Run buildifier check
