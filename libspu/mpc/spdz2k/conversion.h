@@ -107,7 +107,7 @@ class BitDec : public UnaryKernel {
   NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in) const override;
 };
 
-// Referrence:
+// Reference:
 // IV.E Boolean to Arithmetic Sharing (B2A), extended to 3pc settings.
 // https://encrypto.de/papers/DSZ15.pdf
 class B2A : public UnaryKernel {

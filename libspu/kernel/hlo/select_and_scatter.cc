@@ -36,7 +36,7 @@
 
 namespace spu::kernel::hlo {
 
-spu::Value MaxPoolScatter1x2x2x1NoPaddingNoDialation(
+spu::Value MaxPoolScatter1x2x2x1NoPaddingNoDilation(
     SPUContext *ctx, const spu::Value &scatter_indices,
     const spu::Value &source, const Strides &window_strides) {
   std::vector<spu::Value> slices(4);
@@ -97,8 +97,8 @@ spu::Value MaxPoolScatter(
                                   return p.first == 0 && p.second == 0;
                                 });
   if (window_shape == absl::Span<const int64_t>{1, 2, 2, 1} && no_padding) {
-    return MaxPoolScatter1x2x2x1NoPaddingNoDialation(ctx, scatter_indices,
-                                                     source, window_strides);
+    return MaxPoolScatter1x2x2x1NoPaddingNoDilation(ctx, scatter_indices,
+                                                    source, window_strides);
   }
   //  source_shape * window_numel
   auto tiled_1d_shape = source.shape();

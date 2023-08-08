@@ -26,8 +26,6 @@ from sml.lr.simple_lr import LogisticRegression
 import sml.utils.emulation as emulation
 
 
-# TODO: design the enumation framework, just like py.unittest
-# all emulation action should begin with `emul_` (for reflection)
 def emul_LogisticRegression(mode: emulation.Mode.MULTIPROCESS):
     # Test SGDClassifier
     def proc(x, y):

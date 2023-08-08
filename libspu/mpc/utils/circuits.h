@@ -56,7 +56,7 @@ struct CircuitBasicBlock {
 
 // Parallel Prefix Graph: Kogge Stone.
 //
-// P stands for propogate, G stands for generate, where:
+// P stands for propagate, G stands for generate, where:
 //  (G0, P0) = (g0, p0)
 //  (Gi, Pi) = (gi, pi) o (Gi-1, Pi-1)
 //

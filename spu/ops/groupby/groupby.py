@@ -130,7 +130,7 @@ def groupby_agg_postprocess(
 ):
     assert (
         isinstance(group_num, int) and group_num > 0
-    ), f"group num must be a positve integer. got {group_num}, {type(group_num)}"
+    ), f"group num must be a positive integer. got {group_num}, {type(group_num)}"
     if group_num > 1:
         filter_mask = seg_end_marks == 1
         segment_ids = segment_ids[filter_mask]
@@ -186,7 +186,7 @@ def groupby(
     """GroupBy
     Given a matrix X, it has multiple columns.
     We want to calculate some statistics of target columns grouped by some columns as keys.
-    This operator completes the first step of GroupBy statistics: transfom the matrix x into a form,
+    This operator completes the first step of GroupBy statistics: transform the matrix x into a form,
     that is suitable for subsequent statistics.
 
     Parameters
@@ -212,7 +212,7 @@ def groupby(
     assert len(target_columns) > 0, "There should be at least one target_column."
     assert (
         len(set(map(lambda x: x.shape, key_columns + target_columns))) == 1
-    ), f"Columns' shape should be consistant. {set(map(lambda x: x.shape, key_columns + target_columns))}"
+    ), f"Columns' shape should be consistent. {set(map(lambda x: x.shape, key_columns + target_columns))}"
     key_columns = key_columns
     target_columns = target_columns
     sorted_columns = jax.lax.sort(

@@ -95,8 +95,8 @@ std::vector<NdArrayRef> RpcCall(brpc::Channel& channel, AdjustRequest req,
   SPU_ENFORCE(!cntl.Failed(), "Adjust RpcCall failed, code={} error={}",
               cntl.ErrorCode(), cntl.ErrorText());
   SPU_ENFORCE(rsp.code() == beaver::ttp_server::ErrorCode::OK,
-              "Adjust server failed code={}, error={}", rsp.code(),
-              rsp.message());
+              "Adjust server failed code={}, error={}",
+              ErrorCode_Name(rsp.code()), rsp.message());
 
   std::vector<NdArrayRef> ret;
   for (const auto& output : rsp.adjust_outputs()) {
@@ -132,8 +132,8 @@ BeaverTtp::~BeaverTtp() {
     }
     if (rsp.code() != beaver::ttp_server::ErrorCode::OK) {
       // we can do nothing more.
-      SPDLOG_ERROR("delete session server failed code={}, error={}", rsp.code(),
-                   rsp.message());
+      SPDLOG_ERROR("delete session server failed code={}, error={}",
+                   ErrorCode_Name(rsp.code()), rsp.message());
     }
   }
 }
@@ -186,8 +186,8 @@ BeaverTtp::BeaverTtp(std::shared_ptr<yacl::link::Context> lctx, Options ops)
     SPU_ENFORCE(!cntl.Failed(), "create session rpc failed, code={} error={}",
                 cntl.ErrorCode(), cntl.ErrorText());
     SPU_ENFORCE(rsp.code() == beaver::ttp_server::ErrorCode::OK,
-                "create session server failed code={}, error={}", rsp.code(),
-                rsp.message());
+                "create session server failed code={}, error={}",
+                ErrorCode_Name(rsp.code()), rsp.message());
   }
 
   yacl::link::Barrier(lctx_, "BeaverTtp Init");

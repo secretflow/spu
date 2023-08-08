@@ -297,7 +297,7 @@ static PyBindShare ValueToPyBindShare(const spu::Value& value,
 class RuntimeWrapper {
   std::unique_ptr<spu::SPUContext> sctx_;
 
-  // the golbals, could be used to cross session stuffs.
+  // the globals, could be used to cross session stuffs.
   spu::device::SymbolTable env_;
 
   size_t max_chunk_size_;

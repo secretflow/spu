@@ -19,8 +19,6 @@
 #include "absl/numeric/bits.h"
 #include "yacl/base/int128.h"
 
-#include "libspu/core/platform_utils.h"
-
 namespace spu {
 
 inline constexpr int Log2Floor(uint64_t n) {

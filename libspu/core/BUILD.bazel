@@ -56,6 +56,7 @@ spu_cc_library(
     srcs = [],
     hdrs = ["prelude.h"],
     deps = [
+        "//libspu:spu_cc_proto",
         "@yacl//yacl/base:exception",
         "@yacl//yacl/utils:scope_guard",
     ],
@@ -245,40 +246,13 @@ spu_cc_library(
 )
 
 spu_cc_library(
-    name = "platform_utils",
-    srcs = ["platform_utils.cc"],
-    hdrs = ["platform_utils.h"],
-    copts = select({
-        "@platforms//cpu:aarch64": [""],
-        "//conditions:default": [
-            "-mbmi2",
-        ],
-    }),
-    deps = select({
-        "@platforms//cpu:x86_64": [
-            "@com_github_google_cpu_features//:cpu_features",
-        ],
-        "//conditions:default": [],
-    }),
-)
-
-spu_cc_test(
-    name = "platform_utils_test",
-    srcs = ["platform_utils_test.cc"],
-    linkstatic = True,
-    deps = [
-        ":platform_utils",
-    ],
-)
-
-spu_cc_library(
     name = "bit_utils",
     srcs = ["bit_utils.cc"],
     hdrs = ["bit_utils.h"],
     deps = [
-        ":platform_utils",
         "@com_google_absl//absl/numeric:bits",
         "@yacl//yacl/base:int128",
+        "@yacl//yacl/utils:platform_utils",
     ],
 )
 

@@ -18,6 +18,7 @@
 
 #include "libspu/psi/core/ecdh_psi.h"
 #include "libspu/psi/operator/factory.h"
+#include "libspu/psi/prelude.h"
 #include "libspu/psi/utils/utils.h"
 
 namespace spu::psi {

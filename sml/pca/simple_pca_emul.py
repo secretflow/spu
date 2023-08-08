@@ -20,7 +20,6 @@ import jax.random as random
 import numpy as np
 from sklearn.decomposition import PCA as SklearnPCA
 
-# from sklearn.metrics import roc_auc_score, explained_variance_score
 
 # Add the library directory to the path
 sys.path.append(os.path.join(os.path.dirname(__file__), '../../'))
@@ -29,8 +28,6 @@ import sml.utils.emulation as emulation
 from sml.pca.simple_pca import SimplePCA
 
 
-# TODO: design the enumation framework, just like py.unittest
-# all emulation action should begin with `emul_` (for reflection)
 def emul_SimplePCA(mode: emulation.Mode.MULTIPROCESS):
     def proc(X):
         model = SimplePCA(

@@ -65,9 +65,9 @@ TEST_P(EmpVoleTest, Works) {
   auto stats0 = ctxs[0]->GetStats();
   auto stats1 = ctxs[1]->GetStats();
   SPDLOG_INFO("sender/alice ctx0 sent_bytes:{} recv_bytes:{}",
-              stats0->sent_bytes, stats0->recv_bytes);
+              stats0->sent_bytes.load(), stats0->recv_bytes.load());
   SPDLOG_INFO("receiver/bob ctx1 sent_bytes:{} recv_bytes:{}",
-              stats1->sent_bytes, stats1->recv_bytes);
+              stats1->sent_bytes.load(), stats1->recv_bytes.load());
 
   // check vole
   // wi = delta * ui + vi

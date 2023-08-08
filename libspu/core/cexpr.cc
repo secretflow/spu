@@ -45,7 +45,7 @@ class VariableExpr : public BaseExpr {
   std::string expr() const override { return name_; }
   Value eval(const Params& params) const override {
     auto itr = params.find(name_);
-    SPU_ENFORCE(itr != params.end(), "varialbe not found: {}", name_);
+    SPU_ENFORCE(itr != params.end(), "variable not found: {}", name_);
     return itr->second;
   }
 };

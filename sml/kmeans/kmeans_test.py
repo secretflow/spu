@@ -1,13 +1,8 @@
 import unittest
-import json
 import jax.numpy as jnp
 
-# from sklearn.metrics import roc_auc_score, explained_variance_score
 import spu.utils.simulation as spsim
 import spu.spu_pb2 as spu_pb2  # type: ignore
-
-# TODO: unify this.
-import examples.python.utils.dataset_utils as dsutil
 
 from sml.kmeans.kmeans import KMEANS
 from sklearn.datasets import make_blobs

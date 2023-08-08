@@ -126,8 +126,8 @@ TEST_P(DpPsiTest, Works) {
   auto stats1 = link_ctxs[bob_rank]->GetStats();
 
   double total_comm_bytes = stats0->sent_bytes + stats0->recv_bytes;
-  SPDLOG_INFO("bob: sent_bytes:{} recv_bytes:{}", stats1->sent_bytes,
-              stats1->recv_bytes);
+  SPDLOG_INFO("bob: sent_bytes:{} recv_bytes:{}", stats1->sent_bytes.load(),
+              stats1->recv_bytes.load());
 
   total_comm_bytes /= 1024 * 1024;
 

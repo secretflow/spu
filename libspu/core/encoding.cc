@@ -122,7 +122,7 @@ NdArrayRef encodeToRing(const NdArrayRef& src, FieldType field, size_t fxp_bits,
     return dst;
   }
 
-  SPU_THROW("shold not be here");
+  SPU_THROW("should not be here");
 }
 
 NdArrayRef decodeFromRing(const NdArrayRef& src, DataType in_dtype,

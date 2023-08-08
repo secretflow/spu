@@ -17,6 +17,7 @@
 #include <memory>
 
 #include "absl/types/span.h"
+#include "fmt/ostream.h"
 
 #include "libspu/core/ndarray_ref.h"
 #include "libspu/core/shape.h"
@@ -138,5 +139,7 @@ struct SimdTrait<Value> {
 };
 
 std::ostream& operator<<(std::ostream& out, const Value& v);
+
+inline auto format_as(const Value& v) { return fmt::streamed(v); }
 
 }  // namespace spu
