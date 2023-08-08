@@ -16,8 +16,6 @@
 
 #include <memory>
 
-#include "yacl/link/link.h"
-
 #include "libspu/mpc/common/communicator.h"
 #include "libspu/mpc/semi2k/beaver/beaver_interface.h"
 #include "libspu/mpc/semi2k/beaver/beaver_tfp.h"
