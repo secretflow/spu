@@ -111,13 +111,13 @@ class NewtonCholeskySolver(Solver):
 
         # Use Cholesky factorization to solve linear systems
         def cho_solve_wrapper(a, b):
-            return cho_solve(cho_factor(a), b[..., 0])
+            return cho_solve(cho_factor(a), b)
 
         # Perform Newton-Raphson steps
         for i in range(self.max_iter):
             grad_value = self.objective_grad(self.coef)
             hessian_val = self.hessian_fn(self.coef)
-            step = cho_solve_wrapper(hessian_val, grad_value[..., None])
+            step = cho_solve_wrapper(hessian_val, grad_value)
             self.coef = self.coef - step.flatten()
 
         return self.coef
@@ -220,7 +220,7 @@ class LBFGSSolver(Solver):
         q = -jnp.conj(g_k)
         a_his = jnp.zeros((self.maxcor, ))
 
-        for j in range(curr_size):
+        for j in range(his_size):
             i = his_size - 1 - j
             a_i = self.rho_history[i] * (jnp.conj(self.s_history[i]) @ q)
             a_his = a_his.at[i].set(a_i)
@@ -228,16 +228,13 @@ class LBFGSSolver(Solver):
 
         q = self.gamma * q
 
-        for j in range(curr_size):
-            i = his_size - curr_size + j
-            b_i = self.rho_history[i] * (self.y_history[i] @ q)
-            q = q + (a_his[i] - b_i) * self.s_history[i]
-        norm_q = jnp.linalg.norm(q)
-        return q / norm_q
+        for j in range(his_size):
+            b_i = self.rho_history[j] * (self.y_history[j] @ q)
+            q = q + (a_his[j] - b_i) * self.s_history[j]
+        return q 
 
     def _line_search(self, p_k, f_k, g_k):
         a_k = 0.96 ** self.i
-
         # Build a local quadratic model using quasi-Newton method
         def quadratic_model(a):
             f_a = a * p_k @ g_k
