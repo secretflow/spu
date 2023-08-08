@@ -1,6 +1,12 @@
 ---
 name: Yaml Lint
-on: [push]  # yamllint disable-line rule:truthy
+on:
+  push:
+    branches:
+    - main
+  pull_request:
+    branches:
+    - main
 jobs:
   lintAllTheThings:
     runs-on: ubuntu-latest
