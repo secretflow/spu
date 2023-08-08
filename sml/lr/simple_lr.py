@@ -188,6 +188,7 @@ class SGDClassifier:
         assert w.shape[0] == num_feat + 1, "w shape is mismatch to x"
         assert len(w.shape) == 1 or w.shape[1] == 1, "w should be list or 1D array"
         w = w.reshape((w.shape[0], 1))
+
         for idx in range(total_batch):
             begin = idx * batch_size
             end = (idx + 1) * batch_size
