@@ -468,7 +468,6 @@ NdArrayRef MatMulAA::proc(KernelEvalContext* ctx, const NdArrayRef& x,
   // P2 to be the beaver generator
   if (rank == 2) {
     // P2 generate a0, a1, b0, b1, c0 by PRF
-    // and calculate c1
     auto [a1, a0] = prg_state->genPrssPair(field, shape1);
     auto [b1, b0] = prg_state->genPrssPair(field, shape2);
     auto c0 = prg_state->genPrssPair(field, shape3, true, false).second;
