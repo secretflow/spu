@@ -28,9 +28,8 @@ spu_cc_library(
     name = "state",
     hdrs = ["state.h"],
     deps = [
-        "//libspu/mpc/securenn/beaver:beaver_tfp",
-        "//libspu/mpc/securenn/beaver:beaver_ttp",
-        "@yacl//yacl/link",
+        "//libspu/mpc/semi2k/beaver:beaver_tfp",
+        "//libspu/mpc/semi2k/beaver:beaver_ttp",
     ],
 )
 
@@ -99,7 +98,7 @@ spu_cc_test(
         ":protocol",
         "//libspu/mpc:ab_api_test",
         "//libspu/mpc:api_test",
-        "//libspu/mpc/securenn/beaver/ttp_server:beaver_server",
+        "//libspu/mpc/semi2k/beaver/ttp_server:beaver_server",
     ],
 )
 

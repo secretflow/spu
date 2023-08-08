@@ -18,7 +18,7 @@
 
 #include "libspu/mpc/ab_api_test.h"
 #include "libspu/mpc/api_test.h"
-#include "libspu/mpc/securenn/beaver/ttp_server/beaver_server.h"
+#include "libspu/mpc/semi2k/beaver/ttp_server/beaver_server.h"
 
 namespace spu::mpc::test {
 namespace {

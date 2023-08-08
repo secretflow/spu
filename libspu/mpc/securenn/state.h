@@ -19,9 +19,9 @@
 #include "yacl/link/link.h"
 
 #include "libspu/mpc/common/communicator.h"
-#include "libspu/mpc/securenn/beaver/beaver_interface.h"
-#include "libspu/mpc/securenn/beaver/beaver_tfp.h"
-#include "libspu/mpc/securenn/beaver/beaver_ttp.h"
+#include "libspu/mpc/semi2k/beaver/beaver_interface.h"
+#include "libspu/mpc/semi2k/beaver/beaver_tfp.h"
+#include "libspu/mpc/semi2k/beaver/beaver_ttp.h"
 
 namespace spu::mpc {
 
