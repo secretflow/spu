@@ -1,4 +1,4 @@
-// Copyright 2021 Ant Group Co., Ltd.
+// Copyright 2023 Ant Group Co., Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -41,7 +41,7 @@ void regSecurennProtocol(SPUContext* ctx,
   regPV2kKernels(ctx->prot());
 
   // register arithmetic & binary kernels
-  ctx->prot()->addState<SecurennState>(ctx->config(), lctx);
+  // ctx->prot()->addState<SecurennState>();
   ctx->prot()->regKernel<securenn::P2A>();
   ctx->prot()->regKernel<securenn::A2P>();
   ctx->prot()->regKernel<securenn::A2V>();

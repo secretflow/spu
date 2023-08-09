@@ -1,4 +1,4 @@
-// Copyright 2021 Ant Group Co., Ltd.
+// Copyright 2023 Ant Group Co., Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,43 +17,18 @@
 #include <memory>
 
 #include "libspu/mpc/common/communicator.h"
-#include "libspu/mpc/semi2k/beaver/beaver_interface.h"
-#include "libspu/mpc/semi2k/beaver/beaver_tfp.h"
-#include "libspu/mpc/semi2k/beaver/beaver_ttp.h"
 
 namespace spu::mpc {
 
 class SecurennState : public State {
-  std::unique_ptr<semi2k::Beaver> beaver_;
-
- private:
+ public:
   SecurennState() = default;
 
- public:
   static constexpr char kBindName[] = "SecurennState";
-
-  explicit SecurennState(const RuntimeConfig& conf,
-                         const std::shared_ptr<yacl::link::Context>& lctx) {
-    if (conf.beaver_type() == RuntimeConfig_BeaverType_TrustedFirstParty) {
-      beaver_ = std::make_unique<semi2k::BeaverTfpUnsafe>(lctx);
-    } else if (conf.beaver_type() ==
-               RuntimeConfig_BeaverType_TrustedThirdParty) {
-      semi2k::BeaverTtp::Options ops;
-      ops.server_host = conf.ttp_beaver_config().server_host();
-      ops.adjust_rank = conf.ttp_beaver_config().adjust_rank();
-      const auto& sid = conf.ttp_beaver_config().session_id();
-      ops.session_id = sid.empty() ? lctx->Id() : sid;
-      beaver_ = std::make_unique<semi2k::BeaverTtp>(lctx, std::move(ops));
-    } else {
-      SPU_THROW("unsupported beaver type {}", conf.beaver_type());
-    }
-  }
-
-  semi2k::Beaver* beaver() { return beaver_.get(); }
 
   std::unique_ptr<State> fork() override {
     auto ret = std::unique_ptr<SecurennState>(new SecurennState);
-    ret->beaver_ = beaver_->Spawn();
+    // ret->beaver_ = beaver_->Spawn();
     return ret;
   }
 };

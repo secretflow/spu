@@ -45,6 +45,9 @@ void Factory::RegisterProtocol(
     case ProtocolKind::CHEETAH: {
       return regCheetahProtocol(ctx, lctx);
     }
+    case ProtocolKind::SECURENN: {
+      return regSecurennProtocol(ctx, lctx);
+    }
     default: {
       SPU_THROW("Invalid protocol kind {}", ctx->config().protocol());
     }
@@ -65,6 +68,9 @@ std::unique_ptr<IoInterface> Factory::CreateIO(const RuntimeConfig& conf,
     }
     case ProtocolKind::CHEETAH: {
       return cheetah::makeCheetahIo(conf.field(), npc);
+    }
+    case ProtocolKind::SECURENN: {
+      return cheetah::makeSecurennIo(conf.field(), npc);
     }
     default: {
       SPU_THROW("Invalid protocol kind {}", conf.protocol());

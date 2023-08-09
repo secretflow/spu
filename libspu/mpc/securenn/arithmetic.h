@@ -1,4 +1,4 @@
-// Copyright 2021 Ant Group Co., Ltd.
+// Copyright 2023 Ant Group Co., Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -138,11 +138,11 @@ class MulAA : public BinaryKernel {
   static constexpr char kBindName[] = "mul_aa";
 
   ce::CExpr latency() const override {
-    // beaver + online
-    return ce::Const(2);
+    // online
+    return ce::Const(1);
   }
 
-  ce::CExpr comm() const override { return ce::K() * 5; }
+  ce::CExpr comm() const override { return ce::K() * 4; }
 
   NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
                   const NdArrayRef& rhs) const override;
@@ -184,10 +184,10 @@ class TruncAPr : public TruncAKernel {
   static constexpr char kBindName[] = "trunc_a";
 
   Kind kind() const override { return Kind::Static; }
+  // offline + online
+  ce::CExpr latency() const override { return ce::Const(5); }
 
-  ce::CExpr latency() const override { return ce::Const(2); }
-
-  ce::CExpr comm() const override { return ce::K() * ce::Const(2); }
+  ce::CExpr comm() const override { return ce::K() * ce::Const(5); }
 
   NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in, size_t bits,
                   SignType sign) const override;
@@ -214,7 +214,7 @@ class MatMulAA : public MatmulKernel {
     auto m = ce::Variable("m", "rows of lhs");
     auto n = ce::Variable("n", "cols of rhs");
     auto k = ce::Variable("k", "cols of lhs");
-    return ce::K() * (2 * m * k + 2 * k * n + m * n);
+    return ce::K() * (2 * m * k + 2 * k * n);
   }
 
   NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
@@ -235,7 +235,7 @@ class MatMulAA_simple : public MatmulKernel {
     auto m = ce::Variable("m", "rows of lhs");
     auto n = ce::Variable("n", "cols of rhs");
     auto k = ce::Variable("k", "cols of lhs");
-    return ce::K() * 2 * (2 * m * k + 2 * k * n + m * n);
+    return ce::K() * (2 * m * k + 2 * k * n);
   }
 
   NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& lhs,

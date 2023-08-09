@@ -1,4 +1,4 @@
-// Copyright 2021 Ant Group Co., Ltd.
+// Copyright 2023 Ant Group Co., Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -112,6 +112,7 @@ NdArrayRef SecurennIo::fromShares(const std::vector<NdArrayRef>& shares) const {
 
 std::unique_ptr<SecurennIo> makeSecurennIo(FieldType field, size_t npc) {
   registerTypes();
+  SPU_ENFORCE(npc == 3);
   return std::make_unique<SecurennIo>(field, npc);
 }
 

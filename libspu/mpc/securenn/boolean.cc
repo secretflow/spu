@@ -1,4 +1,4 @@
-// Copyright 2021 Ant Group Co., Ltd.
+// Copyright 2023 Ant Group Co., Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -22,7 +22,6 @@
 #include "libspu/mpc/common/prg_state.h"
 #include "libspu/mpc/common/pv2k.h"
 #include "libspu/mpc/kernel.h"
-#include "libspu/mpc/securenn/state.h"
 #include "libspu/mpc/securenn/type.h"
 #include "libspu/mpc/utils/ring_ops.h"
 
@@ -133,14 +132,15 @@ NdArrayRef AndBB::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
   SPU_ENFORCE(lhs.shape() == rhs.shape());
 
   auto* comm = ctx->getState<Communicator>();
-  auto* beaver = ctx->getState<SecurennState>()->beaver();
+  auto rank = comm->getRank();
+  auto* prg_state = ctx->getState<PrgState>();
   const auto field = ctx->getState<Z2kState>()->getDefaultField();
+  auto ty = makeType<BShrTy>(field);
 
   const size_t out_nbits = std::min(getNumBits(lhs), getNumBits(rhs));
   const PtType backtype = getBacktype(out_nbits);
   const int64_t numel = lhs.numel();
 
-  // securenn always use the same storage type.
   NdArrayRef out(makeType<BShrTy>(field, out_nbits), lhs.shape());
   DISPATCH_ALL_FIELDS(field, "_", [&]() {
     using T = ring2k_t;
@@ -150,13 +150,38 @@ NdArrayRef AndBB::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
     DISPATCH_UINT_PT_TYPES(backtype, "_", [&]() {
       using V = ScalarT;
 
-      // TODO: redefine beaver interface, generate variadic beaver and bits.
       int64_t numBytes = numel * SizeOf(backtype);
       int64_t numField = numBytes / SizeOf(field);
       if (numBytes % SizeOf(field)) numField += 1;
+      auto a = ring_zeros(field, {numField});
+      auto b = ring_zeros(field, {numField});
+      auto c = ring_zeros(field, {numField});
 
-      auto [a, b, c] = beaver->And(field, {numField});
-      SPU_ENFORCE(a.buf()->size() >= static_cast<int64_t>(numBytes));
+      // P2 to be the beaver generator
+      if (rank == 2) {
+        // P2 generate a0, a1, b0, b1, c0 by PRF
+        // and calculate c1
+        auto [a1, a0] = prg_state->genPrssPair(field, {numField});
+        auto [b1, b0] = prg_state->genPrssPair(field, {numField});
+        auto c0 = prg_state->genPrssPair(field, {numField}, true, false).second;
+
+        // c1 = (a0 ^ a1) & (b0 ^ b1) ^ c0
+        auto c1 = ring_xor(ring_and(ring_xor(a0, a1), ring_xor(b0, b1)), c0);
+
+        comm->sendAsync(1, c1, "c");  // 1 latency, k
+      }
+      if (rank == 0) {
+        a = prg_state->genPrssPair(field, {numField}, false, true).first;
+        b = prg_state->genPrssPair(field, {numField}, false, true).first;
+        c = prg_state->genPrssPair(field, {numField}, false, true).first;
+      }
+      if (rank == 1) {
+        a = prg_state->genPrssPair(field, {numField}, true, false).second;
+        b = prg_state->genPrssPair(field, {numField}, true, false).second;
+        prg_state->genPrssPair(field, {numField}, true, true);
+        c = comm->recv(2, ty, "c");
+        c = c.reshape({numField});
+      }
 
       NdArrayView<V> _a(a);
       NdArrayView<V> _b(b);

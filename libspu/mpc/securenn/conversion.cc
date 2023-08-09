@@ -1,4 +1,4 @@
-// Copyright 2021 Ant Group Co., Ltd.
+// Copyright 2023 Ant Group Co., Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,7 +19,6 @@
 #include "libspu/mpc/common/communicator.h"
 #include "libspu/mpc/common/prg_state.h"
 #include "libspu/mpc/securenn/arithmetic.h"
-#include "libspu/mpc/securenn/state.h"
 #include "libspu/mpc/securenn/type.h"
 #include "libspu/mpc/utils/ring_ops.h"
 
@@ -95,7 +94,8 @@ NdArrayRef B2A_Randbit::proc(KernelEvalContext* ctx,
                              const NdArrayRef& x) const {
   const auto field = x.eltype().as<Ring2k>()->field();
   auto* comm = ctx->getState<Communicator>();
-  auto* beaver = ctx->getState<SecurennState>()->beaver();
+  auto* prg_state = ctx->getState<PrgState>();
+  auto rank = comm->getRank();
 
   const int64_t nbits = x.eltype().as<BShare>()->nbits();
   SPU_ENFORCE((size_t)nbits <= SizeOf(field) * 8, "invalid nbits={}", nbits);
@@ -106,7 +106,27 @@ NdArrayRef B2A_Randbit::proc(KernelEvalContext* ctx,
 
   auto numel = x.numel();
 
-  auto randbits = beaver->RandBit(field, {numel * static_cast<int64_t>(nbits)});
+  auto randbits =
+      prg_state->genPriv(field, {numel * static_cast<int64_t>(nbits)});
+  // reconstruct ranbits
+  if (rank == 0) comm->sendAsync(2, randbits, "randbits0");
+  if (rank == 1) comm->sendAsync(2, randbits, "randbits1");
+  if (rank == 2) {
+    auto randbits0 = comm->recv(0, makeType<AShrTy>(field), "randbits0");
+    randbits0 = randbits0.reshape(randbits.shape());
+    auto randbits1 = comm->recv(1, makeType<AShrTy>(field), "randbits1");
+    randbits1 = randbits1.reshape(randbits.shape());
+    auto randbits_recon = ring_add(ring_add(randbits, randbits0), randbits1);
+    auto adjust =
+        ring_sub(ring_randbit(field, randbits.shape()), randbits_recon);
+    comm->sendAsync(0, adjust, "adjust");
+  }
+  if (rank == 0) {
+    auto adjust = comm->recv(2, makeType<AShrTy>(field), "adjust");
+    adjust = adjust.reshape(randbits.shape());
+    ring_add_(randbits, adjust);
+  }
+
   auto res = NdArrayRef(makeType<AShrTy>(field), x.shape());
 
   DISPATCH_ALL_FIELDS(field, kBindName, [&]() {
