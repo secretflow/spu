@@ -70,7 +70,7 @@ std::unique_ptr<IoInterface> Factory::CreateIO(const RuntimeConfig& conf,
       return cheetah::makeCheetahIo(conf.field(), npc);
     }
     case ProtocolKind::SECURENN: {
-      return cheetah::makeSecurennIo(conf.field(), npc);
+      return securenn::makeSecurennIo(conf.field(), npc);
     }
     default: {
       SPU_THROW("Invalid protocol kind {}", conf.protocol());
