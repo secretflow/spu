@@ -18,6 +18,7 @@ from jax import random
 def Qr_Householder(A):
     return jnp.linalg.qr(A)
 
+
 def Qr_Gram_schmidt(A):
     Q = jnp.zeros_like(A)
     cnt = 0
@@ -29,6 +30,7 @@ def Qr_Gram_schmidt(A):
         Q = Q.at[:, cnt].set(e)
         cnt += 1
     return Q
+
 
 def eigh_power(A, max_iter):
     n = A.shape[0]
@@ -47,6 +49,7 @@ def eigh_power(A, max_iter):
     eig_vals = jnp.array(eig_val)
     return eig_vals, eig_vecs
 
+
 def eigh_qr(A, max_iter):
     qr = []
     n = A.shape[0]
@@ -60,6 +63,7 @@ def eigh_qr(A, max_iter):
     eig_vec = Q
     return eig_val, eig_vec
 
+
 def rsvd_iteration(A, Omega, scale, power_iter):
     # iter = 7 if rank < 0.1 * min(A.shape) else 4
     Y = jnp.dot(A, Omega)
@@ -69,6 +73,7 @@ def rsvd_iteration(A, Omega, scale, power_iter):
     Q = Qr_Gram_schmidt(Y / scale)
     return Q
 
+
 def svd(A, eigh_iter):
     m, n = A.shape
     sigma, U = eigh_power(jnp.dot(A, A.T), eigh_iter)
@@ -76,6 +81,7 @@ def svd(A, eigh_iter):
     sigma_inv = jnp.diag((1 / sigma_sqrt))
     V = jnp.dot(jnp.dot(sigma_inv, U.T), A)
     return (U, sigma_sqrt, V)
+
 
 def randomized_svd(
     A,
