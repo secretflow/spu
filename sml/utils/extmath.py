@@ -13,8 +13,6 @@
 # limitations under the License.
 
 import jax.numpy as jnp
-import numpy as np
-from jax import random
 
 
 def qr_Householder(A):
