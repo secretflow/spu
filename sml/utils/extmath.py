@@ -1,3 +1,16 @@
+# Copyright 2023 Ant Group Co., Ltd.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      https://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 import jax.numpy as jnp
 import numpy as np
 from jax import random
@@ -6,14 +19,14 @@ def Qr_Householder(A):
     return jnp.linalg.qr(A)
 
 def Qr_Gram_schmidt(A):
-    Q=jnp.zeros_like(A)
+    Q = jnp.zeros_like(A)
     cnt = 0
     for a in A.T:
         u = jnp.copy(a)
         for i in range(0, cnt):
             u -= jnp.dot(jnp.dot(Q[:, i].T, a), Q[:, i])
         e = u / jnp.linalg.norm(u)
-        Q = Q.at[:,cnt].set(e)
+        Q = Q.at[:, cnt].set(e)
         cnt += 1
     return Q
 
@@ -40,7 +53,7 @@ def eigh_qr(A, max_iter):
     Q = jnp.eye(n)
     for _ in range(max_iter):
         qr = jnp.linalg.qr(A)
-        Q = jnp.dot(Q,qr[0])
+        Q = jnp.dot(Q, qr[0])
         A = jnp.dot(qr[1], qr[0])
     AK = jnp.dot(qr[0], qr[1])
     eig_val = jnp.diag(AK)
@@ -60,7 +73,7 @@ def svd(A, eigh_iter):
     m, n = A.shape
     sigma, U = eigh_power(jnp.dot(A, A.T), eigh_iter)
     sigma_sqrt = jnp.sqrt(sigma)
-    sigma_inv = jnp.diag((1/sigma_sqrt))
+    sigma_inv = jnp.diag((1 / sigma_sqrt))
     V = jnp.dot(jnp.dot(sigma_inv, U.T), A)
     return (U, sigma_sqrt, V)
 
@@ -69,12 +82,12 @@ def randomized_svd(
     n_components,
     n_iter=4,
     random_state=0,
-    scale = [10000000,10000],
-    eigh_iter = 100,
+    scale=[10000000, 10000],
+    eigh_iter=100,
 ):
     random_state = np.random.RandomState(0)
     Omega = random_state.normal(size=(A.shape[1], n_components)) / scale[0]
-    Q = rsvd_iteration(A, Omega, scale[1] ,n_iter)
+    Q = rsvd_iteration(A, Omega, scale[1], n_iter)
     B = jnp.dot(Q.T, A)
     u_tilde, s, v = svd(B, eigh_iter)
     u = jnp.dot(Q, u_tilde)
