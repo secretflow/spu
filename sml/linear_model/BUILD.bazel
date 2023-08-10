@@ -24,11 +24,31 @@ py_library(
     ],
 )
 
+# ridge library
+py_library(
+    name = "ridge",
+    srcs = ["ridge.py"],
+    deps = [
+        "//sml/utils:fxp_approx",
+    ],
+)
+
 py_binary(
     name = "simple_sgd_emul",
     srcs = ["simple_sgd_emul.py"],
     deps = [
         ":simple_sgd",
+        "//examples/python/utils:dataset_utils",  # FIXME: remove examples dependency
+        "//sml/utils:emulation",
+    ],
+)
+
+# ridge binary
+py_binary(
+    name = "ridge_emul",
+    srcs = ["ridge_emul.py"],
+    deps = [
+        ":ridge",
         "//examples/python/utils:dataset_utils",  # FIXME: remove examples dependency
         "//sml/utils:emulation",
     ],
@@ -42,6 +62,21 @@ py_test(
     ],
     deps = [
         ":simple_sgd",
+        "//examples/python/utils:dataset_utils",  # FIXME: remove examples dependency
+        "//spu:init",
+        "//spu/utils:simulation",
+    ],
+)
+
+# ridge test
+py_test(
+    name = "ridge_test",
+    srcs = ["ridge_test.py"],
+    data = [
+        "//examples/python/conf",  # FIXME: remove examples dependency
+    ],
+    deps = [
+        ":ridge",
         "//examples/python/utils:dataset_utils",  # FIXME: remove examples dependency
         "//spu:init",
         "//spu/utils:simulation",

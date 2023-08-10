@@ -1,0 +1,6 @@
+{
+    "use_mock_data": false,
+    "problem_type": "regression",
+    "builtin_dataset_name": "diabetes",
+    "left_slice_feature_ratio": 0.5
+}
