@@ -88,15 +88,15 @@ def svd(A, eigh_iter):
 def randomized_svd(
     A,
     n_components,
+    random_matrix,
     n_iter=4,
-    random_state=0,
     scale=None,
     eigh_iter=100,
 ):
     if scale is None:
         scale = [10000000, 10000]
-    random_state = np.random.RandomState(random_state)
-    Omega = random_state.normal(size=(A.shape[1], n_components)) / scale[0]
+    assert random_matrix.shape == (A.shape[1], n_components), f"Expected random_matrix to be ({A.shape[1]}, {n_components}) array, got {random_matrix.shape}"
+    Omega = random_matrix / scale[0]
     Q = rsvd_iteration(A, Omega, scale[1], n_iter)
     B = jnp.dot(Q.T, A)
     u_tilde, s, v = svd(B, eigh_iter)
