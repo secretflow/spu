@@ -15,6 +15,7 @@ import jax.numpy as jnp
 import numpy as np
 from jax import random
 
+
 def Qr_Householder(A):
     return jnp.linalg.qr(A)
 
