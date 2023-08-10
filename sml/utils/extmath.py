@@ -33,7 +33,7 @@ def qr_Gram_schmidt(A):
     return Q
 
 
-def eigh_power(A, max_iter, rank = None):
+def eigh_power(A, max_iter, rank=None):
     n = A.shape[0]
     if rank is None:
         rank = n
