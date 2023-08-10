@@ -16,11 +16,11 @@ import numpy as np
 from jax import random
 
 
-def Qr_Householder(A):
+def qr_Householder(A):
     return jnp.linalg.qr(A)
 
 
-def Qr_Gram_schmidt(A):
+def qr_Gram_schmidt(A):
     Q = jnp.zeros_like(A)
     cnt = 0
     for a in A.T:
@@ -33,11 +33,13 @@ def Qr_Gram_schmidt(A):
     return Q
 
 
-def eigh_power(A, max_iter):
+def eigh_power(A, max_iter, rank = None):
     n = A.shape[0]
+    if rank is None:
+        rank = n
     eig_val = []
     eig_vec = []
-    for _ in range(n):
+    for _ in range(rank):
         vec = jnp.ones((n,))
         for _ in range(max_iter):
             vec = jnp.dot(A, vec)
@@ -71,12 +73,11 @@ def rsvd_iteration(A, Omega, scale, power_iter):
 
     for _ in range(power_iter):
         Y = jnp.dot(A, jnp.dot(A.T, Y))
-    Q = Qr_Gram_schmidt(Y / scale)
+    Q = qr_Gram_schmidt(Y / scale)
     return Q
 
 
 def svd(A, eigh_iter):
-    m, n = A.shape
     sigma, U = eigh_power(jnp.dot(A, A.T), eigh_iter)
     sigma_sqrt = jnp.sqrt(sigma)
     sigma_inv = jnp.diag((1 / sigma_sqrt))
@@ -89,10 +90,12 @@ def randomized_svd(
     n_components,
     n_iter=4,
     random_state=0,
-    scale=[10000000, 10000],
+    scale=None,
     eigh_iter=100,
 ):
-    random_state = np.random.RandomState(0)
+    if scale is None:
+        scale = [10000000, 10000]
+    random_state = np.random.RandomState(random_state)
     Omega = random_state.normal(size=(A.shape[1], n_components)) / scale[0]
     Q = rsvd_iteration(A, Omega, scale[1], n_iter)
     B = jnp.dot(Q.T, A)
