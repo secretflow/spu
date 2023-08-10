@@ -95,7 +95,10 @@ def randomized_svd(
 ):
     if scale is None:
         scale = [10000000, 10000]
-    assert random_matrix.shape == (A.shape[1], n_components), f"Expected random_matrix to be ({A.shape[1]}, {n_components}) array, got {random_matrix.shape}"
+    assert random_matrix.shape == (
+        A.shape[1],
+        n_components,
+    ), f"Expected random_matrix to be ({A.shape[1]}, {n_components}) array, got {random_matrix.shape}"
     Omega = random_matrix / scale[0]
     Q = rsvd_iteration(A, Omega, scale[1], n_iter)
     B = jnp.dot(Q.T, A)
