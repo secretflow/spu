@@ -12,73 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@rules_python//python:defs.bzl", "py_binary", "py_library", "py_test")
+load("@rules_python//python:defs.bzl", "py_library")
 
 package(default_visibility = ["//visibility:public"])
 
 py_library(
-    name = "simple_sgd",
-    srcs = ["simple_sgd.py"],
+    name = "sgd_classifier",
+    srcs = ["sgd_classifier.py"],
     deps = [
         "//sml/utils:fxp_approx",
     ],
 )
 
-# ridge library
 py_library(
-    name = "ridge",
-    srcs = ["ridge.py"],
+    name = "logistic",
+    srcs = ["logistic.py"],
     deps = [
         "//sml/utils:fxp_approx",
-    ],
-)
-
-py_binary(
-    name = "simple_sgd_emul",
-    srcs = ["simple_sgd_emul.py"],
-    deps = [
-        ":simple_sgd",
-        "//examples/python/utils:dataset_utils",  # FIXME: remove examples dependency
-        "//sml/utils:emulation",
-    ],
-)
-
-# ridge binary
-py_binary(
-    name = "ridge_emul",
-    srcs = ["ridge_emul.py"],
-    deps = [
-        ":ridge",
-        "//examples/python/utils:dataset_utils",  # FIXME: remove examples dependency
-        "//sml/utils:emulation",
-    ],
-)
-
-py_test(
-    name = "simple_sgd_test",
-    srcs = ["simple_sgd_test.py"],
-    data = [
-        "//examples/python/conf",  # FIXME: remove examples dependency
-    ],
-    deps = [
-        ":simple_sgd",
-        "//examples/python/utils:dataset_utils",  # FIXME: remove examples dependency
-        "//spu:init",
-        "//spu/utils:simulation",
-    ],
-)
-
-# ridge test
-py_test(
-    name = "ridge_test",
-    srcs = ["ridge_test.py"],
-    data = [
-        "//examples/python/conf",  # FIXME: remove examples dependency
-    ],
-    deps = [
-        ":ridge",
-        "//examples/python/utils:dataset_utils",  # FIXME: remove examples dependency
-        "//spu:init",
-        "//spu/utils:simulation",
     ],
 )
