@@ -163,3 +163,8 @@ def compile(source: spu_pb2.CompilationSource, copts: spu_pb2.CompilerOptions) -
     """
 
     return _spu_compilation(source.SerializeToString(), copts.SerializeToString())
+
+
+def check_cpu_feature():
+    """Check CPU features required by SPU."""
+    libspu.check_cpu_features()

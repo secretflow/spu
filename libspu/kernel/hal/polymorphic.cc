@@ -32,9 +32,6 @@
 namespace spu::kernel::hal {
 namespace {
 
-using UnaryOp = Value(SPUContext*, const Value&);
-using BinaryOp = Value(SPUContext*, const Value&, const Value&);
-
 DataType common_dtype(DataType lhs, DataType rhs) {
   if (lhs == rhs) {
     return lhs;
@@ -42,35 +39,41 @@ DataType common_dtype(DataType lhs, DataType rhs) {
   return std::max(lhs, rhs);  // Always results to higher rank type
 }
 
-template <BinaryOp* FnFxp, BinaryOp* FnInt>
-Value dtypeBinaryDispatch(std::string_view op_name, SPUContext* ctx,
-                          const Value& x, const Value& y) {
+template <typename FnFxp, typename FnInt, typename... Args>
+Value dtypeBinaryDispatch(std::string_view op_name, FnFxp&& fn_fxp,
+                          FnInt&& fn_int, SPUContext* ctx, const Value& x,
+                          const Value& y, Args&&... args) {
   // Promote int to fxp if mismatch.
   if (x.isInt() && y.isInt()) {
     auto common_type = common_dtype(x.dtype(), y.dtype());
-    return FnInt(ctx, dtype_cast(ctx, x, common_type),
-                 dtype_cast(ctx, y, common_type));
+    auto xx = dtype_cast(ctx, x, common_type);
+    auto yy = dtype_cast(ctx, y, common_type);
+    return fn_int(ctx, xx, yy, std::forward<Args>(args)...);
   } else if (x.isInt() && y.isFxp()) {
-    return FnFxp(ctx, dtype_cast(ctx, x, y.dtype()), y);
+    auto xx = dtype_cast(ctx, x, y.dtype());
+    return fn_fxp(ctx, xx, y, std::forward<Args>(args)...);
   } else if (x.isFxp() && y.isInt()) {
-    return FnFxp(ctx, x, dtype_cast(ctx, y, x.dtype()));
+    auto yy = dtype_cast(ctx, y, x.dtype());
+    return fn_fxp(ctx, x, yy, std::forward<Args>(args)...);
   } else if (x.isFxp() && y.isFxp()) {
     auto common_type = common_dtype(x.dtype(), y.dtype());
-    return FnFxp(ctx, dtype_cast(ctx, x, common_type),
-                 dtype_cast(ctx, y, common_type));
+    auto xx = dtype_cast(ctx, x, common_type);
+    auto yy = dtype_cast(ctx, y, common_type);
+    return fn_fxp(ctx, xx, yy, std::forward<Args>(args)...);
   } else {
     SPU_THROW("unsupported op {} for x={}, y={}", op_name, x, y);
   }
 }
 
-template <UnaryOp* FnFxp, UnaryOp* FnInt>
-Value dtypeUnaryDispatch(std::string_view op_name, SPUContext* ctx,
-                         const Value& x) {
+template <typename FnFxp, typename FnInt, typename... Args>
+Value dtypeUnaryDispatch(std::string_view op_name, FnFxp&& fn_fxp,
+                         FnInt&& fn_int, SPUContext* ctx, const Value& x,
+                         Args&&... args) {
   // Promote int to fxp if mismatch.
   if (x.isInt()) {
-    return FnInt(ctx, x);
+    return fn_int(ctx, x, std::forward<Args>(args)...);
   } else if (x.isFxp()) {
-    return FnFxp(ctx, x);
+    return fn_fxp(ctx, x, std::forward<Args>(args)...);
   } else {
     SPU_THROW("unsupported op {} for x={}", op_name, x);
   }
@@ -84,12 +87,12 @@ bool isCrossIntFxp(const Value& x, const Value& y) {
 
 Value add(SPUContext* ctx, const Value& x, const Value& y) {
   SPU_TRACE_HAL_DISP(ctx, x, y);
-  return dtypeBinaryDispatch<f_add, i_add>("add", ctx, x, y);
+  return dtypeBinaryDispatch("add", f_add, i_add, ctx, x, y);
 }
 
 Value sub(SPUContext* ctx, const Value& x, const Value& y) {
   SPU_TRACE_HAL_DISP(ctx, x, y);
-  return dtypeBinaryDispatch<f_sub, i_sub>("sub", ctx, x, y);
+  return dtypeBinaryDispatch("sub", f_sub, i_sub, ctx, x, y);
 }
 
 Value mixed_mul(SPUContext* ctx, const Value& x, const Value& y) {
@@ -115,7 +118,7 @@ Value mul(SPUContext* ctx, const Value& x, const Value& y) {
     return mixed_mul(ctx, x, y);
   }
 
-  return dtypeBinaryDispatch<f_mul_impl, i_mul>("mul", ctx, x, y);
+  return dtypeBinaryDispatch("mul", f_mul_impl, i_mul, ctx, x, y);
 }
 
 Value matmul(SPUContext* ctx, const Value& x, const Value& y) {
@@ -125,7 +128,22 @@ Value matmul(SPUContext* ctx, const Value& x, const Value& y) {
     return mixed_mmul(ctx, x, y);
   }
 
-  return dtypeBinaryDispatch<f_mmul, i_mmul>("mmul", ctx, x, y);
+  return dtypeBinaryDispatch("mmul", f_mmul, i_mmul, ctx, x, y);
+}
+
+Value tensordot(SPUContext* ctx, const Value& x, const Value& y,
+                const Index& ix, const Index& iy) {
+  SPU_TRACE_HAL_DISP(ctx, x, y, ix, iy);
+  return dtypeBinaryDispatch("tensordot", f_tensordot, i_tensordot, ctx, x, y,
+                             ix, iy);
+}
+
+Value conv2d(SPUContext* ctx, const Value& x, const Value& y,
+             const Strides& window_strides) {
+  SPU_TRACE_HAL_DISP(ctx, x, y, window_strides);
+
+  return dtypeBinaryDispatch("conv2d", f_conv2d, i_conv2d, ctx, x, y,
+                             window_strides);
 }
 
 Value logical_not(SPUContext* ctx, const Value& in) {
@@ -145,7 +163,7 @@ Value equal(SPUContext* ctx, const Value& x, const Value& y) {
   SPU_TRACE_HAL_DISP(ctx, x, y);
   SPU_ENFORCE(x.shape() == y.shape(), "x = {}, y = {}", x, y);
 
-  return dtypeBinaryDispatch<f_equal, i_equal>("equal", ctx, x, y);
+  return dtypeBinaryDispatch("equal", f_equal, i_equal, ctx, x, y);
 }
 
 Value not_equal(SPUContext* ctx, const Value& x, const Value& y) {
@@ -159,7 +177,7 @@ Value less(SPUContext* ctx, const Value& x, const Value& y) {
   SPU_TRACE_HAL_DISP(ctx, x, y);
   SPU_ENFORCE(x.shape() == y.shape());
 
-  return dtypeBinaryDispatch<f_less, i_less>("less", ctx, x, y);
+  return dtypeBinaryDispatch("less", f_less, i_less, ctx, x, y);
 }
 
 Value less_equal(SPUContext* ctx, const Value& x, const Value& y) {
@@ -188,13 +206,13 @@ Value greater_equal(SPUContext* ctx, const Value& x, const Value& y) {
 Value negate(SPUContext* ctx, const Value& x) {
   SPU_TRACE_HAL_DISP(ctx, x);
 
-  return dtypeUnaryDispatch<f_negate, i_negate>("negate", ctx, x);
+  return dtypeUnaryDispatch("negate", f_negate, i_negate, ctx, x);
 }
 
 Value abs(SPUContext* ctx, const Value& x) {
   SPU_TRACE_HAL_DISP(ctx, x);
 
-  return dtypeUnaryDispatch<f_abs, i_abs>("abs", ctx, x);
+  return dtypeUnaryDispatch("abs", f_abs, i_abs, ctx, x);
 }
 
 Value exp(SPUContext* ctx, const Value& in) {
@@ -461,21 +479,6 @@ Value sign(SPUContext* ctx, const Value& x) {
   SPU_TRACE_HAL_DISP(ctx, x);
 
   return _sign(ctx, x).setDtype(DT_I8);
-}
-
-Value conv2d(SPUContext* ctx, const Value& x, const Value& y,
-             const Strides& window_strides) {
-  SPU_TRACE_HAL_DISP(ctx, x, y, window_strides);
-  if (x.isFxp() && y.isFxp()) {
-    return f_conv2d(ctx, x, y, window_strides);
-  }
-
-  if (x.isInt() && y.isInt()) {
-    auto common_type = common_dtype(x.dtype(), y.dtype());
-    return i_conv2d(ctx, dtype_cast(ctx, x, common_type),
-                    dtype_cast(ctx, y, common_type), window_strides);
-  }
-  SPU_THROW("unsupported op {} for x={}, y={}", "conv2d", x, y);
 }
 
 }  // namespace spu::kernel::hal

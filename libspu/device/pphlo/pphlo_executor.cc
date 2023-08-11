@@ -428,13 +428,12 @@ void execute(OpExecutor *executor, SPUContext *sctx, SymbolScope *sscope,
   config.outputFeatureDimension = dnums.getOutputFeatureDimension();
   config.outputSpatialDimensions = dnums.getOutputSpatialDimensions();
 
-  spu::Value result;
+  SPU_ENFORCE(
+      dnums.getInputSpatialDimensions().size() == 2,
+      "Convolution with more than 2 spatial dimensions is not supported");
 
-  if (dnums.getInputSpatialDimensions().size() == 2) {
-    result = kernel::hlo::Convolution2D(sctx, lhs, rhs, config, ret_shape);
-  } else {
-    result = kernel::hlo::Convolution(sctx, lhs, rhs, config, ret_shape);
-  }
+  spu::Value result =
+      kernel::hlo::Convolution2D(sctx, lhs, rhs, config, ret_shape);
 
   addValue(sscope, op.getResult(), std::move(result), opts);
 }
@@ -579,8 +578,7 @@ void execute(OpExecutor *executor, SPUContext *sctx, SymbolScope *sscope,
     }
   }
 
-  // auto ret = kernel::hlo::SelectAndScatterNaive(
-  auto ret = kernel::hlo::SelectAndScatterExpanded(
+  auto ret = kernel::hlo::SelectAndScatter(
       sctx, operand, source, init_val, window_shape, window_strides,
       window_padding,
       [&](const spu::Value &selected, const spu::Value &current) {

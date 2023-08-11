@@ -27,15 +27,8 @@ namespace spu::kernel::hlo {
 using ValueBinaryFn =
     std::function<spu::Value(spu::Value const &lhs, spu::Value const &rhs)>;
 
-spu::Value SelectAndScatterExpanded(
+spu::Value SelectAndScatter(
     SPUContext *ctx, const spu::Value &base, const spu::Value &source,
-    const spu::Value &init_val, const Shape &window_shape,
-    const Strides &window_strides,
-    absl::Span<const std::pair<int64_t, int64_t>> window_padding,
-    const ValueBinaryFn &select_fn, const ValueBinaryFn &scatter_fn);
-
-spu::Value SelectAndScatterNaive(
-    SPUContext *ctx, const spu::Value &operand, const spu::Value &source,
     const spu::Value &init_val, const Shape &window_shape,
     const Strides &window_strides,
     absl::Span<const std::pair<int64_t, int64_t>> window_padding,

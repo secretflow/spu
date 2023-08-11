@@ -52,6 +52,14 @@ Value bitwise_not(SPUContext* ctx, const Value& in);
 // @param y, the second parameter
 Value matmul(SPUContext* ctx, const Value& x, const Value& y);
 
+/// matrix production operator
+// @param x, the first parameter
+// @param y, the second parameter
+// @param ix, contract dimensions of first parameter
+// @param iy, contract dimensions of second parameter
+Value tensordot(SPUContext* ctx, const Value& x, const Value& y,
+                const Index& ix, const Index& iy);
+
 /// 2-dimensional convolution operator
 // @param x, the input tensor
 // @param y, the kernel weight

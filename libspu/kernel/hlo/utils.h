@@ -76,7 +76,9 @@ inline bool getBaseIndexFromWindowIndex(
     absl::Span<const int64_t> base_shape,
     absl::Span<const int64_t> base_dilation,
     absl::Span<const int64_t> window_count_index,
-    absl::Span<const int64_t> window_index, absl::Span<int64_t> base_index) {
+    absl::Span<const int64_t> window_index,
+    absl::Span<int64_t> base_index  // out parameter
+) {
   const int64_t ndim = base_shape.size();
 
   for (int64_t dim = 0; dim < ndim; ++dim) {
@@ -128,5 +130,17 @@ inline void RunOnWindowIndex(
     f(base_index);
   }
 }
+
+/// Expand the base according to window
+//
+// let base    = (B0, B1, ..., Bn)
+//     window  = (W0, W1, ..., Wn)
+//     stride  = (S0, S1, ..., Sn)
+// return        (N0, N1, ..., Nn, W0, W1, ..., Wn) where
+//     num_win = (N0, N1, ..., Nn), where Ni = (Bi-Wi)/Si+1
+spu::Value expandWindow(SPUContext *ctx, const spu::Value &base,
+                        const Shape &window_shape,
+                        const Strides &window_strides,
+                        absl::Span<const std::pair<int64_t, int64_t>> padding);
 
 }  // namespace spu::kernel

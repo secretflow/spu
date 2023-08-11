@@ -32,7 +32,4 @@ Value seal(SPUContext* ctx, const Value& x);
 // @param in, the input value
 Value reveal(SPUContext* ctx, const Value& x);
 
-/// cast in storage type to dest type
-Value stype_cast(SPUContext* ctx, const Value& in, const Type& to);
-
 }  // namespace spu::kernel::hal
