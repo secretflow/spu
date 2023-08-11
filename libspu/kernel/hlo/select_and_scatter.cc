@@ -103,7 +103,7 @@ spu::Value MaxPoolScatter(
   //  source_shape * window_numel
   auto tiled_1d_shape = source.shape();
   const int64_t window_numel = std::accumulate(
-      window_shape.begin(), window_shape.end(), 1, std::multiplies<int64_t>());
+      window_shape.begin(), window_shape.end(), 1, std::multiplies<>());
   tiled_1d_shape.push_back(window_numel);
 
   Axes broadcast_dims(source.shape().size(), 0);
@@ -175,7 +175,7 @@ spu::Value MaxPoolScatter(
   return hal::reshape(ctx, output, base_shape);
 }
 
-spu::Value SelectAndScatterExpanded(
+spu::Value SelectAndScatter(
     SPUContext *ctx, const spu::Value &base, const spu::Value &source,
     const spu::Value &init_val, const Shape &window_shape,
     const Strides &window_strides,
@@ -184,22 +184,13 @@ spu::Value SelectAndScatterExpanded(
   const size_t ndim = base.shape().size();
 
   // expand the base, simplify following actions without strides and padding.
-  auto expanded = ExpandStridedWindow(ctx, base, window_shape, window_strides,
-                                      window_padding);
-
-  // sanity check, make (source x window == expanded)
-  for (size_t dim = 0; dim < ndim; dim++) {
-    SPU_ENFORCE(expanded.shape()[dim] % window_shape[dim] == 0);
-    SPU_ENFORCE(expanded.shape()[dim] / window_shape[dim] ==
-                source.shape()[dim]);
-  }
-
-  auto tiled = ConvertToTiledLayout(ctx, expanded, window_shape);
+  auto tiled =
+      expandWindow(ctx, base, window_shape, window_strides, window_padding);
 
   // collapse the tile to 1d for better reduce performance
   auto tiled_1d_shape = source.shape();
   const int64_t window_numel = std::accumulate(
-      window_shape.begin(), window_shape.end(), 1, std::multiplies<int64_t>());
+      window_shape.begin(), window_shape.end(), 1, std::multiplies<>());
   tiled_1d_shape.push_back(window_numel);
   auto tiled_1d = hal::reshape(ctx, tiled, tiled_1d_shape);
 
@@ -282,112 +273,6 @@ spu::Value SelectAndScatterExpanded(
       })[0];
 
   return hal::reshape(ctx, output, base.shape());
-}
-
-spu::Value SelectAndScatterNaive(
-    SPUContext *ctx, const spu::Value &operand, const spu::Value &source,
-    const spu::Value &init_val, const Shape &window_shape,
-    const Strides &window_strides,
-    absl::Span<const std::pair<int64_t, int64_t>> window_padding,
-    const ValueBinaryFn &select_fn, const ValueBinaryFn &scatter_fn) {
-  // Create an index matrix
-  auto idx_matrix = hal::iota(ctx, DT_I64, operand.numel());
-  if (operand.isSecret()) {
-    idx_matrix = hal::seal(ctx, idx_matrix);
-  }
-  idx_matrix = hal::reshape(ctx, idx_matrix, operand.shape());
-
-  const auto rank = window_shape.size();
-  std::vector<int64_t> window_index(rank, 0);
-
-  spu::Value selected_val;
-  spu::Value selected_idx;
-  bool first_iter = true;
-
-  std::vector<int64_t> dummy_window_dilation(window_shape.size(), 1);
-  std::vector<int64_t> dummy_base_dilation(operand.shape().size(), 1);
-
-  // Select part
-  {
-    spu::Value current_val(NdArrayRef(operand.data().eltype(), source.shape()),
-                           operand.dtype());
-    spu::Value current_idx(
-        NdArrayRef(idx_matrix.data().eltype(), source.shape()),
-        idx_matrix.dtype());
-
-    do {
-      Index output_index(source.shape().size(), 0);
-      do {
-        RunOnWindowIndex(
-            window_shape, window_strides, dummy_window_dilation, window_padding,
-            operand.shape(), dummy_base_dilation, output_index, window_index,
-            [&](const Index &operand_index) {
-              current_val.data().update_slice(
-                  operand.data().slice_scalar_at(operand_index), output_index);
-              current_idx.data().update_slice(
-                  idx_matrix.data().slice_scalar_at(operand_index),
-                  output_index);
-            });
-      } while (bumpIndices(source.shape(), absl::MakeSpan(output_index)));
-
-      if (first_iter) {
-        // First iter, don't do the real compute, just copy to selected
-        selected_val = current_val;
-        selected_idx = current_idx;
-        first_iter = false;
-      } else {
-        auto ret = select_fn(selected_val, current_val);
-        selected_val = hal::select(ctx, ret, selected_val, current_val);
-        selected_idx = hal::select(ctx, ret, selected_idx, current_idx);
-      }
-    } while (bumpIndices(window_shape, absl::MakeSpan(window_index)));
-  }
-
-  // Scatter
-  auto result = hal::expand(ctx, init_val, operand.shape());
-  std::fill(window_index.begin(), window_index.end(), 0);
-
-  spu::Value idx_slice(NdArrayRef(idx_matrix.data().eltype(), source.shape()),
-                       idx_matrix.dtype());
-
-  spu::Value result_slice(NdArrayRef(result.data().eltype(), source.shape()),
-                          result.dtype());
-
-  do {
-    Index output_index(source.shape().size(), 0);
-    do {
-      RunOnWindowIndex(
-          window_shape, window_strides, dummy_window_dilation, window_padding,
-          operand.shape(), dummy_base_dilation, output_index, window_index,
-          [&](const Index &operand_index) {
-            idx_slice.data().update_slice(
-                idx_matrix.data().slice_scalar_at(operand_index), output_index);
-            result_slice.data().update_slice(
-                result.data().slice_scalar_at(operand_index), output_index);
-          });
-    } while (bumpIndices(source.shape(), absl::MakeSpan(output_index)));
-
-    auto mask = hal::equal(ctx, selected_idx, idx_slice);
-
-    auto computed = scatter_fn(result_slice, source);
-
-    result_slice = hal::select(ctx, mask, computed, result_slice);
-
-    // Reset, copy window again...
-    std::fill(output_index.begin(), output_index.end(), 0);
-    do {
-      RunOnWindowIndex(window_shape, window_strides, dummy_window_dilation,
-                       window_padding, operand.shape(), dummy_base_dilation,
-                       output_index, window_index,
-                       [&](const Index &operand_index) {
-                         result.data().update_slice(
-                             result_slice.data().slice_scalar_at(output_index),
-                             operand_index);
-                       });
-    } while (bumpIndices(source.shape(), absl::MakeSpan(output_index)));
-  } while (bumpIndices(window_shape, absl::MakeSpan(window_index)));
-
-  return result;
 }
 
 }  // namespace spu::kernel::hlo

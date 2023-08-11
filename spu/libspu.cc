@@ -40,6 +40,10 @@
 #include "libspu/psi/core/ecdh_psi.h"
 #include "libspu/psi/memory_psi.h"
 
+#ifdef CHECK_AVX
+#include "cpu_features/cpuinfo_x86.h"
+#endif
+
 namespace py = pybind11;
 
 namespace brpc {
@@ -50,6 +54,18 @@ DECLARE_int64(socket_max_unwritten_bytes);
 }  // namespace brpc
 
 namespace spu {
+
+namespace {
+
+[[maybe_unused]] std::string FormatMissingCpuFeatureMsg(const char* name) {
+  return fmt::format(
+      "This version of SPU was built using {} instructions, which your "
+      "CPU and/or operating system do not support. You may be able to work "
+      "around this issue by building SPU from source.",
+      name);
+}
+
+}  // namespace
 
 #define NO_GIL py::call_guard<py::gil_scoped_release>()
 
@@ -737,6 +753,22 @@ PYBIND11_MODULE(libspu, m) {
 
   py::module logging_m = m.def_submodule("logging");
   BindLogging(logging_m);
+
+  // bind check cpu features
+  m.def(
+      "check_cpu_features",
+      []() {
+#ifdef CHECK_AVX
+        static const auto cpu_features = cpu_features::GetX86Info().features;
+        if (!cpu_features.avx) {
+          throw std::runtime_error(FormatMissingCpuFeatureMsg("AVX"));
+        }
+        if (!cpu_features.aes) {
+          throw std::runtime_error(FormatMissingCpuFeatureMsg("AES"));
+        }
+#endif
+      },
+      "check cpu features");
 }
 
 }  // namespace spu

@@ -18,239 +18,61 @@
 #include "libspu/core/value.h"
 #include "libspu/kernel/hal/constants.h"
 #include "libspu/kernel/hal/polymorphic.h"
+#include "libspu/kernel/hal/ring.h"
 #include "libspu/kernel/hal/shape_ops.h"
 #include "libspu/kernel/hal/type_cast.h"
 #include "libspu/kernel/hlo/utils.h"
 
-namespace {
-
-std::vector<int64_t> MakeDimMultipliers(absl::Span<const int64_t> shape) {
-  std::vector<int64_t> v(shape.size());
-  int64_t scale = 1;
-  for (int64_t dim = shape.size() - 1; dim >= 0; --dim) {
-    v[dim] = scale;
-    scale *= shape[dim];
-  }
-  return v;
-}
-
-}  // namespace
-
 namespace spu::kernel::hlo {
-
-spu::Value Convolution(SPUContext *ctx, const spu::Value &lhs,
-                       const spu::Value &rhs, const ConvolutionConfig &config,
-                       const Shape &result_shape) {
-  const size_t num_spatial_dims = config.outputSpatialDimensions.size();
-  SPU_ENFORCE(num_spatial_dims == config.inputSpatialDimensions.size());
-  SPU_ENFORCE(num_spatial_dims == config.kernelSpatialDimensions.size());
-
-  const auto &lhs_shape = lhs.shape();
-
-  const auto &rhs_shape = rhs.shape();
-
-  std::vector<int64_t> window_shape;
-  for (auto i : config.kernelSpatialDimensions) {
-    window_shape.push_back(rhs_shape[i]);
-  }
-
-  auto lhs_dim_multipliers = MakeDimMultipliers(lhs_shape);
-  auto rhs_dim_multipliers = MakeDimMultipliers(rhs_shape);
-
-  // Dimension number applicable for input (lhs).
-  const int64_t input_batch_dim = config.inputBatchDimension;
-  const int64_t input_z_dim = config.inputFeatureDimension;
-  // Dimension number applicable for kernel (rhs).
-  const int64_t kernel_input_z_dim = config.kernelInputFeatureDimension;
-  const int64_t kernel_output_z_dim = config.kernelOutputFeatureDimension;
-  // Dimension number applicable for output.
-  const int64_t output_batch_dim = config.outputBatchDimension;
-  const int64_t output_z_dim = config.outputFeatureDimension;
-
-  const int64_t input_z_size = lhs_shape[input_z_dim];
-
-  const int64_t input_batch_size = lhs_shape[input_batch_dim];
-
-  const int64_t batch_group_size = input_batch_size / config.batchGroupCount;
-
-  // The size of an input feature group.
-  const int64_t input_feature_group_size =
-      input_z_size / config.featureGroupCount;
-
-  const int64_t output_z_size = rhs_shape[kernel_output_z_dim];
-  // The output feature dimension is a concatenation of convolution results
-  // from the different groups.
-  const int64_t output_feature_group_size =
-      output_z_size / config.featureGroupCount;
-
-  // Start computing
-  spu::Value ret;
-
-  // Iterate on window
-  std::vector<int64_t> window_index(config.kernelSpatialDimensions.size(), 0);
-
-  do {
-    spu::Value lhs_slice = hal::zeros(ctx, lhs.dtype(), result_shape);
-    spu::Value rhs_slice = hal::zeros(ctx, rhs.dtype(), result_shape);
-
-    if (lhs.isSecret()) {
-      lhs_slice = hal::seal(ctx, lhs_slice);
-    }
-    if (rhs.isSecret()) {
-      rhs_slice = hal::seal(ctx, rhs_slice);
-    }
-
-    forEachIndex(result_shape, [&](const Index &output_index) {
-      // Calculate the group index to which the current output index
-      // belongs.
-      const int64_t feature_group_index =
-          output_index[output_z_dim] / output_feature_group_size;
-
-      const int64_t depthwise_multiplier =
-          config.batchGroupCount > 1 ? output_z_size / input_batch_size : 1;
-      const int64_t batch_group_index =
-          output_index[output_z_dim] / depthwise_multiplier;
-
-      // Find corresponding spatial dimension index for input (lhs).
-      int64_t lhs_linear_spatial_index = 0;
-      int64_t rhs_linear_spatial_index = 0;
-      for (int64_t ki = 0; ki < static_cast<int64_t>(window_index.size());
-           ++ki) {
-        // Spatial dimension number for input (lhs) and output.
-        const int64_t input_spatial_dim = config.inputSpatialDimensions[ki];
-        const int64_t output_spatial_dim = config.outputSpatialDimensions[ki];
-
-        // Calculate lhs (input) index without taking base dilation into
-        // account.
-        const int64_t lhs_spatial_index =
-            output_index[output_spatial_dim] * config.window_strides[ki] +
-            window_index[ki];
-
-        // Skip if input index is not in bounds.
-        if (lhs_spatial_index < 0 ||
-            lhs_spatial_index >= lhs_shape[input_spatial_dim]) {
-          return;
-        }
-
-        lhs_linear_spatial_index +=
-            lhs_spatial_index * lhs_dim_multipliers[input_spatial_dim];
-        rhs_linear_spatial_index +=
-            window_index[ki] *
-            rhs_dim_multipliers[config.kernelSpatialDimensions[ki]];
-      }
-
-      for (int64_t rhs_iz = 0; rhs_iz < input_feature_group_size; ++rhs_iz) {
-        const int64_t iz =
-            feature_group_index * input_feature_group_size + rhs_iz;
-
-        int64_t lhs_linear_index = lhs_linear_spatial_index;
-        lhs_linear_index += output_index[output_batch_dim] *
-                            lhs_dim_multipliers[input_batch_dim];
-
-        // We are scraping only the diagonal elements in the resultant
-        // convolution output when batch_group_count is greater than 1,
-        // where 1 is the default. No scraping is done in that case.
-        // This approach works out automatically for 'groups' in batches
-        // with group_size > 1, because we already descend down the batch
-        // dimension for the 'output_batch_dim' above.
-        lhs_linear_index +=
-            ((batch_group_index * batch_group_size) % input_batch_size) *
-            lhs_dim_multipliers[input_batch_dim];
-
-        lhs_linear_index += iz * lhs_dim_multipliers[input_z_dim];
-        int64_t rhs_linear_index = rhs_linear_spatial_index;
-
-        rhs_linear_index += output_index[output_z_dim] *
-                            rhs_dim_multipliers[kernel_output_z_dim];
-        rhs_linear_index += rhs_iz * rhs_dim_multipliers[kernel_input_z_dim];
-
-        // TODO: anti-pattern, do not use .data(), use ops instead.
-        lhs_slice.data().update_slice(lhs.data().slice_scalar_at(unflattenIndex(
-                                          lhs_linear_index, lhs.shape())),
-                                      output_index);
-        rhs_slice.data().update_slice(rhs.data().slice_scalar_at(unflattenIndex(
-                                          rhs_linear_index, rhs.shape())),
-                                      output_index);
-      }
-    });
-
-    // Work on current slice
-    auto mul_ret = hal::mul(ctx, lhs_slice, rhs_slice);
-    if (ret.dtype() == DT_INVALID) {
-      ret = mul_ret;
-    } else {
-      ret = hal::add(ctx, mul_ret, ret);
-    }
-  } while (bumpIndices(window_shape, absl::MakeSpan(window_index)));
-
-  return ret;
-}
-
-spu::Value extractImagePatches(SPUContext *ctx, const spu::Value &input,
-                               int64_t kernel_x, int64_t kernel_y,
-                               int64_t stride_x, int64_t stride_y) {
-  auto input_batch = input.shape()[0];
-  auto input_x = input.shape()[1];
-  auto input_y = input.shape()[2];
-  auto input_channels = input.shape()[3];
-
-  std::vector<spu::Value> images;
-
-  for (int64_t x = 0; x <= input_x - kernel_x; x += stride_x) {
-    for (int64_t y = 0; y <= input_y - kernel_y; y += stride_y) {
-      auto slice = hal::slice(
-          ctx, input, {0, x, y, 0},
-          {input_batch, x + kernel_x, y + kernel_y, input_channels}, {});
-      auto reshaped = hal::reshape(
-          ctx, slice, {input_batch, 1, kernel_x, kernel_y, input_channels});
-      images.emplace_back(std::move(reshaped));
-    }
-  }
-
-  auto stacked = hal::concatenate(ctx, images, 1);
-  return hal::reshape(
-      ctx, stacked,
-      {input_batch, stacked.shape()[1], kernel_x * kernel_y, input_channels});
-}
 
 // This is an optimized conv2D with im2col
 spu::Value Convolution2D(SPUContext *ctx, const spu::Value &input,
                          const spu::Value &kernel,
                          const ConvolutionConfig &config,
                          const Shape &result_shape) {
-  // input  : NxHxWxC
-  // kernel : hxwxCxO
-  SPU_ENFORCE_EQ(kernel.shape()[2], input.shape()[3]);  // C match
-  SPU_ENFORCE_EQ(result_shape[0], input.shape()[0]);    // N
-  SPU_ENFORCE_EQ(result_shape[3], kernel.shape()[3]);   // O
+  // input  : (N, H, W, C)
+  // kernel : (h, w, C, O)
+  // output : (N, hh,ww,O), where hh=(H-h)/sh+1, ww=(W-w)/sw+1
+
+  // Alias input dimensions.
+  auto N = input.shape()[0];
+  auto H = input.shape()[1];
+  auto W = input.shape()[2];
+  auto C = input.shape()[3];
+
+  auto h = kernel.shape()[0];
+  auto w = kernel.shape()[1];
+  SPU_ENFORCE_EQ(kernel.shape()[2], C, "input/kernel channel mismatch");
+  auto O = kernel.shape()[3];
+
+  SPU_ENFORCE_EQ(result_shape[0], N, "result batch mismatch");
+  auto hh = result_shape[1];
+  auto ww = result_shape[2];
+  SPU_ENFORCE_EQ(result_shape[3], O, "result filters mismatch");
+
   SPU_ENFORCE_EQ(config.window_strides.size(), 2U);
+  int64_t sh = config.window_strides[0];
+  int64_t sw = config.window_strides[1];
 
-  auto input_batch = input.shape()[0];
-  auto kernel_x = kernel.shape()[0];
-  auto kernel_y = kernel.shape()[1];
-  auto kernel_channels = kernel.shape()[2];
-  auto kernel_filters = kernel.shape()[3];
-  auto output_x = result_shape[1];
-  auto output_y = result_shape[2];
-  int64_t stride_h = config.window_strides[0];
-  int64_t stride_w = config.window_strides[1];
+  SPU_ENFORCE_EQ(hh, (H - h) / sh + 1);
+  SPU_ENFORCE_EQ(ww, (W - w) / sw + 1);
 
-  if (ctx->config().protocol() == ProtocolKind::CHEETAH && input.isSecret() &&
-      kernel.isSecret()) {
+  if (ctx->config().protocol() == ProtocolKind::CHEETAH &&  //
+      input.isSecret() && kernel.isSecret()) {
     // NOTE(juhou): ad-hoc optimization for the current 2PC conv2d
-    // implementation. When input_batch is large or small kernel size, it would
+    // implementation. When N is large or small kernel size, it would
     // be better to compute im2col because the current conv2d implementation
-    // needs `input_batch` iterations to handle batched input.
-    if (input_batch <= kernel_x * kernel_y) {
+    // needs `N` iterations to handle batched input.
+    if (N <= h * w) {
       // ad-hoc optimization for strided conv2d when h=1
       auto in = input;
       {
         Strides strides = {1, 1, 1, 1};
         if (kernel.shape()[0] == 1) {
-          strides[1] = stride_h;
+          strides[1] = sh;
         }
         if (kernel.shape()[1] == 1) {
-          strides[2] = stride_w;
+          strides[2] = sw;
         }
 
         if (std::any_of(strides.begin(), strides.end(),
@@ -258,30 +80,67 @@ spu::Value Convolution2D(SPUContext *ctx, const spu::Value &input,
           const Index start = {0, 0, 0, 0};
           const Index end = Index(in.shape().begin(), in.shape().end());
           in = hal::slice(ctx, in, start, end, strides);
-          stride_h = 1;
-          stride_w = 1;
+          sh = 1;
+          sw = 1;
         }
       }
 
-      return hal::conv2d(ctx, in, kernel, {stride_h, stride_w});
+      return hal::conv2d(ctx, in, kernel, {sh, sw});
     }
   }
 
-  Shape pre_contract_dims{output_y * output_x * input_batch,
-                          kernel_channels * kernel_y * kernel_x};
+  // Fallback, use im2col + dot to implement convolution
+  {
+    // expand the image according to the kernel size.
+    // assumption:
+    // - padding is erased by some compiler pass.
+    // - input  : NxHxWxC
+    // - kernel : hxwxCxO
+    Value expanded;
+    {
+      std::vector<spu::Value> images;
+      for (int64_t x = 0; x <= H - h; x += sh) {
+        for (int64_t y = 0; y <= W - w; y += sw) {
+          auto window =
+              hal::slice(ctx, input, {0, x, y, 0}, {N, x + h, y + w, C}, {});
+          images.emplace_back(hal::reshape(ctx, window, {N, 1, h, w, C}));
+        }
+      }
+      auto stacked = hal::concatenate(ctx, images, 1);
+      SPU_ENFORCE_EQ(stacked.shape()[1], hh * ww);
+      expanded = hal::reshape(ctx, stacked, {N, hh * ww, h * w, C});
+    }
 
-  Shape kernel_dims{kernel_channels * kernel_y * kernel_x, kernel_filters};
+    // TODO(jint): the below method is much slower then the code above, consider
+    // to use slice+reshape+concat to rewrite expandWindow.
+    //
+    // std::vector<std::pair<int64_t, int64_t>> padding(4, {0, 0});
+    // auto expanded = expandWindow(ctx, input,      // input
+    //                                    {N, h, w, C},    // window_shape
+    //                                    {1, sh, sw, 1},  // strides
+    //                                    padding);
 
-  spu::Value extracted_patches =
-      extractImagePatches(ctx, input, kernel_x, kernel_y, stride_w, stride_h);
+    // Now expanded shape is (N, hh*ww, h*w, C)
+    SPU_ENFORCE_EQ(expanded.shape()[0], N);
+    SPU_ENFORCE_EQ(expanded.shape()[1], hh * ww);
+    SPU_ENFORCE_EQ(expanded.shape()[2], h * w);
+    SPU_ENFORCE_EQ(expanded.shape()[3], C);
 
-  auto reshaped_patches =
-      hal::reshape(ctx, extracted_patches, pre_contract_dims);
-  auto reshaped_kernel = hal::reshape(ctx, kernel, kernel_dims);
+    // Reshape it to (N, hh, ww, h, w, C)
+    expanded = hal::reshape(ctx, expanded, {N, hh, ww, h, w, C});
 
-  auto ret = hal::matmul(ctx, reshaped_patches, reshaped_kernel);
+    // Contract on h, w, C
+    // expanded:  (N, hh, ww, h, w, C)
+    // kernel:               (h, w, C, O)
+    // result:    (N, hh, ww,          O)
+    auto result = hal::tensordot(ctx, expanded, kernel, {3, 4, 5}, {0, 1, 2});
+    SPU_ENFORCE_EQ(result.shape()[0], N);
+    SPU_ENFORCE_EQ(result.shape()[1], hh);
+    SPU_ENFORCE_EQ(result.shape()[2], ww);
+    SPU_ENFORCE_EQ(result.shape()[3], O);
 
-  return hal::reshape(ctx, ret, result_shape);
+    return result;
+  }
 }
 
 }  // namespace spu::kernel::hlo

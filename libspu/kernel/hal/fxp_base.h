@@ -60,6 +60,9 @@ Value f_mmul(SPUContext* ctx, const Value& x, const Value& y);
 Value f_conv2d(SPUContext* ctx, const Value& x, const Value& y,
                const Strides& window_strides);
 
+Value f_tensordot(SPUContext* ctx, const Value& x, const Value& y,
+                  const Index& ix, const Index& iy);
+
 Value f_div(SPUContext* ctx, const Value& x, const Value& y);
 
 Value f_equal(SPUContext* ctx, const Value& x, const Value& y);

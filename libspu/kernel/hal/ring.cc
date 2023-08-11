@@ -20,6 +20,7 @@
 #include "libspu/core/bit_utils.h"
 #include "libspu/core/prelude.h"
 #include "libspu/kernel/hal/prot_wrapper.h"
+#include "libspu/kernel/hal/shape_ops.h"
 
 namespace spu::kernel::hal {
 namespace {
@@ -68,25 +69,6 @@ std::tuple<int64_t, int64_t, int64_t> calcMmulTilingSize(int64_t m, int64_t n,
   return {m_step, n_step, k_step};
 }
 
-// FIXME: the bellow two functions are copied from shape_ops because of the
-// following dependency problem:
-//
-// shape_ops -> type_cast : concat/pad requires _common_type
-// ring -> shape_ops      : tiled_mmul(transpose/slice)
-// type_cast -> ring      : _p2s/arshift/shift
-Value transpose(SPUContext* ctx, const Value& in) {
-  SPU_TRACE_HAL_DISP(ctx, in);
-  return Value(in.data().transpose({}), in.dtype());
-}
-
-Value slice(SPUContext* ctx, const Value& in, const Index& start_indices,
-            const Index& end_indices, const Strides& strides) {
-  SPU_TRACE_HAL_DISP(ctx, in, start_indices, end_indices, strides);
-
-  return Value(in.data().slice(start_indices, end_indices, strides),
-               in.dtype());
-}
-
 }  // namespace
 
 Type _common_type(SPUContext* ctx, const Type& a, const Type& b) {
@@ -111,7 +93,7 @@ Value _cast_type(SPUContext* ctx, const Value& x, const Type& to) {
   } else if (x.isSecret() && to.isa<Secret>()) {
     return _cast_type_s(ctx, x, to);
   } else {
-    SPU_THROW("show not be here x={}, to={}", x, to);
+    SPU_THROW("should not be here x={}, to={}", x, to);
   }
 }
 
@@ -547,6 +529,65 @@ Value _prefer_b(SPUContext* ctx, const Value& x) {
   }
 
   return x;
+}
+
+namespace {
+
+// Example:
+// in  = {1, 3}, n = 5
+// res = {1, 3, 0, 2, 4}
+Index buildFullIndex(const Index& in, int64_t n) {
+  Index out = in;
+  out.reserve(n);
+  for (int64_t dim = 0; dim < n; dim++) {
+    SPU_ENFORCE_LT(dim, n, "dim={} out of bound={}", dim, n);
+    if (std::find(in.begin(), in.end(), dim) == in.end()) {
+      out.push_back(dim);
+    }
+  }
+  return out;
+}
+
+template <typename Itr>
+inline int64_t product(Itr first, Itr last) {
+  return std::accumulate(first, last, 1, std::multiplies<>());
+}
+
+}  // namespace
+
+// TODO: test me.
+Value _tensordot(SPUContext* ctx, const Value& x, const Value& y,
+                 const Index& ix, const Index& iy) {
+  SPU_ENFORCE(ix.size() == iy.size());
+
+  // number of dims to contract.
+  const size_t nc = ix.size();
+
+  Index perm_x = buildFullIndex(ix, x.shape().ndim());  //
+  Index perm_y = buildFullIndex(iy, y.shape().ndim());
+  std::rotate(perm_x.begin(), perm_x.begin() + nc, perm_x.end());
+
+  // convert to mmul shape.
+  auto xx = transpose(ctx, x, Axes(perm_x));
+  Shape xxs = xx.shape();
+  xx = reshape(ctx, xx,
+               {product(xxs.begin(), xxs.end() - nc),
+                product(xxs.end() - nc, xxs.end())});
+
+  auto yy = transpose(ctx, y, Axes(perm_y));
+  Shape yys = yy.shape();
+  yy = reshape(ctx, yy,
+               {product(yys.begin(), yys.begin() + nc),
+                product(yys.begin() + nc, yys.end())});
+
+  // do matrix multiplication.
+  auto zz = _mmul(ctx, xx, yy);
+
+  // decompose shape back.
+  Shape res_shape(xxs.begin(), xxs.end() - nc);
+  res_shape.insert(res_shape.end(), yys.begin() + nc, yys.end());
+
+  return reshape(ctx, zz, res_shape);
 }
 
 }  // namespace spu::kernel::hal

@@ -333,30 +333,14 @@ NdArrayRef NdArrayRef::slice_scalar_at(const Index& indices) const {
                     &at(indices) - buf()->data<std::byte>());
 }
 
-NdArrayRef NdArrayRef::transpose(const Axes& permutation) const {
-  std::vector<int64_t> perm(shape().size());
-  if (permutation.empty()) {
-    for (size_t i = 0; i < perm.size(); ++i) {
-      perm[i] = static_cast<int64_t>(shape().size()) - 1 - i;
-    }
-  } else {
-    std::vector<int64_t> reverse_permutation(shape().size(), -1);
-    SPU_ENFORCE(permutation.size() == shape().size(),
-                "axes don't match array, permutation = {}, input shape = {}",
-                permutation, shape());
-
-    for (size_t i = 0; i < permutation.size(); i++) {
-      auto axis = permutation[i];
-      SPU_ENFORCE(reverse_permutation[axis] == -1,
-                  "repeated axis in transpose");
-      reverse_permutation[axis] = i;
-      perm[i] = axis;
-    }
-  }
+NdArrayRef NdArrayRef::transpose(const Axes& perm) const {
+  // sanity check.
+  SPU_ENFORCE_EQ(perm.size(), shape().size());
+  std::set<int64_t> uniq(perm.begin(), perm.end());
+  SPU_ENFORCE_EQ(uniq.size(), perm.size(), "perm={} is not unique", perm);
 
   Shape ret_shape(shape().size());
   Strides ret_strides(strides().size());
-
   for (size_t i = 0; i < shape().size(); i++) {
     ret_shape[i] = shape()[perm[i]];
     ret_strides[i] = strides()[perm[i]];
@@ -439,8 +423,6 @@ NdArrayRef NdArrayRef::pad(const NdArrayRef& padding_value,
 
   const auto& result_shape = result.shape();
   const auto& input_shape = shape();
-
-  // auto elsize = result.elsize();
 
   yacl::parallel_for(0, numel(), 1024, [&](int64_t begin, int64_t end) {
     auto unflatten = unflattenIndex(begin, input_shape);

@@ -33,13 +33,6 @@ struct ConvolutionConfig {
   Axes outputSpatialDimensions;
 };
 
-// This is a port of hlo evaluator's HandleConvolutionWithLiterals, which can
-// handle general convolution. See
-// https://github.com/tensorflow/tensorflow/blob/master/tensorflow/compiler/xla/service/hlo_evaluator_typed_visitor.h
-spu::Value Convolution(SPUContext *ctx, const spu::Value &lhs,
-                       const spu::Value &rhs, const ConvolutionConfig &config,
-                       const Shape &result_shape);
-
 // This is an optimized conv2D with im2col
 spu::Value Convolution2D(SPUContext *ctx, const spu::Value &input,
                          const spu::Value &kernel,

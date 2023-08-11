@@ -271,11 +271,20 @@ Value f_mmul(SPUContext* ctx, const Value& x, const Value& y) {
 
 Value f_conv2d(SPUContext* ctx, const Value& x, const Value& y,
                const Strides& window_strides) {
-  SPU_TRACE_HAL_LEAF(ctx, x, y);
+  SPU_TRACE_HAL_LEAF(ctx, x, y, window_strides);
 
   SPU_ENFORCE(x.isFxp() && y.isFxp() && x.dtype() == y.dtype());
 
   return _trunc(ctx, _conv2d(ctx, x, y, window_strides)).setDtype(x.dtype());
+}
+
+Value f_tensordot(SPUContext* ctx, const Value& x, const Value& y,
+                  const Index& ix, const Index& iy) {
+  SPU_TRACE_HAL_LEAF(ctx, x, y, ix, iy);
+
+  SPU_ENFORCE(x.isFxp() && y.isFxp() && x.dtype() == y.dtype());
+
+  return _trunc(ctx, _tensordot(ctx, x, y, ix, iy)).setDtype(x.dtype());
 }
 
 Value f_div(SPUContext* ctx, const Value& x, const Value& y) {
