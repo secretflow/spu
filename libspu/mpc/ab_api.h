@@ -45,7 +45,7 @@ OptionalAPI<Value> mul_av(SPUContext* ctx, const Value& x, const Value& y);
 Value mul_a1b(SPUContext* ctx, const Value& x, const Value& y);
 
 Value lshift_a(SPUContext* ctx, const Value& x, size_t nbits);
-Value trunc_a(SPUContext* ctx, const Value& x, size_t nbits);
+Value trunc_a(SPUContext* ctx, const Value& x, size_t nbits, SignType sign);
 
 Value mmul_ap(SPUContext* ctx, const Value& x, const Value& y);
 Value mmul_aa(SPUContext* ctx, const Value& x, const Value& y);

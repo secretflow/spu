@@ -154,4 +154,24 @@ FieldType PtTypeToField(PtType pt_type) {
 #undef CASE
 }
 
+//////////////////////////////////////////////////////////////
+// SignType related
+//////////////////////////////////////////////////////////////
+std::ostream& operator<<(std::ostream& os, const SignType& sign) {
+  switch (sign) {
+    case SignType::Positive:
+      os << "Positive";
+      break;
+    case SignType::Negative:
+      os << "Negative";
+      break;
+    case SignType::Unknown:
+      os << "Unknown";
+      break;
+    default:
+      os << "Invalid";
+  }
+  return os;
+}
+
 }  // namespace spu

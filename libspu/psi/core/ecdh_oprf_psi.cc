@@ -106,10 +106,10 @@ size_t EcdhOprfPsiServer::FullEvaluate(
   SPDLOG_INFO("omp_get_num_threads:{} cpus:{}", nthreads, mcpus);
   omp_set_num_threads(mcpus);
 
-#pragma omp parallel private(tid, nthreads, i, batch_items, batch_indices, \
-                             shuffle_indices, batch, local_batch_count)    \
-    shared(lck_read, lck_send, batch_count, items_count, compare_length,   \
-           stop_flag)
+#pragma omp parallel private(tid, nthreads, i, batch_items, batch_indices,  \
+                                 shuffle_indices, batch, local_batch_count) \
+    shared(lck_read, lck_send, batch_count, items_count, compare_length,    \
+               stop_flag)
   {
     tid = omp_get_thread_num();
     if ((tid == 0) && (batch_count == 0)) {

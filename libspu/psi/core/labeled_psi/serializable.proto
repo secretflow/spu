@@ -69,7 +69,7 @@ message AlgItemProto {
 
 message AlgItemLabelPairProto {
   uint64 item = 1;
-  repeated uint64 label = 2;
+  bytes label_data = 2;
 }
 
 message AlgItemLabelProto {

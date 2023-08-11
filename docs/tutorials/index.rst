@@ -8,9 +8,16 @@ Tutorials
 .. toctree::
    :maxdepth: 1
 
+   quick_start
    spu_inside
    cpp_lr_example
    develop_your_first_mpc_application
-   policy_sgd_insight
+
+.. toctree::
+   :maxdepth: 1
+   :caption: PSI / PIR
+
+   psi
+   pir
 
 

@@ -60,6 +60,7 @@ def setup_link(rank):
     # config link tls
     if FLAGS.enable_tls:
         # two-way authentication
+        lctx_desc.enable_ssl = True
         lctx_desc.server_ssl_opts.cert.certificate_path = FLAGS.link_server_certificate
         lctx_desc.server_ssl_opts.cert.private_key_path = FLAGS.link_server_private_key
         lctx_desc.server_ssl_opts.verify.ca_file_path = FLAGS.link_server_ca

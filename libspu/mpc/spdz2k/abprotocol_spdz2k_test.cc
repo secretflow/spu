@@ -246,9 +246,9 @@ TEST_P(ConversionTest, BitLT) {
       using U = std::make_unsigned<ring2k_t>::type;
       size_t numel = kShape.numel();
 
-      auto p0_data = p0.data().data<U>();
-      auto p1_data = p1.data().data<U>();
-      auto re_data = re.data().data<U>();
+      NdArrayView<U> p0_data(p0.data());
+      NdArrayView<U> p1_data(p1.data());
+      NdArrayView<U> re_data(re.data());
       for (size_t i = 0; i < numel; ++i) {
         if ((p0_data[i] < p1_data[i])) {
           SPU_ENFORCE((re_data[i] == 1), "i {}, p0 {}, p1 {}", i, p0_data[i],
@@ -294,9 +294,9 @@ TEST_P(ConversionTest, BitLE) {
     DISPATCH_ALL_FIELDS(field, "_", [&]() {
       using U = std::make_unsigned<ring2k_t>::type;
       size_t numel = kShape.numel();
-      auto p0_data = p0.data().data<U>();
-      auto p1_data = p1.data().data<U>();
-      auto re_data = re.data().data<U>();
+      NdArrayView<U> p0_data(p0.data());
+      NdArrayView<U> p1_data(p1.data());
+      NdArrayView<U> re_data(re.data());
 
       for (size_t i = 0; i < numel; ++i) {
         if ((p0_data[i] <= p1_data[i])) {

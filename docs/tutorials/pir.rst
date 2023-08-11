@@ -66,7 +66,7 @@ PIR query results write to pir_out.csv.
 Run examples on two host, Please add '-parties ip1:port1,ip2:port2'.
 
 Run keyword PIR python example
----------------------------
+------------------------------
 
 First build spu python whl package or install from network.
 

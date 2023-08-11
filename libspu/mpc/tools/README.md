@@ -141,7 +141,7 @@ This command can generate a xlsx report(/csv/md/html is also supported), rows wi
 columns with **env**, **buf_len**.
 **env** is from **input** filenames, add different protocol will be in different sheets when we specify
 **--output=*.md**.
-**time** is formated by reasonable unit, raw data is "real_time".
+**time** is formatted by reasonable unit, raw data is "real_time".
 
 '''
 

@@ -363,7 +363,7 @@ TEST_P(ArithmeticTest, TruncA) {
 
     /* WHEN */
     auto prev = obj->prot()->getState<Communicator>()->getStats();
-    auto a1 = trunc_a(obj.get(), a0, bits);
+    auto a1 = trunc_a(obj.get(), a0, bits, SignType::Unknown);
     auto cost = obj->prot()->getState<Communicator>()->getStats() - prev;
 
     auto r_a = a2p(obj.get(), a1);

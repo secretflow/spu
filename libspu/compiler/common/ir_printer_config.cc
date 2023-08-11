@@ -70,7 +70,7 @@ void IRPrinterConfig::printAfterIfEnabled(Pass *pass, Operation *operation,
 }
 
 std::string IRPrinterConfig::genFileName(StringRef pass_name, StringRef stage) {
-  return fmt::format("{}-{}-{}.mlir", pp_cnt++, pass_name, stage);
+  return fmt::format("{}-{}-{}.mlir", pp_cnt++, pass_name.str(), stage.str());
 }
 
 } // namespace mlir::pphlo

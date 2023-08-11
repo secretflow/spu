@@ -213,19 +213,21 @@ void BindLink(py::module& m) {
                          const std::string& in) {
             self->Send(dst_rank, in, PY_CALL_TAG);
           },
-          "Sends data to dst_rank")
+          NO_GIL, "Sends data to dst_rank")
       .def(
           "send_async",
           [&PY_CALL_TAG](const std::shared_ptr<Context>& self, size_t dst_rank,
                          const std::string& in) {
             self->SendAsync(dst_rank, yacl::Buffer(in), PY_CALL_TAG);
           },
-          "Sends data to dst_rank asynchronously")
+          NO_GIL, "Sends data to dst_rank asynchronously")
       .def(
           "recv",
           [&PY_CALL_TAG](const std::shared_ptr<Context>& self,
                          size_t src_rank) -> py::bytes {
-            auto buf = self->Recv(src_rank, PY_CALL_TAG);
+            py::gil_scoped_release release;
+            yacl::Buffer buf = self->Recv(src_rank, PY_CALL_TAG);
+            py::gil_scoped_acquire acquire;
             return py::bytes{buf.data<char>(), static_cast<size_t>(buf.size())};
           },  // Since it uses py bytes, we cannot release GIL here
           "Receives data from src_rank")
@@ -295,7 +297,7 @@ static PyBindShare ValueToPyBindShare(const spu::Value& value,
 class RuntimeWrapper {
   std::unique_ptr<spu::SPUContext> sctx_;
 
-  // the golbals, could be used to cross session stuffs.
+  // the globals, could be used to cross session stuffs.
   spu::device::SymbolTable env_;
 
   size_t max_chunk_size_;
@@ -550,6 +552,9 @@ void BindLibs(py::module& m) {
         pir::PirSetupConfig config;
         SPU_ENFORCE(config.ParseFromString(config_pb));
 
+        config.set_bucket_size(1000000);
+        config.set_compressed(false);
+
         auto r = pir::PirSetup(config);
         return r.SerializeAsString();
       },
@@ -574,6 +579,9 @@ void BindLibs(py::module& m) {
         pir::PirSetupConfig config;
         SPU_ENFORCE(config.ParseFromString(config_pb));
         SPU_ENFORCE(config.setup_path() == "::memory");
+
+        config.set_bucket_size(1000000);
+        config.set_compressed(false);
 
         auto r = pir::PirMemoryServer(lctx, config);
         return r.SerializeAsString();

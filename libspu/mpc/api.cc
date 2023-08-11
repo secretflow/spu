@@ -60,10 +60,10 @@ Value _2a(SPUContext* ctx, const Value& x) {
 }
 // NOLINTEND(readability-identifier-naming)
 
-// FIXME: move me to some where elese.
+// FIXME: move me to some where else.
 #define IsS(X) false
 
-// VSP dispath rule.
+// VSP dispatch rule.
 // all,     commutative,  MPC aware
 // f_ss,    f_ss,         f_ss
 // f_sp,    f_sp,         f_sp
@@ -627,18 +627,18 @@ Value arshift_p(SPUContext* ctx, const Value& x, size_t nbits) {
 
 //////////////////////////////////////////////////////////////////////////////
 
-Value trunc_s(SPUContext* ctx, const Value& x, size_t bits) {
-  SPU_TRACE_MPC_DISP(ctx, x, bits);
-  TRY_DISPATCH(ctx, x, bits);
-  return trunc_a(ctx, _2a(ctx, x), bits);
+Value trunc_s(SPUContext* ctx, const Value& x, size_t bits, SignType sign) {
+  SPU_TRACE_MPC_DISP(ctx, x, bits, sign);
+  TRY_DISPATCH(ctx, x, bits, sign);
+  return trunc_a(ctx, _2a(ctx, x), bits, sign);
 }
 
-Value trunc_v(SPUContext* ctx, const Value& x, size_t nbits) {
-  FORCE_DISPATCH(ctx, x, nbits);
+Value trunc_v(SPUContext* ctx, const Value& x, size_t nbits, SignType sign) {
+  FORCE_DISPATCH(ctx, x, nbits, sign);
 }
 
-Value trunc_p(SPUContext* ctx, const Value& x, size_t nbits) {
-  FORCE_DISPATCH(ctx, x, nbits);
+Value trunc_p(SPUContext* ctx, const Value& x, size_t nbits, SignType sign) {
+  FORCE_DISPATCH(ctx, x, nbits, sign);
 }
 
 //////////////////////////////////////////////////////////////////////////////

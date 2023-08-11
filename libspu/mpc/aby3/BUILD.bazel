@@ -68,9 +68,9 @@ spu_cc_library(
     deps = [
         ":type",
         ":value",
-        "//libspu/core:platform_utils",
         "//libspu/mpc/common:communicator",
         "//libspu/mpc/common:prg_state",
+        "@yacl//yacl/utils:platform_utils",
     ],
 )
 
@@ -81,11 +81,11 @@ spu_cc_library(
     deps = [
         ":ot",
         ":value",
-        "//libspu/core:platform_utils",
         "//libspu/mpc:ab_api",
         "//libspu/mpc/common:communicator",
         "//libspu/mpc/common:prg_state",
         "//libspu/mpc/utils:circuits",
+        "@yacl//yacl/utils:platform_utils",
     ],
 )
 

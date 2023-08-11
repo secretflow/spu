@@ -118,11 +118,12 @@ NdArrayRef AndBP::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
   NdArrayRef out(makeType<BShrTy>(field, out_nbits), lhs.shape());
 
   DISPATCH_ALL_FIELDS(field, "_", [&]() {
-    using T = ring2k_t;
+    NdArrayView<ring2k_t> _lhs(lhs);
+    NdArrayView<ring2k_t> _rhs(rhs);
+    NdArrayView<ring2k_t> _out(out);
 
-    pforeach(0, lhs.numel(), [&](int64_t idx) {
-      out.at<T>(idx) = lhs.at<T>(idx) & rhs.at<T>(idx);
-    });
+    pforeach(0, lhs.numel(),
+             [&](int64_t idx) { _out[idx] = _lhs[idx] & _rhs[idx]; });
   });
   return out;
 }
@@ -143,6 +144,9 @@ NdArrayRef AndBB::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
   NdArrayRef out(makeType<BShrTy>(field, out_nbits), lhs.shape());
   DISPATCH_ALL_FIELDS(field, "_", [&]() {
     using T = ring2k_t;
+    NdArrayView<T> _lhs(lhs);
+    NdArrayView<T> _rhs(rhs);
+
     DISPATCH_UINT_PT_TYPES(backtype, "_", [&]() {
       using V = ScalarT;
 
@@ -154,21 +158,21 @@ NdArrayRef AndBB::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
       auto [a, b, c] = beaver->And(field, {numField});
       SPU_ENFORCE(a.buf()->size() >= static_cast<int64_t>(numBytes));
 
-      const auto* _a = reinterpret_cast<const V*>(a.data());
-      const auto* _b = reinterpret_cast<const V*>(b.data());
-      const auto* _c = reinterpret_cast<const V*>(c.data());
+      NdArrayView<V> _a(a);
+      NdArrayView<V> _b(b);
+      NdArrayView<V> _c(c);
 
       // first half mask x^a, second half mask y^b.
       std::vector<V> mask(numel * 2, 0);
       pforeach(0, numel, [&](int64_t idx) {
-        mask[idx] = lhs.at<T>(idx) ^ _a[idx];
-        mask[numel + idx] = rhs.at<T>(idx) ^ _b[idx];
+        mask[idx] = _lhs[idx] ^ _a[idx];
+        mask[numel + idx] = _rhs[idx] ^ _b[idx];
       });
 
       mask = comm->allReduce<V, std::bit_xor>(mask, "open(x^a,y^b)");
 
       // Zi = Ci ^ ((X ^ A) & Bi) ^ ((Y ^ B) & Ai) ^ <(X ^ A) & (Y ^ B)>
-      auto* _z = reinterpret_cast<T*>(out.data());
+      NdArrayView<T> _z(out);
       pforeach(0, numel, [&](int64_t idx) {
         _z[idx] = _c[idx];
         _z[idx] ^= mask[idx] & _b[idx];
@@ -263,12 +267,11 @@ NdArrayRef BitIntlB::proc(KernelEvalContext* ctx, const NdArrayRef& in,
   auto numel = in.numel();
 
   DISPATCH_ALL_FIELDS(field, "_", [&]() {
-    using T = ring2k_t;
-
-    auto _out = reinterpret_cast<T*>(out.data());
+    NdArrayView<ring2k_t> _in(in);
+    NdArrayView<ring2k_t> _out(out);
 
     pforeach(0, numel, [&](int64_t idx) {
-      _out[idx] = BitIntl<T>(in.at<T>(idx), stride, nbits);
+      _out[idx] = BitIntl<ring2k_t>(_in[idx], stride, nbits);
     });
   });
 
@@ -285,12 +288,11 @@ NdArrayRef BitDeintlB::proc(KernelEvalContext* ctx, const NdArrayRef& in,
   auto numel = in.numel();
 
   DISPATCH_ALL_FIELDS(field, "_", [&]() {
-    using T = ring2k_t;
-
-    auto _out = reinterpret_cast<T*>(out.data());
+    NdArrayView<ring2k_t> _in(in);
+    NdArrayView<ring2k_t> _out(out);
 
     pforeach(0, numel, [&](int64_t idx) {
-      _out[idx] = BitDeintl<T>(in.at<T>(idx), stride, nbits);
+      _out[idx] = BitDeintl<ring2k_t>(_in[idx], stride, nbits);
     });
   });
 

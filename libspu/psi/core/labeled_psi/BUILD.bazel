@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("//bazel:spu.bzl", "spu_cc_library", "spu_cc_test")
+load("//bazel:spu.bzl", "spu_cc_binary", "spu_cc_library", "spu_cc_test")
 load("@rules_proto//proto:defs.bzl", "proto_library")
 load("@rules_cc//cc:defs.bzl", "cc_proto_library")
 
@@ -26,6 +26,8 @@ spu_cc_library(
         "receiver.cc",
         "sender.cc",
         "sender_db.cc",
+        "sender_kvdb.cc",
+        "sender_memdb.cc",
     ],
     hdrs = [
         "package.h",
@@ -33,6 +35,8 @@ spu_cc_library(
         "receiver.h",
         "sender.h",
         "sender_db.h",
+        "sender_kvdb.h",
+        "sender_memdb.h",
         "serialize.h",
     ],
     deps = [
@@ -93,6 +97,20 @@ spu_cc_test(
         ":labeled_psi",
         "//libspu/psi/utils",
         "@com_google_absl//absl/strings",
+        "@yacl//yacl/crypto/tools:prg",
+    ],
+)
+
+spu_cc_binary(
+    name = "apsi_bench",
+    srcs = [
+        "apsi_bench.cc",
+    ],
+    deps = [
+        ":labeled_psi",
+        "@com_github_google_benchmark//:benchmark_main",
+        "@com_google_absl//absl/strings",
+        "@com_google_googletest//:gtest",
         "@yacl//yacl/crypto/tools:prg",
     ],
 )

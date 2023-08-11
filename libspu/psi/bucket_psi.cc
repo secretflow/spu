@@ -41,6 +41,7 @@
 #include "libspu/psi/core/ecdh_psi.h"
 #include "libspu/psi/cryptor/cryptor_selector.h"
 #include "libspu/psi/io/io.h"
+#include "libspu/psi/prelude.h"
 #include "libspu/psi/utils/batch_provider.h"
 #include "libspu/psi/utils/cipher_store.h"
 #include "libspu/psi/utils/csv_header_analyzer.h"

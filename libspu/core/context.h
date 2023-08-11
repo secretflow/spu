@@ -84,8 +84,6 @@ class SPUContext final {
   }
 };
 
-using HalContext [[deprecated("Use SPUContext instead.")]] = SPUContext;
-
 class KernelEvalContext final {
   // Please keep param types as less as possible.
   using ParamType = std::variant<  //
@@ -94,7 +92,9 @@ class KernelEvalContext final {
       size_t,                      // represent size(mmul), shift_bits(shift)
       bool,                        // binary flag
       Type,                        // type of type
-      uint128_t                    // ring constant
+      uint128_t,                   // ring constant
+      int64_t,                     //
+      SignType                     //
       >;
 
   SPUContext* sctx_;
@@ -174,7 +174,7 @@ void bindParams(KernelEvalContext* ectx, First&& head, Args&&... tail) {
 
 }  // namespace detail
 
-// Dynamic dispath to a kernel according to a symbol name.
+// Dynamic dispatch to a kernel according to a symbol name.
 template <typename Ret = Value, typename... Args>
 Ret dynDispatch(SPUContext* sctx, const std::string& name, Args&&... args) {
   /// Steps of dynamic dispatch.

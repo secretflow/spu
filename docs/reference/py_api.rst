@@ -25,8 +25,8 @@ Compiler
 Simulation
 ----------
 
-.. autoclass:: spu.Simulator
+.. autoclass:: spu.utils.simulation.Simulator
    :members:
    :undoc-members:
 
-.. autofunction:: spu.sim_jax
+.. autofunction:: spu.utils.simulation.sim_jax

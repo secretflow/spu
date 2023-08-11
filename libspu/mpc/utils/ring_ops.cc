@@ -43,16 +43,17 @@ constexpr char kModule[] = "RingOps";
   SPU_ENFORCE((lhs).shape() == (rhs).shape(),                                  \
               "numel mismatch, lhs={}, rhs={}", lhs, rhs);
 
-#define DEF_UNARY_RING_OP(NAME, OP)                                           \
-  void NAME##_impl(NdArrayRef& ret, const NdArrayRef& x) {                    \
-    ENFORCE_EQ_ELSIZE_AND_SHAPE(ret, x);                                      \
-    const auto field = x.eltype().as<Ring2k>()->field();                      \
-    const int64_t numel = ret.numel();                                        \
-    return DISPATCH_ALL_FIELDS(field, kModule, [&]() {                        \
-      using T = std::make_signed_t<ring2k_t>;                                 \
-      pforeach(0, numel,                                                      \
-               [&](int64_t idx) { ret.at<T>(idx) = OP x.at<const T>(idx); }); \
-    });                                                                       \
+#define DEF_UNARY_RING_OP(NAME, OP)                                     \
+  void NAME##_impl(NdArrayRef& ret, const NdArrayRef& x) {              \
+    ENFORCE_EQ_ELSIZE_AND_SHAPE(ret, x);                                \
+    const auto field = x.eltype().as<Ring2k>()->field();                \
+    const int64_t numel = ret.numel();                                  \
+    return DISPATCH_ALL_FIELDS(field, kModule, [&]() {                  \
+      using T = std::make_signed_t<ring2k_t>;                           \
+      NdArrayView<T> _x(x);                                             \
+      NdArrayView<T> _ret(ret);                                         \
+      pforeach(0, numel, [&](int64_t idx) { _ret[idx] = OP _x[idx]; }); \
+    });                                                                 \
   }
 
 DEF_UNARY_RING_OP(ring_not, ~);
@@ -60,18 +61,20 @@ DEF_UNARY_RING_OP(ring_neg, -);
 
 #undef DEF_UNARY_RING_OP
 
-#define DEF_BINARY_RING_OP(NAME, OP)                                        \
-  void NAME##_impl(NdArrayRef& ret, const NdArrayRef& x,                    \
-                   const NdArrayRef& y) {                                   \
-    ENFORCE_EQ_ELSIZE_AND_SHAPE(ret, x);                                    \
-    ENFORCE_EQ_ELSIZE_AND_SHAPE(ret, y);                                    \
-    const auto field = x.eltype().as<Ring2k>()->field();                    \
-    const int64_t numel = ret.numel();                                      \
-    return DISPATCH_ALL_FIELDS(field, kModule, [&]() {                      \
-      pforeach(0, numel, [&](int64_t idx) {                                 \
-        ret.at<ring2k_t>(idx) = x.at<ring2k_t>(idx) OP y.at<ring2k_t>(idx); \
-      });                                                                   \
-    });                                                                     \
+#define DEF_BINARY_RING_OP(NAME, OP)                                  \
+  void NAME##_impl(NdArrayRef& ret, const NdArrayRef& x,              \
+                   const NdArrayRef& y) {                             \
+    ENFORCE_EQ_ELSIZE_AND_SHAPE(ret, x);                              \
+    ENFORCE_EQ_ELSIZE_AND_SHAPE(ret, y);                              \
+    const auto field = x.eltype().as<Ring2k>()->field();              \
+    const int64_t numel = ret.numel();                                \
+    return DISPATCH_ALL_FIELDS(field, kModule, [&]() {                \
+      NdArrayView<ring2k_t> _x(x);                                    \
+      NdArrayView<ring2k_t> _y(y);                                    \
+      NdArrayView<ring2k_t> _ret(ret);                                \
+      pforeach(0, numel,                                              \
+               [&](int64_t idx) { _ret[idx] = _x[idx] OP _y[idx]; }); \
+    });                                                               \
   }
 
 DEF_BINARY_RING_OP(ring_add, +)
@@ -92,9 +95,9 @@ void ring_arshift_impl(NdArrayRef& ret, const NdArrayRef& x, size_t bits) {
     // According to K&R 2nd edition the results are implementation-dependent for
     // right shifts of signed values, but "usually" its arithmetic right shift.
     using S = std::make_signed<ring2k_t>::type;
-
-    pforeach(0, numel,
-             [&](int64_t idx) { ret.at<S>(idx) = x.at<S>(idx) >> bits; });
+    NdArrayView<S> _ret(ret);
+    NdArrayView<S> _x(x);
+    pforeach(0, numel, [&](int64_t idx) { _ret[idx] = _x[idx] >> bits; });
   });
 }
 
@@ -104,9 +107,9 @@ void ring_rshift_impl(NdArrayRef& ret, const NdArrayRef& x, size_t bits) {
   const auto field = x.eltype().as<Ring2k>()->field();
   return DISPATCH_ALL_FIELDS(field, kModule, [&]() {
     using U = ring2k_t;
-
-    pforeach(0, numel,
-             [&](int64_t idx) { ret.at<U>(idx) = x.at<U>(idx) >> bits; });
+    NdArrayView<U> _ret(ret);
+    NdArrayView<U> _x(x);
+    pforeach(0, numel, [&](int64_t idx) { _ret[idx] = _x[idx] >> bits; });
   });
 }
 
@@ -115,9 +118,9 @@ void ring_lshift_impl(NdArrayRef& ret, const NdArrayRef& x, size_t bits) {
   const auto numel = ret.numel();
   const auto field = x.eltype().as<Ring2k>()->field();
   return DISPATCH_ALL_FIELDS(field, kModule, [&]() {
-    pforeach(0, numel, [&](int64_t idx) {
-      ret.at<ring2k_t>(idx) = x.at<ring2k_t>(idx) << bits;
-    });
+    NdArrayView<ring2k_t> _ret(ret);
+    NdArrayView<ring2k_t> _x(x);
+    pforeach(0, numel, [&](int64_t idx) { _ret[idx] = _x[idx] << bits; });
   });
 }
 
@@ -144,8 +147,9 @@ void ring_bitrev_impl(NdArrayRef& ret, const NdArrayRef& x, size_t start,
       return (in & ~mask) | tmp;
     };
 
-    pforeach(0, numel,
-             [&](int64_t idx) { ret.at<U>(idx) = bitrev_fn(x.at<U>(idx)); });
+    NdArrayView<U> _ret(ret);
+    NdArrayView<U> _x(x);
+    pforeach(0, numel, [&](int64_t idx) { _ret[idx] = bitrev_fn(_x[idx]); });
   });
 }
 
@@ -168,8 +172,9 @@ void ring_bitmask_impl(NdArrayRef& ret, const NdArrayRef& x, size_t low,
 
     auto mark_fn = [&](U el) { return el & mask; };
 
-    pforeach(0, numel,
-             [&](int64_t idx) { ret.at<U>(idx) = mark_fn(x.at<U>(idx)); });
+    NdArrayView<U> _ret(ret);
+    NdArrayView<U> _x(x);
+    pforeach(0, numel, [&](int64_t idx) { _ret[idx] = mark_fn(_x[idx]); });
   });
 }
 
@@ -185,8 +190,9 @@ void ring_print(const NdArrayRef& x, std::string_view name) {
 
     std::string out;
     out += fmt::format("{} = {{", name);
+    NdArrayView<U> _x(x);
     for (int64_t idx = 0; idx < x.numel(); idx++) {
-      const auto& current_v = x.at<U>(idx);
+      const auto& current_v = _x[idx];
       if (idx != 0) {
         out += fmt::format(", {0:X}", current_v);
       } else {
@@ -212,7 +218,7 @@ NdArrayRef ring_rand(FieldType field, const Shape& shape, uint128_t prg_seed,
   NdArrayRef res(makeType<RingTy>(field), shape);
   *prg_counter = yacl::crypto::FillPRand(
       kCryptoType, prg_seed, kAesInitialVector, *prg_counter,
-      absl::MakeSpan(static_cast<char*>(res.data()), res.buf()->size()));
+      absl::MakeSpan(res.data<char>(), res.buf()->size()));
 
   return res;
 }
@@ -246,8 +252,9 @@ void ring_assign(NdArrayRef& x, const NdArrayRef& y) {
 
   const auto field = x.eltype().as<Ring2k>()->field();
   return DISPATCH_ALL_FIELDS(field, kModule, [&]() {
-    pforeach(0, numel,
-             [&](int64_t idx) { x.at<ring2k_t>(idx) = y.at<ring2k_t>(idx); });
+    NdArrayView<ring2k_t> _y(y);
+    NdArrayView<ring2k_t> _x(x);
+    pforeach(0, numel, [&](int64_t idx) { _x[idx] = _y[idx]; });
   });
 }
 
@@ -256,8 +263,8 @@ NdArrayRef ring_zeros(FieldType field, const Shape& shape) {
   auto numel = ret.numel();
 
   return DISPATCH_ALL_FIELDS(field, kModule, [&]() {
-    pforeach(0, numel,
-             [&](int64_t idx) { ret.at<ring2k_t>(idx) = ring2k_t(0); });
+    NdArrayView<ring2k_t> _ret(ret);
+    pforeach(0, numel, [&](int64_t idx) { _ret[idx] = ring2k_t(0); });
     return ret;
   });
 }
@@ -267,8 +274,8 @@ NdArrayRef ring_ones(FieldType field, const Shape& shape) {
   auto numel = ret.numel();
 
   return DISPATCH_ALL_FIELDS(field, kModule, [&]() {
-    pforeach(0, numel,
-             [&](int64_t idx) { ret.at<ring2k_t>(idx) = ring2k_t(1); });
+    NdArrayView<ring2k_t> _ret(ret);
+    pforeach(0, numel, [&](int64_t idx) { _ret[idx] = ring2k_t(1); });
     return ret;
   });
 }
@@ -282,8 +289,9 @@ NdArrayRef ring_randbit(FieldType field, const Shape& shape) {
   auto numel = ret.numel();
 
   return DISPATCH_ALL_FIELDS(field, kModule, [&]() {
+    NdArrayView<ring2k_t> _ret(ret);
     for (auto idx = 0; idx < numel; ++idx) {
-      ret.at<ring2k_t>(idx) = distrib(gen) & 0x1;
+      _ret[idx] = distrib(gen) & 0x1;
     }
     return ret;
   });
@@ -335,8 +343,9 @@ void ring_mul_impl(NdArrayRef& ret, const NdArrayRef& x, uint128_t y) {
   const auto field = x.eltype().as<Ring2k>()->field();
   DISPATCH_ALL_FIELDS(field, kModule, [&]() {
     using U = std::make_unsigned<ring2k_t>::type;
-
-    pforeach(0, numel, [&](int64_t idx) { ret.at<U>(idx) = x.at<U>(idx) * y; });
+    NdArrayView<U> _x(x);
+    NdArrayView<U> _ret(ret);
+    pforeach(0, numel, [&](int64_t idx) { _ret[idx] = _x[idx] * y; });
   });
 }
 
@@ -369,9 +378,9 @@ void ring_mmul_impl(NdArrayRef& z, const NdArrayRef& lhs,
     const auto LDC = ret_stride_scale * z.strides()[0];
     const auto IDC = ret_stride_scale * z.strides()[1];
 
-    linalg::matmul(M, N, K, static_cast<const ring2k_t*>(lhs.data()), LDA, IDA,
-                   static_cast<const ring2k_t*>(rhs.data()), LDB, IDB,
-                   static_cast<ring2k_t*>(z.data()), LDC, IDC);
+    linalg::matmul(M, N, K, lhs.data<const ring2k_t>(), LDA, IDA,
+                   rhs.data<const ring2k_t>(), LDB, IDB, z.data<ring2k_t>(),
+                   LDC, IDC);
   });
 }
 
@@ -492,10 +501,13 @@ bool ring_all_equal(const NdArrayRef& x, const NdArrayRef& y, size_t abs_err) {
   return DISPATCH_ALL_FIELDS(field, "_", [&]() {
     using T = std::make_signed_t<ring2k_t>;
 
+    NdArrayView<T> _x(x);
+    NdArrayView<T> _y(y);
+
     bool passed = true;
     for (int64_t idx = 0; idx < numel; ++idx) {
-      auto x_el = x.at<T>(idx);
-      auto y_el = y.at<T>(idx);
+      auto x_el = _x[idx];
+      auto y_el = _y[idx];
       if (std::abs(x_el - y_el) > static_cast<T>(abs_err)) {
         fmt::print("error: {0} {1} abs_err: {2}\n", x_el, y_el, abs_err);
         return false;
@@ -513,8 +525,9 @@ std::vector<uint8_t> ring_cast_boolean(const NdArrayRef& x) {
   std::vector<uint8_t> res(numel);
 
   DISPATCH_ALL_FIELDS(field, kModule, [&]() {
+    NdArrayView<ring2k_t> _x(x);
     pforeach(0, numel, [&](int64_t idx) {
-      res[idx] = static_cast<uint8_t>(x.at<ring2k_t>(idx) & 0x1);
+      res[idx] = static_cast<uint8_t>(_x[idx] & 0x1);
     });
   });
 
@@ -532,10 +545,12 @@ NdArrayRef ring_select(const std::vector<uint8_t>& c, const NdArrayRef& x,
   const int64_t numel = c.size();
 
   DISPATCH_ALL_FIELDS(field, kModule, [&]() {
-    pforeach(0, numel, [&](int64_t idx) {
-      z.at<ring2k_t>(idx) =
-          (c[idx] ? y.at<ring2k_t>(idx) : x.at<ring2k_t>(idx));
-    });
+    NdArrayView<ring2k_t> _x(x);
+    NdArrayView<ring2k_t> _y(y);
+    NdArrayView<ring2k_t> _z(z);
+
+    pforeach(0, numel,
+             [&](int64_t idx) { _z[idx] = (c[idx] ? _y[idx] : _x[idx]); });
   });
 
   return z;

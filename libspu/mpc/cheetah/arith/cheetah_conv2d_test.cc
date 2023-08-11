@@ -85,10 +85,10 @@ TEST_P(CheetahConv2dTest, Basic) {
 
   const int64_t kMaxDiff = 1;
   DISPATCH_ALL_FIELDS(field, "_", [&]() {
-    auto c = ArrayView<ring2k_t>(computed);
-
+    ArrayView<ring2k_t> c(computed);
+    NdArrayView<ring2k_t> exp(expected);
     for (auto idx = 0; idx < expected.numel(); idx++) {
-      EXPECT_NEAR(c[idx], expected.at<ring2k_t>(idx), kMaxDiff);
+      EXPECT_NEAR(c[idx], exp[idx], kMaxDiff);
     }
   });
 }

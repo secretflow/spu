@@ -50,13 +50,10 @@ jobs:
       - checkout
       - run:
           name: Checkout devtools
-          command: git clone https://github.com/secretflow/devtools.git ../tools
-      - run:
-          name: C/C++ format check
-          command: bash ../tools/lint-clang-format.sh
+          command: git clone https://github.com/secretflow/devtools.git ../devtools
       - run:
           name: Whitespace check
-          command: bash ../tools/lint-whitespace.sh
+          command: bash ../devtools/lint-whitespace.sh
 
 workflows:
   unittest-workflow:
@@ -92,10 +89,11 @@ workflows:
           # This is mandatory to trigger a pipeline when pushing a tag
           filters:
             tags:
-                only: /.*/
-  testpypi-workflow:
-    when:
-      equal: [ "test_pypi", << pipeline.parameters.GHA_Meta >> ]
-    jobs:
+              only: /.*(?<!dev\d)$/
       - continuation/continue:
-          configuration_path: .circleci/testpypi-config.yml
+          configuration_path: .circleci/dev-release-config.yml
+          # This is mandatory to trigger a pipeline when pushing a tag
+          filters:
+            tags:
+              only: /.*(?<=dev\d)$/
+

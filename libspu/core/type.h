@@ -19,6 +19,8 @@
 #include <string>
 #include <unordered_map>
 
+#include "fmt/ostream.h"
+
 #include "libspu/core/prelude.h"
 #include "libspu/core/type_util.h"
 
@@ -400,5 +402,7 @@ class TypeContext final {
     return fctor->second;
   }
 };
+
+inline auto format_as(const Type& t) { return fmt::streamed(t); }
 
 }  // namespace spu

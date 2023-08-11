@@ -49,7 +49,7 @@ Value _mul(SPUContext* ctx, const Value& x, const Value& y);
 Value _mmul(SPUContext* ctx, const Value& x, const Value& y);
 
 Value _conv2d(SPUContext* ctx, const Value& x, const Value& y,
-              const Strides& window_strides, const Shape& result_shape);
+              const Strides& strides);
 
 Value _and(SPUContext* ctx, const Value& x, const Value& y);
 
@@ -72,10 +72,8 @@ Value _rshift(SPUContext* ctx, const Value& in, size_t bits);
 
 Value _arshift(SPUContext* ctx, const Value& in, size_t bits);
 
-Value _trunc(SPUContext* ctx, const Value& x, size_t bits = 0);
-
-Value _trunc_with_sign(SPUContext* ctx, const Value& x, size_t bits = 0,
-                       bool is_positive = true);
+Value _trunc(SPUContext* ctx, const Value& x, size_t bits = 0,
+             SignType sign = SignType::Unknown);
 
 Value _bitrev(SPUContext* ctx, const Value&, size_t start_idx, size_t end_idx);
 

@@ -54,11 +54,13 @@ NdArrayRef P2Value(FieldType out_field, const NdArrayRef& in, size_t k,
     auto out = ring_zeros(out_field, out_shape);
     return DISPATCH_ALL_FIELDS(out_field, "_", [&]() {
       using BShrT = ring2k_t;
+      NdArrayView<PShrT> _in(in);
+      NdArrayView<BShrT> _out(out);
+
       pforeach(0, in.numel(), [&](int64_t idx) {
         pforeach(0, valid_nbits, [&](int64_t jdx) {
           size_t offset = idx * valid_nbits + jdx;
-          out.at<BShrT>(offset) =
-              static_cast<BShrT>((in.at<PShrT>(idx) >> jdx) & 1);
+          _out[offset] = static_cast<BShrT>((_in[idx] >> jdx) & 1);
         });
       });
 
@@ -74,7 +76,10 @@ std::pair<NdArrayRef, NdArrayRef> RShiftBImpl(const NdArrayRef& in,
   const auto old_nbits = in.eltype().as<BShrTy>()->nbits();
   int64_t new_nbits = old_nbits - bits;
 
-  if (bits == 0) return {getValueShare(in), getMacShare(in)};
+  if (bits == 0) {
+    return {getValueShare(in), getMacShare(in)};
+  }
+
   if (new_nbits <= 0) {
     return {ring_zeros(field, in.shape()), ring_zeros(field, in.shape())};
   }
@@ -284,13 +289,14 @@ NdArrayRef B2P::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
 
       NdArrayRef out(makeType<Pub2kTy>(out_field), in.shape());
 
+      NdArrayView<PShrT> _out(out);
+      NdArrayView<BShrT> _value(value);
       pforeach(0, in.numel(), [&](int64_t idx) {
         PShrT t = 0;
         for (size_t jdx = 0; jdx < nbits; ++jdx) {
-          t |= static_cast<PShrT>((value.at<BShrT>(idx * nbits + jdx) & 1)
-                                  << jdx);
+          t |= static_cast<PShrT>((_value[idx * nbits + jdx] & 1) << jdx);
         }
-        out.at<PShrT>(idx) = t;
+        _out[idx] = t;
       });
 
       return out;
@@ -375,12 +381,15 @@ NdArrayRef BitrevB::proc(KernelEvalContext* ctx, const NdArrayRef& in,
   auto ret_mac = x_mac.clone();
 
   DISPATCH_ALL_FIELDS(field, "_", [&]() {
+    NdArrayView<ring2k_t> _ret(ret);
+    NdArrayView<ring2k_t> _ret_mac(ret_mac);
+    NdArrayView<ring2k_t> _x(x);
+    NdArrayView<ring2k_t> _x_mac(x_mac);
+
     for (size_t i = 0; i < static_cast<size_t>(numel); ++i) {
       for (size_t j = start; j < end; ++j) {
-        ret.at<ring2k_t>(i * nbits + j) =
-            x.at<ring2k_t>(i * nbits + end + start - j - 1);
-        ret_mac.at<ring2k_t>(i * nbits + j) =
-            x_mac.at<ring2k_t>(i * nbits + end + start - j - 1);
+        _ret[i * nbits + j] = _x[i * nbits + end + start - j - 1];
+        _ret_mac[i * nbits + j] = _x_mac[i * nbits + end + start - j - 1];
       }
     }
   });
@@ -576,12 +585,14 @@ NdArrayRef BitIntlB::proc(KernelEvalContext* ctx, const NdArrayRef& in,
     using T = ring2k_t;
 
     if (in.eltype().isa<Pub2kTy>()) {
+      NdArrayView<T> _out(out);
+      NdArrayView<T> _in(in);
       pforeach(0, in.numel(), [&](int64_t idx) {
-        out.at<T>(idx) = BitIntl<T>(in.at<T>(idx), stride, k);
+        _out[idx] = BitIntl<T>(_in[idx], stride, k);
       });
     } else {
-      auto _in = in.data<std::array<T, 2>>();
-      auto _out = out.data<std::array<T, 2>>();
+      NdArrayView<std::array<T, 2>> _in(in);
+      NdArrayView<std::array<T, 2>> _out(out);
       size_t num_per_group = 1 << stride;
       size_t group_num = k / num_per_group + (k % num_per_group != 0);
       size_t half_group_num = (group_num + 1) / 2;
@@ -621,12 +632,15 @@ NdArrayRef BitDeintlB::proc(KernelEvalContext* ctx, const NdArrayRef& in,
     using T = ring2k_t;
 
     if (in.eltype().isa<Pub2kTy>()) {
+      NdArrayView<T> _out(out);
+      NdArrayView<T> _in(in);
       pforeach(0, in.numel(), [&](int64_t idx) {
-        out.at<T>(idx) = BitDeintl<T>(in.at<T>(idx), stride, k);
+        _out[idx] = BitDeintl<T>(_in[idx], stride, k);
       });
     } else {
-      auto _in = in.data<std::array<T, 2>>();
-      auto _out = out.data<std::array<T, 2>>();
+      NdArrayView<std::array<T, 2>> _in(in);
+      NdArrayView<std::array<T, 2>> _out(out);
+
       size_t num_per_group = 1 << stride;
       size_t group_num = k / num_per_group + (k % num_per_group != 0);
       size_t half_group_num = (group_num + 1) / 2;

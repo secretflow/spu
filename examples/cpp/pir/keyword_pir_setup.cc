@@ -62,6 +62,12 @@ llvm::cl::opt<std::string> LabelsColumnsOpt("label_columns",
                                             llvm::cl::init("label"),
                                             llvm::cl::desc("label columns"));
 
+llvm::cl::opt<bool> CompressOpt("compress", llvm::cl::init(false),
+                                llvm::cl::desc("compress seal he plaintext"));
+
+llvm::cl::opt<int> BucketSizeOpt("bucket", llvm::cl::init(1000000),
+                                 llvm::cl::desc("bucket size of pir query"));
+
 llvm::cl::opt<int> LabelPadLengthOpt(
     "max_label_length", llvm::cl::init(288),
     llvm::cl::desc("pad label data to max len"));
@@ -69,6 +75,11 @@ llvm::cl::opt<int> LabelPadLengthOpt(
 llvm::cl::opt<std::string> SetupPathOpt(
     "setup_path", llvm::cl::init("."),
     llvm::cl::desc("[out] output path for db setup data"));
+
+llvm::cl::opt<int> MaxItemsPerBinOpt(
+    "max_items_per_bin", llvm::cl::init(0),
+    llvm::cl::desc(
+        "max items per bin, i.e. Interpolate polynomial max degree"));
 
 int main(int argc, char **argv) {
   llvm::cl::ParseCommandLineOptions(argc, argv);
@@ -96,6 +107,9 @@ int main(int argc, char **argv) {
   config.set_label_max_len(LabelPadLengthOpt.getValue());
   config.set_oprf_key_path(OprfKeyPathOpt.getValue());
   config.set_setup_path(SetupPathOpt.getValue());
+  config.set_compressed(CompressOpt.getValue());
+  config.set_bucket_size(BucketSizeOpt.getValue());
+  config.set_max_items_per_bin(MaxItemsPerBinOpt.getValue());
 
   spu::pir::PirResultReport report = spu::pir::PirSetup(config);
 

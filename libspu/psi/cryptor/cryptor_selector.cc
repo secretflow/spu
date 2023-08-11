@@ -17,11 +17,12 @@
 #include <cstdlib>
 
 #include "spdlog/spdlog.h"
+#include "yacl/utils/platform_utils.h"
 
-#include "libspu/core/platform_utils.h"
 #include "libspu/psi/cryptor/fourq_cryptor.h"
 #include "libspu/psi/cryptor/sm2_cryptor.h"
 #include "libspu/psi/cryptor/sodium_curve25519_cryptor.h"
+#include "libspu/psi/prelude.h"
 
 #ifdef __x86_64__
 #include "libspu/psi/cryptor/ipp_ecc_cryptor.h"
@@ -33,7 +34,7 @@ namespace {
 
 std::unique_ptr<IEccCryptor> GetIppCryptor() {
 #ifdef __x86_64__
-  if (hasAVX512ifma()) {
+  if (yacl::hasAVX512ifma()) {
     SPDLOG_INFO("Using IPPCP");
     return std::make_unique<IppEccCryptor>();
   }
@@ -48,7 +49,7 @@ std::unique_ptr<IEccCryptor> GetSodiumCryptor() {
 
 std::unique_ptr<IEccCryptor> GetFourQCryptor() {
 #ifdef __x86_64__
-  if (hasAVX2()) {
+  if (yacl::hasAVX2()) {
 #endif
     SPDLOG_INFO("Using FourQ");
     return std::make_unique<FourQEccCryptor>();  // fourq has an arm impl,

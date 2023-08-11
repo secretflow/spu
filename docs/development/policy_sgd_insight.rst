@@ -6,7 +6,7 @@ However, it suffers that user should choose hyper-parameters very carefully. Of 
 As an example, When running LR with SGD in `credit card dataset <https://www.kaggle.com/datasets/uciml/default-of-credit-card-clients-dataset>`_ (for 4096-0.1, 4096 is batch_size, 0.1 is learning_rate),
 we can find that it seems safer to use small batch_size and learning_rate, else we get some loss or very strong vibration of auc within 10 epochs(we leave 10000 samples as test dataset randomly).
 
-.. figure:: ../../imgs/sgd_problem.png
+.. figure:: ../imgs/sgd_problem.png
 
 
 Unfortunately, when under MPC, even simple algorithm like SSLR, small batch_size leads to huge training time under limited network resources. Besides, even you have high bandwidth,
@@ -27,7 +27,7 @@ What's Policy sgd
 ------------------------------
 For SSLR, we provide an answer to the above question: policy-sgd(already implemented on `SSRegression` in Secretflow when setting `strategy=policy_sgd`).
 
-.. figure:: ../../imgs/policy_sgd.png
+.. figure:: ../imgs/policy_sgd.png
 
 
 The core of this optimizer consists of two parts:
@@ -72,10 +72,10 @@ We first test how precision of fixed point influence SSLR and test three setting
 
 3. high precision: `FM128` + 42 fxp
 
-.. figure:: ../../imgs/sgd_precision.png
+.. figure:: ../imgs/sgd_precision.png
 
 
-.. figure:: ../../imgs/policy_sgd_precision.png
+.. figure:: ../imgs/policy_sgd_precision.png
 
 
 We can find that for both optimizer, precision has little influence on final auc, so it's safe for
@@ -93,7 +93,7 @@ But for policy_sgd, it's often harmless to use larger batch_size(2048 for these 
 As for other hyper-parameters, we set total running epochs to 20, learning_rate to 0.1 and use low precision, CHEETAH protocol.
 And we test in WAN, providing 20Mbps and 20ms RTT, which is a typical setting in real world project.
 
-.. figure:: ../../imgs/policy_naive_auc.png
+.. figure:: ../imgs/policy_naive_auc.png
 
 
 First, we find for naive_sgd(v1), none of them meets any early stop criterion during 20 epochs(so we omit the early stop line in figure).

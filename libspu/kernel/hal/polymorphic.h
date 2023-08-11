@@ -56,9 +56,8 @@ Value matmul(SPUContext* ctx, const Value& x, const Value& y);
 // @param x, the input tensor
 // @param y, the kernel weight
 // @param window_strides, sized-2 window strides
-// @param result_shape, output shape
 Value conv2d(SPUContext* ctx, const Value& x, const Value& y,
-             const Strides& window_strides, const Shape& result_shape);
+             const Strides& window_strides);
 
 /// general element-wise bitwise equal operator
 // @param x, the first parameter

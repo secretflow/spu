@@ -35,11 +35,22 @@ spu_cc_library(
         "memory_psi.h",
     ],
     deps = [
+        ":prelude",
         ":psi_cc_proto",
         "//libspu/psi/core:ecdh_psi",
         "//libspu/psi/operator",
         "//libspu/psi/operator:factory",
         "//libspu/psi/utils",
+    ],
+)
+
+spu_cc_library(
+    name = "prelude",
+    hdrs = [
+        "prelude.h",
+    ],
+    deps = [
+        ":psi_cc_proto",
     ],
 )
 
@@ -59,6 +70,7 @@ spu_cc_library(
         "bucket_ub_psi.h",
     ],
     deps = [
+        ":prelude",
         ":psi_cc_proto",
         "//libspu/psi/core:ecdh_oprf_psi",
         "//libspu/psi/utils:batch_provider",
@@ -80,6 +92,7 @@ spu_cc_library(
     deps = [
         ":bucket_ub_psi",
         ":memory_psi",
+        ":prelude",
         ":psi_cc_proto",
         "//libspu/psi/utils:batch_provider",
         "//libspu/psi/utils:cipher_store",

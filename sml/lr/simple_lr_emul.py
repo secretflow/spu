@@ -22,24 +22,30 @@ from sklearn.preprocessing import MinMaxScaler
 
 # Add the library directory to the path
 sys.path.append(os.path.join(os.path.dirname(__file__), '../../'))
-from sml.lr.simple_lr import SGDClassifier
+from sml.lr.simple_lr import LogisticRegression
 import sml.utils.emulation as emulation
 
-# TODO: design the enumation framework, just like py.unittest
-# all emulation action should begin with `emul_` (for reflection)
-def emul_SGDClassifier(mode: emulation.Mode.MULTIPROCESS):
+
+def emul_LogisticRegression(mode: emulation.Mode.MULTIPROCESS):
+    # Test SGDClassifier
     def proc(x, y):
-        model = SGDClassifier(
+        model = LogisticRegression(
             epochs=3,
             learning_rate=0.1,
             batch_size=8,
+            solver='sgd',
             penalty='l2',
             sig_type='sr',
             l2_norm=1.0,
             class_weight=None,
-            multi_class='ovr'
+            multi_class='binary',
         )
-        return model.fit(x, y).predict_proba(x)
+
+        model = model.fit(x, y)
+
+        prob = model.predict_proba(x)
+        pred = model.predict(x)
+        return prob, pred
 
     try:
         # bandwidth and latency only work for docker mode
@@ -55,14 +61,21 @@ def emul_SGDClassifier(mode: emulation.Mode.MULTIPROCESS):
         X = scalar.fit_transform(X)
         X = pd.DataFrame(X, columns=cols)
 
+        # mark these data to be protected in SPU
+        X_spu, y_spu = emulator.seal(
+            X.values, y.values.reshape(-1, 1)
+        )  # X, y should be two-dimension array
+
         # Run
-        result = emulator.run(proc)(X.values, y.values.reshape(-1, 1))  # X, y should be two-dimension array
-        print(result)
-        print("Predict result: ", result)
-        print("ROC Score: ", roc_auc_score(y.values, result))
+        result = emulator.run(proc)(X_spu, y_spu)
+        print("Predict result prob: ", result[0])
+        print("Predict result label: ", result[1])
+
+        print("ROC Score: ", roc_auc_score(y.values, result[0]))
 
     finally:
         emulator.down()
 
+
 if __name__ == "__main__":
-    emul_SGDClassifier(emulation.Mode.MULTIPROCESS)
+    emul_LogisticRegression(emulation.Mode.MULTIPROCESS)

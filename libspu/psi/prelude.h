@@ -12,25 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "libspu/core/platform_utils.h"
+#pragma once
 
-#include <array>
+#include "fmt/ostream.h"
 
-#include "gmock/gmock.h"
-#include "gtest/gtest.h"
+#include "libspu/psi/psi.pb.h"
 
-namespace spu {
+namespace fmt {
 
-TEST(PlatformUtils, pdep_u64) {
-  auto x = pdep_u64(19, 19);
+template <>
+struct formatter<spu::psi::CurveType> : ostream_formatter {};
 
-  GTEST_ASSERT_GT(x, 0);
-}
+template <>
+struct formatter<spu::psi::PsiType> : ostream_formatter {};
 
-TEST(PlatformUtils, pext_u64) {
-  auto x = pext_u64(19, 19);
-
-  GTEST_ASSERT_GT(x, 0);
-}
-
-}  // namespace spu
+}  // namespace fmt

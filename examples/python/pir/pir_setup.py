@@ -31,6 +31,13 @@ flags.DEFINE_integer("count_per_query", 1, "count_per_query")
 flags.DEFINE_integer("max_label_length", 256, "max_label_length")
 flags.DEFINE_string("oprf_key_path", "oprf_key.bin", "oprf key file")
 flags.DEFINE_string("setup_path", "setup_path", "data output path")
+
+flags.DEFINE_boolean("compressed", False, "compress seal he plaintext")
+flags.DEFINE_integer("bucket_size", 1000000, "bucket size of pir query")
+flags.DEFINE_integer(
+    "max_items_per_bin", 0, "max items per bin, i.e. Interpolate polynomial max degree"
+)
+
 FLAGS = flags.FLAGS
 
 
@@ -54,6 +61,9 @@ def main(_):
         label_max_len=FLAGS.max_label_length,
         oprf_key_path=FLAGS.oprf_key_path,
         setup_path=FLAGS.setup_path,
+        compressed=FLAGS.compressed,
+        bucket_size=FLAGS.bucket_size,
+        max_items_per_bin=FLAGS.max_items_per_bin,
     )
 
     report = pir.pir_setup(config)

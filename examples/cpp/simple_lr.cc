@@ -24,10 +24,7 @@
 
 #include "examples/cpp/utils.h"
 #include "spdlog/spdlog.h"
-#include "xtensor/xarray.hpp"
 #include "xtensor/xcsv.hpp"
-#include "xtensor/xio.hpp"
-#include "xtensor/xview.hpp"
 
 #include "libspu/device/io.h"
 #include "libspu/kernel/hal/hal.h"
