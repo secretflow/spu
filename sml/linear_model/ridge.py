@@ -79,8 +79,6 @@ class Ridge:
             y = y.reshape(-1, 1)
         alpha = jnp.asarray(self.alpha, dtype=x.dtype).ravel()
         print(f"<<<solver: {self.solver}")
-        if self.solver == Solver.SVD.value:
-            self.coef = _solve_svd(x, y, alpha)
         if self.solver == Solver.CHOLESKY.value:
             self.coef = _solve_cholesky(x, y, alpha)
         return self
@@ -103,16 +101,6 @@ class Ridge:
         b = self.coef.T
         ret = jnp.dot(a, b)
         return ret
-
-
-def _solve_svd(x, y, alpha):
-    U, s, Vt = jsci.linalg.svd(x, full_matrices=False)
-    s_nnz = s[:, jnp.newaxis]
-    UTy = jnp.dot(U.T, y)
-    d = s_nnz / (s_nnz**2 + alpha)
-    d_UT_y = d * UTy
-    return jnp.dot(Vt.T, d_UT_y).T
-
 
 def _solve_cholesky(x, y, alpha):
     # w = inv(X^t X + alpha*Id) * X.T y

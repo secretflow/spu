@@ -38,9 +38,12 @@ class UnitTests(unittest.TestCase):
             result = model.fit(x, y).predict(x)
             return result
 
-        DATASET_CONFIG_FILE = "examples/python/conf/ds_diabetes_basic.json"
-        with open(DATASET_CONFIG_FILE, "r") as f:
-            dataset_config = json.load(f)
+        dataset_config = {
+            "use_mock_data": False,
+            "problem_type": "regression",
+            "builtin_dataset_name": "diabetes",
+            "left_slice_feature_ratio": 0.5
+        }
 
         x1, x2, y = dsutil.load_dataset_by_config(dataset_config)
         result = spsim.sim_jax(sim, proc)(x1, x2, y)

@@ -21,6 +21,5 @@ filegroup(
         "3pc.json",
         "ds_breast_cancer_basic.json",
         "ds_mock_regression_basic.json",
-        "ds_diabetes_basic.json",
     ],
 )

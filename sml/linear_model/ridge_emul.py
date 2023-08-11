@@ -1,12 +1,3 @@
-'''
-Author: HuangYuAn
-Date: 2023-08-08 14:52:00
-LastEditors: HuangYuAn
-LastEditTime: 2023-08-08 15:59:03
-FilePath: \spu\sml\linear_model\ridge_emul.py
-Description: 
-Copyright (c) 2023 by HuangYuAn, All Rights Reserved. 
-'''
 # Copyright 2023 Ant Group Co., Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -40,8 +31,13 @@ def emul_Ridge(mode: emulation.Mode.MULTIPROCESS):
         return model.fit(x, y).predict(x)
 
     def load_data():
-        with open("examples/python/conf/ds_diabetes_basic.json", "r") as f:
-            dataset_config = json.load(f)
+
+        dataset_config = {
+            "use_mock_data": False,
+            "problem_type": "regression",
+            "builtin_dataset_name": "diabetes",
+            "left_slice_feature_ratio": 0.5
+        }
 
         x1, x2, y = dsutil.load_dataset_by_config(dataset_config)
 
