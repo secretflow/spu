@@ -56,14 +56,6 @@ std::pair<spu::Value, spu::Value> ArgMax(SPUContext *ctx,
                                          const ReduceWindowConfig &config);
 
 /// ------------------- non-PPHLO APIs ------------------------------------
-spu::Value ExpandStridedWindow(
-    SPUContext *ctx, const spu::Value &base, const Shape &window_shape,
-    const Strides &window_strides,
-    absl::Span<const std::pair<int64_t, int64_t>> padding);
-
-spu::Value ConvertToTiledLayout(SPUContext *ctx, const spu::Value &in,
-                                const Shape &block_shape);
-
 std::vector<spu::Value> TreeReduce(SPUContext *ctx,
                                    absl::Span<const spu::Value> inputs,
                                    int64_t axis,

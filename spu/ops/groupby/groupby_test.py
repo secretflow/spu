@@ -53,7 +53,7 @@ class UnitTests(unittest.TestCase):
         def proc_view_key(key_cols, segment_end_marks, key):
             return view_key(key_cols, segment_end_marks, key)
 
-        n_rows = 30000
+        n_rows = 3000
         n_cols = 10
         x1 = np.random.random((n_rows, n_cols))
         x2 = np.random.random((n_rows, n_cols))

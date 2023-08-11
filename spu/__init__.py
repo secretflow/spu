@@ -27,7 +27,7 @@ from .spu_pb2 import (  # type: ignore
     CompilerOptions,
 )
 
-from .api import Io, Runtime, compile
+from .api import Io, Runtime, compile, check_cpu_feature
 from .utils import simulation
 from .intrinsic import *
 
@@ -57,3 +57,5 @@ __all__ = [
     "psi",
     # intrinsic
 ] + intrinsic.__all__
+
+check_cpu_feature()

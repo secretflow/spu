@@ -37,6 +37,9 @@ Value i_mul(SPUContext* ctx, const Value& x, const Value& y);
 
 Value i_mmul(SPUContext* ctx, const Value& x, const Value& y);
 
+Value i_tensordot(SPUContext* ctx, const Value& x, const Value& y,
+                  const Index& ix, const Index& iy);
+
 Value i_conv2d(SPUContext* ctx, const Value& x, const Value& y,
                const Strides& window_strides);
 

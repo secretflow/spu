@@ -24,6 +24,7 @@ import sys
 import setuptools
 import setuptools.command.build_ext
 import platform
+from datetime import date
 
 logger = logging.getLogger(__name__)
 
@@ -38,7 +39,20 @@ SKIP_BAZEL_CLEAN = os.getenv("SKIP_BAZEL_CLEAN")
 pyd_suffix = ".so"
 
 
+def add_date_to_version(*filepath):
+    today = date.today()
+    dstr = today.strftime("%Y%m%d")
+    with open(os.path.join(ROOT_DIR, *filepath), "r") as fp:
+        content = fp.read()
+
+    content = content.replace("$$DATE$$", dstr)
+
+    with open(os.path.join(ROOT_DIR, *filepath), "w+") as fp:
+        fp.write(content)
+
+
 def find_version(*filepath):
+    add_date_to_version(*filepath)
     # Extract version information from filepath
     with open(os.path.join(ROOT_DIR, *filepath)) as fp:
         version_match = re.search(
@@ -138,6 +152,9 @@ def build(build_python, build_cpp):
 
     if sys.platform == "linux":
         bazel_flags.extend(["--config=linux-release"])
+
+    if platform.machine() == "x86_64":
+        bazel_flags.extend(["--config=avx"])
 
     return bazel_invoke(
         subprocess.check_call,

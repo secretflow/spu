@@ -19,8 +19,6 @@ import sys
 import unittest
 from time import perf_counter
 import os
-import warnings
-from io import StringIO
 
 import multiprocess
 import numpy.testing as npt
@@ -36,48 +34,15 @@ with open("examples/python/conf/3pc.json", 'r') as file:
 logger = logging.getLogger(ppd.__name__)
 logger.setLevel(level=logging.WARN)
 
-
-FILENAME = "ml_test_run_data.csv"
-
-
-def read_history_record():
-    return pd.read_csv(StringIO(content), index_col=False)
-
-
-_test_perf_table = read_history_record()
-
-
-def compute_history_average():
-    test_pints = _test_perf_table["name"].unique()
-
-    avg_dict = {}
-    for tp in test_pints:
-        history = _test_perf_table[_test_perf_table["name"] == tp]
-        avg = history["duration"].mean()
-        avg_dict[tp] = avg
-
-    return avg_dict
-
-
-_perf_history_avg = compute_history_average()
+_test_perf_table = pd.DataFrame({'name': [], 'duration': []})
 
 
 def add_profile_data(name, duration):
     global _test_perf_table
-    # Check data
-    valid = True
-    if name in _perf_history_avg:
-        history_avg = _perf_history_avg[name]
-        if duration > 1.05 * history_avg:
-            warnings.warn(
-                f"Testpoint {name} is more than 5% slower in this job, history average = {history_avg}, current = {duration}.\n"
-            )
-            valid = True
 
-    if valid:
-        # Save result to table
-        new_row = pd.DataFrame({'name': name, 'duration': duration}, index=[0])
-        _test_perf_table = pd.concat([_test_perf_table, new_row], ignore_index=True)
+    # Save result to table
+    new_row = pd.DataFrame({'name': name, 'duration': duration}, index=[0])
+    _test_perf_table = pd.concat([_test_perf_table, new_row], ignore_index=True)
 
 
 def profile_test_point(foo, *args, **kwargs):
@@ -96,6 +61,9 @@ def profile_test_point(foo, *args, **kwargs):
 
 def save_perf_report():
     buf = _test_perf_table.to_csv(index=False)
+    p = os.path.expanduser(os.path.join('~', '.ml_test_perf.csv'))
+    with open(p, '+w') as f:
+        f.write(buf)
 
 
 class UnitTests(unittest.TestCase):

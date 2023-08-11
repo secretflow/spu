@@ -110,94 +110,6 @@ std::vector<spu::Value> TreeReduce(SPUContext *ctx,
   return outputs;
 }
 
-spu::Value ExpandStridedWindow(
-    SPUContext *ctx, const spu::Value &base, const Shape &window_shape,
-    const Strides &window_strides,
-    absl::Span<const std::pair<int64_t, int64_t>> padding) {
-  const auto &base_shape = base.shape();
-  const size_t ndim = base_shape.size();
-
-  SPU_ENFORCE(ndim == window_shape.size() &&    //
-              ndim == window_strides.size() &&  //
-              ndim == padding.size());
-
-  // calculate output shape
-  Shape expanded_shape(ndim, 0);
-  for (size_t dim = 0; dim < ndim; dim++) {
-    int64_t padded_size =
-        padding[dim].first + padding[dim].second + base_shape[dim];
-    expanded_shape[dim] =
-        ((padded_size - window_shape[dim]) / window_strides[dim] + 1) *
-        window_shape[dim];
-  }
-
-  const std::vector<int64_t> window_dilations(window_shape.size(), 1);
-  const std::vector<int64_t> base_dilations(base.shape().size(), 1);
-  // expand it, assume padding & dilation element is zero.
-  spu::Value expanded = hal::zeros(ctx, base.dtype(), expanded_shape);
-  if (base.isSecret()) {
-    expanded = hal::seal(ctx, expanded);
-  }
-
-  auto numel = expanded_shape.numel();
-
-  yacl::parallel_for(
-      0, numel, computeTaskSize(numel), [&](int64_t begin, int64_t end) {
-        auto expanded_index = unflattenIndex(begin, expanded_shape);
-
-        std::vector<int64_t> window_count_index(ndim, 0);
-        std::vector<int64_t> window_index(ndim, 0);
-
-        for (int64_t idx = begin; idx < end; ++idx) {
-          for (size_t dim = 0; dim < ndim; dim++) {
-            window_index[dim] = expanded_index[dim] % window_shape[dim];
-            window_count_index[dim] = expanded_index[dim] / window_shape[dim];
-          }
-
-          Index base_index(ndim, 0);
-          bool out_of_bound = getBaseIndexFromWindowIndex(
-              window_shape, window_strides, window_dilations, padding,
-              base_shape, base_dilations, window_count_index, window_index,
-              absl::MakeSpan(base_index));
-
-          if (!out_of_bound) {
-            // TODO: anti-pattern, do not use .data(), use ops instead.
-            expanded.data().update_slice(
-                base.data().slice_scalar_at(base_index), expanded_index);
-          }
-
-          if (!bumpIndices(expanded_shape, absl::MakeSpan(expanded_index))) {
-            break;
-          }
-        }
-      });
-
-  return expanded;
-}
-
-spu::Value ConvertToTiledLayout(SPUContext *ctx, const spu::Value &in,
-                                const Shape &block_shape) {
-  // Note(jint): use pad+reshape+transpose to convert from column layout to
-  // tiled layout.
-  //
-  // For example, in shape = [6, 12], window = [2, 3]
-  // The result is [3, 4, 2, 3]
-  SPU_ENFORCE(in.shape().size() == block_shape.size());
-  Shape tiled_shape;
-  for (size_t dim = 0; dim < in.shape().size(); dim++) {
-    SPU_ENFORCE(in.shape()[dim] % block_shape[dim] == 0);
-    tiled_shape.push_back(in.shape()[dim] / block_shape[dim]);
-    tiled_shape.push_back(block_shape[dim]);
-  }
-  Axes perm(tiled_shape.size(), 0);
-  std::iota(perm.begin(), perm.end(), 0);
-  std::stable_partition(perm.begin(), perm.end(),
-                        [](int64_t x) { return x % 2 == 0; });
-
-  auto out = hal::reshape(ctx, in, tiled_shape);
-  return hal::transpose(ctx, out, perm);
-}
-
 std::vector<spu::Value> ReduceWindowWithoutDilation(
     SPUContext *ctx, absl::Span<const spu::Value> inputs,
     absl::Span<const spu::Value> init_values, const Shape &window_shape,
@@ -215,9 +127,8 @@ std::vector<spu::Value> ReduceWindowWithoutDilation(
   std::vector<spu::Value> expanded;
   for (size_t idx = 0; idx < nargs; ++idx) {
     const auto &input = inputs[idx];
-    auto x = ExpandStridedWindow(ctx, input, window_shape, window_strides,
-                                 window_padding);
-    expanded.emplace_back(ConvertToTiledLayout(ctx, x, window_shape));
+    expanded.emplace_back(
+        expandWindow(ctx, input, window_shape, window_strides, window_padding));
   }
 
   if (last_operand_is_window_mask) {

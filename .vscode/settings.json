@@ -35,7 +35,10 @@
         },
         "editor.formatOnSave": false,
     },
-    "python.formatting.provider": "black",
+    "python.formatting.provider": "none",
     "esbonio.sphinx.confDir": "",
-    "git.ignoreLimitWarning": true
+    "git.ignoreLimitWarning": true,
+    "[python]": {
+        "editor.defaultFormatter": "ms-python.black-formatter"
+    }
 }
