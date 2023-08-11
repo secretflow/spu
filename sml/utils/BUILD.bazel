@@ -34,3 +34,9 @@ py_library(
     srcs = ["fxp_approx.py"],
     deps = [],
 )
+
+py_library(
+    name = "extmath",
+    srcs = ["extmath.py"],
+    deps = [],
+)
