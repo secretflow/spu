@@ -11,3 +11,39 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+load("@rules_python//python:defs.bzl", "py_binary", "py_library", "py_test")
+
+package(default_visibility = ["//visibility:public"])
+
+py_library(
+    name = "knn",
+    srcs = ["knn.py"],
+    deps = [
+        "//sml/utils:fxp_approx",
+    ],
+)
+
+py_binary(
+    name = "knn_emul",
+    srcs = ["knn_emul.py"],
+    deps = [
+        ":knn",
+        "//examples/python/utils:dataset_utils",  # FIXME: remove examples dependency
+        "//sml/utils:emulation",
+    ],
+)
+
+py_test(
+    name = "knn_test",
+    srcs = ["knn_test.py"],
+    data = [
+        "//examples/python/conf",  # FIXME: remove examples dependency
+    ],
+    deps = [
+        ":knn",
+        "//examples/python/utils:dataset_utils",  # FIXME: remove examples dependency
+        "//spu:init",
+        "//spu/utils:simulation",
+    ],
+)

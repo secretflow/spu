@@ -21,7 +21,7 @@ import numpy as np
 from sklearn.decomposition import PCA as SklearnPCA
 
 # Add the library directory to the path
-sys.path.append(os.path.join(os.path.dirname(__file__), '../../'))
+sys.path.append(os.path.join(os.path.dirname(__file__), '../../../'))
 
 import sml.utils.emulation as emulation
 from sml.decomposition.pca import PCA
@@ -59,7 +59,11 @@ def emul_PCA(mode: emulation.Mode.MULTIPROCESS):
         emulator.up()
         # Create a simple dataset
         X = random.normal(random.PRNGKey(0), (15, 100))
-        result = emulator.run(proc)(X)
+        # mark these data to be protected in SPU
+        X_spu= emulator.seal(
+            X
+        ) 
+        result = emulator.run(proc)(X_spu)
         print("X_transformed_jax: ", result[0])
         print("X_transformed_jax: ", result[1])
         # The transformed data should have 2 dimensions
