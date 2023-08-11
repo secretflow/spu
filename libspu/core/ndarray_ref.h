@@ -18,6 +18,7 @@
 #include <vector>
 
 #include "absl/types/span.h"
+#include "fmt/ostream.h"
 #include "spdlog/spdlog.h"
 #include "yacl/base/buffer.h"
 
@@ -49,7 +50,7 @@ class NdArrayRef {
 
   // Indicate this buffer can be indexing in a linear way
   bool use_fast_indexing_{false};
-  int64_t fast_indexing_stride_{0};
+  Stride fast_indexing_stride_{0};
 
  public:
   NdArrayRef() = default;
@@ -112,22 +113,12 @@ class NdArrayRef {
 
   // Test only
   bool canUseFastIndexing() const { return use_fast_indexing_; }
+  const Stride& fastIndexingStride() const { return fast_indexing_stride_; }
 
   // View this array ref as another type.
   // @param force, true if ignore the type check, else only the same elsize type
   //               could be casted.
   NdArrayRef as(const Type& new_ty, bool force = false) const;
-
-  // Get data pointer
-  template <typename T = void>
-  T* data() {
-    return reinterpret_cast<T*>(buf_->data<std::byte>() + offset_);
-  }
-
-  template <typename T = void>
-  const T* data() const {
-    return reinterpret_cast<const T*>(buf_->data<std::byte>() + offset_);
-  }
 
   // Get element.
   template <typename T = std::byte>
@@ -142,6 +133,17 @@ class NdArrayRef {
     auto fi = calcFlattenOffset(pos, shape_, strides_);
     return *reinterpret_cast<const T*>(static_cast<const std::byte*>(data()) +
                                        elsize() * fi);
+  }
+
+  // Get data pointer
+  template <typename T = void>
+  T* data() {
+    return reinterpret_cast<T*>(buf_->data<std::byte>() + offset_);
+  }
+
+  template <typename T = void>
+  const T* data() const {
+    return reinterpret_cast<const T*>(buf_->data<std::byte>() + offset_);
   }
 
   template <typename T = std::byte>
@@ -380,6 +382,47 @@ struct SimdTrait<NdArrayRef> {
 NdArrayRef makeConstantArrayRef(const Type& eltype, const Shape& shape);
 
 std::ostream& operator<<(std::ostream& out, const NdArrayRef& v);
+inline auto format_as(const spu::NdArrayRef& f) { return fmt::streamed(f); }
+
+template <typename T>
+class NdArrayView {
+ private:
+  NdArrayRef* arr_;
+  size_t elsize_;
+
+ public:
+  // Note: we explicit discard const correctness due to the complexity.
+  explicit NdArrayView(const NdArrayRef& arr)
+      : arr_(const_cast<NdArrayRef*>(&arr)), elsize_(sizeof(T)) {
+    if (!arr.canUseFastIndexing()) {
+      // When elsize does not match, flatten/unflatten computation is dangerous
+      SPU_ENFORCE(elsize_ == arr_->elsize(), "T size = {}, arr elsize = {}",
+                  elsize_, arr_->elsize());
+    }
+  }
+
+  T& operator[](size_t idx) {
+    if (arr_->canUseFastIndexing()) {
+      return *reinterpret_cast<T*>(arr_->data<std::byte>() +
+                                   elsize_ * idx * arr_->fastIndexingStride());
+    } else {
+      const auto& indices = unflattenIndex(idx, arr_->shape());
+      auto fi = calcFlattenOffset(indices, arr_->shape(), arr_->strides());
+      return *reinterpret_cast<T*>(arr_->data<std::byte>() + elsize_ * fi);
+    }
+  }
+
+  T const& operator[](size_t idx) const {
+    if (arr_->canUseFastIndexing()) {
+      return *reinterpret_cast<T*>(arr_->data<std::byte>() +
+                                   elsize_ * idx * arr_->fastIndexingStride());
+    } else {
+      const auto& indices = unflattenIndex(idx, arr_->shape());
+      auto fi = calcFlattenOffset(indices, arr_->shape(), arr_->strides());
+      return *reinterpret_cast<T*>(arr_->data<std::byte>() + elsize_ * fi);
+    }
+  }
+};
 
 template <typename T>
 size_t maxBitWidth(const NdArrayRef& in) {
@@ -393,12 +436,14 @@ size_t maxBitWidth(const NdArrayRef& in) {
     return BitWidth(in.cbegin().getScalarValue<const T>());
   }
 
+  NdArrayView<T> _in(in);
+
   size_t res = preduce<size_t>(
       0, numel,
       [&](int64_t begin, int64_t end) {
         size_t partial_max = 0;
         for (int64_t idx = begin; idx < end; ++idx) {
-          partial_max = std::max<size_t>(partial_max, BitWidth(in.at<T>(idx)));
+          partial_max = std::max<size_t>(partial_max, BitWidth(_in[idx]));
         }
         return partial_max;
       },

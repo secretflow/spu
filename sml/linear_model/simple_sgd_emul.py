@@ -18,13 +18,10 @@ import jax.numpy as jnp
 
 import examples.python.utils.dataset_utils as dsutil
 
-# from sklearn.metrics import roc_auc_score, explained_variance_score
 import sml.utils.emulation as emulation
 from sml.linear_model.simple_sgd import SGDClassifier
 
 
-# TODO: design the enumation framework, just like py.unittest
-# all emulation action should begin with `emul_` (for reflection)
 def emul_SGDClassifier(mode: emulation.Mode.MULTIPROCESS):
     def proc(x1, x2, y):
         model = SGDClassifier(

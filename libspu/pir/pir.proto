@@ -69,6 +69,15 @@ message PirSetupConfig {
 
   // The path of setup output leveldb path.
   string setup_path = 9;
+
+  // compressed Seal ciphertext
+  bool compressed = 10;
+
+  // split data bucket to do pir query
+  uint32 bucket_size = 11;
+
+  // max items per bin, i.e. Interpolate polynomial max degree
+  uint32 max_items_per_bin = 12;
 }
 
 // The Server's Cfg Params of query phase.

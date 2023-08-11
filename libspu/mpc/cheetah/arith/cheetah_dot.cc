@@ -100,10 +100,10 @@ struct CheetahDot::Impl : public EnableCPRNG {
     std::vector<int> modulus_bits;
     // NOTE(juhou): we need Q=sum(modulus_bits) > 2*k for multiplying two k-bit
     // elements.
-    // 1. We need the (N, Q) pair satisifies the security.
+    // 1. We need the (N, Q) pair satisfies the security.
     //    Check `seal/util/globals.cpp` for the recommendation HE parameters.
     // 2. We prefer modulus_bits[i] to be around 49-bit aiming to use AVX512 for
-    // acceleration if avaiable.
+    // acceleration if available.
     // 3. We need some bits for margin. That is Q > 2*k + margin for errorless
     // w.h.p. We set margin=32bit
     if (ring_bitlen <= 32) {

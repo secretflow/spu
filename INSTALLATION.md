@@ -23,7 +23,7 @@ Please check [official Docker image](https://registry.hub.docker.com/r/secretflo
 
 ### From PyPI
 
-You could install SPU via the [official PyPI package](https://pypi.org/project/spu/)
+You could install SPU via the [official PyPI package](https://pypi.org/project/spu/).
 
 ```bash
 pip install spu

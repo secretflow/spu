@@ -143,15 +143,17 @@ class Ref2kV2S : public UnaryKernel {
     int64_t numel = in.numel();
 
     DISPATCH_ALL_FIELDS(field, "v2s", [&]() {
-      std::vector<ring2k_t> _in(numel);
+      std::vector<ring2k_t> _send(numel);
+      NdArrayView<ring2k_t> _in(in);
 
       for (int64_t idx = 0; idx < numel; ++idx) {
-        _in[idx] = in.at<const ring2k_t>(idx);
+        _send[idx] = _in[idx];
       }
-      std::vector<ring2k_t> _out = comm->bcast<ring2k_t>(_in, owner, "v2s");
+      std::vector<ring2k_t> _recv = comm->bcast<ring2k_t>(_send, owner, "v2s");
 
+      NdArrayView<ring2k_t> _out(out);
       for (int64_t idx = 0; idx < numel; ++idx) {
-        out.at<ring2k_t>(idx) = _out[idx];
+        _out[idx] = _recv[idx];
       }
     });
     return out;
@@ -423,9 +425,11 @@ class Ref2kTruncS : public TruncAKernel {
 
   ce::CExpr comm() const override { return ce::Const(0); }
 
-  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in,
-                  size_t bits) const override {
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in, size_t bits,
+                  SignType sign) const override {
     SPU_TRACE_MPC_LEAF(ctx, in, bits);
+    (void)sign;  // ignore it.
+
     // Rounding
     // AxB = (AxB >> 14) + ((AxB >> 13) & 1);
     // See

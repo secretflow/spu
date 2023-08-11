@@ -198,6 +198,16 @@ using OpData1MS1MP = OpData<0, 0, 0, 0, 1, 1>;
 using OpData1MA1MP = OpData<0, 0, 0, 0, 1, 0, 1>;
 using OpData1A1B1 = OpData<0, 0, 1, 0, 0, 0, 0, 0, 1>;
 
+// TODO: it's hard to add custom parameter type.
+
+static Value trunc_s_wrapper(SPUContext* ctx, const Value& x, size_t nbits) {
+  return trunc_s(ctx, x, nbits, SignType::Unknown);
+}
+
+static Value trunc_a_wrapper(SPUContext* ctx, const Value& x, size_t nbits) {
+  return trunc_a(ctx, x, nbits, SignType::Unknown);
+}
+
 MPC_BENCH_DEFINE(BenchAddSS, OpData2S, add_ss, ss[0], ss[1])
 MPC_BENCH_DEFINE(BenchMulSS, OpData2S, mul_ss, ss[0], ss[1])
 MPC_BENCH_DEFINE(BenchAndSS, OpData2S, and_ss, ss[0], ss[1])
@@ -214,7 +224,7 @@ MPC_BENCH_DEFINE(BenchRShiftS, OpData1S, rshift_s, ss[0], state.range(2))
 MPC_BENCH_DEFINE(BenchRShiftP, OpData1P, rshift_p, ps[0], state.range(2))
 MPC_BENCH_DEFINE(BenchARShiftS, OpData1S, arshift_s, ss[0], state.range(2))
 MPC_BENCH_DEFINE(BenchARShiftP, OpData1P, arshift_p, ps[0], state.range(2))
-MPC_BENCH_DEFINE(BenchTruncS, OpData1S, trunc_s, ss[0], state.range(2))
+MPC_BENCH_DEFINE(BenchTruncS, OpData1S, trunc_s_wrapper, ss[0], state.range(2))
 MPC_BENCH_DEFINE(BenchS2P, OpData1S, s2p, ss[0])
 MPC_BENCH_DEFINE(BenchP2S, OpData1P, p2s, ps[0])
 // MPC_BENCH_DEFINE(BenchMMulSP, OpData1MS1MP, mmul_sp, mss[0], mps[0],
@@ -234,7 +244,7 @@ MPC_BENCH_DEFINE(BenchAddAA, OpData2A, add_aa, as[0], as[1])
 MPC_BENCH_DEFINE(BenchMulAA, OpData2A, mul_aa, as[0], as[1])
 MPC_BENCH_DEFINE(BenchMulA1B, OpData1A1B1, mul_a1b, as[0], b1s[0])
 MPC_BENCH_DEFINE(BenchLShiftA, OpData1A, lshift_a, as[0], state.range(2))
-MPC_BENCH_DEFINE(BenchTruncA, OpData1A, trunc_a, as[0], state.range(2))
+MPC_BENCH_DEFINE(BenchTruncA, OpData1A, trunc_a_wrapper, as[0], state.range(2))
 // MPC_BENCH_DEFINE(BenchMMulAP, OpData1MA1MP, mmul_ap, mas[0], mps[0],
 //  state.range(1), state.range(1), state.range(1))
 // MPC_BENCH_DEFINE(BenchMMulAA, OpData2MA, mmul_aa, mas[0], mas[1],

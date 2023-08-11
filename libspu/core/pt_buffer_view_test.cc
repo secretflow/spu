@@ -67,9 +67,9 @@ TEST(PtBufferView, ConvertToNdArray) {
   EXPECT_THAT(arr.shape(), testing::ElementsAre(3));
   EXPECT_THAT(arr.strides(), testing::ElementsAre(1));
   EXPECT_NE(arr.data(), raw_f32.data());
-  EXPECT_FLOAT_EQ((arr.at<float>({0})), 1.0);
-  EXPECT_FLOAT_EQ((arr.at<float>({1})), 2.0);
-  EXPECT_FLOAT_EQ((arr.at<float>({2})), 3.0);
+  EXPECT_FLOAT_EQ((arr.at<float>(0)), 1.0);
+  EXPECT_FLOAT_EQ((arr.at<float>(1)), 2.0);
+  EXPECT_FLOAT_EQ((arr.at<float>(2)), 3.0);
 }
 
 }  // namespace spu

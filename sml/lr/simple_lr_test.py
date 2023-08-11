@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import unittest
-import json
 import jax.numpy as jnp
 import pandas as pd
 import sys
@@ -26,7 +25,8 @@ from sklearn.preprocessing import MinMaxScaler
 
 # Add the library directory to the path
 sys.path.append(os.path.join(os.path.dirname(__file__), '../../'))
-from sml.lr.simple_lr import SGDClassifier
+from sml.lr.simple_lr import LogisticRegression
+
 
 class UnitTests(unittest.TestCase):
     def test_simple(self):
@@ -36,17 +36,23 @@ class UnitTests(unittest.TestCase):
 
         # Test SGDClassifier
         def proc(x, y):
-            model = SGDClassifier(
+            model = LogisticRegression(
                 epochs=3,
                 learning_rate=0.1,
                 batch_size=8,
+                solver='sgd',
                 penalty='l2',
                 sig_type='sr',
                 l2_norm=1.0,
                 class_weight=None,
-                multi_class='ovr'
+                multi_class='binary',
             )
-            return model.fit(x, y).predict_proba(x)
+
+            model = model.fit(x, y)
+
+            prob = model.predict_proba(x)
+            pred = model.predict(x)
+            return prob, pred
 
         # Create dataset
         X, y = load_breast_cancer(return_X_y=True, as_frame=True)
@@ -56,10 +62,13 @@ class UnitTests(unittest.TestCase):
         X = pd.DataFrame(X, columns=cols)
 
         # Run
-        result = spsim.sim_jax(sim, proc)(X.values, y.values.reshape(-1, 1))  # X, y should be two-dimension array
-        print("Predict result: ", result)
-        print("ROC Score: ", roc_auc_score(y.values, result))
+        result = spsim.sim_jax(sim, proc)(
+            X.values, y.values.reshape(-1, 1)
+        )  # X, y should be two-dimension array
+        print("Predict result prob: ", result[0])
+        print("Predict result label: ", result[1])
 
+        print("ROC Score: ", roc_auc_score(y.values, result[0]))
 
 
 if __name__ == "__main__":

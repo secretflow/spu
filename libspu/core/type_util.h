@@ -258,4 +258,14 @@ inline size_t SizeOf(FieldType field) { return SizeOf(GetStorageType(field)); }
     }                                                               \
   }()
 
+//////////////////////////////////////////////////////////////
+// Value range information, should it be here, at top level(jint)?
+//////////////////////////////////////////////////////////////
+enum class SignType {
+  Unknown,
+  Positive,
+  Negative,
+};
+std::ostream& operator<<(std::ostream& os, const SignType& sign);
+
 }  // namespace spu

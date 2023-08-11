@@ -38,13 +38,13 @@ Value polynomial(SPUContext* ctx, const Value& x,
   Value x_pow = x;
   Value res = _mul(ctx, x_pow, coeffs[0]);
 
+  const auto fbits = ctx->getFxpBits();
   for (size_t i = 1; i < coeffs.size(); i++) {
     if ((i & 1) != 0U) {
       // x^{even order} is always positive
-      x_pow =
-          _trunc_with_sign(ctx, _mul(ctx, x_pow, x), ctx->getFxpBits(), true);
+      x_pow = _trunc(ctx, _mul(ctx, x_pow, x), fbits, SignType::Positive);
     } else {
-      x_pow = _trunc(ctx, _mul(ctx, x_pow, x));
+      x_pow = _trunc(ctx, _mul(ctx, x_pow, x), fbits);
     }
     res = _add(ctx, res, _mul(ctx, x_pow, coeffs[i]));
   }
@@ -78,7 +78,7 @@ void hintNumberOfBits(const Value& a, size_t nbits) {
 }
 
 // Reference:
-//   Charpter 3.4 Division @ Secure Computation With Fixed Point Number
+//   Chapter 3.4 Division @ Secure Computation With Fixed Point Number
 //   http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.221.1305&rep=rep1&type=pdf
 //
 // Goldschmidt main idea:
@@ -122,7 +122,7 @@ Value div_goldschmidt(SPUContext* ctx, const Value& a, const Value& b) {
   detail::hintNumberOfBits(factor, 2 * num_fxp_bits);
 
   // compute normalize x_abs, [0.5, 1)
-  auto c = f_mul_with_sign(ctx, b_abs, factor, SignType::POSITIVE);
+  auto c = f_mul(ctx, b_abs, factor, SignType::Positive);
 
   // initial guess:
   //   w = 1/c ≈ 2.9142 - 2c when c >= 0.5 and c < 1
@@ -133,7 +133,7 @@ Value div_goldschmidt(SPUContext* ctx, const Value& a, const Value& b) {
   // init r=w, e=1-c*w
   const auto& k1_ = constant(ctx, 1.0F, b.dtype(), c.shape());
   auto r = w;
-  auto e = f_sub(ctx, k1_, f_mul_with_sign(ctx, c, w, SignType::POSITIVE));
+  auto e = f_sub(ctx, k1_, f_mul(ctx, c, w, SignType::Positive));
 
   const size_t num_iters = ctx->config().fxp_div_goldschmidt_iters();
   SPU_ENFORCE(num_iters != 0, "fxp_div_goldschmidt_iters should not be {}",
@@ -141,7 +141,7 @@ Value div_goldschmidt(SPUContext* ctx, const Value& a, const Value& b) {
 
   // iterate, r=r(1+e), e=e*e
   for (size_t itr = 0; itr < num_iters; itr++) {
-    r = f_mul_with_sign(ctx, r, f_add(ctx, e, k1_), SignType::POSITIVE);
+    r = f_mul(ctx, r, f_add(ctx, e, k1_), SignType::Positive);
     if (itr + 1 < num_iters) {
       e = f_square(ctx, e);
     }
@@ -164,7 +164,7 @@ Value reciprocal_goldschmidt_positive(SPUContext* ctx, const Value& b_abs) {
   detail::hintNumberOfBits(factor, 2 * num_fxp_bits);
 
   // compute normalize x_abs, [0.5, 1)
-  auto c = f_mul_with_sign(ctx, b_abs, factor, SignType::POSITIVE);
+  auto c = f_mul(ctx, b_abs, factor, SignType::Positive);
 
   // initial guess:
   //   w = 1/b = 2.9142 - 2c when c >= 0.5 and c < 1
@@ -177,7 +177,7 @@ Value reciprocal_goldschmidt_positive(SPUContext* ctx, const Value& b_abs) {
   // init r=a*w, e=1-b*w
   const auto& k1_ = constant(ctx, 1.0F, b_abs.dtype(), c.shape());
   auto r = w;
-  auto e = f_sub(ctx, k1_, f_mul_with_sign(ctx, b_abs, w, SignType::POSITIVE));
+  auto e = f_sub(ctx, k1_, f_mul(ctx, b_abs, w, SignType::Positive));
 
   const size_t num_iters = ctx->config().fxp_div_goldschmidt_iters();
   SPU_ENFORCE(num_iters != 0, "fxp_div_goldschmidt_iters should not be {}",
@@ -185,7 +185,7 @@ Value reciprocal_goldschmidt_positive(SPUContext* ctx, const Value& b_abs) {
 
   // iterate, r=r(1+e), e=e*e
   for (size_t itr = 0; itr < num_iters; itr++) {
-    r = f_mul_with_sign(ctx, r, f_add(ctx, e, k1_), SignType::POSITIVE);
+    r = f_mul(ctx, r, f_add(ctx, e, k1_), SignType::Positive);
     if (itr + 1 < num_iters) {
       e = f_square(ctx, e);
     }
@@ -194,7 +194,7 @@ Value reciprocal_goldschmidt_positive(SPUContext* ctx, const Value& b_abs) {
   return r;
 }
 
-// NOTE(junfeng): we have a seperate reciprocal_goldschmidt is to avoid
+// NOTE(junfeng): we have a separate reciprocal_goldschmidt is to avoid
 // unnecessary f_mul for y initiation in div_goldschmidt.
 Value reciprocal_goldschmidt(SPUContext* ctx, const Value& b) {
   SPU_TRACE_HAL_DISP(ctx, b);
@@ -252,36 +252,13 @@ Value f_sub(SPUContext* ctx, const Value& x, const Value& y) {
   return f_add(ctx, x, f_negate(ctx, y));
 }
 
-Value f_mul(SPUContext* ctx, const Value& x, const Value& y) {
+Value f_mul(SPUContext* ctx, const Value& x, const Value& y, SignType sign) {
   SPU_TRACE_HAL_LEAF(ctx, x, y);
 
   SPU_ENFORCE(x.isFxp() && y.isFxp() && x.dtype() == y.dtype());
 
-  return _trunc(ctx, _mul(ctx, x, y)).setDtype(x.dtype());
-}
-
-Value f_mul_with_sign(SPUContext* ctx, const Value& x, const Value& y,
-                      SignType sign) {
-  SPU_TRACE_HAL_LEAF(ctx, x, y);
-
-  SPU_ENFORCE(x.isFxp() && y.isFxp() && x.dtype() == y.dtype());
-
-  switch (sign) {
-    case SignType::POSITIVE:
-      return _trunc_with_sign(ctx, _mul(ctx, x, y), ctx->getFxpBits(),
-                              /*positive*/ true)
-          .setDtype(x.dtype());
-      break;
-    case SignType::NEGATIVE:
-      return _trunc_with_sign(ctx, _mul(ctx, x, y), ctx->getFxpBits(),
-                              /*positive*/ false)
-          .setDtype(x.dtype());
-      break;
-    case SignType::UNKNOWN:
-    default:
-      return f_mul(ctx, x, y);
-      break;
-  }
+  return _trunc(ctx, _mul(ctx, x, y), ctx->getFxpBits(), sign)
+      .setDtype(x.dtype());
 }
 
 Value f_mmul(SPUContext* ctx, const Value& x, const Value& y) {
@@ -293,13 +270,12 @@ Value f_mmul(SPUContext* ctx, const Value& x, const Value& y) {
 }
 
 Value f_conv2d(SPUContext* ctx, const Value& x, const Value& y,
-               const Strides& window_strides, const Shape& result_shape) {
+               const Strides& window_strides) {
   SPU_TRACE_HAL_LEAF(ctx, x, y);
 
   SPU_ENFORCE(x.isFxp() && y.isFxp() && x.dtype() == y.dtype());
 
-  return _trunc(ctx, _conv2d(ctx, x, y, window_strides, result_shape))
-      .setDtype(x.dtype());
+  return _trunc(ctx, _conv2d(ctx, x, y, window_strides)).setDtype(x.dtype());
 }
 
 Value f_div(SPUContext* ctx, const Value& x, const Value& y) {
@@ -334,10 +310,7 @@ Value f_square(SPUContext* ctx, const Value& x) {
   SPU_TRACE_HAL_LEAF(ctx, x);
 
   SPU_ENFORCE(x.isFxp());
-  // TODO(jint) optimize me.
-  // TODO(juhou) can use truncate with msb=0
-
-  return _trunc_with_sign(ctx, _mul(ctx, x, x), ctx->getFxpBits(), true)
+  return _trunc(ctx, _mul(ctx, x, x), ctx->getFxpBits(), SignType::Positive)
       .setDtype(x.dtype());
 }
 

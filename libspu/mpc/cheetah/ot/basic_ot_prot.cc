@@ -202,7 +202,7 @@ ArrayRef BasicOTProtocols::BitwiseAnd(const ArrayRef &lhs,
 
   if (pack_load == 1) {
     // Open x^a, y^b
-    auto res = vectorize({x_a, y_b}, [&](const ArrayRef &s) {
+    auto res = vmap({x_a, y_b}, [&](const ArrayRef &s) {
       return flatten(
           conn_->allReduce(ReduceOp::XOR, toNdArray(s), "BitwiseAnd"));
     });
@@ -218,7 +218,7 @@ ArrayRef BasicOTProtocols::BitwiseAnd(const ArrayRef &lhs,
 
     ArrayRef packed_xa(x_a.eltype(), packed_sze);
     ArrayRef packed_yb(y_b.eltype(), packed_sze);
-    DISPATCH_ALL_FIELDS(field, "", [&]() {
+    DISPATCH_ALL_FIELDS(field, "_", [&]() {
       size_t used =
           ZipArray<ring2k_t>({&x_a.at<ring2k_t>(0), size}, shareType->nbits(),
                              {&packed_xa.at<ring2k_t>(0), packed_sze});
@@ -228,7 +228,7 @@ ArrayRef BasicOTProtocols::BitwiseAnd(const ArrayRef &lhs,
                                {&packed_yb.at<ring2k_t>(0), packed_sze});
 
       // open x^a, y^b
-      auto res = vectorize({packed_xa, packed_yb}, [&](const ArrayRef &s) {
+      auto res = vmap({packed_xa, packed_yb}, [&](const ArrayRef &s) {
         return flatten(
             conn_->allReduce(ReduceOp::XOR, toNdArray(s), "BitwiseAnd"));
       });
@@ -269,13 +269,12 @@ std::array<ArrayRef, 2> BasicOTProtocols::CorrelatedBitwiseAnd(
   auto [a, b0, c0, b1, c1] = CorrelatedAndTriple(field, size);
 
   // open x^a, y^b0, y1^b1
-  auto res =
-      vectorize({ring_xor(toNdArray(lhs), toNdArray(a)),
-                 ring_xor(toNdArray(rhs0), toNdArray(b0)),
-                 ring_xor(toNdArray(rhs1), toNdArray(b1))},
-                [&](const NdArrayRef &s) {
-                  return conn_->allReduce(ReduceOp::XOR, s, "BitwiseAnd");
-                });
+  auto res = vmap({ring_xor(toNdArray(lhs), toNdArray(a)),
+                   ring_xor(toNdArray(rhs0), toNdArray(b0)),
+                   ring_xor(toNdArray(rhs1), toNdArray(b1))},
+                  [&](const NdArrayRef &s) {
+                    return conn_->allReduce(ReduceOp::XOR, s, "BitwiseAnd");
+                  });
   auto xa = std::move(res[0]);
   auto y0b0 = std::move(res[1]);
   auto y1b1 = std::move(res[2]);

@@ -138,7 +138,7 @@ public:
           continue;
         }
 
-        // Make sure no dialation
+        // Make sure no dilation
         auto window_dilation = previous_reduce_window.getWindowDilations();
         auto base_dilation = previous_reduce_window.getBaseDilations();
         if (window_dilation.has_value() && !isAllOne(*window_dilation)) {

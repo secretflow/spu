@@ -14,6 +14,8 @@
 
 #include "libspu/core/bit_utils.h"
 
+#include "yacl/utils/platform_utils.h"
+
 namespace spu::detail {
 
 uint64_t BitDeintlWithPdepext(uint64_t in, int64_t stride) {
@@ -29,7 +31,7 @@ uint64_t BitDeintlWithPdepext(uint64_t in, int64_t stride) {
     return in;
   }
   const uint64_t m = kMasks[stride];
-  return pext_u64(in, m) ^ (pext_u64(in, ~m) << 32);
+  return yacl::pext_u64(in, m) ^ (yacl::pext_u64(in, ~m) << 32);
 }
 
 uint64_t BitIntlWithPdepext(uint64_t in, int64_t stride) {
@@ -45,7 +47,7 @@ uint64_t BitIntlWithPdepext(uint64_t in, int64_t stride) {
     return in;
   }
   const uint64_t m = kMasks[stride];
-  return pdep_u64(in, m) ^ pdep_u64(in >> 32, ~m);
+  return yacl::pdep_u64(in, m) ^ yacl::pdep_u64(in >> 32, ~m);
 }
 
 }  // namespace spu::detail

@@ -61,10 +61,11 @@ std::vector<NdArrayRef> Spdz2kIo::toShares(const NdArrayRef& raw,
     NdArrayRef x(makeType<Pub2kTy>(runtime_field), raw.shape());
 
     DISPATCH_ALL_FIELDS(field, "_", [&]() {
-      using raw_t = ring2k_t;
+      NdArrayView<ring2k_t> _raw(raw);
       DISPATCH_ALL_FIELDS(runtime_field, "_", [&]() {
+        NdArrayView<ring2k_t> _x(x);
         pforeach(0, raw.numel(), [&](int64_t idx) {
-          x.at<ring2k_t>(idx) = static_cast<ring2k_t>(raw.at<raw_t>(idx));
+          _x[idx] = static_cast<ring2k_t>(_raw[idx]);
         });
       });
     });
@@ -113,10 +114,11 @@ NdArrayRef Spdz2kIo::fromShares(const std::vector<NdArrayRef>& shares) const {
       NdArrayRef x(makeType<Pub2kTy>(field_), res.shape());
 
       DISPATCH_ALL_FIELDS(field, "_", [&]() {
-        using res_t = ring2k_t;
+        NdArrayView<ring2k_t> _res(res);
         DISPATCH_ALL_FIELDS(field_, "_", [&]() {
+          NdArrayView<ring2k_t> _x(x);
           pforeach(0, x.numel(), [&](int64_t idx) {
-            x.at<ring2k_t>(idx) = static_cast<ring2k_t>(res.at<res_t>(idx));
+            _x[idx] = static_cast<ring2k_t>(_res[idx]);
           });
         });
       });

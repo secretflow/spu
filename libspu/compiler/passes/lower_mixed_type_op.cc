@@ -32,6 +32,20 @@ namespace {
 // %3 = mul/dot(%0, %2) int, fxp -> fxp // Save one truncation
 template <typename OpT>
 struct FxpIntMulTruncationRemover : public OpRewritePattern<OpT> {
+private:
+  bool isLegitConvert(mlir::pphlo::ConvertOp op) const {
+    if (op == nullptr) {
+      return true;
+    }
+    TypeTools tools;
+
+    // Only int->fxp conversion is considered legit
+    auto to_type = tools.getExpressedType(op.getType());
+    auto from_type = tools.getExpressedType(op.getOperand().getType());
+
+    return from_type.isa<mlir::IntegerType>() && to_type.isa<mlir::FloatType>();
+  }
+
 public:
   explicit FxpIntMulTruncationRemover(MLIRContext *context)
       : OpRewritePattern<OpT>(context) {}
@@ -51,8 +65,9 @@ public:
     auto lhs_convert = lhs.template getDefiningOp<mlir::pphlo::ConvertOp>();
     auto rhs_convert = rhs.template getDefiningOp<mlir::pphlo::ConvertOp>();
 
-    if ((lhs_convert != nullptr && rhs_convert == nullptr) ||
-        (lhs_convert == nullptr && rhs_convert != nullptr)) {
+    if (((lhs_convert != nullptr && rhs_convert == nullptr) ||
+         (lhs_convert == nullptr && rhs_convert != nullptr)) &&
+        (isLegitConvert(lhs_convert) && isLegitConvert(rhs_convert))) {
       llvm::SmallVector<mlir::Value, 2> operands(2);
       operands[0] = lhs_convert == nullptr ? lhs : lhs_convert.getOperand();
       operands[1] = rhs_convert == nullptr ? rhs : rhs_convert.getOperand();

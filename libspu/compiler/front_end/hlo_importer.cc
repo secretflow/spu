@@ -23,12 +23,16 @@
 #include "xla/service/cholesky_expander.h"
 #include "xla/service/conditional_simplifier.h"
 #include "xla/service/conditional_to_select.h"
+#include "xla/service/convolution_4d_expander.h"
 #include "xla/service/convolution_group_converter.h"
 #include "xla/service/dot_decomposer.h"
-#include "xla/service/dot_merger.h"
+#include "xla/service/eigh_expander.h"
 #include "xla/service/float_normalization.h"
 #include "xla/service/float_support.h"
+#include "xla/service/gather_simplifier.h"
+#include "xla/service/gpu/dot_dimension_sorter.h"
 #include "xla/service/hlo_constant_folding.h"
+#include "xla/service/hlo_cse.h"
 #include "xla/service/hlo_dce.h"
 #include "xla/service/hlo_module_config.h"
 #include "xla/service/hlo_pass_fix.h"
@@ -37,12 +41,16 @@
 #include "xla/service/map_inliner.h"
 #include "xla/service/operand_upcaster.h"
 #include "xla/service/qr_expander.h"
+#include "xla/service/real_imag_expander.h"
 #include "xla/service/reshape_mover.h"
 #include "xla/service/result_caster.h"
 #include "xla/service/scatter_expander.h"
+#include "xla/service/slice_sinker.h"
 #include "xla/service/sort_simplifier.h"
+#include "xla/service/stable_sort_expander.h"
 #include "xla/service/triangular_solve_expander.h"
 #include "xla/service/tuple_simplifier.h"
+#include "xla/service/while_loop_constant_sinking.h"
 #include "xla/service/while_loop_simplifier.h"
 #include "xla/service/zero_sized_hlo_elimination.h"
 #include "xla/translate/hlo_to_mhlo/hlo_module_importer.h"
@@ -54,7 +62,17 @@
 
 namespace xla {
 void runHloPasses(xla::HloModule *module) {
-  HloPassPipeline pipeline("HLO passes");
+
+  // Simplifier options
+  AlgebraicSimplifierOptions options;
+  // For MPC, dot is way faster than reduce
+  options.set_enable_dot_strength_reduction(false);
+  // We do not handle nan, so just use faster minmax
+  options.set_minmax_propagate_nan(false);
+  // Transpose and reshape is cheep for us
+  options.set_unconditionally_simplify_reduce_of_transpose_or_reshape(true);
+
+  HloPassPipeline pipeline("optimization");
   pipeline.AddInvariantChecker<HloVerifier>(/*layout_sensitive=*/false,
                                             /*allow_mixed_precision=*/false);
 
@@ -70,17 +88,25 @@ void runHloPasses(xla::HloModule *module) {
 
   pipeline.AddPass<CholeskyExpander>(); // Eliminate chol
   pipeline.AddPass<QrExpander>();       // Eliminate qr
+  pipeline.AddPass<EighExpander>();
   pipeline.AddPass<TriangularSolveExpander>();
 
-  // Inline computations with a single call site.
-  pipeline.AddPass<CallInliner>(/*single_call_site=*/true);
-  pipeline.AddPass<BatchDotSimplification>();
-  pipeline.AddPass<DotDecomposer>(); // Simplify dot
   // Convert BF16 operations to F32 operations so that the SPU backend can
   // support BF16 operations without directly implementing a BF16 lowering for
   // most ops.
   FloatSupport bf16_support(BF16);
   pipeline.AddPass<FloatNormalization>(&bf16_support);
+
+  // Inline computations with a single call site.
+  pipeline.AddPass<CallInliner>(/*single_call_site=*/true);
+  pipeline.AddPass<gpu::DotDimensionSorter>();
+  pipeline.AddPass<BatchDotSimplification>();
+  pipeline.AddPass<DotDecomposer>(); // Simplify dot
+
+  pipeline.AddPass<Convolution4DExpander>();
+
+  pipeline.AddPass<StableSortExpander>();
+
   // After canonicalization, there may be more batch dots that can be
   // simplified.
   pipeline.AddPass<BatchDotSimplification>();
@@ -95,34 +121,33 @@ void runHloPasses(xla::HloModule *module) {
       /*rewrite_training_op=*/true,
       /*rewrite_inference_op=*/true,
       /*rewrite_grad_op=*/true);
-  pipeline.AddPass<ScatterExpander>(ScatterExpander::kEliminateAllScatters);
 
   // Run the following passes to a fixed point.
-  [&pipeline =
-       pipeline.AddPass<HloPassFix<HloPassPipeline>>("simplification")] {
+  [&, &pipeline =
+          pipeline.AddPass<HloPassFix<HloPassPipeline>>("simplification")] {
     pipeline.AddInvariantCheckerDebug<HloVerifier>(
         /*layout_sensitive=*/false,
         /*allow_mixed_precision=*/false);
 
-    AlgebraicSimplifierOptions options;
-    options.set_enable_dot_strength_reduction(false);
+    pipeline.AddPass<GatherSimplifier>();
+    pipeline.AddPass<ScatterExpander>(ScatterExpander::kEliminateAllScatters);
     pipeline.AddPass<AlgebraicSimplifier>(options);
+    pipeline.AddPass<BitcastDtypesExpander>();
+    // AlgebraicSimplifier may add contracting dimensions to a dot.
+    pipeline.AddPass<gpu::DotDimensionSorter>();
+    pipeline.AddPass<DotDecomposer>();
+
     pipeline.AddPass<SortSimplifier>();
-    pipeline.AddPass<HloDCE>();
-
-    // BatchNormExpander can create zero-sized ops, so zero-sized HLO
-    // elimination has to come after that pass.
-    pipeline.AddPass<ZeroSizedHloElimination>();
-
     pipeline.AddPass<TupleSimplifier>();
     pipeline.AddPass<WhileLoopSimplifier>();
-
-    pipeline.AddPass<HloDCE>();
+    pipeline.AddPass<SliceSinker>();
     pipeline.AddPass<ReshapeMover>();
     pipeline.AddPass<HloConstantFolding>();
     pipeline.AddPass<ConditionalSimplifier>();
+    pipeline.AddPass<RealImagExpander>();
+    pipeline.AddPass<HloCSE>(/*is_layout_sensitive=*/false);
+    pipeline.AddPass<HloDCE>();
   }();
-  pipeline.AddPass<BitcastDtypesExpander>();
 
   auto status = pipeline.Run(module).status();
 

@@ -34,8 +34,9 @@ void FourQEccCryptor::EccMask(absl::Span<const char> batch_points,
     ECCRYPTO_STATUS status =
         CompressedSecretAgreement(this->private_key_, in.data(), out.data());
 
-    SPU_ENFORCE(status == ECCRYPTO_SUCCESS,
-                "FourQ CompressedSecretAgreement Error: ", status);
+    SPU_ENFORCE(
+        status == ECCRYPTO_SUCCESS,
+        "FourQ CompressedSecretAgreement Error: ", static_cast<int>(status));
   };
 
   absl::Span<const Item> input(
@@ -64,7 +65,8 @@ std::vector<uint8_t> FourQEccCryptor::HashToCurve(
   ECCRYPTO_STATUS status = ECCRYPTO_SUCCESS;
   // Hash GF(p^2) element to curve
   status = ::HashToCurve(reinterpret_cast<felm_t*>(f2elmt), P);
-  SPU_ENFORCE(status == ECCRYPTO_SUCCESS, "FourQ HashToCurve Error: ", status);
+  SPU_ENFORCE(status == ECCRYPTO_SUCCESS,
+              "FourQ HashToCurve Error: ", static_cast<int>(status));
   std::vector<uint8_t> ret(kEccKeySize, 0);
   encode(P, static_cast<unsigned char*>(ret.data()));  // Encode public key
   return ret;

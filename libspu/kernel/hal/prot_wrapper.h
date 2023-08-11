@@ -48,12 +48,8 @@ Value _rshift_s(SPUContext* ctx, const Value& in, size_t bits);
 
 Value _arshift_p(SPUContext* ctx, const Value& in, size_t bits);
 Value _arshift_s(SPUContext* ctx, const Value& in, size_t bits);
-Value _trunc_p(SPUContext* ctx, const Value& in, size_t bits);
-Value _trunc_s(SPUContext* ctx, const Value& in, size_t bits);
-Value _trunc_p_with_sign(SPUContext* ctx, const Value& in, size_t bits,
-                         bool is_positive);
-Value _trunc_s_with_sign(SPUContext* ctx, const Value& in, size_t bits,
-                         bool is_positive);
+Value _trunc_p(SPUContext* ctx, const Value& in, size_t bits, SignType sign);
+Value _trunc_s(SPUContext* ctx, const Value& in, size_t bits, SignType sign);
 
 Value _add_pp(SPUContext* ctx, const Value& x, const Value& y);
 Value _add_sp(SPUContext* ctx, const Value& x, const Value& y);
@@ -67,8 +63,8 @@ Value _mmul_pp(SPUContext* ctx, const Value& x, const Value& y);
 Value _mmul_sp(SPUContext* ctx, const Value& x, const Value& y);
 Value _mmul_ss(SPUContext* ctx, const Value& x, const Value& y);
 
-Value _conv2d_ss(SPUContext* ctx, Value x, const Value& y,
-                 const Strides& window_strides, const Shape& result_shape);
+Value _conv2d_ss(SPUContext* ctx, const Value& input, const Value& kernel,
+                 const Strides& strides);
 
 Value _and_pp(SPUContext* ctx, const Value& x, const Value& y);
 Value _and_sp(SPUContext* ctx, const Value& x, const Value& y);

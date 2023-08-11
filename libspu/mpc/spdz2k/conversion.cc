@@ -196,12 +196,12 @@ NdArrayRef Bit2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
 
   // 5. [x] = c + [r] - 2 * c * [r]
   return DISPATCH_ALL_FIELDS(field, "_", [&]() {
-    auto _c = c.data<ring2k_t>();
-    auto _r = r.data<ring2k_t>();
-    auto _r_mac = r_mac.data<ring2k_t>();
+    NdArrayView<ring2k_t> _c(c);
+    NdArrayView<ring2k_t> _r(r);
+    NdArrayView<ring2k_t> _r_mac(r_mac);
 
     NdArrayRef out(makeType<AShrTy>(field, true), _in.shape());
-    auto _out = out.data<std::array<ring2k_t, 2>>();
+    NdArrayView<std::array<ring2k_t, 2>> _out(out);
 
     pforeach(0, out.numel(), [&](int64_t idx) {
       _out[idx][0] = _r[idx] - 2 * _c[idx] * _r[idx];
@@ -280,7 +280,8 @@ NdArrayRef B2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   out_shape.back() /= nbits;
 
   // 1. get rand bit [r]
-  NdArrayRef r, r_mac;
+  NdArrayRef r;
+  NdArrayRef r_mac;
   std::tie(r, r_mac) = beaver->AuthRandBit(field, _in.shape(), k, s);
   auto ar = makeAShare(r, r_mac, field);
 
@@ -292,7 +293,8 @@ NdArrayRef B2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   // Notice we only reserve the least significant bit
   const auto [bc_val, bc_mac] = BShareSwitch2Nbits(bc, 1);
 
-  NdArrayRef c, zero_mac;
+  NdArrayRef c;
+  NdArrayRef zero_mac;
   std::tie(c, zero_mac) = beaver->BatchOpen(bc_val, bc_mac, 1, s);
   SPU_ENFORCE(beaver->BatchMacCheck(c, zero_mac, 1, s));
   ring_bitmask_(c, 0, 1);
@@ -301,12 +303,13 @@ NdArrayRef B2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   return DISPATCH_ALL_FIELDS(field, "_", [&]() {
     NdArrayRef out(makeType<AShrTy>(field, true), out_shape);
     NdArrayRef expand_out(makeType<AShrTy>(field, true), _in.shape());
-    auto _c = c.data<ring2k_t>();
-    auto _r = r.data<ring2k_t>();
-    auto _r_mac = r_mac.data<ring2k_t>();
 
-    auto _out = out.data<std::array<ring2k_t, 2>>();
-    auto _expand_out = expand_out.data<std::array<ring2k_t, 2>>();
+    NdArrayView<ring2k_t> _c(c);
+    NdArrayView<ring2k_t> _r(r);
+    NdArrayView<ring2k_t> _r_mac(r_mac);
+
+    NdArrayView<std::array<ring2k_t, 2>> _out(out);
+    NdArrayView<std::array<ring2k_t, 2>> _expand_out(expand_out);
 
     pforeach(0, _in.numel(), [&](int64_t idx) {
       _expand_out[idx][0] = (_r[idx] - 2 * _c[idx] * _r[idx]);

@@ -16,8 +16,9 @@
 
 #include <functional>
 
+#include "yacl/utils/platform_utils.h"
+
 #include "libspu/core/parallel_utils.h"
-#include "libspu/core/platform_utils.h"
 #include "libspu/core/prelude.h"
 #include "libspu/mpc/ab_api.h"
 #include "libspu/mpc/aby3/type.h"
@@ -63,28 +64,29 @@ NdArrayRef A2B::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   auto numel = in.numel();
 
   DISPATCH_ALL_FIELDS(field, "_", [&]() {
-    // const auto _in = ArrayView<std::array<ring2k_t, 2>>(in);
-    using AShrT = ring2k_t;
+    using ashr_t = std::array<ring2k_t, 2>;
+    NdArrayView<ashr_t> _in(in);
 
     DISPATCH_UINT_PT_TYPES(out_btype, "_", [&]() {
-      using BShrT = ScalarT;
+      using bshr_el_t = ScalarT;
+      using bshr_t = std::array<bshr_el_t, 2>;
 
-      std::vector<BShrT> r0(in.numel());
-      std::vector<BShrT> r1(in.numel());
+      std::vector<bshr_el_t> r0(in.numel());
+      std::vector<bshr_el_t> r1(in.numel());
       prg_state->fillPrssPair(absl::MakeSpan(r0), absl::MakeSpan(r1));
 
       pforeach(0, numel, [&](int64_t idx) {
         r0[idx] ^= r1[idx];
         if (comm->getRank() == 0) {
-          const auto& v = in.at<std::array<AShrT, 2>>(idx);
+          const auto& v = _in[idx];
           r0[idx] ^= v[0] + v[1];
         }
       });
 
-      r1 = comm->rotate<BShrT>(r0, "a2b");  // comm => 1, k
+      r1 = comm->rotate<bshr_el_t>(r0, "a2b");  // comm => 1, k
 
-      auto* _m = m.data<std::array<BShrT, 2>>();
-      auto* _n = n.data<std::array<BShrT, 2>>();
+      NdArrayView<bshr_t> _m(m);
+      NdArrayView<bshr_t> _n(n);
 
       pforeach(0, numel, [&](int64_t idx) {
         _m[idx][0] = r0[idx];
@@ -95,9 +97,9 @@ NdArrayRef A2B::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
           _n[idx][1] = 0;
         } else if (comm->getRank() == 1) {
           _n[idx][0] = 0;
-          _n[idx][1] = in.at<std::array<AShrT, 2>>(idx)[1];
+          _n[idx][1] = _in[idx][1];
         } else if (comm->getRank() == 2) {
-          _n[idx][0] = in.at<std::array<AShrT, 2>>(idx)[0];
+          _n[idx][0] = _in[idx][0];
           _n[idx][1] = 0;
         }
       });
@@ -148,8 +150,7 @@ NdArrayRef B2AByPPA::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   if (in_nbits == 0) {
     // special case, it's known to be zero.
     DISPATCH_ALL_FIELDS(field, "_", [&]() {
-      using AShrT = ring2k_t;
-      auto _out = out.data<std::array<AShrT, 2>>();
+      NdArrayView<std::array<ring2k_t, 2>> _out(out);
       pforeach(0, numel, [&](int64_t idx) {
         _out[idx][0] = 0;
         _out[idx][1] = 0;
@@ -162,28 +163,30 @@ NdArrayRef B2AByPPA::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   auto* prg_state = ctx->getState<PrgState>();
 
   DISPATCH_UINT_PT_TYPES(in_ty->getBacktype(), "_", [&]() {
-    using BShrT = ScalarT;
+    using bshr_t = std::array<ScalarT, 2>;
+    NdArrayView<bshr_t> _in(in);
+
     DISPATCH_ALL_FIELDS(field, "_", [&]() {
-      using AShrT = ring2k_t;
+      using ashr_el_t = ring2k_t;
+      using ashr_t = std::array<ashr_el_t, 2>;
 
       // first expand b share to a share length.
       const auto expanded_ty = makeType<BShrTy>(
           calcBShareBacktype(SizeOf(field) * 8), SizeOf(field) * 8);
       NdArrayRef x(expanded_ty, in.shape());
-
-      auto _x = x.data<std::array<AShrT, 2>>();
+      NdArrayView<ashr_t> _x(x);
 
       pforeach(0, numel, [&](int64_t idx) {
-        const auto& v = in.at<std::array<BShrT, 2>>(idx);
+        const auto& v = _in[idx];
         _x[idx][0] = v[0];
         _x[idx][1] = v[1];
       });
 
       // P1 & P2 local samples ra, note P0's ra is not used.
-      std::vector<AShrT> ra0(numel);
-      std::vector<AShrT> ra1(numel);
-      std::vector<AShrT> rb0(numel);
-      std::vector<AShrT> rb1(numel);
+      std::vector<ashr_el_t> ra0(numel);
+      std::vector<ashr_el_t> ra1(numel);
+      std::vector<ashr_el_t> rb0(numel);
+      std::vector<ashr_el_t> rb1(numel);
 
       prg_state->fillPrssPair(absl::MakeSpan(ra0), absl::MakeSpan(ra1));
       prg_state->fillPrssPair(absl::MakeSpan(rb0), absl::MakeSpan(rb1));
@@ -196,11 +199,11 @@ NdArrayRef B2AByPPA::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
           rb0[idx] = zb;
         }
       });
-      rb1 = comm->rotate<AShrT>(rb0, "b2a.rand");  // comm => 1, k
+      rb1 = comm->rotate<ashr_el_t>(rb0, "b2a.rand");  // comm => 1, k
 
       // compute [x+r]B
       NdArrayRef r(expanded_ty, in.shape());
-      auto _r = r.data<std::array<AShrT, 2>>();
+      NdArrayView<ashr_t> _r(r);
       pforeach(0, numel, [&](int64_t idx) {
         _r[idx][0] = rb0[idx];
         _r[idx][1] = rb1[idx];
@@ -208,34 +211,33 @@ NdArrayRef B2AByPPA::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
 
       // comm => log(k) + 1, 2k(logk) + k
       auto x_plus_r = wrap_add_bb(ctx->sctx(), x, r);
-      // auto _x_plus_r = ArrayView<std::array<AShrT, 2>>(x_plus_r);
+      NdArrayView<ashr_t> _x_plus_r(x_plus_r);
 
       // reveal
-      std::vector<AShrT> x_plus_r_2(numel);
+      std::vector<ashr_el_t> x_plus_r_2(numel);
       if (comm->getRank() == 0) {
-        x_plus_r_2 = comm->recv<AShrT>(2, "reveal.x_plus_r.to.P0");
+        x_plus_r_2 = comm->recv<ashr_el_t>(2, "reveal.x_plus_r.to.P0");
       } else if (comm->getRank() == 2) {
-        std::vector<AShrT> x_plus_r_0(numel);
-        pforeach(0, numel, [&](int64_t idx) {
-          x_plus_r_0[idx] = x_plus_r.at<std::array<AShrT, 2>>(idx)[0];
-        });
-        comm->sendAsync<AShrT>(0, x_plus_r_0, "reveal.x_plus_r.to.P0");
+        std::vector<ashr_el_t> x_plus_r_0(numel);
+        pforeach(0, numel,
+                 [&](int64_t idx) { x_plus_r_0[idx] = _x_plus_r[idx][0]; });
+        comm->sendAsync<ashr_el_t>(0, x_plus_r_0, "reveal.x_plus_r.to.P0");
       }
 
       // P0 hold x+r, P1 & P2 hold -r, reuse ra0 and ra1 as output
       auto self_rank = comm->getRank();
       pforeach(0, numel, [&](int64_t idx) {
         if (self_rank == 0) {
-          const auto& x_r_v = x_plus_r.at<std::array<AShrT, 2>>(idx);
+          const auto& x_r_v = _x_plus_r[idx];
           ra0[idx] = x_r_v[0] ^ x_r_v[1] ^ x_plus_r_2[idx];
         } else {
           ra0[idx] = -ra0[idx];
         }
       });
 
-      ra1 = comm->rotate<AShrT>(ra0, "b2a.rotate");
+      ra1 = comm->rotate<ashr_el_t>(ra0, "b2a.rotate");
 
-      auto _out = out.data<std::array<AShrT, 2>>();
+      NdArrayView<ashr_t> _out(out);
       pforeach(0, numel, [&](int64_t idx) {
         _out[idx][0] = ra0[idx];
         _out[idx][1] = ra1[idx];
@@ -251,8 +253,10 @@ static std::vector<bool> bitDecompose(const NdArrayRef& in, size_t nbits) {
   // decompose each bit of an array of element.
   std::vector<bool> dep(numel * nbits);
 
+  NdArrayView<T> _in(in);
+
   pforeach(0, numel, [&](int64_t idx) {
-    const auto& v = in.at<const T>(idx);
+    const auto& v = _in[idx];
     for (size_t bit = 0; bit < nbits; bit++) {
       size_t flat_idx = idx * nbits + bit;
       dep[flat_idx] = static_cast<bool>((v >> bit) & 0x1);
@@ -315,8 +319,7 @@ NdArrayRef B2AByOT::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   if (in_nbits == 0) {
     // special case, it's known to be zero.
     DISPATCH_ALL_FIELDS(field, "_", [&]() {
-      using AShrT = ring2k_t;
-      auto _out = out.data<std::array<AShrT, 2>>();
+      NdArrayView<std::array<ring2k_t, 2>> _out(out);
       pforeach(0, numel, [&](int64_t idx) {
         _out[idx][0] = 0;
         _out[idx][1] = 0;
@@ -337,25 +340,28 @@ NdArrayRef B2AByOT::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   size_t P2 = (pivot + 2) % 3;
 
   DISPATCH_UINT_PT_TYPES(in_ty->getBacktype(), "_", [&]() {
-    using BShrT = ScalarT;
+    using bshr_el_t = ScalarT;
+    using bshr_t = std::array<bshr_el_t, 2>;
+    NdArrayView<bshr_t> _in(in);
 
     DISPATCH_ALL_FIELDS(field, "_", [&]() {
-      using AShrT = ring2k_t;
+      using ashr_el_t = ring2k_t;
+      using ashr_t = std::array<ashr_el_t, 2>;
 
-      auto _out = out.data<std::array<AShrT, 2>>();
+      NdArrayView<ashr_t> _out(out);
 
       const size_t total_nbits = numel * in_nbits;
-      std::vector<AShrT> r0(total_nbits);
-      std::vector<AShrT> r1(total_nbits);
+      std::vector<ashr_el_t> r0(total_nbits);
+      std::vector<ashr_el_t> r1(total_nbits);
       prg_state->fillPrssPair(absl::MakeSpan(r0), absl::MakeSpan(r1));
 
       if (comm->getRank() == P0) {
         // the helper
-        auto b2 = bitDecompose<BShrT>(getShare(in, 1), in_nbits);
+        auto b2 = bitDecompose<bshr_el_t>(getShare(in, 1), in_nbits);
 
         // gen masks with helper.
-        std::vector<AShrT> m0(total_nbits);
-        std::vector<AShrT> m1(total_nbits);
+        std::vector<ashr_el_t> m0(total_nbits);
+        std::vector<ashr_el_t> m1(total_nbits);
         prg_state->fillPrssPair(absl::MakeSpan(m0), {}, false, true);
         prg_state->fillPrssPair(absl::MakeSpan(m1), {}, false, true);
 
@@ -365,10 +371,10 @@ NdArrayRef B2AByOT::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
                  [&](int64_t idx) { m0[idx] = !b2[idx] ? m0[idx] : m1[idx]; });
 
         // send selected masked to receiver.
-        comm->sendAsync<AShrT>(P1, m0, "mc");
+        comm->sendAsync<ashr_el_t>(P1, m0, "mc");
 
-        auto c1 = bitCompose<AShrT>(r0, in_nbits);
-        auto c2 = comm->recv<AShrT>(P1, "c2");
+        auto c1 = bitCompose<ashr_el_t>(r0, in_nbits);
+        auto c2 = comm->recv<ashr_el_t>(P1, "c2");
 
         pforeach(0, numel, [&](int64_t idx) {
           _out[idx][0] = c1[idx];
@@ -379,20 +385,20 @@ NdArrayRef B2AByOT::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
         prg_state->fillPrssPair(absl::MakeSpan(r0), {}, false, false);
         prg_state->fillPrssPair(absl::MakeSpan(r0), {}, false, false);
 
-        auto b2 = bitDecompose<BShrT>(getShare(in, 0), in_nbits);
+        auto b2 = bitDecompose<bshr_el_t>(getShare(in, 0), in_nbits);
 
         // ot.recv
-        auto mc = comm->recv<AShrT>(P0, "mc");
-        auto m0 = comm->recv<AShrT>(P2, "m0");
-        auto m1 = comm->recv<AShrT>(P2, "m1");
+        auto mc = comm->recv<ashr_el_t>(P0, "mc");
+        auto m0 = comm->recv<ashr_el_t>(P2, "m0");
+        auto m1 = comm->recv<ashr_el_t>(P2, "m1");
 
         // rebuild c2 = (b1^b2^b3)-c1-c3
         pforeach(0, total_nbits, [&](int64_t idx) {
           mc[idx] = !b2[idx] ? m0[idx] ^ mc[idx] : m1[idx] ^ mc[idx];
         });
-        auto c2 = bitCompose<AShrT>(mc, in_nbits);
-        comm->sendAsync<AShrT>(P0, c2, "c2");
-        auto c3 = bitCompose<AShrT>(r1, in_nbits);
+        auto c2 = bitCompose<ashr_el_t>(mc, in_nbits);
+        comm->sendAsync<ashr_el_t>(P0, c2, "c2");
+        auto c3 = bitCompose<ashr_el_t>(r1, in_nbits);
 
         pforeach(0, numel, [&](int64_t idx) {
           _out[idx][0] = c2[idx];
@@ -400,26 +406,26 @@ NdArrayRef B2AByOT::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
         });
       } else if (comm->getRank() == P2) {
         // the sender.
-        auto c3 = bitCompose<AShrT>(r0, in_nbits);
-        auto c1 = bitCompose<AShrT>(r1, in_nbits);
+        auto c3 = bitCompose<ashr_el_t>(r0, in_nbits);
+        auto c1 = bitCompose<ashr_el_t>(r1, in_nbits);
 
         // c3 = r0, c1 = r1
         // let mi := (i^b1^b3)−c1−c3 for i in {0, 1}
         // reuse r's memory for m
         pforeach(0, numel, [&](int64_t idx) {
-          const auto x = in.at<std::array<BShrT, 2>>(idx);
+          const auto x = _in[idx];
           auto xx = x[0] ^ x[1];
           for (size_t bit = 0; bit < in_nbits; bit++) {
             size_t flat_idx = idx * in_nbits + bit;
-            AShrT t = r0[flat_idx] + r1[flat_idx];
+            ashr_el_t t = r0[flat_idx] + r1[flat_idx];
             r0[flat_idx] = ((xx >> bit) & 0x1) - t;
             r1[flat_idx] = ((~xx >> bit) & 0x1) - t;
           }
         });
 
         // gen masks with helper.
-        std::vector<AShrT> m0(total_nbits);
-        std::vector<AShrT> m1(total_nbits);
+        std::vector<ashr_el_t> m0(total_nbits);
+        std::vector<ashr_el_t> m1(total_nbits);
         prg_state->fillPrssPair({}, absl::MakeSpan(m0), true, false);
         prg_state->fillPrssPair({}, absl::MakeSpan(m1), true, false);
         pforeach(0, total_nbits, [&](int64_t idx) {
@@ -427,8 +433,8 @@ NdArrayRef B2AByOT::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
           m1[idx] ^= r1[idx];
         });
 
-        comm->sendAsync<AShrT>(P1, m0, "m0");
-        comm->sendAsync<AShrT>(P1, m1, "m1");
+        comm->sendAsync<ashr_el_t>(P1, m0, "m0");
+        comm->sendAsync<ashr_el_t>(P1, m1, "m1");
 
         pforeach(0, numel, [&](int64_t idx) {
           _out[idx][0] = c3[idx];
@@ -476,27 +482,32 @@ NdArrayRef B2AByOT::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   NdArrayRef hi(out_type, in.shape());
 
   DISPATCH_UINT_PT_TYPES(in_ty->getBacktype(), "_", [&]() {
-    using InT = ScalarT;
-    DISPATCH_UINT_PT_TYPES(out_backtype, "_", [&]() {
-      using OutT = ScalarT;
-      auto _lo = lo.data<std::array<OutT, 2>>();
-      auto _hi = hi.data<std::array<OutT, 2>>();
+    using in_el_t = ScalarT;
+    using in_shr_t = std::array<in_el_t, 2>;
+    NdArrayView<in_shr_t> _in(in);
 
-      if constexpr (sizeof(InT) <= 8) {
+    DISPATCH_UINT_PT_TYPES(out_backtype, "_", [&]() {
+      using out_el_t = ScalarT;
+      using out_shr_t = std::array<out_el_t, 2>;
+
+      NdArrayView<out_shr_t> _lo(lo);
+      NdArrayView<out_shr_t> _hi(hi);
+
+      if constexpr (sizeof(out_el_t) <= 8) {
         pforeach(0, in.numel(), [&](int64_t idx) {
           constexpr uint64_t S = 0x5555555555555555;  // 01010101
-          const InT M = (InT(1) << (in_nbits / 2)) - 1;
+          const out_el_t M = (out_el_t(1) << (in_nbits / 2)) - 1;
 
-          const auto& r = in.at<std::array<InT, 2>>(idx);
+          const auto& r = _in[idx];
 
-          _lo[idx][0] = pext_u64(r[0], S) & M;
-          _hi[idx][0] = pext_u64(r[0], ~S) & M;
-          _lo[idx][1] = pext_u64(r[1], S) & M;
-          _hi[idx][1] = pext_u64(r[1], ~S) & M;
+          _lo[idx][0] = yacl::pext_u64(r[0], S) & M;
+          _hi[idx][0] = yacl::pext_u64(r[0], ~S) & M;
+          _lo[idx][1] = yacl::pext_u64(r[1], S) & M;
+          _hi[idx][1] = yacl::pext_u64(r[1], ~S) & M;
         });
       } else {
         pforeach(0, in.numel(), [&](int64_t idx) {
-          auto r = in.at<std::array<InT, 2>>(idx);
+          auto r = _in[idx];
           // algorithm:
           //      0101010101010101
           // swap  ^^  ^^  ^^  ^^
@@ -506,8 +517,8 @@ NdArrayRef B2AByOT::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
           // swap     ^^^^^^^^
           //      0000000011111111
           for (int k = 0; k + 1 < Log2Ceil(in_nbits); k++) {
-            InT keep = static_cast<InT>(kKeepMasks[k]);
-            InT move = static_cast<InT>(kSwapMasks[k]);
+            auto keep = static_cast<in_el_t>(kKeepMasks[k]);
+            auto move = static_cast<in_el_t>(kSwapMasks[k]);
             int shift = 1 << k;
 
             r[0] = (r[0] & keep) ^ ((r[0] >> shift) & move) ^
@@ -515,11 +526,11 @@ NdArrayRef B2AByOT::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
             r[1] = (r[1] & keep) ^ ((r[1] >> shift) & move) ^
                    ((r[1] & move) << shift);
           }
-          InT mask = (InT(1) << (in_nbits / 2)) - 1;
-          _lo[idx][0] = static_cast<OutT>(r[0]) & mask;
-          _hi[idx][0] = static_cast<OutT>(r[0] >> (in_nbits / 2)) & mask;
-          _lo[idx][1] = static_cast<OutT>(r[1]) & mask;
-          _hi[idx][1] = static_cast<OutT>(r[1] >> (in_nbits / 2)) & mask;
+          in_el_t mask = (in_el_t(1) << (in_nbits / 2)) - 1;
+          _lo[idx][0] = static_cast<out_el_t>(r[0]) & mask;
+          _hi[idx][0] = static_cast<out_el_t>(r[0] >> (in_nbits / 2)) & mask;
+          _lo[idx][1] = static_cast<out_el_t>(r[1]) & mask;
+          _hi[idx][1] = static_cast<out_el_t>(r[1] >> (in_nbits / 2)) & mask;
         });
       }
     });
@@ -551,27 +562,29 @@ NdArrayRef MsbA2B::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   NdArrayRef m(bshr_type, in.shape());
   NdArrayRef n(bshr_type, in.shape());
   DISPATCH_ALL_FIELDS(field, "aby3.msb.split", [&]() {
-    using U = ring2k_t;
+    using el_t = ring2k_t;
+    using shr_t = std::array<el_t, 2>;
 
-    auto _m = m.data<std::array<U, 2>>();
-    auto _n = n.data<std::array<U, 2>>();
+    NdArrayView<shr_t> _in(in);
+    NdArrayView<shr_t> _m(m);
+    NdArrayView<shr_t> _n(n);
 
-    std::vector<U> r0(numel);
-    std::vector<U> r1(numel);
+    std::vector<el_t> r0(numel);
+    std::vector<el_t> r1(numel);
     prg_state->fillPrssPair(absl::MakeSpan(r0), absl::MakeSpan(r1));
 
     pforeach(0, numel, [&](int64_t idx) {
       r0[idx] = r0[idx] ^ r1[idx];
       if (comm->getRank() == 0) {
-        const auto& v = in.at<std::array<U, 2>>(idx);
+        const auto& v = _in[idx];
         r0[idx] ^= (v[0] + v[1]);
       }
     });
 
-    r1 = comm->rotate<U>(r0, "m");
+    r1 = comm->rotate<el_t>(r0, "m");
 
     pforeach(0, numel, [&](int64_t idx) {
-      const auto& v = in.at<std::array<U, 2>>(idx);
+      const auto& v = _in[idx];
       _m[idx][0] = r0[idx];
       _m[idx][1] = r1[idx];
       _n[idx][0] = comm->getRank() == 2 ? v[0] : 0;

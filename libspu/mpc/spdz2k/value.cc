@@ -54,20 +54,22 @@ NdArrayRef makeBShare(const NdArrayRef& s1, const NdArrayRef& s2,
   new_shape.back() /= nbits;
 
   NdArrayRef res(ty, new_shape);
-  size_t res_numel = res.numel();
+  int64_t res_numel = res.numel();
 
   DISPATCH_ALL_FIELDS(field, "_", [&]() {
-    auto _res = res.data<std::array<ring2k_t, 2>>();
+    NdArrayView<std::array<ring2k_t, 2>> _res(res);
 
     pforeach(0, res_numel * k, [&](int64_t i) {
       _res[i][0] = 0;
       _res[i][1] = 0;
     });
 
+    NdArrayView<ring2k_t> _s1(s1);
+    NdArrayView<ring2k_t> _s2(s2);
     pforeach(0, res_numel, [&](int64_t i) {
       pforeach(0, nbits, [&](int64_t j) {
-        _res[i * k + j][0] = s1.at<ring2k_t>(i * nbits + j);
-        _res[i * k + j][1] = s2.at<ring2k_t>(i * nbits + j);
+        _res[i * k + j][0] = _s1[i * nbits + j];
+        _res[i * k + j][1] = _s2[i * nbits + j];
       });
     });
   });
@@ -108,8 +110,8 @@ NdArrayRef getShare(const NdArrayRef& in, int64_t share_idx) {
 
       DISPATCH_ALL_FIELDS(field, "_", [&]() {
         size_t numel = in.numel();
-        auto _ret = ret.data<ring2k_t>();
-        auto _in = in.data<std::array<ring2k_t, 2>>();
+        NdArrayView<ring2k_t> _ret(ret);
+        NdArrayView<std::array<ring2k_t, 2>> _in(in);
 
         pforeach(0, numel, [&](int64_t i) {
           pforeach(0, nbits, [&](int64_t j) {

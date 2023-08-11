@@ -59,8 +59,7 @@ TEST(NdArrayRefTest, Iterator) {
   EXPECT_EQ(a.numel(), 9);
 
   // Fill array with 0 1 2 3 4 5
-  std::iota(static_cast<int32_t *>(a.data()),
-            static_cast<int32_t *>(a.data()) + 9, 0);
+  std::iota(a.data<int32_t>(), a.data<int32_t>() + 9, 0);
 
   verify_array(a, std::vector<int32_t>{0, 1, 2, 3, 4, 5, 6, 7, 8});
 }
@@ -73,8 +72,7 @@ TEST(NdArrayRefTest, StridedIterator) {
   EXPECT_EQ(a.numel(), 9);
 
   // Fill array with 0 1 2 3 4 5
-  std::iota(static_cast<int32_t *>(a.data()),
-            static_cast<int32_t *>(a.data()) + 36, 0);
+  std::iota(a.data<int32_t>(), a.data<int32_t>() + 36, 0);
 
   verify_array(a, std::vector<int32_t>{0, 2, 4, 12, 14, 16, 24, 26, 28});
 }
@@ -87,8 +85,7 @@ TEST(NdArrayRefTest, NdStrides) {
   EXPECT_EQ(a.numel(), 9);
 
   // Fill array with 0 1 2 3 4 5
-  std::iota(static_cast<int32_t *>(a.data()),
-            static_cast<int32_t *>(a.data()) + 36, 0);
+  std::iota(a.data<int32_t>(), a.data<int32_t>() + 36, 0);
 
   EXPECT_EQ(a.at<int32_t>({0, 0}), 0);
   EXPECT_EQ(a.at<int32_t>({0, 1}), 2);
@@ -119,10 +116,8 @@ TEST(NdArrayRefTest, UpdateSlice) {
   //     6,7,8
   // b : 0,1
   //     2,3
-  std::iota(static_cast<int32_t *>(a.data()),
-            static_cast<int32_t *>(a.data()) + 9, 0);
-  std::iota(static_cast<int32_t *>(b.data()),
-            static_cast<int32_t *>(b.data()) + 4, 0);
+  std::iota(a.data<int32_t>(), a.data<int32_t>() + 9, 0);
+  std::iota(b.data<int32_t>(), b.data<int32_t>() + 4, 0);
 
   a.update_slice(b, {0, 1});
   // a : 0,0,1

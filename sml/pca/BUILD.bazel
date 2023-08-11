@@ -29,7 +29,6 @@ py_binary(
     srcs = ["simple_pca_emul.py"],
     deps = [
         ":simple_pca",
-        "//examples/python/utils:dataset_utils",  # FIXME: remove examples dependency
         "//sml/utils:emulation",
     ],
 )
@@ -42,7 +41,6 @@ py_test(
     ],
     deps = [
         ":simple_pca",
-        "//examples/python/utils:dataset_utils",  # FIXME: remove examples dependency
         "//spu:init",
         "//spu/utils:simulation",
     ],

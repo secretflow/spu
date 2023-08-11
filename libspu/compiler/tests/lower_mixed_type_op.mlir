@@ -33,3 +33,12 @@ func.func @main(%arg0: tensor<2x2x!pphlo.pub<f32>>, %arg1: tensor<2x2x!pphlo.pub
     %1 = "pphlo.dot"(%arg1, %0) : (tensor<2x2x!pphlo.pub<i32>>, tensor<2x2x!pphlo.pub<i32>>) -> tensor<2x2x!pphlo.pub<i32>>
     return %1 : tensor<2x2x!pphlo.pub<i32>>
 }
+
+// -----
+
+func.func @main(%arg0: tensor<2x2x!pphlo.pub<f16>>, %arg1: tensor<2x2x!pphlo.pub<f32>>) -> (tensor<2x2x!pphlo.pub<f32>>) {
+    //CHECK: "pphlo.dot"(%arg1, %0) : (tensor<2x2x!pphlo.pub<f32>>, tensor<2x2x!pphlo.pub<f32>>) -> tensor<2x2x!pphlo.pub<f32>>
+    %0 = "pphlo.convert"(%arg0) : (tensor<2x2x!pphlo.pub<f16>>) -> tensor<2x2x!pphlo.pub<f32>>
+    %1 = "pphlo.dot"(%arg1, %0) : (tensor<2x2x!pphlo.pub<f32>>, tensor<2x2x!pphlo.pub<f32>>) -> tensor<2x2x!pphlo.pub<f32>>
+    return %1 : tensor<2x2x!pphlo.pub<f32>>
+}

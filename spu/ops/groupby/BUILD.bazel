@@ -12,20 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-name: "Publish TestPypi Package"
+load("@rules_python//python:defs.bzl", "py_binary", "py_library", "py_test")
 
-on:
-  workflow_dispatch:
+package(default_visibility = ["//visibility:public"])
 
-jobs:
-  trigger-circleci:
-    runs-on: ubuntu-latest
-    steps:
-      - name: secretflow-spu-testpypi
-        id: secretflow-spu-testpypi
-        uses: CircleCI-Public/trigger-circleci-pipeline-action@v1.1.0
-        with:
-          GHA_Meta: "test_pypi"
-        env:
-          CCI_TOKEN: ${{ secrets.CCI_TOKEN }}
-          
+py_library(
+    name = "groupby",
+    srcs = ["groupby.py"],
+)
+
+py_test(
+    name = "groupby_test",
+    srcs = ["groupby_test.py"],
+    deps = [
+        ":groupby",
+        "//spu:init",
+        "//spu/utils:simulation",
+    ],
+)

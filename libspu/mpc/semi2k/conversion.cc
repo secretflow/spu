@@ -51,11 +51,10 @@ NdArrayRef A2B::proc(KernelEvalContext* ctx, const NdArrayRef& x) const {
     bshrs.push_back(b.as(bty));
   }
 
-  NdArrayRef res =
-      vectorizedReduce(bshrs.begin(), bshrs.end(),
-                       [&](const NdArrayRef& xx, const NdArrayRef& yy) {
-                         return wrap_add_bb(ctx->sctx(), xx, yy);
-                       });
+  NdArrayRef res = vreduce(bshrs.begin(), bshrs.end(),
+                           [&](const NdArrayRef& xx, const NdArrayRef& yy) {
+                             return wrap_add_bb(ctx->sctx(), xx, yy);
+                           });
   return res.as(bty);
 }
 
@@ -103,6 +102,9 @@ NdArrayRef B2A_Randbit::proc(KernelEvalContext* ctx,
   DISPATCH_ALL_FIELDS(field, kBindName, [&]() {
     using U = ring2k_t;
 
+    NdArrayView<U> _randbits(randbits);
+    NdArrayView<U> _x(x);
+
     // algorithm begins.
     // Ref: III.D @ https://eprint.iacr.org/2019/599.pdf (SPDZ-2K primitives)
     std::vector<U> x_xor_r(numel);
@@ -111,24 +113,24 @@ NdArrayRef B2A_Randbit::proc(KernelEvalContext* ctx,
       // use _r[i*nbits, (i+1)*nbits) to construct rb[i]
       U mask = 0;
       for (int64_t bit = 0; bit < nbits; ++bit) {
-        mask += (randbits.at<U>(idx * nbits + bit) & 0x1) << bit;
+        mask += (_randbits[idx * nbits + bit] & 0x1) << bit;
       }
-      x_xor_r[idx] = x.at<U>(idx) ^ mask;
+      x_xor_r[idx] = _x[idx] ^ mask;
     });
 
     // open c = x ^ r
     x_xor_r = comm->allReduce<U, std::bit_xor>(x_xor_r, "open(x^r)");
 
+    NdArrayView<U> _res(res);
     pforeach(0, numel, [&](int64_t idx) {
-      res.at<U>(idx) = 0;
+      _res[idx] = 0;
       for (int64_t bit = 0; bit < nbits; bit++) {
         auto c_i = (x_xor_r[idx] >> bit) & 0x1;
         if (comm->getRank() == 0) {
-          res.at<U>(idx) +=
-              (c_i + (1 - c_i * 2) * randbits.at<U>(idx * nbits + bit)) << bit;
+          _res[idx] += (c_i + (1 - c_i * 2) * _randbits[idx * nbits + bit])
+                       << bit;
         } else {
-          res.at<U>(idx) += ((1 - c_i * 2) * randbits.at<U>(idx * nbits + bit))
-                            << bit;
+          _res[idx] += ((1 - c_i * 2) * _randbits[idx * nbits + bit]) << bit;
         }
       }
     });

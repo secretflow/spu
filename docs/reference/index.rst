@@ -5,16 +5,33 @@ Reference
 
 This part contains detailed explanation of background, configs and APIs.
 
-.. toctree::
-   :maxdepth: 2
 
-   runtime_config
+.. toctree::
+   :maxdepth: 1
+   :caption: API
+
    py_api
    cpp_api
-   pphlo_doc
-   xla_status
-   mpc_status
-   np_op_status
-   fxp
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Config
+
    psi_config
+   runtime_config
+
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Status
+
+   np_op_status
+   xla_status
+   pphlo_doc
+   mpc_status
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Misc.
+
    change_log

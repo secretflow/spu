@@ -3,7 +3,7 @@
 List of XLA(mhlo-mlir) Ops that SPU supports:
 
     The list of mhlo ops is obtained from this file:
-        https://github.com/tensorflow/mlir-hlo/blob/master/include/mlir-hlo/Dialect/mhlo/IR/hlo_ops.td
+        https://github.com/openxla/xla/blob/main/xla/mlir_hlo/mhlo/IR/hlo_ops.td
 
     General limitation with SPU:
         * Dynamic shape is not supported
@@ -107,7 +107,7 @@ Count: Total = 1, fully supported = 0
 |  Op Name       | supported(fully/partial/no) | notes       |
 | :------------: | :-------------------------: | ----------- |
 | `after_all`    | no                          |
-| `if`           | partial                     | condition variable must be a public scalar
+| `if`           | fully                       |
 | `case`         | no                          |
 | `while`        | partial                     | condition region must return a public scalar
 | `all_gather`   | no                          |
@@ -116,7 +116,7 @@ Count: Total = 1, fully supported = 0
 | `all_to_all`   | no                          |
 | `reduce`       | fully                       | inherits limitations from reduce function
 
-Count: Total = 9, fully supported = 1, partial = 2
+Count: Total = 9, fully supported = 2, partial = 1
 
 ### XLA tuple ops
 
@@ -132,8 +132,8 @@ Count: Total = 2, fully supported = 2
 |  Op Name       | supported(fully/partial/no) | notes       |
 | :------------: | :-------------------------: | ----------- |
 | `slice`        | fully                       |
-| `dynamic-slice`| partial                     | start_indices must be public values
-| `dynamic-update-slice`| partial              | start_indices must be public values
+| `dynamic-slice`| fully                       |
+| `dynamic-update-slice`| fully                |
 | `batch_norm_grad`| fully                     | Rely on XLA's batchnorm_expander pass
 | `batch_norm_inference`| fully                | Rely on XLA's batchnorm_expander pass
 | `batch_norm_training` | fully                | Rely on XLA's batchnorm_expander pass
@@ -174,7 +174,7 @@ Count: Total = 2, fully supported = 2
 | `torch_index_select` | no                    |
 | `optimization_barrier` | no                  |
 
-Count: Total = 42, fully supported = 26, partial = 3
+Count: Total = 42, fully supported = 28, partial = 1
 
 ### XLA RNG ops
 

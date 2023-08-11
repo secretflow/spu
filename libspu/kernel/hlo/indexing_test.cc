@@ -28,41 +28,43 @@ namespace spu::kernel::hlo {
 TEST(IndexingTest, Take1) {
   Value a(NdArrayRef(makePtType(PT_I64), {5}), DT_I64);
 
-  auto *data_ptr = static_cast<int64_t *>(a.data().data());
+  auto *data_ptr = a.data().data<int64_t>();
   std::iota(data_ptr, data_ptr + 5, 0);
 
+  NdArrayView<int64_t> _a(a.data());
   for (int64_t idx = 0; idx < 5; ++idx) {
-    auto v = a.data().at<int64_t>({idx});
+    auto v = _a[idx];
     EXPECT_EQ(v, idx);
   }
 
   auto r = FilterByMask(nullptr, a, {0U, 1U, 1U, 0U, 0U});
 
   EXPECT_EQ(r.shape()[0], 2);
-  EXPECT_EQ(r.data().at<int64_t>({0}), 1);
-  EXPECT_EQ(r.data().at<int64_t>({1}), 2);
+  EXPECT_EQ(r.data().at<int64_t>(0), 1);
+  EXPECT_EQ(r.data().at<int64_t>(1), 2);
 }
 
 TEST(IndexingTest, Take2) {
   Value a(NdArrayRef(makePtType(PT_I64), {10}), DT_I64);
 
-  auto *data_ptr = static_cast<int64_t *>(a.data().data());
+  auto *data_ptr = a.data().data<int64_t>();
   std::iota(data_ptr, data_ptr + 10, 0);
 
   // Create a strided data
   Value b(NdArrayRef(a.data().buf(), a.data().eltype(), {5}, {2}, 0),
           a.dtype());
   // Sanity input...
+  NdArrayView<const int64_t> _b(b.data());
   for (int64_t idx = 0; idx < 5; ++idx) {
-    auto v = b.data().at<int64_t>({idx});
+    auto v = _b[idx];
     EXPECT_EQ(v, 2 * idx);
   }
 
   auto r = FilterByMask(nullptr, b, {0U, 1U, 1U, 0U, 0U});
 
   EXPECT_EQ(r.shape()[0], 2);
-  EXPECT_EQ(r.data().at<int64_t>({0}), 2);
-  EXPECT_EQ(r.data().at<int64_t>({1}), 4);
+  EXPECT_EQ(r.data().at<int64_t>(0), 2);
+  EXPECT_EQ(r.data().at<int64_t>(1), 4);
 }
 
 TEST(IndexingTest, DynamicUpdateSliceScalarWithPublicIndices) {

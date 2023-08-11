@@ -25,9 +25,10 @@ import spu.libspu.logging as logging
 
 flags.DEFINE_integer("rank", 0, "rank: 0/1/2...")
 flags.DEFINE_string("party_ips", "127.0.0.1:9307,127.0.0.1:9308", "party addresses")
-flags.DEFINE_string("in_path", "data.csv", "data input path")
+
 flags.DEFINE_string("oprf_key_path", "oprf_key.bin", "oprf key file path")
 flags.DEFINE_string("setup_path", "setup_path", "data output path")
+
 flags.DEFINE_bool("enable_tls", False, "whether to enable tls for link")
 flags.DEFINE_string("link_server_certificate", "", "link server certificate file path")
 flags.DEFINE_string("link_server_private_key", "", "link server private key file path")

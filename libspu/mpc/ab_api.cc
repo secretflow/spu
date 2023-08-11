@@ -130,8 +130,8 @@ Value lshift_a(SPUContext* ctx, const Value& x, size_t nbits) {
   FORCE_DISPATCH(ctx, x, nbits);
 }
 
-Value trunc_a(SPUContext* ctx, const Value& x, size_t nbits) {
-  TILED_DISPATCH(ctx, x, nbits);
+Value trunc_a(SPUContext* ctx, const Value& x, size_t nbits, SignType sign) {
+  TILED_DISPATCH(ctx, x, nbits, sign);
 }
 
 Value mmul_ap(SPUContext* ctx, const Value& x, const Value& y) {
@@ -317,7 +317,7 @@ Value ppa_kogge_stone(SPUContext* ctx, const Value& lhs, const Value& rhs,
 
     // P1 = P & P1
     // G1 = G ^ (P & G1)
-    std::vector<Value> res = spu::vectorize(
+    std::vector<Value> res = spu::vmap(
         {P, P}, {P1, G1},
         [&](const Value& xx, const Value& yy) { return and_bb(ctx, xx, yy); });
     P = std::move(res[0]);
@@ -396,7 +396,7 @@ Value ppa_sklansky(SPUContext* ctx, Value const& lhs, Value const& rhs,
 
     // Ph = Ph & Ps
     // Gh = Gh ^ (Ph & Gs)
-    std::vector<Value> PG = spu::vectorize(
+    std::vector<Value> PG = spu::vmap(
         {Ph, Ph}, {Ps, Gs},
         [&](const Value& xx, const Value& yy) { return and_bb(ctx, xx, yy); });
     Ph = std::move(PG[0]);
@@ -459,7 +459,7 @@ Value carry_a2b(SPUContext* ctx, const Value& x, const Value& y, size_t k) {
     //   P = P1 & P0
     //   G = G1 | (P1 & G0)
     //     = G1 ^ (P1 & G0)
-    std::vector<Value> v = vectorize(
+    std::vector<Value> v = vmap(
         {P0, G0}, {P1, P1},
         [&](const Value& xx, const Value& yy) { return and_bb(ctx, xx, yy); });
     P = std::move(v[0]);

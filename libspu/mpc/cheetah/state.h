@@ -96,7 +96,7 @@ class CheetahOTState : public State {
       return;
     }
     std::unique_lock guard(lock_);
-    // NOTE: create a seperated link for OT
+    // NOTE: create a separated link for OT
     auto _comm = std::make_shared<Communicator>(comm->lctx()->Spawn());
     basic_ot_prot_[idx] = std::make_shared<BasicOTProtocols>(std::move(_comm));
   }

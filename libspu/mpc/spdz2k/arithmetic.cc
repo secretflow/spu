@@ -45,13 +45,14 @@ namespace {
 NdArrayRef CastRing(const NdArrayRef& in, FieldType out_field) {
   const auto* in_ty = in.eltype().as<Ring2k>();
   const auto in_field = in_ty->field();
+  auto out = ring_zeros(out_field, in.shape());
+
   return DISPATCH_ALL_FIELDS(in_field, "_", [&]() {
-    using InT = ring2k_t;
-    auto out = ring_zeros(out_field, in.shape());
+    NdArrayView<ring2k_t> _in(in);
     return DISPATCH_ALL_FIELDS(out_field, "_", [&]() {
-      using OutT = ring2k_t;
+      NdArrayView<ring2k_t> _out(out);
       pforeach(0, in.numel(), [&](int64_t idx) {
-        out.at<OutT>(idx) = static_cast<ring2k_t>(in.at<InT>(idx));
+        _out[idx] = static_cast<ring2k_t>(_in[idx]);
       });
 
       return out;
@@ -324,7 +325,7 @@ bool SingleCheck(KernelEvalContext* ctx, const NdArrayRef& in) {
 
   // 4. Check the consistency of y
   auto z = ring_sub(y_mac, ring_mul(plain_y, key));
-  std::string z_str(reinterpret_cast<char*>(z.data()), z.numel() * z.elsize());
+  std::string z_str(z.data<char>(), z.numel() * z.elsize());
   std::vector<std::string> z_strs;
   SPU_ENFORCE(commit_and_open(comm->lctx(), z_str, &z_strs));
   SPU_ENFORCE(z_strs.size() == comm->getWorldSize());
@@ -395,17 +396,18 @@ bool BatchCheck(KernelEvalContext* ctx, const std::vector<NdArrayRef>& ins) {
 
   // 3. broadcast x_hat && 4. open x_hat
   std::vector<NdArrayRef> plain_x_hat_v;
-  vectorize(x_hat_v.begin(), x_hat_v.end(), std::back_inserter(plain_x_hat_v),
-            [&](const NdArrayRef& s) {
-              return comm->allReduce(ReduceOp::ADD, s, kBindName);
-            });
+  vmap(x_hat_v.begin(), x_hat_v.end(), std::back_inserter(plain_x_hat_v),
+       [&](const NdArrayRef& s) {
+         return comm->allReduce(ReduceOp::ADD, s, kBindName);
+       });
 
   // 5. get l public random values, compute plain y
   auto pub_r = beaver->genPublCoin(field, size);
   std::vector<uint128_t> rv;
   uint128_t mask = (static_cast<uint128_t>(1) << s) - 1;
+  NdArrayView<uint128_t> _pub_r(pub_r);
   for (size_t i = 0; i < size; ++i) {
-    rv.emplace_back(pub_r.at<uint128_t>(i) & mask);
+    rv.emplace_back(_pub_r[i] & mask);
   }
 
   auto plain_y = ring_zeros(field, ins[0].shape());
@@ -422,7 +424,7 @@ bool BatchCheck(KernelEvalContext* ctx, const std::vector<NdArrayRef>& ins) {
   auto plain_y_mac_share = ring_mul(plain_y, key);
   auto z = ring_sub(m, plain_y_mac_share);
 
-  std::string z_str(reinterpret_cast<char*>(z.data()), z.numel() * z.elsize());
+  std::string z_str(z.data<char>(), z.numel() * z.elsize());
   std::vector<std::string> z_strs;
   YACL_ENFORCE(commit_and_open(lctx, z_str, &z_strs));
   YACL_ENFORCE(z_strs.size() == comm->getWorldSize());
@@ -503,7 +505,7 @@ NdArrayRef MulAA::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
   auto f_mac = ring_sub(y_mac, b_mac);
 
   // open e, f
-  auto res = vectorize({e, f}, [&](const NdArrayRef& s) {
+  auto res = vmap({e, f}, [&](const NdArrayRef& s) {
     return comm->allReduce(ReduceOp::ADD, s, kBindName);
   });
   auto p_e = std::move(res[0]);
@@ -574,10 +576,9 @@ NdArrayRef MatMulAA::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
   auto [a_mac, b_mac, c_mac] = mac_vec;
 
   // open x-a & y-b
-  auto res =
-      vectorize({ring_sub(x, a), ring_sub(y, b)}, [&](const NdArrayRef& s) {
-        return comm->allReduce(ReduceOp::ADD, s, kBindName);
-      });
+  auto res = vmap({ring_sub(x, a), ring_sub(y, b)}, [&](const NdArrayRef& s) {
+    return comm->allReduce(ReduceOp::ADD, s, kBindName);
+  });
   auto p_e = std::move(res[0]);
   auto p_f = std::move(res[1]);
   auto p_ef = ring_mmul(p_e, p_f);
@@ -617,8 +618,10 @@ NdArrayRef LShiftA::proc(KernelEvalContext* ctx, const NdArrayRef& in,
 // ABY3, truncation pair method.
 // Ref: Section 5.1.2 https://eprint.iacr.org/2018/403.pdf
 NdArrayRef TruncA::proc(KernelEvalContext* ctx, const NdArrayRef& in,
-                        size_t bits) const {
+                        size_t bits, SignType sign) const {
   SPU_TRACE_MPC_LEAF(ctx, in, bits);
+
+  (void)sign;  // TODO: optimize me.
 
   const auto key = ctx->getState<Spdz2kState>()->key();
   const auto field = in.eltype().as<Ring2k>()->field();

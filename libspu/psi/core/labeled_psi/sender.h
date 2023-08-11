@@ -32,7 +32,7 @@ namespace spu::psi {
 
 class LabelPsiSender {
  public:
-  explicit LabelPsiSender(std::shared_ptr<spu::psi::SenderDB> sender_db);
+  explicit LabelPsiSender(std::shared_ptr<spu::psi::ISenderDB> sender_db);
 
   /**
    * @brief  Receive PsiParams Request and Send PsiParams Response
@@ -60,7 +60,7 @@ class LabelPsiSender {
   void RunQuery(const std::shared_ptr<yacl::link::Context>& link_ctx);
 
  private:
-  std::shared_ptr<spu::psi::SenderDB> sender_db_;
+  std::shared_ptr<spu::psi::ISenderDB> sender_db_;
 
   apsi::CryptoContext crypto_context_;
   seal::compr_mode_type compr_mode_ = seal::Serialization::compr_mode_default;
