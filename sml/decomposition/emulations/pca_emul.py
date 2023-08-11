@@ -21,13 +21,13 @@ import numpy as np
 from sklearn.decomposition import PCA as SklearnPCA
 
 # Add the library directory to the path
-sys.path.append(os.path.join(os.path.dirname(__file__), '../../'))
+sys.path.append(os.path.join(os.path.dirname(__file__), '../../../'))
 
 import sml.utils.emulation as emulation
 from sml.decomposition.pca import PCA
 
 
-def emul_PCA(mode: emulation.Mode.MULTIPROCESS):
+def emul_powerPCA(mode: emulation.Mode.MULTIPROCESS):
     def proc(X):
         model = PCA(
             method='power_iteration',
@@ -92,6 +92,83 @@ def emul_PCA(mode: emulation.Mode.MULTIPROCESS):
     finally:
         emulator.down()
 
+def emul_rsvdPCA(mode: emulation.Mode.MULTIPROCESS):
+    def proc(X):
+        model = PCA(
+            method='rsvd',
+            n_components=5,
+            random_matrix=random_matrix,
+        )
+
+        model.fit(X)
+        X_transformed = model.transform(X)
+        X_variances = model._variances
+
+        return X_transformed, X_variances
+
+    def proc_reconstruct(X):
+        model = PCA(
+            method='rsvd',
+            n_components=5,
+            random_matrix=random_matrix,
+        )
+
+        model.fit(X)
+        X_reconstructed = model.inverse_transform(model.transform(X))
+
+        return X_reconstructed
+
+    try:
+        # bandwidth and latency only work for docker mode
+        emulator = emulation.Emulator(
+            emulation.CLUSTER_ABY3_3PC, mode, bandwidth=300, latency=20
+        )
+        emulator.up()
+        # Create a simple dataset
+        X = random.normal(random.PRNGKey(0), (1000, 10))
+
+        # Create random_matrix
+        random_state = np.random.RandomState(0)
+        random_matrix = random_state.normal(
+            size=(X.shape[1], 5)
+        )
+
+        result = emulator.run(proc)(X, random_matrix)
+        print("X_transformed_jax: ", result[0])
+        print("X_transformed_jax: ", result[1])
+
+        # The transformed data should have 2 dimensions
+        assert result[0].shape[1] == 5
+        
+        # The mean of the transformed data should be approximately 0
+        assert jnp.allclose(jnp.mean(result[0], axis=0), 0, atol=1e-3)
+
+        # Compare with sklearn
+        model = SklearnPCA(n_components=5)
+        model.fit(X)
+        X_transformed = model.transform(X)
+        X_variances = model.explained_variance_
+
+        print("X_transformed_sklearn: ", X_transformed)
+        print("X_variances_sklearn: ", X_variances)
+
+        result = emulator.run(proc_reconstruct)(X, random_matrix)
+
+        print("X_reconstructed_jax: ", result)
+
+        # Compare with sklearn
+        model = SklearnPCA(n_components=5)
+        model.fit(X)
+        X_reconstructed = model.inverse_transform(model.transform(X))
+
+        print("X_reconstructed_sklearn: ", X_reconstructed)
+
+        assert np.allclose(X_reconstructed, result, atol=1e-1)
+
+    finally:
+        emulator.down()
+
 
 if __name__ == "__main__":
-    emul_PCA(emulation.Mode.MULTIPROCESS)
+    emul_powerPCA(emulation.Mode.MULTIPROCESS)
+    emul_rsvdPCA(emulation.Mode.MULTIPROCESS)
