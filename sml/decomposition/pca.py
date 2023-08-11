@@ -27,7 +27,7 @@ class Method(Enum):
     PCA_rsvd = 'rsvd'
 
 
-class SimplePCA:
+class PCA:
     def __init__(
         self,
         method: str,
