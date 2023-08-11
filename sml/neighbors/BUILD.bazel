@@ -24,26 +24,5 @@ py_library(
     ],
 )
 
-py_binary(
-    name = "knn_emul",
-    srcs = ["knn_emul.py"],
-    deps = [
-        ":knn",
-        "//examples/python/utils:dataset_utils",  # FIXME: remove examples dependency
-        "//sml/utils:emulation",
-    ],
-)
 
-py_test(
-    name = "knn_test",
-    srcs = ["knn_test.py"],
-    data = [
-        "//examples/python/conf",  # FIXME: remove examples dependency
-    ],
-    deps = [
-        ":knn",
-        "//examples/python/utils:dataset_utils",  # FIXME: remove examples dependency
-        "//spu:init",
-        "//spu/utils:simulation",
-    ],
-)
+
