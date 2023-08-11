@@ -12,10 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@rules_python//python:defs.bzl", "py_binary", "py_library", "py_test")
+load("@rules_python//python:defs.bzl", "py_test")
 
 package(default_visibility = ["//visibility:public"])
-
 
 
 py_test(
@@ -25,8 +24,8 @@ py_test(
         "//examples/python/conf",  # FIXME: remove examples dependency
     ],
     deps = [
-        ":knn",
         "//examples/python/utils:dataset_utils",  # FIXME: remove examples dependency
+	"//sml/neighbors:knn",
         "//spu:init",
         "//spu/utils:simulation",
     ],

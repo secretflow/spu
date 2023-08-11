@@ -12,17 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@rules_python//python:defs.bzl", "py_binary", "py_library", "py_test")
+load("@rules_python//python:defs.bzl", "py_binary")
 
 package(default_visibility = ["//visibility:public"])
-
 
 py_binary(
     name = "knn_emul",
     srcs = ["knn_emul.py"],
     deps = [
-        ":knn",
         "//examples/python/utils:dataset_utils",  # FIXME: remove examples dependency
+	"//sml/neighbors:knn",
         "//sml/utils:emulation",
     ],
 )
