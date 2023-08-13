@@ -44,6 +44,10 @@ class Ridge:
         Constant that multiplies the L2 term, controlling regularization
         strength. `alpha` must be a non-negative float i.e. in `[0, inf)`.
 
+    fit_bias : bool, default=True
+        Whether to fit the bias for this model. If set
+        to false, no bias will be used in calculations
+
     solver : {'svd', 'cholesky'}, default='cholesky'
         Solver to use in the computational routines:
 
@@ -55,9 +59,10 @@ class Ridge:
           dot(X.T, X)
     """
 
-    def __init__(self, alpha=1.0, solver="lsqr") -> None:
+    def __init__(self, alpha=1.0, fit_bias=True, solver="cholesky") -> None:
         self.alpha = alpha
         self.solver = solver
+        self.fit_bias = fit_bias
 
     def fit(self, x, y):
         """Fit Ridge regression model.
@@ -78,9 +83,15 @@ class Ridge:
         if y.ndim == 1:
             y = y.reshape(-1, 1)
         alpha = jnp.asarray(self.alpha, dtype=x.dtype).ravel()
-        print(f"<<<solver: {self.solver}")
+
+        x, y, x_offset, y_offset = self.preprocess_data(x, y)
+
         if self.solver == Solver.CHOLESKY.value:
             self.coef = _solve_cholesky(x, y, alpha)
+        self.coef = self.coef.ravel()
+
+        self.set_bias(x_offset, y_offset)
+
         return self
 
     def predict(self, x):
@@ -99,8 +110,27 @@ class Ridge:
         """
         a = x
         b = self.coef.T
-        ret = jnp.dot(a, b)
+        ret = jnp.dot(a, b) + self.bias
         return ret
+
+    def preprocess_data(self, x, y):
+        # Center and scale data.
+        if self.fit_bias:
+            x_offset = jnp.average(x, axis=0)
+            x -= x_offset
+            y_offset = jnp.average(y, axis=0)
+            y -= y_offset
+        else:
+            x_offset = None
+            y_offset = None
+        return x, y, x_offset, y_offset
+
+    def set_bias(self, x_offset, y_offset):
+        if self.fit_bias:
+            self.bias = y_offset - jnp.dot(x_offset, self.coef.T)
+        else:
+            self.bias = 0.0
+
 
 def _solve_cholesky(x, y, alpha):
     # w = inv(X^t X + alpha*Id) * X.T y
@@ -109,8 +139,7 @@ def _solve_cholesky(x, y, alpha):
     A = jnp.dot(x.T, x)
     Xy = jnp.dot(x.T, y)
 
-    for i in range(n_features):
-        A = A.at[i, i].set(A[i][i] + alpha[0])
+    A += jnp.diag(jnp.ones(n_features) * alpha[0])
 
     coefs = jsci.linalg.solve(A, Xy, assume_a="pos", overwrite_a=True).T
     return coefs
