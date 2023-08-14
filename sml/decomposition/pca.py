@@ -33,7 +33,7 @@ class PCA:
         method: str,
         n_components: int,
         n_oversamples: int = 10,
-        max_iter: int = 300,
+        max_power_iter: int = 300,
         projection_iter: int = 4,
         random_matrix=None,
         scale=None,
@@ -51,7 +51,7 @@ class PCA:
             Additional number of random vectors to sample the range of A so as
             to ensure proper conditioning. The total number of random vectors
             used to find the range of A is n_components + n_oversamples
-        max_iter : int, default=100
+        max_power_iter : int, default=100
             Maximum number of iterations for Power Iteration, larger numbers mean higher accuracy and more time consuming.
         projection_iter : int, default=4
             Used when the 'rsvd' method is used. Number of projection iterations.
@@ -77,7 +77,7 @@ class PCA:
 
         self._n_components = n_components
         self._n_oversamples = n_oversamples  # used in rsvd
-        self._max_iter = max_iter
+        self._max_power_iter = max_power_iter
         self._mean = None
         self._components = None
         self._variances = None
@@ -91,8 +91,8 @@ class PCA:
         In the 'power_iteration' method, we use the Power Iteration algorithm to compute the eigenvalues and eigenvectors.
         The Power Iteration algorithm works by repeatedly multiplying a vector by the matrix to inflate the largest eigenvalue,
         and then normalizing to keep numerical stability.
-        After finding the largest eigenvalue and eigenvector, we deflate the matrix by subtracting the outer product of the 
-        eigenvector and itself, scaled by the eigenvalue. This leaves a matrix with the same eigenvectors, but the largest 
+        After finding the largest eigenvalue and eigenvector, we deflate the matrix by subtracting the outer product of the
+        eigenvector and itself, scaled by the eigenvalue. This leaves a matrix with the same eigenvectors, but the largest
         eigenvalue is replaced by zero.
 
         In the 'rsvd' method, we use the Randomized SVD to compute the eigenvalues and eigenvectors.
@@ -126,9 +126,7 @@ class PCA:
         """
 
         self._mean = jnp.mean(X, axis=0)
-        assert (
-            len(X.shape) == 2
-        ), f"Expected X to be 2 dimensional array, got {X.shape}"
+        assert len(X.shape) == 2, f"Expected X to be 2 dimensional array, got {X.shape}"
         X_centered = X - self._mean
         if self._method == Method.PCA_power:
             # The covariance matrix
@@ -142,7 +140,7 @@ class PCA:
                 # Initialize a random vector
                 vec = jnp.ones((X_centered.shape[1],))
 
-                for _ in range(self._max_iter):  # Max iterations
+                for _ in range(self._max_power_iter):  # Max iterations
                     # Power iteration
                     vec = jnp.dot(cov_matrix, vec)
                     vec /= jnp.linalg.norm(vec)
@@ -167,7 +165,7 @@ class PCA:
                 random_matrix=self._random_matrix,
                 n_iter=self._projection_iter,
                 scale=self._scale,
-                eigh_iter=self._max_iter,
+                eigh_iter=self._max_power_iter,
             )
             self._components = (result[2]).T
             self._variances = (result[1] ** 2) / (X.shape[0] - 1)
@@ -203,7 +201,9 @@ class PCA:
         X_original : array, shape (n_samples, n_features)
             Data in the original space.
         """
-        assert len(X_transformed.shape) == 2, f"Expected X_transformed to be 2 dimensional array, got {X_transformed.shape}"
+        assert (
+            len(X_transformed.shape) == 2
+        ), f"Expected X_transformed to be 2 dimensional array, got {X_transformed.shape}"
 
         X_original = jnp.dot(X_transformed, self._components.T) + self._mean
 
