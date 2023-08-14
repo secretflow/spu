@@ -19,4 +19,5 @@ package(default_visibility = ["//visibility:public"])
 py_library(
     name = "pca",
     srcs = ["pca.py"],
+    deps = ["//sml/utils:extmath"],
 )
