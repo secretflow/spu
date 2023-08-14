@@ -141,7 +141,7 @@ def emul_rsvdPCA(mode: emulation.Mode.MULTIPROCESS):
             size=(X.shape[1], n_components + n_oversamples)
         )
         random_matrix = emulator.seal(random_matrix)
-        
+
         result = emulator.run(proc)(X, random_matrix)
         print("X_transformed_jax: ", result[0])
         print("X_transformed_jax: ", result[1])
