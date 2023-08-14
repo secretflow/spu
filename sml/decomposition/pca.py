@@ -51,7 +51,7 @@ class PCA:
             Additional number of random vectors to sample the range of A so as
             to ensure proper conditioning. The total number of random vectors
             used to find the range of A is n_components + n_oversamples
-        max_power_iter : int, default=100
+        max_power_iter : int, default=300
             Maximum number of iterations for Power Iteration, larger numbers mean higher accuracy and more time consuming.
         projection_iter : int, default=4
             Used when the 'rsvd' method is used. Number of projection iterations.
