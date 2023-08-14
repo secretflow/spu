@@ -19,7 +19,7 @@ import sys
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '../../'))
 
-from sml.utils import extmath 
+from sml.utils import extmath
 
 
 class Method(Enum):
