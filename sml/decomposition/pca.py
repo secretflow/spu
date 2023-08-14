@@ -32,7 +32,8 @@ class PCA:
         self,
         method: str,
         n_components: int,
-        max_iter: int = 100,
+        n_oversamples: int = 10,
+        max_iter: int = 300,
         projection_iter: int = 4,
         random_matrix=None,
         scale=None,
@@ -46,6 +47,10 @@ class PCA:
             'rsvd' uses Randomized SVD to compute the eigenvalues and eigenvectors.
         n_components : int
             Number of components to keep.
+        n_oversamples: int, default=10
+            Additional number of random vectors to sample the range of A so as
+            to ensure proper conditioning. The total number of random vectors
+            used to find the range of A is n_components + n_oversamples
         max_iter : int, default=100
             Maximum number of iterations for Power Iteration, larger numbers mean higher accuracy and more time consuming.
         projection_iter : int, default=4
@@ -71,6 +76,7 @@ class PCA:
         ], f"method should in {[e.value for e in Method]}, but got {method}"
 
         self._n_components = n_components
+        self._n_oversamples = n_oversamples  # used in rsvd
         self._max_iter = max_iter
         self._mean = None
         self._components = None
@@ -157,6 +163,7 @@ class PCA:
             result = extmath.randomized_svd(
                 X_centered,
                 n_components=self._n_components,
+                n_oversamples=self._n_oversamples,
                 random_matrix=self._random_matrix,
                 n_iter=self._projection_iter,
                 scale=self._scale,
