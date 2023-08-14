@@ -11,19 +11,19 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
-import json
+
 import jax.numpy as jnp
-import spu.utils.simulation as spsim
-import spu.spu_pb2 as spu_pb2  # type: ignore
-import examples.python.utils.dataset_utils as dsutil
-from sml.linear_model.ridge import Ridge
 from sklearn.linear_model import Ridge as skRidge
+
+import examples.python.utils.dataset_utils as dsutil
+import spu.spu_pb2 as spu_pb2  # type: ignore
+import spu.utils.simulation as spsim
+from sml.linear_model.ridge import Ridge
 
 
 class UnitTests(unittest.TestCase):
-    def test_simple(self):
+    def test_ridge(self):
         sim = spsim.Simulator.simple(
             3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM64
         )
@@ -60,7 +60,7 @@ class UnitTests(unittest.TestCase):
 
         # absolute_error
         print("[absolute_error]---------------------------------------------")
-        print(jnp.abs(result - sklearn_result)[:20])
+        print(jnp.round(jnp.abs(result - sklearn_result)[:20], 5))
 
 
 if __name__ == "__main__":

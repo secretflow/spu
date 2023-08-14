@@ -11,13 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-from scipy import linalg
 from enum import Enum
-from scipy import linalg, sparse
+
 import jax.numpy as jnp
 import jax.scipy as jsci
-import numpy as np
 
 
 class Solver(Enum):
@@ -35,8 +32,6 @@ class Ridge:
     This model solves a regression model where the loss function is
     the linear least squares function and regularization is given by
     the l2-norm. Also known as Ridge Regression or Tikhonov regularization.
-    This estimator has built-in support for multi-variate regression
-    (i.e., when y is a 2d-array of shape (n_samples, n_targets)).
 
     Parameters
     ----------
@@ -82,7 +77,7 @@ class Ridge:
         """
         if y.ndim == 1:
             y = y.reshape(-1, 1)
-        alpha = jnp.asarray(self.alpha, dtype=x.dtype).ravel()
+        alpha = float(self.alpha)
 
         x, y, x_offset, y_offset = self.preprocess_data(x, y)
 
@@ -139,7 +134,7 @@ def _solve_cholesky(x, y, alpha):
     A = jnp.dot(x.T, x)
     Xy = jnp.dot(x.T, y)
 
-    A += jnp.diag(jnp.ones(n_features) * alpha[0])
+    A += jnp.diag(jnp.ones(n_features) * alpha)
 
     coefs = jsci.linalg.solve(A, Xy, assume_a="pos", overwrite_a=True).T
     return coefs

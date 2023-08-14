@@ -11,13 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-import json
 import jax.numpy as jnp
+from sklearn.linear_model import Ridge as skRidge
+
 import examples.python.utils.dataset_utils as dsutil
 import sml.utils.emulation as emulation
 from sml.linear_model.ridge import Ridge
-from sklearn.linear_model import Ridge as skRidge
 
 
 # TODO: design the enumation framework, just like py.unittest
@@ -71,7 +70,7 @@ def emul_Ridge(mode: emulation.Mode.MULTIPROCESS):
 
         # absolute_error
         print("[absolute_error]---------------------------------------------")
-        print(jnp.abs(result - sklearn_result)[:20])
+        print(jnp.round(jnp.abs(result - sklearn_result)[:20], 5))
     finally:
         emulator.down()
 
