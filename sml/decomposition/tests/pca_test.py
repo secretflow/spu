@@ -145,9 +145,12 @@ class UnitTests(unittest.TestCase):
         X_np = np.array(X)
 
         # Run fit_transform using sklearn
-        # Copy to sklearn.decomposition._pca._fit_truncated
-        # U, S, Vt = randomized_svd(X, n_components=n_components, power_iteration_normalizer = 'QR', svd_lapack_driver = 'gesvd', random_state = 0, n_oversamples = 10)
-        sklearn_pca = SklearnPCA(n_components=n_components)
+        sklearn_pca = SklearnPCA(
+            n_components=n_components,
+            svd_solver="randomized",
+            power_iteration_normalizer="QR",
+            random_state=0,
+        )
         sklearn_pca.fit(X_np)
         X_transformed_sklearn = sklearn_pca.transform(X_np)
 
