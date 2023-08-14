@@ -110,8 +110,10 @@ class UnitTests(unittest.TestCase):
         def proc_transform(X, random_matrix):
             model = PCA(
                 method='rsvd',
-                n_components=5,
+                n_components=n_components,
+                n_oversamples=n_oversamples,
                 random_matrix=random_matrix,
+                scale=[10000000, 10000],
             )
 
             model.fit(X)
@@ -121,19 +123,21 @@ class UnitTests(unittest.TestCase):
             return X_transformed, X_variances
 
         # Create a simple dataset
-        X = random.normal(random.PRNGKey(0), (1000, 10))
+        X = random.normal(random.PRNGKey(0), (1000, 20))
+        n_components = 5
+        n_oversamples = 10
 
         # Create random_matrix
         random_state = np.random.RandomState(0)
         random_matrix = random_state.normal(
-            size=(X.shape[1], 5)
+            size=(X.shape[1], n_components + n_oversamples)
         )
         
         # Run the simulation
         result = spsim.sim_jax(sim, proc_transform)(X, random_matrix)
 
         # The transformed data should have 2 dimensions
-        self.assertEqual(result[0].shape[1], 5)
+        self.assertEqual(result[0].shape[1], n_components)
 
         # The mean of the transformed data should be approximately 0
         self.assertTrue(jnp.allclose(jnp.mean(result[0], axis=0), 0, atol=1e-3))
@@ -141,7 +145,9 @@ class UnitTests(unittest.TestCase):
         X_np = np.array(X)
 
         # Run fit_transform using sklearn
-        sklearn_pca = SklearnPCA(n_components=5)
+        # Copy to sklearn.decomposition._pca._fit_truncated
+        # U, S, Vt = randomized_svd(X, n_components=n_components, power_iteration_normalizer = 'QR', svd_lapack_driver = 'gesvd', random_state = 0, n_oversamples = 10)
+        sklearn_pca = SklearnPCA(n_components=n_components)
         sklearn_pca.fit(X_np)
         X_transformed_sklearn = sklearn_pca.transform(X_np)
 
@@ -160,8 +166,10 @@ class UnitTests(unittest.TestCase):
         def proc_reconstruct(X, random_matrix):
             model = PCA(
                 method='rsvd',
-                n_components=5,
+                n_components=n_components,
+                n_oversamples=n_oversamples,
                 random_matrix=random_matrix,
+                scale=[10000000, 10000],
             )
 
             model.fit(X)
