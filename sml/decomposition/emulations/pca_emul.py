@@ -94,7 +94,7 @@ def emul_powerPCA(mode: emulation.Mode.MULTIPROCESS):
 
 
 def emul_rsvdPCA(mode: emulation.Mode.MULTIPROCESS):
-    def proc(X):
+    def proc(X, random_matrix):
         model = PCA(
             method='rsvd',
             n_components=5,
@@ -109,7 +109,7 @@ def emul_rsvdPCA(mode: emulation.Mode.MULTIPROCESS):
 
         return X_transformed, X_variances
 
-    def proc_reconstruct(X):
+    def proc_reconstruct(X, random_matrix):
         model = PCA(
             method='rsvd',
             n_components=5,
@@ -131,7 +131,7 @@ def emul_rsvdPCA(mode: emulation.Mode.MULTIPROCESS):
         emulator.up()
         # Create a simple dataset
         X = random.normal(random.PRNGKey(0), (1000, 20))
-        X = emulator.seal(X)
+        X_spu = emulator.seal(X)
         n_components = 5
         n_oversamples = 10
 
@@ -140,9 +140,9 @@ def emul_rsvdPCA(mode: emulation.Mode.MULTIPROCESS):
         random_matrix = random_state.normal(
             size=(X.shape[1], n_components + n_oversamples)
         )
-        random_matrix = emulator.seal(random_matrix)
+        random_matrix_spu = emulator.seal(random_matrix)
 
-        result = emulator.run(proc)(X, random_matrix)
+        result = emulator.run(proc)(X_spu, random_matrix_spu)
         print("X_transformed_jax: ", result[0])
         print("X_transformed_jax: ", result[1])
 
@@ -153,7 +153,12 @@ def emul_rsvdPCA(mode: emulation.Mode.MULTIPROCESS):
         assert jnp.allclose(jnp.mean(result[0], axis=0), 0, atol=1e-3)
 
         # Compare with sklearn
-        model = SklearnPCA(n_components=n_components)
+        model = SklearnPCA(
+            n_components=n_components,
+            svd_solver="randomized",
+            power_iteration_normalizer="QR",
+            random_state=0,
+        )
         model.fit(X)
         X_transformed = model.transform(X)
         X_variances = model.explained_variance_
@@ -161,7 +166,7 @@ def emul_rsvdPCA(mode: emulation.Mode.MULTIPROCESS):
         print("X_transformed_sklearn: ", X_transformed)
         print("X_variances_sklearn: ", X_variances)
 
-        result = emulator.run(proc_reconstruct)(X, random_matrix)
+        result = emulator.run(proc_reconstruct)(X_spu, random_matrix_spu)
 
         print("X_reconstructed_jax: ", result)
 
