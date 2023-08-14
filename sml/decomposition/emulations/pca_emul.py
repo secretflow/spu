@@ -126,9 +126,7 @@ def emul_rsvdPCA(mode: emulation.Mode.MULTIPROCESS):
     try:
         # bandwidth and latency only work for docker mode
         conf_path = os.path.dirname(os.path.dirname(__file__)) + "/3pc.json"
-        emulator = emulation.Emulator(
-            conf_path, mode, bandwidth=300, latency=20
-        )
+        emulator = emulation.Emulator(conf_path, mode, bandwidth=300, latency=20)
         emulator.up()
         # Create a simple dataset
         X = random.normal(random.PRNGKey(0), (1000, 20))
