@@ -92,12 +92,15 @@ def emul_powerPCA(mode: emulation.Mode.MULTIPROCESS):
     finally:
         emulator.down()
 
+
 def emul_rsvdPCA(mode: emulation.Mode.MULTIPROCESS):
     def proc(X):
         model = PCA(
             method='rsvd',
             n_components=5,
+            n_oversamples=n_oversamples,
             random_matrix=random_matrix,
+            scale=[10000000, 10000],
         )
 
         model.fit(X)
@@ -110,7 +113,9 @@ def emul_rsvdPCA(mode: emulation.Mode.MULTIPROCESS):
         model = PCA(
             method='rsvd',
             n_components=5,
+            n_oversamples=n_oversamples,
             random_matrix=random_matrix,
+            scale=[10000000, 10000],
         )
 
         model.fit(X)
@@ -125,12 +130,14 @@ def emul_rsvdPCA(mode: emulation.Mode.MULTIPROCESS):
         )
         emulator.up()
         # Create a simple dataset
-        X = random.normal(random.PRNGKey(0), (1000, 10))
+        X = random.normal(random.PRNGKey(0), (1000, 20))
+        n_components = 5
+        n_oversamples = 10
 
         # Create random_matrix
         random_state = np.random.RandomState(0)
         random_matrix = random_state.normal(
-            size=(X.shape[1], 5)
+            size=(X.shape[1], n_components + n_oversamples)
         )
 
         result = emulator.run(proc)(X, random_matrix)
@@ -138,13 +145,13 @@ def emul_rsvdPCA(mode: emulation.Mode.MULTIPROCESS):
         print("X_transformed_jax: ", result[1])
 
         # The transformed data should have 2 dimensions
-        assert result[0].shape[1] == 5
-        
+        assert result[0].shape[1] == n_components
+
         # The mean of the transformed data should be approximately 0
         assert jnp.allclose(jnp.mean(result[0], axis=0), 0, atol=1e-3)
 
         # Compare with sklearn
-        model = SklearnPCA(n_components=5)
+        model = SklearnPCA(n_components=n_components)
         model.fit(X)
         X_transformed = model.transform(X)
         X_variances = model.explained_variance_
@@ -157,7 +164,7 @@ def emul_rsvdPCA(mode: emulation.Mode.MULTIPROCESS):
         print("X_reconstructed_jax: ", result)
 
         # Compare with sklearn
-        model = SklearnPCA(n_components=5)
+        model = SklearnPCA(n_components=n_components)
         model.fit(X)
         X_reconstructed = model.inverse_transform(model.transform(X))
 
