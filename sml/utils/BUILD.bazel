@@ -36,12 +36,6 @@ py_library(
 )
 
 py_library(
-    name = "pca",
-    srcs = ["pca.py"],
-    deps = ["//sml/utils:extmath"],
-)
-
-py_library(
     name = "extmath",
     srcs = ["extmath.py"],
     deps = [],
