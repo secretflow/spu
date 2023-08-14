@@ -20,7 +20,7 @@ import jax.numpy as jnp
 import numpy as np
 from jax import random
 from sklearn.decomposition import PCA as SklearnPCA
-import spu.spu_pb2 as spu_pb2  
+import spu.spu_pb2 as spu_pb2
 import spu.utils.simulation as spsim
 
 # Add the sml directory to the path
@@ -132,7 +132,7 @@ class UnitTests(unittest.TestCase):
         random_matrix = random_state.normal(
             size=(X.shape[1], n_components + n_oversamples)
         )
-        
+
         # Run the simulation
         result = spsim.sim_jax(sim, proc_transform)(X, random_matrix)
 
