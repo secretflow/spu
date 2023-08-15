@@ -26,7 +26,7 @@ py_binary(
 )
 
 py_binary(
-    name = "pca_emul",
+    name = "rsvd_pca_emul",
     srcs = ["rsvd_pca_emul.py"],
     data = [":conf"],  
     deps = [
