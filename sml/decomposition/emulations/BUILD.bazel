@@ -24,3 +24,20 @@ py_binary(
         "//sml/utils:emulation",
     ],
 )
+
+py_binary(
+    name = "pca_emul",
+    srcs = ["rsvd_pca_emul.py"],
+    data = [":conf"],  
+    deps = [
+        "//sml/decomposition:pca",
+        "//sml/utils:emulation",
+    ],
+)
+
+filegroup(
+    name = "conf",
+    srcs = [
+        "3pc.json",
+    ],
+)
