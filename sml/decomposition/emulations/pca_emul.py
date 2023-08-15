@@ -21,13 +21,13 @@ import numpy as np
 from sklearn.decomposition import PCA as SklearnPCA
 
 # Add the library directory to the path
-sys.path.append(os.path.join(os.path.dirname(__file__), '../../'))
+sys.path.append(os.path.join(os.path.dirname(__file__), '../../../'))
 
 import sml.utils.emulation as emulation
 from sml.decomposition.pca import PCA
 
 
-def emul_PCA(mode: emulation.Mode.MULTIPROCESS):
+def emul_powerPCA(mode: emulation.Mode.MULTIPROCESS):
     def proc(X):
         model = PCA(
             method='power_iteration',
@@ -94,4 +94,4 @@ def emul_PCA(mode: emulation.Mode.MULTIPROCESS):
 
 
 if __name__ == "__main__":
-    emul_PCA(emulation.Mode.MULTIPROCESS)
+    emul_powerPCA(emulation.Mode.MULTIPROCESS)
