@@ -103,5 +103,5 @@ def randomized_svd(
     Q = rsvd_iteration(A, Omega, scale[1], n_iter)
     B = jnp.dot(Q.T, A)
     u_tilde, s, v = svd(B, eigh_iter)
-    u = jnp.dot(Q, u_tilde)[:, :]
+    u = jnp.dot(Q, u_tilde)
     return u[:, :n_components], s[:n_components], v[:n_components, :]
