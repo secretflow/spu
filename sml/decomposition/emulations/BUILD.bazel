@@ -28,7 +28,7 @@ py_binary(
 py_binary(
     name = "rsvd_pca_emul",
     srcs = ["rsvd_pca_emul.py"],
-    data = [":conf"],  
+    data = [":conf"],
     deps = [
         "//sml/decomposition:pca",
         "//sml/utils:emulation",
