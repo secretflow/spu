@@ -14,16 +14,12 @@
 
 import os
 import sys
-import unittest
 import numpy as np
 from collections import defaultdict
 
 import jax.numpy as jnp
-import jax.random as random
 import numpy as np
 from sklearn.neighbors import KNeighborsClassifier
-from functools import partial
-from jax import jit
 # from sklearn.metrics import roc_auc_score, explained_variance_score
 
 # Add the library directory to the path
@@ -35,10 +31,16 @@ from sml.neighbors.knn  import KNNClassifer
 
 # TODO: design the enumation framework, just like py.unittest
 # all emulation action should begin with `emul_` (for reflection)
-def emul_SimplePCA(mode: emulation.Mode.MULTIPROCESS):
+def emul_KNN(mode: emulation.Mode.MULTIPROCESS):
     
     
-    def proc(X_train, y_train, X_test, n_classes, n_neighbors=5, weights='uniform'):
+    def proc_uniform(X_train, y_train, X_test, n_classes, n_neighbors=5, weights='uniform'):
+            knn_model = KNNClassifer(n_neighbors=n_neighbors, weights= weights, n_classes=n_classes)
+            knn_model.fit(X_train, y_train)
+            
+            return knn_model.predict(X_test)
+    
+    def proc_distance(X_train, y_train, X_test, n_classes, n_neighbors=5, weights='distance'):
             knn_model = KNNClassifer(n_neighbors=n_neighbors, weights= weights, n_classes=n_classes)
             knn_model.fit(X_train, y_train)
             
@@ -68,12 +70,17 @@ def emul_SimplePCA(mode: emulation.Mode.MULTIPROCESS):
 
         X_train_, y_train_new_, X_test_, = emulator.seal(X_train, y_train_new, X_test)
 
-        result = emulator.run(proc,static_argnums=(3,4))(X_train_, y_train_new_, X_test_, n_classes, n_neighbors)
+        result_uniform = emulator.run(proc_uniform,static_argnums=(3,4))(X_train_, y_train_new_, X_test_, n_classes, n_neighbors)
+
+        result_distance = emulator.run(proc_distance,static_argnums=(3,4))(X_train_, y_train_new_, X_test_, n_classes, n_neighbors)
         
         # 再从连续数组映射回原来的标签
         int_to_label = {i: label for label, i in label_to_int.items()}
-        result_np = np.array(result)
-        predictions = [int_to_label[prediction] for prediction in result_np]
+        result_uniform_np = np.array(result_uniform)
+        result_distance_np = np.array(result_distance)
+        predictions_uniform = [int_to_label[prediction] for prediction in result_uniform_np]
+        predictions_distance = [int_to_label[prediction] for prediction in result_distance_np]
+
 
         # 与sklearn的结果进行比较
         X_train = np.array(X_train)
@@ -85,11 +92,12 @@ def emul_SimplePCA(mode: emulation.Mode.MULTIPROCESS):
 
         sklearn_predictions = neigh.predict(X_test)
 
-        assert np.array_equal(predictions, sklearn_predictions)
+        assert np.array_equal(predictions_uniform, sklearn_predictions)
+        assert np.array_equal(predictions_distance, sklearn_predictions)
 
     finally:
         emulator.down()
 
 
 if __name__ == "__main__":
-    emul_SimplePCA(emulation.Mode.MULTIPROCESS)
+    emul_KNN(emulation.Mode.MULTIPROCESS)

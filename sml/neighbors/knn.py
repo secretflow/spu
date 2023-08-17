@@ -16,6 +16,7 @@
 
 import jax.numpy as jnp
 from jax import lax
+from jax import vmap
 
 class KNNClassifer:
     def __init__(self, n_neighbors=5, weights='uniform', metric=None, metric_params=None, n_classes=None):
@@ -131,11 +132,17 @@ class KNNClassifer:
         Returns:
         - array-like: Predicted class labels for each sample.
         """
-        predictions = []
-        for x in X:
-            prediction = self._predict_single_sample(x)
-            predictions.append(prediction)
-        return jnp.array(predictions)
-
+        # predictions = []
+        # for x in X:
+        #     prediction = self._predict_single_sample(x)
+        #     predictions.append(prediction)
+        # return jnp.array(predictions)
+        # Vectorize the _predict_single_sample function
+        vectorized_predict = vmap(self._predict_single_sample)
+        
+        # Use the vectorized function to predict all samples at once
+        predictions = vectorized_predict(X)
+        
+        return predictions
 
 

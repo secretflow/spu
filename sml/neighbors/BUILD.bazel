@@ -16,10 +16,8 @@ load("@rules_python//python:defs.bzl", "py_library")
 
 package(default_visibility = ["//visibility:public"])
 
+
 py_library(
     name = "knn",
     srcs = ["knn.py"],
-    deps = [
-        "//sml/utils:fxp_approx",
-    ],
 )

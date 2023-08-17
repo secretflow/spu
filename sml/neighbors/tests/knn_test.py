@@ -28,12 +28,18 @@ from sml.neighbors.knn  import KNNClassifer
 
 
 class UnitTests(unittest.TestCase):
-    def test_simple(self):
+    def test_knn(self):
         sim = spsim.Simulator.simple(
             3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM64
         )
         # Test fit_predict
-        def proc_predict(X_train, y_train, X_test, n_classes, n_neighbors=5, weights='uniform'):
+        def proc_uniform_predict(X_train, y_train, X_test, n_classes, n_neighbors=5, weights='uniform'):
+            knn_model = KNNClassifer(n_neighbors=n_neighbors, weights= weights, n_classes=n_classes)
+            knn_model.fit(X_train, y_train)
+            
+            return knn_model.predict(X_test)
+        
+        def proc_distance_predict(X_train, y_train, X_test, n_classes, n_neighbors=5, weights='distance'):
             knn_model = KNNClassifer(n_neighbors=n_neighbors, weights= weights, n_classes=n_classes)
             knn_model.fit(X_train, y_train)
             
@@ -54,12 +60,18 @@ class UnitTests(unittest.TestCase):
         y_train_new = jnp.array([label_to_int[label] for label in y_train.tolist()])
 
         # 运行模拟器
-        result = spsim.sim_jax(sim, proc_predict,  static_argnums=(3,4))(X_train, y_train_new, X_test, n_classes, 3)
+        result_uniform = spsim.sim_jax(sim, proc_uniform_predict,  static_argnums=(3,4))(X_train, y_train_new, X_test, n_classes, 3)
+        result_distance = spsim.sim_jax(sim, proc_distance_predict,  static_argnums=(3,4))(X_train, y_train_new, X_test, n_classes, 3)
+
 
         # 再从连续数组映射回原来的标签
         int_to_label = {i: label for label, i in label_to_int.items()}
-        result_np = np.array(result)
-        predictions = [int_to_label[prediction] for prediction in result_np]
+        result_uniform_np = np.array(result_uniform)
+        result_distance_np = np.array(result_distance)
+        predictions_uniform = [int_to_label[prediction] for prediction in result_uniform_np]
+        predictions_distance = [int_to_label[prediction] for prediction in result_distance_np]
+
+        
 
         # 与sklearn的结果进行比较
         X_train = np.array(X_train)
@@ -71,7 +83,9 @@ class UnitTests(unittest.TestCase):
 
         sklearn_predictions = neigh.predict(X_test)
 
-        self.assertEqual(predictions, sklearn_predictions.tolist())
+        self.assertEqual(predictions_uniform, sklearn_predictions.tolist())
+        self.assertEqual(predictions_distance, sklearn_predictions.tolist())
+
 
 
 

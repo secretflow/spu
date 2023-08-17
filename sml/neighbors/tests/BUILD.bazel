@@ -20,11 +20,7 @@ package(default_visibility = ["//visibility:public"])
 py_test(
     name = "knn_test",
     srcs = ["knn_test.py"],
-    data = [
-        "//examples/python/conf",  # FIXME: remove examples dependency
-    ],
     deps = [
-        "//examples/python/utils:dataset_utils",  # FIXME: remove examples dependency
 	"//sml/neighbors:knn",
         "//spu:init",
         "//spu/utils:simulation",
