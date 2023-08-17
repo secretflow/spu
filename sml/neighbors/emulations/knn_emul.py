@@ -14,23 +14,12 @@
 
 import os
 import sys
-<<<<<<< HEAD
 import numpy as np
-=======
-import unittest
->>>>>>> 20df1b2 ([fix] isort python files)
 from collections import defaultdict
-from functools import partial
 
 import jax.numpy as jnp
 import numpy as np
-<<<<<<< HEAD
 from sklearn.neighbors import KNeighborsClassifier
-=======
-from jax import jit
-from sklearn.neighbors import KNeighborsClassifier
-
->>>>>>> 20df1b2 ([fix] isort python files)
 # from sklearn.metrics import roc_auc_score, explained_variance_score
 
 # Add the library directory to the path
