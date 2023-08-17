@@ -14,17 +14,19 @@
 import os
 import sys
 import unittest
-import numpy as np
 from collections import defaultdict
-from sklearn.neighbors import KNeighborsClassifier
+
 import jax.numpy as jnp
-import spu.spu_pb2 as spu_pb2  
+import numpy as np
+from sklearn.neighbors import KNeighborsClassifier
+
+import spu.spu_pb2 as spu_pb2
 import spu.utils.simulation as spsim
 
 # Add the sml directory to the path
 sys.path.append(os.path.join(os.path.dirname(__file__), '../../../'))
 
-from sml.neighbors.knn  import KNNClassifer
+from sml.neighbors.knn import KNNClassifer
 
 
 class UnitTests(unittest.TestCase):

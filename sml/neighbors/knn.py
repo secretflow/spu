@@ -18,6 +18,7 @@ import jax.numpy as jnp
 from jax import lax
 from jax import vmap
 
+
 class KNNClassifer:
     def __init__(self, n_neighbors=5, weights='uniform', metric=None, metric_params=None, n_classes=None):
         """
