@@ -53,6 +53,39 @@ jobs:
             ls dist/*.whl
 
             python3 -m twine upload -r pypi -u __token__ -p ${PYPI_TWINE_TOKEN} dist/*.whl
+  macOS_arm64_publish:
+    macos:
+      xcode: 14.3
+    resource_class: macos.m1.large.gen1
+    parameters:
+      python_ver:
+        type: string
+    steps:
+      - checkout
+      - run:
+          name: "Install homebrew dependencies"
+          command: |
+            brew install bazel cmake ninja libomp wget go
+            (cd /opt/homebrew/Cellar/bazel/*.*.*/libexec/bin && curl -fLO https://github.com/bazelbuild/bazel/releases/download/6.2.1/bazel-6.2.1-darwin-arm64 && chmod +x bazel-6.2.1-darwin-arm64)
+      - run:
+          name: "Install Miniconda"
+          command: |
+            wget https://repo.anaconda.com/miniconda/Miniconda3-py38_23.1.0-1-MacOSX-arm64.sh -O ~/miniconda.sh
+            bash ~/miniconda.sh -b -p $HOME/miniconda
+            source $HOME/miniconda/bin/activate
+            conda init zsh bash
+      - run:
+          name: "build package and publish"
+          command: |
+            conda update -n base -c defaults conda -y
+            conda create -n build python=3.8 -y
+            conda activate build
+
+            sh ./build_wheel_entrypoint.sh
+            python3 -m pip install twine
+            ls dist/*.whl
+
+            python3 -m twine upload -r pypi -u __token__ -p ${PYPI_TWINE_TOKEN} dist/*.whl
 
 # Invoke jobs via workflows
 # See: https://circleci.com/docs/2.0/configuration-reference/#workflows
@@ -60,6 +93,10 @@ workflows:
   dev-publish:
     jobs:
       - linux_publish:
+          filters:
+            tags:
+              only: /.*/
+      - macOS_arm64_publish:
           filters:
             tags:
               only: /.*/
