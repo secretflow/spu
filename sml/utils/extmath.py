@@ -87,21 +87,20 @@ def svd(A, eigh_iter):
 def randomized_svd(
     A,
     n_components,
-    n_oversamples,
     random_matrix,
     n_iter=4,
     scale=None,
-    eigh_iter=300,
+    eigh_iter=100,
 ):
     if scale is None:
         scale = [10000000, 10000]
     assert random_matrix.shape == (
         A.shape[1],
-        n_components + n_oversamples,
-    ), f"Expected random_matrix to be ({A.shape[1]}, {n_components + n_oversamples}) array, got {random_matrix.shape}"
+        n_components,
+    ), f"Expected random_matrix to be ({A.shape[1]}, {n_components}) array, got {random_matrix.shape}"
     Omega = random_matrix / scale[0]
     Q = rsvd_iteration(A, Omega, scale[1], n_iter)
     B = jnp.dot(Q.T, A)
     u_tilde, s, v = svd(B, eigh_iter)
     u = jnp.dot(Q, u_tilde)
-    return u[:, :n_components], s[:n_components], v[:n_components, :]
+    return u, s, v

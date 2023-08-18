@@ -60,9 +60,7 @@ private:
         op->getLoc(), SmallVector<Type>{current_ret_type, index_result_type},
         op.getInputs()[0], op.getWindowDimensions(),
         op.getWindowStrides().value_or(nullptr),
-        op.getBaseDilations().value_or(nullptr),
-        op.getWindowDilations().value_or(nullptr),
-        op.getPadding().value_or(nullptr));
+        op.getWindowDilations().value_or(nullptr));
 
     op->getResult(0).replaceAllUsesWith(argmax->getResult(0));
 
@@ -134,17 +132,9 @@ public:
           continue;
         }
 
-        if (op.getPadding() != previous_reduce_window.getPadding()) {
-          continue;
-        }
-
         // Make sure no dilation
         auto window_dilation = previous_reduce_window.getWindowDilations();
-        auto base_dilation = previous_reduce_window.getBaseDilations();
         if (window_dilation.has_value() && !isAllOne(*window_dilation)) {
-          continue;
-        }
-        if (base_dilation.has_value() && !isAllOne(*base_dilation)) {
           continue;
         }
 
@@ -156,14 +146,13 @@ public:
       }
     }
 
-    if (rewritten == false) {
+    if (!rewritten) {
       return failure();
     }
 
     rewriter.replaceOpWithNewOp<pphlo::MaxPoolScatterOp>(
         op, op->getResultTypes()[0], selected_indices, op.getSource(),
-        op.getWindowDimensions(), op.getWindowStrides().value_or(nullptr),
-        op.getPadding().value_or(nullptr));
+        op.getWindowDimensions(), op.getWindowStrides().value_or(nullptr));
 
     return status;
   }

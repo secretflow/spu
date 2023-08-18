@@ -34,13 +34,3 @@ py_binary(
         "//sml/utils:emulation",
     ],
 )
-
-py_binary(
-    name = "ridge_emul",
-    srcs = ["ridge_emul.py"],
-    deps = [
-        "//examples/python/utils:dataset_utils",  # FIXME: remove examples dependency
-        "//sml/linear_model:ridge",
-        "//sml/utils:emulation",
-    ],
-)

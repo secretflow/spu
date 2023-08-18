@@ -698,8 +698,7 @@ def PPHLO_SelectAndScatterOp: PPHLO_Op<"select_and_scatter",
     PPHLO_Tensor:$source,
     PPHLO_Tensor:$init_value,
     I64ElementsAttr:$window_dimensions,
-    OptionalAttr<I64ElementsAttr>:$window_strides,
-    OptionalAttr<I64ElementsAttr>:$padding
+    OptionalAttr<I64ElementsAttr>:$window_strides
   );
 
   let regions = (region SizedRegion<1>:$select, SizedRegion<1>:$scatter);
@@ -720,8 +719,7 @@ def PPHLO_MaxPoolScatterOp: PPHLO_Op<"maxpool_scatter", [Pure]> {
     PPHLO_IntTensor:$scatter_indices,
     PPHLO_Tensor:$update,
     OptionalAttr<I64ElementsAttr>:$window_dimensions,
-    OptionalAttr<I64ElementsAttr>:$window_strides,
-    OptionalAttr<I64ElementsAttr>:$padding
+    OptionalAttr<I64ElementsAttr>:$window_strides
   );
 
   let results = (outs PPHLO_Tensor);
@@ -772,12 +770,9 @@ def PPHLO_ReduceWindowOp : PPHLO_Op<"reduce_window", [
     Variadic<PPHLO_Tensor>:$init_values,
     I64ElementsAttr:$window_dimensions,
     // If strides or dilations attributes are missing then the default value is
-    // one for each of the input dimensions. Similarly, padding values are zero
-    // for both low and high in each of the dimensions, if not specified.
+    // one for each of the input dimensions.
     OptionalAttr<I64ElementsAttr>:$window_strides,
-    OptionalAttr<I64ElementsAttr>:$base_dilations,
-    OptionalAttr<I64ElementsAttr>:$window_dilations,
-    OptionalAttr<I64ElementsAttr>:$padding
+    OptionalAttr<I64ElementsAttr>:$window_dilations
   );
 
   let results = (outs Variadic<PPHLO_Tensor>);
@@ -796,12 +791,9 @@ def PPHLO_ArgMaxOp: PPHLO_Op<"argmax", [Pure]> {
     PPHLO_Tensor:$input,
     I64ElementsAttr:$window_dimensions,
     // If strides or dilations attributes are missing then the default value is
-    // one for each of the input dimensions. Similarly, padding values are zero
-    // for both low and high in each of the dimensions, if not specified.
+    // one for each of the input dimensions.
     OptionalAttr<I64ElementsAttr>:$window_strides,
-    OptionalAttr<I64ElementsAttr>:$base_dilations,
     OptionalAttr<I64ElementsAttr>:$window_dilations,
-    OptionalAttr<I64ElementsAttr>:$padding,
     DefaultValuedAttr<BoolAttr, "true">:$onehot_index
   );
 
