@@ -57,9 +57,6 @@ jobs:
     macos:
       xcode: 14.3
     resource_class: macos.m1.large.gen1
-    parameters:
-      python_ver:
-        type: string
     steps:
       - checkout
       - run:
