@@ -45,28 +45,12 @@ xt::xarray<int64_t> getIndices(SPUContext *ctx, const spu::Value &value) {
 
 spu::Value expandWindow(SPUContext *ctx, const spu::Value &base,
                         const Shape &window_shape,
-                        const Strides &window_strides,
-                        absl::Span<const std::pair<int64_t, int64_t>> padding) {
+                        const Strides &window_strides) {
   const size_t ndim = base.shape().size();
 
   // sanity check.
   SPU_ENFORCE(ndim == window_shape.size());
   SPU_ENFORCE(ndim == window_strides.size());
-  SPU_ENFORCE(ndim == padding.size());
-
-  // pad the input.
-  Value padded;
-  {
-    Sizes padding_lo(ndim);
-    Sizes padding_hi(ndim);
-    Sizes padding_in(ndim, 0);  // no dilation
-    for (size_t idx = 0; idx < padding.size(); idx++) {
-      padding_lo[idx] = padding[idx].first;
-      padding_hi[idx] = padding[idx].second;
-    }
-    padded = hal::pad(ctx, base, hal::constant(ctx, 0, base.dtype(), {}),
-                      padding_lo, padding_hi, padding_in);
-  }
 
   // let base    = (B0, B1, ..., Bn)
   //     window  = (W0, W1, ..., Wn)
@@ -78,8 +62,6 @@ spu::Value expandWindow(SPUContext *ctx, const spu::Value &base,
   const Strides &S = window_strides;
   Shape N(ndim);
   for (size_t dim = 0; dim < ndim; dim++) {
-    SPU_ENFORCE_EQ((B[dim] - W[dim]) % S[dim], 0,
-                   "window is not aligned, B={}, W={}, S={}", B, W, S);
     N[dim] = (B[dim] - W[dim]) / S[dim] + 1;
   }
 
@@ -95,7 +77,7 @@ spu::Value expandWindow(SPUContext *ctx, const spu::Value &base,
         start[dim] = window_index[dim] * S[dim];
         end[dim] = start[dim] + W[dim];
       }
-      auto window = hal::slice(ctx, padded, start, end, {});
+      auto window = hal::slice(ctx, base, start, end, {});
 
       Shape new_shape = window.shape();
       new_shape.insert(new_shape.begin(), 1);
@@ -112,6 +94,33 @@ spu::Value expandWindow(SPUContext *ctx, const spu::Value &base,
   Shape res_shape = N;
   res_shape.insert(res_shape.end(), W.begin(), W.end());
   return hal::reshape(ctx, res, res_shape);
+}
+
+spu::Value expandWindow(SPUContext *ctx, const spu::Value &base,
+                        const Shape &window_shape,
+                        const Strides &window_strides,
+                        absl::Span<const std::pair<int64_t, int64_t>> padding,
+                        const spu::Value &init_val) {
+  // sanity check.
+  const size_t ndim = base.shape().size();
+  SPU_ENFORCE(ndim == padding.size());
+
+  Sizes padding_lo(ndim);
+  Sizes padding_hi(ndim);
+  Sizes padding_in(ndim, 0);  // no dilation
+  bool need_pad = false;
+  for (size_t idx = 0; idx < padding.size(); idx++) {
+    padding_lo[idx] = padding[idx].first;
+    padding_hi[idx] = padding[idx].second;
+    need_pad |= (padding[idx].first != 0 || padding[idx].second != 0);
+  }
+  if (need_pad) {
+    Value padded =
+        hal::pad(ctx, base, init_val, padding_lo, padding_hi, padding_in);
+    return expandWindow(ctx, padded, window_shape, window_strides);
+  }
+
+  return expandWindow(ctx, base, window_shape, window_strides);
 }
 
 }  // namespace spu::kernel

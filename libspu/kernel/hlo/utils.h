@@ -141,6 +141,7 @@ inline void RunOnWindowIndex(
 spu::Value expandWindow(SPUContext *ctx, const spu::Value &base,
                         const Shape &window_shape,
                         const Strides &window_strides,
-                        absl::Span<const std::pair<int64_t, int64_t>> padding);
+                        absl::Span<const std::pair<int64_t, int64_t>> padding,
+                        const spu::Value &init_val);
 
 }  // namespace spu::kernel
