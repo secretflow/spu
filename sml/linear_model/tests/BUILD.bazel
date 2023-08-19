@@ -50,3 +50,13 @@ py_test(
         "//spu/utils:simulation",
     ],
 )
+
+py_test(
+    name = "pla_test",
+    srcs = ["pla_test.py"],
+    deps = [
+        "//sml/perceptron:pla",
+        "//spu:init",
+        "//spu/utils:simulation",
+    ],
+)
