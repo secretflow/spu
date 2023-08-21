@@ -21,3 +21,9 @@ py_library(
     srcs = ["pca.py"],
     deps = ["//sml/utils:extmath"],
 )
+
+py_library(
+    name = "pnmf",
+    srcs = ["nmf.py"],
+    deps = [],
+)
