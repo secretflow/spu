@@ -8,3 +8,4 @@ on:
 jobs:
   CLAssistant:
     uses: secretflow/.github/.github/workflows/cla.yml@main
+    secrets: inherit
