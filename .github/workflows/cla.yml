@@ -7,4 +7,4 @@ on:
     types: [opened, closed, synchronize]
 jobs:
   CLAssistant:
-    uses: secretflow/.github/workflows/cla.yml@main
+    uses: secretflow/.github/.github/workflows/cla.yml@main
