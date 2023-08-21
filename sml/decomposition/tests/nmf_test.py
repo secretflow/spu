@@ -16,9 +16,7 @@ import os
 import sys
 import unittest
 
-import jax.numpy as jnp
 import numpy as np
-from jax import random
 from sklearn.decomposition import NMF as SklearnNMF
 import spu.spu_pb2 as spu_pb2
 import spu.utils.simulation as spsim
@@ -70,8 +68,8 @@ class UnitTests(unittest.TestCase):
             return W, H, X_reconstructed
 
         # Create a simple dataset and random_matrix
-        X = np.random.randint(1,100,(1000,10))
-        X = np.array(X,dtype=float)
+        X = np.random.randint(1, 100, (1000, 10))
+        X = np.array(X, dtype=float)
         n_samples, n_features = X.shape
         n_components = 5
         random_seed = 0
@@ -88,13 +86,22 @@ class UnitTests(unittest.TestCase):
         print("X_reconstructed_spu: ", X_reconstructed)
 
         # Run the simulation_seperate
-        W_seperate, H_seperate, X_reconstructed_seperate = spsim.sim_jax(sim, proc2)(X, A, B)
+        W_seperate, H_seperate, X_reconstructed_seperate = spsim.sim_jax(sim, proc2)(
+            X, A, B
+        )
         print("W_matrix_spu_seperate: ", W_seperate)
         print("H_matrix_spu_seperate: ", H_seperate)
         print("X_reconstructed_spu_seperate: ", X_reconstructed_seperate)
 
         # sklearn
-        model = SklearnNMF(n_components=n_components, init='random', random_state=random_seed, l1_ratio=l1_ratio, solver="mu", alpha_W=alpha_W)
+        model = SklearnNMF(
+            n_components=n_components,
+            init='random',
+            random_state=random_seed,
+            l1_ratio=l1_ratio,
+            solver="mu",
+            alpha_W=alpha_W,
+        )
         W_Sklearn = model.fit_transform(X)
         H_Sklearn = model.components_
         X_reconstructed_Sklearn = model.inverse_transform(W_Sklearn)
@@ -103,7 +110,14 @@ class UnitTests(unittest.TestCase):
         print("X_reconstructed_sklearn: ", X_reconstructed_Sklearn)
 
         # sklearn_seperate
-        model = SklearnNMF(n_components=n_components, init='random', random_state=random_seed, l1_ratio=l1_ratio, solver="mu", alpha_W=alpha_W)
+        model = SklearnNMF(
+            n_components=n_components,
+            init='random',
+            random_state=random_seed,
+            l1_ratio=l1_ratio,
+            solver="mu",
+            alpha_W=alpha_W,
+        )
         model.fit(X)
         W_Sklearn_seperate = model.transform(X)
         H_Sklearn_seperate = model.components_
