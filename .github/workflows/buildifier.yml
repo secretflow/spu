@@ -9,4 +9,4 @@ on:
     - main
 jobs:
   bazel-formatting-check:
-    uses: secretflow/.github/workflows/bazel-linter.yml@main
+    uses: secretflow/.github/.github/workflows/bazel-linter.yml@main

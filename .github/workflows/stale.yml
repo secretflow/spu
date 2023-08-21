@@ -6,4 +6,4 @@ on:
     - cron: 40 9 * * *
 jobs:
   stale:
-    uses: secretflow/.github/workflows/stale.yml@main
+    uses: secretflow/.github/.github/workflows/stale.yml@main

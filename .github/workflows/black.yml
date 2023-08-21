@@ -9,4 +9,4 @@ on:
     - main
 jobs:
   python-linter:
-    uses: secretflow/.github/workflows/python-linter.yml@main
+    uses: secretflow/.github/.github/workflows/python-linter.yml@main

@@ -9,4 +9,4 @@ on:
     - main
 jobs:
   run-clang-format:
-    uses: secretflow/.github/workflows/clang-format.yml@main
+    uses: secretflow/.github/.github/workflows/clang-format.yml@main
