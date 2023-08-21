@@ -6,21 +6,4 @@ on:
     - cron: 40 9 * * *
 jobs:
   stale:
-    runs-on: ubuntu-latest
-    permissions:
-      issues: write
-      pull-requests: write
-    steps:
-      - uses: actions/stale@v5
-        with:
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          stale-issue-message: Stale issue message. Please comment to remove stale
-            tag. Otherwise this issue will be closed soon.
-          stale-pr-message: Stale pull request message. Please comment to remove stale
-            tag. Otherwise this pr will be closed soon.
-          stale-issue-label: no-issue-activity
-          exempt-issue-labels: never-stale
-          stale-pr-label: no-pr-activity
-          days-before-stale: 30
-          days-before-close: 7
-          exempt-all-assignees: true
+    uses: secretflow/.github/workflows/stale.yml@main

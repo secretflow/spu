@@ -8,10 +8,5 @@ on:
     branches:
     - main
 jobs:
-  formatting-check:
-    name: Run buildifier check
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - name: Run buildifier
-        uses: jbajic/buildifier@v1
+  bazel-formatting-check:
+    uses: secretflow/.github/workflows/bazel-linter.yml@main
