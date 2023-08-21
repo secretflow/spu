@@ -49,7 +49,7 @@ py_binary(
     name = "pla_emul",
     srcs = ["pla_emul.py"],
     deps = [
-        "//sml/perceptron:pla",
+        "//sml/linear_model:pla",
         "//sml/utils:emulation",
     ],
 )

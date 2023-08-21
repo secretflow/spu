@@ -55,7 +55,7 @@ py_test(
     name = "pla_test",
     srcs = ["pla_test.py"],
     deps = [
-        "//sml/perceptron:pla",
+        "//sml/linear_model:pla",
         "//spu:init",
         "//spu/utils:simulation",
     ],
