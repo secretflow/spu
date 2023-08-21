@@ -567,16 +567,6 @@ void execute(OpExecutor *executor, SPUContext *sctx, SymbolScope *sscope,
   // window padding
   std::vector<std::pair<int64_t, int64_t>> window_padding(window_shape.size(),
                                                           {0, 0});
-  if (op.getPadding().has_value()) {
-    const auto v = *op.getPadding();  // NOLINT
-
-    SPU_ENFORCE(window_padding.size() * 2 == (size_t)v.size());
-
-    for (size_t idx = 0; idx < window_padding.size(); ++idx) {
-      window_padding[idx] = {*(v.getValues<int64_t>().begin() + 2 * idx),
-                             *(v.getValues<int64_t>().begin() + 2 * idx + 1)};
-    }
-  }
 
   auto ret = kernel::hlo::SelectAndScatter(
       sctx, operand, source, init_val, window_shape, window_strides,
@@ -612,16 +602,6 @@ void execute(OpExecutor *executor, SPUContext *sctx, SymbolScope *sscope,
   // window padding
   std::vector<std::pair<int64_t, int64_t>> window_padding(window_shape.size(),
                                                           {0, 0});
-  if (op.getPadding().has_value()) {
-    const auto v = *op.getPadding();  // NOLINT
-
-    SPU_ENFORCE(window_padding.size() * 2 == (size_t)v.size());
-
-    for (size_t idx = 0; idx < window_padding.size(); ++idx) {
-      window_padding[idx] = {*(v.getValues<int64_t>().begin() + 2 * idx),
-                             *(v.getValues<int64_t>().begin() + 2 * idx + 1)};
-    }
-  }
 
   auto base_shape =
       op.getResult().getType().dyn_cast<mlir::RankedTensorType>().getShape();
@@ -889,26 +869,9 @@ void execute(OpExecutor *executor, SPUContext *sctx, SymbolScope *sscope,
                                window_dilations);  // NOLINT
   }
 
-  // window padding
   std::vector<std::pair<int64_t, int64_t>> window_padding(window_shape.size(),
                                                           {0, 0});
-  if (op.getPadding().has_value()) {
-    const auto v = *op.getPadding();  // NOLINT
-
-    SPU_ENFORCE(window_padding.size() * 2 == (size_t)v.size());
-
-    for (size_t idx = 0; idx < window_padding.size(); ++idx) {
-      window_padding[idx] = {*(v.getValues<int64_t>().begin() + 2 * idx),
-                             *(v.getValues<int64_t>().begin() + 2 * idx + 1)};
-    }
-  }
-
-  // base dilation
   Sizes base_dilation(window_shape.size(), 1);
-  if (op.getBaseDilations().has_value()) {
-    convertDenseIntElementAttr(*op.getBaseDilations(),
-                               base_dilation);  // NOLINT
-  }
 
   kernel::hlo::ReduceWindowConfig config;
   config.window_shape = window_shape;
@@ -953,38 +916,21 @@ void execute(OpExecutor *executor, SPUContext *sctx, SymbolScope *sscope,
                                window_dilations);  // NOLINT
   }
 
-  // window padding
-  std::vector<std::pair<int64_t, int64_t>> window_padding(window_shape.size(),
-                                                          {0, 0});
-  if (op.getPadding().has_value()) {
-    const auto v = *op.getPadding();  // NOLINT
-
-    SPU_ENFORCE(window_padding.size() * 2 == (size_t)v.size());
-
-    for (size_t idx = 0; idx < window_padding.size(); ++idx) {
-      window_padding[idx] = {*(v.getValues<int64_t>().begin() + 2 * idx),
-                             *(v.getValues<int64_t>().begin() + 2 * idx + 1)};
-    }
-  }
-
-  // base dilation
-  Sizes base_dilation(window_shape.size(), 1);
-  if (op.getBaseDilations().has_value()) {
-    convertDenseIntElementAttr(*op.getBaseDilations(),
-                               base_dilation);  // NOLINT
-  }
-
   auto ret_shape = op->getResults()[0]
                        .getType()
                        .dyn_cast<mlir::RankedTensorType>()
                        .getShape();
+
+  std::vector<std::pair<int64_t, int64_t>> window_padding(window_shape.size(),
+                                                          {0, 0});
+  Sizes base_dilations(window_shape.size(), 1);
 
   kernel::hlo::ReduceWindowConfig config;
   config.window_shape = window_shape;
   config.window_strides = window_strides;
   config.window_dilations = window_dilations;
   config.window_padding = window_padding;
-  config.base_dilations = base_dilation;
+  config.base_dilations = base_dilations;
 
   auto ret = kernel::hlo::ArgMax(sctx, lookupValue(sscope, op.getInput(), opts),
                                  ret_shape, config);

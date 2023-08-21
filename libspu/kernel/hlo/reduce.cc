@@ -127,8 +127,9 @@ std::vector<spu::Value> ReduceWindowWithoutDilation(
   std::vector<spu::Value> expanded;
   for (size_t idx = 0; idx < nargs; ++idx) {
     const auto &input = inputs[idx];
-    expanded.emplace_back(
-        expandWindow(ctx, input, window_shape, window_strides, window_padding));
+    const auto &init_val = init_values[idx];
+    expanded.emplace_back(expandWindow(ctx, input, window_shape, window_strides,
+                                       window_padding, init_val));
   }
 
   if (last_operand_is_window_mask) {
@@ -493,7 +494,8 @@ std::pair<spu::Value, spu::Value> ArgMax(SPUContext *ctx,
   auto mask = hal::constant(ctx, e, DT_I1);
 
   auto result = ReduceWindowImpl(
-      ctx, {input, mask}, {}, ret_shape, config, true, true,
+      ctx, {input, mask}, {spu::Value(), spu::Value()}, ret_shape, config, true,
+      true,
       [&](absl::Span<spu::Value const> lhs,
           absl::Span<spu::Value const> rhs) -> std::vector<spu::Value> {
         SPU_ENFORCE(lhs.size() == 2);

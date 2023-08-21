@@ -185,8 +185,8 @@ message RuntimeConfig {
 
   // When enabled, runtime dumps executed executables in the dump_dir, debug
   // purpose only.
-  bool enable_processor_dump = 13;
-  string processor_dump_dir = 14;
+  bool enable_runtime_snapshot = 13;
+  string snapshot_dump_dir = 14;
 
   // When enabled, runtime records detailed pphlo timing data, debug purpose
   // only.

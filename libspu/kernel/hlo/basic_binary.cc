@@ -55,7 +55,7 @@ spu::Value Remainder(SPUContext *ctx, const spu::Value &lhs,
   auto quotient = hal::div(ctx, lhs, rhs);
 
   if (lhs.isFxp() || rhs.isFxp()) {
-    // 2nd: round to nearst number through (x >= 0.0) ? floor(x) : ceil(x)...
+    // 2nd: round to nearest number through (x >= 0.0) ? floor(x) : ceil(x)...
     auto zero = hal::zeros(ctx, quotient.dtype(), quotient.shape());
     quotient = hal::select(ctx, hal::greater_equal(ctx, quotient, zero),
                            hal::floor(ctx, quotient), hal::ceil(ctx, quotient));

@@ -31,3 +31,8 @@ py_library(
         "//sml/utils:fxp_approx",
     ],
 )
+
+py_library(
+    name = "ridge",
+    srcs = ["ridge.py"],
+)

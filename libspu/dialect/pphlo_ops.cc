@@ -825,9 +825,29 @@ LogicalResult PadOp::inferReturnTypeComponents(
       adaptor.getEdgePaddingHigh(), adaptor.getInteriorPadding(), types);
 
   // Convert type to STC
+  TypeTools tools;
   for (auto& t : types) {
     auto rt = t.dyn_cast<RankedTensorType>();
-    inferredReturnShapes.emplace_back(rt.getShape(), rt.getElementType());
+    if (tools.isMPCType<UnsetType>(rt)) {
+      llvm::SmallVector<Visibility, 2> vis;
+
+      for (const auto& op : operands) {
+        if (tools.isMPCType<UnsetType>(op.getType())) {
+          auto p = op.getDefiningOp<UnrealizedConversionCastOp>()
+                       ->getOperandTypes()[0];
+          vis.emplace_back(tools.getTypeVisibility(p));
+        } else {
+          vis.emplace_back(tools.getTypeVisibility(op.getType()));
+        }
+      }
+
+      auto result_vis = tools.inferResultVisibility(vis);
+      inferredReturnShapes.emplace_back(
+          rt.getShape(),
+          tools.getTypeWithVisibility(rt.getElementType(), result_vis));
+    } else {
+      inferredReturnShapes.emplace_back(rt.getShape(), rt.getElementType());
+    }
   }
 
   return status;
