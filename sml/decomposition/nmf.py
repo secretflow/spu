@@ -15,8 +15,9 @@
 import numpy as np
 import jax.numpy as jnp
 
+
 def update_w(X, W, H, H_sum, HHt, XHt, l1_reg_W, l2_reg_W):
-    XHt = jnp.dot(X,H.T)
+    XHt = jnp.dot(X, H.T)
     numerator = XHt
     HHt = jnp.dot(H, H.T)
     denominator = jnp.dot(W, HHt)
@@ -26,6 +27,7 @@ def update_w(X, W, H, H_sum, HHt, XHt, l1_reg_W, l2_reg_W):
     W *= delta_W
     return W, H_sum, HHt, XHt
 
+
 def update_h(X, W, H, l1_reg_H, l2_reg_H):
     numerator = jnp.dot(W.T, X)
     denominator = jnp.linalg.multi_dot([W.T, W, H])
@@ -34,6 +36,7 @@ def update_h(X, W, H, l1_reg_H, l2_reg_H):
     delta_H /= denominator
     H *= delta_H
     return H
+
 
 def init_nmf(X, n_components, random_matrixA, random_matrixB):
     n_samples, n_features = X.shape
@@ -53,6 +56,7 @@ def compute_regularization(X, l1_ratio, alpha_W, alpha_H):
     l2_reg_W = n_features * alpha_W * (1.0 - l1_ratio)
     l2_reg_H = n_samples * alpha_H * (1.0 - l1_ratio)
     return l1_reg_W, l1_reg_H, l2_reg_W, l2_reg_H
+
 
 def _beta_divergence(X, W, H, beta, square_root=False):
     if beta == 'frobenius':
@@ -74,7 +78,7 @@ class NMF:
         alpha_H=None,
         random_matrixA=None,
         random_matrixB=None,
-        update_H=True
+        update_H=True,
     ):
         """Compute Non-negative Matrix Factorization (NMF).
 
@@ -184,14 +188,18 @@ class NMF:
 
         # init matrix W&H
         if self._update_H:
-            W, H = init_nmf(X,self._n_components,self._random_matrixA,self._random_matrixB)
+            W, H = init_nmf(
+                X, self._n_components, self._random_matrixA, self._random_matrixB
+            )
         else:
             avg = jnp.sqrt(X.mean() / self._n_components)
             W = jnp.full((X.shape[0], self._n_components), avg, dtype=X.dtype)
             H = self._components
 
         # compute the regularization parameters
-        l1_reg_W, l1_reg_H, l2_reg_W, l2_reg_H = compute_regularization(X,self._l1_ratio,self._alpha_W,self._alpha_H)
+        l1_reg_W, l1_reg_H, l2_reg_W, l2_reg_H = compute_regularization(
+            X, self._l1_ratio, self._alpha_W, self._alpha_H
+        )
         H_sum, HHt, XHt = None, None, None
 
         # use multiplicative update solver
