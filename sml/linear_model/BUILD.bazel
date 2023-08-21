@@ -35,4 +35,7 @@ py_library(
 py_library(
     name = "ridge",
     srcs = ["ridge.py"],
+    deps = [
+        "//sml/utils:extmath",
+    ],
 )

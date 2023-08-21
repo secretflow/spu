@@ -23,13 +23,13 @@ from sml.linear_model.ridge import Ridge
 
 
 class UnitTests(unittest.TestCase):
-    def test_ridge(self):
+    def test_svd(self):
         sim = spsim.Simulator.simple(
             3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM64
         )
 
         def proc(x1, x2, y):
-            model = Ridge(alpha=1.0, solver="cholesky")
+            model = Ridge(alpha=1.0, solver="svd", max_iter=300)
 
             x = jnp.concatenate((x1, x2), axis=1)
             y = y.reshape((y.shape[0], 1))
@@ -49,7 +49,7 @@ class UnitTests(unittest.TestCase):
         # sklearn test
         x = jnp.concatenate((x1, x2), axis=1)
         sklearn_result = (
-            skRidge(alpha=1, solver='cholesky', fit_intercept=True).fit(x, y).predict(x)
+            skRidge(alpha=1, solver='svd', fit_intercept=True).fit(x, y).predict(x)
         )
         print("[sklearn_result]---------------------------------------------")
         print(sklearn_result[:10])
