@@ -35,6 +35,7 @@ def _jax_compilation_key(
     hash_str = f'{hash(wrapped_fn)}-{static_argnums}-{static_argnames}-{types}'
     return hash_str
 
+
 def _argnames_partial_except(fn, static_argnames, kwargs):
     if static_argnames is None:
         return fn, kwargs
