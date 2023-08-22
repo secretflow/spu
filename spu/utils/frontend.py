@@ -16,7 +16,6 @@ import warnings
 from enum import Enum
 from typing import Callable, Dict, Iterable, List
 
-import cloudpickle
 from cachetools import LRUCache, cached
 
 from .. import api as spu_api
@@ -27,12 +26,13 @@ def _jax_compilation_key(
     fn: Callable, static_argnums, static_argnames, args: List, kwargs: Dict
 ):
     import jax
+    from jax._src.util import weakref_lru_cache
+
+    wrapped_fn = weakref_lru_cache(fn)
 
     flat_args, _ = jax.tree_util.tree_flatten((args, kwargs))
     types = [(a.dtype, a.shape) if hasattr(a, 'dtype') else type(a) for a in flat_args]
-    hash_str = (
-        f'{hash(cloudpickle.dumps(fn))}-{static_argnums}-{static_argnames}-{types}'
-    )
+    hash_str = f'{hash(wrapped_fn)}-{static_argnums}-{static_argnames}-{types}'
     return hash_str
 
 
