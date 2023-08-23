@@ -203,7 +203,9 @@ class NMF:
 
         # use multiplicative update solver
         for _ in range(self._max_iter):
-            W, H_sum, HHt, XHt = update_w(X, W, H, H_sum, HHt, XHt, l1_reg_W, l2_reg_W, self._update_H)
+            W, H_sum, HHt, XHt = update_w(
+                X, W, H, H_sum, HHt, XHt, l1_reg_W, l2_reg_W, self._update_H
+            )
             if self._update_H:
                 H = update_h(X, W, H, l1_reg_H, l2_reg_H)
                 H_sum, HHt, XHt = None, None, None
