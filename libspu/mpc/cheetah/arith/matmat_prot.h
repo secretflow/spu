@@ -1,4 +1,3 @@
-
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -29,7 +28,7 @@ class MatMatProtocol {
 
   explicit MatMatProtocol(const seal::SEALContext& context,
                           const ModulusSwitchHelper& ms_helper,
-                          bool use_montgomery_fma = false);
+                          bool disable_pack = false);
 
   size_t GetLeftSize(const Meta& meta) const {
     return GetLeftSize(meta, GetSubMatShape(meta));
@@ -51,26 +50,36 @@ class MatMatProtocol {
 
   Shape3D GetSubMatShape(const Meta& meta) const;
 
-  // Set `need_encrypt=true` if the encoded polynoials are going to be
-  // encrypted. Encoded polynomials are stored in non-NTT form.
-  void EncodeLHS(const ArrayRef& lhs_mat, const Meta& meta, bool need_encrypt,
+  static Shape3D GetSubMatShape(const Meta& meta, int64_t poly_deg,
+                                bool disable_pack = false);
+
+  void EncodeLHS(const NdArrayRef& lhs_mat, const Meta& meta, bool need_encrypt,
                  absl::Span<RLWEPt> out) const;
 
-  void Montgomerize(absl::Span<RLWEPt> pt) const;
-
-  // Set `need_encrypt=true` if the encoded polynoials are going to be
-  // encrypted. Encoded polynomials are stored in non-NTT form.
-  void EncodeRHS(const ArrayRef& rhs_mat, const Meta& meta, bool need_encrypt,
+  void EncodeRHS(const NdArrayRef& rhs_mat, const Meta& meta, bool need_encrypt,
                  absl::Span<RLWEPt> out) const;
 
   bool IsValidMeta(const Meta& meta) const;
 
-  ArrayRef ParseResult(FieldType field, const Meta& meta,
-                       absl::Span<const RLWEPt> ans_poly) const;
+  NdArrayRef ParseResult(FieldType field, const Meta& meta,
+                         absl::Span<const RLWEPt> ans_poly) const;
 
-  ArrayRef ParseResult(FieldType field, const Meta& meta,
-                       absl::Span<const RLWEPt> ans_poly,
-                       const ModulusSwitchHelper& helper) const;
+  NdArrayRef ParseResult(FieldType field, const Meta& meta,
+                         absl::Span<const RLWEPt> ans_poly,
+                         const ModulusSwitchHelper& msh) const;
+
+  // Coefficients via Packed Batched MatMul
+  // output shape batch_size x dims[0] x dims[2]
+  NdArrayRef ParseBatchPackedResult(FieldType field, size_t batch_size,
+                                    const Meta& meta,
+                                    absl::Span<const RLWEPt> polys,
+                                    const ModulusSwitchHelper& msh) const;
+
+  // Coefficients via Packed MatMul
+  // output shape dims[0] x dims[2]
+  NdArrayRef ParsePackedResult(FieldType field, const Meta& meta,
+                               absl::Span<const RLWEPt> ans_poly,
+                               const ModulusSwitchHelper& msh) const;
 
   void ExtractLWEsInplace(const Meta& meta, absl::Span<RLWECt> rlwe) const;
 
@@ -102,17 +111,18 @@ class MatMatProtocol {
 
   bool IsValidSubShape(const Shape3D& shape) const;
 
+  enum class LayoutType { row_major, col_major };
+
   template <typename Indexer>
-  void EncodeMatrix(const ArrayRef& mat, const Meta& meta, int pivot,
-                    bool need_encrypt, absl::Span<RLWEPt> out) const;
+  void EncodeMatrix(const NdArrayRef& mat, const Meta& meta, int pivot,
+                    bool need_encrypt, LayoutType layout,
+                    absl::Span<RLWEPt> out) const;
 
   int64_t poly_deg_{0};
-  bool use_montgomery_fma_{false};
+  bool disable_pack_ = false;
   seal::SEALContext context_;
-  ModulusSwitchHelper ms_helper_;
+  ModulusSwitchHelper msh_;
   std::unique_ptr<VectorEncoder> vencoder_{nullptr};
-
-  std::vector<uint64_t> montgomery_precond_;
 };
 
 }  // namespace spu::mpc::cheetah

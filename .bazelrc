@@ -59,24 +59,6 @@ build:macos --host_macos_minimum_os=11.0
 build:linux --copt=-fopenmp
 build:linux --linkopt=-fopenmp
 
-build:asan --strip=never
-build:asan --copt -fno-sanitize-recover=all
-build:asan --copt -fsanitize=address
-build:asan --copt -Og
-build:asan --copt -g
-build:asan --copt -fno-omit-frame-pointer
-build:asan --linkopt -fsanitize=address
-build:asan --linkopt -static-libasan
-
-build:ubsan --strip=never
-build:ubsan --copt -fno-sanitize-recover=all
-build:ubsan --copt -fsanitize=undefined
-build:ubsan --copt -Og
-build:ubsan --copt -g
-build:ubsan --copt -fno-omit-frame-pointer
-build:ubsan --linkopt -fsanitize=undefined
-build:ubsan --linkopt -static-libubsan
-
-build:macos-asan --features=asan
-build:macos-ubsan --features=ubsan
+build:asan --features=asan
+build:ubsan --features=ubsan
 

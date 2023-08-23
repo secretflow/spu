@@ -16,7 +16,8 @@
 
 #include <memory>
 
-#include "libspu/mpc/cheetah/array_ref.h"
+#include "libspu/core/ndarray_ref.h"
+#include "libspu/core/type_util.h"
 
 namespace spu::mpc::cheetah {
 
@@ -35,39 +36,31 @@ class BasicOTProtocols;
 //   where w = 1{x0 + x1 > 2^{k} - 1} indicates whether the sum wrap round 2^k
 class TruncateProtocol {
  public:
-  enum class MSB_st {
-    zero,
-    one,
-    unknown,
-  };
+  // For x \in [-2^{k - 2}, 2^{k - 2})
+  // 0 <= x + 2^{k - 2} < 2^{k - 1} ie the MSB is always positive
+  static constexpr size_t kHeuristicBound = 2;
 
   struct Meta {
-    MSB_st msb;
-    bool use_heuristic;  // not implemented yet
-    bool signed_arith;
-    size_t shift_bits;
-
-    Meta()
-        : msb(MSB_st::unknown),
-          use_heuristic(false),
-          signed_arith(true),
-          shift_bits(0) {}
+    SignType sign = SignType::Unknown;
+    bool use_heuristic = false;
+    bool signed_arith = true;
+    size_t shift_bits = 0;
   };
 
   explicit TruncateProtocol(std::shared_ptr<BasicOTProtocols> base);
 
   ~TruncateProtocol();
 
-  ArrayRef Compute(const ArrayRef &inp, Meta meta);
+  NdArrayRef Compute(const NdArrayRef &inp, Meta meta);
 
  private:
-  ArrayRef ComputeWrap(const ArrayRef &inp, const Meta &meta);
+  NdArrayRef ComputeWrap(const NdArrayRef &inp, const Meta &meta);
 
   // w = msbA | msbB
-  ArrayRef MSB0ToWrap(const ArrayRef &inp, size_t shift_bits);
+  NdArrayRef MSB0ToWrap(const NdArrayRef &inp, size_t shift_bits);
 
   // w = msbA & msbB
-  ArrayRef MSB1ToWrap(const ArrayRef &inp, size_t shift_bits);
+  NdArrayRef MSB1ToWrap(const NdArrayRef &inp, size_t shift_bits);
 
   std::shared_ptr<BasicOTProtocols> basic_ot_prot_{nullptr};
 };

@@ -14,7 +14,7 @@
 
 load("@rules_python//python:defs.bzl", "py_library")
 load("@rules_proto//proto:defs.bzl", "proto_library")
-load("@com_github_grpc_grpc//bazel:python_rules.bzl", "py_grpc_library", "py_proto_library")
+load("@rules_proto_grpc//python:defs.bzl", "python_grpc_compile")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -32,30 +32,23 @@ proto_library(
     srcs = ["distributed.proto"],
 )
 
-py_proto_library(
-    name = "distributed_py_proto",
-    deps = [
-        ":distributed_proto",
-    ],
-)
-
-py_grpc_library(
+python_grpc_compile(
     name = "distributed_py_proto_grpc",
-    srcs = ["distributed_proto"],
-    deps = [
-        ":distributed_py_proto",
-    ],
+    output_mode = "NO_PREFIX",
+    prefix_path = "../..",
+    protos = ["distributed_proto"],
 )
 
 py_library(
     name = "distributed",
-    srcs = ["distributed.py"],
-    deps = [
-        ":distributed_py_proto",
+    srcs = [
+        "distributed.py",
         ":distributed_py_proto_grpc",
+        "//libspu:spu_py_proto",
+    ],
+    deps = [
         ":frontend",
         "//spu:api",
-        "//spu:spu_py_proto",
     ],
 )
 

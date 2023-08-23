@@ -14,15 +14,15 @@
 
 #include "libspu/mpc/cheetah/nonlinear/compare_prot.h"
 
-#include "emp-tool/utils/prg.h"
+#include "yacl/crypto/tools/prg.h"
 #include "yacl/link/link.h"
 
 #include "libspu/core/type.h"
 #include "libspu/mpc/cheetah/ot/basic_ot_prot.h"
 #include "libspu/mpc/cheetah/ot/ferret.h"
 #include "libspu/mpc/cheetah/ot/util.h"
+#include "libspu/mpc/cheetah/type.h"
 #include "libspu/mpc/common/communicator.h"
-#include "libspu/mpc/semi2k/type.h"
 #include "libspu/mpc/utils/ring_ops.h"
 
 namespace spu::mpc::cheetah {
@@ -55,27 +55,24 @@ void SetLeafOTMsg(absl::Span<uint8_t> ot_messages, uint8_t digit,
 
 // The Mill protocol from "CrypTFlow2: Practical 2-Party Secure Inference"
 // Algorithm 1. REF: https://arxiv.org/pdf/2010.06457.pdf
-ArrayRef CompareProtocol::DoCompute(const ArrayRef& inp, bool greater_than,
-                                    ArrayRef* keep_eq) {
+NdArrayRef CompareProtocol::DoCompute(const NdArrayRef& inp, bool greater_than,
+                                      NdArrayRef* keep_eq, int64_t bitwidth) {
+  SPU_ENFORCE(inp.shape().size() == 1, "need 1D array");
   auto field = inp.eltype().as<Ring2k>()->field();
-  size_t bit_width = SizeOf(field) * 8;
-  SPU_ENFORCE(bit_width % compare_radix_ == 0, "invalid compare radix {}",
-              compare_radix_);
-
-  size_t num_digits = CeilDiv(bit_width, compare_radix_);
+  int64_t num_digits = CeilDiv(bitwidth, (int64_t)compare_radix_);
   size_t radix = static_cast<size_t>(1) << compare_radix_;  // one-of-N OT
-  size_t num_cmp = inp.numel();
+  int64_t num_cmp = inp.numel();
   // init to all zero
   std::vector<uint8_t> digits(num_cmp * num_digits, 0);
 
   // Step 1 break into digits \in [0, radix)
-  DISPATCH_ALL_FIELDS(field, "", [&]() {
+  DISPATCH_ALL_FIELDS(field, "break_digits", [&]() {
     using u2k = std::make_unsigned<ring2k_t>::type;
     const auto mask_radix = makeBitsMask<u2k>(compare_radix_);
-    ArrayView<u2k> xinp(inp);
+    NdArrayView<u2k> xinp(inp);
 
-    for (size_t i = 0; i < num_cmp; ++i) {
-      for (size_t j = 0; j < num_digits; ++j) {
+    for (int64_t i = 0; i < num_cmp; ++i) {
+      for (int64_t j = 0; j < num_digits; ++j) {
         uint32_t shft = j * compare_radix_;
         digits[i * num_digits + j] = (xinp[i] >> shft) & mask_radix;
       }
@@ -86,9 +83,15 @@ ArrayRef CompareProtocol::DoCompute(const ArrayRef& inp, bool greater_than,
   std::vector<uint8_t> leaf_eq(num_cmp * num_digits, 0);
   if (is_sender_) {
     // Step 2 sample random bits
-    emp::PRG prg;
-    prg.random_bool(reinterpret_cast<bool*>(leaf_cmp.data()), leaf_cmp.size());
-    prg.random_bool(reinterpret_cast<bool*>(leaf_eq.data()), leaf_eq.size());
+    yacl::crypto::Prg<uint8_t> prg;
+    prg.Fill(absl::MakeSpan(leaf_cmp));
+    prg.Fill(absl::MakeSpan(leaf_eq));
+
+    // convert u8 random to boolean random
+    std::transform(leaf_cmp.begin(), leaf_cmp.end(), leaf_cmp.data(),
+                   [](uint8_t v) { return v & 1; });
+    std::transform(leaf_eq.begin(), leaf_eq.end(), leaf_eq.data(),
+                   [](uint8_t v) { return v & 1; });
 
     // Step 6-7 set the OT messages with two packed bits (one for compare, one
     // for equal)
@@ -99,13 +102,13 @@ ArrayRef CompareProtocol::DoCompute(const ArrayRef& inp, bool greater_than,
           absl::Span<uint8_t>{leaf_ot_msg.data() + i * radix, radix};
     }
 
-    for (size_t i = 0; i < num_cmp; ++i) {
+    for (int64_t i = 0; i < num_cmp; ++i) {
       auto* this_ot_msg = each_leaf_ot_msg.data() + i * num_digits;
       auto* this_digit = digits.data() + i * num_digits;
       auto* this_leaf_cmp = leaf_cmp.data() + i * num_digits;
       auto* this_leaf_eq = leaf_eq.data() + i * num_digits;
 
-      for (size_t j = 0; j < num_digits; ++j) {
+      for (int64_t j = 0; j < num_digits; ++j) {
         uint8_t rnd_cmp = this_leaf_cmp[j] & 1;
         uint8_t rnd_eq = this_leaf_eq[j] & 1;
         SetLeafOTMsg(this_ot_msg[j], this_digit[j], rnd_cmp, rnd_eq,
@@ -122,28 +125,28 @@ ArrayRef CompareProtocol::DoCompute(const ArrayRef& inp, bool greater_than,
     basic_ot_prot_->GetReceiverCOT()->RecvCMCC(absl::MakeSpan(digits), radix,
                                                absl::MakeSpan(leaf_cmp), 2);
     // extract equality bits from packed messages
-    for (size_t i = 0; i < num_cmp; ++i) {
+    for (int64_t i = 0; i < num_cmp; ++i) {
       auto* this_leaf_cmp = leaf_cmp.data() + i * num_digits;
       auto* this_leaf_eq = leaf_eq.data() + i * num_digits;
-      for (size_t j = 0; j < num_digits; ++j) {
+      for (int64_t j = 0; j < num_digits; ++j) {
         this_leaf_eq[j] = (this_leaf_cmp[j] >> 1) & 1;
         this_leaf_cmp[j] &= 1;
       }
     }
   }
 
-  using BShrTy = semi2k::BShrTy;
   auto boolean_t = makeType<BShrTy>(field, 1);
-  ArrayRef prev_cmp =
-      flatten(ring_zeros(field, {static_cast<int64_t>(num_digits * num_cmp)}))
+  NdArrayRef prev_cmp =
+      ring_zeros(field, {static_cast<int64_t>(num_digits * num_cmp)})
           .as(boolean_t);
-  ArrayRef prev_eq =
-      flatten(ring_zeros(field, {static_cast<int64_t>(num_digits * num_cmp)}))
+  NdArrayRef prev_eq =
+      ring_zeros(field, {static_cast<int64_t>(num_digits * num_cmp)})
           .as(boolean_t);
-  DISPATCH_ALL_FIELDS(field, "", [&]() {
-    ArrayView<ring2k_t> xprev_cmp(prev_cmp);
-    ArrayView<ring2k_t> xprev_eq(prev_eq);
-    pforeach(0, xprev_cmp.numel(), [&](int64_t i) {
+
+  DISPATCH_ALL_FIELDS(field, "copy_leaf", [&]() {
+    NdArrayView<ring2k_t> xprev_cmp(prev_cmp);
+    NdArrayView<ring2k_t> xprev_eq(prev_eq);
+    pforeach(0, prev_cmp.numel(), [&](int64_t i) {
       xprev_cmp[i] = leaf_cmp[i];
       xprev_eq[i] = leaf_eq[i];
     });
@@ -162,24 +165,26 @@ ArrayRef CompareProtocol::DoCompute(const ArrayRef& inp, bool greater_than,
   return _gt.as(boolean_t);
 }
 
-std::array<ArrayRef, 2> CompareProtocol::TraversalANDWithEq(ArrayRef cmp,
-                                                            ArrayRef eq,
-                                                            size_t num_input,
-                                                            size_t num_digits) {
+std::array<NdArrayRef, 2> CompareProtocol::TraversalANDWithEq(
+    NdArrayRef cmp, NdArrayRef eq, size_t num_input, size_t num_digits) {
+  SPU_ENFORCE(cmp.shape().size() == 1, "need 1D array");
+  SPU_ENFORCE_EQ(cmp.shape(), eq.shape());
   SPU_ENFORCE_EQ(cmp.numel(), eq.numel());
   SPU_ENFORCE_EQ(num_input * num_digits, (size_t)cmp.numel());
 
   for (size_t i = 1; i <= num_digits; i += 1) {
-    size_t current_num_digits = num_digits / (1 << (i - 1));
-    if (current_num_digits == 1) break;
+    int64_t current_num_digits = num_digits / (1 << (i - 1));
+    if (current_num_digits == 1) {
+      break;
+    }
     // eq[i-1, j] <- eq[i, 2*j] * eq[i, 2*j+1]
     // cmp[i-1, j] <- cmp[i,2*j] * eq[i,2*j+1] ^ cmp[i,2*j+1]
-    size_t n = current_num_digits * num_input;
-    auto lhs_eq = eq.slice(0, n, 2);
-    auto rhs_eq = eq.slice(1, n, 2);
+    int64_t n = current_num_digits * num_input;
+    auto lhs_eq = eq.slice({0}, {n}, {2});
+    auto rhs_eq = eq.slice({1}, {n}, {2});
 
-    auto lhs_cmp = cmp.slice(0, n, 2);
-    auto rhs_cmp = cmp.slice(1, n, 2);
+    auto lhs_cmp = cmp.slice({0}, {n}, {2});
+    auto rhs_cmp = cmp.slice({1}, {n}, {2});
 
     // Correlated ANDs
     //   _eq = rhs_eq & lhs_eq
@@ -187,14 +192,14 @@ std::array<ArrayRef, 2> CompareProtocol::TraversalANDWithEq(ArrayRef cmp,
     auto [_eq, _cmp] =
         basic_ot_prot_->CorrelatedBitwiseAnd(rhs_eq, lhs_eq, lhs_cmp);
     eq = _eq;
-    cmp = flatten(ring_xor(toNdArray(_cmp), toNdArray(rhs_cmp)));
+    cmp = ring_xor(_cmp, rhs_cmp);
   }
 
   return {cmp, eq};
 }
 
-ArrayRef CompareProtocol::TraversalAND(ArrayRef cmp, ArrayRef eq,
-                                       size_t num_input, size_t num_digits) {
+NdArrayRef CompareProtocol::TraversalAND(NdArrayRef cmp, NdArrayRef eq,
+                                         size_t num_input, size_t num_digits) {
   // Tree-based traversal ANDs
   // lt0[0], lt0[1], ..., lt0[M],
   // lt1[0], lt1[1], ..., lt1[M],
@@ -214,46 +219,52 @@ ArrayRef CompareProtocol::TraversalAND(ArrayRef cmp, ArrayRef eq,
   //         lt1[1], lt0[3], ..., lt0[2*j+1]
   //         ....
   //         ltn[1], ltn[3], ..., ltn[2*j+1]
-  SPU_ENFORCE_EQ(cmp.numel(), eq.numel());
+  SPU_ENFORCE(cmp.shape().size() == 1, "need 1D Array");
+  SPU_ENFORCE_EQ(cmp.shape(), eq.shape());
   SPU_ENFORCE_EQ(num_input * num_digits, (size_t)cmp.numel());
 
   for (size_t i = 1; i <= num_digits; i += 1) {
     size_t current_num_digits = num_digits / (1 << (i - 1));
-    if (current_num_digits == 1) break;
+    if (current_num_digits == 1) {
+      break;
+    }
     // eq[i-1, j] <- eq[i, 2*j] * eq[i, 2*j+1]
     // cmp[i-1, j] <- cmp[i,2*j] * eq[i,2*j+1] ^ cmp[i,2*j+1]
-    size_t n = current_num_digits * num_input;
-    auto lhs_eq = eq.slice(0, n, 2);
-    auto rhs_eq = eq.slice(1, n, 2);
-    auto lhs_cmp = cmp.slice(0, n, 2);
-    auto rhs_cmp = cmp.slice(1, n, 2);
+    int64_t n = current_num_digits * num_input;
+
+    auto lhs_eq = eq.slice({0}, {n}, {2});
+    auto rhs_eq = eq.slice({1}, {n}, {2});
+    auto lhs_cmp = cmp.slice({0}, {n}, {2});
+    auto rhs_cmp = cmp.slice({1}, {n}, {2});
 
     if (current_num_digits == 2) {
       cmp = basic_ot_prot_->BitwiseAnd(lhs_cmp, rhs_eq);
-      auto nd_cmp = toNdArray(cmp);
-      ring_xor_(nd_cmp, toNdArray(rhs_cmp));
+      ring_xor_(cmp, rhs_cmp);
       // We skip the ANDs for eq on the last loop
       continue;
     }
 
     // We skip the AND on the 0-th digit which is unnecessary for the next loop.
-    size_t nrow = num_input;
-    size_t ncol = current_num_digits / 2;
-    SPU_ENFORCE_EQ((size_t)lhs_eq.numel(), nrow * ncol);
+    int64_t nrow = num_input;
+    int64_t ncol = current_num_digits / 2;
+    SPU_ENFORCE_EQ(lhs_eq.numel(), nrow * ncol);
 
-    ArrayRef _lhs_eq(lhs_eq.eltype(), nrow * (ncol - 1));
-    ArrayRef _rhs_eq(lhs_eq.eltype(), nrow * (ncol - 1));
-    ArrayRef _lhs_cmp(lhs_cmp.eltype(), nrow * (ncol - 1));
+    Shape subshape = {nrow * (ncol - 1)};
+    NdArrayRef _lhs_eq(lhs_eq.eltype(), subshape);
+    NdArrayRef _rhs_eq(rhs_eq.eltype(), subshape);
+    NdArrayRef _lhs_cmp(lhs_cmp.eltype(), subshape);
 
-    ArrayRef _lhs_cmp_col0(lhs_cmp.eltype(), nrow);
-    ArrayRef _rhs_eq_col0(rhs_eq.eltype(), nrow);
+    NdArrayRef _lhs_cmp_col0(lhs_cmp.eltype(), {static_cast<int64_t>(nrow)});
+    NdArrayRef _rhs_eq_col0(rhs_eq.eltype(), _lhs_cmp_col0.shape());
 
-    for (size_t r = 0; r < nrow; ++r) {
+    // Skip the 0-th column and take the remains columns
+    // TODO(lwj): Can we have a better way to avoid such copying?
+    for (int64_t r = 0; r < nrow; ++r) {
       std::memcpy(&_rhs_eq_col0.at(r), &rhs_eq.at(r * ncol), rhs_eq.elsize());
       std::memcpy(&_lhs_cmp_col0.at(r), &lhs_cmp.at(r * ncol),
                   lhs_cmp.elsize());
 
-      for (size_t c = 1; c < ncol; ++c) {
+      for (int64_t c = 1; c < ncol; ++c) {
         std::memcpy(&_lhs_cmp.at(r * (ncol - 1) + c - 1),
                     &lhs_cmp.at(r * ncol + c), lhs_eq.elsize());
         std::memcpy(&_lhs_eq.at(r * (ncol - 1) + c - 1),
@@ -262,6 +273,7 @@ ArrayRef CompareProtocol::TraversalAND(ArrayRef cmp, ArrayRef eq,
                     &rhs_eq.at(r * ncol + c), rhs_eq.elsize());
       }
     }
+
     // Normal AND on 0-th column
     auto _next_cmp_col0 =
         basic_ot_prot_->BitwiseAnd(_rhs_eq_col0, _lhs_cmp_col0);
@@ -270,13 +282,14 @@ ArrayRef CompareProtocol::TraversalAND(ArrayRef cmp, ArrayRef eq,
     auto [_next_cmp, _next_eq] =
         basic_ot_prot_->CorrelatedBitwiseAnd(_rhs_eq, _lhs_cmp, _lhs_eq);
 
-    eq = ArrayRef(_next_eq.eltype(), nrow * ncol);
-    cmp = ArrayRef(_next_cmp.eltype(), nrow * ncol);
+    // Concat two ANDs
+    eq = NdArrayRef(eq.eltype(), {_next_cmp_col0.numel() + _next_cmp.numel()});
+    cmp = NdArrayRef(cmp.eltype(), eq.shape());
 
-    for (size_t r = 0; r < nrow; ++r) {
+    for (int64_t r = 0; r < nrow; ++r) {
       std::memcpy(&cmp.at(r * ncol), &_next_cmp_col0.at(r), cmp.elsize());
 
-      for (size_t c = 1; c < ncol; ++c) {
+      for (int64_t c = 1; c < ncol; ++c) {
         std::memcpy(&cmp.at(r * ncol + c),
                     &_next_cmp.at(r * (ncol - 1) + c - 1), _next_cmp.elsize());
 
@@ -285,22 +298,40 @@ ArrayRef CompareProtocol::TraversalAND(ArrayRef cmp, ArrayRef eq,
       }
     }
 
-    auto nd_cmp = toNdArray(cmp);
-    ring_xor_(nd_cmp, toNdArray(rhs_cmp));
+    ring_xor_(cmp, rhs_cmp);
   }
 
   return cmp;
 }
 
-ArrayRef CompareProtocol::Compute(const ArrayRef& inp, bool greater_than) {
-  return DoCompute(inp, greater_than, nullptr);
+NdArrayRef CompareProtocol::Compute(const NdArrayRef& inp, bool greater_than,
+                                    int64_t bitwidth) {
+  int64_t bw = SizeOf(inp.eltype().as<Ring2k>()->field()) * 8;
+  SPU_ENFORCE(bitwidth >= 0 && bitwidth <= bw, "bit_width={} out of bound",
+              bitwidth);
+  if (bitwidth == 0) {
+    bitwidth = bw;
+  }
+  // NOTE(lwj): reshape might need copy
+  auto flatten = inp.reshape({inp.numel()});
+  return DoCompute(flatten, greater_than, nullptr, bitwidth)
+      .reshape(inp.shape());
 }
 
-std::array<ArrayRef, 2> CompareProtocol::ComputeWithEq(const ArrayRef& inp,
-                                                       bool greater_than) {
-  ArrayRef eq;
-  auto cmp = DoCompute(inp, greater_than, &eq);
-  return {cmp, eq};
+std::array<NdArrayRef, 2> CompareProtocol::ComputeWithEq(const NdArrayRef& inp,
+                                                         bool greater_than,
+                                                         int64_t bitwidth) {
+  int64_t bw = SizeOf(inp.eltype().as<Ring2k>()->field()) * 8;
+  SPU_ENFORCE(bitwidth >= 0 && bitwidth <= bw, "bit_width={} out of bound",
+              bitwidth);
+  if (bitwidth == 0) {
+    bitwidth = bw;
+  }
+  NdArrayRef eq;
+  // NOTE(lwj): reshape might need copy
+  auto flatten = inp.reshape({inp.numel()});
+  auto cmp = DoCompute(flatten, greater_than, &eq, bitwidth);
+  return {cmp.reshape(inp.shape()), eq.reshape(inp.shape())};
 }
 
 }  // namespace spu::mpc::cheetah

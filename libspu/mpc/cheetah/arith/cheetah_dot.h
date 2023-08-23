@@ -18,8 +18,8 @@
 
 #include "yacl/link/context.h"
 
+#include "libspu/core/ndarray_ref.h"
 #include "libspu/mpc/cheetah/arith/common.h"
-#include "libspu/mpc/cheetah/array_ref.h"
 
 namespace spu::mpc::cheetah {
 
@@ -29,7 +29,8 @@ namespace spu::mpc::cheetah {
 //  https://eprint.iacr.org/2022/207.pdf
 class CheetahDot {
  public:
-  explicit CheetahDot(std::shared_ptr<yacl::link::Context> lctx);
+  explicit CheetahDot(const std::shared_ptr<yacl::link::Context>& lctx,
+                      bool enable_matmul_pack = true);
 
   ~CheetahDot();
 
@@ -39,30 +40,21 @@ class CheetahDot {
 
   CheetahDot(CheetahDot&&) = delete;
 
-  ArrayRef DotOLE(const ArrayRef& inp, yacl::link::Context* conn,
-                  const Shape3D& dim3, bool is_left_hand_side);
+  NdArrayRef DotOLE(const NdArrayRef& inp, const Shape3D& dim3,
+                    bool is_self_lhs);
 
-  ArrayRef DotOLE(const ArrayRef& inp, const Shape3D& dim3,
-                  bool is_left_hand_side);
+  // LHS.shape MxK, RHS.shape KxL => MxL
+  NdArrayRef DotOLE(const NdArrayRef& inp, yacl::link::Context* conn,
+                    const Shape3D& dim3, bool is_self_lhs);
 
-  ArrayRef Conv2dOLE(const ArrayRef& inp, yacl::link::Context* conn,
-                     int64_t num_input, const Shape3D& tensor_shape,
-                     int64_t num_kernels, const Shape3D& kernel_shape,
-                     const Shape2D& window_strides, bool is_tensor);
-
-  ArrayRef Conv2dOLE(const ArrayRef& inp, int64_t num_input,
-                     const Shape3D& tensor_shape, int64_t num_kernels,
-                     const Shape3D& kernel_shape, const Shape2D& window_strides,
-                     bool is_tensor);
-
-  std::shared_ptr<yacl::link::Context> GetLink() const { return lctx_; }
+  // LHS.shape BxMxK, RHS.shape BxKxL => BxMxL
+  NdArrayRef BatchDotOLE(const NdArrayRef& inp, yacl::link::Context* conn,
+                         const Shape4D& dim4, bool is_self_lhs);
 
  private:
   struct Impl;
 
   std::unique_ptr<Impl> impl_{nullptr};
-
-  std::shared_ptr<yacl::link::Context> lctx_{nullptr};
 };
 
 }  // namespace spu::mpc::cheetah

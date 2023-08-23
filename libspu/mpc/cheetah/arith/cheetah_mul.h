@@ -18,7 +18,7 @@
 
 #include "yacl/link/context.h"
 
-#include "libspu/mpc/cheetah/array_ref.h"
+#include "libspu/core/ndarray_ref.h"
 
 namespace spu::mpc::cheetah {
 
@@ -28,7 +28,8 @@ namespace spu::mpc::cheetah {
 //  https://eprint.iacr.org/2019/577.pdf
 class CheetahMul {
  public:
-  explicit CheetahMul(std::shared_ptr<yacl::link::Context> lctx);
+  explicit CheetahMul(std::shared_ptr<yacl::link::Context> lctx,
+                      bool allow_high_prob_one_bit_error = false);
 
   ~CheetahMul();
 
@@ -38,10 +39,11 @@ class CheetahMul {
 
   CheetahMul(CheetahMul&&) = delete;
 
-  ArrayRef MulOLE(const ArrayRef& inp, yacl::link::Context* conn,
-                  bool evaluator);
+  NdArrayRef MulOLE(const NdArrayRef& inp, yacl::link::Context* conn,
+                    bool is_evaluator, uint32_t msg_width_hint = 0);
 
-  ArrayRef MulOLE(const ArrayRef& inp, bool evaluator);
+  NdArrayRef MulOLE(const NdArrayRef& inp, bool is_evaluator,
+                    uint32_t msg_width_hint = 0);
 
   int Rank() const;
 

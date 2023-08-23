@@ -64,7 +64,7 @@ bool kCastFlags[DT_F64+1][DT_F64+1] = {
 // NOLINTEND
 // clang-format on
 
-bool canImplicitCastTo(DataType frm, DataType to) {
+[[maybe_unused]] bool canImplicitCastTo(DataType frm, DataType to) {
   return kCastFlags[frm][to];
 }
 
@@ -73,13 +73,6 @@ bool canImplicitCastTo(DataType frm, DataType to) {
 Value constant(SPUContext* ctx, PtBufferView init, DataType dtype,
                const Shape& shape) {
   SPU_TRACE_HAL_DISP(ctx, init, dtype, shape);
-
-  const auto init_dtype = getEncodeType(init.pt_type);
-
-  // FIXME: semantically, this is casting from literal to type, not from one
-  // type to another type.
-  SPU_ENFORCE(canImplicitCastTo(init_dtype, dtype), "cast from {} to {} failed",
-              init_dtype, dtype);
 
   auto result = make_pub2k(ctx, init).setDtype(dtype, true);
 

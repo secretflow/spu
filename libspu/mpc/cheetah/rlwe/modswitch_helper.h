@@ -21,7 +21,7 @@
 #include "absl/types/span.h"
 #include "seal/context.h"
 
-#include "libspu/mpc/cheetah/array_ref.h"
+#include "libspu/core/ndarray_ref.h"
 
 namespace spu::mpc::cheetah {
 
@@ -41,18 +41,19 @@ class ModulusSwitchHelper {
   uint32_t coeff_modulus_size() const;
 
   // Given x \in [0, 2^k), compute round(Q/2^k*x) \in [0, Q)
-  void ModulusUpAt(const ArrayRef& src, size_t mod_idx,
+  // Need 1D array
+  void ModulusUpAt(const NdArrayRef& src, size_t mod_idx,
                    absl::Span<uint64_t> out) const;
 
   // Cast [-2^{k-1}, 2^{k-1}) to [0, qj)
-  void CenteralizeAt(const ArrayRef& src, size_t mod_idx,
+  // Need 1D array
+  void CenteralizeAt(const NdArrayRef& src, size_t mod_idx,
                      absl::Span<uint64_t> out) const;
-
   // Given x' in \ [0, Q), compute round(x'*2^k/Q) \in [0, 2^k)
-  ArrayRef ModulusDownRNS(FieldType field,
-                          absl::Span<const uint64_t> src) const;
+  NdArrayRef ModulusDownRNS(FieldType field, const Shape& shape,
+                            absl::Span<const uint64_t> src) const;
 
-  void ModulusDownRNS(absl::Span<const uint64_t> src, ArrayRef out) const;
+  void ModulusDownRNS(absl::Span<const uint64_t> src, NdArrayRef out) const;
 
   void ModulusDownRNS(absl::Span<const uint64_t> src,
                       absl::Span<uint32_t> out) const;

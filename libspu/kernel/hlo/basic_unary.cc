@@ -39,6 +39,8 @@ SIMPLE_UNARY_KERNEL_DEFN(Logistic, hal::logistic)
 SIMPLE_UNARY_KERNEL_DEFN(Tanh, hal::tanh)
 SIMPLE_UNARY_KERNEL_DEFN(Rsqrt, hal::rsqrt)
 SIMPLE_UNARY_KERNEL_DEFN(Sqrt, hal::sqrt)
+SIMPLE_UNARY_KERNEL_DEFN(Sine, hal::sine)
+SIMPLE_UNARY_KERNEL_DEFN(Cosine, hal::cosine)
 
 #undef SIMPLE_UNARY_KERNEL_DEFN
 

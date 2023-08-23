@@ -21,6 +21,8 @@ SECRETFLOW_GIT = "https://github.com/secretflow"
 YACL_COMMIT_ID = "a9c1d7d119c80eb75d5ec63ee6cd77145dff18c2"
 
 def spu_deps():
+    _rules_cuda()
+    _rules_proto_grpc()
     _bazel_platform()
     _upb()
     _com_github_xtensor_xtensor()
@@ -59,6 +61,24 @@ def spu_deps():
         name = "local_homebrew_arm64",
         build_file = "@spulib//bazel:local_openmp_macos.BUILD",
         path = "/opt/homebrew/opt/libomp/",
+    )
+
+def _rules_proto_grpc():
+    http_archive(
+        name = "rules_proto_grpc",
+        sha256 = "928e4205f701b7798ce32f3d2171c1918b363e9a600390a25c876f075f1efc0a",
+        strip_prefix = "rules_proto_grpc-4.4.0",
+        urls = [
+            "https://github.com/rules-proto-grpc/rules_proto_grpc/releases/download/4.4.0/rules_proto_grpc-4.4.0.tar.gz",
+        ],
+    )
+
+def _rules_cuda():
+    http_archive(
+        name = "rules_cuda",
+        sha256 = "fa1462c4c3104de44489800a1da055f55afa57795789539c835e069818786f71",
+        strip_prefix = "rules_cuda-cab1fa2dd0e1f8489f566c91a5025856cf5ae572",
+        urls = ["https://github.com/bazel-contrib/rules_cuda/archive/cab1fa2dd0e1f8489f566c91a5025856cf5ae572.tar.gz"],
     )
 
 def _bazel_platform():
@@ -138,8 +158,8 @@ def _com_github_xtensor_xtl():
     )
 
 def _com_github_openxla_xla():
-    OPENXLA_COMMIT = "f23282956725050dd07996d3b80d6788ad8aaeba"
-    OPENXLA_SHA256 = "6e87093f550573de12af247edfa590d76adc6e931da6b551e78dc2c0c2bbd04d"
+    OPENXLA_COMMIT = "0c99beffabc5d43fa29f121674eb59e14a22c779"
+    OPENXLA_SHA256 = "d4c7511a496aeb917976c0d8a65de374c395546f0c3d4077d9dfd4df780d7ea8"
 
     SKYLIB_VERSION = "1.3.0"
 
@@ -160,6 +180,10 @@ def _com_github_openxla_xla():
         sha256 = OPENXLA_SHA256,
         strip_prefix = "xla-" + OPENXLA_COMMIT,
         type = ".tar.gz",
+        patch_args = ["-p1"],
+        patches = [
+            "@spulib//bazel:patches/xla.patch",
+        ],
         urls = [
             "https://github.com/openxla/xla/archive/{commit}.tar.gz".format(commit = OPENXLA_COMMIT),
         ],

@@ -16,7 +16,7 @@
 
 #include <memory>
 
-#include "libspu/mpc/cheetah/array_ref.h"
+#include "libspu/core/ndarray_ref.h"
 
 namespace spu::mpc::cheetah {
 
@@ -43,9 +43,12 @@ class EqualProtocol {
 
   ~EqualProtocol();
 
-  ArrayRef Compute(const ArrayRef& inp);
+  NdArrayRef Compute(const NdArrayRef& inp, size_t bit_width = 0);
 
  private:
+  // Need 1D Array
+  NdArrayRef DoCompute(const NdArrayRef& inp, size_t bit_width = 0);
+
   size_t compare_radix_;
   bool is_sender_{false};
   std::shared_ptr<BasicOTProtocols> basic_ot_prot_;

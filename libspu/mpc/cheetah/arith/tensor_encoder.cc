@@ -26,7 +26,7 @@ constexpr int kC = 2;
 
 TensorEncoder::TensorEncoder(const seal::SEALContext &context,
                              const ModulusSwitchHelper &ms_helper)
-    : ms_helper_(ms_helper) {
+    : msh_(ms_helper) {
   SPU_ENFORCE(context.parameters_set());
   auto pid0 = context.first_parms_id();
   auto pid1 = ms_helper.parms_id();
@@ -47,9 +47,9 @@ void TensorEncoder::EncodeInput(const Sliced3DTensor &input,
   SPU_ENFORCE(poly_deg_ >= calcNumel(input.shape()));
 
   InputIndexer indexer(input_shape, kernel_shape);
-  auto poly = Tensor2Poly(input_shape, kernel_shape, input, indexer);
+  auto poly = toNdArray(Tensor2Poly(input_shape, kernel_shape, input, indexer));
 
-  size_t num_modulus = ms_helper_.coeff_modulus_size();
+  size_t num_modulus = msh_.coeff_modulus_size();
   out->parms_id() = seal::parms_id_zero;
   out->resize(
       seal::util::mul_safe(static_cast<size_t>(poly_deg_), num_modulus));
@@ -59,14 +59,14 @@ void TensorEncoder::EncodeInput(const Sliced3DTensor &input,
     std::fill_n(dst, poly_deg_, 0);
     absl::Span<uint64_t> dst_wrap(dst, poly_deg_);
     if (need_encrypt) {
-      ms_helper_.ModulusUpAt(poly, mod_idx, dst_wrap);
+      msh_.ModulusUpAt(poly, mod_idx, dst_wrap);
     } else {
-      ms_helper_.CenteralizeAt(poly, mod_idx, dst_wrap);
+      msh_.CenteralizeAt(poly, mod_idx, dst_wrap);
     }
     dst += poly_deg_;
   }
 
-  out->parms_id() = ms_helper_.parms_id();
+  out->parms_id() = msh_.parms_id();
   out->scale() = 1.;
 }
 
@@ -80,9 +80,10 @@ void TensorEncoder::EncodeKernel(const Sliced3DTensor &kernel,
   SPU_ENFORCE(poly_deg_ >= calcNumel(kernel.shape()));
 
   KernelIndexer indexer(input_shape, kernel_shape);
-  auto poly = Tensor2Poly(input_shape, kernel_shape, kernel, indexer);
+  auto poly =
+      toNdArray(Tensor2Poly(input_shape, kernel_shape, kernel, indexer));
 
-  size_t num_modulus = ms_helper_.coeff_modulus_size();
+  size_t num_modulus = msh_.coeff_modulus_size();
   out->parms_id() = seal::parms_id_zero;
   out->resize(
       seal::util::mul_safe(static_cast<size_t>(poly_deg_), num_modulus));
@@ -92,14 +93,14 @@ void TensorEncoder::EncodeKernel(const Sliced3DTensor &kernel,
     std::fill_n(dst, poly_deg_, 0);
     absl::Span<uint64_t> dst_wrap(dst, poly_deg_);
     if (need_encrypt) {
-      ms_helper_.ModulusUpAt(poly, mod_idx, dst_wrap);
+      msh_.ModulusUpAt(poly, mod_idx, dst_wrap);
     } else {
-      ms_helper_.CenteralizeAt(poly, mod_idx, dst_wrap);
+      msh_.CenteralizeAt(poly, mod_idx, dst_wrap);
     }
     dst += poly_deg_;
   }
 
-  out->parms_id() = ms_helper_.parms_id();
+  out->parms_id() = msh_.parms_id();
   out->scale() = 1.;
 }
 
@@ -110,13 +111,13 @@ ArrayRef TensorEncoder::Tensor2Poly(const Shape3D &input_shape,
                                     const Indexer &indexer) const {
   int64_t isze = calcNumel(input_shape);
   int64_t ksze = calcNumel(kernel_shape);
-  int64_t n_elt = tensor.numel();
+  int64_t numel = tensor.numel();
   int64_t N = poly_deg_;
   SPU_ENFORCE(isze > 0 && ksze > 0, "invalid shapes");
-  SPU_ENFORCE(n_elt == isze || n_elt == ksze, "shape mismatch");
-  SPU_ENFORCE(n_elt <= N, "too large tensor to encode as one poly");
+  SPU_ENFORCE(numel == isze || numel == ksze, "shape mismatch");
+  SPU_ENFORCE(numel <= N, "too large tensor to encode as one poly");
 
-  Shape3D shape = isze == n_elt ? input_shape : kernel_shape;
+  Shape3D shape = isze == numel ? input_shape : kernel_shape;
 
   const auto field = tensor.field();
   return DISPATCH_ALL_FIELDS(field, "Tensor2Poly", [&]() {

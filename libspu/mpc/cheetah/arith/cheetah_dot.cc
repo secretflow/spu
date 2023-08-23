@@ -13,6 +13,7 @@
 // limitations under the License.
 #include "libspu/mpc/cheetah/arith/cheetah_dot.h"
 
+#include <future>
 #include <unordered_map>
 #include <utility>
 
@@ -22,6 +23,7 @@
 #include "seal/decryptor.h"
 #include "seal/encryptor.h"
 #include "seal/evaluator.h"
+#include "seal/galoiskeys.h"
 #include "seal/keygenerator.h"
 #include "seal/publickey.h"
 #include "seal/secretkey.h"
@@ -30,11 +32,12 @@
 #include "seal/util/rlwe.h"
 #include "spdlog/spdlog.h"
 #include "yacl/link/link.h"
+#include "yacl/utils/elapsed_timer.h"
 
 #include "libspu/mpc/cheetah/arith/common.h"
-#include "libspu/mpc/cheetah/arith/conv2d_prot.h"
 #include "libspu/mpc/cheetah/arith/matmat_prot.h"
 #include "libspu/mpc/cheetah/rlwe/modswitch_helper.h"
+#include "libspu/mpc/cheetah/rlwe/packlwes.h"
 #include "libspu/mpc/cheetah/rlwe/utils.h"
 #include "libspu/mpc/utils/ring_ops.h"
 
@@ -42,68 +45,67 @@ namespace spu::mpc::cheetah {
 
 struct CheetahDot::Impl : public EnableCPRNG {
  public:
-  const bool kUseModDownOptimization = true;
-  static constexpr size_t kParallelStride = 1;
-  static constexpr size_t kCtAsyncParallel = 8;
+  enum class CipherPackingType {
+    rlwes,
+    none,
+  };
 
-  explicit Impl(std::shared_ptr<yacl::link::Context> lctx)
-      : lctx_(std::move(lctx)) {}
+  const bool kUseModDownOptimization = true;
+  static constexpr size_t kCtAsyncParallel = 16;
+
+  explicit Impl(std::shared_ptr<yacl::link::Context> lctx,
+                bool enable_matmul_pack)
+      : lctx_(std::move(lctx)), disable_pack_(!enable_matmul_pack) {}
 
   ~Impl() = default;
 
-  std::unique_ptr<Impl> Fork();
-
-  struct Conv2DMeta {
-    Conv2DProtocol::Meta prot_meta;
-    bool is_tensor;
-    size_t n_tensor_poly;
-    size_t n_kernel_poly;
-    size_t n_output_poly;
-  };
-
   // Compute C = A*B where |A|=dims[0]xdims[1], |B|=dims[1]xdims[2
-  ArrayRef DotOLE(const ArrayRef &prv, yacl::link::Context *conn,
-                  const Shape3D &dim3, bool is_lhs);
+  NdArrayRef DotOLE(const NdArrayRef &prv_mat, yacl::link::Context *conn,
+                    const Shape3D &dim3, bool is_self_lhs);
 
-  ArrayRef Conv2dOLE(const ArrayRef &inp, yacl::link::Context *conn,
-                     int64_t input_batch, const Shape3D &tensor_shape,
-                     int64_t num_kernels, const Shape3D &kernel_shape,
-                     const Shape2D &window_strides, bool is_tensor);
+  // dim4 = [B, M, K, L]
+  // LHS.shape BxMxK, RHS.shape BxKxL
+  // Out.shape BxMxL
+  NdArrayRef BatchDotOLE(const NdArrayRef &prv_mat, yacl::link::Context *conn,
+                         const Shape4D &dim4, bool is_self_lhs);
 
-  ArrayRef doConv2dOLEForEncryptor(FieldType field,
-                                   absl::Span<const RLWEPt> poly_ntt,
-                                   const Conv2DMeta &meta,
-                                   const Conv2DProtocol &conv2d,
-                                   yacl::link::Context *conn);
+  NdArrayRef doDotOLE(const NdArrayRef &prv_mat, yacl::link::Context *conn,
+                      const Shape3D &dim3, bool is_self_lhs);
 
-  template <typename T0, typename T1>
-  void doConv2dOLECtPtMul(absl::Span<const T0> tensors,
-                          absl::Span<const T1> kernels, const Conv2DMeta &meta,
-                          const Conv2DProtocol &conv2d, absl::Span<RLWECt> out);
+  NdArrayRef doBatchDotOLE(const NdArrayRef &prv_mat, yacl::link::Context *conn,
+                           const Shape4D &dim4, bool is_self_lhs);
 
-  ArrayRef doConv2dOLEForEvaluator(FieldType field,
-                                   absl::Span<const RLWEPt> poly_ntt,
-                                   const Conv2DMeta &meta,
-                                   const Conv2DProtocol &conv2d,
-                                   yacl::link::Context *conn);
+  void doDotOLESenderSendStep(const NdArrayRef &prv_mat, const Shape3D &dim3,
+                              bool is_self_lhs, CipherPackingType cptype,
+                              yacl::link::Context *conn);
 
-  void encodeBatchInput(const ArrayRef &batch_inp, const Conv2DMeta &meta,
-                        const Conv2DProtocol &conv2d, bool need_encrypt,
-                        absl::Span<RLWEPt> out);
+  void doDotOLEReceiverRecvStep(const NdArrayRef &prv_mat, const Shape3D &dim3,
+                                bool is_self_lhs, CipherPackingType cptype,
+                                absl::Span<RLWECt> result_cts,
+                                yacl::link::Context *conn);
 
-  ArrayRef parseBatchedConv2dResult(FieldType field, const Conv2DMeta &meta,
-                                    const Conv2DProtocol &prot,
-                                    absl::Span<const RLWEPt> polys);
+  NdArrayRef doDotOLESenderRecvStep(FieldType field, size_t batch_size,
+                                    MatMatProtocol::Meta meta,
+                                    size_t num_ct_to_recv,
+                                    CipherPackingType cptype,
+                                    yacl::link::Context *conn);
 
-  static seal::EncryptionParameters DecideSEALParameters(uint32_t ring_bitlen) {
+  NdArrayRef doDotOLEReceiverSendStep(FieldType field, size_t batch_size,
+                                      MatMatProtocol::Meta meta,
+                                      absl::Span<RLWECt> ct_array_to_pack,
+                                      CipherPackingType cptype,
+                                      yacl::link::Context *conn,
+                                      size_t bytes_recv);
+
+  seal::EncryptionParameters DecideSEALParameters(uint32_t ring_bitlen) const {
     size_t poly_deg;
     std::vector<int> modulus_bits;
-    // NOTE(juhou): we need Q=sum(modulus_bits) > 2*k for multiplying two k-bit
-    // elements.
-    // 1. We need the (N, Q) pair satisfies the security.
+    // NOTE(lwj): we need Q=sum(modulus_bits) > 2*k for multiplying two
+    // k-bit elements.
+    // 1. We need the (N, Q) pair satisifies the security.
     //    Check `seal/util/globals.cpp` for the recommendation HE parameters.
-    // 2. We prefer modulus_bits[i] to be around 49-bit aiming to use AVX512 for
-    // acceleration if available.
+    // 2. We prefer modulus_bits[i] to be around 49-bit aiming to use AVX512
+    // for acceleration if avaiable.
     // 3. We need some bits for margin. That is Q > 2*k + margin for errorless
     // w.h.p. We set margin=32bit
     if (ring_bitlen <= 32) {
@@ -112,8 +114,8 @@ struct CheetahDot::Impl : public EnableCPRNG {
       modulus_bits = {59, 37};
     } else if (ring_bitlen <= 64) {
       poly_deg = 8192;
-      // ~ 128 + 32 bit
-      modulus_bits = {57, 57, 45};
+      //  ~ 128 + 32 bit
+      modulus_bits = {59, 55, 49};
     } else {
       poly_deg = 16384;
       // ~ 256 + 30 bit
@@ -129,73 +131,9 @@ struct CheetahDot::Impl : public EnableCPRNG {
     return parms;
   }
 
-  static inline uint32_t FieldBitLen(FieldType f) { return 8 * SizeOf(f); }
+  void LazyInit(size_t field_bitlen, bool need_galois_key = false);
 
-  void LazyInit(size_t field_bitlen);
-
-  static void SubPlainInplace(RLWECt &ct, const RLWEPt &pt,
-                              const seal::SEALContext &context) {
-    SPU_ENFORCE(ct.parms_id() == pt.parms_id());
-    auto cntxt_dat = context.get_context_data(ct.parms_id());
-    SPU_ENFORCE(cntxt_dat != nullptr);
-    const auto &parms = cntxt_dat->parms();
-    const auto &modulus = parms.coeff_modulus();
-    size_t num_coeff = ct.poly_modulus_degree();
-    size_t num_modulus = ct.coeff_modulus_size();
-
-    for (size_t l = 0; l < num_modulus; ++l) {
-      auto *op0 = ct.data(0) + l * num_coeff;
-      const auto *op1 = pt.data() + l * num_coeff;
-      seal::util::sub_poly_coeffmod(op0, op1, num_coeff, modulus[l], op0);
-    }
-  }
-
-  void KeepModulus(RLWECt &ct, size_t num_to_keep,
-                   const seal::SEALContext &context) const {
-    SPU_ENFORCE(num_to_keep >= 1 && num_to_keep <= ct.coeff_modulus_size());
-    if (num_to_keep == ct.coeff_modulus_size()) {
-      // nothing to do
-      return;
-    }
-
-    auto cntxt = context.get_context_data(ct.parms_id());
-    YACL_ENFORCE(cntxt != nullptr);
-    size_t index = cntxt->chain_index();
-    YACL_ENFORCE((index + 1) >= num_to_keep);
-
-    auto target_context = cntxt;
-    auto pool =
-        seal::MemoryManager::GetPool(seal::mm_prof_opt::mm_force_thread_local);
-
-    while (target_context->chain_index() >= num_to_keep) {
-      using namespace seal::util;
-      auto rns_tool = target_context->rns_tool();
-      auto ntt_tables = target_context->small_ntt_tables();
-      if (ct.is_ntt_form()) {
-        SEAL_ITERATE(iter(ct), ct.size(), [&](auto I) {
-          rns_tool->divide_and_round_q_last_ntt_inplace(I, ntt_tables, pool);
-        });
-      } else {
-        SEAL_ITERATE(iter(ct), ct.size(), [&](auto I) {
-          rns_tool->divide_and_round_q_last_inplace(I, pool);
-        });
-      }
-
-      auto next_context = target_context->next_context_data();
-      SPU_ENFORCE(next_context != nullptr);
-
-      RLWECt next_ct(pool);
-      next_ct.resize(context, next_context->parms_id(), ct.size());
-      SEAL_ITERATE(iter(ct, next_ct), ct.size(), [&](auto I) {
-        set_poly(get<0>(I), ct.poly_modulus_degree(),
-                 ct.coeff_modulus_size() - 1, get<1>(I));
-      });
-      next_ct.is_ntt_form() = ct.is_ntt_form();
-      target_context = next_context;
-      std::swap(next_ct, ct);
-    }
-    SPU_ENFORCE_EQ(num_to_keep, ct.coeff_modulus_size());
-  }
+  void LazyInitGaloisKey(size_t field_bitlen);
 
   // Enc(Delta*m) -> Enc(Delta*m - r), r where r is sampled from Rq
   // One share of `m` is round(r/Delta) mod t
@@ -208,20 +146,26 @@ struct CheetahDot::Impl : public EnableCPRNG {
     SPU_ENFORCE(num_poly > 0);
     SPU_ENFORCE_EQ(rnd_mask.size(), num_poly);
 
+    constexpr int64_t heuristic_group = 4;
     yacl::parallel_for(
-        0, num_poly, kParallelStride, [&](size_t bgn, size_t end) {
+        0, num_poly, heuristic_group, [&](size_t bgn, size_t end) {
+          RLWECt zero_ct;
           for (size_t idx = bgn; idx < end; ++idx) {
-            // decrease q <- q' for efficiency
-            if (ct[idx].is_ntt_form()) {
-              evaluator.transform_from_ntt_inplace(ct[idx]);
-            }
-            KeepModulus(ct[idx], target_modulus_size, context);
+            // NOTE(lwj): we hope the final ct is in the non-ntt form
+            // We perform the intt before the modulus down which is faster
+            // than modulus down then intt.
+            InvNttInplace(ct[idx], context);
 
-            // TODO(juhou): improve the performance of pk encryption of zero.
+            ModulusSwtichInplace(ct[idx], target_modulus_size, context);
+
+            // TODO(lwj): improve the performance of pk encryption of zero.
             // ct <- ct + enc(0)
-            RLWECt zero_ct;
-            seal::util::encrypt_zero_asymmetric(pk, context, ct[idx].parms_id(),
-                                                ct[idx].is_ntt_form(), zero_ct);
+            if (0 == zero_ct.size()) {
+              seal::util::encrypt_zero_asymmetric(
+                  pk, context, ct[idx].parms_id(), ct[idx].is_ntt_form(),
+                  zero_ct);
+            }
+
             evaluator.add_inplace(ct[idx], zero_ct);
             SPU_ENFORCE(!ct[idx].is_ntt_form());
 
@@ -235,45 +179,65 @@ struct CheetahDot::Impl : public EnableCPRNG {
 
  private:
   std::shared_ptr<yacl::link::Context> lctx_;
+  bool disable_pack_ = false;
 
   mutable std::shared_mutex context_lock_;
   // field_bitlen -> functor mapping
   std::unordered_map<size_t, std::shared_ptr<seal::SEALContext>> seal_cntxts_;
+  std::unordered_map<size_t, seal::SEALContext> galoi_cntxts_;
   std::unordered_map<size_t, std::shared_ptr<seal::SecretKey>> secret_keys_;
   std::unordered_map<size_t, std::shared_ptr<seal::PublicKey>> peer_pub_keys_;
+  std::unordered_map<size_t, std::shared_ptr<seal::GaloisKeys>>
+      peer_galois_keys_;
   // ModulusSwitchHelper for encoding
   std::unordered_map<size_t, std::shared_ptr<ModulusSwitchHelper>> ecd_mswh_;
   // ModulusSwitchHelper for decoding
   std::unordered_map<size_t, std::shared_ptr<ModulusSwitchHelper>> dcd_mswh_;
-  std::unordered_map<size_t, std::shared_ptr<seal::Encryptor>> sym_encryptors_;
   std::unordered_map<size_t, std::shared_ptr<seal::Decryptor>> decryptors_;
 };
 
-std::unique_ptr<CheetahDot::Impl> CheetahDot::Impl::Fork() {
-  auto f = std::make_unique<Impl>(lctx_->Spawn());
-  if (seal_cntxts_.size() == 0) return f;
-  std::unique_lock<std::shared_mutex> guard(context_lock_);
+void CheetahDot::Impl::LazyInitGaloisKey(size_t field_bitlen) {
+  // NOTE: make sure context_lock_ is obtained.
+  if (galoi_cntxts_.find(field_bitlen) != galoi_cntxts_.end()) {
+    return;
+  }
+  auto kv = seal_cntxts_.find(field_bitlen);
+  SPU_ENFORCE(kv != seal_cntxts_.end());
+  const auto &this_context = *kv->second;
+  const auto &this_rlwe_sk = *secret_keys_.find(field_bitlen)->second;
 
-  f->seal_cntxts_ = seal_cntxts_;
-  f->secret_keys_ = secret_keys_;
-  f->peer_pub_keys_ = peer_pub_keys_;
-  f->ecd_mswh_ = ecd_mswh_;
-  f->dcd_mswh_ = dcd_mswh_;
-  f->sym_encryptors_ = sym_encryptors_;
-  f->decryptors_ = decryptors_;
-  return f;
+  seal::GaloisKeys gk;
+  auto gk_parms = this_context.key_context_data()->parms();
+  gk_parms.set_use_special_prime(true);
+
+  seal::SEALContext gk_context(gk_parms, true, seal::sec_level_type::none);
+  GenerateGaloisKeyForPacking(gk_context, this_rlwe_sk,
+                              /*seed*/ true, &gk);
+  galoi_cntxts_.emplace(field_bitlen, gk_context);
+
+  auto gk_buf = EncodeSEALObject(gk);
+  int nxt_rank = lctx_->NextRank();
+  std::shared_ptr<seal::GaloisKeys> peer_galois_key;
+  if (nxt_rank == 0) {
+    lctx_->Send(nxt_rank, gk_buf, "Rank0 send galois key");
+    auto recv_gk = lctx_->Recv(nxt_rank, "Rank0 recv galois key");
+    peer_galois_key = std::make_shared<seal::GaloisKeys>();
+    DecodeSEALObject(recv_gk, this_context, peer_galois_key.get());
+  } else {
+    auto recv_gk = lctx_->Recv(nxt_rank, "Rank1 recv galois key");
+    lctx_->Send(nxt_rank, gk_buf, "Rank0 send galois key");
+    peer_galois_key = std::make_shared<seal::GaloisKeys>();
+    DecodeSEALObject(recv_gk, this_context, peer_galois_key.get());
+  }
+  peer_galois_keys_.emplace(field_bitlen, peer_galois_key);
 }
 
-void CheetahDot::Impl::LazyInit(size_t field_bitlen) {
-  {
-    std::shared_lock<std::shared_mutex> guard(context_lock_);
-    if (seal_cntxts_.find(field_bitlen) != seal_cntxts_.end()) {
-      return;
-    }
-  }
-  // double-checking
-  std::unique_lock<std::shared_mutex> guard(context_lock_);
+void CheetahDot::Impl::LazyInit(size_t field_bitlen, bool need_galois_keys) {
+  std::unique_lock guard(context_lock_);
   if (seal_cntxts_.find(field_bitlen) != seal_cntxts_.end()) {
+    if (need_galois_keys) {
+      LazyInitGaloisKey(field_bitlen);
+    }
     return;
   }
 
@@ -283,30 +247,34 @@ void CheetahDot::Impl::LazyInit(size_t field_bitlen) {
   seal::KeyGenerator keygen(*this_context);
   auto *rlwe_sk = new seal::SecretKey(keygen.secret_key());
 
-  auto pk = keygen.create_public_key();
-  // NOTE(juhou): we patched seal/util/serializable.h
-  auto pk_buf = EncodeSEALObject(pk.obj());
-  // exchange the public key
+  // exchange the public keys
   int nxt_rank = lctx_->NextRank();
-  lctx_->SendAsync(nxt_rank, pk_buf, "send Pk");
-  pk_buf = lctx_->Recv(nxt_rank, "recv pk");
+  auto pk = keygen.create_public_key();
+  auto pk_buf = EncodeSEALObject(pk.obj());
   auto peer_public_key = std::make_shared<seal::PublicKey>();
-  DecodeSEALObject(pk_buf, *this_context, peer_public_key.get());
+  if (nxt_rank == 0) {
+    lctx_->Send(nxt_rank, pk_buf, "Rank1 send public key");
+    auto recv_pk = lctx_->Recv(nxt_rank, "Rank1 recv public key");
+    DecodeSEALObject(recv_pk, *this_context, peer_public_key.get());
+  } else {
+    auto recv_pk = lctx_->Recv(nxt_rank, "Rank0 recv public key");
+    lctx_->Send(nxt_rank, pk_buf, "Rank1 send public key");
+    DecodeSEALObject(recv_pk, *this_context, peer_public_key.get());
+  }
 
   auto modulus = parms.coeff_modulus();
-  if (parms.use_special_prime()) {
-    modulus.pop_back();
-  }
   size_t ecd_modulus_sze = modulus.size();
   parms.set_coeff_modulus(modulus);
   seal::SEALContext ecd_ms_context(parms, false, seal::sec_level_type::none);
+
   if (kUseModDownOptimization) {
-    // NOTE: we can drop some modulus before H2A
     modulus.pop_back();
     if (field_bitlen > 64) {
+      // Keep 3 primes are enough for FM128.
       modulus.pop_back();
     }
   }
+
   size_t dcd_modulus_sze = modulus.size();
   parms.set_coeff_modulus(modulus);
   seal::SEALContext dcd_ms_context(parms, false, seal::sec_level_type::none);
@@ -314,459 +282,506 @@ void CheetahDot::Impl::LazyInit(size_t field_bitlen) {
   seal_cntxts_.emplace(field_bitlen, this_context);
   secret_keys_.emplace(field_bitlen, rlwe_sk);
   peer_pub_keys_.emplace(field_bitlen, peer_public_key);
+
   ecd_mswh_.emplace(field_bitlen,
                     new ModulusSwitchHelper(ecd_ms_context, field_bitlen));
   dcd_mswh_.emplace(field_bitlen,
                     new ModulusSwitchHelper(dcd_ms_context, field_bitlen));
 
-  sym_encryptors_.emplace(field_bitlen,
-                          new seal::Encryptor(*this_context, *rlwe_sk));
   decryptors_.emplace(field_bitlen,
                       new seal::Decryptor(*this_context, *rlwe_sk));
+  if (need_galois_keys) {
+    LazyInitGaloisKey(field_bitlen);
+  }
 
-  SPDLOG_INFO("CheetahDot uses {}@{} modulus {} degree for {} bit ring",
-              ecd_modulus_sze, dcd_modulus_sze, parms.poly_modulus_degree(),
-              field_bitlen);
+  if (lctx_->Rank() == 0) {
+    SPDLOG_INFO("CheetahDot uses {}@{} modulus {} degree for {} bit ring",
+                ecd_modulus_sze, dcd_modulus_sze, parms.poly_modulus_degree(),
+                field_bitlen);
+  }
 }
 
-ArrayRef CheetahDot::Impl::DotOLE(const ArrayRef &prv_mat,
-                                  yacl::link::Context *conn,
-                                  const Shape3D &dim3, bool is_lhs) {
+void CheetahDot::Impl::doDotOLEReceiverRecvStep(const NdArrayRef &prv_mat,
+                                                const Shape3D &dim3,
+                                                bool is_self_lhs,
+                                                CipherPackingType cptype,
+                                                absl::Span<RLWECt> result_cts,
+                                                yacl::link::Context *conn) {
+  int next_rank = conn->NextRank();
+  auto eltype = prv_mat.eltype();
+  auto field = eltype.template as<Ring2k>()->field();
+  const size_t field_bitlen = SizeOf(field) * 8;
+
+  const auto &this_context = *seal_cntxts_.find(field_bitlen)->second;
+  const auto &this_ecd_msh = *ecd_mswh_.find(field_bitlen)->second;
+  bool disable_pack = cptype == CipherPackingType::none;
+
+  MatMatProtocol matmat_prot(this_context, this_ecd_msh, disable_pack);
+
+  MatMatProtocol::Meta meta;
+  meta.dims = dim3;
+  auto subshape = matmat_prot.GetSubMatShape(meta);
+  const size_t lhs_n = matmat_prot.GetLeftSize(meta, subshape);
+  const size_t rhs_n = matmat_prot.GetRightSize(meta, subshape);
+  const size_t out_n = matmat_prot.GetOutSize(meta, subshape);
+  SPU_ENFORCE_EQ(out_n, result_cts.size());
+
+  // 1. launch IO task to recv ct from peer
+  std::vector<RLWECt> enc_mat(is_self_lhs ? rhs_n : lhs_n);
+  auto io_task = std::async(std::launch::async, [&]() {
+    for (auto &ct : enc_mat) {
+      auto ct_s = conn->Recv(next_rank, "recv encrypted mat");
+      DecodeSEALObject(ct_s, this_context, &ct);
+    }
+  });
+
+  // 2. encode the matrix for multiplication
+  std::vector<RLWEPt> plain_mat(is_self_lhs ? lhs_n : rhs_n);
+  if (is_self_lhs) {
+    matmat_prot.EncodeLHS(prv_mat, meta, false, absl::MakeSpan(plain_mat));
+  } else {
+    matmat_prot.EncodeRHS(prv_mat, meta, false, absl::MakeSpan(plain_mat));
+  }
+
+  yacl::parallel_for(0, plain_mat.size(), CalculateWorkLoad(plain_mat.size()),
+                     [&](size_t bgn, size_t end) {
+                       for (size_t i = bgn; i < end; ++i) {
+                         NttInplace(plain_mat[i], this_context);
+                       }
+                     });
+  io_task.get();
+
+  // 3. HE multiplications
+  if (is_self_lhs) {
+    matmat_prot.Compute(plain_mat, enc_mat, meta, result_cts);
+  } else {
+    matmat_prot.Compute(enc_mat, plain_mat, meta, result_cts);
+  }
+}
+
+NdArrayRef CheetahDot::Impl::doDotOLEReceiverSendStep(
+    FieldType field, size_t batch_size, MatMatProtocol::Meta meta,
+    absl::Span<RLWECt> ct_array_to_pack, CipherPackingType cptype,
+    yacl::link::Context *conn, size_t bytes_recv) {
+  int next_rank = conn->NextRank();
+  const size_t field_bitlen = SizeOf(field) * 8;
+  const auto &this_public_key = *(peer_pub_keys_.find(field_bitlen)->second);
+  const auto &this_dcd_msh = *dcd_mswh_.find(field_bitlen)->second;
+  const auto &this_context = *seal_cntxts_.find(field_bitlen)->second;
+  const auto &this_ecd_msh = *ecd_mswh_.find(field_bitlen)->second;
+  bool disable_pack = cptype == CipherPackingType::none;
+
+  MatMatProtocol matmat_prot(this_context, this_ecd_msh, disable_pack);
+
+  auto subshape = matmat_prot.GetSubMatShape(meta);
+
+  size_t out_n = ct_array_to_pack.size();
+  size_t num_ct_response = 0;
+
+  double pack_time = 0.0;
+  if (cptype == CipherPackingType::none) {
+    SPU_ENFORCE(batch_size == 1, "impossible dispatch here");
+    num_ct_response = out_n;
+  } else {
+    yacl::ElapsedTimer _timer;
+    const auto &this_galois_context = galoi_cntxts_.find(field_bitlen)->second;
+    const auto &this_galois_key =
+        *(peer_galois_keys_.find(field_bitlen)->second);
+
+    const size_t gap = subshape[1];
+    const size_t pack_stride = gap;
+
+    PackingHelper pack_helper(gap, this_galois_key, this_galois_context,
+                              this_context);
+
+    for (size_t i = 0; i < out_n; i += pack_stride) {
+      size_t this_batch = std::min(out_n - i, pack_stride);
+      size_t packed_idx = i / pack_stride;
+      pack_helper.PackingWithModulusDrop(
+          ct_array_to_pack.subspan(i, this_batch),
+          ct_array_to_pack[packed_idx]);
+    }
+    pack_time = _timer.CountMs();
+
+    num_ct_response = CeilDiv(out_n, pack_stride);
+  }
+
+  // 4. Random masking to conver HE to AShr
+  std::vector<RLWEPt> rnd_polys(num_ct_response);
+  H2A({ct_array_to_pack.data(), num_ct_response}, absl::MakeSpan(rnd_polys),
+      this_dcd_msh.coeff_modulus_size(), this_public_key, this_context);
+
+  if (cptype == CipherPackingType::none) {
+    // If no packing, then clean up un-used coefficients
+    // NOTE(lwj): we place Extract **after** H2A for a smaller communication
+    matmat_prot.ExtractLWEsInplace(meta, ct_array_to_pack);
+  }
+
+  size_t bytes_sent = conn->GetStats()->sent_bytes;
+  for (size_t i = 0; i < num_ct_response; ++i) {
+    conn->SendAsync(next_rank, EncodeSEALObject(ct_array_to_pack[i]), "");
+  }
+  bytes_sent = conn->GetStats()->sent_bytes - bytes_sent;
+
+  if (conn->Rank() == 0) {
+    SPDLOG_INFO(
+        "{}@{}x{}x{} => {}x{}x{} Recv {} MiB, Response {} MiB Pack {} ms",
+        batch_size, meta.dims[0], meta.dims[1], meta.dims[2], subshape[0],
+        subshape[1], subshape[2],
+        std::roundf(bytes_recv / 1024. / 1024. * 1000) / 1000.,
+        std::roundf(bytes_sent / 1024. / 1024. * 1000) / 1000.,
+        std::roundf(pack_time * 1000) / 1000.);
+  }
+
+  switch (cptype) {
+    case CipherPackingType::none:
+      return matmat_prot.ParseResult(
+          field, meta, absl::MakeConstSpan(rnd_polys), this_dcd_msh);
+    case CipherPackingType::rlwes:
+    default:
+      return matmat_prot.ParseBatchPackedResult(field, batch_size, meta,
+                                                absl::MakeConstSpan(rnd_polys),
+                                                this_dcd_msh);
+  }
+}
+
+void CheetahDot::Impl::doDotOLESenderSendStep(const NdArrayRef &prv_mat,
+                                              const Shape3D &dim3,
+                                              bool is_self_lhs,
+                                              CipherPackingType cptype,
+                                              yacl::link::Context *conn) {
+  int next_rank = conn->NextRank();
+  auto eltype = prv_mat.eltype();
+  auto field = eltype.template as<Ring2k>()->field();
+  const size_t field_bitlen = SizeOf(field) * 8;
+
+  const auto &this_context = *seal_cntxts_.find(field_bitlen)->second;
+  auto &this_secret_key = *secret_keys_.find(field_bitlen)->second;
+  auto &this_ecd_msh = *ecd_mswh_.find(field_bitlen)->second;
+  bool disable_pack = cptype == CipherPackingType::none;
+  MatMatProtocol matmat_prot(this_context, this_ecd_msh, disable_pack);
+
+  MatMatProtocol::Meta meta;
+  meta.dims = dim3;
+  auto subshape = matmat_prot.GetSubMatShape(meta);
+
+  const size_t lhs_n = matmat_prot.GetLeftSize(meta, subshape);
+  const size_t rhs_n = matmat_prot.GetRightSize(meta, subshape);
+
+  std::vector<RLWEPt> _encoded_mat(is_self_lhs ? lhs_n : rhs_n);
+  auto encoded_mat = absl::MakeSpan(_encoded_mat);
+  if (is_self_lhs) {
+    matmat_prot.EncodeLHS(prv_mat, meta, true, encoded_mat);
+  } else {
+    matmat_prot.EncodeRHS(prv_mat, meta, true, encoded_mat);
+  }
+
+  size_t num_ct_to_send = encoded_mat.size();
+  for (size_t i = 0; i < num_ct_to_send; i += kCtAsyncParallel) {
+    size_t this_batch = std::min(num_ct_to_send - i, kCtAsyncParallel);
+    std::vector<RLWECt> enc_mat(this_batch);
+    std::vector<yacl::Buffer> ct_s(this_batch);
+
+    SymmetricRLWEEncrypt(this_secret_key, this_context,
+                         encoded_mat.subspan(i, this_batch),
+                         /*ntt*/ true,
+                         /*seed*/ true, absl::MakeSpan(enc_mat));
+
+    yacl::parallel_for(0, this_batch, CalculateWorkLoad(this_batch),
+                       [&](size_t bgn, size_t end) {
+                         for (size_t j = bgn; j < end; ++j) {
+                           ct_s[j] = EncodeSEALObject(enc_mat[j]);
+                         }
+                       });
+
+    for (size_t j = 1; j < this_batch; ++j) {
+      conn->SendAsync(next_rank, ct_s[j - 1], "send encrypted mat");
+    }
+    conn->Send(next_rank, ct_s[this_batch - 1], "send encrypted mat");
+  }
+}
+
+NdArrayRef CheetahDot::Impl::doDotOLESenderRecvStep(FieldType field,
+                                                    size_t batch_size,
+                                                    MatMatProtocol::Meta meta,
+                                                    size_t num_ct_to_recv,
+                                                    CipherPackingType cptype,
+                                                    yacl::link::Context *conn) {
+  SPU_ENFORCE(batch_size > 0);
+  int next_rank = conn->NextRank();
+  const size_t field_bitlen = SizeOf(field) * 8;
+
+  const auto &this_context = *seal_cntxts_.find(field_bitlen)->second;
+  auto &this_decryptor = decryptors_.find(field_bitlen)->second;
+  auto &this_ecd_msh = *ecd_mswh_.find(field_bitlen)->second;
+  auto &this_dcd_msh = *dcd_mswh_.find(field_bitlen)->second;
+
+  MatMatProtocol matmat_prot(this_context, this_ecd_msh,
+                             cptype == CipherPackingType::none);
+
+  std::vector<RLWECt> recv_ct(kCtAsyncParallel);
+  std::vector<RLWEPt> result_poly(num_ct_to_recv);
+
+  for (size_t i = 0; i < num_ct_to_recv; i += kCtAsyncParallel) {
+    size_t this_batch = std::min(num_ct_to_recv - i, kCtAsyncParallel);
+    for (size_t j = 0; j < this_batch; ++j) {
+      auto ct_s = conn->Recv(next_rank, "recv result mat");
+      DecodeSEALObject(ct_s, this_context, &recv_ct[j]);
+    }
+
+    yacl::parallel_for(0, this_batch, CalculateWorkLoad(this_batch),
+                       [&](size_t bgn, size_t end) {
+                         for (size_t j = bgn; j < end; ++j) {
+                           NttInplace(recv_ct[j], this_context);
+                           this_decryptor->decrypt(recv_ct[j],
+                                                   result_poly[i + j]);
+                           // non-ntt form for ParseResult
+                           InvNttInplace(result_poly[i + j], this_context);
+                         }
+                       });
+  }
+
+  switch (cptype) {
+    case CipherPackingType::none:
+      return matmat_prot.ParseResult(
+          field, meta, absl::MakeConstSpan(result_poly), this_dcd_msh);
+    case CipherPackingType::rlwes:
+    default:
+      return matmat_prot.ParseBatchPackedResult(
+          field, batch_size, meta, absl::MakeConstSpan(result_poly),
+          this_dcd_msh);
+  }
+}
+
+NdArrayRef CheetahDot::Impl::DotOLE(const NdArrayRef &prv_mat,
+                                    yacl::link::Context *conn,
+                                    const Shape3D &dim3, bool is_self_lhs) {
   if (conn == nullptr) {
     conn = lctx_.get();
   }
-  int nxt_rank = conn->NextRank();
   auto eltype = prv_mat.eltype();
   SPU_ENFORCE(eltype.isa<RingTy>(), "must be ring_type, got={}", eltype);
-  SPU_ENFORCE(prv_mat.numel() > 0);
+  SPU_ENFORCE(prv_mat.numel() > 0 && prv_mat.ndim() == 2);
 
-  if (is_lhs) {
+  if (is_self_lhs) {
     SPU_ENFORCE_EQ(prv_mat.numel(), dim3[0] * dim3[1]);
   } else {
     SPU_ENFORCE_EQ(prv_mat.numel(), dim3[1] * dim3[2]);
   }
 
-  auto field = eltype.as<Ring2k>()->field();
-  const size_t field_bitlen = FieldBitLen(field);
-  LazyInit(field_bitlen);
-
-  const auto &this_context = *seal_cntxts_.find(field_bitlen)->second;
-  auto &this_encryptor = sym_encryptors_.find(field_bitlen)->second;
-  auto &this_decryptor = decryptors_.find(field_bitlen)->second;
-  auto &this_ecd_ms = ecd_mswh_.find(field_bitlen)->second;
-  auto &this_dcd_ms = dcd_mswh_.find(field_bitlen)->second;
-  seal::Evaluator evaluator(this_context);
-
-  MatMatProtocol matmat(this_context, *this_ecd_ms, /*mont*/ true);
-  MatMatProtocol::Meta meta;
-  meta.dims = dim3;
-  auto subshape = matmat.GetSubMatShape(meta);
-  size_t lhs_n = matmat.GetLeftSize(meta, subshape);
-  size_t rhs_n = matmat.GetRightSize(meta, subshape);
-  size_t out_n = matmat.GetOutSize(meta, subshape);
-  bool to_encrypt_lhs = lhs_n < rhs_n;
-  bool need_encrypt = (is_lhs ^ to_encrypt_lhs) == 0;
-
-  std::vector<RLWEPt> encoded_mat(is_lhs ? lhs_n : rhs_n);
-  if (is_lhs) {
-    matmat.EncodeLHS(prv_mat, meta, need_encrypt, absl::MakeSpan(encoded_mat));
-  } else {
-    matmat.EncodeRHS(prv_mat, meta, need_encrypt, absl::MakeSpan(encoded_mat));
-  }
-
-  // convert local poly to NTT form to perform encryption / multiplication.
-  yacl::parallel_for(0, encoded_mat.size(), kParallelStride,
-                     [&](size_t bgn, size_t end) {
-                       for (size_t i = bgn; i < end; ++i) {
-                         NttInplace(encoded_mat[i], this_context);
-                         if (not need_encrypt) {
-                           matmat.Montgomerize({&encoded_mat[i], 1});
-                         }
-                       }
-                     });
-
-  if (need_encrypt) {
-    // send ct
-    for (size_t i = 0; i < encoded_mat.size(); ++i) {
-      auto ct = this_encryptor->encrypt_symmetric(encoded_mat[i]).obj();
-      auto ct_s = EncodeSEALObject(ct);
-      conn->SendAsync(nxt_rank, ct_s, "send encrypted mat");
-    }
-
-    // wait for result
-    std::vector<RLWECt> recv_ct(kCtAsyncParallel);
-    std::vector<RLWEPt> result_poly(out_n);
-    for (size_t i = 0; i < out_n; i += kCtAsyncParallel) {
-      size_t this_batch = std::min(out_n - i, kCtAsyncParallel);
-      for (size_t j = 0; j < this_batch; ++j) {
-        auto ct_s = conn->Recv(nxt_rank, "recv result mat");
-        DecodeSEALObject(ct_s, this_context, &recv_ct[j]);
-      }
-
-      yacl::parallel_for(
-          0, this_batch, kParallelStride, [&](size_t bgn, size_t end) {
-            for (size_t j = bgn; j < end; ++j) {
-              if (not recv_ct[j].is_ntt_form()) {
-                evaluator.transform_to_ntt_inplace(recv_ct[j]);
-              }
-              this_decryptor->decrypt(recv_ct[j], result_poly[i + j]);
-            }
-          });
-    }
-
-    // non-ntt form for ParseResult
-    yacl::parallel_for(0, out_n, kParallelStride, [&](size_t bgn, size_t end) {
-      for (size_t i = bgn; i < end; ++i) {
-        InvNttInplace(result_poly[i], this_context);
-      }
-    });
-
-    auto ret = matmat.ParseResult(field, meta, absl::MakeSpan(result_poly),
-                                  *this_dcd_ms);
-    return ret;
-  }
-
-  // recv ct from peer
-  std::vector<RLWECt> encrypted_mat(is_lhs ? rhs_n : lhs_n);
-  for (size_t i = 0; i < encrypted_mat.size(); ++i) {
-    auto ct_s = conn->Recv(nxt_rank, "recv encrypted mat");
-    DecodeSEALObject(ct_s, this_context, &encrypted_mat[i]);
-  }
-
-  std::vector<RLWECt> result_ct(out_n);
-  if (is_lhs) {
-    matmat.Compute(encoded_mat, encrypted_mat, meta, absl::MakeSpan(result_ct));
-  } else {
-    matmat.Compute(encrypted_mat, encoded_mat, meta, absl::MakeSpan(result_ct));
-  }
-
-  const auto &this_pk = peer_pub_keys_.find(field_bitlen)->second;
-
-  std::vector<RLWEPt> mask_mat(out_n);
-  H2A(absl::MakeSpan(result_ct), absl::MakeSpan(mask_mat),
-      this_dcd_ms->coeff_modulus_size(), *this_pk, this_context);
-  matmat.ExtractLWEsInplace(meta, absl::MakeSpan(result_ct));
-
-  for (size_t i = 0; i < out_n; i += kCtAsyncParallel) {
-    // NOTE(juhou): we do not send too much ct with Async
-    size_t this_batch = std::min(out_n - i, kCtAsyncParallel);
-    auto ct_s = EncodeSEALObject(result_ct[i]);
-    conn->Send(nxt_rank, ct_s, "send result mat");
-
-    for (size_t j = 1; j < this_batch; ++j) {
-      auto ct_s = EncodeSEALObject(result_ct[i + j]);
-      conn->SendAsync(nxt_rank, ct_s, "send result mat");
-    }
-  }
-
-  return matmat.ParseResult(field, meta, absl::MakeSpan(mask_mat),
-                            *this_dcd_ms);
+  return doDotOLE(prv_mat, conn, dim3, is_self_lhs);
 }
 
-void CheetahDot::Impl::encodeBatchInput(const ArrayRef &batch_inp,
-                                        const Conv2DMeta &meta,
-                                        const Conv2DProtocol &conv2d,
-                                        bool need_encrypt,
-                                        absl::Span<RLWEPt> out) {
-  size_t input_batch = meta.prot_meta.input_batch;
-  size_t num_poly_per_input = meta.n_tensor_poly / input_batch;
-  SPU_ENFORCE_EQ(out.size(), meta.n_tensor_poly);
-
-  const size_t numel = calcNumel(meta.prot_meta.input_shape);
-  yacl::parallel_for(
-      0, input_batch, kParallelStride, [&](size_t bgn, size_t end) {
-        for (size_t ib = bgn; ib < end; ++ib) {
-          absl::Span<RLWEPt> one_input_polys{
-              out.data() + ib * num_poly_per_input, num_poly_per_input};
-          conv2d.EncodeInput(batch_inp.slice(ib * numel, (ib + 1) * numel),
-                             meta.prot_meta, need_encrypt, one_input_polys);
-        }
-      });
-}
-
-template <typename T0, typename T1>
-void CheetahDot::Impl::doConv2dOLECtPtMul(absl::Span<const T0> tensors,
-                                          absl::Span<const T1> kernels,
-                                          const Conv2DMeta &meta,
-                                          const Conv2DProtocol &conv2d,
-                                          absl::Span<RLWECt> out) {
-  const size_t input_batch = meta.prot_meta.input_batch;
-  const size_t n_poly_per_tensor = meta.n_tensor_poly / input_batch;
-  const size_t n_poly_per_out = meta.n_output_poly / input_batch;
-  yacl::parallel_for(
-      0, input_batch, kParallelStride, [&](size_t bgn, size_t end) {
-        for (size_t ib = bgn; ib < end; ++ib) {
-          absl::Span<const T0> one_input_polys{
-              tensors.data() + ib * n_poly_per_tensor, n_poly_per_tensor};
-
-          absl::Span<RLWECt> one_output_polys{out.data() + ib * n_poly_per_out,
-                                              n_poly_per_out};
-
-          conv2d.Compute(one_input_polys, kernels, meta.prot_meta,
-                         one_output_polys);
-        }
-      });
-}
-
-ArrayRef CheetahDot::Impl::doConv2dOLEForEvaluator(
-    FieldType field, absl::Span<const RLWEPt> poly_ntt, const Conv2DMeta &meta,
-    const Conv2DProtocol &conv2d, yacl::link::Context *conn) {
-  const size_t field_bitlen = FieldBitLen(field);
-  const auto &this_context = *seal_cntxts_.find(field_bitlen)->second;
-  const auto &this_dcd_ms = dcd_mswh_.find(field_bitlen)->second;
-  const int nxt_rank = conn->NextRank();
-
-  SPU_ENFORCE_EQ(poly_ntt.size(),
-                 meta.is_tensor ? meta.n_tensor_poly : meta.n_kernel_poly);
-
-  std::vector<RLWECt> recv_ct(meta.is_tensor ? meta.n_kernel_poly
-                                             : meta.n_tensor_poly);
-
-  for (size_t i = 0; i < recv_ct.size(); ++i) {
-    auto ct_s = conn->Recv(nxt_rank, "recv encrypted mat");
-    DecodeSEALObject(ct_s, this_context, &recv_ct[i]);
-  }
-
-  std::vector<RLWECt> result_ct(meta.n_output_poly);
-  if (meta.is_tensor) {
-    doConv2dOLECtPtMul<RLWEPt, RLWECt>(poly_ntt, absl::MakeSpan(recv_ct), meta,
-                                       conv2d, absl::MakeSpan(result_ct));
-  } else {
-    doConv2dOLECtPtMul<RLWECt, RLWEPt>(absl::MakeSpan(recv_ct), poly_ntt, meta,
-                                       conv2d, absl::MakeSpan(result_ct));
-  }
-
-  const auto &this_pk = peer_pub_keys_.find(field_bitlen)->second;
-
-  std::vector<RLWEPt> mask_tensor(meta.n_output_poly);
-  H2A(absl::MakeSpan(result_ct), absl::MakeSpan(mask_tensor),
-      this_dcd_ms->coeff_modulus_size(), *this_pk, this_context);
-
-  size_t n_poly_per_out = meta.n_output_poly / meta.prot_meta.input_batch;
-  for (int64_t ib = 0; ib < meta.prot_meta.input_batch; ++ib) {
-    absl::Span<RLWECt> one_output_polys{result_ct.data() + ib * n_poly_per_out,
-                                        n_poly_per_out};
-    conv2d.ExtractLWEsInplace(meta.prot_meta, one_output_polys);
-  }
-
-  for (size_t i = 0; i < meta.n_output_poly; i += kCtAsyncParallel) {
-    size_t this_batch = std::min(meta.n_output_poly - i, kCtAsyncParallel);
-    auto ct_s = EncodeSEALObject(result_ct[i]);
-    conn->Send(nxt_rank, ct_s, "send result tensor");
-    for (size_t j = 1; j < this_batch; ++j) {
-      auto ct_s = EncodeSEALObject(result_ct[i + j]);
-      conn->SendAsync(nxt_rank, ct_s, "send result tensor");
-    }
-  }
-
-  return parseBatchedConv2dResult(field, meta, conv2d,
-                                  absl::MakeSpan(mask_tensor));
-}
-
-ArrayRef CheetahDot::Impl::doConv2dOLEForEncryptor(
-    FieldType field, absl::Span<const RLWEPt> poly_ntt, const Conv2DMeta &meta,
-    const Conv2DProtocol &conv2d, yacl::link::Context *conn) {
-  const size_t field_bitlen = FieldBitLen(field);
-  const auto &this_context = *seal_cntxts_.find(field_bitlen)->second;
-  auto &this_encryptor = sym_encryptors_.find(field_bitlen)->second;
-  auto &this_decryptor = decryptors_.find(field_bitlen)->second;
-  seal::Evaluator evaluator(this_context);
-
-  const size_t num_ct_to_send = poly_ntt.size();
-  const int nxt_rank = conn->NextRank();
-
-  // send ct
-  {
-    std::vector<yacl::Buffer> ct_to_send(kCtAsyncParallel);
-    for (size_t i = 0; i < num_ct_to_send; i += kCtAsyncParallel) {
-      size_t this_batch = std::min(num_ct_to_send - i, kCtAsyncParallel);
-      yacl::parallel_for(
-          0, this_batch, kParallelStride, [&](size_t bgn, size_t end) {
-            for (size_t k = bgn; k < end; ++k) {
-              auto ct =
-                  this_encryptor->encrypt_symmetric(poly_ntt[i + k]).obj();
-              ct_to_send[k] = EncodeSEALObject(ct);
-            }
-          });
-
-      conn->Send(nxt_rank, ct_to_send[0], "Conv2dOLE::Send ct");
-      for (size_t k = 1; k < this_batch; ++k) {
-        conn->SendAsync(nxt_rank, ct_to_send[k], "Conv2dOLE::Send ct");
-      }
-    }
-  }
-
-  // wait for result
-  std::vector<RLWECt> recv_ct(kCtAsyncParallel);
-  std::vector<RLWEPt> result_poly(meta.n_output_poly);
-  for (size_t i = 0; i < meta.n_output_poly; i += kCtAsyncParallel) {
-    size_t this_batch = std::min(meta.n_output_poly - i, kCtAsyncParallel);
-    for (size_t j = 0; j < this_batch; ++j) {
-      auto ct_s = conn->Recv(nxt_rank, "Conv2dOLE::Recv");
-      DecodeSEALObject(ct_s, this_context, &recv_ct[j]);
-    }
-
-    yacl::parallel_for(
-        0, this_batch, kParallelStride, [&](size_t bgn, size_t end) {
-          for (size_t j = bgn; j < end; ++j) {
-            evaluator.transform_to_ntt_inplace(recv_ct[j]);
-            this_decryptor->decrypt(recv_ct[j], result_poly[i + j]);
-          }
-        });
-  }
-
-  // non-ntt form for parseBatchedConv2dResult
-  yacl::parallel_for(0, meta.n_output_poly, kParallelStride,
-                     [&](size_t bgn, size_t end) {
-                       for (size_t i = bgn; i < end; ++i) {
-                         InvNttInplace(result_poly[i], this_context);
-                       }
-                     });
-
-  return parseBatchedConv2dResult(field, meta, conv2d,
-                                  absl::MakeSpan(result_poly));
-}
-
-ArrayRef CheetahDot::Impl::Conv2dOLE(
-    const ArrayRef &inp, yacl::link::Context *conn, int64_t input_batch,
-    const Shape3D &tensor_shape, int64_t num_kernels,
-    const Shape3D &kernel_shape, const Shape2D &window_strides,
-    bool is_tensor) {
+NdArrayRef CheetahDot::Impl::BatchDotOLE(const NdArrayRef &prv_mat,
+                                         yacl::link::Context *conn,
+                                         const Shape4D &dim4,
+                                         bool is_self_lhs) {
   if (conn == nullptr) {
     conn = lctx_.get();
   }
-
-  auto eltype = inp.eltype();
+  auto eltype = prv_mat.eltype();
   SPU_ENFORCE(eltype.isa<RingTy>(), "must be ring_type, got={}", eltype);
-  SPU_ENFORCE(input_batch > 0 && num_kernels > 0);
-  if (is_tensor) {
-    SPU_ENFORCE_EQ(inp.numel(), calcNumel(tensor_shape) * input_batch);
+  SPU_ENFORCE(prv_mat.numel() > 0 && prv_mat.ndim() == 3);
+
+  if (is_self_lhs) {
+    SPU_ENFORCE_EQ(prv_mat.numel(), dim4[0] * dim4[1] * dim4[2]);
   } else {
-    SPU_ENFORCE_EQ(inp.numel(), calcNumel(kernel_shape) * num_kernels);
+    SPU_ENFORCE_EQ(prv_mat.numel(), dim4[0] * dim4[2] * dim4[3]);
   }
 
-  auto field = eltype.as<Ring2k>()->field();
-  const size_t field_bitlen = FieldBitLen(field);
-  LazyInit(field_bitlen);
+  if (eltype.template as<Ring2k>()->field() == FM32) {
+    // FM32 not supportting Packing.
+    // Thus just call multiple DotOLEs
+    Shape3D dim3 = {dim4[1], dim4[2], dim4[3]};
+    int64_t out_numel = dim4[1] * dim4[3];
+    NdArrayRef out(eltype, {dim4[0] * out_numel});
+    const auto &mat_shape = prv_mat.shape();
 
-  const auto &this_context = *seal_cntxts_.find(field_bitlen)->second;
-  auto &this_ecd_ms = ecd_mswh_.find(field_bitlen)->second;
-  Conv2DProtocol conv2d(this_context, *this_ecd_ms);
+    for (int64_t b = 0; b < dim4[0]; ++b) {
+      auto one_mat =
+          prv_mat
+              .slice({b, 0, 0}, {b + 1, mat_shape[1], mat_shape[2]}, {1, 1, 1})
+              .reshape({mat_shape[1], mat_shape[2]});
+      auto one_out = DotOLE(one_mat, conn, dim3, is_self_lhs);
+      auto out_slice =
+          out.slice({b * out_numel}, {b * out_numel + out_numel}, {1});
+      pforeach(0, one_out.numel(), [&](int64_t i) {
+        std::memcpy(&out_slice.at(i), &one_out.at(i), one_out.elsize());
+      });
+    }
 
-  Conv2DMeta meta;
-  meta.prot_meta.input_batch = input_batch;
-  meta.prot_meta.num_kernels = num_kernels;
-  meta.prot_meta.input_shape = tensor_shape;
-  meta.prot_meta.kernel_shape = kernel_shape;
-  meta.prot_meta.window_strides = window_strides;
-
-  auto subshape = conv2d.GetSubTensorShape(meta.prot_meta);
-  meta.n_tensor_poly =
-      input_batch * conv2d.GetInputSize(meta.prot_meta, subshape);
-  meta.n_output_poly =
-      input_batch * conv2d.GetOutSize(meta.prot_meta, subshape);
-  meta.n_kernel_poly = conv2d.GetKernelSize(meta.prot_meta, subshape);
-  meta.is_tensor = is_tensor;
-
-  bool to_encrypt_tensor = meta.n_tensor_poly < meta.n_kernel_poly;
-  bool need_encrypt = !(is_tensor ^ to_encrypt_tensor);
-  std::vector<RLWEPt> encoded_poly;
-  if (is_tensor) {
-    encoded_poly.resize(meta.n_tensor_poly);
-    encodeBatchInput(inp, meta, conv2d, need_encrypt,
-                     absl::MakeSpan(encoded_poly));
-  } else {
-    encoded_poly.resize(meta.n_kernel_poly);
-    conv2d.EncodeKernels(inp, meta.prot_meta, need_encrypt,
-                         absl::MakeSpan(encoded_poly));
+    return out.reshape({dim4[0], dim4[1], dim4[3]});
   }
 
-  // convert local poly to NTT form to perform multiplication.
-  yacl::parallel_for(0, encoded_poly.size(), kParallelStride,
-                     [&](size_t bgn, size_t end) {
-                       for (size_t i = bgn; i < end; ++i) {
-                         NttInplace(encoded_poly[i], this_context);
-                       }
-                     });
-  if (need_encrypt) {
-    return doConv2dOLEForEncryptor(field, encoded_poly, meta, conv2d, conn);
-  }
-  return doConv2dOLEForEvaluator(field, encoded_poly, meta, conv2d, conn);
+  return doBatchDotOLE(prv_mat, conn, dim4, is_self_lhs);
 }
 
-ArrayRef CheetahDot::Impl::parseBatchedConv2dResult(
-    FieldType field, const Conv2DMeta &meta, const Conv2DProtocol &prot,
-    absl::Span<const RLWEPt> polys) {
-  SPU_ENFORCE_EQ(polys.size(), meta.n_output_poly);
-  const auto &this_dcd_ms = dcd_mswh_.find(FieldBitLen(field))->second;
+NdArrayRef CheetahDot::Impl::doBatchDotOLE(const NdArrayRef &prv_mat,
+                                           yacl::link::Context *conn,
+                                           const Shape4D &dim4,
+                                           bool is_self_lhs) {
+  auto eltype = prv_mat.eltype();
+  auto field = eltype.template as<Ring2k>()->field();
+  SPU_ENFORCE(field != FM32, "Not support BatchDotOLE for FM32");
 
-  std::array<int64_t, 4> oshape;
-  oshape[0] = meta.prot_meta.input_batch;
-  for (int d : {0, 1}) {
-    oshape[d + 1] =
-        (meta.prot_meta.input_shape[d] - meta.prot_meta.kernel_shape[d] +
-         meta.prot_meta.window_strides[d]) /
-        meta.prot_meta.window_strides[d];
+  const size_t field_bitlen = SizeOf(field) * 8;
+  size_t poly_deg = DecideSEALParameters(field_bitlen).poly_modulus_degree();
+
+  const Shape3D dim3 = {dim4[1], dim4[2], dim4[3]};
+  const size_t batch_size = dim4[0];
+  MatMatProtocol::Meta meta = {.dims = dim3};
+
+  CipherPackingType cptype = CipherPackingType::rlwes;
+  auto subshape =
+      MatMatProtocol::GetSubMatShape(meta, poly_deg, /*disable_pack*/ false);
+
+  size_t blk0 = CeilDiv(meta.dims[0], subshape[0]);
+  size_t blk1 = CeilDiv(meta.dims[1], subshape[1]);
+  size_t blk2 = CeilDiv(meta.dims[2], subshape[2]);
+  size_t lhs_poly_n = blk0 * blk1;
+  size_t rhs_poly_n = blk1 * blk2;
+  bool to_encrypt_lhs = lhs_poly_n <= rhs_poly_n;
+  bool act_as_encryptor = (is_self_lhs ^ to_encrypt_lhs) == 0;
+
+  LazyInit(field_bitlen, cptype != CipherPackingType::none);
+  auto mat_shape = prv_mat.shape();
+
+  if (act_as_encryptor) {
+    for (int64_t b = 0; b < (int64_t)batch_size; ++b) {
+      auto one_mat =
+          prv_mat
+              .slice({b, 0, 0}, {b + 1, mat_shape[1], mat_shape[2]}, {1, 1, 1})
+              .reshape({mat_shape[1], mat_shape[2]});
+      doDotOLESenderSendStep(one_mat, dim3, is_self_lhs, cptype, conn);
+    }
+
+    size_t num_ct_to_recv = 0;
+    switch (cptype) {
+      case CipherPackingType::rlwes:
+        num_ct_to_recv = CeilDiv<size_t>(batch_size * blk0 * blk2, subshape[1]);
+        break;
+      default:
+        num_ct_to_recv = blk0 * blk2;
+    }
+    return doDotOLESenderRecvStep(field, batch_size, meta, num_ct_to_recv,
+                                  cptype, conn);
   }
-  oshape[3] = meta.prot_meta.num_kernels;
 
-  const size_t n_poly_per_out = meta.n_output_poly / meta.prot_meta.input_batch;
-  ArrayRef ret = flatten(ring_zeros(field, {calcNumel(oshape)}));
-  int64_t offset = 0;
-  for (int64_t ib = 0; ib < meta.prot_meta.input_batch; ++ib) {
-    // NxHxWxC layout for tensor
-    // One slice is 1xHxWxC
-    absl::Span<const RLWEPt> subpoly = {polys.data() + ib * n_poly_per_out,
-                                        n_poly_per_out};
-    auto slice = prot.ParseResult(field, meta.prot_meta, subpoly, *this_dcd_ms);
-    int64_t n = slice.numel();
-    DISPATCH_ALL_FIELDS(field, "", [&]() {
-      ArrayView<ring2k_t> xret(ret);
-      ArrayView<const ring2k_t> xslice(slice);
-      pforeach(0, n, [&](int64_t i) { xret[i + offset] = xslice[i]; });
-    });
+  size_t num_ct_per_batch = blk0 * blk2;
+  std::vector<RLWECt> _ct_array_to_pack(batch_size * num_ct_per_batch);
+  auto ct_array_to_pack = absl::MakeSpan(_ct_array_to_pack);
 
-    offset += n;
+  size_t bytes_recv = conn->GetStats()->recv_bytes;
+  for (int64_t b = 0; b < (int64_t)batch_size; ++b) {
+    auto one_mat =
+        prv_mat.slice({b, 0, 0}, {b + 1, mat_shape[1], mat_shape[2]}, {1, 1, 1})
+            .reshape({mat_shape[1], mat_shape[2]});
+    doDotOLEReceiverRecvStep(
+        one_mat, dim3, is_self_lhs, cptype,
+        ct_array_to_pack.subspan(b * num_ct_per_batch, num_ct_per_batch), conn);
   }
-  return ret;
+  bytes_recv = conn->GetStats()->recv_bytes - bytes_recv;
+
+  return doDotOLEReceiverSendStep(field, batch_size, meta, ct_array_to_pack,
+                                  cptype, conn, bytes_recv);
 }
 
-CheetahDot::CheetahDot(std::shared_ptr<yacl::link::Context> lctx) {
-  impl_ = std::make_unique<Impl>(lctx);
+NdArrayRef CheetahDot::Impl::doDotOLE(const NdArrayRef &prv_mat,
+                                      yacl::link::Context *conn,
+                                      const Shape3D &dim3, bool is_self_lhs) {
+  auto eltype = prv_mat.eltype();
+  auto field = eltype.template as<Ring2k>()->field();
+  const size_t field_bitlen = SizeOf(field) * 8;
+  size_t poly_deg = DecideSEALParameters(field_bitlen).poly_modulus_degree();
+
+  MatMatProtocol::Meta meta = {.dims = dim3};
+
+  // No cipher packing for small HE
+  CipherPackingType cptype = (field == FM32 || disable_pack_)
+                                 ? CipherPackingType::none
+                                 : CipherPackingType::rlwes;
+  Shape3D subshape;
+  size_t blk[3];
+  if (cptype != CipherPackingType::none) {
+    // attempt to calculate the cost with packing
+    subshape = MatMatProtocol::GetSubMatShape(meta, poly_deg, false);
+    for (int i : {0, 1, 2}) {
+      blk[i] = CeilDiv(meta.dims[i], subshape[i]);
+    }
+    // If there is only 1 resultant RLWE; then we just skip any packing
+    cptype = blk[0] * blk[2] <= 1 ? CipherPackingType::none
+                                  : CipherPackingType::rlwes;
+  }
+
+  LazyInit(field_bitlen, cptype != CipherPackingType::none);
+
+  // Update subshape
+  subshape = MatMatProtocol::GetSubMatShape(meta, poly_deg,
+                                            cptype == CipherPackingType::none);
+
+  for (int i : {0, 1, 2}) {
+    blk[i] = CeilDiv(meta.dims[i], subshape[i]);
+  }
+
+  size_t lhs_poly_n = blk[0] * blk[1];
+  size_t rhs_poly_n = blk[1] * blk[2];
+  bool to_encrypt_lhs = lhs_poly_n <= rhs_poly_n;
+  bool act_as_encryptor = (is_self_lhs ^ to_encrypt_lhs) == 0;
+
+  if (act_as_encryptor) {
+    doDotOLESenderSendStep(prv_mat, dim3, is_self_lhs, cptype, conn);
+
+    size_t num_ct_to_recv = 0;
+    if (cptype == CipherPackingType::rlwes) {
+      num_ct_to_recv = CeilDiv<size_t>(blk[0] * blk[2], subshape[1]);
+    } else {
+      num_ct_to_recv = blk[0] * blk[2];
+    }
+
+    return doDotOLESenderRecvStep(field, /*batch*/ 1, meta, num_ct_to_recv,
+                                  cptype, conn)
+        .reshape({dim3[0], dim3[2]});
+  }
+
+  std::vector<RLWECt> _ct_array_to_pack(blk[0] * blk[2]);
+  auto ct_array_to_pack = absl::MakeSpan(_ct_array_to_pack);
+  size_t bytes_recv = conn->GetStats()->recv_bytes;
+  doDotOLEReceiverRecvStep(prv_mat, dim3, is_self_lhs, cptype, ct_array_to_pack,
+                           conn);
+  bytes_recv = conn->GetStats()->recv_bytes - bytes_recv;
+
+  return doDotOLEReceiverSendStep(field, /*batch*/ 1, meta, ct_array_to_pack,
+                                  cptype, conn, bytes_recv)
+      .reshape({dim3[0], dim3[2]});
+}
+
+//////////////////////////////////////////////
+
+CheetahDot::CheetahDot(const std::shared_ptr<yacl::link::Context> &lctx,
+                       bool enable_matmul_pack) {
+  impl_ = std::make_unique<Impl>(lctx, enable_matmul_pack);
 }
 
 CheetahDot::~CheetahDot() = default;
 
-ArrayRef CheetahDot::DotOLE(const ArrayRef &inp, yacl::link::Context *conn,
-                            const Shape3D &dim3, bool is_lhs) {
+NdArrayRef CheetahDot::DotOLE(const NdArrayRef &inp, yacl::link::Context *conn,
+                              const Shape3D &dim3, bool is_self_lhs) {
   SPU_ENFORCE(impl_ != nullptr);
   SPU_ENFORCE(conn != nullptr);
-  return impl_->DotOLE(inp, conn, dim3, is_lhs);
+  return impl_->DotOLE(inp, conn, dim3, is_self_lhs);
 }
 
-ArrayRef CheetahDot::DotOLE(const ArrayRef &inp, const Shape3D &dim3,
-                            bool is_lhs) {
+NdArrayRef CheetahDot::DotOLE(const NdArrayRef &inp, const Shape3D &dim3,
+                              bool is_self_lhs) {
   SPU_ENFORCE(impl_ != nullptr);
-  return impl_->DotOLE(inp, nullptr, dim3, is_lhs);
+  return impl_->DotOLE(inp, nullptr, dim3, is_self_lhs);
 }
 
-ArrayRef CheetahDot::Conv2dOLE(const ArrayRef &inp, yacl::link::Context *conn,
-                               int64_t num_input, const Shape3D &tensor_shape,
-                               int64_t num_kernels, const Shape3D &kernel_shape,
-                               const Shape2D &window_strides, bool is_tensor) {
+NdArrayRef CheetahDot::BatchDotOLE(const NdArrayRef &inp,
+                                   yacl::link::Context *conn,
+                                   const Shape4D &dim4, bool is_self_lhs) {
   SPU_ENFORCE(impl_ != nullptr);
-  SPU_ENFORCE(conn != nullptr);
-  return impl_->Conv2dOLE(inp, conn, num_input, tensor_shape, num_kernels,
-                          kernel_shape, window_strides, is_tensor);
-}
-
-ArrayRef CheetahDot::Conv2dOLE(const ArrayRef &inp, int64_t num_input,
-                               const Shape3D &tensor_shape, int64_t num_kernels,
-                               const Shape3D &kernel_shape,
-                               const Shape2D &window_strides, bool is_tensor) {
-  SPU_ENFORCE(impl_ != nullptr);
-  return impl_->Conv2dOLE(inp, nullptr, num_input, tensor_shape, num_kernels,
-                          kernel_shape, window_strides, is_tensor);
+  return impl_->BatchDotOLE(inp, conn, dim4, is_self_lhs);
 }
 
 }  // namespace spu::mpc::cheetah

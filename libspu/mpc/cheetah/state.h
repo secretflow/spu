@@ -24,15 +24,19 @@
 
 namespace spu::mpc::cheetah {
 
+// Return num_workers for the given size of jobs
+size_t InitOTState(KernelEvalContext* ctx, size_t njobs);
+
 class CheetahMulState : public State {
  private:
   mutable std::mutex lock_;
   // a[2] = a[0] * a[1]
   mutable int64_t cached_sze_{0};
   FieldType field_{FT_INVALID};
-  ArrayRef cached_beaver_[3];
+  NdArrayRef cached_beaver_[3];
 
   std::unique_ptr<CheetahMul> mul_prot_;
+  std::shared_ptr<yacl::link::Context> duplx_;
 
   // NOTE(juhou): make sure the lock is obtained
   void makeSureCacheSize(FieldType, int64_t numel);
@@ -43,15 +47,19 @@ class CheetahMulState : public State {
  public:
   static constexpr char kBindName[] = "CheetahMul";
 
-  explicit CheetahMulState(const std::shared_ptr<yacl::link::Context>& lctx) {
-    mul_prot_ = std::make_unique<CheetahMul>(lctx);
+  explicit CheetahMulState(const std::shared_ptr<yacl::link::Context>& lctx,
+                           bool allow_mul_error = false) {
+    mul_prot_ = std::make_unique<CheetahMul>(lctx, allow_mul_error);
+    duplx_ = lctx->Spawn();
   }
 
   ~CheetahMulState() override = default;
 
   CheetahMul* get() { return mul_prot_.get(); }
 
-  std::array<ArrayRef, 3> TakeCachedBeaver(FieldType field, int64_t num);
+  std::shared_ptr<yacl::link::Context> duplx() { return duplx_; }
+
+  std::array<NdArrayRef, 3> TakeCachedBeaver(FieldType field, int64_t num);
 };
 
 class CheetahDotState : public State {
@@ -64,8 +72,9 @@ class CheetahDotState : public State {
  public:
   static constexpr char kBindName[] = "CheetahDot";
 
-  explicit CheetahDotState(const std::shared_ptr<yacl::link::Context>& lctx) {
-    dot_prot_ = std::make_unique<CheetahDot>(lctx);
+  explicit CheetahDotState(const std::shared_ptr<yacl::link::Context>& lctx,
+                           bool enable_matmul_pack = true) {
+    dot_prot_ = std::make_unique<CheetahDot>(lctx, enable_matmul_pack);
   }
 
   ~CheetahDotState() override = default;
@@ -82,13 +91,13 @@ class CheetahOTState : public State {
 
  public:
   static constexpr char kBindName[] = "CheetahOT";
-  static constexpr size_t kParallel = 16;
+  static constexpr size_t kMaxOTParallel = 32;
 
-  explicit CheetahOTState() : basic_ot_prot_(kParallel) {}
+  explicit CheetahOTState() : basic_ot_prot_(kMaxOTParallel) {}
 
   ~CheetahOTState() override = default;
 
-  constexpr size_t parallel_size() const { return kParallel; }
+  size_t parallel_size() const;
 
   void LazyInit(Communicator* comm, size_t idx = 0) {
     SPU_ENFORCE(idx < parallel_size(), "idx={} out-of-bound", idx);

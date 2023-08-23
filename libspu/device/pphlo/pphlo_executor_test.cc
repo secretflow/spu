@@ -424,6 +424,64 @@ func.func @main(%arg0: tensor<4x6x!pphlo.pub<i32>>) -> (tensor<2x2x!pphlo.pub<i3
   r.verifyOutput(expect.data());
 }
 
+TEST_P(ExecutorTest, ReduceWindowStableHloTest) {
+  Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
+           std::get<2>(GetParam()));
+
+  const xt::xarray<int> in1 = {{1, 2}, {3, 4}, {5, 6}};
+  r.addInput(in1);
+
+  r.run(r.compileMHlo(R"(
+func.func @main(%arg0: tensor<3x2xi32>) -> (tensor<2x2xi32>) {
+  %0 = "mhlo.constant"() {value = dense<0> : tensor<i32>} : () -> tensor<i32>
+  %1 = "mhlo.reduce_window"(%arg0, %0) ( {
+    ^bb0(%arg1: tensor<i32>, %arg2: tensor<i32>):  // no predecessors
+      %2 = "mhlo.maximum"(%arg1, %arg2) : (tensor<i32>, tensor<i32>) -> tensor<i32>
+      "mhlo.return"(%2) : (tensor<i32>) -> ()
+    }) {
+      base_dilations = dense<[2, 1]> : tensor<2xi64>,
+      padding = dense<[[2, 1], [0, 0]]> : tensor<2x2xi64>,
+      window_dilations = dense<[3, 1]> : tensor<2xi64>,
+      window_dimensions = dense<[2, 1]> : tensor<2xi64>,
+      window_strides = dense<[ 4, 1 ]> : tensor<2xi64>
+    } : (tensor<3x2xi32>, tensor<i32>) -> tensor<2x2xi32>
+  return %1 : tensor<2x2xi32>
+})",
+                      {Visibility::VIS_PUBLIC}));
+
+  xt::xarray<int> expect = {{0, 0}, {3, 4}};
+  r.verifyOutput(expect.data());
+}
+
+TEST_P(ExecutorTest, ReduceWindowStableHloTest2) {
+  Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
+           std::get<2>(GetParam()));
+
+  const xt::xarray<int> in1 = {{1, 2}, {3, 4}, {5, 6}};
+  r.addInput(in1);
+
+  r.run(r.compileMHlo(R"(
+func.func @main(%arg0: tensor<3x2xi32>) -> (tensor<1x2xi32>) {
+  %0 = "mhlo.constant"() {value = dense<0> : tensor<i32>} : () -> tensor<i32>
+  %1 = "mhlo.reduce_window"(%arg0, %0) ( {
+    ^bb0(%arg1: tensor<i32>, %arg2: tensor<i32>):  // no predecessors
+      %2 = "mhlo.maximum"(%arg1, %arg2) : (tensor<i32>, tensor<i32>) -> tensor<i32>
+      "mhlo.return"(%2) : (tensor<i32>) -> ()
+    }) {
+      base_dilations = dense<[2, 1]> : tensor<2xi64>,
+      padding = dense<[[2, 1], [0, 0]]> : tensor<2x2xi64>,
+      window_dilations = dense<[3, 1]> : tensor<2xi64>,
+      window_dimensions = dense<[3, 1]> : tensor<2xi64>,
+      window_strides = dense<[4, 1]> : tensor<2xi64>
+    } : (tensor<3x2xi32>, tensor<i32>) -> tensor<1x2xi32>
+  return %1 : tensor<1x2xi32>
+})",
+                      {Visibility::VIS_PUBLIC}));
+
+  xt::xarray<int> expect = {{5, 6}};
+  r.verifyOutput(expect.data());
+}
+
 TEST_P(ExecutorTest, ReduceWindowDefaultStrides) {
   Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
            std::get<2>(GetParam()));

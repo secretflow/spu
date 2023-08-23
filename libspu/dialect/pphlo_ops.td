@@ -137,6 +137,28 @@ def PPHLO_TanhOp
   }];
 }
 
+def PPHLO_SineOp
+    : PPHLO_UnaryElementwiseOp<"sine", [Pure, SameOperandsAndResultType], PPHLO_FpTensor> {
+  let summary = "sine operator";
+  let description = [{
+    Returns `sine(operand)` element-wise.
+
+    See
+    https://github.com/openxla/stablehlo/blob/main/docs/spec.md#sine.
+  }];
+}
+
+def PPHLO_CosineOp
+    : PPHLO_UnaryElementwiseOp<"cosine", [Pure, SameOperandsAndResultType], PPHLO_FpTensor> {
+  let summary = "cosine operator";
+  let description = [{
+    Returns `cosine(operand)` element-wise.
+
+    See
+    https://github.com/openxla/stablehlo/blob/main/docs/spec.md#cosine.
+  }];
+}
+
 def PPHLO_NegOp
     : PPHLO_UnaryElementwiseOp<"negate", [Pure, SameOperandsAndResultType], PPHLO_Tensor> {
   let summary = "Negation operator";

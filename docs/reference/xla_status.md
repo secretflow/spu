@@ -30,7 +30,7 @@ Count: Total = 4, fully supported = 2
 | `ceil`         | fully                       |
 | `convert`      | fully                       |
 | `count_leading_zeros`| no                    |
-| `cosine`       | no                          |
+| `cosine`       | fully                       |
 | `exponential`  | fully                       |
 | `exponential_minus_one`| fully               |
 | `floor`        | fully                       |
@@ -46,11 +46,11 @@ Count: Total = 4, fully supported = 2
 | `round_nearest_afz`| not                     |
 | `rsqrt`        | fully                       |
 | `sign`         | partial                     |
-| `sine`         | not                         |
+| `sine`         | fully                       |
 | `sqrt`         | fully                       |
 | `tanh`         | fully                       |
 
-Count: Total = 24, fully supported = 12, partial = 0
+Count: Total = 24, fully supported = 16, partial = 1
 
 ### XLA binary element-wise ops
 
