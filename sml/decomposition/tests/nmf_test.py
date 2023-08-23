@@ -84,7 +84,9 @@ class UnitTests(unittest.TestCase):
         print("reconstruction_error_sklearn: ", err)
         self.assertTrue(np.allclose(W_Sklearn, W, atol=5e-1))
         self.assertTrue(np.allclose(H_Sklearn, H, atol=5e-1))
-        self.assertTrue(np.allclose(X_reconstructed_Sklearn, X_reconstructed, atol=5e-1))
+        self.assertTrue(
+            np.allclose(X_reconstructed_Sklearn, X_reconstructed, atol=5e-1)
+        )
 
     def test_nmf_seperate(self):
         config = spu_pb2.RuntimeConfig(
@@ -126,9 +128,9 @@ class UnitTests(unittest.TestCase):
         W_seperate, H_seperate, X_reconstructed_seperate = spsim.sim_jax(sim, proc2)(
             X, A, B
         )
-        print("W_matrix_spu_seperate: ", W_seperate[:5,:5])
-        print("H_matrix_spu_seperate: ", H_seperate[:5,:5])
-        print("X_reconstructed_spu_seperate: ", X_reconstructed_seperate[:5,:5])
+        print("W_matrix_spu_seperate: ", W_seperate[:5, :5])
+        print("H_matrix_spu_seperate: ", H_seperate[:5, :5])
+        print("X_reconstructed_spu_seperate: ", X_reconstructed_seperate[:5, :5])
 
         # sklearn_seperate
         model = SklearnNMF(
@@ -143,9 +145,12 @@ class UnitTests(unittest.TestCase):
         W_Sklearn_seperate = model.transform(X)
         H_Sklearn_seperate = model.components_
         X_reconstructed_Sklearn_seperate = model.inverse_transform(W_Sklearn_seperate)
-        print("W_matrix_sklearn_seperate: ", W_Sklearn_seperate[:5,:5])
-        print("H_matrix_sklearn_seperate: ", H_Sklearn_seperate[:5,:5])
-        print("X_reconstructed_sklearn_seperate: ", X_reconstructed_Sklearn_seperate[:5,:5])
+        print("W_matrix_sklearn_seperate: ", W_Sklearn_seperate[:5, :5])
+        print("H_matrix_sklearn_seperate: ", H_Sklearn_seperate[:5, :5])
+        print(
+            "X_reconstructed_sklearn_seperate: ",
+            X_reconstructed_Sklearn_seperate[:5, :5],
+        )
 
 
 if __name__ == "__main__":
