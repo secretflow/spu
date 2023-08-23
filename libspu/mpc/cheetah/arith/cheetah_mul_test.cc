@@ -58,15 +58,11 @@ TEST_P(CheetahMulTest, Basic) {
 
     NdArrayRef cross0, cross1;
     if (rank == 0) {
-      cross0 =
-          unflatten(mul->MulOLE(flatten(a_shr[0]), true), a_shr[0].shape());
-      cross1 =
-          unflatten(mul->MulOLE(flatten(b_shr[0]), true), a_shr[0].shape());
+      cross0 = mul->MulOLE(a_shr[0], true);
+      cross1 = mul->MulOLE(b_shr[0], true);
     } else {
-      cross0 =
-          unflatten(mul->MulOLE(flatten(b_shr[1]), false), a_shr[1].shape());
-      cross1 =
-          unflatten(mul->MulOLE(flatten(a_shr[1]), false), b_shr[1].shape());
+      cross0 = mul->MulOLE(b_shr[1], false);
+      cross1 = mul->MulOLE(a_shr[1], false);
     }
 
     result[rank] = ring_mul(a_shr[rank], b_shr[rank]);
@@ -105,15 +101,11 @@ TEST_P(CheetahMulTest, BasicBinary) {
 
     NdArrayRef cross0, cross1;
     if (rank == 0) {
-      cross0 =
-          unflatten(mul->MulOLE(flatten(a_shr[0]), true), a_shr[0].shape());
-      cross1 =
-          unflatten(mul->MulOLE(flatten(b_shr[0]), true), b_shr[0].shape());
+      cross0 = mul->MulOLE(a_shr[0], true);
+      cross1 = mul->MulOLE(b_shr[0], true);
     } else {
-      cross0 =
-          unflatten(mul->MulOLE(flatten(b_shr[1]), false), a_shr[1].shape());
-      cross1 =
-          unflatten(mul->MulOLE(flatten(a_shr[1]), false), b_shr[1].shape());
+      cross0 = mul->MulOLE(b_shr[1], false);
+      cross1 = mul->MulOLE(a_shr[1], false);
     }
 
     result[rank] = ring_mul(a_shr[rank], b_shr[rank]);
@@ -173,15 +165,11 @@ TEST_P(CheetahMulTest, MixedRingSizeMul) {
 
     NdArrayRef cross0, cross1;
     if (rank == 0) {
-      cross0 =
-          unflatten(mul->MulOLE(flatten(a_shr[0]), true), a_shr[0].shape());
-      cross1 =
-          unflatten(mul->MulOLE(flatten(b_shr[0]), true), b_shr[0].shape());
+      cross0 = mul->MulOLE(a_shr[0], true);
+      cross1 = mul->MulOLE(b_shr[0], true);
     } else {
-      cross0 =
-          unflatten(mul->MulOLE(flatten(b_shr[1]), false), a_shr[1].shape());
-      cross1 =
-          unflatten(mul->MulOLE(flatten(a_shr[1]), false), a_shr[1].shape());
+      cross0 = mul->MulOLE(b_shr[1], false);
+      cross1 = mul->MulOLE(a_shr[1], false);
     }
 
     result[rank] = ring_mul(a_shr[rank], b_shr[rank]);
@@ -189,15 +177,11 @@ TEST_P(CheetahMulTest, MixedRingSizeMul) {
     ring_add_(result[rank], cross1);
 
     if (rank == 0) {
-      cross0 =
-          unflatten(mul->MulOLE(flatten(c_shr[0]), true), c_shr[0].shape());
-      cross1 =
-          unflatten(mul->MulOLE(flatten(d_shr[0]), true), d_shr[0].shape());
+      cross0 = mul->MulOLE(c_shr[0], true);
+      cross1 = mul->MulOLE(d_shr[0], true);
     } else {
-      cross1 =
-          unflatten(mul->MulOLE(flatten(d_shr[1]), false), d_shr[1].shape());
-      cross0 =
-          unflatten(mul->MulOLE(flatten(c_shr[1]), false), c_shr[1].shape());
+      cross1 = mul->MulOLE(d_shr[1], false);
+      cross0 = mul->MulOLE(c_shr[1], false);
     }
 
     result2[rank] = ring_mul(c_shr[rank], d_shr[rank]);

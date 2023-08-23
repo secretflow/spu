@@ -88,7 +88,7 @@ struct ModulusSwitchHelper::Impl {
   }
 
   template <typename Scalar>
-  void ModulusUpAt(ArrayView<Scalar> src, size_t mod_idx,
+  void ModulusUpAt(NdArrayView<const Scalar> src, size_t mod_idx,
                    absl::Span<uint64_t> out) const {
     using namespace seal::util;
     SPU_ENFORCE(sizeof(Scalar) < sizeof(uint128_t));
@@ -118,7 +118,7 @@ struct ModulusSwitchHelper::Impl {
 
   // NOTE(juhou): we need 256-bit to store the product `x * (Q mod t)` for x, t
   // \in [2^64, 2^128).
-  void ModulusUpAt(ArrayView<uint128_t> src, size_t mod_idx,
+  void ModulusUpAt(NdArrayView<const uint128_t> src, size_t mod_idx,
                    absl::Span<uint64_t> out) const {
     using namespace seal::util;
     SPU_ENFORCE_EQ(sizeof(uint128_t) * 8, absl::bit_ceil(base_mod_bitlen_),
@@ -161,7 +161,7 @@ struct ModulusSwitchHelper::Impl {
   }
 
   template <typename Scalar>
-  void CenteralizeAt(ArrayView<Scalar> src, size_t mod_idx,
+  void CenteralizeAt(NdArrayView<const Scalar> src, size_t mod_idx,
                      absl::Span<uint64_t> out) const {
     using namespace seal::util;
     SPU_ENFORCE_EQ(sizeof(Scalar) * 8, absl::bit_ceil(base_mod_bitlen_),
@@ -426,22 +426,23 @@ DEFINE_MODSWITCH_FUNS(uint128_t)
 
 #undef DEFINE_MODSWITCH_FUNS
 
-void ModulusSwitchHelper::ModulusUpAt(const ArrayRef &src, size_t mod_idx,
+void ModulusSwitchHelper::ModulusUpAt(const NdArrayRef &src, size_t mod_idx,
                                       absl::Span<uint64_t> out) const {
   yacl::CheckNotNull(impl_.get());
   const Type &eltype = src.eltype();
   const size_t numel = src.numel();
   SPU_ENFORCE_EQ(numel, out.size());
+  SPU_ENFORCE(src.shape().size() == 1, "need 1D array");
   SPU_ENFORCE(eltype.isa<RingTy>(), "source must be ring_type, got={}", eltype);
   const auto field = eltype.as<Ring2k>()->field();
 
   DISPATCH_ALL_FIELDS(field, "ModulusUpAt", [&]() {
     using ring2u = std::make_unsigned<ring2k_t>::type;
-    impl_->ModulusUpAt(ArrayView<ring2u>(src), mod_idx, out);
+    impl_->ModulusUpAt(NdArrayView<const ring2u>(src), mod_idx, out);
   });
 }
 
-void ModulusSwitchHelper::CenteralizeAt(const ArrayRef &src, size_t mod_idx,
+void ModulusSwitchHelper::CenteralizeAt(const NdArrayRef &src, size_t mod_idx,
                                         absl::Span<uint64_t> out) const {
   yacl::CheckNotNull(impl_.get());
   const Type &eltype = src.eltype();
@@ -449,37 +450,38 @@ void ModulusSwitchHelper::CenteralizeAt(const ArrayRef &src, size_t mod_idx,
   SPU_ENFORCE_EQ(numel, out.size());
   SPU_ENFORCE(eltype.isa<RingTy>(), "source must be ring_type, got={}", eltype);
   const auto field = eltype.as<Ring2k>()->field();
-  DISPATCH_ALL_FIELDS(field, "", [&]() {
+  DISPATCH_ALL_FIELDS(field, "CenteralizeAt", [&]() {
     using ring2u = std::make_unsigned<ring2k_t>::type;
-    impl_->CenteralizeAt(ArrayView<ring2u>(src), mod_idx, out);
+    impl_->CenteralizeAt(NdArrayView<const ring2u>(src), mod_idx, out);
   });
 }
 
-ArrayRef ModulusSwitchHelper::ModulusDownRNS(
-    FieldType field, absl::Span<const uint64_t> src) const {
+NdArrayRef ModulusSwitchHelper::ModulusDownRNS(
+    FieldType field, const Shape &shape, absl::Span<const uint64_t> src) const {
   yacl::CheckNotNull(impl_.get());
   size_t num_modulus = impl_->coeff_modulus_size();
-  int64_t num_elt = src.size() / num_modulus;
-  SPU_ENFORCE_EQ(num_elt * num_modulus, src.size());
+  int64_t numel = src.size() / num_modulus;
+  SPU_ENFORCE_EQ(numel, shape.numel());
+  SPU_ENFORCE_EQ(numel * num_modulus, src.size());
 
-  auto out = flatten(ring_zeros(field, {num_elt}));
+  auto out = ring_zeros(field, shape);
   ModulusDownRNS(src, out);
   return out;
 }
 
 void ModulusSwitchHelper::ModulusDownRNS(absl::Span<const uint64_t> src,
-                                         ArrayRef out) const {
+                                         NdArrayRef out) const {
   yacl::CheckNotNull(impl_.get());
   auto eltype = out.eltype();
   SPU_ENFORCE(eltype.isa<RingTy>(), "must be ring_type, got={}", eltype);
   auto field = eltype.as<Ring2k>()->field();
-  SPU_ENFORCE(out.isCompact());
+  SPU_ENFORCE(out.isCompact(), "need compact output");
 
   size_t num_modulus = impl_->coeff_modulus_size();
   size_t num_elt = out.numel();
   SPU_ENFORCE_EQ(num_elt * num_modulus, src.size());
 
-  return DISPATCH_ALL_FIELDS(field, "", [&]() {
+  return DISPATCH_ALL_FIELDS(field, "ModulusDownRNS", [&]() {
     using ring2u = std::make_unsigned<ring2k_t>::type;
     absl::Span<ring2u> out_wrap(reinterpret_cast<ring2u *>(out.data()),
                                 num_elt);

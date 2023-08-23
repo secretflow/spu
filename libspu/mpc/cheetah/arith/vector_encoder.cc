@@ -22,24 +22,25 @@
 namespace spu::mpc::cheetah {
 
 VectorEncoder::VectorEncoder(const seal::SEALContext &context,
-                             const ModulusSwitchHelper &ms_helper) {
+                             const ModulusSwitchHelper &msh) {
   SPU_ENFORCE(context.parameters_set());
   auto pid0 = context.first_parms_id();
-  auto pid1 = ms_helper.parms_id();
+  auto pid1 = msh.parms_id();
   SPU_ENFORCE_EQ(0, std::memcmp(&pid0, &pid1, sizeof(seal::parms_id_type)),
                  fmt::format("parameter set mismatch"));
-  ms_helper_ = std::make_shared<ModulusSwitchHelper>(ms_helper);
+  msh_ = std::make_shared<ModulusSwitchHelper>(msh);
   poly_deg_ = context.first_context_data()->parms().poly_modulus_degree();
 }
 
-void VectorEncoder::Forward(const ArrayRef &vec, RLWEPt *out,
+void VectorEncoder::Forward(const NdArrayRef &vec, RLWEPt *out,
                             bool scale_delta) const {
   // Place the vector elements as polynomial coefficients forwardly.
   // a0, a1, ..., an -> \sum_i ai*X^i
   yacl::CheckNotNull(out);
 
   size_t num_coeffs = vec.numel();
-  size_t num_modulus = ms_helper_->coeff_modulus_size();
+  size_t num_modulus = msh_->coeff_modulus_size();
+  SPU_ENFORCE(vec.shape().size() == 1, "need 1D array");
   SPU_ENFORCE_GT(num_coeffs, 0UL);
   SPU_ENFORCE(num_coeffs <= poly_deg_);
 
@@ -50,27 +51,29 @@ void VectorEncoder::Forward(const ArrayRef &vec, RLWEPt *out,
   for (size_t mod_idx = 0; mod_idx < num_modulus; ++mod_idx) {
     std::fill_n(dst, poly_deg_, 0);
     absl::Span<uint64_t> dst_wrap(dst, num_coeffs);
+
     if (scale_delta) {
-      ms_helper_->ModulusUpAt(vec, mod_idx, dst_wrap);
+      msh_->ModulusUpAt(vec, mod_idx, dst_wrap);
     } else {
-      ms_helper_->CenteralizeAt(vec, mod_idx, dst_wrap);
+      msh_->CenteralizeAt(vec, mod_idx, dst_wrap);
     }
     dst += poly_deg_;
   }
 
-  out->parms_id() = ms_helper_->parms_id();
+  out->parms_id() = msh_->parms_id();
   out->scale() = 1.;
 }
 
-void VectorEncoder::Backward(const ArrayRef &vec, RLWEPt *out,
+void VectorEncoder::Backward(const NdArrayRef &vec, RLWEPt *out,
                              bool scale_delta) const {
   // Place the vector elements as polynomial coefficients in backward.
   // a0, a1, ..., an -> a0 - \sum_{i>0} ai*X^{N-i}
   // where N defines the base ring X^N + 1.
   yacl::CheckNotNull(out);
+  SPU_ENFORCE(vec.shape().size() == 1, "need 1D array");
 
   size_t num_coeffs = vec.numel();
-  size_t num_modulus = ms_helper_->coeff_modulus_size();
+  size_t num_modulus = msh_->coeff_modulus_size();
   SPU_ENFORCE_GT(num_coeffs, 0UL);
   SPU_ENFORCE(num_coeffs <= poly_deg_);
 
@@ -83,15 +86,14 @@ void VectorEncoder::Backward(const ArrayRef &vec, RLWEPt *out,
 
   DISPATCH_ALL_FIELDS(field, "Backward", [&]() {
     auto tmp_buff = ring_zeros(field, {(int64_t)poly_deg_});
-    auto nd_vec = toNdArray(vec);
-    auto xvec = xt_adapt<ring2k_t>(nd_vec);
-    auto xtmp = xt_mutable_adapt<ring2k_t>(tmp_buff);
+    auto xvec = NdArrayView<const ring2k_t>(vec);
+    auto xtmp = NdArrayView<ring2k_t>(tmp_buff);
 
     xtmp[0] = xvec[0];
     // reverse and sign flip
-    std::transform(xvec.data() + 1, xvec.data() + num_coeffs,
-                   std::reverse_iterator<ring2k_t *>(xtmp.data() + poly_deg_),
-                   [](ring2k_t x) { return -x; });
+    for (size_t i = 1; i < num_coeffs; ++i) {
+      xtmp[num_coeffs - 1 - i] = -xvec[i];
+    }
 
     uint64_t *dst = out->data();
     for (size_t mod_idx = 0; mod_idx < num_modulus; ++mod_idx) {
@@ -99,18 +101,19 @@ void VectorEncoder::Backward(const ArrayRef &vec, RLWEPt *out,
       absl::Span<uint64_t> dst_wrap(dst, poly_deg_);
 
       if (scale_delta) {
-        ms_helper_->ModulusUpAt(flatten(tmp_buff), mod_idx, dst_wrap);
+        msh_->ModulusUpAt(tmp_buff, mod_idx, dst_wrap);
       } else {
-        ms_helper_->CenteralizeAt(flatten(tmp_buff), mod_idx, dst_wrap);
+        msh_->CenteralizeAt(tmp_buff, mod_idx, dst_wrap);
       }
       dst += poly_deg_;
     }
 
     // clean up sensitive data
-    seal::util::seal_memzero(xtmp.data(), sizeof(ring2k_t) * poly_deg_);
+    seal::util::seal_memzero(&tmp_buff.at<ring2k_t>(0),
+                             sizeof(ring2k_t) * poly_deg_);
   });
 
-  out->parms_id() = ms_helper_->parms_id();
+  out->parms_id() = msh_->parms_id();
   out->scale() = 1.;
 }
 

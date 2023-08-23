@@ -14,7 +14,6 @@
 
 load("@pybind11_bazel//:build_defs.bzl", "pybind_extension")
 load("@rules_python//python:defs.bzl", "py_library")
-load("@com_github_grpc_grpc//bazel:python_rules.bzl", "py_proto_library")
 load("@rules_python//python:packaging.bzl", "py_package")
 
 package(default_visibility = ["//visibility:public"])
@@ -54,51 +53,39 @@ pybind_extension(
     ],
 )
 
-py_proto_library(
-    name = "spu_py_proto",
-    deps = ["//libspu:spu_proto"],
-)
-
-py_proto_library(
-    name = "psi_py_proto",
-    deps = ["//libspu/psi:psi_proto"],
-)
-
-py_proto_library(
-    name = "pir_py_proto",
-    deps = ["//libspu/pir:pir_proto"],
-)
-
 py_library(
     name = "api",
-    srcs = ["api.py"],
+    srcs = [
+        "api.py",
+        "spu_pb2.py",
+        "//libspu:spu_py_proto",
+    ],
     data = [
         ":libspu.so",
-    ],
-    deps = [
-        ":spu_py_proto",
     ],
 )
 
 py_library(
     name = "psi",
-    srcs = ["psi.py"],
+    srcs = [
+        "psi.py",
+        "psi_pb2.py",
+        "//libspu:psi_py_proto",
+    ],
     data = [
         ":libspu.so",
-    ],
-    deps = [
-        ":psi_py_proto",
     ],
 )
 
 py_library(
     name = "pir",
-    srcs = ["pir.py"],
+    srcs = [
+        "pir.py",
+        "pir_pb2.py",
+        "//libspu:pir_py_proto",
+    ],
     data = [
         ":libspu.so",
-    ],
-    deps = [
-        ":pir_py_proto",
     ],
 )
 
@@ -109,10 +96,7 @@ py_library(
         "version.py",
         ":api",
         ":pir",
-        ":pir_py_proto",
         ":psi",
-        ":psi_py_proto",
-        ":spu_py_proto",
         "//spu/intrinsic:all_intrinsics",
         "//spu/utils:simulation",
     ],

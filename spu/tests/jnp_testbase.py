@@ -140,24 +140,8 @@ JAX_ONE_TO_ONE_OP_RECORDS = [
     REC("subtract", 2, number_dtypes, all_shapes, rand_default),
     REC("signbit", 1, number_dtypes, all_shapes, rand_default),
     REC("trunc", 1, number_dtypes, all_shapes, rand_default),
-    REC(
-        "sin",
-        1,
-        number_dtypes,
-        all_shapes,
-        rand_default,
-        Status.SysError,
-        "stablehlo.sine",
-    ),  # FIXME: stablehlo.sine
-    REC(
-        "cos",
-        1,
-        number_dtypes,
-        all_shapes,
-        rand_default,
-        Status.SysError,
-        "stablehlo.cosine",
-    ),  # FIXME: stablehlo.cosine
+    REC("sin", 1, number_dtypes, all_shapes, rand_default),
+    REC("cos", 1, number_dtypes, all_shapes, rand_default),
     REC(
         "tan",
         1,
@@ -165,17 +149,9 @@ JAX_ONE_TO_ONE_OP_RECORDS = [
         all_shapes,
         partial(jtu.rand_uniform, low=-1.5, high=1.5),
         Status.SysError,
-        "stablehlo.sine",
-    ),  # FIXME: stablehlo.sine
-    REC(
-        "sinh",
-        1,
-        number_dtypes,
-        all_shapes,
-        rand_default,
-        Status.SysError,
-        "stablehlo.cosine",
-    ),  # FIXME: stablehlo.cosine
+        "stablehlo.tan",
+    ),  # FIXME: stablehlo.tan
+    REC("sinh", 1, number_dtypes, all_shapes, jtu.rand_small),
     REC("cosh", 1, number_dtypes, all_shapes, jtu.rand_small),
     REC("tanh", 1, number_dtypes, all_shapes, jtu.rand_default),
     REC(
@@ -341,15 +317,7 @@ COMPOUND_OP_RECORDS = [
     REC(
         "copysign", 2, number_dtypes, all_shapes, rand_default, Status.SysError, "shift"
     ),  # FIXME: shift
-    REC(
-        "sinc",
-        1,
-        number_dtypes,
-        all_shapes,
-        rand_default,
-        Status.SysError,
-        "stablehlo.sine",
-    ),  # FIXME: stablehlo.sine
+    REC("sinc", 1, number_dtypes, all_shapes, rand_default),
     REC("square", 1, number_dtypes, all_shapes, rand_default),
     REC("sqrt", 1, number_dtypes, all_shapes, jtu.rand_positive),
     REC("transpose", 1, all_dtypes, all_shapes, rand_default),

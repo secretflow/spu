@@ -274,6 +274,9 @@ message RuntimeConfig {
   // Enable a simpler rsqrt approximation
   bool enable_lower_accuracy_rsqrt = 57;
 
+  // Sine/Cosine approximation iterations
+  int64 sine_cosine_iters = 58;
+
   /// - MPC protocol related definitions.
 
   enum BeaverType {

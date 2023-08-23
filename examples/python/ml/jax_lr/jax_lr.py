@@ -138,11 +138,11 @@ def save_and_load_model():
     print(W_r, b_r)
 
     x_test, y_test = dsutil.breast_cancer(slice(None, None, None), False)
-    print(
-        "AUC(save_and_load_model)={}".format(
-            metrics.roc_auc_score(y_test, predict(x_test, W_r, b_r))
-        )
-    )
+
+    score = metrics.roc_auc_score(y_test, predict(x_test, W_r, b_r))
+    print("AUC(save_and_load_model)={}".format(score))
+
+    return score
 
 
 def compute_score(W_r, b_r, type):
@@ -163,10 +163,7 @@ def run_on_spu():
     x2, _ = ppd.device("P2")(dsutil.breast_cancer)(slice(15, None), True)
     W, b = train(x1, x2, y)
 
-    W_r, b_r = ppd.get(W), ppd.get(b)
-    print(W_r, b_r)
-
-    return W_r, b_r
+    return W, b
 
 
 if __name__ == "__main__":
@@ -176,5 +173,6 @@ if __name__ == "__main__":
     compute_score(w[1], b[1], 'cpu, manual_grad')
     print('Run on SPU\n------\n')
     w, b = run_on_spu()
-    compute_score(w, b, 'spu')
+    w_r, b_r = ppd.get(w), ppd.get(b)
+    compute_score(w_r, b_r, 'spu')
     save_and_load_model()

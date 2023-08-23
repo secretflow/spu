@@ -48,6 +48,7 @@ def spu_cc_binary(
     cc_binary(
         linkopts = linkopts,
         copts = copts + _spu_copts(),
+        linkstatic = True,
         **kargs
     )
 
@@ -66,6 +67,7 @@ def spu_cc_library(
         local_defines = local_defines + [
             "SPU_BUILD",
         ],
+        linkstatic = True,
         **kargs
     )
 
@@ -111,5 +113,6 @@ def spu_cc_test(
         local_defines = local_defines + [
             "SPU_BUILD",
         ],
+        linkstatic = True,
         **kwargs
     )

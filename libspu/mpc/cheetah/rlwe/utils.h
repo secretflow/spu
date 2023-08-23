@@ -116,9 +116,17 @@ void DecodeSEALObjects(const std::vector<yacl::Buffer> &buf_view,
 void TruncateBFVForDecryption(seal::Ciphertext &ct,
                               const seal::SEALContext &context);
 
-void NttInplace(seal::Plaintext &pt, const seal::SEALContext &context);
+void NttInplace(seal::Plaintext &pt, const seal::SEALContext &context,
+                bool lazy = false);
 
-void InvNttInplace(seal::Plaintext &pt, const seal::SEALContext &context);
+void InvNttInplace(seal::Plaintext &pt, const seal::SEALContext &context,
+                   bool lazy = false);
+
+void NttInplace(RLWECt &ct, const seal::SEALContext &context,
+                bool lazy = false);
+
+void InvNttInplace(RLWECt &ct, const seal::SEALContext &context,
+                   bool lazy = false);
 
 // requires ciphertext.is_ntt_form() is `false`
 //          ciphertext.size() is `2`
@@ -127,6 +135,17 @@ void RemoveCoefficientsInplace(RLWECt &ciphertext,
 
 void KeepCoefficientsInplace(RLWECt &ciphertext,
                              const std::set<size_t> &to_keep);
+
+// ct mod Q' <- ct mod Q
+void ModulusSwtichInplace(RLWECt &ct, size_t num_modulus_to_keep,
+                          const seal::SEALContext &context);
+// ct <- ct + pt
+void AddPlainInplace(seal::Ciphertext &ct, const seal::Plaintext &pt,
+                     const seal::SEALContext &context);
+
+// ct <- ct - pt
+void SubPlainInplace(seal::Ciphertext &ct, const seal::Plaintext &pt,
+                     const seal::SEALContext &context);
 
 // x mod prime
 template <typename T>
@@ -139,16 +158,9 @@ uint64_t BarrettReduce(T x, const seal::Modulus &prime) {
   }
 }
 
-// Erase the memory automatically
-struct AutoMemGuard {
-  explicit AutoMemGuard(ArrayRef *obj);
-
-  explicit AutoMemGuard(RLWEPt *pt);
-
-  ~AutoMemGuard();
-
-  ArrayRef *obj_{nullptr};
-  RLWEPt *pt_{nullptr};
-};
+void SymmetricRLWEEncrypt(const RLWESecretKey &sk,
+                          const seal::SEALContext &context,
+                          absl::Span<const RLWEPt> msg_non_ntt, bool need_ntt,
+                          bool need_seed, absl::Span<RLWECt> out_ct);
 
 }  // namespace spu::mpc::cheetah

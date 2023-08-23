@@ -49,6 +49,8 @@ class PPHloVerifier {
   VERIFY_DECL(CeilOp)
   VERIFY_DECL(LogisticOp)
   VERIFY_DECL(TanhOp)
+  VERIFY_DECL(SineOp)
+  VERIFY_DECL(CosineOp)
   VERIFY_DECL(NotOp)
   VERIFY_DECL(ExpOp)
   VERIFY_DECL(Expm1Op)

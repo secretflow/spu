@@ -15,19 +15,63 @@
 #pragma once
 
 #include "libspu/mpc/kernel.h"
-#include "libspu/mpc/semi2k/boolean.h"
 
 namespace spu::mpc::cheetah {
 
-using CommonTypeB = spu::mpc::semi2k::CommonTypeB;
+class CommonTypeB : public Kernel {
+ public:
+  static constexpr char kBindName[] = "common_type_b";
 
-using CastTypeB = spu::mpc::semi2k::CastTypeB;
+  Kind kind() const override { return Kind::Dynamic; }
 
-using B2P = spu::mpc::semi2k::B2P;
+  void evaluate(KernelEvalContext* ctx) const override;
+};
 
-using P2B = spu::mpc::semi2k::P2B;
+class CastTypeB : public CastTypeKernel {
+ public:
+  static constexpr char kBindName[] = "cast_type_b";
 
-using AndBP = spu::mpc::semi2k::AndBP;
+  ce::CExpr latency() const override { return ce::Const(0); }
+
+  ce::CExpr comm() const override { return ce::Const(0); }
+
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in,
+                  const Type& to_type) const override;
+};
+
+class B2P : public UnaryKernel {
+ public:
+  static constexpr char kBindName[] = "b2p";
+
+  ce::CExpr latency() const override { return ce::Const(1); }
+
+  ce::CExpr comm() const override { return ce::K() * (ce::N() - 1); }
+
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in) const override;
+};
+
+class P2B : public UnaryKernel {
+ public:
+  static constexpr char kBindName[] = "p2b";
+
+  ce::CExpr latency() const override { return ce::Const(0); }
+
+  ce::CExpr comm() const override { return ce::Const(0); }
+
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in) const override;
+};
+
+class AndBP : public BinaryKernel {
+ public:
+  static constexpr char kBindName[] = "and_bp";
+
+  ce::CExpr latency() const override { return ce::Const(0); }
+
+  ce::CExpr comm() const override { return ce::Const(0); }
+
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
+                  const NdArrayRef& rhs) const override;
+};
 
 class AndBB : public BinaryKernel {
  public:
@@ -35,24 +79,103 @@ class AndBB : public BinaryKernel {
 
   Kind kind() const override { return Kind::Dynamic; }
 
-  ce::CExpr latency() const override { return ce::Const(1); }
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
+                  const NdArrayRef& rhs) const override;
+};
 
-  ce::CExpr comm() const override { return ce::K() * 2 * (ce::N() - 1); }
+class XorBP : public BinaryKernel {
+ public:
+  static constexpr char kBindName[] = "xor_bp";
+
+  ce::CExpr latency() const override { return ce::Const(0); }
+
+  ce::CExpr comm() const override { return ce::Const(0); }
 
   NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
                   const NdArrayRef& rhs) const override;
 };
 
-using XorBP = spu::mpc::semi2k::XorBP;
+class XorBB : public BinaryKernel {
+ public:
+  static constexpr char kBindName[] = "xor_bb";
 
-using XorBB = spu::mpc::semi2k::XorBB;
+  ce::CExpr latency() const override { return ce::Const(0); }
 
-using LShiftB = spu::mpc::semi2k::LShiftB;
+  ce::CExpr comm() const override { return ce::Const(0); }
 
-using RShiftB = spu::mpc::semi2k::RShiftB;
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
+                  const NdArrayRef& rhs) const override;
+};
 
-using ARShiftB = spu::mpc::semi2k::ARShiftB;
+class LShiftB : public ShiftKernel {
+ public:
+  static constexpr char kBindName[] = "lshift_b";
 
-using BitrevB = spu::mpc::semi2k::BitrevB;
+  ce::CExpr latency() const override { return ce::Const(0); }
 
+  ce::CExpr comm() const override { return ce::Const(0); }
+
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in,
+                  size_t shift) const override;
+};
+
+class RShiftB : public ShiftKernel {
+ public:
+  static constexpr char kBindName[] = "rshift_b";
+
+  ce::CExpr latency() const override { return ce::Const(0); }
+
+  ce::CExpr comm() const override { return ce::Const(0); }
+
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in,
+                  size_t shift) const override;
+};
+
+class ARShiftB : public ShiftKernel {
+ public:
+  static constexpr char kBindName[] = "arshift_b";
+
+  ce::CExpr latency() const override { return ce::Const(0); }
+
+  ce::CExpr comm() const override { return ce::Const(0); }
+
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in,
+                  size_t shift) const override;
+};
+
+class BitrevB : public BitrevKernel {
+ public:
+  static constexpr char kBindName[] = "bitrev_b";
+
+  ce::CExpr latency() const override { return ce::Const(0); }
+
+  ce::CExpr comm() const override { return ce::Const(0); }
+
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in, size_t start,
+                  size_t end) const override;
+};
+
+class BitIntlB : public BitSplitKernel {
+ public:
+  static constexpr char kBindName[] = "bitintl_b";
+
+  ce::CExpr latency() const override { return ce::Const(0); }
+
+  ce::CExpr comm() const override { return ce::Const(0); }
+
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in,
+                  size_t stride) const override;
+};
+
+class BitDeintlB : public BitSplitKernel {
+ public:
+  static constexpr char kBindName[] = "bitdeintl_b";
+
+  ce::CExpr latency() const override { return ce::Const(0); }
+
+  ce::CExpr comm() const override { return ce::Const(0); }
+
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in,
+                  size_t stride) const override;
+};
 }  // namespace spu::mpc::cheetah

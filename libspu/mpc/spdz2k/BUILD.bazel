@@ -178,7 +178,6 @@ spu_cc_library(
     deps = [
         ":type",
         "//libspu/core",
-        "//libspu/mpc/cheetah:array_ref",
         "//libspu/mpc/common:pv2k",
         "//libspu/mpc/utils:ring_ops",
     ],

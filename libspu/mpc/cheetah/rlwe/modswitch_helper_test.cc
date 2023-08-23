@@ -43,9 +43,9 @@ class RLWE2LWETest : public testing::TestWithParam<FieldType> {
 
   inline uint32_t FieldBitLen(FieldType f) const { return 8 * SizeOf(f); }
 
-  ArrayRef CPRNG(FieldType field, size_t size) {
-    return flatten(
-        ring_rand(field, {static_cast<int64_t>(size)}, seed_, &prng_counter_));
+  NdArrayRef CPRNG(FieldType field, size_t size) {
+    return ring_rand(field, {static_cast<int64_t>(size)}, seed_,
+                     &prng_counter_);
   }
 
   void UniformPoly(const seal::SEALContext &context, RLWEPt *pt) {
@@ -105,9 +105,9 @@ INSTANTIATE_TEST_SUITE_P(
 
 TEST_P(RLWE2LWETest, ModulusSwitch_UpDown) {
   // r <- R_t
-  for (size_t stride : {1, 2, 3}) {
-    auto vec = CPRNG(field_, poly_deg);
-    auto _vec = vec.slice(3, vec.numel(), stride);
+  for (int64_t stride : {1, 2, 3}) {
+    auto vec = ring_rand(field_, {poly_deg});
+    auto _vec = vec.slice({3}, {vec.numel()}, {stride});
 
     // r' = Delta*r \in R_q
     RLWEPt pt;
@@ -120,12 +120,11 @@ TEST_P(RLWE2LWETest, ModulusSwitch_UpDown) {
     }
     // e = round(r'/Delta) mod t \in R_t
     auto src = absl::MakeSpan(pt.data(), pt.coeff_count());
-    auto cmp = flatten(ring_zeros(field_, {(int64_t)poly_deg}));
-    ms_helper_->ModulusDownRNS(src, cmp);
+    auto cmp = ms_helper_->ModulusDownRNS(field_, {(int64_t)poly_deg}, src);
     // check r =? e
     DISPATCH_ALL_FIELDS(field_, "", [&]() {
-      auto expected = ArrayView<ring2k_t>(_vec);
-      auto computed = ArrayView<ring2k_t>(cmp);
+      auto expected = NdArrayView<ring2k_t>(_vec);
+      auto computed = NdArrayView<ring2k_t>(cmp);
       for (int64_t i = 0; i < expected.numel(); ++i) {
         EXPECT_EQ(expected[i], computed[i]);
       }
@@ -135,7 +134,7 @@ TEST_P(RLWE2LWETest, ModulusSwitch_UpDown) {
 
 TEST_P(RLWE2LWETest, ModulusSwitch_DownUp) {
   // a <- R_t
-  auto vec_a = CPRNG(field_, poly_deg);
+  auto vec_a = ring_rand(field_, {poly_deg});
   RLWEPt poly0;
   poly0.resize(poly_deg * ms_helper_->coeff_modulus_size());
   // a' = round(Delta*a) in R_q
@@ -159,8 +158,8 @@ TEST_P(RLWE2LWETest, ModulusSwitch_DownUp) {
 
   // r' = round(r/Delta) mod t \in R_t
   // b' = round(b/Delta) mod t \in R_t
-  auto shr0 = flatten(ring_zeros(field_, {(int64_t)poly_deg}));
-  auto shr1 = flatten(ring_zeros(field_, {(int64_t)poly_deg}));
+  auto shr0 = ring_zeros(field_, {(int64_t)poly_deg});
+  auto shr1 = ring_zeros(field_, {(int64_t)poly_deg});
   {
     auto src = absl::MakeSpan(rnd.data(), rnd.coeff_count());
     ms_helper_->ModulusDownRNS(src, shr0);
@@ -170,9 +169,9 @@ TEST_P(RLWE2LWETest, ModulusSwitch_DownUp) {
   }
 
   DISPATCH_ALL_FIELDS(field_, "", [&]() {
-    auto expected = ArrayView<ring2k_t>(vec_a);
-    auto computed0 = ArrayView<ring2k_t>(shr0);
-    auto computed1 = ArrayView<ring2k_t>(shr1);
+    auto expected = NdArrayView<ring2k_t>(vec_a);
+    auto computed0 = NdArrayView<ring2k_t>(shr0);
+    auto computed1 = NdArrayView<ring2k_t>(shr1);
 
     for (size_t i = 0; i < poly_deg; ++i) {
       auto cmp = computed0[i] + computed1[i];

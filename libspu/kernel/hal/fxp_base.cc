@@ -318,7 +318,7 @@ Value f_less(SPUContext* ctx, const Value& x, const Value& y) {
 Value f_square(SPUContext* ctx, const Value& x) {
   SPU_TRACE_HAL_LEAF(ctx, x);
 
-  SPU_ENFORCE(x.isFxp());
+  SPU_ENFORCE(x.isFxp(), "{}", x);
   return _trunc(ctx, _mul(ctx, x, x), ctx->getFxpBits(), SignType::Positive)
       .setDtype(x.dtype());
 }

@@ -200,6 +200,14 @@ Value exp2(SPUContext* ctx, const Value& x);
 // @param in, the input value
 Value tanh(SPUContext* ctx, const Value& x);
 
+/// element-wise sine, i.e. x -> sin(x)
+// @param in, the input value
+Value sine(SPUContext* ctx, const Value& x);
+
+/// element-wise cosine, i.e. x -> cos(x)
+// @param in, the input value
+Value cosine(SPUContext* ctx, const Value& x);
+
 /// element-wise reciprocal of square root operation, i.e. x - > 1.0 / sqrt(x)
 // @param in, the input value
 Value rsqrt(SPUContext* ctx, const Value& x);

@@ -15,7 +15,7 @@
 
 #include <mutex>
 
-#include "libspu/mpc/cheetah/array_ref.h"
+#include "libspu/core/ndarray_ref.h"
 #include "libspu/mpc/cheetah/rlwe/types.h"
 
 namespace seal {
@@ -46,7 +46,7 @@ struct EnableCPRNG {
                    seal::parms_id_type pid = seal::parms_id_zero);
 
   // Uniform random on ring 2^k
-  ArrayRef CPRNG(FieldType field, size_t size);
+  NdArrayRef CPRNG(FieldType field, size_t size);
 
  protected:
   mutable std::mutex counter_lock_;
@@ -64,4 +64,5 @@ inline int64_t calcNumel(absl::Span<const int64_t> shape) {
                          std::multiplies<>());
 }
 
+size_t CalculateWorkLoad(size_t num_jobs, size_t num_cores = 0);
 }  // namespace spu::mpc::cheetah
