@@ -49,7 +49,50 @@ class UnitTests(unittest.TestCase):
             W = model.fit_transform(X)
             H = model._components
             X_reconstructed = model.inverse_transform(W)
-            return W, H, X_reconstructed
+            err = model.reconstruction_err_
+            return W, H, X_reconstructed, err
+
+        # Create a simple dataset and random_matrix
+        X = np.random.randint(1, 100, (1000, 10))
+        X = np.array(X, dtype=float)
+        n_samples, n_features = X.shape
+        n_components = 5
+        random_seed = 0
+        random_state = np.random.RandomState(random_seed)
+        A = random_state.standard_normal(size=(n_components, n_features))
+        B = random_state.standard_normal(size=(n_samples, n_components))
+        l1_ratio = 0.1
+        alpha_W = 0.01
+
+        # Run the simulation
+        W, H, X_reconstructed, err = spsim.sim_jax(sim, proc1)(X, A, B)
+        print("reconstruction_error: ", err)
+
+        # sklearn
+        model = SklearnNMF(
+            n_components=n_components,
+            init='random',
+            random_state=random_seed,
+            l1_ratio=l1_ratio,
+            solver="mu",
+            alpha_W=alpha_W,
+        )
+        W_Sklearn = model.fit_transform(X)
+        H_Sklearn = model.components_
+        X_reconstructed_Sklearn = model.inverse_transform(W_Sklearn)
+        err = model.reconstruction_err_
+        print("reconstruction_error_sklearn: ", err)
+        self.assertTrue(np.allclose(W_Sklearn, W, atol=5e-1))
+        self.assertTrue(np.allclose(H_Sklearn, H, atol=5e-1))
+        self.assertTrue(np.allclose(X_reconstructed_Sklearn, X_reconstructed, atol=5e-1))
+
+    def test_nmf_seperate(self):
+        config = spu_pb2.RuntimeConfig(
+            protocol=spu_pb2.ProtocolKind.ABY3,
+            field=spu_pb2.FieldType.FM128,
+            fxp_fraction_bits=30,
+        )
+        sim = spsim.Simulator(3, config)
 
         # Test fit and transform
         def proc2(X, random_matrixA, random_matrixB):
@@ -76,38 +119,16 @@ class UnitTests(unittest.TestCase):
         random_state = np.random.RandomState(random_seed)
         A = random_state.standard_normal(size=(n_components, n_features))
         B = random_state.standard_normal(size=(n_samples, n_components))
-        l1_ratio = 0
+        l1_ratio = 0.1
         alpha_W = 0.01
-
-        # Run the simulation
-        W, H, X_reconstructed = spsim.sim_jax(sim, proc1)(X, A, B)
-        print("W_matrix_spu: ", W)
-        print("H_matrix_spu: ", H)
-        print("X_reconstructed_spu: ", X_reconstructed)
 
         # Run the simulation_seperate
         W_seperate, H_seperate, X_reconstructed_seperate = spsim.sim_jax(sim, proc2)(
             X, A, B
         )
-        print("W_matrix_spu_seperate: ", W_seperate)
-        print("H_matrix_spu_seperate: ", H_seperate)
-        print("X_reconstructed_spu_seperate: ", X_reconstructed_seperate)
-
-        # sklearn
-        model = SklearnNMF(
-            n_components=n_components,
-            init='random',
-            random_state=random_seed,
-            l1_ratio=l1_ratio,
-            solver="mu",
-            alpha_W=alpha_W,
-        )
-        W_Sklearn = model.fit_transform(X)
-        H_Sklearn = model.components_
-        X_reconstructed_Sklearn = model.inverse_transform(W_Sklearn)
-        print("W_matrix_sklearn: ", W_Sklearn)
-        print("H_matrix_sklearn: ", H_Sklearn)
-        print("X_reconstructed_sklearn: ", X_reconstructed_Sklearn)
+        print("W_matrix_spu_seperate: ", W_seperate[:5,:5])
+        print("H_matrix_spu_seperate: ", H_seperate[:5,:5])
+        print("X_reconstructed_spu_seperate: ", X_reconstructed_seperate[:5,:5])
 
         # sklearn_seperate
         model = SklearnNMF(
@@ -122,9 +143,9 @@ class UnitTests(unittest.TestCase):
         W_Sklearn_seperate = model.transform(X)
         H_Sklearn_seperate = model.components_
         X_reconstructed_Sklearn_seperate = model.inverse_transform(W_Sklearn_seperate)
-        print("W_matrix_sklearn_seperate: ", W_Sklearn_seperate)
-        print("H_matrix_sklearn_seperate: ", H_Sklearn_seperate)
-        print("X_reconstructed_sklearn_seperate: ", X_reconstructed_Sklearn_seperate)
+        print("W_matrix_sklearn_seperate: ", W_Sklearn_seperate[:5,:5])
+        print("H_matrix_sklearn_seperate: ", H_Sklearn_seperate[:5,:5])
+        print("X_reconstructed_sklearn_seperate: ", X_reconstructed_Sklearn_seperate[:5,:5])
 
 
 if __name__ == "__main__":
