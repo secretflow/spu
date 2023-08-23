@@ -69,7 +69,6 @@ def _rules_proto_grpc():
         sha256 = "928e4205f701b7798ce32f3d2171c1918b363e9a600390a25c876f075f1efc0a",
         strip_prefix = "rules_proto_grpc-4.4.0",
         urls = [
-            "{}/rules_proto_grpc-4.4.0.tar.gz".format(DEPS_FAST_MIRROR),
             "https://github.com/rules-proto-grpc/rules_proto_grpc/releases/download/4.4.0/rules_proto_grpc-4.4.0.tar.gz",
         ],
     )
