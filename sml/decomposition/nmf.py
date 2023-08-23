@@ -16,10 +16,13 @@ import numpy as np
 import jax.numpy as jnp
 
 
-def update_w(X, W, H, H_sum, HHt, XHt, l1_reg_W, l2_reg_W):
-    XHt = jnp.dot(X, H.T)
+def update_w(X, W, H, H_sum, HHt, XHt, l1_reg_W, l2_reg_W, update_H=True):
+    # H_sum is not used in 'frobenius'
+    if XHt is None:
+        XHt = jnp.dot(X, H.T)
     numerator = XHt
-    HHt = jnp.dot(H, H.T)
+    if HHt is None:
+        HHt = jnp.dot(H, H.T)
     denominator = jnp.dot(W, HHt)
     denominator = denominator + l1_reg_W + l2_reg_W * W
     numerator /= denominator
@@ -39,7 +42,6 @@ def update_h(X, W, H, l1_reg_H, l2_reg_H):
 
 
 def init_nmf(X, n_components, random_matrixA, random_matrixB):
-    n_samples, n_features = X.shape
     avg = jnp.sqrt(np.mean(X) / n_components)
     W = avg * random_matrixB.astype(X.dtype)
     W_new = jnp.abs(W)
@@ -78,7 +80,6 @@ class NMF:
         alpha_H=None,
         random_matrixA=None,
         random_matrixB=None,
-        update_H=True,
     ):
         """Compute Non-negative Matrix Factorization (NMF).
 
@@ -112,9 +113,6 @@ class NMF:
         random_matrixB : None
             Non-negative random matrices, scaled with:
             sqrt(X.mean() / n_components), represents matrix W
-        update_H : bool, default=True
-            Set to True, both W and H will be estimated from initial guesses.
-            Set to False, only W will be estimated.
 
         References
         ----------
@@ -151,7 +149,8 @@ class NMF:
             Returns an instance of self.
         Notes
         -----
-        (1) To prevent overflow error, we can modify the definition of simulator as follows:
+        (1) To prevent overflow error when using large data sets or get more accurate results,
+        you can modify the definition of simulator as follows:
         config = spu_pb2.RuntimeConfig(
             protocol=spu_pb2.ProtocolKind.ABY3,
             field=spu_pb2.FieldType.FM128,
@@ -168,7 +167,7 @@ class NMF:
         self.fit_transform(X)
         return self
 
-    def transform(self, X, transform_iter):
+    def transform(self, X, transform_iter=40):
         assert self._components is not None, f"should fit before transform"
         self._update_H = False
         self._max_iter = transform_iter
@@ -204,19 +203,20 @@ class NMF:
 
         # use multiplicative update solver
         for _ in range(self._max_iter):
-            W, H_sum, HHt, XHt = update_w(X, W, H, H_sum, HHt, XHt, l1_reg_W, l2_reg_W)
+            W, H_sum, HHt, XHt = update_w(X, W, H, H_sum, HHt, XHt, l1_reg_W, l2_reg_W, self._update_H)
             if self._update_H:
                 H = update_h(X, W, H, l1_reg_H, l2_reg_H)
-            H_sum, HHt, XHt = None, None, None
+                H_sum, HHt, XHt = None, None, None
 
         # compute the reconstruction error
         if self._update_H:
             self._components = H
-        self.reconstruction_err_ = _beta_divergence(
-            X, W, H, self._beta_loss, square_root=True
-        )
+            self.reconstruction_err_ = _beta_divergence(
+                X, W, H, self._beta_loss, square_root=True
+            )
 
         return W
 
     def inverse_transform(self, X):
+        assert self._components is not None, f"should fit before inverse_transform"
         return jnp.dot(X, self._components)
