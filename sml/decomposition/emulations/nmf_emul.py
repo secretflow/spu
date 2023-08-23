@@ -143,10 +143,12 @@ def emul_nmf_seperate(mode: emulation.Mode.MULTIPROCESS):
         B_spu = emulator.seal(B)
 
         # Run the emulation_seperate
-        W_seperate, H_seperate, X_reconstructed_seperate = emulator.run(proc2)(X_spu, A_spu, B_spu)
-        print("W_matrix_spu_seperate: ", W_seperate[:5,:5])
-        print("H_matrix_spu_seperate: ", H_seperate[:5,:5])
-        print("X_reconstructed_spu_seperate: ", X_reconstructed_seperate[:5,:5])
+        W_seperate, H_seperate, X_reconstructed_seperate = emulator.run(proc2)(
+            X_spu, A_spu, B_spu
+        )
+        print("W_matrix_spu_seperate: ", W_seperate[:5, :5])
+        print("H_matrix_spu_seperate: ", H_seperate[:5, :5])
+        print("X_reconstructed_spu_seperate: ", X_reconstructed_seperate[:5, :5])
 
         # sklearn_seperate
         model = SklearnNMF(
@@ -161,9 +163,12 @@ def emul_nmf_seperate(mode: emulation.Mode.MULTIPROCESS):
         W_Sklearn_seperate = model.transform(X)
         H_Sklearn_seperate = model.components_
         X_reconstructed_Sklearn_seperate = model.inverse_transform(W_Sklearn_seperate)
-        print("W_matrix_sklearn_seperate: ", W_Sklearn_seperate[:5,:5])
-        print("H_matrix_sklearn_seperate: ", H_Sklearn_seperate[:5,:5])
-        print("X_reconstructed_sklearn_seperate: ", X_reconstructed_Sklearn_seperate[:5,:5])
+        print("W_matrix_sklearn_seperate: ", W_Sklearn_seperate[:5, :5])
+        print("H_matrix_sklearn_seperate: ", H_Sklearn_seperate[:5, :5])
+        print(
+            "X_reconstructed_sklearn_seperate: ",
+            X_reconstructed_Sklearn_seperate[:5, :5],
+        )
 
     finally:
         emulator.down()
