@@ -1,7 +1,5 @@
 from enum import Enum
 
-import numpy as np
-
 import jax
 import jax.numpy as jnp
 
@@ -19,12 +17,15 @@ class Perceptron:
     Parameters
     ----------
 
-    penalty : {'l2','l1','elasticnet','None'}, default=None
+    penalty : {'l2','l1','elasticnet',None(NoneType)}, default=None
         The penalty (aka regularization term) to be used.
 
     alpha : float, default=0.0001
         Constant that multiplies the regularization term if regularization is
         used.
+
+    tol : float, default=1e-3
+        The stopping criterion. The iterations will stop when (hinge_loss <= tol).
 
     l1_ratio : float, default=0.15
         The Elastic Net mixing parameter, with `0 <= l1_ratio <= 1`.
@@ -48,6 +49,7 @@ class Perceptron:
         self,
         penalty=None,
         alpha=0.0001,
+        tol=1e-3,
         l1_ratio=0.15,
         fit_intercept=True,
         max_iter=1000,
@@ -57,6 +59,7 @@ class Perceptron:
         assert max_iter > 0, f"max_iter should >0"
         assert eta0 > 0, f"eta0 should >0"
         assert alpha > 0, f"alpha should >0"
+        assert tol > 0 and tol < 1, f"tol should >0 and <1"
         assert penalty in [
             e.value for e in Penalty
         ], f"penalty should in {[e.value for e in Penalty]}, but got {penalty}"
@@ -70,6 +73,7 @@ class Perceptron:
         self.fit_intercept = fit_intercept
         self.penalty = Penalty(penalty)
         self.alpha = alpha
+        self.tol = tol
         if self.penalty == Penalty.L1:
             self.l1_ratio = 1
         elif self.penalty == Penalty.L2:
@@ -80,31 +84,43 @@ class Perceptron:
             self.l1_ratio = None
 
         self._w = None
-        self._b = 0.0
+        self._b = 0.
 
     def _sign(self, x):
-        """The sign function in perceptron.
+        """
+        The sign function in perceptron.
         if x <= 0, f(x)=-1 else if x > 0, f(x)=1
         """
         x = jnp.sign(x)
-        x = jnp.where(x == 0, -1, x)
+        x = jnp.where(x <= 0, -1, x)
         return x
 
+    def _hinge_function(self, x, y, w, b):
+        """
+        loss = \frac{1}{n} \sum_{i=1}^{n}max\{-y_i(wx_i+b), 0\} \in [0,1].
+        """
+        n_samples = len(y)
+        y_hat = self._sign(jnp.matmul(x, w) + b)
+        y_hat = y_hat.reshape(y_hat.shape[0], 1)
+        one_zero = jnp.concatenate((jnp.multiply(-y_hat, y), jnp.zeros(shape=(n_samples, 1))), axis=1)
+        return jnp.mean(jnp.max(one_zero, axis=1))
+
     def _update_parameters(self, x_i, y_i, w, b):
-        # if y_i * (w * x_i) + b <= 0, the point is misclassified used for updating w and b.
+
+        # if y_i * [(w * x_i) + b] <= 0, the point is misclassified used for updating w and b.
         decision = y_i * (jnp.dot(w, x_i) + b) <= 0
 
         dw = decision * (self.eta0 * y_i * x_i)
         if self.fit_intercept:
             db = decision * self.eta0 * y_i
         else:
-            db = 0
+            db = jnp.array([0.])
 
         # add regularization terms
         if self.penalty != Penalty.NONE:
             l1_reg = jnp.sign(w)
             l2_reg = w
-            reg = self.l1_ratio * l1_reg + 0.5 * (1 - self.l1_ratio) * l2_reg
+            reg = self.l1_ratio * l1_reg + (1 - self.l1_ratio) * l2_reg
             dw += decision * self.alpha * reg
 
         dwb = jnp.concatenate((dw, db), axis=0)
@@ -120,7 +136,7 @@ class Perceptron:
             Training data.
 
         y : ndarray of shape (n_samples,)
-            Target values.
+            Target values. Only -1 or 1.
 
         Returns
         -------
@@ -133,15 +149,19 @@ class Perceptron:
         n_samples, n_features = x.shape
 
         w = jnp.zeros(n_features)
-        b = jnp.array([0.0])
+        b = jnp.array([0.])
 
         for iter in range(self.max_iter):
             update_w_b = jax.vmap(
                 self._update_parameters, in_axes=(0, 0, None, None), out_axes=0
             )(x, y, w, b)
             sum_w_b = jnp.sum(jnp.array(update_w_b), axis=0)
-            w += sum_w_b[:-1]
-            b += sum_w_b[-1]
+
+            loss = self._hinge_function(x, y, w, b)
+            update = loss > self.tol
+
+            w += update * sum_w_b[:-1]
+            b += update * sum_w_b[-1]
 
         self._w = w
         self._b = b
@@ -164,3 +184,4 @@ class Perceptron:
 
         pred_ = jnp.matmul(x, self._w) + self._b
         return self._sign(pred_)
+

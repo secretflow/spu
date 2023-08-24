@@ -7,7 +7,7 @@ from sklearn.datasets import load_iris
 import jax.numpy as jnp
 import spu.spu_pb2 as spu_pb2  # type: ignore
 import spu.utils.simulation as spsim
-from sml.perceptron.pla import Perceptron
+from sml.linear_model.pla import Perceptron
 
 
 class UnitTests(unittest.TestCase):
@@ -18,11 +18,13 @@ class UnitTests(unittest.TestCase):
 
         def proc(x, y):
             model = Perceptron(
-                max_iter=100,
+                max_iter=10,
                 eta0=1.0,
                 penalty='elasticnet',
-                alpha=0.0001,
+                alpha=0.01,
                 l1_ratio=0.15,
+                fit_intercept=True,
+                tol=1e-2
             )
 
             return model.fit(x, y).predict(x)
@@ -42,8 +44,9 @@ class UnitTests(unittest.TestCase):
 
             # y is -1 or 1
             y = jnp.sign(y)
-            y = jnp.where(y == 0, -1, y)
+            y = jnp.where(y <= 0, -1, y)
             y = y.reshape((y.shape[0], 1))
+
             return x, y
 
         # load mock data
@@ -52,7 +55,7 @@ class UnitTests(unittest.TestCase):
 
         # compare with sklearn
         sk_pla = sk.Perceptron(
-            max_iter=100, eta0=1.0, penalty='elasticnet', alpha=0.0001, l1_ratio=0.15
+            max_iter=10, eta0=1.0, penalty='elasticnet', alpha=0.01, l1_ratio=0.15, fit_intercept=True, tol=1e-2
         )
         result_sk = sk_pla.fit(x, y).predict(x)
         result_sk = result_sk.reshape(result_sk.shape[0], 1)
