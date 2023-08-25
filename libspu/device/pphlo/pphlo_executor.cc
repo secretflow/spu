@@ -58,22 +58,22 @@ std::string mlirObjectToString(T &&mlir_obj) {
   return buf;
 }
 
-spu::PtType getPtTypeFromMlirType(mlir::Type mlir_ty) {
+std::pair<spu::PtType, bool> getPtTypeFromMlirType(mlir::Type mlir_ty) {
   mlir::pphlo::TypeTools tool;
   auto express_type = tool.getExpressedType(mlir_ty);
 
   if (auto ft = express_type.dyn_cast<mlir::FloatType>()) {
     switch (ft.getWidth()) {
       case 16:
-        return spu::PT_F16;
+        return {spu::PT_F16, false};
       case 32:
-        return spu::PT_F32;
+        return {spu::PT_F32, false};
       case 64:
-        return spu::PT_F64;
+        return {spu::PT_F64, false};
     }
   } else if (auto it = express_type.dyn_cast<mlir::IntegerType>()) {
     if (it.getWidth() == 1) {
-      return spu::PT_BOOL;
+      return {spu::PT_BOOL, false};
     }
     // In mlir, isSigned is for si[1-9][0-9]* type, isUnsigned is for
     // ui[1-9][0-9]*, i[1-9][0-9]* is signless IntegerType... So here, we only
@@ -81,15 +81,26 @@ spu::PtType getPtTypeFromMlirType(mlir::Type mlir_ty) {
     // See https://reviews.llvm.org/D72533
     switch (it.getWidth()) {
       case 8:
-        return it.isUnsigned() ? spu::PT_U8 : spu::PT_I8;
+        return it.isUnsigned() ? std::make_pair(spu::PT_U8, false)
+                               : std::make_pair(spu::PT_I8, false);
       case 16:
-        return it.isUnsigned() ? spu::PT_U16 : spu::PT_I16;
+        return it.isUnsigned() ? std::make_pair(spu::PT_U16, false)
+                               : std::make_pair(spu::PT_I16, false);
       case 32:
-        return it.isUnsigned() ? spu::PT_U32 : spu::PT_I32;
+        return it.isUnsigned() ? std::make_pair(spu::PT_U32, false)
+                               : std::make_pair(spu::PT_I32, false);
       case 64:
-        return it.isUnsigned() ? spu::PT_U64 : spu::PT_I64;
+        return it.isUnsigned() ? std::make_pair(spu::PT_U64, false)
+                               : std::make_pair(spu::PT_I64, false);
+    }
+  } else if (auto ct = express_type.dyn_cast<mlir::ComplexType>()) {
+    if (ct.getElementType().isF32()) {
+      return {spu::PT_F32, true};
+    } else if (ct.getElementType().isF64()) {
+      return {spu::PT_F64, true};
     }
   }
+
   SPU_THROW("invalid type {}", mlirObjectToString(mlir_ty));
 }
 
@@ -121,6 +132,12 @@ spu::DataType getDtypeFromMlirType(mlir::Type mlir_ty) {
         return spu::DT_F64;
       default:
         SPU_THROW("unsupported fp type {}", mlirObjectToString(flp_ty));
+    }
+  } else if (auto ct = express_type.dyn_cast<mlir::ComplexType>()) {
+    if (ct.getElementType().isF32()) {
+      return spu::DT_F32;
+    } else if (ct.getElementType().isF64()) {
+      return spu::DT_F64;
     }
   }
   SPU_THROW("invalid type {}", mlirObjectToString(mlir_ty));
@@ -177,6 +194,9 @@ void do_type_checker(mlir::Value key, const spu::Value &val,
     auto expectedType = getDtypeFromMlirType(mlir_type);
     SPU_ENFORCE(expectedType == val.dtype(), "Expected mlir_type {}, got {}",
                 expectedType, val.dtype());
+    if (mlir_type.isa<mlir::ComplexType>()) {
+      SPU_ENFORCE(val.imag().has_value(), "Expected complex type");
+    }
 
     // Check vtype
     if (tool.isMPCType<mlir::pphlo::PublicType>(mlir_type)) {
@@ -686,11 +706,19 @@ void execute(OpExecutor *executor, SPUContext *sctx, SymbolScope *sscope,
   auto ret_el_type = type_tools.getExpressedType(ret_type);
   auto pt_type = getPtTypeFromMlirType(ret_el_type);
 
-  spu::Value iota_ret = kernel::hlo::Iota(sctx, getEncodeType(pt_type), numel);
+  spu::Value iota_ret =
+      kernel::hlo::Iota(sctx, getEncodeType(pt_type.first), numel);
 
   if (ret_type.getShape().size() > 1) {
     // Need a broadcast
     iota_ret = kernel::hlo::Broadcast(sctx, iota_ret, ret_type.getShape(), {});
+  }
+
+  if (pt_type.second) {
+    // Complex
+    auto zeros = kernel::hlo::Constant(sctx, 0.0F, ret_type.getShape());
+    zeros = kernel::hlo::Cast(sctx, zeros, iota_ret.vtype(), iota_ret.dtype());
+    iota_ret = kernel::hlo::Complex(sctx, iota_ret, zeros);
   }
 
   addValue(sscope, op.getOutput(), std::move(iota_ret), opts);
@@ -1029,6 +1057,7 @@ void execute(OpExecutor *executor, SPUContext *sctx, SymbolScope *sscope,
   // https://github.com/llvm/llvm-project/blob/3696941dae5cc5bb379c50eae6190e29f7edbbb1/mlir/include/mlir/IR/BuiltinAttributes.h#L188
   // We need to normalize the value to 0,1
   if (dea.getElementType().isInteger(1)) {
+    SPU_ENFORCE(pt_type.second == false);
     if (dea.isSplat()) {
       addValue(
           sscope, op.getResult(),
@@ -1039,19 +1068,43 @@ void execute(OpExecutor *executor, SPUContext *sctx, SymbolScope *sscope,
       for (const auto &v : llvm::enumerate(dea.getValues<bool>())) {
         buf[v.index()] = static_cast<uint8_t>(v.value());
       }
-      PtBufferView view(reinterpret_cast<const bool *>(buf.data()), pt_type,
-                        dst_shape, makeCompactStrides(dst_shape));
+      PtBufferView view(reinterpret_cast<const bool *>(buf.data()),
+                        pt_type.first, dst_shape,
+                        makeCompactStrides(dst_shape));
 
       addValue(sscope, op.getResult(),
                kernel::hlo::Constant(sctx, view, dst_shape), opts);
     }
   } else {
-    PtBufferView view(
-        dea.getRawData().data(), pt_type, dea.isSplat() ? Shape() : dst_shape,
-        dea.isSplat() ? Strides() : makeCompactStrides(dst_shape));
+    if (!pt_type.second) {
+      // Real numbers
+      PtBufferView view(
+          dea.getRawData().data(), pt_type.first,
+          dea.isSplat() ? Shape() : dst_shape,
+          dea.isSplat() ? Strides() : makeCompactStrides(dst_shape));
 
-    addValue(sscope, op.getResult(),
-             kernel::hlo::Constant(sctx, view, dst_shape), opts);
+      addValue(sscope, op.getResult(),
+               kernel::hlo::Constant(sctx, view, dst_shape), opts);
+    } else {
+      // Complex constant
+      // real view
+      auto cs = makeCompactStrides(dst_shape);
+      if (!cs.empty()) {
+        cs.back() *= 2;
+      }
+      PtBufferView real_view(dea.getRawData().data(), pt_type.first,
+                             dea.isSplat() ? Shape() : dst_shape,
+                             dea.isSplat() ? Strides() : cs);
+      PtBufferView imag_view(dea.getRawData().data() + SizeOf(pt_type.first),
+                             pt_type.first, dea.isSplat() ? Shape() : dst_shape,
+                             dea.isSplat() ? Strides() : cs);
+
+      auto real = kernel::hlo::Constant(sctx, real_view, dst_shape);
+      auto imag = kernel::hlo::Constant(sctx, imag_view, dst_shape);
+
+      addValue(sscope, op.getResult(), kernel::hlo::Complex(sctx, real, imag),
+               opts);
+    }
   }
 }
 
