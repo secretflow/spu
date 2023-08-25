@@ -1,3 +1,18 @@
+# Copyright 2023 Ant Group Co., Ltd.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+
 import math
 from enum import Enum
 
@@ -53,7 +68,7 @@ class Perceptron:
         self,
         penalty=None,
         alpha=0.0001,
-        patience=1e-3,
+        patience=10,
         l1_ratio=0.15,
         fit_intercept=True,
         max_iter=1000,
@@ -165,6 +180,7 @@ class Perceptron:
         best_b = b
         best_iter = -1
 
+
         for iter in range(self.max_iter):
             total_batch = math.ceil(float(n_samples) / self.bsize)
             for idx in range(total_batch):
@@ -185,12 +201,12 @@ class Perceptron:
 
             # update best params
             best_loss_flag = sumloss < best_loss
-            best_loss = best_loss_flag * sumloss + (1-best_loss_flag) * best_loss
-            best_w = best_loss_flag * w + (1 - best_loss_flag) * best_w
-            best_b = best_loss_flag * b + (1 - best_loss_flag) * best_b
-            best_iter = best_loss_flag * iter + (1 - best_loss_flag) * best_iter
+            best_loss = jnp.where(best_loss_flag, sumloss, best_loss)
+            best_w = jnp.where(best_loss_flag, w, best_w)
+            best_b = jnp.where(best_loss_flag, b, best_b)
+            best_iter = jnp.where(best_loss_flag, iter, best_iter)
 
-            not_early_stop *= (iter < best_iter + self.patience)
+            not_early_stop *= (iter <= best_iter + self.patience)
 
         self._w = best_w
         self._b = best_b
