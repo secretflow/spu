@@ -81,10 +81,10 @@ def PPHLO_IotaOp : PPHLO_Op<"iota", [Pure]> {
 // pphlo unary elementwise op definitions.
 //===----------------------------------------------------------------------===//
 class PPHLO_UnaryElementwiseOp<string mnemonic, list<Trait> traits,
-                               Type TensorType>
+                               Type OperandType, Type ResultType = OperandType>
     : PPHLO_Op<mnemonic, traits #[Elementwise, SameOperandsAndResultShape]> {
-  let arguments = (ins TensorType : $operand);
-  let results = (outs TensorType);
+  let arguments = (ins OperandType : $operand);
+  let results = (outs ResultType);
 }
 
 def PPHLO_ConvertOp
@@ -1138,14 +1138,6 @@ def PPHLO_CustomCallOp: PPHLO_Op<"custom_call",
 
     See:
     https://github.com/openxla/stablehlo/blob/main/docs/spec.md#custom_call
-
-    Example:
-    ```mlir
-    %results = stablehlo.custom_call @foo(%input0) {
-      backend_config = "bar",
-      called_computations = [@foo]
-    } : (tensor<f64>) -> tensor<f64>
-    ```
   }];
 
   let arguments = (ins
@@ -1161,5 +1153,47 @@ def PPHLO_CustomCallOp: PPHLO_Op<"custom_call",
   }];
 }
 
+def PPHLO_RealOp: PPHLO_UnaryElementwiseOp<"real",
+    [Pure], PPHLO_ComplexTensor, PPHLO_Tensor> {
+  let summary = "Real operation";
+  let description = [{
+    Extracts the real part, element-wise, from the `operand` and produces a
+    `result` tensor.
+
+    See:
+    https://github.com/openxla/stablehlo/blob/main/docs/spec.md#real
+  }];
+}
+
+def PPHLO_ImagOp: PPHLO_UnaryElementwiseOp<"imag",
+    [Pure], PPHLO_ComplexTensor, PPHLO_Tensor> {
+  let summary = "Imag operation";
+  let description = [{
+    Extracts the imaginary part, element-wise, from the `operand` and produces a
+    `result` tensor.
+
+    See:
+    https://github.com/openxla/stablehlo/blob/main/docs/spec.md#imag
+  }];
+}
+
+def PPHLO_ComplexOp: PPHLO_BinaryElementwiseOp<"complex", [Pure,
+    SameOperandsElementType /*complex_c1*/,
+    SameOperandsAndResultShape /*complex_c2*/]> {
+  let summary = "Complex operation";
+  let description = [{
+    Performs element-wise conversion to a complex value from a pair of real and
+    imaginary values, `lhs` and `rhs`, and produces a `result` tensor.
+    See:
+    https://github.com/openxla/stablehlo/blob/main/docs/spec.md#complex
+  }];
+  let arguments = (ins
+     PPHLO_FpTensor:$lhs /*complex_i1*/,
+     PPHLO_FpTensor:$rhs /*complex_i2*/
+  );
+  let results = (outs
+     PPHLO_ComplexTensor:$result
+  );
+}
 
 #endif  // SPU_DIALECT_PPHLO_OPS

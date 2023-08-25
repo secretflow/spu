@@ -19,6 +19,7 @@
 #include <algorithm>
 #include <chrono>
 #include <future>
+#include <iterator>
 #include <unordered_set>
 #include <utility>
 
@@ -274,8 +275,11 @@ void EcdhOprfPsiServer::RecvBlindAndShuffleSendEvaluate() {
     std::vector<std::string> batch_evaluated_items =
         oprf_server_->Evaluate(blinded_items);
 
-    evaluated_items.insert(evaluated_items.end(), batch_evaluated_items.begin(),
-                           batch_evaluated_items.end());
+    // evaluated_items is scoped and will be destructed soon
+    evaluated_items.insert(
+        evaluated_items.end(),
+        std::make_move_iterator(batch_evaluated_items.begin()),
+        std::make_move_iterator(batch_evaluated_items.end()));
 
     batch_count++;
   }
@@ -348,8 +352,10 @@ EcdhOprfPsiServer::RecvIntersectionMaskedItems(
           idx * compare_length, compare_length);
     }
 
-    client_masked_items.insert(batch_masked_items.begin(),
-                               batch_masked_items.end());
+    // batch_masked_items is scoped and will be destructed soon
+    client_masked_items.insert(
+        std::make_move_iterator(batch_masked_items.begin()),
+        std::make_move_iterator(batch_masked_items.end()));
 
     batch_count++;
   }
@@ -401,8 +407,10 @@ EcdhOprfPsiServer::RecvIntersectionMaskedItems(
       f_compare[i].get();
     }
 
-    for (const auto& r : batch_result) {
-      indices.insert(indices.end(), r.begin(), r.end());
+    // batch_result is scoped and will be destructed soon
+    for (auto& r : batch_result) {
+      indices.insert(indices.end(), std::make_move_iterator(r.begin()),
+                     std::make_move_iterator(r.end()));
     }
 
     batch_count++;

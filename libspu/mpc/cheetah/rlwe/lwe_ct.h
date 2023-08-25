@@ -24,7 +24,8 @@ class LWECt {
 
   ~LWECt();
 
-  // RLWE(\sum_{i} a_iX^i), k -> LWE(a_k)
+  // Gvien RLWE(\sum_{i} a_iX^i), k to create a valid LWE ciphertext that
+  // decrypts to `a_k`
   LWECt(const RLWECt &rlwe, size_t coeff_index,
         const seal::SEALContext &context);
 
@@ -40,14 +41,22 @@ class LWECt {
   LWECt &SubPlainInplace(const std::vector<uint64_t> &plain,
                          const seal::SEALContext &context);
 
+  // self += other without doing the modulus reduction
+  // The `other` LWE is extracted from the RLWE on-the-fly
   LWECt &AddLazyInplace(const RLWECt &rlwe, size_t coeff_index,
                         const seal::SEALContext &context);
 
+  // self -= other without doing the modulus reduction
+  // The `other` LWE is extracted from the RLWE on-the-fly
   LWECt &SubLazyInplace(const RLWECt &rlwe, size_t coeff_index,
                         const seal::SEALContext &context);
 
-  // LWE(a), multiplier -> RLWE(multiplier * a + \sum_{i>0} a_iX^i) for some
-  // random \{a_i\}
+  // Simply cast the LWE as an RLWE such that
+  // the decryption of the RLWE gives the same value in the 0-th coefficient
+  // i.e., Dec(LWE) = multiplier * Dec(RLWE)[0]
+  //
+  // Ref to Section 3.3 ``Efficient Homomorphic Conversion Between (Ring) LWE
+  // Ciphertexts`` https://eprint.iacr.org/2020/015.pdf
   void CastAsRLWE(const seal::SEALContext &context, uint64_t multiplier,
                   RLWECt *out) const;
 
@@ -112,18 +121,22 @@ class LWECt {
   RLWEPt vec_;
 };
 
+// We aim to lazy the moduluo reduction in x = x + y mod p given y \in [0, p).
+// Because the accumulator `x` is stored in uint64_t, and thus we can lazy
+// 62 - log_2(p) times.
 size_t MaximumLazy(const seal::SEALContext &context);
 
-// Just wrap an RLWE(m(X)) and view it as an LWE of the k-th coefficient,
-// LWE(m_k)
+// clang-format off
+// Wrap an RLWE(m(X)) and view it as an LWE of the k-th coefficient i.e., LWE(m[k]).
+// This wrapper class is used to avoid intensive memory allocation.
+// clang-format on
 class PhantomLWECt {
  public:
   PhantomLWECt() = default;
 
   ~PhantomLWECt() = default;
 
-  void WrapIt(const RLWECt &ct, size_t coeff_index,
-              bool only_wrap_zero = false);
+  void WrapIt(const RLWECt &ct, size_t coeff_index);
 
   seal::parms_id_type parms_id() const { return pid_; }
 
@@ -135,11 +148,16 @@ class PhantomLWECt {
 
   bool IsValid() const;
 
+  // Simply cast the LWE as an RLWE such that
+  // the decryption of the RLWE gives the same value in the 0-th coefficient
+  // i.e., Dec(LWE) = multiplier * Dec(RLWE)[0]
+  //
+  // Ref to Section 3.3 ``Efficient Homomorphic Conversion Between (Ring) LWE
+  // Ciphertexts`` https://eprint.iacr.org/2020/015.pdf
   void CastAsRLWE(const seal::SEALContext &context, uint64_t multiplier,
                   RLWECt *out) const;
 
  private:
-  bool only_wrap_zero_ = false;
   size_t coeff_index_ = 0;
   seal::parms_id_type pid_ = seal::parms_id_zero;
   const RLWECt *base_ = nullptr;

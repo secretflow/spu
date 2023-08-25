@@ -75,7 +75,8 @@ private:
     Type oriElmTy = type.getElementType();
     Type newElmTy;
     if (oriElmTy.isa<::mlir::FloatType>() ||
-        oriElmTy.isa<::mlir::IntegerType>()) {
+        oriElmTy.isa<::mlir::IntegerType>() ||
+        oriElmTy.isa<::mlir::ComplexType>()) {
       newElmTy = ::mlir::pphlo::UnsetType::get(oriElmTy);
     } else {
       newElmTy = oriElmTy;
@@ -1531,6 +1532,9 @@ private:
         .insert<FuncOpConverter, ReturnOpConverter, HloCompToPPHloOpConverter,
                 CustomCallConverter, ReduceOpConverter, ReduceWindowOpConverter,
                 WhileOpConverter, IfOpConverter, CaseOpConverter,
+                HloToPPHloOpConverter<stablehlo::RealOp>,
+                HloToPPHloOpConverter<stablehlo::ImagOp>,
+                HloToPPHloOpConverter<stablehlo::ComplexOp>,
                 HloToPPHloOpConverter<stablehlo::AbsOp>,
                 HloToPPHloOpConverter<stablehlo::AddOp>,
                 HloToPPHloOpConverter<stablehlo::AndOp>,

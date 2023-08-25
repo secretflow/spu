@@ -63,7 +63,7 @@ TEST_P(SelectAndScatterTest, ParamTest) {
   EXPECT_TRUE(xt::allclose(expected, ret_hat, 0.01, 0.001));
 }
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     SelectAndScatterTest_Instantiation, SelectAndScatterTest,
     ::testing::Values(
         SelectAndScatterTestParam{{1, 9, 3, 7, 5, 6},
