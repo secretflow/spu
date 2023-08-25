@@ -72,4 +72,14 @@ spu::Value Dot(SPUContext *ctx, const spu::Value &lhs, const spu::Value &rhs) {
   return hal::matmul(ctx, lhs, rhs);
 }
 
+spu::Value Complex(SPUContext *ctx, const spu::Value &lhs,
+                   const spu::Value &rhs) {
+  SPU_ENFORCE(lhs.dtype() == rhs.dtype());
+  SPU_ENFORCE(lhs.vtype() == rhs.vtype());
+  SPU_ENFORCE(lhs.shape() == rhs.shape());
+  SPU_ENFORCE(!lhs.imag().has_value() && !rhs.imag().has_value());
+
+  return Value(lhs.data(), rhs.data(), lhs.dtype());
+}
+
 }  // namespace spu::kernel::hlo

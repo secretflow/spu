@@ -521,14 +521,9 @@ void LWECt::CastAsRLWE(const seal::SEALContext &context, uint64_t multiplier,
   out->scale() = 1.0;
 }
 
-void PhantomLWECt::WrapIt(const RLWECt &ct, size_t coeff_index,
-                          bool only_wrap_zero) {
+void PhantomLWECt::WrapIt(const RLWECt &ct, size_t coeff_index) {
   SPU_ENFORCE(not ct.is_ntt_form() && ct.size() == 2 &&
               coeff_index < ct.poly_modulus_degree());
-  only_wrap_zero_ = only_wrap_zero;
-  if (only_wrap_zero) {
-    SPU_ENFORCE(coeff_index == 0);
-  }
   coeff_index_ = coeff_index;
   pid_ = ct.parms_id();
   base_ = &ct;
@@ -602,20 +597,8 @@ void PhantomLWECt::CastAsRLWE(const seal::SEALContext &context,
                                      fixed_mul, modulus[l]);
     }
 
-    if (coeff_index_ == 0 && only_wrap_zero_) {
-      auto ct0_ptr = base_->data(0) + l * num_coeff;
-      uint64_t acc = 0;
-      for (size_t i = 0; i < num_coeff; ++i) {
-        acc = add_uint_mod(ct0_ptr[i], acc, modulus[l]);
-      }
-      acc =
-          multiply_uint_mod(acc, ntt_tables[l].inv_degree_modulo(), modulus[l]);
-      acc = multiply_uint_mod(acc, fixed_mul, modulus[l]);
-      out->data(0)[l * num_coeff] = acc;
-    } else {
-      out->data(0)[l * num_coeff] = multiply_uint_mod(
-          base_->data(0)[l * num_coeff + coeff_index_], fixed_mul, modulus[l]);
-    }
+    out->data(0)[l * num_coeff] = multiply_uint_mod(
+        base_->data(0)[l * num_coeff + coeff_index_], fixed_mul, modulus[l]);
 
     src_ptr += num_coeff;
     dst_ptr += num_coeff;

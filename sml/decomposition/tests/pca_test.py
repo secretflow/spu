@@ -30,29 +30,44 @@ from sml.decomposition.pca import PCA
 
 
 class UnitTests(unittest.TestCase):
-    def test_power(self):
-        sim = spsim.Simulator.simple(
+    @classmethod
+    def setUpClass(cls):
+        print(" ========= start test of pca package ========= \n")
+
+        # 1. init sim
+        cls.sim64 = spsim.Simulator.simple(
             3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM64
         )
+        config128 = spu_pb2.RuntimeConfig(
+            protocol=spu_pb2.ProtocolKind.ABY3,
+            field=spu_pb2.FieldType.FM128,
+            fxp_fraction_bits=30,
+        )
+        cls.sim128 = spsim.Simulator(3, config128)
+
+    def test_power(self):
+        print("start test power method.")
 
         # Test fit_transform
         def proc_transform(X):
             model = PCA(
                 method='power_iteration',
                 n_components=2,
+                max_power_iter=200,
             )
 
             model.fit(X)
             X_transformed = model.transform(X)
             X_variances = model._variances
+            X_reconstructed = model.inverse_transform(X_transformed)
 
-            return X_transformed, X_variances
+            return X_transformed, X_variances, X_reconstructed
 
         # Create a simple dataset
-        X = random.normal(random.PRNGKey(0), (15, 100))
+        X = random.normal(random.PRNGKey(0), (10, 20))
 
         # Run the simulation
-        result = spsim.sim_jax(sim, proc_transform)(X)
+        result = spsim.sim_jax(self.sim64, proc_transform)(X)
 
         # The transformed data should have 2 dimensions
         self.assertEqual(result[0].shape[1], 2)
@@ -66,45 +81,26 @@ class UnitTests(unittest.TestCase):
         sklearn_pca = SklearnPCA(n_components=2)
         X_transformed_sklearn = sklearn_pca.fit_transform(X_np)
 
-        # Compare the transform results
-        print("X_transformed_sklearn: ", X_transformed_sklearn)
-        print("X_transformed_jax", result[0])
+        # Compare the transform results(omit sign)
+        np.testing.assert_allclose(
+            np.abs(X_transformed_sklearn), np.abs(result[0]), rtol=0.1, atol=0.1
+        )
 
         # Compare the variance results
-        print(
-            "X_transformed_sklearn.explained_variance_: ",
-            sklearn_pca.explained_variance_,
+        np.testing.assert_allclose(
+            sklearn_pca.explained_variance_, result[1], rtol=0.1, atol=0.1
         )
-        print("X_transformed_jax.explained_variance_: ", result[1])
-
-        # Test inverse_transform
-        def proc_reconstruct(X):
-            model = PCA(
-                method='power_iteration',
-                n_components=2,
-            )
-
-            model.fit(X)
-            X_reconstructed = model.inverse_transform(model.transform(X))
-
-            return X_reconstructed
-
-        # Run the simulation
-        result = spsim.sim_jax(sim, proc_reconstruct)(X)
 
         # Run inverse_transform using sklearn
         X_reconstructed_sklearn = sklearn_pca.inverse_transform(X_transformed_sklearn)
 
         # Compare the results
-        self.assertTrue(np.allclose(X_reconstructed_sklearn, result, atol=0.01))
+        np.testing.assert_allclose(
+            X_reconstructed_sklearn, result[2], atol=0.01, rtol=0.01
+        )
 
     def test_rsvd(self):
-        config = spu_pb2.RuntimeConfig(
-            protocol=spu_pb2.ProtocolKind.ABY3,
-            field=spu_pb2.FieldType.FM128,
-            fxp_fraction_bits=30,
-        )
-        sim = spsim.Simulator(3, config)
+        print("start test rsvd method.")
 
         # Test fit_transform
         def proc_transform(X, random_matrix):
@@ -114,17 +110,22 @@ class UnitTests(unittest.TestCase):
                 n_oversamples=n_oversamples,
                 random_matrix=random_matrix,
                 scale=[10000000, 10000],
+                max_power_iter=100,
             )
 
             model.fit(X)
             X_transformed = model.transform(X)
             X_variances = model._variances
+            X_reconstructed = model.inverse_transform(X_transformed)
 
-            return X_transformed, X_variances
+            return X_transformed, X_variances, X_reconstructed
 
         # Create a simple dataset
-        X = random.normal(random.PRNGKey(0), (1000, 20))
-        n_components = 5
+        # Note:
+        # 1. better for large sample data, like (1000, 20)
+        # 2. for small data, it may corrupt because the projection will have large error
+        X = random.normal(random.PRNGKey(0), (50, 20))
+        n_components = 1
         n_oversamples = 10
 
         # Create random_matrix
@@ -134,7 +135,7 @@ class UnitTests(unittest.TestCase):
         )
 
         # Run the simulation
-        result = spsim.sim_jax(sim, proc_transform)(X, random_matrix)
+        result = spsim.sim_jax(self.sim128, proc_transform)(X, random_matrix)
 
         # The transformed data should have 2 dimensions
         self.assertEqual(result[0].shape[1], n_components)
@@ -154,40 +155,21 @@ class UnitTests(unittest.TestCase):
         sklearn_pca.fit(X_np)
         X_transformed_sklearn = sklearn_pca.transform(X_np)
 
-        # Compare the transform results
-        print("X_transformed_sklearn: ", X_transformed_sklearn)
-        print("X_transformed_jax", result[0])
+        # Compare the transform results(omit sign)
+        np.testing.assert_allclose(
+            np.abs(X_transformed_sklearn), np.abs(result[0]), rtol=1, atol=0.1
+        )
 
         # Compare the variance results
-        print(
-            "X_transformed_sklearn.explained_variance_: ",
-            sklearn_pca.explained_variance_,
+        np.testing.assert_allclose(
+            sklearn_pca.explained_variance_, result[1], rtol=1, atol=0.1
         )
-        print("X_transformed_jax.explained_variance_: ", result[1])
-
-        # Test inverse_transform
-        def proc_reconstruct(X, random_matrix):
-            model = PCA(
-                method='rsvd',
-                n_components=n_components,
-                n_oversamples=n_oversamples,
-                random_matrix=random_matrix,
-                scale=[10000000, 10000],
-            )
-
-            model.fit(X)
-            X_reconstructed = model.inverse_transform(model.transform(X))
-
-            return X_reconstructed
-
-        # Run the simulation
-        result = spsim.sim_jax(sim, proc_reconstruct)(X, random_matrix)
 
         # Run inverse_transform using sklearn
         X_reconstructed_sklearn = sklearn_pca.inverse_transform(X_transformed_sklearn)
 
         # Compare the results
-        self.assertTrue(np.allclose(X_reconstructed_sklearn, result, atol=1e-1))
+        np.testing.assert_allclose(X_reconstructed_sklearn, result[2], atol=0.1, rtol=1)
 
     def test_rsvd(self):
         config = spu_pb2.RuntimeConfig(

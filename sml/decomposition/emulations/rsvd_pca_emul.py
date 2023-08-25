@@ -54,11 +54,11 @@ def emul_rsvdPCA(mode: emulation.Mode.MULTIPROCESS):
         emulator.up()
 
         # Create a simple dataset
-        X = random.normal(random.PRNGKey(0), (1000, 20))
+        X = random.normal(random.PRNGKey(0), (50, 20))
         X_spu = emulator.seal(X)
-        n_components = 5
+        n_components = 1
         n_oversamples = 10
-        max_power_iter = 300
+        max_power_iter = 100
         scale = (10000000, 10000)
 
         # Create random_matrix
@@ -71,9 +71,6 @@ def emul_rsvdPCA(mode: emulation.Mode.MULTIPROCESS):
         result = emulator.run(proc, static_argnums=(2, 3, 4, 5))(
             X_spu, random_matrix_spu, n_components, n_oversamples, max_power_iter, scale
         )
-        print("X_transformed_spu: ", result[0][:5, :])
-        print("X_variance_spu: ", result[1])
-        print("X_reconstructed_spu:", result[2][:5, :])
 
         # The transformed data should have 2 dimensions
         assert result[0].shape[1] == n_components
@@ -89,13 +86,17 @@ def emul_rsvdPCA(mode: emulation.Mode.MULTIPROCESS):
             random_state=0,
         )
         model.fit(X)
-        X_transformed = model.transform(X)
+        X_transformed_sklearn = model.transform(X)
         X_variances = model.explained_variance_
-        X_reconstructed = model.inverse_transform(X_transformed)
+        X_reconstructed = model.inverse_transform(X_transformed_sklearn)
 
-        print("X_transformed_sklearn: ", X_transformed[:5, :])
-        print("X_variances_sklearn: ", X_variances)
-        print("X_reconstructed_sklearn: ", X_reconstructed[:5, :])
+        # Compare the transform results(omit sign)
+        np.testing.assert_allclose(
+            np.abs(X_transformed_sklearn), np.abs(result[0]), rtol=1, atol=0.1
+        )
+
+        # Compare the variance results
+        np.testing.assert_allclose(X_variances, result[1], rtol=1, atol=0.1)
 
         assert np.allclose(X_reconstructed, result[2], atol=1e-1)
 

@@ -41,6 +41,11 @@ Visibility getVisibilityFromType(const Type& ty) {
 Value::Value(NdArrayRef data, DataType dtype)
     : data_(std::move(data)), dtype_(dtype) {}
 
+Value::Value(NdArrayRef real, NdArrayRef imag, DataType dtype)
+    : data_(std::move(real)), imag_(std::move(imag)), dtype_(dtype) {
+  SPU_ENFORCE(data_.eltype() == imag_->eltype());
+}
+
 Visibility Value::vtype() const {
   return getVisibilityFromType(storage_type());
 };
@@ -66,7 +71,7 @@ size_t Value::chunksCount(size_t max_chunk_size) const {
 
 ValueProto Value::toProto(size_t max_chunk_size) const {
   SPU_ENFORCE(max_chunk_size > 0);
-  SPU_ENFORCE(dtype_ != DT_INVALID && vtype() != VIS_INVALID);
+  SPU_ENFORCE(dtype_ != DT_INVALID && vtype() != VIS_INVALID, "{}", *this);
 
   ValueProto ret;
 
@@ -74,7 +79,7 @@ ValueProto Value::toProto(size_t max_chunk_size) const {
     if (size == 0) {
       return;
     }
-    ret.chunks.reserve(num_chunks);
+    ret.chunks.reserve(ret.chunks.size() + num_chunks);
     for (size_t i = 0; i < num_chunks; i++) {
       size_t chunk_size = std::min(max_chunk_size, size - i * max_chunk_size);
 
@@ -92,15 +97,21 @@ ValueProto Value::toProto(size_t max_chunk_size) const {
 
   const size_t num_chunks = chunksCount(max_chunk_size);
 
-  if (data_.isCompact()) {
-    build_chunk(data_.data(), numel() * data_.elsize(), num_chunks);
-  } else {
-    // Make a compact clone
-    auto copy = data_.clone();
-    SPU_ENFORCE(copy.isCompact(), "Must be a compact copy.");
-    build_chunk(copy.data(), copy.buf()->size(), num_chunks);
-  }
+  auto array_to_chunks = [&](const NdArrayRef& a) {
+    if (a.isCompact()) {
+      build_chunk(a.data(), numel() * a.elsize(), num_chunks);
+    } else {
+      // Make a compact clone
+      auto copy = a.clone();
+      SPU_ENFORCE(copy.isCompact(), "Must be a compact copy.");
+      build_chunk(copy.data(), copy.buf()->size(), num_chunks);
+    }
+  };
 
+  array_to_chunks(data_);
+  if (imag_) {
+    array_to_chunks(*imag_);
+  }
   ret.meta.CopyFrom(toMetaProto());
 
   return ret;
@@ -111,6 +122,7 @@ ValueMetaProto Value::toMetaProto() const {
 
   ValueMetaProto proto;
   proto.set_data_type(dtype_);
+  proto.set_is_complex(isComplex());
   proto.set_visibility(vtype());
   for (const auto& d : shape()) {
     proto.mutable_shape()->add_dims(d);
@@ -121,6 +133,24 @@ ValueMetaProto Value::toMetaProto() const {
 
 Value Value::fromProto(const ValueProto& value) {
   const auto& meta = value.meta;
+  if (meta.is_complex()) {
+    // real
+    ValueMetaProto partial = value.meta;
+    partial.set_is_complex(false);
+    ValueProto partial_proto;
+    partial_proto.meta = partial;
+    auto n = value.chunks.size() / 2;
+    std::copy_n(value.chunks.begin(), n,
+                std::back_inserter(partial_proto.chunks));
+    auto rv = fromProto(partial_proto);
+
+    partial_proto.chunks.clear();
+    std::copy_n(value.chunks.begin() + n, n,
+                std::back_inserter(partial_proto.chunks));
+    auto iv = fromProto(partial_proto);
+    return Value(rv.data(), iv.data(), rv.dtype());
+  }
+
   const auto eltype = Type::fromString(meta.storage_type());
 
   SPU_ENFORCE(meta.data_type() != DT_INVALID, "invalid data type={}",

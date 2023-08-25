@@ -87,4 +87,14 @@ spu::Value Round_AFZ(SPUContext *ctx, const spu::Value &in) {
   return hal::dtype_cast(ctx, hal::dtype_cast(ctx, round, DT_I64), in.dtype());
 }
 
+spu::Value Real(SPUContext *ctx, const spu::Value &in) {
+  SPU_ENFORCE(in.imag().has_value(), "In must be a complex value");
+  return Value(in.data(), in.dtype());
+}
+
+spu::Value Imag(SPUContext *ctx, const spu::Value &in) {
+  SPU_ENFORCE(in.imag().has_value(), "In must be a complex value");
+  return Value(*in.imag(), in.dtype());  // NOLINT
+}
+
 }  // namespace spu::kernel::hlo
