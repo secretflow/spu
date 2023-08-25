@@ -1,25 +1,26 @@
+import copy
 import os
 import sys
-import copy
 
 import jax
-from jax import grad
 import jax.numpy as jnp
-from jax.scipy.special import expit, erf
+import numpy as np
+from jax import grad
 from jax.lax.linalg import cholesky
 from jax.scipy.linalg import cho_solve, solve
-
-import numpy as np
-
+from jax.scipy.special import erf, expit
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "./"))
 from kernels import RBF
 from ovo_ovr import OneVsOneClassifier, OneVsRestClassifier
 
 LAMBDAS = jnp.array([0.41, 0.4, 0.37, 0.44, 0.39])[:, jnp.newaxis]
-COEFS = jnp.array([-1854.8214151, 3516.89893646, 221.29346712, 128.12323805, -2010.49422654])[:, jnp.newaxis]
+COEFS = jnp.array(
+    [-1854.8214151, 3516.89893646, 221.29346712, 128.12323805, -2010.49422654]
+)[:, jnp.newaxis]
 
-class _BinaryGaussianProcessClassifierLaplace():
+
+class _BinaryGaussianProcessClassifierLaplace:
     def __init__(
         self,
         kernel=None,
@@ -39,23 +40,25 @@ class _BinaryGaussianProcessClassifierLaplace():
         self.warm_start = warm_start
         self.random_state = random_state
         self.poss = poss
-        self.copy_X_train=copy_X_train,
+        self.copy_X_train = (copy_X_train,)
 
     def fit(self, X, y):
         self._check_kernal()
-        
+
         self.X_train_ = jnp.asarray(X)
 
         if self.poss == "sigmoid":
             self.approx_func = expit
-        else: 
-            raise ValueError(f"Unsupported prior-likelihood function {self.poss}. Please try the default option which is sigmoid")
+        else:
+            raise ValueError(
+                f"Unsupported prior-likelihood function {self.poss}. Please try the default option which is sigmoid"
+            )
 
         # Encode class labels and check that it is a binary classification (self.classes_, self.y_train_ is a np.ndarrays for now, np.unique ias not permitted in spu)
 
         self.y_train = y
 
-        self.y_train= 2*(self.y_train-0.5) #turn y_train into a -1 and 1 array
+        self.y_train = 2 * (self.y_train - 0.5)  # turn y_train into a -1 and 1 array
 
         K = self.kernel_(self.X_train_)
         _, self.f_ = self._posterior_mode(K, return_temporaries=True)
@@ -64,11 +67,11 @@ class _BinaryGaussianProcessClassifierLaplace():
     # def log_and_grad(self, f, y_train):
     #     _tmp = lambda f, y_train: jnp.sum(self.approx_func(y_train*f))
     #     return grad(_tmp)(f, y_train)/self.approx_func(y_train*f)
-    
+
     # def log_and_2grads_and_negtive(self, f, y_train):
     #     _tmp = lambda f, y: jnp.sum(self.log_and_grad(f, y))
     #     return -grad(_tmp)(f, y_train)
-    
+
     # def log_and_3grads(self, f, y_train):
     #     _tmp = lambda f, y_train: jnp.sum(-self.log_and_2grads_and_negtive(f, y_train))
     #     return grad(_tmp)(f, y_train)
@@ -88,13 +91,13 @@ class _BinaryGaussianProcessClassifierLaplace():
 
         # W = self.log_and_2grads_and_negtive(self.f_, self.y_train)
         pi = self.approx_func(self.f_)
-        W = pi * (1-pi)
+        W = pi * (1 - pi)
 
         W_sqr = jnp.sqrt(W)
         W_sqr_K = W_sqr[:, jnp.newaxis] * K
         B = jnp.eye(W.shape[0]) + W_sqr_K * W_sqr
         L = cholesky(B)
-        
+
         K_star = self.kernel_(self.X_train_, X)
         # f_star = K_star.T.dot(self.log_and_grad(self.f_, self.y_train))
         f_star = K_star.T.dot(self.y_train - pi)
@@ -114,18 +117,23 @@ class _BinaryGaussianProcessClassifierLaplace():
 
     def _posterior_mode(self, K, return_temporaries=False):
         # Based on Algorithm 3.1 of GPML
-        if self.warm_start and hasattr(self, "f_cached") and self.f_cached.shape == self.y_train_.shape:
+        if (
+            self.warm_start
+            and hasattr(self, "f_cached")
+            and self.f_cached.shape == self.y_train_.shape
+        ):
             f = self.f_cashed
         else:
-            f = jnp.zeros_like(self.y_train, dtype = jnp.float32) #a warning is triggered if float64 is used
+            f = jnp.zeros_like(
+                self.y_train, dtype=jnp.float32
+            )  # a warning is triggered if float64 is used
 
         log_marginal_likelihood = -jnp.inf
 
         for _ in range(self.max_iter_predict):
-
             # W = self.log_and_2grads_and_negtive(f, self.y_train)
             pi = self.approx_func(f)
-            W = pi * (1-pi)
+            W = pi * (1 - pi)
             W_sqr = jnp.sqrt(W)
             W_sqr_K = W_sqr[:, jnp.newaxis] * K
 
@@ -133,17 +141,24 @@ class _BinaryGaussianProcessClassifierLaplace():
             L = cholesky(B)
             # b = W * f + self.log_and_grad(f, self.y_train)
             b = W * f + (self.y_train - pi)
-            a = b - jnp.dot(W_sqr[:, jnp.newaxis] * cho_solve((L, True), jnp.eye(W.shape[0])) , W_sqr_K.dot(b))
+            a = b - jnp.dot(
+                W_sqr[:, jnp.newaxis] * cho_solve((L, True), jnp.eye(W.shape[0])),
+                W_sqr_K.dot(b),
+            )
             f = K.dot(a)
 
-            lml = -0.5 * a.T.dot(f) + jnp.log(self.approx_func(self.y_train * f)).sum() - jnp.log(jnp.diag(L)).sum()
+            lml = (
+                -0.5 * a.T.dot(f)
+                + jnp.log(self.approx_func(self.y_train * f)).sum()
+                - jnp.log(jnp.diag(L)).sum()
+            )
 
             # if (lml - log_marginal_likelihood) < 1e-10:
             #     log_marginal_likelihood = lml
             #     break
             log_marginal_likelihood = lml
 
-        self.f_cached = f # for warm-start
+        self.f_cached = f  # for warm-start
 
         if return_temporaries:
             return log_marginal_likelihood, f
@@ -151,8 +166,10 @@ class _BinaryGaussianProcessClassifierLaplace():
             return log_marginal_likelihood
 
     def _check_optimizer(self):
-        if self.optimizer!="lbfgs":
-            raise ValueError(f"Unsupported optimizer{self.optimizer}. Please try the default option which is lbfgs")
+        if self.optimizer != "lbfgs":
+            raise ValueError(
+                f"Unsupported optimizer{self.optimizer}. Please try the default option which is lbfgs"
+            )
 
     def _check_kernal(self):
         if self.kernel is None:  # Use an RBF kernel as default
@@ -160,7 +177,8 @@ class _BinaryGaussianProcessClassifierLaplace():
         else:
             self.kernel_ = copy.deepcopy(self.kernel)
 
-class GaussianProcessClassifier():
+
+class GaussianProcessClassifier:
     def __init__(
         self,
         kernel=None,
@@ -192,7 +210,7 @@ class GaussianProcessClassifier():
         y0 = jnp.array(y)
         unique_labels = set(y)
         self.n_classes_ = []
-        self.y_train = jnp.zeros(y0.shape, dtype = int)
+        self.y_train = jnp.zeros(y0.shape, dtype=int)
         for index, label in enumerate(unique_labels):
             self.n_classes_.append(label)
             self.y_train = jnp.where(y0 == label, index, self.y_train)
@@ -212,7 +230,7 @@ class GaussianProcessClassifier():
             warm_start=self.warm_start,
             copy_X_train=self.copy_X_train,
             random_state=self.random_state,
-            poss = self.poss
+            poss=self.poss,
         )
 
         if len(self.n_classes_) > 2:
@@ -227,12 +245,12 @@ class GaussianProcessClassifier():
                 )
             else:
                 raise ValueError("Unknown multi-class mode %s" % self.multi_class)
-        
+
         self.base_estimator_.fit(X, self.y_train)
 
     def predict(self, X):
         a = self.base_estimator_.predict(X)
         result = jnp.array(self.y)
-        for index,label in enumerate(self.n_classes_):
+        for index, label in enumerate(self.n_classes_):
             result = jnp.where(index == a, label, result)
         return result
