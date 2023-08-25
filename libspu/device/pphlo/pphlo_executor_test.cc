@@ -100,6 +100,22 @@ func.func @main() -> (tensor<2x!pphlo.pub<i32>>) {
   r.verifyOutput(expected.data());
 }
 
+TEST_P(ExecutorTest, ComplexConstant) {
+  Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
+           std::get<2>(GetParam()));
+
+  r.getConfig().set_enable_type_checker(false);
+
+  r.run(R"(
+func.func @main() -> (tensor<2x!pphlo.pub<complex<f32>>>) {
+  %0 = "pphlo.constant"() {value = dense<[(1.5, 2.5), (3.5, 4.5)]> : tensor<2xcomplex<f32>>} : () -> tensor<2x!pphlo.pub<complex<f32>>>
+  return %0 : tensor<2x!pphlo.pub<complex<f32>>>
+})");
+
+  std::vector<std::complex<float>> expected = {{1.5, 2.5}, {3.5, 4.5}};
+  r.verifyOutput(expected.data());
+}
+
 TEST_P(ExecutorTest, InvalidIR) {
   Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
            std::get<2>(GetParam()));
@@ -762,6 +778,20 @@ func.func @main() -> (tensor<4x2x!pphlo.pub<i32>>) {
 })");
 
   std::array<int, 8> expect = {0, 1, 0, 1, 0, 1, 0, 1};
+  r.verifyOutput(expect.data());
+}
+
+TEST_P(ExecutorTest, IotaComplex) {
+  Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
+           std::get<2>(GetParam()));
+
+  r.run(R"(
+func.func @main() -> (tensor<4x!pphlo.pub<complex<f32>>>) {
+    %0 = "pphlo.iota"() {iota_dimension = 0 : i64} : () -> tensor<4x!pphlo.pub<complex<f32>>>
+    return %0 : tensor<4x!pphlo.pub<complex<f32>>>
+})");
+
+  std::vector<std::complex<float>> expect = {{0, 0}, {1, 0}, {2, 0}, {3, 0}};
   r.verifyOutput(expect.data());
 }
 

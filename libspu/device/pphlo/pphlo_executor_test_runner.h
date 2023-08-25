@@ -22,6 +22,12 @@
 
 namespace spu::device::pphlo::test {
 
+template <typename T>
+struct is_complex_t : public std::false_type {};
+
+template <typename T>
+struct is_complex_t<std::complex<T>> : public std::true_type {};
+
 class Runner {
  public:
   Runner(size_t world_size, FieldType field, ProtocolKind protocol);
@@ -51,6 +57,11 @@ class Runner {
     for (size_t i = 0; i < numel; ++i) {
       if constexpr (std::is_integral_v<T>) {
         EXPECT_EQ(_out[i], expected[i]) << "i = " << i << "\n";
+      } else if constexpr (is_complex_t<T>::value) {
+        EXPECT_TRUE(std::abs(_out[i].real() - expected[i].real()) <= 1e-2 &&
+                    std::abs(_out[i].imag() - expected[i].imag()) <= 1e-2)
+            << "i = " << i << " in = " << _out[i]
+            << " expected = " << expected[i] << "\n";
       } else {
         EXPECT_TRUE(std::abs(_out[i] - expected[i]) <= 1e-2)
             << "i = " << i << " in = " << _out[i]
