@@ -1,3 +1,4 @@
+import math
 from enum import Enum
 
 import jax
@@ -24,8 +25,8 @@ class Perceptron:
         Constant that multiplies the regularization term if regularization is
         used.
 
-    tol : float, default=1e-3
-        The stopping criterion. The iterations will stop when (hinge_loss <= tol).
+    patience: int, default=10
+        How long to wait after last time loss improved.
 
     l1_ratio : float, default=0.15
         The Elastic Net mixing parameter, with `0 <= l1_ratio <= 1`.
@@ -43,23 +44,28 @@ class Perceptron:
 
     eta0 : float, default=1
         Constant by which the updates are multiplied.
+
+    batch_size : int, default=1
+        The batch size is a number of samples processed before the model is updated.
     """
 
     def __init__(
         self,
         penalty=None,
         alpha=0.0001,
-        tol=1e-3,
+        patience=1e-3,
         l1_ratio=0.15,
         fit_intercept=True,
         max_iter=1000,
         eta0=1.0,
+        batch_size=1
     ):
         # parameter check.
         assert max_iter > 0, f"max_iter should >0"
         assert eta0 > 0, f"eta0 should >0"
         assert alpha > 0, f"alpha should >0"
-        assert tol > 0 and tol < 1, f"tol should >0 and <1"
+        assert patience, f"patience should >0"
+        assert batch_size > 0 , f"batch size should > 0"
         assert penalty in [
             e.value for e in Penalty
         ], f"penalty should in {[e.value for e in Penalty]}, but got {penalty}"
@@ -73,7 +79,8 @@ class Perceptron:
         self.fit_intercept = fit_intercept
         self.penalty = Penalty(penalty)
         self.alpha = alpha
-        self.tol = tol
+        self.patience = patience
+        self.bsize = batch_size
         if self.penalty == Penalty.L1:
             self.l1_ratio = 1
         elif self.penalty == Penalty.L2:
@@ -83,6 +90,7 @@ class Perceptron:
         else:
             self.l1_ratio = None
 
+        self._trained = False
         self._w = None
         self._b = 0.
 
@@ -99,11 +107,9 @@ class Perceptron:
         """
         loss = \frac{1}{n} \sum_{i=1}^{n}max\{-y_i(wx_i+b), 0\} \in [0,1].
         """
-        n_samples = len(y)
         y_hat = self._sign(jnp.matmul(x, w) + b)
         y_hat = y_hat.reshape(y_hat.shape[0], 1)
-        one_zero = jnp.concatenate((jnp.multiply(-y_hat, y), jnp.zeros(shape=(n_samples, 1))), axis=1)
-        return jnp.mean(jnp.max(one_zero, axis=1))
+        return jnp.mean(jnp.maximum(jnp.multiply(-y_hat, y), 0))
 
     def _update_parameters(self, x_i, y_i, w, b):
 
@@ -147,24 +153,48 @@ class Perceptron:
         assert len(x.shape) == 2, f"expect x to be 2 dimension array, got {x.shape}"
 
         n_samples, n_features = x.shape
+        assert self.bsize <= n_samples, f"batch size should not be greater than the number of samples"
 
         w = jnp.zeros(n_features)
         b = jnp.array([0.])
 
+        # early stopping params
+        not_early_stop = True
+        best_loss = 1.1 # loss \in [0,1]
+        best_w = w
+        best_b = b
+        best_iter = -1
+
         for iter in range(self.max_iter):
-            update_w_b = jax.vmap(
-                self._update_parameters, in_axes=(0, 0, None, None), out_axes=0
-            )(x, y, w, b)
-            sum_w_b = jnp.sum(jnp.array(update_w_b), axis=0)
+            total_batch = math.ceil(float(n_samples) / self.bsize)
+            for idx in range(total_batch):
+                begin = idx * self.bsize
+                end = min((idx+1) * self.bsize, n_samples)
+                x_slice = x[begin:end]
+                y_slice = y[begin:end]
 
-            loss = self._hinge_function(x, y, w, b)
-            update = loss > self.tol
+                update_w_b = jax.vmap(
+                    self._update_parameters, in_axes=(0, 0, None, None), out_axes=0
+                )(x_slice, y_slice, w, b)
+                mean_w_b = jnp.mean(jnp.array(update_w_b), axis=0)
 
-            w += update * sum_w_b[:-1]
-            b += update * sum_w_b[-1]
+                w += not_early_stop * mean_w_b[:-1]
+                b += not_early_stop * mean_w_b[-1]
 
-        self._w = w
-        self._b = b
+            sumloss = self._hinge_function(x, y, w, b)
+
+            # update best params
+            best_loss_flag = sumloss < best_loss
+            best_loss = best_loss_flag * sumloss + (1-best_loss_flag) * best_loss
+            best_w = best_loss_flag * w + (1 - best_loss_flag) * best_w
+            best_b = best_loss_flag * b + (1 - best_loss_flag) * best_b
+            best_iter = best_loss_flag * iter + (1 - best_loss_flag) * best_iter
+
+            not_early_stop *= (iter < best_iter + self.patience)
+
+        self._w = best_w
+        self._b = best_b
+        self._trained = True
 
         return self
 
@@ -181,7 +211,7 @@ class Perceptron:
         ndarray of shape (n_samples,)
             Returns the result of the sample for each class in the model.
         """
+        assert self._trained, f"the model should be trained before prediction."
 
         pred_ = jnp.matmul(x, self._w) + self._b
         return self._sign(pred_)
-

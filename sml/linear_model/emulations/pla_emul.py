@@ -10,13 +10,14 @@ from sml.linear_model.pla import Perceptron
 def emul_perceptron(mode: emulation.Mode.MULTIPROCESS):
     def proc(x, y):
         model = Perceptron(
-            max_iter=10,
+            max_iter=20,
             eta0=1.0,
             penalty='elasticnet',
-            alpha=0.01,
-            l1_ratio=0.15,
+            alpha=0.001,
             fit_intercept=True,
-            tol=1e-2
+            l1_ratio=0.7,
+            patience=10,
+            batch_size=64
         )
 
         return model.fit(x, y).predict(x)
@@ -54,7 +55,7 @@ def emul_perceptron(mode: emulation.Mode.MULTIPROCESS):
 
         # compare with sklearn
         sk_pla = sk.Perceptron(
-            max_iter=10, eta0=1.0, penalty='elasticnet', alpha=0.01, l1_ratio=0.15, fit_intercept=True, tol=1e-2
+            max_iter=20, eta0=1.0, penalty='elasticnet', alpha=0.001, l1_ratio=0.7, fit_intercept=True
         )
         result_sk = sk_pla.fit(x, y).predict(x)
         result_sk = result_sk.reshape(result_sk.shape[0], 1)
