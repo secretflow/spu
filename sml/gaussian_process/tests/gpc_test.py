@@ -2,9 +2,9 @@ import os
 import sys
 import unittest
 
-from sklearn.datasets import load_iris
 import jax
 import jax.numpy as jnp
+from sklearn.datasets import load_iris
 
 import spu.spu_pb2 as spu_pb2
 import spu.utils.simulation as spsim
@@ -22,14 +22,12 @@ class UnitTests(unittest.TestCase):
 
         # Test GaussianProcessClassifier
         def proc(x, y):
-            model = GaussianProcessClassifier(
-                max_iter_predict=10
-            )
+            model = GaussianProcessClassifier(max_iter_predict=10)
             model.fit(x, y)
 
             pred = model.predict(x)
             return pred
-        
+
         # Create dataset
         x, y = load_iris(return_X_y=True)
         x = x[45:55, :]
@@ -39,7 +37,7 @@ class UnitTests(unittest.TestCase):
         result = spsim.sim_jax(sim, proc)(x, y)
         print(result)
         print(y)
-        print("Accuracy: ", jnp.sum(result == y)/len(y))
+        print("Accuracy: ", jnp.sum(result == y) / len(y))
 
 
 unittest.main()
