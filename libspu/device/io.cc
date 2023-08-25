@@ -61,6 +61,31 @@ std::vector<spu::Value> IoClient::makeShares(const PtBufferView &bv,
     return result;
   }
 
+  if (bv.pt_type == PT_CF32 || bv.pt_type == PT_CF64) {
+    auto s_type = bv.pt_type == PT_CF32 ? PT_F32 : PT_F64;
+    auto offset = bv.pt_type == PT_CF32 ? sizeof(float) : sizeof(double);
+    // SPDLOG_INFO("bv.strides = {}", bv.strides);
+
+    Strides ds = bv.strides;
+    for (auto &s : ds) {
+      s *= 2;
+    }
+
+    PtBufferView real_view(bv.ptr, s_type, bv.shape, ds);
+    PtBufferView imag_view((std::byte *)bv.ptr + offset, s_type, bv.shape, ds);
+
+    auto r_shares = makeShares(real_view, vtype, owner_rank);
+    auto i_shares = makeShares(imag_view, vtype, owner_rank);
+
+    std::vector<spu::Value> result;
+    result.reserve(world_size_);
+    for (size_t idx = 0; idx < world_size_; ++idx) {
+      result.emplace_back(r_shares[idx].data(), i_shares[idx].data(),
+                          r_shares[idx].dtype());
+    }
+    return result;
+  }
+
   // encode to ring.
   DataType dtype;
   NdArrayRef encoded =
@@ -78,10 +103,49 @@ std::vector<spu::Value> IoClient::makeShares(const PtBufferView &bv,
   return result;
 }
 
+template <typename T>
+NdArrayRef combineComplex(const NdArrayRef &real, const NdArrayRef &imag,
+                          const Type &complex_type) {
+  NdArrayRef ret(complex_type, real.shape());
+  NdArrayView<std::complex<T>> ret_v(ret);
+  NdArrayView<T> rv(real);
+  NdArrayView<T> iv(imag);
+  for (int64_t idx = 0; idx < real.numel(); ++idx) {
+    ret_v[idx].real(rv[idx]);
+    ret_v[idx].imag(iv[idx]);
+  }
+  return ret;
+}
+
 NdArrayRef IoClient::combineShares(absl::Span<spu::Value const> values) {
   SPU_ENFORCE(values.size() == world_size_,
               "wrong number of shares, got={}, expect={}", values.size(),
               world_size_);
+
+  if (values.front().isComplex()) {
+    NdArrayRef real;
+    NdArrayRef imag;
+    {
+      std::vector<spu::Value> reals(values.size());
+      for (size_t idx = 0; idx < values.size(); ++idx) {
+        reals[idx] = Value(values[idx].data(), values[idx].dtype());
+      }
+      real = combineShares(reals);
+    }
+    {
+      std::vector<spu::Value> imags(values.size());
+      for (size_t idx = 0; idx < values.size(); ++idx) {
+        imags[idx] = Value(*values[idx].imag(), values[idx].dtype());
+      }
+      imag = combineShares(imags);
+    }
+    if (values.front().dtype() == DT_F32) {
+      return combineComplex<float>(real, imag, CF32);
+    } else {
+      SPU_ENFORCE(values.front().dtype() == DT_F64);
+      return combineComplex<double>(real, imag, CF64);
+    }
+  }
 
   const size_t fxp_bits = config_.fxp_fraction_bits();
   SPU_ENFORCE(fxp_bits != 0, "fxp should never be zero, please check default");

@@ -146,6 +146,9 @@ class PPHloVerifier {
   NO_VERIFY_DEFN(EpsilonOp)
   NO_VERIFY_DEFN(CustomCallOp)
   NO_VERIFY_DEFN(FreeOp)
+  NO_VERIFY_DEFN(RealOp)
+  NO_VERIFY_DEFN(ImagOp)
+  NO_VERIFY_DEFN(ComplexOp)
 
 #undef NO_VERIFY_DEFN
 };

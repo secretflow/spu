@@ -1110,6 +1110,25 @@ void execute(OpExecutor *executor, SPUContext *sctx, SymbolScope *sscope,
   removeValue(sscope, op.getOperand(), opts);
 }
 
+void execute(OpExecutor *executor, SPUContext *sctx, SymbolScope *sscope,
+             mlir::pphlo::RealOp &op, const ExecutionOptions &opts) {
+  auto v = lookupValue(sscope, op.getOperand(), opts);
+  addValue(sscope, op.getResult(), kernel::hlo::Real(sctx, v), opts);
+}
+
+void execute(OpExecutor *executor, SPUContext *sctx, SymbolScope *sscope,
+             mlir::pphlo::ImagOp &op, const ExecutionOptions &opts) {
+  auto v = lookupValue(sscope, op.getOperand(), opts);
+  addValue(sscope, op.getResult(), kernel::hlo::Imag(sctx, v), opts);
+}
+
+void execute(OpExecutor *executor, SPUContext *sctx, SymbolScope *sscope,
+             mlir::pphlo::ComplexOp &op, const ExecutionOptions &opts) {
+  auto r = lookupValue(sscope, op.getLhs(), opts);
+  auto i = lookupValue(sscope, op.getRhs(), opts);
+  addValue(sscope, op.getResult(), kernel::hlo::Complex(sctx, r, i), opts);
+}
+
 #define DEFINE_UNIMPLEMENTED_OP(OpName)                                     \
   void execute(OpExecutor *executor, SPUContext *sctx, SymbolScope *sscope, \
                mlir::pphlo::OpName &, const ExecutionOptions &opts) {       \

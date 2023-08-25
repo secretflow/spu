@@ -244,9 +244,10 @@ def suite():
     suite.addTest(UnitTests('test_ss_xgb'))
     suite.addTest(UnitTests('test_stax_mnist_classifier'))
     suite.addTest(UnitTests('test_stax_nn'))
+    suite.addTest(UnitTests('test_save_and_load_model'))
+    # should put JAX tests above
     suite.addTest(UnitTests('test_tf_experiment'))
     suite.addTest(UnitTests('test_torch_experiment'))
-    suite.addTest(UnitTests('test_save_and_load_model'))
     return suite
 
 

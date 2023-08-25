@@ -15,6 +15,7 @@
 - [Feature] Support half type
 - [Feature] Add Psi Progress
 - [Feature] Add SineOp/CosineOp support
+- [Feature] Add complex support
 
 ## 20230705
 
