@@ -46,24 +46,23 @@ def emul_SimpleGNB(mode: emulation.Mode.MULTIPROCESS):
     try:
         # bandwidth and latency only work for docker mode
         print(os.getcwd())
-        emulator = emulation.Emulator(
-            '3pc.json', mode, bandwidth=300, latency=20
-        )
+        emulator = emulation.Emulator('3pc.json', mode, bandwidth=300, latency=20)
         emulator.up()
         # Create a simple dataset
         partial = 0.5
         n_samples = 1000
         n_features = 100
         centers = 3
-        X, y = datasets.make_blobs(n_samples=n_samples, n_features=n_features, centers = centers)
+        X, y = datasets.make_blobs(
+            n_samples=n_samples, n_features=n_features, centers=centers
+        )
         classes = jnp.unique(y)
         assert len(classes) == centers, f'Retry or increase partial.'
         total_samples = len(y)
         split_idx = int(partial * len(y))
-        X1, y1 = X[: split_idx], y[: split_idx]
-        X2, y2 = X[split_idx :], y[split_idx :]
-        
-        
+        X1, y1 = X[:split_idx], y[:split_idx]
+        X2, y2 = X[split_idx:], y[split_idx:]
+
         y1_pred, y2_pred = emulator.run(proc_fit)(X1, y1, X2, y2, classes)
         result1 = (y == y1_pred).sum() / total_samples
         result2 = (y == y2_pred).sum() / total_samples

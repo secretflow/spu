@@ -23,7 +23,7 @@ from sklearn import datasets
 
 
 class GaussianNB:
-    def __init__(self, classes_ = None, var_smoothing=1e-9):
+    def __init__(self, classes_=None, var_smoothing=1e-9):
         """Gaussian Naive Bayes (GaussianNB).
         Can perform online updates to model parameters via :meth:`partial_fit`.
 
@@ -41,7 +41,7 @@ class GaussianNB:
         ----------
         first :  bool
             to determine whether the classifier is called the first time.
-        
+
         class_count_ : ndarray of shape (n_classes,)
             number of training samples observed in each class.
 
@@ -50,7 +50,7 @@ class GaussianNB:
 
         epsilon_ : float
             absolute additive value to variances.
-            
+
         var_ : ndarray of shape (n_classes, n_features)
             Variance of each feature per class.
 
@@ -65,14 +65,14 @@ class GaussianNB:
 
     def fit(self, X, y):
         """Fit Gaussian Naive Bayes according to X, y.
-        
+
         When fit or partial fit is called, we update mean and variance for each feature.
-        When predict is called, we compute the posterior log likelihood for each class and 
+        When predict is called, we compute the posterior log likelihood for each class and
         predict the class with the maximun log likelihood.
-        
-        This attribute is seen as the first time the classifier is called, so it 
+
+        This attribute is seen as the first time the classifier is called, so it
         calls _first_partial_fit which set initial attributes. If partial_fit is called,
-        it firstly figure out whether the classifier is called the first time, and then 
+        it firstly figure out whether the classifier is called the first time, and then
         calls _first_partial_fit or _partial_fit respectively to updater theta_ and var_.
 
         Parameters
@@ -83,7 +83,7 @@ class GaussianNB:
 
         y : array-like of shape (n_samples,)
             Target values.
-            
+
         Returns
         -------
         self : object
@@ -95,7 +95,7 @@ class GaussianNB:
 
     def partial_fit(self, X, y):
         """Incremental fit on a batch of samples.
-        
+
         Parameters
         ----------
         X : array-like of shape (n_samples, n_features)
@@ -104,13 +104,13 @@ class GaussianNB:
 
         y : array-like of shape (n_samples,)
             Target values.
-        
+
         Returns
         -------
         self : object
             Returns the instance itself.
         """
-        
+
         self.n_sample = len(y)
         if self.first_ == True:
             self.first_ = False
@@ -149,7 +149,7 @@ class GaussianNB:
         n_new = N_i
         new_mu = jnp.sum(X, axis=0) / n_new
         new_var = jnp.sum((X - new_mu) ** 2, axis=0)
-        new_var = new_var - N * new_mu**2 + N_i * new_mu**2
+        new_var = new_var - N * new_mu ** 2 + N_i * new_mu ** 2
         new_var = new_var / n_new
 
         n_total = n_past + n_new
@@ -163,13 +163,13 @@ class GaussianNB:
         total_ssd = old_ssd + new_ssd + (n_new * n_past / n_total) * (mu - new_mu) ** 2
         total_var = jnp.where(n_new == 0.0, var, total_ssd / n_total)
         # correct precision problem
-        total_var = jnp.where(total_var < 0, 0., total_var)
+        total_var = jnp.where(total_var < 0, 0.0, total_var)
 
         return total_mu, total_var
 
     def _update_theta_var(self, X, y):
         """Actual implementation of Gaussian NB fitting.
-        
+
         Parameters
         ----------
         X : array-like of shape (n_samples, n_features)
@@ -207,8 +207,7 @@ class GaussianNB:
         return self
 
     def _first_partial_fit(self, X, y):
-        """The first time when classifier is called.
-        """
+        """The first time when classifier is called."""
         n_features = X.shape[1]
         n_classes = len(self.classes_)
         self.n_features = n_features
@@ -221,8 +220,7 @@ class GaussianNB:
         return self._update_theta_var(X, y)
 
     def _partial_fit(self, X, y):
-        """Actual implementation of Gaussian NB partial fitting.
-        """
+        """Actual implementation of Gaussian NB partial fitting."""
         self.var_ = self.var_ - self.epsilon_
         return self._update_theta_var(X, y)
 
@@ -233,7 +231,7 @@ class GaussianNB:
         ----------
         X : array-like of shape (n_samples, n_features)
             Testing vectors.
-            
+
         Returns
         -------
         jll: array-like of shape (n_samples, n_classes)
@@ -257,7 +255,7 @@ class GaussianNB:
         ----------
         X : array-like of shape (n_samples, n_features)
             Testing vectors.
-            
+
         Returns
         -------
         result: array-like of shape (n_samples,)

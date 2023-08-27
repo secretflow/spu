@@ -29,6 +29,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '../../../'))
 
 from sml.naive_bayes.gnb import GaussianNB
 
+
 class UnitTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -57,7 +58,7 @@ class UnitTests(unittest.TestCase):
 
             model.fit(X1, y1)
             y1_pred = model.predict(X)
-            
+
             model.fit(X2, y2)
             y2_pred = model.predict(X)
 
@@ -68,13 +69,15 @@ class UnitTests(unittest.TestCase):
         n_samples = 1000
         n_features = 100
         centers = 3
-        X, y = datasets.make_blobs(n_samples=n_samples, n_features=n_features, centers = centers)
+        X, y = datasets.make_blobs(
+            n_samples=n_samples, n_features=n_features, centers=centers
+        )
         classes = jnp.unique(y)
         assert len(classes) == centers, f'Retry or increase partial.'
         total_samples = len(y)
         split_idx = int(partial * len(y))
-        X1, y1 = X[: split_idx], y[: split_idx]
-        X2, y2 = X[split_idx :], y[split_idx :]
+        X1, y1 = X[:split_idx], y[:split_idx]
+        X2, y2 = X[split_idx:], y[split_idx:]
 
         # Run the simulation
         y1_pred, y2_pred = spsim.sim_jax(self.sim64, proc)(X1, y1, X2, y2, classes)
@@ -100,7 +103,7 @@ class UnitTests(unittest.TestCase):
 
         assert np.isclose(result1, sk_result1, atol=1e-4)
         assert np.isclose(result2, sk_result2, atol=1e-4)
-        
-        
+
+
 if __name__ == "__main__":
     unittest.main()
