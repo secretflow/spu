@@ -17,7 +17,7 @@ load("@rules_python//python:defs.bzl", "py_binary")
 package(default_visibility = ["//visibility:public"])
 
 py_binary(
-    name = "gnb_emul;",
+    name = "gnb_emul",
     srcs = ["gnb_emul.py"],
     deps = [
         "//sml/naive_bayes:gnb",
