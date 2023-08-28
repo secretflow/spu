@@ -21,17 +21,11 @@
                     "127.0.0.1:8930",
                     "127.0.0.1:8930"
                 ],
-                "experimental_data_folder": [
-                    "/tmp/spu_data_0/",
-                    "/tmp/spu_data_1/",
-                    "/tmp/spu_data_2/"
-                ],
                 "runtime_config": {
                     "protocol": "ABY3",
                     "field": "FM64",
                     "enable_pphlo_profile": true,
                     "enable_hal_profile": true,
-                    "enable_pphlo_trace": false,
                     "fxp_exp_mode": 0,
                     "fxp_exp_iters": 5
                 }

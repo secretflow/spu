@@ -88,13 +88,19 @@ spu::Value Round_AFZ(SPUContext *ctx, const spu::Value &in) {
 }
 
 spu::Value Real(SPUContext *ctx, const spu::Value &in) {
-  SPU_ENFORCE(in.imag().has_value(), "In must be a complex value");
   return Value(in.data(), in.dtype());
 }
 
 spu::Value Imag(SPUContext *ctx, const spu::Value &in) {
-  SPU_ENFORCE(in.imag().has_value(), "In must be a complex value");
-  return Value(*in.imag(), in.dtype());  // NOLINT
+  if (in.imag().has_value()) {
+    return Value(*in.imag(), in.dtype());  // NOLINT
+  } else {
+    auto zeros = hal::constant(ctx, 0.0F, in.dtype(), in.shape());
+    if (in.isSecret()) {
+      return hal::seal(ctx, zeros);
+    }
+    return zeros;
+  }
 }
 
 }  // namespace spu::kernel::hlo

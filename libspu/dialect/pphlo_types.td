@@ -77,5 +77,6 @@ def PPHLO_SecretComplexType : Type<And<[PPHLO_SecretType.predicate,
     CPred<"$_self.cast<::mlir::pphlo::SecretType>().getBase().isa<::mlir::ComplexType>()">]>, "secret complex type", "::pphlo::SecComplexType">;
 
 def PPHLO_ComplexTensor :  StaticShapeTensorOf<[PPHLO_PublicComplexType, PPHLO_SecretComplexType]>;
+def PPHLO_FpOrComplexTensor :  StaticShapeTensorOf<[PPHLO_PublicComplexType, PPHLO_SecretComplexType, PPHLO_PublicFpType, PPHLO_SecretFpType]>;
 
 #endif  // SPU_DIALECT_PPHLO_TYPES
