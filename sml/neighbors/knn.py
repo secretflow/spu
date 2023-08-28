@@ -13,13 +13,19 @@
 # limitations under the License.
 
 
-
 import jax.numpy as jnp
-from jax import lax
-from jax import vmap
+from jax import lax, vmap
+
 
 class KNNClassifer:
-    def __init__(self, n_neighbors=5, weights='uniform', metric=None, metric_params=None, n_classes=None):
+    def __init__(
+        self,
+        n_neighbors=5,
+        weights='uniform',
+        metric=None,
+        metric_params=None,
+        n_classes=None,
+    ):
         """
         K-Nearest Neighbors (KNN) Classifier.
 
@@ -28,17 +34,29 @@ class KNNClassifer:
         - weights (str): Weight function used in prediction. Possible values:
             * 'uniform': Uniform weights. All points in each neighborhood are weighted equally.
             * 'distance': Weight points by the inverse of their distance.
-        - metric (callable, optional): A function that computes distance between two points. 
-            It should take two arguments and return a scalar. Defaults to the Minkowski metric 
+        - metric (callable, optional): A function that computes distance between two points.
+            It should take two arguments and return a scalar. Defaults to the Minkowski metric
             with p=2 (i.e., Euclidean distance). If None, the Minkowski metric with p=2 is used.
         - metric_params (dict, optional): Additional keyword arguments for the metric function.
-        - n_classes (int, optional): Number of classes in the dataset. It's better to provide 
-            this for faster computation. If not provided, it will be inferred during prediction.
+        - n_classes (int, optional): Number of classes in the dataset. It needs to be provided
+            for computation.
 
-        Note: 
-        If the default metric (Minkowski with p=2) is used and metric_params is None, 
+        Note:
+        If the default metric (Minkowski with p=2) is used and metric_params is None,
         it will default to {'ord': 2}.
         """
+
+        # Validate n_neighbors
+        if not isinstance(n_neighbors, int) or n_neighbors <= 0:
+            raise ValueError("n_neighbors should be a positive integer.")
+
+        # Validate weights
+        if weights not in ['uniform', 'distance']:
+            raise ValueError("weights should be either 'uniform' or 'distance'.")
+
+        # Validate n_classes
+        if n_classes is not None and (not isinstance(n_classes, int) or n_classes <= 0):
+            raise ValueError("n_classes should be a positive integer if provided.")
 
         self.X = None
         self.y = None
@@ -88,7 +106,9 @@ class KNNClassifer:
         elif self.weights == 'distance':
             return 1.0 / distances
         else:
-            raise ValueError("Invalid weight setting. Only 'uniform' and 'distance' are supported.")
+            raise ValueError(
+                "Invalid weight setting. Only 'uniform' and 'distance' are supported."
+            )
 
     def _predict_single_sample(self, x):
         """
@@ -102,7 +122,7 @@ class KNNClassifer:
         """
         distances = self.metric(self.X - x, **self.metric_params, axis=1)
         sorted_indices = jnp.argsort(distances)
-        k_indices = sorted_indices[:self.n_neighbors]
+        k_indices = sorted_indices[: self.n_neighbors]
         k_distances = distances[k_indices]
         k_labels = self.y[k_indices]
 
@@ -113,14 +133,15 @@ class KNNClassifer:
 
         def predict_distance(_):
             weights_inner = self._compute_weights(k_distances)
-            weighted_counts = jnp.bincount(k_labels, weights=weights_inner, length=int(self.n_classes))
+            weighted_counts = jnp.bincount(
+                k_labels, weights=weights_inner, length=int(self.n_classes)
+            )
             prediction = jnp.argmax(weighted_counts)
             return prediction
 
-        return lax.cond(self.weights == 'uniform',
-                        predict_uniform,
-                        predict_distance,
-                        operand=None)
+        return lax.cond(
+            self.weights == 'uniform', predict_uniform, predict_distance, operand=None
+        )
 
     def predict(self, X):
         """
@@ -132,17 +153,7 @@ class KNNClassifer:
         Returns:
         - array-like: Predicted class labels for each sample.
         """
-        # predictions = []
-        # for x in X:
-        #     prediction = self._predict_single_sample(x)
-        #     predictions.append(prediction)
-        # return jnp.array(predictions)
-        # Vectorize the _predict_single_sample function
-        vectorized_predict = vmap(self._predict_single_sample)
-        
         # Use the vectorized function to predict all samples at once
-        predictions = vectorized_predict(X)
-        
+        predictions = vmap(self._predict_single_sample)(X)
+
         return predictions
-
-
