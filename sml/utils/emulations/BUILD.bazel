@@ -12,14 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .example_impl import example
+load("@rules_python//python:defs.bzl", "py_binary")
 
-from .example_binary_impl import example_binary
+package(default_visibility = ["//visibility:public"])
 
-# DO-NOT-EDIT:ADD_IMPORT
+py_binary(
+    name = "svd_emul",
+    srcs = ["svd_emul.py"],
+    data = [":conf"],
+    deps = [
+        "//sml/utils:emulation",
+        "//sml/utils:extmath",
+    ],
+)
 
-__all__ = [
-    # "example",
-    # "example_binary",
-    # DO-NOT-EDIT:EOL
-]
+filegroup(
+    name = "conf",
+    srcs = [
+        "3pc_128.json",
+    ],
+)

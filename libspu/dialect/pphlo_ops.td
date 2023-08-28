@@ -1154,7 +1154,7 @@ def PPHLO_CustomCallOp: PPHLO_Op<"custom_call",
 }
 
 def PPHLO_RealOp: PPHLO_UnaryElementwiseOp<"real",
-    [Pure], PPHLO_ComplexTensor, PPHLO_Tensor> {
+    [Pure], PPHLO_FpOrComplexTensor, PPHLO_Tensor> {
   let summary = "Real operation";
   let description = [{
     Extracts the real part, element-wise, from the `operand` and produces a
@@ -1166,7 +1166,7 @@ def PPHLO_RealOp: PPHLO_UnaryElementwiseOp<"real",
 }
 
 def PPHLO_ImagOp: PPHLO_UnaryElementwiseOp<"imag",
-    [Pure], PPHLO_ComplexTensor, PPHLO_Tensor> {
+    [Pure], PPHLO_FpOrComplexTensor, PPHLO_Tensor> {
   let summary = "Imag operation";
   let description = [{
     Extracts the imaginary part, element-wise, from the `operand` and produces a
