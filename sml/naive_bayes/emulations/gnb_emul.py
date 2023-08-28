@@ -63,7 +63,10 @@ def emul_SimpleGNB(mode: emulation.Mode.MULTIPROCESS):
         X1, y1 = X[:split_idx], y[:split_idx]
         X2, y2 = X[split_idx:], y[split_idx:]
 
-        y1_pred, y2_pred = emulator.run(proc_fit)(X1, y1, X2, y2, classes)
+        X1_spu, y1_spu = emulator.seal(X1), emulator.seal(y1)
+        X2_spu, y2_spu = emulator.seal(X2), emulator.seal(y2)
+
+        y1_pred, y2_pred = emulator.run(proc_fit)(X1_spu, y1_spu, X2_spu, y2_spu, classes)
         result1 = (y == y1_pred).sum() / total_samples
         result2 = (y == y2_pred).sum() / total_samples
 
