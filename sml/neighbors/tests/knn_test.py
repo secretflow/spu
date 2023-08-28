@@ -34,6 +34,7 @@ class UnitTests(unittest.TestCase):
         sim = spsim.Simulator.simple(
             3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM64
         )
+        
         # Test fit_predict
         def proc_predict(
             X_train, y_train, X_test, n_classes, n_neighbors=5, weights='uniform'
