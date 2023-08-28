@@ -795,6 +795,38 @@ func.func @main() -> (tensor<4x!pphlo.pub<complex<f32>>>) {
   r.verifyOutput(expect.data());
 }
 
+TEST_P(ExecutorTest, NonComplexReal) {
+  Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
+           std::get<2>(GetParam()));
+
+  r.addInput(std::vector<float>{1, 2, 3, 4});
+
+  r.run(R"(
+func.func @main(%arg0:tensor<4x!pphlo.pub<f32>>) -> (tensor<4x!pphlo.pub<f32>>) {
+    %0 = "pphlo.real"(%arg0) : (tensor<4x!pphlo.pub<f32>>) -> tensor<4x!pphlo.pub<f32>>
+    return %0 : tensor<4x!pphlo.pub<f32>>
+})");
+
+  std::vector<float> expect = {1, 2, 3, 4};
+  r.verifyOutput(expect.data());
+}
+
+TEST_P(ExecutorTest, NonComplexImag) {
+  Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
+           std::get<2>(GetParam()));
+
+  r.addInput(std::vector<float>{1, 2, 3, 4});
+
+  r.run(R"(
+func.func @main(%arg0:tensor<4x!pphlo.pub<f32>>) -> (tensor<4x!pphlo.pub<f32>>) {
+    %0 = "pphlo.imag"(%arg0) : (tensor<4x!pphlo.pub<f32>>) -> tensor<4x!pphlo.pub<f32>>
+    return %0 : tensor<4x!pphlo.pub<f32>>
+})");
+
+  std::vector<float> expect = {0, 0, 0, 0};
+  r.verifyOutput(expect.data());
+}
+
 TEST_P(ExecutorTest, SimpleBitcast) {
   GTEST_SKIP();
 

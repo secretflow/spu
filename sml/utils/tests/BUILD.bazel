@@ -11,15 +11,16 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+load("@rules_python//python:defs.bzl", "py_test")
 
-from .example_impl import example
+package(default_visibility = ["//visibility:public"])
 
-from .example_binary_impl import example_binary
-
-# DO-NOT-EDIT:ADD_IMPORT
-
-__all__ = [
-    # "example",
-    # "example_binary",
-    # DO-NOT-EDIT:EOL
-]
+py_test(
+    name = "extmath_test",
+    srcs = ["extmath_test.py"],
+    deps = [
+        "//sml/utils:extmath",
+        "//spu:init",
+        "//spu/utils:simulation",
+    ],
+)

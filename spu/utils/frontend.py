@@ -21,6 +21,10 @@ from cachetools import LRUCache, cached
 from .. import api as spu_api
 from .. import spu_pb2
 
+from threading import Lock
+
+_jax_lock = Lock()
+
 
 def _jax_compilation_key(
     fn: Callable, static_argnums, static_argnames, args: List, kwargs: Dict
@@ -160,6 +164,8 @@ def compile(
     if kind == Kind.JAX:
         import jax
 
+        _jax_lock.acquire()
+
         patches = _patch_jax()
 
         ir_text, output = _jax_compilation(
@@ -167,6 +173,8 @@ def compile(
         )
 
         _restore_jax_patch(patches)
+
+        _jax_lock.release()
 
         output_flat, _ = jax.tree_util.tree_flatten(output)
         output_names = outputNameGen(output_flat)

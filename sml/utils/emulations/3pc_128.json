@@ -28,9 +28,11 @@
                 ],
                 "runtime_config": {
                     "protocol": "ABY3",
-                    "field": "FM64",
-                    "enable_pphlo_profile": true,
-                    "enable_hal_profile": true
+                    "field": "FM128",
+                    "fxp_fraction_bits": 30,
+                    "enable_pphlo_profile": false,
+                    "enable_hal_profile": false,
+                    "enable_pphlo_trace": false
                 }
             }
         },
