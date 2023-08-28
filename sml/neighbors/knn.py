@@ -15,6 +15,7 @@
 import jax.numpy as jnp
 from jax import lax, vmap
 
+
 class KNNClassifer:
     def __init__(
         self,
