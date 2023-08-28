@@ -20,7 +20,7 @@ py_test(
     name = "knn_test",
     srcs = ["knn_test.py"],
     deps = [
-	"//sml/neighbors:knn",
+        "//sml/neighbors:knn",
         "//spu:init",
         "//spu/utils:simulation",
     ],

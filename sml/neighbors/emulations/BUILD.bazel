@@ -20,8 +20,7 @@ py_binary(
     name = "knn_emul",
     srcs = ["knn_emul.py"],
     deps = [
-	"//sml/neighbors:knn",
+        "//sml/neighbors:knn",
         "//sml/utils:emulation",
     ],
 )
-
