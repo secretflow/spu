@@ -15,74 +15,101 @@
 #pragma once
 
 #include "libspu/mpc/kernel.h"
-#include "libspu/mpc/semi2k/arithmetic.h"
 
 namespace spu::mpc::cheetah {
-
-using RandA = spu::mpc::semi2k::RandA;
-
-using P2A = spu::mpc::semi2k::P2A;
-
-using A2P = spu::mpc::semi2k::A2P;
-
-using V2A = spu::mpc::semi2k::V2A;
-
-using A2V = spu::mpc::semi2k::A2V;
-
-using NotA = spu::mpc::semi2k::NotA;
-
-using AddAP = spu::mpc::semi2k::AddAP;
-
-using AddAA = spu::mpc::semi2k::AddAA;
-
-using MulAP = spu::mpc::semi2k::MulAP;
-
-using MatMulAP = spu::mpc::semi2k::MatMulAP;
-
-using LShiftA = spu::mpc::semi2k::LShiftA;
-
-class TruncA : public TruncAKernel {
+class RandA : public RandKernel {
  public:
-  static constexpr char kBindName[] = "trunc_a";
+  static constexpr char kBindName[] = "rand_a";
 
   Kind kind() const override { return Kind::Dynamic; }
 
-  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& x, size_t bits,
-                  SignType sign) const override;
-
-  bool hasMsbError() const override { return false; }
-
-  TruncLsbRounding lsbRounding() const override {
-    return TruncLsbRounding::Probabilistic;
-  }
+  NdArrayRef proc(KernelEvalContext* ctx, const Shape& shape) const override;
 };
 
-class MsbA2B : public UnaryKernel {
+class P2A : public UnaryKernel {
  public:
-  static constexpr char kBindName[] = "msb_a2b";
-
-  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& x) const override;
-};
-
-class EqualAA : public BinaryKernel {
- public:
-  static constexpr char kBindName[] = "equal_aa";
+  static constexpr char kBindName[] = "p2a";
 
   Kind kind() const override { return Kind::Dynamic; }
 
-  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& x,
-                  const NdArrayRef& y) const override;
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in) const override;
 };
 
-class EqualAP : public BinaryKernel {
+class A2P : public UnaryKernel {
  public:
-  static constexpr char kBindName[] = "equal_ap";
+  static constexpr char kBindName[] = "a2p";
 
   Kind kind() const override { return Kind::Dynamic; }
 
-  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& x,
-                  const NdArrayRef& y) const override;
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in) const override;
 };
+
+class A2V : public RevealToKernel {
+ public:
+  static constexpr char kBindName[] = "a2v";
+
+  Kind kind() const override { return Kind::Dynamic; }
+
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in,
+                  size_t rank) const override;
+};
+
+class V2A : public UnaryKernel {
+ public:
+  static constexpr char kBindName[] = "v2a";
+
+  Kind kind() const override { return Kind::Dynamic; }
+
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in) const override;
+};
+
+class NotA : public UnaryKernel {
+ public:
+  static constexpr char kBindName[] = "not_a";
+
+  ce::CExpr latency() const override { return ce::Const(0); }
+
+  ce::CExpr comm() const override { return ce::Const(0); }
+
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in) const override;
+};
+
+class AddAP : public BinaryKernel {
+ public:
+  static constexpr char kBindName[] = "add_ap";
+
+  ce::CExpr latency() const override { return ce::Const(0); }
+
+  ce::CExpr comm() const override { return ce::Const(0); }
+
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
+                  const NdArrayRef& rhs) const override;
+};
+
+class AddAA : public BinaryKernel {
+ public:
+  static constexpr char kBindName[] = "add_aa";
+
+  ce::CExpr latency() const override { return ce::Const(0); }
+
+  ce::CExpr comm() const override { return ce::Const(0); }
+
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
+                  const NdArrayRef& rhs) const override;
+};
+
+class MulAP : public BinaryKernel {
+ public:
+  static constexpr char kBindName[] = "mul_ap";
+
+  ce::CExpr latency() const override { return ce::Const(0); }
+
+  ce::CExpr comm() const override { return ce::Const(0); }
+
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
+                  const NdArrayRef& rhs) const override;
+};
+/// Kernels that idenetical to semi2k ///
 
 class MulA1B : public BinaryKernel {
  public:
@@ -102,10 +129,27 @@ class MulAA : public BinaryKernel {
   NdArrayRef mulWithBeaver(KernelEvalContext* ctx, const NdArrayRef& lhs,
                            const NdArrayRef& rhs) const;
 
+  NdArrayRef squareDirectly(KernelEvalContext* ctx, const NdArrayRef& x) const;
+
  public:
   static constexpr char kBindName[] = "mul_aa";
 
   Kind kind() const override { return Kind::Dynamic; }
+
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& x,
+                  const NdArrayRef& y) const override;
+};
+
+////////////////////////////////////////////////////////////////////
+// matmul family
+////////////////////////////////////////////////////////////////////
+class MatMulAP : public MatmulKernel {
+ public:
+  static constexpr char kBindName[] = "mmul_ap";
+
+  ce::CExpr latency() const override { return ce::Const(0); }
+
+  ce::CExpr comm() const override { return ce::Const(0); }
 
   NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& x,
                   const NdArrayRef& y) const override;
@@ -116,7 +160,8 @@ class MatMulAA : public MatmulKernel {
   static constexpr char kBindName[] = "mmul_aa";
 
   Kind kind() const override { return Kind::Dynamic; }
-
+  // LHS: m x k
+  // RHS: k x n
   NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& x,
                   const NdArrayRef& y) const override;
 };
@@ -130,6 +175,93 @@ class Conv2DAA : public Conv2DKernel {
   NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& tensor,
                   const NdArrayRef& filter, int64_t stride_h,
                   int64_t stride_w) const override;
+};
+
+class TruncA : public TruncAKernel {
+ public:
+  static constexpr char kBindName[] = "trunc_a";
+
+  Kind kind() const override { return Kind::Dynamic; }
+
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& x, size_t bits,
+                  SignType sign) const override;
+
+  bool hasMsbError() const override { return false; }
+
+  TruncLsbRounding lsbRounding() const override {
+    return TruncLsbRounding::Probabilistic;
+  }
+};
+
+class LShiftA : public ShiftKernel {
+ public:
+  static constexpr char kBindName[] = "lshift_a";
+
+  ce::CExpr latency() const override { return ce::Const(0); }
+
+  ce::CExpr comm() const override { return ce::Const(0); }
+
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in,
+                  size_t bits) const override;
+};
+
+class MsbA2B : public UnaryKernel {
+ public:
+  static constexpr char kBindName[] = "msb_a2b";
+
+  MsbA2B(size_t nbits = 0) : nbits_(nbits) {}
+
+  Kind kind() const override { return Kind::Dynamic; }
+
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& x) const override;
+
+ private:
+  size_t nbits_;
+};
+
+class EqualAA : public BinaryKernel {
+ public:
+  static constexpr char kBindName[] = "equal_aa";
+
+  EqualAA(size_t nbits = 0) : nbits_(nbits) {}
+
+  Kind kind() const override { return Kind::Dynamic; }
+
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& x,
+                  const NdArrayRef& y) const override;
+
+ private:
+  size_t nbits_;
+};
+
+class EqualAP : public BinaryKernel {
+ public:
+  static constexpr char kBindName[] = "equal_ap";
+
+  Kind kind() const override { return Kind::Dynamic; }
+
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& x,
+                  const NdArrayRef& y) const override;
+};
+
+class LessAP : public BinaryKernel {
+ public:
+  static constexpr char kBindName[] = "f_less_ap";
+
+  Kind kind() const override { return Kind::Dynamic; }
+
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& x,
+                  const NdArrayRef& y) const override;
+};
+
+class LessPA : public BinaryKernel {
+ public:
+  static constexpr char kBindName[] = "f_less_pa";
+
+  Kind kind() const override { return Kind::Dynamic; }
+
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& x,
+                  const NdArrayRef& y) const override;
 };
 
 }  // namespace spu::mpc::cheetah

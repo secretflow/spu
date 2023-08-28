@@ -78,6 +78,10 @@ void populateRuntimeConfig(RuntimeConfig& cfg) {
     }
   }
 
+  if (cfg.sine_cosine_iters() == 0) {
+    cfg.set_sine_cosine_iters(10);  // Default
+  }
+
   // inter op concurrency
   if (cfg.experimental_enable_inter_op_par()) {
     cfg.set_experimental_inter_op_concurrency(

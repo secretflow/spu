@@ -38,7 +38,7 @@ Value reshape(SPUContext* ctx, const Value& in, const Shape& to_shape);
 // @param end_indices, the end indices
 // @param strides, the strides
 Value slice(SPUContext* ctx, const Value& input, const Index& start_indices,
-            const Index& end_indices, const Strides& strides);
+            const Index& end_indices, const Strides& strides = {});
 
 /// This is a special slice for single element at indices
 // @returns a array with empty shape (scalar)

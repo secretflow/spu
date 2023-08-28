@@ -30,8 +30,7 @@
                     "protocol": "ABY3",
                     "field": "FM64",
                     "enable_pphlo_profile": true,
-                    "enable_hal_profile": true,
-                    "enable_pphlo_trace": false
+                    "enable_hal_profile": true
                 }
             }
         },

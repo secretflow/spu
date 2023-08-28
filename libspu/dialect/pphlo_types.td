@@ -70,4 +70,13 @@ def PPHLO_IntTensor : StaticShapeTensorOf<[PPHLO_PublicIntType, PPHLO_SecretIntT
 def PPHLO_FpTensor : StaticShapeTensorOf<[PPHLO_PublicFpType, PPHLO_SecretFpType]>;
 def PPHLO_ScalarIntTensor : 0DTensorOf<[PPHLO_PublicIntType, PPHLO_SecretIntType]>;
 
+def PPHLO_PublicComplexType : Type<And<[PPHLO_PublicType.predicate,
+    CPred<"$_self.cast<::mlir::pphlo::PublicType>().getBase().isa<::mlir::ComplexType>()">]>, "public complex type", "::pphlo::PubComplexType">;
+
+def PPHLO_SecretComplexType : Type<And<[PPHLO_SecretType.predicate,
+    CPred<"$_self.cast<::mlir::pphlo::SecretType>().getBase().isa<::mlir::ComplexType>()">]>, "secret complex type", "::pphlo::SecComplexType">;
+
+def PPHLO_ComplexTensor :  StaticShapeTensorOf<[PPHLO_PublicComplexType, PPHLO_SecretComplexType]>;
+def PPHLO_FpOrComplexTensor :  StaticShapeTensorOf<[PPHLO_PublicComplexType, PPHLO_SecretComplexType, PPHLO_PublicFpType, PPHLO_SecretFpType]>;
+
 #endif  // SPU_DIALECT_PPHLO_TYPES

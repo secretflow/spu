@@ -615,4 +615,56 @@ Value f_sigmoid(SPUContext* ctx, const Value& x) {
   }
 }
 
+// Ref:
+// https://github.com/facebookresearch/CrypTen/blob/f07c6b7e7a9d2e6ddce260929ef9aaec4addce3a/crypten/common/functions/approximations.py#L224
+std::pair<Value, Value> sine_cosine_apprix(SPUContext* ctx, const Value& x) {
+  int64_t iteration = ctx->config().sine_cosine_iters();
+
+  // Normalize input to [-pi, pi]
+  // theta - TWO_PI * Math.floor((theta + Math.PI) / TWO_PI)
+  auto pi = constant(ctx, M_PI, x.dtype(), x.shape());
+  auto two_pi = constant(ctx, 2 * M_PI, x.dtype(), x.shape());
+  auto normalized = f_div(ctx, f_add(ctx, x, pi), two_pi);
+  normalized = f_mul(ctx, f_floor(ctx, normalized), two_pi);
+  normalized = f_sub(ctx, x, normalized);
+
+  auto re = constant(ctx, 1.0F, x.dtype(), x.shape());
+  auto im =
+      f_div(ctx, normalized,
+            constant(ctx, std::pow(2.0F, iteration), x.dtype(), x.shape()));
+  for (int64_t idx = 0; idx < iteration; ++idx) {
+    auto a2 = f_square(ctx, re);
+    auto b2 = f_square(ctx, im);
+    im = f_mul(ctx, im, re);
+    im = _mul(ctx, im, constant(ctx, 2, DT_I32, x.shape())).setDtype(x.dtype());
+    re = f_sub(ctx, a2, b2);
+  }
+
+  return {re, im};
+}
+
+Value f_sine(SPUContext* ctx, const Value& x) {
+  SPU_TRACE_HAL_DISP(ctx, x);
+
+  SPU_ENFORCE(x.isFxp());
+
+  if (x.isPublic()) {
+    return f_sine_p(ctx, x);
+  }
+
+  return sine_cosine_apprix(ctx, x).second;
+}
+
+Value f_cosine(SPUContext* ctx, const Value& x) {
+  SPU_TRACE_HAL_DISP(ctx, x);
+
+  SPU_ENFORCE(x.isFxp());
+
+  if (x.isPublic()) {
+    return f_cosine_p(ctx, x);
+  }
+
+  return sine_cosine_apprix(ctx, x).first;
+}
+
 }  // namespace spu::kernel::hal

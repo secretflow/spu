@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <complex>
 #include <numeric>
 
 #include "fmt/format.h"
@@ -87,6 +88,10 @@ std::ostream& operator<<(std::ostream& os, const DataType& dtype);
   FN(PT_I128, int128_t, I128)    \
   FN(PT_U128, uint128_t, U128)   \
   FN(PT_BOOL, bool, I1)
+
+#define FOREACH_COMPLEX_PT_TYPES(FN)     \
+  FN(PT_CF32, std::complex<float>, CF32) \
+  FN(PT_CF64, std::complex<double>, CF64)
 
 #define FOREACH_PT_TYPES(FN) \
   FOREACH_INT_PT_TYPES(FN)   \

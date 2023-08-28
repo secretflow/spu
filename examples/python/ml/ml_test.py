@@ -145,7 +145,7 @@ class UnitTests(unittest.TestCase):
         from examples.python.ml.jax_lr import jax_lr
 
         w, b = profile_test_point(jax_lr.run_on_spu)
-        score = jax_lr.compute_score(w, b, 'spu')
+        score = jax_lr.compute_score(ppd.get(w), ppd.get(b), 'spu')
 
         self.assertGreater(score, 0.95)
 
@@ -222,6 +222,13 @@ class UnitTests(unittest.TestCase):
         score = torch_experiment.run_inference_on_spu(model)
         self.assertGreater(score, 0.9)
 
+    def test_save_and_load_model(self):
+        from examples.python.ml.jax_lr import jax_lr
+
+        score = jax_lr.save_and_load_model()
+        self.assertGreater(score, 0.9)
+        pass
+
 
 def suite():
     suite = unittest.TestSuite()
@@ -237,6 +244,8 @@ def suite():
     suite.addTest(UnitTests('test_ss_xgb'))
     suite.addTest(UnitTests('test_stax_mnist_classifier'))
     suite.addTest(UnitTests('test_stax_nn'))
+    suite.addTest(UnitTests('test_save_and_load_model'))
+    # should put JAX tests above
     suite.addTest(UnitTests('test_tf_experiment'))
     suite.addTest(UnitTests('test_torch_experiment'))
     return suite

@@ -30,8 +30,9 @@ spu_cc_library(
     hdrs = ["cheetah_dot.h"],
     deps = [
         ":arith_comm",
-        ":conv2d_prot",
         ":matmat_prot",
+        "//libspu/mpc/cheetah/rlwe:packlwes",
+        "@yacl//yacl/utils:elapsed_timer",
     ],
 )
 
@@ -52,24 +53,6 @@ spu_cc_library(
 )
 
 spu_cc_library(
-    name = "conv2d_prot",
-    srcs = [
-        "conv2d_helper.cc",
-        "conv2d_prot.cc",
-        "tensor_encoder.cc",
-    ],
-    hdrs = [
-        "conv2d_helper.h",
-        "conv2d_prot.h",
-        "tensor_encoder.h",
-    ],
-    deps = [
-        ":arith_comm",
-        "//libspu/core:ndarray_ref",
-    ],
-)
-
-spu_cc_library(
     name = "arith_comm",
     srcs = [
         "common.cc",
@@ -81,7 +64,6 @@ spu_cc_library(
     ],
     deps = [
         "//libspu/core:prelude",
-        "//libspu/mpc/cheetah:array_ref",
         "//libspu/mpc/cheetah/rlwe:cheetah_rlwe",
         "@yacl//yacl/link",
     ],
@@ -92,16 +74,6 @@ spu_cc_test(
     srcs = ["matmat_prot_test.cc"],
     deps = [
         ":matmat_prot",
-        "@com_github_xtensor_xtensor//:xtensor",
-    ],
-)
-
-spu_cc_test(
-    name = "conv2d_prot_test",
-    size = "large",
-    srcs = ["conv2d_prot_test.cc"],
-    deps = [
-        ":conv2d_prot",
         "@com_github_xtensor_xtensor//:xtensor",
     ],
 )
@@ -121,18 +93,6 @@ spu_cc_test(
     name = "cheetah_dot_test",
     size = "large",
     srcs = ["cheetah_dot_test.cc"],
-    deps = [
-        ":cheetah_dot",
-        "//libspu/mpc/utils:ring_ops",
-        "//libspu/mpc/utils:simulate",
-        "@com_github_xtensor_xtensor//:xtensor",
-    ],
-)
-
-spu_cc_test(
-    name = "cheetah_conv2d_test",
-    size = "large",
-    srcs = ["cheetah_conv2d_test.cc"],
     deps = [
         ":cheetah_dot",
         "//libspu/mpc/utils:ring_ops",

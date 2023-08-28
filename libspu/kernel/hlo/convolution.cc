@@ -57,38 +57,6 @@ spu::Value Convolution2D(SPUContext *ctx, const spu::Value &input,
   SPU_ENFORCE_EQ(hh, (H - h) / sh + 1);
   SPU_ENFORCE_EQ(ww, (W - w) / sw + 1);
 
-  if (ctx->config().protocol() == ProtocolKind::CHEETAH &&  //
-      input.isSecret() && kernel.isSecret()) {
-    // NOTE(juhou): ad-hoc optimization for the current 2PC conv2d
-    // implementation. When N is large or small kernel size, it would
-    // be better to compute im2col because the current conv2d implementation
-    // needs `N` iterations to handle batched input.
-    if (N <= h * w) {
-      // ad-hoc optimization for strided conv2d when h=1
-      auto in = input;
-      {
-        Strides strides = {1, 1, 1, 1};
-        if (kernel.shape()[0] == 1) {
-          strides[1] = sh;
-        }
-        if (kernel.shape()[1] == 1) {
-          strides[2] = sw;
-        }
-
-        if (std::any_of(strides.begin(), strides.end(),
-                        [](int64_t s) { return s > 1; })) {
-          const Index start = {0, 0, 0, 0};
-          const Index end = Index(in.shape().begin(), in.shape().end());
-          in = hal::slice(ctx, in, start, end, strides);
-          sh = 1;
-          sw = 1;
-        }
-      }
-
-      return hal::conv2d(ctx, in, kernel, {sh, sw});
-    }
-  }
-
   // Fallback, use im2col + dot to implement convolution
   {
     // expand the image according to the kernel size.

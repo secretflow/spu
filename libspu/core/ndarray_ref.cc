@@ -258,6 +258,7 @@ NdArrayRef NdArrayRef::broadcast_to(const Shape& to_shape,
 
   Strides new_strides(to_shape.size(), 0);
 
+  // TODO: check to_shape match broadcasting rules.
   if (!in_dims.empty()) {
     for (size_t idx = 0; idx < in_dims.size(); ++idx) {
       new_strides[in_dims[idx]] = strides()[idx];

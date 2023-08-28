@@ -394,11 +394,11 @@ ArrayRef Conv2DProtocol::ParseResult(FieldType field, const Meta &meta,
   return ParseResult(field, meta, rlwe, tencoder_->ms_helper());
 }
 
-ArrayRef Conv2DProtocol::ParseResult(
-    FieldType field, const Meta &meta, absl::Span<const RLWEPt> rlwe,
-    const ModulusSwitchHelper &ms_helper) const {
+ArrayRef Conv2DProtocol::ParseResult(FieldType field, const Meta &meta,
+                                     absl::Span<const RLWEPt> rlwe,
+                                     const ModulusSwitchHelper &msh) const {
   SPU_ENFORCE_EQ(rlwe.size(), GetOutSize(meta));
-  size_t expected_n = poly_deg_ * ms_helper.coeff_modulus_size();
+  size_t expected_n = poly_deg_ * msh.coeff_modulus_size();
   SPU_ENFORCE(std::all_of(rlwe.data(), rlwe.data() + rlwe.size(),
                           [expected_n](const RLWEPt &pt) {
                             return pt.coeff_count() == expected_n;
@@ -428,8 +428,8 @@ ArrayRef Conv2DProtocol::ParseResult(
         SPU_ENFORCE_EQ(static_cast<int64_t>(coefficients.size()),
                        calcNumel(slice_shape));
 
-        auto computed = toNdArray(
-            ms_helper.ModulusDownRNS(field, MakeSpan(rlwe[poly_idx++])));
+        auto computed =
+            msh.ModulusDownRNS(field, {poly_deg_}, MakeSpan(rlwe[poly_idx++]));
         auto *coeff_iter = coefficients.data();
 
         DISPATCH_ALL_FIELDS(field, "ParseResult", [&]() {

@@ -127,8 +127,9 @@ std::vector<spu::Value> ReduceWindowWithoutDilation(
   std::vector<spu::Value> expanded;
   for (size_t idx = 0; idx < nargs; ++idx) {
     const auto &input = inputs[idx];
-    expanded.emplace_back(
-        expandWindow(ctx, input, window_shape, window_strides, window_padding));
+    const auto &init_val = init_values[idx];
+    expanded.emplace_back(expandWindow(ctx, input, window_shape, window_strides,
+                                       window_padding, init_val));
   }
 
   if (last_operand_is_window_mask) {
@@ -209,55 +210,73 @@ std::vector<spu::Value> ReduceWindowImpl(
   SPU_ENFORCE(!last_operand_is_window_mask);
 
   const int64_t ndims = inputs[0].shape().size();
-  std::vector<int64_t> window_index(ndims, 0);
   int64_t nargs = inputs.size();
 
-  // Init...
-  std::vector<spu::Value> rets(nargs);
-  for (int64_t idx = 0; idx < nargs; ++idx) {
-    rets[idx] = hal::expand(ctx, init_values[idx], ret_shape);
+  SPU_ENFORCE_EQ(ndims, static_cast<int64_t>(config.window_padding.size()));
+  SPU_ENFORCE_EQ(ndims, static_cast<int64_t>(config.window_dilations.size()));
+
+  Sizes padding_lo(ndims);
+  Sizes padding_hi(ndims);
+  Sizes padding_in(ndims);
+
+  for (size_t idx = 0; idx < config.window_padding.size(); idx++) {
+    padding_lo[idx] = config.window_padding[idx].first;
+    padding_hi[idx] = config.window_padding[idx].second;
+    padding_in[idx] = config.base_dilations[idx] - 1;
   }
 
-  // For each resulting dimension, calculate and assign computed value.
-  auto evaluate_impl =
-      [&](absl::Span<int64_t const> output_index) -> std::vector<spu::Value> {
-    std::vector<spu::Value> ret;
-    RunOnWindowIndex(
-        config.window_shape, config.window_strides, config.window_dilations,
-        config.window_padding, inputs[0].shape(), config.base_dilations,
-        output_index, window_index, [&](const Index &operand_index) {
-          for (int64_t idx = 0; idx < nargs; ++idx) {
-            auto element =
-                hal::slice_scalar_at(ctx, inputs[idx], operand_index);
-            ret.emplace_back(std::move(element));
-          }
-        });
-    return ret;
-  };
+  const Strides &S = config.window_strides;
+  const Shape &W = config.window_shape;
 
-  // For each window index
-  std::vector<spu::Value> batches(nargs);
+  // padding
+  std::vector<spu::Value> padded_inputs;
   for (int64_t idx = 0; idx < nargs; ++idx) {
-    batches[idx] =
-        hal::expand(ctx, hal::slice_scalar_at(ctx, inputs[idx], {}), ret_shape);
+    padded_inputs.emplace_back(hal::pad(ctx, inputs[idx], init_values[idx],
+                                        padding_lo, padding_hi, padding_in));
   }
 
+  // iterate windows to reduce
+  // reduce dims
+  const auto in_shape = padded_inputs[0].shape();
+  Axes reduce_dims(in_shape.size(), 0);
+  std::iota(reduce_dims.begin(), reduce_dims.end(), 0);
+
+  Index window_index(ndims, 0);
+  std::vector<std::vector<spu::Value>> reduced_rets;
   do {
-    // Collect one element from each window
-    Index output_index(ret_shape.size(), 0);
-    do {
-      auto r = evaluate_impl(output_index);
-      if (!r.empty()) {
-        for (int64_t idx = 0; idx < nargs; ++idx) {
-          batches[idx].data().update_slice(r[idx].data(), output_index);
-        }
-      }
-    } while (bumpIndices(ret_shape, absl::MakeSpan(output_index)));
+    Index start(ndims);
+    Index end(ndims);
+    for (int64_t dim = 0; dim < ndims; dim++) {
+      start[dim] = window_index[dim] * S[dim];
+      end[dim] = start[dim] + W[dim] +
+                 (W[dim] - 1) * (config.window_dilations[dim] - 1);
+    }
+    std::vector<Value> windows(nargs);
+    for (int64_t idx = 0; idx < nargs; ++idx) {
+      windows[idx] = hal::slice(ctx, padded_inputs[idx], start, end,
+                                (Strides)config.window_dilations);
+    }
+    reduced_rets.emplace_back(
+        Reduce(ctx, windows, init_values, reduce_dims, reducer));
+  } while (bumpIndices(ret_shape, absl::MakeSpan(window_index)));
 
-    // Now run the batch
-    rets = reducer(rets, batches);
+  SPU_ENFORCE_EQ(static_cast<int64_t>(reduced_rets.size()), ret_shape.numel());
 
-  } while (bumpIndices(config.window_shape, absl::MakeSpan(window_index)));
+  std::vector<spu::Value> rets;
+  for (int64_t input_idx = 0; input_idx < nargs; ++input_idx) {
+    std::vector<Value> reduced_values;
+
+    for (size_t widx = 0; widx < reduced_rets.size(); ++widx) {
+      Shape new_shape = reduced_rets[widx][input_idx].shape();
+      new_shape.insert(new_shape.begin(), 1);
+
+      reduced_values.emplace_back(
+          hal::reshape(ctx, reduced_rets[widx][input_idx], new_shape));
+    }
+
+    rets.emplace_back(
+        hal::reshape(ctx, hal::concatenate(ctx, reduced_values, 0), ret_shape));
+  }
 
   return rets;
 }
@@ -493,7 +512,8 @@ std::pair<spu::Value, spu::Value> ArgMax(SPUContext *ctx,
   auto mask = hal::constant(ctx, e, DT_I1);
 
   auto result = ReduceWindowImpl(
-      ctx, {input, mask}, {}, ret_shape, config, true, true,
+      ctx, {input, mask}, {spu::Value(), spu::Value()}, ret_shape, config, true,
+      true,
       [&](absl::Span<spu::Value const> lhs,
           absl::Span<spu::Value const> rhs) -> std::vector<spu::Value> {
         SPU_ENFORCE(lhs.size() == 2);

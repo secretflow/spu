@@ -459,6 +459,22 @@ Value tanh(SPUContext* ctx, const Value& x) {
   return f_tanh(ctx, x);
 }
 
+Value sine(SPUContext* ctx, const Value& x) {
+  SPU_TRACE_HAL_DISP(ctx, x);
+
+  SPU_ENFORCE(x.isFxp());
+
+  return f_sine(ctx, x);
+}
+
+Value cosine(SPUContext* ctx, const Value& x) {
+  SPU_TRACE_HAL_DISP(ctx, x);
+
+  SPU_ENFORCE(x.isFxp());
+
+  return f_cosine(ctx, x);
+}
+
 Value rsqrt(SPUContext* ctx, const Value& x) {
   SPU_TRACE_HAL_DISP(ctx, x);
 

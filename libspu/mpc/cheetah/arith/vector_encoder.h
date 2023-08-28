@@ -16,7 +16,7 @@
 
 #include "absl/types/span.h"
 
-#include "libspu/mpc/cheetah/array_ref.h"
+#include "libspu/core/ndarray_ref.h"
 #include "libspu/mpc/cheetah/rlwe/modswitch_helper.h"
 #include "libspu/mpc/cheetah/rlwe/types.h"
 
@@ -25,7 +25,7 @@ namespace spu::mpc::cheetah {
 class VectorEncoder {
  public:
   explicit VectorEncoder(const seal::SEALContext &context,
-                         const ModulusSwitchHelper &ms_helper);
+                         const ModulusSwitchHelper &msh);
   // clang-format off
   // Math:
   //    Forward(x) * Backward(y) mod X^N + 1 gives the inner product <x, y>
@@ -33,17 +33,19 @@ class VectorEncoder {
   // For example Enc(Forward(Delta*x)) * Backward(y) can give the <x,  y> without error.
   // Or we can encrypt the backward part, i.e., Enc(Backward(Delta*y)) * Forward(x) also gives the <x, y> without error.
   // clang-format on
-  void Forward(const ArrayRef &vec, RLWEPt *out, bool scaleup = true) const;
+  void Forward(const NdArrayRef &vec, RLWEPt *out,
+               bool scale_delta = true) const;
 
-  void Backward(const ArrayRef &vec, RLWEPt *out, bool scaleup = false) const;
+  void Backward(const NdArrayRef &vec, RLWEPt *out,
+                bool scale_delta = false) const;
 
-  const ModulusSwitchHelper &ms_helper() const { return *ms_helper_; }
+  const ModulusSwitchHelper &ms_helper() const { return *msh_; }
 
   size_t poly_degree() const { return poly_deg_; }
 
  private:
   size_t poly_deg_{0};
-  std::shared_ptr<ModulusSwitchHelper> ms_helper_;
+  std::shared_ptr<ModulusSwitchHelper> msh_;
 };
 
 }  // namespace spu::mpc::cheetah

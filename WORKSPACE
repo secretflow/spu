@@ -38,6 +38,12 @@ rules_foreign_cc_dependencies(
     register_preinstalled_tools = True,
 )
 
+load("@rules_cuda//cuda:repositories.bzl", "register_detected_cuda_toolchains", "rules_cuda_dependencies")
+
+rules_cuda_dependencies()
+
+register_detected_cuda_toolchains()
+
 load("@xla//:workspace4.bzl", "xla_workspace4")
 
 xla_workspace4()
@@ -64,3 +70,9 @@ python_configure(
     name = "local_config_python",
     python_version = "3",
 )
+
+load("@rules_proto_grpc//:repositories.bzl", "rules_proto_grpc_repos", "rules_proto_grpc_toolchains")
+
+rules_proto_grpc_toolchains()
+
+rules_proto_grpc_repos()
