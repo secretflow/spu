@@ -20,7 +20,7 @@
 
 #include "libspu/core/xt_helper.h"
 #include "libspu/mpc/cheetah/ot/basic_ot_prot.h"
-#include "libspu/mpc/semi2k/type.h"
+#include "libspu/mpc/cheetah/type.h"
 #include "libspu/mpc/utils/ring_ops.h"
 #include "libspu/mpc/utils/simulate.h"
 
@@ -39,12 +39,12 @@ INSTANTIATE_TEST_SUITE_P(
 
 TEST_P(EqualProtTest, Basic) {
   size_t kWorldSize = 2;
-  int64_t n = 11;
+  Shape shape = {10, 11, 12};
   FieldType field = GetParam();
 
   NdArrayRef inp[2];
-  inp[0] = ring_rand(field, {n});
-  inp[1] = ring_rand(field, {n});
+  inp[0] = ring_rand(field, shape);
+  inp[1] = ring_rand(field, shape);
 
   DISPATCH_ALL_FIELDS(field, "", [&]() {
     auto xinp0 = xt_mutable_adapt<ring2k_t>(inp[0]);
@@ -52,22 +52,25 @@ TEST_P(EqualProtTest, Basic) {
     std::copy_n(xinp1.data(), 5, xinp0.data());
   });
 
-  ArrayRef eq_oup[2];
+  NdArrayRef eq_oup[2];
   utils::simulate(kWorldSize, [&](std::shared_ptr<yacl::link::Context> ctx) {
     auto conn = std::make_shared<Communicator>(ctx);
     int rank = ctx->Rank();
     auto base = std::make_shared<BasicOTProtocols>(conn);
     EqualProtocol eq_prot(base);
-    eq_oup[rank] = eq_prot.Compute(flatten(inp[rank]));
+    eq_oup[rank] = eq_prot.Compute(inp[rank]);
   });
 
-  DISPATCH_ALL_FIELDS(field, "", [&]() {
-    auto xeq0 = ArrayView<ring2k_t>(eq_oup[0]);
-    auto xeq1 = ArrayView<ring2k_t>(eq_oup[1]);
-    auto xinp0 = xt_adapt<ring2k_t>(inp[0]);
-    auto xinp1 = xt_adapt<ring2k_t>(inp[1]);
+  SPU_ENFORCE_EQ(eq_oup[0].shape(), shape);
+  SPU_ENFORCE_EQ(eq_oup[1].shape(), shape);
 
-    for (int64_t i = 0; i < n; ++i) {
+  DISPATCH_ALL_FIELDS(field, "", [&]() {
+    auto xeq0 = NdArrayView<ring2k_t>(eq_oup[0]);
+    auto xeq1 = NdArrayView<ring2k_t>(eq_oup[1]);
+    auto xinp0 = NdArrayView<ring2k_t>(inp[0]);
+    auto xinp1 = NdArrayView<ring2k_t>(inp[1]);
+
+    for (int64_t i = 0; i < shape.numel(); ++i) {
       bool expected = xinp0[i] == xinp1[i];
       bool got_eq = xeq0[i] ^ xeq1[i];
       EXPECT_EQ(expected, got_eq);

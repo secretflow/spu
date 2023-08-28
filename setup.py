@@ -24,7 +24,7 @@ import sys
 import setuptools
 import setuptools.command.build_ext
 import platform
-from datetime import date
+from datetime import datetime, timedelta
 
 logger = logging.getLogger(__name__)
 
@@ -40,8 +40,9 @@ pyd_suffix = ".so"
 
 
 def add_date_to_version(*filepath):
-    today = date.today()
-    dstr = today.strftime("%Y%m%d")
+    local_time = datetime.utcnow()
+    chn_time = local_time + timedelta(hours=8)
+    dstr = chn_time.strftime("%Y%m%d")
     with open(os.path.join(ROOT_DIR, *filepath), "r") as fp:
         content = fp.read()
 

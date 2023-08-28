@@ -20,7 +20,6 @@
 #include "seal/util/polyarithsmallmod.h"
 #include "yacl/crypto/utils/rand.h"
 
-#include "libspu/core/xt_helper.h"
 #include "libspu/mpc/cheetah/rlwe/types.h"
 #include "libspu/mpc/cheetah/rlwe/utils.h"
 #include "libspu/mpc/utils/ring_ops.h"
@@ -42,10 +41,6 @@ class MatMatProtTest
   uint64_t prng_counter_;
 
   inline uint32_t FieldBitLen(FieldType f) const { return 8 * SizeOf(f); }
-
-  ArrayRef CPRNG(FieldType field, size_t size) {
-    return flatten(ring_rand(field, {(int64_t)size}, seed_, &prng_counter_));
-  }
 
   void SetUp() override {
     field_ = std::get<0>(GetParam());
@@ -113,12 +108,14 @@ TEST_P(MatMatProtTest, Plain) {
   meta.dims = std::get<1>(GetParam());
 
   // NOTE(juhou): Cheetah now supports strided ArrayRef
-  for (size_t stride : {1, 2, 3}) {
-    auto _lhs = CPRNG(field_, meta.dims[0] * meta.dims[1] * stride);
-    auto _rhs = CPRNG(field_, meta.dims[1] * meta.dims[2] * stride + 1);
+  for (int64_t stride : {1, 2, 3}) {
+    auto _lhs = ring_rand(field_, {meta.dims[0] * meta.dims[1] * stride});
+    auto _rhs = ring_rand(field_, {meta.dims[1] * meta.dims[2] * stride + 1});
 
-    auto lhs = _lhs.slice(0, _lhs.numel(), stride);
-    auto rhs = _rhs.slice(1, _rhs.numel(), stride);
+    auto lhs = _lhs.slice({0}, {_lhs.numel()}, {stride});
+    auto rhs = _rhs.slice({1}, {_rhs.numel()}, {stride});
+    lhs = lhs.reshape({meta.dims[0], meta.dims[1]});
+    rhs = rhs.reshape({meta.dims[1], meta.dims[2]});
 
     SPU_ENFORCE_EQ(lhs.numel(), meta.dims[0] * meta.dims[1]);
     SPU_ENFORCE_EQ(rhs.numel(), meta.dims[1] * meta.dims[2]);
@@ -128,6 +125,7 @@ TEST_P(MatMatProtTest, Plain) {
     size_t lhs_n = matmat_prot.GetLeftSize(meta);
     size_t rhs_n = matmat_prot.GetRightSize(meta);
     size_t out_n = matmat_prot.GetOutSize(meta);
+
     std::vector<RLWEPt> lhs_poly(lhs_n);
     std::vector<RLWEPt> rhs_poly(rhs_n);
     std::vector<RLWEPt> out_poly(out_n);
@@ -149,18 +147,16 @@ TEST_P(MatMatProtTest, Plain) {
       InvNttInplace(p, *context_);
     }
 
-    auto expected = ring_mmul(unflatten(lhs, {meta.dims[0], meta.dims[1]}),
-                              unflatten(rhs, {meta.dims[1], meta.dims[2]}));
-    auto computed = unflatten(
-        matmat_prot.ParseResult(field_, meta, absl::MakeSpan(out_poly)),
-        {meta.dims[0], meta.dims[2]});
+    auto expected = ring_mmul(lhs, rhs);
+    auto computed =
+        matmat_prot.ParseResult(field_, meta, absl::MakeSpan(out_poly));
 
     EXPECT_EQ(expected.numel(), computed.numel());
 
     DISPATCH_ALL_FIELDS(field_, "", [&]() {
-      auto xe = xt_adapt<ring2k_t>(expected);
-      auto xc = xt_adapt<ring2k_t>(computed);
-      for (size_t i = 0; i < xc.size(); ++i) {
+      auto xe = NdArrayView<ring2k_t>(expected);
+      auto xc = NdArrayView<ring2k_t>(computed);
+      for (int64_t i = 0; i < xc.numel(); ++i) {
         EXPECT_EQ(xe[i], xc[i]);
       }
     });
@@ -171,9 +167,9 @@ TEST_P(MatMatProtTest, EncLHS) {
   MatMatProtocol::Meta meta;
   meta.dims = std::get<1>(GetParam());
 
-  auto lhs = CPRNG(field_, meta.dims[0] * meta.dims[1]);
-  auto rhs = CPRNG(field_, meta.dims[1] * meta.dims[2]);
-  MatMatProtocol matmat_prot(*context_, *ms_helper_, /*mont*/ true);
+  auto lhs = ring_rand(field_, {meta.dims[0], meta.dims[1]});
+  auto rhs = ring_rand(field_, {meta.dims[1], meta.dims[2]});
+  MatMatProtocol matmat_prot(*context_, *ms_helper_);
 
   size_t lhs_n = matmat_prot.GetLeftSize(meta);
   size_t rhs_n = matmat_prot.GetRightSize(meta);
@@ -192,7 +188,6 @@ TEST_P(MatMatProtTest, EncLHS) {
   for (auto& p : rhs_poly) {
     NttInplace(p, *context_);
   }
-  matmat_prot.Montgomerize(absl::MakeSpan(rhs_poly));
 
   std::vector<RLWECt> out_ct(out_n);
   matmat_prot.Compute(absl::MakeSpan(enc_poly), absl::MakeSpan(rhs_poly), meta,
@@ -203,7 +198,9 @@ TEST_P(MatMatProtTest, EncLHS) {
   seal::Decryptor decryptor(*context_, *rlwe_sk_);
   std::vector<RLWEPt> out_poly(out_n);
   for (size_t i = 0; i < out_n; ++i) {
-    if (!out_ct[i].is_ntt_form()) evaluator.transform_to_ntt_inplace(out_ct[i]);
+    if (!out_ct[i].is_ntt_form()) {
+      evaluator.transform_to_ntt_inplace(out_ct[i]);
+    }
     decryptor.decrypt(out_ct[i], out_poly[i]);
   }
 
@@ -212,18 +209,16 @@ TEST_P(MatMatProtTest, EncLHS) {
     InvNttInplace(p, *context_);
   }
 
-  auto expected = ring_mmul(unflatten(lhs, {meta.dims[0], meta.dims[1]}),
-                            unflatten(rhs, {meta.dims[1], meta.dims[2]}));
+  auto expected = ring_mmul(lhs, rhs);
   auto computed =
-      unflatten(matmat_prot.ParseResult(field_, meta, absl::MakeSpan(out_poly)),
-                {meta.dims[0], meta.dims[2]});
+      matmat_prot.ParseResult(field_, meta, absl::MakeSpan(out_poly));
 
   EXPECT_EQ(expected.numel(), computed.numel());
 
   DISPATCH_ALL_FIELDS(field_, "", [&]() {
-    auto xe = xt_adapt<ring2k_t>(expected);
-    auto xc = xt_adapt<ring2k_t>(computed);
-    for (size_t i = 0; i < xc.size(); ++i) {
+    auto xe = NdArrayView<ring2k_t>(expected);
+    auto xc = NdArrayView<ring2k_t>(computed);
+    for (int64_t i = 0; i < xc.numel(); ++i) {
       EXPECT_EQ(xe[i], xc[i]);
     }
   });
@@ -233,8 +228,8 @@ TEST_P(MatMatProtTest, EncRHS) {
   MatMatProtocol::Meta meta;
   meta.dims = std::get<1>(GetParam());
 
-  auto lhs = CPRNG(field_, meta.dims[0] * meta.dims[1]);
-  auto rhs = CPRNG(field_, meta.dims[1] * meta.dims[2]);
+  auto lhs = ring_rand(field_, {meta.dims[0], meta.dims[1]});
+  auto rhs = ring_rand(field_, {meta.dims[1], meta.dims[2]});
   MatMatProtocol matmat_prot(*context_, *ms_helper_);
 
   size_t lhs_n = matmat_prot.GetLeftSize(meta);
@@ -264,7 +259,9 @@ TEST_P(MatMatProtTest, EncRHS) {
   seal::Decryptor decryptor(*context_, *rlwe_sk_);
   std::vector<RLWEPt> out_poly(out_n);
   for (size_t i = 0; i < out_n; ++i) {
-    if (!out_ct[i].is_ntt_form()) evaluator.transform_to_ntt_inplace(out_ct[i]);
+    if (!out_ct[i].is_ntt_form()) {
+      evaluator.transform_to_ntt_inplace(out_ct[i]);
+    }
     decryptor.decrypt(out_ct[i], out_poly[i]);
   }
 
@@ -273,18 +270,16 @@ TEST_P(MatMatProtTest, EncRHS) {
     InvNttInplace(p, *context_);
   }
 
-  auto expected = ring_mmul(unflatten(lhs, {meta.dims[0], meta.dims[1]}),
-                            unflatten(rhs, {meta.dims[1], meta.dims[2]}));
+  auto expected = ring_mmul(lhs, rhs);
   auto computed =
-      unflatten(matmat_prot.ParseResult(field_, meta, absl::MakeSpan(out_poly)),
-                {meta.dims[0], meta.dims[2]});
+      matmat_prot.ParseResult(field_, meta, absl::MakeSpan(out_poly));
 
   EXPECT_EQ(expected.numel(), computed.numel());
 
   DISPATCH_ALL_FIELDS(field_, "", [&]() {
-    auto xe = xt_adapt<ring2k_t>(expected);
-    auto xc = xt_adapt<ring2k_t>(computed);
-    for (size_t i = 0; i < xc.size(); ++i) {
+    auto xe = NdArrayView<ring2k_t>(expected);
+    auto xc = NdArrayView<ring2k_t>(computed);
+    for (int64_t i = 0; i < xc.numel(); ++i) {
       EXPECT_EQ(xe[i], xc[i]);
     }
   });

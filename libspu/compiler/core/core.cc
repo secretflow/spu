@@ -47,6 +47,8 @@ void Core::buildPipeline(mlir::PassManager *pm) {
   // lowering
   auto &optPM = pm->nest<mlir::func::FuncOp>();
   if (!options.disable_maxpooling_optimization()) {
+    // Need a cse before maxpooling
+    optPM.addPass(mlir::createCSEPass());
     optPM.addPass(mlir::pphlo::createOptimizeMaxPoolingPass());
   }
   optPM.addPass(mlir::pphlo::createDecomposeComparisonPass());

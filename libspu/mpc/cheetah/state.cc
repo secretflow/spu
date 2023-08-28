@@ -16,9 +16,30 @@
 
 #include "spdlog/spdlog.h"
 
+#include "libspu/core/context.h"
 #include "libspu/mpc/utils/ring_ops.h"
 
 namespace spu::mpc::cheetah {
+size_t InitOTState(KernelEvalContext* ctx, size_t njobs) {
+  constexpr size_t kMinWorkSize = 1500;
+  if (njobs == 0) {
+    return 0;
+  }
+  auto* comm = ctx->getState<Communicator>();
+  auto* ot_state = ctx->getState<CheetahOTState>();
+  size_t nworker = ot_state->parallel_size();
+  nworker = std::min(nworker, CeilDiv(njobs, kMinWorkSize));
+  for (size_t w = 0; w < nworker; ++w) {
+    ot_state->LazyInit(comm, w);
+  }
+  return nworker;
+}
+
+size_t CheetahOTState::parallel_size() const {
+  // NOTE(lwj): div-2 to prevent making too many threads on small CPU cores.
+  return std::max<size_t>(
+      1, std::min<size_t>(getNumberOfProc() / 2, kMaxOTParallel));
+}
 
 void CheetahMulState::makeSureCacheSize(FieldType field, int64_t numel) {
   // NOTE(juhou): make sure the lock is obtained
@@ -41,39 +62,43 @@ void CheetahMulState::makeSureCacheSize(FieldType field, int64_t numel) {
   //   where c0 = a0*b0 + <a0*b1> + <a1*b0>
   //         c1 = a1*b1 + <a0*b1> + <a1*b0>
   const int rank = mul_prot_->Rank();
-  const size_t ole_sze = mul_prot_->OLEBatchSize();
-  const auto num_ole = CeilDiv<size_t>(2 * numel, ole_sze);
-  const size_t num_beaver = (num_ole * ole_sze) / 2;
-  auto rand =
-      flatten(ring_rand(field, {static_cast<int64_t>(num_ole * ole_sze)}));
+  const int64_t ole_sze = mul_prot_->OLEBatchSize();
+  const int64_t num_ole = CeilDiv<size_t>(2 * numel, ole_sze);
+  const int64_t num_beaver = (num_ole * ole_sze) / 2;
+  auto rand = ring_rand(field, {num_ole * ole_sze});
   auto cross = mul_prot_->MulOLE(rand, rank == 0);
 
-  ArrayRef beaver[3];
-  ArrayRef a0b1, a1b0;
+  NdArrayRef beaver[3];
+  NdArrayRef a0b1;
+  NdArrayRef a1b0;
   if (rank == 0) {
-    beaver[0] = rand.slice(0, num_beaver);
-    beaver[1] = rand.slice(num_beaver, num_beaver * 2);
+    beaver[0] = rand.slice({0}, {num_beaver}, {1});
+    beaver[1] = rand.slice({num_beaver}, {num_beaver * 2}, {1});
   } else {
-    beaver[0] = rand.slice(num_beaver, num_beaver * 2);
-    beaver[1] = rand.slice(0, num_beaver);
+    beaver[0] = rand.slice({num_beaver}, {num_beaver * 2}, {1});
+    beaver[1] = rand.slice({0}, {num_beaver}, {1});
   }
-  a0b1 = cross.slice(0, num_beaver);
-  a1b0 = cross.slice(num_beaver, num_beaver * 2);
+  a0b1 = cross.slice({0}, {num_beaver}, {1});
+  a1b0 = cross.slice({num_beaver}, {num_beaver * 2}, {1});
 
-  beaver[2] = flatten(
-      ring_add(ring_add(toNdArray(cross.slice(0, num_beaver)),
-                        toNdArray(cross.slice(num_beaver, 2 * num_beaver))),
-               ring_mul(toNdArray(beaver[0]), toNdArray(beaver[1]))));
+  beaver[2] =
+      ring_add(ring_add(cross.slice({0}, {num_beaver}, {1}),
+                        cross.slice({num_beaver}, {2 * num_beaver}, {1})),
+               ring_mul(beaver[0], beaver[1]));
 
   DISPATCH_ALL_FIELDS(field, "makeSureCacheSize", [&]() {
     for (size_t i : {0, 1, 2}) {
-      auto tmp =
-          flatten(ring_zeros(field, {(int64_t)num_beaver + cached_sze_}));
-      ArrayView<const ring2k_t> old_cache(cached_beaver_[i]);
-      ArrayView<const ring2k_t> _beaver(beaver[i]);
-      ArrayView<ring2k_t> new_cache(tmp);
+      auto tmp = ring_zeros(field, {num_beaver + cached_sze_});
+      NdArrayView<ring2k_t> new_cache(tmp);
+
       // concate two array
-      pforeach(0, cached_sze_, [&](int64_t j) { new_cache[j] = old_cache[j]; });
+      if (cached_sze_ > 0) {
+        NdArrayView<const ring2k_t> old_cache(cached_beaver_[i]);
+        pforeach(0, cached_sze_,
+                 [&](int64_t j) { new_cache[j] = old_cache[j]; });
+      }
+
+      NdArrayView<const ring2k_t> _beaver(beaver[i]);
       pforeach(0, num_beaver,
                [&](int64_t j) { new_cache[cached_sze_ + j] = _beaver[j]; });
       cached_beaver_[i] = tmp;
@@ -86,21 +111,22 @@ void CheetahMulState::makeSureCacheSize(FieldType field, int64_t numel) {
   SPU_ENFORCE(cached_sze_ >= numel);
 }
 
-std::array<ArrayRef, 3> CheetahMulState::TakeCachedBeaver(FieldType field,
-                                                          int64_t numel) {
+std::array<NdArrayRef, 3> CheetahMulState::TakeCachedBeaver(FieldType field,
+                                                            int64_t numel) {
   SPU_ENFORCE(numel > 0);
   std::unique_lock guard(lock_);
   makeSureCacheSize(field, numel);
 
-  std::array<ArrayRef, 3> ret;
+  std::array<NdArrayRef, 3> ret;
   for (size_t i : {0, 1, 2}) {
     SPU_ENFORCE(cached_beaver_[i].numel() >= numel);
-    ret[i] = cached_beaver_[i].slice(0, numel);
+    ret[i] = cached_beaver_[i].slice({0}, {numel}, {1});
     if (cached_sze_ == numel) {
       // empty cache now
-      cached_beaver_[i] = ArrayRef();
+      // NOTE(lwj): should use `{0}` as empty while `{}` is a scalar
+      cached_beaver_[i] = NdArrayRef(cached_beaver_[i].eltype(), {0});
     } else {
-      cached_beaver_[i] = cached_beaver_[i].slice(numel, cached_sze_);
+      cached_beaver_[i] = cached_beaver_[i].slice({numel}, {cached_sze_}, {1});
     }
   }
 

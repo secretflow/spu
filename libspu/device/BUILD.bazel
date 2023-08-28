@@ -13,8 +13,6 @@
 # limitations under the License.
 
 load("//bazel:spu.bzl", "spu_cc_library", "spu_cc_test")
-load("@rules_proto//proto:defs.bzl", "proto_library")
-load("@rules_cc//cc:defs.bzl", "cc_proto_library")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -66,10 +64,21 @@ spu_cc_library(
 )
 
 spu_cc_library(
+    name = "debug_dump_constant",
+    srcs = [
+        "debug_dump_constant.cc",
+    ],
+    hdrs = [
+        "debug_dump_constant.h",
+    ],
+)
+
+spu_cc_library(
     name = "api",
     srcs = ["api.cc"],
     hdrs = ["api.h"],
     deps = [
+        ":debug_dump_constant",
         ":executor",
         "//libspu/device/pphlo:pphlo_executor",
         "@llvm-project//mlir:FuncDialect",

@@ -106,6 +106,7 @@ size_t SizeOf(PtType ptt) {
     case PT_INVALID:
       return 0;
       FOREACH_PT_TYPES(CASE);
+      FOREACH_COMPLEX_PT_TYPES(CASE);
     default:
       SPU_THROW("unknown size of {}", ptt);
   }

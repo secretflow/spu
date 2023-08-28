@@ -15,11 +15,19 @@
 #pragma once
 
 #include "libspu/mpc/kernel.h"
-#include "libspu/mpc/semi2k/conversion.h"
 
 namespace spu::mpc::cheetah {
 
-typedef spu::mpc::semi2k::A2B A2B;
+class A2B : public UnaryKernel {
+ public:
+  static constexpr char kBindName[] = "a2b";
+
+  ce::CExpr latency() const override { return ce::Const(0); }
+
+  ce::CExpr comm() const override { return ce::Const(0); }
+
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& x) const override;
+};
 
 class B2A : public UnaryKernel {
  public:

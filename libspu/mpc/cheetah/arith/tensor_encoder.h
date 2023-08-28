@@ -35,7 +35,7 @@ class TensorEncoder {
   void EncodeKernel(const Sliced3DTensor &kernel, const Shape3D &input_shape,
                     bool need_encrypt, RLWEPt *out) const;
 
-  const ModulusSwitchHelper &ms_helper() const { return ms_helper_; }
+  const ModulusSwitchHelper &ms_helper() const { return msh_; }
 
  private:
   template <class Indexer>
@@ -46,7 +46,7 @@ class TensorEncoder {
  private:
   int64_t poly_deg_{0};
   // Take the copy
-  ModulusSwitchHelper ms_helper_;
+  ModulusSwitchHelper msh_;
 
   std::shared_ptr<Conv2DHelper> conv2d_helper_{nullptr};
 };

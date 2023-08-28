@@ -22,15 +22,14 @@
 #include "libspu/mpc/cheetah/boolean.h"
 #include "libspu/mpc/cheetah/conversion.h"
 #include "libspu/mpc/cheetah/state.h"
+#include "libspu/mpc/cheetah/type.h"
 #include "libspu/mpc/common/pv2k.h"
-#include "libspu/mpc/semi2k/state.h"
-#include "libspu/mpc/semi2k/type.h"
 
 namespace spu::mpc {
 
 void regCheetahProtocol(SPUContext* ctx,
                         const std::shared_ptr<yacl::link::Context>& lctx) {
-  semi2k::registerTypes();
+  cheetah::registerTypes();
 
   // add communicator
   ctx->prot()->addState<Communicator>(lctx);
@@ -64,7 +63,7 @@ void regCheetahProtocol(SPUContext* ctx,
   ctx->prot()->regKernel<cheetah::EqualAP>();
   ctx->prot()->regKernel<cheetah::MatMulAP>();
   ctx->prot()->regKernel<cheetah::MatMulAA>();
-  ctx->prot()->regKernel<cheetah::Conv2DAA>();
+  // ctx->prot()->regKernel<cheetah::Conv2DAA>();
   ctx->prot()->regKernel<cheetah::LShiftA>();
   ctx->prot()->regKernel<cheetah::TruncA>();
   ctx->prot()->regKernel<cheetah::MsbA2B>();
@@ -90,7 +89,7 @@ void regCheetahProtocol(SPUContext* ctx,
 std::unique_ptr<SPUContext> makeCheetahProtocol(
     const RuntimeConfig& conf,
     const std::shared_ptr<yacl::link::Context>& lctx) {
-  semi2k::registerTypes();
+  cheetah::registerTypes();
 
   auto ctx = std::make_unique<SPUContext>(conf, lctx);
 

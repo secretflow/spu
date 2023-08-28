@@ -21,17 +21,11 @@
                     "172.16.238.3:9931",
                     "172.16.238.4:9932"
                 ],
-                "experimental_data_folder": [
-                    "/tmp/spu_data_0/",
-                    "/tmp/spu_data_1/",
-                    "/tmp/spu_data_2/"
-                ],
                 "runtime_config": {
                     "protocol": "ABY3",
                     "field": "FM64",
                     "enable_pphlo_profile": true,
-                    "enable_hal_profile": true,
-                    "enable_pphlo_trace": false
+                    "enable_hal_profile": true
                 }
             }
         },

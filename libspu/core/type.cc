@@ -64,6 +64,8 @@ Type F64 = makePtType(PT_F64);
 Type I128 = makePtType(PT_I128);
 Type U128 = makePtType(PT_U128);
 Type BOOL = makePtType(PT_BOOL);
+Type CF32 = makePtType(PT_CF32);
+Type CF64 = makePtType(PT_CF64);
 
 bool isFloatTy(const Type& type) {
   if (!type.isa<PtTy>()) {

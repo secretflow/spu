@@ -49,6 +49,8 @@ class PPHloVerifier {
   VERIFY_DECL(CeilOp)
   VERIFY_DECL(LogisticOp)
   VERIFY_DECL(TanhOp)
+  VERIFY_DECL(SineOp)
+  VERIFY_DECL(CosineOp)
   VERIFY_DECL(NotOp)
   VERIFY_DECL(ExpOp)
   VERIFY_DECL(Expm1Op)
@@ -144,6 +146,9 @@ class PPHloVerifier {
   NO_VERIFY_DEFN(EpsilonOp)
   NO_VERIFY_DEFN(CustomCallOp)
   NO_VERIFY_DEFN(FreeOp)
+  NO_VERIFY_DEFN(RealOp)
+  NO_VERIFY_DEFN(ImagOp)
+  NO_VERIFY_DEFN(ComplexOp)
 
 #undef NO_VERIFY_DEFN
 };

@@ -40,13 +40,15 @@ spu_cc_library(
 
 spu_cc_library(
     name = "boolean",
-    srcs = ["boolean.cc"],
+    srcs = [
+        "boolean.cc",
+        "boolean_semi2k.cc",
+    ],
     hdrs = ["boolean.h"],
     copts = AES_COPT_FLAGS,
     deps = [
         ":state",
         ":type",
-        "//libspu/mpc/semi2k:boolean",
     ],
 )
 
@@ -58,19 +60,24 @@ spu_cc_library(
     deps = [
         ":state",
         ":type",
-        "//libspu/mpc/semi2k:conversion",
+        "//libspu/core:vectorize",
+        "//libspu/mpc:ab_api",
+        "//libspu/mpc:kernel",
+        "//libspu/mpc/common:communicator",
     ],
 )
 
 spu_cc_library(
     name = "arithmetic",
-    srcs = ["arithmetic.cc"],
+    srcs = [
+        "arithmetic.cc",
+        "arithmetic_semi2k.cc",
+    ],
     hdrs = ["arithmetic.h"],
     copts = AES_COPT_FLAGS,
     deps = [
         ":state",
         ":type",
-        "//libspu/mpc/semi2k:arithmetic",
     ],
 )
 
@@ -123,37 +130,17 @@ spu_cc_library(
     hdrs = ["io.h"],
     deps = [
         ":type",
-        "//libspu/mpc/semi2k:io",
+        "//libspu/mpc:io_interface",
         "//libspu/mpc/utils:ring_ops",
     ],
 )
 
 spu_cc_library(
     name = "type",
+    srcs = ["type.cc"],
+    hdrs = ["type.h"],
     deps = [
-        "//libspu/mpc/semi2k:type",
-    ],
-)
-
-spu_cc_library(
-    name = "array_ref",
-    srcs = ["array_ref.cc"],
-    hdrs = ["array_ref.h"],
-    deps = [
-        "//libspu/core:bit_utils",
-        "//libspu/core:ndarray_ref",
-        "//libspu/core:parallel_utils",
-        "//libspu/core:prelude",
         "//libspu/core:type",
-        "//libspu/core:vectorize",
-        "@yacl//yacl/base:buffer",
-    ],
-)
-
-spu_cc_test(
-    name = "array_ref_test",
-    srcs = ["array_ref_test.cc"],
-    deps = [
-        ":array_ref",
+        "//libspu/mpc/common:pv2k",
     ],
 )

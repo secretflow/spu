@@ -21,35 +21,28 @@ import numpy as np
 from sklearn.decomposition import PCA as SklearnPCA
 
 # Add the library directory to the path
-sys.path.append(os.path.join(os.path.dirname(__file__), '../../'))
+sys.path.append(os.path.join(os.path.dirname(__file__), '../../../'))
 
 import sml.utils.emulation as emulation
 from sml.decomposition.pca import PCA
 
 
-def emul_PCA(mode: emulation.Mode.MULTIPROCESS):
-    def proc(X):
+def emul_powerPCA(mode: emulation.Mode.MULTIPROCESS):
+    print("start power method emulation.")
+
+    def proc_transform(X):
         model = PCA(
             method='power_iteration',
             n_components=2,
+            max_power_iter=200,
         )
 
         model.fit(X)
         X_transformed = model.transform(X)
         X_variances = model._variances
+        X_reconstructed = model.inverse_transform(X_transformed)
 
-        return X_transformed, X_variances
-
-    def proc_reconstruct(X):
-        model = PCA(
-            method='power_iteration',
-            n_components=2,
-        )
-
-        model.fit(X)
-        X_reconstructed = model.inverse_transform(model.transform(X))
-
-        return X_reconstructed
+        return X_transformed, X_variances, X_reconstructed
 
     try:
         # bandwidth and latency only work for docker mode
@@ -57,11 +50,12 @@ def emul_PCA(mode: emulation.Mode.MULTIPROCESS):
             emulation.CLUSTER_ABY3_3PC, mode, bandwidth=300, latency=20
         )
         emulator.up()
+
         # Create a simple dataset
-        X = random.normal(random.PRNGKey(0), (15, 100))
-        result = emulator.run(proc)(X)
-        print("X_transformed_jax: ", result[0])
-        print("X_transformed_jax: ", result[1])
+        X = random.normal(random.PRNGKey(0), (10, 20))
+        X_spu = emulator.seal(X)
+        result = emulator.run(proc_transform)(X_spu)
+
         # The transformed data should have 2 dimensions
         assert result[0].shape[1] == 2
         # The mean of the transformed data should be approximately 0
@@ -70,28 +64,24 @@ def emul_PCA(mode: emulation.Mode.MULTIPROCESS):
         # Compare with sklearn
         model = SklearnPCA(n_components=2)
         model.fit(X)
-        X_transformed = model.transform(X)
+        X_transformed_sklearn = model.transform(X)
         X_variances = model.explained_variance_
 
-        print("X_transformed_sklearn: ", X_transformed)
-        print("X_variances_sklearn: ", X_variances)
+        # Compare the transform results(omit sign)
+        np.testing.assert_allclose(
+            np.abs(X_transformed_sklearn), np.abs(result[0]), rtol=0.1, atol=0.1
+        )
 
-        result = emulator.run(proc_reconstruct)(X)
+        # Compare the variance results
+        np.testing.assert_allclose(X_variances, result[1], rtol=0.1, atol=0.1)
 
-        print("X_reconstructed_jax: ", result)
+        X_reconstructed = model.inverse_transform(X_transformed_sklearn)
 
-        # Compare with sklearn
-        model = SklearnPCA(n_components=2)
-        model.fit(X)
-        X_reconstructed = model.inverse_transform(model.transform(X))
-
-        print("X_reconstructed_sklearn: ", X_reconstructed)
-
-        assert np.allclose(X_reconstructed, result, atol=1e-3)
+        np.testing.assert_allclose(X_reconstructed, result[2], atol=1e-3)
 
     finally:
         emulator.down()
 
 
 if __name__ == "__main__":
-    emul_PCA(emulation.Mode.MULTIPROCESS)
+    emul_powerPCA(emulation.Mode.MULTIPROCESS)

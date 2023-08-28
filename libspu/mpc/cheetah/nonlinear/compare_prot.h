@@ -16,7 +16,7 @@
 
 #include <memory>
 
-#include "libspu/mpc/cheetah/array_ref.h"
+#include "libspu/core/ndarray_ref.h"
 
 namespace spu::mpc::cheetah {
 
@@ -45,21 +45,26 @@ class CompareProtocol {
 
   ~CompareProtocol();
 
-  ArrayRef Compute(const ArrayRef& inp, bool greater_than);
+  NdArrayRef Compute(const NdArrayRef& inp, bool greater_than,
+                     int64_t bitwidth = 0);
 
-  std::array<ArrayRef, 2> ComputeWithEq(const ArrayRef& inp, bool greater_than);
+  std::array<NdArrayRef, 2> ComputeWithEq(const NdArrayRef& inp,
+                                          bool greater_than,
+                                          int64_t bitwidth = 0);
 
  private:
-  ArrayRef DoCompute(const ArrayRef& inp, bool greater_than,
-                     ArrayRef* eq = nullptr);
+  // Require 1D array
+  NdArrayRef DoCompute(const NdArrayRef& inp, bool greater_than,
+                       NdArrayRef* eq = nullptr, int64_t bitwidth = 0);
 
-  ArrayRef TraversalAND(ArrayRef cmp, ArrayRef eq, size_t num_input,
-                        size_t num_digits);
+  // Require 1D array
+  NdArrayRef TraversalAND(NdArrayRef cmp, NdArrayRef eq, size_t num_input,
+                          size_t num_digits);
 
-  std::array<ArrayRef, 2> TraversalANDWithEq(ArrayRef cmp, ArrayRef eq,
-                                             size_t num_input,
-                                             size_t num_digits);
-
+  // Require 1D array
+  std::array<NdArrayRef, 2> TraversalANDWithEq(NdArrayRef cmp, NdArrayRef eq,
+                                               size_t num_input,
+                                               size_t num_digits);
   size_t compare_radix_;
   bool is_sender_{false};
   std::shared_ptr<BasicOTProtocols> basic_ot_prot_;
