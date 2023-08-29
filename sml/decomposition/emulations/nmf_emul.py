@@ -24,6 +24,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '../../../'))
 import sml.utils.emulation as emulation
 from sml.decomposition.nmf import NMF
 
+
 def test_nmf(mode: emulation.Mode.MULTIPROCESS):
     def emul_nmf():
         def proc1(X, random_matrixA, random_matrixB):
@@ -78,7 +79,6 @@ def test_nmf(mode: emulation.Mode.MULTIPROCESS):
         assert np.allclose(W_Sklearn, W, atol=5e-1)
         assert np.allclose(H_Sklearn, H, atol=5e-1)
         assert np.allclose(X_reconstructed_Sklearn, X_reconstructed, atol=5e-1)
-
 
     def emul_nmf_seperate():
         def proc2(X, random_matrixA, random_matrixB):
@@ -148,6 +148,7 @@ def test_nmf(mode: emulation.Mode.MULTIPROCESS):
         emul_nmf_seperate()
     finally:
         emulator.down()
+
 
 if __name__ == "__main__":
     test_nmf(emulation.Mode.MULTIPROCESS)
