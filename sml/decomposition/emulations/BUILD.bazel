@@ -35,6 +35,16 @@ py_binary(
     ],
 )
 
+py_binary(
+    name = "nmf_emul",
+    srcs = ["nmf_emul.py"],
+    data = [":conf"],
+    deps = [
+        "//sml/decomposition:nmf",
+        "//sml/utils:emulation",
+    ],
+)
+
 filegroup(
     name = "conf",
     srcs = [
