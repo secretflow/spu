@@ -20,7 +20,6 @@
 
 #include "libspu/core/xt_helper.h"
 #include "libspu/mpc/cheetah/ot/basic_ot_prot.h"
-#include "libspu/mpc/semi2k/type.h"
 #include "libspu/mpc/utils/ring_ops.h"
 #include "libspu/mpc/utils/simulate.h"
 
@@ -154,7 +153,7 @@ TEST_P(FerretCOTTest, RndMsgChosenChoice) {
 
 TEST_P(FerretCOTTest, ChosenMsgChosenChoice) {
   size_t kWorldSize = 2;
-  int64_t n = 106;
+  int64_t n = 100;
   auto field = GetParam();
   DISPATCH_ALL_FIELDS(field, "", [&]() {
     using scalar_t = ring2k_t;

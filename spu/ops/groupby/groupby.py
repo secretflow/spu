@@ -53,6 +53,35 @@ def segment_aware_ops(row1, row2, ops):
     return jnp.c_[lead_part, cum_part]
 
 
+def groupby_agg(
+    cols,
+    seg_end_marks,
+    segment_aware_ops,
+) -> jnp.ndarray:
+    """Groupby Aggregation with no shuffle. Usually used as internal tool in MPC.
+
+    The returns of this function are NOT safe to open (count of group elements revealed)
+    return:
+        group_agg_matrix:
+            shape = (n_samples, n_cols)
+            group aggregations
+            padded with zeros.
+
+    """
+    group_mask = jnp.ones(seg_end_marks.shape) - jnp.roll(seg_end_marks, 1)
+
+    X = jnp.vstack([group_mask] + list(cols)).T
+
+    X_prefix_sum = jax.lax.associative_scan(segment_aware_ops, X, axis=0)
+    X_prefix_sum_masked = seg_end_marks.reshape(-1, 1) * X_prefix_sum
+
+    return X_prefix_sum_masked[:, 1:]
+
+
+def groupby_sum_no_shuffle(cols, seg_end_marks) -> jnp.ndarray:
+    return groupby_agg(cols, seg_end_marks, segment_aware_addition)
+
+
 def groupby_agg_via_shuffle(
     cols,
     seg_end_marks,
@@ -203,7 +232,8 @@ def groupby(
     -------
     key_columns_sorted : List[jnp.ndarray]
     target_columns_sorted : List[jnp.ndarray]
-    segment_ids :  List[jnp.ndarray]
+    segment_ids :  jnp.ndarray
+    seg_end_marks : jnp.ndarray
     """
     # parameter check.
     assert isinstance(key_columns, List)
@@ -220,6 +250,13 @@ def groupby(
     )
     key_columns_sorted = sorted_columns[: len(key_columns)]
     target_columns_sorted = sorted_columns[len(key_columns) :]
+    return groupby_sorted(key_columns_sorted, target_columns_sorted)
+
+
+def groupby_sorted(
+    key_columns_sorted: List[jnp.ndarray],
+    target_columns_sorted: List[jnp.ndarray],
+) -> Tuple[List[jnp.ndarray], jnp.ndarray]:
     key_columns_sorted_rolled = rotate_cols(key_columns_sorted)
     seg_end_marks = get_segment_marks(key_columns_sorted, key_columns_sorted_rolled)
     mark_accumulated = associative_scan(seg_end_marks)

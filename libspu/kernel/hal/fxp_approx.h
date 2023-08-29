@@ -49,6 +49,10 @@ Value f_exp2(SPUContext* ctx, const Value& x);
 
 Value f_tanh(SPUContext* ctx, const Value& x);
 
+Value f_sine(SPUContext* ctx, const Value& x);
+
+Value f_cosine(SPUContext* ctx, const Value& x);
+
 Value f_rsqrt(SPUContext* ctx, const Value& x);
 
 Value f_sqrt(SPUContext* ctx, const Value& x);

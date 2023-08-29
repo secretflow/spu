@@ -77,11 +77,38 @@ def rsvd_iteration(A, Omega, scale, power_iter):
 
 
 def svd(A, eigh_iter):
-    sigma, U = eigh_power(jnp.dot(A, A.T), eigh_iter)
-    sigma_sqrt = jnp.sqrt(sigma)
-    sigma_inv = jnp.diag((1 / sigma_sqrt))
-    V = jnp.dot(jnp.dot(sigma_inv, U.T), A)
-    return (U, sigma_sqrt, V)
+    """
+    Get the svd decomposition of matrix A using power iteration.
+
+    Note:
+        1. please make sure the matrix is either full row rank or full column rank.
+        2. for A (m,n), k=min(m,n), get U (m,k), s (k,), Vt (k,n) like np.linalg.svd with ull_matrices=False
+        3. this implementation is now not scalable for large matrix (accuracy and efficiency)
+
+    Args:
+        A (ndarray): the matrix to decomposition
+        eigh_iter (int): iter nums for power iteration
+
+    Returns:
+        U, s, Vt
+    """
+    m, n = A.shape
+    k = min(m, n)
+
+    if m <= n:
+        sigma, U = eigh_power(jnp.dot(A, A.T), eigh_iter, rank=k)
+        sigma_sqrt = jnp.sqrt(sigma)
+        sigma_rec_sqrt = 1 / sigma_sqrt
+        V = jnp.dot(A.T, U) * sigma_rec_sqrt.reshape(1, k)
+    else:
+        sigma, V = eigh_power(jnp.dot(A.T, A), eigh_iter, rank=k)
+        sigma_sqrt = jnp.sqrt(sigma)
+        sigma_rec_sqrt = 1 / sigma_sqrt
+        U = jnp.dot(A, V) * sigma_rec_sqrt.reshape((1, k))
+
+    Vt = V.T
+
+    return U, sigma_sqrt, Vt
 
 
 def randomized_svd(

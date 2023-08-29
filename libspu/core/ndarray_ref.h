@@ -401,6 +401,8 @@ class NdArrayView {
     }
   }
 
+  int64_t numel() const { return arr_->numel(); }
+
   T& operator[](size_t idx) {
     if (arr_->canUseFastIndexing()) {
       return *reinterpret_cast<T*>(arr_->data<std::byte>() +

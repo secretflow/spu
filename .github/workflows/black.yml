@@ -8,11 +8,5 @@ on:
     branches:
     - main
 jobs:
-  lint:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: psf/black@stable
-        with:
-          jupyter: true
-          version: "23.1"
+  python-linter:
+    uses: secretflow/.github/.github/workflows/python-linter.yml@main

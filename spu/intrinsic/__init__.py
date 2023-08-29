@@ -19,7 +19,7 @@ from .example_binary_impl import example_binary
 # DO-NOT-EDIT:ADD_IMPORT
 
 __all__ = [
-    "example",
-    "example_binary",
+    # "example",
+    # "example_binary",
     # DO-NOT-EDIT:EOL
 ]

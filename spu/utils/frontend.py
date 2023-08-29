@@ -16,23 +16,27 @@ import warnings
 from enum import Enum
 from typing import Callable, Dict, Iterable, List
 
-import cloudpickle
 from cachetools import LRUCache, cached
 
 from .. import api as spu_api
 from .. import spu_pb2
+
+from threading import Lock
+
+_jax_lock = Lock()
 
 
 def _jax_compilation_key(
     fn: Callable, static_argnums, static_argnames, args: List, kwargs: Dict
 ):
     import jax
+    from jax._src.util import weakref_lru_cache
+
+    wrapped_fn = weakref_lru_cache(fn)
 
     flat_args, _ = jax.tree_util.tree_flatten((args, kwargs))
     types = [(a.dtype, a.shape) if hasattr(a, 'dtype') else type(a) for a in flat_args]
-    hash_str = (
-        f'{hash(cloudpickle.dumps(fn))}-{static_argnums}-{static_argnames}-{types}'
-    )
+    hash_str = f'{hash(wrapped_fn)}-{static_argnums}-{static_argnames}-{types}'
     return hash_str
 
 
@@ -160,6 +164,8 @@ def compile(
     if kind == Kind.JAX:
         import jax
 
+        _jax_lock.acquire()
+
         patches = _patch_jax()
 
         ir_text, output = _jax_compilation(
@@ -167,6 +173,8 @@ def compile(
         )
 
         _restore_jax_patch(patches)
+
+        _jax_lock.release()
 
         output_flat, _ = jax.tree_util.tree_flatten(output)
         output_names = outputNameGen(output_flat)

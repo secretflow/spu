@@ -100,6 +100,22 @@ func.func @main() -> (tensor<2x!pphlo.pub<i32>>) {
   r.verifyOutput(expected.data());
 }
 
+TEST_P(ExecutorTest, ComplexConstant) {
+  Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
+           std::get<2>(GetParam()));
+
+  r.getConfig().set_enable_type_checker(false);
+
+  r.run(R"(
+func.func @main() -> (tensor<2x!pphlo.pub<complex<f32>>>) {
+  %0 = "pphlo.constant"() {value = dense<[(1.5, 2.5), (3.5, 4.5)]> : tensor<2xcomplex<f32>>} : () -> tensor<2x!pphlo.pub<complex<f32>>>
+  return %0 : tensor<2x!pphlo.pub<complex<f32>>>
+})");
+
+  std::vector<std::complex<float>> expected = {{1.5, 2.5}, {3.5, 4.5}};
+  r.verifyOutput(expected.data());
+}
+
 TEST_P(ExecutorTest, InvalidIR) {
   Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
            std::get<2>(GetParam()));
@@ -424,6 +440,64 @@ func.func @main(%arg0: tensor<4x6x!pphlo.pub<i32>>) -> (tensor<2x2x!pphlo.pub<i3
   r.verifyOutput(expect.data());
 }
 
+TEST_P(ExecutorTest, ReduceWindowStableHloTest) {
+  Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
+           std::get<2>(GetParam()));
+
+  const xt::xarray<int> in1 = {{1, 2}, {3, 4}, {5, 6}};
+  r.addInput(in1);
+
+  r.run(r.compileMHlo(R"(
+func.func @main(%arg0: tensor<3x2xi32>) -> (tensor<2x2xi32>) {
+  %0 = "mhlo.constant"() {value = dense<0> : tensor<i32>} : () -> tensor<i32>
+  %1 = "mhlo.reduce_window"(%arg0, %0) ( {
+    ^bb0(%arg1: tensor<i32>, %arg2: tensor<i32>):  // no predecessors
+      %2 = "mhlo.maximum"(%arg1, %arg2) : (tensor<i32>, tensor<i32>) -> tensor<i32>
+      "mhlo.return"(%2) : (tensor<i32>) -> ()
+    }) {
+      base_dilations = dense<[2, 1]> : tensor<2xi64>,
+      padding = dense<[[2, 1], [0, 0]]> : tensor<2x2xi64>,
+      window_dilations = dense<[3, 1]> : tensor<2xi64>,
+      window_dimensions = dense<[2, 1]> : tensor<2xi64>,
+      window_strides = dense<[ 4, 1 ]> : tensor<2xi64>
+    } : (tensor<3x2xi32>, tensor<i32>) -> tensor<2x2xi32>
+  return %1 : tensor<2x2xi32>
+})",
+                      {Visibility::VIS_PUBLIC}));
+
+  xt::xarray<int> expect = {{0, 0}, {3, 4}};
+  r.verifyOutput(expect.data());
+}
+
+TEST_P(ExecutorTest, ReduceWindowStableHloTest2) {
+  Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
+           std::get<2>(GetParam()));
+
+  const xt::xarray<int> in1 = {{1, 2}, {3, 4}, {5, 6}};
+  r.addInput(in1);
+
+  r.run(r.compileMHlo(R"(
+func.func @main(%arg0: tensor<3x2xi32>) -> (tensor<1x2xi32>) {
+  %0 = "mhlo.constant"() {value = dense<0> : tensor<i32>} : () -> tensor<i32>
+  %1 = "mhlo.reduce_window"(%arg0, %0) ( {
+    ^bb0(%arg1: tensor<i32>, %arg2: tensor<i32>):  // no predecessors
+      %2 = "mhlo.maximum"(%arg1, %arg2) : (tensor<i32>, tensor<i32>) -> tensor<i32>
+      "mhlo.return"(%2) : (tensor<i32>) -> ()
+    }) {
+      base_dilations = dense<[2, 1]> : tensor<2xi64>,
+      padding = dense<[[2, 1], [0, 0]]> : tensor<2x2xi64>,
+      window_dilations = dense<[3, 1]> : tensor<2xi64>,
+      window_dimensions = dense<[3, 1]> : tensor<2xi64>,
+      window_strides = dense<[4, 1]> : tensor<2xi64>
+    } : (tensor<3x2xi32>, tensor<i32>) -> tensor<1x2xi32>
+  return %1 : tensor<1x2xi32>
+})",
+                      {Visibility::VIS_PUBLIC}));
+
+  xt::xarray<int> expect = {{5, 6}};
+  r.verifyOutput(expect.data());
+}
+
 TEST_P(ExecutorTest, ReduceWindowDefaultStrides) {
   Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
            std::get<2>(GetParam()));
@@ -492,7 +566,7 @@ func.func @main(%arg0: tensor<4x4x!pphlo.pub<i32>>) -> (tensor<1x1x!pphlo.pub<i3
       "pphlo.return"(%2) : (tensor<!pphlo.pub<i32>>) -> ()
     }) {base_dilations = dense<1> : tensor<2xi64>, padding = dense<0> : tensor<2x2xi64>, window_dilations = dense<2> : tensor<2xi64>, window_dimensions = dense<2> : tensor<2xi64>, window_strides = dense<2> : tensor<2xi64>} : (tensor<4x4x!pphlo.pub<i32>>, tensor<!pphlo.pub<i32>>) -> tensor<1x1x!pphlo.pub<i32>>
 
-  return %1 :  tensor<1x1x!pphlo.pub<i32>>
+  return %1 : tensor<1x1x!pphlo.pub<i32>>
 })");
 
   xt::xarray<int> expect = {10};
@@ -507,17 +581,23 @@ TEST_P(ExecutorTest, ReduceWindowMaxIotaBaseDilation) {
       {0, 1, 2, 3}, {4, 5, 6, 7}, {8, 9, 10, 11}, {12, 13, 14, 15}};
   r.addInput(in1);
 
-  r.run(R"(
-func.func @main(%arg0: tensor<4x4x!pphlo.pub<i32>>) -> (tensor<6x6x!pphlo.pub<i32>>) {
-  %0 = "pphlo.constant"() {value = dense<0> : tensor<i32>} : () -> tensor<!pphlo.pub<i32>>
-  %1 = "pphlo.reduce_window"(%arg0, %0) ( {
-    ^bb0(%arg1: tensor<!pphlo.pub<i32>>, %arg2: tensor<!pphlo.pub<i32>>):  // no predecessors
-      %2 = "pphlo.maximum"(%arg1, %arg2) : (tensor<!pphlo.pub<i32>>, tensor<!pphlo.pub<i32>>) -> tensor<!pphlo.pub<i32>>
-      "pphlo.return"(%2) : (tensor<!pphlo.pub<i32>>) -> ()
-    }) {base_dilations = dense<2> : tensor<2xi64>, padding = dense<0> : tensor<2x2xi64>, window_dilations = dense<1> : tensor<2xi64>, window_dimensions = dense<2> : tensor<2xi64>, window_strides = dense<1> : tensor<2xi64>} : (tensor<4x4x!pphlo.pub<i32>>, tensor<!pphlo.pub<i32>>) -> tensor<6x6x!pphlo.pub<i32>>
-
-  return %1 :  tensor<6x6x!pphlo.pub<i32>>
-})");
+  r.run(r.compileMHlo(R"(
+func.func @main(%arg0: tensor<4x4xi32>) -> (tensor<6x6xi32>) {
+  %0 = "mhlo.constant"() {value = dense<0> : tensor<i32>} : () -> tensor<i32>
+  %1 = "mhlo.reduce_window"(%arg0, %0) ( {
+    ^bb0(%arg1: tensor<i32>, %arg2: tensor<i32>):  // no predecessors
+      %2 = "mhlo.maximum"(%arg1, %arg2) : (tensor<i32>, tensor<i32>) -> tensor<i32>
+      "mhlo.return"(%2) : (tensor<i32>) -> ()
+    }) {
+      base_dilations = dense<2> : tensor<2xi64>,
+      padding = dense<0> : tensor<2x2xi64>,
+      window_dilations = dense<1> : tensor<2xi64>,
+      window_dimensions = dense<2> : tensor<2xi64>,
+      window_strides = dense<1> : tensor<2xi64>
+    } : (tensor<4x4xi32>, tensor<i32>) -> tensor<6x6xi32>
+  return %1 : tensor<6x6xi32>
+})",
+                      {Visibility::VIS_PUBLIC}));
 
   xt::xarray<int> expect = {{0, 1, 1, 2, 2, 3},    {4, 5, 5, 6, 6, 7},
                             {4, 5, 5, 6, 6, 7},    {8, 9, 9, 10, 10, 11},
@@ -533,17 +613,20 @@ TEST_P(ExecutorTest, ReduceWindowMaxIotaStrideBaseDilation) {
       {0, 1, 2, 3}, {4, 5, 6, 7}, {8, 9, 10, 11}, {12, 13, 14, 15}};
   r.addInput(in1);
 
-  r.run(R"(
-func.func @main(%arg0: tensor<4x4x!pphlo.pub<i32>>) -> (tensor<3x3x!pphlo.pub<i32>>) {
-  %0 = "pphlo.constant"() {value = dense<0> : tensor<i32>} : () -> tensor<!pphlo.pub<i32>>
-  %1 = "pphlo.reduce_window"(%arg0, %0) ( {
-    ^bb0(%arg1: tensor<!pphlo.pub<i32>>, %arg2: tensor<!pphlo.pub<i32>>):  // no predecessors
-      %2 = "pphlo.maximum"(%arg1, %arg2) : (tensor<!pphlo.pub<i32>>, tensor<!pphlo.pub<i32>>) -> tensor<!pphlo.pub<i32>>
-      "pphlo.return"(%2) : (tensor<!pphlo.pub<i32>>) -> ()
-    }) {base_dilations = dense<2> : tensor<2xi64>, padding = dense<0> : tensor<2x2xi64>, window_dilations = dense<1> : tensor<2xi64>, window_dimensions = dense<2> : tensor<2xi64>, window_strides = dense<2> : tensor<2xi64>} : (tensor<4x4x!pphlo.pub<i32>>, tensor<!pphlo.pub<i32>>) -> tensor<3x3x!pphlo.pub<i32>>
+  auto compiled = r.compileMHlo(R"(
+func.func @main(%arg0: tensor<4x4xi32>) -> (tensor<3x3xi32>) {
+  %0 = "mhlo.constant"() {value = dense<0> : tensor<i32>} : () -> tensor<i32>
+  %1 = "mhlo.reduce_window"(%arg0, %0) ( {
+    ^bb0(%arg1: tensor<i32>, %arg2: tensor<i32>):  // no predecessors
+      %2 = "mhlo.maximum"(%arg1, %arg2) : (tensor<i32>, tensor<i32>) -> tensor<i32>
+      "mhlo.return"(%2) : (tensor<i32>) -> ()
+    }) {base_dilations = dense<2> : tensor<2xi64>, padding = dense<0> : tensor<2x2xi64>, window_dilations = dense<1> : tensor<2xi64>, window_dimensions = dense<2> : tensor<2xi64>, window_strides = dense<2> : tensor<2xi64>} : (tensor<4x4xi32>, tensor<i32>) -> tensor<3x3xi32>
 
-  return %1 :  tensor<3x3x!pphlo.pub<i32>>
-})");
+  return %1 :  tensor<3x3xi32>
+})",
+                                {Visibility::VIS_PUBLIC});
+
+  r.run(compiled);
 
   xt::xarray<int> expect = {{0, 1, 2}, {4, 5, 6}, {8, 9, 10}};
   r.verifyOutput(expect.data());
@@ -557,17 +640,20 @@ TEST_P(ExecutorTest, ReduceWindowMaxIotaStrideBothDilation) {
       {0, 1, 2, 3}, {4, 5, 6, 7}, {8, 9, 10, 11}, {12, 13, 14, 15}};
   r.addInput(in1);
 
-  r.run(R"(
-func.func @main(%arg0: tensor<4x4x!pphlo.pub<i32>>) -> (tensor<3x3x!pphlo.pub<i32>>) {
-  %0 = "pphlo.constant"() {value = dense<0> : tensor<i32>} : () -> tensor<!pphlo.pub<i32>>
-  %1 = "pphlo.reduce_window"(%arg0, %0) ( {
-    ^bb0(%arg1: tensor<!pphlo.pub<i32>>, %arg2: tensor<!pphlo.pub<i32>>):  // no predecessors
-      %2 = "pphlo.maximum"(%arg1, %arg2) : (tensor<!pphlo.pub<i32>>, tensor<!pphlo.pub<i32>>) -> tensor<!pphlo.pub<i32>>
-      "pphlo.return"(%2) : (tensor<!pphlo.pub<i32>>) -> ()
-    }) {base_dilations = dense<2> : tensor<2xi64>, padding = dense<0> : tensor<2x2xi64>, window_dilations = dense<2> : tensor<2xi64>, window_dimensions = dense<2> : tensor<2xi64>, window_strides = dense<2> : tensor<2xi64>} : (tensor<4x4x!pphlo.pub<i32>>, tensor<!pphlo.pub<i32>>) -> tensor<3x3x!pphlo.pub<i32>>
+  auto compiled = r.compileMHlo(R"(
+func.func @main(%arg0: tensor<4x4xi32>) -> (tensor<3x3xi32>) {
+  %0 = "mhlo.constant"() {value = dense<0> : tensor<i32>} : () -> tensor<i32>
+  %1 = "mhlo.reduce_window"(%arg0, %0) ( {
+    ^bb0(%arg1: tensor<i32>, %arg2: tensor<i32>):  // no predecessors
+      %2 = "mhlo.maximum"(%arg1, %arg2) : (tensor<i32>, tensor<i32>) -> tensor<i32>
+      "mhlo.return"(%2) : (tensor<i32>) -> ()
+    }) {base_dilations = dense<2> : tensor<2xi64>, padding = dense<0> : tensor<2x2xi64>, window_dilations = dense<2> : tensor<2xi64>, window_dimensions = dense<2> : tensor<2xi64>, window_strides = dense<2> : tensor<2xi64>} : (tensor<4x4xi32>, tensor<i32>) -> tensor<3x3xi32>
 
-  return %1 :  tensor<3x3x!pphlo.pub<i32>>
-})");
+  return %1 :  tensor<3x3xi32>
+})",
+                                {Visibility::VIS_PUBLIC});
+
+  r.run(compiled);
 
   xt::xarray<int> expect = {{5, 6, 7}, {9, 10, 11}, {13, 14, 15}};
   r.verifyOutput(expect.data());
@@ -581,17 +667,20 @@ TEST_P(ExecutorTest, ReduceWindowMaxIotaPaddingStrideBaseDilation) {
       {0, 1, 2, 3}, {4, 5, 6, 7}, {8, 9, 10, 11}, {12, 13, 14, 15}};
   r.addInput(in1);
 
-  r.run(R"(
-func.func @main(%arg0: tensor<4x4x!pphlo.pub<i32>>) -> (tensor<3x3x!pphlo.pub<i32>>) {
-  %0 = "pphlo.constant"() {value = dense<0> : tensor<i32>} : () -> tensor<!pphlo.pub<i32>>
-  %1 = "pphlo.reduce_window"(%arg0, %0) ( {
-    ^bb0(%arg1: tensor<!pphlo.pub<i32>>, %arg2: tensor<!pphlo.pub<i32>>):  // no predecessors
-      %2 = "pphlo.maximum"(%arg1, %arg2) : (tensor<!pphlo.pub<i32>>, tensor<!pphlo.pub<i32>>) -> tensor<!pphlo.pub<i32>>
-      "pphlo.return"(%2) : (tensor<!pphlo.pub<i32>>) -> ()
-    }) {base_dilations = dense<2> : tensor<2xi64>, padding = dense<1> : tensor<2x2xi64>, window_dilations = dense<1> : tensor<2xi64>, window_dimensions = dense<3> : tensor<2xi64>, window_strides = dense<3> : tensor<2xi64>} : (tensor<4x4x!pphlo.pub<i32>>, tensor<!pphlo.pub<i32>>) -> tensor<3x3x!pphlo.pub<i32>>
+  auto compiled = r.compileMHlo(R"(
+func.func @main(%arg0: tensor<4x4xi32>) -> (tensor<3x3xi32>) {
+  %0 = "mhlo.constant"() {value = dense<0> : tensor<i32>} : () -> tensor<i32>
+  %1 = "mhlo.reduce_window"(%arg0, %0) ( {
+    ^bb0(%arg1: tensor<i32>, %arg2: tensor<i32>):  // no predecessors
+      %2 = "mhlo.maximum"(%arg1, %arg2) : (tensor<i32>, tensor<i32>) -> tensor<i32>
+      "mhlo.return"(%2) : (tensor<i32>) -> ()
+    }) {base_dilations = dense<2> : tensor<2xi64>, padding = dense<1> : tensor<2x2xi64>, window_dilations = dense<1> : tensor<2xi64>, window_dimensions = dense<3> : tensor<2xi64>, window_strides = dense<3> : tensor<2xi64>} : (tensor<4x4xi32>, tensor<i32>) -> tensor<3x3xi32>
 
-  return %1 :  tensor<3x3x!pphlo.pub<i32>>
-})");
+  return %1 : tensor<3x3xi32>
+})",
+                                {Visibility::VIS_PUBLIC});
+
+  r.run(compiled);
 
   xt::xarray<int> expect = {{0, 2, 3}, {8, 10, 11}, {12, 14, 15}};
   r.verifyOutput(expect.data());
@@ -689,6 +778,52 @@ func.func @main() -> (tensor<4x2x!pphlo.pub<i32>>) {
 })");
 
   std::array<int, 8> expect = {0, 1, 0, 1, 0, 1, 0, 1};
+  r.verifyOutput(expect.data());
+}
+
+TEST_P(ExecutorTest, IotaComplex) {
+  Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
+           std::get<2>(GetParam()));
+
+  r.run(R"(
+func.func @main() -> (tensor<4x!pphlo.pub<complex<f32>>>) {
+    %0 = "pphlo.iota"() {iota_dimension = 0 : i64} : () -> tensor<4x!pphlo.pub<complex<f32>>>
+    return %0 : tensor<4x!pphlo.pub<complex<f32>>>
+})");
+
+  std::vector<std::complex<float>> expect = {{0, 0}, {1, 0}, {2, 0}, {3, 0}};
+  r.verifyOutput(expect.data());
+}
+
+TEST_P(ExecutorTest, NonComplexReal) {
+  Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
+           std::get<2>(GetParam()));
+
+  r.addInput(std::vector<float>{1, 2, 3, 4});
+
+  r.run(R"(
+func.func @main(%arg0:tensor<4x!pphlo.pub<f32>>) -> (tensor<4x!pphlo.pub<f32>>) {
+    %0 = "pphlo.real"(%arg0) : (tensor<4x!pphlo.pub<f32>>) -> tensor<4x!pphlo.pub<f32>>
+    return %0 : tensor<4x!pphlo.pub<f32>>
+})");
+
+  std::vector<float> expect = {1, 2, 3, 4};
+  r.verifyOutput(expect.data());
+}
+
+TEST_P(ExecutorTest, NonComplexImag) {
+  Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
+           std::get<2>(GetParam()));
+
+  r.addInput(std::vector<float>{1, 2, 3, 4});
+
+  r.run(R"(
+func.func @main(%arg0:tensor<4x!pphlo.pub<f32>>) -> (tensor<4x!pphlo.pub<f32>>) {
+    %0 = "pphlo.imag"(%arg0) : (tensor<4x!pphlo.pub<f32>>) -> tensor<4x!pphlo.pub<f32>>
+    return %0 : tensor<4x!pphlo.pub<f32>>
+})");
+
+  std::vector<float> expect = {0, 0, 0, 0};
   r.verifyOutput(expect.data());
 }
 

@@ -39,6 +39,8 @@ SIMPLE_UNARY_KERNEL_DEFN(Logistic, hal::logistic)
 SIMPLE_UNARY_KERNEL_DEFN(Tanh, hal::tanh)
 SIMPLE_UNARY_KERNEL_DEFN(Rsqrt, hal::rsqrt)
 SIMPLE_UNARY_KERNEL_DEFN(Sqrt, hal::sqrt)
+SIMPLE_UNARY_KERNEL_DEFN(Sine, hal::sine)
+SIMPLE_UNARY_KERNEL_DEFN(Cosine, hal::cosine)
 
 #undef SIMPLE_UNARY_KERNEL_DEFN
 
@@ -83,6 +85,22 @@ spu::Value Round_AFZ(SPUContext *ctx, const spu::Value &in) {
   auto round = hal::add(ctx, in, p_half);
 
   return hal::dtype_cast(ctx, hal::dtype_cast(ctx, round, DT_I64), in.dtype());
+}
+
+spu::Value Real(SPUContext *ctx, const spu::Value &in) {
+  return Value(in.data(), in.dtype());
+}
+
+spu::Value Imag(SPUContext *ctx, const spu::Value &in) {
+  if (in.imag().has_value()) {
+    return Value(*in.imag(), in.dtype());  // NOLINT
+  } else {
+    auto zeros = hal::constant(ctx, 0.0F, in.dtype(), in.shape());
+    if (in.isSecret()) {
+      return hal::seal(ctx, zeros);
+    }
+    return zeros;
+  }
 }
 
 }  // namespace spu::kernel::hlo

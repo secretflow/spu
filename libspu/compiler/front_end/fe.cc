@@ -96,6 +96,7 @@ void FE::buildFrontEndPipeline(mlir::PassManager *pm, const std::string &args) {
     pm->addPass(mlir::mhlo::createExpandHloTuplesPass());
 
     auto &optPM = pm->nest<mlir::func::FuncOp>();
+    optPM.addPass(mlir::mhlo::createLowerComplexPass());
     optPM.addPass(mlir::mhlo::createLegalizeEinsumToDotGeneralPass());
     optPM.addPass(mlir::mhlo::createLegalizeGeneralDotPass());
     optPM.addPass(mlir::mhlo::createSinkConstantsToControlFlowPass());

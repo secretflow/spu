@@ -55,6 +55,12 @@ spu_cc_library(
     name = "ring_ops",
     srcs = ["ring_ops.cc"],
     hdrs = ["ring_ops.h"],
+    copts = select({
+        "@platforms//cpu:x86_64": [
+            "-mavx",
+        ],
+        "//conditions:default": [],
+    }),
     deps = [
         ":linalg",
         "//libspu/core",

@@ -55,7 +55,7 @@ spu::Value Remainder(SPUContext *ctx, const spu::Value &lhs,
   auto quotient = hal::div(ctx, lhs, rhs);
 
   if (lhs.isFxp() || rhs.isFxp()) {
-    // 2nd: round to nearst number through (x >= 0.0) ? floor(x) : ceil(x)...
+    // 2nd: round to nearest number through (x >= 0.0) ? floor(x) : ceil(x)...
     auto zero = hal::zeros(ctx, quotient.dtype(), quotient.shape());
     quotient = hal::select(ctx, hal::greater_equal(ctx, quotient, zero),
                            hal::floor(ctx, quotient), hal::ceil(ctx, quotient));
@@ -70,6 +70,16 @@ spu::Value Dot(SPUContext *ctx, const spu::Value &lhs, const spu::Value &rhs) {
   SPU_ENFORCE(rhs.shape().isTensor() && rhs.shape().size() <= 2);
 
   return hal::matmul(ctx, lhs, rhs);
+}
+
+spu::Value Complex(SPUContext *ctx, const spu::Value &lhs,
+                   const spu::Value &rhs) {
+  SPU_ENFORCE(lhs.dtype() == rhs.dtype());
+  SPU_ENFORCE(lhs.vtype() == rhs.vtype());
+  SPU_ENFORCE(lhs.shape() == rhs.shape());
+  SPU_ENFORCE(!lhs.imag().has_value() && !rhs.imag().has_value());
+
+  return Value(lhs.data(), rhs.data(), lhs.dtype());
 }
 
 }  // namespace spu::kernel::hlo

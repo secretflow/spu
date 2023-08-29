@@ -50,6 +50,17 @@ INSTANTIATE_TEST_SUITE_P(
                          std::get<2>(p.param));
     });
 
+INSTANTIATE_TEST_SUITE_P(
+    Cheetah, ConversionTest,
+    testing::Combine(testing::Values(makeCheetahProtocol),          //
+                     testing::Values(makeConfig(FieldType::FM32),   //
+                                     makeConfig(FieldType::FM64)),  //
+                     testing::Values(2)),                           //
+    [](const testing::TestParamInfo<BooleanTest::ParamType>& p) {
+      return fmt::format("{}x{}", std::get<1>(p.param).field(),
+                         std::get<2>(p.param));
+    });
+
 GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(ConversionTest);
 
 }  // namespace spu::mpc::test

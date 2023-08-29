@@ -220,6 +220,72 @@ class UnitTests(parameterized.TestCase):
 
         npt.assert_almost_equal(x, y, decimal=5)
 
+    def test_io_single_complex(self, wsize, prot, field, chunk_size):
+        if prot == spu_pb2.ProtocolKind.ABY3 and wsize != 3:
+            return
+
+        config = spu_pb2.RuntimeConfig(
+            protocol=prot,
+            field=field,
+            share_max_chunk_size=chunk_size,
+        )
+        io = ppapi.Io(wsize, config)
+
+        # SFXP
+        x = np.array([1 + 2j, 3 + 4j, 5 + 6j]).astype('complex64')
+
+        xs = io.make_shares(x, spu_pb2.Visibility.VIS_SECRET)
+        self.assertEqual(len(xs), wsize)
+
+        y = io.reconstruct(xs)
+        print(xs)
+        chunk_count = io.get_share_chunk_count(x, spu_pb2.Visibility.VIS_SECRET)
+        self.assertEqual(len(xs[0].share_chunks), 2 * chunk_count)
+
+        npt.assert_almost_equal(x, y, decimal=5)
+
+        # PFXP
+        xs = io.make_shares(x, spu_pb2.Visibility.VIS_PUBLIC)
+        self.assertEqual(len(xs), wsize)
+        y = io.reconstruct(xs)
+        chunk_count = io.get_share_chunk_count(x, spu_pb2.Visibility.VIS_PUBLIC)
+        self.assertEqual(len(xs[0].share_chunks), 2 * chunk_count)
+
+        npt.assert_almost_equal(x, y, decimal=5)
+
+    def test_io_double_complex(self, wsize, prot, field, chunk_size):
+        if prot == spu_pb2.ProtocolKind.ABY3 and wsize != 3:
+            return
+
+        config = spu_pb2.RuntimeConfig(
+            protocol=prot,
+            field=field,
+            share_max_chunk_size=chunk_size,
+        )
+        io = ppapi.Io(wsize, config)
+
+        # SFXP
+        x = np.array([1 + 2j, 3 + 4j, 5 + 6j])
+
+        xs = io.make_shares(x, spu_pb2.Visibility.VIS_SECRET)
+        self.assertEqual(len(xs), wsize)
+
+        y = io.reconstruct(xs)
+        print(xs)
+        chunk_count = io.get_share_chunk_count(x, spu_pb2.Visibility.VIS_SECRET)
+        self.assertEqual(len(xs[0].share_chunks), 2 * chunk_count)
+
+        npt.assert_almost_equal(x, y, decimal=5)
+
+        # PFXP
+        xs = io.make_shares(x, spu_pb2.Visibility.VIS_PUBLIC)
+        self.assertEqual(len(xs), wsize)
+        y = io.reconstruct(xs)
+        chunk_count = io.get_share_chunk_count(x, spu_pb2.Visibility.VIS_PUBLIC)
+        self.assertEqual(len(xs[0].share_chunks), 2 * chunk_count)
+
+        npt.assert_almost_equal(x, y, decimal=5)
+
 
 if __name__ == '__main__':
     unittest.main()
