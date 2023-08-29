@@ -62,6 +62,11 @@ class Perceptron:
 
     batch_size : int, default=1
         The batch size is a number of samples processed before the model is updated.
+        if batch_size = -1, all samples will be processed in an iteration.
+
+    early_stop : bool, default=True
+        When the loss function of the model no longer decreases, the early stop method
+        can avoid the overtraining of the model if True.
     """
 
     def __init__(
@@ -73,14 +78,14 @@ class Perceptron:
         fit_intercept=True,
         max_iter=1000,
         eta0=1.0,
-        batch_size=1
+        batch_size=1,
+        early_stop=True,
     ):
         # parameter check.
         assert max_iter > 0, f"max_iter should >0"
         assert eta0 > 0, f"eta0 should >0"
         assert alpha > 0, f"alpha should >0"
-        assert patience, f"patience should >0"
-        assert batch_size > 0 , f"batch size should > 0"
+        assert patience > 0, f"patience should >0"
         assert penalty in [
             e.value for e in Penalty
         ], f"penalty should in {[e.value for e in Penalty]}, but got {penalty}"
@@ -96,6 +101,7 @@ class Perceptron:
         self.alpha = alpha
         self.patience = patience
         self.bsize = batch_size
+        self.early_stop = early_stop
         if self.penalty == Penalty.L1:
             self.l1_ratio = 1
         elif self.penalty == Penalty.L2:
@@ -105,29 +111,26 @@ class Perceptron:
         else:
             self.l1_ratio = None
 
-        self._trained = False
         self._w = None
-        self._b = 0.
+        self._b = 0.0
 
     def _sign(self, x):
         """
         The sign function in perceptron.
         if x <= 0, f(x)=-1 else if x > 0, f(x)=1
         """
-        x = jnp.sign(x)
-        x = jnp.where(x <= 0, -1, x)
+        x = jnp.where(x <= 0, -1, 1)
         return x
 
     def _hinge_function(self, x, y, w, b):
         """
-        loss = \frac{1}{n} \sum_{i=1}^{n}max\{-y_i(wx_i+b), 0\} \in [0,1].
+        loss = \frac{1}{n} \sum_{i=1}^{n}max\{-y_i(wx_i+b), 0\}.
         """
-        y_hat = self._sign(jnp.matmul(x, w) + b)
+        y_hat = jnp.matmul(x, w) + b
         y_hat = y_hat.reshape(y_hat.shape[0], 1)
         return jnp.mean(jnp.maximum(jnp.multiply(-y_hat, y), 0))
 
     def _update_parameters(self, x_i, y_i, w, b):
-
         # if y_i * [(w * x_i) + b] <= 0, the point is misclassified used for updating w and b.
         decision = y_i * (jnp.dot(w, x_i) + b) <= 0
 
@@ -135,7 +138,7 @@ class Perceptron:
         if self.fit_intercept:
             db = decision * self.eta0 * y_i
         else:
-            db = jnp.array([0.])
+            db = jnp.array([0.0])
 
         # add regularization terms
         if self.penalty != Penalty.NONE:
@@ -168,24 +171,28 @@ class Perceptron:
         assert len(x.shape) == 2, f"expect x to be 2 dimension array, got {x.shape}"
 
         n_samples, n_features = x.shape
-        assert self.bsize <= n_samples, f"batch size should not be greater than the number of samples"
+        if self.bsize == -1:
+            self.bsize = n_samples
+        assert (
+            self.bsize <= n_samples
+        ), f"batch size should not be greater than the number of samples"
 
         w = jnp.zeros(n_features)
-        b = jnp.array([0.])
+        b = jnp.array([0.0])
 
-        # early stopping params
         not_early_stop = True
-        best_loss = 1.1 # loss \in [0,1]
-        best_w = w
-        best_b = b
-        best_iter = -1
 
+        if self.early_stop:
+            best_loss = jnp.inf
+            best_w = w
+            best_b = b
+            best_iter = -1
 
         for iter in range(self.max_iter):
             total_batch = math.ceil(float(n_samples) / self.bsize)
             for idx in range(total_batch):
                 begin = idx * self.bsize
-                end = min((idx+1) * self.bsize, n_samples)
+                end = min((idx + 1) * self.bsize, n_samples)
                 x_slice = x[begin:end]
                 y_slice = y[begin:end]
 
@@ -195,22 +202,23 @@ class Perceptron:
                 mean_w_b = jnp.mean(jnp.array(update_w_b), axis=0)
 
                 w += not_early_stop * mean_w_b[:-1]
-                b += not_early_stop * mean_w_b[-1]
 
-            sumloss = self._hinge_function(x, y, w, b)
+                if self.fit_intercept:
+                    b += not_early_stop * mean_w_b[-1]
 
-            # update best params
-            best_loss_flag = sumloss < best_loss
-            best_loss = jnp.where(best_loss_flag, sumloss, best_loss)
-            best_w = jnp.where(best_loss_flag, w, best_w)
-            best_b = jnp.where(best_loss_flag, b, best_b)
-            best_iter = jnp.where(best_loss_flag, iter, best_iter)
+            if self.early_stop:
+                sumloss = self._hinge_function(x, y, w, b)
 
-            not_early_stop *= (iter <= best_iter + self.patience)
+                best_loss_flag = sumloss < best_loss
+                best_loss = jnp.where(best_loss_flag, sumloss, best_loss)
+                best_w = jnp.where(best_loss_flag, w, best_w)
+                best_b = jnp.where(best_loss_flag, b, best_b)
+                best_iter = jnp.where(best_loss_flag, iter, best_iter)
+
+                not_early_stop *= iter <= best_iter + self.patience
 
         self._w = best_w
         self._b = best_b
-        self._trained = True
 
         return self
 
@@ -227,7 +235,7 @@ class Perceptron:
         ndarray of shape (n_samples,)
             Returns the result of the sample for each class in the model.
         """
-        assert self._trained, f"the model should be trained before prediction."
+        assert self._w is not None, f"the model should be trained before prediction."
 
         pred_ = jnp.matmul(x, self._w) + self._b
         return self._sign(pred_)
