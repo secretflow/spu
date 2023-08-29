@@ -250,7 +250,7 @@ class GaussianProcessClassifier:
 
     def predict(self, X):
         a = self.base_estimator_.predict(X)
-        result = jnp.array(self.y)
+        result = jnp.array(a)
         for index, label in enumerate(self.n_classes_):
             result = jnp.where(index == a, label, result)
         return result
