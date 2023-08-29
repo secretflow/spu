@@ -24,28 +24,23 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '../../../'))
 import sml.utils.emulation as emulation
 from sml.decomposition.nmf import NMF
 
+def test_nmf(mode: emulation.Mode.MULTIPROCESS):
+    def emul_nmf():
+        def proc1(X, random_matrixA, random_matrixB):
+            model = NMF(
+                n_components=n_components,
+                l1_ratio=l1_ratio,
+                alpha_W=alpha_W,
+                random_matrixA=random_matrixA,
+                random_matrixB=random_matrixB,
+            )
 
-def emul_nmf(mode: emulation.Mode.MULTIPROCESS):
-    def proc1(X, random_matrixA, random_matrixB):
-        model = NMF(
-            n_components=n_components,
-            l1_ratio=l1_ratio,
-            alpha_W=alpha_W,
-            random_matrixA=random_matrixA,
-            random_matrixB=random_matrixB,
-        )
+            W = model.fit_transform(X)
+            H = model._components
+            X_reconstructed = model.inverse_transform(W)
+            err = model.reconstruction_err_
+            return W, H, X_reconstructed, err
 
-        W = model.fit_transform(X)
-        H = model._components
-        X_reconstructed = model.inverse_transform(W)
-        err = model.reconstruction_err_
-        return W, H, X_reconstructed, err
-
-    try:
-        # bandwidth and latency only work for docker mode
-        conf_path = "sml/decomposition/emulations/3pc.json"
-        emulator = emulation.Emulator(conf_path, mode, bandwidth=300, latency=20)
-        emulator.up()
         # Create a simple dataset and random_matrix
         X = np.random.randint(1, 100, (1000, 10))
         X = np.array(X, dtype=float)
@@ -84,48 +79,23 @@ def emul_nmf(mode: emulation.Mode.MULTIPROCESS):
         assert np.allclose(H_Sklearn, H, atol=5e-1)
         assert np.allclose(X_reconstructed_Sklearn, X_reconstructed, atol=5e-1)
 
-        # sklearn_seperate
-        model = SklearnNMF(
-            n_components=n_components,
-            init='random',
-            random_state=random_seed,
-            l1_ratio=l1_ratio,
-            solver="mu",
-            alpha_W=alpha_W,
-        )
-        model.fit(X)
-        W_Sklearn_seperate = model.transform(X)
-        H_Sklearn_seperate = model.components_
-        X_reconstructed_Sklearn_seperate = model.inverse_transform(W_Sklearn_seperate)
-        print("W_matrix_sklearn_seperate: ", W_Sklearn_seperate)
-        print("H_matrix_sklearn_seperate: ", H_Sklearn_seperate)
-        print("X_reconstructed_sklearn_seperate: ", X_reconstructed_Sklearn_seperate)
 
-    finally:
-        emulator.down()
+    def emul_nmf_seperate():
+        def proc2(X, random_matrixA, random_matrixB):
+            model = NMF(
+                n_components=n_components,
+                l1_ratio=l1_ratio,
+                alpha_W=alpha_W,
+                random_matrixA=random_matrixA,
+                random_matrixB=random_matrixB,
+            )
 
+            model.fit(X)
+            W = model.transform(X, transform_iter=40)
+            H = model._components
+            X_reconstructed = model.inverse_transform(W)
+            return W, H, X_reconstructed
 
-def emul_nmf_seperate(mode: emulation.Mode.MULTIPROCESS):
-    def proc2(X, random_matrixA, random_matrixB):
-        model = NMF(
-            n_components=n_components,
-            l1_ratio=l1_ratio,
-            alpha_W=alpha_W,
-            random_matrixA=random_matrixA,
-            random_matrixB=random_matrixB,
-        )
-
-        model.fit(X)
-        W = model.transform(X, transform_iter=40)
-        H = model._components
-        X_reconstructed = model.inverse_transform(W)
-        return W, H, X_reconstructed
-
-    try:
-        # bandwidth and latency only work for docker mode
-        conf_path = "sml/decomposition/emulations/3pc.json"
-        emulator = emulation.Emulator(conf_path, mode, bandwidth=300, latency=20)
-        emulator.up()
         # Create a simple dataset and random_matrix
         X = np.random.randint(1, 100, (1000, 10))
         X = np.array(X, dtype=float)
@@ -170,10 +140,14 @@ def emul_nmf_seperate(mode: emulation.Mode.MULTIPROCESS):
             X_reconstructed_Sklearn_seperate[:5, :5],
         )
 
+    try:
+        conf_path = "sml/decomposition/emulations/3pc.json"
+        emulator = emulation.Emulator(conf_path, mode, bandwidth=300, latency=20)
+        emulator.up()
+        emul_nmf()
+        emul_nmf_seperate()
     finally:
         emulator.down()
 
-
 if __name__ == "__main__":
-    emul_nmf(emulation.Mode.MULTIPROCESS)
-    emul_nmf_seperate(emulation.Mode.MULTIPROCESS)
+    test_nmf(emulation.Mode.MULTIPROCESS)
