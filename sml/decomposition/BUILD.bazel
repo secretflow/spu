@@ -25,5 +25,4 @@ py_library(
 py_library(
     name = "nmf",
     srcs = ["nmf.py"],
-    deps = [],
 )
