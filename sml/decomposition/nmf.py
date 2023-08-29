@@ -16,7 +16,7 @@ import numpy as np
 import jax.numpy as jnp
 
 
-def update_w(X, W, H, H_sum, HHt, XHt, l1_reg_W, l2_reg_W, update_H=True):
+def update_w(X, W, H, H_sum, HHt, XHt, l1_reg_W, l2_reg_W):
     # H_sum is not used in 'frobenius'
     if XHt is None:
         XHt = jnp.dot(X, H.T)
@@ -121,7 +121,7 @@ class NMF:
         """
         # parameter check.
         assert n_components > 0, f"n_components should >0"
-        assert beta_loss is 'frobenius', f"beta_loss only support frobenius now"
+        assert beta_loss == 'frobenius', f"beta_loss only support frobenius now"
 
         if alpha_H is None:
             alpha_H = alpha_W
@@ -204,7 +204,7 @@ class NMF:
         # use multiplicative update solver
         for _ in range(self._max_iter):
             W, H_sum, HHt, XHt = update_w(
-                X, W, H, H_sum, HHt, XHt, l1_reg_W, l2_reg_W, self._update_H
+                X, W, H, H_sum, HHt, XHt, l1_reg_W, l2_reg_W
             )
             if self._update_H:
                 H = update_h(X, W, H, l1_reg_H, l2_reg_H)
