@@ -23,7 +23,7 @@ from sklearn import datasets
 
 
 class GaussianNB:
-    def __init__(self, classes_=None, var_smoothing=1e-9):
+    def __init__(self, classes_=None, var_smoothing=1e-6):
         """Gaussian Naive Bayes (GaussianNB).
         Can perform online updates to model parameters via :meth:`partial_fit`.
 

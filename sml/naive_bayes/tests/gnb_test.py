@@ -53,7 +53,7 @@ class UnitTests(unittest.TestCase):
         def proc(X1, y1, X2, y2, classes):
             model = GaussianNB(
                 classes_=classes,
-                var_smoothing=1e-9,
+                var_smoothing=1e-6,
             )
 
             model.fit(X1, y1)
@@ -63,6 +63,20 @@ class UnitTests(unittest.TestCase):
             y2_pred = model.predict(X)
 
             return y1_pred, y2_pred
+
+        def test_precision(X1, y1, X2, y2, classes):
+            model = GaussianNB(
+                classes_=classes,
+                var_smoothing=1e-6,
+            )
+
+            model.fit(X1, y1)
+            theta1, var1 = model.theta_, model.var_
+
+            model.fit(X2, y2)
+            theta2, var2 = model.theta_, model.var_
+
+            return theta1, var1, theta2, var2
 
         # Create a simple dataset
         partial = 0.5
@@ -88,7 +102,7 @@ class UnitTests(unittest.TestCase):
         sklearn_model = SklearnGaussianNB()
         sklearn_model.fit(X1, y1)
         y1_pred = sklearn_model.predict(X)
-        sklearn_model.fit(X2, y2)
+        sklearn_model.partial_fit(X2, y2)
         y2_pred = sklearn_model.predict(X)
         sk_result1 = (y == y1_pred).sum() / total_samples
         sk_result2 = (y == y2_pred).sum() / total_samples
@@ -103,6 +117,19 @@ class UnitTests(unittest.TestCase):
 
         assert np.isclose(result1, sk_result1, atol=1e-4)
         assert np.isclose(result2, sk_result2, atol=1e-4)
+
+        # Test precision of theta_ and var_
+        theta1, var1, theta2, var2 = spsim.sim_jax(self.sim64, test_precision)(
+            X1, y1, X2, y2, classes
+        )
+        sklearn_model = SklearnGaussianNB()
+        sklearn_model.fit(X1, y1)
+        sk_theta1, sk_var1 = sklearn_model.theta_, sklearn_model.var_
+        sklearn_model.partial_fit(X2, y2)
+        sk_theta2, sk_var2 = sklearn_model.theta_, sklearn_model.var_
+
+        assert np.allclose(theta1, sk_theta1, rtol=1.0e-5, atol=1)
+        assert np.allclose(var1, sk_var1, rtol=1.0e-5, atol=1)
 
 
 if __name__ == "__main__":
