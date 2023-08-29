@@ -56,7 +56,6 @@ class KNNClassifer:
         # Validate n_classes
         if (n_classes is None) or (not isinstance(n_classes, int)) or (n_classes <= 0):
             raise ValueError("n_classes should be a positive integer if provided.")
-        
 
         self.X = None
         self.y = None
