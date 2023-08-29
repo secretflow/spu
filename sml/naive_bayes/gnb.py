@@ -16,10 +16,11 @@ import unittest
 
 import jax
 import jax.numpy as jnp
-import spu.spu_pb2 as spu_pb2  # type: ignore
-import spu.utils.simulation as spsim
 from jax import jit, lax
 from sklearn import datasets
+
+import spu.spu_pb2 as spu_pb2  # type: ignore
+import spu.utils.simulation as spsim
 
 
 class GaussianNB:

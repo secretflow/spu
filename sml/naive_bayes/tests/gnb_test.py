@@ -18,9 +18,10 @@ import unittest
 
 import jax.numpy as jnp
 import numpy as np
-from sklearn import datasets
 from jax import random
+from sklearn import datasets
 from sklearn.naive_bayes import GaussianNB as SklearnGaussianNB
+
 import spu.spu_pb2 as spu_pb2
 import spu.utils.simulation as spsim
 
