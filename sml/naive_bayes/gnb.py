@@ -150,7 +150,7 @@ class GaussianNB:
         n_new = N_i
         new_mu = jnp.sum(X, axis=0) / n_new
         new_var = jnp.sum((X - new_mu) ** 2, axis=0)
-        new_var = new_var - N * new_mu ** 2 + N_i * new_mu ** 2
+        new_var = new_var - N * new_mu**2 + N_i * new_mu**2
         new_var = new_var / n_new
 
         n_total = n_past + n_new
