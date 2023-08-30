@@ -55,13 +55,13 @@ class Ridge:
           obtain a closed-form solution via a Cholesky decomposition of
           dot(X.T, X)
 
-    max_iter : int, default=300
+    max_iter : int, default=50
         Maximum number of iterations for svd solver.
-        For 'svd' solvers, the default value is 300.
+        For 'svd' solvers, the default value is 100.
     """
 
     def __init__(
-        self, alpha=1.0, fit_bias=True, solver="cholesky", max_iter=300
+        self, alpha=1.0, fit_bias=True, solver="cholesky", max_iter=100
     ) -> None:
         self.alpha = alpha
         self.solver = solver
@@ -152,11 +152,8 @@ def _solve_cholesky(x, y, alpha):
 
 
 def _solve_svd(x, y, alpha, max_iter):
-    u, s, v = extmath.svd(x, max_iter)
-    U = u[:, : x.shape[1]]
-    S = s[: x.shape[1]]
-    V = v[: x.shape[1], :]
-    s_nnz = S[:, jnp.newaxis]
+    U, s, V = extmath.svd(x, max_iter)
+    s_nnz = s[:, jnp.newaxis]
     UTy = jnp.dot(U.T, y)
     d = s_nnz / (s_nnz**2 + alpha)
     d_UT_y = d * UTy

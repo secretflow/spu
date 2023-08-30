@@ -23,7 +23,7 @@ from sml.linear_model.ridge import Ridge
 # all emulation action should begin with `emul_` (for reflection)
 def emul_Ridge(mode: emulation.Mode.MULTIPROCESS):
     def proc(x1, x2, y):
-        model = Ridge(alpha=1.0, solver="svd", max_iter=300)
+        model = Ridge(alpha=1.0, solver="svd", max_iter=100)
 
         x = jnp.concatenate((x1, x2), axis=1)
         y = y.reshape((y.shape[0], 1))
@@ -52,6 +52,7 @@ def emul_Ridge(mode: emulation.Mode.MULTIPROCESS):
         # load mock data
         x1, x2, y = load_data()
 
+        jnp.set_printoptions(suppress=True)
         # sklearn test
         x = jnp.concatenate((x1, x2), axis=1)
         sklearn_result = (

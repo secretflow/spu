@@ -25,11 +25,12 @@ from sml.linear_model.ridge import Ridge
 class UnitTests(unittest.TestCase):
     def test_svd(self):
         sim = spsim.Simulator.simple(
-            3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM64
+            3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM128
         )
 
         def proc(x1, x2, y):
-            model = Ridge(alpha=1.0, solver="svd", max_iter=300)
+            jnp.set_printoptions(suppress=True)
+            model = Ridge(alpha=1.0, solver="svd", max_iter=100)
 
             x = jnp.concatenate((x1, x2), axis=1)
             y = y.reshape((y.shape[0], 1))
