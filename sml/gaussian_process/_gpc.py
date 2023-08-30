@@ -5,7 +5,7 @@ import sys
 import jax
 import jax.numpy as jnp
 import numpy as np
-from jax import grad
+from jax import grad, jit
 from jax.lax.linalg import cholesky
 from jax.scipy.linalg import cho_solve, solve
 from jax.scipy.special import erf, expit
@@ -58,7 +58,7 @@ class _BinaryGaussianProcessClassifierLaplace:
 
         self.y_train = y
 
-        self.y_train = 2 * (self.y_train - 0.5)  # turn y_train into a -1 and 1 array
+        # self.y_train = 2 * (self.y_train - 0.5)  # turn y_train into a -1 and 1 array
 
         K = self.kernel_(self.X_train_)
         _, self.f_ = self._posterior_mode(K, return_temporaries=True)
@@ -177,7 +177,6 @@ class _BinaryGaussianProcessClassifierLaplace:
         else:
             self.kernel_ = copy.deepcopy(self.kernel)
 
-
 class GaussianProcessClassifier:
     def __init__(
         self,
@@ -204,18 +203,22 @@ class GaussianProcessClassifier:
         self.n_jobs = n_jobs
         self.poss = poss
 
-    def fit(self, X, y):
+    def fit(self, X, y, n_classes_):
+        self.n_classes_ = n_classes_
         # Encode class labels and check that it is a binary classification (self.classes_, self.y_train_ is a np.ndarrays for now, jnp.unique doesn't allow string transformation)
         self.y = y
-        y0 = jnp.array(y)
-        unique_labels = set(y)
-        self.n_classes_ = []
-        self.y_train = jnp.zeros(y0.shape, dtype=int)
-        for index, label in enumerate(unique_labels):
-            self.n_classes_.append(label)
-            self.y_train = jnp.where(y0 == label, index, self.y_train)
+        # y0 = jnp.array(y)
+        # unique_labels = set(y)
+        # self.n_classes_ = []
+        # self.y_train = jnp.zeros(y0.shape, dtype=int)
+        # for index, label in enumerate(unique_labels):
+        #     self.n_classes_.append(label)
+        #     self.y_train = jnp.where(y0 == label, index, self.y_train)
 
-        if len(self.n_classes_) == 1:
+        self.y_train = jnp.array(y)
+        # self.n_classes_ = jnp.max(self.y_train) + 1
+
+        if self.n_classes_ == 1:
             raise ValueError(
                 "GaussianProcessClassifier requires 2 or more "
                 "distinct classes; got 1 class (only class %s "
@@ -233,7 +236,7 @@ class GaussianProcessClassifier:
             poss=self.poss,
         )
 
-        if len(self.n_classes_) > 2:
+        if self.n_classes_ > 2:
             if self.multi_class == "one_vs_rest":
                 self.base_estimator_ = OneVsRestClassifier(
                     self.base_estimator_, self.n_classes_, n_jobs=self.n_jobs
@@ -250,7 +253,7 @@ class GaussianProcessClassifier:
 
     def predict(self, X):
         a = self.base_estimator_.predict(X)
-        result = jnp.array(a)
-        for index, label in enumerate(self.n_classes_):
-            result = jnp.where(index == a, label, result)
-        return result
+        # result = jnp.array(a)
+        # for index, label in enumerate(self.n_classes_):
+        #     result = jnp.where(index == a, label, result)
+        return a
