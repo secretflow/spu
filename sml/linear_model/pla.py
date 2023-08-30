@@ -60,7 +60,7 @@ class Perceptron:
     eta0 : float, default=1
         Constant by which the updates are multiplied.
 
-    batch_size : int, default=1
+    batch_size : int, default=-1
         The batch size is a number of samples processed before the model is updated.
         if batch_size = -1, all samples will be processed in an iteration.
 
@@ -78,7 +78,7 @@ class Perceptron:
         fit_intercept=True,
         max_iter=1000,
         eta0=1.0,
-        batch_size=1,
+        batch_size=-1,
         early_stop=True,
     ):
         # parameter check.
@@ -86,6 +86,7 @@ class Perceptron:
         assert eta0 > 0, f"eta0 should >0"
         assert alpha > 0, f"alpha should >0"
         assert patience > 0, f"patience should >0"
+        assert batch_size > 0 or batch_size == -1, f"batch size should >0 or -1"
         assert penalty in [
             e.value for e in Penalty
         ], f"penalty should in {[e.value for e in Penalty]}, but got {penalty}"
@@ -171,22 +172,18 @@ class Perceptron:
         assert len(x.shape) == 2, f"expect x to be 2 dimension array, got {x.shape}"
 
         n_samples, n_features = x.shape
-        if self.bsize == -1:
+        if self.bsize == -1 or self.bsize > n_samples:
             self.bsize = n_samples
-        assert (
-            self.bsize <= n_samples
-        ), f"batch size should not be greater than the number of samples"
 
         w = jnp.zeros(n_features)
         b = jnp.array([0.0])
 
         not_early_stop = True
 
-        if self.early_stop:
-            best_loss = jnp.inf
-            best_w = w
-            best_b = b
-            best_iter = -1
+        best_loss = jnp.inf
+        best_w = w
+        best_b = b
+        best_iter = -1
 
         for iter in range(self.max_iter):
             total_batch = math.ceil(float(n_samples) / self.bsize)
@@ -217,8 +214,12 @@ class Perceptron:
 
                 not_early_stop *= iter <= best_iter + self.patience
 
-        self._w = best_w
-        self._b = best_b
+        if self.early_stop:
+            self._w = best_w
+            self._b = best_b
+        else:
+            self._w = w
+            self._b = b
 
         return self
 
