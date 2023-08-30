@@ -87,70 +87,77 @@ class OneVsOneClassifier:
         return Y.argmax(axis=1)
 
 
-# 此处注释的vmap版本ovr算法，本地已经跑通，但是spu一直报错
+# 此处注释的vmap版本ovr算法,本地已经跑通,但是spu一直报错
 
-# class OneVsRestClassifier():
-#     def __init__(self, estimator, n_classes, * , n_jobs=None):
-#         self.estimator = estimator
-#         self.n_jobs = n_jobs
-#         self.classes_ = n_classes
-
-#     def fit(self, X, y):
-#         self.y_binary = jnp.array([jnp.where(y == i, 0, 1) for i in range(len(self.classes_))])
-
-#         self.fs_ = vmap(self._fit_ovr_binary, in_axes = (None, 0) )(X, self.y_binary)
-
-#         self.estimator.approx_func = expit
-#         self.estimator.X_train_ = jnp.array(X)
-
-#         if self.estimator.kernel is None:  # Use an RBF kernel as default
-#             self.estimator.kernel_ = RBF()
-#         else:
-#             self.estimator.kernel_ = copy.deepcopy(self.estimator.kernel)
-
-#     def predict(self, X_test):
-#         maxima = vmap(self.ovr_predict_proba, in_axes = (0, None, 0))(self.y_binary, X_test, self.fs_)
-#         return maxima.argmax(axis=0)
-
-#     def ovr_predict_proba(self, y_binary, X_test, f_):
-#         estimator1 = copy.deepcopy(self.estimator)
-#         estimator1.y_train = y_binary
-#         estimator1.f_ = f_
-#         return estimator1.predict_proba(X_test)[:, 0]
-
-#     def _fit_ovr_binary(self, X, y_binary):
-#         estimator1 = copy.deepcopy(self.estimator)
-#         f_ = estimator1.fit(X, y_binary)
-#         return f_
-
-# 简陋版本的ovr
-
-
-def _fit_ovr_binary(estimator, X, y, i):
-    y_binary = jnp.where(y == i, 0, 1)
-    estimator1 = copy.deepcopy(estimator)
-    estimator1.fit(X, y_binary)
-    return estimator1
-
-
-class OneVsRestClassifier:
-    def __init__(self, estimator, n_classes, *, n_jobs=None):
+class OneVsRestClassifier():
+    def __init__(self, estimator, n_classes, * , n_jobs=None):
         self.estimator = estimator
         self.n_jobs = n_jobs
         self.classes_ = n_classes
 
     def fit(self, X, y):
-        self.estimators_ = [
-            _fit_ovr_binary(self.estimator, X, y, i) for i in range(len(self.classes_))
-        ]
+        self.y_binary = jnp.array([jnp.where(y == i, 0, 1) for i in range(self.classes_)])
 
-    def predict(self, X0):
-        X = jnp.array(X0)
-        maxima = jnp.zeros(X.shape[0], dtype=jnp.float32)
-        argmaxima = jnp.zeros(X.shape[0], dtype=int)
-        for i, e in enumerate(self.estimators_):
-            pred = e.predict_proba(X)[:, 0]
-            maxima = jnp.maximum(maxima, pred)
-            argmaxima = jnp.where(maxima == pred, i, argmaxima)
-        # return jnp.array([self.classes_[ind] for ind in argmaxima])
-        return argmaxima
+        # y_binary_list = []
+        # for i in range(int(self.classes_)):
+        #     label = jnp.where(y == i, 0, 1)
+        #     y_binary_list.append(label)
+        # self.y_binary = jnp.array(y_binary_list)
+
+        self.fs_ = vmap(self._fit_ovr_binary, in_axes = (None, 0) )(X, self.y_binary)
+
+        self.estimator.approx_func = expit
+        self.estimator.X_train_ = jnp.array(X)
+
+        if self.estimator.kernel is None:  # Use an RBF kernel as default
+            self.estimator.kernel_ = RBF()
+        else:
+            self.estimator.kernel_ = copy.deepcopy(self.estimator.kernel)
+
+    def predict(self, X_test):
+        maxima = vmap(self.ovr_predict_proba, in_axes = (0, None, 0))(self.y_binary, X_test, self.fs_)
+        print(maxima)
+        return maxima.argmax(axis=0)
+
+    def ovr_predict_proba(self, y_binary, X_test, f_):
+        estimator1 = copy.deepcopy(self.estimator)
+        estimator1.y_train = y_binary
+        estimator1.f_ = f_
+        return estimator1.predict_proba(X_test)[:, 0]
+
+    def _fit_ovr_binary(self, X, y_binary):
+        estimator1 = copy.deepcopy(self.estimator)
+        f_ = estimator1.fit(X, y_binary)
+        return f_
+
+# 简陋版本的ovr
+
+
+# def _fit_ovr_binary(estimator, X, y, i):
+#     y_binary = jnp.where(y == i, 0, 1)
+#     estimator1 = copy.deepcopy(estimator)
+#     estimator1.fit(X, y_binary)
+#     return estimator1
+
+
+# class OneVsRestClassifier:
+#     def __init__(self, estimator, n_classes, *, n_jobs=None):
+#         self.estimator = estimator
+#         self.n_jobs = n_jobs
+#         self.classes_ = n_classes
+
+#     def fit(self, X, y):
+#         self.estimators_ = [
+#             _fit_ovr_binary(self.estimator, X, y, i) for i in range(self.classes_)
+#         ]
+
+#     def predict(self, X0):
+#         X = jnp.array(X0)
+#         maxima = jnp.zeros(X.shape[0], dtype=jnp.float32)
+#         argmaxima = jnp.zeros(X.shape[0], dtype=int)
+#         for i, e in enumerate(self.estimators_):
+#             pred = e.predict_proba(X)[:, 0]
+#             maxima = jnp.maximum(maxima, pred)
+#             argmaxima = jnp.where(maxima == pred, i, argmaxima)
+#         # return jnp.array([self.classes_[ind] for ind in argmaxima])
+#         return argmaxima
