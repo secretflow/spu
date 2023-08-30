@@ -36,3 +36,8 @@ py_library(
     name = "ridge",
     srcs = ["ridge.py"],
 )
+
+py_library(
+    name = "pla",
+    srcs = ["pla.py"],
+)
