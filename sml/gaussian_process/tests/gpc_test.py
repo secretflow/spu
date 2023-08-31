@@ -23,15 +23,15 @@ class UnitTests(unittest.TestCase):
         # Test GaussianProcessClassifier
         def proc(x, y):
             model = GaussianProcessClassifier(max_iter_predict=10)
-            model.fit(x, y)
+            model.fit(x, y, 3)
 
             pred = model.predict(x)
             return pred
 
         # Create dataset
         x, y = load_iris(return_X_y=True)
-        x = x[45:55, :]
-        y = y[45:55]
+        # x = x[45:55, :]
+        # y = y[45:55]
 
         # Run
         result = spsim.sim_jax(sim, proc)(x, y)
