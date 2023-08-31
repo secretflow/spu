@@ -36,18 +36,8 @@ py_binary(
 )
 
 py_binary(
-    name = "ridge_cholesky_emul",
-    srcs = ["ridge_cholesky_emul.py"],
-    deps = [
-        "//examples/python/utils:dataset_utils",  # FIXME: remove examples dependency
-        "//sml/linear_model:ridge",
-        "//sml/utils:emulation",
-    ],
-)
-
-py_binary(
-    name = "ridge_svd_emul",
-    srcs = ["ridge_svd_emul.py"],
+    name = "ridge_emul",
+    srcs = ["ridge_emul.py"],
     deps = [
         "//examples/python/utils:dataset_utils",  # FIXME: remove examples dependency
         "//sml/linear_model:ridge",

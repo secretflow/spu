@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import sys
 import unittest
 
 import jax.numpy as jnp
@@ -23,14 +24,25 @@ from sml.linear_model.ridge import Ridge
 
 
 class UnitTests(unittest.TestCase):
-    def test_svd(self):
+    def test_ridge(self):
+        solver_list = ['cholesky', 'svd']
+        print(f"solver_list={solver_list}")
+
         sim = spsim.Simulator.simple(
-            3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM128
+            3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM64
         )
 
-        def proc(x1, x2, y):
-            jnp.set_printoptions(suppress=True)
-            model = Ridge(alpha=1.0, solver="svd", max_iter=100)
+        def cholesky_proc(x1, x2, y):
+            model = Ridge(alpha=1.0, solver='cholesky')
+
+            x = jnp.concatenate((x1, x2), axis=1)
+            y = y.reshape((y.shape[0], 1))
+
+            result = model.fit(x, y).predict(x)
+            return result
+
+        def svd_proc(x1, x2, y):
+            model = Ridge(alpha=1.0, solver='svd', max_iter=100)
 
             x = jnp.concatenate((x1, x2), axis=1)
             y = y.reshape((y.shape[0], 1))
@@ -47,21 +59,26 @@ class UnitTests(unittest.TestCase):
 
         x1, x2, y = dsutil.load_dataset_by_config(dataset_config)
 
-        # sklearn test
         x = jnp.concatenate((x1, x2), axis=1)
-        sklearn_result = (
-            skRidge(alpha=1, solver='svd', fit_intercept=True).fit(x, y).predict(x)
-        )
-        print("[sklearn_result]---------------------------------------------")
-        print(sklearn_result[:10])
+        for i in range(len(solver_list)):
+            solver = solver_list[i]
+            if solver_list[i] == "cholesky":
+                result = spsim.sim_jax(sim, cholesky_proc)(x1, x2, y)
+            if solver_list[i] == "svd":
+                result = spsim.sim_jax(sim, svd_proc)(x1, x2, y)
+            print(f"[spsim_{solver}_result]-------------------------------------------")
+            print(result[:10])
 
-        result = spsim.sim_jax(sim, proc)(x1, x2, y)
-        print("[spsim_result]-----------------------------------------------")
-        print(result[:10])
+            # sklearn test
+            sklearn_result = (
+                skRidge(alpha=1, solver=solver, fit_intercept=True).fit(x, y).predict(x)
+            )
+            print(f"[sklearn_{solver}_result]-----------------------------------------")
+            print(sklearn_result[:10])
 
-        # absolute_error
-        print("[absolute_error]---------------------------------------------")
-        print(jnp.round(jnp.abs(result - sklearn_result)[:20], 5))
+            # absolute_error
+            print(f"[absolute_{solver}_error]-----------------------------------------")
+            print(jnp.round(jnp.abs(result - sklearn_result)[:20], 5))
 
 
 if __name__ == "__main__":
