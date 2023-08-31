@@ -24,10 +24,3 @@ py_binary(
         "//sml/utils:emulation",
     ],
 )
-
-filegroup(
-    name = "conf",
-    srcs = [
-        "3pc.json",
-    ],
-)

@@ -12,15 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-
-import jax
 import jax.numpy as jnp
-from jax import jit, lax
-from sklearn import datasets
-
-import spu.spu_pb2 as spu_pb2  # type: ignore
-import spu.utils.simulation as spsim
+from jax import vmap
 
 
 class GaussianNB:
@@ -34,13 +27,13 @@ class GaussianNB:
             class labels known to the classifier. Should be provided when classifier
             is created.
 
-        var_smoothing : float, default=1e-9
+        var_smoothing : float, default=1e-6
             Portion of the largest variance of all features that is added to
             variances for calculation stability.
 
         Attributes
         ----------
-        first :  bool
+        first_ :  bool
             to determine whether the classifier is called the first time.
 
         class_count_ : ndarray of shape (n_classes,)
@@ -91,7 +84,7 @@ class GaussianNB:
             Returns the instance itself.
         """
         self.n_sample = len(y)
-        self.first_ = False
+        self.first_ = True
         return self._first_partial_fit(X, y)
 
     def partial_fit(self, X, y):
@@ -114,7 +107,6 @@ class GaussianNB:
 
         self.n_sample = len(y)
         if self.first_ == True:
-            self.first_ = False
             return self._first_partial_fit(X, y)
         else:
             return self._partial_fit(X, y)
@@ -153,16 +145,23 @@ class GaussianNB:
         new_var = new_var - N * new_mu**2 + N_i * new_mu**2
         new_var = new_var / n_new
 
+        # n_past == 0
+        if self.first_ == True:
+            # correct precision problem
+            new_var = jnp.where(new_var < 0.0, 0.0, new_var)
+            return new_mu, new_var
+
+        # n_past != 0
         n_total = n_past + n_new
 
         # Combine mean of old and new data.
-        total_mu = jnp.where(n_new == 0.0, mu, (n_new * new_mu + n_past * mu) / n_total)
+        total_mu = (n_new * new_mu + n_past * mu) / n_total
 
         # Combine variance of old and new data.
         old_ssd = n_past * var
         new_ssd = n_new * new_var
         total_ssd = old_ssd + new_ssd + (n_new * n_past / n_total) * (mu - new_mu) ** 2
-        total_var = jnp.where(n_new == 0.0, var, total_ssd / n_total)
+        total_var = total_ssd / n_total
         # correct precision problem
         total_var = jnp.where(total_var < 0, 0.0, total_var)
 
@@ -187,23 +186,25 @@ class GaussianNB:
         classes = self.classes_
         n_features = self.n_features
         y_ = jnp.expand_dims(y, 1).repeat(n_features, 1)
-        for i, y_i in enumerate(classes):
+
+        def _update_single(y_i, theta, var, class_count):
             X_i = jnp.where(y_ == y_i, X, 0.0)
             Indicate_i = jnp.where(y == y_i, 1, 0)
             N_i = jnp.sum(Indicate_i, axis=0)
 
             new_theta, new_sigma = self._update_mean_variance(
-                self.class_count_[i], self.theta_[i, :], self.var_[i, :], X_i, N_i
+                class_count, theta, var, X_i, N_i
             )
+            new_class_count = class_count + N_i
 
-            self.class_count_ = self.class_count_.at[i].set(self.class_count_[i] + N_i)
+            return new_class_count, new_theta, new_sigma
 
-            for j in range(n_features):
-                self.theta_ = self.theta_.at[i, j].set(new_theta[j])
-                self.var_ = self.var_.at[i, j].set(new_sigma[j])
+        self.class_count_, self.theta_, self.var_ = vmap(
+            _update_single, in_axes=(0, 0, 0, 0)
+        )(classes, self.theta_, self.var_, self.class_count_)
 
         self.var_ = self.var_ + self.epsilon_
-        self.class_prior_ = self.class_count_ / jnp.sum(self.class_count_)
+        self.class_prior_ = self.class_count_ / self.total_count_
 
         return self
 
@@ -215,13 +216,16 @@ class GaussianNB:
         self.theta_ = jnp.zeros((n_classes, n_features))
         self.var_ = jnp.zeros((n_classes, n_features))
         self.class_count_ = jnp.zeros(n_classes, dtype=jnp.float32)
+        self.total_count_ = self.n_sample
         self.class_prior_ = jnp.zeros(n_classes, dtype=jnp.float32)
         self.epsilon_ = self.var_smoothing * jnp.var(X, axis=0).max()
-
-        return self._update_theta_var(X, y)
+        self = self._update_theta_var(X, y)
+        self.first_ = False
+        return self
 
     def _partial_fit(self, X, y):
         """Actual implementation of Gaussian NB partial fitting."""
+        self.total_count_ += self.n_sample
         self.var_ = self.var_ - self.epsilon_
         return self._update_theta_var(X, y)
 
@@ -238,14 +242,19 @@ class GaussianNB:
         jll: array-like of shape (n_samples, n_classes)
             The joint log likelihood of testing samples w.r.t all classes.
         """
-        joint_log_likelihood = []
-        for i in range(len(self.classes_)):
-            jointi = jnp.where(
-                self.class_prior_[i] != 0, jnp.log(self.class_prior_[i]), -jnp.inf
-            )
-            n_ij = -0.5 * jnp.sum(jnp.log(2.0 * jnp.pi * self.var_[i, :]))
-            n_ij -= 0.5 * jnp.sum(((X - self.theta_[i, :]) ** 2) / self.var_[i, :], 1)
-            joint_log_likelihood.append(jointi + n_ij)
+
+        def _joint_log_likelihood_single(prior, theta, var, X):
+            # This jnp.where() is necessary
+            # because log(prior) != -jnp.inf on SPU when prior == 0.
+            jointi = jnp.where(prior != 0, jnp.log(prior), -jnp.inf)
+            n_ij = -0.5 * jnp.sum(jnp.log(2.0 * jnp.pi * var))
+            n_ij -= 0.5 * jnp.sum(((X - theta) ** 2) / var, 1)
+            return jointi + n_ij
+
+        joint_log_likelihood = vmap(
+            _joint_log_likelihood_single, in_axes=(0, 0, 0, None)
+        )(self.class_prior_, self.theta_, self.var_, X)
+
         joint_log_likelihood = jnp.array(joint_log_likelihood).T
         return joint_log_likelihood
 
@@ -262,5 +271,6 @@ class GaussianNB:
         result: array-like of shape (n_samples,)
             The predicted classes of testing samples.
         """
+        assert self.first_ == False, f"Not fit on any data yet!"
         jll = self._joint_log_likelihood(X)
         return self.classes_[jnp.argmax(jll, axis=1)]

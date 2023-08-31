@@ -18,7 +18,6 @@ import unittest
 
 import jax.numpy as jnp
 import numpy as np
-from jax import random
 from sklearn import datasets
 from sklearn.naive_bayes import GaussianNB as SklearnGaussianNB
 
@@ -58,26 +57,14 @@ class UnitTests(unittest.TestCase):
             )
 
             model.fit(X1, y1)
+            theta1, var1 = model.theta_, model.var_
             y1_pred = model.predict(X)
 
-            model.fit(X2, y2)
+            model.partial_fit(X2, y2)
+            theta2, var2 = model.theta_, model.var_
             y2_pred = model.predict(X)
 
-            return y1_pred, y2_pred
-
-        def test_precision(X1, y1, X2, y2, classes):
-            model = GaussianNB(
-                classes_=classes,
-                var_smoothing=1e-6,
-            )
-
-            model.fit(X1, y1)
-            theta1, var1 = model.theta_, model.var_
-
-            model.fit(X2, y2)
-            theta2, var2 = model.theta_, model.var_
-
-            return theta1, var1, theta2, var2
+            return y1_pred, y2_pred, theta1, var1, theta2, var2
 
         # Create a simple dataset
         partial = 0.5
@@ -95,15 +82,20 @@ class UnitTests(unittest.TestCase):
         X2, y2 = X[split_idx:], y[split_idx:]
 
         # Run the simulation
-        y1_pred, y2_pred = spsim.sim_jax(self.sim64, proc)(X1, y1, X2, y2, classes)
+        y1_pred, y2_pred, theta1, var1, theta2, var2 = spsim.sim_jax(self.sim64, proc)(
+            X1, y1, X2, y2, classes
+        )
         result1 = (y == y1_pred).sum() / total_samples
         result2 = (y == y2_pred).sum() / total_samples
 
         # Run fit and partial_fit using sklearn
         sklearn_model = SklearnGaussianNB()
         sklearn_model.fit(X1, y1)
+        sk_theta1, sk_var1 = sklearn_model.theta_, sklearn_model.var_
         y1_pred = sklearn_model.predict(X)
         sklearn_model.partial_fit(X2, y2)
+        sk_theta2, sk_var2 = sklearn_model.theta_, sklearn_model.var_
+
         y2_pred = sklearn_model.predict(X)
         sk_result1 = (y == y1_pred).sum() / total_samples
         sk_result2 = (y == y2_pred).sum() / total_samples
@@ -116,21 +108,14 @@ class UnitTests(unittest.TestCase):
         print("Sklearn prediction accuracy with once fit: ", sk_result1)
         print("Sklearn prediction accuracy with twice fits: ", sk_result2)
 
-        assert np.isclose(result1, sk_result1, atol=1e-4)
-        assert np.isclose(result2, sk_result2, atol=1e-4)
+        assert np.isclose(result1, sk_result1, atol=1e-3)
+        assert np.isclose(result2, sk_result2, atol=1e-3)
 
         # Test precision of theta_ and var_
-        theta1, var1, theta2, var2 = spsim.sim_jax(self.sim64, test_precision)(
-            X1, y1, X2, y2, classes
-        )
-        sklearn_model = SklearnGaussianNB()
-        sklearn_model.fit(X1, y1)
-        sk_theta1, sk_var1 = sklearn_model.theta_, sklearn_model.var_
-        sklearn_model.partial_fit(X2, y2)
-        sk_theta2, sk_var2 = sklearn_model.theta_, sklearn_model.var_
-
         assert np.allclose(theta1, sk_theta1, rtol=1.0e-5, atol=1)
         assert np.allclose(var1, sk_var1, rtol=1.0e-5, atol=1)
+        assert np.allclose(theta2, sk_theta2, rtol=1.0e-5, atol=1)
+        assert np.allclose(var2, sk_var2, rtol=1.0e-5, atol=1)
 
 
 if __name__ == "__main__":

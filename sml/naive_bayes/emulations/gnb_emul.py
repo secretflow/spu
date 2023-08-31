@@ -16,7 +16,6 @@ import os
 import sys
 
 import jax.numpy as jnp
-import jax.random as random
 import numpy as np
 from sklearn import datasets
 from sklearn.naive_bayes import GaussianNB as SklearnGaussianNB
@@ -45,8 +44,9 @@ def emul_SimpleGNB(mode: emulation.Mode.MULTIPROCESS):
 
     try:
         # bandwidth and latency only work for docker mode
-        print(os.getcwd())
-        emulator = emulation.Emulator('3pc.json', mode, bandwidth=300, latency=20)
+        emulator = emulation.Emulator(
+            emulation.CLUSTER_ABY3_3PC, mode, bandwidth=300, latency=20
+        )
         emulator.up()
         # Create a simple dataset
         partial = 0.5
@@ -63,8 +63,8 @@ def emul_SimpleGNB(mode: emulation.Mode.MULTIPROCESS):
         X1, y1 = X[:split_idx], y[:split_idx]
         X2, y2 = X[split_idx:], y[split_idx:]
 
-        X1_spu, y1_spu = emulator.seal(X1), emulator.seal(y1)
-        X2_spu, y2_spu = emulator.seal(X2), emulator.seal(y2)
+        X1_spu, y1_spu = emulator.seal(X1, y1)
+        X2_spu, y2_spu = emulator.seal(X2, y2)
 
         y1_pred, y2_pred = emulator.run(proc_fit)(
             X1_spu, y1_spu, X2_spu, y2_spu, classes
