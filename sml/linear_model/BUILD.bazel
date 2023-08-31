@@ -39,3 +39,8 @@ py_library(
         "//sml/utils:extmath",
     ],
 )
+
+py_library(
+    name = "pla",
+    srcs = ["pla.py"],
+)

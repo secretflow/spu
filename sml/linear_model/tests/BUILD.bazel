@@ -61,3 +61,13 @@ py_test(
         "//spu/utils:simulation",
     ],
 )
+
+py_test(
+    name = "pla_test",
+    srcs = ["pla_test.py"],
+    deps = [
+        "//sml/linear_model:pla",
+        "//spu:init",
+        "//spu/utils:simulation",
+    ],
+)

@@ -25,3 +25,13 @@ py_test(
         "//spu/utils:simulation",
     ],
 )
+
+py_test(
+    name = "nmf_test",
+    srcs = ["nmf_test.py"],
+    deps = [
+        "//sml/decomposition:nmf",
+        "//spu:init",
+        "//spu/utils:simulation",
+    ],
+)

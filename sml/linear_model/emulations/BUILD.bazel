@@ -54,3 +54,12 @@ py_binary(
         "//sml/utils:emulation",
     ],
 )
+
+py_binary(
+    name = "pla_emul",
+    srcs = ["pla_emul.py"],
+    deps = [
+        "//sml/linear_model:pla",
+        "//sml/utils:emulation",
+    ],
+)
