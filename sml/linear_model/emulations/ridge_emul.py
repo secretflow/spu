@@ -19,16 +19,13 @@ import sml.utils.emulation as emulation
 from sml.linear_model.ridge import Ridge
 
 
-# TODO: design the enumation framework, just like py.unittest
-# all emulation action should begin with `emul_` (for reflection)
 def emul_Ridge(mode: emulation.Mode.MULTIPROCESS):
-    def proc(x1, x2, y):
-        model = Ridge(alpha=1.0, solver="cholesky")
-
+    def proc(x1, x2, y, solver):
+        model = Ridge(alpha=1.0, max_iter=100, solver=solver)
         x = jnp.concatenate((x1, x2), axis=1)
         y = y.reshape((y.shape[0], 1))
-
-        return model.fit(x, y).predict(x)
+        result = model.fit(x, y).predict(x)
+        return result
 
     def load_data():
         dataset_config = {
@@ -43,6 +40,8 @@ def emul_Ridge(mode: emulation.Mode.MULTIPROCESS):
         return x1, x2, y
 
     try:
+        solver_list = ['cholesky', 'svd']
+        print(f"solver_list={solver_list}")
         # bandwidth and latency only work for docker mode
         emulator = emulation.Emulator(
             emulation.CLUSTER_ABY3_3PC, mode, bandwidth=300, latency=20
@@ -52,25 +51,29 @@ def emul_Ridge(mode: emulation.Mode.MULTIPROCESS):
         # load mock data
         x1, x2, y = load_data()
 
-        # sklearn test
-        x = jnp.concatenate((x1, x2), axis=1)
-        sklearn_result = (
-            skRidge(alpha=1, solver='cholesky', fit_intercept=True).fit(x, y).predict(x)
-        )
-        print("[sklearn_result]---------------------------------------------")
-        print(sklearn_result[:10])
+        for i in range(len(solver_list)):
+            solver = solver_list[i]
+            # mark these data to be protected in SPU
+            X1, X2, Y = emulator.seal(x1, x2, y)
 
-        # mark these data to be protected in SPU
-        x1, x2, y = emulator.seal(x1, x2, y)
+            # run
+            result = emulator.run(proc, static_argnums=(3,))(X1, X2, Y, solver)
+            print(f"[emul_{solver}_result]--------------------------------------------")
+            print(result[:10])
 
-        # run
-        result = emulator.run(proc)(x1, x2, y)
-        print("[emul_result]------------------------------------------------")
-        print(result[:10])
+            # sklearn test
+            x = jnp.concatenate((x1, x2), axis=1)
+            sklearn_result = (
+                skRidge(alpha=1, solver=solver_list[i], fit_intercept=True)
+                .fit(x, y)
+                .predict(x)
+            )
+            print(f"[sklearn_{solver}_result]-----------------------------------------")
+            print(sklearn_result[:10])
 
-        # absolute_error
-        print("[absolute_error]---------------------------------------------")
-        print(jnp.round(jnp.abs(result - sklearn_result)[:20], 5))
+            # absolute_error
+            print(f"[absolute_{solver}_error]-----------------------------------------")
+            print(jnp.round(jnp.abs(result - sklearn_result)[:20], 5))
     finally:
         emulator.down()
 

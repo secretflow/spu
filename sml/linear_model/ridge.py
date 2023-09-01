@@ -16,9 +16,11 @@ from enum import Enum
 import jax.numpy as jnp
 import jax.scipy as jsci
 
+import sml.utils.extmath as extmath
+
 
 class Solver(Enum):
-    SVD = 'svd'  # not supported
+    SVD = 'svd'
     CHOLESKY = 'cholesky'
 
 
@@ -52,12 +54,19 @@ class Ridge:
         - 'cholesky' uses the standard jax.scipy.linalg.solve function to
           obtain a closed-form solution via a Cholesky decomposition of
           dot(X.T, X)
+
+    max_iter : int, default=100
+        Maximum number of iterations for svd solver.
+        For 'svd' solvers, the default value is 100.
     """
 
-    def __init__(self, alpha=1.0, fit_bias=True, solver="cholesky") -> None:
+    def __init__(
+        self, alpha=1.0, fit_bias=True, solver="cholesky", max_iter=100
+    ) -> None:
         self.alpha = alpha
         self.solver = solver
         self.fit_bias = fit_bias
+        self.max_iter = max_iter
 
     def fit(self, x, y):
         """Fit Ridge regression model.
@@ -81,6 +90,8 @@ class Ridge:
 
         x, y, x_offset, y_offset = self.preprocess_data(x, y)
 
+        if self.solver == Solver.SVD.value:
+            self.coef = _solve_svd(x, y, alpha, self.max_iter)
         if self.solver == Solver.CHOLESKY.value:
             self.coef = _solve_cholesky(x, y, alpha)
         self.coef = self.coef.ravel()
@@ -138,3 +149,12 @@ def _solve_cholesky(x, y, alpha):
 
     coefs = jsci.linalg.solve(A, Xy, assume_a="pos", overwrite_a=True).T
     return coefs
+
+
+def _solve_svd(x, y, alpha, max_iter):
+    U, s, V = extmath.svd(x, max_iter)
+    s_nnz = s[:, jnp.newaxis]
+    UTy = jnp.dot(U.T, y)
+    d = s_nnz / (s_nnz**2 + alpha)
+    d_UT_y = d * UTy
+    return jnp.dot(V.T, d_UT_y).T

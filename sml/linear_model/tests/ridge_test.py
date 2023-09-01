@@ -24,16 +24,17 @@ from sml.linear_model.ridge import Ridge
 
 class UnitTests(unittest.TestCase):
     def test_ridge(self):
+        solver_list = ['cholesky', 'svd']
+        print(f"solver_list={solver_list}")
+
         sim = spsim.Simulator.simple(
             3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM64
         )
 
-        def proc(x1, x2, y):
-            model = Ridge(alpha=1.0, solver="cholesky")
-
+        def proc(x1, x2, y, solver):
+            model = Ridge(alpha=1.0, max_iter=100, solver=solver)
             x = jnp.concatenate((x1, x2), axis=1)
             y = y.reshape((y.shape[0], 1))
-
             result = model.fit(x, y).predict(x)
             return result
 
@@ -46,21 +47,24 @@ class UnitTests(unittest.TestCase):
 
         x1, x2, y = dsutil.load_dataset_by_config(dataset_config)
 
-        # sklearn test
         x = jnp.concatenate((x1, x2), axis=1)
-        sklearn_result = (
-            skRidge(alpha=1, solver='cholesky', fit_intercept=True).fit(x, y).predict(x)
-        )
-        print("[sklearn_result]---------------------------------------------")
-        print(sklearn_result[:10])
+        for i in range(len(solver_list)):
+            solver = solver_list[i]
+            result = spsim.sim_jax(sim, proc, static_argnums=(3,))(x1, x2, y, solver)
 
-        result = spsim.sim_jax(sim, proc)(x1, x2, y)
-        print("[spsim_result]-----------------------------------------------")
-        print(result[:10])
+            print(f"[spsim_{solver}_result]-------------------------------------------")
+            print(result[:10])
 
-        # absolute_error
-        print("[absolute_error]---------------------------------------------")
-        print(jnp.round(jnp.abs(result - sklearn_result)[:20], 5))
+            # sklearn test
+            sklearn_result = (
+                skRidge(alpha=1, solver=solver, fit_intercept=True).fit(x, y).predict(x)
+            )
+            print(f"[sklearn_{solver}_result]-----------------------------------------")
+            print(sklearn_result[:10])
+
+            # absolute_error
+            print(f"[absolute_{solver}_error]-----------------------------------------")
+            print(jnp.round(jnp.abs(result - sklearn_result)[:20], 5))
 
 
 if __name__ == "__main__":
