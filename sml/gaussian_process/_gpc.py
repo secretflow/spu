@@ -1,18 +1,16 @@
-import copy
 import os
 import sys
 
 import jax
 import jax.numpy as jnp
-import numpy as np
-from jax import grad, jit
+from jax import grad
 from jax.lax.linalg import cholesky
 from jax.scipy.linalg import cho_solve, solve
 from jax.scipy.special import erf, expit
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "./"))
 from kernels import RBF
-from ovo_ovr import OneVsOneClassifier, OneVsRestClassifier
+from ovo_ovr import OneVsRestClassifier
 
 LAMBDAS = jnp.array([0.41, 0.4, 0.37, 0.44, 0.39])[:, jnp.newaxis]
 COEFS = jnp.array(
@@ -26,21 +24,11 @@ class _BinaryGaussianProcessClassifierLaplace:
         kernel=None,
         *,
         poss="sigmoid",
-        optimizer="lbfgs",
-        n_restarts_optimizer=0,
         max_iter_predict=100,
-        warm_start=False,
-        random_state=None,
-        copy_X_train=True,
     ):
         self.kernel = kernel
-        self.optimizer = optimizer
-        self.n_restarts_optimizer = n_restarts_optimizer
         self.max_iter_predict = max_iter_predict
-        self.warm_start = warm_start
-        self.random_state = random_state
         self.poss = poss
-        self.copy_X_train = (copy_X_train,)
 
     def fit(self, X, y):
         self._check_kernal()
@@ -51,17 +39,14 @@ class _BinaryGaussianProcessClassifierLaplace:
             self.approx_func = expit
         else:
             raise ValueError(
-                f"Unsupported prior-likelihood function {self.poss}. Please try the default option which is sigmoid"
+                f"Unsupported prior-likelihood function {self.poss}."
+                "Please try the default dunction sigmoid."
             )
-
-        # Encode class labels and check that it is a binary classification (self.classes_, self.y_train_ is a np.ndarrays for now, np.unique ias not permitted in spu)
 
         self.y_train = y
 
-        # self.y_train = 2 * (self.y_train - 0.5)  # turn y_train into a -1 and 1 array
-
         K = self.kernel_(self.X_train_)
-        _, self.f_ = self._posterior_mode(K, return_temporaries=True)
+        self.f_ = self._posterior_mode(K)
         return self.f_
 
     # def log_and_grad(self, f, y_train):
@@ -115,20 +100,11 @@ class _BinaryGaussianProcessClassifierLaplace:
 
         return jnp.vstack((1 - pi_star, pi_star)).T
 
-    def _posterior_mode(self, K, return_temporaries=False):
+    def _posterior_mode(self, K):
         # Based on Algorithm 3.1 of GPML
-        if (
-            self.warm_start
-            and hasattr(self, "f_cached")
-            and self.f_cached.shape == self.y_train_.shape
-        ):
-            f = self.f_cashed
-        else:
-            f = jnp.zeros_like(
+        f = jnp.zeros_like(
                 self.y_train, dtype=jnp.float32
             )  # a warning is triggered if float64 is used
-
-        log_marginal_likelihood = -jnp.inf
 
         for _ in range(self.max_iter_predict):
             # W = self.log_and_2grads_and_negtive(f, self.y_train)
@@ -147,76 +123,122 @@ class _BinaryGaussianProcessClassifierLaplace:
             )
             f = K.dot(a)
 
-            lml = (
-                -0.5 * a.T.dot(f)
-                + jnp.log(self.approx_func(self.y_train * f)).sum()
-                - jnp.log(jnp.diag(L)).sum()
-            )
-
-            # if (lml - log_marginal_likelihood) < 1e-10:
-            #     log_marginal_likelihood = lml
-            #     break
-            log_marginal_likelihood = lml
-
         self.f_cached = f  # for warm-start
-
-        if return_temporaries:
-            return log_marginal_likelihood, f
-        else:
-            return log_marginal_likelihood
-
-    def _check_optimizer(self):
-        if self.optimizer != "lbfgs":
-            raise ValueError(
-                f"Unsupported optimizer{self.optimizer}. Please try the default option which is lbfgs"
-            )
+        return f
 
     def _check_kernal(self):
         if self.kernel is None:  # Use an RBF kernel as default
             self.kernel_ = RBF()
         else:
-            self.kernel_ = copy.deepcopy(self.kernel)
+            self.kernel_ = self.kernel
+
 
 class GaussianProcessClassifier:
+    """Gaussian process classification (GPC) based on Laplace approximation.
+
+    The implementation is based on Algorithm 3.1, 3.2, and 5.1 from [RW2006]_.
+
+    Internally, the Laplace approximation is used for approximating the
+    non-Gaussian posterior by a Gaussian.
+
+    Currently, the implementation is restricted to using the logistic link
+    function. For multi-class classification, several binary one-versus rest
+    classifiers are fitted. Note that this class thus does not implement
+    a true multi-class Laplace approximation.
+
+    Read more in the :ref:`User Guide <gaussian_process>`.
+
+    Parameters
+    ----------
+    kernel : kernel instance, default=None
+        The kernel specifying the covariance function of the GP. If None is
+        passed, the kernel "1.0 * RBF(1.0)" is used as default. Note that
+        the kernel's hyperparameters are optimized during fitting. Also kernel
+        cannot be a `CompoundKernel`.
+
+    max_iter_predict : int, default=100
+        The maximum number of iterations in Newton's method for approximating
+        the posterior during predict. Smaller values will reduce computation
+        time at the cost of worse results.
+
+    multi_class : 'one_vs_rest', default='one_vs_rest'
+        Specifies how multi-class classification problems are handled.
+        One binary Gaussian process classifier is fitted for each class, which
+        is trained to separate this class from the rest.
+
+    poss : "sigmoid", allable or None, default="sigmoid", the predefined 
+        likelihood function which computes the possibility of the predict output 
+        w.r.t. f value.
+
+    Attributes
+    ----------
+    base_estimator_ : ``Estimator`` instance
+        The estimator instance that defines the likelihood function
+        using the observed data.
+
+    kernel_ : kernel instance
+        The kernel used for prediction. In case of binary classification,
+        the structure of the kernel is the same as the one passed as parameter
+        but with optimized hyperparameters. In case of multi-class
+        classification, a CompoundKernel is returned which consists of the
+        different kernels used in the one-versus-rest classifiers.
+
+    n_classes_ : int
+        The number of classes in the training data
+
+    References
+    ----------
+    .. [RW2006] `Carl E. Rasmussen and Christopher K.I. Williams,
+       "Gaussian Processes for Machine Learning",
+       MIT Press 2006 <https://www.gaussianprocess.org/gpml/chapters/RW.pdf>`_
+
+    Examples
+    --------
+    >>> from sklearn.datasets import load_iris
+    >>> from sklearn.gaussian_process import GaussianProcessClassifier
+    >>> from sklearn.gaussian_process.kernels import RBF
+    >>> X, y = load_iris(return_X_y=True)
+    >>> kernel = 1.0 * RBF(1.0)
+    >>> gpc = GaussianProcessClassifier(kernel=kernel,
+    ...         random_state=0).fit(X, y, 3)
+    >>> gpc.predict_proba(X[:2,:])
+    array([[0.83548752, 0.03228706, 0.13222543],
+           [0.79064206, 0.06525643, 0.14410151]])
+    """
+
     def __init__(
         self,
         kernel=None,
         *,
         poss="sigmoid",
-        optimizer="lbfgs",
-        n_restarts_optimizer=5,
         max_iter_predict=100,
-        warm_start=False,
-        copy_X_train=True,
-        random_state=None,
         multi_class="one_vs_rest",
-        n_jobs=None,
     ):
         self.kernel = kernel
-        self.optimizer = optimizer
-        self.n_restarts_optimizer = n_restarts_optimizer
         self.max_iter_predict = max_iter_predict
-        self.warm_start = warm_start
-        self.copy_X_train = copy_X_train
-        self.random_state = random_state
         self.multi_class = multi_class
-        self.n_jobs = n_jobs
         self.poss = poss
 
     def fit(self, X, y, n_classes_):
-        self.n_classes_ = n_classes_
-        # Encode class labels and check that it is a binary classification (self.classes_, self.y_train_ is a np.ndarrays for now, jnp.unique doesn't allow string transformation)
-        self.y = y
-        # y0 = jnp.array(y)
-        # unique_labels = set(y)
-        # self.n_classes_ = []
-        # self.y_train = jnp.zeros(y0.shape, dtype=int)
-        # for index, label in enumerate(unique_labels):
-        #     self.n_classes_.append(label)
-        #     self.y_train = jnp.where(y0 == label, index, self.y_train)
+        """Fit Gaussian process classification model.
 
+        Parameters
+        ----------
+        X : jax numpy array (n_samples, n_features) of object
+            Feature vectors of training data.
+
+        y : jax numpy array (n_samples,) Target values, 
+        must be preprocessed to 0, 1, 2, ...
+
+        n_classes_ : The number of classes in the training data
+
+        Returns
+        -------
+        self : object
+            Returns an instance of self.
+        """
+        self.n_classes_ = n_classes_
         self.y_train = jnp.array(y)
-        # self.n_classes_ = jnp.max(self.y_train) + 1
 
         if self.n_classes_ == 1:
             raise ValueError(
@@ -227,33 +249,70 @@ class GaussianProcessClassifier:
 
         self.base_estimator_ = _BinaryGaussianProcessClassifierLaplace(
             kernel=self.kernel,
-            optimizer=self.optimizer,
-            n_restarts_optimizer=self.n_restarts_optimizer,
             max_iter_predict=self.max_iter_predict,
-            warm_start=self.warm_start,
-            copy_X_train=self.copy_X_train,
-            random_state=self.random_state,
             poss=self.poss,
         )
 
         if self.n_classes_ > 2:
             if self.multi_class == "one_vs_rest":
                 self.base_estimator_ = OneVsRestClassifier(
-                    self.base_estimator_, self.n_classes_, n_jobs=self.n_jobs
+                    self.base_estimator_, self.n_classes_
                 )
             elif self.multi_class == "one_vs_one":
-                raise ValueError("one_vs_one classifier is not supported yet")
-                self.base_estimator_ = OneVsOneClassifier(
-                    self.base_estimator_, self.n_classes_, n_jobs=self.n_jobs
-                )
+                raise ValueError("one_vs_one classifier is not supported")
             else:
                 raise ValueError("Unknown multi-class mode %s" % self.multi_class)
 
-        self.base_estimator_.fit(X, self.y_train)
+        self.X = jnp.array(X)
+        self.base_estimator_.fit(self.X, self.y_train)
 
     def predict(self, X):
-        a = self.base_estimator_.predict(X)
-        # result = jnp.array(a)
-        # for index, label in enumerate(self.n_classes_):
-        #     result = jnp.where(index == a, label, result)
-        return a
+        """Perform classification on an array of test vectors X.
+
+        Parameters
+        ----------
+        X : jax numpy array (n_samples, n_features) of object
+            Query points where the GP is evaluated for classification.
+
+        Returns
+        -------
+        C : jax numpy array (n_samples,)
+            Predicted target values for X.
+        """
+        self.check_is_fitted()
+        return self.base_estimator_.predict(X)
+
+    def predict_proba(self, X):
+        """Return probability estimates for the test vector X.
+
+        Parameters
+        ----------
+        X : jax numpy array (n_samples, n_features) of object
+            Query points where the GP is evaluated for classification.
+
+        Returns
+        -------
+        C : jax numpy array (n_samples, n_classes)
+            Returns the probability of the samples for each class in
+            the model. The columns correspond to the classes in sorted
+            order.
+        """
+        self.check_is_fitted()
+        return self.base_estimator_.predict_proba(X)
+
+    def check_is_fitted(self):
+        """Perform is_fitted validation for estimator.
+
+        Checks if the estimator is fitted by verifying the presence of
+        fitted attribute self.n_classes_ and otherwise
+        raises a NotFittedError with the given message.
+
+        Raises
+        ------
+        Exception
+            If the attribute is not found.
+        """
+        try: 
+            self.n_classes_
+        except: 
+            raise Exception('Model is not fitted yet')
