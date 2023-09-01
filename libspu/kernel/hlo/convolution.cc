@@ -30,6 +30,7 @@ spu::Value Convolution2D(SPUContext *ctx, const spu::Value &input,
                          const spu::Value &kernel,
                          const ConvolutionConfig &config,
                          const Shape &result_shape) {
+  SPU_ENFORCE(!input.isComplex() && !kernel.isComplex());
   // input  : (N, H, W, C)
   // kernel : (h, w, C, O)
   // output : (N, hh,ww,O), where hh=(H-h)/sh+1, ww=(W-w)/sw+1

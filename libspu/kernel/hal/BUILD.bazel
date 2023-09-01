@@ -20,6 +20,7 @@ spu_cc_library(
     name = "hal",
     hdrs = ["hal.h"],
     deps = [
+        ":complex",
         ":constants",
         ":debug",
         ":fxp",
@@ -51,6 +52,17 @@ spu_cc_library(
     deps = [
         ":prot_wrapper",
         ":shape_ops",
+        "//libspu/core:context",
+    ],
+)
+
+spu_cc_library(
+    name = "complex",
+    srcs = ["complex.cc"],
+    hdrs = ["complex.h"],
+    deps = [
+        ":constants",
+        ":type_cast",
         "//libspu/core:context",
     ],
 )

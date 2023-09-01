@@ -132,6 +132,11 @@ void BindLink(py::module& m) {
       .def_readwrite("enable_ssl", &ContextDesc::enable_ssl)
       .def_readwrite("client_ssl_opts", &ContextDesc::client_ssl_opts)
       .def_readwrite("server_ssl_opts", &ContextDesc::server_ssl_opts)
+      .def_readwrite("brpc_retry_count", &ContextDesc::brpc_retry_count)
+      .def_readwrite("brpc_retry_interval_ms",
+                     &ContextDesc::brpc_retry_interval_ms)
+      .def_readwrite("brpc_aggressive_retry",
+                     &ContextDesc::brpc_aggressive_retry)
       .def_readwrite("link_type", &ContextDesc::link_type)
       .def(
           "add_party",

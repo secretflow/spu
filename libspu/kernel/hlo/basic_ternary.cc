@@ -14,17 +14,30 @@
 
 #include "libspu/kernel/hlo/basic_ternary.h"
 
+#include "libspu/kernel/hal/complex.h"
 #include "libspu/kernel/hal/polymorphic.h"
+#include "libspu/kernel/hal/ring.h"
 
 namespace spu::kernel::hlo {
 
 spu::Value Select(SPUContext *ctx, const spu::Value &pred,
                   const spu::Value &on_true, const spu::Value &on_false) {
+  if (on_true.isComplex()) {
+    SPU_ENFORCE(on_false.isComplex());
+    auto pred_a = hal::_prefer_a(ctx, pred);
+    auto r = hal::select(ctx, pred_a, hal::real(ctx, on_true),
+                         hal::real(ctx, on_false));
+    auto i = hal::select(ctx, pred_a, hal::imag(ctx, on_true),
+                         hal::imag(ctx, on_false));
+    return hal::complex(ctx, r, i);
+  }
   return hal::select(ctx, pred, on_true, on_false);
 }
 
 spu::Value Clamp(SPUContext *ctx, const spu::Value &operand,
                  const spu::Value &min, const spu::Value &max) {
+  SPU_ENFORCE(!operand.isComplex() && !min.isComplex() && !max.isComplex());
   return hal::clamp(ctx, operand, min, max);
 }
+
 }  // namespace spu::kernel::hlo

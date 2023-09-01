@@ -100,9 +100,15 @@ Value slice_scalar_at(SPUContext* ctx, const Value& input,
 
 Value update_slice(SPUContext* ctx, const Value& in, const Value& update,
                    const Index& start_indices) {
+  if (in.storage_type() != update.storage_type()) {
+    auto u =
+        _cast_type(ctx, update, in.storage_type()).setDtype(update.dtype());
+
+    return update_slice(ctx, in, u, start_indices);
+  }
+
   auto ret = in.clone();
-  auto u = _cast_type(ctx, update, ret.storage_type());
-  ret.data().update_slice(u.data(), start_indices);
+  ret.data().update_slice(update.data(), start_indices);
   return ret;
 }
 

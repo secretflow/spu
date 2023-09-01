@@ -16,6 +16,7 @@
 
 #include "libspu/core/context.h"
 #include "libspu/core/value.h"
+#include "libspu/kernel/hal/complex.h"
 #include "libspu/kernel/hal/constants.h"
 #include "libspu/kernel/hal/polymorphic.h"
 #include "libspu/kernel/hal/type_cast.h"
@@ -24,6 +25,7 @@ namespace spu::kernel::hlo {
 
 #define SIMPLE_UNARY_KERNEL_DEFN(NAME, HalFcn)             \
   spu::Value NAME(SPUContext *ctx, const spu::Value &in) { \
+    SPU_ENFORCE(!in.isComplex());                          \
     return HalFcn(ctx, in);                                \
   }
 
@@ -41,6 +43,8 @@ SIMPLE_UNARY_KERNEL_DEFN(Rsqrt, hal::rsqrt)
 SIMPLE_UNARY_KERNEL_DEFN(Sqrt, hal::sqrt)
 SIMPLE_UNARY_KERNEL_DEFN(Sine, hal::sine)
 SIMPLE_UNARY_KERNEL_DEFN(Cosine, hal::cosine)
+SIMPLE_UNARY_KERNEL_DEFN(Real, hal::real)
+SIMPLE_UNARY_KERNEL_DEFN(Imag, hal::imag)
 
 #undef SIMPLE_UNARY_KERNEL_DEFN
 
@@ -48,11 +52,13 @@ spu::Value Expm1(SPUContext *ctx, const spu::Value &in) {
   // FIXME: By numpy spec, expm1 should have a higher numeric accuracy compare
   // with exp(x) - 1. SPU is not doing so right now, rethink about what we
   // should do here.
+  SPU_ENFORCE(!in.isComplex());
   auto e = hal::exp(ctx, in);
   return hal::sub(ctx, e, hal::constant(ctx, 1.0F, e.dtype(), in.shape()));
 }
 
 spu::Value Not(SPUContext *ctx, const spu::Value &in) {
+  SPU_ENFORCE(!in.isComplex());
   if (in.dtype() == DT_I1) {
     return hal::logical_not(ctx, in);
   } else {
@@ -63,6 +69,7 @@ spu::Value Not(SPUContext *ctx, const spu::Value &in) {
 }
 
 spu::Value Sign(SPUContext *ctx, const spu::Value &in) {
+  SPU_ENFORCE(!in.isComplex());
   // get the (-1, 1) sign
   auto s = hal::sign(ctx, in);
 
@@ -74,6 +81,7 @@ spu::Value Sign(SPUContext *ctx, const spu::Value &in) {
 }
 
 spu::Value Round_AFZ(SPUContext *ctx, const spu::Value &in) {
+  SPU_ENFORCE(!in.isComplex());
   // select(x < 0, (int)(x-0.5), (int)(x+0.5))
   // -> (float)(int)(x + sign(x) * 0.5)
   SPU_ENFORCE(in.isFxp(), "Round only supports fxp");
@@ -85,22 +93,6 @@ spu::Value Round_AFZ(SPUContext *ctx, const spu::Value &in) {
   auto round = hal::add(ctx, in, p_half);
 
   return hal::dtype_cast(ctx, hal::dtype_cast(ctx, round, DT_I64), in.dtype());
-}
-
-spu::Value Real(SPUContext *ctx, const spu::Value &in) {
-  return Value(in.data(), in.dtype());
-}
-
-spu::Value Imag(SPUContext *ctx, const spu::Value &in) {
-  if (in.imag().has_value()) {
-    return Value(*in.imag(), in.dtype());  // NOLINT
-  } else {
-    auto zeros = hal::constant(ctx, 0.0F, in.dtype(), in.shape());
-    if (in.isSecret()) {
-      return hal::seal(ctx, zeros);
-    }
-    return zeros;
-  }
 }
 
 }  // namespace spu::kernel::hlo
