@@ -465,6 +465,12 @@ spu::Value Gather(SPUContext *ctx, const spu::Value &operand,
   spu::Value result(NdArrayRef(operand.data().eltype(), result_shape),
                     operand.dtype());
 
+  if (operand.isComplex()) {
+    result =
+        Value(result.data(), NdArrayRef(operand.imag()->eltype(), result_shape),
+              operand.dtype());
+  }
+
   auto gather_inner_loop_body =
       [&](absl::Span<const int64_t> output_window_index,
           absl::Span<const int64_t> input_gather_index,
@@ -497,6 +503,11 @@ spu::Value Gather(SPUContext *ctx, const spu::Value &operand,
 
         result.data().update_slice(operand.data().slice_scalar_at(input_index),
                                    output_index);
+
+        if (result.isComplex()) {
+          result.imag()->update_slice(
+              operand.imag()->slice_scalar_at(input_index), output_index);
+        }
       };
 
   auto gather_outer_loop_body =
@@ -524,6 +535,7 @@ spu::Value Gather(SPUContext *ctx, const spu::Value &operand,
 spu::Value DynamicUpdateSlice(SPUContext *ctx, const spu::Value &operand,
                               const spu::Value &update,
                               absl::Span<const spu::Value> start_indices) {
+  SPU_ENFORCE(!operand.isComplex());
   // Basic idea here, get a ref slice and update the whole slice..
   SPU_ENFORCE_EQ(start_indices.size(), operand.shape().size());
   SPU_ENFORCE_EQ(start_indices.size(), update.shape().size());
@@ -736,6 +748,7 @@ spu::Value DynamicSlice(SPUContext *ctx, const spu::Value &operand,
   SPU_ENFORCE_EQ(slice_size.size(), start_indices.size());
   SPU_ENFORCE_EQ(slice_size.size(), operand.shape().size());
   SPU_ENFORCE(!start_indices.empty());
+  SPU_ENFORCE(!operand.isComplex());
 
   if (start_indices[0].isSecret()) {
     return SecretDynamicSlice(ctx, operand, slice_size, start_indices);

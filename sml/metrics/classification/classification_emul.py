@@ -24,7 +24,6 @@ from sml.metrics.classification.classification import roc_auc_score
 
 import sml.utils.emulation as emulation
 
-
 # TODO: design the enumation framework, just like py.unittest
 # all emulation action should begin with `emul_` (for reflection)
 def emul_SGDClassifier(mode: emulation.Mode.MULTIPROCESS):

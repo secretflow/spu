@@ -189,7 +189,12 @@ Value Value::fromProto(const ValueProto& value) {
   return Value(data, meta.data_type());
 }
 
-Value Value::clone() const { return Value(data_.clone(), dtype()); }
+Value Value::clone() const {
+  if (isComplex()) {
+    return Value(data_.clone(), imag_->clone(), dtype());
+  }
+  return Value(data_.clone(), dtype());
+}
 
 std::ostream& operator<<(std::ostream& out, const Value& v) {
   out << fmt::format("Value<{}x{}{},s={}>", fmt::join(v.shape(), "x"),
