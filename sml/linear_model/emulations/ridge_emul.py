@@ -20,21 +20,12 @@ from sml.linear_model.ridge import Ridge
 
 
 def emul_Ridge(mode: emulation.Mode.MULTIPROCESS):
-    def cholesky_proc(x1, x2, y):
-        model = Ridge(alpha=1.0, solver="cholesky")
-
+    def proc(x1, x2, y, solver):
+        model = Ridge(alpha=1.0, max_iter=100, solver=solver)
         x = jnp.concatenate((x1, x2), axis=1)
         y = y.reshape((y.shape[0], 1))
-
-        return model.fit(x, y).predict(x)
-
-    def svd_proc(x1, x2, y):
-        model = Ridge(alpha=1.0, solver="svd", max_iter=100)
-
-        x = jnp.concatenate((x1, x2), axis=1)
-        y = y.reshape((y.shape[0], 1))
-
-        return model.fit(x, y).predict(x)
+        result = model.fit(x, y).predict(x)
+        return result
 
     def load_data():
         dataset_config = {
@@ -66,10 +57,7 @@ def emul_Ridge(mode: emulation.Mode.MULTIPROCESS):
             X1, X2, Y = emulator.seal(x1, x2, y)
 
             # run
-            if solver == 'cholesky':
-                result = emulator.run(cholesky_proc)(X1, X2, Y)
-            if solver == 'svd':
-                result = emulator.run(svd_proc)(X1, X2, Y)
+            result = emulator.run(proc, static_argnums=(3,))(X1, X2, Y, solver)
             print(f"[emul_{solver}_result]--------------------------------------------")
             print(result[:10])
 

@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import sys
 import unittest
 
 import jax.numpy as jnp
@@ -32,21 +31,10 @@ class UnitTests(unittest.TestCase):
             3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM64
         )
 
-        def cholesky_proc(x1, x2, y):
-            model = Ridge(alpha=1.0, solver='cholesky')
-
+        def proc(x1, x2, y, solver):
+            model = Ridge(alpha=1.0, max_iter=100, solver=solver)
             x = jnp.concatenate((x1, x2), axis=1)
             y = y.reshape((y.shape[0], 1))
-
-            result = model.fit(x, y).predict(x)
-            return result
-
-        def svd_proc(x1, x2, y):
-            model = Ridge(alpha=1.0, solver='svd', max_iter=100)
-
-            x = jnp.concatenate((x1, x2), axis=1)
-            y = y.reshape((y.shape[0], 1))
-
             result = model.fit(x, y).predict(x)
             return result
 
@@ -62,10 +50,8 @@ class UnitTests(unittest.TestCase):
         x = jnp.concatenate((x1, x2), axis=1)
         for i in range(len(solver_list)):
             solver = solver_list[i]
-            if solver_list[i] == "cholesky":
-                result = spsim.sim_jax(sim, cholesky_proc)(x1, x2, y)
-            if solver_list[i] == "svd":
-                result = spsim.sim_jax(sim, svd_proc)(x1, x2, y)
+            result = spsim.sim_jax(sim, proc, static_argnums=(3,))(x1, x2, y, solver)
+
             print(f"[spsim_{solver}_result]-------------------------------------------")
             print(result[:10])
 

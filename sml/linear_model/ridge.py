@@ -55,7 +55,7 @@ class Ridge:
           obtain a closed-form solution via a Cholesky decomposition of
           dot(X.T, X)
 
-    max_iter : int, default=50
+    max_iter : int, default=100
         Maximum number of iterations for svd solver.
         For 'svd' solvers, the default value is 100.
     """
