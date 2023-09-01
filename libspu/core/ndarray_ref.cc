@@ -522,6 +522,10 @@ void NdArrayRef::update_slice(const NdArrayRef& new_value,
     return;
   }
 
+  SPU_ENFORCE(this->eltype() == new_value.eltype(),
+              "origin eltype = {}, update eltype = {}", this->eltype(),
+              new_value.eltype());
+
   eliminate_zero_stride();
 
   auto elsize = this->elsize();

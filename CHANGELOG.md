@@ -10,10 +10,10 @@
 >
 > please add your unreleased change here.
 
-- [API] Change IO interface, split share into chunk
-- [API] Add intrinsic support
-- [Feature] Support half type
-- [Feature] Add Psi Progress
+- [API] Update IO interface to support splitting large data into chunks
+- [API] Add intrinsic function support
+- [Feature] Add half type support
+- [Feature] Add PSI progress report
 - [Feature] Add SineOp/CosineOp support
 - [Feature] Add complex support
 

@@ -194,8 +194,10 @@ void do_type_checker(mlir::Value key, const spu::Value &val,
     auto expectedType = getDtypeFromMlirType(mlir_type);
     SPU_ENFORCE(expectedType == val.dtype(), "Expected mlir_type {}, got {}",
                 expectedType, val.dtype());
-    if (mlir_type.isa<mlir::ComplexType>()) {
-      SPU_ENFORCE(val.imag().has_value(), "Expected complex type");
+    if (tool.getExpressedType(mlir_type).isa<mlir::ComplexType>()) {
+      SPU_ENFORCE(val.isComplex(), "Expected complex type");
+    } else {
+      SPU_ENFORCE(!val.isComplex());
     }
 
     // Check vtype
@@ -1000,8 +1002,16 @@ void execute(OpExecutor *executor, SPUContext *sctx, SymbolScope *sscope,
                        : VIS_SECRET;
   auto in = lookupValue(sscope, op.getOperand(), opts);
 
-  addValue(sscope, op.getResult(),
-           kernel::hlo::Cast(sctx, in, dst_vtype, dst_dtype), opts);
+  auto from_type = tool.getExpressedType(op.getOperand().getType());
+  auto to_type = tool.getExpressedType(op.getType());
+
+  auto casted = kernel::hlo::Cast(sctx, in, dst_vtype, dst_dtype);
+  if (!from_type.isa<mlir::ComplexType>() && to_type.isa<mlir::ComplexType>()) {
+    auto imag = kernel::hlo::Imag(sctx, casted);
+    casted = kernel::hlo::Complex(sctx, casted, imag);
+  }
+
+  addValue(sscope, op.getResult(), casted, opts);
 }
 
 void execute(OpExecutor *executor, SPUContext *sctx, SymbolScope *sscope,
@@ -1090,7 +1100,9 @@ void execute(OpExecutor *executor, SPUContext *sctx, SymbolScope *sscope,
       // real view
       auto cs = makeCompactStrides(dst_shape);
       if (!cs.empty()) {
-        cs.back() *= 2;
+        for (auto &s : cs) {
+          s *= 2;
+        }
       }
       PtBufferView real_view(dea.getRawData().data(), pt_type.first,
                              dea.isSplat() ? Shape() : dst_shape,

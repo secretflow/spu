@@ -14,6 +14,7 @@
 
 #include "libspu/kernel/hlo/casting.h"
 
+#include "libspu/kernel/hal/complex.h"
 #include "libspu/kernel/hal/polymorphic.h"
 #include "libspu/kernel/hal/type_cast.h"
 
@@ -21,6 +22,13 @@ namespace spu::kernel::hlo {
 
 spu::Value Cast(SPUContext *ctx, const spu::Value &in, Visibility dst_vtype,
                 DataType dst_dtype) {
+  if (in.isComplex()) {
+    auto r = Cast(ctx, hal::real(ctx, in), dst_vtype, dst_dtype);
+    auto i = Cast(ctx, hal::imag(ctx, in), dst_vtype, dst_dtype);
+
+    return hal::complex(ctx, r, i);
+  }
+
   spu::Value ret = in;
   if (ret.vtype() != dst_vtype) {
     if (dst_vtype == VIS_PUBLIC) {
@@ -36,6 +44,7 @@ spu::Value Cast(SPUContext *ctx, const spu::Value &in, Visibility dst_vtype,
 }
 
 spu::Value Bitcast(SPUContext *ctx, const spu::Value &in, DataType dst_dtype) {
+  SPU_ENFORCE(!in.isComplex());
   return hal::bitcast(ctx, in, dst_dtype);
 }
 
