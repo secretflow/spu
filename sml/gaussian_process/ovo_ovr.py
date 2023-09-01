@@ -1,110 +1,21 @@
-import copy
-
 import jax.numpy as jnp
 from jax import vmap
-from jax.scipy.special import expit
+from jax.scipy.special import erf, expit
 from kernels import RBF
+from jax.lax.linalg import cholesky
+from jax.scipy.linalg import cho_solve, solve
 
+LAMBDAS = jnp.array([0.41, 0.4, 0.37, 0.44, 0.39])[:, jnp.newaxis]
+COEFS = jnp.array(
+    [-1854.8214151, 3516.89893646, 221.29346712, 128.12323805, -2010.49422654]
+)[:, jnp.newaxis]
 
-# ovo方法输出的维度不一致。难以写成vmap形式。极慢。暂时不支持。
-def _ovr_decision_function(predictions, confidences, n_classes):
-    n_samples = predictions.shape[1]
-    votes = jnp.zeros((n_classes, n_samples), dtype=int)
-    sum_of_confidences = jnp.zeros((n_classes, n_samples), dtype=jnp.float32)
-
-    k = 0
-    for i in range(n_classes):
-        for j in range(i + 1, n_classes):
-            sum_of_confidences = sum_of_confidences.at[i].set(
-                sum_of_confidences[i] - confidences[k]
-            )
-            sum_of_confidences = sum_of_confidences.at[j].set(
-                sum_of_confidences[j] + confidences[k]
-            )
-            votes = votes.at[i].set(
-                jnp.where(predictions[k] == 0, votes[i] + 1, votes[i])
-            )
-            votes = votes.at[j].set(
-                jnp.where(predictions[k] == 1, votes[j] + 1, votes[j])
-            )
-            k += 1
-
-    transformed_confidences = sum_of_confidences / (
-        3 * (jnp.abs(sum_of_confidences) + 1)
-    )
-    return (votes + transformed_confidences).T
-
-
-def _fit_ovo_binary(estimator, X, Y, i, j):
-    """Fit a single binary estimator (one-vs-one)."""
-    cond = jnp.logical_or(Y == i, Y == j)
-    y = y[cond]
-    # y = []
-    # new_x = []
-    # for xxx, yyy in zip(X, y):
-    #     if yyy == i or yyy == j
-    #         y.append(yyy)
-    #         new_x.append(xxx)
-    # y = jnp.array(y)
-    # new_x = jnp.array(new_x)
-
-    y_binary = jnp.empty(y.shape, dtype=int)
-    y_binary = jnp.where(y == i, 0, 1)
-    indcond = jnp.arange(X.shape[0])[cond]
-    estimator1 = copy.deepcopy(estimator)
-    estimator1.fit(X[indcond], y_binary)
-    # estimator1.fit(new_x, y_binary)
-    return estimator1
-
-
-class OneVsOneClassifier:
-    def __init__(self, estimator, n_classes, *, n_jobs=None):
+class OneVsRestClassifier:
+    def __init__(self, estimator, n_classes):
         self.estimator = estimator
-        self.n_jobs = n_jobs
-        self.classes_ = n_classes
-
-    def fit(self, X0, y):
-        X = jnp.array(X0)
-        self.estimators_ = [
-            _fit_ovo_binary(self.estimator, X, y, i, j)
-            for i in range(len(self.classes_))
-            for j in range(i + 1, len(self.classes_))
-        ]
-
-    def decision_function(self, X):
-        predictions = jnp.vstack([est.predict(X) for est in self.estimators_])
-
-        confidences = jnp.vstack(
-            [est.predict_proba(X)[:, 1] for est in self.estimators_]
-        )
-
-        Y = _ovr_decision_function(predictions, confidences, len(self.classes_))
-        return Y
-
-    def predict(self, X0):
-        X = jnp.array(X0)
-        Y = self.decision_function(X)
-        return Y.argmax(axis=1)
-
-
-# 此处注释的vmap版本ovr算法,本地已经跑通,但是spu一直报错
-
-class OneVsRestClassifier():
-    def __init__(self, estimator, n_classes, * , n_jobs=None):
-        self.estimator = estimator
-        self.n_jobs = n_jobs
         self.classes_ = n_classes
 
     def fit(self, X, y):
-        self.y_binary = jnp.array([jnp.where(y == i, 0, 1) for i in range(self.classes_)])
-
-        # y_binary_list = []
-        # for i in range(int(self.classes_)):
-        #     label = jnp.where(y == i, 0, 1)
-        #     y_binary_list.append(label)
-        # self.y_binary = jnp.array(y_binary_list)
-
-        self.fs_ = vmap(self._fit_ovr_binary, in_axes = (None, 0) )(X, self.y_binary)
 
         self.estimator.approx_func = expit
         self.estimator.X_train_ = jnp.array(X)
@@ -112,52 +23,87 @@ class OneVsRestClassifier():
         if self.estimator.kernel is None:  # Use an RBF kernel as default
             self.estimator.kernel_ = RBF()
         else:
-            self.estimator.kernel_ = copy.deepcopy(self.estimator.kernel)
+            self.estimator.kernel_ = self.estimator.kernel
+
+        self.K = self.estimator.kernel_(X)
+
+        self.y_binary = jnp.array(
+            [jnp.where(y == i, 0, 1) for i in range(self.classes_)]
+        )
+
+        self.fs_ = vmap(self._posterior_mode, in_axes=(None, 0, None))(X, self.y_binary, self.K)
+        self.f_cached = self.fs_
 
     def predict(self, X_test):
-        maxima = vmap(self.ovr_predict_proba, in_axes = (0, None, 0))(self.y_binary, X_test, self.fs_)
-        print(maxima)
+        X = jnp.array(X_test)
+        K_star = self.estimator.kernel_(self.estimator.X_train_, X)
+        diag_K_Xtest = jnp.diag(self.estimator.kernel_(X))
+        maxima = vmap(self.predict_proba_oneclass, in_axes=(0, None, 0, None, None, None))(
+            self.y_binary, X_test, self.fs_, self.K, K_star, diag_K_Xtest
+        )
         return maxima.argmax(axis=0)
 
-    def ovr_predict_proba(self, y_binary, X_test, f_):
-        estimator1 = copy.deepcopy(self.estimator)
-        estimator1.y_train = y_binary
-        estimator1.f_ = f_
-        return estimator1.predict_proba(X_test)[:, 0]
+    def predict_proba(self, X_test):
+        X = jnp.array(X_test)
+        K_star = self.estimator.kernel_(self.estimator.X_train_, X)
+        diag_K_Xtest = jnp.diag(self.estimator.kernel_(X))
+        maxima = vmap(self.predict_proba_oneclass, in_axes=(0, None, 0, None, None, None))(
+            self.y_binary, X_test, self.fs_, self.K, K_star, diag_K_Xtest
+        )
+        maxima = maxima / jnp.sum(maxima, axis=0)
+        return maxima.T
 
-    def _fit_ovr_binary(self, X, y_binary):
-        estimator1 = copy.deepcopy(self.estimator)
-        f_ = estimator1.fit(X, y_binary)
-        return f_
+    def predict_proba_oneclass(self, y_binary, X_test, f_, K, K_star, diag_K_Xtest):
+        X = jnp.asarray(X_test)
+        # K = self.estimator.kernel_(self.estimator.X_train_)
 
-# 简陋版本的ovr
+        pi = self.estimator.approx_func(f_)
+        W = pi * (1 - pi)
 
+        W_sqr = jnp.sqrt(W)
+        W_sqr_K = W_sqr[:, jnp.newaxis] * K
+        B = jnp.eye(W.shape[0]) + W_sqr_K * W_sqr
+        L = cholesky(B)
 
-# def _fit_ovr_binary(estimator, X, y, i):
-#     y_binary = jnp.where(y == i, 0, 1)
-#     estimator1 = copy.deepcopy(estimator)
-#     estimator1.fit(X, y_binary)
-#     return estimator1
+        # K_star = self.estimator.kernel_(self.estimator.X_train_, X)
+        # f_star = K_star.T.dot(self.log_and_grad(self.f_, self.y_train))
+        f_star = K_star.T.dot(y_binary - pi)
+        v = solve(L, W_sqr[:, jnp.newaxis] * K_star)
+        var_f_star = diag_K_Xtest - jnp.einsum("ij,ij->j", v, v)
 
+        alpha = 1 / (2 * var_f_star)
+        gamma = LAMBDAS * f_star
+        integrals = (
+            jnp.sqrt(jnp.pi / alpha)
+            * erf(gamma * jnp.sqrt(alpha / (alpha + LAMBDAS**2)))
+            / (2 * jnp.sqrt(var_f_star * 2 * jnp.pi))
+        )
+        pi_star = (COEFS * integrals).sum(axis=0) + 0.5 * COEFS.sum()
 
-# class OneVsRestClassifier:
-#     def __init__(self, estimator, n_classes, *, n_jobs=None):
-#         self.estimator = estimator
-#         self.n_jobs = n_jobs
-#         self.classes_ = n_classes
+        return 1 - pi_star
 
-#     def fit(self, X, y):
-#         self.estimators_ = [
-#             _fit_ovr_binary(self.estimator, X, y, i) for i in range(self.classes_)
-#         ]
+    def _posterior_mode(self, X, y_binary, K):
+        # K = self.estimator.kernel_(X)
+        # Based on Algorithm 3.1 of GPML
+        f = jnp.zeros_like(
+            y_binary, dtype=jnp.float32
+        )  # a warning is triggered if float64 is used
 
-#     def predict(self, X0):
-#         X = jnp.array(X0)
-#         maxima = jnp.zeros(X.shape[0], dtype=jnp.float32)
-#         argmaxima = jnp.zeros(X.shape[0], dtype=int)
-#         for i, e in enumerate(self.estimators_):
-#             pred = e.predict_proba(X)[:, 0]
-#             maxima = jnp.maximum(maxima, pred)
-#             argmaxima = jnp.where(maxima == pred, i, argmaxima)
-#         # return jnp.array([self.classes_[ind] for ind in argmaxima])
-#         return argmaxima
+        for _ in range(self.estimator.max_iter_predict):
+            # W = self.log_and_2grads_and_negtive(f, self.y_train)
+            pi =  self.estimator.approx_func(f)
+            W = pi * (1 - pi)
+            W_sqr = jnp.sqrt(W)
+            W_sqr_K = W_sqr[:, jnp.newaxis] * K
+
+            B = jnp.eye(W.shape[0]) + W_sqr_K * W_sqr
+            L = cholesky(B)
+            # b = W * f + self.log_and_grad(f, self.y_train)
+            b = W * f + (y_binary - pi)
+            a = b - jnp.dot(
+                W_sqr[:, jnp.newaxis] * cho_solve((L, True), jnp.eye(W.shape[0])),
+                W_sqr_K.dot(b),
+            )
+            f = K.dot(a)
+
+        return f
