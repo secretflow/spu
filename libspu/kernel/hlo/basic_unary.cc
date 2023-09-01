@@ -43,10 +43,18 @@ SIMPLE_UNARY_KERNEL_DEFN(Rsqrt, hal::rsqrt)
 SIMPLE_UNARY_KERNEL_DEFN(Sqrt, hal::sqrt)
 SIMPLE_UNARY_KERNEL_DEFN(Sine, hal::sine)
 SIMPLE_UNARY_KERNEL_DEFN(Cosine, hal::cosine)
-SIMPLE_UNARY_KERNEL_DEFN(Real, hal::real)
-SIMPLE_UNARY_KERNEL_DEFN(Imag, hal::imag)
 
 #undef SIMPLE_UNARY_KERNEL_DEFN
+
+#define SIMPLE_UNARY_COMPLEX_KERNEL_DEFN(NAME, HalFcn)     \
+  spu::Value NAME(SPUContext *ctx, const spu::Value &in) { \
+    return HalFcn(ctx, in);                                \
+  }
+
+SIMPLE_UNARY_COMPLEX_KERNEL_DEFN(Real, hal::real)
+SIMPLE_UNARY_COMPLEX_KERNEL_DEFN(Imag, hal::imag)
+
+#undef SIMPLE_UNARY_COMPLEX_KERNEL_DEFN
 
 spu::Value Expm1(SPUContext *ctx, const spu::Value &in) {
   // FIXME: By numpy spec, expm1 should have a higher numeric accuracy compare
