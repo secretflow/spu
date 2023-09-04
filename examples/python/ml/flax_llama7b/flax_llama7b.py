@@ -55,10 +55,12 @@ config = LLaMAConfig()
 pretrained_model = FlaxLLaMAForCausalLM.from_pretrained(model_path, config=config)
 
 
-def hack_softmax(x: Array,
-            axis: Optional[Union[int, Tuple[int, ...]]] = -1,
-            where: Optional[Array] = None,
-            initial: Optional[Array] = None) -> Array:
+def hack_softmax(
+    x: Array,
+    axis: Optional[Union[int, Tuple[int, ...]]] = -1,
+    where: Optional[Array] = None,
+    initial: Optional[Array] = None,
+) -> Array:
     x_max = jnp.max(x, axis, where=where, initial=initial, keepdims=True)
     x = x - x_max
     # exp on large negative is clipped to zero
@@ -85,17 +87,33 @@ def hack_silu(x: Array) -> Array:
     b0 = x < -8.0
     b1 = x < -4.0
     b2 = x > 4.0
-    b3 = b1 ^ b2 ^ True # x in [-4.0, 4.0)
-    b4 = b0 ^ b1 # x in [-8.0, -4.0)
+    b3 = b1 ^ b2 ^ True  # x in [-4.0, 4.0)
+    b4 = b0 ^ b1  # x in [-8.0, -4.0)
     # seg1 =  a[2] * x^2 + a[1] * x + a[0]
     # seg2 = b[6] * x^6 + b[4] * x^4 + b[2] * x^2 + b[0]
-    a_coeffs = jnp.array([-0.3067541139982155, -0.0819767021525476, -0.0055465625580307])
-    b_coeffs = jnp.array([0.0085064025895951, 0.5, 0.2281430841728270, -0.011113046708173, 0.0002743776353465])
+    a_coeffs = jnp.array(
+        [-0.3067541139982155, -0.0819767021525476, -0.0055465625580307]
+    )
+    b_coeffs = jnp.array(
+        [
+            0.0085064025895951,
+            0.5,
+            0.2281430841728270,
+            -0.011113046708173,
+            0.0002743776353465,
+        ]
+    )
     x2 = jnp.square(x)
     x4 = jnp.square(x2)
     x6 = x2 * x4
     seg1 = a_coeffs[2] * x2 + a_coeffs[1] * x + a_coeffs[0]
-    seg2 = b_coeffs[4] * x6 + b_coeffs[3] * x4 + b_coeffs[2] * x2 + b_coeffs[1] * x + b_coeffs[0]
+    seg2 = (
+        b_coeffs[4] * x6
+        + b_coeffs[3] * x4
+        + b_coeffs[2] * x2
+        + b_coeffs[1] * x
+        + b_coeffs[0]
+    )
     ret = b2 * x + b4 * seg1 + b3 * seg2
     return ret
 
@@ -122,26 +140,30 @@ def text_generation(input_ids, params, token_num=1):
         outputs = model(input_ids=input_ids, params=params)
         next_token_logits = outputs[0][0, -1, :]
         next_token = jnp.argmax(next_token_logits)
-        input_ids = jnp.concatenate([input_ids, jnp.array([[next_token]])], axis=1)    
+        input_ids = jnp.concatenate([input_ids, jnp.array([[next_token]])], axis=1)
     return input_ids
 
 
 def run_on_cpu():
     # encode context the generation is conditioned on
-    inputs_ids = tokenizer.encode('Q: What is the largest animal?\nA:', return_tensors='jax')
+    inputs_ids = tokenizer.encode(
+        'Q: What is the largest animal?\nA:', return_tensors='jax'
+    )
     outputs_ids = text_generation(inputs_ids, pretrained_model.params)
     return outputs_ids
 
 
 def run_on_spu():
     # encode context the generation is conditioned on
-    input_ids = tokenizer.encode('Q: What is the largest animal?\nA:', return_tensors='jax')
-    with hack_softmax_context("hack exp of softmax", enabled = True), hack_silu_context("hack silu", enabled = True):
+    input_ids = tokenizer.encode(
+        'Q: What is the largest animal?\nA:', return_tensors='jax'
+    )
+    with hack_softmax_context("hack exp of softmax", enabled=True), hack_silu_context(
+        "hack silu", enabled=True
+    ):
         params = ppd.device("P2")(lambda x: x)(pretrained_model.params)
         input_ids = ppd.device("P1")(lambda x: x)(input_ids)
-        outputs_ids = ppd.device("SPU")(
-            text_generation, copts=copts
-        )(input_ids, params)
+        outputs_ids = ppd.device("SPU")(text_generation, copts=copts)(input_ids, params)
         outputs_ids = ppd.get(outputs_ids)
     return outputs_ids
 
