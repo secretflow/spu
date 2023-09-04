@@ -14,7 +14,6 @@
 
 # Start nodes.
 # > bazel run -c opt //examples/python/utils:nodectl -- --config `pwd`/examples/python/ml/flax_llama/3pc.json" up
-#
 # Run this example script.
 # > bazel run -c opt //examples/python/ml/flax_llama7b -- --config `pwd`/examples/python/ml/flax_llama7b/3pc.json
 
@@ -87,7 +86,7 @@ def hack_silu(x: Array) -> Array:
     b1 = x < -4.0
     b2 = x > 4.0
     b3 = b1 ^ b2 ^ True # x in [-4.0, 4.0)
-    b4 = b0 ^ b1 # x in [-8.0, -4.0) 
+    b4 = b0 ^ b1 # x in [-8.0, -4.0)
     # seg1 =  a[2] * x^2 + a[1] * x + a[0]
     # seg2 = b[6] * x^6 + b[4] * x^4 + b[2] * x^2 + b[0]
     a_coeffs = jnp.array([-0.3067541139982155, -0.0819767021525476, -0.0055465625580307])
@@ -123,7 +122,7 @@ def text_generation(input_ids, params, token_num=1):
         outputs = model(input_ids=input_ids, params=params)
         next_token_logits = outputs[0][0, -1, :]
         next_token = jnp.argmax(next_token_logits)
-        input_ids = jnp.concatenate([input_ids, jnp.array([[next_token]])], axis=1)     
+        input_ids = jnp.concatenate([input_ids, jnp.array([[next_token]])], axis=1)    
     return input_ids
 
 
