@@ -36,7 +36,7 @@ This example demonstrates how to use SPU to run secure inference on a pre-traine
     ```
 
     and you can get the following results from our example:
-    
+
     ```md
     ------
     Run on CPU
