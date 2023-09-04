@@ -26,12 +26,8 @@ import jax.nn as jnn
 import flax.linen as nn
 from flax.linen.linear import Array
 from typing import Any, Optional, Tuple, Union
-from transformers import LlamaTokenizer, LlamaForCausalLM
+from transformers import LlamaTokenizer
 from EasyLM.models.llama.llama_model import LLaMAConfig, FlaxLLaMAForCausalLM
-
-
-from transformers import AutoTokenizer, FlaxGPT2LMHeadModel, GPT2Config, FlaxOPTForCausalLM, OPTConfig
-
 import spu.utils.distributed as ppd
 from contextlib import contextmanager
 import spu.intrinsic as intrinsic
@@ -64,17 +60,14 @@ def hack_softmax(x: Array,
             axis: Optional[Union[int, Tuple[int, ...]]] = -1,
             where: Optional[Array] = None,
             initial: Optional[Array] = None) -> Array:
-
     x_max = jnp.max(x, axis, where=where, initial=initial, keepdims=True)
     x = x - x_max
-
     # exp on large negative is clipped to zero
     b = x > -14
     nexp = jnp.exp(x) * b
-
     divisor = jnp.sum(nexp, axis, where=where, keepdims=True)
-
     return nexp / divisor
+
 
 @contextmanager
 def hack_softmax_context(msg: str, enabled: bool = True):
@@ -88,14 +81,13 @@ def hack_softmax_context(msg: str, enabled: bool = True):
     # recover back
     jnn.softmax = raw_softmax
 
-def hack_silu(x: Array) -> Array:
 
+def hack_silu(x: Array) -> Array:
     b0 = x < -8.0
     b1 = x < -4.0
     b2 = x > 4.0
     b3 = b1 ^ b2 ^ True # x in [-4.0, 4.0)
     b4 = b0 ^ b1 # x in [-8.0, -4.0) 
-
     # seg1 =  a[2] * x^2 + a[1] * x + a[0]
     # seg2 = b[6] * x^6 + b[4] * x^4 + b[2] * x^2 + b[0]
     a_coeffs = jnp.array([-0.3067541139982155, -0.0819767021525476, -0.0055465625580307])
@@ -103,13 +95,11 @@ def hack_silu(x: Array) -> Array:
     x2 = jnp.square(x)
     x4 = jnp.square(x2)
     x6 = x2 * x4
-
     seg1 = a_coeffs[2] * x2 + a_coeffs[1] * x + a_coeffs[0]
     seg2 = b_coeffs[4] * x6 + b_coeffs[3] * x4 + b_coeffs[2] * x2 + b_coeffs[1] * x + b_coeffs[0]
-
     ret = b2 * x + b4 * seg1 + b3 * seg2
-
     return ret
+
 
 @contextmanager
 def hack_silu_context(msg: str, enabled: bool = True):
@@ -124,7 +114,6 @@ def hack_silu_context(msg: str, enabled: bool = True):
     nn.silu = raw_silu
 
 
-
 # greedy search
 # ref: https://huggingface.co/blog/how-to-generate
 def text_generation(input_ids, params, token_num=1):
@@ -135,22 +124,19 @@ def text_generation(input_ids, params, token_num=1):
         next_token_logits = outputs[0][0, -1, :]
         next_token = jnp.argmax(next_token_logits)
         input_ids = jnp.concatenate([input_ids, jnp.array([[next_token]])], axis=1)     
-
     return input_ids
 
 
 def run_on_cpu():
     # encode context the generation is conditioned on
-    inputs_ids = tokenizer.encode(
-        'Q: What is the largest animal?\nA:', return_tensors='jax')
+    inputs_ids = tokenizer.encode('Q: What is the largest animal?\nA:', return_tensors='jax')
     outputs_ids = text_generation(inputs_ids, pretrained_model.params)
     return outputs_ids
 
 
 def run_on_spu():
     # encode context the generation is conditioned on
-    input_ids = tokenizer.encode(
-        'Q: What is the largest animal?\nA:', return_tensors='jax')
+    input_ids = tokenizer.encode('Q: What is the largest animal?\nA:', return_tensors='jax')
     with hack_softmax_context("hack exp of softmax", enabled = True), hack_silu_context("hack silu", enabled = True):
         params = ppd.device("P2")(lambda x: x)(pretrained_model.params)
         input_ids = ppd.device("P1")(lambda x: x)(input_ids)
@@ -158,16 +144,13 @@ def run_on_spu():
             text_generation, copts=copts
         )(input_ids, params)
         outputs_ids = ppd.get(outputs_ids)
-
     return outputs_ids
 
 
 if __name__ == '__main__':
-    
     print('\n------\nRun on CPU')
     outputs_ids = run_on_cpu()
-    print(tokenizer.decode(outputs_ids[0], skip_special_tokens=True))
-   
+    print(tokenizer.decode(outputs_ids[0], skip_special_tokens=True)) 
     print('\n------\nRun on SPU')
     outputs_ids = run_on_spu()
     print(tokenizer.decode(outputs_ids[0], skip_special_tokens=True))
