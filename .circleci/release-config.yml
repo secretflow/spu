@@ -44,7 +44,7 @@ jobs:
           name: "Install homebrew dependencies"
           command: |
             brew install bazel cmake ninja nasm libomp wget go
-            (cd "/usr/local/Cellar/bazel/5.3.2/libexec/bin" && curl -fLO https://releases.bazel.build/6.2.1/release/bazel-6.2.1-darwin-x86_64 && chmod +x bazel-6.2.1-darwin-x86_64)
+            (cd "/usr/local/Cellar/bazel/6.3.2/libexec/bin" && curl -fLO https://releases.bazel.build/6.2.1/release/bazel-6.2.1-darwin-x86_64 && chmod +x bazel-6.2.1-darwin-x86_64)
       - run:
           name: "Install Miniconda"
           command: |
