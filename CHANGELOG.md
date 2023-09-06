@@ -10,6 +10,9 @@
 >
 > please add your unreleased change here.
 
+## 20230906
+
+- [SPU] 0.5.0 release
 - [API] Update IO interface to support splitting large data into chunks
 - [API] Add intrinsic function support
 - [Feature] Add half type support
