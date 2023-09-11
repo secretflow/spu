@@ -61,7 +61,7 @@ jobs:
             sleep 60
             # TODO: run all stax_nn models with different optimizers
             docker run --rm --mount type=bind,source="$(pwd)",target=/home/admin/dev/ --network nn-benchmark spu-build:v1 \
-                sh -c "cd /home/admin/dev && bash .circleci/run-nn.sh" | tee benchmark_results.log
+                "cd /home/admin/dev && bash .circleci/run-nn.sh" | tee benchmark_results.log
       - run:
           name: Shutdown docker-compose cluster
           command: docker-compose -f .circleci/benchmark.yml down
