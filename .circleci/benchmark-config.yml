@@ -42,7 +42,7 @@ jobs:
             declare -i build_status
             sed -i "s/tensorflow /tensorflow-cpu /g" ./requirements-dev.txt
             docker run --name spu-build --mount type=bind,source="$(pwd)",target=/home/admin/dev/ secretflow/spu-ci:latest \
-                sh -c "cd /home/admin/dev && \
+                --entrypoint sh -c "cd /home/admin/dev && \
                         python3 -m pip install -U pip && \
                         python3 -m pip install -r requirements.txt && \
                         python3 -m pip install -r requirements-dev.txt && \
