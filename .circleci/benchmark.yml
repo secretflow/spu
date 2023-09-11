@@ -22,8 +22,6 @@ networks:
 services:
   node_0:
     command:
-      - /bin/sh
-      - -c
       - cd /home/admin/dev && bazel-bin/examples/python/utils/nodectl -c .circleci/benchmark.json start --node_id node:0
     image: spu-build:v1
     networks:
@@ -33,8 +31,6 @@ services:
       - ${PWD}:/home/admin/dev/
   node_1:
     command:
-      - /bin/sh
-      - -c
       - cd /home/admin/dev && bazel-bin/examples/python/utils/nodectl -c .circleci/benchmark.json start --node_id node:1
     image: spu-build:v1
     networks:
@@ -44,8 +40,6 @@ services:
       - ${PWD}:/home/admin/dev/
   node_2:
     command:
-      - /bin/sh
-      - -c
       - cd /home/admin/dev && bazel-bin/examples/python/utils/nodectl -c .circleci/benchmark.json start --node_id node:2
     image: spu-build:v1
     networks:
@@ -55,8 +49,6 @@ services:
       - ${PWD}:/home/admin/dev/
   node_3:
     command:
-      - /bin/sh
-      - -c
       - cd /home/admin/dev && bazel-bin/examples/python/utils/nodectl -c .circleci/benchmark.json start --node_id node:3
     image: spu-build:v1
     networks:
@@ -66,8 +58,6 @@ services:
       - ${PWD}:/home/admin/dev/
   node_4:
     command:
-      - /bin/sh
-      - -c
       - cd /home/admin/dev && bazel-bin/examples/python/utils/nodectl -c .circleci/benchmark.json start --node_id node:4
     image: spu-build:v1
     networks:
