@@ -17,8 +17,8 @@ version: 2.1
 setup: true
 
 orbs:
-  path-filtering: circleci/path-filtering@0.1.4
-  continuation: circleci/continuation@0.3.1
+  path-filtering: circleci/path-filtering@1.0.0
+  continuation: circleci/continuation@1.0.0
 
 parameters:
   GHA_Actor:
@@ -89,11 +89,11 @@ workflows:
           # This is mandatory to trigger a pipeline when pushing a tag
           filters:
             tags:
-              only: /.*(?<!dev\d)$/
+              only: /.*(?<!dev\d{8})$/
       - continuation/continue:
           configuration_path: .circleci/dev-release-config.yml
           # This is mandatory to trigger a pipeline when pushing a tag
           filters:
             tags:
-              only: /.*(?<=dev\d)$/
+              only: /.*(?<=dev\d{8})$/
 

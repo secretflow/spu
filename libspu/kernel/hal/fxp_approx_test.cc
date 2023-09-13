@@ -310,4 +310,66 @@ TEST(FxpTest, Sqrt) {
   }
 }
 
+TEST(FxpTest, Sine) {
+  // GIVEN
+  SPUContext ctx = test::makeSPUContext();
+
+  xt::xarray<float> x = {0., 0.52359878, 0.78539816, 1.04719755, 1.57079633};
+  // public sin
+  {
+    Value a = constant(&ctx, x, DT_F32);
+    Value c = f_sine(&ctx, a);
+    EXPECT_EQ(c.dtype(), DT_F32);
+
+    auto y = dump_public_as<float>(&ctx, c);
+    EXPECT_TRUE(xt::allclose(xt::sin(x), y, 0.01, 0.001))
+        << xt::sin(x) << std::endl
+        << y;
+  }
+
+  // secret sin
+  {
+    Value a = test::makeValue(&ctx, x, VIS_SECRET);
+    Value c = f_sine(&ctx, a);
+    EXPECT_EQ(c.dtype(), DT_F32);
+
+    auto y = dump_public_as<float>(&ctx, reveal(&ctx, c));
+    // low precision
+    EXPECT_TRUE(xt::allclose(xt::sin(x), y, 0.01, 0.001))
+        << xt::sin(x) << std::endl
+        << y;
+  }
+}
+
+TEST(FxpTest, Cosine) {
+  // GIVEN
+  SPUContext ctx = test::makeSPUContext();
+
+  xt::xarray<float> x = {0., 0.52359878, 0.78539816, 1.04719755, 1.57079633};
+  // public cos
+  {
+    Value a = constant(&ctx, x, DT_F32);
+    Value c = f_cosine(&ctx, a);
+    EXPECT_EQ(c.dtype(), DT_F32);
+
+    auto y = dump_public_as<float>(&ctx, c);
+    EXPECT_TRUE(xt::allclose(xt::cos(x), y, 0.01, 0.001))
+        << xt::cos(x) << std::endl
+        << y;
+  }
+
+  // secret cos
+  {
+    Value a = test::makeValue(&ctx, x, VIS_SECRET);
+    Value c = f_cosine(&ctx, a);
+    EXPECT_EQ(c.dtype(), DT_F32);
+
+    auto y = dump_public_as<float>(&ctx, reveal(&ctx, c));
+    // low precision
+    EXPECT_TRUE(xt::allclose(xt::cos(x), y, 0.01, 0.001))
+        << xt::cos(x) << std::endl
+        << y;
+  }
+}
+
 }  // namespace spu::kernel::hal

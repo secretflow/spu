@@ -240,10 +240,19 @@ TypedValue<RankedTensorType> CreateGatherLoopAccumulatorInitValue(
   OpBuilder builder(op);
   TypeTools type_tools;
 
-  auto c = builder.create<ConstantOp>(
-      op->getLoc(), builder.getZeroAttr(RankedTensorType::get(
-                        accumulator_state_shape_dims,
-                        type_tools.getExpressedType(element_type))));
+  auto express_type = type_tools.getExpressedType(element_type);
+  auto shaped_type =
+      RankedTensorType::get(accumulator_state_shape_dims, express_type);
+  auto zero_attr = builder.getZeroAttr(shaped_type);
+
+  if (zero_attr == nullptr && express_type.isa<mlir::ComplexType>()) {
+    std::complex<APFloat> zero = {APFloat(0.0F), APFloat(0.0F)};
+    zero_attr = DenseElementsAttr::get(shaped_type,
+                                       std::vector<std::complex<llvm::APFloat>>(
+                                           shaped_type.getNumElements(), zero));
+  }
+
+  auto c = builder.create<ConstantOp>(op->getLoc(), zero_attr);
 
   if (type_tools.getTypeVisibility(element_type) != Visibility::VIS_PUBLIC) {
     auto convert = builder.create<ConvertOp>(

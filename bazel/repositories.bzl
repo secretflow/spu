@@ -18,9 +18,11 @@ load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
 
 SECRETFLOW_GIT = "https://github.com/secretflow"
 
-YACL_COMMIT_ID = "6d07cc784f9d7425a68fb251e646b59f69727d07"
+YACL_COMMIT_ID = "aa107d380e9287a8a5d874feb19dd03be34e4241"
 
 def spu_deps():
+    _rules_cuda()
+    _rules_proto_grpc()
     _bazel_platform()
     _upb()
     _com_github_xtensor_xtensor()
@@ -61,14 +63,32 @@ def spu_deps():
         path = "/opt/homebrew/opt/libomp/",
     )
 
+def _rules_proto_grpc():
+    http_archive(
+        name = "rules_proto_grpc",
+        sha256 = "928e4205f701b7798ce32f3d2171c1918b363e9a600390a25c876f075f1efc0a",
+        strip_prefix = "rules_proto_grpc-4.4.0",
+        urls = [
+            "https://github.com/rules-proto-grpc/rules_proto_grpc/releases/download/4.4.0/rules_proto_grpc-4.4.0.tar.gz",
+        ],
+    )
+
+def _rules_cuda():
+    http_archive(
+        name = "rules_cuda",
+        sha256 = "fa1462c4c3104de44489800a1da055f55afa57795789539c835e069818786f71",
+        strip_prefix = "rules_cuda-cab1fa2dd0e1f8489f566c91a5025856cf5ae572",
+        urls = ["https://github.com/bazel-contrib/rules_cuda/archive/cab1fa2dd0e1f8489f566c91a5025856cf5ae572.tar.gz"],
+    )
+
 def _bazel_platform():
     http_archive(
         name = "platforms",
         urls = [
-            "https://mirror.bazel.build/github.com/bazelbuild/platforms/releases/download/0.0.6/platforms-0.0.6.tar.gz",
-            "https://github.com/bazelbuild/platforms/releases/download/0.0.6/platforms-0.0.6.tar.gz",
+            "https://mirror.bazel.build/github.com/bazelbuild/platforms/releases/download/0.0.7/platforms-0.0.7.tar.gz",
+            "https://github.com/bazelbuild/platforms/releases/download/0.0.7/platforms-0.0.7.tar.gz",
         ],
-        sha256 = "5308fc1d8865406a49427ba24a9ab53087f17f5266a7aabbfc28823f3916e1ca",
+        sha256 = "3a561c99e7bdbe9173aa653fd579fe849f1d8d67395780ab4770b1f381431d51",
     )
 
 def _com_github_facebook_zstd():
@@ -76,11 +96,11 @@ def _com_github_facebook_zstd():
         http_archive,
         name = "com_github_facebook_zstd",
         build_file = "@spulib//bazel:zstd.BUILD",
-        strip_prefix = "zstd-1.5.0",
-        sha256 = "5194fbfa781fcf45b98c5e849651aa7b3b0a008c6b72d4a0db760f3002291e94",
+        strip_prefix = "zstd-1.5.5",
+        sha256 = "98e9c3d949d1b924e28e01eccb7deed865eefebf25c2f21c702e5cd5b63b85e1",
         type = ".tar.gz",
         urls = [
-            "https://github.com/facebook/zstd/releases/download/v1.5.0/zstd-1.5.0.tar.gz",
+            "https://github.com/facebook/zstd/archive/refs/tags/v1.5.5.tar.gz",
         ],
     )
 
@@ -138,8 +158,8 @@ def _com_github_xtensor_xtl():
     )
 
 def _com_github_openxla_xla():
-    OPENXLA_COMMIT = "f23282956725050dd07996d3b80d6788ad8aaeba"
-    OPENXLA_SHA256 = "6e87093f550573de12af247edfa590d76adc6e931da6b551e78dc2c0c2bbd04d"
+    OPENXLA_COMMIT = "0c99beffabc5d43fa29f121674eb59e14a22c779"
+    OPENXLA_SHA256 = "d4c7511a496aeb917976c0d8a65de374c395546f0c3d4077d9dfd4df780d7ea8"
 
     SKYLIB_VERSION = "1.3.0"
 
@@ -160,6 +180,10 @@ def _com_github_openxla_xla():
         sha256 = OPENXLA_SHA256,
         strip_prefix = "xla-" + OPENXLA_COMMIT,
         type = ".tar.gz",
+        patch_args = ["-p1"],
+        patches = [
+            "@spulib//bazel:patches/xla.patch",
+        ],
         urls = [
             "https://github.com/openxla/xla/archive/{commit}.tar.gz".format(commit = OPENXLA_COMMIT),
         ],
@@ -169,10 +193,10 @@ def _com_github_pybind11_bazel():
     maybe(
         http_archive,
         name = "pybind11_bazel",
-        sha256 = "6426567481ee345eb48661e7db86adc053881cb4dd39fbf527c8986316b682b9",
-        strip_prefix = "pybind11_bazel-fc56ce8a8b51e3dd941139d329b63ccfea1d304b",
+        sha256 = "2d3316d89b581966fc11eab9aa9320276baee95c8233c7a8efc7158623a48de0",
+        strip_prefix = "pybind11_bazel-ff261d2e9190955d0830040b20ea59ab9dbe66c8",
         urls = [
-            "https://github.com/pybind/pybind11_bazel/archive/fc56ce8a8b51e3dd941139d329b63ccfea1d304b.zip",
+            "https://github.com/pybind/pybind11_bazel/archive/ff261d2e9190955d0830040b20ea59ab9dbe66c8.zip",
         ],
     )
 
@@ -181,10 +205,10 @@ def _com_github_pybind11():
         http_archive,
         name = "pybind11",
         build_file = "@pybind11_bazel//:pybind11.BUILD",
-        sha256 = "5d8c4c5dda428d3a944ba3d2a5212cb988c2fae4670d58075a5a49075a6ca315",
-        strip_prefix = "pybind11-2.10.3",
+        sha256 = "d475978da0cdc2d43b73f30910786759d593a9d8ee05b1b6846d1eb16c6d2e0c",
+        strip_prefix = "pybind11-2.11.1",
         urls = [
-            "https://github.com/pybind/pybind11/archive/refs/tags/v2.10.3.tar.gz",
+            "https://github.com/pybind/pybind11/archive/refs/tags/v2.11.1.tar.gz",
         ],
     )
 
@@ -266,14 +290,16 @@ def _com_github_microsoft_seal():
     )
 
 def _com_github_eigenteam_eigen():
+    EIGEN_COMMIT = "66e8f38891841bf88ee976a316c0c78a52f0cee5"
+    EIGEN_SHA256 = "01fcd68409c038bbcfd16394274c2bf71e2bb6dda89a2319e23fc59a2da17210"
     maybe(
         http_archive,
         name = "com_github_eigenteam_eigen",
-        sha256 = "c1b115c153c27c02112a0ecbf1661494295d9dcff6427632113f2e4af9f3174d",
+        sha256 = EIGEN_SHA256,
         build_file = "@spulib//bazel:eigen.BUILD",
-        strip_prefix = "eigen-3.4",
+        strip_prefix = "eigen-{commit}".format(commit = EIGEN_COMMIT),
         urls = [
-            "https://gitlab.com/libeigen/eigen/-/archive/3.4/eigen-3.4.tar.gz",
+            "https://gitlab.com/libeigen/eigen/-/archive/{commit}/eigen-{commit}.tar.gz".format(commit = EIGEN_COMMIT),
         ],
     )
 

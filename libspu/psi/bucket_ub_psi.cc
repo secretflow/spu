@@ -19,6 +19,7 @@
 #include "yacl/crypto/utils/rand.h"
 
 #include "libspu/psi/io/io.h"
+#include "libspu/psi/prelude.h"
 #include "libspu/psi/utils/serialize.h"
 #include "libspu/psi/utils/utils.h"
 

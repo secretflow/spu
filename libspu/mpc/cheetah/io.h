@@ -14,15 +14,22 @@
 
 #pragma once
 
-#include "libspu/mpc/semi2k/io.h"
+#include "libspu/mpc/io_interface.h"
 
 namespace spu::mpc::cheetah {
-
-class CheetahIo final : public semi2k::Semi2kIo {
+class CheetahIo : public BaseIo {
  public:
-  using semi2k::Semi2kIo::Semi2kIo;
+  using BaseIo::BaseIo;
+
+  // when owner rank is valid (0 <= owner_rank < world_size), colocation
+  // optization may be applied
+  std::vector<NdArrayRef> toShares(const NdArrayRef& raw, Visibility vis,
+                                   int owner_rank) const override;
+
+  Type getShareType(Visibility vis, int owner_rank = -1) const override;
+
+  NdArrayRef fromShares(const std::vector<NdArrayRef>& shares) const override;
 };
 
 std::unique_ptr<CheetahIo> makeCheetahIo(FieldType field, size_t npc);
-
 }  // namespace spu::mpc::cheetah

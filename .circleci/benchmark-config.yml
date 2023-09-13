@@ -41,8 +41,8 @@ jobs:
             set +e
             declare -i build_status
             sed -i "s/tensorflow /tensorflow-cpu /g" ./requirements-dev.txt
-            docker run --name spu-build --mount type=bind,source="$(pwd)",target=/home/admin/dev/ secretflow/spu-ci:0.7 \
-                sh -c "cd /home/admin/dev && \
+            docker run --name spu-build --mount type=bind,source="$(pwd)",target=/home/admin/dev/ secretflow/spu-ci:latest \
+                "cd /home/admin/dev && \
                         python3 -m pip install -U pip && \
                         python3 -m pip install -r requirements.txt && \
                         python3 -m pip install -r requirements-dev.txt && \
@@ -61,7 +61,7 @@ jobs:
             sleep 60
             # TODO: run all stax_nn models with different optimizers
             docker run --rm --mount type=bind,source="$(pwd)",target=/home/admin/dev/ --network nn-benchmark spu-build:v1 \
-                sh -c "cd /home/admin/dev && bash .circleci/run-nn.sh" | tee benchmark_results.log
+                "cd /home/admin/dev && bash .circleci/run-nn.sh" | tee benchmark_results.log
       - run:
           name: Shutdown docker-compose cluster
           command: docker-compose -f .circleci/benchmark.yml down

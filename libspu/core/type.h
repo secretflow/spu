@@ -19,6 +19,8 @@
 #include <string>
 #include <unordered_map>
 
+#include "fmt/ostream.h"
+
 #include "libspu/core/prelude.h"
 #include "libspu/core/type_util.h"
 
@@ -328,6 +330,8 @@ extern Type F32;
 extern Type F64;
 extern Type I128;
 extern Type U128;
+extern Type CF32;
+extern Type CF64;
 
 class RingTy : public TypeImpl<RingTy, TypeObject, Ring2k> {
   using Base = TypeImpl<RingTy, TypeObject, Ring2k>;
@@ -400,5 +404,7 @@ class TypeContext final {
     return fctor->second;
   }
 };
+
+inline auto format_as(const Type& t) { return fmt::streamed(t); }
 
 }  // namespace spu

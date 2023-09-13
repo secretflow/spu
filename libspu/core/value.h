@@ -17,6 +17,7 @@
 #include <memory>
 
 #include "absl/types/span.h"
+#include "fmt/ostream.h"
 
 #include "libspu/core/ndarray_ref.h"
 #include "libspu/core/shape.h"
@@ -37,11 +38,13 @@ struct ValueProto {
 
 class Value final {
   NdArrayRef data_;
+  std::optional<NdArrayRef> imag_;
   DataType dtype_ = DT_INVALID;
 
  public:
   Value() = default;
   explicit Value(NdArrayRef data, DataType dtype);
+  explicit Value(NdArrayRef real, NdArrayRef imag, DataType dtype);
 
   /// Forward ndarray methods.
   inline int64_t numel() const { return data_.numel(); }
@@ -57,6 +60,9 @@ class Value final {
   const NdArrayRef& data() const { return data_; }
   NdArrayRef& data() { return data_; }
 
+  const std::optional<NdArrayRef>& imag() const { return imag_; }
+  std::optional<NdArrayRef>& imag() { return imag_; }
+
   // Get vtype, is readonly and decided by the underline secure compute engine.
   Visibility vtype() const;
   bool isPublic() const { return vtype() == VIS_PUBLIC; }
@@ -66,6 +72,7 @@ class Value final {
   DataType dtype() const { return dtype_; }
   bool isInt() const { return isInteger(dtype()); }
   bool isFxp() const { return isFixedPoint(dtype()); }
+  bool isComplex() const { return imag_.has_value(); }
 
   // Set dtype.
   //
@@ -138,5 +145,7 @@ struct SimdTrait<Value> {
 };
 
 std::ostream& operator<<(std::ostream& out, const Value& v);
+
+inline auto format_as(const Value& v) { return fmt::streamed(v); }
 
 }  // namespace spu

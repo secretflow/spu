@@ -196,7 +196,7 @@ void KosOtExtSend(const std::shared_ptr<yacl::link::Context>& ctx,
   prg.Fill(absl::MakeSpan(rand_samples));
 
   // Note the following is identical to the IKNP protocol without the final hash
-  // code partically copied from yacl/crypto-primitives/ot/extension/kkrt_ote.cc
+  // code partially copied from yacl/crypto-primitives/ot/extension/kkrt_ote.cc
   // For every batch
   for (size_t i = 0; i < batch_num; ++i) {
     std::array<uint128_t, kBatchSize> recv_msg;
@@ -300,7 +300,7 @@ void KosOtExtRecv(const std::shared_ptr<yacl::link::Context>& ctx,
   prg.Fill(absl::MakeSpan(rand_samples));
 
   // Note the following is identical to the IKNP protocol without the final hash
-  // code partically copied from yacl/crypto-primitives/ot/extension/kkrt_ote.cc
+  // code partially copied from yacl/crypto-primitives/ot/extension/kkrt_ote.cc
   // For a task of generating 129 OTs, we actually generates 128 * 2 = 256
   // OTs.
   for (size_t i = 0; i < batch_num; ++i) {

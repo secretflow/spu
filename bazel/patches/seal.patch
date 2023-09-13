@@ -67,7 +67,7 @@ index 31e07441..c34d0a45 100644
          // Write the poly_modulus_degree. Note that it will always be positive.
          *param_data_ptr++ = static_cast<uint64_t>(poly_modulus_degree_);
  
-+		*param_data_ptr++ = static_cast<uint64_t>(use_special_prime_);
++		 *param_data_ptr++ = static_cast<uint64_t>(use_special_prime_);
          for (const auto &mod : coeff_modulus_)
          {
              *param_data_ptr++ = mod.value();
@@ -118,3 +118,104 @@ index 9e1fbe48..eb71c4ac 100644
          parms_id_type parms_id_ = parms_id_zero;
      };
  } // namespace seal
+
+diff --git a/native/src/seal/evaluator.cpp b/native/src/seal/evaluator.cpp
+index dabd3bab..afaa71dc 100644
+--- a/native/src/seal/evaluator.cpp
++++ b/native/src/seal/evaluator.cpp
+@@ -2382,6 +2382,7 @@ namespace seal
+         size_t encrypted_size = encrypted.size();
+         // Use key_context_data where permutation tables exist since previous runs.
+         auto galois_tool = context_.key_context_data()->galois_tool();
++        bool is_ntt_form = encrypted.is_ntt_form();
+
+         // Size check
+         if (!product_fits_in(coeff_count, coeff_modulus_size))
+@@ -2412,7 +2413,7 @@ namespace seal
+         // DO NOT CHANGE EXECUTION ORDER OF FOLLOWING SECTION
+         // BEGIN: Apply Galois for each ciphertext
+         // Execution order is sensitive, since apply_galois is not inplace!
+-        if (parms.scheme() == scheme_type::bfv)
++        if (not is_ntt_form)
+         {
+             // !!! DO NOT CHANGE EXECUTION ORDER!!!
+
+@@ -2426,7 +2427,7 @@ namespace seal
+             // Next transform encrypted.data(1)
+             galois_tool->apply_galois(encrypted_iter[1], coeff_modulus_size, galois_elt, coeff_modulus, temp);
+         }
+-        else if (parms.scheme() == scheme_type::ckks || parms.scheme() == scheme_type::bgv)
++        else
+         {
+             // !!! DO NOT CHANGE EXECUTION ORDER!!!
+
+@@ -2440,10 +2441,6 @@ namespace seal
+             // Next transform encrypted.data(1)
+             galois_tool->apply_galois_ntt(encrypted_iter[1], coeff_modulus_size, galois_elt, temp);
+         }
+-        else
+-        {
+-            throw logic_error("scheme not implemented");
+-        }
+
+         // Wipe encrypted.data(1)
+         set_zero_poly(coeff_count, coeff_modulus_size, encrypted.data(1));
+@@ -2530,6 +2527,7 @@ namespace seal
+         auto &key_context_data = *context_.key_context_data();
+         auto &key_parms = key_context_data.parms();
+         auto scheme = parms.scheme();
++        bool is_ntt_form = encrypted.is_ntt_form();
+
+         // Verify parameters.
+         if (!is_metadata_valid_for(encrypted, context_) || !is_buffer_valid(encrypted))
+@@ -2559,14 +2557,6 @@ namespace seal
+         {
+             throw invalid_argument("pool is uninitialized");
+         }
+-        if (scheme == scheme_type::bfv && encrypted.is_ntt_form())
+-        {
+-            throw invalid_argument("BFV encrypted cannot be in NTT form");
+-        }
+-        if (scheme == scheme_type::ckks && !encrypted.is_ntt_form())
+-        {
+-            throw invalid_argument("CKKS encrypted must be in NTT form");
+-        }
+         if (scheme == scheme_type::bgv && !encrypted.is_ntt_form())
+         {
+             throw invalid_argument("BGV encrypted must be in NTT form");
+@@ -2605,7 +2595,7 @@ namespace seal
+         set_uint(target_iter, decomp_modulus_size * coeff_count, t_target);
+
+         // In CKKS or BGV, t_target is in NTT form; switch back to normal form
+-        if (scheme == scheme_type::ckks || scheme == scheme_type::bgv)
++        if (is_ntt_form)
+         {
+             inverse_ntt_negacyclic_harvey(t_target, decomp_modulus_size, key_ntt_tables);
+         }
+@@ -2632,7 +2622,7 @@ namespace seal
+                 ConstCoeffIter t_operand;
+
+                 // RNS-NTT form exists in input
+-                if ((scheme == scheme_type::ckks || scheme == scheme_type::bgv) && (I == J))
++                if (is_ntt_form && (I == J))
+                 {
+                     t_operand = target_iter[J];
+                 }
+@@ -2789,7 +2779,7 @@ namespace seal
+                     SEAL_ITERATE(t_ntt, coeff_count, [fix](auto &K) { K += fix; });
+
+                     uint64_t qi_lazy = qi << 1; // some multiples of qi
+-                    if (scheme == scheme_type::ckks)
++                    if (is_ntt_form)
+                     {
+                         // This ntt_negacyclic_harvey_lazy results in [0, 4*qi).
+                         ntt_negacyclic_harvey_lazy(t_ntt, get<2>(J));
+@@ -2802,7 +2792,7 @@ namespace seal
+                         qi_lazy = qi << 2;
+ #endif
+                     }
+-                    else if (scheme == scheme_type::bfv)
++                    else
+                     {
+                         inverse_ntt_negacyclic_harvey_lazy(get<0, 1>(J), get<2>(J));
+                     }

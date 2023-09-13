@@ -16,8 +16,9 @@
 
 #include <functional>
 
+#include "yacl/utils/platform_utils.h"
+
 #include "libspu/core/parallel_utils.h"
-#include "libspu/core/platform_utils.h"
 #include "libspu/core/prelude.h"
 #include "libspu/mpc/ab_api.h"
 #include "libspu/mpc/aby3/type.h"
@@ -499,10 +500,10 @@ NdArrayRef B2AByOT::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
 
           const auto& r = _in[idx];
 
-          _lo[idx][0] = pext_u64(r[0], S) & M;
-          _hi[idx][0] = pext_u64(r[0], ~S) & M;
-          _lo[idx][1] = pext_u64(r[1], S) & M;
-          _hi[idx][1] = pext_u64(r[1], ~S) & M;
+          _lo[idx][0] = yacl::pext_u64(r[0], S) & M;
+          _hi[idx][0] = yacl::pext_u64(r[0], ~S) & M;
+          _lo[idx][1] = yacl::pext_u64(r[1], S) & M;
+          _hi[idx][1] = yacl::pext_u64(r[1], ~S) & M;
         });
       } else {
         pforeach(0, in.numel(), [&](int64_t idx) {

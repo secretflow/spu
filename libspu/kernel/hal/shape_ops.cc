@@ -15,26 +15,74 @@
 #include "libspu/kernel/hal/shape_ops.h"
 
 #include <algorithm>
-#include <cstddef>
-#include <cstdint>
-#include <cstring>
-#include <vector>
 
 #include "libspu/core/ndarray_ref.h"
-#include "libspu/core/parallel_utils.h"
-#include "libspu/core/vectorize.h"
-#include "libspu/kernel/hal/ring.h"
-#include "libspu/kernel/hal/type_cast.h"
+#include "libspu/kernel/hal/prot_wrapper.h"
 
 namespace spu::kernel::hal {
+namespace {
+
+// TODO: these code is copied from ring.cc, remove it when shape ops is lowered
+// to mpc layer.
+Type _common_type(SPUContext* ctx, const Type& a, const Type& b) {
+  if (a.isa<Secret>() && b.isa<Secret>()) {
+    return _common_type_s(ctx, a, b);
+  } else if (a.isa<Secret>()) {
+    return a;
+  } else if (b.isa<Secret>()) {
+    return b;
+  } else {
+    SPU_ENFORCE(a.isa<Public>() && b.isa<Public>());
+    return a;
+  }
+}
+
+Value _cast_type(SPUContext* ctx, const Value& x, const Type& to) {
+  if (x.storage_type() == to) {
+    return x;
+  }
+  if (x.isPublic() && to.isa<Public>()) {
+    return x;
+  } else if (x.isPublic() && to.isa<Secret>()) {
+    // FIXME: casting to BShare semantic is wrong.
+    return _p2s(ctx, x);
+  } else if (x.isSecret() && to.isa<Secret>()) {
+    return _cast_type_s(ctx, x, to);
+  } else {
+    SPU_THROW("show not be here x={}, to={}", x, to);
+  }
+}
+
+}  // namespace
 
 Value transpose(SPUContext* ctx, const Value& in, const Axes& permutation) {
   SPU_TRACE_HAL_DISP(ctx, in);
 
+  Axes perm = permutation;
+  if (perm.empty()) {
+    // by default, transpose the data in reverse order.
+    perm.resize(in.shape().size());
+    std::iota(perm.rbegin(), perm.rend(), 0);
+  }
+
+  // sanity check.
+  SPU_ENFORCE_EQ(perm.size(), in.shape().size());
+  std::set<int64_t> uniq(perm.begin(), perm.end());
+  SPU_ENFORCE_EQ(uniq.size(), perm.size(), "perm={} is not unique", perm);
+
+  // fast path, if identity permutation, return it.
+  Axes no_perm(in.shape().size());
+  std::iota(no_perm.begin(), no_perm.end(), 0);
+  if (perm == no_perm) {
+    return in;
+  }
+
+  auto res = Value(in.data().transpose(perm), in.dtype());
+
   // compact clone is a rather expensive memory operation.
   // To prevent transposed value being cloned multiple times in later ops, clone
   // the value here.
-  return Value(in.data().transpose(permutation), in.dtype()).clone();
+  return res.clone();
 }
 
 Value slice(SPUContext* ctx, const Value& in, const Index& start_indices,
@@ -52,9 +100,15 @@ Value slice_scalar_at(SPUContext* ctx, const Value& input,
 
 Value update_slice(SPUContext* ctx, const Value& in, const Value& update,
                    const Index& start_indices) {
+  if (in.storage_type() != update.storage_type()) {
+    auto u =
+        _cast_type(ctx, update, in.storage_type()).setDtype(update.dtype());
+
+    return update_slice(ctx, in, u, start_indices);
+  }
+
   auto ret = in.clone();
-  auto u = stype_cast(ctx, update, ret.storage_type());
-  ret.data().update_slice(u.data(), start_indices);
+  ret.data().update_slice(update.data(), start_indices);
   return ret;
 }
 

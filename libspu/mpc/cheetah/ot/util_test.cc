@@ -34,28 +34,27 @@ INSTANTIATE_TEST_SUITE_P(
     });
 
 TEST_P(UtilTest, ZipArray) {
-  const int64_t n = 20;
+  const int64_t n = 200;
   const auto field = GetParam();
   const size_t elsze = SizeOf(field);
 
   auto unzip = ring_zeros(field, {n});
 
-  DISPATCH_ALL_FIELDS(field, "", [&]() {
+  DISPATCH_ALL_FIELDS(field, "UT_ZipArray", [&]() {
     for (size_t bw : {1, 2, 4, 7, 15, 16}) {
       int64_t pack_load = elsze * 8 / bw;
       auto zip = ring_zeros(field, {(n + pack_load - 1) / pack_load});
       auto array = ring_rand(field, {n});
-      auto inp = xt_mutable_adapt<ring2k_t>(array);
+      auto inp = absl::MakeSpan(&array.at<ring2k_t>(0), array.numel());
       auto mask = makeBitsMask<ring2k_t>(bw);
-      inp &= mask;
+      std::transform(inp.begin(), inp.end(), inp.data(),
+                     [&](auto v) { return v & mask; });
 
-      auto _zip = xt_mutable_adapt<ring2k_t>(zip);
-      auto _unzip = xt_mutable_adapt<ring2k_t>(unzip);
-      size_t zip_sze = ZipArray<ring2k_t>({inp.data(), inp.size()}, bw,
-                                          {_zip.data(), _zip.size()});
+      auto _zip = absl::MakeSpan(&zip.at<ring2k_t>(0), zip.numel());
+      auto _unzip = absl::MakeSpan(&unzip.at<ring2k_t>(0), unzip.numel());
+      (void)ZipArray<ring2k_t>(inp, bw, _zip);
 
-      UnzipArray<ring2k_t>({_zip.data(), zip_sze}, bw,
-                           {_unzip.data(), _unzip.size()});
+      UnzipArray<ring2k_t>(_zip, bw, _unzip);
 
       for (size_t i = 0; i < n; ++i) {
         EXPECT_EQ(inp[i], _unzip[i]);
@@ -64,26 +63,41 @@ TEST_P(UtilTest, ZipArray) {
   });
 }
 
-TEST_P(UtilTest, PackU8Array) {
-  const int64_t num_bytes = 223;
+TEST_P(UtilTest, ZipArrayBit) {
+  const size_t n = 1000;
   const auto field = GetParam();
-  const int64_t elsze = SizeOf(field);
 
-  std::uniform_int_distribution<uint8_t> uniform(0, -1);
-  std::default_random_engine rdv;
-  std::vector<uint8_t> u8array(num_bytes);
-  std::generate_n(u8array.data(), u8array.size(),
-                  [&]() { return uniform(rdv); });
+  auto unzip = ring_zeros(field, {n});
 
-  auto packed = ring_zeros(field, {(num_bytes + elsze - 1) / elsze});
+  DISPATCH_ALL_FIELDS(field, "UT_ZipArrayBit", [&]() {
+    const size_t elsze = SizeOf(field);
+    for (size_t bw : {1, 2, 3, 4, 5, 6, 7, 8, 9, 10}) {
+      size_t width = elsze * 8;
+      size_t pack_sze = CeilDiv(bw * n, width);
 
-  DISPATCH_ALL_FIELDS(field, "", [&]() {
-    auto xp = xt_mutable_adapt<ring2k_t>(packed);
-    PackU8Array<ring2k_t>(absl::MakeSpan(u8array), {xp.data(), xp.size()});
-    std::vector<uint8_t> _u8(num_bytes, -1);
-    UnpackU8Array<ring2k_t>({xp.data(), xp.size()}, absl::MakeSpan(_u8));
+      auto zip = ring_zeros(field, {(int)pack_sze});
+      auto array = ring_rand(field, {n});
+      auto mask = makeBitsMask<ring2k_t>(bw);
 
-    EXPECT_TRUE(std::memcmp(_u8.data(), u8array.data(), num_bytes) == 0);
+      auto inp = absl::MakeSpan(&array.at<ring2k_t>(0), array.numel());
+      auto _zip = absl::MakeSpan(&zip.at<ring2k_t>(0), zip.numel());
+      auto _unzip = absl::MakeSpan(&unzip.at<ring2k_t>(0), unzip.numel());
+      pforeach(0, array.numel(), [&](int64_t i) { inp[i] &= mask; });
+
+      size_t zip_sze = ZipArrayBit<ring2k_t>(inp, bw, _zip);
+      SPU_ENFORCE(zip_sze == pack_sze);
+
+      if (((n * bw) % width) != 0) {
+        // add some noises
+        _zip[pack_sze - 1] |= (static_cast<ring2k_t>(1) << (width - 1));
+      }
+
+      UnzipArrayBit<ring2k_t>(_zip, bw, _unzip);
+
+      for (size_t i = 0; i < n; ++i) {
+        EXPECT_EQ(inp[i], _unzip[i]);
+      }
+    }
   });
 }
 

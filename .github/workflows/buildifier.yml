@@ -1,11 +1,12 @@
 ---
-name: Bazel files check
-on: [push]
+name: Bazel files linter
+on:
+  push:
+    branches:
+    - main
+  pull_request:
+    branches:
+    - main
 jobs:
-  formatting-check:
-    name: Run buildifier check
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - name: Run buildifier
-        uses: jbajic/buildifier@v1
+  bazel-formatting-check:
+    uses: secretflow/.github/.github/workflows/bazel-linter.yml@main

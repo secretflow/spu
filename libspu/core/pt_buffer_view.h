@@ -47,7 +47,7 @@ struct PtBufferView {
   void const* const ptr;  // Pointer to the underlying storage
   PtType const pt_type;   // Plaintext data type.
   Shape const shape;      // Shape of the tensor.
-  Strides const strides;  // Strides in byte.
+  Strides const strides;  // Strides in number of elements.
 
   // We have to take a concrete buffer as a view.
   PtBufferView() = delete;

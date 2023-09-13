@@ -40,6 +40,10 @@
 #include "libspu/psi/core/ecdh_psi.h"
 #include "libspu/psi/memory_psi.h"
 
+#ifdef CHECK_AVX
+#include "cpu_features/cpuinfo_x86.h"
+#endif
+
 namespace py = pybind11;
 
 namespace brpc {
@@ -50,6 +54,18 @@ DECLARE_int64(socket_max_unwritten_bytes);
 }  // namespace brpc
 
 namespace spu {
+
+namespace {
+
+[[maybe_unused]] std::string FormatMissingCpuFeatureMsg(const char* name) {
+  return fmt::format(
+      "This version of SPU was built using {} instructions, which your "
+      "CPU and/or operating system do not support. You may be able to work "
+      "around this issue by building SPU from source.",
+      name);
+}
+
+}  // namespace
 
 #define NO_GIL py::call_guard<py::gil_scoped_release>()
 
@@ -116,6 +132,11 @@ void BindLink(py::module& m) {
       .def_readwrite("enable_ssl", &ContextDesc::enable_ssl)
       .def_readwrite("client_ssl_opts", &ContextDesc::client_ssl_opts)
       .def_readwrite("server_ssl_opts", &ContextDesc::server_ssl_opts)
+      .def_readwrite("brpc_retry_count", &ContextDesc::brpc_retry_count)
+      .def_readwrite("brpc_retry_interval_ms",
+                     &ContextDesc::brpc_retry_interval_ms)
+      .def_readwrite("brpc_aggressive_retry",
+                     &ContextDesc::brpc_aggressive_retry)
       .def_readwrite("link_type", &ContextDesc::link_type)
       .def(
           "add_party",
@@ -297,7 +318,7 @@ static PyBindShare ValueToPyBindShare(const spu::Value& value,
 class RuntimeWrapper {
   std::unique_ptr<spu::SPUContext> sctx_;
 
-  // the golbals, could be used to cross session stuffs.
+  // the globals, could be used to cross session stuffs.
   spu::device::SymbolTable env_;
 
   size_t max_chunk_size_;
@@ -348,21 +369,23 @@ class RuntimeWrapper {
   void Clear() { env_.clear(); }
 };
 
+// numpy type naming:
+// https://numpy.org/doc/stable/reference/arrays.scalars.html#sized-aliases
 #define FOR_PY_FORMATS(FN) \
-  FN("b", PT_I8)           \
-  FN("h", PT_I16)          \
-  FN("i", PT_I32)          \
-  FN("l", PT_I64)          \
-  FN("q", PT_I64)          \
-  FN("B", PT_U8)           \
-  FN("H", PT_U16)          \
-  FN("I", PT_U32)          \
-  FN("L", PT_U64)          \
-  FN("Q", PT_U64)          \
-  FN("e", PT_F16)          \
-  FN("f", PT_F32)          \
-  FN("d", PT_F64)          \
-  FN("?", PT_BOOL)
+  FN("int8", PT_I8)        \
+  FN("int16", PT_I16)      \
+  FN("int32", PT_I32)      \
+  FN("int64", PT_I64)      \
+  FN("uint8", PT_U8)       \
+  FN("uint16", PT_U16)     \
+  FN("uint32", PT_U32)     \
+  FN("uint64", PT_U64)     \
+  FN("float16", PT_F16)    \
+  FN("float32", PT_F32)    \
+  FN("float64", PT_F64)    \
+  FN("bool", PT_BOOL)      \
+  FN("complex64", PT_CF32) \
+  FN("complex128", PT_CF64)
 
 // https://docs.python.org/3/library/struct.html#format-characters
 // https://numpy.org/doc/stable/reference/arrays.scalars.html#built-in-scalar-types
@@ -431,7 +454,7 @@ class IoWrapper {
   size_t GetShareChunkCount(const py::array& arr, int visibility,
                             int owner_rank) {
     const py::buffer_info& binfo = arr.request();
-    const PtType pt_type = PyFormatToPtType(binfo.format);
+    const PtType pt_type = PyFormatToPtType(py::str(arr.dtype()));
 
     spu::PtBufferView view(
         binfo.ptr, pt_type, Shape(binfo.shape.begin(), binfo.shape.end()),
@@ -449,8 +472,9 @@ class IoWrapper {
     // cost
     SizeCheck();
 
+    const PtType pt_type = PyFormatToPtType(py::str(arr.dtype()));
+
     const py::buffer_info& binfo = arr.request();
-    const PtType pt_type = PyFormatToPtType(binfo.format);
 
     spu::PtBufferView view(
         binfo.ptr, pt_type, Shape(binfo.shape.begin(), binfo.shape.end()),
@@ -737,6 +761,22 @@ PYBIND11_MODULE(libspu, m) {
 
   py::module logging_m = m.def_submodule("logging");
   BindLogging(logging_m);
+
+  // bind check cpu features
+  m.def(
+      "check_cpu_features",
+      []() {
+#ifdef CHECK_AVX
+        static const auto cpu_features = cpu_features::GetX86Info().features;
+        if (!cpu_features.avx) {
+          throw std::runtime_error(FormatMissingCpuFeatureMsg("AVX"));
+        }
+        if (!cpu_features.aes) {
+          throw std::runtime_error(FormatMissingCpuFeatureMsg("AES"));
+        }
+#endif
+      },
+      "check cpu features");
 }
 
 }  // namespace spu

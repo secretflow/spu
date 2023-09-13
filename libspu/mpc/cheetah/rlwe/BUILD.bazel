@@ -25,13 +25,19 @@ spu_cc_library(
 
 spu_cc_library(
     name = "lwe",
-    srcs = [
-        "lwe_ct.cc",
-        "lwe_decryptor.cc",
-        "lwe_secret_key.cc",
-    ],
-    hdrs = ["lwe_decryptor.h"],
+    srcs = ["lwe_ct.cc"],
+    hdrs = ["lwe_ct.h"],
     deps = [":modswitch_helper"],
+)
+
+spu_cc_library(
+    name = "packlwes",
+    srcs = ["packlwes.cc"],
+    hdrs = ["packlwes.h"],
+    deps = [
+        ":lwe",
+        ":rlwe_utils",
+    ],
 )
 
 spu_cc_library(
@@ -55,7 +61,6 @@ spu_cc_library(
         "utils.h",
     ],
     deps = [
-        "//libspu/mpc/cheetah:array_ref",
         "//libspu/mpc/utils:ring_ops",
         "@com_github_microsoft_seal//:seal",
     ],
@@ -67,5 +72,14 @@ spu_cc_test(
     deps = [
         ":modswitch_helper",
         "@com_github_xtensor_xtensor//:xtensor",
+    ],
+)
+
+spu_cc_test(
+    name = "packlwes_test",
+    srcs = ["packlwes_test.cc"],
+    deps = [
+        ":modswitch_helper",
+        ":packlwes",
     ],
 )

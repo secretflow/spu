@@ -78,7 +78,7 @@ void hintNumberOfBits(const Value& a, size_t nbits) {
 }
 
 // Reference:
-//   Charpter 3.4 Division @ Secure Computation With Fixed Point Number
+//   Chapter 3.4 Division @ Secure Computation With Fixed Point Number
 //   http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.221.1305&rep=rep1&type=pdf
 //
 // Goldschmidt main idea:
@@ -194,7 +194,7 @@ Value reciprocal_goldschmidt_positive(SPUContext* ctx, const Value& b_abs) {
   return r;
 }
 
-// NOTE(junfeng): we have a seperate reciprocal_goldschmidt is to avoid
+// NOTE(junfeng): we have a separate reciprocal_goldschmidt is to avoid
 // unnecessary f_mul for y initiation in div_goldschmidt.
 Value reciprocal_goldschmidt(SPUContext* ctx, const Value& b) {
   SPU_TRACE_HAL_DISP(ctx, b);
@@ -271,11 +271,20 @@ Value f_mmul(SPUContext* ctx, const Value& x, const Value& y) {
 
 Value f_conv2d(SPUContext* ctx, const Value& x, const Value& y,
                const Strides& window_strides) {
-  SPU_TRACE_HAL_LEAF(ctx, x, y);
+  SPU_TRACE_HAL_LEAF(ctx, x, y, window_strides);
 
   SPU_ENFORCE(x.isFxp() && y.isFxp() && x.dtype() == y.dtype());
 
   return _trunc(ctx, _conv2d(ctx, x, y, window_strides)).setDtype(x.dtype());
+}
+
+Value f_tensordot(SPUContext* ctx, const Value& x, const Value& y,
+                  const Index& ix, const Index& iy) {
+  SPU_TRACE_HAL_LEAF(ctx, x, y, ix, iy);
+
+  SPU_ENFORCE(x.isFxp() && y.isFxp() && x.dtype() == y.dtype());
+
+  return _trunc(ctx, _tensordot(ctx, x, y, ix, iy)).setDtype(x.dtype());
 }
 
 Value f_div(SPUContext* ctx, const Value& x, const Value& y) {
@@ -309,7 +318,7 @@ Value f_less(SPUContext* ctx, const Value& x, const Value& y) {
 Value f_square(SPUContext* ctx, const Value& x) {
   SPU_TRACE_HAL_LEAF(ctx, x);
 
-  SPU_ENFORCE(x.isFxp());
+  SPU_ENFORCE(x.isFxp(), "{}", x);
   return _trunc(ctx, _mul(ctx, x, x), ctx->getFxpBits(), SignType::Positive)
       .setDtype(x.dtype());
 }

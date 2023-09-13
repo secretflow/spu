@@ -11,6 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+#include "libspu/mpc/cheetah/rlwe/lwe_ct.h"
 
 #include "seal/util/ntt.h"
 #include "seal/util/polyarithsmallmod.h"
@@ -20,10 +21,14 @@
 
 namespace spu::mpc::cheetah {
 
-static size_t MaximumLazy(const seal::SEALContext &context) {
-  if (!context.parameters_set()) return 0;
+size_t MaximumLazy(const seal::SEALContext &context) {
+  if (!context.parameters_set()) {
+    return 0;
+  }
   auto cntxt_dat = context.first_context_data();
-  if (!cntxt_dat) return 0;
+  if (!cntxt_dat) {
+    return 0;
+  }
   const auto &modulus = cntxt_dat->parms().coeff_modulus();
 
   constexpr int kBarrettLimit = 62;
@@ -31,13 +36,21 @@ static size_t MaximumLazy(const seal::SEALContext &context) {
   for (const auto &mod : modulus) {
     nbits = std::max(mod.bit_count(), nbits);
   }
-  if (nbits >= kBarrettLimit) return 0;
+
+  if (nbits >= kBarrettLimit) {
+    return 0;
+  }
+  // NOTE(lwj): not to lazy too much
   return 1UL << std::min(16, kBarrettLimit - nbits);
 }
 
 LWECt::LWECt() = default;
 
 LWECt::~LWECt() = default;
+
+seal::parms_id_type LWECt::parms_id() const { return vec_.parms_id(); }
+
+seal::parms_id_type &LWECt::parms_id() { return vec_.parms_id(); }
 
 LWECt::LWECt(const RLWECt &rlwe, size_t coeff_index,
              const seal::SEALContext &context) {
@@ -445,6 +458,151 @@ void LWECt::load_members(const seal::SEALContext &context, std::istream &stream,
   stream.exceptions(old_except_mask);
 
   std::swap(*this, tmp);
+}
+
+void LWECt::CastAsRLWE(const seal::SEALContext &context, uint64_t multiplier,
+                       RLWECt *out) const {
+  SPU_ENFORCE(out != nullptr);
+  using namespace seal;
+  using namespace seal::util;
+  if (!IsValid()) {
+    out->release();
+    return;
+  }
+
+  SPU_ENFORCE(lazy_counter_ < 2, "invalid lazy_counter={}", lazy_counter_);
+  SPU_ENFORCE(multiplier > 0, "invalid multiplier={}", multiplier);
+
+  auto work_cntxt = context.get_context_data(parms_id());
+  SPU_ENFORCE(work_cntxt != nullptr);
+
+  const auto &parms = work_cntxt->parms();
+  const auto &modulus = parms.coeff_modulus();
+  const auto *ntt_tables = work_cntxt->small_ntt_tables();
+  size_t num_coeff = parms.poly_modulus_degree();
+  size_t num_moduli = modulus.size();
+
+  out->resize(context, parms_id(), 2);
+
+  auto *cnst_ptr = out->data(0);
+  auto *dst_ptr = out->data(1);
+  const auto *src_ptr = vec_.data();
+
+  for (size_t l = 0; l < num_moduli; ++l) {
+    uint64_t inv_multiplier;
+    if (multiplier == num_coeff) {
+      inv_multiplier = ntt_tables[l].inv_degree_modulo().operand;
+    } else {
+      // compute multiplier^{-1} mod p
+      SPU_ENFORCE(
+          try_invert_uint_mod(multiplier, modulus[l], inv_multiplier),
+          fmt::format("inverse mod for multiplier={} failed", multiplier));
+    }
+
+    MultiplyUIntModOperand fixed_mul;
+    fixed_mul.set(negate_uint_mod(inv_multiplier, modulus[l]), modulus[l]);
+
+    // [a0, -a1, -a2, ..., -a_{n-1}]
+    dst_ptr[0] = multiply_uint_mod(src_ptr[0], inv_multiplier, modulus[l]);
+    multiply_poly_scalar_coeffmod(src_ptr + 1, num_coeff - 1, fixed_mul,
+                                  modulus[l], dst_ptr + 1);
+    // reverse [1, n)
+    std::reverse(dst_ptr + 1, dst_ptr + num_coeff);
+
+    cnst_ptr[0] = multiply_uint_mod(cnst_term_[l], inv_multiplier, modulus[l]);
+    std::fill_n(cnst_ptr + 1, num_coeff - 1, 0);
+
+    src_ptr += num_coeff;
+    cnst_ptr += num_coeff;
+    dst_ptr += num_coeff;
+  }
+
+  out->is_ntt_form() = false;
+  out->scale() = 1.0;
+}
+
+void PhantomLWECt::WrapIt(const RLWECt &ct, size_t coeff_index) {
+  SPU_ENFORCE(not ct.is_ntt_form() && ct.size() == 2 &&
+              coeff_index < ct.poly_modulus_degree());
+  coeff_index_ = coeff_index;
+  pid_ = ct.parms_id();
+  base_ = &ct;
+}
+
+bool PhantomLWECt::IsValid() const { return base_ != nullptr; }
+
+size_t PhantomLWECt::poly_modulus_degree() const {
+  if (base_ != nullptr) {
+    return base_->poly_modulus_degree();
+  }
+  return 0;
+}
+
+size_t PhantomLWECt::coeff_modulus_size() const {
+  if (base_ != nullptr) {
+    return base_->coeff_modulus_size();
+  }
+  return 0;
+}
+
+void PhantomLWECt::CastAsRLWE(const seal::SEALContext &context,
+                              uint64_t multiplier, RLWECt *out) const {
+  SPU_ENFORCE(out != nullptr);
+  if (!IsValid()) {
+    out->release();
+    return;
+  }
+
+  auto cntxt_data = context.get_context_data(parms_id());
+  SPU_ENFORCE(cntxt_data != nullptr, "invalid pid for this context");
+
+  out->resize(context, parms_id(), 2);
+  const auto &modulus = cntxt_data->parms().coeff_modulus();
+  const auto *ntt_tables = cntxt_data->small_ntt_tables();
+  auto num_modulus = this->coeff_modulus_size();
+  auto num_coeff = this->poly_modulus_degree();
+
+  const uint64_t *src_ptr = base_->data(1);
+  uint64_t *dst_ptr = out->data(1);
+
+  std::fill_n(out->data(0), num_coeff * num_modulus, 0);
+  for (size_t l = 0; l < num_modulus; ++l) {
+    using namespace seal::util;
+    // multiply N^{-1} mod p to cancel out the multiplier
+    MultiplyUIntModOperand fixed_mul;
+    if (multiplier == num_coeff) {
+      fixed_mul = ntt_tables[l].inv_degree_modulo();
+    } else {
+      // compute multiplier^{-1} mod p
+      uint64_t inv_multiplier;
+      SPU_ENFORCE(
+          try_invert_uint_mod(multiplier, modulus[l], inv_multiplier),
+          fmt::format("inverse mod for multiplier={} failed", multiplier));
+      fixed_mul.set(negate_uint_mod(inv_multiplier, modulus[l]), modulus[l]);
+    }
+
+    dst_ptr[0] =
+        multiply_uint_mod(src_ptr[coeff_index_], fixed_mul, modulus[l]);
+
+    size_t offset = num_coeff - coeff_index_;
+    for (size_t i = 1; i < offset; ++i) {
+      size_t src_rlwe_idx = coeff_index_ + i;
+      dst_ptr[i] =
+          multiply_uint_mod(src_ptr[src_rlwe_idx], fixed_mul, modulus[l]);
+    }
+
+    for (size_t i = offset; i < num_coeff; ++i) {
+      size_t src_rlwe_idx = i - offset;
+      dst_ptr[i] = multiply_uint_mod(modulus[l].value() - src_ptr[src_rlwe_idx],
+                                     fixed_mul, modulus[l]);
+    }
+
+    out->data(0)[l * num_coeff] = multiply_uint_mod(
+        base_->data(0)[l * num_coeff + coeff_index_], fixed_mul, modulus[l]);
+
+    src_ptr += num_coeff;
+    dst_ptr += num_coeff;
+  }
 }
 
 }  // namespace spu::mpc::cheetah

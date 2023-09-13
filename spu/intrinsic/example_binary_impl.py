@@ -3,7 +3,7 @@ __all__ = ["example_binary"]
 from functools import partial
 
 from jax import core, dtypes
-from jax.abstract_arrays import ShapedArray
+from jax.core import ShapedArray
 from jax.interpreters import ad, batching, mlir, xla
 
 # from jax.lib import xla_client

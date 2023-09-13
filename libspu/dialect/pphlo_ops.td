@@ -81,10 +81,10 @@ def PPHLO_IotaOp : PPHLO_Op<"iota", [Pure]> {
 // pphlo unary elementwise op definitions.
 //===----------------------------------------------------------------------===//
 class PPHLO_UnaryElementwiseOp<string mnemonic, list<Trait> traits,
-                               Type TensorType>
+                               Type OperandType, Type ResultType = OperandType>
     : PPHLO_Op<mnemonic, traits #[Elementwise, SameOperandsAndResultShape]> {
-  let arguments = (ins TensorType : $operand);
-  let results = (outs TensorType);
+  let arguments = (ins OperandType : $operand);
+  let results = (outs ResultType);
 }
 
 def PPHLO_ConvertOp
@@ -134,6 +134,28 @@ def PPHLO_TanhOp
 
     See
     https://www.tensorflow.org/xla/operation_semantics#element-wise_unary_functions.
+  }];
+}
+
+def PPHLO_SineOp
+    : PPHLO_UnaryElementwiseOp<"sine", [Pure, SameOperandsAndResultType], PPHLO_FpTensor> {
+  let summary = "sine operator";
+  let description = [{
+    Returns `sine(operand)` element-wise.
+
+    See
+    https://github.com/openxla/stablehlo/blob/main/docs/spec.md#sine.
+  }];
+}
+
+def PPHLO_CosineOp
+    : PPHLO_UnaryElementwiseOp<"cosine", [Pure, SameOperandsAndResultType], PPHLO_FpTensor> {
+  let summary = "cosine operator";
+  let description = [{
+    Returns `cosine(operand)` element-wise.
+
+    See
+    https://github.com/openxla/stablehlo/blob/main/docs/spec.md#cosine.
   }];
 }
 
@@ -698,8 +720,7 @@ def PPHLO_SelectAndScatterOp: PPHLO_Op<"select_and_scatter",
     PPHLO_Tensor:$source,
     PPHLO_Tensor:$init_value,
     I64ElementsAttr:$window_dimensions,
-    OptionalAttr<I64ElementsAttr>:$window_strides,
-    OptionalAttr<I64ElementsAttr>:$padding
+    OptionalAttr<I64ElementsAttr>:$window_strides
   );
 
   let regions = (region SizedRegion<1>:$select, SizedRegion<1>:$scatter);
@@ -720,8 +741,7 @@ def PPHLO_MaxPoolScatterOp: PPHLO_Op<"maxpool_scatter", [Pure]> {
     PPHLO_IntTensor:$scatter_indices,
     PPHLO_Tensor:$update,
     OptionalAttr<I64ElementsAttr>:$window_dimensions,
-    OptionalAttr<I64ElementsAttr>:$window_strides,
-    OptionalAttr<I64ElementsAttr>:$padding
+    OptionalAttr<I64ElementsAttr>:$window_strides
   );
 
   let results = (outs PPHLO_Tensor);
@@ -772,12 +792,9 @@ def PPHLO_ReduceWindowOp : PPHLO_Op<"reduce_window", [
     Variadic<PPHLO_Tensor>:$init_values,
     I64ElementsAttr:$window_dimensions,
     // If strides or dilations attributes are missing then the default value is
-    // one for each of the input dimensions. Similarly, padding values are zero
-    // for both low and high in each of the dimensions, if not specified.
+    // one for each of the input dimensions.
     OptionalAttr<I64ElementsAttr>:$window_strides,
-    OptionalAttr<I64ElementsAttr>:$base_dilations,
-    OptionalAttr<I64ElementsAttr>:$window_dilations,
-    OptionalAttr<I64ElementsAttr>:$padding
+    OptionalAttr<I64ElementsAttr>:$window_dilations
   );
 
   let results = (outs Variadic<PPHLO_Tensor>);
@@ -796,12 +813,9 @@ def PPHLO_ArgMaxOp: PPHLO_Op<"argmax", [Pure]> {
     PPHLO_Tensor:$input,
     I64ElementsAttr:$window_dimensions,
     // If strides or dilations attributes are missing then the default value is
-    // one for each of the input dimensions. Similarly, padding values are zero
-    // for both low and high in each of the dimensions, if not specified.
+    // one for each of the input dimensions.
     OptionalAttr<I64ElementsAttr>:$window_strides,
-    OptionalAttr<I64ElementsAttr>:$base_dilations,
     OptionalAttr<I64ElementsAttr>:$window_dilations,
-    OptionalAttr<I64ElementsAttr>:$padding,
     DefaultValuedAttr<BoolAttr, "true">:$onehot_index
   );
 
@@ -1124,14 +1138,6 @@ def PPHLO_CustomCallOp: PPHLO_Op<"custom_call",
 
     See:
     https://github.com/openxla/stablehlo/blob/main/docs/spec.md#custom_call
-
-    Example:
-    ```mlir
-    %results = stablehlo.custom_call @foo(%input0) {
-      backend_config = "bar",
-      called_computations = [@foo]
-    } : (tensor<f64>) -> tensor<f64>
-    ```
   }];
 
   let arguments = (ins
@@ -1147,5 +1153,47 @@ def PPHLO_CustomCallOp: PPHLO_Op<"custom_call",
   }];
 }
 
+def PPHLO_RealOp: PPHLO_UnaryElementwiseOp<"real",
+    [Pure], PPHLO_FpOrComplexTensor, PPHLO_Tensor> {
+  let summary = "Real operation";
+  let description = [{
+    Extracts the real part, element-wise, from the `operand` and produces a
+    `result` tensor.
+
+    See:
+    https://github.com/openxla/stablehlo/blob/main/docs/spec.md#real
+  }];
+}
+
+def PPHLO_ImagOp: PPHLO_UnaryElementwiseOp<"imag",
+    [Pure], PPHLO_FpOrComplexTensor, PPHLO_Tensor> {
+  let summary = "Imag operation";
+  let description = [{
+    Extracts the imaginary part, element-wise, from the `operand` and produces a
+    `result` tensor.
+
+    See:
+    https://github.com/openxla/stablehlo/blob/main/docs/spec.md#imag
+  }];
+}
+
+def PPHLO_ComplexOp: PPHLO_BinaryElementwiseOp<"complex", [Pure,
+    SameOperandsElementType /*complex_c1*/,
+    SameOperandsAndResultShape /*complex_c2*/]> {
+  let summary = "Complex operation";
+  let description = [{
+    Performs element-wise conversion to a complex value from a pair of real and
+    imaginary values, `lhs` and `rhs`, and produces a `result` tensor.
+    See:
+    https://github.com/openxla/stablehlo/blob/main/docs/spec.md#complex
+  }];
+  let arguments = (ins
+     PPHLO_FpTensor:$lhs /*complex_i1*/,
+     PPHLO_FpTensor:$rhs /*complex_i2*/
+  );
+  let results = (outs
+     PPHLO_ComplexTensor:$result
+  );
+}
 
 #endif  // SPU_DIALECT_PPHLO_OPS

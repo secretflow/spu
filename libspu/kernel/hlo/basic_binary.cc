@@ -14,6 +14,7 @@
 
 #include "libspu/kernel/hlo/basic_binary.h"
 
+#include "libspu/kernel/hal/complex.h"
 #include "libspu/kernel/hal/constants.h"
 #include "libspu/kernel/hal/debug.h"
 #include "libspu/kernel/hal/polymorphic.h"
@@ -24,6 +25,7 @@ namespace spu::kernel::hlo {
 #define SIMPLE_BINARY_KERNEL_DEFN(NAME, HalFcn)           \
   spu::Value NAME(SPUContext *ctx, const spu::Value &lhs, \
                   const spu::Value &rhs) {                \
+    SPU_ENFORCE(!lhs.isComplex() && !rhs.isComplex());    \
     return HalFcn(ctx, lhs, rhs);                         \
   }
 
@@ -43,6 +45,7 @@ SIMPLE_BINARY_KERNEL_DEFN(Div, hal::div)
 SIMPLE_BINARY_KERNEL_DEFN(NotEqual, hal::not_equal)
 SIMPLE_BINARY_KERNEL_DEFN(LessEqual, hal::less_equal)
 SIMPLE_BINARY_KERNEL_DEFN(GreaterEqual, hal::greater_equal)
+SIMPLE_BINARY_KERNEL_DEFN(Complex, hal::complex)
 
 #undef SIMPLE_BINARY_KERNEL_DEFN
 
@@ -50,12 +53,13 @@ spu::Value Remainder(SPUContext *ctx, const spu::Value &lhs,
                      const spu::Value &rhs) {
   SPU_ENFORCE(lhs.dtype() == rhs.dtype(), "dtype mismatch {} != {}",
               lhs.dtype(), rhs.dtype());
+  SPU_ENFORCE(!lhs.isComplex() && !rhs.isComplex());
 
   // 1st: find quotient by x/y
   auto quotient = hal::div(ctx, lhs, rhs);
 
   if (lhs.isFxp() || rhs.isFxp()) {
-    // 2nd: round to nearst number through (x >= 0.0) ? floor(x) : ceil(x)...
+    // 2nd: round to nearest number through (x >= 0.0) ? floor(x) : ceil(x)...
     auto zero = hal::zeros(ctx, quotient.dtype(), quotient.shape());
     quotient = hal::select(ctx, hal::greater_equal(ctx, quotient, zero),
                            hal::floor(ctx, quotient), hal::ceil(ctx, quotient));
@@ -68,6 +72,7 @@ spu::Value Remainder(SPUContext *ctx, const spu::Value &lhs,
 spu::Value Dot(SPUContext *ctx, const spu::Value &lhs, const spu::Value &rhs) {
   SPU_ENFORCE(lhs.shape().isTensor() && lhs.shape().size() <= 2);
   SPU_ENFORCE(rhs.shape().isTensor() && rhs.shape().size() <= 2);
+  SPU_ENFORCE(!lhs.isComplex() && !rhs.isComplex());
 
   return hal::matmul(ctx, lhs, rhs);
 }

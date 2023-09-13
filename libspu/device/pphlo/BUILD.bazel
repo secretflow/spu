@@ -87,3 +87,16 @@ spu_cc_test(
         "@llvm-project//mlir:Parser",
     ],
 )
+
+spu_cc_binary(
+    name = "pphlo_executor_debug_runner",
+    testonly = True,
+    srcs = ["pphlo_executor_debug_runner.cc"],
+    deps = [
+        ":pphlo_executor",
+        "//libspu/device:api",
+        "//libspu/device:debug_dump_constant",
+        "//libspu/device:test_utils",
+        "@llvm-project//llvm:Support",
+    ],
+)

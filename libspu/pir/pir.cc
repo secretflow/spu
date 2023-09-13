@@ -704,7 +704,8 @@ PirResultReport LabeledPirClient(
 
 PirResultReport PirSetup(const PirSetupConfig &config) {
   if (config.pir_protocol() != KEYWORD_PIR_LABELED_PSI) {
-    SPU_THROW("Unsupported pir protocol {}", config.pir_protocol());
+    SPU_THROW("Unsupported pir protocol {}",
+              PirProtocol_Name(config.pir_protocol()));
   }
 
   return LabeledPirSetup(config);
@@ -713,7 +714,8 @@ PirResultReport PirSetup(const PirSetupConfig &config) {
 PirResultReport PirServer(const std::shared_ptr<yacl::link::Context> &link_ctx,
                           const PirServerConfig &config) {
   if (config.pir_protocol() != KEYWORD_PIR_LABELED_PSI) {
-    SPU_THROW("Unsupported pir protocol {}", config.pir_protocol());
+    SPU_THROW("Unsupported pir protocol {}",
+              PirProtocol_Name(config.pir_protocol()));
   }
 
   return LabeledPirServer(link_ctx, config);
@@ -723,7 +725,8 @@ PirResultReport PirMemoryServer(
     const std::shared_ptr<yacl::link::Context> &link_ctx,
     const PirSetupConfig &config) {
   if (config.pir_protocol() != KEYWORD_PIR_LABELED_PSI) {
-    SPU_THROW("Unsupported pir protocol {}", config.pir_protocol());
+    SPU_THROW("Unsupported pir protocol {}",
+              PirProtocol_Name(config.pir_protocol()));
   }
 
   return LabeledPirMemoryServer(link_ctx, config);
@@ -732,7 +735,8 @@ PirResultReport PirMemoryServer(
 PirResultReport PirClient(const std::shared_ptr<yacl::link::Context> &link_ctx,
                           const PirClientConfig &config) {
   if (config.pir_protocol() != KEYWORD_PIR_LABELED_PSI) {
-    SPU_THROW("Unsupported pir protocol {}", config.pir_protocol());
+    SPU_THROW("Unsupported pir protocol {}",
+              PirProtocol_Name(config.pir_protocol()));
   }
 
   return LabeledPirClient(link_ctx, config);

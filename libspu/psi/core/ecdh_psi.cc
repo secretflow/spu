@@ -52,7 +52,7 @@ void EcdhPsiContext::CheckConfig() {
   auto peer_config = config_list[main_link_ctx_->NextRank()];
   SPU_ENFORCE(my_config_buf == peer_config,
               "EcdhPsiContext Config mismatch, mine={}, peer={}", my_config,
-              peer_config);
+              peer_config.data<const char>());
 }
 
 void EcdhPsiContext::MaskSelf(

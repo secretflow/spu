@@ -67,66 +67,17 @@ void forEachIndex(absl::Span<const int64_t> shape,
                       /*count=*/shape, incr, visitor_function);
 }
 
-// return false if it's in padding or dilation area
-inline bool getBaseIndexFromWindowIndex(
-    absl::Span<const int64_t> window_shape,
-    absl::Span<const int64_t> window_strides,
-    absl::Span<const int64_t> window_dilation,
-    absl::Span<const std::pair<int64_t, int64_t>> window_padding,
-    absl::Span<const int64_t> base_shape,
-    absl::Span<const int64_t> base_dilation,
-    absl::Span<const int64_t> window_count_index,
-    absl::Span<const int64_t> window_index, absl::Span<int64_t> base_index) {
-  const int64_t ndim = base_shape.size();
-
-  for (int64_t dim = 0; dim < ndim; ++dim) {
-    // Padding is applied to the dilated base. Say that padding is 3 and
-    // dilation is 2 for some dimension. After applying base dilation and
-    // padding, the dimension looks like:
-    // P P P E D D E D D ... E D D E P P P
-    // where E are the elements and D are the holes. So, the elements are
-    // located in indices: padding + k*base_dilation for k = {0, 1, 2, ...}.
-    // We are accessing elements in the transformed base at indices:
-    // window_count_index * stride + window_index * window_dilation.
-    // Solving for k gives us
-    // (win_count_i * stride + win_i * win_dilation - pad) / base_dilation
-    // When this is a natural number, we index an original element.
-    // Otherwise, we index a 0 (pad or hole), and we don't need to apply
-    // the callback f.
-    base_index[dim] = window_count_index[dim] * window_strides[dim] +
-                      window_index[dim] * window_dilation[dim] -
-                      window_padding[dim].first;
-    if (base_index[dim] % base_dilation[dim] != 0) {
-      // out of bound
-      return true;
-    }
-    base_index[dim] /= base_dilation[dim];
-    if (base_index[dim] < 0 || base_index[dim] >= base_shape[dim]) {
-      // out of bound
-      return true;
-    }
-  }
-  return false;
-}
-
-inline void RunOnWindowIndex(
-    absl::Span<const int64_t> window_shape,
-    absl::Span<const int64_t> window_strides,
-    absl::Span<const int64_t> window_dilation,
-    absl::Span<const std::pair<int64_t, int64_t>> window_padding,
-    absl::Span<const int64_t> base_shape,
-    absl::Span<const int64_t> base_dilation,
-    absl::Span<const int64_t> window_count_index,
-    absl::Span<const int64_t> window_index,
-    const std::function<void(const Index &)> &f) {
-  Index base_index(base_shape.size());
-  bool out_of_bound = getBaseIndexFromWindowIndex(
-      window_shape, window_strides, window_dilation, window_padding, base_shape,
-      base_dilation, window_count_index, window_index,
-      absl::MakeSpan(base_index));
-  if (!out_of_bound) {
-    f(base_index);
-  }
-}
+/// Expand the base according to window
+//
+// let base    = (B0, B1, ..., Bn)
+//     window  = (W0, W1, ..., Wn)
+//     stride  = (S0, S1, ..., Sn)
+// return        (N0, N1, ..., Nn, W0, W1, ..., Wn) where
+//     num_win = (N0, N1, ..., Nn), where Ni = (Bi-Wi)/Si+1
+spu::Value expandWindow(SPUContext *ctx, const spu::Value &base,
+                        const Shape &window_shape,
+                        const Strides &window_strides,
+                        absl::Span<const std::pair<int64_t, int64_t>> padding,
+                        const spu::Value &init_val);
 
 }  // namespace spu::kernel

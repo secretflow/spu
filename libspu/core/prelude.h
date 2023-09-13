@@ -49,3 +49,42 @@
 
 // forward scope guard related macros
 #include "yacl/utils/scope_guard.h"
+
+// Format
+#include "fmt/ostream.h"
+
+#include "libspu/spu.pb.h"
+
+namespace fmt {
+
+template <>
+struct formatter<spu::FieldType> : ostream_formatter {};
+
+template <>
+struct formatter<spu::DataType> : ostream_formatter {};
+
+template <>
+struct formatter<spu::PtType> : ostream_formatter {};
+
+template <>
+struct formatter<spu::Visibility> : ostream_formatter {};
+
+template <>
+struct formatter<spu::ProtocolKind> : ostream_formatter {};
+
+template <>
+struct formatter<spu::RuntimeConfig_BeaverType> : ostream_formatter {};
+
+template <>
+struct formatter<spu::RuntimeConfig_ExpMode> : ostream_formatter {};
+
+template <>
+struct formatter<spu::RuntimeConfig_LogMode> : ostream_formatter {};
+
+template <>
+struct formatter<spu::RuntimeConfig_SigmoidMode> : ostream_formatter {};
+
+template <>
+struct formatter<spu::SourceIRType> : ostream_formatter {};
+
+}  // namespace fmt

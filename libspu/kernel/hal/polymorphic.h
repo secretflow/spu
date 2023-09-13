@@ -52,6 +52,14 @@ Value bitwise_not(SPUContext* ctx, const Value& in);
 // @param y, the second parameter
 Value matmul(SPUContext* ctx, const Value& x, const Value& y);
 
+/// matrix production operator
+// @param x, the first parameter
+// @param y, the second parameter
+// @param ix, contract dimensions of first parameter
+// @param iy, contract dimensions of second parameter
+Value tensordot(SPUContext* ctx, const Value& x, const Value& y,
+                const Index& ix, const Index& iy);
+
 /// 2-dimensional convolution operator
 // @param x, the input tensor
 // @param y, the kernel weight
@@ -191,6 +199,14 @@ Value exp2(SPUContext* ctx, const Value& x);
 /// element-wise hyperbolic tangent, i.e. x -> tanh(x)
 // @param in, the input value
 Value tanh(SPUContext* ctx, const Value& x);
+
+/// element-wise sine, i.e. x -> sin(x)
+// @param in, the input value
+Value sine(SPUContext* ctx, const Value& x);
+
+/// element-wise cosine, i.e. x -> cos(x)
+// @param in, the input value
+Value cosine(SPUContext* ctx, const Value& x);
 
 /// element-wise reciprocal of square root operation, i.e. x - > 1.0 / sqrt(x)
 // @param in, the input value

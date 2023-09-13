@@ -53,6 +53,35 @@ def segment_aware_ops(row1, row2, ops):
     return jnp.c_[lead_part, cum_part]
 
 
+def groupby_agg(
+    cols,
+    seg_end_marks,
+    segment_aware_ops,
+) -> jnp.ndarray:
+    """Groupby Aggregation with no shuffle. Usually used as internal tool in MPC.
+
+    The returns of this function are NOT safe to open (count of group elements revealed)
+    return:
+        group_agg_matrix:
+            shape = (n_samples, n_cols)
+            group aggregations
+            padded with zeros.
+
+    """
+    group_mask = jnp.ones(seg_end_marks.shape) - jnp.roll(seg_end_marks, 1)
+
+    X = jnp.vstack([group_mask] + list(cols)).T
+
+    X_prefix_sum = jax.lax.associative_scan(segment_aware_ops, X, axis=0)
+    X_prefix_sum_masked = seg_end_marks.reshape(-1, 1) * X_prefix_sum
+
+    return X_prefix_sum_masked[:, 1:]
+
+
+def groupby_sum_no_shuffle(cols, seg_end_marks) -> jnp.ndarray:
+    return groupby_agg(cols, seg_end_marks, segment_aware_addition)
+
+
 def groupby_agg_via_shuffle(
     cols,
     seg_end_marks,
@@ -130,7 +159,7 @@ def groupby_agg_postprocess(
 ):
     assert (
         isinstance(group_num, int) and group_num > 0
-    ), f"group num must be a positve integer. got {group_num}, {type(group_num)}"
+    ), f"group num must be a positive integer. got {group_num}, {type(group_num)}"
     if group_num > 1:
         filter_mask = seg_end_marks == 1
         segment_ids = segment_ids[filter_mask]
@@ -186,7 +215,7 @@ def groupby(
     """GroupBy
     Given a matrix X, it has multiple columns.
     We want to calculate some statistics of target columns grouped by some columns as keys.
-    This operator completes the first step of GroupBy statistics: transfom the matrix x into a form,
+    This operator completes the first step of GroupBy statistics: transform the matrix x into a form,
     that is suitable for subsequent statistics.
 
     Parameters
@@ -203,7 +232,8 @@ def groupby(
     -------
     key_columns_sorted : List[jnp.ndarray]
     target_columns_sorted : List[jnp.ndarray]
-    segment_ids :  List[jnp.ndarray]
+    segment_ids :  jnp.ndarray
+    seg_end_marks : jnp.ndarray
     """
     # parameter check.
     assert isinstance(key_columns, List)
@@ -212,7 +242,7 @@ def groupby(
     assert len(target_columns) > 0, "There should be at least one target_column."
     assert (
         len(set(map(lambda x: x.shape, key_columns + target_columns))) == 1
-    ), f"Columns' shape should be consistant. {set(map(lambda x: x.shape, key_columns + target_columns))}"
+    ), f"Columns' shape should be consistent. {set(map(lambda x: x.shape, key_columns + target_columns))}"
     key_columns = key_columns
     target_columns = target_columns
     sorted_columns = jax.lax.sort(
@@ -220,6 +250,13 @@ def groupby(
     )
     key_columns_sorted = sorted_columns[: len(key_columns)]
     target_columns_sorted = sorted_columns[len(key_columns) :]
+    return groupby_sorted(key_columns_sorted, target_columns_sorted)
+
+
+def groupby_sorted(
+    key_columns_sorted: List[jnp.ndarray],
+    target_columns_sorted: List[jnp.ndarray],
+) -> Tuple[List[jnp.ndarray], jnp.ndarray]:
     key_columns_sorted_rolled = rotate_cols(key_columns_sorted)
     seg_end_marks = get_segment_marks(key_columns_sorted, key_columns_sorted_rolled)
     mark_accumulated = associative_scan(seg_end_marks)

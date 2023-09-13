@@ -178,7 +178,7 @@ static void BM_DpPsi(benchmark::State& state) {
 
     double total_comm_bytes = stats0->sent_bytes + stats0->recv_bytes;
     SPDLOG_INFO("bob: sent_bytes:{} recv_bytes:{}, total_comm_bytes:{}",
-                stats1->sent_bytes, stats1->recv_bytes,
+                stats1->sent_bytes.load(), stats1->recv_bytes.load(),
                 total_comm_bytes / 1024 / 1024);
   }
 }

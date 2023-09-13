@@ -15,379 +15,210 @@
 
 #include "libspu/kernel/hlo/select_and_scatter.h"
 
-#include <cstdint>
-#include <future>
-#include <iostream>
-#include <vector>
-
-#include "yacl/utils/parallel.h"
-
-#include "libspu/core/context.h"
-#include "libspu/core/value.h"
 #include "libspu/kernel/hal/constants.h"
 #include "libspu/kernel/hal/debug.h"
-#include "libspu/kernel/hal/polymorphic.h"  // for select
-#include "libspu/kernel/hal/ring.h"
+#include "libspu/kernel/hal/polymorphic.h"
 #include "libspu/kernel/hal/shape_ops.h"
-#include "libspu/kernel/hal/type_cast.h"
-#include "libspu/kernel/hlo/const.h"
+#include "libspu/kernel/hlo/const.h"  // iota
 #include "libspu/kernel/hlo/reduce.h"
 #include "libspu/kernel/hlo/utils.h"
 
 namespace spu::kernel::hlo {
 
-spu::Value MaxPoolScatter1x2x2x1NoPaddingNoDialation(
-    SPUContext *ctx, const spu::Value &scatter_indices,
-    const spu::Value &source, const Strides &window_strides) {
-  std::vector<spu::Value> slices(4);
-  for (int64_t idx = 0; idx < 4; ++idx) {
-    slices[idx] = hal::slice(
-        ctx, scatter_indices, {0, 0, 0, 0, idx},
-        {scatter_indices.shape()[0], scatter_indices.shape()[1],
-         scatter_indices.shape()[2], scatter_indices.shape()[3], idx + 1},
-        {1, 1, 1, 1, 1});
-    slices[idx] =
-        hal::mul(ctx, hal::reshape(ctx, slices[idx], source.shape()), source);
+/// The simplified scatter function
+static spu::Value ScatterWindow(
+    SPUContext *ctx,                    //
+    const spu::Value &source,           // scatter source, shape = num_window
+    const spu::Value &scatter_indices,  // the one-hot encoded scatter index
+    const spu::Value &init,         // scalar value for non-scattered positions.
+    const Shape &base_shape,        //
+    const Shape &window_shape,      //
+    const Strides &window_strides,  //
+    const ValueBinaryFn &scatter_fn) {
+  // alias shapes, use B,W,N.
+  const Shape &B = base_shape;                // base shape
+  const Shape &W = window_shape;              // window shape
+  const Shape &N = source.shape();            // number of window
+  const Shape NW2d = {N.numel(), W.numel()};  // flat N x W
 
-    // FIXME(jint), handle int type promotion
-    slices[idx] = hal::dtype_cast(ctx, slices[idx], source.dtype());
+  // sanity check.
+  const size_t ndim = source.shape().size();
+  SPU_ENFORCE_EQ(ndim, window_shape.size());
+  SPU_ENFORCE_EQ(ndim, window_strides.size());
+  SPU_ENFORCE(init.shape().isScalar());
+
+  // scatter_indices is the one-hot encoding for each window.
+  // win0: [0, 0, 0, 1, 0, 0]  // position 3 is selected.
+  // win1: [0, 1, 0, 0, 0, 0]  // position 1 is selected.
+  // ...
+  SPU_ENFORCE_EQ(ndim + 1, scatter_indices.shape().size());
+  SPU_ENFORCE_EQ(N, Shape(scatter_indices.shape().begin(),
+                          scatter_indices.shape().begin() + ndim));
+  SPU_ENFORCE_EQ(W.numel(), scatter_indices.shape()[ndim]);
+  auto scatter_indices_2d = hal::reshape(ctx, scatter_indices, NW2d);
+
+  auto source2d =
+      hal::broadcast_to(ctx, hal::reshape(ctx, source, {N.numel()}), NW2d, {0});
+
+  // One hot selected value per-window.
+  // win0: [0, 0, 0, X, 0, 0]  // position 3 is selected.
+  // win1: [0, Y, 0, 0, 0, 0]  // position 1 is selected.
+  auto selected = hal::mul(ctx, source2d, scatter_indices_2d);
+  SPU_ENFORCE_EQ(selected.shape(), NW2d);
+
+  // selected value per-window index.
+  std::vector<spu::Value> base_per_widx(W.numel());
+  for (int64_t widx = 0; widx < W.numel(); widx++) {
+    // for the i-th index in window, find all selected values.
+    // win0: _, [0], _, _, _, _
+    // win1: _, [Y], _, _, _, _
+    // ..
+    auto sel_pw = hal::slice(ctx, selected, {0, widx}, {N.numel(), widx + 1});
+    SPU_ENFORCE_EQ(sel_pw.shape(), Shape({N.numel(), 1}));
+    sel_pw = hal::reshape(ctx, sel_pw, N);
+
+    // scatter it from num_window space to base space.
+    Index window_index = unflattenIndex(widx, W);
+    Sizes padding_lo(ndim, 0);
+    Sizes padding_hi(ndim, 0);
+    Sizes padding_in(ndim, 0);
+    for (size_t dim = 0; dim < ndim; dim++) {
+      padding_lo[dim] = window_index[dim];
+      padding_hi[dim] = window_shape[dim] - window_index[dim] - 1;
+      padding_in[dim] = window_strides[dim] - 1;
+    }
+
+    base_per_widx[widx] =
+        hal::pad(ctx, sel_pw, init, padding_lo, padding_hi, padding_in);
+    SPU_ENFORCE_EQ(base_per_widx[widx].shape(), B);
   }
 
-  // Improvement idea: If window strides is >= window size (no overlap), we
-  // should be able to compute scatter result with just one multiply
-  auto z = hal::zeros(ctx, slices[0].dtype());
-  if (slices[0].isSecret()) {
-    z = hal::seal(ctx, z);
-  }
+  // last step, stack and reduce it.
+  auto res = hal::concatenate(ctx, base_per_widx, 0);
+  Shape WflatB = {W.numel()};
+  WflatB.insert(WflatB.end(), B.begin(), B.end());
+  res = hal::reshape(ctx, res, WflatB);
 
-  std::vector<std::future<spu::Value>> f_slices(4);
-  f_slices[0] =
-      std::async(std::launch::async, hal::pad, ctx, slices[0], z,
-                 Sizes{0, 0, 0, 0}, Sizes{0, 1, 1, 0},
-                 Sizes{0, window_strides[1] - 1, window_strides[2] - 1, 0});
-  f_slices[1] =
-      std::async(std::launch::async, hal::pad, ctx, slices[1], z,
-                 Sizes{0, 0, 1, 0}, Sizes{0, 1, 0, 0},
-                 Sizes{0, window_strides[1] - 1, window_strides[2] - 1, 0});
-  f_slices[2] =
-      std::async(std::launch::async, hal::pad, ctx, slices[2], z,
-                 Sizes{0, 1, 0, 0}, Sizes{0, 0, 1, 0},
-                 Sizes{0, window_strides[1] - 1, window_strides[2] - 1, 0});
-  f_slices[3] =
-      std::async(std::launch::async, hal::pad, ctx, slices[3], z,
-                 Sizes{0, 1, 1, 0}, Sizes{0, 0, 0, 0},
-                 Sizes{0, window_strides[1] - 1, window_strides[2] - 1, 0});
+  res = TreeReduce(
+      ctx, {res}, /* axis */ 0,
+      [&](absl::Span<const spu::Value> lhs, absl::Span<const spu::Value> rhs) {
+        return std::vector<spu::Value>{scatter_fn(lhs[0], rhs[0])};
+      })[0];
 
-  spu::Value ret = f_slices[0].get();
-  for (size_t idx = 1; idx < 4; ++idx) {
-    ret = hal::add(ctx, ret, f_slices[idx].get());
-  }
-
-  return ret;
-};
+  // TODO: if the reshape failed, that maybe the right edge is not sampled by
+  // the window, we should add a padding operation here.
+  return hal::reshape(ctx, res, B);
+}
 
 spu::Value MaxPoolScatter(
     SPUContext *ctx, const spu::Value &scatter_indices,
     const spu::Value &source, const Shape &window_shape,
     const Shape &base_shape, const Strides &window_strides,
     absl::Span<const std::pair<int64_t, int64_t>> window_padding) {
-  // Add a fast 1x2x2x1, no padding fast reduce
   auto no_padding = std::all_of(window_padding.begin(), window_padding.end(),
                                 [](const std::pair<int64_t, int64_t> &p) {
                                   return p.first == 0 && p.second == 0;
                                 });
-  if (window_shape == absl::Span<const int64_t>{1, 2, 2, 1} && no_padding) {
-    return MaxPoolScatter1x2x2x1NoPaddingNoDialation(ctx, scatter_indices,
-                                                     source, window_strides);
-  }
-  //  source_shape * window_numel
-  auto tiled_1d_shape = source.shape();
-  const int64_t window_numel = std::accumulate(
-      window_shape.begin(), window_shape.end(), 1, std::multiplies<int64_t>());
-  tiled_1d_shape.push_back(window_numel);
+  SPU_ENFORCE(no_padding, "Expect padding to be removed by previous pass");
 
-  Axes broadcast_dims(source.shape().size(), 0);
-  std::iota(broadcast_dims.begin(), broadcast_dims.end(), 0);
+  // In MaxPoolScatter, one-hot scatter_indices is carried from the 'forward'
+  // reduce window operation. So we can avoid on equal test here.
 
-  auto tiled_1d_source =
-      hal::broadcast_to(ctx, source, tiled_1d_shape, broadcast_dims);
+  auto init = hal::zeros(ctx, source.dtype(), {});
+  auto scatter_fn = [&ctx](spu::Value const &lhs,
+                           spu::Value const &rhs) -> spu::Value {
+    return hal::add(ctx, lhs, rhs);
+  };
 
-  // selected_pos is the one hot encoding for each window.
-  auto selected = hal::mul(ctx, tiled_1d_source, scatter_indices);
-
-  Shape tiled_shape(source.shape().begin(), source.shape().end());
-  tiled_shape.insert(tiled_shape.end(), window_shape.begin(),
-                     window_shape.end());
-
-  selected = hal::reshape(ctx, selected, tiled_shape);
-
-  const size_t ndim = base_shape.size();
-  auto base_x_window_shape = base_shape;
-  base_x_window_shape.insert(base_x_window_shape.end(), window_shape.begin(),
-                             window_shape.end());
-  auto output = hal::zeros(ctx, source.dtype(), base_x_window_shape);
-  if (source.isSecret()) {
-    output = hal::seal(ctx, output);
-  }
-
-  const std::vector<int64_t> window_dilations(window_shape.size(), 1);
-  const std::vector<int64_t> base_dilations(source.shape().size(), 1);
-  std::vector<int64_t> window_index(ndim, 0);
-
-  do {
-    yacl::parallel_for(
-        0, source.numel(), 2048, [&](int64_t begin, int64_t end) {
-          Index tiled_index(2 * ndim, 0);
-          Index base_x_window_index(2 * ndim, 0);
-          std::copy(window_index.begin(), window_index.end(),
-                    base_x_window_index.begin() + ndim);
-          std::copy(window_index.begin(), window_index.end(),
-                    tiled_index.begin() + ndim);
-          auto source_index = unflattenIndex(begin, source.shape());
-          for (int64_t idx = begin; idx < end; ++idx) {
-            bool out_of_bound = getBaseIndexFromWindowIndex(
-                window_shape, window_strides, window_dilations, window_padding,
-                base_shape, base_dilations,
-                absl::MakeSpan(tiled_index).subspan(0, ndim), window_index,
-                absl::MakeSpan(base_x_window_index).subspan(0, ndim));
-            if (!out_of_bound) {
-              // TODO: anti-pattern, do not use .data(), use ops instead.
-              output.data().update_slice(
-                  selected.data().slice_scalar_at(tiled_index),
-                  base_x_window_index);
-            }
-            bumpIndices(source.shape(),
-                        absl::MakeSpan(tiled_index).subspan(0, ndim));
-          }
-        });
-  } while (bumpIndices(window_shape, absl::MakeSpan(window_index)));
-
-  auto base_1d_shape = base_shape;
-  base_1d_shape.push_back(window_numel);
-  output = hal::reshape(ctx, output, base_1d_shape);
-
-  output = TreeReduce(
-      ctx, {output}, base_1d_shape.size() - 1,
-      [&](absl::Span<const spu::Value> lhs, absl::Span<const spu::Value> rhs) {
-        return std::vector<spu::Value>{hal::add(ctx, lhs[0], rhs[0])};
-      })[0];
-
-  return hal::reshape(ctx, output, base_shape);
+  return ScatterWindow(ctx, source, scatter_indices, init, base_shape,
+                       window_shape, window_strides, scatter_fn);
 }
 
-spu::Value SelectAndScatterExpanded(
+spu::Value SelectAndScatter(
     SPUContext *ctx, const spu::Value &base, const spu::Value &source,
     const spu::Value &init_val, const Shape &window_shape,
     const Strides &window_strides,
-    absl::Span<const std::pair<int64_t, int64_t>> window_padding,
+    absl::Span<const std::pair<int64_t, int64_t>> padding,
     const ValueBinaryFn &select_fn, const ValueBinaryFn &scatter_fn) {
+  // sanity check.
   const size_t ndim = base.shape().size();
+  SPU_ENFORCE_EQ(ndim, window_shape.size());
+  SPU_ENFORCE_EQ(ndim, window_strides.size());
+  SPU_ENFORCE(init_val.shape().isScalar());
 
-  // expand the base, simplify following actions without strides and padding.
-  auto expanded = ExpandStridedWindow(ctx, base, window_shape, window_strides,
-                                      window_padding);
+  // alias shapes, use B,W,N.
+  const Shape &W = window_shape;
+  const Shape &N = source.shape();
 
-  // sanity check, make (source x window == expanded)
-  for (size_t dim = 0; dim < ndim; dim++) {
-    SPU_ENFORCE(expanded.shape()[dim] % window_shape[dim] == 0);
-    SPU_ENFORCE(expanded.shape()[dim] / window_shape[dim] ==
-                source.shape()[dim]);
-  }
-
-  auto tiled = ConvertToTiledLayout(ctx, expanded, window_shape);
-
-  // collapse the tile to 1d for better reduce performance
-  auto tiled_1d_shape = source.shape();
-  const int64_t window_numel = std::accumulate(
-      window_shape.begin(), window_shape.end(), 1, std::multiplies<int64_t>());
-  tiled_1d_shape.push_back(window_numel);
-  auto tiled_1d = hal::reshape(ctx, tiled, tiled_1d_shape);
-
+  // clang-format off
   //
-  auto indices = Iota(ctx, DT_I64, window_numel);
-  indices = hal::broadcast_to(ctx, indices, tiled_1d_shape);
+  // The algorithm:
+  // tiled = win_count x window          : (N,W)
+  // index = iota(0, num_window)         : (_,W)
+  // sel_pos = reduce(tiled, index)      : (N,)   # find selected position of each window
+  // onehot = sel_pos == index           : (N,_)->(_,W)->(N,W)  # each window ia one-hot position
+  // sel_val = sel(onehot, source, init) : (N,W)->(N,)->()->(N,W)
+  // sel_val = reduce(sel_val, 1)        : (N,W)->(N)
+  //
+  // clang-format on
+
+  // Expand the base, simplify further actions without strides and padding.
+  // Now tiled shaped is (N0, N1, ..., Nn, W0, W1, ..., Wn) where
+  // window_count = (N0, N1, ..., Nn), where Ni = (Bi-Wi)/Strides{i} + 1
+  auto tiled = expandWindow(ctx, base, W, window_strides, padding, init_val);
+  SPU_ENFORCE_EQ(tiled.shape().size(), 2 * ndim);
+  SPU_ENFORCE_EQ(N, Shape(tiled.shape().begin(), tiled.shape().begin() + ndim));
+  SPU_ENFORCE_EQ(W, Shape(tiled.shape().begin() + ndim, tiled.shape().end()));
+
+  // Use 2k, (N, W) to (N.numel(), W.numel()) to make future processing simpler.
+  const Shape NW2d = {N.numel(), W.numel()};
+  auto tiled2d = hal::reshape(ctx, tiled, NW2d);
+
+  // indices is the iota for each window.
+  // win0: [0, 1, 2, 3, 4, 5]
+  // win1: [0, 1, 2, 3, 4, 5]
+  // ...
+  auto indices = hal::broadcast_to(ctx, Iota(ctx, DT_I64, W.numel()), NW2d);
+  SPU_ENFORCE_EQ(indices.shape(), NW2d);
 
   // Apply the reduce with indices.
-  // total number of select_fn call is log2(window_numel)
   auto reduced = TreeReduce(
-      ctx, {tiled_1d, indices}, tiled_1d_shape.size() - 1,
+      ctx, {tiled2d, indices}, 1,
       [&](absl::Span<const spu::Value> lhs, absl::Span<const spu::Value> rhs) {
+        SPU_ENFORCE(lhs.size() == 2 && rhs.size() == 2);
         auto pred = select_fn(lhs[0], rhs[0]);
-        pred = hal::_prefer_a(ctx, pred);
-
         std::vector<spu::Value> rets;
         for (size_t idx = 0; idx < lhs.size(); idx++) {
+          // TODO: if reduce window does not require lhs[0].shape ==
+          // lhs[1].shape, then we could avoid the later comparison.
           rets.push_back(hal::select(ctx, pred, lhs[idx], rhs[idx]));
         }
         return rets;
       });
 
-  Axes broadcast_dims(source.shape().size(), 0);
-  std::iota(broadcast_dims.begin(), broadcast_dims.end(), 0);
+  // indices is the iota for each window.
+  // win0: [3]              // position 3 is selected.
+  // win1: [1]              // position 1 is selected.
+  // ...
+  auto sel_pos = reduced[1];
+  SPU_ENFORCE_EQ(sel_pos.shape(), Shape({N.numel(), 1}));
 
-  // selected_pos is the one hot encoding for each window.
-  auto selected_pos = hal::equal(
-      ctx, hal::broadcast_to(ctx, reduced[1], tiled_1d_shape), indices);
-  auto selected = hal::select(
-      ctx, selected_pos,
-      hal::broadcast_to(ctx, source, tiled_1d_shape, broadcast_dims),
-      hal::broadcast_to(ctx, init_val, tiled_1d_shape));
+  // win0: [3, 3, 3, 3, 3, 3]
+  // win1: [1, 1, 1, 1, 1, 1]
+  sel_pos = hal::broadcast_to(ctx, sel_pos, NW2d, {0});
 
-  // last step, collapse expanded shape to strided window
-  // build a tensor with [base.shape() x window_shape], so each
-  // [base.shape(), window_index] does not overlap with each other.
-  selected = hal::reshape(ctx, selected, tiled.shape());
+  // one hot encoding for each window
+  // win0: [0, 0, 0, 1, 0, 0]  // position 3 is selected.
+  // win1: [0, 1, 0, 0, 0, 0]  // position 1 is selected.
+  // ...
+  auto onehot = hal::equal(ctx, sel_pos, indices);
+  SPU_ENFORCE_EQ(onehot.shape(), NW2d);
 
-  auto base_x_window_shape = base.shape();
-  base_x_window_shape.insert(base_x_window_shape.end(), window_shape.begin(),
-                             window_shape.end());
-  auto output = hal::expand(ctx, init_val, base_x_window_shape);
+  Shape N_W1d = N;
+  N_W1d.push_back(W.numel());
 
-  const std::vector<int64_t> window_dilations(window_shape.size(), 1);
-  const std::vector<int64_t> base_dilations(source.shape().size(), 1);
-  std::vector<int64_t> window_index(ndim, 0);
-  Index tiled_index(2 * ndim, 0);
-  Index base_x_window_index(2 * ndim, 0);
-  std::vector<int64_t> base_index(ndim, 0);
-  do {
-    std::copy(window_index.begin(), window_index.end(),
-              base_x_window_index.begin() + ndim);
-    std::fill(tiled_index.begin(), tiled_index.begin() + ndim, 0);
-    std::copy(window_index.begin(), window_index.end(),
-              tiled_index.begin() + ndim);
-
-    do {
-      bool out_of_bound = getBaseIndexFromWindowIndex(
-          window_shape, window_strides, window_dilations, window_padding,
-          base.shape(), base_dilations,
-          absl::MakeSpan(tiled_index).subspan(0, ndim), window_index,
-          absl::MakeSpan(base_x_window_index).subspan(0, ndim));
-      if (!out_of_bound) {
-        output.data().update_slice(selected.data().slice_scalar_at(tiled_index),
-                                   base_x_window_index);
-      }
-
-    } while (bumpIndices(source.shape(),
-                         absl::MakeSpan(tiled_index).subspan(0, ndim)));
-  } while (bumpIndices(window_shape, absl::MakeSpan(window_index)));
-
-  auto base_1d_shape = base.shape();
-  base_1d_shape.push_back(window_numel);
-  output = hal::reshape(ctx, output, base_1d_shape);
-
-  output = TreeReduce(
-      ctx, {output}, base_1d_shape.size() - 1,
-      [&](absl::Span<const spu::Value> lhs, absl::Span<const spu::Value> rhs) {
-        return std::vector<spu::Value>{scatter_fn(lhs[0], rhs[0])};
-      })[0];
-
-  return hal::reshape(ctx, output, base.shape());
-}
-
-spu::Value SelectAndScatterNaive(
-    SPUContext *ctx, const spu::Value &operand, const spu::Value &source,
-    const spu::Value &init_val, const Shape &window_shape,
-    const Strides &window_strides,
-    absl::Span<const std::pair<int64_t, int64_t>> window_padding,
-    const ValueBinaryFn &select_fn, const ValueBinaryFn &scatter_fn) {
-  // Create an index matrix
-  auto idx_matrix = hal::iota(ctx, DT_I64, operand.numel());
-  if (operand.isSecret()) {
-    idx_matrix = hal::seal(ctx, idx_matrix);
-  }
-  idx_matrix = hal::reshape(ctx, idx_matrix, operand.shape());
-
-  const auto rank = window_shape.size();
-  std::vector<int64_t> window_index(rank, 0);
-
-  spu::Value selected_val;
-  spu::Value selected_idx;
-  bool first_iter = true;
-
-  std::vector<int64_t> dummy_window_dilation(window_shape.size(), 1);
-  std::vector<int64_t> dummy_base_dilation(operand.shape().size(), 1);
-
-  // Select part
-  {
-    spu::Value current_val(NdArrayRef(operand.data().eltype(), source.shape()),
-                           operand.dtype());
-    spu::Value current_idx(
-        NdArrayRef(idx_matrix.data().eltype(), source.shape()),
-        idx_matrix.dtype());
-
-    do {
-      Index output_index(source.shape().size(), 0);
-      do {
-        RunOnWindowIndex(
-            window_shape, window_strides, dummy_window_dilation, window_padding,
-            operand.shape(), dummy_base_dilation, output_index, window_index,
-            [&](const Index &operand_index) {
-              current_val.data().update_slice(
-                  operand.data().slice_scalar_at(operand_index), output_index);
-              current_idx.data().update_slice(
-                  idx_matrix.data().slice_scalar_at(operand_index),
-                  output_index);
-            });
-      } while (bumpIndices(source.shape(), absl::MakeSpan(output_index)));
-
-      if (first_iter) {
-        // First iter, don't do the real compute, just copy to selected
-        selected_val = current_val;
-        selected_idx = current_idx;
-        first_iter = false;
-      } else {
-        auto ret = select_fn(selected_val, current_val);
-        selected_val = hal::select(ctx, ret, selected_val, current_val);
-        selected_idx = hal::select(ctx, ret, selected_idx, current_idx);
-      }
-    } while (bumpIndices(window_shape, absl::MakeSpan(window_index)));
-  }
-
-  // Scatter
-  auto result = hal::expand(ctx, init_val, operand.shape());
-  std::fill(window_index.begin(), window_index.end(), 0);
-
-  spu::Value idx_slice(NdArrayRef(idx_matrix.data().eltype(), source.shape()),
-                       idx_matrix.dtype());
-
-  spu::Value result_slice(NdArrayRef(result.data().eltype(), source.shape()),
-                          result.dtype());
-
-  do {
-    Index output_index(source.shape().size(), 0);
-    do {
-      RunOnWindowIndex(
-          window_shape, window_strides, dummy_window_dilation, window_padding,
-          operand.shape(), dummy_base_dilation, output_index, window_index,
-          [&](const Index &operand_index) {
-            idx_slice.data().update_slice(
-                idx_matrix.data().slice_scalar_at(operand_index), output_index);
-            result_slice.data().update_slice(
-                result.data().slice_scalar_at(operand_index), output_index);
-          });
-    } while (bumpIndices(source.shape(), absl::MakeSpan(output_index)));
-
-    auto mask = hal::equal(ctx, selected_idx, idx_slice);
-
-    auto computed = scatter_fn(result_slice, source);
-
-    result_slice = hal::select(ctx, mask, computed, result_slice);
-
-    // Reset, copy window again...
-    std::fill(output_index.begin(), output_index.end(), 0);
-    do {
-      RunOnWindowIndex(window_shape, window_strides, dummy_window_dilation,
-                       window_padding, operand.shape(), dummy_base_dilation,
-                       output_index, window_index,
-                       [&](const Index &operand_index) {
-                         result.data().update_slice(
-                             result_slice.data().slice_scalar_at(output_index),
-                             operand_index);
-                       });
-    } while (bumpIndices(source.shape(), absl::MakeSpan(output_index)));
-  } while (bumpIndices(window_shape, absl::MakeSpan(window_index)));
-
-  return result;
+  return ScatterWindow(ctx, source, hal::reshape(ctx, onehot, N_W1d), init_val,
+                       base.shape(), window_shape, window_strides, scatter_fn);
 }
 
 }  // namespace spu::kernel::hlo

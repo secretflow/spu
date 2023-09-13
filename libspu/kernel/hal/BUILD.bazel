@@ -20,6 +20,7 @@ spu_cc_library(
     name = "hal",
     hdrs = ["hal.h"],
     deps = [
+        ":complex",
         ":constants",
         ":debug",
         ":fxp",
@@ -50,6 +51,18 @@ spu_cc_library(
     hdrs = ["ring.h"],
     deps = [
         ":prot_wrapper",
+        ":shape_ops",
+        "//libspu/core:context",
+    ],
+)
+
+spu_cc_library(
+    name = "complex",
+    srcs = ["complex.cc"],
+    hdrs = ["complex.h"],
+    deps = [
+        ":constants",
+        ":type_cast",
         "//libspu/core:context",
     ],
 )
@@ -265,11 +278,9 @@ spu_cc_library(
     srcs = ["shape_ops.cc"],
     hdrs = ["shape_ops.h"],
     deps = [
-        ":ring",
-        ":type_cast",
+        # Please DONT add extra dependency here.
+        ":prot_wrapper",
         "//libspu/core:context",
-        "//libspu/core:prelude",
-        "//libspu/core:vectorize",
     ],
 )
 

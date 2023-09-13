@@ -74,12 +74,16 @@ enum PtType {
   PT_U32 = 6;      // uint32_t
   PT_I64 = 7;      // int64_t
   PT_U64 = 8;      // uint64_t
-  PT_F32 = 9;      // float
-  PT_F64 = 10;     // double
-  PT_I128 = 11;    // int128_t
-  PT_U128 = 12;    // uint128_t
-  PT_BOOL = 13;    // bool
-  PT_F16 = 14;     // half
+  PT_I128 = 9;     // int128_t
+  PT_U128 = 10;    // uint128_t
+  PT_BOOL = 11;    // bool
+
+  PT_F16 = 30;     // half
+  PT_F32 = 31;     // float
+  PT_F64 = 32;     // double
+
+  PT_CF32 = 50;    // complex float
+  PT_CF64 = 51;    // complex double
 }
 
 // A security parameter type.
@@ -124,17 +128,18 @@ enum ProtocolKind {
 message ValueMetaProto {
   // The data type.
   DataType data_type = 1;
+  bool is_complex = 2;
 
   // The data visibility.
-  Visibility visibility = 2;
+  Visibility visibility = 3;
 
   // The shape of the value.
-  ShapeProto shape = 3;
+  ShapeProto shape = 4;
 
   // The storage type, defined by the underline evaluation engine.
   // i.e. `aby3.AShr<FM64>` means an aby3 arithmetic share in FM64.
   // usually, the application does not care about this attribute.
-  string storage_type = 4;
+  string storage_type = 5;
 }
 
 // The spu Value proto, used for spu value serialization.
@@ -189,8 +194,8 @@ message RuntimeConfig {
 
   // When enabled, runtime dumps executed executables in the dump_dir, debug
   // purpose only.
-  bool enable_processor_dump = 13;
-  string processor_dump_dir = 14;
+  bool enable_runtime_snapshot = 13;
+  string snapshot_dump_dir = 14;
 
   // When enabled, runtime records detailed pphlo timing data, debug purpose
   // only.
@@ -277,6 +282,9 @@ message RuntimeConfig {
 
   // Enable a simpler rsqrt approximation
   bool enable_lower_accuracy_rsqrt = 57;
+
+  // Sine/Cosine approximation iterations
+  int64 sine_cosine_iters = 58;
 
   /// - MPC protocol related definitions.
 

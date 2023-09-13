@@ -24,6 +24,7 @@
 #include "mlir/Parser/Parser.h"
 #include "spdlog/spdlog.h"
 
+#include "libspu/device/debug_dump_constant.h"
 #include "libspu/device/pphlo/pphlo_executor.h"
 #include "libspu/dialect/pphlo_dialect.h"
 
@@ -106,28 +107,48 @@ struct ActionStats {
   }
 };
 
-/*
- @shantang / @wuju
- TODO: temporary remove, need to adapt value slice change
 void takeSnapshot(size_t rank, const RuntimeConfig &rt_config,
                   const ExecutableProto &executable, const SymbolTable &env) {
-
-  const std::string &dump_dir = rt_config.processor_dump_dir();
+  const std::string &dump_dir = rt_config.snapshot_dump_dir();
   // Naming convention for dumped files must align with debug runner.
   std::filesystem::path dump_folder(dump_dir);
   std::filesystem::create_directories(dump_folder);
-  auto dump_path = dump_folder / fmt::format("snapshot_{}.spu", rank);
 
-  SnapshotProto snapshot;
-  snapshot.set_rank(rank);
-  *snapshot.mutable_executable() = executable;
-  *snapshot.mutable_runtime_cfg() = rt_config;
-  *snapshot.mutable_environ() = env.toProto();
+  // Dump executable
+  {
+    std::ofstream config_file(getConfigFilePath(dump_folder),
+                              std::ios::binary | std::ios::out);
+    config_file << rt_config.SerializeAsString();
+  }
 
-  std::ofstream dump_file(dump_path, std::ios::binary | std::ios::out);
-  dump_file << snapshot.SerializeAsString();
+  // Dump executable
+  {
+    std::ofstream main_file(getCodeFilePath(dump_folder),
+                            std::ios::binary | std::ios::out);
+    main_file << executable.SerializeAsString();
+  }
+
+  auto value_dump_dir = getRankFolder(dump_folder, rank);
+  std::filesystem::create_directories(value_dump_dir);
+
+  // Dump inputs
+  for (const auto &[name, var] : env) {
+    auto serialized = var.toProto(std::numeric_limits<int>::max());
+    {
+      std::ofstream meta_file(getMetaFilePath(dump_folder, rank, name),
+                              std::ios::binary | std::ios::out);
+      meta_file << serialized.meta.SerializeAsString();
+    }
+    {
+      for (const auto &chunk : llvm::enumerate(serialized.chunks)) {
+        std::ofstream chunk_file(
+            getValueChunkFilePath(dump_folder, rank, name, chunk.index()),
+            std::ios::binary | std::ios::out);
+        chunk_file << chunk.value().SerializeAsString();
+      }
+    }
+  }
 }
-*/
 
 void printProfilingData(spu::SPUContext *sctx, const std::string &name,
                         const ExecutionStats &exec_stats,
@@ -222,18 +243,13 @@ void executeImpl(OpExecutor *executor, spu::SPUContext *sctx,
     }
   }
 
-  // TODO: rename this flag, enable_execution_dump?
   const RuntimeConfig rt_config = sctx->config();
-  /*
-  @shantang / @wuju
-  TODO: temporary remove, need to adapt value slice change
-  if (rt_config.enable_processor_dump()) {
+
+  if (rt_config.enable_runtime_snapshot()) {
     const bool isRefHal = sctx->lctx() == nullptr;
     const size_t rank = isRefHal ? 0 : sctx->lctx()->Rank();
     takeSnapshot(rank, rt_config, executable, *env);
-
   }
-  */
 
   // execution
   std::vector<spu::Value> outputs;

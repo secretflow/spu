@@ -58,22 +58,22 @@ std::string mlirObjectToString(T &&mlir_obj) {
   return buf;
 }
 
-spu::PtType getPtTypeFromMlirType(mlir::Type mlir_ty) {
+std::pair<spu::PtType, bool> getPtTypeFromMlirType(mlir::Type mlir_ty) {
   mlir::pphlo::TypeTools tool;
   auto express_type = tool.getExpressedType(mlir_ty);
 
   if (auto ft = express_type.dyn_cast<mlir::FloatType>()) {
     switch (ft.getWidth()) {
       case 16:
-        return spu::PT_F16;
+        return {spu::PT_F16, false};
       case 32:
-        return spu::PT_F32;
+        return {spu::PT_F32, false};
       case 64:
-        return spu::PT_F64;
+        return {spu::PT_F64, false};
     }
   } else if (auto it = express_type.dyn_cast<mlir::IntegerType>()) {
     if (it.getWidth() == 1) {
-      return spu::PT_BOOL;
+      return {spu::PT_BOOL, false};
     }
     // In mlir, isSigned is for si[1-9][0-9]* type, isUnsigned is for
     // ui[1-9][0-9]*, i[1-9][0-9]* is signless IntegerType... So here, we only
@@ -81,15 +81,26 @@ spu::PtType getPtTypeFromMlirType(mlir::Type mlir_ty) {
     // See https://reviews.llvm.org/D72533
     switch (it.getWidth()) {
       case 8:
-        return it.isUnsigned() ? spu::PT_U8 : spu::PT_I8;
+        return it.isUnsigned() ? std::make_pair(spu::PT_U8, false)
+                               : std::make_pair(spu::PT_I8, false);
       case 16:
-        return it.isUnsigned() ? spu::PT_U16 : spu::PT_I16;
+        return it.isUnsigned() ? std::make_pair(spu::PT_U16, false)
+                               : std::make_pair(spu::PT_I16, false);
       case 32:
-        return it.isUnsigned() ? spu::PT_U32 : spu::PT_I32;
+        return it.isUnsigned() ? std::make_pair(spu::PT_U32, false)
+                               : std::make_pair(spu::PT_I32, false);
       case 64:
-        return it.isUnsigned() ? spu::PT_U64 : spu::PT_I64;
+        return it.isUnsigned() ? std::make_pair(spu::PT_U64, false)
+                               : std::make_pair(spu::PT_I64, false);
+    }
+  } else if (auto ct = express_type.dyn_cast<mlir::ComplexType>()) {
+    if (ct.getElementType().isF32()) {
+      return {spu::PT_F32, true};
+    } else if (ct.getElementType().isF64()) {
+      return {spu::PT_F64, true};
     }
   }
+
   SPU_THROW("invalid type {}", mlirObjectToString(mlir_ty));
 }
 
@@ -121,6 +132,12 @@ spu::DataType getDtypeFromMlirType(mlir::Type mlir_ty) {
         return spu::DT_F64;
       default:
         SPU_THROW("unsupported fp type {}", mlirObjectToString(flp_ty));
+    }
+  } else if (auto ct = express_type.dyn_cast<mlir::ComplexType>()) {
+    if (ct.getElementType().isF32()) {
+      return spu::DT_F32;
+    } else if (ct.getElementType().isF64()) {
+      return spu::DT_F64;
     }
   }
   SPU_THROW("invalid type {}", mlirObjectToString(mlir_ty));
@@ -177,6 +194,11 @@ void do_type_checker(mlir::Value key, const spu::Value &val,
     auto expectedType = getDtypeFromMlirType(mlir_type);
     SPU_ENFORCE(expectedType == val.dtype(), "Expected mlir_type {}, got {}",
                 expectedType, val.dtype());
+    if (tool.getExpressedType(mlir_type).isa<mlir::ComplexType>()) {
+      SPU_ENFORCE(val.isComplex(), "Expected complex type");
+    } else {
+      SPU_ENFORCE(!val.isComplex());
+    }
 
     // Check vtype
     if (tool.isMPCType<mlir::pphlo::PublicType>(mlir_type)) {
@@ -237,6 +259,8 @@ STANDARD_UNARY_OP_EXEC_IMPL(NotOp, Not)
 STANDARD_UNARY_OP_EXEC_IMPL(RsqrtOp, Rsqrt)
 STANDARD_UNARY_OP_EXEC_IMPL(SqrtOp, Sqrt)
 STANDARD_UNARY_OP_EXEC_IMPL(RoundOp, Round_AFZ)
+STANDARD_UNARY_OP_EXEC_IMPL(SineOp, Sine)
+STANDARD_UNARY_OP_EXEC_IMPL(CosineOp, Cosine)
 
 #undef STANDARD_UNARY_OP_EXEC_IMPL
 
@@ -428,13 +452,12 @@ void execute(OpExecutor *executor, SPUContext *sctx, SymbolScope *sscope,
   config.outputFeatureDimension = dnums.getOutputFeatureDimension();
   config.outputSpatialDimensions = dnums.getOutputSpatialDimensions();
 
-  spu::Value result;
+  SPU_ENFORCE(
+      dnums.getInputSpatialDimensions().size() == 2,
+      "Convolution with more than 2 spatial dimensions is not supported");
 
-  if (dnums.getInputSpatialDimensions().size() == 2) {
-    result = kernel::hlo::Convolution2D(sctx, lhs, rhs, config, ret_shape);
-  } else {
-    result = kernel::hlo::Convolution(sctx, lhs, rhs, config, ret_shape);
-  }
+  spu::Value result =
+      kernel::hlo::Convolution2D(sctx, lhs, rhs, config, ret_shape);
 
   addValue(sscope, op.getResult(), std::move(result), opts);
 }
@@ -568,19 +591,8 @@ void execute(OpExecutor *executor, SPUContext *sctx, SymbolScope *sscope,
   // window padding
   std::vector<std::pair<int64_t, int64_t>> window_padding(window_shape.size(),
                                                           {0, 0});
-  if (op.getPadding().has_value()) {
-    const auto v = *op.getPadding();  // NOLINT
 
-    SPU_ENFORCE(window_padding.size() * 2 == (size_t)v.size());
-
-    for (size_t idx = 0; idx < window_padding.size(); ++idx) {
-      window_padding[idx] = {*(v.getValues<int64_t>().begin() + 2 * idx),
-                             *(v.getValues<int64_t>().begin() + 2 * idx + 1)};
-    }
-  }
-
-  // auto ret = kernel::hlo::SelectAndScatterNaive(
-  auto ret = kernel::hlo::SelectAndScatterExpanded(
+  auto ret = kernel::hlo::SelectAndScatter(
       sctx, operand, source, init_val, window_shape, window_strides,
       window_padding,
       [&](const spu::Value &selected, const spu::Value &current) {
@@ -614,16 +626,6 @@ void execute(OpExecutor *executor, SPUContext *sctx, SymbolScope *sscope,
   // window padding
   std::vector<std::pair<int64_t, int64_t>> window_padding(window_shape.size(),
                                                           {0, 0});
-  if (op.getPadding().has_value()) {
-    const auto v = *op.getPadding();  // NOLINT
-
-    SPU_ENFORCE(window_padding.size() * 2 == (size_t)v.size());
-
-    for (size_t idx = 0; idx < window_padding.size(); ++idx) {
-      window_padding[idx] = {*(v.getValues<int64_t>().begin() + 2 * idx),
-                             *(v.getValues<int64_t>().begin() + 2 * idx + 1)};
-    }
-  }
 
   auto base_shape =
       op.getResult().getType().dyn_cast<mlir::RankedTensorType>().getShape();
@@ -706,11 +708,19 @@ void execute(OpExecutor *executor, SPUContext *sctx, SymbolScope *sscope,
   auto ret_el_type = type_tools.getExpressedType(ret_type);
   auto pt_type = getPtTypeFromMlirType(ret_el_type);
 
-  spu::Value iota_ret = kernel::hlo::Iota(sctx, getEncodeType(pt_type), numel);
+  spu::Value iota_ret =
+      kernel::hlo::Iota(sctx, getEncodeType(pt_type.first), numel);
 
   if (ret_type.getShape().size() > 1) {
     // Need a broadcast
     iota_ret = kernel::hlo::Broadcast(sctx, iota_ret, ret_type.getShape(), {});
+  }
+
+  if (pt_type.second) {
+    // Complex
+    auto zeros = kernel::hlo::Constant(sctx, 0.0F, ret_type.getShape());
+    zeros = kernel::hlo::Cast(sctx, zeros, iota_ret.vtype(), iota_ret.dtype());
+    iota_ret = kernel::hlo::Complex(sctx, iota_ret, zeros);
   }
 
   addValue(sscope, op.getOutput(), std::move(iota_ret), opts);
@@ -891,26 +901,9 @@ void execute(OpExecutor *executor, SPUContext *sctx, SymbolScope *sscope,
                                window_dilations);  // NOLINT
   }
 
-  // window padding
   std::vector<std::pair<int64_t, int64_t>> window_padding(window_shape.size(),
                                                           {0, 0});
-  if (op.getPadding().has_value()) {
-    const auto v = *op.getPadding();  // NOLINT
-
-    SPU_ENFORCE(window_padding.size() * 2 == (size_t)v.size());
-
-    for (size_t idx = 0; idx < window_padding.size(); ++idx) {
-      window_padding[idx] = {*(v.getValues<int64_t>().begin() + 2 * idx),
-                             *(v.getValues<int64_t>().begin() + 2 * idx + 1)};
-    }
-  }
-
-  // base dilation
   Sizes base_dilation(window_shape.size(), 1);
-  if (op.getBaseDilations().has_value()) {
-    convertDenseIntElementAttr(*op.getBaseDilations(),
-                               base_dilation);  // NOLINT
-  }
 
   kernel::hlo::ReduceWindowConfig config;
   config.window_shape = window_shape;
@@ -955,38 +948,21 @@ void execute(OpExecutor *executor, SPUContext *sctx, SymbolScope *sscope,
                                window_dilations);  // NOLINT
   }
 
-  // window padding
-  std::vector<std::pair<int64_t, int64_t>> window_padding(window_shape.size(),
-                                                          {0, 0});
-  if (op.getPadding().has_value()) {
-    const auto v = *op.getPadding();  // NOLINT
-
-    SPU_ENFORCE(window_padding.size() * 2 == (size_t)v.size());
-
-    for (size_t idx = 0; idx < window_padding.size(); ++idx) {
-      window_padding[idx] = {*(v.getValues<int64_t>().begin() + 2 * idx),
-                             *(v.getValues<int64_t>().begin() + 2 * idx + 1)};
-    }
-  }
-
-  // base dilation
-  Sizes base_dilation(window_shape.size(), 1);
-  if (op.getBaseDilations().has_value()) {
-    convertDenseIntElementAttr(*op.getBaseDilations(),
-                               base_dilation);  // NOLINT
-  }
-
   auto ret_shape = op->getResults()[0]
                        .getType()
                        .dyn_cast<mlir::RankedTensorType>()
                        .getShape();
+
+  std::vector<std::pair<int64_t, int64_t>> window_padding(window_shape.size(),
+                                                          {0, 0});
+  Sizes base_dilations(window_shape.size(), 1);
 
   kernel::hlo::ReduceWindowConfig config;
   config.window_shape = window_shape;
   config.window_strides = window_strides;
   config.window_dilations = window_dilations;
   config.window_padding = window_padding;
-  config.base_dilations = base_dilation;
+  config.base_dilations = base_dilations;
 
   auto ret = kernel::hlo::ArgMax(sctx, lookupValue(sscope, op.getInput(), opts),
                                  ret_shape, config);
@@ -1026,8 +1002,16 @@ void execute(OpExecutor *executor, SPUContext *sctx, SymbolScope *sscope,
                        : VIS_SECRET;
   auto in = lookupValue(sscope, op.getOperand(), opts);
 
-  addValue(sscope, op.getResult(),
-           kernel::hlo::Cast(sctx, in, dst_vtype, dst_dtype), opts);
+  auto from_type = tool.getExpressedType(op.getOperand().getType());
+  auto to_type = tool.getExpressedType(op.getType());
+
+  auto casted = kernel::hlo::Cast(sctx, in, dst_vtype, dst_dtype);
+  if (!from_type.isa<mlir::ComplexType>() && to_type.isa<mlir::ComplexType>()) {
+    auto imag = kernel::hlo::Imag(sctx, casted);
+    casted = kernel::hlo::Complex(sctx, casted, imag);
+  }
+
+  addValue(sscope, op.getResult(), casted, opts);
 }
 
 void execute(OpExecutor *executor, SPUContext *sctx, SymbolScope *sscope,
@@ -1083,6 +1067,7 @@ void execute(OpExecutor *executor, SPUContext *sctx, SymbolScope *sscope,
   // https://github.com/llvm/llvm-project/blob/3696941dae5cc5bb379c50eae6190e29f7edbbb1/mlir/include/mlir/IR/BuiltinAttributes.h#L188
   // We need to normalize the value to 0,1
   if (dea.getElementType().isInteger(1)) {
+    SPU_ENFORCE(pt_type.second == false);
     if (dea.isSplat()) {
       addValue(
           sscope, op.getResult(),
@@ -1093,19 +1078,45 @@ void execute(OpExecutor *executor, SPUContext *sctx, SymbolScope *sscope,
       for (const auto &v : llvm::enumerate(dea.getValues<bool>())) {
         buf[v.index()] = static_cast<uint8_t>(v.value());
       }
-      PtBufferView view(reinterpret_cast<const bool *>(buf.data()), pt_type,
-                        dst_shape, makeCompactStrides(dst_shape));
+      PtBufferView view(reinterpret_cast<const bool *>(buf.data()),
+                        pt_type.first, dst_shape,
+                        makeCompactStrides(dst_shape));
 
       addValue(sscope, op.getResult(),
                kernel::hlo::Constant(sctx, view, dst_shape), opts);
     }
   } else {
-    PtBufferView view(
-        dea.getRawData().data(), pt_type, dea.isSplat() ? Shape() : dst_shape,
-        dea.isSplat() ? Strides() : makeCompactStrides(dst_shape));
+    if (!pt_type.second) {
+      // Real numbers
+      PtBufferView view(
+          dea.getRawData().data(), pt_type.first,
+          dea.isSplat() ? Shape() : dst_shape,
+          dea.isSplat() ? Strides() : makeCompactStrides(dst_shape));
 
-    addValue(sscope, op.getResult(),
-             kernel::hlo::Constant(sctx, view, dst_shape), opts);
+      addValue(sscope, op.getResult(),
+               kernel::hlo::Constant(sctx, view, dst_shape), opts);
+    } else {
+      // Complex constant
+      // real view
+      auto cs = makeCompactStrides(dst_shape);
+      if (!cs.empty()) {
+        for (auto &s : cs) {
+          s *= 2;
+        }
+      }
+      PtBufferView real_view(dea.getRawData().data(), pt_type.first,
+                             dea.isSplat() ? Shape() : dst_shape,
+                             dea.isSplat() ? Strides() : cs);
+      PtBufferView imag_view(dea.getRawData().data() + SizeOf(pt_type.first),
+                             pt_type.first, dea.isSplat() ? Shape() : dst_shape,
+                             dea.isSplat() ? Strides() : cs);
+
+      auto real = kernel::hlo::Constant(sctx, real_view, dst_shape);
+      auto imag = kernel::hlo::Constant(sctx, imag_view, dst_shape);
+
+      addValue(sscope, op.getResult(), kernel::hlo::Complex(sctx, real, imag),
+               opts);
+    }
   }
 }
 
@@ -1155,13 +1166,32 @@ void execute(OpExecutor *executor, SPUContext *sctx, SymbolScope *sscope,
     // free(%a)
     // Here free is also a consider a use...so under parallel execution free
     // will be invoked once a is defined.
-    // This will make %a randomly dealloced after defined.
+    // This will make %a randomly deallocated after defined.
     // FreeOp has an implicit requirement that it needs to be invoked after all
     // other uses are done.
     // FIXME(xiaochen): Enable this...
     return;
   }
   removeValue(sscope, op.getOperand(), opts);
+}
+
+void execute(OpExecutor *executor, SPUContext *sctx, SymbolScope *sscope,
+             mlir::pphlo::RealOp &op, const ExecutionOptions &opts) {
+  auto v = lookupValue(sscope, op.getOperand(), opts);
+  addValue(sscope, op.getResult(), kernel::hlo::Real(sctx, v), opts);
+}
+
+void execute(OpExecutor *executor, SPUContext *sctx, SymbolScope *sscope,
+             mlir::pphlo::ImagOp &op, const ExecutionOptions &opts) {
+  auto v = lookupValue(sscope, op.getOperand(), opts);
+  addValue(sscope, op.getResult(), kernel::hlo::Imag(sctx, v), opts);
+}
+
+void execute(OpExecutor *executor, SPUContext *sctx, SymbolScope *sscope,
+             mlir::pphlo::ComplexOp &op, const ExecutionOptions &opts) {
+  auto r = lookupValue(sscope, op.getLhs(), opts);
+  auto i = lookupValue(sscope, op.getRhs(), opts);
+  addValue(sscope, op.getResult(), kernel::hlo::Complex(sctx, r, i), opts);
 }
 
 #define DEFINE_UNIMPLEMENTED_OP(OpName)                                     \

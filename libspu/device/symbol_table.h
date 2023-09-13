@@ -36,11 +36,6 @@ class SymbolTable {
 
   auto begin() { return data_.begin(); }
   auto end() { return data_.end(); }
-
-  // @shantang / @wuju
-  // TODO: temporary remove, need to adapt value slice change
-  // SymbolTableProto toProto() const;
-  // static SymbolTable fromProto(const SymbolTableProto &proto);
 };
 
 }  // namespace spu::device

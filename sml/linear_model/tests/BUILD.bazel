@@ -1,0 +1,62 @@
+# Copyright 2023 Ant Group Co., Ltd.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+load("@rules_python//python:defs.bzl", "py_test")
+
+package(default_visibility = ["//visibility:public"])
+
+py_test(
+    name = "sgd_classifier_test",
+    srcs = ["sgd_classifier_test.py"],
+    data = [
+        "//examples/python/conf",  # FIXME: remove examples dependency
+    ],
+    deps = [
+        "//examples/python/utils:dataset_utils",  # FIXME: remove examples dependency
+        "//sml/linear_model:sgd_classifier",
+        "//spu:init",
+        "//spu/utils:simulation",
+    ],
+)
+
+py_test(
+    name = "logistic_test",
+    srcs = ["logistic_test.py"],
+    deps = [
+        "//sml/linear_model:logistic",
+        "//spu:init",
+        "//spu/utils:simulation",
+    ],
+)
+
+py_test(
+    name = "ridge_test",
+    srcs = ["ridge_test.py"],
+    deps = [
+        "//examples/python/utils:dataset_utils",  # FIXME: remove examples dependency
+        "//sml/linear_model:ridge",
+        "//spu:init",
+        "//spu/utils:simulation",
+    ],
+)
+
+py_test(
+    name = "pla_test",
+    srcs = ["pla_test.py"],
+    deps = [
+        "//sml/linear_model:pla",
+        "//spu:init",
+        "//spu/utils:simulation",
+    ],
+)

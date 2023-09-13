@@ -18,13 +18,15 @@ package(default_visibility = ["//visibility:public"])
 
 py_library(
     name = "emulation",
-    srcs = ["emulation.py"],
+    srcs = [
+        "emulation.py",
+        "//libspu:spu_py_proto",
+    ],
     data = [
         "//examples/python/conf",  # FIXME
     ],
     deps = [
         "//spu:init",
-        "//spu:spu_py_proto",
         "//spu/utils:distributed",
     ],
 )
@@ -32,5 +34,9 @@ py_library(
 py_library(
     name = "fxp_approx",
     srcs = ["fxp_approx.py"],
-    deps = [],
+)
+
+py_library(
+    name = "extmath",
+    srcs = ["extmath.py"],
 )

@@ -1,17 +1,12 @@
 ---
 name: Yaml Lint
-on: [push]  # yamllint disable-line rule:truthy
+on:
+  push:
+    branches:
+    - main
+  pull_request:
+    branches:
+    - main
 jobs:
-  lintAllTheThings:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - name: yaml-lint
-        uses: ibiqlik/action-yamllint@v3
-        with:
-          config_data: |
-            rules:
-              line-length:
-                max: 300
-                allow-non-breakable-words: true
-                allow-non-breakable-inline-mappings: true
+  yaml-linter:
+    uses: secretflow/.github/.github/workflows/yaml-linter.yml@main
