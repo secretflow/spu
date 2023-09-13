@@ -29,31 +29,6 @@ RuntimeConfig makeConfig(FieldType field) {
   return conf;
 }
 
-// std::once_flag init_server;
-// std::unique_ptr<brpc::Server> server;
-// std::string server_host;
-
-// void InitBeaverServer() {
-//   std::call_once(init_server, []() {
-//     server = semi2k::beaver::ttp_server::RunServer(0);
-//     server_host = fmt::format("127.0.0.1:{}", server->listen_address().port);
-//   });
-// }
-
-// std::unique_ptr<SPUContext> makeTTPSecurennProtocol(
-//     const RuntimeConfig& rt, const std::shared_ptr<yacl::link::Context>&
-//     lctx) {
-//   InitBeaverServer();
-//   RuntimeConfig ttp_rt = rt;
-
-//   ttp_rt.set_beaver_type(RuntimeConfig_BeaverType_TrustedThirdParty);
-//   auto* ttp = ttp_rt.mutable_ttp_beaver_config();
-//   ttp->set_adjust_rank(lctx->WorldSize() - 1);
-//   ttp->set_server_host(server_host);
-
-//   return makeSecurennProtocol(ttp_rt, lctx);
-// }
-
 }  // namespace
 
 INSTANTIATE_TEST_SUITE_P(
