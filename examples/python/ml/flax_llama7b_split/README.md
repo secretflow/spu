@@ -3,11 +3,13 @@
 This example demonstrates how to use SPU to run secure inference on a pre-trained
 [Llama-7B](https://research.facebook.com/publications/llama-open-and-efficient-foundation-language-models/) model with model split.
 
-1. Install huggingface transformers library
+1. Motivation
 
-    ```sh
-    pip install 'transformers[flax]'
-    ```
+- Time:
+Using the full Llama model for inference on SPU can take a significant amount of time. If only a portion of the model is passed through SPU to ensure privacy, it can greatly improve inference efficiency.
+
+- RAM Usage:
+Using the full Llama model for inference on SPU requires a large amount of memory. Splitting the model can significantly reduce memory usage, making it available for use in hardware-constrained environments.
 
 2. Download EasyML library to support Flax-LLaMA-7B
 
@@ -16,6 +18,18 @@ This example demonstrates how to use SPU to run secure inference on a pre-traine
     cd EasyLM
     export PYTHONPATH="${PWD}:$PYTHONPATH"
     ```
+
+    Install EasyLM Environment Before Install Secretflow & SPU
+    
+    ```sh
+    conda env create -f examples/python/ml/flax_llama7b_split/gpu_environment.yml
+    conda activate EasyLM
+    pip install 'transformers[flax]'
+    pip install -U secretflow
+    pip install spu
+    ```
+
+    Install 
 
     Download trained LLaMA-7B[PyTroch-Version] from "https://github.com/facebookresearch/llama", and convert it to EasyLM format as:
 
@@ -28,7 +42,7 @@ This example demonstrates how to use SPU to run secure inference on a pre-traine
        --streaming
     ```
 
-    Dove the python file to EasyLM
+    Move the python file to EasyLM
 
     ```sh
     cp path-to-llama_model_split_transformer_py path_to_EasyLM/EasyLM/models/llama
@@ -39,11 +53,26 @@ This example demonstrates how to use SPU to run secure inference on a pre-traine
     ```sh
     bazel run -c opt //examples/python/utils:nodectl -- --config `pwd`/examples/python/ml/flax_llama7b_split/3pc.json up
     ```
+    
+    or
+    （recommended）
+
+    ```sh
+    cd examples/python/utils
+    python nodectl.py  --config `pwd`/examples/python/ml/flax_llama7b_split/3pc.json up
+    ```
 
 4. Run `flax_llama7b_split` example
 
     ```sh
-    bazel run -c opt //examples/python/ml/flax_llama7b -- --config `pwd`/examples/python/ml/flax_llama7b_split/3pc.json
+    bazel run -c opt //examples/python/ml/flax_llama7b_split -- --config `pwd`/examples/python/ml/flax_llama7b_split/3pc.json
+    ```
+
+    or（recommended）
+
+    ```sh
+    cd examples/python/ml/flax_llama7b_split
+    python flax_llama7b_split.py --config `pwd`/examples/python/ml/flax_llama7b_split/3pc.json
     ```
 
     and you can get the following results from our example:
@@ -53,15 +82,15 @@ This example demonstrates how to use SPU to run secure inference on a pre-traine
     Run on CPU
     Q: What is the largest animal?
     A: The largest animal is the blue whale.
-    Q: What is the smallest animal?
-    A: The smallest animal is the bee.
+    generate on CPU: 655.7938830852509 seconds
 
     ------
     Run on SPU
+    [2023-09-14 16:32:36.721] [info] [thread_pool.cc:30] Create a fixed thread pool with size 127
     Q: What is the largest animal?
     A: The largest animal is the blue whale.
-    Q: What is the smallest animal?
-    A: The smallest animal is the bee.
+    generate  on SPU: 1195.8216683864594 seconds
     ```
+    RAM peak: 64.5888GB
 
 

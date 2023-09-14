@@ -55,12 +55,8 @@ copts.enable_optimize_denominator_with_broadcast = True
 
 # model_path = 'path-to-flax-llama7b'
 
-# tokenizer = LlamaTokenizer.from_pretrained(model_path)
-# tokenizer.pad_token_id = tokenizer.eos_token_id
-# config = LLaMAConfig()
-# pretrained_model = FlaxLLaMAForCausalLM.from_pretrained(model_path, config=config)
-model_path = "params::/mnt/workspace/huzhanyi/llama/JAX_llama/converted_llama_model/7B_/checkpoint"
-tokenizer_path = "/mnt/workspace/huzhanyi/llama/JAX_llama/llama_model/7B"
+model_path = "params::path-to-flax-llama7b-checkpoint"
+tokenizer_path = "path-to-flax-llama7b"
 tokenizer = LlamaTokenizer.from_pretrained(tokenizer_path)
 tokenizer.pad_token_id = tokenizer.eos_token_id
 config = LLaMAConfig()
@@ -181,17 +177,6 @@ def hack_silu_context(msg: str, enabled: bool = True):
 
 # greedy search
 # ref: https://huggingface.co/blog/how-to-generate
-def text_generation(input_ids, params, token_num=8):
-
-    config = LLaMAConfig()
-    model = FlaxLLaMAForCausalLM(config=config)
-    for _ in range(token_num):
-        outputs = model(input_ids=input_ids, params=params)
-        next_token_logits = outputs[0][0, -1, :]
-        next_token = jnp.argmax(next_token_logits)
-        input_ids = jnp.concatenate([input_ids, jnp.array([[next_token]])], axis=1)
-    return input_ids
-
 # for embedding genrate
 def embeding_generation(input_ids, params):
     config = LLaMAConfig()
@@ -219,16 +204,27 @@ def server_generation(input_ids, params, attention_mask, position_ids):
     
     return _smasheddata
 
-def run_on_cpu():
-    # encode context the generation is conditioned on
-    inputs_ids = tokenizer.encode(
+def run_on_cpu(token_num=9):
+
+    input_ids = tokenizer.encode(
         'Q: What is the largest animal?\nA:', return_tensors='jax'
     )
-    outputs_ids = text_generation(inputs_ids, params['params'])
-    return outputs_ids
+    for _ in range(token_num):
+        smasheddata, attention_mask, position_ids = embeding_generation(input_ids=input_ids, params=client_params_dict)
+
+        _smasheddata, attention_mask, position_ids = mid_generation(input_ids=smasheddata, params=mid_params_dict, attention_mask=attention_mask, position_ids=position_ids)
+            
+        outputs = server_generation(input_ids=_smasheddata, params=server_params_dict, attention_mask=attention_mask, position_ids=position_ids)
+        
+        next_token_logits = outputs[0][0, -1, :]
+        next_token = jnp.argmax(next_token_logits)
+
+        input_ids = jnp.concatenate([input_ids, jnp.array([[next_token]])], axis=1)
+
+    return input_ids
 
 
-def run_on_spu(token_num=8):
+def run_on_spu(token_num=9):
     # encode context the generation is conditioned on
     input_ids = tokenizer.encode(
         'Q: What is the largest animal?\nA:', return_tensors='jax'
@@ -238,10 +234,7 @@ def run_on_spu(token_num=8):
         with hack_softmax_context("hack exp of softmax", enabled=True), hack_silu_context(
             "hack silu", enabled=True
         ):
-            # params = ppd.device("P2")(lambda x: x)(pretrained_model.params)
-            # input_ids = ppd.device("P1")(lambda x: x)(input_ids)
-            # outputs_ids = ppd.device("SPU")(text_generation, copts=copts)(input_ids, params)
-            # outputs_ids = ppd.get(outputs_ids)
+
 
             _input_ids = ppd.device("P1")(lambda x: x)(smasheddata)
             _params = ppd.device("P2")(lambda x: x)(mid_params_dict)
@@ -249,13 +242,12 @@ def run_on_spu(token_num=8):
             _smasheddata, attention_mask, position_ids = ppd.device("SPU")(mid_generation)(_input_ids, _params, attention_mask, position_ids)
 
             _smasheddata, attention_mask, position_ids = ppd.get(_smasheddata), ppd.get(attention_mask), ppd.get(position_ids)
-        # outputs = model_server(input_ids=_smasheddata, params=params['params'], attention_mask=attention_mask, position_ids=position_ids)
+       
         outputs = server_generation(input_ids=_smasheddata, params=server_params_dict, attention_mask=attention_mask, position_ids=position_ids)
         
         next_token_logits = outputs[0][0, -1, :]
         next_token = jnp.argmax(next_token_logits)
-        # next_token_text += " " + tokenizer.decode(next_token)
-        # print(next_token_text)
+
         input_ids = jnp.concatenate([input_ids, jnp.array([[next_token]])], axis=1)
 
     return input_ids
@@ -276,11 +268,5 @@ if __name__ == '__main__':
     print(tokenizer.decode(outputs_ids[0], skip_special_tokens=True))
     end_time = time.time()
     print(f"generate  on SPU: {end_time - start_time} seconds")
-
-    # for key, v in params['params']["transformer"]["h"]["0"]["attention_norm"].items():
-    #     print(key)
-
-    # for key, v in server_params_dict["lm_head"].items():
-    #     print(key)
 
 
