@@ -29,6 +29,13 @@ Using the full Llama model for inference on SPU requires a large amount of memor
     pip install spu
     ```
 
+    If Do not Want to use GPU
+
+    ```sh
+        pip uninstall jax jaxlib
+        pip install jax==0.4.11 jaxlib==0.4.11
+    ```
+
     Download trained LLaMA-7B[PyTroch-Version] from "https://github.com/facebookresearch/llama", and convert it to EasyLM format as:
 
     ```sh
