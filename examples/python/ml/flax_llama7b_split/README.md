@@ -29,8 +29,6 @@ Using the full Llama model for inference on SPU requires a large amount of memor
     pip install spu
     ```
 
-    Install 
-
     Download trained LLaMA-7B[PyTroch-Version] from "https://github.com/facebookresearch/llama", and convert it to EasyLM format as:
 
     ```sh
