@@ -87,14 +87,14 @@ Using the full Llama model for inference on SPU requires a large amount of memor
     Run on CPU
     Q: What is the largest animal?
     A: The largest animal is the blue whale.
-    generate on CPU: 655.7938830852509 seconds
+    generate on CPU: 256.08824276924133 seconds
 
     ------
     Run on SPU
-    [2023-09-14 16:32:36.721] [info] [thread_pool.cc:30] Create a fixed thread pool with size 127
+    [2023-09-14 20:34:47.264] [info] [thread_pool.cc:30] Create a fixed thread pool with size 127
     Q: What is the largest animal?
     A: The largest animal is the blue whale.
-    generate  on SPU: 1195.8216683864594 seconds
+    generate  on SPU: 812.9427680969238 seconds
     ```
     RAM peak: 64.5888GB
 
