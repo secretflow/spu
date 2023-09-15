@@ -41,7 +41,7 @@ void CommonTypeB::evaluate(KernelEvalContext* ctx) const {
   ctx->setOutput(makeType<BShrTy>(out_btype, out_nbits));
 }
 
-NdArrayRef CastTypeB::proc(KernelEvalContext* ctx, const NdArrayRef& in,
+NdArrayRef CastTypeB::proc(KernelEvalContext*, const NdArrayRef& in,
                            const Type& to_type) const {
   NdArrayRef out(to_type, in.shape());
   DISPATCH_UINT_PT_TYPES(in.eltype().as<BShrTy>()->getBacktype(), "_", [&]() {
@@ -174,7 +174,7 @@ NdArrayRef B2V::proc(KernelEvalContext* ctx, const NdArrayRef& in,
   });
 }
 
-NdArrayRef AndBP::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
+NdArrayRef AndBP::proc(KernelEvalContext*, const NdArrayRef& lhs,
                        const NdArrayRef& rhs) const {
   const auto* lhs_ty = lhs.eltype().as<BShrTy>();
   const auto* rhs_ty = rhs.eltype().as<Pub2kTy>();
@@ -242,7 +242,8 @@ NdArrayRef AndBB::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
 
         std::vector<out_el_t> r0(lhs.numel());
         std::vector<out_el_t> r1(lhs.numel());
-        prg_state->fillPrssPair(absl::MakeSpan(r0), absl::MakeSpan(r1));
+        prg_state->fillPrssPair(r0.data(), r1.data(), r0.size(),
+                                PrgState::GenPrssCtrl::Both);
 
         // z1 = (x1 & y1) ^ (x1 & y2) ^ (x2 & y1) ^ (r0 ^ r1);
         pforeach(0, lhs.numel(), [&](int64_t idx) {
@@ -265,7 +266,7 @@ NdArrayRef AndBB::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
   });
 }
 
-NdArrayRef XorBP::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
+NdArrayRef XorBP::proc(KernelEvalContext*, const NdArrayRef& lhs,
                        const NdArrayRef& rhs) const {
   const auto* lhs_ty = lhs.eltype().as<BShrTy>();
   const auto* rhs_ty = rhs.eltype().as<Pub2kTy>();
@@ -304,7 +305,7 @@ NdArrayRef XorBP::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
   });
 }
 
-NdArrayRef XorBB::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
+NdArrayRef XorBB::proc(KernelEvalContext*, const NdArrayRef& lhs,
                        const NdArrayRef& rhs) const {
   const auto* lhs_ty = lhs.eltype().as<BShrTy>();
   const auto* rhs_ty = rhs.eltype().as<BShrTy>();
@@ -376,7 +377,7 @@ NdArrayRef LShiftB::proc(KernelEvalContext* ctx, const NdArrayRef& in,
   });
 }
 
-NdArrayRef RShiftB::proc(KernelEvalContext* ctx, const NdArrayRef& in,
+NdArrayRef RShiftB::proc(KernelEvalContext*, const NdArrayRef& in,
                          size_t bits) const {
   const auto* in_ty = in.eltype().as<BShrTy>();
 
@@ -437,8 +438,8 @@ NdArrayRef ARShiftB::proc(KernelEvalContext* ctx, const NdArrayRef& in,
   });
 }
 
-NdArrayRef BitrevB::proc(KernelEvalContext* ctx, const NdArrayRef& in,
-                         size_t start, size_t end) const {
+NdArrayRef BitrevB::proc(KernelEvalContext*, const NdArrayRef& in, size_t start,
+                         size_t end) const {
   SPU_ENFORCE(start <= end && end <= 128);
 
   const auto* in_ty = in.eltype().as<BShrTy>();
@@ -481,7 +482,7 @@ NdArrayRef BitrevB::proc(KernelEvalContext* ctx, const NdArrayRef& in,
   });
 }
 
-NdArrayRef BitIntlB::proc(KernelEvalContext* ctx, const NdArrayRef& in,
+NdArrayRef BitIntlB::proc(KernelEvalContext*, const NdArrayRef& in,
                           size_t stride) const {
   // void BitIntlB::evaluate(KernelEvalContext* ctx) const {
   const auto* in_ty = in.eltype().as<BShrTy>();
@@ -505,7 +506,7 @@ NdArrayRef BitIntlB::proc(KernelEvalContext* ctx, const NdArrayRef& in,
   return out;
 }
 
-NdArrayRef BitDeintlB::proc(KernelEvalContext* ctx, const NdArrayRef& in,
+NdArrayRef BitDeintlB::proc(KernelEvalContext*, const NdArrayRef& in,
                             size_t stride) const {
   const auto* in_ty = in.eltype().as<BShrTy>();
   const size_t nbits = in_ty->nbits();

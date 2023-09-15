@@ -38,8 +38,7 @@ public:
   explicit SelectConversion(MLIRContext *context)
       : OpRewritePattern<SelectOp>(context) {}
 
-  LogicalResult matchAndRewrite(SelectOp op,
-                                PatternRewriter &rewriter) const override {
+  LogicalResult matchAndRewrite(SelectOp op, PatternRewriter &) const override {
     auto pred = op.getPred();
     // Only do this for certain select...
     if (pred.getDefiningOp<PreferAOp>() != nullptr) {

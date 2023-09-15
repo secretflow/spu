@@ -39,7 +39,7 @@ class IBatchProvider {
   // Read at most `batch_size` items&labels and return them. An empty returned
   // vector is treated as the end of stream.
   virtual std::pair<std::vector<std::string>, std::vector<std::string>>
-  ReadNextBatchWithLabel(size_t batch_size) {
+  ReadNextBatchWithLabel(size_t /*batch_size*/) {
     std::vector<std::string> batch_items;
     std::vector<std::string> batch_labels;
 

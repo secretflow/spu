@@ -131,7 +131,7 @@ std::vector<spu::Value> runRegion(OpExecutor *executor,                 //
 
 std::vector<spu::Value> runBlock(OpExecutor *executor, SPUContext *sctx,
                                  SymbolScope *symbols, mlir::Block &block,
-                                 absl::Span<spu::Value const> params,
+                                 absl::Span<spu::Value const> /*params*/,
                                  const ExecutionOptions &opts) {
   for (auto &op : block.without_terminator()) {
     executor->runKernel(sctx, symbols, op, opts);
@@ -273,11 +273,10 @@ class BlockParallelRunner final {
   }
 };
 
-std::vector<spu::Value> runBlockParallel(OpExecutor *executor, SPUContext *sctx,
-                                         SymbolScope *symbols,
-                                         mlir::Block &block,
-                                         absl::Span<spu::Value const> params,
-                                         const ExecutionOptions &opts) {
+std::vector<spu::Value> runBlockParallel(
+    OpExecutor *executor, SPUContext *sctx, SymbolScope *symbols,
+    mlir::Block &block, absl::Span<spu::Value const> /*params*/,
+    const ExecutionOptions &opts) {
   BlockParallelRunner runner(sctx, executor, symbols, opts);
   return runner.run(block);
 }

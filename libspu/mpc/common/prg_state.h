@@ -65,10 +65,41 @@ class PrgState : public State {
   // This correlation could be used to construct zero shares.
   //
   // Note: ignore_first, ignore_second is for perf improvement.
+  enum class GenPrssCtrl { Both, First, Second, None };
   std::pair<NdArrayRef, NdArrayRef> genPrssPair(FieldType field,
                                                 const Shape& shape,
-                                                bool ignore_first = false,
-                                                bool ignore_second = false);
+                                                GenPrssCtrl ctrl);
+
+  template <typename T>
+  void fillPrssPair(T* r0, T* r1, size_t numel, GenPrssCtrl ctrl) {
+    switch (ctrl) {
+      case GenPrssCtrl::None: {
+        // Nothing to generate, pure dummy
+        prss_counter_ = yacl::crypto::DummyUpdateRandomCount(prss_counter_,
+                                                             numel * sizeof(T));
+        return;
+      }
+      case GenPrssCtrl::First: {
+        prss_counter_ = yacl::crypto::FillPRand(
+            kAesType, self_seed_, 0, prss_counter_, absl::MakeSpan(r0, numel));
+        return;
+      }
+      case GenPrssCtrl::Second: {
+        prss_counter_ = yacl::crypto::FillPRand(
+            kAesType, next_seed_, 0, prss_counter_, absl::MakeSpan(r1, numel));
+        return;
+      }
+      case GenPrssCtrl::Both: {
+        auto counter0 = yacl::crypto::FillPRand(
+            kAesType, self_seed_, 0, prss_counter_, absl::MakeSpan(r0, numel));
+        auto counter1 = yacl::crypto::FillPRand(
+            kAesType, next_seed_, 0, prss_counter_, absl::MakeSpan(r1, numel));
+        SPU_ENFORCE(counter0 == counter1);
+        prss_counter_ = counter0;
+        return;
+      }
+    }
+  }
 
   template <typename T>
   void fillPubl(absl::Span<T> r) {
@@ -80,26 +111,6 @@ class PrgState : public State {
   void fillPriv(absl::Span<T> r) {
     priv_counter_ =
         yacl::crypto::FillPRand(kAesType, priv_seed_, 0, priv_counter_, r);
-  }
-
-  template <typename T>
-  void fillPrssPair(absl::Span<T> r0, absl::Span<T> r1,
-                    bool ignore_first = false, bool ignore_second = false) {
-    uint64_t new_counter = prss_counter_;
-    if (!ignore_first) {
-      new_counter =
-          yacl::crypto::FillPRand(kAesType, self_seed_, 0, prss_counter_, r0);
-    }
-    if (!ignore_second) {
-      new_counter =
-          yacl::crypto::FillPRand(kAesType, next_seed_, 0, prss_counter_, r1);
-    }
-
-    if (new_counter == prss_counter_) {
-      // both part ignored, dummy run to update counter...
-      new_counter = yacl::crypto::DummyUpdateRandomCount(prss_counter_, r0);
-    }
-    prss_counter_ = new_counter;
   }
 };
 

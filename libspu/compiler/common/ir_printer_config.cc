@@ -43,7 +43,7 @@ IRPrinterConfig::IRPrinterConfig(std::string_view pp_dir)
   }
 }
 
-void IRPrinterConfig::printBeforeIfEnabled(Pass *pass, Operation *operation,
+void IRPrinterConfig::printBeforeIfEnabled(Pass *pass, Operation *,
                                            PrintCallbackFn print_callback) {
   std::filesystem::path file_name =
       pp_dir_ / genFileName(pass->getName(), "before");
@@ -56,7 +56,7 @@ void IRPrinterConfig::printBeforeIfEnabled(Pass *pass, Operation *operation,
   print_callback(f);
 }
 
-void IRPrinterConfig::printAfterIfEnabled(Pass *pass, Operation *operation,
+void IRPrinterConfig::printAfterIfEnabled(Pass *pass, Operation *,
                                           PrintCallbackFn print_callback) {
   std::filesystem::path file_name =
       pp_dir_ / genFileName(pass->getName(), "after");

@@ -340,9 +340,9 @@ TypedValue<RankedTensorType> AdjustBatchDimsInAccumulator(
   return ExpandFirstDimIntoNDims(accumulator, batch_dim_bounds);
 }
 
-void BuildWhileCondition(Region &cond, Value counter,
-                         Value canonical_start_indices, Value accumulator_init,
-                         Value loop_upper_bound) {
+void BuildWhileCondition(Region &cond, Value /*counter*/,
+                         Value /*canonical_start_indices*/,
+                         Value /*accumulator_init*/, Value loop_upper_bound) {
   OpBuilder builder(cond);
   TypeTools type_tool;
 

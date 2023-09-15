@@ -279,8 +279,8 @@ PirResultReport LabeledPirServer(
     const std::shared_ptr<spu::psi::ISenderDB> &sender_db,
     const std::vector<uint8_t> &oprf_key, const apsi::PSIParams &psi_params,
     const std::vector<std::string> &label_columns, size_t bucket_count,
-    size_t server_data_count, size_t count_per_query, size_t label_byte_count,
-    uint32_t bucket_size) {
+    size_t /*server_data_count*/, size_t count_per_query,
+    size_t /*label_byte_count*/, uint32_t /*bucket_size*/) {
   // send count_per_query
   link_ctx->SendAsync(link_ctx->NextRank(),
                       spu::psi::utils::SerializeSize(count_per_query),

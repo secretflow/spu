@@ -45,26 +45,34 @@ std::pair<NdArrayRef, NdArrayRef> Ot3::genMasks() {
 
   if (comm_->getRank() == roles_.sender) {
     if (inFrontOf(roles_.sender, roles_.helper)) {
-      std::tie(_, w0) = prg_state_->genPrssPair(field_, shape_, true, false);
-      std::tie(_, w1) = prg_state_->genPrssPair(field_, shape_, true, false);
+      std::tie(_, w0) = prg_state_->genPrssPair(field_, shape_,
+                                                PrgState::GenPrssCtrl::Second);
+      std::tie(_, w1) = prg_state_->genPrssPair(field_, shape_,
+                                                PrgState::GenPrssCtrl::Second);
     } else {
       SPU_ENFORCE(inFrontOf(roles_.helper, roles_.sender));
-      std::tie(w0, _) = prg_state_->genPrssPair(field_, shape_, false, true);
-      std::tie(w1, _) = prg_state_->genPrssPair(field_, shape_, false, true);
+      std::tie(w0, _) =
+          prg_state_->genPrssPair(field_, shape_, PrgState::GenPrssCtrl::First);
+      std::tie(w1, _) =
+          prg_state_->genPrssPair(field_, shape_, PrgState::GenPrssCtrl::First);
     }
   } else if (comm_->getRank() == roles_.helper) {
     if (inFrontOf(roles_.sender, roles_.helper)) {
-      std::tie(w0, _) = prg_state_->genPrssPair(field_, shape_, false, true);
-      std::tie(w1, _) = prg_state_->genPrssPair(field_, shape_, false, true);
+      std::tie(w0, _) =
+          prg_state_->genPrssPair(field_, shape_, PrgState::GenPrssCtrl::First);
+      std::tie(w1, _) =
+          prg_state_->genPrssPair(field_, shape_, PrgState::GenPrssCtrl::First);
     } else {
       SPU_ENFORCE(inFrontOf(roles_.helper, roles_.sender));
-      std::tie(_, w0) = prg_state_->genPrssPair(field_, shape_, true, false);
-      std::tie(_, w1) = prg_state_->genPrssPair(field_, shape_, true, false);
+      std::tie(_, w0) = prg_state_->genPrssPair(field_, shape_,
+                                                PrgState::GenPrssCtrl::Second);
+      std::tie(_, w1) = prg_state_->genPrssPair(field_, shape_,
+                                                PrgState::GenPrssCtrl::Second);
     }
   } else {
     SPU_ENFORCE(comm_->getRank() == roles_.receiver);
-    prg_state_->genPrssPair(field_, shape_, true, true);
-    prg_state_->genPrssPair(field_, shape_, true, true);
+    prg_state_->genPrssPair(field_, shape_, PrgState::GenPrssCtrl::None);
+    prg_state_->genPrssPair(field_, shape_, PrgState::GenPrssCtrl::None);
   }
 
   return {w0, w1};

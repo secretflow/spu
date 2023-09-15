@@ -97,8 +97,8 @@ BeaverTfpUnsafe::Pair BeaverTfpUnsafe::AuthCoinTossing(FieldType field,
 }
 
 BeaverTfpUnsafe::Pair BeaverTfpUnsafe::AuthRandBit(FieldType field,
-                                                   const Shape& shape, size_t k,
-                                                   size_t s) {
+                                                   const Shape& shape,
+                                                   size_t /*k*/, size_t s) {
   PrgArrayDesc desc{};
   PrgArrayDesc mac_desc{};
 
@@ -116,7 +116,8 @@ BeaverTfpUnsafe::Pair BeaverTfpUnsafe::AuthRandBit(FieldType field,
 
 BeaverTfpUnsafe::Triple_Pair BeaverTfpUnsafe::AuthMul(FieldType field,
                                                       const Shape& shape,
-                                                      size_t k, size_t s) {
+                                                      size_t /*k*/,
+                                                      size_t /*s*/) {
   std::vector<PrgArrayDesc> descs(3);
   std::vector<PrgArrayDesc> mac_descs(3);
 
@@ -141,8 +142,9 @@ BeaverTfpUnsafe::Triple_Pair BeaverTfpUnsafe::AuthMul(FieldType field,
 
 BeaverTfpUnsafe::Triple_Pair BeaverTfpUnsafe::AuthDot(FieldType field,
                                                       int64_t m, int64_t n,
-                                                      int64_t k, size_t k_bits,
-                                                      size_t s_bits) {
+                                                      int64_t k,
+                                                      size_t /*k_bits*/,
+                                                      size_t /*s_bits*/) {
   std::vector<PrgArrayDesc> descs(3);
   std::vector<PrgArrayDesc> mac_descs(3);
 
@@ -168,7 +170,7 @@ BeaverTfpUnsafe::Triple_Pair BeaverTfpUnsafe::AuthDot(FieldType field,
 
 BeaverTfpUnsafe::Triple_Pair BeaverTfpUnsafe::AuthAnd(FieldType field,
                                                       const Shape& shape,
-                                                      size_t s) {
+                                                      size_t /*s*/) {
   std::vector<PrgArrayDesc> descs(3);
   std::vector<PrgArrayDesc> mac_descs(3);
 

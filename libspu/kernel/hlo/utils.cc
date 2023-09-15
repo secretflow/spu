@@ -19,15 +19,6 @@
 
 namespace spu::kernel {
 
-bool getBooleanValue(SPUContext *ctx, const spu::Value &value) {
-  SPU_ENFORCE(value.numel() == 1, "Condition value must be a scalar tensor.");
-  SPU_ENFORCE(value.dtype() == DT_I1, "Expect bool, got {}", value.dtype());
-  SPU_ENFORCE(value.isPublic(), "Expect public value");
-
-  const auto public_val = kernel::hal::dump_public_as<bool>(ctx, value);
-  return public_val.front();
-}
-
 int32_t getI32Value(SPUContext *ctx, const spu::Value &value) {
   SPU_ENFORCE(value.numel() == 1, "Index value must be a scalar tensor.");
   SPU_ENFORCE(value.dtype() == DT_I32, "Expect bool, got {}", value.dtype());

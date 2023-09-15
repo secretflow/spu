@@ -42,7 +42,8 @@ NdArrayRef A2B::proc(KernelEvalContext* ctx, const NdArrayRef& x) const {
   std::vector<NdArrayRef> bshrs;
   const auto bty = makeType<BShrTy>(field);
   for (size_t idx = 0; idx < comm->getWorldSize(); idx++) {
-    auto [r0, r1] = prg_state->genPrssPair(field, x.shape());
+    auto [r0, r1] =
+        prg_state->genPrssPair(field, x.shape(), PrgState::GenPrssCtrl::Both);
     auto b = ring_xor(r0, r1).as(bty);
 
     if (idx == comm->getRank()) {
@@ -152,7 +153,8 @@ NdArrayRef MsbA2B::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   std::vector<NdArrayRef> bshrs;
   const auto bty = makeType<BShrTy>(field);
   for (size_t idx = 0; idx < comm->getWorldSize(); idx++) {
-    auto [r0, r1] = prg_state->genPrssPair(field, in.shape());
+    auto [r0, r1] =
+        prg_state->genPrssPair(field, in.shape(), PrgState::GenPrssCtrl::Both);
     auto b = ring_xor(r0, r1).as(bty);
     if (idx == comm->getRank()) {
       ring_xor_(b, in);

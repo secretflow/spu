@@ -873,7 +873,7 @@ class HloToPPHloOpConverter<stablehlo::ReturnOp>
     : public OpConversionPattern<stablehlo::ReturnOp> {
 public:
   HloToPPHloOpConverter(TypeConverter &type_converter, MLIRContext *context,
-                        const ValueVisibilityMap &vis)
+                        const ValueVisibilityMap &)
       : OpConversionPattern<stablehlo::ReturnOp>(type_converter, context) {}
 
   LogicalResult

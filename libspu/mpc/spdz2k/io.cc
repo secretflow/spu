@@ -33,7 +33,7 @@ FieldType getRuntimeField(FieldType data_field) {
   return FT_INVALID;
 }
 
-Type Spdz2kIo::getShareType(Visibility vis, int owner_rank) const {
+Type Spdz2kIo::getShareType(Visibility vis, int /*owner_rank*/) const {
   if (vis == VIS_PUBLIC) {
     return makeType<Pub2kTy>(field_);
   } else if (vis == VIS_SECRET) {
@@ -46,7 +46,7 @@ Type Spdz2kIo::getShareType(Visibility vis, int owner_rank) const {
 
 std::vector<NdArrayRef> Spdz2kIo::toShares(const NdArrayRef& raw,
                                            Visibility vis,
-                                           int owner_rank) const {
+                                           int /*owner_rank*/) const {
   SPU_ENFORCE(raw.eltype().isa<RingTy>(), "expected RingTy, got {}",
               raw.eltype());
   const auto field = raw.eltype().as<Ring2k>()->field();

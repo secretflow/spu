@@ -73,7 +73,8 @@ NdArrayRef A2B::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
 
       std::vector<bshr_el_t> r0(in.numel());
       std::vector<bshr_el_t> r1(in.numel());
-      prg_state->fillPrssPair(absl::MakeSpan(r0), absl::MakeSpan(r1));
+      prg_state->fillPrssPair(r0.data(), r1.data(), r0.size(),
+                              PrgState::GenPrssCtrl::Both);
 
       pforeach(0, numel, [&](int64_t idx) {
         r0[idx] ^= r1[idx];
@@ -188,8 +189,10 @@ NdArrayRef B2AByPPA::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
       std::vector<ashr_el_t> rb0(numel);
       std::vector<ashr_el_t> rb1(numel);
 
-      prg_state->fillPrssPair(absl::MakeSpan(ra0), absl::MakeSpan(ra1));
-      prg_state->fillPrssPair(absl::MakeSpan(rb0), absl::MakeSpan(rb1));
+      prg_state->fillPrssPair(ra0.data(), ra1.data(), ra0.size(),
+                              PrgState::GenPrssCtrl::Both);
+      prg_state->fillPrssPair(rb0.data(), rb1.data(), rb0.size(),
+                              PrgState::GenPrssCtrl::Both);
 
       pforeach(0, numel, [&](int64_t idx) {
         const auto zb = rb0[idx] ^ rb1[idx];
@@ -353,7 +356,8 @@ NdArrayRef B2AByOT::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
       const size_t total_nbits = numel * in_nbits;
       std::vector<ashr_el_t> r0(total_nbits);
       std::vector<ashr_el_t> r1(total_nbits);
-      prg_state->fillPrssPair(absl::MakeSpan(r0), absl::MakeSpan(r1));
+      prg_state->fillPrssPair(r0.data(), r1.data(), r0.size(),
+                              PrgState::GenPrssCtrl::Both);
 
       if (comm->getRank() == P0) {
         // the helper
@@ -362,8 +366,10 @@ NdArrayRef B2AByOT::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
         // gen masks with helper.
         std::vector<ashr_el_t> m0(total_nbits);
         std::vector<ashr_el_t> m1(total_nbits);
-        prg_state->fillPrssPair(absl::MakeSpan(m0), {}, false, true);
-        prg_state->fillPrssPair(absl::MakeSpan(m1), {}, false, true);
+        prg_state->fillPrssPair<ashr_el_t>(m0.data(), nullptr, m0.size(),
+                                           PrgState::GenPrssCtrl::First);
+        prg_state->fillPrssPair<ashr_el_t>(m1.data(), nullptr, m1.size(),
+                                           PrgState::GenPrssCtrl::First);
 
         // build selected mask
         SPU_ENFORCE(b2.size() == m0.size() && b2.size() == m1.size());
@@ -382,8 +388,10 @@ NdArrayRef B2AByOT::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
         });
       } else if (comm->getRank() == P1) {
         // the receiver
-        prg_state->fillPrssPair(absl::MakeSpan(r0), {}, false, false);
-        prg_state->fillPrssPair(absl::MakeSpan(r0), {}, false, false);
+        prg_state->fillPrssPair<ashr_el_t>(nullptr, nullptr, r0.size(),
+                                           PrgState::GenPrssCtrl::None);
+        prg_state->fillPrssPair<ashr_el_t>(nullptr, nullptr, r0.size(),
+                                           PrgState::GenPrssCtrl::None);
 
         auto b2 = bitDecompose<bshr_el_t>(getShare(in, 0), in_nbits);
 
@@ -426,8 +434,10 @@ NdArrayRef B2AByOT::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
         // gen masks with helper.
         std::vector<ashr_el_t> m0(total_nbits);
         std::vector<ashr_el_t> m1(total_nbits);
-        prg_state->fillPrssPair({}, absl::MakeSpan(m0), true, false);
-        prg_state->fillPrssPair({}, absl::MakeSpan(m1), true, false);
+        prg_state->fillPrssPair<ashr_el_t>(nullptr, m0.data(), m0.size(),
+                                           PrgState::GenPrssCtrl::Second);
+        prg_state->fillPrssPair<ashr_el_t>(nullptr, m1.data(), m1.size(),
+                                           PrgState::GenPrssCtrl::Second);
         pforeach(0, total_nbits, [&](int64_t idx) {
           m0[idx] ^= r0[idx];
           m1[idx] ^= r1[idx];
@@ -571,7 +581,8 @@ NdArrayRef MsbA2B::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
 
     std::vector<el_t> r0(numel);
     std::vector<el_t> r1(numel);
-    prg_state->fillPrssPair(absl::MakeSpan(r0), absl::MakeSpan(r1));
+    prg_state->fillPrssPair(r0.data(), r1.data(), r0.size(),
+                            PrgState::GenPrssCtrl::Both);
 
     pforeach(0, numel, [&](int64_t idx) {
       r0[idx] = r0[idx] ^ r1[idx];

@@ -204,7 +204,7 @@ std::vector<std::string> GetIntersection(
   return ret;
 }
 
-void PayloadMeanWithDp(const DpPsiOptions& dp_psi_options,
+void PayloadMeanWithDp(const DpPsiOptions& /*dp_psi_options*/,
                        const std::vector<size_t>& intersection_idx,
                        const std::vector<uint32_t>& payloads, double* mean,
                        double* dp_mean, double* sigma, size_t max_value = 100,

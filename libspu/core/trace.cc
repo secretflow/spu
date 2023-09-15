@@ -163,7 +163,7 @@ std::shared_ptr<spdlog::logger> getTraceLogger() {
 
 }  // namespace
 
-void Tracer::logActionBegin(int64_t id, const std::string& mod,
+void Tracer::logActionBegin(int64_t, const std::string& mod,
                             const std::string& name,
                             const std::string& detail) const {
   const auto indent = getIndentString(depth_);
@@ -176,7 +176,7 @@ void Tracer::logActionBegin(int64_t id, const std::string& mod,
   }
 }
 
-void Tracer::logActionEnd(int64_t id, const std::string& mod,
+void Tracer::logActionEnd(int64_t, const std::string& mod,
                           const std::string& name,
                           const std::string& detail) const {
   const auto indent = getIndentString(depth_);

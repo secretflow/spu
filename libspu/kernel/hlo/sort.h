@@ -14,24 +14,14 @@
 
 #pragma once
 
-#include <cstddef>
-#include <cstdint>
-
-#include "absl/types/span.h"
-
-#include "libspu/core/context.h"
-#include "libspu/core/ndarray_ref.h"
-#include "libspu/core/value.h"
-#include "libspu/kernel/hal/shape_ops.h"
+#include "libspu/kernel/hal/sort.h"
 
 namespace spu::kernel::hlo {
-
-using CompFn = std::function<spu::Value(absl::Span<const spu::Value>)>;
 
 std::vector<spu::Value> Sort(SPUContext* ctx,
                              absl::Span<const spu::Value> inputs,
                              int64_t sort_dim, bool is_stable,
-                             const CompFn& comparator_body,
+                             const hal::CompFn& comparator_body,
                              Visibility comparator_ret_vis);
 
 }  // namespace spu::kernel::hlo

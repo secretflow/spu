@@ -32,7 +32,7 @@ class ConstantExpr : public BaseExpr {
  public:
   explicit ConstantExpr(Value val) : val_(val) {}
   std::string expr() const override { return fmt::format("{}", val_); }
-  Value eval(const Params& params) const override { return val_; }
+  Value eval(const Params&) const override { return val_; }
 };
 
 class VariableExpr : public BaseExpr {

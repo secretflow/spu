@@ -37,7 +37,7 @@ class UnitTests(unittest.TestCase):
         def proc(rank):
             data = "hello" if rank == 0 else "world"
 
-            lctx = link.create_brpc(desc, rank)
+            lctx = link.create_brpc(desc, rank, log_details=True)
             res = lctx.all_gather(data)
 
             self.assertEqual(res, ['hello', 'world'])

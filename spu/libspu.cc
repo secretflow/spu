@@ -259,18 +259,22 @@ void BindLink(py::module& m) {
           },
           NO_GIL, "Gets next party rank", py::arg("strides") = 1);
 
-  m.def("create_brpc",
-        [](const ContextDesc& desc,
-           size_t self_rank) -> std::shared_ptr<Context> {
-          py::gil_scoped_release release;
-          brpc::FLAGS_max_body_size = std::numeric_limits<uint64_t>::max();
-          brpc::FLAGS_socket_max_unwritten_bytes =
-              std::numeric_limits<int64_t>::max() / 2;
+  m.def(
+      "create_brpc",
+      [](const ContextDesc& desc, size_t self_rank,
+         bool log_details) -> std::shared_ptr<Context> {
+        py::gil_scoped_release release;
+        brpc::FLAGS_max_body_size = std::numeric_limits<uint64_t>::max();
+        brpc::FLAGS_socket_max_unwritten_bytes =
+            std::numeric_limits<int64_t>::max() / 2;
 
-          auto ctx = yacl::link::FactoryBrpc().CreateContext(desc, self_rank);
-          ctx->ConnectToMesh();
-          return ctx;
-        });
+        auto ctx = yacl::link::FactoryBrpc().CreateContext(desc, self_rank);
+        ctx->ConnectToMesh(log_details ? spdlog::level::info
+                                       : spdlog::level::debug);
+        return ctx;
+      },
+      py::arg("desc"), py::arg("self_rank"), py::kw_only(),
+      py::arg("log_details") = false);
 
   m.def("create_mem",
         [](const ContextDesc& desc,
