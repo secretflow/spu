@@ -24,8 +24,6 @@
 
 namespace spu::kernel {
 
-bool getBooleanValue(SPUContext *ctx, const spu::Value &value);
-
 int32_t getI32Value(SPUContext *ctx, const spu::Value &value);
 
 xt::xarray<int64_t> getIndices(SPUContext *ctx, const spu::Value &value);

@@ -127,7 +127,7 @@ std::vector<NdArrayRef> TrustedParty::adjustAuthCoinTossing(
 
 std::vector<NdArrayRef> TrustedParty::adjustAuthRandBit(
     const PrgArrayDesc& desc, const PrgArrayDesc& mac_desc,
-    uint128_t global_key, size_t s) const {
+    uint128_t global_key, size_t /*s*/) const {
   auto [r0, rs] = reconstruct(RecOp::ADD, getSeeds(), absl::MakeSpan(&desc, 1));
   SPU_ENFORCE(r0.size() == 1 && rs.size() == 1);
 
@@ -236,7 +236,7 @@ std::vector<NdArrayRef> TrustedParty::adjustAuthAnd(
 std::vector<NdArrayRef> TrustedParty::adjustAuthTrunc(
     absl::Span<const PrgArrayDesc> descs,
     absl::Span<const PrgArrayDesc> mac_descs, size_t bits, uint128_t global_key,
-    size_t k, size_t s) const {
+    size_t k, size_t /*s*/) const {
   SPU_ENFORCE_EQ(descs.size(), 2U);
   checkDescs(descs);
   const auto field = descs[0].field;

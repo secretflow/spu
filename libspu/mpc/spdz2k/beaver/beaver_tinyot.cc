@@ -182,7 +182,7 @@ BeaverTinyOt::BeaverTinyOt(std::shared_ptr<yacl::link::Context> lctx)
   }
 }
 
-uint128_t BeaverTinyOt::InitSpdzKey(FieldType field, size_t s) {
+uint128_t BeaverTinyOt::InitSpdzKey(FieldType, size_t s) {
   spdz_key_ = yacl::crypto::SecureRandSeed();
   spdz_key_ &= ((uint128_t)1 << s) - 1;
   return spdz_key_;
@@ -450,7 +450,7 @@ BeaverTinyOt::Triple_Pair BeaverTinyOt::AuthAnd(FieldType field,
 }
 
 BeaverTinyOt::Triple BeaverTinyOt::dot(FieldType field, int64_t M, int64_t N,
-                                       int64_t K, size_t k, size_t s) {
+                                       int64_t K, size_t k, size_t /*s*/) {
   size_t WorldSize = comm_->getWorldSize();
   size_t rank = comm_->getRank();
 

@@ -37,14 +37,14 @@ TEST(PrgStateTest, Fork) {
     auto sub1_sub1 = sub1->fork();
 
     dynamic_cast<PrgState*>(sub1.get())
-        ->fillPrssPair(absl::MakeSpan(data0[rank].data(), 1),
-                       absl::MakeSpan(&data0[rank][1], 1));
+        ->fillPrssPair(data0[rank].data(), &data0[rank][1], 1,
+                       PrgState::GenPrssCtrl::Both);
     dynamic_cast<PrgState*>(sub2.get())
-        ->fillPrssPair(absl::MakeSpan(data1[rank].data(), 1),
-                       absl::MakeSpan(&data1[rank][1], 1));
+        ->fillPrssPair(data1[rank].data(), &data1[rank][1], 1,
+                       PrgState::GenPrssCtrl::Both);
     dynamic_cast<PrgState*>(sub1_sub1.get())
-        ->fillPrssPair(absl::MakeSpan(data2[rank].data(), 1),
-                       absl::MakeSpan(&data2[rank][1], 1));
+        ->fillPrssPair(data2[rank].data(), &data2[rank][1], 1,
+                       PrgState::GenPrssCtrl::Both);
     yacl::link::Barrier(lctx, "_");
 
     for (size_t idx = 0; idx < npc; idx++) {

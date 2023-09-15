@@ -79,7 +79,7 @@ class BenchArgs {
   BenchArgs(const std::string& op_name, benchmark::State& st) : state(st) {
     label_ = "op_name:" + op_name;
   }
-  virtual std::string StateInfo(benchmark::State& st) { return ""; }
+  virtual std::string StateInfo(benchmark::State&) { return ""; }
   std::string Label() { return label_ + StateInfo(state); }
   virtual ~BenchArgs() = default;
 };

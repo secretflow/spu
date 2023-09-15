@@ -187,6 +187,9 @@ def run_model(model_name, run_cpu=True):
         'network_b': models.minionn,
         'network_c': models.lenet,
         'network_d': models.chameleon,
+        'alexnet': models.alexnet,
+        'lenet': models.lenet,
+        'vgg16': models.vgg16,
     }
 
     fn = partial(train_mnist, MODEL_MAPS.get(model_name))

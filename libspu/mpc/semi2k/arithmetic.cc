@@ -48,7 +48,8 @@ NdArrayRef P2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   auto* prg_state = ctx->getState<PrgState>();
   auto* comm = ctx->getState<Communicator>();
 
-  auto [r0, r1] = prg_state->genPrssPair(field, in.shape());
+  auto [r0, r1] =
+      prg_state->genPrssPair(field, in.shape(), PrgState::GenPrssCtrl::Both);
   auto x = ring_sub(r0, r1).as(makeType<AShrTy>(field));
 
   if (comm->getRank() == 0) {
@@ -105,7 +106,8 @@ NdArrayRef V2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   auto* prg_state = ctx->getState<PrgState>();
   auto* comm = ctx->getState<Communicator>();
 
-  auto [r0, r1] = prg_state->genPrssPair(field, in.shape());
+  auto [r0, r1] =
+      prg_state->genPrssPair(field, in.shape(), PrgState::GenPrssCtrl::Both);
   auto x = ring_sub(r0, r1).as(makeType<AShrTy>(field));
 
   if (comm->getRank() == owner_rank) {
@@ -157,7 +159,7 @@ NdArrayRef AddAP::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
   return lhs;
 }
 
-NdArrayRef AddAA::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
+NdArrayRef AddAA::proc(KernelEvalContext*, const NdArrayRef& lhs,
                        const NdArrayRef& rhs) const {
   SPU_ENFORCE(lhs.numel() == rhs.numel());
   SPU_ENFORCE(lhs.eltype() == rhs.eltype());
@@ -168,7 +170,7 @@ NdArrayRef AddAA::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
 ////////////////////////////////////////////////////////////////////
 // multiply family
 ////////////////////////////////////////////////////////////////////
-NdArrayRef MulAP::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
+NdArrayRef MulAP::proc(KernelEvalContext*, const NdArrayRef& lhs,
                        const NdArrayRef& rhs) const {
   return ring_mul(lhs, rhs).as(lhs.eltype());
 }
@@ -233,7 +235,7 @@ NdArrayRef MulAA::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
 ////////////////////////////////////////////////////////////////////
 // matmul family
 ////////////////////////////////////////////////////////////////////
-NdArrayRef MatMulAP::proc(KernelEvalContext* ctx, const NdArrayRef& x,
+NdArrayRef MatMulAP::proc(KernelEvalContext*, const NdArrayRef& x,
                           const NdArrayRef& y) const {
   return ring_mmul(x, y).as(x.eltype());
 }
@@ -271,7 +273,7 @@ NdArrayRef MatMulAA::proc(KernelEvalContext* ctx, const NdArrayRef& x,
   return z.as(x.eltype());
 }
 
-NdArrayRef LShiftA::proc(KernelEvalContext* ctx, const NdArrayRef& in,
+NdArrayRef LShiftA::proc(KernelEvalContext*, const NdArrayRef& in,
                          size_t bits) const {
   const auto field = in.eltype().as<Ring2k>()->field();
   bits %= SizeOf(field) * 8;

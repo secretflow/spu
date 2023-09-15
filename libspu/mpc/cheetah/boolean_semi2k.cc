@@ -50,7 +50,7 @@ void CommonTypeB::evaluate(KernelEvalContext* ctx) const {
   ctx->setOutput(lhs);
 }
 
-NdArrayRef CastTypeB::proc(KernelEvalContext* ctx, const NdArrayRef& in,
+NdArrayRef CastTypeB::proc(KernelEvalContext*, const NdArrayRef& in,
                            const Type& to_type) const {
   SPU_ENFORCE(in.eltype() == to_type,
               "cheetah always use same bshare type, lhs={}, rhs={}",
@@ -71,7 +71,8 @@ NdArrayRef P2B::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
 
   auto* comm = ctx->getState<Communicator>();
 
-  auto [r0, r1] = prg_state->genPrssPair(field, in.shape());
+  auto [r0, r1] =
+      prg_state->genPrssPair(field, in.shape(), PrgState::GenPrssCtrl::Both);
   auto x = ring_xor(r0, r1).as(makeType<BShrTy>(field, 0));
 
   if (comm->getRank() == 0) {
@@ -125,7 +126,7 @@ NdArrayRef XorBB::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
   return makeBShare(ring_xor(lhs, rhs), field, out_nbits);
 }
 
-NdArrayRef LShiftB::proc(KernelEvalContext* ctx, const NdArrayRef& in,
+NdArrayRef LShiftB::proc(KernelEvalContext*, const NdArrayRef& in,
                          size_t shift) const {
   const auto field = in.eltype().as<Ring2k>()->field();
   shift %= SizeOf(field) * 8;
@@ -136,7 +137,7 @@ NdArrayRef LShiftB::proc(KernelEvalContext* ctx, const NdArrayRef& in,
   return makeBShare(ring_lshift(in, shift), field, out_nbits);
 }
 
-NdArrayRef RShiftB::proc(KernelEvalContext* ctx, const NdArrayRef& in,
+NdArrayRef RShiftB::proc(KernelEvalContext*, const NdArrayRef& in,
                          size_t shift) const {
   const auto field = in.eltype().as<Ring2k>()->field();
   shift %= SizeOf(field) * 8;
@@ -148,7 +149,7 @@ NdArrayRef RShiftB::proc(KernelEvalContext* ctx, const NdArrayRef& in,
   return makeBShare(ring_rshift(in, shift), field, out_nbits);
 }
 
-NdArrayRef ARShiftB::proc(KernelEvalContext* ctx, const NdArrayRef& in,
+NdArrayRef ARShiftB::proc(KernelEvalContext*, const NdArrayRef& in,
                           size_t shift) const {
   const auto field = in.eltype().as<Ring2k>()->field();
   shift %= SizeOf(field) * 8;
@@ -158,8 +159,8 @@ NdArrayRef ARShiftB::proc(KernelEvalContext* ctx, const NdArrayRef& in,
   return makeBShare(ring_arshift(in, shift), field, SizeOf(field) * 8);
 }
 
-NdArrayRef BitrevB::proc(KernelEvalContext* ctx, const NdArrayRef& in,
-                         size_t start, size_t end) const {
+NdArrayRef BitrevB::proc(KernelEvalContext*, const NdArrayRef& in, size_t start,
+                         size_t end) const {
   const auto field = in.eltype().as<Ring2k>()->field();
 
   SPU_ENFORCE(start <= end);
@@ -170,7 +171,7 @@ NdArrayRef BitrevB::proc(KernelEvalContext* ctx, const NdArrayRef& in,
   return makeBShare(ring_bitrev(in, start, end), field, out_nbits);
 }
 
-NdArrayRef BitIntlB::proc(KernelEvalContext* ctx, const NdArrayRef& in,
+NdArrayRef BitIntlB::proc(KernelEvalContext*, const NdArrayRef& in,
                           size_t stride) const {
   const auto field = in.eltype().as<Ring2k>()->field();
   const auto nbits = getNumBits(in);
@@ -191,7 +192,7 @@ NdArrayRef BitIntlB::proc(KernelEvalContext* ctx, const NdArrayRef& in,
   return out;
 }
 
-NdArrayRef BitDeintlB::proc(KernelEvalContext* ctx, const NdArrayRef& in,
+NdArrayRef BitDeintlB::proc(KernelEvalContext*, const NdArrayRef& in,
                             size_t stride) const {
   const auto field = in.eltype().as<Ring2k>()->field();
   const auto nbits = getNumBits(in);

@@ -51,8 +51,6 @@ build:linux-release --action_env=BAZEL_LINKLIBS=-l%:libstdc++.a:-l%:libgcc.a
 build:macos --copt="-Xpreprocessor -fopenmp"
 build:macos --copt=-Wno-unused-command-line-argument
 build:macos --features=-supports_dynamic_linker
-build:macos --cxxopt -Wno-deprecated-enum-enum-conversion
-build:macos --cxxopt -Wno-deprecated-anon-enum-enum-conversion
 build:macos --macos_minimum_os=11.0
 build:macos --host_macos_minimum_os=11.0
 

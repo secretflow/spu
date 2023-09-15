@@ -52,13 +52,12 @@ bool hasDuplicates(const ArrayRef<int64_t> nums) {
 }  // namespace
 
 template <typename T>
-static LogicalResult Verify(T op) {
+static LogicalResult Verify(T /*op*/) {
   return success();
 }
 
 // Builds a constant op with the specified attribute `value`.
-void ConstantOp::build(OpBuilder& builder, OperationState& result,
-                       Attribute value) {
+void ConstantOp::build(OpBuilder&, OperationState& result, Attribute value) {
   Type type;
   if (auto elemAttr = value.dyn_cast<DenseElementsAttr>()) {
     auto valueType = elemAttr.getType().dyn_cast<RankedTensorType>();
@@ -72,7 +71,7 @@ void ConstantOp::build(OpBuilder& builder, OperationState& result,
   result.addAttribute("value", value);
 }
 
-OpFoldResult ConstantOp::fold(FoldAdaptor adaptor) {
+OpFoldResult ConstantOp::fold([[maybe_unused]] FoldAdaptor adaptor) {
   assert(adaptor.getOperands().empty() && "constant has no operands");
 
   // Return the held attribute value.
@@ -551,8 +550,8 @@ OpFoldResult ReciprocalOp::fold(FoldAdaptor operands) {
 
 LogicalResult verifyReduceOpInputsAndInferShape(
     std::optional<Location> location, SmallVector<TensorType> inputArgTypes,
-    SmallVector<TensorType> initValueTypes, DenseIntElementsAttr dimensions,
-    SmallVector<int64_t>& newDimensions, Attribute& encoding) {
+    SmallVector<TensorType> /*initValueTypes*/, DenseIntElementsAttr dimensions,
+    SmallVector<int64_t>& /*newDimensions*/, Attribute& /*encoding*/) {
   uint64_t numInputs = inputArgTypes.size();
 
   for (uint64_t inputIdx = 0; inputIdx < numInputs; ++inputIdx) {
@@ -583,7 +582,7 @@ LogicalResult verifyReduceOpInputsAndInferShape(
 }
 
 LogicalResult verifyReducerShape(std::optional<Location> loc, Block& block,
-                                 ArrayRef<TensorType> inputArgTypes,
+                                 ArrayRef<TensorType> /*inputArgTypes*/,
                                  ArrayRef<TensorType> initValueTypes,
                                  int64_t numInputs,
                                  ArrayRef<int64_t> allowedDimensions) {
@@ -813,9 +812,8 @@ LogicalResult TransposeOp::verify() {
 }
 
 LogicalResult PadOp::inferReturnTypeComponents(
-    MLIRContext* context, std::optional<Location> location,
-    ValueShapeRange operands, DictionaryAttr attributes,
-    OpaqueProperties properties, RegionRange regions,
+    MLIRContext*, std::optional<Location> location, ValueShapeRange operands,
+    DictionaryAttr attributes, OpaqueProperties, RegionRange regions,
     SmallVectorImpl<ShapedTypeComponents>& inferredReturnShapes) {
   PadOp::Adaptor adaptor(operands, attributes, {}, regions);
   SmallVector<Type> types;
@@ -908,7 +906,7 @@ LogicalResult ConcatenateOp::verify() {
 
 LogicalResult ConcatenateOp::inferReturnTypes(
     MLIRContext*, std::optional<Location> location, ValueRange operands,
-    DictionaryAttr attributes, OpaqueProperties properties, RegionRange regions,
+    DictionaryAttr attributes, OpaqueProperties, RegionRange regions,
     SmallVectorImpl<Type>& inferredReturnTypes) {
   ConcatenateOp::Adaptor adaptor(operands, attributes, {}, regions);
   return hlo::inferConcatenateOp(location, adaptor.getVal().getTypes(),
@@ -1103,8 +1101,8 @@ LogicalResult inferDynamicSliceOp(std::optional<Location> location,
 }
 
 LogicalResult DynamicSliceOp::inferReturnTypes(
-    MLIRContext* context, std::optional<Location> location, ValueRange operands,
-    DictionaryAttr attributes, OpaqueProperties properties, RegionRange regions,
+    MLIRContext*, std::optional<Location> location, ValueRange operands,
+    DictionaryAttr attributes, OpaqueProperties, RegionRange regions,
     SmallVectorImpl<Type>& inferredReturnTypes) {
   DynamicSliceOp::Adaptor adaptor(operands, attributes, {}, regions);
   return inferDynamicSliceOp(location, adaptor.getOperand().getType(),
@@ -1155,8 +1153,8 @@ LogicalResult inferDynamicUpdateSliceOp(
 }
 
 LogicalResult DynamicUpdateSliceOp::inferReturnTypes(
-    MLIRContext* context, std::optional<Location> location, ValueRange operands,
-    DictionaryAttr attributes, OpaqueProperties properties, RegionRange regions,
+    MLIRContext*, std::optional<Location> location, ValueRange operands,
+    DictionaryAttr attributes, OpaqueProperties, RegionRange regions,
     SmallVectorImpl<Type>& inferredReturnTypes) {
   DynamicUpdateSliceOp::Adaptor adaptor(operands, attributes, {}, regions);
 
@@ -1185,8 +1183,7 @@ static void printField(AsmPrinter& printer, StringRef name, ArrayRef<T> field,
 }
 
 template <typename... Ts>
-static void printStruct(AsmPrinter& printer, StringRef name,
-                        Ts... print_fields) {
+static void printStruct(AsmPrinter& printer, StringRef, Ts... print_fields) {
   printer << "<";
   StringRef separator = "";
   // Fold expression to print each entry in the parameter pack.
@@ -1273,7 +1270,7 @@ void GatherDimensionNumbersAttr::print(AsmPrinter& printer) const {
               std::make_pair("index_vector_dim", getIndexVectorDim()));
 }
 
-Attribute GatherDimensionNumbersAttr::parse(AsmParser& parser, Type type) {
+Attribute GatherDimensionNumbersAttr::parse(AsmParser& parser, Type) {
   if (failed(parser.parseLess())) {
     return {};
   }
@@ -1313,7 +1310,7 @@ void DotDimensionNumbersAttr::print(AsmPrinter& printer) const {
                      getRhsContractingDimensions()));
 }
 
-Attribute DotDimensionNumbersAttr::parse(AsmParser& parser, Type type) {
+Attribute DotDimensionNumbersAttr::parse(AsmParser& parser, Type) {
   if (failed(parser.parseLess())) {
     return {};
   }
@@ -1635,7 +1632,7 @@ ParseResult parseConvolutionDimensions(AsmParser& parser,
   return success();
 }
 
-Attribute ConvDimensionNumbersAttr::parse(AsmParser& parser, Type type) {
+Attribute ConvDimensionNumbersAttr::parse(AsmParser& parser, Type) {
   if (failed(parser.parseLess())) {
     return {};
   }
@@ -1683,7 +1680,7 @@ void printWindowAttribute(OpAsmPrinter& p, DenseElementsAttr attribute) {
 
 }  // namespace
 
-void printWindowAttributes(OpAsmPrinter& p, Operation* op,
+void printWindowAttributes(OpAsmPrinter& p, Operation*,
                            std::optional<DenseIntElementsAttr> window_strides) {
   using PairT = std::pair<DenseElementsAttr, StringRef>;
   std::array<PairT, 1> printed_attributes = {{

@@ -40,6 +40,7 @@ def PPHlo_Dialect : Dialect {
   let cppNamespace = "::mlir::pphlo";
   let useDefaultAttributePrinterParser = 0;
   let useDefaultTypePrinterParser = 0;
+  let usePropertiesForAttributes = 0;
   let extraClassDeclaration = [{
     Attribute parseAttribute(DialectAsmParser & parser, Type type)
         const override;

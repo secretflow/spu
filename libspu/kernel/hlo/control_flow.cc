@@ -17,10 +17,10 @@
 #include "libspu/kernel/hal/constants.h"
 #include "libspu/kernel/hal/debug.h"
 #include "libspu/kernel/hal/polymorphic.h"
+#include "libspu/kernel/hal/public_helper.h"
 #include "libspu/kernel/hal/shape_ops.h"
 #include "libspu/kernel/hal/type_cast.h"
 #include "libspu/kernel/hlo/const.h"
-#include "libspu/kernel/hlo/utils.h"
 
 // Allow runtime to reveal `secret variable` use as while
 // condition result, debug purpose only.
@@ -45,7 +45,7 @@ std::vector<spu::Value> IfElse(SPUContext *ctx, const spu::Value &condition,
 
     return selected;
   } else {
-    bool v = getBooleanValue(ctx, condition);
+    bool v = hal::getBooleanValue(ctx, condition);
 
     return (v ? on_true() : on_false());
   }
@@ -134,7 +134,7 @@ std::vector<spu::Value> While(SPUContext *ctx,
       }
     }
 
-    return getBooleanValue(ctx, c);
+    return hal::getBooleanValue(ctx, c);
   };
 
   while (eval_cond(ret)) {

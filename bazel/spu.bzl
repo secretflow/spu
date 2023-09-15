@@ -24,11 +24,8 @@ WARNING_FLAGS = [
     "-Wextra",
     "-Werror",
     "-Wno-unused-parameter",
-    "-Wnon-virtual-dtor",
-] + select({
-    "@bazel_tools//src/conditions:darwin": ["-Wunused-const-variable"],
-    "//conditions:default": ["-Wunused-const-variable=1"],
-})
+]
+
 DEBUG_FLAGS = ["-O0", "-g"]
 RELEASE_FLAGS = ["-O2"]
 FAST_FLAGS = ["-O1"]

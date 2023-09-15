@@ -64,8 +64,10 @@ NdArrayRef zero_a_impl(KernelEvalContext* ctx, const Shape& shape) {
   auto* prg_state = ctx->getState<PrgState>();
   const auto field = ctx->getState<Spdz2kState>()->getDefaultField();
 
-  auto [r0, r1] = prg_state->genPrssPair(field, shape);
-  auto [r2, r3] = prg_state->genPrssPair(field, shape);
+  auto [r0, r1] =
+      prg_state->genPrssPair(field, shape, PrgState::GenPrssCtrl::Both);
+  auto [r2, r3] =
+      prg_state->genPrssPair(field, shape, PrgState::GenPrssCtrl::Both);
 
   auto x = ring_sub(r0, r1);
   auto x_mac = ring_sub(r2, r3);

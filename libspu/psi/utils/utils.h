@@ -62,12 +62,13 @@ std::vector<size_t> AllGatherItemsSize(
 template <typename T>
 T SyncWait(const std::shared_ptr<yacl::link::Context>& lctx,
            std::future<T>* f) {
+  std::shared_ptr<yacl::link::Context> sync_lctx = lctx->Spawn();
   std::vector<yacl::Buffer> flag_list;
   std::chrono::seconds span(5);
   while (true) {
     bool done = f->wait_for(span) == std::future_status::ready;
     auto flag = done ? kFinishedFlag : kUnFinishedFlag;
-    flag_list = yacl::link::AllGather(lctx, flag, "sync wait");
+    flag_list = yacl::link::AllGather(sync_lctx, flag, "sync wait");
     if (std::find_if(flag_list.begin(), flag_list.end(),
                      [](const yacl::Buffer& b) {
                        return std::string_view(b.data<char>(), b.size()) ==

@@ -31,7 +31,7 @@ CircuitBasicBlock<T> makeScalarCBB() {
   cbb.init_like = [](T const&, uint128_t init) -> T {
     return static_cast<T>(init);
   };
-  cbb.set_nbits = [](T& x, size_t nbits) {};
+  cbb.set_nbits = [](T&, size_t) {};
   return cbb;
 }
 
@@ -65,7 +65,7 @@ CircuitBasicBlock<C> makeVectorCBB() {
                    [&](const auto& e) { return e >> bits; });
     return res;
   };
-  cbb.set_nbits = [](C& x, size_t nbits) -> void {};
+  cbb.set_nbits = [](C&, size_t) -> void {};
   return cbb;
 }
 

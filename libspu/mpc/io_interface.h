@@ -73,11 +73,11 @@ class BaseIo : public IoInterface {
   explicit BaseIo(FieldType field, size_t world_size)
       : field_(field), world_size_(world_size) {}
 
-  std::vector<NdArrayRef> makeBitSecret(const NdArrayRef& raw) const override {
+  std::vector<NdArrayRef> makeBitSecret(const NdArrayRef&) const override {
     SPU_THROW("should not be here");
   }
 
-  size_t getBitSecretShareSize(size_t numel) const override {
+  size_t getBitSecretShareSize(size_t) const override {
     SPU_THROW("should not be here");
   }
   bool hasBitSecretSupport() const override { return false; }

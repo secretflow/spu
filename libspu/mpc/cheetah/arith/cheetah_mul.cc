@@ -542,7 +542,7 @@ void CheetahMul::Impl::EncodeArray(const NdArrayRef &array, bool need_encrypt,
       });
 }
 
-void CheetahMul::Impl::MulThenResponse(FieldType field, int64_t num_elts,
+void CheetahMul::Impl::MulThenResponse(FieldType, int64_t num_elts,
                                        const Options &options,
                                        absl::Span<const yacl::Buffer> ciphers,
                                        absl::Span<const RLWEPt> plains,

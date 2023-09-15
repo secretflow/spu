@@ -256,7 +256,7 @@ void CommonTypeB::evaluate(KernelEvalContext* ctx) const {
   ctx->setOutput(lhs);
 }
 
-NdArrayRef CastTypeB::proc(KernelEvalContext* ctx, const NdArrayRef& in,
+NdArrayRef CastTypeB::proc(KernelEvalContext*, const NdArrayRef& in,
                            const Type& to_type) const {
   SPU_ENFORCE(in.eltype() == to_type,
               "spdz2k always use same bshare type, lhs={}, rhs={}", in.eltype(),
@@ -325,8 +325,10 @@ NdArrayRef P2B::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   // 3. out_mac = p * key
   ring_mul_(p, key);
   // 4. add some random mask
-  auto [r0, r1] = prg_state->genPrssPair(out_field, out.shape());
-  auto [r2, r3] = prg_state->genPrssPair(out_field, out.shape());
+  auto [r0, r1] = prg_state->genPrssPair(out_field, out.shape(),
+                                         PrgState::GenPrssCtrl::Both);
+  auto [r2, r3] = prg_state->genPrssPair(out_field, out.shape(),
+                                         PrgState::GenPrssCtrl::Both);
   ring_add_(out, ring_sub(r0, r1));
   ring_add_(out_mac, ring_sub(r2, r3));
   // 5. makeBShare

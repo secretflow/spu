@@ -274,7 +274,7 @@ class VoidTy : public TypeImpl<VoidTy, TypeObject> {
 
   std::string toString() const override { return ""; }
 
-  bool equals(TypeObject const* other) const override { return true; }
+  bool equals(TypeObject const*) const override { return true; }
 };
 
 // Builtin type, plaintext types.

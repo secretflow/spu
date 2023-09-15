@@ -296,7 +296,7 @@ void CachedCsvBatchProvider::ReadAndShuffle(size_t read_index,
 
   std::unique_lock<std::mutex> lk(bucket_mutex_[read_index]);
 
-  auto read_proc = [&](int idx, std::unique_lock<std::mutex> lk) -> void {
+  auto read_proc = [&](int idx, std::unique_lock<std::mutex>) -> void {
     SPDLOG_INFO(
         "Begin thread ReadAndShuffle next bucket, read_index:{} "
         "bucket_size_:{}",
