@@ -9,7 +9,7 @@ This example demonstrates how to use SPU to run secure inference on a pre-traine
 Using the full Llama model for inference on SPU can take a significant amount of time. If only a portion of the model is passed through SPU to ensure privacy, it can greatly improve inference efficiency.
 
 - RAM Usage:
-Using the full Llama model for inference on SPU requires a large amount of memory. Splitting the model can significantly reduce memory usage, making it available for use in hardware-constrained environments.
+Using the full Llama model for inference on SPU requires a large amount of memory(more than 256 GB). Splitting the model can significantly reduce memory usage, making it available for use in hardware-constrained environments.
 
 2. Download EasyML library to support Flax-LLaMA-7B
 
@@ -91,11 +91,30 @@ Using the full Llama model for inference on SPU requires a large amount of memor
 
     ------
     Run on SPU
-    [2023-09-14 20:34:47.264] [info] [thread_pool.cc:30] Create a fixed thread pool with size 127
+    [0000-00-00 00:00:00.000] [info] [thread_pool.cc:30] Create a fixed thread pool with size 127
     Q: What is the largest animal?
     A: The largest animal is the blue whale.
     generate  on SPU: 812.9427680969238 seconds
     ```
     RAM peak: 64.5888GB
 
+    And If you set token_num to 29, you can get the following results:
+    ```sh
+    ------
+    Run on CPU
+    Q: What is the largest animal?
+    A: The largest animal is the blue whale.
+    Q: What is the smallest animal?
+    A: The smallest animal is the bacter
+    generate on CPU: 780.697101354599 seconds
 
+    ------
+    Run on SPU
+    [0000-00-00 00:00:00.000] [info] [thread_pool.cc:30] Create a fixed thread pool with size 127
+    Q: What is the largest animal?
+    A: The largest animal is the blue whale.
+    Q: What is the smallest animal?
+    A: The smallest animal is the bacter
+    generate  on SPU: 2556.2608857154846 seconds
+
+    ```
