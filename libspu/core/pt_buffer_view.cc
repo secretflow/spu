@@ -35,10 +35,14 @@ NdArrayRef convertToNdArray(PtBufferView bv) {
     size_t elsize = SizeOf(bv.pt_type);
 
     Index indices(bv.shape.size(), 0);
-    do {
-      std::memcpy(out_ptr, bv.get(indices), elsize);
-      out_ptr += elsize;
-    } while (bumpIndices(bv.shape, absl::MakeSpan(indices)));
+    if (bv.isCompact()) {
+      std::memcpy(out_ptr, bv.get(indices), elsize * bv.shape.numel());
+    } else {
+      do {
+        std::memcpy(out_ptr, bv.get(indices), elsize);
+        out_ptr += elsize;
+      } while (bumpIndices(bv.shape, absl::MakeSpan(indices)));
+    }
   }
 
   return out;
