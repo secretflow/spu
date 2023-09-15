@@ -52,4 +52,6 @@ T getScalarValue(SPUContext* ctx, const spu::Value& value) {
   return pvar.front();
 }
 
+bool getBooleanValue(SPUContext* ctx, const spu::Value& value);
+
 }  // namespace spu::kernel::hal

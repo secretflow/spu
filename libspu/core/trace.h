@@ -47,7 +47,7 @@ inline std::ostream& operator<<(std::ostream& os,
 namespace spu {
 namespace internal {
 
-inline void variadicToStringImpl(std::stringstream& ss) {}
+inline void variadicToStringImpl(std::stringstream&) {}
 
 template <typename T>
 void variadicToStringImpl(std::stringstream& ss, const T& t) {

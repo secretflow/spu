@@ -29,6 +29,7 @@ spu_cc_library(
         ":public_helper",
         ":random",
         ":shape_ops",
+        ":sort",
         ":type_cast",
         "//libspu/core:value",
     ],
@@ -280,6 +281,19 @@ spu_cc_library(
     deps = [
         # Please DONT add extra dependency here.
         ":prot_wrapper",
+        "//libspu/core:context",
+    ],
+)
+
+spu_cc_library(
+    name = "sort",
+    srcs = ["sort.cc"],
+    hdrs = ["sort.h"],
+    deps = [
+        ":polymorphic",
+        ":public_helper",
+        ":ring",
+        ":shape_ops",
         "//libspu/core:context",
     ],
 )

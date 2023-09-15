@@ -140,7 +140,7 @@ class NotP : public UnaryKernel {
 
   ce::CExpr comm() const override { return ce::Const(0); }
 
-  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in) const override {
+  NdArrayRef proc(KernelEvalContext*, const NdArrayRef& in) const override {
     const auto field = in.eltype().as<Ring2k>()->field();
     return ring_not(in).as(makeType<Pub2kTy>(field));
   }
@@ -171,7 +171,7 @@ class MsbP : public UnaryKernel {
 
   ce::CExpr comm() const override { return ce::Const(0); }
 
-  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in) const override {
+  NdArrayRef proc(KernelEvalContext*, const NdArrayRef& in) const override {
     return ring_rshift(in, in.elsize() * 8 - 1).as(in.eltype());
   }
 };
@@ -200,7 +200,7 @@ class EqualPP : public BinaryKernel {
   ce::CExpr latency() const override { return ce::Const(0); }
   ce::CExpr comm() const override { return ce::Const(0); }
 
-  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& x,
+  NdArrayRef proc(KernelEvalContext*, const NdArrayRef& x,
                   const NdArrayRef& y) const override {
     SPU_ENFORCE_EQ(x.eltype(), y.eltype());
     SPU_ENFORCE(x.eltype().isa<Pub2kTy>());
@@ -254,7 +254,7 @@ class AddPP : public BinaryKernel {
   ce::CExpr latency() const override { return ce::Const(0); }
   ce::CExpr comm() const override { return ce::Const(0); }
 
-  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
+  NdArrayRef proc(KernelEvalContext*, const NdArrayRef& lhs,
                   const NdArrayRef& rhs) const override {
     SPU_ENFORCE(lhs.eltype() == rhs.eltype());
     return ring_add(lhs, rhs).as(lhs.eltype());
@@ -305,7 +305,7 @@ class MulPP : public BinaryKernel {
 
   ce::CExpr comm() const override { return ce::Const(0); }
 
-  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
+  NdArrayRef proc(KernelEvalContext*, const NdArrayRef& lhs,
                   const NdArrayRef& rhs) const override {
     SPU_ENFORCE(lhs.eltype() == rhs.eltype());
     return ring_mul(lhs, rhs).as(lhs.eltype());
@@ -356,7 +356,7 @@ class MatMulPP : public MatmulKernel {
 
   ce::CExpr comm() const override { return ce::Const(0); }
 
-  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
+  NdArrayRef proc(KernelEvalContext*, const NdArrayRef& lhs,
                   const NdArrayRef& rhs) const override {
     SPU_ENFORCE(lhs.eltype() == rhs.eltype());
     return ring_mmul(lhs, rhs).as(lhs.eltype());
@@ -409,7 +409,7 @@ class AndPP : public BinaryKernel {
 
   ce::CExpr comm() const override { return ce::Const(0); }
 
-  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
+  NdArrayRef proc(KernelEvalContext*, const NdArrayRef& lhs,
                   const NdArrayRef& rhs) const override {
     SPU_ENFORCE(lhs.eltype() == rhs.eltype());
     return ring_and(lhs, rhs).as(lhs.eltype());
@@ -461,7 +461,7 @@ class XorPP : public BinaryKernel {
 
   ce::CExpr comm() const override { return ce::Const(0); }
 
-  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
+  NdArrayRef proc(KernelEvalContext*, const NdArrayRef& lhs,
                   const NdArrayRef& rhs) const override {
     SPU_ENFORCE(lhs.eltype() == rhs.eltype());
     return ring_xor(lhs, rhs).as(lhs.eltype());
@@ -512,7 +512,7 @@ class LShiftP : public ShiftKernel {
 
   ce::CExpr comm() const override { return ce::Const(0); }
 
-  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in,
+  NdArrayRef proc(KernelEvalContext*, const NdArrayRef& in,
                   size_t bits) const override {
     return ring_lshift(in, bits).as(in.eltype());
   }
@@ -544,7 +544,7 @@ class RShiftP : public ShiftKernel {
 
   ce::CExpr comm() const override { return ce::Const(0); }
 
-  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in,
+  NdArrayRef proc(KernelEvalContext*, const NdArrayRef& in,
                   size_t bits) const override {
     return ring_rshift(in, bits).as(in.eltype());
   }
@@ -576,7 +576,7 @@ class ARShiftP : public ShiftKernel {
 
   ce::CExpr comm() const override { return ce::Const(0); }
 
-  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in,
+  NdArrayRef proc(KernelEvalContext*, const NdArrayRef& in,
                   size_t bits) const override {
     return ring_arshift(in, bits).as(in.eltype());
   }
@@ -623,7 +623,7 @@ class TruncP : public ShiftKernel {
 
   ce::CExpr comm() const override { return ce::Const(0); }
 
-  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in,
+  NdArrayRef proc(KernelEvalContext*, const NdArrayRef& in,
                   size_t bits) const override {
     return rounded_arshift(in, bits).as(in.eltype());
   }
@@ -655,7 +655,7 @@ class BitrevP : public BitrevKernel {
 
   ce::CExpr comm() const override { return ce::Const(0); }
 
-  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in, size_t start,
+  NdArrayRef proc(KernelEvalContext*, const NdArrayRef& in, size_t start,
                   size_t end) const override {
     const auto field = in.eltype().as<Ring2k>()->field();
     SPU_ENFORCE(start <= end);

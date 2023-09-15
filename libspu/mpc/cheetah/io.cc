@@ -96,11 +96,6 @@ NdArrayRef CheetahIo::fromShares(const std::vector<NdArrayRef>& shares) const {
     auto res = ring_zeros(field, shares[0].shape());
 
     for (const auto& share : shares) {
-      // Currently, only packed zeros are not compact, this is for colocation
-      // optimization
-      if (!share.isCompact()) {
-        continue;
-      }
       if (eltype.isa<AShare>()) {
         ring_add_(res, share);
       } else if (eltype.isa<BShare>()) {

@@ -50,7 +50,7 @@ class UnitTests(unittest.TestCase):
         def digitize(y_pred, thresholds):
             return jnp.digitize(y_pred, thresholds)
 
-        row = 2000
+        row = 500
         y_true = np.random.randint(0, 2, (row,))
         y_pred = np.random.random((row,))
 

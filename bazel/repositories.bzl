@@ -18,7 +18,7 @@ load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
 
 SECRETFLOW_GIT = "https://github.com/secretflow"
 
-YACL_COMMIT_ID = "aa107d380e9287a8a5d874feb19dd03be34e4241"
+YACL_COMMIT_ID = "5418371c4335f4a64fbd0bdabb0efd94da2af808"
 
 def spu_deps():
     _rules_cuda()
@@ -158,8 +158,8 @@ def _com_github_xtensor_xtl():
     )
 
 def _com_github_openxla_xla():
-    OPENXLA_COMMIT = "0c99beffabc5d43fa29f121674eb59e14a22c779"
-    OPENXLA_SHA256 = "d4c7511a496aeb917976c0d8a65de374c395546f0c3d4077d9dfd4df780d7ea8"
+    OPENXLA_COMMIT = "75a7973c2850fcc33278c84e1b62eff8f0ad35f8"
+    OPENXLA_SHA256 = "4534c3230853e990ac613898c2ff39626d1beacb0c3675fbea502dce3e32f620"
 
     SKYLIB_VERSION = "1.3.0"
 

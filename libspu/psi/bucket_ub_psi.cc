@@ -157,7 +157,7 @@ std::pair<std::vector<uint64_t>, size_t> UbPsi(
 
 // generate cache
 std::pair<std::vector<uint64_t>, size_t> UbPsiServerGenCache(
-    BucketPsiConfig config, std::shared_ptr<yacl::link::Context> lctx,
+    BucketPsiConfig config, std::shared_ptr<yacl::link::Context>,
     const spu::psi::EcdhOprfPsiOptions& psi_options) {
   std::vector<uint8_t> server_private_key =
       ReadEcSecretKeyFile(config.ecdh_secret_key_path());
@@ -218,7 +218,7 @@ std::pair<std::vector<uint64_t>, size_t> UbPsiClientTransferCache(
 std::pair<std::vector<uint64_t>, size_t> UbPsiServerTransferCache(
     BucketPsiConfig config, std::shared_ptr<yacl::link::Context> lctx,
     const spu::psi::EcdhOprfPsiOptions& psi_options,
-    const std::string& tmp_dir) {
+    const std::string& /*tmp_dir*/) {
   std::array<uint8_t, spu::psi::kEccKeySize> server_private_key;
 
   std::shared_ptr<EcdhOprfPsiServer> ub_psi_server_transfer_cache =
@@ -292,9 +292,9 @@ std::pair<std::vector<uint64_t>, size_t> UbPsiClientShuffleOnline(
 }
 
 std::pair<std::vector<uint64_t>, size_t> UbPsiServerShuffleOnline(
-    BucketPsiConfig config, std::shared_ptr<yacl::link::Context> lctx,
+    BucketPsiConfig config, std::shared_ptr<yacl::link::Context>,
     const spu::psi::EcdhOprfPsiOptions& psi_options,
-    const std::string& tmp_dir) {
+    const std::string& /*tmp_dir*/) {
   std::vector<uint8_t> server_private_key =
       ReadEcSecretKeyFile(config.ecdh_secret_key_path());
 
@@ -348,7 +348,7 @@ std::pair<std::vector<uint64_t>, size_t> UbPsiClientOffline(
 std::pair<std::vector<uint64_t>, size_t> UbPsiServerOffline(
     BucketPsiConfig config, std::shared_ptr<yacl::link::Context> lctx,
     const spu::psi::EcdhOprfPsiOptions& psi_options,
-    const std::string& tmp_dir) {
+    const std::string& /*tmp_dir*/) {
   std::vector<uint8_t> server_private_key =
       ReadEcSecretKeyFile(config.ecdh_secret_key_path());
 
@@ -449,7 +449,7 @@ std::pair<std::vector<uint64_t>, size_t> UbPsiClientOnline(
 std::pair<std::vector<uint64_t>, size_t> UbPsiServerOnline(
     BucketPsiConfig config, std::shared_ptr<yacl::link::Context> lctx,
     const spu::psi::EcdhOprfPsiOptions& psi_options,
-    const std::string& tmp_dir) {
+    const std::string& /*tmp_dir*/) {
   std::vector<uint8_t> server_private_key =
       ReadEcSecretKeyFile(config.ecdh_secret_key_path());
 

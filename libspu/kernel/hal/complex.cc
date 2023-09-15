@@ -19,9 +19,7 @@
 
 namespace spu::kernel::hal {
 
-Value real(SPUContext* ctx, const Value& v) {
-  return Value(v.data(), v.dtype());
-}
+Value real(SPUContext*, const Value& v) { return Value(v.data(), v.dtype()); }
 
 Value imag(SPUContext* ctx, const Value& v) {
   if (v.isComplex()) {
@@ -35,7 +33,7 @@ Value imag(SPUContext* ctx, const Value& v) {
   }
 }
 
-Value complex(SPUContext* ctx, const Value& r, const Value& i) {
+Value complex(SPUContext*, const Value& r, const Value& i) {
   SPU_ENFORCE(r.dtype() == r.dtype());
   SPU_ENFORCE(r.vtype() == r.vtype());
   SPU_ENFORCE(r.shape() == r.shape());

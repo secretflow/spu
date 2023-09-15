@@ -327,6 +327,46 @@ Value tanh_chebyshev(SPUContext* ctx, const Value& x) {
   return reshape(ctx, ret, x.shape());
 }
 
+Value sin_chebyshev(SPUContext* ctx, const Value& x) {
+  // Cheb coeff, deg = 9, domain = [-1.25*pi, 1.25*pi]
+  // use larger domain for accurate output on boundary
+  static const std::array<float, 5> kCoeffs = {
+      -0.07570787578233389, -0.8532364056408055, 0.2474789050491474,
+      -0.02719844932262742, 0.0016750058127101841};
+
+  auto coeff_value = constant(ctx, kCoeffs, x.dtype(),
+                              {1, static_cast<int64_t>(kCoeffs.size())});
+
+  // Normalize input to[-pi, pi]
+  // theta - TWO_PI * Math.floor((theta + Math.PI) / TWO_PI)
+  auto pi = constant(ctx, M_PI, x.dtype(), x.shape());
+  auto two_pi = constant(ctx, 2 * M_PI, x.dtype(), x.shape());
+  auto two_pi_inv = constant(ctx, 1 / (2 * M_PI), x.dtype(), x.shape());
+  auto normalized = f_mul(ctx, f_add(ctx, x, pi), two_pi_inv);
+  normalized = f_mul(ctx, f_floor(ctx, normalized), two_pi);
+  normalized = f_sub(ctx, x, normalized);
+
+  normalized = reshape(ctx, normalized, {1, normalized.numel()});
+
+  // rescale the original x
+  normalized = f_mul(ctx,
+                     constant(ctx, 0.25464790894703254F, normalized.dtype(),
+                              normalized.shape()),
+                     normalized);
+
+  auto poly = compute_chebyshev_polynomials(ctx, normalized, kCoeffs.size());
+
+  auto ret = f_mmul(ctx, coeff_value, poly);
+
+  return reshape(ctx, ret, x.shape());
+}
+
+Value cos_chebyshev(SPUContext* ctx, const Value& x) {
+  auto half_pi = constant(ctx, M_PI / 2, x.dtype(), x.shape());
+  // cos(x) = sin(pi/2 - x)
+  return sin_chebyshev(ctx, f_sub(ctx, half_pi, x));
+}
+
 }  // namespace detail
 
 Value f_exp(SPUContext* ctx, const Value& x) {
@@ -615,34 +655,6 @@ Value f_sigmoid(SPUContext* ctx, const Value& x) {
   }
 }
 
-// Ref:
-// https://github.com/facebookresearch/CrypTen/blob/f07c6b7e7a9d2e6ddce260929ef9aaec4addce3a/crypten/common/functions/approximations.py#L224
-std::pair<Value, Value> sine_cosine_apprix(SPUContext* ctx, const Value& x) {
-  int64_t iteration = ctx->config().sine_cosine_iters();
-
-  // Normalize input to [-pi, pi]
-  // theta - TWO_PI * Math.floor((theta + Math.PI) / TWO_PI)
-  auto pi = constant(ctx, M_PI, x.dtype(), x.shape());
-  auto two_pi = constant(ctx, 2 * M_PI, x.dtype(), x.shape());
-  auto normalized = f_div(ctx, f_add(ctx, x, pi), two_pi);
-  normalized = f_mul(ctx, f_floor(ctx, normalized), two_pi);
-  normalized = f_sub(ctx, x, normalized);
-
-  auto re = constant(ctx, 1.0F, x.dtype(), x.shape());
-  auto im =
-      f_div(ctx, normalized,
-            constant(ctx, std::pow(2.0F, iteration), x.dtype(), x.shape()));
-  for (int64_t idx = 0; idx < iteration; ++idx) {
-    auto a2 = f_square(ctx, re);
-    auto b2 = f_square(ctx, im);
-    im = f_mul(ctx, im, re);
-    im = _mul(ctx, im, constant(ctx, 2, DT_I32, x.shape())).setDtype(x.dtype());
-    re = f_sub(ctx, a2, b2);
-  }
-
-  return {re, im};
-}
-
 Value f_sine(SPUContext* ctx, const Value& x) {
   SPU_TRACE_HAL_DISP(ctx, x);
 
@@ -652,7 +664,7 @@ Value f_sine(SPUContext* ctx, const Value& x) {
     return f_sine_p(ctx, x);
   }
 
-  return sine_cosine_apprix(ctx, x).second;
+  return detail::sin_chebyshev(ctx, x);
 }
 
 Value f_cosine(SPUContext* ctx, const Value& x) {
@@ -664,7 +676,7 @@ Value f_cosine(SPUContext* ctx, const Value& x) {
     return f_cosine_p(ctx, x);
   }
 
-  return sine_cosine_apprix(ctx, x).first;
+  return detail::cos_chebyshev(ctx, x);
 }
 
 }  // namespace spu::kernel::hal

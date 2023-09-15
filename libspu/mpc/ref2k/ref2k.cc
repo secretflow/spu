@@ -85,7 +85,7 @@ class Ref2kP2S : public UnaryKernel {
 
   ce::CExpr comm() const override { return ce::Const(0); }
 
-  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in) const override {
+  NdArrayRef proc(KernelEvalContext*, const NdArrayRef& in) const override {
     return in.as(makeType<Ref2kSecrTy>(in.eltype().as<Ring2k>()->field()));
   }
 };
@@ -98,7 +98,7 @@ class Ref2kS2P : public UnaryKernel {
 
   ce::CExpr comm() const override { return ce::Const(0); }
 
-  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in) const override {
+  NdArrayRef proc(KernelEvalContext*, const NdArrayRef& in) const override {
     return in.as(makeType<Pub2kTy>(in.eltype().as<Ring2k>()->field()));
   }
 };
@@ -426,9 +426,8 @@ class Ref2kTruncS : public TruncAKernel {
   ce::CExpr comm() const override { return ce::Const(0); }
 
   NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in, size_t bits,
-                  SignType sign) const override {
+                  SignType) const override {
     SPU_TRACE_MPC_LEAF(ctx, in, bits);
-    (void)sign;  // ignore it.
 
     // Rounding
     // AxB = (AxB >> 14) + ((AxB >> 13) & 1);
@@ -513,7 +512,7 @@ std::unique_ptr<SPUContext> makeRef2kProtocol(
   return ctx;
 }
 
-Type Ref2kIo::getShareType(Visibility vis, int owner_rank) const {
+Type Ref2kIo::getShareType(Visibility vis, int /*owner_rank*/) const {
   if (vis == VIS_PUBLIC) {
     return makeType<Pub2kTy>(field_);
   } else if (vis == VIS_SECRET) {
@@ -524,7 +523,7 @@ Type Ref2kIo::getShareType(Visibility vis, int owner_rank) const {
 }
 
 std::vector<NdArrayRef> Ref2kIo::toShares(const NdArrayRef& raw, Visibility vis,
-                                          int owner_rank) const {
+                                          int /*owner_rank*/) const {
   SPU_ENFORCE(raw.eltype().isa<RingTy>(), "expected RingTy, got {}",
               raw.eltype());
   const auto field = raw.eltype().as<Ring2k>()->field();

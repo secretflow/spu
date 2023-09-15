@@ -17,7 +17,8 @@ This example demonstrates how to use SPU to run secure inference on a pre-traine
     export PYTHONPATH="${PWD}:$PYTHONPATH"
     ```
 
-    Download trained LLaMA-B[PyTroch-Version] from "https://huggingface.co/openlm-research/open_llama_7b", and convert it to Flax.msgpack as:
+    Download trained LLaMA-B[PyTroch-Version] from [Hugging Face](https://huggingface.co/openlm-research/open_llama_7b)
+    , and convert it to Flax.msgpack as:
 
     ```sh
     python3 -m EasyLM.scripts.convert_checkpoint --load_checkpoint='params::path-to-LLaMA-7B[Pytroch-Version]' --output_file='path-to-LLaMMA-7B.msgpack' --streaming=False
@@ -54,4 +55,3 @@ This example demonstrates how to use SPU to run secure inference on a pre-traine
     ```
 
 5. To reproduce the benchmarks results in the [Puma paper](https://arxiv.org/abs/2307.12533), please check [here](https://github.com/AntCPLab/puma_benchmarks).
-

@@ -69,41 +69,23 @@ std::unique_ptr<State> PrgState::fork() {
 
   new_prg->priv_seed_ = yacl::crypto::RandSeed();
 
-  fillPrssPair(absl::MakeSpan(&new_prg->self_seed_, 1),
-               absl::MakeSpan(&new_prg->next_seed_, 1));
+  fillPrssPair(&new_prg->self_seed_, &new_prg->next_seed_, 1,
+               PrgState::GenPrssCtrl::Both);
 
   return new_prg;
 }
 
 std::pair<NdArrayRef, NdArrayRef> PrgState::genPrssPair(FieldType field,
                                                         const Shape& shape,
-                                                        bool ignore_first,
-                                                        bool ignore_second) {
+                                                        GenPrssCtrl ctrl) {
   const Type ty = makeType<RingTy>(field);
 
   NdArrayRef r_self(ty, shape);
   NdArrayRef r_next(ty, shape);
 
-  uint64_t new_counter = prss_counter_;
-  if (!ignore_first) {
-    new_counter = yacl::crypto::FillPRand(
-        kAesType, self_seed_, 0, prss_counter_,
-        absl::MakeSpan(r_self.data<char>(), r_self.buf()->size()));
-  }
-  if (!ignore_second) {
-    new_counter = yacl::crypto::FillPRand(
-        kAesType, next_seed_, 0, prss_counter_,
-        absl::MakeSpan(r_next.data<char>(), r_next.buf()->size()));
-  }
+  fillPrssPair(r_self.data<std::uint8_t>(), r_next.data<std::uint8_t>(),
+               shape.numel() * ty.size(), ctrl);
 
-  if (new_counter == prss_counter_) {
-    // both part ignored, dummy run to update counter...
-    new_counter = yacl::crypto::DummyUpdateRandomCount(
-        prss_counter_,
-        absl::MakeSpan(r_next.data<char>(), r_next.buf()->size()));
-  }
-
-  prss_counter_ = new_counter;
   return std::make_pair(r_self, r_next);
 }
 

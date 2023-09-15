@@ -77,12 +77,7 @@ Value transpose(SPUContext* ctx, const Value& in, const Axes& permutation) {
     return in;
   }
 
-  auto res = Value(in.data().transpose(perm), in.dtype());
-
-  // compact clone is a rather expensive memory operation.
-  // To prevent transposed value being cloned multiple times in later ops, clone
-  // the value here.
-  return res.clone();
+  return Value(in.data().transpose(perm), in.dtype());
 }
 
 Value slice(SPUContext* ctx, const Value& in, const Index& start_indices,
@@ -93,8 +88,7 @@ Value slice(SPUContext* ctx, const Value& in, const Index& start_indices,
                in.dtype());
 }
 
-Value slice_scalar_at(SPUContext* ctx, const Value& input,
-                      const Index& indices) {
+Value slice_scalar_at(SPUContext*, const Value& input, const Index& indices) {
   return Value(input.data().slice_scalar_at(indices), input.dtype());
 }
 
@@ -131,7 +125,7 @@ Value reverse(SPUContext* ctx, const Value& in, const Axes& dimensions) {
   return Value(in.data().reverse(dimensions), in.dtype());
 }
 
-Value expand(SPUContext* ctx, const Value& in, const Shape& to_shape) {
+Value expand(SPUContext*, const Value& in, const Shape& to_shape) {
   return Value(in.data().expand(to_shape), in.dtype());
 }
 

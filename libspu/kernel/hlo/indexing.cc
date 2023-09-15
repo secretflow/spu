@@ -437,7 +437,7 @@ spu::Value Gather(SPUContext *ctx, const spu::Value &operand,
 
   SPU_ENFORCE(start_indices.isPublic());
 
-  auto start_induces = getIndices(ctx, start_indices_value);
+  auto start_index = getIndices(ctx, start_indices_value);
 
   // We iterate over the gather dimensions in the output shape in an outer
   // loop nest, and iterate over the window dimensions in the output shape in
@@ -457,7 +457,7 @@ spu::Value Gather(SPUContext *ctx, const spu::Value &operand,
 
   OutputBatchIndexToInputIndex output_batch_index_to_input_index(
       config, /*input_shape=*/operand_shape,
-      /*output_shape=*/result_shape, start_induces);
+      /*output_shape=*/result_shape, start_index);
   OutputOffsetIndexToInputIndex output_offset_index_to_input_index(
       config, /*input_shape=*/operand_shape,
       /*output_shape=*/result_shape);
@@ -779,7 +779,7 @@ spu::Value DynamicSlice(SPUContext *ctx, const spu::Value &operand,
   }
 }
 
-spu::Value FilterByMask(SPUContext *ctx, const spu::Value &operand,
+spu::Value FilterByMask(SPUContext *, const spu::Value &operand,
                         absl::Span<const uint8_t> mask) {
   // Sanity
   SPU_ENFORCE(operand.shape().size() == 1, "Operand must be a vector");
@@ -806,7 +806,7 @@ spu::Value FilterByMask(SPUContext *ctx, const spu::Value &operand,
   return Value(operand.data().linear_gather(indices), operand.dtype());
 }
 
-spu::Value LinearGather(SPUContext *ctx, const spu::Value &in,
+spu::Value LinearGather(SPUContext *, const spu::Value &in,
                         const Index &indices) {
   return Value(in.data().linear_gather(indices), in.dtype());
 }

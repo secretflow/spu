@@ -24,7 +24,7 @@ namespace spu::mpc::utils {
 TEST(Simulate, Works) {
   auto result = simulate(
       3,
-      [](const std::shared_ptr<yacl::link::Context>& lctx, int x) {
+      [](const std::shared_ptr<yacl::link::Context>& lctx, int) {
         return 1 + lctx->Rank();
       },
       1);
@@ -37,7 +37,7 @@ TEST(Simulate, Throw) {
       {
         simulate(
             3,
-            [](const std::shared_ptr<yacl::link::Context>& lctx, int x) {
+            [](const std::shared_ptr<yacl::link::Context>& lctx, int) {
               if (lctx->Rank() == 2) {
                 SPU_THROW("error");
               }

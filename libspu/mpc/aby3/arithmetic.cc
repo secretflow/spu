@@ -55,9 +55,14 @@ std::vector<NdArrayRef> a1b_offline(size_t sender, const NdArrayRef& a,
         [&]() -> std::vector<NdArrayRef> {
           using bshr_t = std::array<ScalarT, 2>;
           if (self_rank == sender) {
-            auto c1 =
-                prg_state->genPrssPair(field, a.shape(), false, true).first;
-            auto c2 = prg_state->genPrssPair(field, a.shape(), true).second;
+            auto c1 = prg_state
+                          ->genPrssPair(field, a.shape(),
+                                        PrgState::GenPrssCtrl::First)
+                          .first;
+            auto c2 = prg_state
+                          ->genPrssPair(field, a.shape(),
+                                        PrgState::GenPrssCtrl::Second)
+                          .second;
 
             NdArrayView<ashr_el_t> _a(a);
             NdArrayView<bshr_t> _b(b);
@@ -79,15 +84,21 @@ std::vector<NdArrayRef> a1b_offline(size_t sender, const NdArrayRef& a,
 
             return {c1, c2, m0, m1};
           } else if (self_rank == (sender + 1) % 3) {
-            prg_state->genPrssPair(field, a.shape(), true, true);
-            auto c1 =
-                prg_state->genPrssPair(field, a.shape(), false, true).first;
+            prg_state->genPrssPair(field, a.shape(),
+                                   PrgState::GenPrssCtrl::None);
+            auto c1 = prg_state
+                          ->genPrssPair(field, a.shape(),
+                                        PrgState::GenPrssCtrl::First)
+                          .first;
 
             return {c1};
           } else {
-            auto c2 =
-                prg_state->genPrssPair(field, a.shape(), true, false).second;
-            prg_state->genPrssPair(field, a.shape(), true, true);
+            auto c2 = prg_state
+                          ->genPrssPair(field, a.shape(),
+                                        PrgState::GenPrssCtrl::Second)
+                          .second;
+            prg_state->genPrssPair(field, a.shape(),
+                                   PrgState::GenPrssCtrl::None);
 
             return {c2};
           }
@@ -123,7 +134,8 @@ NdArrayRef RandA::proc(KernelEvalContext* ctx, const Shape& shape) const {
 
     std::vector<el_t> r0(shape.numel());
     std::vector<el_t> r1(shape.numel());
-    prg_state->fillPrssPair(absl::MakeSpan(r0), absl::MakeSpan(r1));
+    prg_state->fillPrssPair(r0.data(), r1.data(), r0.size(),
+                            PrgState::GenPrssCtrl::Both);
 
     NdArrayView<std::array<el_t, 2>> _out(out);
 
@@ -193,7 +205,8 @@ NdArrayRef P2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
     std::vector<ashr_el_t> r0(in.numel());
     std::vector<ashr_el_t> r1(in.numel());
     auto* prg_state = ctx->getState<PrgState>();
-    prg_state->fillPrssPair(absl::MakeSpan(r0), absl::MakeSpan(r1));
+    prg_state->fillPrssPair(r0.data(), r1.data(), r0.size(),
+                            PrgState::GenPrssCtrl::Both);
 
     for (int64_t idx = 0; idx < in.numel(); idx++) {
       r0[idx] = r0[idx] - r1[idx];
@@ -357,7 +370,7 @@ NdArrayRef AddAP::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
   });
 }
 
-NdArrayRef AddAA::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
+NdArrayRef AddAA::proc(KernelEvalContext*, const NdArrayRef& lhs,
                        const NdArrayRef& rhs) const {
   const auto* lhs_ty = lhs.eltype().as<AShrTy>();
   const auto* rhs_ty = rhs.eltype().as<AShrTy>();
@@ -384,7 +397,7 @@ NdArrayRef AddAA::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
 ////////////////////////////////////////////////////////////////////
 // multiply family
 ////////////////////////////////////////////////////////////////////
-NdArrayRef MulAP::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
+NdArrayRef MulAP::proc(KernelEvalContext*, const NdArrayRef& lhs,
                        const NdArrayRef& rhs) const {
   const auto* lhs_ty = lhs.eltype().as<AShrTy>();
   const auto* rhs_ty = rhs.eltype().as<Pub2kTy>();
@@ -421,7 +434,8 @@ NdArrayRef MulAA::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
 
     std::vector<el_t> r0(lhs.numel());
     std::vector<el_t> r1(lhs.numel());
-    prg_state->fillPrssPair(absl::MakeSpan(r0), absl::MakeSpan(r1));
+    prg_state->fillPrssPair(r0.data(), r1.data(), r0.size(),
+                            PrgState::GenPrssCtrl::Both);
 
     NdArrayView<shr_t> _lhs(lhs);
     NdArrayView<shr_t> _rhs(rhs);
@@ -593,7 +607,7 @@ NdArrayRef MulA1B::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
 ////////////////////////////////////////////////////////////////////
 // matmul family
 ////////////////////////////////////////////////////////////////////
-NdArrayRef MatMulAP::proc(KernelEvalContext* ctx, const NdArrayRef& x,
+NdArrayRef MatMulAP::proc(KernelEvalContext*, const NdArrayRef& x,
                           const NdArrayRef& y) const {
   const auto field = x.eltype().as<Ring2k>()->field();
 
@@ -618,7 +632,8 @@ NdArrayRef MatMulAA::proc(KernelEvalContext* ctx, const NdArrayRef& x,
   auto* prg_state = ctx->getState<PrgState>();
 
   auto r = std::async([&] {
-    auto [r0, r1] = prg_state->genPrssPair(field, {x.shape()[0], y.shape()[1]});
+    auto [r0, r1] = prg_state->genPrssPair(field, {x.shape()[0], y.shape()[1]},
+                                           PrgState::GenPrssCtrl::Both);
     return ring_sub(r0, r1);
   });
 
@@ -645,7 +660,7 @@ NdArrayRef MatMulAA::proc(KernelEvalContext* ctx, const NdArrayRef& x,
   return out;
 }
 
-NdArrayRef LShiftA::proc(KernelEvalContext* ctx, const NdArrayRef& in,
+NdArrayRef LShiftA::proc(KernelEvalContext*, const NdArrayRef& in,
                          size_t bits) const {
   const auto* in_ty = in.eltype().as<AShrTy>();
   const auto field = in_ty->field();
@@ -678,8 +693,10 @@ NdArrayRef TruncA::proc(KernelEvalContext* ctx, const NdArrayRef& in,
   auto* prg_state = ctx->getState<PrgState>();
   auto* comm = ctx->getState<Communicator>();
 
-  auto r_future =
-      std::async([&] { return prg_state->genPrssPair(field, in.shape()); });
+  auto r_future = std::async([&] {
+    return prg_state->genPrssPair(field, in.shape(),
+                                  PrgState::GenPrssCtrl::Both);
+  });
 
   // in
   const auto& x1 = getFirstShare(in);
@@ -768,7 +785,8 @@ NdArrayRef TruncAPr::proc(KernelEvalContext* ctx, const NdArrayRef& in,
 
     if (comm->getRank() == P0) {
       std::vector<el_t> r(numel);
-      prg_state->fillPrssPair(absl::MakeSpan(r), {}, false, true);
+      prg_state->fillPrssPair<el_t>(r.data(), nullptr, r.size(),
+                                    PrgState::GenPrssCtrl::First);
 
       std::vector<el_t> x_plus_r(numel);
       pforeach(0, numel, [&](int64_t idx) {
@@ -815,7 +833,8 @@ NdArrayRef TruncAPr::proc(KernelEvalContext* ctx, const NdArrayRef& in,
 
       //
       std::vector<el_t> y1(numel);
-      prg_state->fillPrssPair(absl::MakeSpan(y1), {}, false, true);
+      prg_state->fillPrssPair<el_t>(y1.data(), nullptr, r.size(),
+                                    PrgState::GenPrssCtrl::First);
       pforeach(0, numel, [&](int64_t idx) {  //
         y2[idx] -= y1[idx];
       });
@@ -830,7 +849,8 @@ NdArrayRef TruncAPr::proc(KernelEvalContext* ctx, const NdArrayRef& in,
       });
     } else if (comm->getRank() == P1) {
       std::vector<el_t> r(numel);
-      prg_state->fillPrssPair({}, absl::MakeSpan(r), true, false);
+      prg_state->fillPrssPair<el_t>(nullptr, r.data(), r.size(),
+                                    PrgState::GenPrssCtrl::Second);
 
       std::vector<el_t> x_plus_r(numel);
       pforeach(0, numel, [&](int64_t idx) {
@@ -860,7 +880,8 @@ NdArrayRef TruncAPr::proc(KernelEvalContext* ctx, const NdArrayRef& in,
       });
 
       std::vector<el_t> y3(numel);
-      prg_state->fillPrssPair({}, absl::MakeSpan(y3), true, false);
+      prg_state->fillPrssPair<el_t>(nullptr, y3.data(), y3.size(),
+                                    PrgState::GenPrssCtrl::Second);
       pforeach(0, numel, [&](int64_t idx) {  //
         y2[idx] -= y3[idx];
       });
@@ -875,7 +896,8 @@ NdArrayRef TruncAPr::proc(KernelEvalContext* ctx, const NdArrayRef& in,
     } else if (comm->getRank() == P2) {
       std::vector<el_t> r0(numel);
       std::vector<el_t> r1(numel);
-      prg_state->fillPrssPair(absl::MakeSpan(r0), absl::MakeSpan(r1));
+      prg_state->fillPrssPair(r0.data(), r1.data(), r0.size(),
+                              PrgState::GenPrssCtrl::Both);
 
       std::vector<el_t> cr0(2 * numel);
       std::vector<el_t> cr1(2 * numel);
@@ -905,7 +927,8 @@ NdArrayRef TruncAPr::proc(KernelEvalContext* ctx, const NdArrayRef& in,
 
       std::vector<el_t> y3(numel);
       std::vector<el_t> y1(numel);
-      prg_state->fillPrssPair(absl::MakeSpan(y3), absl::MakeSpan(y1));
+      prg_state->fillPrssPair(y3.data(), y1.data(), y1.size(),
+                              PrgState::GenPrssCtrl::Both);
       pforeach(0, numel, [&](int64_t idx) {
         _out[idx][0] = y3[idx];
         _out[idx][1] = y1[idx];

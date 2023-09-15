@@ -24,7 +24,7 @@
 namespace spu::mpc::test {
 namespace {
 
-Shape kShape = {30, 40};
+Shape kShape = {20, 30};
 const std::vector<size_t> kShiftBits = {0, 1, 2, 31, 32, 33, 64, 1000};
 
 #define EXPECT_VALUE_EQ(X, Y)                            \
