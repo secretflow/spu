@@ -98,15 +98,15 @@ Using the full Llama model for inference on SPU requires a large amount of memor
     ```
     RAM peak: 64.5888GB
 
-    And If you set token_num to 29, you can get the following results:
+    And If you set token_num to 30, you can get the following results:
     ```sh
-    ------
+   ------
     Run on CPU
     Q: What is the largest animal?
     A: The largest animal is the blue whale.
     Q: What is the smallest animal?
-    A: The smallest animal is the bacter
-    generate on CPU: 780.697101354599 seconds
+    A: The smallest animal is the bacterium.
+    generate on CPU: 837.0810837745667 seconds
 
     ------
     Run on SPU
@@ -114,7 +114,6 @@ Using the full Llama model for inference on SPU requires a large amount of memor
     Q: What is the largest animal?
     A: The largest animal is the blue whale.
     Q: What is the smallest animal?
-    A: The smallest animal is the bacter
-    generate  on SPU: 2556.2608857154846 seconds
-
+    A: The smallest animal is the bacterium.
+    generate  on SPU: 2760.5035905838013 seconds
     ```
