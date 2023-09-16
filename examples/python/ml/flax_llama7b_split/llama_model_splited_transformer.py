@@ -150,8 +150,7 @@ class LLaMAConfig(PretrainedConfig):
         self.fcm_min_ratio = fcm_min_ratio
         self.fcm_max_ratio = fcm_max_ratio
         self.splitlayer = splitlayer
-        # self.start = splitlayer[0]
-        # self.end = splitlayer[1]
+
         
 
         super().__init__(
@@ -552,7 +551,6 @@ class FlaxLLaMAMLP(nn.Module):
 
     def __call__(self, x: jnp.ndarray, deterministic: bool = True) -> jnp.ndarray:
         x = self.w2(nn.silu(self.w1(x)) * self.w3(x))
-        # x = self.w2(jax.nn.gelu(self.w1(x)) * self.w3(x))
         x = self.dropout(x, deterministic=deterministic)
         return x
 
@@ -832,7 +830,6 @@ class FlaxLLaMAPreTrainedModelServer(FlaxPreTrainedModel):
 
     def init_weights(self, rng: jax.random.PRNGKey, input_shape: Tuple, params: FrozenDict = None) -> FrozenDict:
         # init input tensors
-        # print("FlaxLLaMAPreTrainedModelServer init_weights")
         input_ids = jnp.zeros(input_shape, dtype="i4")
         tmp_ids = jnp.zeros(input_shape[:2],dtype="i4")
         attention_mask = jnp.ones_like(jnp.zeros(input_shape[:2], dtype="i4"))
@@ -933,7 +930,6 @@ class FlaxLLaMAPreTrainedModelServer(FlaxPreTrainedModel):
             mutable = ["cache"]
         else:
             mutable = False
-        # print("FlaxLLaMAPreTrainedModelServer call input_ids", input_ids)
         outputs = self.module.apply(
             inputs,
             jnp.array(input_ids, dtype=jnp.float32),
@@ -1096,7 +1092,6 @@ class FlaxLLaMABlockCollectionClient(nn.Module):
 
   
         for block in self.blocks[:2]:
-            # print("FlaxLLaMABlockCollectionClient block")
             if output_hidden_states:
                 all_hidden_states += (hidden_states,)
 
@@ -1260,7 +1255,7 @@ class FlaxLLaMABlockCollectionServer(nn.Module):
         else:
             fcm_mask = None
 
-        # print("FlaxLLaMABlockCollectionServer hidden_states", hidden_states)
+
         for block in self.blocks[3:]:
             if output_hidden_states:
                 all_hidden_states += (hidden_states,)
@@ -1278,7 +1273,6 @@ class FlaxLLaMABlockCollectionServer(nn.Module):
 
             if output_attentions:
                 all_attentions += (layer_outputs[1],)
-        # print("FlaxLLaMABlockCollectionServer hidden_states after self.blocks", hidden_states)
         # this contains possible `None` values - `FlaxGPTJModule` will filter them out
         outputs = (hidden_states, all_hidden_states, all_attentions)
 
@@ -1370,7 +1364,6 @@ class FlaxLLaMAModuleClientEmbed(nn.Module):
         )
         self.dropout = nn.Dropout(rate=self.config.embd_pdrop)
         self.h = FlaxLLaMABlockCollectionClient(self.config, dtype=self.dtype, param_dtype=self.param_dtype, precision=self.precision)
-        # self.ln_f = RMSNorm(self.config.hidden_size, eps=self.config.rms_norm_eps, dtype=self.dtype, param_dtype=self.param_dtype)
 
     def __call__(
         self,
@@ -1423,7 +1416,6 @@ class FlaxLLaMAModuleMidEmbed(nn.Module):
         )
         self.dropout = nn.Dropout(rate=self.config.embd_pdrop)
         self.h = FlaxLLaMABlockCollectionMid(self.config, dtype=self.dtype, param_dtype=self.param_dtype, precision=self.precision)
-        # self.ln_f = RMSNorm(self.config.hidden_size, eps=self.config.rms_norm_eps, dtype=self.dtype, param_dtype=self.param_dtype)
     
     def __call__(
         self,
@@ -1459,10 +1451,7 @@ class FlaxLLaMAModuleMidEmbed(nn.Module):
             return_dict=return_dict,
             splitlayer=splitlayer,
         )
-        # print("FlaxLLaMAModuleMidEmbed outputs", outputs)
 
-
-        # hidden_states = outputs[0]
         return outputs
 
 
@@ -1474,16 +1463,7 @@ class FlaxLLaMAModuleServerEmbed(nn.Module):
     precision: Optional[Union[jax.lax.Precision, str]]=None
 
     def setup(self):
-        # self.embed_dim = self.config.hidden_size
 
-        # self.wte = nn.Embed(
-        #     self.config.vocab_size,
-        #     self.config.hidden_size,
-        #     embedding_init=jax.nn.initializers.normal(stddev=self.config.initializer_range),
-        #     dtype=self.dtype,
-        #     param_dtype=self.param_dtype,
-        # )
-        # self.dropout = nn.Dropout(rate=self.config.embd_pdrop)
         self.h = FlaxLLaMABlockCollectionServer(self.config, dtype=self.dtype, param_dtype=self.param_dtype, precision=self.precision)
         self.ln_f = RMSNorm(self.config.hidden_size, eps=self.config.rms_norm_eps, dtype=self.dtype, param_dtype=self.param_dtype)
 
@@ -1508,16 +1488,7 @@ class FlaxLLaMAModuleServerEmbed(nn.Module):
             hidden_states = self.dropout(input_embeds, deterministic=deterministic)
 
         else:
-            hidden_states = input_ids  # 暂时性的绕过Jax
-            # with open("./tmp.txt", "rb") as f:
-            #     data_str = f.read()
-
-            #     numpy_array = np.frombuffer(data_str, dtype=np.float32)
-            # t = numpy_array.shape[0] // 4096
-            # numpy_array = numpy_array.reshape(1, t, 4096)
-
-            # hidden_states = jax.device_put(numpy_array)
-
+            hidden_states = input_ids
 
 
         outputs = self.h(
@@ -1531,7 +1502,6 @@ class FlaxLLaMAModuleServerEmbed(nn.Module):
             return_dict=return_dict,
             splitlayer=splitlayer
         )
-        # print("FlaxLLaMAModuleServerEmbed outputs", outputs)
 
         hidden_states = outputs[0]
         hidden_states = self.ln_f(hidden_states)
@@ -1678,7 +1648,6 @@ class FlaxLLaMAForCausalLMServerEmbedModule(nn.Module):
                 )
         else:
             assert attention_mask is not None
-        # print("FlaxLLaMAForCausalLMServerEmbedModule input_ids", input_ids)
         outputs = self.transformer(
             input_ids,
             attention_mask,
@@ -1750,8 +1719,6 @@ class FlaxLLaMAForCausalLMMidEmbedModule(nn.Module):
             splitlayer=splitlayer,
         )
 
-        # outputs = outputs.astype(jnp.float64)
-
 
         return outputs
 
@@ -1797,16 +1764,6 @@ class FlaxLLaMAForCausalLMClientEmbedModule(nn.Module):
             splitlayer=splitlayer
         )
 
-        # hidden_states = outputs[0]
-
-        # if self.config.tie_word_embeddings:
-        #     shared_kernel = self.transformer.variables["params"]["wte"]["embedding"].T
-        #     lm_logits = self.lm_head.apply({"params": {"kernel": shared_kernel}}, hidden_states)
-        # else:
-        #     lm_logits = self.lm_head(hidden_states)
-
-        # if not return_dict:
-        #     return (lm_logits,) + outputs[1:]
 
         return outputs
 
@@ -1823,7 +1780,6 @@ class FlaxLLaMAForCausalLMMid(FlaxLLaMAPreTrainedModelServer):
             batch_size, seq_length = 1, 2048
 
         past_key_values = self.init_cache(batch_size, max_length)
-        # print("past_key_values", past_key_values)
         # Note that usually one would have to put 0's in the attention_mask for x > input_ids.shape[-1] and x < cache_length.
         # But since GPTJ uses a causal mask, those positions are masked anyways.
         # Thus we can create a single static attention_mask here, which is more efficient for compilation
@@ -1850,7 +1806,6 @@ class FlaxLLaMAForCausalLMMid(FlaxLLaMAPreTrainedModelServer):
 @add_start_docstrings("", "")
 class FlaxLLaMAForCausalLMServer(FlaxLLaMAPreTrainedModelServer):
     module_class = FlaxLLaMAForCausalLMServerEmbedModule
-    # module_class = FlaxLLaMAForCausalLMModule
 
     def prepare_inputs_for_generation(self, input_ids, max_length, attention_mask: Optional[jax.Array] = None):
         # initializing the cache
@@ -1861,7 +1816,6 @@ class FlaxLLaMAForCausalLMServer(FlaxLLaMAPreTrainedModelServer):
             batch_size, seq_length = input_ids.shape[:2]
 
         past_key_values = self.init_cache(batch_size, max_length)
-        # print("past_key_values", past_key_values)
         # Note that usually one would have to put 0's in the attention_mask for x > input_ids.shape[-1] and x < cache_length.
         # But since GPTJ uses a causal mask, those positions are masked anyways.
         # Thus we can create a single static attention_mask here, which is more efficient for compilation
