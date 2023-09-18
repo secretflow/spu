@@ -27,7 +27,7 @@ Using the full Llama model for inference on SPU requires a large amount of memor
     ```
 
     Install EasyLM Environment Before Install Secretflow & SPU
-    
+
     ```sh
     conda env create -f examples/python/ml/flax_llama7b_split/gpu_environment.yml
     conda activate EasyLM
@@ -65,7 +65,7 @@ Using the full Llama model for inference on SPU requires a large amount of memor
     ```sh
     bazel run -c opt //examples/python/utils:nodectl -- --config `pwd`/examples/python/ml/flax_llama7b_split/3pc.json up
     ```
-    
+
     or
     （recommended）
 
