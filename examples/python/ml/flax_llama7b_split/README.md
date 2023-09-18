@@ -18,6 +18,13 @@ Using the full Llama model for inference on SPU requires a large amount of memor
     cd EasyLM
     export PYTHONPATH="${PWD}:$PYTHONPATH"
     ```
+    Or use a fork created for transformer split.
+
+    ```sh
+    git clone -b split_llama_2 https://github.com/Rainysponge/EasyLM.git
+    cd EasyLM
+    export PYTHONPATH="${PWD}:$PYTHONPATH"
+    ```
 
     Install EasyLM Environment Before Install Secretflow & SPU
     
@@ -47,7 +54,7 @@ Using the full Llama model for inference on SPU requires a large amount of memor
        --streaming
     ```
 
-    Move the python file to EasyLM
+    Move the python file to EasyLM if you do not use the fork fork created for transformer split.
 
     ```sh
     cp path-to-llama_model_split_transformer_py path_to_EasyLM/EasyLM/models/llama
