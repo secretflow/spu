@@ -1,30 +1,28 @@
-import jax.numpy as jnp
+# Copyright 2023 Ant Group Co., Ltd.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      https://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 import numpy as np
-import sys
-import os
+from sml.linear_model.glm import _GeneralizedLinearRegressor
 
-# Add the parent directory to the system path to import custom modules
-sys.path.append('../../')
 import sml.utils.emulation as emulation
 import spu.utils.distributed as ppd
-from glm import (
-    _GeneralizedLinearRegressor,
-    PoissonRegressor,
-    GammaRegressor,
-    TweedieRegressor,
-)
 
 n_samples, n_features = 100, 5
 
 
-def generate_data(noise=False):
+def generate_data():
     """
     Generate random data for testing.
-
-    Parameters:
-    ----------
-    noise : bool, optional (default=False)
-        Whether to add noise.
 
     Returns:
     -------
@@ -40,14 +38,8 @@ def generate_data(noise=False):
     X = np.random.rand(n_samples, n_features)
     coef = np.random.rand(n_features + 1)  # +1 for the intercept term
     y = X @ coef[1:] + coef[0]
-    if noise:
-        noise = np.random.normal(loc=0, scale=0.05, size=num_samples)
-        y += noise
     sample_weight = np.random.rand(n_samples)
     return X, y, coef, sample_weight
-
-
-X, y, coef, sample_weight = generate_data()
 
 
 def emul_SGDClassifier(mode: emulation.Mode.MULTIPROCESS, num=10):
@@ -91,14 +83,17 @@ def emul_SGDClassifier(mode: emulation.Mode.MULTIPROCESS, num=10):
         return model.score(X, y), model.predict(X)
 
     try:
-        # Specify the file paths for cluster and dataset
-        CLUSTER_ABY3_3PC = os.path.join('../../', emulation.CLUSTER_ABY3_3PC)
+        X, y, coef, sample_weight = generate_data()
         # Create the emulator with specified mode and bandwidth/latency settings
-        emulator = emulation.Emulator(CLUSTER_ABY3_3PC, mode, bandwidth=300, latency=20)
+        emulator = emulation.Emulator(
+            emulation.CLUSTER_ABY3_3PC, mode, bandwidth=300, latency=20
+        )
         emulator.up()
 
         # Run the proc_ncSolver function using both plaintext and encrypted data
-        raw_score, raw_result = proc_ncSolver(ppd.get(X), ppd.get(y))
+        raw_score, raw_result = proc_ncSolver(X, y)
+
+        X, y = emulator.seal(X, y)
         score, result = emulator.run(proc_ncSolver)(X, y)
 
         # Print the results

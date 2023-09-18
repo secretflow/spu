@@ -1,35 +1,44 @@
+# Copyright 2023 Ant Group Co., Ltd.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      https://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import unittest
-from jax import random
+
 import jax.numpy as jnp
-import spu.spu_pb2 as spu_pb2
-import spu.utils.simulation as spsim
-from glm import (
-    _GeneralizedLinearRegressor,
-    PoissonRegressor,
-    GammaRegressor,
-    TweedieRegressor,
-)
 import numpy as np
-import scipy.stats as stats
+from sml.linear_model.glm import (
+    GammaRegressor,
+    PoissonRegressor,
+    TweedieRegressor,
+    _GeneralizedLinearRegressor,
+)
+from sklearn.linear_model._glm import GammaRegressor as std_GammaRegressor
+from sklearn.linear_model._glm import PoissonRegressor as std_PoissonRegressor
+from sklearn.linear_model._glm import TweedieRegressor as std_TweedieRegressor
 from sklearn.linear_model._glm import (
     _GeneralizedLinearRegressor as std__GeneralizedLinearRegressor,
 )
-from sklearn.linear_model._glm import PoissonRegressor as std_PoissonRegressor
-from sklearn.linear_model._glm import GammaRegressor as std_GammaRegressor
-from sklearn.linear_model._glm import TweedieRegressor as std_TweedieRegressor
+
+import spu.spu_pb2 as spu_pb2
+import spu.utils.simulation as spsim
 
 verbose = 0
 n_samples, n_features = 100, 5
 
 
-def generate_data(noise=False):
+def generate_data():
     """
     Generate random data for testing.
-
-    Parameters:
-    ----------
-    noise : bool, optional (default=False)
-        Whether to add noise.
 
     Returns:
     -------
@@ -45,9 +54,6 @@ def generate_data(noise=False):
     X = np.random.rand(n_samples, n_features)
     coef = np.random.rand(n_features + 1)  # +1 for the intercept term
     y = X @ coef[1:] + coef[0]
-    if noise:
-        noise = np.random.normal(loc=0, scale=0.05, size=num_samples)
-        y += noise
     sample_weight = np.random.rand(n_samples)
     return X, y, coef, sample_weight
 
@@ -137,7 +143,7 @@ def proc_ncSolver():
         Model coefficients, including the intercept term and feature weights.
 
     """
-    model = _GeneralizedLinearRegressor(solver="newton-cholesky")
+    model = _GeneralizedLinearRegressor(solver="newton-cholesky", max_iter=5)
     model.fit(X, y)
     return model.coef_
 
@@ -167,7 +173,7 @@ def proc_Poisson():
         Model coefficients, including the intercept term and feature weights.
 
     """
-    model = PoissonRegressor()
+    model = PoissonRegressor(max_iter=5)
     model.fit(X, round_exp_y)
     return model.coef_
 
@@ -182,7 +188,7 @@ def proc_Gamma():
         Model coefficients, including the intercept term and feature weights.
 
     """
-    model = GammaRegressor()
+    model = GammaRegressor(max_iter=5)
     model.fit(X, exp_y)
     return model.coef_
 
@@ -197,7 +203,7 @@ def proc_Tweedie():
         Model coefficients, including the intercept term and feature weights.
 
     """
-    model = TweedieRegressor()
+    model = TweedieRegressor(max_iter=5)
     model.fit(X, exp_y)
     return model.coef_
 
@@ -213,7 +219,7 @@ class TestGeneralizedLinearRegressor(unittest.TestCase):
     def test_Poisson_accuracy(self):
         # Test the accuracy of the PoissonRegressor model
         model = PoissonRegressor()
-        std_model = PoissonRegressor(alpha=0)
+        std_model = std_PoissonRegressor(alpha=0)
         accuracy_test(model, std_model, round_exp_y, coef)
         print('test_Poisson_accuracy: OK')
 
@@ -224,7 +230,7 @@ class TestGeneralizedLinearRegressor(unittest.TestCase):
         accuracy_test(model, std_model, exp_y, coef)
         print('test_gamma_accuracy: OK')
 
-    def test_Tweedie_accuracy(self, power=0):
+    def test_Tweedie_accuracy(self, power=1.5):
         # Test the accuracy of the TweedieRegressor model
         model = TweedieRegressor(power=power)
         std_model = std_TweedieRegressor(alpha=0, power=power)
@@ -236,11 +242,6 @@ class TestGeneralizedLinearRegressor(unittest.TestCase):
         proc_test(proc_ncSolver)
         print('test_ncSolver_encrypted: OK')
 
-    def test_lbfgsSolver_encrypted(self):
-        # Test if the results of the LBFGS solver are correct after encryption
-        proc_test(proc_lbfgsSolver)
-        print('test_lbfgsSolver_encrypted: OK')
-
     def test_Poisson_encrypted(self):
         # Test if the results of the PoissonRegressor model are correct after encryption
         proc_test(proc_Poisson)
@@ -251,7 +252,7 @@ class TestGeneralizedLinearRegressor(unittest.TestCase):
         proc_test(proc_Gamma)
         print('test_gamma_encrypted: OK')
 
-    def test_Tweedie_encrypted(self, power=0):
+    def test_Tweedie_encrypted(self):
         # Test if the results of the TweedieRegressor model are correct after encryption
         proc_test(proc_Tweedie)
         print('test_Tweedie_encrypted: OK')

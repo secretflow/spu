@@ -1,8 +1,23 @@
+# Copyright 2023 Ant Group Co., Ltd.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      https://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 from abc import ABC, abstractmethod
+
 import jax
-from jax import vmap, jit
 import jax.numpy as jnp
-from jax.scipy.linalg import cho_solve, cho_factor
+from jax import jit
+from jax.scipy.linalg import cho_factor, cho_solve
 
 DEBUG = 0
 
@@ -13,17 +28,13 @@ class Solver(ABC):
         loss_model,
         link,
         max_iter=100,
-        l2_reg_strength=1,
-        n_threads=None,
+        l2_reg_strength=1.0,
         fit_intercept=True,
-        verbose=0,
         coef=None,
     ):
         self.loss_model = loss_model
         self.max_iter = max_iter
-        self.n_threads = n_threads
         self.fit_intercept = fit_intercept
-        self.verbose = verbose
         self.link = link
         self.l2_reg_strength = l2_reg_strength
         self.coef = coef
@@ -35,18 +46,13 @@ class Solver(ABC):
     def solve(self, X, y, sample_weight=None):
         # Initialize parameters
         n_samples, n_features = X.shape
-        rng_key = jax.random.PRNGKey(0)
         if self.fit_intercept:
             X = jnp.hstack([jnp.ones((n_samples, 1)), X])  # Add the intercept term
             if not self.coef:
-                self.coef = jnp.full(
-                    (n_features + 1,), 0.5
-                )  # Initialize coef using np.random.rand (uniform distribution between 0 and 1)
+                self.coef = jnp.full((n_features + 1,), 0.5)
         else:
             if not self.coef:
-                self.coef = jnp.full(
-                    (n_features,), 0.5
-                )  # Initialize coef using np.random.rand (uniform distribution between 0 and 1)
+                self.coef = jnp.full((n_features,), 0.5)
         self.objective = (
             lambda coef: self.loss_model(y, self.link.inverse(X @ coef))
             + jnp.linalg.norm(coef) * self.l2_reg_strength / 2
@@ -68,9 +74,7 @@ class NewtonCholeskySolver(Solver):
         link,
         l2_reg_strength=1.0,
         max_iter=100,
-        n_threads=None,
         fit_intercept=True,
-        verbose=0,
         coef=None,
     ):
         """
@@ -101,9 +105,7 @@ class NewtonCholeskySolver(Solver):
             link,
             max_iter,
             l2_reg_strength,
-            n_threads,
             fit_intercept,
-            verbose,
             coef,
         )
 
@@ -133,7 +135,7 @@ class NewtonCholeskySolver(Solver):
             return cho_solve(cho_factor(a), b)
 
         # Perform Newton-Raphson steps
-        for i in range(self.max_iter):
+        for _ in range(self.max_iter):
             grad_value = self.objective_grad(self.coef)
             hessian_val = self.hessian_fn(self.coef)
             step = cho_solve_wrapper(hessian_val, grad_value)
@@ -149,9 +151,7 @@ class LBFGSSolver(Solver):
         link,
         max_iter=100,
         l2_reg_strength=1.0,
-        n_threads=None,
         fit_intercept=True,
-        verbose=0,
         coef=None,
     ):
         """
@@ -191,9 +191,7 @@ class LBFGSSolver(Solver):
             link,
             max_iter,
             l2_reg_strength,
-            n_threads,
             fit_intercept,
-            verbose,
             coef,
         )
         self.maxcor = 10
@@ -229,7 +227,8 @@ class LBFGSSolver(Solver):
 
         for self.i in range(self.max_iter):
             p_k = self._two_loop_recursion(g_k)
-            a_k = self._line_search(p_k, f_k, g_k)
+            # todo: implement line search here
+            a_k = 1.0
             s_k = a_k * p_k
             self.coef += s_k
             f_k, g_new = jax.value_and_grad(self.objective)(self.coef)
@@ -246,7 +245,6 @@ class LBFGSSolver(Solver):
 
     def _two_loop_recursion(self, g_k):
         his_size = len(self.rho_history)
-        curr_size = his_size
         q = -jnp.conj(g_k)
         a_his = jnp.zeros((self.maxcor,))
 
@@ -262,18 +260,3 @@ class LBFGSSolver(Solver):
             b_i = self.rho_history[j] * (self.y_history[j] @ q)
             q = q + (a_his[j] - b_i) * self.s_history[j]
         return q
-
-    def _line_search(self, p_k, f_k, g_k):
-        a_k = 0.96**self.i
-
-        # Build a local quadratic model using quasi-Newton method
-        def quadratic_model(a):
-            f_a = a * p_k @ g_k
-            return jnp.abs(jnp.abs(f_a) - jnp.abs(f_k)) / max(
-                jnp.abs(f_a), jnp.abs(f_k)
-            )
-
-        alpha = 0.9
-        # alpha = quadratic_model(a_k)
-        a_k *= alpha**self.maxls
-        return a_k

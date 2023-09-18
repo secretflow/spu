@@ -1,30 +1,38 @@
-import jax
-from jax import random
-import jax.numpy as jnp
-from utils.solver import *
-from utils.loss import *
-from utils.link import *
+# Copyright 2023 Ant Group Co., Ltd.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      https://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import warnings
-import os
 
-DEBUG = 0
+import jax.numpy as jnp
+from sml.linear_model.utils.link import *
+from sml.linear_model.utils.loss import *
+from sml.linear_model.utils.solver import *
 
 
-# Define the _GeneralizedLinearRegressor class using JAX
 class _GeneralizedLinearRegressor:
     def __init__(
         self,
-        fit_intercept=True,  # Whether to fit the intercept term, default is True
-        alpha=0,  # L2 regularization strength, default is 0 (no regularization)
-        solver="newton-cholesky",  # Optimization algorithm, default is Newton-Cholesky
-        max_iter=20,  # Maximum number of iterations, default is 20
-        warm_start=False,  # Whether to use warm start, default is False
-        n_threads=None,  # Deprecated parameter (no longer used)
-        tol=None,  # Deprecated parameter (no longer used)
-        verbose=0,  # Level of verbosity, default is 0 (no output)
+        fit_intercept=True,
+        alpha=0,
+        solver="newton-cholesky",
+        max_iter=20,
+        warm_start=False,
+        tol=None,
     ):
         """
-        Initialize the generalized linear regression model.
+        GLMs based on a reproductive Exponential Dispersion Model (EDM) aim at fitting and
+        predicting the mean of the target y as y_pred=h(X*w) with coefficients w.
 
         Parameters:
         ----------
@@ -38,35 +46,16 @@ class _GeneralizedLinearRegressor:
             Maximum number of iterations, default is 20.
         warm_start : bool, optional
             Whether to use warm start, default is False.
-        n_threads : int, optional
-            Number of threads for parallel computation, default is 1.
-            If set to 0, it will detect all available CPUs for parallel computation.
-        tol : deprecated
-            This parameter is deprecated and no longer used. It was used to set an early stop threshold.
-        verbose : int, optional
-            Level of verbosity, default is 0 (no output).
-
+        tol : float, optional,
+            Stopping criterion. For the lbfgs solver, the iteration will stop when ``max{|g_j|, j = 1, ..., d} <= tol``
+            where ``g_j`` is the j-th component of the gradient (derivative) of the objective function.
         """
         self.l2_reg_strength = alpha
         self.fit_intercept = fit_intercept
         self.solver = solver
         self.max_iter = max_iter
         self.warm_start = warm_start
-        self.verbose = verbose
-        if n_threads:
-            warnings.warn(
-                "SPU does not need n_threads.",
-                category=DeprecationWarning,
-                stacklevel=2,
-            )
-        if warm_start:
-            warnings.warn("Using minibatch in the second optimizer may cause problems.")
-        if tol:
-            warnings.warn(
-                "SPU does not support early stop.",
-                category=DeprecationWarning,
-                stacklevel=2,
-            )
+        self.tol = tol
 
     def fit(self, X, y, sample_weight=None):
         if sample_weight is None:
@@ -76,13 +65,13 @@ class _GeneralizedLinearRegressor:
         self._check_solver_support()
         self.loss_model = self._get_loss()
         self.link_model = self._get_link()
-        self.loss_model.get_sampleweight(sample_weight)
-        # y=self.link_model.inverse(y)
+        self.loss_model.set_sample_weight(sample_weight)
+
         if not self.warm_start or not hasattr(self, "coef_"):
             self.coef_ = None
         if self.solver == "lbfgs":
             warnings.warn(
-                "LBFGS algorithm cannot be accurately implemented on SPU platform, only approximate implementation is available.",
+                "LBFGS algorithm will be very costly, because of the dummy early stop schema",
                 UserWarning,
             )
             self._fit_lbfgs(X, y)
@@ -103,7 +92,6 @@ class _GeneralizedLinearRegressor:
             loss_model=self.loss_model,
             l2_reg_strength=self.l2_reg_strength,
             max_iter=self.max_iter,
-            verbose=self.verbose,
             link=self.link_model,
             coef=self.coef_,
         )
@@ -115,7 +103,6 @@ class _GeneralizedLinearRegressor:
             loss_model=self.loss_model,
             max_iter=self.max_iter,
             l2_reg_strength=self.l2_reg_strength,
-            verbose=self.verbose,
             link=self.link_model,
             coef=self.coef_,
         )
@@ -130,6 +117,7 @@ class _GeneralizedLinearRegressor:
 
     def score(self, X, y, sample_weight=None):
         """
+        # todo: current only implement D2 score for square loss and normal dist.
         D^2 is the evaluation metric for the generalized linear regression model.
         """
 
@@ -184,11 +172,24 @@ class GammaRegressor(_GeneralizedLinearRegressor):
 class TweedieRegressor(_GeneralizedLinearRegressor):
     def __init__(
         self,
-        power=0.5,
+        power=1.5,
+        fit_intercept=True,
+        alpha=0,
+        solver="newton-cholesky",
+        max_iter=20,
+        warm_start=False,
+        tol=None,
     ):
-        super().__init__()
+        super().__init__(
+            fit_intercept=fit_intercept,
+            alpha=alpha,
+            solver=solver,
+            max_iter=max_iter,
+            warm_start=warm_start,
+            tol=tol,
+        )
         # Ensure that the power is within the valid range for the Tweedie distribution
-        assert power >= 0 and power <= 3
+        assert power > 0 and power <= 3
         self.power = power
 
     def _get_loss(self):
@@ -197,7 +198,4 @@ class TweedieRegressor(_GeneralizedLinearRegressor):
         )
 
     def _get_link(self):
-        if self.power > 0:
-            return LogLink()
-        else:
-            return IdentityLink()
+        return LogLink()

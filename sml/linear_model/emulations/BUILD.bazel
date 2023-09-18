@@ -53,3 +53,12 @@ py_binary(
         "//sml/utils:emulation",
     ],
 )
+
+py_binary(
+    name = "glm_emul",
+    srcs = ["glm_emul.py"],
+    deps = [
+        "//sml/linear_model:glm",
+        "//sml/utils:emulation",
+    ],
+)
