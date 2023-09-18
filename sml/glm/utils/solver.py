@@ -6,16 +6,19 @@ from jax.scipy.linalg import cho_solve, cho_factor
 
 DEBUG = 0
 
+
 class Solver(ABC):
-    def __init__(self,
-                 loss_model,
-                 link,
-                 max_iter=100,
-                 l2_reg_strength=1,
-                 n_threads=None,
-                 fit_intercept=True,
-                 verbose=0,
-                 coef=None):
+    def __init__(
+        self,
+        loss_model,
+        link,
+        max_iter=100,
+        l2_reg_strength=1,
+        n_threads=None,
+        fit_intercept=True,
+        verbose=0,
+        coef=None,
+    ):
         self.loss_model = loss_model
         self.max_iter = max_iter
         self.n_threads = n_threads
@@ -36,12 +39,18 @@ class Solver(ABC):
         if self.fit_intercept:
             X = jnp.hstack([jnp.ones((n_samples, 1)), X])  # Add the intercept term
             if not self.coef:
-                self.coef = jnp.full((n_features + 1, ), 0.5)  # Initialize coef using np.random.rand (uniform distribution between 0 and 1)
+                self.coef = jnp.full(
+                    (n_features + 1,), 0.5
+                )  # Initialize coef using np.random.rand (uniform distribution between 0 and 1)
         else:
             if not self.coef:
-                self.coef = jnp.full((n_features, ), 0.5)  # Initialize coef using np.random.rand (uniform distribution between 0 and 1)
-        self.objective = lambda coef: self.loss_model(
-            y, self.link.inverse(X @ coef)) + jnp.linalg.norm(coef) * self.l2_reg_strength / 2
+                self.coef = jnp.full(
+                    (n_features,), 0.5
+                )  # Initialize coef using np.random.rand (uniform distribution between 0 and 1)
+        self.objective = (
+            lambda coef: self.loss_model(y, self.link.inverse(X @ coef))
+            + jnp.linalg.norm(coef) * self.l2_reg_strength / 2
+        )
         self.objective_grad = jit(jax.grad(self.objective))
         self.hessian_fn = jit(jax.hessian(self.objective))
         return X
@@ -53,15 +62,17 @@ class Solver(ABC):
 
 # Define NewtonCholeskySolver class using JAX
 class NewtonCholeskySolver(Solver):
-    def __init__(self,
-                 loss_model,
-                 link,
-                 l2_reg_strength=1.0,
-                 max_iter=100,
-                 n_threads=None,
-                 fit_intercept=True,
-                 verbose=0,
-                 coef=None):
+    def __init__(
+        self,
+        loss_model,
+        link,
+        l2_reg_strength=1.0,
+        max_iter=100,
+        n_threads=None,
+        fit_intercept=True,
+        verbose=0,
+        coef=None,
+    ):
         """
         Solver for Newton-Cholesky optimization algorithm.
 
@@ -85,8 +96,16 @@ class NewtonCholeskySolver(Solver):
             Initial coefficient values. Default is None.
 
         """
-        super().__init__(loss_model, link, max_iter, l2_reg_strength, n_threads, fit_intercept,
-                         verbose, coef)
+        super().__init__(
+            loss_model,
+            link,
+            max_iter,
+            l2_reg_strength,
+            n_threads,
+            fit_intercept,
+            verbose,
+            coef,
+        )
 
     def solve(self, X, y, sample_weight=None):
         """
@@ -124,15 +143,17 @@ class NewtonCholeskySolver(Solver):
 
 
 class LBFGSSolver(Solver):
-    def __init__(self,
-                 loss_model,
-                 link,
-                 max_iter=100,
-                 l2_reg_strength=1.0,
-                 n_threads=None,
-                 fit_intercept=True,
-                 verbose=0,
-                 coef=None):
+    def __init__(
+        self,
+        loss_model,
+        link,
+        max_iter=100,
+        l2_reg_strength=1.0,
+        n_threads=None,
+        fit_intercept=True,
+        verbose=0,
+        coef=None,
+    ):
         """
         Implementation of LBFGS optimization algorithm for generalized linear regression.
 
@@ -165,7 +186,16 @@ class LBFGSSolver(Solver):
             A parameter in BFGS algorithm.
 
         """
-        super().__init__(loss_model, link, max_iter, l2_reg_strength, n_threads, fit_intercept, verbose, coef)
+        super().__init__(
+            loss_model,
+            link,
+            max_iter,
+            l2_reg_strength,
+            n_threads,
+            fit_intercept,
+            verbose,
+            coef,
+        )
         self.maxcor = 10
         self.maxls = 3
         self.gamma = 1
@@ -194,7 +224,7 @@ class LBFGSSolver(Solver):
         d = len(self.coef)
         self.s_history = jnp.zeros((self.maxcor, d))
         self.y_history = jnp.zeros((self.maxcor, d))
-        self.rho_history = jnp.zeros((self.maxcor, ))
+        self.rho_history = jnp.zeros((self.maxcor,))
         f_k, g_k = jax.value_and_grad(self.objective)(self.coef)
 
         for self.i in range(self.max_iter):
@@ -218,7 +248,7 @@ class LBFGSSolver(Solver):
         his_size = len(self.rho_history)
         curr_size = his_size
         q = -jnp.conj(g_k)
-        a_his = jnp.zeros((self.maxcor, ))
+        a_his = jnp.zeros((self.maxcor,))
 
         for j in range(his_size):
             i = his_size - 1 - j
@@ -231,16 +261,19 @@ class LBFGSSolver(Solver):
         for j in range(his_size):
             b_i = self.rho_history[j] * (self.y_history[j] @ q)
             q = q + (a_his[j] - b_i) * self.s_history[j]
-        return q 
+        return q
 
     def _line_search(self, p_k, f_k, g_k):
-        a_k = 0.96 ** self.i
+        a_k = 0.96**self.i
+
         # Build a local quadratic model using quasi-Newton method
         def quadratic_model(a):
             f_a = a * p_k @ g_k
-            return jnp.abs(jnp.abs(f_a) - jnp.abs(f_k)) / max(jnp.abs(f_a), jnp.abs(f_k))
+            return jnp.abs(jnp.abs(f_a) - jnp.abs(f_k)) / max(
+                jnp.abs(f_a), jnp.abs(f_k)
+            )
 
         alpha = 0.9
         # alpha = quadratic_model(a_k)
-        a_k *= alpha ** self.maxls
+        a_k *= alpha**self.maxls
         return a_k

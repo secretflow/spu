@@ -7,9 +7,16 @@ import os
 sys.path.append('../../')
 import sml.utils.emulation as emulation
 import spu.utils.distributed as ppd
-from glm import _GeneralizedLinearRegressor, PoissonRegressor, GammaRegressor, TweedieRegressor
+from glm import (
+    _GeneralizedLinearRegressor,
+    PoissonRegressor,
+    GammaRegressor,
+    TweedieRegressor,
+)
 
 n_samples, n_features = 100, 5
+
+
 def generate_data(noise=False):
     """
     Generate random data for testing.
@@ -39,7 +46,9 @@ def generate_data(noise=False):
     sample_weight = np.random.rand(n_samples)
     return X, y, coef, sample_weight
 
+
 X, y, coef, sample_weight = generate_data()
+
 
 def emul_SGDClassifier(mode: emulation.Mode.MULTIPROCESS, num=10):
     """
@@ -85,9 +94,7 @@ def emul_SGDClassifier(mode: emulation.Mode.MULTIPROCESS, num=10):
         # Specify the file paths for cluster and dataset
         CLUSTER_ABY3_3PC = os.path.join('../../', emulation.CLUSTER_ABY3_3PC)
         # Create the emulator with specified mode and bandwidth/latency settings
-        emulator = emulation.Emulator(
-            CLUSTER_ABY3_3PC, mode, bandwidth=300, latency=20
-        )
+        emulator = emulation.Emulator(CLUSTER_ABY3_3PC, mode, bandwidth=300, latency=20)
         emulator.up()
 
         # Run the proc_ncSolver function using both plaintext and encrypted data

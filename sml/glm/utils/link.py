@@ -3,6 +3,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 import jax.numpy as jnp
 
+
 # Define a dataclass to represent an interval
 @dataclass
 class Interval:

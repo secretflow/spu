@@ -6,20 +6,23 @@ from utils.loss import *
 from utils.link import *
 import warnings
 import os
+
 DEBUG = 0
+
 
 # Define the _GeneralizedLinearRegressor class using JAX
 class _GeneralizedLinearRegressor:
-    def __init__(self,
-                 fit_intercept=True,  # Whether to fit the intercept term, default is True
-                 alpha=0,  # L2 regularization strength, default is 0 (no regularization)
-                 solver="newton-cholesky",  # Optimization algorithm, default is Newton-Cholesky
-                 max_iter=20,  # Maximum number of iterations, default is 20
-                 warm_start=False,  # Whether to use warm start, default is False
-                 n_threads=None,  # Deprecated parameter (no longer used)
-                 tol=None,  # Deprecated parameter (no longer used)
-                 verbose=0  # Level of verbosity, default is 0 (no output)
-                 ):
+    def __init__(
+        self,
+        fit_intercept=True,  # Whether to fit the intercept term, default is True
+        alpha=0,  # L2 regularization strength, default is 0 (no regularization)
+        solver="newton-cholesky",  # Optimization algorithm, default is Newton-Cholesky
+        max_iter=20,  # Maximum number of iterations, default is 20
+        warm_start=False,  # Whether to use warm start, default is False
+        n_threads=None,  # Deprecated parameter (no longer used)
+        tol=None,  # Deprecated parameter (no longer used)
+        verbose=0,  # Level of verbosity, default is 0 (no output)
+    ):
         """
         Initialize the generalized linear regression model.
 
@@ -51,11 +54,19 @@ class _GeneralizedLinearRegressor:
         self.warm_start = warm_start
         self.verbose = verbose
         if n_threads:
-            warnings.warn("SPU does not need n_threads.", category=DeprecationWarning, stacklevel=2)
+            warnings.warn(
+                "SPU does not need n_threads.",
+                category=DeprecationWarning,
+                stacklevel=2,
+            )
         if warm_start:
             warnings.warn("Using minibatch in the second optimizer may cause problems.")
         if tol:
-            warnings.warn("SPU does not support early stop.", category=DeprecationWarning, stacklevel=2)
+            warnings.warn(
+                "SPU does not support early stop.",
+                category=DeprecationWarning,
+                stacklevel=2,
+            )
 
     def fit(self, X, y, sample_weight=None):
         if sample_weight is None:
@@ -70,7 +81,10 @@ class _GeneralizedLinearRegressor:
         if not self.warm_start or not hasattr(self, "coef_"):
             self.coef_ = None
         if self.solver == "lbfgs":
-            warnings.warn("LBFGS algorithm cannot be accurately implemented on SPU platform, only approximate implementation is available.", UserWarning)
+            warnings.warn(
+                "LBFGS algorithm cannot be accurately implemented on SPU platform, only approximate implementation is available.",
+                UserWarning,
+            )
             self._fit_lbfgs(X, y)
         elif self.solver == "newton-cholesky":
             self._fit_newton_cholesky(X, y)
@@ -85,22 +99,26 @@ class _GeneralizedLinearRegressor:
 
     def _fit_newton_cholesky(self, X, y):
         # Use the NewtonCholeskySolver class to implement the Newton-Cholesky optimization algorithm
-        solver = NewtonCholeskySolver(loss_model=self.loss_model,
-                                      l2_reg_strength=self.l2_reg_strength,
-                                      max_iter=self.max_iter,
-                                      verbose=self.verbose,
-                                      link=self.link_model,
-                                      coef=self.coef_)
+        solver = NewtonCholeskySolver(
+            loss_model=self.loss_model,
+            l2_reg_strength=self.l2_reg_strength,
+            max_iter=self.max_iter,
+            verbose=self.verbose,
+            link=self.link_model,
+            coef=self.coef_,
+        )
         self.coef_ = solver.solve(X, y)
 
     def _fit_lbfgs(self, X, y):
         # Use the LBFGSSolver class to implement the Newton-Cholesky optimization algorithm
-        solver = LBFGSSolver(loss_model=self.loss_model,
-                             max_iter=self.max_iter,
-                             l2_reg_strength=self.l2_reg_strength,
-                             verbose=self.verbose,
-                             link=self.link_model,
-                             coef=self.coef_)
+        solver = LBFGSSolver(
+            loss_model=self.loss_model,
+            max_iter=self.max_iter,
+            l2_reg_strength=self.l2_reg_strength,
+            verbose=self.verbose,
+            link=self.link_model,
+            coef=self.coef_,
+        )
         self.coef_ = solver.solve(X, y)
 
     def predict(self, X):
@@ -117,20 +135,22 @@ class _GeneralizedLinearRegressor:
 
         # Calculate the model's predictions
         prediction = self.predict(X)
-        squared_error = lambda y_true, prediction: jnp.mean(
-            (y_true - prediction)**2)
+        squared_error = lambda y_true, prediction: jnp.mean((y_true - prediction) ** 2)
         # Calculate the model's deviance
         deviance = squared_error(y_true=y, prediction=prediction)
         # Calculate the null deviance
-        deviance_null = squared_error(y_true=y,
-                                      prediction=jnp.tile(
-                                          jnp.average(y), y.shape[0]))
+        deviance_null = squared_error(
+            y_true=y, prediction=jnp.tile(jnp.average(y), y.shape[0])
+        )
         # Calculate D^2
         d2 = 1 - (deviance) / (deviance_null)
         return d2
 
     def _check_solver_support(self):
-        supported_solvers = ["lbfgs", "newton-cholesky"]  # List of supported optimization algorithms
+        supported_solvers = [
+            "lbfgs",
+            "newton-cholesky",
+        ]  # List of supported optimization algorithms
         if self.solver not in supported_solvers:
             raise ValueError(
                 f"Invalid solver={self.solver}. Supported solvers are {supported_solvers}."
@@ -143,6 +163,7 @@ class PoissonRegressor(_GeneralizedLinearRegressor):
 
     This regressor uses the 'log' link function.
     """
+
     def _get_loss(self):
         return HalfPoissonLoss()
 
@@ -158,6 +179,7 @@ class GammaRegressor(_GeneralizedLinearRegressor):
     def _get_link(self):
         return LogLink()
 
+
 # The TweedieRegressor class represents a generalized linear model with Tweedie distribution using JAX.
 class TweedieRegressor(_GeneralizedLinearRegressor):
     def __init__(
@@ -166,11 +188,13 @@ class TweedieRegressor(_GeneralizedLinearRegressor):
     ):
         super().__init__()
         # Ensure that the power is within the valid range for the Tweedie distribution
-        assert(power>=0 and power<=3)
+        assert power >= 0 and power <= 3
         self.power = power
 
     def _get_loss(self):
-        return HalfTweedieLoss(self.power, )
+        return HalfTweedieLoss(
+            self.power,
+        )
 
     def _get_link(self):
         if self.power > 0:

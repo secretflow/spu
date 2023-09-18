@@ -1,6 +1,7 @@
 import jax
 import jax.numpy as jnp
 
+
 class BaseLoss:
     def get_sampleweight(self, sample_weight):
         """
@@ -28,9 +29,9 @@ class HalfSquaredLoss(BaseLoss):
             Average half squared loss value.
 
         """
-        y_t,y_p=y_true,y_pred
+        y_t, y_p = y_true, y_pred
         w = self.sample_weight
-        return jnp.sum(((y_t - y_p) ** 2 / 2) *w)
+        return jnp.sum(((y_t - y_p) ** 2 / 2) * w)
 
 
 class HalfPoissonLoss(BaseLoss):
@@ -51,9 +52,10 @@ class HalfPoissonLoss(BaseLoss):
             Average half Poisson loss value.
 
         """
-        y_t,y_p=y_true,y_pred
+        y_t, y_p = y_true, y_pred
         w = self.sample_weight
-        return jnp.sum((y_p - y_t * jnp.log(y_p))*w)
+        return jnp.sum((y_p - y_t * jnp.log(y_p)) * w)
+
 
 class HalfGammaLoss(BaseLoss):
     def __call__(self, y_true, y_pred):
@@ -73,9 +75,10 @@ class HalfGammaLoss(BaseLoss):
             Average half Gamma loss value.
 
         """
-        y_t,y_p=y_true,y_pred
+        y_t, y_p = y_true, y_pred
         w = self.sample_weight
-        return jnp.sum(w *(jnp.log(y_p / y_t) + y_t / y_p - 1))
+        return jnp.sum(w * (jnp.log(y_p / y_t) + y_t / y_p - 1))
+
 
 class HalfTweedieLoss(BaseLoss):
     def __init__(self, power=0.5):
@@ -112,7 +115,6 @@ class HalfTweedieLoss(BaseLoss):
 
         """
         p = self.power
-        y_t,y_p=y_true,y_pred
+        y_t, y_p = y_true, y_pred
         w = self.sample_weight
-        return jnp.sum((y_p ** (2 - p) / (2 - p) - y_t * y_p ** (1 - p) / (1 - p))*w)
-
+        return jnp.sum((y_p ** (2 - p) / (2 - p) - y_t * y_p ** (1 - p) / (1 - p)) * w)
