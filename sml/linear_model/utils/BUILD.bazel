@@ -17,40 +17,17 @@ load("@rules_python//python:defs.bzl", "py_library")
 package(default_visibility = ["//visibility:public"])
 
 py_library(
-    name = "sgd_classifier",
-    srcs = ["sgd_classifier.py"],
-    deps = [
-        "//sml/utils:fxp_approx",
-    ],
+    name = "link",
+    srcs = ["link.py"],
 )
 
 py_library(
-    name = "logistic",
-    srcs = ["logistic.py"],
-    deps = [
-        "//sml/utils:fxp_approx",
-    ],
+    name = "loss",
+    srcs = ["loss.py"],
+    deps = [":link"],
 )
 
 py_library(
-    name = "ridge",
-    srcs = ["ridge.py"],
-    deps = [
-        "//sml/utils:extmath",
-    ],
-)
-
-py_library(
-    name = "pla",
-    srcs = ["pla.py"],
-)
-
-py_binary(
-    name = "glm",
-    srcs = ["glm.py"],
-    deps = [
-        "//sml/linear_model/utils:link",
-        "//sml/linear_model/utils:loss",
-        "//sml/linear_model/utils:solver",
-    ],
+    name = "solver",
+    srcs = ["solver.py"],
 )

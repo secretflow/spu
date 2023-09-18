@@ -60,3 +60,13 @@ py_test(
         "//spu/utils:simulation",
     ],
 )
+
+py_test(
+    name = "glm_test",
+    srcs = ["glm_test.py"],
+    deps = [
+        "//sml/linear_model:glm",
+        "//spu:init",
+        "//spu/utils:simulation",
+    ],
+)
