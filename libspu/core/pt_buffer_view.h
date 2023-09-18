@@ -93,6 +93,8 @@ struct PtBufferView {
         static_cast<const std::byte*>(ptr) + SizeOf(pt_type) * fi;
     return reinterpret_cast<const T*>(addr);
   }
+
+  bool isCompact() const { return strides == makeCompactStrides(shape); }
 };
 
 std::ostream& operator<<(std::ostream& out, PtBufferView v);
