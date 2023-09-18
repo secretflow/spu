@@ -42,9 +42,6 @@ def generate_data():
     return X, y, coef, sample_weight
 
 
-X, y, coef, sample_weight = generate_data()
-
-
 def emul_SGDClassifier(mode: emulation.Mode.MULTIPROCESS, num=10):
     """
     Execute the encrypted SGD classifier in a simulation environment and output the results.
@@ -86,6 +83,7 @@ def emul_SGDClassifier(mode: emulation.Mode.MULTIPROCESS, num=10):
         return model.score(X, y), model.predict(X)
 
     try:
+        X, y, coef, sample_weight = generate_data()
         # Create the emulator with specified mode and bandwidth/latency settings
         emulator = emulation.Emulator(
             emulation.CLUSTER_ABY3_3PC, mode, bandwidth=300, latency=20
@@ -93,7 +91,9 @@ def emul_SGDClassifier(mode: emulation.Mode.MULTIPROCESS, num=10):
         emulator.up()
 
         # Run the proc_ncSolver function using both plaintext and encrypted data
-        raw_score, raw_result = proc_ncSolver(ppd.get(X), ppd.get(y))
+        raw_score, raw_result = proc_ncSolver(X, y)
+
+        X, y = emulator.seal(X, y)
         score, result = emulator.run(proc_ncSolver)(X, y)
 
         # Print the results
