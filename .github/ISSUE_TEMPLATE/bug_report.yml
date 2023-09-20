@@ -57,21 +57,21 @@ body:
       label: SPU Version
       description: pip version if installed from package, commit id if build
         from source
-      placeholder: e.g., spu 0.3.2b12
+      placeholder: e.g., spu 0.5.0b0
     validations:
       required: true
   - type: input
     id: OS
     attributes:
       label: OS Platform and Distribution
-      placeholder: e.g., Linux Ubuntu 16.04
+      placeholder: e.g., Linux Ubuntu 22.04
     validations:
       required: true
   - type: input
     id: Python
     attributes:
       label: Python Version
-      placeholder: e.g., 3.8
+      placeholder: e.g., 3.9
     validations:
       required: true
   - type: input
