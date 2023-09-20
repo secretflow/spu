@@ -43,4 +43,21 @@ body:
       options: ['Yes', 'No']
     validations:
       required: true
+  - type: dropdown
+    id: head
+    attributes:
+      label: Have you searched existing issues?
+      description: To prevent duplicated reports, it is strongly suggested that you search existing issues first.
+      options: ['Yes', 'No']
+    validations:
+      required: true
+  - type: dropdown
+    id: installation-type
+    attributes:
+      label: Installation Kind
+      description: SPU installed from
+      options: [source, binary]
+    validations:
+      required: true
+  
  
