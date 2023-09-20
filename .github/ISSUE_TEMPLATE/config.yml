@@ -1,4 +1,3 @@
----
 name: SPU Issue Template
 description: To report any SPU related issue please use this template.
 body:
@@ -41,7 +40,7 @@ body:
       label: Have you reproduced the bug with SPU HEAD?
       description: It is strongly suggested that you have reproduced the bug
         with latest SPU code
-      options: [Yes, No]
+      options: ['Yes', 'No']
     validations:
       required: true
   - type: dropdown
