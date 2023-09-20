@@ -60,5 +60,27 @@ body:
       placeholder: e.g., spu 0.3.2b12
     validations:
       required: true
+  - type: input
+    id: OS
+    attributes:
+      label: OS Platform and Distribution
+      placeholder: e.g., Linux Ubuntu 16.04
+    validations:
+      required: true
+  - type: input
+    id: Python
+    attributes:
+      label: Python Version
+      placeholder: e.g., 3.8
+    validations:
+      required: true
+  - type: input
+    id: Compiler
+    attributes:
+      label: Compiler Version
+      description: if compiling from source
+      placeholder: e.g., GCC 11.2.1
+    validations:
+      required: false
   
  
