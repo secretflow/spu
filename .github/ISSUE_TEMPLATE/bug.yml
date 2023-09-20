@@ -1,4 +1,4 @@
-name: SPU Issue Template
+name: SPU Bug Report Template
 description: To report any SPU related bug
 title: "[Bug]: "
 body:
@@ -15,6 +15,22 @@ body:
         - Usability
         - Documentation
         - Currentness/Accuracy
+        - Others
+    validations:
+      required: true
+  - type: dropdown
+    id: sub-area
+    attributes:
+      label: Modules Involved
+      description: Which modules are involved in this issue?
+      multiple: true
+      options:
+        - MPC protocol
+        - SPU runtime
+        - SPU compiler
+        - PSI
+        - PIR
+        - Documentation/Tutorial/Example
         - Others
     validations:
       required: true
