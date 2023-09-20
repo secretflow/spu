@@ -34,4 +34,13 @@ body:
         - Others
     validations:
       required: true
+  - type: dropdown
+    id: head
+    attributes:
+      label: Have you reproduced the bug with SPU HEAD?
+      description: It is strongly suggested that you have reproduced the bug
+        with latest SPU code
+      options: ['Yes', 'No']
+    validations:
+      required: true
  
