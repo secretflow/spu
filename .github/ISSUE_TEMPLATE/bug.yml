@@ -82,5 +82,26 @@ body:
       placeholder: e.g., GCC 11.2.1
     validations:
       required: false
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: Current Behavior?
+      description: Also tell us, what did you expect to happen?
+      placeholder: Tell us what you see!
+      value: A bug happened!
+    validations:
+      required: true
+  - type: textarea
+    id: code-to-reproduce
+    attributes:
+      label: Standalone code to reproduce the issue
+      description: Provide a reproducible test case that is the bare minimum
+        necessary to generate the problem. If possible, please share a link to
+        Jupyter/any notebook.
+      placeholder: Tell us what you see!
+      value: print("A bug")
+      render: Python
+    validations:
+      required: true
   
  
