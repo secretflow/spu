@@ -44,20 +44,21 @@ body:
     validations:
       required: true
   - type: dropdown
-    id: head
+    id: search
     attributes:
       label: Have you searched existing issues?
       description: To prevent duplicated reports, it is strongly suggested that you search existing issues first.
       options: ['Yes', 'No']
     validations:
       required: true
-  - type: dropdown
-    id: installation-type
-    attributes:
-      label: Installation Kind
-      description: SPU installed from
-      options: [source, binary]
-    validations:
-      required: true
+  - type: input
+      id: version
+      attributes:
+        label: SPU Version
+        description: pip version if installed from package, commit id if build
+          from source
+        placeholder: e.g., spu 0.3.2b12
+      validations:
+        required: true
   
  
