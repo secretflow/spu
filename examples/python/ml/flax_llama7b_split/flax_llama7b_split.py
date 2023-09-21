@@ -13,9 +13,9 @@
 # limitations under the License.
 
 # Start nodes.
-# > bazel run -c opt //examples/python/utils:nodectl -- --config `pwd`/examples/python/ml/flax_llama/3pc.json" up
+# > bazel run -c opt //examples/python/utils:nodectl -- --config `pwd`/examples/python/ml/flax_llama_split/3pc.json" up
 # Run this example script.
-# > bazel run -c opt //examples/python/ml/flax_llama7b -- --config `pwd`/examples/python/ml/flax_llama7b/3pc.json
+# > bazel run -c opt //examples/python/ml/flax_llama7b -- --config `pwd`/examples/python/ml/flax_llama_split/3pc.json
 import time
 import argparse
 import json
@@ -28,7 +28,15 @@ from typing import Any, Optional, Tuple, Union
 from transformers import LlamaTokenizer
 from EasyLM.checkpoint import StreamingCheckpointer
 from EasyLM.models.llama.llama_model import  FlaxLLaMAForCausalLM
-from EasyLM.models.llama.llama_model_splited_transformer import FlaxLLaMAForCausalLMClient, FlaxLLaMAForCausalLMServer, FlaxLLaMAModule, FlaxLLaMAForCausalLMMid, LLaMAConfig
+from EasyLM.models.llama.llama_model import FlaxLLaMAForCausalLM
+from EasyLM.models.llama.llama_model_splited_transformer import (
+    FlaxLLaMAForCausalLMClient,
+    FlaxLLaMAForCausalLMServer,
+    FlaxLLaMAModule,
+    FlaxLLaMAForCausalLMMid,
+    LLaMAConfig,
+)
+
 
 import spu.utils.distributed as ppd
 from contextlib import contextmanager
@@ -70,32 +78,29 @@ client_params_dict = {
         "transformer":{
             "wte":params['params']["transformer"]["wte"],
             "ln_f": params['params']["transformer"]["ln_f"],
-            "h":{
-                str(i): params['params']["transformer"]["h"][str(i)] for i in range(2)
-            }
+            "h":{str(i): params['params']["transformer"]["h"][str(i)] for i in range(2)}
         }
     }
 
 mid_params_dict = {
     "transformer":{
 
-        "h":{
-            str(i): params['params']["transformer"]["h"][str(i)] for i in range(2, 3)
-        }
+        "h":{str(i): params['params']["transformer"]["h"][str(i)] for i in range(2, 3)}
     }
 }
 
 server_params_dict = {
-    "transformer":{
+    "transformer": {
         "ln_f": params['params']["transformer"]["ln_f"],
         "h":{
-            str(i): params['params']["transformer"]["h"][str(i)] for i in range(3, len(params['params']["transformer"]["h"]))
+            str(i): params['params']["transformer"]["h"][str(i)]
+            for i in range(3, len(params['params']["transformer"]["h"]))
         }
 
     },
     "lm_head": {
         "kernel": params['params']["lm_head"]["kernel"],
-    }
+    },
 }
 
 
@@ -181,7 +186,9 @@ def hack_silu_context(msg: str, enabled: bool = True):
 def embeding_generation(input_ids, params):
     config = LLaMAConfig()
     model = FlaxLLaMAForCausalLMClient(config=config)
-    smasheddata, attention_mask, position_ids = model(input_ids=input_ids, params=params)
+    smasheddata, attention_mask, position_ids = model(
+        input_ids=input_ids, params=params
+    )
     del model
     return smasheddata, attention_mask, position_ids
 
@@ -192,7 +199,12 @@ def mid_generation(input_ids, params, attention_mask, position_ids):
     config = LLaMAConfig()
     _model = FlaxLLaMAForCausalLMMid(config=config)
 
-    _smasheddata = _model(input_ids=input_ids, params=params, attention_mask=attention_mask, position_ids=position_ids)
+    _smasheddata = _model(
+        input_ids=input_ids,
+        params=params,
+        attention_mask=attention_mask,
+        position_ids=position_ids
+    )
     
     return _smasheddata, attention_mask, position_ids
 
@@ -200,9 +212,15 @@ def server_generation(input_ids, params, attention_mask, position_ids):
     config = LLaMAConfig()
     _model = FlaxLLaMAForCausalLMServer(config=config)
 
-    _smasheddata = _model(input_ids=input_ids, params=params, attention_mask=attention_mask, position_ids=position_ids)
+    _smasheddata = _model(
+        input_ids=input_ids,
+        params=params,
+        attention_mask=attention_mask,
+        position_ids=position_ids
+    )
     
     return _smasheddata
+
 
 def run_on_cpu(token_num=9):
 
@@ -210,11 +228,23 @@ def run_on_cpu(token_num=9):
         'Q: What is the largest animal?\nA:', return_tensors='jax'
     )
     for _ in range(token_num):
-        smasheddata, attention_mask, position_ids = embeding_generation(input_ids=input_ids, params=client_params_dict)
+        smasheddata, attention_mask, position_ids = embeding_generation(
+            input_ids=input_ids, params=client_params_dict
+        )
 
-        _smasheddata, attention_mask, position_ids = mid_generation(input_ids=smasheddata, params=mid_params_dict, attention_mask=attention_mask, position_ids=position_ids)
+        _smasheddata, attention_mask, position_ids = mid_generation(
+            input_ids=smasheddata,
+            params=mid_params_dict,
+            attention_mask=attention_mask,
+            position_ids=position_ids,
+        )
             
-        outputs = server_generation(input_ids=_smasheddata, params=server_params_dict, attention_mask=attention_mask, position_ids=position_ids)
+        outputs = server_generation(
+            input_ids=_smasheddata,
+            params=server_params_dict,
+            attention_mask=attention_mask,
+            position_ids=position_ids,
+        )
         
         next_token_logits = outputs[0][0, -1, :]
         next_token = jnp.argmax(next_token_logits)
@@ -239,11 +269,22 @@ def run_on_spu(token_num=9):
             _input_ids = ppd.device("P1")(lambda x: x)(smasheddata)
             _params = ppd.device("P2")(lambda x: x)(mid_params_dict)
 
-            _smasheddata, attention_mask, position_ids = ppd.device("SPU")(mid_generation)(_input_ids, _params, attention_mask, position_ids)
+            _smasheddata, attention_mask, position_ids = ppd.device("SPU")(
+                mid_generation
+            )(_input_ids, _params, attention_mask, position_ids)
 
-            _smasheddata, attention_mask, position_ids = ppd.get(_smasheddata), ppd.get(attention_mask), ppd.get(position_ids)
+            _smasheddata, attention_mask, position_ids = (
+                ppd.get(_smasheddata),
+                ppd.get(attention_mask),
+                ppd.get(position_ids),
+            )
        
-        outputs = server_generation(input_ids=_smasheddata, params=server_params_dict, attention_mask=attention_mask, position_ids=position_ids)
+        outputs = server_generation(
+            input_ids=_smasheddata,
+            params=server_params_dict,
+            attention_mask=attention_mask,
+            position_ids=position_ids,
+        )
         
         next_token_logits = outputs[0][0, -1, :]
         next_token = jnp.argmax(next_token_logits)
@@ -255,18 +296,15 @@ def run_on_spu(token_num=9):
 
 if __name__ == '__main__':
     print('\n------\nRun on CPU')
-    start_time = time.time() 
+    start_time = time.time()
     outputs_ids = run_on_cpu()
     print(tokenizer.decode(outputs_ids[0], skip_special_tokens=True))
     end_time = time.time()
     print(f"generate on CPU: {end_time - start_time} seconds")
 
-
     print('\n------\nRun on SPU')
-    start_time = time.time() 
+    start_time = time.time()
     outputs_ids = run_on_spu()
     print(tokenizer.decode(outputs_ids[0], skip_special_tokens=True))
     end_time = time.time()
     print(f"generate  on SPU: {end_time - start_time} seconds")
-
-
