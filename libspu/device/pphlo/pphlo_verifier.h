@@ -149,6 +149,7 @@ class PPHloVerifier {
   NO_VERIFY_DEFN(RealOp)
   NO_VERIFY_DEFN(ImagOp)
   NO_VERIFY_DEFN(ComplexOp)
+  NO_VERIFY_DEFN(SimpleSortOp)
 
 #undef NO_VERIFY_DEFN
 };

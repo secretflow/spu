@@ -1,6 +1,9 @@
 #include "libspu/kernel/hal/sort.h"
 
+#include <algorithm>
+
 #include "libspu/kernel/hal/polymorphic.h"
+#include "libspu/kernel/hal/prot_wrapper.h"
 #include "libspu/kernel/hal/public_helper.h"
 #include "libspu/kernel/hal/ring.h"
 #include "libspu/kernel/hal/shape_ops.h"
@@ -172,11 +175,38 @@ std::vector<spu::Value> sort1d(SPUContext *ctx,
     for (auto const &input : inputs) {
       ret.push_back(input.clone());
     }
-    // TODO(jimi): leave a special dispatch path for radix sort
     BitonicSort(ctx, cmp, ret);
   }
 
   return ret;
+}
+
+std::vector<spu::Value> simple_sort1d(SPUContext *ctx,
+                                      absl::Span<spu::Value const> inputs,
+                                      SortDirection direction) {
+  // Fall back to generic sort
+  SPU_ENFORCE(!inputs.empty(), "Inputs should not be empty");
+  if (inputs[0].isPublic() || !ctx->hasKernel("sort_a")) {
+    auto ret = sort1d(
+        ctx, inputs,
+        [&](absl::Span<const spu::Value> cmp_inputs) {
+          if (direction == SortDirection::Ascending) {
+            return hal::less(ctx, cmp_inputs[0], cmp_inputs[1]);
+          }
+          if (direction == SortDirection::Descending) {
+            return hal::greater(ctx, cmp_inputs[0], cmp_inputs[1]);
+          }
+          SPU_THROW("Should not reach here");
+        },
+        inputs[0].vtype(), false);
+    return ret;
+  } else {
+    auto ret = _sort_s(ctx, inputs);
+    if (direction == SortDirection::Descending) {
+      std::reverse(ret.begin(), ret.end());
+    }
+    return ret;
+  }
 }
 
 }  // namespace spu::kernel::hal

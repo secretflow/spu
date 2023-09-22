@@ -82,6 +82,8 @@ Value _make_p(SPUContext* ctx, uint128_t init, const Shape& shape);
 Value _rand_p(SPUContext* ctx, const Shape& shape);
 Value _rand_s(SPUContext* ctx, const Shape& shape);
 
+std::vector<Value> _sort_s(SPUContext* ctx, absl::Span<Value const> x);
+
 // NOLINTEND(readability-identifier-naming)
 
 }  // namespace spu::kernel::hal

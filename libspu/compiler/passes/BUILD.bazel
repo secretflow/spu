@@ -247,6 +247,18 @@ spu_cc_library(
 )
 
 spu_cc_library(
+    name = "sort_lowering",
+    srcs = ["sort_lowering.cc"],
+    hdrs = ["passes.h"],
+    deps = [
+        ":pass_details",
+        "//libspu/dialect:pphlo_dialect",
+        "@llvm-project//mlir:IR",
+        "@llvm-project//mlir:TransformUtils",
+    ],
+)
+
+spu_cc_library(
     name = "all_passes",
     hdrs = ["register_passes.h"],
     deps = [
@@ -263,5 +275,6 @@ spu_cc_library(
         ":optimize_sqrt_plus_eps",
         ":reduce_truncation",
         ":rewrite_div_sqrt_patterns",
+        ":sort_lowering",
     ],
 )

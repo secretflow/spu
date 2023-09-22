@@ -134,7 +134,7 @@ class NMF:
         self._random_matrixA = random_matrixA
         self._random_matrixB = random_matrixB
         self._update_H = True
-        self._components = None
+        self.components_ = None
 
     def fit(self, X):
         """Learn a NMF model for the data X.
@@ -168,7 +168,7 @@ class NMF:
         return self
 
     def transform(self, X, transform_iter=40):
-        assert self._components is not None, f"should fit before transform"
+        assert self.components_ is not None, f"should fit before transform"
         self._update_H = False
         self._max_iter = transform_iter
         W = self.fit_transform(X)
@@ -193,7 +193,7 @@ class NMF:
         else:
             avg = jnp.sqrt(X.mean() / self._n_components)
             W = jnp.full((X.shape[0], self._n_components), avg, dtype=X.dtype)
-            H = self._components
+            H = self.components_
 
         # compute the regularization parameters
         l1_reg_W, l1_reg_H, l2_reg_W, l2_reg_H = compute_regularization(
@@ -210,7 +210,7 @@ class NMF:
 
         # compute the reconstruction error
         if self._update_H:
-            self._components = H
+            self.components_ = H
             self.reconstruction_err_ = _beta_divergence(
                 X, W, H, self._beta_loss, square_root=True
             )
@@ -218,5 +218,5 @@ class NMF:
         return W
 
     def inverse_transform(self, X):
-        assert self._components is not None, f"should fit before inverse_transform"
-        return jnp.dot(X, self._components)
+        assert self.components_ is not None, f"should fit before inverse_transform"
+        return jnp.dot(X, self.components_)

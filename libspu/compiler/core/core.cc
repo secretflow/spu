@@ -53,6 +53,7 @@ void Core::buildPipeline(mlir::PassManager *pm) {
   }
   optPM.addPass(mlir::pphlo::createDecomposeComparisonPass());
   optPM.addPass(mlir::pphlo::createDecomposeMinMaxPass());
+  optPM.addPass(mlir::pphlo::createSortLowering());
 
   if (!options.disable_sqrt_plus_epsilon_rewrite()) {
     optPM.addPass(mlir::pphlo::createOptimizeSqrtPlusEps());

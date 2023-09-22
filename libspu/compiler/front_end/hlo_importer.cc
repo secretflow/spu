@@ -47,7 +47,6 @@
 #include "xla/service/scatter_expander.h"
 #include "xla/service/slice_sinker.h"
 #include "xla/service/sort_simplifier.h"
-#include "xla/service/stable_sort_expander.h"
 #include "xla/service/triangular_solve_expander.h"
 #include "xla/service/tuple_simplifier.h"
 #include "xla/service/while_loop_constant_sinking.h"
@@ -104,8 +103,6 @@ void runHloPasses(xla::HloModule *module) {
   pipeline.AddPass<DotDecomposer>(); // Simplify dot
 
   pipeline.AddPass<Convolution4DExpander>();
-
-  pipeline.AddPass<StableSortExpander>();
 
   // After canonicalization, there may be more batch dots that can be
   // simplified.

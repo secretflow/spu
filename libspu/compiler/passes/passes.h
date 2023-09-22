@@ -73,6 +73,8 @@ createOptimizeDenominatorWithBroadcast();
 
 std::unique_ptr<OperationPass<func::FuncOp>> createInsertDeallocationOp();
 
+std::unique_ptr<OperationPass<func::FuncOp>> createSortLowering();
+
 } // namespace pphlo
 
 } // namespace mlir

@@ -573,6 +573,32 @@ void execute(OpExecutor *executor, SPUContext *sctx, SymbolScope *sscope,
 }
 
 void execute(OpExecutor *executor, SPUContext *sctx, SymbolScope *sscope,
+             mlir::pphlo::SimpleSortOp &op, const ExecutionOptions &opts) {
+  auto sort_dim = op.getDimension();
+  std::vector<spu::Value> inputs(op->getNumOperands());
+  for (size_t idx = 0; idx < inputs.size(); ++idx) {
+    inputs[idx] = lookupValue(sscope, op->getOperand(idx), opts);
+  }
+
+  kernel::hal::SortDirection direction;
+  if (op.getSortDirectionAttr().getInt() ==
+      static_cast<int>(mlir::pphlo::SortDirection::ASC)) {
+    direction = kernel::hal::SortDirection::Ascending;
+  } else if (op.getSortDirectionAttr().getInt() ==
+             static_cast<int>(mlir::pphlo::SortDirection::DES)) {
+    direction = kernel::hal::SortDirection::Descending;
+  } else {
+    SPU_THROW("Should not reach here");
+  }
+
+  auto ret = kernel::hlo::SimpleSort(sctx, inputs, sort_dim, direction);
+
+  for (int64_t idx = 0; idx < op->getNumResults(); ++idx) {
+    addValue(sscope, op->getResult(idx), ret[idx], opts);
+  }
+}
+
+void execute(OpExecutor *executor, SPUContext *sctx, SymbolScope *sscope,
              mlir::pphlo::SelectAndScatterOp &op,
              const ExecutionOptions &opts) {
   auto operand = lookupValue(sscope, op.getOperand(), opts);
