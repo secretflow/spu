@@ -71,11 +71,29 @@ class NdArrayRef {
   NdArrayRef(const NdArrayRef& other) = default;
   NdArrayRef(NdArrayRef&& other) = default;
   NdArrayRef& operator=(const NdArrayRef& other) = default;
+
+#ifndef NDEBUG
+  // GCC 11.4 with -O1 is not happy with default assign operator when using
+  // std::reverse...
+  NdArrayRef& operator=(NdArrayRef&& other) noexcept {
+    if (this != &other) {
+      std::swap(this->buf_, other.buf_);
+      std::swap(this->eltype_, other.eltype_);
+      std::swap(this->shape_, other.shape_);
+      std::swap(this->strides_, other.strides_);
+      std::swap(this->offset_, other.offset_);
+      std::swap(this->use_fast_indexing_, other.use_fast_indexing_);
+      std::swap(this->fast_indexing_stride_, other.fast_indexing_stride_);
+    }
+    return *this;
+  }
+#else
   NdArrayRef& operator=(NdArrayRef&& other) = default;
+#endif
 
   bool operator==(const NdArrayRef& other) const {
-    return buf_ == other.buf_ && shape_ == other.shape_ &&
-           strides_ == other.strides_ && offset_ == other.offset_;
+    return shape_ == other.shape_ && strides_ == other.strides_ &&
+           offset_ == other.offset_ && buf_ == other.buf_;
   }
 
   bool operator!=(const NdArrayRef& other) const { return !(*this == other); }

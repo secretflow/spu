@@ -18,6 +18,7 @@ import unittest
 
 import numpy as np
 from sklearn.decomposition import NMF as SklearnNMF
+
 import spu.spu_pb2 as spu_pb2
 import spu.utils.simulation as spsim
 
@@ -28,129 +29,115 @@ from sml.decomposition.nmf import NMF
 
 
 class UnitTests(unittest.TestCase):
-    def test_nmf(self):
+    @classmethod
+    def setUpClass(cls):
+        print(" ========= start test of NMF package ========= \n")
+        cls.random_seed = 0
+        np.random.seed(cls.random_seed)
+        # NMF must use FM128 now, for heavy use of non-linear & matrix operations
         config = spu_pb2.RuntimeConfig(
             protocol=spu_pb2.ProtocolKind.ABY3,
             field=spu_pb2.FieldType.FM128,
             fxp_fraction_bits=30,
         )
-        sim = spsim.Simulator(3, config)
+        cls.sim = spsim.Simulator(3, config)
 
-        # Test fit_transform
-        def proc1(X, random_matrixA, random_matrixB):
-            model = NMF(
-                n_components=n_components,
-                l1_ratio=l1_ratio,
-                alpha_W=alpha_W,
-                random_matrixA=random_matrixA,
-                random_matrixB=random_matrixB,
+        # generate some dummy test datas
+        cls.test_data = np.random.randint(1, 100, (100, 10)) * 1.0
+        n_samples, n_features = cls.test_data.shape
+
+        # random matrix should be generated in plaintext.
+        cls.n_components = 5
+        random_state = np.random.RandomState(cls.random_seed)
+        cls.random_A = random_state.standard_normal(size=(cls.n_components, n_features))
+        cls.random_B = random_state.standard_normal(size=(n_samples, cls.n_components))
+
+        # test hyper-parameters settings
+        cls.l1_ratio = 0.1
+        cls.alpha_W = 0.01
+
+    @classmethod
+    def tearDownClass(cls):
+        print(" ========= test of NMF package end ========= \n")
+
+    def _nmf_test_main(self, plaintext=True, mode="uniform"):
+        # uniform means model is fitted by fit_transform method
+        # seperate means model is fitted by first fit then transform
+        assert mode in ["uniform", "seperate"]
+
+        # must define here, because test may run simultaneously
+        model = (
+            SklearnNMF(
+                n_components=self.n_components,
+                init='random',
+                random_state=self.random_seed,
+                l1_ratio=self.l1_ratio,
+                solver="mu",  # sml only implement this solver now.
+                alpha_W=self.alpha_W,
             )
+            if plaintext
+            else NMF(
+                n_components=self.n_components,
+                l1_ratio=self.l1_ratio,
+                alpha_W=self.alpha_W,
+                random_matrixA=self.random_A,
+                random_matrixB=self.random_B,
+            )
+        )
 
-            W = model.fit_transform(X)
-            H = model._components
+        def proc(x):
+            if mode == "uniform":
+                W = model.fit_transform(x)
+            else:
+                model.fit(x)
+                W = model.transform(x)
+
+            H = model.components_
             X_reconstructed = model.inverse_transform(W)
             err = model.reconstruction_err_
+
             return W, H, X_reconstructed, err
 
-        # Create a simple dataset and random_matrix
-        X = np.random.randint(1, 100, (1000, 10))
-        X = np.array(X, dtype=float)
-        n_samples, n_features = X.shape
-        n_components = 5
-        random_seed = 0
-        random_state = np.random.RandomState(random_seed)
-        A = random_state.standard_normal(size=(n_components, n_features))
-        B = random_state.standard_normal(size=(n_samples, n_components))
-        l1_ratio = 0.1
-        alpha_W = 0.01
-
-        # Run the simulation
-        W, H, X_reconstructed, err = spsim.sim_jax(sim, proc1)(X, A, B)
-        print("reconstruction_error: ", err)
-
-        # sklearn
-        model = SklearnNMF(
-            n_components=n_components,
-            init='random',
-            random_state=random_seed,
-            l1_ratio=l1_ratio,
-            solver="mu",
-            alpha_W=alpha_W,
+        run_func = (
+            proc
+            if plaintext
+            else spsim.sim_jax(
+                self.sim,
+                proc,
+            )
         )
-        W_Sklearn = model.fit_transform(X)
-        H_Sklearn = model.components_
-        X_reconstructed_Sklearn = model.inverse_transform(W_Sklearn)
-        err = model.reconstruction_err_
-        print("reconstruction_error_sklearn: ", err)
-        self.assertTrue(np.allclose(W_Sklearn, W, atol=5e-1))
-        self.assertTrue(np.allclose(H_Sklearn, H, atol=5e-1))
-        self.assertTrue(
-            np.allclose(X_reconstructed_Sklearn, X_reconstructed, atol=5e-1)
+
+        return run_func(self.test_data)
+
+    def test_nmf_uniform(self):
+        print("==============  start test of nmf uniform ==============\n")
+
+        W, H, X_reconstructed, err = self._nmf_test_main(False, "uniform")
+        W_sk, H_sk, X_reconstructed_sk, err_sk = self._nmf_test_main(True, "uniform")
+
+        np.testing.assert_allclose(err, err_sk, rtol=1, atol=1e-1)
+        np.testing.assert_allclose(W, W_sk, rtol=1, atol=1e-1)
+        np.testing.assert_allclose(H, H_sk, rtol=1, atol=1e-1)
+        np.testing.assert_allclose(
+            X_reconstructed, X_reconstructed_sk, rtol=1, atol=1e-1
         )
+
+        print("==============  nmf uniform test pass  ==============\n")
 
     def test_nmf_seperate(self):
-        config = spu_pb2.RuntimeConfig(
-            protocol=spu_pb2.ProtocolKind.ABY3,
-            field=spu_pb2.FieldType.FM128,
-            fxp_fraction_bits=30,
+        print("==============  start test of nmf seperate ==============\n")
+
+        W, H, X_reconstructed, err = self._nmf_test_main(False, "seperate")
+        W_sk, H_sk, X_reconstructed_sk, err_sk = self._nmf_test_main(True, "seperate")
+
+        np.testing.assert_allclose(err, err_sk, rtol=1, atol=1e-1)
+        np.testing.assert_allclose(W, W_sk, rtol=1, atol=1e-1)
+        np.testing.assert_allclose(H, H_sk, rtol=1, atol=1e-1)
+        np.testing.assert_allclose(
+            X_reconstructed, X_reconstructed_sk, rtol=1, atol=1e-1
         )
-        sim = spsim.Simulator(3, config)
 
-        # Test fit and transform
-        def proc2(X, random_matrixA, random_matrixB):
-            model = NMF(
-                n_components=n_components,
-                l1_ratio=l1_ratio,
-                alpha_W=alpha_W,
-                random_matrixA=random_matrixA,
-                random_matrixB=random_matrixB,
-            )
-
-            model.fit(X)
-            W = model.transform(X, transform_iter=40)
-            H = model._components
-            X_reconstructed = model.inverse_transform(W)
-            return W, H, X_reconstructed
-
-        # Create a simple dataset and random_matrix
-        X = np.random.randint(1, 100, (1000, 10))
-        X = np.array(X, dtype=float)
-        n_samples, n_features = X.shape
-        n_components = 5
-        random_seed = 0
-        random_state = np.random.RandomState(random_seed)
-        A = random_state.standard_normal(size=(n_components, n_features))
-        B = random_state.standard_normal(size=(n_samples, n_components))
-        l1_ratio = 0.1
-        alpha_W = 0.01
-
-        # Run the simulation_seperate
-        W_seperate, H_seperate, X_reconstructed_seperate = spsim.sim_jax(sim, proc2)(
-            X, A, B
-        )
-        print("W_matrix_spu_seperate: ", W_seperate[:5, :5])
-        print("H_matrix_spu_seperate: ", H_seperate[:5, :5])
-        print("X_reconstructed_spu_seperate: ", X_reconstructed_seperate[:5, :5])
-
-        # sklearn_seperate
-        model = SklearnNMF(
-            n_components=n_components,
-            init='random',
-            random_state=random_seed,
-            l1_ratio=l1_ratio,
-            solver="mu",
-            alpha_W=alpha_W,
-        )
-        model.fit(X)
-        W_Sklearn_seperate = model.transform(X)
-        H_Sklearn_seperate = model.components_
-        X_reconstructed_Sklearn_seperate = model.inverse_transform(W_Sklearn_seperate)
-        print("W_matrix_sklearn_seperate: ", W_Sklearn_seperate[:5, :5])
-        print("H_matrix_sklearn_seperate: ", H_Sklearn_seperate[:5, :5])
-        print(
-            "X_reconstructed_sklearn_seperate: ",
-            X_reconstructed_Sklearn_seperate[:5, :5],
-        )
+        print("==============  nmf seperate test pass ==============\n")
 
 
 if __name__ == "__main__":

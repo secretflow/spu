@@ -24,4 +24,9 @@ std::vector<spu::Value> Sort(SPUContext* ctx,
                              const hal::CompFn& comparator_body,
                              Visibility comparator_ret_vis);
 
+std::vector<spu::Value> SimpleSort(SPUContext* ctx,
+                                   absl::Span<const spu::Value> inputs,
+                                   int64_t sort_dim,
+                                   hal::SortDirection direction);
+
 }  // namespace spu::kernel::hlo

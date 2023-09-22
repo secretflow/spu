@@ -98,3 +98,9 @@ def InsertDeallocation: Pass<"insert-deallocation", "func::FuncOp"> {
   let constructor = "createInsertDeallocationOp()";
   let dependentDialects = ["pphlo::PPHloDialect"];
 }
+
+def SortLowering: Pass<"sort-lowering", "func::FuncOp"> {
+  let summary = "Lower some simple sort to simple sort op";
+  let constructor = "createSortLowering()";
+  let dependentDialects = ["pphlo::PPHloDialect"];
+}

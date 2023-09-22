@@ -31,4 +31,20 @@ def PPHLO_VisibilityAttr
   let genSpecializedAttr = 0;
 }
 
+//===----------------------------------------------------------------------===//
+// Sort direction enum definitions.
+//===----------------------------------------------------------------------===//
+def PPHLO_SORT_DIRECTION_ASC : I32EnumAttrCase<"ASC", 0>;
+def PPHLO_SORT_DIRECTION_DES : I32EnumAttrCase<"DES", 1>;
+
+def PPHLO_SortDirection : I32EnumAttr<"SortDirection",
+    "Which mode to sort.",
+    [
+      PPHLO_SORT_DIRECTION_ASC,
+      PPHLO_SORT_DIRECTION_DES
+    ]> {
+  let genSpecializedAttr = 0;
+  let cppNamespace = "::mlir::pphlo";
+}
+
 #endif  // SPU_DIALECT_PPHLO_BASE_ENUMS

@@ -20,7 +20,10 @@
 
 namespace spu::kernel::hlo {
 
-namespace {
+namespace internal {
+
+using Sort1dFn =
+    std::function<std::vector<spu::Value>(absl::Span<const spu::Value>)>;
 
 // Given a & p are vectors, and p is a permutation.
 // let b = permute(a, p) where b[i] = a[p[i]]
@@ -44,13 +47,9 @@ Index InversePermute(const Index &p) {
   return q;
 }
 
-}  // namespace
-
 std::vector<spu::Value> Sort(SPUContext *ctx,
                              absl::Span<const spu::Value> inputs,
-                             int64_t sort_dim, bool is_stable,
-                             const hal::CompFn &comparator_body,
-                             Visibility comparator_ret_vis) {
+                             int64_t sort_dim, const Sort1dFn &sort_fn) {
   // sanity check.
   SPU_ENFORCE(!inputs.empty(), "Inputs should not be empty");
   // put the to_sort dimension to last dimension.
@@ -99,8 +98,7 @@ std::vector<spu::Value> Sort(SPUContext *ctx,
           hal::reshape(ctx, hal::slice(ctx, input, {ni, 0}, {ni + 1, W}), {W}));
     }
 
-    sorted1d.push_back(hal::sort1d(ctx, input_i, comparator_body,
-                                   comparator_ret_vis, is_stable));
+    sorted1d.push_back(sort_fn(input_i));
   }
 
   // result is (M,shape)
@@ -117,6 +115,30 @@ std::vector<spu::Value> Sort(SPUContext *ctx,
   }
 
   return results;
+}
+
+}  // namespace internal
+
+std::vector<spu::Value> Sort(SPUContext *ctx,
+                             absl::Span<const spu::Value> inputs,
+                             int64_t sort_dim, bool is_stable,
+                             const hal::CompFn &comparator_body,
+                             Visibility comparator_ret_vis) {
+  auto sort_fn = [&](absl::Span<const spu::Value> input) {
+    return hal::sort1d(ctx, input, comparator_body, comparator_ret_vis,
+                       is_stable);
+  };
+  return internal::Sort(ctx, inputs, sort_dim, sort_fn);
+}
+
+std::vector<spu::Value> SimpleSort(SPUContext *ctx,
+                                   absl::Span<const spu::Value> inputs,
+                                   int64_t sort_dim,
+                                   hal::SortDirection direction) {
+  auto sort_fn = [&](absl::Span<const spu::Value> input) {
+    return hal::simple_sort1d(ctx, input, direction);
+  };
+  return internal::Sort(ctx, inputs, sort_dim, sort_fn);
 }
 
 }  // namespace spu::kernel::hlo

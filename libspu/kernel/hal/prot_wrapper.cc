@@ -108,6 +108,12 @@ Value _trunc_s(SPUContext* ctx, const Value& in, size_t bits, SignType sign) {
   return mpc::trunc_s(ctx, in, bits, sign);
 }
 
+std::vector<Value> _sort_s(SPUContext* ctx, absl::Span<Value const> x) {
+  SPU_TRACE_HAL_DISP(ctx, x.size());
+  // FIXME(jimi): formalize mpc sort api
+  return dynDispatch<std::vector<Value>>(ctx, "sort_a", x);
+}
+
 MAP_UNARY_OP(p2s)
 MAP_UNARY_OP(s2p)
 MAP_UNARY_OP(not_p)

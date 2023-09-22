@@ -53,7 +53,6 @@ spu_cc_library(
         "@xla//xla/service:scatter_expander",
         "@xla//xla/service:slice_sinker",
         "@xla//xla/service:sort_simplifier",
-        "@xla//xla/service:stable_sort_expander",
         "@xla//xla/service:triangular_solve_expander",
         "@xla//xla/service:while_loop_constant_sinking",
         "@xla//xla/service:while_loop_simplifier",

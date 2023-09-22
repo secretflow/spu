@@ -37,7 +37,7 @@ inline std::ostream& operator<<(std::ostream& os,
 }
 
 inline std::ostream& operator<<(std::ostream& os,
-                                const absl::Span<int64_t const>& indices) {
+                                absl::Span<int64_t const> indices) {
   os << fmt::format("{{{}}}", fmt::join(indices, ","));
   return os;
 }

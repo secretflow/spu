@@ -938,6 +938,22 @@ def PPHLO_SortOp
       CArg<"bool", "false">:$is_stable)>];
 }
 
+def PPHLO_SimpleSortOp
+    : PPHLO_Op<"simple_sort", [RecursiveMemoryEffects, SameOperandsAndResultShape]> {
+  let summary = "Sort operator";
+  let description = [{
+    Sorts the given `operands` at the given `dimension` with the given
+    `mode`.
+  }];
+  let arguments = (ins
+    Variadic<PPHLO_Tensor>:$operands,
+    DefaultValuedAttr<I64Attr, "-1">:$dimension,
+    PPHLO_SortDirection: $sort_direction
+  );
+
+  let results = (outs Variadic<PPHLO_Tensor>);
+}
+
 def PPHLO_ReverseOp
     : PPHLO_Op<"reverse", [Pure, SameOperandsAndResultType]> {
   let summary = "Reverse operator";
