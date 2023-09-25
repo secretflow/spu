@@ -119,6 +119,10 @@ enum ProtocolKind {
   // The famous [Cheetah](https://eprint.iacr.org/2022/207) protocol, a very
   // fast 2PC protocol.
   CHEETAH = 4;
+
+  // A semi-honest 3PC-protocol for Neural Network, P2 as the helper,
+  // (https://eprint.iacr.org/2018/442)
+  SECURENN = 5;
 }
 
 message ValueMetaProto {

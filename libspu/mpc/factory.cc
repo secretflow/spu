@@ -22,6 +22,8 @@
 #include "libspu/mpc/cheetah/io.h"
 #include "libspu/mpc/cheetah/protocol.h"
 #include "libspu/mpc/ref2k/ref2k.h"
+#include "libspu/mpc/securenn/io.h"
+#include "libspu/mpc/securenn/protocol.h"
 #include "libspu/mpc/semi2k/io.h"
 #include "libspu/mpc/semi2k/protocol.h"
 
@@ -43,6 +45,9 @@ void Factory::RegisterProtocol(
     case ProtocolKind::CHEETAH: {
       return regCheetahProtocol(ctx, lctx);
     }
+    case ProtocolKind::SECURENN: {
+      return regSecurennProtocol(ctx, lctx);
+    }
     default: {
       SPU_THROW("Invalid protocol kind {}", ctx->config().protocol());
     }
@@ -63,6 +68,9 @@ std::unique_ptr<IoInterface> Factory::CreateIO(const RuntimeConfig& conf,
     }
     case ProtocolKind::CHEETAH: {
       return cheetah::makeCheetahIo(conf.field(), npc);
+    }
+    case ProtocolKind::SECURENN: {
+      return securenn::makeSecurennIo(conf.field(), npc);
     }
     default: {
       SPU_THROW("Invalid protocol kind {}", conf.protocol());

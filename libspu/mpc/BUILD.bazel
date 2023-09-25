@@ -49,6 +49,7 @@ spu_cc_library(
         "//libspu/mpc/cheetah",
         "//libspu/mpc/ref2k",
         "//libspu/mpc/semi2k",
+        "//libspu/mpc/securenn",
     ],
 )
 
