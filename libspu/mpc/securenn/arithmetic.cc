@@ -70,7 +70,7 @@ NdArrayRef V2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   auto* comm = ctx->getState<Communicator>();
   auto res = ring_zeros(field, in.shape());
 
-  auto [r0, r1] = prg_state->genPrssPair(field, in.shape());
+  auto [r0, r1] = prg_state->genPrssPair(field, in.shape(), PrgState::GenPrssCtrl::Both);
   // SPU_ENFORCE(owner_rank != 2);
   if (owner_rank == 2) {
     auto x = ring_sub(r0, r1).as(makeType<AShrTy>(field));
@@ -117,7 +117,7 @@ NdArrayRef P2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   auto* comm = ctx->getState<Communicator>();
   auto* prg_state = ctx->getState<PrgState>();
   auto res = ring_zeros(field, in.shape());
-  auto [r0, r1] = prg_state->genPrssPair(field, in.shape());
+  auto [r0, r1] = prg_state->genPrssPair(field, in.shape(), PrgState::GenPrssCtrl::Both);
   // P0.r1 = P1.r0
   if (comm->getRank() == 0) res = r1;
   if (comm->getRank() == 1) res = ring_sub(in, r0);
@@ -335,9 +335,9 @@ NdArrayRef MulAA::proc(KernelEvalContext* ctx, const NdArrayRef& x,
   if (rank == 2) {
     // P2 generate a0, a1, b0, b1, c0 by PRF
     // and calculate c1
-    auto [a1, a0] = prg_state->genPrssPair(field, x.shape());
-    auto [b1, b0] = prg_state->genPrssPair(field, x.shape());
-    auto c0 = prg_state->genPrssPair(field, x.shape(), true, false).second;
+    auto [a1, a0] = prg_state->genPrssPair(field, x.shape(), PrgState::GenPrssCtrl::Both);
+    auto [b1, b0] = prg_state->genPrssPair(field, x.shape(), PrgState::GenPrssCtrl::Both);
+    auto c0 = prg_state->genPrssPair(field, x.shape(), PrgState::GenPrssCtrl::Second).second;
 
     // c1 = (a0 + a1) * (b0 + b1) - c0
     auto c1 = ring_sub(ring_mul(ring_add(a0, a1), ring_add(b0, b1)), c0);
@@ -349,14 +349,14 @@ NdArrayRef MulAA::proc(KernelEvalContext* ctx, const NdArrayRef& x,
     NdArrayRef b(ty, x.shape());
     NdArrayRef c(ty, x.shape());
     if (rank == 0) {
-      a = prg_state->genPrssPair(field, x.shape(), false, true).first;
-      b = prg_state->genPrssPair(field, x.shape(), false, true).first;
-      c = prg_state->genPrssPair(field, x.shape(), false, true).first;
+      a = prg_state->genPrssPair(field, x.shape(), PrgState::GenPrssCtrl::First).first;
+      b = prg_state->genPrssPair(field, x.shape(), PrgState::GenPrssCtrl::First).first;
+      c = prg_state->genPrssPair(field, x.shape(), PrgState::GenPrssCtrl::First).first;
     }
     if (rank == 1) {
-      a = prg_state->genPrssPair(field, x.shape(), true, false).second;
-      b = prg_state->genPrssPair(field, x.shape(), true, false).second;
-      prg_state->genPrssPair(field, x.shape(), true, true);
+      a = prg_state->genPrssPair(field, x.shape(), PrgState::GenPrssCtrl::Second).second;
+      b = prg_state->genPrssPair(field, x.shape(), PrgState::GenPrssCtrl::Second).second;
+      prg_state->genPrssPair(field, x.shape(), PrgState::GenPrssCtrl::None);
       c = comm->recv(2, ty, "c");
       c = c.reshape(x.shape());
     }
@@ -384,7 +384,7 @@ NdArrayRef MulAA::proc(KernelEvalContext* ctx, const NdArrayRef& x,
 
   // P0 and P1 add the share of zero
   // P0.zero_1 = P1.zero_0
-  auto [zero_0, zero_1] = prg_state->genPrssPair(field, x.shape());
+  auto [zero_0, zero_1] = prg_state->genPrssPair(field, x.shape(), PrgState::GenPrssCtrl::Both);
   if (rank == 0) {
     z = ring_sub(z, zero_1);
   }
@@ -459,7 +459,7 @@ NdArrayRef MatMulAA_simple::proc(KernelEvalContext* ctx, const NdArrayRef& x,
 
   // P0 and P1 add the share of zero
   // P0.zero_1 = P1.zero_0
-  auto [zero_0, zero_1] = prg_state->genPrssPair(field, shape3);
+  auto [zero_0, zero_1] = prg_state->genPrssPair(field, shape3, PrgState::GenPrssCtrl::Both);
   if (rank == 0) {
     z = ring_sub(z, zero_1);
   }
@@ -489,9 +489,9 @@ NdArrayRef MatMulAA::proc(KernelEvalContext* ctx, const NdArrayRef& x,
   if (rank == 2) {
     // P2 generate a0, a1, b0, b1, c0 by PRF
     // and calculate c1
-    auto [a1, a0] = prg_state->genPrssPair(field, shape1);
-    auto [b1, b0] = prg_state->genPrssPair(field, shape2);
-    auto c0 = prg_state->genPrssPair(field, shape3, true, false).second;
+    auto [a1, a0] = prg_state->genPrssPair(field, shape1, PrgState::GenPrssCtrl::Both);
+    auto [b1, b0] = prg_state->genPrssPair(field, shape2, PrgState::GenPrssCtrl::Both);
+    auto c0 = prg_state->genPrssPair(field, shape3, PrgState::GenPrssCtrl::Second).second;
 
     // c1 = (a0 + a1) * (b0 + b1) - c0
     auto c1 = ring_sub(ring_mmul(ring_add(a0, a1), ring_add(b0, b1)), c0);
@@ -503,14 +503,14 @@ NdArrayRef MatMulAA::proc(KernelEvalContext* ctx, const NdArrayRef& x,
     NdArrayRef b(ty, shape2);
     NdArrayRef c(ty, shape3);
     if (rank == 0) {
-      a = prg_state->genPrssPair(field, shape1, false, true).first;
-      b = prg_state->genPrssPair(field, shape2, false, true).first;
-      c = prg_state->genPrssPair(field, shape3, false, true).first;
+      a = prg_state->genPrssPair(field, shape1, PrgState::GenPrssCtrl::First).first;
+      b = prg_state->genPrssPair(field, shape2, PrgState::GenPrssCtrl::First).first;
+      c = prg_state->genPrssPair(field, shape3, PrgState::GenPrssCtrl::First).first;
     }
     if (rank == 1) {
-      a = prg_state->genPrssPair(field, shape1, true, false).second;
-      b = prg_state->genPrssPair(field, shape2, true, false).second;
-      prg_state->genPrssPair(field, shape3, true, true);
+      a = prg_state->genPrssPair(field, shape1, PrgState::GenPrssCtrl::Second).second;
+      b = prg_state->genPrssPair(field, shape2, PrgState::GenPrssCtrl::Second).second;
+      prg_state->genPrssPair(field, shape3, PrgState::GenPrssCtrl::None);
 
       c = comm->recv(2, ty, "c");
       c = c.reshape(shape3);
@@ -540,7 +540,7 @@ NdArrayRef MatMulAA::proc(KernelEvalContext* ctx, const NdArrayRef& x,
 
   // P0 and P1 add the share of zero
   // P0.zero_1 = P1.zero_0
-  auto [zero_0, zero_1] = prg_state->genPrssPair(field, shape3);
+  auto [zero_0, zero_1] = prg_state->genPrssPair(field, shape3, PrgState::GenPrssCtrl::Both);
   if (rank == 0) {
     z = ring_sub(z, zero_1);
   }
@@ -581,23 +581,23 @@ NdArrayRef ShareConvert::proc(KernelEvalContext* ctx,
     const U L_1 = (U)(~0);  // 2^k - 1
     // P0 and P1 add the share of zero
     // P0.zero_1 = P1.zero_0
-    auto [zero_0, zero_1] = prg_state->genPrssPair(field, a.shape());
+    auto [zero_0, zero_1] = prg_state->genPrssPair(field, a.shape(), PrgState::GenPrssCtrl::Both);
     NdArrayView<U> _zero_0(zero_0);
     NdArrayView<U> _zero_1(zero_1);
     NdArrayView<U> _res(res);
 
     // P0 and P1 hold eta__ by PRF
-    auto [eta__0, eta__1] = prg_state->genPrssPair(field, a.shape());
+    auto [eta__0, eta__1] = prg_state->genPrssPair(field, a.shape(), PrgState::GenPrssCtrl::Both);
     // P0 and P1 hold r and share  it into r0 and r1
     // which means P0 and P1 hold r0 and r1
     // P0.r0_1 = P1.r0_0 = r0
     // P0.r1_1 = P1.r1_0 = r1
-    auto [r0_0, r0_1] = prg_state->genPrssPair(field, a.shape());
-    auto [r1_0, r1_1] = prg_state->genPrssPair(field, a.shape());
+    auto [r0_0, r0_1] = prg_state->genPrssPair(field, a.shape(), PrgState::GenPrssCtrl::Both);
+    auto [r1_0, r1_1] = prg_state->genPrssPair(field, a.shape(), PrgState::GenPrssCtrl::Both);
 
     // random for PC
-    auto [s_r0, s_r1] = prg_state->genPrssPair(field, {size * k});
-    auto [u_r0, u_r1] = prg_state->genPrssPair(field, {size * k});
+    auto [s_r0, s_r1] = prg_state->genPrssPair(field, {size * k}, PrgState::GenPrssCtrl::Both);
+    auto [u_r0, u_r1] = prg_state->genPrssPair(field, {size * k}, PrgState::GenPrssCtrl::Both);
 
     if (rank <= 1) {
       auto beta = ring_zeros(field, a.shape());
@@ -885,9 +885,9 @@ NdArrayRef Msb::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
     NdArrayRef gamma(ty, in.shape());
     NdArrayRef delta(ty, in.shape());
     // P0 and P1 hold beta by PRF
-    auto [beta0, beta1] = prg_state->genPrssPair(field, in.shape());
-    auto [s_r0, s_r1] = prg_state->genPrssPair(field, {size * k});
-    auto [u_r0, u_r1] = prg_state->genPrssPair(field, {size * k});
+    auto [beta0, beta1] = prg_state->genPrssPair(field, in.shape(), PrgState::GenPrssCtrl::Both);
+    auto [s_r0, s_r1] = prg_state->genPrssPair(field, {size * k}, PrgState::GenPrssCtrl::Both);
+    auto [u_r0, u_r1] = prg_state->genPrssPair(field, {size * k}, PrgState::GenPrssCtrl::Both);
     if (rank == 2) {
       std::random_device rd;
       std::mt19937 gen(rd());
@@ -896,9 +896,9 @@ NdArrayRef Msb::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
       // random for beaver
       // P2 generate a0, a1, b0, b1, c0 by PRF
       // and calculate c1
-      auto [a1, a0] = prg_state->genPrssPair(field, in.shape());
-      auto [b1, b0] = prg_state->genPrssPair(field, in.shape());
-      auto c0 = prg_state->genPrssPair(field, in.shape(), true, false).second;
+      auto [a1, a0] = prg_state->genPrssPair(field, in.shape(), PrgState::GenPrssCtrl::Both);
+      auto [b1, b0] = prg_state->genPrssPair(field, in.shape(), PrgState::GenPrssCtrl::Both);
+      auto c0 = prg_state->genPrssPair(field, in.shape(), PrgState::GenPrssCtrl::Second).second;
       // c1 = (a0 + a1) * (b0 + b1) - c0
       auto c1 = ring_sub(ring_mul(ring_add(a0, a1), ring_add(b0, b1)), c0);
       // end beaver  (c1 will be sent with x to reduce one round latency)
@@ -996,16 +996,16 @@ NdArrayRef Msb::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
       NdArrayRef beaver_b(ty, in.shape());
       NdArrayRef beaver_c(ty, in.shape());
       if (rank == 0) {
-        beaver_a = prg_state->genPrssPair(field, in.shape(), false, true).first;
-        beaver_b = prg_state->genPrssPair(field, in.shape(), false, true).first;
-        beaver_c = prg_state->genPrssPair(field, in.shape(), false, true).first;
+        beaver_a = prg_state->genPrssPair(field, in.shape(), PrgState::GenPrssCtrl::First).first;
+        beaver_b = prg_state->genPrssPair(field, in.shape(), PrgState::GenPrssCtrl::First).first;
+        beaver_c = prg_state->genPrssPair(field, in.shape(), PrgState::GenPrssCtrl::First).first;
       }
       if (rank == 1) {
         beaver_a =
-            prg_state->genPrssPair(field, in.shape(), true, false).second;
+            prg_state->genPrssPair(field, in.shape(), PrgState::GenPrssCtrl::Second).second;
         beaver_b =
-            prg_state->genPrssPair(field, in.shape(), true, false).second;
-        prg_state->genPrssPair(field, in.shape(), true, true);
+            prg_state->genPrssPair(field, in.shape(), PrgState::GenPrssCtrl::Second).second;
+        prg_state->genPrssPair(field, in.shape(), PrgState::GenPrssCtrl::None);
         beaver_c = comm->recv(2, ty, "beaver_c");
         beaver_c = beaver_c.reshape(in.shape());
       }
@@ -1169,7 +1169,7 @@ NdArrayRef Msb::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
 
   // P0 and P1 add the share of zero
   // P0.zero_1 = P1.zero_0
-  auto [zero_0, zero_1] = prg_state->genPrssPair(field, in.shape());
+  auto [zero_0, zero_1] = prg_state->genPrssPair(field, in.shape(), PrgState::GenPrssCtrl::Both);
   if (rank == 0) {
     res = ring_sub(res, zero_1);
   }
@@ -1202,15 +1202,15 @@ NdArrayRef Msb_opt::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
     NdArrayRef gamma(ty, in.shape());
     NdArrayRef delta(ty, in.shape());
     // P0 and P1 hold beta by PRF
-    auto [beta0, beta1] = prg_state->genPrssPair(field, in.shape());
+    auto [beta0, beta1] = prg_state->genPrssPair(field, in.shape(), PrgState::GenPrssCtrl::Both);
     // random for pc
-    auto [s_r0, s_r1] = prg_state->genPrssPair(field, {size * k});
-    auto [u_r0, u_r1] = prg_state->genPrssPair(field, {size * k});
+    auto [s_r0, s_r1] = prg_state->genPrssPair(field, {size * k}, PrgState::GenPrssCtrl::Both);
+    auto [u_r0, u_r1] = prg_state->genPrssPair(field, {size * k}, PrgState::GenPrssCtrl::Both);
     // using PRF for reduce some comm
-    auto [prf_x0, prf_x1] = prg_state->genPrssPair(field, in.shape());
-    auto [prf_dpx0, prf_dpx1] = prg_state->genPrssPair(field, {size * k});
-    auto [prf_lsbx0, prf_lsbx1] = prg_state->genPrssPair(field, in.shape());
-    auto [beta_0, beta_1] = prg_state->genPrssPair(field, in.shape());
+    auto [prf_x0, prf_x1] = prg_state->genPrssPair(field, in.shape(), PrgState::GenPrssCtrl::Both);
+    auto [prf_dpx0, prf_dpx1] = prg_state->genPrssPair(field, {size * k}, PrgState::GenPrssCtrl::Both);
+    auto [prf_lsbx0, prf_lsbx1] = prg_state->genPrssPair(field, in.shape(), PrgState::GenPrssCtrl::Both);
+    auto [beta_0, beta_1] = prg_state->genPrssPair(field, in.shape(), PrgState::GenPrssCtrl::Both);
     if (rank == 2) {
       std::random_device rd;
       std::mt19937 gen(rd());
@@ -1219,9 +1219,9 @@ NdArrayRef Msb_opt::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
       // random for beaver
       // P2 generate a0, a1, b0, b1, c0 by PRF
       // and calculate c1
-      auto [a1, a0] = prg_state->genPrssPair(field, in.shape());
-      auto [b1, b0] = prg_state->genPrssPair(field, in.shape());
-      auto c0 = prg_state->genPrssPair(field, in.shape(), true, false).second;
+      auto [a1, a0] = prg_state->genPrssPair(field, in.shape(), PrgState::GenPrssCtrl::Both);
+      auto [b1, b0] = prg_state->genPrssPair(field, in.shape(), PrgState::GenPrssCtrl::Both);
+      auto c0 = prg_state->genPrssPair(field, in.shape(), PrgState::GenPrssCtrl::Second).second;
       // c1 = (a0 + a1) * (b0 + b1) - c0
       auto c1 = ring_sub(ring_mul(ring_add(a0, a1), ring_add(b0, b1)), c0);
       // end beaver  (c1 will be sent with x to reduce one round latency)
@@ -1315,15 +1315,15 @@ NdArrayRef Msb_opt::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
       NdArrayRef beaver_b(ty, in.shape());
       NdArrayRef beaver_c(ty, in.shape());
       if (rank == 0) {
-        beaver_a = prg_state->genPrssPair(field, in.shape(), false, true).first;
-        beaver_b = prg_state->genPrssPair(field, in.shape(), false, true).first;
-        beaver_c = prg_state->genPrssPair(field, in.shape(), false, true).first;
+        beaver_a = prg_state->genPrssPair(field, in.shape(), PrgState::GenPrssCtrl::First).first;
+        beaver_b = prg_state->genPrssPair(field, in.shape(), PrgState::GenPrssCtrl::First).first;
+        beaver_c = prg_state->genPrssPair(field, in.shape(), PrgState::GenPrssCtrl::First).first;
       }
       if (rank == 1) {
         beaver_a =
-            prg_state->genPrssPair(field, in.shape(), true, false).second;
+            prg_state->genPrssPair(field, in.shape(), PrgState::GenPrssCtrl::Second).second;
         beaver_b =
-            prg_state->genPrssPair(field, in.shape(), true, false).second;
+            prg_state->genPrssPair(field, in.shape(), PrgState::GenPrssCtrl::Second).second;
         prg_state->genPrssPair(field, in.shape(), true, true);
         beaver_c = comm->recv(2, ty, "beaver_c");
         beaver_c = beaver_c.reshape(in.shape());
@@ -1505,7 +1505,7 @@ NdArrayRef Msb_opt::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
 
   // P0 and P1 add the share of zero
   // P0.zero_1 = P1.zero_0
-  auto [zero_0, zero_1] = prg_state->genPrssPair(field, in.shape());
+  auto [zero_0, zero_1] = prg_state->genPrssPair(field, in.shape(), PrgState::GenPrssCtrl::Both);
   if (rank == 0) {
     res = ring_sub(res, zero_1);
   }
