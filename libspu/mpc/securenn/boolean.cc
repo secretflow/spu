@@ -98,7 +98,8 @@ NdArrayRef P2B::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
 
   auto* comm = ctx->getState<Communicator>();
 
-  auto [r0, r1] = prg_state->genPrssPair(field, in.shape());
+  auto [r0, r1] =
+      prg_state->genPrssPair(field, in.shape(), PrgState::GenPrssCtrl::Both);
   auto x = ring_xor(r0, r1).as(makeType<BShrTy>(field, 0));
 
   if (comm->getRank() == 0) {
@@ -161,9 +162,14 @@ NdArrayRef AndBB::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
       if (rank == 2) {
         // P2 generate a0, a1, b0, b1, c0 by PRF
         // and calculate c1
-        auto [a1, a0] = prg_state->genPrssPair(field, {numField});
-        auto [b1, b0] = prg_state->genPrssPair(field, {numField});
-        auto c0 = prg_state->genPrssPair(field, {numField}, true, false).second;
+        auto [a1, a0] = prg_state->genPrssPair(field, {numField},
+                                               PrgState::GenPrssCtrl::Both);
+        auto [b1, b0] = prg_state->genPrssPair(field, {numField},
+                                               PrgState::GenPrssCtrl::Both);
+        auto c0 =
+            prg_state
+                ->genPrssPair(field, {numField}, PrgState::GenPrssCtrl::Second)
+                .second;
 
         // c1 = (a0 ^ a1) & (b0 ^ b1) ^ c0
         auto c1 = ring_xor(ring_and(ring_xor(a0, a1), ring_xor(b0, b1)), c0);
@@ -171,14 +177,24 @@ NdArrayRef AndBB::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
         comm->sendAsync(1, c1, "c");  // 1 latency, k
       }
       if (rank == 0) {
-        a = prg_state->genPrssPair(field, {numField}, false, true).first;
-        b = prg_state->genPrssPair(field, {numField}, false, true).first;
-        c = prg_state->genPrssPair(field, {numField}, false, true).first;
+        a = prg_state
+                ->genPrssPair(field, {numField}, PrgState::GenPrssCtrl::First)
+                .first;
+        b = prg_state
+                ->genPrssPair(field, {numField}, PrgState::GenPrssCtrl::First)
+                .first;
+        c = prg_state
+                ->genPrssPair(field, {numField}, PrgState::GenPrssCtrl::First)
+                .first;
       }
       if (rank == 1) {
-        a = prg_state->genPrssPair(field, {numField}, true, false).second;
-        b = prg_state->genPrssPair(field, {numField}, true, false).second;
-        prg_state->genPrssPair(field, {numField}, true, true);
+        a = prg_state
+                ->genPrssPair(field, {numField}, PrgState::GenPrssCtrl::Second)
+                .second;
+        b = prg_state
+                ->genPrssPair(field, {numField}, PrgState::GenPrssCtrl::Second)
+                .second;
+        prg_state->genPrssPair(field, {numField}, PrgState::GenPrssCtrl::None);
         c = comm->recv(2, ty, "c");
         c = c.reshape({numField});
       }
