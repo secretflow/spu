@@ -37,8 +37,8 @@ spu_cc_library(
     hdrs = ["boolean.h"],
     deps = [
         ":type",
-        "//libspu/mpc:kernel",
         "//libspu/mpc:ab_api",
+        "//libspu/mpc:kernel",
         "//libspu/mpc/common:communicator",
     ],
 )
@@ -48,11 +48,11 @@ spu_cc_library(
     srcs = ["conversion.cc"],
     hdrs = ["conversion.h"],
     deps = [
-        ":type",
         "arithmetic",
+        ":type",
         "//libspu/core:vectorize",
-        "//libspu/mpc:kernel",
         "//libspu/mpc:ab_api",
+        "//libspu/mpc:kernel",
         "//libspu/mpc/common:communicator",
     ],
 )
@@ -64,12 +64,12 @@ spu_cc_library(
     deps = [
         ":type",
         "//libspu/core:vectorize",
-        "//libspu/mpc:kernel",
         "//libspu/mpc:ab_api",
+        "//libspu/mpc:io_interface",
+        "//libspu/mpc:kernel",
         "//libspu/mpc/common:communicator",
         "//libspu/mpc/utils:circuits",
         "//libspu/mpc/utils:ring_ops",
-        "//libspu/mpc:io_interface",
     ],
 )
 
@@ -78,10 +78,10 @@ spu_cc_library(
     srcs = ["protocol.cc"],
     hdrs = ["protocol.h"],
     deps = [
-        ":state",
         ":arithmetic",
         ":boolean",
         ":conversion",
+        ":state",
         "//libspu/mpc/common:prg_state",
     ],
 )
