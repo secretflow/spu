@@ -178,7 +178,7 @@ NdArrayRef AndBB::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
       if (rank == 1) {
         a = prg_state->genPrssPair(field, {numField}, PrgState::GenPrssCtrl::Second).second;
         b = prg_state->genPrssPair(field, {numField}, PrgState::GenPrssCtrl::Second).second;
-        prg_state->genPrssPair(field, {numField}, true, true);
+        prg_state->genPrssPair(field, {numField}, PrgState::GenPrssCtrl::None);
         c = comm->recv(2, ty, "c");
         c = c.reshape({numField});
       }

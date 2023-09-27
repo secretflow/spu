@@ -1324,7 +1324,7 @@ NdArrayRef Msb_opt::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
             prg_state->genPrssPair(field, in.shape(), PrgState::GenPrssCtrl::Second).second;
         beaver_b =
             prg_state->genPrssPair(field, in.shape(), PrgState::GenPrssCtrl::Second).second;
-        prg_state->genPrssPair(field, in.shape(), true, true);
+        prg_state->genPrssPair(field, in.shape(), PrgState::GenPrssCtrl::None);
         beaver_c = comm->recv(2, ty, "beaver_c");
         beaver_c = beaver_c.reshape(in.shape());
       }
