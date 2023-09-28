@@ -38,6 +38,7 @@ spu_cc_test(
         ":beaver_tfp",
         ":beaver_ttp",
         "//libspu/mpc/semi2k/beaver/ttp_server:beaver_server",
+        "//libspu/mpc/utils:permute",
         "//libspu/mpc/utils:simulate",
         "@com_google_googletest//:gtest",
     ],
@@ -50,6 +51,7 @@ spu_cc_library(
     deps = [
         "//libspu/core:type_util",
         "//libspu/mpc/common:prg_tensor",
+        "//libspu/mpc/utils:permute",
         "//libspu/mpc/utils:ring_ops",
     ],
 )

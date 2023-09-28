@@ -24,6 +24,7 @@
 #include "libspu/core/ndarray_ref.h"
 #include "libspu/mpc/common/prg_tensor.h"
 #include "libspu/mpc/semi2k/beaver/trusted_party.h"
+#include "libspu/mpc/utils/permute.h"
 
 #include "libspu/mpc/semi2k/beaver/ttp_server/service.pb.h"
 
@@ -67,7 +68,7 @@ std::vector<NdArrayRef> AdjustImpl(const AdjustRequest& req,
   if constexpr (std::is_same_v<AdjustRequest, AdjustMulRequest>) {
     auto adjust = TrustedParty::adjustMul(descs, seeds);
     ret.push_back(std::move(adjust));
-  } else if constexpr (std::is_same_v<AdjustRequest, AdjusDotRequest>) {
+  } else if constexpr (std::is_same_v<AdjustRequest, AdjustDotRequest>) {
     auto adjust =
         TrustedParty::adjustDot(descs, seeds, req.m(), req.n(), req.k());
     ret.push_back(std::move(adjust));
@@ -83,6 +84,14 @@ std::vector<NdArrayRef> AdjustImpl(const AdjustRequest& req,
     ret.push_back(std::move(std::get<1>(adjust)));
   } else if constexpr (std::is_same_v<AdjustRequest, AdjustRandBitRequest>) {
     auto adjust = TrustedParty::adjustRandBit(descs, seeds);
+    ret.push_back(std::move(adjust));
+  } else if constexpr (std::is_same_v<AdjustRequest, AdjustPermRequest>) {
+    PermVector pv;
+    for (auto p : req.perm_vec()) {
+      pv.push_back(p);
+    }
+
+    auto adjust = TrustedParty::adjustPerm(descs, seeds, pv);
     ret.push_back(std::move(adjust));
   } else {
     static_assert(dependent_false<AdjustRequest>::value,
@@ -279,7 +288,7 @@ class ServiceImpl final : public BeaverService {
   }
 
   void AdjustDot(::google::protobuf::RpcController* controller,
-                 const AdjusDotRequest* req, AdjustResponse* rsp,
+                 const AdjustDotRequest* req, AdjustResponse* rsp,
                  ::google::protobuf::Closure* done) override {
     Adjust(controller, req, rsp, done);
   }
@@ -305,6 +314,12 @@ class ServiceImpl final : public BeaverService {
   void AdjustRandBit(::google::protobuf::RpcController* controller,
                      const AdjustRandBitRequest* req, AdjustResponse* rsp,
                      ::google::protobuf::Closure* done) override {
+    Adjust(controller, req, rsp, done);
+  }
+
+  void AdjustPerm(::google::protobuf::RpcController* controller,
+                  const AdjustPermRequest* req, AdjustResponse* rsp,
+                  ::google::protobuf::Closure* done) override {
     Adjust(controller, req, rsp, done);
   }
 };
