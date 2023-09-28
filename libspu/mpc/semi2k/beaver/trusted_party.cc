@@ -14,6 +14,7 @@
 
 #include "libspu/mpc/semi2k/beaver/trusted_party.h"
 
+#include "libspu/mpc/utils/permute.h"
 #include "libspu/mpc/utils/ring_ops.h"
 
 namespace spu::mpc::semi2k {
@@ -123,6 +124,14 @@ NdArrayRef TrustedParty::adjustRandBit(Descs descs, Seeds seeds) {
 
   // adjust = bitrev - rs[0];
   return ring_sub(ring_randbit(descs[0].field, descs[0].shape), rs[0]);
+}
+
+NdArrayRef TrustedParty::adjustPerm(Descs descs, Seeds seeds,
+                                    absl::Span<const int64_t> perm_vec) {
+  SPU_ENFORCE_EQ(descs.size(), 2U);
+  auto rs = reconstruct(RecOp::ADD, seeds, descs);
+
+  return ring_sub(applyInvPerm(rs[0], perm_vec), rs[1]);
 }
 
 }  // namespace spu::mpc::semi2k

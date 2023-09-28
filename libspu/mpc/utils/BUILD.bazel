@@ -42,6 +42,15 @@ spu_cc_library(
     ],
 )
 
+spu_cc_library(
+    name = "permute",
+    srcs = ["permute.cc"],
+    hdrs = ["permute.h"],
+    deps = [
+        "//libspu/core",
+    ],
+)
+
 spu_cc_test(
     name = "simulate_test",
     srcs = ["simulate_test.cc"],

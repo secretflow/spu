@@ -52,6 +52,23 @@ class Beaver {
 
   virtual NdArrayRef RandBit(FieldType field, const Shape& shape) = 0;
 
+  // Generate share permutation pair.
+  /*
+          ┌───────────────────────┐
+          │                       │   A i
+  Perm    │      Permutation      ├─────►
+  ───────►│                       │   B i
+          │    Pair  Generator    ├─────►
+          │                       │
+          └───────────────────────┘
+
+                Perm(A) = B
+
+  if perm_rank == lctx->Rank(); perm not empty.
+  */
+  virtual Pair PermPair(FieldType field, const Shape& shape, size_t perm_rank,
+                        absl::Span<const int64_t> perm_vec) = 0;
+
   virtual std::unique_ptr<Beaver> Spawn() = 0;
 };
 

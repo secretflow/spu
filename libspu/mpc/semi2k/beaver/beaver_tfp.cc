@@ -23,6 +23,7 @@
 
 #include "libspu/mpc/common/prg_tensor.h"
 #include "libspu/mpc/semi2k/beaver/trusted_party.h"
+#include "libspu/mpc/utils/permute.h"
 #include "libspu/mpc/utils/ring_ops.h"
 
 namespace spu::mpc::semi2k {
@@ -132,6 +133,33 @@ NdArrayRef BeaverTfpUnsafe::RandBit(FieldType field, const Shape& shape) {
   }
 
   return a;
+}
+
+BeaverTfpUnsafe::Pair BeaverTfpUnsafe::PermPair(
+    FieldType field, const Shape& shape, size_t perm_rank,
+    absl::Span<const int64_t> perm_vec) {
+  constexpr char kTag[] = "BEAVER_TFP:PERM";
+
+  std::vector<PrgArrayDesc> descs(2);
+  auto a = prgCreateArray(field, shape, seed_, &counter_, descs.data());
+  auto b = prgCreateArray(field, shape, seed_, &counter_, &descs[1]);
+  if (lctx_->Rank() == 0) {
+    if (perm_rank != lctx_->Rank()) {
+      auto pv_buf = lctx_->Recv(perm_rank, kTag);
+
+      ring_add_(b, TrustedParty::adjustPerm(
+                       descs, seeds_,
+                       absl::MakeSpan(pv_buf.data<int64_t>(),
+                                      pv_buf.size() / sizeof(int64_t))));
+    } else {
+      ring_add_(b, TrustedParty::adjustPerm(descs, seeds_, perm_vec));
+    }
+  } else if (perm_rank == lctx_->Rank()) {
+    lctx_->SendAsync(
+        0, yacl::Buffer(perm_vec.data(), perm_vec.size() * sizeof(int64_t)),
+        kTag);
+  }
+  return {a, b};
 }
 
 std::unique_ptr<Beaver> BeaverTfpUnsafe::Spawn() {

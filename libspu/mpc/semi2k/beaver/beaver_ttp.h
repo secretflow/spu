@@ -73,6 +73,9 @@ class BeaverTtp final : public Beaver {
 
   NdArrayRef RandBit(FieldType field, const Shape& shape) override;
 
+  Pair PermPair(FieldType field, const Shape& shape, size_t perm_rank,
+                absl::Span<const int64_t> perm_vec) override;
+
   std::unique_ptr<Beaver> Spawn() override;
 };
 

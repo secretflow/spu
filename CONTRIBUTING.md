@@ -58,7 +58,7 @@ docker exec -it spu-dev-$(whoami) bash
 #### Linux
 
 ```sh
-Install gcc>=11.2, cmake>=3.18, ninja, nasm>=2.15, python>=3.8, bazel==6.2.1, golang
+Install gcc>=11.2, cmake>=3.26, ninja, nasm>=2.15, python>=3.8, bazel==6.2.1, golang, xxd, lld
 
 python3 -m pip install -r requirements.txt
 python3 -m pip install -r requirements-dev.txt
@@ -81,7 +81,7 @@ https://brew.sh/
 # Install dependencies
 # Be aware, brew may install a newer version of bazel, when that happens bazel will give an error message during build.
 # Please follow instructions in the error message to install the required version
-brew install bazel cmake ninja libomp go
+brew install bazel cmake ninja libomp go wget
 
 # For Intel mac only
 brew install nasm

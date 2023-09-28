@@ -71,7 +71,7 @@ std::vector<NdArrayRef> RpcCall(brpc::Channel& channel, AdjustRequest req,
                                beaver::ttp_server::AdjustMulRequest>) {
     stub.AdjustMul(&cntl, &req, &rsp, nullptr);
   } else if constexpr (std::is_same_v<AdjustRequest,
-                                      beaver::ttp_server::AdjusDotRequest>) {
+                                      beaver::ttp_server::AdjustDotRequest>) {
     stub.AdjustDot(&cntl, &req, &rsp, nullptr);
   } else if constexpr (std::is_same_v<AdjustRequest,
                                       beaver::ttp_server::AdjustAndRequest>) {
@@ -87,6 +87,9 @@ std::vector<NdArrayRef> RpcCall(brpc::Channel& channel, AdjustRequest req,
                            AdjustRequest,
                            beaver::ttp_server::AdjustRandBitRequest>) {
     stub.AdjustRandBit(&cntl, &req, &rsp, nullptr);
+  } else if constexpr (std::is_same_v<AdjustRequest,
+                                      beaver::ttp_server::AdjustPermRequest>) {
+    stub.AdjustPerm(&cntl, &req, &rsp, nullptr);
   } else {
     static_assert(dependent_false<AdjustRequest>::value,
                   "not support AdjustRequest type");
@@ -220,7 +223,7 @@ BeaverTtp::Triple BeaverTtp::Dot(FieldType field, int64_t m, int64_t n,
   auto c = prgCreateArray(field, {m, n}, seed_, &counter_, &descs[2]);
 
   if (lctx_->Rank() == options_.adjust_rank) {
-    auto req = BuildAdjustRequest<beaver::ttp_server::AdjusDotRequest>(
+    auto req = BuildAdjustRequest<beaver::ttp_server::AdjustDotRequest>(
         options_.session_id, descs);
     req.set_m(m);
     req.set_n(n);
@@ -304,6 +307,27 @@ NdArrayRef BeaverTtp::RandBit(FieldType field, const Shape& shape) {
   }
 
   return a;
+}
+
+BeaverTtp::Pair BeaverTtp::PermPair(FieldType field, const Shape& shape,
+                                    size_t perm_rank,
+                                    absl::Span<const int64_t> perm_vec) {
+  std::vector<PrgArrayDesc> descs(2);
+  auto a = prgCreateArray(field, shape, seed_, &counter_, descs.data());
+  auto b = prgCreateArray(field, shape, seed_, &counter_, &descs[1]);
+
+  if (lctx_->Rank() == perm_rank) {
+    auto req = BuildAdjustRequest<beaver::ttp_server::AdjustPermRequest>(
+        options_.session_id, descs);
+    for (auto p : perm_vec) {
+      req.add_perm_vec(p);
+    }
+    auto adjusts = RpcCall(channel_, req, field);
+    SPU_ENFORCE_EQ(adjusts.size(), 1U);
+    ring_add_(b, adjusts[0].reshape(b.shape()));
+  }
+
+  return {a, b};
 }
 
 std::unique_ptr<Beaver> BeaverTtp::Spawn() {

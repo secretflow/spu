@@ -31,7 +31,11 @@ pip install spu
 
 ### From Source
 
-At the root of repo, run
+- Install dependencies listed [here](CONTRIBUTING.md#prerequisite).
+- For CentOS 7 or Ubuntu 22.04, use corresponding dockerfile below as a reference:
+  - [Ubuntu 22.04 reference](https://github.com/secretflow/devtools/blob/main/dockerfiles/ubuntu-base-ci.DockerFile)
+  - [CentOS 7 reference](https://github.com/secretflow/devtools/blob/main/dockerfiles/release-ci.DockerFile)
+- At the root of repo, run
 
 ```bash
 python setup.py bdist_wheel
