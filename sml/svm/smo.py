@@ -73,7 +73,7 @@ class SMO():
         quad_coef = Qi[i] + Qj[j] - 2 * yi * yj * Qi[j]
         quad_coef = (quad_coef > 0) * quad_coef + (1 - (quad_coef > 0)) * self.tau
 
-        yi_mul_yj = yi*yj
+        yi_mul_yj = yi * yj
         yi_neq_yj = yi != yj
 
         delta = (-yi_mul_yj * neg_y_grad[i] * yi + neg_y_grad[j] * yj) / quad_coef

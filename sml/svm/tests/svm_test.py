@@ -57,7 +57,7 @@ class UnitTests(unittest.TestCase):
                 jnp.array(y_train),
                 jnp.array(y_test),
             )
-            
+
             return X_train, X_test, y_train, y_test
 
         time0 = time.time()
