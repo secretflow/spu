@@ -41,7 +41,7 @@ def emul_SVM(mode: emulation.Mode.MULTIPROCESS):
             data, target, test_size=0.2, random_state=1
         )
 
-       party_split_num = len(X_train) // 2
+        party_split_num = len(X_train) // 2
 
         y_train[y_train != 1] = -1
         X_train, X_test, y_train, y_test = (

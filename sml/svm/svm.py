@@ -40,7 +40,7 @@ class SVM():
         self.b = None
 
     def cal_kernel(self, x, x_):
-         """Calculate kernel."""
+        """Calculate kernel."""
         if type(self.gamma) == str:
             gamma = {
                 'scale': 1 / (self.n_features * x.var()),
