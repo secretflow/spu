@@ -5,7 +5,7 @@ import time
 INF = float('inf')
 
 
-class SMO():
+class SMO:
     """
     Parameters
     ----------
