@@ -4,7 +4,7 @@ import jax.numpy as jnp
 from sml.svm.smo import SMO
 
 
-class SVM():
+class SVM:
     """
     Parameters
     ----------
@@ -27,7 +27,6 @@ class SVM():
     """
 
     def __init__(self, kernel="rbf", C=1.0, gamma='scale', max_iter=300, tol=1e-3):
-
         self.kernel = kernel
         self.C = C
         self.gamma = gamma
