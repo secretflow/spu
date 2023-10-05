@@ -17,6 +17,14 @@ load("@rules_python//python:defs.bzl", "py_library")
 package(default_visibility = ["//visibility:public"])
 
 py_library(
+    name = "smo",
+    srcs = ["smo.py"],
+)
+
+py_library(
     name = "svm",
-    srcs = ["svm.py", "smo.py"],
+    srcs = ["svm.py"],
+    deps = [
+        ":smo",
+    ],
 )

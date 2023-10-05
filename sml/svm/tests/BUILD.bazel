@@ -20,7 +20,7 @@ py_test(
     name = "svm_test",
     srcs = ["svm_test.py"],
     deps = [
-        "//sml/svm:svm",
+        "//sml/svm",
         "//spu:init",
         "//spu/utils:simulation",
     ],

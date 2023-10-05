@@ -20,7 +20,7 @@ py_binary(
     name = "svm_emul",
     srcs = ["svm_emul.py"],
     deps = [
-        "//sml/svm:svm",
+        "//sml/svm",
         "//sml/utils:emulation",
     ],
 )
