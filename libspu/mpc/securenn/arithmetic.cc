@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "libspu/mpc/securenn/arithmetic.h"
-
 #include <array>
 #include <functional>
 #include <random>
@@ -24,6 +22,7 @@
 #include "libspu/mpc/common/communicator.h"
 #include "libspu/mpc/common/prg_state.h"
 #include "libspu/mpc/common/pv2k.h"
+#include "libspu/mpc/securenn/arithmetic.h"
 #include "libspu/mpc/securenn/type.h"
 #include "libspu/mpc/utils/ring_ops.h"
 

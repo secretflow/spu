@@ -24,27 +24,34 @@ import sml.utils.emulation as emulation
 
 import time
 
+
 def emul_SVM(mode: emulation.Mode.MULTIPROCESS):
     def proc(x0, x1, y0):
-            rbf_svm = SVM(kernel="rbf", max_iter=102)
-            rbf_svm.fit(x0,y0)
+        rbf_svm = SVM(kernel="rbf", max_iter=102)
+        rbf_svm.fit(x0, y0)
 
-            return rbf_svm.predict(x0, y0, x1)
+        return rbf_svm.predict(x0, y0, x1)
 
     def load_data():
-            breast_cancer = datasets.load_breast_cancer()
-            data = breast_cancer.data
-            data = data/(jnp.max(data)-jnp.min(data))
-            target = breast_cancer.target
-            X_train, X_test, y_train, y_test = train_test_split(
-                data, target, test_size=0.2, random_state=1)
+        breast_cancer = datasets.load_breast_cancer()
+        data = breast_cancer.data
+        data = data / (jnp.max(data) - jnp.min(data))
+        target = breast_cancer.target
+        X_train, X_test, y_train, y_test = train_test_split(
+            data, target, test_size=0.2, random_state=1
+        )
 
-            party_split_num = len(X_train)//2
-            
-            y_train[y_train!=1] = -1
-            X_train, X_test, y_train, y_test = jnp.array(X_train), jnp.array(X_test), jnp.array(y_train), jnp.array(y_test)
-            
-            return X_train, X_test, y_train, y_test
+       party_split_num = len(X_train) // 2
+
+        y_train[y_train != 1] = -1
+        X_train, X_test, y_train, y_test = (
+            jnp.array(X_train),
+            jnp.array(X_test),
+            jnp.array(y_train),
+            jnp.array(y_test),
+        )
+
+        return X_train, X_test, y_train, y_test
 
     try:
         # bandwidth and latency only work for docker mode
@@ -69,8 +76,8 @@ def emul_SVM(mode: emulation.Mode.MULTIPROCESS):
         X_train, X_test, y_train, y_test = load_data()
         clf_svc = SVC(C=1.0, kernel="rbf", gamma='scale', tol=1e-3)
         result2 = clf_svc.fit(X_train, y_train).predict(X_test)
-        print("result\n", (result2>0).astype(int))
-        print("accuracy score", accuracy_score((result2>0).astype(int), y_test))
+        print("result\n", (result2 > 0).astype(int))
+        print("accuracy score", accuracy_score((result2 > 0).astype(int), y_test))
     finally:
         emulator.down()
 
