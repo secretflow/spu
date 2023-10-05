@@ -33,7 +33,7 @@ class UnitTests(unittest.TestCase):
         )
 
         def proc(x0, x1, y0):
-            rbf_svm = SVM()
+            rbf_svm = SVM(kernel="rbf", max_iter=102)
             rbf_svm.fit(x0,y0)
 
             return rbf_svm.predict(x0, y0, x1)
