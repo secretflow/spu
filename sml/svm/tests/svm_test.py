@@ -17,6 +17,7 @@ import unittest
 import jax.numpy as jnp
 from sklearn import datasets
 from sklearn.model_selection import train_test_split
+from sklearn.svm import SVC
 from sklearn.metrics import accuracy_score, classification_report
 
 import spu.spu_pb2 as spu_pb2  # type: ignore
@@ -31,7 +32,7 @@ class UnitTests(unittest.TestCase):
             3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM64
         )
 
-        def proc(x0, x1, y0, y1):
+        def proc(x0, x1, y0):
             rbf_svm = SVM()
             rbf_svm.fit(x0,y0)
 
@@ -54,12 +55,18 @@ class UnitTests(unittest.TestCase):
 
         time0 = time.time()
         X_train, X_test, y_train, y_test = load_data()
-        result = spsim.sim_jax(sim, proc)(X_train, X_test, y_train, y_test)
-        print("result\n", result)
-        print(f"run time(s): {time.time()-time0}")
+        result1 = spsim.sim_jax(sim, proc)(X_train, X_test, y_train)
+        print("result\n", result1)
+        print("accuracy score", accuracy_score(result1, y_test))
+        print("cost time ", time.time() - time0)
 
-        print("y_test\n", y_test)
-        print("svm sc:\n", accuracy_score(result,y_test))
+        # Compare with sklearn
+        print("sklearn")
+        clf_svc = SVC(C=1.0, kernel="rbf", gamma='scale', tol=1e-3)
+        result2 = clf_svc.fit(X_train, y_train).predict(X_test)
+        print("result\n", (result2>0).astype(int))
+        print("accuracy score", accuracy_score((result2>0).astype(int), y_test))
+
 
 
 if __name__ == "__main__":

@@ -16,13 +16,16 @@ import jax.numpy as jnp
 from sklearn import datasets
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score, classification_report
+from sklearn.svm import SVC
 
 import spu.spu_pb2 as spu_pb2  # type: ignore
 from sml.svm.svm import SVM
 import sml.utils.emulation as emulation
 
+import time
+
 def emul_SVM(mode: emulation.Mode.MULTIPROCESS):
-    def proc(x0, x1, y0, y1):
+    def proc(x0, x1, y0):
             rbf_svm = SVM()
             rbf_svm.fit(x0,y0)
 
@@ -50,15 +53,24 @@ def emul_SVM(mode: emulation.Mode.MULTIPROCESS):
         )
         emulator.up()
 
+        time0 = time.time()
         # load data
         X_train, X_test, y_train, y_test = load_data()
 
         # mark these data to be protected in SPU
-        X_train, X_test, y_train, y_test = emulator.seal(X_train, X_test, y_train, y_test)
-        result = emulator.run(proc)(X_train, X_test, y_train, y_test)
-        print("result\n", result)
+        X_train, X_test, y_train = emulator.seal(X_train, X_test, y_train)
+        result1 = emulator.run(proc)(X_train, X_test, y_train)
+        print("result\n", result1)
+        print("accuracy score", accuracy_score(result1, y_test))
+        print("cost time ", time.time() - time0)
 
-        print("y_test\n", y_test)
+        # Compare with sklearn
+        print("sklearn")
+        X_train, X_test, y_train, y_test = load_data()
+        clf_svc = SVC(C=1.0, kernel="rbf", gamma='scale', tol=1e-3)
+        result2 = clf_svc.fit(X_train, y_train).predict(X_test)
+        print("result\n", (result2>0).astype(int))
+        print("accuracy score", accuracy_score((result2>0).astype(int), y_test))
     finally:
         emulator.down()
 

@@ -25,7 +25,7 @@ class SVM():
         Acceptable error to consider the two to be equal.
     """
     
-    def __init__(self, kernel="rbf", C=1.0, gamma = 'scale', max_iter=300, tol=1e-3):
+    def __init__(self, kernel="rbf", C=1.0, gamma = 'scale', max_iter=102, tol=1e-3):
         
         self.kernel = kernel
         self.C = C
