@@ -19,5 +19,4 @@ package(default_visibility = ["//visibility:public"])
 py_library(
     name = "svm",
     srcs = ["svm.py", "smo.py"],
-    deps = 
 )
