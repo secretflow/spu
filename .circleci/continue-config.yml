@@ -119,9 +119,7 @@ jobs:
                   command: sh ../devtools/decompress-build-cache.sh spu_build_cache
               - run:
                   name: "Install homebrew dependencies"
-                  command: |
-                    brew install bazel cmake ninja libomp wget go md5sha1sum
-                    (cd /opt/homebrew/Cellar/bazel/*.*.*/libexec/bin && curl -fLO https://github.com/bazelbuild/bazel/releases/download/6.2.1/bazel-6.2.1-darwin-arm64 && chmod +x bazel-6.2.1-darwin-arm64)
+                  command: brew install bazelisk cmake ninja libomp wget go md5sha1sum
               - run:
                   name: "Install Miniconda"
                   command: |
