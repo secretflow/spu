@@ -49,7 +49,7 @@ class LogisticRegression:
     Parameters
     ----------
     penalty: Specify the norm of the penalty:
-        {'l1', 'l2', 'elasticnet', 'None'}, default='l2' (current only support l2)
+        {'l1', 'l2', 'elasticnet', 'None'}, default='l2'
 
     solver: Algorithm to use in the optimization problem, default='sgd'.
 
@@ -64,7 +64,12 @@ class LogisticRegression:
     sig_type: the approximation method for sigmoid function, default='sr'
         for all choices, refer to `SigType`
 
+    l1_norm: the strength of L1 norm, must be a positive float, default=0.01
+
     l2_norm: the strength of L2 norm, must be a positive float, default=0.01
+
+    elastic_norm: the strength of elastic_norm, Affects the L1 and L2 norm ratios.
+        Value range in `[0, 1]`, default=0.5
 
     epochs, learning_rate, batch_size: hyper-parameters for sgd solver
         epochs: default=20
@@ -80,7 +85,9 @@ class LogisticRegression:
         multi_class: str = 'binary',
         class_weight=None,
         sig_type: str = 'sr',
+        l1_norm: float = 0.01,
         l2_norm: float = 0.01,
+        elastic_norm: float = 0.5,
         epochs: int = 20,
         learning_rate: float = 0.1,
         batch_size: int = 512,
@@ -89,10 +96,15 @@ class LogisticRegression:
         assert epochs > 0, f"epochs should >0"
         assert learning_rate > 0, f"learning_rate should >0"
         assert batch_size > 0, f"batch_size should >0"
-        assert penalty == 'l2', "only support L2 penalty for now"
         assert solver == 'sgd', "only support sgd solver for now"
+        if penalty == Penalty.L1:
+            assert l1_norm > 0, f"l1_norm should >0 if use L1 penalty"
         if penalty == Penalty.L2:
             assert l2_norm > 0, f"l2_norm should >0 if use L2 penalty"
+        if penalty == Penalty.Elastic:
+            assert (
+                elastic_norm >= 0 and elastic_norm <= 1
+            ), f"elastic_norm should in `[0, 1]` if use Elastic penalty"
         assert penalty in [
             e.value for e in Penalty
         ], f"penalty should in {[e.value for e in Penalty]}, but got {penalty}"
@@ -105,7 +117,9 @@ class LogisticRegression:
         self._epochs = epochs
         self._learning_rate = learning_rate
         self._batch_size = batch_size
+        self._l1_norm = l1_norm
         self._l2_norm = l2_norm
+        self._elastic_norm = elastic_norm
         self._penalty = Penalty(penalty)
         self._sig_type = SigType(sig_type)
         self._class_weight = class_weight
@@ -142,20 +156,25 @@ class LogisticRegression:
             err = pred - y_slice
             grad = jnp.matmul(jnp.transpose(x_slice), err)
 
+            w_with_zero_bias = jnp.resize(w, (num_feat, 1))
+            w_with_zero_bias = jnp.concatenate(
+                (w_with_zero_bias, jnp.zeros((1, 1))),
+                axis=0,
+            )
             if self._penalty == Penalty.L2:
-                w_with_zero_bias = jnp.resize(w, (num_feat, 1))
-                w_with_zero_bias = jnp.concatenate(
-                    (w_with_zero_bias, jnp.zeros((1, 1))),
-                    axis=0,
-                )
-                grad = grad + w_with_zero_bias * self._l2_norm
+                reg = w_with_zero_bias * self._l2_norm
             elif self._penalty == Penalty.L1:
-                raise NotImplementedError
+                reg = jnp.sign(w_with_zero_bias) * self._l1_norm
             elif self._penalty == Penalty.Elastic:
-                raise NotImplementedError
+                reg = (
+                    self._elastic_norm * jnp.sign(w_with_zero_bias) * self._l1_norm
+                    + (1 - self._elastic_norm) * w_with_zero_bias * self._l2_norm
+                )
             else:
                 # None penalty
                 raise NotImplementedError
+
+            grad = grad + reg
 
             step = (self._learning_rate * grad) / batch_size
 
