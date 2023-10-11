@@ -98,10 +98,11 @@ class LogisticRegression:
         assert learning_rate > 0, f"learning_rate should >0"
         assert batch_size > 0, f"batch_size should >0"
         assert solver == 'sgd', "only support sgd solver for now"
+        assert C > 0, f"C should >0"
         if penalty == Penalty.Elastic:
             assert (
                 0 <= l1_ratio <= 1
-            ), f"elastic_norm should in `[0, 1]` if use Elastic penalty"
+            ), f"l1_ratio should in `[0, 1]` if use Elastic penalty"
         assert penalty in [
             e.value for e in Penalty
         ], f"penalty should in {[e.value for e in Penalty]}, but got {penalty}"
@@ -152,7 +153,7 @@ class LogisticRegression:
             err = pred - y_slice
             grad = jnp.matmul(jnp.transpose(x_slice), err)
 
-            if self._penalty is not None:
+            if self._penalty != Penalty.NONE:
                 w_with_zero_bias = jnp.resize(w, (num_feat, 1))
                 w_with_zero_bias = jnp.concatenate(
                     (w_with_zero_bias, jnp.zeros((1, 1))),
@@ -167,7 +168,6 @@ class LogisticRegression:
                     jnp.sign(w_with_zero_bias) * self._l1_ratio * 1.0 / self._C
                     + w_with_zero_bias * (1 - self._l1_ratio) * 1.0 / self._C
                 )
-
             else:
                 reg = 0
 
