@@ -27,16 +27,20 @@ from sml.linear_model.logistic import LogisticRegression
 
 
 def emul_LogisticRegression(mode: emulation.Mode.MULTIPROCESS):
+    penalty_list = ["l1", "l2", "elasticnet"]
+    print(f"penalty_list={penalty_list}")
+
     # Test SGDClassifier
-    def proc(x, y):
+    def proc(x, y, penalty):
         model = LogisticRegression(
-            epochs=3,
+            epochs=1,
             learning_rate=0.1,
             batch_size=8,
             solver="sgd",
-            penalty="l2",
+            penalty=penalty,
             sig_type="sr",
-            l2_norm=1.0,
+            C=1.0,
+            l1_ratio=0.5,
             class_weight=None,
             multi_class="binary",
         )
@@ -66,12 +70,13 @@ def emul_LogisticRegression(mode: emulation.Mode.MULTIPROCESS):
             X.values, y.values.reshape(-1, 1)
         )  # X, y should be two-dimension array
 
-        # Run
-        result = emulator.run(proc)(X_spu, y_spu)
-        print("Predict result prob: ", result[0])
-        print("Predict result label: ", result[1])
-
-        print("ROC Score: ", roc_auc_score(y.values, result[0]))
+        for i in range(len(penalty_list)):
+            penalty = penalty_list[i]
+            # Run
+            result = emulator.run(proc, static_argnums=(2,))(X_spu, y_spu, penalty)
+            # print("Predict result prob: ", result[0])
+            # print("Predict result label: ", result[1])
+            print(f"{penalty} ROC Score: {roc_auc_score(y.values, result[0])}")
 
     finally:
         emulator.down()
