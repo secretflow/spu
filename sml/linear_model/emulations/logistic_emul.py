@@ -33,13 +33,14 @@ def emul_LogisticRegression(mode: emulation.Mode.MULTIPROCESS):
     # Test SGDClassifier
     def proc(x, y, penalty):
         model = LogisticRegression(
-            epochs=3,
+            epochs=1,
             learning_rate=0.1,
             batch_size=8,
             solver="sgd",
             penalty=penalty,
             sig_type="sr",
-            l2_norm=1.0,
+            C=1.0,
+            l1_ratio=0.5,
             class_weight=None,
             multi_class="binary",
         )
