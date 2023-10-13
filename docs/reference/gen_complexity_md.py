@@ -16,8 +16,9 @@
 
 
 import argparse
-from pytablewriter import MarkdownTableWriter
 import json
+
+from pytablewriter import MarkdownTableWriter
 
 
 def main():

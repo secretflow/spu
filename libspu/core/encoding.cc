@@ -49,12 +49,11 @@ PtType getDecodeType(DataType dtype) {
 #undef CASE
 }
 
-NdArrayRef encodeToRing(const NdArrayRef& src, FieldType field, size_t fxp_bits,
-                        DataType* out_dtype) {
-  SPU_ENFORCE(src.eltype().isa<PtTy>(), "expect PtType, got={}", src.eltype());
-  const PtType pt_type = src.eltype().as<PtTy>()->pt_type();
-  const size_t numel = src.numel();
-  NdArrayRef dst(makeType<RingTy>(field), src.shape());
+NdArrayRef encodeToRing(const PtBufferView& bv, FieldType field,
+                        size_t fxp_bits, DataType* out_dtype) {
+  const PtType pt_type = bv.pt_type;
+  const size_t numel = bv.shape.numel();
+  NdArrayRef dst(makeType<RingTy>(field), bv.shape);
 
   if (out_dtype != nullptr) {
     *out_dtype = getEncodeType(pt_type);
@@ -73,16 +72,16 @@ NdArrayRef encodeToRing(const NdArrayRef& src, FieldType field, size_t fxp_bits,
         const T kScale = T(1) << fxp_bits;
         const T kFxpLower = -(T)std::pow(2, k - 2);
         const T kFxpUpper = (T)std::pow(2, k - 2) - 1;
-        const Float kFlpUpper =
+        const auto kFlpUpper =
             static_cast<Float>(static_cast<double>(kFxpUpper) / kScale);
-        const Float kFlpLower =
+        const auto kFlpLower =
             static_cast<Float>(static_cast<double>(kFxpLower) / kScale);
 
-        auto _src = NdArrayView<Float>(src);
         auto _dst = NdArrayView<T>(dst);
 
         pforeach(0, numel, [&](int64_t idx) {
-          const auto src_value = _src[idx];
+          const auto indices = unflattenIndex(idx, bv.shape);
+          auto src_value = bv.get<Float>(indices);
           if (std::isnan(src_value)) {
             // see numpy.nan_to_num
             // note(jint) I dont know why nan could be
@@ -110,11 +109,13 @@ NdArrayRef encodeToRing(const NdArrayRef& src, FieldType field, size_t fxp_bits,
                     field, pt_type);
 
         using T = std::make_signed_t<ring2k_t>;
-        auto _src = NdArrayView<Integer>(src);
+
         auto _dst = NdArrayView<T>(dst);
         // TODO: encoding integer in range [-2^(k-2),2^(k-2))
         pforeach(0, numel, [&](int64_t idx) {
-          _dst[idx] = static_cast<T>(_src[idx]);  // NOLINT
+          const auto indices = unflattenIndex(idx, bv.shape);
+          auto src_value = bv.get<Integer>(indices);
+          _dst[idx] = static_cast<T>(src_value);  // NOLINT
         });
       });
     });
@@ -125,8 +126,8 @@ NdArrayRef encodeToRing(const NdArrayRef& src, FieldType field, size_t fxp_bits,
   SPU_THROW("should not be here");
 }
 
-NdArrayRef decodeFromRing(const NdArrayRef& src, DataType in_dtype,
-                          size_t fxp_bits, PtType* out_pt_type) {
+void decodeFromRing(const NdArrayRef& src, DataType in_dtype, size_t fxp_bits,
+                    PtBufferView* out_bv, PtType* out_pt_type) {
   const Type& src_type = src.eltype();
   const FieldType field = src_type.as<Ring2k>()->field();
   const PtType pt_type = getDecodeType(in_dtype);
@@ -139,36 +140,35 @@ NdArrayRef decodeFromRing(const NdArrayRef& src, DataType in_dtype,
     *out_pt_type = pt_type;
   }
 
-  NdArrayRef dst(makePtType(pt_type), src.shape());
-
   DISPATCH_ALL_FIELDS(field, "field", [&]() {
     DISPATCH_ALL_PT_TYPES(pt_type, "pt_type", [&]() {
       using T = std::make_signed_t<ring2k_t>;
 
       auto _src = NdArrayView<T>(src);
-      auto _dst = NdArrayView<ScalarT>(dst);
 
       if (in_dtype == DT_I1) {
         constexpr bool kSanity = std::is_same_v<ScalarT, bool>;
         SPU_ENFORCE(kSanity);
-        pforeach(0, numel,
-                 [&](int64_t idx) { _dst[idx] = !((_src[idx] & 0x1) == 0); });
+        pforeach(0, numel, [&](int64_t idx) {
+          bool value = !((_src[idx] & 0x1) == 0);
+          out_bv->set<bool>(idx, value);
+        });
       } else if (in_dtype == DT_F32 || in_dtype == DT_F64 ||
                  in_dtype == DT_F16) {
         const T kScale = T(1) << fxp_bits;
         pforeach(0, numel, [&](int64_t idx) {
-          _dst[idx] =
+          auto value =
               static_cast<ScalarT>(static_cast<double>(_src[idx]) / kScale);
+          out_bv->set<ScalarT>(idx, value);
         });
       } else {
         pforeach(0, numel, [&](int64_t idx) {
-          _dst[idx] = static_cast<ScalarT>(_src[idx]);
+          auto value = static_cast<ScalarT>(_src[idx]);
+          out_bv->set<ScalarT>(idx, value);
         });
       }
     });
   });
-
-  return dst;
 }
 
 }  // namespace spu

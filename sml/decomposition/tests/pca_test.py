@@ -20,6 +20,7 @@ import jax.numpy as jnp
 import numpy as np
 from jax import random
 from sklearn.decomposition import PCA as SklearnPCA
+
 import spu.spu_pb2 as spu_pb2
 import spu.utils.simulation as spsim
 

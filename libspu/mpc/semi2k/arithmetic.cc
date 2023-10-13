@@ -18,7 +18,6 @@
 
 #include "libspu/core/type_util.h"
 #include "libspu/core/vectorize.h"
-#include "libspu/mpc/ab_api.h"
 #include "libspu/mpc/common/communicator.h"
 #include "libspu/mpc/common/prg_state.h"
 #include "libspu/mpc/common/pv2k.h"

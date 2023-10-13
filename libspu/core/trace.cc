@@ -26,8 +26,6 @@
 #include "absl/strings/numbers.h"
 #include "absl/strings/str_split.h"
 
-#include "libspu/core/prelude.h"
-
 #ifdef __APPLE__
 #include <mach/mach.h>
 #endif

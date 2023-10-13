@@ -71,7 +71,7 @@ spu_cc_test(
     srcs = ["modswitch_helper_test.cc"],
     deps = [
         ":modswitch_helper",
-        "@com_github_xtensor_xtensor//:xtensor",
+        "//libspu/core:xt_helper",
     ],
 )
 

@@ -21,6 +21,7 @@ spu_cc_library(
     hdrs = ["io_interface.h"],
     deps = [
         "//libspu/core:ndarray_ref",
+        "//libspu/core:pt_buffer_view",
         "//libspu/core:type",
     ],
 )

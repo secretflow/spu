@@ -14,7 +14,6 @@
 
 #include "libspu/compiler/front_end/hlo_importer.h"
 
-#include "spdlog/spdlog.h"
 #include "xla/service/algebraic_simplifier.h"
 #include "xla/service/batch_dot_simplification.h"
 #include "xla/service/batchnorm_expander.h"

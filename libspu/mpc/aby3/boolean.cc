@@ -16,8 +16,6 @@
 
 #include <algorithm>
 
-#include "yacl/utils/platform_utils.h"
-
 #include "libspu/core/bit_utils.h"
 #include "libspu/core/parallel_utils.h"
 #include "libspu/mpc/aby3/type.h"

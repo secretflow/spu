@@ -93,8 +93,6 @@ NdArrayRef GetMacShare(KernelEvalContext* ctx, const NdArrayRef& in) {
 }
 
 NdArrayRef RandA::proc(KernelEvalContext* ctx, const Shape& shape) const {
-  SPU_TRACE_MPC_LEAF(ctx, shape);
-
   const auto field = ctx->getState<Spdz2kState>()->getDefaultField();
   auto* prg_state = ctx->getState<PrgState>();
   auto* beaver = ctx->getState<Spdz2kState>()->beaver();
@@ -115,8 +113,6 @@ NdArrayRef RandA::proc(KernelEvalContext* ctx, const Shape& shape) const {
 }
 
 NdArrayRef P2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
-  SPU_TRACE_MPC_LEAF(ctx, in);
-
   const auto field = ctx->getState<Spdz2kState>()->getDefaultField();
   auto* comm = ctx->getState<Communicator>();
   const auto key = ctx->getState<Spdz2kState>()->key();
@@ -136,8 +132,6 @@ NdArrayRef P2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
 }
 
 NdArrayRef A2P::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
-  SPU_TRACE_MPC_LEAF(ctx, in);
-
   const auto out_field = ctx->getState<Z2kState>()->getDefaultField();
   auto* beaver = ctx->getState<Spdz2kState>()->beaver();
   const auto k = ctx->getState<Spdz2kState>()->k();
@@ -158,8 +152,6 @@ NdArrayRef A2P::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
 
 NdArrayRef A2V::proc(KernelEvalContext* ctx, const NdArrayRef& in,
                      size_t rank) const {
-  SPU_TRACE_MPC_LEAF(ctx, in);
-
   const auto field = ctx->getState<Spdz2kState>()->getDefaultField();
   const auto out_field = ctx->getState<Z2kState>()->getDefaultField();
   auto* comm = ctx->getState<Communicator>();
@@ -221,8 +213,6 @@ NdArrayRef V2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
 }
 
 NdArrayRef NotA::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
-  SPU_TRACE_MPC_LEAF(ctx, in);
-
   const auto field = in.eltype().as<Ring2k>()->field();
   const auto key = ctx->getState<Spdz2kState>()->key();
   auto* comm = ctx->getState<Communicator>();
@@ -251,8 +241,6 @@ NdArrayRef NotA::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
 ////////////////////////////////////////////////////////////////////
 NdArrayRef AddAP::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
                        const NdArrayRef& rhs) const {
-  SPU_TRACE_MPC_LEAF(ctx, lhs, rhs);
-
   const auto field = lhs.eltype().as<Ring2k>()->field();
   auto* comm = ctx->getState<Communicator>();
   const auto key = ctx->getState<Spdz2kState>()->key();
@@ -275,8 +263,6 @@ NdArrayRef AddAP::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
 
 NdArrayRef AddAA::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
                        const NdArrayRef& rhs) const {
-  SPU_TRACE_MPC_LEAF(ctx, lhs, rhs);
-
   const auto field = lhs.eltype().as<Ring2k>()->field();
 
   // lhs
@@ -456,8 +442,6 @@ bool BatchCheck(KernelEvalContext* ctx, const std::vector<NdArrayRef>& ins) {
 
 NdArrayRef MulAP::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
                        const NdArrayRef& rhs) const {
-  SPU_TRACE_MPC_LEAF(ctx, lhs, rhs);
-
   const auto field = lhs.eltype().as<Ring2k>()->field();
 
   // lhs
@@ -480,8 +464,6 @@ NdArrayRef MulAP::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
 // TODO: use DISPATCH_ALL_FIELDS instead of ring ops to improve performance
 NdArrayRef MulAA::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
                        const NdArrayRef& rhs) const {
-  SPU_TRACE_MPC_LEAF(ctx, lhs, rhs);
-
   const auto field = lhs.eltype().as<Ring2k>()->field();
   auto* comm = ctx->getState<Communicator>();
   auto* beaver = ctx->getState<Spdz2kState>()->beaver();
@@ -542,8 +524,6 @@ NdArrayRef MulAA::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
 ////////////////////////////////////////////////////////////////////
 NdArrayRef MatMulAP::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
                           const NdArrayRef& rhs) const {
-  SPU_TRACE_MPC_LEAF(ctx, lhs, rhs);
-
   const auto field = lhs.eltype().as<Ring2k>()->field();
 
   // in
@@ -559,8 +539,6 @@ NdArrayRef MatMulAP::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
 
 NdArrayRef MatMulAA::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
                           const NdArrayRef& rhs) const {
-  SPU_TRACE_MPC_LEAF(ctx, lhs, rhs);
-
   const auto field = lhs.eltype().as<Ring2k>()->field();
   auto* comm = ctx->getState<Communicator>();
   auto* beaver = ctx->getState<Spdz2kState>()->beaver();
@@ -602,8 +580,6 @@ NdArrayRef MatMulAA::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
 
 NdArrayRef LShiftA::proc(KernelEvalContext* ctx, const NdArrayRef& in,
                          size_t bits) const {
-  SPU_TRACE_MPC_LEAF(ctx, in, bits);
-
   const auto field = in.eltype().as<Ring2k>()->field();
   bits %= SizeOf(field) * 8;
 
@@ -621,8 +597,6 @@ NdArrayRef LShiftA::proc(KernelEvalContext* ctx, const NdArrayRef& in,
 // Ref: Section 5.1.2 https://eprint.iacr.org/2018/403.pdf
 NdArrayRef TruncA::proc(KernelEvalContext* ctx, const NdArrayRef& in,
                         size_t bits, SignType sign) const {
-  SPU_TRACE_MPC_LEAF(ctx, in, bits);
-
   (void)sign;  // TODO: optimize me.
 
   const auto key = ctx->getState<Spdz2kState>()->key();

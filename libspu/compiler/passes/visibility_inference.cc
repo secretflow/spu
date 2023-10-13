@@ -47,18 +47,18 @@ void VisibilityInference::inferIf(Operation &op) {
 
   llvm::SmallVector<Visibility, 2> input_vis;
   for (const auto &operand : op.getOperands()) {
-    input_vis.emplace_back(ValueVis_.getValueVisibility(operand));
+    input_vis.emplace_back(value_vis_.getValueVisibility(operand));
   }
 
   // Infer true branch
   for (const auto &blkarg : ifOp.getTrueBranch().getArguments()) {
-    ValueVis_.setValueVisibility(blkarg, input_vis[blkarg.getArgNumber()]);
+    value_vis_.setValueVisibility(blkarg, input_vis[blkarg.getArgNumber()]);
   }
   inferRegion(ifOp.getTrueBranch());
 
   // Infer false branch
   for (const auto &blkarg : ifOp.getFalseBranch().getArguments()) {
-    ValueVis_.setValueVisibility(blkarg, input_vis[blkarg.getArgNumber()]);
+    value_vis_.setValueVisibility(blkarg, input_vis[blkarg.getArgNumber()]);
   }
   inferRegion(ifOp.getFalseBranch());
 
@@ -69,7 +69,7 @@ void VisibilityInference::inferIf(Operation &op) {
   SPU_ENFORCE(llvm::isa<stablehlo::ReturnOp>(false_return));
 
   // Cond vis
-  auto cond_vis = ValueVis_.getValueVisibility(ifOp.getPred());
+  auto cond_vis = value_vis_.getValueVisibility(ifOp.getPred());
 
   for (const auto &ret : llvm::enumerate(ifOp->getResults())) {
     SmallVector<Visibility, 2> vis;
@@ -79,13 +79,13 @@ void VisibilityInference::inferIf(Operation &op) {
 
     // Get true branch result vis
     vis.emplace_back(
-        ValueVis_.getValueVisibility(true_return.getOperand(ret.index())));
+        value_vis_.getValueVisibility(true_return.getOperand(ret.index())));
     // Get false branch result vis
     vis.emplace_back(
-        ValueVis_.getValueVisibility(false_return.getOperand(ret.index())));
+        value_vis_.getValueVisibility(false_return.getOperand(ret.index())));
 
-    ValueVis_.setValueVisibility(ret.value(),
-                                 TypeTools::inferResultVisibility(vis));
+    value_vis_.setValueVisibility(ret.value(),
+                                  TypeTools::inferResultVisibility(vis));
   }
 }
 
@@ -96,13 +96,13 @@ void VisibilityInference::inferCase(Operation &op) {
   llvm::SmallVector<Visibility, 2> input_vis;
   llvm::SmallVector<Operation *, 2> returns;
   for (const auto &operand : caseOp->getOperands()) {
-    input_vis.emplace_back(ValueVis_.getValueVisibility(operand));
+    input_vis.emplace_back(value_vis_.getValueVisibility(operand));
   }
 
   // Infer each branch
   for (auto &region : caseOp.getBranches()) {
     for (const auto &blkarg : region.getArguments()) {
-      ValueVis_.setValueVisibility(blkarg, input_vis[blkarg.getArgNumber()]);
+      value_vis_.setValueVisibility(blkarg, input_vis[blkarg.getArgNumber()]);
     }
     inferRegion(region);
     auto *ret = &region.back().back();
@@ -111,7 +111,7 @@ void VisibilityInference::inferCase(Operation &op) {
   }
 
   // Index vis
-  auto index_vis = ValueVis_.getValueVisibility(caseOp.getIndex());
+  auto index_vis = value_vis_.getValueVisibility(caseOp.getIndex());
 
   // Infer result visibility
   for (const auto &ret_enu : llvm::enumerate(caseOp->getResults())) {
@@ -121,11 +121,11 @@ void VisibilityInference::inferCase(Operation &op) {
 
     for (auto *ret : returns) {
       vis.emplace_back(
-          ValueVis_.getValueVisibility(ret->getOperand(ret_enu.index())));
+          value_vis_.getValueVisibility(ret->getOperand(ret_enu.index())));
     }
 
-    ValueVis_.setValueVisibility(ret_enu.value(),
-                                 TypeTools::inferResultVisibility(vis));
+    value_vis_.setValueVisibility(ret_enu.value(),
+                                  TypeTools::inferResultVisibility(vis));
   }
 }
 
@@ -137,14 +137,14 @@ void VisibilityInference::inferWhile(Operation &op) {
   SmallVector<Visibility> result_vis(op.getNumOperands());
 
   for (int64_t idx = 0; idx < op.getNumOperands(); ++idx) {
-    input_vis[idx] = ValueVis_.getValueVisibility(whileOp->getOperand(idx));
+    input_vis[idx] = value_vis_.getValueVisibility(whileOp->getOperand(idx));
   }
 
   bool converge = false;
   do {
     // Push visibility to block args
     for (const auto &blkarg : whileOp.getBody().getArguments()) {
-      ValueVis_.setValueVisibility(blkarg, input_vis[blkarg.getArgNumber()]);
+      value_vis_.setValueVisibility(blkarg, input_vis[blkarg.getArgNumber()]);
     }
 
     // Infer body region
@@ -157,7 +157,7 @@ void VisibilityInference::inferWhile(Operation &op) {
     // Update visibility
     for (int64_t idx = 0; idx < body_return.getNumOperands(); ++idx) {
       result_vis[idx] =
-          ValueVis_.getValueVisibility(body_return.getOperand(idx));
+          value_vis_.getValueVisibility(body_return.getOperand(idx));
     }
 
     converge = (input_vis == result_vis);
@@ -165,17 +165,17 @@ void VisibilityInference::inferWhile(Operation &op) {
   } while (!converge);
 
   for (int64_t idx = 0; idx < op.getNumOperands(); ++idx) {
-    ValueVis_.setValueVisibility(whileOp.getBody().getArgument(idx),
-                                 input_vis[idx]);
-    ValueVis_.setValueVisibility(whileOp.getCond().getArgument(idx),
-                                 input_vis[idx]);
+    value_vis_.setValueVisibility(whileOp.getBody().getArgument(idx),
+                                  input_vis[idx]);
+    value_vis_.setValueVisibility(whileOp.getCond().getArgument(idx),
+                                  input_vis[idx]);
   }
 
   inferRegion(whileOp.getCond());
 
   // Update result visibility
   for (int64_t idx = 0; idx < op.getNumResults(); ++idx) {
-    ValueVis_.setValueVisibility(op.getResult(idx), input_vis[idx]);
+    value_vis_.setValueVisibility(op.getResult(idx), input_vis[idx]);
   }
 }
 
@@ -184,14 +184,14 @@ void VisibilityInference::inferSort(Operation &op) {
 
   // Push inputs to body region
   for (const auto &in : llvm::enumerate(op.getOperands())) {
-    auto inputVis = ValueVis_.getValueVisibility(in.value());
-    ValueVis_.setValueVisibility(
+    auto inputVis = value_vis_.getValueVisibility(in.value());
+    value_vis_.setValueVisibility(
         sortOp.getComparator().getArgument(2 * in.index()), inputVis);
-    ValueVis_.setValueVisibility(
+    value_vis_.setValueVisibility(
         sortOp.getComparator().getArgument(2 * in.index() + 1), inputVis);
 
     // Sort does not change result vis
-    ValueVis_.setValueVisibility(op.getResult(in.index()), inputVis);
+    value_vis_.setValueVisibility(op.getResult(in.index()), inputVis);
   }
 
   inferRegion(sortOp.getComparator());
@@ -200,20 +200,20 @@ void VisibilityInference::inferSort(Operation &op) {
   auto &comp_ret = *sortOp.getComparator().front().getTerminator();
   SPU_ENFORCE(llvm::isa<stablehlo::ReturnOp>(comp_ret));
 
-  if (ValueVis_.getValueVisibility(comp_ret.getOperand(0)) ==
+  if (value_vis_.getValueVisibility(comp_ret.getOperand(0)) ==
       Visibility::VIS_SECRET) {
     // If comparator result is secret, all results are secrets
     for (const auto &in : llvm::enumerate(op.getOperands())) {
-      ValueVis_.setValueVisibility(
+      value_vis_.setValueVisibility(
           sortOp.getComparator().getArgument(2 * in.index()),
           Visibility::VIS_SECRET);
-      ValueVis_.setValueVisibility(
+      value_vis_.setValueVisibility(
           sortOp.getComparator().getArgument(2 * in.index() + 1),
           Visibility::VIS_SECRET);
 
       // Sort does not change result vis
-      ValueVis_.setValueVisibility(op.getResult(in.index()),
-                                   Visibility::VIS_SECRET);
+      value_vis_.setValueVisibility(op.getResult(in.index()),
+                                    Visibility::VIS_SECRET);
     }
 
     inferRegion(sortOp.getComparator());
@@ -223,11 +223,11 @@ void VisibilityInference::inferSort(Operation &op) {
 void VisibilityInference::inferSelectAndScatter(Operation &op) {
   auto selectAndScatterOp = llvm::dyn_cast<stablehlo::SelectAndScatterOp>(op);
 
-  auto op_vis = ValueVis_.getValueVisibility(selectAndScatterOp.getOperand());
+  auto op_vis = value_vis_.getValueVisibility(selectAndScatterOp.getOperand());
   auto source_vis =
-      ValueVis_.getValueVisibility(selectAndScatterOp.getSource());
+      value_vis_.getValueVisibility(selectAndScatterOp.getSource());
   auto init_vis =
-      ValueVis_.getValueVisibility(selectAndScatterOp.getInitValue());
+      value_vis_.getValueVisibility(selectAndScatterOp.getInitValue());
 
   // init and operand must have the same visibility
   auto promoted_init_op_vis =
@@ -235,18 +235,18 @@ void VisibilityInference::inferSelectAndScatter(Operation &op) {
 
   // Select region
   {
-    ValueVis_.setValueVisibility(selectAndScatterOp.getSelect().getArgument(0),
-                                 promoted_init_op_vis);
-    ValueVis_.setValueVisibility(selectAndScatterOp.getSelect().getArgument(1),
-                                 promoted_init_op_vis);
+    value_vis_.setValueVisibility(selectAndScatterOp.getSelect().getArgument(0),
+                                  promoted_init_op_vis);
+    value_vis_.setValueVisibility(selectAndScatterOp.getSelect().getArgument(1),
+                                  promoted_init_op_vis);
     inferRegion(selectAndScatterOp.getSelect());
   }
   // Scatter region
   {
-    ValueVis_.setValueVisibility(selectAndScatterOp.getScatter().getArgument(0),
-                                 source_vis);
-    ValueVis_.setValueVisibility(selectAndScatterOp.getScatter().getArgument(1),
-                                 promoted_init_op_vis);
+    value_vis_.setValueVisibility(
+        selectAndScatterOp.getScatter().getArgument(0), source_vis);
+    value_vis_.setValueVisibility(
+        selectAndScatterOp.getScatter().getArgument(1), promoted_init_op_vis);
     inferRegion(selectAndScatterOp.getScatter());
   }
 
@@ -258,9 +258,9 @@ void VisibilityInference::inferSelectAndScatter(Operation &op) {
       llvm::dyn_cast<stablehlo::ReturnOp>(scatter_return)->getNumOperands() ==
       1);
 
-  ValueVis_.setValueVisibility(
+  value_vis_.setValueVisibility(
       selectAndScatterOp.getResult(),
-      ValueVis_.getValueVisibility(scatter_return.getOperand(0)));
+      value_vis_.getValueVisibility(scatter_return.getOperand(0)));
 }
 
 void VisibilityInference::inferIntrinsic(Operation &op) {
@@ -274,18 +274,18 @@ void VisibilityInference::inferIntrinsic(Operation &op) {
   if (op.getNumResults() == 1) {
     SmallVector<Visibility, 2> operand_vis;
     for (auto operand : op.getOperands()) {
-      operand_vis.emplace_back(ValueVis_.getValueVisibility(operand));
+      operand_vis.emplace_back(value_vis_.getValueVisibility(operand));
     }
     auto ret_vis = TypeTools::inferResultVisibility(operand_vis);
-    ValueVis_.setValueVisibility(op.getResult(0), ret_vis);
+    value_vis_.setValueVisibility(op.getResult(0), ret_vis);
   } else {
     SPU_ENFORCE(op.getNumResults() == op.getNumOperands(),
                 "Default intrinsic inference can only handle single output or "
                 "#output matches #input");
 
     for (int64_t idx = 0; idx < op.getNumResults(); ++idx) {
-      ValueVis_.setValueVisibility(
-          op.getResult(idx), ValueVis_.getValueVisibility(op.getOperand(idx)));
+      value_vis_.setValueVisibility(
+          op.getResult(idx), value_vis_.getValueVisibility(op.getOperand(idx)));
     }
   }
 }
@@ -303,15 +303,15 @@ void VisibilityInference::inferOperation(Operation &op) {
     inferCase(op);
   } else if (llvm::isa<stablehlo::ConstantOp>(op)) {
     // Constant always returns public
-    ValueVis_.setValueVisibility(op.getResult(0), Visibility::VIS_PUBLIC);
+    value_vis_.setValueVisibility(op.getResult(0), Visibility::VIS_PUBLIC);
   } else if (llvm::isa<stablehlo::SortOp>(op)) {
     inferSort(op);
   } else if (llvm::isa<stablehlo::GatherOp>(op)) {
     // For gather op, if either operand or indices is a secret, result is a
     // secret
-    auto operand_vis = ValueVis_.getValueVisibility(op.getOperand(0));
-    auto indices_vis = ValueVis_.getValueVisibility(op.getOperand(1));
-    ValueVis_.setValueVisibility(
+    auto operand_vis = value_vis_.getValueVisibility(op.getOperand(0));
+    auto indices_vis = value_vis_.getValueVisibility(op.getOperand(1));
+    value_vis_.setValueVisibility(
         op.getResult(0),
         TypeTools::inferResultVisibility({operand_vis, indices_vis}));
   } else if (llvm::isa<stablehlo::SelectAndScatterOp>(op)) {
@@ -321,10 +321,10 @@ void VisibilityInference::inferOperation(Operation &op) {
   } else if (op.getNumResults() == 1) {
     SmallVector<Visibility, 2> operand_vis;
     for (auto operand : op.getOperands()) {
-      operand_vis.emplace_back(ValueVis_.getValueVisibility(operand));
+      operand_vis.emplace_back(value_vis_.getValueVisibility(operand));
     }
     auto ret_vis = TypeTools::inferResultVisibility(operand_vis);
-    ValueVis_.setValueVisibility(op.getResult(0), ret_vis);
+    value_vis_.setValueVisibility(op.getResult(0), ret_vis);
   } else if (llvm::isa<mlir::func::ReturnOp>(op) ||
              llvm::isa<stablehlo::ReturnOp>(op)) {
     // Do nothing

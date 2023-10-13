@@ -14,8 +14,6 @@
 
 #include "libspu/core/type_util.h"
 
-#include "absl/strings/str_join.h"
-
 namespace spu {
 
 //////////////////////////////////////////////////////////////

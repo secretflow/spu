@@ -12,13 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
 import array
 import gzip
 import os
-from os import path
 import struct
 import urllib.request
+from os import path
+
+import numpy as np
 
 
 def standardize(data):

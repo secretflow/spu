@@ -15,8 +15,6 @@
 #pragma once
 
 #include "mlir/Dialect/Func/IR/FuncOps.h"
-#include "mlir/IR/BuiltinOps.h"
-#include "mlir/IR/Value.h"
 
 #include "libspu/compiler/passes/value_visibility_map.h"
 #include "libspu/dialect/pphlo_types.h"
@@ -25,8 +23,8 @@ namespace mlir::pphlo {
 
 class VisibilityInference {
 public:
-  explicit VisibilityInference(ValueVisibilityMap &ValueVis)
-      : ValueVis_(ValueVis) {}
+  explicit VisibilityInference(ValueVisibilityMap &value_vis)
+      : value_vis_(value_vis) {}
 
   void inferFunc(func::FuncOp &func);
   void inferRegion(Region &region);
@@ -48,16 +46,17 @@ private:
     size_t num_results = op.getNumResults();
     std::vector<Visibility> input_vis;
     for (size_t idx = 0; idx < num_results; ++idx) {
-      auto inputVis = ValueVis_.getValueVisibility(reduceOp.getOperands()[idx]);
+      auto inputVis =
+          value_vis_.getValueVisibility(reduceOp.getOperands()[idx]);
       auto initVis =
-          ValueVis_.getValueVisibility(reduceOp.getInitValues()[idx]);
+          value_vis_.getValueVisibility(reduceOp.getInitValues()[idx]);
 
       auto promoted_vis = TypeTools::inferResultVisibility({inputVis, initVis});
       input_vis.emplace_back(promoted_vis);
 
-      ValueVis_.setValueVisibility(reduceOp.getBody().getArgument(idx),
-                                   promoted_vis);
-      ValueVis_.setValueVisibility(
+      value_vis_.setValueVisibility(reduceOp.getBody().getArgument(idx),
+                                    promoted_vis);
+      value_vis_.setValueVisibility(
           reduceOp.getBody().getArgument(num_results + idx), promoted_vis);
     }
 
@@ -73,8 +72,8 @@ private:
     std::vector<Visibility> ret_vis;
     for (size_t idx = 0; idx < reduceOp->getNumResults(); ++idx) {
       auto resultVis =
-          ValueVis_.getValueVisibility(terminator->getOperand(idx));
-      ValueVis_.setValueVisibility(reduceOp->getResult(idx), resultVis);
+          value_vis_.getValueVisibility(terminator->getOperand(idx));
+      value_vis_.setValueVisibility(reduceOp->getResult(idx), resultVis);
       ret_vis.emplace_back(resultVis);
       if (resultVis != input_vis[idx]) {
         reinfer = true;
@@ -83,9 +82,9 @@ private:
 
     if (reinfer) {
       for (size_t idx = 0; idx < num_results; ++idx) {
-        ValueVis_.setValueVisibility(reduceOp.getBody().getArgument(idx),
-                                     ret_vis[idx]);
-        ValueVis_.setValueVisibility(
+        value_vis_.setValueVisibility(reduceOp.getBody().getArgument(idx),
+                                      ret_vis[idx]);
+        value_vis_.setValueVisibility(
             reduceOp.getBody().getArgument(num_results + idx), ret_vis[idx]);
       }
 
@@ -95,7 +94,7 @@ private:
     }
   }
 
-  ValueVisibilityMap &ValueVis_;
+  ValueVisibilityMap &value_vis_;
 };
 
 } // namespace mlir::pphlo

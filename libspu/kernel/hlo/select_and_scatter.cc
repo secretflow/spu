@@ -16,7 +16,6 @@
 #include "libspu/kernel/hlo/select_and_scatter.h"
 
 #include "libspu/kernel/hal/constants.h"
-#include "libspu/kernel/hal/debug.h"
 #include "libspu/kernel/hal/polymorphic.h"
 #include "libspu/kernel/hal/shape_ops.h"
 #include "libspu/kernel/hlo/const.h"  // iota

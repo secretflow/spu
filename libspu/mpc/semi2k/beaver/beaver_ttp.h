@@ -15,7 +15,6 @@
 #pragma once
 
 #include <memory>
-#include <variant>
 
 #include "brpc/channel.h"
 #include "yacl/link/context.h"

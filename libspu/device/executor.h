@@ -18,8 +18,8 @@
 #include <shared_mutex>
 
 #include "llvm/ADT/DenseMap.h"
-#include "mlir/IR/BuiltinOps.h"
-#include "mlir/IR/MLIRContext.h"
+#include "mlir/IR/Value.h"
+#include "mlir/IR/ValueRange.h"
 
 #include "libspu/core/context.h"
 #include "libspu/core/value.h"

@@ -12,10 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "fmt/format.h"
 #include "gtest/gtest.h"
 #include "xtensor/xarray.hpp"
-#include "yacl/link/link.h"
+#include "yacl/link/algorithm/barrier.h"
+#include "yacl/link/context.h"
 
 #include "libspu/core/type_util.h"
 #include "libspu/core/xt_helper.h"

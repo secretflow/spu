@@ -25,7 +25,12 @@ spu_cc_binary(
     deps = [
         ":utils",
         "//libspu/device:io",
-        "//libspu/kernel/hal",
+        "//libspu/kernel/hal:public_helper",
+        "//libspu/kernel/hlo:basic_binary",
+        "//libspu/kernel/hlo:basic_unary",
+        "//libspu/kernel/hlo:casting",
+        "//libspu/kernel/hlo:const",
+        "//libspu/kernel/hlo:geometrical",
         "@com_google_absl//absl/strings",
         "@llvm-project//llvm:Support",
         "@yacl//yacl/link:factory",

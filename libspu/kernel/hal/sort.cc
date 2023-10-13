@@ -2,6 +2,7 @@
 
 #include <algorithm>
 
+#include "libspu/core/context.h"
 #include "libspu/kernel/hal/polymorphic.h"
 #include "libspu/kernel/hal/prot_wrapper.h"
 #include "libspu/kernel/hal/public_helper.h"
@@ -136,7 +137,7 @@ std::vector<spu::Value> sort1d(SPUContext *ctx,
               "Inputs should be 1-d but actually have {} dimensions",
               inputs[0].shape().ndim());
   SPU_ENFORCE(std::all_of(inputs.begin(), inputs.end(),
-                          [&inputs](const spu::Value v) {
+                          [&inputs](const spu::Value &v) {
                             return v.shape() == inputs[0].shape();
                           }),
               "Inputs shape mismatched");
@@ -148,9 +149,9 @@ std::vector<spu::Value> sort1d(SPUContext *ctx,
     auto comparator = [&cmp, &inputs, &ctx](int64_t a, int64_t b) {
       std::vector<spu::Value> values;
       values.reserve(2 * inputs.size());
-      for (int64_t i = 0; i < static_cast<int64_t>(inputs.size()); ++i) {
-        values.push_back(hal::slice(ctx, inputs[i], {a}, {a + 1}));
-        values.push_back(hal::slice(ctx, inputs[i], {b}, {b + 1}));
+      for (const auto &input : inputs) {
+        values.push_back(hal::slice(ctx, input, {a}, {a + 1}));
+        values.push_back(hal::slice(ctx, input, {b}, {b + 1}));
       }
       spu::Value cmp_ret = cmp(values);
       return getBooleanValue(ctx, cmp_ret);
@@ -164,8 +165,8 @@ std::vector<spu::Value> sort1d(SPUContext *ctx,
     }
 
     ret.reserve(inputs.size());
-    for (int64_t i = 0; i < static_cast<int64_t>(inputs.size()); ++i) {
-      ret.push_back(Permute1D(ctx, inputs[i], indices_to_sort));
+    for (const auto &input : inputs) {
+      ret.push_back(Permute1D(ctx, input, indices_to_sort));
     }
   } else {
     SPU_ENFORCE(!is_stable,

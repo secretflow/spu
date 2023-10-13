@@ -15,9 +15,9 @@
 
 import collections
 import itertools
-from os import getenv
 from enum import Enum
 from functools import partial
+from os import getenv
 
 import jax.numpy as jnp
 import numpy as np

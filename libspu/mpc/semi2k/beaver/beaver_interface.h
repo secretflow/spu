@@ -62,7 +62,7 @@ class Beaver {
           │                       │
           └───────────────────────┘
 
-                Perm(A) = B
+                InversePerm(A) = B
 
   if perm_rank == lctx->Rank(); perm not empty.
   */

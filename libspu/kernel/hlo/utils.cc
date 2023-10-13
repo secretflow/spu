@@ -14,8 +14,8 @@
 
 #include "libspu/kernel/hlo/utils.h"
 
-#include "libspu/kernel/hal/hal.h"
 #include "libspu/kernel/hal/public_helper.h"
+#include "libspu/kernel/hal/shape_ops.h"
 
 namespace spu::kernel {
 

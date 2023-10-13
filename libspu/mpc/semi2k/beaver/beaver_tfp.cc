@@ -14,16 +14,14 @@
 
 #include "libspu/mpc/semi2k/beaver/beaver_tfp.h"
 
-#include <random>
 #include <utility>
 
 #include "yacl/crypto/utils/rand.h"
-#include "yacl/link/link.h"
+#include "yacl/link/algorithm/gather.h"
 #include "yacl/utils/serialize.h"
 
 #include "libspu/mpc/common/prg_tensor.h"
 #include "libspu/mpc/semi2k/beaver/trusted_party.h"
-#include "libspu/mpc/utils/permute.h"
 #include "libspu/mpc/utils/ring_ops.h"
 
 namespace spu::mpc::semi2k {
@@ -125,7 +123,7 @@ BeaverTfpUnsafe::Triple BeaverTfpUnsafe::TruncPr(FieldType field,
 
 NdArrayRef BeaverTfpUnsafe::RandBit(FieldType field, const Shape& shape) {
   std::vector<PrgArrayDesc> descs(1);
-  auto a = prgCreateArray(field, shape, seed_, &counter_, &descs[0]);
+  auto a = prgCreateArray(field, shape, seed_, &counter_, descs.data());
 
   if (lctx_->Rank() == 0) {
     auto adjust = TrustedParty::adjustRandBit(descs, seeds_);

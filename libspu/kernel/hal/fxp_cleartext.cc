@@ -16,10 +16,31 @@
 
 #include <cmath>
 
+#include "libspu/core/context.h"
 #include "libspu/core/encoding.h"
+#include "libspu/core/trace.h"
 
 namespace spu::kernel::hal {
 namespace {
+
+NdArrayRef encodeToRing(const NdArrayRef& src, FieldType field, size_t fxp_bits,
+                        DataType* out_type) {
+  SPU_ENFORCE(src.eltype().isa<PtTy>(), "expect PtType, got={}", src.eltype());
+  const PtType pt_type = src.eltype().as<PtTy>()->pt_type();
+  PtBufferView pv(static_cast<const void*>(src.data()), pt_type, src.shape(),
+                  src.strides());
+  return encodeToRing(pv, field, fxp_bits, out_type);
+}
+
+NdArrayRef decodeFromRing(const NdArrayRef& src, DataType in_dtype,
+                          size_t fxp_bits) {
+  const PtType pt_type = getDecodeType(in_dtype);
+  NdArrayRef dst(makePtType(pt_type), src.shape());
+  PtBufferView pv(static_cast<void*>(dst.data()), pt_type, dst.shape(),
+                  dst.strides());
+  decodeFromRing(src, in_dtype, fxp_bits, &pv, nullptr);
+  return dst;
+}
 
 template <typename FN>
 Value applyFloatingPointFn(SPUContext* ctx, const Value& in, FN&& fn) {
@@ -33,7 +54,6 @@ Value applyFloatingPointFn(SPUContext* ctx, const Value& in, FN&& fn) {
 
   // decode to floating point
   auto f32_arr = decodeFromRing(in.data().as(ring_ty), in.dtype(), fxp_bits);
-
   for (auto iter = f32_arr.begin(); iter != f32_arr.end(); ++iter) {
     auto* ptr = reinterpret_cast<float*>(&*iter);
     *ptr = fn(*ptr);
@@ -41,7 +61,6 @@ Value applyFloatingPointFn(SPUContext* ctx, const Value& in, FN&& fn) {
 
   DataType dtype;
   const auto out = encodeToRing(f32_arr, field, fxp_bits, &dtype);
-
   SPU_ENFORCE(dtype == DT_F32 || dtype == DT_F64, "sanity failed");
   return Value(out.as(in.storage_type()), dtype);
 }

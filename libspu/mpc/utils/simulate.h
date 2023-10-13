@@ -17,7 +17,6 @@
 #include <future>
 #include <vector>
 
-#include "yacl/link/link.h"
 #include "yacl/link/test_util.h"
 
 namespace spu::mpc::utils {

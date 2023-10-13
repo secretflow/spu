@@ -23,9 +23,8 @@
 
 #include "absl/types/span.h"
 #include "fmt/format.h"
-#include "fmt/ostream.h"
 #include "spdlog/spdlog.h"
-#include "yacl/link/link.h"
+#include "yacl/link/context.h"
 
 namespace std {
 

@@ -70,7 +70,6 @@ spu_cc_library(
         ":value",
         "//libspu/mpc/common:communicator",
         "//libspu/mpc/common:prg_state",
-        "@yacl//yacl/utils:platform_utils",
     ],
 )
 
@@ -79,7 +78,6 @@ spu_cc_library(
     srcs = ["conversion.cc"],
     hdrs = ["conversion.h"],
     deps = [
-        ":ot",
         ":value",
         "//libspu/mpc:ab_api",
         "//libspu/mpc/common:communicator",
@@ -95,7 +93,7 @@ spu_cc_library(
     hdrs = ["value.h"],
     deps = [
         ":type",
-        "//libspu/core",
+        "//libspu/core:ndarray_ref",
         "//libspu/mpc/utils:ring_ops",
     ],
 )
@@ -105,7 +103,7 @@ spu_cc_library(
     srcs = ["ot.cc"],
     hdrs = ["ot.h"],
     deps = [
-        "//libspu/core",
+        "//libspu/core:ndarray_ref",
         "//libspu/mpc/common:communicator",
         "//libspu/mpc/common:prg_state",
         "//libspu/mpc/utils:ring_ops",

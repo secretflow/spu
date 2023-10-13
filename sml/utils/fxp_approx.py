@@ -12,8 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import jax.numpy as jnp
 from enum import Enum
+
+import jax.numpy as jnp
 
 
 class SigType(Enum):

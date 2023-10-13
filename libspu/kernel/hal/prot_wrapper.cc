@@ -15,11 +15,10 @@
 #include "libspu/kernel/hal/prot_wrapper.h"
 
 #include <cstddef>
-#include <tuple>
 #include <vector>
 
-#include "libspu/core/ndarray_ref.h"
 #include "libspu/core/prelude.h"
+#include "libspu/core/trace.h"
 #include "libspu/core/type_util.h"
 #include "libspu/mpc/api.h"
 
@@ -111,7 +110,11 @@ Value _trunc_s(SPUContext* ctx, const Value& in, size_t bits, SignType sign) {
 std::vector<Value> _sort_s(SPUContext* ctx, absl::Span<Value const> x) {
   SPU_TRACE_HAL_DISP(ctx, x.size());
   // FIXME(jimi): formalize mpc sort api
-  return dynDispatch<std::vector<Value>>(ctx, "sort_a", x);
+
+  // As pass absl::Span in dynDispatch is dangerous, we initialize a new vector
+  // here. And the copy of value is cheap, so it's ok.
+  std::vector<Value> x_val(x.begin(), x.end());
+  return dynDispatch<std::vector<Value>>(ctx, "sort_a", x_val);
 }
 
 MAP_UNARY_OP(p2s)

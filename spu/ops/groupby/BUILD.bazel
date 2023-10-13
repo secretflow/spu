@@ -12,20 +12,82 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@rules_python//python:defs.bzl", "py_binary", "py_library", "py_test")
+load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
 package(default_visibility = ["//visibility:public"])
 
 py_library(
     name = "groupby",
-    srcs = ["groupby.py"],
+    srcs = [
+        "__init__.py",
+    ],
+    deps = [
+        ":aggregation",
+        ":groupby_via_shuffle",
+        ":postprocess",
+        ":segmentation",
+        ":shuffle",
+        ":utils",
+    ],
+)
+
+py_library(
+    name = "segmentation",
+    srcs = [
+        "segmentation.py",
+    ],
+    deps = [":utils"],
+)
+
+py_library(
+    name = "aggregation",
+    srcs = [
+        "aggregation.py",
+    ],
+    deps = [":utils"],
+)
+
+py_library(
+    name = "utils",
+    srcs = [
+        "utils.py",
+    ],
+)
+
+py_library(
+    name = "groupby_via_shuffle",
+    srcs = [
+        "groupby_via_shuffle.py",
+    ],
+    deps = [
+        ":aggregation",
+        ":shuffle",
+    ],
+)
+
+py_library(
+    name = "shuffle",
+    srcs = [
+        "shuffle.py",
+    ],
+    deps = [":utils"],
+)
+
+py_library(
+    name = "postprocess",
+    srcs = [
+        "postprocess.py",
+    ],
 )
 
 py_test(
     name = "groupby_test",
     srcs = ["groupby_test.py"],
     deps = [
-        ":groupby",
+        ":aggregation",
+        ":groupby_via_shuffle",
+        ":postprocess",
+        ":segmentation",
         "//spu:init",
         "//spu/utils:simulation",
     ],

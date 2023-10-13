@@ -20,7 +20,7 @@ spu_cc_library(
     name = "beaver_interface",
     hdrs = ["beaver_interface.h"],
     deps = [
-        "//libspu/core",
+        "//libspu/core:ndarray_ref",
     ],
 )
 
@@ -76,7 +76,7 @@ spu_cc_library(
         "//libspu/mpc/spdz2k/ot:kos_ote",
         "//libspu/mpc/spdz2k/ot:tiny_ot",
         "//libspu/mpc/utils:ring_ops",
-        "@yacl//yacl/crypto/primitives/ot:base_ot",
+        "@yacl//yacl/crypto/primitives/ot:ot_store",
         "@yacl//yacl/crypto/tools:prg",
         "@yacl//yacl/link",
         "@yacl//yacl/utils:matrix_utils",

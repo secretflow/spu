@@ -16,10 +16,11 @@
 
 #include <utility>
 
+#include "yacl/link/algorithm/allgather.h"
+
 #include "libspu/core/config.h"
 #include "libspu/core/encoding.h"
 #include "libspu/core/pt_buffer_view.h"
-#include "libspu/kernel/hal/constants.h"
 #include "libspu/kernel/hal/public_helper.h"
 #include "libspu/mpc/factory.h"
 
@@ -47,10 +48,7 @@ std::vector<spu::Value> IoClient::makeShares(const PtBufferView &bv,
 
   if (bv.pt_type == PT_BOOL && vtype == VIS_SECRET &&
       base_io_->hasBitSecretSupport()) {
-    // handle boolean type encoding.
-    NdArrayRef arr = convertToNdArray(bv);
-
-    auto shares = base_io_->makeBitSecret(arr);
+    auto shares = base_io_->makeBitSecret(bv);
     SPU_ENFORCE(shares.size() == world_size_);
 
     std::vector<spu::Value> result;
@@ -64,7 +62,6 @@ std::vector<spu::Value> IoClient::makeShares(const PtBufferView &bv,
   if (bv.pt_type == PT_CF32 || bv.pt_type == PT_CF64) {
     auto s_type = bv.pt_type == PT_CF32 ? PT_F32 : PT_F64;
     auto offset = bv.pt_type == PT_CF32 ? sizeof(float) : sizeof(double);
-    // SPDLOG_INFO("bv.strides = {}", bv.strides);
 
     Strides ds = bv.strides;
     for (auto &s : ds) {
@@ -72,7 +69,8 @@ std::vector<spu::Value> IoClient::makeShares(const PtBufferView &bv,
     }
 
     PtBufferView real_view(bv.ptr, s_type, bv.shape, ds);
-    PtBufferView imag_view((std::byte *)bv.ptr + offset, s_type, bv.shape, ds);
+    PtBufferView imag_view(static_cast<const std::byte *>(bv.ptr) + offset,
+                           s_type, bv.shape, ds);
 
     auto r_shares = makeShares(real_view, vtype, owner_rank);
     auto i_shares = makeShares(imag_view, vtype, owner_rank);
@@ -88,8 +86,7 @@ std::vector<spu::Value> IoClient::makeShares(const PtBufferView &bv,
 
   // encode to ring.
   DataType dtype;
-  NdArrayRef encoded =
-      encodeToRing(convertToNdArray(bv), config_.field(), fxp_bits, &dtype);
+  NdArrayRef encoded = encodeToRing(bv, config_.field(), fxp_bits, &dtype);
 
   // make shares.
   std::vector<NdArrayRef> shares = base_io_->toShares(encoded, vtype);
@@ -103,48 +100,54 @@ std::vector<spu::Value> IoClient::makeShares(const PtBufferView &bv,
   return result;
 }
 
-template <typename T>
-NdArrayRef combineComplex(const NdArrayRef &real, const NdArrayRef &imag,
-                          const Type &complex_type) {
-  NdArrayRef ret(complex_type, real.shape());
-  NdArrayView<std::complex<T>> ret_v(ret);
-  NdArrayView<T> rv(real);
-  NdArrayView<T> iv(imag);
-  for (int64_t idx = 0; idx < real.numel(); ++idx) {
-    ret_v[idx].real(rv[idx]);
-    ret_v[idx].imag(iv[idx]);
+PtType IoClient::getPtType(absl::Span<spu::Value const> values) {
+  const DataType dtype = values.front().dtype();
+  if (values.front().isComplex()) {
+    if (dtype == DT_F32) {
+      return PT_CF32;
+    } else {
+      SPU_ENFORCE(dtype == DT_F64);
+      return PT_CF64;
+    }
+  } else {
+    return getDecodeType(dtype);
   }
-  return ret;
 }
 
-NdArrayRef IoClient::combineShares(absl::Span<spu::Value const> values) {
+void IoClient::combineShares(absl::Span<Value const> values,
+                             PtBufferView *out) {
   SPU_ENFORCE(values.size() == world_size_,
               "wrong number of shares, got={}, expect={}", values.size(),
               world_size_);
 
   if (values.front().isComplex()) {
-    NdArrayRef real;
-    NdArrayRef imag;
+    Strides ds = out->strides;
+    for (auto &s : ds) {
+      s *= 2;
+    }
+
+    auto s_type = values.front().dtype() == DT_F32 ? PT_F32 : PT_F64;
+    auto offset =
+        values.front().dtype() == DT_F32 ? sizeof(float) : sizeof(double);
+
+    PtBufferView real_pv(out->ptr, s_type, out->shape, ds);
+    PtBufferView imag_pv(static_cast<std::byte *>(out->ptr) + offset, s_type,
+                         out->shape, ds);
     {
-      std::vector<spu::Value> reals(values.size());
+      std::vector<Value> reals(values.size());
       for (size_t idx = 0; idx < values.size(); ++idx) {
         reals[idx] = Value(values[idx].data(), values[idx].dtype());
       }
-      real = combineShares(reals);
+      combineShares(reals, &real_pv);
     }
     {
       std::vector<spu::Value> imags(values.size());
       for (size_t idx = 0; idx < values.size(); ++idx) {
-        imags[idx] = Value(*values[idx].imag(), values[idx].dtype());
+        imags[idx] = Value(values[idx].imag().value(), values[idx].dtype());
       }
-      imag = combineShares(imags);
+      combineShares(imags, &imag_pv);
     }
-    if (values.front().dtype() == DT_F32) {
-      return combineComplex<float>(real, imag, CF32);
-    } else {
-      SPU_ENFORCE(values.front().dtype() == DT_F64);
-      return combineComplex<double>(real, imag, CF64);
-    }
+    return;
   }
 
   const size_t fxp_bits = config_.fxp_fraction_bits();
@@ -164,7 +167,7 @@ NdArrayRef IoClient::combineShares(absl::Span<spu::Value const> values) {
 
   // decode from ring.
   const DataType dtype = values.front().dtype();
-  return decodeFromRing(encoded, dtype, fxp_bits);
+  decodeFromRing(encoded, dtype, fxp_bits, out);
 }
 
 ColocatedIo::ColocatedIo(SPUContext *sctx) : sctx_(sctx) {}

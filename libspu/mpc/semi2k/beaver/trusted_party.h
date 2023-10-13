@@ -14,9 +14,6 @@
 
 #pragma once
 
-#include <mutex>
-#include <optional>
-#include <shared_mutex>
 #include <utility>
 
 #include "absl/types/span.h"

@@ -16,9 +16,7 @@
 
 #include "libspu/kernel/hal/complex.h"
 #include "libspu/kernel/hal/constants.h"
-#include "libspu/kernel/hal/debug.h"
 #include "libspu/kernel/hal/polymorphic.h"
-#include "libspu/kernel/hal/type_cast.h"
 
 namespace spu::kernel::hlo {
 

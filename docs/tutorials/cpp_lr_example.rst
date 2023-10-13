@@ -20,11 +20,11 @@ In the first terminal.
 
 .. code-block:: bash
 
-  bazel run //examples/cpp:simple_lr -- -rank 0 -dataset examples/cpp/data/perfect_logit_a.csv -has_label=true
+  bazel run //examples/cpp:simple_lr -- -rank 0 -dataset examples/cpp/perfect_logit_a.csv -has_label=true
 
 In the second terminal.
 
 .. code-block:: bash
 
-  bazel run //examples/cpp:simple_lr -- -rank 1 -dataset examples/cpp/data/perfect_logit_b.csv
+  bazel run //examples/cpp:simple_lr -- -rank 1 -dataset examples/cpp/perfect_logit_b.csv
 

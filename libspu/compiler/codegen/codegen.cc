@@ -14,9 +14,7 @@
 
 #include "libspu/compiler/codegen/codegen.h"
 
-#include <string>
-
-#include "llvm/Support/raw_os_ostream.h"
+#include "llvm/Support/raw_ostream.h"
 
 namespace spu::compiler {
 

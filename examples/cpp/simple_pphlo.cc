@@ -19,7 +19,6 @@
 // clang-format on
 
 #include "examples/cpp/utils.h"
-#include "spdlog/spdlog.h"
 
 #include "libspu/device/api.h"
 #include "libspu/device/io.h"

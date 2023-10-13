@@ -17,7 +17,7 @@
 #include <string>
 #include <vector>
 
-#include "xtensor/xarray.hpp"
+#include "xtensor/xarray.hpp"  // IWYU pragma: keep
 
 #include "libspu/core/context.h"
 #include "libspu/core/value.h"

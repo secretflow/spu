@@ -47,8 +47,11 @@
 #define SPU_DEBUG_ONLY_THROW YACL_THROW
 #endif
 
+// Force compiler to inline something regardless of optimization level.
+#define SPU_ALWAYS_INLINE inline __attribute__((always_inline))
+
 // forward scope guard related macros
-#include "yacl/utils/scope_guard.h"
+#include "yacl/utils/scope_guard.h"  // IWYU pragma: keep
 
 // Format
 #include "fmt/ostream.h"

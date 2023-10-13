@@ -16,7 +16,7 @@
 
 #include "absl/types/span.h"
 #include "yacl/crypto/tools/prg.h"
-#include "yacl/link/link.h"
+#include "yacl/link/context.h"
 
 #include "libspu/core/ndarray_ref.h"
 #include "libspu/core/object.h"

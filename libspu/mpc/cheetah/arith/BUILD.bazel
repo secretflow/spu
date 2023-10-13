@@ -64,6 +64,7 @@ spu_cc_library(
     ],
     deps = [
         "//libspu/core:prelude",
+        "//libspu/core:xt_helper",
         "//libspu/mpc/cheetah/rlwe:cheetah_rlwe",
         "@yacl//yacl/link",
     ],

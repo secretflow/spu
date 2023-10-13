@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #pragma once
+
 #include "llvm/ADT/DenseMap.h"
 #include "mlir/IR/Value.h"
 
@@ -22,7 +23,7 @@ namespace mlir::pphlo {
 
 class ValueVisibilityMap {
 private:
-  llvm::DenseMap<Value, Visibility> storage;
+  llvm::DenseMap<Value, Visibility> storage_;
 
 public:
   Visibility getValueVisibility(const Value &v) const;

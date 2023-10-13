@@ -14,8 +14,11 @@
 
 #pragma once
 
-#include "libspu/core/context.h"
 #include "libspu/core/value.h"
+
+namespace spu {
+class SPUContext;
+}
 
 // !!please read [README.md] for api naming conventions.
 // this module implements ops x ring 2k space WITHOUT dtype check.

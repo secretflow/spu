@@ -16,8 +16,6 @@
 
 #include <utility>
 
-#include "absl/types/span.h"
-
 #include "libspu/core/ndarray_ref.h"
 #include "libspu/core/prelude.h"
 #include "libspu/core/shape.h"
@@ -41,65 +39,115 @@ constexpr bool
 }  // namespace detail
 
 // A view of a plaintext buffer.
-//
-// Please do not direct use this class if possible.
 struct PtBufferView {
-  void const* const ptr;  // Pointer to the underlying storage
-  PtType const pt_type;   // Plaintext data type.
-  Shape const shape;      // Shape of the tensor.
-  Strides const strides;  // Strides in number of elements.
+  void* const ptr;               // Pointer to the underlying storage
+  PtType const pt_type;          // Plaintext data type.
+  Shape const shape;             // Shape of the tensor.
+  Strides const strides;         // Strides in number of elements.
+  bool const write_able{false};  // Whether this is a writable buffer
+  bool const compacted{false};   // Whether this is a compacted buffer
 
   // We have to take a concrete buffer as a view.
   PtBufferView() = delete;
 
   // full constructor
-  explicit PtBufferView(void const* ptr, PtType pt_type, Shape shape,
-                        Strides strides)
-      : ptr(ptr),
+  template <typename Pointer>
+  explicit PtBufferView(Pointer ptr, PtType pt_type, Shape in_shape,
+                        Strides in_strides)
+      : ptr(const_cast<void*>(static_cast<const void*>(ptr))),
         pt_type(pt_type),
-        shape(std::move(shape)),
-        strides(std::move(strides)) {}
+        shape(std::move(in_shape)),
+        strides(std::move(in_strides)),
+        write_able(!std::is_const_v<std::remove_pointer_t<Pointer>>),
+        compacted(strides == makeCompactStrides(shape)) {
+    static_assert(std::is_pointer_v<Pointer>);
+  }
 
   // View c++ builtin scalar type as a buffer
   template <typename T, std::enable_if_t<std::is_arithmetic_v<T>, bool> = true>
   /* implicit */ PtBufferView(T const& s)  // NOLINT
-      : ptr(static_cast<void const*>(&s)),
+      : ptr(const_cast<void*>(static_cast<const void*>(&s))),
         pt_type(PtTypeToEnum<T>::value),
         shape(),
-        strides() {}
+        strides(),
+        compacted(true) {}
 
   // FIXME(jint): make it work when T = bool
-  template <typename T, typename std::enable_if_t<
-                            detail::is_container_like_v<T>, bool> = true>
+  template <typename T,
+            std::enable_if_t<detail::is_container_like_v<T>, bool> = true>
   /* implicit */ PtBufferView(const T& c)  // NOLINT
-      : ptr(static_cast<void const*>(c.data())),
+      : ptr(const_cast<void*>(static_cast<const void*>(c.data()))),
         pt_type(PtTypeToEnum<typename T::value_type>::value),
         shape({static_cast<int64_t>(c.size())}),
-        strides({1}) {}
+        strides({1}),
+        compacted(true) {}
 
   // View a tensor-like type (i.e. xt::xarray) as a buffer.
   template <typename T,
-            typename std::enable_if_t<detail::is_tensor_like_v<T>, bool> = true>
+            std::enable_if_t<detail::is_tensor_like_v<T>, bool> = true>
   /* implicit */ PtBufferView(const T& t)  // NOLINT
-      : ptr(static_cast<void const*>(t.data())),
+      : ptr(const_cast<void*>(static_cast<const void*>(t.data()))),
         pt_type(PtTypeToEnum<typename T::value_type>::value),
         shape(t.shape().begin(), t.shape().end()),
-        strides(t.strides().begin(), t.strides().end()) {}
+        strides(t.strides().begin(), t.strides().end()),
+        compacted(strides == makeCompactStrides(shape)) {}
 
-  template <typename T = std::byte>
-  const T* get(const Index& indices) const {
+  template <typename T,
+            std::enable_if_t<detail::is_tensor_like_v<T>, bool> = true>
+  /* implicit */ PtBufferView(T& t)  // NOLINT
+      : ptr(const_cast<void*>(static_cast<const void*>(t.data()))),
+        pt_type(PtTypeToEnum<typename T::value_type>::value),
+        shape(t.shape().begin(), t.shape().end()),
+        strides(t.strides().begin(), t.strides().end()),
+        write_able(true),
+        compacted(strides == makeCompactStrides(shape)) {}
+
+  template <typename S = uint8_t>
+  const S& get(const Index& indices) const {
+    SPU_ENFORCE(PtTypeToEnum<S>::value == pt_type);
     auto fi = calcFlattenOffset(indices, shape, strides);
     const auto* addr =
         static_cast<const std::byte*>(ptr) + SizeOf(pt_type) * fi;
-    return reinterpret_cast<const T*>(addr);
+    return *reinterpret_cast<const S*>(addr);
   }
 
-  bool isCompact() const { return strides == makeCompactStrides(shape); }
+  template <typename S = uint8_t>
+  const S& get(size_t idx) const {
+    if (isCompact()) {
+      const auto* addr =
+          static_cast<const std::byte*>(ptr) + SizeOf(pt_type) * idx;
+      return *reinterpret_cast<const S*>(addr);
+    } else {
+      const auto& indices = unflattenIndex(idx, shape);
+      return get<S>(indices);
+    }
+  }
+
+  template <typename S = uint8_t>
+  void set(const Index& indices, S v) {
+    SPU_ENFORCE(write_able);
+    SPU_ENFORCE(PtTypeToEnum<S>::value == pt_type);
+    auto fi = calcFlattenOffset(indices, shape, strides);
+    auto* addr = static_cast<std::byte*>(ptr) + SizeOf(pt_type) * fi;
+    *reinterpret_cast<S*>(addr) = v;
+  }
+
+  template <typename S = uint8_t>
+  void set(size_t idx, S v) {
+    if (isCompact()) {
+      auto* addr = static_cast<std::byte*>(ptr) + SizeOf(pt_type) * idx;
+      *reinterpret_cast<S*>(addr) = v;
+    } else {
+      const auto& indices = unflattenIndex(idx, shape);
+      set<S>(indices, v);
+    }
+  }
+
+  bool isCompact() const { return compacted; }
 };
 
 std::ostream& operator<<(std::ostream& out, PtBufferView v);
 
-// Make a ndarray from a plaintext buffer.
 NdArrayRef convertToNdArray(PtBufferView bv);
 
 }  // namespace spu
