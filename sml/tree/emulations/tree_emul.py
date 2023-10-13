@@ -19,17 +19,18 @@ from sklearn.datasets import load_iris
 from sklearn.tree import DecisionTreeClassifier
 
 import sml.utils.emulation as emulation
-from sml.tree.tree import odti, odtt
+from sml.tree.tree import DecisionTreeClassifier as sml_dtc
 
-MAX_DEPTH = 3
+MAX_DEPTH = 2
 CONFIG_FILE = emulation.CLUSTER_ABY3_3PC
 
 
 def emul_tree(mode=emulation.Mode.MULTIPROCESS):
     def proc_wrapper(max_depth=2, n_labels=3):
+        dt = sml_dtc(max_depth=max_depth, criterion='gini', splitter='best', n_labels=n_labels)
         def proc(X, y):
-            T, F = odtt(X, y, max_depth=max_depth, n_labels=n_labels)
-            result = odti(X, T, max_depth)
+            dt_fit = dt.fit(X, y)
+            result = dt_fit.predict(X)
             return result
 
         return proc

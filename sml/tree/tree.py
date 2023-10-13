@@ -16,6 +16,48 @@
 import jax.numpy as jnp
 
 
+
+class DecisionTreeClassifier:
+    """A decision tree classifier.
+
+    Read more in the :ref:`User Guide <tree>`.
+
+    Parameters
+    ----------
+    criterion : {"gini", "entropy", "log_loss"}, default="gini"
+        The function to measure the quality of a split. Supported criteria are
+        "gini" for the Gini impurity and "log_loss" and "entropy" both for the
+        Shannon information gain, see :ref:`tree_mathematical_formulation`.
+
+    splitter : {"best", "random"}, default="best"
+        The strategy used to choose the split at each node. Supported
+        strategies are "best" to choose the best split and "random" to choose
+        the best random split.
+
+    max_depth : int, default=None
+        The maximum depth of the tree. If None, then nodes are expanded until
+        all leaves are pure or until all leaves contain less than
+        min_samples_split samples.
+
+    n_labels: int, the max number of labels.
+    """
+
+    def __init__(self, criterion, splitter, max_depth, n_labels):
+        assert criterion == "gini", NotImplementedError
+        assert splitter == "best", NotImplementedError
+        self.max_depth = max_depth
+        self.n_labels = n_labels
+
+    def fit(self, X, y):
+        self.T, self.F = odtt(X, y, self.max_depth, self.n_labels)
+        return self
+
+    def predict(self, X):
+        if self.T == None:
+            raise "The model has not been trained yet."
+        return odti(X, self.T, self.max_depth)
+
+
 '''
 The protocols of GTree.
 '''
@@ -99,7 +141,6 @@ def oblivious_learning(X, y, T, F, M, h, Cn, n_labels):
     # (n_leaves, n_labels+1, 2*n_features)
     new_Cn = jnp.sum(Cd, axis=0)
 
-    print(isLeaf.shape, Cn.shape, new_Cn.shape)
     if h != 0:
         Cn = Cn.repeat(2, axis=0)
     new_Cn = new_Cn[:, :, :] + Cn[:, :, :] * (1 - isLeaf[:, jnp.newaxis, jnp.newaxis])
@@ -126,7 +167,6 @@ def oblivious_heuristic_computation(Cn, gamma, F, h, n_labels):
     D = Ds0 + Ds1
     Q = D * Ds0 * Ds1
     P = jnp.zeros(gamma.shape)
-    print(P.shape, Ds1.shape)
     for i in range(n_labels):
         P = P - Ds1 * (Cn[:, i + 1, 0::2] ** 2) - Ds0 * (Cn[:, i + 1, 1::2] ** 2)
     gini = Q / (Q + P + 1)
@@ -187,29 +227,16 @@ def oblivious_DT_training(X, y, max_depth, n_labels):
 
     h = 0
     while h < max_depth:
-        print(f"---------------------------------------\ncurrent level: {h}")
-        # layer 0
         Cn, M = ol(X, y, T, F, M, h, Cn, n_labels)
-        print("Cn: \n", Cn)
-        print("M: ", M)
-        print("-----------------------------------")
 
         SD, gamma, F = ohc(Cn, gamma, F, h, n_labels)
-        print("SD: ", SD)
-        print("gamma: ", gamma)
-        print("F: ", F)
-        print("-----------------------------------")
 
         T, Cn = ons(SD, T, F, Cn, h, max_depth)
-        print("SD: ", SD)
-        print("T: ", T)
-        print("Cn: \n", Cn)
 
         h += 1
 
     n_leaves = 2**h
     psi = jnp.zeros((n_leaves, n_labels))
-    print(psi[0, :].shape, oaa(Cn[0, 1:], 2 * SD[0]).shape)
     for i in range(2 ** (h - 1)):
         t1 = oaa(Cn[i, 1:], 2 * SD[i : i + 1]).squeeze()
         t2 = oaa(Cn[i, 1:], 2 * SD[i : i + 1] + 1).squeeze()

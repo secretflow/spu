@@ -21,17 +21,18 @@ from sklearn.tree import DecisionTreeClassifier
 
 import spu.spu_pb2 as spu_pb2  # type: ignore
 import spu.utils.simulation as spsim
-from sml.tree.tree import odti, odtt
+from sml.tree.tree import DecisionTreeClassifier as sml_dtc
 
-MAX_DEPTH = 3
+MAX_DEPTH = 2
 
 
 class UnitTests(unittest.TestCase):
     def test_pla(self):
         def proc_wrapper(max_depth=2, n_labels=3):
+            dt = sml_dtc("gini", "best", max_depth, n_labels)
             def proc(X, y):
-                T, F = odtt(X, y, max_depth=max_depth, n_labels=n_labels)
-                result = odti(X, T, max_depth)
+                dt_fit = dt.fit(X, y)
+                result = dt_fit.predict(X)
                 return result
 
             return proc
