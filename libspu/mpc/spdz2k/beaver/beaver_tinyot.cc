@@ -20,16 +20,14 @@
 #include <random>
 
 #include "yacl/base/dynamic_bitset.h"
+#include "yacl/crypto/primitives/ot/base_ot.h"
 #include "yacl/crypto/primitives/ot/ot_store.h"
 #include "yacl/crypto/tools/prg.h"
 #include "yacl/crypto/utils/rand.h"
-#include "yacl/link/link.h"
-#include "yacl/utils/matrix_utils.h"
 #include "yacl/utils/serialize.h"
 
 #include "libspu/mpc/common/prg_tensor.h"
 #include "libspu/mpc/spdz2k/commitment.h"
-#include "libspu/mpc/spdz2k/ot/kos_ote.h"
 #include "libspu/mpc/spdz2k/ot/tiny_ot.h"
 #include "libspu/mpc/utils/ring_ops.h"
 

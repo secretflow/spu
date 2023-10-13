@@ -14,7 +14,12 @@
 
 #pragma once
 
-#include "libspu/kernel/hlo/utils.h"
+#include "libspu/core/value.h"
+
+namespace spu {
+class SPUContext;
+}
+
 namespace spu::kernel::hlo {
 
 spu::Value Transpose(SPUContext *ctx, const spu::Value &in,

@@ -22,7 +22,6 @@
 #include "absl/types/span.h"
 #include "yacl/crypto/tools/prg.h"
 #include "yacl/crypto/utils/rand.h"
-#include "yacl/utils/parallel.h"
 
 #include "libspu/mpc/utils/linalg.h"
 

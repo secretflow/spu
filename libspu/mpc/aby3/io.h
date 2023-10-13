@@ -29,7 +29,7 @@ class Aby3Io final : public BaseIo {
 
   NdArrayRef fromShares(const std::vector<NdArrayRef>& shares) const override;
 
-  std::vector<NdArrayRef> makeBitSecret(const NdArrayRef& in) const override;
+  std::vector<NdArrayRef> makeBitSecret(const PtBufferView& in) const override;
 
   size_t getBitSecretShareSize(size_t numel) const override;
 

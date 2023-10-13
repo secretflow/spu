@@ -19,7 +19,6 @@
 #include "libspu/compiler/passes/pass_details.h"
 #include "libspu/compiler/passes/passes.h"
 #include "libspu/dialect/pphlo_ops.h"
-#include "libspu/dialect/pphlo_types.h"
 
 namespace mlir::pphlo {
 

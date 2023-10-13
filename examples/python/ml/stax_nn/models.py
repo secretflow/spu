@@ -15,16 +15,16 @@
 
 from jax.example_libraries import stax
 from jax.example_libraries.stax import (
-    Conv,
-    MaxPool,
     AvgPool,
-    Flatten,
+    BatchNorm,
+    Conv,
     Dense,
+    Flatten,
+    LogSoftmax,
+    MaxPool,
     Relu,
     Sigmoid,
-    LogSoftmax,
     Softmax,
-    BatchNorm,
 )
 
 

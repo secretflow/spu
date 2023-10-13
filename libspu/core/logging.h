@@ -16,7 +16,6 @@
 
 #include <string>
 
-#include "spdlog/spdlog.h"
 #include "yacl/link/trace.h"
 
 namespace spu::logging {

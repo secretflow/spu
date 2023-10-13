@@ -15,13 +15,15 @@
 #include "libspu/device/pphlo/pphlo_executor.h"
 
 #include "mlir/IR/BuiltinAttributes.h"
-#include "mlir/IR/Location.h"
 
 #include "libspu/core/encoding.h"
+#include "libspu/core/trace.h"
 #include "libspu/device/pphlo/pphlo_intrinsic_executor.h"
 #include "libspu/device/pphlo/pphlo_verifier.h"
 #include "libspu/dialect/pphlo_base_enums.h"
 #include "libspu/dialect/pphlo_ops.h"
+#include "libspu/kernel/hal/debug.h"
+#include "libspu/kernel/hal/public_helper.h"
 #include "libspu/kernel/hal/ring.h"
 #include "libspu/kernel/hlo/basic_binary.h"
 #include "libspu/kernel/hlo/basic_ternary.h"
@@ -611,7 +613,8 @@ void execute(OpExecutor *executor, SPUContext *sctx, SymbolScope *sscope,
   // build strides
   Strides window_strides(window_shape.size(), 1);
   if (op.getWindowStrides().has_value()) {
-    convertDenseIntElementAttr(*op.getWindowStrides(), window_strides);
+    convertDenseIntElementAttr(*op.getWindowStrides(),  // NOLINT
+                               window_strides);
   }
 
   // window padding
@@ -646,7 +649,8 @@ void execute(OpExecutor *, SPUContext *sctx, SymbolScope *sscope,
   // build strides
   Strides window_strides(window_shape.size(), 1);
   if (op.getWindowStrides().has_value()) {
-    convertDenseIntElementAttr(*op.getWindowStrides(), window_strides);
+    convertDenseIntElementAttr(*op.getWindowStrides(),  // NOLINT
+                               window_strides);
   }
 
   // window padding
@@ -916,15 +920,15 @@ void execute(OpExecutor *executor, SPUContext *sctx, SymbolScope *sscope,
   // build strides
   Strides window_strides(window_shape.size(), 1);
   if (op.getWindowStrides().has_value()) {
-    convertDenseIntElementAttr(*op.getWindowStrides(),
-                               window_strides);  // NOLINT
+    convertDenseIntElementAttr(*op.getWindowStrides(),  // NOLINT
+                               window_strides);
   }
 
   // window dilation
   Sizes window_dilations(window_shape.size(), 1);
   if (op.getWindowDilations().has_value()) {
-    convertDenseIntElementAttr(*op.getWindowDilations(),
-                               window_dilations);  // NOLINT
+    convertDenseIntElementAttr(*op.getWindowDilations(),  // NOLINT
+                               window_dilations);
   }
 
   std::vector<std::pair<int64_t, int64_t>> window_padding(window_shape.size(),
@@ -963,15 +967,15 @@ void execute(OpExecutor *, SPUContext *sctx, SymbolScope *sscope,
   // build strides
   Strides window_strides(window_shape.size(), 1);
   if (op.getWindowStrides().has_value()) {
-    convertDenseIntElementAttr(*op.getWindowStrides(),
-                               window_strides);  // NOLINT
+    convertDenseIntElementAttr(*op.getWindowStrides(),  // NOLINT
+                               window_strides);
   }
 
   // window dilation
   Sizes window_dilations(window_shape.size(), 1);
   if (op.getWindowDilations().has_value()) {
-    convertDenseIntElementAttr(*op.getWindowDilations(),
-                               window_dilations);  // NOLINT
+    convertDenseIntElementAttr(*op.getWindowDilations(),  // NOLINT
+                               window_dilations);
   }
 
   auto ret_shape = op->getResults()[0]

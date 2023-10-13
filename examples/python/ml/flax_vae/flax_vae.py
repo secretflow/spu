@@ -21,11 +21,11 @@ import numpy as np
 import optax
 import tensorflow as tf
 import tensorflow_datasets as tfds
+from flax import linen as nn
+from flax.training import train_state
 from jax import random
 
 import examples.python.ml.flax_vae.utils as vae_utils
-from flax import linen as nn
-from flax.training import train_state
 
 # Replace absl.flags used by original authors with argparse for unittest
 parser = argparse.ArgumentParser(description='distributed driver.')

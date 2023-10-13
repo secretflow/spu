@@ -14,6 +14,8 @@
 
 #include "libspu/core/context.h"
 
+#include "libspu/core/trace.h"
+
 namespace spu {
 namespace {
 

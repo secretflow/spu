@@ -18,11 +18,10 @@
 #include <optional>
 #include <variant>
 
-#include "yacl/link/link.h"
+#include "yacl/link/context.h"
 
 #include "libspu/core/object.h"
 #include "libspu/core/prelude.h"
-#include "libspu/core/trace.h"  // TODO: bad reference, but implicitly include too much.
 #include "libspu/core/value.h"
 
 #include "libspu/spu.pb.h"
@@ -95,8 +94,7 @@ class KernelEvalContext final {
       uint128_t,                   // ring constant
       int64_t,                     //
       SignType,                    //
-      std::vector<Value>,          // for sort
-      absl::Span<Value const>      // for sort
+      std::vector<Value>           // for sort
       >;
 
   SPUContext* sctx_;

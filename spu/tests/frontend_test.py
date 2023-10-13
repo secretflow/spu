@@ -94,16 +94,19 @@ class UnitTests(unittest.TestCase):
         self.assertEqual(output.dtype, np.dtype("int32"))
 
     def test_tf_compile(self):
+        def foo(x, y):
+            return tf.add(x, y)
+
         executable, output = spu_fe.compile(
             spu_fe.Kind.Tensorflow,
-            tf.add,
+            foo,
             (np.array([1, 2]), np.array([2, 4])),
             {},
             ["in1", "in2"],
             [spu_pb2.VIS_PUBLIC, spu_pb2.VIS_PUBLIC],
             lambda out_flat: [f'test-out{idx}' for idx in range(len(out_flat))],
         )
-        self.assertEqual(executable.name, "add")
+        self.assertEqual(executable.name, "foo")
         self.assertEqual(executable.input_names, ["in1", "in2"])
         self.assertEqual(executable.output_names, ["test-out0"])
         self.assertTrue(

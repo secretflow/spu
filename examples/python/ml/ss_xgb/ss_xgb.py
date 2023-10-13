@@ -20,21 +20,19 @@
 
 import argparse
 import json
-from statistics import mode
 import time
-
-from sklearn.metrics import roc_auc_score
-
+from functools import reduce
+from statistics import mode
 from typing import Any, Dict, List, Tuple
+
 import jax.numpy as jnp
 import numpy as np
 import pandas as pd
-from functools import reduce
+from sklearn.metrics import roc_auc_score
 
-import examples.python.utils.dataset_utils as dsutil
 import examples.python.utils.appr_sigmoid as Sigmoid
+import examples.python.utils.dataset_utils as dsutil
 import spu.utils.distributed as ppd
-
 from spu.utils.distributed import PYU, SPU
 
 parser = argparse.ArgumentParser(description='distributed driver.')

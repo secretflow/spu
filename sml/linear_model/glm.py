@@ -15,6 +15,7 @@
 import warnings
 
 import jax.numpy as jnp
+
 from sml.linear_model.utils.link import *
 from sml.linear_model.utils.loss import *
 from sml.linear_model.utils.solver import *

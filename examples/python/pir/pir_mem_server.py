@@ -18,13 +18,13 @@
 # > --count_per_query 1 -max_label_length 256 \
 # > --oprf_key_path oprf_key.bin --setup_path setup_path
 
+import time
+
 from absl import app, flags
 
-import spu.pir as pir
 import spu.libspu.link as link
 import spu.libspu.logging as logging
-
-import time
+import spu.pir as pir
 
 flags.DEFINE_integer("rank", 0, "rank: 0/1/2...")
 flags.DEFINE_string("party_ips", "127.0.0.1:9307,127.0.0.1:9308", "party addresses")

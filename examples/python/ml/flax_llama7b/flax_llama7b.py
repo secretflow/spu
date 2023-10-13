@@ -19,18 +19,20 @@
 
 import argparse
 import json
-import jax
-import jax.numpy as jnp
-import jax.nn as jnn
-import flax.linen as nn
-from flax.linen.linear import Array
-from typing import Any, Optional, Tuple, Union
-from transformers import LlamaTokenizer
-from EasyLM.models.llama.llama_model import LLaMAConfig, FlaxLLaMAForCausalLM
-import spu.utils.distributed as ppd
 from contextlib import contextmanager
+from typing import Any, Optional, Tuple, Union
+
+import flax.linen as nn
+import jax
+import jax.nn as jnn
+import jax.numpy as jnp
+from EasyLM.models.llama.llama_model import FlaxLLaMAForCausalLM, LLaMAConfig
+from flax.linen.linear import Array
+from transformers import LlamaTokenizer
+
 import spu.intrinsic as intrinsic
 import spu.spu_pb2 as spu_pb2
+import spu.utils.distributed as ppd
 
 parser = argparse.ArgumentParser(description='distributed driver.')
 parser.add_argument("-c", "--config", default="examples/python/ml/flax_llama/3pc.json")

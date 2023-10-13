@@ -515,13 +515,20 @@ class IoWrapper {
                   cur.dtype(), prev.dtype());
     }
 
-    auto ndarr = ptr_->combineShares(shares);
-    SPU_ENFORCE(ndarr.eltype().isa<PtTy>(), "expect decode to pt_type, got {}",
-                ndarr.eltype());
+    const PtType pt_type = ptr_->getPtType(shares);
+    std::vector<size_t> shape = {shares.front().shape().begin(),
+                                 shares.front().shape().end()};
 
-    const auto pt_type = ndarr.eltype().as<PtTy>()->pt_type();
-    std::vector<size_t> shape = {ndarr.shape().begin(), ndarr.shape().end()};
-    return py::array(py::dtype(PtTypeToPyFormat(pt_type)), shape, ndarr.data());
+    py::array ret(py::dtype(PtTypeToPyFormat(pt_type)), shape);
+    const py::buffer_info& binfo = ret.request();
+
+    spu::PtBufferView ret_view(
+        binfo.ptr, pt_type, Shape(binfo.shape.begin(), binfo.shape.end()),
+        ByteToElementStrides(binfo.strides.begin(), binfo.strides.end(),
+                             binfo.itemsize));
+
+    ptr_->combineShares(shares, &ret_view);
+    return ret;
   }
 };
 

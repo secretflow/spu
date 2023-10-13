@@ -15,12 +15,12 @@
 #include "libspu/kernel/hlo/control_flow.h"
 
 #include "libspu/kernel/hal/constants.h"
-#include "libspu/kernel/hal/debug.h"
 #include "libspu/kernel/hal/polymorphic.h"
 #include "libspu/kernel/hal/public_helper.h"
 #include "libspu/kernel/hal/shape_ops.h"
 #include "libspu/kernel/hal/type_cast.h"
 #include "libspu/kernel/hlo/const.h"
+#include "libspu/kernel/hlo/utils.h"
 
 // Allow runtime to reveal `secret variable` use as while
 // condition result, debug purpose only.

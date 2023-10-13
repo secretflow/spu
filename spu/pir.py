@@ -16,16 +16,15 @@ from __future__ import annotations
 
 from typing import List
 
+from . import libspu  # type: ignore
 from .pir_pb2 import (  # type: ignore
     KvStoreType,
+    PirClientConfig,
     PirProtocol,
     PirResultReport,
-    PirClientConfig,
     PirServerConfig,
     PirSetupConfig,
 )
-
-from . import libspu  # type: ignore
 
 
 def pir_setup(config: PirSetupConfig) -> List[str]:

@@ -15,8 +15,8 @@
 #include "xtensor/xrandom.hpp"
 
 #include "libspu/core/context.h"
+#include "libspu/core/pt_buffer_view.h"
 #include "libspu/core/value.h"
-#include "libspu/core/xt_helper.h"
 #include "libspu/kernel/hal/prot_wrapper.h"   // bad reference
 #include "libspu/kernel/hal/public_helper.h"  // bad reference
 

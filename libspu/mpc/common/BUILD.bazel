@@ -21,8 +21,6 @@ spu_cc_library(
     srcs = ["pv2k.cc"],
     hdrs = ["pv2k.h"],
     deps = [
-        "//libspu/core",
-        "//libspu/core:trace",
         "//libspu/mpc:kernel",
         "//libspu/mpc/common:communicator",
         "//libspu/mpc/common:prg_state",
@@ -45,7 +43,10 @@ spu_cc_library(
     deps = [
         "//libspu/core:object",
         "//libspu/mpc/utils:ring_ops",
-        "@yacl//yacl/link",
+        "@yacl//yacl/link:context",
+        "@yacl//yacl/link/algorithm:allgather",
+        "@yacl//yacl/link/algorithm:broadcast",
+        "@yacl//yacl/link/algorithm:gather",
     ],
 )
 
@@ -63,11 +64,11 @@ spu_cc_library(
     srcs = ["prg_state.cc"],
     hdrs = ["prg_state.h"],
     deps = [
-        "//libspu/core",
         "//libspu/core:object",
         "@yacl//yacl/crypto/tools:prg",
         "@yacl//yacl/crypto/utils:rand",
-        "@yacl//yacl/link",
+        "@yacl//yacl/link:context",
+        "@yacl//yacl/link/algorithm:allgather",
     ],
 )
 
@@ -77,6 +78,7 @@ spu_cc_test(
     deps = [
         ":prg_state",
         "//libspu/mpc/utils:simulate",
+        "@yacl//yacl/link/algorithm:barrier",
     ],
 )
 

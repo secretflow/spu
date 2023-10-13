@@ -14,6 +14,7 @@
 
 #include "libspu/mpc/semi2k/protocol.h"
 
+#include "libspu/mpc/common/communicator.h"
 #include "libspu/mpc/common/prg_state.h"
 #include "libspu/mpc/common/pv2k.h"
 #include "libspu/mpc/semi2k/arithmetic.h"

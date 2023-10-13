@@ -38,7 +38,7 @@ spu_cc_library(
     name = "simulate",
     hdrs = ["simulate.h"],
     deps = [
-        "@yacl//yacl/link",
+        "@yacl//yacl/link:test_util",
     ],
 )
 
@@ -47,7 +47,7 @@ spu_cc_library(
     srcs = ["permute.cc"],
     hdrs = ["permute.h"],
     deps = [
-        "//libspu/core",
+        "//libspu/core:ndarray_ref",
     ],
 )
 
@@ -72,7 +72,7 @@ spu_cc_library(
     }),
     deps = [
         ":linalg",
-        "//libspu/core",
+        "//libspu/core:ndarray_ref",
         "@yacl//yacl/crypto/tools:prg",
         "@yacl//yacl/crypto/utils:rand",
         "@yacl//yacl/utils:parallel",
@@ -102,7 +102,6 @@ spu_cc_library(
     hdrs = ["linalg.h"],
     deps = [
         "//libspu/core:parallel_utils",
-        "//libspu/core:prelude",
         "@com_github_eigenteam_eigen//:eigen3",
     ] + select({
         "@bazel_tools//src/conditions:darwin_x86_64": ["@local_homebrew_x64//:openmp"],

@@ -17,12 +17,10 @@
 #include "gtest/gtest.h"
 
 #include "libspu/core/context.h"
-#include "libspu/core/ndarray_ref.h"
 #include "libspu/core/value.h"
 #include "libspu/kernel/hlo/casting.h"
 #include "libspu/kernel/hlo/const.h"
 #include "libspu/kernel/test_util.h"
-#include "libspu/mpc/factory.h"
 #include "libspu/mpc/utils/simulate.h"
 
 namespace spu::kernel::hlo {

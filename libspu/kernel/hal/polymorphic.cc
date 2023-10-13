@@ -14,18 +14,13 @@
 
 #include "libspu/kernel/hal/polymorphic.h"
 
-#include "fmt/format.h"
-#include "fmt/ostream.h"
-
 #include "libspu/core/context.h"
-#include "libspu/core/encoding.h"  // for bitcast
 #include "libspu/core/prelude.h"
 #include "libspu/core/trace.h"
-#include "libspu/kernel/hal/constants.h"
-#include "libspu/kernel/hal/fxp.h"
+#include "libspu/kernel/hal/fxp_approx.h"
+#include "libspu/kernel/hal/fxp_base.h"
 #include "libspu/kernel/hal/integer.h"
 #include "libspu/kernel/hal/ring.h"  // for fast fxp x int
-#include "libspu/kernel/hal/shape_ops.h"
 #include "libspu/kernel/hal/type_cast.h"
 
 // TODO: handle dtype promotion inside integer dtypes.

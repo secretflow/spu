@@ -12,10 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import jax.numpy as jnp
-from enum import Enum
 import os
 import sys
+from enum import Enum
+
+import jax.numpy as jnp
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '../../'))
 

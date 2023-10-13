@@ -17,25 +17,6 @@ load("//bazel:spu.bzl", "spu_cc_library", "spu_cc_test")
 package(default_visibility = ["//visibility:public"])
 
 spu_cc_library(
-    name = "hal",
-    hdrs = ["hal.h"],
-    deps = [
-        ":complex",
-        ":constants",
-        ":debug",
-        ":fxp",
-        ":integer",
-        ":polymorphic",
-        ":public_helper",
-        ":random",
-        ":shape_ops",
-        ":sort",
-        ":type_cast",
-        "//libspu/core:value",
-    ],
-)
-
-spu_cc_library(
     name = "prot_wrapper",
     srcs = ["prot_wrapper.cc"],
     hdrs = ["prot_wrapper.h"],
@@ -151,15 +132,6 @@ spu_cc_test(
 )
 
 spu_cc_library(
-    name = "fxp",
-    hdrs = ["fxp.h"],
-    deps = [
-        ":fxp_approx",
-        ":fxp_base",
-    ],
-)
-
-spu_cc_library(
     name = "constants",
     srcs = ["constants.cc"],
     hdrs = ["constants.h"],
@@ -191,6 +163,7 @@ spu_cc_library(
         "//libspu/core:context",
         "//libspu/core:encoding",
         "//libspu/core:value",
+        "//libspu/core:xt_helper",
         "//libspu/mpc/common:pv2k",  # TODO: this is a bad reference
     ],
 )
@@ -212,7 +185,8 @@ spu_cc_library(
     srcs = ["polymorphic.cc"],
     hdrs = ["polymorphic.h"],
     deps = [
-        ":fxp",
+        ":fxp_approx",
+        ":fxp_base",
         ":integer",
         ":shape_ops",
         ":type_cast",

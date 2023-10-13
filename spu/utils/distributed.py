@@ -49,12 +49,12 @@ from jax._src import api_util as japi_util
 from jax.tree_util import tree_map, tree_unflatten
 from termcolor import colored
 
-from . import frontend as spu_fe
+from .. import api as spu_api
+from .. import libspu  # type: ignore
+from .. import spu_pb2
 from . import distributed_pb2  # type: ignore
 from . import distributed_pb2_grpc  # type: ignore
-from .. import libspu  # type: ignore
-from .. import api as spu_api
-from .. import spu_pb2
+from . import frontend as spu_fe
 
 """
 This module is used as a simple scheduler to demonstrate SPU usage.

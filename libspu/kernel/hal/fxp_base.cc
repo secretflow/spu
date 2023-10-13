@@ -17,6 +17,7 @@
 #include <cmath>
 
 #include "libspu/core/prelude.h"
+#include "libspu/core/trace.h"
 #include "libspu/kernel/hal/constants.h"
 #include "libspu/kernel/hal/fxp_cleartext.h"
 #include "libspu/kernel/hal/ring.h"

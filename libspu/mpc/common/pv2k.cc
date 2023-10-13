@@ -17,7 +17,6 @@
 #include <mutex>
 
 #include "libspu/core/ndarray_ref.h"
-#include "libspu/core/trace.h"
 #include "libspu/mpc/common/communicator.h"
 #include "libspu/mpc/common/prg_state.h"
 #include "libspu/mpc/kernel.h"

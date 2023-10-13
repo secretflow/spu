@@ -16,19 +16,13 @@
 
 #include <algorithm>
 #include <cstdint>
-#include <future>
-#include <iostream>
 #include <stack>
 #include <vector>
 
-#include "libspu/core/parallel_utils.h"
-#include "libspu/core/xt_helper.h"
 #include "libspu/kernel/hal/constants.h"
 #include "libspu/kernel/hal/polymorphic.h"
 #include "libspu/kernel/hal/ring.h"
 #include "libspu/kernel/hal/shape_ops.h"
-#include "libspu/kernel/hal/type_cast.h"
-#include "libspu/kernel/hlo/geometrical.h"
 #include "libspu/kernel/hlo/utils.h"
 
 namespace spu::kernel::hlo {
@@ -254,7 +248,7 @@ std::vector<spu::Value> ReduceWindowImpl(
     std::vector<Value> windows(nargs);
     for (int64_t idx = 0; idx < nargs; ++idx) {
       windows[idx] = hal::slice(ctx, padded_inputs[idx], start, end,
-                                (Strides)config.window_dilations);
+                                Strides(config.window_dilations));
     }
     reduced_rets.emplace_back(
         Reduce(ctx, windows, init_values, reduce_dims, reducer));
@@ -266,12 +260,12 @@ std::vector<spu::Value> ReduceWindowImpl(
   for (int64_t input_idx = 0; input_idx < nargs; ++input_idx) {
     std::vector<Value> reduced_values;
 
-    for (size_t widx = 0; widx < reduced_rets.size(); ++widx) {
-      Shape new_shape = reduced_rets[widx][input_idx].shape();
+    for (auto &reduced_ret : reduced_rets) {
+      Shape new_shape = reduced_ret[input_idx].shape();
       new_shape.insert(new_shape.begin(), 1);
 
       reduced_values.emplace_back(
-          hal::reshape(ctx, reduced_rets[widx][input_idx], new_shape));
+          hal::reshape(ctx, reduced_ret[input_idx], new_shape));
     }
 
     rets.emplace_back(

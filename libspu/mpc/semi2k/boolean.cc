@@ -17,11 +17,9 @@
 #include <functional>
 
 #include "libspu/core/bit_utils.h"
-#include "libspu/mpc/ab_api.h"
 #include "libspu/mpc/common/communicator.h"
 #include "libspu/mpc/common/prg_state.h"
 #include "libspu/mpc/common/pv2k.h"
-#include "libspu/mpc/kernel.h"
 #include "libspu/mpc/semi2k/state.h"
 #include "libspu/mpc/semi2k/type.h"
 #include "libspu/mpc/utils/ring_ops.h"

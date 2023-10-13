@@ -18,7 +18,6 @@
 #include <cstdint>
 
 #include "fmt/format.h"
-#include "fmt/ostream.h"
 
 #include "libspu/core/ndarray_ref.h"
 #include "libspu/core/prelude.h"

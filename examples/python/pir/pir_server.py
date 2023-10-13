@@ -19,9 +19,9 @@
 
 from absl import app, flags
 
-import spu.pir as pir
 import spu.libspu.link as link
 import spu.libspu.logging as logging
+import spu.pir as pir
 
 flags.DEFINE_integer("rank", 0, "rank: 0/1/2...")
 flags.DEFINE_string("party_ips", "127.0.0.1:9307,127.0.0.1:9308", "party addresses")
