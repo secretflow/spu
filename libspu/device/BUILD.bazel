@@ -34,7 +34,6 @@ spu_cc_library(
         "//libspu/core:context",
         "//libspu/core:pt_buffer_view",
         "//libspu/core:value",
-        "//libspu/kernel/hal:constants",
         "//libspu/kernel/hal:public_helper",
         "//libspu/mpc:factory",
     ],

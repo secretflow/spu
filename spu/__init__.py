@@ -13,26 +13,22 @@
 # limitations under the License.
 
 
-from .version import __version__  # type: ignore
-
-from .spu_pb2 import (  # type: ignore
-    DataType,
-    Visibility,
-    PtType,
-    ProtocolKind,
-    FieldType,
-    ShapeProto,
-    RuntimeConfig,
-    ExecutableProto,
-    CompilerOptions,
-)
-
-from .api import Io, Runtime, compile, check_cpu_feature
-from .utils import simulation
+from . import pir, psi
+from .api import Io, Runtime, check_cpu_feature, compile
 from .intrinsic import *
-
-from . import pir
-from . import psi
+from .spu_pb2 import (  # type: ignore
+    CompilerOptions,
+    DataType,
+    ExecutableProto,
+    FieldType,
+    ProtocolKind,
+    PtType,
+    RuntimeConfig,
+    ShapeProto,
+    Visibility,
+)
+from .utils import simulation
+from .version import __version__  # type: ignore
 
 __all__ = [
     "__version__",

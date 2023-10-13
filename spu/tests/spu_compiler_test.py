@@ -19,8 +19,8 @@ import unittest
 import numpy as np
 import numpy.testing as npt
 
-import spu.utils.frontend as spu_fe
 import spu.spu_pb2 as spu_pb2
+import spu.utils.frontend as spu_fe
 
 
 class UnitTests(unittest.TestCase):

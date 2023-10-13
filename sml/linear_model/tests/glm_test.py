@@ -16,12 +16,6 @@ import unittest
 
 import jax.numpy as jnp
 import numpy as np
-from sml.linear_model.glm import (
-    GammaRegressor,
-    PoissonRegressor,
-    TweedieRegressor,
-    _GeneralizedLinearRegressor,
-)
 from sklearn.linear_model._glm import GammaRegressor as std_GammaRegressor
 from sklearn.linear_model._glm import PoissonRegressor as std_PoissonRegressor
 from sklearn.linear_model._glm import TweedieRegressor as std_TweedieRegressor
@@ -31,6 +25,12 @@ from sklearn.linear_model._glm import (
 
 import spu.spu_pb2 as spu_pb2
 import spu.utils.simulation as spsim
+from sml.linear_model.glm import (
+    GammaRegressor,
+    PoissonRegressor,
+    TweedieRegressor,
+    _GeneralizedLinearRegressor,
+)
 
 verbose = 0
 n_samples, n_features = 100, 5

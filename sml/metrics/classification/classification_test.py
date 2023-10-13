@@ -16,8 +16,8 @@ import sys
 import time
 import unittest
 
-import numpy as np
 import jax.numpy as jnp
+import numpy as np
 
 import spu.spu_pb2 as spu_pb2
 import spu.utils.simulation as spsim
@@ -25,13 +25,13 @@ import spu.utils.simulation as spsim
 # add ops dir to the path
 sys.path.append(os.path.join(os.path.dirname(__file__), '../../'))
 
-from sml.metrics.classification.classification import (
-    roc_auc_score,
-    equal_obs,
-    bin_counts,
-)
-
 from sklearn.metrics import roc_auc_score as sk_roc_auc_score
+
+from sml.metrics.classification.classification import (
+    bin_counts,
+    equal_obs,
+    roc_auc_score,
+)
 
 
 class UnitTests(unittest.TestCase):

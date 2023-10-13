@@ -14,11 +14,13 @@
 
 #include "libspu/kernel/hal/ring.h"
 
-#include <array>
 #include <cmath>
+#include <vector>
 
 #include "libspu/core/bit_utils.h"
+#include "libspu/core/context.h"
 #include "libspu/core/prelude.h"
+#include "libspu/core/trace.h"
 #include "libspu/kernel/hal/prot_wrapper.h"
 #include "libspu/kernel/hal/shape_ops.h"
 

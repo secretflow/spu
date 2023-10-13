@@ -14,10 +14,10 @@
 
 import argparse
 import json
+import time
 
 import jax.numpy as jnp
 import numpy as np
-import time
 
 import spu.utils.distributed as ppd
 

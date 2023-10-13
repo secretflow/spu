@@ -14,8 +14,10 @@
 
 #include "libspu/kernel/hal/public_helper.h"
 
+#include "libspu/core/context.h"
 #include "libspu/core/encoding.h"
 #include "libspu/core/ndarray_ref.h"
+#include "libspu/core/trace.h"
 #include "libspu/mpc/common/pv2k.h"
 
 namespace spu::kernel::hal {
@@ -26,7 +28,14 @@ NdArrayRef dump_public(SPUContext* ctx, const Value& v) {
   const auto field = v.storage_type().as<Ring2k>()->field();
   auto encoded = v.data().as(makeType<RingTy>(field));
 
-  return decodeFromRing(encoded, v.dtype(), ctx->getFxpBits());
+  const PtType pt_type = getDecodeType(v.dtype());
+  NdArrayRef dst(makePtType(pt_type), v.shape());
+  PtBufferView pv(static_cast<void*>(dst.data()), pt_type, dst.shape(),
+                  dst.strides());
+
+  decodeFromRing(encoded, v.dtype(), ctx->getFxpBits(), &pv);
+
+  return dst;
 }
 
 bool getBooleanValue(SPUContext* ctx, const spu::Value& value) {

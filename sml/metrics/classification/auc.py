@@ -13,9 +13,11 @@
 # limitations under the License.
 
 from typing import Tuple
-import jax.numpy as jnp
+
 import jax
-from spu.ops.groupby.groupby import groupby_sorted
+import jax.numpy as jnp
+
+from spu.ops.groupby import groupby_sorted
 
 
 def binary_clf_curve(sorted_pairs: jnp.array) -> Tuple[jnp.array, jnp.array, jnp.array]:

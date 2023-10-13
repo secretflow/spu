@@ -14,8 +14,11 @@
 
 #pragma once
 
-#include "libspu/core/context.h"
 #include "libspu/device/executor.h"
+
+namespace spu {
+class SPUContext;
+}
 
 namespace spu::device::pphlo {
 

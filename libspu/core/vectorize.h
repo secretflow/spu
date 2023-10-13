@@ -18,8 +18,6 @@
 #include <numeric>
 #include <vector>
 
-#include "absl/types/span.h"
-
 #include "libspu/core/prelude.h"
 
 namespace spu {

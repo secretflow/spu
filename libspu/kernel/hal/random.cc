@@ -14,8 +14,10 @@
 
 #include "libspu/kernel/hal/random.h"
 
+#include <random>
+
 #include "libspu/core/prelude.h"
-#include "libspu/core/xt_helper.h"
+#include "libspu/core/trace.h"
 #include "libspu/kernel/hal/constants.h"
 #include "libspu/kernel/hal/prot_wrapper.h"
 #include "libspu/kernel/hal/public_helper.h"

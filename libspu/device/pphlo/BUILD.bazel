@@ -25,7 +25,21 @@ spu_cc_library(
         ":pphlo_verifier",
         "//libspu/device:executor",
         "//libspu/dialect:pphlo_dialect",
-        "//libspu/kernel/hlo",
+        "//libspu/kernel/hal:debug",
+        "//libspu/kernel/hlo:basic_binary",
+        "//libspu/kernel/hlo:basic_ternary",
+        "//libspu/kernel/hlo:basic_unary",
+        "//libspu/kernel/hlo:casting",
+        "//libspu/kernel/hlo:const",
+        "//libspu/kernel/hlo:control_flow",
+        "//libspu/kernel/hlo:convolution",
+        "//libspu/kernel/hlo:geometrical",
+        "//libspu/kernel/hlo:indexing",
+        "//libspu/kernel/hlo:rand",
+        "//libspu/kernel/hlo:reduce",
+        "//libspu/kernel/hlo:select_and_scatter",
+        "//libspu/kernel/hlo:shift",
+        "//libspu/kernel/hlo:sort",
     ],
 )
 
@@ -34,8 +48,8 @@ spu_cc_library(
     srcs = ["pphlo_intrinsic_executor.cc"],
     hdrs = ["pphlo_intrinsic_executor.h"],
     deps = [
-        "//libspu/core:context",
-        "//libspu/kernel/hlo",
+        "//libspu/kernel/hlo:casting",
+        "//libspu/kernel/hlo:const",
         "@llvm-project//llvm:Support",
     ],
 )
@@ -68,10 +82,10 @@ spu_cc_library(
     srcs = ["pphlo_verifier.cc"],
     hdrs = ["pphlo_verifier.h"],
     deps = [
-        "//libspu/core:context",
         "//libspu/core:value",
         "//libspu/dialect:pphlo_dialect",
-        "//libspu/kernel/hlo",
+        "//libspu/kernel/hal:public_helper",
+        "//libspu/kernel/hal:type_cast",
         "@stablehlo//:reference_ops",
     ],
 )

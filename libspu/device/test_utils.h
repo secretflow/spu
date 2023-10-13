@@ -48,7 +48,13 @@ class LocalIo {
       shares.push_back(st.getVar(name));
     }
 
-    return io_client_.combineShares(shares);
+    auto pt_type = io_client_.getPtType(shares);
+    NdArrayRef ret(makePtType(pt_type), shares.front().shape());
+    PtBufferView pv(ret.data(), pt_type, ret.shape(), ret.strides());
+
+    io_client_.combineShares(shares, &pv);
+
+    return ret;
   }
 
   SymbolTable *GetSymbolTable(size_t idx) { return &symbol_tables_[idx]; }

@@ -17,15 +17,12 @@
 #include <functional>
 #include <future>
 
-#include "spdlog/spdlog.h"
-
 #include "libspu/mpc/aby3/ot.h"
 #include "libspu/mpc/aby3/type.h"
 #include "libspu/mpc/aby3/value.h"
 #include "libspu/mpc/common/communicator.h"
 #include "libspu/mpc/common/prg_state.h"
 #include "libspu/mpc/common/pv2k.h"
-#include "libspu/mpc/utils/linalg.h"
 #include "libspu/mpc/utils/ring_ops.h"
 
 namespace spu::mpc::aby3 {

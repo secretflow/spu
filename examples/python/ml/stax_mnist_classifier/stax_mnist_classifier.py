@@ -25,16 +25,15 @@ optimization.
 # Run this example script.
 # > bazel run -c opt //examples/python/ml/stax_mnist_classifier:stax_mnist_classifier
 
-import time
 import itertools
-
-import numpy.random as npr
+import time
 
 import jax.numpy as jnp
-from jax import jit, grad, random
-from jax.example_libraries import optimizers
-from jax.example_libraries import stax
-from jax.example_libraries.stax import Dense, Relu, LogSoftmax, Flatten, Conv, MaxPool
+import numpy.random as npr
+from jax import grad, jit, random
+from jax.example_libraries import optimizers, stax
+from jax.example_libraries.stax import Conv, Dense, Flatten, LogSoftmax, MaxPool, Relu
+
 import examples.python.utils.dataset_utils as datasets
 
 
@@ -129,6 +128,7 @@ def run_cpu():
 def run_spu():
     import argparse
     import json
+
     import spu.utils.distributed as ppd
 
     parser = argparse.ArgumentParser(description='distributed driver.')

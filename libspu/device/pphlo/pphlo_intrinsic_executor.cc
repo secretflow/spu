@@ -14,6 +14,9 @@
 
 #include "libspu/device/pphlo/pphlo_intrinsic_executor.h"
 
+#include "spdlog/spdlog.h"
+
+#include "libspu/kernel/hlo/casting.h"
 #include "libspu/kernel/hlo/const.h"
 
 namespace spu::device::pphlo {

@@ -15,7 +15,6 @@
 #pragma once
 
 #include "libspu/core/ndarray_ref.h"
-#include "libspu/core/type_util.h"
 
 namespace spu::mpc::spdz2k {
 

@@ -18,3 +18,16 @@ ignore_roles = [
 ignore_languages = [
     "cpp"
 ]
+
+[tool.pyright]
+include = [
+    "spu",
+    "sml",
+    "examples",
+]
+
+reportMissingImports = true
+reportMissingTypeStubs = false
+
+pythonVersion = "3.9"
+pythonPlatform = "Linux"

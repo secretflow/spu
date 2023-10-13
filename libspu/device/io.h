@@ -112,8 +112,10 @@ class IoClient {
   size_t getShareSize(const PtBufferView &bv, Visibility vtype,
                       int owner_rank = -1);
 
-  // Combine shares to a plaintext ndarray.
-  NdArrayRef combineShares(absl::Span<spu::Value const> values);
+  // Combine shares to a plaintext buffer.
+  void combineShares(absl::Span<spu::Value const> values, PtBufferView *out);
+
+  PtType getPtType(absl::Span<spu::Value const> values);
 };
 
 class ColocatedIo {

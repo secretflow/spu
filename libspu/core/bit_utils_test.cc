@@ -14,7 +14,6 @@
 
 #include "libspu/core/bit_utils.h"
 
-#include "gmock/gmock.h"
 #include "gtest/gtest.h"
 
 namespace spu {
@@ -49,13 +48,13 @@ TEST(BitUtilsTest, Log2Ceil) {
 }
 
 TEST(BitUtilsTest, BitWidth) {
-  EXPECT_EQ(BitWidth(0u), 0);
-  EXPECT_EQ(BitWidth(1u), 1);
-  EXPECT_EQ(BitWidth(1u << 3), 3 + 1);
-  EXPECT_EQ(BitWidth(1ull << 3), 3 + 1);
-  EXPECT_EQ(BitWidth(1ull << 40), 40 + 1);
-  EXPECT_EQ(BitWidth(yacl::MakeInt128(0, 1ull << 3)), 3 + 1);
-  EXPECT_EQ(BitWidth(yacl::MakeInt128(1ull << 3, 0)), 3 + 1 + 64);
+  EXPECT_EQ(BitWidth(0U), 0);
+  EXPECT_EQ(BitWidth(1U), 1);
+  EXPECT_EQ(BitWidth(1U << 3), 3 + 1);
+  EXPECT_EQ(BitWidth(1ULL << 3), 3 + 1);
+  EXPECT_EQ(BitWidth(1ULL << 40), 40 + 1);
+  EXPECT_EQ(BitWidth(yacl::MakeInt128(0, 1ULL << 3)), 3 + 1);
+  EXPECT_EQ(BitWidth(yacl::MakeInt128(1ULL << 3, 0)), 3 + 1 + 64);
 }
 
 TEST(BitUtilsTest, BitDeintl32) {

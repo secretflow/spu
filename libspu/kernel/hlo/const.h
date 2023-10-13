@@ -14,11 +14,12 @@
 
 #pragma once
 
-#include <algorithm>
-
 #include "libspu/core/pt_buffer_view.h"
-#include "libspu/kernel/hlo/casting.h"
-#include "libspu/kernel/hlo/utils.h"
+#include "libspu/core/value.h"
+
+namespace spu {
+class SPUContext;
+}
 
 namespace spu::kernel::hlo {
 

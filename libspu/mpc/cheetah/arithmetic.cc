@@ -33,7 +33,6 @@ namespace spu::mpc::cheetah {
 
 NdArrayRef TruncA::proc(KernelEvalContext* ctx, const NdArrayRef& x,
                         size_t bits, SignType sign) const {
-  SPU_TRACE_MPC_LEAF(ctx, x);
   size_t n = x.numel();
   NdArrayRef out(x.eltype(), x.shape());
   if (n == 0) {
@@ -76,7 +75,6 @@ NdArrayRef TruncA::proc(KernelEvalContext* ctx, const NdArrayRef& x,
 //     1{(x0 + x1) > 2^{k - 1} - 1} = 1{x0 > 2^{k - 1} - 1 - x1}
 //  is computed using a Millionare protocol.
 NdArrayRef MsbA2B::proc(KernelEvalContext* ctx, const NdArrayRef& x) const {
-  SPU_TRACE_MPC_LEAF(ctx, x);
   const int64_t numel = x.numel();
   const auto field = ctx->getState<Z2kState>()->getDefaultField();
   const size_t nbits = nbits_ == 0 ? SizeOf(field) * 8 : nbits_;
@@ -139,7 +137,6 @@ NdArrayRef MsbA2B::proc(KernelEvalContext* ctx, const NdArrayRef& x) const {
 
 NdArrayRef EqualAP::proc(KernelEvalContext* ctx, const NdArrayRef& x,
                          const NdArrayRef& y) const {
-  SPU_TRACE_MPC_LEAF(ctx, x, y);
   EqualAA equal_aa;
   const auto field = ctx->getState<Z2kState>()->getDefaultField();
   // TODO(juhou): Can we use any place holder to indicate the dummy 0s.
@@ -152,7 +149,6 @@ NdArrayRef EqualAP::proc(KernelEvalContext* ctx, const NdArrayRef& x,
 
 NdArrayRef EqualAA::proc(KernelEvalContext* ctx, const NdArrayRef& x,
                          const NdArrayRef& y) const {
-  SPU_TRACE_MPC_LEAF(ctx, x, y);
   SPU_ENFORCE_EQ(x.shape(), y.shape());
 
   const int64_t numel = x.numel();
@@ -203,7 +199,6 @@ NdArrayRef EqualAA::proc(KernelEvalContext* ctx, const NdArrayRef& x,
 
 NdArrayRef MulA1B::proc(KernelEvalContext* ctx, const NdArrayRef& ashr,
                         const NdArrayRef& bshr) const {
-  SPU_TRACE_MPC_LEAF(ctx, ashr, bshr);
   SPU_ENFORCE_EQ(ashr.shape(), bshr.shape());
   const int64_t numel = ashr.numel();
   NdArrayRef out(ashr.eltype(), ashr.shape());
@@ -241,7 +236,6 @@ NdArrayRef MulA1B::proc(KernelEvalContext* ctx, const NdArrayRef& ashr,
 
 NdArrayRef MulAA::proc(KernelEvalContext* ctx, const NdArrayRef& x,
                        const NdArrayRef& y) const {
-  SPU_TRACE_MPC_LEAF(ctx, x, y);
   SPU_ENFORCE_EQ(x.shape(), y.shape());
 
   int64_t batch_sze = ctx->getState<CheetahMulState>()->get()->OLEBatchSize();

@@ -21,7 +21,10 @@
 #include <utility>
 
 #include "yacl/base/buffer.h"
-#include "yacl/link/link.h"
+#include "yacl/link/algorithm/allgather.h"
+#include "yacl/link/algorithm/broadcast.h"
+#include "yacl/link/algorithm/gather.h"
+#include "yacl/link/context.h"
 
 #include "libspu/core/ndarray_ref.h"
 #include "libspu/core/object.h"

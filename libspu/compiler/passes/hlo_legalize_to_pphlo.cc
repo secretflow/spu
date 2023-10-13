@@ -28,7 +28,6 @@
 #include "mlir/Transforms/DialectConversion.h"
 #include "stablehlo/dialect/StablehloOps.h"
 
-#include "libspu/compiler/common/compilation_context.h"
 #include "libspu/compiler/passes/map_stablehlo_to_pphlo_op.h"
 #include "libspu/compiler/passes/pass_details.h"
 #include "libspu/compiler/passes/value_visibility_map.h"

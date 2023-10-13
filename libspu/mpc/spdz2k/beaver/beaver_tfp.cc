@@ -18,7 +18,6 @@
 #include <utility>
 
 #include "yacl/crypto/utils/rand.h"
-#include "yacl/link/link.h"
 #include "yacl/utils/serialize.h"
 
 #include "libspu/mpc/common/prg_tensor.h"

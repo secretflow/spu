@@ -12,13 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <iostream>
 #include <limits>
 
 #include "mlir/IR/PatternMatch.h"
 #include "mlir/Pass/Pass.h"
 #include "mlir/Transforms/GreedyPatternRewriteDriver.h"
-#include "spdlog/spdlog.h"
 
 #include "libspu/compiler/passes/pass_details.h"
 #include "libspu/dialect/pphlo_ops.h"

@@ -15,7 +15,6 @@
 #pragma once
 
 #include "libspu/core/ndarray_ref.h"
-#include "libspu/mpc/aby3/value.h"
 #include "libspu/mpc/kernel.h"
 
 namespace spu::mpc::aby3 {

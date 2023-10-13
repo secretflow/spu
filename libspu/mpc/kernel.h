@@ -15,7 +15,6 @@
 #pragma once
 
 #include "libspu/core/context.h"
-#include "libspu/core/prelude.h"
 
 namespace spu::mpc {
 

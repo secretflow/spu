@@ -40,7 +40,6 @@ spu_cc_library(
     deps = [
         ":state",
         ":type",
-        "//libspu/mpc:ab_api",
         "//libspu/mpc:kernel",
         "//libspu/mpc/common:communicator",
     ],
@@ -68,7 +67,6 @@ spu_cc_library(
         ":state",
         ":type",
         "//libspu/core:vectorize",
-        "//libspu/mpc:ab_api",
         "//libspu/mpc:kernel",
         "//libspu/mpc/common:communicator",
         "//libspu/mpc/utils:circuits",

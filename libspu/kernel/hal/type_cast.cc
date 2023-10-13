@@ -14,8 +14,9 @@
 
 #include "libspu/kernel/hal/type_cast.h"
 
+#include "libspu/core/context.h"
+#include "libspu/core/trace.h"
 #include "libspu/core/type_util.h"
-#include "libspu/kernel/hal/constants.h"
 #include "libspu/kernel/hal/prot_wrapper.h"  // vtype_cast
 #include "libspu/kernel/hal/ring.h"
 

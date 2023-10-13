@@ -16,7 +16,6 @@
 
 #include <memory>
 
-#include "absl/types/span.h"
 #include "fmt/ostream.h"
 
 #include "libspu/core/ndarray_ref.h"

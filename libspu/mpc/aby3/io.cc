@@ -93,9 +93,8 @@ size_t Aby3Io::getBitSecretShareSize(size_t numel) const {
   return numel * type.size();
 }
 
-std::vector<NdArrayRef> Aby3Io::makeBitSecret(const NdArrayRef& in) const {
-  SPU_ENFORCE(in.eltype().isa<PtTy>(), "expected PtType, got {}", in.eltype());
-  PtType in_pt_type = in.eltype().as<PtTy>()->pt_type();
+std::vector<NdArrayRef> Aby3Io::makeBitSecret(const PtBufferView& in) const {
+  PtType in_pt_type = in.pt_type;
   SPU_ENFORCE(in_pt_type == PT_BOOL);
 
   if (in_pt_type == PT_BOOL) {
@@ -104,43 +103,39 @@ std::vector<NdArrayRef> Aby3Io::makeBitSecret(const NdArrayRef& in) const {
   }
 
   const auto out_type = makeType<BShrTy>(PT_U8, /* out_nbits */ 1);
-  const size_t numel = in.numel();
+  const size_t numel = in.shape.numel();
 
-  std::vector<NdArrayRef> shares = {NdArrayRef(out_type, in.shape()),
-                                    NdArrayRef(out_type, in.shape()),
-                                    NdArrayRef(out_type, in.shape())};
+  std::vector<NdArrayRef> shares = {NdArrayRef(out_type, in.shape),
+                                    NdArrayRef(out_type, in.shape),
+                                    NdArrayRef(out_type, in.shape)};
 
-  return DISPATCH_UINT_PT_TYPES(in_pt_type, "_", [&]() {
-    using in_el_t = ScalarT;
-    using bshr_el_t = uint8_t;
-    using bshr_t = std::array<bshr_el_t, 2>;
+  using bshr_el_t = uint8_t;
+  using bshr_t = std::array<bshr_el_t, 2>;
 
-    NdArrayView<in_el_t> _in(in);
+  std::vector<bshr_el_t> r0(numel);
+  std::vector<bshr_el_t> r1(numel);
 
-    std::vector<bshr_el_t> r0(numel);
-    std::vector<bshr_el_t> r1(numel);
+  yacl::crypto::PrgAesCtr(yacl::crypto::RandSeed(), absl::MakeSpan(r0));
+  yacl::crypto::PrgAesCtr(yacl::crypto::RandSeed(), absl::MakeSpan(r1));
 
-    yacl::crypto::PrgAesCtr(yacl::crypto::RandSeed(), absl::MakeSpan(r0));
-    yacl::crypto::PrgAesCtr(yacl::crypto::RandSeed(), absl::MakeSpan(r1));
+  NdArrayView<bshr_t> _s0(shares[0]);
+  NdArrayView<bshr_t> _s1(shares[1]);
+  NdArrayView<bshr_t> _s2(shares[2]);
 
-    NdArrayView<bshr_t> _s0(shares[0]);
-    NdArrayView<bshr_t> _s1(shares[1]);
-    NdArrayView<bshr_t> _s2(shares[2]);
+  for (size_t idx = 0; idx < numel; idx++) {
+    const bshr_el_t r2 =
+        static_cast<bshr_el_t>(in.get<bool>(idx)) - r0[idx] - r1[idx];
 
-    for (int64_t idx = 0; idx < in.numel(); idx++) {
-      const bshr_el_t r2 = static_cast<bshr_el_t>(_in[idx]) - r0[idx] - r1[idx];
+    _s0[idx][0] = r0[idx] & 0x1;
+    _s0[idx][1] = r1[idx] & 0x1;
 
-      _s0[idx][0] = r0[idx] & 0x1;
-      _s0[idx][1] = r1[idx] & 0x1;
+    _s1[idx][0] = r1[idx] & 0x1;
+    _s1[idx][1] = r2 & 0x1;
 
-      _s1[idx][0] = r1[idx] & 0x1;
-      _s1[idx][1] = r2 & 0x1;
-
-      _s2[idx][0] = r2 & 0x1;
-      _s2[idx][1] = r0[idx] & 0x1;
-    }
-    return shares;
-  });
+    _s2[idx][0] = r2 & 0x1;
+    _s2[idx][1] = r0[idx] & 0x1;
+  }
+  return shares;
 }
 
 NdArrayRef Aby3Io::fromShares(const std::vector<NdArrayRef>& shares) const {

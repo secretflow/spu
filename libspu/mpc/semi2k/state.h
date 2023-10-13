@@ -16,7 +16,7 @@
 
 #include <memory>
 
-#include "libspu/mpc/common/communicator.h"
+#include "libspu/core/object.h"
 #include "libspu/mpc/semi2k/beaver/beaver_interface.h"
 #include "libspu/mpc/semi2k/beaver/beaver_tfp.h"
 #include "libspu/mpc/semi2k/beaver/beaver_ttp.h"
