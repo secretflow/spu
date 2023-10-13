@@ -11,3 +11,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+py_test(
+    name = "tree_test",
+    srcs = ["tree_test.py"],
+    deps = [
+        "//sml/tree:tree",
+        "//spu:init",
+        "//spu/utils:simulation",
+    ],
+)
