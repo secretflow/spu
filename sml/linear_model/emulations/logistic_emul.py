@@ -16,7 +16,7 @@ import os
 import sys
 
 import pandas as pd
-from sklearn.datasets import load_breast_cancer
+from sklearn.datasets import load_breast_cancer, load_wine
 from sklearn.metrics import roc_auc_score
 from sklearn.preprocessing import MinMaxScaler
 
@@ -43,6 +43,28 @@ def emul_LogisticRegression(mode: emulation.Mode.MULTIPROCESS):
             l1_ratio=0.5,
             class_weight=None,
             multi_class="binary",
+        )
+
+        model = model.fit(x, y)
+
+        prob = model.predict_proba(x)
+        pred = model.predict(x)
+        return prob, pred
+
+    # Test Multi classification
+    def proc2(x, y):
+        model = LogisticRegression(
+            epochs=1,
+            learning_rate=0.1,
+            batch_size=8,
+            solver="sgd",
+            penalty="l2",
+            sig_type="sr",
+            C=1.0,
+            l1_ratio=0.5,
+            class_weight=None,
+            multi_class="ovr",
+            class_labels=[0, 1, 2],
         )
 
         model = model.fit(x, y)
@@ -78,6 +100,24 @@ def emul_LogisticRegression(mode: emulation.Mode.MULTIPROCESS):
             # print("Predict result label: ", result[1])
             print(f"{penalty} ROC Score: {roc_auc_score(y.values, result[0])}")
 
+        # Multi classification
+        # dataset: wine
+        X, y = load_wine(return_X_y=True, as_frame=True)
+        scalar = MinMaxScaler(feature_range=(-2, 2))
+        cols = X.columns
+        X = scalar.fit_transform(X)
+        X = pd.DataFrame(X, columns=cols)
+
+        # mark these data to be protected in SPU
+        X_spu, y_spu = emulator.seal(
+            X.values, y.values.reshape(-1, 1)
+        )  # X, y should be two-dimension array
+
+        # Run
+        result2 = emulator.run(proc2)(X_spu, y_spu)
+        print(
+            f"Multi classification OVR ROC Score: {roc_auc_score(y.values, result2[0], multi_class='ovr')}"
+        )
     finally:
         emulator.down()
 

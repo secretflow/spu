@@ -17,7 +17,7 @@ import sys
 import unittest
 
 import pandas as pd
-from sklearn.datasets import load_breast_cancer
+from sklearn.datasets import load_breast_cancer, load_wine
 from sklearn.metrics import roc_auc_score
 from sklearn.preprocessing import MinMaxScaler
 
@@ -59,6 +59,28 @@ class UnitTests(unittest.TestCase):
             pred = model.predict(x)
             return prob, pred
 
+        # Test Multi classification
+        def proc2(x, y):
+            model = LogisticRegression(
+                epochs=1,
+                learning_rate=0.1,
+                batch_size=8,
+                solver="sgd",
+                penalty="l2",
+                sig_type="sr",
+                C=1.0,
+                l1_ratio=0.5,
+                class_weight=None,
+                multi_class="ovr",
+                class_labels=[0, 1, 2],
+            )
+
+            model = model.fit(x, y)
+
+            prob = model.predict_proba(x)
+            pred = model.predict(x)
+            return prob, pred
+
         # Create dataset
         X, y = load_breast_cancer(return_X_y=True, as_frame=True)
         scalar = MinMaxScaler(feature_range=(-2, 2))
@@ -75,6 +97,25 @@ class UnitTests(unittest.TestCase):
             # print("Predict result prob: ", result[0])
             # print("Predict result label: ", result[1])
             print(f"{penalty} ROC Score: {roc_auc_score(y.values, result[0])}")
+
+        # Multi classification
+        # dataset: wine
+        X, y = load_wine(return_X_y=True, as_frame=True)
+        scalar = MinMaxScaler(feature_range=(-2, 2))
+        cols = X.columns
+        X = scalar.fit_transform(X)
+        X = pd.DataFrame(X, columns=cols)
+        # Run
+        result2 = spsim.sim_jax(sim, proc2)(
+            X.values, y.values.reshape(-1, 1)
+        )  # X, y should be two-dimension array
+        print(result2[0].sum(axis=1))
+        import jax.numpy as jnp
+
+        print(jnp.allclose(1, result2[0].sum(axis=1)))
+        print(
+            f"Multi classification OVR ROC Score: {roc_auc_score(y.values, result2[0], multi_class='ovr')}"
+        )
 
 
 if __name__ == "__main__":
