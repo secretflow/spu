@@ -54,10 +54,21 @@ VisibilityDiscovery(const llvm::ArrayRef<std::string> input_vis_list,
   for (const auto &blockargs : entry_func.getBody().getArguments()) {
     SPU_ENFORCE(blockargs.getArgNumber() < input_vis_list.size(),
                 "Input visibility list does not match actual inputs.");
-    auto v =
-        symbolizeEnum<Visibility>(input_vis_list[blockargs.getArgNumber()]);
-    SPU_ENFORCE(v.has_value(), "Input visibility list has invalid value.");
-    vis_map.setValueVisibility(blockargs, *v);
+    Visibility v;
+
+    // There is no compile time private support at this moment.
+    // Force compiler to treat private as secret for now
+    if (input_vis_list[blockargs.getArgNumber()] == "VIS_PRIVATE") {
+      v = Visibility::VIS_SECRET;
+    } else {
+      auto v_optional =
+          symbolizeEnum<Visibility>(input_vis_list[blockargs.getArgNumber()]);
+      SPU_ENFORCE(v_optional.has_value(),
+                  "Input visibility list has invalid value. value = {}",
+                  input_vis_list[blockargs.getArgNumber()]);
+      v = *v_optional;
+    }
+    vis_map.setValueVisibility(blockargs, v);
   }
 
   VisibilityInference inference(vis_map);

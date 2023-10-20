@@ -46,10 +46,6 @@ std::vector<NdArrayRef> SecurennIo::toShares(const NdArrayRef& raw,
     const auto share = raw.as(makeType<Pub2kTy>(field));
     return std::vector<NdArrayRef>(world_size_, share);
   } else if (vis == VIS_SECRET) {
-#if !defined(SPU_ENABLE_PRIVATE_TYPE)
-    owner_rank = -1;
-#endif
-
     if (owner_rank >= 0 && owner_rank < static_cast<int>(world_size_)) {
       // indicates private
       std::vector<NdArrayRef> shares;

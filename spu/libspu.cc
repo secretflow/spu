@@ -743,8 +743,10 @@ PYBIND11_MODULE(libspu, m) {
   // bind spu io suite.
   py::class_<IoWrapper>(m, "IoWrapper", "SPU VM IO")
       .def(py::init<size_t, std::string>())
-      .def("MakeShares", &IoWrapper::MakeShares)
-      .def("GetShareChunkCount", &IoWrapper::GetShareChunkCount)
+      .def("MakeShares", &IoWrapper::MakeShares, "Create secret shares",
+           py::arg("arr"), py::arg("visibility"), py::arg("owner_rank") = -1)
+      .def("GetShareChunkCount", &IoWrapper::GetShareChunkCount, py::arg("arr"),
+           py::arg("visibility"), py::arg("owner_rank") = -1)
       .def("Reconstruct", &IoWrapper::Reconstruct);
 
   // bind compiler.

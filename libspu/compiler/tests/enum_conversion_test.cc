@@ -42,6 +42,8 @@ TEST(EnumConversion, ProtoKinds) {
     break;
   case Visibility::VIS_PUBLIC:
     break;
+  case Visibility::VIS_PRIVATE:
+    break;
   case Visibility::VIS_INVALID:
     break;
   case Visibility::Visibility_INT_MAX_SENTINEL_DO_NOT_USE_:

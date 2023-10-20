@@ -89,7 +89,11 @@ std::vector<spu::Value> IoClient::makeShares(const PtBufferView &bv,
   NdArrayRef encoded = encodeToRing(bv, config_.field(), fxp_bits, &dtype);
 
   // make shares.
-  std::vector<NdArrayRef> shares = base_io_->toShares(encoded, vtype);
+  if (!config_.experimental_enable_colocated_optimization()) {
+    owner_rank = -1;
+  }
+  std::vector<NdArrayRef> shares =
+      base_io_->toShares(encoded, vtype, owner_rank);
 
   // build value.
   std::vector<spu::Value> result;

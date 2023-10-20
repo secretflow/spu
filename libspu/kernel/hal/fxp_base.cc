@@ -70,7 +70,7 @@ Value highestOneBit(SPUContext* ctx, const Value& x) {
 }
 
 // FIXME:
-// Use range propatation instead of directly set.
+// Use range propagation instead of directly set.
 // or expose bit_decompose as mpc level api.
 void hintNumberOfBits(const Value& a, size_t nbits) {
   if (a.storage_type().isa<BShare>()) {

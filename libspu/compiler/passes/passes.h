@@ -75,6 +75,8 @@ std::unique_ptr<OperationPass<func::FuncOp>> createInsertDeallocationOp();
 
 std::unique_ptr<OperationPass<func::FuncOp>> createSortLowering();
 
+std::unique_ptr<OperationPass<func::FuncOp>> createConvertPushDownPass();
+
 } // namespace pphlo
 
 } // namespace mlir

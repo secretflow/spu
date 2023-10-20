@@ -51,6 +51,7 @@ enum Visibility {
   VIS_INVALID = 0;
   VIS_SECRET = 1;  // Invisible(unknown) for all or some of the parties.
   VIS_PUBLIC = 2;  // Visible(public) for all parties.
+  VIS_PRIVATE = 3; // Visible for only one party
 }
 
 // @exclude
@@ -318,6 +319,8 @@ message RuntimeConfig {
   bool experimental_disable_vectorization = 103;
   // inter op concurrency.
   uint64 experimental_inter_op_concurrency = 104;
+  // Enable use of private type
+  bool experimental_enable_colocated_optimization = 105;
 }
 
 message TTPBeaverConfig {

@@ -14,8 +14,9 @@
 
 // clang-format off
 // To run the example, start two terminals:
-// > bazel run //examples/cpp:simple_lr -- --dataset=examples/data/perfect_logit_a.csv --has_label=true
-// > bazel run //examples/cpp:simple_lr -- --dataset=examples/data/perfect_logit_b.csv --rank=1
+// > bazel run //examples/cpp:simple_lr -c opt -- -dataset=examples/data/perfect_logit_a.csv -has_label=true
+// > bazel run //examples/cpp:simple_lr -c opt -- -dataset=examples/data/perfect_logit_b.csv -rank=1
+// To run with non-default IP config, add -parties IP:port,IP:port to above commands
 // clang-format on
 
 #include <fstream>
