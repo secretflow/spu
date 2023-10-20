@@ -63,11 +63,17 @@ Value fxp2int(SPUContext* ctx, const Value& x, DataType to_type) {
 // TODO: move seal/reveal into a new header file.
 Value seal(SPUContext* ctx, const Value& x) {
   SPU_TRACE_HAL_LEAF(ctx, x);
+  if (x.isPrivate()) {
+    return _v2s(ctx, x).setDtype(x.dtype());
+  }
   return _p2s(ctx, x).setDtype(x.dtype());
 }
 
 Value reveal(SPUContext* ctx, const Value& x) {
   SPU_TRACE_HAL_LEAF(ctx, x);
+  if (x.isPrivate()) {
+    return _v2p(ctx, x).setDtype(x.dtype());
+  }
   return _s2p(ctx, x).setDtype(x.dtype());
 }
 

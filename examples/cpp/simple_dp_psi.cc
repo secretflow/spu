@@ -13,12 +13,10 @@
 // limitations under the License.
 
 // clang-format off
-// build simple_dp_psi
-// > bazel build //examples/cpp:simple_dp_psi -c opt
-//
 // To run the example, start two terminals:
-// > ./simple_dp_psi -rank 0 -in_path examples/data/psi_1.csv -field_names id
-// > ./simple_dp_psi -rank 1 -in_path examples/data/psi_2.csv -field_names id -out_path /tmp/p2.out
+// > bazel run //examples/cpp/simple_dp_psi -c opt -- -rank 0 -in_path examples/data/psi_1.csv -field_names id
+// > bazel run //examples/cpp/simple_dp_psi -c opt -- -rank 1 -in_path examples/data/psi_2.csv -field_names id -out_path /tmp/p2.out
+// To run with non-default IP config, add -parties IP:port,IP:port to above commands
 // clang-format on
 
 #include <fstream>

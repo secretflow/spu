@@ -104,3 +104,9 @@ def SortLowering: Pass<"sort-lowering", "func::FuncOp"> {
   let constructor = "createSortLowering()";
   let dependentDialects = ["pphlo::PPHloDialect"];
 }
+
+def ConvertPushDown: Pass<"convert-push-down", "func::FuncOp"> {
+  let summary = "Push convert later";
+  let constructor = "createConvertPushDownPass()";
+  let dependentDialects = ["pphlo::PPHloDialect"];
+}

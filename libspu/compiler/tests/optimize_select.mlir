@@ -2,7 +2,7 @@
 
 func.func @main() -> (tensor<!pphlo.pub<f32>>) {
     %0 = "pphlo.constant"() {value = dense<0xFF800000> : tensor<f32>} : () -> tensor<!pphlo.pub<f32>>
-    %1 = "pphlo.constant"() {value = dense<0.000000e+00> : tensor<f32>} : () -> tensor<!pphlo.pub<f32>>
+    %1 = "pphlo.constant"() {value = dense<1.000000e+00> : tensor<f32>} : () -> tensor<!pphlo.pub<f32>>
     %2 = "pphlo.less"(%0, %1): (tensor<!pphlo.pub<f32>>, tensor<!pphlo.pub<f32>>) -> tensor<!pphlo.pub<i1>>
     //CHECK-NOT: pphlo.prefer_a
     %3 = "pphlo.select"(%2, %0, %1): (tensor<!pphlo.pub<i1>>, tensor<!pphlo.pub<f32>>, tensor<!pphlo.pub<f32>>) -> tensor<!pphlo.pub<f32>>
@@ -13,7 +13,7 @@ func.func @main() -> (tensor<!pphlo.pub<f32>>) {
 
 func.func @main() -> (tensor<!pphlo.pub<f32>>, tensor<!pphlo.pub<f32>>) {
     %0 = "pphlo.constant"() {value = dense<0xFF800000> : tensor<f32>} : () -> tensor<!pphlo.pub<f32>>
-    %1 = "pphlo.constant"() {value = dense<0.000000e+00> : tensor<f32>} : () -> tensor<!pphlo.pub<f32>>
+    %1 = "pphlo.constant"() {value = dense<1.000000e+00> : tensor<f32>} : () -> tensor<!pphlo.pub<f32>>
     %2 = "pphlo.less"(%0, %1): (tensor<!pphlo.pub<f32>>, tensor<!pphlo.pub<f32>>) -> tensor<!pphlo.pub<i1>>
     //CHECK: pphlo.prefer_a
     %3 = "pphlo.select"(%2, %0, %1): (tensor<!pphlo.pub<i1>>, tensor<!pphlo.pub<f32>>, tensor<!pphlo.pub<f32>>) -> tensor<!pphlo.pub<f32>>
@@ -25,7 +25,7 @@ func.func @main() -> (tensor<!pphlo.pub<f32>>, tensor<!pphlo.pub<f32>>) {
 
 func.func @main() -> (tensor<!pphlo.pub<f32>>, tensor<!pphlo.pub<i1>>) {
     %0 = "pphlo.constant"() {value = dense<0xFF800000> : tensor<f32>} : () -> tensor<!pphlo.pub<f32>>
-    %1 = "pphlo.constant"() {value = dense<0.000000e+00> : tensor<f32>} : () -> tensor<!pphlo.pub<f32>>
+    %1 = "pphlo.constant"() {value = dense<1.000000e+00> : tensor<f32>} : () -> tensor<!pphlo.pub<f32>>
     %2 = "pphlo.less"(%0, %1): (tensor<!pphlo.pub<f32>>, tensor<!pphlo.pub<f32>>) -> tensor<!pphlo.pub<i1>>
     //CHECK-NOT: pphlo.prefer_a
     %3 = "pphlo.select"(%2, %0, %1): (tensor<!pphlo.pub<i1>>, tensor<!pphlo.pub<f32>>, tensor<!pphlo.pub<f32>>) -> tensor<!pphlo.pub<f32>>
@@ -37,9 +37,19 @@ func.func @main() -> (tensor<!pphlo.pub<f32>>, tensor<!pphlo.pub<i1>>) {
 
 func.func @main(%arg0: tensor<!pphlo.pub<i1>>) -> (tensor<!pphlo.pub<f32>>, tensor<!pphlo.pub<f32>>) {
     %0 = "pphlo.constant"() {value = dense<0xFF800000> : tensor<f32>} : () -> tensor<!pphlo.pub<f32>>
-    %1 = "pphlo.constant"() {value = dense<0.000000e+00> : tensor<f32>} : () -> tensor<!pphlo.pub<f32>>
+    %1 = "pphlo.constant"() {value = dense<1.000000e+00> : tensor<f32>} : () -> tensor<!pphlo.pub<f32>>
     //CHECK: pphlo.prefer_a
     %2 = "pphlo.select"(%arg0, %0, %1): (tensor<!pphlo.pub<i1>>, tensor<!pphlo.pub<f32>>, tensor<!pphlo.pub<f32>>) -> tensor<!pphlo.pub<f32>>
     %3 = "pphlo.select"(%arg0, %1, %0): (tensor<!pphlo.pub<i1>>, tensor<!pphlo.pub<f32>>, tensor<!pphlo.pub<f32>>) -> tensor<!pphlo.pub<f32>>
     return %2, %3: tensor<!pphlo.pub<f32>>, tensor<!pphlo.pub<f32>>
+}
+
+
+// -----
+
+func.func @main(%arg0: tensor<!pphlo.pub<i1>>, %arg1: tensor<!pphlo.pub<f32>>) -> (tensor<!pphlo.pub<f32>>) {
+    %1 = "pphlo.constant"() {value = dense<0.000000e+00> : tensor<f32>} : () -> tensor<!pphlo.pub<f32>>
+    //CHECK: pphlo.multiply
+    %2 = "pphlo.select"(%arg0, %arg1, %1): (tensor<!pphlo.pub<i1>>, tensor<!pphlo.pub<f32>>, tensor<!pphlo.pub<f32>>) -> tensor<!pphlo.pub<f32>>
+    return %2: tensor<!pphlo.pub<f32>>
 }

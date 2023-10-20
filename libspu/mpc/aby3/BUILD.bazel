@@ -50,6 +50,10 @@ spu_cc_library(
     name = "arithmetic",
     srcs = ["arithmetic.cc"],
     hdrs = ["arithmetic.h"],
+    defines = select({
+        "@rules_cuda//cuda:is_enabled": ["CUDA_ENABLED"],
+        "//conditions:default": ["CUDA_DISABLED"],
+    }),
     deps = [
         ":ot",
         ":type",
@@ -58,6 +62,28 @@ spu_cc_library(
         "//libspu/mpc/common:communicator",
         "//libspu/mpc/common:prg_state",
         "//libspu/mpc/utils:circuits",
+    ] + select({
+        "@rules_cuda//cuda:is_enabled": [":arithmetic_gpu_ext"],
+        "//conditions:default": [],
+    }),
+)
+
+spu_cc_library(
+    name = "arithmetic_gpu_ext",
+    srcs = ["arithmetic_gpu_ext.cc"],
+    hdrs = ["arithmetic_gpu_ext.h"],
+    tags = [
+        "manual",  # Exclude this target from :all expansion
+    ],
+    target_compatible_with = select({
+        "@rules_cuda//cuda:is_enabled": [],
+        "//conditions:default": ["@platforms//:incompatible"],
+    }),
+    deps = [
+        ":type",
+        "//libspu/core:ndarray_ref",
+        "//libspu/cuda_support:kernels",
+        "//libspu/cuda_support:utils",
     ],
 )
 

@@ -69,6 +69,7 @@ void regCheetahProtocol(SPUContext* ctx,
   ctx->prot()->regKernel<cheetah::MsbA2B>();
 
   ctx->prot()->regKernel<cheetah::CommonTypeB>();
+  ctx->prot()->regKernel<cheetah::CommonTypeV>();
   ctx->prot()->regKernel<cheetah::CastTypeB>();
   ctx->prot()->regKernel<cheetah::B2P>();
   ctx->prot()->regKernel<cheetah::P2B>();

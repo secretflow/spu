@@ -13,11 +13,8 @@
 // limitations under the License.
 
 // clang-format off
-// build keyword_pir_client
-// > bazel build //examples/cpp/pir:keyword_pir_client -c opt
-//
 // To run the example, start terminals:
-// > ./keyword_pir_client -rank 1 -in_path ../../data/psi_client_data.csv.csv
+// > bazel run //examples/cpp/pir:keyword_pir_client -c opt -- -rank 1 -in_path ../../data/psi_client_data.csv.csv
 // >       -key_columns id -out_path pir_out.csv
 // clang-format on
 

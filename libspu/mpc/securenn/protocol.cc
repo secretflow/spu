@@ -60,6 +60,8 @@ void regSecurennProtocol(SPUContext* ctx,
   ctx->prot()->regKernel<securenn::TruncAPr>();
 
   ctx->prot()->regKernel<securenn::CommonTypeB>();
+  ctx->prot()->regKernel<securenn::CommonTypeV>();
+
   ctx->prot()->regKernel<securenn::CastTypeB>();
   ctx->prot()->regKernel<securenn::B2P>();
   ctx->prot()->regKernel<securenn::P2B>();

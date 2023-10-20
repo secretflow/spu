@@ -2234,12 +2234,12 @@ TEST_P(ExecutorTest, CasePrivate) {
 }
 
 TEST_P(ExecutorTest, MixedPayload) {
-  xt::xarray<int32_t> op = {10, 9, 8, 7, 6,  5,  4,  3,  2,  1,
-                            99, 7, 8, 9, 10, 11, 12, 13, 14, 15};
-  xt::xarray<int32_t> expected_ret0 = {1, 2, 3,  4,  5,  6,  7,  7,  8,  8,
-                                       9, 9, 10, 10, 11, 12, 13, 14, 15, 99};
-  xt::xarray<int32_t> expected_ret1 = {9, 8,  7,  6, 5,  4,  3,  11, 12, 2,
-                                       1, 13, 14, 0, 15, 16, 17, 18, 19, 10};
+  xt::xarray<int32_t> op = {10, 9,  8,  7,  6,  5,  4,  3,  2,  1,
+                            99, 97, 98, 96, 91, 11, 12, 13, 14, 15};
+  xt::xarray<int32_t> expected_ret0 = {1,  2,  3,  4,  5,  6,  7,  8,  9,  10,
+                                       11, 12, 13, 14, 15, 91, 96, 97, 98, 99};
+  xt::xarray<int32_t> expected_ret1 = {9,  8,  7,  6,  5,  4,  3,  2,  1,  0,
+                                       15, 16, 17, 18, 19, 14, 13, 11, 12, 10};
 
   Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
            std::get<2>(GetParam()));

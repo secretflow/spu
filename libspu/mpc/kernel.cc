@@ -121,4 +121,22 @@ void CastTypeKernel::evaluate(KernelEvalContext* ctx) const {
   ctx->setOutput(WrapValue(res));
 }
 
+void SimpleSortKernel::evaluate(KernelEvalContext* ctx) const {
+  auto values = ctx->getParam<std::vector<Value>>(0);
+  std::vector<NdArrayRef> inputs;
+
+  for (const auto& val : values) {
+    inputs.emplace_back(UnwrapValue(val));
+  }
+
+  auto res = proc(ctx, inputs);
+
+  std::vector<Value> res_values;
+
+  for (size_t i = 0; i < res.size(); ++i) {
+    res_values.emplace_back(WrapValue(std::move(res[i])));
+  }
+  ctx->setOutput(res_values);
+}
+
 }  // namespace spu::mpc

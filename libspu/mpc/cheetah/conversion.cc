@@ -16,6 +16,7 @@
 
 #include "yacl/utils/parallel.h"
 
+#include "libspu/core/trace.h"
 #include "libspu/mpc/ab_api.h"
 #include "libspu/mpc/cheetah/state.h"
 #include "libspu/mpc/cheetah/type.h"
@@ -80,6 +81,18 @@ NdArrayRef B2A::proc(KernelEvalContext* ctx, const NdArrayRef& x) const {
   });
 
   return out.as(makeType<AShrTy>(field));
+}
+
+void CommonTypeV::evaluate(KernelEvalContext* ctx) const {
+  const Type& lhs = ctx->getParam<Type>(0);
+  const Type& rhs = ctx->getParam<Type>(1);
+
+  SPU_TRACE_MPC_DISP(ctx, lhs, rhs);
+
+  const auto* lhs_v = lhs.as<Priv2kTy>();
+  const auto* rhs_v = rhs.as<Priv2kTy>();
+
+  ctx->setOutput(makeType<AShrTy>(std::max(lhs_v->field(), rhs_v->field())));
 }
 
 }  // namespace spu::mpc::cheetah
