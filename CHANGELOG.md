@@ -10,6 +10,12 @@
 >
 > please add your unreleased change here.
 
+- [Bugfix] Fix compatibility with latest Jax
+- [Feature] Improve memory efficiency during encode/decode data
+- [Feature] Add radix sort support for SEMI2K
+- [Feature] Experimental: ABY3 matmul CUDA support
+- [Feature] Experimental: Private support under colocated mode
+
 ## 20230906
 
 - [SPU] 0.5.0 release
@@ -168,7 +174,7 @@
 ## 20220325
 
 - [SPU] 0.0.5.1 release
-- [Bugfix] Fix SEMI2K divivsion wrong answer
+- [Bugfix] Fix SEMI2K division wrong answer
 
 ## 20220324
 
@@ -198,7 +204,7 @@
 - [API] merge (config.proto, executable.proto, types.proto) into single spu.proto.
 - [API] change RuntimeConfig.enable_protocol_trace to enable_action_trace.
 - [API] change RuntimeConfig.fxp_recirptocal_goldschmdit_iters to fxp_reciprocal_goldschmdit_iters.
-- [API] add RuntimConfig.reveal_secret_condition to allow reveal secret control flow condition.
+- [API] add RuntimeConfig.reveal_secret_condition to allow reveal secret control flow condition.
 - [Bugfix] Fixed SEGV when reconstruct from an ABY3 scalar secret
 - [Feature] Left/right shift now properly supports non-scalar inputs
 

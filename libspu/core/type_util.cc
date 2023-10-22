@@ -27,6 +27,9 @@ std::ostream& operator<<(std::ostream& os, const Visibility& vtype) {
     case VIS_SECRET:
       os << "S";
       break;
+    case VIS_PRIVATE:
+      os << "V";
+      break;
     default:
       os << "Invalid";
   }

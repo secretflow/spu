@@ -13,14 +13,10 @@
 // limitations under the License.
 
 // clang-format off
-// build keyword_pir_setup
-// > bazel build //examples/cpp/pir:keyword_pir_setup -c opt
-//
 // To generate ecc oprf secret key, start terminals:
 // > dd if=/dev/urandom of=secret_key.bin bs=32 count=1
-//
 // To run the example, start terminals:
-// > ./keyword_pir_setup -in_path ../../data/psi_server_data.csv -oprf_key_path secret_key.bin
+// > bazel run //examples/cpp/pir:keyword_pir_setup -c opt -- -in_path ../../data/psi_server_data.csv -oprf_key_path secret_key.bin
 // >     -key_columns id -label_columns label -data_per_query 1 -label_max_len 40
 // >     -setup_path pir_setup_dir
 // clang-format on

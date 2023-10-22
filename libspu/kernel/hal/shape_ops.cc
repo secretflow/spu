@@ -29,6 +29,8 @@ namespace {
 Type _common_type(SPUContext* ctx, const Type& a, const Type& b) {
   if (a.isa<Secret>() && b.isa<Secret>()) {
     return _common_type_s(ctx, a, b);
+  } else if (a.isa<Private>() && b.isa<Private>()) {
+    return _common_type_v(ctx, a, b);
   } else if (a.isa<Secret>()) {
     return a;
   } else if (b.isa<Secret>()) {
@@ -48,10 +50,16 @@ Value _cast_type(SPUContext* ctx, const Value& x, const Type& to) {
   } else if (x.isPublic() && to.isa<Secret>()) {
     // FIXME: casting to BShare semantic is wrong.
     return _p2s(ctx, x);
+  } else if (x.isPublic() && to.isa<Private>()) {
+    return _p2v(ctx, x, to.as<Private>()->owner());
+  } else if (x.isSecret() && to.isa<Private>()) {
+    return _s2v(ctx, x, to.as<Private>()->owner());
+  } else if (x.isPrivate() && to.isa<Secret>()) {
+    return _v2s(ctx, x);
   } else if (x.isSecret() && to.isa<Secret>()) {
     return _cast_type_s(ctx, x, to);
   } else {
-    SPU_THROW("show not be here x={}, to={}", x, to);
+    SPU_THROW("should not be here x={}, to={}", x, to);
   }
 }
 

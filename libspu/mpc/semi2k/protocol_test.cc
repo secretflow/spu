@@ -19,6 +19,7 @@
 #include "libspu/mpc/ab_api_test.h"
 #include "libspu/mpc/api_test.h"
 #include "libspu/mpc/semi2k/beaver/ttp_server/beaver_server.h"
+#include "libspu/mpc/semi2k/sort_test.h"
 
 namespace spu::mpc::test {
 namespace {
@@ -110,6 +111,21 @@ INSTANTIATE_TEST_SUITE_P(
                                      makeConfig(FieldType::FM128)),  //
                      testing::Values(2, 3, 5)),                      //
     [](const testing::TestParamInfo<BooleanTest::ParamType>& p) {
+      return fmt::format("{}x{}x{}", std::get<0>(p.param).name(),
+                         std::get<1>(p.param).field(), std::get<2>(p.param));
+      ;
+    });
+
+INSTANTIATE_TEST_SUITE_P(
+    Semi2k, PermuteTest,
+    testing::Combine(testing::Values(CreateObjectFn(makeSemi2kProtocol, "tfp"),
+                                     CreateObjectFn(makeTTPSemi2kProtocol,
+                                                    "ttp")),         //
+                     testing::Values(makeConfig(FieldType::FM32),    //
+                                     makeConfig(FieldType::FM64),    //
+                                     makeConfig(FieldType::FM128)),  //
+                     testing::Values(2, 3, 5)),                      //
+    [](const testing::TestParamInfo<PermuteTest::ParamType>& p) {
       return fmt::format("{}x{}x{}", std::get<0>(p.param).name(),
                          std::get<1>(p.param).field(), std::get<2>(p.param));
       ;

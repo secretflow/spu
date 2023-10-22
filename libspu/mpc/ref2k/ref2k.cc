@@ -61,6 +61,28 @@ class Ref2kCommonTypeS : public Kernel {
   }
 };
 
+class Ref2kCommonTypeV : public Kernel {
+ public:
+  static constexpr char kBindName[] = "common_type_v";
+
+  Kind kind() const override { return Kind::Dynamic; }
+
+  void evaluate(KernelEvalContext* ctx) const override {
+    const Type& lhs = ctx->getParam<Type>(0);
+    const Type& rhs = ctx->getParam<Type>(1);
+
+    SPU_TRACE_MPC_DISP(ctx, lhs, rhs);
+    SPU_ENFORCE(lhs.isa<Ref2kSecrTy>(), "invalid type, got={}", lhs);
+    SPU_ENFORCE(rhs.isa<Ref2kSecrTy>(), "invalid type, got={}", rhs);
+
+    const auto* lhs_v = lhs.as<Priv2kTy>();
+    const auto* rhs_v = rhs.as<Priv2kTy>();
+
+    ctx->setOutput(
+        makeType<Ref2kSecrTy>(std::max(lhs_v->field(), rhs_v->field())));
+  }
+};
+
 class Ref2kCastTypeS : public CastTypeKernel {
  public:
   static constexpr char kBindName[] = "cast_type_s";
@@ -459,6 +481,8 @@ void regRef2kProtocol(SPUContext* ctx,
 
   // register compute kernels
   ctx->prot()->regKernel<Ref2kCommonTypeS>();
+  ctx->prot()->regKernel<Ref2kCommonTypeV>();
+
   ctx->prot()->regKernel<Ref2kCastTypeS>();
   ctx->prot()->regKernel<Ref2kP2S>();
   ctx->prot()->regKernel<Ref2kS2P>();

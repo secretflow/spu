@@ -38,6 +38,8 @@ class Shape : public std::vector<int64_t> {
   /*explicit*/ Shape(llvm::ArrayRef<int64_t> arr)
       : Base(arr.begin(), arr.end()) {}
 
+  Shape(std::initializer_list<int64_t> list) : Base(list) {}
+
   template <size_t SZ>
   Shape(std::array<int64_t, SZ> arr) : Base(arr.begin(), arr.end()) {}
 
@@ -99,6 +101,8 @@ class Strides : public std::vector<Stride> {
 
   /*explicit*/ Strides(llvm::ArrayRef<Stride> arr)
       : Base(arr.begin(), arr.end()) {}
+
+  Strides(std::initializer_list<int64_t> list) : Base(list) {}
 
   friend std::ostream &operator<<(std::ostream &out, const Strides &s) {
     out << fmt::format("{}", fmt::join(s, "x"));

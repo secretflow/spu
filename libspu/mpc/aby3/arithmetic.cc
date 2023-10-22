@@ -14,7 +14,6 @@
 
 #include "libspu/mpc/aby3/arithmetic.h"
 
-#include <functional>
 #include <future>
 
 #include "libspu/mpc/aby3/ot.h"
@@ -24,6 +23,11 @@
 #include "libspu/mpc/common/prg_state.h"
 #include "libspu/mpc/common/pv2k.h"
 #include "libspu/mpc/utils/ring_ops.h"
+
+#ifdef CUDA_ENABLED
+#include "libspu/cuda_support/utils.h"
+#include "libspu/mpc/aby3/arithmetic_gpu_ext.h"
+#endif
 
 namespace spu::mpc::aby3 {
 namespace {
@@ -628,32 +632,48 @@ NdArrayRef MatMulAA::proc(KernelEvalContext* ctx, const NdArrayRef& x,
   auto* comm = ctx->getState<Communicator>();
   auto* prg_state = ctx->getState<PrgState>();
 
+  auto M = x.shape()[0];
+  auto N = y.shape()[1];
+
   auto r = std::async([&] {
-    auto [r0, r1] = prg_state->genPrssPair(field, {x.shape()[0], y.shape()[1]},
-                                           PrgState::GenPrssCtrl::Both);
+    auto [r0, r1] =
+        prg_state->genPrssPair(field, {M, N}, PrgState::GenPrssCtrl::Both);
     return ring_sub(r0, r1);
   });
 
-  auto x1 = getFirstShare(x);
-  auto x2 = getSecondShare(x);
-
-  auto y1 = getFirstShare(y);
-  auto y2 = getSecondShare(y);
-
-  // z1 := x1*y1 + x1*y2 + x2*y1 + k1
-  // z2 := x2*y2 + x2*y3 + x3*y2 + k2
-  // z3 := x3*y3 + x3*y1 + x1*y3 + k3
-  NdArrayRef out(makeType<AShrTy>(field), {x.shape()[0], y.shape()[1]});
+  NdArrayRef out(makeType<AShrTy>(field), {M, N});
   auto o1 = getFirstShare(out);
   auto o2 = getSecondShare(out);
 
-  auto t2 = std::async(ring_mmul, x2, y1);
-  auto t0 = ring_mmul(x1, ring_add(y1, y2));  //
-  auto z1 = ring_sum({t0, t2.get(), r.get()});
+#ifdef CUDA_ENABLED
+  // FIXME: better heuristic?
+  if (spu::cuda::hasGPUDevice() && M * N <= 20000 && field == FM64) {
+#endif
+    auto x1 = getFirstShare(x);
+    auto x2 = getSecondShare(x);
 
-  auto f = std::async([&] { ring_assign(o1, z1); });
-  ring_assign(o2, comm->rotate(z1, kBindName));  // comm => 1, k
-  f.get();
+    auto y1 = getFirstShare(y);
+    auto y2 = getSecondShare(y);
+    // z1 := x1*y1 + x1*y2 + x2*y1 + k1
+    // z2 := x2*y2 + x2*y3 + x3*y2 + k2
+    // z3 := x3*y3 + x3*y1 + x1*y3 + k3
+
+    // x1*(y1+y2) + x2*y1 + k1
+    auto t2 = std::async(ring_mmul, x2, y1);
+    auto t0 = ring_mmul(x1, ring_add(y1, y2));  //
+    auto z1 = ring_sum({t0, t2.get(), r.get()});
+
+    auto f = std::async([&] { ring_assign(o1, z1); });
+    ring_assign(o2, comm->rotate(z1, kBindName));  // comm => 1, k
+    f.get();
+#ifdef CUDA_ENABLED
+  } else {
+    matmul_aa_gpu(x, y, o1);
+    ring_add_(o1, r.get());
+    ring_assign(o2, comm->rotate(o1, kBindName));  // comm => 1, k
+  }
+#endif
+
   return out;
 }
 

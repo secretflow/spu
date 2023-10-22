@@ -373,11 +373,9 @@ class MatMulVVV : public MatmulKernel {
   NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
                   const NdArrayRef& rhs) const override {
     SPU_ENFORCE(lhs.eltype() == rhs.eltype());
-    if (isOwner(ctx, lhs.eltype())) {
-      return ring_mmul(lhs, rhs).as(lhs.eltype());
-    } else {
-      return lhs;
-    }
+    // For parties other than owner, also do a matmul to make result shape
+    // correct.
+    return ring_mmul(lhs, rhs).as(lhs.eltype());
   }
 };
 
@@ -391,12 +389,9 @@ class MatMulVP : public MatmulKernel {
 
   NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
                   const NdArrayRef& rhs) const override {
-    SPU_ENFORCE(lhs.eltype() == rhs.eltype());
-    if (isOwner(ctx, lhs.eltype())) {
-      return ring_mmul(lhs, rhs).as(lhs.eltype());
-    } else {
-      return lhs;
-    }
+    // For parties other than owner, also do a matmul to make result shape
+    // correct.
+    return ring_mmul(lhs, rhs).as(lhs.eltype());
   }
 };
 

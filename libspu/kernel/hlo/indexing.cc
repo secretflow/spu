@@ -747,9 +747,8 @@ spu::Value DynamicSlice(SPUContext *ctx, const spu::Value &operand,
   SPU_ENFORCE(!start_indices.empty());
   SPU_ENFORCE(!operand.isComplex());
 
-  if (start_indices[0].isSecret()) {
-    return SecretDynamicSlice(ctx, operand, slice_size, start_indices);
-  } else {
+  if (std::all_of(start_indices.begin(), start_indices.end(),
+                  [](const spu::Value &v) { return v.isPublic(); })) {
     // Start indices
     Index start_indices_i64(start_indices.size());
     for (const auto &idx : llvm::enumerate(start_indices)) {
@@ -774,6 +773,8 @@ spu::Value DynamicSlice(SPUContext *ctx, const spu::Value &operand,
 
     return hal::slice(ctx, operand, start_indices_i64, limit, strides);
   }
+
+  return SecretDynamicSlice(ctx, operand, slice_size, start_indices);
 }
 
 spu::Value FilterByMask(SPUContext *, const spu::Value &operand,

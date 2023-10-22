@@ -223,6 +223,14 @@ Type common_type_s(SPUContext* ctx, const Type& a, const Type& b) {
   }
 }
 
+Type common_type_v(SPUContext* ctx, const Type& a, const Type& b) {
+  SPU_TRACE_MPC_DISP(ctx, a, b);
+  if (a == b) {
+    return a;
+  }
+  return dynDispatch<Type>(ctx, __func__, a, b);
+}
+
 Value cast_type_s(SPUContext* ctx, const Value& frm, const Type& to_type) {
   SPU_TRACE_MPC_DISP(ctx, frm, to_type);
 

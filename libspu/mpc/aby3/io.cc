@@ -51,10 +51,6 @@ std::vector<NdArrayRef> Aby3Io::toShares(const NdArrayRef& raw, Visibility vis,
     const auto share = raw.as(makeType<Pub2kTy>(field));
     return std::vector<NdArrayRef>(world_size_, share);
   } else if (vis == VIS_SECRET) {
-#if !defined(SPU_ENABLE_PRIVATE_TYPE)
-    owner_rank = -1;
-#endif
-
     if (owner_rank >= 0 && owner_rank <= 2) {
       // indicates private
       std::vector<NdArrayRef> shares;
