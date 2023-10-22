@@ -23,13 +23,14 @@ import spu.spu_pb2 as spu_pb2  # type: ignore
 import spu.utils.simulation as spsim
 from sml.tree.tree import DecisionTreeClassifier as sml_dtc
 
-MAX_DEPTH = 2
+MAX_DEPTH = 3
 
 
 class UnitTests(unittest.TestCase):
-    def test_pla(self):
+    def test_tree(self):
         def proc_wrapper(max_depth=2, n_labels=3):
             dt = sml_dtc("gini", "best", max_depth, n_labels)
+            
             def proc(X, y):
                 dt_fit = dt.fit(X, y)
                 result = dt_fit.predict(X)
@@ -52,7 +53,7 @@ class UnitTests(unittest.TestCase):
             )
             new_features = new_features.transpose([1, 0, 2]).reshape(n_samples, -1)
 
-            X, y = new_features, iris_label
+            X, y = new_features[:, ::3], iris_label[:]
             return X, y
 
         # bandwidth and latency only work for docker mode

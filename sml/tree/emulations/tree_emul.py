@@ -21,13 +21,16 @@ from sklearn.tree import DecisionTreeClassifier
 import sml.utils.emulation as emulation
 from sml.tree.tree import DecisionTreeClassifier as sml_dtc
 
-MAX_DEPTH = 2
+MAX_DEPTH = 3
 CONFIG_FILE = emulation.CLUSTER_ABY3_3PC
 
 
 def emul_tree(mode=emulation.Mode.MULTIPROCESS):
     def proc_wrapper(max_depth=2, n_labels=3):
-        dt = sml_dtc(max_depth=max_depth, criterion='gini', splitter='best', n_labels=n_labels)
+        dt = sml_dtc(
+            max_depth=max_depth, criterion='gini', splitter='best', n_labels=n_labels
+        )
+        
         def proc(X, y):
             dt_fit = dt.fit(X, y)
             result = dt_fit.predict(X)
@@ -48,7 +51,7 @@ def emul_tree(mode=emulation.Mode.MULTIPROCESS):
         )
         new_features = new_features.transpose([1, 0, 2]).reshape(n_samples, -1)
 
-        X, y = new_features, iris_label
+        X, y = new_features[:, ::3], iris_label[:]
         return X, y
 
     try:

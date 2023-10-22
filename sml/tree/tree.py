@@ -16,11 +16,17 @@
 import jax.numpy as jnp
 
 
-
 class DecisionTreeClassifier:
-    """A decision tree classifier.
-
-    Read more in the :ref:`User Guide <tree>`.
+    """A decision tree classifier based on [GTree](https://arxiv.org/abs/2305.00645).
+    
+    Adopting a MPC-based linear scan method (i.e. oblivious_array_access), GTree 
+    designs a new GPU-friendly oblivious decision tree training protocol, which is 
+    more efficient than the prior works. The current implementation supports the training
+    of decision tree with binary features (i.e. {0, 1}) and multi-class labels (i.e. {0, 1, 2, \dots}). 
+    
+    We provide a simple example to show how to use GTree to train a decision tree classifier 
+    in sml/tree/emulations/tree_emul.py. For training, the memory and time complexity is around
+    O(n_samples * n_labels * n_features * 2 ** max_height).
 
     Parameters
     ----------
@@ -43,8 +49,8 @@ class DecisionTreeClassifier:
     """
 
     def __init__(self, criterion, splitter, max_depth, n_labels):
-        assert criterion == "gini", NotImplementedError
-        assert splitter == "best", NotImplementedError
+        assert criterion == "gini", "criteria other than gini is not supported."
+        assert splitter == "best", "splitter other than best is not supported."
         self.max_depth = max_depth
         self.n_labels = n_labels
 
@@ -53,8 +59,7 @@ class DecisionTreeClassifier:
         return self
 
     def predict(self, X):
-        if self.T == None:
-            raise "The model has not been trained yet."
+        assert self.T != None, "the model has not been trained yet."
         return odti(X, self.T, self.max_depth)
 
 
@@ -64,10 +69,21 @@ The protocols of GTree.
 
 
 def oblivious_array_access(array, index):
+    '''
+    Extract elements from array according to index.
+    
+    If array is 1D, then output [array[i] for i in index].
+    e.g.: array = [1, 2, 3, 4, 5], index = [0, 2, 4], output = [1, 3, 5].
+    
+    If array is 2D, then output [array[i, index[i]] for i in range(len(array))].
+    e.g.: array = [[1, 2, 3], [4, 5, 6]], index = [0, 2], output = [[1], [6]].
+    '''
     # (n_array)
     count_array = jnp.arange(0, array.shape[-1])
     # (n_array, n_index)
     E = jnp.equal(index, count_array[:, jnp.newaxis])
+    
+    assert len(array.shape) <= 2, "OAA protocol only supports 1D or 2D array."
 
     # OAA basic case
     if len(array.shape) == 1:
@@ -79,21 +95,23 @@ def oblivious_array_access(array, index):
         # (n_arrays, n_array, n_index)
         O = array[:, :, jnp.newaxis] * E[jnp.newaxis, :, :]  # select shares
         zu = jnp.sum(O, axis=1)
-    else:
-        raise "Not implemented."
     return zu
 
 
 def oaa_elementwise(array, index_array):
+    '''
+    Extract elements from each sub-array of array according to index_array.
+    
+    e.g. array = [[1, 2, 3], [4, 5, 6]], index_array = [0, 2], output = [[1, 3], [4, 6]].
+    '''
     assert index_array.shape[0] == array.shape[0], "n_arrays must be equal to n_index."
+    assert len(array.shape) == 2, "OAAE protocol only supports 2D array."
     count_array = jnp.arange(0, array.shape[-1])
     # (n_array, n_index)
     E = jnp.equal(index_array[:, jnp.newaxis], count_array)
     if len(array.shape) == 2:
         O = array * E
         zu = jnp.sum(O, axis=1)
-    else:
-        raise "Not implemented."
     return zu
 
 
@@ -144,7 +162,6 @@ def oblivious_learning(X, y, T, F, M, h, Cn, n_labels):
     if h != 0:
         Cn = Cn.repeat(2, axis=0)
     new_Cn = new_Cn[:, :, :] + Cn[:, :, :] * (1 - isLeaf[:, jnp.newaxis, jnp.newaxis])
-    # new_Cn = new_Cn + Cn
 
     return new_Cn, M
 
@@ -181,15 +198,11 @@ def oblivious_heuristic_computation(Cn, gamma, F, h, n_labels):
 
     # # modification.
     psi = jnp.zeros((n_leaves, n_labels))
-    # print(psi.shape)
     for i in range(n_labels):
         psi = psi.at[:, i].set(Cn[:, i + 1, 0] + Cn[:, i + 1, 1])
     total = jnp.sum(psi, axis=1)
-    # print(total.shape)
     psi = total[:, jnp.newaxis] - psi
-    # print(psi.shape)
     psi = jnp.prod(psi, axis=1)
-    # print(psi.shape)
     F = F.at[2**h - 1 : 2 ** (h + 1) - 1].set(
         jnp.equal(psi * F[2**h - 1 : 2 ** (h + 1) - 1], 0)
     )
@@ -199,21 +212,13 @@ def oblivious_heuristic_computation(Cn, gamma, F, h, n_labels):
     F = F.at[2 ** (h + 1) : 2 ** (h + 2) - 1 : 2].set(
         F[2 ** (h + 1) - 1 : 2 ** (h + 2) - 1 : 2]
     )
-    # F = F.at[2**h-1:2**(h+1)-1].set(1 - jnp.not_equal(psi, 0) * jnp.equal(F[2**h-1:2**(h+1)-1], 1))
-    # F = F.at[2**(h+1)-1:2**(h+2)-1:2].set(1 + F[2**h-1:2**(h+1)-1])
-    # F = F.at[2**(h+1):2**(h+2)-1:2].set(F[2**(h+1)-1:2**(h+2)-1:2])
     return SD, new_gamma, F
 
 
 def oblivious_node_split(SD, T, F, Cn, h, max_depth):
     '''Convert each node into its internal node and generates new leaves at the next level.'''
-    # is_not_internal = F[2**h-1:2**(h+1)-1]
-    # if h < max_depth - 1:
-    #     Cn = Cn * is_not_internal[:,jnp.newaxis,jnp.newaxis]
-    # Cn = Cn.repeat(2, axis=0)
 
     T = T.at[2**h - 1 : 2 ** (h + 1) - 1].set(SD)
-    # return T
     return T, Cn
 
 
@@ -242,8 +247,6 @@ def oblivious_DT_training(X, y, max_depth, n_labels):
         t2 = oaa(Cn[i, 1:], 2 * SD[i : i + 1] + 1).squeeze()
         psi = psi.at[2 * i, :].set(t1)
         psi = psi.at[2 * i + 1, :].set(t2)
-        # psi = psi.at[0::2, i].set(Cn[0::2, i+1, 0])
-        # psi = psi.at[1::2, i].set(Cn[1::2, i+1, 1])
     T = T.at[n_leaves - 1 :].set(jnp.argmax(psi, axis=1))
     return T, F
 
