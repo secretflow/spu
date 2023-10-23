@@ -75,8 +75,8 @@ def oblivious_array_access(array, index):
     If array is 1D, then output [array[i] for i in index].
     e.g.: array = [1, 2, 3, 4, 5], index = [0, 2, 4], output = [1, 3, 5].
 
-    If array is 2D, then output [array[i, index[i]] for i in range(len(array))].
-    e.g.: array = [[1, 2, 3], [4, 5, 6]], index = [0, 2], output = [[1], [6]].
+    If array is 2D, then output [[array[j, i] for i in index] for j in range(array.shape[0])].
+    e.g. array = [[1, 2, 3], [4, 5, 6]], index_array = [0, 2], output = [[1, 3], [4, 6]].
     '''
     # (n_array)
     count_array = jnp.arange(0, array.shape[-1])
@@ -100,9 +100,9 @@ def oblivious_array_access(array, index):
 
 def oaa_elementwise(array, index_array):
     '''
-    Extract elements from each sub-array of array according to index_array.
+    Given index_array, output [array[i, index[i]] for i in range(len(array))].
 
-    e.g. array = [[1, 2, 3], [4, 5, 6]], index_array = [0, 2], output = [[1, 3], [4, 6]].
+    e.g.: array = [[1, 2, 3], [4, 5, 6]], index = [0, 2], output = [1, 6].
     '''
     assert index_array.shape[0] == array.shape[0], "n_arrays must be equal to n_index."
     assert len(array.shape) == 2, "OAAE protocol only supports 2D array."
