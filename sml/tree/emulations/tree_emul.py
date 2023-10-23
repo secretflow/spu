@@ -30,7 +30,7 @@ def emul_tree(mode=emulation.Mode.MULTIPROCESS):
         dt = sml_dtc(
             max_depth=max_depth, criterion='gini', splitter='best', n_labels=n_labels
         )
-        
+
         def proc(X, y):
             dt_fit = dt.fit(X, y)
             result = dt_fit.predict(X)

@@ -20,7 +20,7 @@ py_test(
     name = "tree_test",
     srcs = ["tree_test.py"],
     deps = [
-        "//sml/tree:tree",
+        "//sml/tree",
         "//spu:init",
         "//spu/utils:simulation",
     ],

@@ -20,7 +20,7 @@ py_binary(
     name = "tree_emul",
     srcs = ["tree_emul.py"],
     deps = [
-        "//sml/tree:tree",
+        "//sml/tree",
         "//sml/utils:emulation",
     ],
 )

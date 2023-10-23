@@ -18,13 +18,13 @@ import jax.numpy as jnp
 
 class DecisionTreeClassifier:
     """A decision tree classifier based on [GTree](https://arxiv.org/abs/2305.00645).
-    
-    Adopting a MPC-based linear scan method (i.e. oblivious_array_access), GTree 
-    designs a new GPU-friendly oblivious decision tree training protocol, which is 
+
+    Adopting a MPC-based linear scan method (i.e. oblivious_array_access), GTree
+    designs a new GPU-friendly oblivious decision tree training protocol, which is
     more efficient than the prior works. The current implementation supports the training
-    of decision tree with binary features (i.e. {0, 1}) and multi-class labels (i.e. {0, 1, 2, \dots}). 
-    
-    We provide a simple example to show how to use GTree to train a decision tree classifier 
+    of decision tree with binary features (i.e. {0, 1}) and multi-class labels (i.e. {0, 1, 2, \dots}).
+
+    We provide a simple example to show how to use GTree to train a decision tree classifier
     in sml/tree/emulations/tree_emul.py. For training, the memory and time complexity is around
     O(n_samples * n_labels * n_features * 2 ** max_height).
 
@@ -71,10 +71,10 @@ The protocols of GTree.
 def oblivious_array_access(array, index):
     '''
     Extract elements from array according to index.
-    
+
     If array is 1D, then output [array[i] for i in index].
     e.g.: array = [1, 2, 3, 4, 5], index = [0, 2, 4], output = [1, 3, 5].
-    
+
     If array is 2D, then output [array[i, index[i]] for i in range(len(array))].
     e.g.: array = [[1, 2, 3], [4, 5, 6]], index = [0, 2], output = [[1], [6]].
     '''
@@ -82,7 +82,7 @@ def oblivious_array_access(array, index):
     count_array = jnp.arange(0, array.shape[-1])
     # (n_array, n_index)
     E = jnp.equal(index, count_array[:, jnp.newaxis])
-    
+
     assert len(array.shape) <= 2, "OAA protocol only supports 1D or 2D array."
 
     # OAA basic case
@@ -101,7 +101,7 @@ def oblivious_array_access(array, index):
 def oaa_elementwise(array, index_array):
     '''
     Extract elements from each sub-array of array according to index_array.
-    
+
     e.g. array = [[1, 2, 3], [4, 5, 6]], index_array = [0, 2], output = [[1, 3], [4, 6]].
     '''
     assert index_array.shape[0] == array.shape[0], "n_arrays must be equal to n_index."
