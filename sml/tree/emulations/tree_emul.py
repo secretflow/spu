@@ -47,7 +47,7 @@ def emul_tree(mode=emulation.Mode.MULTIPROCESS):
         sorted_features = jnp.sort(iris_data, axis=0)
         new_threshold = (sorted_features[:-1, :] + sorted_features[1:, :]) / 2
         new_features = jnp.greater_equal(
-            iris_data[:, :], new_threshold[:, jnp.newaxis, :] + 1 - 1
+            iris_data[:, :], new_threshold[:, jnp.newaxis, :]
         )
         new_features = new_features.transpose([1, 0, 2]).reshape(n_samples, -1)
 
