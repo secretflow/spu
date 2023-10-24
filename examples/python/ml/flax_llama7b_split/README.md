@@ -124,3 +124,8 @@ Using the full Llama model for inference on SPU requires a large amount of memor
     A: The smallest animal is the bacterium.
     generate  on SPU: 2760.5035905838013 seconds
     ```
+4. Privacy Security Warning
+
+In this example, spu is only used for inference on the middle blocks of the model. Its privacy protection capability for the original data is weaker when using spu for inference on the entire [Llama-7B](https://research.facebook.com/publications/llama-open-and-efficient-foundation-language-models/) model. It may be vulnerable to Model Inversion Attacks known in Split Learning as follows:
+- [PCAT: Functionality and Data Stealing from Split Learning by Pseudo-Client Attack](https://www.usenix.org/system/files/usenixsecurity23-gao.pdf)
+- [UnSplit: Data-Oblivious Model Inversion, Model Stealing, and Label Inference Attacks Against Split Learning](https://arxiv.org/pdf/2108.09033.pdf)
