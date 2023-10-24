@@ -14,7 +14,6 @@
 
 import os
 import sys
-import time
 
 import pandas as pd
 from sklearn.datasets import load_breast_cancer, load_wine
@@ -27,13 +26,7 @@ import sml.utils.emulation as emulation
 from sml.linear_model.logistic import LogisticRegression
 
 
-def load_data(mode, multi_class="binary"):
-    # bandwidth and latency only work for docker mode
-    emulator = emulation.Emulator(
-        emulation.CLUSTER_ABY3_3PC, mode, bandwidth=300, latency=20
-    )
-    emulator.up()
-
+def load_data(multi_class="binary"):
     # Create dataset
     if multi_class == "binary":
         X, y = load_breast_cancer(return_X_y=True, as_frame=True)
@@ -48,7 +41,7 @@ def load_data(mode, multi_class="binary"):
     X_spu, y_spu = emulator.seal(
         X.values, y.values.reshape(-1, 1)
     )  # X, y should be two-dimension array
-    return emulator, X, y, X_spu, y_spu
+    return X, y, X_spu, y_spu
 
 
 def proc(x, y, penalty, multi_class="binary"):
@@ -74,41 +67,43 @@ def proc(x, y, penalty, multi_class="binary"):
 
 
 # Test Binary classification
-def emul_LogisticRegression(mode: emulation.Mode.MULTIPROCESS):
+def emul_LogisticRegression(emulator):
     penalty_list = ["l1", "l2", "elasticnet"]
     print(f"penalty_list={penalty_list}")
 
-    try:
-        emulator, X, y, X_spu, y_spu = load_data(mode, multi_class="binary")
-
-        for i in range(len(penalty_list)):
-            penalty = penalty_list[i]
-            # Run
-            result = emulator.run(proc, static_argnums=(2, 3))(
-                X_spu, y_spu, penalty, "binary"
-            )
-            # print("Predict result prob: ", result[0])
-            # print("Predict result label: ", result[1])
-            print(f"{penalty} ROC Score: {roc_auc_score(y.values, result[0])}")
-    finally:
-        emulator.down()
+    X, y, X_spu, y_spu = load_data(multi_class="binary")
+    for i in range(len(penalty_list)):
+        penalty = penalty_list[i]
+        # Run
+        result = emulator.run(proc, static_argnums=(2, 3))(
+            X_spu, y_spu, penalty, "binary"
+        )
+        # print("Predict result prob: ", result[0])
+        # print("Predict result label: ", result[1])
+        print(f"{penalty} ROC Score: {roc_auc_score(y.values, result[0])}")
 
 
 # Test Multi classification
-def emul_LogisticRegression_multi_classificatio(mode: emulation.Mode.MULTIPROCESS):
-    try:
-        emulator, X, y, X_spu, y_spu = load_data(mode, multi_class="ovr")
-
-        # Run
-        result = emulator.run(proc, static_argnums=(2, 3))(X_spu, y_spu, "l2", "ovr")
-        print(
-            f"Multi classification OVR ROC Score: {roc_auc_score(y.values, result[0], multi_class='ovr')}"
-        )
-    finally:
-        emulator.down()
+def emul_LogisticRegression_multi_classificatio(emulator):
+    X, y, X_spu, y_spu = load_data(multi_class="ovr")
+    # Run
+    result = emulator.run(proc, static_argnums=(2, 3))(X_spu, y_spu, "l2", "ovr")
+    print(
+        f"Multi classification OVR ROC Score: {roc_auc_score(y.values, result[0], multi_class='ovr')}"
+    )
 
 
 if __name__ == "__main__":
-    emul_LogisticRegression(emulation.Mode.MULTIPROCESS)
-    time.sleep(10)
-    emul_LogisticRegression_multi_classificatio(emulation.Mode.MULTIPROCESS)
+    try:
+        # bandwidth and latency only work for docker mode
+        emulator = emulation.Emulator(
+            emulation.CLUSTER_ABY3_3PC,
+            emulation.Mode.MULTIPROCESS,
+            bandwidth=300,
+            latency=20,
+        )
+        emulator.up()
+        emul_LogisticRegression(emulator)
+        emul_LogisticRegression_multi_classificatio(emulator)
+    finally:
+        emulator.down()
