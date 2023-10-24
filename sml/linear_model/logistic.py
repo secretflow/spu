@@ -214,7 +214,6 @@ class LogisticRegression:
         num_feat = x.shape[1]
         batch_size = min(self._batch_size, num_sample)
         total_batch = int(num_sample / batch_size)
-        weights = jnp.zeros((num_feat + 1, 1))
         n_classes = len(self._class_labels)
         _classes = self._class_labels
         if n_classes == 2:
@@ -229,6 +228,7 @@ class LogisticRegression:
             raise NotImplementedError
 
         for i in range(n_classes):
+            weights = jnp.zeros((num_feat + 1, 1))
             # do train
             for _ in range(self._epochs):
                 weights = self._update_weights(
@@ -263,6 +263,7 @@ class LogisticRegression:
                 preds[i] = prob.ravel()
             preds = jnp.transpose(jnp.array(preds))
             prob = preds / preds.sum(axis=1).reshape((preds.shape[0], -1))
+            prob = prob.at[:, 0].set(1 - prob.sum(axis=1) + prob[:, 0])
         else:
             raise NotImplementedError
 
@@ -289,11 +290,11 @@ class LogisticRegression:
             label = jnp.select([pred[0] > 0], [1], 0)
         elif self._multi_class == MultiClass.Ovr:
             prob = self.predict_proba(x)
-            label = prob.argmax(axis=1).reshape((-1, 1))
+            label = prob.argmax(axis=1)
         else:
             raise NotImplementedError
 
-        return label
+        return label.reshape((-1,))
 
     def decision_function(self, x):
         if self._multi_class in [MultiClass.Binary, MultiClass.Ovr]:
@@ -306,7 +307,6 @@ class LogisticRegression:
                 assert (
                     len(w.shape) == 1 or w.shape[1] == 1
                 ), "w should be list or 1D array"
-                w.reshape((w.shape[0], 1))
                 bias = w[-1, 0]
                 w = jnp.resize(w, (num_feat, 1))
                 pred = jnp.matmul(x, w) + bias
