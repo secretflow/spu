@@ -126,6 +126,6 @@ Using the full Llama model for inference on SPU requires a large amount of memor
     ```
 4. Privacy Security Warning
 
-In this example, our main motivation is to reduce the hardware and time resource costs of LLaMA7b model inference using the SPU. Therefore, spu is only used for inference on the middle blocks of the model.  Its privacy protection capability for the original data is weaker when using spu for inference on the entire [Llama-7B](https://research.facebook.com/publications/llama-open-and-efficient-foundation-language-models/) model. It may be vulnerable to Model Inversion Attacks known in Split Learning as follows:
+In this example, our main motivation is to reduce the hardware and time resource costs of [Llama-7B](https://research.facebook.com/publications/llama-open-and-efficient-foundation-language-models/) model inference using the SPU. Therefore, spu is only used for inference on the middle blocks of the model.  Its privacy protection capability for the original data is weaker when using spu for inference on the entire Llama-7B model. It may be vulnerable to Model Inversion Attacks known in Split Learning as follows:
 - [PCAT: Functionality and Data Stealing from Split Learning by Pseudo-Client Attack](https://www.usenix.org/system/files/usenixsecurity23-gao.pdf)
 - [UnSplit: Data-Oblivious Model Inversion, Model Stealing, and Label Inference Attacks Against Split Learning](https://arxiv.org/pdf/2108.09033.pdf)
