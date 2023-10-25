@@ -16,11 +16,19 @@ load("@rules_python//python:defs.bzl", "py_binary")
 
 package(default_visibility = ["//visibility:public"])
 
-py_test(
+filegroup(
+    name = "conf",
+    srcs = [
+        "3pc.json",
+    ],
+)
+
+py_binary(
     name = "gpc_emul",
     srcs = ["gpc_emul.py"],
+    data = ["conf"],
     deps = [
         "//sml/gaussian_process:_gpc",
-        "//spu/utils:emulation",
+        "//sml/utils:emulation",
     ],
 )
