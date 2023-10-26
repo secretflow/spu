@@ -40,14 +40,13 @@ from EasyLM.models.llama.llama_model_splited_transformer import (
 
 import spu.utils.distributed as ppd
 from contextlib import contextmanager
-import spu.intrinsic as intrinsic
 import spu.spu_pb2 as spu_pb2
 
 from flax.linen.linear import Array
 from typing import Any, Optional, Tuple, Union
 
 parser = argparse.ArgumentParser(description='distributed driver.')
-parser.add_argument("-c", "--config", default="examples/python/ml/flax_llama/3pc.json")
+parser.add_argument("-c", "--config", default="examples/python/ml/flax_llama_split/3pc.json")
 args = parser.parse_args()
 
 with open(args.config, 'r') as file:
@@ -182,7 +181,7 @@ def hack_silu_context(msg: str, enabled: bool = True):
 
 # greedy search
 # ref: https://huggingface.co/blog/how-to-generate
-# for embedding genrate
+# for embedding generation
 def embeding_generation(input_ids, params):
     config = LLaMAConfig()
     model = FlaxLLaMAForCausalLMClient(config=config)
