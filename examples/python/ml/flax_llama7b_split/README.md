@@ -138,7 +138,7 @@ Actually, if users want to split LLaMA-7B model in other way, this can be easily
 For example, we rewrite the files as follow.
 
 ```python
-# flax_llama7b_split.py 
+# flax_llama7b_split.py
 # lines 76-89
 
 client_params_dict = {
