@@ -13,11 +13,12 @@
 # limitations under the License.
 
 from typing import Tuple
+
 import jax
 import jax.numpy as jnp
-
-from spu.ops.groupby.groupby import groupby, groupby_sum_no_shuffle
 from auc import binary_roc_auc
+
+from spu.ops.groupby import groupby, groupby_sum
 
 
 def roc_auc_score(y_true, y_pred):
@@ -53,7 +54,7 @@ def bin_counts(
     bin_sorted, bin_count_cols, _, effective_rows = groupby(
         [-bins], [y_true, y_true_negate]
     )
-    bin_count_matrix = groupby_sum_no_shuffle(bin_count_cols, effective_rows)
+    bin_count_matrix = groupby_sum(bin_count_cols, effective_rows)
     return (
         -bin_sorted[0],
         bin_count_matrix[:, 0],

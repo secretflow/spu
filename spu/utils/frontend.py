@@ -14,14 +14,13 @@
 import functools
 import warnings
 from enum import Enum
+from threading import Lock
 from typing import Callable, Dict, Iterable, List
 
 from cachetools import LRUCache, cached
 
 from .. import api as spu_api
 from .. import spu_pb2
-
-from threading import Lock
 
 _jax_lock = Lock()
 
@@ -73,23 +72,28 @@ def _jax_compilation(
     fn: Callable, static_argnums, static_argnames, args: List, kwargs: Dict
 ):
     import jax
-
-    from jax._src.xla_bridge import register_backend_factory, _backend_lock, _backends
-    from jax._src.lib import xla_client
+    from jax._src.xla_bridge import _backend_lock, _backends, register_backend_factory
+    from jax._src.lib import xla_client, xla_extension_version
 
     # Register interpreter backend since we don't want any cpu/gpu/tpu specific optimization
-    try:
+    if xla_extension_version < 164:
+        # interpreter is registerd by default before jaxlib 0.4.13
+        pass
+    else:
         has_interpreter_backend = False
         with _backend_lock:
             if 'interpreter' in _backends:
                 has_interpreter_backend = True
-
         if not has_interpreter_backend:
-            register_backend_factory(
-                'interpreter', xla_client.make_interpreter_client, priority=-100
-            )
-    finally:
-        pass  # Silent re-register error....
+            if xla_extension_version < 194:
+                # make_interpreter_client has been removed after jaxlib 0.4.16
+                register_backend_factory(
+                    'interpreter', xla_client.make_interpreter_client, priority=-100
+                )
+            else:
+                from jax.interpreters.xla import Backend as xla_back
+
+                register_backend_factory('interpreter', xla_back, priority=-100)
 
     fn, kwargs = _argnames_partial_except(fn, static_argnames, kwargs)
 

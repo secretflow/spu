@@ -70,6 +70,8 @@ void Core::buildPipeline(mlir::PassManager *pm) {
 
   optPM.addPass(mlir::createCSEPass());
 
+  optPM.addPass(mlir::pphlo::createConvertPushDownPass());
+
   if (!options.disable_reduce_truncation_optimization()) {
     optPM.addPass(mlir::pphlo::createReduceTruncationPass());
   }

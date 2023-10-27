@@ -18,7 +18,6 @@
 #include <cstdint>
 
 #include "fmt/format.h"
-#include "fmt/ostream.h"
 
 #include "libspu/core/ndarray_ref.h"
 #include "libspu/core/prelude.h"
@@ -31,6 +30,8 @@ Visibility getVisibilityFromType(const Type& ty) {
     return VIS_SECRET;
   } else if (ty.isa<Public>()) {
     return VIS_PUBLIC;
+  } else if (ty.isa<Private>()) {
+    return VIS_PRIVATE;
   } else {
     return VIS_INVALID;
   }
@@ -197,8 +198,14 @@ Value Value::clone() const {
 }
 
 std::ostream& operator<<(std::ostream& out, const Value& v) {
-  out << fmt::format("Value<{}x{}{},s={}>", fmt::join(v.shape(), "x"),
-                     v.vtype(), v.dtype(), fmt::join(v.strides(), ","));
+  if (v.isPrivate()) {
+    out << fmt::format("Value<{}x{}{},s={},o={}>", fmt::join(v.shape(), "x"),
+                       v.vtype(), v.dtype(), fmt::join(v.strides(), ","),
+                       v.storage_type().as<Private>()->owner());
+  } else {
+    out << fmt::format("Value<{}x{}{},s={}>", fmt::join(v.shape(), "x"),
+                       v.vtype(), v.dtype(), fmt::join(v.strides(), ","));
+  }
   return out;
 }
 

@@ -87,6 +87,10 @@ def no_in_dict_out():
     return {"first": np.array([1, 2]), "second": np.array([3.0, 4.0])}
 
 
+def tf_fun(x, y):
+    return tf.add(x, y)
+
+
 class UnitTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -263,13 +267,13 @@ class UnitTests(unittest.TestCase):
         npt.assert_equal(ppd.get(d["second"]), np.array([3.0, 4.0]))
 
         # immediate input from driver
-        e = ppd.device("SPU")(tf.add)(np.array([1, 2]), np.array([3, 4]))
+        e = ppd.device("SPU")(tf_fun)(np.array([1, 2]), np.array([3, 4]))
         self.assertTrue(isinstance(e, ppd.SPU.Object))
         self.assertEqual(e.vtype, spu_pb2.VIS_PUBLIC)
         npt.assert_equal(ppd.get(e), np.array([4, 6]))
 
         # reuse inputs from SPU
-        c = ppd.device("SPU")(tf.add)(a, a)
+        c = ppd.device("SPU")(tf_fun)(a, a)
         self.assertTrue(isinstance(c, ppd.SPU.Object))
         self.assertEqual(c.vtype, spu_pb2.VIS_PUBLIC)
         self.assertTrue(c.device is ppd.current().devices["SPU"])
@@ -277,7 +281,7 @@ class UnitTests(unittest.TestCase):
 
         # reuse a from SPU, x from pyu
         x = ppd.device("P1")(no_in_one_out)()
-        c = ppd.device("SPU")(tf.add)(a, x)
+        c = ppd.device("SPU")(tf_fun)(a, x)
         self.assertTrue(isinstance(c, ppd.SPU.Object))
         self.assertEqual(c.vtype, spu_pb2.VIS_SECRET)
         self.assertTrue(c.device is ppd.current().devices["SPU"])

@@ -16,6 +16,7 @@
 
 #include "yacl/crypto/tools/prg.h"
 #include "yacl/crypto/utils/rand.h"
+#include "yacl/link/algorithm/allgather.h"
 #include "yacl/utils/serialize.h"
 
 namespace spu::mpc {

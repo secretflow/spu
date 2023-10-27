@@ -22,10 +22,10 @@ import numpy as np
 from jax import linear_util as jax_lu
 from jax._src import api_util as japi_util
 
-from . import frontend as spu_fe
-from .. import libspu  # type: ignore
 from .. import api as spu_api
+from .. import libspu  # type: ignore
 from .. import spu_pb2
+from . import frontend as spu_fe
 
 
 # https://stackoverflow.com/questions/2829329/catch-a-threads-exception-in-the-caller-thread-in-python

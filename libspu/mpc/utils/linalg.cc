@@ -14,6 +14,8 @@
 
 #include "libspu/mpc/utils/linalg.h"
 
+#include "libspu/core/parallel_utils.h"
+
 namespace spu::mpc::linalg::detail {
 
 void setEigenParallelLevel(int64_t expected_threads) {

@@ -32,18 +32,18 @@ Visibility ComputePromotedVisibility(Visibility v1, Visibility v2) {
 } // namespace
 
 Visibility ValueVisibilityMap::getValueVisibility(const Value &v) const {
-  const auto &iter = storage.find(v);
-  SPU_ENFORCE(iter != storage.end());
+  const auto &iter = storage_.find(v);
+  SPU_ENFORCE(iter != storage_.end());
   return iter->second;
 }
 
 void ValueVisibilityMap::setValueVisibility(const Value &val, Visibility vis) {
-  const auto &iter = storage.find(val);
-  if (iter != storage.end()) {
+  const auto &iter = storage_.find(val);
+  if (iter != storage_.end()) {
     // Merge
-    storage[val] = ComputePromotedVisibility(iter->second, vis);
+    storage_[val] = ComputePromotedVisibility(iter->second, vis);
   } else {
-    storage[val] = vis;
+    storage_[val] = vis;
   }
 }
 

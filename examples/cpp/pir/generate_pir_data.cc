@@ -13,11 +13,8 @@
 // limitations under the License.
 
 // clang-format off
-// build generate_pir_data
-// > bazel build //examples/cpp/pir:generate_pir_data -c opt
-//
 // To run the example, start two terminals:
-// > ./generate_pir_data -data_count 10000 -label_len 32 -server_out_path pir_server.csv -client_out_path pir_client.csv
+// > bazel run //examples/cpp/pir:generate_pir_data -c opt -- -data_count 10000 -label_len 32 -server_out_path pir_server.csv -client_out_path pir_client.csv
 // clang-format on
 
 #include <fstream>

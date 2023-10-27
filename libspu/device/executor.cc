@@ -20,9 +20,8 @@
 #include <future>
 #include <mutex>
 
-#include "mlir/IR/BuiltinAttributes.h"
-#include "mlir/IR/BuiltinOps.h"
-#include "mlir/IR/Value.h"
+#include "mlir/IR/Operation.h"
+#include "mlir/IR/Region.h"
 
 #include "libspu/core/context.h"
 #include "libspu/core/prelude.h"
@@ -237,7 +236,7 @@ class BlockParallelRunner final {
 
     threads_.reserve(opts_.concurrency);
     for (uint64_t i = 0; i < opts_.concurrency; i++) {
-      threads_.emplace_back(std::thread(&BlockParallelRunner::run_task, this));
+      threads_.emplace_back(&BlockParallelRunner::run_task, this);
     }
 
     for (uint64_t i = 0; i < opts_.concurrency; i++) {
@@ -260,7 +259,7 @@ class BlockParallelRunner final {
     SPU_THROW("Should not be here");
   }
 
-  void run_task(void) {
+  void run_task() {
     std::unique_lock queue_lock(queue_mtx_);
 
     while (!task_queue_.empty()) {

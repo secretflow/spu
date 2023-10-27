@@ -141,8 +141,6 @@ CircuitBasicBlock<Value> MakeSPDZBasicBlock(SPUContext* ctx) {
 };  // namespace
 
 NdArrayRef A2Bit::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
-  SPU_TRACE_MPC_LEAF(ctx, in);
-
   const auto field = in.eltype().as<Ring2k>()->field();
   const size_t s = ctx->getState<Spdz2kState>()->s();
   const size_t nbits = 1;
@@ -159,8 +157,6 @@ NdArrayRef A2Bit::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
 }
 
 NdArrayRef Bit2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
-  SPU_TRACE_MPC_LEAF(ctx, in);
-
   const auto field = in.eltype().as<Ring2k>()->field();
   auto* comm = ctx->getState<Communicator>();
   auto* beaver = ctx->getState<Spdz2kState>()->beaver();
@@ -217,8 +213,6 @@ NdArrayRef Bit2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
 }
 
 NdArrayRef A2B::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
-  SPU_TRACE_MPC_LEAF(ctx, in);
-
   const auto field = in.eltype().as<Ring2k>()->field();
   auto* beaver = ctx->getState<Spdz2kState>()->beaver();
   const size_t k = ctx->getState<Spdz2kState>()->k();
@@ -261,8 +255,6 @@ NdArrayRef A2B::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
 }
 
 NdArrayRef B2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
-  SPU_TRACE_MPC_LEAF(ctx, in);
-
   const auto field = in.eltype().as<BShrTy>()->field();
   const auto nbits = in.eltype().as<BShrTy>()->nbits();
   auto* comm = ctx->getState<Communicator>();
@@ -334,7 +326,6 @@ NdArrayRef B2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
 }
 
 NdArrayRef MSB::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
-  SPU_TRACE_MPC_LEAF(ctx, in);
   const auto field = in.eltype().as<Ring2k>()->field();
   const int64_t k = ctx->getState<Spdz2kState>()->k();
   const size_t s = ctx->getState<Spdz2kState>()->s();
@@ -458,7 +449,6 @@ NdArrayRef MSB::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
 
 NdArrayRef AddBB::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
                        const NdArrayRef& rhs) const {
-  SPU_TRACE_MPC_LEAF(ctx, lhs, rhs);
   const size_t nbits = maxNumBits(lhs, rhs);
   const auto field = lhs.eltype().as<Ring2k>()->field();
   const auto [x_val, x_mac] = BShareSwitch2Nbits(lhs, nbits);
@@ -475,8 +465,6 @@ NdArrayRef AddBB::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
 
 NdArrayRef AddBP::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
                        const NdArrayRef& rhs) const {
-  SPU_TRACE_MPC_LEAF(ctx, lhs, rhs);
-
   const size_t nbits = maxNumBits(lhs, rhs);
   const auto field = lhs.eltype().as<Ring2k>()->field();
   const auto [x_val, x_mac] = BShareSwitch2Nbits(lhs, nbits);
@@ -491,7 +479,6 @@ NdArrayRef AddBP::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
 #if 0
 ArrayRef BitLTBB::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
                        const ArrayRef& rhs) const {
-  SPU_TRACE_MPC_LEAF(ctx, lhs, rhs);
   const auto nbits = maxNumBits(lhs, rhs);
   const auto field = lhs.eltype().as<Ring2k>()->field();
   const auto numel = lhs.numel();
@@ -517,8 +504,6 @@ ArrayRef BitLTBB::proc(KernelEvalContext* ctx, const ArrayRef& lhs,
 #else
 NdArrayRef BitLTBB::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
                          const NdArrayRef& rhs) const {
-  SPU_TRACE_MPC_LEAF(ctx, lhs, rhs);
-
   auto res0 = wrap_bitle_bb(ctx->sctx(), lhs, rhs);
   auto res1 = wrap_bitle_bb(ctx->sctx(), rhs, lhs);
   auto eq = wrap_and_bb(ctx->sctx(), res0, res1);
@@ -531,8 +516,6 @@ NdArrayRef BitLTBB::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
 
 NdArrayRef BitLEBB::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
                          const NdArrayRef& rhs) const {
-  SPU_TRACE_MPC_LEAF(ctx, lhs, rhs);
-
   const auto nbits = maxNumBits(lhs, rhs);
   const auto field = lhs.eltype().as<Ring2k>()->field();
 

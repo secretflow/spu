@@ -41,3 +41,9 @@ pip install spu
 python setup.py bdist_wheel
 pip install dist/*.whl --force-reinstall
 ```
+
+- Once GCC/bazel/python/Xcode version or other environment settings have changed, please run the following command to ensure a clean build
+
+```bash
+bazel clean --expunge
+```

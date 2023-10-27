@@ -20,9 +20,9 @@
 
 from absl import app, flags
 
-import spu.pir as pir
 import spu.libspu.link as link
 import spu.libspu.logging as logging
+import spu.pir as pir
 
 flags.DEFINE_string("in_path", "data.csv", "data input path")
 flags.DEFINE_string("key_columns", "id", "csv file key filed name")

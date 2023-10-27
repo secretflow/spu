@@ -12,9 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .example_impl import example
-
 from .example_binary_impl import example_binary
+from .example_impl import example
 
 # DO-NOT-EDIT:ADD_IMPORT
 

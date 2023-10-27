@@ -15,7 +15,6 @@
 #pragma once
 
 #include "libspu/core/ndarray_ref.h"
-#include "libspu/mpc/aby3/value.h"
 #include "libspu/mpc/kernel.h"
 
 namespace spu::mpc::aby3 {
@@ -119,6 +118,15 @@ class MsbA2B : public UnaryKernel {
   float getCommTolerance() const override { return 0.2; }
 
   NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in) const override;
+};
+
+class CommonTypeV : public Kernel {
+ public:
+  static constexpr char kBindName[] = "common_type_v";
+
+  Kind kind() const override { return Kind::Dynamic; }
+
+  void evaluate(KernelEvalContext* ctx) const override;
 };
 
 }  // namespace spu::mpc::aby3

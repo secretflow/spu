@@ -14,14 +14,10 @@
 
 import argparse
 import json
-import multiprocess
-import sys
 
-import grpc
-import jax
+import multiprocess
 
 import spu.utils.distributed as ppd
-from spu.utils import distributed_pb2_grpc
 
 parser = argparse.ArgumentParser(description='SPU node service.')
 parser.add_argument(

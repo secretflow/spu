@@ -14,8 +14,11 @@
 
 #pragma once
 
-#include "libspu/core/context.h"
 #include "libspu/core/value.h"
+
+namespace spu {
+class SPUContext;
+}
 
 // !!please read [README.md] for api naming conventions.
 namespace spu::kernel::hal {
@@ -31,8 +34,8 @@ Value f_exp_p(SPUContext* ctx, const Value& in);
 
 Value f_div_p(SPUContext* ctx, const Value& x, const Value& y);
 
-Value f_sine_p(SPUContext* ctx, const Value& x);
+Value f_sine_p(SPUContext* ctx, const Value& in);
 
-Value f_cosine_p(SPUContext* ctx, const Value& x);
+Value f_cosine_p(SPUContext* ctx, const Value& in);
 
 }  // namespace spu::kernel::hal

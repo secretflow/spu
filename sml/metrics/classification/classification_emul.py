@@ -19,10 +19,8 @@ import numpy as np
 # add ops dir to the path
 sys.path.append(os.path.join(os.path.dirname(__file__), '../../'))
 
-from sml.metrics.classification.classification import roc_auc_score
-
-
 import sml.utils.emulation as emulation
+from sml.metrics.classification.classification import roc_auc_score
 
 
 # TODO: design the enumation framework, just like py.unittest

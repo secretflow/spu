@@ -39,10 +39,11 @@ TEST_P(IoClientTest, Float) {
   auto shares = io.makeShares(in_data, kVisibility);
   EXPECT_EQ(shares.size(), kWorldSize);
 
-  auto out = io.combineShares(shares);
-  EXPECT_EQ(out.eltype().as<PtTy>()->pt_type(), PT_F32);
+  EXPECT_EQ(io.getPtType(shares), PT_F32);
+  xt::xarray<float> out_data(in_data.shape());
+  PtBufferView out_pv(out_data);
+  io.combineShares(shares, &out_pv);
 
-  auto out_data = xt_adapt<float>(out);
   EXPECT_EQ(in_data, out_data);
 }
 
@@ -60,10 +61,11 @@ TEST_P(IoClientTest, Int) {
   auto shares = io.makeShares(in_data, kVisibility);
   EXPECT_EQ(shares.size(), kWorldSize);
 
-  auto out = io.combineShares(shares);
-  EXPECT_EQ(out.eltype().as<PtTy>()->pt_type(), PT_I32);
+  EXPECT_EQ(io.getPtType(shares), PT_I32);
+  xt::xarray<int> out_data(in_data.shape());
+  PtBufferView out_pv(out_data);
+  io.combineShares(shares, &out_pv);
 
-  auto out_data = xt_adapt<int32_t>(out);
   EXPECT_EQ(in_data, out_data);
 }
 

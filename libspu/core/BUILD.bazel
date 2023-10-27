@@ -17,28 +17,12 @@ load("//bazel:spu.bzl", "spu_cc_binary", "spu_cc_library", "spu_cc_test")
 package(default_visibility = ["//visibility:public"])
 
 spu_cc_library(
-    name = "core",
-    deps = [
-        ":config",
-        ":encoding",
-        ":ndarray_ref",
-        ":shape",
-        ":type",
-        ":type_util",
-        ":xt_helper",
-        "@yacl//yacl/base:buffer",
-    ],
-)
-
-spu_cc_library(
     name = "trace",
     srcs = ["trace.cc"],
     hdrs = ["trace.h"],
     deps = [
         "//libspu/core:prelude",
-        "@com_google_absl//absl/types:span",
         "@yacl//yacl/link",
-        "@yacl//yacl/utils:scope_guard",
     ],
 )
 
@@ -70,7 +54,6 @@ spu_cc_library(
         ":half",
         "//libspu:spu_cc_proto",
         "//libspu/core:prelude",
-        "@com_google_absl//absl/types:span",
         "@yacl//yacl/base:int128",
     ],
 )
@@ -82,9 +65,8 @@ spu_cc_library(
     deps = [
         ":ndarray_ref",
         ":parallel_utils",
-        ":xt_helper",
+        ":pt_buffer_view",
         "@yacl//yacl/crypto/tools:prg",
-        "@yacl//yacl/utils:parallel",
     ],
 )
 
@@ -187,7 +169,6 @@ spu_cc_test(
 
 spu_cc_library(
     name = "xt_helper",
-    srcs = ["xt_helper.cc"],
     hdrs = ["xt_helper.h"],
     deps = [
         ":ndarray_ref",
@@ -210,7 +191,6 @@ spu_cc_library(
     hdrs = ["vectorize.h"],
     deps = [
         "//libspu/core:prelude",
-        "@com_google_absl//absl/types:span",
     ],
 )
 

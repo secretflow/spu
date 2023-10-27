@@ -18,9 +18,9 @@ import unittest
 import jax.numpy as jnp
 import numpy as np
 
-import spu.utils.simulation as ppsim
-import spu.spu_pb2 as spu_pb2
 import spu.intrinsic as si
+import spu.spu_pb2 as spu_pb2
+import spu.utils.simulation as ppsim
 
 if __name__ == "__main__":
     """

@@ -20,7 +20,6 @@
 #include "libspu/kernel/hal/constants.h"
 #include "libspu/kernel/hal/polymorphic.h"
 #include "libspu/kernel/hal/public_helper.h"
-#include "libspu/kernel/hal/shape_ops.h"
 
 namespace spu::kernel::hlo {
 

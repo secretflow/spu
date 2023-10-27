@@ -19,11 +19,6 @@
 #include <numeric>
 #include <utility>
 
-#include "fmt/format.h"
-#include "fmt/ostream.h"
-
-#include "libspu/core/parallel_utils.h"
-
 namespace spu {
 namespace {
 

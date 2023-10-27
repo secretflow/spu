@@ -19,8 +19,6 @@
 #include <sstream>
 #include <type_traits>
 
-#include "fmt/format.h"
-
 #include "libspu/core/prelude.h"
 
 namespace spu::ce {

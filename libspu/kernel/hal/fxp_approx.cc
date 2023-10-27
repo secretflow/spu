@@ -19,6 +19,7 @@
 #include <cmath>
 #include <future>
 
+#include "libspu/core/trace.h"
 #include "libspu/kernel/hal/constants.h"
 #include "libspu/kernel/hal/fxp_base.h"
 #include "libspu/kernel/hal/fxp_cleartext.h"

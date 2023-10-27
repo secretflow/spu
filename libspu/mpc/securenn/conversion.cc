@@ -14,10 +14,12 @@
 
 #include "libspu/mpc/securenn/conversion.h"
 
+#include "libspu/core/trace.h"
 #include "libspu/core/vectorize.h"
 #include "libspu/mpc/ab_api.h"
 #include "libspu/mpc/common/communicator.h"
 #include "libspu/mpc/common/prg_state.h"
+#include "libspu/mpc/common/pv2k.h"
 #include "libspu/mpc/securenn/arithmetic.h"
 #include "libspu/mpc/securenn/type.h"
 #include "libspu/mpc/utils/ring_ops.h"
@@ -188,6 +190,18 @@ NdArrayRef Msb_a2b::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   // auto res = Msb().proc(ctx, in_);
   res = A2B().proc(ctx, res);
   return res;
+}
+
+void CommonTypeV::evaluate(KernelEvalContext* ctx) const {
+  const Type& lhs = ctx->getParam<Type>(0);
+  const Type& rhs = ctx->getParam<Type>(1);
+
+  SPU_TRACE_MPC_DISP(ctx, lhs, rhs);
+
+  const auto* lhs_v = lhs.as<Priv2kTy>();
+  const auto* rhs_v = rhs.as<Priv2kTy>();
+
+  ctx->setOutput(makeType<AShrTy>(std::max(lhs_v->field(), rhs_v->field())));
 }
 
 }  // namespace spu::mpc::securenn

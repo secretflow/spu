@@ -14,8 +14,9 @@
 
 // clang-format off
 // To run the example, start two terminals:
-// > bazel run //examples/cpp:simple_in_memory_psi -- --rank=0
-// > bazel run //examples/cpp:simple_in_memory_psi -- --rank=1
+// > bazel run //examples/cpp:simple_in_memory_psi -c opt -- -rank=0
+// > bazel run //examples/cpp:simple_in_memory_psi -c opt -- -rank=1
+// To run with non-default IP config, add -parties IP:port,IP:port to above commands
 // clang-format on
 
 #include <cassert>

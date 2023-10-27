@@ -16,8 +16,7 @@
 
 #include <chrono>
 
-#include "fmt/chrono.h"
-#include "fmt/format.h"
+#include "fmt/chrono.h" // IWYU pragma: keep, format chrono needs this header
 #include "llvm/Support/FileSystem.h"
 #include "llvm/Support/raw_ostream.h"
 #include "mlir/Pass/Pass.h"

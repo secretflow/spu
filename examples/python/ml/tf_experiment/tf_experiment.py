@@ -22,6 +22,7 @@ import json
 import numpy as np
 import tensorflow as tf
 from sklearn import metrics
+
 import spu.utils.distributed as ppd
 
 # This example is to show tf program could be converted to XLA IR and run by SPU.

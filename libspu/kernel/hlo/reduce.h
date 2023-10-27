@@ -19,8 +19,11 @@
 
 #include "absl/types/span.h"
 
-#include "libspu/core/context.h"
 #include "libspu/core/value.h"
+
+namespace spu {
+class SPUContext;
+}
 
 namespace spu::kernel::hlo {
 

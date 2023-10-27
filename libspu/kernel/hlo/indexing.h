@@ -14,8 +14,11 @@
 
 #pragma once
 
-#include "libspu/core/context.h"
-#include "libspu/kernel/hlo/utils.h"
+#include "libspu/core/value.h"
+
+namespace spu {
+class SPUContext;
+}
 
 namespace spu::kernel::hlo {
 

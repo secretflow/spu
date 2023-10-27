@@ -21,10 +21,8 @@
 #include "stablehlo/reference/Tensor.h"
 
 #include "libspu/dialect/pphlo_ops.h"
-#include "libspu/kernel/hal/constants.h"
 #include "libspu/kernel/hal/public_helper.h"
 #include "libspu/kernel/hal/type_cast.h"
-#include "libspu/kernel/hlo/utils.h"
 
 namespace spu::device::pphlo {
 namespace {

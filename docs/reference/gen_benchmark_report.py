@@ -15,12 +15,13 @@
 # limitations under the License.
 
 
+import argparse
 import json
-import pandas as pd
-import numpy as np
 import os
 from enum import Enum
-import argparse
+
+import numpy as np
+import pandas as pd
 
 g_time_list = [
     ('ns', 1000),

@@ -21,11 +21,12 @@
 
 #include "llvm/Support/ErrorHandling.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"
+#include "mlir/IR/BuiltinOps.h"
 #include "mlir/Parser/Parser.h"
 #include "spdlog/spdlog.h"
 
+#include "libspu/core/trace.h"
 #include "libspu/device/debug_dump_constant.h"
-#include "libspu/device/pphlo/pphlo_executor.h"
 #include "libspu/dialect/pphlo_dialect.h"
 
 namespace spu::device {

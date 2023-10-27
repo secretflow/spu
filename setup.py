@@ -17,14 +17,15 @@
 import io
 import logging
 import os
+import platform
 import re
 import shutil
 import subprocess
 import sys
+from datetime import datetime, timedelta
+
 import setuptools
 import setuptools.command.build_ext
-import platform
-from datetime import datetime, timedelta
 
 logger = logging.getLogger(__name__)
 

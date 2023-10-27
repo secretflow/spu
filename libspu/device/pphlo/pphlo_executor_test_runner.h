@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "fmt/format.h"
+#include "fmt/format.h"  // IWYU pragma: keep
 
 #include "libspu/device/test_utils.h"
 

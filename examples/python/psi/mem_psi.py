@@ -17,12 +17,12 @@
 # > bazel run //examples/python/psi:mem_psi -- --rank 0 --protocol ECDH_PSI_2PC --in_path examples/data/psi_1.csv --field_name id --out_path /tmp/p1.out
 # > bazel run //examples/python/psi:mem_psi -- --rank 1 --protocol ECDH_PSI_2PC --in_path examples/data/psi_2.csv --field_name id --out_path /tmp/p2.out
 
+import pandas as pd
 from absl import app, flags
 
-import pandas as pd
-import spu.psi as psi
 import spu.libspu.link as link
 import spu.libspu.logging as logging
+import spu.psi as psi
 
 flags.DEFINE_string("protocol", "ECDH_PSI_2PC", "psi protocol, see `spu/psi/psi.proto`")
 flags.DEFINE_integer("rank", 0, "rank: 0/1/2...")

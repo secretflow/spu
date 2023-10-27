@@ -21,6 +21,7 @@
 #include "xtensor/xarray.hpp"
 
 #include "libspu/device/test_utils.h"
+#include "libspu/dialect/pphlo_dialect.h"
 #include "libspu/kernel/test_util.h"
 #include "libspu/mpc/utils/simulate.h"
 

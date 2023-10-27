@@ -15,7 +15,7 @@
 #pragma once
 
 #include "libspu/core/ndarray_ref.h"
-#include "libspu/core/type.h"
+#include "libspu/core/pt_buffer_view.h"
 
 namespace spu {
 
@@ -84,12 +84,10 @@ DataType getEncodeType(PtType pt_type);
 
 PtType getDecodeType(DataType dtype);
 
-// TODO: document me, verbosely
-NdArrayRef encodeToRing(const NdArrayRef& src, FieldType field, size_t fxp_bits,
-                        DataType* out_dtype = nullptr);
+NdArrayRef encodeToRing(const PtBufferView& src, FieldType field,
+                        size_t fxp_bits, DataType* out_dtype = nullptr);
 
-// TODO: document me, verbosely
-NdArrayRef decodeFromRing(const NdArrayRef& src, DataType in_dtype,
-                          size_t fxp_bits, PtType* out_pt_type = nullptr);
+void decodeFromRing(const NdArrayRef& src, DataType in_dtype, size_t fxp_bits,
+                    PtBufferView* out_bv, PtType* out_pt_type = nullptr);
 
 }  // namespace spu

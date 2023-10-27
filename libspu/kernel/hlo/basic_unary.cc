@@ -14,8 +14,6 @@
 
 #include "libspu/kernel/hlo/basic_unary.h"
 
-#include "libspu/core/context.h"
-#include "libspu/core/value.h"
 #include "libspu/kernel/hal/complex.h"
 #include "libspu/kernel/hal/constants.h"
 #include "libspu/kernel/hal/polymorphic.h"

@@ -286,6 +286,30 @@ class UnitTests(parameterized.TestCase):
 
         npt.assert_almost_equal(x, y, decimal=5)
 
+    def test_colocated_io(self, wsize, prot, field, chunk_size):
+        if prot == spu_pb2.ProtocolKind.ABY3 and wsize != 3:
+            return
+
+        if prot == spu_pb2.ProtocolKind.REF2K:
+            return
+
+        config = spu_pb2.RuntimeConfig(
+            protocol=prot,
+            field=field,
+            share_max_chunk_size=chunk_size,
+            experimental_enable_colocated_optimization=True,
+        )
+        io = ppapi.Io(wsize, config)
+
+        # PrivINT
+        x = np.random.randint(10, size=())
+
+        xs = io.make_shares(x, spu_pb2.Visibility.VIS_SECRET, owner_rank=1)
+        self.assertIn('Priv2k', _bytes_to_pb(xs[0].meta).storage_type)
+        y = io.reconstruct(xs)
+
+        npt.assert_equal(x, y)
+
 
 if __name__ == '__main__':
     unittest.main()
