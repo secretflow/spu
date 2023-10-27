@@ -58,11 +58,11 @@ class SVM:
 
     def cal_kernel(self, x, x_):
         """Calculate kernel."""
-        assert self.gamma in {'scale', 'auto'}, "Gamma only support 'scale' and 'auto'" 
+        assert self.gamma in {'scale', 'auto'}, "Gamma only support 'scale' and 'auto'"
         gamma = {
-                'scale': 1 / (self.n_features * x.var()),
-                'auto': 1 / self.n_features,
-            }[self.gamma]
+            'scale': 1 / (self.n_features * x.var()),
+            'auto': 1 / self.n_features,
+        }[self.gamma]
 
         assert self.kernel == "rbf", "Kernel function only support 'rbf'"
         kernel_res = jnp.exp(
@@ -73,7 +73,6 @@ class SVM:
                 - 2 * jnp.matmul(x, x_.T)
             )
         )
-            
 
         return kernel_res
 
