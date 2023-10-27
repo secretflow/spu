@@ -12,19 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import time
 import unittest
 
 import jax.numpy as jnp
 from sklearn import datasets
+from sklearn.metrics import accuracy_score, classification_report
 from sklearn.model_selection import train_test_split
 from sklearn.svm import SVC
-from sklearn.metrics import accuracy_score, classification_report
 
 import spu.spu_pb2 as spu_pb2  # type: ignore
 import spu.utils.simulation as spsim
 from sml.svm.svm import SVM
-
-import time
 
 
 class UnitTests(unittest.TestCase):
@@ -37,7 +36,7 @@ class UnitTests(unittest.TestCase):
             rbf_svm = SVM(kernel="rbf", max_iter=102)
             rbf_svm.fit(x0, y0)
 
-            return rbf_svm.predict(x0, y0, x1)
+            return rbf_svm.predict(x1)
 
         def load_data():
             breast_cancer = datasets.load_breast_cancer()
@@ -47,8 +46,6 @@ class UnitTests(unittest.TestCase):
             X_train, X_test, y_train, y_test = train_test_split(
                 data, target, test_size=0.2, random_state=1
             )
-
-            party_split_num = len(X_train) // 2
 
             y_train[y_train != 1] = -1
             X_train, X_test, y_train, y_test = (

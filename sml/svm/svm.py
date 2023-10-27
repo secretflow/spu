@@ -1,4 +1,17 @@
-import jax
+# Copyright 2023 Ant Group Co., Ltd.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import jax.numpy as jnp
 
 from sml.svm.smo import SMO
@@ -12,11 +25,14 @@ class SVM:
         The kernel function used in the svm algorithm, maps samples
         to a higher dimensional feature space.
 
-    C : float
-        Error penalty coefficient.
+    C : float, default=1.0
+        Regularization parameter. The strength of the regularization
+        is inversely proportional to C. Must be strictly positive. The penalty is a squared l2 penalty.
 
-    gamma : str, default="scale"
-        The coefficient in the kernel function
+    gamma : {'scale', 'auto'}, default="scale"
+        Kernel coefficient for 'rbf', 'poly' and 'sigmoid'.
+        if gamma='scale' (default) is passed then it uses 1 / (n_features * X.var()) as value of gamma,
+        if 'auto', uses 1 / n_features
 
     max_iter : int, default=300
         Maximum number of iterations of the svm algorithm for a
@@ -35,27 +51,29 @@ class SVM:
         self.n_features = None
 
         self.alpha = None
-        self.alph_y = None
+        self.alpha_y = None
         self.b = None
+
+        self.X = None
 
     def cal_kernel(self, x, x_):
         """Calculate kernel."""
-        if type(self.gamma) == str:
-            gamma = {
+        assert self.gamma in {'scale', 'auto'}, "Gamma only support 'scale' and 'auto'" 
+        gamma = {
                 'scale': 1 / (self.n_features * x.var()),
                 'auto': 1 / self.n_features,
             }[self.gamma]
-        else:
-            gamma = self.gamma
-        if self.kernel == "rbf":
-            kernel_res = jnp.exp(
-                -gamma
-                * (
-                    (x**2).sum(1, keepdims=True)
-                    + (x_**2).sum(1)
-                    - 2 * jnp.matmul(x, x_.T)
-                )
+
+        assert self.kernel == "rbf", "Kernel function only support 'rbf'"
+        kernel_res = jnp.exp(
+            -gamma
+            * (
+                (x**2).sum(1, keepdims=True)
+                + (x_**2).sum(1)
+                - 2 * jnp.matmul(x, x_.T)
             )
+        )
+            
 
         return kernel_res
 
@@ -98,7 +116,9 @@ class SVM:
         self.b = smo.cal_b(alpha, neg_y_grad, y)
         self.alpha_y = self.alpha * y
 
-    def predict(self, X, y, x):
+        self.X = X
+
+    def predict(self, x):
         """Result estimates.
 
         Calculate the classification result of the input data.
@@ -122,8 +142,8 @@ class SVM:
 
         pred = (
             jnp.matmul(
-                self.alpha * y,
-                self.cal_kernel(X, x),
+                self.alpha_y,
+                self.cal_kernel(self.X, x),
             )
             + self.b
         )
