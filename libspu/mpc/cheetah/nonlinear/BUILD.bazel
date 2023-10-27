@@ -30,7 +30,7 @@ spu_cc_library(
     srcs = ["compare_prot.cc"],
     hdrs = ["compare_prot.h"],
     deps = [
-        "//libspu/mpc/cheetah/ot:cheetah_ot",
+        "//libspu/mpc/cheetah/yacl_ot:yacl_ferret_ot",
         "@yacl//yacl/link",
     ],
 )
@@ -40,7 +40,7 @@ spu_cc_library(
     srcs = ["equal_prot.cc"],
     hdrs = ["equal_prot.h"],
     deps = [
-        "//libspu/mpc/cheetah/ot:cheetah_ot",
+        "//libspu/mpc/cheetah/yacl_ot:yacl_ferret_ot",
         "@yacl//yacl/link",
     ],
 )

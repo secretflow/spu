@@ -15,9 +15,9 @@
 
 #include "libspu/core/type.h"
 #include "libspu/mpc/cheetah/nonlinear/compare_prot.h"
-#include "libspu/mpc/cheetah/ot/basic_ot_prot.h"
-#include "libspu/mpc/cheetah/ot/util.h"
 #include "libspu/mpc/cheetah/type.h"
+#include "libspu/mpc/cheetah/yacl_ot/basic_ot_prot.h"
+#include "libspu/mpc/cheetah/yacl_ot/util.h"
 #include "libspu/mpc/utils/ring_ops.h"
 
 namespace spu::mpc::cheetah {

@@ -367,54 +367,48 @@ void execute(OpExecutor *, SPUContext *sctx, SymbolScope *sscope,
 void execute(OpExecutor *, SPUContext *sctx, SymbolScope *sscope,
              mlir::pphlo::DotGeneralOp &op, const ExecutionOptions &opts) {
   auto dnum = op.getDotDimensionNumbers();
-  // Should in order
-  SPU_ENFORCE(dnum.getLhsBatchingDimensions().size() == 1 &&
-                  dnum.getLhsContractingDimensions().size() == 1 &&
-                  dnum.getLhsBatchingDimensions()[0] == 0 &&
-                  dnum.getLhsContractingDimensions()[0] == 2,
-              "LHS dims is not in order");
-  SPU_ENFORCE(dnum.getRhsBatchingDimensions().size() == 1 &&
-                  dnum.getRhsContractingDimensions().size() == 1 &&
-                  dnum.getRhsBatchingDimensions()[0] == 0 &&
-                  dnum.getRhsContractingDimensions()[0] == 1,
-              "RHS dims is not in order");
 
   auto lhs = lookupValue(sscope, op.getLhs(), opts);
   auto rhs = lookupValue(sscope, op.getRhs(), opts);
-  SPU_ENFORCE(lhs.shape()[0] == rhs.shape()[0], "Batch dim should equal");
-  int64_t num_batch = lhs.shape()[0];
+  SPU_ENFORCE(lhs.shape().ndim() == 3 && rhs.shape().ndim() == 3);
 
-  std::vector<spu::Value> results(num_batch);
-  Index lhs_slice_begin(3, 0);
-  Index lhs_slice_end(lhs.shape().begin(), lhs.shape().end());
-  Index rhs_slice_begin(3, 0);
-  Index rhs_slice_end(rhs.shape().begin(), rhs.shape().end());
-  Strides strides(lhs.shape().size(), 1);
-
-  Shape lhs_slice_shape{lhs.shape()[1], lhs.shape()[2]};
-  Shape rhs_slice_shape{rhs.shape()[1], rhs.shape()[2]};
-  Shape ret_slice_shape{1, lhs.shape()[1], rhs.shape()[2]};
-
-  for (int64_t batch_idx = 0; batch_idx < num_batch; ++batch_idx) {
-    lhs_slice_begin[0] = batch_idx;
-    lhs_slice_end[0] = batch_idx + 1;
-    rhs_slice_begin[0] = batch_idx;
-    rhs_slice_end[0] = batch_idx + 1;
-    auto lhs_slice = kernel::hlo::Reshape(
-        sctx,
-        kernel::hlo::Slice(sctx, lhs, lhs_slice_begin, lhs_slice_end, strides),
-        lhs_slice_shape);
-    auto rhs_slice = kernel::hlo::Reshape(
-        sctx,
-        kernel::hlo::Slice(sctx, rhs, rhs_slice_begin, rhs_slice_end, strides),
-        rhs_slice_shape);
-    results[batch_idx] = kernel::hlo::Reshape(
-        sctx, kernel::hlo::Dot(sctx, lhs_slice, rhs_slice), ret_slice_shape);
+  SPU_ENFORCE(dnum.getLhsContractingDimensions().size() == 1 &&
+              dnum.getRhsContractingDimensions().size() == 1);
+  if (dnum.getLhsBatchingDimensions().size() == 1) {
+    // LHS should be [b,m,k]
+    SPU_ENFORCE(dnum.getLhsBatchingDimensions()[0] == 0 &&
+                    dnum.getLhsContractingDimensions()[0] == 2,
+                "LHS dims is not in order");
+  } else {
+    // LHS should be [b0, b1, k]
+    SPU_ENFORCE(dnum.getLhsBatchingDimensions().size() == 2 &&
+                    dnum.getLhsContractingDimensions()[0] == 2,
+                "LHS dims is not in order");
+    // reshape to [b0xb1, 1, k]
+    lhs = kernel::hlo::Reshape(
+        sctx, lhs, {lhs.shape()[0] * lhs.shape()[1], 1, lhs.shape()[2]});
   }
 
+  if (dnum.getRhsBatchingDimensions().size() == 1) {
+    // RHS should be [b,k,n]
+    SPU_ENFORCE(dnum.getRhsBatchingDimensions()[0] == 0 &&
+                    dnum.getRhsContractingDimensions()[0] == 1,
+                "RHS dims is not in order");
+  } else {
+    // RHS should be [b0, b1, k]
+    SPU_ENFORCE(dnum.getRhsBatchingDimensions().size() == 2 &&
+                    dnum.getRhsContractingDimensions()[0] == 2,
+                "LHS dims is not in order");
+    // reshape to [b0xb1, k, 1]
+    rhs = kernel::hlo::Reshape(
+        sctx, rhs, {rhs.shape()[0] * rhs.shape()[1], rhs.shape()[2], 1});
+  }
+
+  // Must be [b,m,k] * [b, k, n]
+  SPU_ENFORCE(lhs.shape()[0] == rhs.shape()[0], "Batch dim should equal");
   auto ret_type = op.getResult().getType().dyn_cast<mlir::RankedTensorType>();
-  auto ret = kernel::hlo::Reshape(
-      sctx, kernel::hlo::Concatenate(sctx, results, 0), ret_type.getShape());
+  auto ret = kernel::hlo::Reshape(sctx, kernel::hlo::DotGeneral(sctx, lhs, rhs),
+                                  ret_type.getShape());
 
   addValue(sscope, op.getResult(), std::move(ret), opts);
 }
