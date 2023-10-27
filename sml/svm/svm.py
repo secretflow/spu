@@ -50,21 +50,20 @@ class SVM:
         self.tol = tol
         self.n_features = None
 
-        self.alpha = None
         self.alpha_y = None
         self.b = None
-
         self.X = None
+
+        assert self.gamma in {'scale', 'auto'}, "Gamma only support 'scale' and 'auto'"
+        assert self.kernel == "rbf", "Kernel function only support 'rbf'"
 
     def cal_kernel(self, x, x_):
         """Calculate kernel."""
-        assert self.gamma in {'scale', 'auto'}, "Gamma only support 'scale' and 'auto'"
         gamma = {
             'scale': 1 / (self.n_features * x.var()),
             'auto': 1 / self.n_features,
         }[self.gamma]
 
-        assert self.kernel == "rbf", "Kernel function only support 'rbf'"
         kernel_res = jnp.exp(
             -gamma
             * (
@@ -111,9 +110,8 @@ class SVM:
             j = smo.working_set_select_j(i, alpha, y, neg_y_grad, Q)
             neg_y_grad, alpha = smo.update(i, j, Q, y, alpha, neg_y_grad)
 
-        self.alpha = alpha
         self.b = smo.cal_b(alpha, neg_y_grad, y)
-        self.alpha_y = self.alpha * y
+        self.alpha_y = alpha * y
 
         self.X = X
 
@@ -124,12 +122,6 @@ class SVM:
 
         Parameters
         ----------
-        X : {array-like}, shape (n_samples, n_features)
-            Input data.
-
-        y : {array-like}, shape (n_samples)
-            Lable of the input data.
-
         x : {array-like}, shape (n_samples, n_features)
             Input data for prediction.
 
