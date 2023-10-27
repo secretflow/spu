@@ -172,24 +172,24 @@ struct YaclFerretOT::Impl {
   MITCCRHExp<8> mitccrh_exp_{};
 
   inline void SendRCOT(absl::Span<uint128_t> output) {
-    YACL_ENFORCE( is_sender_ );
+    SPU_ENFORCE( is_sender_ );
     ferret_->send_rcot(output);
   }
 
   inline void RecvRCOT(absl::Span<uint8_t> choices,
                        absl::Span<uint128_t> output) {
-    YACL_ENFORCE( !is_sender_ );
+    SPU_ENFORCE( !is_sender_ );
     ferret_->recv_rcot(output, choices);
   }
 
   inline void SendCOT(uint128_t* output, size_t n) {
-    YACL_ENFORCE( is_sender_ );
+    SPU_ENFORCE( is_sender_ );
     ferret_->send_cot(absl::MakeSpan(output, n));
   }
 
   inline void RecvCOT(absl::Span<const uint8_t> choices,
                       absl::Span<uint128_t> output) {
-    YACL_ENFORCE( !is_sender_ );
+    SPU_ENFORCE( !is_sender_ );
     ferret_->recv_cot(output, choices);
   }
 
