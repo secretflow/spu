@@ -19,8 +19,8 @@
 #include "gtest/gtest.h"
 
 #include "libspu/core/xt_helper.h"
-#include "libspu/mpc/cheetah/ot/basic_ot_prot.h"
 #include "libspu/mpc/cheetah/type.h"
+#include "libspu/mpc/cheetah/yacl_ot/basic_ot_prot.h"
 #include "libspu/mpc/utils/ring_ops.h"
 #include "libspu/mpc/utils/simulate.h"
 

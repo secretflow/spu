@@ -33,8 +33,8 @@ spu_cc_library(
     deps = [
         "//libspu/mpc/cheetah/arith:cheetah_arith",
         "//libspu/mpc/cheetah/nonlinear:cheetah_nonlinear",
-        "//libspu/mpc/cheetah/ot:cheetah_ot",
         "//libspu/mpc/cheetah/rlwe:cheetah_rlwe",
+        "//libspu/mpc/cheetah/yacl_ot:yacl_ferret_ot",
     ],
 )
 

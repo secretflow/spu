@@ -15,6 +15,7 @@
 - [Feature] Add radix sort support for SEMI2K
 - [Feature] Experimental: ABY3 matmul CUDA support
 - [Feature] Experimental: Private support under colocated mode
+- [Feature] Add yacl ot support for Cheetah
 
 ## 20230906
 
