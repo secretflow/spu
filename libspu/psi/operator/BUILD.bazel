@@ -107,6 +107,17 @@ spu_cc_library(
         ":factory",
         "//libspu/psi/core/dp_psi",
     ],
+)
+
+spu_cc_library(
+    name = "fnp04_mp_psi",
+    srcs = ["fnp04_mp_psi.cc"],
+    hdrs = ["fnp04_mp_psi.h"],
+    deps = [
+        ":base_operator",
+        ":factory",
+        "//libspu/psi/core/fnp04_mp_psi",
+    ],
     alwayslink = True,
 )
 
@@ -118,5 +129,6 @@ spu_cc_library(
         ":ecdh_3party_psi",
         ":kkrt_2party_psi",
         ":nparty_psi",
+        ":fnp04_mp_psi",
     ],
 )

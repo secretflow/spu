@@ -60,6 +60,9 @@ enum PsiType {
   // Differentially-Private PSI https://arxiv.org/pdf/2208.13249.pdf
   // bases on ECDH-PSI, and provides: Differentially private PSI results.
   DP_PSI_2PC = 12;
+
+  // Efficient Private Matching and Set Intersection http://www.pinkas.net/PAPERS/FNP04.pdf
+  FNP_PSI_NPC = 13;
 }
 
 // The specified elliptic curve cryptography used in psi.

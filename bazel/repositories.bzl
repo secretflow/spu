@@ -20,6 +20,8 @@ SECRETFLOW_GIT = "https://github.com/secretflow"
 
 YACL_COMMIT_ID = "5418371c4335f4a64fbd0bdabb0efd94da2af808"
 
+HEU_COMMIT_ID = "68c3bfa12ea5d340196a2092519398a57f8476e6"
+
 def spu_deps():
     _rules_cuda()
     _rules_proto_grpc()
@@ -48,6 +50,13 @@ def spu_deps():
         name = "yacl",
         commit = YACL_COMMIT_ID,
         remote = "{}/yacl.git".format(SECRETFLOW_GIT),
+    )
+
+    maybe(
+        git_repository,
+        name = "heu",
+        commit = HEU_COMMIT_ID,
+        remote = "{}/heu.git".format(SECRETFLOW_GIT),        
     )
 
     # Add homebrew openmp for macOS, somehow..homebrew installs to different location on Apple Silcon/Intel macs.. so we need two rules here
