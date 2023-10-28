@@ -40,4 +40,13 @@ class B2A : public UnaryKernel {
   NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& x) const override;
 };
 
+class CommonTypeV : public Kernel {
+ public:
+  static constexpr char kBindName[] = "common_type_v";
+
+  Kind kind() const override { return Kind::Dynamic; }
+
+  void evaluate(KernelEvalContext* ctx) const override;
+};
+
 }  // namespace spu::mpc::cheetah

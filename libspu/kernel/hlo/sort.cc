@@ -92,6 +92,7 @@ std::vector<spu::Value> Sort(SPUContext *ctx,
   for (int64_t ni = 0; ni < N; ni++) {
     // TODO: all these small sort could be done in parallel.
     std::vector<spu::Value> input_i;
+    input_i.reserve(inputs2d.size());
     for (auto const &input : inputs2d) {
       // we need 1-d tensor here
       input_i.push_back(

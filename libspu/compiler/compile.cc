@@ -14,18 +14,11 @@
 
 #include "libspu/compiler/compile.h"
 
-#include <filesystem>
-#include <fstream>
-#include <iostream>
-
 #include "mlir/IR/BuiltinOps.h"
-#include "mlir/IR/MLIRContext.h"
-#include "spdlog/spdlog.h"
 
 #include "libspu/compiler/codegen/codegen.h"
 #include "libspu/compiler/core/core.h"
 #include "libspu/compiler/front_end/fe.h"
-#include "libspu/core/prelude.h"
 
 namespace spu::compiler {
 
@@ -40,9 +33,7 @@ std::string compile(CompilationContext *ctx,
   core.doit(mlir_module.get());
 
   // Run codegen
-  CodeGen codegen;
-
-  return codegen.doit(mlir_module.get());
+  return spu::compiler::CodeGen::doit(mlir_module.get());
 }
 
 } // namespace spu::compiler

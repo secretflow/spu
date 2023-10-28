@@ -15,8 +15,6 @@
 #pragma once
 
 #include <string>
-#include <utility>
-#include <vector>
 
 #include "mlir/IR/BuiltinOps.h"
 

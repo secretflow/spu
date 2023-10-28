@@ -17,6 +17,7 @@
 #include <cmath>
 
 #include "libspu/core/prelude.h"
+#include "libspu/core/trace.h"
 #include "libspu/kernel/hal/constants.h"
 #include "libspu/kernel/hal/fxp_cleartext.h"
 #include "libspu/kernel/hal/ring.h"
@@ -69,7 +70,7 @@ Value highestOneBit(SPUContext* ctx, const Value& x) {
 }
 
 // FIXME:
-// Use range propatation instead of directly set.
+// Use range propagation instead of directly set.
 // or expose bit_decompose as mpc level api.
 void hintNumberOfBits(const Value& a, size_t nbits) {
   if (a.storage_type().isa<BShare>()) {

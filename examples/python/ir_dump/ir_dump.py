@@ -28,8 +28,8 @@ import os
 import jax.numpy as jnp
 import numpy as np
 
-import spu.utils.distributed as ppd
 import spu.spu_pb2 as spu_pb2
+import spu.utils.distributed as ppd
 
 logging.basicConfig(level=logging.INFO)
 

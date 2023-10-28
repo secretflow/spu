@@ -20,14 +20,13 @@
 
 #include "libspu/core/ndarray_ref.h"
 #include "libspu/core/value.h"
-#include "libspu/kernel/hal/hal.h"
+#include "libspu/kernel/hal/constants.h"
+#include "libspu/kernel/hal/polymorphic.h"
 #include "libspu/kernel/hal/ring.h"
-#include "libspu/kernel/hlo/basic_binary.h"
-#include "libspu/kernel/hlo/basic_ternary.h"
+#include "libspu/kernel/hal/shape_ops.h"
+#include "libspu/kernel/hal/type_cast.h"
 #include "libspu/kernel/hlo/basic_unary.h"
 #include "libspu/kernel/hlo/const.h"
-#include "libspu/kernel/hlo/geometrical.h"
-#include "libspu/kernel/hlo/reduce.h"
 #include "libspu/kernel/hlo/utils.h"
 
 // forward
@@ -323,22 +322,22 @@ spu::Value SecretLinearUpdateIndexing(spu::SPUContext *ctx,
   // Basic idea here:
   // eq(iota, idx) * update + !eq(iota, idx) * operand
   auto linear_idx_broadcasted =
-      spu::kernel::hlo::Broadcast(ctx, linear_idx, {operand.numel()}, {});
+      spu::kernel::hal::broadcast_to(ctx, linear_idx, {operand.numel()}, {});
   spu::Value idx_iota =
-      spu::kernel::hlo::Iota(ctx, spu::DT_I64, operand.numel());
-  auto mask = spu::kernel::hlo::Equal(ctx, linear_idx_broadcasted, idx_iota);
+      spu::kernel::hal::iota(ctx, spu::DT_I64, operand.numel());
+  auto mask = spu::kernel::hal::equal(ctx, linear_idx_broadcasted, idx_iota);
 
   auto c0 = spu::kernel::hlo::Constant(ctx, static_cast<int64_t>(0), {});
-  auto i0 = spu::kernel::hlo::Cast(ctx, c0, c0.vtype(), operand.dtype());
+  auto i0 = spu::kernel::hal::dtype_cast(ctx, c0, operand.dtype());
 
   auto reverse_mask = spu::kernel::hlo::Not(ctx, mask);
 
   auto broadcast_update =
-      spu::kernel::hlo::Broadcast(ctx, update, operand.shape(), {0});
+      spu::kernel::hal::broadcast_to(ctx, update, operand.shape(), {0});
 
-  return spu::kernel::hlo::Add(
-      ctx, spu::kernel::hlo::Mul(ctx, operand, reverse_mask),
-      spu::kernel::hlo::Mul(ctx, broadcast_update, mask));
+  return spu::kernel::hal::add(
+      ctx, spu::kernel::hal::mul(ctx, operand, reverse_mask),
+      spu::kernel::hal::mul(ctx, broadcast_update, mask));
 }
 
 std::vector<spu::Value> ClampAndFlattenIndex(
@@ -354,15 +353,15 @@ std::vector<spu::Value> ClampAndFlattenIndex(
     std::transform(start_indices.cbegin(), start_indices.cend(),
                    std::back_inserter(reshaped_start_indices),
                    [&](const spu::Value &x) {
-                     return spu::kernel::hlo::Reshape(ctx, x, {1});
+                     return spu::kernel::hal::reshape(ctx, x, {1});
                    });
 
     auto concat_idx =
-        spu::kernel::hlo::Concatenate(ctx, reshaped_start_indices, 0);
+        spu::kernel::hal::concatenate(ctx, reshaped_start_indices, 0);
     auto lower_bound = spu::kernel::hlo::Constant(ctx, static_cast<int64_t>(0),
                                                   concat_idx.shape());
-    lower_bound = spu::kernel::hlo::Cast(ctx, lower_bound, lower_bound.vtype(),
-                                         concat_idx.dtype());
+    lower_bound =
+        spu::kernel::hal::dtype_cast(ctx, lower_bound, concat_idx.dtype());
 
     std::vector<int64_t> upper_bound_pt(start_indices.size());
     for (size_t idx = 0; idx < upper_bound_pt.size(); ++idx) {
@@ -370,14 +369,14 @@ std::vector<spu::Value> ClampAndFlattenIndex(
     }
     auto upper_bound =
         spu::kernel::hlo::Constant(ctx, upper_bound_pt, concat_idx.shape());
-    upper_bound = spu::kernel::hlo::Cast(ctx, upper_bound, upper_bound.vtype(),
-                                         concat_idx.dtype());
+    upper_bound =
+        spu::kernel::hal::dtype_cast(ctx, upper_bound, concat_idx.dtype());
 
-    auto c = spu::kernel::hlo::Clamp(ctx, concat_idx, lower_bound, upper_bound);
+    auto c = spu::kernel::hal::clamp(ctx, concat_idx, lower_bound, upper_bound);
     for (int64_t idx = 0; idx < static_cast<int64_t>(clamped_start.size());
          ++idx) {
-      clamped_start[idx] = spu::kernel::hlo::Reshape(
-          ctx, spu::kernel::hlo::Slice(ctx, c, {idx}, {idx + 1}, {1}), {});
+      clamped_start[idx] = spu::kernel::hal::reshape(
+          ctx, spu::kernel::hal::slice(ctx, c, {idx}, {idx + 1}, {1}), {});
     }
   }
 
@@ -386,9 +385,9 @@ std::vector<spu::Value> ClampAndFlattenIndex(
       spu::kernel::hlo::Constant(ctx, static_cast<int64_t>(0), {});
   int64_t stride = 1;
   for (int64_t idx = iterate_shape.size() - 1; idx >= 0; --idx) {
-    linear_idx = spu::kernel::hlo::Add(
+    linear_idx = spu::kernel::hal::add(
         ctx, linear_idx,
-        spu::kernel::hlo::Mul(ctx, clamped_start[idx],
+        spu::kernel::hal::mul(ctx, clamped_start[idx],
                               spu::kernel::hlo::Constant(ctx, stride, {})));
     stride *= limit_shape[idx];
   }
@@ -407,15 +406,15 @@ std::vector<spu::Value> ClampAndFlattenIndex(
   auto num_index = iterate_shape.numel();
   std::vector<spu::Value> linear_indices;
   linear_indices.reserve(num_index);
-  auto added = spu::kernel::hlo::Add(
+  auto added = spu::kernel::hal::add(
       ctx,
-      spu::kernel::hlo::Broadcast(
-          ctx, spu::kernel::hlo::Reshape(ctx, linear_idx, {1}), {num_index},
+      spu::kernel::hal::broadcast_to(
+          ctx, spu::kernel::hal::reshape(ctx, linear_idx, {1}), {num_index},
           {0}),
       spu::kernel::hlo::Constant(ctx, flatten_idx, {num_index}));
   for (int64_t idx = 0; idx < num_index; ++idx) {
-    linear_indices.emplace_back(spu::kernel::hlo::Reshape(
-        ctx, spu::kernel::hlo::Slice(ctx, added, {idx}, {idx + 1}, {1}), {}));
+    linear_indices.emplace_back(spu::kernel::hal::reshape(
+        ctx, spu::kernel::hal::slice(ctx, added, {idx}, {idx + 1}, {1}), {}));
   }
   return linear_indices;
 }
@@ -546,7 +545,7 @@ spu::Value DynamicUpdateSlice(SPUContext *ctx, const spu::Value &operand,
     spu::Value flattened_operand =
         hal::reshape(ctx, operand, {operand.numel()});
 
-    spu::Value flattened_update = Reshape(ctx, update, {update.numel()});
+    spu::Value flattened_update = hal::reshape(ctx, update, {update.numel()});
 
     auto flattened_indices = ClampAndFlattenIndex(
         ctx, start_indices, update.shape(), operand.shape());
@@ -555,12 +554,12 @@ spu::Value DynamicUpdateSlice(SPUContext *ctx, const spu::Value &operand,
 
     for (int64_t n = 0; n < static_cast<int64_t>(flattened_indices.size());
          ++n) {
-      auto update_slice = Slice(ctx, flattened_update, {n}, {n + 1}, {1});
+      auto update_slice = hal::slice(ctx, flattened_update, {n}, {n + 1}, {1});
       ret = SecretLinearUpdateIndexing(ctx, ret, update_slice,
                                        flattened_indices[n]);
     }
 
-    return Reshape(ctx, ret, operand.shape());
+    return hal::reshape(ctx, ret, operand.shape());
 
   } else {
     // Start indices
@@ -715,10 +714,8 @@ spu::Value SecretDynamicSlice(SPUContext *ctx, const spu::Value &operand,
       hlo::Constant(ctx, limit, {static_cast<int64_t>(slice_size.size())});
 
   // Cast to proper type
-  lower_bound = hlo::Cast(ctx, lower_bound, lower_bound.vtype(),
-                          start_indices[0].dtype());
-  upper_bound = hlo::Cast(ctx, upper_bound, upper_bound.vtype(),
-                          start_indices[0].dtype());
+  lower_bound = hal::dtype_cast(ctx, lower_bound, start_indices[0].dtype());
+  upper_bound = hal::dtype_cast(ctx, upper_bound, start_indices[0].dtype());
 
   // Reshape from scalar to {1} to make concat happy
   std::vector<spu::Value> adjusted_start_indices;
@@ -750,9 +747,8 @@ spu::Value DynamicSlice(SPUContext *ctx, const spu::Value &operand,
   SPU_ENFORCE(!start_indices.empty());
   SPU_ENFORCE(!operand.isComplex());
 
-  if (start_indices[0].isSecret()) {
-    return SecretDynamicSlice(ctx, operand, slice_size, start_indices);
-  } else {
+  if (std::all_of(start_indices.begin(), start_indices.end(),
+                  [](const spu::Value &v) { return v.isPublic(); })) {
     // Start indices
     Index start_indices_i64(start_indices.size());
     for (const auto &idx : llvm::enumerate(start_indices)) {
@@ -777,6 +773,8 @@ spu::Value DynamicSlice(SPUContext *ctx, const spu::Value &operand,
 
     return hal::slice(ctx, operand, start_indices_i64, limit, strides);
   }
+
+  return SecretDynamicSlice(ctx, operand, slice_size, start_indices);
 }
 
 spu::Value FilterByMask(SPUContext *, const spu::Value &operand,

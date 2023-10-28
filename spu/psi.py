@@ -16,6 +16,8 @@ from __future__ import annotations
 
 from typing import List
 
+from . import libspu  # type: ignore
+from .libspu.libs import ProgressData
 from .psi_pb2 import (  # type: ignore
     BucketPsiConfig,
     CurveType,
@@ -25,9 +27,6 @@ from .psi_pb2 import (  # type: ignore
     PsiResultReport,
     PsiType,
 )
-
-from . import libspu  # type: ignore
-from .libspu.libs import ProgressData
 
 
 def mem_psi(

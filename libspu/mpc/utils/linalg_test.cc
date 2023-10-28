@@ -27,8 +27,8 @@ TEST(LinalgTest, MatMulBasic) {
 
   matmul(4, 2, 3, A.data(), 3, 1, B.data(), 2, 1, C.data(), 2, 1);
 
-  std::vector<float> expected = {22.f, 28.f,  58.f,  76.f,
-                                 94.f, 124.f, 130.f, 172.f};
+  std::vector<float> expected = {22.F, 28.F,  58.F,  76.F,
+                                 94.F, 124.F, 130.F, 172.F};
 
   EXPECT_EQ(C, expected);
 }
@@ -46,8 +46,8 @@ TEST(LinalgTest, MatMulStrides) {
 
   matmul(4, 2, 3, A.data(), 6, 2, B.data(), 4, 2, C.data(), 2, 1);
 
-  std::vector<float> expected = {22.f, 28.f,  58.f,  76.f,
-                                 94.f, 124.f, 130.f, 172.f};
+  std::vector<float> expected = {22.F, 28.F,  58.F,  76.F,
+                                 94.F, 124.F, 130.F, 172.F};
 
   EXPECT_EQ(C, expected);
 }

@@ -17,8 +17,8 @@
 #include "libspu/core/encoding.h"
 #include "libspu/core/ndarray_ref.h"
 #include "libspu/core/pt_buffer_view.h"
+#include "libspu/core/trace.h"
 #include "libspu/core/type_util.h"
-#include "libspu/kernel/hal/prot_wrapper.h"
 #include "libspu/kernel/hal/ring.h"
 #include "libspu/mpc/common/pv2k.h"
 
@@ -31,13 +31,11 @@ namespace {
 Value make_pub2k(SPUContext* ctx, const PtBufferView& bv) {
   SPU_TRACE_HAL_DISP(ctx, bv);
 
-  NdArrayRef raw = convertToNdArray(bv);
-
   const auto field = ctx->getField();
   const auto fxp_bits = ctx->getFxpBits();
 
   DataType dtype;
-  NdArrayRef encoded = encodeToRing(raw, field, fxp_bits, &dtype);
+  NdArrayRef encoded = encodeToRing(bv, field, fxp_bits, &dtype);
 
   return Value(encoded.as(makeType<mpc::Pub2kTy>(field)), dtype);
 }

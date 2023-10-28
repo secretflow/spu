@@ -79,6 +79,7 @@ Value export_s(SPUContext* ctx, const Value& x, const Type& t);
 //
 // This api calculate the common type.
 Type common_type_s(SPUContext* ctx, const Type& a, const Type& b);
+Type common_type_v(SPUContext* ctx, const Type& a, const Type& b);
 Value cast_type_s(SPUContext* ctx, const Value& frm, const Type& to_type);
 
 // Make a public variable with given plaintext input.

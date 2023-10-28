@@ -16,9 +16,8 @@
 
 #include "libspu/kernel/hal/complex.h"
 #include "libspu/kernel/hal/constants.h"
-#include "libspu/kernel/hal/debug.h"
 #include "libspu/kernel/hal/polymorphic.h"
-#include "libspu/kernel/hal/type_cast.h"
+#include "libspu/kernel/hal/shape_ops.h"
 
 namespace spu::kernel::hlo {
 
@@ -75,6 +74,41 @@ spu::Value Dot(SPUContext *ctx, const spu::Value &lhs, const spu::Value &rhs) {
   SPU_ENFORCE(!lhs.isComplex() && !rhs.isComplex());
 
   return hal::matmul(ctx, lhs, rhs);
+}
+
+spu::Value DotGeneral(SPUContext *ctx, const spu::Value &lhs,
+                      const spu::Value &rhs) {
+  int64_t num_batch = lhs.shape()[0];
+
+  std::vector<spu::Value> results(num_batch);
+  Index lhs_slice_begin(3, 0);
+  Index lhs_slice_end(lhs.shape().begin(), lhs.shape().end());
+  Index rhs_slice_begin(3, 0);
+  Index rhs_slice_end(rhs.shape().begin(), rhs.shape().end());
+  Strides strides(lhs.shape().size(), 1);
+
+  Shape lhs_slice_shape{lhs.shape()[1], lhs.shape()[2]};
+  Shape rhs_slice_shape{rhs.shape()[1], rhs.shape()[2]};
+  Shape ret_slice_shape{1, lhs.shape()[1], rhs.shape()[2]};
+
+  for (int64_t batch_idx = 0; batch_idx < num_batch; ++batch_idx) {
+    lhs_slice_begin[0] = batch_idx;
+    lhs_slice_end[0] = batch_idx + 1;
+    rhs_slice_begin[0] = batch_idx;
+    rhs_slice_end[0] = batch_idx + 1;
+    auto lhs_slice = kernel::hal::reshape(
+        ctx,
+        kernel::hal::slice(ctx, lhs, lhs_slice_begin, lhs_slice_end, strides),
+        lhs_slice_shape);
+    auto rhs_slice = kernel::hal::reshape(
+        ctx,
+        kernel::hal::slice(ctx, rhs, rhs_slice_begin, rhs_slice_end, strides),
+        rhs_slice_shape);
+    results[batch_idx] = kernel::hal::reshape(
+        ctx, kernel::hal::matmul(ctx, lhs_slice, rhs_slice), ret_slice_shape);
+  }
+
+  return kernel::hal::concatenate(ctx, results, 0);
 }
 
 }  // namespace spu::kernel::hlo

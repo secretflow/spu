@@ -1,0 +1,82 @@
+# Copyright 2023 Ant Group Co., Ltd.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+load("//bazel:spu.bzl", "spu_cc_library", "spu_cc_test")
+load("@yacl//bazel:yacl.bzl", "AES_COPT_FLAGS")
+
+package(default_visibility = ["//visibility:public"])
+
+spu_cc_test(
+    name = "yacl_ferret_test",
+    srcs = ["yacl_ferret_test.cc"],
+    deps = [
+        ":yacl_ferret_ot",
+        "//libspu/mpc/utils:simulate",
+    ],
+)
+
+spu_cc_library(
+    name = "yacl_ferret_ot",
+    srcs = [
+        "basic_ot_prot.cc",
+        "util.cc",
+        "yacl_ferret.cc",
+        "yacl_ote_adapter.cc",
+    ],
+    hdrs = [
+        "basic_ot_prot.h",
+        "mitccrh_exp.h",
+        "util.h",
+        "yacl_ferret.h",
+        "yacl_ote_adapter.h",
+    ],
+    copts = AES_COPT_FLAGS + ["-Wno-ignored-attributes"],
+    deps = [
+        "//libspu/core:xt_helper",
+        "//libspu/mpc/cheetah:type",
+        "//libspu/mpc/common:communicator",
+        "//libspu/mpc/semi2k:conversion",
+        "@com_github_emptoolkit_emp_tool//:emp-tool",
+        "@yacl//yacl/base:dynamic_bitset",
+        "@yacl//yacl/base:int128",
+        "@yacl//yacl/crypto/base/aes:aes_opt",
+        "@yacl//yacl/crypto/primitives/ot:base_ot",
+        "@yacl//yacl/crypto/primitives/ot:ferret_ote",
+        "@yacl//yacl/crypto/primitives/ot:iknp_ote",
+        "@yacl//yacl/crypto/tools:random_permutation",
+        "@yacl//yacl/crypto/utils:rand",
+        "@yacl//yacl/link",
+    ],
+)
+
+spu_cc_test(
+    name = "basic_ot_prot_test",
+    size = "large",
+    srcs = ["basic_ot_prot_test.cc"],
+    tags = [
+        "exclusive-if-local",
+    ],
+    deps = [
+        ":yacl_ferret_ot",
+        "//libspu/mpc/utils:simulate",
+    ],
+)
+
+spu_cc_test(
+    name = "util_test",
+    srcs = ["util_test.cc"],
+    deps = [
+        ":yacl_ferret_ot",
+    ],
+)

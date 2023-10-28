@@ -18,10 +18,10 @@
 #include "yacl/link/link.h"
 
 #include "libspu/core/type.h"
-#include "libspu/mpc/cheetah/ot/basic_ot_prot.h"
-#include "libspu/mpc/cheetah/ot/ferret.h"
-#include "libspu/mpc/cheetah/ot/util.h"
 #include "libspu/mpc/cheetah/type.h"
+#include "libspu/mpc/cheetah/yacl_ot/basic_ot_prot.h"
+#include "libspu/mpc/cheetah/yacl_ot/util.h"
+#include "libspu/mpc/cheetah/yacl_ot/yacl_ferret.h"
 #include "libspu/mpc/common/communicator.h"
 #include "libspu/mpc/utils/ring_ops.h"
 

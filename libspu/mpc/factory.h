@@ -16,7 +16,7 @@
 
 #include <memory>
 
-#include "yacl/link/link.h"
+#include "yacl/link/context.h"
 
 #include "libspu/core/context.h"
 #include "libspu/mpc/io_interface.h"

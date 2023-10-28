@@ -16,7 +16,6 @@
 
 #include <memory>
 
-#include "absl/types/span.h"
 #include "fmt/ostream.h"
 
 #include "libspu/core/ndarray_ref.h"
@@ -67,6 +66,7 @@ class Value final {
   Visibility vtype() const;
   bool isPublic() const { return vtype() == VIS_PUBLIC; }
   bool isSecret() const { return vtype() == VIS_SECRET; }
+  bool isPrivate() const { return vtype() == VIS_PRIVATE; }
 
   // Get dtype.
   DataType dtype() const { return dtype_; }

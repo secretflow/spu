@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "yacl/link/link.h"
+#include "yacl/link/context.h"
 
 #include "libspu/core/context.h"
 

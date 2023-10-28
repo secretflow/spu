@@ -106,8 +106,9 @@ with open(args.config, 'r') as file:
 
 ppd.init(conf["nodes"], conf["devices"])
 
-import cloudpickle as pickle
 import tempfile
+
+import cloudpickle as pickle
 
 
 def compute_score(param, type):

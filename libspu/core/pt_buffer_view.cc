@@ -15,6 +15,7 @@
 #include "libspu/core/pt_buffer_view.h"
 
 #include "libspu/core/shape.h"
+#include "libspu/core/type_util.h"
 
 namespace spu {
 
@@ -28,24 +29,23 @@ std::ostream& operator<<(std::ostream& out, PtBufferView v) {
 NdArrayRef convertToNdArray(PtBufferView bv) {
   const auto type = makePtType(bv.pt_type);
   auto out = NdArrayRef(type, bv.shape);
+  return DISPATCH_ALL_PT_TYPES(bv.pt_type, "pt_type", [&]() {
+    using T = ScalarT;
+    if (bv.shape.numel() > 0) {
+      auto* out_ptr = out.data<T>();
 
-  if (bv.shape.numel() > 0) {
-    auto* out_ptr = out.data<std::byte>();
-
-    size_t elsize = SizeOf(bv.pt_type);
-
-    Index indices(bv.shape.size(), 0);
-    if (bv.isCompact()) {
-      std::memcpy(out_ptr, bv.get(indices), elsize * bv.shape.numel());
-    } else {
-      do {
-        std::memcpy(out_ptr, bv.get(indices), elsize);
-        out_ptr += elsize;
-      } while (bumpIndices(bv.shape, absl::MakeSpan(indices)));
+      Index indices(bv.shape.size(), 0);
+      if (bv.isCompact()) {
+        std::memcpy(out_ptr, &bv.get<T>(indices), sizeof(T) * bv.shape.numel());
+      } else {
+        do {
+          *out_ptr = bv.get<T>(indices);
+          out_ptr += 1;
+        } while (bumpIndices(bv.shape, absl::MakeSpan(indices)));
+      }
     }
-  }
-
-  return out;
+    return out;
+  });
 }
 
 }  // namespace spu

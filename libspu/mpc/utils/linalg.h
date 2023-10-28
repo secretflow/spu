@@ -16,11 +16,6 @@
 
 #include <cstddef>
 
-#include "spdlog/spdlog.h"
-
-#include "libspu/core/parallel_utils.h"
-#include "libspu/core/prelude.h"
-
 #define EIGEN_HAS_OPENMP
 
 #include "Eigen/Core"

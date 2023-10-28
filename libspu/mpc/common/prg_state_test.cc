@@ -15,7 +15,8 @@
 #include "libspu/mpc/common/prg_state.h"
 
 #include "gtest/gtest.h"
-#include "yacl/link/link.h"
+#include "yacl/link/algorithm/barrier.h"
+#include "yacl/link/context.h"
 
 #include "libspu/mpc/utils/simulate.h"
 

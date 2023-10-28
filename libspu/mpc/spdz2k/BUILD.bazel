@@ -177,7 +177,7 @@ spu_cc_library(
     hdrs = ["value.h"],
     deps = [
         ":type",
-        "//libspu/core",
+        "//libspu/core:ndarray_ref",
         "//libspu/mpc/common:pv2k",
         "//libspu/mpc/utils:ring_ops",
     ],

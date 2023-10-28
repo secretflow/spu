@@ -26,8 +26,6 @@
 #include "libspu/device/debug_dump_constant.h"
 #include "libspu/device/pphlo/pphlo_executor.h"
 #include "libspu/device/symbol_table.h"
-#include "libspu/device/test_utils.h"
-#include "libspu/kernel/hal/debug.h"
 #include "libspu/mpc/factory.h"
 #include "libspu/mpc/utils/simulate.h"
 
@@ -57,9 +55,9 @@ std::shared_ptr<yacl::link::Context> MakeLink(const std::string &parties,
                                               size_t rank) {
   yacl::link::ContextDesc lctx_desc;
   std::vector<std::string> hosts = absl::StrSplit(parties, ',');
-  for (size_t rank = 0; rank < hosts.size(); rank++) {
+  for (auto &host : hosts) {
     const auto id = fmt::format("party{}", rank);
-    lctx_desc.parties.push_back({id, hosts[rank]});
+    lctx_desc.parties.push_back({id, host});
   }
   auto lctx = yacl::link::FactoryBrpc().CreateContext(lctx_desc, rank);
   lctx->ConnectToMesh();

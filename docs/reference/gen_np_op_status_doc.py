@@ -16,9 +16,10 @@
 
 
 import argparse
-from pytablewriter import MarkdownTableWriter
 import json
+
 from mdutils.mdutils import MdUtils
+from pytablewriter import MarkdownTableWriter
 
 
 def main():

@@ -17,32 +17,14 @@ load("//bazel:spu.bzl", "spu_cc_library", "spu_cc_test")
 package(default_visibility = ["//visibility:public"])
 
 spu_cc_library(
-    name = "hlo",
-    deps = [
-        ":basic_binary",
-        ":basic_ternary",
-        ":basic_unary",
-        ":casting",
-        ":const",
-        ":control_flow",
-        ":convolution",
-        ":geometrical",
-        ":indexing",
-        ":rand",
-        ":reduce",
-        ":select_and_scatter",
-        ":shift",
-        ":sort",
-    ],
-)
-
-spu_cc_library(
     name = "basic_binary",
     srcs = ["basic_binary.cc"],
     hdrs = ["basic_binary.h"],
     deps = [
         ":utils",
-        "//libspu/kernel/hal",
+        "//libspu/kernel/hal:complex",
+        "//libspu/kernel/hal:constants",
+        "//libspu/kernel/hal:polymorphic",
     ],
 )
 
@@ -51,9 +33,9 @@ spu_cc_test(
     srcs = ["basic_binary_test.cc"],
     deps = [
         ":basic_binary",
+        ":casting",
         ":const",
         "//libspu/kernel:test_util",
-        "//libspu/kernel/hal",
         "//libspu/mpc/utils:simulate",
     ],
 )
@@ -63,8 +45,12 @@ spu_cc_library(
     srcs = ["basic_ternary.cc"],
     hdrs = ["basic_ternary.h"],
     deps = [
+        ":casting",
+        ":const",
         ":utils",
-        "//libspu/kernel/hal",
+        "//libspu/kernel/hal:complex",
+        "//libspu/kernel/hal:polymorphic",
+        "//libspu/kernel/hal:ring",
     ],
 )
 
@@ -75,7 +61,6 @@ spu_cc_test(
         ":basic_ternary",
         ":const",
         "//libspu/kernel:test_util",
-        "//libspu/kernel/hal",
         "//libspu/mpc/utils:simulate",
     ],
 )
@@ -86,7 +71,10 @@ spu_cc_library(
     hdrs = ["basic_unary.h"],
     deps = [
         ":utils",
-        "//libspu/kernel/hal",
+        "//libspu/kernel/hal:complex",
+        "//libspu/kernel/hal:constants",
+        "//libspu/kernel/hal:polymorphic",
+        "//libspu/kernel/hal:type_cast",
     ],
 )
 
@@ -95,9 +83,9 @@ spu_cc_test(
     srcs = ["basic_unary_test.cc"],
     deps = [
         ":basic_unary",
+        ":casting",
         ":const",
         "//libspu/kernel:test_util",
-        "//libspu/kernel/hal",
         "//libspu/mpc/utils:simulate",
     ],
 )
@@ -108,7 +96,9 @@ spu_cc_library(
     hdrs = ["casting.h"],
     deps = [
         ":utils",
-        "//libspu/kernel/hal",
+        "//libspu/kernel/hal:complex",
+        "//libspu/kernel/hal:polymorphic",
+        "//libspu/kernel/hal:type_cast",
     ],
 )
 
@@ -127,9 +117,10 @@ spu_cc_library(
     srcs = ["const.cc"],
     hdrs = ["const.h"],
     deps = [
-        ":casting",
         ":utils",
-        "//libspu/kernel/hal",
+        "//libspu/core:encoding",
+        "//libspu/kernel/hal:constants",
+        "//libspu/kernel/hal:shape_ops",
     ],
 )
 
@@ -149,7 +140,11 @@ spu_cc_library(
     deps = [
         ":const",
         ":utils",
-        "//libspu/kernel/hal",
+        "//libspu/kernel/hal:constants",
+        "//libspu/kernel/hal:polymorphic",
+        "//libspu/kernel/hal:public_helper",
+        "//libspu/kernel/hal:shape_ops",
+        "//libspu/kernel/hal:type_cast",
     ],
 )
 
@@ -158,8 +153,8 @@ spu_cc_library(
     srcs = ["convolution.cc"],
     hdrs = ["convolution.h"],
     deps = [
-        ":utils",
-        "//libspu/kernel/hal",
+        "//libspu/kernel/hal:polymorphic",
+        "//libspu/kernel/hal:shape_ops",
     ],
 )
 
@@ -168,14 +163,14 @@ spu_cc_library(
     srcs = ["indexing.cc"],
     hdrs = ["indexing.h"],
     deps = [
-        ":basic_binary",
-        ":basic_ternary",
         ":basic_unary",
         ":const",
-        ":geometrical",
-        ":reduce",
         ":utils",
-        "//libspu/kernel/hal",
+        "//libspu/kernel/hal:constants",
+        "//libspu/kernel/hal:polymorphic",
+        "//libspu/kernel/hal:ring",
+        "//libspu/kernel/hal:shape_ops",
+        "//libspu/kernel/hal:type_cast",
     ],
 )
 
@@ -183,6 +178,7 @@ spu_cc_test(
     name = "indexing_test",
     srcs = ["indexing_test.cc"],
     deps = [
+        ":casting",
         ":indexing",
         "//libspu/kernel:test_util",
     ],
@@ -193,9 +189,8 @@ spu_cc_library(
     srcs = ["geometrical.cc"],
     hdrs = ["geometrical.h"],
     deps = [
-        ":basic_binary",
-        ":utils",
-        "//libspu/kernel/hal",
+        "//libspu/kernel/hal:complex",
+        "//libspu/kernel/hal:shape_ops",
     ],
 )
 
@@ -203,6 +198,8 @@ spu_cc_test(
     name = "geometrical_test",
     srcs = ["geometrical_test.cc"],
     deps = [
+        ":basic_binary",
+        ":casting",
         ":const",
         ":geometrical",
         "//libspu/kernel:test_util",
@@ -215,8 +212,7 @@ spu_cc_library(
     srcs = ["rand.cc"],
     hdrs = ["rand.h"],
     deps = [
-        ":utils",
-        "//libspu/kernel/hal",
+        "//libspu/kernel/hal:random",
     ],
 )
 
@@ -225,9 +221,11 @@ spu_cc_library(
     srcs = ["reduce.cc"],
     hdrs = ["reduce.h"],
     deps = [
-        ":geometrical",
         ":utils",
-        "//libspu/kernel/hal",
+        "//libspu/kernel/hal:constants",
+        "//libspu/kernel/hal:polymorphic",
+        "//libspu/kernel/hal:ring",
+        "//libspu/kernel/hal:shape_ops",
     ],
 )
 
@@ -239,7 +237,9 @@ spu_cc_library(
         ":const",
         ":reduce",
         ":utils",
-        "//libspu/kernel/hal",
+        "//libspu/kernel/hal:constants",
+        "//libspu/kernel/hal:polymorphic",
+        "//libspu/kernel/hal:shape_ops",
     ],
 )
 
@@ -258,7 +258,9 @@ spu_cc_library(
     hdrs = ["shift.h"],
     deps = [
         ":utils",
-        "//libspu/kernel/hal",
+        "//libspu/kernel/hal:constants",
+        "//libspu/kernel/hal:polymorphic",
+        "//libspu/kernel/hal:public_helper",
     ],
 )
 
@@ -270,7 +272,8 @@ spu_cc_library(
         ":basic_binary",
         ":casting",
         ":utils",
-        "//libspu/kernel/hal",
+        "//libspu/kernel/hal:shape_ops",
+        "//libspu/kernel/hal:sort",
     ],
 )
 
@@ -289,7 +292,8 @@ spu_cc_library(
     srcs = ["utils.cc"],
     hdrs = ["utils.h"],
     deps = [
-        "//libspu/kernel/hal",
+        "//libspu/kernel/hal:public_helper",
+        "//libspu/kernel/hal:shape_ops",
     ],
 )
 
@@ -307,7 +311,8 @@ spu_cc_library(
     hdrs = ["shuffle.h"],
     deps = [
         ":sort",
-        "//libspu/kernel/hal",
+        "//libspu/kernel/hal:polymorphic",
+        "//libspu/kernel/hal:random",
     ],
 )
 

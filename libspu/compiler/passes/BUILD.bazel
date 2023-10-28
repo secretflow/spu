@@ -259,9 +259,22 @@ spu_cc_library(
 )
 
 spu_cc_library(
+    name = "convert_push_down",
+    srcs = ["convert_push_down.cc"],
+    hdrs = ["passes.h"],
+    deps = [
+        ":pass_details",
+        "//libspu/dialect:pphlo_dialect",
+        "@llvm-project//mlir:IR",
+        "@llvm-project//mlir:TransformUtils",
+    ],
+)
+
+spu_cc_library(
     name = "all_passes",
     hdrs = ["register_passes.h"],
     deps = [
+        ":convert_push_down",
         ":decompose_comparison",
         ":decompose_minmax",
         ":expand_secret_gather",

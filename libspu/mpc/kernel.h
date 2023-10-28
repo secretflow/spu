@@ -15,7 +15,6 @@
 #pragma once
 
 #include "libspu/core/context.h"
-#include "libspu/core/prelude.h"
 
 namespace spu::mpc {
 
@@ -119,6 +118,13 @@ class CastTypeKernel : public Kernel {
 
   virtual NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in,
                           const Type& to_type) const = 0;
+};
+
+class SimpleSortKernel : public Kernel {
+  void evaluate(KernelEvalContext* ctx) const override;
+
+  virtual std::vector<NdArrayRef> proc(
+      KernelEvalContext* ctx, absl::Span<NdArrayRef const> in) const = 0;
 };
 
 }  // namespace spu::mpc

@@ -3,6 +3,8 @@
 This example demonstrates how to use SPU to run secure inference on a pre-trained
 [Llama-7B](https://research.facebook.com/publications/llama-open-and-efficient-foundation-language-models/) model using [Puma](https://arxiv.org/abs/2307.12533).
 
+> **_NOTE:_**  To run LLaMA-7B with ABY3, each node requires at least 1TB of RAM
+
 1. Install huggingface transformers library
 
     ```sh

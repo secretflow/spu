@@ -14,7 +14,7 @@
 
 #include "libspu/device/debug_dump_constant.h"
 
-#include "fmt/format.h"
+#include "fmt/format.h"  // IWYU pragma: keep
 
 namespace spu::device {
 

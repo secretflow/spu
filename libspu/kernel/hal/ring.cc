@@ -14,21 +14,205 @@
 
 #include "libspu/kernel/hal/ring.h"
 
-#include <array>
 #include <cmath>
+#include <vector>
 
 #include "libspu/core/bit_utils.h"
+#include "libspu/core/context.h"
 #include "libspu/core/prelude.h"
+#include "libspu/core/trace.h"
 #include "libspu/kernel/hal/prot_wrapper.h"
 #include "libspu/kernel/hal/shape_ops.h"
 
 namespace spu::kernel::hal {
+
+Type _common_type(SPUContext* ctx, const Type& a, const Type& b) {
+  if (a.isa<Secret>() && b.isa<Secret>()) {
+    return _common_type_s(ctx, a, b);
+  } else if (a.isa<Secret>()) {
+    return a;
+  } else if (b.isa<Secret>()) {
+    return b;
+  } else {
+    SPU_ENFORCE(a.isa<Public>() && b.isa<Public>());
+    return a;
+  }
+}
+
+Value _cast_type(SPUContext* ctx, const Value& x, const Type& to) {
+  if (x.isPublic() && to.isa<Public>()) {
+    return x;
+  } else if (x.isPublic() && to.isa<Secret>()) {
+    // FIXME: casting to BShare semantic is wrong.
+    return _p2s(ctx, x);
+  } else if (x.isSecret() && to.isa<Secret>()) {
+    return _cast_type_s(ctx, x, to);
+  } else {
+    SPU_THROW("should not be here x={}, to={}", x, to);
+  }
+}
+
+#define IMPL_UNARY_OP(Name)                                 \
+  Value Name(SPUContext* ctx, const Value& in) {            \
+    SPU_TRACE_HAL_LEAF(ctx, in);                            \
+    if (in.isPublic()) {                                    \
+      return Name##_p(ctx, in);                             \
+    } else if (in.isSecret()) {                             \
+      return Name##_s(ctx, in);                             \
+    } else if (in.isPrivate()) {                            \
+      return Name##_v(ctx, in);                             \
+    } else {                                                \
+      SPU_THROW("unsupport unary op={} for {}", #Name, in); \
+    }                                                       \
+  }
+
+IMPL_UNARY_OP(_not)
+IMPL_UNARY_OP(_msb)
+
+#undef IMPL_UNARY_OP
+
+#define IMPL_SHIFT_OP(Name)                                   \
+  Value Name(SPUContext* ctx, const Value& in, size_t bits) { \
+    SPU_TRACE_HAL_LEAF(ctx, in, bits);                        \
+    if (in.isPublic()) {                                      \
+      return Name##_p(ctx, in, bits);                         \
+    } else if (in.isSecret()) {                               \
+      return Name##_s(ctx, in, bits);                         \
+    } else if (in.isPrivate()) {                              \
+      return Name##_v(ctx, in, bits);                         \
+    } else {                                                  \
+      SPU_THROW("unsupport unary op={} for {}", #Name, in);   \
+    }                                                         \
+  }
+
+IMPL_SHIFT_OP(_lshift)
+IMPL_SHIFT_OP(_rshift)
+IMPL_SHIFT_OP(_arshift)
+
+#undef IMPL_SHIFT_OP
+
+#define IMPL_COMMUTATIVE_BINARY_OP(Name)                          \
+  Value Name(SPUContext* ctx, const Value& x, const Value& y) {   \
+    SPU_TRACE_HAL_LEAF(ctx, x, y);                                \
+    if (x.isPublic() && y.isPublic()) { /*PP*/                    \
+      return Name##_pp(ctx, x, y);                                \
+    } else if (x.isPrivate() && y.isPrivate()) { /*VV*/           \
+      return Name##_vv(ctx, x, y);                                \
+    } else if (x.isSecret() && y.isSecret()) { /*SS*/             \
+      return Name##_ss(ctx, y, x);                                \
+    } else if (x.isSecret() && y.isPublic()) { /*SP*/             \
+      return Name##_sp(ctx, x, y);                                \
+    } else if (x.isPublic() && y.isSecret()) { /*PS*/             \
+      /* commutative, swap args */                                \
+      return Name##_sp(ctx, y, x);                                \
+    } else if (x.isPrivate() && y.isPublic()) { /*VP*/            \
+      return Name##_vp(ctx, x, y);                                \
+    } else if (x.isPublic() && y.isPrivate()) { /*PV*/            \
+      /* commutative, swap args */                                \
+      return Name##_vp(ctx, y, x);                                \
+    } else if (x.isPrivate() && y.isSecret()) { /*VS*/            \
+      return Name##_sv(ctx, y, x);                                \
+    } else if (x.isSecret() && y.isPrivate()) { /*SV*/            \
+      /* commutative, swap args */                                \
+      return Name##_sv(ctx, x, y);                                \
+    } else {                                                      \
+      SPU_THROW("unsupported op {} for x={}, y={}", #Name, x, y); \
+    }                                                             \
+  }
+
+IMPL_COMMUTATIVE_BINARY_OP(_add)
+IMPL_COMMUTATIVE_BINARY_OP(_mul)
+IMPL_COMMUTATIVE_BINARY_OP(_and)
+IMPL_COMMUTATIVE_BINARY_OP(_xor)
+
+#undef IMPL_COMMUTATIVE_BINARY_OP
+
+static OptionalAPI<Value> _equal_impl(SPUContext* ctx, const Value& x,
+                                      const Value& y) {
+  SPU_TRACE_HAL_LEAF(ctx, x, y);
+
+  if (x.isPublic() && y.isPublic()) {
+    return _equal_pp(ctx, x, y);
+  } else if (x.isSecret() && y.isPublic()) {
+    return _equal_sp(ctx, x, y);
+  } else if (x.isPublic() && y.isSecret()) { /* commutative, swap args */
+    return _equal_sp(ctx, y, x);
+  } else if (x.isSecret() && y.isSecret()) {
+    return _equal_ss(ctx, y, x);
+  }
+
+  return NotAvailable;
+}
+
+Value _conv2d(SPUContext* ctx, const Value& input, const Value& kernel,
+              const Strides& window_strides) {
+  SPU_TRACE_HAL_DISP(ctx, input, kernel, window_strides);
+
+  // TODO: assume s*p and p*p should call `dot`
+  SPU_ENFORCE(input.isSecret() && kernel.isSecret());
+  return _conv2d_ss(ctx, input, kernel, window_strides);
+}
+
+static Value _mmul_impl(SPUContext* ctx, const Value& x, const Value& y) {
+  if (x.isPublic() && y.isPublic()) {  // PP
+    return _mmul_pp(ctx, x, y);
+  } else if (x.isSecret() && y.isSecret()) {  // SS
+    return _mmul_ss(ctx, x, y);
+  } else if (x.isPrivate() && y.isPrivate()) {  // VV
+    return _mmul_vv(ctx, x, y);
+  } else if (x.isSecret() && y.isPublic()) {  // SP
+    return _mmul_sp(ctx, x, y);
+  } else if (x.isPublic() && y.isSecret()) {  // PS
+    return transpose(ctx, _mmul_sp(ctx, transpose(ctx, y), transpose(ctx, x)));
+  } else if (x.isPrivate() && y.isPublic()) {  // VP
+    return _mmul_vp(ctx, x, y);
+  } else if (x.isPublic() && y.isPrivate()) {  // PV
+    return transpose(ctx, _mmul_vp(ctx, transpose(ctx, y), transpose(ctx, x)));
+  } else if (x.isSecret() && y.isPrivate()) {  // SV
+    return _mmul_sv(ctx, x, y);
+  } else if (x.isPrivate() && y.isSecret()) {  // VS
+    return transpose(ctx, _mmul_sv(ctx, transpose(ctx, y), transpose(ctx, x)));
+  } else {
+    SPU_THROW("unsupported op {} for x={}, y={}", "_matmul", x, y);
+  }
+};
+
+Value _trunc(SPUContext* ctx, const Value& x, size_t bits, SignType sign) {
+  SPU_TRACE_HAL_LEAF(ctx, x, bits);
+  bits = (bits == 0) ? ctx->getFxpBits() : bits;
+
+  if (x.isPublic()) {
+    return _trunc_p(ctx, x, bits, sign);
+  } else if (x.isSecret()) {
+    return _trunc_s(ctx, x, bits, sign);
+  } else if (x.isPrivate()) {
+    return _trunc_v(ctx, x, bits, sign);
+  } else {
+    SPU_THROW("unsupport unary op={} for {}", __func__, x);
+  }
+}
+
+// swap bits of [start, end)
+Value _bitrev(SPUContext* ctx, const Value& x, size_t start, size_t end) {
+  SPU_TRACE_HAL_LEAF(ctx, x, start, end);
+
+  if (x.isPublic()) {
+    return _bitrev_p(ctx, x, start, end);
+  } else if (x.isSecret()) {
+    return _bitrev_s(ctx, x, start, end);
+  } else if (x.isPrivate()) {
+    return _bitrev_v(ctx, x, start, end);
+  }
+
+  SPU_THROW("unsupport op={} for {}", "_bitrev", x);
+}
+
 namespace {
 
-std::tuple<int64_t, int64_t, int64_t> deduceMmulArgs(
-    const std::vector<int64_t>& lhs, const std::vector<int64_t>& rhs) {
-  SPU_ENFORCE(!lhs.empty() && lhs.size() <= 2);
-  SPU_ENFORCE(!rhs.empty() && rhs.size() <= 2);
+std::tuple<int64_t, int64_t, int64_t> deduceMmulArgs(const Shape& lhs,
+                                                     const Shape& rhs) {
+  SPU_ENFORCE(lhs.ndim() > 0 && lhs.ndim() <= 2);
+  SPU_ENFORCE(rhs.ndim() > 0 && rhs.ndim() <= 2);
 
   if (lhs.size() == 1 && rhs.size() == 1) {
     SPU_ENFORCE(lhs[0] == rhs[0]);
@@ -71,85 +255,6 @@ std::tuple<int64_t, int64_t, int64_t> calcMmulTilingSize(int64_t m, int64_t n,
 
 }  // namespace
 
-Type _common_type(SPUContext* ctx, const Type& a, const Type& b) {
-  if (a.isa<Secret>() && b.isa<Secret>()) {
-    return _common_type_s(ctx, a, b);
-  } else if (a.isa<Secret>()) {
-    return a;
-  } else if (b.isa<Secret>()) {
-    return b;
-  } else {
-    SPU_ENFORCE(a.isa<Public>() && b.isa<Public>());
-    return a;
-  }
-}
-
-Value _cast_type(SPUContext* ctx, const Value& x, const Type& to) {
-  if (x.isPublic() && to.isa<Public>()) {
-    return x;
-  } else if (x.isPublic() && to.isa<Secret>()) {
-    // FIXME: casting to BShare semantic is wrong.
-    return _p2s(ctx, x);
-  } else if (x.isSecret() && to.isa<Secret>()) {
-    return _cast_type_s(ctx, x, to);
-  } else {
-    SPU_THROW("should not be here x={}, to={}", x, to);
-  }
-}
-
-#define IMPL_UNARY_OP(Name, FnP, FnS)                       \
-  Value Name(SPUContext* ctx, const Value& in) {            \
-    SPU_TRACE_HAL_LEAF(ctx, in);                            \
-    if (in.isPublic()) {                                    \
-      return FnP(ctx, in);                                  \
-    } else if (in.isSecret()) {                             \
-      return FnS(ctx, in);                                  \
-    } else {                                                \
-      SPU_THROW("unsupport unary op={} for {}", #Name, in); \
-    }                                                       \
-  }
-
-#define IMPL_SHIFT_OP(Name, FnP, FnS)                         \
-  Value Name(SPUContext* ctx, const Value& in, size_t bits) { \
-    SPU_TRACE_HAL_LEAF(ctx, in, bits);                        \
-    if (in.isPublic()) {                                      \
-      return FnP(ctx, in, bits);                              \
-    } else if (in.isSecret()) {                               \
-      return FnS(ctx, in, bits);                              \
-    } else {                                                  \
-      SPU_THROW("unsupport unary op={} for {}", #Name, in);   \
-    }                                                         \
-  }
-
-#define IMPL_COMMUTATIVE_BINARY_OP(Name, FnPP, FnSP, FnSS)        \
-  Value Name(SPUContext* ctx, const Value& x, const Value& y) {   \
-    SPU_TRACE_HAL_LEAF(ctx, x, y);                                \
-    if (x.isPublic() && y.isPublic()) {                           \
-      return FnPP(ctx, x, y);                                     \
-    } else if (x.isSecret() && y.isPublic()) {                    \
-      return FnSP(ctx, x, y);                                     \
-    } else if (x.isPublic() && y.isSecret()) {                    \
-      /* commutative, swap args */                                \
-      return FnSP(ctx, y, x);                                     \
-    } else if (x.isSecret() && y.isSecret()) {                    \
-      return FnSS(ctx, y, x);                                     \
-    } else {                                                      \
-      SPU_THROW("unsupported op {} for x={}, y={}", #Name, x, y); \
-    }                                                             \
-  }
-
-IMPL_UNARY_OP(_not, _not_p, _not_s)
-IMPL_UNARY_OP(_msb, _msb_p, _msb_s)
-
-IMPL_SHIFT_OP(_lshift, _lshift_p, _lshift_s)
-IMPL_SHIFT_OP(_rshift, _rshift_p, _rshift_s)
-IMPL_SHIFT_OP(_arshift, _arshift_p, _arshift_s)
-
-IMPL_COMMUTATIVE_BINARY_OP(_add, _add_pp, _add_sp, _add_ss)
-IMPL_COMMUTATIVE_BINARY_OP(_mul, _mul_pp, _mul_sp, _mul_ss)
-IMPL_COMMUTATIVE_BINARY_OP(_and, _and_pp, _and_sp, _and_ss)
-IMPL_COMMUTATIVE_BINARY_OP(_xor, _xor_pp, _xor_sp, _xor_ss)
-
 Value _sub(SPUContext* ctx, const Value& x, const Value& y) {
   SPU_TRACE_HAL_LEAF(ctx, x, y);
   return _add(ctx, x, _negate(ctx, y));
@@ -171,29 +276,6 @@ Value _sub(SPUContext* ctx, const Value& x, const Value& y) {
 
   return res;
 }
-
-Value _conv2d(SPUContext* ctx, const Value& input, const Value& kernel,
-              const Strides& window_strides) {
-  SPU_TRACE_HAL_DISP(ctx, input, kernel, window_strides);
-
-  // TODO: assume s*p and p*p should call `dot`
-  SPU_ENFORCE(input.isSecret() && kernel.isSecret());
-  return _conv2d_ss(ctx, input, kernel, window_strides);
-}
-
-static Value _mmul_impl(SPUContext* ctx, const Value& x, const Value& y) {
-  if (x.isPublic() && y.isPublic()) {
-    return _mmul_pp(ctx, x, y);
-  } else if (x.isSecret() && y.isPublic()) {
-    return _mmul_sp(ctx, x, y);
-  } else if (x.isPublic() && y.isSecret()) {
-    return transpose(ctx, _mmul_sp(ctx, transpose(ctx, y), transpose(ctx, x)));
-  } else if (x.isSecret() && y.isSecret()) {
-    return _mmul_ss(ctx, x, y);
-  } else {
-    SPU_THROW("unsupported op {} for x={}, y={}", "_matmul", x, y);
-  }
-};
 
 Value _mmul(SPUContext* ctx, const Value& x, const Value& y) {
   auto [m, n, k] = deduceMmulArgs(x.shape(), y.shape());
@@ -293,23 +375,6 @@ Value _or(SPUContext* ctx, const Value& x, const Value& y) {
   return _xor(ctx, x, _xor(ctx, y, _and(ctx, x, y)));
 }
 
-static std::optional<Value> _equal_impl(SPUContext* ctx, const Value& x,
-                                        const Value& y) {
-  SPU_TRACE_HAL_LEAF(ctx, x, y);
-
-  if (x.isPublic() && y.isPublic()) {
-    return _equal_pp(ctx, x, y);
-  } else if (x.isSecret() && y.isPublic()) {
-    return _equal_sp(ctx, x, y);
-  } else if (x.isPublic() && y.isSecret()) { /* commutative, swap args */
-    return _equal_sp(ctx, y, x);
-  } else if (x.isSecret() && y.isSecret()) {
-    return _equal_ss(ctx, y, x);
-  }
-
-  return std::nullopt;
-}
-
 Value _equal(SPUContext* ctx, const Value& x, const Value& y) {
   // First try use equal kernel, i.e. for 2PC , equal can be done with the same
   // cost of half MSB.
@@ -327,20 +392,6 @@ Value _equal(SPUContext* ctx, const Value& x, const Value& y) {
   const auto _k1 = _constant(ctx, 1, x.shape());
   return _and(ctx, _xor(ctx, _less(ctx, x, y), _k1),
               _xor(ctx, _less(ctx, y, x), _k1));
-}
-
-// TODO:
-Value _trunc(SPUContext* ctx, const Value& x, size_t bits, SignType sign) {
-  SPU_TRACE_HAL_LEAF(ctx, x, bits);
-  bits = (bits == 0) ? ctx->getFxpBits() : bits;
-
-  if (x.isPublic()) {
-    return _trunc_p(ctx, x, bits, sign);
-  } else if (x.isSecret()) {
-    return _trunc_s(ctx, x, bits, sign);
-  } else {
-    SPU_THROW("unsupport unary op={} for {}", __func__, x);
-  }
 }
 
 Value _negate(SPUContext* ctx, const Value& x) {
@@ -372,19 +423,6 @@ Value _less(SPUContext* ctx, const Value& x, const Value& y) {
   // Note: the impl assume inputs are signed with two's complement encoding.
   // test msb(x-y) == 1
   return _msb(ctx, _sub(ctx, x, y));
-}
-
-// swap bits of [start, end)
-Value _bitrev(SPUContext* ctx, const Value& x, size_t start, size_t end) {
-  SPU_TRACE_HAL_LEAF(ctx, x, start, end);
-
-  if (x.isPublic()) {
-    return _bitrev_p(ctx, x, start, end);
-  } else if (x.isSecret()) {
-    return _bitrev_s(ctx, x, start, end);
-  }
-
-  SPU_THROW("unsupport op={} for {}", "_bitrev", x);
 }
 
 Value _mux(SPUContext* ctx, const Value& pred, const Value& a, const Value& b) {

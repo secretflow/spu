@@ -18,7 +18,7 @@ load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
 
 SECRETFLOW_GIT = "https://github.com/secretflow"
 
-YACL_COMMIT_ID = "5418371c4335f4a64fbd0bdabb0efd94da2af808"
+YACL_COMMIT_ID = "f933d7ff4caf0d9f7ea84cc3e9f51a9a6ee9eeca"
 
 HEU_COMMIT_ID = "68c3bfa12ea5d340196a2092519398a57f8476e6"
 
@@ -44,6 +44,7 @@ def spu_deps():
     _com_github_microsoft_gsl()
     _com_github_microsoft_kuku()
     _com_google_flatbuffers()
+    _com_github_nvidia_cutlass()
 
     maybe(
         git_repository,
@@ -85,9 +86,9 @@ def _rules_proto_grpc():
 def _rules_cuda():
     http_archive(
         name = "rules_cuda",
-        sha256 = "fa1462c4c3104de44489800a1da055f55afa57795789539c835e069818786f71",
-        strip_prefix = "rules_cuda-cab1fa2dd0e1f8489f566c91a5025856cf5ae572",
-        urls = ["https://github.com/bazel-contrib/rules_cuda/archive/cab1fa2dd0e1f8489f566c91a5025856cf5ae572.tar.gz"],
+        sha256 = "2f8c8c8c85f727bec4423efecec12d3b751cb0a98bda99f0f9d351608a23b858",
+        strip_prefix = "rules_cuda-v0.2.1",
+        urls = ["https://github.com/bazel-contrib/rules_cuda/releases/download/v0.2.1/rules_cuda-v0.2.1.tar.gz"],
     )
 
 def _bazel_platform():
@@ -365,4 +366,16 @@ def _com_google_flatbuffers():
         urls = [
             "https://github.com/google/flatbuffers/archive/refs/tags/v23.3.3.tar.gz",
         ],
+    )
+
+def _com_github_nvidia_cutlass():
+    maybe(
+        http_archive,
+        name = "com_github_nvidia_cutlass",
+        strip_prefix = "cutlass-3.2.0",
+        urls = [
+            "https://github.com/NVIDIA/cutlass/archive/refs/tags/v3.2.0.tar.gz",
+        ],
+        sha256 = "9637961560a9d63a6bb3f407faf457c7dbc4246d3afb54ac7dc1e014dd7f172f",
+        build_file = "@spulib//bazel:nvidia_cutlass.BUILD",
     )

@@ -53,9 +53,9 @@ TEST(PtBufferView, Vector) {
   EXPECT_EQ(bv_f32.pt_type, PT_F32);
   EXPECT_THAT(bv_f32.shape, testing::ElementsAre(3));
   EXPECT_THAT(bv_f32.strides, testing::ElementsAre(1));
-  EXPECT_FLOAT_EQ((*bv_f32.get<float>({0})), 1.0);
-  EXPECT_FLOAT_EQ((*bv_f32.get<float>({1})), 2.0);
-  EXPECT_FLOAT_EQ((*bv_f32.get<float>({2})), 3.0);
+  EXPECT_FLOAT_EQ((bv_f32.get<float>(0)), 1.0);
+  EXPECT_FLOAT_EQ((bv_f32.get<float>(1)), 2.0);
+  EXPECT_FLOAT_EQ((bv_f32.get<float>(2)), 3.0);
 }
 
 TEST(PtBufferView, ConvertToNdArray) {

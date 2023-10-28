@@ -16,7 +16,11 @@
 
 #include "llvm/ADT/StringRef.h"
 
-#include "libspu/core/context.h"
+#include "libspu/core/value.h"
+
+namespace spu {
+class SPUContext;
+}
 
 namespace spu::device::pphlo {
 

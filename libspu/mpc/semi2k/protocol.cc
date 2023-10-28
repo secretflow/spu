@@ -14,11 +14,13 @@
 
 #include "libspu/mpc/semi2k/protocol.h"
 
+#include "libspu/mpc/common/communicator.h"
 #include "libspu/mpc/common/prg_state.h"
 #include "libspu/mpc/common/pv2k.h"
 #include "libspu/mpc/semi2k/arithmetic.h"
 #include "libspu/mpc/semi2k/boolean.h"
 #include "libspu/mpc/semi2k/conversion.h"
+#include "libspu/mpc/semi2k/sort.h"
 #include "libspu/mpc/semi2k/state.h"
 #include "libspu/mpc/semi2k/type.h"
 
@@ -61,6 +63,8 @@ void regSemi2kProtocol(SPUContext* ctx,
   }
 
   ctx->prot()->regKernel<semi2k::CommonTypeB>();
+  ctx->prot()->regKernel<semi2k::CommonTypeV>();
+
   ctx->prot()->regKernel<semi2k::CastTypeB>();
   ctx->prot()->regKernel<semi2k::B2P>();
   ctx->prot()->regKernel<semi2k::P2B>();
@@ -82,6 +86,7 @@ void regSemi2kProtocol(SPUContext* ctx,
   ctx->prot()->regKernel<semi2k::BitIntlB>();
   ctx->prot()->regKernel<semi2k::BitDeintlB>();
   ctx->prot()->regKernel<semi2k::RandA>();
+  ctx->prot()->regKernel<semi2k::SimpleSortA>();
 }
 
 std::unique_ptr<SPUContext> makeSemi2kProtocol(

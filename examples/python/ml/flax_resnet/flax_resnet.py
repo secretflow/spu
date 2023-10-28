@@ -17,19 +17,17 @@
 # See issue #620.
 # pytype: disable=wrong-arg-count
 
-from typing import Any
 import argparse
 import time
+from typing import Any
 
+import jax
+import jax.numpy as jnp
+import optax
 import tensorflow as tf
 import tensorflow_datasets as tfds
-
-import optax
 from flax.training import train_state
-import jax.numpy as jnp
-import jax
 from jax import random
-
 from models import ResNet18
 
 NUM_CLASSES = 10

@@ -1,4 +1,4 @@
-// Copyright 2021 Ant Group Co., Ltd.
+// Copyright 2023 Ant Group Co., Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,5 +14,9 @@
 
 #pragma once
 
-#include "libspu/kernel/hal/fxp_approx.h"
-#include "libspu/kernel/hal/fxp_base.h"
+#include "libspu/core/ndarray_ref.h"
+
+namespace spu::mpc::aby3 {
+
+void matmul_aa_gpu(const NdArrayRef& x, const NdArrayRef& y, NdArrayRef& ret);
+}

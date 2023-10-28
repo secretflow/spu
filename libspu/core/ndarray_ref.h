@@ -19,7 +19,6 @@
 
 #include "absl/types/span.h"
 #include "fmt/ostream.h"
-#include "spdlog/spdlog.h"
 #include "yacl/base/buffer.h"
 
 #include "libspu/core/bit_utils.h"

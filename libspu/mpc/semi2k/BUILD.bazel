@@ -40,7 +40,6 @@ spu_cc_library(
     deps = [
         ":state",
         ":type",
-        "//libspu/mpc:ab_api",
         "//libspu/mpc:kernel",
         "//libspu/mpc/common:communicator",
     ],
@@ -68,7 +67,6 @@ spu_cc_library(
         ":state",
         ":type",
         "//libspu/core:vectorize",
-        "//libspu/mpc:ab_api",
         "//libspu/mpc:kernel",
         "//libspu/mpc/common:communicator",
         "//libspu/mpc/utils:circuits",
@@ -84,6 +82,7 @@ spu_cc_library(
         ":arithmetic",
         ":boolean",
         ":conversion",
+        ":sort",
         ":state",
         "//libspu/mpc/common:prg_state",
     ],
@@ -94,6 +93,7 @@ spu_cc_test(
     srcs = ["protocol_test.cc"],
     deps = [
         ":protocol",
+        ":sort_test",
         "//libspu/mpc:ab_api_test",
         "//libspu/mpc:api_test",
         "//libspu/mpc/semi2k/beaver/ttp_server:beaver_server",
@@ -136,4 +136,36 @@ spu_cc_test(
     deps = [
         ":type",
     ],
+)
+
+spu_cc_library(
+    name = "sort",
+    srcs = ["sort.cc"],
+    hdrs = ["sort.h"],
+    deps = [
+        ":state",
+        ":type",
+        "//libspu/core:vectorize",
+        "//libspu/mpc:ab_api",
+        "//libspu/mpc:kernel",
+        "//libspu/mpc/common:communicator",
+        "//libspu/mpc/utils:ring_ops",
+    ],
+)
+
+spu_cc_library(
+    name = "sort_test",
+    testonly = 1,
+    srcs = ["sort_test.cc"],
+    hdrs = ["sort_test.h"],
+    deps = [
+        "//libspu/mpc:ab_api",
+        "//libspu/mpc:api",
+        "//libspu/mpc:api_test_params",
+        "//libspu/mpc/utils:permute",
+        "//libspu/mpc/utils:ring_ops",
+        "//libspu/mpc/utils:simulate",
+        "@com_google_googletest//:gtest",
+    ],
+    alwayslink = True,
 )

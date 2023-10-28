@@ -14,8 +14,6 @@
 
 #include "libspu/core/type_util.h"
 
-#include "absl/strings/str_join.h"
-
 namespace spu {
 
 //////////////////////////////////////////////////////////////
@@ -28,6 +26,9 @@ std::ostream& operator<<(std::ostream& os, const Visibility& vtype) {
       break;
     case VIS_SECRET:
       os << "S";
+      break;
+    case VIS_PRIVATE:
+      os << "V";
       break;
     default:
       os << "Invalid";

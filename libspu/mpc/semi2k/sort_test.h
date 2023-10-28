@@ -1,4 +1,4 @@
-// Copyright 2021 Ant Group Co., Ltd.
+// Copyright 2023 Ant Group Co., Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,10 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "libspu/core/xt_helper.h"
+#include "gtest/gtest.h"
+#include "yacl/link/link.h"
 
-namespace spu {
+#include "libspu/mpc/api_test_params.h"
 
-//
+namespace spu::mpc::test {
 
-}  // namespace spu
+class PermuteTest : public ::testing::TestWithParam<OpTestParams> {};
+
+}  // namespace spu::mpc::test

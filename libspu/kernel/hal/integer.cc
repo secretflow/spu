@@ -14,7 +14,8 @@
 
 #include "libspu/kernel/hal/integer.h"
 
-#include "libspu/kernel/hal/prot_wrapper.h"
+#include "libspu/core/context.h"
+#include "libspu/core/trace.h"
 #include "libspu/kernel/hal/ring.h"
 
 namespace spu::kernel::hal {

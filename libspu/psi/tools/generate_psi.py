@@ -13,10 +13,9 @@
 # limitations under the License.
 
 
-from random import randint
-from random import sample
 import csv
 import sys
+from random import randint, sample
 
 
 def random_with_N_digits(n):

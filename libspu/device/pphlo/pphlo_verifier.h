@@ -14,11 +14,12 @@
 
 #pragma once
 
-#include "libspu/core/context.h"
 #include "libspu/core/value.h"
-#include "libspu/dialect/pphlo_dialect.h"
 #include "libspu/dialect/pphlo_ops.h"
-#include "libspu/dialect/pphlo_types.h"
+
+namespace spu {
+class SPUContext;
+}
 
 namespace spu::device::pphlo {
 

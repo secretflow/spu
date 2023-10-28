@@ -19,12 +19,24 @@
 #include "libspu/compiler/passes/pass_details.h"
 #include "libspu/compiler/passes/passes.h"
 #include "libspu/dialect/pphlo_ops.h"
-#include "libspu/dialect/pphlo_types.h"
 
 namespace mlir::pphlo {
 
 namespace {
 
+/// Returns true if 'val' is a splat of zero, false otherwise.
+static bool isSplatZero(DenseElementsAttr val) {
+  auto type = val.getElementType();
+  if (llvm::isa<FloatType>(type)) {
+    return val && val.isSplat() && val.getSplatValue<APFloat>().isZero();
+  }
+  if (llvm::isa<IntegerType>(type)) {
+    return val && val.isSplat() && val.getSplatValue<APInt>().isZero();
+  }
+  return false;
+}
+
+// Pattern 1
 // Idea here:
 //   select(p, x, y)
 // into
@@ -33,12 +45,34 @@ namespace {
 // Rational:
 // If the predicate is used by multiple select, explicit doing a to_a op can
 // reduce the cost of to_a
+
+// Pattern 2
+// Idea here:
+//   select(pred, x, const_0)
+// into
+//   mul(pred, x)
+// Rational:
+// This is a pattern created by xla alg simplifier
 struct SelectConversion : public OpRewritePattern<SelectOp> {
 public:
   explicit SelectConversion(MLIRContext *context)
       : OpRewritePattern<SelectOp>(context) {}
 
-  LogicalResult matchAndRewrite(SelectOp op, PatternRewriter &) const override {
+  LogicalResult matchAndRewrite(SelectOp op,
+                                PatternRewriter &rewrite) const override {
+
+    // Pattern 2 first:
+    auto on_false = op.getOnFalse();
+    if (auto on_false_const = on_false.getDefiningOp<ConstantOp>()) {
+      auto dea = on_false_const.getValue().dyn_cast<DenseElementsAttr>();
+      if (isSplatZero(dea)) {
+        rewrite.replaceOpWithNewOp<MulOp>(op, op->getResultTypes(),
+                                          op.getPred(), op.getOnTrue());
+        return success();
+      }
+    }
+
+    // Pattern 1:
     auto pred = op.getPred();
     // Only do this for certain select...
     if (pred.getDefiningOp<PreferAOp>() != nullptr) {

@@ -18,6 +18,7 @@
 #include <vector>
 
 #include "libspu/core/ndarray_ref.h"
+#include "libspu/core/pt_buffer_view.h"
 
 namespace spu::mpc {
 
@@ -49,7 +50,7 @@ class IoInterface {
   //
   // @param raw, with type as PtType.
   virtual std::vector<NdArrayRef> makeBitSecret(
-      const NdArrayRef& raw) const = 0;
+      const PtBufferView& raw) const = 0;
 
   virtual size_t getBitSecretShareSize(size_t numel) const = 0;
 
@@ -73,7 +74,7 @@ class BaseIo : public IoInterface {
   explicit BaseIo(FieldType field, size_t world_size)
       : field_(field), world_size_(world_size) {}
 
-  std::vector<NdArrayRef> makeBitSecret(const NdArrayRef&) const override {
+  std::vector<NdArrayRef> makeBitSecret(const PtBufferView&) const override {
     SPU_THROW("should not be here");
   }
 

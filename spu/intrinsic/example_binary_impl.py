@@ -2,14 +2,13 @@ __all__ = ["example_binary"]
 
 from functools import partial
 
+import numpy as np
 from jax import core, dtypes
 from jax.core import ShapedArray
 from jax.interpreters import ad, batching, mlir, xla
 
 # from jax.lib import xla_client
 from jaxlib.hlo_helpers import custom_call
-
-import numpy as np
 
 
 # Public facing interface

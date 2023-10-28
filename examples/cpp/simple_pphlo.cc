@@ -14,12 +14,12 @@
 
 // clang-format off
 // To run the example, start two terminals:
-// > bazel run //examples/cpp:simple_pphlo -- --rank=0
-// > bazel run //examples/cpp:simple_pphlo -- --rank=1
+// > bazel run //examples/cpp:simple_pphlo -c opt -- -rank=0
+// > bazel run //examples/cpp:simple_pphlo -c opt -- -rank=1
+// To run with non-default IP config, add -parties IP:port,IP:port to above commands
 // clang-format on
 
 #include "examples/cpp/utils.h"
-#include "spdlog/spdlog.h"
 
 #include "libspu/device/api.h"
 #include "libspu/device/io.h"

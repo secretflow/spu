@@ -24,12 +24,12 @@ karate club to two distinct karate instructors (Mr. Hi and John A).
 
 import logging
 
-from absl import app
 import haiku as hk
 import jax
 import jax.numpy as jnp
 import jraph
 import optax
+from absl import app
 
 
 def get_zacharys_karate_club() -> jraph.GraphsTuple:
@@ -252,8 +252,9 @@ def optimize_club(num_steps: int, run_on_spu: bool):
 
 
 import argparse
-import spu.utils.distributed as ppd
 import json
+
+import spu.utils.distributed as ppd
 
 parser = argparse.ArgumentParser(description="distributed driver.")
 parser.add_argument("-c", "--config", default="examples/python/conf/3pc.json")

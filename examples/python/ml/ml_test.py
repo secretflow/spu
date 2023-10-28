@@ -13,20 +13,19 @@
 # limitations under the License.
 
 
+import inspect
 import json
 import logging
+import os
 import sys
 import unittest
 from time import perf_counter
-import os
 
 import multiprocess
 import numpy.testing as npt
 import pandas as pd
-import inspect
 
 import spu.utils.distributed as ppd
-
 
 with open("examples/python/conf/3pc.json", 'r') as file:
     conf = json.load(file)

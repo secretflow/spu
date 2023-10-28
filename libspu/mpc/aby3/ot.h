@@ -16,10 +16,7 @@
 
 #include <optional>
 
-#include "yacl/link/link.h"
-
 #include "libspu/core/ndarray_ref.h"
-#include "libspu/core/type_util.h"
 #include "libspu/mpc/common/communicator.h"
 #include "libspu/mpc/common/prg_state.h"
 

@@ -29,6 +29,12 @@ build:avx --host_copt=-mavx
 build:avx --copt=-DCHECK_AVX
 build:avx --host_copt=-DCHECK_AVX
 
+# default off CUDA build
+build --@rules_cuda//cuda:enable=false
+
+# Only on when asked
+build:gpu --@rules_cuda//cuda:archs=compute_80:compute_80
+build:gpu --@rules_cuda//cuda:enable=true
 
 # Binary safety flags
 build --copt=-fPIC

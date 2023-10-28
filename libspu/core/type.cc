@@ -16,9 +16,6 @@
 
 #include <mutex>
 
-#include "absl/strings/match.h"
-#include "absl/strings/str_split.h"
-
 namespace spu {
 
 Type::Type()

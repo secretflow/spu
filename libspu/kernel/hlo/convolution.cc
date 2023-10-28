@@ -14,14 +14,9 @@
 
 #include "libspu/kernel/hlo/convolution.h"
 
-#include "libspu/core/context.h"
 #include "libspu/core/value.h"
-#include "libspu/kernel/hal/constants.h"
 #include "libspu/kernel/hal/polymorphic.h"
-#include "libspu/kernel/hal/ring.h"
 #include "libspu/kernel/hal/shape_ops.h"
-#include "libspu/kernel/hal/type_cast.h"
-#include "libspu/kernel/hlo/utils.h"
 
 namespace spu::kernel::hlo {
 

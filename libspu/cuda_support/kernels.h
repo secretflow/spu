@@ -1,4 +1,4 @@
-// Copyright 2021 Ant Group Co., Ltd.
+// Copyright 2023 Ant Group Co., Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,10 +14,14 @@
 
 #pragma once
 
-#include "libspu/kernel/hal/constants.h"
-#include "libspu/kernel/hal/debug.h"
-#include "libspu/kernel/hal/polymorphic.h"
-#include "libspu/kernel/hal/public_helper.h"
-#include "libspu/kernel/hal/random.h"
-#include "libspu/kernel/hal/shape_ops.h"
-#include "libspu/kernel/hal/type_cast.h"
+#include <cstdint>
+
+namespace spu::cuda {
+
+// uint64 implementation
+void matmul(int64_t M, int64_t N, int64_t K, const uint64_t* A, uint64_t* B,
+            uint64_t* C);
+
+void add(uint64_t* A, const uint64_t* B, int64_t numel);
+
+}  // namespace spu::cuda

@@ -19,8 +19,6 @@
 #include <complex>
 #include <numeric>
 
-#include "fmt/format.h"
-#include "fmt/ostream.h"
 #include "yacl/base/int128.h"
 
 #include "libspu/core/half.h"

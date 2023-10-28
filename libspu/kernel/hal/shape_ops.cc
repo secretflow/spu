@@ -16,7 +16,9 @@
 
 #include <algorithm>
 
+#include "libspu/core/context.h"
 #include "libspu/core/ndarray_ref.h"
+#include "libspu/core/trace.h"
 #include "libspu/kernel/hal/prot_wrapper.h"
 
 namespace spu::kernel::hal {
@@ -27,6 +29,8 @@ namespace {
 Type _common_type(SPUContext* ctx, const Type& a, const Type& b) {
   if (a.isa<Secret>() && b.isa<Secret>()) {
     return _common_type_s(ctx, a, b);
+  } else if (a.isa<Private>() && b.isa<Private>()) {
+    return _common_type_v(ctx, a, b);
   } else if (a.isa<Secret>()) {
     return a;
   } else if (b.isa<Secret>()) {
@@ -46,11 +50,29 @@ Value _cast_type(SPUContext* ctx, const Value& x, const Type& to) {
   } else if (x.isPublic() && to.isa<Secret>()) {
     // FIXME: casting to BShare semantic is wrong.
     return _p2s(ctx, x);
+  } else if (x.isPublic() && to.isa<Private>()) {
+    return _p2v(ctx, x, to.as<Private>()->owner());
+  } else if (x.isSecret() && to.isa<Private>()) {
+    return _s2v(ctx, x, to.as<Private>()->owner());
+  } else if (x.isPrivate() && to.isa<Secret>()) {
+    return _v2s(ctx, x);
   } else if (x.isSecret() && to.isa<Secret>()) {
     return _cast_type_s(ctx, x, to);
   } else {
-    SPU_THROW("show not be here x={}, to={}", x, to);
+    SPU_THROW("should not be here x={}, to={}", x, to);
   }
+}
+
+// Compact threshold heuristic, try to make it same as L1 cache size
+#define COMPACT_THRESHOLD (32 * 1024)  // 32K
+
+SPU_ALWAYS_INLINE NdArrayRef _try_compact(const NdArrayRef& in) {
+  // If in data is not compact after some shape ops and small enough, make it
+  // compact
+  if (in.numel() * in.elsize() <= COMPACT_THRESHOLD && !in.isCompact()) {
+    return in.clone();
+  }
+  return in;
 }
 
 }  // namespace
@@ -77,15 +99,16 @@ Value transpose(SPUContext* ctx, const Value& in, const Axes& permutation) {
     return in;
   }
 
-  return Value(in.data().transpose(perm), in.dtype());
+  return Value(_try_compact(in.data().transpose(perm)), in.dtype());
 }
 
 Value slice(SPUContext* ctx, const Value& in, const Index& start_indices,
             const Index& end_indices, const Strides& strides) {
   SPU_TRACE_HAL_DISP(ctx, in, start_indices, end_indices, strides);
 
-  return Value(in.data().slice(start_indices, end_indices, strides),
-               in.dtype());
+  return Value(
+      _try_compact(in.data().slice(start_indices, end_indices, strides)),
+      in.dtype());
 }
 
 Value slice_scalar_at(SPUContext*, const Value& input, const Index& indices) {
@@ -109,7 +132,7 @@ Value update_slice(SPUContext* ctx, const Value& in, const Value& update,
 Value reshape(SPUContext* ctx, const Value& in, const Shape& to_shape) {
   SPU_TRACE_HAL_DISP(ctx, in, to_shape);
 
-  return Value(in.data().reshape(to_shape), in.dtype());
+  return Value(_try_compact(in.data().reshape(to_shape)), in.dtype());
 }
 
 Value broadcast_to(SPUContext* ctx, const Value& in, const Shape& to_shape,

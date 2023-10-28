@@ -18,12 +18,9 @@
 #include "xtensor/xeval.hpp"
 #include "xtensor/xexpression.hpp"
 #include "xtensor/xio.hpp"
-#include "xtensor/xrandom.hpp"
 
 #include "libspu/core/ndarray_ref.h"
 #include "libspu/core/prelude.h"
-#include "libspu/core/pt_buffer_view.h"
-#include "libspu/core/type_util.h"
 
 namespace spu {
 
