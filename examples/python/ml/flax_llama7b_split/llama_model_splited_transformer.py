@@ -1143,7 +1143,7 @@ class FlaxLLaMABlockCollection(nn.Module):
                 self.make_rng('fcm'),
                 shape=(batch_size, 1, 1, 1),
                 minval=self.config.fcm_min_ratio,
-                maxval=self.config.fcm_max_ratio
+                maxval=self.config.fcm_max_ratio,
             )
             fcm_mask = (
                 jax.random.uniform(
@@ -1902,7 +1902,7 @@ class FlaxLLaMAForCausalLMMidEmbedModule(nn.Module):
             if position_ids is None:
                 position_ids = jnp.broadcast_to(
                     jnp.clip(jnp.cumsum(attention_mask, axis=-1) - 1, a_min=0),
-                    (batch_size, seq_length)
+                    (batch_size, seq_length),
                 )
         else:
             assert attention_mask is not None
@@ -2292,7 +2292,7 @@ class LLaMATokenizer(PreTrainedTokenizer):
         self,
         token_ids_0: List[int],
         token_ids_1: Optional[List[int]] = None,
-        already_has_special_tokens: bool = False
+        already_has_special_tokens: bool = False,
     ) -> List[int]:
         """
         Retrieve sequence ids from a token list that has no special tokens added. This method is called when adding
