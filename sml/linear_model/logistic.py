@@ -29,7 +29,7 @@ class Penalty(Enum):
 
 class MultiClass(Enum):
     Binary = 'binary'
-    Ovr = 'ovr'  # not supported yet
+    Ovr = 'ovr'
     Multy = 'multinomial'  # not supported yet
 
 
@@ -44,7 +44,8 @@ class LogisticRegression:
     IMPORTANT: Something different between `LogisticRegression` in sklearn:
         1. sigmoid will be computed with approximation
         2. you must define multi_class because we can not inspect y to decision the problem type
-        3. for now, only 0-1 binary classification is supported; so if your label is {-1,1}, you must change it first!
+        3. Due to the inability to perform data exploration in encrypted state, it is necessary to specify a value for labels.
+            For example, binary classification [0,1] ,multi classification [0,1,2].
 
     Parameters
     ----------
@@ -263,6 +264,7 @@ class LogisticRegression:
                 preds[i] = prob.ravel()
             preds = jnp.transpose(jnp.array(preds))
             prob = preds / preds.sum(axis=1).reshape((preds.shape[0], -1))
+            # When using sklearn's "roc_auc_score()" function, accuracy verification will be performed on the sum of "prob": np.allclose (1, prob.sum (axis=1)). The following operation is to eliminate the impact of accuracy errors.
             prob = prob.at[:, 0].set(1 - prob.sum(axis=1) + prob[:, 0])
         else:
             raise NotImplementedError
@@ -289,8 +291,7 @@ class LogisticRegression:
             # for binary task, only check whether logit > 0 (prob > 0.5)
             label = jnp.select([pred[0] > 0], [1], 0)
         elif self._multi_class == MultiClass.Ovr:
-            prob = self.predict_proba(x)
-            label = prob.argmax(axis=1)
+            label = jnp.argmax(jnp.array(pred), axis=0)
         else:
             raise NotImplementedError
 
