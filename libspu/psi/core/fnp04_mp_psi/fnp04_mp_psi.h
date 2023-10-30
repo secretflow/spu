@@ -21,8 +21,6 @@
 #include "heu/library/algorithms/paillier_zahlen/paillier.h"
 #include "yacl/link/link.h"
 
-#include "libspu/core/prelude.h"
-
 namespace spu::psi {
 
 // Efficient Private Matching and Set Intersection
@@ -44,6 +42,8 @@ class FNP04Party {
   virtual std::vector<std::string> Run(const std::vector<std::string>& inputs);
 
  private:
+  std::vector<size_t> EncodeInputs(const std::vector<std::string>& inputs,
+                                   size_t count) const;
   void BroadcastPubKey();
   void SendEncryptedSet(const std::vector<size_t>& items) const;
   std::vector<SecretPolynomial> RecvEncryptedSet(size_t count) const;

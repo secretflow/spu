@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("//bazel:spu.bzl", "spu_cc_binary", "spu_cc_library", "spu_cc_test")
+load("//bazel:spu.bzl", "spu_cc_library", "spu_cc_test")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -21,11 +21,11 @@ spu_cc_library(
     srcs = ["fnp04_mp_psi.cc"],
     hdrs = ["fnp04_mp_psi.h"],
     deps = [
-        ":serializable_cc_proto",
         "//libspu/core:prelude",
         "@yacl//yacl/link",
         "@heu//heu/library/algorithms/paillier_zahlen",
         "//libspu/psi/utils:test_utils",
+        "//libspu/psi/utils",
     ],
 )
 
@@ -33,14 +33,4 @@ spu_cc_test(
     name = "fnp04_mp_psi_test",
     srcs = ["fnp04_mp_psi_test.cc"],
     deps = [":fnp04_mp_psi"],
-)
-
-proto_library(
-    name = "serializable_proto",
-    srcs = ["serializable.proto"],
-)
-
-cc_proto_library(
-    name = "serializable_cc_proto",
-    deps = [":serializable_proto"],
 )
