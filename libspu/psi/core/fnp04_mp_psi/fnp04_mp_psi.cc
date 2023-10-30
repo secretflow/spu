@@ -60,7 +60,7 @@ size_t Deserialize(const yacl::Buffer& buf) {
 
 namespace spu::psi {
 
-Party::Party(const Options& options) : options_{options} {
+FNP04Party::FNP04Party(const Options& options) : options_{options} {
   auto [ctx, wsize, me, leader] = CollectContext();
   encryptors_.resize(wsize);
   SecretKey sk;
@@ -70,7 +70,8 @@ Party::Party(const Options& options) : options_{options} {
   decryptor_ = std::make_shared<Decryptor>(pk, sk);
 }
 
-std::vector<std::string> Party::Run(const std::vector<std::string>& inputs) {
+std::vector<std::string> FNP04Party::Run(
+    const std::vector<std::string>& inputs) {
   auto [ctx, wsize, me, leader] = CollectContext();
   // Step 0: Preprocessing inputs
   auto count = inputs.size();
@@ -127,7 +128,7 @@ std::vector<std::string> Party::Run(const std::vector<std::string>& inputs) {
   return intersection;
 }
 
-void Party::BroadcastPubKey() {
+void FNP04Party::BroadcastPubKey() {
   auto [ctx, wsize, me, leader] = CollectContext();
   // Publish
   if (leader != me) {
@@ -153,7 +154,7 @@ void Party::BroadcastPubKey() {
   }
 }
 
-void Party::SendEncryptedSet(const std::vector<size_t>& items) const {
+void FNP04Party::SendEncryptedSet(const std::vector<size_t>& items) const {
   auto [ctx, wsize, me, leader] = CollectContext();
   assert(me != leader);
   // Encode
@@ -195,7 +196,7 @@ void Party::SendEncryptedSet(const std::vector<size_t>& items) const {
                           fmt::format("Party {} sends the encrypted set", me));
 }
 
-auto Party::RecvEncryptedSet(size_t count) const
+auto FNP04Party::RecvEncryptedSet(size_t count) const
     -> std::vector<SecretPolynomial> {
   auto [ctx, wsize, me, leader] = CollectContext();
   assert(me == leader);
@@ -219,7 +220,7 @@ auto Party::RecvEncryptedSet(size_t count) const
   return hashings;
 }
 
-auto Party::ZeroSharing(size_t count) const -> std::vector<Share> {
+auto FNP04Party::ZeroSharing(size_t count) const -> std::vector<Share> {
   auto [ctx, wsize, me, leader] = CollectContext();
   std::vector<Share> shares(count, Share(wsize));
   for (auto& share : shares) {
@@ -232,7 +233,7 @@ auto Party::ZeroSharing(size_t count) const -> std::vector<Share> {
   return shares;
 }
 
-auto Party::SwapShares(const std::vector<Share>& shares) const
+auto FNP04Party::SwapShares(const std::vector<Share>& shares) const
     -> std::vector<Share> {
   auto [ctx, wsize, me, leader] = CollectContext();
   auto count = shares.size();
@@ -274,9 +275,9 @@ auto Party::SwapShares(const std::vector<Share>& shares) const
   return recv_shares;
 }
 
-void Party::SwapShares(const std::vector<Share>& shares,
-                       const std::vector<size_t>& items,
-                       const std::vector<SecretPolynomial>& hashings) const {
+void FNP04Party::SwapShares(
+    const std::vector<Share>& shares, const std::vector<size_t>& items,
+    const std::vector<SecretPolynomial>& hashings) const {
   auto [ctx, wsize, me, leader] = CollectContext();
   auto count = items.size();
   size_t B{BinCountHint(count)};
@@ -315,7 +316,8 @@ void Party::SwapShares(const std::vector<Share>& shares,
   }
 }
 
-auto Party::AggregateShare(const std::vector<Share>& shares) const -> Share {
+auto FNP04Party::AggregateShare(const std::vector<Share>& shares) const
+    -> Share {
   auto [ctx, wsize, me, leader] = CollectContext();
   Share share(shares.size());
   for (size_t i{}; i != shares.size(); ++i) {
@@ -326,8 +328,8 @@ auto Party::AggregateShare(const std::vector<Share>& shares) const -> Share {
   return share;
 }
 
-std::vector<size_t> Party::GetIntersection(const std::vector<size_t>& items,
-                                           const Share& share) const {
+std::vector<size_t> FNP04Party::GetIntersection(
+    const std::vector<size_t>& items, const Share& share) const {
   auto [ctx, wsize, me, leader] = CollectContext();
   if (me != leader) {
     proto::SizesProto proto;

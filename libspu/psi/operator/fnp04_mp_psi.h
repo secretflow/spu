@@ -26,13 +26,13 @@ namespace spu::psi {
 
 class FnpMpPsiOperator : public PsiBaseOperator {
  public:
-  using Options = Party::Options;
+  using Options = FNP04Party::Options;
 
   explicit FnpMpPsiOperator(const Options& options)
       : PsiBaseOperator(options.link_ctx), options_(options) {}
 
   std::vector<std::string> OnRun(const std::vector<std::string>& inputs) final {
-    return Party{options_}.Run(inputs);
+    return FNP04Party{options_}.Run(inputs);
   }
 
  private:

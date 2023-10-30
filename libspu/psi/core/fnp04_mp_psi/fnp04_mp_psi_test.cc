@@ -75,10 +75,10 @@ TEST_P(FnpMpPsiTest, Works) {
   auto ctxs = yacl::link::test::SetupWorld(params.item_size.size());
 
   auto proc = [&](int idx) -> std::vector<std::string> {
-    Party::Options opts;
+    FNP04Party::Options opts;
     opts.link_ctx = ctxs[idx];
     opts.leader_rank = leader_rank;
-    Party op(opts);
+    FNP04Party op(opts);
     return op.Run(items[idx]);
   };
 

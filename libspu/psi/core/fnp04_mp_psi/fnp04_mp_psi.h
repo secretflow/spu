@@ -30,7 +30,7 @@ namespace spu::psi {
 
 using namespace heu::lib::algorithms::paillier_z;
 
-class Party {
+class FNP04Party {
  public:
   struct Options {
     std::shared_ptr<yacl::link::Context> link_ctx;
@@ -40,7 +40,7 @@ class Party {
   using SecretPolynomial = std::vector<std::array<Ciphertext, BinSize>>;
   using Share = std::vector<size_t>;
 
-  Party(const Options& options);
+  FNP04Party(const Options& options);
   virtual std::vector<std::string> Run(const std::vector<std::string>& inputs);
 
  private:
