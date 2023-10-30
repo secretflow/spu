@@ -15,6 +15,7 @@
 # Additional Reference Link:
 # Original Source Code Form [EasyLM](https://github.com/young-geng/EasyLM/tree/main)
 
+import os
 from shutil import copyfile
 from typing import Any, Dict, List, Optional, Tuple, Union
 import json
