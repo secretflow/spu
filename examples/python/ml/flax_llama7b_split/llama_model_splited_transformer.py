@@ -863,7 +863,8 @@ class FlaxLLaMAPreTrainedModel(FlaxPreTrainedModel):
                     )
 
                 position_ids = jnp.broadcast_to(
-                    jnp.arange(sequence_length)[None, :], (batch_size, sequence_length))
+                    jnp.arange(sequence_length)[None, :], (batch_size, sequence_length)
+                )
 
             if attention_mask is None:
                 attention_mask = jnp.ones((batch_size, sequence_length))
