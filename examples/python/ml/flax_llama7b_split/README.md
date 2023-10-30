@@ -32,7 +32,6 @@ Using the full LLaMA model for inference on SPU requires a large amount of memor
     conda env create -f examples/python/ml/flax_llama7b_split/gpu_environment.yml
     conda activate EasyLM
     pip install 'transformers[flax]'
-    pip install -U secretflow
     pip install spu
     ```
 
