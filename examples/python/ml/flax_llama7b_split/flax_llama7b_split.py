@@ -27,7 +27,6 @@ from flax.linen.linear import Array
 from typing import Any, Optional, Tuple, Union
 from transformers import LlamaTokenizer
 from EasyLM.checkpoint import StreamingCheckpointer
-from EasyLM.models.llama.llama_model import  FlaxLLaMAForCausalLM
 from EasyLM.models.llama.llama_model import FlaxLLaMAForCausalLM
 from EasyLM.models.llama.llama_model_splited_transformer import (
     FlaxLLaMAForCausalLMClient,
@@ -46,7 +45,8 @@ from flax.linen.linear import Array
 from typing import Any, Optional, Tuple, Union
 
 parser = argparse.ArgumentParser(description='distributed driver.')
-parser.add_argument("-c", "--config", default="examples/python/ml/flax_llama_split/3pc.json")
+parser.add_argument(
+    "-c", "--config", default="examples/python/ml/flax_llama_split/3pc.json")
 args = parser.parse_args()
 
 with open(args.config, 'r') as file:
@@ -74,27 +74,27 @@ with jax.default_device(jax.devices("cpu")[0]):
         model_path, disallow_trainstate=True
     )
 client_params_dict = {
-        "transformer":{
-            "wte":params['params']["transformer"]["wte"],
-            "ln_f": params['params']["transformer"]["ln_f"],
-            "h":{str(i): params['params']["transformer"]["h"][str(i)] for i in range(2)}
-        }
+    "transformer": {
+        "wte": params['params']["transformer"]["wte"],
+        "ln_f": params['params']["transformer"]["ln_f"],
+        "h": {str(i): params['params']["transformer"]["h"][str(i)] for i in range(2)},
     }
+}
 
 mid_params_dict = {
-    "transformer":{
+    "transformer": {
 
-        "h":{str(i): params['params']["transformer"]["h"][str(i)] for i in range(2, 3)}
+        "h": {str(i): params['params']["transformer"]["h"][str(i)] for i in range(2, 3)}
     }
 }
 
 server_params_dict = {
     "transformer": {
         "ln_f": params['params']["transformer"]["ln_f"],
-        "h":{
+        "h": {
             str(i): params['params']["transformer"]["h"][str(i)]
             for i in range(3, len(params['params']["transformer"]["h"]))
-        }
+        },
 
     },
     "lm_head": {
@@ -192,7 +192,6 @@ def embeding_generation(input_ids, params):
     return smasheddata, attention_mask, position_ids
 
 
-
 def mid_generation(input_ids, params, attention_mask, position_ids):
 
     config = LLaMAConfig()
@@ -202,10 +201,11 @@ def mid_generation(input_ids, params, attention_mask, position_ids):
         input_ids=input_ids,
         params=params,
         attention_mask=attention_mask,
-        position_ids=position_ids
+        position_ids=position_ids,
     )
-    
+
     return _smasheddata, attention_mask, position_ids
+
 
 def server_generation(input_ids, params, attention_mask, position_ids):
     config = LLaMAConfig()
@@ -215,9 +215,9 @@ def server_generation(input_ids, params, attention_mask, position_ids):
         input_ids=input_ids,
         params=params,
         attention_mask=attention_mask,
-        position_ids=position_ids
+        position_ids=position_ids,
     )
-    
+
     return _smasheddata
 
 
@@ -237,14 +237,14 @@ def run_on_cpu(token_num=9):
             attention_mask=attention_mask,
             position_ids=position_ids,
         )
-            
+
         outputs = server_generation(
             input_ids=_smasheddata,
             params=server_params_dict,
             attention_mask=attention_mask,
             position_ids=position_ids,
         )
-        
+
         next_token_logits = outputs[0][0, -1, :]
         next_token = jnp.argmax(next_token_logits)
 
@@ -259,12 +259,12 @@ def run_on_spu(token_num=9):
         'Q: What is the largest animal?\nA:', return_tensors='jax'
     )
     for _ in range(token_num):
-        smasheddata, attention_mask, position_ids = embeding_generation(input_ids=input_ids, params=client_params_dict)
-        with hack_softmax_context("hack exp of softmax", enabled=True), hack_silu_context(
-            "hack silu", enabled=True
-        ):
-
-
+        smasheddata, attention_mask, position_ids = embeding_generation(
+            input_ids=input_ids, params=client_params_dict
+        )
+        with hack_softmax_context(
+            "hack exp of softmax", enabled=True
+        ), hack_silu_context("hack silu", enabled=True):
             _input_ids = ppd.device("P1")(lambda x: x)(smasheddata)
             _params = ppd.device("P2")(lambda x: x)(mid_params_dict)
 
@@ -277,18 +277,19 @@ def run_on_spu(token_num=9):
                 ppd.get(attention_mask),
                 ppd.get(position_ids),
             )
-       
+
         outputs = server_generation(
             input_ids=_smasheddata,
             params=server_params_dict,
             attention_mask=attention_mask,
             position_ids=position_ids,
         )
-        
+
         next_token_logits = outputs[0][0, -1, :]
         next_token = jnp.argmax(next_token_logits)
 
-        input_ids = jnp.concatenate([input_ids, jnp.array([[next_token]])], axis=1)
+        input_ids = jnp.concatenate(
+            [input_ids, jnp.array([[next_token]])], axis=1)
 
     return input_ids
 
