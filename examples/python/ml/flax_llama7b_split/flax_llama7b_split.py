@@ -46,7 +46,8 @@ from typing import Any, Optional, Tuple, Union
 
 parser = argparse.ArgumentParser(description='distributed driver.')
 parser.add_argument(
-    "-c", "--config", default="examples/python/ml/flax_llama_split/3pc.json")
+    "-c", "--config", default="examples/python/ml/flax_llama_split/3pc.json"
+)
 args = parser.parse_args()
 
 with open(args.config, 'r') as file:
@@ -83,7 +84,6 @@ client_params_dict = {
 
 mid_params_dict = {
     "transformer": {
-
         "h": {str(i): params['params']["transformer"]["h"][str(i)] for i in range(2, 3)}
     }
 }
@@ -95,7 +95,6 @@ server_params_dict = {
             str(i): params['params']["transformer"]["h"][str(i)]
             for i in range(3, len(params['params']["transformer"]["h"]))
         },
-
     },
     "lm_head": {
         "kernel": params['params']["lm_head"]["kernel"],
@@ -193,7 +192,6 @@ def embeding_generation(input_ids, params):
 
 
 def mid_generation(input_ids, params, attention_mask, position_ids):
-
     config = LLaMAConfig()
     _model = FlaxLLaMAForCausalLMMid(config=config)
 
@@ -222,7 +220,6 @@ def server_generation(input_ids, params, attention_mask, position_ids):
 
 
 def run_on_cpu(token_num=9):
-
     input_ids = tokenizer.encode(
         'Q: What is the largest animal?\nA:', return_tensors='jax'
     )
@@ -288,8 +285,7 @@ def run_on_spu(token_num=9):
         next_token_logits = outputs[0][0, -1, :]
         next_token = jnp.argmax(next_token_logits)
 
-        input_ids = jnp.concatenate(
-            [input_ids, jnp.array([[next_token]])], axis=1)
+        input_ids = jnp.concatenate([input_ids, jnp.array([[next_token]])], axis=1)
 
     return input_ids
 
