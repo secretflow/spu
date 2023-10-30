@@ -19,10 +19,9 @@ package(default_visibility = ["//visibility:public"])
 spu_cc_library(
     name = "fnp04_mp_psi",
     srcs = ["fnp04_mp_psi.cc"],
-    hdrs = ["fnp04_mp_psi.h",
-            "buffer.h",
-    ],
+    hdrs = ["fnp04_mp_psi.h"],
     deps = [
+        ":serializable_cc_proto",
         "//libspu/core:prelude",
         "@yacl//yacl/link",
         "@heu//heu/library/algorithms/paillier_zahlen",
@@ -33,7 +32,15 @@ spu_cc_library(
 spu_cc_test(
     name = "fnp04_mp_psi_test",
     srcs = ["fnp04_mp_psi_test.cc"],
-    deps = [
-        ":fnp04_mp_psi",
-    ],
+    deps = [":fnp04_mp_psi"],
+)
+
+proto_library(
+    name = "serializable_proto",
+    srcs = ["serializable.proto"],
+)
+
+cc_proto_library(
+    name = "serializable_cc_proto",
+    deps = [":serializable_proto"],
 )

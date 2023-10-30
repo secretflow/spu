@@ -23,7 +23,7 @@
 
 #include "yacl/link/link.h"
 
-#include "libspu/psi/core/fnp04_mp_psi/buffer.h"
+#include "libspu/psi/core/fnp04_mp_psi/serializable.pb.h"
 
 namespace {
 
@@ -163,6 +163,7 @@ void Party::SendEncryptedSet(const std::vector<size_t>& items) const {
                 [&](auto item) { hashing[item % B].emplace_back(item); });
   // Hashing
   SecretPolynomial bins(B);
+  proto::BuffersProto proto;
   for (auto& roots : hashing) {
     SPU_ENFORCE(roots.size() <= BinSize, "Severe hash collisions");
     roots.resize(BinSize);
@@ -184,10 +185,13 @@ void Party::SendEncryptedSet(const std::vector<size_t>& items) const {
           roots[3] * roots[4]),
         -(roots[0] + roots[1] + roots[2] + roots[3] + roots[4])};
     for (const auto& coeff : coeffs) {
-      Buffer::Push(encryptors_[me]->Encrypt(Plaintext(coeff)).Serialize());
+      auto buf = encryptors_[me]->Encrypt(Plaintext(coeff)).Serialize();
+      proto.add_buffers(buf.data(), buf.size());
     }
   }
-  ctx->SendAsyncThrottled(leader, Buffer::Merge(),
+  yacl::Buffer buf(proto.ByteSizeLong());
+  proto.SerializeToArray(buf.data(), buf.size());
+  ctx->SendAsyncThrottled(leader, buf,
                           fmt::format("Party {} sends the encrypted set", me));
 }
 
@@ -202,10 +206,12 @@ auto Party::RecvEncryptedSet(size_t count) const
       auto buf = ctx->Recv(
           src, fmt::format(
                    "The leader receives the encrypted set from party {}", src));
-      Buffer::Split(std::move(buf), B * BinSize);
+      proto::BuffersProto proto;
+      proto.ParseFromArray(buf.data(), buf.size());
+      size_t i{};
       for (auto& bin : hashings[src]) {
         for (auto& coeff : bin) {
-          coeff.Deserialize(Buffer::Pop());
+          coeff.Deserialize(proto.buffers(i++));
         }
       }
     }
@@ -233,13 +239,16 @@ auto Party::SwapShares(const std::vector<Share>& shares) const
   // Send
   for (size_t dst{}; dst != wsize; ++dst) {
     if (dst != me && dst != leader) {
+      proto::BuffersProto proto;
       for (auto& share : shares) {
-        Ciphertext cipher = encryptors_[dst]->Encrypt(Plaintext(share[dst]));
-        Buffer::Push(cipher.Serialize());
+        auto cipher =
+            encryptors_[dst]->Encrypt(Plaintext(share[dst])).Serialize();
+        proto.add_buffers(cipher.data(), cipher.size());
       }
+      yacl::Buffer buf(proto.ByteSizeLong());
+      proto.SerializeToArray(buf.data(), buf.size());
       ctx->SendAsyncThrottled(
-          dst, Buffer::Merge(),
-          fmt::format("Party {} sends secret shares to {}", me, dst));
+          dst, buf, fmt::format("Party {} sends secret shares to {}", me, dst));
     }
   }
   // Receive
@@ -248,10 +257,12 @@ auto Party::SwapShares(const std::vector<Share>& shares) const
     if (src != me) {
       auto buf = ctx->Recv(
           src, fmt::format("Party {} receives secret shares from {}", me, src));
-      Buffer::Split(std::move(buf), count);
+      proto::BuffersProto proto;
+      proto.ParseFromArray(buf.data(), buf.size());
+      size_t i{};
       for (auto& share : recv_shares) {
         Ciphertext cipher;
-        cipher.Deserialize(Buffer::Pop());
+        cipher.Deserialize(proto.buffers(i++));
         share[src] = ToUnsigned(decryptor_->Decrypt(cipher));
       }
     } else {
@@ -291,12 +302,15 @@ void Party::SwapShares(const std::vector<Share>& shares,
         evaluator.MulInplace(&share[i], scale);
         evaluator.AddInplace(&share[i], bias);
       }
+      proto::BuffersProto proto;
       for (const auto& s : share) {
-        Buffer::Push(s.Serialize());
+        auto buf = s.Serialize();
+        proto.add_buffers(buf.data(), buf.size());
       }
+      yacl::Buffer buf(proto.ByteSizeLong());
+      proto.SerializeToArray(buf.data(), buf.size());
       ctx->SendAsyncThrottled(
-          dst, Buffer::Merge(),
-          fmt::format("The leader sends secret shares to {}", dst));
+          dst, buf, fmt::format("The leader sends secret shares to {}", dst));
     }
   }
 }
@@ -315,13 +329,15 @@ auto Party::AggregateShare(const std::vector<Share>& shares) const -> Share {
 std::vector<size_t> Party::GetIntersection(const std::vector<size_t>& items,
                                            const Share& share) const {
   auto [ctx, wsize, me, leader] = CollectContext();
-  auto count = share.size();
   if (me != leader) {
+    proto::SizesProto proto;
     for (auto& s : share) {
-      Buffer::Push(Serialize(s));
+      proto.add_sizes(s);
     }
+    yacl::Buffer buf(proto.ByteSizeLong());
+    proto.SerializeToArray(buf.data(), buf.size());
     ctx->SendAsyncThrottled(
-        leader, Buffer::Merge(),
+        leader, buf,
         fmt::format("Party {} sends aggregated shares to the leader", me));
     return {};
   }
@@ -331,9 +347,11 @@ std::vector<size_t> Party::GetIntersection(const std::vector<size_t>& items,
       auto buf = ctx->Recv(
           src,
           fmt::format("The leader receives aggregated shares from {}", src));
-      Buffer::Split(std::move(buf), count);
+      proto::SizesProto proto;
+      proto.ParseFromArray(buf.data(), buf.size());
+      size_t i{};
       for (auto& item : universe) {
-        item ^= Deserialize(Buffer::Pop());
+        item ^= proto.sizes(i++);
       }
     }
   }
