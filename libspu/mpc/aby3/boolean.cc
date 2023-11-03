@@ -220,7 +220,7 @@ NdArrayRef AndBB::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
   const auto* lhs_ty = lhs.eltype().as<BShrTy>();
   const auto* rhs_ty = rhs.eltype().as<BShrTy>();
 
-  const size_t out_nbits = std::max(lhs_ty->nbits(), rhs_ty->nbits());
+  const size_t out_nbits = std::min(lhs_ty->nbits(), rhs_ty->nbits());
   const PtType out_btype = calcBShareBacktype(out_nbits);
   NdArrayRef out(makeType<BShrTy>(out_btype, out_nbits), lhs.shape());
 

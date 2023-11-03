@@ -271,6 +271,7 @@ spu_cc_library(
     deps = [
         ":basic_binary",
         ":casting",
+        ":const",
         ":utils",
         "//libspu/kernel/hal:shape_ops",
         "//libspu/kernel/hal:sort",

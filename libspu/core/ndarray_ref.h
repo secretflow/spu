@@ -121,8 +121,6 @@ class NdArrayRef {
 
   std::shared_ptr<yacl::Buffer> buf() const { return buf_; }
 
-  std::shared_ptr<yacl::Buffer> getOrCreateCompactBuf() const;
-
   // create a compact clone.
   NdArrayRef clone() const;
 
@@ -447,7 +445,7 @@ template <typename T>
 size_t maxBitWidth(const NdArrayRef& in) {
   auto numel = in.numel();
   if (numel == 0) {
-    return 0;
+    return sizeof(T) * 8;
   }
 
   if (std::all_of(in.strides().begin(), in.strides().end(),

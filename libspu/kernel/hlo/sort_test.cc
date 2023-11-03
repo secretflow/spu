@@ -22,6 +22,8 @@
 #include "libspu/kernel/hal/constants.h"
 #include "libspu/kernel/hal/polymorphic.h"
 #include "libspu/kernel/hal/type_cast.h"
+#include "libspu/kernel/hlo/casting.h"
+#include "libspu/kernel/hlo/const.h"
 #include "libspu/kernel/test_util.h"
 
 namespace spu::kernel::hlo {
@@ -145,6 +147,23 @@ TEST(SortTest, MultiOperands) {
   EXPECT_TRUE(xt::allclose(sorted_k2, sorted_k2_hat, 0.01, 0.001))
       << sorted_k2 << std::endl
       << sorted_k2_hat << std::endl;
+}
+
+TEST(SortTest, EmptyOperands) {
+  SPUContext ctx = test::makeSPUContext();
+  auto empty_x = Seal(&ctx, Constant(&ctx, 1, {0}));
+
+  std::vector<spu::Value> rets = Sort(
+      &ctx, {empty_x}, 0, false,
+      [&](absl::Span<const spu::Value> inputs) {
+        return hal::less(&ctx, inputs[0], inputs[1]);
+      },
+      Visibility::VIS_SECRET);
+
+  EXPECT_EQ(rets.size(), 1);
+  EXPECT_EQ(rets[0].numel(), 0);
+  EXPECT_EQ(rets[0].shape().size(), 1);
+  EXPECT_EQ(rets[0].shape()[0], 0);
 }
 
 }  // namespace spu::kernel::hlo
