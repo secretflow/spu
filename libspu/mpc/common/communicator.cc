@@ -26,12 +26,18 @@ std::shared_ptr<yacl::Buffer> stealBuffer(yacl::Buffer&& buf) {
   return std::make_shared<yacl::Buffer>(std::move(buf));
 }
 
+std::shared_ptr<yacl::Buffer> getOrCreateCompactBuf(const NdArrayRef& in) {
+  if (in.numel() * in.elsize() != static_cast<size_t>(in.buf()->size())) {
+    return in.clone().buf();
+  }
+  return in.buf();
+}
+
 }  // namespace
 
 NdArrayRef Communicator::allReduce(ReduceOp op, const NdArrayRef& in,
                                    std::string_view tag) {
-  const auto buf = in.getOrCreateCompactBuf();
-
+  const auto buf = getOrCreateCompactBuf(in);
   std::vector<yacl::Buffer> bufs = yacl::link::AllGather(lctx_, *buf, tag);
 
   SPU_ENFORCE(bufs.size() == getWorldSize());
@@ -61,8 +67,7 @@ NdArrayRef Communicator::allReduce(ReduceOp op, const NdArrayRef& in,
 NdArrayRef Communicator::reduce(ReduceOp op, const NdArrayRef& in, size_t root,
                                 std::string_view tag) {
   SPU_ENFORCE(root < lctx_->WorldSize());
-  const auto buf = in.getOrCreateCompactBuf();
-
+  const auto buf = getOrCreateCompactBuf(in);
   std::vector<yacl::Buffer> bufs = yacl::link::Gather(lctx_, *buf, root, tag);
 
   auto res = in.clone();
@@ -92,8 +97,7 @@ NdArrayRef Communicator::reduce(ReduceOp op, const NdArrayRef& in, size_t root,
 }
 
 NdArrayRef Communicator::rotate(const NdArrayRef& in, std::string_view tag) {
-  const auto buf = in.getOrCreateCompactBuf();
-
+  const auto buf = getOrCreateCompactBuf(in);
   lctx_->SendAsync(lctx_->PrevRank(), *buf, tag);
 
   auto res_buf = lctx_->Recv(lctx_->NextRank(), tag);
@@ -107,8 +111,7 @@ NdArrayRef Communicator::rotate(const NdArrayRef& in, std::string_view tag) {
 
 void Communicator::sendAsync(size_t dst_rank, const NdArrayRef& in,
                              std::string_view tag) {
-  const auto buf = in.getOrCreateCompactBuf();
-
+  const auto buf = getOrCreateCompactBuf(in);
   lctx_->SendAsync(dst_rank, *buf, tag);
 }
 

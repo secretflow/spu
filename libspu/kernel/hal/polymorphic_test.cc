@@ -769,35 +769,4 @@ TYPED_TEST(MathTest, Div) {
                                                    << z << std::endl;
 }
 
-// TEST(PopcountTest, Works) {
-//   {
-//     // GIVEN
-//     xt::xarray<int32_t> x = xt::xarray<int32_t>{1, 100, 1000, -1, -100,
-//     -1000};
-
-//    // WHAT
-//    auto z = test::evalUnaryOp<int>(secret_v(), popcount, x);
-//    auto expected = xt::xarray<int>{1, 3, 6, 64, 60, 56};
-
-//    // THEN
-//    EXPECT_TRUE(xt::allclose(expected, z, 0.01, 0.001)) << expected <<
-//    std::endl
-//                                                        << z;
-//  }
-
-//  {
-//    // GIVEN
-//    xt::xarray<float> x = xt::xarray<float>{1, 100, 1000, -1, -100, -1000};
-
-//    // WHAT
-//    auto z = test::evalUnaryOp<int>(secret_v(), popcount, x);
-//    auto expected = xt::xarray<int>{1, 3, 6, 46, 42, 38};
-
-//    // THEN
-//    EXPECT_TRUE(xt::allclose(expected, z, 0.01, 0.001)) << expected <<
-//    std::endl
-//                                                        << z;
-//  }
-//}
-
 }  // namespace spu::kernel::hal

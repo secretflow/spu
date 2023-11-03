@@ -131,7 +131,7 @@ Value SvpUnaryDisp(SPUContext* ctx, const Value& x, Args&&... args) {
   FORCE_NAMED_DISPATCH(CTX, __func__, __VA_ARGS__)
 
 #define TRY_NAMED_DISPATCH(CTX, FNAME, ...)        \
-  if ((CTX)->hasKernel(__func__)) {                \
+  if ((CTX)->hasKernel(FNAME)) {                   \
     SPU_TRACE_MPC_LEAF(CTX, __VA_ARGS__);          \
     return dynDispatch((CTX), FNAME, __VA_ARGS__); \
   }

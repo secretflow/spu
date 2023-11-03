@@ -38,4 +38,3 @@ dependencies:
         - fastapi
         - uvicorn
         - gradio
-

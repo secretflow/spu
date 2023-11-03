@@ -61,6 +61,9 @@ std::vector<spu::Value> Sort(SPUContext *ctx,
   // - W is the vector length.
   const int64_t M = inputs.size();
   const int64_t W = shape.dim(sort_dim);
+  if (W == 0) {
+    return std::vector<spu::Value>(inputs.begin(), inputs.end());
+  }
   const int64_t N = shape.numel() / W;
   Axes perm(shape.ndim());
   Axes unperm;

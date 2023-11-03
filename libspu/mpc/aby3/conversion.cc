@@ -255,6 +255,7 @@ template <typename T>
 static std::vector<bool> bitDecompose(const NdArrayRef& in, size_t nbits) {
   auto numel = in.numel();
   // decompose each bit of an array of element.
+  // FIXME: this is not thread-safe.
   std::vector<bool> dep(numel * nbits);
 
   NdArrayView<T> _in(in);

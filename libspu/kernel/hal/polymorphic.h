@@ -189,8 +189,6 @@ Value right_shift_logical(SPUContext* ctx, const Value& x, size_t bits);
 
 Value right_shift_arithmetic(SPUContext* ctx, const Value& x, size_t bits);
 
-Value popcount(SPUContext* ctx, const Value& x);
-
 /// the element-wise base-2 logarithm of x
 // @param in, should be positive, or the result is implementation defined.
 Value log2(SPUContext* ctx, const Value& in);

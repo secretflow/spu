@@ -219,13 +219,6 @@ NdArrayRef NdArrayRef::clone() const {
   return res;
 }
 
-std::shared_ptr<yacl::Buffer> NdArrayRef::getOrCreateCompactBuf() const {
-  if (isCompact() && offset_ == 0) {
-    return buf();
-  }
-  return clone().buf();
-}
-
 void NdArrayRef::copy_slice(const NdArrayRef& src, const Index& src_base,
                             const Index& dst_base, int64_t num_copy) {
   NdArrayRef::Iterator src_iter(src, src_base);
