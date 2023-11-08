@@ -10,6 +10,8 @@
 >
 > please add your unreleased change here.
 
+## 20231108
+
 - [Bugfix] Fix compatibility with latest Jax
 - [Feature] Improve memory efficiency during encode/decode data
 - [Feature] Add radix sort support for SEMI2K
