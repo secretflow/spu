@@ -665,4 +665,38 @@ Value bitrev_p(SPUContext* ctx, const Value& x, size_t start, size_t end) {
   FORCE_DISPATCH(ctx, x, start, end);
 }
 
+//////////////////////////////////////////////////////////////////////////////
+
+OptionalAPI<Value> rand_perm_s(SPUContext* ctx, const Shape& shape) {
+  SPU_TRACE_MPC_DISP(ctx, shape);
+  TRY_DISPATCH(ctx, shape);
+  return NotAvailable;
+}
+
+OptionalAPI<Value> perm_ss(SPUContext* ctx, const Value& x, const Value& perm) {
+  SPU_TRACE_MPC_DISP(ctx, x, perm);
+  TRY_NAMED_DISPATCH(ctx, "perm_as", _2a(ctx, x), perm);
+  return NotAvailable;
+}
+
+OptionalAPI<Value> perm_sp(SPUContext* ctx, const Value& x, const Value& perm) {
+  SPU_TRACE_MPC_DISP(ctx, x, perm);
+  TRY_NAMED_DISPATCH(ctx, "perm_ap", _2a(ctx, x), perm);
+  return NotAvailable;
+}
+
+OptionalAPI<Value> inv_perm_ss(SPUContext* ctx, const Value& x,
+                               const Value& perm) {
+  SPU_TRACE_MPC_DISP(ctx, x, perm);
+  TRY_NAMED_DISPATCH(ctx, "inv_perm_as", _2a(ctx, x), perm);
+  return NotAvailable;
+}
+
+OptionalAPI<Value> inv_perm_sp(SPUContext* ctx, const Value& x,
+                               const Value& perm) {
+  SPU_TRACE_MPC_DISP(ctx, x, perm);
+  TRY_NAMED_DISPATCH(ctx, "inv_perm_ap", _2a(ctx, x), perm);
+  return NotAvailable;
+}
+
 }  // namespace spu::mpc

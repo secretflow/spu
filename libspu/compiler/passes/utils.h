@@ -12,13 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "gtest/gtest.h"
-#include "yacl/link/link.h"
+#pragma once
 
-#include "libspu/mpc/api_test_params.h"
+#include "mlir/IR/Builders.h"
+#include "mlir/IR/BuiltinAttributes.h"
 
-namespace spu::mpc::test {
+namespace mlir::pphlo {
 
-class PermuteTest : public ::testing::TestWithParam<OpTestParams> {};
+mlir::DenseIntElementsAttr
+ConvertDimensions(OpBuilder *builder, llvm::ArrayRef<int64_t> op_dimensions);
 
-}  // namespace spu::mpc::test
+}

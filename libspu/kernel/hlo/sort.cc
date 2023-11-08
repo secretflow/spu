@@ -138,9 +138,10 @@ std::vector<spu::Value> Sort(SPUContext *ctx,
 std::vector<spu::Value> SimpleSort(SPUContext *ctx,
                                    absl::Span<const spu::Value> inputs,
                                    int64_t sort_dim,
-                                   hal::SortDirection direction) {
+                                   hal::SortDirection direction,
+                                   int64_t num_keys, int64_t valid_bits) {
   auto sort_fn = [&](absl::Span<const spu::Value> input) {
-    return hal::simple_sort1d(ctx, input, direction);
+    return hal::simple_sort1d(ctx, input, direction, num_keys, valid_bits);
   };
   return internal::Sort(ctx, inputs, sort_dim, sort_fn);
 }

@@ -14,9 +14,7 @@
 
 // This file implements logic for lowering HLO dialect to pphlo dialect.
 
-#include <algorithm>
 #include <cstdint>
-#include <iostream>
 #include <string>
 #include <utility>
 #include <vector>
@@ -30,6 +28,7 @@
 
 #include "libspu/compiler/passes/map_stablehlo_to_pphlo_op.h"
 #include "libspu/compiler/passes/pass_details.h"
+#include "libspu/compiler/passes/utils.h"
 #include "libspu/compiler/passes/value_visibility_map.h"
 #include "libspu/compiler/passes/visibility_inference.h"
 #include "libspu/core/prelude.h"
@@ -983,9 +982,13 @@ public:
     auto result_type = HloToPPHloTypeConverter::getTypeWithVisibility(
         op.getType(), vis_.getValueVisibility(op.getResult()));
 
-    if (op.getPadding().has_value() &&
-        (!op.getPaddingAttr().isSplat() ||
-         op.getPaddingAttr().getSplatValue<int64_t>() != 0)) {
+    bool has_padding = op.getPadding().has_value() &&
+                       (!op.getPaddingAttr().isSplat() ||
+                        op.getPaddingAttr().getSplatValue<int64_t>() != 0);
+
+    SelectAndScatterOp new_op;
+
+    if (has_padding) {
       auto rank =
           op->getOperandTypes()[0].dyn_cast<RankedTensorType>().getRank();
       llvm::SmallVector<int64_t, 2> padding_low(rank, 0);
@@ -1003,12 +1006,32 @@ public:
           builder.getI64TensorAttr(padding_low),
           builder.getI64TensorAttr(padding_high),
           builder.getI64TensorAttr(padding_interior));
-    }
 
-    auto new_op = rewriter.replaceOpWithNewOp<pphlo::SelectAndScatterOp>(
-        op, result_type, materialized_operand, adaptor.getSource(),
-        materialized_init_value, op.getWindowDimensionsAttr(),
-        op.getWindowStridesAttr());
+      new_op = rewriter.create<pphlo::SelectAndScatterOp>(
+          op->getLoc(), materialized_operand.getType(), materialized_operand,
+          adaptor.getSource(), materialized_init_value,
+          op.getWindowDimensionsAttr(), op.getWindowStridesAttr());
+
+      llvm::SmallVector<int64_t, 2> slice_end(
+          new_op.getType().dyn_cast<RankedTensorType>().getShape().begin(),
+          new_op.getType().dyn_cast<RankedTensorType>().getShape().end());
+
+      for (size_t idx = 0; idx < slice_end.size(); ++idx) {
+        slice_end[idx] -= padding_high[idx];
+      }
+
+      // Slice back
+      rewriter.replaceOpWithNewOp<pphlo::SliceOp>(
+          op, result_type, new_op, ConvertDimensions(&builder, padding_low),
+          ConvertDimensions(&builder, slice_end),
+          ConvertDimensions(&builder,
+                            llvm::SmallVector<int64_t>(slice_end.size(), 1)));
+    } else {
+      new_op = rewriter.replaceOpWithNewOp<pphlo::SelectAndScatterOp>(
+          op, result_type, materialized_operand, adaptor.getSource(),
+          materialized_init_value, op.getWindowDimensionsAttr(),
+          op.getWindowStridesAttr());
+    }
 
     // Convert the region signature.
     TypeConverter::SignatureConversion select_sig_conversion(

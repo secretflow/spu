@@ -56,6 +56,15 @@ class BShrTy : public TypeImpl<BShrTy, RingTy, Secret, BShare> {
   }
 };
 
+class PShrTy : public TypeImpl<PShrTy, RingTy, Secret> {
+  using Base = TypeImpl<PShrTy, RingTy, Secret>;
+
+ public:
+  using Base::Base;
+  static std::string_view getStaticId() { return "semi2k.PShr"; }
+  explicit PShrTy() { field_ = FieldType::FM64; }
+};
+
 void registerTypes();
 
 }  // namespace spu::mpc::semi2k

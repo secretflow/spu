@@ -89,8 +89,8 @@ spu_cc_library(
     name = "hlo_legalize_to_pphlo",
     srcs = ["hlo_legalize_to_pphlo.cc"],
     hdrs = ["passes.h"],
-    include_prefix = "tensorflow/compiler/xla/mlir_hlo/include",
     deps = [
+        ":utils",
         ":map_stablehlo_to_pphlo_op",
         ":pass_details",
         ":visibility_inference",
@@ -203,6 +203,7 @@ spu_cc_library(
     srcs = ["expand_secret_gather.cc"],
     hdrs = ["passes.h"],
     deps = [
+        ":utils",
         ":pass_details",
         "//libspu/dialect:pphlo_dialect",
         "@llvm-project//mlir:IR",
@@ -256,6 +257,15 @@ spu_cc_library(
         "@llvm-project//mlir:IR",
         "@llvm-project//mlir:TransformUtils",
     ],
+)
+
+spu_cc_library(
+    name = "utils",
+    srcs = ["utils.cc"],
+    hdrs = ["utils.h"],
+    deps = [
+        "@llvm-project//mlir:IR",
+    ]
 )
 
 spu_cc_library(
