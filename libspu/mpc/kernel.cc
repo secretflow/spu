@@ -121,22 +121,17 @@ void CastTypeKernel::evaluate(KernelEvalContext* ctx) const {
   ctx->setOutput(WrapValue(res));
 }
 
-void SimpleSortKernel::evaluate(KernelEvalContext* ctx) const {
-  auto values = ctx->getParam<std::vector<Value>>(0);
-  std::vector<NdArrayRef> inputs;
+void PermKernel::evaluate(KernelEvalContext* ctx) const {
+  const auto& in = ctx->getParam<Value>(0);
+  const auto& perm = ctx->getParam<Value>(1);
 
-  for (const auto& val : values) {
-    inputs.emplace_back(UnwrapValue(val));
-  }
+  SPU_ENFORCE(in.shape() == perm.shape(), "shape mismatch {} {}", in.shape(),
+              perm.shape());
+  SPU_ENFORCE(in.shape().ndim() == 1, "input should be a 1-d tensor");
 
-  auto res = proc(ctx, inputs);
+  auto z = proc(ctx, UnwrapValue(in), UnwrapValue(perm));
 
-  std::vector<Value> res_values;
-
-  for (size_t i = 0; i < res.size(); ++i) {
-    res_values.emplace_back(WrapValue(std::move(res[i])));
-  }
-  ctx->setOutput(res_values);
+  ctx->setOutput(WrapValue(z));
 }
 
 }  // namespace spu::mpc

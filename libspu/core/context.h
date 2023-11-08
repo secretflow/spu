@@ -93,8 +93,7 @@ class KernelEvalContext final {
       Type,                        // type of type
       uint128_t,                   // ring constant
       int64_t,                     //
-      SignType,                    //
-      std::vector<Value>           // for sort
+      SignType                     //
       >;
 
   SPUContext* sctx_;

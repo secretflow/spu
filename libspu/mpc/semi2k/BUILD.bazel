@@ -82,7 +82,7 @@ spu_cc_library(
         ":arithmetic",
         ":boolean",
         ":conversion",
-        ":sort",
+        ":permute",
         ":state",
         "//libspu/mpc/common:prg_state",
     ],
@@ -93,7 +93,6 @@ spu_cc_test(
     srcs = ["protocol_test.cc"],
     deps = [
         ":protocol",
-        ":sort_test",
         "//libspu/mpc:ab_api_test",
         "//libspu/mpc:api_test",
         "//libspu/mpc/semi2k/beaver/ttp_server:beaver_server",
@@ -139,9 +138,9 @@ spu_cc_test(
 )
 
 spu_cc_library(
-    name = "sort",
-    srcs = ["sort.cc"],
-    hdrs = ["sort.h"],
+    name = "permute",
+    srcs = ["permute.cc"],
+    hdrs = ["permute.h"],
     deps = [
         ":state",
         ":type",
@@ -151,21 +150,4 @@ spu_cc_library(
         "//libspu/mpc/common:communicator",
         "//libspu/mpc/utils:ring_ops",
     ],
-)
-
-spu_cc_library(
-    name = "sort_test",
-    testonly = 1,
-    srcs = ["sort_test.cc"],
-    hdrs = ["sort_test.h"],
-    deps = [
-        "//libspu/mpc:ab_api",
-        "//libspu/mpc:api",
-        "//libspu/mpc:api_test_params",
-        "//libspu/mpc/utils:permute",
-        "//libspu/mpc/utils:ring_ops",
-        "//libspu/mpc/utils:simulate",
-        "@com_google_googletest//:gtest",
-    ],
-    alwayslink = True,
 )

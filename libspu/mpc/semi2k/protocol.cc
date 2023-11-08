@@ -20,7 +20,7 @@
 #include "libspu/mpc/semi2k/arithmetic.h"
 #include "libspu/mpc/semi2k/boolean.h"
 #include "libspu/mpc/semi2k/conversion.h"
-#include "libspu/mpc/semi2k/sort.h"
+#include "libspu/mpc/semi2k/permute.h"
 #include "libspu/mpc/semi2k/state.h"
 #include "libspu/mpc/semi2k/type.h"
 
@@ -86,7 +86,11 @@ void regSemi2kProtocol(SPUContext* ctx,
   ctx->prot()->regKernel<semi2k::BitIntlB>();
   ctx->prot()->regKernel<semi2k::BitDeintlB>();
   ctx->prot()->regKernel<semi2k::RandA>();
-  ctx->prot()->regKernel<semi2k::SimpleSortA>();
+  ctx->prot()->regKernel<semi2k::RandPermS>();
+  ctx->prot()->regKernel<semi2k::PermAS>();
+  ctx->prot()->regKernel<semi2k::PermAP>();
+  ctx->prot()->regKernel<semi2k::InvPermAS>();
+  ctx->prot()->regKernel<semi2k::InvPermAP>();
 }
 
 std::unique_ptr<SPUContext> makeSemi2kProtocol(

@@ -20,6 +20,7 @@
 #include "mlir/Transforms/GreedyPatternRewriteDriver.h"
 
 #include "libspu/compiler/passes/pass_details.h"
+#include "libspu/compiler/passes/utils.h"
 #include "libspu/dialect/pphlo_ops.h"
 
 namespace mlir::pphlo {
@@ -49,19 +50,6 @@ std::vector<int64_t> DeleteDimensions(llvm::ArrayRef<int64_t> dims_to_delete,
     result.emplace_back(idx);
   }
   return result;
-}
-
-mlir::DenseIntElementsAttr
-ConvertDimensions(OpBuilder *builder, llvm::ArrayRef<int64_t> op_dimensions) {
-  llvm::SmallVector<APInt, 8> dimensions;
-  dimensions.reserve(op_dimensions.size());
-  for (auto value : op_dimensions) {
-    dimensions.emplace_back(APInt(64, value));
-  }
-
-  return DenseIntElementsAttr::get(
-      RankedTensorType::get(dimensions.size(), builder->getIntegerType(64)),
-      dimensions);
 }
 
 // Computes how many trips a loop implementing this gather op would take.

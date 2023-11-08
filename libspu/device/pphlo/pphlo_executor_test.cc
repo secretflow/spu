@@ -2263,6 +2263,36 @@ func.func @main(%arg0: tensor<20xi32>) -> (tensor<20xi32>, tensor<20xi32>) {
   r.verifyOutput(expected_ret1.data(), 1);
 }
 
+TEST_P(ExecutorTest, MixedPayloadDescending) {
+  xt::xarray<int32_t> op = {10, 9,  8,  7,  6,  5,  4,  3,  2,  1,
+                            99, 97, 98, 96, 91, 11, 12, 13, 14, 15};
+  xt::xarray<int32_t> expected_ret0 = {99, 98, 97, 96, 91, 15, 14, 13, 12, 11,
+                                       10, 9,  8,  7,  6,  5,  4,  3,  2,  1};
+  xt::xarray<int32_t> expected_ret1 = {10, 12, 11, 13, 14, 19, 18, 17, 16, 15,
+                                       0,  1,  2,  3,  4,  5,  6,  7,  8,  9};
+
+  Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
+           std::get<2>(GetParam()));
+
+  r.addInput(op, VIS_SECRET);
+
+  r.run(r.compileMHlo(
+            R"(
+func.func @main(%arg0: tensor<20xi32>) -> (tensor<20xi32>, tensor<20xi32>) {
+    %0 = "mhlo.iota"() {iota_dimension = 0 : i64} : () -> tensor<20xi32>
+    %1:2 = "mhlo.sort"(%arg0, %0) ({
+    ^bb0(%arg1: tensor<i32>, %arg2: tensor<i32>, %arg3: tensor<i32>, %arg4: tensor<i32>):
+      %2 = mhlo.compare  GT, %arg1, %arg2 : (tensor<i32>, tensor<i32>) -> tensor<i1>
+      mhlo.return %2 : tensor<i1>
+    }) {dimension = 0 : i64, is_stable = true} : (tensor<20xi32>, tensor<20xi32>) -> (tensor<20xi32>, tensor<20xi32>)
+    return %1#0, %1#1: tensor<20xi32>, tensor<20xi32>
+})",
+            {VIS_SECRET}),
+        2);
+  r.verifyOutput(expected_ret0.data(), 0);
+  r.verifyOutput(expected_ret1.data(), 1);
+}
+
 INSTANTIATE_TEST_SUITE_P(
     ExecutorTestInstances, ExecutorTest,
     testing::Combine(testing::Values(4, 3, 2),

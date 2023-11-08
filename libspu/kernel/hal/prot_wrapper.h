@@ -115,7 +115,12 @@ Value _make_p(SPUContext* ctx, uint128_t init, const Shape& shape);
 Value _rand_p(SPUContext* ctx, const Shape& shape);
 Value _rand_s(SPUContext* ctx, const Shape& shape);
 
-std::vector<Value> _sort_s(SPUContext* ctx, absl::Span<Value const> x);
+// FIXME: temporary API
+Value _rand_perm_s(SPUContext* ctx, const Shape& shape);
+Value _perm_ss(SPUContext* ctx, const Value& x, const Value& perm);
+Value _perm_sp(SPUContext* ctx, const Value& x, const Value& perm);
+Value _inv_perm_ss(SPUContext* ctx, const Value& x, const Value& perm);
+Value _inv_perm_sp(SPUContext* ctx, const Value& x, const Value& perm);
 
 // NOLINTEND(readability-identifier-naming)
 

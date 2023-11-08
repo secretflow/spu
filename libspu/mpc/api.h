@@ -161,4 +161,28 @@ Value bitrev_s(SPUContext* ctx, const Value& x, size_t start, size_t end);
 Value bitrev_v(SPUContext* ctx, const Value& x, size_t start, size_t end);
 Value bitrev_p(SPUContext* ctx, const Value& x, size_t start, size_t end);
 
+// Generate a 1-D random secret permutation, here secret means the permutation
+// is composed of a series of individual permutations hold by each party.
+// Specifically, if Perm = Perm1(Perm0), then party0 holds Perm0 and party1
+// holds Perm1
+OptionalAPI<Value> rand_perm_s(SPUContext* ctx, const Shape& shape);
+
+// Permute 1-D secret x with public permutation perm
+// ret[i] = <x>[perm[i]]
+OptionalAPI<Value> perm_ss(SPUContext* ctx, const Value& x, const Value& perm);
+
+// Permute 1-D secret x with secret permutation perm
+// ret[i] = <x[perm[i]]>
+OptionalAPI<Value> perm_sp(SPUContext* ctx, const Value& x, const Value& perm);
+
+// Inverse permute 1-D secret x with public permutation perm
+// ret[perm[i]] = <x>[i]
+OptionalAPI<Value> inv_perm_ss(SPUContext* ctx, const Value& x,
+                               const Value& perm);
+
+// Inverse permute 1-D secret x with secret permutation perm
+// ret[perm[i]] = <x[i]>
+OptionalAPI<Value> inv_perm_sp(SPUContext* ctx, const Value& x,
+                               const Value& perm);
+
 }  // namespace spu::mpc
