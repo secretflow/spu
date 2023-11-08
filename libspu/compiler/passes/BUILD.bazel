@@ -90,9 +90,9 @@ spu_cc_library(
     srcs = ["hlo_legalize_to_pphlo.cc"],
     hdrs = ["passes.h"],
     deps = [
-        ":utils",
         ":map_stablehlo_to_pphlo_op",
         ":pass_details",
+        ":utils",
         ":visibility_inference",
         "//libspu/compiler/common:compilation_context",
         "//libspu/core:prelude",
@@ -203,8 +203,8 @@ spu_cc_library(
     srcs = ["expand_secret_gather.cc"],
     hdrs = ["passes.h"],
     deps = [
-        ":utils",
         ":pass_details",
+        ":utils",
         "//libspu/dialect:pphlo_dialect",
         "@llvm-project//mlir:IR",
         "@llvm-project//mlir:TransformUtils",
@@ -265,7 +265,7 @@ spu_cc_library(
     hdrs = ["utils.h"],
     deps = [
         "@llvm-project//mlir:IR",
-    ]
+    ],
 )
 
 spu_cc_library(
