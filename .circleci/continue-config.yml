@@ -105,8 +105,6 @@ jobs:
     steps:
       - checkout
       - when:
-            condition:
-              equal: [ main, << pipeline.git.branch >> ]
             steps:
               - restore_cache:
                   name: "Restore build cache"
