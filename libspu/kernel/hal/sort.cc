@@ -21,6 +21,7 @@ Value Permute1D(SPUContext *, const Value &x, const Index &indices) {
   return Value(x.data().linear_gather(indices), x.dtype());
 }
 
+// FIXME: move to mpc layer
 // Vectorized Prefix Sum
 // Ref: https://en.algorithmica.org/hpc/algorithms/prefix/
 Value PrefixSum(SPUContext *ctx, const Value &x) {
@@ -242,10 +243,9 @@ spu::Value GenInvPermByTwoBitVectors(SPUContext *ctx, const spu::Value &x,
                   {reshape(ctx, f0, new_shape), reshape(ctx, f1, new_shape),
                    reshape(ctx, f2, new_shape), reshape(ctx, f3, new_shape)},
                   1);
-  auto s = f.clone();
 
   // calculate prefix sum
-  auto ps = PrefixSum(ctx, s);
+  auto ps = PrefixSum(ctx, f);
 
   // mul f and s
   auto fs = _mul(ctx, f, ps);
@@ -294,10 +294,9 @@ spu::Value GenInvPermByBitVector(SPUContext *ctx, const spu::Value &x) {
   Shape new_shape = {1, numel};
   auto f = concatenate(
       ctx, {reshape(ctx, rev_x, new_shape), reshape(ctx, x, new_shape)}, 1);
-  auto s = f.clone();
 
   // calculate prefix sum
-  auto ps = PrefixSum(ctx, s);
+  auto ps = PrefixSum(ctx, f);
 
   // mul f and s
   auto fs = _mul(ctx, f, ps);
@@ -339,25 +338,11 @@ std::vector<spu::Value> BitDecompose(SPUContext *ctx, const spu::Value &x,
                      ? static_cast<size_t>(valid_bits)
                      : x_bshare.storage_type().as<BShare>()->nbits();
   rets.reserve(nbits);
-  std::vector<std::unique_ptr<SPUContext>> sub_ctxs;
-  for (size_t bit = 0; bit < nbits; ++bit) {
-    sub_ctxs.push_back(ctx->fork());
-  }
 
-  std::vector<std::future<spu::Value>> futures;
   for (size_t bit = 0; bit < nbits; ++bit) {
-    auto async_res = std::async(
-        [&](size_t bit, const spu::Value &x, const spu::Value &k1) {
-          auto sub_ctx = sub_ctxs[bit].get();
-          auto x_bshare_shift = right_shift_logical(sub_ctx, x, bit);
-          auto lowest_bit = _and(sub_ctx, x_bshare_shift, k1);
-          return _prefer_a(sub_ctx, lowest_bit);
-        },
-        bit, x_bshare, k1);
-    futures.push_back(std::move(async_res));
-  }
-  for (size_t bit = 0; bit < nbits; ++bit) {
-    rets.emplace_back(futures[bit].get());
+    auto x_bshare_shift = right_shift_logical(ctx, x_bshare, bit);
+    auto lowest_bit = _and(ctx, x_bshare_shift, k1);
+    rets.emplace_back(_prefer_a(ctx, lowest_bit));
   }
 
   return rets;

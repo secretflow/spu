@@ -346,22 +346,31 @@ Value _mmul(SPUContext* ctx, const Value& x, const Value& y) {
     const auto& row_blocks = ret_blocks[r];
     for (int64_t c = 0; c < static_cast<int64_t>(row_blocks.size()); c++) {
       const auto& block = row_blocks[c];
-      SPU_ENFORCE(block.data().isCompact());
       const int64_t block_rows = block.shape()[0];
       const int64_t block_cols = block.shape()[1];
-      if (n_blocks == 1) {
-        SPU_ENFORCE(row_blocks.size() == 1);
-        SPU_ENFORCE(block_cols == n);
-        char* dst = &ret.data().at<char>({r * m_step, 0});
-        const char* src = &block.data().at<char>({0, 0});
-        size_t cp_len = block.elsize() * block.numel();
-        std::memcpy(dst, src, cp_len);
+      if (block.data().isCompact()) {
+        if (n_blocks == 1) {
+          SPU_ENFORCE(row_blocks.size() == 1);
+          SPU_ENFORCE(block_cols == n);
+          char* dst = &ret.data().at<char>({r * m_step, 0});
+          const char* src = &block.data().at<char>({0, 0});
+          size_t cp_len = block.elsize() * block.numel();
+          std::memcpy(dst, src, cp_len);
+        } else {
+          for (int64_t i = 0; i < block_rows; i++) {
+            char* dst = &ret.data().at<char>({r * m_step + i, c * n_step});
+            const char* src = &block.data().at<char>({i, 0});
+            size_t cp_len = block.elsize() * block_cols;
+            std::memcpy(dst, src, cp_len);
+          }
+        }
       } else {
         for (int64_t i = 0; i < block_rows; i++) {
-          char* dst = &ret.data().at<char>({r * m_step + i, c * n_step});
-          const char* src = &block.data().at<char>({i, 0});
-          size_t cp_len = block.elsize() * block_cols;
-          std::memcpy(dst, src, cp_len);
+          for (int64_t j = 0; j < block_cols; j++) {
+            char* dst = &ret.data().at<char>({r * m_step + i, c * n_step + j});
+            const char* src = &block.data().at<char>({i, j});
+            std::memcpy(dst, src, block.elsize());
+          }
         }
       }
     }

@@ -17,7 +17,7 @@ warpper bazel cc_xx to modify flags.
 """
 
 load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library", "cc_test")
-load("@rules_foreign_cc//foreign_cc:defs.bzl", "cmake", "configure_make")
+load("@yacl//bazel:yacl.bzl", "yacl_cmake_external")
 
 WARNING_FLAGS = [
     "-Wall",
@@ -68,15 +68,7 @@ def spu_cc_library(
         **kargs
     )
 
-def spu_cmake_external(**attrs):
-    if "generate_args" not in attrs:
-        attrs["generate_args"] = ["-GNinja"]
-    return cmake(**attrs)
-
-def spu_configure_make(**attrs):
-    if "args" not in attrs:
-        attrs["args"] = ["-j 4"]
-    return configure_make(**attrs)
+spu_cmake_external = yacl_cmake_external
 
 def _spu_version_file_impl(ctx):
     out = ctx.actions.declare_file(ctx.attr.filename)

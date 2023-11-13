@@ -62,8 +62,6 @@ class UnitTests(unittest.TestCase):
             port = get_free_port()
             lctx_desc.add_party(f"id_{rank}", f"127.0.0.1:{port}")
 
-        global wrap
-
         def wrap(rank, selected_fields, input_path, output_path, type):
             lctx = link.create_brpc(lctx_desc, rank)
 
@@ -241,8 +239,6 @@ class UnitTests(unittest.TestCase):
 
         precheck_input = False
         server_cache_path = "server_cache.bin"
-
-        global wrap
 
         def wrap(
             rank,

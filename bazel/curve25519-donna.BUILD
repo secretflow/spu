@@ -11,28 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+load("@rules_cc//cc:defs.bzl", "cc_library")
 
-load("@spulib//bazel:spu.bzl", "spu_cmake_external")
-
-package(default_visibility = ["//visibility:public"])
-
-filegroup(
-    name = "all_srcs",
-    srcs = glob(["**"]),
-)
-
-spu_cmake_external(
-    name = "emp-tool",
-    cache_entries = {
-        "OPENSSL_ROOT_DIR": "$EXT_BUILD_DEPS/openssl",
-        "BUILD_TESTING": "OFF",
-    },
-    lib_source = ":all_srcs",
-    out_data_dirs = ["cmake"],
-    out_static_libs = [
-        "libemp-tool.a",
-    ],
-    deps = [
-        "@com_github_openssl_openssl//:openssl",
-    ],
+cc_library(
+    name = "curve25519_donna",
+    srcs = ["curve25519.c"],
+    hdrs = glob(["*.h"]),
+    visibility = ["//visibility:public"],
 )
