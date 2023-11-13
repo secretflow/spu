@@ -18,7 +18,7 @@ load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
 
 SECRETFLOW_GIT = "https://github.com/secretflow"
 
-YACL_COMMIT_ID = "6be4330542e92b6503317c45a999c99e654ced58"
+YACL_COMMIT_ID = "3b82829f7c25f581bf6b5d7ac7e7296ea4746cd3"
 
 def spu_deps():
     _rules_cuda()
