@@ -12,13 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 load("@bazel_tools//tools/build_defs/repo:utils.bzl", "maybe")
-load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
 
 SECRETFLOW_GIT = "https://github.com/secretflow"
 
-YACL_COMMIT_ID = "6be4330542e92b6503317c45a999c99e654ced58"
+YACL_COMMIT_ID = "0953593df3ca6544442236f2b6d78a5b89035e24"
 
 def spu_deps():
     _rules_cuda()
@@ -43,6 +43,7 @@ def spu_deps():
     _com_github_microsoft_kuku()
     _com_google_flatbuffers()
     _com_github_nvidia_cutlass()
+    _com_github_floodyberry_curve25519_donna()
 
     maybe(
         git_repository,
@@ -159,17 +160,17 @@ def _com_github_xtensor_xtl():
     )
 
 def _com_github_openxla_xla():
-    OPENXLA_COMMIT = "75a7973c2850fcc33278c84e1b62eff8f0ad35f8"
-    OPENXLA_SHA256 = "4534c3230853e990ac613898c2ff39626d1beacb0c3675fbea502dce3e32f620"
+    OPENXLA_COMMIT = "d5791b01aa7541e3400224ac0a2985cc0f6940cb"
+    OPENXLA_SHA256 = "82dd50e6f51d79e8da69f109a234e33b8036f7b8798e41a03831b19c0c64d6e5"
 
     SKYLIB_VERSION = "1.3.0"
+    SKYLIB_SHA256 = "74d544d96f4a5bb630d465ca8bbcfe231e3594e5aae57e1edbf17a6eb3ca2506"
 
     maybe(
         http_archive,
         name = "bazel_skylib",
-        sha256 = "74d544d96f4a5bb630d465ca8bbcfe231e3594e5aae57e1edbf17a6eb3ca2506",
+        sha256 = SKYLIB_SHA256,
         urls = [
-            "https://mirror.bazel.build/github.com/bazelbuild/bazel-skylib/releases/download/{version}/bazel-skylib-{version}.tar.gz".format(version = SKYLIB_VERSION),
             "https://github.com/bazelbuild/bazel-skylib/releases/download/{version}/bazel-skylib-{version}.tar.gz".format(version = SKYLIB_VERSION),
         ],
     )
@@ -181,10 +182,6 @@ def _com_github_openxla_xla():
         sha256 = OPENXLA_SHA256,
         strip_prefix = "xla-" + OPENXLA_COMMIT,
         type = ".tar.gz",
-        patch_args = ["-p1"],
-        patches = [
-            "@spulib//bazel:patches/xla.patch",
-        ],
         urls = [
             "https://github.com/openxla/xla/archive/{commit}.tar.gz".format(commit = OPENXLA_COMMIT),
         ],
@@ -369,4 +366,17 @@ def _com_github_nvidia_cutlass():
         ],
         sha256 = "9637961560a9d63a6bb3f407faf457c7dbc4246d3afb54ac7dc1e014dd7f172f",
         build_file = "@spulib//bazel:nvidia_cutlass.BUILD",
+    )
+
+def _com_github_floodyberry_curve25519_donna():
+    maybe(
+        http_archive,
+        name = "com_github_floodyberry_curve25519_donna",
+        strip_prefix = "curve25519-donna-2fe66b65ea1acb788024f40a3373b8b3e6f4bbb2",
+        sha256 = "ba57d538c241ad30ff85f49102ab2c8dd996148456ed238a8c319f263b7b149a",
+        type = "tar.gz",
+        build_file = "@spulib//bazel:curve25519-donna.BUILD",
+        urls = [
+            "https://github.com/floodyberry/curve25519-donna/archive/2fe66b65ea1acb788024f40a3373b8b3e6f4bbb2.tar.gz",
+        ],
     )

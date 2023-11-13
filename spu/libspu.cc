@@ -73,6 +73,7 @@ void BindLink(py::module& m) {
   using yacl::link::CertInfo;
   using yacl::link::Context;
   using yacl::link::ContextDesc;
+  using yacl::link::RetryOptions;
   using yacl::link::SSLOptions;
   using yacl::link::VerifyOptions;
 
@@ -95,6 +96,25 @@ void BindLink(py::module& m) {
                      "maximum depth of the certificate chain for verification")
       .def_readwrite("ca_file_path", &VerifyOptions::ca_file_path,
                      "the trusted CA file path");
+
+  py::class_<RetryOptions>(m, "RetryOptions",
+                           "The options used for channel retry")
+      .def_readwrite("max_retry", &RetryOptions::max_retry, "max retry count")
+      .def_readwrite("retry_interval_ms", &RetryOptions::retry_interval_ms,
+                     "first retry interval")
+      .def_readwrite("retry_interval_incr_ms",
+                     &RetryOptions::retry_interval_incr_ms,
+                     "the amount of time to increase between retries")
+      .def_readwrite("max_retry_interval_ms",
+                     &RetryOptions::max_retry_interval_ms,
+                     "the max interval between retries")
+      .def_readwrite("error_codes", &RetryOptions::error_codes,
+                     "retry on these error codes, if empty, retry on all codes")
+      .def_readwrite(
+          "http_codes", &RetryOptions::http_codes,
+          "retry on these http codes, if empty, retry on all http codes")
+      .def_readwrite("aggressive_retry", &RetryOptions::aggressive_retry,
+                     "do aggressive retry");
 
   py::class_<SSLOptions>(m, "SSLOptions", "The options used for ssl")
       .def_readwrite("cert", &SSLOptions::cert,
@@ -132,12 +152,8 @@ void BindLink(py::module& m) {
       .def_readwrite("enable_ssl", &ContextDesc::enable_ssl)
       .def_readwrite("client_ssl_opts", &ContextDesc::client_ssl_opts)
       .def_readwrite("server_ssl_opts", &ContextDesc::server_ssl_opts)
-      .def_readwrite("brpc_retry_count", &ContextDesc::brpc_retry_count)
-      .def_readwrite("brpc_retry_interval_ms",
-                     &ContextDesc::brpc_retry_interval_ms)
-      .def_readwrite("brpc_aggressive_retry",
-                     &ContextDesc::brpc_aggressive_retry)
       .def_readwrite("link_type", &ContextDesc::link_type)
+      .def_readwrite("retry_opts", &ContextDesc::retry_opts)
       .def(
           "add_party",
           [](ContextDesc& desc, std::string id, std::string host) {

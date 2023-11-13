@@ -185,7 +185,7 @@ HloImporter::parseXlaModuleFromString(const std::string &content) {
       break;
     }
     }
-    debug_options.set_xla_detailed_logging_and_dumping(true);
+    debug_options.set_xla_enable_dumping(true);
   }
 
   auto module_config =
