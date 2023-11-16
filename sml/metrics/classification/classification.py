@@ -106,6 +106,7 @@ def _f1_score(y_true, y_pred):
     f1 = 2 * tp / (2 * tp + fp + fn + 1e-10)
     return f1
 
+
 def _precision_score(y_true, y_pred):
     """Calculate the Precision score."""
     tp = jnp.sum(y_true * y_pred)
@@ -113,12 +114,14 @@ def _precision_score(y_true, y_pred):
     precision = tp / (tp + fp + 1e-10)
     return precision
 
+
 def _recall_score(y_true, y_pred):
     """Calculate the Recall score."""
     tp = jnp.sum(y_true * y_pred)
     fn = jnp.sum(y_true) - tp
     recall = tp / (tp + fn + 1e-10)
-    return recall  
+    return recall
+
 
 def accuracy_score(y_true, y_pred):
     """Calculate the Accuracy score."""
@@ -127,24 +130,41 @@ def accuracy_score(y_true, y_pred):
     accuracy = correct / total
     return accuracy
 
+
 def transform_binary(y_true, y_pred, label):
     y_true_transform = jnp.where(y_true == label, 1, 0)
     y_pred_transform = jnp.where(y_pred != label, 0, 1)
     return y_true_transform, y_pred_transform
 
+
 def f1_score(y_true, y_pred, average='binary', labels=None, pos_label=1, transform=1):
-    f1_result = fun_score(_f1_score, y_true, y_pred, average, labels, pos_label, transform)
-    return f1_result
+    f1_result = fun_score(
+        _f1_score, y_true, y_pred, average, labels, pos_label, transform
+    )
+     return f1_result
 
-def precision_score(y_true, y_pred, average='binary', labels=None, pos_label=1, transform=1):
-    f1_result = fun_score(_precision_score, y_true, y_pred, average, labels, pos_label, transform)
-    return f1_result
 
-def recall_score(y_true, y_pred, average='binary', labels=None, pos_label=1, transform=1):
-    f1_result = fun_score(_recall_score, y_true, y_pred, average, labels, pos_label, transform)
-    return f1_result
+def precision_score(
+    y_true, y_pred, average='binary', labels=None, pos_label=1, transform=1
+):
+    f1_result = fun_score(
+        _precision_score, y_true, y_pred, average, labels, pos_label, transform
+    )
+     return f1_result
 
-def fun_score(fun, y_true, y_pred, average='binary', labels=None, pos_label=1, transform=1):
+
+def recall_score(
+    y_true, y_pred, average='binary', labels=None, pos_label=1, transform=1
+):
+    f1_result = fun_score(
+        _recall_score, y_true, y_pred, average, labels, pos_label, transform
+    )
+     return f1_result
+
+
+def fun_score(
+    fun, y_true, y_pred, average='binary', labels=None, pos_label=1, transform=1
+):
     """
     Compute precision, recall, f1.
 
@@ -169,7 +189,7 @@ def fun_score(fun, y_true, y_pred, average='binary', labels=None, pos_label=1, t
     pos_label : int, float, default=1
         The class to report if ``average='binary'`` and the data is binary.
         If the data are multiclass or multilabel, this will be ignored;
-    
+
     transform : bool, default=1
         The problem is transformed into a binary classification with positive samples labeled 1 and negative samples labeled 0.
 
@@ -186,9 +206,7 @@ def fun_score(fun, y_true, y_pred, average='binary', labels=None, pos_label=1, t
     """
 
     if average is None:
-        assert (
-            labels is not None
-        ), f"labels cannot be None"
+        assert labels is not None, f"labels cannot be None"
         fun_result = []
         for i in labels:
             y_true_binary, y_pred_binary = transform_binary(y_true, y_pred, i)
