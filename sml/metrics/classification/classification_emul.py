@@ -64,7 +64,7 @@ def emul_Classification(mode: emulation.Mode.MULTIPROCESS):
         )
         emulator.up()
     
-def proc(
+        def proc(
             y_true, y_pred, average='binary', labels=None, pos_label=1, transform=1
         ):
             f1 = f1_score(
