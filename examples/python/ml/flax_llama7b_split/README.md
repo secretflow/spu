@@ -50,8 +50,8 @@ This example demonstrates how to use SPU to run secure inference on a pre-traine
     ```sh
     cd path_to_EasyLM/EasyLM/models/llama
     python convert_hf_to_easylm.py  \
-       --checkpoint_dir     path_to_llama_weights    \
-       --output_file path_to_outputfile  \
+       --checkpoint_dir     path-to-flax-llama7b-dir    \
+       --output_file path-to-flax-llama7b-EasyLM.msgpack  \
        --model_size 7b \
        --streaming
     ```
@@ -73,20 +73,20 @@ This example demonstrates how to use SPU to run secure inference on a pre-traine
 
     ```sh
     cd examples/python/utils
-    python nodectl.py  --config `pwd`/examples/python/ml/flax_llama7b_split/3pc.json up
+    python nodectl.py  --config ../ml/flax_llama7b_split/3pc.json up
     ```
 
 4. Run `flax_llama7b_split` example
 
     ```sh
-    bazel run -c opt //examples/python/ml/flax_llama7b_split -- --config `pwd`/examples/python/ml/flax_llama7b_split/3pc.json
+    bazel run -c opt //examples/python/ml/flax_llama7b_split -- --model_path path-to-flax-llama7b-EasyLM.msgpack  --tokenizer_path path-to-flax-llama7b-dir --config `pwd`/examples/python/ml/flax_llama7b_split/3pc.json 
     ```
 
     or（recommended）
 
     ```sh
     cd examples/python/ml/flax_llama7b_split
-    python flax_llama7b_split.py --config `pwd`/examples/python/ml/flax_llama7b_split/3pc.json
+    python flax_llama7b_split.py --model_path path-to-flax-llama7b-EasyLM.msgpack  --tokenizer_path path-to-flax-llama7b-dir   --config ./3pc.json
     ```
 
     and you can get the following results from our example:

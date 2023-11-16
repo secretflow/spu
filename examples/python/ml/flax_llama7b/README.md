@@ -22,8 +22,13 @@ This example demonstrates how to use SPU to run secure inference on a pre-traine
     Download trained LLaMA-B[PyTroch-Version] from [Hugging Face](https://huggingface.co/openlm-research/open_llama_7b)
     , and convert it to Flax.msgpack as:
 
-    ```sh
-    python3 -m EasyLM.scripts.convert_checkpoint --load_checkpoint='params::path-to-LLaMA-7B[Pytroch-Version]' --output_file='path-to-LLaMMA-7B.msgpack' --streaming=False
+    ```sh 
+    cd path_to_EasyLM/EasyLM/models/llama
+    python convert_hf_to_easylm.py  \
+       --checkpoint_dir     path-to-flax-llama7b-dir    \
+       --output_file path-to-flax-llama7b-EasyLM.msgpack  \
+       --model_size 7b \
+       --streaming
     ```
 
 3. Launch SPU backend runtime
