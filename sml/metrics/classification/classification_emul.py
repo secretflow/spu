@@ -33,7 +33,7 @@ from sml.metrics.classification.classification import (
 
 # TODO: design the enumation framework, just like py.unittest
 # all emulation action should begin with `emul_` (for reflection)
-def emul_SGDClassifier(mode: emulation.Mode.MULTIPROCESS):
+def emul_auc(mode: emulation.Mode.MULTIPROCESS):
     try:
         # bandwidth and latency only work for docker mode
         emulator = emulation.Emulator(
@@ -130,5 +130,5 @@ def emul_Classification(mode: emulation.Mode.MULTIPROCESS):
 
 
 if __name__ == "__main__":
-    emul_SGDClassifier(emulation.Mode.MULTIPROCESS)
+    emul_auc(emulation.Mode.MULTIPROCESS)
     emul_Classification(emulation.Mode.MULTIPROCESS)
