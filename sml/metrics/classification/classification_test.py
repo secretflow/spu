@@ -119,7 +119,6 @@ class UnitTests(unittest.TestCase):
             accuracy = accuracy_score(y_true, y_pred)
             return f1, precision, recall, accuracy
 
-
         def sklearn_proc(y_true, y_pred, average='binary', labels=None, pos_label=1):
             f1 = metrics.f1_score(
                 y_true, y_pred, average=average, labels=labels, pos_label=pos_label
@@ -132,7 +131,7 @@ class UnitTests(unittest.TestCase):
             )
             accuracy = metrics.accuracy_score(y_true, y_pred)
             return f1, precision, recall, accuracy
-        
+
         def check(spu_result, sk_result):
             for pair in zip(spu_result, sk_result):
                 np.testing.assert_allclose(pair[0], pair[1], rtol=1, atol=1e-5)
