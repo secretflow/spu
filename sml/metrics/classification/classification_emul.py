@@ -63,7 +63,7 @@ def emul_Classification(mode: emulation.Mode.MULTIPROCESS):
             emulation.CLUSTER_ABY3_3PC, mode, bandwidth=300, latency=20
         )
         emulator.up()
-    
+
         def proc(
             y_true, y_pred, average='binary', labels=None, pos_label=1, transform=1
         ):
@@ -94,7 +94,6 @@ def emul_Classification(mode: emulation.Mode.MULTIPROCESS):
             accuracy = accuracy_score(y_true, y_pred)
             return f1, precision, recall, accuracy
 
-
         def sklearn_proc(y_true, y_pred, average='binary', labels=None, pos_label=1):
             f1 = metrics.f1_score(
                 y_true, y_pred, average=average, labels=labels, pos_label=pos_label
@@ -107,7 +106,6 @@ def emul_Classification(mode: emulation.Mode.MULTIPROCESS):
             )
             accuracy = metrics.accuracy_score(y_true, y_pred)
             return f1, precision, recall, accuracy
-
 
         def check(spu_result, sk_result):
             for pair in zip(spu_result, sk_result):
@@ -123,8 +121,8 @@ def emul_Classification(mode: emulation.Mode.MULTIPROCESS):
         # Test multiclass
         y_true = jnp.array([0, 1, 1, 0, 2, 1])
         y_pred = jnp.array([0, 0, 1, 0, 2, 1])
-        spu_result = emulator.run(proc)(y_true, y_pred, average=None, labels=[0,1,2])
-        sk_result = sklearn_proc(y_true, y_pred, average=None, labels=[0,1,2])
+        spu_result = emulator.run(proc)(y_true, y_pred, average=None, labels=[0, 1, 2])
+        sk_result = sklearn_proc(y_true, y_pred, average=None, labels=[0, 1, 2])
         check(spu_result, sk_result)
 
     finally:
