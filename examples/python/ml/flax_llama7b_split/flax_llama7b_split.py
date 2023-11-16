@@ -48,6 +48,12 @@ parser = argparse.ArgumentParser(description='distributed driver.')
 parser.add_argument(
     "-c", "--config", default="examples/python/ml/flax_llama_split/3pc.json"
 )
+parser.add_argument(
+    "-m", "--model_path", help="please input the path-to-flax-llama7b-EasyLM.msgpack"
+)
+parser.add_argument(
+    "-t", "--tokenizer_path", help="please input the path-to-flax-llama7b-dir"
+)
 args = parser.parse_args()
 
 with open(args.config, 'r') as file:
@@ -63,9 +69,8 @@ copts.enable_optimize_denominator_with_broadcast = True
 
 # model_path = 'path-to-flax-llama7b'
 
-model_path = "params::path-to-flax-llama7b-checkpoint"
-tokenizer_path = "path-to-flax-llama7b"
-tokenizer = LlamaTokenizer.from_pretrained(tokenizer_path)
+model_path = f"params::{args.model_path}"
+tokenizer = LlamaTokenizer.from_pretrained(args.tokenizer_path)
 tokenizer.pad_token_id = tokenizer.eos_token_id
 config = LLaMAConfig()
 # pretrained_model = FlaxLLaMAForCausalLM.from_pretrained(model_path, config=config)
