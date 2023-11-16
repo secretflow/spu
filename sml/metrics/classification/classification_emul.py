@@ -47,9 +47,7 @@ def emul_auc(mode: emulation.Mode.MULTIPROCESS):
 
 
 def emul_Classification(mode: emulation.Mode.MULTIPROCESS):
-    def proc(
-        y_true, y_pred, average='binary', labels=None, pos_label=1, transform=1
-    ):
+    def proc(y_true, y_pred, average='binary', labels=None, pos_label=1, transform=1):
         f1 = f1_score(
             y_true,
             y_pred,
