@@ -40,7 +40,7 @@ from sml.metrics.classification.classification import (
 
 
 class UnitTests(unittest.TestCase):
-    def test_simple(self):
+    def test_auc(self):
         sim = spsim.Simulator.simple(
             3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM64
         )
