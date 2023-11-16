@@ -141,7 +141,7 @@ def f1_score(y_true, y_pred, average='binary', labels=None, pos_label=1, transfo
     f1_result = fun_score(
         _f1_score, y_true, y_pred, average, labels, pos_label, transform
     )
-     return f1_result
+    return f1_result
 
 
 def precision_score(
@@ -150,7 +150,7 @@ def precision_score(
     f1_result = fun_score(
         _precision_score, y_true, y_pred, average, labels, pos_label, transform
     )
-     return f1_result
+    return f1_result
 
 
 def recall_score(
@@ -159,7 +159,7 @@ def recall_score(
     f1_result = fun_score(
         _recall_score, y_true, y_pred, average, labels, pos_label, transform
     )
-     return f1_result
+    return f1_result
 
 
 def fun_score(
