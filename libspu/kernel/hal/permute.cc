@@ -1,7 +1,20 @@
-#include "libspu/kernel/hal/sort.h"
+// Copyright 2023 Ant Group Co., Ltd.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//   http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+#include "libspu/kernel/hal/permute.h"
 
 #include <algorithm>
-#include <future>
 
 #include "libspu/core/context.h"
 #include "libspu/kernel/hal/constants.h"
@@ -14,7 +27,18 @@
 #include "libspu/spu.pb.h"
 
 namespace spu::kernel::hal {
+
 namespace {
+
+// generate inverse permutation
+Index GenInvPerm(const Index &p) {
+  Index q(p.size());
+  const auto n = static_cast<int64_t>(p.size());
+  for (int64_t i = 0; i < n; ++i) {
+    q[p[i]] = i;
+  }
+  return q;
+}
 
 Value Permute1D(SPUContext *, const Value &x, const Index &indices) {
   SPU_ENFORCE(x.shape().size() == 1);
@@ -389,7 +413,9 @@ spu::Value GenInvPerm(SPUContext *ctx, absl::Span<spu::Value const> inputs,
   SPU_ENFORCE_GT(bv.size(), 0U);
 
   // 2. generate natural permutation for initialization
-  auto init_perm = iota(ctx, spu::DT_I64, inputs[0].numel());
+  auto dt =
+      ctx->config().field() == FieldType::FM32 ? spu::DT_I32 : spu::DT_I64;
+  auto init_perm = iota(ctx, dt, inputs[0].numel());
   auto shared_perm = _p2s(ctx, init_perm);
 
   // 3. generate shared inverse permutation by bit vector and process
@@ -448,7 +474,7 @@ std::vector<spu::Value> ApplyInvPerm(SPUContext *ctx,
   // 4. <T> = SP(<SX>)
   std::vector<spu::Value> v;
   for (size_t i = 0; i < sx.size(); ++i) {
-    auto t = _inv_perm_sp(ctx, sx[i], m).setDtype(x[i].dtype());
+    auto t = _inv_perm_sp(ctx, sx[i], m);
     v.emplace_back(std::move(t));
   }
 
@@ -584,6 +610,81 @@ std::vector<spu::Value> simple_sort1d(SPUContext *ctx,
         inputs[0].vtype(), false);
     return ret;
   }
+}
+
+std::vector<spu::Value> permute(SPUContext *ctx,
+                                absl::Span<const spu::Value> inputs,
+                                int64_t permute_dim,
+                                const Permute1dFn &permute_fn) {
+  // sanity check.
+  SPU_ENFORCE(!inputs.empty(), "Inputs should not be empty");
+  // put the to_permute dimension to the last dimension.
+  const Shape shape = inputs[0].shape();
+
+  // let
+  // - M is the number of inputs.
+  // - N is the number of vector to permute
+  // - W is the vector length.
+  const int64_t M = inputs.size();
+  const int64_t W = shape.dim(permute_dim);
+  if (W == 0) {
+    return std::vector<spu::Value>(inputs.begin(), inputs.end());
+  }
+  const int64_t N = shape.numel() / W;
+  Axes perm(shape.ndim());
+  Axes unperm;
+  {
+    // 2 ==> {0, 1, 4, 3, 2}
+    SPU_ENFORCE(permute_dim < shape.ndim());
+    std::iota(perm.begin(), perm.end(), 0);
+    std::swap(perm[permute_dim], perm.back());
+
+    auto q = GenInvPerm(Index(perm.begin(), perm.end()));
+    unperm = Axes(q.begin(), q.end());
+  }
+
+  Shape perm_shape(shape.begin(), shape.end());
+  std::swap(perm_shape[permute_dim], perm_shape.back());
+
+  // Do permute in 2-dimensions.
+  // First, reshape the input to (N, W)
+  std::vector<spu::Value> inputs2d;
+  for (auto const &input : inputs) {
+    auto transposed = hal::transpose(ctx, input, perm);
+    auto reshaped = hal::reshape(ctx, transposed, {N, W});
+    inputs2d.push_back(reshaped);
+  }
+
+  // Call permute1d for each dim to permute.
+  // results (N,M,W), each element is a vector with length W.
+  std::vector<std::vector<spu::Value>> permuted1d;
+  for (int64_t ni = 0; ni < N; ni++) {
+    // TODO: all these small permutations could be done in parallel.
+    std::vector<spu::Value> input_i;
+    input_i.reserve(inputs2d.size());
+    for (auto const &input : inputs2d) {
+      // we need 1-d tensor here
+      input_i.push_back(
+          hal::reshape(ctx, hal::slice(ctx, input, {ni, 0}, {ni + 1, W}), {W}));
+    }
+
+    permuted1d.push_back(permute_fn(input_i));
+  }
+
+  // result is (M,shape)
+  std::vector<spu::Value> results(M);
+  for (int64_t mi = 0; mi < M; mi++) {
+    std::vector<spu::Value> output2d;
+    for (int64_t ni = 0; ni < N; ni++) {
+      output2d.push_back(hal::reshape(ctx, permuted1d[ni][mi], {1, W}));
+    }
+    auto result = hal::concatenate(ctx, output2d, 0);
+    // Permute it back, final result is (M, shape)
+    result = hal::reshape(ctx, result, perm_shape);
+    results[mi] = hal::transpose(ctx, result, unperm);
+  }
+
+  return results;
 }
 
 }  // namespace spu::kernel::hal

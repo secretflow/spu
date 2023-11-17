@@ -31,14 +31,11 @@ class KMEANS:
         Maximum number of iterations of the k-means algorithm for a
         single run.
 
-    tol : float, default=1e-4
-        Acceptable error to consider the two to be equal.
     """
 
-    def __init__(self, n_clusters, n_samples, max_iter=300, tol=1e-4):
+    def __init__(self, n_clusters, n_samples, max_iter=300):
         self.n_clusters = n_clusters
         self.max_iter = max_iter
-        self.tol = tol
         self.init_params = jax.random.randint(
             jax.random.PRNGKey(1), shape=[self.n_clusters], minval=0, maxval=n_samples
         )

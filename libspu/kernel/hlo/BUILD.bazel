@@ -269,12 +269,7 @@ spu_cc_library(
     srcs = ["sort.cc"],
     hdrs = ["sort.h"],
     deps = [
-        ":basic_binary",
-        ":casting",
-        ":const",
-        ":utils",
-        "//libspu/kernel/hal:shape_ops",
-        "//libspu/kernel/hal:sort",
+        "//libspu/kernel/hal:permute",
     ],
 )
 
@@ -282,6 +277,8 @@ spu_cc_test(
     name = "sort_test",
     srcs = ["sort_test.cc"],
     deps = [
+        ":casting",
+        ":const",
         ":sort",
         "//libspu/kernel:test_util",
         "//libspu/kernel/hal:polymorphic",
@@ -312,7 +309,10 @@ spu_cc_library(
     hdrs = ["shuffle.h"],
     deps = [
         ":sort",
+        "//libspu/core:context",
+        "//libspu/kernel/hal:permute",
         "//libspu/kernel/hal:polymorphic",
+        "//libspu/kernel/hal:prot_wrapper",
         "//libspu/kernel/hal:random",
     ],
 )

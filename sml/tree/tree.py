@@ -26,24 +26,20 @@ class DecisionTreeClassifier:
 
     We provide a simple example to show how to use GTree to train a decision tree classifier
     in sml/tree/emulations/tree_emul.py. For training, the memory and time complexity is around
-    O(n_samples * n_labels * n_features * 2 ** max_height).
+    O(n_samples * n_labels * n_features * 2 ** max_depth).
 
     Parameters
     ----------
-    criterion : {"gini", "entropy", "log_loss"}, default="gini"
+    criterion : {"gini"}, default="gini"
         The function to measure the quality of a split. Supported criteria are
-        "gini" for the Gini impurity and "log_loss" and "entropy" both for the
-        Shannon information gain, see :ref:`tree_mathematical_formulation`.
+        "gini" for the Gini impurity.
 
-    splitter : {"best", "random"}, default="best"
+    splitter : {"best"}, default="best"
         The strategy used to choose the split at each node. Supported
-        strategies are "best" to choose the best split and "random" to choose
-        the best random split.
+        strategies are "best" to choose the best split.
 
-    max_depth : int, default=None
-        The maximum depth of the tree. If None, then nodes are expanded until
-        all leaves are pure or until all leaves contain less than
-        min_samples_split samples.
+    max_depth : int
+        The maximum depth of the tree. Must specify an integer > 0.
 
     n_labels: int, the max number of labels.
     """
@@ -51,6 +47,9 @@ class DecisionTreeClassifier:
     def __init__(self, criterion, splitter, max_depth, n_labels):
         assert criterion == "gini", "criteria other than gini is not supported."
         assert splitter == "best", "splitter other than best is not supported."
+        assert (
+            max_depth is not None and max_depth > 0
+        ), "max_depth should not be None and must > 0."
         self.max_depth = max_depth
         self.n_labels = n_labels
 

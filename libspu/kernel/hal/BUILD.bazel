@@ -260,9 +260,9 @@ spu_cc_library(
 )
 
 spu_cc_library(
-    name = "sort",
-    srcs = ["sort.cc"],
-    hdrs = ["sort.h"],
+    name = "permute",
+    srcs = ["permute.cc"],
+    hdrs = ["permute.h"],
     deps = [
         ":polymorphic",
         ":public_helper",

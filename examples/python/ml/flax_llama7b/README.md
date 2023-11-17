@@ -22,7 +22,7 @@ This example demonstrates how to use SPU to run secure inference on a pre-traine
     Download trained LLaMA-B[PyTroch-Version] from [Hugging Face](https://huggingface.co/openlm-research/open_llama_7b)
     , and convert it to Flax.msgpack as:
 
-    ```sh 
+    ```sh
     cd path_to_EasyLM/EasyLM/models/llama
     python convert_hf_to_easylm.py  \
        --checkpoint_dir     path-to-flax-llama7b-dir    \

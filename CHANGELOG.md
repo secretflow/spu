@@ -10,6 +10,8 @@
 >
 > please add your unreleased change here.
 
+- [Deprecated] macOS 11.x is no longer supported
+
 ## 20231108
 
 - [Bugfix] Fix compatibility with latest Jax

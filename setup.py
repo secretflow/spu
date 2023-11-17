@@ -35,7 +35,7 @@ SUPPORTED_PYTHONS = [(3, 8), (3, 9), (3, 10), (3, 11)]
 BAZEL_MAX_JOBS = os.getenv("BAZEL_MAX_JOBS")
 ROOT_DIR = os.path.dirname(__file__)
 SKIP_BAZEL_CLEAN = os.getenv("SKIP_BAZEL_CLEAN")
-
+ENABLE_GPU_BUILD = os.getenv("ENABLE_GPU_BUILD")
 
 pyd_suffix = ".so"
 
@@ -154,9 +154,13 @@ def build(build_python, build_cpp):
 
     if sys.platform == "linux":
         bazel_flags.extend(["--config=linux-release"])
+        if ENABLE_GPU_BUILD:
+            bazel_flags.extend(["--config=gpu"])
 
     if platform.machine() == "x86_64":
         bazel_flags.extend(["--config=avx"])
+
+    print(f"Build with extra flags = {bazel_flags}")
 
     return bazel_invoke(
         subprocess.check_call,
@@ -237,9 +241,9 @@ plat_name = "manylinux2014_x86_64"
 if sys.platform == "darwin":
     # Due to a bug in conda x64 python, platform tag has to be 10_16 for X64 wheel
     if platform.machine() == "x86_64":
-        plat_name = "macosx_10_16_x86_64"
+        plat_name = "macosx_12_0_x86_64"
     else:
-        plat_name = "macosx_11_0_arm64"
+        plat_name = "macosx_12_0_arm64"
 
 setuptools.setup(
     name=setup_spec.name,

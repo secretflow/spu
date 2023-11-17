@@ -19,7 +19,6 @@
 #include "gtest/gtest.h"
 #include "xtensor/xio.hpp"
 
-#include "libspu/kernel/hal/constants.h"
 #include "libspu/kernel/hal/polymorphic.h"
 #include "libspu/kernel/hal/type_cast.h"
 #include "libspu/kernel/hlo/casting.h"

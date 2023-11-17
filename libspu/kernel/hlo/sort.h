@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "libspu/kernel/hal/sort.h"
+#include "libspu/kernel/hal/permute.h"
 
 namespace spu::kernel::hlo {
 
