@@ -137,7 +137,7 @@ def transform_binary(y_true, y_pred, label):
     return y_true_transform, y_pred_transform
 
 
-def f1_score(y_true, y_pred, average='binary', labels=None, pos_label=1, transform=1):
+def f1_score(y_true, y_pred, average='binary', labels=None, pos_label=1, transform=True):
     f1_result = fun_score(
         _f1_score, y_true, y_pred, average, labels, pos_label, transform
     )
@@ -145,7 +145,7 @@ def f1_score(y_true, y_pred, average='binary', labels=None, pos_label=1, transfo
 
 
 def precision_score(
-    y_true, y_pred, average='binary', labels=None, pos_label=1, transform=1
+    y_true, y_pred, average='binary', labels=None, pos_label=1, transform=True
 ):
     f1_result = fun_score(
         _precision_score, y_true, y_pred, average, labels, pos_label, transform
@@ -154,7 +154,7 @@ def precision_score(
 
 
 def recall_score(
-    y_true, y_pred, average='binary', labels=None, pos_label=1, transform=1
+    y_true, y_pred, average='binary', labels=None, pos_label=1, transform=True
 ):
     f1_result = fun_score(
         _recall_score, y_true, y_pred, average, labels, pos_label, transform
@@ -163,7 +163,7 @@ def recall_score(
 
 
 def fun_score(
-    fun, y_true, y_pred, average='binary', labels=None, pos_label=1, transform=1
+    fun, y_true, y_pred, average='binary', labels=None, pos_label=1, transform=True
 ):
     """
     Compute precision, recall, f1.
@@ -190,8 +190,8 @@ def fun_score(
         The class to report if ``average='binary'`` and the data is binary.
         If the data are multiclass or multilabel, this will be ignored;
 
-    transform : bool, default=1
-        The problem is transformed into a binary classification with positive samples labeled 1 and negative samples labeled 0.
+    transform : bool, default=True
+        Binary classification only. If True, then the transformation of label to 0/1 will be done explicitly. Else, you can do it beforehand which decrease the costs of this function.
 
     Returns:
     -------
@@ -212,7 +212,7 @@ def fun_score(
             y_true_binary, y_pred_binary = transform_binary(y_true, y_pred, i)
             fun_result.append(fun(y_true_binary, y_pred_binary))
     elif average == 'binary':
-        if transform is True:
+        if transform:
             y_true_binary, y_pred_binary = transform_binary(y_true, y_pred, pos_label)
         else:
             y_true_binary, y_pred_binary = y_true, y_pred
