@@ -95,8 +95,8 @@ def emul_Classification(mode: emulation.Mode.MULTIPROCESS):
     # Test binary
     y_true = jnp.array([0, 1, 1, 0, 1, 1])
     y_pred = jnp.array([0, 0, 1, 0, 1, 1])
-    spu_result = emulator.run(proc)(y_true, y_pred, average=None, labels=[0, 1, 2])
-    sk_result = sklearn_proc(y_true, y_pred, average=None, labels=[0, 1, 2])
+    spu_result = emulator.run(proc)(y_true, y_pred, pos_label=1, transform=0)
+    sk_result = sklearn_proc(y_true, y_pred)
     check(spu_result, sk_result)
 
     # Test multiclass
