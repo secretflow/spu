@@ -49,9 +49,9 @@ enum DataType {
 // performance significantly.
 enum Visibility {
   VIS_INVALID = 0;
-  VIS_SECRET = 1;  // Invisible(unknown) for all or some of the parties.
-  VIS_PUBLIC = 2;  // Visible(public) for all parties.
-  VIS_PRIVATE = 3; // Visible for only one party
+  VIS_SECRET = 1;   // Invisible(unknown) for all or some of the parties.
+  VIS_PUBLIC = 2;   // Visible(public) for all parties.
+  VIS_PRIVATE = 3;  // Visible for only one party
 }
 
 // @exclude
@@ -78,11 +78,11 @@ enum PtType {
   PT_I128 = 9;     // int128_t
   PT_U128 = 10;    // uint128_t
   PT_BOOL = 11;    // bool
-
+                   //
   PT_F16 = 30;     // half
   PT_F32 = 31;     // float
   PT_F64 = 32;     // double
-
+                   //
   PT_CF32 = 50;    // complex float
   PT_CF64 = 51;    // complex double
 }
@@ -290,11 +290,12 @@ message RuntimeConfig {
   /// - MPC protocol related definitions.
 
   enum BeaverType {
-    // assume first party (rank0) as trusted party to generate beaver triple.
+    // Assume first party (rank0) as trusted party to generate beaver triple.
+    // WARNING: It is NOT SAFE and SHOULD NOT BE used in production.
     TrustedFirstParty = 0;
-    // generate beaver triple through an additional trusted third party.
+    // Generate beaver triple through an additional trusted third party.
     TrustedThirdParty = 1;
-    // generate beaver triple through multi-party.
+    // Generate beaver triple through multi-party.
     MultiParty = 2;
   }
   // beaver config, works for semi2k and spdz2k for now.
@@ -311,13 +312,13 @@ message RuntimeConfig {
 
   // Experimental: DO NOT USE
   bool experimental_disable_mmul_split = 100;
-  // inter op parallel, aka, DAG level parallel.
+  // Inter op parallel, aka, DAG level parallel.
   bool experimental_enable_inter_op_par = 101;
-  // intra op parallel, aka, hal/mpc level parallel.
+  // Intra op parallel, aka, hal/mpc level parallel.
   bool experimental_enable_intra_op_par = 102;
-  // disable kernel level vectorization.
+  // Disable kernel level vectorization.
   bool experimental_disable_vectorization = 103;
-  // inter op concurrency.
+  // Inter op concurrency.
   uint64 experimental_inter_op_concurrency = 104;
   // Enable use of private type
   bool experimental_enable_colocated_optimization = 105;

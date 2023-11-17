@@ -218,7 +218,7 @@ MAP_BINARY_OP(equal_pp)
     SPU_ENFORCE(x.shape().ndim() == 1, "x should be a 1-d tensor"); \
     auto ret = mpc::NAME(ctx, x, y);                                \
     SPU_ENFORCE(ret.has_value(), "{} api not implemented", #NAME);  \
-    return ret.value();                                             \
+    return ret.value().setDtype(x.dtype());                         \
   }  // namespace spu::kernel::hal
 
 MAP_OPTIONAL_PERM_OP(perm_ss);

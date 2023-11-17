@@ -6,14 +6,14 @@
 
 SPU has been tested with the following settings:
 
-- Anolis OS 8.4 or later
+- Ubuntu 22.04
 - python3.8
 - 8c16g
 
 ### MacOS
 
 We have conducted some successful preliminary testings on
-macOS Monterey 12.4 with Intel processors and Apple Silicon.
+macOS Monterey 14.1 with Apple Silicon.
 
 ### Docker Image
 
@@ -46,4 +46,10 @@ pip install dist/*.whl --force-reinstall
 
 ```bash
 bazel clean --expunge
+```
+
+#### Build with GPU support
+
+```bash
+export ENABLE_GPU_BUILD=1 && python setup.py bdist_wheel
 ```

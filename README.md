@@ -1,6 +1,7 @@
 # SPU: Secure Processing Unit
 
 [![CircleCI](https://dl.circleci.com/status-badge/img/gh/secretflow/spu/tree/main.svg?style=svg)](https://dl.circleci.com/status-badge/redirect/gh/secretflow/spu/tree/main)
+![PyPI version](https://img.shields.io/pypi/v/spu)
 
 SPU (Secure Processing Unit) aims to be a `provable`, `measurable` secure computation device,
 which provides computation ability while keeping your private data protected.
@@ -25,7 +26,22 @@ This documentation also contains instructions for [build and testing](CONTRIBUTI
 
 ## Installation Guidelines
 
+### Supported platforms
+
+|            | Linux x86_64 | Linux aarch64 | macOS x86_64   | macOS Apple Silicon | Windows x86_64 | Windows WSL2 x86_64 |
+|------------|--------------|---------------|--------------|--------------|----------------|---------------------|
+| CPU        | yes          | no            | yes          | yes          | no             | yes                 |
+| NVIDIA GPU | experimental | no            | no           | n/a          | no             | no                  |
+
+### Instructions
+
 Please follow [Installation Guidelines](INSTALLATION.md) to install SPU.
+
+### Hardware Requirements
+
+| General Features | FourQ based PSI | GPU |
+| ---------------- | --------------- | --- |
+| AVX/ARMv8        | AVX2/ARMv8      | CUDA 11.8+ |
 
 ## Citing SPU
 

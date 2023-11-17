@@ -100,7 +100,7 @@ jobs:
           path: test_logs.tar.gz
   macOS_ut:
     macos:
-      xcode: 14.3
+      xcode: 15.1
     resource_class: macos.m1.large.gen1
     steps:
       - checkout

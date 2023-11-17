@@ -1,3 +1,17 @@
+// Copyright 2023 Ant Group Co., Ltd.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//   http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 #pragma once
 
 #include "absl/types/span.h"
@@ -11,6 +25,9 @@ class SPUContext;
 namespace spu::kernel::hal {
 
 using CompFn = std::function<spu::Value(absl::Span<const spu::Value>)>;
+
+using Permute1dFn =
+    std::function<std::vector<spu::Value>(absl::Span<const spu::Value>)>;
 
 // sort direction for sorters without comparators
 enum class SortDirection {
@@ -35,5 +52,12 @@ std::vector<spu::Value> simple_sort1d(SPUContext *ctx,
                                       absl::Span<spu::Value const> inputs,
                                       SortDirection direction, int64_t num_keys,
                                       int64_t valid_bits);
+
+// transform n-d permute to 1-d permute and applying permute function to each
+// 1-d array
+std::vector<spu::Value> permute(SPUContext *ctx,
+                                absl::Span<const spu::Value> inputs,
+                                int64_t permute_dim,
+                                const Permute1dFn &permute_fn);
 
 }  // namespace spu::kernel::hal
