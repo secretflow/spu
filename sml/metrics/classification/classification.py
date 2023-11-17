@@ -137,7 +137,9 @@ def transform_binary(y_true, y_pred, label):
     return y_true_transform, y_pred_transform
 
 
-def f1_score(y_true, y_pred, average='binary', labels=None, pos_label=1, transform=True):
+def f1_score(
+    y_true, y_pred, average='binary', labels=None, pos_label=1, transform=True
+):
     f1_result = fun_score(
         _f1_score, y_true, y_pred, average, labels, pos_label, transform
     )
@@ -212,7 +214,7 @@ def fun_score(
             y_true_binary, y_pred_binary = transform_binary(y_true, y_pred, i)
             fun_result.append(fun(y_true_binary, y_pred_binary))
     elif average == 'binary':
-        if transform:
+        if transform is True:
             y_true_binary, y_pred_binary = transform_binary(y_true, y_pred, pos_label)
         else:
             y_true_binary, y_pred_binary = y_true, y_pred
