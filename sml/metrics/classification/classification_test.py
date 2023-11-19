@@ -18,6 +18,7 @@ import unittest
 
 import jax.numpy as jnp
 import numpy as np
+from sklearn import metrics
 
 import spu.spu_pb2 as spu_pb2
 import spu.utils.simulation as spsim
@@ -31,11 +32,15 @@ from sml.metrics.classification.classification import (
     bin_counts,
     equal_obs,
     roc_auc_score,
+    f1_score,
+    precision_score,
+    recall_score,
+    accuracy_score,
 )
 
 
 class UnitTests(unittest.TestCase):
-    def test_simple(self):
+    def test_auc(self):
         sim = spsim.Simulator.simple(
             3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM64
         )
@@ -78,6 +83,76 @@ class UnitTests(unittest.TestCase):
         true_score = sk_roc_auc_score(y_true, y_pred)
 
         np.testing.assert_almost_equal(true_score, score, decimal=2)
+
+    def test_classification(self):
+        sim = spsim.Simulator.simple(
+            3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM128
+        )
+
+        def proc(
+            y_true, y_pred, average='binary', labels=None, pos_label=1, transform=1
+        ):
+            f1 = f1_score(
+                y_true,
+                y_pred,
+                average=average,
+                labels=labels,
+                pos_label=pos_label,
+                transform=transform,
+            )
+            precision = precision_score(
+                y_true,
+                y_pred,
+                average=average,
+                labels=labels,
+                pos_label=pos_label,
+                transform=transform,
+            )
+            recall = recall_score(
+                y_true,
+                y_pred,
+                average=average,
+                labels=labels,
+                pos_label=pos_label,
+                transform=transform,
+            )
+            accuracy = accuracy_score(y_true, y_pred)
+            return f1, precision, recall, accuracy
+
+        def sklearn_proc(y_true, y_pred, average='binary', labels=None, pos_label=1):
+            f1 = metrics.f1_score(
+                y_true, y_pred, average=average, labels=labels, pos_label=pos_label
+            )
+            precision = metrics.precision_score(
+                y_true, y_pred, average=average, labels=labels, pos_label=pos_label
+            )
+            recall = metrics.recall_score(
+                y_true, y_pred, average=average, labels=labels, pos_label=pos_label
+            )
+            accuracy = metrics.accuracy_score(y_true, y_pred)
+            return f1, precision, recall, accuracy
+
+        def check(spu_result, sk_result):
+            for pair in zip(spu_result, sk_result):
+                np.testing.assert_allclose(pair[0], pair[1], rtol=1, atol=1e-5)
+
+        # Test binary
+        y_true = jnp.array([0, 1, 1, 0, 1, 1])
+        y_pred = jnp.array([0, 0, 1, 0, 1, 1])
+        spu_result = spsim.sim_jax(sim, proc, static_argnums=(2, 5))(
+            y_true, y_pred, 'binary', None, 1, False
+        )
+        sk_result = sklearn_proc(y_true, y_pred)
+        check(spu_result, sk_result)
+
+        # Test multiclass
+        y_true = jnp.array([0, 1, 1, 0, 2, 1])
+        y_pred = jnp.array([0, 0, 1, 0, 2, 1])
+        spu_result = spsim.sim_jax(sim, proc, static_argnums=(2, 5))(
+            y_true, y_pred, None, [0, 1, 2], 1, True
+        )
+        sk_result = sklearn_proc(y_true, y_pred, average=None, labels=[0, 1, 2])
+        check(spu_result, sk_result)
 
 
 if __name__ == "__main__":

@@ -98,13 +98,127 @@ def equal_range(x: jnp.ndarray, n_bin: int) -> jnp.ndarray:
     return result
 
 
-# TODO: more evaluation tools
-
-
-def compute_f1_score(
-    true_positive: jnp.ndarray, false_positive: jnp.ndarray, false_negative: jnp.ndarray
-):
+def _f1_score(y_true, y_pred):
     """Calculate the F1 score."""
-    precision = true_positive / (true_positive + false_positive)
-    recall = true_positive / (true_positive + false_negative)
-    return 2 * precision * recall / (precision + recall)
+    tp = jnp.sum(y_true * y_pred)
+    fp = jnp.sum(y_pred) - tp
+    fn = jnp.sum(y_true) - tp
+    f1 = 2 * tp / (2 * tp + fp + fn + 1e-10)
+    return f1
+
+
+def _precision_score(y_true, y_pred):
+    """Calculate the Precision score."""
+    tp = jnp.sum(y_true * y_pred)
+    fp = jnp.sum(y_pred) - tp
+    precision = tp / (tp + fp + 1e-10)
+    return precision
+
+
+def _recall_score(y_true, y_pred):
+    """Calculate the Recall score."""
+    tp = jnp.sum(y_true * y_pred)
+    fn = jnp.sum(y_true) - tp
+    recall = tp / (tp + fn + 1e-10)
+    return recall
+
+
+def accuracy_score(y_true, y_pred):
+    """Calculate the Accuracy score."""
+    correct = jnp.sum(y_true == y_pred)
+    total = len(y_true)
+    accuracy = correct / total
+    return accuracy
+
+
+def transform_binary(y_true, y_pred, label):
+    y_true_transform = jnp.where(y_true == label, 1, 0)
+    y_pred_transform = jnp.where(y_pred != label, 0, 1)
+    return y_true_transform, y_pred_transform
+
+
+def f1_score(
+    y_true, y_pred, average='binary', labels=None, pos_label=1, transform=True
+):
+    f1_result = fun_score(
+        _f1_score, y_true, y_pred, average, labels, pos_label, transform
+    )
+    return f1_result
+
+
+def precision_score(
+    y_true, y_pred, average='binary', labels=None, pos_label=1, transform=True
+):
+    f1_result = fun_score(
+        _precision_score, y_true, y_pred, average, labels, pos_label, transform
+    )
+    return f1_result
+
+
+def recall_score(
+    y_true, y_pred, average='binary', labels=None, pos_label=1, transform=True
+):
+    f1_result = fun_score(
+        _recall_score, y_true, y_pred, average, labels, pos_label, transform
+    )
+    return f1_result
+
+
+def fun_score(
+    fun, y_true, y_pred, average='binary', labels=None, pos_label=1, transform=True
+):
+    """
+    Compute precision, recall, f1.
+
+    Args:
+    fun : function, support '_precision_score' / '_recall_score' / '_f1_score'.
+
+    y_true : 1d array-like, ground truth (correct) target values.
+
+    y_pred : 1d array-like, estimated targets as returned by a classifier.
+
+    average : {'binary'} or None, default='binary'
+        This parameter is required for multiclass/multilabel targets.
+        If ``None``, the scores for each class are returned.
+
+        ``'binary'``:
+            Only report results for the class specified by ``pos_label``.
+            This is applicable only if targets (``y_{true,pred}``) are binary
+
+    labels : array-like, default=None
+        The set of labels to include when ``average != 'binary'``.
+
+    pos_label : int, float, default=1
+        The class to report if ``average='binary'`` and the data is binary.
+        If the data are multiclass or multilabel, this will be ignored;
+
+    transform : bool, default=True
+        Binary classification only. If True, then the transformation of label to 0/1 will be done explicitly. Else, you can do it beforehand which decrease the costs of this function.
+
+    Returns:
+    -------
+    precision : float, shape = [n_unique_labels] for multi-classification
+        Precision score.
+
+    recall : float, shape = [n_unique_labels] for multi-classification
+        Recall score.
+
+    f1 : float, shape = [n_unique_labels] for multi-classification
+        F1 score.
+    """
+
+    if average is None:
+        assert labels is not None, f"labels cannot be None"
+        fun_result = []
+        for i in labels:
+            y_true_binary, y_pred_binary = transform_binary(y_true, y_pred, i)
+            fun_result.append(fun(y_true_binary, y_pred_binary))
+    elif average == 'binary':
+        if transform:
+            y_true_binary, y_pred_binary = transform_binary(y_true, y_pred, pos_label)
+        else:
+            y_true_binary, y_pred_binary = y_true, y_pred
+        fun_result = fun(y_true_binary, y_pred_binary)
+    else:
+        raise ValueError("average should be None or 'binary'")
+    return fun_result
