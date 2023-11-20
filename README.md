@@ -1,6 +1,6 @@
 # SPU: Secure Processing Unit
 
-[![CircleCI](https://dl.circleci.com/status-badge/img/gh/secretflow/spu/tree/main.svg?style=svg)](https://dl.circleci.com/status-badge/redirect/gh/secretflow/spu/tree/main)
+[![CircleCI](https://dl.circleci.com/status-badge/img/gh/secretflow/spu/tree/main.svg?style=shield)](https://dl.circleci.com/status-badge/redirect/gh/secretflow/spu/tree/main)
 [![Python](https://img.shields.io/pypi/pyversions/spu.svg)](https://pypi.org/project/spu/)
 [![PyPI version](https://img.shields.io/pypi/v/spu)](https://pypi.org/project/spu/)
 [![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/secretflow/spu/badge)](https://securityscorecards.dev/viewer/?uri=github.com/secretflow/spu)
