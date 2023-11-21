@@ -18,10 +18,10 @@
 for net in network_a network_b network_c network_d; do
     for opt in sgd; do
         echo "Start training "${net}" "${opt}" "${start_ts}""
-        python3 examples/python/ml/stax_nn/stax_nn --model ${net} --optimizer ${opt} -e 1 -c .circleci/benchmark.json
+        python3 examples/python/ml/stax_nn/stax_nn.py --model ${net} --optimizer ${opt} -e 1 -c .circleci/benchmark.json
         echo "Finish training "${net}" "${opt}" "${end_ts}""
     done
 done
 
 # adam is slow so run network_a only
-python3 examples/python/ml/stax_nn/stax_nn --model network_a --optimizer adam -e 1 -c .circleci/benchmark.json
+python3 examples/python/ml/stax_nn/stax_nn.py --model network_a --optimizer adam -e 1 -c .circleci/benchmark.json
