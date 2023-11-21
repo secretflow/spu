@@ -32,25 +32,6 @@ jobs:
     shell: /bin/bash --login -eo pipefail
     steps:
       - checkout
-      - restore_cache:
-          name: "Restore build cache"
-          key: spu-build-linuxVM-
-      - run:
-          name: Build SPU
-          command: |
-            set +e
-            declare -i build_status
-            sed -i "s/tensorflow /tensorflow-cpu /g" ./requirements-dev.txt
-            docker run --name spu-build --mount type=bind,source="$(pwd)",target=/home/admin/dev/ secretflow/spu-ci:latest \
-                "cd /home/admin/dev && \
-                        python3 -m pip install -U pip && \
-                        python3 -m pip install -r requirements.txt && \
-                        python3 -m pip install -r requirements-dev.txt && \
-                        bazel build //examples/python/... -c opt --ui_event_filters=-info,-debug,-warning --disk_cache=/home/admin/dev/.cache/spu_build_cache" | tee build_results.log; build_status=${PIPESTATUS[0]}
-            exit ${build_status}
-      - run:
-          name: Save image
-          command: docker commit spu-build spu-build:v1
       - run:
           name: Launch docker-compose cluster
           command: docker-compose -f .circleci/benchmark.yml up -d
@@ -59,18 +40,19 @@ jobs:
           no_output_timeout: 30m
           command: |
             sleep 60
+            # Hide local spu path for import conflicts
+            mv spu .spu
             # TODO: run all stax_nn models with different optimizers
-            docker run --rm --mount type=bind,source="$(pwd)",target=/home/admin/dev/ --network nn-benchmark spu-build:v1 \
-                "cd /home/admin/dev && bash .circleci/run-nn.sh" | tee benchmark_results.log
+            docker run --rm --mount type=bind,source="$(pwd)",target=/home/admin/dev/ --network nn-benchmark secretflow/spu-ci:latest \
+                "python3 -m pip install -U pip && \
+                   python3 -m pip install spu && \
+                   cd /home/admin/dev/ && \
+                   python3 -m pip install -r requirements-dev.txt && \
+                   export PYTHONPATH="${PWD}:$PYTHONPATH" && \
+                   bash .circleci/run-nn.sh" | tee benchmark_results.log
       - run:
           name: Shutdown docker-compose cluster
           command: docker-compose -f .circleci/benchmark.yml down
-      - save_cache:
-          key: spu-build-linuxVM-{{ .Environment.CIRCLE_BUILD_NUM }}
-          paths:
-            - .cache/spu_build_cache
-      - store_artifacts:
-          path: build_results.log
       - store_artifacts:
           path: benchmark_results.log
 # Invoke jobs via workflows
