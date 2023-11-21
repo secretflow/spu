@@ -21,45 +21,55 @@ networks:
     name: nn-benchmark
 services:
   node_0:
-    command:
-      - cd /home/admin/dev && bazel-bin/examples/python/utils/nodectl -c .circleci/benchmark.json start --node_id node:0
-    image: spu-build:v1
+    command: |
+      python3 -m pip install -U pip
+      python3 -m pip install spu
+      python3 -m spu.examples.python.utils.nodectl -c /home/admin/dev/.circleci/benchmark.json start --node_id node:0
+    image: secretflow/spu-ci:latest
     networks:
       nn-benchmark:
         ipv4_address: 172.16.238.2
     volumes:
       - ${PWD}:/home/admin/dev/
   node_1:
-    command:
-      - cd /home/admin/dev && bazel-bin/examples/python/utils/nodectl -c .circleci/benchmark.json start --node_id node:1
-    image: spu-build:v1
+    command: |
+      python3 -m pip install -U pip
+      python3 -m pip install spu
+      python3 -m spu.examples.python.utils.nodectl -c /home/admin/dev/.circleci/benchmark.json start --node_id node:1
+    image: secretflow/spu-ci:latest
     networks:
       nn-benchmark:
         ipv4_address: 172.16.238.3
     volumes:
       - ${PWD}:/home/admin/dev/
   node_2:
-    command:
-      - cd /home/admin/dev && bazel-bin/examples/python/utils/nodectl -c .circleci/benchmark.json start --node_id node:2
-    image: spu-build:v1
+    command: |
+      python3 -m pip install -U pip
+      python3 -m pip install spu
+      python3 -m spu.examples.python.utils.nodectl -c /home/admin/dev/.circleci/benchmark.json start --node_id node:2
+    image: secretflow/spu-ci:latest
     networks:
       nn-benchmark:
         ipv4_address: 172.16.238.4
     volumes:
       - ${PWD}:/home/admin/dev/
   node_3:
-    command:
-      - cd /home/admin/dev && bazel-bin/examples/python/utils/nodectl -c .circleci/benchmark.json start --node_id node:3
-    image: spu-build:v1
+    command: |
+      python3 -m pip install -U pip
+      python3 -m pip install spu
+      python3 -m spu.examples.python.utils.nodectl -c /home/admin/dev/.circleci/benchmark.json start --node_id node:3
+    image: secretflow/spu-ci:latest
     networks:
       nn-benchmark:
         ipv4_address: 172.16.238.5
     volumes:
       - ${PWD}:/home/admin/dev/
   node_4:
-    command:
-      - cd /home/admin/dev && bazel-bin/examples/python/utils/nodectl -c .circleci/benchmark.json start --node_id node:4
-    image: spu-build:v1
+    command: |
+      python3 -m pip install -U pip
+      python3 -m pip install spu
+      python3 -m spu.examples.python.utils.nodectl -c /home/admin/dev/.circleci/benchmark.json start --node_id node:4
+    image: secretflow/spu-ci:latest
     networks:
       nn-benchmark:
         ipv4_address: 172.16.238.6
