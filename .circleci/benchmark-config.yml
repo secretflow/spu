@@ -40,6 +40,8 @@ jobs:
           no_output_timeout: 30m
           command: |
             sleep 60
+            # Hide local spu path for import conflicts
+            mv spu .spu
             # TODO: run all stax_nn models with different optimizers
             docker run --rm --mount type=bind,source="$(pwd)",target=/home/admin/dev/ --network nn-benchmark secretflow/spu-ci:latest \
                 "python3 -m pip install -U pip && \
