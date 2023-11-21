@@ -45,6 +45,7 @@ jobs:
                 "python3 -m pip install -U pip && \
                    python3 -m pip install spu && \
                    cd /home/admin/dev/ && \
+                   python3 -m pip install -r requirements-dev.txt && \
                    bash .circleci/run-nn.sh" | tee benchmark_results.log
       - run:
           name: Shutdown docker-compose cluster
