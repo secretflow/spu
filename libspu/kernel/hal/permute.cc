@@ -593,21 +593,33 @@ std::vector<spu::Value> simple_sort1d(SPUContext *ctx,
     auto ret = RadixSort(ctx, inputs, direction, num_keys, valid_bits);
     return ret;
   } else {
-    SPDLOG_WARN(
-        "Fallback to generic sort1d only support use the first operand as key");
+    auto scalar_cmp = [direction](spu::SPUContext *ctx, const spu::Value &lhs,
+                                  const spu::Value &rhs) {
+      if (direction == SortDirection::Ascending) {
+        return hal::less(ctx, lhs, rhs);
+      }
+      return hal::greater(ctx, lhs, rhs);
+    };
 
-    auto ret = sort1d(
-        ctx, inputs,
-        [&](absl::Span<const spu::Value> cmp_inputs) {
-          if (direction == SortDirection::Ascending) {
-            return hal::less(ctx, cmp_inputs[0], cmp_inputs[1]);
-          }
-          if (direction == SortDirection::Descending) {
-            return hal::greater(ctx, cmp_inputs[0], cmp_inputs[1]);
-          }
-          SPU_THROW("Should not reach here");
-        },
-        inputs[0].vtype(), false);
+    hal::CompFn comp_fn =
+        [ctx, num_keys,
+         &scalar_cmp](absl::Span<const spu::Value> values) -> spu::Value {
+      spu::Value pre_equal = hal::constant(ctx, true, DT_I1);
+      if (pre_equal.shape() != values[0].shape()) {
+        pre_equal = hal::broadcast_to(ctx, pre_equal, values[0].shape());
+      }
+      spu::Value result = scalar_cmp(ctx, values[0], values[1]);
+      for (int64_t idx = 2; idx < num_keys * 2; idx += 2) {
+        pre_equal = hal::bitwise_and(
+            ctx, pre_equal, hal::equal(ctx, values[idx - 2], values[idx - 1]));
+        auto current = scalar_cmp(ctx, values[idx], values[idx + 1]);
+        current = hal::bitwise_and(ctx, pre_equal, current);
+        result = hal::bitwise_or(ctx, result, current);
+      }
+      return result;
+    };
+
+    auto ret = sort1d(ctx, inputs, comp_fn, inputs[0].vtype(), false);
     return ret;
   }
 }

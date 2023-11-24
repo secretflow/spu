@@ -60,7 +60,7 @@ def main(_):
         )
 
     cache_path = "server_cache.bin"
-    link_ctx = setup_link(FLAGS.rank, 9827)
+    link_ctx = setup_link(FLAGS.rank, 91827)
 
     # ===== gen cache phase =====
     if FLAGS.receiver_rank != FLAGS.rank:

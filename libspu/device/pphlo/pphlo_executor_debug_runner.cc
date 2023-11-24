@@ -39,7 +39,8 @@ llvm::cl::opt<bool> LocalMode("local", llvm::cl::desc("local simulation mode"),
 
 // Network only settings
 llvm::cl::opt<std::string> Parties(
-    "parties", llvm::cl::init("127.0.0.1:9530,127.0.0.1:9531,127.0.0.1:9532"),
+    "parties",
+    llvm::cl::init("127.0.0.1:61530,127.0.0.1:61531,127.0.0.1:61532"),
     llvm::cl::desc("server list, format: host1:port1[,host2:port2, ...]"));
 
 llvm::cl::opt<uint32_t> Rank("rank", llvm::cl::init(0),

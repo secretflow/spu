@@ -165,4 +165,34 @@ TEST(SortTest, EmptyOperands) {
   EXPECT_EQ(rets[0].shape()[0], 0);
 }
 
+TEST(SimpleSortTest, MultiOperands) {
+  SPUContext ctx = test::makeSPUContext();
+  xt::xarray<float> k1 = {7, 6, 5, 5, 4, 4, 4, 1, 3, 3};
+  xt::xarray<float> k2 = {1, 2, 3, 6, 7, 6, 5, 2, 1, 2};
+
+  xt::xarray<float> sorted_k1 = {1, 3, 3, 4, 4, 4, 5, 5, 6, 7};
+  xt::xarray<float> sorted_k2 = {2, 1, 2, 5, 6, 7, 3, 6, 2, 1};
+
+  Value k1_v = test::makeValue(&ctx, k1, VIS_SECRET);
+  Value k2_v = test::makeValue(&ctx, k2, VIS_SECRET);
+
+  std::vector<spu::Value> rets =
+      SimpleSort(&ctx, {k1_v, k2_v}, 0, hal::SortDirection::Ascending, 2);
+
+  EXPECT_EQ(rets.size(), 2);
+
+  auto sorted_k1_hat =
+      hal::dump_public_as<float>(&ctx, hal::reveal(&ctx, rets[0]));
+  auto sorted_k2_hat =
+      hal::dump_public_as<float>(&ctx, hal::reveal(&ctx, rets[1]));
+
+  EXPECT_TRUE(xt::allclose(sorted_k1, sorted_k1_hat, 0.01, 0.001))
+      << sorted_k1 << std::endl
+      << sorted_k1_hat << std::endl;
+
+  EXPECT_TRUE(xt::allclose(sorted_k2, sorted_k2_hat, 0.01, 0.001))
+      << sorted_k2 << std::endl
+      << sorted_k2_hat << std::endl;
+}
+
 }  // namespace spu::kernel::hlo

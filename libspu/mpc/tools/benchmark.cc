@@ -29,9 +29,9 @@
 namespace {
 
 constexpr uint32_t kUnSetMagic = 0x123456;
-const std::string kTwoPartyHosts = "127.0.0.1:9540,127.0.0.1:9541";
+const std::string kTwoPartyHosts = "127.0.0.1:61540,127.0.0.1:61541";
 const std::string kThreePartyHosts =
-    "127.0.0.1:9540,127.0.0.1:9541,127.0.0.1:9542";
+    "127.0.0.1:61540,127.0.0.1:61541,127.0.0.1:61542";
 
 llvm::cl::opt<std::string> cli_gbenchmark(
     "benchmark_**",

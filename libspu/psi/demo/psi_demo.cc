@@ -29,7 +29,7 @@ DEFINE_string(
     "which keys in input file should be used in psi, separated by \",\"");
 DEFINE_string(output_path, "psi_demo_out.csv", "output csv file path");
 DEFINE_string(
-    party_ips, "127.0.0.1:9307,127.0.0.1:9308",
+    party_ips, "127.0.0.1:61307,127.0.0.1:61308",
     "all parties ip, separated by \",\", the order must be consistent");
 DEFINE_uint32(rank, 0, "self rank in link::Context");
 DEFINE_string(psi_protocol, "ECDH_PSI_2PC", "psi protocol, see PsiType");
