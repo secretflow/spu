@@ -42,10 +42,11 @@ llvm::cl::opt<std::string> OutPathOpt("out", llvm::cl::init("out.csv"),
 llvm::cl::opt<std::string> IdOpt("id", llvm::cl::init("id"),
                                  llvm::cl::desc("id of the csv"));
 
-llvm::cl::opt<std::string> LocalOpt("local", llvm::cl::init("127.0.0.1:1234"),
+llvm::cl::opt<std::string> LocalOpt("local", llvm::cl::init("127.0.0.1:61234"),
                                     llvm::cl::desc("local address and port"));
 
-llvm::cl::opt<std::string> RemoteOpt("remote", llvm::cl::init("127.0.0.1:1235"),
+llvm::cl::opt<std::string> RemoteOpt("remote",
+                                     llvm::cl::init("127.0.0.1:61235"),
                                      llvm::cl::desc("remote address and port"));
 
 llvm::cl::opt<std::string> ProtocolOpt("protocol",

@@ -36,7 +36,7 @@ namespace spu::psi {
 
 namespace {
 
-constexpr char kLinkAddrAB[] = "127.0.0.1:9532,127.0.0.1:9533";
+constexpr char kLinkAddrAB[] = "127.0.0.1:61532,127.0.0.1:61533";
 constexpr uint32_t kLinkRecvTimeout = 30 * 60 * 1000;
 constexpr uint32_t kLinkWindowSize = 16;
 

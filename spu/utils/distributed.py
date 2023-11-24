@@ -1262,9 +1262,9 @@ Device.TRANS_KERNELS = {
 
 # Sample definitions
 SAMPLE_NODES_DEF = {
-    "node:0": "127.0.0.1:9327",
-    "node:1": "127.0.0.1:9328",
-    "node:2": "127.0.0.1:9329",
+    "node:0": "127.0.0.1:61327",
+    "node:1": "127.0.0.1:61328",
+    "node:2": "127.0.0.1:61329",
 }
 
 
@@ -1274,9 +1274,9 @@ SAMPLE_DEVICES_DEF = {
         "config": {
             "node_ids": ["node:0", "node:1", "node:2"],
             "spu_internal_addrs": [
-                "127.0.0.1:9437",
-                "127.0.0.1:9438",
-                "127.0.0.1:9439",
+                "127.0.0.1:61437",
+                "127.0.0.1:61438",
+                "127.0.0.1:61439",
             ],
             "runtime_config": {
                 "protocol": "ABY3",

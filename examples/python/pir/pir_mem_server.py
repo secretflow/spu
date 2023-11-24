@@ -27,7 +27,7 @@ import spu.libspu.logging as logging
 import spu.pir as pir
 
 flags.DEFINE_integer("rank", 0, "rank: 0/1/2...")
-flags.DEFINE_string("party_ips", "127.0.0.1:9307,127.0.0.1:9308", "party addresses")
+flags.DEFINE_string("party_ips", "127.0.0.1:61307,127.0.0.1:61308", "party addresses")
 
 flags.DEFINE_string("in_path", "data.csv", "data input path")
 flags.DEFINE_string("key_columns", "id", "csv file key filed name")

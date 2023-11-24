@@ -63,7 +63,7 @@ void WriteCsvFile(const std::string& file_name,
 
 }  // namespace
 
-const char kTwoPartyHosts[] = "127.0.0.1:9540,127.0.0.1:9541";
+const char kTwoPartyHosts[] = "127.0.0.1:61540,127.0.0.1:61541";
 
 class PsiBench : public benchmark::Fixture {
  public:
