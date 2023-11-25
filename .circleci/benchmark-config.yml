@@ -43,7 +43,7 @@ jobs:
             # Hide local spu path for import conflicts
             mv spu .spu
             # TODO: run all stax_nn models with different optimizers
-            docker run --rm --mount type=bind,source="$(pwd)",target=/home/admin/dev/ --network nn-benchmark secretflow/spu-ci:latest \
+            docker run --rm --mount type=bind,source="$(pwd)",target=/home/admin/dev/ --network nn-benchmark secretflow/ubuntu-base-ci:latest \
                 "python3 -m pip install -U pip && \
                    python3 -m pip install spu && \
                    cd /home/admin/dev/ && \

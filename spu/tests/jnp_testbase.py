@@ -285,8 +285,22 @@ COMPOUND_OP_RECORDS = [
         jtu.rand_some_inf_and_nan,
         Status.UnSupport,
     ),  # UnSupport
-    REC("isneginf", 1, float_dtypes, all_shapes, jtu.rand_some_inf_and_nan),
-    REC("isposinf", 1, float_dtypes, all_shapes, jtu.rand_some_inf_and_nan),
+    REC(
+        "isneginf",
+        1,
+        float_dtypes,
+        all_shapes,
+        jtu.rand_some_inf_and_nan,
+        Status.UnSupport,
+    ),  # UnSupport
+    REC(
+        "isposinf",
+        1,
+        float_dtypes,
+        all_shapes,
+        jtu.rand_some_inf_and_nan,
+        Status.UnSupport,
+    ),  # UnSupport
     REC("isreal", 1, number_dtypes, all_shapes, jtu.rand_some_inf),
     REC("isrealobj", 1, number_dtypes, all_shapes, jtu.rand_some_inf),
     REC("log2", 1, number_dtypes, all_shapes, jtu.rand_positive),

@@ -28,7 +28,7 @@ echo -e "${COLOR_GREEN}Cleanup old docker${COLOR_END}"
 docker rm -f spu-build
 
 echo -e "${COLOR_GREEN}Build spu-build${COLOR_END}"
-docker run --name spu-build --mount type=bind,source="$(pwd)",target=/home/admin/dev/ secretflow/spu-ci:latest \
+docker run --name spu-build --mount type=bind,source="$(pwd)",target=/home/admin/dev/ secretflow/ubuntu-base-ci:latest \
     sh -c "cd /home/admin/dev && \
             python3 -m pip install -U pip && \
             python3 -m pip install -r requirements.txt && \

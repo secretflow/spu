@@ -49,7 +49,8 @@ docker run -d -it --name spu-dev-$(whoami) \
          --cap-add=SYS_PTRACE --security-opt seccomp=unconfined \
          --cap-add=NET_ADMIN \
          --privileged=true \
-         secretflow/spu-ci:latest
+         --entrypoint="bash" \
+         secretflow/ubuntu-base-ci:latest
 
 # attach to build container
 docker exec -it spu-dev-$(whoami) bash

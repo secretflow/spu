@@ -17,7 +17,7 @@ macOS Monterey 14.1 with Apple Silicon.
 
 ### Docker Image
 
-Please check [official Docker image](https://registry.hub.docker.com/r/secretflow/spu-ci).
+Please check [official Docker image](https://hub.docker.com/r/secretflow/ubuntu-base-ci).
 
 ## Binaries
 
