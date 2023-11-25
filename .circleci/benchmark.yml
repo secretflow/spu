@@ -23,7 +23,7 @@ services:
   node_0:
     command:
       - python3 -m pip install -U pip && python3 -m pip install spu && cd /home/admin/dev/examples/python/utils && python3 nodectl.py -c /home/admin/dev/.circleci/benchmark.json start --node_id node:0
-    image: secretflow/spu-ci:latest
+    image: secretflow/ubuntu-base-ci:latest
     networks:
       nn-benchmark:
         ipv4_address: 172.16.238.2
@@ -32,7 +32,7 @@ services:
   node_1:
     command:
       - python3 -m pip install -U pip && python3 -m pip install spu && cd /home/admin/dev/examples/python/utils && python3 nodectl.py -c /home/admin/dev/.circleci/benchmark.json start --node_id node:1
-    image: secretflow/spu-ci:latest
+    image: secretflow/ubuntu-base-ci:latest
     networks:
       nn-benchmark:
         ipv4_address: 172.16.238.3
@@ -41,7 +41,7 @@ services:
   node_2:
     command:
       - python3 -m pip install -U pip && python3 -m pip install spu && cd /home/admin/dev/examples/python/utils && python3 nodectl.py -c /home/admin/dev/.circleci/benchmark.json start --node_id node:2
-    image: secretflow/spu-ci:latest
+    image: secretflow/ubuntu-base-ci:latest
     networks:
       nn-benchmark:
         ipv4_address: 172.16.238.4
@@ -50,7 +50,7 @@ services:
   node_3:
     command:
       - python3 -m pip install -U pip && python3 -m pip install spu && cd /home/admin/dev/examples/python/utils && python3 nodectl.py -c /home/admin/dev/.circleci/benchmark.json start --node_id node:3
-    image: secretflow/spu-ci:latest
+    image: secretflow/ubuntu-base-ci:latest
     networks:
       nn-benchmark:
         ipv4_address: 172.16.238.5
@@ -59,7 +59,7 @@ services:
   node_4:
     command:
       - python3 -m pip install -U pip && python3 -m pip install spu && cd /home/admin/dev/examples/python/utils && python3 nodectl.py -c /home/admin/dev/.circleci/benchmark.json start --node_id node:4
-    image: secretflow/spu-ci:latest
+    image: secretflow/ubuntu-base-ci:latest
     networks:
       nn-benchmark:
         ipv4_address: 172.16.238.6
