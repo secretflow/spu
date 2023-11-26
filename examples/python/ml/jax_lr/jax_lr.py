@@ -44,9 +44,8 @@ def predict(x, w, b):
 
 def loss(x, y, w, b):
     pred = predict(x, w, b)
-    label_prob = pred * y + (1 - pred) * (1 - y)
-    return -jnp.mean(jnp.log(label_prob))
-
+    return -jnp.mean(y * jnp.log(pred) + (1 - y) * jnp.log(1 - pred))
+    
 
 class LogitRegression:
     def __init__(self, n_epochs=10, n_iters=10, step_size=0.1):
