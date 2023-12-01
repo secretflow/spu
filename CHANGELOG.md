@@ -10,6 +10,8 @@
 >
 > please add your unreleased change here.
 
+- [Improvement] Optimize memory usage of bitonic sort.
+- [Feature] Add radix sort support for ABY3
 - [Deprecated] macOS 11.x is no longer supported
 
 ## 20231108

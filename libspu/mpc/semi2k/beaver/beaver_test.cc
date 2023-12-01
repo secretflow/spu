@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <random>
+
 #include "gtest/gtest.h"
 #include "xtensor/xarray.hpp"
 #include "yacl/link/algorithm/barrier.h"
@@ -419,8 +421,8 @@ TEST_P(BeaverTest, PermPair) {
   const size_t kWorldSize = std::get<1>(GetParam());
   const FieldType kField = std::get<2>(GetParam());
   const int64_t kNumel = 10;
-
-  const auto r_perm = genRandomPerm(kNumel);
+  std::random_device rd;
+  const auto r_perm = genRandomPerm(kNumel, rd());
 
   for (size_t r = 0; r < kWorldSize; ++r) {
     std::vector<Pair> pairs(kWorldSize);

@@ -40,6 +40,13 @@ NdArrayRef getShare(const NdArrayRef& in, int64_t share_idx) {
     return NdArrayRef(
         in.buf(), ty, in.shape(), new_strides,
         in.offset() + share_idx * static_cast<int64_t>(ty.size()));
+  } else if (in.eltype().isa<PShrTy>()) {
+    const auto field = in.eltype().as<PShrTy>()->field();
+    const auto ty = makeType<RingTy>(field);
+
+    return NdArrayRef(
+        in.buf(), ty, in.shape(), new_strides,
+        in.offset() + share_idx * static_cast<int64_t>(ty.size()));
   } else {
     SPU_THROW("unsupported type {}", in.eltype());
   }

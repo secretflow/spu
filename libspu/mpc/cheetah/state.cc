@@ -14,6 +14,8 @@
 
 #include "libspu/mpc/cheetah/state.h"
 
+#include <future>
+
 #include "spdlog/spdlog.h"
 
 #include "libspu/core/context.h"
@@ -27,18 +29,25 @@ size_t InitOTState(KernelEvalContext* ctx, size_t njobs) {
   }
   auto* comm = ctx->getState<Communicator>();
   auto* ot_state = ctx->getState<CheetahOTState>();
-  size_t nworker = ot_state->parallel_size();
-  nworker = std::min(nworker, CeilDiv(njobs, kMinWorkSize));
+  size_t nworker =
+      std::min(CheetahOTState::kMaxOTParallel, CeilDiv(njobs, kMinWorkSize));
   for (size_t w = 0; w < nworker; ++w) {
     ot_state->LazyInit(comm, w);
   }
   return nworker;
 }
 
-size_t CheetahOTState::parallel_size() const {
-  // NOTE(lwj): div-2 to prevent making too many threads on small CPU cores.
-  return std::max<size_t>(
-      1, std::min<size_t>(getNumberOfProc() / 2, kMaxOTParallel));
+// Call func(idx) for idx = 0, 1, ..., n - 1
+void TiledDispatch(KernelEvalContext* ctx, int64_t njobs,
+                   const std::function<void(int64_t)>& func) {
+  std::vector<std::future<void>> jobs;
+  for (int64_t idx = 0; idx < njobs; ++idx) {
+    jobs.emplace_back(std::async([&](int64_t i) { func(i); }, idx));
+  }
+
+  for (auto&& job : jobs) {
+    job.get();
+  }
 }
 
 void CheetahMulState::makeSureCacheSize(FieldType field, int64_t numel) {
