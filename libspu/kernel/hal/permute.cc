@@ -597,10 +597,10 @@ std::vector<spu::Value> simple_sort1d(SPUContext *ctx,
     };
 
     Visibility vis =
-    std::all_of(inputs.begin(), inputs.begin() + num_keys,
-                [](const spu::Value &v) { return v.isPublic(); })
-        ? VIS_PUBLIC
-        : VIS_SECRET;
+        std::all_of(inputs.begin(), inputs.begin() + num_keys,
+                    [](const spu::Value &v) { return v.isPublic(); })
+            ? VIS_PUBLIC
+            : VIS_SECRET;
     auto ret = sort1d(ctx, inputs, comp_fn, vis, false);
     return ret;
   }
