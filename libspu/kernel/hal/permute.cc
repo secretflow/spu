@@ -108,7 +108,12 @@ std::vector<spu::Value> BitonicSort(SPUContext *ctx,
   // make a copy for inplace sort
   std::vector<spu::Value> ret;
   for (auto const &input : inputs) {
-    ret.emplace_back(input.clone());
+    if (input.isPublic()) {
+      // we can not linear_scatter a secret value to a public operand
+      ret.emplace_back(_p2s(ctx, input).setDtype(input.dtype()));
+    } else {
+      ret.emplace_back(input.clone());
+    }
   }
 
   // sort by per network layer for memory optimizations, sorting N elements
@@ -515,7 +520,7 @@ std::vector<spu::Value> sort1d(SPUContext *ctx,
     for (const auto &input : inputs) {
       ret.push_back(Permute1D(ctx, input, indices_to_sort));
     }
-  } else {
+  } else if (comparator_ret_vis == VIS_SECRET) {
     SPU_ENFORCE(!is_stable,
                 "Stable sort is unsupported if comparator return is secret.");
 
@@ -591,7 +596,12 @@ std::vector<spu::Value> simple_sort1d(SPUContext *ctx,
       return result;
     };
 
-    auto ret = sort1d(ctx, inputs, comp_fn, inputs[0].vtype(), false);
+    Visibility vis =
+    std::all_of(inputs.begin(), inputs.begin() + num_keys,
+                [](const spu::Value &v) { return v.isPublic(); })
+        ? VIS_PUBLIC
+        : VIS_SECRET;
+    auto ret = sort1d(ctx, inputs, comp_fn, vis, false);
     return ret;
   }
 }
