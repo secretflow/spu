@@ -110,7 +110,9 @@ std::vector<spu::Value> BitonicSort(SPUContext *ctx,
   for (auto const &input : inputs) {
     if (input.isPublic()) {
       // we can not linear_scatter a secret value to a public operand
-      ret.emplace_back(_p2s(ctx, input).setDtype(input.dtype()));
+      // FIXME: clone() is need here as ref2k p2s is in-place operation, fixed
+      // later
+      ret.emplace_back(_p2s(ctx, input).setDtype(input.dtype()).clone());
     } else {
       ret.emplace_back(input.clone());
     }
