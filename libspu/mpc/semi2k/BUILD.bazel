@@ -144,7 +144,6 @@ spu_cc_library(
     deps = [
         ":state",
         ":type",
-        "//libspu/core:vectorize",
         "//libspu/mpc:ab_api",
         "//libspu/mpc:kernel",
         "//libspu/mpc/common:communicator",

@@ -22,6 +22,18 @@
 
 namespace spu::mpc {
 
+PermVector ring2pv(const NdArrayRef& x) {
+  SPU_ENFORCE(x.eltype().isa<Ring2k>(), "must be ring2k_type, got={}",
+              x.eltype());
+  const auto field = x.eltype().as<Ring2k>()->field();
+  PermVector pv(x.numel());
+  DISPATCH_ALL_FIELDS(field, "_", [&]() {
+    NdArrayView<ring2k_t> _x(x);
+    pforeach(0, x.numel(), [&](int64_t idx) { pv[idx] = int64_t(_x[idx]); });
+  });
+  return pv;
+}
+
 NdArrayRef applyInvPerm(const NdArrayRef& x, absl::Span<const int64_t> pv) {
   SPU_ENFORCE_EQ(x.shape().ndim(), 1U, "x should be 1-d tensor");
 
@@ -52,12 +64,11 @@ NdArrayRef applyPerm(const NdArrayRef& x, absl::Span<const int64_t> pv) {
   return y;
 }
 
-PermVector genRandomPerm(size_t size) {
+PermVector genRandomPerm(size_t size, uint64_t seed) {
   PermVector perm(size);
   std::iota(perm.begin(), perm.end(), 0);
-  std::random_device rd;
   // TODO: change PRNG to CSPRNG
-  std::mt19937 rng(rd());
+  std::mt19937 rng(seed);
   std::shuffle(perm.begin(), perm.end(), rng);
   return perm;
 }

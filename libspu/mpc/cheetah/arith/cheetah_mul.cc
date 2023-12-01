@@ -189,7 +189,7 @@ struct CheetahMul::Impl : public EnableCPRNG {
   uint32_t current_crt_plain_bitlen_{0};
 
   // SEAL's contexts for ZZ_{2^k}
-  mutable std::shared_mutex context_lock_;
+  mutable std::mutex context_lock_;
   std::vector<seal::SEALContext> seal_cntxts_;
 
   // own secret key
@@ -206,7 +206,7 @@ struct CheetahMul::Impl : public EnableCPRNG {
 };
 
 void CheetahMul::Impl::LazyInitModSwitchHelper(const Options &options) {
-  std::unique_lock<std::shared_mutex> guard(context_lock_);
+  std::lock_guard guard(context_lock_);
   if (ms_helpers_.count(options) > 0) {
     return;
   }
@@ -269,7 +269,7 @@ void CheetahMul::Impl::LocalExpandSEALContexts(size_t target) {
 void CheetahMul::Impl::LazyExpandSEALContexts(const Options &options,
                                               yacl::link::Context *conn) {
   uint32_t target_plain_bitlen = TotalCRTBitLen(options);
-  std::unique_lock<std::shared_mutex> guard(context_lock_);
+  std::lock_guard guard(context_lock_);
   if (current_crt_plain_bitlen_ >= target_plain_bitlen) {
     return;
   }

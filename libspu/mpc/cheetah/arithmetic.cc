@@ -50,20 +50,18 @@ NdArrayRef TruncA::proc(KernelEvalContext* ctx, const NdArrayRef& x,
 
   // Operate on 1D array
   auto flatten_x = x.reshape({x.numel()});
-  yacl::parallel_for(0, nworker, 1, [&](int64_t bgn, int64_t end) {
-    for (int64_t job = bgn; job < end; ++job) {
-      int64_t slice_bgn = std::min<int64_t>(job * work_load, n);
-      int64_t slice_end = std::min<int64_t>(slice_bgn + work_load, n);
-      if (slice_end == slice_bgn) {
-        break;
-      }
-
-      TruncateProtocol prot(ctx->getState<CheetahOTState>()->get(job));
-      auto out_slice =
-          prot.Compute(flatten_x.slice({slice_bgn}, {slice_end}, {1}), meta);
-      std::memcpy(&out.at(slice_bgn), &out_slice.at(0),
-                  out_slice.numel() * out_slice.elsize());
+  TiledDispatch(ctx, nworker, [&](int64_t job) {
+    int64_t slice_bgn = std::min<int64_t>(job * work_load, n);
+    int64_t slice_end = std::min<int64_t>(slice_bgn + work_load, n);
+    if (slice_end == slice_bgn) {
+      return;
     }
+
+    TruncateProtocol prot(ctx->getState<CheetahOTState>()->get(job));
+    auto out_slice =
+        prot.Compute(flatten_x.slice({slice_bgn}, {slice_end}, {1}), meta);
+    std::memcpy(&out.at(slice_bgn), &out_slice.at(0),
+                out_slice.numel() * out_slice.elsize());
   });
 
   return out;
@@ -106,25 +104,22 @@ NdArrayRef MsbA2B::proc(KernelEvalContext* ctx, const NdArrayRef& x) const {
     }
 
     NdArrayRef carry_bit(x.eltype(), x.shape());
-    yacl::parallel_for(0, nworker, 1, [&](int64_t bgn, int64_t end) {
-      for (int64_t job = bgn; job < end; ++job) {
-        int64_t slice_bgn = std::min(job * work_load, numel);
-        int64_t slice_end = std::min(slice_bgn + work_load, numel);
-
-        if (slice_end == slice_bgn) {
-          break;
-        }
-
-        CompareProtocol prot(ctx->getState<CheetahOTState>()->get(job));
-
-        // 1{x0 > 2^{k - 1} - 1 - x1}
-        auto out_slice =
-            prot.Compute(adjusted.slice({slice_bgn}, {slice_end}, {1}),
-                         /*greater*/ true);
-
-        std::memcpy(&carry_bit.at(slice_bgn), &out_slice.at(0),
-                    out_slice.numel() * out_slice.elsize());
+    TiledDispatch(ctx, nworker, [&](int64_t job) {
+      int64_t slice_bgn = std::min(job * work_load, numel);
+      int64_t slice_end = std::min(slice_bgn + work_load, numel);
+      if (slice_end == slice_bgn) {
+        return;
       }
+
+      CompareProtocol prot(ctx->getState<CheetahOTState>()->get(job));
+
+      // 1{x0 > 2^{k - 1} - 1 - x1}
+      auto out_slice =
+          prot.Compute(adjusted.slice({slice_bgn}, {slice_end}, {1}),
+                       /*greater*/ true);
+
+      std::memcpy(&carry_bit.at(slice_bgn), &out_slice.at(0),
+                  out_slice.numel() * out_slice.elsize());
     });
 
     // [msb(x)]_B <- [1{x0 + x1 > 2^{k- 1} - 1]_B ^ msb(x0)
@@ -176,22 +171,19 @@ NdArrayRef EqualAA::proc(KernelEvalContext* ctx, const NdArrayRef& x,
 
   // Need 1D array
   adjusted = adjusted.reshape({adjusted.numel()});
-  yacl::parallel_for(0, nworker, 1, [&](int64_t bgn, int64_t end) {
-    for (int64_t job = bgn; job < end; ++job) {
-      int64_t slice_bgn = std::min(job * work_load, numel);
-      int64_t slice_end = std::min(slice_bgn + work_load, numel);
-
-      if (slice_end == slice_bgn) {
-        break;
-      }
-
-      EqualProtocol prot(ctx->getState<CheetahOTState>()->get(job));
-      auto out_slice =
-          prot.Compute(adjusted.slice({slice_bgn}, {slice_end}, {1}), nbits);
-
-      std::memcpy(&eq_bit.at(slice_bgn), &out_slice.at(0),
-                  out_slice.numel() * out_slice.elsize());
+  TiledDispatch(ctx, nworker, [&](int64_t job) {
+    int64_t slice_bgn = std::min(job * work_load, numel);
+    int64_t slice_end = std::min(slice_bgn + work_load, numel);
+    if (slice_end == slice_bgn) {
+      return;
     }
+
+    EqualProtocol prot(ctx->getState<CheetahOTState>()->get(job));
+    auto out_slice =
+        prot.Compute(adjusted.slice({slice_bgn}, {slice_end}, {1}), nbits);
+
+    std::memcpy(&eq_bit.at(slice_bgn), &out_slice.at(0),
+                out_slice.numel() * out_slice.elsize());
   });
 
   return eq_bit.as(makeType<BShrTy>(field, 1));
@@ -213,22 +205,19 @@ NdArrayRef MulA1B::proc(KernelEvalContext* ctx, const NdArrayRef& ashr,
   // Need 1D Array
   auto flatten_a = ashr.reshape({ashr.numel()});
   auto flatten_b = bshr.reshape({bshr.numel()});
-  yacl::parallel_for(0, nworker, 1, [&](int64_t bgn, int64_t end) {
-    for (int64_t job = bgn; job < end; ++job) {
-      int64_t slice_bgn = std::min(job * work_load, numel);
-      int64_t slice_end = std::min(slice_bgn + work_load, numel);
-
-      if (slice_end == slice_bgn) {
-        break;
-      }
-
-      auto out_slice = ctx->getState<CheetahOTState>()->get(job)->Multiplexer(
-          flatten_a.slice({slice_bgn}, {slice_end}, {1}),
-          flatten_b.slice({slice_bgn}, {slice_end}, {1}));
-
-      std::memcpy(&out.at(slice_bgn), &out_slice.at(0),
-                  out_slice.numel() * out_slice.elsize());
+  TiledDispatch(ctx, nworker, [&](int64_t job) {
+    int64_t slice_bgn = std::min(job * work_load, numel);
+    int64_t slice_end = std::min(slice_bgn + work_load, numel);
+    if (slice_end == slice_bgn) {
+      return;
     }
+
+    auto out_slice = ctx->getState<CheetahOTState>()->get(job)->Multiplexer(
+        flatten_a.slice({slice_bgn}, {slice_end}, {1}),
+        flatten_b.slice({slice_bgn}, {slice_end}, {1}));
+
+    std::memcpy(&out.at(slice_bgn), &out_slice.at(0),
+                out_slice.numel() * out_slice.elsize());
   });
 
   return out;

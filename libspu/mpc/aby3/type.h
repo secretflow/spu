@@ -89,6 +89,19 @@ class BShrTy : public TypeImpl<BShrTy, TypeObject, Secret, BShare> {
   }
 };
 
+// Permutation share
+class PShrTy : public TypeImpl<PShrTy, RingTy, Secret> {
+  using Base = TypeImpl<PShrTy, RingTy, Secret>;
+
+ public:
+  using Base::Base;
+  static std::string_view getStaticId() { return "aby3.PShr"; }
+
+  explicit PShrTy() { field_ = FieldType::FM64; }
+
+  size_t size() const override { return SizeOf(GetStorageType(field_)) * 2; }
+};
+
 void registerTypes();
 
 }  // namespace spu::mpc::aby3
