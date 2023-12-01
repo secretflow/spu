@@ -52,6 +52,19 @@ def spu_deps():
         remote = "{}/yacl.git".format(SECRETFLOW_GIT),
     )
 
+    # Add homebrew openmp for macOS, somehow..homebrew installs to different location on Apple Silcon/Intel macs.. so we need two rules here
+    native.new_local_repository(
+        name = "local_homebrew_x64",
+        build_file = "@spulib//bazel:local_openmp_macos.BUILD",
+        path = "/usr/local/opt/libomp",
+    )
+
+    native.new_local_repository(
+        name = "local_homebrew_arm64",
+        build_file = "@spulib//bazel:local_openmp_macos.BUILD",
+        path = "/opt/homebrew/opt/libomp/",
+    )
+
 def _rules_proto_grpc():
     http_archive(
         name = "rules_proto_grpc",
