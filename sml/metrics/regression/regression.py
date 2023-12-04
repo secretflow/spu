@@ -48,10 +48,95 @@ def _mean_tweedie_deviance(y_true, y_pred, sample_weight, power, d2_score=False)
     else:
         return jnp.average(dev, weights=sample_weight)
 
+def _mean_tweedie_deviance(y_true, y_pred, sample_weight, power, d2_score=False):
+    p = power
+    if p < 0:
+        # 'Extreme stable', y any real number, y_pred > 0
+        temp = 1 - p
+        temp_power = jnp.power(y_pred, temp)
+        dev = 2 * (
+            jnp.power(jnp.maximum(y_true, 0), 1 + temp) / (temp * (temp + 1))
+            - y_true * temp_power / temp + temp_power * y_pred / (temp + 1)
+        )
+    elif p == 0:
+        # Normal distribution, y and y_pred any real number
+        dev = (y_true - y_pred) ** 2
+    elif p == 1:
+        # Poisson distribution
+        dev = 2 * (y_true * jnp.log((y_true / y_pred)) - y_true + y_pred)
+    elif p == 2:
+        # Gamma distribution
+        dev = 2 * (jnp.log(y_pred / y_true) + y_true / y_pred - 1)
+    else:
+        temp = 1 - p
+        temp_power = jnp.power(y_pred, temp)
+        dev = 2 * (
+            jnp.power(y_true, 1 + temp) / (temp * (temp + 1))
+            - y_true * temp_power / temp + temp_power * y_pred / (temp + 1)
+        )
+    return jnp.average(dev, weights=sample_weight)
+    
+def _d2_tweedie_score(y_true, y_pred, sample_weight, power, re_use=None):
+    p = power
+    re_value = []
+    if p < 0:
+        # 'Extreme stable', y any real number, y_pred > 0
+        temp = 1 - p
+        if re_use is None:
+            re_power = jnp.power(jnp.maximum(y_true, 0), 1 + temp) / (temp * (temp + 1))
+            re_div = y_true / temp
+            re_value.append(re_power)
+            re_value.append(re_div)
+        else:
+            re_power = re_use[0]
+            re_div = re_use[1]
+        temp_power = jnp.power(y_pred, temp)
+        dev = 2 * (re_power - temp_power * re_div + temp_power * y_pred / (temp + 1))
+    elif p == 0:
+        # Normal distribution, y and y_pred any real number
+        if re_use is None:
+            re_square = y_true ** 2
+            re_value.append(re_square)
+        else:
+            re_square = re_use[0]
+        dev = re_square + y_pred ** 2 - 2 * y_true * y_pred
+    elif p == 1:
+        # Poisson distribution
+        if re_use is None:
+            re_log = y_true * jnp.log(y_true) - y_true
+            re_value.append(re_log)
+        else:
+            re_log = re_use[0]
+        dev = 2 * (re_log - y_true * jnp.log(y_pred) + y_pred)
+    elif p == 2:
+        if re_use is None:
+            re_log = jnp.log(y_true)
+            re_value.append(re_log)
+        else:
+            re_log = re_use[0]
+        # Gamma distribution
+        dev = 2 * (jnp.log(y_pred) - re_log + y_true / y_pred - 1)
+    else:
+        temp = 1 - p
+        if re_use is None:
+            re_power = jnp.power(y_true, 1 + temp) / (temp * (temp + 1))
+            re_div = y_true / temp
+            re_value.append(re_power)
+            re_value.append(re_div)
+        else:
+            re_power = re_use[0]
+            re_div = re_use[1]
+        temp_power = jnp.power(y_pred, temp)
+        dev = 2 * (re_power - temp_power * re_div + temp_power * y_pred / (temp + 1))
+    if sample_weight is None:
+        return jnp.sum(dev), re_value
+    else:
+        return jnp.average(dev, weights=sample_weight), re_value
+
 def d2_tweedie_score(y_true, y_pred, sample_weight=None, power=0):
-    numerator = _mean_tweedie_deviance(y_true, y_pred, sample_weight=sample_weight, power=power, d2_score=True)
+    numerator, re_use = _d2_tweedie_score(y_true, y_pred, sample_weight=sample_weight, power=power)
     y_avg = jnp.average(y_true, weights=sample_weight)
-    denominator = _mean_tweedie_deviance(y_true, y_avg, sample_weight=sample_weight, power=power, d2_score=True)
+    denominator, _ = _d2_tweedie_score(y_true, y_avg, sample_weight=sample_weight, power=power, re_use=re_use)
     return 1 - numerator / denominator
 
 def explained_variance_score(
