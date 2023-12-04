@@ -17,7 +17,7 @@ import jax.numpy as jnp
 import spu.spu_pb2 as spu_pb2
 import spu.utils.simulation as spsim
 
-def _mean_tweedie_deviance(y_true, y_pred, sample_weight, power):
+def _mean_tweedie_deviance(y_true, y_pred, sample_weight, power, d2_score=False):
     p = power
     if p < 0:
         # 'Extreme stable', y any real number, y_pred > 0
@@ -43,12 +43,15 @@ def _mean_tweedie_deviance(y_true, y_pred, sample_weight, power):
             jnp.power(y_true, 1 + temp) / (temp * (temp + 1))
             - y_true * temp_power / temp + temp_power * y_pred / (temp + 1)
         )
-    return jnp.average(dev, weights=sample_weight)
+    if d2_score & (sample_weight is None):
+        return jnp.sum(dev)
+    else:
+        return jnp.average(dev, weights=sample_weight)
 
 def d2_tweedie_score(y_true, y_pred, sample_weight=None, power=0):
-    numerator = _mean_tweedie_deviance(y_true, y_pred, sample_weight=sample_weight, power=power)
+    numerator = _mean_tweedie_deviance(y_true, y_pred, sample_weight=sample_weight, power=power, d2_score=True)
     y_avg = jnp.average(y_true, weights=sample_weight)
-    denominator = _mean_tweedie_deviance(y_true, y_avg, sample_weight=sample_weight, power=power)
+    denominator = _mean_tweedie_deviance(y_true, y_avg, sample_weight=sample_weight, power=power, d2_score=True)
     return 1 - numerator / denominator
 
 def explained_variance_score(
