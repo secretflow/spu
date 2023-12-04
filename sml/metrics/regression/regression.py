@@ -17,38 +17,8 @@ import jax.numpy as jnp
 import spu.spu_pb2 as spu_pb2
 import spu.utils.simulation as spsim
 
-def _mean_tweedie_deviance(y_true, y_pred, sample_weight, power, d2_score=False):
-    p = power
-    if p < 0:
-        # 'Extreme stable', y any real number, y_pred > 0
-        temp = 1 - p
-        temp_power = jnp.power(y_pred, temp)
-        dev = 2 * (
-            jnp.power(jnp.maximum(y_true, 0), 1 + temp) / (temp * (temp + 1))
-            - y_true * temp_power / temp + temp_power * y_pred / (temp + 1)
-        )
-    elif p == 0:
-        # Normal distribution, y and y_pred any real number
-        dev = (y_true - y_pred) ** 2
-    elif p == 1:
-        # Poisson distribution
-        dev = 2 * (y_true * jnp.log((y_true / y_pred)) - y_true + y_pred)
-    elif p == 2:
-        # Gamma distribution
-        dev = 2 * (jnp.log(y_pred / y_true) + y_true / y_pred - 1)
-    else:
-        temp = 1 - p
-        temp_power = jnp.power(y_pred, temp)
-        dev = 2 * (
-            jnp.power(y_true, 1 + temp) / (temp * (temp + 1))
-            - y_true * temp_power / temp + temp_power * y_pred / (temp + 1)
-        )
-    if d2_score & (sample_weight is None):
-        return jnp.sum(dev)
-    else:
-        return jnp.average(dev, weights=sample_weight)
 
-def _mean_tweedie_deviance(y_true, y_pred, sample_weight, power, d2_score=False):
+def _mean_tweedie_deviance(y_true, y_pred, sample_weight, power):
     p = power
     if p < 0:
         # 'Extreme stable', y any real number, y_pred > 0
@@ -56,7 +26,8 @@ def _mean_tweedie_deviance(y_true, y_pred, sample_weight, power, d2_score=False)
         temp_power = jnp.power(y_pred, temp)
         dev = 2 * (
             jnp.power(jnp.maximum(y_true, 0), 1 + temp) / (temp * (temp + 1))
-            - y_true * temp_power / temp + temp_power * y_pred / (temp + 1)
+            - y_true * temp_power / temp
+            + temp_power * y_pred / (temp + 1)
         )
     elif p == 0:
         # Normal distribution, y and y_pred any real number
@@ -72,9 +43,11 @@ def _mean_tweedie_deviance(y_true, y_pred, sample_weight, power, d2_score=False)
         temp_power = jnp.power(y_pred, temp)
         dev = 2 * (
             jnp.power(y_true, 1 + temp) / (temp * (temp + 1))
-            - y_true * temp_power / temp + temp_power * y_pred / (temp + 1)
+            - y_true * temp_power / temp
+            + temp_power * y_pred / (temp + 1)
         )
     return jnp.average(dev, weights=sample_weight)
+
     
 def _d2_tweedie_score(y_true, y_pred, sample_weight, power, re_use=None):
     p = power
@@ -95,11 +68,11 @@ def _d2_tweedie_score(y_true, y_pred, sample_weight, power, re_use=None):
     elif p == 0:
         # Normal distribution, y and y_pred any real number
         if re_use is None:
-            re_square = y_true ** 2
+            re_square = y_true**2
             re_value.append(re_square)
         else:
             re_square = re_use[0]
-        dev = re_square + y_pred ** 2 - 2 * y_true * y_pred
+        dev = re_square + y_pred**2 - 2 * y_true * y_pred
     elif p == 1:
         # Poisson distribution
         if re_use is None:
@@ -133,11 +106,17 @@ def _d2_tweedie_score(y_true, y_pred, sample_weight, power, re_use=None):
     else:
         return jnp.average(dev, weights=sample_weight), re_value
 
+
 def d2_tweedie_score(y_true, y_pred, sample_weight=None, power=0):
-    numerator, re_use = _d2_tweedie_score(y_true, y_pred, sample_weight=sample_weight, power=power)
+    numerator, re_use = _d2_tweedie_score(
+        y_true, y_pred, sample_weight=sample_weight, power=power
+    )
     y_avg = jnp.average(y_true, weights=sample_weight)
-    denominator, _ = _d2_tweedie_score(y_true, y_avg, sample_weight=sample_weight, power=power, re_use=re_use)
+    denominator, _ = _d2_tweedie_score(
+        y_true, y_avg, sample_weight=sample_weight, power=power, re_use=re_use
+    )
     return 1 - numerator / denominator
+
 
 def explained_variance_score(
     y_true,
@@ -168,7 +147,9 @@ def explained_variance_score(
 
     return jnp.average(output_scores, weights=avg_weights)
 
-def mean_squared_error(y_true, y_pred, sample_weight=None, multioutput="uniform_average", squared=True):
+def mean_squared_error(
+    y_true, y_pred, sample_weight=None, multioutput="uniform_average", squared=True
+):
     output_errors = jnp.average((y_true - y_pred) ** 2, axis=0, weights=sample_weight)
 
     if not squared:
@@ -181,6 +162,7 @@ def mean_squared_error(y_true, y_pred, sample_weight=None, multioutput="uniform_
             multioutput = None
 
     return jnp.average(output_errors, weights=multioutput)
+
 
 def mean_poisson_deviance(y_true, y_pred, sample_weight=None):
     return _mean_tweedie_deviance(y_true, y_pred, sample_weight=sample_weight, power=1)
