@@ -15,7 +15,6 @@ from sklearn import metrics
 import jax.numpy as jnp
 
 
-
 def _mean_tweedie_deviance(y_true, y_pred, sample_weight, power, d2_score=False):
     p = power
     if p < 0:
