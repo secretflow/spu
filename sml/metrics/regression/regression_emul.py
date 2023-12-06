@@ -32,30 +32,30 @@ from sml.metrics.regression.regression import (
 )
 
 
-def emul_Regression(mode: emulation.Mode.MULTIPROCESS):
-    try:
-        # bandwidth and latency only work for docker mode
-        emulator = emulation.Emulator(
-            emulation.CLUSTER_ABY3_3PC, mode, bandwidth=300, latency=20
-        )
-        emulator.up()
+def emul_d2_tweedie_score(mode: emulation.Mode.MULTIPROCESS):
+    power_list = [-1, 0 , 1, 2, 3]
+    weight_list = [None, jnp.array([0.5, 0.5, 0.5, 0.5]), jnp.array([0.5, 1, 2, 0.5])]
 
-        # Test d2_tweedie_score
-        y_true = jnp.array([0.5, 1, 2.5, 7])
-        y_pred = jnp.array([1, 1, 5, 3.5])
-        weight = None
-        sk_result = metrics.d2_tweedie_score(
-            y_true, y_pred, sample_weight=weight, power=1
-        )
-        spu_result = emulator.run(d2_tweedie_score, static_argnums=(3,))(
-            y_true, y_pred, weight, 1
-        )
-        np.testing.assert_allclose(sk_result, spu_result, rtol=0, atol=1e-4)
+    # Test d2_tweedie_score
+    y_true = jnp.array([0.5, 1, 2.5, 7])
+    y_pred = jnp.array([1, 1, 5, 3.5])
+    for p in power_list:
+        for weight in weight_list:
+            sk_result = metrics.d2_tweedie_score(
+                y_true, y_pred, sample_weight=weight, power=p
+            )
+            spu_result = emulator.run(d2_tweedie_score, static_argnums=(3,))(
+                y_true, y_pred, weight, p
+            )
+            np.testing.assert_allclose(sk_result, spu_result, rtol=0, atol=1e-4)
 
-        # Test explained_variance_score
-        y_true = jnp.array([3, -0.5, 2, 7])
-        y_pred = jnp.array([2.5, 0.0, 2, 8])
-        weight = None
+def emul_explained_variance_score(mode: emulation.Mode.MULTIPROCESS):
+    weight_list = [None, jnp.array([0.5, 0.5, 0.5, 0.5]), jnp.array([0.5, 1, 2, 0.5])]
+
+    # Test explained_variance_score
+    y_true = jnp.array([3, -0.5, 2, 7])
+    y_pred = jnp.array([2.5, 0.0, 2, 8])
+    for weight in weight_list:
         sk_result = metrics.explained_variance_score(
             y_true,
             y_pred,
@@ -68,37 +68,58 @@ def emul_Regression(mode: emulation.Mode.MULTIPROCESS):
         )
         np.testing.assert_allclose(sk_result, spu_result, rtol=0, atol=1e-4)
 
-        # Test mean_squared_error
-        y_true = jnp.array([3, -0.5, 2, 7])
-        y_pred = jnp.array([2.5, 0.0, 2, 8])
-        weight = None
+def emul_mean_squared_error(mode: emulation.Mode.MULTIPROCESS):
+    weight_list = [None, jnp.array([0.5, 0.5, 0.5, 0.5]), jnp.array([0.5, 1, 2, 0.5])]
+
+    # Test mean_squared_error
+    y_true = jnp.array([3, -0.5, 2, 7])
+    y_pred = jnp.array([2.5, 0.0, 2, 8])
+    for weight in weight_list:
         sk_result = metrics.mean_squared_error(
-            y_true, y_pred, sample_weight=None, squared=False
+            y_true, y_pred, sample_weight=weight, squared=False
         )
         spu_result = emulator.run(mean_squared_error, static_argnums=(3, 4))(
             y_true, y_pred, weight, "uniform_average", False
         )
         np.testing.assert_allclose(sk_result, spu_result, rtol=0, atol=1e-4)
 
-        # Test mean_poisson_deviance
-        y_true = jnp.array([2, 0, 1, 4])
-        y_pred = jnp.array([0.5, 0.5, 2.0, 2.0])
-        weight = None
+def emul_mean_poisson_deviance(mode: emulation.Mode.MULTIPROCESS):
+    weight_list = [None, jnp.array([0.5, 0.5, 0.5, 0.5]), jnp.array([0.5, 1, 2, 0.5])]
+
+    # Test mean_poisson_deviance
+    y_true = jnp.array([2, 0, 1, 4])
+    y_pred = jnp.array([0.5, 0.5, 2.0, 2.0])
+    for weight in weight_list:
         sk_result = metrics.mean_poisson_deviance(y_true, y_pred, sample_weight=weight)
         spu_result = emulator.run(mean_poisson_deviance)(y_true, y_pred, weight)
         np.testing.assert_allclose(sk_result, spu_result, rtol=0, atol=1e-4)
 
-        # Test mean_gamma_deviance
-        y_true = jnp.array([2, 0.5, 1, 4])
-        y_pred = jnp.array([0.5, 0.5, 2.0, 2.0])
-        weight = None
+def emul_mean_gamma_deviance(mode: emulation.Mode.MULTIPROCESS):
+    weight_list = [None, jnp.array([0.5, 0.5, 0.5, 0.5]), jnp.array([0.5, 1, 2, 0.5])]
+
+    # Test mean_gamma_deviance
+    y_true = jnp.array([2, 0.5, 1, 4])
+    y_pred = jnp.array([0.5, 0.5, 2.0, 2.0])
+    for weight in weight_list:
         sk_result = metrics.mean_gamma_deviance(y_true, y_pred, sample_weight=weight)
         spu_result = emulator.run(mean_gamma_deviance)(y_true, y_pred, weight)
         np.testing.assert_allclose(sk_result, spu_result, rtol=0, atol=1e-4)
 
-    finally:
-        emulator.down()
-
 
 if __name__ == "__main__":
-    emul_Regression(emulation.Mode.MULTIPROCESS)
+    try:
+        # bandwidth and latency only work for docker mode
+        emulator = emulation.Emulator(
+            emulation.CLUSTER_ABY3_3PC,
+            emulation.Mode.MULTIPROCESS,
+            bandwidth=300,
+            latency=20,
+        )
+        emulator.up()
+        emul_d2_tweedie_score(emulation.Mode.MULTIPROCESS)
+        emul_explained_variance_score(emulation.Mode.MULTIPROCESS)
+        emul_mean_squared_error(emulation.Mode.MULTIPROCESS)
+        emul_mean_poisson_deviance(emulation.Mode.MULTIPROCESS)
+        emul_mean_gamma_deviance(emulation.Mode.MULTIPROCESS)
+    finally:
+        emulator.down()
