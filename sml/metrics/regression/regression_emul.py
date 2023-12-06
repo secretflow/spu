@@ -32,7 +32,7 @@ from sml.metrics.regression.regression import (
 )
 
 
-def emul_d2_tweedie_score(mode: emulation.Mode.MULTIPROCESS):
+def emul_d2_tweedie_score():
     power_list = [-1, 0, 1, 2, 3]
     weight_list = [None, jnp.array([0.5, 0.5, 0.5, 0.5]), jnp.array([0.5, 1, 2, 0.5])]
 
@@ -50,7 +50,7 @@ def emul_d2_tweedie_score(mode: emulation.Mode.MULTIPROCESS):
             np.testing.assert_allclose(sk_result, spu_result, rtol=0, atol=1e-4)
 
 
-def emul_explained_variance_score(mode: emulation.Mode.MULTIPROCESS):
+def emul_explained_variance_score():
     weight_list = [None, jnp.array([0.5, 0.5, 0.5, 0.5]), jnp.array([0.5, 1, 2, 0.5])]
 
     # Test explained_variance_score
@@ -70,7 +70,7 @@ def emul_explained_variance_score(mode: emulation.Mode.MULTIPROCESS):
         np.testing.assert_allclose(sk_result, spu_result, rtol=0, atol=1e-4)
 
 
-def emul_mean_squared_error(mode: emulation.Mode.MULTIPROCESS):
+def emul_mean_squared_error():
     weight_list = [None, jnp.array([0.5, 0.5, 0.5, 0.5]), jnp.array([0.5, 1, 2, 0.5])]
 
     # Test mean_squared_error
@@ -86,7 +86,7 @@ def emul_mean_squared_error(mode: emulation.Mode.MULTIPROCESS):
         np.testing.assert_allclose(sk_result, spu_result, rtol=0, atol=1e-4)
 
 
-def emul_mean_poisson_deviance(mode: emulation.Mode.MULTIPROCESS):
+def emul_mean_poisson_deviance():
     weight_list = [None, jnp.array([0.5, 0.5, 0.5, 0.5]), jnp.array([0.5, 1, 2, 0.5])]
 
     # Test mean_poisson_deviance
@@ -98,7 +98,7 @@ def emul_mean_poisson_deviance(mode: emulation.Mode.MULTIPROCESS):
         np.testing.assert_allclose(sk_result, spu_result, rtol=0, atol=1e-4)
 
 
-def emul_mean_gamma_deviance(mode: emulation.Mode.MULTIPROCESS):
+def emul_mean_gamma_deviance():
     weight_list = [None, jnp.array([0.5, 0.5, 0.5, 0.5]), jnp.array([0.5, 1, 2, 0.5])]
 
     # Test mean_gamma_deviance
@@ -120,10 +120,10 @@ if __name__ == "__main__":
             latency=20,
         )
         emulator.up()
-        emul_d2_tweedie_score(emulation.Mode.MULTIPROCESS)
-        emul_explained_variance_score(emulation.Mode.MULTIPROCESS)
-        emul_mean_squared_error(emulation.Mode.MULTIPROCESS)
-        emul_mean_poisson_deviance(emulation.Mode.MULTIPROCESS)
-        emul_mean_gamma_deviance(emulation.Mode.MULTIPROCESS)
+        emul_d2_tweedie_score()
+        emul_explained_variance_score()
+        emul_mean_squared_error()
+        emul_mean_poisson_deviance()
+        emul_mean_gamma_deviance()
     finally:
         emulator.down()
