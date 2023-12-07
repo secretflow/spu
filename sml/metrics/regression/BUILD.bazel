@@ -19,10 +19,6 @@ package(default_visibility = ["//visibility:public"])
 py_library(
     name = "regression",
     srcs = ["regression.py"],
-    deps = [
-        ":regression",
-        "//spu/ops/groupby",
-    ],
 )
 
 py_test(
