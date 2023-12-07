@@ -31,7 +31,7 @@ pip install spu
 
 ### From Source
 
-- Install dependencies listed [here](CONTRIBUTING.md#prerequisite).
+- Install dependencies listed [here](https://github.com/secretflow/spu/blob/main/CONTRIBUTING.md#prerequisite).
 - For CentOS 7 or Ubuntu 22.04, use corresponding dockerfile below as a reference:
   - [Ubuntu 22.04 reference](https://github.com/secretflow/devtools/blob/main/dockerfiles/ubuntu-base-ci.DockerFile)
   - [CentOS 7 reference](https://github.com/secretflow/devtools/blob/main/dockerfiles/release-ci.DockerFile)
