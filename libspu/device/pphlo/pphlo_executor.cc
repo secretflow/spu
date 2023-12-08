@@ -571,6 +571,7 @@ void execute(OpExecutor *executor, SPUContext *sctx, SymbolScope *sscope,
 void execute(OpExecutor *executor, SPUContext *sctx, SymbolScope *sscope,
              mlir::pphlo::SimpleSortOp &op, const ExecutionOptions &opts) {
   auto sort_dim = op.getDimension();
+  auto num_keys = op.getNumKeys();
   std::vector<spu::Value> inputs(op->getNumOperands());
   for (size_t idx = 0; idx < inputs.size(); ++idx) {
     inputs[idx] = lookupValue(sscope, op->getOperand(idx), opts);
@@ -587,7 +588,8 @@ void execute(OpExecutor *executor, SPUContext *sctx, SymbolScope *sscope,
     SPU_THROW("Should not reach here");
   }
 
-  auto ret = kernel::hlo::SimpleSort(sctx, inputs, sort_dim, direction);
+  auto ret =
+      kernel::hlo::SimpleSort(sctx, inputs, sort_dim, direction, num_keys);
 
   for (int64_t idx = 0; idx < op->getNumResults(); ++idx) {
     addValue(sscope, op->getResult(idx), ret[idx], opts);

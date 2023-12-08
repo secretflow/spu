@@ -14,13 +14,4 @@
 
 #include "libspu/mpc/utils/linalg.h"
 
-#include "libspu/core/parallel_utils.h"
-
-namespace spu::mpc::linalg::detail {
-
-void setEigenParallelLevel(int64_t expected_threads) {
-  auto nproc = std::min(getNumberOfProc(), static_cast<int>(expected_threads));
-  Eigen::setNbThreads(nproc);
-}
-
-}  // namespace spu::mpc::linalg::detail
+namespace spu::mpc::linalg::detail {}  // namespace spu::mpc::linalg::detail

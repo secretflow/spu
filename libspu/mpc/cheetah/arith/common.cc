@@ -21,13 +21,6 @@
 #include "libspu/mpc/utils/ring_ops.h"
 namespace spu::mpc::cheetah {
 
-size_t CalculateWorkLoad(size_t num_jobs, size_t num_cores) {
-  if (num_cores == 0) {
-    num_cores = spu::getNumberOfProc();
-  }
-  return (num_jobs + num_cores - 1) / num_cores;
-}
-
 EnableCPRNG::EnableCPRNG()
     : seed_(yacl::crypto::RandSeed(/*drbg*/ true)), prng_counter_(0) {}
 

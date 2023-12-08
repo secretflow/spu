@@ -35,11 +35,6 @@ How could I use Cheetah protocol?
 You only need to select Cheetah protocol in :ref:`/reference/runtime_config.md`. Please search for *protocol* field in RuntimeConfig.
 And please keep in mind that Cheetah protocol is a 2PC protocol.
 
-Do I need to remove duplicated keys locally before PSI?
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Yes. Otherwise an error would be raised.
-
 
 General
 -------

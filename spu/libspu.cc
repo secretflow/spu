@@ -15,30 +15,28 @@
 #include <cstddef>
 #include <utility>
 
-#include "fmt/format.h"
-#include "pybind11/complex.h"
-#include "pybind11/functional.h"
 #include "pybind11/iostream.h"
 #include "pybind11/numpy.h"
 #include "pybind11/pybind11.h"
 #include "pybind11/stl.h"
-#include "yacl/link/link.h"
+#include "yacl/link/algorithm/allgather.h"
+#include "yacl/link/algorithm/barrier.h"
+#include "yacl/link/algorithm/broadcast.h"
+#include "yacl/link/algorithm/gather.h"
+#include "yacl/link/algorithm/scatter.h"
+#include "yacl/link/context.h"
+#include "yacl/link/factory.h"
 
-#include "libspu/compiler/common/compilation_context.h"
 #include "libspu/compiler/compile.h"
 #include "libspu/core/config.h"
 #include "libspu/core/context.h"
 #include "libspu/core/logging.h"
-#include "libspu/core/type_util.h"
 #include "libspu/core/value.h"
 #include "libspu/device/api.h"
 #include "libspu/device/io.h"
 #include "libspu/device/pphlo/pphlo_executor.h"
+#include "libspu/device/symbol_table.h"
 #include "libspu/mpc/factory.h"
-#include "libspu/pir/pir.h"
-#include "libspu/psi/bucket_psi.h"
-#include "libspu/psi/core/ecdh_psi.h"
-#include "libspu/psi/memory_psi.h"
 
 #ifdef CHECK_AVX
 #include "cpu_features/cpuinfo_x86.h"
@@ -548,110 +546,6 @@ class IoWrapper {
   }
 };
 
-void BindLibs(py::module& m) {
-  m.doc() = R"pbdoc(
-              SPU Mixed Library
-                  )pbdoc";
-
-  py::class_<psi::Progress::Data>(m, "ProgressData", "The progress data")
-      .def(py::init<>())
-      .def_readonly("total", &psi::Progress::Data::total,
-                    "the number of all subjobs")
-      .def_readonly("finished", &psi::Progress::Data::finished,
-                    "the number of finished subjobs")
-      .def_readonly("running", &psi::Progress::Data::running,
-                    "the number of running subjobs")
-      .def_readonly("percentage", &psi::Progress::Data::percentage,
-                    "the percentage of the task progress")
-      .def_readonly("description", &psi::Progress::Data::description,
-                    "description of the current running subjob");
-
-  m.def(
-      "mem_psi",
-      [](const std::shared_ptr<yacl::link::Context>& lctx,
-         const std::string& config_pb,
-         const std::vector<std::string>& items) -> std::vector<std::string> {
-        psi::MemoryPsiConfig config;
-        SPU_ENFORCE(config.ParseFromString(config_pb));
-
-        psi::MemoryPsi psi(config, lctx);
-        return psi.Run(items);
-      },
-      NO_GIL);
-
-  m.def(
-      "bucket_psi",
-      [](const std::shared_ptr<yacl::link::Context>& lctx,
-         const std::string& config_pb,
-         psi::ProgressCallbacks progress_callbacks,
-         int64_t callbacks_interval_ms, bool ic_mode) -> py::bytes {
-        psi::BucketPsiConfig config;
-        SPU_ENFORCE(config.ParseFromString(config_pb));
-
-        psi::BucketPsi psi(config, lctx, ic_mode);
-        auto r = psi.Run(progress_callbacks, callbacks_interval_ms);
-        return r.SerializeAsString();
-      },
-      py::arg("link_context"), py::arg("psi_config"),
-      py::arg("progress_callbacks") = nullptr,
-      py::arg("callbacks_interval_ms") = 5 * 1000, py::arg("ic_mode") = false,
-      "Run bucket psi. ic_mode means run in interconnection mode", NO_GIL);
-
-  m.def(
-      "pir_setup",
-      [](const std::string& config_pb) -> py::bytes {
-        pir::PirSetupConfig config;
-        SPU_ENFORCE(config.ParseFromString(config_pb));
-
-        config.set_bucket_size(1000000);
-        config.set_compressed(false);
-
-        auto r = pir::PirSetup(config);
-        return r.SerializeAsString();
-      },
-      py::arg("pir_config"), "Run pir setup.");
-
-  m.def(
-      "pir_server",
-      [](const std::shared_ptr<yacl::link::Context>& lctx,
-         const std::string& config_pb) -> py::bytes {
-        pir::PirServerConfig config;
-        SPU_ENFORCE(config.ParseFromString(config_pb));
-
-        auto r = pir::PirServer(lctx, config);
-        return r.SerializeAsString();
-      },
-      py::arg("link_context"), py::arg("pir_config"), "Run pir server");
-
-  m.def(
-      "pir_memory_server",
-      [](const std::shared_ptr<yacl::link::Context>& lctx,
-         const std::string& config_pb) -> py::bytes {
-        pir::PirSetupConfig config;
-        SPU_ENFORCE(config.ParseFromString(config_pb));
-        SPU_ENFORCE(config.setup_path() == "::memory");
-
-        config.set_bucket_size(1000000);
-        config.set_compressed(false);
-
-        auto r = pir::PirMemoryServer(lctx, config);
-        return r.SerializeAsString();
-      },
-      py::arg("link_context"), py::arg("pir_config"), "Run pir memory server");
-
-  m.def(
-      "pir_client",
-      [](const std::shared_ptr<yacl::link::Context>& lctx,
-         const std::string& config_pb) -> py::bytes {
-        pir::PirClientConfig config;
-        SPU_ENFORCE(config.ParseFromString(config_pb));
-
-        auto r = pir::PirClient(lctx, config);
-        return r.SerializeAsString();
-      },
-      py::arg("link_context"), py::arg("pir_config"), "Run pir client");
-}
-
 void BindLogging(py::module& m) {
   m.doc() = R"pbdoc(
               SPU Logging Library
@@ -768,25 +662,26 @@ PYBIND11_MODULE(libspu, m) {
   // bind compiler.
   m.def(
       "compile",
-      [](const py::bytes& source, const std::string& copts) {
+      [](const py::bytes& serialized_src, const std::string& serialized_copts) {
         py::scoped_ostream_redirect stream(
             std::cout,                                 // std::ostream&
             py::module_::import("sys").attr("stdout")  // Python output
         );
 
-        spu::compiler::CompilationContext ctx;
-        ctx.setCompilerOptions(copts);
+        spu::CompilerOptions copts;
+        SPU_ENFORCE(copts.ParseFromString(serialized_copts),
+                    "Parse compiler options failed");
 
-        return py::bytes(spu::compiler::compile(&ctx, source));
+        spu::CompilationSource src;
+        SPU_ENFORCE(src.ParseFromString(serialized_src), "Parse source failed");
+
+        return py::bytes(spu::compiler::compile(src, copts));
       },
       "spu compile.", py::arg("source"), py::arg("copts"));
 
   // bind spu libs.
   py::module link_m = m.def_submodule("link");
   BindLink(link_m);
-
-  py::module libs_m = m.def_submodule("libs");
-  BindLibs(libs_m);
 
   py::module logging_m = m.def_submodule("logging");
   BindLogging(logging_m);

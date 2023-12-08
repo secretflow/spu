@@ -1539,6 +1539,7 @@ TEST_P(ExecutorTest, SimpleSortMultiOperands) {
   xt::xarray<int> expected_x = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
   xt::xarray<int> expected_y = {2, 1, 2, 5, 6, 7, 6, 3, 2, 1};
 
+  // ascending direction
   {
     Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
              std::get<2>(GetParam()));
@@ -1549,7 +1550,7 @@ TEST_P(ExecutorTest, SimpleSortMultiOperands) {
     // Row sort
     r.run(R"(
 func.func @main(%arg0: tensor<10x!pphlo.pub<i32>>, %arg1: tensor<10x!pphlo.pub<i32>>) -> (tensor<10x!pphlo.pub<i32>>, tensor<10x!pphlo.pub<i32>>) {
-    %0:2 = "pphlo.simple_sort"(%arg0, %arg1) {dimension = 0 : i64, sort_direction = 0 : i32} : (tensor<10x!pphlo.pub<i32>>, tensor<10x!pphlo.pub<i32>>) -> (tensor<10x!pphlo.pub<i32>>, tensor<10x!pphlo.pub<i32>>)
+    %0:2 = "pphlo.simple_sort"(%arg0, %arg1) {dimension = 0 : i64, num_keys = 1 : i64, sort_direction = 0 : i32} : (tensor<10x!pphlo.pub<i32>>, tensor<10x!pphlo.pub<i32>>) -> (tensor<10x!pphlo.pub<i32>>, tensor<10x!pphlo.pub<i32>>)
     return %0#0, %0#1 : tensor<10x!pphlo.pub<i32>>, tensor<10x!pphlo.pub<i32>>
 })",
           2);
@@ -1567,13 +1568,196 @@ func.func @main(%arg0: tensor<10x!pphlo.pub<i32>>, %arg1: tensor<10x!pphlo.pub<i
     // Row sort
     r.run(R"(
 func.func @main(%arg0: tensor<10x!pphlo.sec<i32>>, %arg1: tensor<10x!pphlo.sec<i32>>) -> (tensor<10x!pphlo.sec<i32>>, tensor<10x!pphlo.sec<i32>>) {
-    %0:2 = "pphlo.simple_sort"(%arg0, %arg1) {dimension = 0 : i64, sort_direction = 0 : i32} : (tensor<10x!pphlo.sec<i32>>, tensor<10x!pphlo.sec<i32>>) -> (tensor<10x!pphlo.sec<i32>>, tensor<10x!pphlo.sec<i32>>)
+    %0:2 = "pphlo.simple_sort"(%arg0, %arg1) {dimension = 0 : i64, num_keys = 1 : i64, sort_direction = 0 : i32} : (tensor<10x!pphlo.sec<i32>>, tensor<10x!pphlo.sec<i32>>) -> (tensor<10x!pphlo.sec<i32>>, tensor<10x!pphlo.sec<i32>>)
     return %0#0, %0#1 : tensor<10x!pphlo.sec<i32>>, tensor<10x!pphlo.sec<i32>>
 })",
           2);
 
     r.verifyOutput(expected_x.data(), 0);
     r.verifyOutput(expected_y.data(), 1);
+  }
+
+  // Descending direction
+  expected_x = {10, 9, 8, 7, 6, 5, 4, 3, 2, 1};
+  expected_y = {1, 2, 3, 6, 7, 6, 5, 2, 1, 2};
+
+  {
+    Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
+             std::get<2>(GetParam()));
+
+    r.addInput(x);
+    r.addInput(y);
+
+    // Row sort
+    r.run(R"(
+func.func @main(%arg0: tensor<10x!pphlo.pub<i32>>, %arg1: tensor<10x!pphlo.pub<i32>>) -> (tensor<10x!pphlo.pub<i32>>, tensor<10x!pphlo.pub<i32>>) {
+    %0:2 = "pphlo.simple_sort"(%arg0, %arg1) {dimension = 0 : i64, num_keys = 1 : i64, sort_direction = 1 : i32} : (tensor<10x!pphlo.pub<i32>>, tensor<10x!pphlo.pub<i32>>) -> (tensor<10x!pphlo.pub<i32>>, tensor<10x!pphlo.pub<i32>>)
+    return %0#0, %0#1 : tensor<10x!pphlo.pub<i32>>, tensor<10x!pphlo.pub<i32>>
+})",
+          2);
+
+    r.verifyOutput(expected_x.data(), 0);
+    r.verifyOutput(expected_y.data(), 1);
+  }
+
+  {
+    Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
+             std::get<2>(GetParam()));
+    r.addInput(x, VIS_SECRET);
+    r.addInput(y, VIS_SECRET);
+
+    // Row sort
+    r.run(R"(
+func.func @main(%arg0: tensor<10x!pphlo.sec<i32>>, %arg1: tensor<10x!pphlo.sec<i32>>) -> (tensor<10x!pphlo.sec<i32>>, tensor<10x!pphlo.sec<i32>>) {
+    %0:2 = "pphlo.simple_sort"(%arg0, %arg1) {dimension = 0 : i64, num_keys = 1 : i64, sort_direction = 1 : i32} : (tensor<10x!pphlo.sec<i32>>, tensor<10x!pphlo.sec<i32>>) -> (tensor<10x!pphlo.sec<i32>>, tensor<10x!pphlo.sec<i32>>)
+    return %0#0, %0#1 : tensor<10x!pphlo.sec<i32>>, tensor<10x!pphlo.sec<i32>>
+})",
+          2);
+
+    r.verifyOutput(expected_x.data(), 0);
+    r.verifyOutput(expected_y.data(), 1);
+  }
+}
+
+TEST_P(ExecutorTest, SimpleSortMultiKeys) {
+  xt::xarray<int> x = {10, 10, 8, 8, 6, 6, 4, 4, 2, 2};
+  xt::xarray<float> y = {-1.0, -2.0, -3.0, -6.0, -7.0,
+                         -6.0, -5.0, -2.0, -1.0, -0.0};
+  xt::xarray<int> z = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+
+  xt::xarray<int> expected_x = {2, 2, 4, 4, 6, 6, 8, 8, 10, 10};
+  xt::xarray<float> expected_y = {-1.0, -0.0, -5.0, -2.0, -7.0,
+                                  -6.0, -6.0, -3.0, -2.0, -1.0};
+  xt::xarray<int> expected_z = {9, 10, 7, 8, 5, 6, 4, 3, 2, 1};
+
+  // ascending direction
+  {
+    Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
+             std::get<2>(GetParam()));
+
+    r.addInput(x);
+    r.addInput(y);
+    r.addInput(z);
+
+    // Row sort
+    r.run(R"(
+func.func @main(%arg0: tensor<10x!pphlo.pub<i32>>, %arg1: tensor<10x!pphlo.pub<f32>>, %arg2: tensor<10x!pphlo.pub<i32>>) -> (tensor<10x!pphlo.pub<i32>>, tensor<10x!pphlo.pub<f32>>, tensor<10x!pphlo.pub<i32>>) {
+    %0:3 = "pphlo.simple_sort"(%arg0, %arg1, %arg2) {dimension = 0 : i64, num_keys = 2 : i64, sort_direction = 0 : i32} : (tensor<10x!pphlo.pub<i32>>, tensor<10x!pphlo.pub<f32>>, tensor<10x!pphlo.pub<i32>>) -> (tensor<10x!pphlo.pub<i32>>, tensor<10x!pphlo.pub<f32>>, tensor<10x!pphlo.pub<i32>>)
+    return %0#0, %0#1, %0#2 : tensor<10x!pphlo.pub<i32>>, tensor<10x!pphlo.pub<f32>>, tensor<10x!pphlo.pub<i32>>
+})",
+          3);
+
+    r.verifyOutput(expected_x.data(), 0);
+    r.verifyOutput(expected_y.data(), 1);
+    r.verifyOutput(expected_z.data(), 2);
+  }
+
+  {
+    Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
+             std::get<2>(GetParam()));
+    r.addInput(x, VIS_SECRET);
+    r.addInput(y, VIS_SECRET);
+    r.addInput(z, VIS_SECRET);
+
+    // Row sort
+    r.run(R"(
+func.func @main(%arg0: tensor<10x!pphlo.sec<i32>>, %arg1: tensor<10x!pphlo.sec<f32>>, %arg2: tensor<10x!pphlo.sec<i32>>) -> (tensor<10x!pphlo.sec<i32>>, tensor<10x!pphlo.sec<f32>>, tensor<10x!pphlo.sec<i32>>) {
+    %0:3 = "pphlo.simple_sort"(%arg0, %arg1, %arg2) {dimension = 0 : i64, num_keys = 2 : i64, sort_direction = 0 : i32} : (tensor<10x!pphlo.sec<i32>>, tensor<10x!pphlo.sec<f32>>, tensor<10x!pphlo.sec<i32>>) -> (tensor<10x!pphlo.sec<i32>>, tensor<10x!pphlo.sec<f32>>, tensor<10x!pphlo.sec<i32>>)
+    return %0#0, %0#1, %0#2 : tensor<10x!pphlo.sec<i32>>, tensor<10x!pphlo.sec<f32>>, tensor<10x!pphlo.sec<i32>>
+})",
+          3);
+
+    r.verifyOutput(expected_x.data(), 0);
+    r.verifyOutput(expected_y.data(), 1);
+    r.verifyOutput(expected_z.data(), 2);
+  }
+
+  // mixed-visibility
+  {
+    Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
+             std::get<2>(GetParam()));
+    r.addInput(x);
+    r.addInput(y, VIS_SECRET);
+    r.addInput(z, VIS_SECRET);
+
+    // Row sort
+    r.run(R"(
+func.func @main(%arg0: tensor<10x!pphlo.pub<i32>>, %arg1: tensor<10x!pphlo.sec<f32>>, %arg2: tensor<10x!pphlo.sec<i32>>) -> (tensor<10x!pphlo.sec<i32>>, tensor<10x!pphlo.sec<f32>>, tensor<10x!pphlo.sec<i32>>) {
+    %0:3 = "pphlo.simple_sort"(%arg0, %arg1, %arg2) {dimension = 0 : i64, num_keys = 2 : i64, sort_direction = 0 : i32} : (tensor<10x!pphlo.pub<i32>>, tensor<10x!pphlo.sec<f32>>, tensor<10x!pphlo.sec<i32>>) -> (tensor<10x!pphlo.sec<i32>>, tensor<10x!pphlo.sec<f32>>, tensor<10x!pphlo.sec<i32>>)
+    return %0#0, %0#1, %0#2 : tensor<10x!pphlo.sec<i32>>, tensor<10x!pphlo.sec<f32>>, tensor<10x!pphlo.sec<i32>>
+})",
+          3);
+
+    r.verifyOutput(expected_x.data(), 0);
+    r.verifyOutput(expected_y.data(), 1);
+    r.verifyOutput(expected_z.data(), 2);
+  }
+
+  expected_x = {10, 10, 8, 8, 6, 6, 4, 4, 2, 2};
+  expected_y = {-1.0, -2.0, -3.0, -6.0, -6.0, -7.0, -2.0, -5.0, -0.0, -1.0};
+  expected_z = {1, 2, 3, 4, 6, 5, 8, 7, 10, 9};
+
+  // descending direction
+  {
+    Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
+             std::get<2>(GetParam()));
+
+    r.addInput(x);
+    r.addInput(y);
+    r.addInput(z);
+
+    // Row sort
+    r.run(R"(
+func.func @main(%arg0: tensor<10x!pphlo.pub<i32>>, %arg1: tensor<10x!pphlo.pub<f32>>, %arg2: tensor<10x!pphlo.pub<i32>>) -> (tensor<10x!pphlo.pub<i32>>, tensor<10x!pphlo.pub<f32>>, tensor<10x!pphlo.pub<i32>>) {
+    %0:3 = "pphlo.simple_sort"(%arg0, %arg1, %arg2) {dimension = 0 : i64, num_keys = 2 : i64, sort_direction = 1 : i32} : (tensor<10x!pphlo.pub<i32>>, tensor<10x!pphlo.pub<f32>>, tensor<10x!pphlo.pub<i32>>) -> (tensor<10x!pphlo.pub<i32>>, tensor<10x!pphlo.pub<f32>>, tensor<10x!pphlo.pub<i32>>)
+    return %0#0, %0#1, %0#2 : tensor<10x!pphlo.pub<i32>>, tensor<10x!pphlo.pub<f32>>, tensor<10x!pphlo.pub<i32>>
+})",
+          3);
+
+    r.verifyOutput(expected_x.data(), 0);
+    r.verifyOutput(expected_y.data(), 1);
+    r.verifyOutput(expected_z.data(), 2);
+  }
+
+  {
+    Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
+             std::get<2>(GetParam()));
+    r.addInput(x, VIS_SECRET);
+    r.addInput(y, VIS_SECRET);
+    r.addInput(z, VIS_SECRET);
+
+    // Row sort
+    r.run(R"(
+func.func @main(%arg0: tensor<10x!pphlo.sec<i32>>, %arg1: tensor<10x!pphlo.sec<f32>>, %arg2: tensor<10x!pphlo.sec<i32>>) -> (tensor<10x!pphlo.sec<i32>>, tensor<10x!pphlo.sec<f32>>, tensor<10x!pphlo.sec<i32>>) {
+    %0:3 = "pphlo.simple_sort"(%arg0, %arg1, %arg2) {dimension = 0 : i64, num_keys = 2 : i64, sort_direction = 1 : i32} : (tensor<10x!pphlo.sec<i32>>, tensor<10x!pphlo.sec<f32>>, tensor<10x!pphlo.sec<i32>>) -> (tensor<10x!pphlo.sec<i32>>, tensor<10x!pphlo.sec<f32>>, tensor<10x!pphlo.sec<i32>>)
+    return %0#0, %0#1, %0#2 : tensor<10x!pphlo.sec<i32>>, tensor<10x!pphlo.sec<f32>>, tensor<10x!pphlo.sec<i32>>
+})",
+          3);
+
+    r.verifyOutput(expected_x.data(), 0);
+    r.verifyOutput(expected_y.data(), 1);
+    r.verifyOutput(expected_z.data(), 2);
+  }
+
+  // mixed-visibility
+  {
+    Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
+             std::get<2>(GetParam()));
+    r.addInput(x);
+    r.addInput(y, VIS_SECRET);
+    r.addInput(z, VIS_SECRET);
+
+    // Row sort
+    r.run(R"(
+func.func @main(%arg0: tensor<10x!pphlo.pub<i32>>, %arg1: tensor<10x!pphlo.sec<f32>>, %arg2: tensor<10x!pphlo.sec<i32>>) -> (tensor<10x!pphlo.sec<i32>>, tensor<10x!pphlo.sec<f32>>, tensor<10x!pphlo.sec<i32>>) {
+    %0:3 = "pphlo.simple_sort"(%arg0, %arg1, %arg2) {dimension = 0 : i64, num_keys = 2 : i64, sort_direction = 1 : i32} : (tensor<10x!pphlo.pub<i32>>, tensor<10x!pphlo.sec<f32>>, tensor<10x!pphlo.sec<i32>>) -> (tensor<10x!pphlo.sec<i32>>, tensor<10x!pphlo.sec<f32>>, tensor<10x!pphlo.sec<i32>>)
+    return %0#0, %0#1, %0#2 : tensor<10x!pphlo.sec<i32>>, tensor<10x!pphlo.sec<f32>>, tensor<10x!pphlo.sec<i32>>
+})",
+          3);
+
+    r.verifyOutput(expected_x.data(), 0);
+    r.verifyOutput(expected_y.data(), 1);
+    r.verifyOutput(expected_z.data(), 2);
   }
 }
 

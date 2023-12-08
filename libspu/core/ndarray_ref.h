@@ -455,8 +455,8 @@ size_t maxBitWidth(const NdArrayRef& in) {
 
   NdArrayView<T> _in(in);
 
-  size_t res = preduce<size_t>(
-      0, numel,
+  return yacl::parallel_reduce<size_t>(
+      0, numel, kMinTaskSize,
       [&](int64_t begin, int64_t end) {
         size_t partial_max = 0;
         for (int64_t idx = begin; idx < end; ++idx) {
@@ -464,9 +464,7 @@ size_t maxBitWidth(const NdArrayRef& in) {
         }
         return partial_max;
       },
-      [](const size_t& a, const size_t& b) { return std::max(a, b); });
-
-  return res;
+      [](size_t a, size_t b) { return std::max(a, b); });
 }
 
 // FIXME(xiaochen): remove this

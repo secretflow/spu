@@ -65,7 +65,7 @@ public:
 
         rewriter.replaceOpWithNewOp<pphlo::SimpleSortOp>(
             op, op.getResultTypes(), op.getOperands(), op.getDimensionAttr(),
-            direction);
+            rewriter.getI64IntegerAttr(1), direction);
         return success();
       }
     }

@@ -343,12 +343,11 @@ void CheetahDot::Impl::doDotOLEReceiverRecvStep(const NdArrayRef &prv_mat,
     matmat_prot.EncodeRHS(prv_mat, meta, false, absl::MakeSpan(plain_mat));
   }
 
-  yacl::parallel_for(0, plain_mat.size(), CalculateWorkLoad(plain_mat.size()),
-                     [&](size_t bgn, size_t end) {
-                       for (size_t i = bgn; i < end; ++i) {
-                         NttInplace(plain_mat[i], this_context);
-                       }
-                     });
+  yacl::parallel_for(0, plain_mat.size(), [&](size_t bgn, size_t end) {
+    for (size_t i = bgn; i < end; ++i) {
+      NttInplace(plain_mat[i], this_context);
+    }
+  });
   io_task.get();
 
   // 3. HE multiplications
@@ -487,12 +486,11 @@ void CheetahDot::Impl::doDotOLESenderSendStep(const NdArrayRef &prv_mat,
                          /*ntt*/ true,
                          /*seed*/ true, absl::MakeSpan(enc_mat));
 
-    yacl::parallel_for(0, this_batch, CalculateWorkLoad(this_batch),
-                       [&](size_t bgn, size_t end) {
-                         for (size_t j = bgn; j < end; ++j) {
-                           ct_s[j] = EncodeSEALObject(enc_mat[j]);
-                         }
-                       });
+    yacl::parallel_for(0, this_batch, [&](size_t bgn, size_t end) {
+      for (size_t j = bgn; j < end; ++j) {
+        ct_s[j] = EncodeSEALObject(enc_mat[j]);
+      }
+    });
 
     for (size_t j = 1; j < this_batch; ++j) {
       conn->SendAsync(next_rank, ct_s[j - 1], "send encrypted mat");
@@ -529,16 +527,14 @@ NdArrayRef CheetahDot::Impl::doDotOLESenderRecvStep(FieldType field,
       DecodeSEALObject(ct_s, this_context, &recv_ct[j]);
     }
 
-    yacl::parallel_for(0, this_batch, CalculateWorkLoad(this_batch),
-                       [&](size_t bgn, size_t end) {
-                         for (size_t j = bgn; j < end; ++j) {
-                           NttInplace(recv_ct[j], this_context);
-                           this_decryptor->decrypt(recv_ct[j],
-                                                   result_poly[i + j]);
-                           // non-ntt form for ParseResult
-                           InvNttInplace(result_poly[i + j], this_context);
-                         }
-                       });
+    yacl::parallel_for(0, this_batch, [&](size_t bgn, size_t end) {
+      for (size_t j = bgn; j < end; ++j) {
+        NttInplace(recv_ct[j], this_context);
+        this_decryptor->decrypt(recv_ct[j], result_poly[i + j]);
+        // non-ntt form for ParseResult
+        InvNttInplace(result_poly[i + j], this_context);
+      }
+    });
   }
 
   switch (cptype) {

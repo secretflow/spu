@@ -14,13 +14,11 @@
 
 #pragma once
 
-#include <string>
+#include "libspu/spu.pb.h"
 
 namespace spu::compiler {
 
-class CompilationContext;
-
-std::string compile(CompilationContext *ctx,
-                    const std::string &serialized_source);
+std::string compile(const CompilationSource &source,
+                    const CompilerOptions &copts);
 
 } // namespace spu::compiler

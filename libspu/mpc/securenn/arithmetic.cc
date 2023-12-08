@@ -1487,14 +1487,12 @@ NdArrayRef Msb_opt::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
       NdArrayRef c(ty, {size * k});
       NdArrayView<U> _c(c);
 
-      size_t w;
-      size_t w_total;
-
       pforeach(0, in.numel(), [&](int64_t idx) {
         auto r_bits = bitDecompose(_r[idx], k);
         auto t_bits = bitDecompose(_t[idx], k);
         _lsb_r[idx] = static_cast<U>(r_bits[0]);
-        w_total = 0;
+        size_t w_total = 0;
+        size_t w;
         for (int i = (int)(k - 1); i >= 0; i--) {
           if (rank == 0) _dp_x[idx * k + i] = _dp_x[idx * k + i] % p;
           if (_beta[idx] == 0) {

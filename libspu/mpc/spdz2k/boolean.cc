@@ -58,10 +58,10 @@ NdArrayRef P2Value(FieldType out_field, const NdArrayRef& in, size_t k,
       NdArrayView<BShrT> _out(out);
 
       pforeach(0, in.numel(), [&](int64_t idx) {
-        pforeach(0, valid_nbits, [&](int64_t jdx) {
+        for (size_t jdx = 0; jdx < valid_nbits; ++jdx) {
           size_t offset = idx * valid_nbits + jdx;
           _out[offset] = static_cast<BShrT>((_in[idx] >> jdx) & 1);
-        });
+        }
       });
 
       return out;
@@ -581,9 +581,9 @@ NdArrayRef BitIntlB::proc(KernelEvalContext* ctx, const NdArrayRef& in,
       size_t group_num = k / num_per_group + (k % num_per_group != 0);
       size_t half_group_num = (group_num + 1) / 2;
 
-      pforeach(0, in.numel(), [&](size_t jdx) {
+      pforeach(0, in.numel(), [&](int64_t jdx) {
         size_t base_offset = jdx * k;
-        pforeach(0, k, [&](size_t idx) {
+        for (size_t idx = 0; idx < k; ++idx) {
           auto group = idx / num_per_group;
           auto offset = idx % num_per_group;
           size_t src_idx = base_offset;
@@ -597,7 +597,7 @@ NdArrayRef BitIntlB::proc(KernelEvalContext* ctx, const NdArrayRef& in,
           }
           _out[dest_idx][0] = _in[src_idx][0];
           _out[dest_idx][1] = _in[src_idx][1];
-        });
+        }
       });
     }
   });
@@ -628,9 +628,9 @@ NdArrayRef BitDeintlB::proc(KernelEvalContext* ctx, const NdArrayRef& in,
       size_t num_per_group = 1 << stride;
       size_t group_num = k / num_per_group + (k % num_per_group != 0);
       size_t half_group_num = (group_num + 1) / 2;
-      pforeach(0, in.numel(), [&](size_t jdx) {
+      pforeach(0, in.numel(), [&](int64_t jdx) {
         size_t base_offset = jdx * k;
-        pforeach(0, k, [&](size_t idx) {
+        for (size_t idx = 0; idx < k; ++idx) {
           auto group = idx / num_per_group;
           auto offset = idx % num_per_group;
           size_t src_idx = base_offset;
@@ -644,7 +644,7 @@ NdArrayRef BitDeintlB::proc(KernelEvalContext* ctx, const NdArrayRef& in,
           }
           _out[dest_idx][0] = _in[src_idx][0];
           _out[dest_idx][1] = _in[src_idx][1];
-        });
+        }
       });
     }
   });

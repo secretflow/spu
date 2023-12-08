@@ -387,12 +387,16 @@ shift
 JAX NumPy Document link: https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.cos.html
 ### Status
 
-Not supported by compiler or runtime. But we could implement on demand in future.
-Please check *Note* for details.
-### Note
+**PASS**
+Please check *Supported Dtypes* as well.
+### Supported Dtypes
 
+- float32
+- int16
+- int32
+- uint16
+- uint32
 
-stablehlo.cosine
 ## cosh
 
 JAX NumPy Document link: https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.cosh.html
@@ -803,23 +807,15 @@ Please check *Note* for details.
 JAX NumPy Document link: https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.isneginf.html
 ### Status
 
-**PASS**
-Please check *Supported Dtypes* as well.
-### Supported Dtypes
-
-- float32
-
+Not supported by design. We couldn't fix this in near future.
+Please check *Note* for details.
 ## isposinf
 
 JAX NumPy Document link: https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.isposinf.html
 ### Status
 
-**PASS**
-Please check *Supported Dtypes* as well.
-### Supported Dtypes
-
-- float32
-
+Not supported by design. We couldn't fix this in near future.
+Please check *Note* for details.
 ## isreal
 
 JAX NumPy Document link: https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.isreal.html
@@ -1468,34 +1464,46 @@ Please check *Supported Dtypes* as well.
 JAX NumPy Document link: https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.sin.html
 ### Status
 
-Not supported by compiler or runtime. But we could implement on demand in future.
-Please check *Note* for details.
-### Note
+**PASS**
+Please check *Supported Dtypes* as well.
+### Supported Dtypes
 
+- float32
+- int16
+- int32
+- uint16
+- uint32
 
-stablehlo.sine
 ## sinc
 
 JAX NumPy Document link: https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.sinc.html
 ### Status
 
-Not supported by compiler or runtime. But we could implement on demand in future.
-Please check *Note* for details.
-### Note
+**PASS**
+Please check *Supported Dtypes* as well.
+### Supported Dtypes
 
+- float32
+- int16
+- int32
+- uint16
+- uint32
 
-stablehlo.sine
 ## sinh
 
 JAX NumPy Document link: https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.sinh.html
 ### Status
 
-Not supported by compiler or runtime. But we could implement on demand in future.
-Please check *Note* for details.
-### Note
+**PASS**
+Please check *Supported Dtypes* as well.
+### Supported Dtypes
 
+- float32
+- int16
+- int32
+- uint16
+- uint32
 
-stablehlo.cosine
 ## sqrt
 
 JAX NumPy Document link: https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.sqrt.html
@@ -1565,7 +1573,7 @@ Please check *Note* for details.
 ### Note
 
 
-stablehlo.sine
+stablehlo.tan
 ## tanh
 
 JAX NumPy Document link: https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.tanh.html

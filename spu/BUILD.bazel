@@ -15,6 +15,7 @@
 load("@pybind11_bazel//:build_defs.bzl", "pybind_extension")
 load("@rules_python//python:defs.bzl", "py_library")
 load("@rules_python//python:packaging.bzl", "py_package")
+load("@rules_proto_grpc//python:defs.bzl", "python_proto_compile")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -46,9 +47,27 @@ pybind_extension(
         "//libspu/device:api",
         "//libspu/device:io",
         "//libspu/device/pphlo:pphlo_executor",
-        "//libspu/pir",
-        "//libspu/psi:bucket_psi",
-        "//libspu/psi:memory_psi",
+        "@yacl//yacl/link",
+    ],
+)
+
+pybind_extension(
+    name = "libpsi",
+    srcs = ["libpsi.cc"],
+    linkopts = select({
+        "@bazel_tools//src/conditions:darwin": [
+            "-Wl,-exported_symbols_list,$(location //spu:exported_symbols.lds)",
+        ],
+        "//conditions:default": [
+            "-Wl,--version-script,$(location //spu:version_script.lds)",
+        ],
+    }),
+    deps = [
+        ":exported_symbols.lds",
+        ":version_script.lds",
+        "@psi//psi/pir",
+        "@psi//psi/psi:bucket_psi",
+        "@psi//psi/psi:memory_psi",
         "@yacl//yacl/link",
     ],
 )
@@ -65,26 +84,38 @@ py_library(
     ],
 )
 
+python_proto_compile(
+    name = "psi_py_proto",
+    output_mode = "NO_PREFIX_FLAT",
+    protos = ["@psi//psi/psi:psi_proto"],
+)
+
 py_library(
     name = "psi",
     srcs = [
         "psi.py",
-        "psi_pb2.py",
-        "//libspu:psi_py_proto",
+        ":psi_py_proto",
     ],
     data = [
+        ":libpsi.so",
         ":libspu.so",
     ],
+)
+
+python_proto_compile(
+    name = "pir_py_proto",
+    output_mode = "NO_PREFIX_FLAT",
+    protos = ["@psi//psi/pir:pir_proto"],
 )
 
 py_library(
     name = "pir",
     srcs = [
         "pir.py",
-        "pir_pb2.py",
-        "//libspu:pir_py_proto",
+        ":pir_py_proto",
     ],
     data = [
+        ":libpsi.so",
         ":libspu.so",
     ],
 )

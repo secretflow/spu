@@ -17,19 +17,22 @@
 #include "mlir/IR/BuiltinOps.h"
 
 #include "libspu/compiler/codegen/codegen.h"
+#include "libspu/compiler/common/compilation_context.h"
 #include "libspu/compiler/core/core.h"
 #include "libspu/compiler/front_end/fe.h"
 
 namespace spu::compiler {
 
-std::string compile(CompilationContext *ctx,
-                    const std::string &serialized_source) {
+std::string compile(const CompilationSource &source,
+                    const CompilerOptions &copts) {
+  CompilationContext ctx(copts);
+
   // Call front end
-  FE fe(ctx);
-  auto mlir_module = fe.doit(serialized_source);
+  FE fe(&ctx);
+  auto mlir_module = fe.doit(source);
 
   // Run core passes
-  Core core(ctx);
+  Core core(&ctx);
   core.doit(mlir_module.get());
 
   // Run codegen

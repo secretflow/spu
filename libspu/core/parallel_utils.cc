@@ -14,14 +14,4 @@
 
 #include "libspu/core/parallel_utils.h"
 
-#include "llvm/Support/Threading.h"
-
-namespace spu {
-
-int getNumberOfProc() {
-  static int nProc =
-      llvm::heavyweight_hardware_concurrency().compute_thread_count() - 1;
-  return nProc;
-}
-
-}  // namespace spu
+namespace spu {}  // namespace spu

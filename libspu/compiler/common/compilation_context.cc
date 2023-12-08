@@ -30,7 +30,13 @@ void SPUErrorHandler(void * /*use_data*/, const char *reason,
 
 namespace spu::compiler {
 
-CompilationContext::CompilationContext() {
+CompilationContext::CompilationContext(CompilerOptions options)
+    : options_(std::move(options)) {
+  if (options_.enable_pretty_print()) {
+    pp_config_ = std::make_unique<mlir::pphlo::IRPrinterConfig>(
+        options_.pretty_print_dump_dir());
+  }
+
   // Set an error handler
   llvm::remove_fatal_error_handler();
   llvm::install_fatal_error_handler(SPUErrorHandler);
@@ -60,18 +66,6 @@ std::filesystem::path CompilationContext::getPrettyPrintDir() const {
   SPU_ENFORCE(hasPrettyPrintEnabled());
   return static_cast<const mlir::pphlo::IRPrinterConfig *>(pp_config_.get())
       ->GetPrettyPrintDir();
-}
-
-void CompilationContext::setCompilerOptions(
-    const std::string &serialized_copts) {
-  auto status = options_.ParseFromString(serialized_copts);
-
-  SPU_ENFORCE(status, "Parse compiler options failed");
-
-  if (options_.enable_pretty_print()) {
-    pp_config_ = std::make_unique<mlir::pphlo::IRPrinterConfig>(
-        options_.pretty_print_dump_dir());
-  }
 }
 
 } // namespace spu::compiler

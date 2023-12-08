@@ -423,16 +423,14 @@ size_t CheetahMul::Impl::EncryptArrayThenSend(const NdArrayRef &array,
 
   std::vector<yacl::Buffer> payload(num_polys);
 
-  yacl::parallel_for(0, num_polys, CalculateWorkLoad(num_polys),
-                     [&](int64_t job_bgn, int64_t job_end) {
-                       for (int64_t job_id = job_bgn; job_id < job_end;
-                            ++job_id) {
-                         int64_t cntxt_id = job_id / num_splits;
-                         auto ct = sym_encryptors_[cntxt_id]->encrypt_symmetric(
-                             encoded_array.at(job_id));
-                         payload.at(job_id) = EncodeSEALObject(ct.obj());
-                       }
-                     });
+  yacl::parallel_for(0, num_polys, [&](int64_t job_bgn, int64_t job_end) {
+    for (int64_t job_id = job_bgn; job_id < job_end; ++job_id) {
+      int64_t cntxt_id = job_id / num_splits;
+      auto ct = sym_encryptors_[cntxt_id]->encrypt_symmetric(
+          encoded_array.at(job_id));
+      payload.at(job_id) = EncodeSEALObject(ct.obj());
+    }
+  });
 
   if (conn == nullptr) {
     conn = lctx_.get();
@@ -512,34 +510,31 @@ void CheetahMul::Impl::EncodeArray(const NdArrayRef &array, bool need_encrypt,
 
   auto &ms_helper = ms_helpers_.find(options)->second;
 
-  yacl::parallel_for(
-      0, num_polys, CalculateWorkLoad(num_polys),
-      [&](int64_t job_bgn, int64_t job_end) {
-        std::vector<uint64_t> _u64tmp(num_slots());
-        auto u64tmp = absl::MakeSpan(_u64tmp);
+  yacl::parallel_for(0, num_polys, [&](int64_t job_bgn, int64_t job_end) {
+    std::vector<uint64_t> _u64tmp(num_slots());
+    auto u64tmp = absl::MakeSpan(_u64tmp);
 
-        for (int64_t job_id = job_bgn; job_id < job_end; ++job_id) {
-          int64_t cntxt_id = job_id / num_splits;
-          int64_t split_id = job_id % num_splits;
-          int64_t slice_bgn = split_id * num_slots();
-          int64_t slice_end =
-              std::min(num_elts, slice_bgn + static_cast<int64_t>(num_slots()));
+    for (int64_t job_id = job_bgn; job_id < job_end; ++job_id) {
+      int64_t cntxt_id = job_id / num_splits;
+      int64_t split_id = job_id % num_splits;
+      int64_t slice_bgn = split_id * num_slots();
+      int64_t slice_end =
+          std::min(num_elts, slice_bgn + static_cast<int64_t>(num_slots()));
 
-          auto slice = array.slice({slice_bgn}, {slice_end}, {1});
-          auto dst = u64tmp.subspan(0, slice_end - slice_bgn);
-          if (need_encrypt) {
-            ms_helper.ModulusUpAt(slice, cntxt_id, dst);
-          } else {
-            ms_helper.CenteralizeAt(slice, cntxt_id, dst);
-          }
-          // zero-padding the rest
-          std::fill_n(u64tmp.data() + slice.numel(),
-                      u64tmp.size() - slice.numel(), 0);
+      auto slice = array.slice({slice_bgn}, {slice_end}, {1});
+      auto dst = u64tmp.subspan(0, slice_end - slice_bgn);
+      if (need_encrypt) {
+        ms_helper.ModulusUpAt(slice, cntxt_id, dst);
+      } else {
+        ms_helper.CenteralizeAt(slice, cntxt_id, dst);
+      }
+      // zero-padding the rest
+      std::fill_n(u64tmp.data() + slice.numel(), u64tmp.size() - slice.numel(),
+                  0);
 
-          CATCH_SEAL_ERROR(
-              bfv_encoders_[cntxt_id]->encode(_u64tmp, out[job_id]));
-        }
-      });
+      CATCH_SEAL_ERROR(bfv_encoders_[cntxt_id]->encode(_u64tmp, out[job_id]));
+    }
+  });
 }
 
 void CheetahMul::Impl::MulThenResponse(FieldType, int64_t num_elts,
@@ -561,28 +556,25 @@ void CheetahMul::Impl::MulThenResponse(FieldType, int64_t num_elts,
               "CheetahMul: encoded rnaomd size mismatch");
 
   std::vector<yacl::Buffer> response(num_ciphers);
-  yacl::parallel_for(
-      0, num_ciphers, CalculateWorkLoad(num_ciphers),
-      [&](int64_t job_bgn, int64_t job_end) {
-        RLWECt ct;
-        std::vector<uint64_t> u64tmp(num_slots(), 0);
-        for (int64_t job_id = job_bgn; job_id < job_end; ++job_id) {
-          int64_t cntxt_id = job_id / num_splits;
-          // int64_t offset = cntxt_id * num_splits;
-          const auto &seal_cntxt = seal_cntxts_[cntxt_id];
-          seal::Evaluator evaluator(seal_cntxt);
-          // Multiply-then-H2A
-          DecodeSEALObject(ciphers.at(job_id), seal_cntxt, &ct);
-          // Multiply step
-          CATCH_SEAL_ERROR(
-              evaluator.multiply_plain_inplace(ct, plains[job_id]));
-          // H2A
-          CATCH_SEAL_ERROR(evaluator.sub_plain_inplace(ct, ecd_random[job_id]));
-          // re-randomize the ciphertext (e.g., noise flood)
-          RandomizeCipherForDecryption(ct, cntxt_id);
-          response[job_id] = EncodeSEALObject(ct);
-        }
-      });
+  yacl::parallel_for(0, num_ciphers, [&](int64_t job_bgn, int64_t job_end) {
+    RLWECt ct;
+    std::vector<uint64_t> u64tmp(num_slots(), 0);
+    for (int64_t job_id = job_bgn; job_id < job_end; ++job_id) {
+      int64_t cntxt_id = job_id / num_splits;
+      // int64_t offset = cntxt_id * num_splits;
+      const auto &seal_cntxt = seal_cntxts_[cntxt_id];
+      seal::Evaluator evaluator(seal_cntxt);
+      // Multiply-then-H2A
+      DecodeSEALObject(ciphers.at(job_id), seal_cntxt, &ct);
+      // Multiply step
+      CATCH_SEAL_ERROR(evaluator.multiply_plain_inplace(ct, plains[job_id]));
+      // H2A
+      CATCH_SEAL_ERROR(evaluator.sub_plain_inplace(ct, ecd_random[job_id]));
+      // re-randomize the ciphertext (e.g., noise flood)
+      RandomizeCipherForDecryption(ct, cntxt_id);
+      response[job_id] = EncodeSEALObject(ct);
+    }
+  });
 
   if (conn == nullptr) {
     conn = lctx_.get();
@@ -614,27 +606,25 @@ NdArrayRef CheetahMul::Impl::DecryptArray(
   // Decrypt ciphertexts into size x num_modulus
   // Then apply the ModulusDown to get value in Z_{2^k}.
   std::vector<uint64_t> rns_temp(size * num_seal_ctx, 0);
-  yacl::parallel_for(
-      0, num_ciphers, CalculateWorkLoad(num_ciphers),
-      [&](int64_t job_bgn, int64_t job_end) {
-        RLWEPt pt;
-        RLWECt ct;
-        std::vector<uint64_t> subarray(num_slots(), 0);
-        for (int64_t job_id = job_bgn; job_id < job_end; ++job_id) {
-          int64_t cntxt_id = job_id / num_splits;
-          int64_t split_id = job_id % num_splits;
+  yacl::parallel_for(0, num_ciphers, [&](int64_t job_bgn, int64_t job_end) {
+    RLWEPt pt;
+    RLWECt ct;
+    std::vector<uint64_t> subarray(num_slots(), 0);
+    for (int64_t job_id = job_bgn; job_id < job_end; ++job_id) {
+      int64_t cntxt_id = job_id / num_splits;
+      int64_t split_id = job_id % num_splits;
 
-          DecodeSEALObject(ct_array.at(job_id), seal_cntxts_[cntxt_id], &ct);
-          CATCH_SEAL_ERROR(decryptors_[cntxt_id]->decrypt(ct, pt));
-          CATCH_SEAL_ERROR(bfv_encoders_[cntxt_id]->decode(pt, subarray));
+      DecodeSEALObject(ct_array.at(job_id), seal_cntxts_[cntxt_id], &ct);
+      CATCH_SEAL_ERROR(decryptors_[cntxt_id]->decrypt(ct, pt));
+      CATCH_SEAL_ERROR(bfv_encoders_[cntxt_id]->decode(pt, subarray));
 
-          int64_t slice_bgn = split_id * num_slots();
-          int64_t slice_end = std::min(size, slice_bgn + num_slots());
-          int64_t slice_modulus_bgn = cntxt_id * size + slice_bgn;
-          std::copy_n(subarray.data(), slice_end - slice_bgn,
-                      rns_temp.data() + slice_modulus_bgn);
-        }
-      });
+      int64_t slice_bgn = split_id * num_slots();
+      int64_t slice_end = std::min(size, slice_bgn + num_slots());
+      int64_t slice_modulus_bgn = cntxt_id * size + slice_bgn;
+      std::copy_n(subarray.data(), slice_end - slice_bgn,
+                  rns_temp.data() + slice_modulus_bgn);
+    }
+  });
 
   auto &ms_helper = ms_helpers_.find(options)->second;
   return ms_helper.ModulusDownRNS(field, {size}, absl::MakeSpan(rns_temp));
