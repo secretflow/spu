@@ -6,7 +6,7 @@ This training example comes from Flax official github repo:
 
 <https://github.com/google/flax/tree/main/examples/imagenet>
 
-and the inference example comes from microsoft resnet-50 repo on Transformers:
+and the inference example comes from pre-trained microsoft resnet-50 model on huggingface:
 
 <https://huggingface.co/microsoft/resnet-50>
 
