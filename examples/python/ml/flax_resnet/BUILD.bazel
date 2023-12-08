@@ -22,13 +22,24 @@ py_library(
 )
 
 py_binary(
-    name = "flax_resnet",
-    srcs = ["flax_resnet.py"],
+    name = "flax_resnet_training",
+    srcs = ["flax_resnet_training.py"],
     data = [
         "//examples/python/ml/flax_resnet:3pc.json",
     ],
     deps = [
         ":models",
+        "//spu/utils:distributed",
+    ],
+)
+
+py_binary(
+    name = "flax_resnet_inference",
+    srcs = ["flax_resnet_inference.py"],
+    data = [
+        "//examples/python/ml/flax_resnet:3pc.json",
+    ],
+    deps = [
         "//spu/utils:distributed",
     ],
 )
