@@ -22,12 +22,6 @@
 
 namespace spu::mpc::linalg {
 
-namespace detail {
-
-void setEigenParallelLevel(int64_t expected_threads);
-
-}  // namespace detail
-
 /**
  * @brief C := op( A )*op( B )
  *
@@ -91,7 +85,8 @@ void matmul(int64_t M, int64_t N, int64_t K, const T* A, int64_t LDA,
   //        num_cores.
   // auto expected_num_threads = std::max((M * K + kMinTaskSize) / kMinTaskSize,
   //                                     (N * K + kMinTaskSize) / kMinTaskSize);
-  detail::setEigenParallelLevel(2);
+
+  Eigen::setNbThreads(4);
 
   c.noalias() = a * b;
 }

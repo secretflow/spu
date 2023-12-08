@@ -16,7 +16,6 @@
 
 #include <algorithm>
 
-#include "libspu/core/bit_utils.h"
 #include "libspu/core/context.h"
 #include "libspu/kernel/hal/constants.h"
 #include "libspu/kernel/hal/polymorphic.h"
@@ -53,7 +52,7 @@ Value PrefixSum(SPUContext *ctx, const Value &x) {
   SPU_ENFORCE(x.shape().ndim() == 2U && x.shape()[0] == 1,
               "x should be 1-row matrix");
 
-  auto padding0 = _constant(ctx, 0U, {1, 1});
+  auto padding0 = _p2s(ctx, _constant(ctx, 0U, {1, 1}));
   auto x_t = x;
   for (int64_t shift = 1; shift < x.numel(); shift *= 2) {
     auto x_slice = slice(ctx, x_t, {0, 0}, {1, x.numel() - shift}, {});
@@ -93,52 +92,47 @@ void CmpSwap(SPUContext *ctx, const CompFn &comparator_body,
   }
 }
 
-inline int64_t Exp2(int64_t n) {
-  SPU_ENFORCE_GE(n, 0, "input should be greater than or equal zero");
-  int64_t ret = 1;
-  return ret << n;
-}
-
-// Bitonic sort with all comparator sorts in the same direction
+// Secure Odd-even mergesort
 // Ref:
-// https://en.wikipedia.org/wiki/Bitonic_sorter#Alternative_representation
-std::vector<spu::Value> BitonicSort(SPUContext *ctx,
-                                    const CompFn &comparator_body,
-                                    absl::Span<spu::Value const> inputs) {
+// https://hwlang.de/algorithmen/sortieren/networks/oemen.htm
+std::vector<spu::Value> OddEvenMergeSort(SPUContext *ctx,
+                                         const CompFn &comparator_body,
+                                         absl::Span<spu::Value const> inputs) {
   // make a copy for inplace sort
   std::vector<spu::Value> ret;
   for (auto const &input : inputs) {
     if (input.isPublic()) {
       // we can not linear_scatter a secret value to a public operand
-      ret.emplace_back(_p2s(ctx, input).setDtype(input.dtype()).clone());
+      ret.emplace_back(_p2s(ctx, input.clone()).setDtype(input.dtype()));
     } else {
       ret.emplace_back(input.clone());
     }
   }
 
   // sort by per network layer for memory optimizations, sorting N elements
-  // needs log2(N) stages, and the i_th stage has i layers
-  const auto numel = inputs.front().numel();
-  const auto n_stages = Log2Ceil(numel);
-  for (int64_t stage = 1; stage <= n_stages; ++stage) {
-    for (int64_t layer = 1; layer <= stage; ++layer) {
-      // find index pairs that needs to be compared
+  // needs log2(N) stages, and the i_th stage has i layers, which means the
+  // same latency cost as BitonicSort but less CmpSwap unit.
+  const auto n = inputs.front().numel();
+  for (int64_t max_gap_in_stage = 1; max_gap_in_stage < n;
+       max_gap_in_stage += max_gap_in_stage) {
+    for (int64_t step = max_gap_in_stage; step > 0; step /= 2) {
+      // collect index pairs that can be computed parallelly.
       Index lhs_indices;
       Index rhs_indices;
-      auto step = Exp2(stage - layer);
-      for (int64_t idx = 0; idx + step < numel; idx += 2 * step) {
-        for (int64_t offset = 0; offset < step; ++offset) {
-          int64_t lhs_idx, rhs_idx;
-          if (layer == 1) {
-            lhs_idx = idx + step - offset - 1;
-            rhs_idx = idx + step + offset;
-          } else {
-            lhs_idx = idx + offset;
-            rhs_idx = idx + offset + step;
+
+      for (int64_t j = step % max_gap_in_stage; j + step < n;
+           j += step + step) {
+        for (int64_t i = 0; i < step; i++) {
+          auto lhs_idx = i + j;
+          auto rhs_idx = i + j + step;
+
+          if (rhs_idx >= n) break;
+
+          auto range = max_gap_in_stage + max_gap_in_stage;
+          if (lhs_idx / range == rhs_idx / range) {
+            lhs_indices.emplace_back(lhs_idx);
+            rhs_indices.emplace_back(rhs_idx);
           }
-          if (lhs_idx >= numel || rhs_idx >= numel) break;
-          lhs_indices.emplace_back(lhs_idx);
-          rhs_indices.emplace_back(rhs_idx);
         }
       }
 
@@ -146,6 +140,7 @@ std::vector<spu::Value> BitonicSort(SPUContext *ctx,
               rhs_indices);
     }
   }
+
   return ret;
 }
 
@@ -524,7 +519,9 @@ std::vector<spu::Value> sort1d(SPUContext *ctx,
     SPU_ENFORCE(!is_stable,
                 "Stable sort is unsupported if comparator return is secret.");
 
-    ret = BitonicSort(ctx, cmp, inputs);
+    ret = OddEvenMergeSort(ctx, cmp, inputs);
+  } else {
+    SPU_THROW("Should not reach here");
   }
 
   return ret;
@@ -595,7 +592,6 @@ std::vector<spu::Value> simple_sort1d(SPUContext *ctx,
       }
       return result;
     };
-
     Visibility vis =
         std::all_of(inputs.begin(), inputs.begin() + num_keys,
                     [](const spu::Value &v) { return v.isPublic(); })

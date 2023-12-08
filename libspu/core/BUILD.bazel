@@ -207,7 +207,6 @@ spu_cc_library(
     srcs = ["parallel_utils.cc"],
     hdrs = ["parallel_utils.h"],
     deps = [
-        "@llvm-project//llvm:Support",
         "@yacl//yacl/utils:parallel",
     ],
 )

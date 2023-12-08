@@ -53,14 +53,18 @@ Value applyFloatingPointFn(SPUContext* ctx, const Value& in, FN&& fn) {
   const Type ring_ty = makeType<RingTy>(field);
 
   // decode to floating point
-  auto f32_arr = decodeFromRing(in.data().as(ring_ty), in.dtype(), fxp_bits);
-  for (auto iter = f32_arr.begin(); iter != f32_arr.end(); ++iter) {
-    auto* ptr = reinterpret_cast<float*>(&*iter);
-    *ptr = fn(*ptr);
+  auto fp_arr = decodeFromRing(in.data().as(ring_ty), in.dtype(), fxp_bits);
+  auto pt_type = getDecodeType(in.dtype());
+
+  for (auto iter = fp_arr.begin(); iter != fp_arr.end(); ++iter) {
+    DISPATCH_FLOAT_PT_TYPES(pt_type, "pt_type", [&]() {
+      auto* ptr = reinterpret_cast<ScalarT*>(&*iter);
+      *ptr = fn(*ptr);
+    });
   }
 
   DataType dtype;
-  const auto out = encodeToRing(f32_arr, field, fxp_bits, &dtype);
+  const auto out = encodeToRing(fp_arr, field, fxp_bits, &dtype);
   SPU_ENFORCE(dtype == DT_F32 || dtype == DT_F64, "sanity failed");
   return Value(out.as(in.storage_type()), dtype);
 }
@@ -82,12 +86,18 @@ Value applyFloatingPointFn(SPUContext* ctx, const Value& x, const Value& y,
   // decode to floating point
   auto flp_x = decodeFromRing(x.data().as(ring_ty), x.dtype(), fxp_bits);
   auto flp_y = decodeFromRing(y.data().as(ring_ty), y.dtype(), fxp_bits);
+  auto x_pt_type = getDecodeType(x.dtype());
+  auto y_pt_type = getDecodeType(y.dtype());
 
   for (auto itr_x = flp_x.begin(), itr_y = flp_y.begin(); itr_x != flp_x.end();
        itr_x++, itr_y++) {
-    auto* ptr_x = reinterpret_cast<float*>(&*itr_x);
-    auto* ptr_y = reinterpret_cast<float*>(&*itr_y);
-    *ptr_x = fn(*ptr_x, *ptr_y);
+    DISPATCH_FLOAT_PT_TYPES(x_pt_type, "x_pt_type", [&]() {
+      auto* ptr_x = reinterpret_cast<ScalarT*>(&*itr_x);
+      DISPATCH_FLOAT_PT_TYPES(y_pt_type, "y_pt_type", [&]() {
+        auto* ptr_y = reinterpret_cast<ScalarT*>(&*itr_y);
+        *ptr_x = fn(*ptr_x, *ptr_y);
+      });
+    });
   }
 
   DataType dtype;

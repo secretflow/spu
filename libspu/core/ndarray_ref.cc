@@ -413,7 +413,7 @@ NdArrayRef NdArrayRef::pad(const NdArrayRef& padding_value,
   const auto& result_shape = result.shape();
   const auto& input_shape = shape();
 
-  yacl::parallel_for(0, numel(), 1024, [&](int64_t begin, int64_t end) {
+  pforeach(0, numel(), [&](int64_t begin, int64_t end) {
     auto unflatten = unflattenIndex(begin, input_shape);
 
     Index target_index(result_shape.size());

@@ -34,17 +34,3 @@ python_proto_compile(
     prefix_path = "..",
     protos = ["//libspu:spu_proto"],
 )
-
-python_proto_compile(
-    name = "psi_py_proto",
-    output_mode = "NO_PREFIX",
-    prefix_path = "..",
-    protos = ["//libspu/psi:psi_proto"],
-)
-
-python_proto_compile(
-    name = "pir_py_proto",
-    output_mode = "NO_PREFIX",
-    prefix_path = "..",
-    protos = ["//libspu/pir:pir_proto"],
-)

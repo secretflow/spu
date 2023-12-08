@@ -17,6 +17,7 @@ from __future__ import annotations
 from typing import List
 
 from . import libspu  # type: ignore
+from . import libpsi  # type: ignore
 from .pir_pb2 import (  # type: ignore
     KvStoreType,
     PirClientConfig,
@@ -28,7 +29,7 @@ from .pir_pb2 import (  # type: ignore
 
 
 def pir_setup(config: PirSetupConfig) -> List[str]:
-    report_str = libspu.libs.pir_setup(config.SerializeToString())
+    report_str = libpsi.libs.pir_setup(config.SerializeToString())
 
     report = PirResultReport()
     report.ParseFromString(report_str)
@@ -36,7 +37,7 @@ def pir_setup(config: PirSetupConfig) -> List[str]:
 
 
 def pir_server(link: libspu.link.Context, config: PirServerConfig) -> List[str]:
-    report_str = libspu.libs.pir_server(link, config.SerializeToString())
+    report_str = libpsi.libs.pir_server(link, config.SerializeToString())
 
     report = PirResultReport()
     report.ParseFromString(report_str)
@@ -44,7 +45,7 @@ def pir_server(link: libspu.link.Context, config: PirServerConfig) -> List[str]:
 
 
 def pir_memory_server(link: libspu.link.Context, config: PirSetupConfig) -> List[str]:
-    report_str = libspu.libs.pir_memory_server(link, config.SerializeToString())
+    report_str = libpsi.libs.pir_memory_server(link, config.SerializeToString())
 
     report = PirResultReport()
     report.ParseFromString(report_str)
@@ -52,7 +53,7 @@ def pir_memory_server(link: libspu.link.Context, config: PirSetupConfig) -> List
 
 
 def pir_client(link: libspu.link.Context, config: PirClientConfig) -> List[str]:
-    report_str = libspu.libs.pir_client(link, config.SerializeToString())
+    report_str = libpsi.libs.pir_client(link, config.SerializeToString())
 
     report = PirResultReport()
     report.ParseFromString(report_str)

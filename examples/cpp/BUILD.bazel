@@ -60,39 +60,3 @@ spu_cc_binary(
         "@llvm-project//llvm:Support",
     ],
 )
-
-spu_cc_binary(
-    name = "simple_in_memory_psi",
-    srcs = ["simple_in_memory_psi.cc"],
-    deps = [
-        ":utils",
-        "//libspu/device:io",
-        "//libspu/psi/core:ecdh_psi",
-        "@llvm-project//llvm:Support",
-    ],
-)
-
-spu_cc_binary(
-    name = "simple_psi",
-    srcs = ["simple_psi.cc"],
-    data = [
-        "//examples/data",
-    ],
-    deps = [
-        ":utils",
-        "//libspu/device:io",
-        "//libspu/psi:bucket_psi",
-        "@llvm-project//llvm:Support",
-    ],
-)
-
-spu_cc_binary(
-    name = "simple_dp_psi",
-    srcs = ["simple_dp_psi.cc"],
-    deps = [
-        ":utils",
-        "//libspu/device:io",
-        "//libspu/psi/core/dp_psi",
-        "@llvm-project//llvm:Support",
-    ],
-)

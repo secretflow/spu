@@ -18,6 +18,8 @@
 
 #include "mlir/IR/OwningOpRef.h"
 
+#include "libspu/spu.pb.h"
+
 namespace mlir {
 
 class PassManager;
@@ -33,7 +35,7 @@ class FE final {
 public:
   explicit FE(CompilationContext *ctx);
 
-  mlir::OwningOpRef<mlir::ModuleOp> doit(const std::string &source);
+  mlir::OwningOpRef<mlir::ModuleOp> doit(const CompilationSource &source);
 
 private:
   void buildFrontEndPipeline(mlir::PassManager *pm, const std::string &args);

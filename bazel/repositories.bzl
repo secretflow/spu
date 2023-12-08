@@ -18,13 +18,14 @@ load("@bazel_tools//tools/build_defs/repo:utils.bzl", "maybe")
 
 SECRETFLOW_GIT = "https://github.com/secretflow"
 
-YACL_COMMIT_ID = "8492bdf8c39444262fdb53b5fdf19a0b75f0356a"
+YACL_COMMIT_ID = "d9f18c74ba2a1bbbe52bd6beac644adf81fb9925"
+
+LIBSPI_COMMIT_ID = "182a2e12850187790309331997859b0b2de87f4b"
 
 def spu_deps():
     _rules_cuda()
     _rules_proto_grpc()
     _bazel_platform()
-    _upb()
     _com_github_xtensor_xtensor()
     _com_github_xtensor_xtl()
     _com_github_grpc_grpc()
@@ -34,16 +35,10 @@ def spu_deps():
     _com_intel_hexl()
     _com_github_emptoolkit_emp_tool()
     _com_github_emptoolkit_emp_ot()
-    _com_github_emptoolkit_emp_zk()
     _com_github_facebook_zstd()
     _com_github_microsoft_seal()
     _com_github_eigenteam_eigen()
-    _com_github_microsoft_apsi()
-    _com_github_microsoft_gsl()
-    _com_github_microsoft_kuku()
-    _com_google_flatbuffers()
     _com_github_nvidia_cutlass()
-    _com_github_floodyberry_curve25519_donna()
 
     maybe(
         git_repository,
@@ -52,17 +47,11 @@ def spu_deps():
         remote = "{}/yacl.git".format(SECRETFLOW_GIT),
     )
 
-    # Add homebrew openmp for macOS, somehow..homebrew installs to different location on Apple Silcon/Intel macs.. so we need two rules here
-    native.new_local_repository(
-        name = "local_homebrew_x64",
-        build_file = "@spulib//bazel:local_openmp_macos.BUILD",
-        path = "/usr/local/opt/libomp",
-    )
-
-    native.new_local_repository(
-        name = "local_homebrew_arm64",
-        build_file = "@spulib//bazel:local_openmp_macos.BUILD",
-        path = "/opt/homebrew/opt/libomp/",
+    maybe(
+        git_repository,
+        name = "psi",
+        commit = LIBSPI_COMMIT_ID,
+        remote = "{}/psi.git".format(SECRETFLOW_GIT),
     )
 
 def _rules_proto_grpc():
@@ -103,18 +92,6 @@ def _com_github_facebook_zstd():
         type = ".tar.gz",
         urls = [
             "https://github.com/facebook/zstd/archive/refs/tags/v1.5.5.tar.gz",
-        ],
-    )
-
-def _upb():
-    maybe(
-        http_archive,
-        name = "upb",
-        sha256 = "017a7e8e4e842d01dba5dc8aa316323eee080cd1b75986a7d1f94d87220e6502",
-        strip_prefix = "upb-e4635f223e7d36dfbea3b722a4ca4807a7e882e2",
-        urls = [
-            "https://storage.googleapis.com/grpc-bazel-mirror/github.com/protocolbuffers/upb/archive/e4635f223e7d36dfbea3b722a4ca4807a7e882e2.tar.gz",
-            "https://github.com/protocolbuffers/upb/archive/e4635f223e7d36dfbea3b722a4ca4807a7e882e2.tar.gz",
         ],
     )
 
@@ -257,21 +234,6 @@ def _com_github_emptoolkit_emp_ot():
         build_file = "@spulib//bazel:emp-ot.BUILD",
     )
 
-def _com_github_emptoolkit_emp_zk():
-    maybe(
-        http_archive,
-        name = "com_github_emptoolkit_emp_zk",
-        sha256 = "e02e6abc6ee14ca0e69e6f5f0efe24cab7da1bc905fc7c86a3e5a529114e489a",
-        strip_prefix = "emp-zk-0.2.1",
-        type = "tar.gz",
-        patch_args = ["-p1"],
-        patches = ["@spulib//bazel:patches/emp-zk.patch"],
-        urls = [
-            "https://github.com/emp-toolkit/emp-zk/archive/refs/tags/0.2.1.tar.gz",
-        ],
-        build_file = "@spulib//bazel:emp-zk.BUILD",
-    )
-
 def _com_github_microsoft_seal():
     maybe(
         http_archive,
@@ -301,61 +263,6 @@ def _com_github_eigenteam_eigen():
         ],
     )
 
-def _com_github_microsoft_apsi():
-    maybe(
-        http_archive,
-        name = "com_github_microsoft_apsi",
-        sha256 = "82c0f9329c79222675109d4a3682d204acd3ea9a724bcd98fa58eabe53851333",
-        strip_prefix = "APSI-0.11.0",
-        urls = [
-            "https://github.com/microsoft/APSI/archive/refs/tags/v0.11.0.tar.gz",
-        ],
-        build_file = "@spulib//bazel:microsoft_apsi.BUILD",
-        patch_args = ["-p1"],
-        patches = [
-            "@spulib//bazel:patches/apsi.patch",
-            "@spulib//bazel:patches/apsi-gen.patch",
-            "@spulib//bazel:patches/apsi_bin_bundle.patch",
-        ],
-    )
-
-def _com_github_microsoft_gsl():
-    maybe(
-        http_archive,
-        name = "com_github_microsoft_gsl",
-        sha256 = "f0e32cb10654fea91ad56bde89170d78cfbf4363ee0b01d8f097de2ba49f6ce9",
-        strip_prefix = "GSL-4.0.0",
-        type = "tar.gz",
-        urls = [
-            "https://github.com/microsoft/GSL/archive/refs/tags/v4.0.0.tar.gz",
-        ],
-        build_file = "@spulib//bazel:microsoft_gsl.BUILD",
-    )
-
-def _com_github_microsoft_kuku():
-    maybe(
-        http_archive,
-        name = "com_github_microsoft_kuku",
-        sha256 = "96ed5fad82ea8c8a8bb82f6eaf0b5dce744c0c2566b4baa11d8f5443ad1f83b7",
-        strip_prefix = "Kuku-2.1.0",
-        type = "tar.gz",
-        urls = [
-            "https://github.com/microsoft/Kuku/archive/refs/tags/v2.1.0.tar.gz",
-        ],
-        build_file = "@spulib//bazel:microsoft_kuku.BUILD",
-    )
-
-def _com_google_flatbuffers():
-    maybe(
-        http_archive,
-        name = "com_google_flatbuffers",
-        sha256 = "8aff985da30aaab37edf8e5b02fda33ed4cbdd962699a8e2af98fdef306f4e4d",
-        strip_prefix = "flatbuffers-23.3.3",
-        urls = [
-            "https://github.com/google/flatbuffers/archive/refs/tags/v23.3.3.tar.gz",
-        ],
-    )
-
 def _com_github_nvidia_cutlass():
     maybe(
         http_archive,
@@ -366,17 +273,4 @@ def _com_github_nvidia_cutlass():
         ],
         sha256 = "9637961560a9d63a6bb3f407faf457c7dbc4246d3afb54ac7dc1e014dd7f172f",
         build_file = "@spulib//bazel:nvidia_cutlass.BUILD",
-    )
-
-def _com_github_floodyberry_curve25519_donna():
-    maybe(
-        http_archive,
-        name = "com_github_floodyberry_curve25519_donna",
-        strip_prefix = "curve25519-donna-2fe66b65ea1acb788024f40a3373b8b3e6f4bbb2",
-        sha256 = "ba57d538c241ad30ff85f49102ab2c8dd996148456ed238a8c319f263b7b149a",
-        type = "tar.gz",
-        build_file = "@spulib//bazel:curve25519-donna.BUILD",
-        urls = [
-            "https://github.com/floodyberry/curve25519-donna/archive/2fe66b65ea1acb788024f40a3373b8b3e6f4bbb2.tar.gz",
-        ],
     )

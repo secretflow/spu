@@ -10,9 +10,11 @@
 >
 > please add your unreleased change here.
 
-- [Improvement] Optimize memory usage of bitonic sort.
+- [Feature] Add Odd-Even Merge Sort to replace the bitonic sort.
+- [Improvement] Optimize sort memory usage.
 - [Feature] Add radix sort support for ABY3
 - [Deprecated] macOS 11.x is no longer supported
+- [Feature] Integrate with secretflow/psi
 
 ## 20231108
 

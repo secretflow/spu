@@ -36,13 +36,6 @@ namespace spu::mpc::cheetah {
 static void NegacyclicRightShiftInplace(RLWECt &ct, size_t shift,
                                         const seal::SEALContext &context);
 
-static size_t calculateWorkLoad(size_t num_jobs, size_t num_cores = 0) {
-  if (num_cores == 0) {
-    num_cores = spu::getNumberOfProc();
-  }
-  return (num_jobs + num_cores - 1) / num_cores;
-}
-
 PackingHelper::PackingHelper(size_t gap, const seal::GaloisKeys &galois_keys,
                              const seal::SEALContext &gk_context,
                              const seal::SEALContext &context)
@@ -134,61 +127,59 @@ void PackingHelper::doPackingRLWEs(absl::Span<RLWECt> rlwes,
   size_t modulus_for_keyswitch =
       gk_context_.first_context_data()->chain_index() + 1;
 
-  yacl::parallel_for(
-      0, num_ct, calculateWorkLoad(num_ct), [&](int64_t bgn, int64_t end) {
-        for (int64_t i = bgn; i < end; ++i) {
-          InvNttInplace(rlwes[i], context_, true);
-          // multiply gap^{-1} mod Q
-          MultiplyFixedScalarInplace(rlwes[i]);
-          // drop some modulus aiming a lighter KeySwitch
-          ModulusSwtichInplace(rlwes[i], modulus_for_keyswitch, context_);
-          // change pid to galois_context for KS
-          rlwes[i].parms_id() = gk_context_.first_parms_id();
-        }
-      });
+  yacl::parallel_for(0, num_ct, [&](int64_t bgn, int64_t end) {
+    for (int64_t i = bgn; i < end; ++i) {
+      InvNttInplace(rlwes[i], context_, true);
+      // multiply gap^{-1} mod Q
+      MultiplyFixedScalarInplace(rlwes[i]);
+      // drop some modulus aiming a lighter KeySwitch
+      ModulusSwtichInplace(rlwes[i], modulus_for_keyswitch, context_);
+      // change pid to galois_context for KS
+      rlwes[i].parms_id() = gk_context_.first_parms_id();
+    }
+  });
 
   // FFT-like method to merge RLWEs into one RLWE.
   seal::Evaluator evaluator(gk_context_);
   const int64_t logn = absl::bit_width(gap_) - 1;
   for (int64_t k = logn; k >= 1; --k) {
     int64_t h = 1 << (k - 1);
-    yacl::parallel_for(
-        0, h, calculateWorkLoad(h), [&](int64_t bgn, int64_t end) {
-          RLWECt dummy;  // zero-padding with zero RLWE
-          for (int64_t i = bgn; i < end; ++i) {
-            // E' <- E + X^k*O + Auto(E - X^k*O, k')
-            RLWECt &ct_even = i < num_ct ? rlwes[i] : dummy;
-            RLWECt &ct_odd = i + h < num_ct ? rlwes[i + h] : dummy;
+    yacl::parallel_for(0, h, [&](int64_t bgn, int64_t end) {
+      RLWECt dummy;  // zero-padding with zero RLWE
+      for (int64_t i = bgn; i < end; ++i) {
+        // E' <- E + X^k*O + Auto(E - X^k*O, k')
+        RLWECt &ct_even = i < num_ct ? rlwes[i] : dummy;
+        RLWECt &ct_odd = i + h < num_ct ? rlwes[i + h] : dummy;
 
-            bool is_odd_empty = ct_odd.size() == 0;
-            bool is_even_empty = ct_even.size() == 0;
-            if (is_even_empty && is_odd_empty) {
-              ct_even.release();
-              continue;
-            }
+        bool is_odd_empty = ct_odd.size() == 0;
+        bool is_even_empty = ct_even.size() == 0;
+        if (is_even_empty && is_odd_empty) {
+          ct_even.release();
+          continue;
+        }
 
-            NegacyclicRightShiftInplace(ct_odd, h, gk_context_);
+        NegacyclicRightShiftInplace(ct_odd, h, gk_context_);
 
-            if (!is_even_empty) {
-              seal::Ciphertext tmp = ct_even;
-              if (!is_odd_empty) {
-                // E - X^k*O
-                // E + X^k*O
-                CATCH_SEAL_ERROR(evaluator.sub_inplace(ct_even, ct_odd));
-                CATCH_SEAL_ERROR(evaluator.add_inplace(tmp, ct_odd));
-              }
-
-              CATCH_SEAL_ERROR(evaluator.apply_galois_inplace(
-                  ct_even, poly_degree / h + 1, galois_keys_));
-              CATCH_SEAL_ERROR(evaluator.add_inplace(ct_even, tmp));
-            } else {
-              evaluator.negate(ct_odd, ct_even);
-              CATCH_SEAL_ERROR(evaluator.apply_galois_inplace(
-                  ct_even, poly_degree / h + 1, galois_keys_));
-              CATCH_SEAL_ERROR(evaluator.add_inplace(ct_even, ct_odd));
-            }
+        if (!is_even_empty) {
+          seal::Ciphertext tmp = ct_even;
+          if (!is_odd_empty) {
+            // E - X^k*O
+            // E + X^k*O
+            CATCH_SEAL_ERROR(evaluator.sub_inplace(ct_even, ct_odd));
+            CATCH_SEAL_ERROR(evaluator.add_inplace(tmp, ct_odd));
           }
-        });
+
+          CATCH_SEAL_ERROR(evaluator.apply_galois_inplace(
+              ct_even, poly_degree / h + 1, galois_keys_));
+          CATCH_SEAL_ERROR(evaluator.add_inplace(ct_even, tmp));
+        } else {
+          evaluator.negate(ct_odd, ct_even);
+          CATCH_SEAL_ERROR(evaluator.apply_galois_inplace(
+              ct_even, poly_degree / h + 1, galois_keys_));
+          CATCH_SEAL_ERROR(evaluator.add_inplace(ct_even, ct_odd));
+        }
+      }
+    });
   }
 
   SPU_ENFORCE(rlwes[0].size() > 0, fmt::format("all empty RLWEs are invalid"));
@@ -330,7 +321,7 @@ static void doPackingLWEs(absl::Span<RLWECt> rlwes, const GaloisKeys &galois,
     };
 
     if (h > 0) {
-      yacl::parallel_for(0, h, calculateWorkLoad(h), merge_callback);
+      yacl::parallel_for(0, h, merge_callback);
     }
   }
 
@@ -372,12 +363,11 @@ static void doPackLWEs(absl::Span<const LWEType> lwes, const GaloisKeys &galois,
 
   // Step 1: cast all LWEs to RLWEs
   std::vector<RLWECt> rlwes(num_lwes);
-  yacl::parallel_for(0, num_lwes, calculateWorkLoad(num_lwes),
-                     [&](size_t start, size_t end) {
-                       for (size_t i = start; i < end; ++i) {
-                         lwes[i].CastAsRLWE(context, poly_degree, &rlwes[i]);
-                       }
-                     });
+  yacl::parallel_for(0, num_lwes, [&](size_t start, size_t end) {
+    for (size_t i = start; i < end; ++i) {
+      lwes[i].CastAsRLWE(context, poly_degree, &rlwes[i]);
+    }
+  });
 
   doPackingLWEs(absl::MakeSpan(rlwes), galois, context, out, true);
 }

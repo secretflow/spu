@@ -17,7 +17,7 @@ from __future__ import annotations
 from typing import List
 
 from . import libspu  # type: ignore
-from .libspu.libs import ProgressData
+from . import libpsi  # type: ignore
 from .psi_pb2 import (  # type: ignore
     BucketPsiConfig,
     CurveType,
@@ -32,13 +32,13 @@ from .psi_pb2 import (  # type: ignore
 def mem_psi(
     link: libspu.link.Context, config: MemoryPsiConfig, input_items: List[str]
 ) -> List[str]:
-    return libspu.libs.mem_psi(link, config.SerializeToString(), input_items)
+    return libpsi.libs.mem_psi(link, config.SerializeToString(), input_items)
 
 
 def bucket_psi(
     link: libspu.link.Context,
     config: BucketPsiConfig,
-    progress_callbacks: [[psi.ProgressData], None] = None,
+    progress_callbacks: [[libpsi.libs.ProgressData], None] = None,
     callbacks_interval_ms: int = 5 * 1000,
     ic_mode: bool = False,
 ) -> PsiResultReport:
@@ -50,7 +50,7 @@ def bucket_psi(
     :param ic_mode: Whether to run in interconnection mode
     :return: statistical results
     """
-    report_str = libspu.libs.bucket_psi(
+    report_str = libpsi.libs.bucket_psi(
         link,
         config.SerializeToString(),
         progress_callbacks,
@@ -82,7 +82,7 @@ def gen_cache_for_2pc_ub_psi(config: BucketPsiConfig) -> PsiResultReport:
     config.broadcast_result = False
     config.output_params.need_sort = False
     config.receiver_rank = 0
-    report_str = libspu.libs.bucket_psi(None, config.SerializeToString())
+    report_str = libpsi.libs.bucket_psi(None, config.SerializeToString())
     report = PsiResultReport()
     report.ParseFromString(report_str)
     return report

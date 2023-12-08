@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+load("@yacl//bazel:yacl.bzl", "OMP_CFLAGS", "OMP_DEPS", "OMP_LINKFLAGS")
 load("//bazel:spu.bzl", "spu_cc_binary", "spu_cc_library", "spu_cc_test")
 
 package(default_visibility = ["//visibility:public"])
@@ -100,14 +101,12 @@ spu_cc_library(
     name = "linalg",
     srcs = ["linalg.cc"],
     hdrs = ["linalg.h"],
+    copts = OMP_CFLAGS,
+    linkopts = OMP_LINKFLAGS,
     deps = [
         "//libspu/core:parallel_utils",
         "@com_github_eigenteam_eigen//:eigen3",
-    ] + select({
-        "@bazel_tools//src/conditions:darwin_x86_64": ["@local_homebrew_x64//:openmp"],
-        "@bazel_tools//src/conditions:darwin_arm64": ["@local_homebrew_arm64//:openmp"],
-        "//conditions:default": [],
-    }),
+    ] + OMP_DEPS,
 )
 
 spu_cc_test(

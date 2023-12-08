@@ -16,11 +16,12 @@ Effects: MemoryEffects::Effect{}
 
 #### Attributes:
 
-| Attribute | MLIR Type | Description |
-| :-------: | :-------: | ----------- |
-| `edge_padding_low` | ::mlir::DenseIntElementsAttr | 64-bit signless integer elements attribute
-| `edge_padding_high` | ::mlir::DenseIntElementsAttr | 64-bit signless integer elements attribute
-| `interior_padding` | ::mlir::DenseIntElementsAttr | 64-bit signless integer elements attribute
+<table>
+<tr><th>Attribute</th><th>MLIR Type</th><th>Description</th></tr>
+<tr><td><code>edge_padding_low</code></td><td>::mlir::DenseIntElementsAttr</td><td>64-bit signless integer elements attribute</td></tr>
+<tr><td><code>edge_padding_high</code></td><td>::mlir::DenseIntElementsAttr</td><td>64-bit signless integer elements attribute</td></tr>
+<tr><td><code>interior_padding</code></td><td>::mlir::DenseIntElementsAttr</td><td>64-bit signless integer elements attribute</td></tr>
+</table>
 
 #### Operands:
 
@@ -132,14 +133,13 @@ Effects: MemoryEffects::Effect{}
 
 #### Attributes:
 
-| Attribute | MLIR Type | Description |
-| :-------: | :-------: | ----------- |
-| `window_dimensions` | ::mlir::DenseIntElementsAttr | 64-bit signless integer elements attribute
-| `window_strides` | ::mlir::DenseIntElementsAttr | 64-bit signless integer elements attribute
-| `base_dilations` | ::mlir::DenseIntElementsAttr | 64-bit signless integer elements attribute
-| `window_dilations` | ::mlir::DenseIntElementsAttr | 64-bit signless integer elements attribute
-| `padding` | ::mlir::DenseIntElementsAttr | 64-bit signless integer elements attribute
-| `onehot_index` | ::mlir::BoolAttr | bool attribute
+<table>
+<tr><th>Attribute</th><th>MLIR Type</th><th>Description</th></tr>
+<tr><td><code>window_dimensions</code></td><td>::mlir::DenseIntElementsAttr</td><td>64-bit signless integer elements attribute</td></tr>
+<tr><td><code>window_strides</code></td><td>::mlir::DenseIntElementsAttr</td><td>64-bit signless integer elements attribute</td></tr>
+<tr><td><code>window_dilations</code></td><td>::mlir::DenseIntElementsAttr</td><td>64-bit signless integer elements attribute</td></tr>
+<tr><td><code>onehot_index</code></td><td>::mlir::BoolAttr</td><td>bool attribute</td></tr>
+</table>
 
 #### Operands:
 
@@ -211,9 +211,10 @@ Effects: MemoryEffects::Effect{}
 
 #### Attributes:
 
-| Attribute | MLIR Type | Description |
-| :-------: | :-------: | ----------- |
-| `broadcast_dimensions` | ::mlir::DenseIntElementsAttr | 64-bit signless integer elements attribute
+<table>
+<tr><th>Attribute</th><th>MLIR Type</th><th>Description</th></tr>
+<tr><td><code>broadcast_dimensions</code></td><td>::mlir::DenseIntElementsAttr</td><td>64-bit signless integer elements attribute</td></tr>
+</table>
 
 #### Operands:
 
@@ -240,7 +241,7 @@ to the types of the values returned by the operation.
 Note that if index is public only one of the branches will be executed depending on the value
 of index, otherwise all branches will be executed and select results based on index value.
 
-Traits: RecursiveMemoryEffects, SingleBlockImplicitTerminator<ReturnOp>
+Traits: RecursiveMemoryEffects, SingleBlock, SingleBlockImplicitTerminator<ReturnOp>
 
 #### Operands:
 
@@ -252,7 +253,7 @@ Traits: RecursiveMemoryEffects, SingleBlockImplicitTerminator<ReturnOp>
 
 | Result | Description |
 | :----: | ----------- |
-&laquo;unnamed&raquo; | statically shaped tensor of PPHlo public type or PPHlo secret type values
+&laquo;unnamed&raquo; | variadic of statically shaped tensor of PPHlo public type or PPHlo secret type values
 
 ### `pphlo.ceil` (pphlo::CeilOp)
 
@@ -313,6 +314,34 @@ Effects: MemoryEffects::Effect{}
 | :----: | ----------- |
 &laquo;unnamed&raquo; | statically shaped tensor of PPHlo public type or PPHlo secret type values
 
+### `pphlo.complex` (pphlo::ComplexOp)
+
+_Complex operation_
+
+Performs element-wise conversion to a complex value from a pair of real and
+imaginary values, `lhs` and `rhs`, and produces a `result` tensor.
+See:
+https://github.com/openxla/stablehlo/blob/main/docs/spec.md#complex
+
+Traits: AlwaysSpeculatableImplTrait, Elementwise, SameOperandsAndResultShape, SameOperandsElementType
+
+Interfaces: ConditionallySpeculatable, NoMemoryEffect (MemoryEffectOpInterface)
+
+Effects: MemoryEffects::Effect{}
+
+#### Operands:
+
+| Operand | Description |
+| :-----: | ----------- |
+| `lhs` | statically shaped tensor of public fixed-point type or secret fixed-point type values
+| `rhs` | statically shaped tensor of public fixed-point type or secret fixed-point type values
+
+#### Results:
+
+| Result | Description |
+| :----: | ----------- |
+| `result` | statically shaped tensor of public complex type or secret complex type values
+
 ### `pphlo.concatenate` (pphlo::ConcatenateOp)
 
 _Concatenate op_
@@ -329,15 +358,16 @@ Effects: MemoryEffects::Effect{}
 
 #### Attributes:
 
-| Attribute | MLIR Type | Description |
-| :-------: | :-------: | ----------- |
-| `dimension` | ::mlir::IntegerAttr | 64-bit signless integer attribute
+<table>
+<tr><th>Attribute</th><th>MLIR Type</th><th>Description</th></tr>
+<tr><td><code>dimension</code></td><td>::mlir::IntegerAttr</td><td>64-bit signless integer attribute</td></tr>
+</table>
 
 #### Operands:
 
 | Operand | Description |
 | :-----: | ----------- |
-| `val` | statically shaped tensor of PPHlo public type or PPHlo secret type values
+| `val` | variadic of statically shaped tensor of PPHlo public type or PPHlo secret type values
 
 #### Results:
 
@@ -358,9 +388,10 @@ Effects: MemoryEffects::Effect{}
 
 #### Attributes:
 
-| Attribute | MLIR Type | Description |
-| :-------: | :-------: | ----------- |
-| `value` | ::mlir::ElementsAttr | constant vector/tensor attribute
+<table>
+<tr><th>Attribute</th><th>MLIR Type</th><th>Description</th></tr>
+<tr><td><code>value</code></td><td>::mlir::ElementsAttr</td><td>constant vector/tensor attribute</td></tr>
+</table>
 
 #### Results:
 
@@ -422,12 +453,13 @@ Effects: MemoryEffects::Effect{}
 
 #### Attributes:
 
-| Attribute | MLIR Type | Description |
-| :-------: | :-------: | ----------- |
-| `window_strides` | ::mlir::DenseIntElementsAttr | 64-bit signless integer elements attribute
-| `dimension_numbers` | ::mlir::pphlo::ConvDimensionNumbersAttr | Structure of dimension information for conv op
-| `feature_group_count` | ::mlir::IntegerAttr | 64-bit signless integer attribute
-| `batch_group_count` | ::mlir::IntegerAttr | 64-bit signless integer attribute
+<table>
+<tr><th>Attribute</th><th>MLIR Type</th><th>Description</th></tr>
+<tr><td><code>window_strides</code></td><td>::mlir::DenseIntElementsAttr</td><td>64-bit signless integer elements attribute</td></tr>
+<tr><td><code>dimension_numbers</code></td><td>::mlir::pphlo::ConvDimensionNumbersAttr</td><td>Structure of dimension information for conv op</td></tr>
+<tr><td><code>feature_group_count</code></td><td>::mlir::IntegerAttr</td><td>64-bit signless integer attribute</td></tr>
+<tr><td><code>batch_group_count</code></td><td>::mlir::IntegerAttr</td><td>64-bit signless integer attribute</td></tr>
+</table>
 
 #### Operands:
 
@@ -441,6 +473,33 @@ Effects: MemoryEffects::Effect{}
 | Result | Description |
 | :----: | ----------- |
 &laquo;unnamed&raquo; | statically shaped tensor of PPHlo public type or PPHlo secret type values
+
+### `pphlo.cosine` (pphlo::CosineOp)
+
+_Cosine operator_
+
+Returns `cosine(operand)` element-wise.
+
+See
+https://github.com/openxla/stablehlo/blob/main/docs/spec.md#cosine.
+
+Traits: AlwaysSpeculatableImplTrait, Elementwise, SameOperandsAndResultShape, SameOperandsAndResultType
+
+Interfaces: ConditionallySpeculatable, InferTypeOpInterface, NoMemoryEffect (MemoryEffectOpInterface)
+
+Effects: MemoryEffects::Effect{}
+
+#### Operands:
+
+| Operand | Description |
+| :-----: | ----------- |
+| `operand` | statically shaped tensor of public fixed-point type or secret fixed-point type values
+
+#### Results:
+
+| Result | Description |
+| :----: | ----------- |
+&laquo;unnamed&raquo; | statically shaped tensor of public fixed-point type or secret fixed-point type values
 
 ### `pphlo.custom_call` (pphlo::CustomCallOp)
 
@@ -460,34 +519,27 @@ takes `inputs` and `called_computations` and produces `results`.
 See:
 https://github.com/openxla/stablehlo/blob/main/docs/spec.md#custom_call
 
-Example:
-```mlir
-%results = stablehlo.custom_call @foo(%input0) {
-  backend_config = "bar",
-  called_computations = [@foo]
-} : (tensor<f64>) -> tensor<f64>
-```
-
 Interfaces: MemoryEffectOpInterface
 
 #### Attributes:
 
-| Attribute | MLIR Type | Description |
-| :-------: | :-------: | ----------- |
-| `call_target_name` | ::mlir::StringAttr | string attribute
-| `has_side_effect` | ::mlir::BoolAttr | bool attribute
+<table>
+<tr><th>Attribute</th><th>MLIR Type</th><th>Description</th></tr>
+<tr><td><code>call_target_name</code></td><td>::mlir::StringAttr</td><td>string attribute</td></tr>
+<tr><td><code>has_side_effect</code></td><td>::mlir::BoolAttr</td><td>bool attribute</td></tr>
+</table>
 
 #### Operands:
 
 | Operand | Description |
 | :-----: | ----------- |
-| `inputs` | statically shaped tensor of PPHlo public type or PPHlo secret type values
+| `inputs` | variadic of statically shaped tensor of PPHlo public type or PPHlo secret type values
 
 #### Results:
 
 | Result | Description |
 | :----: | ----------- |
-&laquo;unnamed&raquo; | statically shaped tensor of PPHlo public type or PPHlo secret type values
+&laquo;unnamed&raquo; | variadic of statically shaped tensor of PPHlo public type or PPHlo secret type values
 
 ### `pphlo.dbg_print` (pphlo::DbgPrintOp)
 
@@ -542,9 +594,10 @@ Effects: MemoryEffects::Effect{}
 
 #### Attributes:
 
-| Attribute | MLIR Type | Description |
-| :-------: | :-------: | ----------- |
-| `dot_dimension_numbers` | ::mlir::pphlo::DotDimensionNumbersAttr | Attribute that models the dimension information for dot.
+<table>
+<tr><th>Attribute</th><th>MLIR Type</th><th>Description</th></tr>
+<tr><td><code>dot_dimension_numbers</code></td><td>::mlir::pphlo::DotDimensionNumbersAttr</td><td>Attribute that models the dimension information for dot.</td></tr>
+</table>
 
 #### Operands:
 
@@ -603,16 +656,17 @@ Effects: MemoryEffects::Effect{}
 
 #### Attributes:
 
-| Attribute | MLIR Type | Description |
-| :-------: | :-------: | ----------- |
-| `slice_sizes` | ::mlir::DenseIntElementsAttr | 64-bit signless integer elements attribute
+<table>
+<tr><th>Attribute</th><th>MLIR Type</th><th>Description</th></tr>
+<tr><td><code>slice_sizes</code></td><td>::mlir::DenseIntElementsAttr</td><td>64-bit signless integer elements attribute</td></tr>
+</table>
 
 #### Operands:
 
 | Operand | Description |
 | :-----: | ----------- |
 | `operand` | statically shaped tensor of PPHlo public type or PPHlo secret type values
-| `start_indices` | 0D tensor of public integer type or secret integer type values
+| `start_indices` | variadic of 0D tensor of public integer type or secret integer type values
 
 #### Results:
 
@@ -641,7 +695,7 @@ Effects: MemoryEffects::Effect{}
 | :-----: | ----------- |
 | `operand` | statically shaped tensor of PPHlo public type or PPHlo secret type values
 | `update` | statically shaped tensor of PPHlo public type or PPHlo secret type values
-| `start_indices` | 0D tensor of public integer type or secret integer type values
+| `start_indices` | variadic of 0D tensor of public integer type or secret integer type values
 
 #### Results:
 
@@ -800,11 +854,12 @@ Effects: MemoryEffects::Effect{}
 
 #### Attributes:
 
-| Attribute | MLIR Type | Description |
-| :-------: | :-------: | ----------- |
-| `dimension_numbers` | ::mlir::pphlo::GatherDimensionNumbersAttr | Attribute that models the dimension information for gather
-| `slice_sizes` | ::mlir::DenseIntElementsAttr | 64-bit signless integer elements attribute
-| `indices_are_sorted` | ::mlir::BoolAttr | bool attribute
+<table>
+<tr><th>Attribute</th><th>MLIR Type</th><th>Description</th></tr>
+<tr><td><code>dimension_numbers</code></td><td>::mlir::pphlo::GatherDimensionNumbersAttr</td><td>Attribute that models the dimension information for gather</td></tr>
+<tr><td><code>slice_sizes</code></td><td>::mlir::DenseIntElementsAttr</td><td>64-bit signless integer elements attribute</td></tr>
+<tr><td><code>indices_are_sorted</code></td><td>::mlir::BoolAttr</td><td>bool attribute</td></tr>
+</table>
 
 #### Operands:
 
@@ -880,13 +935,41 @@ Returns the result of executing either a true or false function depending on
 
 See https://www.tensorflow.org/xla/operation_semantics#conditional.
 
-Traits: RecursiveMemoryEffects, SingleBlockImplicitTerminator<ReturnOp>
+Traits: RecursiveMemoryEffects, SingleBlock, SingleBlockImplicitTerminator<ReturnOp>
 
 #### Operands:
 
 | Operand | Description |
 | :-----: | ----------- |
 | `condition` | statically shaped tensor of public integer type or secret integer type values
+
+#### Results:
+
+| Result | Description |
+| :----: | ----------- |
+&laquo;unnamed&raquo; | variadic of statically shaped tensor of PPHlo public type or PPHlo secret type values
+
+### `pphlo.imag` (pphlo::ImagOp)
+
+_Imag operation_
+
+Extracts the imaginary part, element-wise, from the `operand` and produces a
+`result` tensor.
+
+See:
+https://github.com/openxla/stablehlo/blob/main/docs/spec.md#imag
+
+Traits: AlwaysSpeculatableImplTrait, Elementwise, SameOperandsAndResultShape
+
+Interfaces: ConditionallySpeculatable, NoMemoryEffect (MemoryEffectOpInterface)
+
+Effects: MemoryEffects::Effect{}
+
+#### Operands:
+
+| Operand | Description |
+| :-----: | ----------- |
+| `operand` | statically shaped tensor of public complex type or secret complex type or public fixed-point type or secret fixed-point type values
 
 #### Results:
 
@@ -910,9 +993,10 @@ Effects: MemoryEffects::Effect{}
 
 #### Attributes:
 
-| Attribute | MLIR Type | Description |
-| :-------: | :-------: | ----------- |
-| `iota_dimension` | ::mlir::IntegerAttr | 64-bit signless integer attribute
+<table>
+<tr><th>Attribute</th><th>MLIR Type</th><th>Description</th></tr>
+<tr><td><code>iota_dimension</code></td><td>::mlir::IntegerAttr</td><td>64-bit signless integer attribute</td></tr>
+</table>
 
 #### Results:
 
@@ -1099,11 +1183,11 @@ Effects: MemoryEffects::Effect{}
 
 #### Attributes:
 
-| Attribute | MLIR Type | Description |
-| :-------: | :-------: | ----------- |
-| `window_dimensions` | ::mlir::DenseIntElementsAttr | 64-bit signless integer elements attribute
-| `window_strides` | ::mlir::DenseIntElementsAttr | 64-bit signless integer elements attribute
-| `padding` | ::mlir::DenseIntElementsAttr | 64-bit signless integer elements attribute
+<table>
+<tr><th>Attribute</th><th>MLIR Type</th><th>Description</th></tr>
+<tr><td><code>window_dimensions</code></td><td>::mlir::DenseIntElementsAttr</td><td>64-bit signless integer elements attribute</td></tr>
+<tr><td><code>window_strides</code></td><td>::mlir::DenseIntElementsAttr</td><td>64-bit signless integer elements attribute</td></tr>
+</table>
 
 #### Operands:
 
@@ -1337,6 +1421,34 @@ Effects: MemoryEffects::Effect{}
 | :----: | ----------- |
 &laquo;unnamed&raquo; | statically shaped tensor of PPHlo public type or PPHlo secret type values
 
+### `pphlo.real` (pphlo::RealOp)
+
+_Real operation_
+
+Extracts the real part, element-wise, from the `operand` and produces a
+`result` tensor.
+
+See:
+https://github.com/openxla/stablehlo/blob/main/docs/spec.md#real
+
+Traits: AlwaysSpeculatableImplTrait, Elementwise, SameOperandsAndResultShape
+
+Interfaces: ConditionallySpeculatable, NoMemoryEffect (MemoryEffectOpInterface)
+
+Effects: MemoryEffects::Effect{}
+
+#### Operands:
+
+| Operand | Description |
+| :-----: | ----------- |
+| `operand` | statically shaped tensor of public complex type or secret complex type or public fixed-point type or secret fixed-point type values
+
+#### Results:
+
+| Result | Description |
+| :----: | ----------- |
+&laquo;unnamed&raquo; | statically shaped tensor of PPHlo public type or PPHlo secret type values
+
 ### `pphlo.reciprocal` (pphlo::ReciprocalOp)
 
 _Reciprocal operator_
@@ -1373,26 +1485,27 @@ in parallel.
 
 See https://www.tensorflow.org/xla/operation_semantics#reduce.
 
-Traits: RecursiveMemoryEffects, SameVariadicOperandSize, SingleBlockImplicitTerminator<ReturnOp>
+Traits: RecursiveMemoryEffects, SameVariadicOperandSize, SingleBlock, SingleBlockImplicitTerminator<ReturnOp>
 
 #### Attributes:
 
-| Attribute | MLIR Type | Description |
-| :-------: | :-------: | ----------- |
-| `dimensions` | ::mlir::DenseIntElementsAttr | 64-bit signless integer elements attribute
+<table>
+<tr><th>Attribute</th><th>MLIR Type</th><th>Description</th></tr>
+<tr><td><code>dimensions</code></td><td>::mlir::DenseIntElementsAttr</td><td>64-bit signless integer elements attribute</td></tr>
+</table>
 
 #### Operands:
 
 | Operand | Description |
 | :-----: | ----------- |
-| `inputs` | statically shaped tensor of PPHlo public type or PPHlo secret type values
-| `init_values` | statically shaped tensor of PPHlo public type or PPHlo secret type values
+| `inputs` | variadic of statically shaped tensor of PPHlo public type or PPHlo secret type values
+| `init_values` | variadic of statically shaped tensor of PPHlo public type or PPHlo secret type values
 
 #### Results:
 
 | Result | Description |
 | :----: | ----------- |
-&laquo;unnamed&raquo; | statically shaped tensor of PPHlo public type or PPHlo secret type values
+&laquo;unnamed&raquo; | variadic of statically shaped tensor of PPHlo public type or PPHlo secret type values
 
 ### `pphlo.reduce_window` (pphlo::ReduceWindowOp)
 
@@ -1403,30 +1516,29 @@ each window of one or more arrays.
 
 See https://www.tensorflow.org/xla/operation_semantics#reducewindow.
 
-Traits: RecursiveMemoryEffects, SameVariadicOperandSize, SingleBlockImplicitTerminator<ReturnOp>
+Traits: RecursiveMemoryEffects, SameVariadicOperandSize, SingleBlock, SingleBlockImplicitTerminator<ReturnOp>
 
 #### Attributes:
 
-| Attribute | MLIR Type | Description |
-| :-------: | :-------: | ----------- |
-| `window_dimensions` | ::mlir::DenseIntElementsAttr | 64-bit signless integer elements attribute
-| `window_strides` | ::mlir::DenseIntElementsAttr | 64-bit signless integer elements attribute
-| `base_dilations` | ::mlir::DenseIntElementsAttr | 64-bit signless integer elements attribute
-| `window_dilations` | ::mlir::DenseIntElementsAttr | 64-bit signless integer elements attribute
-| `padding` | ::mlir::DenseIntElementsAttr | 64-bit signless integer elements attribute
+<table>
+<tr><th>Attribute</th><th>MLIR Type</th><th>Description</th></tr>
+<tr><td><code>window_dimensions</code></td><td>::mlir::DenseIntElementsAttr</td><td>64-bit signless integer elements attribute</td></tr>
+<tr><td><code>window_strides</code></td><td>::mlir::DenseIntElementsAttr</td><td>64-bit signless integer elements attribute</td></tr>
+<tr><td><code>window_dilations</code></td><td>::mlir::DenseIntElementsAttr</td><td>64-bit signless integer elements attribute</td></tr>
+</table>
 
 #### Operands:
 
 | Operand | Description |
 | :-----: | ----------- |
-| `inputs` | statically shaped tensor of PPHlo public type or PPHlo secret type values
-| `init_values` | statically shaped tensor of PPHlo public type or PPHlo secret type values
+| `inputs` | variadic of statically shaped tensor of PPHlo public type or PPHlo secret type values
+| `init_values` | variadic of statically shaped tensor of PPHlo public type or PPHlo secret type values
 
 #### Results:
 
 | Result | Description |
 | :----: | ----------- |
-&laquo;unnamed&raquo; | statically shaped tensor of PPHlo public type or PPHlo secret type values
+&laquo;unnamed&raquo; | variadic of statically shaped tensor of PPHlo public type or PPHlo secret type values
 
 ### `pphlo.remainder` (pphlo::RemOp)
 
@@ -1484,9 +1596,7 @@ Effects: MemoryEffects::Effect{}
 
 ### `pphlo.return` (pphlo::ReturnOp)
 
-_
-    The `pphlo.return` operation terminates a region and returns values.
-  _
+_The `pphlo.return` operation terminates a region and returns values._
 
 
 Traits: AlwaysSpeculatableImplTrait, Terminator
@@ -1499,7 +1609,7 @@ Effects: MemoryEffects::Effect{}
 
 | Operand | Description |
 | :-----: | ----------- |
-| `results` | statically shaped tensor of PPHlo public type or PPHlo secret type values
+| `results` | variadic of statically shaped tensor of PPHlo public type or PPHlo secret type values
 
 ### `pphlo.reverse` (pphlo::ReverseOp)
 
@@ -1518,9 +1628,10 @@ Effects: MemoryEffects::Effect{}
 
 #### Attributes:
 
-| Attribute | MLIR Type | Description |
-| :-------: | :-------: | ----------- |
-| `dimensions` | ::mlir::DenseIntElementsAttr | 64-bit signless integer elements attribute
+<table>
+<tr><th>Attribute</th><th>MLIR Type</th><th>Description</th></tr>
+<tr><td><code>dimensions</code></td><td>::mlir::DenseIntElementsAttr</td><td>64-bit signless integer elements attribute</td></tr>
+</table>
 
 #### Operands:
 
@@ -1632,11 +1743,11 @@ Traits: RecursiveMemoryEffects
 
 #### Attributes:
 
-| Attribute | MLIR Type | Description |
-| :-------: | :-------: | ----------- |
-| `window_dimensions` | ::mlir::DenseIntElementsAttr | 64-bit signless integer elements attribute
-| `window_strides` | ::mlir::DenseIntElementsAttr | 64-bit signless integer elements attribute
-| `padding` | ::mlir::DenseIntElementsAttr | 64-bit signless integer elements attribute
+<table>
+<tr><th>Attribute</th><th>MLIR Type</th><th>Description</th></tr>
+<tr><td><code>window_dimensions</code></td><td>::mlir::DenseIntElementsAttr</td><td>64-bit signless integer elements attribute</td></tr>
+<tr><td><code>window_strides</code></td><td>::mlir::DenseIntElementsAttr</td><td>64-bit signless integer elements attribute</td></tr>
+</table>
 
 #### Operands:
 
@@ -1800,6 +1911,63 @@ Effects: MemoryEffects::Effect{}
 | :----: | ----------- |
 &laquo;unnamed&raquo; | statically shaped tensor of PPHlo public type or PPHlo secret type values
 
+### `pphlo.simple_sort` (pphlo::SimpleSortOp)
+
+_Sort operator_
+
+Sorts the given `operands` at the given `dimension` with the given
+`mode`.
+
+Traits: RecursiveMemoryEffects, SameOperandsAndResultShape
+
+#### Attributes:
+
+<table>
+<tr><th>Attribute</th><th>MLIR Type</th><th>Description</th></tr>
+<tr><td><code>dimension</code></td><td>::mlir::IntegerAttr</td><td>64-bit signless integer attribute</td></tr>
+<tr><td><code>num_keys</code></td><td>::mlir::IntegerAttr</td><td>64-bit signless integer attribute</td></tr>
+<tr><td><code>sort_direction</code></td><td>::mlir::IntegerAttr</td><td>Which mode to sort.</td></tr>
+</table>
+
+#### Operands:
+
+| Operand | Description |
+| :-----: | ----------- |
+| `operands` | variadic of statically shaped tensor of PPHlo public type or PPHlo secret type values
+
+#### Results:
+
+| Result | Description |
+| :----: | ----------- |
+&laquo;unnamed&raquo; | variadic of statically shaped tensor of PPHlo public type or PPHlo secret type values
+
+### `pphlo.sine` (pphlo::SineOp)
+
+_Sine operator_
+
+Returns `sine(operand)` element-wise.
+
+See
+https://github.com/openxla/stablehlo/blob/main/docs/spec.md#sine.
+
+Traits: AlwaysSpeculatableImplTrait, Elementwise, SameOperandsAndResultShape, SameOperandsAndResultType
+
+Interfaces: ConditionallySpeculatable, InferTypeOpInterface, NoMemoryEffect (MemoryEffectOpInterface)
+
+Effects: MemoryEffects::Effect{}
+
+#### Operands:
+
+| Operand | Description |
+| :-----: | ----------- |
+| `operand` | statically shaped tensor of public fixed-point type or secret fixed-point type values
+
+#### Results:
+
+| Result | Description |
+| :----: | ----------- |
+&laquo;unnamed&raquo; | statically shaped tensor of public fixed-point type or secret fixed-point type values
+
 ### `pphlo.slice` (pphlo::SliceOp)
 The dynamic shape version of SliceOp. Extracts a sub-array from the input
 array according to start_indices, limit_indices and strides. Expect
@@ -1816,11 +1984,12 @@ Effects: MemoryEffects::Effect{}
 
 #### Attributes:
 
-| Attribute | MLIR Type | Description |
-| :-------: | :-------: | ----------- |
-| `start_indices` | ::mlir::DenseIntElementsAttr | 64-bit signless integer elements attribute
-| `limit_indices` | ::mlir::DenseIntElementsAttr | 64-bit signless integer elements attribute
-| `strides` | ::mlir::DenseIntElementsAttr | 64-bit signless integer elements attribute
+<table>
+<tr><th>Attribute</th><th>MLIR Type</th><th>Description</th></tr>
+<tr><td><code>start_indices</code></td><td>::mlir::DenseIntElementsAttr</td><td>64-bit signless integer elements attribute</td></tr>
+<tr><td><code>limit_indices</code></td><td>::mlir::DenseIntElementsAttr</td><td>64-bit signless integer elements attribute</td></tr>
+<tr><td><code>strides</code></td><td>::mlir::DenseIntElementsAttr</td><td>64-bit signless integer elements attribute</td></tr>
+</table>
 
 #### Operands:
 
@@ -1847,22 +2016,23 @@ Traits: RecursiveMemoryEffects, SameOperandsAndResultShape
 
 #### Attributes:
 
-| Attribute | MLIR Type | Description |
-| :-------: | :-------: | ----------- |
-| `dimension` | ::mlir::IntegerAttr | 64-bit signless integer attribute
-| `is_stable` | ::mlir::BoolAttr | bool attribute
+<table>
+<tr><th>Attribute</th><th>MLIR Type</th><th>Description</th></tr>
+<tr><td><code>dimension</code></td><td>::mlir::IntegerAttr</td><td>64-bit signless integer attribute</td></tr>
+<tr><td><code>is_stable</code></td><td>::mlir::BoolAttr</td><td>bool attribute</td></tr>
+</table>
 
 #### Operands:
 
 | Operand | Description |
 | :-----: | ----------- |
-| `operands` | statically shaped tensor of PPHlo public type or PPHlo secret type values
+| `operands` | variadic of statically shaped tensor of PPHlo public type or PPHlo secret type values
 
 #### Results:
 
 | Result | Description |
 | :----: | ----------- |
-&laquo;unnamed&raquo; | statically shaped tensor of PPHlo public type or PPHlo secret type values
+&laquo;unnamed&raquo; | variadic of statically shaped tensor of PPHlo public type or PPHlo secret type values
 
 ### `pphlo.sqrt` (pphlo::SqrtOp)
 
@@ -1964,9 +2134,10 @@ Effects: MemoryEffects::Effect{}
 
 #### Attributes:
 
-| Attribute | MLIR Type | Description |
-| :-------: | :-------: | ----------- |
-| `permutation` | ::mlir::DenseIntElementsAttr | 64-bit signless integer elements attribute
+<table>
+<tr><th>Attribute</th><th>MLIR Type</th><th>Description</th></tr>
+<tr><td><code>permutation</code></td><td>::mlir::DenseIntElementsAttr</td><td>64-bit signless integer elements attribute</td></tr>
+</table>
 
 #### Operands:
 
@@ -1989,19 +2160,19 @@ Returns the result of executing a body function until the cond body
 
 See https://www.tensorflow.org/xla/operation_semantics#while.
 
-Traits: PPHLO_PairwiseSameOperandAndResultType, RecursiveMemoryEffects, SingleBlockImplicitTerminator<ReturnOp>
+Traits: PPHLO_PairwiseSameOperandAndResultType, RecursiveMemoryEffects, SingleBlock, SingleBlockImplicitTerminator<ReturnOp>
 
 #### Operands:
 
 | Operand | Description |
 | :-----: | ----------- |
-| `args` | statically shaped tensor of PPHlo public type or PPHlo secret type values
+| `args` | variadic of statically shaped tensor of PPHlo public type or PPHlo secret type values
 
 #### Results:
 
 | Result | Description |
 | :----: | ----------- |
-&laquo;unnamed&raquo; | statically shaped tensor of PPHlo public type or PPHlo secret type values
+&laquo;unnamed&raquo; | variadic of statically shaped tensor of PPHlo public type or PPHlo secret type values
 
 ### `pphlo.xor` (pphlo::XorOp)
 

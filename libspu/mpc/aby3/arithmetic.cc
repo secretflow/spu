@@ -75,9 +75,6 @@ std::vector<NdArrayRef> a1b_offline(size_t sender, const NdArrayRef& a,
               _m0[idx] = (_m0[idx] ^ (_b[idx][0] & 0x1) ^ (_b[idx][1] & 0x1)) *
                              _a[idx] -
                          _c1[idx] - _c2[idx];
-            });
-
-            pforeach(0, numel, [&](int64_t idx) {
               _m1[idx] = (_m1[idx] ^ (_b[idx][0] & 0x1) ^ (_b[idx][1] & 0x1)) *
                              _a[idx] -
                          _c1[idx] - _c2[idx];

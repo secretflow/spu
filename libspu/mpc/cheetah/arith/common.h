@@ -64,5 +64,4 @@ inline int64_t calcNumel(absl::Span<const int64_t> shape) {
                          std::multiplies<>());
 }
 
-size_t CalculateWorkLoad(size_t num_jobs, size_t num_cores = 0);
 }  // namespace spu::mpc::cheetah

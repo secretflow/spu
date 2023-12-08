@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 
 import functools
-import warnings
 from enum import Enum
 from threading import Lock
 from typing import Callable, Dict, Iterable, List
+from numpy import ndarray
 
 from cachetools import LRUCache, cached
 
@@ -29,28 +29,42 @@ def _jax_compilation_key(
     fn: Callable, static_argnums, static_argnames, args: List, kwargs: Dict
 ):
     import jax
-    from jax._src.util import weakref_lru_cache
+    from jax._src.api_util import argnames_partial_except, argnums_partial_except
 
-    wrapped_fn = weakref_lru_cache(fn)
+    try:
+        from jax.extend.linear_util import wrap_init  # Moved in jax 0.4.16
+    except ImportError:
+        from jax.linear_util import wrap_init
 
-    flat_args, _ = jax.tree_util.tree_flatten((args, kwargs))
+    def _function_contents(func):
+        try:
+            closure = []
+            if hasattr(func, '__closure__') and func.__closure__:
+                for cell in func.__closure__:
+                    if isinstance(cell.cell_contents, ndarray):
+                        closure.append(cell.cell_contents.ctypes.data)
+                    else:
+                        closure.append(cell.cell_contents)
+            return (
+                func.__name__,
+                func.__defaults__,
+                tuple(closure),
+                func.__code__.co_code,
+                func.__code__.co_consts,
+            )
+        except AttributeError:
+            # Not a standard func
+            return func
+
+    f = wrap_init(fn)
+    f, dkwargs = argnames_partial_except(f, static_argnames, kwargs)
+    f, dargs = argnums_partial_except(f, static_argnums, args, allow_invalid=True)
+
+    flat_args, _ = jax.tree_util.tree_flatten((dargs, dkwargs))
     types = [(a.dtype, a.shape) if hasattr(a, 'dtype') else type(a) for a in flat_args]
-    hash_str = f'{hash(wrapped_fn)}-{static_argnums}-{static_argnames}-{types}'
+    hash_str = f'{hash(f)}-{hash(_function_contents(fn))}-{types}'
+
     return hash_str
-
-
-def _argnames_partial_except(fn, static_argnames, kwargs):
-    if static_argnames is None:
-        return fn, kwargs
-
-    assert isinstance(
-        static_argnames, (str, Iterable)
-    ), f'type of static_argnames is {type(static_argnames)} while str or Iterable is required here.'
-    if isinstance(static_argnames, str):
-        static_argnames = (static_argnames,)
-
-    static_kwargs = {k: kwargs.pop(k) for k in static_argnames if k in kwargs}
-    return functools.partial(fn, **static_kwargs), kwargs
 
 
 def _argnames_partial_except(fn, static_argnames, kwargs):
@@ -112,7 +126,7 @@ def _patch_fcn(obj, func_name, wrapped_func):
         setattr(obj, func_name, wrapped_func)
         return old_fcn
     else:
-        warnings.warn(f'Failed to patch {func_name} in {obj}')
+        return None
 
 
 # This is a fix to float->int cast in lax.sort
@@ -120,10 +134,22 @@ def _patched_lax_float_to_int_for_sort(x):
     return x
 
 
+class FcnReplaceLibrary:
+    possible_names = []
+    replace_fcn = None
+
+    def __init__(self, names, rf):
+        self.possible_names = names
+        self.replace_fcn = rf
+
+
 lax_patches = {
     # lax sort has  float->int bitcast which is causing problems on MPC protocols using fixed-point
     # Replace this function with a no-op
-    '_float_to_int_for_sort': _patched_lax_float_to_int_for_sort,
+    'sort': FcnReplaceLibrary(
+        ['_float_to_int_for_sort', '_canonicalize_float_for_sort'],
+        _patched_lax_float_to_int_for_sort,
+    )
 }
 
 
@@ -131,8 +157,18 @@ def _patch_jax():
     import jax._src.lax.lax as lax
 
     patch_history = {}
-    for fcn_name, fcn in lax_patches.items():
-        patch_history[fcn_name] = _patch_fcn(lax, fcn_name, fcn)
+    for fcn_name, replace in lax_patches.items():
+        success = False
+        for name in replace.possible_names:
+            old_fcn = _patch_fcn(lax, name, replace.replace_fcn)
+            if old_fcn:
+                patch_history[name] = old_fcn
+                success = True
+                break
+        if not success:
+            raise RuntimeError(
+                f'Failed to patch {fcn_name}, current jax version is not compatible with SPU'
+            )
 
     return patch_history
 
@@ -168,20 +204,17 @@ def compile(
     if kind == Kind.JAX:
         import jax
 
-        _jax_lock.acquire()
+        with _jax_lock:
+            patches = _patch_jax()
 
-        patches = _patch_jax()
+            ir_text, output = _jax_compilation(
+                fn, static_argnums, static_argnames, m_args, m_kwargs
+            )
 
-        ir_text, output = _jax_compilation(
-            fn, static_argnums, static_argnames, m_args, m_kwargs
-        )
+            _restore_jax_patch(patches)
 
-        _restore_jax_patch(patches)
-
-        _jax_lock.release()
-
-        output_flat, _ = jax.tree_util.tree_flatten(output)
-        output_names = outputNameGen(output_flat)
+            output_flat, _ = jax.tree_util.tree_flatten(output)
+            output_names = outputNameGen(output_flat)
 
     elif kind == Kind.Tensorflow:
         import tensorflow as tf

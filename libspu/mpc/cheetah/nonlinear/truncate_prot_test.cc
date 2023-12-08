@@ -71,6 +71,7 @@ TEST_P(TruncateProtTest, Basic) {
       if (msb == "Zero") {
         ring2k_t mask = (static_cast<ring2k_t>(1) << (bw - 1)) - 1;
         pforeach(0, msg.numel(), [&](int64_t i) { xmsg[i] &= mask; });
+
         sign = SignType::Positive;
       } else {
         ring2k_t mask = (static_cast<ring2k_t>(1) << (bw - 1));

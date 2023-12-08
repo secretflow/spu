@@ -8,8 +8,10 @@ IncludeCategories:
   - Regex: "^<.*"
     Priority: 2
   - Regex: '.*\.pb\.h"$'
-    Priority: 5
+    Priority: 6
   - Regex: '^"libspu.*'
     Priority: 4
+  - Regex: '^"psi.*'
+    Priority: 5
   - Regex: '^".*'
     Priority: 3

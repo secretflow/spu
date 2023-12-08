@@ -17,7 +17,6 @@ This part contains detailed explanation of background, configs and APIs.
    :maxdepth: 1
    :caption: Config
 
-   psi_config
    runtime_config
 
 
