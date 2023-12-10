@@ -177,6 +177,16 @@ static Value _mmul_impl(SPUContext* ctx, const Value& x, const Value& y) {
   }
 };
 
+static OptionalAPI<Value> _batch_mmul_impl(SPUContext* ctx, const Value& x,
+                                           const Value& y) {
+  if (x.isSecret() && y.isSecret()) {  // SS
+    return _batch_mmul_ss(ctx, x, y);
+  } else if (x.isSecret() && y.isPrivate()) {  // SV
+    return _batch_mmul_sv(ctx, x, y);
+  }
+  return NotAvailable;
+}
+
 Value _trunc(SPUContext* ctx, const Value& x, size_t bits, SignType sign) {
   SPU_TRACE_HAL_LEAF(ctx, x, bits);
   bits = (bits == 0) ? ctx->getFxpBits() : bits;
@@ -275,6 +285,11 @@ Value _sub(SPUContext* ctx, const Value& x, const Value& y) {
   }
 
   return res;
+}
+
+OptionalAPI<Value> _batch_mmul(SPUContext* ctx, const Value& x,
+                               const Value& y) {
+  return _batch_mmul_impl(ctx, x, y);
 }
 
 Value _mmul(SPUContext* ctx, const Value& x, const Value& y) {

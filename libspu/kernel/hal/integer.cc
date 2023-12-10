@@ -98,4 +98,15 @@ Value i_tensordot(SPUContext* ctx, const Value& x, const Value& y,
   return _tensordot(ctx, x, y, ix, iy).setDtype(x.dtype());
 }
 
+std::optional<Value> i_batch_mmul(SPUContext* ctx, const Value& x,
+                                  const Value& y) {
+  SPU_TRACE_HAL_LEAF(ctx, x, y);
+  ENSURE_INT_AND_DTYPE_MATCH(x, y);
+  auto ret = _batch_mmul(ctx, x, y);
+  if (ret.has_value()) {
+    ret->setDtype(x.dtype());
+  }
+  return ret;
+}
+
 }  // namespace spu::kernel::hal

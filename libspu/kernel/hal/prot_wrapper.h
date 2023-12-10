@@ -88,6 +88,10 @@ Value _mmul_ss(SPUContext* ctx, const Value& x, const Value& y);
 Value _mmul_vv(SPUContext* ctx, const Value& x, const Value& y);
 Value _mmul_vp(SPUContext* ctx, const Value& x, const Value& y);
 Value _mmul_sv(SPUContext* ctx, const Value& x, const Value& y);
+std::optional<Value> _batch_mmul_ss(SPUContext* ctx, const Value& x,
+                                    const Value& y);
+std::optional<Value> _batch_mmul_sv(SPUContext* ctx, const Value& x,
+                                    const Value& y);
 
 Value _conv2d_ss(SPUContext* ctx, const Value& input, const Value& kernel,
                  const Strides& strides);

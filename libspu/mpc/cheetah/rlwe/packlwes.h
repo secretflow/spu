@@ -24,6 +24,9 @@ namespace spu::mpc::cheetah {
 void GenerateGaloisKeyForPacking(const seal::SEALContext &context,
                                  const RLWESecretKey &key, bool save_seed,
                                  GaloisKeys *out);
+
+// REF: BumbleBee: Secure Two-party Inference Framework for Large Transformers
+// https://eprint.iacr.org/2023/1678
 class PackingHelper {
  public:
   PackingHelper(size_t gap, const seal::GaloisKeys &galois_keys,

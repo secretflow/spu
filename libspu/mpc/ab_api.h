@@ -50,6 +50,10 @@ Value trunc_a(SPUContext* ctx, const Value& x, size_t nbits, SignType sign);
 Value mmul_ap(SPUContext* ctx, const Value& x, const Value& y);
 Value mmul_aa(SPUContext* ctx, const Value& x, const Value& y);
 OptionalAPI<Value> mmul_av(SPUContext* ctx, const Value& x, const Value& y);
+OptionalAPI<Value> batch_mmul_aa(SPUContext* ctx, const Value& x,
+                                 const Value& y);
+OptionalAPI<Value> batch_mmul_av(SPUContext* ctx, const Value& x,
+                                 const Value& y);
 
 Type common_type_b(SPUContext* ctx, const Type& a, const Type& b);
 Value cast_type_b(SPUContext* ctx, const Value& a, const Type& to_type);

@@ -63,7 +63,9 @@ void regCheetahProtocol(SPUContext* ctx,
   ctx->prot()->regKernel<cheetah::EqualAP>();
   ctx->prot()->regKernel<cheetah::MatMulAP>();
   ctx->prot()->regKernel<cheetah::MatMulAA>();
-  // ctx->prot()->regKernel<cheetah::Conv2DAA>();
+  ctx->prot()->regKernel<cheetah::MatMulAV>();
+  ctx->prot()->regKernel<cheetah::BatchMatMulAA>();
+  ctx->prot()->regKernel<cheetah::BatchMatMulAV>();
   ctx->prot()->regKernel<cheetah::LShiftA>();
   ctx->prot()->regKernel<cheetah::TruncA>();
   ctx->prot()->regKernel<cheetah::MsbA2B>();

@@ -340,4 +340,169 @@ NdArrayRef MatMulAA::proc(KernelEvalContext* ctx, const NdArrayRef& x,
   return ring_add(ret, task.get()).as(x.eltype());
 }
 
+// LHS is a share type (A); RHS is a private type (V)
+NdArrayRef MatMulAV::proc(KernelEvalContext* ctx, const NdArrayRef& x,
+                          const NdArrayRef& y) const {
+  if (0 == x.numel() || 0 == y.numel()) {
+    return NdArrayRef(x.eltype(), {x.shape()[0], y.shape()[1]});
+  }
+
+  auto* comm = ctx->getState<Communicator>();
+  auto* dot_prot = ctx->getState<CheetahDotState>()->get();
+  const auto* priv_type = y.eltype().as<Priv2kTy>();
+  SPU_ENFORCE(priv_type != nullptr, "RHS should be a private type");
+  const int rank = comm->getRank();
+  const int owner = priv_type->owner();
+
+  const Shape3D dim3 = {x.shape()[0], x.shape()[1], y.shape()[1]};
+  NdArrayRef out;
+  if (rank == owner) {
+    out = dot_prot->DotOLE(y, dim3, false);
+    auto tmp = ring_mmul(x, y);
+    ring_add_(out, tmp);
+  } else {
+    out = dot_prot->DotOLE(x, dim3, true);
+  }
+  return out.as(x.eltype());
+}
+
+void BatchMatMulAA::evaluate(KernelEvalContext* ctx) const {
+  // NOTE(lwj): overwrite the shape check in the MatmulKernel
+  const auto& lhs = ctx->getParam<Value>(0);
+  const auto& rhs = ctx->getParam<Value>(1);
+  const auto& lhs_shape = lhs.shape();
+  const auto& rhs_shape = rhs.shape();
+  SPU_ENFORCE(lhs_shape.ndim() == rhs_shape.ndim(),
+              "ndim mismatch: lhs={}, rhs={}", lhs_shape, rhs_shape);
+  SPU_ENFORCE(lhs_shape[0] == rhs_shape[0], "batch mismatch: lhs={}, rhs={}",
+              lhs_shape, rhs_shape);
+  SPU_ENFORCE(lhs_shape[2] == rhs_shape[1], "shape mismatch: lhs={}, rhs={}",
+              lhs_shape, rhs_shape);
+  ctx->setOutput(WrapValue(proc(ctx, lhs.data(), rhs.data())));
+}
+
+NdArrayRef BatchMatMulAA::proc(KernelEvalContext* ctx, const NdArrayRef& x,
+                               const NdArrayRef& y) const {
+  if (0 == x.numel() || 0 == y.numel()) {
+    return NdArrayRef(x.eltype(), {x.shape()[0], y.shape()[1]});
+  }
+
+  auto* comm = ctx->getState<Communicator>();
+  auto* dot_prot = ctx->getState<CheetahDotState>()->get();
+  const int rank = comm->getRank();
+
+  // (x0 + x1) * (y0 + y1)
+  // Compute the cross terms homomorphically
+  const Shape4D dim4 = {x.shape()[0], x.shape()[1], x.shape()[2], y.shape()[2]};
+
+  auto* conn = comm->lctx().get();
+  auto dupx = ctx->getState<CheetahMulState>()->duplx();
+  std::future<NdArrayRef> task = std::async(std::launch::async, [&] {
+    // Compute x0*y1
+    if (rank == 0) {
+      return dot_prot->BatchDotOLE(x, dupx.get(), dim4, true);
+    } else {
+      return dot_prot->BatchDotOLE(y, dupx.get(), dim4, false);
+    }
+  });
+
+  NdArrayRef x1y0;
+  if (rank == 0) {
+    x1y0 = dot_prot->BatchDotOLE(y, conn, dim4, false);
+  } else {
+    x1y0 = dot_prot->BatchDotOLE(x, conn, dim4, true);
+  }
+
+  // local batch mmul
+  const Strides strides(x.shape().size(), 1);
+  Index lhs_slice_end(x.shape().begin(), x.shape().end());
+  Index rhs_slice_end(y.shape().begin(), y.shape().end());
+  Index lhs_slice_begin(3, 0);
+  Index rhs_slice_begin(3, 0);
+  NdArrayRef out(x.eltype(), {dim4[0], dim4[1], dim4[3]});
+  for (int64_t batch = 0; batch < dim4[0]; ++batch) {
+    lhs_slice_begin[0] = batch;
+    lhs_slice_end[0] = batch + 1;
+    rhs_slice_begin[0] = batch;
+    rhs_slice_end[0] = batch + 1;
+    auto lhs_slice = x.slice(lhs_slice_begin, lhs_slice_end, strides)
+                         .reshape({dim4[1], dim4[2]});
+    auto rhs_slice = y.slice(rhs_slice_begin, rhs_slice_end, strides)
+                         .reshape({dim4[2], dim4[3]});
+
+    auto out_slice =
+        out.slice({batch, 0, 0}, {batch + 1, dim4[1], dim4[3]}, strides);
+    out_slice = out_slice.reshape({dim4[1], dim4[3]});
+    ring_mmul_(out_slice, lhs_slice, rhs_slice);
+  }
+
+  ring_add_(out, x1y0);
+  ring_add_(out, task.get());
+  return out;
+}
+
+void BatchMatMulAV::evaluate(KernelEvalContext* ctx) const {
+  // NOTE(lwj): overwrite the shape check in the MatmulKernel
+  const auto& lhs = ctx->getParam<Value>(0);
+  const auto& rhs = ctx->getParam<Value>(1);
+  const auto& lhs_shape = lhs.shape();
+  const auto& rhs_shape = rhs.shape();
+  SPU_ENFORCE(lhs_shape.ndim() == rhs_shape.ndim(),
+              "ndim mismatch: lhs={}, rhs={}", lhs_shape, rhs_shape);
+  SPU_ENFORCE(lhs_shape[0] == rhs_shape[0], "batch mismatch: lhs={}, rhs={}",
+              lhs_shape, rhs_shape);
+  SPU_ENFORCE(lhs_shape[2] == rhs_shape[1], "shape mismatch: lhs={}, rhs={}",
+              lhs_shape, rhs_shape);
+  ctx->setOutput(WrapValue(proc(ctx, lhs.data(), rhs.data())));
+}
+
+NdArrayRef BatchMatMulAV::proc(KernelEvalContext* ctx, const NdArrayRef& x,
+                               const NdArrayRef& y) const {
+  if (0 == x.numel() || 0 == y.numel()) {
+    return NdArrayRef(x.eltype(), {x.shape()[0], y.shape()[1]});
+  }
+
+  auto* comm = ctx->getState<Communicator>();
+  auto* dot_prot = ctx->getState<CheetahDotState>()->get();
+  const auto* priv_type = y.eltype().as<Priv2kTy>();
+  SPU_ENFORCE(priv_type != nullptr, "RHS should be a private type");
+  const int rank = comm->getRank();
+  const int owner = priv_type->owner();
+
+  // (x0 + x1) * (y0 + y1)
+  // Compute the cross terms homomorphically
+  const Shape4D dim4 = {x.shape()[0], x.shape()[1], x.shape()[2], y.shape()[2]};
+
+  NdArrayRef out;
+  if (rank != owner) {
+    out = dot_prot->BatchDotOLE(x, comm->lctx().get(), dim4, true);
+  } else {
+    out = dot_prot->BatchDotOLE(y, comm->lctx().get(), dim4, false);
+    // local batch mmul
+    const Strides strides(x.shape().size(), 1);
+    Index lhs_slice_end(x.shape().begin(), x.shape().end());
+    Index rhs_slice_end(y.shape().begin(), y.shape().end());
+    Index lhs_slice_begin(3, 0);
+    Index rhs_slice_begin(3, 0);
+    NdArrayRef out(x.eltype(), {dim4[0], dim4[1], dim4[3]});
+    for (int64_t batch = 0; batch < dim4[0]; ++batch) {
+      lhs_slice_begin[0] = batch;
+      lhs_slice_end[0] = batch + 1;
+      rhs_slice_begin[0] = batch;
+      rhs_slice_end[0] = batch + 1;
+      auto lhs_slice = x.slice(lhs_slice_begin, lhs_slice_end, strides)
+                           .reshape({dim4[1], dim4[2]});
+      auto rhs_slice = y.slice(rhs_slice_begin, rhs_slice_end, strides)
+                           .reshape({dim4[2], dim4[3]});
+      auto local = ring_mmul(lhs_slice, rhs_slice);
+
+      auto out_slice =
+          out.slice({batch, 0, 0}, {batch + 1, dim4[1], dim4[3]}, strides);
+      out_slice = out_slice.reshape({dim4[1], dim4[3]});
+      ring_add_(out_slice, local);
+    }
+  }
+  return out;
+}
+
 }  // namespace spu::mpc::cheetah
