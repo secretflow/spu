@@ -20,7 +20,7 @@ SECRETFLOW_GIT = "https://github.com/secretflow"
 
 YACL_COMMIT_ID = "d9f18c74ba2a1bbbe52bd6beac644adf81fb9925"
 
-LIBSPI_COMMIT_ID = "182a2e12850187790309331997859b0b2de87f4b"
+LIBSPI_COMMIT_ID = "575cb5999b5bc52926d08de6944e8d54f0a38f9f"
 
 def spu_deps():
     _rules_cuda()
