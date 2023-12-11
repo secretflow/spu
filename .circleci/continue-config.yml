@@ -29,7 +29,10 @@ jobs:
     # See: https://circleci.com/docs/2.0/configuration-reference/#docker-machine-macos-windows-executor
     docker:
       - image: secretflow/ubuntu-base-ci:latest
-    resource_class: 2xlarge+
+    parameters:
+      resource_class:
+        type: string
+    resource_class: << parameters.resource_class >>
     shell: /bin/bash --login -eo pipefail
     # Add steps to the job
     # See: https://circleci.com/docs/2.0/configuration-reference/#steps
@@ -140,31 +143,14 @@ jobs:
           path: test_binary.tar.gz
       - store_artifacts:
           path: test_logs.tar.gz
-  linux_arm_build:
-    # Specify the execution environment. You can specify an image from Dockerhub or use one of our Convenience Images from CircleCI's Developer Hub.
-    # See: https://circleci.com/docs/2.0/configuration-reference/#docker-machine-macos-windows-executor
-    docker:
-      - image: secretflow/ubuntu-base-ci:latest
-    resource_class: arm-xlarge
-    shell: /bin/bash --login -eo pipefail
-    # Add steps to the job
-    # See: https://circleci.com/docs/2.0/configuration-reference/#steps
-    steps:
-      - checkout
-      - run:
-          name: "Install dependencies"
-          command: |
-            python3 -m pip install numpy
-      - run:
-          name: "build"
-          command: bazel build //... -c opt --ui_event_filters=-info,-debug,-warning --jobs 20 || true
-
 # Invoke jobs via workflows
 # See: https://circleci.com/docs/2.0/configuration-reference/#workflows
 workflows:
   unittest:
     when: << pipeline.parameters.build-and-run >>
     jobs:
-      - linux_ut
+      - linux_ut:
+          matrix:
+            parameters:
+              resource_class: ["2xlarge", "arm-xlarge"]
       - macOS_ut
-      - linux_arm_build
