@@ -151,5 +151,5 @@ workflows:
       - linux_ut:
           matrix:
             parameters:
-              resource_class: ["2xlarge", "arm-xlarge"]
+              resource_class: ["2xlarge", "arm.2xlarge"]
       - macOS_ut
