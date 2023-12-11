@@ -43,10 +43,7 @@ FE::FE(CompilationContext *ctx) : ctx_(ctx) {
   ctx_->getMLIRContext()->appendDialectRegistry(registry);
 }
 
-mlir::OwningOpRef<mlir::ModuleOp> FE::doit(const std::string &source_str) {
-  CompilationSource source;
-  source.ParseFromString(source_str);
-
+mlir::OwningOpRef<mlir::ModuleOp> FE::doit(const CompilationSource &source) {
   mlir::OwningOpRef<mlir::ModuleOp> module;
   switch (source.ir_type()) {
   case spu::SourceIRType::XLA: {

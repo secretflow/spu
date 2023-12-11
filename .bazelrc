@@ -49,8 +49,8 @@ build:benchmark --copt -O3
 build:benchmark --copt -march=native
 
 # static link runtime libraries on Linux
-build:linux-release --action_env=BAZEL_LINKOPTS=-static-libstdc++:-static-libgcc
-build:linux-release --action_env=BAZEL_LINKLIBS=-l%:libstdc++.a:-l%:libgcc.a
+build:linux --action_env=BAZEL_LINKOPTS=-static-libstdc++:-static-libgcc
+build:linux --action_env=BAZEL_LINKLIBS=-l%:libstdc++.a:-l%:libgcc.a
 
 # platform specific config
 # Bazel will automatic pick platform config since we have enable_platform_specific_config set

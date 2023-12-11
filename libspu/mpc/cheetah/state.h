@@ -27,6 +27,10 @@ namespace spu::mpc::cheetah {
 // Return num_workers for the given size of jobs
 size_t InitOTState(KernelEvalContext* ctx, size_t njobs);
 
+// Call func(idx) for idx = 0, 1, ..., n - 1
+void TiledDispatch(KernelEvalContext* ctx, int64_t njobs,
+                   const std::function<void(int64_t)>& func);
+
 class CheetahMulState : public State {
  private:
   mutable std::mutex lock_;
@@ -97,21 +101,19 @@ class CheetahOTState : public State {
 
   ~CheetahOTState() override = default;
 
-  size_t parallel_size() const;
-
   void LazyInit(Communicator* comm, size_t idx = 0) {
-    SPU_ENFORCE(idx < parallel_size(), "idx={} out-of-bound", idx);
+    SPU_ENFORCE(idx < kMaxOTParallel, "idx={} out-of-bound", idx);
+    std::lock_guard guard(lock_);
     if (basic_ot_prot_[idx]) {
       return;
     }
-    std::unique_lock guard(lock_);
     // NOTE: create a separated link for OT
     auto _comm = std::make_shared<Communicator>(comm->lctx()->Spawn());
     basic_ot_prot_[idx] = std::make_shared<BasicOTProtocols>(std::move(_comm));
   }
 
   std::shared_ptr<BasicOTProtocols> get(size_t idx = 0) {
-    SPU_ENFORCE(idx < parallel_size(), "idx={} out-of-bound", idx);
+    SPU_ENFORCE(idx < kMaxOTParallel, "idx={} out-of-bound", idx);
     SPU_ENFORCE(basic_ot_prot_[idx], "call LazyInit first");
     return basic_ot_prot_[idx];
   }

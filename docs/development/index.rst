@@ -3,7 +3,7 @@
 Development
 ===========
 
-This part contains design principles of SPU and staging PSI documentation.
+This part contains design principles of SPU.
 
 .. toctree::
    :maxdepth: 1
@@ -28,9 +28,3 @@ This part contains design principles of SPU and staging PSI documentation.
    :caption: Extending SPU
 
    add_protocols
-
-.. toctree::
-   :maxdepth: 1
-   :caption: PSI / PIR
-
-   psi_protocol_intro

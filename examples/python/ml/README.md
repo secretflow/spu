@@ -13,7 +13,7 @@ This directory contains examples demonstrating how to use SPU to write privacy-p
                        [Stax](https://jax.readthedocs.io/en/latest/jax.example_libraries.stax.html).
 * [stax_mnist_classifier](stax_mnist_classifier/): Private training of a simple neural network for MNIST classification with
                                                    [Stax](https://jax.readthedocs.io/en/latest/jax.example_libraries.stax.html).
-* [flax_resnet](flax_resnet/): Private training of a [ResNet](https://arxiv.org/abs/1512.03385) model with [Flax](https://github.com/google/flax) library.
+* [flax_resnet](flax_resnet/): Private training of a [ResNet](https://arxiv.org/abs/1512.03385) model with [Flax](https://github.com/google/flax) library, and private inference of a pre-trained ResNet-50 model based on [Microsoft-ResNet50](https://huggingface.co/microsoft/resnet-50).
 * [flax_gpt2](flax_gpt2/): Private inference of a pre-trained
                            [GPT2](https://cdn.openai.com/better-language-models/language_models_are_unsupervised_multitask_learners.pdf)
                            model with [Flax](https://github.com/google/flax) library.

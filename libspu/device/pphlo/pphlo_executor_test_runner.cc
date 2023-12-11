@@ -40,8 +40,8 @@ std::string Runner::compileMHlo(const std::string &mhlo,
     source.add_input_visibility(v);
   }
 
-  compiler::CompilationContext ctx;
-  return compiler::compile(&ctx, source.SerializeAsString());
+  CompilerOptions copts;
+  return compiler::compile(source, copts);
 }
 
 void Runner::run(const std::string &mlir, size_t num_output) {

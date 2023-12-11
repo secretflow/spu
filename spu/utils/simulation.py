@@ -19,7 +19,11 @@ from typing import Callable
 import jax
 import jax.numpy as jnp
 import numpy as np
-from jax import linear_util as jax_lu
+
+try:
+    import jax.extend.linear_util as jax_lu  # Moved in jax 0.4.16
+except ImportError:
+    import jax.linear_util as jax_lu
 from jax._src import api_util as japi_util
 
 from .. import api as spu_api

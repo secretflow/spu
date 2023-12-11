@@ -52,15 +52,6 @@ Runtime
 
 **Extending**: :doc:`/development/add_protocols`
 
-PSI/PIR
-~~~~~~~
-
-**Doc**: :doc:`/development/psi_protocol_intro`
-
-**Config**: :doc:`/reference/psi_config`
-
-**How-to**: :doc:`/tutorials/psi` | :doc:`/tutorials/pir`
-
 
 .. toctree::
    :hidden:

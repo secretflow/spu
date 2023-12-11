@@ -14,8 +14,6 @@
 
 #include "libspu/mpc/cheetah/conversion.h"
 
-#include "yacl/utils/parallel.h"
-
 #include "libspu/core/trace.h"
 #include "libspu/mpc/ab_api.h"
 #include "libspu/mpc/cheetah/state.h"
@@ -66,18 +64,16 @@ NdArrayRef B2A::proc(KernelEvalContext* ctx, const NdArrayRef& x) const {
   const auto flatten_x = x.reshape({static_cast<int64_t>(n)});
   NdArrayRef out(x.eltype(), x.shape());
 
-  yacl::parallel_for(0, nworker, 1, [&](int64_t bgn, int64_t end) {
-    for (int64_t job = bgn; job < end; ++job) {
-      auto slice_bgn = std::min<int64_t>(n, job * work_load);
-      auto slice_end = std::min<int64_t>(n, slice_bgn + work_load);
-      if (slice_bgn == slice_end) {
-        break;
-      }
-      auto out_slice = ctx->getState<CheetahOTState>()->get(job)->B2A(
-          flatten_x.slice({slice_bgn}, {slice_end}, {1}));
-      std::memcpy(&out.at(slice_bgn), &out_slice.at(0),
-                  out_slice.elsize() * out_slice.numel());
+  TiledDispatch(ctx, nworker, [&](int64_t job) {
+    auto slice_bgn = std::min<int64_t>(n, job * work_load);
+    auto slice_end = std::min<int64_t>(n, slice_bgn + work_load);
+    if (slice_bgn == slice_end) {
+      return;
     }
+    auto out_slice = ctx->getState<CheetahOTState>()->get(job)->B2A(
+        flatten_x.slice({slice_bgn}, {slice_end}, {1}));
+    std::memcpy(&out.at(slice_bgn), &out_slice.at(0),
+                out_slice.elsize() * out_slice.numel());
   });
 
   return out.as(makeType<AShrTy>(field));

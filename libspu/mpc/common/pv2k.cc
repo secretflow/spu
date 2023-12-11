@@ -72,12 +72,12 @@ class V2P : public UnaryKernel {
       std::vector<ring2k_t> priv(numel);
       NdArrayView<ring2k_t> _in(in);
 
-      pforeach(0, in.numel(), [&](int64_t idx) { priv[idx] = _in[idx]; });
+      pforeach(0, numel, [&](int64_t idx) { priv[idx] = _in[idx]; });
 
       std::vector<ring2k_t> publ = comm->bcast<ring2k_t>(priv, owner, "v2p");
 
       NdArrayView<ring2k_t> _out(out);
-      pforeach(0, in.numel(), [&](int64_t idx) { _out[idx] = publ[idx]; });
+      pforeach(0, numel, [&](int64_t idx) { _out[idx] = publ[idx]; });
     });
     return out;
   }

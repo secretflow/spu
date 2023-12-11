@@ -99,6 +99,7 @@ setup_spec = SetupSpec(
 # NOTE: The lists below must be kept in sync with spu/BUILD.bazel.
 spu_lib_files = [
     "bazel-bin/spu/libspu" + pyd_suffix,
+    "bazel-bin/spu/libpsi" + pyd_suffix,
 ]
 
 # These are the directories where automatically generated Python protobuf
@@ -106,8 +107,6 @@ spu_lib_files = [
 generated_python_directories = [
     "bazel-bin/spu",
     "bazel-bin/libspu",
-    "bazel-bin/libspu/pir",
-    "bazel-bin/libspu/psi",
     "bazel-bin/spu/utils",
 ]
 
@@ -152,10 +151,8 @@ def build(build_python, build_cpp):
 
     bazel_flags.extend(["-c", "opt"])
 
-    if sys.platform == "linux":
-        bazel_flags.extend(["--config=linux-release"])
-        if ENABLE_GPU_BUILD:
-            bazel_flags.extend(["--config=gpu"])
+    if sys.platform == "linux" and ENABLE_GPU_BUILD:
+        bazel_flags.extend(["--config=gpu"])
 
     if platform.machine() == "x86_64":
         bazel_flags.extend(["--config=avx"])

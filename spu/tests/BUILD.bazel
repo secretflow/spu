@@ -250,3 +250,11 @@ py_test(
         "//spu/utils:distributed",
     ],
 )
+
+py_test(
+    name = "jax_compile_test",
+    srcs = ["jax_compile_test.py"],
+    deps = [
+        ":jnp_testbase",
+    ],
+)

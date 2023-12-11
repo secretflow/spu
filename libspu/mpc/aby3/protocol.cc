@@ -17,6 +17,7 @@
 #include "libspu/mpc/aby3/arithmetic.h"
 #include "libspu/mpc/aby3/boolean.h"
 #include "libspu/mpc/aby3/conversion.h"
+#include "libspu/mpc/aby3/permute.h"
 #include "libspu/mpc/aby3/type.h"
 #include "libspu/mpc/common/communicator.h"
 #include "libspu/mpc/common/prg_state.h"
@@ -84,6 +85,11 @@ void regAby3Protocol(SPUContext* ctx,
   ctx->prot()->regKernel<aby3::BitIntlB>();
   ctx->prot()->regKernel<aby3::BitDeintlB>();
   ctx->prot()->regKernel<aby3::RandA>();
+  ctx->prot()->regKernel<aby3::RandPermS>();
+  ctx->prot()->regKernel<aby3::PermAS>();
+  ctx->prot()->regKernel<aby3::PermAP>();
+  ctx->prot()->regKernel<aby3::InvPermAS>();
+  ctx->prot()->regKernel<aby3::InvPermAP>();
 }
 
 std::unique_ptr<SPUContext> makeAby3Protocol(

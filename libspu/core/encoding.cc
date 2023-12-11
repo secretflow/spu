@@ -80,8 +80,7 @@ NdArrayRef encodeToRing(const PtBufferView& bv, FieldType field,
         auto _dst = NdArrayView<T>(dst);
 
         pforeach(0, numel, [&](int64_t idx) {
-          const auto indices = unflattenIndex(idx, bv.shape);
-          auto src_value = bv.get<Float>(indices);
+          auto src_value = bv.get<Float>(idx);
           if (std::isnan(src_value)) {
             // see numpy.nan_to_num
             // note(jint) I dont know why nan could be
@@ -113,8 +112,7 @@ NdArrayRef encodeToRing(const PtBufferView& bv, FieldType field,
         auto _dst = NdArrayView<T>(dst);
         // TODO: encoding integer in range [-2^(k-2),2^(k-2))
         pforeach(0, numel, [&](int64_t idx) {
-          const auto indices = unflattenIndex(idx, bv.shape);
-          auto src_value = bv.get<Integer>(indices);
+          auto src_value = bv.get<Integer>(idx);
           _dst[idx] = static_cast<T>(src_value);  // NOLINT
         });
       });
@@ -147,8 +145,6 @@ void decodeFromRing(const NdArrayRef& src, DataType in_dtype, size_t fxp_bits,
       auto _src = NdArrayView<T>(src);
 
       if (in_dtype == DT_I1) {
-        constexpr bool kSanity = std::is_same_v<ScalarT, bool>;
-        SPU_ENFORCE(kSanity);
         pforeach(0, numel, [&](int64_t idx) {
           bool value = !((_src[idx] & 0x1) == 0);
           out_bv->set<bool>(idx, value);

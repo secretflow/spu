@@ -31,7 +31,7 @@ namespace spu::compiler {
 
 class CompilationContext {
 public:
-  CompilationContext();
+  explicit CompilationContext(CompilerOptions options);
 
   ~CompilationContext();
 
@@ -39,8 +39,6 @@ public:
 
   /// Setup pretty print for a pass manager
   void setupPrettyPrintConfigurations(mlir::PassManager *pm);
-
-  void setCompilerOptions(const std::string &serialized_copts);
 
   const CompilerOptions &getCompilerOptions() const { return options_; }
 
@@ -59,7 +57,7 @@ private:
   mlir::MLIRContext context_;
   std::unique_ptr<mlir::PassManager::IRPrinterConfig> pp_config_;
 
-  CompilerOptions options_;
+  const CompilerOptions options_;
 };
 
 } // namespace spu::compiler

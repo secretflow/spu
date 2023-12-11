@@ -16,6 +16,7 @@
 
 #include "libspu/mpc/ab_api.h"
 #include "libspu/mpc/common/communicator.h"
+#include "libspu/mpc/common/prg_state.h"
 #include "libspu/mpc/common/pv2k.h"
 #include "libspu/mpc/semi2k/state.h"
 #include "libspu/mpc/semi2k/type.h"
@@ -55,25 +56,18 @@ NdArrayRef SecureInvPerm(KernelEvalContext* ctx, const NdArrayRef& x,
   }
 }
 
-PermVector ring2pv(const NdArrayRef& x) {
-  SPU_ENFORCE(x.eltype().isa<Ring2k>(), "must be ring2k_type, got={}",
-              x.eltype());
-  const auto field = x.eltype().as<Ring2k>()->field();
-  PermVector pv(x.numel());
-  DISPATCH_ALL_FIELDS(field, "_", [&]() {
-    NdArrayView<ring2k_t> _x(x);
-    pforeach(0, x.numel(), [&](int64_t idx) { pv[idx] = int64_t(_x[idx]); });
-  });
-  return pv;
-}
-
 }  // namespace
 
 NdArrayRef RandPermS::proc(KernelEvalContext* ctx, const Shape& shape) const {
   NdArrayRef out(makeType<PShrTy>(), shape);
-  const auto field = out.eltype().as<PShrTy>()->field();
-  const auto perm_vector = genRandomPerm(out.numel());
 
+  // generate a RandU64 as permutation seed
+  auto* prg_state = ctx->getState<PrgState>();
+  const auto seed = prg_state->genPriv(FieldType::FM64, {1});
+  NdArrayView<uint64_t> _seed(seed);
+  const auto perm_vector = genRandomPerm(out.numel(), _seed[0]);
+
+  const auto field = out.eltype().as<PShrTy>()->field();
   DISPATCH_ALL_FIELDS(field, "_", [&]() {
     NdArrayView<ring2k_t> _out(out);
     pforeach(0, out.numel(),

@@ -948,6 +948,7 @@ def PPHLO_SimpleSortOp
   let arguments = (ins
     Variadic<PPHLO_Tensor>:$operands,
     DefaultValuedAttr<I64Attr, "-1">:$dimension,
+    DefaultValuedAttr<I64Attr, "1">:$num_keys,
     PPHLO_SortDirection: $sort_direction
   );
 

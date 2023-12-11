@@ -52,7 +52,7 @@ Value PrefixSum(SPUContext *ctx, const Value &x) {
   SPU_ENFORCE(x.shape().ndim() == 2U && x.shape()[0] == 1,
               "x should be 1-row matrix");
 
-  auto padding0 = _constant(ctx, 0U, {1, 1});
+  auto padding0 = _p2s(ctx, _constant(ctx, 0U, {1, 1}));
   auto x_t = x;
   for (int64_t shift = 1; shift < x.numel(); shift *= 2) {
     auto x_slice = slice(ctx, x_t, {0, 0}, {1, x.numel() - shift}, {});
@@ -63,10 +63,8 @@ Value PrefixSum(SPUContext *ctx, const Value &x) {
   return x_t;
 }
 
-using SequenceT = std::vector<std::pair<Index, Index>>;
-
 void CmpSwap(SPUContext *ctx, const CompFn &comparator_body,
-             std::vector<spu::Value> &values_to_sort, const Index &lhs_indices,
+             absl::Span<spu::Value> values_to_sort, const Index &lhs_indices,
              const Index &rhs_indices) {
   size_t num_operands = values_to_sort.size();
 
@@ -83,90 +81,67 @@ void CmpSwap(SPUContext *ctx, const CompFn &comparator_body,
   predicate = hal::_prefer_a(ctx, predicate);
 
   for (size_t i = 0; i < num_operands; ++i) {
-    auto fst = values[2 * i];
-    auto sec = values[2 * i + 1];
+    const auto &fst = values[2 * i];
+    const auto &sec = values[2 * i + 1];
 
-    auto greater = spu::kernel::hal::select(ctx, predicate, fst, sec);
-    auto less = spu::kernel::hal::select(ctx, predicate, sec, fst);
+    auto greater = select(ctx, predicate, fst, sec);
+    auto less = sub(ctx, add(ctx, fst, sec), greater);
 
     values_to_sort[i].data().linear_scatter(greater.data(), lhs_indices);
     values_to_sort[i].data().linear_scatter(less.data(), rhs_indices);
   }
 }
 
-// Bitonic sort sequence for arbitrary size
+// Secure Odd-even mergesort
 // Ref:
-// https://www.inf.hs-flensburg.de/lang/algorithmen/sortieren/bitonic/oddn.htm
-inline int GreatestPowerOfTwoLessThan(int64_t n) {
-  int64_t k = 1;
-  while (k < n) {
-    k = k << 1;
-  }
-  return k >> 1;
-}
-
-void MergeSequence(SequenceT &seq, int64_t lo, int64_t n, bool forward,
-                   int64_t &depth) {
-  if (n > 1) {
-    auto m = GreatestPowerOfTwoLessThan(n);
-    if (static_cast<int64_t>(seq.size()) - 1 < depth) {
-      seq.resize(depth + 1);
+// https://hwlang.de/algorithmen/sortieren/networks/oemen.htm
+std::vector<spu::Value> OddEvenMergeSort(SPUContext *ctx,
+                                         const CompFn &comparator_body,
+                                         absl::Span<spu::Value const> inputs) {
+  // make a copy for inplace sort
+  std::vector<spu::Value> ret;
+  for (auto const &input : inputs) {
+    if (input.isPublic()) {
+      // we can not linear_scatter a secret value to a public operand
+      ret.emplace_back(_p2s(ctx, input.clone()).setDtype(input.dtype()));
+    } else {
+      ret.emplace_back(input.clone());
     }
-    for (auto i = lo; i < lo + n - m; ++i) {
-      if (forward) {
-        seq[depth].first.emplace_back(i);
-        seq[depth].second.emplace_back(i + m);
-      } else {
-        seq[depth].first.emplace_back(i + m);
-        seq[depth].second.emplace_back(i);
+  }
+
+  // sort by per network layer for memory optimizations, sorting N elements
+  // needs log2(N) stages, and the i_th stage has i layers, which means the
+  // same latency cost as BitonicSort but less CmpSwap unit.
+  const auto n = inputs.front().numel();
+  for (int64_t max_gap_in_stage = 1; max_gap_in_stage < n;
+       max_gap_in_stage += max_gap_in_stage) {
+    for (int64_t step = max_gap_in_stage; step > 0; step /= 2) {
+      // collect index pairs that can be computed parallelly.
+      Index lhs_indices;
+      Index rhs_indices;
+
+      for (int64_t j = step % max_gap_in_stage; j + step < n;
+           j += step + step) {
+        for (int64_t i = 0; i < step; i++) {
+          auto lhs_idx = i + j;
+          auto rhs_idx = i + j + step;
+
+          if (rhs_idx >= n) break;
+
+          auto range = max_gap_in_stage + max_gap_in_stage;
+          if (lhs_idx / range == rhs_idx / range) {
+            lhs_indices.emplace_back(lhs_idx);
+            rhs_indices.emplace_back(rhs_idx);
+          }
+        }
       }
+
+      CmpSwap(ctx, comparator_body, absl::MakeSpan(ret), lhs_indices,
+              rhs_indices);
     }
-    ++depth;
-
-    int64_t lower_depth = depth;
-    MergeSequence(seq, lo, m, forward, lower_depth);
-
-    int64_t upper_depth = depth;
-    MergeSequence(seq, lo + m, n - m, forward, upper_depth);
-
-    depth = std::max(lower_depth, upper_depth);
   }
-}
 
-void SortSequence(SequenceT &seq, int64_t lo, int64_t n, bool forward,
-                  int64_t &depth) {
-  if (n > 1) {
-    int64_t m = n / 2;
-    int64_t lower_depth = depth;
-
-    SortSequence(seq, lo, m, !forward, lower_depth);
-
-    int64_t upper_depth = depth;
-    SortSequence(seq, lo + m, n - m, forward, upper_depth);
-
-    depth = std::max(lower_depth, upper_depth);
-
-    MergeSequence(seq, lo, n, forward, ++depth);
-  }
-}
-
-void BuildCmpSwapSequence(SequenceT &seq, int64_t numel) {
-  int64_t depth = 0;
-  SortSequence(seq, 0, numel, true, depth);
-}
-
-void BitonicSort(SPUContext *ctx, const CompFn &comparator_body,
-                 std::vector<spu::Value> &values_to_sort) {
-  // Build a sorting network...
-  SequenceT sequence;
-  BuildCmpSwapSequence(sequence, values_to_sort.front().numel());
-
-  for (const auto &seq : sequence) {
-    if (seq.first.empty()) {
-      continue;  // Skip empty sequence
-    }
-    CmpSwap(ctx, comparator_body, values_to_sort, seq.first, seq.second);
-  }
+  return ret;
 }
 
 // Secure shuffle a shared permutation <perm> and use it to permute shared bit
@@ -216,9 +191,10 @@ std::pair<std::vector<spu::Value>, spu::Value> ShufflePerm(
 //   output: shared inverse permutation
 //
 // We can generate inverse permutation by two bit vectors in one loop.
-// It needs one extra mul op and 2 times memory to store intermediate data than
-// GenInvPermByBitVector. But the number of invocations of permutation-related
-// protocols such as SecureInvPerm or Compose will be reduced to half.
+// It needs one extra mul op and 2 times memory to store intermediate data
+// than GenInvPermByBitVector. But the number of invocations of
+// permutation-related protocols such as SecureInvPerm or Compose will be
+// reduced to half.
 //
 // If we process three bit vectors in one loop, it needs at least four extra
 // mul ops and 2^2 times data to store intermediate data. The number of
@@ -336,8 +312,8 @@ spu::Value GenInvPermByBitVector(SPUContext *ctx, const spu::Value &x) {
 
 // This is the inverse of ShufflePerm.
 // The input is a shared inverse permutation <perm>, a public permutation
-// shuffled_perm generated by ShufflePerm, and a secret permutation random_perm
-// for secure unshuffle.
+// shuffled_perm generated by ShufflePerm, and a secret permutation
+// random_perm for secure unshuffle.
 //
 // The steps are as follows:
 //   1) permute <perm> by shuffled_perm as <sm>
@@ -385,8 +361,8 @@ std::vector<spu::Value> GenBvVector(SPUContext *ctx,
 
     SPU_ENFORCE(t.size() > 0);
     for (size_t j = 0; j < t.size() - 1; j++) {
-      // Radix sort is a stable sorting algorithm for the ascending order, if we
-      // flip the bit, then we can get the descending order for stable sort
+      // Radix sort is a stable sorting algorithm for the ascending order, if
+      // we flip the bit, then we can get the descending order for stable sort
       if (direction == SortDirection::Descending) {
         ret.emplace_back(_sub(ctx, k1, t[j]));
       } else {
@@ -441,8 +417,8 @@ spu::Value GenInvPerm(SPUContext *ctx, absl::Span<spu::Value const> inputs,
   return shared_perm;
 }
 
-// Apply inverse permutation on each tensor of x by a shared inverse permutation
-// <perm>
+// Apply inverse permutation on each tensor of x by a shared inverse
+// permutation <perm>
 std::vector<spu::Value> ApplyInvPerm(SPUContext *ctx,
                                      absl::Span<spu::Value const> x,
                                      const spu::Value &perm) {
@@ -485,8 +461,8 @@ std::vector<spu::Value> ApplyInvPerm(SPUContext *ctx,
 // Ref:
 //  https://eprint.iacr.org/2019/695.pdf
 //
-// Each input is a 1-d tensor, inputs[0, num_keys) are the keys, and sort inputs
-// according to keys
+// Each input is a 1-d tensor, inputs[0, num_keys) are the keys, and sort
+// inputs according to keys
 std::vector<spu::Value> RadixSort(SPUContext *ctx,
                                   absl::Span<spu::Value const> inputs,
                                   SortDirection direction, int64_t num_keys,
@@ -539,15 +515,13 @@ std::vector<spu::Value> sort1d(SPUContext *ctx,
     for (const auto &input : inputs) {
       ret.push_back(Permute1D(ctx, input, indices_to_sort));
     }
-  } else {
+  } else if (comparator_ret_vis == VIS_SECRET) {
     SPU_ENFORCE(!is_stable,
                 "Stable sort is unsupported if comparator return is secret.");
 
-    // make a copy for inplace sort
-    for (auto const &input : inputs) {
-      ret.push_back(input.clone());
-    }
-    BitonicSort(ctx, cmp, ret);
+    ret = OddEvenMergeSort(ctx, cmp, inputs);
+  } else {
+    SPU_THROW("Should not reach here");
   }
 
   return ret;
@@ -604,11 +578,11 @@ std::vector<spu::Value> simple_sort1d(SPUContext *ctx,
     hal::CompFn comp_fn =
         [ctx, num_keys,
          &scalar_cmp](absl::Span<const spu::Value> values) -> spu::Value {
-      spu::Value pre_equal = hal::constant(ctx, true, DT_I1);
-      if (pre_equal.shape() != values[0].shape()) {
-        pre_equal = hal::broadcast_to(ctx, pre_equal, values[0].shape());
-      }
+      spu::Value pre_equal = hal::constant(ctx, true, DT_I1, values[0].shape());
       spu::Value result = scalar_cmp(ctx, values[0], values[1]);
+      // the idea here is that if the two values of the last key is equal, than
+      // we compare the two values of the current key, and iteratively to update
+      // the result which indicates whether to swap values
       for (int64_t idx = 2; idx < num_keys * 2; idx += 2) {
         pre_equal = hal::bitwise_and(
             ctx, pre_equal, hal::equal(ctx, values[idx - 2], values[idx - 1]));
@@ -618,8 +592,12 @@ std::vector<spu::Value> simple_sort1d(SPUContext *ctx,
       }
       return result;
     };
-
-    auto ret = sort1d(ctx, inputs, comp_fn, inputs[0].vtype(), false);
+    Visibility vis =
+        std::all_of(inputs.begin(), inputs.begin() + num_keys,
+                    [](const spu::Value &v) { return v.isPublic(); })
+            ? VIS_PUBLIC
+            : VIS_SECRET;
+    auto ret = sort1d(ctx, inputs, comp_fn, vis, false);
     return ret;
   }
 }

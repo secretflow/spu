@@ -32,6 +32,7 @@ spu_cc_library(
         ":arithmetic",
         ":boolean",
         ":conversion",
+        ":permute",
         ":value",
     ],
 )
@@ -180,5 +181,19 @@ spu_cc_test(
     srcs = ["type_test.cc"],
     deps = [
         ":type",
+    ],
+)
+
+spu_cc_library(
+    name = "permute",
+    srcs = ["permute.cc"],
+    hdrs = ["permute.h"],
+    deps = [
+        ":type",
+        ":value",
+        "//libspu/mpc:kernel",
+        "//libspu/mpc/common:communicator",
+        "//libspu/mpc/utils:permute",
+        "//libspu/mpc/utils:ring_ops",
     ],
 )

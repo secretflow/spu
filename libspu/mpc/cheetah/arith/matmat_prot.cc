@@ -255,9 +255,8 @@ void MatMatProtocol::EncodeMatrix(const NdArrayRef& mat, const Meta& meta,
 
   Indexer indexer(subshape, poly_deg_);
   size_t num_jobs = num_row_blocks * num_col_blocks;
-  size_t wload = CalculateWorkLoad(num_jobs);
 
-  yacl::parallel_for(0, num_jobs, wload, [&](int64_t job_bgn, int64_t job_end) {
+  yacl::parallel_for(0, num_jobs, [&](int64_t job_bgn, int64_t job_end) {
     std::array<int64_t, 2> extents;
     for (int64_t job_id = job_bgn; job_id < job_end; ++job_id) {
       int64_t rblk = job_id / num_col_blocks;
@@ -469,14 +468,12 @@ NdArrayRef MatMatProtocol::ParseBatchPackedResult(
   const int64_t numel_per_dot = meta.dims[0] * meta.dims[2];
 
   std::vector<NdArrayRef> decoded_vectors(polys.size());
-  yacl::parallel_for(0, polys.size(), CalculateWorkLoad(polys.size()),
-                     [&](int64_t bgn, int64_t end) {
-                       for (int64_t i = bgn; i < end; ++i) {
-                         decoded_vectors[i] = msh.ModulusDownRNS(
-                             field, {poly_deg_},
-                             {polys[i].data(), polys[i].coeff_count()});
-                       }
-                     });
+  yacl::parallel_for(0, polys.size(), [&](int64_t bgn, int64_t end) {
+    for (int64_t i = bgn; i < end; ++i) {
+      decoded_vectors[i] = msh.ModulusDownRNS(
+          field, {poly_deg_}, {polys[i].data(), polys[i].coeff_count()});
+    }
+  });
 
   PackRLWEMappingHelper mapper(poly_deg_, gap, total_polys);
 
@@ -589,8 +586,7 @@ void MatMatProtocol::DoCompute(absl::Span<const LHS> lhs,
   }
 
   if (dims[0] >= dims[2]) {
-    auto wload = CalculateWorkLoad(dims[0]);
-    yacl::parallel_for(0, dims[0], wload, [&](int64_t bgn, int64_t end) {
+    yacl::parallel_for(0, dims[0], [&](int64_t bgn, int64_t end) {
       // Loop dim0
       for (int64_t i = bgn; i < end; ++i) {
         // out[i, k]
@@ -608,8 +604,7 @@ void MatMatProtocol::DoCompute(absl::Span<const LHS> lhs,
       }
     });
   } else {
-    auto wload = CalculateWorkLoad(dims[2]);
-    yacl::parallel_for(0, dims[2], wload, [&](int64_t bgn, int64_t end) {
+    yacl::parallel_for(0, dims[2], [&](int64_t bgn, int64_t end) {
       // Loop dim2
       for (int64_t k = bgn; k < end; ++k) {
         // NOTE(lwj): RHS is stored in column-major

@@ -211,13 +211,13 @@ void YaclFerretOTeAdapter::Bootstrap() {
     yacl::AlignedVector<uint128_t> send_ot(ot_buff_.begin(),
                                            ot_buff_.begin() + reserve_num_);
     auto send_ot_store = yc::MakeCompactOtSendStore(std::move(send_ot), Delta);
-    yc::FerretOtExtSend_Cheetah(ctx_, send_ot_store, lpn_param_, lpn_param_.n,
+    yc::FerretOtExtSend_cheetah(ctx_, send_ot_store, lpn_param_, lpn_param_.n,
                                 absl::MakeSpan(ot_buff_.data(), lpn_param_.n));
   } else {
     yacl::AlignedVector<uint128_t> recv_ot(ot_buff_.begin(),
                                            ot_buff_.begin() + reserve_num_);
     auto recv_ot_store = yc::MakeCompactOtRecvStore(std::move(recv_ot));
-    yc::FerretOtExtRecv_Cheetah(ctx_, recv_ot_store, lpn_param_, lpn_param_.n,
+    yc::FerretOtExtRecv_cheetah(ctx_, recv_ot_store, lpn_param_, lpn_param_.n,
                                 absl::MakeSpan(ot_buff_.data(), lpn_param_.n));
   }
   auto end = std::chrono::high_resolution_clock::now();
@@ -244,11 +244,11 @@ void YaclFerretOTeAdapter::BootstrapInplace(absl::Span<uint128_t> ot,
   auto begin = std::chrono::high_resolution_clock::now();
   if (is_sender_) {
     auto send_ot_store = yc::MakeCompactOtSendStore(std::move(ot_tmp), Delta);
-    yc::FerretOtExtSend_Cheetah(ctx_, send_ot_store, lpn_param_, lpn_param_.n,
+    yc::FerretOtExtSend_cheetah(ctx_, send_ot_store, lpn_param_, lpn_param_.n,
                                 data);
   } else {
     auto recv_ot_store = yc::MakeCompactOtRecvStore(std::move(ot_tmp));
-    yc::FerretOtExtRecv_Cheetah(ctx_, recv_ot_store, lpn_param_, lpn_param_.n,
+    yc::FerretOtExtRecv_cheetah(ctx_, recv_ot_store, lpn_param_, lpn_param_.n,
                                 data);
   }
   auto end = std::chrono::high_resolution_clock::now();

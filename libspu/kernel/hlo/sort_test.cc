@@ -14,6 +14,9 @@
 
 #include "libspu/kernel/hlo/sort.h"
 
+#include <algorithm>
+#include <random>
+#include <xtensor/xadapt.hpp>
 #include <xtensor/xsort.hpp>
 
 #include "gtest/gtest.h"
@@ -163,6 +166,66 @@ TEST(SortTest, EmptyOperands) {
   EXPECT_EQ(rets[0].numel(), 0);
   EXPECT_EQ(rets[0].shape().size(), 1);
   EXPECT_EQ(rets[0].shape()[0], 0);
+}
+
+TEST(SortTest, LargeNumel) {
+  SPUContext ctx = test::makeSPUContext();
+
+  std::vector<std::size_t> numels = {63, 64, 65, 149, 170, 255, 256, 257, 500};
+
+  for (auto numel : numels) {
+    std::vector<int64_t> asc_arr(numel);
+    std::vector<std::size_t> shape = {numel};
+    std::iota(asc_arr.begin(), asc_arr.end(), 0);
+
+    auto shuffled_arr = asc_arr;
+    std::random_device rd;
+    std::mt19937 rng(rd());
+    std::shuffle(shuffled_arr.begin(), shuffled_arr.end(), rng);
+
+    auto des_arr = asc_arr;
+    std::reverse(des_arr.begin(), des_arr.end());
+
+    auto x = xt::adapt(shuffled_arr, shape);
+    auto asc_x = xt::adapt(asc_arr, shape);
+    auto des_x = xt::adapt(des_arr, shape);
+
+    Value x_v = test::makeValue(&ctx, x, VIS_SECRET);
+
+    // ascending sort
+    std::vector<spu::Value> rets = Sort(
+        &ctx, {x_v}, 0, false,
+        [&](absl::Span<const spu::Value> inputs) {
+          return hal::less(&ctx, inputs[0], inputs[1]);
+        },
+        Visibility::VIS_SECRET);
+
+    EXPECT_EQ(rets.size(), 1);
+
+    auto asc_x_hat =
+        hal::dump_public_as<float>(&ctx, hal::reveal(&ctx, rets[0]));
+
+    EXPECT_TRUE(xt::allclose(asc_x, asc_x_hat, 0.01, 0.001))
+        << asc_x << std::endl
+        << asc_x_hat << std::endl;
+
+    // descending sort
+    rets = Sort(
+        &ctx, {x_v}, 0, false,
+        [&](absl::Span<const spu::Value> inputs) {
+          return hal::greater(&ctx, inputs[0], inputs[1]);
+        },
+        Visibility::VIS_SECRET);
+
+    EXPECT_EQ(rets.size(), 1);
+
+    auto des_x_hat =
+        hal::dump_public_as<float>(&ctx, hal::reveal(&ctx, rets[0]));
+
+    EXPECT_TRUE(xt::allclose(des_x, des_x_hat, 0.01, 0.001))
+        << des_x << std::endl
+        << des_x_hat << std::endl;
+  }
 }
 
 TEST(SimpleSortTest, MultiOperands) {

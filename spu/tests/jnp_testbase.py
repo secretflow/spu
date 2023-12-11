@@ -464,8 +464,8 @@ class JnpTests:
                 spu_out,
                 jnp_out,
                 decimal=1,
-                err_msg="{} faild, spu = {}, jnp = {}, args = {}".format(
-                    name, spu_out, jnp_out, args
+                err_msg="{} failed, spu = {}, jnp = {}, args = {}, pphlo = {}".format(
+                    name, spu_out, jnp_out, args, spu_op.pphlo
                 ),
             )
 
@@ -498,7 +498,9 @@ class JnpTests:
                 spu_out,
                 jnp_out,
                 decimal=1,
-                err_msg="{} faild, spu = {}, jnp = {}".format(name, spu_out, jnp_out),
+                err_msg="{} failed, spu = {}, jnp = {}, args = {}, pphlo = {}".format(
+                    name, spu_out, jnp_out, args, spu_fn.pphlo
+                ),
             )
 
         @parameterized.parameters(
@@ -525,8 +527,8 @@ class JnpTests:
             npt.assert_equal(
                 spu_out,
                 jnp_out,
-                err_msg="{} faild.\nlhs = {},\nspu = {}\njnp = {}".format(
-                    name, *args, spu_out, jnp_out
+                err_msg="{} failed.\nlhs = {},\nspu = {}\njnp = {}\npphlo = {}".format(
+                    name, *args, spu_out, jnp_out, spu_fn.pphlo
                 ),
             )
 
@@ -556,8 +558,8 @@ class JnpTests:
             npt.assert_equal(
                 spu_out,
                 jnp_out,
-                err_msg="{} faild.\nlhs = {}, rhs = {}\nspu = {}\njnp = {}".format(
-                    name, *args, rhs, spu_out, jnp_out
+                err_msg="{} failed.\nlhs = {}, rhs = {}\nspu = {}\njnp = {}\npphlo = {}".format(
+                    name, *args, rhs, spu_out, jnp_out, spu_fn.pphlo
                 ),
             )
 
@@ -572,7 +574,7 @@ class JnpTests:
             npt.assert_equal(
                 spu_out,
                 jnp_out,
-                err_msg="take faild.\nx = {}, indices = {}\nspu = {}\njnp = {}".format(
-                    args[0], args[1], spu_out, jnp_out
+                err_msg="take failed.\nx = {}, indices = {}\nspu = {}\njnp = {}\npphlo = {}".format(
+                    args[0], args[1], spu_out, jnp_out, spu_fn.pphlo
                 ),
             )

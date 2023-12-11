@@ -67,10 +67,10 @@ NdArrayRef makeBShare(const NdArrayRef& s1, const NdArrayRef& s2,
     NdArrayView<ring2k_t> _s1(s1);
     NdArrayView<ring2k_t> _s2(s2);
     pforeach(0, res_numel, [&](int64_t i) {
-      pforeach(0, nbits, [&](int64_t j) {
+      for (int64_t j = 0; j < nbits; ++j) {
         _res[i * k + j][0] = _s1[i * nbits + j];
         _res[i * k + j][1] = _s2[i * nbits + j];
-      });
+      }
     });
   });
   return res;
@@ -114,9 +114,9 @@ NdArrayRef getShare(const NdArrayRef& in, int64_t share_idx) {
         NdArrayView<std::array<ring2k_t, 2>> _in(in);
 
         pforeach(0, numel, [&](int64_t i) {
-          pforeach(0, nbits, [&](int64_t j) {
+          for (size_t j = 0; j < nbits; ++j) {
             _ret[i * nbits + j] = _in[i * k + j][share_idx];
-          });
+          }
         });
       });
 

@@ -22,7 +22,7 @@ constexpr char kPermModule[] = "Permute";
 
 using PermVector = std::vector<int64_t>;
 
-PermVector genRandomPerm(size_t size);
+PermVector genRandomPerm(size_t size, uint64_t seed);
 
 PermVector genInversePerm(absl::Span<const int64_t> pv);
 
@@ -36,5 +36,8 @@ NdArrayRef applyInvPerm(const NdArrayRef& x, absl::Span<const int64_t> pv);
 // reorder 1-d tensor element by applying permutation.
 // ret = ApplyPerm(x, pv) -> ret[i] = x[pv[i]]
 NdArrayRef applyPerm(const NdArrayRef& x, absl::Span<const int64_t> pv);
+
+// get a permutation vector from a ring
+PermVector ring2pv(const NdArrayRef& x);
 
 }  // namespace spu::mpc
