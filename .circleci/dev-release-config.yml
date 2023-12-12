@@ -30,14 +30,32 @@ parameters:
     type: string
     default: ""
 
-
 # Define a job to be invoked later in a workflow.
 # See: https://circleci.com/docs/2.0/configuration-reference/#jobs
 jobs:
-  linux_publish:
+  linux_x64_publish:
     docker:
       - image: secretflow/release-ci:latest
     resource_class: 2xlarge+
+    shell: /bin/bash --login -eo pipefail
+    steps:
+      - checkout
+      - run:
+          name: "build package and publish"
+          command: |
+            conda update -n base -c defaults conda -y
+            conda create -n build python=3.8 -y
+            conda activate build
+
+            sh ./build_wheel_entrypoint.sh
+            python3 -m pip install twine
+            ls dist/*.whl
+
+            python3 -m twine upload -r pypi -u __token__ -p ${PYPI_TWINE_TOKEN} dist/*.whl
+  linux_aarch64_publish:
+    docker:
+      - image: secretflow/release-ci-aarch64:latest
+    resource_class: arm.2xlarge
     shell: /bin/bash --login -eo pipefail
     steps:
       - checkout
@@ -88,7 +106,11 @@ jobs:
 workflows:
   dev-publish:
     jobs:
-      - linux_publish:
+      - linux_x64_publish:
+          filters:
+            tags:
+              only: /.*/
+      - linux_aarch64_publish:
           filters:
             tags:
               only: /.*/
