@@ -16,7 +16,7 @@ from __future__ import annotations
 
 from typing import List
 
-from . import libspu  # type: ignore
+from .libspu.link import Context  # type: ignore
 from . import libpsi  # type: ignore
 from .pir_pb2 import (  # type: ignore
     KvStoreType,

@@ -16,7 +16,8 @@ from __future__ import annotations
 
 from typing import List
 
-from . import libspu  # type: ignore
+from .libspu.link import Context  # type: ignore
+from .libpsi.libs import ProgressData
 from . import libpsi  # type: ignore
 from .psi_pb2 import (  # type: ignore
     BucketPsiConfig,
@@ -30,13 +31,13 @@ from .psi_pb2 import (  # type: ignore
 
 
 def mem_psi(
-    link: libspu.link.Context, config: MemoryPsiConfig, input_items: List[str]
+    link: Context, config: MemoryPsiConfig, input_items: List[str]
 ) -> List[str]:
     return libpsi.libs.mem_psi(link, config.SerializeToString(), input_items)
 
 
 def bucket_psi(
-    link: libspu.link.Context,
+    link: Context,
     config: BucketPsiConfig,
     progress_callbacks: [[libpsi.libs.ProgressData], None] = None,
     callbacks_interval_ms: int = 5 * 1000,
