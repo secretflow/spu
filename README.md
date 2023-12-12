@@ -30,9 +30,9 @@ This documentation also contains instructions for [build and testing](CONTRIBUTI
 
 ### Supported platforms
 
-|            | Linux x86_64 | Linux aarch64 | macOS x86_64   | macOS Apple Silicon | Windows x86_64 | Windows WSL2 x86_64 |
+|            | Linux x86_64 | Linux aarch64 | macOS x86_64 | macOS Apple Silicon | Windows x86_64 | Windows WSL2 x86_64 |
 |------------|--------------|---------------|--------------|--------------|----------------|---------------------|
-| CPU        | yes          | no            | yes          | yes          | no             | yes                 |
+| CPU        | yes          | experimental  | yes          | yes          | no             | yes                 |
 | NVIDIA GPU | experimental | no            | no           | n/a          | no             | no                  |
 
 ### Instructions
