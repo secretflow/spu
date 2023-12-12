@@ -27,7 +27,6 @@ parameters:
     type: string
     default: ""
 
-
 # Define a job to be invoked later in a workflow.
 # See: https://circleci.com/docs/2.0/configuration-reference/#jobs
 jobs:
@@ -95,10 +94,32 @@ jobs:
             ls dist/*.whl
 
             python3 -m twine upload -r pypi -u __token__ -p ${PYPI_TWINE_TOKEN} dist/*.whl
-  linux_publish:
+  linux_x64_publish:
     docker:
       - image: secretflow/release-ci:latest
     resource_class: 2xlarge+
+    parameters:
+      python_ver:
+        type: string
+    shell: /bin/bash --login -eo pipefail
+    steps:
+      - checkout
+      - run:
+          name: "build package and publish"
+          command: |
+            conda update -n base -c defaults conda -y
+            conda create -n build python=<< parameters.python_ver >> -y
+            conda activate build
+
+            sh ./build_wheel_entrypoint.sh
+            python3 -m pip install twine
+            ls dist/*.whl
+
+            python3 -m twine upload -r pypi -u __token__ -p ${PYPI_TWINE_TOKEN} dist/*.whl
+  linux_aarch64_publish:
+    docker:
+      - image: secretflow/release-ci-aarch64:latest
+    resource_class: arm.2xlarge
     parameters:
       python_ver:
         type: string
@@ -123,7 +144,15 @@ jobs:
 workflows:
   publish:
     jobs:
-      - linux_publish:
+      - linux_x64_publish:
+          matrix:
+            parameters:
+              python_ver: ["3.8", "3.9", "3.10", "3.11"]
+          # This is mandatory to trigger a pipeline when pushing a tag
+          filters:
+            tags:
+              only: /.*/
+      - linux_aarch64_publish:
           matrix:
             parameters:
               python_ver: ["3.8", "3.9", "3.10", "3.11"]
@@ -134,7 +163,7 @@ workflows:
       - macOS_x64_publish:
           matrix:
             parameters:
-              python_ver: ['3.8', '3.9', '3.10', '3.11']
+              python_ver: ["3.8", "3.9", "3.10", "3.11"]
           # This is mandatory to trigger a pipeline when pushing a tag
           filters:
             tags:
@@ -142,7 +171,7 @@ workflows:
       - macOS_arm64_publish:
           matrix:
             parameters:
-              python_ver: ['3.8', '3.9', '3.10', '3.11']
+              python_ver: ["3.8", "3.9", "3.10", "3.11"]
           # This is mandatory to trigger a pipeline when pushing a tag
           filters:
             tags:
