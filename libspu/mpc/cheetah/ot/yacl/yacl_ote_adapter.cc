@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "libspu/mpc/cheetah/yacl_ot/yacl_ote_adapter.h"
+#include "libspu/mpc/cheetah/ot/yacl/yacl_ote_adapter.h"
 
 namespace spu::mpc::cheetah {
 
@@ -146,8 +146,7 @@ void YaclFerretOTeAdapter::rcot(absl::Span<uint128_t> data) {
     // Require_num is greater then "buff_upper_bound_ - reserve_num_"
     // which means that an extra "Bootstrap" is needed.
     if (require_num > (buff_upper_bound_ - reserve_num_)) {
-      SPDLOG_INFO("[YACL] Worst Case Occured!!! current require_num {}",
-                  require_num);
+      SPDLOG_WARN("[YACL] Worst Case!!! current require_num {}", require_num);
       // Bootstrap would reset buff_used_num_
       memcpy(data.data() + data_offset, ot_buff_.data() + buff_used_num_,
              (buff_upper_bound_ - reserve_num_) * sizeof(uint128_t));

@@ -47,7 +47,7 @@ class TruncateProtocol {
     size_t shift_bits = 0;
   };
 
-  explicit TruncateProtocol(std::shared_ptr<BasicOTProtocols> base);
+  explicit TruncateProtocol(const std::shared_ptr<BasicOTProtocols> &base);
 
   ~TruncateProtocol();
 
@@ -62,7 +62,7 @@ class TruncateProtocol {
   // w = msbA & msbB
   NdArrayRef MSB1ToWrap(const NdArrayRef &inp, size_t shift_bits);
 
-  std::shared_ptr<BasicOTProtocols> basic_ot_prot_{nullptr};
+  std::shared_ptr<BasicOTProtocols> basic_ot_prot_ = nullptr;
 };
 
 }  // namespace spu::mpc::cheetah

@@ -12,27 +12,25 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "libspu/mpc/cheetah/yacl_ot/yacl_ferret.h"
+#include "libspu/mpc/cheetah/ot/yacl/ferret.h"
 
 #include <utility>
 
-#include "emp-tool/io/io_channel.h"
 #include "spdlog/spdlog.h"
 #include "yacl/base/buffer.h"
 #include "yacl/crypto/tools/random_permutation.h"
 #include "yacl/link/link.h"
 
-#include "libspu/mpc/cheetah/yacl_ot/mitccrh_exp.h"
-#include "libspu/mpc/cheetah/yacl_ot/util.h"
-#include "libspu/mpc/cheetah/yacl_ot/yacl_ote_adapter.h"
+#include "libspu/mpc/cheetah/ot/ot_util.h"
+#include "libspu/mpc/cheetah/ot/yacl/mitccrh_exp.h"
+#include "libspu/mpc/cheetah/ot/yacl/yacl_ote_adapter.h"
+#include "libspu/mpc/cheetah/ot/yacl/yacl_util.h"
 
 namespace spu::mpc::cheetah {
 
 constexpr size_t kOTBatchSize = 8;  // emp-ot/cot.h
 
-// A concrete class for emp::IOChannel
-// Because emp::FerretCOT needs a uniform API of emp::IOChannel
-class CheetahIO : public emp::IOChannel<CheetahIO> {
+class BufferedIO {
  public:
   std::shared_ptr<Communicator> conn_;
 
@@ -47,7 +45,7 @@ class CheetahIO : public emp::IOChannel<CheetahIO> {
   std::vector<uint8_t> recv_buffer_;
   uint64_t recv_buffer_used_;
 
-  explicit CheetahIO(std::shared_ptr<Communicator> conn)
+  explicit BufferedIO(std::shared_ptr<Communicator> conn)
       : conn_(std::move(conn)),
         send_op_(0),
         recv_op_(0),
@@ -56,7 +54,7 @@ class CheetahIO : public emp::IOChannel<CheetahIO> {
     send_buffer_.resize(SEND_BUFFER_SIZE);
   }
 
-  ~CheetahIO() {
+  ~BufferedIO() {
     try {
       flush();
     } catch (const std::exception& e) {
@@ -72,7 +70,7 @@ class CheetahIO : public emp::IOChannel<CheetahIO> {
     conn_->sendAsync(
         conn_->nextRank(),
         absl::Span<const uint8_t>{send_buffer_.data(), send_buffer_used_},
-        fmt::format("CheetahIO send:{}", send_op_++));
+        fmt::format("BufferedIO send:{}", send_op_++));
 
     std::memset(send_buffer_.data(), 0, SEND_BUFFER_SIZE);
     send_buffer_used_ = 0;
@@ -80,11 +78,11 @@ class CheetahIO : public emp::IOChannel<CheetahIO> {
 
   void fill_recv() {
     recv_buffer_ = conn_->recv<uint8_t>(
-        conn_->nextRank(), fmt::format("CheetahIO recv:{}", recv_op_++));
+        conn_->nextRank(), fmt::format("BufferedIO recv:{}", recv_op_++));
     recv_buffer_used_ = 0;
   }
 
-  void send_data_internal(const void* data, int len) {
+  void send_data(const void* data, int len) {
     size_t send_buffer_left = SEND_BUFFER_SIZE - send_buffer_used_;
     if (send_buffer_left <= static_cast<size_t>(len)) {
       std::memcpy(send_buffer_.data() + send_buffer_used_, data,
@@ -92,15 +90,15 @@ class CheetahIO : public emp::IOChannel<CheetahIO> {
       send_buffer_used_ += send_buffer_left;
       flush();
 
-      send_data_internal(static_cast<const char*>(data) + send_buffer_left,
-                         len - send_buffer_left);
+      send_data(static_cast<const char*>(data) + send_buffer_left,
+                len - send_buffer_left);
     } else {
       std::memcpy(send_buffer_.data() + send_buffer_used_, data, len);
       send_buffer_used_ += len;
     }
   }
 
-  void recv_data_internal(void* data, int len) {
+  void recv_data(void* data, int len) {
     if (send_buffer_used_ > 0) {
       flush();
     }
@@ -116,57 +114,17 @@ class CheetahIO : public emp::IOChannel<CheetahIO> {
       }
       fill_recv();
 
-      recv_data_internal(static_cast<char*>(data) + recv_buffer_left,
-                         len - recv_buffer_left);
-    }
-  }
-
-  template <typename T>
-  void send_data_partial(const T* data, int len, int bitlength) {
-    if (bitlength == sizeof(T) * 8) {
-      send_data_internal(static_cast<const void*>(data), len * sizeof(T));
-      return;
-    }
-
-    int compact_len = (bitlength + 7) / 8;
-    std::vector<uint8_t> bytes(len);
-    for (int i = 0; i < compact_len; i++) {
-      for (int j = 0; j < len; j++) {
-        bytes[j] = uint8_t(data[j] >> (i * 8));
-      }
-      send_data_internal(bytes.data(), len);
-    }
-  }
-
-  template <typename T>
-  void recv_data_partial(T* data, int len, int bitlength) {
-    if (bitlength == sizeof(T) * 8) {
-      recv_data_internal(static_cast<void*>(data), len * sizeof(T));
-      return;
-    }
-    std::memset(data, 0, len * sizeof(T));
-
-    int compact_len = (bitlength + 7) / 8;
-    std::vector<uint8_t> bytes(len);
-    for (int i = 0; i < compact_len; i++) {
-      recv_data_internal(bytes.data(), len);
-      for (int j = 0; j < len; j++) {
-        data[j] |= T(bytes[j]) << (i * 8);
-      }
-    }
-    T mask = (T(1) << bitlength) - 1;
-    for (int i = 0; i < len; i++) {
-      data[i] &= mask;
+      recv_data(static_cast<char*>(data) + recv_buffer_left,
+                len - recv_buffer_left);
     }
   }
 };
 
-struct YaclFerretOT::Impl {
+struct YaclFerretOt::Impl {
  private:
   const bool is_sender_;
 
-  std::shared_ptr<CheetahIO> io_{nullptr};
-  std::array<CheetahIO*, 1> io_holder_;
+  std::shared_ptr<BufferedIO> io_{nullptr};
   std::shared_ptr<YaclOTeAdapter> ferret_{nullptr};
 
   MITCCRHExp<8> mitccrh_exp_{};
@@ -200,8 +158,7 @@ struct YaclFerretOT::Impl {
                 "YACL does NOT support malicious ferret ote");
     SPU_ENFORCE(conn != nullptr);
 
-    io_ = std::make_shared<CheetahIO>(conn);
-    io_holder_[0] = io_.get();
+    io_ = std::make_shared<BufferedIO>(conn);
     ferret_ = std::make_shared<YaclFerretOTeAdapter>(conn->lctx(), is_sender);
     ferret_->OneTimeSetup();
   }
@@ -253,6 +210,60 @@ struct YaclFerretOT::Impl {
   }
 
   template <typename T>
+  void SendCorrelatedMsgChosenChoice(absl::Span<const T> corr,
+                                     absl::Span<T> output, int bit_width) {
+    size_t n = corr.size();
+    SPU_ENFORCE_EQ(n, output.size());
+    if (bit_width == 0) {
+      bit_width = 8 * sizeof(T);
+    }
+    SPU_ENFORCE(bit_width > 0 && bit_width <= (int)(8 * sizeof(T)),
+                "bit_width={} out-of-range T={} bits", bit_width,
+                sizeof(T) * 8);
+
+    yacl::AlignedVector<uint128_t> rcm_output(n);
+
+    SendRandCorrelatedMsgChosenChoice(rcm_output.data(), n);
+
+    std::array<uint128_t, 2 * kOTBatchSize> pad;
+    std::vector<T> corr_output(kOTBatchSize);
+
+    size_t eltsize = 8 * sizeof(T);
+    bool packable = eltsize > (size_t)bit_width;
+    size_t packed_size = CeilDiv(kOTBatchSize * bit_width, eltsize);
+
+    std::vector<T> packed_corr_output;
+    if (packable) {
+      packed_corr_output.resize(packed_size);
+    }
+
+    for (size_t i = 0; i < n; i += kOTBatchSize) {
+      size_t this_batch = std::min(kOTBatchSize, n - i);
+      for (size_t j = 0; j < this_batch; ++j) {
+        pad[2 * j] = rcm_output[i + j];
+        pad[2 * j + 1] = rcm_output[i + j] ^ ferret_->GetDelta();
+      }
+
+      yc::ParaCrHashInplace_128(absl::MakeSpan(pad));
+
+      for (size_t j = 0; j < this_batch; ++j) {
+        output[i + j] = (T)(pad[2 * j]);
+        corr_output[j] = (T)(pad[2 * j + 1]);
+        corr_output[j] += corr[i + j] + output[i + j];
+      }
+
+      if (packable) {
+        size_t used = ZipArray<T>({corr_output.data(), this_batch}, bit_width,
+                                  absl::MakeSpan(packed_corr_output));
+        SPU_ENFORCE(used == CeilDiv(this_batch * bit_width, eltsize));
+        io_->send_data(packed_corr_output.data(), used * sizeof(T));
+      } else {
+        io_->send_data(corr_output.data(), sizeof(T) * this_batch);
+      }
+    }
+  }
+
+  template <typename T>
   void RecvCorrelatedMsgChosenChoice(absl::Span<const uint8_t> choices,
                                      absl::Span<T> output, int bit_width) {
     size_t n = choices.size();
@@ -267,12 +278,16 @@ struct YaclFerretOT::Impl {
     yacl::AlignedVector<uint128_t> rcm_output(n);
     RecvRandCorrelatedMsgChosenChoice(choices, absl::MakeSpan(rcm_output));
 
-    size_t pack_load = 8 * sizeof(T) / bit_width;
     std::array<uint128_t, kOTBatchSize> pad;
     std::vector<T> corr_output(kOTBatchSize);
+
+    size_t eltsize = 8 * sizeof(T);
+    bool packable = eltsize > (size_t)bit_width;
+    size_t packed_size = CeilDiv(kOTBatchSize * bit_width, eltsize);
+
     std::vector<T> packed_corr_output;
-    if (pack_load > 1) {
-      packed_corr_output.resize(CeilDiv(corr_output.size(), pack_load));
+    if (packable) {
+      packed_corr_output.resize(packed_size);
     }
 
     for (size_t i = 0; i < n; i += kOTBatchSize) {
@@ -283,8 +298,8 @@ struct YaclFerretOT::Impl {
       // Use CrHash
       yc::ParaCrHashInplace_128(absl::MakeSpan(pad));
 
-      if (pack_load > 1) {
-        size_t used = CeilDiv(this_batch, pack_load);
+      if (packable) {
+        size_t used = CeilDiv(this_batch * bit_width, eltsize);
         io_->recv_data(packed_corr_output.data(), sizeof(T) * used);
         UnzipArray<T>({packed_corr_output.data(), used}, bit_width,
                       {corr_output.data(), this_batch});
@@ -376,56 +391,6 @@ struct YaclFerretOT::Impl {
   }
 
   template <typename T>
-  void SendCorrelatedMsgChosenChoice(absl::Span<const T> corr,
-                                     absl::Span<T> output, int bit_width) {
-    size_t n = corr.size();
-    SPU_ENFORCE_EQ(n, output.size());
-    if (bit_width == 0) {
-      bit_width = 8 * sizeof(T);
-    }
-    SPU_ENFORCE(bit_width > 0 && bit_width <= (int)(8 * sizeof(T)),
-                "bit_width={} out-of-range T={} bits", bit_width,
-                sizeof(T) * 8);
-
-    yacl::AlignedVector<uint128_t> rcm_output(n);
-
-    SendRandCorrelatedMsgChosenChoice(rcm_output.data(), n);
-
-    size_t pack_load = 8 * sizeof(T) / bit_width;
-    std::array<uint128_t, 2 * kOTBatchSize> pad;
-    std::vector<T> corr_output(kOTBatchSize);
-    std::vector<T> packed_corr_output;
-    if (pack_load > 1) {
-      packed_corr_output.resize(CeilDiv(corr_output.size(), pack_load));
-    }
-
-    for (size_t i = 0; i < n; i += kOTBatchSize) {
-      size_t this_batch = std::min(kOTBatchSize, n - i);
-      for (size_t j = 0; j < this_batch; ++j) {
-        pad[2 * j] = rcm_output[i + j];
-        pad[2 * j + 1] = rcm_output[i + j] ^ ferret_->GetDelta();
-      }
-
-      yc::ParaCrHashInplace_128(absl::MakeSpan(pad));
-
-      for (size_t j = 0; j < this_batch; ++j) {
-        output[i + j] = (T)(pad[2 * j]);
-        corr_output[j] = (T)(pad[2 * j + 1]);
-        corr_output[j] += corr[i + j] + output[i + j];
-      }
-
-      if (pack_load > 1) {
-        size_t used = ZipArray<T>({corr_output.data(), this_batch}, bit_width,
-                                  absl::MakeSpan(packed_corr_output));
-        SPU_ENFORCE(used == CeilDiv(this_batch, pack_load));
-        io_->send_data(packed_corr_output.data(), used * sizeof(T));
-      } else {
-        io_->send_data(corr_output.data(), sizeof(T) * this_batch);
-      }
-    }
-  }
-
-  template <typename T>
   void SendRandMsgRandChoice(absl::Span<T> output0, absl::Span<T> output1,
                              size_t bit_width = 0) {
     size_t n = output0.size();
@@ -499,12 +464,15 @@ struct YaclFerretOT::Impl {
     yacl::AlignedVector<uint128_t> pad(kOTBatchSize * N);
 
     const T msg_mask = makeBitsMask<T>(bit_width);
-    size_t pack_load = 8 * sizeof(T) / bit_width;
+    size_t eltsize = 8 * sizeof(T);
+    bool packable = eltsize > (size_t)bit_width;
+
     std::vector<T> to_send(kOTBatchSize * N);
+    size_t packed_size = CeilDiv(kOTBatchSize * N * bit_width, eltsize);
     std::vector<T> packed_to_send;
-    if (pack_load > 1) {
+    if (packable) {
       // NOTE: pack bit chunks into single T element if possible
-      packed_to_send.resize(CeilDiv(to_send.size(), pack_load));
+      packed_to_send.resize(packed_size);
     }
 
     for (size_t i = 0; i < n; i += kOTBatchSize) {
@@ -543,10 +511,10 @@ struct YaclFerretOT::Impl {
         }
       }
 
-      if (pack_load > 1) {
+      if (packable) {
         size_t used = ZipArray<T>({to_send.data(), N * this_batch}, bit_width,
                                   absl::MakeSpan(packed_to_send));
-        SPU_ENFORCE(used == CeilDiv(N * this_batch, pack_load));
+        SPU_ENFORCE(used == CeilDiv(N * this_batch * bit_width, eltsize));
         io_->send_data(packed_to_send.data(), used * sizeof(T));
       } else {
         io_->send_data(to_send.data(), N * this_batch * sizeof(T));
@@ -588,16 +556,26 @@ struct YaclFerretOT::Impl {
     yacl::AlignedVector<uint128_t> pad(kOTBatchSize);
 
     const T msg_mask = makeBitsMask<T>(bit_width);
-    const size_t pack_load = 8 * sizeof(T) / bit_width;
+    size_t eltsize = 8 * sizeof(T);
+    bool packable = eltsize > (size_t)bit_width;
+    size_t packed_size = CeilDiv(kOTBatchSize * N * bit_width, eltsize);
+
     std::vector<T> recv(kOTBatchSize * N);
-    std::vector<T> packed_recv(CeilDiv(recv.size(), pack_load));
+    std::vector<T> packed_recv;
+    if (packable) {
+      packed_recv.resize(packed_size);
+    }
 
     for (size_t i = 0; i < n; i += kOTBatchSize) {
       size_t this_batch = std::min(kOTBatchSize, n - i);
-      size_t used = CeilDiv(N * this_batch, pack_load);
-      io_->recv_data(packed_recv.data(), used * sizeof(T));
-      UnzipArray<T>({packed_recv.data(), used}, bit_width,
-                    {recv.data(), N * this_batch});
+      size_t used = CeilDiv(N * this_batch * bit_width, eltsize);
+      if (packable) {
+        io_->recv_data(packed_recv.data(), used * sizeof(T));
+        UnzipArray<T>({packed_recv.data(), used}, bit_width,
+                      {recv.data(), N * this_batch});
+      } else {
+        io_->recv_data(recv.data(), N * this_batch * sizeof(T));
+      }
 
       std::memset(pad.data(), 0, kOTBatchSize * sizeof(uint128_t));
       for (size_t j = 0; j < this_batch; ++j) {
@@ -722,19 +700,16 @@ struct YaclFerretOT::Impl {
   }
 };
 
-YaclFerretOT::YaclFerretOT(std::shared_ptr<Communicator> conn, bool is_sender,
+YaclFerretOt::YaclFerretOt(std::shared_ptr<Communicator> conn, bool is_sender,
                            bool malicious) {
   impl_ = std::make_shared<Impl>(conn, is_sender, malicious);
 }
 
-int YaclFerretOT::Rank() const { return impl_->Rank(); }
+int YaclFerretOt::Rank() const { return impl_->Rank(); }
 
-void YaclFerretOT::Flush() { impl_->Flush(); }
+void YaclFerretOt::Flush() { impl_->Flush(); }
 
-YaclFerretOT::~YaclFerretOT() {
-  impl_->Flush();
-  // SPDLOG_INFO(fmt::format("Party {} - Destroying YaclFerretOT", (Rank())));
-}
+YaclFerretOt::~YaclFerretOt() { impl_->Flush(); }
 
 template <typename T>
 size_t CheckBitWidth(size_t bw) {
@@ -747,40 +722,40 @@ size_t CheckBitWidth(size_t bw) {
 }
 
 #define DEF_SEND_RECV(T)                                                       \
-  void YaclFerretOT::SendCAMCC(absl::Span<const T> corr, absl::Span<T> output, \
+  void YaclFerretOt::SendCAMCC(absl::Span<const T> corr, absl::Span<T> output, \
                                int bw) {                                       \
     impl_->SendCorrelatedMsgChosenChoice<T>(corr, output, bw);                 \
   }                                                                            \
-  void YaclFerretOT::RecvCAMCC(absl::Span<const uint8_t> choices,              \
+  void YaclFerretOt::RecvCAMCC(absl::Span<const uint8_t> choices,              \
                                absl::Span<T> output, int bw) {                 \
     impl_->RecvCorrelatedMsgChosenChoice<T>(choices, output, bw);              \
   }                                                                            \
-  void YaclFerretOT::SendRMRC(absl::Span<T> output0, absl::Span<T> output1,    \
+  void YaclFerretOt::SendRMRC(absl::Span<T> output0, absl::Span<T> output1,    \
                               size_t bit_width) {                              \
     bit_width = CheckBitWidth<T>(bit_width);                                   \
     impl_->SendRandMsgRandChoice<T>(output0, output1, bit_width);              \
   }                                                                            \
-  void YaclFerretOT::RecvRMRC(absl::Span<uint8_t> choices,                     \
+  void YaclFerretOt::RecvRMRC(absl::Span<uint8_t> choices,                     \
                               absl::Span<T> output, size_t bit_width) {        \
     bit_width = CheckBitWidth<T>(bit_width);                                   \
     impl_->RecvRandMsgRandChoice<T>(choices, output, bit_width);               \
   }                                                                            \
-  void YaclFerretOT::SendCMCC(absl::Span<const T> msg_array, size_t N,         \
+  void YaclFerretOt::SendCMCC(absl::Span<const T> msg_array, size_t N,         \
                               size_t bit_width) {                              \
     bit_width = CheckBitWidth<T>(bit_width);                                   \
     impl_->SendChosenMsgChosenChoice<T>(msg_array, N, bit_width);              \
   }                                                                            \
-  void YaclFerretOT::RecvCMCC(absl::Span<const uint8_t> choices, size_t N,     \
+  void YaclFerretOt::RecvCMCC(absl::Span<const uint8_t> choices, size_t N,     \
                               absl::Span<T> output, size_t bit_width) {        \
     bit_width = CheckBitWidth<T>(bit_width);                                   \
     impl_->RecvChosenMsgChosenChoice<T>(choices, N, output, bit_width);        \
   }                                                                            \
-  void YaclFerretOT::SendRMCC(absl::Span<T> output0, absl::Span<T> output1,    \
+  void YaclFerretOt::SendRMCC(absl::Span<T> output0, absl::Span<T> output1,    \
                               size_t bit_width) {                              \
     bit_width = CheckBitWidth<T>(bit_width);                                   \
     impl_->SendRMCC<T>(output0, output1, bit_width);                           \
   }                                                                            \
-  void YaclFerretOT::RecvRMCC(absl::Span<const uint8_t> choices,               \
+  void YaclFerretOt::RecvRMCC(absl::Span<const uint8_t> choices,               \
                               absl::Span<T> output, size_t bit_width) {        \
     bit_width = CheckBitWidth<T>(bit_width);                                   \
     impl_->RecvRMCC<T>(choices, output, bit_width);                            \

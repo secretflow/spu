@@ -76,6 +76,8 @@ class BeaverTtp final : public Beaver {
                 absl::Span<const int64_t> perm_vec) override;
 
   std::unique_ptr<Beaver> Spawn() override;
+
+  Pair Eqz(FieldType field, const Shape& shape) override;
 };
 
 }  // namespace spu::mpc::semi2k

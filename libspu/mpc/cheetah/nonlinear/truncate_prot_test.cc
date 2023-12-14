@@ -18,8 +18,8 @@
 
 #include "gtest/gtest.h"
 
+#include "libspu/mpc/cheetah/ot/basic_ot_prot.h"
 #include "libspu/mpc/cheetah/type.h"
-#include "libspu/mpc/cheetah/yacl_ot/basic_ot_prot.h"
 #include "libspu/mpc/utils/ring_ops.h"
 #include "libspu/mpc/utils/simulate.h"
 
@@ -50,8 +50,8 @@ bool SignBit(T x) {
 
 TEST_P(TruncateProtTest, Basic) {
   size_t kWorldSize = 2;
-  int64_t n = 1024;
-  size_t shift = 13;
+  int64_t n = 100;
+  size_t shift = 12;
   FieldType field = std::get<0>(GetParam());
   bool signed_arith = std::get<1>(GetParam());
   std::string msb = std::get<2>(GetParam());
@@ -93,8 +93,21 @@ TEST_P(TruncateProtTest, Basic) {
     meta.sign = sign;
     meta.signed_arith = signed_arith;
     meta.shift_bits = shift;
+    meta.use_heuristic = false;
+
+    [[maybe_unused]] auto b0 = ctx->GetStats()->sent_bytes.load();
+    [[maybe_unused]] auto s0 = ctx->GetStats()->sent_actions.load();
+
     oup[rank] = trunc_prot.Compute(inp[rank], meta);
+
+    [[maybe_unused]] auto b1 = ctx->GetStats()->sent_bytes.load();
+    [[maybe_unused]] auto s1 = ctx->GetStats()->sent_actions.load();
+
+    SPDLOG_DEBUG("Truncate {} bits share by {} bits {} bits each #sent {}",
+                 SizeOf(field) * 8, meta.shift_bits,
+                 (b1 - b0) * 8. / inp[0].numel(), (s1 - s0));
   });
+
   EXPECT_EQ(oup[0].shape(), oup[1].shape());
 
   DISPATCH_ALL_FIELDS(field, "", [&]() {
@@ -198,9 +211,6 @@ TEST_P(TruncateProtTest, Heuristic) {
       }
     }
   });
-
-  // printf("0 %d %f, +1 %d %f -1 %d %f\n", count_zero, count_zero * 1. / n,
-  //        count_pos, count_pos * 1. / n, count_neg, count_neg * 1. / n);
 }
 
 }  // namespace spu::mpc::cheetah

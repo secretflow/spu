@@ -20,7 +20,7 @@
 #include "libspu/core/object.h"
 #include "libspu/mpc/cheetah/arith/cheetah_dot.h"
 #include "libspu/mpc/cheetah/arith/cheetah_mul.h"
-#include "libspu/mpc/cheetah/yacl_ot/basic_ot_prot.h"
+#include "libspu/mpc/cheetah/ot/basic_ot_prot.h"
 
 namespace spu::mpc::cheetah {
 

@@ -23,12 +23,12 @@
 #include "absl/types/span.h"
 #include "yacl/base/int128.h"
 
-#include "libspu/mpc/cheetah/ot/ferret.h"
+#include "libspu/mpc/cheetah/ot/emp/ferret.h"
 #include "libspu/mpc/common/communicator.h"
 
 namespace spu::mpc::spdz2k {
 
-class FerretOT : public cheetah::FerretOT {
+class FerretOT : public cheetah::EmpFerretOt {
  private:
   struct Impl;
   std::shared_ptr<Impl> impl_;
@@ -36,9 +36,9 @@ class FerretOT : public cheetah::FerretOT {
  public:
   FerretOT(std::shared_ptr<Communicator> conn, bool is_sender,
            bool malicious = true)
-      : cheetah::FerretOT::FerretOT(conn, is_sender, malicious) {}
+      : EmpFerretOt(std::move(conn), is_sender, malicious) {}
 
-  ~FerretOT() = default;
+  ~FerretOT() override = default;
 
   // VOLE, only for SPDZ2K
   // data[i] = data0[i] + a[i] * corr[i]

@@ -91,6 +91,9 @@ void regSemi2kProtocol(SPUContext* ctx,
   ctx->prot()->regKernel<semi2k::PermAP>();
   ctx->prot()->regKernel<semi2k::InvPermAS>();
   ctx->prot()->regKernel<semi2k::InvPermAP>();
+
+  ctx->prot()->regKernel<semi2k::EqualAA>();
+  ctx->prot()->regKernel<semi2k::EqualAP>();
 }
 
 std::unique_ptr<SPUContext> makeSemi2kProtocol(

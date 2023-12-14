@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "libspu/mpc/cheetah/yacl_ot/yacl_ferret.h"
+#include "libspu/mpc/cheetah/ot/yacl/yacl_ferret.h"
 
 #include <random>
 
@@ -26,16 +26,16 @@
 
 namespace spu::mpc::cheetah::test {
 
-class FerretCOTTest : public testing::TestWithParam<FieldType> {};
+class YaclFerretTest : public testing::TestWithParam<FieldType> {};
 
 INSTANTIATE_TEST_SUITE_P(
-    Cheetah, FerretCOTTest,
+    Cheetah, YaclFerretTest,
     testing::Values(FieldType::FM32, FieldType::FM64, FieldType::FM128),
     [](const testing::TestParamInfo<FerretCOTTest::ParamType> &p) {
       return fmt::format("{}", p.param);
     });
 
-TEST_P(FerretCOTTest, ChosenCorrelationChosenChoice) {
+TEST_P(YaclFerretTest, ChosenCorrelationChosenChoice) {
   size_t kWorldSize = 2;
   int64_t n = 10;
   auto field = GetParam();
@@ -49,13 +49,13 @@ TEST_P(FerretCOTTest, ChosenCorrelationChosenChoice) {
   });
 
   DISPATCH_ALL_FIELDS(field, "", [&]() {
-    auto correlation = xt_adapt<ring2k_t>(_correlation);
+    NdArrayView<ring2k_t> correlation(_correlation);
     std::vector<ring2k_t> computed[2];
     utils::simulate(kWorldSize, [&](std::shared_ptr<yacl::link::Context> ctx) {
       auto conn = std::make_shared<Communicator>(ctx);
       int rank = ctx->Rank();
       computed[rank].resize(n);
-      YaclFerretOT ferret(conn, rank == 0);
+      YaclFerretOt ferret(conn, rank == 0);
       if (rank == 0) {
         ferret.SendCAMCC({correlation.data(), correlation.size()},
                          absl::MakeSpan(computed[0]));
@@ -73,7 +73,7 @@ TEST_P(FerretCOTTest, ChosenCorrelationChosenChoice) {
   });
 }
 
-TEST_P(FerretCOTTest, RndMsgRndChoice) {
+TEST_P(YaclFerretTest, RndMsgRndChoice) {
   size_t kWorldSize = 2;
   auto field = GetParam();
   constexpr size_t bw = 2;
@@ -90,7 +90,7 @@ TEST_P(FerretCOTTest, RndMsgRndChoice) {
     utils::simulate(kWorldSize, [&](std::shared_ptr<yacl::link::Context> ctx) {
       auto conn = std::make_shared<Communicator>(ctx);
       int rank = ctx->Rank();
-      YaclFerretOT ferret(conn, rank == 0);
+      YaclFerretOt ferret(conn, rank == 0);
       if (rank == 0) {
         ferret.SendRMRC(absl::MakeSpan(msg0), absl::MakeSpan(msg1), bw);
         ferret.Flush();
@@ -110,7 +110,7 @@ TEST_P(FerretCOTTest, RndMsgRndChoice) {
   });
 }
 
-TEST_P(FerretCOTTest, RndMsgChosenChoice) {
+TEST_P(YaclFerretTest, RndMsgChosenChoice) {
   size_t kWorldSize = 2;
   auto field = GetParam();
   constexpr size_t bw = 2;
@@ -133,7 +133,7 @@ TEST_P(FerretCOTTest, RndMsgChosenChoice) {
     utils::simulate(kWorldSize, [&](std::shared_ptr<yacl::link::Context> ctx) {
       auto conn = std::make_shared<Communicator>(ctx);
       int rank = ctx->Rank();
-      YaclFerretOT ferret(conn, rank == 0);
+      YaclFerretOt ferret(conn, rank == 0);
       if (rank == 0) {
         ferret.SendRMCC(absl::MakeSpan(msg0), absl::MakeSpan(msg1), bw);
         ferret.Flush();
@@ -152,7 +152,7 @@ TEST_P(FerretCOTTest, RndMsgChosenChoice) {
   });
 }
 
-TEST_P(FerretCOTTest, ChosenMsgChosenChoice) {
+TEST_P(YaclFerretTest, ChosenMsgChosenChoice) {
   size_t kWorldSize = 2;
   int64_t n = 106;
   auto field = GetParam();
@@ -184,7 +184,7 @@ TEST_P(FerretCOTTest, ChosenMsgChosenChoice) {
               auto conn = std::make_shared<Communicator>(ctx);
               int rank = ctx->Rank();
               {
-                YaclFerretOT ferret(conn, rank == 0);
+                YaclFerretOt ferret(conn, rank == 0);
                 if (rank == 0) {
                   ferret.SendCMCC({msg.data(), msg.size()}, N, bw);
                   ferret.Flush();

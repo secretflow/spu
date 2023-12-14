@@ -88,6 +88,9 @@ std::vector<NdArrayRef> RpcCall(brpc::Channel& channel, AdjustRequest req,
                            beaver::ttp_server::AdjustRandBitRequest>) {
     stub.AdjustRandBit(&cntl, &req, &rsp, nullptr);
   } else if constexpr (std::is_same_v<AdjustRequest,
+                                      beaver::ttp_server::AdjustEqzRequest>) {
+    stub.AdjustEqz(&cntl, &req, &rsp, nullptr);
+  } else if constexpr (std::is_same_v<AdjustRequest,
                                       beaver::ttp_server::AdjustPermRequest>) {
     stub.AdjustPerm(&cntl, &req, &rsp, nullptr);
   } else {
@@ -337,4 +340,20 @@ std::unique_ptr<Beaver> BeaverTtp::Spawn() {
   return std::make_unique<BeaverTtp>(lctx_->Spawn(), std::move(new_options));
 }
 
+BeaverTtp::Pair BeaverTtp::Eqz(FieldType field, const Shape& shape) {
+  std::vector<PrgArrayDesc> descs(2);
+
+  auto a = prgCreateArray(field, shape, seed_, &counter_, descs.data());
+  auto b = prgCreateArray(field, shape, seed_, &counter_, &descs[1]);
+
+  if (lctx_->Rank() == options_.adjust_rank) {
+    auto req = BuildAdjustRequest<beaver::ttp_server::AdjustEqzRequest>(
+        options_.session_id, descs);
+    auto adjusts = RpcCall(channel_, req, field);
+    SPU_ENFORCE_EQ(adjusts.size(), 1U);
+    ring_xor_(b, adjusts[0].reshape(shape));
+  }
+
+  return {a, b};
+}
 }  // namespace spu::mpc::semi2k

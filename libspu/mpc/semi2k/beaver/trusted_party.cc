@@ -126,6 +126,15 @@ NdArrayRef TrustedParty::adjustRandBit(Descs descs, Seeds seeds) {
   return ring_sub(ring_randbit(descs[0].field, descs[0].shape), rs[0]);
 }
 
+NdArrayRef TrustedParty::adjustEqz(Descs descs, Seeds seeds) {
+  SPU_ENFORCE_EQ(descs.size(), 2U);
+  checkDescs(descs);
+  auto rs_a = reconstruct(RecOp::ADD, seeds, descs.subspan(0, 1));
+  auto rs_b = reconstruct(RecOp::XOR, seeds, descs.subspan(1, 2));
+  // adjust = rs[0] ^ rs[1];
+  return ring_xor(rs_a[0], rs_b[0]);
+}
+
 NdArrayRef TrustedParty::adjustPerm(Descs descs, Seeds seeds,
                                     absl::Span<const int64_t> perm_vec) {
   SPU_ENFORCE_EQ(descs.size(), 2U);

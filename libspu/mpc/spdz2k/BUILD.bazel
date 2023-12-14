@@ -111,6 +111,7 @@ spu_cc_library(
         ":boolean",
         ":state",
         ":type",
+        "//libspu/core:xt_helper",
         "//libspu/core:vectorize",
         "//libspu/mpc:ab_api",
         "//libspu/mpc:api",

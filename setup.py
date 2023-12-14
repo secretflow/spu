@@ -192,8 +192,22 @@ def remove_file(target_dir, filename):
     return 0
 
 
+def fix_pb(file, old_pattern, new_pattern):
+    os.chmod(file, 0o666)
+    with open(file, 'r+') as f:
+        content = f.read()
+        content = content.replace(old_pattern, new_pattern)
+
+    with open(file, 'w+') as f:
+        f.write(content)
+
+
 def pip_run(build_ext):
     build(True, True)
+
+    # Change __module__ in psi_pb2.py and pir_pb2.py
+    fix_pb('bazel-bin/spu/psi_pb2.py', 'psi.psi.psi_pb2', 'spu.psi_pb2')
+    fix_pb('bazel-bin/spu/pir_pb2.py', 'psi.pir.pir_pb2', 'spu.pir_pb2')
 
     setup_spec.files_to_include += spu_lib_files
 

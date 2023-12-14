@@ -1,4 +1,4 @@
-# Copyright 2021 Ant Group Co., Ltd.
+# Copyright 2022 Ant Group Co., Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,57 +18,31 @@ load("@yacl//bazel:yacl.bzl", "AES_COPT_FLAGS")
 package(default_visibility = ["//visibility:public"])
 
 spu_cc_library(
-    name = "ferret_ot_interface",
-    hdrs = ["ferret_ot_interface.h"],
-)
-
-spu_cc_library(
-    name = "ot_util",
-    srcs = ["ot_util.cc"],
-    hdrs = ["ot_util.h"],
-    deps = [
-        "//libspu/core:ndarray_ref",
-        "//libspu/core:prelude",
-        "//libspu/mpc/common:communicator",
-        "@com_google_absl//absl/types:span",
-        "@yacl//yacl/base:int128",
+    name = "ferret",
+    srcs = ["ferret.cc"],
+    hdrs = [
+        "emp_util.h",
+        "ferret.h",
+        "mitccrh_exp.h",
     ],
-)
-
-spu_cc_library(
-    name = "ot",
-    srcs = ["basic_ot_prot.cc"],
-    hdrs = ["basic_ot_prot.h"],
+    copts = AES_COPT_FLAGS + ["-Wno-ignored-attributes"],
     deps = [
-        ":ot_util",
-        "//libspu/mpc/cheetah:env",
         "//libspu/mpc/cheetah:type",
-        "//libspu/mpc/cheetah/ot/emp:ferret",
-        "//libspu/mpc/cheetah/ot/yacl:ferret",
+        "//libspu/mpc/cheetah/ot:ferret_ot_interface",
+        "//libspu/mpc/cheetah/ot:ot_util",
         "//libspu/mpc/common:communicator",
+        "@com_github_emptoolkit_emp_ot//:emp-ot",
+        "@com_github_emptoolkit_emp_tool//:emp-tool",
         "@yacl//yacl/base:int128",
         "@yacl//yacl/link",
     ],
 )
 
 spu_cc_test(
-    name = "basic_ot_prot_test",
-    size = "large",
-    srcs = ["basic_ot_prot_test.cc"],
-    tags = [
-        "exclusive-if-local",
-    ],
+    name = "ferret_test",
+    srcs = ["ferret_test.cc"],
     deps = [
-        ":ot",
+        ":ferret",
         "//libspu/mpc/utils:simulate",
-    ],
-)
-
-spu_cc_test(
-    name = "ot_util_test",
-    srcs = ["ot_util_test.cc"],
-    deps = [
-        ":ot_util",
-        "//libspu/mpc/utils:ring_ops",
     ],
 )

@@ -40,7 +40,7 @@ class BasicOTProtocols;
 class CompareProtocol {
  public:
   // REQUIRE 1 <= compare_radix <= 4
-  explicit CompareProtocol(std::shared_ptr<BasicOTProtocols> base,
+  explicit CompareProtocol(const std::shared_ptr<BasicOTProtocols>& base,
                            size_t compare_radix = 4);
 
   ~CompareProtocol();
@@ -61,10 +61,19 @@ class CompareProtocol {
   NdArrayRef TraversalAND(NdArrayRef cmp, NdArrayRef eq, size_t num_input,
                           size_t num_digits);
 
+  // Require num_digits to be two-power value
+  NdArrayRef TraversalANDFullBinaryTree(NdArrayRef cmp, NdArrayRef eq,
+                                        size_t num_input, size_t num_digits);
   // Require 1D array
   std::array<NdArrayRef, 2> TraversalANDWithEq(NdArrayRef cmp, NdArrayRef eq,
                                                size_t num_input,
                                                size_t num_digits);
+
+  // Require num_digits to be two-power value
+  std::array<NdArrayRef, 2> TraversalANDWithEqFullBinaryTree(NdArrayRef cmp,
+                                                             NdArrayRef eq,
+                                                             size_t num_input,
+                                                             size_t num_digits);
   size_t compare_radix_;
   bool is_sender_{false};
   std::shared_ptr<BasicOTProtocols> basic_ot_prot_;

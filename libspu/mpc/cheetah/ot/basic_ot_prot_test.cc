@@ -18,12 +18,24 @@
 
 #include "gtest/gtest.h"
 
-#include "libspu/core/xt_helper.h"
 #include "libspu/mpc/cheetah/type.h"
 #include "libspu/mpc/utils/ring_ops.h"
 #include "libspu/mpc/utils/simulate.h"
 
 namespace spu::mpc::cheetah::test {
+template <typename T>
+T makeBitsMask(size_t nbits) {
+  size_t max = sizeof(T) * 8;
+  if (nbits == 0) {
+    nbits = max;
+  }
+  SPU_ENFORCE(nbits <= max);
+  T mask = static_cast<T>(-1);
+  if (nbits < max) {
+    mask = (static_cast<T>(1) << nbits) - 1;
+  }
+  return mask;
+}
 
 class BasicOTProtTest : public ::testing::TestWithParam<FieldType> {
   void SetUp() override {}
@@ -51,12 +63,12 @@ TEST_P(BasicOTProtTest, SingleB2A) {
     auto mask = static_cast<ring2k_t>(-1);
     if (nbits > 0) {
       mask = (static_cast<ring2k_t>(1) << packed_nbits) - 1;
-      auto xb0 = xt_mutable_adapt<ring2k_t>(bshr0);
-      auto xb1 = xt_mutable_adapt<ring2k_t>(bshr1);
-      std::transform(xb0.data(), xb0.data() + xb0.size(), xb0.data(),
-                     [&](auto x) { return x & mask; });
-      std::transform(xb1.data(), xb1.data() + xb1.size(), xb1.data(),
-                     [&](auto x) { return x & mask; });
+      NdArrayView<ring2k_t> xb0(bshr0);
+      NdArrayView<ring2k_t> xb1(bshr1);
+      pforeach(0, xb0.numel(), [&](int64_t i) {
+        xb0[i] &= mask;
+        xb1[i] &= mask;
+      });
     }
   });
 
@@ -76,10 +88,10 @@ TEST_P(BasicOTProtTest, SingleB2A) {
   EXPECT_EQ(shape, ashr0.shape());
 
   DISPATCH_ALL_FIELDS(field, "", [&]() {
-    auto b0 = xt_adapt<ring2k_t>(bshr0);
-    auto b1 = xt_adapt<ring2k_t>(bshr1);
-    auto a0 = xt_adapt<ring2k_t>(ashr0);
-    auto a1 = xt_adapt<ring2k_t>(ashr1);
+    NdArrayView<ring2k_t> b0(bshr0);
+    NdArrayView<ring2k_t> b1(bshr1);
+    NdArrayView<ring2k_t> a0(ashr0);
+    NdArrayView<ring2k_t> a1(ashr1);
     auto mask = static_cast<ring2k_t>(-1);
     if (nbits > 0) {
       mask = (static_cast<ring2k_t>(1) << packed_nbits) - 1;
@@ -107,12 +119,12 @@ TEST_P(BasicOTProtTest, PackedB2A) {
       auto mask = static_cast<ring2k_t>(-1);
       if (nbits > 0) {
         mask = (static_cast<ring2k_t>(1) << packed_nbits) - 1;
-        auto xb0 = xt_mutable_adapt<ring2k_t>(bshr0);
-        auto xb1 = xt_mutable_adapt<ring2k_t>(bshr1);
-        std::transform(xb0.data(), xb0.data() + xb0.size(), xb0.data(),
-                       [&](auto x) { return x & mask; });
-        std::transform(xb1.data(), xb1.data() + xb1.size(), xb1.data(),
-                       [&](auto x) { return x & mask; });
+        NdArrayView<ring2k_t> xb0(bshr0);
+        NdArrayView<ring2k_t> xb1(bshr1);
+        pforeach(0, xb0.numel(), [&](int64_t i) {
+          xb0[i] &= mask;
+          xb1[i] &= mask;
+        });
       }
     });
 
@@ -131,10 +143,10 @@ TEST_P(BasicOTProtTest, PackedB2A) {
     EXPECT_EQ(ashr0.shape(), shape);
 
     DISPATCH_ALL_FIELDS(field, "", [&]() {
-      auto b0 = xt_adapt<ring2k_t>(bshr0);
-      auto b1 = xt_adapt<ring2k_t>(bshr1);
-      auto a0 = xt_adapt<ring2k_t>(ashr0);
-      auto a1 = xt_adapt<ring2k_t>(ashr1);
+      NdArrayView<ring2k_t> b0(bshr0);
+      NdArrayView<ring2k_t> b1(bshr1);
+      NdArrayView<ring2k_t> a0(ashr0);
+      NdArrayView<ring2k_t> a1(ashr1);
       auto mask = static_cast<ring2k_t>(-1);
 
       if (nbits > 0) {
@@ -165,12 +177,12 @@ TEST_P(BasicOTProtTest, PackedB2AFull) {
       auto mask = static_cast<ring2k_t>(-1);
       if (nbits > 0) {
         mask = (static_cast<ring2k_t>(1) << packed_nbits) - 1;
-        auto xb0 = xt_mutable_adapt<ring2k_t>(bshr0);
-        auto xb1 = xt_mutable_adapt<ring2k_t>(bshr1);
-        std::transform(xb0.data(), xb0.data() + xb0.size(), xb0.data(),
-                       [&](auto x) { return x & mask; });
-        std::transform(xb1.data(), xb1.data() + xb1.size(), xb1.data(),
-                       [&](auto x) { return x & mask; });
+        auto xb0 = NdArrayView<ring2k_t>(bshr0);
+        auto xb1 = NdArrayView<ring2k_t>(bshr1);
+        pforeach(0, xb0.numel(), [&](int64_t i) {
+          xb0[i] &= mask;
+          xb1[i] &= mask;
+        });
       }
     });
 
@@ -190,10 +202,10 @@ TEST_P(BasicOTProtTest, PackedB2AFull) {
     EXPECT_EQ(ashr0.shape(), shape);
 
     DISPATCH_ALL_FIELDS(field, "", [&]() {
-      auto b0 = xt_adapt<ring2k_t>(bshr0);
-      auto b1 = xt_adapt<ring2k_t>(bshr1);
-      auto a0 = xt_adapt<ring2k_t>(ashr0);
-      auto a1 = xt_adapt<ring2k_t>(ashr1);
+      NdArrayView<ring2k_t> b0(bshr0);
+      NdArrayView<ring2k_t> b1(bshr1);
+      NdArrayView<ring2k_t> a0(ashr0);
+      NdArrayView<ring2k_t> a1(ashr1);
       auto mask = static_cast<ring2k_t>(-1);
       if (nbits > 0) {
         mask = (static_cast<ring2k_t>(1) << packed_nbits) - 1;
@@ -228,12 +240,12 @@ TEST_P(BasicOTProtTest, AndTripleSparse) {
 
     DISPATCH_ALL_FIELDS(field, "", [&]() {
       ring2k_t max = static_cast<ring2k_t>(1) << target_nbits;
-      auto a0 = xt_adapt<ring2k_t>(triple[0][0]);
-      auto b0 = xt_adapt<ring2k_t>(triple[0][1]);
-      auto c0 = xt_adapt<ring2k_t>(triple[0][2]);
-      auto a1 = xt_adapt<ring2k_t>(triple[1][0]);
-      auto b1 = xt_adapt<ring2k_t>(triple[1][1]);
-      auto c1 = xt_adapt<ring2k_t>(triple[1][2]);
+      NdArrayView<ring2k_t> a0(triple[0][0]);
+      NdArrayView<ring2k_t> b0(triple[0][1]);
+      NdArrayView<ring2k_t> c0(triple[0][2]);
+      NdArrayView<ring2k_t> a1(triple[1][0]);
+      NdArrayView<ring2k_t> b1(triple[1][1]);
+      NdArrayView<ring2k_t> c1(triple[1][2]);
 
       for (int64_t i = 0; i < shape.numel(); ++i) {
         EXPECT_TRUE(a0[i] < max && a1[i] < max);
@@ -246,6 +258,50 @@ TEST_P(BasicOTProtTest, AndTripleSparse) {
       }
     });
   }
+}
+
+TEST_P(BasicOTProtTest, BitwiseAnd) {
+  size_t kWorldSize = 2;
+  Shape shape = {55};
+  FieldType field = GetParam();
+  int bw = SizeOf(field) * 8;
+  auto boolean_t = makeType<BShrTy>(field, bw);
+
+  NdArrayRef lhs[2];
+  NdArrayRef rhs[2];
+  NdArrayRef out[2];
+
+  for (int i : {0, 1}) {
+    lhs[i] = ring_rand(field, shape).as(boolean_t);
+    rhs[i] = ring_rand(field, shape).as(boolean_t);
+    DISPATCH_ALL_FIELDS(field, "mask", [&]() {
+      ring2k_t mask = makeBitsMask<ring2k_t>(bw);
+      NdArrayView<ring2k_t> L(lhs[i]);
+      NdArrayView<ring2k_t> R(rhs[i]);
+
+      pforeach(0, shape.numel(), [&](int64_t j) { L[j] &= mask; });
+      pforeach(0, shape.numel(), [&](int64_t j) { R[j] &= mask; });
+    });
+  }
+
+  utils::simulate(kWorldSize, [&](std::shared_ptr<yacl::link::Context> ctx) {
+    auto conn = std::make_shared<Communicator>(ctx);
+    BasicOTProtocols ot_prot(conn);
+    int r = ctx->Rank();
+    out[r] = ot_prot.BitwiseAnd(lhs[r].clone(), rhs[r].clone());
+  });
+
+  auto expected = ring_and(ring_xor(lhs[0], lhs[1]), ring_xor(rhs[0], rhs[1]));
+  auto got = ring_xor(out[0], out[1]);
+
+  DISPATCH_ALL_FIELDS(field, "", [&]() {
+    NdArrayView<ring2k_t> e(expected);
+    NdArrayView<ring2k_t> g(got);
+
+    for (int64_t i = 0; i < shape.numel(); ++i) {
+      ASSERT_EQ(e[i], g[i]);
+    }
+  });
 }
 
 TEST_P(BasicOTProtTest, AndTripleFull) {
@@ -264,14 +320,14 @@ TEST_P(BasicOTProtTest, AndTripleFull) {
   });
 
   DISPATCH_ALL_FIELDS(field, "", [&]() {
-    auto a0 = xt_adapt<ring2k_t>(packed_triple[0][0]);
-    auto b0 = xt_adapt<ring2k_t>(packed_triple[0][1]);
-    auto c0 = xt_adapt<ring2k_t>(packed_triple[0][2]);
-    auto a1 = xt_adapt<ring2k_t>(packed_triple[1][0]);
-    auto b1 = xt_adapt<ring2k_t>(packed_triple[1][1]);
-    auto c1 = xt_adapt<ring2k_t>(packed_triple[1][2]);
+    NdArrayView<ring2k_t> a0(packed_triple[0][0]);
+    NdArrayView<ring2k_t> b0(packed_triple[0][1]);
+    NdArrayView<ring2k_t> c0(packed_triple[0][2]);
+    NdArrayView<ring2k_t> a1(packed_triple[1][0]);
+    NdArrayView<ring2k_t> b1(packed_triple[1][1]);
+    NdArrayView<ring2k_t> c1(packed_triple[1][2]);
 
-    size_t nn = a0.size();
+    size_t nn = a0.numel();
     EXPECT_TRUE(nn * 8 * SizeOf(field) >= (size_t)shape.numel());
 
     for (size_t i = 0; i < nn; ++i) {
@@ -297,12 +353,12 @@ TEST_P(BasicOTProtTest, Multiplexer) {
 
   DISPATCH_ALL_FIELDS(field, "", [&]() {
     auto mask = static_cast<ring2k_t>(1);
-    auto xb0 = xt_mutable_adapt<ring2k_t>(bshr0);
-    auto xb1 = xt_mutable_adapt<ring2k_t>(bshr1);
-    std::transform(xb0.data(), xb0.data() + xb0.size(), xb0.data(),
-                   [&](auto x) { return x & mask; });
-    std::transform(xb1.data(), xb1.data() + xb1.size(), xb1.data(),
-                   [&](auto x) { return x & mask; });
+    NdArrayView<ring2k_t> xb0(bshr0);
+    NdArrayView<ring2k_t> xb1(bshr1);
+    pforeach(0, xb0.numel(), [&](int64_t i) {
+      xb0[i] &= mask;
+      xb1[i] &= mask;
+    });
   });
 
   NdArrayRef computed[2];
@@ -320,12 +376,12 @@ TEST_P(BasicOTProtTest, Multiplexer) {
   EXPECT_EQ(computed[0].shape(), shape);
 
   DISPATCH_ALL_FIELDS(field, "", [&]() {
-    auto a0 = xt_adapt<ring2k_t>(ashr0);
-    auto a1 = xt_adapt<ring2k_t>(ashr1);
-    auto b0 = xt_adapt<ring2k_t>(bshr0);
-    auto b1 = xt_adapt<ring2k_t>(bshr1);
-    auto c0 = xt_adapt<ring2k_t>(computed[0]);
-    auto c1 = xt_adapt<ring2k_t>(computed[1]);
+    NdArrayView<ring2k_t> a0(ashr0);
+    NdArrayView<ring2k_t> a1(ashr1);
+    NdArrayView<ring2k_t> b0(bshr0);
+    NdArrayView<ring2k_t> b1(bshr1);
+    NdArrayView<ring2k_t> c0(computed[0]);
+    NdArrayView<ring2k_t> c1(computed[1]);
 
     for (int64_t i = 0; i < shape.numel(); ++i) {
       ring2k_t msg = (a0[i] + a1[i]);

@@ -105,8 +105,8 @@ bazel build //... -c opt
 bazel test //...
 
 # [optional] build & test with ASAN or UBSAN, for macOS users please use configs with macOS prefix
-bazel test //... --config=[macos-]asan
-bazel test //... --config=[macos-]ubsan
+bazel test //... --features=asan
+bazel test //... --features=ubsan
 ```
 
 ### Bazel build options

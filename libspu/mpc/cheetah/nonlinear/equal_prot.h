@@ -38,7 +38,7 @@ class BasicOTProtocols;
 class EqualProtocol {
  public:
   // REQUIRE 1 <= compare_radix <= 8.
-  explicit EqualProtocol(std::shared_ptr<BasicOTProtocols> base,
+  explicit EqualProtocol(const std::shared_ptr<BasicOTProtocols>& base,
                          size_t compare_radix = 4);
 
   ~EqualProtocol();

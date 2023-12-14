@@ -27,6 +27,7 @@
 #include "libspu/mpc/common/communicator.h"
 #include "libspu/mpc/common/prg_state.h"
 #include "libspu/mpc/common/pv2k.h"
+#include "libspu/mpc/utils/ring_ops.h"
 
 namespace spu::mpc::aby3 {
 
@@ -622,6 +623,292 @@ NdArrayRef MsbA2B::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
 
     return UnwrapValue(msb);
   }
+}
+
+// Reference:
+// New Primitives for Actively-Secure MPC over Rings with Applications to
+// Private Machine Learning
+// P8 IV.D protocol eqz
+// https://eprint.iacr.org/2019/599.pdf
+//
+// Improved Primitives for MPC over Mixed Arithmetic-Binary Circuits
+// https://eprint.iacr.org/2020/338.pdf
+//
+// P0 as the helper/dealer, samples r, deals [r]a and [r]b.
+// P1 and P2 get new share [a]
+//   P1: [a] = x2 + x3
+//   P2: [a] = x1
+// reveal c = [a]+[r]a
+// check [a] == 0  <=> c == r
+// c == r <=> ~c ^ rb  to be bit wise all 1
+// then eqz(a) = bit_wise_and(~c ^ rb)
+NdArrayRef eqz(KernelEvalContext* ctx, const NdArrayRef& in) {
+  auto* prg_state = ctx->getState<PrgState>();
+  auto* comm = ctx->getState<Communicator>();
+
+  const auto field = in.eltype().as<AShrTy>()->field();
+  const PtType in_bshr_btype = calcBShareBacktype(SizeOf(field) * 8);
+  const auto numel = in.numel();
+
+  NdArrayRef out(makeType<BShrTy>(calcBShareBacktype(8), 8), in.shape());
+
+  size_t pivot;
+  prg_state->fillPubl(absl::MakeSpan(&pivot, 1));
+  size_t P0 = pivot % 3;
+  size_t P1 = (pivot + 1) % 3;
+  size_t P2 = (pivot + 2) % 3;
+
+  DISPATCH_ALL_FIELDS(field, "_", [&]() {
+    using ashr_el_t = ring2k_t;
+    using ashr_t = std::array<ashr_el_t, 2>;
+    DISPATCH_UINT_PT_TYPES(in_bshr_btype, "_", [&]() {
+      using bshr_el_t = ScalarT;
+      std::vector<bshr_el_t> zero_flag_3pc_0(numel);
+      std::vector<bshr_el_t> zero_flag_3pc_1(numel);
+
+      // algorithm begins
+      if (comm->getRank() == P0) {
+        std::vector<ashr_el_t> r(numel);
+        prg_state->fillPriv(absl::MakeSpan(r));
+
+        std::vector<ashr_el_t> r_arith_0(numel);
+        prg_state->fillPrssPair<ashr_el_t>({}, r_arith_0.data(), numel,
+                                           PrgState::GenPrssCtrl::Second);
+        std::vector<bshr_el_t> r_bool_0(numel);
+        prg_state->fillPrssPair<bshr_el_t>({}, r_bool_0.data(), numel,
+                                           PrgState::GenPrssCtrl::Second);
+
+        std::vector<ashr_el_t> r_arith_1(numel);
+        pforeach(0, numel, [&](int64_t idx) {
+          r_arith_1[idx] = r[idx] - r_arith_0[idx];
+        });
+        comm->sendAsync<ashr_el_t>(P2, r_arith_1, "r_arith");
+
+        std::vector<bshr_el_t> r_bool_1(numel);
+        pforeach(0, numel,
+                 [&](int64_t idx) { r_bool_1[idx] = r[idx] ^ r_bool_0[idx]; });
+        comm->sendAsync<bshr_el_t>(P2, r_bool_1, "r_bool");
+
+        // back to 3 pc
+        // P0 zero_flag = (rb1, rz)
+        pforeach(0, numel,
+                 [&](int64_t idx) { zero_flag_3pc_0[idx] = r_bool_1[idx]; });
+
+        prg_state->fillPrssPair<bshr_el_t>({}, zero_flag_3pc_1.data(), numel,
+                                           PrgState::GenPrssCtrl::Second);
+
+      } else {
+        std::vector<ashr_el_t> a_s(numel);
+        NdArrayView<ashr_t> _in(in);
+        std::vector<ashr_el_t> r_arith(numel);
+        std::vector<bshr_el_t> r_bool(numel);
+
+        if (comm->getRank() == P1) {
+          pforeach(0, numel,
+                   [&](int64_t idx) { a_s[idx] = _in[idx][0] + _in[idx][1]; });
+
+          prg_state->fillPrssPair<ashr_el_t>(r_arith.data(), {}, numel,
+                                             PrgState::GenPrssCtrl::First);
+          prg_state->fillPrssPair<bshr_el_t>(r_bool.data(), {}, numel,
+                                             PrgState::GenPrssCtrl::First);
+        } else {
+          pforeach(0, numel, [&](int64_t idx) { a_s[idx] = _in[idx][1]; });
+          prg_state->fillPrssPair<ashr_el_t>({}, {}, numel,
+                                             PrgState::GenPrssCtrl::None);
+          prg_state->fillPrssPair<bshr_el_t>({}, {}, numel,
+                                             PrgState::GenPrssCtrl::None);
+          r_arith = comm->recv<ashr_el_t>(P0, "r_arith");
+          r_bool = comm->recv<bshr_el_t>(P0, "r_bool");
+        }
+
+        // c in secret share
+        std::vector<ashr_el_t> c_s(numel);
+        pforeach(0, numel,
+                 [&](int64_t idx) { c_s[idx] = r_arith[idx] + a_s[idx]; });
+
+        std::vector<bshr_el_t> zero_flag_2pc(numel);
+        if (comm->getRank() == P1) {
+          auto c_p = comm->recv<ashr_el_t>(P2, "c_s");
+
+          // reveal c
+          pforeach(0, numel,
+                   [&](int64_t idx) { c_p[idx] = c_p[idx] + c_s[idx]; });
+          // P1 zero_flag = (rz, not(c_p xor [r]b0)^ rz)
+          std::vector<bshr_el_t> r_z(numel);
+          prg_state->fillPrssPair<bshr_el_t>(r_z.data(), {}, numel,
+                                             PrgState::GenPrssCtrl::First);
+          pforeach(0, numel, [&](int64_t idx) {
+            zero_flag_2pc[idx] = ~(c_p[idx] ^ r_bool[idx]) ^ r_z[idx];
+          });
+
+          comm->sendAsync<bshr_el_t>(P2, zero_flag_2pc, "flag_split");
+
+          pforeach(0, numel, [&](int64_t idx) {
+            zero_flag_3pc_0[idx] = r_z[idx];
+            zero_flag_3pc_1[idx] = zero_flag_2pc[idx];
+          });
+        } else {
+          comm->sendAsync<ashr_el_t>(P1, c_s, "c_s");
+          // P1 zero_flag = (not(c_p xor [r]b0)^ rz, rb1)
+          pforeach(0, numel,
+                   [&](int64_t idx) { zero_flag_3pc_1[idx] = r_bool[idx]; });
+          prg_state->fillPrssPair<bshr_el_t>({}, {}, numel,
+                                             PrgState::GenPrssCtrl::None);
+
+          auto flag_split = comm->recv<bshr_el_t>(P1, "flag_split");
+          pforeach(0, numel, [&](int64_t idx) {
+            zero_flag_3pc_0[idx] = flag_split[idx];
+          });
+        }
+      }
+
+      // Reference:
+      // Improved Primitives for Secure Multiparty Integer Computation
+      // P10 4.1 k-ary
+      // https://link.springer.com/chapter/10.1007/978-3-642-15317-4_13
+      //
+      // if a == 0, zero_flag supposed to be all 1
+      // do log k round bit wise and
+      // in each round, bit wise split zero_flag in half
+      // compute  and(left_half, right_half)
+      auto cur_bytes = SizeOf(field) * numel;
+      auto cur_bits = cur_bytes * 8;
+      auto cur_numel = (unsigned long)numel;
+      std::vector<std::byte> round_res_0(cur_bytes);
+      std::memcpy(round_res_0.data(), zero_flag_3pc_0.data(), cur_bytes);
+      std::vector<std::byte> round_res_1(cur_bytes);
+      std::memcpy(round_res_1.data(), zero_flag_3pc_1.data(), cur_bytes);
+      while (cur_bits != cur_numel) {
+        // byte num per element
+        auto byte_num_el = cur_bytes == cur_numel ? 1 : (cur_bytes / numel);
+        // byte num of left/right_bits
+        auto half_num_bytes =
+            cur_bytes == cur_numel ? cur_numel : (cur_bytes / 2);
+
+        // break into left_bits and right_bits
+        std::vector<std::vector<std::byte>> left_bits(
+            2, std::vector<std::byte>(half_num_bytes));
+        std::vector<std::vector<std::byte>> right_bits(
+            2, std::vector<std::byte>(half_num_bytes));
+
+        // cur_bits <= 8, use rshift to split in half
+        if (cur_bytes == cur_numel) {
+          pforeach(0, numel, [&](int64_t idx) {
+            left_bits[0][idx] =
+                round_res_0[idx] >> (cur_bits / (cur_numel * 2));
+            left_bits[1][idx] =
+                round_res_1[idx] >> (cur_bits / (cur_numel * 2));
+            right_bits[0][idx] = round_res_0[idx];
+            right_bits[1][idx] = round_res_1[idx];
+          });
+          // cur_bits > 8
+        } else {
+          pforeach(0, numel, [&](int64_t idx) {
+            auto cur_byte_idx = idx * byte_num_el;
+            for (size_t i = 0; i < (byte_num_el / 2); i++) {
+              left_bits[0][cur_byte_idx / 2 + i] =
+                  round_res_0[cur_byte_idx + i];
+              left_bits[1][cur_byte_idx / 2 + i] =
+                  round_res_1[cur_byte_idx + i];
+            }
+            for (size_t i = 0; i < (byte_num_el / 2); i++) {
+              right_bits[0][cur_byte_idx / 2 + i] =
+                  round_res_0[cur_byte_idx + byte_num_el / 2 + i];
+              right_bits[1][cur_byte_idx / 2 + i] =
+                  round_res_1[cur_byte_idx + byte_num_el / 2 + i];
+            }
+          });
+        }
+
+        // compute and(left_half, right_half)
+        std::vector<std::byte> r0(half_num_bytes);
+        std::vector<std::byte> r1(half_num_bytes);
+        prg_state->fillPrssPair<std::byte>(r0.data(), r1.data(), half_num_bytes,
+                                           PrgState::GenPrssCtrl::Both);
+
+        // z1 = (x1 & y1) ^ (x1 & y2) ^ (x2 & y1) ^ (r0 ^ r1);
+        pforeach(0, half_num_bytes, [&](int64_t idx) {
+          r0[idx] = (left_bits[0][idx] & right_bits[0][idx]) ^
+                    (left_bits[0][idx] & right_bits[1][idx]) ^
+                    (left_bits[1][idx] & right_bits[0][idx]) ^
+                    (r0[idx] ^ r1[idx]);
+        });
+
+        auto temp = comm->rotate<std::byte>(r0, "andbb");
+        r1.assign(temp.begin(), temp.end());
+
+        cur_bytes = cur_bytes == cur_numel ? cur_numel : (cur_bytes / 2);
+        cur_bits /= 2;
+        round_res_0.assign(r0.begin(), r0.end());
+        round_res_1.assign(r1.begin(), r1.end());
+      }
+
+      NdArrayView<std::array<std::byte, 2>> _out(out);
+
+      pforeach(0, numel, [&](int64_t idx) {
+        _out[idx][0] = round_res_0[idx];
+        _out[idx][1] = round_res_1[idx];
+      });
+    });
+  });
+
+  return out;
+}
+
+NdArrayRef EqualAA::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
+                         const NdArrayRef& rhs) const {
+  const auto* lhs_ty = lhs.eltype().as<AShrTy>();
+  const auto* rhs_ty = rhs.eltype().as<AShrTy>();
+
+  SPU_ENFORCE(lhs_ty->field() == rhs_ty->field());
+  const auto field = lhs_ty->field();
+  NdArrayRef out(makeType<AShrTy>(field), lhs.shape());
+
+  DISPATCH_ALL_FIELDS(field, "_", [&]() {
+    using shr_t = std::array<ring2k_t, 2>;
+    NdArrayView<shr_t> _out(out);
+    NdArrayView<shr_t> _lhs(lhs);
+    NdArrayView<shr_t> _rhs(rhs);
+
+    pforeach(0, lhs.numel(), [&](int64_t idx) {
+      _out[idx][0] = _lhs[idx][0] - _rhs[idx][0];
+      _out[idx][1] = _lhs[idx][1] - _rhs[idx][1];
+    });
+  });
+
+  return eqz(ctx, out);
+}
+
+NdArrayRef EqualAP::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
+                         const NdArrayRef& rhs) const {
+  auto* comm = ctx->getState<Communicator>();
+  const auto* lhs_ty = lhs.eltype().as<AShrTy>();
+  const auto* rhs_ty = rhs.eltype().as<Pub2kTy>();
+
+  SPU_ENFORCE(lhs_ty->field() == rhs_ty->field());
+  const auto field = lhs_ty->field();
+  NdArrayRef out(makeType<AShrTy>(field), lhs.shape());
+
+  auto rank = comm->getRank();
+
+  DISPATCH_ALL_FIELDS(field, "_", [&]() {
+    using el_t = ring2k_t;
+    using shr_t = std::array<el_t, 2>;
+
+    NdArrayView<shr_t> _out(out);
+    NdArrayView<shr_t> _lhs(lhs);
+    NdArrayView<el_t> _rhs(rhs);
+
+    pforeach(0, lhs.numel(), [&](int64_t idx) {
+      _out[idx][0] = _lhs[idx][0];
+      _out[idx][1] = _lhs[idx][1];
+      if (rank == 0) _out[idx][1] -= _rhs[idx];
+      if (rank == 1) _out[idx][0] -= _rhs[idx];
+    });
+    return out;
+  });
+
+  return eqz(ctx, out);
 }
 
 void CommonTypeV::evaluate(KernelEvalContext* ctx) const {

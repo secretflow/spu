@@ -10,11 +10,12 @@
 >
 > please add your unreleased change here.
 
-- [Feature] Add Odd-Even Merge Sort to replace the bitonic sort.
-- [Feature] Add radix sort support for ABY3.
-- [Feature] Integrate with secretflow/psi.
-- [Feature] Add Linux aarch64 support.
-- [Improvement] Optimize sort memory usage.
+- [Feature] Add Odd-Even Merge Sort to replace the bitonic sort
+- [Feature] Add radix sort support for ABY3
+- [Feature] Integrate with secretflow/psi
+- [Feature] Add Linux aarch64 support
+- [Feature] Add equal support for SEMI2K and ABY3
+- [Improvement] Optimize sort memory usage
 - [Deprecated] macOS 11.x is no longer supported
 
 ## 20231108

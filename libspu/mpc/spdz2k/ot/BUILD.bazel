@@ -21,7 +21,7 @@ spu_cc_library(
     name = "ferret",
     hdrs = ["ferret.h"],
     deps = [
-        "//libspu/mpc/cheetah/ot:cheetah_ot",
+        "//libspu/mpc/cheetah/ot:ot",
         "//libspu/mpc/common:communicator",
     ],
 )

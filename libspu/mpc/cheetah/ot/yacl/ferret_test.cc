@@ -1,4 +1,4 @@
-// Copyright 2022 Ant Group Co., Ltd.
+// Copyright 2023 Ant Group Co., Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,14 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "libspu/mpc/cheetah/ot/ferret.h"
+#include "libspu/mpc/cheetah/ot/yacl/ferret.h"
 
 #include <random>
 
 #include "gtest/gtest.h"
 
-#include "libspu/core/xt_helper.h"
-#include "libspu/mpc/cheetah/ot/basic_ot_prot.h"
+#include "libspu/mpc/semi2k/type.h"
 #include "libspu/mpc/utils/ring_ops.h"
 #include "libspu/mpc/utils/simulate.h"
 
@@ -33,6 +32,11 @@ INSTANTIATE_TEST_SUITE_P(
     [](const testing::TestParamInfo<FerretCOTTest::ParamType> &p) {
       return fmt::format("{}", p.param);
     });
+
+template <typename T>
+absl::Span<const T> makeConstSpan(NdArrayView<T> a) {
+  return {&a[0], (size_t)a.numel()};
+}
 
 TEST_P(FerretCOTTest, ChosenCorrelationChosenChoice) {
   size_t kWorldSize = 2;
@@ -48,15 +52,15 @@ TEST_P(FerretCOTTest, ChosenCorrelationChosenChoice) {
   });
 
   DISPATCH_ALL_FIELDS(field, "", [&]() {
-    auto correlation = xt_adapt<ring2k_t>(_correlation);
+    NdArrayView<ring2k_t> correlation(_correlation);
     std::vector<ring2k_t> computed[2];
     utils::simulate(kWorldSize, [&](std::shared_ptr<yacl::link::Context> ctx) {
       auto conn = std::make_shared<Communicator>(ctx);
       int rank = ctx->Rank();
       computed[rank].resize(n);
-      FerretOT ferret(conn, rank == 0);
+      YaclFerretOt ferret(conn, rank == 0);
       if (rank == 0) {
-        ferret.SendCAMCC({correlation.data(), correlation.size()},
+        ferret.SendCAMCC(makeConstSpan<ring2k_t>(correlation),
                          absl::MakeSpan(computed[0]));
         ferret.Flush();
       } else {
@@ -89,7 +93,7 @@ TEST_P(FerretCOTTest, RndMsgRndChoice) {
     utils::simulate(kWorldSize, [&](std::shared_ptr<yacl::link::Context> ctx) {
       auto conn = std::make_shared<Communicator>(ctx);
       int rank = ctx->Rank();
-      FerretOT ferret(conn, rank == 0);
+      YaclFerretOt ferret(conn, rank == 0);
       if (rank == 0) {
         ferret.SendRMRC(absl::MakeSpan(msg0), absl::MakeSpan(msg1), bw);
         ferret.Flush();
@@ -132,7 +136,7 @@ TEST_P(FerretCOTTest, RndMsgChosenChoice) {
     utils::simulate(kWorldSize, [&](std::shared_ptr<yacl::link::Context> ctx) {
       auto conn = std::make_shared<Communicator>(ctx);
       int rank = ctx->Rank();
-      FerretOT ferret(conn, rank == 0);
+      YaclFerretOt ferret(conn, rank == 0);
       if (rank == 0) {
         ferret.SendRMCC(absl::MakeSpan(msg0), absl::MakeSpan(msg1), bw);
         ferret.Flush();
@@ -153,20 +157,20 @@ TEST_P(FerretCOTTest, RndMsgChosenChoice) {
 
 TEST_P(FerretCOTTest, ChosenMsgChosenChoice) {
   size_t kWorldSize = 2;
-  int64_t n = 100;
+  int64_t n = 1 << 18;
   auto field = GetParam();
   DISPATCH_ALL_FIELDS(field, "", [&]() {
     using scalar_t = ring2k_t;
     std::default_random_engine rdv;
     std::uniform_int_distribution<uint32_t> uniform(0, -1);
-    for (size_t bw : {2UL, 4UL, sizeof(scalar_t) * 8}) {
-      scalar_t mask = (static_cast<scalar_t>(1) << bw) - 1;
-      for (int64_t N : {2, 3, 8}) {
+    for (int64_t N : {2, 4, 8}) {
+      for (size_t bw : {4UL, 8UL, 32UL}) {
+        scalar_t mask = (static_cast<scalar_t>(1) << bw) - 1;
         auto _msg = ring_rand(field, {N * n});
-        auto msg = xt_mutable_adapt<scalar_t>(_msg);
-        msg &= mask;
-        std::vector<uint8_t> choices(n);
+        NdArrayView<scalar_t> msg(_msg);
+        pforeach(0, msg.numel(), [&](int64_t i) { msg[i] &= mask; });
 
+        std::vector<uint8_t> choices(n);
         std::generate_n(choices.begin(), n, [&]() -> uint8_t {
           return static_cast<uint8_t>(uniform(rdv) % N);
         });
@@ -177,14 +181,16 @@ TEST_P(FerretCOTTest, ChosenMsgChosenChoice) {
                         [&](std::shared_ptr<yacl::link::Context> ctx) {
                           auto conn = std::make_shared<Communicator>(ctx);
                           int rank = ctx->Rank();
-                          FerretOT ferret(conn, rank == 0);
+                          YaclFerretOt ferret(conn, rank == 0);
+                          size_t sent = ctx->GetStats()->sent_bytes;
                           if (rank == 0) {
-                            ferret.SendCMCC({msg.data(), msg.size()}, N, bw);
+                            ferret.SendCMCC(makeConstSpan(msg), N, bw);
                             ferret.Flush();
                           } else {
                             ferret.RecvCMCC(absl::MakeSpan(choices), N,
                                             absl::MakeSpan(selected), bw);
                           }
+                          sent = ctx->GetStats()->sent_bytes - sent;
                         });
 
         for (int64_t i = 0; i < n; ++i) {

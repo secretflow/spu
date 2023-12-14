@@ -1,4 +1,4 @@
-# Copyright 2023 Ant Group Co., Ltd.
+# Copyright 2022 Ant Group Co., Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,37 +17,26 @@ load("@yacl//bazel:yacl.bzl", "AES_COPT_FLAGS")
 
 package(default_visibility = ["//visibility:public"])
 
-spu_cc_test(
-    name = "yacl_ferret_test",
-    srcs = ["yacl_ferret_test.cc"],
-    deps = [
-        ":yacl_ferret_ot",
-        "//libspu/mpc/utils:simulate",
-    ],
-)
-
 spu_cc_library(
-    name = "yacl_ferret_ot",
+    name = "ferret",
     srcs = [
-        "basic_ot_prot.cc",
-        "util.cc",
-        "yacl_ferret.cc",
+        "ferret.cc",
         "yacl_ote_adapter.cc",
+        "yacl_util.cc",
     ],
     hdrs = [
-        "basic_ot_prot.h",
+        "ferret.h",
         "mitccrh_exp.h",
-        "util.h",
-        "yacl_ferret.h",
         "yacl_ote_adapter.h",
+        "yacl_util.h",
     ],
     copts = AES_COPT_FLAGS + ["-Wno-ignored-attributes"],
     deps = [
-        "//libspu/core:xt_helper",
         "//libspu/mpc/cheetah:type",
+        "//libspu/mpc/cheetah/ot:ferret_ot_interface",
+        "//libspu/mpc/cheetah/ot:ot_util",
         "//libspu/mpc/common:communicator",
         "//libspu/mpc/semi2k:conversion",
-        "@com_github_emptoolkit_emp_tool//:emp-tool",
         "@yacl//yacl/base:dynamic_bitset",
         "@yacl//yacl/base:int128",
         "@yacl//yacl/crypto/base/aes:aes_opt",
@@ -61,22 +50,10 @@ spu_cc_library(
 )
 
 spu_cc_test(
-    name = "basic_ot_prot_test",
-    size = "large",
-    srcs = ["basic_ot_prot_test.cc"],
-    tags = [
-        "exclusive-if-local",
-    ],
+    name = "ferret_test",
+    srcs = ["ferret_test.cc"],
     deps = [
-        ":yacl_ferret_ot",
+        ":ferret",
         "//libspu/mpc/utils:simulate",
-    ],
-)
-
-spu_cc_test(
-    name = "util_test",
-    srcs = ["util_test.cc"],
-    deps = [
-        ":yacl_ferret_ot",
     ],
 )
