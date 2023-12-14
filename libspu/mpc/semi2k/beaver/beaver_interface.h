@@ -70,6 +70,10 @@ class Beaver {
                         absl::Span<const int64_t> perm_vec) = 0;
 
   virtual std::unique_ptr<Beaver> Spawn() = 0;
+
+  // ret[0] (in a share) = ret[1] (in b share)
+  // ref: https://eprint.iacr.org/2020/338
+  virtual Pair Eqz(FieldType field, const Shape& shape) = 0;
 };
 
 }  // namespace spu::mpc::semi2k

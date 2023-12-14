@@ -63,6 +63,8 @@ void regAby3Protocol(SPUContext* ctx,
 #endif
 
   ctx->prot()->regKernel<aby3::MsbA2B>();
+  ctx->prot()->regKernel<aby3::EqualAA>();
+  ctx->prot()->regKernel<aby3::EqualAP>();
 
   ctx->prot()->regKernel<aby3::CommonTypeB>();
   ctx->prot()->regKernel<aby3::CommonTypeV>();

@@ -14,7 +14,9 @@
 
 #include "libspu/mpc/aby3/protocol.h"
 
+#include "libspu/mpc/ab_api.h"
 #include "libspu/mpc/ab_api_test.h"
+#include "libspu/mpc/api.h"
 #include "libspu/mpc/api_test.h"
 
 namespace spu::mpc::test {

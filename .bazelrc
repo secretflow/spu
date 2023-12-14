@@ -62,7 +62,3 @@ build:macos --host_macos_minimum_os=12.0
 
 build:linux --copt=-fopenmp
 build:linux --linkopt=-fopenmp
-
-build:asan --features=asan
-build:ubsan --features=ubsan
-

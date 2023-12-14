@@ -18,16 +18,15 @@
 #include "yacl/link/link.h"
 
 #include "libspu/core/type.h"
+#include "libspu/mpc/cheetah/ot/basic_ot_prot.h"
+#include "libspu/mpc/cheetah/ot/ot_util.h"
 #include "libspu/mpc/cheetah/type.h"
-#include "libspu/mpc/cheetah/yacl_ot/basic_ot_prot.h"
-#include "libspu/mpc/cheetah/yacl_ot/util.h"
-#include "libspu/mpc/cheetah/yacl_ot/yacl_ferret.h"
 #include "libspu/mpc/common/communicator.h"
 #include "libspu/mpc/utils/ring_ops.h"
 
 namespace spu::mpc::cheetah {
 
-EqualProtocol::EqualProtocol(std::shared_ptr<BasicOTProtocols> base,
+EqualProtocol::EqualProtocol(const std::shared_ptr<BasicOTProtocols>& base,
                              size_t compare_radix)
     : compare_radix_(compare_radix), basic_ot_prot_(base) {
   SPU_ENFORCE(base != nullptr);

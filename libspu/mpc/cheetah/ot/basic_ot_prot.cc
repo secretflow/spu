@@ -14,7 +14,14 @@
 
 #include "libspu/mpc/cheetah/ot/basic_ot_prot.h"
 
-#include "libspu/mpc/cheetah/ot/util.h"
+#include <random>
+
+#include "ot_util.h"
+
+#include "libspu/mpc/cheetah/env.h"
+#include "libspu/mpc/cheetah/ot/emp/ferret.h"
+#include "libspu/mpc/cheetah/ot/ot_util.h"
+#include "libspu/mpc/cheetah/ot/yacl/ferret.h"
 #include "libspu/mpc/cheetah/type.h"
 #include "libspu/mpc/common/communicator.h"
 #include "libspu/mpc/utils/ring_ops.h"
@@ -24,12 +31,24 @@ namespace spu::mpc::cheetah {
 BasicOTProtocols::BasicOTProtocols(std::shared_ptr<Communicator> conn)
     : conn_(std::move(conn)) {
   SPU_ENFORCE(conn_ != nullptr);
-  if (conn_->getRank() == 0) {
-    ferret_sender_ = std::make_shared<FerretOT>(conn_, true);
-    ferret_receiver_ = std::make_shared<FerretOT>(conn_, false);
+  if (TestEnvFlag(EnvFlag::SPU_CTH_ENABLE_EMP_OT)) {
+    using Ot = EmpFerretOt;
+    if (conn_->getRank() == 0) {
+      ferret_sender_ = std::make_shared<Ot>(conn_, true);
+      ferret_receiver_ = std::make_shared<Ot>(conn_, false);
+    } else {
+      ferret_receiver_ = std::make_shared<Ot>(conn_, false);
+      ferret_sender_ = std::make_shared<Ot>(conn_, true);
+    }
   } else {
-    ferret_receiver_ = std::make_shared<FerretOT>(conn_, false);
-    ferret_sender_ = std::make_shared<FerretOT>(conn_, true);
+    using Ot = YaclFerretOt;
+    if (conn_->getRank() == 0) {
+      ferret_sender_ = std::make_shared<Ot>(conn_, true);
+      ferret_receiver_ = std::make_shared<Ot>(conn_, false);
+    } else {
+      ferret_receiver_ = std::make_shared<Ot>(conn_, false);
+      ferret_sender_ = std::make_shared<Ot>(conn_, true);
+    }
   }
 }
 
@@ -81,9 +100,7 @@ NdArrayRef BasicOTProtocols::PackedB2A(const NdArrayRef &inp) {
   auto rand = convert_from_bits_form(rand_bits);
 
   // open c = x ^ r
-  // FIXME(juhou): Actually, we only want to exchange the low-end bits.
-  auto opened =
-      conn_->allReduce(ReduceOp::XOR, ring_xor(inp, rand), "B2AFull_open");
+  auto opened = OpenShare(ring_xor(inp, rand), ReduceOp::XOR, nbits, conn_);
 
   // compute c + (1 - 2*c)*<r>
   NdArrayRef oup = ring_zeros(field, inp.shape());
@@ -167,7 +184,6 @@ NdArrayRef BasicOTProtocols::SingleB2A(const NdArrayRef &inp, int bit_width) {
 
 // Random bit r \in {0, 1} and return as AShr
 NdArrayRef BasicOTProtocols::RandBits(FieldType filed, const Shape &shape) {
-  // TODO(juhou): profile ring_randbit performance
   auto r = ring_randbit(filed, shape).as(makeType<BShrTy>(filed, 1));
   return SingleB2A(r);
 }
@@ -188,61 +204,17 @@ NdArrayRef BasicOTProtocols::BitwiseAnd(const NdArrayRef &lhs,
 
   auto field = lhs.eltype().as<Ring2k>()->field();
   const auto *shareType = lhs.eltype().as<BShrTy>();
-  size_t numel = lhs.numel();
   auto [a, b, c] = AndTriple(field, lhs.shape(), shareType->nbits());
 
-  NdArrayRef x_a = ring_xor(lhs, a);
-  NdArrayRef y_b = ring_xor(rhs, b);
-  size_t pack_load = 8 * SizeOf(field) / shareType->nbits();
-
-  if (pack_load == 1) {
-    // Open x^a, y^b
-    auto res = vmap({x_a, y_b}, [&](const NdArrayRef &s) {
-      return conn_->allReduce(ReduceOp::XOR, s, "BitwiseAnd");
-    });
-    x_a = std::move(res[0]);
-    y_b = std::move(res[1]);
-  } else {
-    // Open x^a, y^b
-    // pack multiple nbits() into single field element before sending through
-    // network
-    SPU_ENFORCE(x_a.isCompact() && y_b.isCompact());
-    int64_t packed_sze = CeilDiv(numel, pack_load);
-
-    NdArrayRef packed_xa(x_a.eltype(), {packed_sze});
-    NdArrayRef packed_yb(y_b.eltype(), {packed_sze});
-
-    DISPATCH_ALL_FIELDS(field, "_", [&]() {
-      auto xa_wrap = absl::MakeSpan(&x_a.at<ring2k_t>(0), numel);
-      auto yb_wrap = absl::MakeSpan(&y_b.at<ring2k_t>(0), numel);
-      auto packed_xa_wrap =
-          absl::MakeSpan(&packed_xa.at<ring2k_t>(0), packed_sze);
-      auto packed_yb_wrap =
-          absl::MakeSpan(&packed_yb.at<ring2k_t>(0), packed_sze);
-
-      int64_t used =
-          ZipArray<ring2k_t>(xa_wrap, shareType->nbits(), packed_xa_wrap);
-      (void)ZipArray<ring2k_t>(yb_wrap, shareType->nbits(), packed_yb_wrap);
-      SPU_ENFORCE_EQ(used, packed_sze);
-
-      // open x^a, y^b
-      auto res = vmap({packed_xa, packed_yb}, [&](const NdArrayRef &s) {
-        return conn_->allReduce(ReduceOp::XOR, s, "BitwiseAnd");
-      });
-
-      packed_xa = std::move(res[0]);
-      packed_yb = std::move(res[1]);
-      packed_xa_wrap = absl::MakeSpan(&packed_xa.at<ring2k_t>(0), packed_sze);
-      packed_yb_wrap = absl::MakeSpan(&packed_yb.at<ring2k_t>(0), packed_sze);
-      UnzipArray<ring2k_t>(packed_xa_wrap, shareType->nbits(), xa_wrap);
-      UnzipArray<ring2k_t>(packed_yb_wrap, shareType->nbits(), yb_wrap);
-    });
-  }
+  // open x^a, y^b
+  int nbits = shareType->nbits();
+  auto xa = OpenShare(ring_xor(lhs, a), ReduceOp::XOR, nbits, conn_);
+  auto yb = OpenShare(ring_xor(rhs, b), ReduceOp::XOR, nbits, conn_);
 
   // Zi = Ci ^ ((X ^ A) & Bi) ^ ((Y ^ B) & Ai) ^ <(X ^ A) & (Y ^ B)>
-  auto z = ring_xor(ring_xor(ring_and(x_a, b), ring_and(y_b, a)), c);
+  auto z = ring_xor(ring_xor(ring_and(xa, b), ring_and(yb, a)), c);
   if (conn_->getRank() == 0) {
-    ring_xor_(z, ring_and(x_a, y_b));
+    ring_xor_(z, ring_and(xa, yb));
   }
 
   return z.as(lhs.eltype());
@@ -261,14 +233,10 @@ std::array<NdArrayRef, 2> BasicOTProtocols::CorrelatedBitwiseAnd(
   auto [a, b0, c0, b1, c1] = CorrelatedAndTriple(field, lhs.shape());
 
   // open x^a, y^b0, y1^b1
-  auto res =
-      vmap({ring_xor(lhs, a), ring_xor(rhs0, b0), ring_xor(rhs1, b1)},
-           [&](const NdArrayRef &s) {
-             return conn_->allReduce(ReduceOp::XOR, s, "CorrelatedBitwiseAnd");
-           });
-  auto xa = std::move(res[0]);
-  auto y0b0 = std::move(res[1]);
-  auto y1b1 = std::move(res[2]);
+  int nbits = shareType->nbits();
+  auto xa = OpenShare(ring_xor(lhs, a), ReduceOp::XOR, nbits, conn_);
+  auto y0b0 = OpenShare(ring_xor(rhs0, b0), ReduceOp::XOR, nbits, conn_);
+  auto y1b1 = OpenShare(ring_xor(rhs1, b1), ReduceOp::XOR, nbits, conn_);
 
   // Zi = Ci ^ ((X ^ A) & Bi) ^ ((Y ^ B) & Ai) ^ <(X ^ A) & (Y ^ B)>
   auto z0 = ring_xor(ring_xor(ring_and(xa, b0), ring_and(y0b0, a)), c0);

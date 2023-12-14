@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "libspu/mpc/cheetah/yacl_ot/util.h"
+#include "libspu/mpc/cheetah/ot/yacl/yacl_util.h"
 
 #include <numeric>
 

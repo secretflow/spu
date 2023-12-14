@@ -18,16 +18,15 @@
 #include "yacl/link/link.h"
 
 #include "libspu/core/type.h"
+#include "libspu/mpc/cheetah/ot/basic_ot_prot.h"
+#include "libspu/mpc/cheetah/ot/ot_util.h"
 #include "libspu/mpc/cheetah/type.h"
-#include "libspu/mpc/cheetah/yacl_ot/basic_ot_prot.h"
-#include "libspu/mpc/cheetah/yacl_ot/util.h"
-#include "libspu/mpc/cheetah/yacl_ot/yacl_ferret.h"
 #include "libspu/mpc/common/communicator.h"
 #include "libspu/mpc/utils/ring_ops.h"
 
 namespace spu::mpc::cheetah {
 
-CompareProtocol::CompareProtocol(std::shared_ptr<BasicOTProtocols> base,
+CompareProtocol::CompareProtocol(const std::shared_ptr<BasicOTProtocols>& base,
                                  size_t compare_radix)
     : compare_radix_(compare_radix), basic_ot_prot_(base) {
   SPU_ENFORCE(base != nullptr);
@@ -165,8 +164,13 @@ NdArrayRef CompareProtocol::DoCompute(const NdArrayRef& inp, bool greater_than,
   return _gt.as(boolean_t);
 }
 
-std::array<NdArrayRef, 2> CompareProtocol::TraversalANDWithEq(
+std::array<NdArrayRef, 2> CompareProtocol::TraversalANDWithEqFullBinaryTree(
     NdArrayRef cmp, NdArrayRef eq, size_t num_input, size_t num_digits) {
+  SPU_ENFORCE(num_digits > 0 && absl::has_single_bit(num_digits),
+              "require num_digits be a 2-power");
+  if (num_digits == 1) {
+    return {cmp, eq};
+  }
   SPU_ENFORCE(cmp.shape().size() == 1, "need 1D array");
   SPU_ENFORCE_EQ(cmp.shape(), eq.shape());
   SPU_ENFORCE_EQ(cmp.numel(), eq.numel());
@@ -198,8 +202,76 @@ std::array<NdArrayRef, 2> CompareProtocol::TraversalANDWithEq(
   return {cmp, eq};
 }
 
-NdArrayRef CompareProtocol::TraversalAND(NdArrayRef cmp, NdArrayRef eq,
-                                         size_t num_input, size_t num_digits) {
+std::array<NdArrayRef, 2> CompareProtocol::TraversalANDWithEq(
+    NdArrayRef cmp, NdArrayRef eq, size_t num_input, size_t num_digits) {
+  if (absl::has_single_bit(num_digits)) {
+    return TraversalANDWithEqFullBinaryTree(cmp, eq, num_input, num_digits);
+  }
+
+  // Split the current tree into two subtrees
+  size_t current_num_digits = absl::bit_floor(num_digits);
+
+  Shape current_shape({static_cast<int64_t>(current_num_digits * num_input)});
+  NdArrayRef current_cmp(cmp.eltype(), current_shape);
+  NdArrayRef current_eq(eq.eltype(), current_shape);
+  // Copy from the CMP and EQ bits for the current sub-full-tree
+  pforeach(0, num_input, [&](int64_t i) {
+    std::memcpy(&current_cmp.at(i * current_num_digits),
+                &cmp.at(i * num_digits), current_num_digits * cmp.elsize());
+    std::memcpy(&current_eq.at(i * current_num_digits), &eq.at(i * num_digits),
+                current_num_digits * eq.elsize());
+  });
+
+  auto [_cmp, _eq] = TraversalANDWithEqFullBinaryTree(
+      current_cmp, current_eq, num_input, current_num_digits);
+  // NOTE(lwj): auto unbox is a C++20 feature
+  NdArrayRef subtree_cmp = _cmp;
+  NdArrayRef subtree_eq = _eq;
+
+  // NOTE(lwj): +1 due to the AND on the sub-full-tree
+  size_t remain_num_digits = num_digits - current_num_digits + 1;
+  while (remain_num_digits > 1) {
+    current_num_digits = absl::bit_floor(remain_num_digits);
+    Shape current_shape({static_cast<int64_t>(current_num_digits * num_input)});
+    NdArrayRef current_cmp(cmp.eltype(), current_shape);
+    NdArrayRef current_eq(eq.eltype(), current_shape);
+
+    pforeach(0, num_input, [&](int64_t i) {
+      // copy subtree result as the 1st digit
+      std::memcpy(&current_cmp.at(i * current_num_digits), &subtree_cmp.at(i),
+                  1 * cmp.elsize());
+      std::memcpy(&current_eq.at(i * current_num_digits), &subtree_eq.at(i),
+                  1 * eq.elsize());
+
+      // copy the remaining digits from the input 'cmp' and 'eq'
+      std::memcpy(&current_cmp.at(i * current_num_digits + 1),
+                  &cmp.at((i + 1) * num_digits - remain_num_digits + 1),
+                  (current_num_digits - 1) * cmp.elsize());
+      std::memcpy(&current_eq.at(i * current_num_digits + 1),
+                  &eq.at((i + 1) * num_digits - remain_num_digits + 1),
+                  (current_num_digits - 1) * eq.elsize());
+    });
+
+    // NOTE(lwj): current_num_digits is not a 2-power
+    auto [_cmp, _eq] = TraversalANDWithEq(current_cmp, current_eq, num_input,
+                                          current_num_digits);
+    subtree_cmp = _cmp;
+    subtree_eq = _eq;
+    remain_num_digits = remain_num_digits - current_num_digits + 1;
+  }
+
+  return {subtree_cmp, subtree_eq};
+}
+
+NdArrayRef CompareProtocol::TraversalANDFullBinaryTree(NdArrayRef cmp,
+                                                       NdArrayRef eq,
+                                                       size_t num_input,
+                                                       size_t num_digits) {
+  SPU_ENFORCE(num_digits > 0 && absl::has_single_bit(num_digits),
+              "require num_digits be a 2-power");
+  if (num_digits == 1) {
+    return cmp;
+  }
   // Tree-based traversal ANDs
   // lt0[0], lt0[1], ..., lt0[M],
   // lt1[0], lt1[1], ..., lt1[M],
@@ -302,6 +374,62 @@ NdArrayRef CompareProtocol::TraversalAND(NdArrayRef cmp, NdArrayRef eq,
   }
 
   return cmp;
+}
+
+NdArrayRef CompareProtocol::TraversalAND(NdArrayRef cmp, NdArrayRef eq,
+                                         size_t num_input, size_t num_digits) {
+  if (absl::has_single_bit(num_digits)) {
+    return TraversalANDFullBinaryTree(cmp, eq, num_input, num_digits);
+  }
+
+  // Split the current tree into two subtrees
+  size_t current_num_digits = absl::bit_floor(num_digits);
+
+  Shape current_shape({static_cast<int64_t>(current_num_digits * num_input)});
+  NdArrayRef current_cmp(cmp.eltype(), current_shape);
+  NdArrayRef current_eq(eq.eltype(), current_shape);
+  // Copy from the CMP and EQ bits for the current sub-full-tree
+  pforeach(0, num_input, [&](int64_t i) {
+    std::memcpy(&current_cmp.at(i * current_num_digits),
+                &cmp.at(i * num_digits), current_num_digits * cmp.elsize());
+    std::memcpy(&current_eq.at(i * current_num_digits), &eq.at(i * num_digits),
+                current_num_digits * eq.elsize());
+  });
+
+  NdArrayRef subtree_cmp = TraversalANDFullBinaryTree(
+      current_cmp, current_eq, num_input, current_num_digits);
+
+  // NOTE(lwj): +1 due to the AND on the sub-full-tree
+  size_t remain_num_digits = num_digits - current_num_digits + 1;
+  while (remain_num_digits > 1) {
+    current_num_digits = absl::bit_floor(remain_num_digits);
+    Shape current_shape({static_cast<int64_t>(current_num_digits * num_input)});
+    NdArrayRef current_cmp(cmp.eltype(), current_shape);
+    NdArrayRef current_eq(eq.eltype(), current_shape);
+
+    pforeach(0, num_input, [&](int64_t i) {
+      // copy subtree result as the 1st digit
+      std::memcpy(&current_cmp.at(i * current_num_digits), &subtree_cmp.at(i),
+                  1 * cmp.elsize());
+      // copy the remaining digits from the input 'cmp'
+      std::memcpy(&current_cmp.at(i * current_num_digits + 1),
+                  &cmp.at((i + 1) * num_digits - remain_num_digits + 1),
+                  (current_num_digits - 1) * cmp.elsize());
+
+      // copy the remaining digits from the input 'eq'
+      // we skip the left-most equal which is unnecessary
+      std::memcpy(&current_eq.at(i * current_num_digits + 1),
+                  &eq.at((i + 1) * num_digits - remain_num_digits + 1),
+                  (current_num_digits - 1) * eq.elsize());
+    });
+
+    // NOTE(lwj): current_num_digits is not a 2-power
+    subtree_cmp =
+        TraversalAND(current_cmp, current_eq, num_input, current_num_digits);
+    remain_num_digits = remain_num_digits - current_num_digits + 1;
+  }
+
+  return subtree_cmp;
 }
 
 NdArrayRef CompareProtocol::Compute(const NdArrayRef& inp, bool greater_than,

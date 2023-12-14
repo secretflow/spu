@@ -22,7 +22,8 @@
 #include "yacl/crypto/utils/rand.h"
 
 #include "libspu/core/prelude.h"
-#include "libspu/mpc/cheetah/yacl_ot/util.h"
+#include "libspu/mpc/cheetah/ot/ot_util.h"
+#include "libspu/mpc/cheetah/ot/yacl/yacl_util.h"
 
 namespace spu::mpc::cheetah {
 
@@ -59,7 +60,7 @@ class YaclFerretOTeAdapter : public YaclOTeAdapter {
   }
 
   ~YaclFerretOTeAdapter() {
-    SPDLOG_INFO(
+    SPDLOG_DEBUG(
         "[FerretAdapter {}]({}), comsume OT {}, total time {:.3e} ms, "
         "invoke bootstrap {} ( {:.2e} ms per bootstrap, {:.2e} ms per ot )",
         id_, (is_sender_ ? fmt::format("Sender") : fmt::format("Receiver")),

@@ -21,7 +21,7 @@
 
 #include "yacl/crypto/base/aes/aes_opt.h"
 
-#include "libspu/mpc/cheetah/yacl_ot/util.h"
+#include "libspu/mpc/cheetah/ot/yacl/yacl_util.h"
 
 namespace spu::mpc::cheetah {
 

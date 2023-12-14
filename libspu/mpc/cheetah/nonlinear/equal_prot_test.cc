@@ -18,9 +18,8 @@
 
 #include "gtest/gtest.h"
 
-#include "libspu/core/xt_helper.h"
+#include "libspu/mpc/cheetah/ot/basic_ot_prot.h"
 #include "libspu/mpc/cheetah/type.h"
-#include "libspu/mpc/cheetah/yacl_ot/basic_ot_prot.h"
 #include "libspu/mpc/utils/ring_ops.h"
 #include "libspu/mpc/utils/simulate.h"
 
@@ -47,9 +46,9 @@ TEST_P(EqualProtTest, Basic) {
   inp[1] = ring_rand(field, shape);
 
   DISPATCH_ALL_FIELDS(field, "", [&]() {
-    auto xinp0 = xt_mutable_adapt<ring2k_t>(inp[0]);
-    auto xinp1 = xt_mutable_adapt<ring2k_t>(inp[1]);
-    std::copy_n(xinp1.data(), 5, xinp0.data());
+    auto xinp0 = NdArrayView<ring2k_t>(inp[0]);
+    auto xinp1 = NdArrayView<ring2k_t>(inp[1]);
+    std::copy_n(&xinp1[0], 5, &xinp0[0]);
   });
 
   NdArrayRef eq_oup[2];

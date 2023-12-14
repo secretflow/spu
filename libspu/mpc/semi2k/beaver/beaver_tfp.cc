@@ -164,4 +164,16 @@ std::unique_ptr<Beaver> BeaverTfpUnsafe::Spawn() {
   return std::make_unique<BeaverTfpUnsafe>(lctx_->Spawn());
 }
 
+BeaverTfpUnsafe::Pair BeaverTfpUnsafe::Eqz(FieldType field,
+                                           const Shape& shape) {
+  std::vector<PrgArrayDesc> descs(2);
+  auto a = prgCreateArray(field, shape, seed_, &counter_, descs.data());
+  auto b = prgCreateArray(field, shape, seed_, &counter_, &descs[1]);
+  if (lctx_->Rank() == 0) {
+    auto adjust = TrustedParty::adjustEqz(descs, seeds_);
+    ring_xor_(b, adjust);
+  }
+  return {a, b};
+}
+
 }  // namespace spu::mpc::semi2k

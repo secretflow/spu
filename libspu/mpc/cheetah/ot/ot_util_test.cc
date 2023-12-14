@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "libspu/mpc/cheetah/ot/util.h"
+#include "libspu/mpc/cheetah/ot/ot_util.h"
 
 #include <random>
 
@@ -22,18 +22,18 @@
 
 namespace spu::mpc::cheetah::test {
 
-class UtilTest : public ::testing::TestWithParam<FieldType> {
+class OtUtilTest : public ::testing::TestWithParam<FieldType> {
   void SetUp() override {}
 };
 
 INSTANTIATE_TEST_SUITE_P(
-    Cheetah, UtilTest,
+    Cheetah, OtUtilTest,
     testing::Values(FieldType::FM32, FieldType::FM64, FieldType::FM128),
-    [](const testing::TestParamInfo<UtilTest::ParamType> &p) {
+    [](const testing::TestParamInfo<OtUtilTest::ParamType> &p) {
       return fmt::format("{}", p.param);
     });
 
-TEST_P(UtilTest, ZipArray) {
+TEST_P(OtUtilTest, ZipArray) {
   const int64_t n = 200;
   const auto field = GetParam();
   const size_t elsze = SizeOf(field);
@@ -63,7 +63,7 @@ TEST_P(UtilTest, ZipArray) {
   });
 }
 
-TEST_P(UtilTest, ZipArrayBit) {
+TEST_P(OtUtilTest, ZipArrayBit) {
   const size_t n = 1000;
   const auto field = GetParam();
 

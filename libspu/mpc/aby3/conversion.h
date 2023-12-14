@@ -120,6 +120,26 @@ class MsbA2B : public UnaryKernel {
   NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in) const override;
 };
 
+class EqualAA : public BinaryKernel {
+ public:
+  static constexpr char kBindName[] = "equal_aa";
+
+  Kind kind() const override { return Kind::Dynamic; }
+
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
+                  const NdArrayRef& rhs) const override;
+};
+
+class EqualAP : public BinaryKernel {
+ public:
+  static constexpr char kBindName[] = "equal_ap";
+
+  Kind kind() const override { return Kind::Dynamic; }
+
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
+                  const NdArrayRef& rhs) const override;
+};
+
 class CommonTypeV : public Kernel {
  public:
   static constexpr char kBindName[] = "common_type_v";

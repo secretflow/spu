@@ -416,6 +416,34 @@ TEST_P(BeaverTest, Randbit) {
   });
 }
 
+TEST_P(BeaverTest, Eqz) {
+  const auto factory = std::get<0>(GetParam()).first;
+  const size_t kWorldSize = std::get<1>(GetParam());
+  const FieldType kField = std::get<2>(GetParam());
+  const int64_t kNumel = 2;
+
+  std::vector<Pair> pairs;
+  pairs.resize(kWorldSize);
+  utils::simulate(kWorldSize,
+                  [&](const std::shared_ptr<yacl::link::Context>& lctx) {
+                    auto beaver = factory(lctx, ttp_options_);
+                    pairs[lctx->Rank()] = beaver->Eqz(kField, {kNumel});
+                    yacl::link::Barrier(lctx, "BeaverUT");
+                  });
+  EXPECT_EQ(pairs.size(), kWorldSize);
+  auto sum_a = ring_zeros(kField, {kNumel});
+  auto sum_b = ring_zeros(kField, {kNumel});
+  for (Rank r = 0; r < kWorldSize; r++) {
+    const auto& [a, b] = pairs[r];
+    EXPECT_EQ(a.numel(), kNumel);
+    EXPECT_EQ(b.numel(), kNumel);
+
+    ring_add_(sum_a, a);
+    ring_xor_(sum_b, b);
+  }
+  EXPECT_TRUE(ring_all_equal(sum_a, sum_b));
+}
+
 TEST_P(BeaverTest, PermPair) {
   const auto factory = std::get<0>(GetParam()).first;
   const size_t kWorldSize = std::get<1>(GetParam());

@@ -687,4 +687,74 @@ TEST_P(ConversionTest, MSB) {
   });
 }
 
+TEST_P(ConversionTest, EqualAA) {
+  const auto factory = std::get<0>(GetParam());
+  const RuntimeConfig& conf = std::get<1>(GetParam());
+  const size_t npc = std::get<2>(GetParam());
+
+  utils::simulate(npc, [&](std::shared_ptr<yacl::link::Context> lctx) {
+    auto obj = factory(conf, lctx);
+
+    if (!obj->hasKernel("equal_aa")) {
+      return;
+    }
+    /* GIVEN */
+    auto r0 = rand_p(obj.get(), kShape);
+    auto r1 = rand_p(obj.get(), kShape);
+    auto r2 = rand_p(obj.get(), kShape);
+    std::memcpy(r2.data().data(), r0.data().data(), 16);
+    std::vector<Value> test_values = {r0, r1, r2};
+
+    for (auto& test_value : test_values) {
+      auto l_value = p2a(obj.get(), r0);
+      auto r_value = p2a(obj.get(), test_value);
+      auto prev = obj->prot()->getState<Communicator>()->getStats();
+      auto tmp = dynDispatch(obj.get(), "equal_aa", l_value, r_value);
+      auto cost = obj->prot()->getState<Communicator>()->getStats() - prev;
+      auto out_value = b2p(obj.get(), tmp);
+      auto t_value = equal_pp(obj.get(), r0, test_value);
+
+      /* THEN */
+      EXPECT_VALUE_EQ(out_value, t_value);
+      EXPECT_TRUE(verifyCost(obj->prot()->getKernel("equal_aa"), "equal_aa",
+                             conf.field(), kShape, npc, cost));
+    }
+  });
+}
+
+TEST_P(ConversionTest, EqualAP) {
+  const auto factory = std::get<0>(GetParam());
+  const RuntimeConfig& conf = std::get<1>(GetParam());
+  const size_t npc = std::get<2>(GetParam());
+
+  utils::simulate(npc, [&](std::shared_ptr<yacl::link::Context> lctx) {
+    auto obj = factory(conf, lctx);
+
+    if (!obj->hasKernel("equal_ap")) {
+      return;
+    }
+    /* GIVEN */
+    auto r0 = rand_p(obj.get(), kShape);
+    auto r1 = rand_p(obj.get(), kShape);
+    auto r2 = rand_p(obj.get(), kShape);
+    std::memcpy(r2.data().data(), r0.data().data(), 16);
+    std::vector<Value> test_values = {r0, r1, r2};
+
+    for (auto& test_value : test_values) {
+      auto l_value = p2a(obj.get(), r0);
+      auto r_value = test_value;
+      auto prev = obj->prot()->getState<Communicator>()->getStats();
+      auto tmp = dynDispatch(obj.get(), "equal_ap", l_value, r_value);
+      auto cost = obj->prot()->getState<Communicator>()->getStats() - prev;
+      auto out_value = b2p(obj.get(), tmp);
+      auto t_value = equal_pp(obj.get(), r0, test_value);
+
+      /* THEN */
+      EXPECT_VALUE_EQ(out_value, t_value);
+      EXPECT_TRUE(verifyCost(obj->prot()->getKernel("equal_ap"), "equal_ap",
+                             conf.field(), kShape, npc, cost));
+    }
+  });
+}
+
 }  // namespace spu::mpc::test

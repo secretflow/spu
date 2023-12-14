@@ -83,6 +83,8 @@ service BeaverService {
 
   rpc AdjustRandBit(AdjustRandBitRequest) returns (AdjustResponse);
 
+  rpc AdjustEqz(AdjustEqzRequest) returns (AdjustResponse);
+
   rpc AdjustPerm(AdjustPermRequest) returns (AdjustResponse);
 }
 
@@ -173,6 +175,19 @@ message AdjustRandBitRequest {
   // adjust_a = server generated random 0/1 array - rb
   // make
   // (adjust_a + ra) = random 0/1 array
+}
+
+message AdjustEqzRequest {
+  string session_id = 1;
+  // input two prg buffer
+  // reconstruct all parties' share get: ra / rb
+  repeated PrgBufferMeta prg_inputs = 2;
+  // use which field to interprete buffer. details see: spu.FieldType
+  int32 field = 3;
+  // output
+  // adjust_b = rb
+  // make
+  // ra(in a share) = rb(in b share)
 }
 
 message AdjustPermRequest {

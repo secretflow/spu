@@ -43,6 +43,8 @@ class TrustedParty {
 
   static NdArrayRef adjustRandBit(Descs descs, Seeds seeds);
 
+  static NdArrayRef adjustEqz(Descs descs, Seeds seeds);
+
   static NdArrayRef adjustPerm(Descs descs, Seeds seeds,
                                absl::Span<const int64_t> perm_vec);
 };

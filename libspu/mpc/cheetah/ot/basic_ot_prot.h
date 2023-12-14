@@ -15,7 +15,8 @@
 #pragma once
 
 #include "libspu/core/ndarray_ref.h"
-#include "libspu/mpc/cheetah/ot/ferret.h"
+#include "libspu/mpc/cheetah/ot/ferret_ot_interface.h"
+#include "libspu/mpc/common/communicator.h"
 
 namespace spu::mpc::cheetah {
 
@@ -40,14 +41,10 @@ class BasicOTProtocols {
 
   // Create `numel` of AND-triple. Each element contains `k` bits
   // 1 <= k <= field size
-  // std::array<ArrayRef, 3> AndTriple(FieldType field, size_t numel, size_t k);
-
   std::array<NdArrayRef, 3> AndTriple(FieldType field, const Shape &shape,
                                       size_t k);
 
   // [a, b, b', c, c'] such that c = a*b and c' = a*b' for the same a
-  // std::array<ArrayRef, 5> CorrelatedAndTriple(FieldType field, size_t numel);
-
   std::array<NdArrayRef, 5> CorrelatedAndTriple(FieldType field,
                                                 const Shape &shape);
 
@@ -60,9 +57,11 @@ class BasicOTProtocols {
                                                  const NdArrayRef &rhs0,
                                                  const NdArrayRef &rhs1);
 
-  std::shared_ptr<FerretOT> GetSenderCOT() { return ferret_sender_; }
+  std::shared_ptr<FerretOtInterface> GetSenderCOT() { return ferret_sender_; }
 
-  std::shared_ptr<FerretOT> GetReceiverCOT() { return ferret_receiver_; }
+  std::shared_ptr<FerretOtInterface> GetReceiverCOT() {
+    return ferret_receiver_;
+  }
 
   void Flush();
 
@@ -73,8 +72,8 @@ class BasicOTProtocols {
 
  private:
   std::shared_ptr<Communicator> conn_;
-  std::shared_ptr<FerretOT> ferret_sender_;
-  std::shared_ptr<FerretOT> ferret_receiver_;
+  std::shared_ptr<FerretOtInterface> ferret_sender_;
+  std::shared_ptr<FerretOtInterface> ferret_receiver_;
 };
 
 }  // namespace spu::mpc::cheetah

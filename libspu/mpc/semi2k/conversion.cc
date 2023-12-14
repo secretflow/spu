@@ -36,6 +36,12 @@ static NdArrayRef wrap_a2b(SPUContext* ctx, const NdArrayRef& x) {
   return UnwrapValue(a2b(ctx, WrapValue(x)));
 }
 
+static NdArrayRef wrap_and_bb(SPUContext* ctx, const NdArrayRef& x,
+                              const NdArrayRef& y) {
+  SPU_ENFORCE(x.shape() == y.shape());
+  return UnwrapValue(and_bb(ctx, WrapValue(x), WrapValue(y)));
+}
+
 NdArrayRef A2B::proc(KernelEvalContext* ctx, const NdArrayRef& x) const {
   const auto field = x.eltype().as<Ring2k>()->field();
   auto* comm = ctx->getState<Communicator>();
@@ -183,6 +189,91 @@ NdArrayRef MsbA2B::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
 
     return UnwrapValue(msb);
   }
+}
+
+NdArrayRef eqz(KernelEvalContext* ctx, const NdArrayRef& in) {
+  auto* prg_state = ctx->getState<PrgState>();
+  auto* comm = ctx->getState<Communicator>();
+  auto* beaver = ctx->getState<Semi2kState>()->beaver();
+
+  const auto field = in.eltype().as<AShrTy>()->field();
+  const auto numel = in.numel();
+
+  NdArrayRef out(makeType<BShrTy>(field), in.shape());
+
+  size_t pivot;
+  prg_state->fillPubl(absl::MakeSpan(&pivot, 1));
+  pivot %= comm->getWorldSize();
+  // beaver samples r and deals [r]a and [r]b
+  //  receal c = a+r
+  // check a == 0  <=> c == r
+  DISPATCH_ALL_FIELDS(field, "_", [&]() {
+    using el_t = ring2k_t;
+    auto [ra, rb] = beaver->Eqz(field, in.shape());
+
+    // c in secret share
+    ring_add_(ra, in);
+    // reveal c
+    NdArrayRef c_p = comm->allReduce(ReduceOp::ADD, ra, "reveal c ");
+
+    if (comm->getRank() == pivot) {
+      ring_xor_(rb, c_p);
+      ring_not_(rb);
+    }
+
+    // if a == 0, ~(a+ra) ^ rb supposed to be all 1
+    // do log(k) round bit wise and
+    // TODO: fix AND triple
+    // in beaver->AND(field, shape), min FM32, need min 1byte to reduce comm
+    NdArrayRef round_out = rb.as(makeType<BShrTy>(field));
+    size_t cur_bits = round_out.eltype().as<BShare>()->nbits();
+    while (cur_bits != 1) {
+      cur_bits /= 2;
+      round_out =
+          wrap_and_bb(ctx->sctx(), round_out, ring_rshift(round_out, cur_bits));
+    }
+
+    // 1 bit info in lsb
+    NdArrayView<el_t> _out(out);
+    NdArrayView<el_t> _round_out(round_out);
+    pforeach(0, numel, [&](int64_t idx) { _out[idx] = _round_out[idx] & 1; });
+  });
+
+  return out;
+}
+
+NdArrayRef EqualAA::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
+                         const NdArrayRef& rhs) const {
+  const auto* lhs_ty = lhs.eltype().as<AShrTy>();
+  const auto* rhs_ty = rhs.eltype().as<AShrTy>();
+
+  SPU_ENFORCE(lhs_ty->field() == rhs_ty->field());
+  const auto field = lhs_ty->field();
+  NdArrayRef out(makeType<AShrTy>(field), lhs.shape());
+
+  out = ring_sub(lhs, rhs);
+
+  return eqz(ctx, out);
+}
+
+NdArrayRef EqualAP::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
+                         const NdArrayRef& rhs) const {
+  auto* comm = ctx->getState<Communicator>();
+  const auto* lhs_ty = lhs.eltype().as<AShrTy>();
+  const auto* rhs_ty = rhs.eltype().as<Pub2kTy>();
+
+  SPU_ENFORCE(lhs_ty->field() == rhs_ty->field());
+  const auto field = lhs_ty->field();
+  NdArrayRef out(makeType<AShrTy>(field), lhs.shape());
+
+  auto rank = comm->getRank();
+  if (rank == 0) {
+    out = ring_sub(lhs, rhs);
+  } else {
+    out = lhs;
+  };
+
+  return eqz(ctx, out);
 }
 
 void CommonTypeV::evaluate(KernelEvalContext* ctx) const {

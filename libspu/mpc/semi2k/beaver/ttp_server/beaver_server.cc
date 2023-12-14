@@ -85,6 +85,9 @@ std::vector<NdArrayRef> AdjustImpl(const AdjustRequest& req,
   } else if constexpr (std::is_same_v<AdjustRequest, AdjustRandBitRequest>) {
     auto adjust = TrustedParty::adjustRandBit(descs, seeds);
     ret.push_back(std::move(adjust));
+  } else if constexpr (std::is_same_v<AdjustRequest, AdjustEqzRequest>) {
+    auto adjust = TrustedParty::adjustEqz(descs, seeds);
+    ret.push_back(std::move(adjust));
   } else if constexpr (std::is_same_v<AdjustRequest, AdjustPermRequest>) {
     PermVector pv;
     for (auto p : req.perm_vec()) {
@@ -317,12 +320,18 @@ class ServiceImpl final : public BeaverService {
     Adjust(controller, req, rsp, done);
   }
 
+  void AdjustEqz(::google::protobuf::RpcController* controller,
+                 const AdjustEqzRequest* req, AdjustResponse* rsp,
+                 ::google::protobuf::Closure* done) override {
+    Adjust(controller, req, rsp, done);
+  }
+
   void AdjustPerm(::google::protobuf::RpcController* controller,
                   const AdjustPermRequest* req, AdjustResponse* rsp,
                   ::google::protobuf::Closure* done) override {
     Adjust(controller, req, rsp, done);
   }
-};
+};  // namespace spu::mpc::semi2k::beaver::ttp_server
 
 std::unique_ptr<brpc::Server> RunServer(int32_t port) {
   brpc::FLAGS_max_body_size = std::numeric_limits<uint64_t>::max();
