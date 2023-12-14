@@ -18,7 +18,7 @@ load("@bazel_tools//tools/build_defs/repo:utils.bzl", "maybe")
 
 SECRETFLOW_GIT = "https://github.com/secretflow"
 
-YACL_COMMIT_ID = "6ba8bd5f02035176ec4daaca1c1269195a1b1b4e"
+YACL_COMMIT_ID = "2b7d8882c78f07bd9e78217b7f9ca13135781e65"
 
 LIBSPI_COMMIT_ID = "dbf452b9d87619b40b73746b7c9afefc1845975b"
 
