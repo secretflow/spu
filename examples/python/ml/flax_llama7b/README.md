@@ -17,18 +17,26 @@ This example demonstrates how to use SPU to run secure inference on a pre-traine
     git clone https://github.com/young-geng/EasyLM.git
     cd EasyLM
     export PYTHONPATH="${PWD}:$PYTHONPATH"
+    cd ./EasyLM/models/llama
     ```
 
+    Since EasyLM have an issue，so we have to make a samll change to support the option "streaming=false".
+    Open and edit "convert_hf_to_easylm.py", chang this:
+    ```python
+       parser.add_argument("--streaming", action="store_true", default=True, help="whether is model weight saved stream format",)
+    ```
+    to:
+    ```python
+       parser.add_argument("--streaming", action="store_true", default=False, help="whether is model weight saved stream format",)
+    ```
     Download trained LLaMA-B[PyTroch-Version] from [Hugging Face](https://huggingface.co/openlm-research/open_llama_7b)
     , and convert it to Flax.msgpack as:
-
-    ```sh
-    cd path_to_EasyLM/EasyLM/models/llama
+    ```sh    
     python convert_hf_to_easylm.py  \
        --checkpoint_dir     path-to-flax-llama7b-dir    \
        --output_file path-to-flax-llama7b-EasyLM.msgpack  \
        --model_size 7b \
-       --streaming
+       --streaming false
     ```
 
 3. Launch SPU backend runtime
@@ -37,11 +45,25 @@ This example demonstrates how to use SPU to run secure inference on a pre-traine
     bazel run -c opt //examples/python/utils:nodectl -- --config `pwd`/examples/python/ml/flax_llama7b/3pc.json up
     ```
 
+        or
+    （recommended）
+
+    ```sh
+    cd examples/python/utils
+    python nodectl.py  --config ../ml/flax_llama7b/3pc.json up
+    ```
+
 4. Run `flax_llama7b` example
 
     ```sh
     bazel run -c opt //examples/python/ml/flax_llama7b -- --config `pwd`/examples/python/ml/flax_llama7b/3pc.json
     ```
+
+    or（recommended）
+
+    ```sh
+    cd examples/python/ml/flax_llama7b
+    python flax_llama7b_split.py --model_path dir-to-flax-llama7b-EasyLM   --config ./3pc.json
 
     and you can get the following results from our example:
 
