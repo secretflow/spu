@@ -34,13 +34,13 @@
         "P1": {
             "kind": "PYU",
             "config": {
-                "node_id": "node:0"
+                "node_id": "node:3"
             }
         },
         "P2": {
             "kind": "PYU",
             "config": {
-                "node_id": "node:0"
+                "node_id": "node:4"
             }
         }
     }

@@ -36,6 +36,9 @@ import spu.utils.distributed as ppd
 
 parser = argparse.ArgumentParser(description='distributed driver.')
 parser.add_argument("-c", "--config", default="examples/python/ml/flax_llama/3pc.json")
+parser.add_argument(
+    "-m", "--model_path", required=True, help="please input the dir-to-flax-llama7b"
+)
 args = parser.parse_args()
 
 with open(args.config, 'r') as file:
@@ -49,7 +52,7 @@ copts.xla_pp_kind = 2
 # enable x / broadcast(y) -> x * broadcast(1/y)
 copts.enable_optimize_denominator_with_broadcast = True
 
-model_path = 'path-to-flax-llama7b'
+model_path = parser.model_path
 
 tokenizer = LlamaTokenizer.from_pretrained(model_path)
 tokenizer.pad_token_id = tokenizer.eos_token_id
