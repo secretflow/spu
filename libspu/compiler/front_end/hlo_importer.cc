@@ -28,6 +28,7 @@
 #include "xla/service/eigh_expander.h"
 #include "xla/service/float_normalization.h"
 #include "xla/service/float_support.h"
+#include "xla/service/gather_expander.h"
 #include "xla/service/gather_simplifier.h"
 #include "xla/service/gpu/dot_dimension_sorter.h"
 #include "xla/service/hlo_constant_folding.h"
@@ -126,6 +127,7 @@ void runHloPasses(xla::HloModule *module) {
         /*allow_mixed_precision=*/false);
 
     pipeline.AddPass<GatherSimplifier>();
+    pipeline.AddPass<GatherExpander>(GatherExpander::kEliminateSimpleGathers);
     pipeline.AddPass<ScatterExpander>(ScatterExpander::kEliminateAllScatters);
     pipeline.AddPass<AlgebraicSimplifier>(options);
     pipeline.AddPass<BitcastDtypesExpander>();
