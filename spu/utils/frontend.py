@@ -29,6 +29,7 @@ def _jax_compilation_key(
     fn: Callable, static_argnums, static_argnames, args: List, kwargs: Dict
 ):
     import jax
+    import numpy as np
     from jax._src.api_util import argnames_partial_except, argnums_partial_except
 
     try:
@@ -60,9 +61,15 @@ def _jax_compilation_key(
     f, dkwargs = argnames_partial_except(f, static_argnames, kwargs)
     f, dargs = argnums_partial_except(f, static_argnums, args, allow_invalid=True)
 
-    flat_args, _ = jax.tree_util.tree_flatten((dargs, dkwargs))
-    types = [(a.dtype, a.shape) if hasattr(a, 'dtype') else type(a) for a in flat_args]
-    hash_str = f'{hash(f)}-{hash(_function_contents(fn))}-{types}'
+    flat_args, tree = jax.tree_util.tree_flatten((dargs, dkwargs))
+    types = []
+    for a in flat_args:
+        if hasattr(a, 'dtype'):
+            types.append((a.dtype, a.shape))
+        else:
+            np_array = np.asarray(a)
+            types.append((np_array.dtype, np_array.shape))
+    hash_str = f'{hash(f)}-{hash(_function_contents(fn))}-{types}-{hash(tree)}'
 
     return hash_str
 
@@ -114,6 +121,7 @@ def _jax_compilation(
     cfn, output = jax.xla_computation(
         fn, return_shape=True, static_argnums=static_argnums, backend="interpreter"
     )(*args, **kwargs)
+
     return cfn.as_serialized_hlo_module_proto(), output
 
 
