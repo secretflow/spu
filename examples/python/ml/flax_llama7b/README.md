@@ -25,7 +25,9 @@ This example demonstrates how to use SPU to run secure inference on a pre-traine
     ```python
        parser.add_argument("--streaming", action="store_true", default=True, help="whether is model weight saved stream format",)
     ```
+
     to:
+
     ```python
        parser.add_argument("--streaming", action="store_true", default=False, help="whether is model weight saved stream format",)
     ```
