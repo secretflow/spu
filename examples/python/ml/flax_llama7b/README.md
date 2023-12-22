@@ -22,32 +22,6 @@ This example demonstrates how to use SPU to run secure inference on a pre-traine
 
     Since EasyLM have an issue，so we have to make a samll change to support the option "streaming=false".
     Open and edit "convert_hf_to_easylm.py", chang this:
-
-    ```python
-       parser.add_argument("--streaming", action="store_true", default=True, help="whether is model weight saved stream format",)
-    ```
-
-    to:
-
-    ```python
-       parser.add_argument("--streaming", action="store_true", default=False, help="whether is model weight saved stream format",)
-    ```
-
-    Since EasyLM have an issue，so we have to make a samll change to support the option "streaming=false".
-    Open and edit "convert_hf_to_easylm.py", chang this:
-
-    ```python
-       parser.add_argument("--streaming", action="store_true", default=True, help="whether is model weight saved stream format",)
-    ```
-
-    to:
-
-    ```python
-       parser.add_argument("--streaming", action="store_true", default=False, help="whether is model weight saved stream format",)
-    ```
-
-    Since EasyLM have an issue，so we have to make a samll change to support the option "streaming=false".
-    Open and edit "convert_hf_to_easylm.py", chang this:
     ```python
        parser.add_argument("--streaming", action="store_true", default=True, help="whether is model weight saved stream format",)
     ```
@@ -55,8 +29,10 @@ This example demonstrates how to use SPU to run secure inference on a pre-traine
     ```python
        parser.add_argument("--streaming", action="store_true", default=False, help="whether is model weight saved stream format",)
     ```
+
     Download trained LLaMA-B[PyTroch-Version] from [Hugging Face](https://huggingface.co/openlm-research/open_llama_7b)
     , and convert it to Flax.msgpack as:
+
     ```sh
     python convert_hf_to_easylm.py  \
        --checkpoint_dir     path-to-flax-llama7b-dir    \
