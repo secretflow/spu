@@ -111,8 +111,8 @@ std::vector<NdArrayRef> Aby3Io::makeBitSecret(const PtBufferView& in) const {
   std::vector<bshr_el_t> r0(numel);
   std::vector<bshr_el_t> r1(numel);
 
-  yacl::crypto::PrgAesCtr(yacl::crypto::RandSeed(), absl::MakeSpan(r0));
-  yacl::crypto::PrgAesCtr(yacl::crypto::RandSeed(), absl::MakeSpan(r1));
+  yacl::crypto::PrgAesCtr(yacl::crypto::SecureRandSeed(), absl::MakeSpan(r0));
+  yacl::crypto::PrgAesCtr(yacl::crypto::SecureRandSeed(), absl::MakeSpan(r1));
 
   NdArrayView<bshr_t> _s0(shares[0]);
   NdArrayView<bshr_t> _s1(shares[1]);

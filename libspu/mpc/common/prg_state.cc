@@ -24,7 +24,7 @@ namespace spu::mpc {
 PrgState::PrgState() {
   pub_seed_ = 0;
 
-  priv_seed_ = yacl::crypto::RandSeed();
+  priv_seed_ = yacl::crypto::SecureRandSeed();
 
   self_seed_ = 0;
   next_seed_ = 0;
@@ -33,7 +33,7 @@ PrgState::PrgState() {
 PrgState::PrgState(const std::shared_ptr<yacl::link::Context>& lctx) {
   // synchronize public state.
   {
-    uint128_t self_pk = yacl::crypto::RandSeed();
+    uint128_t self_pk = yacl::crypto::SecureRandSeed();
 
     const auto all_buf = yacl::link::AllGather(
         lctx, yacl::SerializeUint128(self_pk), "Random::PK");
@@ -46,11 +46,11 @@ PrgState::PrgState(const std::shared_ptr<yacl::link::Context>& lctx) {
   }
 
   // init private state.
-  priv_seed_ = yacl::crypto::RandSeed();
+  priv_seed_ = yacl::crypto::SecureRandSeed();
 
   // init PRSS state.
   {
-    self_seed_ = yacl::crypto::RandSeed();
+    self_seed_ = yacl::crypto::SecureRandSeed();
 
     constexpr char kCommTag[] = "Random:PRSS";
 
@@ -68,7 +68,7 @@ std::unique_ptr<State> PrgState::fork() {
 
   fillPubl(absl::MakeSpan(&new_prg->pub_seed_, 1));
 
-  new_prg->priv_seed_ = yacl::crypto::RandSeed();
+  new_prg->priv_seed_ = yacl::crypto::SecureRandSeed();
 
   fillPrssPair(&new_prg->self_seed_, &new_prg->next_seed_, 1,
                PrgState::GenPrssCtrl::Both);

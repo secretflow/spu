@@ -131,6 +131,38 @@ TEST_P(ColocatedIoTest, Works) {
   });
 }
 
+TEST(ColocatedIoTest, PrivateWorks) {
+  const size_t kWorldSize = 2;
+
+  RuntimeConfig hconf;
+  hconf.set_protocol(ProtocolKind::SEMI2K);
+  hconf.set_field(FieldType::FM64);
+  hconf.set_experimental_enable_colocated_optimization(true);
+
+  mpc::utils::simulate(kWorldSize, [&](auto lctx) {
+    SPUContext sctx(hconf, lctx);
+    ColocatedIo cio(&sctx);
+
+    // WHEN
+    if (lctx->Rank() == 0) {
+      cio.hostSetVar("x", xt::xarray<int>{{1, -2, 3, 0}},
+                     Visibility::VIS_PRIVATE);
+    } else if (lctx->Rank() == 1) {
+      cio.hostSetVar("y", xt::xarray<float>{{1, -2, 3, 0}},
+                     Visibility::VIS_PRIVATE);
+    }
+    cio.sync();
+
+    // THEN
+    EXPECT_TRUE(cio.deviceHasVar("x"));
+    auto x = cio.deviceGetVar("x");
+    EXPECT_TRUE(x.isPrivate()) << x;
+    EXPECT_TRUE(cio.deviceHasVar("y"));
+    auto y = cio.deviceGetVar("y");
+    EXPECT_TRUE(y.isPrivate()) << y;
+  });
+}
+
 INSTANTIATE_TEST_SUITE_P(
     ColocatedIoTestInstance, ColocatedIoTest,
     testing::Combine(

@@ -178,7 +178,13 @@ ColocatedIo::ColocatedIo(SPUContext *sctx) : sctx_(sctx) {}
 
 void ColocatedIo::hostSetVar(const std::string &name, const PtBufferView &bv,
                              Visibility vtype) {
-  unsynced_[name] = {convertToNdArray(bv), vtype};
+  if (vtype == VIS_PRIVATE) {
+    // handle SECRET/PRIVATE compiler/runtime trick.
+    unsynced_[name] = {convertToNdArray(bv), VIS_SECRET,
+                       static_cast<int>(sctx_->lctx()->Rank())};
+  } else {
+    unsynced_[name] = {convertToNdArray(bv), vtype};
+  }
 }
 
 NdArrayRef ColocatedIo::hostGetVar(const std::string &name) const {
@@ -325,7 +331,7 @@ void ColocatedIo::sync() {
     PtBufferView bv(arr.data(), arr.eltype().as<PtTy>()->pt_type(), arr.shape(),
                     arr.strides());
 
-    auto shares = io.makeShares(bv, priv.vtype);
+    auto shares = io.makeShares(bv, priv.vtype, priv.owner_rank);
     SPU_ENFORCE(shares.size() == lctx->WorldSize());
 
     for (size_t idx = 0; idx < shares.size(); idx++) {

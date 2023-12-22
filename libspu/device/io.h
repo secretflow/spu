@@ -128,7 +128,8 @@ class ColocatedIo {
   // un-synchronized data.
   struct PrivData {
     NdArrayRef arr;
-    Visibility vtype;
+    Visibility vtype{Visibility::VIS_INVALID};
+    int owner_rank{-1};
   };
   std::map<std::string, PrivData> unsynced_;
 

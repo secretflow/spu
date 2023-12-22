@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("//bazel:spu.bzl", "spu_cc_library", "spu_cc_test")
+load("//bazel:spu.bzl", "spu_cc_library")
 load("@yacl//bazel:yacl.bzl", "AES_COPT_FLAGS")
 
 package(default_visibility = ["//visibility:public"])
@@ -46,9 +46,10 @@ spu_cc_library(
         "@yacl//yacl/crypto/base/hash:hash_interface",
         "@yacl//yacl/crypto/base/hash:hash_utils",
         "@yacl//yacl/crypto/primitives/ot:base_ot",
+        "@yacl//yacl/crypto/tools:crhash",
         "@yacl//yacl/crypto/tools:prg",
-        "@yacl//yacl/crypto/tools:random_oracle",
-        "@yacl//yacl/crypto/tools:random_permutation",
+        "@yacl//yacl/crypto/tools:ro",
+        "@yacl//yacl/crypto/tools:rp",
         "@yacl//yacl/link",
         "@yacl//yacl/utils:matrix_utils",
         "@yacl//yacl/utils:serialize",

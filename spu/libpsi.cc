@@ -22,6 +22,7 @@
 
 #include "psi/pir/pir.h"
 #include "psi/psi/bucket_psi.h"
+#include "psi/psi/factory.h"
 #include "psi/psi/memory_psi.h"
 #include "psi/psi/utils/progress.h"
 
@@ -75,6 +76,21 @@ void BindLibs(py::module& m) {
       py::arg("progress_callbacks") = nullptr,
       py::arg("callbacks_interval_ms") = 5 * 1000, py::arg("ic_mode") = false,
       "Run bucket psi. ic_mode means run in interconnection mode", NO_GIL);
+
+  m.def(
+      "psi_v2",
+      [](const std::string& config_pb,
+         const std::shared_ptr<yacl::link::Context>& lctx) -> py::bytes {
+        psi::v2::PsiConfig psi_config;
+        YACL_ENFORCE(psi_config.ParseFromString(config_pb));
+
+        std::unique_ptr<psi::AbstractPSIParty> psi_party =
+            psi::createPSIParty(psi_config, lctx);
+        psi::v2::PsiReport report = psi_party->Run();
+        return report.SerializeAsString();
+      },
+      py::arg("psi_config"), py::arg("link_context") = nullptr,
+      "Run PSI with v2 API.", NO_GIL);
 
   m.def(
       "pir_setup",

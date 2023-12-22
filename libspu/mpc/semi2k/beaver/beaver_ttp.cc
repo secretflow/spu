@@ -146,7 +146,7 @@ BeaverTtp::~BeaverTtp() {
 
 BeaverTtp::BeaverTtp(std::shared_ptr<yacl::link::Context> lctx, Options ops)
     : lctx_(std::move(std::move(lctx))),
-      seed_(yacl::crypto::RandSeed(true)),
+      seed_(yacl::crypto::SecureRandSeed()),
       counter_(0),
       options_(std::move(ops)),
       child_counter_(0) {

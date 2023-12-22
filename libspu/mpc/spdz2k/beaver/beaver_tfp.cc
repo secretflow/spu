@@ -17,6 +17,8 @@
 #include <random>
 #include <utility>
 
+#include "yacl/crypto/base/block_cipher/symmetric_crypto.h"
+#include "yacl/crypto/tools/prg.h"
 #include "yacl/crypto/utils/rand.h"
 #include "yacl/utils/serialize.h"
 

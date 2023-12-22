@@ -75,7 +75,7 @@ class MatMatProtTest
     seal::KeyGenerator keygen(*context_);
     rlwe_sk_ = std::make_shared<RLWESecretKey>(keygen.secret_key());
 
-    seed_ = yacl::crypto::RandSeed();
+    seed_ = yacl::crypto::SecureRandSeed();
     prng_counter_ = 0;
   }
 };
