@@ -22,7 +22,7 @@
 namespace spu::mpc::cheetah {
 
 EnableCPRNG::EnableCPRNG()
-    : seed_(yacl::crypto::RandSeed(/*drbg*/ true)), prng_counter_(0) {}
+    : seed_(yacl::crypto::SecureRandSeed()), prng_counter_(0) {}
 
 // Uniform random on prime field
 void EnableCPRNG::UniformPrime(const seal::Modulus &prime,
@@ -75,7 +75,7 @@ NdArrayRef EnableCPRNG::CPRNG(FieldType field, size_t size) {
   // Lock prng_counter_
   std::scoped_lock guard(counter_lock_);
   if (prng_counter_ > kPRNG_THREASHOLD) {
-    seed_ = yacl::crypto::RandSeed(true);
+    seed_ = yacl::crypto::SecureRandSeed();
     prng_counter_ = 0;
   }
   return ring_rand(field, {static_cast<int64_t>(size)}, seed_, &prng_counter_);

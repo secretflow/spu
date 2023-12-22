@@ -28,7 +28,7 @@ namespace spu::mpc::semi2k {
 
 BeaverTfpUnsafe::BeaverTfpUnsafe(std::shared_ptr<yacl::link::Context> lctx)
     : lctx_(std::move(std::move(lctx))),
-      seed_(yacl::crypto::RandSeed(true)),
+      seed_(yacl::crypto::SecureRandSeed()),
       counter_(0) {
   auto buf = yacl::SerializeUint128(seed_);
   std::vector<yacl::Buffer> all_bufs =

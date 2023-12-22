@@ -16,9 +16,9 @@ from __future__ import annotations
 
 from typing import List
 
-from .libspu.link import Context  # type: ignore
-from .libpsi.libs import ProgressData
 from . import libpsi  # type: ignore
+from .libpsi.libs import ProgressData
+from .libspu.link import Context  # type: ignore
 from .psi_pb2 import (  # type: ignore
     BucketPsiConfig,
     CurveType,
@@ -28,6 +28,7 @@ from .psi_pb2 import (  # type: ignore
     PsiResultReport,
     PsiType,
 )
+from .psi_v2_pb2 import PsiConfig, PsiReport
 
 
 def mem_psi(
@@ -85,5 +86,24 @@ def gen_cache_for_2pc_ub_psi(config: BucketPsiConfig) -> PsiResultReport:
     config.receiver_rank = 0
     report_str = libpsi.libs.bucket_psi(None, config.SerializeToString())
     report = PsiResultReport()
+    report.ParseFromString(report_str)
+    return report
+
+
+def psi_v2(
+    config: BucketPsiConfig,
+    link: Context = None,
+) -> PsiReport:
+    """
+    Run PSI with v2 API.
+    :param config: psi config
+    :param link: the transport layer
+    :return: statistical results
+    """
+    report_str = libpsi.libs.psi_v2(
+        config.SerializeToString(),
+        link,
+    )
+    report = PsiReport()
     report.ParseFromString(report_str)
     return report

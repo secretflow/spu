@@ -18,7 +18,8 @@
 
 #include "spdlog/spdlog.h"
 #include "yacl/base/buffer.h"
-#include "yacl/crypto/tools/random_permutation.h"
+#include "yacl/crypto/tools/crhash.h"
+#include "yacl/crypto/tools/rp.h"
 #include "yacl/link/link.h"
 
 #include "libspu/mpc/cheetah/ot/ot_util.h"

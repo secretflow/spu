@@ -50,7 +50,7 @@ bool commit_and_open(const std::shared_ptr<yacl::link::Context>& lctx,
                      std::vector<std::string>* z_strs) {
   bool res = true;
   size_t send_player = lctx->Rank();
-  uint128_t rs = yacl::crypto::RandSeed();
+  uint128_t rs = yacl::crypto::SecureRandSeed();
   std::string rs_str(reinterpret_cast<char*>(&rs), sizeof(rs));
   // 1. commit and send
   auto cmt = commit(send_player, z_str, rs_str);

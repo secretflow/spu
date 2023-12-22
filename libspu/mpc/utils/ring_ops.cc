@@ -205,7 +205,7 @@ void ring_print(const NdArrayRef& x, std::string_view name) {
 
 NdArrayRef ring_rand(FieldType field, const Shape& shape) {
   uint64_t cnt = 0;
-  return ring_rand(field, shape, yacl::crypto::RandSeed(), &cnt);
+  return ring_rand(field, shape, yacl::crypto::SecureRandSeed(), &cnt);
 }
 
 NdArrayRef ring_rand(FieldType field, const Shape& shape, uint128_t prg_seed,

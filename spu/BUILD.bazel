@@ -67,6 +67,7 @@ pybind_extension(
         ":version_script.lds",
         "@psi//psi/pir",
         "@psi//psi/psi:bucket_psi",
+        "@psi//psi/psi:factory",
         "@psi//psi/psi:memory_psi",
         "@yacl//yacl/link",
     ],
@@ -90,11 +91,33 @@ python_proto_compile(
     protos = ["@psi//psi/psi:psi_proto"],
 )
 
+python_proto_compile(
+    name = "link_py_proto",
+    output_mode = "NO_PREFIX_FLAT",
+    protos = ["@yacl//yacl/link:link_proto"],
+)
+
+python_proto_compile(
+    name = "psi_v2_py_proto",
+    output_mode = "NO_PREFIX",
+    protos = ["@psi//psi/proto:psi_v2_proto"],
+)
+
+# Hack generated protobuf due to https://github.com/protocolbuffers/protobuf/issues/1491
+genrule(
+    name = "psi_v2_py_proto_fixed",
+    srcs = [":psi_v2_py_proto"],
+    outs = ["psi_v2_pb2.py"],
+    cmd = "sed 's#from yacl.link import#from . import#g;s#from psi.psi import#from . import#g' $(SRCS) > $(OUTS)",
+)
+
 py_library(
     name = "psi",
     srcs = [
         "psi.py",
+        ":link_py_proto",
         ":psi_py_proto",
+        ":psi_v2_py_proto_fixed",
     ],
     data = [
         ":libpsi.so",

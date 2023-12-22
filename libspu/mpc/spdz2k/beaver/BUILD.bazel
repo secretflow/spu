@@ -36,6 +36,8 @@ spu_cc_library(
         "//libspu/mpc/spdz2k:commitment",
         "//libspu/mpc/utils:ring_ops",
         "@com_github_microsoft_seal//:seal",
+        "@yacl//yacl/crypto/base/block_cipher:symmetric_crypto",
+        "@yacl//yacl/crypto/tools:prg",
         "@yacl//yacl/link",
         "@yacl//yacl/utils:parallel",
     ],
