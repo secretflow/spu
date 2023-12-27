@@ -1686,7 +1686,7 @@ template <std::float_round_style R, bool E, bool I, typename T>
 T half2int(unsigned int value) {
   unsigned int abs = value & 0x7FFF;
   if (abs >= 0x7C00) {
-    raise(FE_INVALID);
+    detail::raise(FE_INVALID);
     return (value & 0x8000) ? std::numeric_limits<T>::min()
                             : std::numeric_limits<T>::max();
   }
@@ -1712,9 +1712,9 @@ T half2int(unsigned int value) {
       (std::numeric_limits<T>::digits < 16 &&
        ((value & 0x8000) ? (-i < std::numeric_limits<T>::min())
                          : (i > std::numeric_limits<T>::max()))))
-    raise(FE_INVALID);
+    detail::raise(FE_INVALID);
   else if (I && exp > 0 && (m & ((1 << exp) - 1)))
-    raise(FE_INEXACT);
+    detail::raise(FE_INEXACT);
   return static_cast<T>((value & 0x8000) ? -i : i);
 }
 
