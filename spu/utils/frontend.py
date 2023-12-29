@@ -88,7 +88,8 @@ def _argnames_partial_except(fn, static_argnames, kwargs):
     return functools.partial(fn, **static_kwargs), kwargs
 
 
-@cached(cache=LRUCache(maxsize=128), key=_jax_compilation_key)
+# FIXME: Figure out a proper way to hash lambda functions
+# @cached(cache=LRUCache(maxsize=128), key=_jax_compilation_key)
 def _jax_compilation(
     fn: Callable, static_argnums, static_argnames, args: List, kwargs: Dict
 ):
