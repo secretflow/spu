@@ -47,9 +47,6 @@ jobs:
             curl -X POST --header "Content-Type: application/json" "https://circleci.com/api/v2/workflow/${CIRCLE_WORKFLOW_ID}/cancel?circle-token=${BUILD_TIMER_TOKEN}"
       - checkout
       - restore_cache:
-          name: "Restore pip cache"
-          key: &pip-cache pip-{{ checksum "requirements.txt" }}-{{ checksum "requirements-dev.txt" }}
-      - restore_cache:
           name: "Restore build cache"
           key: spu-build-comp-{{ arch }}-
       - run:
@@ -79,10 +76,6 @@ jobs:
             find bazel-testlogs/ -type f -name "test.log"  -print0 | xargs -0 tar -cvzf test_logs.tar.gz
 
             exit ${test_status}
-      - save_cache:
-          key: *pip-cache
-          paths:
-            - /usr/local/lib64/python3.8/site-packages
       - run:
           name: Cleanup and compress cache
           command: |
