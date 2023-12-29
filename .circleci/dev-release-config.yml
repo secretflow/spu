@@ -61,7 +61,7 @@ jobs:
       - run:
           name: "build package and publish"
           command: |
-            conda create -n build python=3.8 -y
+            conda create -n build python=3.9 -y
             conda activate build
 
             sh ./build_wheel_entrypoint.sh
