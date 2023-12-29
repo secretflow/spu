@@ -143,13 +143,14 @@ TEST(ColocatedIoTest, PrivateWorks) {
     SPUContext sctx(hconf, lctx);
     ColocatedIo cio(&sctx);
 
-    // WHEN
+    // when experimental_enable_colocated_optimization is on,
+    // set secret with colocated io gets a prvate result
     if (lctx->Rank() == 0) {
       cio.hostSetVar("x", xt::xarray<int>{{1, -2, 3, 0}},
-                     Visibility::VIS_PRIVATE);
+                     Visibility::VIS_SECRET);
     } else if (lctx->Rank() == 1) {
       cio.hostSetVar("y", xt::xarray<float>{{1, -2, 3, 0}},
-                     Visibility::VIS_PRIVATE);
+                     Visibility::VIS_SECRET);
     }
     cio.sync();
 

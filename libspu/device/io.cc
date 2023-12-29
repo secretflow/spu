@@ -178,13 +178,8 @@ ColocatedIo::ColocatedIo(SPUContext *sctx) : sctx_(sctx) {}
 
 void ColocatedIo::hostSetVar(const std::string &name, const PtBufferView &bv,
                              Visibility vtype) {
-  if (vtype == VIS_PRIVATE) {
-    // handle SECRET/PRIVATE compiler/runtime trick.
-    unsynced_[name] = {convertToNdArray(bv), VIS_SECRET,
-                       static_cast<int>(sctx_->lctx()->Rank())};
-  } else {
-    unsynced_[name] = {convertToNdArray(bv), vtype};
-  }
+  unsynced_[name] = {convertToNdArray(bv), vtype,
+                     static_cast<int>(sctx_->lctx()->Rank())};
 }
 
 NdArrayRef ColocatedIo::hostGetVar(const std::string &name) const {
