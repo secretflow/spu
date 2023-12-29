@@ -644,7 +644,7 @@ NdArrayRef MatMulAA::proc(KernelEvalContext* ctx, const NdArrayRef& x,
 
 #ifdef CUDA_ENABLED
   // FIXME: better heuristic?
-  if (spu::cuda::hasGPUDevice() && M * N <= 20000 && field == FM64) {
+  if (!spu::cuda::hasGPUDevice() || M * N <= 20000 || field != FM64) {
 #endif
     auto x1 = getFirstShare(x);
     auto x2 = getSecondShare(x);
