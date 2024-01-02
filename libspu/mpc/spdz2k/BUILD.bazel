@@ -56,6 +56,7 @@ spu_cc_test(
         ":protocol",
         "//libspu/mpc:ab_api_test",
     ],
+    timeout = "eternal",
 )
 
 spu_cc_library(

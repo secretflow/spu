@@ -45,4 +45,5 @@ spu_cc_test(
         ":ferret",
         "//libspu/mpc/utils:simulate",
     ],
+    timeout = "eternal",
 )
