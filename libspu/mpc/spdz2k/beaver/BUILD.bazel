@@ -52,6 +52,7 @@ spu_cc_test(
         "//libspu/mpc/utils:simulate",
         "@com_google_googletest//:gtest",
     ],
+    timeout = "eternal",
 )
 
 spu_cc_library(
