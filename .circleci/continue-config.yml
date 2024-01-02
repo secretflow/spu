@@ -60,13 +60,13 @@ jobs:
             python3 -m pip install -r requirements-dev.txt
       - run:
           name: "build"
-          command: bazel build //... -c opt --ui_event_filters=-info,-debug,-warning --jobs 20 --remote_cache=https://storage.googleapis.com/secretflow --google_credentials=../gcs.json
+          command: bazel build //... -c opt --ui_event_filters=-info,-debug,-warning --jobs 20 --remote_cache=https://storage.googleapis.com/secretflow --google_credentials=../gcs.json --remote_download_minimal
       - run:
           name: "test"
           command: |
             set +e
             declare -i test_status
-            bazel test //... -c opt --ui_event_filters=-info,-debug,-warning --test_output=errors --remote_cache=https://storage.googleapis.com/secretflow --google_credentials=../gcs.json | tee test_result.log; test_status=${PIPESTATUS[0]}
+            bazel test //... -c opt --ui_event_filters=-info,-debug,-warning --test_output=errors --remote_cache=https://storage.googleapis.com/secretflow --google_credentials=../gcs.json --remote_download_minimal | tee test_result.log; test_status=${PIPESTATUS[0]}
 
             sh ../devtools/rename-junit-xml.sh
             find bazel-bin/ -executable -type f -name "*_test"  -print0 | xargs -0 tar -cvzf test_binary.tar.gz
@@ -101,14 +101,17 @@ jobs:
             pip install -r requirements.txt
             pip install -r requirements-dev.txt
       - run:
+          name: Setup GCS
+          command: ../devtools/base64_converter.py --str ${gcs_content} --out_file ../gcs.json
+      - run:
           name: "build"
-          command: bazel build //... -c opt --ui_event_filters=-info,-debug,-warning
+          command: bazel build //... -c opt --ui_event_filters=-info,-debug,-warning --remote_cache=https://storage.googleapis.com/secretflow --google_credentials=../gcs.json --remote_download_minimal
       - run:
           name: "test"
           command: |
             set +e
             declare -i test_status
-            bazel test //... -c opt --ui_event_filters=-info,-debug,-warning --test_output=errors | tee test_result.log; test_status=${PIPESTATUS[0]}
+            bazel test //... -c opt --ui_event_filters=-info,-debug,-warning --test_output=errors --remote_cache=https://storage.googleapis.com/secretflow --google_credentials=../gcs.json --remote_download_minimal | tee test_result.log; test_status=${PIPESTATUS[0]}
 
             sh ../devtools/rename-junit-xml.sh
             find bazel-bin/ -perm +111 -type f -name "*_test"  -print0 | xargs -0 tar -cvzf test_binary.tar.gz
@@ -133,4 +136,6 @@ workflows:
               resource_class: ["2xlarge", "arm.2xlarge"]
           context:
             - gcs
-      - macOS_ut
+      - macOS_ut:
+          context:
+            - gcs
