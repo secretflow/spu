@@ -12,15 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 load("@bazel_tools//tools/build_defs/repo:utils.bzl", "maybe")
 
 SECRETFLOW_GIT = "https://github.com/secretflow"
 
 YACL_COMMIT_ID = "716e72902ef5d1badd9b15159d7ff5070c8a95c4"
+YACL_SHA256 = "4011f4ef9e573b575b50e979b7d9d23152c765e204fe494c5fdfc09eebfc3b21"
 
-LIBSPI_COMMIT_ID = "d5caedc399503275820a881f10d48e1e11a10357"
+LIBPSI_COMMIT_ID = "d5caedc399503275820a881f10d48e1e11a10357"
+LIBPSI_SHA256 = "f7968386cc74d74d0848fd293c4ab9dc978da164ee22ba1c5b081f78aa8b0b1b"
 
 def spu_deps():
     _rules_cuda()
@@ -39,19 +40,29 @@ def spu_deps():
     _com_github_microsoft_seal()
     _com_github_eigenteam_eigen()
     _com_github_nvidia_cutlass()
+    _yacl()
+    _libpsi()
 
+def _yacl():
     maybe(
-        git_repository,
+        http_archive,
         name = "yacl",
-        commit = YACL_COMMIT_ID,
-        remote = "{}/yacl.git".format(SECRETFLOW_GIT),
+        urls = [
+            "https://github.com/secretflow/yacl/archive/{commit}.tar.gz".format(commit = YACL_COMMIT_ID),
+        ],
+        strip_prefix = "yacl-{commit}".format(commit = YACL_COMMIT_ID),
+        sha256 = YACL_SHA256,
     )
 
+def _libpsi():
     maybe(
-        git_repository,
+        http_archive,
         name = "psi",
-        commit = LIBSPI_COMMIT_ID,
-        remote = "{}/psi.git".format(SECRETFLOW_GIT),
+        urls = [
+            "https://github.com/secretflow/psi/archive/{commit}.tar.gz".format(commit = LIBPSI_COMMIT_ID),
+        ],
+        strip_prefix = "psi-{commit}".format(commit = LIBPSI_COMMIT_ID),
+        sha256 = LIBPSI_SHA256,
     )
 
 def _rules_proto_grpc():
