@@ -50,13 +50,13 @@ spu_cc_test(
 
 spu_cc_test(
     name = "protocol_ab_test",
+    timeout = "eternal",
     srcs = ["protocol_ab_test.cc"],
     deps = [
         ":abprotocol_spdz2k_test",
         ":protocol",
         "//libspu/mpc:ab_api_test",
     ],
-    timeout = "eternal",
 )
 
 spu_cc_library(

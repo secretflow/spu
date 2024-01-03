@@ -45,6 +45,7 @@ spu_cc_library(
 
 spu_cc_test(
     name = "beaver_test",
+    timeout = "eternal",
     srcs = ["beaver_test.cc"],
     deps = [
         ":beaver_tfp",
@@ -52,7 +53,6 @@ spu_cc_test(
         "//libspu/mpc/utils:simulate",
         "@com_google_googletest//:gtest",
     ],
-    timeout = "eternal",
 )
 
 spu_cc_library(
