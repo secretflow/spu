@@ -40,10 +40,10 @@ spu_cc_library(
 
 spu_cc_test(
     name = "ferret_test",
+    timeout = "eternal",
     srcs = ["ferret_test.cc"],
     deps = [
         ":ferret",
         "//libspu/mpc/utils:simulate",
     ],
-    timeout = "eternal",
 )

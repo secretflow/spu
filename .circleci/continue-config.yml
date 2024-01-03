@@ -46,15 +46,12 @@ jobs:
             echo "Canceling workflow as too much time has elapsed"
             curl -X POST --header "Content-Type: application/json" "https://circleci.com/api/v2/workflow/${CIRCLE_WORKFLOW_ID}/cancel?circle-token=${BUILD_TIMER_TOKEN}"
       - checkout
-      - restore_cache:
-          name: "Restore build cache"
-          key: spu-build-comp-{{ arch }}-
       - run:
           name: Checkout devtools
           command: git clone https://github.com/secretflow/devtools.git ../devtools
       - run:
-          name: Decompress cache
-          command: sh ../devtools/decompress-build-cache.sh spu_build_cache
+          name: Setup GCS
+          command: ../devtools/base64_converter.py --str ${gcs_content} --out_file ../gcs.json
       - run:
           name: "Install dependencies"
           command: |
@@ -63,30 +60,19 @@ jobs:
             python3 -m pip install -r requirements-dev.txt
       - run:
           name: "build"
-          command: bazel build //... -c opt --ui_event_filters=-info,-debug,-warning --disk_cache=~/.cache/spu_build_cache --jobs 20
+          command: bazel build //... -c opt --ui_event_filters=-info,-debug,-warning --jobs 20 --remote_cache=https://storage.googleapis.com/secretflow --google_credentials=../gcs.json --remote_download_minimal
       - run:
           name: "test"
           command: |
             set +e
             declare -i test_status
-            bazel test //... -c opt --ui_event_filters=-info,-debug,-warning --test_output=errors --disk_cache=~/.cache/spu_build_cache | tee test_result.log; test_status=${PIPESTATUS[0]}
+            bazel test //... -c opt --ui_event_filters=-info,-debug,-warning --test_output=errors --remote_cache=https://storage.googleapis.com/secretflow --google_credentials=../gcs.json --remote_download_minimal | tee test_result.log; test_status=${PIPESTATUS[0]}
 
             sh ../devtools/rename-junit-xml.sh
             find bazel-bin/ -executable -type f -name "*_test"  -print0 | xargs -0 tar -cvzf test_binary.tar.gz
             find bazel-testlogs/ -type f -name "test.log"  -print0 | xargs -0 tar -cvzf test_logs.tar.gz
 
             exit ${test_status}
-      - run:
-          name: Cleanup and compress cache
-          command: |
-            sh ../devtools/clean_disk_cache.sh ~/.cache/spu_build_cache
-            sh ../devtools/compress-build-cache.sh spu_build_cache
-          when: always
-      - save_cache:
-          key: spu-build-comp-{{ arch }}-{{ .Environment.CIRCLE_BUILD_NUM }}
-          paths:
-            - /root/.cache/spu_build_cache.tar.gz
-          when: always
       - store_test_results:
           path: test-results
       - store_artifacts:
@@ -115,14 +101,17 @@ jobs:
             pip install -r requirements.txt
             pip install -r requirements-dev.txt
       - run:
+          name: Setup GCS
+          command: ../devtools/base64_converter.py --str ${gcs_content} --out_file ../gcs.json
+      - run:
           name: "build"
-          command: bazel build //... -c opt --ui_event_filters=-info,-debug,-warning
+          command: bazel build //... -c opt --ui_event_filters=-info,-debug,-warning --remote_cache=https://storage.googleapis.com/secretflow --google_credentials=../gcs.json --remote_download_minimal
       - run:
           name: "test"
           command: |
             set +e
             declare -i test_status
-            bazel test //... -c opt --ui_event_filters=-info,-debug,-warning --test_output=errors | tee test_result.log; test_status=${PIPESTATUS[0]}
+            bazel test //... -c opt --ui_event_filters=-info,-debug,-warning --test_output=errors --remote_cache=https://storage.googleapis.com/secretflow --google_credentials=../gcs.json --remote_download_minimal | tee test_result.log; test_status=${PIPESTATUS[0]}
 
             sh ../devtools/rename-junit-xml.sh
             find bazel-bin/ -perm +111 -type f -name "*_test"  -print0 | xargs -0 tar -cvzf test_binary.tar.gz
@@ -145,4 +134,8 @@ workflows:
           matrix:
             parameters:
               resource_class: ["2xlarge", "arm.2xlarge"]
-      - macOS_ut
+          context:
+            - gcs
+      - macOS_ut:
+          context:
+            - gcs
