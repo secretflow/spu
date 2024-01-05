@@ -10,7 +10,7 @@
 >
 > please add your unreleased change here.
 
-## TBD
+## 20230105
 
 - [Feature] Add Odd-Even Merge Sort to replace the bitonic sort
 - [Feature] Add radix sort support for ABY3
