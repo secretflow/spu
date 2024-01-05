@@ -15,13 +15,11 @@
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 load("@bazel_tools//tools/build_defs/repo:utils.bzl", "maybe")
 
-SECRETFLOW_GIT = "https://github.com/secretflow"
+YACL_COMMIT_ID = "5feaa30e6a2ab3be5a01a7a4ee3c1613d11386d9"
+YACL_SHA256 = "7ff9f93b0de554fa454a4c995dc0533a7b998173e6f0468be5b40a6092555a4e"
 
-YACL_COMMIT_ID = "716e72902ef5d1badd9b15159d7ff5070c8a95c4"
-YACL_SHA256 = "4011f4ef9e573b575b50e979b7d9d23152c765e204fe494c5fdfc09eebfc3b21"
-
-LIBPSI_COMMIT_ID = "d5caedc399503275820a881f10d48e1e11a10357"
-LIBPSI_SHA256 = "f7968386cc74d74d0848fd293c4ab9dc978da164ee22ba1c5b081f78aa8b0b1b"
+LIBPSI_COMMIT_ID = "65263edfa3255ffe17af6b30904b395366b5b661"
+LIBPSI_SHA256 = "8d1e42eaa435e6715c1b9dda38b1dec2245d499afe4f79c0da24602bf72cb72b"
 
 def spu_deps():
     _rules_cuda()
