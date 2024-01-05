@@ -213,7 +213,7 @@ TEST(Memory, TestStridedCopy2D2) {
   }
 }
 
-TEST(Memory, TestStidedCopyFrom) {
+TEST(Memory, TestStridedCopyFrom) {
   auto gpu_ptr = allocate(10 * sizeof(int));
 
   std::array<int, 10> base;
