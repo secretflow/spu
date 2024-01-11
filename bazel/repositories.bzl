@@ -130,12 +130,12 @@ def _com_github_xtensor_xtl():
     maybe(
         http_archive,
         name = "com_github_xtensor_xtl",
-        sha256 = "f4a81e3c9ca9ddb42bd4373967d4859ecfdca1aba60b9fa6ced6c84d8b9824ff",
-        strip_prefix = "xtl-0.7.3",
+        sha256 = "44fb99fbf5e56af5c43619fc8c29aa58e5fad18f3ba6e7d9c55c111b62df1fbb",
+        strip_prefix = "xtl-0.7.7",
         build_file = "@spulib//bazel:xtl.BUILD",
         type = "tar.gz",
         urls = [
-            "https://github.com/xtensor-stack/xtl/archive/refs/tags/0.7.3.tar.gz",
+            "https://github.com/xtensor-stack/xtl/archive/refs/tags/0.7.7.tar.gz",
         ],
     )
 
