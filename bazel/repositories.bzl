@@ -15,12 +15,6 @@
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 load("@bazel_tools//tools/build_defs/repo:utils.bzl", "maybe")
 
-YACL_COMMIT_ID = "5feaa30e6a2ab3be5a01a7a4ee3c1613d11386d9"
-YACL_SHA256 = "7ff9f93b0de554fa454a4c995dc0533a7b998173e6f0468be5b40a6092555a4e"
-
-LIBPSI_COMMIT_ID = "65263edfa3255ffe17af6b30904b395366b5b661"
-LIBPSI_SHA256 = "8d1e42eaa435e6715c1b9dda38b1dec2245d499afe4f79c0da24602bf72cb72b"
-
 def spu_deps():
     _rules_cuda()
     _rules_proto_grpc()
@@ -46,10 +40,10 @@ def _yacl():
         http_archive,
         name = "yacl",
         urls = [
-            "https://github.com/secretflow/yacl/archive/{commit}.tar.gz".format(commit = YACL_COMMIT_ID),
+            "https://github.com/secretflow/yacl/archive/5feaa30e6a2ab3be5a01a7a4ee3c1613d11386d9.tar.gz",
         ],
-        strip_prefix = "yacl-{commit}".format(commit = YACL_COMMIT_ID),
-        sha256 = YACL_SHA256,
+        strip_prefix = "yacl-5feaa30e6a2ab3be5a01a7a4ee3c1613d11386d9",
+        sha256 = "7ff9f93b0de554fa454a4c995dc0533a7b998173e6f0468be5b40a6092555a4e",
     )
 
 def _libpsi():
@@ -57,10 +51,10 @@ def _libpsi():
         http_archive,
         name = "psi",
         urls = [
-            "https://github.com/secretflow/psi/archive/{commit}.tar.gz".format(commit = LIBPSI_COMMIT_ID),
+            "https://github.com/secretflow/psi/archive/65263edfa3255ffe17af6b30904b395366b5b661.tar.gz",
         ],
-        strip_prefix = "psi-{commit}".format(commit = LIBPSI_COMMIT_ID),
-        sha256 = LIBPSI_SHA256,
+        strip_prefix = "psi-65263edfa3255ffe17af6b30904b395366b5b661",
+        sha256 = "8d1e42eaa435e6715c1b9dda38b1dec2245d499afe4f79c0da24602bf72cb72b",
     )
 
 def _rules_proto_grpc():
@@ -149,15 +143,12 @@ def _com_github_openxla_xla():
     OPENXLA_COMMIT = "d5791b01aa7541e3400224ac0a2985cc0f6940cb"
     OPENXLA_SHA256 = "82dd50e6f51d79e8da69f109a234e33b8036f7b8798e41a03831b19c0c64d6e5"
 
-    SKYLIB_VERSION = "1.3.0"
-    SKYLIB_SHA256 = "74d544d96f4a5bb630d465ca8bbcfe231e3594e5aae57e1edbf17a6eb3ca2506"
-
     maybe(
         http_archive,
         name = "bazel_skylib",
-        sha256 = SKYLIB_SHA256,
+        sha256 = "74d544d96f4a5bb630d465ca8bbcfe231e3594e5aae57e1edbf17a6eb3ca2506",
         urls = [
-            "https://github.com/bazelbuild/bazel-skylib/releases/download/{version}/bazel-skylib-{version}.tar.gz".format(version = SKYLIB_VERSION),
+            "https://github.com/bazelbuild/bazel-skylib/releases/download/{version}/bazel-skylib-1.3.0.tar.gz",
         ],
     )
 
