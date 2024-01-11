@@ -23,10 +23,13 @@
 
 namespace spu::mpc::cheetah {
 
+// clang-format off
 // Implementation for Dot.
-// Ref: Huang et al. "Cheetah: Lean and Fast Secure Two-Party Deep Neural
-// Network Inference"
-//  https://eprint.iacr.org/2022/207.pdf
+// Ref: Lu et al. "BumbleBee: Secure Two-party Inference Framework for Large Transformers"
+//   https://eprint.iacr.org/2023/1678
+// Ref: Huang et al. "Cheetah: Lean and Fast Secure Two-Party Deep Neural Network Inference"
+//   https://eprint.iacr.org/2022/207.pdf
+// clang-format on
 class CheetahDot {
  public:
   explicit CheetahDot(const std::shared_ptr<yacl::link::Context>& lctx,

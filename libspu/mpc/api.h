@@ -125,6 +125,13 @@ Value mmul_sp(SPUContext* ctx, const Value& x, const Value& y);
 Value mmul_vv(SPUContext* ctx, const Value& x, const Value& y);
 Value mmul_vp(SPUContext* ctx, const Value& x, const Value& y);
 Value mmul_pp(SPUContext* ctx, const Value& x, const Value& y);
+// NOTE(lwj): LHS.shape: B x m x k, and RHS.shape: B x k x n
+// Out shape is B x m x n
+Value batch_mmul_pp(SPUContext* ctx, const Value& x, const Value& y);
+OptionalAPI<Value> batch_mmul_ss(SPUContext* ctx, const Value& x,
+                                 const Value& y);
+OptionalAPI<Value> batch_mmul_sv(SPUContext* ctx, const Value& x,
+                                 const Value& y);
 
 Value and_ss(SPUContext* ctx, const Value& x, const Value& y);
 Value and_sv(SPUContext* ctx, const Value& x, const Value& y);

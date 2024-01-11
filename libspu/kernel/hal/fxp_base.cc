@@ -270,6 +270,18 @@ Value f_mmul(SPUContext* ctx, const Value& x, const Value& y) {
   return _trunc(ctx, _mmul(ctx, x, y)).setDtype(x.dtype());
 }
 
+std::optional<Value> f_batch_mmul(SPUContext* ctx, const Value& x,
+                                  const Value& y) {
+  SPU_TRACE_HAL_LEAF(ctx, x, y);
+
+  SPU_ENFORCE(x.isFxp() && y.isFxp() && x.dtype() == y.dtype());
+  auto ret = _batch_mmul(ctx, x, y);
+  if (not ret.has_value()) {
+    return NotAvailable;
+  }
+  return _trunc(ctx, *ret).setDtype(x.dtype());
+}
+
 Value f_conv2d(SPUContext* ctx, const Value& x, const Value& y,
                const Strides& window_strides) {
   SPU_TRACE_HAL_LEAF(ctx, x, y, window_strides);

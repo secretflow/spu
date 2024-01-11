@@ -22,9 +22,11 @@
 
 namespace spu::mpc::cheetah {
 
+// clang-format off
 // Implementation for Mul
-// Ref: Rathee et al. "Improved Multiplication Triple Generation over Rings
-// via RLWE-based AHE"
+// Ref: Lu et al. "BumbleBee: Secure Two-party Inference Framework for Large Transformers"
+//  https://eprint.iacr.org/2023/1678
+// Ref: Rathee et al. "Improved Multiplication Triple Generation over Rings via RLWE-based AHE"
 //  https://eprint.iacr.org/2019/577.pdf
 class CheetahMul {
  public:

@@ -60,6 +60,13 @@ namespace spu::kernel::hal {
     return ret;                                                    \
   }
 
+#define MAP_OPTIONAL_MMUL_OP(NAME)                              \
+  std::optional<Value> _##NAME(SPUContext* ctx, const Value& x, \
+                               const Value& y) {                \
+    SPU_TRACE_HAL_DISP(ctx, x, y);                              \
+    return mpc::NAME(ctx, x, y);                                \
+  }
+
 Type _common_type_s(SPUContext* ctx, const Type& a, const Type& b) {
   SPU_TRACE_HAL_DISP(ctx, a, b);
   return mpc::common_type_s(ctx, a, b);
@@ -194,6 +201,8 @@ MAP_MMUL_OP(mmul_ss)
 MAP_MMUL_OP(mmul_sv)
 MAP_MMUL_OP(mmul_vp)
 MAP_MMUL_OP(mmul_vv)
+MAP_OPTIONAL_MMUL_OP(batch_mmul_ss)
+MAP_OPTIONAL_MMUL_OP(batch_mmul_sv)
 
 #define MAP_OPTIONAL_BINARY_OP(NAME)                                  \
   std::optional<Value> _##NAME(SPUContext* ctx, const Value& x,       \

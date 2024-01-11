@@ -80,6 +80,11 @@ spu::Value DotGeneral(SPUContext *ctx, const spu::Value &lhs,
                       const spu::Value &rhs) {
   int64_t num_batch = lhs.shape()[0];
 
+  auto ret = kernel::hal::batch_matmul(ctx, lhs, rhs);
+  if (ret.has_value()) {
+    return *ret;
+  }
+
   std::vector<spu::Value> results(num_batch);
   Index lhs_slice_begin(3, 0);
   Index lhs_slice_end(lhs.shape().begin(), lhs.shape().end());

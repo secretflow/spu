@@ -147,6 +147,18 @@ OptionalAPI<Value> mmul_av(SPUContext* ctx, const Value& x, const Value& y) {
   return NotAvailable;
 }
 
+OptionalAPI<Value> batch_mmul_aa(SPUContext* ctx, const Value& x,
+                                 const Value& y) {
+  TRY_DISPATCH(ctx, x, y);
+  return NotAvailable;
+}
+
+OptionalAPI<Value> batch_mmul_av(SPUContext* ctx, const Value& x,
+                                 const Value& y) {
+  TRY_DISPATCH(ctx, x, y);
+  return NotAvailable;
+}
+
 Type common_type_b(SPUContext* ctx, const Type& a, const Type& b) {
   SPU_TRACE_MPC_LEAF(ctx, a, b);
   return dynDispatch<Type>(ctx, __func__, a, b);

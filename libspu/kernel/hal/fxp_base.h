@@ -59,6 +59,9 @@ Value f_mul(SPUContext* ctx, const Value& x, const Value& y,
 
 Value f_mmul(SPUContext* ctx, const Value& x, const Value& y);
 
+std::optional<Value> f_batch_mmul(SPUContext* ctx, const Value& x,
+                                  const Value& y);
+
 Value f_conv2d(SPUContext* ctx, const Value& x, const Value& y,
                const Strides& window_strides);
 

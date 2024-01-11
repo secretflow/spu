@@ -495,6 +495,30 @@ Value mmul_pp(SPUContext* ctx, const Value& x, const Value& y) {
   FORCE_DISPATCH(ctx, x, y);
 }
 
+// NOTE(lwj): LHS.shape: B x m x k, and RHS.shape: B x k x n
+// Out shape is B x m x n
+Value batch_mmul_pp(SPUContext* ctx, const Value& x, const Value& y) {
+  FORCE_DISPATCH(ctx, x, y);
+}
+
+OptionalAPI<Value> batch_mmul_ss(SPUContext* ctx, const Value& x,
+                                 const Value& y) {
+  SPU_TRACE_MPC_DISP(ctx, x, y);
+  if (auto ret = batch_mmul_aa(ctx, x, y)) {
+    return ret.value();
+  }
+  return NotAvailable;
+}
+
+OptionalAPI<Value> batch_mmul_sv(SPUContext* ctx, const Value& x,
+                                 const Value& y) {
+  SPU_TRACE_MPC_DISP(ctx, x, y);
+  if (auto ret = batch_mmul_av(ctx, x, y)) {
+    return ret.value();
+  }
+  return NotAvailable;
+}
+
 //////////////////////////////////////////////////////////////////////////////
 
 Value and_ss(SPUContext* ctx, const Value& x, const Value& y) {

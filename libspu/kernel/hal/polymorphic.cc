@@ -126,6 +126,28 @@ Value matmul(SPUContext* ctx, const Value& x, const Value& y) {
   return dtypeBinaryDispatch("mmul", f_mmul, i_mmul, ctx, x, y);
 }
 
+std::optional<Value> batch_matmul(SPUContext* ctx, const Value& x,
+                                  const Value& y) {
+  SPU_TRACE_HAL_DISP(ctx, x, y);
+  if (isCrossIntFxp(x, y)) {
+    auto ret = _batch_mmul(ctx, x, y);
+    if (ret.has_value()) {
+      auto new_dtype = x.isFxp() ? x.dtype() : y.dtype();
+      ret->setDtype(new_dtype);
+    }
+    return ret;
+  }
+
+  if (x.isInt() && y.isInt()) {
+    return i_batch_mmul(ctx, x, y);
+  }
+
+  if (x.isFxp() && y.isFxp()) {
+    return f_batch_mmul(ctx, x, y);
+  }
+  return NotAvailable;
+}
+
 Value tensordot(SPUContext* ctx, const Value& x, const Value& y,
                 const Index& ix, const Index& iy) {
   SPU_TRACE_HAL_DISP(ctx, x, y, ix, iy);
