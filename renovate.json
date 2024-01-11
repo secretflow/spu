@@ -6,9 +6,7 @@
   "labels": [
     "dependencies"
   ],
-  "constraints": {
-    "bazel": "< 7.0.0"
-  },
+  "ignoreDeps": ["bazel"],
   "reviewers": [
     "team:spu-dev"
   ]
