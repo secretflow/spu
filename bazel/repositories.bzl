@@ -123,12 +123,12 @@ def _com_github_xtensor_xtensor():
     maybe(
         http_archive,
         name = "com_github_xtensor_xtensor",
-        sha256 = "37738aa0865350b39f048e638735c05d78b5331073b6329693e8b8f0902df713",
-        strip_prefix = "xtensor-0.24.0",
+        sha256 = "0fbbd524dde2199b731b6af99b16063780de6cf1d0d6cb1f3f4d4ceb318f3106",
+        strip_prefix = "xtensor-0.24.7",
         build_file = "@spulib//bazel:xtensor.BUILD",
         type = "tar.gz",
         urls = [
-            "https://github.com/xtensor-stack/xtensor/archive/refs/tags/0.24.0.tar.gz",
+            "https://github.com/xtensor-stack/xtensor/archive/refs/tags/0.24.7.tar.gz",
         ],
     )
 
