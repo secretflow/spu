@@ -15,14 +15,6 @@
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 load("@bazel_tools//tools/build_defs/repo:utils.bzl", "maybe")
 
-SECRETFLOW_GIT = "https://github.com/secretflow"
-
-YACL_COMMIT_ID = "716e72902ef5d1badd9b15159d7ff5070c8a95c4"
-YACL_SHA256 = "4011f4ef9e573b575b50e979b7d9d23152c765e204fe494c5fdfc09eebfc3b21"
-
-LIBPSI_COMMIT_ID = "d5caedc399503275820a881f10d48e1e11a10357"
-LIBPSI_SHA256 = "f7968386cc74d74d0848fd293c4ab9dc978da164ee22ba1c5b081f78aa8b0b1b"
-
 def spu_deps():
     _rules_cuda()
     _rules_proto_grpc()
@@ -48,10 +40,10 @@ def _yacl():
         http_archive,
         name = "yacl",
         urls = [
-            "https://github.com/secretflow/yacl/archive/{commit}.tar.gz".format(commit = YACL_COMMIT_ID),
+            "https://github.com/secretflow/yacl/archive/5feaa30e6a2ab3be5a01a7a4ee3c1613d11386d9.tar.gz",
         ],
-        strip_prefix = "yacl-{commit}".format(commit = YACL_COMMIT_ID),
-        sha256 = YACL_SHA256,
+        strip_prefix = "yacl-5feaa30e6a2ab3be5a01a7a4ee3c1613d11386d9",
+        sha256 = "7ff9f93b0de554fa454a4c995dc0533a7b998173e6f0468be5b40a6092555a4e",
     )
 
 def _libpsi():
@@ -59,10 +51,10 @@ def _libpsi():
         http_archive,
         name = "psi",
         urls = [
-            "https://github.com/secretflow/psi/archive/{commit}.tar.gz".format(commit = LIBPSI_COMMIT_ID),
+            "https://github.com/secretflow/psi/archive/65263edfa3255ffe17af6b30904b395366b5b661.tar.gz",
         ],
-        strip_prefix = "psi-{commit}".format(commit = LIBPSI_COMMIT_ID),
-        sha256 = LIBPSI_SHA256,
+        strip_prefix = "psi-65263edfa3255ffe17af6b30904b395366b5b661",
+        sha256 = "8d1e42eaa435e6715c1b9dda38b1dec2245d499afe4f79c0da24602bf72cb72b",
     )
 
 def _rules_proto_grpc():
@@ -125,12 +117,12 @@ def _com_github_xtensor_xtensor():
     maybe(
         http_archive,
         name = "com_github_xtensor_xtensor",
-        sha256 = "37738aa0865350b39f048e638735c05d78b5331073b6329693e8b8f0902df713",
-        strip_prefix = "xtensor-0.24.0",
+        sha256 = "0fbbd524dde2199b731b6af99b16063780de6cf1d0d6cb1f3f4d4ceb318f3106",
+        strip_prefix = "xtensor-0.24.7",
         build_file = "@spulib//bazel:xtensor.BUILD",
         type = "tar.gz",
         urls = [
-            "https://github.com/xtensor-stack/xtensor/archive/refs/tags/0.24.0.tar.gz",
+            "https://github.com/xtensor-stack/xtensor/archive/refs/tags/0.24.7.tar.gz",
         ],
     )
 
@@ -138,12 +130,12 @@ def _com_github_xtensor_xtl():
     maybe(
         http_archive,
         name = "com_github_xtensor_xtl",
-        sha256 = "f4a81e3c9ca9ddb42bd4373967d4859ecfdca1aba60b9fa6ced6c84d8b9824ff",
-        strip_prefix = "xtl-0.7.3",
+        sha256 = "44fb99fbf5e56af5c43619fc8c29aa58e5fad18f3ba6e7d9c55c111b62df1fbb",
+        strip_prefix = "xtl-0.7.7",
         build_file = "@spulib//bazel:xtl.BUILD",
         type = "tar.gz",
         urls = [
-            "https://github.com/xtensor-stack/xtl/archive/refs/tags/0.7.3.tar.gz",
+            "https://github.com/xtensor-stack/xtl/archive/refs/tags/0.7.7.tar.gz",
         ],
     )
 
@@ -151,15 +143,12 @@ def _com_github_openxla_xla():
     OPENXLA_COMMIT = "d5791b01aa7541e3400224ac0a2985cc0f6940cb"
     OPENXLA_SHA256 = "82dd50e6f51d79e8da69f109a234e33b8036f7b8798e41a03831b19c0c64d6e5"
 
-    SKYLIB_VERSION = "1.3.0"
-    SKYLIB_SHA256 = "74d544d96f4a5bb630d465ca8bbcfe231e3594e5aae57e1edbf17a6eb3ca2506"
-
     maybe(
         http_archive,
         name = "bazel_skylib",
-        sha256 = SKYLIB_SHA256,
+        sha256 = "74d544d96f4a5bb630d465ca8bbcfe231e3594e5aae57e1edbf17a6eb3ca2506",
         urls = [
-            "https://github.com/bazelbuild/bazel-skylib/releases/download/{version}/bazel-skylib-{version}.tar.gz".format(version = SKYLIB_VERSION),
+            "https://github.com/bazelbuild/bazel-skylib/releases/download/{version}/bazel-skylib-1.3.0.tar.gz",
         ],
     )
 
@@ -179,10 +168,10 @@ def _com_github_pybind11_bazel():
     maybe(
         http_archive,
         name = "pybind11_bazel",
-        sha256 = "2d3316d89b581966fc11eab9aa9320276baee95c8233c7a8efc7158623a48de0",
-        strip_prefix = "pybind11_bazel-ff261d2e9190955d0830040b20ea59ab9dbe66c8",
+        sha256 = "07e529a85cf4c11e1ca1b423149e86e63a3f3859c22efee3b3c5225ca89580f2",
+        strip_prefix = "pybind11_bazel-23926b00e2b2eb2fc46b17e587cf0c0cfd2f2c4b",
         urls = [
-            "https://github.com/pybind/pybind11_bazel/archive/ff261d2e9190955d0830040b20ea59ab9dbe66c8.zip",
+            "https://github.com/pybind/pybind11_bazel/archive/23926b00e2b2eb2fc46b17e587cf0c0cfd2f2c4b.zip",
         ],
     )
 

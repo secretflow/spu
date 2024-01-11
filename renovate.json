@@ -1,0 +1,17 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended"
+  ],
+  "labels": [
+    "dependencies"
+  ],
+  "ignoreDeps": [
+    "bazel",
+    "protobuf",
+    "com_github_grpc_grpc"
+  ],
+  "reviewers": [
+    "team:spu-dev"
+  ]
+}

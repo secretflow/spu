@@ -18,6 +18,8 @@
 - [Feature] Add Linux aarch64 support
 - [Feature] Add equal support for SEMI2K and ABY3
 - [Improvement] Optimize sort memory usage
+- [Improvement] Improve compatibility with latest Jax
+- [Bugfix] Fix compilation cache collision under certian cases
 - [Deprecated] macOS 11.x is no longer supported
 
 ## 20231108

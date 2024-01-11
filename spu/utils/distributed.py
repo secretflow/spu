@@ -173,6 +173,7 @@ class RPC:
     OPTIONS = [
         ('grpc.max_message_length', 1024 * 1024 * 1024),
         ('grpc.max_receive_message_length', 1024 * 1024 * 1024),
+        ('grpc.so_reuseport', 0),
     ]
     CHUNK_SIZE = 10 * 1024 * 1024
 
