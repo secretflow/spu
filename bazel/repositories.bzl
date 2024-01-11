@@ -192,11 +192,11 @@ def _com_intel_hexl():
         http_archive,
         name = "com_intel_hexl",
         type = "tar.gz",
-        strip_prefix = "hexl-1.2.4",
-        sha256 = "f91dd158e3faa8795035f618286cdef7dacbf488fd0ba4f44409880997b4549f",
+        strip_prefix = "hexl-1.2.5",
+        sha256 = "3692e6e6183dbc49253e51e86c3e52e7affcac925f57db0949dbb4d34b558a9a",
         build_file = "@spulib//bazel:hexl.BUILD",
         urls = [
-            "https://github.com/intel/hexl/archive/refs/tags/v1.2.4.tar.gz",
+            "https://github.com/intel/hexl/archive/refs/tags/v1.2.5.tar.gz",
         ],
     )
 
