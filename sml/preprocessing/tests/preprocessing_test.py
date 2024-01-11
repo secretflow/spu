@@ -15,13 +15,13 @@
 import unittest
 
 import jax.numpy as jnp
-from sklearn import preprocessing
 import numpy as np
+from sklearn import preprocessing
 
 import spu.spu_pb2 as spu_pb2
 import spu.utils.simulation as spsim
+from sml.preprocessing.preprocessing import Binarizer, LabelBinarizer, Normalizer
 
-from sml.preprocessing.preprocessing import LabelBinarizer, Binarizer, Normalizer
 
 class UnitTests(unittest.TestCase):
     def test_labelbinarizer(self):
@@ -50,8 +50,10 @@ class UnitTests(unittest.TestCase):
         # print("sklearn:\n", sk_transformed)
         # print("sklearn:\n", sk_inv_transformed)
         np.testing.assert_allclose(sk_transformed, spu_transformed, rtol=0, atol=0)
-        np.testing.assert_allclose(sk_inv_transformed, spu_inv_transformed, rtol=0, atol=0)
-    
+        np.testing.assert_allclose(
+            sk_inv_transformed, spu_inv_transformed, rtol=0, atol=0
+        )
+
     def test_labelbinarizer_binary(self):
         sim = spsim.Simulator.simple(
             3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM64
@@ -77,8 +79,10 @@ class UnitTests(unittest.TestCase):
         # print("sklearn:\n", sk_transformed)
         # print("sklearn:\n", sk_inv_transformed)
         np.testing.assert_allclose(sk_transformed, spu_transformed, rtol=0, atol=0)
-        np.testing.assert_allclose(sk_inv_transformed, spu_inv_transformed, rtol=0, atol=0)
-    
+        np.testing.assert_allclose(
+            sk_inv_transformed, spu_inv_transformed, rtol=0, atol=0
+        )
+
     def test_labelbinarizer_unseen(self):
         sim = spsim.Simulator.simple(
             3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM64
@@ -87,7 +91,7 @@ class UnitTests(unittest.TestCase):
         def labelbinarize(X, Y):
             transformer = LabelBinarizer()
             transformer.fit(X, n_classes=3)
-            return transformer.transform(Y, unseen = True)
+            return transformer.transform(Y, unseen=True)
 
         X = jnp.array([2, 4, 5])
         Y = jnp.array([1, 2, 3, 4, 5, 6])
@@ -110,9 +114,7 @@ class UnitTests(unittest.TestCase):
             transformer = Binarizer()
             return transformer.transform(X)
 
-        X = jnp.array([[ 1., -1.,  2.],
-            [ 2.,  0.,  0.],
-            [ 0.,  1., -1.]])
+        X = jnp.array([[1.0, -1.0, 2.0], [2.0, 0.0, 0.0], [0.0, 1.0, -1.0]])
 
         spu_result = spsim.sim_jax(sim, binarize)(X)
         # print("result\n", spu_result)
@@ -121,7 +123,7 @@ class UnitTests(unittest.TestCase):
         sk_result = transformer.transform(X)
         # print("sklearn:\n", sk_result)
         np.testing.assert_allclose(sk_result, spu_result, rtol=0, atol=0)
-    
+
     def test_normalizer(self):
         sim = spsim.Simulator.simple(
             3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM64
@@ -130,18 +132,16 @@ class UnitTests(unittest.TestCase):
         def normalize_l1(X):
             transformer = Normalizer(norm="l1")
             return transformer.transform(X)
-        
+
         def normalize_l2(X):
             transformer = Normalizer()
             return transformer.transform(X)
-        
+
         def normalize_max(X):
             transformer = Normalizer(norm="max")
             return transformer.transform(X)
 
-        X = jnp.array([[4, 1, 2, 2],
-                       [1, 3, 9, 3],
-                       [5, 7, 5, 1]])
+        X = jnp.array([[4, 1, 2, 2], [1, 3, 9, 3], [5, 7, 5, 1]])
 
         spu_result_l1 = spsim.sim_jax(sim, normalize_l1)(X)
         spu_result_l2 = spsim.sim_jax(sim, normalize_l2)(X)
@@ -162,6 +162,7 @@ class UnitTests(unittest.TestCase):
         np.testing.assert_allclose(sk_result_l1, spu_result_l1, rtol=0, atol=1e-4)
         np.testing.assert_allclose(sk_result_l2, spu_result_l2, rtol=0, atol=1e-4)
         np.testing.assert_allclose(sk_result_max, spu_result_max, rtol=0, atol=1e-4)
+
 
 if __name__ == "__main__":
     unittest.main()

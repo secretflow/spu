@@ -13,10 +13,12 @@
 # limitations under the License.
 
 from posixpath import normcase
-import jax.numpy as jnp
-import jax
 
-def label_binarize(y, *, classes, n_classes, neg_label=0, pos_label=1, unseen = False):
+import jax
+import jax.numpy as jnp
+
+
+def label_binarize(y, *, classes, n_classes, neg_label=0, pos_label=1, unseen=False):
     """Binarize labels in a one-vs-all fashion.
 
     Parameters
@@ -26,9 +28,9 @@ def label_binarize(y, *, classes, n_classes, neg_label=0, pos_label=1, unseen = 
 
     classes : {array-like}, shape (n_classes,)
         Uniquely holds the label for each class.
-    
+
     n_classes : int
-        Number of classes. SPU cannot support dynamic shape, 
+        Number of classes. SPU cannot support dynamic shape,
         so this parameter needs to be designated.
 
     neg_label : int, default=0
@@ -47,19 +49,20 @@ def label_binarize(y, *, classes, n_classes, neg_label=0, pos_label=1, unseen = 
     """
     n_samples = y.shape[0]
     indices = jnp.searchsorted(classes, y)
-    result = jax.nn.one_hot(indices, n_classes, dtype = jnp.int_)
+    result = jax.nn.one_hot(indices, n_classes, dtype=jnp.int_)
     if unseen == True:
         indices = jnp.searchsorted(classes, y)
         emptylike = jnp.full((n_samples, n_classes), 0)
         boolean = jnp.tile(jnp.isin(y, classes)[:, jnp.newaxis], (1, 3))
         result = jax.lax.select(boolean, result, emptylike)
-    
+
     if neg_label != 0 or pos_label != 1:
         result = jnp.where(result, pos_label, neg_label)
 
     if n_classes == 2:
         result = result[:, -1].reshape((-1, 1))
     return result
+
 
 def _inverse_binarize_multiclass(y, classes):
     """Inverse label binarization transformation for multiclass.
@@ -68,19 +71,21 @@ def _inverse_binarize_multiclass(y, classes):
     """
     return jnp.take(classes, y.argmax(axis=1), mode="clip")
 
+
 def _inverse_binarize_thresholding(y, classes, threshold):
     """Inverse label binarization transformation using thresholding."""
     y = jnp.array(y > threshold, dtype=int)
     return classes[y[:, 1]]
 
-class LabelBinarizer():
+
+class LabelBinarizer:
     """Binarize labels in a one-vs-all fashion.
 
     Firstly, use fit() to use an array to set the classes.
     The number of classes needs to be designated through parameter n_classes since SPU cannot support dynamic shape.
 
     Secondly, use transform() to convert the value to a one-hot label for classes.
-    The input array needs to be 1d. In sklearn, the input array is automatically transformed into 1d, 
+    The input array needs to be 1d. In sklearn, the input array is automatically transformed into 1d,
     so more dimension seems to be meaningless. To avoid redundant operations used in MPC implementation,
     the automated transformation is canceled. Users can directly use the transformation method like jax.ravel to
     transform the input array into 1d then use LabelBinarizer to do further transformation.
@@ -101,7 +106,7 @@ class LabelBinarizer():
     def __init__(self, *, neg_label=0, pos_label=1):
         self.neg_label = neg_label
         self.pos_label = pos_label
-    
+
     def fit(self, y, n_classes):
         """Fit label binarizer.
 
@@ -109,9 +114,9 @@ class LabelBinarizer():
         ----------
         y : {array-like}, shape (n_samples,)
             Input data.
-        
+
         n_classes : int
-            Number of classes. SPU cannot support dynamic shape, 
+            Number of classes. SPU cannot support dynamic shape,
             so this parameter needs to be designated.
 
         Returns
@@ -124,23 +129,23 @@ class LabelBinarizer():
                 f"neg_label={self.neg_label} must be strictly less than "
                 f"pos_label={self.pos_label}."
             )
-        # The output of jax needs to be tensor with known size. 
-        self.classes_ = jnp.unique(y, size = n_classes)
+        # The output of jax needs to be tensor with known size.
+        self.classes_ = jnp.unique(y, size=n_classes)
         self.n_classes_ = n_classes
         return self
-    
-    def fit_transform(self, y, n_classes, *, unseen = False):
+
+    def fit_transform(self, y, n_classes, *, unseen=False):
         """Fit label binarizer/transform multi-class labels to binary labels.
 
         Parameters
         ----------
         y : {array-like}, shape (n_samples,)
             Input data.
-        
+
         n_classes : int
-            Number of classes. SPU cannot support dynamic shape, 
+            Number of classes. SPU cannot support dynamic shape,
             so this parameter needs to be designated.
-        
+
         unseen : bool, default=False
             True if the input array contains the classes that are unseen in the fit phase.
 
@@ -149,15 +154,15 @@ class LabelBinarizer():
         ndarray of shape (n_samples, n_classes)
             Shape will be (n_samples, 1) for binary problems.
         """
-        return self.fit(y, n_classes).transform(y, unseen = unseen)
-    
-    def transform(self, y, *, unseen = False):
+        return self.fit(y, n_classes).transform(y, unseen=unseen)
+
+    def transform(self, y, *, unseen=False):
         """Transform multi-class labels to binary labels.
         Parameters
         ----------
         y : {array-like}, shape (n_samples,)
             Input data.
-        
+
         unseen : bool, default=False
             True if the input array contains the classes that are unseen in the fit phase.
 
@@ -172,9 +177,9 @@ class LabelBinarizer():
             n_classes=self.n_classes_,
             neg_label=self.neg_label,
             pos_label=self.pos_label,
-            unseen = unseen
+            unseen=unseen,
         )
-    
+
     def inverse_transform(self, Y, threshold=None):
         """Transform binary labels back to multi-class labels.
 
@@ -185,7 +190,7 @@ class LabelBinarizer():
 
         threshold : float, default=None
             Threshold used in the binary cases.
-        
+
         Returns
         -------
         ndarray of shape (n_samples,)
@@ -211,7 +216,8 @@ def binarize(X, *, threshold=0.0):
     """
     return jnp.where(X > threshold, 1, 0)
 
-class Binarizer():
+
+class Binarizer:
     """Binarize data (set feature values to 0 or 1) according to a threshold.
 
     Parameters
@@ -220,9 +226,10 @@ class Binarizer():
         Feature values below or equal to this are replaced by 0, above it by 1.
 
     """
+
     def __init__(self, *, threshold=0.0):
         self.threshold = threshold
-    
+
     def transform(self, X, copy=None):
         """Binarize each element of X.
 
@@ -237,6 +244,7 @@ class Binarizer():
             Transformed array.
         """
         return binarize(X, threshold=self.threshold)
+
 
 def normalize(X, norm="l2"):
     """Scale input vectors individually to unit norm (vector length).
@@ -257,7 +265,7 @@ def normalize(X, norm="l2"):
     """
     if norm == "l1":
         norms = jnp.abs(X).sum(axis=1)
-        return  X / norms[:, jnp.newaxis]
+        return X / norms[:, jnp.newaxis]
     elif norm == "l2":
         norms = jnp.einsum("ij,ij->i", X, X)
         norms = norms.astype(jnp.float32)
@@ -265,9 +273,10 @@ def normalize(X, norm="l2"):
         return X * jax.lax.rsqrt(norms)[:, jnp.newaxis]
     elif norm == "max":
         norms = jnp.max(abs(X), axis=1)
-        return  X / norms[:, jnp.newaxis]
+        return X / norms[:, jnp.newaxis]
 
-class Normalizer():
+
+class Normalizer:
     """Normalize samples individually to unit norm.
 
     Parameters
@@ -277,16 +286,17 @@ class Normalizer():
         is used, values will be rescaled by the maximum of the absolute
         values.
     """
+
     def __init__(self, norm="l2"):
         self.norm = norm
-    
+
     def transform(self, X):
         """Scale each non zero row of X to unit norm.
 
         Parameters
         ----------
         X : {array-like} of shape (n_samples, n_features)
-            The data to normalize, row by row. 
+            The data to normalize, row by row.
 
         Returns
         -------
