@@ -39,9 +39,13 @@ class CheetahMul {
 
   CheetahMul(CheetahMul&&) = delete;
 
+  void LazyInitKeys(FieldType field, uint32_t msg_width_hint = 0);
+
+  // NOTE: make sure to call InitKeys first
   NdArrayRef MulOLE(const NdArrayRef& inp, yacl::link::Context* conn,
                     bool is_evaluator, uint32_t msg_width_hint = 0);
 
+  // NOTE: make sure to call InitKeys first
   NdArrayRef MulOLE(const NdArrayRef& inp, bool is_evaluator,
                     uint32_t msg_width_hint = 0);
 

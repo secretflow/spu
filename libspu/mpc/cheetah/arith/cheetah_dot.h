@@ -40,14 +40,19 @@ class CheetahDot {
 
   CheetahDot(CheetahDot&&) = delete;
 
+  void LazyInitKeys(FieldType field);
+
+  // make sure to call InitKeys first
   NdArrayRef DotOLE(const NdArrayRef& inp, const Shape3D& dim3,
                     bool is_self_lhs);
 
   // LHS.shape MxK, RHS.shape KxL => MxL
+  // make sure to call InitKeys first
   NdArrayRef DotOLE(const NdArrayRef& inp, yacl::link::Context* conn,
                     const Shape3D& dim3, bool is_self_lhs);
 
   // LHS.shape BxMxK, RHS.shape BxKxL => BxMxL
+  // make sure to call InitKeys first
   NdArrayRef BatchDotOLE(const NdArrayRef& inp, yacl::link::Context* conn,
                          const Shape4D& dim4, bool is_self_lhs);
 

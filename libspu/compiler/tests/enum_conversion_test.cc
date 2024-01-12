@@ -29,8 +29,7 @@ TEST(EnumConversion, Public) {
       mlir::pphlo::symbolizeEnum<mlir::pphlo::Visibility>(Visibility_Name(v)); \
   EXPECT_EQ(mlir_v, mlir::pphlo::Visibility::T);
 
-  { CHECK(VIS_PUBLIC) }
-  { CHECK(VIS_SECRET) }
+  {CHECK(VIS_PUBLIC)} { CHECK(VIS_SECRET) }
 
 #undef CHECK
 }

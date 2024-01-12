@@ -278,6 +278,8 @@ NdArrayRef MulAA::mulDirectly(KernelEvalContext* ctx, const NdArrayRef& x,
   // Compute the cross terms x0*y1, x1*y0 homomorphically
   auto* comm = ctx->getState<Communicator>();
   auto* mul_prot = ctx->getState<CheetahMulState>()->get();
+  mul_prot->LazyInitKeys(x.eltype().as<Ring2k>()->field());
+
   const int rank = comm->getRank();
   auto fx = x.reshape({x.numel()});
   auto fy = y.reshape({y.numel()});
@@ -311,6 +313,8 @@ NdArrayRef MatMulAA::proc(KernelEvalContext* ctx, const NdArrayRef& x,
 
   auto* comm = ctx->getState<Communicator>();
   auto* dot_prot = ctx->getState<CheetahDotState>()->get();
+  dot_prot->LazyInitKeys(x.eltype().as<Ring2k>()->field());
+
   const int rank = comm->getRank();
 
   // (x0 + x1) * (y0 + y1)
@@ -347,6 +351,8 @@ NdArrayRef MatMulAV::proc(KernelEvalContext* ctx, const NdArrayRef& x,
   }
   auto* comm = ctx->getState<Communicator>();
   auto* dot_prot = ctx->getState<CheetahDotState>()->get();
+  dot_prot->LazyInitKeys(x.eltype().as<Ring2k>()->field());
+
   const int rank = comm->getRank();
   const auto* ptype = y.eltype().as<Priv2kTy>();
   SPU_ENFORCE(ptype != nullptr, "rhs should be a private type");
