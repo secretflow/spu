@@ -107,8 +107,12 @@ class CheetahOTState : public State {
     if (basic_ot_prot_[idx]) {
       return;
     }
-    // NOTE: create a separated link for OT
-    auto _comm = std::make_shared<Communicator>(comm->lctx()->Spawn());
+    // NOTE(lwj): create a separated link for OT
+    // We **do not** block on the OT link since the message volume is small for
+    // LPN-based OTe
+    auto link = comm->lctx()->Spawn();
+    link->SetThrottleWindowSize(0);
+    auto _comm = std::make_shared<Communicator>(std::move(link));
     basic_ot_prot_[idx] = std::make_shared<BasicOTProtocols>(std::move(_comm));
   }
 

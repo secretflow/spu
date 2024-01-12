@@ -181,7 +181,6 @@ struct CheetahDot::Impl : public EnableCPRNG {
   std::shared_ptr<yacl::link::Context> lctx_;
   bool disable_pack_ = false;
 
-  mutable std::shared_mutex context_lock_;
   // field_bitlen -> functor mapping
   std::unordered_map<size_t, std::shared_ptr<seal::SEALContext>> seal_cntxts_;
   std::unordered_map<size_t, seal::SEALContext> galoi_cntxts_;
@@ -197,7 +196,6 @@ struct CheetahDot::Impl : public EnableCPRNG {
 };
 
 void CheetahDot::Impl::LazyInitGaloisKey(size_t field_bitlen) {
-  // NOTE: make sure context_lock_ is obtained.
   if (galoi_cntxts_.find(field_bitlen) != galoi_cntxts_.end()) {
     return;
   }
@@ -233,7 +231,6 @@ void CheetahDot::Impl::LazyInitGaloisKey(size_t field_bitlen) {
 }
 
 void CheetahDot::Impl::LazyInit(size_t field_bitlen, bool need_galois_keys) {
-  std::unique_lock guard(context_lock_);
   if (seal_cntxts_.find(field_bitlen) != seal_cntxts_.end()) {
     if (need_galois_keys) {
       LazyInitGaloisKey(field_bitlen);
@@ -759,6 +756,11 @@ CheetahDot::CheetahDot(const std::shared_ptr<yacl::link::Context> &lctx,
 }
 
 CheetahDot::~CheetahDot() = default;
+
+void CheetahDot::LazyInitKeys(FieldType field) {
+  SPU_ENFORCE(impl_ != nullptr);
+  return impl_->LazyInit(SizeOf(field) * 8, /*create_galois*/ true);
+}
 
 NdArrayRef CheetahDot::DotOLE(const NdArrayRef &inp, yacl::link::Context *conn,
                               const Shape3D &dim3, bool is_self_lhs) {
