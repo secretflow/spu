@@ -1,4 +1,4 @@
-myst-parser==0.18.1
+myst-parser==0.19.2
 rstcheck==6.2.0
 sphinx==5.3.0
 nbsphinx==0.8.9
