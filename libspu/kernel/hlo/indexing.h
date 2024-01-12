@@ -23,11 +23,11 @@ class SPUContext;
 namespace spu::kernel::hlo {
 
 struct GatherConfig {
-  absl::Span<const int64_t> sliceSizes;
+  spu::Sizes sliceSizes;
   int64_t indexVectorDim;
-  absl::Span<const int64_t> offsetDims;
-  absl::Span<const int64_t> collapsedSliceDims;
-  absl::Span<const int64_t> startIndexMap;
+  spu::Axes offsetDims;
+  spu::Axes collapsedSliceDims;
+  spu::Axes startIndexMap;
 };
 
 // This is ported from

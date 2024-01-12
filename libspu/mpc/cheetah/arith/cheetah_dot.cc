@@ -556,7 +556,7 @@ NdArrayRef CheetahDot::Impl::DotOLE(const NdArrayRef &prv_mat,
     conn = lctx_.get();
   }
   auto eltype = prv_mat.eltype();
-  SPU_ENFORCE(eltype.isa<RingTy>(), "must be ring_type, got={}", eltype);
+  SPU_ENFORCE(eltype.isa<Ring2k>(), "must be ring_type, got={}", eltype);
   SPU_ENFORCE(prv_mat.numel() > 0 && prv_mat.ndim() == 2);
 
   if (is_self_lhs) {
@@ -576,7 +576,7 @@ NdArrayRef CheetahDot::Impl::BatchDotOLE(const NdArrayRef &prv_mat,
     conn = lctx_.get();
   }
   auto eltype = prv_mat.eltype();
-  SPU_ENFORCE(eltype.isa<RingTy>(), "must be ring_type, got={}", eltype);
+  SPU_ENFORCE(eltype.isa<Ring2k>(), "must be ring_type, got={}", eltype);
   SPU_ENFORCE(prv_mat.numel() > 0 && prv_mat.ndim() == 3);
 
   if (is_self_lhs) {

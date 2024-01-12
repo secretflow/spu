@@ -31,7 +31,7 @@ spu::Value Broadcast(SPUContext *ctx, const spu::Value &in,
 spu::Value Reshape(SPUContext *ctx, const spu::Value &in,
                    const Shape &to_shape);
 
-spu::Value Concatenate(SPUContext *ctx, absl::Span<const spu::Value> operands,
+spu::Value Concatenate(SPUContext *ctx, const std::vector<spu::Value> &operands,
                        int64_t axis);
 
 spu::Value Slice(SPUContext *ctx, const spu::Value &in, const Index &start,

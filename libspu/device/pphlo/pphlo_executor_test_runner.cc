@@ -28,6 +28,7 @@ Runner::Runner(size_t world_size, FieldType field, ProtocolKind protocol)
   config_.set_field(field);
   config_.set_protocol(protocol);
   config_.set_enable_type_checker(true);
+  config_.set_experimental_enable_colocated_optimization(true);
   io_ = std::make_unique<LocalIo>(world_size_, config_);
 }
 

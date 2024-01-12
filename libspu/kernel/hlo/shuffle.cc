@@ -22,6 +22,19 @@
 
 namespace spu::kernel::hlo {
 
+namespace {
+
+spu::Value _2s(SPUContext* ctx, const Value& x) {
+  if (x.isPublic()) {
+    return hal::_p2s(ctx, x);
+  } else if (x.isPrivate()) {
+    return hal::_v2s(ctx, x);
+  }
+  return x;
+}
+
+}  // namespace
+
 std::vector<spu::Value> Shuffle(SPUContext* ctx,
                                 absl::Span<const spu::Value> inputs,
                                 int64_t axis) {
@@ -32,12 +45,13 @@ std::vector<spu::Value> Shuffle(SPUContext* ctx,
   auto input_shape = inputs[0].shape();
 
   // TODO: Rename permute-related kernels
-  if (ctx->hasKernel("rand_perm_s") && ctx->hasKernel("perm_as")) {
+  if (ctx->hasKernel("rand_perm_m") && ctx->hasKernel("perm_am")) {
     auto shuffle_fn = [&](absl::Span<const spu::Value> input) {
       std::vector<spu::Value> rets;
       auto rand_perm = hal::_rand_perm_s(ctx, input_shape);
       for (size_t i = 0; i < input.size(); ++i) {
-        rets.emplace_back(hal::_perm_ss(ctx, input[i], rand_perm));
+        rets.emplace_back(hal::_perm_ss(ctx, _2s(ctx, input[i]), rand_perm)
+                              .setDtype(input[i].dtype()));
       }
       return rets;
     };

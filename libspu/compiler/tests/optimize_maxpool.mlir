@@ -10,7 +10,7 @@ func.func @main(%arg0: tensor<129x24x24x16x!pphlo.sec<f32>>, %arg1: tensor<129x2
     ^bb0(%arg2: tensor<!pphlo.sec<f32>>, %arg3: tensor<!pphlo.sec<f32>>):
       %6 = "pphlo.maximum"(%arg2, %arg3) : (tensor<!pphlo.sec<f32>>, tensor<!pphlo.sec<f32>>) -> tensor<!pphlo.sec<f32>>
       "pphlo.return"(%6) : (tensor<!pphlo.sec<f32>>) -> ()
-    }) {base_dilations = dense<1> : tensor<4xi64>, window_dilations = dense<1> : tensor<4xi64>, window_dimensions = dense<[1, 2, 2, 1]> : tensor<4xi64>, window_strides = dense<1> : tensor<4xi64>} : (tensor<129x24x24x16x!pphlo.sec<f32>>, tensor<!pphlo.sec<f32>>) -> tensor<129x23x23x16x!pphlo.sec<f32>>
+    }) {base_dilations = array<i64: 1, 1, 1, 1>, window_dilations = array<i64: 1, 1, 1, 1>, window_dimensions = array<i64: 1, 2, 2, 1>, window_strides = array<i64: 1, 1, 1, 1>} : (tensor<129x24x24x16x!pphlo.sec<f32>>, tensor<!pphlo.sec<f32>>) -> tensor<129x23x23x16x!pphlo.sec<f32>>
     //CHECK-NOT: pphlo.select_and_scatter
     //CHECK : pphlo.maxpool_scatter
     %5 = "pphlo.select_and_scatter"(%arg0, %arg1, %3) ({
@@ -21,7 +21,7 @@ func.func @main(%arg0: tensor<129x24x24x16x!pphlo.sec<f32>>, %arg1: tensor<129x2
     ^bb0(%arg2: tensor<!pphlo.sec<f32>>, %arg3: tensor<!pphlo.sec<f32>>):
       %6 = "pphlo.add"(%arg2, %arg3) : (tensor<!pphlo.sec<f32>>, tensor<!pphlo.sec<f32>>) -> tensor<!pphlo.sec<f32>>
       "pphlo.return"(%6) : (tensor<!pphlo.sec<f32>>) -> ()
-    }) {window_dimensions = dense<[1, 2, 2, 1]> : tensor<4xi64>, window_strides = dense<1> : tensor<4xi64>} : (tensor<129x24x24x16x!pphlo.sec<f32>>, tensor<129x23x23x16x!pphlo.sec<f32>>, tensor<!pphlo.sec<f32>>) -> tensor<129x24x24x16x!pphlo.sec<f32>>
+    }) {window_dimensions = array<i64: 1, 2, 2, 1>, window_strides = array<i64: 1, 1, 1, 1>} : (tensor<129x24x24x16x!pphlo.sec<f32>>, tensor<129x23x23x16x!pphlo.sec<f32>>, tensor<!pphlo.sec<f32>>) -> tensor<129x24x24x16x!pphlo.sec<f32>>
 
     return %4, %5 : tensor<129x23x23x16x!pphlo.sec<f32>>, tensor<129x24x24x16x!pphlo.sec<f32>>
 }
@@ -42,7 +42,7 @@ func.func @main(%arg0: tensor<128x2x2x256x!pphlo.sec<f32>>, %arg1: tensor<128x1x
     ^bb0(%arg2: tensor<!pphlo.sec<f32>>, %arg3: tensor<!pphlo.sec<f32>>):
       %5 = "pphlo.add"(%arg2, %arg3) : (tensor<!pphlo.sec<f32>>, tensor<!pphlo.sec<f32>>) -> tensor<!pphlo.sec<f32>>
       "pphlo.return"(%5) : (tensor<!pphlo.sec<f32>>) -> ()
-    }) {window_dimensions = dense<[1, 2, 2, 1]> : tensor<4xi64>, window_strides = dense<1> : tensor<4xi64>} : (tensor<128x2x2x256x!pphlo.sec<f32>>, tensor<128x1x1x256x!pphlo.sec<f32>>, tensor<!pphlo.sec<f32>>) -> tensor<128x2x2x256x!pphlo.sec<f32>>
+    }) {window_dimensions = array<i64: 1, 2, 2, 1>, window_strides = array<i64: 1, 1, 1, 1>} : (tensor<128x2x2x256x!pphlo.sec<f32>>, tensor<128x1x1x256x!pphlo.sec<f32>>, tensor<!pphlo.sec<f32>>) -> tensor<128x2x2x256x!pphlo.sec<f32>>
 
     return %3, %4 : tensor<128x2x2x256x!pphlo.sec<f32>>, tensor<128x2x2x256x!pphlo.sec<f32>>
 }

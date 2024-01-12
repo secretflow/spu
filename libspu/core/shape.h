@@ -78,6 +78,9 @@ class Index : public std::vector<int64_t> {
  public:
   using Base::Base;
 
+  /*explicit*/ Index(llvm::ArrayRef<int64_t> arr)
+      : Base(arr.begin(), arr.end()) {}
+
   /// Checks if an element `e` at kth axis of `this` object follows
   /// `0 <= e <= bounds[k]`.
   bool inBounds(const Shape &bounds) const;
@@ -118,6 +121,9 @@ class Sizes : public std::vector<int64_t> {
 
  public:
   using Base::Base;
+
+  /*explicit*/ Sizes(llvm::ArrayRef<Stride> arr)
+      : Base(arr.begin(), arr.end()) {}
 
   friend std::ostream &operator<<(std::ostream &out, const Sizes &s) {
     out << fmt::format("{}", fmt::join(s, "x"));

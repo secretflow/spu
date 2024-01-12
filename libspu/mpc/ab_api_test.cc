@@ -274,6 +274,45 @@ TEST_P(ArithmeticTest, MatMulAA) {
   });
 }
 
+TEST_P(ArithmeticTest, MatMulAV) {
+  const auto factory = std::get<0>(GetParam());
+  const RuntimeConfig& conf = std::get<1>(GetParam());
+  const size_t npc = std::get<2>(GetParam());
+  const int64_t M = 3;
+  const int64_t K = 4;
+  const int64_t N = 3;
+  const Shape shape_A = {M, K};
+  const Shape shape_B = {K, N};
+  const Shape shape_C = {M, N};
+  utils::simulate(npc, [&](const std::shared_ptr<yacl::link::Context>& lctx) {
+    auto obj = factory(conf, lctx);
+    /* GIVEN */
+    auto p0 = rand_p(obj.get(), shape_A);
+    auto p1 = rand_p(obj.get(), shape_B);
+    auto a0 = p2a(obj.get(), p0);
+    auto v1 = p2v(obj.get(), p1, 0);
+    /* WHEN */
+    auto prev = obj->prot()->getState<Communicator>()->getStats();
+    auto _tmp = mmul_av(obj.get(), a0, v1);
+    if (!_tmp.has_value()) {
+      return;
+    }
+    auto tmp = _tmp.value();
+    auto cost = obj->prot()->getState<Communicator>()->getStats() - prev;
+    auto r_aa = a2p(obj.get(), tmp);
+    auto r_pp = mmul_pp(obj.get(), p0, p1);
+    /* THEN */
+    EXPECT_VALUE_EQ(r_aa, r_pp);
+    ce::Params params = {{"K", SizeOf(conf.field()) * 8},
+                         {"N", npc},
+                         {"m", M},
+                         {"n", N},
+                         {"k", K}};
+    EXPECT_TRUE(verifyCost(obj->prot()->getKernel("mmul_av"), "mmul_av", params,
+                           cost, 1));
+  });
+}
+
 TEST_P(ArithmeticTest, NotA) {
   const auto factory = std::get<0>(GetParam());
   const RuntimeConfig& conf = std::get<1>(GetParam());

@@ -22,6 +22,9 @@
 #include "libspu/mpc/common/communicator.h"
 #include "libspu/mpc/common/prg_state.h"
 #include "libspu/mpc/common/pv2k.h"
+#include "libspu/mpc/standard_shape/protocol.h"
+
+#define ENABLE_PRECISE_ABY3_TRUNCPR
 
 namespace spu::mpc {
 
@@ -40,58 +43,38 @@ void regAby3Protocol(SPUContext* ctx,
   // register public kernels.
   regPV2kKernels(ctx->prot());
 
+  // Register standard shape ops
+  regStandardShapeOps(ctx);
+
   // register arithmetic & binary kernels
-  ctx->prot()->regKernel<aby3::P2A>();
-  ctx->prot()->regKernel<aby3::V2A>();
-  ctx->prot()->regKernel<aby3::A2P>();
-  ctx->prot()->regKernel<aby3::A2V>();
-  ctx->prot()->regKernel<aby3::NotA>();
-  ctx->prot()->regKernel<aby3::AddAP>();
-  ctx->prot()->regKernel<aby3::AddAA>();
-  ctx->prot()->regKernel<aby3::MulAP>();
-  ctx->prot()->regKernel<aby3::MulAA>();
-  ctx->prot()->regKernel<aby3::MulA1B>();
-  ctx->prot()->regKernel<aby3::MatMulAP>();
-  ctx->prot()->regKernel<aby3::MatMulAA>();
-  ctx->prot()->regKernel<aby3::LShiftA>();
-
-#define ENABLE_PRECISE_ABY3_TRUNCPR
+  ctx->prot()
+      ->regKernel<                                              //
+          aby3::P2A, aby3::V2A, aby3::A2P, aby3::A2V,           // Conversions
+          aby3::B2P, aby3::P2B, aby3::A2B,                      // Conversion2
+          aby3::B2ASelector, /*aby3::B2AByOT, aby3::B2AByPPA*/  // B2A
+          aby3::CastTypeB,                                      // Cast
+          aby3::NotA,                                           // Not
+          aby3::AddAP, aby3::AddAA,                             // Add
+          aby3::MulAP, aby3::MulAA, aby3::MulA1B,               // Mul
+          aby3::MatMulAP, aby3::MatMulAA,                       // MatMul
+          aby3::LShiftA, aby3::LShiftB,                         // LShift
+          aby3::RShiftB, aby3::ARShiftB,                        // (A)Rshift
+          aby3::MsbA2B,                                         // MSB
+          aby3::EqualAA, aby3::EqualAP,                         // Equal
+          aby3::CommonTypeB, aby3::CommonTypeV,                 // CommonType
+          aby3::AndBP, aby3::AndBB,                             // And
+          aby3::XorBP, aby3::XorBB,                             // Xor
+          aby3::BitrevB,                                        // bitreverse
+          aby3::BitIntlB, aby3::BitDeintlB,  // bit(de)interleave
+          aby3::RandA,                       // rand
 #ifdef ENABLE_PRECISE_ABY3_TRUNCPR
-  ctx->prot()->regKernel<aby3::TruncAPr>();
+          aby3::TruncAPr,  // Trunc
 #else
-  ctx->prot()->regKernel<aby3::TruncA>();
+          aby3::TruncA,
 #endif
-
-  ctx->prot()->regKernel<aby3::MsbA2B>();
-  ctx->prot()->regKernel<aby3::EqualAA>();
-  ctx->prot()->regKernel<aby3::EqualAP>();
-
-  ctx->prot()->regKernel<aby3::CommonTypeB>();
-  ctx->prot()->regKernel<aby3::CommonTypeV>();
-
-  ctx->prot()->regKernel<aby3::CastTypeB>();
-  ctx->prot()->regKernel<aby3::B2P>();
-  ctx->prot()->regKernel<aby3::P2B>();
-  ctx->prot()->regKernel<aby3::A2B>();
-  ctx->prot()->regKernel<aby3::B2ASelector>();
-  // ctx->prot()->regKernel<aby3::B2AByOT>();
-  // ctx->prot()->regKernel<aby3::B2AByPPA>();
-  ctx->prot()->regKernel<aby3::AndBP>();
-  ctx->prot()->regKernel<aby3::AndBB>();
-  ctx->prot()->regKernel<aby3::XorBP>();
-  ctx->prot()->regKernel<aby3::XorBB>();
-  ctx->prot()->regKernel<aby3::LShiftB>();
-  ctx->prot()->regKernel<aby3::RShiftB>();
-  ctx->prot()->regKernel<aby3::ARShiftB>();
-  ctx->prot()->regKernel<aby3::BitrevB>();
-  ctx->prot()->regKernel<aby3::BitIntlB>();
-  ctx->prot()->regKernel<aby3::BitDeintlB>();
-  ctx->prot()->regKernel<aby3::RandA>();
-  ctx->prot()->regKernel<aby3::RandPermS>();
-  ctx->prot()->regKernel<aby3::PermAS>();
-  ctx->prot()->regKernel<aby3::PermAP>();
-  ctx->prot()->regKernel<aby3::InvPermAS>();
-  ctx->prot()->regKernel<aby3::InvPermAP>();
+          aby3::RandPermM, aby3::PermAM, aby3::PermAP, aby3::InvPermAM,  // perm
+          aby3::InvPermAP                                                // perm
+          >();
 }
 
 std::unique_ptr<SPUContext> makeAby3Protocol(

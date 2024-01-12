@@ -301,7 +301,7 @@ TEST(Verify, Clamp) {
 TEST(Verify, DynamicSlice) {
   std::string mlir = R"(
 func.func @main(%arg0: tensor<5x!pphlo.pub<i32>>, %arg1: tensor<!pphlo.pub<i32>>) -> tensor<2x!pphlo.pub<i32>> {
-  %0 = "pphlo.dynamic-slice"(%arg0, %arg1) {slice_sizes = dense<2> : tensor<1xi64>} : (tensor<5x!pphlo.pub<i32>>, tensor<!pphlo.pub<i32>>) -> tensor<2x!pphlo.pub<i32>>
+  %0 = "pphlo.dynamic-slice"(%arg0, %arg1) {slice_sizes = array<i64: 2>} : (tensor<5x!pphlo.pub<i32>>, tensor<!pphlo.pub<i32>>) -> tensor<2x!pphlo.pub<i32>>
   return %0 : tensor<2x!pphlo.pub<i32>>
 })";
 

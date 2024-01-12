@@ -35,9 +35,10 @@ class Runner {
   auto &getConfig() { return config_; }
 
   template <typename T>
-  void addInput(const T &input, Visibility vis = Visibility::VIS_PUBLIC) {
+  void addInput(const T &input, Visibility vis = Visibility::VIS_PUBLIC,
+                int owner_rank = -1) {
     const std::string name = fmt::format("input{}", input_idx_++);
-    io_->InFeed(name, input, vis);
+    io_->InFeed(name, input, vis, owner_rank);
     executable_.add_input_names(name);
   }
 

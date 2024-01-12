@@ -140,8 +140,8 @@ def _com_github_xtensor_xtl():
     )
 
 def _com_github_openxla_xla():
-    OPENXLA_COMMIT = "d5791b01aa7541e3400224ac0a2985cc0f6940cb"
-    OPENXLA_SHA256 = "82dd50e6f51d79e8da69f109a234e33b8036f7b8798e41a03831b19c0c64d6e5"
+    OPENXLA_COMMIT = "fa9331a7e557b4ec1381f84cbbf7401a8f41ac66"
+    OPENXLA_SHA256 = "d19c570d434002b7b0490327d407fc7cf2b18633f4a2d3b1bb44f3f0e4b36533"
 
     maybe(
         http_archive,

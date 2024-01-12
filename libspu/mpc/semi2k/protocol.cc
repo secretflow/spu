@@ -23,6 +23,7 @@
 #include "libspu/mpc/semi2k/permute.h"
 #include "libspu/mpc/semi2k/state.h"
 #include "libspu/mpc/semi2k/type.h"
+#include "libspu/mpc/standard_shape/protocol.h"
 
 namespace spu::mpc {
 
@@ -42,58 +43,39 @@ void regSemi2kProtocol(SPUContext* ctx,
   // register public kernels.
   regPV2kKernels(ctx->prot());
 
+  // Register standard shape ops
+  regStandardShapeOps(ctx);
+
   // register arithmetic & binary kernels
   ctx->prot()->addState<Semi2kState>(ctx->config(), lctx);
-  ctx->prot()->regKernel<semi2k::P2A>();
-  ctx->prot()->regKernel<semi2k::A2P>();
-  ctx->prot()->regKernel<semi2k::A2V>();
-  ctx->prot()->regKernel<semi2k::V2A>();
-  ctx->prot()->regKernel<semi2k::NotA>();
-  ctx->prot()->regKernel<semi2k::AddAP>();
-  ctx->prot()->regKernel<semi2k::AddAA>();
-  ctx->prot()->regKernel<semi2k::MulAP>();
-  ctx->prot()->regKernel<semi2k::MulAA>();
-  ctx->prot()->regKernel<semi2k::MatMulAP>();
-  ctx->prot()->regKernel<semi2k::MatMulAA>();
-  ctx->prot()->regKernel<semi2k::LShiftA>();
+  ctx->prot()
+      ->regKernel<
+          semi2k::P2A, semi2k::A2P, semi2k::A2V, semi2k::V2A,  //
+          semi2k::NotA,                                        //
+          semi2k::AddAP, semi2k::AddAA,                        //
+          semi2k::MulAP, semi2k::MulAA,                        //
+          semi2k::MatMulAP, semi2k::MatMulAA,                  //
+          semi2k::LShiftA, semi2k::LShiftB, semi2k::RShiftB,
+          semi2k::ARShiftB,                                             //
+          semi2k::CommonTypeB, semi2k::CommonTypeV, semi2k::CastTypeB,  //
+          semi2k::B2P, semi2k::P2B, semi2k::A2B, semi2k::B2A_Randbit,   //
+          semi2k::AndBP, semi2k::AndBB, semi2k::XorBP, semi2k::XorBB,
+          semi2k::BitrevB,                       //
+          semi2k::BitIntlB, semi2k::BitDeintlB,  //
+          semi2k::RandA, semi2k::RandPermM, semi2k::PermAM, semi2k::PermAP,
+          semi2k::InvPermAM, semi2k::InvPermAP, semi2k::InvPermAV,  //
+          semi2k::EqualAA, semi2k::EqualAP>();
+
   if (ctx->config().trunc_allow_msb_error()) {
     ctx->prot()->regKernel<semi2k::TruncA>();
   } else {
     ctx->prot()->regKernel<semi2k::TruncAPr>();
   }
 
-  ctx->prot()->regKernel<semi2k::CommonTypeB>();
-  ctx->prot()->regKernel<semi2k::CommonTypeV>();
-
-  ctx->prot()->regKernel<semi2k::CastTypeB>();
-  ctx->prot()->regKernel<semi2k::B2P>();
-  ctx->prot()->regKernel<semi2k::P2B>();
-  ctx->prot()->regKernel<semi2k::A2B>();
-
   if (lctx->WorldSize() == 2) {
     ctx->prot()->regKernel<semi2k::MsbA2B>();
   }
   // ctx->prot()->regKernel<semi2k::B2A>();
-  ctx->prot()->regKernel<semi2k::B2A_Randbit>();
-  ctx->prot()->regKernel<semi2k::AndBP>();
-  ctx->prot()->regKernel<semi2k::AndBB>();
-  ctx->prot()->regKernel<semi2k::XorBP>();
-  ctx->prot()->regKernel<semi2k::XorBB>();
-  ctx->prot()->regKernel<semi2k::LShiftB>();
-  ctx->prot()->regKernel<semi2k::RShiftB>();
-  ctx->prot()->regKernel<semi2k::ARShiftB>();
-  ctx->prot()->regKernel<semi2k::BitrevB>();
-  ctx->prot()->regKernel<semi2k::BitIntlB>();
-  ctx->prot()->regKernel<semi2k::BitDeintlB>();
-  ctx->prot()->regKernel<semi2k::RandA>();
-  ctx->prot()->regKernel<semi2k::RandPermS>();
-  ctx->prot()->regKernel<semi2k::PermAS>();
-  ctx->prot()->regKernel<semi2k::PermAP>();
-  ctx->prot()->regKernel<semi2k::InvPermAS>();
-  ctx->prot()->regKernel<semi2k::InvPermAP>();
-
-  ctx->prot()->regKernel<semi2k::EqualAA>();
-  ctx->prot()->regKernel<semi2k::EqualAP>();
 }
 
 std::unique_ptr<SPUContext> makeSemi2kProtocol(

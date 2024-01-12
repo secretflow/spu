@@ -416,7 +416,7 @@ ArrayRef Conv2DProtocol::ParseResult(FieldType field, const Meta &meta,
   Conv2DHelper helper(meta, GetSubTensorShape(meta));
   size_t poly_per_channel = helper.slice_size(kH) * helper.slice_size(kW);
 
-  NdArrayRef computed_tensor(makeType<RingTy>(field), oshape);
+  NdArrayRef computed_tensor(makeType<Ring2k>(field), oshape);
   for (int64_t m = 0; m < meta.num_kernels; ++m) {
     size_t poly_idx = m * poly_per_channel;
 

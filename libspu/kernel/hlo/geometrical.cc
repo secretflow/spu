@@ -49,7 +49,7 @@ spu::Value Reshape(SPUContext *ctx, const spu::Value &in,
   return hal::reshape(ctx, in, to_shape);
 }
 
-spu::Value Concatenate(SPUContext *ctx, absl::Span<const spu::Value> operands,
+spu::Value Concatenate(SPUContext *ctx, const std::vector<spu::Value> &operands,
                        int64_t axis) {
   if (operands.front().isComplex()) {
     std::vector<spu::Value> r_operands(operands.size());

@@ -33,8 +33,9 @@ class LocalIo {
     //
   }
 
-  void InFeed(const std::string &name, PtBufferView view, Visibility vtype) {
-    auto shares = io_client_.makeShares(view, vtype);
+  void InFeed(const std::string &name, PtBufferView view, Visibility vtype,
+              int owner_rank = -1) {
+    auto shares = io_client_.makeShares(view, vtype, owner_rank);
     SPU_ENFORCE(shares.size() == symbol_tables_.size());
     for (size_t idx = 0; idx < symbol_tables_.size(); ++idx) {
       symbol_tables_[idx].setVar(name, shares[idx]);

@@ -22,16 +22,21 @@
 #include "libspu/core/prelude.h"
 #include "libspu/core/trace.h"
 #include "libspu/kernel/hal/prot_wrapper.h"
-#include "libspu/kernel/hal/shape_ops.h"
 
 namespace spu::kernel::hal {
 
 Type _common_type(SPUContext* ctx, const Type& a, const Type& b) {
   if (a.isa<Secret>() && b.isa<Secret>()) {
     return _common_type_s(ctx, a, b);
+  } else if (a.isa<Private>() && b.isa<Private>()) {
+    return _common_type_v(ctx, a, b);
   } else if (a.isa<Secret>()) {
     return a;
   } else if (b.isa<Secret>()) {
+    return b;
+  } else if (a.isa<Private>()) {
+    return a;
+  } else if (b.isa<Private>()) {
     return b;
   } else {
     SPU_ENFORCE(a.isa<Public>() && b.isa<Public>());
@@ -40,11 +45,18 @@ Type _common_type(SPUContext* ctx, const Type& a, const Type& b) {
 }
 
 Value _cast_type(SPUContext* ctx, const Value& x, const Type& to) {
+  if (x.storage_type() == to) {
+    return x;
+  }
   if (x.isPublic() && to.isa<Public>()) {
     return x;
   } else if (x.isPublic() && to.isa<Secret>()) {
     // FIXME: casting to BShare semantic is wrong.
     return _p2s(ctx, x);
+  } else if (x.isPublic() && to.isa<Private>()) {
+    return _p2v(ctx, x, to.as<Private>()->owner());
+  } else if (x.isPrivate() && to.isa<Secret>()) {
+    return _v2s(ctx, x);
   } else if (x.isSecret() && to.isa<Secret>()) {
     return _cast_type_s(ctx, x, to);
   } else {
@@ -163,15 +175,18 @@ static Value _mmul_impl(SPUContext* ctx, const Value& x, const Value& y) {
   } else if (x.isSecret() && y.isPublic()) {  // SP
     return _mmul_sp(ctx, x, y);
   } else if (x.isPublic() && y.isSecret()) {  // PS
-    return transpose(ctx, _mmul_sp(ctx, transpose(ctx, y), transpose(ctx, x)));
+    return _transpose(ctx,
+                      _mmul_sp(ctx, _transpose(ctx, y), _transpose(ctx, x)));
   } else if (x.isPrivate() && y.isPublic()) {  // VP
     return _mmul_vp(ctx, x, y);
   } else if (x.isPublic() && y.isPrivate()) {  // PV
-    return transpose(ctx, _mmul_vp(ctx, transpose(ctx, y), transpose(ctx, x)));
+    return _transpose(ctx,
+                      _mmul_vp(ctx, _transpose(ctx, y), _transpose(ctx, x)));
   } else if (x.isSecret() && y.isPrivate()) {  // SV
     return _mmul_sv(ctx, x, y);
   } else if (x.isPrivate() && y.isSecret()) {  // VS
-    return transpose(ctx, _mmul_sv(ctx, transpose(ctx, y), transpose(ctx, x)));
+    return _transpose(ctx,
+                      _mmul_sv(ctx, _transpose(ctx, y), _transpose(ctx, x)));
   } else {
     SPU_THROW("unsupported op {} for x={}, y={}", "_matmul", x, y);
   }
@@ -314,17 +329,19 @@ Value _mmul(SPUContext* ctx, const Value& x, const Value& y) {
         Value x_block;
         if (x.shape().size() == 1) {
           SPU_ENFORCE(m_start == 0 && m_end == 1);
-          x_block = slice(ctx, x, {k_start}, {k_end}, {});
+          x_block = _extract_slice(ctx, x, {k_start}, {k_end}, {});
         } else {
-          x_block = slice(ctx, x, {m_start, k_start}, {m_end, k_end}, {});
+          x_block =
+              _extract_slice(ctx, x, {m_start, k_start}, {m_end, k_end}, {});
         }
 
         Value y_block;
         if (y.shape().size() == 1) {
           SPU_ENFORCE(n_start == 0 && n_end == 1);
-          y_block = slice(ctx, y, {k_start}, {k_end}, {});
+          y_block = _extract_slice(ctx, y, {k_start}, {k_end}, {});
         } else {
-          y_block = slice(ctx, y, {k_start, n_start}, {k_end, n_end}, {});
+          y_block =
+              _extract_slice(ctx, y, {k_start, n_start}, {k_end, n_end}, {});
         }
 
         auto mmul_ret = _mmul_impl(ctx, x_block, y_block);
@@ -615,17 +632,17 @@ Value _tensordot(SPUContext* ctx, const Value& x, const Value& y,
   std::rotate(perm_x.begin(), perm_x.begin() + nc, perm_x.end());
 
   // convert to mmul shape.
-  auto xx = transpose(ctx, x, Axes(perm_x));
+  auto xx = _transpose(ctx, x, Axes(perm_x));
   Shape xxs = xx.shape();
-  xx = reshape(ctx, xx,
-               {product(xxs.begin(), xxs.end() - nc),
-                product(xxs.end() - nc, xxs.end())});
+  xx = _reshape(ctx, xx,
+                {product(xxs.begin(), xxs.end() - nc),
+                 product(xxs.end() - nc, xxs.end())});
 
-  auto yy = transpose(ctx, y, Axes(perm_y));
+  auto yy = _transpose(ctx, y, Axes(perm_y));
   Shape yys = yy.shape();
-  yy = reshape(ctx, yy,
-               {product(yys.begin(), yys.begin() + nc),
-                product(yys.begin() + nc, yys.end())});
+  yy = _reshape(ctx, yy,
+                {product(yys.begin(), yys.begin() + nc),
+                 product(yys.begin() + nc, yys.end())});
 
   // do matrix multiplication.
   auto zz = _mmul(ctx, xx, yy);
@@ -634,7 +651,7 @@ Value _tensordot(SPUContext* ctx, const Value& x, const Value& y,
   Shape res_shape(xxs.begin(), xxs.end() - nc);
   res_shape.insert(res_shape.end(), yys.begin() + nc, yys.end());
 
-  return reshape(ctx, zz, res_shape);
+  return _reshape(ctx, zz, res_shape);
 }
 
 }  // namespace spu::kernel::hal

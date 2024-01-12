@@ -127,4 +127,80 @@ class PermKernel : public Kernel {
                           const NdArrayRef& perm) const = 0;
 };
 
+class GenInvPermKernel : public Kernel {
+ public:
+  void evaluate(KernelEvalContext* ctx) const override;
+  virtual NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in,
+                          bool is_ascending) const = 0;
+};
+
+class MergeKeysKernel : public Kernel {
+ public:
+  void evaluate(KernelEvalContext* ctx) const override;
+  virtual NdArrayRef proc(KernelEvalContext* ctx,
+                          absl::Span<NdArrayRef const> inputs,
+                          bool is_ascending) const = 0;
+};
+
+class BroadcastKernel : public Kernel {
+ public:
+  void evaluate(KernelEvalContext* ctx) const override;
+
+  virtual NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in,
+                          const Shape& to_shape, const Axes& in_dims) const = 0;
+};
+
+class DimsBasedKernel : public Kernel {
+ public:
+  void evaluate(KernelEvalContext* ctx) const override;
+
+  virtual NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in,
+                          const Axes& perm) const = 0;
+};
+
+class ShapeBasedKernel : public Kernel {
+ public:
+  void evaluate(KernelEvalContext* ctx) const override;
+
+  virtual NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in,
+                          const Shape& to_shape) const = 0;
+};
+
+class ExtractSliceKernel : public Kernel {
+ public:
+  void evaluate(KernelEvalContext* ctx) const override;
+  virtual NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in,
+                          const Index& start, const Index& end,
+                          const Strides& strides) const = 0;
+};
+
+class UpdateSliceKernel : public Kernel {
+ public:
+  void evaluate(KernelEvalContext* ctx) const override;
+
+  virtual NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in,
+                          const NdArrayRef& update,
+                          const Index& start) const = 0;
+};
+
+class PadKernel : public Kernel {
+ public:
+  void evaluate(KernelEvalContext* ctx) const override;
+
+  virtual NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in,
+                          const NdArrayRef& padding_value,
+                          const Sizes& edge_padding_low,
+                          const Sizes& edge_padding_high,
+                          const Sizes& interior_padding) const = 0;
+};
+
+class ConcateKernel : public Kernel {
+ public:
+  void evaluate(KernelEvalContext* ctx) const override;
+
+  virtual NdArrayRef proc(KernelEvalContext* ctx,
+                          const std::vector<NdArrayRef>& values,
+                          int64_t axis) const = 0;
+};
+
 }  // namespace spu::mpc

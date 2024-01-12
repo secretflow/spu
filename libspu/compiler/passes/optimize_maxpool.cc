@@ -37,10 +37,9 @@ private:
 
   Value rewriteReduceWindow(ReduceWindowOp op,
                             PatternRewriter &rewriter) const {
-    auto window_size =
-        std::accumulate(op.getWindowDimensions().getValues<int64_t>().begin(),
-                        op.getWindowDimensions().getValues<int64_t>().end(), 1,
-                        std::multiplies<int64_t>());
+    auto window_size = std::accumulate(op.getWindowDimensions().begin(),
+                                       op.getWindowDimensions().end(), 1,
+                                       std::multiplies<int64_t>());
 
     auto current_ret_type =
         op.getResult(0).getType().dyn_cast<RankedTensorType>();
@@ -59,8 +58,10 @@ private:
     auto argmax = builder.create<ArgMaxOp>(
         op->getLoc(), SmallVector<Type>{current_ret_type, index_result_type},
         op.getInputs()[0], op.getWindowDimensions(),
-        op.getWindowStrides().value_or(nullptr),
-        op.getWindowDilations().value_or(nullptr));
+        DenseI64ArrayAttr::get(op->getContext(),
+                               op.getWindowStrides().value_or(std::nullopt)),
+        DenseI64ArrayAttr::get(op->getContext(),
+                               op.getWindowDilations().value_or(std::nullopt)));
 
     op->getResult(0).replaceAllUsesWith(argmax->getResult(0));
 
@@ -101,10 +102,6 @@ public:
     Value selected_indices;
     bool rewritten = false;
 
-    auto isAllOne = [](const DenseIntElementsAttr &attr) {
-      return attr.isSplat() && attr.getSplatValue<int64_t>() == 1;
-    };
-
     for (const auto &u : uses) {
       if (auto previous_reduce_window =
               mlir::dyn_cast<ReduceWindowOp>(u.getOwner())) {
@@ -134,7 +131,8 @@ public:
 
         // Make sure no dilation
         auto window_dilation = previous_reduce_window.getWindowDilations();
-        if (window_dilation.has_value() && !isAllOne(*window_dilation)) {
+        if (window_dilation.has_value() &&
+            !llvm::all_of(*window_dilation, [](int64_t v) { return v == 1; })) {
           continue;
         }
 
@@ -152,7 +150,9 @@ public:
 
     rewriter.replaceOpWithNewOp<pphlo::MaxPoolScatterOp>(
         op, op->getResultTypes()[0], selected_indices, op.getSource(),
-        op.getWindowDimensions(), op.getWindowStrides().value_or(nullptr));
+        DenseI64ArrayAttr::get(op->getContext(), op.getWindowDimensions()),
+        DenseI64ArrayAttr::get(op->getContext(),
+                               op.getWindowStrides().value_or(std::nullopt)));
 
     return status;
   }

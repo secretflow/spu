@@ -36,19 +36,19 @@ void hintNumberOfBits(const Value &a, size_t nbits);
 
 namespace {
 struct IndexIterationSpace {
-  std::vector<int64_t> index_base;
-  std::vector<int64_t> index_count;
-  std::vector<int64_t> index_incr;
+  spu::Index index_base;
+  spu::Index index_count;
+  spu::Index index_incr;
 };
 
 // Returns an IndexIterationSpace that iterates over the output batch
 // dimensions while keeping the rest of the output dimensions clamped to 0.
 IndexIterationSpace iterationSpaceForOutputBatchIndices(
-    absl::Span<const int64_t> output_shape,
+    const spu::Shape &output_shape,
     const spu::kernel::hlo::GatherConfig &config) {
   int64_t output_rank = output_shape.size();
-  std::vector<int64_t> index_base(output_rank, 0);
-  std::vector<int64_t> index_count;
+  spu::Index index_base(output_rank, 0);
+  spu::Index index_count;
   index_count.reserve(output_rank);
 
   for (int64_t i = 0; i < output_rank; i++) {
@@ -58,15 +58,15 @@ IndexIterationSpace iterationSpaceForOutputBatchIndices(
   }
 
   return {std::move(index_base), std::move(index_count),
-          std::vector<int64_t>(output_rank, 1)};
+          spu::Index(output_rank, 1)};
 }
 
 // Return an IndexIterationSpace that iterates over the output slice
 // dimensions while keeping the rest of the output dimensions clamped to 0.
 IndexIterationSpace iterationSpaceForOutputOffsetIndices(
     int64_t output_rank, const spu::kernel::hlo::GatherConfig &config) {
-  std::vector<int64_t> index_base(output_rank, 0);
-  std::vector<int64_t> index_count(output_rank, 1);
+  spu::Index index_base(output_rank, 0);
+  spu::Index index_count(output_rank, 1);
   int64_t slice_sizes_idx = 0;
 
   for (int64_t i = 0; i < output_rank; i++) {
@@ -83,7 +83,7 @@ IndexIterationSpace iterationSpaceForOutputOffsetIndices(
   }
 
   return {std::move(index_base), std::move(index_count),
-          std::vector<int64_t>(output_rank, 1)};
+          spu::Index(output_rank, 1)};
 }
 
 // This functor computes the contribution of start_indices to an input index
@@ -97,8 +97,7 @@ class OutputBatchIndexToInputIndex {
   // iterations.
   explicit OutputBatchIndexToInputIndex(
       const spu::kernel::hlo::GatherConfig &config,
-      absl::Span<const int64_t> input_shape,
-      absl::Span<const int64_t> output_shape,
+      const spu::Shape &input_shape, const spu::Shape &output_shape,
       const xt::xarray<int64_t> &start_indices)
       : config_(config), start_indices_(start_indices) {
     for (int64_t i = 0; i < static_cast<int64_t>(output_shape.size()); ++i) {
@@ -146,7 +145,7 @@ class OutputBatchIndexToInputIndex {
   //    same storage for all invocations.
   //
   // This returns a Span into memory owned by the class.
-  absl::Span<const int64_t> operator()(absl::Span<const int64_t> output_index) {
+  spu::Index &operator()(const spu::Index &output_index) {
     propagateOutputIndexGatherDimsToIndexVectorIndex(output_index);
     fetchIndexVector();
     propagateIndexVectorToInputIndex();
@@ -197,7 +196,7 @@ class OutputBatchIndexToInputIndex {
   // input_dim_value_to_index_vector_[i] tells us how to compute dimension i
   // of the input index from the index vector.  See
   // PropagateIndexVectorToInputIndex.
-  std::vector<int64_t> input_dim_value_to_index_vector_;
+  spu::Index input_dim_value_to_index_vector_;
 
   // output_dim_is_batch_dims_[i] is true iff the output index i is a gather
   // dimension.
@@ -208,11 +207,11 @@ class OutputBatchIndexToInputIndex {
   spu::Index index_vector_index_;
 
   // The index vector fetched from start_indices_.
-  std::vector<int64_t> index_vector_;
+  spu::Index index_vector_;
 
   // The result computed by this functor.  operator() returns a Span into
   // this vector.
-  std::vector<int64_t> input_index_;
+  spu::Index input_index_;
 
   const spu::kernel::hlo::GatherConfig &config_;
   const xt::xarray<int64_t> &start_indices_;
@@ -229,9 +228,8 @@ class OutputOffsetIndexToInputIndex {
   // iterations.
   explicit OutputOffsetIndexToInputIndex(
       const spu::kernel::hlo::GatherConfig &config,
-      absl::Span<const int64_t> input_shape,
-      absl::Span<const int64_t> output_shape) {
-    std::vector<int64_t> window_index_to_output_index;
+      const spu::Shape &input_shape, const spu::Shape &output_shape) {
+    spu::Index window_index_to_output_index;
     int64_t output_index_count = 0;
     for (int64_t i = 0; i < static_cast<int64_t>(output_shape.size()); i++) {
       if (std::binary_search(config.offsetDims.begin(), config.offsetDims.end(),
@@ -265,7 +263,7 @@ class OutputOffsetIndexToInputIndex {
   // result (input_index_), mutating it in place.
   //
   // This returns a Span into memory owned by the class.
-  absl::Span<const int64_t> operator()(absl::Span<const int64_t> output_index) {
+  spu::Index &operator()(const spu::Index &output_index) {
     propagateOutputIndexWindowDimsToInputIndex(output_index);
     return input_index_;
   }
@@ -291,11 +289,11 @@ class OutputOffsetIndexToInputIndex {
   // input_dim_value_to_index_vector_[i] tells us how to compute dimension i
   // of the input index from the output index. See
   // PropagateOutputIndexWindowDimsToInputIndex.
-  std::vector<int64_t> input_dim_value_to_output_index_;
+  spu::Index input_dim_value_to_output_index_;
 
   // The result computed by this functor.  operator() returns a Span into
   // this vector.
-  std::vector<int64_t> input_index_;
+  spu::Index input_index_;
 };
 
 spu::Value reshapedGatherIndices(spu::SPUContext *ctx, int64_t index_vector_dim,
@@ -393,10 +391,10 @@ std::vector<spu::Value> ClampAndFlattenIndex(
   }
 
   // Now compute offsets of each index
-  std::vector<int64_t> base(iterate_shape.size(), 0);
-  std::vector<int64_t> incr(iterate_shape.size(), 1);
+  spu::Index base(iterate_shape.size(), 0);
+  spu::Index incr(iterate_shape.size(), 1);
 
-  std::vector<int64_t> flatten_idx;
+  spu::Index flatten_idx;
   spu::kernel::forEachIndex(
       limit_shape, base, iterate_shape, incr,
       [&flatten_idx, &limit_shape](const spu::Index &idx) {
@@ -470,58 +468,55 @@ spu::Value Gather(SPUContext *ctx, const spu::Value &operand,
               operand.dtype());
   }
 
-  auto gather_inner_loop_body =
-      [&](absl::Span<const int64_t> output_window_index,
-          absl::Span<const int64_t> input_gather_index,
-          absl::Span<const int64_t> output_gather_index) {
-        auto input_window_index =
-            output_offset_index_to_input_index(output_window_index);
-        for (int i = 0, e = output_index.size(); i < e; i++) {
-          output_index[i] = output_gather_index[i] + output_window_index[i];
-        }
-        for (int i = 0, e = input_gather_index.size(); i < e; i++) {
-          int64_t output_dim = output_offset_index_to_input_index
-                                   .input_dim_value_to_output_index(i);
-          // If 'output_dim' is -1, it means 'i' is an elided window dim. This
-          // means we set the iteration index to 0, so for the purpose of the
-          // following calculations we can consider the output dimension size
-          // to be 1.
-          int64_t output_dim_size =
-              output_dim == -1 ? 1 : result_shape[output_dim];
-          // Clamp the gather index so that the gather region fits in the
-          // operand. input_index_clamped[i] = clamp(input_gather_index[i], 0,
-          //                                       operand_shape.dimensions(i)
-          //                                       - output_dim_size);
-          input_index_clamped[i] =
-              std::min(operand_shape[i] - output_dim_size,
-                       std::max(int64_t{0}, input_gather_index[i]));
-        }
-        for (int i = 0, e = input_index.size(); i < e; i++) {
-          input_index[i] = input_index_clamped[i] + input_window_index[i];
-        }
+  auto gather_inner_loop_body = [&](const spu::Index &output_window_index,
+                                    const spu::Index &input_gather_index,
+                                    const spu::Index &output_gather_index) {
+    auto input_window_index =
+        output_offset_index_to_input_index(output_window_index);
+    for (int i = 0, e = output_index.size(); i < e; i++) {
+      output_index[i] = output_gather_index[i] + output_window_index[i];
+    }
+    for (int i = 0, e = input_gather_index.size(); i < e; i++) {
+      int64_t output_dim =
+          output_offset_index_to_input_index.input_dim_value_to_output_index(i);
+      // If 'output_dim' is -1, it means 'i' is an elided window dim. This
+      // means we set the iteration index to 0, so for the purpose of the
+      // following calculations we can consider the output dimension size
+      // to be 1.
+      int64_t output_dim_size = output_dim == -1 ? 1 : result_shape[output_dim];
+      // Clamp the gather index so that the gather region fits in the
+      // operand. input_index_clamped[i] = clamp(input_gather_index[i], 0,
+      //                                       operand_shape.dimensions(i)
+      //                                       - output_dim_size);
+      input_index_clamped[i] =
+          std::min(operand_shape[i] - output_dim_size,
+                   std::max(int64_t{0}, input_gather_index[i]));
+    }
+    for (int i = 0, e = input_index.size(); i < e; i++) {
+      input_index[i] = input_index_clamped[i] + input_window_index[i];
+    }
 
-        result.data().update_slice(operand.data().slice_scalar_at(input_index),
-                                   output_index);
+    result.data().update_slice(operand.data().slice_scalar_at(input_index),
+                               output_index);
 
-        if (result.isComplex()) {
-          result.imag()->update_slice(
-              operand.imag()->slice_scalar_at(input_index), output_index);
-        }
-      };
+    if (result.isComplex()) {
+      result.imag()->update_slice(operand.imag()->slice_scalar_at(input_index),
+                                  output_index);
+    }
+  };
 
-  auto gather_outer_loop_body =
-      [&](absl::Span<const int64_t> output_gather_index) {
-        auto input_gather_index =
-            output_batch_index_to_input_index(output_gather_index);
-        forEachIndex(result_shape, offset_indices_iteration_space.index_base,
-                     offset_indices_iteration_space.index_count,
-                     offset_indices_iteration_space.index_incr,
-                     [&](absl::Span<const int64_t> output_window_index) {
-                       return gather_inner_loop_body(output_window_index,
-                                                     input_gather_index,
-                                                     output_gather_index);
-                     });
-      };
+  auto gather_outer_loop_body = [&](const spu::Index &output_gather_index) {
+    auto input_gather_index =
+        output_batch_index_to_input_index(output_gather_index);
+    forEachIndex(result_shape, offset_indices_iteration_space.index_base,
+                 offset_indices_iteration_space.index_count,
+                 offset_indices_iteration_space.index_incr,
+                 [&](const spu::Index &output_window_index) {
+                   return gather_inner_loop_body(output_window_index,
+                                                 input_gather_index,
+                                                 output_gather_index);
+                 });
+  };
 
   forEachIndex(result_shape, start_indices_iteration_space.index_base,
                start_indices_iteration_space.index_count,
@@ -706,7 +701,7 @@ spu::Value SecretDynamicSlice(SPUContext *ctx, const spu::Value &operand,
       hlo::Constant(ctx, std::vector<int64_t>(slice_size.size(), 0),
                     {static_cast<int64_t>(slice_size.size())});
 
-  std::vector<int64_t> limit = operand.shape();
+  spu::Shape limit = operand.shape();
   for (size_t idx = 0; idx < limit.size(); ++idx) {
     limit[idx] -= slice_size[idx];
   }

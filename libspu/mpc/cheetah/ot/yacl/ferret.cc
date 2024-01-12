@@ -222,7 +222,8 @@ struct YaclFerretOt::Impl {
                 "bit_width={} out-of-range T={} bits", bit_width,
                 sizeof(T) * 8);
 
-    yacl::AlignedVector<uint128_t> rcm_output(n);
+    yacl::Buffer buf(n * sizeof(uint128_t));
+    auto rcm_output = MakeSpan_Uint128(buf);
 
     SendRandCorrelatedMsgChosenChoice(rcm_output.data(), n);
 
@@ -262,6 +263,7 @@ struct YaclFerretOt::Impl {
         io_->send_data(corr_output.data(), sizeof(T) * this_batch);
       }
     }
+    io_->flush();
   }
 
   template <typename T>
@@ -276,8 +278,10 @@ struct YaclFerretOt::Impl {
                 "bit_width={} out-of-range T={} bits", bit_width,
                 sizeof(T) * 8);
 
-    yacl::AlignedVector<uint128_t> rcm_output(n);
-    RecvRandCorrelatedMsgChosenChoice(choices, absl::MakeSpan(rcm_output));
+    yacl::Buffer buf(n * sizeof(uint128_t));
+    auto rcm_output = MakeSpan_Uint128(buf);
+
+    RecvRandCorrelatedMsgChosenChoice(choices, rcm_output);
 
     std::array<uint128_t, kOTBatchSize> pad;
     std::vector<T> corr_output(kOTBatchSize);
@@ -347,7 +351,10 @@ struct YaclFerretOt::Impl {
                                  size_t n) {
     SPU_ENFORCE(msg0 != nullptr && msg1 != nullptr);
     SPU_ENFORCE(n > 0);
-    yacl::AlignedVector<uint128_t> rcm_data(n);
+
+    yacl::Buffer buf(n * sizeof(uint128_t));
+    auto rcm_data = MakeSpan_Uint128(buf);
+
     SendRandCorrelatedMsgChosenChoice(rcm_data.data(), n);
 
     uint128_t delta = ferret_->GetDelta();
@@ -368,6 +375,7 @@ struct YaclFerretOt::Impl {
 
       io_->send_data(pad.data(), 2 * sizeof(uint128_t) * this_batch);
     }
+    io_->flush();
   }
 
   void RecvChosenMsgChosenChoice(absl::Span<const uint8_t> choices,
@@ -399,15 +407,17 @@ struct YaclFerretOt::Impl {
     SPU_ENFORCE_EQ(n, output1.size());
     const T mask = makeBitsMask<T>(bit_width);
 
-    yacl::AlignedVector<uint128_t> rm_data(2 * n);
-    auto* rm_data0 = rm_data.data();
-    auto* rm_data1 = rm_data.data() + n;
-    SendRandMsgRandChoice({rm_data0, n}, {rm_data1, n});
+    yacl::Buffer buf(2 * n * sizeof(uint128_t));
+    auto rm_data = MakeSpan_Uint128(buf);
 
-    std::transform(rm_data0, rm_data0 + n, output0.data(),
-                   [mask](uint128_t x) { return (T)x & mask; });
-    std::transform(rm_data1, rm_data1 + n, output1.data(),
-                   [mask](uint128_t x) { return (T)x & mask; });
+    auto rm_data0 = rm_data.subspan(0, n);
+    auto rm_data1 = rm_data.subspan(n, n);
+    SendRandMsgRandChoice(rm_data0, rm_data1);
+
+    std::transform(rm_data0.cbegin(), rm_data0.cend(), output0.data(),
+                   [mask](const uint128_t& x) { return (T)x & mask; });
+    std::transform(rm_data1.cbegin(), rm_data1.cend(), output1.data(),
+                   [mask](const uint128_t& x) { return (T)x & mask; });
   }
 
   template <typename T>
@@ -418,12 +428,13 @@ struct YaclFerretOt::Impl {
     SPU_ENFORCE_EQ(n, output.size());
     const T mask = makeBitsMask<T>(bit_width);
 
-    yacl::AlignedVector<uint128_t> rm_data(n);
+    yacl::Buffer buf(n * sizeof(uint128_t));
+    auto rm_data = MakeSpan_Uint128(buf);
 
-    RecvRandMsgRandChoice(choices, absl::MakeSpan(rm_data));
+    RecvRandMsgRandChoice(choices, rm_data);
 
-    std::transform(rm_data.begin(), rm_data.end(), output.data(),
-                   [mask](uint128_t x) { return ((T)x) & mask; });
+    std::transform(rm_data.cbegin(), rm_data.cend(), output.data(),
+                   [mask](const uint128_t& x) { return ((T)x) & mask; });
   }
 
   template <typename T>
@@ -442,13 +453,18 @@ struct YaclFerretOt::Impl {
     // Send: (s_{0, j}, s_{1, j}) for 0 <= j < logN
     // Recv:  c_j \in {0, 1}
 
-    yacl::AlignedVector<uint128_t> rm_data0(n * logN);
-    yacl::AlignedVector<uint128_t> rm_data1(n * logN);
+    yacl::Buffer buf_data0(n * logN * sizeof(uint128_t));
+    yacl::Buffer buf_data1(n * logN * sizeof(uint128_t));
+    auto rm_data0 = MakeSpan_Uint128(buf_data0);
+    auto rm_data1 = MakeSpan_Uint128(buf_data1);
 
     SendRandMsgChosenChoice(rm_data0.data(), rm_data1.data(), n * logN);
 
-    yacl::AlignedVector<uint128_t> hash_in0(N - 1);
-    yacl::AlignedVector<uint128_t> hash_in1(N - 1);
+    yacl::Buffer buf_in0((N - 1) * sizeof(uint128_t));
+    yacl::Buffer buf_in1((N - 1) * sizeof(uint128_t));
+    auto hash_in0 = MakeSpan_Uint128(buf_in0);
+    auto hash_in1 = MakeSpan_Uint128(buf_in1);
+
     {
       size_t idx = 0;
       for (size_t x = 0; x < logN; ++x) {
@@ -460,9 +476,13 @@ struct YaclFerretOt::Impl {
       }
     }
 
-    yacl::AlignedVector<uint128_t> hash_out0(N - 1);
-    yacl::AlignedVector<uint128_t> hash_out1(N - 1);
-    yacl::AlignedVector<uint128_t> pad(kOTBatchSize * N);
+    yacl::Buffer buf_out0((N - 1) * sizeof(uint128_t));
+    yacl::Buffer buf_out1((N - 1) * sizeof(uint128_t));
+    yacl::Buffer buf_pad(kOTBatchSize * N * sizeof(uint128_t));
+
+    auto hash_out0 = MakeSpan_Uint128(buf_out0);
+    auto hash_out1 = MakeSpan_Uint128(buf_out1);
+    auto pad = MakeSpan_Uint128(buf_pad);
 
     const T msg_mask = makeBitsMask<T>(bit_width);
     size_t eltsize = 8 * sizeof(T);
@@ -481,10 +501,12 @@ struct YaclFerretOt::Impl {
       std::memset(pad.data(), 0, pad.size() * sizeof(uint128_t));
 
       for (size_t j = 0; j < this_batch; ++j) {
-        mitccrh_exp_.renew_ks(&rm_data0[(i + j) * logN], logN);
+        mitccrh_exp_.renew_ks(
+            reinterpret_cast<uint128_t*>(&rm_data0[(i + j) * logN]), logN);
         mitccrh_exp_.hash_exp(hash_out0.data(), hash_in0.data(), logN);
 
-        mitccrh_exp_.renew_ks(&rm_data1[(i + j) * logN], logN);
+        mitccrh_exp_.renew_ks(
+            reinterpret_cast<uint128_t*>(&rm_data1[(i + j) * logN]), logN);
         mitccrh_exp_.hash_exp(hash_out1.data(), hash_in1.data(), logN);
 
         for (size_t k = 0; k < N; ++k) {
@@ -521,6 +543,7 @@ struct YaclFerretOt::Impl {
         io_->send_data(to_send.data(), N * this_batch * sizeof(T));
       }
     }
+    io_->flush();
   }
 
   template <typename T>
@@ -548,13 +571,18 @@ struct YaclFerretOt::Impl {
 
     // rm_data[logN * i + k] = 1-of-2 OT on the k-th bits of the i-th
     // message
-    yacl::AlignedVector<uint128_t> rm_data(n * logN);
-    RecvRandMsgChosenChoice(absl::MakeSpan(bool_choices),
-                            absl::MakeSpan(rm_data));
+    yacl::Buffer buf(n * logN * sizeof(uint128_t));
+    auto rm_data = MakeSpan_Uint128(buf);
 
-    yacl::AlignedVector<uint128_t> hash_in(logN);
-    yacl::AlignedVector<uint128_t> hash_out(logN);
-    yacl::AlignedVector<uint128_t> pad(kOTBatchSize);
+    RecvRandMsgChosenChoice(absl::MakeSpan(bool_choices), rm_data);
+
+    yacl::Buffer buf_in(logN * sizeof(uint128_t));
+    yacl::Buffer buf_out(logN * sizeof(uint128_t));
+    yacl::Buffer buf_pad(kOTBatchSize * sizeof(uint128_t));
+
+    auto hash_in = MakeSpan_Uint128(buf_in);
+    auto hash_out = MakeSpan_Uint128(buf_out);
+    auto pad = MakeSpan_Uint128(buf_pad);
 
     const T msg_mask = makeBitsMask<T>(bit_width);
     size_t eltsize = 8 * sizeof(T);
@@ -584,7 +612,8 @@ struct YaclFerretOt::Impl {
           auto h = choices[i + j] & makeBitsMask<uint8_t>(1 + s);
           hash_in[s] = yacl::MakeUint128(h, 0);
         }
-        mitccrh_exp_.renew_ks(&rm_data[(i + j) * logN], logN);
+        mitccrh_exp_.renew_ks(
+            reinterpret_cast<uint128_t*>(&rm_data[(i + j) * logN]), logN);
         mitccrh_exp_.hash_single(hash_out.data(), hash_in.data(), logN);
 
         pad[j] = std::accumulate(hash_out.begin(), hash_out.end(), pad[j],
@@ -604,17 +633,21 @@ struct YaclFerretOt::Impl {
     SPU_ENFORCE(n > 0);
     SPU_ENFORCE_EQ(n, output1.size());
 
-    yacl::AlignedVector<uint128_t> rm_data(2 * n);
+    yacl::Buffer buf(2 * n * sizeof(uint128_t));
+    auto rm_data = MakeSpan_Uint128(buf);
+
     auto* rm_data0 = rm_data.data();
     auto* rm_data1 = rm_data0 + n;
     SendRandMsgChosenChoice(rm_data0, rm_data1, n);
 
     // Type conversion
     const T msg_mask = makeBitsMask<T>(bit_width);
-    std::transform(rm_data0, rm_data0 + n, output0.data(),
-                   [msg_mask](uint128_t val) { return ((T)val) & msg_mask; });
-    std::transform(rm_data1, rm_data1 + n, output1.data(),
-                   [msg_mask](uint128_t val) { return ((T)val) & msg_mask; });
+    std::transform(
+        rm_data0, rm_data0 + n, output0.data(),
+        [msg_mask](const uint128_t& val) { return ((T)val) & msg_mask; });
+    std::transform(
+        rm_data1, rm_data1 + n, output1.data(),
+        [msg_mask](const uint128_t& val) { return ((T)val) & msg_mask; });
   }
 
   // Modified by @wenfan
@@ -625,13 +658,16 @@ struct YaclFerretOt::Impl {
     SPU_ENFORCE(n > 0);
     SPU_ENFORCE_EQ(n, output.size());
 
-    yacl::AlignedVector<uint128_t> rm_data(n);
-    RecvRandMsgChosenChoice(choices, absl::MakeSpan(rm_data));
+    yacl::Buffer buf(n * sizeof(uint128_t));
+    auto rm_data = MakeSpan_Uint128(buf);
+
+    RecvRandMsgChosenChoice(choices, rm_data);
 
     // Type conversion
     const T msg_mask = makeBitsMask<T>(bit_width);
-    std::transform(rm_data.begin(), rm_data.end(), output.begin(),
-                   [msg_mask](uint128_t val) { return ((T)val) & msg_mask; });
+    std::transform(
+        rm_data.begin(), rm_data.end(), output.begin(),
+        [msg_mask](const uint128_t& val) { return ((T)val) & msg_mask; });
   }
 
   // Inplace

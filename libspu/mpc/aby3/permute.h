@@ -18,9 +18,9 @@
 
 namespace spu::mpc::aby3 {
 
-class RandPermS : public RandKernel {
+class RandPermM : public RandKernel {
  public:
-  static constexpr char kBindName[] = "rand_perm_s";
+  static constexpr char kBindName[] = "rand_perm_m";
 
   ce::CExpr latency() const override { return ce::Const(0); }
 
@@ -29,9 +29,9 @@ class RandPermS : public RandKernel {
   NdArrayRef proc(KernelEvalContext* ctx, const Shape& shape) const override;
 };
 
-class PermAS : public PermKernel {
+class PermAM : public PermKernel {
  public:
-  static constexpr char kBindName[] = "perm_as";
+  static constexpr char kBindName[] = "perm_am";
 
   Kind kind() const override { return Kind::Dynamic; }
 
@@ -51,9 +51,9 @@ class PermAP : public PermKernel {
                   const NdArrayRef& perm) const override;
 };
 
-class InvPermAS : public PermKernel {
+class InvPermAM : public PermKernel {
  public:
-  static constexpr char kBindName[] = "inv_perm_as";
+  static constexpr char kBindName[] = "inv_perm_am";
 
   Kind kind() const override { return Kind::Dynamic; }
 

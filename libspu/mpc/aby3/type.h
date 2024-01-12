@@ -90,8 +90,8 @@ class BShrTy : public TypeImpl<BShrTy, TypeObject, Secret, BShare> {
 };
 
 // Permutation share
-class PShrTy : public TypeImpl<PShrTy, RingTy, Secret> {
-  using Base = TypeImpl<PShrTy, RingTy, Secret>;
+class PShrTy : public TypeImpl<PShrTy, RingTy, Secret, PShare> {
+  using Base = TypeImpl<PShrTy, RingTy, Secret, PShare>;
 
  public:
   using Base::Base;

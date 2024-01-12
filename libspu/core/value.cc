@@ -209,4 +209,9 @@ std::ostream& operator<<(std::ostream& out, const Value& v) {
   return out;
 }
 
+std::ostream& operator<<(std::ostream& out, const std::vector<Value>& v) {
+  out << fmt::format("{}", fmt::join(v, ","));
+  return out;
+}
+
 }  // namespace spu

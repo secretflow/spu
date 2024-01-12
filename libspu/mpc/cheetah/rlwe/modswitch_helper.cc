@@ -433,7 +433,7 @@ void ModulusSwitchHelper::ModulusUpAt(const NdArrayRef &src, size_t mod_idx,
   const size_t numel = src.numel();
   SPU_ENFORCE_EQ(numel, out.size());
   SPU_ENFORCE(src.shape().size() == 1, "need 1D array");
-  SPU_ENFORCE(eltype.isa<RingTy>(), "source must be ring_type, got={}", eltype);
+  SPU_ENFORCE(eltype.isa<Ring2k>(), "source must be ring_type, got={}", eltype);
   const auto field = eltype.as<Ring2k>()->field();
 
   DISPATCH_ALL_FIELDS(field, "ModulusUpAt", [&]() {
@@ -448,7 +448,7 @@ void ModulusSwitchHelper::CenteralizeAt(const NdArrayRef &src, size_t mod_idx,
   const Type &eltype = src.eltype();
   const size_t numel = src.numel();
   SPU_ENFORCE_EQ(numel, out.size());
-  SPU_ENFORCE(eltype.isa<RingTy>(), "source must be ring_type, got={}", eltype);
+  SPU_ENFORCE(eltype.isa<Ring2k>(), "source must be ring_type, got={}", eltype);
   const auto field = eltype.as<Ring2k>()->field();
   DISPATCH_ALL_FIELDS(field, "CenteralizeAt", [&]() {
     using ring2u = std::make_unsigned<ring2k_t>::type;
@@ -473,7 +473,7 @@ void ModulusSwitchHelper::ModulusDownRNS(absl::Span<const uint64_t> src,
                                          NdArrayRef out) const {
   yacl::CheckNotNull(impl_.get());
   auto eltype = out.eltype();
-  SPU_ENFORCE(eltype.isa<RingTy>(), "must be ring_type, got={}", eltype);
+  SPU_ENFORCE(eltype.isa<Ring2k>(), "must be ring_type, got={}", eltype);
   auto field = eltype.as<Ring2k>()->field();
   SPU_ENFORCE(out.isCompact(), "need compact output");
 

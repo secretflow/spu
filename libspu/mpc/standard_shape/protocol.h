@@ -14,12 +14,10 @@
 
 #pragma once
 
-#include "mlir/IR/Builders.h"
-#include "mlir/IR/BuiltinAttributes.h"
+#include "libspu/core/context.h"
 
-namespace mlir::pphlo {
+namespace spu::mpc {
 
-mlir::DenseIntElementsAttr
-ConvertDimensions(OpBuilder *builder, llvm::ArrayRef<int64_t> op_dimensions);
+void regStandardShapeOps(SPUContext* ctx);
 
-}
+}  // namespace spu::mpc

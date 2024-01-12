@@ -98,7 +98,7 @@ NdArrayRef ConcatSubMatrix(const NdArrayRef& mat, const Shape2D& mat_shape,
                            const Shape2D& submat_shape, int64_t num_coeff,
                            const Indexer& indexer) {
   const Type& eltype = mat.eltype();
-  SPU_ENFORCE(eltype.isa<RingTy>(), "must be ring_type, got={}", eltype);
+  SPU_ENFORCE(eltype.isa<Ring2k>(), "must be ring_type, got={}", eltype);
   // SPU_ENFORCE(mat.ndim() == 2, "should be a 2D matrix");
   SPU_ENFORCE_EQ(mat.numel(), mat_shape[0] * mat_shape[1]);
   SPU_ENFORCE(num_coeff >= submat_shape[0] * submat_shape[1]);

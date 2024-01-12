@@ -39,7 +39,7 @@ PermVector ring2pv(const NdArrayRef& x) {
 
 }  // namespace
 
-NdArrayRef RandPermS::proc(KernelEvalContext* ctx, const Shape& shape) const {
+NdArrayRef RandPermM::proc(KernelEvalContext* ctx, const Shape& shape) const {
   NdArrayRef out(makeType<PShrTy>(), shape);
 
   // generate a RandU64 pair as permutation seeds
@@ -67,7 +67,7 @@ NdArrayRef RandPermS::proc(KernelEvalContext* ctx, const Shape& shape) const {
 
 // Ref: https://eprint.iacr.org/2019/695.pdf
 // Algorithm 9: Optimized shuffling protocol
-NdArrayRef PermAS::proc(KernelEvalContext* ctx, const NdArrayRef& in,
+NdArrayRef PermAM::proc(KernelEvalContext* ctx, const NdArrayRef& in,
                         const NdArrayRef& perm) const {
   auto* comm = ctx->getState<Communicator>();
   const auto numel = in.numel();
@@ -187,7 +187,7 @@ NdArrayRef PermAP::proc(KernelEvalContext* ctx, const NdArrayRef& in,
 
 // Ref: https://eprint.iacr.org/2019/695.pdf
 // Algorithm 17: Optimized unshuffling protocol
-NdArrayRef InvPermAS::proc(KernelEvalContext* ctx, const NdArrayRef& in,
+NdArrayRef InvPermAM::proc(KernelEvalContext* ctx, const NdArrayRef& in,
                            const NdArrayRef& perm) const {
   auto* comm = ctx->getState<Communicator>();
   const auto numel = in.numel();

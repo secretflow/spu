@@ -340,4 +340,29 @@ NdArrayRef MatMulAA::proc(KernelEvalContext* ctx, const NdArrayRef& x,
   return ring_add(ret, task.get()).as(x.eltype());
 }
 
+NdArrayRef MatMulAV::proc(KernelEvalContext* ctx, const NdArrayRef& x,
+                          const NdArrayRef& y) const {
+  if (0 == x.numel() || 0 == y.numel()) {
+    return NdArrayRef(x.eltype(), {x.shape()[0], y.shape()[1]});
+  }
+  auto* comm = ctx->getState<Communicator>();
+  auto* dot_prot = ctx->getState<CheetahDotState>()->get();
+  const int rank = comm->getRank();
+  const auto* ptype = y.eltype().as<Priv2kTy>();
+  SPU_ENFORCE(ptype != nullptr, "rhs should be a private type");
+  const int owner = ptype->owner();
+  NdArrayRef out;
+  const Shape3D dim3 = {x.shape()[0], x.shape()[1], y.shape()[1]};
+  // (x0 + x1)*y = <x0 * y>_0 + <x0 * y>_1 + x1 * y
+  if (rank == owner) {
+    // Compute <y * x0>
+    out = dot_prot->DotOLE(y, dim3, false);
+    auto local = ring_mmul(x, y);
+    ring_add_(out, local);
+  } else {
+    out = dot_prot->DotOLE(x, dim3, true);
+  }
+  return out.as(x.eltype());
+}
+
 }  // namespace spu::mpc::cheetah
