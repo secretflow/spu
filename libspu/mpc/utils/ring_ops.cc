@@ -45,7 +45,7 @@ constexpr char kModule[] = "RingOps";
 #define DEF_UNARY_RING_OP(NAME, OP)                                     \
   void NAME##_impl(NdArrayRef& ret, const NdArrayRef& x) {              \
     ENFORCE_EQ_ELSIZE_AND_SHAPE(ret, x);                                \
-    const auto field = x.eltype().as<Ring2k>()->field();                \
+    const auto field = x.eltype().as<Ring2k>() -> field();              \
     const int64_t numel = ret.numel();                                  \
     return DISPATCH_ALL_FIELDS(field, kModule, [&]() {                  \
       using T = std::make_signed_t<ring2k_t>;                           \
@@ -65,7 +65,7 @@ DEF_UNARY_RING_OP(ring_neg, -);
                    const NdArrayRef& y) {                             \
     ENFORCE_EQ_ELSIZE_AND_SHAPE(ret, x);                              \
     ENFORCE_EQ_ELSIZE_AND_SHAPE(ret, y);                              \
-    const auto field = x.eltype().as<Ring2k>()->field();              \
+    const auto field = x.eltype().as<Ring2k>() -> field();            \
     const int64_t numel = ret.numel();                                \
     return DISPATCH_ALL_FIELDS(field, kModule, [&]() {                \
       NdArrayView<ring2k_t> _x(x);                                    \

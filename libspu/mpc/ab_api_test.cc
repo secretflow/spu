@@ -101,10 +101,10 @@ bool verifyCost(Kernel* kernel, std::string_view name, FieldType field,
           /* WHEN */                                                           \
           auto a0 = p2a(obj.get(), p0);                                        \
           auto a1 = p2a(obj.get(), p1);                                        \
-          auto prev = obj->prot()->getState<Communicator>()->getStats();       \
+          auto prev = obj->prot() -> getState<Communicator>() -> getStats();   \
           auto tmp = OP##_aa(obj.get(), a0, a1);                               \
           auto cost =                                                          \
-              obj->prot()->getState<Communicator>()->getStats() - prev;        \
+              obj->prot() -> getState<Communicator>() -> getStats() - prev;    \
           auto re = a2p(obj.get(), tmp);                                       \
           auto rp = OP##_pp(obj.get(), p0, p1);                                \
                                                                                \
@@ -131,10 +131,10 @@ bool verifyCost(Kernel* kernel, std::string_view name, FieldType field,
                                                                                \
           /* WHEN */                                                           \
           auto a0 = p2a(obj.get(), p0);                                        \
-          auto prev = obj->prot()->getState<Communicator>()->getStats();       \
+          auto prev = obj->prot() -> getState<Communicator>() -> getStats();   \
           auto tmp = OP##_ap(obj.get(), a0, p1);                               \
           auto cost =                                                          \
-              obj->prot()->getState<Communicator>()->getStats() - prev;        \
+              obj->prot() -> getState<Communicator>() -> getStats() - prev;    \
           auto re = a2p(obj.get(), tmp);                                       \
           auto rp = OP##_pp(obj.get(), p0, p1);                                \
                                                                                \
@@ -480,10 +480,10 @@ TEST_P(ArithmeticTest, A2P) {
           /* WHEN */                                                           \
           auto b0 = p2b(obj.get(), p0);                                        \
           auto b1 = p2b(obj.get(), p1);                                        \
-          auto prev = obj->prot()->getState<Communicator>()->getStats();       \
+          auto prev = obj->prot() -> getState<Communicator>() -> getStats();   \
           auto tmp = OP##_bb(obj.get(), b0, b1);                               \
           auto cost =                                                          \
-              obj->prot()->getState<Communicator>()->getStats() - prev;        \
+              obj->prot() -> getState<Communicator>() -> getStats() - prev;    \
           auto re = b2p(obj.get(), tmp);                                       \
           auto rp = OP##_pp(obj.get(), p0, p1);                                \
                                                                                \
@@ -510,10 +510,10 @@ TEST_P(ArithmeticTest, A2P) {
                                                                                \
           /* WHEN */                                                           \
           auto b0 = p2b(obj.get(), p0);                                        \
-          auto prev = obj->prot()->getState<Communicator>()->getStats();       \
+          auto prev = obj->prot() -> getState<Communicator>() -> getStats();   \
           auto tmp = OP##_bp(obj.get(), b0, p1);                               \
           auto cost =                                                          \
-              obj->prot()->getState<Communicator>()->getStats() - prev;        \
+              obj->prot() -> getState<Communicator>() -> getStats() - prev;    \
           auto re = b2p(obj.get(), tmp);                                       \
           auto rp = OP##_pp(obj.get(), p0, p1);                                \
                                                                                \
@@ -550,10 +550,10 @@ TEST_BOOLEAN_BINARY_OP(xor)
               continue;                                                        \
             }                                                                  \
             /* WHEN */                                                         \
-            auto prev = obj->prot()->getState<Communicator>()->getStats();     \
+            auto prev = obj->prot() -> getState<Communicator>() -> getStats(); \
             auto tmp = OP##_b(obj.get(), b0, bits);                            \
             auto cost =                                                        \
-                obj->prot()->getState<Communicator>()->getStats() - prev;      \
+                obj->prot() -> getState<Communicator>() -> getStats() - prev;  \
             auto r_b = b2p(obj.get(), tmp);                                    \
             auto r_p = OP##_p(obj.get(), p0, bits);                            \
                                                                                \
