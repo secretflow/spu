@@ -6,7 +6,7 @@ sphinx-autobuild==2021.3.14
 sphinx-markdown-parser==0.2.4
 sphinxcontrib-actdiag==3.0.0
 sphinxcontrib-blockdiag==3.0.0
-sphinxcontrib-mermaid==0.7.1
+sphinxcontrib-mermaid==0.9.2
 sphinxcontrib-nwdiag==2.0.0
 sphinxcontrib-seqdiag==3.0.0
 pytablewriter==0.64.2
