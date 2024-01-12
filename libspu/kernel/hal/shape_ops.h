@@ -82,7 +82,7 @@ Value pad(SPUContext* ctx, const Value& in, const Value& padding_value,
 // @param first, the first param
 // @param second, the second param
 // @param axis, the axis
-Value concatenate(SPUContext* ctx, absl::Span<const Value> values,
+Value concatenate(SPUContext* ctx, const std::vector<Value>& values,
                   int64_t axis);
 
 }  // namespace spu::kernel::hal

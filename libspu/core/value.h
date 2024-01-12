@@ -145,6 +145,7 @@ struct SimdTrait<Value> {
 };
 
 std::ostream& operator<<(std::ostream& out, const Value& v);
+std::ostream& operator<<(std::ostream& out, const std::vector<Value>& v);
 
 inline auto format_as(const Value& v) { return fmt::streamed(v); }
 

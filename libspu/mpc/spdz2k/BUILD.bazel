@@ -36,6 +36,7 @@ spu_cc_library(
         ":value",
         "//libspu/core:context",
         "//libspu/mpc/common:prg_state",
+        "//libspu/mpc/standard_shape:protocol",
     ],
 )
 

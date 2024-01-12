@@ -212,27 +212,116 @@ MAP_OPTIONAL_BINARY_OP(equal_ss)
 MAP_OPTIONAL_BINARY_OP(equal_sp)
 MAP_BINARY_OP(equal_pp)
 
-#define MAP_OPTIONAL_PERM_OP(NAME)                                  \
-  Value _##NAME(SPUContext* ctx, const Value& x, const Value& y) {  \
-    SPU_TRACE_HAL_DISP(ctx, x, y);                                  \
-    SPU_ENFORCE(x.shape().ndim() == 1, "x should be a 1-d tensor"); \
-    auto ret = mpc::NAME(ctx, x, y);                                \
-    SPU_ENFORCE(ret.has_value(), "{} api not implemented", #NAME);  \
-    return ret.value().setDtype(x.dtype());                         \
+#define MAP_OPTIONAL_PERM_OP(NAME)                                    \
+  Value _##NAME(SPUContext* ctx, const Value& x, const Value& y) {    \
+    SPU_TRACE_HAL_DISP(ctx, x, y);                                    \
+    SPU_ENFORCE(x.shape() == y.shape(), "shape mismatch: x={}, y={}", \
+                x.shape(), y.shape());                                \
+    SPU_ENFORCE(x.shape().ndim() == 1, "x should be a 1-d tensor");   \
+    auto ret = mpc::NAME(ctx, x, y);                                  \
+    SPU_ENFORCE(ret.has_value(), "{} api not implemented", #NAME);    \
+    return ret.value().setDtype(x.dtype());                           \
   }  // namespace spu::kernel::hal
 
 MAP_OPTIONAL_PERM_OP(perm_ss);
 MAP_OPTIONAL_PERM_OP(perm_sp);
 MAP_OPTIONAL_PERM_OP(inv_perm_ss);
 MAP_OPTIONAL_PERM_OP(inv_perm_sp);
+MAP_OPTIONAL_PERM_OP(inv_perm_sv);
 
 Value _rand_perm_s(SPUContext* ctx, const Shape& shape) {
   SPU_TRACE_HAL_DISP(ctx, shape);
-  SPU_ENFORCE(shape.ndim() == 1, "shape should be a 1-d");
-
+  SPU_ENFORCE(shape.ndim() == 1, "shape should be 1-d");
   auto ret = mpc::rand_perm_s(ctx, shape);
   SPU_ENFORCE(ret.has_value(), "rand_perm_s api not implemented");
   return ret.value();
 }
+
+Value _broadcast(SPUContext* ctx, const Value& in, const Shape& to_shape,
+                 const Axes& in_dims) {
+  return mpc::broadcast(ctx, in, to_shape, in_dims).setDtype(in.dtype());
+}
+
+Value _reshape(SPUContext* ctx, const Value& in, const Shape& to_shape) {
+  return mpc::reshape(ctx, in, to_shape).setDtype(in.dtype());
+}
+
+Value _extract_slice(SPUContext* ctx, const Value& in,
+                     const Index& start_indices, const Index& end_indices,
+                     const Strides& strides) {
+  return mpc::extract_slice(ctx, in, start_indices, end_indices, strides)
+      .setDtype(in.dtype());
+}
+
+Value _update_slice(SPUContext* ctx, const Value& in, const Value& update,
+                    const Index& start_indices) {
+  return mpc::update_slice(ctx, in, update, start_indices).setDtype(in.dtype());
+}
+
+Value _transpose(SPUContext* ctx, const Value& in, const Axes& permutation) {
+  return mpc::transpose(ctx, in, permutation).setDtype(in.dtype());
+}
+
+Value _reverse(SPUContext* ctx, const Value& in, const Axes& dimensions) {
+  return mpc::reverse(ctx, in, dimensions).setDtype(in.dtype());
+}
+
+Value _fill(SPUContext* ctx, const Value& in, const Shape& to_shape) {
+  return mpc::fill(ctx, in, to_shape).setDtype(in.dtype());
+}
+
+Value _pad(SPUContext* ctx, const Value& in, const Value& padding_value,
+           const Sizes& edge_padding_low, const Sizes& edge_padding_high,
+           const Sizes& interior_padding) {
+  return mpc::pad(ctx, in, padding_value, edge_padding_low, edge_padding_high,
+                  interior_padding)
+      .setDtype(in.dtype());
+}
+
+Value _concatenate(SPUContext* ctx, const std::vector<Value>& values,
+                   int64_t axis) {
+  return mpc::concatenate(ctx, values, axis).setDtype(values.front().dtype());
+}
+
+Value _gen_inv_perm_p(SPUContext* ctx, const Value& in, bool is_ascending) {
+  SPU_TRACE_HAL_DISP(ctx, in, is_ascending);
+  SPU_ENFORCE(in.shape().ndim() == 1, "input should be 1-d");
+  return dynDispatch(ctx, "gen_inv_perm_p", in, is_ascending);
+}
+
+Value _gen_inv_perm_v(SPUContext* ctx, const Value& in, bool is_ascending) {
+  SPU_TRACE_HAL_DISP(ctx, in, is_ascending);
+  SPU_ENFORCE(in.shape().ndim() == 1, "input should be 1-d");
+  return dynDispatch(ctx, "gen_inv_perm_v", in, is_ascending);
+}
+
+Value _merge_keys_p(SPUContext* ctx, absl::Span<Value const> inputs,
+                    bool is_ascending) {
+  SPU_TRACE_HAL_DISP(ctx, inputs.size(), inputs[0].shape(), is_ascending);
+  std::vector<Value> in(inputs.begin(), inputs.end());
+  return dynDispatch(ctx, "merge_keys_p", in, is_ascending);
+}
+
+Value _merge_keys_v(SPUContext* ctx, absl::Span<Value const> inputs,
+                    bool is_ascending) {
+  SPU_TRACE_HAL_DISP(ctx, inputs.size(), inputs[0].shape(), is_ascending);
+  std::vector<Value> in(inputs.begin(), inputs.end());
+  return dynDispatch(ctx, "merge_keys_v", in, is_ascending);
+}
+
+#define MAP_PERM_OP(NAME)                                             \
+  Value _##NAME(SPUContext* ctx, const Value& x, const Value& y) {    \
+    SPU_TRACE_HAL_DISP(ctx, x, y);                                    \
+    SPU_ENFORCE(x.shape() == y.shape(), "shape mismatch: x={}, y={}", \
+                x.shape(), y.shape());                                \
+    SPU_ENFORCE(x.shape().ndim() == 1, "x should be a 1-d tensor");   \
+    auto ret = mpc::NAME(ctx, x, y);                                  \
+    return ret.setDtype(x.dtype());                                   \
+  }
+
+MAP_PERM_OP(inv_perm_pp);
+MAP_PERM_OP(inv_perm_vv);
+MAP_PERM_OP(perm_pp);
+MAP_PERM_OP(perm_vv);
 
 }  // namespace spu::kernel::hal

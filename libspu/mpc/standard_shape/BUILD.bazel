@@ -1,4 +1,4 @@
-# Copyright 2021 Ant Group Co., Ltd.
+# Copyright 2023 Ant Group Co., Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,25 +17,27 @@ load("//bazel:spu.bzl", "spu_cc_library", "spu_cc_test")
 package(default_visibility = ["//visibility:public"])
 
 spu_cc_library(
-    name = "ref2k",
-    srcs = ["ref2k.cc"],
-    hdrs = ["ref2k.h"],
+    name = "standard_shape",
     deps = [
-        "//libspu/core:context",
-        "//libspu/mpc:io_interface",
-        "//libspu/mpc/common:prg_state",
-        "//libspu/mpc/common:pv2k",
-        "//libspu/mpc/standard_shape:protocol",
-        "@yacl//yacl/link",
+        ":protocol",
     ],
 )
 
-spu_cc_test(
-    name = "ref2k_test",
-    srcs = ["ref2k_test.cc"],
+spu_cc_library(
+    name = "protocol",
+    srcs = ["protocol.cc"],
+    hdrs = ["protocol.h"],
     deps = [
-        ":ref2k",
-        "//libspu/mpc:api_test",
-        "//libspu/mpc:io_test",
+        ":kernels",
+        "//libspu/core:context",
+    ],
+)
+
+spu_cc_library(
+    name = "kernels",
+    srcs = ["kernels.cc"],
+    hdrs = ["kernels.h"],
+    deps = [
+        "//libspu/mpc:kernel",
     ],
 )

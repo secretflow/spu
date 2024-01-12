@@ -125,7 +125,7 @@ func.func @main() -> tensor<!pphlo.pub<i32>> {
   %2 = "pphlo.constant"() {value = dense<[0x41DA6E5887800000, 0x41C94E3940000000, 0x41C4BD2007000000, 0x41DC95133AC00000, 0x41D1650CEC000000, 0x41C9DF42E7800000, 0x41D46C43B6800000, 0x41C467EE0E800000, 0x41DC705F14400000]> : tensor<9xf64>} : () -> tensor<9x!pphlo.pub<f64>>
   %3 = "pphlo.floor"(%2) : (tensor<9x!pphlo.pub<f64>>) -> tensor<9x!pphlo.pub<f64>>
   %9 = "pphlo.concatenate"(%3) {dimension = 0 : i64} : (tensor<9x!pphlo.pub<f64>>) -> tensor<9x!pphlo.pub<f64>>
-  %10 = "pphlo.broadcast"(%9) {broadcast_dimensions = dense<13> : tensor<1xi64>} : (tensor<9x!pphlo.pub<f64>>) -> tensor<9x!pphlo.pub<f64>>
+  %10 = "pphlo.broadcast"(%9) {broadcast_dimensions = array<i64: 13>} : (tensor<9x!pphlo.pub<f64>>) -> tensor<9x!pphlo.pub<f64>>
   %51 = "pphlo.constant"() {value = dense<5> : tensor<i32>} : () -> tensor<!pphlo.pub<i32>>
   "pphlo.return"(%51) : (tensor<!pphlo.pub<i32>>) -> ()
 })"),
@@ -203,7 +203,7 @@ TEST_P(ExecutorTest, Slice) {
 
   r.run(R"(
 func.func @main(%arg0: tensor<4x3x!pphlo.pub<i32>>) -> (tensor<2x2x!pphlo.pub<i32>>) {
-  %0 = "pphlo.slice"(%arg0) {limit_indices = dense<[4, 3]> : tensor<2xi64>, start_indices = dense<[2, 1]> : tensor<2xi64>, strides = dense<[1, 1]> : tensor<2xi64>} : (tensor<4x3x!pphlo.pub<i32>>) -> tensor<2x2x!pphlo.pub<i32>>
+  %0 = "pphlo.slice"(%arg0) {limit_indices = array<i64: 4, 3>, start_indices = array<i64: 2, 1>, strides = array<i64: 1, 1>} : (tensor<4x3x!pphlo.pub<i32>>) -> tensor<2x2x!pphlo.pub<i32>>
   return %0 : tensor<2x2x!pphlo.pub<i32>>
 })");
 
@@ -222,7 +222,7 @@ TEST_P(ExecutorTest, SliceStride) {
 
   r.run(R"(
 func.func @main(%arg0: tensor<4x6x!pphlo.pub<i32>>) -> (tensor<2x3x!pphlo.pub<i32>>) {
-  %0 = "pphlo.slice"(%arg0) {limit_indices = dense<[4, 6]> : tensor<2xi64>, start_indices = dense<[0, 0]> : tensor<2xi64>, strides = dense<[2, 2]> : tensor<2xi64>} : (tensor<4x6x!pphlo.pub<i32>>) -> tensor<2x3x!pphlo.pub<i32>>
+  %0 = "pphlo.slice"(%arg0) {limit_indices = array<i64: 4, 6>, start_indices = array<i64: 0, 0>, strides = array<i64: 2, 2>} : (tensor<4x6x!pphlo.pub<i32>>) -> tensor<2x3x!pphlo.pub<i32>>
   return %0 : tensor<2x3x!pphlo.pub<i32>>
 })");
 
@@ -287,7 +287,7 @@ func.func @main(%arg0: tensor<10x!pphlo.pub<i32>>) -> (tensor<!pphlo.pub<i32>>) 
         ^bb0(%arg1: tensor<!pphlo.pub<i32>>, %arg2: tensor<!pphlo.pub<i32>>): // no predecessors
          %2 = "pphlo.add"(%arg1, %arg2) : (tensor<!pphlo.pub<i32>>, tensor<!pphlo.pub<i32>>) -> tensor<!pphlo.pub<i32>>
          "pphlo.return"(%2) : (tensor<!pphlo.pub<i32>>) -> ()
-  }) {dimensions = dense<0> : tensor<1xi64>} : (tensor<10x!pphlo.pub<i32>>, tensor<!pphlo.pub<i32>>) -> tensor<!pphlo.pub<i32>>
+  }) {dimensions = array<i64: 0>} : (tensor<10x!pphlo.pub<i32>>, tensor<!pphlo.pub<i32>>) -> tensor<!pphlo.pub<i32>>
   return %1 :  tensor<!pphlo.pub<i32>>
 })");
 
@@ -309,7 +309,7 @@ func.func @main(%arg0: tensor<2x3x!pphlo.pub<i32>>) -> (tensor<2x!pphlo.pub<i32>
         ^bb0(%arg1: tensor<!pphlo.pub<i32>>, %arg2: tensor<!pphlo.pub<i32>>): // no predecessors
          %2 = "pphlo.add"(%arg1, %arg2) : (tensor<!pphlo.pub<i32>>, tensor<!pphlo.pub<i32>>) -> tensor<!pphlo.pub<i32>>
          "pphlo.return"(%2) : (tensor<!pphlo.pub<i32>>) -> ()
-  }) {dimensions = dense<1> : tensor<1xi64>} : (tensor<2x3x!pphlo.pub<i32>>, tensor<!pphlo.pub<i32>>) -> tensor<2x!pphlo.pub<i32>>
+  }) {dimensions = array<i64: 1>} : (tensor<2x3x!pphlo.pub<i32>>, tensor<!pphlo.pub<i32>>) -> tensor<2x!pphlo.pub<i32>>
   return %1 :  tensor<2x!pphlo.pub<i32>>
 })");
 
@@ -331,7 +331,7 @@ func.func @main(%arg0: tensor<2x3x!pphlo.pub<i32>>) -> (tensor<3x!pphlo.pub<i32>
         ^bb0(%arg1: tensor<!pphlo.pub<i32>>, %arg2: tensor<!pphlo.pub<i32>>): // no predecessors
          %2 = "pphlo.add"(%arg1, %arg2) : (tensor<!pphlo.pub<i32>>, tensor<!pphlo.pub<i32>>) -> tensor<!pphlo.pub<i32>>
          "pphlo.return"(%2) : (tensor<!pphlo.pub<i32>>) -> ()
-  }) {dimensions = dense<0> : tensor<1xi64>} : (tensor<2x3x!pphlo.pub<i32>>, tensor<!pphlo.pub<i32>>) -> tensor<3x!pphlo.pub<i32>>
+  }) {dimensions = array<i64: 0>} : (tensor<2x3x!pphlo.pub<i32>>, tensor<!pphlo.pub<i32>>) -> tensor<3x!pphlo.pub<i32>>
   return %1 :  tensor<3x!pphlo.pub<i32>>
 })");
 
@@ -354,7 +354,7 @@ func.func @main(%arg0: tensor<10x!pphlo.pub<i32>>) -> (tensor<!pphlo.pub<i32>>, 
          %2 = "pphlo.add"(%arg1, %arg3) : (tensor<!pphlo.pub<i32>>, tensor<!pphlo.pub<i32>>) -> tensor<!pphlo.pub<i32>>
          %3 = "pphlo.maximum"(%arg2, %arg4) : (tensor<!pphlo.pub<i32>>, tensor<!pphlo.pub<i32>>) -> tensor<!pphlo.pub<i32>>
          "pphlo.return"(%2, %3) : (tensor<!pphlo.pub<i32>>, tensor<!pphlo.pub<i32>>) -> ()
-  }) {dimensions = dense<0> : tensor<1xi64>} : (tensor<10x!pphlo.pub<i32>>, tensor<10x!pphlo.pub<i32>>, tensor<!pphlo.pub<i32>>, tensor<!pphlo.pub<i32>>) -> (tensor<!pphlo.pub<i32>>, tensor<!pphlo.pub<i32>>)
+  }) {dimensions = array<i64: 0>} : (tensor<10x!pphlo.pub<i32>>, tensor<10x!pphlo.pub<i32>>, tensor<!pphlo.pub<i32>>, tensor<!pphlo.pub<i32>>) -> (tensor<!pphlo.pub<i32>>, tensor<!pphlo.pub<i32>>)
   return %1#0, %1#1 : tensor<!pphlo.pub<i32>>, tensor<!pphlo.pub<i32>>
 })",
         2);
@@ -380,7 +380,7 @@ func.func @main(%arg0: tensor<1x10x!pphlo.pub<f32>>) -> (tensor<1x!pphlo.pub<f32
   ^bb0(%arg1: tensor<!pphlo.pub<f32>>, %arg2: tensor<!pphlo.pub<f32>>):  // no predecessors
     %2 = "pphlo.maximum"(%arg1, %arg2) : (tensor<!pphlo.pub<f32>>, tensor<!pphlo.pub<f32>>) -> tensor<!pphlo.pub<f32>>
     "pphlo.return"(%2) : (tensor<!pphlo.pub<f32>>) -> ()
-  }) {dimensions = dense<1> : tensor<1xi64>} : (tensor<1x10x!pphlo.pub<f32>>, tensor<!pphlo.pub<f32>>) -> tensor<1x!pphlo.pub<f32>>
+  }) {dimensions = array<i64: 1>} : (tensor<1x10x!pphlo.pub<f32>>, tensor<!pphlo.pub<f32>>) -> tensor<1x!pphlo.pub<f32>>
   return %1 :  tensor<1x!pphlo.pub<f32>>
 })");
 
@@ -406,7 +406,7 @@ func.func @main(%arg0: tensor<2x3x4x!pphlo.sec<f32>>, %arg1: tensor<2x3x4x!pphlo
   ^bb0(%arg2: tensor<!pphlo.sec<i1>>, %arg3: tensor<!pphlo.sec<i1>>):
     %4 = "pphlo.and"(%arg2, %arg3) : (tensor<!pphlo.sec<i1>>, tensor<!pphlo.sec<i1>>) -> tensor<!pphlo.sec<i1>>
     "pphlo.return"(%4) : (tensor<!pphlo.sec<i1>>) -> ()
-  }) {dimensions = dense<[0, 1, 2]> : tensor<3xi64>} : (tensor<2x3x4x!pphlo.sec<i1>>, tensor<!pphlo.sec<i1>>) -> tensor<!pphlo.sec<i1>>
+  }) {dimensions = array<i64: 0, 1, 2>} : (tensor<2x3x4x!pphlo.sec<i1>>, tensor<!pphlo.sec<i1>>) -> tensor<!pphlo.sec<i1>>
   return %3 :  tensor<!pphlo.sec<i1>>
 })");
 
@@ -431,7 +431,7 @@ func.func @main(%arg0: tensor<4x6x!pphlo.pub<i32>>) -> (tensor<2x2x!pphlo.pub<i3
     ^bb0(%arg1: tensor<!pphlo.pub<i32>>, %arg2: tensor<!pphlo.pub<i32>>):  // no predecessors
       %2 = "pphlo.add"(%arg1, %arg2) : (tensor<!pphlo.pub<i32>>, tensor<!pphlo.pub<i32>>) -> tensor<!pphlo.pub<i32>>
       "pphlo.return"(%2) : (tensor<!pphlo.pub<i32>>) -> ()
-    }) {base_dilations = dense<1> : tensor<2xi64>, padding = dense<0> : tensor<2x2xi64>, window_dilations = dense<1> : tensor<2xi64>, window_dimensions = dense<[2,3]> : tensor<2xi64>, window_strides = dense<[2,3]> : tensor<2xi64>} : (tensor<4x6x!pphlo.pub<i32>>, tensor<!pphlo.pub<i32>>) -> tensor<2x2x!pphlo.pub<i32>>
+    }) {base_dilations = array<i64: 1, 1>, window_dilations = array<i64: 1, 1>, window_dimensions = array<i64: 2,3>, window_strides = array<i64: 2,3>} : (tensor<4x6x!pphlo.pub<i32>>, tensor<!pphlo.pub<i32>>) -> tensor<2x2x!pphlo.pub<i32>>
 
   return %1 :  tensor<2x2x!pphlo.pub<i32>>
 })");
@@ -515,7 +515,7 @@ func.func @main(%arg0: tensor<4x6x!pphlo.pub<i32>>) -> (tensor<3x4x!pphlo.pub<i3
     ^bb0(%arg1: tensor<!pphlo.pub<i32>>, %arg2: tensor<!pphlo.pub<i32>>):  // no predecessors
       %2 = "pphlo.maximum"(%arg1, %arg2) : (tensor<!pphlo.pub<i32>>, tensor<!pphlo.pub<i32>>) -> tensor<!pphlo.pub<i32>>
       "pphlo.return"(%2) : (tensor<!pphlo.pub<i32>>) -> ()
-    }) {base_dilations = dense<1> : tensor<2xi64>, padding = dense<0> : tensor<2x2xi64>, window_dilations = dense<1> : tensor<2xi64>, window_dimensions = dense<[2,3]> : tensor<2xi64>, window_strides = dense<1> : tensor<2xi64>} : (tensor<4x6x!pphlo.pub<i32>>, tensor<!pphlo.pub<i32>>) -> tensor<3x4x!pphlo.pub<i32>>
+    }) {base_dilations = array<i64: 1, 1>, window_dilations = array<i64: 1, 1>, window_dimensions = array<i64: 2,3>, window_strides = array<i64: 1, 1>} : (tensor<4x6x!pphlo.pub<i32>>, tensor<!pphlo.pub<i32>>) -> tensor<3x4x!pphlo.pub<i32>>
 
   return %1 :  tensor<3x4x!pphlo.pub<i32>>
 })");
@@ -540,7 +540,7 @@ func.func @main(%arg0: tensor<4x4x!pphlo.pub<i32>>) -> (tensor<2x2x!pphlo.pub<i3
     ^bb0(%arg1: tensor<!pphlo.pub<i32>>, %arg2: tensor<!pphlo.pub<i32>>):  // no predecessors
       %2 = "pphlo.maximum"(%arg1, %arg2) : (tensor<!pphlo.pub<i32>>, tensor<!pphlo.pub<i32>>) -> tensor<!pphlo.pub<i32>>
       "pphlo.return"(%2) : (tensor<!pphlo.pub<i32>>) -> ()
-    }) {base_dilations = dense<1> : tensor<2xi64>, padding = dense<0> : tensor<2x2xi64>, window_dilations = dense<2> : tensor<2xi64>, window_dimensions = dense<2> : tensor<2xi64>, window_strides = dense<1> : tensor<2xi64>} : (tensor<4x4x!pphlo.pub<i32>>, tensor<!pphlo.pub<i32>>) -> tensor<2x2x!pphlo.pub<i32>>
+    }) {base_dilations = array<i64: 1, 1>, window_dilations = array<i64: 2, 2>, window_dimensions = array<i64: 2, 2>, window_strides = array<i64: 1, 1>} : (tensor<4x4x!pphlo.pub<i32>>, tensor<!pphlo.pub<i32>>) -> tensor<2x2x!pphlo.pub<i32>>
 
   return %1 :  tensor<2x2x!pphlo.pub<i32>>
 })");
@@ -564,7 +564,7 @@ func.func @main(%arg0: tensor<4x4x!pphlo.pub<i32>>) -> (tensor<1x1x!pphlo.pub<i3
     ^bb0(%arg1: tensor<!pphlo.pub<i32>>, %arg2: tensor<!pphlo.pub<i32>>):  // no predecessors
       %2 = "pphlo.maximum"(%arg1, %arg2) : (tensor<!pphlo.pub<i32>>, tensor<!pphlo.pub<i32>>) -> tensor<!pphlo.pub<i32>>
       "pphlo.return"(%2) : (tensor<!pphlo.pub<i32>>) -> ()
-    }) {base_dilations = dense<1> : tensor<2xi64>, padding = dense<0> : tensor<2x2xi64>, window_dilations = dense<2> : tensor<2xi64>, window_dimensions = dense<2> : tensor<2xi64>, window_strides = dense<2> : tensor<2xi64>} : (tensor<4x4x!pphlo.pub<i32>>, tensor<!pphlo.pub<i32>>) -> tensor<1x1x!pphlo.pub<i32>>
+    }) {base_dilations = array<i64: 1, 1>, window_dilations = array<i64: 2, 2>, window_dimensions = array<i64: 2, 2>, window_strides = array<i64: 2, 2>} : (tensor<4x4x!pphlo.pub<i32>>, tensor<!pphlo.pub<i32>>) -> tensor<1x1x!pphlo.pub<i32>>
 
   return %1 : tensor<1x1x!pphlo.pub<i32>>
 })");
@@ -1261,7 +1261,7 @@ TEST_P(ExecutorTest, DynamicSlice1D) {
 
   r.run(R"(
 func.func @main(%arg0: tensor<5x!pphlo.pub<i32>>, %arg1: tensor<!pphlo.pub<i32>>) -> tensor<2x!pphlo.pub<i32>> {
-  %0 = "pphlo.dynamic-slice"(%arg0, %arg1) {slice_sizes = dense<2> : tensor<1xi64>} : (tensor<5x!pphlo.pub<i32>>, tensor<!pphlo.pub<i32>>) -> tensor<2x!pphlo.pub<i32>>
+  %0 = "pphlo.dynamic-slice"(%arg0, %arg1) {slice_sizes = array<i64: 2>} : (tensor<5x!pphlo.pub<i32>>, tensor<!pphlo.pub<i32>>) -> tensor<2x!pphlo.pub<i32>>
   return %0 : tensor<2x!pphlo.pub<i32>>
 })");
 
@@ -1284,7 +1284,7 @@ TEST_P(ExecutorTest, DynamicSlice2D) {
 
   r.run(R"(
 func.func @main(%arg0: tensor<4x3x!pphlo.pub<f32>>, %arg1: tensor<!pphlo.pub<i32>>, %arg2: tensor<!pphlo.pub<i32>>) -> tensor<2x2x!pphlo.pub<f32>> {
-  %0 = "pphlo.dynamic-slice"(%arg0, %arg1, %arg2) {slice_sizes = dense<[2, 2]> : tensor<2xi64>} : (tensor<4x3x!pphlo.pub<f32>>, tensor<!pphlo.pub<i32>>, tensor<!pphlo.pub<i32>>) -> tensor<2x2x!pphlo.pub<f32>>
+  %0 = "pphlo.dynamic-slice"(%arg0, %arg1, %arg2) {slice_sizes = array<i64: 2, 2>} : (tensor<4x3x!pphlo.pub<f32>>, tensor<!pphlo.pub<i32>>, tensor<!pphlo.pub<i32>>) -> tensor<2x2x!pphlo.pub<f32>>
   return %0 : tensor<2x2x!pphlo.pub<f32>>
 })");
 
@@ -1761,6 +1761,286 @@ func.func @main(%arg0: tensor<10x!pphlo.pub<i32>>, %arg1: tensor<10x!pphlo.sec<f
   }
 }
 
+TEST_P(ExecutorTest, SimpleSortComplicatedMultiKeys) {
+  xt::xarray<int> key0 = {10,  10,  10,  10,  10,  10,  10,  10,
+                          -10, -10, -10, -10, -10, -10, -10, -10};
+  xt::xarray<float> key1 = {-3.0, -3.0, -3.0, -3.0, -3.0, -3.0, -3.0, -1.0,
+                            1.0,  3.0,  3.0,  3.0,  3.0,  3.0,  3.0,  3.0};
+  xt::xarray<int> key2 = {-10, -10, -10, -10, -10, 8,  9,  6,
+                          7,   5,   4,   10,  10,  10, 10, 10};
+  xt::xarray<float> key3 = {4.0, 4.0, 4.0, 4.0, -4.0, -3.0, -2.0, -1.0,
+                            0.0, 1.0, 2.0, 3.0, 4.0,  4.0,  4.0,  4.0};
+  xt::xarray<int> key4 = {-10, -10, -10, 1, 2, 3,  4,  5,
+                          6,   7,   8,   9, 9, 10, 10, 10};
+  xt::xarray<int> key5 = {10, 10, -1, -2, -3, -4, -5, -6,
+                          6,  5,  4,  3,  2,  1,  10, 10};
+  xt::xarray<int> key6 = {10, 9, -1, -2, -3, -4, -5, -6,
+                          6,  5, 4,  3,  2,  1,  9,  10};
+  xt::xarray<int> val = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16};
+
+  // ascending
+  xt::xarray<int> expected_key0_asc = {-10, -10, -10, -10, -10, -10, -10, -10,
+                                       10,  10,  10,  10,  10,  10,  10,  10};
+  xt::xarray<float> expected_key1_asc = {1.0,  3.0,  3.0,  3.0,  3.0,  3.0,
+                                         3.0,  3.0,  -3.0, -3.0, -3.0, -3.0,
+                                         -3.0, -3.0, -3.0, -1.0};
+  xt::xarray<int> expected_key2_asc = {7,   4,   5,   10,  10,  10, 10, 10,
+                                       -10, -10, -10, -10, -10, 8,  9,  6};
+  xt::xarray<float> expected_key3_asc = {0.0, 2.0,  1.0,  3.0, 4.0, 4.0,
+                                         4.0, 4.0,  -4.0, 4.0, 4.0, 4.0,
+                                         4.0, -3.0, -2.0, -1.0};
+  xt::xarray<int> expected_key4_asc = {6, 8,   7,   9,   9, 10, 10, 10,
+                                       2, -10, -10, -10, 1, 3,  4,  5};
+  xt::xarray<int> expected_key5_asc = {6,  4,  5,  3,  2,  1,  10, 10,
+                                       -3, -1, 10, 10, -2, -4, -5, -6};
+  xt::xarray<int> expected_key6_asc = {6,  4,  5, 3,  2,  1,  9,  10,
+                                       -3, -1, 9, 10, -2, -4, -5, -6};
+  xt::xarray<int> expected_val_asc = {9, 11, 10, 12, 13, 14, 15, 16,
+                                      5, 3,  2,  1,  4,  6,  7,  8};
+
+  // descending
+  xt::xarray<int> expected_key0_des = {10,  10,  10,  10,  10,  10,  10,  10,
+                                       -10, -10, -10, -10, -10, -10, -10, -10};
+  xt::xarray<float> expected_key1_des = {-1.0, -3.0, -3.0, -3.0, -3.0, -3.0,
+                                         -3.0, -3.0, 3.0,  3.0,  3.0,  3.0,
+                                         3.0,  3.0,  3.0,  1.0};
+  xt::xarray<int> expected_key2_des = {6,  9,  8,  -10, -10, -10, -10, -10,
+                                       10, 10, 10, 10,  10,  5,   4,   7};
+  xt::xarray<float> expected_key3_des = {-1.0, -2.0, -3.0, 4.0, 4.0, 4.0,
+                                         4.0,  -4.0, 4.0,  4.0, 4.0, 4.0,
+                                         3.0,  1.0,  2.0,  0.0};
+  xt::xarray<int> expected_key4_des = {5,  4,  3,  1, -10, -10, -10, 2,
+                                       10, 10, 10, 9, 9,   7,   8,   6};
+  xt::xarray<int> expected_key5_des = {-6, -5, -4, -2, 10, 10, -1, -3,
+                                       10, 10, 1,  2,  3,  5,  4,  6};
+  xt::xarray<int> expected_key6_des = {-6, -5, -4, -2, 10, 9, -1, -3,
+                                       10, 9,  1,  2,  3,  5, 4,  6};
+  xt::xarray<int> expected_val_des = {8,  7,  6,  4,  1,  2,  3,  5,
+                                      16, 15, 14, 13, 12, 10, 11, 9};
+
+  auto VERIFY_RESULTS = [&](Runner &r, bool is_ascending) {
+    if (is_ascending) {
+      r.verifyOutput(expected_key0_asc.data(), 0);
+      r.verifyOutput(expected_key1_asc.data(), 1);
+      r.verifyOutput(expected_key2_asc.data(), 2);
+      r.verifyOutput(expected_key3_asc.data(), 3);
+      r.verifyOutput(expected_key4_asc.data(), 4);
+      r.verifyOutput(expected_key5_asc.data(), 5);
+      r.verifyOutput(expected_key6_asc.data(), 6);
+      r.verifyOutput(expected_val_asc.data(), 7);
+    } else {
+      r.verifyOutput(expected_key0_des.data(), 0);
+      r.verifyOutput(expected_key1_des.data(), 1);
+      r.verifyOutput(expected_key2_des.data(), 2);
+      r.verifyOutput(expected_key3_des.data(), 3);
+      r.verifyOutput(expected_key4_des.data(), 4);
+      r.verifyOutput(expected_key5_des.data(), 5);
+      r.verifyOutput(expected_key6_des.data(), 6);
+      r.verifyOutput(expected_val_des.data(), 7);
+    }
+  };
+
+  // ascending direction
+  {
+    Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
+             std::get<2>(GetParam()));
+
+    r.addInput(key0);
+    r.addInput(key1);
+    r.addInput(key2);
+    r.addInput(key3);
+    r.addInput(key4);
+    r.addInput(key5);
+    r.addInput(key6);
+    r.addInput(val);
+
+    // all public
+    r.run(R"(
+func.func @main(%arg0: tensor<16x!pphlo.pub<i32>>, %arg1: tensor<16x!pphlo.pub<f32>>, %arg2: tensor<16x!pphlo.pub<i32>>, %arg3: tensor<16x!pphlo.pub<f32>>, %arg4: tensor<16x!pphlo.pub<i32>>, %arg5: tensor<16x!pphlo.pub<i32>>, %arg6: tensor<16x!pphlo.pub<i32>>, %arg7: tensor<16x!pphlo.pub<i32>>) -> (tensor<16x!pphlo.pub<i32>>, tensor<16x!pphlo.pub<f32>>, tensor<16x!pphlo.pub<i32>>, tensor<16x!pphlo.pub<f32>>, tensor<16x!pphlo.pub<i32>>, tensor<16x!pphlo.pub<i32>>,tensor<16x!pphlo.pub<i32>>, tensor<16x!pphlo.pub<i32>>) {
+    %0:8 = "pphlo.simple_sort"(%arg0, %arg1, %arg2, %arg3, %arg4, %arg5, %arg6, %arg7) {dimension = 0 : i64, num_keys = 7 : i64, sort_direction = 0 : i32} : (tensor<16x!pphlo.pub<i32>>, tensor<16x!pphlo.pub<f32>>, tensor<16x!pphlo.pub<i32>>, tensor<16x!pphlo.pub<f32>>, tensor<16x!pphlo.pub<i32>>, tensor<16x!pphlo.pub<i32>>,tensor<16x!pphlo.pub<i32>>, tensor<16x!pphlo.pub<i32>>) -> (tensor<16x!pphlo.pub<i32>>, tensor<16x!pphlo.pub<f32>>, tensor<16x!pphlo.pub<i32>>, tensor<16x!pphlo.pub<f32>>, tensor<16x!pphlo.pub<i32>>, tensor<16x!pphlo.pub<i32>>,tensor<16x!pphlo.pub<i32>>, tensor<16x!pphlo.pub<i32>>)
+    return %0#0, %0#1, %0#2, %0#3, %0#4, %0#5, %0#6, %0#7 : tensor<16x!pphlo.pub<i32>>, tensor<16x!pphlo.pub<f32>>, tensor<16x!pphlo.pub<i32>>, tensor<16x!pphlo.pub<f32>>, tensor<16x!pphlo.pub<i32>>, tensor<16x!pphlo.pub<i32>>,tensor<16x!pphlo.pub<i32>>, tensor<16x!pphlo.pub<i32>>
+})",
+          8);
+
+    VERIFY_RESULTS(r, true);
+  }
+
+  // descending direction
+  {
+    Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
+             std::get<2>(GetParam()));
+
+    r.addInput(key0);
+    r.addInput(key1);
+    r.addInput(key2);
+    r.addInput(key3);
+    r.addInput(key4);
+    r.addInput(key5);
+    r.addInput(key6);
+    r.addInput(val);
+
+    // all public
+    r.run(R"(
+func.func @main(%arg0: tensor<16x!pphlo.pub<i32>>, %arg1: tensor<16x!pphlo.pub<f32>>, %arg2: tensor<16x!pphlo.pub<i32>>, %arg3: tensor<16x!pphlo.pub<f32>>, %arg4: tensor<16x!pphlo.pub<i32>>, %arg5: tensor<16x!pphlo.pub<i32>>, %arg6: tensor<16x!pphlo.pub<i32>>, %arg7: tensor<16x!pphlo.pub<i32>>) -> (tensor<16x!pphlo.pub<i32>>, tensor<16x!pphlo.pub<f32>>, tensor<16x!pphlo.pub<i32>>, tensor<16x!pphlo.pub<f32>>, tensor<16x!pphlo.pub<i32>>, tensor<16x!pphlo.pub<i32>>,tensor<16x!pphlo.pub<i32>>, tensor<16x!pphlo.pub<i32>>) {
+    %0:8 = "pphlo.simple_sort"(%arg0, %arg1, %arg2, %arg3, %arg4, %arg5, %arg6, %arg7) {dimension = 0 : i64, num_keys = 7 : i64, sort_direction = 1 : i32} : (tensor<16x!pphlo.pub<i32>>, tensor<16x!pphlo.pub<f32>>, tensor<16x!pphlo.pub<i32>>, tensor<16x!pphlo.pub<f32>>, tensor<16x!pphlo.pub<i32>>, tensor<16x!pphlo.pub<i32>>,tensor<16x!pphlo.pub<i32>>, tensor<16x!pphlo.pub<i32>>) -> (tensor<16x!pphlo.pub<i32>>, tensor<16x!pphlo.pub<f32>>, tensor<16x!pphlo.pub<i32>>, tensor<16x!pphlo.pub<f32>>, tensor<16x!pphlo.pub<i32>>, tensor<16x!pphlo.pub<i32>>,tensor<16x!pphlo.pub<i32>>, tensor<16x!pphlo.pub<i32>>)
+    return %0#0, %0#1, %0#2, %0#3, %0#4, %0#5, %0#6, %0#7 : tensor<16x!pphlo.pub<i32>>, tensor<16x!pphlo.pub<f32>>, tensor<16x!pphlo.pub<i32>>, tensor<16x!pphlo.pub<f32>>, tensor<16x!pphlo.pub<i32>>, tensor<16x!pphlo.pub<i32>>,tensor<16x!pphlo.pub<i32>>, tensor<16x!pphlo.pub<i32>>
+})",
+          8);
+
+    VERIFY_RESULTS(r, false);
+  }
+
+  // ascending direction
+  {
+    Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
+             std::get<2>(GetParam()));
+
+    r.addInput(key0, VIS_SECRET, 0);
+    r.addInput(key1, VIS_SECRET, 0);
+    r.addInput(key2, VIS_SECRET, 0);
+    r.addInput(key3, VIS_SECRET, 0);
+    r.addInput(key4, VIS_SECRET, 1);
+    r.addInput(key5, VIS_SECRET, 1);
+    r.addInput(key6, VIS_SECRET, 1);
+    r.addInput(val, VIS_SECRET);
+
+    // all private
+    r.run(R"(
+func.func @main(%arg0: tensor<16x!pphlo.sec<i32>>, %arg1: tensor<16x!pphlo.sec<f32>>, %arg2: tensor<16x!pphlo.sec<i32>>, %arg3: tensor<16x!pphlo.sec<f32>>, %arg4: tensor<16x!pphlo.sec<i32>>, %arg5: tensor<16x!pphlo.sec<i32>>, %arg6: tensor<16x!pphlo.sec<i32>>, %arg7: tensor<16x!pphlo.sec<i32>>) -> (tensor<16x!pphlo.sec<i32>>, tensor<16x!pphlo.sec<f32>>, tensor<16x!pphlo.sec<i32>>, tensor<16x!pphlo.sec<f32>>, tensor<16x!pphlo.sec<i32>>, tensor<16x!pphlo.sec<i32>>,tensor<16x!pphlo.sec<i32>>, tensor<16x!pphlo.sec<i32>>) {
+    %0:8 = "pphlo.simple_sort"(%arg0, %arg1, %arg2, %arg3, %arg4, %arg5, %arg6, %arg7) {dimension = 0 : i64, num_keys = 7 : i64, sort_direction = 0 : i32} : (tensor<16x!pphlo.sec<i32>>, tensor<16x!pphlo.sec<f32>>, tensor<16x!pphlo.sec<i32>>, tensor<16x!pphlo.sec<f32>>, tensor<16x!pphlo.sec<i32>>, tensor<16x!pphlo.sec<i32>>,tensor<16x!pphlo.sec<i32>>, tensor<16x!pphlo.sec<i32>>) -> (tensor<16x!pphlo.sec<i32>>, tensor<16x!pphlo.sec<f32>>, tensor<16x!pphlo.sec<i32>>, tensor<16x!pphlo.sec<f32>>, tensor<16x!pphlo.sec<i32>>, tensor<16x!pphlo.sec<i32>>,tensor<16x!pphlo.sec<i32>>, tensor<16x!pphlo.sec<i32>>)
+    return %0#0, %0#1, %0#2, %0#3, %0#4, %0#5, %0#6, %0#7 : tensor<16x!pphlo.sec<i32>>, tensor<16x!pphlo.sec<f32>>, tensor<16x!pphlo.sec<i32>>, tensor<16x!pphlo.sec<f32>>, tensor<16x!pphlo.sec<i32>>, tensor<16x!pphlo.sec<i32>>,tensor<16x!pphlo.sec<i32>>, tensor<16x!pphlo.sec<i32>>
+})",
+          8);
+
+    VERIFY_RESULTS(r, true);
+  }
+
+  // descending direction
+  {
+    Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
+             std::get<2>(GetParam()));
+
+    r.addInput(key0, VIS_SECRET, 0);
+    r.addInput(key1, VIS_SECRET, 0);
+    r.addInput(key2, VIS_SECRET, 0);
+    r.addInput(key3, VIS_SECRET, 0);
+    r.addInput(key4, VIS_SECRET, 1);
+    r.addInput(key5, VIS_SECRET, 1);
+    r.addInput(key6, VIS_SECRET, 1);
+    r.addInput(val, VIS_SECRET);
+
+    // all private
+    r.run(R"(
+func.func @main(%arg0: tensor<16x!pphlo.sec<i32>>, %arg1: tensor<16x!pphlo.sec<f32>>, %arg2: tensor<16x!pphlo.sec<i32>>, %arg3: tensor<16x!pphlo.sec<f32>>, %arg4: tensor<16x!pphlo.sec<i32>>, %arg5: tensor<16x!pphlo.sec<i32>>, %arg6: tensor<16x!pphlo.sec<i32>>, %arg7: tensor<16x!pphlo.sec<i32>>) -> (tensor<16x!pphlo.sec<i32>>, tensor<16x!pphlo.sec<f32>>, tensor<16x!pphlo.sec<i32>>, tensor<16x!pphlo.sec<f32>>, tensor<16x!pphlo.sec<i32>>, tensor<16x!pphlo.sec<i32>>,tensor<16x!pphlo.sec<i32>>, tensor<16x!pphlo.sec<i32>>) {
+    %0:8 = "pphlo.simple_sort"(%arg0, %arg1, %arg2, %arg3, %arg4, %arg5, %arg6, %arg7) {dimension = 0 : i64, num_keys = 7 : i64, sort_direction = 1 : i32} : (tensor<16x!pphlo.sec<i32>>, tensor<16x!pphlo.sec<f32>>, tensor<16x!pphlo.sec<i32>>, tensor<16x!pphlo.sec<f32>>, tensor<16x!pphlo.sec<i32>>, tensor<16x!pphlo.sec<i32>>,tensor<16x!pphlo.sec<i32>>, tensor<16x!pphlo.sec<i32>>) -> (tensor<16x!pphlo.sec<i32>>, tensor<16x!pphlo.sec<f32>>, tensor<16x!pphlo.sec<i32>>, tensor<16x!pphlo.sec<f32>>, tensor<16x!pphlo.sec<i32>>, tensor<16x!pphlo.sec<i32>>,tensor<16x!pphlo.sec<i32>>, tensor<16x!pphlo.sec<i32>>)
+    return %0#0, %0#1, %0#2, %0#3, %0#4, %0#5, %0#6, %0#7 : tensor<16x!pphlo.sec<i32>>, tensor<16x!pphlo.sec<f32>>, tensor<16x!pphlo.sec<i32>>, tensor<16x!pphlo.sec<f32>>, tensor<16x!pphlo.sec<i32>>, tensor<16x!pphlo.sec<i32>>,tensor<16x!pphlo.sec<i32>>, tensor<16x!pphlo.sec<i32>>
+})",
+          8);
+
+    VERIFY_RESULTS(r, false);
+  }
+
+  // ascending direction
+  {
+    Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
+             std::get<2>(GetParam()));
+
+    r.addInput(key0, VIS_SECRET, 0);
+    r.addInput(key1, VIS_PUBLIC, 0);
+    r.addInput(key2, VIS_SECRET, 0);
+    r.addInput(key3, VIS_SECRET, 0);
+    r.addInput(key4, VIS_SECRET, 1);
+    r.addInput(key5, VIS_PUBLIC, 1);
+    r.addInput(key6, VIS_SECRET, 1);
+    r.addInput(val, VIS_SECRET);
+
+    // mixed visibility
+    r.run(R"(
+func.func @main(%arg0: tensor<16x!pphlo.sec<i32>>, %arg1: tensor<16x!pphlo.pub<f32>>, %arg2: tensor<16x!pphlo.sec<i32>>, %arg3: tensor<16x!pphlo.sec<f32>>, %arg4: tensor<16x!pphlo.sec<i32>>, %arg5: tensor<16x!pphlo.pub<i32>>, %arg6: tensor<16x!pphlo.sec<i32>>, %arg7: tensor<16x!pphlo.sec<i32>>) -> (tensor<16x!pphlo.sec<i32>>, tensor<16x!pphlo.sec<f32>>, tensor<16x!pphlo.sec<i32>>, tensor<16x!pphlo.sec<f32>>, tensor<16x!pphlo.sec<i32>>, tensor<16x!pphlo.sec<i32>>,tensor<16x!pphlo.sec<i32>>, tensor<16x!pphlo.sec<i32>>) {
+    %0:8 = "pphlo.simple_sort"(%arg0, %arg1, %arg2, %arg3, %arg4, %arg5, %arg6, %arg7) {dimension = 0 : i64, num_keys = 7 : i64, sort_direction = 0 : i32} : (tensor<16x!pphlo.sec<i32>>, tensor<16x!pphlo.pub<f32>>, tensor<16x!pphlo.sec<i32>>, tensor<16x!pphlo.sec<f32>>, tensor<16x!pphlo.sec<i32>>, tensor<16x!pphlo.pub<i32>>,tensor<16x!pphlo.sec<i32>>, tensor<16x!pphlo.sec<i32>>) -> (tensor<16x!pphlo.sec<i32>>, tensor<16x!pphlo.sec<f32>>, tensor<16x!pphlo.sec<i32>>, tensor<16x!pphlo.sec<f32>>, tensor<16x!pphlo.sec<i32>>, tensor<16x!pphlo.sec<i32>>,tensor<16x!pphlo.sec<i32>>, tensor<16x!pphlo.sec<i32>>)
+    return %0#0, %0#1, %0#2, %0#3, %0#4, %0#5, %0#6, %0#7 : tensor<16x!pphlo.sec<i32>>, tensor<16x!pphlo.sec<f32>>, tensor<16x!pphlo.sec<i32>>, tensor<16x!pphlo.sec<f32>>, tensor<16x!pphlo.sec<i32>>, tensor<16x!pphlo.sec<i32>>,tensor<16x!pphlo.sec<i32>>, tensor<16x!pphlo.sec<i32>>
+})",
+          8);
+
+    VERIFY_RESULTS(r, true);
+  }
+
+  // descending direction
+  {
+    Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
+             std::get<2>(GetParam()));
+
+    r.addInput(key0, VIS_SECRET, 0);
+    r.addInput(key1, VIS_PUBLIC, 0);
+    r.addInput(key2, VIS_SECRET, 0);
+    r.addInput(key3, VIS_SECRET, 0);
+    r.addInput(key4, VIS_SECRET, 1);
+    r.addInput(key5, VIS_PUBLIC, 1);
+    r.addInput(key6, VIS_SECRET, 1);
+    r.addInput(val, VIS_SECRET);
+
+    // mixed visibility
+    r.run(R"(
+func.func @main(%arg0: tensor<16x!pphlo.sec<i32>>, %arg1: tensor<16x!pphlo.pub<f32>>, %arg2: tensor<16x!pphlo.sec<i32>>, %arg3: tensor<16x!pphlo.sec<f32>>, %arg4: tensor<16x!pphlo.sec<i32>>, %arg5: tensor<16x!pphlo.pub<i32>>, %arg6: tensor<16x!pphlo.sec<i32>>, %arg7: tensor<16x!pphlo.sec<i32>>) -> (tensor<16x!pphlo.sec<i32>>, tensor<16x!pphlo.sec<f32>>, tensor<16x!pphlo.sec<i32>>, tensor<16x!pphlo.sec<f32>>, tensor<16x!pphlo.sec<i32>>, tensor<16x!pphlo.sec<i32>>,tensor<16x!pphlo.sec<i32>>, tensor<16x!pphlo.sec<i32>>) {
+    %0:8 = "pphlo.simple_sort"(%arg0, %arg1, %arg2, %arg3, %arg4, %arg5, %arg6, %arg7) {dimension = 0 : i64, num_keys = 7 : i64, sort_direction = 1 : i32} : (tensor<16x!pphlo.sec<i32>>, tensor<16x!pphlo.pub<f32>>, tensor<16x!pphlo.sec<i32>>, tensor<16x!pphlo.sec<f32>>, tensor<16x!pphlo.sec<i32>>, tensor<16x!pphlo.pub<i32>>,tensor<16x!pphlo.sec<i32>>, tensor<16x!pphlo.sec<i32>>) -> (tensor<16x!pphlo.sec<i32>>, tensor<16x!pphlo.sec<f32>>, tensor<16x!pphlo.sec<i32>>, tensor<16x!pphlo.sec<f32>>, tensor<16x!pphlo.sec<i32>>, tensor<16x!pphlo.sec<i32>>,tensor<16x!pphlo.sec<i32>>, tensor<16x!pphlo.sec<i32>>)
+    return %0#0, %0#1, %0#2, %0#3, %0#4, %0#5, %0#6, %0#7 : tensor<16x!pphlo.sec<i32>>, tensor<16x!pphlo.sec<f32>>, tensor<16x!pphlo.sec<i32>>, tensor<16x!pphlo.sec<f32>>, tensor<16x!pphlo.sec<i32>>, tensor<16x!pphlo.sec<i32>>,tensor<16x!pphlo.sec<i32>>, tensor<16x!pphlo.sec<i32>>
+})",
+          8);
+
+    VERIFY_RESULTS(r, false);
+  }
+
+  // ascending direction
+  {
+    Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
+             std::get<2>(GetParam()));
+
+    r.addInput(key0, VIS_SECRET, 0);
+    r.addInput(key1, VIS_PUBLIC, 0);
+    r.addInput(key2, VIS_SECRET);
+    r.addInput(key3, VIS_SECRET, 0);
+    r.addInput(key4, VIS_SECRET, 1);
+    r.addInput(key5, VIS_PUBLIC, 1);
+    r.addInput(key6, VIS_SECRET);
+    r.addInput(val, VIS_SECRET);
+
+    // mixed visibility
+    r.run(R"(
+func.func @main(%arg0: tensor<16x!pphlo.sec<i32>>, %arg1: tensor<16x!pphlo.pub<f32>>, %arg2: tensor<16x!pphlo.sec<i32>>, %arg3: tensor<16x!pphlo.sec<f32>>, %arg4: tensor<16x!pphlo.sec<i32>>, %arg5: tensor<16x!pphlo.pub<i32>>, %arg6: tensor<16x!pphlo.sec<i32>>, %arg7: tensor<16x!pphlo.sec<i32>>) -> (tensor<16x!pphlo.sec<i32>>, tensor<16x!pphlo.sec<f32>>, tensor<16x!pphlo.sec<i32>>, tensor<16x!pphlo.sec<f32>>, tensor<16x!pphlo.sec<i32>>, tensor<16x!pphlo.sec<i32>>,tensor<16x!pphlo.sec<i32>>, tensor<16x!pphlo.sec<i32>>) {
+    %0:8 = "pphlo.simple_sort"(%arg0, %arg1, %arg2, %arg3, %arg4, %arg5, %arg6, %arg7) {dimension = 0 : i64, num_keys = 7 : i64, sort_direction = 0 : i32} : (tensor<16x!pphlo.sec<i32>>, tensor<16x!pphlo.pub<f32>>, tensor<16x!pphlo.sec<i32>>, tensor<16x!pphlo.sec<f32>>, tensor<16x!pphlo.sec<i32>>, tensor<16x!pphlo.pub<i32>>,tensor<16x!pphlo.sec<i32>>, tensor<16x!pphlo.sec<i32>>) -> (tensor<16x!pphlo.sec<i32>>, tensor<16x!pphlo.sec<f32>>, tensor<16x!pphlo.sec<i32>>, tensor<16x!pphlo.sec<f32>>, tensor<16x!pphlo.sec<i32>>, tensor<16x!pphlo.sec<i32>>,tensor<16x!pphlo.sec<i32>>, tensor<16x!pphlo.sec<i32>>)
+    return %0#0, %0#1, %0#2, %0#3, %0#4, %0#5, %0#6, %0#7 : tensor<16x!pphlo.sec<i32>>, tensor<16x!pphlo.sec<f32>>, tensor<16x!pphlo.sec<i32>>, tensor<16x!pphlo.sec<f32>>, tensor<16x!pphlo.sec<i32>>, tensor<16x!pphlo.sec<i32>>,tensor<16x!pphlo.sec<i32>>, tensor<16x!pphlo.sec<i32>>
+})",
+          8);
+
+    VERIFY_RESULTS(r, true);
+  }
+
+  // descending direction
+  {
+    Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
+             std::get<2>(GetParam()));
+
+    r.addInput(key0, VIS_SECRET, 0);
+    r.addInput(key1, VIS_PUBLIC, 0);
+    r.addInput(key2, VIS_SECRET);
+    r.addInput(key3, VIS_SECRET, 0);
+    r.addInput(key4, VIS_SECRET, 1);
+    r.addInput(key5, VIS_PUBLIC, 1);
+    r.addInput(key6, VIS_SECRET);
+    r.addInput(val, VIS_SECRET);
+
+    // mixed visibility
+    r.run(R"(
+func.func @main(%arg0: tensor<16x!pphlo.sec<i32>>, %arg1: tensor<16x!pphlo.pub<f32>>, %arg2: tensor<16x!pphlo.sec<i32>>, %arg3: tensor<16x!pphlo.sec<f32>>, %arg4: tensor<16x!pphlo.sec<i32>>, %arg5: tensor<16x!pphlo.pub<i32>>, %arg6: tensor<16x!pphlo.sec<i32>>, %arg7: tensor<16x!pphlo.sec<i32>>) -> (tensor<16x!pphlo.sec<i32>>, tensor<16x!pphlo.sec<f32>>, tensor<16x!pphlo.sec<i32>>, tensor<16x!pphlo.sec<f32>>, tensor<16x!pphlo.sec<i32>>, tensor<16x!pphlo.sec<i32>>,tensor<16x!pphlo.sec<i32>>, tensor<16x!pphlo.sec<i32>>) {
+    %0:8 = "pphlo.simple_sort"(%arg0, %arg1, %arg2, %arg3, %arg4, %arg5, %arg6, %arg7) {dimension = 0 : i64, num_keys = 7 : i64, sort_direction = 1 : i32} : (tensor<16x!pphlo.sec<i32>>, tensor<16x!pphlo.pub<f32>>, tensor<16x!pphlo.sec<i32>>, tensor<16x!pphlo.sec<f32>>, tensor<16x!pphlo.sec<i32>>, tensor<16x!pphlo.pub<i32>>,tensor<16x!pphlo.sec<i32>>, tensor<16x!pphlo.sec<i32>>) -> (tensor<16x!pphlo.sec<i32>>, tensor<16x!pphlo.sec<f32>>, tensor<16x!pphlo.sec<i32>>, tensor<16x!pphlo.sec<f32>>, tensor<16x!pphlo.sec<i32>>, tensor<16x!pphlo.sec<i32>>,tensor<16x!pphlo.sec<i32>>, tensor<16x!pphlo.sec<i32>>)
+    return %0#0, %0#1, %0#2, %0#3, %0#4, %0#5, %0#6, %0#7 : tensor<16x!pphlo.sec<i32>>, tensor<16x!pphlo.sec<f32>>, tensor<16x!pphlo.sec<i32>>, tensor<16x!pphlo.sec<f32>>, tensor<16x!pphlo.sec<i32>>, tensor<16x!pphlo.sec<i32>>,tensor<16x!pphlo.sec<i32>>, tensor<16x!pphlo.sec<i32>>
+})",
+          8);
+
+    VERIFY_RESULTS(r, false);
+  }
+}
+
 TEST_P(ExecutorTest, SortComplicatedComparator) {
   xt::xarray<int> x = {3, 1, 4, 2};
   xt::xarray<int> y = {42, 50, 49, 47};
@@ -2050,7 +2330,7 @@ func.func @main(%arg0: tensor<4x6x!pphlo.pub<i32>>, %arg1: tensor<2x2x!pphlo.pub
     ^bb0(%arg3: tensor<!pphlo.pub<i32>>, %arg4: tensor<!pphlo.pub<i32>>):
       %1 = "pphlo.add"(%arg3, %arg4) : (tensor<!pphlo.pub<i32>>, tensor<!pphlo.pub<i32>>) -> tensor<!pphlo.pub<i32>>
       "pphlo.return"(%1) : (tensor<!pphlo.pub<i32>>) -> ()
-    }) {padding = dense<0> : tensor<2x2xi64>, window_dimensions = dense<[2,3]> : tensor<2xi64>, window_strides = dense<[2,3]> : tensor<2xi64>} : (tensor<4x6x!pphlo.pub<i32>>, tensor<2x2x!pphlo.pub<i32>>, tensor<!pphlo.pub<i32>>) -> tensor<4x6x!pphlo.pub<i32>>
+    }) {window_dimensions = array<i64: 2,3>, window_strides = array<i64: 2,3>} : (tensor<4x6x!pphlo.pub<i32>>, tensor<2x2x!pphlo.pub<i32>>, tensor<!pphlo.pub<i32>>) -> tensor<4x6x!pphlo.pub<i32>>
     return %0 : tensor<4x6x!pphlo.pub<i32>>
 })");
 
@@ -2088,7 +2368,7 @@ func.func @main(%arg0: tensor<4x5x!pphlo.pub<i32>>, %arg1: tensor<2x2x!pphlo.pub
     ^bb0(%arg3: tensor<!pphlo.pub<i32>>, %arg4: tensor<!pphlo.pub<i32>>):
       %1 = "pphlo.add"(%arg3, %arg4) : (tensor<!pphlo.pub<i32>>, tensor<!pphlo.pub<i32>>) -> tensor<!pphlo.pub<i32>>
       "pphlo.return"(%1) : (tensor<!pphlo.pub<i32>>) -> ()
-    }) {padding = dense<0> : tensor<2x2xi64>, window_dimensions = dense<[2,3]> : tensor<2xi64>, window_strides = dense<[2,2]> : tensor<2xi64>} : (tensor<4x5x!pphlo.pub<i32>>, tensor<2x2x!pphlo.pub<i32>>, tensor<!pphlo.pub<i32>>) -> tensor<4x5x!pphlo.pub<i32>>
+    }) {window_dimensions = array<i64:2,3>, window_strides = array<i64:2,2>} : (tensor<4x5x!pphlo.pub<i32>>, tensor<2x2x!pphlo.pub<i32>>, tensor<!pphlo.pub<i32>>) -> tensor<4x5x!pphlo.pub<i32>>
     return %0 : tensor<4x5x!pphlo.pub<i32>>
 })");
 
@@ -2114,7 +2394,7 @@ TEST_P(ExecutorTest, MaxPoolScatter1) {
 
   r.run(R"(
 func.func @main(%arg0: tensor<2x2x6x!pphlo.pub<i8>>, %arg1: tensor<2x2x!pphlo.pub<i32>>) -> (tensor<4x6x!pphlo.pub<i32>>) {
-    %0 = "pphlo.maxpool_scatter"(%arg0, %arg1) {padding = dense<0> : tensor<2x2xi64>, window_dimensions = dense<[2,3]> : tensor<2xi64>, window_strides = dense<[2,3]> : tensor<2xi64>} : (tensor<2x2x6x!pphlo.pub<i8>>, tensor<2x2x!pphlo.pub<i32>>) -> tensor<4x6x!pphlo.pub<i32>>
+    %0 = "pphlo.maxpool_scatter"(%arg0, %arg1) {window_dimensions = array<i64:2,3>, window_strides = array<i64:2,3>} : (tensor<2x2x6x!pphlo.pub<i8>>, tensor<2x2x!pphlo.pub<i32>>) -> tensor<4x6x!pphlo.pub<i32>>
     return %0 : tensor<4x6x!pphlo.pub<i32>>
 })");
 
@@ -2141,7 +2421,7 @@ TEST_P(ExecutorTest, MaxPoolScatter2) {
 
   r.run(R"(
 func.func @main(%arg0: tensor<2x2x6x!pphlo.pub<i8>>, %arg1: tensor<2x2x!pphlo.pub<i32>>) -> (tensor<4x5x!pphlo.pub<i32>>) {
-    %0 = "pphlo.maxpool_scatter"(%arg0, %arg1) {padding = dense<0> : tensor<2x2xi64>, window_dimensions = dense<[2,3]> : tensor<2xi64>, window_strides = dense<[2,2]> : tensor<2xi64>} : (tensor<2x2x6x!pphlo.pub<i8>>, tensor<2x2x!pphlo.pub<i32>>) -> tensor<4x5x!pphlo.pub<i32>>
+    %0 = "pphlo.maxpool_scatter"(%arg0, %arg1) {window_dimensions = array<i64:2,3>, window_strides = array<i64:2,2>} : (tensor<2x2x6x!pphlo.pub<i8>>, tensor<2x2x!pphlo.pub<i32>>) -> tensor<4x5x!pphlo.pub<i32>>
     return %0 : tensor<4x5x!pphlo.pub<i32>>
 })");
 
@@ -2165,7 +2445,7 @@ TEST_P(ExecutorTest, MaxPoolReduce1) {
 
   r.run(R"(
 func.func @main(%arg0: tensor<4x6x!pphlo.pub<i32>>) -> (tensor<2x2x!pphlo.pub<i32>>, tensor<2x2x6x!pphlo.pub<i1>>) {
-    %4:2 = "pphlo.argmax"(%arg0) {base_dilations = dense<1> : tensor<4xi64>, padding = dense<0> : tensor<2x2xi64>, window_dilations = dense<1> : tensor<2xi64>, window_dimensions = dense<[2, 3]> : tensor<2xi64>, window_strides = dense<[2, 3]> : tensor<2xi64>} : (tensor<4x6x!pphlo.pub<i32>>) -> (tensor<2x2x!pphlo.pub<i32>>, tensor<2x2x6x!pphlo.pub<i1>>)
+    %4:2 = "pphlo.argmax"(%arg0) {window_dilations = array<i64: 1, 1>, window_dimensions = array<i64:2, 3>, window_strides = array<i64:2, 3>} : (tensor<4x6x!pphlo.pub<i32>>) -> (tensor<2x2x!pphlo.pub<i32>>, tensor<2x2x6x!pphlo.pub<i1>>)
     return %4#0, %4#1: tensor<2x2x!pphlo.pub<i32>>, tensor<2x2x6x!pphlo.pub<i1>>
 })",
         2);
@@ -2195,7 +2475,7 @@ TEST_P(ExecutorTest, MaxPoolReduce2) {
 
   r.run(R"(
 func.func @main(%arg0: tensor<4x5x!pphlo.pub<i32>>) -> (tensor<2x2x!pphlo.pub<i32>>, tensor<2x2x6x!pphlo.pub<i1>>) {
-    %4:2 = "pphlo.argmax"(%arg0) {base_dilations = dense<1> : tensor<4xi64>, padding = dense<0> : tensor<2x2xi64>, window_dilations = dense<1> : tensor<2xi64>, window_dimensions = dense<[2, 3]> : tensor<2xi64>, window_strides = dense<[2, 2]> : tensor<2xi64>} : (tensor<4x5x!pphlo.pub<i32>>) -> (tensor<2x2x!pphlo.pub<i32>>, tensor<2x2x6x!pphlo.pub<i1>>)
+    %4:2 = "pphlo.argmax"(%arg0) {window_dilations = array<i64: 1,1>, window_dimensions = array<i64:2, 3>, window_strides = array<i64:2, 2>} : (tensor<4x5x!pphlo.pub<i32>>) -> (tensor<2x2x!pphlo.pub<i32>>, tensor<2x2x6x!pphlo.pub<i1>>)
     return %4#0, %4#1: tensor<2x2x!pphlo.pub<i32>>, tensor<2x2x6x!pphlo.pub<i1>>
 })",
         2);
@@ -2296,8 +2576,8 @@ TEST_P(ExecutorTest, MaxPoolReduce3) {
 
   r.run(R"(
 func.func @main(%arg0: tensor<1x4x4x1x!pphlo.pub<i32>>, %arg1: tensor<1x3x3x1x!pphlo.pub<i32>>) -> (tensor<1x3x3x1x!pphlo.pub<i32>>, tensor<1x3x3x1x4x!pphlo.pub<i1>>, tensor<1x4x4x1x!pphlo.pub<i32>>) {
-    %0:2 = "pphlo.argmax"(%arg0) {base_dilations = dense<1> : tensor<4xi64>, padding = dense<0> : tensor<4x2xi64>, window_dilations = dense<1> : tensor<4xi64>, window_dimensions = dense<[1, 2, 2, 1]> : tensor<4xi64>, window_strides = dense<1> : tensor<4xi64>} : (tensor<1x4x4x1x!pphlo.pub<i32>>) -> (tensor<1x3x3x1x!pphlo.pub<i32>>, tensor<1x3x3x1x4x!pphlo.pub<i1>>)
-    %1 = "pphlo.maxpool_scatter"(%0#1, %arg1) {padding = dense<0> : tensor<4x2xi64>, window_dimensions = dense<[1, 2, 2, 1]> : tensor<4xi64>, window_strides = dense<1> : tensor<4xi64>} : (tensor<1x3x3x1x4x!pphlo.pub<i1>>, tensor<1x3x3x1x!pphlo.pub<i32>>) -> tensor<1x4x4x1x!pphlo.pub<i32>>
+    %0:2 = "pphlo.argmax"(%arg0) {window_dilations = array<i64:1,1,1,1>, window_dimensions = array<i64:1, 2, 2, 1>, window_strides = array<i64:1,1,1,1>} : (tensor<1x4x4x1x!pphlo.pub<i32>>) -> (tensor<1x3x3x1x!pphlo.pub<i32>>, tensor<1x3x3x1x4x!pphlo.pub<i1>>)
+    %1 = "pphlo.maxpool_scatter"(%0#1, %arg1) {window_dimensions = array<i64:1, 2, 2, 1>, window_strides = array<i64:1,1,1,1>} : (tensor<1x3x3x1x4x!pphlo.pub<i1>>, tensor<1x3x3x1x!pphlo.pub<i32>>) -> tensor<1x4x4x1x!pphlo.pub<i32>>
     return %0#0, %0#1, %1: tensor<1x3x3x1x!pphlo.pub<i32>>, tensor<1x3x3x1x4x!pphlo.pub<i1>>, tensor<1x4x4x1x!pphlo.pub<i32>>
 })",
         3);

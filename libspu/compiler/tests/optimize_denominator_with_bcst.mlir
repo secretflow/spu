@@ -5,7 +5,7 @@ func.func @main(%arg0: tensor<16x!pphlo.sec<f32>>, %arg1: tensor<16x10000x!pphlo
     //CHECK: %1 = "pphlo.broadcast"(%0)
     //CHECK: %2 = "pphlo.multiply"(%arg1, %1)
     //CHECK: return %2
-    %0 = "pphlo.broadcast"(%arg0) {broadcast_dimensions = dense<0> : tensor<1xi64>} : (tensor<16x!pphlo.sec<f32>>) -> tensor<16x10000x!pphlo.sec<f32>>
+    %0 = "pphlo.broadcast"(%arg0) {broadcast_dimensions = array<i64:0>} : (tensor<16x!pphlo.sec<f32>>) -> tensor<16x10000x!pphlo.sec<f32>>
     %1 = "pphlo.divide"(%arg1, %0) : (tensor<16x10000x!pphlo.sec<f32>>, tensor<16x10000x!pphlo.sec<f32>>) -> tensor<16x10000x!pphlo.sec<f32>>
     return %1 : tensor<16x10000x!pphlo.sec<f32>>
 }

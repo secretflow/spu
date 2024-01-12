@@ -33,7 +33,6 @@ spu_cc_library(
     hdrs = ["ring.h"],
     deps = [
         ":prot_wrapper",
-        ":shape_ops",
         "//libspu/core:context",
     ],
 )
@@ -255,6 +254,7 @@ spu_cc_library(
     deps = [
         # Please DONT add extra dependency here.
         ":prot_wrapper",
+        ":ring",
         "//libspu/core:context",
     ],
 )

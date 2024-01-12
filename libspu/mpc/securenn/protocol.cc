@@ -14,13 +14,14 @@
 
 #include "libspu/mpc/securenn/protocol.h"
 
+#include "libspu/mpc/common/communicator.h"
 #include "libspu/mpc/common/prg_state.h"
 #include "libspu/mpc/common/pv2k.h"
 #include "libspu/mpc/securenn/arithmetic.h"
 #include "libspu/mpc/securenn/boolean.h"
 #include "libspu/mpc/securenn/conversion.h"
-#include "libspu/mpc/securenn/state.h"
 #include "libspu/mpc/securenn/type.h"
+#include "libspu/mpc/standard_shape/protocol.h"
 
 namespace spu::mpc {
 
@@ -40,47 +41,30 @@ void regSecurennProtocol(SPUContext* ctx,
   // register public kernels.
   regPV2kKernels(ctx->prot());
 
+  // Register standard shape ops
+  regStandardShapeOps(ctx);
+
   // register arithmetic & binary kernels
   // ctx->prot()->addState<SecurennState>();
-  ctx->prot()->regKernel<securenn::P2A>();
-  ctx->prot()->regKernel<securenn::A2P>();
-  ctx->prot()->regKernel<securenn::A2V>();
-  ctx->prot()->regKernel<securenn::V2A>();
-  ctx->prot()->regKernel<securenn::NotA>();
-  ctx->prot()->regKernel<securenn::AddAP>();
-  ctx->prot()->regKernel<securenn::AddAA>();
-  ctx->prot()->regKernel<securenn::MulAP>();
-  ctx->prot()->regKernel<securenn::MulAA>();
-  ctx->prot()->regKernel<securenn::MatMulAP>();
-  ctx->prot()->regKernel<securenn::MatMulAA>();
-  ctx->prot()->regKernel<securenn::MatMulAA_simple>();
-  ctx->prot()->regKernel<securenn::LShiftA>();
-  ctx->prot()->regKernel<securenn::Msb>();
-  ctx->prot()->regKernel<securenn::Msb_opt>();
-  ctx->prot()->regKernel<securenn::TruncAPr>();
 
-  ctx->prot()->regKernel<securenn::CommonTypeB>();
-  ctx->prot()->regKernel<securenn::CommonTypeV>();
-
-  ctx->prot()->regKernel<securenn::CastTypeB>();
-  ctx->prot()->regKernel<securenn::B2P>();
-  ctx->prot()->regKernel<securenn::P2B>();
-  ctx->prot()->regKernel<securenn::A2B>();
-
-  ctx->prot()->regKernel<securenn::Msb_a2b>();
-  // ctx->prot()->regKernel<securenn::B2A>();
-  ctx->prot()->regKernel<securenn::B2A_Randbit>();
-  ctx->prot()->regKernel<securenn::AndBP>();
-  ctx->prot()->regKernel<securenn::AndBB>();
-  ctx->prot()->regKernel<securenn::XorBP>();
-  ctx->prot()->regKernel<securenn::XorBB>();
-  ctx->prot()->regKernel<securenn::LShiftB>();
-  ctx->prot()->regKernel<securenn::RShiftB>();
-  ctx->prot()->regKernel<securenn::ARShiftB>();
-  ctx->prot()->regKernel<securenn::BitrevB>();
-  ctx->prot()->regKernel<securenn::BitIntlB>();
-  ctx->prot()->regKernel<securenn::BitDeintlB>();
-  ctx->prot()->regKernel<securenn::RandA>();
+  ctx->prot()
+      ->regKernel<
+          securenn::P2A, securenn::A2P, securenn::A2V, securenn::V2A,         //
+          securenn::NotA,                                                     //
+          securenn::AddAP, securenn::AddAA,                                   //
+          securenn::MulAP, securenn::MulAA,                                   //
+          securenn::MatMulAP, securenn::MatMulAA, securenn::MatMulAA_simple,  //
+          securenn::LShiftA, securenn::LShiftB, securenn::RShiftB,
+          securenn::ARShiftB,                //
+          securenn::Msb, securenn::Msb_opt,  //
+          securenn::TruncAPr,                //
+          securenn::CommonTypeB, securenn::CommonTypeV, securenn::CastTypeB,
+          securenn::B2P, securenn::P2B, securenn::A2B, securenn::Msb_a2b,
+          /*securenn::B2A,*/ securenn::B2A_Randbit,  //
+          securenn::AndBP, securenn::AndBB,          //
+          securenn::XorBP, securenn::XorBB,          //
+          securenn::BitrevB, securenn::BitIntlB, securenn::BitDeintlB,
+          securenn::RandA>();
 }
 
 std::unique_ptr<SPUContext> makeSecurennProtocol(

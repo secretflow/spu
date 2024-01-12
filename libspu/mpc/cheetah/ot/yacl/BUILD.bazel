@@ -22,7 +22,6 @@ spu_cc_library(
     srcs = [
         "ferret.cc",
         "yacl_ote_adapter.cc",
-        "yacl_util.cc",
     ],
     hdrs = [
         "ferret.h",
@@ -37,12 +36,15 @@ spu_cc_library(
         "//libspu/mpc/cheetah/ot:ot_util",
         "//libspu/mpc/common:communicator",
         "//libspu/mpc/semi2k:conversion",
+        "@yacl//yacl/base:aligned_vector",
+        "@yacl//yacl/base:buffer",
         "@yacl//yacl/base:dynamic_bitset",
         "@yacl//yacl/base:int128",
         "@yacl//yacl/crypto/base/aes:aes_opt",
         "@yacl//yacl/crypto/primitives/ot:base_ot",
         "@yacl//yacl/crypto/primitives/ot:ferret_ote",
         "@yacl//yacl/crypto/primitives/ot:iknp_ote",
+        "@yacl//yacl/crypto/primitives/ot:softspoken_ote",
         "@yacl//yacl/crypto/tools:crhash",
         "@yacl//yacl/crypto/tools:rp",
         "@yacl//yacl/crypto/utils:rand",

@@ -56,8 +56,8 @@ class BShrTy : public TypeImpl<BShrTy, RingTy, Secret, BShare> {
   }
 };
 
-class PShrTy : public TypeImpl<PShrTy, RingTy, Secret> {
-  using Base = TypeImpl<PShrTy, RingTy, Secret>;
+class PShrTy : public TypeImpl<PShrTy, RingTy, Secret, PShare> {
+  using Base = TypeImpl<PShrTy, RingTy, Secret, PShare>;
 
  public:
   using Base::Base;

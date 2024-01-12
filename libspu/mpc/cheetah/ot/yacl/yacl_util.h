@@ -15,6 +15,8 @@
 #pragma once
 
 #include "absl/types/span.h"
+#include "yacl/base/aligned_vector.h"
+#include "yacl/base/buffer.h"
 #include "yacl/base/dynamic_bitset.h"
 #include "yacl/base/int128.h"
 
@@ -55,6 +57,10 @@ inline std::vector<uint8_t> BitsettoVecU8(
   std::vector<uint8_t> bits(bitset.size());
   BitsettoVecU8(bitset, absl::MakeSpan(bits));
   return bits;
+}
+
+absl::Span<uint128_t> inline MakeSpan_Uint128(yacl::Buffer& buf) {
+  return absl::MakeSpan(buf.data<uint128_t>(), buf.size() / sizeof(uint128_t));
 }
 
 }  // namespace spu::mpc::cheetah

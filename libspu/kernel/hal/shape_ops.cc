@@ -14,101 +14,24 @@
 
 #include "libspu/kernel/hal/shape_ops.h"
 
-#include <algorithm>
-
 #include "libspu/core/context.h"
-#include "libspu/core/ndarray_ref.h"
 #include "libspu/core/trace.h"
 #include "libspu/kernel/hal/prot_wrapper.h"
+#include "libspu/kernel/hal/ring.h"
 
 namespace spu::kernel::hal {
-namespace {
-
-// TODO: these code is copied from ring.cc, remove it when shape ops is lowered
-// to mpc layer.
-Type _common_type(SPUContext* ctx, const Type& a, const Type& b) {
-  if (a.isa<Secret>() && b.isa<Secret>()) {
-    return _common_type_s(ctx, a, b);
-  } else if (a.isa<Private>() && b.isa<Private>()) {
-    return _common_type_v(ctx, a, b);
-  } else if (a.isa<Secret>()) {
-    return a;
-  } else if (b.isa<Secret>()) {
-    return b;
-  } else {
-    SPU_ENFORCE(a.isa<Public>() && b.isa<Public>());
-    return a;
-  }
-}
-
-Value _cast_type(SPUContext* ctx, const Value& x, const Type& to) {
-  if (x.storage_type() == to) {
-    return x;
-  }
-  if (x.isPublic() && to.isa<Public>()) {
-    return x;
-  } else if (x.isPublic() && to.isa<Secret>()) {
-    // FIXME: casting to BShare semantic is wrong.
-    return _p2s(ctx, x);
-  } else if (x.isPublic() && to.isa<Private>()) {
-    return _p2v(ctx, x, to.as<Private>()->owner());
-  } else if (x.isSecret() && to.isa<Private>()) {
-    return _s2v(ctx, x, to.as<Private>()->owner());
-  } else if (x.isPrivate() && to.isa<Secret>()) {
-    return _v2s(ctx, x);
-  } else if (x.isSecret() && to.isa<Secret>()) {
-    return _cast_type_s(ctx, x, to);
-  } else {
-    SPU_THROW("should not be here x={}, to={}", x, to);
-  }
-}
-
-// Compact threshold heuristic, try to make it same as L1 cache size
-#define COMPACT_THRESHOLD (32 * 1024)  // 32K
-
-SPU_ALWAYS_INLINE NdArrayRef _try_compact(const NdArrayRef& in) {
-  // If in data is not compact after some shape ops and small enough, make it
-  // compact
-  if (in.numel() * in.elsize() <= COMPACT_THRESHOLD && !in.isCompact()) {
-    return in.clone();
-  }
-  return in;
-}
-
-}  // namespace
 
 Value transpose(SPUContext* ctx, const Value& in, const Axes& permutation) {
-  SPU_TRACE_HAL_DISP(ctx, in);
+  SPU_TRACE_HAL_DISP(ctx, in, permutation);
 
-  Axes perm = permutation;
-  if (perm.empty()) {
-    // by default, transpose the data in reverse order.
-    perm.resize(in.shape().size());
-    std::iota(perm.rbegin(), perm.rend(), 0);
-  }
-
-  // sanity check.
-  SPU_ENFORCE_EQ(perm.size(), in.shape().size());
-  std::set<int64_t> uniq(perm.begin(), perm.end());
-  SPU_ENFORCE_EQ(uniq.size(), perm.size(), "perm={} is not unique", perm);
-
-  // fast path, if identity permutation, return it.
-  Axes no_perm(in.shape().size());
-  std::iota(no_perm.begin(), no_perm.end(), 0);
-  if (perm == no_perm) {
-    return in;
-  }
-
-  return Value(_try_compact(in.data().transpose(perm)), in.dtype());
+  return _transpose(ctx, in, permutation);
 }
 
 Value slice(SPUContext* ctx, const Value& in, const Index& start_indices,
             const Index& end_indices, const Strides& strides) {
   SPU_TRACE_HAL_DISP(ctx, in, start_indices, end_indices, strides);
 
-  return Value(
-      _try_compact(in.data().slice(start_indices, end_indices, strides)),
-      in.dtype());
+  return _extract_slice(ctx, in, start_indices, end_indices, strides);
 }
 
 Value slice_scalar_at(SPUContext*, const Value& input, const Index& indices) {
@@ -117,6 +40,8 @@ Value slice_scalar_at(SPUContext*, const Value& input, const Index& indices) {
 
 Value update_slice(SPUContext* ctx, const Value& in, const Value& update,
                    const Index& start_indices) {
+  SPU_TRACE_HAL_DISP(ctx, in, start_indices);
+
   if (in.storage_type() != update.storage_type()) {
     auto u =
         _cast_type(ctx, update, in.storage_type()).setDtype(update.dtype());
@@ -124,32 +49,32 @@ Value update_slice(SPUContext* ctx, const Value& in, const Value& update,
     return update_slice(ctx, in, u, start_indices);
   }
 
-  auto ret = in.clone();
-  ret.data().update_slice(update.data(), start_indices);
-  return ret;
+  return _update_slice(ctx, in, update, start_indices).setDtype(in.dtype());
 }
 
 Value reshape(SPUContext* ctx, const Value& in, const Shape& to_shape) {
   SPU_TRACE_HAL_DISP(ctx, in, to_shape);
 
-  return Value(_try_compact(in.data().reshape(to_shape)), in.dtype());
+  return _reshape(ctx, in, to_shape).setDtype(in.dtype());
 }
 
 Value broadcast_to(SPUContext* ctx, const Value& in, const Shape& to_shape,
                    const Axes& in_dims) {
   SPU_TRACE_HAL_DISP(ctx, in, to_shape);
 
-  return Value(in.data().broadcast_to(to_shape, in_dims), in.dtype());
+  return _broadcast(ctx, in, to_shape, in_dims).setDtype(in.dtype());
 }
 
 Value reverse(SPUContext* ctx, const Value& in, const Axes& dimensions) {
   SPU_TRACE_HAL_DISP(ctx, in, dimensions);
 
-  return Value(in.data().reverse(dimensions), in.dtype());
+  return _reverse(ctx, in, dimensions);
 }
 
-Value expand(SPUContext*, const Value& in, const Shape& to_shape) {
-  return Value(in.data().expand(to_shape), in.dtype());
+Value expand(SPUContext* ctx, const Value& in, const Shape& to_shape) {
+  SPU_TRACE_HAL_DISP(ctx, in, to_shape);
+
+  return _fill(ctx, in, to_shape);
 }
 
 Value pad(SPUContext* ctx, const Value& in, const Value& padding_value,
@@ -165,14 +90,13 @@ Value pad(SPUContext* ctx, const Value& in, const Value& padding_value,
                edge_padding_high, interior_padding);
   }
 
-  return Value(in.data().pad(padding_value.data(), edge_padding_low,
-                             edge_padding_high, interior_padding),
-               in.dtype());
+  return _pad(ctx, in, padding_value, edge_padding_low, edge_padding_high,
+              interior_padding);
 }
 
-Value concatenate(SPUContext* ctx, absl::Span<const Value> values,
+Value concatenate(SPUContext* ctx, const std::vector<Value>& values,
                   int64_t axis) {
-  SPU_TRACE_HAL_DISP(ctx, axis);
+  SPU_TRACE_HAL_DISP(ctx, values, axis);
   SPU_ENFORCE(!values.empty(), "got={}", values.size());
 
   if (values.size() == 1) {
@@ -207,12 +131,7 @@ Value concatenate(SPUContext* ctx, absl::Span<const Value> values,
 
   SPU_ENFORCE(all_same_stype);
 
-  std::vector<NdArrayRef> array(values.size() - 1);
-  for (int64_t idx = 1; idx < static_cast<int64_t>(values.size()); ++idx) {
-    array[idx - 1] = values[idx].data();
-  }
-
-  return Value(values[0].data().concatenate(array, axis), values[0].dtype());
+  return _concatenate(ctx, values, axis);
 }
 
 }  // namespace spu::kernel::hal

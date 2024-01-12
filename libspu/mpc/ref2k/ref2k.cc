@@ -22,6 +22,7 @@
 #include "libspu/mpc/common/prg_state.h"
 #include "libspu/mpc/common/pv2k.h"
 #include "libspu/mpc/kernel.h"
+#include "libspu/mpc/standard_shape/protocol.h"
 #include "libspu/mpc/utils/ring_ops.h"
 
 namespace spu::mpc {
@@ -479,33 +480,23 @@ void regRef2kProtocol(SPUContext* ctx,
   // register public kernels.
   regPV2kKernels(ctx->prot());
 
-  // register compute kernels
-  ctx->prot()->regKernel<Ref2kCommonTypeS>();
-  ctx->prot()->regKernel<Ref2kCommonTypeV>();
+  // Register standard shape ops
+  regStandardShapeOps(ctx);
 
-  ctx->prot()->regKernel<Ref2kCastTypeS>();
-  ctx->prot()->regKernel<Ref2kP2S>();
-  ctx->prot()->regKernel<Ref2kS2P>();
-  ctx->prot()->regKernel<Ref2kV2S>();
-  ctx->prot()->regKernel<Ref2kS2V>();
-  ctx->prot()->regKernel<Ref2kNotS>();
-  ctx->prot()->regKernel<Ref2kAddSS>();
-  ctx->prot()->regKernel<Ref2kAddSP>();
-  ctx->prot()->regKernel<Ref2kMulSS>();
-  ctx->prot()->regKernel<Ref2kMulSP>();
-  ctx->prot()->regKernel<Ref2kMatMulSS>();
-  ctx->prot()->regKernel<Ref2kMatMulSP>();
-  ctx->prot()->regKernel<Ref2kAndSS>();
-  ctx->prot()->regKernel<Ref2kAndSP>();
-  ctx->prot()->regKernel<Ref2kXorSS>();
-  ctx->prot()->regKernel<Ref2kXorSP>();
-  ctx->prot()->regKernel<Ref2kLShiftS>();
-  ctx->prot()->regKernel<Ref2kRShiftS>();
-  ctx->prot()->regKernel<Ref2kBitrevS>();
-  ctx->prot()->regKernel<Ref2kARShiftS>();
-  ctx->prot()->regKernel<Ref2kTruncS>();
-  ctx->prot()->regKernel<Ref2kMsbS>();
-  ctx->prot()->regKernel<Ref2kRandS>();
+  // register compute kernels
+  ctx->prot()
+      ->regKernel<Ref2kCommonTypeS, Ref2kCommonTypeV, Ref2kCastTypeS,  //
+                  Ref2kP2S, Ref2kS2P, Ref2kV2S, Ref2kS2V,              //
+                  Ref2kNotS,                                           //
+                  Ref2kAddSS, Ref2kAddSP,                              //
+                  Ref2kMulSS, Ref2kMulSP,                              //
+                  Ref2kMatMulSS, Ref2kMatMulSP,                        //
+                  Ref2kAndSS, Ref2kAndSP,                              //
+                  Ref2kXorSS, Ref2kXorSP,                              //
+                  Ref2kLShiftS, Ref2kRShiftS, Ref2kARShiftS,           //
+                  Ref2kBitrevS,                                        //
+                  Ref2kTruncS,                                         //
+                  Ref2kMsbS, Ref2kRandS>();
 }
 
 std::unique_ptr<SPUContext> makeRef2kProtocol(

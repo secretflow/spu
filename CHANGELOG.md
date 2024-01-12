@@ -10,7 +10,9 @@
 >
 > please add your unreleased change here.
 
-## TBD
+- [Improvement] Optimize one-time setup for yacl ot
+
+## 20240105
 
 - [Feature] Add Odd-Even Merge Sort to replace the bitonic sort
 - [Feature] Add radix sort support for ABY3

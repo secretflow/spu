@@ -20,7 +20,6 @@
 #include "mlir/Transforms/GreedyPatternRewriteDriver.h"
 
 #include "libspu/compiler/passes/pass_details.h"
-#include "libspu/compiler/passes/utils.h"
 #include "libspu/dialect/pphlo_ops.h"
 
 namespace mlir::pphlo {
@@ -28,7 +27,7 @@ namespace mlir::pphlo {
 namespace {
 
 bool GatherIsBroadcast(GatherOp &op) {
-  auto gather_slice_size = op.getSliceSizes().getValues<int64_t>();
+  auto gather_slice_size = op.getSliceSizes();
   auto op_shape = op.getOperand().getType().getShape();
   return (gather_slice_size.size() == op_shape.size()) &&
          (std::equal(gather_slice_size.begin(), gather_slice_size.end(),
@@ -113,7 +112,7 @@ TransposeIndexVectorDimToLast(TypedValue<RankedTensorType> &start_indices,
       start_indices.getLoc(),
       RankedTensorType::get(result_shape,
                             start_indices.getType().getElementType()),
-      start_indices, ConvertDimensions(&builder, permutation));
+      start_indices, permutation);
 
   return transpose.getResult();
 }
@@ -211,17 +210,16 @@ CanonicalizeGatherIndices(TypedValue<RankedTensorType> &start_indices,
 }
 
 TypedValue<RankedTensorType> CreateGatherLoopAccumulatorInitValue(
-    GatherOp op, Type element_type, DenseIntElementsAttr slice_sizes,
+    GatherOp op, Type element_type, llvm::ArrayRef<int64_t> slice_sizes,
     int64_t gather_loop_trip_count,
     const GatherDimensionNumbersAttr &dim_numbers) {
   std::vector<int64_t> accumulator_state_shape_dims;
-  auto array_slice_size = slice_sizes.getValues<int64_t>();
-  accumulator_state_shape_dims.reserve(1 + array_slice_size.size());
+  accumulator_state_shape_dims.reserve(1 + slice_sizes.size());
   accumulator_state_shape_dims.push_back(gather_loop_trip_count);
-  for (int64_t i = 0; i < static_cast<int64_t>(array_slice_size.size()); i++) {
+  for (int64_t i = 0; i < static_cast<int64_t>(slice_sizes.size()); i++) {
     if (!std::binary_search(dim_numbers.getCollapsedSliceDims().begin(),
                             dim_numbers.getCollapsedSliceDims().end(), i)) {
-      accumulator_state_shape_dims.emplace_back(array_slice_size[i]);
+      accumulator_state_shape_dims.emplace_back(slice_sizes[i]);
     }
   }
 
@@ -392,9 +390,12 @@ llvm::SmallVector<Value> ExpandIndexVectorIntoOperandSpace(
       auto component_to_concat = builder->create<SliceOp>(
           index_vector.getLoc(),
           RankedTensorType::get({1}, index_vector.getType().getElementType()),
-          index_vector, ConvertDimensions(builder, {index_vector_dim_index}),
-          ConvertDimensions(builder, {index_vector_dim_index + 1}),
-          ConvertDimensions(builder, {1}));
+          index_vector,
+          DenseI64ArrayAttr::get(builder->getContext(),
+                                 {index_vector_dim_index}),
+          DenseI64ArrayAttr::get(builder->getContext(),
+                                 {index_vector_dim_index + 1}),
+          DenseI64ArrayAttr::get(builder->getContext(), {1}));
       auto reshaped = builder->create<ReshapeOp>(
           index_vector.getLoc(),
           RankedTensorType::get({}, index_vector.getType().getElementType()),
@@ -450,9 +451,9 @@ void GatherLoopBody(GatherOp gather, Region &body,
   if (has_scalar_indices) {
     // In this case start_indices has rank 1 and induction_var_as_vector (of
     // shape {1}) is an index into this rank 1 tensor.
-    auto ds = builder.create<DynamicSliceOp>(gather->getLoc(), start_indices,
-                                             ValueRange{induction_var},
-                                             ConvertDimensions(&builder, {1}));
+    auto ds = builder.create<DynamicSliceOp>(
+        gather->getLoc(), start_indices, ValueRange{induction_var},
+        DenseI64ArrayAttr::get(builder.getContext(), {1}));
     index_vector = ds.getResult();
   } else {
     // In this case start_indices has rank 2 and induction_var_as_vector (of
@@ -463,7 +464,7 @@ void GatherLoopBody(GatherOp gather, Region &body,
 
     auto index_vector_2d = builder.create<DynamicSliceOp>(
         gather->getLoc(), start_indices, ValueRange{induction_var, index_zero},
-        ConvertDimensions(&builder, {1, index_vector_size}));
+        DenseI64ArrayAttr::get(builder.getContext(), {1, index_vector_size}));
 
     index_vector = ElideDegenerateDims(&builder, index_vector_2d, {0});
   }
@@ -523,8 +524,8 @@ struct GatherConverter : public OpRewritePattern<GatherOp> {
           op->getLoc(), reshaped_type, op.getOperand());
       rewriter.replaceOpWithNewOp<BroadcastOp>(
           op, op->getResults().getType(), broadcast_operand,
-          ConvertDimensions(&builder,
-                            op.getDimensionNumbers().getOffsetDims()));
+          DenseI64ArrayAttr::get(builder.getContext(),
+                                 op.getDimensionNumbers().getOffsetDims()));
       return success();
     }
 
@@ -612,7 +613,7 @@ struct GatherConverter : public OpRewritePattern<GatherOp> {
     rewriter.replaceOpWithNewOp<TransposeOp>(
         op, op.getResult().getType(),
         accumulator_with_batch_dims_decanonicalized,
-        ConvertDimensions(&builder, permutation));
+        DenseI64ArrayAttr::get(builder.getContext(), permutation));
 
     return success();
   }
