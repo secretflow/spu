@@ -20,7 +20,7 @@ py_test(
     name = "preprocessing_test",
     srcs = ["preprocessing_test.py"],
     deps = [
-        "//sml/preprocessing:preprocessing",
+        "//sml/preprocessing",
         "//spu:init",
         "//spu/utils:simulation",
     ],

@@ -20,7 +20,7 @@ py_binary(
     name = "preprocessing_emul",
     srcs = ["preprocessing_emul.py"],
     deps = [
-        "//sml/preprocessing:preprocessing",
+        "//sml/preprocessing",
         "//sml/utils:emulation",
     ],
 )
