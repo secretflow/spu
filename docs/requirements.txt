@@ -11,6 +11,6 @@ sphinxcontrib-nwdiag==2.0.0
 sphinxcontrib-seqdiag==3.0.0
 pytablewriter==0.64.2
 linkify-it-py==2.0.2
-mdutils==1.4.0
+mdutils==1.6.0
 spu>=0.3.1b0
 pydata-sphinx-theme
