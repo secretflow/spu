@@ -79,10 +79,8 @@ class LabelBinarizer:
     Noted that if unique==True, the order of the classes will be kept instead of sorted.
 
     Secondly, use transform() to convert the value to a one-hot label for classes.
-    The input array needs to be 1d. In sklearn, the input array is automatically transformed into 1d,
-    so more dimension seems to be meaningless. To avoid redundant operations used in MPC implementation,
-    the automated transformation is canceled. Users can directly use the transformation method like jax.ravel to
-    transform the input array into 1d then use LabelBinarizer to do further transformation.
+    The input array needs to be 1d.  Users can directly use the transformation method like jax.ravel to transform
+    the input array into 1d then use LabelBinarizer to do further transformation.
 
     Parameters
     ----------
@@ -109,7 +107,7 @@ class LabelBinarizer:
         n_classes : int
             Number of classes. SPU cannot support dynamic shape,
             so this parameter needs to be designated.
-        
+
         unique : bool
             Set to False to do deduplication on classes
 
@@ -123,7 +121,7 @@ class LabelBinarizer:
                 f"neg_label={self.neg_label} must be strictly less than "
                 f"pos_label={self.pos_label}."
             )
-        if unique==True:
+        if unique == True:
             self.classes_ = y
         else:
             # The output of jax needs to be tensor with known size.
@@ -142,7 +140,7 @@ class LabelBinarizer:
         n_classes : int
             Number of classes. SPU cannot support dynamic shape,
             so this parameter needs to be designated.
-        
+
         unique : bool
             Set to False to do deduplication on classes
 

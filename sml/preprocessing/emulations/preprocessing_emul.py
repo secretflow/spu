@@ -83,7 +83,7 @@ def emul_labelbinarizer_unseen():
     transformer.fit(X)
     sk_result = transformer.transform(Y)
     # print("sklearn:\n", sk_result)
-    
+
     X, Y = emulator.seal(X, Y)
     spu_result = emulator.run(labelbinarize)(X, Y)
     # print("spu:\n", spu_result)
