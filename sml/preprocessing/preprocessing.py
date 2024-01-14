@@ -44,11 +44,8 @@ def label_binarize(y, *, classes, n_classes, neg_label=0, pos_label=1):
     ndarray of shape (n_samples, n_classes)
         Shape will be (n_samples, 1) for binary problems.
     """
-    n_samples = y.shape[0]
-    indices = jnp.searchsorted(classes, y)
-    result = jax.nn.one_hot(indices, n_classes, dtype=jnp.int_)
-    # eq_func = lambda x: jnp.where(classes == x, 1, 0)
-    # result = jax.vmap(eq_func)(y)
+    eq_func = lambda x: jnp.where(classes == x, 1, 0)
+    result = jax.vmap(eq_func)(y)
 
     if neg_label != 0 or pos_label != 1:
         result = jnp.where(result, pos_label, neg_label)
