@@ -39,16 +39,17 @@ class UnitTests(unittest.TestCase):
         X = jnp.array([1, 2, 6, 4, 2])
         Y = jnp.array([1, 6])
 
-        spu_transformed, spu_inv_transformed = spsim.sim_jax(sim, labelbinarize)(X, Y)
-        # print("result\n", spu_transformed)
-        # print("result\n", spu_inv_transformed)
-
         transformer = preprocessing.LabelBinarizer(neg_label=-2, pos_label=3)
         transformer.fit(X)
         sk_transformed = transformer.transform(Y)
         sk_inv_transformed = transformer.inverse_transform(sk_transformed)
         # print("sklearn:\n", sk_transformed)
         # print("sklearn:\n", sk_inv_transformed)
+
+        spu_transformed, spu_inv_transformed = spsim.sim_jax(sim, labelbinarize)(X, Y)
+        # print("result\n", spu_transformed)
+        # print("result\n", spu_inv_transformed)
+
         np.testing.assert_allclose(sk_transformed, spu_transformed, rtol=0, atol=0)
         np.testing.assert_allclose(
             sk_inv_transformed, spu_inv_transformed, rtol=0, atol=0
@@ -69,15 +70,16 @@ class UnitTests(unittest.TestCase):
         X = jnp.array([1, -1, -1, 1])
         Y = jnp.array([1, 6])
 
-        spu_transformed, spu_inv_transformed = spsim.sim_jax(sim, labelbinarize)(X, Y)
-        # print("result\n", spu_transformed)
-        # print("result\n", spu_inv_transformed)
-
         transformer = preprocessing.LabelBinarizer()
         sk_transformed = transformer.fit_transform(X)
         sk_inv_transformed = transformer.inverse_transform(sk_transformed)
         # print("sklearn:\n", sk_transformed)
         # print("sklearn:\n", sk_inv_transformed)
+
+        spu_transformed, spu_inv_transformed = spsim.sim_jax(sim, labelbinarize)(X, Y)
+        # print("result\n", spu_transformed)
+        # print("result\n", spu_inv_transformed)
+
         np.testing.assert_allclose(sk_transformed, spu_transformed, rtol=0, atol=0)
         np.testing.assert_allclose(
             sk_inv_transformed, spu_inv_transformed, rtol=0, atol=0
@@ -91,18 +93,19 @@ class UnitTests(unittest.TestCase):
         def labelbinarize(X, Y):
             transformer = LabelBinarizer()
             transformer.fit(X, n_classes=3)
-            return transformer.transform(Y, unseen=True)
+            return transformer.transform(Y)
 
         X = jnp.array([2, 4, 5])
         Y = jnp.array([1, 2, 3, 4, 5, 6])
-
-        spu_result = spsim.sim_jax(sim, labelbinarize)(X, Y)
-        # print("result\n", spu_result)
 
         transformer = preprocessing.LabelBinarizer()
         transformer.fit(X)
         sk_result = transformer.transform(Y)
         # print("sklearn:\n", sk_result)
+
+        spu_result = spsim.sim_jax(sim, labelbinarize)(X, Y)
+        # print("result\n", spu_result)
+
         np.testing.assert_allclose(sk_result, spu_result, rtol=0, atol=0)
 
     def test_binarizer(self):
@@ -116,12 +119,13 @@ class UnitTests(unittest.TestCase):
 
         X = jnp.array([[1.0, -1.0, 2.0], [2.0, 0.0, 0.0], [0.0, 1.0, -1.0]])
 
-        spu_result = spsim.sim_jax(sim, binarize)(X)
-        # print("result\n", spu_result)
-
         transformer = preprocessing.Binarizer()
         sk_result = transformer.transform(X)
         # print("sklearn:\n", sk_result)
+
+        spu_result = spsim.sim_jax(sim, binarize)(X)
+        # print("result\n", spu_result)
+
         np.testing.assert_allclose(sk_result, spu_result, rtol=0, atol=0)
 
     def test_normalizer(self):
@@ -146,9 +150,6 @@ class UnitTests(unittest.TestCase):
         spu_result_l1 = spsim.sim_jax(sim, normalize_l1)(X)
         spu_result_l2 = spsim.sim_jax(sim, normalize_l2)(X)
         spu_result_max = spsim.sim_jax(sim, normalize_max)(X)
-        # print("result\n", spu_result_l1)
-        # print("result\n", spu_result_l2)
-        # print("result\n", spu_result_max)
 
         transformer_l1 = preprocessing.Normalizer(norm="l1")
         sk_result_l1 = transformer_l1.transform(X)
@@ -159,6 +160,11 @@ class UnitTests(unittest.TestCase):
         # print("sklearn:\n", sk_result_l1)
         # print("sklearn:\n", sk_result_l2)
         # print("sklearn:\n", sk_result_max)
+
+        # print("result\n", spu_result_l1)
+        # print("result\n", spu_result_l2)
+        # print("result\n", spu_result_max)
+
         np.testing.assert_allclose(sk_result_l1, spu_result_l1, rtol=0, atol=1e-4)
         np.testing.assert_allclose(sk_result_l2, spu_result_l2, rtol=0, atol=1e-4)
         np.testing.assert_allclose(sk_result_max, spu_result_max, rtol=0, atol=1e-4)

@@ -18,7 +18,7 @@ import jax
 import jax.numpy as jnp
 
 
-def label_binarize(y, *, classes, n_classes, neg_label=0, pos_label=1, unseen=False):
+def label_binarize(y, *, classes, n_classes, neg_label=0, pos_label=1):
     """Binarize labels in a one-vs-all fashion.
 
     Parameters
@@ -39,16 +39,16 @@ def label_binarize(y, *, classes, n_classes, neg_label=0, pos_label=1, unseen=Fa
     pos_label : int, default=1
         Value with which positive labels must be encoded.
 
-    unseen : bool, default=False
-            True if the input array contains the classes that are unseen in the fit phase.
-
     Returns
     -------
     ndarray of shape (n_samples, n_classes)
         Shape will be (n_samples, 1) for binary problems.
     """
-    eq_func = lambda x: jnp.where(classes == x, 1, 0)
-    result = jax.vmap(eq_func)(y)
+    n_samples = y.shape[0]
+    indices = jnp.searchsorted(classes, y)
+    result = jax.nn.one_hot(indices, n_classes, dtype=jnp.int_)
+    # eq_func = lambda x: jnp.where(classes == x, 1, 0)
+    # result = jax.vmap(eq_func)(y)
 
     if neg_label != 0 or pos_label != 1:
         result = jnp.where(result, pos_label, neg_label)
@@ -83,9 +83,6 @@ class LabelBinarizer:
     so more dimension seems to be meaningless. To avoid redundant operations used in MPC implementation,
     the automated transformation is canceled. Users can directly use the transformation method like jax.ravel to
     transform the input array into 1d then use LabelBinarizer to do further transformation.
-    In sklearn, transform can accept an array containing the classes not seen in the fit phase.
-    This function is not supported by default, since many additional operations will be used.
-    Set the parameter unseen to be true to activate the function.
 
     Parameters
     ----------
@@ -128,7 +125,7 @@ class LabelBinarizer:
         self.n_classes_ = n_classes
         return self
 
-    def fit_transform(self, y, n_classes, *, unseen=False):
+    def fit_transform(self, y, n_classes):
         """Fit label binarizer/transform multi-class labels to binary labels.
 
         Parameters
@@ -140,25 +137,19 @@ class LabelBinarizer:
             Number of classes. SPU cannot support dynamic shape,
             so this parameter needs to be designated.
 
-        unseen : bool, default=False
-            True if the input array contains the classes that are unseen in the fit phase.
-
         Returns
         -------
         ndarray of shape (n_samples, n_classes)
             Shape will be (n_samples, 1) for binary problems.
         """
-        return self.fit(y, n_classes).transform(y, unseen=unseen)
+        return self.fit(y, n_classes).transform(y)
 
-    def transform(self, y, *, unseen=False):
+    def transform(self, y):
         """Transform multi-class labels to binary labels.
         Parameters
         ----------
         y : {array-like}, shape (n_samples,)
             Input data.
-
-        unseen : bool, default=False
-            True if the input array contains the classes that are unseen in the fit phase.
 
         Returns
         -------
@@ -171,7 +162,6 @@ class LabelBinarizer:
             n_classes=self.n_classes_,
             neg_label=self.neg_label,
             pos_label=self.pos_label,
-            unseen=unseen,
         )
 
     def inverse_transform(self, Y, threshold=None):

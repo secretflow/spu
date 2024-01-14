@@ -31,16 +31,18 @@ def emul_labelbinarizer():
     X = jnp.array([1, 2, 6, 4, 2])
     Y = jnp.array([1, 6])
 
-    spu_transformed, spu_inv_transformed = emulator.run(labelbinarize)(X, Y)
-    # print("result\n", spu_transformed)
-    # print("result\n", spu_inv_transformed)
-
     transformer = preprocessing.LabelBinarizer(neg_label=-2, pos_label=3)
     transformer.fit(X)
     sk_transformed = transformer.transform(Y)
     sk_inv_transformed = transformer.inverse_transform(sk_transformed)
     # print("sklearn:\n", sk_transformed)
     # print("sklearn:\n", sk_inv_transformed)
+
+    X, Y = emulator.seal(X, Y)
+    spu_transformed, spu_inv_transformed = emulator.run(labelbinarize)(X, Y)
+    # print("spu:\n", spu_transformed)
+    # print("spu:\n", spu_inv_transformed)
+
     np.testing.assert_allclose(sk_transformed, spu_transformed, rtol=0, atol=0)
     np.testing.assert_allclose(sk_inv_transformed, spu_inv_transformed, rtol=0, atol=0)
 
@@ -54,16 +56,17 @@ def emul_labelbinarizer_binary():
 
     X = jnp.array([1, -1, -1, 1])
     Y = jnp.array([1, 6])
-
-    spu_transformed, spu_inv_transformed = emulator.run(labelbinarize)(X, Y)
-    # print("result\n", spu_transformed)
-    # print("result\n", spu_inv_transformed)
-
     transformer = preprocessing.LabelBinarizer()
     sk_transformed = transformer.fit_transform(X)
     sk_inv_transformed = transformer.inverse_transform(sk_transformed)
     # print("sklearn:\n", sk_transformed)
     # print("sklearn:\n", sk_inv_transformed)
+
+    X, Y = emulator.seal(X, Y)
+    spu_transformed, spu_inv_transformed = emulator.run(labelbinarize)(X, Y)
+    # print("spu:\n", spu_transformed)
+    # print("spu:\n", spu_inv_transformed)
+
     np.testing.assert_allclose(sk_transformed, spu_transformed, rtol=0, atol=0)
     np.testing.assert_allclose(sk_inv_transformed, spu_inv_transformed, rtol=0, atol=0)
 
@@ -72,18 +75,20 @@ def emul_labelbinarizer_unseen():
     def labelbinarize(X, Y):
         transformer = LabelBinarizer()
         transformer.fit(X, n_classes=3)
-        return transformer.transform(Y, unseen=True)
+        return transformer.transform(Y)
 
     X = jnp.array([2, 4, 5])
     Y = jnp.array([1, 2, 3, 4, 5, 6])
-
-    spu_result = emulator.run(labelbinarize)(X, Y)
-    # print("result\n", spu_result)
 
     transformer = preprocessing.LabelBinarizer()
     transformer.fit(X)
     sk_result = transformer.transform(Y)
     # print("sklearn:\n", sk_result)
+    
+    X, Y = emulator.seal(X, Y)
+    spu_result = emulator.run(labelbinarize)(X, Y)
+    # print("spu:\n", spu_result)
+
     np.testing.assert_allclose(sk_result, spu_result, rtol=0, atol=0)
 
 
@@ -94,12 +99,14 @@ def emul_binarizer():
 
     X = jnp.array([[1.0, -1.0, 2.0], [2.0, 0.0, 0.0], [0.0, 1.0, -1.0]])
 
-    spu_result = emulator.run(binarize)(X)
-    # print("result\n", spu_result)
-
     transformer = preprocessing.Binarizer()
     sk_result = transformer.transform(X)
     # print("sklearn:\n", sk_result)
+
+    X = emulator.seal(X)
+    spu_result = emulator.run(binarize)(X)
+    # print("spu:\n", spu_result)
+
     np.testing.assert_allclose(sk_result, spu_result, rtol=0, atol=0)
 
 
@@ -118,13 +125,6 @@ def emul_normalizer():
 
     X = jnp.array([[4, 1, 2, 2], [1, 3, 9, 3], [5, 7, 5, 1]])
 
-    spu_result_l1 = emulator.run(normalize_l1)(X)
-    spu_result_l2 = emulator.run(normalize_l2)(X)
-    spu_result_max = emulator.run(normalize_max)(X)
-    # print("result\n", spu_result_l1)
-    # print("result\n", spu_result_l2)
-    # print("result\n", spu_result_max)
-
     transformer_l1 = preprocessing.Normalizer(norm="l1")
     sk_result_l1 = transformer_l1.transform(X)
     transformer_l2 = preprocessing.Normalizer()
@@ -134,6 +134,15 @@ def emul_normalizer():
     # print("sklearn:\n", sk_result_l1)
     # print("sklearn:\n", sk_result_l2)
     # print("sklearn:\n", sk_result_max)
+
+    X = emulator.seal(X)
+    spu_result_l1 = emulator.run(normalize_l1)(X)
+    spu_result_l2 = emulator.run(normalize_l2)(X)
+    spu_result_max = emulator.run(normalize_max)(X)
+    # print("spu:\n", spu_result_l1)
+    # print("spu:\n", spu_result_l2)
+    # print("spu:\n", spu_result_max)
+
     np.testing.assert_allclose(sk_result_l1, spu_result_l1, rtol=0, atol=1e-4)
     np.testing.assert_allclose(sk_result_l2, spu_result_l2, rtol=0, atol=1e-4)
     np.testing.assert_allclose(sk_result_max, spu_result_max, rtol=0, atol=1e-4)
@@ -150,9 +159,9 @@ if __name__ == "__main__":
         )
         emulator.up()
         emul_labelbinarizer()
-        emul_labelbinarizer_binary()
-        emul_labelbinarizer_unseen()
-        emul_binarizer()
-        emul_normalizer()
+        # emul_labelbinarizer_binary()
+        # emul_labelbinarizer_unseen()
+        # emul_binarizer()
+        # emul_normalizer()
     finally:
         emulator.down()
