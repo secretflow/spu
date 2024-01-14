@@ -36,7 +36,7 @@ class UnitTests(unittest.TestCase):
             inv_transformed = transformer.inverse_transform(transformed)
             return transformed, inv_transformed
 
-        X = jnp.array([1, 2, 6, 4, 2])
+        X = jnp.array([1, 2, 4, 6])
         Y = jnp.array([1, 6])
 
         transformer = preprocessing.LabelBinarizer(neg_label=-2, pos_label=3)
@@ -60,15 +60,13 @@ class UnitTests(unittest.TestCase):
             3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM64
         )
 
-        def labelbinarize(X, Y):
+        def labelbinarize(X):
             transformer = LabelBinarizer()
-            # transformer.fit(X, n_classes=4)
-            transformed = transformer.fit_transform(X, n_classes=2)
+            transformed = transformer.fit_transform(X, n_classes=2, unique=False)
             inv_transformed = transformer.inverse_transform(transformed)
             return transformed, inv_transformed
 
         X = jnp.array([1, -1, -1, 1])
-        Y = jnp.array([1, 6])
 
         transformer = preprocessing.LabelBinarizer()
         sk_transformed = transformer.fit_transform(X)
@@ -76,7 +74,7 @@ class UnitTests(unittest.TestCase):
         # print("sklearn:\n", sk_transformed)
         # print("sklearn:\n", sk_inv_transformed)
 
-        spu_transformed, spu_inv_transformed = spsim.sim_jax(sim, labelbinarize)(X, Y)
+        spu_transformed, spu_inv_transformed = spsim.sim_jax(sim, labelbinarize)(X)
         # print("result\n", spu_transformed)
         # print("result\n", spu_inv_transformed)
 

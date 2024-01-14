@@ -74,6 +74,9 @@ class LabelBinarizer:
 
     Firstly, use fit() to use an array to set the classes.
     The number of classes needs to be designated through parameter n_classes since SPU cannot support dynamic shape.
+    The dynamic shape problem occurs when there are duplicated elements in input of fit function.
+    The deduplication operation will cause complex computation, so it is not used by default.
+    Noted that if unique==True, the order of the classes will be kept instead of sorted.
 
     Secondly, use transform() to convert the value to a one-hot label for classes.
     The input array needs to be 1d. In sklearn, the input array is automatically transformed into 1d,
@@ -95,7 +98,7 @@ class LabelBinarizer:
         self.neg_label = neg_label
         self.pos_label = pos_label
 
-    def fit(self, y, n_classes):
+    def fit(self, y, n_classes, unique=True):
         """Fit label binarizer.
 
         Parameters
@@ -106,6 +109,9 @@ class LabelBinarizer:
         n_classes : int
             Number of classes. SPU cannot support dynamic shape,
             so this parameter needs to be designated.
+        
+        unique : bool
+            Set to False to do deduplication on classes
 
         Returns
         -------
@@ -117,12 +123,15 @@ class LabelBinarizer:
                 f"neg_label={self.neg_label} must be strictly less than "
                 f"pos_label={self.pos_label}."
             )
-        # The output of jax needs to be tensor with known size.
-        self.classes_ = jnp.unique(y, size=n_classes)
+        if unique==True:
+            self.classes_ = y
+        else:
+            # The output of jax needs to be tensor with known size.
+            self.classes_ = jnp.unique(y, size=n_classes)
         self.n_classes_ = n_classes
         return self
 
-    def fit_transform(self, y, n_classes):
+    def fit_transform(self, y, n_classes, unique=True):
         """Fit label binarizer/transform multi-class labels to binary labels.
 
         Parameters
@@ -133,13 +142,16 @@ class LabelBinarizer:
         n_classes : int
             Number of classes. SPU cannot support dynamic shape,
             so this parameter needs to be designated.
+        
+        unique : bool
+            Set to False to do deduplication on classes
 
         Returns
         -------
         ndarray of shape (n_samples, n_classes)
             Shape will be (n_samples, 1) for binary problems.
         """
-        return self.fit(y, n_classes).transform(y)
+        return self.fit(y, n_classes, unique=unique).transform(y)
 
     def transform(self, y):
         """Transform multi-class labels to binary labels.

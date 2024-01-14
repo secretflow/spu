@@ -28,7 +28,7 @@ def emul_labelbinarizer():
         inv_transformed = transformer.inverse_transform(transformed)
         return transformed, inv_transformed
 
-    X = jnp.array([1, 2, 6, 4, 2])
+    X = jnp.array([1, 2, 4, 6])
     Y = jnp.array([1, 6])
 
     transformer = preprocessing.LabelBinarizer(neg_label=-2, pos_label=3)
@@ -48,22 +48,21 @@ def emul_labelbinarizer():
 
 
 def emul_labelbinarizer_binary():
-    def labelbinarize(X, Y):
+    def labelbinarize(X):
         transformer = LabelBinarizer()
-        transformed = transformer.fit_transform(X, n_classes=2)
+        transformed = transformer.fit_transform(X, n_classes=2, unique=False)
         inv_transformed = transformer.inverse_transform(transformed)
         return transformed, inv_transformed
 
     X = jnp.array([1, -1, -1, 1])
-    Y = jnp.array([1, 6])
     transformer = preprocessing.LabelBinarizer()
     sk_transformed = transformer.fit_transform(X)
     sk_inv_transformed = transformer.inverse_transform(sk_transformed)
     # print("sklearn:\n", sk_transformed)
     # print("sklearn:\n", sk_inv_transformed)
 
-    X, Y = emulator.seal(X, Y)
-    spu_transformed, spu_inv_transformed = emulator.run(labelbinarize)(X, Y)
+    X = emulator.seal(X)
+    spu_transformed, spu_inv_transformed = emulator.run(labelbinarize)(X)
     # print("spu:\n", spu_transformed)
     # print("spu:\n", spu_inv_transformed)
 
@@ -159,9 +158,9 @@ if __name__ == "__main__":
         )
         emulator.up()
         emul_labelbinarizer()
-        # emul_labelbinarizer_binary()
-        # emul_labelbinarizer_unseen()
-        # emul_binarizer()
-        # emul_normalizer()
+        emul_labelbinarizer_binary()
+        emul_labelbinarizer_unseen()
+        emul_binarizer()
+        emul_normalizer()
     finally:
         emulator.down()
