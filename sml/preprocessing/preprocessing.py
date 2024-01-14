@@ -47,14 +47,8 @@ def label_binarize(y, *, classes, n_classes, neg_label=0, pos_label=1, unseen=Fa
     ndarray of shape (n_samples, n_classes)
         Shape will be (n_samples, 1) for binary problems.
     """
-    n_samples = y.shape[0]
-    indices = jnp.searchsorted(classes, y)
-    result = jax.nn.one_hot(indices, n_classes, dtype=jnp.int_)
-    if unseen == True:
-        indices = jnp.searchsorted(classes, y)
-        emptylike = jnp.full((n_samples, n_classes), 0)
-        boolean = jnp.tile(jnp.isin(y, classes)[:, jnp.newaxis], (1, 3))
-        result = jax.lax.select(boolean, result, emptylike)
+    eq_func = lambda x: jnp.where(classes == x, 1, 0)
+    result = jax.vmap(eq_func)(y)
 
     if neg_label != 0 or pos_label != 1:
         result = jnp.where(result, pos_label, neg_label)
