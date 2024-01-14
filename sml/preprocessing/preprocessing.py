@@ -230,7 +230,7 @@ class Binarizer:
     def __init__(self, *, threshold=0.0):
         self.threshold = threshold
 
-    def transform(self, X, copy=None):
+    def transform(self, X):
         """Binarize each element of X.
 
         Parameters
