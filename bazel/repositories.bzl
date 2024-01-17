@@ -168,10 +168,10 @@ def _com_github_pybind11_bazel():
     maybe(
         http_archive,
         name = "pybind11_bazel",
-        sha256 = "07e529a85cf4c11e1ca1b423149e86e63a3f3859c22efee3b3c5225ca89580f2",
-        strip_prefix = "pybind11_bazel-23926b00e2b2eb2fc46b17e587cf0c0cfd2f2c4b",
+        sha256 = "dc4882b23a617575d0fd822aba88aa4a14133c3d428b5a8fb83d81d03444a475",
+        strip_prefix = "pybind11_bazel-8889d39b2b925b2a47519ae09402a96f00ccf2b4",
         urls = [
-            "https://github.com/pybind/pybind11_bazel/archive/23926b00e2b2eb2fc46b17e587cf0c0cfd2f2c4b.zip",
+            "https://github.com/pybind/pybind11_bazel/archive/8889d39b2b925b2a47519ae09402a96f00ccf2b4.zip",
         ],
     )
 
