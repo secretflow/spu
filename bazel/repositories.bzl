@@ -267,10 +267,10 @@ def _com_github_nvidia_cutlass():
     maybe(
         http_archive,
         name = "com_github_nvidia_cutlass",
-        strip_prefix = "cutlass-3.3.0",
+        strip_prefix = "cutlass-3.4.0",
         urls = [
-            "https://github.com/NVIDIA/cutlass/archive/refs/tags/v3.3.0.tar.gz",
+            "https://github.com/NVIDIA/cutlass/archive/refs/tags/v3.4.0.tar.gz",
         ],
-        sha256 = "99876de94a04d0b9cdee81d4f29659bde1426b416926aef4d9a3a3a7869511a3",
+        sha256 = "49f4b854acc2a520126ceefe4f701cfe8c2b039045873e311b1f10a8ca5d5de1",
         build_file = "@spulib//bazel:nvidia_cutlass.BUILD",
     )
