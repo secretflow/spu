@@ -4,6 +4,7 @@
 [![Python](https://img.shields.io/pypi/pyversions/spu.svg)](https://pypi.org/project/spu/)
 [![PyPI version](https://img.shields.io/pypi/v/spu)](https://pypi.org/project/spu/)
 [![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/secretflow/spu/badge)](https://securityscorecards.dev/viewer/?uri=github.com/secretflow/spu)
+[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/8311/badge)](https://www.bestpractices.dev/projects/8311)
 
 SPU (Secure Processing Unit) aims to be a `provable`, `measurable` secure computation device,
 which provides computation ability while keeping your private data protected.
