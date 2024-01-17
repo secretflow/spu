@@ -62,6 +62,7 @@ workflows:
   unittest-workflow:
     when:
       and:
+        - not: << pipeline.parameters.run-asan >>
         - not: << pipeline.parameters.run-schedule >>
         - not: << pipeline.parameters.GHA_Action >>
         - not: << pipeline.parameters.GHA_Meta >>
