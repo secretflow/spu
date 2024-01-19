@@ -35,7 +35,7 @@ Runner::Runner(size_t world_size, FieldType field, ProtocolKind protocol)
 std::string Runner::compileMHlo(const std::string &mhlo,
                                 const std::vector<spu::Visibility> &vis) {
   CompilationSource source;
-  source.set_ir_type(SourceIRType::MLIR_HLO);
+  source.set_ir_type(SourceIRType::STABLEHLO);
   source.set_ir_txt(mhlo);
   for (const auto v : vis) {
     source.add_input_visibility(v);

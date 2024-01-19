@@ -24,6 +24,7 @@
 #include "stablehlo/dialect/StablehloOps.h"
 #include "xla/mlir_hlo/mhlo/IR/hlo_ops.h"
 #include "xla/mlir_hlo/mhlo/transforms/passes.h"
+#include "xla/translate/mhlo_to_hlo/translate.h"
 
 #include "libspu/compiler/common/compilation_context.h"
 #include "libspu/compiler/front_end/hlo_importer.h"
@@ -44,21 +45,33 @@ FE::FE(CompilationContext *ctx) : ctx_(ctx) {
 }
 
 mlir::OwningOpRef<mlir::ModuleOp> FE::doit(const CompilationSource &source) {
+  HloImporter importer(ctx_);
   mlir::OwningOpRef<mlir::ModuleOp> module;
-  switch (source.ir_type()) {
-  case spu::SourceIRType::XLA: {
-    HloImporter importer(ctx_);
-    module = importer.parseXlaModuleFromString(source.ir_txt());
-    break;
-  }
-  case spu::SourceIRType::MLIR_HLO: {
+
+  if (source.ir_type() == spu::SourceIRType::STABLEHLO) {
     module = mlir::parseSourceString<mlir::ModuleOp>(source.ir_txt(),
                                                      ctx_->getMLIRContext());
-    break;
-  }
-  default: {
-    SPU_THROW("Unsupported input IR type = {}", source.ir_type());
-  }
+
+    // Convert stablehlo to mhlo first
+    mlir::PassManager pm(ctx_->getMLIRContext());
+    pm.addPass(mlir::mhlo::createStablehloLegalizeToHloPass());
+    if (pm.run(module.get()).failed()) {
+      SPU_THROW("Failed to legalized stablehlo to mhlo");
+    }
+
+    // Convert back to XLA, SPU still relies on XLA to eliminate ops like
+    // batch-normal-inference
+    std::string xla_text;
+    llvm::raw_string_ostream out(xla_text);
+    if (!mlir::failed(xla::MlirHloToHloTranslateFunction(module.get(), out,
+                                                         true, true))) {
+      out.flush();
+      module = importer.parseXlaModuleFromString(xla_text);
+    }
+  } else if (source.ir_type() == spu::SourceIRType::XLA) {
+    module = importer.parseXlaModuleFromString(source.ir_txt());
+  } else {
+    SPU_THROW("Unhandled IR type = {}", source.ir_type());
   }
 
   std::string input_vis_str;

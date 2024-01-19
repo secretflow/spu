@@ -11,13 +11,14 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 
+import collections
 import functools
 from enum import Enum
 from threading import Lock
-from typing import Callable, Dict, Iterable, List
-from numpy import ndarray
+from typing import Callable, Dict, Iterable, List, Union
 
 from cachetools import LRUCache, cached
+from numpy import ndarray
 
 from .. import api as spu_api
 from .. import spu_pb2
@@ -94,8 +95,8 @@ def _jax_compilation(
     fn: Callable, static_argnums, static_argnames, args: List, kwargs: Dict
 ):
     import jax
-    from jax._src.xla_bridge import _backend_lock, _backends, register_backend_factory
     from jax._src.lib import xla_client, xla_extension_version
+    from jax._src.xla_bridge import _backend_lock, _backends, register_backend_factory
 
     # Register interpreter backend since we don't want any cpu/gpu/tpu specific optimization
     if xla_extension_version < 164:
@@ -242,50 +243,14 @@ def compile(
 
         output = cf.structured_outputs
         output_names = outputNameGen(cf.outputs)
-    elif kind == Kind.Torch:
-        import jax
-        import torch
-        import torch_mlir
-        from torch_mlir._mlir_libs._mlir.ir import Attribute, Context
-
-        assert isinstance(
-            fn, torch.nn.Module
-        ), "currently only torch.nn.Module is supported"
-
-        # convert numpy.ndarray to torch tensor as torch_mlir required
-        arg_tensors = [torch.Tensor(arg) for arg in m_args]
-        # get mlir module
-        module = torch_mlir.compile(
-            fn, arg_tensors, output_type=torch_mlir.OutputType.MHLO
-        )
-        # get mlir func op of torch.nn.Module.forward function
-        func_op = module.body.operations[0]
-        # rename func name from 'forward' to 'main'
-        with Context():
-            func_op.attributes["sym_name"] = Attribute.parse('"main"')
-
-        # parse output_num from func op signature string
-        func_sig = func_op.attributes["function_type"]
-        output_num = len(str(func_sig).split("->")[1].split(","))
-        # get mhlo
-        ir_text = bytes(str(module), 'utf-8')
-        # mock output
-        output = [0] * output_num
-        output_names = outputNameGen(output)
-        output = tuple(output) if output_num > 1 else output[0]
-        _, output = jax.tree_util.tree_flatten(output)
     else:
         raise NameError(f"Unknown frontend type {kind}")
 
     source = spu_pb2.CompilationSource()
     source.ir_txt = ir_text
+    source.ir_type = spu_pb2.SourceIRType.XLA
     source.input_visibility.extend(input_vis)
-    if kind in [Kind.JAX, Kind.Tensorflow]:
-        source.ir_type = spu_pb2.SourceIRType.XLA
-        name = fn.func.__name__ if isinstance(fn, functools.partial) else fn.__name__
-    elif kind == Kind.Torch:
-        source.ir_type = spu_pb2.SourceIRType.MLIR_HLO
-        name = repr(fn)
+    name = fn.func.__name__ if isinstance(fn, functools.partial) else fn.__name__
     mlir = spu_api.compile(source, copts)
     executable = spu_pb2.ExecutableProto(
         name=name,
@@ -294,3 +259,71 @@ def compile(
         code=mlir,
     )
     return executable, output
+
+
+def torch_compile(
+    fn: Callable,
+    args_flat: List,
+    m_args_flat: List,
+    state_dict: collections.OrderedDict(),
+    copts=spu_pb2.CompilerOptions(),
+):
+    import os
+    import torch
+    from torch_xla import stablehlo
+    from torch_xla.stablehlo import VariableType
+
+    from . import distributed
+
+    assert isinstance(
+        fn, torch.export.ExportedProgram
+    ), "input should be an exported torch model"
+
+    os.environ['PJRT_DEVICE'] = 'CPU'
+    options = stablehlo.StableHLOExportOptions()
+    options.override_tracing_arguments = m_args_flat
+    shlo = stablehlo.exported_program_to_stablehlo(fn, options)
+    method = shlo._name_to_stablehlo["forward"]
+    ir_str = method.text
+    ir_text = bytes(ir_str, 'utf-8')
+
+    name = fn.module()._get_name()
+    output_names = [
+        f'{id(name)}-out{idx}' for idx in range(len(fn.graph_signature.user_outputs))
+    ]
+    output_tree = method.meta.output_pytree_spec
+
+    source = spu_pb2.CompilationSource()
+    source.ir_txt = ir_text
+    source.ir_type = spu_pb2.SourceIRType.STABLEHLO
+
+    state_dict_idx = {k: i for i, k in enumerate(shlo._bundle.state_dict.keys())}
+    state_dict_list = list(state_dict.values())
+    args_params_flat = []
+    for loc in method.meta.input_locations:
+        if loc.type_ == VariableType.PARAMETER:
+            args_params_flat.append(state_dict_list[state_dict_idx[loc.name]])
+        elif loc.type_ == VariableType.INPUT_ARG:
+            args_params_flat.append(args_flat[loc.position])
+        else:
+            raise RuntimeError(
+                'Currently only torch models with named parameters and buffers are supported'
+            )
+    input_names = [f'{id(name)}-in{idx}' for idx in range(len(args_params_flat))]
+
+    source.input_visibility.extend(
+        [
+            arg.vtype
+            if isinstance(arg, distributed.SPU.Object)
+            else spu_pb2.Visibility.VIS_PUBLIC
+            for arg in args_params_flat
+        ]
+    )
+    mlir = spu_api.compile(source, copts)
+    executable = spu_pb2.ExecutableProto(
+        name=name,
+        input_names=input_names,
+        output_names=output_names,
+        code=mlir,
+    )
+    return executable, output_tree, args_params_flat

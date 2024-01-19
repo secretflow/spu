@@ -10,6 +10,7 @@
 >
 > please add your unreleased change here.
 
+- [Feature] Support more generic Torch model inference
 - [Improvement] Optimize one-time setup for yacl ot
 - [Improvement] Optimize sort performance
 

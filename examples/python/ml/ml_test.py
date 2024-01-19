@@ -213,20 +213,27 @@ class UnitTests(unittest.TestCase):
         score = tf_experiment.run_fit_manual_grad_spu()
         self.assertGreater(score, 0.9)
 
-    def test_torch_experiment(self):
-        from examples.python.ml.torch_experiment import torch_experiment
+    def test_torch_lr_experiment(self):
+        from examples.python.ml.torch_lr_experiment import torch_lr_experiment
 
-        model = torch_experiment.LinearRegression()
-        torch_experiment.train(model)
-        score = torch_experiment.run_inference_on_spu(model)
+        model = torch_lr_experiment.LinearRegression()
+        torch_lr_experiment.train(model)
+        score = torch_lr_experiment.run_inference_on_spu(model)
         self.assertGreater(score, 0.9)
+
+    def test_torch_resnet_experiment(self):
+        from examples.python.ml.torch_resnet_experiment import torch_resnet_experiment
+
+        model = torch_resnet_experiment.resnet
+        image = torch_resnet_experiment.input_batch
+        label = torch_resnet_experiment.run_inference_on_spu(model, image)
+        self.assertEqual(label, 258)
 
     def test_save_and_load_model(self):
         from examples.python.ml.jax_lr import jax_lr
 
         score = jax_lr.save_and_load_model()
         self.assertGreater(score, 0.9)
-        pass
 
 
 def suite():
@@ -246,7 +253,8 @@ def suite():
     suite.addTest(UnitTests('test_save_and_load_model'))
     # should put JAX tests above
     suite.addTest(UnitTests('test_tf_experiment'))
-    suite.addTest(UnitTests('test_torch_experiment'))
+    suite.addTest(UnitTests('test_torch_lr_experiment'))
+    # suite.addTest(UnitTests('test_torch_resnet_experiment'))
     return suite
 
 

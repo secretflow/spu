@@ -481,36 +481,6 @@ void execute(OpExecutor *, SPUContext *sctx, SymbolScope *sscope,
            opts);
 }
 
-void execute(OpExecutor *, SPUContext *sctx, SymbolScope *sscope,
-             mlir::pphlo::GatherOp &op, const ExecutionOptions &opts) {
-  // If input is empty, short circuit
-  auto operand = lookupValue(sscope, op.getOperand(), opts);
-  auto start_indices = lookupValue(sscope, op.getStartIndices(), opts);
-  if (operand.numel() == 0) {
-    addValue(sscope, op.getResult(), operand, opts);
-    return;
-  }
-
-  const auto &output_shape =
-      op.getResult().getType().dyn_cast<mlir::RankedTensorType>().getShape();
-
-  const auto &dim_numbers = op.getDimensionNumbers();
-
-  kernel::hlo::GatherConfig config;
-  // Sizes ss;
-  // convertDenseIntElementAttr(op.getSliceSizes(), ss);
-  config.sliceSizes = op.getSliceSizes();
-  config.indexVectorDim = dim_numbers.getIndexVectorDim();
-  config.offsetDims = dim_numbers.getOffsetDims();
-  config.collapsedSliceDims = dim_numbers.getCollapsedSliceDims();
-  config.startIndexMap = dim_numbers.getStartIndexMap();
-
-  addValue(
-      sscope, op.getResult(),
-      kernel::hlo::Gather(sctx, operand, start_indices, config, output_shape),
-      opts);
-}
-
 void execute(OpExecutor *executor, SPUContext *sctx, SymbolScope *sscope,
              mlir::pphlo::SortOp &op, const ExecutionOptions &opts) {
   auto sort_dim = op.getDimension();

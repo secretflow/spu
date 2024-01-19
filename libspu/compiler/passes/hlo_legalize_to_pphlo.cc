@@ -1227,41 +1227,6 @@ public:
 };
 
 template <>
-class HloToPPHloOpConverter<stablehlo::GatherOp>
-    : public OpConversionPattern<stablehlo::GatherOp> {
-private:
-  const ValueVisibilityMap &vis_;
-
-public:
-  HloToPPHloOpConverter(TypeConverter &type_converter, MLIRContext *context,
-                        const ValueVisibilityMap &vis)
-      : OpConversionPattern<stablehlo::GatherOp>(type_converter, context),
-        vis_(vis) {}
-
-  LogicalResult
-  matchAndRewrite(stablehlo::GatherOp op, stablehlo::GatherOpAdaptor adaptor,
-                  ConversionPatternRewriter &rewriter) const override {
-    auto old_attr = op.getDimensionNumbers();
-    pphlo::GatherDimensionNumbersAttr attr = GatherDimensionNumbersAttr::get(
-        op.getContext(), old_attr.getOffsetDims(),
-        old_attr.getCollapsedSliceDims(), old_attr.getStartIndexMap(),
-        old_attr.getIndexVectorDim());
-
-    auto result_vis = vis_.getValueVisibility(op.getResult());
-
-    Type resultType = HloToPPHloTypeConverter::getTypeWithVisibility(
-        this->getTypeConverter()->convertType(op.getType()), result_vis);
-
-    rewriter.replaceOpWithNewOp<pphlo::GatherOp>(
-        op, resultType, adaptor.getOperands()[0], adaptor.getOperands()[1],
-        attr, ConvertDenseIntElementAttr(op.getSliceSizes()),
-        op.getIndicesAreSorted());
-
-    return success();
-  }
-};
-
-template <>
 class HloToPPHloOpConverter<stablehlo::ConvolutionOp>
     : public OpConversionPattern<stablehlo::ConvolutionOp> {
 private:
@@ -1628,7 +1593,6 @@ private:
                 HloToPPHloOpConverter<stablehlo::DivOp>,
                 HloToPPHloOpConverter<stablehlo::DotOp>,
                 HloToPPHloOpConverter<stablehlo::DotGeneralOp>,
-                HloToPPHloOpConverter<stablehlo::GatherOp>,
                 HloToPPHloOpConverter<stablehlo::DynamicSliceOp>,
                 HloToPPHloOpConverter<stablehlo::DynamicUpdateSliceOp>,
                 HloToPPHloOpConverter<stablehlo::ExpOp>,

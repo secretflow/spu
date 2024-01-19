@@ -40,7 +40,8 @@ py_test(
         "//examples/python/ml/stax_mnist_classifier",
         "//examples/python/ml/stax_nn",
         "//examples/python/ml/tf_experiment",
-        "//examples/python/ml/torch_experiment",
+        "//examples/python/ml/torch_lr_experiment",
+        "//examples/python/ml/torch_resnet_experiment",
         "//spu/utils:distributed",
     ],
 )

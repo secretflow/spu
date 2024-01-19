@@ -537,7 +537,6 @@ def builtin_spu_init(
         return
     desc = libspu.link.Desc()
     desc.recv_timeout_ms = 100 * 1000  # 100 seconds
-    desc.throttle_window_size = 0  # disable throttle
     desc.http_max_payload_size = 32 * 1024 * 1024  # Default set link payload to 32M
     for rank, addr in enumerate(addrs):
         desc.add_party(f"r{rank}", addr)
@@ -839,8 +838,20 @@ class SPU(Device):
 
         def __init__(self, device: Device, pyfunc: Callable):
             super().__init__(device, pyfunc)
+            self.state_dict = None
 
-        def __call__(self, *args, **kwargs):
+        def _place_state_dict(self, state_dict):
+            # place arguments onto this device.
+            def place(obj):
+                if not isinstance(obj, Device.Object):
+                    return obj
+                return Device.move(obj, self.device)
+
+            return tree_map(place, state_dict)
+
+        def __call__(self, state_dict, *args, **kwargs):
+            # place state_dict
+            self.state_dict = self._place_state_dict(state_dict)
             args, kwargs = self.device._place_arguments(*args, **kwargs)
 
             # now, all object are either PyObject or SPU.DeviceObject
@@ -871,12 +882,17 @@ class SPU(Device):
                 builtin_fetch_meta, results[0]
             )
 
-            ret_flat = [
+            ret = [
                 SPU.Object(self.device, share_refs, *meta)
                 for share_refs, meta in zip(zip(*results), metas)
             ]
 
-            return tree_unflatten(out_tree, ret_flat)
+            from torch.utils import _pytree as pytree
+
+            if out_tree is not None:
+                out_spec = pytree.treespec_loads(out_tree)
+                ret = pytree.tree_unflatten(ret, out_spec)
+            return ret
 
         def dump_pphlo(self, *args, **kwargs):
             args, kwargs = self.device._place_arguments(*args, **kwargs)
@@ -884,38 +900,32 @@ class SPU(Device):
             return executable.code.decode('utf-8')
 
         def _compile_torch_func(self, fn, *args, **kwargs):
+            import torch
+
             def mock_parameters(obj: Union[SPU.Object, np.ndarray]):
                 if isinstance(obj, SPU.Object):
-                    return np.zeros(shape=obj.shape, dtype=obj.dtype)
+                    zeros = np.zeros(shape=obj.shape, dtype=obj.dtype)
+                    return torch.from_numpy(zeros)
                 else:
                     assert not isinstance(obj, Device.Object)
                     return obj
 
+            assert isinstance(
+                fn, torch.nn.Module
+            ), "currently only torch.nn.Module is supported"
+
             mock_args, mock_kwargs = tree_map(mock_parameters, (args, kwargs))
 
+            exported_fn = torch._export.export(fn, args=mock_args, kwargs=mock_kwargs)
+
             args_flat, _ = jax.tree_util.tree_flatten((args, kwargs))
+            m_args_flat, _ = jax.tree_util.tree_flatten((mock_args, mock_kwargs))
 
-            fn_name = repr(fn)
-
-            in_vis = [
-                arg.vtype
-                if isinstance(arg, SPU.Object)
-                else spu_pb2.Visibility.VIS_PUBLIC
-                for arg in args_flat
-            ]
-            in_names = [f'{id(fn_name)}-in{idx}' for idx in range(len(args_flat))]
-
-            def outputNameGen(out_flat: List):
-                return [f'{id(fn_name)}-out{idx}' for idx in range(len(out_flat))]
-
-            executable, output_tree = spu_fe.compile(
-                spu_fe.Kind.Torch,
-                fn,
-                mock_args,
-                mock_kwargs,
-                in_names,
-                in_vis,
-                outputNameGen,
+            executable, output_tree, args_flat = spu_fe.torch_compile(
+                exported_fn,
+                args_flat,
+                m_args_flat,
+                state_dict=self.state_dict,
             )
             return executable, args_flat, output_tree
 

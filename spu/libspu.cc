@@ -152,6 +152,7 @@ void BindLink(py::module& m) {
       .def_readwrite("server_ssl_opts", &ContextDesc::server_ssl_opts)
       .def_readwrite("link_type", &ContextDesc::link_type)
       .def_readwrite("retry_opts", &ContextDesc::retry_opts)
+      .def_readwrite("disable_msg_seq_id", &ContextDesc::disable_msg_seq_id)
       .def(
           "add_party",
           [](ContextDesc& desc, std::string id, std::string host) {
