@@ -1,2 +1,0 @@
-dm-haiku==0.0.10
-plotnine

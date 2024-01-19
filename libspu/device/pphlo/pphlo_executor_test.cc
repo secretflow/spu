@@ -449,11 +449,11 @@ TEST_P(ExecutorTest, ReduceWindowStableHloTest) {
 
   r.run(r.compileMHlo(R"(
 func.func @main(%arg0: tensor<3x2xi32>) -> (tensor<2x2xi32>) {
-  %0 = "mhlo.constant"() {value = dense<0> : tensor<i32>} : () -> tensor<i32>
-  %1 = "mhlo.reduce_window"(%arg0, %0) ( {
+  %0 = "stablehlo.constant"() {value = dense<0> : tensor<i32>} : () -> tensor<i32>
+  %1 = "stablehlo.reduce_window"(%arg0, %0) ( {
     ^bb0(%arg1: tensor<i32>, %arg2: tensor<i32>):  // no predecessors
-      %2 = "mhlo.maximum"(%arg1, %arg2) : (tensor<i32>, tensor<i32>) -> tensor<i32>
-      "mhlo.return"(%2) : (tensor<i32>) -> ()
+      %2 = "stablehlo.maximum"(%arg1, %arg2) : (tensor<i32>, tensor<i32>) -> tensor<i32>
+      "stablehlo.return"(%2) : (tensor<i32>) -> ()
     }) {
       base_dilations = dense<[2, 1]> : tensor<2xi64>,
       padding = dense<[[2, 1], [0, 0]]> : tensor<2x2xi64>,
@@ -478,11 +478,11 @@ TEST_P(ExecutorTest, ReduceWindowStableHloTest2) {
 
   r.run(r.compileMHlo(R"(
 func.func @main(%arg0: tensor<3x2xi32>) -> (tensor<1x2xi32>) {
-  %0 = "mhlo.constant"() {value = dense<0> : tensor<i32>} : () -> tensor<i32>
-  %1 = "mhlo.reduce_window"(%arg0, %0) ( {
+  %0 = "stablehlo.constant"() {value = dense<0> : tensor<i32>} : () -> tensor<i32>
+  %1 = "stablehlo.reduce_window"(%arg0, %0) ( {
     ^bb0(%arg1: tensor<i32>, %arg2: tensor<i32>):  // no predecessors
-      %2 = "mhlo.maximum"(%arg1, %arg2) : (tensor<i32>, tensor<i32>) -> tensor<i32>
-      "mhlo.return"(%2) : (tensor<i32>) -> ()
+      %2 = "stablehlo.maximum"(%arg1, %arg2) : (tensor<i32>, tensor<i32>) -> tensor<i32>
+      "stablehlo.return"(%2) : (tensor<i32>) -> ()
     }) {
       base_dilations = dense<[2, 1]> : tensor<2xi64>,
       padding = dense<[[2, 1], [0, 0]]> : tensor<2x2xi64>,
@@ -583,11 +583,11 @@ TEST_P(ExecutorTest, ReduceWindowMaxIotaBaseDilation) {
 
   r.run(r.compileMHlo(R"(
 func.func @main(%arg0: tensor<4x4xi32>) -> (tensor<6x6xi32>) {
-  %0 = "mhlo.constant"() {value = dense<0> : tensor<i32>} : () -> tensor<i32>
-  %1 = "mhlo.reduce_window"(%arg0, %0) ( {
+  %0 = "stablehlo.constant"() {value = dense<0> : tensor<i32>} : () -> tensor<i32>
+  %1 = "stablehlo.reduce_window"(%arg0, %0) ( {
     ^bb0(%arg1: tensor<i32>, %arg2: tensor<i32>):  // no predecessors
-      %2 = "mhlo.maximum"(%arg1, %arg2) : (tensor<i32>, tensor<i32>) -> tensor<i32>
-      "mhlo.return"(%2) : (tensor<i32>) -> ()
+      %2 = "stablehlo.maximum"(%arg1, %arg2) : (tensor<i32>, tensor<i32>) -> tensor<i32>
+      "stablehlo.return"(%2) : (tensor<i32>) -> ()
     }) {
       base_dilations = dense<2> : tensor<2xi64>,
       padding = dense<0> : tensor<2x2xi64>,
@@ -615,11 +615,11 @@ TEST_P(ExecutorTest, ReduceWindowMaxIotaStrideBaseDilation) {
 
   auto compiled = r.compileMHlo(R"(
 func.func @main(%arg0: tensor<4x4xi32>) -> (tensor<3x3xi32>) {
-  %0 = "mhlo.constant"() {value = dense<0> : tensor<i32>} : () -> tensor<i32>
-  %1 = "mhlo.reduce_window"(%arg0, %0) ( {
+  %0 = "stablehlo.constant"() {value = dense<0> : tensor<i32>} : () -> tensor<i32>
+  %1 = "stablehlo.reduce_window"(%arg0, %0) ( {
     ^bb0(%arg1: tensor<i32>, %arg2: tensor<i32>):  // no predecessors
-      %2 = "mhlo.maximum"(%arg1, %arg2) : (tensor<i32>, tensor<i32>) -> tensor<i32>
-      "mhlo.return"(%2) : (tensor<i32>) -> ()
+      %2 = "stablehlo.maximum"(%arg1, %arg2) : (tensor<i32>, tensor<i32>) -> tensor<i32>
+      "stablehlo.return"(%2) : (tensor<i32>) -> ()
     }) {base_dilations = dense<2> : tensor<2xi64>, padding = dense<0> : tensor<2x2xi64>, window_dilations = dense<1> : tensor<2xi64>, window_dimensions = dense<2> : tensor<2xi64>, window_strides = dense<2> : tensor<2xi64>} : (tensor<4x4xi32>, tensor<i32>) -> tensor<3x3xi32>
 
   return %1 :  tensor<3x3xi32>
@@ -642,11 +642,11 @@ TEST_P(ExecutorTest, ReduceWindowMaxIotaStrideBothDilation) {
 
   auto compiled = r.compileMHlo(R"(
 func.func @main(%arg0: tensor<4x4xi32>) -> (tensor<3x3xi32>) {
-  %0 = "mhlo.constant"() {value = dense<0> : tensor<i32>} : () -> tensor<i32>
-  %1 = "mhlo.reduce_window"(%arg0, %0) ( {
+  %0 = "stablehlo.constant"() {value = dense<0> : tensor<i32>} : () -> tensor<i32>
+  %1 = "stablehlo.reduce_window"(%arg0, %0) ( {
     ^bb0(%arg1: tensor<i32>, %arg2: tensor<i32>):  // no predecessors
-      %2 = "mhlo.maximum"(%arg1, %arg2) : (tensor<i32>, tensor<i32>) -> tensor<i32>
-      "mhlo.return"(%2) : (tensor<i32>) -> ()
+      %2 = "stablehlo.maximum"(%arg1, %arg2) : (tensor<i32>, tensor<i32>) -> tensor<i32>
+      "stablehlo.return"(%2) : (tensor<i32>) -> ()
     }) {base_dilations = dense<2> : tensor<2xi64>, padding = dense<0> : tensor<2x2xi64>, window_dilations = dense<2> : tensor<2xi64>, window_dimensions = dense<2> : tensor<2xi64>, window_strides = dense<2> : tensor<2xi64>} : (tensor<4x4xi32>, tensor<i32>) -> tensor<3x3xi32>
 
   return %1 :  tensor<3x3xi32>
@@ -669,11 +669,11 @@ TEST_P(ExecutorTest, ReduceWindowMaxIotaPaddingStrideBaseDilation) {
 
   auto compiled = r.compileMHlo(R"(
 func.func @main(%arg0: tensor<4x4xi32>) -> (tensor<3x3xi32>) {
-  %0 = "mhlo.constant"() {value = dense<0> : tensor<i32>} : () -> tensor<i32>
-  %1 = "mhlo.reduce_window"(%arg0, %0) ( {
+  %0 = "stablehlo.constant"() {value = dense<0> : tensor<i32>} : () -> tensor<i32>
+  %1 = "stablehlo.reduce_window"(%arg0, %0) ( {
     ^bb0(%arg1: tensor<i32>, %arg2: tensor<i32>):  // no predecessors
-      %2 = "mhlo.maximum"(%arg1, %arg2) : (tensor<i32>, tensor<i32>) -> tensor<i32>
-      "mhlo.return"(%2) : (tensor<i32>) -> ()
+      %2 = "stablehlo.maximum"(%arg1, %arg2) : (tensor<i32>, tensor<i32>) -> tensor<i32>
+      "stablehlo.return"(%2) : (tensor<i32>) -> ()
     }) {base_dilations = dense<2> : tensor<2xi64>, padding = dense<1> : tensor<2x2xi64>, window_dilations = dense<1> : tensor<2xi64>, window_dimensions = dense<3> : tensor<2xi64>, window_strides = dense<3> : tensor<2xi64>} : (tensor<4x4xi32>, tensor<i32>) -> tensor<3x3xi32>
 
   return %1 : tensor<3x3xi32>
@@ -846,124 +846,6 @@ func.func @main(%arg0: tensor<!pphlo.pub<f32>>) -> (tensor<!pphlo.pub<i32>>) {
   r.verifyOutput(reinterpret_cast<int32_t *>(&in));
 }
 
-void testGatherImpl(size_t world_size, FieldType field, ProtocolKind protocol,
-                    const xt::xarray<int> &operand,
-                    const xt::xarray<int> &indices,
-                    const xt::xarray<int> &expected, const std::string &mhlo) {
-  // Public index
-  {
-    Runner r(world_size, field, protocol);
-
-    r.addInput(operand);
-    // Start indices
-    r.addInput(indices);
-
-    auto compiled = r.compileMHlo(mhlo, {VIS_PUBLIC, VIS_PUBLIC});
-
-    EXPECT_THAT(compiled, testing::HasSubstr("pphlo.gather"));
-
-    r.run(compiled);
-
-    r.verifyOutput(expected.data());
-  }
-
-  // Secret index
-  {
-    Runner r(world_size, field, protocol);
-
-    r.addInput(operand);
-    // Start indices
-    r.addInput(indices, VIS_SECRET);
-
-    auto compiled = r.compileMHlo(mhlo, {VIS_PUBLIC, VIS_SECRET});
-
-    EXPECT_THAT(compiled, testing::Not(testing::HasSubstr("pphlo.gather")));
-
-    r.run(compiled);
-
-    r.verifyOutput(expected.data());
-  }
-}
-
-TEST_P(ExecutorTest, Gather1) {
-  std::string mhlo = R"(
-func.func @main(%arg0: tensor<3x3xi32>, %arg1: tensor<2xi32>) -> (tensor<2x3xi32>) {
-    %0 = "mhlo.gather"(%arg0, %arg1) {dimension_numbers = #mhlo.gather<offset_dims = [1], collapsed_slice_dims = [0], start_index_map = [0], index_vector_dim = 1>, indices_are_sorted = false, slice_sizes = dense<[1, 3]> : tensor<2xi64>} : (tensor<3x3xi32>, tensor<2xi32>) -> tensor<2x3xi32>
-    return %0 : tensor<2x3xi32>
-})";
-
-  auto operand = xt::xarray<int>{{1, 2, 3}, {4, 5, 6}, {7, 8, 9}};
-  auto indices = xt::xarray<int>{0, 2};
-  xt::xarray<int> expected = {{1, 2, 3}, {7, 8, 9}};
-
-  testGatherImpl(std::get<0>(GetParam()), std::get<1>(GetParam()),
-                 std::get<2>(GetParam()), operand, indices, expected, mhlo);
-}
-
-TEST_P(ExecutorTest, Gather2) {
-  std::string mhlo = R"(
-func.func @main(%arg0: tensor<3x3xi32>, %arg1: tensor<2xi32>) -> (tensor<3x2xi32>) {
-    %0 = "mhlo.gather"(%arg0, %arg1) {dimension_numbers = #mhlo.gather<offset_dims = [0], collapsed_slice_dims = [1], start_index_map = [1], index_vector_dim = 1>, indices_are_sorted = false, slice_sizes = dense<[3,1]> : tensor<2xi64>} : (tensor<3x3xi32>, tensor<2xi32>) -> tensor<3x2xi32>
-    return %0 : tensor<3x2xi32>
-})";
-
-  auto operand = xt::xarray<int>{{1, 2, 3}, {4, 5, 6}, {7, 8, 9}};
-  auto indices = xt::xarray<int>{0, 2};
-  xt::xarray<int> expected = {{1, 3}, {4, 6}, {7, 9}};
-
-  testGatherImpl(std::get<0>(GetParam()), std::get<1>(GetParam()),
-                 std::get<2>(GetParam()), operand, indices, expected, mhlo);
-}
-
-TEST_P(ExecutorTest, GatherBatch) {
-  std::string mhlo = R"(
-func.func @main(%arg0: tensor<3x3xi32>, %arg1: tensor<2x2xi32>) -> (tensor<2x3x2xi32>) {
-    %0 = "mhlo.gather"(%arg0, %arg1) {dimension_numbers = #mhlo.gather<offset_dims = [1], collapsed_slice_dims = [1], start_index_map = [1], index_vector_dim = 2>, indices_are_sorted = false, slice_sizes = dense<[3,1]> : tensor<2xi64>} : (tensor<3x3xi32>, tensor<2x2xi32>) -> tensor<2x3x2xi32>
-    return %0 : tensor<2x3x2xi32>
-})";
-
-  auto operand = xt::xarray<int>{{1, 2, 3}, {4, 5, 6}, {7, 8, 9}};
-  auto indices = xt::xarray<int>{{0, 2}, {2, 1}};
-
-  xt::xarray<int> expected = {{{1, 3}, {4, 6}, {7, 9}},
-                              {{3, 2}, {6, 5}, {9, 8}}};
-
-  testGatherImpl(std::get<0>(GetParam()), std::get<1>(GetParam()),
-                 std::get<2>(GetParam()), operand, indices, expected, mhlo);
-}
-
-TEST_P(ExecutorTest, GatherNd) {
-  std::string mhlo = R"(
-func.func @main(%arg0: tensor<3x3x2xi32>, %arg1: tensor<2x2xi32>) -> (tensor<2x2xi32>) {
-    %0 = "mhlo.gather"(%arg0, %arg1) {dimension_numbers = #mhlo.gather<offset_dims = [1], collapsed_slice_dims = [0,1], start_index_map = [0,1], index_vector_dim = 1>, indices_are_sorted = false, slice_sizes = dense<[1,1,2]> : tensor<3xi64>} : (tensor<3x3x2xi32>, tensor<2x2xi32>) -> tensor<2x2xi32>
-    return %0 : tensor<2x2xi32>
-})";
-  const xt::xarray<int> operand = {{{-1, 1}, {-2, 2}, {-3, 3}},
-                                   {{-4, 4}, {-5, 5}, {-6, 6}},
-                                   {{-7, 7}, {-8, 8}, {-9, 9}}};
-  auto indices = xt::xarray<int>{{0, 0}, {1, 0}};
-  xt::xarray<int> expected = {{-1, 1}, {-4, 4}};
-
-  testGatherImpl(std::get<0>(GetParam()), std::get<1>(GetParam()),
-                 std::get<2>(GetParam()), operand, indices, expected, mhlo);
-}
-
-TEST_P(ExecutorTest, GatherNdNonDefaultIndexVectorDim) {
-  std::string mhlo = R"(
-func.func @main(%arg0: tensor<3x3x2xi32>, %arg1: tensor<2x2xi32>) -> (tensor<2x2xi32>) {
-    %0 = "mhlo.gather"(%arg0, %arg1) {dimension_numbers = #mhlo.gather<offset_dims = [1], collapsed_slice_dims = [0,1], start_index_map = [0,1], index_vector_dim = 0>, indices_are_sorted = false, slice_sizes = dense<[1,1,2]> : tensor<3xi64>} : (tensor<3x3x2xi32>, tensor<2x2xi32>) -> tensor<2x2xi32>
-    return %0 : tensor<2x2xi32>
-})";
-  xt::xarray<int> operand = {{{-1, 1}, {-2, 2}, {-3, 3}},
-                             {{-4, 4}, {-5, 5}, {-6, 6}},
-                             {{-7, 7}, {-8, 8}, {-9, 9}}};
-  auto indices = xt::xarray<int>{{0, 0}, {1, 0}};
-  xt::xarray<int> expected = {{-2, 2}, {-1, 1}};
-
-  testGatherImpl(std::get<0>(GetParam()), std::get<1>(GetParam()),
-                 std::get<2>(GetParam()), operand, indices, expected, mhlo);
-}
-
 TEST_P(ExecutorTest, Simple4x4Conv2DWith2x2Kernel) {
   Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
            std::get<2>(GetParam()));
@@ -984,7 +866,7 @@ TEST_P(ExecutorTest, Simple4x4Conv2DWith2x2Kernel) {
 
   auto ir = r.compileMHlo(R"(
 func.func @main(%arg0: tensor<1x1x4x4xf32>, %arg1: tensor<1x1x2x2xf32>) -> (tensor<1x1x4x4xf32>) {
-    %0 = mhlo.convolution(%arg0, %arg1)
+    %0 = stablehlo.convolution(%arg0, %arg1)
             dim_numbers = [b, f, 0, 1]x[o, i, 0, 1]->[b, f, 0, 1],
             window = {stride = [1, 1], pad = [[0, 1], [0, 1]], lhs_dilate = [1, 1], rhs_dilate = [1, 1]}
             {
@@ -1023,7 +905,7 @@ TEST_P(ExecutorTest, Conv2DGeneralDimensions) {
 
   auto ir = r.compileMHlo(R"(
 func.func @main(%arg0: tensor<2x3x1x4xf32>, %arg1:tensor<1x3x2x3xf32>) -> (tensor<1x1x1x2xf32>) {
-    %0 = mhlo.convolution(%arg0, %arg1)
+    %0 = stablehlo.convolution(%arg0, %arg1)
           dim_numbers = [f, 0, b, 1]x[o, 1, i,0]->[f, 0, b, 1],
           window = {stride = [1, 1], pad = [[0, 0], [0, 0]], lhs_dilate = [1, 1], rhs_dilate = [1, 1]}
           {
@@ -1061,7 +943,7 @@ TEST_P(ExecutorTest, DilatedBaseConv2DWithHighPadding) {
 
   auto ir = r.compileMHlo(R"(
 func.func @main(%arg0: tensor<1x1x4x4xf32>, %arg1: tensor<1x1x2x2xf32>) -> (tensor<1x1x7x7xf32>) {
-    %0 = mhlo.convolution(%arg0, %arg1)
+    %0 = stablehlo.convolution(%arg0, %arg1)
           dim_numbers = [b, f, 0, 1]x[o, i, 0, 1]->[b, f, 0, 1],
           window = {stride = [1, 1], pad = [[0, 1], [0, 1]], lhs_dilate = [2, 2], rhs_dilate = [1, 1]}
           {
@@ -1105,7 +987,7 @@ TEST_P(ExecutorTest, DilatedBaseConv2DWithLowAndHighPadding) {
 
   auto ir = r.compileMHlo(R"(
 func.func @main(%arg0: tensor<1x1x4x4xf32>, %arg1: tensor<1x1x2x2xf32>) -> (tensor<1x1x8x8xf32>) {
-    %0 = mhlo.convolution(%arg0, %arg1)
+    %0 = stablehlo.convolution(%arg0, %arg1)
           dim_numbers = [b, f, 0, 1]x[o, i, 0, 1]->[b, f, 0, 1],
           window = {stride = [1, 1], pad = [[1, 1], [1, 1]], lhs_dilate = [2, 2], rhs_dilate = [1, 1]}
           {
@@ -1151,7 +1033,7 @@ TEST_P(ExecutorTest, FlatRhsDilation) {
 
   auto ir = r.compileMHlo(R"(
 func.func @main(%arg0: tensor<1x1x4x6xf32>, %arg1: tensor<1x1x2x3xf32>) -> (tensor<1x1x2x2xf32>) {
-    %0 = mhlo.convolution(%arg0, %arg1)
+    %0 = stablehlo.convolution(%arg0, %arg1)
           dim_numbers = [b, f, 0, 1]x[o, i, 0, 1]->[b, f, 0, 1],
           window = {stride = [1, 1], pad = [[0, 0], [0, 0]], lhs_dilate = [1, 1], rhs_dilate = [2, 2]}
           {
@@ -2509,21 +2391,21 @@ TEST_P(ExecutorTest, OptimizedMaxPool1) {
 
   auto ir = r.compileMHlo(R"(
 func.func @main(%arg0: tensor<4x6xi32>, %arg1: tensor<2x2xi32>) -> (tensor<2x2xi32>, tensor<4x6xi32>) {
-  %0 = mhlo.constant dense<0> : tensor<i32>
-  %1 = "mhlo.reduce_window"(%arg0, %0) ({
+  %0 = stablehlo.constant dense<0> : tensor<i32>
+  %1 = "stablehlo.reduce_window"(%arg0, %0) ({
     ^bb0(%arg2: tensor<i32>, %arg3: tensor<i32>):
-      %3 = mhlo.maximum %arg2, %arg3 : tensor<i32>
-      "mhlo.return"(%3) : (tensor<i32>) -> ()
+      %3 = stablehlo.maximum %arg2, %arg3 : tensor<i32>
+      "stablehlo.return"(%3) : (tensor<i32>) -> ()
     }) {base_dilations = dense<1> : tensor<2xi64>, padding = dense<0> : tensor<2x2xi64>, window_dilations = dense<1> : tensor<2xi64>,
         window_dimensions = dense<[2,3]> : tensor<2xi64>, window_strides = dense<[2, 3]> : tensor<2xi64>} : (tensor<4x6xi32>, tensor<i32>) -> tensor<2x2xi32>
-  %2 = "mhlo.select_and_scatter"(%arg0, %arg1, %0) ({
+  %2 = "stablehlo.select_and_scatter"(%arg0, %arg1, %0) ({
     ^bb0(%arg3: tensor<i32>, %arg4: tensor<i32>):
-      %3 = "mhlo.compare"(%arg3, %arg4) {comparison_direction = #mhlo<comparison_direction GE>} : (tensor<i32>, tensor<i32>) -> tensor<i1>
-      "mhlo.return"(%3) : (tensor<i1>) -> ()
+      %3 = "stablehlo.compare"(%arg3, %arg4) {comparison_direction = #stablehlo<comparison_direction GE>} : (tensor<i32>, tensor<i32>) -> tensor<i1>
+      "stablehlo.return"(%3) : (tensor<i1>) -> ()
     }, {
     ^bb0(%arg3: tensor<i32>, %arg4: tensor<i32>):
-      %3 = mhlo.add %arg3, %arg4 : tensor<i32>
-      "mhlo.return"(%3) : (tensor<i32>) -> ()
+      %3 = stablehlo.add %arg3, %arg4 : tensor<i32>
+      "stablehlo.return"(%3) : (tensor<i32>) -> ()
     }) {padding = dense<0> : tensor<2x2xi64>, window_dimensions = dense<[2,3]> : tensor<2xi64>, window_strides = dense<[2,3]> : tensor<2xi64>} : (tensor<4x6xi32>, tensor<2x2xi32>, tensor<i32>) -> tensor<4x6xi32>
     return %1, %2 : tensor<2x2xi32>, tensor<4x6xi32>
 })",
@@ -2758,11 +2640,11 @@ TEST_P(ExecutorTest, MixedPayload) {
   r.run(r.compileMHlo(
             R"(
 func.func @main(%arg0: tensor<20xi32>) -> (tensor<20xi32>, tensor<20xi32>) {
-    %0 = "mhlo.iota"() {iota_dimension = 0 : i64} : () -> tensor<20xi32>
-    %1:2 = "mhlo.sort"(%arg0, %0) ({
+    %0 = "stablehlo.iota"() {iota_dimension = 0 : i64} : () -> tensor<20xi32>
+    %1:2 = "stablehlo.sort"(%arg0, %0) ({
     ^bb0(%arg1: tensor<i32>, %arg2: tensor<i32>, %arg3: tensor<i32>, %arg4: tensor<i32>):
-      %2 = mhlo.compare  LT, %arg1, %arg2 : (tensor<i32>, tensor<i32>) -> tensor<i1>
-      mhlo.return %2 : tensor<i1>
+      %2 = stablehlo.compare  LT, %arg1, %arg2 : (tensor<i32>, tensor<i32>) -> tensor<i1>
+      stablehlo.return %2 : tensor<i1>
     }) {dimension = 0 : i64, is_stable = true} : (tensor<20xi32>, tensor<20xi32>) -> (tensor<20xi32>, tensor<20xi32>)
     return %1#0, %1#1: tensor<20xi32>, tensor<20xi32>
 })",
@@ -2788,11 +2670,11 @@ TEST_P(ExecutorTest, MixedPayloadDescending) {
   r.run(r.compileMHlo(
             R"(
 func.func @main(%arg0: tensor<20xi32>) -> (tensor<20xi32>, tensor<20xi32>) {
-    %0 = "mhlo.iota"() {iota_dimension = 0 : i64} : () -> tensor<20xi32>
-    %1:2 = "mhlo.sort"(%arg0, %0) ({
+    %0 = "stablehlo.iota"() {iota_dimension = 0 : i64} : () -> tensor<20xi32>
+    %1:2 = "stablehlo.sort"(%arg0, %0) ({
     ^bb0(%arg1: tensor<i32>, %arg2: tensor<i32>, %arg3: tensor<i32>, %arg4: tensor<i32>):
-      %2 = mhlo.compare  GT, %arg1, %arg2 : (tensor<i32>, tensor<i32>) -> tensor<i1>
-      mhlo.return %2 : tensor<i1>
+      %2 = stablehlo.compare  GT, %arg1, %arg2 : (tensor<i32>, tensor<i32>) -> tensor<i1>
+      stablehlo.return %2 : tensor<i1>
     }) {dimension = 0 : i64, is_stable = true} : (tensor<20xi32>, tensor<20xi32>) -> (tensor<20xi32>, tensor<20xi32>)
     return %1#0, %1#1: tensor<20xi32>, tensor<20xi32>
 })",

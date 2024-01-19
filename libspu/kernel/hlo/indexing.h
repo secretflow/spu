@@ -22,20 +22,6 @@ class SPUContext;
 
 namespace spu::kernel::hlo {
 
-struct GatherConfig {
-  spu::Sizes sliceSizes;
-  int64_t indexVectorDim;
-  spu::Axes offsetDims;
-  spu::Axes collapsedSliceDims;
-  spu::Axes startIndexMap;
-};
-
-// This is ported from
-// https://github.com/tensorflow/tensorflow/blob/bf4c6ad46dac1f7f69911e2bfc48e141a39b40af/tensorflow/compiler/xla/service/hlo_evaluator.cc#L1774
-spu::Value Gather(SPUContext *ctx, const spu::Value &operand,
-                  const spu::Value &start_indices, const GatherConfig &config,
-                  const Shape &result_shape);
-
 spu::Value DynamicUpdateSlice(SPUContext *ctx, const spu::Value &operand,
                               const spu::Value &update,
                               absl::Span<const spu::Value> start_indices);

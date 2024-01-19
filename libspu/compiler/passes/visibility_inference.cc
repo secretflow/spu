@@ -306,14 +306,6 @@ void VisibilityInference::inferOperation(Operation &op) {
     value_vis_.setValueVisibility(op.getResult(0), Visibility::VIS_PUBLIC);
   } else if (llvm::isa<stablehlo::SortOp>(op)) {
     inferSort(op);
-  } else if (llvm::isa<stablehlo::GatherOp>(op)) {
-    // For gather op, if either operand or indices is a secret, result is a
-    // secret
-    auto operand_vis = value_vis_.getValueVisibility(op.getOperand(0));
-    auto indices_vis = value_vis_.getValueVisibility(op.getOperand(1));
-    value_vis_.setValueVisibility(
-        op.getResult(0),
-        TypeTools::inferResultVisibility({operand_vis, indices_vis}));
   } else if (llvm::isa<stablehlo::SelectAndScatterOp>(op)) {
     inferSelectAndScatter(op);
   } else if (llvm::isa<stablehlo::CustomCallOp>(op)) {

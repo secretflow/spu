@@ -993,26 +993,6 @@ def HLO_PadOp
   let results = (outs PPHLO_Tensor);
 }
 
-def PPHLO_GatherOp : PPHLO_Op<"gather", [Pure]> {
-  let summary = "Gather operator";
-  let description = [{
-    Stitches together several slices of `operand` from offsets specified in
-    `start_indices` (each slice at a potentially different runtime offset).
-
-    See https://www.tensorflow.org/xla/operation_semantics#gather.
-  }];
-
-  let arguments = (ins
-    PPHLO_Tensor:$operand,
-    PPHLO_IntTensor:$start_indices,
-    GatherDimensionNumbers:$dimension_numbers,
-    DenseI64ArrayAttr:$slice_sizes,
-    DefaultValuedAttr<BoolAttr, "false">:$indices_are_sorted
-  );
-
-  let results = (outs PPHLO_Tensor);
-}
-
 def ConvolutionAttributes {
   dag attributes = (ins
     // Default value: one for each of the spatial dimension.

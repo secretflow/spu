@@ -1058,9 +1058,19 @@ LogicalResult inferDynamicSliceOp(std::optional<Location> location,
     }
   }
 
+  TypeTools tools;
   // dynamic_slice_c5
-  inferredReturnTypes.emplace_back(
-      RankedTensorType::get(sliceSizes, rankedOperandType.getElementType()));
+  llvm::SmallVector<Visibility> vis(startIndicesTypes.size() + 1);
+  vis[0] = tools.getTypeVisibility(operandType);
+  for (const auto& index_type : llvm::enumerate(startIndicesTypes)) {
+    vis[index_type.index() + 1] = tools.getTypeVisibility(index_type.value());
+  }
+
+  inferredReturnTypes.emplace_back(RankedTensorType::get(
+      sliceSizes,
+      tools.getTypeWithVisibility(rankedOperandType.getElementType(),
+                                  tools.inferResultVisibility(vis))));
+
   return success();
 }
 
@@ -1225,41 +1235,6 @@ static ParseResult parseDims(AsmParser& parser, SmallVector<int64_t>& dims) {
     (void)parser.parseOptionalComma();
   }
   return success();
-}
-
-void GatherDimensionNumbersAttr::print(AsmPrinter& printer) const {
-  printStruct(printer, "gather", std::make_pair("offset_dims", getOffsetDims()),
-              std::make_pair("collapsed_slice_dims", getCollapsedSliceDims()),
-              std::make_pair("start_index_map", getStartIndexMap()),
-              std::make_pair("index_vector_dim", getIndexVectorDim()));
-}
-
-Attribute GatherDimensionNumbersAttr::parse(AsmParser& parser, Type) {
-  if (failed(parser.parseLess())) {
-    return {};
-  }
-
-  SmallVector<int64_t> offset_dims;
-  SmallVector<int64_t> collapsed_slice_dims;
-  SmallVector<int64_t> start_index_map;
-  int64_t index_vector_dim = 0;
-
-  if (failed(parseStruct(
-          parser,
-          {"offset_dims", "collapsed_slice_dims", "start_index_map",
-           "index_vector_dim"},
-          {[&]() { return parseDims(parser, offset_dims); },
-           [&]() { return parseDims(parser, collapsed_slice_dims); },
-           [&]() { return parseDims(parser, start_index_map); },
-           [&]() { return parser.parseInteger(index_vector_dim); }}))) {
-    parser.emitError(parser.getCurrentLocation())
-        << "failed parsing gather dimension numbers attribute";
-    return {};
-  }
-
-  return GatherDimensionNumbersAttr::get(parser.getContext(), offset_dims,
-                                         collapsed_slice_dims, start_index_map,
-                                         index_vector_dim);
 }
 
 // Custom printer and parser for DotDimensionNumbersAttr.

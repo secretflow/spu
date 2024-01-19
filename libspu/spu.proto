@@ -341,7 +341,7 @@ message TTPBeaverConfig {
 //////////////////////////////////////////////////////////////////////////
 enum SourceIRType {
   XLA = 0;
-  MLIR_HLO = 1;
+  STABLEHLO = 1;
 }
 
 message CompilationSource {

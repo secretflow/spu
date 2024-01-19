@@ -34,3 +34,29 @@ func.func @main(%arg0: tensor<!pphlo.pub<f32>>, %arg1: tensor<!pphlo.pub<f32>>) 
     return %4: tensor<!pphlo.pub<f32>>
 }
 
+// -----
+
+func.func @main(%arg0: tensor<3x4x!pphlo.sec<f32>>) -> tensor<3x4x!pphlo.sec<f32>> {
+    // CHECK: %[[RSQRT:.+]] = "pphlo.rsqrt"(%arg0) : (tensor<3x4x!pphlo.sec<f32>>) -> tensor<3x4x!pphlo.sec<f32>>
+    // CHECK: "pphlo.multiply"(%arg0, %[[RSQRT]]) : (tensor<3x4x!pphlo.sec<f32>>, tensor<3x4x!pphlo.sec<f32>>) -> tensor<3x4x!pphlo.sec<f32>>
+    %0 = "pphlo.sqrt"(%arg0) : (tensor<3x4x!pphlo.sec<f32>>) -> tensor<3x4x!pphlo.sec<f32>>
+    %1 = "pphlo.divide"(%arg0, %0) : (tensor<3x4x!pphlo.sec<f32>>, tensor<3x4x!pphlo.sec<f32>>) -> tensor<3x4x!pphlo.sec<f32>>
+    return %1 : tensor<3x4x!pphlo.sec<f32>>
+}
+
+// -----
+
+func.func @main(%arg0: tensor<3x4x!pphlo.sec<i32>>) -> tensor<3x4x!pphlo.sec<f32>> {
+    %0 = "pphlo.convert"(%arg0) : (tensor<3x4x!pphlo.sec<i32>>) -> tensor<3x4x!pphlo.sec<f32>>
+    %1 = "pphlo.reshape"(%arg0) : (tensor<3x4x!pphlo.sec<i32>>) -> tensor<3x4x1x!pphlo.sec<i32>>
+    %2 = "pphlo.transpose"(%1) {permutation = array<i64: 0, 2, 1>} : (tensor<3x4x1x!pphlo.sec<i32>>) -> tensor<3x1x4x!pphlo.sec<i32>>
+    %3 = "pphlo.dot_general"(%2, %1) {dot_dimension_numbers = #pphlo.dot<lhs_batching_dimensions = [0], rhs_batching_dimensions = [0], lhs_contracting_dimensions = [2], rhs_contracting_dimensions = [1]>} : (tensor<3x1x4x!pphlo.sec<i32>>, tensor<3x4x1x!pphlo.sec<i32>>) -> tensor<3x!pphlo.sec<i32>>
+    %4 = "pphlo.convert"(%3) : (tensor<3x!pphlo.sec<i32>>) -> tensor<3x!pphlo.sec<f32>>
+    // CHECK: %[[RSQRT:.+]] = "pphlo.rsqrt"
+    // CHECK: %[[BCAST:.+]] = "pphlo.broadcast"(%[[RSQRT]]) {broadcast_dimensions = array<i64: 0>} : (tensor<3x!pphlo.sec<f32>>) -> tensor<3x4x!pphlo.sec<f32>>
+    // CHECK: "pphlo.multiply"(%0, %[[BCAST]]) : (tensor<3x4x!pphlo.sec<f32>>, tensor<3x4x!pphlo.sec<f32>>) -> tensor<3x4x!pphlo.sec<f32>>
+    %5 = "pphlo.sqrt"(%4) : (tensor<3x!pphlo.sec<f32>>) -> tensor<3x!pphlo.sec<f32>>
+    %6 = "pphlo.broadcast"(%5) {broadcast_dimensions = array<i64: 0>} : (tensor<3x!pphlo.sec<f32>>) -> tensor<3x4x!pphlo.sec<f32>>
+    %7 = "pphlo.divide"(%0, %6) : (tensor<3x4x!pphlo.sec<f32>>, tensor<3x4x!pphlo.sec<f32>>) -> tensor<3x4x!pphlo.sec<f32>>
+    return %7 : tensor<3x4x!pphlo.sec<f32>>
+}

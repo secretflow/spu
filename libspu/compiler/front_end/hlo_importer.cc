@@ -127,7 +127,7 @@ void runHloPasses(xla::HloModule *module) {
         /*allow_mixed_precision=*/false);
 
     pipeline.AddPass<GatherSimplifier>();
-    pipeline.AddPass<GatherExpander>(GatherExpander::kEliminateSimpleGathers);
+    pipeline.AddPass<GatherExpander>(GatherExpander::kEliminateAllGathers);
     pipeline.AddPass<ScatterExpander>(ScatterExpander::kEliminateAllScatters);
     pipeline.AddPass<AlgebraicSimplifier>(options);
     pipeline.AddPass<BitcastDtypesExpander>();
@@ -163,7 +163,10 @@ HloImporter::parseXlaModuleFromString(const std::string &content) {
     // If parse as HloModuleProto fails, try HloProto.
     xla::HloProto hlo_proto;
     if (!hlo_proto.ParseFromString(content)) {
-      SPU_THROW("Failed to parse hlo module from string");
+      // Try human-readable format
+      if (!google::protobuf::TextFormat::ParseFromString(content, &hlo_proto)) {
+        SPU_THROW("Failed to parse hlo module from string {}", content);
+      }
     }
     hlo_module = hlo_proto.hlo_module();
   }

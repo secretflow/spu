@@ -27,4 +27,5 @@ library, and private inference of a pre-trained ResNet-50 model based on [Micros
 * [jraph_gnn](jraph_gnn/): Private training of a [graph convolutional network](https://arxiv.org/abs/1609.02907) model with
                            [Jraph](https://github.com/deepmind/jraph).
 * [tf_experiment](tf_experiment/): Private training of a logistic regression model with TensorFlow (**experimental**).
-* [torch_experiment](torch_experiment/): Private inference of a linear regression model with PyTorch (**experimental**).
+* [torch_lr_experiment](torch_lr_experiment/): Private inference of a logistic regression model with PyTorch (**experimental**).
+* [torch_resnet_experiment](torch_resnet_experiment/): Private inference of a [ResNet](https://arxiv.org/abs/1512.03385) model with PyTorch (**experimental**).

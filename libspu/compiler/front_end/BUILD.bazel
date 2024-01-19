@@ -76,5 +76,6 @@ spu_cc_library(
         "@llvm-project//mlir:FuncExtensions",
         "@llvm-project//mlir:Parser",
         "@xla//xla/mlir_hlo:mhlo_passes",
+        "@xla//xla/translate/mhlo_to_hlo:translate",
     ],
 )
