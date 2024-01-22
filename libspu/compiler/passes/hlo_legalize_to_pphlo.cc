@@ -28,7 +28,6 @@
 
 #include "libspu/compiler/passes/map_stablehlo_to_pphlo_op.h"
 #include "libspu/compiler/passes/pass_details.h"
-#include "libspu/compiler/passes/utils.h"
 #include "libspu/compiler/passes/value_visibility_map.h"
 #include "libspu/compiler/passes/visibility_inference.h"
 #include "libspu/core/prelude.h"
@@ -39,6 +38,11 @@
 
 namespace mlir::pphlo {
 namespace {
+
+DenseI64ArrayAttr ConvertDenseIntElementAttr(const DenseIntElementsAttr &attr) {
+  llvm::SmallVector<int64_t, 2> array(attr.getValues<int64_t>());
+  return DenseI64ArrayAttr::get(attr.getContext(), array);
+}
 
 ValueVisibilityMap
 VisibilityDiscovery(const llvm::ArrayRef<std::string> input_vis_list,
@@ -348,9 +352,14 @@ public:
       sig_conversion.addInputs(arg.getArgNumber(), lower_t);
     }
 
+    mlir::NamedAttribute dimAttr(
+        StringAttr::get(op->getContext(), "dimensions"),
+        ConvertDenseIntElementAttr(op.getDimensions()));
+
     auto new_op =
         rewriter.replaceOpWithNewOp<pphlo::HloToPPHloOp<stablehlo::ReduceOp>>(
-            op, result_types, materialized_operands, op->getAttrs());
+            op, result_types, materialized_operands,
+            llvm::SmallVector<mlir::NamedAttribute, 1>{dimAttr});
 
     // Copy over the operations inside the region.
     rewriter.inlineRegionBefore(op.getBody(), new_op.getBody(),
@@ -466,9 +475,9 @@ public:
           materialized_operands[idx] = rewriter.create<pphlo::PadOp>(
               op->getLoc(), materialized_operands[idx],
               materialized_operands[idx + num_results],
-              builder.getI64TensorAttr(padding_low),
-              builder.getI64TensorAttr(padding_high),
-              builder.getI64TensorAttr(interior_padding));
+              DenseI64ArrayAttr::get(op->getContext(), padding_low),
+              DenseI64ArrayAttr::get(op->getContext(), padding_high),
+              DenseI64ArrayAttr::get(op->getContext(), interior_padding));
         }
       }
     }
@@ -476,17 +485,20 @@ public:
     llvm::SmallVector<mlir::NamedAttribute> attrs;
     {
       // I64ElementsAttr:$window_dimensions,
-      attrs.push_back({builder.getStringAttr("window_dimensions"),
-                       op.getWindowDimensionsAttr()});
+      attrs.push_back(
+          {builder.getStringAttr("window_dimensions"),
+           ConvertDenseIntElementAttr(op.getWindowDimensionsAttr())});
       // OptionalAttr<I64ElementsAttr>:$window_strides,
       if (op.getWindowStrides().has_value()) {
-        attrs.push_back({builder.getStringAttr("window_strides"),
-                         op.getWindowStridesAttr()});
+        attrs.push_back(
+            {builder.getStringAttr("window_strides"),
+             ConvertDenseIntElementAttr(op.getWindowStridesAttr())});
       }
       // OptionalAttr<I64ElementsAttr>:$window_dilations,
       if (op.getWindowDilations().has_value()) {
-        attrs.push_back({builder.getStringAttr("window_dilations"),
-                         op.getWindowDilationsAttr()});
+        attrs.push_back(
+            {builder.getStringAttr("window_dilations"),
+             ConvertDenseIntElementAttr(op.getWindowDilationsAttr())});
       }
     }
 
@@ -756,6 +768,40 @@ public:
 };
 
 template <>
+class HloToPPHloOpConverter<stablehlo::BroadcastInDimOp>
+    : public OpConversionPattern<stablehlo::BroadcastInDimOp> {
+private:
+  const ValueVisibilityMap &vis_;
+
+public:
+  HloToPPHloOpConverter(TypeConverter &type_converter, MLIRContext *context,
+                        const ValueVisibilityMap &vis)
+      : OpConversionPattern<stablehlo::BroadcastInDimOp>(type_converter,
+                                                         context),
+        vis_(vis) {}
+
+  LogicalResult
+  matchAndRewrite(stablehlo::BroadcastInDimOp hlo_op,
+                  stablehlo::BroadcastInDimOpAdaptor adaptor,
+                  ConversionPatternRewriter &rewriter) const override {
+    auto result_vis = vis_.getValueVisibility(hlo_op.getResult());
+
+    Type resultType = HloToPPHloTypeConverter::getTypeWithVisibility(
+        this->getTypeConverter()->convertType(hlo_op.getType()), result_vis);
+
+    mlir::NamedAttribute dim(
+        StringAttr::get(hlo_op.getContext(), "broadcast_dimensions"),
+        ConvertDenseIntElementAttr(hlo_op.getBroadcastDimensions()));
+
+    rewriter
+        .replaceOpWithNewOp<pphlo::HloToPPHloOp<stablehlo::BroadcastInDimOp>>(
+            hlo_op, resultType, adaptor.getOperands(), dim);
+
+    return success();
+  }
+};
+
+template <>
 class HloToPPHloOpConverter<stablehlo::ConstantOp>
     : public OpConversionPattern<stablehlo::ConstantOp> {
 public:
@@ -1003,14 +1049,15 @@ public:
 
       materialized_operand = rewriter.create<pphlo::PadOp>(
           op->getLoc(), materialized_operand, materialized_init_value,
-          builder.getI64TensorAttr(padding_low),
-          builder.getI64TensorAttr(padding_high),
-          builder.getI64TensorAttr(padding_interior));
+          DenseI64ArrayAttr::get(op->getContext(), padding_low),
+          DenseI64ArrayAttr::get(op->getContext(), padding_high),
+          DenseI64ArrayAttr::get(op->getContext(), padding_interior));
 
       new_op = rewriter.create<pphlo::SelectAndScatterOp>(
           op->getLoc(), materialized_operand.getType(), materialized_operand,
           adaptor.getSource(), materialized_init_value,
-          op.getWindowDimensionsAttr(), op.getWindowStridesAttr());
+          ConvertDenseIntElementAttr(op.getWindowDimensionsAttr()),
+          ConvertDenseIntElementAttr(op.getWindowStridesAttr()));
 
       llvm::SmallVector<int64_t, 2> slice_end(
           new_op.getType().dyn_cast<RankedTensorType>().getShape().begin(),
@@ -1022,15 +1069,18 @@ public:
 
       // Slice back
       rewriter.replaceOpWithNewOp<pphlo::SliceOp>(
-          op, result_type, new_op, ConvertDimensions(&builder, padding_low),
-          ConvertDimensions(&builder, slice_end),
-          ConvertDimensions(&builder,
-                            llvm::SmallVector<int64_t>(slice_end.size(), 1)));
+          op, result_type, new_op,
+          DenseI64ArrayAttr::get(builder.getContext(), padding_low),
+          DenseI64ArrayAttr::get(builder.getContext(), slice_end),
+          DenseI64ArrayAttr::get(
+              builder.getContext(),
+              llvm::SmallVector<int64_t>(slice_end.size(), 1)));
     } else {
       new_op = rewriter.replaceOpWithNewOp<pphlo::SelectAndScatterOp>(
           op, result_type, materialized_operand, adaptor.getSource(),
-          materialized_init_value, op.getWindowDimensionsAttr(),
-          op.getWindowStridesAttr());
+          materialized_init_value,
+          ConvertDenseIntElementAttr(op.getWindowDimensionsAttr()),
+          ConvertDenseIntElementAttr(op.getWindowStridesAttr()));
     }
 
     // Convert the region signature.
@@ -1177,40 +1227,6 @@ public:
 };
 
 template <>
-class HloToPPHloOpConverter<stablehlo::GatherOp>
-    : public OpConversionPattern<stablehlo::GatherOp> {
-private:
-  const ValueVisibilityMap &vis_;
-
-public:
-  HloToPPHloOpConverter(TypeConverter &type_converter, MLIRContext *context,
-                        const ValueVisibilityMap &vis)
-      : OpConversionPattern<stablehlo::GatherOp>(type_converter, context),
-        vis_(vis) {}
-
-  LogicalResult
-  matchAndRewrite(stablehlo::GatherOp op, stablehlo::GatherOpAdaptor adaptor,
-                  ConversionPatternRewriter &rewriter) const override {
-    auto old_attr = op.getDimensionNumbers();
-    pphlo::GatherDimensionNumbersAttr attr = GatherDimensionNumbersAttr::get(
-        op.getContext(), old_attr.getOffsetDims(),
-        old_attr.getCollapsedSliceDims(), old_attr.getStartIndexMap(),
-        old_attr.getIndexVectorDim());
-
-    auto result_vis = vis_.getValueVisibility(op.getResult());
-
-    Type resultType = HloToPPHloTypeConverter::getTypeWithVisibility(
-        this->getTypeConverter()->convertType(op.getType()), result_vis);
-
-    rewriter.replaceOpWithNewOp<pphlo::GatherOp>(
-        op, resultType, adaptor.getOperands()[0], adaptor.getOperands()[1],
-        attr, op.getSliceSizes(), op.getIndicesAreSorted());
-
-    return success();
-  }
-};
-
-template <>
 class HloToPPHloOpConverter<stablehlo::ConvolutionOp>
     : public OpConversionPattern<stablehlo::ConvolutionOp> {
 private:
@@ -1262,17 +1278,15 @@ private:
     }
 
     TypeTools type_tools;
-    auto indexType = rewriter.getIntegerType(64);
-    auto attrType = RankedTensorType::get({rank}, indexType);
     Value zero = rewriter.create<pphlo::ConstantOp>(
         loc, rewriter.getZeroAttr(RankedTensorType::get(
                  {}, type_tools.getExpressedType(inputType.getElementType()))));
     zero = rewriter.create<pphlo::ConvertOp>(
         loc, RankedTensorType::get({}, inputType.getElementType()), zero);
     return rewriter.create<pphlo::PadOp>(
-        loc, input, zero, DenseIntElementsAttr::get(attrType, padLow),
-        DenseIntElementsAttr::get(attrType, padHigh),
-        DenseIntElementsAttr::get(attrType, padInterior));
+        loc, input, zero, DenseI64ArrayAttr::get(loc.getContext(), padLow),
+        DenseI64ArrayAttr::get(loc.getContext(), padHigh),
+        DenseI64ArrayAttr::get(loc.getContext(), padInterior));
   }
 
 public:
@@ -1338,16 +1352,13 @@ public:
 
       modifiedRhs = rewriter.create<pphlo::ReverseOp>(
           op.getLoc(), modifiedRhs,
-          mlir::DenseIntElementsAttr::get(
-              RankedTensorType::get(reversedDims.size(),
-                                    rewriter.getIntegerType(64)),
-              reversedDims));
+          DenseI64ArrayAttr::get(op->getContext(), reversedDims));
     }
 
     rewriter.replaceOpWithNewOp<pphlo::ConvolutionOp>(
         op, resultType, modifiedLhs, modifiedRhs,
-        op.getWindowStrides().value_or(nullptr), attr,
-        op.getFeatureGroupCount(), op.getBatchGroupCount());
+        ConvertDenseIntElementAttr(op.getWindowStrides().value_or(nullptr)),
+        attr, op.getFeatureGroupCount(), op.getBatchGroupCount());
 
     return success();
   }
@@ -1582,7 +1593,6 @@ private:
                 HloToPPHloOpConverter<stablehlo::DivOp>,
                 HloToPPHloOpConverter<stablehlo::DotOp>,
                 HloToPPHloOpConverter<stablehlo::DotGeneralOp>,
-                HloToPPHloOpConverter<stablehlo::GatherOp>,
                 HloToPPHloOpConverter<stablehlo::DynamicSliceOp>,
                 HloToPPHloOpConverter<stablehlo::DynamicUpdateSliceOp>,
                 HloToPPHloOpConverter<stablehlo::ExpOp>,

@@ -9,7 +9,7 @@ This example comes from Haiku official github repo:
 1. Install dependencies
 
     ```sh
-    pip install -r requirements.txt
+    pip install -r ../requirements.txt
     ```
 
 2. Launch SPU backend runtime

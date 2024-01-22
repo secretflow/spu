@@ -120,7 +120,7 @@ class TransposeReshapeGenericDotGeneral
     }
     return b.create<pphlo::TransposeOp>(
         loc, RankedTensorType::get(transposeShape, type.getElementType()), src,
-        b.getI64TensorAttr(target_order));
+        target_order);
   }
 
   static Value ReshapeIfMorethan3D(OpBuilder& b, Location loc, Value src,
@@ -275,12 +275,6 @@ std::vector<int64_t> InversePermutation(
   return output_permutation;
 }
 
-mlir::DenseIntElementsAttr ConvertToDenseIntElementAttr(
-    OpBuilder* builder, llvm::ArrayRef<int64_t> value) {
-  return DenseIntElementsAttr::get(
-      RankedTensorType::get(value.size(), builder->getIntegerType(64)), value);
-}
-
 bool IsSameShape(llvm::ArrayRef<int64_t> lhs, llvm::ArrayRef<int64_t> rhs) {
   if (lhs.size() != rhs.size()) {
     return false;
@@ -358,8 +352,7 @@ class NormalizeDimensionOrder : public OpRewritePattern<ConvolutionOp> {
       auto new_input_type =
           RankedTensorType::get(new_input_dims, input_type.getElementType());
       new_input = rewriter.create<pphlo::TransposeOp>(
-          op->getLoc(), new_input_type, input,
-          ConvertToDenseIntElementAttr(&rewriter, new_input_dim_order));
+          op->getLoc(), new_input_type, input, new_input_dim_order);
     }
 
     auto kernel = op.getRhs();
@@ -383,9 +376,8 @@ class NormalizeDimensionOrder : public OpRewritePattern<ConvolutionOp> {
     if (needTranspose(kernel_shape, new_kernel_dims, new_kernel_dim_order)) {
       auto new_kernel_type =
           RankedTensorType::get(new_kernel_dims, kernel_type.getElementType());
-      new_kernel = rewriter.create<TransposeOp>(
-          op->getLoc(), new_kernel_type, kernel,
-          ConvertToDenseIntElementAttr(&rewriter, new_kernel_dim_order));
+      new_kernel = rewriter.create<TransposeOp>(op->getLoc(), new_kernel_type,
+                                                kernel, new_kernel_dim_order);
     }
 
     if (input == new_input && kernel == new_kernel) {
@@ -413,9 +405,9 @@ class NormalizeDimensionOrder : public OpRewritePattern<ConvolutionOp> {
     auto new_conv_type =
         RankedTensorType::get(new_conv_dims, result_type.getElementType());
 
-    std::vector<int64_t> input_sd(num_spatial_dims);
-    std::vector<int64_t> kernel_sd(num_spatial_dims);
-    std::vector<int64_t> output_sd(num_spatial_dims);
+    llvm::SmallVector<int64_t> input_sd(num_spatial_dims);
+    llvm::SmallVector<int64_t> kernel_sd(num_spatial_dims);
+    llvm::SmallVector<int64_t> output_sd(num_spatial_dims);
 
     for (int64_t i = 0; i < num_spatial_dims; ++i) {
       input_sd[i] = i + 1;
@@ -432,14 +424,14 @@ class NormalizeDimensionOrder : public OpRewritePattern<ConvolutionOp> {
     // example, input height and width are the same as before the reshapes.
     auto new_conv = rewriter.create<ConvolutionOp>(
         op->getLoc(), new_conv_type, new_input, new_kernel,
-        op.getWindowStrides().value_or(nullptr), new_dnums,
-        op.getFeatureGroupCount(), op.getBatchGroupCount());
+        DenseI64ArrayAttr::get(op->getContext(),
+                               op.getWindowStrides().value_or(std::nullopt)),
+        new_dnums, op.getFeatureGroupCount(), op.getBatchGroupCount());
 
     // Reshape the output back to the shape of the original convolution.
     rewriter.replaceOpWithNewOp<TransposeOp>(
         op, op->getResultTypes()[0], new_conv,
-        ConvertToDenseIntElementAttr(&rewriter,
-                                     InversePermutation(new_output_dim_order)));
+        InversePermutation(new_output_dim_order));
 
     return success();
   }
@@ -452,16 +444,15 @@ OpFoldResult ReverseOp::fold(FoldAdaptor) {
 
   // No dimensions to reverse.
   auto dims = getDimensions();
-  if (dims.getNumElements() == 0) {
+  if (dims.empty()) {
     return input;
   }
 
   // If the dimensions to reverse are all statically 1, then the reverse is a
   // no-op.
   auto shapedType = input.getType().cast<ShapedType>();
-  if (llvm::all_of(dims.getValues<int64_t>(), [&](int64_t dim) {
-        return shapedType.getDimSize(dim) == 1;
-      })) {
+  if (llvm::all_of(
+          dims, [&](int64_t dim) { return shapedType.getDimSize(dim) == 1; })) {
     return input;
   }
   return {};
@@ -477,13 +468,8 @@ LogicalResult ReverseOp::verify() {
     return emitOpError("operand and result type mismatch");
   }
 
-  // dimensions: 1-dimensional tensor constant of type si64
-  if (getDimensions().getType().getRank() != 1) {
-    return emitOpError("dimensions must be a 1-dimensional tensor");
-  }
-
   //(C2) All dimensions in dimensions are unique.
-  auto dims = getDimensions().getValues<int64_t>();
+  auto dims = getDimensions();
   llvm::SmallDenseSet<int64_t> unique_dims(dims.begin(), dims.end());
 
   if (unique_dims.size() != dims.size()) {
@@ -550,8 +536,9 @@ OpFoldResult ReciprocalOp::fold(FoldAdaptor operands) {
 
 LogicalResult verifyReduceOpInputsAndInferShape(
     std::optional<Location> location, SmallVector<TensorType> inputArgTypes,
-    SmallVector<TensorType> /*initValueTypes*/, DenseIntElementsAttr dimensions,
-    SmallVector<int64_t>& /*newDimensions*/, Attribute& /*encoding*/) {
+    SmallVector<TensorType> /*initValueTypes*/,
+    llvm::ArrayRef<int64_t> dimensions, SmallVector<int64_t>& /*newDimensions*/,
+    Attribute& /*encoding*/) {
   uint64_t numInputs = inputArgTypes.size();
 
   for (uint64_t inputIdx = 0; inputIdx < numInputs; ++inputIdx) {
@@ -565,7 +552,7 @@ LogicalResult verifyReduceOpInputsAndInferShape(
   }
 
   DenseSet<int64_t> dimensionsToReduceSet;
-  for (int64_t dimension : dimensions.getValues<int64_t>()) {
+  for (int64_t dimension : dimensions) {
     if ((dimension >= inputArgTypes[0].getRank()) || dimension < 0) {
       return emitOptionalError(
           location, "Out-of-bounds dimension ", dimension,
@@ -762,8 +749,8 @@ OpFoldResult ReshapeOp::fold(FoldAdaptor) {
 }
 
 OpFoldResult TransposeOp::fold(FoldAdaptor) {
-  for (const auto& it : llvm::enumerate(getPermutation().getValues<APInt>())) {
-    if (it.index() != it.value()) {
+  for (const auto& it : llvm::enumerate(getPermutation())) {
+    if (static_cast<int64_t>(it.index()) != it.value()) {
       return {};
     }
   }
@@ -784,7 +771,7 @@ LogicalResult TransposeOp::verify() {
   // (C2) permutation is a permutation of [0, 1, ..., R-1] where R is the rank
   // of operand.
   auto max_rank = inputType.getRank();
-  auto permutation = getPermutation().getValues<int64_t>();
+  auto permutation = getPermutation();
   for (auto p : permutation) {
     if (p < 0 || p > max_rank - 1) {
       return emitOpError(llvm::formatv("permutation {0} out of range [0, {1}]",
@@ -918,7 +905,7 @@ LogicalResult BroadcastOp::verify() {
 
   auto operandRank = operandType.getRank();
 
-  if (!getBroadcastDimensions()) {
+  if (getBroadcastDimensions().empty()) {
     if (operandRank == 0) {
       return success();
     }
@@ -928,22 +915,14 @@ LogicalResult BroadcastOp::verify() {
                       operandRank));
   }
 
-  auto dimensionsType = getBroadcastDimensions().getType();
-  auto dimensionsRank = dimensionsType.getRank();
-  if (dimensionsRank != 1) {
-    return emitOpError(llvm::formatv(
-        "broadcast_dimensions has rank {0} instead of rank 1", dimensionsRank));
-  }
-
-  auto dimensionsSize = dimensionsType.getNumElements();
-  if (dimensionsSize != operandRank) {
+  auto dimensionsSize = getBroadcastDimensions().size();
+  if (static_cast<int64_t>(dimensionsSize) != operandRank) {
     return emitOpError(llvm::formatv(
         "broadcast_dimensions size ({0}) does not match operand rank ({1})",
         dimensionsSize, operandRank));
   }
 
-  auto dimensions =
-      llvm::to_vector(getBroadcastDimensions().getValues<int64_t>());
+  auto dimensions = getBroadcastDimensions();
   if (hasDuplicates(dimensions)) {
     return emitOpError("broadcast_dimensions should not have duplicates");
   }
@@ -951,7 +930,7 @@ LogicalResult BroadcastOp::verify() {
   auto resultType = getResult().getType().cast<RankedTensorType>();
   auto resultRank = resultType.getRank();
 
-  for (int i = 0; i != dimensionsSize; ++i) {
+  for (size_t i = 0; i != dimensionsSize; ++i) {
     auto dimIndex = dimensions[i];
     if ((dimIndex >= resultRank) || (dimIndex < 0)) {
       return emitOpError(
@@ -995,26 +974,19 @@ LogicalResult IotaOp::verify() {
 
 LogicalResult SliceOp::verify() {
   auto rankedTy = getOperand().getType();
-  // slice_i2
-  ShapedType attrTy = getStartIndices().getType();
-  if (attrTy.getRank() != 1) {
-    return emitOpError(
-        llvm::formatv("start_indices has rank {0} instead of required rank 1",
-                      attrTy.getRank()));
-  }
 
   // slice_c2
   int64_t rank = rankedTy.getRank();
-  if (attrTy.getNumElements() != rank) {
+  if (static_cast<int64_t>(getStartIndices().size()) != rank) {
     return emitOpError(
         llvm::formatv("the number of elements in start_indices ({0}) does not "
                       "match the rank of the operand ({1})",
-                      attrTy.getNumElements(), rank));
+                      getStartIndices().size(), rank));
   }
 
-  auto start = getStartIndices().getValues<int64_t>();
-  auto limit = getLimitIndices().getValues<int64_t>();
-  auto strideVals = getStrides().getValues<int64_t>();
+  auto start = getStartIndices();
+  auto limit = getLimitIndices();
+  auto strideVals = getStrides();
 
   for (int64_t i = 0, e = rank; i != e; i++) {
     // slice_c3
@@ -1051,16 +1023,10 @@ LogicalResult SliceOp::verify() {
 
 LogicalResult inferDynamicSliceOp(std::optional<Location> location,
                                   Type operandType, TypeRange startIndicesTypes,
-                                  DenseIntElementsAttr sliceSizes,
+                                  llvm::ArrayRef<int64_t> sliceSizes,
                                   SmallVectorImpl<Type>& inferredReturnTypes) {
-  // dynamic_slice_i3
-  if (sliceSizes.getType().getRank() != 1) {
-    return emitOptionalError(location,
-                             "slice_sizes should be rank 1, but got rank ",
-                             sliceSizes.getType().getRank(), ".");
-  }
   // dynamic_slice_c2
-  int numSliceSizes = sliceSizes.getNumElements();
+  int numSliceSizes = sliceSizes.size();
   int numStartIndices = startIndicesTypes.size();
   if (numStartIndices != numSliceSizes) {
     return emitOptionalError(location, "has mismatched number of slice sizes (",
@@ -1077,7 +1043,7 @@ LogicalResult inferDynamicSliceOp(std::optional<Location> location,
 
   // dynamic_slice_c4
   for (int i = 0; i < numSliceSizes; ++i) {
-    int64_t sliceSize = sliceSizes.getValues<int64_t>()[i];
+    int64_t sliceSize = sliceSizes[i];
     if (sliceSize < 0) {
       return emitOptionalError(
           location, "has negative size index to dynamic slice: ", sliceSize);
@@ -1092,11 +1058,19 @@ LogicalResult inferDynamicSliceOp(std::optional<Location> location,
     }
   }
 
-  std::vector<int64_t> slice_size(sliceSizes.getValues<int64_t>().begin(),
-                                  sliceSizes.getValues<int64_t>().end());
+  TypeTools tools;
   // dynamic_slice_c5
-  inferredReturnTypes.emplace_back(
-      RankedTensorType::get(slice_size, rankedOperandType.getElementType()));
+  llvm::SmallVector<Visibility> vis(startIndicesTypes.size() + 1);
+  vis[0] = tools.getTypeVisibility(operandType);
+  for (const auto& index_type : llvm::enumerate(startIndicesTypes)) {
+    vis[index_type.index() + 1] = tools.getTypeVisibility(index_type.value());
+  }
+
+  inferredReturnTypes.emplace_back(RankedTensorType::get(
+      sliceSizes,
+      tools.getTypeWithVisibility(rankedOperandType.getElementType(),
+                                  tools.inferResultVisibility(vis))));
+
   return success();
 }
 
@@ -1261,41 +1235,6 @@ static ParseResult parseDims(AsmParser& parser, SmallVector<int64_t>& dims) {
     (void)parser.parseOptionalComma();
   }
   return success();
-}
-
-void GatherDimensionNumbersAttr::print(AsmPrinter& printer) const {
-  printStruct(printer, "gather", std::make_pair("offset_dims", getOffsetDims()),
-              std::make_pair("collapsed_slice_dims", getCollapsedSliceDims()),
-              std::make_pair("start_index_map", getStartIndexMap()),
-              std::make_pair("index_vector_dim", getIndexVectorDim()));
-}
-
-Attribute GatherDimensionNumbersAttr::parse(AsmParser& parser, Type) {
-  if (failed(parser.parseLess())) {
-    return {};
-  }
-
-  SmallVector<int64_t> offset_dims;
-  SmallVector<int64_t> collapsed_slice_dims;
-  SmallVector<int64_t> start_index_map;
-  int64_t index_vector_dim = 0;
-
-  if (failed(parseStruct(
-          parser,
-          {"offset_dims", "collapsed_slice_dims", "start_index_map",
-           "index_vector_dim"},
-          {[&]() { return parseDims(parser, offset_dims); },
-           [&]() { return parseDims(parser, collapsed_slice_dims); },
-           [&]() { return parseDims(parser, start_index_map); },
-           [&]() { return parser.parseInteger(index_vector_dim); }}))) {
-    parser.emitError(parser.getCurrentLocation())
-        << "failed parsing gather dimension numbers attribute";
-    return {};
-  }
-
-  return GatherDimensionNumbersAttr::get(parser.getContext(), offset_dims,
-                                         collapsed_slice_dims, start_index_map,
-                                         index_vector_dim);
 }
 
 // Custom printer and parser for DotDimensionNumbersAttr.
@@ -1650,57 +1589,23 @@ Attribute ConvDimensionNumbersAttr::parse(AsmParser& parser, Type) {
 namespace {
 
 // Custom formatting for convolution window attributes.
-void printWindowAttribute(OpAsmPrinter& p, DenseElementsAttr attribute) {
-  if (attribute.getElementType().isInteger(/*width=*/1)) {
-    // boolean attribute.
-    llvm::interleaveComma(attribute.getValues<bool>(), p,
-                          [&](bool b) { p << (b ? 1 : 0); });
-    return;
-  }
-  if (attribute.getType().getRank() == 2) {
-    // Padding is Nx2 attribute.
-    auto it = attribute.value_begin<int64_t>();
-    std::vector<std::pair<int64_t, int64_t>> values(attribute.getNumElements() /
-                                                    2);
-    for (auto& item : values) {
-      int64_t first = *it;
-      ++it;
-      int64_t second = *it;
-      ++it;
-      item = {first, second};
-    }
-    llvm::interleaveComma(
-        values, p, [&](const std::pair<int64_t, int64_t> pair) {
-          p << '[' << pair.first << ", " << pair.second << ']';
-        });
-  } else {
-    llvm::interleaveComma(attribute.getValues<int64_t>(), p);
-  }
+void printWindowAttribute(OpAsmPrinter& p, llvm::ArrayRef<int64_t> attribute) {
+  llvm::interleaveComma(attribute, p);
 }
 
 }  // namespace
 
 void printWindowAttributes(OpAsmPrinter& p, Operation*,
-                           std::optional<DenseIntElementsAttr> window_strides) {
-  using PairT = std::pair<DenseElementsAttr, StringRef>;
-  std::array<PairT, 1> printed_attributes = {{
-      {window_strides ? *window_strides : nullptr, "stride"},
-  }};
-
-  // Do not print attributes that do no exist.
-  auto non_null_attributes = llvm::make_filter_range(
-      printed_attributes,
-      [](const PairT& a) { return static_cast<bool>(a.first); });
-
-  llvm::interleaveComma(non_null_attributes, p, [&](const PairT& a) {
-    p << a.second << " = [";
-    printWindowAttribute(p, a.first);
+                           std::optional<DenseI64ArrayAttr> window_strides) {
+  if (window_strides.has_value()) {
+    p << "stride = [";
+    printWindowAttribute(p, *window_strides);
     p << "]";
-  });
+  }
 }
 
 ParseResult parseWindowAttributes(OpAsmParser& parser,
-                                  DenseIntElementsAttr& window_strides) {
+                                  DenseI64ArrayAttr& window_strides) {
   StringRef attribute_name;
 
   // Helper to parse an array of the form [ e0, e1, .. ]
@@ -1754,10 +1659,9 @@ ParseResult parseWindowAttributes(OpAsmParser& parser,
     if (parse_array(int64_parser)) {
       return failure();
     }
-    auto attr = parser.getBuilder().getI64TensorAttr(values);
 
     if (attribute_name == "stride") {
-      window_strides = attr;
+      window_strides = DenseI64ArrayAttr::get(parser.getContext(), values);
     } else {
       llvm_unreachable("Unexpected attribute name");
     }

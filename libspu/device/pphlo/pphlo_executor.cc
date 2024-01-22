@@ -43,15 +43,6 @@
 namespace {
 
 template <typename T>
-void convertDenseIntElementAttr(const mlir::DenseIntElementsAttr &attr,
-                                T &out) {
-  out.clear();
-  for (const auto &v : attr.getValues<int64_t>()) {
-    out.emplace_back(v);
-  }
-}
-
-template <typename T>
 std::string mlirObjectToString(T &&mlir_obj) {
   std::string buf;
   llvm::raw_string_ostream rss(buf);
@@ -206,7 +197,7 @@ void do_type_checker(mlir::Value key, const spu::Value &val,
     if (tool.isMPCType<mlir::pphlo::PublicType>(mlir_type)) {
       SPU_ENFORCE(val.isPublic());
     } else if (tool.isMPCType<mlir::pphlo::SecretType>(mlir_type)) {
-      SPU_ENFORCE(val.isSecret());
+      SPU_ENFORCE(val.isSecret() || val.isPrivate());
     } else {
       SPU_ENFORCE("Unknown vtype");
     }
@@ -428,10 +419,7 @@ void execute(OpExecutor *, SPUContext *sctx, SymbolScope *sscope,
 
   Strides window_strides(dnums.getInputSpatialDimensions().size(), 1);
   if (op.getWindowStrides().has_value()) {
-    for (const auto &iter : llvm::enumerate(
-             op.getWindowStrides()->getValues<int64_t>())) {  // NOLINT
-      window_strides[iter.index()] = iter.value();
-    }
+    window_strides = *op.getWindowStrides();
   }
 
   kernel::hlo::ConvolutionConfig config;
@@ -480,8 +468,7 @@ void execute(OpExecutor *, SPUContext *sctx, SymbolScope *sscope,
 void execute(OpExecutor *, SPUContext *sctx, SymbolScope *sscope,
              mlir::pphlo::DynamicSliceOp &op, const ExecutionOptions &opts) {
   // Start indices
-  auto iter = op.getSliceSizes().getValues<int64_t>();
-  Sizes slice_size{iter.begin(), iter.end()};
+  Sizes slice_size{op.getSliceSizes().begin(), op.getSliceSizes().end()};
   const auto &operand = lookupValue(sscope, op.getOperand(), opts);
   std::vector<spu::Value> start_indices(op.getStartIndices().size());
 
@@ -492,36 +479,6 @@ void execute(OpExecutor *, SPUContext *sctx, SymbolScope *sscope,
   addValue(sscope, op.getResult(),
            kernel::hlo::DynamicSlice(sctx, operand, slice_size, start_indices),
            opts);
-}
-
-void execute(OpExecutor *, SPUContext *sctx, SymbolScope *sscope,
-             mlir::pphlo::GatherOp &op, const ExecutionOptions &opts) {
-  // If input is empty, short circuit
-  auto operand = lookupValue(sscope, op.getOperand(), opts);
-  auto start_indices = lookupValue(sscope, op.getStartIndices(), opts);
-  if (operand.numel() == 0) {
-    addValue(sscope, op.getResult(), operand, opts);
-    return;
-  }
-
-  const auto &output_shape =
-      op.getResult().getType().dyn_cast<mlir::RankedTensorType>().getShape();
-
-  const auto &dim_numbers = op.getDimensionNumbers();
-
-  kernel::hlo::GatherConfig config;
-  Sizes ss;
-  convertDenseIntElementAttr(op.getSliceSizes(), ss);
-  config.sliceSizes = ss;
-  config.indexVectorDim = dim_numbers.getIndexVectorDim();
-  config.offsetDims = dim_numbers.getOffsetDims();
-  config.collapsedSliceDims = dim_numbers.getCollapsedSliceDims();
-  config.startIndexMap = dim_numbers.getStartIndexMap();
-
-  addValue(
-      sscope, op.getResult(),
-      kernel::hlo::Gather(sctx, operand, start_indices, config, output_shape),
-      opts);
 }
 
 void execute(OpExecutor *executor, SPUContext *sctx, SymbolScope *sscope,
@@ -603,14 +560,13 @@ void execute(OpExecutor *executor, SPUContext *sctx, SymbolScope *sscope,
   auto source = lookupValue(sscope, op.getSource(), opts);
   auto init_val = lookupValue(sscope, op.getInitValue(), opts);
 
-  Shape window_shape;
-  convertDenseIntElementAttr(op.getWindowDimensions(), window_shape);
+  Shape window_shape(op.getWindowDimensions().begin(),
+                     op.getWindowDimensions().end());
 
   // build strides
   Strides window_strides(window_shape.size(), 1);
   if (op.getWindowStrides().has_value()) {
-    convertDenseIntElementAttr(*op.getWindowStrides(),  // NOLINT
-                               window_strides);
+    window_strides = *op.getWindowStrides();
   }
 
   // window padding
@@ -639,14 +595,13 @@ void execute(OpExecutor *, SPUContext *sctx, SymbolScope *sscope,
   auto scatter_indices = lookupValue(sscope, op.getScatterIndices(), opts);
   auto update = lookupValue(sscope, op.getUpdate(), opts);
 
-  Shape window_shape;
-  convertDenseIntElementAttr(op.getWindowDimensions().value(), window_shape);
+  Shape window_shape(op.getWindowDimensions().begin(),
+                     op.getWindowDimensions().end());
 
   // build strides
   Strides window_strides(window_shape.size(), 1);
   if (op.getWindowStrides().has_value()) {
-    convertDenseIntElementAttr(*op.getWindowStrides(),  // NOLINT
-                               window_strides);
+    window_strides = *op.getWindowStrides();
   }
 
   // window padding
@@ -764,8 +719,7 @@ void execute(OpExecutor *, SPUContext *sctx, SymbolScope *sscope,
 
 void execute(OpExecutor *, SPUContext *sctx, SymbolScope *sscope,
              mlir::pphlo::TransposeOp &op, const ExecutionOptions &opts) {
-  Axes permu;
-  convertDenseIntElementAttr(op.getPermutation(), permu);
+  Axes permu = op.getPermutation();
 
   addValue(sscope, op.getResult(),
            kernel::hlo::Transpose(
@@ -776,8 +730,7 @@ void execute(OpExecutor *, SPUContext *sctx, SymbolScope *sscope,
 void execute(OpExecutor *, SPUContext *sctx, SymbolScope *sscope,
              mlir::pphlo::BroadcastOp &op, const ExecutionOptions &opts) {
   auto to_shape = op.getType().dyn_cast<mlir::RankedTensorType>().getShape();
-  Axes in_dims;
-  convertDenseIntElementAttr(op.getBroadcastDimensions(), in_dims);
+  Axes in_dims = op.getBroadcastDimensions();
   addValue(
       sscope, op.getResult(),
       kernel::hlo::Broadcast(sctx, lookupValue(sscope, op.getOperand(), opts),
@@ -809,12 +762,9 @@ void execute(OpExecutor *, SPUContext *sctx, SymbolScope *sscope,
 
 void execute(OpExecutor *, SPUContext *sctx, SymbolScope *sscope,
              mlir::pphlo::SliceOp &op, const ExecutionOptions &opts) {
-  Index start;
-  Index end;
-  Strides s;
-  convertDenseIntElementAttr(op.getStartIndices(), start);
-  convertDenseIntElementAttr(op.getLimitIndices(), end);
-  convertDenseIntElementAttr(op.getStrides(), s);
+  Index start = op.getStartIndices();
+  Index end = op.getLimitIndices();
+  Strides s = op.getStrides();
   addValue(sscope, op.getResult(),
            kernel::hlo::Slice(sctx, lookupValue(sscope, op.getOperand(), opts),
                               start, end, s),
@@ -828,16 +778,13 @@ void execute(OpExecutor *, SPUContext *sctx, SymbolScope *sscope,
   const auto &padding_value = lookupValue(sscope, op.getPaddingValue(), opts);
   SPU_ENFORCE(padding_value.shape().isScalar());
 
-  Sizes edge_padding_low;
-  convertDenseIntElementAttr(op.getEdgePaddingLow(), edge_padding_low);
+  Sizes edge_padding_low = op.getEdgePaddingLow();
   SPU_ENFORCE(edge_padding_low.size() == operand_rank);
 
-  Sizes edge_padding_high;
-  convertDenseIntElementAttr(op.getEdgePaddingHigh(), edge_padding_high);
+  Sizes edge_padding_high = op.getEdgePaddingHigh();
   SPU_ENFORCE(edge_padding_high.size() == operand_rank);
 
-  Sizes interior_padding;
-  convertDenseIntElementAttr(op.getInteriorPadding(), interior_padding);
+  Sizes interior_padding = op.getInteriorPadding();
   SPU_ENFORCE(interior_padding.size() == operand_rank);
   SPU_ENFORCE(std::all_of(interior_padding.begin(), interior_padding.end(),
                           [](int64_t i) { return i >= 0; }));
@@ -850,8 +797,7 @@ void execute(OpExecutor *, SPUContext *sctx, SymbolScope *sscope,
 
 void execute(OpExecutor *, SPUContext *sctx, SymbolScope *sscope,
              mlir::pphlo::ReverseOp &op, const ExecutionOptions &opts) {
-  Axes dims;
-  convertDenseIntElementAttr(op.getDimensions(), dims);
+  Axes dims = op.getDimensions();
   addValue(sscope, op.getResult(),
            kernel::hlo::Reverse(
                sctx, lookupValue(sscope, op.getOperand(), opts), dims),
@@ -861,8 +807,7 @@ void execute(OpExecutor *, SPUContext *sctx, SymbolScope *sscope,
 void execute(OpExecutor *executor, SPUContext *sctx, SymbolScope *sscope,
              mlir::pphlo::ReduceOp &op, const ExecutionOptions &opts) {
   int64_t num_args = op->getNumOperands() / 2;
-  Axes dimensions_to_reduce;
-  convertDenseIntElementAttr(op.getDimensions(), dimensions_to_reduce);
+  Axes dimensions_to_reduce = op.getDimensions();
 
   std::vector<spu::Value> input_args(num_args);
   std::vector<spu::Value> init_values(num_args);
@@ -910,21 +855,18 @@ void execute(OpExecutor *executor, SPUContext *sctx, SymbolScope *sscope,
                        .getType()
                        .dyn_cast<mlir::RankedTensorType>()
                        .getShape();
-  Shape window_shape;
-  convertDenseIntElementAttr(op.getWindowDimensions(), window_shape);
+  Shape window_shape = op.getWindowDimensions();
 
   // build strides
   Strides window_strides(window_shape.size(), 1);
   if (op.getWindowStrides().has_value()) {
-    convertDenseIntElementAttr(*op.getWindowStrides(),  // NOLINT
-                               window_strides);
+    window_strides = *op.getWindowStrides();
   }
 
   // window dilation
   Sizes window_dilations(window_shape.size(), 1);
   if (op.getWindowDilations().has_value()) {
-    convertDenseIntElementAttr(*op.getWindowDilations(),  // NOLINT
-                               window_dilations);
+    window_dilations = *op.getWindowDilations();
   }
 
   std::vector<std::pair<int64_t, int64_t>> window_padding(window_shape.size(),
@@ -957,21 +899,18 @@ void execute(OpExecutor *executor, SPUContext *sctx, SymbolScope *sscope,
 
 void execute(OpExecutor *, SPUContext *sctx, SymbolScope *sscope,
              mlir::pphlo::ArgMaxOp &op, const ExecutionOptions &opts) {
-  Shape window_shape;
-  convertDenseIntElementAttr(op.getWindowDimensions(), window_shape);
+  Shape window_shape = op.getWindowDimensions();
 
   // build strides
   Strides window_strides(window_shape.size(), 1);
   if (op.getWindowStrides().has_value()) {
-    convertDenseIntElementAttr(*op.getWindowStrides(),  // NOLINT
-                               window_strides);
+    window_strides = *op.getWindowStrides();
   }
 
   // window dilation
   Sizes window_dilations(window_shape.size(), 1);
   if (op.getWindowDilations().has_value()) {
-    convertDenseIntElementAttr(*op.getWindowDilations(),  // NOLINT
-                               window_dilations);
+    window_dilations = *op.getWindowDilations();
   }
 
   auto ret_shape = op->getResults()[0]

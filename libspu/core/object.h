@@ -115,6 +115,12 @@ class Object final {
     regKernel(KernelT::kBindName, std::make_unique<KernelT>());
   }
 
+  template <typename KernelT, typename OtherKernelT, typename... MoreKernelT>
+  void regKernel() {
+    regKernel<KernelT>();
+    regKernel<OtherKernelT, MoreKernelT...>();
+  }
+
   template <typename KernelT>
   void regKernel(const std::string& name) {
     return regKernel(name, std::make_unique<KernelT>());

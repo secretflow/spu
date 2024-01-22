@@ -99,6 +99,7 @@ spu_cc_library(
         ":state",
         "//libspu/mpc/common:prg_state",
         "//libspu/mpc/common:pv2k",
+        "//libspu/mpc/standard_shape:protocol",
     ],
 )
 

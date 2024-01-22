@@ -27,23 +27,48 @@ namespace mlir::pphlo {
 namespace {
 
 struct DivRewriter : public OpRewritePattern<DivOp> {
+private:
+  Operation *rewriteSqrtIfPossible(PatternRewriter &rewriter,
+                                   Operation *op) const {
+    if (op == nullptr || op->getNumOperands() != 1) {
+      return nullptr;
+    }
+
+    if (mlir::isa<SqrtOp>(op)) {
+      return rewriter.create<RsqrtOp>(op->getLoc(), op->getResultTypes(),
+                                      op->getOperand(0));
+    }
+
+    if (auto bcastOp = mlir::dyn_cast<BroadcastOp>(op)) {
+      if (auto *inner = rewriteSqrtIfPossible(
+              rewriter, bcastOp.getOperand().getDefiningOp())) {
+        return rewriter.create<BroadcastOp>(
+            op->getLoc(), bcastOp->getResultTypes(), inner->getResult(0),
+            bcastOp.getBroadcastDimensions());
+      }
+      return nullptr;
+    }
+
+    return nullptr;
+  }
+
+public:
   explicit DivRewriter(MLIRContext *context)
       : OpRewritePattern<DivOp>(context) {}
 
   LogicalResult matchAndRewrite(DivOp op,
                                 PatternRewriter &rewriter) const override {
     // Pattern 1:
-    // y/sqrt(x + eps)
+    // y/sqrt(x) -> y*rsqrt(x)
     auto denominator = op.getRhs();
-    if (auto sqrt = denominator.getDefiningOp<SqrtOp>()) {
-      auto newRsqrt = rewriter.create<RsqrtOp>(
-          denominator.getLoc(), denominator.getType(), sqrt.getOperand());
+    if (auto *newop =
+            rewriteSqrtIfPossible(rewriter, denominator.getDefiningOp())) {
       rewriter.replaceOpWithNewOp<MulOp>(op, op.getType(), op.getLhs(),
-                                         newRsqrt);
+                                         newop->getResult(0));
       return success();
     } else {
       // Pattern 2:
-      // y/(k*sqrt(x + eps)) -> y/k*rsqrt(x+eps)
+      // y/(k*sqrt(x)) -> y/k*rsqrt(x)
       if (auto mulOp = denominator.getDefiningOp<MulOp>()) {
         auto sqrtOp = mulOp.getRhs().getDefiningOp<SqrtOp>();
         auto k = mulOp.getLhs();
@@ -55,10 +80,10 @@ struct DivRewriter : public OpRewritePattern<DivOp> {
           // y/k
           auto newDiv = rewriter.create<DivOp>(
               op.getLoc(), op->getResultTypes(), op.getLhs(), k);
-          // rsqrt(x+eps)
+          // rsqrt(x)
           auto newRsqrt = rewriter.create<RsqrtOp>(
               op->getLoc(), sqrtOp->getResultTypes(), sqrtOp->getOperand(0));
-          // y/k*rsqrt(x+eps)
+          // y/k*rsqrt(x)
           rewriter.replaceOpWithNewOp<MulOp>(op, op.getType(), newDiv,
                                              newRsqrt);
           return success();

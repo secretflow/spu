@@ -161,28 +161,65 @@ Value bitrev_s(SPUContext* ctx, const Value& x, size_t start, size_t end);
 Value bitrev_v(SPUContext* ctx, const Value& x, size_t start, size_t end);
 Value bitrev_p(SPUContext* ctx, const Value& x, size_t start, size_t end);
 
-// Generate a 1-D random secret permutation, here secret means the permutation
+//////////////////////////////////////////////////////////////////////////////
+// TODO: Formalize these permutation APIs
+//////////////////////////////////////////////////////////////////////////////
+// Generate a 1-D random secret permutation. Here secret means the permutation
 // is composed of a series of individual permutations hold by each party.
 // Specifically, if Perm = Perm1(Perm0), then party0 holds Perm0 and party1
 // holds Perm1
 OptionalAPI<Value> rand_perm_s(SPUContext* ctx, const Shape& shape);
 
-// Permute 1-D secret x with public permutation perm
-// ret[i] = <x>[perm[i]]
-OptionalAPI<Value> perm_ss(SPUContext* ctx, const Value& x, const Value& perm);
-
-// Permute 1-D secret x with secret permutation perm
-// ret[i] = <x[perm[i]]>
+// Permute 1-D x with permutation perm
+// ret[i] = x[perm[i]]
 OptionalAPI<Value> perm_sp(SPUContext* ctx, const Value& x, const Value& perm);
+OptionalAPI<Value> perm_ss(SPUContext* ctx, const Value& x, const Value& perm);
+Value perm_pp(SPUContext* ctx, const Value& x, const Value& perm);
+Value perm_vv(SPUContext* ctx, const Value& x, const Value& perm);
 
-// Inverse permute 1-D secret x with public permutation perm
-// ret[perm[i]] = <x>[i]
-OptionalAPI<Value> inv_perm_ss(SPUContext* ctx, const Value& x,
-                               const Value& perm);
-
-// Inverse permute 1-D secret x with secret permutation perm
-// ret[perm[i]] = <x[i]>
+// Inverse permute 1-D x with permutation perm
+// ret[perm[i]] = x[i]
 OptionalAPI<Value> inv_perm_sp(SPUContext* ctx, const Value& x,
                                const Value& perm);
+OptionalAPI<Value> inv_perm_ss(SPUContext* ctx, const Value& x,
+                               const Value& perm);
+OptionalAPI<Value> inv_perm_sv(SPUContext* ctx, const Value& x,
+                               const Value& perm);
+Value inv_perm_pp(SPUContext* ctx, const Value& x, const Value& perm);
+Value inv_perm_vv(SPUContext* ctx, const Value& x, const Value& perm);
 
+/*---------------------------- Value APIs ----------------------------------*/
+// Broadcast a Value
+Value broadcast(SPUContext* ctx, const Value& in, const Shape& to_shape,
+                const Axes& in_dims);
+
+// Resahpe a Value
+Value reshape(SPUContext* ctx, const Value& in, const Shape& to_shape);
+
+// Extract a slice from a Value
+Value extract_slice(SPUContext* ctx, const Value& in,
+                    const Index& start_indices, const Index& end_indices,
+                    const Strides& strides);
+
+// Update a Value at index with given value
+Value update_slice(SPUContext* ctx, const Value& in, const Value& update,
+                   const Index& start_indices);
+
+// Transpose a Value
+Value transpose(SPUContext* ctx, const Value& in, const Axes& permutation);
+
+// Reverse a Value at dimensions
+Value reverse(SPUContext* ctx, const Value& in, const Axes& dimensions);
+
+// Fill a Value with input value
+Value fill(SPUContext* ctx, const Value& in, const Shape& to_shape);
+
+// Pad a Value
+Value pad(SPUContext* ctx, const Value& in, const Value& padding_value,
+          const Sizes& edge_padding_low, const Sizes& edge_padding_high,
+          const Sizes& interior_padding);
+
+// Concate Values at an axis
+Value concatenate(SPUContext* ctx, const std::vector<Value>& values,
+                  int64_t axis);
 }  // namespace spu::mpc

@@ -85,6 +85,7 @@ spu_cc_library(
         ":permute",
         ":state",
         "//libspu/mpc/common:prg_state",
+        "//libspu/mpc/standard_shape:protocol",
     ],
 )
 

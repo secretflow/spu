@@ -115,12 +115,43 @@ Value _make_p(SPUContext* ctx, uint128_t init, const Shape& shape);
 Value _rand_p(SPUContext* ctx, const Shape& shape);
 Value _rand_s(SPUContext* ctx, const Shape& shape);
 
-// FIXME: temporary API
+// FIXME: temporary API, formalize later
 Value _rand_perm_s(SPUContext* ctx, const Shape& shape);
 Value _perm_ss(SPUContext* ctx, const Value& x, const Value& perm);
 Value _perm_sp(SPUContext* ctx, const Value& x, const Value& perm);
+Value _perm_pp(SPUContext* ctx, const Value& x, const Value& perm);
+Value _perm_vv(SPUContext* ctx, const Value& x, const Value& perm);
 Value _inv_perm_ss(SPUContext* ctx, const Value& x, const Value& perm);
 Value _inv_perm_sp(SPUContext* ctx, const Value& x, const Value& perm);
+Value _inv_perm_sv(SPUContext* ctx, const Value& x, const Value& perm);
+Value _inv_perm_pp(SPUContext* ctx, const Value& x, const Value& perm);
+Value _inv_perm_vv(SPUContext* ctx, const Value& x, const Value& perm);
+
+Value _gen_inv_perm_p(SPUContext* ctx, const Value& x, bool is_ascending);
+Value _gen_inv_perm_v(SPUContext* ctx, const Value& x, bool is_ascending);
+Value _merge_keys_p(SPUContext* ctx, absl::Span<Value const> inputs,
+                    bool is_ascending);
+Value _merge_keys_v(SPUContext* ctx, absl::Span<Value const> inputs,
+                    bool is_ascending);
+
+// Shape ops
+Value _broadcast(SPUContext* ctx, const Value& in, const Shape& to_shape,
+                 const Axes& in_dims);
+Value _reshape(SPUContext* ctx, const Value& in, const Shape& to_shape);
+Value _extract_slice(SPUContext* ctx, const Value& in,
+                     const Index& start_indices, const Index& end_indices,
+                     const Strides& strides);
+Value _update_slice(SPUContext* ctx, const Value& in, const Value& update,
+                    const Index& start_indices);
+Value _transpose(SPUContext* ctx, const Value& in,
+                 const Axes& permutation = {});
+Value _reverse(SPUContext* ctx, const Value& in, const Axes& dimensions);
+Value _fill(SPUContext* ctx, const Value& in, const Shape& to_shape);
+Value _pad(SPUContext* ctx, const Value& in, const Value& padding_value,
+           const Sizes& edge_padding_low, const Sizes& edge_padding_high,
+           const Sizes& interior_padding);
+Value _concatenate(SPUContext* ctx, const std::vector<Value>& values,
+                   int64_t axis);
 
 // NOLINTEND(readability-identifier-naming)
 

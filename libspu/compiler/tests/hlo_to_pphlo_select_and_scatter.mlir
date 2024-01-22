@@ -9,7 +9,7 @@ func.func @main(%arg0: tensor<128x5x5x32xf32>, %arg1: tensor<128x4x4x32xf32>, %a
   // CHECK:   ^bb0(%arg3: tensor<!pphlo.pub<f32>>, %arg4: tensor<!pphlo.sec<f32>>):
   // CHECK:     %2 = "pphlo.add"(%arg3, %arg4) : (tensor<!pphlo.pub<f32>>, tensor<!pphlo.sec<f32>>) -> tensor<!pphlo.sec<f32>>
   // CHECK:     "pphlo.return"(%2) : (tensor<!pphlo.sec<f32>>) -> ()
-  // CHECK:   }) {window_dimensions = dense<[1, 2, 2, 1]> : tensor<4xi64>, window_strides = dense<1> : tensor<4xi64>} : (tensor<128x5x5x32x!pphlo.sec<f32>>, tensor<128x4x4x32x!pphlo.pub<f32>>, tensor<!pphlo.sec<f32>>) -> tensor<128x5x5x32x!pphlo.sec<f32>>
+  // CHECK:   }) {window_dimensions = array<i64: 1, 2, 2, 1>, window_strides = array<i64: 1, 1, 1, 1>} : (tensor<128x5x5x32x!pphlo.sec<f32>>, tensor<128x4x4x32x!pphlo.pub<f32>>, tensor<!pphlo.sec<f32>>) -> tensor<128x5x5x32x!pphlo.sec<f32>>
   %0 = "stablehlo.select_and_scatter"(%arg0, %arg1, %arg2) ({
     ^bb0(%arg3: tensor<f32>, %arg4: tensor<f32>):
         %1 = "stablehlo.compare"(%arg3, %arg4) {comparison_direction = #stablehlo<comparison_direction GE>} : (tensor<f32>, tensor<f32>) -> tensor<i1>

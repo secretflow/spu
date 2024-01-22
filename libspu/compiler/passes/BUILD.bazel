@@ -92,7 +92,6 @@ spu_cc_library(
     deps = [
         ":map_stablehlo_to_pphlo_op",
         ":pass_details",
-        ":utils",
         ":visibility_inference",
         "//libspu/compiler/common:compilation_context",
         "//libspu/core:prelude",
@@ -199,19 +198,6 @@ spu_cc_library(
 )
 
 spu_cc_library(
-    name = "expand_secret_gather",
-    srcs = ["expand_secret_gather.cc"],
-    hdrs = ["passes.h"],
-    deps = [
-        ":pass_details",
-        ":utils",
-        "//libspu/dialect:pphlo_dialect",
-        "@llvm-project//mlir:IR",
-        "@llvm-project//mlir:TransformUtils",
-    ],
-)
-
-spu_cc_library(
     name = "rewrite_div_sqrt_patterns",
     srcs = ["rewrite_div_sqrt_patterns.cc"],
     hdrs = ["passes.h"],
@@ -260,15 +246,6 @@ spu_cc_library(
 )
 
 spu_cc_library(
-    name = "utils",
-    srcs = ["utils.cc"],
-    hdrs = ["utils.h"],
-    deps = [
-        "@llvm-project//mlir:IR",
-    ],
-)
-
-spu_cc_library(
     name = "convert_push_down",
     srcs = ["convert_push_down.cc"],
     hdrs = ["passes.h"],
@@ -287,7 +264,6 @@ spu_cc_library(
         ":convert_push_down",
         ":decompose_comparison",
         ":decompose_minmax",
-        ":expand_secret_gather",
         ":hlo_legalize_to_pphlo",
         ":insert_deallocation",
         ":lower_conversion_cast",

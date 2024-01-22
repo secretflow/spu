@@ -12,17 +12,32 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@rules_python//python:defs.bzl", "py_binary")
+load("//bazel:spu.bzl", "spu_cc_library", "spu_cc_test")
 
 package(default_visibility = ["//visibility:public"])
 
-py_binary(
-    name = "torch_experiment",
-    srcs = ["torch_experiment.py"],
-    data = [
-        "//examples/python/conf",
-    ],
+spu_cc_library(
+    name = "standard_shape",
     deps = [
-        "//spu/utils:distributed",
+        ":protocol",
+    ],
+)
+
+spu_cc_library(
+    name = "protocol",
+    srcs = ["protocol.cc"],
+    hdrs = ["protocol.h"],
+    deps = [
+        ":kernels",
+        "//libspu/core:context",
+    ],
+)
+
+spu_cc_library(
+    name = "kernels",
+    srcs = ["kernels.cc"],
+    hdrs = ["kernels.h"],
+    deps = [
+        "//libspu/mpc:kernel",
     ],
 )

@@ -22,17 +22,6 @@ include "pphlo_dialect.td"
 
 def PPHloDim : ArrayRefParameter<"int64_t", "Dimension">;
 
-def GatherDimensionNumbers : AttrDef<PPHlo_Dialect, "GatherDimensionNumbers"> {
-  let mnemonic = "gather";
-  let summary = "Attribute that models the dimension information for gather";
-  let parameters = (ins
-              PPHloDim: $offsetDims,
-              PPHloDim: $collapsedSliceDims,
-              PPHloDim: $startIndexMap,
-              "int64_t": $indexVectorDim);
-  let hasCustomAssemblyFormat = 1;
-}
-
 def ConvDimensionNumbers : AttrDef<PPHlo_Dialect, "ConvDimensionNumbers"> {
   let mnemonic = "conv";
   let summary = "Structure of dimension information for conv op";

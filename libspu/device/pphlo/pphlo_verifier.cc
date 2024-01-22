@@ -490,12 +490,6 @@ void PPHloVerifier::verify(mlir::pphlo::SortOp,
   SPDLOG_WARN("Missing stablehlo interpreter support");
 }
 
-void PPHloVerifier::verify(mlir::pphlo::GatherOp,
-                           absl::Span<const spu::Value> /*operands*/,
-                           absl::Span<const spu::Value> /*expected*/) {
-  SPDLOG_WARN("Missing stablehlo interpreter support");
-}
-
 void PPHloVerifier::verify(mlir::pphlo::BitcastConvertOp,
                            absl::Span<const spu::Value> /*operands*/,
                            absl::Span<const spu::Value> /*expected*/) {

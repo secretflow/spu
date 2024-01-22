@@ -122,14 +122,113 @@ void CastTypeKernel::evaluate(KernelEvalContext* ctx) const {
 }
 
 void PermKernel::evaluate(KernelEvalContext* ctx) const {
-  const auto& in = ctx->getParam<Value>(0);
-  const auto& perm = ctx->getParam<Value>(1);
+  const auto& x = ctx->getParam<Value>(0);
+  const auto& y = ctx->getParam<Value>(1);
 
-  SPU_ENFORCE(in.shape() == perm.shape(), "shape mismatch {} {}", in.shape(),
-              perm.shape());
+  SPU_ENFORCE(x.shape() == y.shape(), "shape mismatch {} {}", x.shape(),
+              x.shape());
+  SPU_ENFORCE(x.shape().ndim() == 1, "input should be a 1-d tensor");
+
+  auto z = proc(ctx, UnwrapValue(x), UnwrapValue(y));
+
+  ctx->setOutput(WrapValue(z));
+}
+
+void GenInvPermKernel::evaluate(KernelEvalContext* ctx) const {
+  const auto& in = ctx->getParam<Value>(0);
+  bool is_ascending = ctx->getParam<bool>(1);
   SPU_ENFORCE(in.shape().ndim() == 1, "input should be a 1-d tensor");
 
-  auto z = proc(ctx, UnwrapValue(in), UnwrapValue(perm));
+  auto y = proc(ctx, UnwrapValue(in), is_ascending);
+
+  ctx->setOutput(WrapValue(y));
+}
+
+void MergeKeysKernel::evaluate(KernelEvalContext* ctx) const {
+  const auto& in = ctx->getParam<std::vector<Value>>(0);
+  bool is_ascending = ctx->getParam<bool>(1);
+  std::vector<NdArrayRef> inputs;
+  for (size_t i = 0; i < in.size(); ++i) {
+    inputs.push_back(UnwrapValue(in[i]));
+  }
+  auto y = proc(ctx, inputs, is_ascending);
+
+  ctx->setOutput(WrapValue(y));
+}
+
+void BroadcastKernel::evaluate(KernelEvalContext* ctx) const {
+  const auto& in = ctx->getParam<Value>(0);
+  const auto& to_shape = ctx->getParam<Shape>(1);
+  const auto& in_dims = ctx->getParam<Axes>(2);
+
+  auto z = proc(ctx, UnwrapValue(in), to_shape, in_dims);
+
+  ctx->setOutput(WrapValue(z));
+}
+
+void DimsBasedKernel::evaluate(KernelEvalContext* ctx) const {
+  const auto& in = ctx->getParam<Value>(0);
+  const auto& axes = ctx->getParam<Axes>(1);
+
+  auto z = proc(ctx, UnwrapValue(in), axes);
+
+  ctx->setOutput(WrapValue(z));
+}
+
+void ShapeBasedKernel::evaluate(KernelEvalContext* ctx) const {
+  const auto& in = ctx->getParam<Value>(0);
+  const auto& to_shape = ctx->getParam<Shape>(1);
+
+  auto z = proc(ctx, UnwrapValue(in), to_shape);
+
+  ctx->setOutput(WrapValue(z));
+}
+
+void ExtractSliceKernel::evaluate(KernelEvalContext* ctx) const {
+  const auto& in = ctx->getParam<Value>(0);
+  const auto& start = ctx->getParam<Index>(1);
+  const auto& end = ctx->getParam<Index>(2);
+  const auto& strides = ctx->getParam<Strides>(3);
+
+  auto z = proc(ctx, UnwrapValue(in), start, end, strides);
+
+  ctx->setOutput(WrapValue(z));
+}
+
+void UpdateSliceKernel::evaluate(KernelEvalContext* ctx) const {
+  const auto& in = ctx->getParam<Value>(0);
+  const auto& update = ctx->getParam<Value>(1);
+  const auto& start = ctx->getParam<Index>(2);
+
+  auto z = proc(ctx, UnwrapValue(in), UnwrapValue(update), start);
+
+  ctx->setOutput(WrapValue(z));
+}
+
+void PadKernel::evaluate(KernelEvalContext* ctx) const {
+  const auto& in = ctx->getParam<Value>(0);
+  const auto& padding_value = ctx->getParam<Value>(1);
+  const auto& edge_low = ctx->getParam<Sizes>(2);
+  const auto& edge_high = ctx->getParam<Sizes>(3);
+  const auto& interior_padding = ctx->getParam<Sizes>(4);
+
+  auto z = proc(ctx, UnwrapValue(in), UnwrapValue(padding_value), edge_low,
+                edge_high, interior_padding);
+
+  ctx->setOutput(WrapValue(z));
+}
+
+void ConcateKernel::evaluate(KernelEvalContext* ctx) const {
+  const auto& ins = ctx->getParam<std::vector<Value>>(0);
+  const auto& axis = ctx->getParam<int64_t>(1);
+
+  std::vector<NdArrayRef> unwrapped(ins.size());
+
+  for (size_t idx = 0; idx < ins.size(); ++idx) {
+    unwrapped[idx] = UnwrapValue(ins[idx]);
+  }
+
+  auto z = proc(ctx, unwrapped, axis);
 
   ctx->setOutput(WrapValue(z));
 }

@@ -83,6 +83,7 @@ spu_cc_library(
         ":conversion",
         ":state",
         "//libspu/mpc/common:prg_state",
+        "//libspu/mpc/standard_shape:protocol",
     ],
 )
 

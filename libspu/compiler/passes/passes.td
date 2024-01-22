@@ -81,12 +81,6 @@ def RewriteDivSqrtPatterns: Pass<"rewrite-div-sqrt-pattern", "func::FuncOp"> {
   let dependentDialects = ["pphlo::PPHloDialect"];
 }
 
-def ExpandSecretGather: Pass<"expand-secret-gather", "func::FuncOp"> {
-  let summary = "Rewrite Gather with secret indexing to loop with DynamicUpdateSlice";
-  let constructor = "createExpandSecretGatherPass()";
-  let dependentDialects = ["pphlo::PPHloDialect"];
-}
-
 def OptimizeDenominatorWithBcast: Pass<"optimize-denominator-with-broadcast", "func::FuncOp"> {
   let summary = "Optimize x/broadcast(y) into x*broadcast(1/y)";
   let constructor = "createOptimizeDenominatorWithBroadcast()";

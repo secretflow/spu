@@ -18,9 +18,9 @@
 
 namespace spu::mpc::semi2k {
 
-class RandPermS : public RandKernel {
+class RandPermM : public RandKernel {
  public:
-  static constexpr char kBindName[] = "rand_perm_s";
+  static constexpr char kBindName[] = "rand_perm_m";
 
   ce::CExpr latency() const override { return ce::Const(0); }
 
@@ -29,9 +29,9 @@ class RandPermS : public RandKernel {
   NdArrayRef proc(KernelEvalContext* ctx, const Shape& shape) const override;
 };
 
-class PermAS : public PermKernel {
+class PermAM : public PermKernel {
  public:
-  static constexpr char kBindName[] = "perm_as";
+  static constexpr char kBindName[] = "perm_am";
 
   ce::CExpr latency() const override { return ce::N(); }
 
@@ -53,9 +53,9 @@ class PermAP : public PermKernel {
                   const NdArrayRef& perm) const override;
 };
 
-class InvPermAS : public PermKernel {
+class InvPermAM : public PermKernel {
  public:
-  static constexpr char kBindName[] = "inv_perm_as";
+  static constexpr char kBindName[] = "inv_perm_am";
 
   ce::CExpr latency() const override { return ce::N(); }
 
@@ -72,6 +72,21 @@ class InvPermAP : public PermKernel {
   ce::CExpr latency() const override { return ce::Const(0); }
 
   ce::CExpr comm() const override { return ce::Const(0); }
+
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in,
+                  const NdArrayRef& perm) const override;
+};
+
+class InvPermAV : public PermKernel {
+ public:
+  static constexpr char kBindName[] = "inv_perm_av";
+
+  // communication is unbalanced
+  Kind kind() const override { return Kind::Dynamic; }
+
+  ce::CExpr latency() const override { return ce::Const(1); }
+
+  ce::CExpr comm() const override { return ce::K(); }
 
   NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in,
                   const NdArrayRef& perm) const override;

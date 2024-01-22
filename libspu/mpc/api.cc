@@ -24,6 +24,7 @@ namespace {
 
 inline bool IsA(const Value& x) { return x.storage_type().isa<AShare>(); }
 inline bool IsB(const Value& x) { return x.storage_type().isa<BShare>(); }
+inline bool IsPShr(const Value& x) { return x.storage_type().isa<PShare>(); }
 [[maybe_unused]] inline bool IsP(const Value& x) {
   return x.storage_type().isa<Public>();
 }
@@ -669,13 +670,14 @@ Value bitrev_p(SPUContext* ctx, const Value& x, size_t start, size_t end) {
 
 OptionalAPI<Value> rand_perm_s(SPUContext* ctx, const Shape& shape) {
   SPU_TRACE_MPC_DISP(ctx, shape);
-  TRY_DISPATCH(ctx, shape);
+  TRY_NAMED_DISPATCH(ctx, "rand_perm_m", shape);
   return NotAvailable;
 }
 
 OptionalAPI<Value> perm_ss(SPUContext* ctx, const Value& x, const Value& perm) {
+  SPU_ENFORCE(IsPShr(perm), "perm should be a PShare");
   SPU_TRACE_MPC_DISP(ctx, x, perm);
-  TRY_NAMED_DISPATCH(ctx, "perm_as", _2a(ctx, x), perm);
+  TRY_NAMED_DISPATCH(ctx, "perm_am", _2a(ctx, x), perm);
   return NotAvailable;
 }
 
@@ -685,10 +687,21 @@ OptionalAPI<Value> perm_sp(SPUContext* ctx, const Value& x, const Value& perm) {
   return NotAvailable;
 }
 
+spu::Value perm_pp(SPUContext* ctx, const Value& in, const Value& perm) {
+  FORCE_DISPATCH(ctx, in, perm);
+}
+
+spu::Value perm_vv(SPUContext* ctx, const Value& in, const Value& perm) {
+  SPU_ENFORCE(hasSameOwner(in, perm),
+              "in and perm should belong to the same owner");
+  FORCE_DISPATCH(ctx, in, perm);
+}
+
 OptionalAPI<Value> inv_perm_ss(SPUContext* ctx, const Value& x,
                                const Value& perm) {
+  SPU_ENFORCE(IsPShr(perm), "perm should be a PShare");
   SPU_TRACE_MPC_DISP(ctx, x, perm);
-  TRY_NAMED_DISPATCH(ctx, "inv_perm_as", _2a(ctx, x), perm);
+  TRY_NAMED_DISPATCH(ctx, "inv_perm_am", _2a(ctx, x), perm);
   return NotAvailable;
 }
 
@@ -697,6 +710,85 @@ OptionalAPI<Value> inv_perm_sp(SPUContext* ctx, const Value& x,
   SPU_TRACE_MPC_DISP(ctx, x, perm);
   TRY_NAMED_DISPATCH(ctx, "inv_perm_ap", _2a(ctx, x), perm);
   return NotAvailable;
+}
+
+OptionalAPI<Value> inv_perm_sv(SPUContext* ctx, const Value& x,
+                               const Value& perm) {
+  SPU_TRACE_MPC_DISP(ctx, x, perm);
+  TRY_NAMED_DISPATCH(ctx, "inv_perm_av", _2a(ctx, x), perm);
+  return NotAvailable;
+}
+
+spu::Value inv_perm_pp(SPUContext* ctx, const Value& in, const Value& perm) {
+  FORCE_DISPATCH(ctx, in, perm);
+}
+
+spu::Value inv_perm_vv(SPUContext* ctx, const Value& in, const Value& perm) {
+  SPU_ENFORCE(hasSameOwner(in, perm),
+              "in and perm should belong to the same owner");
+  FORCE_DISPATCH(ctx, in, perm);
+}
+
+Value broadcast(SPUContext* ctx, const Value& in, const Shape& to_shape,
+                const Axes& in_dims) {
+  SPU_TRACE_MPC_DISP(ctx, in, to_shape, in_dims);
+  FORCE_DISPATCH(ctx, in, to_shape, in_dims);
+}
+
+// Resahpe a Value
+Value reshape(SPUContext* ctx, const Value& in, const Shape& to_shape) {
+  SPU_TRACE_MPC_DISP(ctx, in, to_shape);
+  FORCE_DISPATCH(ctx, in, to_shape);
+}
+
+// Extract a slice from a Value
+Value extract_slice(SPUContext* ctx, const Value& in,
+                    const Index& start_indices, const Index& end_indices,
+                    const Strides& strides) {
+  SPU_TRACE_MPC_DISP(ctx, in, start_indices, end_indices, strides);
+  FORCE_DISPATCH(ctx, in, start_indices, end_indices, strides);
+}
+
+// Update a Value at index with given value
+Value update_slice(SPUContext* ctx, const Value& in, const Value& update,
+                   const Index& start_indices) {
+  SPU_TRACE_MPC_DISP(ctx, in, update, start_indices);
+  FORCE_DISPATCH(ctx, in, update, start_indices);
+}
+
+// Transpose a Value
+Value transpose(SPUContext* ctx, const Value& in, const Axes& permutation) {
+  SPU_TRACE_MPC_DISP(ctx, in, permutation);
+  FORCE_DISPATCH(ctx, in, permutation);
+}
+
+// Reverse a Value at dimensions
+Value reverse(SPUContext* ctx, const Value& in, const Axes& dimensions) {
+  SPU_TRACE_MPC_DISP(ctx, in, dimensions);
+  FORCE_DISPATCH(ctx, in, dimensions);
+}
+
+// Fill a Value with input value
+Value fill(SPUContext* ctx, const Value& in, const Shape& to_shape) {
+  SPU_TRACE_MPC_DISP(ctx, in, to_shape);
+  FORCE_DISPATCH(ctx, in, to_shape);
+}
+
+// Pad a Value
+Value pad(SPUContext* ctx, const Value& in, const Value& padding_value,
+          const Sizes& edge_padding_low, const Sizes& edge_padding_high,
+          const Sizes& interior_padding) {
+  SPU_TRACE_MPC_DISP(ctx, in, padding_value, edge_padding_low,
+                     edge_padding_high, interior_padding);
+  FORCE_DISPATCH(ctx, in, padding_value, edge_padding_low, edge_padding_high,
+                 interior_padding);
+}
+
+// Concate Values at an axis
+Value concatenate(SPUContext* ctx, const std::vector<Value>& values,
+                  int64_t axis) {
+  SPU_TRACE_MPC_DISP(ctx, values, axis);
+  FORCE_DISPATCH(ctx, values, axis);
 }
 
 }  // namespace spu::mpc

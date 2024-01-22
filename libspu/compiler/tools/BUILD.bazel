@@ -34,3 +34,19 @@ spu_cc_binary(
         "@xla//xla/mlir_hlo:mhlo_passes",
     ],
 )
+
+spu_cc_binary(
+    name = "mlir-pphlo-lsp",
+    srcs = [
+        "mlir-pphlo-lsp.cc",
+    ],
+    deps = [
+        "//libspu/dialect:pphlo_dialect",
+        "@llvm-project//llvm:Support",
+        "@llvm-project//mlir:FuncExtensions",
+        "@llvm-project//mlir:IR",
+        "@llvm-project//mlir:MlirLspServerLib",
+        "@stablehlo//:stablehlo_ops",
+        "@xla//xla/mlir_hlo",
+    ],
+)

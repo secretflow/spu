@@ -31,6 +31,15 @@ NdArrayRef wrap_a2v(SPUContext* ctx, const NdArrayRef& x, size_t rank) {
   return UnwrapValue(a2v(ctx, WrapValue(x), rank));
 }
 
+inline bool isOwner(KernelEvalContext* ctx, const Type& type) {
+  auto* comm = ctx->getState<Communicator>();
+  return type.as<Priv2kTy>()->owner() == static_cast<int64_t>(comm->getRank());
+}
+
+inline int64_t getOwner(const NdArrayRef& x) {
+  return x.eltype().as<Priv2kTy>()->owner();
+}
+
 // Secure inverse permutation of x by perm_rank's permutation pv
 // The idea here is:
 // Input permutation pv, beaver generates perm pair {<A>, <B>} that
@@ -58,7 +67,7 @@ NdArrayRef SecureInvPerm(KernelEvalContext* ctx, const NdArrayRef& x,
 
 }  // namespace
 
-NdArrayRef RandPermS::proc(KernelEvalContext* ctx, const Shape& shape) const {
+NdArrayRef RandPermM::proc(KernelEvalContext* ctx, const Shape& shape) const {
   NdArrayRef out(makeType<PShrTy>(), shape);
 
   // generate a RandU64 as permutation seed
@@ -77,7 +86,7 @@ NdArrayRef RandPermS::proc(KernelEvalContext* ctx, const Shape& shape) const {
   return out;
 }
 
-NdArrayRef PermAS::proc(KernelEvalContext* ctx, const NdArrayRef& in,
+NdArrayRef PermAM::proc(KernelEvalContext* ctx, const NdArrayRef& in,
                         const NdArrayRef& perm) const {
   auto* comm = ctx->getState<Communicator>();
 
@@ -97,7 +106,7 @@ NdArrayRef PermAP::proc(KernelEvalContext* ctx, const NdArrayRef& in,
   return out;
 }
 
-NdArrayRef InvPermAS::proc(KernelEvalContext* ctx, const NdArrayRef& in,
+NdArrayRef InvPermAM::proc(KernelEvalContext* ctx, const NdArrayRef& in,
                            const NdArrayRef& perm) const {
   auto* comm = ctx->getState<Communicator>();
   PermVector pv = ring2pv(perm);
@@ -114,6 +123,17 @@ NdArrayRef InvPermAP::proc(KernelEvalContext* ctx, const NdArrayRef& in,
                            const NdArrayRef& perm) const {
   PermVector pv = ring2pv(perm);
   auto out = applyInvPerm(in, pv);
+  return out;
+}
+
+NdArrayRef InvPermAV::proc(KernelEvalContext* ctx, const NdArrayRef& in,
+                           const NdArrayRef& perm) const {
+  PermVector pv;
+  const auto lctx = ctx->lctx();
+  if (isOwner(ctx, perm.eltype())) {
+    pv = ring2pv(perm);
+  }
+  auto out = SecureInvPerm(ctx, in, getOwner(perm), pv);
   return out;
 }
 

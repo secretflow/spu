@@ -20,6 +20,7 @@
 #include "yacl/base/int128.h"
 
 #include "libspu/mpc/cheetah/ot/ferret_ot_interface.h"
+#include "libspu/mpc/cheetah/ot/yacl/yacl_util.h"
 #include "libspu/mpc/common/communicator.h"
 
 namespace spu::mpc::cheetah {

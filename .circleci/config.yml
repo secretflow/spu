@@ -36,6 +36,9 @@ parameters:
   run-schedule:
     type: boolean
     default: false
+  run-asan:
+    type: boolean
+    default: false
 
 # Define a job to be invoked later in a workflow.
 # See: https://circleci.com/docs/2.0/configuration-reference/#jobs
@@ -59,6 +62,7 @@ workflows:
   unittest-workflow:
     when:
       and:
+        - not: << pipeline.parameters.run-asan >>
         - not: << pipeline.parameters.run-schedule >>
         - not: << pipeline.parameters.GHA_Action >>
         - not: << pipeline.parameters.GHA_Meta >>
@@ -80,6 +84,11 @@ workflows:
     jobs:
       - continuation/continue:
           configuration_path: .circleci/benchmark-config.yml
+  asan-workflow:
+    when: << pipeline.parameters.run-asan >>
+    jobs:
+      - continuation/continue:
+          configuration_path: .circleci/asan-config.yml
   publish-workflow:
     when:
       equal: [ "release", << pipeline.parameters.GHA_Event >> ]

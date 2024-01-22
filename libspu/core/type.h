@@ -138,6 +138,16 @@ class BShare {
   void setNbits(size_t nbits) { nbits_ = nbits; }
 };
 
+// Permutation share, a secret permutation can be a composition of a series of
+// individual permutations hold by different parties. Each individual
+// permutation is represented as a PShare in SPU. PShare is a secret type.
+// We use the letter m for naming PShare values in order to be distinguished
+// from public values.
+class PShare {
+ public:
+  virtual ~PShare() = default;
+};
+
 ////////////////////////////////////////////////////////////////////////////
 // Type interfaces end.
 ////////////////////////////////////////////////////////////////////////////

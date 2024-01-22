@@ -40,10 +40,10 @@ def _yacl():
         http_archive,
         name = "yacl",
         urls = [
-            "https://github.com/secretflow/yacl/archive/5feaa30e6a2ab3be5a01a7a4ee3c1613d11386d9.tar.gz",
+            "https://github.com/secretflow/yacl/archive/7a99fd620213ae80bb5fbdc2f60b015dadbd8c7b.tar.gz",
         ],
-        strip_prefix = "yacl-5feaa30e6a2ab3be5a01a7a4ee3c1613d11386d9",
-        sha256 = "7ff9f93b0de554fa454a4c995dc0533a7b998173e6f0468be5b40a6092555a4e",
+        strip_prefix = "yacl-7a99fd620213ae80bb5fbdc2f60b015dadbd8c7b",
+        sha256 = "ea5cade0b1e44a3cb49124a88a3549668a8805543a1b4b823629b18538f8d7ce",
     )
 
 def _libpsi():
@@ -51,19 +51,19 @@ def _libpsi():
         http_archive,
         name = "psi",
         urls = [
-            "https://github.com/secretflow/psi/archive/65263edfa3255ffe17af6b30904b395366b5b661.tar.gz",
+            "https://github.com/secretflow/psi/archive/2f4bb012d9b294a2dea1fd622d13a63c3ee31f52.tar.gz",
         ],
-        strip_prefix = "psi-65263edfa3255ffe17af6b30904b395366b5b661",
-        sha256 = "8d1e42eaa435e6715c1b9dda38b1dec2245d499afe4f79c0da24602bf72cb72b",
+        strip_prefix = "psi-2f4bb012d9b294a2dea1fd622d13a63c3ee31f52",
+        sha256 = "602ea61f40b7635382e26f526292eb4649af0b1763fd13d63cb3e1c1542c60af",
     )
 
 def _rules_proto_grpc():
     http_archive(
         name = "rules_proto_grpc",
-        sha256 = "928e4205f701b7798ce32f3d2171c1918b363e9a600390a25c876f075f1efc0a",
-        strip_prefix = "rules_proto_grpc-4.4.0",
+        sha256 = "2a0860a336ae836b54671cbbe0710eec17c64ef70c4c5a88ccfd47ea6e3739bd",
+        strip_prefix = "rules_proto_grpc-4.6.0",
         urls = [
-            "https://github.com/rules-proto-grpc/rules_proto_grpc/releases/download/4.4.0/rules_proto_grpc-4.4.0.tar.gz",
+            "https://github.com/rules-proto-grpc/rules_proto_grpc/releases/download/4.6.0/rules_proto_grpc-4.6.0.tar.gz",
         ],
     )
 
@@ -79,10 +79,10 @@ def _bazel_platform():
     http_archive(
         name = "platforms",
         urls = [
-            "https://mirror.bazel.build/github.com/bazelbuild/platforms/releases/download/0.0.7/platforms-0.0.7.tar.gz",
-            "https://github.com/bazelbuild/platforms/releases/download/0.0.7/platforms-0.0.7.tar.gz",
+            "https://mirror.bazel.build/github.com/bazelbuild/platforms/releases/download/0.0.8/platforms-0.0.8.tar.gz",
+            "https://github.com/bazelbuild/platforms/releases/download/0.0.8/platforms-0.0.8.tar.gz",
         ],
-        sha256 = "3a561c99e7bdbe9173aa653fd579fe849f1d8d67395780ab4770b1f381431d51",
+        sha256 = "8150406605389ececb6da07cbcb509d5637a3ab9a24bc69b1101531367d89d74",
     )
 
 def _com_github_facebook_zstd():
@@ -140,15 +140,15 @@ def _com_github_xtensor_xtl():
     )
 
 def _com_github_openxla_xla():
-    OPENXLA_COMMIT = "d5791b01aa7541e3400224ac0a2985cc0f6940cb"
-    OPENXLA_SHA256 = "82dd50e6f51d79e8da69f109a234e33b8036f7b8798e41a03831b19c0c64d6e5"
+    OPENXLA_COMMIT = "fa9331a7e557b4ec1381f84cbbf7401a8f41ac66"
+    OPENXLA_SHA256 = "d19c570d434002b7b0490327d407fc7cf2b18633f4a2d3b1bb44f3f0e4b36533"
 
     maybe(
         http_archive,
         name = "bazel_skylib",
-        sha256 = "74d544d96f4a5bb630d465ca8bbcfe231e3594e5aae57e1edbf17a6eb3ca2506",
+        sha256 = "cd55a062e763b9349921f0f5db8c3933288dc8ba4f76dd9416aac68acee3cb94",
         urls = [
-            "https://github.com/bazelbuild/bazel-skylib/releases/download/{version}/bazel-skylib-1.3.0.tar.gz",
+            "https://github.com/bazelbuild/bazel-skylib/releases/download/1.5.0/bazel-skylib-1.5.0.tar.gz",
         ],
     )
 
@@ -168,10 +168,10 @@ def _com_github_pybind11_bazel():
     maybe(
         http_archive,
         name = "pybind11_bazel",
-        sha256 = "07e529a85cf4c11e1ca1b423149e86e63a3f3859c22efee3b3c5225ca89580f2",
-        strip_prefix = "pybind11_bazel-23926b00e2b2eb2fc46b17e587cf0c0cfd2f2c4b",
+        sha256 = "dc4882b23a617575d0fd822aba88aa4a14133c3d428b5a8fb83d81d03444a475",
+        strip_prefix = "pybind11_bazel-8889d39b2b925b2a47519ae09402a96f00ccf2b4",
         urls = [
-            "https://github.com/pybind/pybind11_bazel/archive/23926b00e2b2eb2fc46b17e587cf0c0cfd2f2c4b.zip",
+            "https://github.com/pybind/pybind11_bazel/archive/8889d39b2b925b2a47519ae09402a96f00ccf2b4.zip",
         ],
     )
 
@@ -192,11 +192,11 @@ def _com_intel_hexl():
         http_archive,
         name = "com_intel_hexl",
         type = "tar.gz",
-        strip_prefix = "hexl-1.2.4",
-        sha256 = "f91dd158e3faa8795035f618286cdef7dacbf488fd0ba4f44409880997b4549f",
+        strip_prefix = "hexl-1.2.5",
+        sha256 = "3692e6e6183dbc49253e51e86c3e52e7affcac925f57db0949dbb4d34b558a9a",
         build_file = "@spulib//bazel:hexl.BUILD",
         urls = [
-            "https://github.com/intel/hexl/archive/refs/tags/v1.2.4.tar.gz",
+            "https://github.com/intel/hexl/archive/refs/tags/v1.2.5.tar.gz",
         ],
     )
 
@@ -267,10 +267,10 @@ def _com_github_nvidia_cutlass():
     maybe(
         http_archive,
         name = "com_github_nvidia_cutlass",
-        strip_prefix = "cutlass-3.2.0",
+        strip_prefix = "cutlass-3.4.0",
         urls = [
-            "https://github.com/NVIDIA/cutlass/archive/refs/tags/v3.2.0.tar.gz",
+            "https://github.com/NVIDIA/cutlass/archive/refs/tags/v3.4.0.tar.gz",
         ],
-        sha256 = "9637961560a9d63a6bb3f407faf457c7dbc4246d3afb54ac7dc1e014dd7f172f",
+        sha256 = "49f4b854acc2a520126ceefe4f701cfe8c2b039045873e311b1f10a8ca5d5de1",
         build_file = "@spulib//bazel:nvidia_cutlass.BUILD",
     )

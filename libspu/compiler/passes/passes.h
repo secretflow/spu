@@ -62,8 +62,6 @@ std::unique_ptr<OperationPass<func::FuncOp>> createOptimizeSelectPass();
 // Optimize sqrt(x) + very_small_const) -> sqrt(x + eps)
 std::unique_ptr<OperationPass<func::FuncOp>> createOptimizeSqrtPlusEps();
 
-std::unique_ptr<OperationPass<func::FuncOp>> createExpandSecretGatherPass();
-
 // Rewrite x/sqrt(x+eps) -> x*rsqrt(x+eps)
 std::unique_ptr<OperationPass<func::FuncOp>> createRewriteDivSqrtPatterns();
 

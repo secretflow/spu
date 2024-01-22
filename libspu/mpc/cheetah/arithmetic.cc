@@ -278,6 +278,8 @@ NdArrayRef MulAA::mulDirectly(KernelEvalContext* ctx, const NdArrayRef& x,
   // Compute the cross terms x0*y1, x1*y0 homomorphically
   auto* comm = ctx->getState<Communicator>();
   auto* mul_prot = ctx->getState<CheetahMulState>()->get();
+  mul_prot->LazyInitKeys(x.eltype().as<Ring2k>()->field());
+
   const int rank = comm->getRank();
   auto fx = x.reshape({x.numel()});
   auto fy = y.reshape({y.numel()});
@@ -311,6 +313,8 @@ NdArrayRef MatMulAA::proc(KernelEvalContext* ctx, const NdArrayRef& x,
 
   auto* comm = ctx->getState<Communicator>();
   auto* dot_prot = ctx->getState<CheetahDotState>()->get();
+  dot_prot->LazyInitKeys(x.eltype().as<Ring2k>()->field());
+
   const int rank = comm->getRank();
 
   // (x0 + x1) * (y0 + y1)
@@ -338,6 +342,33 @@ NdArrayRef MatMulAA::proc(KernelEvalContext* ctx, const NdArrayRef& x,
   auto ret = ring_mmul(x, y);
   ring_add_(ret, x1y0);
   return ring_add(ret, task.get()).as(x.eltype());
+}
+
+NdArrayRef MatMulAV::proc(KernelEvalContext* ctx, const NdArrayRef& x,
+                          const NdArrayRef& y) const {
+  if (0 == x.numel() || 0 == y.numel()) {
+    return NdArrayRef(x.eltype(), {x.shape()[0], y.shape()[1]});
+  }
+  auto* comm = ctx->getState<Communicator>();
+  auto* dot_prot = ctx->getState<CheetahDotState>()->get();
+  dot_prot->LazyInitKeys(x.eltype().as<Ring2k>()->field());
+
+  const int rank = comm->getRank();
+  const auto* ptype = y.eltype().as<Priv2kTy>();
+  SPU_ENFORCE(ptype != nullptr, "rhs should be a private type");
+  const int owner = ptype->owner();
+  NdArrayRef out;
+  const Shape3D dim3 = {x.shape()[0], x.shape()[1], y.shape()[1]};
+  // (x0 + x1)*y = <x0 * y>_0 + <x0 * y>_1 + x1 * y
+  if (rank == owner) {
+    // Compute <y * x0>
+    out = dot_prot->DotOLE(y, dim3, false);
+    auto local = ring_mmul(x, y);
+    ring_add_(out, local);
+  } else {
+    out = dot_prot->DotOLE(x, dim3, true);
+  }
+  return out.as(x.eltype());
 }
 
 }  // namespace spu::mpc::cheetah

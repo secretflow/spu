@@ -613,7 +613,7 @@ def PPHLO_BroadcastOp
     See https://www.tensorflow.org/xla/broadcasting.
   }];
   let arguments = (ins PPHLO_Tensor: $operand,
-                      I64ElementsAttr: $broadcast_dimensions);
+                      DenseI64ArrayAttr: $broadcast_dimensions);
 
   let results = (outs PPHLO_Tensor);
 
@@ -719,8 +719,8 @@ def PPHLO_SelectAndScatterOp: PPHLO_Op<"select_and_scatter",
     PPHLO_Tensor:$operand,
     PPHLO_Tensor:$source,
     PPHLO_Tensor:$init_value,
-    I64ElementsAttr:$window_dimensions,
-    OptionalAttr<I64ElementsAttr>:$window_strides
+    DenseI64ArrayAttr:$window_dimensions,
+    OptionalAttr<DenseI64ArrayAttr>:$window_strides
   );
 
   let regions = (region SizedRegion<1>:$select, SizedRegion<1>:$scatter);
@@ -740,8 +740,8 @@ def PPHLO_MaxPoolScatterOp: PPHLO_Op<"maxpool_scatter", [Pure]> {
   let arguments = (ins
     PPHLO_IntTensor:$scatter_indices,
     PPHLO_Tensor:$update,
-    OptionalAttr<I64ElementsAttr>:$window_dimensions,
-    OptionalAttr<I64ElementsAttr>:$window_strides
+    DenseI64ArrayAttr:$window_dimensions,
+    OptionalAttr<DenseI64ArrayAttr>:$window_strides
   );
 
   let results = (outs PPHLO_Tensor);
@@ -761,14 +761,14 @@ def PPHLO_ReduceOp : PPHLO_Op<"reduce", [
   let arguments = (ins
     Variadic<PPHLO_Tensor>:$inputs,
     Variadic<PPHLO_Tensor>:$init_values,
-    I64ElementsAttr:$dimensions
+    DenseI64ArrayAttr:$dimensions
   );
 
   let results = (outs Variadic<PPHLO_Tensor>);
 
   let builders = [
     OpBuilder<(ins "ValueRange":$inputs, "ValueRange":$init_values,
-      "DenseIntElementsAttr":$dimensions)>];
+      "DenseI64ArrayAttr":$dimensions)>];
 
   let regions = (region SizedRegion<1> : $body);
 
@@ -790,11 +790,11 @@ def PPHLO_ReduceWindowOp : PPHLO_Op<"reduce_window", [
   let arguments = (ins
     Variadic<PPHLO_Tensor>:$inputs,
     Variadic<PPHLO_Tensor>:$init_values,
-    I64ElementsAttr:$window_dimensions,
+    DenseI64ArrayAttr:$window_dimensions,
     // If strides or dilations attributes are missing then the default value is
     // one for each of the input dimensions.
-    OptionalAttr<I64ElementsAttr>:$window_strides,
-    OptionalAttr<I64ElementsAttr>:$window_dilations
+    OptionalAttr<DenseI64ArrayAttr>:$window_strides,
+    OptionalAttr<DenseI64ArrayAttr>:$window_dilations
   );
 
   let results = (outs Variadic<PPHLO_Tensor>);
@@ -811,11 +811,11 @@ def PPHLO_ArgMaxOp: PPHLO_Op<"argmax", [Pure]> {
 
   let arguments = (ins
     PPHLO_Tensor:$input,
-    I64ElementsAttr:$window_dimensions,
+    DenseI64ArrayAttr:$window_dimensions,
     // If strides or dilations attributes are missing then the default value is
     // one for each of the input dimensions.
-    OptionalAttr<I64ElementsAttr>:$window_strides,
-    OptionalAttr<I64ElementsAttr>:$window_dilations,
+    OptionalAttr<DenseI64ArrayAttr>:$window_strides,
+    OptionalAttr<DenseI64ArrayAttr>:$window_dilations,
     DefaultValuedAttr<BoolAttr, "true">:$onehot_index
   );
 
@@ -840,7 +840,7 @@ def PPHLO_TransposeOp
 
     See https://www.tensorflow.org/xla/operation_semantics#transpose.
   }];
-  let arguments = (ins PPHLO_Tensor : $operand, I64ElementsAttr : $permutation);
+  let arguments = (ins PPHLO_Tensor : $operand, DenseI64ArrayAttr : $permutation);
   let results = (outs PPHLO_Tensor);
   let hasFolder = 1;
 
@@ -849,7 +849,8 @@ def PPHLO_TransposeOp
 
 def PPHLO_SliceOp : PPHLO_Op<"slice", [
   Pure, SameOperandsAndResultElementType,
-  AllTypesMatch<["start_indices", "limit_indices", "strides"]>
+  AllMatchSameOperatorTrait<["start_indices", "limit_indices",
+      "strides"], "$_self.size()", "size"> /*slice_c2*/,
 ]> {
   let description = [{
     The dynamic shape version of SliceOp. Extracts a sub-array from the input
@@ -860,9 +861,9 @@ def PPHLO_SliceOp : PPHLO_Op<"slice", [
     See https://www.tensorflow.org/xla/operation_semantics#slice
   }];
   let arguments = (ins PPHLO_Tensor
-                   : $operand, I64ElementsAttr
-                   : $start_indices, I64ElementsAttr
-                   : $limit_indices, I64ElementsAttr
+                   : $operand, DenseI64ArrayAttr
+                   : $start_indices, DenseI64ArrayAttr
+                   : $limit_indices, DenseI64ArrayAttr
                    : $strides);
 
   let results = (outs PPHLO_Tensor);
@@ -964,7 +965,7 @@ def PPHLO_ReverseOp
 
     See https://www.tensorflow.org/xla/operation_semantics#rev_reverse.
   }];
-  let arguments = (ins PPHLO_Tensor : $operand, I64ElementsAttr : $dimensions);
+  let arguments = (ins PPHLO_Tensor : $operand, DenseI64ArrayAttr : $dimensions);
 
   let results = (outs PPHLO_Tensor);
 
@@ -984,30 +985,10 @@ def HLO_PadOp
   }];
   let arguments = (ins PPHLO_Tensor
                    : $operand, PPHLO_Tensor
-                   : $padding_value, I64ElementsAttr
-                   : $edge_padding_low, I64ElementsAttr
-                   : $edge_padding_high, I64ElementsAttr
+                   : $padding_value, DenseI64ArrayAttr
+                   : $edge_padding_low, DenseI64ArrayAttr
+                   : $edge_padding_high, DenseI64ArrayAttr
                    : $interior_padding);
-
-  let results = (outs PPHLO_Tensor);
-}
-
-def PPHLO_GatherOp : PPHLO_Op<"gather", [Pure]> {
-  let summary = "Gather operator";
-  let description = [{
-    Stitches together several slices of `operand` from offsets specified in
-    `start_indices` (each slice at a potentially different runtime offset).
-
-    See https://www.tensorflow.org/xla/operation_semantics#gather.
-  }];
-
-  let arguments = (ins
-    PPHLO_Tensor:$operand,
-    PPHLO_IntTensor:$start_indices,
-    GatherDimensionNumbers:$dimension_numbers,
-    I64ElementsAttr:$slice_sizes,
-    DefaultValuedAttr<BoolAttr, "false">:$indices_are_sorted
-  );
 
   let results = (outs PPHLO_Tensor);
 }
@@ -1015,7 +996,7 @@ def PPHLO_GatherOp : PPHLO_Op<"gather", [Pure]> {
 def ConvolutionAttributes {
   dag attributes = (ins
     // Default value: one for each of the spatial dimension.
-    OptionalAttr<I64ElementsAttr>:$window_strides,
+    OptionalAttr<DenseI64ArrayAttr>:$window_strides,
     ConvDimensionNumbers:$dimension_numbers,
     I64Attr:$feature_group_count,
     I64Attr:$batch_group_count
@@ -1057,7 +1038,7 @@ def PPHLO_DynamicSliceOp: PPHLO_WithShapeInferOp<"dynamic-slice", [Pure]> {
   let arguments = (ins
     PPHLO_Tensor:$operand,
     Variadic<PPHLO_ScalarIntTensor>:$start_indices,
-    I64ElementsAttr:$slice_sizes
+    DenseI64ArrayAttr:$slice_sizes
   );
 
   let results = (outs PPHLO_Tensor:$result);

@@ -28,13 +28,14 @@ Runner::Runner(size_t world_size, FieldType field, ProtocolKind protocol)
   config_.set_field(field);
   config_.set_protocol(protocol);
   config_.set_enable_type_checker(true);
+  config_.set_experimental_enable_colocated_optimization(true);
   io_ = std::make_unique<LocalIo>(world_size_, config_);
 }
 
 std::string Runner::compileMHlo(const std::string &mhlo,
                                 const std::vector<spu::Visibility> &vis) {
   CompilationSource source;
-  source.set_ir_type(SourceIRType::MLIR_HLO);
+  source.set_ir_type(SourceIRType::STABLEHLO);
   source.set_ir_txt(mhlo);
   for (const auto v : vis) {
     source.add_input_visibility(v);

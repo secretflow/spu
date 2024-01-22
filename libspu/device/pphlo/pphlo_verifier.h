@@ -98,9 +98,6 @@ class PPHloVerifier {
   VERIFY_DECL(DynamicSliceOp)
   VERIFY_DECL(DynamicUpdateSliceOp)
 
-  // Gather
-  VERIFY_DECL(GatherOp)
-
   // Geometrical
   VERIFY_DECL(PadOp)
   VERIFY_DECL(BroadcastOp)

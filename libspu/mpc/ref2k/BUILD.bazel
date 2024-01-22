@@ -25,6 +25,7 @@ spu_cc_library(
         "//libspu/mpc:io_interface",
         "//libspu/mpc/common:prg_state",
         "//libspu/mpc/common:pv2k",
+        "//libspu/mpc/standard_shape:protocol",
         "@yacl//yacl/link",
     ],
 )

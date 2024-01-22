@@ -1,7 +1,7 @@
 // RUN: mlir-pphlo-opt --hlo-legalize-to-pphlo=input_vis_list=VIS_PUBLIC,VIS_PUBLIC --split-input-file %s | FileCheck %s
 
 func.func @main(%arg0: tensor<3x2xi64>, %arg1: tensor<i64>) -> tensor<2x2xi64>   {
-  // CHECK:  %0 = "pphlo.pad"(%arg0, %arg1) {edge_padding_high = dense<[1, 0]> : tensor<2xi64>, edge_padding_low = dense<[2, 0]> : tensor<2xi64>, interior_padding = dense<[1, 0]> : tensor<2xi64>} : (tensor<3x2x!pphlo.pub<i64>>, tensor<!pphlo.pub<i64>>) -> tensor<8x2x!pphlo.pub<i64>>
+  // CHECK:  %0 = "pphlo.pad"(%arg0, %arg1) {edge_padding_high = array<i64: 1, 0>, edge_padding_low = array<i64: 2, 0>, interior_padding = array<i64: 1, 0>} : (tensor<3x2x!pphlo.pub<i64>>, tensor<!pphlo.pub<i64>>) -> tensor<8x2x!pphlo.pub<i64>>
   // CHECK:  %1 = "pphlo.reduce_window"(%0, %arg1)
   %result = "stablehlo.reduce_window"(%arg0, %arg1) ({
     ^bb0(%arg2: tensor<i64>, %arg3: tensor<i64>):

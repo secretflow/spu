@@ -28,7 +28,6 @@
 #include "seal/keygenerator.h"
 #include "seal/publickey.h"
 #include "seal/secretkey.h"
-#include "seal/util/locks.h"
 #include "seal/util/polyarithsmallmod.h"
 #include "seal/valcheck.h"
 #include "spdlog/spdlog.h"
@@ -102,6 +101,15 @@ struct CheetahMul::Impl : public EnableCPRNG {
   }
 
   int64_t num_slots() const { return parms_.poly_modulus_degree(); }
+
+  void LazyInit(FieldType field, uint32_t msg_width_hint) {
+    Options options;
+    options.ring_bitlen = SizeOf(field) * 8;
+    options.msg_bitlen =
+        msg_width_hint == 0 ? options.ring_bitlen : msg_width_hint;
+    LazyExpandSEALContexts(options);
+    LazyInitModSwitchHelper(options);
+  }
 
   void LazyExpandSEALContexts(const Options &options,
                               yacl::link::Context *conn = nullptr);
@@ -189,7 +197,6 @@ struct CheetahMul::Impl : public EnableCPRNG {
   uint32_t current_crt_plain_bitlen_{0};
 
   // SEAL's contexts for ZZ_{2^k}
-  mutable std::mutex context_lock_;
   std::vector<seal::SEALContext> seal_cntxts_;
 
   // own secret key
@@ -206,7 +213,6 @@ struct CheetahMul::Impl : public EnableCPRNG {
 };
 
 void CheetahMul::Impl::LazyInitModSwitchHelper(const Options &options) {
-  std::lock_guard guard(context_lock_);
   if (ms_helpers_.count(options) > 0) {
     return;
   }
@@ -269,7 +275,6 @@ void CheetahMul::Impl::LocalExpandSEALContexts(size_t target) {
 void CheetahMul::Impl::LazyExpandSEALContexts(const Options &options,
                                               yacl::link::Context *conn) {
   uint32_t target_plain_bitlen = TotalCRTBitLen(options);
-  std::lock_guard guard(context_lock_);
   if (current_crt_plain_bitlen_ >= target_plain_bitlen) {
     return;
   }
@@ -717,6 +722,12 @@ NdArrayRef CheetahMul::MulOLE(const NdArrayRef &inp, bool is_evaluator,
                               uint32_t msg_width_hint) {
   SPU_ENFORCE(impl_ != nullptr);
   return impl_->MulOLE(inp, nullptr, is_evaluator, msg_width_hint);
+}
+
+void CheetahMul::LazyInitKeys(FieldType field, uint32_t msg_width_hint) {
+  SPU_ENFORCE(impl_ != nullptr);
+  SPU_ENFORCE(msg_width_hint <= SizeOf(field) * 8);
+  return impl_->LazyInit(field, msg_width_hint);
 }
 
 }  // namespace spu::mpc::cheetah

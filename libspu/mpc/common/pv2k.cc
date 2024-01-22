@@ -14,6 +14,7 @@
 
 #include "libspu/mpc/common/pv2k.h"
 
+#include <algorithm>
 #include <mutex>
 
 #include "libspu/core/ndarray_ref.h"
@@ -25,9 +26,13 @@
 namespace spu::mpc {
 namespace {
 
-bool isOwner(KernelEvalContext* ctx, const Type& type) {
+inline bool isOwner(KernelEvalContext* ctx, const Type& type) {
   auto* comm = ctx->getState<Communicator>();
   return type.as<Priv2kTy>()->owner() == static_cast<int64_t>(comm->getRank());
+}
+
+inline int64_t getOwner(const NdArrayRef& x) {
+  return x.eltype().as<Priv2kTy>()->owner();
 }
 
 class P2V : public RevealToKernel {
@@ -681,6 +686,260 @@ class BitrevV : public BitrevKernel {
   }
 };
 
+class GenInvPermP : public GenInvPermKernel {
+ public:
+  static constexpr char kBindName[] = "gen_inv_perm_p";
+
+  ce::CExpr latency() const override { return ce::Const(0); }
+
+  ce::CExpr comm() const override { return ce::Const(0); }
+
+  NdArrayRef proc(KernelEvalContext*, const NdArrayRef& in,
+                  bool is_ascending) const override {
+    const auto field = in.eltype().as<Ring2k>()->field();
+    NdArrayRef out(makeType<Pub2kTy>(field), in.shape());
+
+    auto numel = in.numel();
+
+    DISPATCH_ALL_FIELDS(field, "gen_inv_perm_p", [&]() {
+      using T = std::make_signed_t<ring2k_t>;
+      std::vector<T> perm(numel);
+      std::iota(perm.begin(), perm.end(), 0);
+      // TODO: Add an iterator for NdArrayView
+      NdArrayView<T> _in(in);
+      NdArrayView<T> _out(out);
+      auto cmp = [&_in, is_ascending](int64_t a, int64_t b) {
+        return is_ascending ? _in[a] < _in[b] : _in[a] > _in[b];
+      };
+      std::stable_sort(perm.begin(), perm.end(), cmp);
+      for (int64_t idx = 0; idx < numel; ++idx) {
+        _out[perm[idx]] = idx;
+      }
+    });
+    return out;
+  }
+};
+
+class GenInvPermV : public GenInvPermKernel {
+ public:
+  static constexpr char kBindName[] = "gen_inv_perm_v";
+
+  ce::CExpr latency() const override { return ce::Const(0); }
+
+  ce::CExpr comm() const override { return ce::Const(0); }
+
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in,
+                  bool is_ascending) const override {
+    if (isOwner(ctx, in.eltype())) {
+      NdArrayRef out(in.eltype(), in.shape());
+      auto numel = in.numel();
+      const auto field = in.eltype().as<Ring2k>()->field();
+
+      DISPATCH_ALL_FIELDS(field, "gen_inv_perm_v", [&]() {
+        using T = std::make_signed_t<ring2k_t>;
+        std::vector<T> perm(numel);
+        std::iota(perm.begin(), perm.end(), 0);
+        // TODO: Add an iterator for NdArrayView
+        NdArrayView<T> _in(in);
+        NdArrayView<T> _out(out);
+        auto cmp = [&_in, is_ascending](int64_t a, int64_t b) {
+          return is_ascending ? _in[a] < _in[b] : _in[a] > _in[b];
+        };
+        std::stable_sort(perm.begin(), perm.end(), cmp);
+        for (int64_t idx = 0; idx < numel; ++idx) {
+          _out[perm[idx]] = idx;
+        }
+      });
+      return out;
+    } else {
+      return in;
+    }
+  }
+};
+
+class InvPermPP : public PermKernel {
+ public:
+  static constexpr char kBindName[] = "inv_perm_pp";
+
+  ce::CExpr latency() const override { return ce::Const(0); }
+  ce::CExpr comm() const override { return ce::Const(0); }
+
+  NdArrayRef proc(KernelEvalContext*, const NdArrayRef& x,
+                  const NdArrayRef& y) const override {
+    SPU_ENFORCE_EQ(x.eltype(), y.eltype());
+    NdArrayRef z(x.eltype(), x.shape());
+    const auto field = x.eltype().as<Ring2k>()->field();
+    DISPATCH_ALL_FIELDS(field, "_", [&]() {
+      using T = std::make_signed_t<ring2k_t>;
+      NdArrayView<T> _x(x);
+      NdArrayView<T> _y(y);
+      NdArrayView<T> _z(z);
+      for (int64_t idx = 0; idx < x.numel(); ++idx) {
+        _z[_y[idx]] = _x[idx];
+      }
+    });
+    return z;
+  }
+};
+
+class InvPermVV : public PermKernel {
+ public:
+  static constexpr char kBindName[] = "inv_perm_vv";
+
+  ce::CExpr latency() const override { return ce::Const(0); }
+  ce::CExpr comm() const override { return ce::Const(0); }
+
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& x,
+                  const NdArrayRef& y) const override {
+    SPU_ENFORCE_EQ(x.eltype(), y.eltype());
+    if (isOwner(ctx, x.eltype())) {
+      NdArrayRef z(x.eltype(), x.shape());
+      const auto field = x.eltype().as<Ring2k>()->field();
+      DISPATCH_ALL_FIELDS(field, "_", [&]() {
+        using T = std::make_signed_t<ring2k_t>;
+        NdArrayView<T> _x(x);
+        NdArrayView<T> _y(y);
+        NdArrayView<T> _z(z);
+        for (int64_t idx = 0; idx < x.numel(); ++idx) {
+          _z[_y[idx]] = _x[idx];
+        }
+      });
+      return z;
+    } else {
+      return x;
+    }
+  }
+};
+
+class PermPP : public PermKernel {
+ public:
+  static constexpr char kBindName[] = "perm_pp";
+
+  ce::CExpr latency() const override { return ce::Const(0); }
+  ce::CExpr comm() const override { return ce::Const(0); }
+
+  NdArrayRef proc(KernelEvalContext*, const NdArrayRef& x,
+                  const NdArrayRef& y) const override {
+    SPU_ENFORCE_EQ(x.eltype(), y.eltype());
+    NdArrayRef z(x.eltype(), x.shape());
+    const auto field = x.eltype().as<Ring2k>()->field();
+    DISPATCH_ALL_FIELDS(field, "_", [&]() {
+      using T = std::make_signed_t<ring2k_t>;
+      NdArrayView<T> _x(x);
+      NdArrayView<T> _y(y);
+      NdArrayView<T> _z(z);
+      for (int64_t idx = 0; idx < x.numel(); ++idx) {
+        _z[idx] = _x[_y[idx]];
+      }
+    });
+    return z;
+  }
+};
+
+class PermVV : public PermKernel {
+ public:
+  static constexpr char kBindName[] = "perm_vv";
+
+  ce::CExpr latency() const override { return ce::Const(0); }
+  ce::CExpr comm() const override { return ce::Const(0); }
+
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& x,
+                  const NdArrayRef& y) const override {
+    SPU_ENFORCE_EQ(x.eltype(), y.eltype());
+    if (isOwner(ctx, x.eltype())) {
+      NdArrayRef z(x.eltype(), x.shape());
+      const auto field = x.eltype().as<Ring2k>()->field();
+      DISPATCH_ALL_FIELDS(field, "_", [&]() {
+        using T = std::make_signed_t<ring2k_t>;
+        NdArrayView<T> _x(x);
+        NdArrayView<T> _y(y);
+        NdArrayView<T> _z(z);
+        for (int64_t idx = 0; idx < x.numel(); ++idx) {
+          _z[idx] = _x[_y[idx]];
+        }
+      });
+      return z;
+    } else {
+      return x;
+    }
+  }
+};
+
+class MergeKeysP : public MergeKeysKernel {
+ public:
+  static constexpr char kBindName[] = "merge_keys_p";
+
+  ce::CExpr latency() const override { return ce::Const(0); }
+  ce::CExpr comm() const override { return ce::Const(0); }
+
+  NdArrayRef proc(KernelEvalContext* ctx, absl::Span<NdArrayRef const> inputs,
+                  bool is_ascending) const override {
+    SPU_ENFORCE(!inputs.empty(), "Inputs should not be empty");
+    NdArrayRef out(inputs[0].eltype(), inputs[0].shape());
+    const auto field = inputs[0].eltype().as<Ring2k>()->field();
+    const auto numel = inputs[0].numel();
+    DISPATCH_ALL_FIELDS(field, "_", [&]() {
+      using T = std::make_signed_t<ring2k_t>;
+      NdArrayView<T> _out(out);
+      _out[0] = 0;
+      for (int64_t i = 1; i < numel; ++i) {
+        if (std::all_of(inputs.begin(), inputs.end(), [i](const NdArrayRef& x) {
+              NdArrayView<T> _x(x);
+              return _x[i] == _x[i - 1];
+            })) {
+          _out[i] = _out[i - 1];
+        } else {
+          _out[i] = is_ascending ? _out[i - 1] + 1 : _out[i - 1] - 1;
+        }
+      }
+    });
+    return out;
+  }
+};
+
+class MergeKeysV : public MergeKeysKernel {
+ public:
+  static constexpr char kBindName[] = "merge_keys_v";
+
+  ce::CExpr latency() const override { return ce::Const(0); }
+  ce::CExpr comm() const override { return ce::Const(0); }
+
+  NdArrayRef proc(KernelEvalContext* ctx, absl::Span<NdArrayRef const> inputs,
+                  bool is_ascending) const override {
+    SPU_ENFORCE(!inputs.empty(), "Inputs should not be empty");
+    SPU_ENFORCE(std::all_of(inputs.begin(), inputs.end(),
+                            [&inputs](const NdArrayRef& v) {
+                              return getOwner(v) == getOwner(inputs[0]);
+                            }),
+                "Inputs should belong to the same owner");
+
+    if (isOwner(ctx, inputs[0].eltype())) {
+      NdArrayRef out(inputs[0].eltype(), inputs[0].shape());
+      const auto field = inputs[0].eltype().as<Ring2k>()->field();
+      const auto numel = inputs[0].numel();
+      DISPATCH_ALL_FIELDS(field, "_", [&]() {
+        using T = std::make_signed_t<ring2k_t>;
+        NdArrayView<T> _out(out);
+        _out[0] = 0;
+        for (int64_t i = 1; i < numel; ++i) {
+          if (std::all_of(inputs.begin(), inputs.end(),
+                          [i](const NdArrayRef& x) {
+                            NdArrayView<T> _x(x);
+                            return _x[i] == _x[i - 1];
+                          })) {
+            _out[i] = _out[i - 1];
+          } else {
+            _out[i] = is_ascending ? _out[i - 1] + 1 : _out[i - 1] - 1;
+          }
+        }
+      });
+      return out;
+    } else {
+      return makeConstantArrayRef(inputs[0].eltype(), inputs[0].shape());
+    }
+  }
+};
+
 }  // namespace
 
 void regPV2kTypes() {
@@ -691,42 +950,25 @@ void regPV2kTypes() {
 }
 
 void regPV2kKernels(Object* obj) {
-  obj->regKernel<V2P>();
-  obj->regKernel<P2V>();
-  obj->regKernel<MakeP>();
-  obj->regKernel<RandP>();
-  obj->regKernel<NotV>();
-  obj->regKernel<NotP>();
-  obj->regKernel<EqualVVV>();
-  obj->regKernel<EqualVP>();
-  obj->regKernel<EqualPP>();
-  obj->regKernel<AddVVV>();
-  obj->regKernel<AddVP>();
-  obj->regKernel<AddPP>();
-  obj->regKernel<MulVVV>();
-  obj->regKernel<MulVP>();
-  obj->regKernel<MulPP>();
-  obj->regKernel<MatMulVVV>();
-  obj->regKernel<MatMulVP>();
-  obj->regKernel<MatMulPP>();
-  obj->regKernel<AndVVV>();
-  obj->regKernel<AndVP>();
-  obj->regKernel<AndPP>();
-  obj->regKernel<XorVVV>();
-  obj->regKernel<XorVP>();
-  obj->regKernel<XorPP>();
-  obj->regKernel<LShiftV>();
-  obj->regKernel<LShiftP>();
-  obj->regKernel<RShiftV>();
-  obj->regKernel<RShiftP>();
-  obj->regKernel<BitrevV>();
-  obj->regKernel<BitrevP>();
-  obj->regKernel<ARShiftV>();
-  obj->regKernel<ARShiftP>();
-  obj->regKernel<MsbV>();
-  obj->regKernel<MsbP>();
-  obj->regKernel<TruncV>();
-  obj->regKernel<TruncP>();
+  obj->regKernel<V2P, P2V,                               //
+                 MakeP, RandP,                           //
+                 NotV, NotP,                             //
+                 EqualVVV, EqualVP, EqualPP,             //
+                 AddVVV, AddVP, AddPP,                   //
+                 MulVVV, MulVP, MulPP,                   //
+                 MatMulVVV, MatMulVP, MatMulPP,          //
+                 AndVVV, AndVP, AndPP,                   //
+                 XorVVV, XorVP, XorPP,                   //
+                 LShiftV, LShiftP,                       //
+                 RShiftV, RShiftP,                       //
+                 BitrevV, BitrevP,                       //
+                 ARShiftV, ARShiftP,                     //
+                 MsbV, MsbP,                             //
+                 TruncV, TruncP,                         //
+                 GenInvPermV, GenInvPermP,               //
+                 InvPermPP, InvPermVV,                   //
+                 PermPP, PermVV, MergeKeysP, MergeKeysV  //
+                 >();
 }
 
 }  // namespace spu::mpc

@@ -24,6 +24,7 @@
 #include "libspu/mpc/cheetah/state.h"
 #include "libspu/mpc/cheetah/type.h"
 #include "libspu/mpc/common/pv2k.h"
+#include "libspu/mpc/standard_shape/protocol.h"
 
 namespace spu::mpc {
 
@@ -48,43 +49,27 @@ void regCheetahProtocol(SPUContext* ctx,
   // register public kernels.
   regPV2kKernels(ctx->prot());
 
+  // Register standard shape ops
+  regStandardShapeOps(ctx);
+
   // register arithmetic & binary kernels
-  ctx->prot()->regKernel<cheetah::P2A>();
-  ctx->prot()->regKernel<cheetah::A2P>();
-  ctx->prot()->regKernel<cheetah::V2A>();
-  ctx->prot()->regKernel<cheetah::A2V>();
-  ctx->prot()->regKernel<cheetah::NotA>();
-  ctx->prot()->regKernel<cheetah::AddAP>();
-  ctx->prot()->regKernel<cheetah::AddAA>();
-  ctx->prot()->regKernel<cheetah::MulAP>();
-  ctx->prot()->regKernel<cheetah::MulAA>();
-  ctx->prot()->regKernel<cheetah::MulA1B>();
-  ctx->prot()->regKernel<cheetah::EqualAA>();
-  ctx->prot()->regKernel<cheetah::EqualAP>();
-  ctx->prot()->regKernel<cheetah::MatMulAP>();
-  ctx->prot()->regKernel<cheetah::MatMulAA>();
-  // ctx->prot()->regKernel<cheetah::Conv2DAA>();
-  ctx->prot()->regKernel<cheetah::LShiftA>();
-  ctx->prot()->regKernel<cheetah::TruncA>();
-  ctx->prot()->regKernel<cheetah::MsbA2B>();
-
-  ctx->prot()->regKernel<cheetah::CommonTypeB>();
-  ctx->prot()->regKernel<cheetah::CommonTypeV>();
-  ctx->prot()->regKernel<cheetah::CastTypeB>();
-  ctx->prot()->regKernel<cheetah::B2P>();
-  ctx->prot()->regKernel<cheetah::P2B>();
-  ctx->prot()->regKernel<cheetah::A2B>();
-  ctx->prot()->regKernel<cheetah::B2A>();
-
-  ctx->prot()->regKernel<cheetah::AndBP>();
-  ctx->prot()->regKernel<cheetah::AndBB>();
-  ctx->prot()->regKernel<cheetah::XorBP>();
-  ctx->prot()->regKernel<cheetah::XorBB>();
-  ctx->prot()->regKernel<cheetah::LShiftB>();
-  ctx->prot()->regKernel<cheetah::RShiftB>();
-  ctx->prot()->regKernel<cheetah::ARShiftB>();
-  ctx->prot()->regKernel<cheetah::BitrevB>();
-  ctx->prot()->regKernel<cheetah::RandA>();
+  ctx->prot()
+      ->regKernel<cheetah::P2A, cheetah::A2P, cheetah::V2A, cheetah::A2V,   //
+                  cheetah::B2P, cheetah::P2B, cheetah::A2B, cheetah::B2A,   //
+                  cheetah::NotA,                                            //
+                  cheetah::AddAP, cheetah::AddAA,                           //
+                  cheetah::MulAP, cheetah::MulAA, cheetah::MulA1B,          //
+                  cheetah::EqualAA, cheetah::EqualAP,                       //
+                  cheetah::MatMulAP, cheetah::MatMulAA, cheetah::MatMulAV,  //
+                  cheetah::LShiftA, cheetah::ARShiftB, cheetah::LShiftB,
+                  cheetah::RShiftB,                                    //
+                  cheetah::BitrevB,                                    //
+                  cheetah::TruncA,                                     //
+                  cheetah::MsbA2B,                                     //
+                  cheetah::CommonTypeB, cheetah::CommonTypeV,          //
+                  cheetah::CastTypeB, cheetah::AndBP, cheetah::AndBB,  //
+                  cheetah::XorBP, cheetah::XorBB,                      //
+                  cheetah::RandA>();
 }
 
 std::unique_ptr<SPUContext> makeCheetahProtocol(
