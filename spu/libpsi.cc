@@ -84,9 +84,9 @@ void BindLibs(py::module& m) {
         psi::v2::PsiConfig psi_config;
         YACL_ENFORCE(psi_config.ParseFromString(config_pb));
 
-        std::unique_ptr<psi::AbstractPSIParty> psi_party =
-            psi::createPSIParty(psi_config, lctx);
-        psi::v2::PsiReport report = psi_party->Run();
+        std::unique_ptr<psi::AbstractPsiParty> psi_party =
+            psi::createPsiParty(psi_config, lctx);
+        auto report = psi_party->Run();
         return report.SerializeAsString();
       },
       py::arg("psi_config"), py::arg("link_context") = nullptr,
