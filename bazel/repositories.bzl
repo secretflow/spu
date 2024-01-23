@@ -40,10 +40,10 @@ def _yacl():
         http_archive,
         name = "yacl",
         urls = [
-            "https://github.com/secretflow/yacl/archive/ea6e1ea567903804f17525fe04ede706815ece38.tar.gz",
+            "https://github.com/secretflow/yacl/archive/c1721d4671be03adf46b2094f12a6e895eb02f8b.tar.gz",
         ],
-        strip_prefix = "yacl-ea6e1ea567903804f17525fe04ede706815ece38",
-        sha256 = "51c58b3c9704e439101311f74a46d97b0bc3afe2d1c53866e6a80629745cabe1",
+        strip_prefix = "yacl-c1721d4671be03adf46b2094f12a6e895eb02f8b",
+        sha256 = "06c72b715e7132a742049c7f491387baa4e6be60dab063093e59516376bc8d14",
     )
 
 def _libpsi():
