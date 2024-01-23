@@ -17,3 +17,16 @@ index 5e65a65df4..03bbd2361e 100644
      )
 
      native.bind(
+diff --git a/src/core/lib/iomgr/tcp_posix.cc b/src/core/lib/iomgr/tcp_posix.cc
+index 72e1b6609e..aded52d0db 100644
+--- a/src/core/lib/iomgr/tcp_posix.cc
++++ b/src/core/lib/iomgr/tcp_posix.cc
+@@ -41,6 +41,8 @@
+ #include <algorithm>
+ #include <unordered_map>
+ 
++#include "absl/strings/str_cat.h"
++
+ #include <grpc/slice.h>
+ #include <grpc/support/alloc.h>
+ #include <grpc/support/log.h>
