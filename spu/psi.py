@@ -28,7 +28,7 @@ from .psi_pb2 import (  # type: ignore
     PsiResultReport,
     PsiType,
 )
-from .psi_v2_pb2 import PsiConfig, PsiReport
+from .psi_v2_pb2 import PsiConfig
 
 
 def mem_psi(
@@ -91,7 +91,7 @@ def gen_cache_for_2pc_ub_psi(config: BucketPsiConfig) -> PsiResultReport:
 
 
 def psi_v2(
-    config: BucketPsiConfig,
+    config: PsiConfig,
     link: Context = None,
 ) -> PsiReport:
     """
