@@ -417,31 +417,74 @@ void execute(OpExecutor *, SPUContext *sctx, SymbolScope *sscope,
   auto lhs = lookupValue(sscope, op.getLhs(), opts);
   auto rhs = lookupValue(sscope, op.getRhs(), opts);
 
-  Strides window_strides(dnums.getInputSpatialDimensions().size(), 1);
-  if (op.getWindowStrides().has_value()) {
-    window_strides = *op.getWindowStrides();
-  }
-
   kernel::hlo::ConvolutionConfig config;
-  config.featureGroupCount = op.getFeatureGroupCount();
-  config.batchGroupCount = op.getBatchGroupCount();
-  config.window_strides = window_strides;
-  config.inputBatchDimension = dnums.getInputBatchDimension();
-  config.inputFeatureDimension = dnums.getInputFeatureDimension();
-  config.inputSpatialDimensions = dnums.getInputSpatialDimensions();
-  config.kernelInputFeatureDimension = dnums.getKernelInputFeatureDimension();
-  config.kernelOutputFeatureDimension = dnums.getKernelOutputFeatureDimension();
-  config.kernelSpatialDimensions = dnums.getKernelSpatialDimensions();
-  config.outputBatchDimension = dnums.getOutputBatchDimension();
-  config.outputFeatureDimension = dnums.getOutputFeatureDimension();
-  config.outputSpatialDimensions = dnums.getOutputSpatialDimensions();
+  spu::Value result;
 
-  SPU_ENFORCE(
-      dnums.getInputSpatialDimensions().size() == 2,
-      "Convolution with more than 2 spatial dimensions is not supported");
+  switch (dnums.getInputSpatialDimensions().size()) {
+    case 1: {
+      // Nwc Wcf to N1wc 1Wcf
+      Strides window_strides(2, 1);
+      if (op.getWindowStrides().has_value()) {
+        window_strides[1] = (*op.getWindowStrides())[0];
+      }
+      config.featureGroupCount = op.getFeatureGroupCount();
+      config.batchGroupCount = op.getBatchGroupCount();
+      config.window_strides = window_strides;
+      config.inputBatchDimension = dnums.getInputBatchDimension();
+      config.inputFeatureDimension = dnums.getInputFeatureDimension() + 1;
+      config.inputSpatialDimensions = {1, 2};
+      config.kernelInputFeatureDimension =
+          dnums.getKernelInputFeatureDimension() + 1;
+      config.kernelOutputFeatureDimension =
+          dnums.getKernelOutputFeatureDimension() + 1;
+      config.kernelSpatialDimensions = {0, 1};
+      config.outputBatchDimension = dnums.getOutputBatchDimension();
+      config.outputFeatureDimension = dnums.getOutputFeatureDimension() + 1;
+      config.outputSpatialDimensions = {1, 2};
 
-  spu::Value result =
-      kernel::hlo::Convolution2D(sctx, lhs, rhs, config, ret_shape);
+      auto reshaped_lhs = kernel::hlo::Reshape(
+          sctx, lhs, {lhs.shape()[0], 1, lhs.shape()[1], lhs.shape()[2]});
+      auto reshaped_rhs = kernel::hlo::Reshape(
+          sctx, rhs, {1, rhs.shape()[0], rhs.shape()[1], rhs.shape()[2]});
+
+      Shape reshaped_result = {ret_shape[0], 1, ret_shape[1], ret_shape[2]};
+
+      result = kernel::hlo::Convolution2D(sctx, reshaped_lhs, reshaped_rhs,
+                                          config, reshaped_result);
+
+      result = kernel::hlo::Reshape(sctx, result, ret_shape);
+      break;
+    }
+    case 2: {
+      Strides window_strides(dnums.getInputSpatialDimensions().size(), 1);
+      if (op.getWindowStrides().has_value()) {
+        window_strides = *op.getWindowStrides();
+      }
+      config.featureGroupCount = op.getFeatureGroupCount();
+      config.batchGroupCount = op.getBatchGroupCount();
+      config.window_strides = window_strides;
+      config.inputBatchDimension = dnums.getInputBatchDimension();
+      config.inputFeatureDimension = dnums.getInputFeatureDimension();
+      config.inputSpatialDimensions = dnums.getInputSpatialDimensions();
+      config.kernelInputFeatureDimension =
+          dnums.getKernelInputFeatureDimension();
+      config.kernelOutputFeatureDimension =
+          dnums.getKernelOutputFeatureDimension();
+      config.kernelSpatialDimensions = dnums.getKernelSpatialDimensions();
+      config.outputBatchDimension = dnums.getOutputBatchDimension();
+      config.outputFeatureDimension = dnums.getOutputFeatureDimension();
+      config.outputSpatialDimensions = dnums.getOutputSpatialDimensions();
+
+      result = kernel::hlo::Convolution2D(sctx, lhs, rhs, config, ret_shape);
+      break;
+    }
+    default: {
+      SPU_THROW(
+          "Convolution with {} spatial dimensions is not "
+          "supported, {}",
+          dnums.getInputSpatialDimensions().size(), mlirObjectToString(op));
+    }
+  }
 
   addValue(sscope, op.getResult(), std::move(result), opts);
 }
