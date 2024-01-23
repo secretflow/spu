@@ -128,7 +128,7 @@ py_library(
 python_proto_compile(
     name = "pir_py_proto",
     output_mode = "NO_PREFIX_FLAT",
-    protos = ["@psi//psi/pir:pir_proto"],
+    protos = ["@psi//psi/proto:pir_proto"],
 )
 
 py_library(
