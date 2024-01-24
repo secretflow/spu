@@ -36,7 +36,7 @@ This documentation also contains instructions for [build and testing](CONTRIBUTI
 | CPU        | yes          | yes           | yes<sup>1</sup>| yes                 | no             | yes                 |
 | NVIDIA GPU | experimental | no            | no             | n/a                 | no             | no                  |
 
-1. macOS x64 support will be deprecated soon
+1. macOS x64 support is scheduled to deprecate later this year
 
 ### Instructions
 
