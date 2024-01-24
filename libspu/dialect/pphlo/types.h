@@ -31,7 +31,9 @@ class TypeTools {
   MLIRContext *context_;
 
  public:
-  explicit TypeTools(MLIRContext *context) : context_(context) {}
+  explicit TypeTools(MLIRContext *context) : context_(context) {
+    (void)context_;
+  }
 
   bool isFloatType(const Type &t) const;
   bool isIntType(const Type &t) const;
