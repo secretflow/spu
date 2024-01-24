@@ -28,7 +28,7 @@ namespace mlir::spu::pphlo {
 
 class TypeTools {
  private:
-  MLIRContext *context_;
+  [[maybe_unused]] MLIRContext *context_;
 
  public:
   explicit TypeTools(MLIRContext *context) : context_(context) {}
