@@ -22,7 +22,7 @@
 
 #include "psi/pir/pir.h"
 #include "psi/psi/bucket_psi.h"
-#include "psi/psi/factory.h"
+#include "psi/psi/launch.h"
 #include "psi/psi/memory_psi.h"
 #include "psi/psi/utils/progress.h"
 
@@ -84,13 +84,24 @@ void BindLibs(py::module& m) {
         psi::v2::PsiConfig psi_config;
         YACL_ENFORCE(psi_config.ParseFromString(config_pb));
 
-        std::unique_ptr<psi::AbstractPsiParty> psi_party =
-            psi::createPsiParty(psi_config, lctx);
-        auto report = psi_party->Run();
+        auto report = psi::RunPsi(psi_config, lctx);
         return report.SerializeAsString();
       },
-      py::arg("psi_config"), py::arg("link_context") = nullptr,
-      "Run PSI with v2 API.", NO_GIL);
+      py::arg("psi_config"), py::arg("link_context"), "Run PSI with v2 API.",
+      NO_GIL);
+
+  m.def(
+      "ub_psi",
+      [](const std::string& config_pb,
+         const std::shared_ptr<yacl::link::Context>& lctx) -> py::bytes {
+        psi::v2::UbPsiConfig ub_psi_config;
+        YACL_ENFORCE(ub_psi_config.ParseFromString(config_pb));
+
+        auto report = psi::RunUbPsi(ub_psi_config, lctx);
+        return report.SerializeAsString();
+      },
+      py::arg("ub_psi_config"), py::arg("link_context") = nullptr,
+      "Run UB PSI with v2 API.", NO_GIL);
 
   m.def(
       "pir_setup",
