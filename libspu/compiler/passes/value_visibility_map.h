@@ -17,18 +17,39 @@
 #include "llvm/ADT/DenseMap.h"
 #include "mlir/IR/Value.h"
 
-#include "libspu/dialect/pphlo_base_enums.h"
+#include "libspu/dialect/pphlo/types.h"
 
-namespace mlir::pphlo {
+namespace mlir::spu::pphlo {
 
 class ValueVisibilityMap {
 private:
-  llvm::DenseMap<Value, Visibility> storage_;
+  llvm::DenseMap<Value, Visibility> value_vis_;
+  llvm::DenseMap<Operation *, llvm::SmallVector<Visibility>> op_in_vis_;
+  llvm::SmallVector<Visibility> input_vis_;
+  llvm::SmallVector<Visibility> output_vis_;
 
 public:
   Visibility getValueVisibility(const Value &v) const;
+  std::optional<llvm::ArrayRef<Visibility>>
+  getOperationInputVisibility(Operation *op) const {
+    auto iter = op_in_vis_.find(op);
+    if (iter == op_in_vis_.end()) {
+      return std::nullopt;
+    }
+    return iter->getSecond();
+  }
+
+  Visibility getInputsVisibility(int64_t idx) const { return input_vis_[idx]; }
+  Visibility getOutputVisibility(int64_t idx) const { return output_vis_[idx]; }
+
+  void appendInputVisibility(Visibility vis) { input_vis_.emplace_back(vis); }
+  void appendOutputVisibility(Visibility vis) { output_vis_.emplace_back(vis); }
 
   void setValueVisibility(const Value &val, Visibility vis);
+  void setOperationInputVisibility(Operation *op,
+                                   llvm::SmallVector<Visibility> &&vis);
+  void setOperationInputVisibility(Operation *op,
+                                   llvm::ArrayRef<Visibility> vis);
 };
 
-} // namespace mlir::pphlo
+} // namespace mlir::spu::pphlo

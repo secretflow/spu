@@ -18,10 +18,10 @@
 
 #include "libspu/compiler/passes/pass_details.h"
 #include "libspu/compiler/passes/passes.h"
-#include "libspu/dialect/pphlo_ops.h"
-#include "libspu/dialect/pphlo_types.h"
+#include "libspu/dialect/pphlo/ops.h"
+#include "libspu/dialect/pphlo/types.h"
 
-namespace mlir::pphlo {
+namespace mlir::spu::pphlo {
 
 namespace {
 
@@ -33,37 +33,33 @@ namespace {
 template <typename OpT>
 struct FxpIntMulTruncationRemover : public OpRewritePattern<OpT> {
 private:
-  bool isLegitConvert(mlir::pphlo::ConvertOp op) const {
+  TypeTools typetools_;
+
+  bool isLegitConvert(ConvertOp op) const {
     if (op == nullptr) {
       return true;
     }
-    TypeTools tools;
 
     // Only int->fxp conversion is considered legit
-    auto to_type = tools.getExpressedType(op.getType());
-    auto from_type = tools.getExpressedType(op.getOperand().getType());
-
-    return from_type.isa<mlir::IntegerType>() && to_type.isa<mlir::FloatType>();
+    return typetools_.isFloatType(op.getType()) &&
+           typetools_.isIntType(op.getOperand().getType());
   }
 
 public:
   explicit FxpIntMulTruncationRemover(MLIRContext *context)
-      : OpRewritePattern<OpT>(context) {}
+      : OpRewritePattern<OpT>(context), typetools_(context) {}
 
   LogicalResult matchAndRewrite(OpT op,
                                 PatternRewriter &rewriter) const override {
     auto lhs = op.getLhs();
     auto rhs = op.getRhs();
 
-    TypeTools tools;
-
-    if (!tools.getExpressedType(op.getType())
-             .template isa<::mlir::FloatType>()) {
+    if (!typetools_.isFloatType(op.getType())) {
       return failure(); // Must be an op result in fp type
     }
 
-    auto lhs_convert = lhs.template getDefiningOp<mlir::pphlo::ConvertOp>();
-    auto rhs_convert = rhs.template getDefiningOp<mlir::pphlo::ConvertOp>();
+    auto lhs_convert = lhs.template getDefiningOp<ConvertOp>();
+    auto rhs_convert = rhs.template getDefiningOp<ConvertOp>();
 
     if (((lhs_convert != nullptr && rhs_convert == nullptr) ||
          (lhs_convert == nullptr && rhs_convert != nullptr)) &&
@@ -100,4 +96,4 @@ std::unique_ptr<OperationPass<func::FuncOp>> createLowerMixedTypeOpPass() {
   return std::make_unique<LowerMixedTypeOp>();
 }
 
-} // namespace mlir::pphlo
+} // namespace mlir::spu::pphlo

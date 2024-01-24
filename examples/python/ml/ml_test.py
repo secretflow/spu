@@ -109,15 +109,6 @@ class UnitTests(unittest.TestCase):
         self.assertTrue(240 < metrics['bce'] < 247)
         self.assertTrue(20 < metrics['kld'] < 23)
 
-    def test_flax_resnet(self):
-        from examples.python.ml.flax_resnet import flax_resnet
-
-        flax_resnet.args.num_epochs = 1
-        flax_resnet.args.num_steps = 1
-        metrics = profile_test_point(flax_resnet.train)
-
-        self.assertTrue(0 < metrics['loss'] < 5)
-
     def test_haiku_lstm(self):
         from examples.python.ml.haiku_lstm import haiku_lstm
 
@@ -240,7 +231,6 @@ def suite():
     suite = unittest.TestSuite()
     suite.addTest(UnitTests('test_flax_mlp'))
     suite.addTest(UnitTests('test_flax_vae'))
-    # suite.addTest(UnitTests('test_flax_resnet'))
     suite.addTest(UnitTests('test_haiku_lstm'))
     suite.addTest(UnitTests('test_jax_kmeans'))
     suite.addTest(UnitTests('test_jax_lr'))
@@ -254,7 +244,7 @@ def suite():
     # should put JAX tests above
     suite.addTest(UnitTests('test_tf_experiment'))
     suite.addTest(UnitTests('test_torch_lr_experiment'))
-    # suite.addTest(UnitTests('test_torch_resnet_experiment'))
+    suite.addTest(UnitTests('test_torch_resnet_experiment'))
     return suite
 
 

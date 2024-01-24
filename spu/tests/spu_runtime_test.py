@@ -36,11 +36,11 @@ class UnitTests(unittest.TestCase):
         x = np.random.randint(10, dtype=np.int32, size=(2, 2))
 
         code = """
-func.func @main(%arg0: tensor<2x2x!pphlo.sec<i32>>) -> (tensor<2x2x!pphlo.sec<i32>>) {
-    %0 = "pphlo.constant"() {value = dense<[[1,2],[3,4]]> : tensor<2x2xi32>} : () -> tensor<2x2x!pphlo.pub<i32>>
-    %1 = "pphlo.add"(%arg0, %0) : (tensor<2x2x!pphlo.sec<i32>>, tensor<2x2x!pphlo.pub<i32>>) -> tensor<2x2x!pphlo.sec<i32>>
-    "pphlo.dbg_print"(%1) : (tensor<2x2x!pphlo.sec<i32>>) -> ()
-    return %1 : tensor<2x2x!pphlo.sec<i32>>
+func.func @main(%arg0: tensor<2x2x!pphlo.secret<i32>>) -> (tensor<2x2x!pphlo.secret<i32>>) {
+    %0 = "pphlo.constant"() {value = dense<[[1,2],[3,4]]> : tensor<2x2xi32>} : () -> tensor<2x2xi32>
+    %1 = "pphlo.add"(%arg0, %0) : (tensor<2x2x!pphlo.secret<i32>>, tensor<2x2xi32>) -> tensor<2x2x!pphlo.secret<i32>>
+    "pphlo.dbg_print"(%1) : (tensor<2x2x!pphlo.secret<i32>>) -> ()
+    return %1 : tensor<2x2x!pphlo.secret<i32>>
 }"""
         executable = spu_pb2.ExecutableProto(
             name="test", input_names=["in0"], output_names=["out0"], code=code.encode()
@@ -62,9 +62,9 @@ func.func @main(%arg0: tensor<2x2x!pphlo.sec<i32>>) -> (tensor<2x2x!pphlo.sec<i3
 
         # Give some insane ir
         code = """
-func.func @main(%arg0: tensor<2x3x!pphlo.sec<i32>>, %arg1: tensor<12x13x!pphlo.sec<i32>>) -> (tensor<2x2x!pphlo.sec<i32>>) {
-    %0 = "pphlo.dot"(%arg0, %arg1) : (tensor<2x3x!pphlo.sec<i32>>, tensor<12x13x!pphlo.sec<i32>>) -> tensor<2x2x!pphlo.sec<i32>>
-    return %0 : tensor<2x2x!pphlo.sec<i32>>
+func.func @main(%arg0: tensor<2x3x!pphlo.secret<i32>>, %arg1: tensor<12x13x!pphlo.secret<i32>>) -> (tensor<2x2x!pphlo.secret<i32>>) {
+    %0 = "pphlo.dot"(%arg0, %arg1) : (tensor<2x3x!pphlo.secret<i32>>, tensor<12x13x!pphlo.secret<i32>>) -> tensor<2x2x!pphlo.secret<i32>>
+    return %0 : tensor<2x2x!pphlo.secret<i32>>
 }"""
         executable = spu_pb2.ExecutableProto(
             name="test",

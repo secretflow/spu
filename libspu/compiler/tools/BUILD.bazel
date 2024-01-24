@@ -41,7 +41,7 @@ spu_cc_binary(
         "mlir-pphlo-lsp.cc",
     ],
     deps = [
-        "//libspu/dialect:pphlo_dialect",
+        "//libspu/dialect/pphlo:dialect",
         "@llvm-project//llvm:Support",
         "@llvm-project//mlir:FuncExtensions",
         "@llvm-project//mlir:IR",

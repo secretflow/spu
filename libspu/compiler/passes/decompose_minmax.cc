@@ -17,9 +17,9 @@
 #include "mlir/Transforms/GreedyPatternRewriteDriver.h"
 
 #include "libspu/compiler/passes/pass_details.h"
-#include "libspu/dialect/pphlo_ops.h"
+#include "libspu/dialect/pphlo/ops.h"
 
-namespace mlir::pphlo {
+namespace mlir::spu::pphlo {
 
 namespace {
 
@@ -27,20 +27,23 @@ namespace {
 // MinOp -> select(less(x,y), x, y)
 template <typename InOp, typename RetOp>
 struct MinMaxOpConverter : public OpRewritePattern<InOp> {
+private:
+  TypeTools typetools_;
+
+public:
   explicit MinMaxOpConverter(MLIRContext *context)
-      : OpRewritePattern<InOp>(context) {}
+      : OpRewritePattern<InOp>(context), typetools_(context) {}
 
   LogicalResult matchAndRewrite(InOp op,
                                 PatternRewriter &rewriter) const override {
     OpBuilder builder(op);
 
-    TypeTools tools;
     auto ret_type = op.getType().template dyn_cast<mlir::RankedTensorType>();
-    auto ret_vis = tools.getTypeVisibility(op.getType());
+    auto ret_vis = typetools_.getTypeVisibility(op.getType());
     auto gt_ret = RankedTensorType::get(
         ret_type.getShape(),
-        tools.getTypeWithVisibility(mlir::IntegerType::get(op->getContext(), 1),
-                                    ret_vis));
+        typetools_.getType(mlir::IntegerType::get(op->getContext(), 1),
+                           ret_vis));
 
     auto gt = builder.create<RetOp>(op->getLoc(), gt_ret, op.getOperands());
 
@@ -71,4 +74,4 @@ std::unique_ptr<OperationPass<func::FuncOp>> createDecomposeMinMaxPass() {
   return std::make_unique<DecomposeMinMax>();
 }
 
-} // namespace mlir::pphlo
+} // namespace mlir::spu::pphlo

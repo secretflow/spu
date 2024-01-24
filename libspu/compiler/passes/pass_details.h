@@ -17,11 +17,11 @@
 #include "mlir/Dialect/Func/IR/FuncOps.h"
 
 #include "libspu/compiler/passes/passes.h"
-#include "libspu/dialect/pphlo_dialect.h"
+#include "libspu/dialect/pphlo/dialect.h"
 
-namespace mlir::pphlo {
+namespace mlir::spu::pphlo {
 
 #define GEN_PASS_CLASSES
 #include "libspu/compiler/passes/passes.h.inc"
 
-} // namespace mlir::pphlo
+} // namespace mlir::spu::pphlo

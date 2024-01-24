@@ -21,16 +21,16 @@
 #include "xla/mlir_hlo/mhlo/transforms/passes.h"
 
 #include "libspu/compiler/passes/register_passes.h"
-#include "libspu/dialect/pphlo_dialect.h"
+#include "libspu/dialect/pphlo/dialect.h"
 
 int main(int argc, char **argv) {
   mlir::registerTransformsPasses();
-  mlir::pphlo::registerAllPPHloPasses();
+  mlir::spu::pphlo::registerAllPPHloPasses();
   mlir::mhlo::registerAllMhloPasses();
 
   mlir::DialectRegistry registry;
   registry.insert<mlir::mhlo::MhloDialect, mlir::stablehlo::StablehloDialect,
-                  mlir::pphlo::PPHloDialect, mlir::func::FuncDialect>();
+                  mlir::spu::pphlo::PPHloDialect, mlir::func::FuncDialect>();
   mlir::func::registerInlinerExtension(registry);
 
   return mlir::asMainReturnCode(
