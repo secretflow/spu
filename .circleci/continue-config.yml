@@ -190,4 +190,8 @@ workflows:
       - linux_ml_ut:
           requires:
             - linux_ut
+          filters:
+            branches:
+              only:
+                - main
       - macOS_ut
