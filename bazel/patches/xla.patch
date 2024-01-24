@@ -1,0 +1,24 @@
+diff --git a/xla/stream_executor/dnn.cc b/xla/stream_executor/dnn.cc
+index 91b5c0157..edad4b93c 100644
+--- a/xla/stream_executor/dnn.cc
++++ b/xla/stream_executor/dnn.cc
+@@ -23,7 +23,6 @@ limitations under the License.
+ #include "absl/container/btree_map.h"
+ #include "absl/status/status.h"
+ #include "absl/status/statusor.h"
+-#include "absl/strings/str_cat.h"
+ #include "absl/strings/str_format.h"
+ #include "absl/strings/str_join.h"
+ #include "absl/types/span.h"
+diff --git a/xla/stream_executor/dnn.h b/xla/stream_executor/dnn.h
+index fa068226d..996ac82a0 100644
+--- a/xla/stream_executor/dnn.h
++++ b/xla/stream_executor/dnn.h
+@@ -36,6 +36,7 @@ limitations under the License.
+ #include "google/protobuf/wrappers.pb.h"
+ #include "absl/status/status.h"
+ #include "absl/status/statusor.h"
++#include "absl/strings/str_cat.h"
+ #include "absl/types/span.h"
+ #include "xla/stream_executor/data_type.h"
+ #include "xla/stream_executor/device_description.pb.h"

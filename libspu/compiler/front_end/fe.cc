@@ -30,13 +30,13 @@
 #include "libspu/compiler/front_end/hlo_importer.h"
 #include "libspu/compiler/passes/passes.h"
 #include "libspu/core/prelude.h"
-#include "libspu/dialect/pphlo_dialect.h"
+#include "libspu/dialect/pphlo/dialect.h"
 
 namespace spu::compiler {
 
 FE::FE(CompilationContext *ctx) : ctx_(ctx) {
   ctx_->getMLIRContext()
-      ->loadDialect<mlir::pphlo::PPHloDialect, mlir::mhlo::MhloDialect,
+      ->loadDialect<mlir::spu::pphlo::PPHloDialect, mlir::mhlo::MhloDialect,
                     mlir::stablehlo::StablehloDialect,
                     mlir::func::FuncDialect>();
   mlir::DialectRegistry registry;
@@ -112,7 +112,6 @@ void FE::buildFrontEndPipeline(mlir::PassManager *pm, const std::string &args) {
     optPM.addPass(mlir::mhlo::createSinkConstantsToControlFlowPass());
     optPM.addPass(mlir::mhlo::createLowerComplexPass());
     optPM.addPass(mlir::mhlo::createFlattenTuplePass());
-    optPM.addPass(mlir::mhlo::createLegalizeTrigonometricToApproximationPass());
     optPM.addPass(mlir::mhlo::createBroadcastPropagationPass());
 
     // Convert to stablehlo
@@ -122,14 +121,14 @@ void FE::buildFrontEndPipeline(mlir::PassManager *pm, const std::string &args) {
   // stablehlo now
   // Dialect conversion
   {
-    auto l = mlir::pphlo::createLegalizeToPPHloPass();
+    auto l = mlir::spu::pphlo::createLegalizeToPPHloPass();
     if (!args.empty()) {
       SPU_ENFORCE(l->initializeOptions(args).succeeded());
     }
     pm->addPass(std::move(l));
   }
   auto &optPM = pm->nest<mlir::func::FuncOp>();
-  optPM.addPass(mlir::pphlo::createLowerConversionCastPass());
+  optPM.addPass(mlir::spu::pphlo::createLowerConversionCastPass());
 }
 
 } // namespace spu::compiler

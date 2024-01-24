@@ -15,7 +15,7 @@
 #pragma once
 
 #include "libspu/core/value.h"
-#include "libspu/dialect/pphlo_ops.h"
+#include "libspu/dialect/pphlo/ops.h"
 
 namespace spu {
 class SPUContext;
@@ -36,8 +36,8 @@ class PPHloVerifier {
     mismatch_handler_ = std::move(f);
   }
 
-#define VERIFY_DECL(OpName)                                               \
-  void verify(mlir::pphlo::OpName, absl::Span<const spu::Value> operands, \
+#define VERIFY_DECL(OpName)                                                    \
+  void verify(mlir::spu::pphlo::OpName, absl::Span<const spu::Value> operands, \
               absl::Span<const spu::Value> expected);
 
   // Simple unary
@@ -128,8 +128,8 @@ class PPHloVerifier {
 #undef VERIFY_DECL
 
 // Other (no verify)
-#define NO_VERIFY_DEFN(OpName)                                   \
-  void verify(mlir::pphlo::OpName, absl::Span<const spu::Value>, \
+#define NO_VERIFY_DEFN(OpName)                                        \
+  void verify(mlir::spu::pphlo::OpName, absl::Span<const spu::Value>, \
               absl::Span<const spu::Value>) {}
   NO_VERIFY_DEFN(DbgPrintOp)
   NO_VERIFY_DEFN(IfOp)

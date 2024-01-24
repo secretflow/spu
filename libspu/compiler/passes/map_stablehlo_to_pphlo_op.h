@@ -18,9 +18,9 @@
 
 #include "stablehlo/dialect/StablehloOps.h"
 
-#include "libspu/dialect/pphlo_ops.h"
+#include "libspu/dialect/pphlo/ops.h"
 
-namespace mlir::pphlo {
+namespace mlir::spu::pphlo {
 
 template <typename HloOpTy>
 struct HloToPPHloOpImpl {
@@ -101,4 +101,4 @@ MAP_HLO_TO_PPHLO_DIFF_NAME(BroadcastInDimOp, BroadcastOp)
 
 #undef MAP_HLO_TO_PPHLO
 
-} // namespace mlir::pphlo
+} // namespace mlir::spu::pphlo

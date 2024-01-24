@@ -226,6 +226,9 @@ py_test(
     data = [
         "//spu/tests/data",
     ],
+    tags = [
+        "exclusive-if-local",
+    ],
     deps = [
         "//spu:psi",
         "//spu/utils:simulation",

@@ -20,9 +20,9 @@
 #include "mlir/Transforms/GreedyPatternRewriteDriver.h"
 
 #include "libspu/compiler/passes/pass_details.h"
-#include "libspu/dialect/pphlo_ops.h"
+#include "libspu/dialect/pphlo/ops.h"
 
-namespace mlir::pphlo {
+namespace mlir::spu::pphlo {
 
 namespace {
 
@@ -114,4 +114,4 @@ std::unique_ptr<OperationPass<func::FuncOp>> createRewriteDivSqrtPatterns() {
   return std::make_unique<RewriteDivSqrtPatterns>();
 }
 
-} // namespace mlir::pphlo
+} // namespace mlir::spu::pphlo

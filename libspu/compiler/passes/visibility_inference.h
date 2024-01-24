@@ -17,21 +17,22 @@
 #include "mlir/Dialect/Func/IR/FuncOps.h"
 
 #include "libspu/compiler/passes/value_visibility_map.h"
-#include "libspu/dialect/pphlo_types.h"
+#include "libspu/core/prelude.h"
 
-namespace mlir::pphlo {
+namespace mlir::spu::pphlo {
 
 class VisibilityInference {
 public:
-  explicit VisibilityInference(ValueVisibilityMap &value_vis)
-      : value_vis_(value_vis) {}
+  explicit VisibilityInference(MLIRContext *context,
+                               ValueVisibilityMap &value_vis)
+      : value_vis_(value_vis), tools_(context) {}
 
-  void inferFunc(func::FuncOp &func);
+  void infer(func::FuncOp &func);
+
+private:
   void inferRegion(Region &region);
   void inferBlock(Block &blk);
   void inferOperation(Operation &op);
-
-private:
   void inferWhile(Operation &op);
   void inferIf(Operation &op);
   void inferCase(Operation &op);
@@ -44,16 +45,18 @@ private:
     auto reduceOp = llvm::dyn_cast<T>(op);
 
     size_t num_results = op.getNumResults();
-    std::vector<Visibility> input_vis;
+    llvm::SmallVector<Visibility> input_vis(num_results * 2);
     for (size_t idx = 0; idx < num_results; ++idx) {
       auto inputVis =
           value_vis_.getValueVisibility(reduceOp.getOperands()[idx]);
       auto initVis =
           value_vis_.getValueVisibility(reduceOp.getInitValues()[idx]);
 
-      auto promoted_vis = TypeTools::inferResultVisibility({inputVis, initVis});
-      input_vis.emplace_back(promoted_vis);
+      auto promoted_vis = tools_.computeCommonVisibility({inputVis, initVis});
+      input_vis[idx] = promoted_vis;
+      input_vis[idx + num_results] = promoted_vis;
 
+      // Set region block arg visibility
       value_vis_.setValueVisibility(reduceOp.getBody().getArgument(idx),
                                     promoted_vis);
       value_vis_.setValueVisibility(
@@ -69,32 +72,38 @@ private:
     auto *terminator = reduceOp.getBody().back().getTerminator();
     SPU_ENFORCE(terminator &&
                 terminator->getNumOperands() == reduceOp->getNumResults());
-    std::vector<Visibility> ret_vis;
     for (size_t idx = 0; idx < reduceOp->getNumResults(); ++idx) {
-      auto resultVis =
+      auto result_vis =
           value_vis_.getValueVisibility(terminator->getOperand(idx));
-      value_vis_.setValueVisibility(reduceOp->getResult(idx), resultVis);
-      ret_vis.emplace_back(resultVis);
-      if (resultVis != input_vis[idx]) {
+      if (result_vis != input_vis[idx]) {
         reinfer = true;
+        input_vis[idx] = result_vis;
+        input_vis[idx + num_results] = result_vis;
+
+        value_vis_.setValueVisibility(reduceOp.getBody().getArgument(idx),
+                                      result_vis);
+        value_vis_.setValueVisibility(
+            reduceOp.getBody().getArgument(num_results + idx), result_vis);
       }
     }
 
     if (reinfer) {
-      for (size_t idx = 0; idx < num_results; ++idx) {
-        value_vis_.setValueVisibility(reduceOp.getBody().getArgument(idx),
-                                      ret_vis[idx]);
-        value_vis_.setValueVisibility(
-            reduceOp.getBody().getArgument(num_results + idx), ret_vis[idx]);
-      }
-
       // ret0 = reduce(init0, val0)
       // Push inputs to body region
       inferRegion(reduceOp.getBody());
     }
+
+    for (size_t idx = 0; idx < reduceOp->getNumResults(); ++idx) {
+      auto result_vis =
+          value_vis_.getValueVisibility(terminator->getOperand(idx));
+      value_vis_.setValueVisibility(reduceOp->getResult(idx), result_vis);
+    }
+
+    value_vis_.setOperationInputVisibility(&op, std::move(input_vis));
   }
 
   ValueVisibilityMap &value_vis_;
+  TypeTools tools_;
 };
 
-} // namespace mlir::pphlo
+} // namespace mlir::spu::pphlo
