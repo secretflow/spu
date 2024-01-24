@@ -28,10 +28,12 @@ namespace mlir::spu::pphlo {
 
 class TypeTools {
  private:
-  [[maybe_unused]] MLIRContext *context_;
+  MLIRContext *context_;
 
  public:
-  explicit TypeTools(MLIRContext *context) : context_(context) {}
+  explicit TypeTools(MLIRContext *context) : context_(context) {
+    (void)context_;
+  }
 
   bool isFloatType(const Type &t) const;
   bool isIntType(const Type &t) const;
