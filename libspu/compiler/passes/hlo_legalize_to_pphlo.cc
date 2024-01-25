@@ -1065,9 +1065,10 @@ private:
     }
 
     TypeTools type_tools(rewriter.getContext());
-    Value zero = rewriter.create<pphlo::ConstantOp>(
-        loc, rewriter.getZeroAttr(
-                 RankedTensorType::get({}, inputType.getElementType())));
+    auto zero_attr = rewriter.getZeroAttr(RankedTensorType::get(
+        {}, type_tools.getExpressedType(inputType.getElementType())));
+    SPU_ENFORCE(zero_attr);
+    Value zero = rewriter.create<pphlo::ConstantOp>(loc, zero_attr);
     zero = rewriter.create<pphlo::ConvertOp>(
         loc, RankedTensorType::get({}, inputType.getElementType()), zero);
     return rewriter.create<pphlo::PadOp>(
