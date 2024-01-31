@@ -293,3 +293,253 @@ class Normalizer:
             Transformed array.
         """
         return normalize(X, norm=self.norm)
+
+class MinMaxScaler():
+    def __init__(self, feature_range=(0, 1), *, clip=False):
+        self.feature_range = feature_range
+        self.clip = clip
+    
+    def _reset(self):
+        if hasattr(self, "scale_"):
+            del self.scale_
+            del self.min_
+            del self.n_samples_seen_
+            del self.data_min_
+            del self.data_max_
+            del self.data_range_
+
+    def fit(self, X, *, zero_variance=False, contain_nan=False):
+        ### if do not handle zero variance, though transform the matrix that used in fit will work correctly. Transform new matrix and inverse transform will work incorrectly.
+        self._reset()
+        return self.partial_fit(X, zero_variance=zero_variance, contain_nan=contain_nan)
+    
+    def partial_fit(self, X, *, zero_variance=False, contain_nan=False):
+        feature_range = self.feature_range
+        if feature_range[0] >= feature_range[1]:
+            raise ValueError(
+                "Minimum of desired feature range must be smaller than maximum. Got %s."
+                % str(feature_range)
+            )
+        first_pass = not hasattr(self, "n_samples_seen_")
+        if contain_nan == False:
+            data_min = jnp.min(X, axis=0)
+            data_max = jnp.max(X, axis=0)
+        else:
+            data_min = jnp.nanmin(X, axis=0)
+            data_max = jnp.nanmax(X, axis=0)
+        if first_pass:
+            self.n_samples_seen_ = X.shape[0]
+        else:
+            data_min = jnp.minimum(self.data_min_, data_min)
+            data_max = jnp.maximum(self.data_max_, data_max)
+            self.n_samples_seen_ += X.shape[0]
+        data_range = data_max - data_min
+        if zero_variance == False:
+            self.scale_ = (feature_range[1] - feature_range[0]) / data_range
+        else:
+            self.scale_ = (feature_range[1] - feature_range[0]) / jnp.where(data_range==0, 1, data_range)
+
+        self.min_ = feature_range[0] - data_min * self.scale_
+        self.data_min_ = data_min
+        self.data_max_ = data_max
+        self.data_range_ = data_range
+        return self
+    
+    def transform(self, X):
+        X *= self.scale_
+        X += self.min_
+        if self.clip:
+            X = jnp.clip(X, self.feature_range[0], self.feature_range[1])
+        return X
+
+    def fit_transform(self, X, *, zero_variance=False, contain_nan=False):
+        return self.fit(X, zero_variance=zero_variance, contain_nan=contain_nan).transform(X)
+
+    def inverse_transform(self, X):
+        X -= self.min_
+        X /= self.scale_
+        return X
+
+class MaxAbsScaler():
+    def __init__(self):
+        pass
+
+    def _reset(self):
+        if hasattr(self, "scale_"):
+            del self.scale_
+            del self.n_samples_seen_
+            del self.max_abs_
+    
+    def fit(self, X, zero_maxabs=False, contain_nan=False):
+        ### if do not handle zero maxabs, though transform the matrix that used in fit and inverse transform will work correctly. Transform new matrix and inverse transform will work incorrectly.
+        self._reset()
+        return self.partial_fit(X, zero_maxabs=zero_maxabs, contain_nan=contain_nan)
+    
+    def partial_fit(self, X, *, zero_maxabs=False, contain_nan=False):
+        first_pass = not hasattr(self, "n_samples_seen_")
+        if contain_nan == False:
+            max_abs = jnp.max(jnp.abs(X), axis=0)
+        else:
+            max_abs = jnp.nanmax(jnp.abs(X), axis=0)
+        if first_pass:
+            self.n_samples_seen_ = X.shape[0]
+        else:
+            max_abs = jnp.maximum(self.max_abs_, max_abs)
+            self.n_samples_seen_ += X.shape[0]
+        self.max_abs_ = max_abs
+        if zero_maxabs == False:
+            self.scale_ = max_abs
+        else:
+            self.scale_ = jnp.where(max_abs==0, 1, max_abs)
+        return self
+    
+    def transform(self, X):
+        return X / self.scale_
+    
+    def fit_transform(self, X, *, zero_maxabs=False, contain_nan=False):
+        return self.fit(X, zero_maxabs=zero_maxabs, contain_nan=contain_nan).transform(X)
+
+    def inverse_transform(self, X):
+        return X * self.scale_
+    
+class KBinsDiscretizer():
+    ### subsample is not triggered by default
+    # n_bins : array-like of shape (n_features,)
+    #     The number of bins to produce. All the value in n_bins should be int >= 2. There is no check here to avoid redundent operation, so user should pay attention here.
+    def __init__(self, n_bins, same_n_bins=True, *, encode="onehot", strategy="quantile", dtype=None, subsample=None, random_state=None):
+        self.n_bins = n_bins
+        self.same_n_bins = same_n_bins
+        self.encode = encode
+        self.strategy = strategy
+        self.dtype = dtype
+        self.subsample = subsample
+        self.random_state = random_state
+    
+    def fit(self, X, sample_weight=None):
+        ### subsample is not triggered by default
+        if self.dtype in (jnp.float64, jnp.float32):
+            output_dtype = self.dtype
+        else:  # self.dtype is None
+            output_dtype = X.dtype
+        n_samples, n_features = X.shape
+        # X = X.astype(output_dtype)
+        if sample_weight is not None and self.strategy == "uniform":
+            raise ValueError(
+                "`sample_weight` was provided but it cannot be "
+                "used with strategy='uniform'. Got strategy="
+                f"{self.strategy!r} instead."
+            )
+        subsample = self.subsample
+        n_bins = self.n_bins
+        if subsample is not None and n_samples > subsample:
+            ### this part is not implemented
+            pass
+
+        if self.same_n_bins == True:
+            bin_func = lambda x: jnp.linspace(jnp.min(x), jnp.max(x), n_bins + 1)
+            bin_edges = jax.vmap(bin_func, in_axes=1, out_axes=1)(X)
+        else:
+            bin_edges = []
+            for jj in range(n_features):
+                column = X[:, jj]
+                col_min, col_max = jnp.min(column), jnp.max(column)
+
+                if self.strategy == "uniform":
+                    bin_edges.append(jnp.linspace(col_min, col_max, n_bins[jj] + 1))
+        # column_min = jnp.min(X, axis=0)
+        # column_max = jnp.max(X, axis=0)
+        # bin_edges = jnp.linspace(column_min, column_max, n_bins[:, None])
+
+        # bin_func = lambda x: jnp.linspace(jnp.min(x), jnp.max(x), 4)
+        # bin_edges = jax.vmap(bin_func, in_axes=1, out_axes=0)(X)
+
+        # bin_func = lambda x: jnp.linspace(jnp.min(x), jnp.max(x), 4)
+        # bin_edges = jax.vmap(bin_func, in_axes=1, out_axes=0)(X)
+
+
+        # for jj in range(n_features):
+        #     column = X[:, jj]
+        #     col_min, col_max = jnp.min(column), jnp.max(column)
+
+        #     ### some problem related to dynamic shape
+
+        #     # if col_min == col_max:
+        #     #     # warnings.warn(
+        #     #     #     "Feature %d is constant and will be replaced with 0." % jj
+        #     #     # )
+        #     #     n_bins[jj] = 1
+        #     #     bin_edges[jj] = jnp.array([-jnp.inf, jnp.inf])
+        #     #     continue
+        #     if self.strategy == "uniform":
+        #         bin_edges[jj] = jnp.linspace(col_min, col_max, 3)
+        #     elif self.strategy == "quantile":
+        #         quantiles = jnp.linspace(0, 100, n_bins[jj] + 1)
+        #         if sample_weight is None:
+        #             bin_edges[jj] = jnp.asarray(jnp.percentile(column, quantiles))
+        #         ### not implemented
+                    
+        #         # else:
+        #         #     bin_edges[jj] = jnp.asarray(
+        #         #         [
+        #         #             _weighted_percentile(column, sample_weight, q)
+        #         #             for q in quantiles
+        #         #         ],
+        #         #         dtype=np.float64,
+        #         #     )
+                    
+        #     if self.strategy in ("quantile", "kmeans"):
+        #         mask = jnp.ediff1d(bin_edges[jj], to_begin=jnp.inf) > 1e-8
+        #         bin_edges[jj] = bin_edges[jj][mask]
+        #         if len(bin_edges[jj]) - 1 != n_bins[jj]:
+        #             # warnings.warn(
+        #             #     "Bins whose width are too small (i.e., <= "
+        #             #     "1e-8) in feature %d are removed. Consider "
+        #             #     "decreasing the number of bins." % jj
+        #             # )
+        #             n_bins[jj] = len(bin_edges[jj]) - 1
+        
+        self.bin_edges_ = bin_edges
+        self.n_bins_ = n_bins
+
+        ### not implemented
+        # if "onehot" in self.encode:
+        #     self._encoder = OneHotEncoder(
+        #         categories=[np.arange(i) for i in self.n_bins_],
+        #         sparse_output=self.encode == "onehot",
+        #         dtype=output_dtype,
+        #     )
+        #     # Fit the OneHotEncoder with toy datasets
+        #     # so that it's ready for use after the KBinsDiscretizer is fitted
+        #     self._encoder.fit(np.zeros((1, len(self.n_bins_))))
+
+        return self
+
+    def transform(self, X):
+        # check input and attribute dtypes
+        dtype = (jnp.float64, jnp.float32) if self.dtype is None else self.dtype
+        # Xt = self._validate_data(X, copy=True, dtype=dtype, reset=False)
+
+        bin_edges = self.bin_edges_
+
+        # def compute_row(x, y):
+        #     jnp.searchsorted(x[1:-1], y, side="right")
+        compute_row = lambda x, y: jnp.searchsorted(x[1:-1], y, side="right")
+        compute_rows_vmap = jax.vmap(compute_row, in_axes=(1, 1), out_axes=1)(bin_edges, X)
+        return compute_rows_vmap
+        # for jj in range(Xt.shape[1]):
+        #     Xt[:, jj] = np.searchsorted(bin_edges[jj][1:-1], Xt[:, jj], side="right")
+
+        # if self.encode == "ordinal":
+        #     return Xt
+
+        # dtype_init = None
+        # if "onehot" in self.encode:
+        #     dtype_init = self._encoder.dtype
+        #     self._encoder.dtype = Xt.dtype
+        # try:
+        #     Xt_enc = self._encoder.transform(Xt)
+        # finally:
+        #     # revert the initial dtype to avoid modifying self.
+        #     self._encoder.dtype = dtype_init
+        # return Xt_enc
+

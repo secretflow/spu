@@ -17,7 +17,7 @@ import numpy as np
 from sklearn import preprocessing
 
 import sml.utils.emulation as emulation
-from sml.preprocessing.preprocessing import Binarizer, LabelBinarizer, Normalizer
+from sml.preprocessing.preprocessing import Binarizer, LabelBinarizer, Normalizer, MinMaxScaler, MaxAbsScaler
 
 
 def emul_labelbinarizer():
@@ -146,6 +146,146 @@ def emul_normalizer():
     np.testing.assert_allclose(sk_result_l2, spu_result_l2, rtol=0, atol=1e-4)
     np.testing.assert_allclose(sk_result_max, spu_result_max, rtol=0, atol=1e-4)
 
+def emul_minmaxscaler():
+    def minmaxscale(X, Y):
+        transformer = MinMaxScaler()
+        result1 = transformer.fit_transform(X)
+        result2 = transformer.transform(Y)
+        return result1, result2
+    
+    X = jnp.array([[-1, 2], [-0.5, 6], [0, 10], [1, 18]])
+    Y = jnp.array([[2, 2]])
+
+    transformer = preprocessing.MinMaxScaler()
+    sk_result_1 = transformer.fit_transform(X)
+    sk_result_2 = transformer.transform(Y)
+    # print("sklearn:\n", sk_result_1)
+    # print("sklearn:\n", sk_result_2)
+
+    X, Y = emulator.seal(X, Y)
+    spu_result_1, spu_result_2 = emulator.run(minmaxscale)(X, Y)
+    # print("result\n", spu_result_1)
+    # print("result\n", spu_result_2)
+
+    np.testing.assert_allclose(sk_result_1, spu_result_1, rtol=0, atol=1e-4)
+    np.testing.assert_allclose(sk_result_2, spu_result_2, rtol=0, atol=1e-4)
+
+def emul_minmaxscaler_partial_fit():
+    def minmaxscale(X):
+        transformer = MinMaxScaler()
+        for batch in range(50):
+            transformer = transformer.partial_fit(X[batch * 2: batch * 2 + 2])
+        result_min = transformer.data_min_
+        result_max = transformer.data_max_
+        return result_min, result_max
+
+    rng = np.random.RandomState(0)
+    n_features = 30
+    n_samples = 1000
+    offsets = rng.uniform(-1, 1, size=n_features)
+    scales = rng.uniform(1, 10, size=n_features)
+    X_2d = rng.randn(n_samples, n_features) * scales + offsets
+    X = X_2d
+
+    chunk_size = 2
+    transformer = MinMaxScaler()
+    for batch in range(50):
+        transformer = transformer.partial_fit(X[batch * 2: batch * 2 + 2])
+
+    # transformer = preprocessing.MinMaxScaler()
+    # transformer.fit(X)
+    sk_result_min = transformer.data_min_
+    sk_result_max = transformer.data_max_
+    # print("sklearn:\n", sk_result_min)
+    # print("sklearn:\n", sk_result_max)
+
+    X = emulator.seal(X)
+    spu_result_min, spu_result_max = emulator.run(minmaxscale)(X)
+    # print("result\n", spu_result_min)
+    # print("result\n", spu_result_max)
+
+    np.testing.assert_allclose(sk_result_min, spu_result_min, rtol=0, atol=1e-4)
+    np.testing.assert_allclose(sk_result_max, spu_result_max, rtol=0, atol=1e-4)
+
+def emul_minmaxscaler_zero_variance():
+    def minmaxscale(X, X_new):
+            transformer = MinMaxScaler()
+            transformer.fit(X, zero_variance=True)
+            transformed = transformer.transform(X)
+            inv_transformed = transformer.inverse_transform(transformed)
+            transformed_new = transformer.transform(X_new)
+            return transformed, inv_transformed, transformed_new
+
+    X = jnp.array([[0.0, 1.0, +0.5], [0.0, 1.0, -0.1], [0.0, 1.0, +1.1]])
+    X_new = jnp.array([[+0.0, 2.0, 0.5], [-1.0, 1.0, 0.0], [+0.0, 1.0, 1.5]])
+
+    transformer = preprocessing.MinMaxScaler()
+    transformer.fit(X)
+    sk_transformed = transformer.transform(X)
+    sk_inv_transformed = transformer.inverse_transform(sk_transformed)
+    sk_transformed_new = transformer.transform(X_new)
+    # print("sklearn:\n", sk_transformed)
+    # print("sklearn:\n", sk_inv_transformed)
+    # print("sklearn:\n", sk_transformed_new)
+
+    X, X_new = emulator.seal(X, X_new)
+    spu_transformed, spu_inv_transformed, spu_transformed_new = emulator.run(minmaxscale)(X, X_new)
+    # print("result\n", spu_transformed)
+    # print("result\n", spu_inv_transformed)
+    # print("result\n", spu_transformed_new)
+
+    np.testing.assert_allclose(sk_transformed, spu_transformed, rtol=0, atol=1e-4)
+    np.testing.assert_allclose(sk_inv_transformed, spu_inv_transformed, rtol=0, atol=1e-4)
+    np.testing.assert_allclose(sk_transformed_new, spu_transformed_new, rtol=0, atol=1e-4)
+
+def emul_maxabsscaler():
+        def maxabsscale(X):
+            transformer = MaxAbsScaler()
+            result = transformer.fit_transform(X)
+            return result
+
+        X = jnp.array([[ 1., -1.,  2.], [ 2.,  0.,  0.], [ 0.,  1., -1.]])
+
+        transformer = preprocessing.MaxAbsScaler()
+        sk_result = transformer.fit_transform(X)
+        # print("sklearn:\n", sk_result)
+
+        X = emulator.seal(X)
+        spu_result = emulator.run(maxabsscale)(X)
+        # print("result\n", spu_result)
+
+        np.testing.assert_allclose(sk_result, spu_result, rtol=0, atol=1e-4)
+    
+def emul_maxabsscaler_zero_maxabs():
+    def maxabsscale(X, X_new):
+        transformer = MaxAbsScaler()
+        transformer.fit(X, zero_maxabs=True)
+        transformed = transformer.transform(X)
+        inv_transformed = transformer.inverse_transform(transformed)
+        transformed_new = transformer.transform(X_new)
+        return transformed, inv_transformed, transformed_new
+
+    X = jnp.array([[0.0, 1.0, +0.5], [0.0, 1.0, -0.3], [0.0, 1.0, +1.5], [0.0, 0.0, +0.0]])
+    X_new = jnp.array([[+0.0, 2.0, 0.5], [-1.0, 1.0, 0.0], [+0.0, 1.0, 1.5]])
+
+    transformer = preprocessing.MaxAbsScaler()
+    transformer.fit(X)
+    sk_transformed = transformer.transform(X)
+    sk_inv_transformed = transformer.inverse_transform(sk_transformed)
+    sk_transformed_new = transformer.transform(X_new)
+    # print("sklearn:\n", sk_transformed)
+    # print("sklearn:\n", sk_inv_transformed)
+    # print("sklearn:\n", sk_transformed_new)
+
+    X, X_new = emulator.seal(X, X_new)
+    spu_transformed, spu_inv_transformed, spu_transformed_new = emulator.run(maxabsscale)(X, X_new)
+    # print("result\n", spu_transformed)
+    # print("result\n", spu_inv_transformed)
+    # print("result\n", spu_transformed_new)
+
+    np.testing.assert_allclose(sk_transformed, spu_transformed, rtol=0, atol=1e-4)
+    np.testing.assert_allclose(sk_inv_transformed, spu_inv_transformed, rtol=0, atol=1e-4)
+    np.testing.assert_allclose(sk_transformed_new, spu_transformed_new, rtol=0, atol=1e-4)
 
 if __name__ == "__main__":
     try:
@@ -157,10 +297,15 @@ if __name__ == "__main__":
             latency=20,
         )
         emulator.up()
-        emul_labelbinarizer()
-        emul_labelbinarizer_binary()
-        emul_labelbinarizer_unseen()
-        emul_binarizer()
-        emul_normalizer()
+        # emul_labelbinarizer()
+        # emul_labelbinarizer_binary()
+        # emul_labelbinarizer_unseen()
+        # emul_binarizer()
+        # emul_normalizer()
+        # emul_minmaxscaler()
+        # emul_minmaxscaler_partial_fit()
+        # emul_minmaxscaler_zero_variance()
+        # emul_maxabsscaler()
+        # emul_maxabsscaler_zero_maxabs()
     finally:
         emulator.down()
