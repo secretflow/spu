@@ -18,11 +18,11 @@
 
 #include "libspu/compiler/passes/passes.h"
 
-namespace mlir::pphlo {
+namespace mlir::spu::pphlo {
 
 #define GEN_PASS_REGISTRATION
 #include "libspu/compiler/passes/passes.h.inc"
 
 inline void registerAllPPHloPasses() { registerPasses(); }
 
-} // namespace mlir::pphlo
+} // namespace mlir::spu::pphlo

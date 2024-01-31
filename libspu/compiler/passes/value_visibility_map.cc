@@ -16,35 +16,26 @@
 
 #include "libspu/core/prelude.h"
 
-namespace mlir::pphlo {
-namespace {
-
-Visibility ComputePromotedVisibility(Visibility v1, Visibility v2) {
-  if (v1 == v2) {
-    return v1;
-  }
-  if (v1 == Visibility::VIS_SECRET || v2 == Visibility::VIS_SECRET) {
-    return Visibility::VIS_SECRET;
-  }
-  return Visibility::VIS_PUBLIC;
-}
-
-} // namespace
+namespace mlir::spu::pphlo {
 
 Visibility ValueVisibilityMap::getValueVisibility(const Value &v) const {
-  const auto &iter = storage_.find(v);
-  SPU_ENFORCE(iter != storage_.end());
+  const auto &iter = value_vis_.find(v);
+  SPU_ENFORCE(iter != value_vis_.end());
   return iter->second;
 }
 
 void ValueVisibilityMap::setValueVisibility(const Value &val, Visibility vis) {
-  const auto &iter = storage_.find(val);
-  if (iter != storage_.end()) {
-    // Merge
-    storage_[val] = ComputePromotedVisibility(iter->second, vis);
-  } else {
-    storage_[val] = vis;
-  }
+  value_vis_[val] = vis;
 }
 
-} // namespace mlir::pphlo
+void ValueVisibilityMap::setOperationInputVisibility(
+    Operation *op, llvm::SmallVector<Visibility> &&vis) {
+  op_in_vis_[op] = std::move(vis);
+}
+
+void ValueVisibilityMap::setOperationInputVisibility(
+    Operation *op, llvm::ArrayRef<Visibility> vis) {
+  op_in_vis_[op] = llvm::SmallVector<Visibility>(vis);
+}
+
+} // namespace mlir::spu::pphlo

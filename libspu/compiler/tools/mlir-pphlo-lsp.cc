@@ -18,12 +18,12 @@
 #include "stablehlo/dialect/StablehloOps.h"
 #include "xla/mlir_hlo/mhlo/IR/hlo_ops.h"
 
-#include "libspu/dialect/pphlo_dialect.h"
+#include "libspu/dialect/pphlo/dialect.h"
 
 int main(int argc, char **argv) {
   mlir::DialectRegistry registry;
   registry.insert<mlir::mhlo::MhloDialect, mlir::stablehlo::StablehloDialect,
-                  mlir::pphlo::PPHloDialect, mlir::func::FuncDialect>();
+                  mlir::spu::pphlo::PPHloDialect, mlir::func::FuncDialect>();
   mlir::func::registerInlinerExtension(registry);
   return mlir::failed(mlir::MlirLspServerMain(argc, argv, registry));
 }

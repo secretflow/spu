@@ -40,10 +40,10 @@ def _yacl():
         http_archive,
         name = "yacl",
         urls = [
-            "https://github.com/secretflow/yacl/archive/7a99fd620213ae80bb5fbdc2f60b015dadbd8c7b.tar.gz",
+            "https://github.com/secretflow/yacl/archive/e3401da07d8aa2f3fe2238e8563e5f573036a594.tar.gz",
         ],
-        strip_prefix = "yacl-7a99fd620213ae80bb5fbdc2f60b015dadbd8c7b",
-        sha256 = "ea5cade0b1e44a3cb49124a88a3549668a8805543a1b4b823629b18538f8d7ce",
+        strip_prefix = "yacl-e3401da07d8aa2f3fe2238e8563e5f573036a594",
+        sha256 = "7b3b41630c26efdd420bed4ce8318ba352992fa4b3cd8fbbe8a015a66498b474",
     )
 
 def _libpsi():
@@ -51,10 +51,10 @@ def _libpsi():
         http_archive,
         name = "psi",
         urls = [
-            "https://github.com/secretflow/psi/archive/2f4bb012d9b294a2dea1fd622d13a63c3ee31f52.tar.gz",
+            "https://github.com/secretflow/psi/archive/9225bc9626a4ed3e4a8a55b86e400aa5e50e3e93.tar.gz",
         ],
-        strip_prefix = "psi-2f4bb012d9b294a2dea1fd622d13a63c3ee31f52",
-        sha256 = "602ea61f40b7635382e26f526292eb4649af0b1763fd13d63cb3e1c1542c60af",
+        strip_prefix = "psi-9225bc9626a4ed3e4a8a55b86e400aa5e50e3e93",
+        sha256 = "f90e9e9a2a931833ebdf8f08c01c09fe0c1b0f88458f0c18d45b1a548cf2c001",
     )
 
 def _rules_proto_grpc():
@@ -117,12 +117,12 @@ def _com_github_xtensor_xtensor():
     maybe(
         http_archive,
         name = "com_github_xtensor_xtensor",
-        sha256 = "0fbbd524dde2199b731b6af99b16063780de6cf1d0d6cb1f3f4d4ceb318f3106",
-        strip_prefix = "xtensor-0.24.7",
+        sha256 = "32d5d9fd23998c57e746c375a544edf544b74f0a18ad6bc3c38cbba968d5e6c7",
+        strip_prefix = "xtensor-0.25.0",
         build_file = "@spulib//bazel:xtensor.BUILD",
         type = "tar.gz",
         urls = [
-            "https://github.com/xtensor-stack/xtensor/archive/refs/tags/0.24.7.tar.gz",
+            "https://github.com/xtensor-stack/xtensor/archive/refs/tags/0.25.0.tar.gz",
         ],
     )
 
@@ -140,8 +140,8 @@ def _com_github_xtensor_xtl():
     )
 
 def _com_github_openxla_xla():
-    OPENXLA_COMMIT = "fa9331a7e557b4ec1381f84cbbf7401a8f41ac66"
-    OPENXLA_SHA256 = "d19c570d434002b7b0490327d407fc7cf2b18633f4a2d3b1bb44f3f0e4b36533"
+    OPENXLA_COMMIT = "a0d4632c93451c685ce422d087388a5c624a5ee9"
+    OPENXLA_SHA256 = "3c990717bb64d7e27097f059b727e8e6e131a21c006ac16006f471fb8740b139"
 
     maybe(
         http_archive,
@@ -159,6 +159,10 @@ def _com_github_openxla_xla():
         sha256 = OPENXLA_SHA256,
         strip_prefix = "xla-" + OPENXLA_COMMIT,
         type = ".tar.gz",
+        patch_args = ["-p1"],
+        patches = [
+            "@spulib//bazel:patches/xla.patch",
+        ],
         urls = [
             "https://github.com/openxla/xla/archive/{commit}.tar.gz".format(commit = OPENXLA_COMMIT),
         ],

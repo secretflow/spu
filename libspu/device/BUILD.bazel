@@ -57,7 +57,7 @@ spu_cc_library(
         "//libspu:spu_cc_proto",
         "//libspu/core:context",
         "//libspu/core:value",
-        "//libspu/dialect:pphlo_dialect",
+        "//libspu/dialect/pphlo:dialect",
         "@llvm-project//mlir:IR",
     ],
 )

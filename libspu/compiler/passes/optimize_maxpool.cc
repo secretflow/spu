@@ -23,17 +23,16 @@
 
 #include "libspu/compiler/passes/pass_details.h"
 #include "libspu/compiler/passes/passes.h"
-#include "libspu/dialect/pphlo_base_enums.h"
-#include "libspu/dialect/pphlo_ops.h"
-#include "libspu/dialect/pphlo_types.h"
+#include "libspu/dialect/pphlo/ops.h"
+#include "libspu/dialect/pphlo/types.h"
 
-namespace mlir::pphlo {
+namespace mlir::spu::pphlo {
 
 namespace {
 
 struct SelectAndScatterConverter : public OpRewritePattern<SelectAndScatterOp> {
 private:
-  TypeTools tools_;
+  TypeTools typetools_;
 
   Value rewriteReduceWindow(ReduceWindowOp op,
                             PatternRewriter &rewriter) const {
@@ -47,11 +46,11 @@ private:
     std::vector<int64_t> index_result_shape = current_ret_type.getShape();
     index_result_shape.emplace_back(window_size);
 
-    auto current_ret_vis = tools_.getTypeVisibility(current_ret_type);
+    auto current_ret_vis = typetools_.getTypeVisibility(current_ret_type);
 
     auto index_result_type = RankedTensorType::get(
         index_result_shape,
-        tools_.getTypeWithVisibility(rewriter.getI1Type(), current_ret_vis));
+        typetools_.getType(rewriter.getI1Type(), current_ret_vis));
 
     OpBuilder builder(op);
     builder.setInsertionPoint(op.getOperation());
@@ -77,7 +76,7 @@ private:
 
 public:
   explicit SelectAndScatterConverter(MLIRContext *context)
-      : OpRewritePattern(context) {}
+      : OpRewritePattern(context), typetools_(context) {}
 
   LogicalResult matchAndRewrite(SelectAndScatterOp op,
                                 PatternRewriter &rewriter) const override {
@@ -178,4 +177,4 @@ std::unique_ptr<OperationPass<func::FuncOp>> createOptimizeMaxPoolingPass() {
   return std::make_unique<OptimizeMaxPooling>();
 }
 
-} // namespace mlir::pphlo
+} // namespace mlir::spu::pphlo

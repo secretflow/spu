@@ -21,7 +21,7 @@
 #include "xtensor/xarray.hpp"
 
 #include "libspu/device/test_utils.h"
-#include "libspu/dialect/pphlo_dialect.h"
+#include "libspu/dialect/pphlo/dialect.h"
 #include "libspu/kernel/test_util.h"
 #include "libspu/mpc/utils/simulate.h"
 
@@ -76,48 +76,50 @@ void runner(const OpFcn &f, absl::Span<const xt::xarray<InT>> inputs,
 }
 
 TEST(Verify, DISABLED_Reciprocal) {
-  runner<float, float>([] { return mlir::pphlo::ReciprocalOp{}; },
+  runner<float, float>([] { return mlir::spu::pphlo::ReciprocalOp{}; },
                        {xt::xarray<float>{1, 2, 4, 8}},
                        {xt::xarray<float>{1, 0.5, 0.25, 0.125}},
                        {xt::xarray<float>{1, 2, 2, 1}});
 }
 
 TEST(Verify, Neg) {
-  runner<int32_t, int32_t>(
-      [] { return mlir::pphlo::NegOp{}; }, {xt::xarray<int32_t>{0, 0, 1, 1}},
-      {xt::xarray<int32_t>{0, 0, -1, -1}}, {xt::xarray<int32_t>{0, 0, 0, 0}});
+  runner<int32_t, int32_t>([] { return mlir::spu::pphlo::NegOp{}; },
+                           {xt::xarray<int32_t>{0, 0, 1, 1}},
+                           {xt::xarray<int32_t>{0, 0, -1, -1}},
+                           {xt::xarray<int32_t>{0, 0, 0, 0}});
 }
 
 TEST(Verify, Log) {
   runner<float, float>(
-      [] { return mlir::pphlo::LogOp{}; }, {xt::xarray<float>{1, 2, 3, 4}},
+      [] { return mlir::spu::pphlo::LogOp{}; }, {xt::xarray<float>{1, 2, 3, 4}},
       {xt::xarray<float>{0, 0.6931472, 1.09861229, 1.38629436}},
       {xt::xarray<float>{1, 1, 1, 1}});
 }
 
 TEST(Verify, DISABLED_Log1p) {
   runner<float, float>(
-      [] { return mlir::pphlo::Log1pOp{}; }, {xt::xarray<float>{0, 1, 2, 3}},
+      [] { return mlir::spu::pphlo::Log1pOp{}; },
+      {xt::xarray<float>{0, 1, 2, 3}},
       {xt::xarray<float>{0, 0.6931472, 1.09861229, 1.38629436}},
       {xt::xarray<float>{1, 1, 1, 1}});
 }
 
 TEST(Verify, Floor) {
-  runner<float, float>([] { return mlir::pphlo::FloorOp{}; },
+  runner<float, float>([] { return mlir::spu::pphlo::FloorOp{}; },
                        {xt::xarray<float>{-1.1, 2.2, -3.3, 4.4}},
                        {xt::xarray<float>{-2, 2, -4, 4}},
                        {xt::xarray<float>{1, 2, 2, 1}});
 }
 
 TEST(Verify, Ceil) {
-  runner<float, float>([] { return mlir::pphlo::CeilOp{}; },
+  runner<float, float>([] { return mlir::spu::pphlo::CeilOp{}; },
                        {xt::xarray<float>{-1.1, 2.2, -3.3, 4.4}},
                        {xt::xarray<float>{-1, 3, -3, 5}},
                        {xt::xarray<float>{1, 2, 2, 1}});
 }
 
 TEST(Verify, Abs) {
-  runner<int64_t, int64_t>([] { return mlir::pphlo::AbsOp{}; },
+  runner<int64_t, int64_t>([] { return mlir::spu::pphlo::AbsOp{}; },
                            {xt::xarray<int64_t>{-1, -1, -1, -1}},
                            {xt::xarray<int64_t>{1, 1, 1, 1}},
                            {xt::xarray<int64_t>{1, 2, 2, 1}});
@@ -125,20 +127,22 @@ TEST(Verify, Abs) {
 
 TEST(Verify, Logistic) {
   runner<float, float>(
-      [] { return mlir::pphlo::LogisticOp{}; }, {xt::xarray<float>{1, 2, 3, 4}},
+      [] { return mlir::spu::pphlo::LogisticOp{}; },
+      {xt::xarray<float>{1, 2, 3, 4}},
       {xt::xarray<float>{0.73105858, 0.88079708, 0.95257413, 0.98201379}},
       {xt::xarray<float>{1, 1, 1, 1}});
 }
 
 TEST(Verify, Tanh) {
   runner<float, float>(
-      [] { return mlir::pphlo::TanhOp{}; }, {xt::xarray<float>{1, 2, 3, 4}},
+      [] { return mlir::spu::pphlo::TanhOp{}; },
+      {xt::xarray<float>{1, 2, 3, 4}},
       {xt::xarray<float>{0.76159416, 0.96402758, 0.99505475, 0.9993293}},
       {xt::xarray<float>{1, 1, 1, 1}});
 }
 
 TEST(Verify, Not) {
-  runner<uint8_t, uint8_t>([] { return mlir::pphlo::NotOp{}; },
+  runner<uint8_t, uint8_t>([] { return mlir::spu::pphlo::NotOp{}; },
                            {xt::xarray<uint8_t>{2, 0, 1, 0}},
                            {xt::xarray<uint8_t>{253, 255, 254, 255}},
                            {xt::xarray<uint8_t>{1, 2, 2, 1}});
@@ -146,28 +150,28 @@ TEST(Verify, Not) {
 
 TEST(Verify, Add) {
   runner<int32_t, int32_t>(
-      [] { return mlir::pphlo::AddOp{}; },
+      [] { return mlir::spu::pphlo::AddOp{}; },
       {xt::xarray<int32_t>{1, 2, 3, 4}, xt::xarray<int32_t>{5, 6, 7, 8}},
       {xt::xarray<int32_t>{6, 8, 10, 12}}, {xt::xarray<int32_t>{1, 2, 2, 1}});
 }
 
 TEST(Verify, Sub) {
   runner<int32_t, int32_t>(
-      [] { return mlir::pphlo::SubtractOp{}; },
+      [] { return mlir::spu::pphlo::SubtractOp{}; },
       {xt::xarray<int32_t>{1, 2, 3, 4}, xt::xarray<int32_t>{5, 6, 7, 8}},
       {xt::xarray<int32_t>{-4, -4, -4, -4}}, {xt::xarray<int32_t>{1, 2, 2, 1}});
 }
 
 TEST(Verify, Mul) {
   runner<int32_t, int32_t>(
-      [] { return mlir::pphlo::MulOp{}; },
+      [] { return mlir::spu::pphlo::MulOp{}; },
       {xt::xarray<int32_t>{1, 2, 3, 4}, xt::xarray<int32_t>{5, 6, 7, 8}},
       {xt::xarray<int32_t>{5, 12, 21, 32}}, {xt::xarray<int32_t>{1, 2, 2, 1}});
 }
 
 TEST(Verify, Pow) {
   runner<int32_t, int32_t>(
-      [] { return mlir::pphlo::PowOp{}; },
+      [] { return mlir::spu::pphlo::PowOp{}; },
       {xt::xarray<int32_t>{1, 2, 3, 4}, xt::xarray<int32_t>{5, 6, 7, 8}},
       {xt::xarray<int32_t>{1, 64, 2187, 65536}},
       {xt::xarray<int32_t>{1, 2, 2, 1}});
@@ -175,56 +179,56 @@ TEST(Verify, Pow) {
 
 TEST(Verify, Max) {
   runner<int32_t, int32_t>(
-      [] { return mlir::pphlo::MaxOp{}; },
+      [] { return mlir::spu::pphlo::MaxOp{}; },
       {xt::xarray<int32_t>{10, 9, 8, 7}, xt::xarray<int32_t>{5, 6, 7, 8}},
       {xt::xarray<int32_t>{10, 9, 8, 8}}, {xt::xarray<int32_t>{1, 2, 2, 1}});
 }
 
 TEST(Verify, Min) {
   runner<int32_t, int32_t>(
-      [] { return mlir::pphlo::MinOp{}; },
+      [] { return mlir::spu::pphlo::MinOp{}; },
       {xt::xarray<int32_t>{10, 9, 8, 7}, xt::xarray<int32_t>{5, 6, 7, 8}},
       {xt::xarray<int32_t>{5, 6, 7, 7}}, {xt::xarray<int32_t>{1, 2, 2, 1}});
 }
 
 TEST(Verify, And) {
   runner<int8_t, int8_t>(
-      [] { return mlir::pphlo::AndOp{}; },
+      [] { return mlir::spu::pphlo::AndOp{}; },
       {xt::xarray<int8_t>{1, 15, 33, 60}, xt::xarray<int8_t>{12, 13, 17, 19}},
       {xt::xarray<int8_t>{0, 13, 1, 16}}, {xt::xarray<int8_t>{1, 2, 2, 1}});
 }
 
 TEST(Verify, Or) {
   runner<int8_t, int8_t>(
-      [] { return mlir::pphlo::OrOp{}; },
+      [] { return mlir::spu::pphlo::OrOp{}; },
       {xt::xarray<int8_t>{1, 15, 33, 60}, xt::xarray<int8_t>{12, 13, 17, 19}},
       {xt::xarray<int8_t>{13, 15, 49, 63}}, {xt::xarray<int8_t>{1, 2, 2, 1}});
 }
 
 TEST(Verify, Xor) {
   runner<int8_t, int8_t>(
-      [] { return mlir::pphlo::XorOp{}; },
+      [] { return mlir::spu::pphlo::XorOp{}; },
       {xt::xarray<int8_t>{1, 15, 33, 60}, xt::xarray<int8_t>{12, 13, 17, 19}},
       {xt::xarray<int8_t>{13, 2, 48, 47}}, {xt::xarray<int8_t>{1, 2, 2, 1}});
 }
 
 TEST(Verify, Div) {
   runner<float, float>(
-      [] { return mlir::pphlo::DivOp{}; },
+      [] { return mlir::spu::pphlo::DivOp{}; },
       {xt::xarray<float>{1, 15, 33, 60}, xt::xarray<float>{2, 3, 3, 5}},
       {xt::xarray<float>{0.5, 5, 11, 12}}, {xt::xarray<float>{1, 2, 2, 1}});
 }
 
 TEST(Verify, Rem) {
   runner<int32_t, int32_t>(
-      [] { return mlir::pphlo::RemOp{}; },
+      [] { return mlir::spu::pphlo::RemOp{}; },
       {xt::xarray<int32_t>{1, 15, 33, 60}, xt::xarray<int32_t>{2, 3, 10, 7}},
       {xt::xarray<int32_t>{1, 0, 3, 4}}, {xt::xarray<int32_t>{1, 2, 2, 1}});
 }
 
 TEST(Verify, DISABLED_Dot) {
   runner<int32_t, int32_t>(
-      [] { return mlir::pphlo::DotOp{}; },
+      [] { return mlir::spu::pphlo::DotOp{}; },
       {xt::xarray<int32_t>{{1, 3, 5}, {2, 4, 7}},
        xt::xarray<int32_t>{{-5, 8, 11}, {3, 9, 21}, {4, 0, 8}}},
       {xt::xarray<int32_t>{{24, 35, 114}, {30, 52, 162}}},
@@ -233,7 +237,7 @@ TEST(Verify, DISABLED_Dot) {
 
 TEST(Verify, Equal) {
   runner<int32_t, bool>(
-      [] { return mlir::pphlo::EqualOp{}; },
+      [] { return mlir::spu::pphlo::EqualOp{}; },
       {xt::xarray<int32_t>{1, 2, 3, 4}, xt::xarray<int32_t>{5, 2, 7, 4}},
       {xt::xarray<bool>{false, true, false, true}},
       {xt::xarray<bool>{false, false, false, false}});
@@ -241,7 +245,7 @@ TEST(Verify, Equal) {
 
 TEST(Verify, Less) {
   runner<int32_t, bool>(
-      [] { return mlir::pphlo::LessOp{}; },
+      [] { return mlir::spu::pphlo::LessOp{}; },
       {xt::xarray<int32_t>{1, 2, 3, 4}, xt::xarray<int32_t>{5, 2, 7, 4}},
       {xt::xarray<bool>{true, false, true, false}},
       {xt::xarray<bool>{false, false, false, false}});
@@ -249,7 +253,7 @@ TEST(Verify, Less) {
 
 TEST(Verify, Greater) {
   runner<int32_t, bool>(
-      [] { return mlir::pphlo::GreaterOp{}; },
+      [] { return mlir::spu::pphlo::GreaterOp{}; },
       {xt::xarray<int32_t>{1, 2, 3, 4}, xt::xarray<int32_t>{5, 2, 7, 4}},
       {xt::xarray<bool>{false, false, false, false}},
       {xt::xarray<bool>{true, true, false, false}});
@@ -276,13 +280,13 @@ TEST(Verify, Select) {
 
         // positive case, should pass
         verifier.verify(
-            mlir::pphlo::SelectOp{},
+            mlir::spu::pphlo::SelectOp{},
             {table->getVar("in0"), table->getVar("in1"), table->getVar("in2")},
             {table->getVar("pout")});
 
         // negative case, should throw
         EXPECT_THROW(
-            verifier.verify(mlir::pphlo::SelectOp{},
+            verifier.verify(mlir::spu::pphlo::SelectOp{},
                             {table->getVar("in0"), table->getVar("in1"),
                              table->getVar("in2")},
                             {table->getVar("nout")}),
@@ -292,7 +296,7 @@ TEST(Verify, Select) {
 
 TEST(Verify, Clamp) {
   runner<int32_t, int32_t>(
-      [] { return mlir::pphlo::ClampOp{}; },
+      [] { return mlir::spu::pphlo::ClampOp{}; },
       {xt::xarray<int32_t>{1, 2, 3, 4}, xt::xarray<int32_t>{10, 1, -40, 5},
        xt::xarray<int32_t>{5, 6, 7, 8}},
       {xt::xarray<int32_t>{5, 2, 3, 5}}, {xt::xarray<int32_t>{1, 1, 1, 1}});
@@ -300,13 +304,13 @@ TEST(Verify, Clamp) {
 
 TEST(Verify, DynamicSlice) {
   std::string mlir = R"(
-func.func @main(%arg0: tensor<5x!pphlo.pub<i32>>, %arg1: tensor<!pphlo.pub<i32>>) -> tensor<2x!pphlo.pub<i32>> {
-  %0 = "pphlo.dynamic-slice"(%arg0, %arg1) {slice_sizes = array<i64: 2>} : (tensor<5x!pphlo.pub<i32>>, tensor<!pphlo.pub<i32>>) -> tensor<2x!pphlo.pub<i32>>
-  return %0 : tensor<2x!pphlo.pub<i32>>
+func.func @main(%arg0: tensor<5xi32>, %arg1: tensor<i32>) -> tensor<2xi32> {
+  %0 = "pphlo.dynamic-slice"(%arg0, %arg1) {slice_sizes = array<i64: 2>} : (tensor<5xi32>, tensor<i32>) -> tensor<2xi32>
+  return %0 : tensor<2xi32>
 })";
 
   mlir::DialectRegistry registry;
-  registry.insert<mlir::pphlo::PPHloDialect, mlir::func::FuncDialect>();
+  registry.insert<mlir::spu::pphlo::PPHloDialect, mlir::func::FuncDialect>();
   auto mlir_ctx = std::make_unique<mlir::MLIRContext>(registry);
 
   auto moduleOpRef =
@@ -315,7 +319,7 @@ func.func @main(%arg0: tensor<5x!pphlo.pub<i32>>, %arg1: tensor<!pphlo.pub<i32>>
   auto entry_function = moduleOpRef->lookupSymbol<mlir::func::FuncOp>("main");
   runner<int32_t, int32_t>(
       [&] {
-        return mlir::dyn_cast<mlir::pphlo::DynamicSliceOp>(
+        return mlir::dyn_cast<mlir::spu::pphlo::DynamicSliceOp>(
             entry_function.getBody().front().front());
       },
       {xt::xarray<int32_t>{0, 1, 2, 3, 4}, 2}, {xt::xarray<int32_t>{2, 3}},
@@ -324,7 +328,7 @@ func.func @main(%arg0: tensor<5x!pphlo.pub<i32>>, %arg1: tensor<!pphlo.pub<i32>>
 
 TEST(Verify, DynamicUpdateSlice) {
   runner<int32_t, int32_t>(
-      [] { return mlir::pphlo::DynamicUpdateSliceOp{}; },
+      [] { return mlir::spu::pphlo::DynamicUpdateSliceOp{}; },
       {xt::xarray<int32_t>{0, 1, 2, 3, 4}, xt::xarray<int32_t>{5, 6}, 2},
       {xt::xarray<int32_t>{0, 1, 5, 6, 4}},
       {xt::xarray<int32_t>{1, 1, 1, 1, 1}});

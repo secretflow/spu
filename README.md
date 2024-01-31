@@ -31,10 +31,12 @@ This documentation also contains instructions for [build and testing](CONTRIBUTI
 
 ### Supported platforms
 
-|            | Linux x86_64 | Linux aarch64 | macOS x86_64 | macOS Apple Silicon | Windows x86_64 | Windows WSL2 x86_64 |
-|------------|--------------|---------------|--------------|--------------|----------------|---------------------|
-| CPU        | yes          | experimental  | yes          | yes          | no             | yes                 |
-| NVIDIA GPU | experimental | no            | no           | n/a          | no             | no                  |
+|            | Linux x86_64 | Linux aarch64 | macOS x64      | macOS Apple Silicon | Windows x64    | Windows WSL2    x64 |
+|------------|--------------|---------------|----------------|---------------------|----------------|---------------------|
+| CPU        | yes          | yes           | yes<sup>1</sup>| yes                 | no             | yes                 |
+| NVIDIA GPU | experimental | no            | no             | n/a                 | no             | no                  |
+
+1. macOS x64 support is scheduled to deprecate later this year
 
 ### Instructions
 

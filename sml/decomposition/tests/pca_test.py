@@ -29,6 +29,8 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '../../../'))
 
 from sml.decomposition.pca import PCA
 
+np.random.seed(0)
+
 
 class UnitTests(unittest.TestCase):
     @classmethod
@@ -125,20 +127,20 @@ class UnitTests(unittest.TestCase):
         # Note:
         # 1. better for large sample data, like (1000, 20)
         # 2. for small data, it may corrupt because the projection will have large error
-        X = random.normal(random.PRNGKey(0), (50, 20))
+        X = np.random.normal(size=(50, 20))
+
         n_components = 1
         n_oversamples = 10
 
         # Create random_matrix
-        random_state = np.random.RandomState(0)
-        random_matrix = random_state.normal(
+        random_matrix = np.random.normal(
             size=(X.shape[1], n_components + n_oversamples)
         )
 
         # Run the simulation
         result = spsim.sim_jax(self.sim128, proc_transform)(X, random_matrix)
 
-        # The transformed data should have 2 dimensions
+        # The transformed data should have n_components dimensions
         self.assertEqual(result[0].shape[1], n_components)
 
         # The mean of the transformed data should be approximately 0

@@ -27,7 +27,7 @@
 
 #include "libspu/core/trace.h"
 #include "libspu/device/debug_dump_constant.h"
-#include "libspu/dialect/pphlo_dialect.h"
+#include "libspu/dialect/pphlo/dialect.h"
 
 namespace spu::device {
 namespace {
@@ -258,13 +258,13 @@ void executeImpl(OpExecutor *executor, spu::SPUContext *sctx,
     TimeitGuard timeit(exec_stats.execution_time);
 
     mlir::MLIRContext mlir_ctx;
-    mlir_ctx.loadDialect<mlir::pphlo::PPHloDialect, mlir::func::FuncDialect>();
+    mlir_ctx
+        .loadDialect<mlir::spu::pphlo::PPHloDialect, mlir::func::FuncDialect>();
 
     auto &engine = mlir_ctx.getDiagEngine();
     engine.registerHandler(
         [&](mlir::Diagnostic &diag) { SPDLOG_ERROR(diag.str()); });
 
-    mlir_ctx.loadDialect<mlir::pphlo::PPHloDialect, mlir::func::FuncDialect>();
     auto moduleOpRef =
         mlir::parseSourceString<mlir::ModuleOp>(executable.code(), &mlir_ctx);
 

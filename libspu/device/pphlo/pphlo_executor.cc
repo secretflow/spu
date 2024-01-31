@@ -20,8 +20,8 @@
 #include "libspu/core/trace.h"
 #include "libspu/device/pphlo/pphlo_intrinsic_executor.h"
 #include "libspu/device/pphlo/pphlo_verifier.h"
-#include "libspu/dialect/pphlo_base_enums.h"
-#include "libspu/dialect/pphlo_ops.h"
+#include "libspu/dialect/pphlo/base_enums.h"
+#include "libspu/dialect/pphlo/ops.h"
 #include "libspu/kernel/hal/debug.h"
 #include "libspu/kernel/hal/public_helper.h"
 #include "libspu/kernel/hal/ring.h"
@@ -52,8 +52,9 @@ std::string mlirObjectToString(T &&mlir_obj) {
 }
 
 std::pair<spu::PtType, bool> getPtTypeFromMlirType(mlir::Type mlir_ty) {
-  mlir::pphlo::TypeTools tool;
-  auto express_type = tool.getExpressedType(mlir_ty);
+  mlir::spu::pphlo::TypeTools tool(mlir_ty.getContext());
+  auto express_type =
+      tool.getType(mlir_ty, mlir::spu::pphlo::Visibility::PUBLIC);
 
   if (auto ft = express_type.dyn_cast<mlir::FloatType>()) {
     switch (ft.getWidth()) {
@@ -98,8 +99,12 @@ std::pair<spu::PtType, bool> getPtTypeFromMlirType(mlir::Type mlir_ty) {
 }
 
 spu::DataType getDtypeFromMlirType(mlir::Type mlir_ty) {
-  mlir::pphlo::TypeTools tool;
-  auto express_type = tool.getExpressedType(mlir_ty);
+  mlir::spu::pphlo::TypeTools tool(mlir_ty.getContext());
+  auto express_type =
+      tool.getType(mlir_ty, mlir::spu::pphlo::Visibility::PUBLIC);
+  if (const auto &rt = express_type.dyn_cast<mlir::RankedTensorType>()) {
+    express_type = rt.getElementType();
+  }
   if (auto int_ty = express_type.dyn_cast<mlir::IntegerType>()) {
     switch (int_ty.getWidth()) {
       case 1:
@@ -133,15 +138,16 @@ spu::DataType getDtypeFromMlirType(mlir::Type mlir_ty) {
       return spu::DT_F64;
     }
   }
-  SPU_THROW("invalid type {}", mlirObjectToString(mlir_ty));
+  SPU_THROW("invalid type {} {}", mlirObjectToString(mlir_ty),
+            mlirObjectToString(express_type));
 }
 
 // Convert mlir visibility to spu visibility
-spu::Visibility convertVisibility(mlir::pphlo::Visibility vis) {
+spu::Visibility convertVisibility(mlir::spu::pphlo::Visibility vis) {
   switch (vis) {
-    case mlir::pphlo::Visibility::VIS_PUBLIC:
+    case mlir::spu::pphlo::Visibility::PUBLIC:
       return spu::Visibility::VIS_PUBLIC;
-    case mlir::pphlo::Visibility::VIS_SECRET:
+    case mlir::spu::pphlo::Visibility::SECRET:
       return spu::Visibility::VIS_SECRET;
   }
   SPU_THROW("Should not hit");
@@ -183,23 +189,29 @@ void do_type_checker(mlir::Value key, const spu::Value &val,
     }
 
     // Check dtype
-    mlir::pphlo::TypeTools tool;
+    mlir::spu::pphlo::TypeTools tool(key.getContext());
     auto expectedType = getDtypeFromMlirType(mlir_type);
     SPU_ENFORCE(expectedType == val.dtype(), "Expected mlir_type {}, got {}",
                 expectedType, val.dtype());
-    if (tool.getExpressedType(mlir_type).isa<mlir::ComplexType>()) {
+    auto mlir_base =
+        tool.getExpressedType(mlir_type).dyn_cast<mlir::RankedTensorType>();
+    if (mlir_base.getElementType().isa<mlir::ComplexType>()) {
       SPU_ENFORCE(val.isComplex(), "Expected complex type");
     } else {
-      SPU_ENFORCE(!val.isComplex());
+      SPU_ENFORCE(!val.isComplex(), "Got type {}",
+                  mlirObjectToString(mlir_type));
     }
 
     // Check vtype
-    if (tool.isMPCType<mlir::pphlo::PublicType>(mlir_type)) {
-      SPU_ENFORCE(val.isPublic());
-    } else if (tool.isMPCType<mlir::pphlo::SecretType>(mlir_type)) {
-      SPU_ENFORCE(val.isSecret() || val.isPrivate());
-    } else {
-      SPU_ENFORCE("Unknown vtype");
+    switch (tool.getTypeVisibility(mlir_type)) {
+      case mlir::spu::pphlo::Visibility::PUBLIC: {
+        SPU_ENFORCE(val.isPublic());
+        break;
+      }
+      case mlir::spu::pphlo::Visibility::SECRET: {
+        SPU_ENFORCE(val.isSecret() || val.isPrivate());
+        break;
+      }
     }
   }
 }
@@ -229,12 +241,12 @@ void removeValue(SymbolScope *scope, mlir::Value key,
 }
 
 //
-#define STANDARD_UNARY_OP_EXEC_IMPL(OpName, KernelName)                 \
-  void execute(OpExecutor *, SPUContext *sctx, SymbolScope *sscope,     \
-               mlir::pphlo::OpName &op, const ExecutionOptions &opts) { \
-    const auto in = lookupValue(sscope, op.getOperand(), opts);         \
-    auto ret = kernel::hlo::KernelName(sctx, in);                       \
-    addValue(sscope, op.getResult(), std::move(ret), opts);             \
+#define STANDARD_UNARY_OP_EXEC_IMPL(OpName, KernelName)                      \
+  void execute(OpExecutor *, SPUContext *sctx, SymbolScope *sscope,          \
+               mlir::spu::pphlo::OpName &op, const ExecutionOptions &opts) { \
+    const auto in = lookupValue(sscope, op.getOperand(), opts);              \
+    auto ret = kernel::hlo::KernelName(sctx, in);                            \
+    addValue(sscope, op.getResult(), std::move(ret), opts);                  \
   }
 
 STANDARD_UNARY_OP_EXEC_IMPL(ReciprocalOp, Reciprocal)
@@ -259,7 +271,7 @@ STANDARD_UNARY_OP_EXEC_IMPL(CosineOp, Cosine)
 
 #define STANDARD_BINARY_OP_EXEC_IMPL(OpName, KernelName)                      \
   void execute(OpExecutor *, SPUContext *sctx, SymbolScope *sscope,           \
-               mlir::pphlo::OpName &op, const ExecutionOptions &opts) {       \
+               mlir::spu::pphlo::OpName &op, const ExecutionOptions &opts) {  \
     addValue(                                                                 \
         sscope, op.getResult(),                                               \
         kernel::hlo::KernelName(sctx, lookupValue(sscope, op.getLhs(), opts), \
@@ -289,12 +301,12 @@ STANDARD_BINARY_OP_EXEC_IMPL(ShiftRightLogicalOp, Rshift)
 #undef STANDARD_BINARY_OP_EXEC_IMPL
 
 void execute(OpExecutor *, SPUContext *sctx, SymbolScope *sscope,
-             mlir::pphlo::MulOp &op, const ExecutionOptions &opts) {
-  auto smallConst = op.getRhs().getDefiningOp<mlir::pphlo::ConstantOp>();
+             mlir::spu::pphlo::MulOp &op, const ExecutionOptions &opts) {
+  auto smallConst = op.getRhs().getDefiningOp<mlir::spu::pphlo::ConstantOp>();
   auto multiplier = op.getLhs();
   if (!smallConst) {
     // Try lhs
-    smallConst = op.getLhs().getDefiningOp<mlir::pphlo::ConstantOp>();
+    smallConst = op.getLhs().getDefiningOp<mlir::spu::pphlo::ConstantOp>();
     multiplier = op.getRhs();
   }
 
@@ -344,7 +356,7 @@ void execute(OpExecutor *, SPUContext *sctx, SymbolScope *sscope,
 }
 
 void execute(OpExecutor *, SPUContext *sctx, SymbolScope *sscope,
-             mlir::pphlo::DotOp &op, const ExecutionOptions &opts) {
+             mlir::spu::pphlo::DotOp &op, const ExecutionOptions &opts) {
   auto ret = kernel::hlo::Dot(sctx, lookupValue(sscope, op.getLhs(), opts),
                               lookupValue(sscope, op.getRhs(), opts));
 
@@ -356,7 +368,7 @@ void execute(OpExecutor *, SPUContext *sctx, SymbolScope *sscope,
 }
 
 void execute(OpExecutor *, SPUContext *sctx, SymbolScope *sscope,
-             mlir::pphlo::DotGeneralOp &op, const ExecutionOptions &opts) {
+             mlir::spu::pphlo::DotGeneralOp &op, const ExecutionOptions &opts) {
   auto dnum = op.getDotDimensionNumbers();
 
   auto lhs = lookupValue(sscope, op.getLhs(), opts);
@@ -405,7 +417,8 @@ void execute(OpExecutor *, SPUContext *sctx, SymbolScope *sscope,
 }
 
 void execute(OpExecutor *, SPUContext *sctx, SymbolScope *sscope,
-             mlir::pphlo::ConvolutionOp &op, const ExecutionOptions &opts) {
+             mlir::spu::pphlo::ConvolutionOp &op,
+             const ExecutionOptions &opts) {
   const auto &dnums = op.getDimensionNumbers();
   const size_t num_spatial_dims = dnums.getOutputSpatialDimensions().size();
   SPU_ENFORCE(num_spatial_dims == dnums.getInputSpatialDimensions().size());
@@ -417,37 +430,80 @@ void execute(OpExecutor *, SPUContext *sctx, SymbolScope *sscope,
   auto lhs = lookupValue(sscope, op.getLhs(), opts);
   auto rhs = lookupValue(sscope, op.getRhs(), opts);
 
-  Strides window_strides(dnums.getInputSpatialDimensions().size(), 1);
-  if (op.getWindowStrides().has_value()) {
-    window_strides = *op.getWindowStrides();
-  }
-
   kernel::hlo::ConvolutionConfig config;
-  config.featureGroupCount = op.getFeatureGroupCount();
-  config.batchGroupCount = op.getBatchGroupCount();
-  config.window_strides = window_strides;
-  config.inputBatchDimension = dnums.getInputBatchDimension();
-  config.inputFeatureDimension = dnums.getInputFeatureDimension();
-  config.inputSpatialDimensions = dnums.getInputSpatialDimensions();
-  config.kernelInputFeatureDimension = dnums.getKernelInputFeatureDimension();
-  config.kernelOutputFeatureDimension = dnums.getKernelOutputFeatureDimension();
-  config.kernelSpatialDimensions = dnums.getKernelSpatialDimensions();
-  config.outputBatchDimension = dnums.getOutputBatchDimension();
-  config.outputFeatureDimension = dnums.getOutputFeatureDimension();
-  config.outputSpatialDimensions = dnums.getOutputSpatialDimensions();
+  spu::Value result;
 
-  SPU_ENFORCE(
-      dnums.getInputSpatialDimensions().size() == 2,
-      "Convolution with more than 2 spatial dimensions is not supported");
+  switch (dnums.getInputSpatialDimensions().size()) {
+    case 1: {
+      // Nwc Wcf to N1wc 1Wcf
+      Strides window_strides(2, 1);
+      if (op.getWindowStrides().has_value()) {
+        window_strides[1] = (*op.getWindowStrides())[0];
+      }
+      config.featureGroupCount = op.getFeatureGroupCount();
+      config.batchGroupCount = op.getBatchGroupCount();
+      config.window_strides = window_strides;
+      config.inputBatchDimension = dnums.getInputBatchDimension();
+      config.inputFeatureDimension = dnums.getInputFeatureDimension() + 1;
+      config.inputSpatialDimensions = {1, 2};
+      config.kernelInputFeatureDimension =
+          dnums.getKernelInputFeatureDimension() + 1;
+      config.kernelOutputFeatureDimension =
+          dnums.getKernelOutputFeatureDimension() + 1;
+      config.kernelSpatialDimensions = {0, 1};
+      config.outputBatchDimension = dnums.getOutputBatchDimension();
+      config.outputFeatureDimension = dnums.getOutputFeatureDimension() + 1;
+      config.outputSpatialDimensions = {1, 2};
 
-  spu::Value result =
-      kernel::hlo::Convolution2D(sctx, lhs, rhs, config, ret_shape);
+      auto reshaped_lhs = kernel::hlo::Reshape(
+          sctx, lhs, {lhs.shape()[0], 1, lhs.shape()[1], lhs.shape()[2]});
+      auto reshaped_rhs = kernel::hlo::Reshape(
+          sctx, rhs, {1, rhs.shape()[0], rhs.shape()[1], rhs.shape()[2]});
+
+      Shape reshaped_result = {ret_shape[0], 1, ret_shape[1], ret_shape[2]};
+
+      result = kernel::hlo::Convolution2D(sctx, reshaped_lhs, reshaped_rhs,
+                                          config, reshaped_result);
+
+      result = kernel::hlo::Reshape(sctx, result, ret_shape);
+      break;
+    }
+    case 2: {
+      Strides window_strides(dnums.getInputSpatialDimensions().size(), 1);
+      if (op.getWindowStrides().has_value()) {
+        window_strides = *op.getWindowStrides();
+      }
+      config.featureGroupCount = op.getFeatureGroupCount();
+      config.batchGroupCount = op.getBatchGroupCount();
+      config.window_strides = window_strides;
+      config.inputBatchDimension = dnums.getInputBatchDimension();
+      config.inputFeatureDimension = dnums.getInputFeatureDimension();
+      config.inputSpatialDimensions = dnums.getInputSpatialDimensions();
+      config.kernelInputFeatureDimension =
+          dnums.getKernelInputFeatureDimension();
+      config.kernelOutputFeatureDimension =
+          dnums.getKernelOutputFeatureDimension();
+      config.kernelSpatialDimensions = dnums.getKernelSpatialDimensions();
+      config.outputBatchDimension = dnums.getOutputBatchDimension();
+      config.outputFeatureDimension = dnums.getOutputFeatureDimension();
+      config.outputSpatialDimensions = dnums.getOutputSpatialDimensions();
+
+      result = kernel::hlo::Convolution2D(sctx, lhs, rhs, config, ret_shape);
+      break;
+    }
+    default: {
+      SPU_THROW(
+          "Convolution with {} spatial dimensions is not "
+          "supported, {}",
+          dnums.getInputSpatialDimensions().size(), mlirObjectToString(op));
+    }
+  }
 
   addValue(sscope, op.getResult(), std::move(result), opts);
 }
 
 void execute(OpExecutor *, SPUContext *sctx, SymbolScope *sscope,
-             mlir::pphlo::DynamicUpdateSliceOp &op,
+             mlir::spu::pphlo::DynamicUpdateSliceOp &op,
              const ExecutionOptions &opts) {
   // Basic idea here, get a ref slice and update the whole slice..
   // Start indices
@@ -466,7 +522,8 @@ void execute(OpExecutor *, SPUContext *sctx, SymbolScope *sscope,
 }
 
 void execute(OpExecutor *, SPUContext *sctx, SymbolScope *sscope,
-             mlir::pphlo::DynamicSliceOp &op, const ExecutionOptions &opts) {
+             mlir::spu::pphlo::DynamicSliceOp &op,
+             const ExecutionOptions &opts) {
   // Start indices
   Sizes slice_size{op.getSliceSizes().begin(), op.getSliceSizes().end()};
   const auto &operand = lookupValue(sscope, op.getOperand(), opts);
@@ -482,7 +539,7 @@ void execute(OpExecutor *, SPUContext *sctx, SymbolScope *sscope,
 }
 
 void execute(OpExecutor *executor, SPUContext *sctx, SymbolScope *sscope,
-             mlir::pphlo::SortOp &op, const ExecutionOptions &opts) {
+             mlir::spu::pphlo::SortOp &op, const ExecutionOptions &opts) {
   auto sort_dim = op.getDimension();
   auto is_stable = op.getIsStable();
   std::vector<spu::Value> inputs(op->getNumOperands());
@@ -490,13 +547,13 @@ void execute(OpExecutor *executor, SPUContext *sctx, SymbolScope *sscope,
     inputs[idx] = lookupValue(sscope, op->getOperand(idx), opts);
   }
 
-  auto body_return =
-      llvm::dyn_cast<mlir::pphlo::ReturnOp>(op.getComparator().back().back());
+  auto body_return = llvm::dyn_cast<mlir::spu::pphlo::ReturnOp>(
+      op.getComparator().back().back());
   SPU_ENFORCE(body_return, "Cannot find body return");
   SPU_ENFORCE(body_return->getNumOperands() == 1,
               "Comparator should have exactly one return");
 
-  mlir::pphlo::TypeTools type_tools;
+  mlir::spu::pphlo::TypeTools type_tools(op->getContext());
   auto return_vis =
       type_tools.getTypeVisibility(body_return->getOperandTypes().front());
 
@@ -526,7 +583,7 @@ void execute(OpExecutor *executor, SPUContext *sctx, SymbolScope *sscope,
 }
 
 void execute(OpExecutor *executor, SPUContext *sctx, SymbolScope *sscope,
-             mlir::pphlo::SimpleSortOp &op, const ExecutionOptions &opts) {
+             mlir::spu::pphlo::SimpleSortOp &op, const ExecutionOptions &opts) {
   auto sort_dim = op.getDimension();
   auto num_keys = op.getNumKeys();
   std::vector<spu::Value> inputs(op->getNumOperands());
@@ -536,10 +593,10 @@ void execute(OpExecutor *executor, SPUContext *sctx, SymbolScope *sscope,
 
   kernel::hal::SortDirection direction;
   if (op.getSortDirectionAttr().getInt() ==
-      static_cast<int>(mlir::pphlo::SortDirection::ASC)) {
+      static_cast<int>(mlir::spu::pphlo::SortDirection::ASC)) {
     direction = kernel::hal::SortDirection::Ascending;
   } else if (op.getSortDirectionAttr().getInt() ==
-             static_cast<int>(mlir::pphlo::SortDirection::DES)) {
+             static_cast<int>(mlir::spu::pphlo::SortDirection::DES)) {
     direction = kernel::hal::SortDirection::Descending;
   } else {
     SPU_THROW("Should not reach here");
@@ -554,7 +611,7 @@ void execute(OpExecutor *executor, SPUContext *sctx, SymbolScope *sscope,
 }
 
 void execute(OpExecutor *executor, SPUContext *sctx, SymbolScope *sscope,
-             mlir::pphlo::SelectAndScatterOp &op,
+             mlir::spu::pphlo::SelectAndScatterOp &op,
              const ExecutionOptions &opts) {
   auto operand = lookupValue(sscope, op.getOperand(), opts);
   auto source = lookupValue(sscope, op.getSource(), opts);
@@ -591,7 +648,8 @@ void execute(OpExecutor *executor, SPUContext *sctx, SymbolScope *sscope,
 }
 
 void execute(OpExecutor *, SPUContext *sctx, SymbolScope *sscope,
-             mlir::pphlo::MaxPoolScatterOp &op, const ExecutionOptions &opts) {
+             mlir::spu::pphlo::MaxPoolScatterOp &op,
+             const ExecutionOptions &opts) {
   auto scatter_indices = lookupValue(sscope, op.getScatterIndices(), opts);
   auto update = lookupValue(sscope, op.getUpdate(), opts);
 
@@ -619,7 +677,7 @@ void execute(OpExecutor *, SPUContext *sctx, SymbolScope *sscope,
 }
 
 void execute(OpExecutor *executor, SPUContext *sctx, SymbolScope *sscope,
-             mlir::pphlo::CaseOp &op, const ExecutionOptions &opts) {
+             mlir::spu::pphlo::CaseOp &op, const ExecutionOptions &opts) {
   std::vector<kernel::hlo::BranchFcnT> branches;
   for (auto &b : op.getBranches()) {
     branches.emplace_back(
@@ -636,7 +694,7 @@ void execute(OpExecutor *executor, SPUContext *sctx, SymbolScope *sscope,
 }
 
 void execute(OpExecutor *executor, SPUContext *sctx, SymbolScope *sscope,
-             mlir::pphlo::IfOp &op, const ExecutionOptions &opts) {
+             mlir::spu::pphlo::IfOp &op, const ExecutionOptions &opts) {
   auto conditional = lookupValue(sscope, op.getCondition(), opts);
 
   auto results = kernel::hlo::IfElse(
@@ -655,7 +713,7 @@ void execute(OpExecutor *executor, SPUContext *sctx, SymbolScope *sscope,
 }
 
 void execute(OpExecutor *executor, SPUContext *sctx, SymbolScope *sscope,
-             mlir::pphlo::WhileOp &op, const ExecutionOptions &opts) {
+             mlir::spu::pphlo::WhileOp &op, const ExecutionOptions &opts) {
   // First inputs vectors
   std::vector<spu::Value> inputs;
   inputs.reserve(op->getNumOperands());
@@ -680,13 +738,16 @@ void execute(OpExecutor *executor, SPUContext *sctx, SymbolScope *sscope,
 }
 
 void execute(OpExecutor *, SPUContext *sctx, SymbolScope *sscope,
-             mlir::pphlo::IotaOp &op, const ExecutionOptions &opts) {
+             mlir::spu::pphlo::IotaOp &op, const ExecutionOptions &opts) {
   const auto &ret_type =
       op.getOutput().getType().dyn_cast<mlir::RankedTensorType>();
   const size_t numel = ret_type.getShape()[op.getIotaDimension()];
 
-  mlir::pphlo::TypeTools type_tools;
-  auto ret_el_type = type_tools.getExpressedType(ret_type);
+  mlir::spu::pphlo::TypeTools type_tools(op->getContext());
+  auto ret_el_type =
+      type_tools.getType(ret_type, mlir::spu::pphlo::Visibility::PUBLIC)
+          .dyn_cast<mlir::RankedTensorType>()
+          .getElementType();
   auto pt_type = getPtTypeFromMlirType(ret_el_type);
 
   spu::Value iota_ret =
@@ -708,7 +769,7 @@ void execute(OpExecutor *, SPUContext *sctx, SymbolScope *sscope,
 }
 
 void execute(OpExecutor *, SPUContext *sctx, SymbolScope *sscope,
-             mlir::pphlo::RemOp &op, const ExecutionOptions &opts) {
+             mlir::spu::pphlo::RemOp &op, const ExecutionOptions &opts) {
   // FIXME: When hal has a remainder, use that
   auto lhs = lookupValue(sscope, op.getLhs(), opts);
   auto rhs = lookupValue(sscope, op.getRhs(), opts);
@@ -718,7 +779,7 @@ void execute(OpExecutor *, SPUContext *sctx, SymbolScope *sscope,
 }
 
 void execute(OpExecutor *, SPUContext *sctx, SymbolScope *sscope,
-             mlir::pphlo::TransposeOp &op, const ExecutionOptions &opts) {
+             mlir::spu::pphlo::TransposeOp &op, const ExecutionOptions &opts) {
   Axes permu = op.getPermutation();
 
   addValue(sscope, op.getResult(),
@@ -728,7 +789,7 @@ void execute(OpExecutor *, SPUContext *sctx, SymbolScope *sscope,
 }
 
 void execute(OpExecutor *, SPUContext *sctx, SymbolScope *sscope,
-             mlir::pphlo::BroadcastOp &op, const ExecutionOptions &opts) {
+             mlir::spu::pphlo::BroadcastOp &op, const ExecutionOptions &opts) {
   auto to_shape = op.getType().dyn_cast<mlir::RankedTensorType>().getShape();
   Axes in_dims = op.getBroadcastDimensions();
   addValue(
@@ -739,7 +800,7 @@ void execute(OpExecutor *, SPUContext *sctx, SymbolScope *sscope,
 }
 
 void execute(OpExecutor *, SPUContext *sctx, SymbolScope *sscope,
-             mlir::pphlo::ReshapeOp &op, const ExecutionOptions &opts) {
+             mlir::spu::pphlo::ReshapeOp &op, const ExecutionOptions &opts) {
   auto to_shape = op.getType().dyn_cast<mlir::RankedTensorType>().getShape();
   addValue(sscope, op.getResult(),
            kernel::hlo::Reshape(
@@ -748,7 +809,8 @@ void execute(OpExecutor *, SPUContext *sctx, SymbolScope *sscope,
 }
 
 void execute(OpExecutor *, SPUContext *sctx, SymbolScope *sscope,
-             mlir::pphlo::ConcatenateOp &op, const ExecutionOptions &opts) {
+             mlir::spu::pphlo::ConcatenateOp &op,
+             const ExecutionOptions &opts) {
   std::vector<spu::Value> values(op->getNumOperands());
 
   for (size_t idx = 0; idx < op->getNumOperands(); ++idx) {
@@ -761,7 +823,7 @@ void execute(OpExecutor *, SPUContext *sctx, SymbolScope *sscope,
 }
 
 void execute(OpExecutor *, SPUContext *sctx, SymbolScope *sscope,
-             mlir::pphlo::SliceOp &op, const ExecutionOptions &opts) {
+             mlir::spu::pphlo::SliceOp &op, const ExecutionOptions &opts) {
   Index start = op.getStartIndices();
   Index end = op.getLimitIndices();
   Strides s = op.getStrides();
@@ -772,7 +834,7 @@ void execute(OpExecutor *, SPUContext *sctx, SymbolScope *sscope,
 }
 
 void execute(OpExecutor *, SPUContext *sctx, SymbolScope *sscope,
-             mlir::pphlo::PadOp &op, const ExecutionOptions &opts) {
+             mlir::spu::pphlo::PadOp &op, const ExecutionOptions &opts) {
   const auto &operand = lookupValue(sscope, op.getOperand(), opts);
   const size_t operand_rank = operand.shape().size();
   const auto &padding_value = lookupValue(sscope, op.getPaddingValue(), opts);
@@ -796,7 +858,7 @@ void execute(OpExecutor *, SPUContext *sctx, SymbolScope *sscope,
 }
 
 void execute(OpExecutor *, SPUContext *sctx, SymbolScope *sscope,
-             mlir::pphlo::ReverseOp &op, const ExecutionOptions &opts) {
+             mlir::spu::pphlo::ReverseOp &op, const ExecutionOptions &opts) {
   Axes dims = op.getDimensions();
   addValue(sscope, op.getResult(),
            kernel::hlo::Reverse(
@@ -805,7 +867,7 @@ void execute(OpExecutor *, SPUContext *sctx, SymbolScope *sscope,
 }
 
 void execute(OpExecutor *executor, SPUContext *sctx, SymbolScope *sscope,
-             mlir::pphlo::ReduceOp &op, const ExecutionOptions &opts) {
+             mlir::spu::pphlo::ReduceOp &op, const ExecutionOptions &opts) {
   int64_t num_args = op->getNumOperands() / 2;
   Axes dimensions_to_reduce = op.getDimensions();
 
@@ -840,7 +902,8 @@ void execute(OpExecutor *executor, SPUContext *sctx, SymbolScope *sscope,
 }
 
 void execute(OpExecutor *executor, SPUContext *sctx, SymbolScope *sscope,
-             mlir::pphlo::ReduceWindowOp &op, const ExecutionOptions &opts) {
+             mlir::spu::pphlo::ReduceWindowOp &op,
+             const ExecutionOptions &opts) {
   int64_t num_args = op->getNumOperands() / 2;
 
   std::vector<spu::Value> input_args(num_args);
@@ -898,7 +961,7 @@ void execute(OpExecutor *executor, SPUContext *sctx, SymbolScope *sscope,
 }
 
 void execute(OpExecutor *, SPUContext *sctx, SymbolScope *sscope,
-             mlir::pphlo::ArgMaxOp &op, const ExecutionOptions &opts) {
+             mlir::spu::pphlo::ArgMaxOp &op, const ExecutionOptions &opts) {
   Shape window_shape = op.getWindowDimensions();
 
   // build strides
@@ -938,7 +1001,7 @@ void execute(OpExecutor *, SPUContext *sctx, SymbolScope *sscope,
 }
 
 void execute(OpExecutor *, SPUContext *sctx, SymbolScope *sscope,
-             mlir::pphlo::SelectOp &op, const ExecutionOptions &opts) {
+             mlir::spu::pphlo::SelectOp &op, const ExecutionOptions &opts) {
   auto pred = lookupValue(sscope, op.getPred(), opts);
 
   auto on_true = lookupValue(sscope, op.getOnTrue(), opts);
@@ -949,7 +1012,7 @@ void execute(OpExecutor *, SPUContext *sctx, SymbolScope *sscope,
 }
 
 void execute(OpExecutor *, SPUContext *sctx, SymbolScope *sscope,
-             mlir::pphlo::RngOp &op, const ExecutionOptions &opts) {
+             mlir::spu::pphlo::RngOp &op, const ExecutionOptions &opts) {
   auto to_shape = op.getType().dyn_cast<mlir::RankedTensorType>().getShape();
   addValue(
       sscope, op.getResult(),
@@ -959,12 +1022,10 @@ void execute(OpExecutor *, SPUContext *sctx, SymbolScope *sscope,
 }
 
 void execute(OpExecutor *, SPUContext *sctx, SymbolScope *sscope,
-             mlir::pphlo::ConvertOp &op, const ExecutionOptions &opts) {
-  mlir::pphlo::TypeTools tool;
+             mlir::spu::pphlo::ConvertOp &op, const ExecutionOptions &opts) {
+  mlir::spu::pphlo::TypeTools tool(op->getContext());
   auto dst_dtype = getDtypeFromMlirType(op.getType());
-  auto dst_vtype = tool.isMPCType<mlir::pphlo::PublicType>(op.getType())
-                       ? VIS_PUBLIC
-                       : VIS_SECRET;
+  auto dst_vtype = convertVisibility(tool.getTypeVisibility(op.getType()));
   auto in = lookupValue(sscope, op.getOperand(), opts);
 
   auto from_type = tool.getExpressedType(op.getOperand().getType());
@@ -980,7 +1041,7 @@ void execute(OpExecutor *, SPUContext *sctx, SymbolScope *sscope,
 }
 
 void execute(OpExecutor *, SPUContext *sctx, SymbolScope *sscope,
-             mlir::pphlo::PreferAOp &op, const ExecutionOptions &opts) {
+             mlir::spu::pphlo::PreferAOp &op, const ExecutionOptions &opts) {
   auto in = lookupValue(sscope, op.getOperand(), opts);
   if (sctx->config().protocol() == ProtocolKind::CHEETAH) {
     // NOTE(juhou): For 2PC, MulAB uses COT which is efficient and accurate than
@@ -994,13 +1055,14 @@ void execute(OpExecutor *, SPUContext *sctx, SymbolScope *sscope,
 }
 
 void execute(OpExecutor *, SPUContext *sctx, SymbolScope *sscope,
-             mlir::pphlo::SignOp &op, const ExecutionOptions &opts) {
+             mlir::spu::pphlo::SignOp &op, const ExecutionOptions &opts) {
   auto in = lookupValue(sscope, op.getOperand(), opts);
   addValue(sscope, op.getResult(), kernel::hlo::Sign(sctx, in), opts);
 }
 
 void execute(OpExecutor *, SPUContext *sctx, SymbolScope *sscope,
-             mlir::pphlo::BitcastConvertOp &op, const ExecutionOptions &opts) {
+             mlir::spu::pphlo::BitcastConvertOp &op,
+             const ExecutionOptions &opts) {
   const auto &in_type =
       op.getOperand().getType().dyn_cast<mlir::RankedTensorType>();
   const auto &out_type =
@@ -1020,7 +1082,7 @@ void execute(OpExecutor *, SPUContext *sctx, SymbolScope *sscope,
 }
 
 void execute(OpExecutor *, SPUContext *sctx, SymbolScope *sscope,
-             mlir::pphlo::ConstantOp &op, const ExecutionOptions &opts) {
+             mlir::spu::pphlo::ConstantOp &op, const ExecutionOptions &opts) {
   const auto &val = op.getValue();
   const auto &dea = val.dyn_cast<mlir::DenseElementsAttr>();
   const auto &type = val.getType().dyn_cast<mlir::RankedTensorType>();
@@ -1086,7 +1148,7 @@ void execute(OpExecutor *, SPUContext *sctx, SymbolScope *sscope,
 }
 
 void execute(OpExecutor *, SPUContext *sctx, SymbolScope *sscope,
-             mlir::pphlo::EpsilonOp &op, const ExecutionOptions &opts) {
+             mlir::spu::pphlo::EpsilonOp &op, const ExecutionOptions &opts) {
   auto e = kernel::hlo::Epsilon(sctx, getDtypeFromMlirType(op.getType()));
   auto shape =
       op->getResultTypes()[0].dyn_cast<mlir::RankedTensorType>().getShape();
@@ -1095,7 +1157,7 @@ void execute(OpExecutor *, SPUContext *sctx, SymbolScope *sscope,
 }
 
 void execute(OpExecutor *, SPUContext *sctx, SymbolScope *sscope,
-             mlir::pphlo::ClampOp &op, const ExecutionOptions &opts) {
+             mlir::spu::pphlo::ClampOp &op, const ExecutionOptions &opts) {
   addValue(sscope, op.getResult(),
            kernel::hlo::Clamp(sctx, lookupValue(sscope, op.getOperand(), opts),
                               lookupValue(sscope, op.getMin(), opts),
@@ -1104,7 +1166,7 @@ void execute(OpExecutor *, SPUContext *sctx, SymbolScope *sscope,
 }
 
 void execute(OpExecutor *, SPUContext *sctx, SymbolScope *sscope,
-             mlir::pphlo::CustomCallOp &op, const ExecutionOptions &opt) {
+             mlir::spu::pphlo::CustomCallOp &op, const ExecutionOptions &opt) {
   std::vector<Value> inputs(op->getNumOperands());
   for (size_t idx = 0; idx < inputs.size(); ++idx) {
     inputs[idx] = lookupValue(sscope, op->getOperand(idx), opt);
@@ -1117,12 +1179,12 @@ void execute(OpExecutor *, SPUContext *sctx, SymbolScope *sscope,
 }
 
 void execute(OpExecutor *, SPUContext *sctx, SymbolScope *sscope,
-             mlir::pphlo::DbgPrintOp &op, const ExecutionOptions &opts) {
+             mlir::spu::pphlo::DbgPrintOp &op, const ExecutionOptions &opts) {
   kernel::hal::dbg_print(sctx, lookupValue(sscope, op.getOperand(), opts));
 }
 
 void execute(OpExecutor *, SPUContext *, SymbolScope *sscope,
-             mlir::pphlo::FreeOp &op, const ExecutionOptions &opts) {
+             mlir::spu::pphlo::FreeOp &op, const ExecutionOptions &opts) {
   if (opts.do_parallel) {
     // Think about the following case
     // %a = def
@@ -1141,28 +1203,28 @@ void execute(OpExecutor *, SPUContext *, SymbolScope *sscope,
 }
 
 void execute(OpExecutor *, SPUContext *sctx, SymbolScope *sscope,
-             mlir::pphlo::RealOp &op, const ExecutionOptions &opts) {
+             mlir::spu::pphlo::RealOp &op, const ExecutionOptions &opts) {
   auto v = lookupValue(sscope, op.getOperand(), opts);
   addValue(sscope, op.getResult(), kernel::hlo::Real(sctx, v), opts);
 }
 
 void execute(OpExecutor *, SPUContext *sctx, SymbolScope *sscope,
-             mlir::pphlo::ImagOp &op, const ExecutionOptions &opts) {
+             mlir::spu::pphlo::ImagOp &op, const ExecutionOptions &opts) {
   auto v = lookupValue(sscope, op.getOperand(), opts);
   addValue(sscope, op.getResult(), kernel::hlo::Imag(sctx, v), opts);
 }
 
 void execute(OpExecutor *, SPUContext *sctx, SymbolScope *sscope,
-             mlir::pphlo::ComplexOp &op, const ExecutionOptions &opts) {
+             mlir::spu::pphlo::ComplexOp &op, const ExecutionOptions &opts) {
   auto r = lookupValue(sscope, op.getLhs(), opts);
   auto i = lookupValue(sscope, op.getRhs(), opts);
   addValue(sscope, op.getResult(), kernel::hlo::Complex(sctx, r, i), opts);
 }
 
-#define DEFINE_UNIMPLEMENTED_OP(OpName)                           \
-  void execute(OpExecutor *, SPUContext *, SymbolScope *,         \
-               mlir::pphlo::OpName &, const ExecutionOptions &) { \
-    SPU_THROW("Lowered op should not occur at backend");          \
+#define DEFINE_UNIMPLEMENTED_OP(OpName)                                \
+  void execute(OpExecutor *, SPUContext *, SymbolScope *,              \
+               mlir::spu::pphlo::OpName &, const ExecutionOptions &) { \
+    SPU_THROW("Lowered op should not occur at backend");               \
   }
 
 DEFINE_UNIMPLEMENTED_OP(ReturnOp)
@@ -1187,7 +1249,7 @@ static bool hasKernelImpl(mlir::Operation &op) {
 bool PPHloExecutor::hasKernel(mlir::Operation &op) const {
   return hasKernelImpl<
 #define GET_OP_LIST
-#include "libspu/dialect/pphlo_ops.cc.inc"
+#include "libspu/dialect/pphlo/ops.cc.inc"
       >(op);
 }
 
@@ -1209,17 +1271,19 @@ static void dispatchOp(OpExecutor *executor, SPUContext *sctx,
     if (kEnableXlaVerifier) {
       PPHloVerifier verifier(sctx);
       // handle mixed (int, fxp) multiplication
-      if constexpr (std::is_same_v<OpT, mlir::pphlo::MulOp> or
-                    std::is_same_v<OpT, mlir::pphlo::DotOp> or
-                    std::is_same_v<OpT, mlir::pphlo::DotGeneralOp>) {
+      if constexpr (std::is_same_v<OpT, mlir::spu::pphlo::MulOp> or
+                    std::is_same_v<OpT, mlir::spu::pphlo::DotOp> or
+                    std::is_same_v<OpT, mlir::spu::pphlo::DotGeneralOp>) {
         spu::Value lhs = sscope->lookupValue(casted.getLhs());
         spu::Value rhs = sscope->lookupValue(casted.getRhs());
         spu::Value ret = sscope->lookupValue(casted.getResult());
-        mlir::pphlo::TypeTools type_tool;
-        auto lhs_type = type_tool.getExpressedType(casted.getLhs().getType());
-        auto rhs_type = type_tool.getExpressedType(casted.getRhs().getType());
-        auto ret_type =
-            type_tool.getExpressedType(casted.getResult().getType());
+        mlir::spu::pphlo::TypeTools type_tool(op.getContext());
+        auto lhs_type = type_tool.getType(casted.getLhs().getType(),
+                                          mlir::spu::pphlo::Visibility::PUBLIC);
+        auto rhs_type = type_tool.getType(casted.getRhs().getType(),
+                                          mlir::spu::pphlo::Visibility::PUBLIC);
+        auto ret_type = type_tool.getType(casted.getResult().getType(),
+                                          mlir::spu::pphlo::Visibility::PUBLIC);
 
         if (lhs_type != ret_type) {
           lhs = kernel::hlo::Cast(sctx, lhs, lhs.vtype(), ret.dtype());
@@ -1261,7 +1325,7 @@ void PPHloExecutor::runKernelImpl(SPUContext *sctx, SymbolScope *sscope,
   }
   dispatchOp<
 #define GET_OP_LIST
-#include "libspu/dialect/pphlo_ops.cc.inc"
+#include "libspu/dialect/pphlo/ops.cc.inc"
       >(this, sctx, sscope, op, opts);
 }
 

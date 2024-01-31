@@ -30,16 +30,13 @@ class Pass;
 template <typename T>
 class OperationPass;
 
-namespace pphlo {
+namespace spu::pphlo {
 
 /// Lowers from HLO dialect to pphlo dialect
 std::unique_ptr<OperationPass<ModuleOp>> createLegalizeToPPHloPass();
 
 // Decompose comparison into lower ops when possible
 std::unique_ptr<OperationPass<func::FuncOp>> createDecomposeComparisonPass();
-
-// Categorize a normal reduce into categorized reduce ops
-std::unique_ptr<OperationPass<func::FuncOp>> createCategorizeReducePass();
 
 // Lower UnrealizedConversionCastOp
 std::unique_ptr<OperationPass<func::FuncOp>> createLowerConversionCastPass();
@@ -75,6 +72,6 @@ std::unique_ptr<OperationPass<func::FuncOp>> createSortLowering();
 
 std::unique_ptr<OperationPass<func::FuncOp>> createConvertPushDownPass();
 
-} // namespace pphlo
+} // namespace spu::pphlo
 
 } // namespace mlir

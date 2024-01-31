@@ -18,6 +18,10 @@ library, and private inference of a pre-trained ResNet-50 model based on [Micros
 * [flax_gpt2](flax_gpt2/): Private inference of a pre-trained
                            [GPT2](https://cdn.openai.com/better-language-models/language_models_are_unsupervised_multitask_learners.pdf)
                            model with [Flax](https://github.com/google/flax) library.
+* [flax_t5](flax_t5/): Private inference of a pre-trained
+                           [T5](https://arxiv.org/pdf/1910.10683.pdf) model with [Flax](https://github.com/google/flax) library.
+* [flax_whisper](flax_whisper/): Private inference of a pre-trained
+                           [Whisper](https://cdn.openai.com/papers/whisper.pdf) model with [Flax](https://github.com/google/flax) library.
 * [flax_llama7b](flax_llama7b/): Private inference of a pre-trained
                            [Llama-7B](https://research.facebook.com/publications/llama-open-and-efficient-foundation-language-models/)
                            model using [Puma](https://arxiv.org/abs/2307.12533).

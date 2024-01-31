@@ -18,7 +18,7 @@
 #include "mlir/Pass/Pass.h"
 
 #include "libspu/compiler/passes/pass_details.h"
-#include "libspu/dialect/pphlo_ops.h"
+#include "libspu/dialect/pphlo/ops.h"
 
 #ifdef ENABLE_LIVENESS_DEBUG
 
@@ -35,7 +35,7 @@ void printLiveness(mlir::Liveness *liveness) {
 
 #endif
 
-namespace mlir::pphlo {
+namespace mlir::spu::pphlo {
 
 namespace {
 
@@ -124,4 +124,4 @@ std::unique_ptr<OperationPass<func::FuncOp>> createInsertDeallocationOp() {
   return std::make_unique<InsertDeallocation>();
 }
 
-} // namespace mlir::pphlo
+} // namespace mlir::spu::pphlo

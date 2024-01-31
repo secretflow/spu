@@ -28,7 +28,20 @@ from .psi_pb2 import (  # type: ignore
     PsiResultReport,
     PsiType,
 )
-from .psi_v2_pb2 import PsiConfig, PsiReport
+from .psi_v2_pb2 import (
+    DebugOptions,
+    EcdhConfig,
+    IoConfig,
+    IoType,
+    KkrtConfig,
+    Protocol,
+    ProtocolConfig,
+    PsiConfig,
+    RecoveryConfig,
+    Role,
+    Rr22Config,
+    UbPsiConfig,
+)
 
 
 def mem_psi(
@@ -91,11 +104,12 @@ def gen_cache_for_2pc_ub_psi(config: BucketPsiConfig) -> PsiResultReport:
 
 
 def psi_v2(
-    config: BucketPsiConfig,
-    link: Context = None,
-) -> PsiReport:
+    config: PsiConfig,
+    link: Context,
+) -> PsiResultReport:
     """
     Run PSI with v2 API.
+    Check PsiConfig at https://www.secretflow.org.cn/docs/psi/latest/en-US/reference/psi_v2_config#psiconfig.
     :param config: psi config
     :param link: the transport layer
     :return: statistical results
@@ -104,6 +118,26 @@ def psi_v2(
         config.SerializeToString(),
         link,
     )
-    report = PsiReport()
+    report = PsiResultReport()
+    report.ParseFromString(report_str)
+    return report
+
+
+def ub_psi(
+    config: UbPsiConfig,
+    link: Context = None,
+) -> PsiResultReport:
+    """
+    Run PSI with v2 API.
+    Check UbPsiConfig at https://www.secretflow.org.cn/docs/psi/latest/en-US/reference/psi_v2_config#ubpsiconfig.
+    :param config: ub psi config
+    :param link: the transport layer
+    :return: statistical results
+    """
+    report_str = libpsi.libs.ub_psi(
+        config.SerializeToString(),
+        link,
+    )
+    report = PsiResultReport()
     report.ParseFromString(report_str)
     return report

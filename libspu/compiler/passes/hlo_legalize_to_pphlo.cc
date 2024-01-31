@@ -17,7 +17,6 @@
 #include <cstdint>
 #include <string>
 #include <utility>
-#include <vector>
 
 #include "mlir/Dialect/Func/IR/FuncOps.h"
 #include "mlir/IR/BuiltinOps.h"
@@ -31,17 +30,16 @@
 #include "libspu/compiler/passes/value_visibility_map.h"
 #include "libspu/compiler/passes/visibility_inference.h"
 #include "libspu/core/prelude.h"
-#include "libspu/dialect/pphlo_attrs.h"
-#include "libspu/dialect/pphlo_base_enums.h"
-#include "libspu/dialect/pphlo_ops.h"
-#include "libspu/dialect/pphlo_types.h"
+#include "libspu/dialect/pphlo/attrs.h"
+#include "libspu/dialect/pphlo/base_enums.h"
+#include "libspu/dialect/pphlo/ops.h"
+#include "libspu/dialect/pphlo/types.h"
 
-namespace mlir::pphlo {
+namespace mlir::spu::pphlo {
 namespace {
 
-DenseI64ArrayAttr ConvertDenseIntElementAttr(const DenseIntElementsAttr &attr) {
-  llvm::SmallVector<int64_t, 2> array(attr.getValues<int64_t>());
-  return DenseI64ArrayAttr::get(attr.getContext(), array);
+bool isAll(llvm::ArrayRef<int64_t> values, int64_t value) {
+  return llvm::all_of(values, [value](int64_t v) { return v == value; });
 }
 
 ValueVisibilityMap
@@ -57,106 +55,79 @@ VisibilityDiscovery(const llvm::ArrayRef<std::string> input_vis_list,
   for (const auto &blockargs : entry_func.getBody().getArguments()) {
     SPU_ENFORCE(blockargs.getArgNumber() < input_vis_list.size(),
                 "Input visibility list does not match actual inputs.");
-    Visibility v;
+    Visibility v = Visibility::PUBLIC;
 
     // There is no compile time private support at this moment.
     // Force compiler to treat private as secret for now
-    if (input_vis_list[blockargs.getArgNumber()] == "VIS_PRIVATE") {
-      v = Visibility::VIS_SECRET;
-    } else {
-      auto v_optional =
-          symbolizeEnum<Visibility>(input_vis_list[blockargs.getArgNumber()]);
-      SPU_ENFORCE(v_optional.has_value(),
-                  "Input visibility list has invalid value. value = {}",
-                  input_vis_list[blockargs.getArgNumber()]);
-      v = *v_optional;
+    if (input_vis_list[blockargs.getArgNumber()] == "VIS_PRIVATE" ||
+        input_vis_list[blockargs.getArgNumber()] == "VIS_SECRET") {
+      v = Visibility::SECRET;
     }
     vis_map.setValueVisibility(blockargs, v);
+    vis_map.appendInputVisibility(v);
   }
 
-  VisibilityInference inference(vis_map);
-  inference.inferFunc(entry_func);
+  VisibilityInference inference(op->getContext(), vis_map);
+  inference.infer(entry_func);
+
+  auto ret =
+      llvm::dyn_cast<mlir::func::ReturnOp>(entry_func.getBody().back().back());
+
+  for (const auto &op : ret->getOperands()) {
+    vis_map.appendOutputVisibility(vis_map.getValueVisibility(op));
+  }
 
   return vis_map;
 }
 
-TypeTools typetools_;
 /// Type converter for mhlo type to pphlo types
 class HloToPPHloTypeConverter : public TypeConverter {
 private:
-  static Type convertRankedTensorType(RankedTensorType type) {
-    Type oriElmTy = type.getElementType();
-    Type newElmTy;
-    if (oriElmTy.isa<::mlir::FloatType>() ||
-        oriElmTy.isa<::mlir::IntegerType>() ||
-        oriElmTy.isa<::mlir::ComplexType>()) {
-      newElmTy = ::mlir::pphlo::UnsetType::get(oriElmTy);
-    } else {
-      newElmTy = oriElmTy;
-    }
-    return RankedTensorType::get(type.getShape(), newElmTy);
+  TypeTools typetools_;
+
+  static std::optional<Value> materializeCastFromIllegal(OpBuilder &builder,
+                                                         Type type,
+                                                         ValueRange inputs,
+                                                         Location loc) {
+    return builder.create<UnrealizedConversionCastOp>(loc, type, inputs[0])
+        ->getResult(0);
   }
 
-  static Value materializeToMPCTensor(OpBuilder &builder, RankedTensorType type,
-                                      ValueRange inputs, Location loc) {
-    SPU_ENFORCE(inputs.size() == 1);
-    SPU_ENFORCE(inputs[0].getType().isa<RankedTensorType>());
-
-    // To unknown type is always a noop, just forward operands
-    if (typetools_.isMPCType<UnsetType>(type)) {
-      return inputs.front();
-    }
-
-    // Deferred materialization
-    auto op = builder.create<UnrealizedConversionCastOp>(loc, type, inputs[0]);
-
-    return op.getResults()[0];
+  static std::optional<Value> materializeCastToIllegal(OpBuilder &builder,
+                                                       Type type,
+                                                       ValueRange inputs,
+                                                       Location loc) {
+    return builder.create<UnrealizedConversionCastOp>(loc, type, inputs[0])
+        ->getResult(0);
   }
 
 public:
-  HloToPPHloTypeConverter() {
+  explicit HloToPPHloTypeConverter(MLIRContext *ctx) : typetools_(ctx) {
     // Keep all types unchanged.
-    addConversion([&](RankedTensorType type) -> Type {
-      return convertRankedTensorType(type);
-    });
-    addTargetMaterialization(materializeToMPCTensor);
-  }
+    addConversion([](Type type) -> Type { return type; });
 
-  static Type getTypeWithVisibility(Type type, Visibility vis) {
-    return typetools_.getTypeWithVisibility(type, vis);
+    addArgumentMaterialization(materializeCastFromIllegal);
+    addSourceMaterialization(materializeCastToIllegal);
+    addTargetMaterialization(materializeCastFromIllegal);
   }
 };
-
-Visibility getOperandVisibility(const mlir::Value &v) {
-  if (typetools_.isMPCType<UnsetType>(v.getType())) {
-    if (auto dop = v.getDefiningOp<UnrealizedConversionCastOp>()) {
-      for (const auto &result : llvm::enumerate(dop.getResults())) {
-        if (result.value() == v) {
-          return typetools_.getTypeVisibility(
-              dop->getOperandTypes()[result.index()]);
-        }
-      }
-    }
-    llvm_unreachable("Should not hit here.");
-  }
-  return typetools_.getTypeVisibility(v.getType());
-}
 
 class FuncOpConverter : public OpConversionPattern<::mlir::func::FuncOp> {
 private:
   const ValueVisibilityMap &vis_;
+  TypeTools tools_;
 
 public:
   FuncOpConverter(TypeConverter &type_converter, MLIRContext *context,
                   const ValueVisibilityMap &vis)
       : OpConversionPattern<::mlir::func::FuncOp>(type_converter, context),
-        vis_(vis) {}
+        vis_(vis), tools_(context) {}
 
   LogicalResult
   matchAndRewrite(::mlir::func::FuncOp op,
                   ::mlir::func::FuncOpAdaptor /*adaptor*/,
                   ConversionPatternRewriter &rewriter) const override {
-    rewriter.startRootUpdate(op);
+    rewriter.startOpModification(op);
 
     auto functionType = op.getFunctionType();
     auto &region = op.getBody();
@@ -169,7 +140,7 @@ public:
       for (BlockArgument blockArgument : block.getArguments()) {
         auto idx = blockArgument.getArgNumber();
         auto vis_v = vis_.getValueVisibility(blockArgument);
-        auto convertedType = HloToPPHloTypeConverter::getTypeWithVisibility(
+        auto convertedType = tools_.getType(
             typeConverter->convertType(blockArgument.getType()), vis_v);
 
         back.addInputs(idx, convertedType);
@@ -178,7 +149,7 @@ public:
 
     if (failed(rewriter.convertNonEntryRegionTypes(&region, *typeConverter,
                                                    conversions))) {
-      rewriter.cancelRootUpdate(op);
+      rewriter.cancelOpModification(op);
       return failure();
     }
 
@@ -186,7 +157,7 @@ public:
     TypeConverter::SignatureConversion conversion(functionType.getNumInputs());
     for (const auto &blockarg : llvm::enumerate(op.getBody().getArguments())) {
       auto vis_v = vis_.getValueVisibility(blockarg.value());
-      auto convertedType = HloToPPHloTypeConverter::getTypeWithVisibility(
+      auto convertedType = tools_.getType(
           typeConverter->convertType(blockarg.value().getType()), vis_v);
       conversion.addInputs(blockarg.index(), convertedType);
     }
@@ -194,7 +165,7 @@ public:
     // If the SignatureConversion doesn't apply, bail out.
     if (failed(rewriter.convertRegionTypes(&region, *getTypeConverter(),
                                            &conversion))) {
-      rewriter.cancelRootUpdate(op);
+      rewriter.cancelOpModification(op);
       return failure();
     }
 
@@ -202,7 +173,7 @@ public:
     SmallVector<Type, 2> newResultTypes;
     if (failed(typeConverter->convertTypes(functionType.getResults(),
                                            newResultTypes))) {
-      rewriter.cancelRootUpdate(op);
+      rewriter.cancelOpModification(op);
       return failure();
     }
 
@@ -215,73 +186,153 @@ public:
       auto vis_v =
           vis_.getValueVisibility(retOp.getOperand(resultType.index()));
       newResultTypes[resultType.index()] =
-          HloToPPHloTypeConverter::getTypeWithVisibility(resultType.value(),
-                                                         vis_v);
+          tools_.getType(resultType.value(), vis_v);
     }
     op.setType(rewriter.getFunctionType(conversion.getConvertedTypes(),
                                         newResultTypes));
-    rewriter.finalizeRootUpdate(op);
+    rewriter.finalizeOpModification(op);
 
     return success();
   }
 };
 
-class ReturnOpConverter : public OpConversionPattern<::mlir::func::ReturnOp> {
+class BasePPHloOpConverter {
+protected:
+  const ValueVisibilityMap &vis_;
+  TypeTools typetools_;
+  const TypeConverter &converter_;
+
 public:
-  ReturnOpConverter(TypeConverter &type_converter, MLIRContext *context,
-                    const ValueVisibilityMap & /*unused*/)
-      : OpConversionPattern<::mlir::func::ReturnOp>(type_converter, context) {}
+  BasePPHloOpConverter(MLIRContext *ctx, const ValueVisibilityMap &vis,
+                       const TypeConverter &converter)
+      : vis_(vis), typetools_(ctx), converter_(converter) {}
+
+  llvm::SmallVector<Value, 2>
+  materializeInputs(Operation *op, ValueRange adaptor_range) const {
+    OpBuilder builder(op);
+    SmallVector<Value, 2> operands(op->getNumOperands());
+
+    // Get override vis if avaible
+    auto override_vis = vis_.getOperationInputVisibility(op);
+
+    TypeTools typetools_(op->getContext());
+    for (size_t idx = 0; idx < operands.size(); ++idx) {
+      Visibility vis;
+      if (override_vis.has_value()) {
+        vis = override_vis.value()[idx];
+      } else {
+        vis = vis_.getValueVisibility(op->getOperand(idx));
+      }
+      operands[idx] = converter_.materializeTargetConversion(
+          builder, op->getLoc(),
+          typetools_.getType(adaptor_range[idx].getType(), vis),
+          adaptor_range[idx]);
+    }
+
+    return operands;
+  }
+
+  llvm::SmallVector<Type>
+  convertResultType(::mlir::Operation::result_range result_range) const {
+    llvm::SmallVector<Type> result_types(result_range.size());
+
+    for (size_t idx = 0; idx < result_types.size(); ++idx) {
+      auto result_value = result_range[idx];
+      auto result_vis = vis_.getValueVisibility(result_value);
+      result_types[idx] = typetools_.getType(
+          converter_.convertType(result_value.getType()), result_vis);
+    }
+
+    return result_types;
+  }
+
+  Type convertResultType(Value result_value) const {
+    auto result_vis = vis_.getValueVisibility(result_value);
+    return typetools_.getType(converter_.convertType(result_value.getType()),
+                              result_vis);
+    ;
+  }
+};
+
+template <typename HloOpTy>
+class HloToPPHloOpConverter : public OpConversionPattern<HloOpTy>,
+                              BasePPHloOpConverter {
+public:
+  HloToPPHloOpConverter(TypeConverter &type_converter, MLIRContext *context,
+                        const ValueVisibilityMap &vis)
+      : OpConversionPattern<HloOpTy>(type_converter, context),
+        BasePPHloOpConverter(context, vis, type_converter) {}
+
+  LogicalResult
+  matchAndRewrite(HloOpTy hlo_op,
+                  typename HloToPPHloOpConverter::OpAdaptor adaptor,
+                  ConversionPatternRewriter &rewriter) const override {
+    auto result_type = convertResultType(hlo_op.getResult());
+    auto operands = materializeInputs(hlo_op, adaptor.getOperands());
+
+    rewriter.replaceOpWithNewOp<pphlo::HloToPPHloOp<HloOpTy>>(
+        hlo_op, result_type, operands, hlo_op->getAttrs());
+
+    return success();
+  }
+};
+
+template <>
+class HloToPPHloOpConverter<mlir::func::ReturnOp>
+    : public OpConversionPattern<mlir::func::ReturnOp>, BasePPHloOpConverter {
+public:
+  HloToPPHloOpConverter(TypeConverter &type_converter, MLIRContext *context,
+                        const ValueVisibilityMap &vis)
+      : OpConversionPattern<mlir::func::ReturnOp>(type_converter, context),
+        BasePPHloOpConverter(context, vis, type_converter) {}
 
   LogicalResult
   matchAndRewrite(::mlir::func::ReturnOp op,
                   ::mlir::func::ReturnOpAdaptor adaptor,
                   ConversionPatternRewriter &rewriter) const override {
     Operation *operation = op.getOperation();
-    rewriter.updateRootInPlace(
-        op, [&]() { operation->setOperands(adaptor.getOperands()); });
+    rewriter.modifyOpInPlace(op, [&]() {
+      operation->setOperands(materializeInputs(op, adaptor.getOperands()));
+    });
     return success();
   }
 };
 
-class HloCompToPPHloOpConverter
-    : public OpConversionPattern<stablehlo::CompareOp> {
-private:
-  const ValueVisibilityMap &vis_;
-
+template <>
+class HloToPPHloOpConverter<stablehlo::CompareOp>
+    : public OpConversionPattern<stablehlo::CompareOp>, BasePPHloOpConverter {
 public:
-  HloCompToPPHloOpConverter(TypeConverter &type_converter, MLIRContext *context,
-                            const ValueVisibilityMap &vis)
+  HloToPPHloOpConverter(TypeConverter &type_converter, MLIRContext *context,
+                        const ValueVisibilityMap &vis)
       : OpConversionPattern<stablehlo::CompareOp>(type_converter, context),
-        vis_(vis) {}
+        BasePPHloOpConverter(context, vis, type_converter) {}
 
   LogicalResult
   matchAndRewrite(stablehlo::CompareOp hlo_op,
                   stablehlo::CompareOpAdaptor adaptor,
                   ConversionPatternRewriter &rewriter) const override {
-    auto result_vis = vis_.getValueVisibility(hlo_op.getResult());
-
-    Type resultType = HloToPPHloTypeConverter::getTypeWithVisibility(
-        this->getTypeConverter()->convertType(hlo_op.getType()), result_vis);
+    auto result_type = convertResultType(hlo_op.getResult());
 
     auto comp_direction = hlo_op.getComparisonDirection();
 
-    SmallVector<Value, 2> operands(adaptor.getOperands());
+    auto operands = materializeInputs(hlo_op, adaptor.getOperands());
 
     if (comp_direction == stablehlo::ComparisonDirection::EQ) {
-      rewriter.replaceOpWithNewOp<pphlo::EqualOp>(hlo_op, resultType, operands);
+      rewriter.replaceOpWithNewOp<pphlo::EqualOp>(hlo_op, result_type,
+                                                  operands);
     } else if (comp_direction == stablehlo::ComparisonDirection::NE) {
-      rewriter.replaceOpWithNewOp<pphlo::NotEqualOp>(hlo_op, resultType,
+      rewriter.replaceOpWithNewOp<pphlo::NotEqualOp>(hlo_op, result_type,
                                                      operands);
     } else if (comp_direction == stablehlo::ComparisonDirection::LT) {
-      rewriter.replaceOpWithNewOp<pphlo::LessOp>(hlo_op, resultType, operands);
+      rewriter.replaceOpWithNewOp<pphlo::LessOp>(hlo_op, result_type, operands);
     } else if (comp_direction == stablehlo::ComparisonDirection::LE) {
-      rewriter.replaceOpWithNewOp<pphlo::LessEqualOp>(hlo_op, resultType,
+      rewriter.replaceOpWithNewOp<pphlo::LessEqualOp>(hlo_op, result_type,
                                                       operands);
     } else if (comp_direction == stablehlo::ComparisonDirection::GT) {
-      rewriter.replaceOpWithNewOp<pphlo::GreaterOp>(hlo_op, resultType,
+      rewriter.replaceOpWithNewOp<pphlo::GreaterOp>(hlo_op, result_type,
                                                     operands);
     } else if (comp_direction == stablehlo::ComparisonDirection::GE) {
-      rewriter.replaceOpWithNewOp<pphlo::GreaterEqualOp>(hlo_op, resultType,
+      rewriter.replaceOpWithNewOp<pphlo::GreaterEqualOp>(hlo_op, result_type,
                                                          operands);
     } else {
       return failure();
@@ -290,55 +341,22 @@ public:
   }
 };
 
-struct ReduceOpConverter : public OpConversionPattern<stablehlo::ReduceOp> {
-private:
-  const ValueVisibilityMap &vis_;
+template <>
+struct HloToPPHloOpConverter<stablehlo::ReduceOp>
+    : public OpConversionPattern<stablehlo::ReduceOp>, BasePPHloOpConverter {
 
 public:
-  ReduceOpConverter(TypeConverter &type_converter, MLIRContext *context,
-                    const ValueVisibilityMap &vis)
+  HloToPPHloOpConverter(TypeConverter &type_converter, MLIRContext *context,
+                        const ValueVisibilityMap &vis)
       : OpConversionPattern<stablehlo::ReduceOp>(type_converter, context),
-        vis_(vis) {}
+        BasePPHloOpConverter(context, vis, type_converter) {}
 
   LogicalResult
   matchAndRewrite(stablehlo::ReduceOp op, stablehlo::ReduceOpAdaptor adaptor,
                   ConversionPatternRewriter &rewriter) const override {
-
     // We may need to materialize operands
-    llvm::SmallVector<Value> materialized_operands;
-    llvm::SmallVector<Type> result_types;
-    size_t num_results = op.getNumResults();
-
-    materialized_operands.resize(2 * num_results);
-    result_types.resize(num_results);
-
-    OpBuilder builder(op);
-
-    auto materialize = [&, this](size_t idx) {
-      auto current_vis = getOperandVisibility(adaptor.getOperands()[idx]);
-      auto expected_vis =
-          vis_.getValueVisibility(op.getBody().getArguments()[idx]);
-
-      if (expected_vis == current_vis) {
-        materialized_operands[idx] = adaptor.getOperands()[idx];
-      } else {
-        auto new_type = HloToPPHloTypeConverter::getTypeWithVisibility(
-            adaptor.getOperands()[idx].getType(), expected_vis);
-        materialized_operands[idx] =
-            this->getTypeConverter()->materializeTargetConversion(
-                builder, op.getLoc(), new_type, adaptor.getOperands()[idx]);
-      }
-    };
-
-    for (size_t idx = 0; idx < num_results; ++idx) {
-      auto result_vis = vis_.getValueVisibility(op.getResult(idx));
-      // Check input vis
-      materialize(idx);
-      materialize(idx + num_results);
-      // Push result type
-      result_types[idx] = HloToPPHloTypeConverter::getTypeWithVisibility(
-          this->getTypeConverter()->convertType(op.getType(idx)), result_vis);
-    }
+    auto materialized_operands = materializeInputs(op, adaptor.getOperands());
+    auto result_types = convertResultType(op.getResults());
 
     // Convert the region signature.
     auto &entry_block = op.getBody().front();
@@ -347,14 +365,13 @@ public:
 
     for (const auto &arg : entry_block.getArguments()) {
       auto arg_t = this->getTypeConverter()->convertType(arg.getType());
-      auto lower_t = HloToPPHloTypeConverter::getTypeWithVisibility(
-          arg_t, vis_.getValueVisibility(arg));
+      auto lower_t = typetools_.getType(arg_t, vis_.getValueVisibility(arg));
       sig_conversion.addInputs(arg.getArgNumber(), lower_t);
     }
 
     mlir::NamedAttribute dimAttr(
         StringAttr::get(op->getContext(), "dimensions"),
-        ConvertDenseIntElementAttr(op.getDimensions()));
+        DenseI64ArrayAttr::get(getContext(), op.getDimensions()));
 
     auto new_op =
         rewriter.replaceOpWithNewOp<pphlo::HloToPPHloOp<stablehlo::ReduceOp>>(
@@ -374,57 +391,25 @@ public:
   }
 };
 
-struct ReduceWindowOpConverter
-    : public OpConversionPattern<stablehlo::ReduceWindowOp> {
-private:
-  const ValueVisibilityMap &vis_;
-
+template <>
+struct HloToPPHloOpConverter<stablehlo::ReduceWindowOp>
+    : public OpConversionPattern<stablehlo::ReduceWindowOp>,
+      BasePPHloOpConverter {
 public:
-  ReduceWindowOpConverter(TypeConverter &type_converter, MLIRContext *context,
-                          const ValueVisibilityMap &vis)
+  HloToPPHloOpConverter(TypeConverter &type_converter, MLIRContext *context,
+                        const ValueVisibilityMap &vis)
       : OpConversionPattern<stablehlo::ReduceWindowOp>(type_converter, context),
-        vis_(vis) {}
+        BasePPHloOpConverter(context, vis, type_converter) {}
 
   LogicalResult
   matchAndRewrite(stablehlo::ReduceWindowOp op,
                   stablehlo::ReduceWindowOpAdaptor adaptor,
                   ConversionPatternRewriter &rewriter) const override {
-
     // We may need to materialize operands
-    llvm::SmallVector<Value> materialized_operands;
-    llvm::SmallVector<Type> result_types;
-    size_t num_results = op.getNumResults();
+    auto materialized_operands = materializeInputs(op, adaptor.getOperands());
+    auto result_types = convertResultType(op->getResults());
 
-    materialized_operands.resize(2 * num_results);
-    result_types.resize(num_results);
-
-    OpBuilder builder(op);
-
-    auto materialize = [&, this](size_t idx) {
-      auto current_vis = getOperandVisibility(adaptor.getOperands()[idx]);
-      auto expected_vis =
-          vis_.getValueVisibility(op.getBody().getArguments()[idx]);
-
-      if (expected_vis == current_vis) {
-        materialized_operands[idx] = adaptor.getOperands()[idx];
-      } else {
-        auto new_type = HloToPPHloTypeConverter::getTypeWithVisibility(
-            adaptor.getOperands()[idx].getType(), expected_vis);
-        materialized_operands[idx] =
-            this->getTypeConverter()->materializeTargetConversion(
-                builder, op.getLoc(), new_type, adaptor.getOperands()[idx]);
-      }
-    };
-
-    for (size_t idx = 0; idx < num_results; ++idx) {
-      auto result_vis = vis_.getValueVisibility(op.getResult(idx));
-      // Check input vis
-      materialize(idx);
-      materialize(idx + num_results);
-      // Push result type
-      result_types[idx] = HloToPPHloTypeConverter::getTypeWithVisibility(
-          this->getTypeConverter()->convertType(op.getType(idx)), result_vis);
-    }
+    auto num_results = op->getNumResults();
 
     // Convert the region signature.
     auto &entry_block = op.getBody().front();
@@ -433,8 +418,7 @@ public:
 
     for (const auto &arg : entry_block.getArguments()) {
       auto arg_t = this->getTypeConverter()->convertType(arg.getType());
-      auto lower_t = HloToPPHloTypeConverter::getTypeWithVisibility(
-          arg_t, vis_.getValueVisibility(arg));
+      auto lower_t = typetools_.getType(arg_t, vis_.getValueVisibility(arg));
       sig_conversion.addInputs(arg.getArgNumber(), lower_t);
     }
 
@@ -445,15 +429,12 @@ public:
       llvm::SmallVector<int64_t, 2> padding_low(rank, 0);
       llvm::SmallVector<int64_t, 2> padding_high(rank, 0);
 
-      bool has_dilation =
-          op.getBaseDilations().has_value() &&
-          (!op.getBaseDilationsAttr().isSplat() ||
-           op.getBaseDilationsAttr().getSplatValue<int64_t>() != 1);
+      bool has_dilation = op.getBaseDilations().has_value() &&
+                          !isAll(*op.getBaseDilations(), 1);
 
       if (has_dilation) {
         for (int64_t rank_idx = 0; rank_idx < rank; ++rank_idx) {
-          interior_padding[rank_idx] =
-              op.getBaseDilationsAttr().getValues<int64_t>()[rank_idx] - 1;
+          interior_padding[rank_idx] = (*op.getBaseDilations())[rank_idx] - 1;
         }
       }
 
@@ -486,19 +467,19 @@ public:
     {
       // I64ElementsAttr:$window_dimensions,
       attrs.push_back(
-          {builder.getStringAttr("window_dimensions"),
-           ConvertDenseIntElementAttr(op.getWindowDimensionsAttr())});
+          {StringAttr::get(getContext(), "window_dimensions"),
+           DenseI64ArrayAttr::get(getContext(), op.getWindowDimensions())});
       // OptionalAttr<I64ElementsAttr>:$window_strides,
       if (op.getWindowStrides().has_value()) {
         attrs.push_back(
-            {builder.getStringAttr("window_strides"),
-             ConvertDenseIntElementAttr(op.getWindowStridesAttr())});
+            {StringAttr::get(getContext(), "window_strides"),
+             DenseI64ArrayAttr::get(getContext(), *op.getWindowStrides())});
       }
       // OptionalAttr<I64ElementsAttr>:$window_dilations,
       if (op.getWindowDilations().has_value()) {
         attrs.push_back(
-            {builder.getStringAttr("window_dilations"),
-             ConvertDenseIntElementAttr(op.getWindowDilationsAttr())});
+            {StringAttr::get(getContext(), "window_dilations"),
+             DenseI64ArrayAttr::get(getContext(), *op.getWindowDilations())});
       }
     }
 
@@ -519,28 +500,23 @@ public:
     return success();
   }
 };
-struct IfOpConverter : public OpConversionPattern<stablehlo::IfOp> {
-private:
-  const ValueVisibilityMap &vis_;
+
+template <>
+struct HloToPPHloOpConverter<stablehlo::IfOp>
+    : public OpConversionPattern<stablehlo::IfOp>, BasePPHloOpConverter {
 
 public:
-  IfOpConverter(TypeConverter &type_converter, MLIRContext *context,
-                const ValueVisibilityMap &vis)
+  HloToPPHloOpConverter(TypeConverter &type_converter, MLIRContext *context,
+                        const ValueVisibilityMap &vis)
       : OpConversionPattern<stablehlo::IfOp>(type_converter, context),
-        vis_(vis) {}
+        BasePPHloOpConverter(context, vis, type_converter) {}
 
   LogicalResult
   matchAndRewrite(stablehlo::IfOp op, stablehlo::IfOpAdaptor adaptor,
                   ConversionPatternRewriter &rewriter) const override {
 
-    llvm::SmallVector<Type, 4> resultTypes;
-    {
-      for (const auto &ret : op->getResults()) {
-        auto result_vis = vis_.getValueVisibility(ret);
-        resultTypes.emplace_back(HloToPPHloTypeConverter::getTypeWithVisibility(
-            this->getTypeConverter()->convertType(ret.getType()), result_vis));
-      }
-    }
+    auto result_types = convertResultType(op->getResults());
+    auto operands = materializeInputs(op, adaptor.getOperands());
 
     // Convert true region signature.
     auto &true_region = op.getTrueBranch();
@@ -549,8 +525,7 @@ public:
 
     for (const auto &arg : true_region.getArguments()) {
       auto arg_t = getTypeConverter()->convertType(arg.getType());
-      auto lower_t = HloToPPHloTypeConverter::getTypeWithVisibility(
-          arg_t, vis_.getValueVisibility(arg));
+      auto lower_t = typetools_.getType(arg_t, vis_.getValueVisibility(arg));
       true_sig_conversion.addInputs(arg.getArgNumber(), lower_t);
     }
 
@@ -561,15 +536,12 @@ public:
 
     for (const auto &arg : false_region.getArguments()) {
       auto arg_t = getTypeConverter()->convertType(arg.getType());
-      auto lower_t = HloToPPHloTypeConverter::getTypeWithVisibility(
-          arg_t, vis_.getValueVisibility(arg));
+      auto lower_t = typetools_.getType(arg_t, vis_.getValueVisibility(arg));
       false_sig_conversion.addInputs(arg.getArgNumber(), lower_t);
     }
 
-    llvm::SmallVector<Value, 2> operands(adaptor.getOperands());
-
     auto new_op = rewriter.replaceOpWithNewOp<pphlo::IfOp>(
-        op, resultTypes, operands, op->getAttrs());
+        op, result_types, operands, op->getAttrs());
 
     // Copy over the operations inside true/false region.
     rewriter.inlineRegionBefore(op.getTrueBranch(), new_op.getTrueBranch(),
@@ -593,34 +565,26 @@ public:
   }
 };
 
-struct CaseOpConverter : public OpConversionPattern<stablehlo::CaseOp> {
-private:
-  const ValueVisibilityMap &vis_;
-
+template <>
+struct HloToPPHloOpConverter<stablehlo::CaseOp>
+    : public OpConversionPattern<stablehlo::CaseOp>, BasePPHloOpConverter {
 public:
-  CaseOpConverter(TypeConverter &type_converter, MLIRContext *context,
-                  const ValueVisibilityMap &vis)
+  HloToPPHloOpConverter(TypeConverter &type_converter, MLIRContext *context,
+                        const ValueVisibilityMap &vis)
       : OpConversionPattern<stablehlo::CaseOp>(type_converter, context),
-        vis_(vis) {}
+        BasePPHloOpConverter(context, vis, type_converter) {}
 
   LogicalResult
   matchAndRewrite(stablehlo::CaseOp op, stablehlo::CaseOpAdaptor adaptor,
                   ConversionPatternRewriter &rewriter) const override {
 
-    llvm::SmallVector<Type, 4> resultTypes;
-    {
-      for (const auto &ret : op->getResults()) {
-        auto result_vis = vis_.getValueVisibility(ret);
-        resultTypes.emplace_back(HloToPPHloTypeConverter::getTypeWithVisibility(
-            this->getTypeConverter()->convertType(ret.getType()), result_vis));
-      }
-    }
+    auto result_types = convertResultType(op->getResults());
 
     // Create new op
-    llvm::SmallVector<Value, 2> operands(adaptor.getOperands());
+    auto operands = materializeInputs(op, adaptor.getOperands());
 
     auto new_op = rewriter.replaceOpWithNewOp<pphlo::CaseOp>(
-        op, resultTypes, operands, op->getAttrs(), op.getNumRegions());
+        op, result_types, operands, op->getAttrs(), op.getNumRegions());
 
     // Convert each region
     llvm::SmallVector<TypeConverter::SignatureConversion, 2> sig_converters;
@@ -628,8 +592,7 @@ public:
       TypeConverter::SignatureConversion sig_conversion(r.getNumArguments());
       for (const auto &arg : r.getArguments()) {
         auto arg_t = getTypeConverter()->convertType(arg.getType());
-        auto lower_t = HloToPPHloTypeConverter::getTypeWithVisibility(
-            arg_t, vis_.getValueVisibility(arg));
+        auto lower_t = typetools_.getType(arg_t, vis_.getValueVisibility(arg));
         sig_conversion.addInputs(arg.getArgNumber(), lower_t);
       }
       sig_converters.emplace_back(std::move(sig_conversion));
@@ -653,27 +616,19 @@ public:
   }
 };
 
-struct WhileOpConverter : public OpConversionPattern<stablehlo::WhileOp> {
-private:
-  const ValueVisibilityMap &vis_;
-
+template <>
+struct HloToPPHloOpConverter<stablehlo::WhileOp>
+    : public OpConversionPattern<stablehlo::WhileOp>, BasePPHloOpConverter {
 public:
-  WhileOpConverter(TypeConverter &type_converter, MLIRContext *context,
-                   const ValueVisibilityMap &vis)
+  HloToPPHloOpConverter(TypeConverter &type_converter, MLIRContext *context,
+                        const ValueVisibilityMap &vis)
       : OpConversionPattern<stablehlo::WhileOp>(type_converter, context),
-        vis_(vis) {}
+        BasePPHloOpConverter(context, vis, type_converter) {}
 
   LogicalResult
   matchAndRewrite(stablehlo::WhileOp op, stablehlo::WhileOpAdaptor adaptor,
                   ConversionPatternRewriter &rewriter) const override {
-    llvm::SmallVector<Type, 4> resultTypes;
-    {
-      for (const auto &ret : op->getResults()) {
-        auto result_vis = vis_.getValueVisibility(ret);
-        resultTypes.emplace_back(HloToPPHloTypeConverter::getTypeWithVisibility(
-            this->getTypeConverter()->convertType(ret.getType()), result_vis));
-      }
-    }
+    auto result_types = convertResultType(op->getResults());
 
     // Convert cond region signature.
     auto &cond_region = op.getCond();
@@ -682,8 +637,7 @@ public:
 
     for (const auto &arg : cond_region.getArguments()) {
       auto arg_t = getTypeConverter()->convertType(arg.getType());
-      auto lower_t = HloToPPHloTypeConverter::getTypeWithVisibility(
-          arg_t, vis_.getValueVisibility(arg));
+      auto lower_t = typetools_.getType(arg_t, vis_.getValueVisibility(arg));
       cond_sig_conversion.addInputs(arg.getArgNumber(), lower_t);
     }
 
@@ -694,32 +648,15 @@ public:
 
     for (const auto &arg : body_region.getArguments()) {
       auto arg_t = getTypeConverter()->convertType(arg.getType());
-      auto lower_t = HloToPPHloTypeConverter::getTypeWithVisibility(
-          arg_t, vis_.getValueVisibility(arg));
+      auto lower_t = typetools_.getType(arg_t, vis_.getValueVisibility(arg));
       body_sig_conversion.addInputs(arg.getArgNumber(), lower_t);
     }
 
     // May need to materialize operands
-    OpBuilder builder(op);
-    llvm::SmallVector<Value, 6> operands(adaptor.getOperands());
-    llvm::SmallVector<Value, 6> materializedOperands;
-    for (const auto &operand : llvm::enumerate(operands)) {
-      auto currentVis = getOperandVisibility(operand.value());
-      auto targetVis =
-          vis_.getValueVisibility(op.getBody().getArgument(operand.index()));
-      if (currentVis == targetVis) {
-        materializedOperands.emplace_back(operand.value());
-      } else {
-        auto new_type = HloToPPHloTypeConverter::getTypeWithVisibility(
-            operand.value().getType(), targetVis);
-        materializedOperands.emplace_back(
-            getTypeConverter()->materializeTargetConversion(
-                builder, op->getLoc(), new_type, operand.value()));
-      }
-    }
+    auto operands = materializeInputs(op, adaptor.getOperands());
 
     auto new_op = rewriter.replaceOpWithNewOp<pphlo::WhileOp>(
-        op, resultTypes, materializedOperands, op->getAttrs());
+        op, result_types, operands, op->getAttrs());
 
     // Copy over the operations inside body region.
     rewriter.inlineRegionBefore(op.getBody(), new_op.getBody(),
@@ -741,61 +678,31 @@ public:
   }
 };
 
-template <typename HloOpTy>
-class HloToPPHloOpConverter : public OpConversionPattern<HloOpTy> {
-private:
-  const ValueVisibilityMap &vis_;
-
-public:
-  HloToPPHloOpConverter(TypeConverter &type_converter, MLIRContext *context,
-                        const ValueVisibilityMap &vis)
-      : OpConversionPattern<HloOpTy>(type_converter, context), vis_(vis) {}
-
-  LogicalResult
-  matchAndRewrite(HloOpTy hlo_op,
-                  typename HloToPPHloOpConverter::OpAdaptor adaptor,
-                  ConversionPatternRewriter &rewriter) const override {
-    auto result_vis = vis_.getValueVisibility(hlo_op.getResult());
-
-    Type resultType = HloToPPHloTypeConverter::getTypeWithVisibility(
-        this->getTypeConverter()->convertType(hlo_op.getType()), result_vis);
-
-    rewriter.replaceOpWithNewOp<pphlo::HloToPPHloOp<HloOpTy>>(
-        hlo_op, resultType, adaptor.getOperands(), hlo_op->getAttrs());
-
-    return success();
-  }
-};
-
 template <>
 class HloToPPHloOpConverter<stablehlo::BroadcastInDimOp>
-    : public OpConversionPattern<stablehlo::BroadcastInDimOp> {
-private:
-  const ValueVisibilityMap &vis_;
-
+    : public OpConversionPattern<stablehlo::BroadcastInDimOp>,
+      BasePPHloOpConverter {
 public:
   HloToPPHloOpConverter(TypeConverter &type_converter, MLIRContext *context,
                         const ValueVisibilityMap &vis)
       : OpConversionPattern<stablehlo::BroadcastInDimOp>(type_converter,
                                                          context),
-        vis_(vis) {}
+        BasePPHloOpConverter(context, vis, type_converter) {}
 
   LogicalResult
   matchAndRewrite(stablehlo::BroadcastInDimOp hlo_op,
                   stablehlo::BroadcastInDimOpAdaptor adaptor,
                   ConversionPatternRewriter &rewriter) const override {
-    auto result_vis = vis_.getValueVisibility(hlo_op.getResult());
-
-    Type resultType = HloToPPHloTypeConverter::getTypeWithVisibility(
-        this->getTypeConverter()->convertType(hlo_op.getType()), result_vis);
+    auto resultType = convertResultType(hlo_op.getResult());
 
     mlir::NamedAttribute dim(
         StringAttr::get(hlo_op.getContext(), "broadcast_dimensions"),
-        ConvertDenseIntElementAttr(hlo_op.getBroadcastDimensions()));
+        DenseI64ArrayAttr::get(getContext(), hlo_op.getBroadcastDimensions()));
 
     rewriter
         .replaceOpWithNewOp<pphlo::HloToPPHloOp<stablehlo::BroadcastInDimOp>>(
-            hlo_op, resultType, adaptor.getOperands(), dim);
+            hlo_op, resultType,
+            materializeInputs(hlo_op, adaptor.getOperands()), dim);
 
     return success();
   }
@@ -821,23 +728,20 @@ public:
 
 template <>
 class HloToPPHloOpConverter<stablehlo::IotaOp>
-    : public OpConversionPattern<stablehlo::IotaOp> {
+    : public OpConversionPattern<stablehlo::IotaOp>, BasePPHloOpConverter {
 public:
   HloToPPHloOpConverter(TypeConverter &type_converter, MLIRContext *context,
-                        const ValueVisibilityMap & /*unused*/)
-      : OpConversionPattern<stablehlo::IotaOp>(type_converter, context) {}
+                        const ValueVisibilityMap &vis)
+      : OpConversionPattern<stablehlo::IotaOp>(type_converter, context),
+        BasePPHloOpConverter(context, vis, type_converter) {}
 
   LogicalResult
   matchAndRewrite(stablehlo::IotaOp hlo_op,
                   stablehlo::IotaOpAdaptor /*adaptor*/,
                   ConversionPatternRewriter &rewriter) const override {
-
-    Type resultType = HloToPPHloTypeConverter::getTypeWithVisibility(
-        this->getTypeConverter()->convertType(hlo_op.getType()),
-        Visibility::VIS_PUBLIC);
-
+    auto result_type = convertResultType(hlo_op.getResult());
     rewriter.replaceOpWithNewOp<pphlo::HloToPPHloOp<stablehlo::IotaOp>>(
-        hlo_op, resultType, hlo_op.getIotaDimension());
+        hlo_op, result_type, hlo_op.getIotaDimension());
     return success();
   }
 };
@@ -845,44 +749,36 @@ public:
 /// Need a special conversion rule for Dot to drop precision configs
 template <>
 class HloToPPHloOpConverter<stablehlo::DotOp>
-    : public OpConversionPattern<stablehlo::DotOp> {
-private:
-  const ValueVisibilityMap &vis_;
-
+    : public OpConversionPattern<stablehlo::DotOp>, BasePPHloOpConverter {
 public:
   HloToPPHloOpConverter(TypeConverter &type_converter, MLIRContext *context,
                         const ValueVisibilityMap &vis)
       : OpConversionPattern<stablehlo::DotOp>(type_converter, context),
-        vis_(vis) {}
+        BasePPHloOpConverter(context, vis, type_converter) {}
 
   LogicalResult
   matchAndRewrite(stablehlo::DotOp hlo_op, stablehlo::DotOpAdaptor adaptor,
                   ConversionPatternRewriter &rewriter) const override {
-    auto result_vis = vis_.getValueVisibility(hlo_op.getResult());
-
-    Type resultType = HloToPPHloTypeConverter::getTypeWithVisibility(
-        this->getTypeConverter()->convertType(hlo_op.getType()), result_vis);
+    auto result_type = convertResultType(hlo_op.getResult());
 
     rewriter.replaceOpWithNewOp<pphlo::HloToPPHloOp<stablehlo::DotOp>>(
-        hlo_op, resultType, adaptor.getOperands());
+        hlo_op, result_type, materializeInputs(hlo_op, adaptor.getOperands()));
     return success();
   }
 };
 
 template <>
 class HloToPPHloOpConverter<stablehlo::DotGeneralOp>
-    : public OpConversionPattern<stablehlo::DotGeneralOp> {
-private:
-  const ValueVisibilityMap &vis_;
-
+    : public OpConversionPattern<stablehlo::DotGeneralOp>,
+      BasePPHloOpConverter {
 public:
   HloToPPHloOpConverter(TypeConverter &type_converter, MLIRContext *context,
                         const ValueVisibilityMap &vis)
       : OpConversionPattern<stablehlo::DotGeneralOp>(type_converter, context),
-        vis_(vis) {}
+        BasePPHloOpConverter(context, vis, type_converter) {}
 
-  static Value ensureAtLeast3D(ConversionPatternRewriter &rewriter,
-                               Value operand, Visibility expected_vis) {
+  Value ensureAtLeast3D(ConversionPatternRewriter &rewriter,
+                        Value operand) const {
     auto type = operand.getType().dyn_cast<RankedTensorType>();
     if (type.getRank() >= 3) {
       return operand;
@@ -890,8 +786,7 @@ public:
 
     std::vector<int64_t> new_shape(type.getShape());
     new_shape.emplace_back(1); // Add a trailing one dimension
-    auto new_type = HloToPPHloTypeConverter::getTypeWithVisibility(
-        RankedTensorType::get(new_shape, type.getElementType()), expected_vis);
+    auto new_type = RankedTensorType::get(new_shape, type.getElementType());
     return rewriter.create<pphlo::ReshapeOp>(operand.getLoc(), new_type,
                                              operand);
   }
@@ -900,10 +795,8 @@ public:
   matchAndRewrite(stablehlo::DotGeneralOp hlo_op,
                   stablehlo::DotGeneralOpAdaptor adaptor,
                   ConversionPatternRewriter &rewriter) const override {
-    auto result_vis = vis_.getValueVisibility(hlo_op.getResult());
-
-    Type resultType = HloToPPHloTypeConverter::getTypeWithVisibility(
-        this->getTypeConverter()->convertType(hlo_op.getType()), result_vis);
+    auto result_type = convertResultType(hlo_op.getResult());
+    auto operands = materializeInputs(hlo_op, adaptor.getOperands());
 
     auto attr = DotDimensionNumbersAttr::get(
         hlo_op->getContext(),
@@ -913,120 +806,49 @@ public:
         hlo_op.getDotDimensionNumbersAttr().getRhsContractingDimensions());
 
     rewriter.replaceOpWithNewOp<pphlo::DotGeneralOp>(
-        hlo_op, resultType,
-        ensureAtLeast3D(rewriter, adaptor.getLhs(),
-                        vis_.getValueVisibility(hlo_op.getLhs())),
-        ensureAtLeast3D(rewriter, adaptor.getRhs(),
-                        vis_.getValueVisibility(hlo_op.getRhs())),
-        attr);
+        hlo_op, result_type, ensureAtLeast3D(rewriter, operands[0]),
+        ensureAtLeast3D(rewriter, operands[1]), attr);
     return success();
   }
 };
 
 template <>
 class HloToPPHloOpConverter<stablehlo::ReturnOp>
-    : public OpConversionPattern<stablehlo::ReturnOp> {
+    : public OpConversionPattern<stablehlo::ReturnOp>, BasePPHloOpConverter {
 public:
   HloToPPHloOpConverter(TypeConverter &type_converter, MLIRContext *context,
-                        const ValueVisibilityMap &)
-      : OpConversionPattern<stablehlo::ReturnOp>(type_converter, context) {}
+                        const ValueVisibilityMap &vis)
+      : OpConversionPattern<stablehlo::ReturnOp>(type_converter, context),
+        BasePPHloOpConverter(context, vis, type_converter) {}
 
   LogicalResult
   matchAndRewrite(stablehlo::ReturnOp op, stablehlo::ReturnOpAdaptor adaptor,
                   ConversionPatternRewriter &rewriter) const override {
-    // Expected vis
-    auto *owning_region = op->getParentRegion();
-    auto *owning_op = owning_region->getParentOp();
-
-    // The owning op should already been lowered..so it's pphlo if/case
-    if (llvm::isa<pphlo::IfOp>(owning_op) ||
-        llvm::isa<pphlo::CaseOp>(owning_op)) {
-      // Has multiple regions, need unify
-      SPU_ENFORCE(owning_op, "mhlo::return should not occur in top region");
-
-      TypeTools tools;
-
-      OpBuilder builder(op);
-      auto materialize = [&, this](const mlir::Value &operand,
-                                   Visibility except_vis) {
-        auto current_vis = getOperandVisibility(operand);
-        if (except_vis == current_vis) {
-          return operand;
-        } else {
-          auto new_type = HloToPPHloTypeConverter::getTypeWithVisibility(
-              operand.getType(), except_vis);
-          return this->getTypeConverter()->materializeTargetConversion(
-              builder, op.getLoc(), new_type, operand);
-        }
-      };
-
-      llvm::SmallVector<Value, 2> materialized;
-
-      SPU_ENFORCE(adaptor.getOperands().size() == owning_op->getNumResults(),
-                  "adaptor has {} operands while owning op has {} results",
-                  adaptor.getOperands().size(), owning_op->getNumResults());
-
-      for (const auto &r : llvm::enumerate(owning_op->getResults())) {
-        auto expected_vis = tools.getTypeVisibility(r.value().getType());
-        materialized.emplace_back(
-            materialize(adaptor.getOperands()[r.index()], expected_vis));
-      }
-
-      rewriter.replaceOpWithNewOp<pphlo::ReturnOp>(op, std::nullopt,
-                                                   materialized);
-    } else {
-      rewriter.replaceOpWithNewOp<pphlo::ReturnOp>(op, std::nullopt,
-                                                   adaptor.getOperands());
-    }
-
+    auto operands = materializeInputs(op, adaptor.getOperands());
+    rewriter.replaceOpWithNewOp<pphlo::ReturnOp>(op, std::nullopt, operands);
     return success();
   }
 };
 
 template <>
 struct HloToPPHloOpConverter<stablehlo::SelectAndScatterOp>
-    : public OpConversionPattern<stablehlo::SelectAndScatterOp> {
-private:
-  const ValueVisibilityMap &vis_;
-
+    : public OpConversionPattern<stablehlo::SelectAndScatterOp>,
+      BasePPHloOpConverter {
 public:
   HloToPPHloOpConverter(TypeConverter &type_converter, MLIRContext *context,
                         const ValueVisibilityMap &vis)
       : OpConversionPattern<stablehlo::SelectAndScatterOp>(type_converter,
                                                            context),
-        vis_(vis) {}
+        BasePPHloOpConverter(context, vis, type_converter) {}
 
   LogicalResult
   matchAndRewrite(stablehlo::SelectAndScatterOp op,
                   stablehlo::SelectAndScatterOpAdaptor adaptor,
                   ConversionPatternRewriter &rewriter) const override {
-
-    // We may need to materialize operands
-    OpBuilder builder(op);
-
     // Select
-    auto materialize = [&, this](const mlir::Value &operand,
-                                 Visibility except_vis) {
-      auto current_vis = getOperandVisibility(operand);
-      if (except_vis == current_vis) {
-        return operand;
-      } else {
-        auto new_type = HloToPPHloTypeConverter::getTypeWithVisibility(
-            operand.getType(), except_vis);
-        return this->getTypeConverter()->materializeTargetConversion(
-            builder, op.getLoc(), new_type, operand);
-      }
-    };
+    auto operands = materializeInputs(op, adaptor.getOperands());
 
-    auto promoted_vis = mlir::pphlo::TypeTools::inferResultVisibility(
-        {vis_.getValueVisibility(op.getOperand()),
-         vis_.getValueVisibility(op.getInitValue())});
-    auto materialized_operand = materialize(adaptor.getOperand(), promoted_vis);
-    auto materialized_init_value =
-        materialize(adaptor.getInitValue(), promoted_vis);
-
-    auto result_type = HloToPPHloTypeConverter::getTypeWithVisibility(
-        op.getType(), vis_.getValueVisibility(op.getResult()));
+    auto result_type = convertResultType(op.getResult());
 
     bool has_padding = op.getPadding().has_value() &&
                        (!op.getPaddingAttr().isSplat() ||
@@ -1047,17 +869,16 @@ public:
             op.getPaddingAttr().getValues<int64_t>()[2 * rank_idx + 1];
       }
 
-      materialized_operand = rewriter.create<pphlo::PadOp>(
-          op->getLoc(), materialized_operand, materialized_init_value,
+      auto operand = rewriter.create<pphlo::PadOp>(
+          op->getLoc(), operands[0], operands[2],
           DenseI64ArrayAttr::get(op->getContext(), padding_low),
           DenseI64ArrayAttr::get(op->getContext(), padding_high),
           DenseI64ArrayAttr::get(op->getContext(), padding_interior));
 
       new_op = rewriter.create<pphlo::SelectAndScatterOp>(
-          op->getLoc(), materialized_operand.getType(), materialized_operand,
-          adaptor.getSource(), materialized_init_value,
-          ConvertDenseIntElementAttr(op.getWindowDimensionsAttr()),
-          ConvertDenseIntElementAttr(op.getWindowStridesAttr()));
+          op->getLoc(), operand.getType(), operand, operands[1], operands[2],
+          DenseI64ArrayAttr::get(getContext(), *op.getWindowDimensions()),
+          DenseI64ArrayAttr::get(getContext(), *op.getWindowStrides()));
 
       llvm::SmallVector<int64_t, 2> slice_end(
           new_op.getType().dyn_cast<RankedTensorType>().getShape().begin(),
@@ -1070,17 +891,15 @@ public:
       // Slice back
       rewriter.replaceOpWithNewOp<pphlo::SliceOp>(
           op, result_type, new_op,
-          DenseI64ArrayAttr::get(builder.getContext(), padding_low),
-          DenseI64ArrayAttr::get(builder.getContext(), slice_end),
+          DenseI64ArrayAttr::get(getContext(), padding_low),
+          DenseI64ArrayAttr::get(getContext(), slice_end),
           DenseI64ArrayAttr::get(
-              builder.getContext(),
-              llvm::SmallVector<int64_t>(slice_end.size(), 1)));
+              getContext(), llvm::SmallVector<int64_t>(slice_end.size(), 1)));
     } else {
       new_op = rewriter.replaceOpWithNewOp<pphlo::SelectAndScatterOp>(
-          op, result_type, materialized_operand, adaptor.getSource(),
-          materialized_init_value,
-          ConvertDenseIntElementAttr(op.getWindowDimensionsAttr()),
-          ConvertDenseIntElementAttr(op.getWindowStridesAttr()));
+          op, result_type, operands[0], operands[1], operands[2],
+          DenseI64ArrayAttr::get(getContext(), *op.getWindowDimensions()),
+          DenseI64ArrayAttr::get(getContext(), *op.getWindowStrides()));
     }
 
     // Convert the region signature.
@@ -1089,8 +908,7 @@ public:
 
     for (const auto &arg : op.getSelect().front().getArguments()) {
       auto arg_t = this->getTypeConverter()->convertType(arg.getType());
-      auto lower_t = HloToPPHloTypeConverter::getTypeWithVisibility(
-          arg_t, vis_.getValueVisibility(arg));
+      auto lower_t = typetools_.getType(arg_t, vis_.getValueVisibility(arg));
       select_sig_conversion.addInputs(arg.getArgNumber(), lower_t);
     }
 
@@ -1099,8 +917,7 @@ public:
 
     for (const auto &arg : op.getScatter().front().getArguments()) {
       auto arg_t = this->getTypeConverter()->convertType(arg.getType());
-      auto lower_t = HloToPPHloTypeConverter::getTypeWithVisibility(
-          arg_t, vis_.getValueVisibility(arg));
+      auto lower_t = typetools_.getType(arg_t, vis_.getValueVisibility(arg));
       scatter_sig_conversion.addInputs(arg.getArgNumber(), lower_t);
     }
 
@@ -1128,40 +945,32 @@ public:
 
 template <>
 class HloToPPHloOpConverter<stablehlo::RngOp>
-    : public OpConversionPattern<stablehlo::RngOp> {
-private:
-  const ValueVisibilityMap &vis_;
-
+    : public OpConversionPattern<stablehlo::RngOp>, BasePPHloOpConverter {
 public:
   HloToPPHloOpConverter(TypeConverter &type_converter, MLIRContext *context,
                         const ValueVisibilityMap &vis)
       : OpConversionPattern<stablehlo::RngOp>(type_converter, context),
-        vis_(vis) {}
+        BasePPHloOpConverter(context, vis, type_converter) {}
 
   LogicalResult
   matchAndRewrite(stablehlo::RngOp op, stablehlo::RngOpAdaptor adaptor,
                   ConversionPatternRewriter &rewriter) const override {
-    auto result_vis = vis_.getValueVisibility(op.getResult());
-
-    Type resultType = HloToPPHloTypeConverter::getTypeWithVisibility(
-        this->getTypeConverter()->convertType(op.getType()), result_vis);
+    Type resultType = convertResultType(op.getResult());
 
     rewriter.replaceOpWithNewOp<pphlo::RngOp>(
-        op, resultType, adaptor.getOperands()[0], adaptor.getOperands()[1]);
+        op, resultType, materializeInputs(op, adaptor.getOperands()));
     return success();
   }
 };
 
 template <>
 class HloToPPHloOpConverter<stablehlo::SortOp>
-    : public OpConversionPattern<stablehlo::SortOp> {
-  const ValueVisibilityMap &vis_;
-
+    : public OpConversionPattern<stablehlo::SortOp>, BasePPHloOpConverter {
 public:
   HloToPPHloOpConverter(TypeConverter &type_converter, MLIRContext *context,
                         const ValueVisibilityMap &vis)
       : OpConversionPattern<stablehlo::SortOp>(type_converter, context),
-        vis_(vis) {}
+        BasePPHloOpConverter(context, vis, type_converter) {}
 
   LogicalResult
   matchAndRewrite(stablehlo::SortOp op, stablehlo::SortOpAdaptor adaptor,
@@ -1171,12 +980,7 @@ public:
     SPU_ENFORCE(comp_ret.getNumOperands() == 1,
                 "SortOp comparator can only return one value");
 
-    llvm::SmallVector<Type, 2> ret_types;
-    for (const auto &ret : op->getResults()) {
-      auto ret_vis = vis_.getValueVisibility(ret);
-      ret_types.emplace_back(HloToPPHloTypeConverter::getTypeWithVisibility(
-          this->getTypeConverter()->convertType(ret.getType()), ret_vis));
-    }
+    auto result_types = convertResultType(op->getResults());
 
     // Convert the region signature.
     auto &comp_region = op.getComparator();
@@ -1185,32 +989,15 @@ public:
 
     for (const auto &arg : comp_region.getArguments()) {
       auto arg_t = this->getTypeConverter()->convertType(arg.getType());
-      auto lower_t = HloToPPHloTypeConverter::getTypeWithVisibility(
-          arg_t, vis_.getValueVisibility(arg));
+      auto lower_t = typetools_.getType(arg_t, vis_.getValueVisibility(arg));
       sig_conversion.addInputs(arg.getArgNumber(), lower_t);
     }
 
     // materialize inputs
-    auto materialize = [&](mlir::Value v, Visibility vis) {
-      auto new_type = HloToPPHloTypeConverter::getTypeWithVisibility(
-          this->getTypeConverter()->convertType(v.getType()), vis);
-      return this->getTypeConverter()->materializeTargetConversion(
-          rewriter, op.getLoc(), new_type, v);
-    };
-    llvm::SmallVector<mlir::Value, 2> new_operands;
-    for (int64_t idx = 0; idx < op->getNumOperands(); ++idx) {
-      auto ret_vis = vis_.getValueVisibility(op.getResult(idx));
-      auto operand_vis = vis_.getValueVisibility(op->getOperand(idx));
-      if (ret_vis == operand_vis) {
-        new_operands.emplace_back(adaptor.getOperands()[idx]);
-      } else {
-        new_operands.emplace_back(
-            materialize(adaptor.getOperands()[idx], ret_vis));
-      }
-    }
+    auto operands = materializeInputs(op, adaptor.getOperands());
 
     auto new_op = rewriter.replaceOpWithNewOp<pphlo::SortOp>(
-        op, ret_types, new_operands, op.getDimension(), op.getIsStable());
+        op, result_types, operands, op.getDimension(), op.getIsStable());
 
     // Copy over the operations inside the region.
     rewriter.inlineRegionBefore(op.getComparator(), new_op.getComparator(),
@@ -1228,59 +1015,60 @@ public:
 
 template <>
 class HloToPPHloOpConverter<stablehlo::ConvolutionOp>
-    : public OpConversionPattern<stablehlo::ConvolutionOp> {
+    : public OpConversionPattern<stablehlo::ConvolutionOp>,
+      BasePPHloOpConverter {
 private:
-  const ValueVisibilityMap &vis_;
-
   /// Returns true if the given `attr` is a splat of the given `value`.
   static bool isSplatValue(DenseIntElementsAttr attr, uint64_t value) {
     return attr.isSplat() && attr.getSplatValue<uint64_t>() == value;
   }
 
   // Apply dilation and padding to the input of a convolution.
-  static Value applyConvolutionPadding(Location loc, Value input,
-                                       DenseIntElementsAttr padding,
-                                       DenseIntElementsAttr lhs_dilation,
-                                       llvm::ArrayRef<int64_t> dim_mappings,
-                                       OpBuilder &rewriter) {
-    if ((!padding || isSplatValue(padding, 0)) &&
-        (!lhs_dilation || isSplatValue(lhs_dilation, 1))) {
+  Value applyConvolutionPadding(
+      Location loc, Value input,
+      const std::optional<llvm::SmallVector<int64_t>> &padding,
+      const std::optional<llvm::SmallVector<int64_t>> &lhs_dilation,
+      llvm::ArrayRef<int64_t> dim_mappings, OpBuilder &rewriter) const {
+    if ((!padding || isAll(*padding, 0)) &&
+        (!lhs_dilation || isAll(*lhs_dilation, 1))) {
       return input;
     }
 
     auto inputType = input.getType().cast<ShapedType>();
-    auto rank = inputType.getRank();
+    size_t rank = inputType.getRank();
 
     // Translate window padding into low/high padding.
     SmallVector<int64_t, 8> padLow(rank, 0);
     SmallVector<int64_t, 8> padHigh(rank, 0);
     if (padding) {
-      // The padding attribute contains two values per dimension, but excludes
+      // The padding attribute contains two values per dimension, but
+      // excludes
       // the batch and feature dimensions.
       assert(
-          rank * 2 == padding.size() + 4 &&
+          rank * 2 == padding->size() + 4 &&
           "There should be 2 padding values per dimension, i.e low and high.");
-      for (auto i : llvm::seq<int64_t>(0, padding.size() / 2)) {
+      for (auto i : llvm::seq<int64_t>(0, (*padding).size() / 2)) {
         auto dim = dim_mappings[i];
-        padLow[dim] = padding.getValues<int64_t>()[i * 2];
-        padHigh[dim] = padding.getValues<int64_t>()[i * 2 + 1];
+        padLow[dim] = (*padding)[i * 2];
+        padHigh[dim] = (*padding)[i * 2 + 1];
       }
     }
 
     // Translate input dilation into interior padding.
     SmallVector<int64_t, 8> padInterior(rank, 0);
     if (lhs_dilation) {
-      assert(rank == lhs_dilation.size() + 2);
-      for (auto i : llvm::seq<int64_t>(0, lhs_dilation.size())) {
+      assert(rank == (*lhs_dilation).size() + 2);
+      for (auto i : llvm::seq<int64_t>(0, (*lhs_dilation).size())) {
         auto dim = dim_mappings[i];
-        padInterior[dim] = lhs_dilation.getValues<int64_t>()[i] - 1;
+        padInterior[dim] = (*lhs_dilation)[i] - 1;
       }
     }
 
-    TypeTools type_tools;
-    Value zero = rewriter.create<pphlo::ConstantOp>(
-        loc, rewriter.getZeroAttr(RankedTensorType::get(
-                 {}, type_tools.getExpressedType(inputType.getElementType()))));
+    TypeTools type_tools(rewriter.getContext());
+    auto zero_attr = rewriter.getZeroAttr(RankedTensorType::get(
+        {}, type_tools.getExpressedType(inputType.getElementType())));
+    SPU_ENFORCE(zero_attr);
+    Value zero = rewriter.create<pphlo::ConstantOp>(loc, zero_attr);
     zero = rewriter.create<pphlo::ConvertOp>(
         loc, RankedTensorType::get({}, inputType.getElementType()), zero);
     return rewriter.create<pphlo::PadOp>(
@@ -1293,7 +1081,7 @@ public:
   HloToPPHloOpConverter(TypeConverter &type_converter, MLIRContext *context,
                         const ValueVisibilityMap &vis)
       : OpConversionPattern<stablehlo::ConvolutionOp>(type_converter, context),
-        vis_(vis) {}
+        BasePPHloOpConverter(context, vis, type_converter) {}
 
   LogicalResult
   matchAndRewrite(stablehlo::ConvolutionOp op,
@@ -1311,38 +1099,28 @@ public:
         old_attr.getOutputFeatureDimension(),
         old_attr.getOutputSpatialDimensions());
 
-    auto result_vis = vis_.getValueVisibility(op.getResult());
+    Type result_type = convertResultType(op.getResult());
 
-    Type resultType = HloToPPHloTypeConverter::getTypeWithVisibility(
-        this->getTypeConverter()->convertType(op.getType()), result_vis);
+    auto operands = materializeInputs(op, adaptor.getOperands());
 
-    auto materialize = [&](mlir::Value v, Visibility vis) {
-      auto new_type = HloToPPHloTypeConverter::getTypeWithVisibility(
-          this->getTypeConverter()->convertType(v.getType()), vis);
-      return this->getTypeConverter()->materializeTargetConversion(
-          rewriter, op.getLoc(), new_type, v);
-    };
+    std::optional<llvm::SmallVector<int64_t>> padding{std::nullopt};
+    if (adaptor.getPadding().has_value()) {
+      padding = llvm::SmallVector<int64_t>{
+          adaptor.getPadding()->getValues<int64_t>()};
+    }
 
-    auto modifiedLhs =
-        materialize(adaptor.getLhs(), vis_.getValueVisibility(op.getLhs()));
-
-    modifiedLhs = applyConvolutionPadding(
-        op->getLoc(), modifiedLhs, adaptor.getPaddingAttr(),
-        adaptor.getLhsDilationAttr(),
+    auto lhs = applyConvolutionPadding(
+        op->getLoc(), operands[0], padding, adaptor.getLhsDilation(),
         adaptor.getDimensionNumbers().getInputSpatialDimensions(), rewriter);
 
-    auto modifiedRhs =
-        materialize(adaptor.getRhs(), vis_.getValueVisibility(op.getRhs()));
-
-    modifiedRhs = applyConvolutionPadding(
-        op.getLoc(), modifiedRhs, nullptr, adaptor.getRhsDilationAttr(),
+    auto rhs = applyConvolutionPadding(
+        op.getLoc(), operands[1], std::nullopt, adaptor.getRhsDilation(),
         op.getDimensionNumbers().getKernelSpatialDimensions(), rewriter);
 
     auto reversals = op.getWindowReversal();
     if (reversals.has_value()) {
       llvm::SmallVector<int64_t> reversedDims;
-      for (const auto &idxAndBool :
-           llvm::enumerate(reversals->getValues<bool>())) {
+      for (const auto &idxAndBool : llvm::enumerate(*reversals)) {
         if (idxAndBool.value()) {
           reversedDims.push_back(
               op.getDimensionNumbers()
@@ -1350,15 +1128,21 @@ public:
         }
       }
 
-      modifiedRhs = rewriter.create<pphlo::ReverseOp>(
-          op.getLoc(), modifiedRhs,
+      rhs = rewriter.create<pphlo::ReverseOp>(
+          op.getLoc(), rhs,
           DenseI64ArrayAttr::get(op->getContext(), reversedDims));
     }
 
-    rewriter.replaceOpWithNewOp<pphlo::ConvolutionOp>(
-        op, resultType, modifiedLhs, modifiedRhs,
-        ConvertDenseIntElementAttr(op.getWindowStrides().value_or(nullptr)),
-        attr, op.getFeatureGroupCount(), op.getBatchGroupCount());
+    if (op.getWindowStrides().has_value()) {
+      rewriter.replaceOpWithNewOp<pphlo::ConvolutionOp>(
+          op, result_type, lhs, rhs,
+          DenseI64ArrayAttr::get(getContext(), *op.getWindowStrides()), attr,
+          op.getFeatureGroupCount(), op.getBatchGroupCount());
+    } else {
+      rewriter.replaceOpWithNewOp<pphlo::ConvolutionOp>(
+          op, result_type, lhs, rhs, nullptr, attr, op.getFeatureGroupCount(),
+          op.getBatchGroupCount());
+    }
 
     return success();
   }
@@ -1366,44 +1150,21 @@ public:
 
 template <>
 class HloToPPHloOpConverter<stablehlo::PadOp>
-    : public OpConversionPattern<stablehlo::PadOp> {
-private:
-  const ValueVisibilityMap &vis_;
-
+    : public OpConversionPattern<stablehlo::PadOp>, BasePPHloOpConverter {
 public:
   HloToPPHloOpConverter(TypeConverter &type_converter, MLIRContext *context,
                         const ValueVisibilityMap &vis)
       : OpConversionPattern<stablehlo::PadOp>(type_converter, context),
-        vis_(vis) {}
+        BasePPHloOpConverter(context, vis, type_converter) {}
 
   LogicalResult
   matchAndRewrite(stablehlo::PadOp op, stablehlo::PadOpAdaptor adaptor,
                   ConversionPatternRewriter &rewriter) const override {
-
-    auto result_vis = vis_.getValueVisibility(op.getResult());
-
-    Type result_type = HloToPPHloTypeConverter::getTypeWithVisibility(
-        this->getTypeConverter()->convertType(op.getType()), result_vis);
-
-    llvm::SmallVector<Value, 2> materialized_operands;
-    OpBuilder builder(op);
-    for (const auto &old_operand : llvm::enumerate(op.getOperands())) {
-      auto op_vis = vis_.getValueVisibility(old_operand.value());
-      if (op_vis != result_vis) {
-        Type new_type = HloToPPHloTypeConverter::getTypeWithVisibility(
-            adaptor.getOperands()[old_operand.index()].getType(), result_vis);
-        materialized_operands.emplace_back(
-            getTypeConverter()->materializeTargetConversion(
-                builder, op.getLoc(), new_type,
-                adaptor.getOperands()[old_operand.index()]));
-      } else {
-        materialized_operands.emplace_back(
-            adaptor.getOperands()[old_operand.index()]);
-      }
-    }
+    Type result_type = convertResultType(op.getResult());
 
     rewriter.replaceOpWithNewOp<pphlo::PadOp>(
-        op, result_type, materialized_operands, op->getAttrs());
+        op, result_type, materializeInputs(op, adaptor.getOperands()),
+        op->getAttrs());
 
     return success();
   }
@@ -1411,26 +1172,19 @@ public:
 
 template <>
 class HloToPPHloOpConverter<stablehlo::BitcastConvertOp>
-    : public OpConversionPattern<stablehlo::BitcastConvertOp> {
-private:
-  const ValueVisibilityMap &vis_;
-
+    : public OpConversionPattern<stablehlo::BitcastConvertOp>,
+      BasePPHloOpConverter {
 public:
   HloToPPHloOpConverter(TypeConverter &type_converter, MLIRContext *context,
                         const ValueVisibilityMap &vis)
       : OpConversionPattern<stablehlo::BitcastConvertOp>(type_converter,
                                                          context),
-        vis_(vis) {}
+        BasePPHloOpConverter(context, vis, type_converter) {}
 
   LogicalResult
   matchAndRewrite(stablehlo::BitcastConvertOp op,
                   stablehlo::BitcastConvertOpAdaptor adaptor,
                   ConversionPatternRewriter &rewriter) const override {
-    auto result_vis = vis_.getValueVisibility(op.getResult());
-
-    Type resultType = HloToPPHloTypeConverter::getTypeWithVisibility(
-        this->getTypeConverter()->convertType(op.getType()), result_vis);
-
     auto in_type_size = op->getOperandTypes()[0]
                             .dyn_cast<RankedTensorType>()
                             .getElementTypeBitWidth();
@@ -1443,7 +1197,8 @@ public:
                 "not supported");
 
     rewriter.replaceOpWithNewOp<pphlo::BitcastConvertOp>(
-        op, resultType, adaptor.getOperands()[0]);
+        op, convertResultType(op.getResult()),
+        materializeInputs(op, adaptor.getOperands()));
 
     return success();
   }
@@ -1451,38 +1206,23 @@ public:
 
 template <>
 class HloToPPHloOpConverter<stablehlo::ConcatenateOp>
-    : public OpConversionPattern<stablehlo::ConcatenateOp> {
-private:
-  const ValueVisibilityMap &vis_;
-
+    : public OpConversionPattern<stablehlo::ConcatenateOp>,
+      BasePPHloOpConverter {
 public:
   HloToPPHloOpConverter(TypeConverter &type_converter, MLIRContext *context,
                         const ValueVisibilityMap &vis)
       : OpConversionPattern<stablehlo::ConcatenateOp>(type_converter, context),
-        vis_(vis) {}
+        BasePPHloOpConverter(context, vis, type_converter) {}
 
   LogicalResult
   matchAndRewrite(stablehlo::ConcatenateOp op,
                   stablehlo::ConcatenateOpAdaptor adaptor,
                   ConversionPatternRewriter &rewriter) const override {
-    auto result_vis = vis_.getValueVisibility(op.getResult());
-
-    Type result_type = HloToPPHloTypeConverter::getTypeWithVisibility(
-        this->getTypeConverter()->convertType(op.getType()), result_vis);
-
-    OpBuilder builder(op);
-    SmallVector<Value, 2> materialized_operands;
-    for (size_t idx = 0; idx < adaptor.getOperands().size(); ++idx) {
-      auto new_type = HloToPPHloTypeConverter::getTypeWithVisibility(
-          this->getTypeConverter()->convertType(op->getOperand(idx).getType()),
-          result_vis);
-      materialized_operands.emplace_back(
-          this->getTypeConverter()->materializeTargetConversion(
-              builder, op.getLoc(), new_type, adaptor.getOperands()[idx]));
-    }
+    auto result_type = convertResultType(op.getResult());
 
     rewriter.replaceOpWithNewOp<pphlo::ConcatenateOp>(
-        op, result_type, materialized_operands, op.getDimension());
+        op, result_type, materializeInputs(op, adaptor.getOperands()),
+        op.getDimension());
 
     return success();
   }
@@ -1490,16 +1230,14 @@ public:
 
 template <>
 class HloToPPHloOpConverter<stablehlo::DynamicUpdateSliceOp>
-    : public OpConversionPattern<stablehlo::DynamicUpdateSliceOp> {
-private:
-  const ValueVisibilityMap &vis_;
-
+    : public OpConversionPattern<stablehlo::DynamicUpdateSliceOp>,
+      BasePPHloOpConverter {
 public:
   HloToPPHloOpConverter(TypeConverter &type_converter, MLIRContext *context,
                         const ValueVisibilityMap &vis)
       : OpConversionPattern<stablehlo::DynamicUpdateSliceOp>(type_converter,
                                                              context),
-        vis_(vis) {}
+        BasePPHloOpConverter(context, vis, type_converter) {}
 
   LogicalResult
   matchAndRewrite(stablehlo::DynamicUpdateSliceOp op,
@@ -1507,57 +1245,38 @@ public:
                   ConversionPatternRewriter &rewriter) const override {
     auto result_vis = vis_.getValueVisibility(op.getResult());
 
-    Type result_type = HloToPPHloTypeConverter::getTypeWithVisibility(
+    Type result_type = typetools_.getType(
         this->getTypeConverter()->convertType(op.getType()), result_vis);
 
-    OpBuilder builder(op);
-
-    auto materialize = [&](Value in) {
-      auto new_type = HloToPPHloTypeConverter::getTypeWithVisibility(
-          this->getTypeConverter()->convertType(in.getType()), result_vis);
-      return this->getTypeConverter()->materializeTargetConversion(
-          builder, op.getLoc(), new_type, in);
-    };
-
-    Value materized_operand = materialize(adaptor.getOperand());
-    Value materized_update = materialize(adaptor.getUpdate());
-
+    auto materialized = materializeInputs(op, op->getOperands());
     rewriter.replaceOpWithNewOp<pphlo::DynamicUpdateSliceOp>(
-        op, result_type, materized_operand, materized_update,
+        op, result_type, materialized[0], materialized[1],
         adaptor.getStartIndices());
 
     return success();
   }
 };
 
-struct CustomCallConverter
-    : public OpConversionPattern<stablehlo::CustomCallOp> {
-private:
-  const ValueVisibilityMap &vis_;
-
+template <>
+class HloToPPHloOpConverter<stablehlo::CustomCallOp>
+    : public OpConversionPattern<stablehlo::CustomCallOp>,
+      BasePPHloOpConverter {
 public:
-  CustomCallConverter(TypeConverter &type_converter, MLIRContext *context,
-                      const ValueVisibilityMap &vis)
+  HloToPPHloOpConverter(TypeConverter &type_converter, MLIRContext *context,
+                        const ValueVisibilityMap &vis)
       : OpConversionPattern<stablehlo::CustomCallOp>(type_converter, context),
-        vis_(vis) {}
+        BasePPHloOpConverter(context, vis, type_converter) {}
 
   LogicalResult
   matchAndRewrite(stablehlo::CustomCallOp op,
                   stablehlo::CustomCallOpAdaptor adaptor,
                   ConversionPatternRewriter &rewriter) const override {
 
-    llvm::SmallVector<Type> result_types;
-    for (int64_t idx = 0; idx < op->getNumResults(); ++idx) {
-      auto result_vis = vis_.getValueVisibility(op.getResult(idx));
-
-      result_types.emplace_back(HloToPPHloTypeConverter::getTypeWithVisibility(
-          this->getTypeConverter()->convertType(op.getResult(idx).getType()),
-          result_vis));
-    }
+    llvm::SmallVector<Type> result_types = convertResultType(op->getResults());
 
     rewriter.replaceOpWithNewOp<pphlo::CustomCallOp>(
-        op, result_types, adaptor.getOperands(), op.getCallTargetName(),
-        op.getHasSideEffect());
+        op, result_types, materializeInputs(op, adaptor.getOperands()),
+        op.getCallTargetName(), op.getHasSideEffect());
 
     return success();
   }
@@ -1572,67 +1291,71 @@ private:
                                       const ValueVisibilityMap &vis_map) {
     auto *context = patterns.getContext();
 
-    patterns
-        .insert<FuncOpConverter, ReturnOpConverter, HloCompToPPHloOpConverter,
-                CustomCallConverter, ReduceOpConverter, ReduceWindowOpConverter,
-                WhileOpConverter, IfOpConverter, CaseOpConverter,
-                HloToPPHloOpConverter<stablehlo::RealOp>,
-                HloToPPHloOpConverter<stablehlo::ImagOp>,
-                HloToPPHloOpConverter<stablehlo::ComplexOp>,
-                HloToPPHloOpConverter<stablehlo::AbsOp>,
-                HloToPPHloOpConverter<stablehlo::AddOp>,
-                HloToPPHloOpConverter<stablehlo::AndOp>,
-                HloToPPHloOpConverter<stablehlo::BitcastConvertOp>,
-                HloToPPHloOpConverter<stablehlo::BroadcastInDimOp>,
-                HloToPPHloOpConverter<stablehlo::CeilOp>,
-                HloToPPHloOpConverter<stablehlo::ClampOp>,
-                HloToPPHloOpConverter<stablehlo::ConcatenateOp>,
-                HloToPPHloOpConverter<stablehlo::ConstantOp>,
-                HloToPPHloOpConverter<stablehlo::ConvertOp>,
-                HloToPPHloOpConverter<stablehlo::ConvolutionOp>,
-                HloToPPHloOpConverter<stablehlo::DivOp>,
-                HloToPPHloOpConverter<stablehlo::DotOp>,
-                HloToPPHloOpConverter<stablehlo::DotGeneralOp>,
-                HloToPPHloOpConverter<stablehlo::DynamicSliceOp>,
-                HloToPPHloOpConverter<stablehlo::DynamicUpdateSliceOp>,
-                HloToPPHloOpConverter<stablehlo::ExpOp>,
-                HloToPPHloOpConverter<stablehlo::Expm1Op>,
-                HloToPPHloOpConverter<stablehlo::FloorOp>,
-                HloToPPHloOpConverter<stablehlo::IotaOp>,
-                HloToPPHloOpConverter<stablehlo::LogOp>,
-                HloToPPHloOpConverter<stablehlo::Log1pOp>,
-                HloToPPHloOpConverter<stablehlo::LogisticOp>,
-                HloToPPHloOpConverter<stablehlo::MaxOp>,
-                HloToPPHloOpConverter<stablehlo::MinOp>,
-                HloToPPHloOpConverter<stablehlo::MulOp>,
-                HloToPPHloOpConverter<stablehlo::NegOp>,
-                HloToPPHloOpConverter<stablehlo::NotOp>,
-                HloToPPHloOpConverter<stablehlo::OrOp>,
-                HloToPPHloOpConverter<stablehlo::PadOp>,
-                HloToPPHloOpConverter<stablehlo::PowOp>,
-                HloToPPHloOpConverter<stablehlo::RemOp>,
-                HloToPPHloOpConverter<stablehlo::ReshapeOp>,
-                HloToPPHloOpConverter<stablehlo::ReturnOp>,
-                HloToPPHloOpConverter<stablehlo::RoundOp>,
-                HloToPPHloOpConverter<stablehlo::ReverseOp>,
-                HloToPPHloOpConverter<stablehlo::RngOp>,
-                HloToPPHloOpConverter<stablehlo::SineOp>,
-                HloToPPHloOpConverter<stablehlo::CosineOp>,
-                HloToPPHloOpConverter<stablehlo::SelectOp>,
-                HloToPPHloOpConverter<stablehlo::SelectAndScatterOp>,
-                HloToPPHloOpConverter<stablehlo::ShiftLeftOp>,
-                HloToPPHloOpConverter<stablehlo::ShiftRightArithmeticOp>,
-                HloToPPHloOpConverter<stablehlo::ShiftRightLogicalOp>,
-                HloToPPHloOpConverter<stablehlo::SignOp>,
-                HloToPPHloOpConverter<stablehlo::SliceOp>,
-                HloToPPHloOpConverter<stablehlo::SortOp>,
-                HloToPPHloOpConverter<stablehlo::SqrtOp>,
-                HloToPPHloOpConverter<stablehlo::RsqrtOp>,
-                HloToPPHloOpConverter<stablehlo::SubtractOp>,
-                HloToPPHloOpConverter<stablehlo::TanhOp>,
-                HloToPPHloOpConverter<stablehlo::TransposeOp>,
-                HloToPPHloOpConverter<stablehlo::XorOp>>(converter, context,
-                                                         vis_map);
+    patterns.insert<FuncOpConverter, HloToPPHloOpConverter<func::ReturnOp>,
+                    HloToPPHloOpConverter<stablehlo::AbsOp>,
+                    HloToPPHloOpConverter<stablehlo::AddOp>,
+                    HloToPPHloOpConverter<stablehlo::AndOp>,
+                    HloToPPHloOpConverter<stablehlo::BitcastConvertOp>,
+                    HloToPPHloOpConverter<stablehlo::BroadcastInDimOp>,
+                    HloToPPHloOpConverter<stablehlo::CaseOp>,
+                    HloToPPHloOpConverter<stablehlo::CeilOp>,
+                    HloToPPHloOpConverter<stablehlo::ClampOp>,
+                    HloToPPHloOpConverter<stablehlo::CompareOp>,
+                    HloToPPHloOpConverter<stablehlo::ComplexOp>,
+                    HloToPPHloOpConverter<stablehlo::ConcatenateOp>,
+                    HloToPPHloOpConverter<stablehlo::ConstantOp>,
+                    HloToPPHloOpConverter<stablehlo::ConvertOp>,
+                    HloToPPHloOpConverter<stablehlo::ConvolutionOp>,
+                    HloToPPHloOpConverter<stablehlo::CosineOp>,
+                    HloToPPHloOpConverter<stablehlo::CustomCallOp>,
+                    HloToPPHloOpConverter<stablehlo::DivOp>,
+                    HloToPPHloOpConverter<stablehlo::DotOp>,
+                    HloToPPHloOpConverter<stablehlo::DotGeneralOp>,
+                    HloToPPHloOpConverter<stablehlo::DynamicSliceOp>,
+                    HloToPPHloOpConverter<stablehlo::DynamicUpdateSliceOp>,
+                    HloToPPHloOpConverter<stablehlo::ExpOp>,
+                    HloToPPHloOpConverter<stablehlo::Expm1Op>,
+                    HloToPPHloOpConverter<stablehlo::FloorOp>,
+                    HloToPPHloOpConverter<stablehlo::IfOp>,
+                    HloToPPHloOpConverter<stablehlo::ImagOp>,
+                    HloToPPHloOpConverter<stablehlo::IotaOp>,
+                    HloToPPHloOpConverter<stablehlo::LogOp>,
+                    HloToPPHloOpConverter<stablehlo::Log1pOp>,
+                    HloToPPHloOpConverter<stablehlo::LogisticOp>,
+                    HloToPPHloOpConverter<stablehlo::MaxOp>,
+                    HloToPPHloOpConverter<stablehlo::MinOp>,
+                    HloToPPHloOpConverter<stablehlo::MulOp>,
+                    HloToPPHloOpConverter<stablehlo::NegOp>,
+                    HloToPPHloOpConverter<stablehlo::NotOp>,
+                    HloToPPHloOpConverter<stablehlo::OrOp>,
+                    HloToPPHloOpConverter<stablehlo::PadOp>,
+                    HloToPPHloOpConverter<stablehlo::PowOp>,
+                    HloToPPHloOpConverter<stablehlo::ReduceOp>,
+                    HloToPPHloOpConverter<stablehlo::ReduceWindowOp>,
+                    HloToPPHloOpConverter<stablehlo::RemOp>,
+                    HloToPPHloOpConverter<stablehlo::ReverseOp>,
+                    HloToPPHloOpConverter<stablehlo::ReshapeOp>,
+                    HloToPPHloOpConverter<stablehlo::RealOp>,
+                    HloToPPHloOpConverter<stablehlo::ReturnOp>,
+                    HloToPPHloOpConverter<stablehlo::RngOp>,
+                    HloToPPHloOpConverter<stablehlo::RoundOp>,
+                    HloToPPHloOpConverter<stablehlo::RsqrtOp>,
+                    HloToPPHloOpConverter<stablehlo::SineOp>,
+                    HloToPPHloOpConverter<stablehlo::SelectOp>,
+                    HloToPPHloOpConverter<stablehlo::SelectAndScatterOp>,
+                    HloToPPHloOpConverter<stablehlo::ShiftLeftOp>,
+                    HloToPPHloOpConverter<stablehlo::ShiftRightArithmeticOp>,
+                    HloToPPHloOpConverter<stablehlo::ShiftRightLogicalOp>,
+                    HloToPPHloOpConverter<stablehlo::SignOp>,
+                    HloToPPHloOpConverter<stablehlo::SliceOp>,
+                    HloToPPHloOpConverter<stablehlo::SortOp>,
+                    HloToPPHloOpConverter<stablehlo::SqrtOp>,
+                    HloToPPHloOpConverter<stablehlo::SubtractOp>,
+                    HloToPPHloOpConverter<stablehlo::TanhOp>,
+                    HloToPPHloOpConverter<stablehlo::TransposeOp>,
+                    HloToPPHloOpConverter<stablehlo::WhileOp>,
+                    HloToPPHloOpConverter<stablehlo::XorOp>>(converter, context,
+                                                             vis_map);
   }
 
 public:
@@ -1640,34 +1363,66 @@ public:
   HloLegalizeToPPHlo() = default;
 
   void runOnOperation() override {
+    // Stage 1: Run a visibility discover pass to tag all Values' visibility
+    ValueVisibilityMap vis_map =
+        VisibilityDiscovery(input_vis_list_, getOperation());
+
     auto &context = getContext();
 
     RewritePatternSet patterns(&context);
     ConversionTarget target(context);
-    HloToPPHloTypeConverter converter;
+    HloToPPHloTypeConverter converter(&context);
 
     // To pphlo dialect, ModuleOp is also a thing that we won't handle.
     target.addLegalDialect<PPHloDialect>();
-    target.addLegalOp<mlir::ModuleOp>();
-    target.addLegalOp<mlir::UnrealizedConversionCastOp>();
+    target.addLegalOp<mlir::ModuleOp, mlir::UnrealizedConversionCastOp>();
     // After conversion, there shouldn't be any mhlo dialect thingy left.
     target.addIllegalDialect<stablehlo::StablehloDialect>();
+
+    TypeTools typetools(&getContext());
+    auto is_func_sig_legal = [&](FunctionType ftype) {
+      for (int64_t idx = 0; idx < ftype.getNumInputs(); ++idx) {
+        auto actual_vis = typetools.getTypeVisibility(ftype.getInput(idx));
+        if (actual_vis != vis_map.getInputsVisibility(idx)) {
+          return false;
+        }
+      }
+
+      for (int64_t idx = 0; idx < ftype.getNumResults(); ++idx) {
+        auto actual_vis = typetools.getTypeVisibility(ftype.getResult(idx));
+        if (actual_vis != vis_map.getOutputVisibility(idx)) {
+          return false;
+        }
+      }
+
+      return true;
+    };
 
     // FcnOp is only legitimate iff signature and body is legal
     target.addDynamicallyLegalOp<::mlir::func::FuncOp>(
         [&](::mlir::func::FuncOp op) {
-          return converter.isSignatureLegal(op.getFunctionType()) &&
+          return is_func_sig_legal(op.getFunctionType()) &&
+                 converter.isSignatureLegal(op.getFunctionType()) &&
                  converter.isLegal(&op.getBody());
         });
+
+    auto is_return_op_legal = [&](mlir::func::ReturnOp op) {
+      for (int64_t idx = 0; idx < op.getNumOperands(); ++idx) {
+        auto actual_vis =
+            typetools.getTypeVisibility(op.getOperandTypes()[idx]);
+        if (actual_vis != vis_map.getOutputVisibility(idx)) {
+          return false;
+        }
+      }
+      return true;
+    };
+
     // We keep mlir return op legal here.
     target.addDynamicallyLegalOp<mlir::func::ReturnOp>(
         [&](mlir::func::ReturnOp op) {
-          return converter.isLegal(op.getOperandTypes());
+          return converter.isLegal(op.getOperandTypes()) &&
+                 is_return_op_legal(op);
         });
-
-    // Stage 1: Run a visibility discover pass to tag all Values' visibility
-    ValueVisibilityMap vis_map =
-        VisibilityDiscovery(input_vis_list_, getOperation());
 
     // Stage 2: Do an actual dialect conversion.
     populateHLOToPPHloConversionPattern(converter, patterns, vis_map);
@@ -1684,4 +1439,4 @@ std::unique_ptr<OperationPass<ModuleOp>> createLegalizeToPPHloPass() {
   return std::make_unique<HloLegalizeToPPHlo>();
 }
 
-} // namespace mlir::pphlo
+} // namespace mlir::spu::pphlo

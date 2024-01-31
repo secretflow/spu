@@ -16,7 +16,6 @@ import os
 import sys
 
 import jax.numpy as jnp
-import jax.random as random
 import numpy as np
 from sklearn.decomposition import PCA as SklearnPCA
 
@@ -25,6 +24,8 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '../../../'))
 
 import sml.utils.emulation as emulation
 from sml.decomposition.pca import PCA
+
+np.random.seed(0)
 
 
 def emul_rsvdPCA(mode: emulation.Mode.MULTIPROCESS):
@@ -54,7 +55,7 @@ def emul_rsvdPCA(mode: emulation.Mode.MULTIPROCESS):
         emulator.up()
 
         # Create a simple dataset
-        X = random.normal(random.PRNGKey(0), (50, 20))
+        X = np.random.normal(size=(50, 20))
         X_spu = emulator.seal(X)
         n_components = 1
         n_oversamples = 10
@@ -62,8 +63,7 @@ def emul_rsvdPCA(mode: emulation.Mode.MULTIPROCESS):
         scale = (10000000, 10000)
 
         # Create random_matrix
-        random_state = np.random.RandomState(0)
-        random_matrix = random_state.normal(
+        random_matrix = np.random.normal(
             size=(X.shape[1], n_components + n_oversamples)
         )
         random_matrix_spu = emulator.seal(random_matrix)
@@ -72,7 +72,7 @@ def emul_rsvdPCA(mode: emulation.Mode.MULTIPROCESS):
             X_spu, random_matrix_spu, n_components, n_oversamples, max_power_iter, scale
         )
 
-        # The transformed data should have 2 dimensions
+        # The transformed data should have n_components dimensions
         assert result[0].shape[1] == n_components
 
         # The mean of the transformed data should be approximately 0

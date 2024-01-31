@@ -17,9 +17,9 @@
 #include "mlir/Transforms/GreedyPatternRewriteDriver.h"
 
 #include "libspu/compiler/passes/pass_details.h"
-#include "libspu/dialect/pphlo_ops.h"
+#include "libspu/dialect/pphlo/ops.h"
 
-namespace mlir::pphlo {
+namespace mlir::spu::pphlo {
 
 namespace {
 
@@ -40,15 +40,16 @@ private:
     auto lhs_vis = tools_.getTypeVisibility(op.getLhs().getType());
 
     auto secret_operand =
-        lhs_vis == Visibility::VIS_SECRET ? op.getLhs() : op.getRhs();
+        lhs_vis == Visibility::SECRET ? op.getLhs() : op.getRhs();
     auto public_operand =
-        lhs_vis == Visibility::VIS_SECRET ? op.getRhs() : op.getLhs();
+        lhs_vis == Visibility::SECRET ? op.getRhs() : op.getLhs();
 
     return {secret_operand, public_operand};
   }
 
 public:
-  explicit MulConverter(MLIRContext *context) : OpRewritePattern(context) {
+  explicit MulConverter(MLIRContext *context)
+      : OpRewritePattern(context), tools_(context) {
     setHasBoundedRewriteRecursion(false);
   }
 
@@ -101,4 +102,4 @@ std::unique_ptr<OperationPass<func::FuncOp>> createReduceTruncationPass() {
   return std::make_unique<ReduceTruncation>();
 }
 
-} // namespace mlir::pphlo
+} // namespace mlir::spu::pphlo

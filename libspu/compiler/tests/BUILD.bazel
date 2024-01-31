@@ -14,16 +14,6 @@
 
 load("@bazel_skylib//rules:expand_template.bzl", "expand_template")
 load("@llvm-project//llvm:lit_test.bzl", "lit_test", "package_path")
-load("//bazel:spu.bzl", "spu_cc_test")
-
-spu_cc_test(
-    name = "enum_conversion_test",
-    srcs = ["enum_conversion_test.cc"],
-    deps = [
-        "//libspu:spu_cc_proto",
-        "//libspu/dialect:pphlo_dialect",
-    ],
-)
 
 # Equivalent of configure_lit_site_cfg from CMakeLists.txt.
 expand_template(
@@ -50,6 +40,7 @@ expand_template(
             "lit.site.cfg.py",
             "//libspu/compiler/tools:mlir-pphlo-opt",
             "@llvm-project//llvm:FileCheck",
+            "@llvm-project//llvm:not",
         ] + glob(["%s.bc" % src]),
         tags = ["pphlo_tests"],
     )

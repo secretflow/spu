@@ -56,7 +56,7 @@ spu_cc_library(
         "//visibility:private",  # This target is a private detail of ops map
     ],
     deps = [
-        "//libspu/dialect:pphlo_dialect",
+        "//libspu/dialect/pphlo:dialect",
         "@stablehlo//:stablehlo_ops",
     ],
 )
@@ -67,7 +67,7 @@ spu_cc_library(
     hdrs = ["value_visibility_map.h"],
     deps = [
         "//libspu/core:prelude",
-        "//libspu/dialect:pphlo_dialect",
+        "//libspu/dialect/pphlo:dialect",
         "@llvm-project//mlir:IR",
     ],
 )
@@ -79,7 +79,7 @@ spu_cc_library(
     deps = [
         ":value_visibility_map",
         "//libspu/core:prelude",
-        "//libspu/dialect:pphlo_dialect",
+        "//libspu/dialect/pphlo:dialect",
         "@llvm-project//mlir:IR",
         "@stablehlo//:stablehlo_ops",
     ],
@@ -95,7 +95,7 @@ spu_cc_library(
         ":visibility_inference",
         "//libspu/compiler/common:compilation_context",
         "//libspu/core:prelude",
-        "//libspu/dialect:pphlo_dialect",
+        "//libspu/dialect/pphlo:dialect",
         "@llvm-project//mlir:IR",
         "@stablehlo//:stablehlo_ops",
     ],
@@ -107,7 +107,7 @@ spu_cc_library(
     hdrs = ["passes.h"],
     deps = [
         ":pass_details",
-        "//libspu/dialect:pphlo_dialect",
+        "//libspu/dialect/pphlo:dialect",
         "@llvm-project//mlir:IR",
         "@llvm-project//mlir:TransformUtils",
     ],
@@ -119,7 +119,7 @@ spu_cc_library(
     hdrs = ["passes.h"],
     deps = [
         ":pass_details",
-        "//libspu/dialect:pphlo_dialect",
+        "//libspu/dialect/pphlo:dialect",
         "@llvm-project//mlir:IR",
         "@llvm-project//mlir:TransformUtils",
     ],
@@ -131,7 +131,7 @@ spu_cc_library(
     hdrs = ["passes.h"],
     deps = [
         ":pass_details",
-        "//libspu/dialect:pphlo_dialect",
+        "//libspu/dialect/pphlo:dialect",
         "@llvm-project//mlir:IR",
         "@llvm-project//mlir:TransformUtils",
     ],
@@ -143,7 +143,7 @@ spu_cc_library(
     hdrs = ["passes.h"],
     deps = [
         ":pass_details",
-        "//libspu/dialect:pphlo_dialect",
+        "//libspu/dialect/pphlo:dialect",
         "@llvm-project//mlir:IR",
         "@llvm-project//mlir:TransformUtils",
     ],
@@ -155,7 +155,7 @@ spu_cc_library(
     hdrs = ["passes.h"],
     deps = [
         ":pass_details",
-        "//libspu/dialect:pphlo_dialect",
+        "//libspu/dialect/pphlo:dialect",
         "@llvm-project//mlir:IR",
         "@llvm-project//mlir:TransformUtils",
     ],
@@ -167,7 +167,7 @@ spu_cc_library(
     hdrs = ["passes.h"],
     deps = [
         ":pass_details",
-        "//libspu/dialect:pphlo_dialect",
+        "//libspu/dialect/pphlo:dialect",
         "@llvm-project//mlir:IR",
         "@llvm-project//mlir:TransformUtils",
     ],
@@ -179,7 +179,7 @@ spu_cc_library(
     hdrs = ["passes.h"],
     deps = [
         ":pass_details",
-        "//libspu/dialect:pphlo_dialect",
+        "//libspu/dialect/pphlo:dialect",
         "@llvm-project//mlir:IR",
         "@llvm-project//mlir:TransformUtils",
     ],
@@ -191,7 +191,7 @@ spu_cc_library(
     hdrs = ["passes.h"],
     deps = [
         ":pass_details",
-        "//libspu/dialect:pphlo_dialect",
+        "//libspu/dialect/pphlo:dialect",
         "@llvm-project//mlir:IR",
         "@llvm-project//mlir:TransformUtils",
     ],
@@ -203,7 +203,7 @@ spu_cc_library(
     hdrs = ["passes.h"],
     deps = [
         ":pass_details",
-        "//libspu/dialect:pphlo_dialect",
+        "//libspu/dialect/pphlo:dialect",
         "@llvm-project//mlir:IR",
         "@llvm-project//mlir:TransformUtils",
     ],
@@ -215,7 +215,7 @@ spu_cc_library(
     hdrs = ["passes.h"],
     deps = [
         ":pass_details",
-        "//libspu/dialect:pphlo_dialect",
+        "//libspu/dialect/pphlo:dialect",
         "@llvm-project//mlir:IR",
         "@llvm-project//mlir:TransformUtils",
     ],
@@ -227,7 +227,7 @@ spu_cc_library(
     hdrs = ["passes.h"],
     deps = [
         ":pass_details",
-        "//libspu/dialect:pphlo_dialect",
+        "//libspu/dialect/pphlo:dialect",
         "@llvm-project//mlir:IR",
         "@llvm-project//mlir:TransformUtils",
     ],
@@ -239,7 +239,7 @@ spu_cc_library(
     hdrs = ["passes.h"],
     deps = [
         ":pass_details",
-        "//libspu/dialect:pphlo_dialect",
+        "//libspu/dialect/pphlo:dialect",
         "@llvm-project//mlir:IR",
         "@llvm-project//mlir:TransformUtils",
     ],
@@ -251,7 +251,7 @@ spu_cc_library(
     hdrs = ["passes.h"],
     deps = [
         ":pass_details",
-        "//libspu/dialect:pphlo_dialect",
+        "//libspu/dialect/pphlo:dialect",
         "@llvm-project//mlir:IR",
         "@llvm-project//mlir:TransformUtils",
     ],
