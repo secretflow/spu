@@ -415,7 +415,7 @@ class KBinsDiscretizer():
         self.subsample = subsample
         self.random_state = random_state
     
-    def fit(self, X, sample_weight=None):
+    def fit(self, X, sample_weight=None, *, remove_bin=False, eliminate_ref=1e-3):
         ### subsample is not triggered by default
         if self.dtype in (jnp.float64, jnp.float32):
             output_dtype = self.dtype
@@ -436,8 +436,42 @@ class KBinsDiscretizer():
             pass
 
         if self.same_n_bins == True:
-            bin_func = lambda x: jnp.linspace(jnp.min(x), jnp.max(x), n_bins + 1)
-            bin_edges = jax.vmap(bin_func, in_axes=1, out_axes=1)(X)
+            if self.strategy == "uniform":
+                bin_func = lambda x: jnp.linspace(jnp.min(x), jnp.max(x), n_bins + 1)
+                bin_edges = jax.vmap(bin_func, in_axes=1, out_axes=1)(X)
+            if self.strategy == "quantile":
+                quantiles = jnp.linspace(0, 100, n_bins + 1)
+                if sample_weight is None:
+
+                    bin_func = lambda x: jnp.percentile(x, quantiles)
+                    
+                    bin_edges = jax.vmap(bin_func, in_axes=1, out_axes=1)(X)
+                else:
+                    ### not implemented yet **************************
+                    pass
+            if remove_bin == True and self.strategy in ("quantile", "kmeans"):
+                def eliminate_func(x):
+                    return jnp.concatenate((jnp.where(jnp.abs(x[1:] - x[:-1]) < eliminate_ref, x[1:], x[:-1]), jnp.array([x[-1]])))
+                bin_edges = jax.vmap(eliminate_func, in_axes=1, out_axes=1)(bin_edges)
+                # mask = jnp.ediff1d(bin_edges[jj], to_begin=jnp.inf) > 1e-8
+                # bin_edges[jj] = bin_edges[jj][mask]
+                # if len(bin_edges[jj]) - 1 != n_bins[jj]:
+                #     n_bins[jj] = len(bin_edges[jj]) - 1
+
+                # def eliminate_func(x, y):
+                #     mask = jnp.ediff1d(x, to_begin=jnp.inf) > 1e-8
+                #     x = x[mask]
+                #     if len(x) - 1 != y:
+                #         y = len(x) - 1
+                #     return x, y
+                # bin_edges, n_bins = jax.vmap(eliminate_func, in_axes=(1, 0), out_axes=(1, 0))(bin_edges, n_bins)
+
+                # def eliminate_func(x):
+                #     mask = jnp.ediff1d(x, to_begin=jnp.inf) > 1e-8
+                #     x = x[mask]
+                #     return x
+                # bin_edges = jax.vmap(eliminate_func, in_axes=1, out_axes=1)(bin_edges)
+                
         else:
             bin_edges = []
             for jj in range(n_features):
@@ -515,17 +549,21 @@ class KBinsDiscretizer():
         return self
 
     def transform(self, X):
-        # check input and attribute dtypes
         dtype = (jnp.float64, jnp.float32) if self.dtype is None else self.dtype
-        # Xt = self._validate_data(X, copy=True, dtype=dtype, reset=False)
-
         bin_edges = self.bin_edges_
 
-        # def compute_row(x, y):
-        #     jnp.searchsorted(x[1:-1], y, side="right")
-        compute_row = lambda x, y: jnp.searchsorted(x[1:-1], y, side="right")
+        def compute_row(bin, x):
+            def compute_element(x):
+                encoding = jnp.where(x <= bin[1:], 1, 0)
+                return self.n_bins - jnp.sum(encoding)
+            if self.strategy == "uniform":
+                return jax.vmap(compute_element)(x)
+            else:
+                return jnp.clip(jax.vmap(compute_element)(x), 0, self.n_bins - 1)
+
         compute_rows_vmap = jax.vmap(compute_row, in_axes=(1, 1), out_axes=1)(bin_edges, X)
         return compute_rows_vmap
+
         # for jj in range(Xt.shape[1]):
         #     Xt[:, jj] = np.searchsorted(bin_edges[jj][1:-1], Xt[:, jj], side="right")
 
@@ -542,4 +580,17 @@ class KBinsDiscretizer():
         #     # revert the initial dtype to avoid modifying self.
         #     self._encoder.dtype = dtype_init
         # return Xt_enc
+    
+    ### not defined yet **************************************************************88
+    def fit_transform(self):
+        pass
+
+    def inverse_transform(self, X):
+        bin_edges = self.bin_edges_
+        def bin_func(bin, x):
+            bin_edges = bin
+            bin_centers = (bin_edges[1:] + bin_edges[:-1]) * 0.5
+            return bin_centers[(x).astype(jnp.int64)]
+        return jax.vmap(bin_func, in_axes=(1, 1), out_axes=1)(bin_edges, X)
+
 

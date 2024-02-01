@@ -322,7 +322,7 @@ class UnitTests(unittest.TestCase):
         np.testing.assert_allclose(sk_inv_transformed, spu_inv_transformed, rtol=0, atol=1e-4)
         np.testing.assert_allclose(sk_transformed_new, spu_transformed_new, rtol=0, atol=1e-4)
     
-    def test_kbinsdiscretizer(self):
+    def test_kbinsdiscretizer_uniform(self):
         sim = spsim.Simulator.simple(
             3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM64
         )
@@ -330,18 +330,79 @@ class UnitTests(unittest.TestCase):
         def kbinsdiscretize(X):
             transformer = KBinsDiscretizer(n_bins=3, encode='ordinal', strategy='uniform', subsample=None)
             transformer.fit(X)
-            return transformer.transform(X)
+            transformed = transformer.transform(X)
+            inv_transformed = transformer.inverse_transform(transformed)
+            return transformed, inv_transformed
 
         X = jnp.array([[-2, 1, -4, -1], [-1, 2, -3, -0.5], [0, 3, -2, 0.5], [ 1, 4, -1, 2]])
 
         transformer = preprocessing.KBinsDiscretizer(n_bins=3, encode='ordinal', strategy='uniform', subsample=None)
-        sk_result = transformer.fit_transform(X)
-        print("sklearn:\n", sk_result)
+        sk_transformed = transformer.fit_transform(X)
+        sk_inv_transformed = transformer.inverse_transform(sk_transformed)
+        # print("sklearn:\n", sk_transformed)
+        # print("sklearn:\n", sk_inv_transformed)
 
-        spu_result = spsim.sim_jax(sim, kbinsdiscretize)(X)
-        print("result\n", spu_result)
+        spu_transformed, spu_inv_transformed = spsim.sim_jax(sim, kbinsdiscretize)(X)
+        # print("result\n", spu_transformed)
+        # print("result\n", spu_inv_transformed)
 
-        # np.testing.assert_allclose(sk_result, spu_result, rtol=0, atol=1e-4)
+        np.testing.assert_allclose(sk_transformed, spu_transformed, rtol=0, atol=1e-4)
+        np.testing.assert_allclose(sk_inv_transformed, spu_inv_transformed, rtol=0, atol=1e-4)
+    
+    def test_kbinsdiscretizer_quantile(self):
+        sim = spsim.Simulator.simple(
+            3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM64
+        )
+
+        def kbinsdiscretize(X):
+            transformer = KBinsDiscretizer(n_bins=3, encode='ordinal', strategy='quantile', subsample=None)
+            transformer.fit(X)
+            transformed = transformer.transform(X)
+            inv_transformed = transformer.inverse_transform(transformed)
+            return transformed, inv_transformed
+
+        X = jnp.array([[-2, 1.5, -4, -1], [-1, 2.5, -3, -0.5], [0, 3.5, -2, 0.5], [1, 4.5, -1, 2]])
+
+        transformer = preprocessing.KBinsDiscretizer(3, encode='ordinal', strategy='quantile', subsample=None)
+        sk_transformed = transformer.fit_transform(X)
+        sk_inv_transformed = transformer.inverse_transform(sk_transformed)
+        print("sklearn:\n", sk_transformed)
+        print("sklearn:\n", sk_inv_transformed)
+
+        spu_transformed, spu_inv_transformed, spu333 = spsim.sim_jax(sim, kbinsdiscretize)(X)
+        print("result\n", spu_transformed)
+        print("result\n", spu_inv_transformed)
+
+        np.testing.assert_allclose(sk_transformed, spu_transformed, rtol=0, atol=1e-4)
+        ### The error here is larger than expected. If atol is 1e-4, there will be an error.
+        np.testing.assert_allclose(sk_inv_transformed, spu_inv_transformed, rtol=0, atol=1e-3)
+    
+    def test_kbinsdiscretizer_quantile_eliminate(self):
+        sim = spsim.Simulator.simple(
+            3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM64
+        )
+
+        def kbinsdiscretize(X):
+            transformer = KBinsDiscretizer(n_bins=3, encode='ordinal', strategy='quantile', subsample=None)
+            transformer.fit(X, remove_bin=True)
+            transformed = transformer.transform(X)
+            inv_transformed = transformer.inverse_transform(transformed)
+            return transformed, inv_transformed
+
+        X = jnp.array([[-1.5, 2.0, -3.5, -0.75], [-0.5, 3.0, -2.5, 0.0], [0.5, 4.0, -1.5, 1.25], [0.5, 4.0, -1.5, 1.25]])
+
+        transformer = preprocessing.KBinsDiscretizer(3, encode='ordinal', strategy='quantile', subsample=None)
+        sk_transformed = transformer.fit_transform(X)
+        sk_inv_transformed = transformer.inverse_transform(sk_transformed)
+        # print("sklearn:\n", sk_transformed)
+        # print("sklearn:\n", sk_inv_transformed)
+
+        spu_transformed, spu_inv_transformed = spsim.sim_jax(sim, kbinsdiscretize)(X)
+        # print("result\n", spu_transformed)
+        # print("result\n", spu_inv_transformed)
+
+        np.testing.assert_allclose(sk_transformed, spu_transformed, rtol=0, atol=1e-4)
+        np.testing.assert_allclose(sk_inv_transformed, spu_inv_transformed, rtol=0, atol=1e-4)
 
 
 

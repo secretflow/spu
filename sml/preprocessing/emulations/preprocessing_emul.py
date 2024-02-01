@@ -17,7 +17,7 @@ import numpy as np
 from sklearn import preprocessing
 
 import sml.utils.emulation as emulation
-from sml.preprocessing.preprocessing import Binarizer, LabelBinarizer, Normalizer, MinMaxScaler, MaxAbsScaler
+from sml.preprocessing.preprocessing import Binarizer, LabelBinarizer, Normalizer, MinMaxScaler, MaxAbsScaler, KBinsDiscretizer
 
 
 def emul_labelbinarizer():
@@ -287,6 +287,24 @@ def emul_maxabsscaler_zero_maxabs():
     np.testing.assert_allclose(sk_inv_transformed, spu_inv_transformed, rtol=0, atol=1e-4)
     np.testing.assert_allclose(sk_transformed_new, spu_transformed_new, rtol=0, atol=1e-4)
 
+def emul_kbinsdiscretizer_uniform():
+    def kbinsdiscretize(X):
+        transformer = KBinsDiscretizer(n_bins=3, encode='ordinal', strategy='uniform', subsample=None)
+        transformer.fit(X)
+        return transformer.transform(X)
+
+    X = jnp.array([[-2, 1, -4, -1], [-1, 2, -3, -0.5], [0, 3, -2, 0.5], [ 1, 4, -1, 2]])
+
+    transformer = preprocessing.KBinsDiscretizer(n_bins=3, encode='ordinal', strategy='uniform', subsample=None)
+    sk_result = transformer.fit_transform(X)
+    # print("sklearn:\n", sk_result)
+
+    X = emulator.seal(X)
+    spu_result = emulator.run(kbinsdiscretize)(X)
+    # print("result\n", spu_result)
+
+    np.testing.assert_allclose(sk_result, spu_result, rtol=0, atol=1e-4)
+
 if __name__ == "__main__":
     try:
         # bandwidth and latency only work for docker mode
@@ -307,5 +325,6 @@ if __name__ == "__main__":
         # emul_minmaxscaler_zero_variance()
         # emul_maxabsscaler()
         # emul_maxabsscaler_zero_maxabs()
+        emul_kbinsdiscretizer_uniform()
     finally:
         emulator.down()
