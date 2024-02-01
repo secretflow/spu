@@ -387,6 +387,9 @@ message CompilerOptions {
 
   // Enable optimize x/bcast(y) -> x * bcast(1/y)
   bool enable_optimize_denominator_with_broadcast = 16;
+
+  // Disable deallocation insertion pass
+  bool disable_deallocation_insertion = 17;
 }
 
 // The executable format accepted by SPU runtime.

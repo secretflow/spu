@@ -25,6 +25,7 @@
 #include "libspu/kernel/hal/public_helper.h"
 #include "libspu/kernel/hal/ring.h"
 #include "libspu/kernel/hal/shape_ops.h"
+#include "libspu/kernel/hal/utils.h"
 
 #include "libspu/spu.pb.h"
 
@@ -64,22 +65,12 @@ Value _permute_1d(SPUContext *, const Value &x, const Index &indices) {
   return Value(x.data().linear_gather(indices), x.dtype());
 }
 
-// FIXME: move to mpc layer
-// Vectorized Prefix Sum
-// Ref: https://en.algorithmica.org/hpc/algorithms/prefix/
 Value _prefix_sum(SPUContext *ctx, const Value &x) {
   SPU_ENFORCE(x.shape().ndim() == 2U && x.shape()[0] == 1,
               "x should be 1-row matrix");
-
-  auto padding0 = _p2s(ctx, _constant(ctx, 0U, {1, 1}));
-  auto x_t = x;
-  for (int64_t shift = 1; shift < x.numel(); shift *= 2) {
-    auto x_slice = slice(ctx, x_t, {0, 0}, {1, x.numel() - shift}, {});
-    auto x_rshift = pad(ctx, x_slice, padding0, {0, shift}, {0, 0}, {0, 0});
-    x_t = _add(ctx, x_t, x_rshift);
-  }
-
-  return x_t;
+  auto x_v = hal::reshape(ctx, x, {x.numel()});
+  auto ret = hal::associative_scan(hal::_add, ctx, x_v);
+  return hal::reshape(ctx, ret, {1, x.numel()});
 }
 
 void _cmp_swap(SPUContext *ctx, const CompFn &comparator_body,

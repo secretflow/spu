@@ -185,7 +185,7 @@ class TruncAPr : public TruncAKernel {
 
   Kind kind() const override { return Kind::Static; }
   // offline + online
-  ce::CExpr latency() const override { return ce::Const(5); }
+  ce::CExpr latency() const override { return ce::Const(4); }
 
   ce::CExpr comm() const override { return ce::K() * ce::Const(5); }
 

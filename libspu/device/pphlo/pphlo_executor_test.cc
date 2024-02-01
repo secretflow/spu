@@ -12,22 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "libspu/device/pphlo/pphlo_executor.h"
-
 #include <array>
 #include <cstddef>
 #include <exception>
-#include <memory>
 #include <string>
 #include <vector>
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
-#include "xtensor/xrandom.hpp"
+#include "xtensor/xarray.hpp"
 
 #include "libspu/device/pphlo/pphlo_executor_test_runner.h"
-#include "libspu/device/symbol_table.h"
-#include "libspu/mpc/ref2k/ref2k.h"
 
 namespace spu::device::pphlo::test {
 
@@ -42,7 +37,7 @@ TEST_P(ExecutorTest, Basic) {
 
   r.run(R"(
 func.func @main(%arg0: tensor<i32>, %arg1: tensor<i32>) -> (tensor<i32>) {
-  %0 = "pphlo.add"(%arg0, %arg1) : (tensor<i32>, tensor<i32>) -> tensor<i32>
+  %0 = pphlo.add %arg0, %arg1 : tensor<i32>
   return %0 : tensor<i32>
 })");
 
@@ -57,10 +52,10 @@ TEST_P(ExecutorTest, BoolSplatConstant) {
 
   r.run(R"(
 func.func @main() -> (tensor<i32>) {
-  %0 = "pphlo.constant"() {value = dense<true> : tensor<i1>} : () ->tensor<i1>
-  %1 = "pphlo.constant"() {value = dense<1> : tensor<i32>} : () ->tensor<i32>
-  %2 = "pphlo.constant"() {value = dense<0> : tensor<i32>} : () ->tensor<i32>
-  %3 = "pphlo.select"(%0, %1, %2) : (tensor<i1>, tensor<i32>, tensor<i32>) -> tensor<i32>
+  %0 = pphlo.constant dense<true> : tensor<i1>
+  %1 = pphlo.constant dense<1> : tensor<i32>
+  %2 = pphlo.constant dense<0> : tensor<i32>
+  %3 = pphlo.select %0, %1, %2 : (tensor<i1>, tensor<i32>, tensor<i32>) -> tensor<i32>
   return %3 : tensor<i32>
 })");
 
@@ -74,7 +69,7 @@ TEST_P(ExecutorTest, EmptyConstant) {
 
   r.run(R"(
 func.func @main() -> tensor<0xf32> {
-  %0 = "pphlo.constant"() {value = dense<> : tensor<0xf32>} : () -> tensor<0xf32>
+  %0 = pphlo.constant dense<> : tensor<0xf32>
   return %0 : tensor<0xf32>
 })");
 
@@ -89,10 +84,10 @@ TEST_P(ExecutorTest, BoolConstant) {
 
   r.run(R"(
 func.func @main() -> (tensor<2xi32>) {
-  %0 = "pphlo.constant"() {value = dense<[true,false]> : tensor<2xi1>} : () ->tensor<2xi1>
-  %1 = "pphlo.constant"() {value = dense<1> : tensor<2xi32>} : () ->tensor<2xi32>
-  %2 = "pphlo.constant"() {value = dense<0> : tensor<2xi32>} : () ->tensor<2xi32>
-  %3 = "pphlo.select"(%0, %1, %2) : (tensor<2xi1>, tensor<2xi32>, tensor<2xi32>) -> tensor<2xi32>
+  %0 = pphlo.constant dense<[true,false]> : tensor<2xi1>
+  %1 = pphlo.constant dense<1> : tensor<2xi32>
+  %2 = pphlo.constant dense<0> : tensor<2xi32>
+  %3 = pphlo.select %0, %1, %2 : (tensor<2xi1>, tensor<2xi32>, tensor<2xi32>) -> tensor<2xi32>
   return %3 : tensor<2xi32>
 })");
 
@@ -108,7 +103,7 @@ TEST_P(ExecutorTest, ComplexConstant) {
 
   r.run(R"(
 func.func @main() -> (tensor<2xcomplex<f32>>) {
-  %0 = "pphlo.constant"() {value = dense<[(1.5, 2.5), (3.5, 4.5)]> : tensor<2xcomplex<f32>>} : () -> tensor<2xcomplex<f32>>
+  %0 = pphlo.constant dense<[(1.5, 2.5), (3.5, 4.5)]> : tensor<2xcomplex<f32>>
   return %0 : tensor<2xcomplex<f32>>
 })");
 
@@ -122,12 +117,12 @@ TEST_P(ExecutorTest, InvalidIR) {
 
   ASSERT_THROW(r.run(R"(
 func.func @main() -> tensor<i32> {
-  %2 = "pphlo.constant"() {value = dense<[0x41DA6E5887800000, 0x41C94E3940000000, 0x41C4BD2007000000, 0x41DC95133AC00000, 0x41D1650CEC000000, 0x41C9DF42E7800000, 0x41D46C43B6800000, 0x41C467EE0E800000, 0x41DC705F14400000]> : tensor<9xf64>} : () -> tensor<9xf64>
-  %3 = "pphlo.floor"(%2) : (tensor<9xf64>) -> tensor<9xf64>
-  %9 = "pphlo.concatenate"(%3) {dimension = 0 : i64} : (tensor<9xf64>) -> tensor<9xf64>
-  %10 = "pphlo.broadcast"(%9) {broadcast_dimensions = array<i64: 13>} : (tensor<9xf64>) -> tensor<9xf64>
-  %51 = "pphlo.constant"() {value = dense<5> : tensor<i32>} : () -> tensor<i32>
-  "pphlo.return"(%51) : (tensor<i32>) -> ()
+  %2 = pphlo.constant dense<[0x41DA6E5887800000, 0x41C94E3940000000, 0x41C4BD2007000000, 0x41DC95133AC00000, 0x41D1650CEC000000, 0x41C9DF42E7800000, 0x41D46C43B6800000, 0x41C467EE0E800000, 0x41DC705F14400000]> : tensor<9xf64>
+  %3 = pphlo.floor %2 : tensor<9xf64>
+  %9 = pphlo.concatenate %3 dim = 0 : (tensor<9xf64>) -> tensor<9xf64>
+  %10 = pphlo.broadcast %9, dims = [13] : (tensor<9xf64>) -> tensor<9xf64>
+  %51 = pphlo.constant dense<5> : tensor<i32>
+  pphlo.return %51 : tensor<i32>
 })"),
                std::exception);
 }
@@ -139,8 +134,8 @@ TEST_P(ExecutorTest, WithConst) {
 
   r.run(R"(
 func.func @main(%arg0: tensor<2x2xi32>) -> (tensor<2x2xi32>) {
-    %0 = "pphlo.constant"() {value = dense<[[1,2],[3,4]]> : tensor<2x2xi32>} : () -> tensor<2x2xi32>
-    %1 = "pphlo.add"(%arg0, %0) : (tensor<2x2xi32>, tensor<2x2xi32>) -> tensor<2x2xi32>
+    %0 = pphlo.constant dense<[[1,2],[3,4]]> : tensor<2x2xi32>
+    %1 = pphlo.add %arg0, %0 : tensor<2x2xi32>
     return %1 : tensor<2x2xi32>
 })");
 
@@ -156,7 +151,7 @@ TEST_P(ExecutorTest, RowConcat) {
 
   r.run(R"(
 func.func @main(%arg0: tensor<2x3xi32>, %arg1: tensor<2x3xi32>) -> (tensor<4x3xi32>) {
-  %0 = "pphlo.concatenate"(%arg0, %arg1) {dimension = 0 : i64} : (tensor<2x3xi32>, tensor<2x3xi32>) -> tensor<4x3xi32>
+  %0 = pphlo.concatenate %arg0, %arg1 dim = 0 : (tensor<2x3xi32>, tensor<2x3xi32>) -> tensor<4x3xi32>
   return %0 : tensor<4x3xi32>
 })");
 
@@ -172,7 +167,7 @@ TEST_P(ExecutorTest, ColConcat) {
 
   r.run(R"(
 func.func @main(%arg0: tensor<2x3xi32>, %arg1: tensor<2x3xi32>) -> (tensor<2x6xi32>) {
-  %0 = "pphlo.concatenate"(%arg0, %arg1) {dimension = 1 : i64} : (tensor<2x3xi32>, tensor<2x3xi32>) -> tensor<2x6xi32>
+  %0 = pphlo.concatenate %arg0, %arg1 dim = 1 : (tensor<2x3xi32>, tensor<2x3xi32>) -> tensor<2x6xi32>
   return %0 : tensor<2x6xi32>
 }
   )");
@@ -188,7 +183,7 @@ TEST_P(ExecutorTest, VariadicConcat) {
 
   r.run(R"(
 func.func @main(%arg0: tensor<3xi32>) -> (tensor<9xi32>) {
-  %0 = "pphlo.concatenate"(%arg0, %arg0, %arg0) {dimension = 0 : i64} : (tensor<3xi32>, tensor<3xi32>, tensor<3xi32>) -> tensor<9xi32>
+  %0 = pphlo.concatenate %arg0, %arg0, %arg0 dim = 0 : (tensor<3xi32>, tensor<3xi32>, tensor<3xi32>) -> tensor<9xi32>
   return %0 : tensor<9xi32>
 })");
 
@@ -203,7 +198,7 @@ TEST_P(ExecutorTest, Slice) {
 
   r.run(R"(
 func.func @main(%arg0: tensor<4x3xi32>) -> (tensor<2x2xi32>) {
-  %0 = "pphlo.slice"(%arg0) {limit_indices = array<i64: 4, 3>, start_indices = array<i64: 2, 1>, strides = array<i64: 1, 1>} : (tensor<4x3xi32>) -> tensor<2x2xi32>
+  %0 = pphlo.slice %arg0 [2:1:4, 1:1:3] : (tensor<4x3xi32>) -> tensor<2x2xi32>
   return %0 : tensor<2x2xi32>
 })");
 
@@ -222,7 +217,7 @@ TEST_P(ExecutorTest, SliceStride) {
 
   r.run(R"(
 func.func @main(%arg0: tensor<4x6xi32>) -> (tensor<2x3xi32>) {
-  %0 = "pphlo.slice"(%arg0) {limit_indices = array<i64: 4, 6>, start_indices = array<i64: 0, 0>, strides = array<i64: 2, 2>} : (tensor<4x6xi32>) -> tensor<2x3xi32>
+  %0 = pphlo.slice %arg0 [0:2:4, 0:2:6] : (tensor<4x6xi32>) -> tensor<2x3xi32>
   return %0 : tensor<2x3xi32>
 })");
 
@@ -239,7 +234,7 @@ TEST_P(ExecutorTest, Reshape) {
   // Reshape to 2x6
   r.run(R"(
 func.func @main(%arg0: tensor<4x3xi32>) -> (tensor<2x6xi32>) {
-  %0 = "pphlo.reshape"(%arg0) : (tensor<4x3xi32>) -> tensor<2x6xi32>
+  %0 = pphlo.reshape %arg0 : (tensor<4x3xi32>) -> tensor<2x6xi32>
   return %0 : tensor<2x6xi32>
 }
   )");
@@ -257,16 +252,15 @@ TEST_P(ExecutorTest, While) {
   // while(x < y) { x = x + 1; }
   r.run(R"(
 func.func @main(%arg0: tensor<i32>, %arg1: tensor<i32>) -> tensor<i32> {
-  %0, %1 = "pphlo.while"(%arg0, %arg1) ( {
-  ^bb0(%arg2: tensor<i32>, %arg3: tensor<i32>):  // no predecessors
-    %2 = "pphlo.less"(%arg2, %arg3) : (tensor<i32>, tensor<i32>) -> tensor<i1>
-    "pphlo.return"(%2) : (tensor<i1>) -> ()
-  },  {
-  ^bb0(%arg2: tensor<i32>, %arg3: tensor<i32>):  // no predecessors
-    %2 = "pphlo.constant"() {value = dense<1> : tensor<i32>} : () -> tensor<i32>
-    %3 = "pphlo.add"(%arg2, %2) {name = "compare.0"} : (tensor<i32>, tensor<i32>) -> tensor<i32>
-    "pphlo.return"(%3, %arg3) : (tensor<i32>, tensor<i32>) -> ()
-  }) : (tensor<i32>, tensor<i32>) -> (tensor<i32>, tensor<i32>)
+  %0, %1 = pphlo.while(%arg2 = %arg0, %arg3 = %arg1): tensor<i32>, tensor<i32>
+  cond {
+    %2 = pphlo.less %arg2, %arg3 : (tensor<i32>, tensor<i32>) -> tensor<i1>
+    pphlo.return %2 : tensor<i1>
+  } do {
+    %2 = pphlo.constant dense<1> : tensor<i32>
+    %3 = pphlo.add %arg2, %2 : tensor<i32>
+    pphlo.return %3, %arg3 : tensor<i32>, tensor<i32>
+  }
   return %0 : tensor<i32>
 })");
 
@@ -282,12 +276,8 @@ TEST_P(ExecutorTest, Reduce1D) {
 
   r.run(R"(
 func.func @main(%arg0: tensor<10xi32>) -> (tensor<i32>) {
-  %0 = "pphlo.constant"() {value = dense<0> : tensor<i32>} : () -> tensor<i32>
-  %1 = "pphlo.reduce"(%arg0, %0) ( {
-        ^bb0(%arg1: tensor<i32>, %arg2: tensor<i32>): // no predecessors
-         %2 = "pphlo.add"(%arg1, %arg2) : (tensor<i32>, tensor<i32>) -> tensor<i32>
-         "pphlo.return"(%2) : (tensor<i32>) -> ()
-  }) {dimensions = array<i64: 0>} : (tensor<10xi32>, tensor<i32>) -> tensor<i32>
+  %0 = pphlo.constant dense<0> : tensor<i32>
+  %1 = pphlo.reduce(%arg0 init: %0) applies pphlo.add across dimensions = [0] : (tensor<10xi32>, tensor<i32>) -> tensor<i32>
   return %1 :  tensor<i32>
 })");
 
@@ -304,12 +294,8 @@ TEST_P(ExecutorTest, Reduce2D1) {
 
   r.run(R"(
 func.func @main(%arg0: tensor<2x3xi32>) -> (tensor<2xi32>) {
-  %0 = "pphlo.constant"() {value = dense<0> : tensor<i32>} : () -> tensor<i32>
-  %1 = "pphlo.reduce"(%arg0, %0) ( {
-        ^bb0(%arg1: tensor<i32>, %arg2: tensor<i32>): // no predecessors
-         %2 = "pphlo.add"(%arg1, %arg2) : (tensor<i32>, tensor<i32>) -> tensor<i32>
-         "pphlo.return"(%2) : (tensor<i32>) -> ()
-  }) {dimensions = array<i64: 1>} : (tensor<2x3xi32>, tensor<i32>) -> tensor<2xi32>
+  %0 = pphlo.constant dense<0> : tensor<i32>
+  %1 = pphlo.reduce(%arg0 init: %0) applies pphlo.add across dimensions = [1] : (tensor<2x3xi32>, tensor<i32>) -> tensor<2xi32>
   return %1 :  tensor<2xi32>
 })");
 
@@ -326,12 +312,8 @@ TEST_P(ExecutorTest, Reduce2D2) {
 
   r.run(R"(
 func.func @main(%arg0: tensor<2x3xi32>) -> (tensor<3xi32>) {
-  %0 = "pphlo.constant"() {value = dense<0> : tensor<i32>} : () -> tensor<i32>
-  %1 = "pphlo.reduce"(%arg0, %0) ( {
-        ^bb0(%arg1: tensor<i32>, %arg2: tensor<i32>): // no predecessors
-         %2 = "pphlo.add"(%arg1, %arg2) : (tensor<i32>, tensor<i32>) -> tensor<i32>
-         "pphlo.return"(%2) : (tensor<i32>) -> ()
-  }) {dimensions = array<i64: 0>} : (tensor<2x3xi32>, tensor<i32>) -> tensor<3xi32>
+  %0 = pphlo.constant dense<0> : tensor<i32>
+  %1 = pphlo.reduce(%arg0 init: %0) applies pphlo.add across dimensions = [0] : (tensor<2x3xi32>, tensor<i32>) -> tensor<3xi32>
   return %1 :  tensor<3xi32>
 })");
 
@@ -348,13 +330,13 @@ TEST_P(ExecutorTest, VReduce) {
 
   r.run(R"(
 func.func @main(%arg0: tensor<10xi32>) -> (tensor<i32>, tensor<i32>) {
-  %0 = "pphlo.constant"() {value = dense<0> : tensor<i32>} : () -> tensor<i32>
-  %1:2 = "pphlo.reduce"(%arg0, %arg0, %0, %0) ( {
-        ^bb0(%arg1: tensor<i32>, %arg2: tensor<i32>, %arg3: tensor<i32>, %arg4: tensor<i32>): // no predecessors
-         %2 = "pphlo.add"(%arg1, %arg3) : (tensor<i32>, tensor<i32>) -> tensor<i32>
-         %3 = "pphlo.maximum"(%arg2, %arg4) : (tensor<i32>, tensor<i32>) -> tensor<i32>
-         "pphlo.return"(%2, %3) : (tensor<i32>, tensor<i32>) -> ()
-  }) {dimensions = array<i64: 0>} : (tensor<10xi32>, tensor<10xi32>, tensor<i32>, tensor<i32>) -> (tensor<i32>, tensor<i32>)
+  %0 = pphlo.constant dense<0> : tensor<i32>
+  %1:2 = pphlo.reduce(%arg0 init: %0), (%arg0 init: %0) across dimensions = [0]: (tensor<10xi32>, tensor<10xi32>, tensor<i32>, tensor<i32>) -> (tensor<i32>, tensor<i32>)
+          reducer(%arg1: tensor<i32>, %arg3: tensor<i32>) (%arg2: tensor<i32>, %arg4: tensor<i32>) {
+            %2 = pphlo.add %arg1, %arg3 : tensor<i32>
+            %3 = pphlo.maximum %arg2, %arg4 : tensor<i32>
+            pphlo.return %2, %3 : tensor<i32>, tensor<i32>
+          }
   return %1#0, %1#1 : tensor<i32>, tensor<i32>
 })",
         2);
@@ -375,12 +357,8 @@ TEST_P(ExecutorTest, MaxReduce) {
   r.run(R"(
 func.func @main(%arg0: tensor<1x10xf32>) -> (tensor<1xf32>) {
   // Initial value is -inf
-  %0 = "pphlo.constant"() {value = dense<0xFF800000> : tensor<f32>} : () -> tensor<f32>
-  %1 = "pphlo.reduce"(%arg0, %0) ( {
-  ^bb0(%arg1: tensor<f32>, %arg2: tensor<f32>):  // no predecessors
-    %2 = "pphlo.maximum"(%arg1, %arg2) : (tensor<f32>, tensor<f32>) -> tensor<f32>
-    "pphlo.return"(%2) : (tensor<f32>) -> ()
-  }) {dimensions = array<i64: 1>} : (tensor<1x10xf32>, tensor<f32>) -> tensor<1xf32>
+  %0 = pphlo.constant dense<0xFF800000> : tensor<f32>
+  %1 = pphlo.reduce(%arg0 init: %0) applies pphlo.maximum across dimensions = [1] : (tensor<1x10xf32>, tensor<f32>) -> tensor<1xf32>
   return %1 :  tensor<1xf32>
 })");
 
@@ -399,14 +377,10 @@ TEST_P(ExecutorTest, ReduceMultiDims) {
 
   r.run(R"(
 func.func @main(%arg0: tensor<2x3x4x!pphlo.secret<f32>>, %arg1: tensor<2x3x4x!pphlo.secret<f32>>) -> (tensor<!pphlo.secret<i1>>) {
-  %0 = "pphlo.constant"() {value = dense<true> : tensor<i1>} : () -> tensor<i1>
-  %1 = "pphlo.equal"(%arg0, %arg1) : (tensor<2x3x4x!pphlo.secret<f32>>, tensor<2x3x4x!pphlo.secret<f32>>) -> tensor<2x3x4x!pphlo.secret<i1>>
-  %2 = "pphlo.convert"(%0) : (tensor<i1>) -> tensor<!pphlo.secret<i1>>
-  %3 = "pphlo.reduce"(%1, %2) ({
-  ^bb0(%arg2: tensor<!pphlo.secret<i1>>, %arg3: tensor<!pphlo.secret<i1>>):
-    %4 = "pphlo.and"(%arg2, %arg3) : (tensor<!pphlo.secret<i1>>, tensor<!pphlo.secret<i1>>) -> tensor<!pphlo.secret<i1>>
-    "pphlo.return"(%4) : (tensor<!pphlo.secret<i1>>) -> ()
-  }) {dimensions = array<i64: 0, 1, 2>} : (tensor<2x3x4x!pphlo.secret<i1>>, tensor<!pphlo.secret<i1>>) -> tensor<!pphlo.secret<i1>>
+  %0 = pphlo.constant dense<true> : tensor<i1>
+  %1 = pphlo.equal %arg0, %arg1 : (tensor<2x3x4x!pphlo.secret<f32>>, tensor<2x3x4x!pphlo.secret<f32>>) -> tensor<2x3x4x!pphlo.secret<i1>>
+  %2 = pphlo.convert %0 : (tensor<i1>) -> tensor<!pphlo.secret<i1>>
+  %3 = pphlo.reduce(%1 init: %2) applies pphlo.and across dimensions = [0,1,2] : (tensor<2x3x4x!pphlo.secret<i1>>, tensor<!pphlo.secret<i1>>) -> tensor<!pphlo.secret<i1>>
   return %3 :  tensor<!pphlo.secret<i1>>
 })");
 
@@ -426,12 +400,17 @@ TEST_P(ExecutorTest, ReduceWindow) {
 
   r.run(R"(
 func.func @main(%arg0: tensor<4x6xi32>) -> (tensor<2x2xi32>) {
-  %0 = "pphlo.constant"() {value = dense<0> : tensor<i32>} : () -> tensor<i32>
+  %0 = pphlo.constant dense<0> : tensor<i32>
   %1 = "pphlo.reduce_window"(%arg0, %0) ( {
     ^bb0(%arg1: tensor<i32>, %arg2: tensor<i32>):  // no predecessors
-      %2 = "pphlo.add"(%arg1, %arg2) : (tensor<i32>, tensor<i32>) -> tensor<i32>
-      "pphlo.return"(%2) : (tensor<i32>) -> ()
-    }) {base_dilations = array<i64: 1, 1>, window_dilations = array<i64: 1, 1>, window_dimensions = array<i64: 2,3>, window_strides = array<i64: 2,3>} : (tensor<4x6xi32>, tensor<i32>) -> tensor<2x2xi32>
+      %2 = pphlo.add %arg1, %arg2 : tensor<i32>
+      pphlo.return %2 : tensor<i32>
+    }) {
+      base_dilations = array<i64: 1, 1>,
+      window_dilations = array<i64: 1, 1>,
+      window_dimensions = array<i64: 2,3>,
+      window_strides = array<i64: 2,3>
+    } : (tensor<4x6xi32>, tensor<i32>) -> tensor<2x2xi32>
 
   return %1 :  tensor<2x2xi32>
 })");
@@ -449,11 +428,11 @@ TEST_P(ExecutorTest, ReduceWindowStableHloTest) {
 
   r.run(r.compileMHlo(R"(
 func.func @main(%arg0: tensor<3x2xi32>) -> (tensor<2x2xi32>) {
-  %0 = "stablehlo.constant"() {value = dense<0> : tensor<i32>} : () -> tensor<i32>
+  %0 = stablehlo.constant dense<0> : tensor<i32>
   %1 = "stablehlo.reduce_window"(%arg0, %0) ( {
     ^bb0(%arg1: tensor<i32>, %arg2: tensor<i32>):  // no predecessors
-      %2 = "stablehlo.maximum"(%arg1, %arg2) : (tensor<i32>, tensor<i32>) -> tensor<i32>
-      "stablehlo.return"(%2) : (tensor<i32>) -> ()
+      %2 = stablehlo.maximum %arg1, %arg2 : tensor<i32>
+      stablehlo.return %2 : tensor<i32>
     }) {
       base_dilations = dense<[2, 1]> : tensor<2xi64>,
       padding = dense<[[2, 1], [0, 0]]> : tensor<2x2xi64>,
@@ -478,11 +457,11 @@ TEST_P(ExecutorTest, ReduceWindowStableHloTest2) {
 
   r.run(r.compileMHlo(R"(
 func.func @main(%arg0: tensor<3x2xi32>) -> (tensor<1x2xi32>) {
-  %0 = "stablehlo.constant"() {value = dense<0> : tensor<i32>} : () -> tensor<i32>
+  %0 = stablehlo.constant dense<0> : tensor<i32>
   %1 = "stablehlo.reduce_window"(%arg0, %0) ( {
     ^bb0(%arg1: tensor<i32>, %arg2: tensor<i32>):  // no predecessors
-      %2 = "stablehlo.maximum"(%arg1, %arg2) : (tensor<i32>, tensor<i32>) -> tensor<i32>
-      "stablehlo.return"(%2) : (tensor<i32>) -> ()
+      %2 = stablehlo.maximum %arg1, %arg2 : tensor<i32>
+      stablehlo.return %2 : tensor<i32>
     }) {
       base_dilations = dense<[2, 1]> : tensor<2xi64>,
       padding = dense<[[2, 1], [0, 0]]> : tensor<2x2xi64>,
@@ -510,12 +489,17 @@ TEST_P(ExecutorTest, ReduceWindowDefaultStrides) {
 
   r.run(R"(
 func.func @main(%arg0: tensor<4x6xi32>) -> (tensor<3x4xi32>) {
-  %0 = "pphlo.constant"() {value = dense<0> : tensor<i32>} : () -> tensor<i32>
+  %0 = pphlo.constant dense<0> : tensor<i32>
   %1 = "pphlo.reduce_window"(%arg0, %0) ( {
     ^bb0(%arg1: tensor<i32>, %arg2: tensor<i32>):  // no predecessors
-      %2 = "pphlo.maximum"(%arg1, %arg2) : (tensor<i32>, tensor<i32>) -> tensor<i32>
-      "pphlo.return"(%2) : (tensor<i32>) -> ()
-    }) {base_dilations = array<i64: 1, 1>, window_dilations = array<i64: 1, 1>, window_dimensions = array<i64: 2,3>, window_strides = array<i64: 1, 1>} : (tensor<4x6xi32>, tensor<i32>) -> tensor<3x4xi32>
+      %2 = pphlo.maximum %arg1, %arg2 : tensor<i32>
+      pphlo.return %2 : tensor<i32>
+    }) {
+      base_dilations = array<i64: 1, 1>,
+      window_dilations = array<i64: 1, 1>,
+      window_dimensions = array<i64: 2,3>,
+      window_strides = array<i64: 1, 1>
+    } : (tensor<4x6xi32>, tensor<i32>) -> tensor<3x4xi32>
 
   return %1 :  tensor<3x4xi32>
 })");
@@ -535,12 +519,17 @@ TEST_P(ExecutorTest, ReduceWindowIotaWindowDilation) {
 
   r.run(R"(
 func.func @main(%arg0: tensor<4x4xi32>) -> (tensor<2x2xi32>) {
-  %0 = "pphlo.constant"() {value = dense<0> : tensor<i32>} : () -> tensor<i32>
+  %0 = pphlo.constant dense<0> : tensor<i32>
   %1 = "pphlo.reduce_window"(%arg0, %0) ( {
     ^bb0(%arg1: tensor<i32>, %arg2: tensor<i32>):  // no predecessors
-      %2 = "pphlo.maximum"(%arg1, %arg2) : (tensor<i32>, tensor<i32>) -> tensor<i32>
-      "pphlo.return"(%2) : (tensor<i32>) -> ()
-    }) {base_dilations = array<i64: 1, 1>, window_dilations = array<i64: 2, 2>, window_dimensions = array<i64: 2, 2>, window_strides = array<i64: 1, 1>} : (tensor<4x4xi32>, tensor<i32>) -> tensor<2x2xi32>
+      %2 = pphlo.maximum %arg1, %arg2 : tensor<i32>
+      pphlo.return %2 : tensor<i32>
+    }) {
+      base_dilations = array<i64: 1, 1>,
+      window_dilations = array<i64: 2, 2>,
+      window_dimensions = array<i64: 2, 2>,
+      window_strides = array<i64: 1, 1>
+    } : (tensor<4x4xi32>, tensor<i32>) -> tensor<2x2xi32>
 
   return %1 :  tensor<2x2xi32>
 })");
@@ -559,12 +548,17 @@ TEST_P(ExecutorTest, ReduceWindowIotaStrideWindowDilation) {
 
   r.run(R"(
 func.func @main(%arg0: tensor<4x4xi32>) -> (tensor<1x1xi32>) {
-  %0 = "pphlo.constant"() {value = dense<0> : tensor<i32>} : () -> tensor<i32>
+  %0 = pphlo.constant dense<0> : tensor<i32>
   %1 = "pphlo.reduce_window"(%arg0, %0) ( {
     ^bb0(%arg1: tensor<i32>, %arg2: tensor<i32>):  // no predecessors
-      %2 = "pphlo.maximum"(%arg1, %arg2) : (tensor<i32>, tensor<i32>) -> tensor<i32>
-      "pphlo.return"(%2) : (tensor<i32>) -> ()
-    }) {base_dilations = array<i64: 1, 1>, window_dilations = array<i64: 2, 2>, window_dimensions = array<i64: 2, 2>, window_strides = array<i64: 2, 2>} : (tensor<4x4xi32>, tensor<i32>) -> tensor<1x1xi32>
+      %2 = pphlo.maximum %arg1, %arg2 : tensor<i32>
+      pphlo.return %2 : tensor<i32>
+    }) {
+      base_dilations = array<i64: 1, 1>,
+      window_dilations = array<i64: 2, 2>,
+      window_dimensions = array<i64: 2, 2>,
+      window_strides = array<i64: 2, 2>
+    } : (tensor<4x4xi32>, tensor<i32>) -> tensor<1x1xi32>
 
   return %1 : tensor<1x1xi32>
 })");
@@ -583,11 +577,11 @@ TEST_P(ExecutorTest, ReduceWindowMaxIotaBaseDilation) {
 
   r.run(r.compileMHlo(R"(
 func.func @main(%arg0: tensor<4x4xi32>) -> (tensor<6x6xi32>) {
-  %0 = "stablehlo.constant"() {value = dense<0> : tensor<i32>} : () -> tensor<i32>
+  %0 = stablehlo.constant dense<0> : tensor<i32>
   %1 = "stablehlo.reduce_window"(%arg0, %0) ( {
     ^bb0(%arg1: tensor<i32>, %arg2: tensor<i32>):  // no predecessors
-      %2 = "stablehlo.maximum"(%arg1, %arg2) : (tensor<i32>, tensor<i32>) -> tensor<i32>
-      "stablehlo.return"(%2) : (tensor<i32>) -> ()
+      %2 = stablehlo.maximum %arg1, %arg2 : tensor<i32>
+      stablehlo.return %2 : tensor<i32>
     }) {
       base_dilations = dense<2> : tensor<2xi64>,
       padding = dense<0> : tensor<2x2xi64>,
@@ -615,12 +609,18 @@ TEST_P(ExecutorTest, ReduceWindowMaxIotaStrideBaseDilation) {
 
   auto compiled = r.compileMHlo(R"(
 func.func @main(%arg0: tensor<4x4xi32>) -> (tensor<3x3xi32>) {
-  %0 = "stablehlo.constant"() {value = dense<0> : tensor<i32>} : () -> tensor<i32>
+  %0 = stablehlo.constant dense<0> : tensor<i32>
   %1 = "stablehlo.reduce_window"(%arg0, %0) ( {
     ^bb0(%arg1: tensor<i32>, %arg2: tensor<i32>):  // no predecessors
-      %2 = "stablehlo.maximum"(%arg1, %arg2) : (tensor<i32>, tensor<i32>) -> tensor<i32>
-      "stablehlo.return"(%2) : (tensor<i32>) -> ()
-    }) {base_dilations = dense<2> : tensor<2xi64>, padding = dense<0> : tensor<2x2xi64>, window_dilations = dense<1> : tensor<2xi64>, window_dimensions = dense<2> : tensor<2xi64>, window_strides = dense<2> : tensor<2xi64>} : (tensor<4x4xi32>, tensor<i32>) -> tensor<3x3xi32>
+      %2 = stablehlo.maximum %arg1, %arg2 : tensor<i32>
+      stablehlo.return %2 : tensor<i32>
+    }) {
+      base_dilations = dense<2> : tensor<2xi64>,
+      padding = dense<0> : tensor<2x2xi64>,
+      window_dilations = dense<1> : tensor<2xi64>,
+      window_dimensions = dense<2> : tensor<2xi64>,
+      window_strides = dense<2> : tensor<2xi64>
+    } : (tensor<4x4xi32>, tensor<i32>) -> tensor<3x3xi32>
 
   return %1 :  tensor<3x3xi32>
 })",
@@ -642,12 +642,18 @@ TEST_P(ExecutorTest, ReduceWindowMaxIotaStrideBothDilation) {
 
   auto compiled = r.compileMHlo(R"(
 func.func @main(%arg0: tensor<4x4xi32>) -> (tensor<3x3xi32>) {
-  %0 = "stablehlo.constant"() {value = dense<0> : tensor<i32>} : () -> tensor<i32>
+  %0 = stablehlo.constant dense<0> : tensor<i32>
   %1 = "stablehlo.reduce_window"(%arg0, %0) ( {
     ^bb0(%arg1: tensor<i32>, %arg2: tensor<i32>):  // no predecessors
-      %2 = "stablehlo.maximum"(%arg1, %arg2) : (tensor<i32>, tensor<i32>) -> tensor<i32>
-      "stablehlo.return"(%2) : (tensor<i32>) -> ()
-    }) {base_dilations = dense<2> : tensor<2xi64>, padding = dense<0> : tensor<2x2xi64>, window_dilations = dense<2> : tensor<2xi64>, window_dimensions = dense<2> : tensor<2xi64>, window_strides = dense<2> : tensor<2xi64>} : (tensor<4x4xi32>, tensor<i32>) -> tensor<3x3xi32>
+      %2 = stablehlo.maximum %arg1, %arg2 : tensor<i32>
+      stablehlo.return %2 : tensor<i32>
+    }) {
+      base_dilations = dense<2> : tensor<2xi64>,
+      padding = dense<0> : tensor<2x2xi64>,
+      window_dilations = dense<2> : tensor<2xi64>,
+      window_dimensions = dense<2> : tensor<2xi64>,
+      window_strides = dense<2> : tensor<2xi64>
+    } : (tensor<4x4xi32>, tensor<i32>) -> tensor<3x3xi32>
 
   return %1 :  tensor<3x3xi32>
 })",
@@ -669,12 +675,18 @@ TEST_P(ExecutorTest, ReduceWindowMaxIotaPaddingStrideBaseDilation) {
 
   auto compiled = r.compileMHlo(R"(
 func.func @main(%arg0: tensor<4x4xi32>) -> (tensor<3x3xi32>) {
-  %0 = "stablehlo.constant"() {value = dense<0> : tensor<i32>} : () -> tensor<i32>
+  %0 = stablehlo.constant dense<0> : tensor<i32>
   %1 = "stablehlo.reduce_window"(%arg0, %0) ( {
     ^bb0(%arg1: tensor<i32>, %arg2: tensor<i32>):  // no predecessors
-      %2 = "stablehlo.maximum"(%arg1, %arg2) : (tensor<i32>, tensor<i32>) -> tensor<i32>
-      "stablehlo.return"(%2) : (tensor<i32>) -> ()
-    }) {base_dilations = dense<2> : tensor<2xi64>, padding = dense<1> : tensor<2x2xi64>, window_dilations = dense<1> : tensor<2xi64>, window_dimensions = dense<3> : tensor<2xi64>, window_strides = dense<3> : tensor<2xi64>} : (tensor<4x4xi32>, tensor<i32>) -> tensor<3x3xi32>
+      %2 = stablehlo.maximum %arg1, %arg2 : tensor<i32>
+      stablehlo.return %2 : tensor<i32>
+    }) {
+      base_dilations = dense<2> : tensor<2xi64>,
+      padding = dense<1> : tensor<2x2xi64>,
+      window_dilations = dense<1> : tensor<2xi64>,
+      window_dimensions = dense<3> : tensor<2xi64>,
+      window_strides = dense<3> : tensor<2xi64>
+    } : (tensor<4x4xi32>, tensor<i32>) -> tensor<3x3xi32>
 
   return %1 : tensor<3x3xi32>
 })",
@@ -689,14 +701,14 @@ func.func @main(%arg0: tensor<4x4xi32>) -> (tensor<3x3xi32>) {
 TEST_P(ExecutorTest, If) {
   const auto *prog = R"(
  func.func @main(%arg0: tensor<f32>) -> tensor<f32> {
-  %0 = "pphlo.constant"() {value = dense<1.000000e+01> : tensor<f32>} : () -> tensor<f32>
-  %1 = "pphlo.less"(%arg0, %0) : (tensor<f32>, tensor<f32>) -> tensor<i1>
+  %0 = pphlo.constant dense<1.000000e+01> : tensor<f32>
+  %1 = pphlo.less %arg0, %0 : (tensor<f32>, tensor<f32>) -> tensor<i1>
   %2 = "pphlo.if"(%1) ( {
-    %3 = "pphlo.multiply"(%arg0, %arg0) : (tensor<f32>, tensor<f32>) -> tensor<f32>
-    "pphlo.return"(%3) : (tensor<f32>) -> ()
+    %3 = pphlo.multiply %arg0, %arg0 : tensor<f32>
+    pphlo.return %3 : tensor<f32>
   },  {
-    %3 = "pphlo.add"(%arg0, %arg0) : (tensor<f32>, tensor<f32>) -> tensor<f32>
-    "pphlo.return"(%3) : (tensor<f32>) -> ()
+    %3 = pphlo.add %arg0, %arg0 : tensor<f32>
+    pphlo.return %3 : tensor<f32>
   }) : (tensor<i1>) -> tensor<f32>
   return %2 : tensor<f32>
 }
@@ -729,15 +741,15 @@ TEST_P(ExecutorTest, If) {
 TEST_P(ExecutorTest, SecretControlFlow) {
   const auto *prog = R"(
 func.func @main(%arg0: tensor<f32>) -> tensor<!pphlo.secret<f32>> {
-  %0 = "pphlo.constant"() {value = dense<1.000000e+01> : tensor<f32>} : () -> tensor<f32>
-  %1 = "pphlo.convert"(%arg0) : (tensor<f32>) -> tensor<!pphlo.secret<f32>>
-  %2 = "pphlo.less"(%1, %0) : (tensor<!pphlo.secret<f32>>, tensor<f32>) -> tensor<!pphlo.secret<i1>>
+  %0 = pphlo.constant dense<1.000000e+01> : tensor<f32>
+  %1 = pphlo.convert %arg0 : (tensor<f32>) -> tensor<!pphlo.secret<f32>>
+  %2 = pphlo.less %1, %0 : (tensor<!pphlo.secret<f32>>, tensor<f32>) -> tensor<!pphlo.secret<i1>>
   %3 = "pphlo.if"(%2) ( {
-    %4 = "pphlo.multiply"(%arg0, %arg0) : (tensor<f32>, tensor<f32>) -> tensor<f32>
-    "pphlo.return"(%4) : (tensor<f32>) -> ()
+    %4 = pphlo.multiply %arg0, %arg0 : tensor<f32>
+    pphlo.return %4 : tensor<f32>
   },  {
-    %4 = "pphlo.add"(%arg0, %arg0) : (tensor<f32>, tensor<f32>) -> tensor<f32>
-    "pphlo.return"(%4) : (tensor<f32>) -> ()
+    %4 = pphlo.add %arg0, %arg0 : tensor<f32>
+    pphlo.return %4 : tensor<f32>
   }) : (tensor<!pphlo.secret<i1>>) -> tensor<!pphlo.secret<f32>>
   return %3 : tensor<!pphlo.secret<f32>>
 }
@@ -759,7 +771,7 @@ TEST_P(ExecutorTest, Iota1D) {
 
   r.run(R"(
 func.func @main() -> (tensor<4xi32>) {
-    %0 = "pphlo.iota"() {iota_dimension = 0 : i64} : () -> tensor<4xi32>
+    %0 = pphlo.iota dim = 0 : tensor<4xi32>
     return %0 : tensor<4xi32>
 })");
 
@@ -773,7 +785,7 @@ TEST_P(ExecutorTest, Iota2D) {
 
   r.run(R"(
 func.func @main() -> (tensor<4x2xi32>) {
-    %0 = "pphlo.iota"() {iota_dimension = 1 : i64} : () -> tensor<4x2xi32>
+    %0 = pphlo.iota dim = 1 : tensor<4x2xi32>
     return %0 : tensor<4x2xi32>
 })");
 
@@ -787,7 +799,7 @@ TEST_P(ExecutorTest, IotaComplex) {
 
   r.run(R"(
 func.func @main() -> (tensor<4xcomplex<f32>>) {
-    %0 = "pphlo.iota"() {iota_dimension = 0 : i64} : () -> tensor<4xcomplex<f32>>
+    %0 = pphlo.iota dim = 0 : tensor<4xcomplex<f32>>
     return %0 : tensor<4xcomplex<f32>>
 })");
 
@@ -803,7 +815,7 @@ TEST_P(ExecutorTest, NonComplexReal) {
 
   r.run(R"(
 func.func @main(%arg0:tensor<4xf32>) -> (tensor<4xf32>) {
-    %0 = "pphlo.real"(%arg0) : (tensor<4xf32>) -> tensor<4xf32>
+    %0 = pphlo.real %arg0 : tensor<4xf32>
     return %0 : tensor<4xf32>
 })");
 
@@ -819,7 +831,7 @@ TEST_P(ExecutorTest, NonComplexImag) {
 
   r.run(R"(
 func.func @main(%arg0:tensor<4xf32>) -> (tensor<4xf32>) {
-    %0 = "pphlo.imag"(%arg0) : (tensor<4xf32>) -> tensor<4xf32>
+    %0 = pphlo.imag %arg0 : tensor<4xf32>
     return %0 : tensor<4xf32>
 })");
 
@@ -1062,7 +1074,7 @@ TEST_P(ExecutorTest, ShiftLeft) {
 
   r.run(R"(
 func.func @main(%arg0: tensor<2xi32>, %arg1: tensor<2xi32>) -> (tensor<2xi32>) {
-    %0 = "pphlo.shift_left"(%arg0, %arg1) : (tensor<2xi32>, tensor<2xi32>) -> tensor<2xi32>
+    %0 = pphlo.shift_left %arg0, %arg1 : tensor<2xi32>
     return %0 : tensor<2xi32>
 })");
 
@@ -1082,7 +1094,7 @@ TEST_P(ExecutorTest, RightShiftLogical) {
 
   r.run(R"(
 func.func @main(%arg0: tensor<2xi32>, %arg1: tensor<2xi32>) -> (tensor<2xi32>) {
-    %0 = "pphlo.shift_right_logical"(%arg0, %arg1) : (tensor<2xi32>, tensor<2xi32>) -> tensor<2xi32>
+    %0 = pphlo.shift_right_logical %arg0, %arg1 : tensor<2xi32>
     return %0 : tensor<2xi32>
 })");
 
@@ -1102,8 +1114,8 @@ TEST_P(ExecutorTest, Maximum) {
 
   r.run(R"(
 func.func @main(%arg0: tensor<i32>) -> (tensor<i32>) {
-  %0 = "pphlo.constant"() {value = dense<-2147483648> : tensor<i32>} : () -> tensor<i32>
-  %1 = "pphlo.maximum"(%0, %arg0) : (tensor<i32>, tensor<i32>) -> tensor<i32>
+  %0 = pphlo.constant dense<-2147483648> : tensor<i32>
+  %1 = pphlo.maximum %0, %arg0 : tensor<i32>
   return %1 :  tensor<i32>
 })");
 
@@ -1123,9 +1135,9 @@ TEST_P(ExecutorTest, Minimum) {
 
   r.run(R"(
 func.func @main(%arg0: tensor<i32>) -> (tensor<i32>) {
-  %0 = "pphlo.constant"() {value = dense<2147483647> : tensor<i32>} : () -> tensor<i32>
-  %1 = "pphlo.minimum"(%0, %arg0) : (tensor<i32>, tensor<i32>) -> tensor<i32>
-  return %1 :  tensor<i32>
+  %0 = pphlo.constant dense<2147483647> : tensor<i32>
+  %1 = pphlo.minimum %0, %arg0 : tensor<i32>
+  return %1 : tensor<i32>
 })");
 
   int expected = 10;
@@ -1143,7 +1155,7 @@ TEST_P(ExecutorTest, DynamicSlice1D) {
 
   r.run(R"(
 func.func @main(%arg0: tensor<5xi32>, %arg1: tensor<i32>) -> tensor<2xi32> {
-  %0 = "pphlo.dynamic-slice"(%arg0, %arg1) {slice_sizes = array<i64: 2>} : (tensor<5xi32>, tensor<i32>) -> tensor<2xi32>
+  %0 = pphlo.dynamic_slice %arg0, %arg1 sizes =[2] : (tensor<5xi32>, tensor<i32>) -> tensor<2xi32>
   return %0 : tensor<2xi32>
 })");
 
@@ -1166,11 +1178,61 @@ TEST_P(ExecutorTest, DynamicSlice2D) {
 
   r.run(R"(
 func.func @main(%arg0: tensor<4x3xf32>, %arg1: tensor<i32>, %arg2: tensor<i32>) -> tensor<2x2xf32> {
-  %0 = "pphlo.dynamic-slice"(%arg0, %arg1, %arg2) {slice_sizes = array<i64: 2, 2>} : (tensor<4x3xf32>, tensor<i32>, tensor<i32>) -> tensor<2x2xf32>
+  %0 = pphlo.dynamic_slice %arg0, %arg1, %arg2 sizes = [2, 2] : (tensor<4x3xf32>, tensor<i32>, tensor<i32>) -> tensor<2x2xf32>
   return %0 : tensor<2x2xf32>
 })");
 
   xt::xarray<float> expected = {{7.0, 8.0}, {10.0, 11.0}};
+  r.verifyOutput(expected.data());
+}
+
+TEST_P(ExecutorTest, DynamicSlice3D) {
+  Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
+           std::get<2>(GetParam()));
+
+  xt::xarray<int32_t> op = {{{0, 1, 9},  //
+                             {3, 4, 9},
+                             {6, 7, 9},
+                             {9, 10, 9}}};
+  r.addInput(op);
+
+  r.addInput(0);
+  r.addInput(1, VIS_SECRET);
+  r.addInput(0);
+
+  r.run(R"(
+func.func @main(%arg0: tensor<1x4x3xi32>, %arg1: tensor<i32>, %arg2: tensor<!pphlo.secret<i32>>, %arg3: tensor<i32>) -> tensor<1x1x2x!pphlo.secret<i32>> {
+  %0 = pphlo.dynamic_slice %arg0, %arg1, %arg2, %arg3 sizes = [1, 1, 2]
+        : (tensor<1x4x3xi32>, tensor<i32>, tensor<!pphlo.secret<i32>>, tensor<i32>) -> tensor<1x1x2x!pphlo.secret<i32>>
+  return %0: tensor<1x1x2x!pphlo.secret<i32>>
+})");
+
+  xt::xarray<int32_t> expected = {{{3, 4}}};
+  r.verifyOutput(expected.data());
+}
+
+TEST_P(ExecutorTest, DynamicSlice3D_1) {
+  Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
+           std::get<2>(GetParam()));
+
+  xt::xarray<int32_t> op = {{{0, 1, 9},  //
+                             {3, 4, 9},
+                             {6, 7, 9},
+                             {9, 10, 9}}};
+  r.addInput(op);
+
+  r.addInput(0);
+  r.addInput(1, VIS_SECRET);
+  r.addInput(2);
+
+  r.run(R"(
+func.func @main(%arg0: tensor<1x4x3xi32>, %arg1: tensor<i32>, %arg2: tensor<!pphlo.secret<i32>>, %arg3: tensor<i32>) -> tensor<1x1x2x!pphlo.secret<i32>> {
+  %0 = pphlo.dynamic_slice %arg0, %arg1, %arg2, %arg3 sizes = [1, 1, 2]
+        : (tensor<1x4x3xi32>, tensor<i32>, tensor<!pphlo.secret<i32>>, tensor<i32>) -> tensor<1x1x2x!pphlo.secret<i32>>
+  return %0: tensor<1x1x2x!pphlo.secret<i32>>
+})");
+
+  xt::xarray<int32_t> expected = {{{4, 9}}};
   r.verifyOutput(expected.data());
 }
 
@@ -1188,7 +1250,7 @@ TEST_P(ExecutorTest, DynamicUpdateSlice1D) {
 
   r.run(R"(
 func.func @main(%arg0: tensor<5xi32>, %arg1: tensor<2xi32>, %arg2: tensor<i32>) -> tensor<5xi32> {
-  %0 = "pphlo.dynamic-update-slice"(%arg0, %arg1, %arg2) : (tensor<5xi32>, tensor<2xi32>, tensor<i32>) -> tensor<5xi32>
+  %0 = pphlo.dynamic_update_slice %arg0, %arg1, %arg2 : (tensor<5xi32>, tensor<2xi32>, tensor<i32>) -> tensor<5xi32>
   return %0 : tensor<5xi32>
 })");
 
@@ -1216,7 +1278,7 @@ TEST_P(ExecutorTest, DynamicUpdateSlice2D) {
 
   r.run(R"(
 func.func @main(%arg0: tensor<4x3xf32>, %arg1: tensor<3x2xf32>, %arg2: tensor<i32>, %arg3: tensor<i32>) -> tensor<4x3xf32> {
-  %0 = "pphlo.dynamic-update-slice"(%arg0, %arg1, %arg2, %arg3) : (tensor<4x3xf32>, tensor<3x2xf32>, tensor<i32>, tensor<i32>) -> tensor<4x3xf32>
+  %0 = pphlo.dynamic_update_slice %arg0, %arg1, %arg2, %arg3 : (tensor<4x3xf32>, tensor<3x2xf32>, tensor<i32>, tensor<i32>) -> tensor<4x3xf32>
   return %0 : tensor<4x3xf32>
 })");
 
@@ -1241,8 +1303,8 @@ TEST_P(ExecutorTest, Sort1D) {
 func.func @main(%arg0: tensor<4xf32>) -> tensor<4xf32> {
     %0 = "pphlo.sort"(%arg0) ( {
     ^bb0(%arg1: tensor<f32>, %arg2: tensor<f32>):  // no predecessors
-      %1 = "pphlo.less"(%arg1, %arg2) : (tensor<f32>, tensor<f32>) -> tensor<i1>
-      "pphlo.return"(%1) : (tensor<i1>) -> ()
+      %1 = pphlo.less %arg1, %arg2 : (tensor<f32>, tensor<f32>) -> tensor<i1>
+      pphlo.return %1 : tensor<i1>
     }) {dimension = 0 : i64, is_stable = true} : (tensor<4xf32>) -> (tensor<4xf32>)
     return %0 : tensor<4xf32>
 })");
@@ -1259,8 +1321,8 @@ func.func @main(%arg0: tensor<4xf32>) -> tensor<4xf32> {
 func.func @main(%arg0: tensor<4x!pphlo.secret<f32>>) -> tensor<4x!pphlo.secret<f32>> {
     %0 = "pphlo.sort"(%arg0) ( {
     ^bb0(%arg1: tensor<!pphlo.secret<f32>>, %arg2: tensor<!pphlo.secret<f32>>):  // no predecessors
-      %1 = "pphlo.less"(%arg1, %arg2) : (tensor<!pphlo.secret<f32>>, tensor<!pphlo.secret<f32>>) -> tensor<!pphlo.secret<i1>>
-      "pphlo.return"(%1) : (tensor<!pphlo.secret<i1>>) -> ()
+      %1 = pphlo.less %arg1, %arg2 : (tensor<!pphlo.secret<f32>>, tensor<!pphlo.secret<f32>>) -> tensor<!pphlo.secret<i1>>
+      pphlo.return %1 : tensor<!pphlo.secret<i1>>
     }) {dimension = 0 : i64, is_stable = true} : (tensor<4x!pphlo.secret<f32>>) -> (tensor<4x!pphlo.secret<f32>>)
     return %0 : tensor<4x!pphlo.secret<f32>>
 })");
@@ -1284,8 +1346,8 @@ TEST_P(ExecutorTest, Sort2DRow) {
 func.func @main(%arg0: tensor<2x5xf32>) -> tensor<2x5xf32> {
     %0 = "pphlo.sort"(%arg0) ( {
     ^bb0(%arg1: tensor<f32>, %arg2: tensor<f32>):  // no predecessors
-      %1 = "pphlo.less"(%arg1, %arg2) : (tensor<f32>, tensor<f32>) -> tensor<i1>
-      "pphlo.return"(%1) : (tensor<i1>) -> ()
+      %1 = pphlo.less %arg1, %arg2 : (tensor<f32>, tensor<f32>) -> tensor<i1>
+      pphlo.return %1 : tensor<i1>
     }) {dimension = 1 : i64, is_stable = true} : (tensor<2x5xf32>) -> (tensor<2x5xf32>)
     return %0 : tensor<2x5xf32>
 })");
@@ -1301,8 +1363,8 @@ func.func @main(%arg0: tensor<2x5xf32>) -> tensor<2x5xf32> {
 func.func @main(%arg0: tensor<2x5x!pphlo.secret<f32>>) -> tensor<2x5x!pphlo.secret<f32>> {
     %0 = "pphlo.sort"(%arg0) ( {
     ^bb0(%arg1: tensor<!pphlo.secret<f32>>, %arg2: tensor<!pphlo.secret<f32>>):  // no predecessors
-      %1 = "pphlo.less"(%arg1, %arg2) : (tensor<!pphlo.secret<f32>>, tensor<!pphlo.secret<f32>>) -> tensor<!pphlo.secret<i1>>
-      "pphlo.return"(%1) : (tensor<!pphlo.secret<i1>>) -> ()
+      %1 = pphlo.less %arg1, %arg2 : (tensor<!pphlo.secret<f32>>, tensor<!pphlo.secret<f32>>) -> tensor<!pphlo.secret<i1>>
+      pphlo.return %1 : tensor<!pphlo.secret<i1>>
     }) {dimension = 1 : i64, is_stable = true} : (tensor<2x5x!pphlo.secret<f32>>) -> (tensor<2x5x!pphlo.secret<f32>>)
     return %0 : tensor<2x5x!pphlo.secret<f32>>
 })");
@@ -1326,8 +1388,8 @@ TEST_P(ExecutorTest, Sort2DCol) {
 func.func @main(%arg0: tensor<2x4xf32>) -> tensor<2x4xf32> {
     %0 = "pphlo.sort"(%arg0) ( {
     ^bb0(%arg1: tensor<f32>, %arg2: tensor<f32>):  // no predecessors
-      %1 = "pphlo.less"(%arg1, %arg2) : (tensor<f32>, tensor<f32>) -> tensor<i1>
-      "pphlo.return"(%1) : (tensor<i1>) -> ()
+      %1 = pphlo.less %arg1, %arg2 : (tensor<f32>, tensor<f32>) -> tensor<i1>
+      pphlo.return %1 : tensor<i1>
     }) {dimension = 0 : i64, is_stable = true} : (tensor<2x4xf32>) -> (tensor<2x4xf32>)
     return %0 : tensor<2x4xf32>
 })");
@@ -1345,8 +1407,8 @@ func.func @main(%arg0: tensor<2x4xf32>) -> tensor<2x4xf32> {
 func.func @main(%arg0: tensor<2x4x!pphlo.secret<f32>>) -> tensor<2x4x!pphlo.secret<f32>> {
     %0 = "pphlo.sort"(%arg0) ( {
     ^bb0(%arg1: tensor<!pphlo.secret<f32>>, %arg2: tensor<!pphlo.secret<f32>>):  // no predecessors
-      %1 = "pphlo.less"(%arg1, %arg2) : (tensor<!pphlo.secret<f32>>, tensor<!pphlo.secret<f32>>) -> tensor<!pphlo.secret<i1>>
-      "pphlo.return"(%1) : (tensor<!pphlo.secret<i1>>) -> ()
+      %1 = pphlo.less %arg1, %arg2 : (tensor<!pphlo.secret<f32>>, tensor<!pphlo.secret<f32>>) -> tensor<!pphlo.secret<i1>>
+      pphlo.return %1 : tensor<!pphlo.secret<i1>>
     }) {dimension = 0 : i64, is_stable = true} : (tensor<2x4x!pphlo.secret<f32>>) -> (tensor<2x4x!pphlo.secret<f32>>)
     return %0 : tensor<2x4x!pphlo.secret<f32>>
 })");
@@ -1377,8 +1439,8 @@ TEST_P(ExecutorTest, SortMultiOperands) {
 func.func @main(%arg0: tensor<2xi32>, %arg1: tensor<2xi32>, %arg2: tensor<2xf32>) -> (tensor<2xi32>, tensor<2xi32>, tensor<2xf32>) {
     %0:3 = "pphlo.sort"(%arg0, %arg1, %arg2) ( {
     ^bb0(%arg3: tensor<i32>, %arg4: tensor<i32>, %arg5: tensor<i32>, %arg6: tensor<i32>, %arg7: tensor<f32>, %arg8: tensor<f32>):  // no predecessors
-      %1 = "pphlo.less"(%arg3, %arg4) : (tensor<i32>, tensor<i32>) -> tensor<i1>
-      "pphlo.return"(%1) : (tensor<i1>) -> ()
+      %1 = pphlo.less %arg3, %arg4 : (tensor<i32>, tensor<i32>) -> tensor<i1>
+      pphlo.return %1 : tensor<i1>
     }) {dimension = 0 : i64, is_stable = true} : (tensor<2xi32>, tensor<2xi32>, tensor<2xf32>) -> (tensor<2xi32>, tensor<2xi32>, tensor<2xf32>)
     return %0#0, %0#1, %0#2 : tensor<2xi32>, tensor<2xi32>, tensor<2xf32>
 })",
@@ -1401,8 +1463,8 @@ func.func @main(%arg0: tensor<2xi32>, %arg1: tensor<2xi32>, %arg2: tensor<2xf32>
 func.func @main(%arg0: tensor<2x!pphlo.secret<i32>>, %arg1: tensor<2x!pphlo.secret<i32>>, %arg2: tensor<2x!pphlo.secret<f32>>) -> (tensor<2x!pphlo.secret<i32>>, tensor<2x!pphlo.secret<i32>>, tensor<2x!pphlo.secret<f32>>) {
     %0:3 = "pphlo.sort"(%arg0, %arg1, %arg2) ( {
     ^bb0(%arg3: tensor<!pphlo.secret<i32>>, %arg4: tensor<!pphlo.secret<i32>>, %arg5: tensor<!pphlo.secret<i32>>, %arg6: tensor<!pphlo.secret<i32>>, %arg7: tensor<!pphlo.secret<f32>>, %arg8: tensor<!pphlo.secret<f32>>):  // no predecessors
-      %1 = "pphlo.less"(%arg3, %arg4) : (tensor<!pphlo.secret<i32>>, tensor<!pphlo.secret<i32>>) -> tensor<!pphlo.secret<i1>>
-      "pphlo.return"(%1) : (tensor<!pphlo.secret<i1>>) -> ()
+      %1 = pphlo.less %arg3, %arg4 : (tensor<!pphlo.secret<i32>>, tensor<!pphlo.secret<i32>>) -> tensor<!pphlo.secret<i1>>
+      pphlo.return %1 : tensor<!pphlo.secret<i1>>
     }) {dimension = 0 : i64, is_stable = true} : (tensor<2x!pphlo.secret<i32>>, tensor<2x!pphlo.secret<i32>>, tensor<2x!pphlo.secret<f32>>) -> (tensor<2x!pphlo.secret<i32>>, tensor<2x!pphlo.secret<i32>>, tensor<2x!pphlo.secret<f32>>)
     return %0#0, %0#1, %0#2 : tensor<2x!pphlo.secret<i32>>, tensor<2x!pphlo.secret<i32>>, tensor<2x!pphlo.secret<f32>>
 })",
@@ -1432,7 +1494,7 @@ TEST_P(ExecutorTest, SimpleSortMultiOperands) {
     // Row sort
     r.run(R"(
 func.func @main(%arg0: tensor<10xi32>, %arg1: tensor<10xi32>) -> (tensor<10xi32>, tensor<10xi32>) {
-    %0:2 = "pphlo.simple_sort"(%arg0, %arg1) {dimension = 0 : i64, num_keys = 1 : i64, sort_direction = 0 : i32} : (tensor<10xi32>, tensor<10xi32>) -> (tensor<10xi32>, tensor<10xi32>)
+    %0:2 = pphlo.simple_sort %arg0, %arg1 ASC, dim = 0, num_keys = 1 : (tensor<10xi32>, tensor<10xi32>) -> (tensor<10xi32>, tensor<10xi32>)
     return %0#0, %0#1 : tensor<10xi32>, tensor<10xi32>
 })",
           2);
@@ -1450,7 +1512,7 @@ func.func @main(%arg0: tensor<10xi32>, %arg1: tensor<10xi32>) -> (tensor<10xi32>
     // Row sort
     r.run(R"(
 func.func @main(%arg0: tensor<10x!pphlo.secret<i32>>, %arg1: tensor<10x!pphlo.secret<i32>>) -> (tensor<10x!pphlo.secret<i32>>, tensor<10x!pphlo.secret<i32>>) {
-    %0:2 = "pphlo.simple_sort"(%arg0, %arg1) {dimension = 0 : i64, num_keys = 1 : i64, sort_direction = 0 : i32} : (tensor<10x!pphlo.secret<i32>>, tensor<10x!pphlo.secret<i32>>) -> (tensor<10x!pphlo.secret<i32>>, tensor<10x!pphlo.secret<i32>>)
+    %0:2 = pphlo.simple_sort %arg0, %arg1 ASC, dim = 0, num_keys = 1 : (tensor<10x!pphlo.secret<i32>>, tensor<10x!pphlo.secret<i32>>) -> (tensor<10x!pphlo.secret<i32>>, tensor<10x!pphlo.secret<i32>>)
     return %0#0, %0#1 : tensor<10x!pphlo.secret<i32>>, tensor<10x!pphlo.secret<i32>>
 })",
           2);
@@ -1472,10 +1534,10 @@ func.func @main(%arg0: tensor<10x!pphlo.secret<i32>>, %arg1: tensor<10x!pphlo.se
 
     // Row sort
     r.run(R"(
-func.func @main(%arg0: tensor<10xi32>, %arg1: tensor<10xi32>) -> (tensor<10xi32>, tensor<10xi32>) {
-    %0:2 = "pphlo.simple_sort"(%arg0, %arg1) {dimension = 0 : i64, num_keys = 1 : i64, sort_direction = 1 : i32} : (tensor<10xi32>, tensor<10xi32>) -> (tensor<10xi32>, tensor<10xi32>)
-    return %0#0, %0#1 : tensor<10xi32>, tensor<10xi32>
-})",
+    func.func @main(%arg0: tensor<10xi32>, %arg1: tensor<10xi32>) -> (tensor<10xi32>, tensor<10xi32>) {
+        %0:2 = pphlo.simple_sort %arg0, %arg1 DES, dim = 0, num_keys = 1 : (tensor<10xi32>, tensor<10xi32>) -> (tensor<10xi32>, tensor<10xi32>)
+        return %0#0, %0#1 : tensor<10xi32>, tensor<10xi32>
+    })",
           2);
 
     r.verifyOutput(expected_x.data(), 0);
@@ -1490,10 +1552,10 @@ func.func @main(%arg0: tensor<10xi32>, %arg1: tensor<10xi32>) -> (tensor<10xi32>
 
     // Row sort
     r.run(R"(
-func.func @main(%arg0: tensor<10x!pphlo.secret<i32>>, %arg1: tensor<10x!pphlo.secret<i32>>) -> (tensor<10x!pphlo.secret<i32>>, tensor<10x!pphlo.secret<i32>>) {
-    %0:2 = "pphlo.simple_sort"(%arg0, %arg1) {dimension = 0 : i64, num_keys = 1 : i64, sort_direction = 1 : i32} : (tensor<10x!pphlo.secret<i32>>, tensor<10x!pphlo.secret<i32>>) -> (tensor<10x!pphlo.secret<i32>>, tensor<10x!pphlo.secret<i32>>)
-    return %0#0, %0#1 : tensor<10x!pphlo.secret<i32>>, tensor<10x!pphlo.secret<i32>>
-})",
+    func.func @main(%arg0: tensor<10x!pphlo.secret<i32>>, %arg1:tensor<10x!pphlo.secret<i32>>) -> (tensor<10x!pphlo.secret<i32>>, tensor<10x!pphlo.secret<i32>>) {
+        %0:2 = pphlo.simple_sort %arg0, %arg1 DES, dim = 0, num_keys = 1 : (tensor<10x!pphlo.secret<i32>>, tensor<10x!pphlo.secret<i32>>) -> (tensor<10x!pphlo.secret<i32>>, tensor<10x!pphlo.secret<i32>>)
+        return %0#0, %0#1 : tensor<10x!pphlo.secret<i32>>, tensor<10x!pphlo.secret<i32>>
+    })",
           2);
 
     r.verifyOutput(expected_x.data(), 0);
@@ -1524,7 +1586,7 @@ TEST_P(ExecutorTest, SimpleSortMultiKeys) {
     // Row sort
     r.run(R"(
 func.func @main(%arg0: tensor<10xi32>, %arg1: tensor<10xf32>, %arg2: tensor<10xi32>) -> (tensor<10xi32>, tensor<10xf32>, tensor<10xi32>) {
-    %0:3 = "pphlo.simple_sort"(%arg0, %arg1, %arg2) {dimension = 0 : i64, num_keys = 2 : i64, sort_direction = 0 : i32} : (tensor<10xi32>, tensor<10xf32>, tensor<10xi32>) -> (tensor<10xi32>, tensor<10xf32>, tensor<10xi32>)
+    %0:3 = pphlo.simple_sort %arg0, %arg1, %arg2 ASC, dim = 0, num_keys = 2 : (tensor<10xi32>, tensor<10xf32>, tensor<10xi32>) -> (tensor<10xi32>, tensor<10xf32>, tensor<10xi32>)
     return %0#0, %0#1, %0#2 : tensor<10xi32>, tensor<10xf32>, tensor<10xi32>
 })",
           3);
@@ -1544,7 +1606,7 @@ func.func @main(%arg0: tensor<10xi32>, %arg1: tensor<10xf32>, %arg2: tensor<10xi
     // Row sort
     r.run(R"(
 func.func @main(%arg0: tensor<10x!pphlo.secret<i32>>, %arg1: tensor<10x!pphlo.secret<f32>>, %arg2: tensor<10x!pphlo.secret<i32>>) -> (tensor<10x!pphlo.secret<i32>>, tensor<10x!pphlo.secret<f32>>, tensor<10x!pphlo.secret<i32>>) {
-    %0:3 = "pphlo.simple_sort"(%arg0, %arg1, %arg2) {dimension = 0 : i64, num_keys = 2 : i64, sort_direction = 0 : i32} : (tensor<10x!pphlo.secret<i32>>, tensor<10x!pphlo.secret<f32>>, tensor<10x!pphlo.secret<i32>>) -> (tensor<10x!pphlo.secret<i32>>, tensor<10x!pphlo.secret<f32>>, tensor<10x!pphlo.secret<i32>>)
+    %0:3 = pphlo.simple_sort %arg0, %arg1, %arg2 ASC, dim = 0, num_keys = 2 : (tensor<10x!pphlo.secret<i32>>, tensor<10x!pphlo.secret<f32>>, tensor<10x!pphlo.secret<i32>>) -> (tensor<10x!pphlo.secret<i32>>, tensor<10x!pphlo.secret<f32>>, tensor<10x!pphlo.secret<i32>>)
     return %0#0, %0#1, %0#2 : tensor<10x!pphlo.secret<i32>>, tensor<10x!pphlo.secret<f32>>, tensor<10x!pphlo.secret<i32>>
 })",
           3);
@@ -1565,7 +1627,7 @@ func.func @main(%arg0: tensor<10x!pphlo.secret<i32>>, %arg1: tensor<10x!pphlo.se
     // Row sort
     r.run(R"(
 func.func @main(%arg0: tensor<10xi32>, %arg1: tensor<10x!pphlo.secret<f32>>, %arg2: tensor<10x!pphlo.secret<i32>>) -> (tensor<10x!pphlo.secret<i32>>, tensor<10x!pphlo.secret<f32>>, tensor<10x!pphlo.secret<i32>>) {
-    %0:3 = "pphlo.simple_sort"(%arg0, %arg1, %arg2) {dimension = 0 : i64, num_keys = 2 : i64, sort_direction = 0 : i32} : (tensor<10xi32>, tensor<10x!pphlo.secret<f32>>, tensor<10x!pphlo.secret<i32>>) -> (tensor<10x!pphlo.secret<i32>>, tensor<10x!pphlo.secret<f32>>, tensor<10x!pphlo.secret<i32>>)
+    %0:3 = pphlo.simple_sort %arg0, %arg1, %arg2 ASC, dim = 0, num_keys = 2 : (tensor<10xi32>, tensor<10x!pphlo.secret<f32>>, tensor<10x!pphlo.secret<i32>>) -> (tensor<10x!pphlo.secret<i32>>, tensor<10x!pphlo.secret<f32>>, tensor<10x!pphlo.secret<i32>>)
     return %0#0, %0#1, %0#2 : tensor<10x!pphlo.secret<i32>>, tensor<10x!pphlo.secret<f32>>, tensor<10x!pphlo.secret<i32>>
 })",
           3);
@@ -1591,7 +1653,7 @@ func.func @main(%arg0: tensor<10xi32>, %arg1: tensor<10x!pphlo.secret<f32>>, %ar
     // Row sort
     r.run(R"(
 func.func @main(%arg0: tensor<10xi32>, %arg1: tensor<10xf32>, %arg2: tensor<10xi32>) -> (tensor<10xi32>, tensor<10xf32>, tensor<10xi32>) {
-    %0:3 = "pphlo.simple_sort"(%arg0, %arg1, %arg2) {dimension = 0 : i64, num_keys = 2 : i64, sort_direction = 1 : i32} : (tensor<10xi32>, tensor<10xf32>, tensor<10xi32>) -> (tensor<10xi32>, tensor<10xf32>, tensor<10xi32>)
+    %0:3 = pphlo.simple_sort %arg0, %arg1, %arg2 DES, dim = 0, num_keys = 2 : (tensor<10xi32>, tensor<10xf32>, tensor<10xi32>) -> (tensor<10xi32>, tensor<10xf32>, tensor<10xi32>)
     return %0#0, %0#1, %0#2 : tensor<10xi32>, tensor<10xf32>, tensor<10xi32>
 })",
           3);
@@ -1611,7 +1673,7 @@ func.func @main(%arg0: tensor<10xi32>, %arg1: tensor<10xf32>, %arg2: tensor<10xi
     // Row sort
     r.run(R"(
 func.func @main(%arg0: tensor<10x!pphlo.secret<i32>>, %arg1: tensor<10x!pphlo.secret<f32>>, %arg2: tensor<10x!pphlo.secret<i32>>) -> (tensor<10x!pphlo.secret<i32>>, tensor<10x!pphlo.secret<f32>>, tensor<10x!pphlo.secret<i32>>) {
-    %0:3 = "pphlo.simple_sort"(%arg0, %arg1, %arg2) {dimension = 0 : i64, num_keys = 2 : i64, sort_direction = 1 : i32} : (tensor<10x!pphlo.secret<i32>>, tensor<10x!pphlo.secret<f32>>, tensor<10x!pphlo.secret<i32>>) -> (tensor<10x!pphlo.secret<i32>>, tensor<10x!pphlo.secret<f32>>, tensor<10x!pphlo.secret<i32>>)
+    %0:3 = pphlo.simple_sort %arg0, %arg1, %arg2 DES, dim = 0, num_keys = 2 : (tensor<10x!pphlo.secret<i32>>, tensor<10x!pphlo.secret<f32>>, tensor<10x!pphlo.secret<i32>>) -> (tensor<10x!pphlo.secret<i32>>, tensor<10x!pphlo.secret<f32>>, tensor<10x!pphlo.secret<i32>>)
     return %0#0, %0#1, %0#2 : tensor<10x!pphlo.secret<i32>>, tensor<10x!pphlo.secret<f32>>, tensor<10x!pphlo.secret<i32>>
 })",
           3);
@@ -1632,7 +1694,7 @@ func.func @main(%arg0: tensor<10x!pphlo.secret<i32>>, %arg1: tensor<10x!pphlo.se
     // Row sort
     r.run(R"(
 func.func @main(%arg0: tensor<10xi32>, %arg1: tensor<10x!pphlo.secret<f32>>, %arg2: tensor<10x!pphlo.secret<i32>>) -> (tensor<10x!pphlo.secret<i32>>, tensor<10x!pphlo.secret<f32>>, tensor<10x!pphlo.secret<i32>>) {
-    %0:3 = "pphlo.simple_sort"(%arg0, %arg1, %arg2) {dimension = 0 : i64, num_keys = 2 : i64, sort_direction = 1 : i32} : (tensor<10xi32>, tensor<10x!pphlo.secret<f32>>, tensor<10x!pphlo.secret<i32>>) -> (tensor<10x!pphlo.secret<i32>>, tensor<10x!pphlo.secret<f32>>, tensor<10x!pphlo.secret<i32>>)
+    %0:3 = pphlo.simple_sort %arg0, %arg1, %arg2 DES, dim = 0, num_keys = 2 : (tensor<10xi32>, tensor<10x!pphlo.secret<f32>>, tensor<10x!pphlo.secret<i32>>) -> (tensor<10x!pphlo.secret<i32>>, tensor<10x!pphlo.secret<f32>>, tensor<10x!pphlo.secret<i32>>)
     return %0#0, %0#1, %0#2 : tensor<10x!pphlo.secret<i32>>, tensor<10x!pphlo.secret<f32>>, tensor<10x!pphlo.secret<i32>>
 })",
           3);
@@ -1739,7 +1801,7 @@ TEST_P(ExecutorTest, SimpleSortComplicatedMultiKeys) {
     // all public
     r.run(R"(
 func.func @main(%arg0: tensor<16xi32>, %arg1: tensor<16xf32>, %arg2: tensor<16xi32>, %arg3: tensor<16xf32>, %arg4: tensor<16xi32>, %arg5: tensor<16xi32>, %arg6: tensor<16xi32>, %arg7: tensor<16xi32>) -> (tensor<16xi32>, tensor<16xf32>, tensor<16xi32>, tensor<16xf32>, tensor<16xi32>, tensor<16xi32>,tensor<16xi32>, tensor<16xi32>) {
-    %0:8 = "pphlo.simple_sort"(%arg0, %arg1, %arg2, %arg3, %arg4, %arg5, %arg6, %arg7) {dimension = 0 : i64, num_keys = 7 : i64, sort_direction = 0 : i32} : (tensor<16xi32>, tensor<16xf32>, tensor<16xi32>, tensor<16xf32>, tensor<16xi32>, tensor<16xi32>,tensor<16xi32>, tensor<16xi32>) -> (tensor<16xi32>, tensor<16xf32>, tensor<16xi32>, tensor<16xf32>, tensor<16xi32>, tensor<16xi32>,tensor<16xi32>, tensor<16xi32>)
+    %0:8 = pphlo.simple_sort %arg0, %arg1, %arg2, %arg3, %arg4, %arg5, %arg6, %arg7 ASC, dim = 0, num_keys = 7 : (tensor<16xi32>, tensor<16xf32>, tensor<16xi32>, tensor<16xf32>, tensor<16xi32>, tensor<16xi32>,tensor<16xi32>, tensor<16xi32>) -> (tensor<16xi32>, tensor<16xf32>, tensor<16xi32>, tensor<16xf32>, tensor<16xi32>, tensor<16xi32>,tensor<16xi32>, tensor<16xi32>)
     return %0#0, %0#1, %0#2, %0#3, %0#4, %0#5, %0#6, %0#7 : tensor<16xi32>, tensor<16xf32>, tensor<16xi32>, tensor<16xf32>, tensor<16xi32>, tensor<16xi32>,tensor<16xi32>, tensor<16xi32>
 })",
           8);
@@ -1764,7 +1826,7 @@ func.func @main(%arg0: tensor<16xi32>, %arg1: tensor<16xf32>, %arg2: tensor<16xi
     // all public
     r.run(R"(
 func.func @main(%arg0: tensor<16xi32>, %arg1: tensor<16xf32>, %arg2: tensor<16xi32>, %arg3: tensor<16xf32>, %arg4: tensor<16xi32>, %arg5: tensor<16xi32>, %arg6: tensor<16xi32>, %arg7: tensor<16xi32>) -> (tensor<16xi32>, tensor<16xf32>, tensor<16xi32>, tensor<16xf32>, tensor<16xi32>, tensor<16xi32>,tensor<16xi32>, tensor<16xi32>) {
-    %0:8 = "pphlo.simple_sort"(%arg0, %arg1, %arg2, %arg3, %arg4, %arg5, %arg6, %arg7) {dimension = 0 : i64, num_keys = 7 : i64, sort_direction = 1 : i32} : (tensor<16xi32>, tensor<16xf32>, tensor<16xi32>, tensor<16xf32>, tensor<16xi32>, tensor<16xi32>,tensor<16xi32>, tensor<16xi32>) -> (tensor<16xi32>, tensor<16xf32>, tensor<16xi32>, tensor<16xf32>, tensor<16xi32>, tensor<16xi32>,tensor<16xi32>, tensor<16xi32>)
+    %0:8 = pphlo.simple_sort %arg0, %arg1, %arg2, %arg3, %arg4, %arg5, %arg6, %arg7 DES, dim = 0, num_keys = 7 : (tensor<16xi32>, tensor<16xf32>, tensor<16xi32>, tensor<16xf32>, tensor<16xi32>, tensor<16xi32>,tensor<16xi32>, tensor<16xi32>) -> (tensor<16xi32>, tensor<16xf32>, tensor<16xi32>, tensor<16xf32>, tensor<16xi32>, tensor<16xi32>,tensor<16xi32>, tensor<16xi32>)
     return %0#0, %0#1, %0#2, %0#3, %0#4, %0#5, %0#6, %0#7 : tensor<16xi32>, tensor<16xf32>, tensor<16xi32>, tensor<16xf32>, tensor<16xi32>, tensor<16xi32>,tensor<16xi32>, tensor<16xi32>
 })",
           8);
@@ -1789,7 +1851,7 @@ func.func @main(%arg0: tensor<16xi32>, %arg1: tensor<16xf32>, %arg2: tensor<16xi
     // all private
     r.run(R"(
 func.func @main(%arg0: tensor<16x!pphlo.secret<i32>>, %arg1: tensor<16x!pphlo.secret<f32>>, %arg2: tensor<16x!pphlo.secret<i32>>, %arg3: tensor<16x!pphlo.secret<f32>>, %arg4: tensor<16x!pphlo.secret<i32>>, %arg5: tensor<16x!pphlo.secret<i32>>, %arg6: tensor<16x!pphlo.secret<i32>>, %arg7: tensor<16x!pphlo.secret<i32>>) -> (tensor<16x!pphlo.secret<i32>>, tensor<16x!pphlo.secret<f32>>, tensor<16x!pphlo.secret<i32>>, tensor<16x!pphlo.secret<f32>>, tensor<16x!pphlo.secret<i32>>, tensor<16x!pphlo.secret<i32>>,tensor<16x!pphlo.secret<i32>>, tensor<16x!pphlo.secret<i32>>) {
-    %0:8 = "pphlo.simple_sort"(%arg0, %arg1, %arg2, %arg3, %arg4, %arg5, %arg6, %arg7) {dimension = 0 : i64, num_keys = 7 : i64, sort_direction = 0 : i32} : (tensor<16x!pphlo.secret<i32>>, tensor<16x!pphlo.secret<f32>>, tensor<16x!pphlo.secret<i32>>, tensor<16x!pphlo.secret<f32>>, tensor<16x!pphlo.secret<i32>>, tensor<16x!pphlo.secret<i32>>,tensor<16x!pphlo.secret<i32>>, tensor<16x!pphlo.secret<i32>>) -> (tensor<16x!pphlo.secret<i32>>, tensor<16x!pphlo.secret<f32>>, tensor<16x!pphlo.secret<i32>>, tensor<16x!pphlo.secret<f32>>, tensor<16x!pphlo.secret<i32>>, tensor<16x!pphlo.secret<i32>>,tensor<16x!pphlo.secret<i32>>, tensor<16x!pphlo.secret<i32>>)
+    %0:8 = pphlo.simple_sort %arg0, %arg1, %arg2, %arg3, %arg4, %arg5, %arg6, %arg7 ASC, dim = 0, num_keys = 7 : (tensor<16x!pphlo.secret<i32>>, tensor<16x!pphlo.secret<f32>>, tensor<16x!pphlo.secret<i32>>, tensor<16x!pphlo.secret<f32>>, tensor<16x!pphlo.secret<i32>>, tensor<16x!pphlo.secret<i32>>,tensor<16x!pphlo.secret<i32>>, tensor<16x!pphlo.secret<i32>>) -> (tensor<16x!pphlo.secret<i32>>, tensor<16x!pphlo.secret<f32>>, tensor<16x!pphlo.secret<i32>>, tensor<16x!pphlo.secret<f32>>, tensor<16x!pphlo.secret<i32>>, tensor<16x!pphlo.secret<i32>>,tensor<16x!pphlo.secret<i32>>, tensor<16x!pphlo.secret<i32>>)
     return %0#0, %0#1, %0#2, %0#3, %0#4, %0#5, %0#6, %0#7 : tensor<16x!pphlo.secret<i32>>, tensor<16x!pphlo.secret<f32>>, tensor<16x!pphlo.secret<i32>>, tensor<16x!pphlo.secret<f32>>, tensor<16x!pphlo.secret<i32>>, tensor<16x!pphlo.secret<i32>>,tensor<16x!pphlo.secret<i32>>, tensor<16x!pphlo.secret<i32>>
 })",
           8);
@@ -1814,7 +1876,7 @@ func.func @main(%arg0: tensor<16x!pphlo.secret<i32>>, %arg1: tensor<16x!pphlo.se
     // all private
     r.run(R"(
 func.func @main(%arg0: tensor<16x!pphlo.secret<i32>>, %arg1: tensor<16x!pphlo.secret<f32>>, %arg2: tensor<16x!pphlo.secret<i32>>, %arg3: tensor<16x!pphlo.secret<f32>>, %arg4: tensor<16x!pphlo.secret<i32>>, %arg5: tensor<16x!pphlo.secret<i32>>, %arg6: tensor<16x!pphlo.secret<i32>>, %arg7: tensor<16x!pphlo.secret<i32>>) -> (tensor<16x!pphlo.secret<i32>>, tensor<16x!pphlo.secret<f32>>, tensor<16x!pphlo.secret<i32>>, tensor<16x!pphlo.secret<f32>>, tensor<16x!pphlo.secret<i32>>, tensor<16x!pphlo.secret<i32>>,tensor<16x!pphlo.secret<i32>>, tensor<16x!pphlo.secret<i32>>) {
-    %0:8 = "pphlo.simple_sort"(%arg0, %arg1, %arg2, %arg3, %arg4, %arg5, %arg6, %arg7) {dimension = 0 : i64, num_keys = 7 : i64, sort_direction = 1 : i32} : (tensor<16x!pphlo.secret<i32>>, tensor<16x!pphlo.secret<f32>>, tensor<16x!pphlo.secret<i32>>, tensor<16x!pphlo.secret<f32>>, tensor<16x!pphlo.secret<i32>>, tensor<16x!pphlo.secret<i32>>,tensor<16x!pphlo.secret<i32>>, tensor<16x!pphlo.secret<i32>>) -> (tensor<16x!pphlo.secret<i32>>, tensor<16x!pphlo.secret<f32>>, tensor<16x!pphlo.secret<i32>>, tensor<16x!pphlo.secret<f32>>, tensor<16x!pphlo.secret<i32>>, tensor<16x!pphlo.secret<i32>>,tensor<16x!pphlo.secret<i32>>, tensor<16x!pphlo.secret<i32>>)
+    %0:8 = pphlo.simple_sort %arg0, %arg1, %arg2, %arg3, %arg4, %arg5, %arg6, %arg7 DES, dim = 0, num_keys = 7 : (tensor<16x!pphlo.secret<i32>>, tensor<16x!pphlo.secret<f32>>, tensor<16x!pphlo.secret<i32>>, tensor<16x!pphlo.secret<f32>>, tensor<16x!pphlo.secret<i32>>, tensor<16x!pphlo.secret<i32>>,tensor<16x!pphlo.secret<i32>>, tensor<16x!pphlo.secret<i32>>) -> (tensor<16x!pphlo.secret<i32>>, tensor<16x!pphlo.secret<f32>>, tensor<16x!pphlo.secret<i32>>, tensor<16x!pphlo.secret<f32>>, tensor<16x!pphlo.secret<i32>>, tensor<16x!pphlo.secret<i32>>,tensor<16x!pphlo.secret<i32>>, tensor<16x!pphlo.secret<i32>>)
     return %0#0, %0#1, %0#2, %0#3, %0#4, %0#5, %0#6, %0#7 : tensor<16x!pphlo.secret<i32>>, tensor<16x!pphlo.secret<f32>>, tensor<16x!pphlo.secret<i32>>, tensor<16x!pphlo.secret<f32>>, tensor<16x!pphlo.secret<i32>>, tensor<16x!pphlo.secret<i32>>,tensor<16x!pphlo.secret<i32>>, tensor<16x!pphlo.secret<i32>>
 })",
           8);
@@ -1839,7 +1901,7 @@ func.func @main(%arg0: tensor<16x!pphlo.secret<i32>>, %arg1: tensor<16x!pphlo.se
     // mixed visibility
     r.run(R"(
 func.func @main(%arg0: tensor<16x!pphlo.secret<i32>>, %arg1: tensor<16xf32>, %arg2: tensor<16x!pphlo.secret<i32>>, %arg3: tensor<16x!pphlo.secret<f32>>, %arg4: tensor<16x!pphlo.secret<i32>>, %arg5: tensor<16xi32>, %arg6: tensor<16x!pphlo.secret<i32>>, %arg7: tensor<16x!pphlo.secret<i32>>) -> (tensor<16x!pphlo.secret<i32>>, tensor<16x!pphlo.secret<f32>>, tensor<16x!pphlo.secret<i32>>, tensor<16x!pphlo.secret<f32>>, tensor<16x!pphlo.secret<i32>>, tensor<16x!pphlo.secret<i32>>,tensor<16x!pphlo.secret<i32>>, tensor<16x!pphlo.secret<i32>>) {
-    %0:8 = "pphlo.simple_sort"(%arg0, %arg1, %arg2, %arg3, %arg4, %arg5, %arg6, %arg7) {dimension = 0 : i64, num_keys = 7 : i64, sort_direction = 0 : i32} : (tensor<16x!pphlo.secret<i32>>, tensor<16xf32>, tensor<16x!pphlo.secret<i32>>, tensor<16x!pphlo.secret<f32>>, tensor<16x!pphlo.secret<i32>>, tensor<16xi32>,tensor<16x!pphlo.secret<i32>>, tensor<16x!pphlo.secret<i32>>) -> (tensor<16x!pphlo.secret<i32>>, tensor<16x!pphlo.secret<f32>>, tensor<16x!pphlo.secret<i32>>, tensor<16x!pphlo.secret<f32>>, tensor<16x!pphlo.secret<i32>>, tensor<16x!pphlo.secret<i32>>,tensor<16x!pphlo.secret<i32>>, tensor<16x!pphlo.secret<i32>>)
+    %0:8 = pphlo.simple_sort %arg0, %arg1, %arg2, %arg3, %arg4, %arg5, %arg6, %arg7 ASC, dim = 0, num_keys = 7 : (tensor<16x!pphlo.secret<i32>>, tensor<16xf32>, tensor<16x!pphlo.secret<i32>>, tensor<16x!pphlo.secret<f32>>, tensor<16x!pphlo.secret<i32>>, tensor<16xi32>,tensor<16x!pphlo.secret<i32>>, tensor<16x!pphlo.secret<i32>>) -> (tensor<16x!pphlo.secret<i32>>, tensor<16x!pphlo.secret<f32>>, tensor<16x!pphlo.secret<i32>>, tensor<16x!pphlo.secret<f32>>, tensor<16x!pphlo.secret<i32>>, tensor<16x!pphlo.secret<i32>>,tensor<16x!pphlo.secret<i32>>, tensor<16x!pphlo.secret<i32>>)
     return %0#0, %0#1, %0#2, %0#3, %0#4, %0#5, %0#6, %0#7 : tensor<16x!pphlo.secret<i32>>, tensor<16x!pphlo.secret<f32>>, tensor<16x!pphlo.secret<i32>>, tensor<16x!pphlo.secret<f32>>, tensor<16x!pphlo.secret<i32>>, tensor<16x!pphlo.secret<i32>>,tensor<16x!pphlo.secret<i32>>, tensor<16x!pphlo.secret<i32>>
 })",
           8);
@@ -1864,7 +1926,7 @@ func.func @main(%arg0: tensor<16x!pphlo.secret<i32>>, %arg1: tensor<16xf32>, %ar
     // mixed visibility
     r.run(R"(
 func.func @main(%arg0: tensor<16x!pphlo.secret<i32>>, %arg1: tensor<16xf32>, %arg2: tensor<16x!pphlo.secret<i32>>, %arg3: tensor<16x!pphlo.secret<f32>>, %arg4: tensor<16x!pphlo.secret<i32>>, %arg5: tensor<16xi32>, %arg6: tensor<16x!pphlo.secret<i32>>, %arg7: tensor<16x!pphlo.secret<i32>>) -> (tensor<16x!pphlo.secret<i32>>, tensor<16x!pphlo.secret<f32>>, tensor<16x!pphlo.secret<i32>>, tensor<16x!pphlo.secret<f32>>, tensor<16x!pphlo.secret<i32>>, tensor<16x!pphlo.secret<i32>>,tensor<16x!pphlo.secret<i32>>, tensor<16x!pphlo.secret<i32>>) {
-    %0:8 = "pphlo.simple_sort"(%arg0, %arg1, %arg2, %arg3, %arg4, %arg5, %arg6, %arg7) {dimension = 0 : i64, num_keys = 7 : i64, sort_direction = 1 : i32} : (tensor<16x!pphlo.secret<i32>>, tensor<16xf32>, tensor<16x!pphlo.secret<i32>>, tensor<16x!pphlo.secret<f32>>, tensor<16x!pphlo.secret<i32>>, tensor<16xi32>,tensor<16x!pphlo.secret<i32>>, tensor<16x!pphlo.secret<i32>>) -> (tensor<16x!pphlo.secret<i32>>, tensor<16x!pphlo.secret<f32>>, tensor<16x!pphlo.secret<i32>>, tensor<16x!pphlo.secret<f32>>, tensor<16x!pphlo.secret<i32>>, tensor<16x!pphlo.secret<i32>>,tensor<16x!pphlo.secret<i32>>, tensor<16x!pphlo.secret<i32>>)
+    %0:8 = pphlo.simple_sort %arg0, %arg1, %arg2, %arg3, %arg4, %arg5, %arg6, %arg7 DES, dim = 0, num_keys = 7 : (tensor<16x!pphlo.secret<i32>>, tensor<16xf32>, tensor<16x!pphlo.secret<i32>>, tensor<16x!pphlo.secret<f32>>, tensor<16x!pphlo.secret<i32>>, tensor<16xi32>,tensor<16x!pphlo.secret<i32>>, tensor<16x!pphlo.secret<i32>>) -> (tensor<16x!pphlo.secret<i32>>, tensor<16x!pphlo.secret<f32>>, tensor<16x!pphlo.secret<i32>>, tensor<16x!pphlo.secret<f32>>, tensor<16x!pphlo.secret<i32>>, tensor<16x!pphlo.secret<i32>>,tensor<16x!pphlo.secret<i32>>, tensor<16x!pphlo.secret<i32>>)
     return %0#0, %0#1, %0#2, %0#3, %0#4, %0#5, %0#6, %0#7 : tensor<16x!pphlo.secret<i32>>, tensor<16x!pphlo.secret<f32>>, tensor<16x!pphlo.secret<i32>>, tensor<16x!pphlo.secret<f32>>, tensor<16x!pphlo.secret<i32>>, tensor<16x!pphlo.secret<i32>>,tensor<16x!pphlo.secret<i32>>, tensor<16x!pphlo.secret<i32>>
 })",
           8);
@@ -1889,7 +1951,7 @@ func.func @main(%arg0: tensor<16x!pphlo.secret<i32>>, %arg1: tensor<16xf32>, %ar
     // mixed visibility
     r.run(R"(
 func.func @main(%arg0: tensor<16x!pphlo.secret<i32>>, %arg1: tensor<16xf32>, %arg2: tensor<16x!pphlo.secret<i32>>, %arg3: tensor<16x!pphlo.secret<f32>>, %arg4: tensor<16x!pphlo.secret<i32>>, %arg5: tensor<16xi32>, %arg6: tensor<16x!pphlo.secret<i32>>, %arg7: tensor<16x!pphlo.secret<i32>>) -> (tensor<16x!pphlo.secret<i32>>, tensor<16x!pphlo.secret<f32>>, tensor<16x!pphlo.secret<i32>>, tensor<16x!pphlo.secret<f32>>, tensor<16x!pphlo.secret<i32>>, tensor<16x!pphlo.secret<i32>>,tensor<16x!pphlo.secret<i32>>, tensor<16x!pphlo.secret<i32>>) {
-    %0:8 = "pphlo.simple_sort"(%arg0, %arg1, %arg2, %arg3, %arg4, %arg5, %arg6, %arg7) {dimension = 0 : i64, num_keys = 7 : i64, sort_direction = 0 : i32} : (tensor<16x!pphlo.secret<i32>>, tensor<16xf32>, tensor<16x!pphlo.secret<i32>>, tensor<16x!pphlo.secret<f32>>, tensor<16x!pphlo.secret<i32>>, tensor<16xi32>,tensor<16x!pphlo.secret<i32>>, tensor<16x!pphlo.secret<i32>>) -> (tensor<16x!pphlo.secret<i32>>, tensor<16x!pphlo.secret<f32>>, tensor<16x!pphlo.secret<i32>>, tensor<16x!pphlo.secret<f32>>, tensor<16x!pphlo.secret<i32>>, tensor<16x!pphlo.secret<i32>>,tensor<16x!pphlo.secret<i32>>, tensor<16x!pphlo.secret<i32>>)
+    %0:8 = pphlo.simple_sort %arg0, %arg1, %arg2, %arg3, %arg4, %arg5, %arg6, %arg7 ASC, dim = 0, num_keys = 7 : (tensor<16x!pphlo.secret<i32>>, tensor<16xf32>, tensor<16x!pphlo.secret<i32>>, tensor<16x!pphlo.secret<f32>>, tensor<16x!pphlo.secret<i32>>, tensor<16xi32>,tensor<16x!pphlo.secret<i32>>, tensor<16x!pphlo.secret<i32>>) -> (tensor<16x!pphlo.secret<i32>>, tensor<16x!pphlo.secret<f32>>, tensor<16x!pphlo.secret<i32>>, tensor<16x!pphlo.secret<f32>>, tensor<16x!pphlo.secret<i32>>, tensor<16x!pphlo.secret<i32>>,tensor<16x!pphlo.secret<i32>>, tensor<16x!pphlo.secret<i32>>)
     return %0#0, %0#1, %0#2, %0#3, %0#4, %0#5, %0#6, %0#7 : tensor<16x!pphlo.secret<i32>>, tensor<16x!pphlo.secret<f32>>, tensor<16x!pphlo.secret<i32>>, tensor<16x!pphlo.secret<f32>>, tensor<16x!pphlo.secret<i32>>, tensor<16x!pphlo.secret<i32>>,tensor<16x!pphlo.secret<i32>>, tensor<16x!pphlo.secret<i32>>
 })",
           8);
@@ -1914,7 +1976,7 @@ func.func @main(%arg0: tensor<16x!pphlo.secret<i32>>, %arg1: tensor<16xf32>, %ar
     // mixed visibility
     r.run(R"(
 func.func @main(%arg0: tensor<16x!pphlo.secret<i32>>, %arg1: tensor<16xf32>, %arg2: tensor<16x!pphlo.secret<i32>>, %arg3: tensor<16x!pphlo.secret<f32>>, %arg4: tensor<16x!pphlo.secret<i32>>, %arg5: tensor<16xi32>, %arg6: tensor<16x!pphlo.secret<i32>>, %arg7: tensor<16x!pphlo.secret<i32>>) -> (tensor<16x!pphlo.secret<i32>>, tensor<16x!pphlo.secret<f32>>, tensor<16x!pphlo.secret<i32>>, tensor<16x!pphlo.secret<f32>>, tensor<16x!pphlo.secret<i32>>, tensor<16x!pphlo.secret<i32>>,tensor<16x!pphlo.secret<i32>>, tensor<16x!pphlo.secret<i32>>) {
-    %0:8 = "pphlo.simple_sort"(%arg0, %arg1, %arg2, %arg3, %arg4, %arg5, %arg6, %arg7) {dimension = 0 : i64, num_keys = 7 : i64, sort_direction = 1 : i32} : (tensor<16x!pphlo.secret<i32>>, tensor<16xf32>, tensor<16x!pphlo.secret<i32>>, tensor<16x!pphlo.secret<f32>>, tensor<16x!pphlo.secret<i32>>, tensor<16xi32>,tensor<16x!pphlo.secret<i32>>, tensor<16x!pphlo.secret<i32>>) -> (tensor<16x!pphlo.secret<i32>>, tensor<16x!pphlo.secret<f32>>, tensor<16x!pphlo.secret<i32>>, tensor<16x!pphlo.secret<f32>>, tensor<16x!pphlo.secret<i32>>, tensor<16x!pphlo.secret<i32>>,tensor<16x!pphlo.secret<i32>>, tensor<16x!pphlo.secret<i32>>)
+    %0:8 = pphlo.simple_sort %arg0, %arg1, %arg2, %arg3, %arg4, %arg5, %arg6, %arg7 DES, dim = 0, num_keys = 7 : (tensor<16x!pphlo.secret<i32>>, tensor<16xf32>, tensor<16x!pphlo.secret<i32>>, tensor<16x!pphlo.secret<f32>>, tensor<16x!pphlo.secret<i32>>, tensor<16xi32>,tensor<16x!pphlo.secret<i32>>, tensor<16x!pphlo.secret<i32>>) -> (tensor<16x!pphlo.secret<i32>>, tensor<16x!pphlo.secret<f32>>, tensor<16x!pphlo.secret<i32>>, tensor<16x!pphlo.secret<f32>>, tensor<16x!pphlo.secret<i32>>, tensor<16x!pphlo.secret<i32>>,tensor<16x!pphlo.secret<i32>>, tensor<16x!pphlo.secret<i32>>)
     return %0#0, %0#1, %0#2, %0#3, %0#4, %0#5, %0#6, %0#7 : tensor<16x!pphlo.secret<i32>>, tensor<16x!pphlo.secret<f32>>, tensor<16x!pphlo.secret<i32>>, tensor<16x!pphlo.secret<f32>>, tensor<16x!pphlo.secret<i32>>, tensor<16x!pphlo.secret<i32>>,tensor<16x!pphlo.secret<i32>>, tensor<16x!pphlo.secret<i32>>
 })",
           8);
@@ -1941,10 +2003,10 @@ TEST_P(ExecutorTest, SortComplicatedComparator) {
 func.func @main(%arg0: tensor<4xi32>, %arg1: tensor<4xi32>) -> (tensor<4xi32>, tensor<4xi32>) {
     %0:2 = "pphlo.sort"(%arg0, %arg1) ( {
     ^bb0(%arg2: tensor<i32>, %arg3: tensor<i32>, %arg4: tensor<i32>, %arg5: tensor<i32>):  // no predecessors
-      %1 = "pphlo.add"(%arg2, %arg4) : (tensor<i32>, tensor<i32>) -> tensor<i32>
-      %2 = "pphlo.add"(%arg3, %arg5) : (tensor<i32>, tensor<i32>) -> tensor<i32>
-      %3 = "pphlo.less" (%1, %2) : (tensor<i32>, tensor<i32>) -> tensor<i1>
-      "pphlo.return"(%3) : (tensor<i1>) -> ()
+      %1 = pphlo.add %arg2, %arg4 : tensor<i32>
+      %2 = pphlo.add %arg3, %arg5 : tensor<i32>
+      %3 = pphlo.less %1, %2 : (tensor<i32>, tensor<i32>) -> tensor<i1>
+      pphlo.return %3 : tensor<i1>
     }) {dimension = 0 : i64, is_stable = true} : (tensor<4xi32>, tensor<4xi32>) -> (tensor<4xi32>, tensor<4xi32>)
     return %0#0, %0#1 : tensor<4xi32>, tensor<4xi32>
 })",
@@ -1966,10 +2028,10 @@ func.func @main(%arg0: tensor<4xi32>, %arg1: tensor<4xi32>) -> (tensor<4xi32>, t
 func.func @main(%arg0: tensor<4x!pphlo.secret<i32>>, %arg1: tensor<4x!pphlo.secret<i32>>) -> (tensor<4x!pphlo.secret<i32>>, tensor<4x!pphlo.secret<i32>>) {
     %0:2 = "pphlo.sort"(%arg0, %arg1) ( {
     ^bb0(%arg2: tensor<!pphlo.secret<i32>>, %arg3: tensor<!pphlo.secret<i32>>, %arg4: tensor<!pphlo.secret<i32>>, %arg5: tensor<!pphlo.secret<i32>>):  // no predecessors
-      %1 = "pphlo.add"(%arg2, %arg4) : (tensor<!pphlo.secret<i32>>, tensor<!pphlo.secret<i32>>) -> tensor<!pphlo.secret<i32>>
-      %2 = "pphlo.add"(%arg3, %arg5) : (tensor<!pphlo.secret<i32>>, tensor<!pphlo.secret<i32>>) -> tensor<!pphlo.secret<i32>>
-      %3 = "pphlo.less" (%1, %2) : (tensor<!pphlo.secret<i32>>, tensor<!pphlo.secret<i32>>) -> tensor<!pphlo.secret<i1>>
-      "pphlo.return"(%3) : (tensor<!pphlo.secret<i1>>) -> ()
+      %1 = pphlo.add %arg2, %arg4 : tensor<!pphlo.secret<i32>>
+      %2 = pphlo.add %arg3, %arg5 : tensor<!pphlo.secret<i32>>
+      %3 = pphlo.less %1, %2 : (tensor<!pphlo.secret<i32>>, tensor<!pphlo.secret<i32>>) -> tensor<!pphlo.secret<i1>>
+      pphlo.return %3 : tensor<!pphlo.secret<i1>>
     }) {dimension = 0 : i64, is_stable = true} : (tensor<4x!pphlo.secret<i32>>, tensor<4x!pphlo.secret<i32>>) -> (tensor<4x!pphlo.secret<i32>>, tensor<4x!pphlo.secret<i32>>)
     return %0#0, %0#1 : tensor<4x!pphlo.secret<i32>>, tensor<4x!pphlo.secret<i32>>
 })",
@@ -1988,7 +2050,7 @@ TEST_P(ExecutorTest, RemainderFxp) {
 
   r.run(R"(
 func.func @main(%arg0: tensor<3xf32>, %arg1: tensor<3xf32>) -> (tensor<3xf32>) {
-  %0 = "pphlo.remainder"(%arg0, %arg1) : (tensor<3xf32>, tensor<3xf32>) -> tensor<3xf32>
+  %0 = pphlo.remainder %arg0, %arg1 : tensor<3xf32>
   return %0 : tensor<3xf32>
 })");
 
@@ -2004,7 +2066,7 @@ TEST_P(ExecutorTest, RemainderInt) {
 
   r.run(R"(
 func.func @main(%arg0: tensor<8xi32>, %arg1: tensor<8xi32>) -> (tensor<8xi32>) {
-  %0 = "pphlo.remainder"(%arg0, %arg1) : (tensor<8xi32>, tensor<8xi32>) -> tensor<8xi32>
+  %0 = pphlo.remainder %arg0, %arg1 : tensor<8xi32>
   return %0 : tensor<8xi32>
 })");
 
@@ -2023,7 +2085,7 @@ TEST_P(ExecutorTest, ShiftLeftS32) {
 
   r.run(R"(
 func.func @main(%arg0: tensor<8xi32>, %arg1: tensor<8xi32>) -> (tensor<8xi32>) {
-  %0 = "pphlo.shift_left"(%arg0, %arg1) : (tensor<8xi32>, tensor<8xi32>) -> tensor<8xi32>
+  %0 = pphlo.shift_left %arg0, %arg1 : tensor<8xi32>
   return %0 : tensor<8xi32>
 })");
 
@@ -2048,7 +2110,7 @@ TEST_P(ExecutorTest, ShiftLeftU32) {
 
   r.run(R"(
 func.func @main(%arg0: tensor<8xui32>, %arg1: tensor<8xui32>) -> (tensor<8xui32>) {
-  %0 = "pphlo.shift_left"(%arg0, %arg1) : (tensor<8xui32>, tensor<8xui32>) -> tensor<8xui32>
+  %0 = pphlo.shift_left %arg0, %arg1 : tensor<8xui32>
   return %0 : tensor<8xui32>
 })");
 
@@ -2068,7 +2130,7 @@ TEST_P(ExecutorTest, ShiftRightLogicalS32) {
 
   r.run(R"(
 func.func @main(%arg0: tensor<8xi32>, %arg1: tensor<8xi32>) -> (tensor<8xi32>) {
-  %0 = "pphlo.shift_right_logical"(%arg0, %arg1) : (tensor<8xi32>, tensor<8xi32>) -> tensor<8xi32>
+  %0 = pphlo.shift_right_logical %arg0, %arg1 : tensor<8xi32>
   return %0 : tensor<8xi32>
 })");
 
@@ -2087,7 +2149,7 @@ TEST_P(ExecutorTest, ShiftRightLogicalU32) {
 
   r.run(R"(
 func.func @main(%arg0: tensor<8xui32>, %arg1: tensor<8xui32>) -> (tensor<8xui32>) {
-  %0 = "pphlo.shift_right_logical"(%arg0, %arg1) : (tensor<8xui32>, tensor<8xui32>) -> tensor<8xui32>
+  %0 = pphlo.shift_right_logical %arg0, %arg1 : tensor<8xui32>
   return %0 : tensor<8xui32>
 })");
 
@@ -2106,7 +2168,7 @@ TEST_P(ExecutorTest, ShiftRightArithmeticS32) {
 
   r.run(R"(
 func.func @main(%arg0: tensor<8xi32>, %arg1: tensor<8xi32>) -> (tensor<8xi32>) {
-  %0 = "pphlo.shift_right_arithmetic"(%arg0, %arg1) : (tensor<8xi32>, tensor<8xi32>) -> tensor<8xi32>
+  %0 = pphlo.shift_right_arithmetic %arg0, %arg1 : tensor<8xi32>
   return %0 : tensor<8xi32>
 })");
 
@@ -2131,7 +2193,7 @@ TEST_P(ExecutorTest, ShiftRightArithmeticU32) {
 
   r.run(R"(
 func.func @main(%arg0: tensor<8xui32>, %arg1: tensor<8xui32>) -> (tensor<8xui32>) {
-  %0 = "pphlo.shift_right_arithmetic"(%arg0, %arg1) : (tensor<8xui32>, tensor<8xui32>) -> tensor<8xui32>
+  %0 = pphlo.shift_right_arithmetic %arg0, %arg1 : tensor<8xui32>
   return %0 : tensor<8xui32>
 })");
 
@@ -2151,7 +2213,7 @@ TEST_P(ExecutorTest, ARShift_Secret) {
 
   r.run(R"(
 func.func @main(%arg0: tensor<8x!pphlo.secret<ui32>>, %arg1: tensor<8x!pphlo.secret<ui32>>) -> (tensor<8x!pphlo.secret<ui32>>) {
-  %0 = "pphlo.shift_right_arithmetic"(%arg0, %arg1) : (tensor<8x!pphlo.secret<ui32>>, tensor<8x!pphlo.secret<ui32>>) -> tensor<8x!pphlo.secret<ui32>>
+  %0 = pphlo.shift_right_arithmetic %arg0, %arg1 : tensor<8x!pphlo.secret<ui32>>
   return %0 : tensor<8x!pphlo.secret<ui32>>
 })");
 
@@ -2173,9 +2235,9 @@ TEST_P(ExecutorTest, DotGeneral) {
 
   r.run(R"(
 func.func @main(%arg0: tensor<12xi32>, %arg1: tensor<60xi32>) -> (tensor<3x5xi32>) {
-  %0 = "pphlo.reshape" (%arg0) : (tensor<12xi32>) -> tensor<3x1x4xi32>
-  %1 = "pphlo.reshape" (%arg1) : (tensor<60xi32>) -> tensor<3x4x5xi32>
-  %2 = "pphlo.dot_general"(%0, %1) {dot_dimension_numbers = #pphlo.dot<lhs_batching_dimensions = [0], rhs_batching_dimensions = [0], lhs_contracting_dimensions = [2], rhs_contracting_dimensions = [1]>} : (tensor<3x1x4xi32>, tensor<3x4x5xi32>) -> tensor<3x5xi32>
+  %0 = pphlo.reshape %arg0 : (tensor<12xi32>) -> tensor<3x1x4xi32>
+  %1 = pphlo.reshape %arg1 : (tensor<60xi32>) -> tensor<3x4x5xi32>
+  %2 = pphlo.dot_general %0, %1, batching_dims = [0] x [0], contracting_dims = [2] x [1] : (tensor<3x1x4xi32>, tensor<3x4x5xi32>) -> tensor<3x5xi32>
   return %2 : tensor<3x5xi32>
 })");
 
@@ -2205,14 +2267,17 @@ TEST_P(ExecutorTest, SelectAndScatter1) {
 func.func @main(%arg0: tensor<4x6xi32>, %arg1: tensor<2x2xi32>, %arg2: tensor<i32>) -> (tensor<4x6xi32>) {
   %0 = "pphlo.select_and_scatter"(%arg0, %arg1, %arg2) ({
     ^bb0(%arg3: tensor<i32>, %arg4: tensor<i32>):
-      %1 = "pphlo.less"(%arg3, %arg4) : (tensor<i32>, tensor<i32>) -> tensor<i1>
-      %2 = "pphlo.not"(%1) : (tensor<i1>) -> tensor<i1>
-      "pphlo.return"(%2) : (tensor<i1>) -> ()
+      %1 = pphlo.less %arg3, %arg4 : (tensor<i32>, tensor<i32>) -> tensor<i1>
+      %2 = pphlo.not %1 : tensor<i1>
+      pphlo.return %2 : tensor<i1>
     }, {
     ^bb0(%arg3: tensor<i32>, %arg4: tensor<i32>):
-      %1 = "pphlo.add"(%arg3, %arg4) : (tensor<i32>, tensor<i32>) -> tensor<i32>
-      "pphlo.return"(%1) : (tensor<i32>) -> ()
-    }) {window_dimensions = array<i64: 2,3>, window_strides = array<i64: 2,3>} : (tensor<4x6xi32>, tensor<2x2xi32>, tensor<i32>) -> tensor<4x6xi32>
+      %1 = pphlo.add %arg3, %arg4 : tensor<i32>
+      pphlo.return %1 : tensor<i32>
+    }) {
+      window_dimensions = array<i64: 2,3>,
+      window_strides = array<i64: 2,3>
+    } : (tensor<4x6xi32>, tensor<2x2xi32>, tensor<i32>) -> tensor<4x6xi32>
     return %0 : tensor<4x6xi32>
 })");
 
@@ -2243,14 +2308,17 @@ TEST_P(ExecutorTest, SelectAndScatter2) {
 func.func @main(%arg0: tensor<4x5xi32>, %arg1: tensor<2x2xi32>, %arg2: tensor<i32>) -> (tensor<4x5xi32>) {
   %0 = "pphlo.select_and_scatter"(%arg0, %arg1, %arg2) ({
     ^bb0(%arg3: tensor<i32>, %arg4: tensor<i32>):
-      %1 = "pphlo.less"(%arg3, %arg4) : (tensor<i32>, tensor<i32>) -> tensor<i1>
-      %2 = "pphlo.not"(%1) : (tensor<i1>) -> tensor<i1>
-      "pphlo.return"(%2) : (tensor<i1>) -> ()
+      %1 = pphlo.less %arg3, %arg4 : (tensor<i32>, tensor<i32>) -> tensor<i1>
+      %2 = pphlo.not %1 : tensor<i1>
+      pphlo.return %2 : tensor<i1>
     }, {
     ^bb0(%arg3: tensor<i32>, %arg4: tensor<i32>):
-      %1 = "pphlo.add"(%arg3, %arg4) : (tensor<i32>, tensor<i32>) -> tensor<i32>
-      "pphlo.return"(%1) : (tensor<i32>) -> ()
-    }) {window_dimensions = array<i64:2,3>, window_strides = array<i64:2,2>} : (tensor<4x5xi32>, tensor<2x2xi32>, tensor<i32>) -> tensor<4x5xi32>
+      %1 = pphlo.add %arg3, %arg4 : tensor<i32>
+      pphlo.return %1 : tensor<i32>
+    }) {
+      window_dimensions = array<i64:2,3>,
+      window_strides = array<i64:2,2>
+    } : (tensor<4x5xi32>, tensor<2x2xi32>, tensor<i32>) -> tensor<4x5xi32>
     return %0 : tensor<4x5xi32>
 })");
 
@@ -2277,7 +2345,7 @@ TEST_P(ExecutorTest, MaxPoolScatter1) {
 
   r.run(R"(
 func.func @main(%arg0: tensor<2x2x6xi1>, %arg1: tensor<2x2xi32>) -> (tensor<4x6xi32>) {
-    %0 = "pphlo.maxpool_scatter"(%arg0, %arg1) {window_dimensions = array<i64:2,3>, window_strides = array<i64:2,3>} : (tensor<2x2x6xi1>, tensor<2x2xi32>) -> tensor<4x6xi32>
+    %0 = pphlo.maxpool_scatter %arg0, %arg1 {window_dimensions = array<i64:2,3>, window_strides = array<i64:2,3>} : (tensor<2x2x6xi1>, tensor<2x2xi32>) -> tensor<4x6xi32>
     return %0 : tensor<4x6xi32>
 })");
 
@@ -2304,7 +2372,7 @@ TEST_P(ExecutorTest, MaxPoolScatter2) {
 
   r.run(R"(
 func.func @main(%arg0: tensor<2x2x6xi1>, %arg1: tensor<2x2xi32>) -> (tensor<4x5xi32>) {
-    %0 = "pphlo.maxpool_scatter"(%arg0, %arg1) {window_dimensions = array<i64:2,3>, window_strides = array<i64:2,2>} : (tensor<2x2x6xi1>, tensor<2x2xi32>) -> tensor<4x5xi32>
+    %0 = pphlo.maxpool_scatter %arg0, %arg1 {window_dimensions = array<i64:2,3>, window_strides = array<i64:2,2>} : (tensor<2x2x6xi1>, tensor<2x2xi32>) -> tensor<4x5xi32>
     return %0 : tensor<4x5xi32>
 })");
 
@@ -2328,7 +2396,11 @@ TEST_P(ExecutorTest, MaxPoolReduce1) {
 
   r.run(R"(
 func.func @main(%arg0: tensor<4x6xi32>) -> (tensor<2x2xi32>, tensor<2x2x6xi1>) {
-    %4:2 = "pphlo.argmax"(%arg0) {window_dilations = array<i64: 1, 1>, window_dimensions = array<i64:2, 3>, window_strides = array<i64:2, 3>} : (tensor<4x6xi32>) -> (tensor<2x2xi32>, tensor<2x2x6xi1>)
+    %4:2 = pphlo.argmax %arg0 {
+      window_dilations = array<i64: 1, 1>,
+      window_dimensions = array<i64:2, 3>,
+      window_strides = array<i64:2, 3>
+    } : (tensor<4x6xi32>) -> (tensor<2x2xi32>, tensor<2x2x6xi1>)
     return %4#0, %4#1: tensor<2x2xi32>, tensor<2x2x6xi1>
 })",
         2);
@@ -2358,7 +2430,11 @@ TEST_P(ExecutorTest, MaxPoolReduce2) {
 
   r.run(R"(
 func.func @main(%arg0: tensor<4x5xi32>) -> (tensor<2x2xi32>, tensor<2x2x6xi1>) {
-    %4:2 = "pphlo.argmax"(%arg0) {window_dilations = array<i64: 1,1>, window_dimensions = array<i64:2, 3>, window_strides = array<i64:2, 2>} : (tensor<4x5xi32>) -> (tensor<2x2xi32>, tensor<2x2x6xi1>)
+    %4:2 = pphlo.argmax %arg0 {
+      window_dilations = array<i64: 1,1>,
+      window_dimensions = array<i64:2, 3>,
+      window_strides = array<i64:2, 2>
+    } : (tensor<4x5xi32>) -> (tensor<2x2xi32>, tensor<2x2x6xi1>)
     return %4#0, %4#1: tensor<2x2xi32>, tensor<2x2x6xi1>
 })",
         2);
@@ -2396,18 +2472,27 @@ func.func @main(%arg0: tensor<4x6xi32>, %arg1: tensor<2x2xi32>) -> (tensor<2x2xi
   %1 = "stablehlo.reduce_window"(%arg0, %0) ({
     ^bb0(%arg2: tensor<i32>, %arg3: tensor<i32>):
       %3 = stablehlo.maximum %arg2, %arg3 : tensor<i32>
-      "stablehlo.return"(%3) : (tensor<i32>) -> ()
-    }) {base_dilations = dense<1> : tensor<2xi64>, padding = dense<0> : tensor<2x2xi64>, window_dilations = dense<1> : tensor<2xi64>,
-        window_dimensions = dense<[2,3]> : tensor<2xi64>, window_strides = dense<[2, 3]> : tensor<2xi64>} : (tensor<4x6xi32>, tensor<i32>) -> tensor<2x2xi32>
+      stablehlo.return %3 : tensor<i32>
+    }) {
+      base_dilations = dense<1> : tensor<2xi64>,
+      padding = dense<0> : tensor<2x2xi64>,
+      window_dilations = dense<1> : tensor<2xi64>,
+      window_dimensions = dense<[2,3]> : tensor<2xi64>,
+      window_strides = dense<[2, 3]> : tensor<2xi64>
+    } : (tensor<4x6xi32>, tensor<i32>) -> tensor<2x2xi32>
   %2 = "stablehlo.select_and_scatter"(%arg0, %arg1, %0) ({
     ^bb0(%arg3: tensor<i32>, %arg4: tensor<i32>):
-      %3 = "stablehlo.compare"(%arg3, %arg4) {comparison_direction = #stablehlo<comparison_direction GE>} : (tensor<i32>, tensor<i32>) -> tensor<i1>
-      "stablehlo.return"(%3) : (tensor<i1>) -> ()
+      %3 = stablehlo.compare GE, %arg3, %arg4 : (tensor<i32>, tensor<i32>) -> tensor<i1>
+      stablehlo.return %3 : tensor<i1>
     }, {
     ^bb0(%arg3: tensor<i32>, %arg4: tensor<i32>):
       %3 = stablehlo.add %arg3, %arg4 : tensor<i32>
-      "stablehlo.return"(%3) : (tensor<i32>) -> ()
-    }) {padding = dense<0> : tensor<2x2xi64>, window_dimensions = dense<[2,3]> : tensor<2xi64>, window_strides = dense<[2,3]> : tensor<2xi64>} : (tensor<4x6xi32>, tensor<2x2xi32>, tensor<i32>) -> tensor<4x6xi32>
+      stablehlo.return %3 : tensor<i32>
+    }) {
+      padding = dense<0> : tensor<2x2xi64>,
+      window_dimensions = dense<[2,3]> : tensor<2xi64>,
+      window_strides = dense<[2,3]> : tensor<2xi64>
+    } : (tensor<4x6xi32>, tensor<2x2xi32>, tensor<i32>) -> tensor<4x6xi32>
     return %1, %2 : tensor<2x2xi32>, tensor<4x6xi32>
 })",
                           {VIS_PUBLIC, VIS_PUBLIC});
@@ -2459,8 +2544,15 @@ TEST_P(ExecutorTest, MaxPoolReduce3) {
 
   r.run(R"(
 func.func @main(%arg0: tensor<1x4x4x1xi32>, %arg1: tensor<1x3x3x1xi32>) -> (tensor<1x3x3x1xi32>, tensor<1x3x3x1x4xi1>, tensor<1x4x4x1xi32>) {
-    %0:2 = "pphlo.argmax"(%arg0) {window_dilations = array<i64:1,1,1,1>, window_dimensions = array<i64:1, 2, 2, 1>, window_strides = array<i64:1,1,1,1>} : (tensor<1x4x4x1xi32>) -> (tensor<1x3x3x1xi32>, tensor<1x3x3x1x4xi1>)
-    %1 = "pphlo.maxpool_scatter"(%0#1, %arg1) {window_dimensions = array<i64:1, 2, 2, 1>, window_strides = array<i64:1,1,1,1>} : (tensor<1x3x3x1x4xi1>, tensor<1x3x3x1xi32>) -> tensor<1x4x4x1xi32>
+    %0:2 = pphlo.argmax %arg0 {
+      window_dilations = array<i64:1,1,1,1>,
+      window_dimensions = array<i64:1, 2, 2, 1>,
+      window_strides = array<i64:1,1,1,1>
+    } : (tensor<1x4x4x1xi32>) -> (tensor<1x3x3x1xi32>, tensor<1x3x3x1x4xi1>)
+    %1 = pphlo.maxpool_scatter %0#1, %arg1 {
+      window_dimensions = array<i64:1, 2, 2, 1>,
+      window_strides = array<i64:1,1,1,1>
+    } : (tensor<1x3x3x1x4xi1>, tensor<1x3x3x1xi32>) -> tensor<1x4x4x1xi32>
     return %0#0, %0#1, %1: tensor<1x3x3x1xi32>, tensor<1x3x3x1x4xi1>, tensor<1x4x4x1xi32>
 })",
         3);
@@ -2483,10 +2575,10 @@ TEST_P(ExecutorTest, IntNot) {
 
   r.run(R"(
 func.func @main() -> (tensor<i32>, tensor<i1>) {
-    %0 = "pphlo.constant"() {value = dense<5> : tensor<i32>} : () -> tensor<i32>
-    %1 = "pphlo.not"(%0) : (tensor<i32>) -> tensor<i32>
-    %2 = "pphlo.constant"() {value = dense<0> : tensor<i1>} : () -> tensor<i1>
-    %3 = "pphlo.not"(%2) : (tensor<i1>) -> tensor<i1>
+    %0 = pphlo.constant dense<5> : tensor<i32>
+    %1 = pphlo.not %0 : tensor<i32>
+    %2 = pphlo.constant dense<0> : tensor<i1>
+    %3 = pphlo.not %2 : tensor<i1>
     return %1, %3: tensor<i32>, tensor<i1>
 })",
         2);
@@ -2505,17 +2597,17 @@ TEST_P(ExecutorTest, Case) {
   const auto *prog = R"(
  func.func @main(%arg0: tensor<i32>) -> (tensor<i32>,tensor<i32>) {
   %0:2 = "pphlo.case"(%arg0) ({
-    %1 = "pphlo.constant"() {value = dense<1> : tensor<i32>} : () -> tensor<i32>
-    %2 = "pphlo.constant"() {value = dense<11> : tensor<i32>} : () -> tensor<i32>
-    "pphlo.return"(%1, %2) : (tensor<i32>, tensor<i32>) -> ()
+    %1 = pphlo.constant dense<1> : tensor<i32>
+    %2 = pphlo.constant dense<11> : tensor<i32>
+    pphlo.return %1, %2 : tensor<i32>, tensor<i32>
   }, {
-    %1 = "pphlo.constant"() {value = dense<2> : tensor<i32>} : () -> tensor<i32>
-    %2 = "pphlo.constant"() {value = dense<12> : tensor<i32>} : () -> tensor<i32>
-    "pphlo.return"(%1, %2) : (tensor<i32>, tensor<i32>) -> ()
+    %1 = pphlo.constant dense<2> : tensor<i32>
+    %2 = pphlo.constant dense<12> : tensor<i32>
+    pphlo.return %1, %2 : tensor<i32>, tensor<i32>
   }, {
-    %1 = "pphlo.constant"() {value = dense<3> : tensor<i32>} : () -> tensor<i32>
-    %2 = "pphlo.constant"() {value = dense<13> : tensor<i32>} : () -> tensor<i32>
-    "pphlo.return"(%1, %2) : (tensor<i32>, tensor<i32>) -> ()
+    %1 = pphlo.constant dense<3> : tensor<i32>
+    %2 = pphlo.constant dense<13> : tensor<i32>
+    pphlo.return %1, %2 : tensor<i32>, tensor<i32>
   }) : (tensor<i32>) -> (tensor<i32>, tensor<i32>)
   return %0#0, %0#1: tensor<i32>, tensor<i32>
 })";
@@ -2564,23 +2656,23 @@ TEST_P(ExecutorTest, CasePrivate) {
   const auto *prog = R"(
  func.func @main(%arg0: tensor<!pphlo.secret<i32>>) -> (tensor<!pphlo.secret<i32>>, tensor<!pphlo.secret<i32>>) {
   %0:2 = "pphlo.case"(%arg0) ({
-    %1 = "pphlo.constant"() {value = dense<1> : tensor<i32>} : () -> tensor<i32>
-    %2 = "pphlo.convert"(%1) : (tensor<i32>) -> tensor<!pphlo.secret<i32>>
-    %3 = "pphlo.constant"() {value = dense<11> : tensor<i32>} : () -> tensor<i32>
-    %4 = "pphlo.convert"(%3) : (tensor<i32>) -> tensor<!pphlo.secret<i32>>
-    "pphlo.return"(%2, %4) : (tensor<!pphlo.secret<i32>>, tensor<!pphlo.secret<i32>>) -> ()
+    %1 = pphlo.constant dense<1> : tensor<i32>
+    %2 = pphlo.convert %1 : (tensor<i32>) -> tensor<!pphlo.secret<i32>>
+    %3 = pphlo.constant dense<11> : tensor<i32>
+    %4 = pphlo.convert %3 : (tensor<i32>) -> tensor<!pphlo.secret<i32>>
+    pphlo.return %2, %4 : tensor<!pphlo.secret<i32>>, tensor<!pphlo.secret<i32>>
   }, {
-    %1 = "pphlo.constant"() {value = dense<2> : tensor<i32>} : () -> tensor<i32>
-    %2 = "pphlo.convert"(%1) : (tensor<i32>) -> tensor<!pphlo.secret<i32>>
-    %3 = "pphlo.constant"() {value = dense<12> : tensor<i32>} : () -> tensor<i32>
-    %4 = "pphlo.convert"(%3) : (tensor<i32>) -> tensor<!pphlo.secret<i32>>
-    "pphlo.return"(%2, %4) : (tensor<!pphlo.secret<i32>>, tensor<!pphlo.secret<i32>>) -> ()
+    %1 = pphlo.constant dense<2> : tensor<i32>
+    %2 = pphlo.convert %1 : (tensor<i32>) -> tensor<!pphlo.secret<i32>>
+    %3 = pphlo.constant dense<12> : tensor<i32>
+    %4 = pphlo.convert %3 : (tensor<i32>) -> tensor<!pphlo.secret<i32>>
+    pphlo.return %2, %4 : tensor<!pphlo.secret<i32>>, tensor<!pphlo.secret<i32>>
   }, {
-    %1 = "pphlo.constant"() {value = dense<3> : tensor<i32>} : () -> tensor<i32>
-    %2 = "pphlo.convert"(%1) : (tensor<i32>) -> tensor<!pphlo.secret<i32>>
-    %3 = "pphlo.constant"() {value = dense<13> : tensor<i32>} : () -> tensor<i32>
-    %4 = "pphlo.convert"(%3) : (tensor<i32>) -> tensor<!pphlo.secret<i32>>
-    "pphlo.return"(%2, %4) : (tensor<!pphlo.secret<i32>>, tensor<!pphlo.secret<i32>>) -> ()
+    %1 = pphlo.constant dense<3> : tensor<i32>
+    %2 = pphlo.convert %1 : (tensor<i32>) -> tensor<!pphlo.secret<i32>>
+    %3 = pphlo.constant dense<13> : tensor<i32>
+    %4 = pphlo.convert %3 : (tensor<i32>) -> tensor<!pphlo.secret<i32>>
+    pphlo.return %2, %4 : tensor<!pphlo.secret<i32>>, tensor<!pphlo.secret<i32>>
   }) : (tensor<!pphlo.secret<i32>>) -> (tensor<!pphlo.secret<i32>>, tensor<!pphlo.secret<i32>>)
   return %0#0, %0#1: tensor<!pphlo.secret<i32>>, tensor<!pphlo.secret<i32>>
 })";
@@ -2641,10 +2733,10 @@ TEST_P(ExecutorTest, MixedPayload) {
   r.run(r.compileMHlo(
             R"(
 func.func @main(%arg0: tensor<20xi32>) -> (tensor<20xi32>, tensor<20xi32>) {
-    %0 = "stablehlo.iota"() {iota_dimension = 0 : i64} : () -> tensor<20xi32>
+    %0 = stablehlo.iota dim = 0: tensor<20xi32>
     %1:2 = "stablehlo.sort"(%arg0, %0) ({
     ^bb0(%arg1: tensor<i32>, %arg2: tensor<i32>, %arg3: tensor<i32>, %arg4: tensor<i32>):
-      %2 = stablehlo.compare  LT, %arg1, %arg2 : (tensor<i32>, tensor<i32>) -> tensor<i1>
+      %2 = stablehlo.compare LT, %arg1, %arg2 : (tensor<i32>, tensor<i32>) -> tensor<i1>
       stablehlo.return %2 : tensor<i1>
     }) {dimension = 0 : i64, is_stable = true} : (tensor<20xi32>, tensor<20xi32>) -> (tensor<20xi32>, tensor<20xi32>)
     return %1#0, %1#1: tensor<20xi32>, tensor<20xi32>
@@ -2671,10 +2763,10 @@ TEST_P(ExecutorTest, MixedPayloadDescending) {
   r.run(r.compileMHlo(
             R"(
 func.func @main(%arg0: tensor<20xi32>) -> (tensor<20xi32>, tensor<20xi32>) {
-    %0 = "stablehlo.iota"() {iota_dimension = 0 : i64} : () -> tensor<20xi32>
+    %0 = stablehlo.iota dim = 0 : tensor<20xi32>
     %1:2 = "stablehlo.sort"(%arg0, %0) ({
     ^bb0(%arg1: tensor<i32>, %arg2: tensor<i32>, %arg3: tensor<i32>, %arg4: tensor<i32>):
-      %2 = stablehlo.compare  GT, %arg1, %arg2 : (tensor<i32>, tensor<i32>) -> tensor<i1>
+      %2 = stablehlo.compare GT, %arg1, %arg2 : (tensor<i32>, tensor<i32>) -> tensor<i1>
       stablehlo.return %2 : tensor<i1>
     }) {dimension = 0 : i64, is_stable = true} : (tensor<20xi32>, tensor<20xi32>) -> (tensor<20xi32>, tensor<20xi32>)
     return %1#0, %1#1: tensor<20xi32>, tensor<20xi32>

@@ -18,7 +18,7 @@
 SCRIPT=`realpath $0`
 SCRIPTPATH=`dirname $SCRIPT`
 
-bazel build //libspu/dialect:pphlo_op_doc
+bazel build //libspu/dialect/pphlo:op_doc
 
-cp `bazel info workspace`/bazel-bin/libspu/dialect/pphlo_op_doc.md $SCRIPTPATH/pphlo_op_doc.md
+cp `bazel info workspace`/bazel-bin/libspu/dialect/pphlo/op_doc.md $SCRIPTPATH/pphlo_op_doc.md
 

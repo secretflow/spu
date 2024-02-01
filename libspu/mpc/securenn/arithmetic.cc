@@ -218,11 +218,6 @@ NdArrayRef TruncAPr::proc(KernelEvalContext* ctx, const NdArrayRef& in,
   const auto field = in.eltype().as<Ring2k>()->field();
   const size_t k = SizeOf(field) * 8;
 
-  // NdArrayRef r(in.eltype(), in.shape());
-  // NdArrayRef rc(in.eltype(), in.shape());
-  // NdArrayRef rb(in.eltype(), in.shape());
-  // std::tie(r, rc, rb) = beaver->TruncPr(field, in.shape(), bits);
-
   NdArrayRef out(in.eltype(), in.shape());
   DISPATCH_ALL_FIELDS(field, "securenn.truncpr", [&]() {
     using U = ring2k_t;
@@ -304,8 +299,6 @@ NdArrayRef TruncAPr::proc(KernelEvalContext* ctx, const NdArrayRef& in,
     });
   });
   // P2 send share to P0
-  const auto kComm = in.elsize();
-  comm->addCommStatsManually(1, kComm);
   if (rank == 2) {
     comm->sendAsync(0, out, "out");
     out = ring_zeros(field, in.shape()).as(makeType<AShrTy>(field));

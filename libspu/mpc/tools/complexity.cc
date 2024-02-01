@@ -40,9 +40,9 @@ internal::SingleComplexityReport dumpComplexityReport(
 
   // the interested kernel whitelist.
   const std::vector<std::string> kWhitelist = {
-      "a2b",    "b2a",    "a2p",    "b2p",     "add_bb",  "add_aa",
-      "add_ap", "mul_aa", "mul_ap", "mmul_aa", "mmul_ap", "trunc_a",
-      "xor_bb", "xor_bp", "and_bb", "and_bp",
+      "a2b",     "b2a",    "a2p",    "b2p",     "add_aa",
+      "add_ap",  "mul_aa", "mul_ap", "mmul_aa", "mmul_ap",
+      "trunc_a", "xor_bb", "xor_bp", "and_bb",  "and_bp",
   };
   std::cout << protocol_str << std::endl;
   // print header

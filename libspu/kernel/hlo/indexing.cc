@@ -22,6 +22,7 @@
 #include "libspu/core/value.h"
 #include "libspu/kernel/hal/constants.h"
 #include "libspu/kernel/hal/polymorphic.h"
+#include "libspu/kernel/hal/public_helper.h"
 #include "libspu/kernel/hal/ring.h"
 #include "libspu/kernel/hal/shape_ops.h"
 #include "libspu/kernel/hal/type_cast.h"
@@ -318,6 +319,31 @@ spu::Value SecretDynamicSliceImpl(SPUContext *ctx, const spu::Value &operand,
 spu::Value SecretDynamicSlice(SPUContext *ctx, const spu::Value &operand,
                               const Sizes &slice_size,
                               absl::Span<const spu::Value> start_indices) {
+  // Prune public indexed dimensions
+  if (std::any_of(start_indices.begin(), start_indices.end(),
+                  [](const spu::Value &v) { return v.isPublic(); })) {
+    Index start(operand.shape().size(), 0);
+    Index limit(operand.shape());
+    std::vector<spu::Value> new_start_indices(start_indices.size());
+    auto zero_s =
+        hal::seal(ctx, hal::zeros(ctx, start_indices.front().dtype()));
+
+    for (size_t rank = 0; rank < operand.shape().size(); ++rank) {
+      if (start_indices[rank].isPublic()) {
+        start[rank] = hal::getScalarValue<int64_t>(ctx, start_indices[rank]);
+        start[rank] = std::min(limit[rank] - slice_size[rank], start[rank]);
+        limit[rank] = start[rank] + slice_size[rank];
+        new_start_indices[rank] = zero_s;
+      } else {
+        new_start_indices[rank] = start_indices[rank];
+      }
+    }
+
+    auto pruned_operand = hal::slice(ctx, operand, start, limit);
+
+    return SecretDynamicSlice(ctx, pruned_operand, slice_size,
+                              new_start_indices);
+  }
   // Clamp all indices
   auto lower_bound =
       hlo::Constant(ctx, std::vector<int64_t>(slice_size.size(), 0),
@@ -340,11 +366,9 @@ spu::Value SecretDynamicSlice(SPUContext *ctx, const spu::Value &operand,
                  std::back_inserter(adjusted_start_indices),
                  [&](const Value &x) { return hal::reshape(ctx, x, {1}); });
 
-  auto adjusted_all_indices = hal::broadcast_to(
-      ctx,
+  auto adjusted_all_indices =
       hal::clamp(ctx, hal::concatenate(ctx, adjusted_start_indices, 0),
-                 lower_bound, upper_bound),
-      {operand.shape()[0]});
+                 lower_bound, upper_bound);
 
   for (int64_t idx = 0;
        idx < static_cast<int64_t>(adjusted_start_indices.size()); ++idx) {
