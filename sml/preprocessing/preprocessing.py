@@ -415,7 +415,9 @@ class KBinsDiscretizer():
         self.subsample = subsample
         self.random_state = random_state
     
+    ### note that the remove_bin here will also influence transform function
     def fit(self, X, sample_weight=None, *, remove_bin=False, eliminate_ref=1e-3):
+        self.remove_bin = remove_bin
         ### subsample is not triggered by default
         if self.dtype in (jnp.float64, jnp.float32):
             output_dtype = self.dtype
@@ -439,20 +441,70 @@ class KBinsDiscretizer():
             if self.strategy == "uniform":
                 bin_func = lambda x: jnp.linspace(jnp.min(x), jnp.max(x), n_bins + 1)
                 bin_edges = jax.vmap(bin_func, in_axes=1, out_axes=1)(X)
+
             if self.strategy == "quantile":
                 quantiles = jnp.linspace(0, 100, n_bins + 1)
                 if sample_weight is None:
-
                     bin_func = lambda x: jnp.percentile(x, quantiles)
-                    
                     bin_edges = jax.vmap(bin_func, in_axes=1, out_axes=1)(X)
+
                 else:
-                    ### not implemented yet **************************
-                    pass
+                    def bin_func(x):
+                        def _weighted_percentile(x, q, w):
+                            x = x.reshape((-1, 1))
+                            if x.shape != w.shape and x.shape[0] == w.shape[0]:
+                                w = jnp.tile(w, (x.shape[1], 1)).T
+                            ### not sure whether to add axis
+                            sorted_idx = jnp.argsort(x, axis=0)
+                            sorted_weights = jnp.take_along_axis(w, sorted_idx, axis=0)
+                            weight_cdf = jnp.cumsum(sorted_weights, axis=0)
+                            adjusted_percentile = q / 100 * weight_cdf[-1]
+                            # mask = adjusted_percentile == 0
+                            # adjusted_percentile[mask] = jnp.nextafter(
+                            #     adjusted_percentile[mask], adjusted_percentile[mask] + 1
+                            # )
+                            # def percentile_idx_func(w, a):
+                            #     return jnp.searchsorted(w, a)
+                            # jax.vmap(percentile_idx_func, in_axes=(1, 0), out_axes=1)(weight_cdf, adjusted_percentile)
+                            percentile_idx = jnp.searchsorted(weight_cdf[:, 0], adjusted_percentile)
+                            
+                            # jax.vmap(percentile_idx_func)(weight_cdf, adjusted_percentile)
+
+                            # max_idx = sorted_idx.shape[0] - 1
+                            # percentile_idx = jnp.apply_along_axis(
+                            #     lambda x: jnp.clip(x, 0, max_idx), axis=0, arr=percentile_idx
+                            # )
+                            percentile_idx = jnp.clip(percentile_idx, 0, sorted_idx.shape[0] - 1)
+                            col_index = jnp.arange(x.shape[1])
+                            percentile_in_sorted = sorted_idx[percentile_idx, col_index]
+                            percentile = x[percentile_in_sorted, col_index]
+                            return percentile[0]
+                        return jax.vmap(_weighted_percentile, (None, 0, None))(x, quantiles, sample_weight)
+
+                    bin_edges = jax.vmap(bin_func, in_axes=1, out_axes=1)(X)
+
+
             if remove_bin == True and self.strategy in ("quantile", "kmeans"):
                 def eliminate_func(x):
-                    return jnp.concatenate((jnp.where(jnp.abs(x[1:] - x[:-1]) < eliminate_ref, x[1:], x[:-1]), jnp.array([x[-1]])))
-                bin_edges = jax.vmap(eliminate_func, in_axes=1, out_axes=1)(bin_edges)
+                    # count = jnp.zeros((), dtype=jnp.int32)
+                    n = x.shape[0]
+                    def loop_body(i, st):
+                        count, x = st
+                        ### Not sure whether to add abs here. Though the element in x bin_edges shuld be incremental, the precision problem of MPC may cuase addition unexpected behavior.
+                        pred = (x[i] - x[i - 1]) >= eliminate_ref
+                        x = jax.lax.cond(pred, lambda _: x.at[count].set(x[i]), lambda _: x, count)
+                        count = jax.lax.cond(pred, lambda c: c + 1, lambda c: c, count)
+                        return count, x
+                    st = (1, x)
+                    count, x = jax.lax.fori_loop(1, n, loop_body, st)
+                    return x, count
+
+                    # eliminated = jnp.concatenate((jnp.where(jnp.abs(x[1:] - x[:-1]) < eliminate_ref, x[1:], x[:-1]), jnp.array([x[-1]])))
+                    # deduplicated, unique_index = jnp.unique(eliminated, return_counts= True, size = n_bins + 1)
+                    # return deduplicated, unique_index
+
+                bin_edges, unqiue_count = jax.vmap(eliminate_func, in_axes=1, out_axes=(1, 0))(bin_edges)
+                self.unqiue_count = unqiue_count
                 # mask = jnp.ediff1d(bin_edges[jj], to_begin=jnp.inf) > 1e-8
                 # bin_edges[jj] = bin_edges[jj][mask]
                 # if len(bin_edges[jj]) - 1 != n_bins[jj]:
@@ -549,20 +601,27 @@ class KBinsDiscretizer():
         return self
 
     def transform(self, X):
-        dtype = (jnp.float64, jnp.float32) if self.dtype is None else self.dtype
+        # dtype = (jnp.float64, jnp.float32) if self.dtype is None else self.dtype
         bin_edges = self.bin_edges_
 
-        def compute_row(bin, x):
-            def compute_element(x):
-                encoding = jnp.where(x <= bin[1:], 1, 0)
-                return self.n_bins - jnp.sum(encoding)
-            if self.strategy == "uniform":
+        if self.remove_bin == True and self.strategy in ("quantile", "kmeans"):
+            unqiue_count = self.unqiue_count
+            def compute_row(bin, x, c):
+                def compute_element(x):
+                    encoding = jnp.where(x >= bin[1:-1], 1, 0)
+                    return jnp.clip(jnp.sum(encoding), 0, c - 2)
                 return jax.vmap(compute_element)(x)
-            else:
-                return jnp.clip(jax.vmap(compute_element)(x), 0, self.n_bins - 1)
+            compute_rows_vmap = jax.vmap(compute_row, in_axes=(1, 1, 0), out_axes=1)(bin_edges, X, unqiue_count)
+            return compute_rows_vmap
+        else:
+            def compute_row(bin, x):
+                def compute_element(x):
+                    encoding = jnp.where(x >= bin[1:-1], 1, 0)
+                    return jnp.sum(encoding)
+                return jax.vmap(compute_element)(x)
+            compute_rows_vmap = jax.vmap(compute_row, in_axes=(1, 1), out_axes=1)(bin_edges, X)
+            return compute_rows_vmap
 
-        compute_rows_vmap = jax.vmap(compute_row, in_axes=(1, 1), out_axes=1)(bin_edges, X)
-        return compute_rows_vmap
 
         # for jj in range(Xt.shape[1]):
         #     Xt[:, jj] = np.searchsorted(bin_edges[jj][1:-1], Xt[:, jj], side="right")
@@ -581,7 +640,7 @@ class KBinsDiscretizer():
         #     self._encoder.dtype = dtype_init
         # return Xt_enc
     
-    ### not defined yet **************************************************************88
+    ### not defined yet **************************************************************
     def fit_transform(self):
         pass
 
@@ -590,7 +649,7 @@ class KBinsDiscretizer():
         def bin_func(bin, x):
             bin_edges = bin
             bin_centers = (bin_edges[1:] + bin_edges[:-1]) * 0.5
-            return bin_centers[(x).astype(jnp.int64)]
+            return bin_centers[(x).astype(jnp.int32)]
         return jax.vmap(bin_func, in_axes=(1, 1), out_axes=1)(bin_edges, X)
 
 
