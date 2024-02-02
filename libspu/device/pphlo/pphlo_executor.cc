@@ -376,36 +376,10 @@ void execute(OpExecutor *, SPUContext *sctx, SymbolScope *sscope,
   SPU_ENFORCE(lhs.shape().ndim() == 3 && rhs.shape().ndim() == 3);
 
   SPU_ENFORCE(dnum.getLhsContractingDimensions().size() == 1 &&
-              dnum.getRhsContractingDimensions().size() == 1);
-  if (dnum.getLhsBatchingDimensions().size() == 1) {
-    // LHS should be [b,m,k]
-    SPU_ENFORCE(dnum.getLhsBatchingDimensions()[0] == 0 &&
-                    dnum.getLhsContractingDimensions()[0] == 2,
-                "LHS dims is not in order");
-  } else {
-    // LHS should be [b0, b1, k]
-    SPU_ENFORCE(dnum.getLhsBatchingDimensions().size() == 2 &&
-                    dnum.getLhsContractingDimensions()[0] == 2,
-                "LHS dims is not in order");
-    // reshape to [b0xb1, 1, k]
-    lhs = kernel::hlo::Reshape(
-        sctx, lhs, {lhs.shape()[0] * lhs.shape()[1], 1, lhs.shape()[2]});
-  }
-
-  if (dnum.getRhsBatchingDimensions().size() == 1) {
-    // RHS should be [b,k,n]
-    SPU_ENFORCE(dnum.getRhsBatchingDimensions()[0] == 0 &&
-                    dnum.getRhsContractingDimensions()[0] == 1,
-                "RHS dims is not in order");
-  } else {
-    // RHS should be [b0, b1, k]
-    SPU_ENFORCE(dnum.getRhsBatchingDimensions().size() == 2 &&
-                    dnum.getRhsContractingDimensions()[0] == 2,
-                "LHS dims is not in order");
-    // reshape to [b0xb1, k, 1]
-    rhs = kernel::hlo::Reshape(
-        sctx, rhs, {rhs.shape()[0] * rhs.shape()[1], rhs.shape()[2], 1});
-  }
+                  dnum.getRhsContractingDimensions().size() == 1 &&
+                  dnum.getLhsBatchingDimensions()[0] == 0 &&
+                  dnum.getLhsContractingDimensions()[0] == 2,
+              "LHS dims is not in order");
 
   // Must be [b,m,k] * [b, k, n]
   SPU_ENFORCE(lhs.shape()[0] == rhs.shape()[0], "Batch dim should equal");
@@ -592,11 +566,9 @@ void execute(OpExecutor *executor, SPUContext *sctx, SymbolScope *sscope,
   }
 
   kernel::hal::SortDirection direction;
-  if (op.getSortDirectionAttr().getInt() ==
-      static_cast<int>(mlir::spu::pphlo::SortDirection::ASC)) {
+  if (op.getSortDirection() == mlir::spu::pphlo::SortDirection::ASC) {
     direction = kernel::hal::SortDirection::Ascending;
-  } else if (op.getSortDirectionAttr().getInt() ==
-             static_cast<int>(mlir::spu::pphlo::SortDirection::DES)) {
+  } else if (op.getSortDirection() == mlir::spu::pphlo::SortDirection::DES) {
     direction = kernel::hal::SortDirection::Descending;
   } else {
     SPU_THROW("Should not reach here");
@@ -1293,6 +1265,8 @@ static void dispatchOp(OpExecutor *executor, SPUContext *sctx,
         }
 
         verifier.verify(casted, {lhs, rhs}, {ret});
+      } else if constexpr (std::is_same_v<OpT, mlir::spu::pphlo::FreeOp>) {
+        SPDLOG_INFO("Skip Free Op");
       } else {
         // Collect inputs
         std::vector<spu::Value> ins;

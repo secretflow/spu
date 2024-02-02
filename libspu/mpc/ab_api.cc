@@ -443,9 +443,13 @@ Value add_bb(SPUContext* ctx, const Value& x, const Value& y) {
 Value carry_a2b(SPUContext* ctx, const Value& x, const Value& y, size_t k) {
   // init P & G
   auto P = xor_bb(ctx, x, y);
+
+  // k bits
   auto G = and_bb(ctx, x, y);
 
   // Use kogge stone layout.
+  //    Theoreticall: k + k/2 + k/4 + ... + 1 = 2k
+  //    Actually: K + k/2 + k/4 + ... + 8 (8) + 8 (4) + 8 (2) + 8 (1) = 2k + 16
   while (k > 1) {
     if (k % 2 != 0) {
       k += 1;

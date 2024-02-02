@@ -127,7 +127,7 @@ gentbl_cc_library(
         ),
     ],
     tblgen = "@llvm-project//mlir:mlir-tblgen",
-    td_file = "attrs.td",
+    td_file = "ops.td",
     deps = [":dialect_td_files"],
 )
 

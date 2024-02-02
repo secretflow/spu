@@ -335,7 +335,7 @@ Compiler relate definition
 | Name | Number | Description |
 | ---- | ------ | ----------- |
 | XLA | 0 | none |
-| MLIR_HLO | 1 | none |
+| STABLEHLO | 1 | none |
 
 
 

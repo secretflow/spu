@@ -140,8 +140,8 @@ def _com_github_xtensor_xtl():
     )
 
 def _com_github_openxla_xla():
-    OPENXLA_COMMIT = "a0d4632c93451c685ce422d087388a5c624a5ee9"
-    OPENXLA_SHA256 = "3c990717bb64d7e27097f059b727e8e6e131a21c006ac16006f471fb8740b139"
+    OPENXLA_COMMIT = "f0946d01ef4cd9ecb1a27b4adb41ce6bcc846634"
+    OPENXLA_SHA256 = "0af44c6e621da42a87c68746d343b0400ed6ca4b7dc0a7c7efc32f32c83d6be2"
 
     maybe(
         http_archive,
@@ -159,10 +159,6 @@ def _com_github_openxla_xla():
         sha256 = OPENXLA_SHA256,
         strip_prefix = "xla-" + OPENXLA_COMMIT,
         type = ".tar.gz",
-        patch_args = ["-p1"],
-        patches = [
-            "@spulib//bazel:patches/xla.patch",
-        ],
         urls = [
             "https://github.com/openxla/xla/archive/{commit}.tar.gz".format(commit = OPENXLA_COMMIT),
         ],

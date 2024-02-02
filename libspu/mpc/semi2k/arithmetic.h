@@ -175,7 +175,8 @@ class MatMulAA : public MatmulKernel {
   ce::CExpr comm() const override {
     auto m = ce::Variable("m", "rows of lhs");
     auto n = ce::Variable("n", "cols of rhs");
-    return ce::K() * 2 * (ce::N() - 1) * m * n;
+    auto k = ce::Variable("k", "cols of lhs");
+    return ce::K() * (ce::N() - 1) * (m + n) * k;
   }
 
   NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& x,

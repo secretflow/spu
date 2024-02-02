@@ -88,7 +88,9 @@ void Core::buildPipeline(mlir::PassManager *pm) {
   optPM.addPass(mlir::createLoopInvariantCodeMotionPass());
   optPM.addPass(mlir::createCSEPass());
 
-  optPM.addPass(mlir::spu::pphlo::createInsertDeallocationOp());
+  if (!options.disable_deallocation_insertion()) {
+    optPM.addPass(mlir::spu::pphlo::createInsertDeallocationOp());
+  }
 }
 
 } // namespace spu::compiler

@@ -2,7 +2,7 @@ Dump IR to DAG
 ========================
 
 .. warning::
-    The configuration for dump IR to DAG maybe unstable. Please refer to the :spu_code_host:`spu.proto </spu/blob/main/libspu/spu.proto>` for latest configurations.
+    The configuration for dump IR to DAG maybe unstable. Please refer to the :spu_code_host:`spu.proto <spu/blob/main/libspu/spu.proto>` for latest configurations.
 
 Introduction
 ------------
@@ -16,14 +16,14 @@ With the aid of visualized DAG, the execution logic and required operators will 
 
 TL;DR
 ------------
-In case you just want to have a try on obtaining the DAG for executed code, we provide a :spu_code_host:`demo </spu/blob/main/examples/python/ir_dump/ir_dump.py>` that demonstrates the required code modifications to enable dumping the IR of executed code to a custom path.
+In case you just want to have a try on obtaining the DAG for executed code, we provide a :spu_code_host:`demo <spu/blob/main/examples/python/ir_dump/ir_dump.py>` that demonstrates the required code modifications to enable dumping the IR of executed code to a custom path.
 
 For those users who have designated requirements (e.g., dump to txt, dot, html), we recommend to read the following detailed step-by-step elaborations.
 
 
 Configuration
 -------------
-Please first have a look at the :spu_code_host:`spu.proto </spu/blob/main/libspu/spu.proto>` for SPU. To dump the IR, we should modify the compiler options, which is shown in the following code snippet.
+Please first have a look at the :spu_code_host:`spu.proto <spu/blob/main/libspu/spu.proto>` for SPU. To dump the IR, we should modify the compiler options, which is shown in the following code snippet.
 
 .. code-block:: protobuf
     :caption: Compiler Options
@@ -120,7 +120,7 @@ to
     res_spu = ppd.device("SPU")(func, copts=copts)(x_spu, y_spu)
 
 .. Note::
-    Here, `func` is a Python function. Please refer to the :spu_code_host:`demo </spu/blob/main/examples/python/ir_dump/ir_dump.py>` for the context.
+    Here, `func` is a Python function. Please refer to the :spu_code_host:`demo <spu/blob/main/examples/python/ir_dump/ir_dump.py>` for the context.
 
 In the end, you can just run the target code and the output (e.g., DOT) can be found in **your custom path**.
 
