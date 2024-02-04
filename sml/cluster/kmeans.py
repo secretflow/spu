@@ -15,6 +15,42 @@
 import jax
 import jax.numpy as jnp
 
+def _kmeans_single(
+    x,
+    centers_init,
+    n_clusters,
+    max_iter=300,
+):
+    centers = jnp.array([x[i] for i in centers_init])
+    for _ in range(max_iter):
+        C = x.reshape((1, x.shape[0], x.shape[1])) - centers.reshape(
+            (centers.shape[0], 1, centers.shape[1])
+        )
+        C = jnp.argmin(jnp.sum(jnp.square(C), axis=2), axis=0)
+        S = jnp.tile(C, (n_clusters, 1))
+        ks = jnp.arange(n_clusters)
+        aligned_array_raw = (S.T - ks).T
+        aligned_array = jnp.equal(aligned_array_raw, 0)
+
+        centers_raw = x.reshape(
+            (1, x.shape[0], x.shape[1])
+        ) * aligned_array.reshape(
+            (aligned_array.shape[0], aligned_array.shape[1], 1)
+        )
+        equals_sum = jnp.sum(aligned_array, axis=1)
+        centers_sum = jnp.sum(centers_raw, axis=1)
+        centers = jnp.divide(centers_sum.T, equals_sum).T
+    return centers
+
+def _inertia(x, centers):
+    C = x.reshape((1, x.shape[0], x.shape[1])) - centers.reshape(
+            (centers.shape[0], 1, centers.shape[1])
+        )
+    distance =  jnp.sum(jnp.square(C), axis=2)
+    index = jnp.argmin(distance, axis=0)
+    return jnp.sum(jnp.take(distance, index))
+    # return jnp.argmin(jnp.sum(jnp.take(distance, index)))
+
 
 class KMEANS:
     """
@@ -33,12 +69,22 @@ class KMEANS:
 
     """
 
-    def __init__(self, n_clusters, n_samples, max_iter=300):
+    def __init__(self, n_clusters, n_samples, init="random", n_init=1, max_iter=300):
         self.n_clusters = n_clusters
         self.max_iter = max_iter
-        self.init_params = jax.random.randint(
-            jax.random.PRNGKey(1), shape=[self.n_clusters], minval=0, maxval=n_samples
-        )
+        self.init = init
+        self.n_init = n_init
+        ### if the n_init is 1, reduce the dimension of init_params to eliminate the reshape operations
+        if n_init == 1:
+            if init == "random":
+                self.init_params = jax.random.randint(
+                    jax.random.PRNGKey(1), shape=[self.n_clusters], minval=0, maxval=n_samples
+                )
+        else:
+            if init == "random":
+                self.init_params = jax.random.randint(
+                    jax.random.PRNGKey(1), shape=[n_init, self.n_clusters], minval=0, maxval=n_samples
+                )
         self._centers = jnp.zeros(())
 
     def fit(self, x):
@@ -61,29 +107,51 @@ class KMEANS:
             Returns an instance of self.
         """
 
-        centers = jnp.array([x[i] for i in self.init_params])
-        for _ in range(self.max_iter):
-            C = x.reshape((1, x.shape[0], x.shape[1])) - centers.reshape(
-                (centers.shape[0], 1, centers.shape[1])
+        # centers = jnp.array([x[i] for i in self.init_params])
+        # centers = _kmeans_single(x, centers, self.n_clusters, self.max_iter)
+        if self.n_init == 1:
+            centers_best = _kmeans_single(x, self.init_params, self.n_clusters, self.max_iter)
+        else:
+            centers = jax.vmap(_kmeans_single, in_axes=(None, 0, None, None))(x, self.init_params, self.n_clusters, self.max_iter)
+            C = x.reshape((1, 1, x.shape[0], x.shape[1])) - centers.reshape(
+                (centers.shape[0], centers.shape[1], 1, centers.shape[2])
             )
-            C = jnp.argmin(jnp.sum(jnp.square(C), axis=2), axis=0)
+            distance =  jnp.sum(jnp.square(C), axis=3)
+            index = jnp.argmin(distance, axis=1)
+            # return jnp.sum(jnp.take(distance, index))
+            inertia = jnp.sum(jnp.take(distance, index), axis=1)
+            centers_best = centers[jnp.argmin(inertia)]
+            # inertia = jax.vmap(_inertia, in_axes=(None, 0))(x, centers)
+            # centers_best = centers[jnp.argmin(inertia)]
+            # centers_best = centers[inertia]
+            # centers_best = jnp.take(centers, jnp.argmin(inertia)[:, jnp.newaxis, jnp.newaxis])
+            # centers_best = centers[jnp.argmin(inertia)]
+            # centers_best = centers[jnp.argmin(inertia)]
+            # centers_best = jnp.take(centers, jnp.argmin(inertia)[:, jnp.newaxis])
+        # for _ in range(self.max_iter):
+        #     C = x.reshape((1, x.shape[0], x.shape[1])) - centers.reshape(
+        #         (centers.shape[0], 1, centers.shape[1])
+        #     )
+        #     C = jnp.argmin(jnp.sum(jnp.square(C), axis=2), axis=0)
+        #     S = jnp.tile(C, (self.n_clusters, 1))
+        #     ks = jnp.arange(self.n_clusters)
+        #     aligned_array_raw = (S.T - ks).T
+        #     aligned_array = jnp.equal(aligned_array_raw, 0)
 
-            S = jnp.tile(C, (self.n_clusters, 1))
-            ks = jnp.arange(self.n_clusters)
-            aligned_array_raw = (S.T - ks).T
-            aligned_array = jnp.equal(aligned_array_raw, 0)
+        #     centers_raw = x.reshape(
+        #         (1, x.shape[0], x.shape[1])
+        #     ) * aligned_array.reshape(
+        #         (aligned_array.shape[0], aligned_array.shape[1], 1)
+        #     )
+        #     equals_sum = jnp.sum(aligned_array, axis=1)
+        #     centers_sum = jnp.sum(centers_raw, axis=1)
+        #     centers = jnp.divide(centers_sum.T, equals_sum).T
 
-            centers_raw = x.reshape(
-                (1, x.shape[0], x.shape[1])
-            ) * aligned_array.reshape(
-                (aligned_array.shape[0], aligned_array.shape[1], 1)
-            )
-            equals_sum = jnp.sum(aligned_array, axis=1)
-            centers_sum = jnp.sum(centers_raw, axis=1)
-            centers = jnp.divide(centers_sum.T, equals_sum).T
-
-        self._centers = centers
+        self._centers = centers_best
+        # self._inertia = inertia
         return self
+
+
 
     def predict(self, x):
         """Result estimates.
