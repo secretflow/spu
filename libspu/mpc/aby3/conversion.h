@@ -37,9 +37,9 @@ class A2B : public UnaryKernel {
 
   // TODO: this depends on the adder circuit.
   ce::CExpr comm() const override {
-    // 1 * AddBB : logk * k + k
+    // 1 * AddBB : 2 * logk * k + k
     // 1 * rotate: k
-    return Log(ce::K()) * ce::K() + ce::K() * 2;
+    return 2 * Log(ce::K()) * ce::K() + ce::K() * 2;
   }
 
   NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in) const override;
@@ -110,12 +110,10 @@ class MsbA2B : public UnaryKernel {
   }
 
   ce::CExpr comm() const override {
-    // 1 * carry : k + 2 * k
+    // 1 * carry : k + 2 * k + 16 * 2
     // 1 * rotate: k
-    return ce::K() * 4;
+    return ce::K() + 2 * ce::K() + ce::K() + 32;
   }
-
-  float getCommTolerance() const override { return 0.2; }
 
   NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in) const override;
 };

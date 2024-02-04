@@ -57,6 +57,8 @@ def PPHLO_ConstantOp : PPHLO_Op<"constant", [ConstantLike, Pure]> {
   let builders = [OpBuilder<(ins "Attribute" : $value)>];
   let skipDefaultBuilders = 1;
   let hasFolder = 1;
+
+  let hasCustomAssemblyFormat = 1;
 }
 
 def PPHLO_EpsilonOp : PPHLO_Op<"epsilon", [Pure]> {
@@ -72,11 +74,13 @@ def PPHLO_IotaOp : PPHLO_Op<"iota", [Pure]> {
 
     See https://www.tensorflow.org/xla/operation_semantics#iota
   }];
-  let arguments = (ins I64Attr : $iota_dimension);
+  let arguments = (ins I64Attr: $iota_dimension);
 
-  let results = (outs PPHLO_Tensor : $output);
+  let results = (outs PPHLO_Tensor: $output);
 
   let hasVerifier = 1;
+
+  let assemblyFormat = "`dim` `=` $iota_dimension attr-dict `:` type($output)";
 }
 
 //===----------------------------------------------------------------------===//
@@ -85,8 +89,12 @@ def PPHLO_IotaOp : PPHLO_Op<"iota", [Pure]> {
 class PPHLO_UnaryElementwiseOp<string mnemonic, list<Trait> traits,
                                Type OperandType, Type ResultType = OperandType>
     : PPHLO_Op<mnemonic, traits #[Elementwise, SameOperandsAndResultShape]> {
-  let arguments = (ins OperandType : $operand);
-  let results = (outs ResultType);
+  let arguments = (ins OperandType: $operand);
+  let results = (outs ResultType: $result);
+
+  let assemblyFormat = [{
+    $operand attr-dict `:` custom<SameOperandsAndResultType>(type($operand), type($result))
+  }];
 }
 
 def PPHLO_ConvertOp
@@ -332,9 +340,17 @@ def PPHLO_PreferAOp : PPHLO_UnaryElementwiseOp<"prefer_a", [Pure, SameOperandsAn
 
 class PPHLO_BinaryElementwiseOp<string mnemonic, list<Trait> traits>
     : PPHLO_Op<mnemonic, traits #[SameOperandsAndResultShape, Elementwise]> {
-  let arguments = (ins PPHLO_Tensor : $lhs, PPHLO_Tensor : $rhs);
+  let arguments = (ins
+      PPHLO_Tensor: $lhs,
+      PPHLO_Tensor: $rhs
+  );
 
-  let results = (outs PPHLO_Tensor);
+  let results = (outs PPHLO_Tensor: $result);
+
+  let assemblyFormat = [{
+    $lhs `,` $rhs attr-dict
+      `:` custom<SameOperandsAndResultType>(type($lhs), type($rhs), type($result))
+  }];
 }
 
 def PPHLO_SubtractOp : PPHLO_BinaryElementwiseOp<"subtract", [Pure]> {
@@ -463,7 +479,8 @@ def PPHLO_ShiftRightArithmeticOp
 class PPHLO_BinaryLogicalElementwiseOp<string mnemonic>
     : PPHLO_BinaryElementwiseOp<
           mnemonic, [Commutative, Pure, SameOperandsAndResultShape]> {
-  let arguments = (ins PPHLO_BoolOrIntTensor : $lhs, PPHLO_BoolOrIntTensor : $rhs);
+  let arguments = (ins PPHLO_BoolOrIntTensor: $lhs, PPHLO_BoolOrIntTensor: $rhs);
+  let results = (outs PPHLO_BoolOrIntTensor: $result);
 }
 
 def PPHLO_AndOp : PPHLO_BinaryLogicalElementwiseOp<"and"> {
@@ -499,9 +516,14 @@ def PPHLO_XorOp : PPHLO_BinaryLogicalElementwiseOp<"xor"> {
 //===----------------------------------------------------------------------===//
 // pphlo comparison op definitions.
 //===----------------------------------------------------------------------===//
-def PPHLO_EqualOp
-    : PPHLO_Op<"equal",
-               [Pure, SameOperandsAndResultShape, Elementwise]> {
+class PPHLO_ComparisionOp<string mnemonic>
+    : PPHLO_BinaryElementwiseOp<
+          mnemonic, [Pure, SameOperandsAndResultShape]> {
+  let arguments = (ins PPHLO_Tensor: $lhs, PPHLO_Tensor: $rhs);
+  let results = (outs PPHLO_BoolTensor: $result);
+}
+
+def PPHLO_EqualOp: PPHLO_ComparisionOp<"equal"> {
   let summary = "Equal comparison operator";
   let description = [{
     Returns `lhs` == `rhs` element-wise.
@@ -509,13 +531,9 @@ def PPHLO_EqualOp
     See
     https://www.tensorflow.org/xla/operation_semantics#element-wise_comparison_operations.
   }];
-  let arguments = (ins PPHLO_Tensor : $lhs, PPHLO_Tensor : $rhs);
-  let results = (outs PPHLO_BoolTensor);
 }
 
-def PPHLO_NotEqualOp
-    : PPHLO_Op<"not_equal",
-               [Pure, SameOperandsAndResultShape, Elementwise]> {
+def PPHLO_NotEqualOp: PPHLO_ComparisionOp<"not_equal"> {
   let summary = "Not-equal comparison operator";
   let description = [{
     Returns `lhs` != `rhs` element-wise.
@@ -523,13 +541,9 @@ def PPHLO_NotEqualOp
     See
     https://www.tensorflow.org/xla/operation_semantics#element-wise_comparison_operations.
   }];
-  let arguments = (ins PPHLO_Tensor : $lhs, PPHLO_Tensor : $rhs);
-  let results = (outs PPHLO_BoolTensor);
 }
 
-def PPHLO_GreaterEqualOp
-    : PPHLO_Op<"greater_equal",
-               [Pure, SameOperandsAndResultShape, Elementwise]> {
+def PPHLO_GreaterEqualOp: PPHLO_ComparisionOp<"greater_equal"> {
   let summary = "greater_equal comparison operator";
   let description = [{
     Returns `lhs` >= `rhs` element-wise.
@@ -537,31 +551,19 @@ def PPHLO_GreaterEqualOp
     See
     https://www.tensorflow.org/xla/operation_semantics#element-wise_comparison_operations.
   }];
-  let arguments = (ins PPHLO_Tensor : $lhs, PPHLO_Tensor : $rhs);
-  let results = (outs PPHLO_BoolTensor);
 }
 
-def PPHLO_GreaterOp
-    : PPHLO_Op<"greater",
-               [Pure, SameOperandsAndResultShape, Elementwise]> {
+def PPHLO_GreaterOp: PPHLO_ComparisionOp<"greater"> {
   let summary = "greater comparison operator";
   let description = [{elementwise `lhs` > `rhs`.}];
-  let arguments = (ins PPHLO_Tensor : $lhs, PPHLO_Tensor : $rhs);
-  let results = (outs PPHLO_BoolTensor);
 }
 
-def PPHLO_LessEqualOp
-    : PPHLO_Op<"less_equal",
-               [Pure, SameOperandsAndResultShape, Elementwise]> {
+def PPHLO_LessEqualOp: PPHLO_ComparisionOp<"less_equal"> {
   let summary = "less_equal comparison operator";
   let description = [{elementwise `lhs` <= `rhs`.}];
-  let arguments = (ins PPHLO_Tensor : $lhs, PPHLO_Tensor : $rhs);
-  let results = (outs PPHLO_BoolTensor);
 }
 
-def PPHLO_LessOp
-    : PPHLO_Op<"less",
-               [Pure, SameOperandsAndResultShape, Elementwise]> {
+def PPHLO_LessOp: PPHLO_ComparisionOp<"less"> {
   let summary = "less comparison operator";
   let description = [{
     Returns `lhs` < `rhs` element-wise.
@@ -569,8 +571,6 @@ def PPHLO_LessOp
     See
     https://www.tensorflow.org/xla/operation_semantics#element-wise_comparison_operations.
   }];
-  let arguments = (ins PPHLO_Tensor : $lhs, PPHLO_Tensor : $rhs);
-  let results = (outs PPHLO_BoolTensor);
 }
 
 //===----------------------------------------------------------------------===//
@@ -620,6 +620,11 @@ def PPHLO_BroadcastOp
   let results = (outs PPHLO_Tensor);
 
   let hasVerifier = 1;
+
+  let assemblyFormat = [{
+    $operand `,` `dims` `=` $broadcast_dimensions
+      attr-dict `:` functional-type(operands, results)
+  }];
 }
 
 def PPHLO_ReshapeOp
@@ -630,10 +635,12 @@ def PPHLO_ReshapeOp
 
     See https://www.tensorflow.org/xla/operation_semantics#reshape.
   }];
-  let arguments = (ins PPHLO_AnyTensor : $operand);
+  let arguments = (ins PPHLO_AnyTensor: $operand);
 
-  let results = (outs PPHLO_AnyTensor);
+  let results = (outs PPHLO_AnyTensor: $result);
   let hasFolder = 1;
+
+  let assemblyFormat = "operands attr-dict `:` functional-type(operands, results)";
 }
 
 def PPHLO_ConcatenateOp
@@ -651,6 +658,10 @@ def PPHLO_ConcatenateOp
   let results = (outs PPHLO_AnyTensor);
 
   let hasVerifier = 1;
+
+  let assemblyFormat = [{
+     operands `dim` `=` $dimension attr-dict `:` functional-type(operands, results)
+  }];
 }
 
 def PPHLO_DotOp : PPHLO_Op<"dot", [Pure]> {
@@ -663,6 +674,11 @@ def PPHLO_DotOp : PPHLO_Op<"dot", [Pure]> {
   }];
   let arguments = (ins PPHLO_Tensor : $lhs, PPHLO_Tensor : $rhs);
   let results = (outs PPHLO_Tensor);
+
+  let assemblyFormat = [{
+    $lhs `,` $rhs attr-dict
+      `:` functional-type(operands, results)
+  }];
 }
 
 def PPHLO_DotGeneralOp: PPHLO_Op<"dot_general", [Pure]> {
@@ -681,6 +697,11 @@ def PPHLO_DotGeneralOp: PPHLO_Op<"dot_general", [Pure]> {
 
   let results = (outs PPHLO_Tensor);
   let hasCanonicalizer = 1;
+
+  let assemblyFormat = [{
+    $lhs `,` $rhs `,` custom<DotDimensionNumbers>($dot_dimension_numbers) attr-dict
+      `:` functional-type(operands, results)
+  }];
 }
 
 def PPHLO_SelectOp
@@ -699,9 +720,13 @@ def PPHLO_SelectOp
                   PPHLO_Tensor: $on_true,
                   PPHLO_Tensor: $on_false);
 
-  let results = (outs PPHLO_Tensor);
+  let results = (outs PPHLO_Tensor: $result);
 
   let hasCanonicalizer = 1;
+
+  let assemblyFormat = [{
+    operands attr-dict `:` functional-type(operands, results)
+  }];
 }
 
 def PPHLO_SelectAndScatterOp: PPHLO_Op<"select_and_scatter",
@@ -747,6 +772,10 @@ def PPHLO_MaxPoolScatterOp: PPHLO_Op<"maxpool_scatter", [Pure]> {
   );
 
   let results = (outs PPHLO_Tensor);
+
+  let assemblyFormat = [{
+    operands attr-dict `:` functional-type(operands, results)
+  }];
 }
 
 def PPHLO_ReduceOp : PPHLO_Op<"reduce", [
@@ -775,6 +804,8 @@ def PPHLO_ReduceOp : PPHLO_Op<"reduce", [
   let regions = (region SizedRegion<1> : $body);
 
   let hasVerifier = 1;
+
+  let hasCustomAssemblyFormat = 1;
 }
 
 def PPHLO_ReduceWindowOp : PPHLO_Op<"reduce_window", [
@@ -822,6 +853,10 @@ def PPHLO_ArgMaxOp: PPHLO_Op<"argmax", [Pure]> {
   );
 
   let results = (outs PPHLO_Tensor, PPHLO_BoolTensor);
+
+  let assemblyFormat = [{
+    operands attr-dict `:` functional-type(operands, results)
+  }];
 }
 
 def PPHLO_ReturnOp : PPHLO_Op<"return", [Pure, Terminator]> {
@@ -830,6 +865,8 @@ def PPHLO_ReturnOp : PPHLO_Op<"return", [Pure, Terminator]> {
   }];
 
   let arguments = (ins Variadic<PPHLO_Tensor> : $results);
+
+  let assemblyFormat = "$results attr-dict (`:` type($results)^)?";
 }
 
 def PPHLO_TransposeOp
@@ -847,6 +884,11 @@ def PPHLO_TransposeOp
   let hasFolder = 1;
 
   let hasVerifier = 1;
+
+  let assemblyFormat = [{
+    $operand `,` `dims` `=` $permutation
+      attr-dict `:` functional-type(operands, results)
+  }];
 }
 
 def PPHLO_SliceOp : PPHLO_Op<"slice", [
@@ -870,14 +912,21 @@ def PPHLO_SliceOp : PPHLO_Op<"slice", [
   let results = (outs PPHLO_AnyTensor);
 
   let hasVerifier = 1;
+
+  let assemblyFormat = [{
+    $operand custom<SliceRanges>($start_indices, $limit_indices, $strides)
+      attr-dict `:` functional-type(operands, results)
+  }];
 }
 
 def PPHLO_DbgPrintOp : PPHLO_Op<"dbg_print", []> {
   let arguments = (ins PPHLO_Tensor : $operand);
+  let assemblyFormat = "operands attr-dict `:` type(operands)";
 }
 
 def PPHLO_FreeOp : PPHLO_Op<"free", []> {
   let arguments = (ins PPHLO_Tensor : $operand);
+  let assemblyFormat = "operands attr-dict `:` type(operands)";
 }
 
 def PPHLO_ClampOp
@@ -951,10 +1000,15 @@ def PPHLO_SimpleSortOp
     Variadic<PPHLO_Tensor>:$operands,
     DefaultValuedAttr<I64Attr, "-1">:$dimension,
     DefaultValuedAttr<I64Attr, "1">:$num_keys,
-    PPHLO_SortDirection: $sort_direction
+    PPHLO_SortDirectionAttr: $sort_direction
   );
 
   let results = (outs Variadic<PPHLO_Tensor>);
+
+  let assemblyFormat = [{
+    operands $sort_direction `,` `dim` `=` $dimension `,` `num_keys` `=` $num_keys
+      attr-dict `:` functional-type(operands, results)
+  }];
 }
 
 def PPHLO_ReverseOp
@@ -968,11 +1022,15 @@ def PPHLO_ReverseOp
   }];
   let arguments = (ins PPHLO_AnyTensor : $operand, DenseI64ArrayAttr : $dimensions);
 
-  let results = (outs PPHLO_AnyTensor);
+  let results = (outs PPHLO_AnyTensor : $result);
 
   let hasFolder = 1;
 
   let hasVerifier = 1;
+
+  let assemblyFormat = [{
+    $operand `,` `dims` `=` $dimensions attr-dict `:` type($result)
+  }];
 }
 
 def HLO_PadOp
@@ -991,6 +1049,14 @@ def HLO_PadOp
                        DenseI64ArrayAttr: $interior_padding);
 
   let results = (outs PPHLO_AnyTensor);
+
+  let assemblyFormat = [{
+    $operand `,` $padding_value `,`
+      `low` `=` $edge_padding_low `,`
+      `high` `=` $edge_padding_high `,`
+      `interior` `=` $interior_padding
+      attr-dict `:` functional-type(operands, results)
+  }];
 }
 
 def ConvolutionAttributes {
@@ -1028,7 +1094,7 @@ def PPHLO_ConvolutionOp : PPHLO_Op<"convolution", [Pure]> {
   let hasCanonicalizer = 1;
 }
 
-def PPHLO_DynamicSliceOp: PPHLO_WithShapeInferOp<"dynamic-slice", [Pure]> {
+def PPHLO_DynamicSliceOp: PPHLO_WithShapeInferOp<"dynamic_slice", [Pure]> {
   let summary = "Dynamic Slice operator";
   let description = [{
     Extracts a sub-array from the input array at dynamic start_indices.
@@ -1041,9 +1107,14 @@ def PPHLO_DynamicSliceOp: PPHLO_WithShapeInferOp<"dynamic-slice", [Pure]> {
   );
 
   let results = (outs PPHLO_AnyTensor:$result);
+
+  let assemblyFormat = [{
+    operands `sizes` `=` $slice_sizes
+      attr-dict `:` functional-type(operands, results)
+  }];
 }
 
-def PPHLO_DynamicUpdateSliceOp: PPHLO_WithShapeInferOp<"dynamic-update-slice",
+def PPHLO_DynamicUpdateSliceOp: PPHLO_WithShapeInferOp<"dynamic_update_slice",
       [Pure, AllShapesMatch<["operand", "result"]>]> {
   let summary = "Dynamic Update Slice operator";
   let description = [{
@@ -1057,6 +1128,8 @@ def PPHLO_DynamicUpdateSliceOp: PPHLO_WithShapeInferOp<"dynamic-update-slice",
                        Variadic<PPHLO_ScalarIntTensor>:$start_indices
   );
   let results = (outs PPHLO_AnyTensor:$result);
+
+  let assemblyFormat = "operands attr-dict `:` functional-type(operands, results)";
 }
 
 //===----------------------------------------------------------------------===//
@@ -1077,6 +1150,8 @@ def PPHLO_WhileOp : PPHLO_Op<"while", [
   let regions = (region SizedRegion<1> : $cond, SizedRegion<1> : $body);
 
   let results = (outs Variadic<PPHLO_Tensor>);
+
+  let hasCustomAssemblyFormat = 1;
 }
 
 def PPHLO_IfOp : PPHLO_Op<"if", [

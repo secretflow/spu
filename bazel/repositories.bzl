@@ -40,10 +40,10 @@ def _yacl():
         http_archive,
         name = "yacl",
         urls = [
-            "https://github.com/secretflow/yacl/archive/e3401da07d8aa2f3fe2238e8563e5f573036a594.tar.gz",
+            "https://github.com/secretflow/yacl/archive/refs/tags/0.4.3b0.tar.gz",
         ],
-        strip_prefix = "yacl-e3401da07d8aa2f3fe2238e8563e5f573036a594",
-        sha256 = "7b3b41630c26efdd420bed4ce8318ba352992fa4b3cd8fbbe8a015a66498b474",
+        strip_prefix = "yacl-0.4.3b0",
+        sha256 = "76f40897a360c9f8cce25840d6a068144cc703c630e0a23679f7d2aae3a015d1",
     )
 
 def _libpsi():
@@ -140,8 +140,8 @@ def _com_github_xtensor_xtl():
     )
 
 def _com_github_openxla_xla():
-    OPENXLA_COMMIT = "a0d4632c93451c685ce422d087388a5c624a5ee9"
-    OPENXLA_SHA256 = "3c990717bb64d7e27097f059b727e8e6e131a21c006ac16006f471fb8740b139"
+    OPENXLA_COMMIT = "f0946d01ef4cd9ecb1a27b4adb41ce6bcc846634"
+    OPENXLA_SHA256 = "0af44c6e621da42a87c68746d343b0400ed6ca4b7dc0a7c7efc32f32c83d6be2"
 
     maybe(
         http_archive,
@@ -159,10 +159,6 @@ def _com_github_openxla_xla():
         sha256 = OPENXLA_SHA256,
         strip_prefix = "xla-" + OPENXLA_COMMIT,
         type = ".tar.gz",
-        patch_args = ["-p1"],
-        patches = [
-            "@spulib//bazel:patches/xla.patch",
-        ],
         urls = [
             "https://github.com/openxla/xla/archive/{commit}.tar.gz".format(commit = OPENXLA_COMMIT),
         ],

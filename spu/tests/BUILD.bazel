@@ -226,6 +226,7 @@ py_test(
     data = [
         "//spu/tests/data",
     ],
+    flaky = True,
     tags = [
         "exclusive-if-local",
     ],

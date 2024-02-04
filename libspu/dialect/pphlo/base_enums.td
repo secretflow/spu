@@ -19,6 +19,8 @@
 include "mlir/IR/EnumAttr.td"
 include "mlir/IR/OpBase.td"
 
+include "dialect.td"
+
 //===----------------------------------------------------------------------===//
 // Sort direction enum definitions.
 //===----------------------------------------------------------------------===//
@@ -34,5 +36,7 @@ def PPHLO_SortDirection : I32EnumAttr<"SortDirection",
   let genSpecializedAttr = 0;
   let cppNamespace = "::mlir::spu::pphlo";
 }
+
+def PPHLO_SortDirectionAttr : EnumAttr<PPHlo_Dialect, PPHLO_SortDirection, "sort_direction">;
 
 #endif  // SPU_DIALECT_PPHLO_BASE_ENUMS
