@@ -287,6 +287,11 @@ def emul_maxabsscaler_zero_maxabs():
     np.testing.assert_allclose(sk_inv_transformed, spu_inv_transformed, rtol=0, atol=1e-4)
     np.testing.assert_allclose(sk_transformed_new, spu_transformed_new, rtol=0, atol=1e-4)
 
+####
+####
+####
+#### This needs to be modifed to be the same with test
+    
 def emul_kbinsdiscretizer_uniform():
     def kbinsdiscretize(X):
         transformer = KBinsDiscretizer(n_bins=3, encode='ordinal', strategy='uniform', subsample=None)

@@ -436,6 +436,51 @@ class UnitTests(unittest.TestCase):
 
         np.testing.assert_allclose(sk_transformed, spu_transformed, rtol=0, atol=1e-4)
         np.testing.assert_allclose(sk_inv_transformed, spu_inv_transformed, rtol=0, atol=1e-4)
+    
+    def test_kbinsdiscretizer_kmeans(self):
+        sim = spsim.Simulator.simple(
+            3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM64
+        )
+
+        def kbinsdiscretize(X):
+            transformer = KBinsDiscretizer(n_bins=3, encode='ordinal', strategy='kmeans', subsample=None)
+            transformer.fit(X)
+            transformed = transformer.transform(X)
+            # return transformed
+            return transformer.bin_edges_
+            # inv_transformed = transformer.inverse_transform(transformed)
+            # return transformed, inv_transformed
+
+        # X = jnp.array([[-2, 1.5, -4, -1], [-1, 2.5, -3, -0.5], [0, 3.5, -2, 0.5], [1, 4.5, -1, 2]])
+        X = jnp.array([[-4, -4, -4, -4], [-3, -3, -3, -3], [-2, -2, -2, -2], [-1, -1, -1, -1]])
+
+        transformer = preprocessing.KBinsDiscretizer(3, encode='ordinal', strategy='kmeans', subsample=None)
+        sk_transformed = transformer.fit_transform(X)
+        # sk_inv_transformed = transformer.inverse_transform(sk_transformed)
+        print("sklearn:\n", sk_transformed)
+        # print("sklearn:\n", sk_inv_transformed)
+        print(transformer.bin_edges_)
+
+        spu_transformed = spsim.sim_jax(sim, kbinsdiscretize)(X)
+        # spu_transformed, spu_inv_transformed = spsim.sim_jax(sim, kbinsdiscretize)(X)
+        print("result\n", spu_transformed)
+        # print("result\n", spu_inv_transformed)
+
+        np.testing.assert_allclose(sk_transformed, spu_transformed, rtol=0, atol=1e-4)
+        ### The error here is larger than expected. If atol is 1e-4, there will be an error.
+        # np.testing.assert_allclose(sk_inv_transformed, spu_inv_transformed, rtol=0, atol=1e-3)
+    
+    # def test_same_min_max(strategy):
+    #     warnings.simplefilter("always")
+    #     X = np.array([[1, -2], [1, -1], [1, 0], [1, 1]])
+    #     est = KBinsDiscretizer(strategy=strategy, n_bins=3, encode="ordinal")
+    #     warning_message = "Feature 0 is constant and will be replaced with 0."
+    #     with pytest.warns(UserWarning, match=warning_message):
+    #         est.fit(X)
+    #     assert est.n_bins_[0] == 1
+    #     # replace the feature with zeros
+    #     Xt = est.transform(X)
+    #     assert_array_equal(Xt[:, 0], np.zeros(X.shape[0]))
 
 
 

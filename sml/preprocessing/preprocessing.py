@@ -454,34 +454,34 @@ class KBinsDiscretizer():
                             x = x.reshape((-1, 1))
                             if x.shape != w.shape and x.shape[0] == w.shape[0]:
                                 w = jnp.tile(w, (x.shape[1], 1)).T
-                            ### not sure whether to add axis
                             sorted_idx = jnp.argsort(x, axis=0)
                             sorted_weights = jnp.take_along_axis(w, sorted_idx, axis=0)
                             weight_cdf = jnp.cumsum(sorted_weights, axis=0)
                             adjusted_percentile = q / 100 * weight_cdf[-1]
-                            # mask = adjusted_percentile == 0
-                            # adjusted_percentile[mask] = jnp.nextafter(
-                            #     adjusted_percentile[mask], adjusted_percentile[mask] + 1
-                            # )
-                            # def percentile_idx_func(w, a):
-                            #     return jnp.searchsorted(w, a)
-                            # jax.vmap(percentile_idx_func, in_axes=(1, 0), out_axes=1)(weight_cdf, adjusted_percentile)
                             percentile_idx = jnp.searchsorted(weight_cdf[:, 0], adjusted_percentile)
-                            
-                            # jax.vmap(percentile_idx_func)(weight_cdf, adjusted_percentile)
-
-                            # max_idx = sorted_idx.shape[0] - 1
-                            # percentile_idx = jnp.apply_along_axis(
-                            #     lambda x: jnp.clip(x, 0, max_idx), axis=0, arr=percentile_idx
-                            # )
                             percentile_idx = jnp.clip(percentile_idx, 0, sorted_idx.shape[0] - 1)
                             col_index = jnp.arange(x.shape[1])
                             percentile_in_sorted = sorted_idx[percentile_idx, col_index]
                             percentile = x[percentile_in_sorted, col_index]
                             return percentile[0]
                         return jax.vmap(_weighted_percentile, (None, 0, None))(x, quantiles, sample_weight)
-
                     bin_edges = jax.vmap(bin_func, in_axes=1, out_axes=1)(X)
+
+            if self.strategy == "kmeans":
+                from ..cluster.kmeans import KMEANS
+                # from sml.cluster.kmeans import KMEANS
+                def bin_func(x, KMeans):
+                    # return jnp.array(x[:, None].shape)
+                    x = x[:, None]
+                    col_min = jnp.min(x)
+                    col_max = jnp.max(x)
+                    # uniform_edges = jnp.linspace(col_min, col_max, n_bins + 1)
+                    km = KMeans(n_clusters=n_bins, n_samples=x.shape[0], max_iter=10)
+                    km.fit(x)
+                    centers = jnp.sort(km._centers[:, 0])
+                    return jnp.r_[col_min, (centers[1:] + centers[:-1]) * 0.5, col_max]
+                bin_edges = jax.vmap(bin_func, in_axes=(1, None), out_axes=1)(X, KMEANS)
+
 
 
             if remove_bin == True and self.strategy in ("quantile", "kmeans"):
