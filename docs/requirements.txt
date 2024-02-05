@@ -10,7 +10,7 @@ sphinxcontrib-mermaid==0.9.2
 sphinxcontrib-nwdiag==2.0.0
 sphinxcontrib-seqdiag==3.0.0
 pytablewriter==1.2.0
-linkify-it-py==2.0.2
+linkify-it-py==2.0.3
 mdutils==1.6.0
 spu>=0.3.1b0
 pydata-sphinx-theme
