@@ -1,3 +1,17 @@
+# Copyright 2023 Ant Group Co., Ltd.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 __all__ = ["example_binary"]
 
 from functools import partial
@@ -51,13 +65,15 @@ def _example_binary_lowering(ctx, in1, in2):
     result_shape = _compute_result_shape(in1_dtype.shape, in2_dtype.shape)
     result_type = mlir.ir.RankedTensorType.get(result_shape, in1_dtype.element_type)
 
-    return custom_call(
+    call = custom_call(
         "example_binary",
         # Output types
-        out_types=[result_type],
+        result_types=[result_type],
         # The inputs:
         operands=[in1, in2],
     )
+
+    return call.results
 
 
 # **********************************
