@@ -22,16 +22,37 @@ def _kmeans_plusplus_single(
     init_center_id, 
     init_params
 ):
+    """Computational component for initialization of n_clusters by k-means++.
+
+    Parameters
+    ----------
+    x : {array-like}, shape (n_samples, n_features)
+        Input data.
+    
+    n_clusters : int
+        The number of clusters to form as well as the number of
+        centroids to generate.
+    
+    init_center_id : {array-like}, shape (1,)
+        Randome variable generated before SPU running time.
+    
+    init_params : {array-like}, shape (self.n_clusters-1, 2 + int(math.log(n_clusters)))
+        Randome variables generated before SPU running time.
+    
+    Returns
+    -------
+    centers : {array-like}, shape (n_clusters, n_features)
+        Centers calculated for initial centers.
+    """
     x_squared_norms = jnp.einsum("ij,ij->i", X, X)
-    # centers = jnp.empty((n_clusters, X.shape[1]), dtype=X.dtype)
     centers = X[init_center_id][jnp.newaxis,:]
     closest_dist_sq = _euclidean_distances(
         centers, X, Y_norm_squared=x_squared_norms
     )
     current_pot = jnp.sum(closest_dist_sq)
 
-    for c in range(1, n_clusters):
-        rand_vals = init_params[c - 1, :] * current_pot
+    for c in range(0, n_clusters-1):
+        rand_vals = init_params[c, :] * current_pot
         bin = jnp.cumsum(closest_dist_sq)
         def searchsorted_element(x):
             encoding = jnp.where(x >= bin[0:-1], 1, 0)
@@ -51,6 +72,7 @@ def _kmeans_plusplus_single(
  
 
 def _euclidean_distances(X, Y, Y_norm_squared):
+    """Computational part of euclidean_distances of X and Y"""
     XX = jnp.einsum("ij,ij->i", X, X)[:, jnp.newaxis]
     YY = Y_norm_squared.reshape(1, -1)
     distances = -2 * jnp.dot(X, Y.T) + XX + YY
@@ -62,6 +84,31 @@ def _kmeans_single(
     n_clusters,
     max_iter=300,
 ):
+    """A single run of k-means.
+
+    Parameters
+    ----------
+
+    x : {array-like}, shape (n_samples, n_features)
+        Input data.
+    
+    centers_init : {array-like}, shape (n_clusters, n_features)
+        The initial centers.
+    
+    n_clusters : int
+        The number of clusters to form as well as the number of
+        centroids to generate.
+    
+    max_iter : int, default=300
+        Maximum number of iterations of the k-means algorithm for a
+        single run.
+    
+    Returns
+    -------
+    centers : {array-like}, shape (n_clusters, n_features)
+        Centers found at the last iteration of k-means.
+
+    """
     for _ in range(max_iter):
         C = x.reshape((1, x.shape[0], x.shape[1])) - centers.reshape(
             (centers.shape[0], 1, centers.shape[1])
@@ -99,6 +146,28 @@ class KMEANS:
 
     n_samples : int
         The number of samples.
+
+    init : {'k-means++', 'random'}, callable or array-like of shape
+            (n_clusters, n_features), default='random'
+        When 'k-means++' is passed, since the random variable generated in
+        running time is not supported, parameter init_params needs to 
+        be passed for random variables generated before SPU running time.
+
+    init_params : {array-like}, shape (n_samples, n_features)
+        Only when init='k-means++', this parameter will be used.
+
+        When n_init=1, it should be random variables generated from 
+        jax.random.uniform(jax.random.PRNGKey(1), 
+        shape=(self.n_clusters-1, 2 + int(math.log(n_clusters))))
+
+        When n_init=2, it should be random variables generated from 
+        jax.random.uniform(jax.random.PRNGKey(1), 
+        shape=(n_init, self.n_clusters-1, 2 + int(math.log(n_clusters))))
+    
+    n_init : int
+        Number of times the k-means algorithm is run with different centroid
+        seeds.
+        When an array to init, n_init will be set to 1.
 
     max_iter : int, default=300
         Maximum number of iterations of the k-means algorithm for a
@@ -146,11 +215,13 @@ class KMEANS:
     def fit(self, x):
         """Fit KMEANS.
 
-        Firstly, randomly select the initial centers. Then calculate the distance between each sample and each center,
-        and assign each sample to the nearest center. Use an `aligned_array` to indicate the samples in a cluster,
-        where unrelated samples will be set to 0. Once all samples are assigned, the center of each cluster will
-        be updated to the average. The average could be got by `sum(data * aligned_array) / sum(aligned_array)`.
-        Different clusters could use broadcast for better performance.
+        Firstly, select the initial centers according to init method from self.init. Then calculate the distance 
+        between each sample and each center, and assign each sample to the nearest center. Use an `aligned_array` 
+        to indicate the samples in a cluster, where unrelated samples will be set to 0. Once all samples are 
+        assigned, the center of each cluster will be updated to the average. The average could be got by `sum(data 
+        * aligned_array) / sum(aligned_array)`. Different clusters could use broadcast for better performance.
+        If n_init>= 1, then n_init gourps of initial centers will be used. The final results is the best output of 
+        `n_init` consecutive runs in terms of inertia.
 
         Parameters
         ----------
@@ -174,9 +245,6 @@ class KMEANS:
             centers = jnp.array([x[i] for i in self.init_params])
         else:
             centers = init
-        
-        # self._centers = centers
-        # return self
             
         if n_init == 1:
             centers_best = _kmeans_single(x, centers, self.n_clusters, self.max_iter)
