@@ -13,6 +13,9 @@
 # limitations under the License.
 
 import jax.numpy as jnp
+import jax
+import math
+import numpy as np
 from sklearn.datasets import make_blobs
 
 import sml.utils.emulation as emulation
@@ -57,6 +60,43 @@ def emul_KMEANS(mode: emulation.Mode.MULTIPROCESS):
     finally:
         emulator.down()
 
+def emul_kmeans_kmeans_plus_plus(mode: emulation.Mode.MULTIPROCESS):
+    def proc(x, init_params):
+        model = KMEANS(n_clusters=4, n_samples=x.shape[0], init="k-means++", init_params=init_params, n_init=2, max_iter=10)
+        model.fit(x)
+        return model._centers.sort(axis=0)
+    
+    try:
+        # bandwidth and latency only work for docker mode
+        emulator = emulation.Emulator(
+            "examples/python/conf/3pc.json", mode, bandwidth=300, latency=20
+        )
+        emulator.up()
+
+        X = jnp.array([[-4, -3, -2, -1], [-4, -3, -2, -1]]).T
+        ### provide init_params with jax.random.uniform(jax.random.PRNGKey(1), shape=(self.n_clusters-1, 2 + int(math.log(n_clusters))))
+        init_params = jax.random.uniform(
+                    jax.random.PRNGKey(1), shape=(2, 3, 2 + int(math.log(4))))
+        X, init_params = emulator.seal(X, init_params)
+        result = emulator.run(proc)(X, init_params)
+        print("result\n", result)
+
+        # Compare with sklearn
+        from sklearn.cluster import KMeans
+
+        X = jnp.array([[-4, -3, -2, -1], [-4, -3, -2, -1]]).T
+        model = KMeans(n_clusters=4, n_init=1, max_iter=10)
+        model.fit(X)
+        sk_result = model.cluster_centers_
+        sk_result.sort(axis=0)
+        print("sklearn:\n", sk_result)
+
+        np.testing.assert_allclose(result, sk_result, rtol=0, atol=1e-4)
+    finally:
+        emulator.down()
+
 
 if __name__ == "__main__":
-    emul_KMEANS(emulation.Mode.MULTIPROCESS)
+    # emul_KMEANS(emulation.Mode.MULTIPROCESS)
+    emul_kmeans_kmeans_plus_plus(emulation.Mode.MULTIPROCESS)
+    

@@ -14,14 +14,54 @@
 
 import jax
 import jax.numpy as jnp
+import math
+
+def _kmeans_plusplus_single(
+    X,
+    n_clusters,
+    init_center_id, 
+    init_params
+):
+    x_squared_norms = jnp.einsum("ij,ij->i", X, X)
+    # centers = jnp.empty((n_clusters, X.shape[1]), dtype=X.dtype)
+    centers = X[init_center_id][jnp.newaxis,:]
+    closest_dist_sq = _euclidean_distances(
+        centers, X, Y_norm_squared=x_squared_norms
+    )
+    current_pot = jnp.sum(closest_dist_sq)
+
+    for c in range(1, n_clusters):
+        rand_vals = init_params[c - 1, :] * current_pot
+        bin = jnp.cumsum(closest_dist_sq)
+        def searchsorted_element(x):
+            encoding = jnp.where(x >= bin[0:-1], 1, 0)
+            return jnp.sum(encoding)
+        candidate_ids = jax.vmap(searchsorted_element)(rand_vals)
+        distance_to_candidates = _euclidean_distances(
+            X[candidate_ids], X, Y_norm_squared=x_squared_norms
+        )
+        distance_to_candidates = jnp.minimum(closest_dist_sq, distance_to_candidates)
+        candidates_pot = jnp.sum(distance_to_candidates, axis=1).reshape(-1, 1)
+        best_candidate = jnp.argmin(candidates_pot)
+        current_pot = candidates_pot[best_candidate]
+        closest_dist_sq = distance_to_candidates[best_candidate, :]
+        best_candidate = candidate_ids[best_candidate]
+        centers = jnp.concatenate([centers, X[best_candidate][jnp.newaxis,:]], axis=0)
+    return centers
+ 
+
+def _euclidean_distances(X, Y, Y_norm_squared):
+    XX = jnp.einsum("ij,ij->i", X, X)[:, jnp.newaxis]
+    YY = Y_norm_squared.reshape(1, -1)
+    distances = -2 * jnp.dot(X, Y.T) + XX + YY
+    return jnp.maximum(distances, 0)
 
 def _kmeans_single(
     x,
-    centers_init,
+    centers,
     n_clusters,
     max_iter=300,
 ):
-    centers = jnp.array([x[i] for i in centers_init])
     for _ in range(max_iter):
         C = x.reshape((1, x.shape[0], x.shape[1])) - centers.reshape(
             (centers.shape[0], 1, centers.shape[1])
@@ -47,10 +87,7 @@ def _inertia(x, centers):
             (centers.shape[0], 1, centers.shape[1])
         )
     distance =  jnp.sum(jnp.square(C), axis=2)
-    index = jnp.argmin(distance, axis=0)
-    return jnp.sum(jnp.take(distance, index))
-    # return jnp.argmin(jnp.sum(jnp.take(distance, index)))
-
+    return jnp.sum(jnp.min(distance, axis=0))
 
 class KMEANS:
     """
@@ -69,22 +106,41 @@ class KMEANS:
 
     """
 
-    def __init__(self, n_clusters, n_samples, init="random", n_init=1, max_iter=300):
+    def __init__(self, n_clusters, n_samples, init="random", init_params=None, n_init=1, max_iter=300):
+        ### if init is array like, then n_init will be set to 1. init is array with shape (n_clusters, n_features)
         self.n_clusters = n_clusters
         self.max_iter = max_iter
         self.init = init
         self.n_init = n_init
-        ### if the n_init is 1, reduce the dimension of init_params to eliminate the reshape operations
-        if n_init == 1:
-            if init == "random":
+
+        if init == "k-means++":
+            ### if the n_init is 1, reduce the dimension of init_params to eliminate the reshape operations
+            if n_init == 1:
+                self.init_center_id = jax.random.choice(jax.random.PRNGKey(1), n_samples)
+                # self.init_params = jax.random.uniform(
+                #     jax.random.PRNGKey(1), shape=(self.n_clusters-1, 2 + int(math.log(n_clusters))))
+                self.init_params = init_params
+            else:
+                self.init_center_id = jax.random.choice(
+                    jax.random.PRNGKey(1), n_samples, shape=[n_init]
+                )
+                # self.init_params = jax.random.uniform(
+                #     jax.random.PRNGKey(1), shape=(n_init, self.n_clusters-1, 2 + int(math.log(n_clusters))))
+                self.init_params = init_params
+        elif init == "random":
+            ### if the n_init is 1, reduce the dimension of init_params to eliminate the reshape operations
+            if n_init == 1:
                 self.init_params = jax.random.randint(
                     jax.random.PRNGKey(1), shape=[self.n_clusters], minval=0, maxval=n_samples
                 )
-        else:
-            if init == "random":
+            else:
                 self.init_params = jax.random.randint(
                     jax.random.PRNGKey(1), shape=[n_init, self.n_clusters], minval=0, maxval=n_samples
                 )
+        else:
+            ### If init is array like, then n_init will be set to 1.
+            self.n_init = 1
+
         self._centers = jnp.zeros(())
 
     def fit(self, x):
@@ -107,48 +163,29 @@ class KMEANS:
             Returns an instance of self.
         """
 
-        # centers = jnp.array([x[i] for i in self.init_params])
-        # centers = _kmeans_single(x, centers, self.n_clusters, self.max_iter)
-        if self.n_init == 1:
-            centers_best = _kmeans_single(x, self.init_params, self.n_clusters, self.max_iter)
+        init = self.init
+        n_init = self.n_init
+        if init == "k-means++":
+            if n_init == 1:
+                centers = _kmeans_plusplus_single(x, self.n_clusters, self.init_center_id, self.init_params)
+            else:
+                centers = jax.vmap(_kmeans_plusplus_single, in_axes=(None, None, 0, 0))(x, self.n_clusters, self.init_center_id, self.init_params)
+        elif init == "random":
+            centers = jnp.array([x[i] for i in self.init_params])
         else:
-            centers = jax.vmap(_kmeans_single, in_axes=(None, 0, None, None))(x, self.init_params, self.n_clusters, self.max_iter)
-            C = x.reshape((1, 1, x.shape[0], x.shape[1])) - centers.reshape(
-                (centers.shape[0], centers.shape[1], 1, centers.shape[2])
-            )
-            distance =  jnp.sum(jnp.square(C), axis=3)
-            index = jnp.argmin(distance, axis=1)
-            # return jnp.sum(jnp.take(distance, index))
-            inertia = jnp.sum(jnp.take(distance, index), axis=1)
+            centers = init
+        
+        # self._centers = centers
+        # return self
+            
+        if n_init == 1:
+            centers_best = _kmeans_single(x, centers, self.n_clusters, self.max_iter)
+        else:
+            centers = jax.vmap(_kmeans_single, in_axes=(None, 0, None, None))(x, centers, self.n_clusters, self.max_iter)
+            inertia = jax.vmap(_inertia, in_axes=(None, 0))(x, centers)
             centers_best = centers[jnp.argmin(inertia)]
-            # inertia = jax.vmap(_inertia, in_axes=(None, 0))(x, centers)
-            # centers_best = centers[jnp.argmin(inertia)]
-            # centers_best = centers[inertia]
-            # centers_best = jnp.take(centers, jnp.argmin(inertia)[:, jnp.newaxis, jnp.newaxis])
-            # centers_best = centers[jnp.argmin(inertia)]
-            # centers_best = centers[jnp.argmin(inertia)]
-            # centers_best = jnp.take(centers, jnp.argmin(inertia)[:, jnp.newaxis])
-        # for _ in range(self.max_iter):
-        #     C = x.reshape((1, x.shape[0], x.shape[1])) - centers.reshape(
-        #         (centers.shape[0], 1, centers.shape[1])
-        #     )
-        #     C = jnp.argmin(jnp.sum(jnp.square(C), axis=2), axis=0)
-        #     S = jnp.tile(C, (self.n_clusters, 1))
-        #     ks = jnp.arange(self.n_clusters)
-        #     aligned_array_raw = (S.T - ks).T
-        #     aligned_array = jnp.equal(aligned_array_raw, 0)
-
-        #     centers_raw = x.reshape(
-        #         (1, x.shape[0], x.shape[1])
-        #     ) * aligned_array.reshape(
-        #         (aligned_array.shape[0], aligned_array.shape[1], 1)
-        #     )
-        #     equals_sum = jnp.sum(aligned_array, axis=1)
-        #     centers_sum = jnp.sum(centers_raw, axis=1)
-        #     centers = jnp.divide(centers_sum.T, equals_sum).T
 
         self._centers = centers_best
-        # self._inertia = inertia
         return self
 
 
