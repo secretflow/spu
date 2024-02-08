@@ -37,12 +37,6 @@ def emul_KMEANS(mode: emulation.Mode.MULTIPROCESS):
         split_index = n_features // 2
         return X[:, :split_index], X[:, split_index:]
 
-    # bandwidth and latency only work for docker mode
-    emulator = emulation.Emulator(
-        "examples/python/conf/3pc.json", mode, bandwidth=300, latency=20
-    )
-    emulator.up()
-
     # load mock data
     x1, x2 = load_data()
     X = jnp.concatenate((x1, x2), axis=1)
@@ -71,12 +65,6 @@ def emul_kmeans_kmeans_plus_plus(mode: emulation.Mode.MULTIPROCESS):
         )
         model.fit(x)
         return model._centers.sort(axis=0)
-
-    # bandwidth and latency only work for docker mode
-    emulator = emulation.Emulator(
-        "examples/python/conf/3pc.json", mode, bandwidth=300, latency=20
-    )
-    emulator.up()
 
     X = jnp.array([[-4, -3, -2, -1], [-4, -3, -2, -1]]).T
     ### provide init_params with jax.random.uniform(jax.random.PRNGKey(1), shape=(self.n_clusters-1, 2 + int(math.log(n_clusters))))
@@ -108,12 +96,6 @@ def emul_kmeans_init_array(mode: emulation.Mode.MULTIPROCESS):
         model.fit(x)
         return model._centers
 
-    # bandwidth and latency only work for docker mode
-    emulator = emulation.Emulator(
-        "examples/python/conf/3pc.json", mode, bandwidth=300, latency=20
-    )
-    emulator.up()
-
     X = jnp.array([[-4, -3, -2, -1]]).T
     uniform_edges = np.linspace(np.min(X), np.max(X), 5)
     init_array = (uniform_edges[1:] + uniform_edges[:-1])[:, None] * 0.5
@@ -142,11 +124,6 @@ def emul_kmeans_random(mode: emulation.Mode.MULTIPROCESS):
         model.fit(x)
         return model._centers.sort(axis=0)
 
-    # bandwidth and latency only work for docker mode
-    emulator = emulation.Emulator(
-        "examples/python/conf/3pc.json", mode, bandwidth=300, latency=20
-    )
-    emulator.up()
     X = jnp.array([[-4, -3, -2, -1], [-4, -3, -2, -1]]).T
     X = emulator.seal(X)
     result = emulator.run(proc)(X)
