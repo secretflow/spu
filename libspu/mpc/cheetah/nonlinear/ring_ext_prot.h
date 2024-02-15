@@ -31,7 +31,10 @@ class RingExtendProtocol {
 
   struct Meta {
     SignType sign = SignType::Unknown;
+    // To add a heuristic large value to make sure the input is positive (i.e.,
+    // known sign)
     bool use_heuristic = false;
+    // To view the MSB as sign bit
     bool signed_arith = true;
 
     FieldType src_ring;

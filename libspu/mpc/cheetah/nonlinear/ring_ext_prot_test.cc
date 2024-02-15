@@ -139,8 +139,8 @@ TEST_P(RingExtendProtocolTest, Basic) {
     [[maybe_unused]] size_t b0 = ctx->GetStats()->sent_bytes;
     oup[rank] = prot.Compute(inp[rank], meta);
     [[maybe_unused]] size_t b1 = ctx->GetStats()->sent_bytes;
-    SPDLOG_INFO("Ext {} bits to {} bits sent {} bits per", meta.src_width,
-                meta.dst_width, (b1 - b0) * 8. / shape.numel());
+    SPDLOG_DEBUG("Ext {} bits to {} bits sent {} bits per", meta.src_width,
+                 meta.dst_width, (b1 - b0) * 8. / shape.numel());
   });
 
   EXPECT_EQ(oup[0].shape(), oup[1].shape());
@@ -226,8 +226,9 @@ TEST_P(RingExtendProtocolTest, Heuristic) {
     [[maybe_unused]] size_t b0 = ctx->GetStats()->sent_bytes;
     oup[rank] = prot.Compute(inp[rank], meta);
     [[maybe_unused]] size_t b1 = ctx->GetStats()->sent_bytes;
-    SPDLOG_INFO("Heuristic Ext {} bits to {} bits sent {} bits per",
-                meta.src_width, meta.dst_width, (b1 - b0) * 8. / shape.numel());
+    SPDLOG_DEBUG("Heuristic Ext {} bits to {} bits sent {} bits per",
+                 meta.src_width, meta.dst_width,
+                 (b1 - b0) * 8. / shape.numel());
   });
 
   EXPECT_EQ(oup[0].shape(), oup[1].shape());
@@ -322,8 +323,8 @@ TEST_P(RingExtendProtocolTest, BasicWithSpecificOutWidth) {
     [[maybe_unused]] size_t b0 = ctx->GetStats()->sent_bytes;
     oup[rank] = prot.Compute(inp[rank], meta);
     [[maybe_unused]] size_t b1 = ctx->GetStats()->sent_bytes;
-    SPDLOG_INFO("Ext {} bits to {} bits sent {} bits per", meta.src_width,
-                meta.dst_width, (b1 - b0) * 8. / shape.numel());
+    SPDLOG_DEBUG("Ext {} bits to {} bits sent {} bits per", meta.src_width,
+                 meta.dst_width, (b1 - b0) * 8. / shape.numel());
 
     src_width = meta.src_width;
     dst_width = meta.dst_width;
@@ -418,8 +419,9 @@ TEST_P(RingExtendProtocolTest, HeuristicWithSpecificOutWidth) {
     [[maybe_unused]] size_t b0 = ctx->GetStats()->sent_bytes;
     oup[rank] = prot.Compute(inp[rank], meta);
     [[maybe_unused]] size_t b1 = ctx->GetStats()->sent_bytes;
-    SPDLOG_INFO("Heuristic Ext {} bits to {} bits sent {} bits per",
-                meta.src_width, meta.dst_width, (b1 - b0) * 8. / shape.numel());
+    SPDLOG_DEBUG("Heuristic Ext {} bits to {} bits sent {} bits per",
+                 meta.src_width, meta.dst_width,
+                 (b1 - b0) * 8. / shape.numel());
 
     src_width = meta.src_width;
     dst_width = meta.dst_width;
