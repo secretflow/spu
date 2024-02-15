@@ -54,6 +54,15 @@ spu_cc_library(
     ],
 )
 
+spu_cc_library(
+    name = "ring_ext_prot",
+    srcs = ["ring_ext_prot.cc"],
+    hdrs = ["ring_ext_prot.h"],
+    deps = [
+        ":compare_prot",
+    ],
+)
+
 spu_cc_test(
     name = "compare_prot_test",
     srcs = ["compare_prot_test.cc"],
@@ -80,6 +89,15 @@ spu_cc_test(
     srcs = ["equal_prot_test.cc"],
     deps = [
         ":equal_prot",
+        "//libspu/mpc/utils:simulate",
+    ],
+)
+
+spu_cc_test(
+    name = "ring_ext_prot_test",
+    srcs = ["ring_ext_prot_test.cc"],
+    deps = [
+        ":ring_ext_prot",
         "//libspu/mpc/utils:simulate",
     ],
 )

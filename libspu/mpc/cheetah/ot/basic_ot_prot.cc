@@ -193,7 +193,7 @@ NdArrayRef BasicOTProtocols::B2ASingleBitWithSize(const NdArrayRef &inp,
   const auto *share_t = inp.eltype().as<BShrTy>();
   SPU_ENFORCE(share_t->nbits() == 1, "Support for 1bit boolean only");
   auto field = inp.eltype().as<Ring2k>()->field();
-  SPU_ENFORCE(bit_width > 1 && bit_width < (int)(8 * SizeOf(field)),
+  SPU_ENFORCE(bit_width >= 1 && bit_width <= (int)(8 * SizeOf(field)),
               "bit_width={} is invalid", bit_width);
   return SingleB2A(inp, bit_width);
 }
