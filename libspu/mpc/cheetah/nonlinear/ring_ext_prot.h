@@ -46,7 +46,7 @@ class RingExtendProtocol {
 
   explicit RingExtendProtocol(const std::shared_ptr<BasicOTProtocols> &base);
 
-  ~RingExtendProtocol();
+  ~RingExtendProtocol() = default;
 
   NdArrayRef Compute(const NdArrayRef &inp, const Meta &meta);
 

@@ -23,7 +23,6 @@
 #include "libspu/core/type_util.h"
 #include "libspu/mpc/cheetah/nonlinear/compare_prot.h"
 #include "libspu/mpc/cheetah/ot/basic_ot_prot.h"
-#include "libspu/mpc/cheetah/ot/ot_util.h"
 #include "libspu/mpc/cheetah/type.h"
 #include "libspu/mpc/utils/ring_ops.h"
 
@@ -62,8 +61,6 @@ NdArrayRef CastTo(const NdArrayRef &x, FieldType from, FieldType to) {
 RingExtendProtocol::RingExtendProtocol(
     const std::shared_ptr<BasicOTProtocols> &base)
     : basic_ot_prot_(base) {}
-
-RingExtendProtocol::~RingExtendProtocol() {}
 
 NdArrayRef RingExtendProtocol::UnsignedExtend(const NdArrayRef &inp,
                                               const Meta &meta) {
