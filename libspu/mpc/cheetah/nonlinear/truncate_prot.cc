@@ -97,6 +97,7 @@ NdArrayRef TruncateProtocol::ComputeWrap(const NdArrayRef& inp,
       }
       break;
     }
+    default:
     case SignType::Unknown: {
       const auto field = inp.eltype().as<Ring2k>()->field();
       return ComputeWrapByCompare(inp, SizeOf(field) * 8, meta.shift_bits);
