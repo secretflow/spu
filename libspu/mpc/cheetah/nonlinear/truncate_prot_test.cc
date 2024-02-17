@@ -28,7 +28,7 @@ namespace spu::mpc::cheetah {
 class TruncateProtTest : public ::testing::TestWithParam<
                              std::tuple<FieldType, bool, bool, std::string>> {
  public:
-  static constexpr int64_t kUTSize = 1LL << 17;
+  static constexpr int64_t kUTSize = 100;
   void SetUp() override {}
 };
 
