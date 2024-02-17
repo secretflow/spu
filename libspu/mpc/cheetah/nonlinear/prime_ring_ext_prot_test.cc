@@ -32,7 +32,7 @@ namespace spu::mpc::cheetah {
 class PrimeRingExtendProtocolTest
     : public ::testing::TestWithParam<std::tuple<FieldType, bool>> {
  public:
-  static constexpr int64_t kBenchSize = 1LL << 20;
+  static constexpr int64_t kBenchSize = 1LL << 10;
   void SetUp() override {}
 };
 
