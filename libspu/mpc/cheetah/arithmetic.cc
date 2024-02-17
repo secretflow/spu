@@ -47,6 +47,44 @@ NdArrayRef TruncA::proc(KernelEvalContext* ctx, const NdArrayRef& x,
   meta.sign = sign;
   meta.shift_bits = bits;
   meta.use_heuristic = true;
+  meta.probabilistic = false;
+
+  // Operate on 1D array
+  auto flatten_x = x.reshape({x.numel()});
+  TiledDispatch(ctx, nworker, [&](int64_t job) {
+    int64_t slice_bgn = std::min<int64_t>(job * work_load, n);
+    int64_t slice_end = std::min<int64_t>(slice_bgn + work_load, n);
+    if (slice_end == slice_bgn) {
+      return;
+    }
+
+    TruncateProtocol prot(ctx->getState<CheetahOTState>()->get(job));
+    auto out_slice =
+        prot.Compute(flatten_x.slice({slice_bgn}, {slice_end}, {1}), meta);
+    std::memcpy(&out.at(slice_bgn), &out_slice.at(0),
+                out_slice.numel() * out_slice.elsize());
+  });
+
+  return out;
+}
+
+NdArrayRef TruncPrA::proc(KernelEvalContext* ctx, const NdArrayRef& x,
+                          size_t bits, SignType sign) const {
+  size_t n = x.numel();
+  NdArrayRef out(x.eltype(), x.shape());
+  if (n == 0) {
+    return out;
+  }
+
+  size_t nworker = InitOTState(ctx, n);
+  size_t work_load = nworker == 0 ? 0 : CeilDiv(n, nworker);
+
+  TruncateProtocol::Meta meta;
+  meta.signed_arith = true;
+  meta.sign = sign;
+  meta.shift_bits = bits;
+  meta.use_heuristic = true;
+  meta.probabilistic = true;
 
   // Operate on 1D array
   auto flatten_x = x.reshape({x.numel()});

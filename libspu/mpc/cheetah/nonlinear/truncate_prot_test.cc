@@ -26,7 +26,9 @@
 namespace spu::mpc::cheetah {
 
 class TruncateProtTest : public ::testing::TestWithParam<
-                             std::tuple<FieldType, bool, std::string>> {
+                             std::tuple<FieldType, bool, bool, std::string>> {
+ public:
+  static constexpr int64_t kUTSize = 1LL << 17;
   void SetUp() override {}
 };
 
@@ -34,12 +36,14 @@ INSTANTIATE_TEST_SUITE_P(
     Cheetah, TruncateProtTest,
     testing::Combine(testing::Values(FieldType::FM32, FieldType::FM64,
                                      FieldType::FM128),
-                     testing::Values(true, false),
+                     testing::Values(true, false),  // signed, unsigned
+                     testing::Values(true, false),  // prob, exact
                      testing::Values("Unknown", "Zero", "One")),
     [](const testing::TestParamInfo<TruncateProtTest::ParamType> &p) {
-      return fmt::format("{}{}MSB{}", std::get<0>(p.param),
+      return fmt::format("{}{}{}MSB{}", std::get<0>(p.param),
                          std::get<1>(p.param) ? "Signed" : "Unsigned",
-                         std::get<2>(p.param));
+                         std::get<2>(p.param) ? "Prob" : "Exact",
+                         std::get<3>(p.param));
     });
 
 template <typename T>
@@ -50,11 +54,12 @@ bool SignBit(T x) {
 
 TEST_P(TruncateProtTest, Basic) {
   size_t kWorldSize = 2;
-  int64_t n = 100;
+  int64_t n = kUTSize;
   size_t shift = 12;
   FieldType field = std::get<0>(GetParam());
   bool signed_arith = std::get<1>(GetParam());
-  std::string msb = std::get<2>(GetParam());
+  bool prob_tr = std::get<2>(GetParam());
+  std::string msb = std::get<3>(GetParam());
   SignType sign;
 
   NdArrayRef inp[2];
@@ -93,6 +98,7 @@ TEST_P(TruncateProtTest, Basic) {
     meta.sign = sign;
     meta.signed_arith = signed_arith;
     meta.shift_bits = shift;
+    meta.probabilistic = prob_tr;
     meta.use_heuristic = false;
 
     [[maybe_unused]] auto b0 = ctx->GetStats()->sent_bytes.load();
@@ -103,9 +109,11 @@ TEST_P(TruncateProtTest, Basic) {
     [[maybe_unused]] auto b1 = ctx->GetStats()->sent_bytes.load();
     [[maybe_unused]] auto s1 = ctx->GetStats()->sent_actions.load();
 
-    SPDLOG_DEBUG("Truncate {} bits share by {} bits {} bits each #sent {}",
-                 SizeOf(field) * 8, meta.shift_bits,
-                 (b1 - b0) * 8. / inp[0].numel(), (s1 - s0));
+    if (n >= (1L << 17)) {
+      SPDLOG_INFO("Truncate {} bits share by {} bits {} bits each #sent {}",
+                  SizeOf(field) * 8, meta.shift_bits,
+                  (b1 - b0) * 8. / inp[0].numel(), (s1 - s0));
+    }
   });
 
   EXPECT_EQ(oup[0].shape(), oup[1].shape());
@@ -127,7 +135,7 @@ TEST_P(TruncateProtTest, Basic) {
           ASSERT_EQ(SignBit<signed_t>(in), sign == SignType::Negative);
         }
         signed_t got = xout0[i] + xout1[i];
-        EXPECT_NEAR(expected, got, 1);
+        EXPECT_NEAR(expected, got, prob_tr ? 1 : 0);
       }
     } else {
       auto xout0 = NdArrayView<usigned_t>(oup[0]);
@@ -142,7 +150,7 @@ TEST_P(TruncateProtTest, Basic) {
           ASSERT_EQ(SignBit<usigned_t>(in), sign == SignType::Negative);
         }
         usigned_t got = xout0[i] + xout1[i];
-        ASSERT_NEAR(expected, got, 1);
+        ASSERT_NEAR(expected, got, prob_tr ? 1 : 0);
       }
     }
   });
@@ -154,7 +162,8 @@ TEST_P(TruncateProtTest, Heuristic) {
   size_t shift = 13;
   FieldType field = std::get<0>(GetParam());
   bool signed_arith = std::get<1>(GetParam());
-  std::string msb = std::get<2>(GetParam());
+  bool prob_tr = std::get<2>(GetParam());
+  std::string msb = std::get<3>(GetParam());
   if (not signed_arith or msb != "Unknown") {
     return;
   }
@@ -183,6 +192,7 @@ TEST_P(TruncateProtTest, Heuristic) {
     meta.signed_arith = true;
     meta.shift_bits = shift;
     meta.use_heuristic = true;
+    meta.probabilistic = prob_tr;
     oup[rank] = trunc_prot.Compute(inp[rank], meta);
   });
 

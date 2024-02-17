@@ -13,6 +13,7 @@
 // limitations under the License.
 #include "libspu/mpc/cheetah/nonlinear/truncate_prot.h"
 
+#include "libspu/core/prelude.h"
 #include "libspu/core/type.h"
 #include "libspu/mpc/cheetah/nonlinear/compare_prot.h"
 #include "libspu/mpc/cheetah/ot/basic_ot_prot.h"
@@ -22,6 +23,17 @@
 
 namespace spu::mpc::cheetah {
 
+namespace {
+template <typename T>
+auto makeMask(size_t bw) {
+  using U = typename std::make_unsigned<T>::type;
+  if (bw == sizeof(U) * 8) {
+    return static_cast<U>(-1);
+  }
+  return (static_cast<U>(1) << bw) - 1;
+}
+}  // namespace
+
 TruncateProtocol::TruncateProtocol(
     const std::shared_ptr<BasicOTProtocols>& base)
     : basic_ot_prot_(base) {
@@ -30,10 +42,40 @@ TruncateProtocol::TruncateProtocol(
 
 TruncateProtocol::~TruncateProtocol() { basic_ot_prot_->Flush(); }
 
+NdArrayRef TruncateProtocol::ComputeWrapByCompare(const NdArrayRef& inp,
+                                                  size_t inp_width,
+                                                  size_t oup_width) {
+  const int rank = basic_ot_prot_->Rank();
+  const auto field = inp.eltype().as<Ring2k>()->field();
+  SPU_ENFORCE(SizeOf(field) * 8 >= inp_width and inp_width > 0);
+  SPU_ENFORCE(SizeOf(field) * 8 >= oup_width and oup_width > 0);
+
+  CompareProtocol compare_prot(basic_ot_prot_);
+  // w = 1{x_A + x_B >= 2^k}
+  //   = 1{x_A > 2^k - 1 - x_B}
+  NdArrayRef wrap_bool;
+  if (rank == 0) {
+    wrap_bool = compare_prot.Compute(inp, true, inp_width);
+  } else {
+    auto adjusted = inp.clone();
+    DISPATCH_ALL_FIELDS(field, "wrap_adjust", [&]() {
+      NdArrayView<ring2k_t> xadj(adjusted);
+      // 2^{k} - 1 = 2^{k-1}*2 - 2 + 1
+      //           = 2*(2^{k-1} - 1) + 1
+      auto shift = ((static_cast<ring2k_t>(1) << (inp_width - 1)) - 1) * 2 + 1;
+      auto msk = makeMask<ring2k_t>(inp_width);
+      pforeach(0, inp.numel(),
+               [&](int64_t i) { xadj[i] = (shift - xadj[i]) & msk; });
+    });
+    wrap_bool = compare_prot.Compute(adjusted, true, inp_width);
+  }
+
+  return basic_ot_prot_->B2ASingleBitWithSize(
+      wrap_bool.as(makeType<BShrTy>(field, 1)), oup_width);
+}
+
 NdArrayRef TruncateProtocol::ComputeWrap(const NdArrayRef& inp,
                                          const Meta& meta) {
-  const int rank = basic_ot_prot_->Rank();
-
   switch (meta.sign) {
     case SignType::Positive: {
       if (!meta.signed_arith) {
@@ -55,26 +97,9 @@ NdArrayRef TruncateProtocol::ComputeWrap(const NdArrayRef& inp,
       }
       break;
     }
-    case SignType::Unknown:
-    default: {
-      CompareProtocol compare_prot(basic_ot_prot_);
-      NdArrayRef wrap_bool;
-      // w = 1{x_A + x_B > 2^k - 1}
-      //   = 1{x_A > 2^k - 1 - x_B}
+    case SignType::Unknown: {
       const auto field = inp.eltype().as<Ring2k>()->field();
-      if (rank == 0) {
-        wrap_bool = compare_prot.Compute(inp, true);
-      } else {
-        auto adjusted = ring_neg(inp);
-        DISPATCH_ALL_FIELDS(field, "wrap_adjust", [&]() {
-          NdArrayView<ring2k_t> xadj(adjusted);
-          pforeach(0, inp.numel(), [&](int64_t i) { xadj[i] -= 1; });
-        });
-        wrap_bool = compare_prot.Compute(adjusted, true);
-      }
-      return basic_ot_prot_->B2ASingleBitWithSize(
-          wrap_bool.as(makeType<BShrTy>(field, 1)), meta.shift_bits);
-      break;
+      return ComputeWrapByCompare(inp, SizeOf(field) * 8, meta.shift_bits);
     }
   }
 }
@@ -243,10 +268,11 @@ NdArrayRef TruncateProtocol::Compute(const NdArrayRef& inp, Meta meta) {
     }
   }
 
-  NdArrayRef wrap_ashr;
+  NdArrayRef hi_wrap_ashr;
+  NdArrayRef lo_wrap_ashr;
   NdArrayRef out = ring_zeros(field, inp.shape());
 
-  return DISPATCH_ALL_FIELDS(field, "Truncate", [&]() {
+  DISPATCH_ALL_FIELDS(field, "Truncate", [&]() {
     const ring2k_t component = (static_cast<ring2k_t>(1) << (bit_width - 1));
     NdArrayView<const ring2k_t> xinp(inp);
 
@@ -258,11 +284,23 @@ NdArrayRef TruncateProtocol::Compute(const NdArrayRef& inp, Meta meta) {
       NdArrayView<ring2k_t> xtmp(tmp);
       pforeach(0, inp.numel(),
                [&](int64_t i) { xtmp[i] = xinp[i] + component; });
-      wrap_ashr = ComputeWrap(tmp, meta);
+      hi_wrap_ashr = ComputeWrap(tmp, meta);
+
+      if (not meta.probabilistic) {
+        // NOTE(lwj): the low-end wrap need to export to the share width
+        lo_wrap_ashr =
+            ComputeWrapByCompare(tmp, meta.shift_bits, sizeof(ring2k_t) * 8);
+      }
     } else {
-      wrap_ashr = ComputeWrap(inp, meta);
+      hi_wrap_ashr = ComputeWrap(inp, meta);
+
+      if (not meta.probabilistic) {
+        lo_wrap_ashr =
+            ComputeWrapByCompare(inp, meta.shift_bits, sizeof(ring2k_t) * 8);
+      }
     }
-    NdArrayView<const ring2k_t> xwrap(wrap_ashr);
+
+    NdArrayView<const ring2k_t> xwrap(hi_wrap_ashr);
 
     // NOTE(lwj) We need logic right shift here
     /// m' = (m >> shift) - wrap * 2^{k - shift}
@@ -284,7 +322,10 @@ NdArrayRef TruncateProtocol::Compute(const NdArrayRef& inp, Meta meta) {
       pforeach(0, inp.numel(), [&](int64_t i) { xout[i] -= u; });
     }
 
-    if (rank == 0) {
+    if (not meta.probabilistic) {
+      NdArrayView<const ring2k_t> xwrap(lo_wrap_ashr);
+      pforeach(0, inp.numel(), [&](int64_t i) { xout[i] += xwrap[i]; });
+    } else if (rank == 0) {
       // The origin Truncate introduce -1 error by 50%.
       // We balance it by +1 at the rate of 50%.
       // As a result, we introduce 0 error by 50%， +1 error by 25% and -1 error
@@ -293,8 +334,10 @@ NdArrayRef TruncateProtocol::Compute(const NdArrayRef& inp, Meta meta) {
     }
 
     basic_ot_prot_->Flush();
-    return out.as(inp.eltype());
+    out = out.as(inp.eltype());
   });
+
+  return out;
 }
 
 }  // namespace spu::mpc::cheetah

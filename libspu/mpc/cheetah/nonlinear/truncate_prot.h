@@ -44,6 +44,7 @@ class TruncateProtocol {
     SignType sign = SignType::Unknown;
     bool use_heuristic = false;
     bool signed_arith = true;
+    bool probabilistic = true;
     size_t shift_bits = 0;
   };
 
@@ -54,6 +55,9 @@ class TruncateProtocol {
   NdArrayRef Compute(const NdArrayRef &inp, Meta meta);
 
  private:
+  NdArrayRef ComputeWrapByCompare(const NdArrayRef &inp, size_t inp_width,
+                                  size_t oup_width);
+
   NdArrayRef ComputeWrap(const NdArrayRef &inp, const Meta &meta);
 
   // w = msbA | msbB
