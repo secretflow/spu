@@ -73,9 +73,7 @@ def run_on_spu():
 
     input_ids = ppd.device("P1")(lambda x: x)(inputs_ids.input_features)
     params = ppd.device("P2")(lambda x: x)(pretrained_model.params)
-    outputs_ids = ppd.device("SPU")(
-        text_generation, copts = copts
-    )(input_ids, params)
+    outputs_ids = ppd.device("SPU")(text_generation, copts=copts)(input_ids, params)
     outputs_ids = ppd.get(outputs_ids)
     return outputs_ids
 
