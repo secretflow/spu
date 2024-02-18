@@ -44,7 +44,7 @@ import jax
 import multiprocess
 import numpy as np
 from google.protobuf import json_format
-from jax import linear_util as lu
+from jax.extend import linear_util as lu
 from jax._src import api_util as japi_util
 from jax.tree_util import tree_map, tree_unflatten
 from termcolor import colored

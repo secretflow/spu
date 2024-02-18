@@ -46,45 +46,7 @@ class PPHLO_WithShapeInferOp<string mnemonic, list<Trait> traits> :
 }
 
 //===----------------------------------------------------------------------===//
-// pphlo nullary op definitions.
-//===----------------------------------------------------------------------===//
-
-def PPHLO_ConstantOp : PPHLO_Op<"constant", [ConstantLike, Pure]> {
-  let summary = "Constant operator";
-  let description = [{Create a constant value.}];
-  let arguments = (ins ElementsAttr : $value);
-  let results = (outs PPHLO_Tensor : $output);
-  let builders = [OpBuilder<(ins "Attribute" : $value)>];
-  let skipDefaultBuilders = 1;
-  let hasFolder = 1;
-
-  let hasCustomAssemblyFormat = 1;
-}
-
-def PPHLO_EpsilonOp : PPHLO_Op<"epsilon", [Pure]> {
-  let summary = "Epsilon operator";
-  let description = [{Return a value that representation runtime epsilon.}];
-  let results = (outs PPHLO_FpTensor : $output);
-}
-
-def PPHLO_IotaOp : PPHLO_Op<"iota", [Pure]> {
-  let summary = "Iota operator";
-  let description = [{
-    Creates a rank 1 array of values starting at zero and incrementing by one.
-
-    See https://www.tensorflow.org/xla/operation_semantics#iota
-  }];
-  let arguments = (ins I64Attr: $iota_dimension);
-
-  let results = (outs PPHLO_Tensor: $output);
-
-  let hasVerifier = 1;
-
-  let assemblyFormat = "`dim` `=` $iota_dimension attr-dict `:` type($output)";
-}
-
-//===----------------------------------------------------------------------===//
-// pphlo unary elementwise op definitions.
+// Common op kinds
 //===----------------------------------------------------------------------===//
 class PPHLO_UnaryElementwiseOp<string mnemonic, list<Trait> traits,
                                Type OperandType, Type ResultType = OperandType>
@@ -97,131 +59,73 @@ class PPHLO_UnaryElementwiseOp<string mnemonic, list<Trait> traits,
   }];
 }
 
-def PPHLO_ConvertOp
-    : PPHLO_UnaryElementwiseOp<"convert", [Pure], PPHLO_Tensor> {
-  let summary = "Convert operator";
-  let description = [{
-    Performs element-wise conversion of values from one type to another,
-    e.g.fxp to int.
+class PPHLO_BinaryElementwiseOp<string mnemonic, list<Trait> traits,
+                                Type OperandType, Type ResultType = OperandType>
+    : PPHLO_Op<mnemonic, traits #[SameOperandsAndResultShape, Elementwise]> {
+  let arguments = (ins
+      OperandType: $lhs,
+      OperandType: $rhs
+  );
 
-    See
-    https://www.tensorflow.org/xla/operation_semantics#convertelementtype.
+  let results = (outs ResultType: $result);
+
+  let assemblyFormat = [{
+    $lhs `,` $rhs attr-dict
+      `:` custom<SameOperandsAndResultType>(type($lhs), type($rhs), type($result))
   }];
-  let builders = [OpBuilder<(ins "Value"
-                             : $operand, "Type"
-                             : $result_element_ty)>];
+}
 
+class PPHLO_BinaryLogicalElementwiseOp<string mnemonic>
+    : PPHLO_BinaryElementwiseOp<
+          mnemonic, [Commutative, Pure, SameOperandsAndResultShape], PPHLO_BoolOrIntTensor> {
+}
+
+class PPHLO_ComparisionOp<string mnemonic>
+    : PPHLO_BinaryElementwiseOp<
+          mnemonic, [Pure, SameOperandsAndResultShape], PPHLO_Tensor, PPHLO_BoolTensor> {
+}
+
+//===----------------------------------------------------------------------===//
+// pphlo nullary op definitions.
+//===----------------------------------------------------------------------===//
+def PPHLO_ConstantOp : PPHLO_Op<"constant", [ConstantLike, Pure]> {
+  let summary = "Constant operator";
+  let description = [{
+    Produces an `output` tensor from a constant `value`.
+
+    Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#constant
+  }];
+  let arguments = (ins ElementsAttr : $value);
+  let results = (outs PPHLO_Tensor : $output);
+  let builders = [OpBuilder<(ins "Attribute" : $value)>];
+  let skipDefaultBuilders = 1;
   let hasFolder = 1;
+  let hasCustomAssemblyFormat = 1;
 }
 
-def PPHLO_SqrtOp
-    : PPHLO_UnaryElementwiseOp<"sqrt", [Pure, SameOperandsAndResultType], PPHLO_FpTensor> {
-  let summary = "Square-root operator";
+def PPHLO_IotaOp : PPHLO_Op<"iota", [Pure]> {
+  let summary = "Iota operator";
   let description = [{
-    Returns `sqrt(operand)` element-wise.
+    Fills an `output` tensor with values in increasing order starting from zero along the `iota_dimension` dimension.
 
-    See
-    https://www.tensorflow.org/xla/operation_semantics#element-wise_unary_functions.
+    Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#iota
   }];
+  let arguments = (ins I64Attr: $iota_dimension);
+  let results = (outs PPHLO_Tensor: $output);
+  let hasVerifier = 1;
+  let assemblyFormat = "`dim` `=` $iota_dimension attr-dict `:` type($output)";
 }
 
-def PPHLO_RsqrtOp
-    : PPHLO_UnaryElementwiseOp<"rsqrt", [Pure, SameOperandsAndResultType], PPHLO_FpTensor> {
-  let summary = "Reciprocal of square-root operator";
+//===----------------------------------------------------------------------===//
+// pphlo unary elementwise op definitions.
+//===----------------------------------------------------------------------===//
+def PPHLO_AbsOp
+    : PPHLO_UnaryElementwiseOp<"abs", [Pure, SameOperandsAndResultType], PPHLO_Tensor> {
+  let summary = "Absolute value operator";
   let description = [{
-    Returns `rsqrt(operand)` element-wise.
+    Performs element-wise abs operation on operand tensor and produces a result tensor.
 
-    See
-    https://www.tensorflow.org/xla/operation_semantics#element-wise_unary_functions.
-  }];
-}
-
-def PPHLO_TanhOp
-    : PPHLO_UnaryElementwiseOp<"tanh", [Pure, SameOperandsAndResultType], PPHLO_FpTensor> {
-  let summary = "Tanh operator";
-  let description = [{
-    Returns `tanh(operand)` element-wise.
-
-    See
-    https://www.tensorflow.org/xla/operation_semantics#element-wise_unary_functions.
-  }];
-}
-
-def PPHLO_SineOp
-    : PPHLO_UnaryElementwiseOp<"sine", [Pure, SameOperandsAndResultType], PPHLO_FpTensor> {
-  let summary = "sine operator";
-  let description = [{
-    Returns `sine(operand)` element-wise.
-
-    See
-    https://github.com/openxla/stablehlo/blob/main/docs/spec.md#sine.
-  }];
-}
-
-def PPHLO_CosineOp
-    : PPHLO_UnaryElementwiseOp<"cosine", [Pure, SameOperandsAndResultType], PPHLO_FpTensor> {
-  let summary = "cosine operator";
-  let description = [{
-    Returns `cosine(operand)` element-wise.
-
-    See
-    https://github.com/openxla/stablehlo/blob/main/docs/spec.md#cosine.
-  }];
-}
-
-def PPHLO_NegOp
-    : PPHLO_UnaryElementwiseOp<"negate", [Pure, SameOperandsAndResultType], PPHLO_Tensor> {
-  let summary = "Negation operator";
-  let description = [{
-    Returns `- operand` element -
-    wise.
-
-    See
-    https://www.tensorflow.org/xla/operation_semantics#element-wise_unary_functions.
-  }];
-}
-
-def PPHLO_ExpOp
-    : PPHLO_UnaryElementwiseOp<"exponential", [Pure, SameOperandsAndResultType], PPHLO_FpTensor> {
-  let summary = "Exponential operator";
-  let description = [{
-    Returns `e ^ (operand)` element-wise.
-
-    See
-    https://www.tensorflow.org/xla/operation_semantics#element-wise_unary_functions.
-  }];
-}
-
-def PPHLO_Expm1Op: PPHLO_UnaryElementwiseOp<"exponential_minus_one",
-    [Pure, SameOperandsAndResultType], PPHLO_FpTensor> {
-  let summary = "Exponential minus one operator";
-  let description = [{
-    Returns `e^(operand) - 1` element-wise.
-
-    See
-    https://www.tensorflow.org/xla/operation_semantics#element-wise_unary_functions.
-  }];
-}
-
-def PPHLO_LogOp
-    : PPHLO_UnaryElementwiseOp<"log", [Pure, SameOperandsAndResultType], PPHLO_FpTensor> {
-  let summary = "Log operator";
-  let description = [{
-    Returns `log(operand)` element-wise.
-
-    See
-    https://www.tensorflow.org/xla/operation_semantics#element-wise_unary_functions.
-  }];
-}
-
-def PPHLO_Log1pOp : PPHLO_UnaryElementwiseOp<"log_plus_one", [Pure, SameOperandsAndResultType],
-                                             PPHLO_FpTensor> {
-  let summary = "Log1p operator";
-  let description = [{
-    Returns `log(operand + 1)` element-wise.
-
-    See
-    https://www.tensorflow.org/xla/operation_semantics#element-wise_unary_functions.
+    Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#abs
   }];
 }
 
@@ -229,10 +133,54 @@ def PPHLO_CeilOp
     : PPHLO_UnaryElementwiseOp<"ceil", [Pure, SameOperandsAndResultType], PPHLO_FpTensor> {
   let summary = "Ceil operator";
   let description = [{
-    Returns `Ceil(operand)` element-wise.
+    Performs element-wise ceil of operand tensor and produces a result tensor.
 
-    See
-    https://www.tensorflow.org/xla/operation_semantics#element-wise_unary_functions.
+    Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#ceil
+  }];
+}
+
+def PPHLO_ConvertOp
+    : PPHLO_UnaryElementwiseOp<"convert", [Pure], PPHLO_Tensor> {
+  let summary = "Convert operator";
+  let description = [{
+    Performs an element-wise conversion from one element type to another on `operand` tensor and produces a `result` tensor.
+
+    Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#convert
+  }];
+  let builders = [
+    OpBuilder<(ins "Value": $operand,
+                   "Type": $result_element_ty)>
+  ];
+  let hasFolder = 1;
+}
+
+def PPHLO_CosineOp
+    : PPHLO_UnaryElementwiseOp<"cosine", [Pure, SameOperandsAndResultType], PPHLO_FpTensor> {
+  let summary = "cosine operator";
+  let description = [{
+    Performs element-wise cosine operation on `operand` tensor and produces a `result` tensor.
+
+    Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#cosine
+  }];
+}
+
+def PPHLO_ExpOp
+    : PPHLO_UnaryElementwiseOp<"exponential", [Pure, SameOperandsAndResultType], PPHLO_FpTensor> {
+  let summary = "Exponential operator";
+  let description = [{
+    Performs element-wise exponential operation on `operand` tensor and produces a `result` tensor.
+
+    Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#exponential
+  }];
+}
+
+def PPHLO_Expm1Op: PPHLO_UnaryElementwiseOp<"exponential_minus_one",
+    [Pure, SameOperandsAndResultType], PPHLO_FpTensor> {
+  let summary = "Exponential minus one operator";
+  let description = [{
+    Performs element-wise exponential minus one operation on `operand` tensor and produces a `result` tensor.
+
+    Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#exponential_minus_one
   }];
 }
 
@@ -240,48 +188,30 @@ def PPHLO_FloorOp
     : PPHLO_UnaryElementwiseOp<"floor", [Pure, SameOperandsAndResultType], PPHLO_FpTensor> {
   let summary = "Floor operator";
   let description = [{
-    Returns `Floor(operand)` element-wise.
+    Performs element-wise floor of operand tensor and produces a result tensor.
 
-    See
-    https://www.tensorflow.org/xla/operation_semantics#element-wise_unary_functions.
+    Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#floor
   }];
 }
 
-def PPHLO_RoundOp
-    : PPHLO_UnaryElementwiseOp<"round_nearest_afz", [Pure, SameOperandsAndResultType], PPHLO_FpTensor> {
-  let summary = "Round operator, ties away from zero";
+def PPHLO_LogOp
+    : PPHLO_UnaryElementwiseOp<"log", [Pure, SameOperandsAndResultType], PPHLO_FpTensor> {
+  let summary = "Log operator";
   let description = [{
-    Returns `Round(operand)` element-wise, rounding to nearest integer with
-    half-way cases rounding away from zero.
+    Performs element-wise logarithm operation on `operand` tensor and produces a `result` tensor.
 
-    See
-    https://www.tensorflow.org/xla/operation_semantics#element-wise_unary_functions.
+    Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#log
   }];
 }
 
-def PPHLO_AbsOp
-    : PPHLO_UnaryElementwiseOp<"abs", [Pure, SameOperandsAndResultType], PPHLO_Tensor> {
-  let summary = "Absolute value operator";
+def PPHLO_Log1pOp : PPHLO_UnaryElementwiseOp<"log_plus_one", [Pure, SameOperandsAndResultType],
+                                             PPHLO_FpTensor> {
+  let summary = "Log1p operator";
   let description = [{
-    Returns `abs(operand)` element-wise.
+    Performs element-wise logarithm plus one operation on `operand` tensor and produces a `result` tensor.
 
-    See
-    https://www.tensorflow.org/xla/operation_semantics#element-wise_unary_functions.
+    Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#log_plus_one
   }];
-}
-
-def PPHLO_ReciprocalOp
-    : PPHLO_UnaryElementwiseOp<"reciprocal",
-                               [Pure, SameOperandsAndResultType],
-                               PPHLO_FpTensor> {
-  let summary = "Reciprocal operator";
-  let description = [{
-    Returns `1.0 / operand` element-wise.
-
-    See
-    https://www.tensorflow.org/xla/operation_semantics#element-wise_unary_functions.
-  }];
-  let hasFolder = 1;
 }
 
 def PPHLO_LogisticOp
@@ -290,10 +220,19 @@ def PPHLO_LogisticOp
                                PPHLO_FpTensor> {
   let summary = "Reciprocal operator";
   let description = [{
-    Returns `logistic(operand)` element-wise.
+    Performs element-wise logistic operation on `operand` tensor and produces a `result` tensor.
 
-    See
-    https://www.tensorflow.org/xla/operation_semantics#element-wise_unary_functions.
+    Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#logistic
+  }];
+}
+
+def PPHLO_NegOp
+    : PPHLO_UnaryElementwiseOp<"negate", [Pure, SameOperandsAndResultType], PPHLO_Tensor> {
+  let summary = "Negation operator";
+  let description = [{
+    Performs element-wise negation of `operand` tensor and produces a `result` tensor.
+
+    Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#negate
   }];
 }
 
@@ -302,10 +241,30 @@ def PPHLO_NotOp
                                PPHLO_BoolOrIntTensor> {
   let summary = "Not operator";
   let description = [{
-    Returns `!operand` element-wise.
+    Performs element-wise NOT of tensor `operand` and produces a `result` tensor.
 
-    See
-    https://www.tensorflow.org/xla/operation_semantics#element-wise_unary_functions.
+    Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#not
+  }];
+}
+
+def PPHLO_RoundOp
+    : PPHLO_UnaryElementwiseOp<"round_nearest_afz", [Pure, SameOperandsAndResultType], PPHLO_FpTensor> {
+  let summary = "Round operator, ties away from zero";
+  let description = [{
+    Performs element-wise rounding towards the nearest integer, breaking ties away from zero,
+    on the `operand` tensor and produces a `result` tensor.
+
+    Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#round_nearest_afz
+  }];
+}
+
+def PPHLO_RsqrtOp
+    : PPHLO_UnaryElementwiseOp<"rsqrt", [Pure, SameOperandsAndResultType], PPHLO_FpTensor> {
+  let summary = "Reciprocal of square-root operator";
+  let description = [{
+    Performs element-wise reciprocal square root operation on `operand` tensor and produces a `result` tensor.
+
+    Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#rsqrt
   }];
 }
 
@@ -314,262 +273,236 @@ def PPHLO_SignOp
                                PPHLO_Tensor> {
   let summary = "Sign operator";
   let description = [{
-    Returns `sign(operand)` element-wise, where
+    Returns the sign of the `operand` element-wise and produces a `result` tensor.
 
-    ```
-    sign(x) = -1  : x < 0
-            = 0   : x = 0
-            = 1   : x > 0
-    ```
-
-    See
-    https://www.tensorflow.org/xla/operation_semantics#element-wise_unary_functions.
+    Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#sign
   }];
 }
 
-def PPHLO_PreferAOp : PPHLO_UnaryElementwiseOp<"prefer_a", [Pure, SameOperandsAndResultType], PPHLO_Tensor> {
-  let summary = "Prefer AShare operator";
+def PPHLO_SineOp
+    : PPHLO_UnaryElementwiseOp<"sine", [Pure, SameOperandsAndResultType], PPHLO_FpTensor> {
+  let summary = "sine operator";
   let description = [{
-    Convert input to AShare if possible.
+    Performs element-wise sine operation on `operand` tensor and produces a `result` tensor.
+
+    Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#sine
+  }];
+}
+
+def PPHLO_SqrtOp
+    : PPHLO_UnaryElementwiseOp<"sqrt", [Pure, SameOperandsAndResultType], PPHLO_FpTensor> {
+  let summary = "Square-root operator";
+  let description = [{
+    Performs element-wise square root operation on `operand` tensor and produces a `result` tensor.
+
+    Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#sqrt
+  }];
+}
+
+def PPHLO_TanhOp
+    : PPHLO_UnaryElementwiseOp<"tanh", [Pure, SameOperandsAndResultType], PPHLO_FpTensor> {
+  let summary = "Tanh operator";
+  let description = [{
+    Performs element-wise hyperbolic tangent operation on `operand` tensor and produces a `result` tensor.
+
+    Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#tanh
   }];
 }
 
 //===----------------------------------------------------------------------===//
 // pphlo binary elementwise op definitions.
 //===----------------------------------------------------------------------===//
+def PPHLO_AddOp
+    : PPHLO_BinaryElementwiseOp<"add", [Commutative, Pure], PPHLO_Tensor> {
+  let summary = "Addition operator";
+  let description = [{
+    Performs element-wise addition of two tensors `lhs` and `rhs` and produces a `result` tensor.
 
-class PPHLO_BinaryElementwiseOp<string mnemonic, list<Trait> traits>
-    : PPHLO_Op<mnemonic, traits #[SameOperandsAndResultShape, Elementwise]> {
-  let arguments = (ins
-      PPHLO_Tensor: $lhs,
-      PPHLO_Tensor: $rhs
-  );
-
-  let results = (outs PPHLO_Tensor: $result);
-
-  let assemblyFormat = [{
-    $lhs `,` $rhs attr-dict
-      `:` custom<SameOperandsAndResultType>(type($lhs), type($rhs), type($result))
+    Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#add
   }];
 }
 
-def PPHLO_SubtractOp : PPHLO_BinaryElementwiseOp<"subtract", [Pure]> {
-  let summary = "Subtraction operator";
+def PPHLO_DivOp : PPHLO_BinaryElementwiseOp<"divide", [Pure], PPHLO_Tensor> {
+  let summary = "Division operator";
   let description = [{
-    Returns `lhs - rhs` element-wise.
+    Performs element-wise division of dividend `lhs` and divisor `rhs` tensors and produces a `result` tensor.
 
-    See
-    https://www.tensorflow.org/xla/operation_semantics#element-wise_binary_arithmetic_operations.
+    Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#divide
   }];
 }
 
 def PPHLO_MaxOp
-    : PPHLO_BinaryElementwiseOp<"maximum", [Commutative, Pure]> {
+    : PPHLO_BinaryElementwiseOp<"maximum", [Commutative, Pure], PPHLO_Tensor> {
   let summary = "Maximum operator";
   let description = [{
-    Returns `max(lhs, rhs)` element-wise.
+    Performs element-wise max operation on tensors `lhs` and `rhs` and produces a `result` tensor.
 
-    See
-    https://www.tensorflow.org/xla/operation_semantics#element-wise_binary_arithmetic_operations.
+    Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#maximum
   }];
 }
 
 def PPHLO_MinOp
-    : PPHLO_BinaryElementwiseOp<"minimum", [Commutative, Pure]> {
+    : PPHLO_BinaryElementwiseOp<"minimum", [Commutative, Pure], PPHLO_Tensor> {
   let summary = "Minimum operator";
   let description = [{
-    Returns `min(lhs, rhs)` element-wise.
+    Performs element-wise min operation on tensors `lhs` and `rhs` and produces a `result` tensor.
 
-    See
-    https://www.tensorflow.org/xla/operation_semantics#element-wise_binary_arithmetic_operations.
+    Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#minimum
     }];
 }
 
-def PPHLO_DivOp : PPHLO_BinaryElementwiseOp<"divide", [Pure]> {
-  let summary = "Division operator";
-  let description = [{
-    Returns `lhs / rhs` element-wise.
-
-    See
-    https://www.tensorflow.org/xla/operation_semantics#element-wise_binary_arithmetic_operations.
-  }];
-}
-
-def PPHLO_AddOp
-    : PPHLO_BinaryElementwiseOp<"add", [Commutative, Pure]> {
-  let summary = "Addition operator";
-  let description = [{
-    Returns `lhs + rhs` element-wise.
-
-    See
-    https://www.tensorflow.org/xla/operation_semantics#element-wise_binary_arithmetic_operations.
-  }];
-}
-
 def PPHLO_MulOp
-    : PPHLO_BinaryElementwiseOp<"multiply", [Commutative, Pure]> {
+    : PPHLO_BinaryElementwiseOp<"multiply", [Commutative, Pure], PPHLO_Tensor> {
   let summary = "Multiplication operator";
   let description = [{
-    Returns `lhs * rhs` element-wise.
+    Performs element-wise product of two tensors `lhs` and `rhs` and produces a `result` tensor.
 
-    See
-    https://www.tensorflow.org/xla/operation_semantics#element-wise_binary_arithmetic_operations.
+    Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#multiply
   }];
 }
 
-def PPHLO_PowOp : PPHLO_BinaryElementwiseOp<"power", [Pure]> {
+def PPHLO_PowOp : PPHLO_BinaryElementwiseOp<"power", [Pure], PPHLO_Tensor> {
   let summary = "Power operator";
   let description = [{
-    Returns `lhs ^ rhs` element-wise.
+    Performs element-wise exponentiation of `lhs` tensor by `rhs` tensor and produces a `result` tensor.
 
-    See
-    https://www.tensorflow.org/xla/operation_semantics#element-wise_binary_arithmetic_operations.
+    Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#power
   }];
 }
 
-def PPHLO_RemOp : PPHLO_BinaryElementwiseOp<"remainder", [Pure]> {
+def PPHLO_RemOp : PPHLO_BinaryElementwiseOp<"remainder", [Pure], PPHLO_Tensor> {
   let summary = "Remainder operator";
   let description = [{
-    Returns `lhs % rhs` element-wise.
+    Performs element-wise remainder of dividend `lhs` and divisor `rhs` tensors and produces a `result` tensor.
 
-    See
-    https://www.tensorflow.org/xla/operation_semantics#element-wise_binary_arithmetic_operations.
+    Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#remainder
   }];
 }
 
 def PPHLO_ShiftLeftOp
-    : PPHLO_BinaryElementwiseOp<"shift_left",
-                                [Pure]> {
+    : PPHLO_BinaryElementwiseOp<"shift_left", [Pure], PPHLO_IntTensor> {
   let summary = "Shift Left operator";
   let description = [{
-    Returns `lhs << rhs` element-wise.
+    Performs element-wise left-shift operation on the `lhs` tensor by `rhs` number of bits and produces a `result` tensor.
 
-    See
-    https://www.tensorflow.org/xla/operation_semantics#element-wise_binary_arithmetic_operations.
-  }];
-}
-
-def PPHLO_ShiftRightLogicalOp
-    : PPHLO_BinaryElementwiseOp<"shift_right_logical",
-                                [Pure]> {
-  let summary = "Shift right logical operator";
-  let description = [{
-    Returns logical `lhs >> rhs` element-wise.
-
-    See
-    https://www.tensorflow.org/xla/operation_semantics#element-wise_binary_arithmetic_operations.
+    Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#shift_left
   }];
 }
 
 def PPHLO_ShiftRightArithmeticOp
     : PPHLO_BinaryElementwiseOp<"shift_right_arithmetic",
-                                [Pure]> {
+                                [Pure], PPHLO_IntTensor> {
   let summary = "Shift right arithmetic operator";
   let description = [{
-    Returns arithmetic `lhs >> rhs` element-wise.
+    Performs element-wise arithmetic right-shift operation on the `lhs` tensor by `rhs` number of bits and produces a `result` tensor.
 
-    See
-    https://www.tensorflow.org/xla/operation_semantics#element-wise_binary_arithmetic_operations.
+    Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#shift_right_arithmetic
+  }];
+}
+
+def PPHLO_ShiftRightLogicalOp
+    : PPHLO_BinaryElementwiseOp<"shift_right_logical", [Pure], PPHLO_IntTensor> {
+  let summary = "Shift right logical operator";
+  let description = [{
+    Performs element-wise logical right-shift operation on the `lhs` tensor by `rhs` number of bits and produces a `result` tensor.
+
+    Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#shift_right_logical
+  }];
+}
+
+def PPHLO_SubtractOp : PPHLO_BinaryElementwiseOp<"subtract", [Pure], PPHLO_Tensor> {
+  let summary = "Subtraction operator";
+  let description = [{
+    Performs element-wise subtraction of two tensors `lhs` and `rhs` and produces a `result` tensor.
+
+    Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#subtract
   }];
 }
 
 //===----------------------------------------------------------------------===//
 // pphlo binary logical elementwise op definitions.
 //===----------------------------------------------------------------------===//
-class PPHLO_BinaryLogicalElementwiseOp<string mnemonic>
-    : PPHLO_BinaryElementwiseOp<
-          mnemonic, [Commutative, Pure, SameOperandsAndResultShape]> {
-  let arguments = (ins PPHLO_BoolOrIntTensor: $lhs, PPHLO_BoolOrIntTensor: $rhs);
-  let results = (outs PPHLO_BoolOrIntTensor: $result);
-}
-
 def PPHLO_AndOp : PPHLO_BinaryLogicalElementwiseOp<"and"> {
-  let summary = "Logical and";
+  let summary = "And operator";
   let description = [{
-    Returns `logical_and(lhs, rhs)` element-wise.
+    Performs element-wise AND of two tensors `lhs` and `rhs` and produces a `result` tensor.
 
-    See
-    https://www.tensorflow.org/xla/operation_semantics#element-wise_binary_arithmetic_operations.
+    Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#and
   }];
 }
 
 def PPHLO_OrOp : PPHLO_BinaryLogicalElementwiseOp<"or"> {
-  let summary = "Logical or";
+  let summary = "Or operator";
   let description = [{
-    Returns `logical_or(lhs, rhs)` element-wise.
+    Performs element-wise OR of two tensors `lhs` and `rhs` and produces a `result` tensor.
 
-    See
-    https://www.tensorflow.org/xla/operation_semantics#element-wise_binary_arithmetic_operations.
+    Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#or
   }];
 }
 
 def PPHLO_XorOp : PPHLO_BinaryLogicalElementwiseOp<"xor"> {
   let summary = "Logical xor";
   let description = [{
-    Returns `logical_xor(lhs, rhs)` element-wise.
+    Performs element-wise XOR of two tensors `lhs` and `rhs` and produces a `result` tensor.
 
-    See
-    https://www.tensorflow.org/xla/operation_semantics#element-wise_binary_arithmetic_operations.
+    Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#xor
   }];
 }
 
 //===----------------------------------------------------------------------===//
 // pphlo comparison op definitions.
 //===----------------------------------------------------------------------===//
-class PPHLO_ComparisionOp<string mnemonic>
-    : PPHLO_BinaryElementwiseOp<
-          mnemonic, [Pure, SameOperandsAndResultShape]> {
-  let arguments = (ins PPHLO_Tensor: $lhs, PPHLO_Tensor: $rhs);
-  let results = (outs PPHLO_BoolTensor: $result);
-}
-
 def PPHLO_EqualOp: PPHLO_ComparisionOp<"equal"> {
   let summary = "Equal comparison operator";
   let description = [{
-    Returns `lhs` == `rhs` element-wise.
+    Performs element-wise equal comparison of `lhs` and `rhs` tensors and produces a `result` tensor.
 
-    See
-    https://www.tensorflow.org/xla/operation_semantics#element-wise_comparison_operations.
+    Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#compare
   }];
 }
 
 def PPHLO_NotEqualOp: PPHLO_ComparisionOp<"not_equal"> {
   let summary = "Not-equal comparison operator";
   let description = [{
-    Returns `lhs` != `rhs` element-wise.
+    Performs element-wise not equal comparison of `lhs` and `rhs` tensors and produces a `result` tensor.
 
-    See
-    https://www.tensorflow.org/xla/operation_semantics#element-wise_comparison_operations.
+    Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#compare
   }];
 }
 
 def PPHLO_GreaterEqualOp: PPHLO_ComparisionOp<"greater_equal"> {
   let summary = "greater_equal comparison operator";
   let description = [{
-    Returns `lhs` >= `rhs` element-wise.
+    Performs element-wise greater equal comparison of `lhs` and `rhs` tensors and produces a `result` tensor.
 
-    See
-    https://www.tensorflow.org/xla/operation_semantics#element-wise_comparison_operations.
+    Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#compare
   }];
 }
 
 def PPHLO_GreaterOp: PPHLO_ComparisionOp<"greater"> {
   let summary = "greater comparison operator";
-  let description = [{elementwise `lhs` > `rhs`.}];
+  let description = [{
+    Performs element-wise greater comparison of `lhs` and `rhs` tensors and produces a `result` tensor.
+
+    Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#compare
+  }];
 }
 
 def PPHLO_LessEqualOp: PPHLO_ComparisionOp<"less_equal"> {
   let summary = "less_equal comparison operator";
-  let description = [{elementwise `lhs` <= `rhs`.}];
+  let description = [{
+    Performs element-wise less equal comparison of `lhs` and `rhs` tensors and produces a `result` tensor.
+
+    Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#compare
+  }];
 }
 
 def PPHLO_LessOp: PPHLO_ComparisionOp<"less"> {
   let summary = "less comparison operator";
   let description = [{
-    Returns `lhs` < `rhs` element-wise.
+    Performs element-wise less comparison of `lhs` and `rhs` tensors and produces a `result` tensor.
 
-    See
-    https://www.tensorflow.org/xla/operation_semantics#element-wise_comparison_operations.
+    Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#compare
   }];
 }
 
@@ -585,62 +518,63 @@ def PPHLO_RngOp
     and output element type have to be an integral type or a
     fixed point type, and the types have to be consistent.
 
-    See https://www.tensorflow.org/xla/operation_semantics#rnguniform.
+    Ref https://www.tensorflow.org/xla/operation_semantics#rnguniform.
   }];
   let arguments = (ins PPHLO_Tensor : $a, PPHLO_Tensor : $b);
-
   let results = (outs PPHLO_Tensor);
 }
 
 //===----------------------------------------------------------------------===//
 // pphlo other op definitions.
 //===----------------------------------------------------------------------===//
+def PPHLO_BitcastConvertOp : PPHLO_UnaryElementwiseOp<"bitcast_convert", [Pure], PPHLO_Tensor> {
+  let summary = "BitcastConvert operator";
+  let description =[{
+    Performs a bitcast operation on operand tensor and produces a result tensor where the bits of the entire
+    `operand` tensor are reinterpreted using the type of the `result` tensor.
+
+    Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#bitcast_convert
+  }];
+}
+
 def PPHLO_BroadcastOp
     : PPHLO_Op<"broadcast", [Pure, SameOperandsAndResultElementType]> {
-  let summary = "Broadcast a tensor into the given shape by adding dimensions.";
+  let summary = "Broadcast operator";
   let description = [{
-    Broadcasts the `operand` tensor to a higher rank. This is not the limited
-    form of broadcasting exposed as the XLA client broadcast op, but rather the
-    more powerful "InDim" broadcasting, which is closer to the HLO broadcast op
-    and exposed in the XLA client BroadcastInDim method.
+    Expands the dimensions and/or rank of an input tensor by duplicating the data in the `operand` tensor and produces a `result` tensor.
 
-    `broadcast_dimensions` maps the operand dimension number to the target shape
-    dimension number. It must have the same size as the rank of the operand. The
-    mapped dimensions must either be the same size or the dimension being
-    broadcast from must be size 1 (degenerate broadcasting).
-
-    For a scalar (0D tensor) operand, `broadcast_dimensions` must be empty. The
-    The scalar value will be broadcast to every element in the target shape.
-
-    See https://www.tensorflow.org/xla/broadcasting.
+    Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#broadcast_in_dim
   }];
   let arguments = (ins PPHLO_Tensor: $operand,
-                      DenseI64ArrayAttr: $broadcast_dimensions);
+                       DenseI64ArrayAttr: $broadcast_dimensions);
 
   let results = (outs PPHLO_Tensor);
-
   let hasVerifier = 1;
-
   let assemblyFormat = [{
     $operand `,` `dims` `=` $broadcast_dimensions
       attr-dict `:` functional-type(operands, results)
   }];
 }
 
-def PPHLO_ReshapeOp
-    : PPHLO_Op<"reshape", [Pure, SameOperandsAndResultElementType]> {
-  let summary = "Reshape operator";
+def PPHLO_ClampOp
+    : PPHLO_Op<"clamp", [Pure, SameOperandsAndResultShape]> {
+  let summary = "Clamp operator";
   let description = [{
-    Reshapes the dimensions of `operand` into a new configuration.
+    Clamps every element of the `operand` tensor between a `minimum` and `maximum` value and produces a `result` tensor.
 
-    See https://www.tensorflow.org/xla/operation_semantics#reshape.
+    Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#clamp
   }];
-  let arguments = (ins PPHLO_AnyTensor: $operand);
 
-  let results = (outs PPHLO_AnyTensor: $result);
-  let hasFolder = 1;
+  let arguments = (ins PPHLO_Tensor: $min,
+                       PPHLO_Tensor: $operand,
+                       PPHLO_Tensor: $max
+                  );
+  let results = (outs PPHLO_Tensor: $result);
 
-  let assemblyFormat = "operands attr-dict `:` functional-type(operands, results)";
+  let assemblyFormat = [{
+    $min `,` $operand `,` $max attr-dict
+      `:` custom<SameOperandsAndResultType>(type($min), type($operand), type($max), type($result))
+  }];
 }
 
 def PPHLO_ConcatenateOp
@@ -648,20 +582,44 @@ def PPHLO_ConcatenateOp
                [Pure, SameOperandsAndResultElementType]> {
   let summary = "Concatenate op";
   let description = [{
-    Concatenates a set of tensors along the specified dimension.
+    Concatenates `inputs` along `dimension` dimension in the same order as the given arguments and produces a `result` tensor.
 
-    See https://www.tensorflow.org/xla/operation_semantics#concatenate.
+    Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#concatenate
   }];
 
-  let arguments = (ins Variadic<PPHLO_AnyTensor> : $val, I64Attr : $dimension);
+  let arguments = (ins Variadic<PPHLO_AnyTensor>: $inputs,
+                       I64Attr: $dimension);
 
   let results = (outs PPHLO_AnyTensor);
-
   let hasVerifier = 1;
-
   let assemblyFormat = [{
      operands `dim` `=` $dimension attr-dict `:` functional-type(operands, results)
   }];
+}
+
+def PPHLO_ConvolutionOp : PPHLO_Op<"convolution", [Pure]> {
+  let summary = "Convolution operator";
+  let description = [{
+    Computes dot products between windows of `lhs` and slices of `rhs` and produces `result`.
+
+    Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#convolution
+  }];
+  let arguments = !con(
+    (ins
+       PPHLO_Tensor:$lhs,
+       PPHLO_Tensor:$rhs),
+    ConvolutionAttributes.attributes);
+
+  let results = (outs PPHLO_Tensor);
+
+  let assemblyFormat = [{
+    `(`operands`)`
+       `dim_numbers` `=` custom<ConvolutionDimensions>($dimension_numbers) `,`
+       `window` `=` `{` custom<WindowAttributes>($window_strides) `}`
+       attr-dict `:` functional-type(operands, results)
+  }];
+
+  let hasCanonicalizer = 1;
 }
 
 def PPHLO_DotOp : PPHLO_Op<"dot", [Pure]> {
@@ -670,7 +628,7 @@ def PPHLO_DotOp : PPHLO_Op<"dot", [Pure]> {
     Performs dot products between vectors, vector/matrix and matrix/matrix
     multiplication.
 
-    See https://www.tensorflow.org/xla/operation_semantics#dot.
+    Ref https://www.tensorflow.org/xla/operation_semantics#dot.
   }];
   let arguments = (ins PPHLO_Tensor : $lhs, PPHLO_Tensor : $rhs);
   let results = (outs PPHLO_Tensor);
@@ -684,10 +642,9 @@ def PPHLO_DotOp : PPHLO_Op<"dot", [Pure]> {
 def PPHLO_DotGeneralOp: PPHLO_Op<"dot_general", [Pure]> {
   let summary = "General Dot operator";
   let description = [{
-    Performs general dot products between vectors, vector/matrix and
-    matrix/matrix multiplication.
+    Computes dot products between slices of `lhs` and slices of `rhs` and produces a `result` tensor.
 
-    See https://www.tensorflow.org/xla/operation_semantics#dotgeneral.
+    Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#dot_general
   }];
   let arguments = (ins
     PPHLO_Tensor:$lhs,
@@ -704,24 +661,181 @@ def PPHLO_DotGeneralOp: PPHLO_Op<"dot_general", [Pure]> {
   }];
 }
 
-def PPHLO_SelectOp
-    : PPHLO_Op<"select", [Pure]> {
+def PPHLO_DynamicSliceOp: PPHLO_WithShapeInferOp<"dynamic_slice", [Pure]> {
+  let summary = "Dynamic Slice operator";
+  let description = [{
+    Extracts a slice from the `operand` using dynamically-computed starting indices and produces a `result` tensor.
+
+    `start_indices` contain the starting indices of the slice for each dimension subject to potential adjustment,
+    and `slice_sizes` contain the sizes of the slice for each dimension.
+
+    Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#dynamic_slice
+  }];
+  let arguments = (ins PPHLO_AnyTensor:$operand,
+                       Variadic<PPHLO_ScalarIntTensor>:$start_indices,
+                       DenseI64ArrayAttr:$slice_sizes
+  );
+
+  let results = (outs PPHLO_AnyTensor:$result);
+
+  let assemblyFormat = [{
+    operands `sizes` `=` $slice_sizes
+      attr-dict `:` functional-type(operands, results)
+  }];
+}
+
+def PPHLO_DynamicUpdateSliceOp: PPHLO_WithShapeInferOp<"dynamic_update_slice",
+      [Pure, AllShapesMatch<["operand", "result"]>]> {
+  let summary = "Dynamic Update Slice operator";
+  let description = [{
+    Produces a `resul`t tensor which is equal to the `operand` tensor except that the slice starting at `start_indices`
+    is updated with the values in `update`.
+
+    Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#dynamic_update_slice
+  }];
+  let arguments = (ins PPHLO_AnyTensor:$operand,
+                       PPHLO_AnyTensor:$update,
+                       Variadic<PPHLO_ScalarIntTensor>:$start_indices
+  );
+  let results = (outs PPHLO_AnyTensor:$result);
+
+  let assemblyFormat = "operands attr-dict `:` functional-type(operands, results)";
+}
+
+def HLO_PadOp
+    : PPHLO_WithShapeInferOp<"pad", [Pure, SameOperandsAndResultElementType, InferTensorType]> {
+  let summary = "Pad operator";
+  let description = [{
+    Expands `operand` by padding around the tensor as well as between the elements of the tensor with the given `padding_value`.
+
+    `edge_padding_low` and `edge_padding_high` specify the amount of padding added at the low-end (next to index 0) and the high-end (next to the highest index)
+    of each dimension respectively. The amount of padding can be negative, where the absolute value of negative padding indicates the number of elements to remove from the specified dimension.
+
+    `interior_padding` specifies the amount of padding added between any two elements in each dimension which may not be negative.
+    Interior padding occurs before edge padding such that negative edge padding will remove elements from the interior-padded operand.
+
+    Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#pad
+  }];
+
+  let arguments = (ins PPHLO_AnyTensor: $operand,
+                       PPHLO_AnyTensor: $padding_value,
+                       DenseI64ArrayAttr: $edge_padding_low,
+                       DenseI64ArrayAttr: $edge_padding_high,
+                       DenseI64ArrayAttr: $interior_padding);
+
+  let results = (outs PPHLO_AnyTensor);
+  let assemblyFormat = [{
+    $operand `,` $padding_value `,`
+      `low` `=` $edge_padding_low `,`
+      `high` `=` $edge_padding_high `,`
+      `interior` `=` $interior_padding
+      attr-dict `:` functional-type(operands, results)
+  }];
+}
+
+def PPHLO_ReduceOp : PPHLO_Op<"reduce", [
+  RecursiveMemoryEffects, SameVariadicOperandSize,
+  SingleBlockImplicitTerminator<"ReturnOp">
+]> {
+  let summary = "Reduce operator";
+  let description = [{
+    Applies a reduction function `body` to `inputs` and `init_values` along the `dimensions` and produces `results` tensors.
+
+    Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#reduce
+  }];
+  let arguments = (ins
+    Variadic<PPHLO_Tensor>:$inputs,
+    Variadic<PPHLO_Tensor>:$init_values,
+    DenseI64ArrayAttr:$dimensions
+  );
+
+  let results = (outs Variadic<PPHLO_Tensor>);
+
+  let builders = [
+    OpBuilder<(ins "ValueRange":$inputs, "ValueRange":$init_values,
+      "DenseI64ArrayAttr":$dimensions)>];
+
+  let regions = (region SizedRegion<1> : $body);
+  let hasVerifier = 1;
+  let hasCustomAssemblyFormat = 1;
+}
+
+def PPHLO_ReshapeOp
+    : PPHLO_Op<"reshape", [Pure, SameOperandsAndResultElementType]> {
+  let summary = "Reshape operator";
+  let description = [{
+    Performs reshape of `operand` tensor to a `result` tensor.
+
+    Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#reshape
+  }];
+  let arguments = (ins PPHLO_AnyTensor: $operand);
+  let results = (outs PPHLO_AnyTensor: $result);
+  let hasFolder = 1;
+  let assemblyFormat = "operands attr-dict `:` functional-type(operands, results)";
+}
+
+def PPHLO_ReduceWindowOp : PPHLO_Op<"reduce_window", [
+  RecursiveMemoryEffects, SameVariadicOperandSize,
+  SingleBlockImplicitTerminator<"ReturnOp">
+]> {
+  let summary = "ReduceWindow operator";
+  let description = [{
+    Applies a reduction function `body` to windows of `inputs` and `init_values` and produces `results`.
+
+    Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#reduce_window
+  }];
+
+  let arguments = (ins
+    Variadic<PPHLO_Tensor>:$inputs,
+    Variadic<PPHLO_Tensor>:$init_values,
+    DenseI64ArrayAttr:$window_dimensions,
+    // If strides or dilations attributes are missing then the default value is
+    // one for each of the input dimensions.
+    OptionalAttr<DenseI64ArrayAttr>:$window_strides,
+    OptionalAttr<DenseI64ArrayAttr>:$window_dilations
+  );
+
+  let results = (outs Variadic<PPHLO_Tensor>);
+  let regions = (region SizedRegion<1> : $body);
+}
+
+def PPHLO_ReverseOp
+    : PPHLO_Op<"reverse", [Pure, SameOperandsAndResultType]> {
+  let summary = "Reverse operator";
+  let description = [{
+    Reverses the order of elements in the `operand` along the specified `dimensions` and produces a `result` tensor.
+
+    Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#reverse
+  }];
+
+  let arguments = (ins PPHLO_AnyTensor: $operand,
+                       DenseI64ArrayAttr: $dimensions
+  );
+
+  let results = (outs PPHLO_AnyTensor: $result);
+
+  let hasFolder = 1;
+  let hasVerifier = 1;
+
+  let assemblyFormat = [{
+    $operand `,` `dims` `=` $dimensions attr-dict `:` type($result)
+  }];
+}
+
+def PPHLO_SelectOp: PPHLO_Op<"select", [Pure]> {
   let summary = "Select operator";
   let description = [{
-    Constructs an output tensor from the elements of `on_true` and `on_false`
-    based on the values of `pred`. All three operands must be of the same shape
-    with the exception of `pred`, which may also be a scalar in which case it is
-    broadcasted.
+    Produces a `result` tensor where each element is selected from `on_true` or `on_false` tensor based on the value of the corresponding element of `pred`.
 
-    See https://www.tensorflow.org/xla/operation_semantics#select.
+    Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#Select
   }];
   let arguments = (ins
                   PPHLO_BoolTensor: $pred,
                   PPHLO_Tensor: $on_true,
-                  PPHLO_Tensor: $on_false);
+                  PPHLO_Tensor: $on_false
+  );
 
   let results = (outs PPHLO_Tensor: $result);
-
   let hasCanonicalizer = 1;
 
   let assemblyFormat = [{
@@ -733,14 +847,10 @@ def PPHLO_SelectAndScatterOp: PPHLO_Op<"select_and_scatter",
       [RecursiveMemoryEffects]> {
   let summary = "SelectAndScatter operator";
   let description = [{
-    Runs a windowed selection `select` function over `operand` with shape
-    `window_dimensions` and stride `window_strides`. This will produce an amount
-    of selected locations whose shape matches `source`. These are then scattered
-    to the output which is initialized with `init_value`.
-    Multiple scattered elements which land in the same output location are
-    combined using the `scatter` function.
+    Scatters the values from the `source` tensor using `scatter` based on the outcome of `reduce_window` of the
+    input tensor using `select` and produces a `result` tensor.
 
-    See https://www.tensorflow.org/xla/operation_semantics#selectandscatter.
+    Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#select_and_scatter.
   }];
   let arguments = (ins
     PPHLO_Tensor:$operand,
@@ -751,8 +861,223 @@ def PPHLO_SelectAndScatterOp: PPHLO_Op<"select_and_scatter",
   );
 
   let regions = (region SizedRegion<1>:$select, SizedRegion<1>:$scatter);
-
   let results = (outs PPHLO_Tensor);
+}
+
+def PPHLO_SliceOp : PPHLO_Op<"slice", [
+  Pure, SameOperandsAndResultElementType,
+  AllMatchSameOperatorTrait<["start_indices", "limit_indices",
+      "strides"], "$_self.size()", "size"> /*slice_c2*/,
+]> {
+  let description = [{
+    Extracts a slice from the `operand` using statically-computed starting indices and produces a `result` tensor.
+    `start_indices` contain the starting indices of the slice for each dimension,
+    `limit_indices` contain the ending indices (exclusive) for the slice for each dimension,
+    and `strides` contain the strides for each dimension.
+
+    Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#slice
+  }];
+  let arguments = (ins PPHLO_AnyTensor: $operand,
+                       DenseI64ArrayAttr: $start_indices,
+                       DenseI64ArrayAttr: $limit_indices,
+                       DenseI64ArrayAttr: $strides);
+
+  let results = (outs PPHLO_AnyTensor);
+  let hasVerifier = 1;
+
+  let assemblyFormat = [{
+    $operand custom<SliceRanges>($start_indices, $limit_indices, $strides)
+      attr-dict `:` functional-type(operands, results)
+  }];
+}
+
+def PPHLO_SortOp
+    : PPHLO_Op<"sort", [RecursiveMemoryEffects, SameOperandsAndResultShape]> {
+  let summary = "Sort operator";
+  let description = [{
+    Sorts 1-dimensional slices of inputs along the dimension `dimension` together, according to a `comparator` and produces `results`.
+
+    Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#sort
+  }];
+
+  let arguments = (ins
+    Variadic<PPHLO_Tensor>:$operands,
+    DefaultValuedAttr<I64Attr, "-1">:$dimension,
+    DefaultValuedAttr<BoolAttr, "false">:$is_stable
+  );
+
+  let regions = (region SizedRegion<1>:$comparator);
+  let results = (outs Variadic<PPHLO_Tensor>);
+
+  let builders = [
+    OpBuilder<(ins "ValueRange":$operands, CArg<"int64_t", "-1">:$dimension,
+      CArg<"bool", "false">:$is_stable)>];
+}
+
+
+def PPHLO_TransposeOp
+    : PPHLO_Op<"transpose", [Pure, SameOperandsAndResultElementType]> {
+  let summary = "Transpose operator";
+  let description = [{
+    Permutes the dimensions of `operand` tensor using `permutation` and produces a `result` tensor.
+
+    Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#transpose
+  }];
+  let arguments = (ins PPHLO_AnyTensor : $operand, DenseI64ArrayAttr : $permutation);
+  let results = (outs PPHLO_AnyTensor);
+  let hasFolder = 1;
+  let hasVerifier = 1;
+
+  let assemblyFormat = [{
+    $operand `,` `dims` `=` $permutation
+      attr-dict `:` functional-type(operands, results)
+  }];
+}
+
+//===----------------------------------------------------------------------===//
+// pphlo control flow op definitions.
+//===----------------------------------------------------------------------===//
+def PPHLO_CaseOp: PPHLO_Op<"case", [
+      RecursiveMemoryEffects,
+      SingleBlockImplicitTerminator<"ReturnOp">
+    ]> {
+  let summary = "Switch-Case operator";
+  let description = [{
+    Produces the output from executing exactly one function from `branches` depending on the value of `index`.
+
+    Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#case
+  }];
+
+  let arguments = (ins PPHLO_IntTensor:$index);
+  let regions = (region VariadicRegion<SizedRegion<1>>:$branches);
+  let results = (outs Variadic<PPHLO_Tensor>);
+}
+
+def PPHLO_IfOp : PPHLO_Op<"if", [
+  RecursiveMemoryEffects,
+  SingleBlockImplicitTerminator<"ReturnOp">
+]> {
+  let summary = "If operator";
+
+  let description = [{
+    Produces the output from executing exactly one function from `true_branch` or `false_branch` depending on the value of `pred`.
+
+    Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#if
+  }];
+
+  let arguments = (ins PPHLO_BoolTensor:$condition);
+
+  let regions = (region SizedRegion<1>:$true_branch,
+                        SizedRegion<1>:$false_branch);
+
+  let results = (outs Variadic<PPHLO_Tensor>);
+}
+
+def PPHLO_WhileOp : PPHLO_Op<"while", [
+  RecursiveMemoryEffects, PPHLO_PairwiseSameOperandAndResultType, SingleBlockImplicitTerminator<"ReturnOp">
+]> {
+  let summary = "While operator";
+  let description = [{
+    Produces the output from executing `body` function 0 or more times while the `cond` function outputs true.
+
+    Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#while
+  }];
+  let arguments = (ins Variadic<PPHLO_Tensor> : $args);
+  let regions = (region SizedRegion<1> : $cond, SizedRegion<1> : $body);
+  let results = (outs Variadic<PPHLO_Tensor>);
+  let hasCustomAssemblyFormat = 1;
+}
+
+//===----------------------------------------------------------------------===//
+// pphlo complex op definitions.
+//===----------------------------------------------------------------------===//
+def PPHLO_ComplexOp: PPHLO_BinaryElementwiseOp<"complex", [Pure,
+    SameOperandsElementType /*complex_c1*/,
+    SameOperandsAndResultShape /*complex_c2*/], PPHLO_FpTensor, PPHLO_ComplexTensor> {
+  let summary = "Complex operator";
+  let description = [{
+    Performs element-wise conversion to a complex value from a pair of real and
+    imaginary values, `lhs` and `rhs`, and produces a `result` tensor.
+
+    Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#complex
+  }];
+}
+
+def PPHLO_RealOp: PPHLO_UnaryElementwiseOp<"real",
+    [Pure], PPHLO_FpOrComplexTensor, PPHLO_Tensor> {
+  let summary = "Real operator";
+  let description = [{
+    Extracts the real part, element-wise, from the `operand` and produces a
+    `result` tensor.
+
+    Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#real
+  }];
+}
+
+def PPHLO_ImagOp: PPHLO_UnaryElementwiseOp<"imag",
+    [Pure], PPHLO_FpOrComplexTensor, PPHLO_Tensor> {
+  let summary = "Imag operator";
+  let description = [{
+    Extracts the imaginary part, element-wise, from the `operand` and produces a
+    `result` tensor.
+
+    Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#imag
+  }];
+}
+
+//===----------------------------------------------------------------------===//
+// pphlo custom call op definitions.
+//===----------------------------------------------------------------------===//
+def PPHLO_CustomCallOp: PPHLO_Op<"custom_call",
+    [DeclareOpInterfaceMethods<MemoryEffectsOpInterface>]> {
+  let summary = "CustomCall operator";
+  let description = [{
+    Encapsulates an implementation-defined operation `call_target_name` that
+    takes `inputs` and `called_computations` and produces `results`.
+
+    Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#custom_call
+  }];
+
+  let arguments = (ins
+    Variadic<PPHLO_Tensor>:$inputs,
+    StrAttr:$call_target_name,
+    DefaultValuedOptionalAttr<BoolAttr, "false">:$has_side_effect
+  );
+  let results = (outs Variadic<PPHLO_Tensor>);
+  let assemblyFormat = [{
+    custom<CustomCallTarget>($call_target_name) `(` $inputs `)`
+      attr-dict `:` functional-type(operands, results)
+  }];
+}
+
+//===----------------------------------------------------------------------===//
+// pphlo extended op definitions.
+//===----------------------------------------------------------------------===//
+def PPHLO_EpsilonOp: PPHLO_Op<"epsilon", [Pure]> {
+  let summary = "Epsilon operator";
+  let description = [{
+    Produces a tensor that representations runtime epsilon.
+  }];
+  let results = (outs PPHLO_FpTensor);
+}
+
+def PPHLO_ReciprocalOp: PPHLO_UnaryElementwiseOp<"reciprocal",
+                          [Pure, SameOperandsAndResultType],
+                          PPHLO_FpTensor> {
+  let summary = "Reciprocal operator";
+  let description = [{
+    Performs element-wise reciprocal of `operand` tensor and produces a `result` tensor.
+  }];
+  let hasFolder = 1;
+}
+
+def PPHLO_PreferAOp : PPHLO_UnaryElementwiseOp<"prefer_a",
+                            [Pure, SameOperandsAndResultType],
+                            PPHLO_Tensor> {
+  let summary = "Prefer AShare operator";
+  let description = [{
+    Convert input to AShare if possible.
+  }];
 }
 
 def PPHLO_MaxPoolScatterOp: PPHLO_Op<"maxpool_scatter", [Pure]> {
@@ -776,63 +1101,6 @@ def PPHLO_MaxPoolScatterOp: PPHLO_Op<"maxpool_scatter", [Pure]> {
   let assemblyFormat = [{
     operands attr-dict `:` functional-type(operands, results)
   }];
-}
-
-def PPHLO_ReduceOp : PPHLO_Op<"reduce", [
-  RecursiveMemoryEffects, SameVariadicOperandSize,
-  SingleBlockImplicitTerminator<"ReturnOp">
-]> {
-  let summary = "Reduce operator";
-  let description = [{
-    Returns the result of executing a reduction function on one or more arrays
-    in parallel.
-
-    See https://www.tensorflow.org/xla/operation_semantics#reduce.
-  }];
-  let arguments = (ins
-    Variadic<PPHLO_Tensor>:$inputs,
-    Variadic<PPHLO_Tensor>:$init_values,
-    DenseI64ArrayAttr:$dimensions
-  );
-
-  let results = (outs Variadic<PPHLO_Tensor>);
-
-  let builders = [
-    OpBuilder<(ins "ValueRange":$inputs, "ValueRange":$init_values,
-      "DenseI64ArrayAttr":$dimensions)>];
-
-  let regions = (region SizedRegion<1> : $body);
-
-  let hasVerifier = 1;
-
-  let hasCustomAssemblyFormat = 1;
-}
-
-def PPHLO_ReduceWindowOp : PPHLO_Op<"reduce_window", [
-  RecursiveMemoryEffects, SameVariadicOperandSize,
-  SingleBlockImplicitTerminator<"ReturnOp">
-]> {
-  let summary = "ReduceWindow operator";
-  let description = [{
-    Returns the result of executing a reduction function over all elements in
-    each window of one or more arrays.
-
-    See https://www.tensorflow.org/xla/operation_semantics#reducewindow.
-  }];
-
-  let arguments = (ins
-    Variadic<PPHLO_Tensor>:$inputs,
-    Variadic<PPHLO_Tensor>:$init_values,
-    DenseI64ArrayAttr:$window_dimensions,
-    // If strides or dilations attributes are missing then the default value is
-    // one for each of the input dimensions.
-    OptionalAttr<DenseI64ArrayAttr>:$window_strides,
-    OptionalAttr<DenseI64ArrayAttr>:$window_dilations
-  );
-
-  let results = (outs Variadic<PPHLO_Tensor>);
-
-  let regions = (region SizedRegion<1> : $body);
 }
 
 def PPHLO_ArgMaxOp: PPHLO_Op<"argmax", [Pure]> {
@@ -860,63 +1128,14 @@ def PPHLO_ArgMaxOp: PPHLO_Op<"argmax", [Pure]> {
 }
 
 def PPHLO_ReturnOp : PPHLO_Op<"return", [Pure, Terminator]> {
-  let summary = [{
-    The `pphlo.return` operation terminates a region and returns values.
+  let summary = "Return operator";
+  let description = [{
+    Terminates a region and returns `results`.
   }];
 
   let arguments = (ins Variadic<PPHLO_Tensor> : $results);
 
   let assemblyFormat = "$results attr-dict (`:` type($results)^)?";
-}
-
-def PPHLO_TransposeOp
-    : PPHLO_Op<"transpose", [Pure, SameOperandsAndResultElementType]> {
-  let summary = "Transpose operator";
-  let description = [{
-    Permutes the dimensions of `operand` according to the given `permutation`.
-
-    `res_dimensions[i] = operand_dimensions[permutation[i]]`
-
-    See https://www.tensorflow.org/xla/operation_semantics#transpose.
-  }];
-  let arguments = (ins PPHLO_AnyTensor : $operand, DenseI64ArrayAttr : $permutation);
-  let results = (outs PPHLO_AnyTensor);
-  let hasFolder = 1;
-
-  let hasVerifier = 1;
-
-  let assemblyFormat = [{
-    $operand `,` `dims` `=` $permutation
-      attr-dict `:` functional-type(operands, results)
-  }];
-}
-
-def PPHLO_SliceOp : PPHLO_Op<"slice", [
-  Pure, SameOperandsAndResultElementType,
-  AllMatchSameOperatorTrait<["start_indices", "limit_indices",
-      "strides"], "$_self.size()", "size"> /*slice_c2*/,
-]> {
-  let description = [{
-    The dynamic shape version of SliceOp. Extracts a sub-array from the input
-    array according to start_indices, limit_indices and strides. Expect
-    start_indices/limit_indices/strides to be statically shaped and matching
-    the rank of the input.
-
-    See https://www.tensorflow.org/xla/operation_semantics#slice
-  }];
-  let arguments = (ins PPHLO_AnyTensor: $operand,
-                       DenseI64ArrayAttr: $start_indices,
-                       DenseI64ArrayAttr: $limit_indices,
-                       DenseI64ArrayAttr: $strides);
-
-  let results = (outs PPHLO_AnyTensor);
-
-  let hasVerifier = 1;
-
-  let assemblyFormat = [{
-    $operand custom<SliceRanges>($start_indices, $limit_indices, $strides)
-      attr-dict `:` functional-type(operands, results)
-  }];
 }
 
 def PPHLO_DbgPrintOp : PPHLO_Op<"dbg_print", []> {
@@ -927,66 +1146,6 @@ def PPHLO_DbgPrintOp : PPHLO_Op<"dbg_print", []> {
 def PPHLO_FreeOp : PPHLO_Op<"free", []> {
   let arguments = (ins PPHLO_Tensor : $operand);
   let assemblyFormat = "operands attr-dict `:` type(operands)";
-}
-
-def PPHLO_ClampOp
-    : PPHLO_Op<"clamp", [Pure, SameOperandsAndResultShape]> {
-  let summary = "Clamp operator";
-  let description = [{
-    Clamps an operand to within the range between a minimum and maximum value.
-
-    Note: All three arrays must be the same shape. Alternatively, as a
-          restricted form of broadcasting, min and/or max can be a scalar (0D
-          tensor) of the element type of the tensor operand.
-
-    See https://www.tensorflow.org/xla/operation_semantics#clamp.
-  }];
-
-  let arguments = (ins PPHLO_Tensor
-                   : $min, PPHLO_Tensor
-                   : $operand, PPHLO_Tensor
-                   : $max);
-  let results = (outs PPHLO_Tensor);
-}
-
-def PPHLO_BitcastConvertOp : PPHLO_Op<"bitcast_convert", [Pure]> {
-  let summary = "BitcastConvert operator";
-  let description =[{
-   Similar to a 'tf.bitcast' in TensorFlow, performs an element-wise bitcast
-    operation from a data shape to a target shape. The dimensions must match,
-    and the conversion is an element-wise one. Bitcast is implemented as a
-    low-level cast, so machines with different floating-point representations
-    will give different results.
-
-    See https://www.tensorflow.org/xla/operation_semantics#bitcastconverttype.
-  }];
-
-  let arguments = (ins PPHLO_Tensor : $operand);
-  let results = (outs PPHLO_Tensor);
-}
-
-def PPHLO_SortOp
-    : PPHLO_Op<"sort", [RecursiveMemoryEffects, SameOperandsAndResultShape]> {
-  let summary = "Sort operator";
-  let description = [{
-    Sorts the given `operands` at the given `dimension` with the given
-    `comparator`.
-
-    See https://www.tensorflow.org/xla/operation_semantics#sort.
-  }];
-  let arguments = (ins
-    Variadic<PPHLO_Tensor>:$operands,
-    DefaultValuedAttr<I64Attr, "-1">:$dimension,
-    DefaultValuedAttr<BoolAttr, "false">:$is_stable
-  );
-
-  let regions = (region SizedRegion<1>:$comparator);
-
-  let results = (outs Variadic<PPHLO_Tensor>);
-
-  let builders = [
-    OpBuilder<(ins "ValueRange":$operands, CArg<"int64_t", "-1">:$dimension,
-      CArg<"bool", "false">:$is_stable)>];
 }
 
 def PPHLO_SimpleSortOp
@@ -1009,262 +1168,6 @@ def PPHLO_SimpleSortOp
     operands $sort_direction `,` `dim` `=` $dimension `,` `num_keys` `=` $num_keys
       attr-dict `:` functional-type(operands, results)
   }];
-}
-
-def PPHLO_ReverseOp
-    : PPHLO_Op<"reverse", [Pure, SameOperandsAndResultType]> {
-  let summary = "Reverse operator";
-  let description = [{
-    Reverses the specified dimensions of `operand` according to the given
-    `dimensions`.
-
-    See https://www.tensorflow.org/xla/operation_semantics#rev_reverse.
-  }];
-  let arguments = (ins PPHLO_AnyTensor : $operand, DenseI64ArrayAttr : $dimensions);
-
-  let results = (outs PPHLO_AnyTensor : $result);
-
-  let hasFolder = 1;
-
-  let hasVerifier = 1;
-
-  let assemblyFormat = [{
-    $operand `,` `dims` `=` $dimensions attr-dict `:` type($result)
-  }];
-}
-
-def HLO_PadOp
-    : PPHLO_WithShapeInferOp<"pad", [Pure, SameOperandsAndResultElementType, InferTensorType]> {
-  let summary = "Pad operator";
-  let description = [{
-    Pads the edges of `operand` with the `padding_value` and according to
-    the passed configuration.
-
-    See https://www.tensorflow.org/xla/operation_semantics#pad.
-  }];
-  let arguments = (ins PPHLO_AnyTensor: $operand,
-                       PPHLO_AnyTensor: $padding_value,
-                       DenseI64ArrayAttr: $edge_padding_low,
-                       DenseI64ArrayAttr: $edge_padding_high,
-                       DenseI64ArrayAttr: $interior_padding);
-
-  let results = (outs PPHLO_AnyTensor);
-
-  let assemblyFormat = [{
-    $operand `,` $padding_value `,`
-      `low` `=` $edge_padding_low `,`
-      `high` `=` $edge_padding_high `,`
-      `interior` `=` $interior_padding
-      attr-dict `:` functional-type(operands, results)
-  }];
-}
-
-def ConvolutionAttributes {
-  dag attributes = (ins
-    // Default value: one for each of the spatial dimension.
-    OptionalAttr<DenseI64ArrayAttr>:$window_strides,
-    ConvDimensionNumbers:$dimension_numbers,
-    I64Attr:$feature_group_count,
-    I64Attr:$batch_group_count
-  );
-}
-
-def PPHLO_ConvolutionOp : PPHLO_Op<"convolution", [Pure]> {
-  let summary = "Convolution operator";
-  let description = [{
-    Computes a convolution of the kind used in neural networks.
-
-    See https://www.tensorflow.org/xla/operation_semantics#conv_convolution.
-  }];
-  let arguments = !con(
-    (ins
-       PPHLO_Tensor:$lhs,
-       PPHLO_Tensor:$rhs),
-    ConvolutionAttributes.attributes);
-
-  let results = (outs PPHLO_Tensor);
-
-  let assemblyFormat = [{
-    `(`operands`)`
-       `dim_numbers` `=` custom<ConvolutionDimensions>($dimension_numbers) `,`
-       `window` `=` `{` custom<WindowAttributes>($window_strides) `}`
-       attr-dict `:` functional-type(operands, results)
-  }];
-
-  let hasCanonicalizer = 1;
-}
-
-def PPHLO_DynamicSliceOp: PPHLO_WithShapeInferOp<"dynamic_slice", [Pure]> {
-  let summary = "Dynamic Slice operator";
-  let description = [{
-    Extracts a sub-array from the input array at dynamic start_indices.
-
-    See https://www.tensorflow.org/xla/operation_semantics#dynamicslice.
-  }];
-  let arguments = (ins PPHLO_AnyTensor:$operand,
-                       Variadic<PPHLO_ScalarIntTensor>:$start_indices,
-                       DenseI64ArrayAttr:$slice_sizes
-  );
-
-  let results = (outs PPHLO_AnyTensor:$result);
-
-  let assemblyFormat = [{
-    operands `sizes` `=` $slice_sizes
-      attr-dict `:` functional-type(operands, results)
-  }];
-}
-
-def PPHLO_DynamicUpdateSliceOp: PPHLO_WithShapeInferOp<"dynamic_update_slice",
-      [Pure, AllShapesMatch<["operand", "result"]>]> {
-  let summary = "Dynamic Update Slice operator";
-  let description = [{
-    DynamicUpdateSlice generates a result which is the value of the input array
-    operand, with a slice update overwritten at start_indices.
-
-    See https://www.tensorflow.org/xla/operation_semantics#dynamicupdateslice.
-  }];
-  let arguments = (ins PPHLO_AnyTensor:$operand,
-                       PPHLO_AnyTensor:$update,
-                       Variadic<PPHLO_ScalarIntTensor>:$start_indices
-  );
-  let results = (outs PPHLO_AnyTensor:$result);
-
-  let assemblyFormat = "operands attr-dict `:` functional-type(operands, results)";
-}
-
-//===----------------------------------------------------------------------===//
-// pphlo control flow op definitions.
-//===----------------------------------------------------------------------===//
-def PPHLO_WhileOp : PPHLO_Op<"while", [
-  RecursiveMemoryEffects, PPHLO_PairwiseSameOperandAndResultType, SingleBlockImplicitTerminator<"ReturnOp">
-]> {
-  let summary = "While operator";
-  let description = [{
-    Returns the result of executing a body function until the cond body
-        returns true.
-
-    See https://www.tensorflow.org/xla/operation_semantics#while.
-  }];
-  let arguments = (ins Variadic<PPHLO_Tensor> : $args);
-
-  let regions = (region SizedRegion<1> : $cond, SizedRegion<1> : $body);
-
-  let results = (outs Variadic<PPHLO_Tensor>);
-
-  let hasCustomAssemblyFormat = 1;
-}
-
-def PPHLO_IfOp : PPHLO_Op<"if", [
-  RecursiveMemoryEffects,
-  SingleBlockImplicitTerminator<"ReturnOp">
-]> {
-  let summary = "If operator";
-
-  let description = [{
-    Returns the result of executing either a true or false function depending on
-        the result of a condition function.
-
-    See https://www.tensorflow.org/xla/operation_semantics#conditional.
-  }];
-
-  let arguments = (ins PPHLO_BoolTensor:$condition);
-
-  let regions = (region SizedRegion<1>:$true_branch,
-                        SizedRegion<1>:$false_branch);
-
-  let results = (outs Variadic<PPHLO_Tensor>);
-}
-
-def PPHLO_CaseOp: PPHLO_Op<"case", [
-      RecursiveMemoryEffects,
-      SingleBlockImplicitTerminator<"ReturnOp">
-    ]> {
-  let summary = "Switch-Case operator";
-  let description = [{
-    Returns the result of executing `branches[index]`. If `index` is < 0 or >=
-    N, then `branches[N-1]` is executed as the default branch.
-
-    The type of the returned values of each branch must be the same and equal
-    to the types of the values returned by the operation.
-
-    Note that if index is public only one of the branches will be executed depending on the value
-    of index, otherwise all branches will be executed and select results based on index value.
-  }];
-
-  let arguments = (ins
-    PPHLO_IntTensor:$index
-  );
-
-  let regions = (region VariadicRegion<SizedRegion<1>>:$branches);
-
-  let results = (outs Variadic<PPHLO_Tensor>);
-}
-
-def PPHLO_CustomCallOp: PPHLO_Op<"custom_call",
-    [DeclareOpInterfaceMethods<MemoryEffectsOpInterface>]> {
-  let summary = "CustomCall operation";
-  let description = [{
-    Encapsulates an implementation-defined operation `call_target_name` that
-    takes `inputs` and `called_computations` and produces `results`.
-
-    See:
-    https://github.com/openxla/stablehlo/blob/main/docs/spec.md#custom_call
-  }];
-
-  let arguments = (ins
-    Variadic<PPHLO_Tensor>:$inputs,
-    StrAttr:$call_target_name,
-    DefaultValuedOptionalAttr<BoolAttr, "false">:$has_side_effect
-  );
-  let results = (outs Variadic<PPHLO_Tensor>);
-
-  let assemblyFormat = [{
-    custom<CustomCallTarget>($call_target_name) `(` $inputs `)`
-      attr-dict `:` functional-type(operands, results)
-  }];
-}
-
-def PPHLO_RealOp: PPHLO_UnaryElementwiseOp<"real",
-    [Pure], PPHLO_FpOrComplexTensor, PPHLO_Tensor> {
-  let summary = "Real operation";
-  let description = [{
-    Extracts the real part, element-wise, from the `operand` and produces a
-    `result` tensor.
-
-    See:
-    https://github.com/openxla/stablehlo/blob/main/docs/spec.md#real
-  }];
-}
-
-def PPHLO_ImagOp: PPHLO_UnaryElementwiseOp<"imag",
-    [Pure], PPHLO_FpOrComplexTensor, PPHLO_Tensor> {
-  let summary = "Imag operation";
-  let description = [{
-    Extracts the imaginary part, element-wise, from the `operand` and produces a
-    `result` tensor.
-
-    See:
-    https://github.com/openxla/stablehlo/blob/main/docs/spec.md#imag
-  }];
-}
-
-def PPHLO_ComplexOp: PPHLO_BinaryElementwiseOp<"complex", [Pure,
-    SameOperandsElementType /*complex_c1*/,
-    SameOperandsAndResultShape /*complex_c2*/]> {
-  let summary = "Complex operation";
-  let description = [{
-    Performs element-wise conversion to a complex value from a pair of real and
-    imaginary values, `lhs` and `rhs`, and produces a `result` tensor.
-    See:
-    https://github.com/openxla/stablehlo/blob/main/docs/spec.md#complex
-  }];
-  let arguments = (ins
-     PPHLO_FpTensor:$lhs /*complex_i1*/,
-     PPHLO_FpTensor:$rhs /*complex_i2*/
-  );
-  let results = (outs
-     PPHLO_ComplexTensor:$result
-  );
 }
 
 #endif  // SPU_DIALECT_PPHLO_OPS

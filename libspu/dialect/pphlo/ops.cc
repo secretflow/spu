@@ -1272,7 +1272,7 @@ LogicalResult ConcatenateOp::inferReturnTypes(
     DictionaryAttr attributes, OpaqueProperties, RegionRange regions,
     SmallVectorImpl<Type>& inferred_return_types) {
   ConcatenateOp::Adaptor adaptor(operands, attributes, {}, regions);
-  return hlo::inferConcatenateOp(location, adaptor.getVal().getTypes(),
+  return hlo::inferConcatenateOp(location, adaptor.getInputs().getTypes(),
                                  adaptor.getDimension(), inferred_return_types);
 }
 

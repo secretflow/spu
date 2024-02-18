@@ -3,10 +3,26 @@
 
 _Pad operator_
 
-Pads the edges of `operand` with the `padding_value` and according to
-the passed configuration.
 
-See https://www.tensorflow.org/xla/operation_semantics#pad.
+Syntax:
+
+```
+operation ::= `pphlo.pad` $operand `,` $padding_value `,`
+              `low` `=` $edge_padding_low `,`
+              `high` `=` $edge_padding_high `,`
+              `interior` `=` $interior_padding
+              attr-dict `:` functional-type(operands, results)
+```
+
+Expands `operand` by padding around the tensor as well as between the elements of the tensor with the given `padding_value`.
+
+`edge_padding_low` and `edge_padding_high` specify the amount of padding added at the low-end (next to index 0) and the high-end (next to the highest index)
+of each dimension respectively. The amount of padding can be negative, where the absolute value of negative padding indicates the number of elements to remove from the specified dimension.
+
+`interior_padding` specifies the amount of padding added between any two elements in each dimension which may not be negative.
+Interior padding occurs before edge padding such that negative edge padding will remove elements from the interior-padded operand.
+
+Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#pad
 
 Traits: `AlwaysSpeculatableImplTrait`, `InferTensorType`, `SameOperandsAndResultElementType`
 
@@ -40,10 +56,16 @@ Effects: `MemoryEffects::Effect{}`
 
 _Absolute value operator_
 
-Returns `abs(operand)` element-wise.
 
-See
-https://www.tensorflow.org/xla/operation_semantics#element-wise_unary_functions.
+Syntax:
+
+```
+operation ::= `pphlo.abs` $operand attr-dict `:` custom<SameOperandsAndResultType>(type($operand), type($result))
+```
+
+Performs element-wise abs operation on operand tensor and produces a result tensor.
+
+Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#abs
 
 Traits: `AlwaysSpeculatableImplTrait`, `Elementwise`, `SameOperandsAndResultShape`, `SameOperandsAndResultType`
 
@@ -61,16 +83,23 @@ Effects: `MemoryEffects::Effect{}`
 
 | Result | Description |
 | :----: | ----------- |
-&laquo;unnamed&raquo; | statically shaped tensor of pred (AKA boolean or 1-bit integer) or Secret of 1-bit signless integer values or 8/16/32/64-bit signless integer or Secret of 8-bit signless integer or 16-bit signless integer or 32-bit signless integer or 64-bit signless integer values or 8/16/32/64-bit unsigned integer or Secret of 8/16/32/64-bit unsigned integer values or 16-bit float or 32-bit float or 64-bit float or Secret of 16-bit float or 32-bit float or 64-bit float values or complex type with 32-bit float or 64-bit float elements or Secret of complex type with 32-bit float or 64-bit float elements values values
+| `result` | statically shaped tensor of pred (AKA boolean or 1-bit integer) or Secret of 1-bit signless integer values or 8/16/32/64-bit signless integer or Secret of 8-bit signless integer or 16-bit signless integer or 32-bit signless integer or 64-bit signless integer values or 8/16/32/64-bit unsigned integer or Secret of 8/16/32/64-bit unsigned integer values or 16-bit float or 32-bit float or 64-bit float or Secret of 16-bit float or 32-bit float or 64-bit float values or complex type with 32-bit float or 64-bit float elements or Secret of complex type with 32-bit float or 64-bit float elements values values
 
 ### `pphlo.add` (spu::pphlo::AddOp)
 
 _Addition operator_
 
-Returns `lhs + rhs` element-wise.
 
-See
-https://www.tensorflow.org/xla/operation_semantics#element-wise_binary_arithmetic_operations.
+Syntax:
+
+```
+operation ::= `pphlo.add` $lhs `,` $rhs attr-dict
+              `:` custom<SameOperandsAndResultType>(type($lhs), type($rhs), type($result))
+```
+
+Performs element-wise addition of two tensors `lhs` and `rhs` and produces a `result` tensor.
+
+Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#add
 
 Traits: `AlwaysSpeculatableImplTrait`, `Commutative`, `Elementwise`, `SameOperandsAndResultShape`
 
@@ -89,16 +118,23 @@ Effects: `MemoryEffects::Effect{}`
 
 | Result | Description |
 | :----: | ----------- |
-&laquo;unnamed&raquo; | statically shaped tensor of pred (AKA boolean or 1-bit integer) or Secret of 1-bit signless integer values or 8/16/32/64-bit signless integer or Secret of 8-bit signless integer or 16-bit signless integer or 32-bit signless integer or 64-bit signless integer values or 8/16/32/64-bit unsigned integer or Secret of 8/16/32/64-bit unsigned integer values or 16-bit float or 32-bit float or 64-bit float or Secret of 16-bit float or 32-bit float or 64-bit float values or complex type with 32-bit float or 64-bit float elements or Secret of complex type with 32-bit float or 64-bit float elements values values
+| `result` | statically shaped tensor of pred (AKA boolean or 1-bit integer) or Secret of 1-bit signless integer values or 8/16/32/64-bit signless integer or Secret of 8-bit signless integer or 16-bit signless integer or 32-bit signless integer or 64-bit signless integer values or 8/16/32/64-bit unsigned integer or Secret of 8/16/32/64-bit unsigned integer values or 16-bit float or 32-bit float or 64-bit float or Secret of 16-bit float or 32-bit float or 64-bit float values or complex type with 32-bit float or 64-bit float elements or Secret of complex type with 32-bit float or 64-bit float elements values values
 
 ### `pphlo.and` (spu::pphlo::AndOp)
 
-_Logical and_
+_And operator_
 
-Returns `logical_and(lhs, rhs)` element-wise.
 
-See
-https://www.tensorflow.org/xla/operation_semantics#element-wise_binary_arithmetic_operations.
+Syntax:
+
+```
+operation ::= `pphlo.and` $lhs `,` $rhs attr-dict
+              `:` custom<SameOperandsAndResultType>(type($lhs), type($rhs), type($result))
+```
+
+Performs element-wise AND of two tensors `lhs` and `rhs` and produces a `result` tensor.
+
+Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#and
 
 Traits: `AlwaysSpeculatableImplTrait`, `Commutative`, `Elementwise`, `SameOperandsAndResultShape`
 
@@ -117,11 +153,18 @@ Effects: `MemoryEffects::Effect{}`
 
 | Result | Description |
 | :----: | ----------- |
-&laquo;unnamed&raquo; | statically shaped tensor of pred (AKA boolean or 1-bit integer) or Secret of 1-bit signless integer values or 8/16/32/64-bit signless integer or Secret of 8-bit signless integer or 16-bit signless integer or 32-bit signless integer or 64-bit signless integer values or 8/16/32/64-bit unsigned integer or Secret of 8/16/32/64-bit unsigned integer values or 16-bit float or 32-bit float or 64-bit float or Secret of 16-bit float or 32-bit float or 64-bit float values or complex type with 32-bit float or 64-bit float elements or Secret of complex type with 32-bit float or 64-bit float elements values values
+| `result` | statically shaped tensor of 8/16/32/64-bit signless integer or Secret of 8-bit signless integer or 16-bit signless integer or 32-bit signless integer or 64-bit signless integer values or 8/16/32/64-bit unsigned integer or Secret of 8/16/32/64-bit unsigned integer values or pred (AKA boolean or 1-bit integer) or Secret of 1-bit signless integer values values
 
 ### `pphlo.argmax` (spu::pphlo::ArgMaxOp)
 
 _ArgMax operator_
+
+
+Syntax:
+
+```
+operation ::= `pphlo.argmax` operands attr-dict `:` functional-type(operands, results)
+```
 
 Returns the max value and index in a window.
 
@@ -158,13 +201,10 @@ Effects: `MemoryEffects::Effect{}`
 
 _BitcastConvert operator_
 
-Similar to a 'tf.bitcast' in TensorFlow, performs an element-wise bitcast
- operation from a data shape to a target shape. The dimensions must match,
- and the conversion is an element-wise one. Bitcast is implemented as a
- low-level cast, so machines with different floating-point representations
- will give different results.
+Performs a bitcast operation on operand tensor and produces a result tensor where the bits of the entire
+`operand` tensor are reinterpreted using the type of the `result` tensor.
 
- See https://www.tensorflow.org/xla/operation_semantics#bitcastconverttype.
+Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#bitcast_convert
 
 Traits: `AlwaysSpeculatableImplTrait`
 
@@ -186,22 +226,19 @@ Effects: `MemoryEffects::Effect{}`
 
 ### `pphlo.broadcast` (spu::pphlo::BroadcastOp)
 
-_Broadcast a tensor into the given shape by adding dimensions._
+_Broadcast operator_
 
-Broadcasts the `operand` tensor to a higher rank. This is not the limited
-form of broadcasting exposed as the XLA client broadcast op, but rather the
-more powerful "InDim" broadcasting, which is closer to the HLO broadcast op
-and exposed in the XLA client BroadcastInDim method.
 
-`broadcast_dimensions` maps the operand dimension number to the target shape
-dimension number. It must have the same size as the rank of the operand. The
-mapped dimensions must either be the same size or the dimension being
-broadcast from must be size 1 (degenerate broadcasting).
+Syntax:
 
-For a scalar (0D tensor) operand, `broadcast_dimensions` must be empty. The
-The scalar value will be broadcast to every element in the target shape.
+```
+operation ::= `pphlo.broadcast` $operand `,` `dims` `=` $broadcast_dimensions
+              attr-dict `:` functional-type(operands, results)
+```
 
-See https://www.tensorflow.org/xla/broadcasting.
+Expands the dimensions and/or rank of an input tensor by duplicating the data in the `operand` tensor and produces a `result` tensor.
+
+Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#broadcast_in_dim
 
 Traits: `AlwaysSpeculatableImplTrait`, `SameOperandsAndResultElementType`
 
@@ -232,14 +269,9 @@ Effects: `MemoryEffects::Effect{}`
 
 _Switch-Case operator_
 
-Returns the result of executing `branches[index]`. If `index` is < 0 or >=
-N, then `branches[N-1]` is executed as the default branch.
+Produces the output from executing exactly one function from `branches` depending on the value of `index`.
 
-The type of the returned values of each branch must be the same and equal
-to the types of the values returned by the operation.
-
-Note that if index is public only one of the branches will be executed depending on the value
-of index, otherwise all branches will be executed and select results based on index value.
+Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#case
 
 Traits: `RecursiveMemoryEffects`, `SingleBlockImplicitTerminator<ReturnOp>`, `SingleBlock`
 
@@ -259,10 +291,16 @@ Traits: `RecursiveMemoryEffects`, `SingleBlockImplicitTerminator<ReturnOp>`, `Si
 
 _Ceil operator_
 
-Returns `Ceil(operand)` element-wise.
 
-See
-https://www.tensorflow.org/xla/operation_semantics#element-wise_unary_functions.
+Syntax:
+
+```
+operation ::= `pphlo.ceil` $operand attr-dict `:` custom<SameOperandsAndResultType>(type($operand), type($result))
+```
+
+Performs element-wise ceil of operand tensor and produces a result tensor.
+
+Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#ceil
 
 Traits: `AlwaysSpeculatableImplTrait`, `Elementwise`, `SameOperandsAndResultShape`, `SameOperandsAndResultType`
 
@@ -280,19 +318,15 @@ Effects: `MemoryEffects::Effect{}`
 
 | Result | Description |
 | :----: | ----------- |
-&laquo;unnamed&raquo; | statically shaped tensor of 16-bit float or 32-bit float or 64-bit float or Secret of 16-bit float or 32-bit float or 64-bit float values values
+| `result` | statically shaped tensor of 16-bit float or 32-bit float or 64-bit float or Secret of 16-bit float or 32-bit float or 64-bit float values values
 
 ### `pphlo.clamp` (spu::pphlo::ClampOp)
 
 _Clamp operator_
 
-Clamps an operand to within the range between a minimum and maximum value.
+Clamps every element of the `operand` tensor between a `minimum` and `maximum` value and produces a `result` tensor.
 
-Note: All three arrays must be the same shape. Alternatively, as a
-      restricted form of broadcasting, min and/or max can be a scalar (0D
-      tensor) of the element type of the tensor operand.
-
-See https://www.tensorflow.org/xla/operation_semantics#clamp.
+Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#clamp
 
 Traits: `AlwaysSpeculatableImplTrait`, `SameOperandsAndResultShape`
 
@@ -316,12 +350,20 @@ Effects: `MemoryEffects::Effect{}`
 
 ### `pphlo.complex` (spu::pphlo::ComplexOp)
 
-_Complex operation_
+_Complex operator_
+
+
+Syntax:
+
+```
+operation ::= `pphlo.complex` $lhs `,` $rhs attr-dict
+              `:` custom<SameOperandsAndResultType>(type($lhs), type($rhs), type($result))
+```
 
 Performs element-wise conversion to a complex value from a pair of real and
 imaginary values, `lhs` and `rhs`, and produces a `result` tensor.
-See:
-https://github.com/openxla/stablehlo/blob/main/docs/spec.md#complex
+
+Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#complex
 
 Traits: `AlwaysSpeculatableImplTrait`, `Elementwise`, `SameOperandsAndResultShape`, `SameOperandsElementType`
 
@@ -346,9 +388,16 @@ Effects: `MemoryEffects::Effect{}`
 
 _Concatenate op_
 
-Concatenates a set of tensors along the specified dimension.
 
-See https://www.tensorflow.org/xla/operation_semantics#concatenate.
+Syntax:
+
+```
+operation ::= `pphlo.concatenate` operands `dim` `=` $dimension attr-dict `:` functional-type(operands, results)
+```
+
+Concatenates `inputs` along `dimension` dimension in the same order as the given arguments and produces a `result` tensor.
+
+Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#concatenate
 
 Traits: `AlwaysSpeculatableImplTrait`, `SameOperandsAndResultElementType`
 
@@ -367,7 +416,7 @@ Effects: `MemoryEffects::Effect{}`
 
 | Operand | Description |
 | :-----: | ----------- |
-| `val` | variadic of statically shaped tensor of any type values
+| `inputs` | variadic of statically shaped tensor of any type values
 
 #### Results:
 
@@ -379,7 +428,10 @@ Effects: `MemoryEffects::Effect{}`
 
 _Constant operator_
 
-Create a constant value.
+Produces an `output` tensor from a constant `value`.
+
+Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#constant
+
 Traits: `AlwaysSpeculatableImplTrait`, `ConstantLike`
 
 Interfaces: `ConditionallySpeculatable`, `NoMemoryEffect (MemoryEffectOpInterface)`
@@ -403,11 +455,16 @@ Effects: `MemoryEffects::Effect{}`
 
 _Convert operator_
 
-Performs element-wise conversion of values from one type to another,
-e.g.fxp to int.
 
-See
-https://www.tensorflow.org/xla/operation_semantics#convertelementtype.
+Syntax:
+
+```
+operation ::= `pphlo.convert` $operand attr-dict `:` custom<SameOperandsAndResultType>(type($operand), type($result))
+```
+
+Performs an element-wise conversion from one element type to another on `operand` tensor and produces a `result` tensor.
+
+Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#convert
 
 Traits: `AlwaysSpeculatableImplTrait`, `Elementwise`, `SameOperandsAndResultShape`
 
@@ -425,7 +482,7 @@ Effects: `MemoryEffects::Effect{}`
 
 | Result | Description |
 | :----: | ----------- |
-&laquo;unnamed&raquo; | statically shaped tensor of pred (AKA boolean or 1-bit integer) or Secret of 1-bit signless integer values or 8/16/32/64-bit signless integer or Secret of 8-bit signless integer or 16-bit signless integer or 32-bit signless integer or 64-bit signless integer values or 8/16/32/64-bit unsigned integer or Secret of 8/16/32/64-bit unsigned integer values or 16-bit float or 32-bit float or 64-bit float or Secret of 16-bit float or 32-bit float or 64-bit float values or complex type with 32-bit float or 64-bit float elements or Secret of complex type with 32-bit float or 64-bit float elements values values
+| `result` | statically shaped tensor of pred (AKA boolean or 1-bit integer) or Secret of 1-bit signless integer values or 8/16/32/64-bit signless integer or Secret of 8-bit signless integer or 16-bit signless integer or 32-bit signless integer or 64-bit signless integer values or 8/16/32/64-bit unsigned integer or Secret of 8/16/32/64-bit unsigned integer values or 16-bit float or 32-bit float or 64-bit float or Secret of 16-bit float or 32-bit float or 64-bit float values or complex type with 32-bit float or 64-bit float elements or Secret of complex type with 32-bit float or 64-bit float elements values values
 
 ### `pphlo.convolution` (spu::pphlo::ConvolutionOp)
 
@@ -441,9 +498,9 @@ operation ::= `pphlo.convolution` `(`operands`)`
               attr-dict `:` functional-type(operands, results)
 ```
 
-Computes a convolution of the kind used in neural networks.
+Computes dot products between windows of `lhs` and slices of `rhs` and produces `result`.
 
-See https://www.tensorflow.org/xla/operation_semantics#conv_convolution.
+Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#convolution
 
 Traits: `AlwaysSpeculatableImplTrait`
 
@@ -478,10 +535,16 @@ Effects: `MemoryEffects::Effect{}`
 
 _Cosine operator_
 
-Returns `cosine(operand)` element-wise.
 
-See
-https://github.com/openxla/stablehlo/blob/main/docs/spec.md#cosine.
+Syntax:
+
+```
+operation ::= `pphlo.cosine` $operand attr-dict `:` custom<SameOperandsAndResultType>(type($operand), type($result))
+```
+
+Performs element-wise cosine operation on `operand` tensor and produces a `result` tensor.
+
+Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#cosine
 
 Traits: `AlwaysSpeculatableImplTrait`, `Elementwise`, `SameOperandsAndResultShape`, `SameOperandsAndResultType`
 
@@ -499,11 +562,11 @@ Effects: `MemoryEffects::Effect{}`
 
 | Result | Description |
 | :----: | ----------- |
-&laquo;unnamed&raquo; | statically shaped tensor of 16-bit float or 32-bit float or 64-bit float or Secret of 16-bit float or 32-bit float or 64-bit float values values
+| `result` | statically shaped tensor of 16-bit float or 32-bit float or 64-bit float or Secret of 16-bit float or 32-bit float or 64-bit float values values
 
 ### `pphlo.custom_call` (spu::pphlo::CustomCallOp)
 
-_CustomCall operation_
+_CustomCall operator_
 
 
 Syntax:
@@ -516,8 +579,7 @@ operation ::= `pphlo.custom_call` custom<CustomCallTarget>($call_target_name) `(
 Encapsulates an implementation-defined operation `call_target_name` that
 takes `inputs` and `called_computations` and produces `results`.
 
-See:
-https://github.com/openxla/stablehlo/blob/main/docs/spec.md#custom_call
+Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#custom_call
 
 Interfaces: `MemoryEffectOpInterface`
 
@@ -543,6 +605,13 @@ Interfaces: `MemoryEffectOpInterface`
 
 ### `pphlo.dbg_print` (spu::pphlo::DbgPrintOp)
 
+Syntax:
+
+```
+operation ::= `pphlo.dbg_print` operands attr-dict `:` type(operands)
+```
+
+
 #### Operands:
 
 | Operand | Description |
@@ -553,10 +622,17 @@ Interfaces: `MemoryEffectOpInterface`
 
 _Division operator_
 
-Returns `lhs / rhs` element-wise.
 
-See
-https://www.tensorflow.org/xla/operation_semantics#element-wise_binary_arithmetic_operations.
+Syntax:
+
+```
+operation ::= `pphlo.divide` $lhs `,` $rhs attr-dict
+              `:` custom<SameOperandsAndResultType>(type($lhs), type($rhs), type($result))
+```
+
+Performs element-wise division of dividend `lhs` and divisor `rhs` tensors and produces a `result` tensor.
+
+Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#divide
 
 Traits: `AlwaysSpeculatableImplTrait`, `Elementwise`, `SameOperandsAndResultShape`
 
@@ -575,16 +651,23 @@ Effects: `MemoryEffects::Effect{}`
 
 | Result | Description |
 | :----: | ----------- |
-&laquo;unnamed&raquo; | statically shaped tensor of pred (AKA boolean or 1-bit integer) or Secret of 1-bit signless integer values or 8/16/32/64-bit signless integer or Secret of 8-bit signless integer or 16-bit signless integer or 32-bit signless integer or 64-bit signless integer values or 8/16/32/64-bit unsigned integer or Secret of 8/16/32/64-bit unsigned integer values or 16-bit float or 32-bit float or 64-bit float or Secret of 16-bit float or 32-bit float or 64-bit float values or complex type with 32-bit float or 64-bit float elements or Secret of complex type with 32-bit float or 64-bit float elements values values
+| `result` | statically shaped tensor of pred (AKA boolean or 1-bit integer) or Secret of 1-bit signless integer values or 8/16/32/64-bit signless integer or Secret of 8-bit signless integer or 16-bit signless integer or 32-bit signless integer or 64-bit signless integer values or 8/16/32/64-bit unsigned integer or Secret of 8/16/32/64-bit unsigned integer values or 16-bit float or 32-bit float or 64-bit float or Secret of 16-bit float or 32-bit float or 64-bit float values or complex type with 32-bit float or 64-bit float elements or Secret of complex type with 32-bit float or 64-bit float elements values values
 
 ### `pphlo.dot_general` (spu::pphlo::DotGeneralOp)
 
 _General Dot operator_
 
-Performs general dot products between vectors, vector/matrix and
-matrix/matrix multiplication.
 
-See https://www.tensorflow.org/xla/operation_semantics#dotgeneral.
+Syntax:
+
+```
+operation ::= `pphlo.dot_general` $lhs `,` $rhs `,` custom<DotDimensionNumbers>($dot_dimension_numbers) attr-dict
+              `:` functional-type(operands, results)
+```
+
+Computes dot products between slices of `lhs` and slices of `rhs` and produces a `result` tensor.
+
+Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#dot_general
 
 Traits: `AlwaysSpeculatableImplTrait`
 
@@ -616,10 +699,18 @@ Effects: `MemoryEffects::Effect{}`
 
 _Dot operator_
 
+
+Syntax:
+
+```
+operation ::= `pphlo.dot` $lhs `,` $rhs attr-dict
+              `:` functional-type(operands, results)
+```
+
 Performs dot products between vectors, vector/matrix and matrix/matrix
 multiplication.
 
-See https://www.tensorflow.org/xla/operation_semantics#dot.
+Ref https://www.tensorflow.org/xla/operation_semantics#dot.
 
 Traits: `AlwaysSpeculatableImplTrait`
 
@@ -640,13 +731,24 @@ Effects: `MemoryEffects::Effect{}`
 | :----: | ----------- |
 &laquo;unnamed&raquo; | statically shaped tensor of pred (AKA boolean or 1-bit integer) or Secret of 1-bit signless integer values or 8/16/32/64-bit signless integer or Secret of 8-bit signless integer or 16-bit signless integer or 32-bit signless integer or 64-bit signless integer values or 8/16/32/64-bit unsigned integer or Secret of 8/16/32/64-bit unsigned integer values or 16-bit float or 32-bit float or 64-bit float or Secret of 16-bit float or 32-bit float or 64-bit float values or complex type with 32-bit float or 64-bit float elements or Secret of complex type with 32-bit float or 64-bit float elements values values
 
-### `pphlo.dynamic-slice` (spu::pphlo::DynamicSliceOp)
+### `pphlo.dynamic_slice` (spu::pphlo::DynamicSliceOp)
 
 _Dynamic Slice operator_
 
-Extracts a sub-array from the input array at dynamic start_indices.
 
-See https://www.tensorflow.org/xla/operation_semantics#dynamicslice.
+Syntax:
+
+```
+operation ::= `pphlo.dynamic_slice` operands `sizes` `=` $slice_sizes
+              attr-dict `:` functional-type(operands, results)
+```
+
+Extracts a slice from the `operand` using dynamically-computed starting indices and produces a `result` tensor.
+
+`start_indices` contain the starting indices of the slice for each dimension subject to potential adjustment,
+and `slice_sizes` contain the sizes of the slice for each dimension.
+
+Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#dynamic_slice
 
 Traits: `AlwaysSpeculatableImplTrait`
 
@@ -674,14 +776,21 @@ Effects: `MemoryEffects::Effect{}`
 | :----: | ----------- |
 | `result` | statically shaped tensor of any type values
 
-### `pphlo.dynamic-update-slice` (spu::pphlo::DynamicUpdateSliceOp)
+### `pphlo.dynamic_update_slice` (spu::pphlo::DynamicUpdateSliceOp)
 
 _Dynamic Update Slice operator_
 
-DynamicUpdateSlice generates a result which is the value of the input array
-operand, with a slice update overwritten at start_indices.
 
-See https://www.tensorflow.org/xla/operation_semantics#dynamicupdateslice.
+Syntax:
+
+```
+operation ::= `pphlo.dynamic_update_slice` operands attr-dict `:` functional-type(operands, results)
+```
+
+Produces a `resul`t tensor which is equal to the `operand` tensor except that the slice starting at `start_indices`
+is updated with the values in `update`.
+
+Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#dynamic_update_slice
 
 Traits: `AlwaysSpeculatableImplTrait`
 
@@ -707,7 +816,8 @@ Effects: `MemoryEffects::Effect{}`
 
 _Epsilon operator_
 
-Return a value that representation runtime epsilon.
+Produces a tensor that representations runtime epsilon.
+
 Traits: `AlwaysSpeculatableImplTrait`
 
 Interfaces: `ConditionallySpeculatable`, `NoMemoryEffect (MemoryEffectOpInterface)`
@@ -718,16 +828,23 @@ Effects: `MemoryEffects::Effect{}`
 
 | Result | Description |
 | :----: | ----------- |
-| `output` | statically shaped tensor of 16-bit float or 32-bit float or 64-bit float or Secret of 16-bit float or 32-bit float or 64-bit float values values
+&laquo;unnamed&raquo; | statically shaped tensor of 16-bit float or 32-bit float or 64-bit float or Secret of 16-bit float or 32-bit float or 64-bit float values values
 
 ### `pphlo.equal` (spu::pphlo::EqualOp)
 
 _Equal comparison operator_
 
-Returns `lhs` == `rhs` element-wise.
 
-See
-https://www.tensorflow.org/xla/operation_semantics#element-wise_comparison_operations.
+Syntax:
+
+```
+operation ::= `pphlo.equal` $lhs `,` $rhs attr-dict
+              `:` custom<SameOperandsAndResultType>(type($lhs), type($rhs), type($result))
+```
+
+Performs element-wise equal comparison of `lhs` and `rhs` tensors and produces a `result` tensor.
+
+Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#compare
 
 Traits: `AlwaysSpeculatableImplTrait`, `Elementwise`, `SameOperandsAndResultShape`
 
@@ -746,16 +863,22 @@ Effects: `MemoryEffects::Effect{}`
 
 | Result | Description |
 | :----: | ----------- |
-&laquo;unnamed&raquo; | statically shaped tensor of pred (AKA boolean or 1-bit integer) or Secret of 1-bit signless integer values values
+| `result` | statically shaped tensor of pred (AKA boolean or 1-bit integer) or Secret of 1-bit signless integer values values
 
 ### `pphlo.exponential` (spu::pphlo::ExpOp)
 
 _Exponential operator_
 
-Returns `e ^ (operand)` element-wise.
 
-See
-https://www.tensorflow.org/xla/operation_semantics#element-wise_unary_functions.
+Syntax:
+
+```
+operation ::= `pphlo.exponential` $operand attr-dict `:` custom<SameOperandsAndResultType>(type($operand), type($result))
+```
+
+Performs element-wise exponential operation on `operand` tensor and produces a `result` tensor.
+
+Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#exponential
 
 Traits: `AlwaysSpeculatableImplTrait`, `Elementwise`, `SameOperandsAndResultShape`, `SameOperandsAndResultType`
 
@@ -773,16 +896,22 @@ Effects: `MemoryEffects::Effect{}`
 
 | Result | Description |
 | :----: | ----------- |
-&laquo;unnamed&raquo; | statically shaped tensor of 16-bit float or 32-bit float or 64-bit float or Secret of 16-bit float or 32-bit float or 64-bit float values values
+| `result` | statically shaped tensor of 16-bit float or 32-bit float or 64-bit float or Secret of 16-bit float or 32-bit float or 64-bit float values values
 
 ### `pphlo.exponential_minus_one` (spu::pphlo::Expm1Op)
 
 _Exponential minus one operator_
 
-Returns `e^(operand) - 1` element-wise.
 
-See
-https://www.tensorflow.org/xla/operation_semantics#element-wise_unary_functions.
+Syntax:
+
+```
+operation ::= `pphlo.exponential_minus_one` $operand attr-dict `:` custom<SameOperandsAndResultType>(type($operand), type($result))
+```
+
+Performs element-wise exponential minus one operation on `operand` tensor and produces a `result` tensor.
+
+Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#exponential_minus_one
 
 Traits: `AlwaysSpeculatableImplTrait`, `Elementwise`, `SameOperandsAndResultShape`, `SameOperandsAndResultType`
 
@@ -800,16 +929,22 @@ Effects: `MemoryEffects::Effect{}`
 
 | Result | Description |
 | :----: | ----------- |
-&laquo;unnamed&raquo; | statically shaped tensor of 16-bit float or 32-bit float or 64-bit float or Secret of 16-bit float or 32-bit float or 64-bit float values values
+| `result` | statically shaped tensor of 16-bit float or 32-bit float or 64-bit float or Secret of 16-bit float or 32-bit float or 64-bit float values values
 
 ### `pphlo.floor` (spu::pphlo::FloorOp)
 
 _Floor operator_
 
-Returns `Floor(operand)` element-wise.
 
-See
-https://www.tensorflow.org/xla/operation_semantics#element-wise_unary_functions.
+Syntax:
+
+```
+operation ::= `pphlo.floor` $operand attr-dict `:` custom<SameOperandsAndResultType>(type($operand), type($result))
+```
+
+Performs element-wise floor of operand tensor and produces a result tensor.
+
+Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#floor
 
 Traits: `AlwaysSpeculatableImplTrait`, `Elementwise`, `SameOperandsAndResultShape`, `SameOperandsAndResultType`
 
@@ -827,9 +962,16 @@ Effects: `MemoryEffects::Effect{}`
 
 | Result | Description |
 | :----: | ----------- |
-&laquo;unnamed&raquo; | statically shaped tensor of 16-bit float or 32-bit float or 64-bit float or Secret of 16-bit float or 32-bit float or 64-bit float values values
+| `result` | statically shaped tensor of 16-bit float or 32-bit float or 64-bit float or Secret of 16-bit float or 32-bit float or 64-bit float values values
 
 ### `pphlo.free` (spu::pphlo::FreeOp)
+
+Syntax:
+
+```
+operation ::= `pphlo.free` operands attr-dict `:` type(operands)
+```
+
 
 #### Operands:
 
@@ -841,10 +983,17 @@ Effects: `MemoryEffects::Effect{}`
 
 _Greater_equal comparison operator_
 
-Returns `lhs` >= `rhs` element-wise.
 
-See
-https://www.tensorflow.org/xla/operation_semantics#element-wise_comparison_operations.
+Syntax:
+
+```
+operation ::= `pphlo.greater_equal` $lhs `,` $rhs attr-dict
+              `:` custom<SameOperandsAndResultType>(type($lhs), type($rhs), type($result))
+```
+
+Performs element-wise greater equal comparison of `lhs` and `rhs` tensors and produces a `result` tensor.
+
+Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#compare
 
 Traits: `AlwaysSpeculatableImplTrait`, `Elementwise`, `SameOperandsAndResultShape`
 
@@ -863,13 +1012,24 @@ Effects: `MemoryEffects::Effect{}`
 
 | Result | Description |
 | :----: | ----------- |
-&laquo;unnamed&raquo; | statically shaped tensor of pred (AKA boolean or 1-bit integer) or Secret of 1-bit signless integer values values
+| `result` | statically shaped tensor of pred (AKA boolean or 1-bit integer) or Secret of 1-bit signless integer values values
 
 ### `pphlo.greater` (spu::pphlo::GreaterOp)
 
 _Greater comparison operator_
 
-elementwise `lhs` > `rhs`.
+
+Syntax:
+
+```
+operation ::= `pphlo.greater` $lhs `,` $rhs attr-dict
+              `:` custom<SameOperandsAndResultType>(type($lhs), type($rhs), type($result))
+```
+
+Performs element-wise greater comparison of `lhs` and `rhs` tensors and produces a `result` tensor.
+
+Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#compare
+
 Traits: `AlwaysSpeculatableImplTrait`, `Elementwise`, `SameOperandsAndResultShape`
 
 Interfaces: `ConditionallySpeculatable`, `NoMemoryEffect (MemoryEffectOpInterface)`
@@ -887,16 +1047,15 @@ Effects: `MemoryEffects::Effect{}`
 
 | Result | Description |
 | :----: | ----------- |
-&laquo;unnamed&raquo; | statically shaped tensor of pred (AKA boolean or 1-bit integer) or Secret of 1-bit signless integer values values
+| `result` | statically shaped tensor of pred (AKA boolean or 1-bit integer) or Secret of 1-bit signless integer values values
 
 ### `pphlo.if` (spu::pphlo::IfOp)
 
 _If operator_
 
-Returns the result of executing either a true or false function depending on
-    the result of a condition function.
+Produces the output from executing exactly one function from `true_branch` or `false_branch` depending on the value of `pred`.
 
-See https://www.tensorflow.org/xla/operation_semantics#conditional.
+Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#if
 
 Traits: `RecursiveMemoryEffects`, `SingleBlockImplicitTerminator<ReturnOp>`, `SingleBlock`
 
@@ -914,13 +1073,19 @@ Traits: `RecursiveMemoryEffects`, `SingleBlockImplicitTerminator<ReturnOp>`, `Si
 
 ### `pphlo.imag` (spu::pphlo::ImagOp)
 
-_Imag operation_
+_Imag operator_
+
+
+Syntax:
+
+```
+operation ::= `pphlo.imag` $operand attr-dict `:` custom<SameOperandsAndResultType>(type($operand), type($result))
+```
 
 Extracts the imaginary part, element-wise, from the `operand` and produces a
 `result` tensor.
 
-See:
-https://github.com/openxla/stablehlo/blob/main/docs/spec.md#imag
+Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#imag
 
 Traits: `AlwaysSpeculatableImplTrait`, `Elementwise`, `SameOperandsAndResultShape`
 
@@ -938,15 +1103,22 @@ Effects: `MemoryEffects::Effect{}`
 
 | Result | Description |
 | :----: | ----------- |
-&laquo;unnamed&raquo; | statically shaped tensor of pred (AKA boolean or 1-bit integer) or Secret of 1-bit signless integer values or 8/16/32/64-bit signless integer or Secret of 8-bit signless integer or 16-bit signless integer or 32-bit signless integer or 64-bit signless integer values or 8/16/32/64-bit unsigned integer or Secret of 8/16/32/64-bit unsigned integer values or 16-bit float or 32-bit float or 64-bit float or Secret of 16-bit float or 32-bit float or 64-bit float values or complex type with 32-bit float or 64-bit float elements or Secret of complex type with 32-bit float or 64-bit float elements values values
+| `result` | statically shaped tensor of pred (AKA boolean or 1-bit integer) or Secret of 1-bit signless integer values or 8/16/32/64-bit signless integer or Secret of 8-bit signless integer or 16-bit signless integer or 32-bit signless integer or 64-bit signless integer values or 8/16/32/64-bit unsigned integer or Secret of 8/16/32/64-bit unsigned integer values or 16-bit float or 32-bit float or 64-bit float or Secret of 16-bit float or 32-bit float or 64-bit float values or complex type with 32-bit float or 64-bit float elements or Secret of complex type with 32-bit float or 64-bit float elements values values
 
 ### `pphlo.iota` (spu::pphlo::IotaOp)
 
 _Iota operator_
 
-Creates a rank 1 array of values starting at zero and incrementing by one.
 
-See https://www.tensorflow.org/xla/operation_semantics#iota
+Syntax:
+
+```
+operation ::= `pphlo.iota` `dim` `=` $iota_dimension attr-dict `:` type($output)
+```
+
+Fills an `output` tensor with values in increasing order starting from zero along the `iota_dimension` dimension.
+
+Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#iota
 
 Traits: `AlwaysSpeculatableImplTrait`
 
@@ -971,7 +1143,18 @@ Effects: `MemoryEffects::Effect{}`
 
 _Less_equal comparison operator_
 
-elementwise `lhs` <= `rhs`.
+
+Syntax:
+
+```
+operation ::= `pphlo.less_equal` $lhs `,` $rhs attr-dict
+              `:` custom<SameOperandsAndResultType>(type($lhs), type($rhs), type($result))
+```
+
+Performs element-wise less equal comparison of `lhs` and `rhs` tensors and produces a `result` tensor.
+
+Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#compare
+
 Traits: `AlwaysSpeculatableImplTrait`, `Elementwise`, `SameOperandsAndResultShape`
 
 Interfaces: `ConditionallySpeculatable`, `NoMemoryEffect (MemoryEffectOpInterface)`
@@ -989,16 +1172,23 @@ Effects: `MemoryEffects::Effect{}`
 
 | Result | Description |
 | :----: | ----------- |
-&laquo;unnamed&raquo; | statically shaped tensor of pred (AKA boolean or 1-bit integer) or Secret of 1-bit signless integer values values
+| `result` | statically shaped tensor of pred (AKA boolean or 1-bit integer) or Secret of 1-bit signless integer values values
 
 ### `pphlo.less` (spu::pphlo::LessOp)
 
 _Less comparison operator_
 
-Returns `lhs` < `rhs` element-wise.
 
-See
-https://www.tensorflow.org/xla/operation_semantics#element-wise_comparison_operations.
+Syntax:
+
+```
+operation ::= `pphlo.less` $lhs `,` $rhs attr-dict
+              `:` custom<SameOperandsAndResultType>(type($lhs), type($rhs), type($result))
+```
+
+Performs element-wise less comparison of `lhs` and `rhs` tensors and produces a `result` tensor.
+
+Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#compare
 
 Traits: `AlwaysSpeculatableImplTrait`, `Elementwise`, `SameOperandsAndResultShape`
 
@@ -1017,16 +1207,22 @@ Effects: `MemoryEffects::Effect{}`
 
 | Result | Description |
 | :----: | ----------- |
-&laquo;unnamed&raquo; | statically shaped tensor of pred (AKA boolean or 1-bit integer) or Secret of 1-bit signless integer values values
+| `result` | statically shaped tensor of pred (AKA boolean or 1-bit integer) or Secret of 1-bit signless integer values values
 
 ### `pphlo.log_plus_one` (spu::pphlo::Log1pOp)
 
 _Log1p operator_
 
-Returns `log(operand + 1)` element-wise.
 
-See
-https://www.tensorflow.org/xla/operation_semantics#element-wise_unary_functions.
+Syntax:
+
+```
+operation ::= `pphlo.log_plus_one` $operand attr-dict `:` custom<SameOperandsAndResultType>(type($operand), type($result))
+```
+
+Performs element-wise logarithm plus one operation on `operand` tensor and produces a `result` tensor.
+
+Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#log_plus_one
 
 Traits: `AlwaysSpeculatableImplTrait`, `Elementwise`, `SameOperandsAndResultShape`, `SameOperandsAndResultType`
 
@@ -1044,16 +1240,22 @@ Effects: `MemoryEffects::Effect{}`
 
 | Result | Description |
 | :----: | ----------- |
-&laquo;unnamed&raquo; | statically shaped tensor of 16-bit float or 32-bit float or 64-bit float or Secret of 16-bit float or 32-bit float or 64-bit float values values
+| `result` | statically shaped tensor of 16-bit float or 32-bit float or 64-bit float or Secret of 16-bit float or 32-bit float or 64-bit float values values
 
 ### `pphlo.log` (spu::pphlo::LogOp)
 
 _Log operator_
 
-Returns `log(operand)` element-wise.
 
-See
-https://www.tensorflow.org/xla/operation_semantics#element-wise_unary_functions.
+Syntax:
+
+```
+operation ::= `pphlo.log` $operand attr-dict `:` custom<SameOperandsAndResultType>(type($operand), type($result))
+```
+
+Performs element-wise logarithm operation on `operand` tensor and produces a `result` tensor.
+
+Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#log
 
 Traits: `AlwaysSpeculatableImplTrait`, `Elementwise`, `SameOperandsAndResultShape`, `SameOperandsAndResultType`
 
@@ -1071,16 +1273,22 @@ Effects: `MemoryEffects::Effect{}`
 
 | Result | Description |
 | :----: | ----------- |
-&laquo;unnamed&raquo; | statically shaped tensor of 16-bit float or 32-bit float or 64-bit float or Secret of 16-bit float or 32-bit float or 64-bit float values values
+| `result` | statically shaped tensor of 16-bit float or 32-bit float or 64-bit float or Secret of 16-bit float or 32-bit float or 64-bit float values values
 
 ### `pphlo.logistic` (spu::pphlo::LogisticOp)
 
 _Reciprocal operator_
 
-Returns `logistic(operand)` element-wise.
 
-See
-https://www.tensorflow.org/xla/operation_semantics#element-wise_unary_functions.
+Syntax:
+
+```
+operation ::= `pphlo.logistic` $operand attr-dict `:` custom<SameOperandsAndResultType>(type($operand), type($result))
+```
+
+Performs element-wise logistic operation on `operand` tensor and produces a `result` tensor.
+
+Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#logistic
 
 Traits: `AlwaysSpeculatableImplTrait`, `Elementwise`, `SameOperandsAndResultShape`, `SameOperandsAndResultType`
 
@@ -1098,16 +1306,23 @@ Effects: `MemoryEffects::Effect{}`
 
 | Result | Description |
 | :----: | ----------- |
-&laquo;unnamed&raquo; | statically shaped tensor of 16-bit float or 32-bit float or 64-bit float or Secret of 16-bit float or 32-bit float or 64-bit float values values
+| `result` | statically shaped tensor of 16-bit float or 32-bit float or 64-bit float or Secret of 16-bit float or 32-bit float or 64-bit float values values
 
 ### `pphlo.maximum` (spu::pphlo::MaxOp)
 
 _Maximum operator_
 
-Returns `max(lhs, rhs)` element-wise.
 
-See
-https://www.tensorflow.org/xla/operation_semantics#element-wise_binary_arithmetic_operations.
+Syntax:
+
+```
+operation ::= `pphlo.maximum` $lhs `,` $rhs attr-dict
+              `:` custom<SameOperandsAndResultType>(type($lhs), type($rhs), type($result))
+```
+
+Performs element-wise max operation on tensors `lhs` and `rhs` and produces a `result` tensor.
+
+Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#maximum
 
 Traits: `AlwaysSpeculatableImplTrait`, `Commutative`, `Elementwise`, `SameOperandsAndResultShape`
 
@@ -1126,11 +1341,18 @@ Effects: `MemoryEffects::Effect{}`
 
 | Result | Description |
 | :----: | ----------- |
-&laquo;unnamed&raquo; | statically shaped tensor of pred (AKA boolean or 1-bit integer) or Secret of 1-bit signless integer values or 8/16/32/64-bit signless integer or Secret of 8-bit signless integer or 16-bit signless integer or 32-bit signless integer or 64-bit signless integer values or 8/16/32/64-bit unsigned integer or Secret of 8/16/32/64-bit unsigned integer values or 16-bit float or 32-bit float or 64-bit float or Secret of 16-bit float or 32-bit float or 64-bit float values or complex type with 32-bit float or 64-bit float elements or Secret of complex type with 32-bit float or 64-bit float elements values values
+| `result` | statically shaped tensor of pred (AKA boolean or 1-bit integer) or Secret of 1-bit signless integer values or 8/16/32/64-bit signless integer or Secret of 8-bit signless integer or 16-bit signless integer or 32-bit signless integer or 64-bit signless integer values or 8/16/32/64-bit unsigned integer or Secret of 8/16/32/64-bit unsigned integer values or 16-bit float or 32-bit float or 64-bit float or Secret of 16-bit float or 32-bit float or 64-bit float values or complex type with 32-bit float or 64-bit float elements or Secret of complex type with 32-bit float or 64-bit float elements values values
 
 ### `pphlo.maxpool_scatter` (spu::pphlo::MaxPoolScatterOp)
 
 _MaxPool Scatter operator_
+
+
+Syntax:
+
+```
+operation ::= `pphlo.maxpool_scatter` operands attr-dict `:` functional-type(operands, results)
+```
 
 Generates a result which is the value of the input array `operand`,
 with several slices (at indices specified by `scatter_indices`)
@@ -1169,10 +1391,17 @@ Effects: `MemoryEffects::Effect{}`
 
 _Minimum operator_
 
-Returns `min(lhs, rhs)` element-wise.
 
-See
-https://www.tensorflow.org/xla/operation_semantics#element-wise_binary_arithmetic_operations.
+Syntax:
+
+```
+operation ::= `pphlo.minimum` $lhs `,` $rhs attr-dict
+              `:` custom<SameOperandsAndResultType>(type($lhs), type($rhs), type($result))
+```
+
+Performs element-wise min operation on tensors `lhs` and `rhs` and produces a `result` tensor.
+
+Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#minimum
 
 Traits: `AlwaysSpeculatableImplTrait`, `Commutative`, `Elementwise`, `SameOperandsAndResultShape`
 
@@ -1191,16 +1420,23 @@ Effects: `MemoryEffects::Effect{}`
 
 | Result | Description |
 | :----: | ----------- |
-&laquo;unnamed&raquo; | statically shaped tensor of pred (AKA boolean or 1-bit integer) or Secret of 1-bit signless integer values or 8/16/32/64-bit signless integer or Secret of 8-bit signless integer or 16-bit signless integer or 32-bit signless integer or 64-bit signless integer values or 8/16/32/64-bit unsigned integer or Secret of 8/16/32/64-bit unsigned integer values or 16-bit float or 32-bit float or 64-bit float or Secret of 16-bit float or 32-bit float or 64-bit float values or complex type with 32-bit float or 64-bit float elements or Secret of complex type with 32-bit float or 64-bit float elements values values
+| `result` | statically shaped tensor of pred (AKA boolean or 1-bit integer) or Secret of 1-bit signless integer values or 8/16/32/64-bit signless integer or Secret of 8-bit signless integer or 16-bit signless integer or 32-bit signless integer or 64-bit signless integer values or 8/16/32/64-bit unsigned integer or Secret of 8/16/32/64-bit unsigned integer values or 16-bit float or 32-bit float or 64-bit float or Secret of 16-bit float or 32-bit float or 64-bit float values or complex type with 32-bit float or 64-bit float elements or Secret of complex type with 32-bit float or 64-bit float elements values values
 
 ### `pphlo.multiply` (spu::pphlo::MulOp)
 
 _Multiplication operator_
 
-Returns `lhs * rhs` element-wise.
 
-See
-https://www.tensorflow.org/xla/operation_semantics#element-wise_binary_arithmetic_operations.
+Syntax:
+
+```
+operation ::= `pphlo.multiply` $lhs `,` $rhs attr-dict
+              `:` custom<SameOperandsAndResultType>(type($lhs), type($rhs), type($result))
+```
+
+Performs element-wise product of two tensors `lhs` and `rhs` and produces a `result` tensor.
+
+Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#multiply
 
 Traits: `AlwaysSpeculatableImplTrait`, `Commutative`, `Elementwise`, `SameOperandsAndResultShape`
 
@@ -1219,17 +1455,22 @@ Effects: `MemoryEffects::Effect{}`
 
 | Result | Description |
 | :----: | ----------- |
-&laquo;unnamed&raquo; | statically shaped tensor of pred (AKA boolean or 1-bit integer) or Secret of 1-bit signless integer values or 8/16/32/64-bit signless integer or Secret of 8-bit signless integer or 16-bit signless integer or 32-bit signless integer or 64-bit signless integer values or 8/16/32/64-bit unsigned integer or Secret of 8/16/32/64-bit unsigned integer values or 16-bit float or 32-bit float or 64-bit float or Secret of 16-bit float or 32-bit float or 64-bit float values or complex type with 32-bit float or 64-bit float elements or Secret of complex type with 32-bit float or 64-bit float elements values values
+| `result` | statically shaped tensor of pred (AKA boolean or 1-bit integer) or Secret of 1-bit signless integer values or 8/16/32/64-bit signless integer or Secret of 8-bit signless integer or 16-bit signless integer or 32-bit signless integer or 64-bit signless integer values or 8/16/32/64-bit unsigned integer or Secret of 8/16/32/64-bit unsigned integer values or 16-bit float or 32-bit float or 64-bit float or Secret of 16-bit float or 32-bit float or 64-bit float values or complex type with 32-bit float or 64-bit float elements or Secret of complex type with 32-bit float or 64-bit float elements values values
 
 ### `pphlo.negate` (spu::pphlo::NegOp)
 
 _Negation operator_
 
-Returns `- operand` element -
-wise.
 
-See
-https://www.tensorflow.org/xla/operation_semantics#element-wise_unary_functions.
+Syntax:
+
+```
+operation ::= `pphlo.negate` $operand attr-dict `:` custom<SameOperandsAndResultType>(type($operand), type($result))
+```
+
+Performs element-wise negation of `operand` tensor and produces a `result` tensor.
+
+Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#negate
 
 Traits: `AlwaysSpeculatableImplTrait`, `Elementwise`, `SameOperandsAndResultShape`, `SameOperandsAndResultType`
 
@@ -1247,16 +1488,23 @@ Effects: `MemoryEffects::Effect{}`
 
 | Result | Description |
 | :----: | ----------- |
-&laquo;unnamed&raquo; | statically shaped tensor of pred (AKA boolean or 1-bit integer) or Secret of 1-bit signless integer values or 8/16/32/64-bit signless integer or Secret of 8-bit signless integer or 16-bit signless integer or 32-bit signless integer or 64-bit signless integer values or 8/16/32/64-bit unsigned integer or Secret of 8/16/32/64-bit unsigned integer values or 16-bit float or 32-bit float or 64-bit float or Secret of 16-bit float or 32-bit float or 64-bit float values or complex type with 32-bit float or 64-bit float elements or Secret of complex type with 32-bit float or 64-bit float elements values values
+| `result` | statically shaped tensor of pred (AKA boolean or 1-bit integer) or Secret of 1-bit signless integer values or 8/16/32/64-bit signless integer or Secret of 8-bit signless integer or 16-bit signless integer or 32-bit signless integer or 64-bit signless integer values or 8/16/32/64-bit unsigned integer or Secret of 8/16/32/64-bit unsigned integer values or 16-bit float or 32-bit float or 64-bit float or Secret of 16-bit float or 32-bit float or 64-bit float values or complex type with 32-bit float or 64-bit float elements or Secret of complex type with 32-bit float or 64-bit float elements values values
 
 ### `pphlo.not_equal` (spu::pphlo::NotEqualOp)
 
 _Not-equal comparison operator_
 
-Returns `lhs` != `rhs` element-wise.
 
-See
-https://www.tensorflow.org/xla/operation_semantics#element-wise_comparison_operations.
+Syntax:
+
+```
+operation ::= `pphlo.not_equal` $lhs `,` $rhs attr-dict
+              `:` custom<SameOperandsAndResultType>(type($lhs), type($rhs), type($result))
+```
+
+Performs element-wise not equal comparison of `lhs` and `rhs` tensors and produces a `result` tensor.
+
+Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#compare
 
 Traits: `AlwaysSpeculatableImplTrait`, `Elementwise`, `SameOperandsAndResultShape`
 
@@ -1275,16 +1523,22 @@ Effects: `MemoryEffects::Effect{}`
 
 | Result | Description |
 | :----: | ----------- |
-&laquo;unnamed&raquo; | statically shaped tensor of pred (AKA boolean or 1-bit integer) or Secret of 1-bit signless integer values values
+| `result` | statically shaped tensor of pred (AKA boolean or 1-bit integer) or Secret of 1-bit signless integer values values
 
 ### `pphlo.not` (spu::pphlo::NotOp)
 
 _Not operator_
 
-Returns `!operand` element-wise.
 
-See
-https://www.tensorflow.org/xla/operation_semantics#element-wise_unary_functions.
+Syntax:
+
+```
+operation ::= `pphlo.not` $operand attr-dict `:` custom<SameOperandsAndResultType>(type($operand), type($result))
+```
+
+Performs element-wise NOT of tensor `operand` and produces a `result` tensor.
+
+Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#not
 
 Traits: `AlwaysSpeculatableImplTrait`, `Elementwise`, `SameOperandsAndResultShape`, `SameOperandsAndResultType`
 
@@ -1302,16 +1556,23 @@ Effects: `MemoryEffects::Effect{}`
 
 | Result | Description |
 | :----: | ----------- |
-&laquo;unnamed&raquo; | statically shaped tensor of 8/16/32/64-bit signless integer or Secret of 8-bit signless integer or 16-bit signless integer or 32-bit signless integer or 64-bit signless integer values or 8/16/32/64-bit unsigned integer or Secret of 8/16/32/64-bit unsigned integer values or pred (AKA boolean or 1-bit integer) or Secret of 1-bit signless integer values values
+| `result` | statically shaped tensor of 8/16/32/64-bit signless integer or Secret of 8-bit signless integer or 16-bit signless integer or 32-bit signless integer or 64-bit signless integer values or 8/16/32/64-bit unsigned integer or Secret of 8/16/32/64-bit unsigned integer values or pred (AKA boolean or 1-bit integer) or Secret of 1-bit signless integer values values
 
 ### `pphlo.or` (spu::pphlo::OrOp)
 
-_Logical or_
+_Or operator_
 
-Returns `logical_or(lhs, rhs)` element-wise.
 
-See
-https://www.tensorflow.org/xla/operation_semantics#element-wise_binary_arithmetic_operations.
+Syntax:
+
+```
+operation ::= `pphlo.or` $lhs `,` $rhs attr-dict
+              `:` custom<SameOperandsAndResultType>(type($lhs), type($rhs), type($result))
+```
+
+Performs element-wise OR of two tensors `lhs` and `rhs` and produces a `result` tensor.
+
+Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#or
 
 Traits: `AlwaysSpeculatableImplTrait`, `Commutative`, `Elementwise`, `SameOperandsAndResultShape`
 
@@ -1330,16 +1591,23 @@ Effects: `MemoryEffects::Effect{}`
 
 | Result | Description |
 | :----: | ----------- |
-&laquo;unnamed&raquo; | statically shaped tensor of pred (AKA boolean or 1-bit integer) or Secret of 1-bit signless integer values or 8/16/32/64-bit signless integer or Secret of 8-bit signless integer or 16-bit signless integer or 32-bit signless integer or 64-bit signless integer values or 8/16/32/64-bit unsigned integer or Secret of 8/16/32/64-bit unsigned integer values or 16-bit float or 32-bit float or 64-bit float or Secret of 16-bit float or 32-bit float or 64-bit float values or complex type with 32-bit float or 64-bit float elements or Secret of complex type with 32-bit float or 64-bit float elements values values
+| `result` | statically shaped tensor of 8/16/32/64-bit signless integer or Secret of 8-bit signless integer or 16-bit signless integer or 32-bit signless integer or 64-bit signless integer values or 8/16/32/64-bit unsigned integer or Secret of 8/16/32/64-bit unsigned integer values or pred (AKA boolean or 1-bit integer) or Secret of 1-bit signless integer values values
 
 ### `pphlo.power` (spu::pphlo::PowOp)
 
 _Power operator_
 
-Returns `lhs ^ rhs` element-wise.
 
-See
-https://www.tensorflow.org/xla/operation_semantics#element-wise_binary_arithmetic_operations.
+Syntax:
+
+```
+operation ::= `pphlo.power` $lhs `,` $rhs attr-dict
+              `:` custom<SameOperandsAndResultType>(type($lhs), type($rhs), type($result))
+```
+
+Performs element-wise exponentiation of `lhs` tensor by `rhs` tensor and produces a `result` tensor.
+
+Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#power
 
 Traits: `AlwaysSpeculatableImplTrait`, `Elementwise`, `SameOperandsAndResultShape`
 
@@ -1358,11 +1626,18 @@ Effects: `MemoryEffects::Effect{}`
 
 | Result | Description |
 | :----: | ----------- |
-&laquo;unnamed&raquo; | statically shaped tensor of pred (AKA boolean or 1-bit integer) or Secret of 1-bit signless integer values or 8/16/32/64-bit signless integer or Secret of 8-bit signless integer or 16-bit signless integer or 32-bit signless integer or 64-bit signless integer values or 8/16/32/64-bit unsigned integer or Secret of 8/16/32/64-bit unsigned integer values or 16-bit float or 32-bit float or 64-bit float or Secret of 16-bit float or 32-bit float or 64-bit float values or complex type with 32-bit float or 64-bit float elements or Secret of complex type with 32-bit float or 64-bit float elements values values
+| `result` | statically shaped tensor of pred (AKA boolean or 1-bit integer) or Secret of 1-bit signless integer values or 8/16/32/64-bit signless integer or Secret of 8-bit signless integer or 16-bit signless integer or 32-bit signless integer or 64-bit signless integer values or 8/16/32/64-bit unsigned integer or Secret of 8/16/32/64-bit unsigned integer values or 16-bit float or 32-bit float or 64-bit float or Secret of 16-bit float or 32-bit float or 64-bit float values or complex type with 32-bit float or 64-bit float elements or Secret of complex type with 32-bit float or 64-bit float elements values values
 
 ### `pphlo.prefer_a` (spu::pphlo::PreferAOp)
 
 _Prefer AShare operator_
+
+
+Syntax:
+
+```
+operation ::= `pphlo.prefer_a` $operand attr-dict `:` custom<SameOperandsAndResultType>(type($operand), type($result))
+```
 
 Convert input to AShare if possible.
 
@@ -1382,17 +1657,23 @@ Effects: `MemoryEffects::Effect{}`
 
 | Result | Description |
 | :----: | ----------- |
-&laquo;unnamed&raquo; | statically shaped tensor of pred (AKA boolean or 1-bit integer) or Secret of 1-bit signless integer values or 8/16/32/64-bit signless integer or Secret of 8-bit signless integer or 16-bit signless integer or 32-bit signless integer or 64-bit signless integer values or 8/16/32/64-bit unsigned integer or Secret of 8/16/32/64-bit unsigned integer values or 16-bit float or 32-bit float or 64-bit float or Secret of 16-bit float or 32-bit float or 64-bit float values or complex type with 32-bit float or 64-bit float elements or Secret of complex type with 32-bit float or 64-bit float elements values values
+| `result` | statically shaped tensor of pred (AKA boolean or 1-bit integer) or Secret of 1-bit signless integer values or 8/16/32/64-bit signless integer or Secret of 8-bit signless integer or 16-bit signless integer or 32-bit signless integer or 64-bit signless integer values or 8/16/32/64-bit unsigned integer or Secret of 8/16/32/64-bit unsigned integer values or 16-bit float or 32-bit float or 64-bit float or Secret of 16-bit float or 32-bit float or 64-bit float values or complex type with 32-bit float or 64-bit float elements or Secret of complex type with 32-bit float or 64-bit float elements values values
 
 ### `pphlo.real` (spu::pphlo::RealOp)
 
-_Real operation_
+_Real operator_
+
+
+Syntax:
+
+```
+operation ::= `pphlo.real` $operand attr-dict `:` custom<SameOperandsAndResultType>(type($operand), type($result))
+```
 
 Extracts the real part, element-wise, from the `operand` and produces a
 `result` tensor.
 
-See:
-https://github.com/openxla/stablehlo/blob/main/docs/spec.md#real
+Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#real
 
 Traits: `AlwaysSpeculatableImplTrait`, `Elementwise`, `SameOperandsAndResultShape`
 
@@ -1410,16 +1691,20 @@ Effects: `MemoryEffects::Effect{}`
 
 | Result | Description |
 | :----: | ----------- |
-&laquo;unnamed&raquo; | statically shaped tensor of pred (AKA boolean or 1-bit integer) or Secret of 1-bit signless integer values or 8/16/32/64-bit signless integer or Secret of 8-bit signless integer or 16-bit signless integer or 32-bit signless integer or 64-bit signless integer values or 8/16/32/64-bit unsigned integer or Secret of 8/16/32/64-bit unsigned integer values or 16-bit float or 32-bit float or 64-bit float or Secret of 16-bit float or 32-bit float or 64-bit float values or complex type with 32-bit float or 64-bit float elements or Secret of complex type with 32-bit float or 64-bit float elements values values
+| `result` | statically shaped tensor of pred (AKA boolean or 1-bit integer) or Secret of 1-bit signless integer values or 8/16/32/64-bit signless integer or Secret of 8-bit signless integer or 16-bit signless integer or 32-bit signless integer or 64-bit signless integer values or 8/16/32/64-bit unsigned integer or Secret of 8/16/32/64-bit unsigned integer values or 16-bit float or 32-bit float or 64-bit float or Secret of 16-bit float or 32-bit float or 64-bit float values or complex type with 32-bit float or 64-bit float elements or Secret of complex type with 32-bit float or 64-bit float elements values values
 
 ### `pphlo.reciprocal` (spu::pphlo::ReciprocalOp)
 
 _Reciprocal operator_
 
-Returns `1.0 / operand` element-wise.
 
-See
-https://www.tensorflow.org/xla/operation_semantics#element-wise_unary_functions.
+Syntax:
+
+```
+operation ::= `pphlo.reciprocal` $operand attr-dict `:` custom<SameOperandsAndResultType>(type($operand), type($result))
+```
+
+Performs element-wise reciprocal of `lhs` and `rhs` tensors and produces a `result` tensor.
 
 Traits: `AlwaysSpeculatableImplTrait`, `Elementwise`, `SameOperandsAndResultShape`, `SameOperandsAndResultType`
 
@@ -1437,16 +1722,15 @@ Effects: `MemoryEffects::Effect{}`
 
 | Result | Description |
 | :----: | ----------- |
-&laquo;unnamed&raquo; | statically shaped tensor of 16-bit float or 32-bit float or 64-bit float or Secret of 16-bit float or 32-bit float or 64-bit float values values
+| `result` | statically shaped tensor of 16-bit float or 32-bit float or 64-bit float or Secret of 16-bit float or 32-bit float or 64-bit float values values
 
 ### `pphlo.reduce` (spu::pphlo::ReduceOp)
 
 _Reduce operator_
 
-Returns the result of executing a reduction function on one or more arrays
-in parallel.
+Applies a reduction function `body` to `inputs` and `init_values` along the `dimensions` and produces `results` tensors.
 
-See https://www.tensorflow.org/xla/operation_semantics#reduce.
+Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#reduce
 
 Traits: `RecursiveMemoryEffects`, `SameVariadicOperandSize`, `SingleBlockImplicitTerminator<ReturnOp>`, `SingleBlock`
 
@@ -1474,10 +1758,9 @@ Traits: `RecursiveMemoryEffects`, `SameVariadicOperandSize`, `SingleBlockImplici
 
 _ReduceWindow operator_
 
-Returns the result of executing a reduction function over all elements in
-each window of one or more arrays.
+Applies a reduction function `body` to windows of `inputs` and `init_values` and produces `results`.
 
-See https://www.tensorflow.org/xla/operation_semantics#reducewindow.
+Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#reduce_window
 
 Traits: `RecursiveMemoryEffects`, `SameVariadicOperandSize`, `SingleBlockImplicitTerminator<ReturnOp>`, `SingleBlock`
 
@@ -1507,10 +1790,17 @@ Traits: `RecursiveMemoryEffects`, `SameVariadicOperandSize`, `SingleBlockImplici
 
 _Remainder operator_
 
-Returns `lhs % rhs` element-wise.
 
-See
-https://www.tensorflow.org/xla/operation_semantics#element-wise_binary_arithmetic_operations.
+Syntax:
+
+```
+operation ::= `pphlo.remainder` $lhs `,` $rhs attr-dict
+              `:` custom<SameOperandsAndResultType>(type($lhs), type($rhs), type($result))
+```
+
+Performs element-wise remainder of dividend `lhs` and divisor `rhs` tensors and produces a `result` tensor.
+
+Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#remainder
 
 Traits: `AlwaysSpeculatableImplTrait`, `Elementwise`, `SameOperandsAndResultShape`
 
@@ -1529,15 +1819,22 @@ Effects: `MemoryEffects::Effect{}`
 
 | Result | Description |
 | :----: | ----------- |
-&laquo;unnamed&raquo; | statically shaped tensor of pred (AKA boolean or 1-bit integer) or Secret of 1-bit signless integer values or 8/16/32/64-bit signless integer or Secret of 8-bit signless integer or 16-bit signless integer or 32-bit signless integer or 64-bit signless integer values or 8/16/32/64-bit unsigned integer or Secret of 8/16/32/64-bit unsigned integer values or 16-bit float or 32-bit float or 64-bit float or Secret of 16-bit float or 32-bit float or 64-bit float values or complex type with 32-bit float or 64-bit float elements or Secret of complex type with 32-bit float or 64-bit float elements values values
+| `result` | statically shaped tensor of pred (AKA boolean or 1-bit integer) or Secret of 1-bit signless integer values or 8/16/32/64-bit signless integer or Secret of 8-bit signless integer or 16-bit signless integer or 32-bit signless integer or 64-bit signless integer values or 8/16/32/64-bit unsigned integer or Secret of 8/16/32/64-bit unsigned integer values or 16-bit float or 32-bit float or 64-bit float or Secret of 16-bit float or 32-bit float or 64-bit float values or complex type with 32-bit float or 64-bit float elements or Secret of complex type with 32-bit float or 64-bit float elements values values
 
 ### `pphlo.reshape` (spu::pphlo::ReshapeOp)
 
 _Reshape operator_
 
-Reshapes the dimensions of `operand` into a new configuration.
 
-See https://www.tensorflow.org/xla/operation_semantics#reshape.
+Syntax:
+
+```
+operation ::= `pphlo.reshape` operands attr-dict `:` functional-type(operands, results)
+```
+
+Performs reshape of `operand` tensor to a `result` tensor.
+
+Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#reshape
 
 Traits: `AlwaysSpeculatableImplTrait`, `SameOperandsAndResultElementType`
 
@@ -1555,12 +1852,20 @@ Effects: `MemoryEffects::Effect{}`
 
 | Result | Description |
 | :----: | ----------- |
-&laquo;unnamed&raquo; | statically shaped tensor of any type values
+| `result` | statically shaped tensor of any type values
 
 ### `pphlo.return` (spu::pphlo::ReturnOp)
 
-_The `pphlo.return` operation terminates a region and returns values._
+_Return operator_
 
+
+Syntax:
+
+```
+operation ::= `pphlo.return` $results attr-dict (`:` type($results)^)?
+```
+
+Terminates a region and returns `results`.
 
 Traits: `AlwaysSpeculatableImplTrait`, `Terminator`
 
@@ -1578,10 +1883,16 @@ Effects: `MemoryEffects::Effect{}`
 
 _Reverse operator_
 
-Reverses the specified dimensions of `operand` according to the given
-`dimensions`.
 
-See https://www.tensorflow.org/xla/operation_semantics#rev_reverse.
+Syntax:
+
+```
+operation ::= `pphlo.reverse` $operand `,` `dims` `=` $dimensions attr-dict `:` type($result)
+```
+
+Reverses the order of elements in the `operand` along the specified `dimensions` and produces a `result` tensor.
+
+Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#reverse
 
 Traits: `AlwaysSpeculatableImplTrait`, `SameOperandsAndResultType`
 
@@ -1606,7 +1917,7 @@ Effects: `MemoryEffects::Effect{}`
 
 | Result | Description |
 | :----: | ----------- |
-&laquo;unnamed&raquo; | statically shaped tensor of any type values
+| `result` | statically shaped tensor of any type values
 
 ### `pphlo.rng` (spu::pphlo::RngOp)
 
@@ -1617,7 +1928,7 @@ following the uniform distribution over the interval `[a,b)`. The parameters
 and output element type have to be an integral type or a
 fixed point type, and the types have to be consistent.
 
-See https://www.tensorflow.org/xla/operation_semantics#rnguniform.
+Ref https://www.tensorflow.org/xla/operation_semantics#rnguniform.
 
 Traits: `SameOperandsAndResultElementType`
 
@@ -1638,11 +1949,17 @@ Traits: `SameOperandsAndResultElementType`
 
 _Round operator, ties away from zero_
 
-Returns `Round(operand)` element-wise, rounding to nearest integer with
-half-way cases rounding away from zero.
 
-See
-https://www.tensorflow.org/xla/operation_semantics#element-wise_unary_functions.
+Syntax:
+
+```
+operation ::= `pphlo.round_nearest_afz` $operand attr-dict `:` custom<SameOperandsAndResultType>(type($operand), type($result))
+```
+
+Performs element-wise rounding towards the nearest integer, breaking ties away from zero,
+on the `operand` tensor and produces a `result` tensor.
+
+Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#round_nearest_afz
 
 Traits: `AlwaysSpeculatableImplTrait`, `Elementwise`, `SameOperandsAndResultShape`, `SameOperandsAndResultType`
 
@@ -1660,16 +1977,22 @@ Effects: `MemoryEffects::Effect{}`
 
 | Result | Description |
 | :----: | ----------- |
-&laquo;unnamed&raquo; | statically shaped tensor of 16-bit float or 32-bit float or 64-bit float or Secret of 16-bit float or 32-bit float or 64-bit float values values
+| `result` | statically shaped tensor of 16-bit float or 32-bit float or 64-bit float or Secret of 16-bit float or 32-bit float or 64-bit float values values
 
 ### `pphlo.rsqrt` (spu::pphlo::RsqrtOp)
 
 _Reciprocal of square-root operator_
 
-Returns `rsqrt(operand)` element-wise.
 
-See
-https://www.tensorflow.org/xla/operation_semantics#element-wise_unary_functions.
+Syntax:
+
+```
+operation ::= `pphlo.rsqrt` $operand attr-dict `:` custom<SameOperandsAndResultType>(type($operand), type($result))
+```
+
+Performs element-wise reciprocal square root operation on `operand` tensor and produces a `result` tensor.
+
+Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#rsqrt
 
 Traits: `AlwaysSpeculatableImplTrait`, `Elementwise`, `SameOperandsAndResultShape`, `SameOperandsAndResultType`
 
@@ -1687,20 +2010,16 @@ Effects: `MemoryEffects::Effect{}`
 
 | Result | Description |
 | :----: | ----------- |
-&laquo;unnamed&raquo; | statically shaped tensor of 16-bit float or 32-bit float or 64-bit float or Secret of 16-bit float or 32-bit float or 64-bit float values values
+| `result` | statically shaped tensor of 16-bit float or 32-bit float or 64-bit float or Secret of 16-bit float or 32-bit float or 64-bit float values values
 
 ### `pphlo.select_and_scatter` (spu::pphlo::SelectAndScatterOp)
 
 _SelectAndScatter operator_
 
-Runs a windowed selection `select` function over `operand` with shape
-`window_dimensions` and stride `window_strides`. This will produce an amount
-of selected locations whose shape matches `source`. These are then scattered
-to the output which is initialized with `init_value`.
-Multiple scattered elements which land in the same output location are
-combined using the `scatter` function.
+Scatters the values from the `source` tensor using `scatter` based on the outcome of `reduce_window` of the
+input tensor using `select` and produces a `result` tensor.
 
-See https://www.tensorflow.org/xla/operation_semantics#selectandscatter.
+Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#select_and_scatter.
 
 Traits: `RecursiveMemoryEffects`
 
@@ -1730,12 +2049,16 @@ Traits: `RecursiveMemoryEffects`
 
 _Select operator_
 
-Constructs an output tensor from the elements of `on_true` and `on_false`
-based on the values of `pred`. All three operands must be of the same shape
-with the exception of `pred`, which may also be a scalar in which case it is
-broadcasted.
 
-See https://www.tensorflow.org/xla/operation_semantics#select.
+Syntax:
+
+```
+operation ::= `pphlo.select` operands attr-dict `:` functional-type(operands, results)
+```
+
+Produces a `result` tensor where each element is selected from `on_true` or `on_false` tensor based on the value of the corresponding element of `pred`.
+
+Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#Select
 
 Traits: `AlwaysSpeculatableImplTrait`
 
@@ -1755,16 +2078,23 @@ Effects: `MemoryEffects::Effect{}`
 
 | Result | Description |
 | :----: | ----------- |
-&laquo;unnamed&raquo; | statically shaped tensor of pred (AKA boolean or 1-bit integer) or Secret of 1-bit signless integer values or 8/16/32/64-bit signless integer or Secret of 8-bit signless integer or 16-bit signless integer or 32-bit signless integer or 64-bit signless integer values or 8/16/32/64-bit unsigned integer or Secret of 8/16/32/64-bit unsigned integer values or 16-bit float or 32-bit float or 64-bit float or Secret of 16-bit float or 32-bit float or 64-bit float values or complex type with 32-bit float or 64-bit float elements or Secret of complex type with 32-bit float or 64-bit float elements values values
+| `result` | statically shaped tensor of pred (AKA boolean or 1-bit integer) or Secret of 1-bit signless integer values or 8/16/32/64-bit signless integer or Secret of 8-bit signless integer or 16-bit signless integer or 32-bit signless integer or 64-bit signless integer values or 8/16/32/64-bit unsigned integer or Secret of 8/16/32/64-bit unsigned integer values or 16-bit float or 32-bit float or 64-bit float or Secret of 16-bit float or 32-bit float or 64-bit float values or complex type with 32-bit float or 64-bit float elements or Secret of complex type with 32-bit float or 64-bit float elements values values
 
 ### `pphlo.shift_left` (spu::pphlo::ShiftLeftOp)
 
 _Shift Left operator_
 
-Returns `lhs << rhs` element-wise.
 
-See
-https://www.tensorflow.org/xla/operation_semantics#element-wise_binary_arithmetic_operations.
+Syntax:
+
+```
+operation ::= `pphlo.shift_left` $lhs `,` $rhs attr-dict
+              `:` custom<SameOperandsAndResultType>(type($lhs), type($rhs), type($result))
+```
+
+Performs element-wise left-shift operation on the `lhs` tensor by `rhs` number of bits and produces a `result` tensor.
+
+Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#shift_left
 
 Traits: `AlwaysSpeculatableImplTrait`, `Elementwise`, `SameOperandsAndResultShape`
 
@@ -1776,23 +2106,30 @@ Effects: `MemoryEffects::Effect{}`
 
 | Operand | Description |
 | :-----: | ----------- |
-| `lhs` | statically shaped tensor of pred (AKA boolean or 1-bit integer) or Secret of 1-bit signless integer values or 8/16/32/64-bit signless integer or Secret of 8-bit signless integer or 16-bit signless integer or 32-bit signless integer or 64-bit signless integer values or 8/16/32/64-bit unsigned integer or Secret of 8/16/32/64-bit unsigned integer values or 16-bit float or 32-bit float or 64-bit float or Secret of 16-bit float or 32-bit float or 64-bit float values or complex type with 32-bit float or 64-bit float elements or Secret of complex type with 32-bit float or 64-bit float elements values values
-| `rhs` | statically shaped tensor of pred (AKA boolean or 1-bit integer) or Secret of 1-bit signless integer values or 8/16/32/64-bit signless integer or Secret of 8-bit signless integer or 16-bit signless integer or 32-bit signless integer or 64-bit signless integer values or 8/16/32/64-bit unsigned integer or Secret of 8/16/32/64-bit unsigned integer values or 16-bit float or 32-bit float or 64-bit float or Secret of 16-bit float or 32-bit float or 64-bit float values or complex type with 32-bit float or 64-bit float elements or Secret of complex type with 32-bit float or 64-bit float elements values values
+| `lhs` | statically shaped tensor of 8/16/32/64-bit signless integer or Secret of 8-bit signless integer or 16-bit signless integer or 32-bit signless integer or 64-bit signless integer values or 8/16/32/64-bit unsigned integer or Secret of 8/16/32/64-bit unsigned integer values values
+| `rhs` | statically shaped tensor of 8/16/32/64-bit signless integer or Secret of 8-bit signless integer or 16-bit signless integer or 32-bit signless integer or 64-bit signless integer values or 8/16/32/64-bit unsigned integer or Secret of 8/16/32/64-bit unsigned integer values values
 
 #### Results:
 
 | Result | Description |
 | :----: | ----------- |
-&laquo;unnamed&raquo; | statically shaped tensor of pred (AKA boolean or 1-bit integer) or Secret of 1-bit signless integer values or 8/16/32/64-bit signless integer or Secret of 8-bit signless integer or 16-bit signless integer or 32-bit signless integer or 64-bit signless integer values or 8/16/32/64-bit unsigned integer or Secret of 8/16/32/64-bit unsigned integer values or 16-bit float or 32-bit float or 64-bit float or Secret of 16-bit float or 32-bit float or 64-bit float values or complex type with 32-bit float or 64-bit float elements or Secret of complex type with 32-bit float or 64-bit float elements values values
+| `result` | statically shaped tensor of 8/16/32/64-bit signless integer or Secret of 8-bit signless integer or 16-bit signless integer or 32-bit signless integer or 64-bit signless integer values or 8/16/32/64-bit unsigned integer or Secret of 8/16/32/64-bit unsigned integer values values
 
 ### `pphlo.shift_right_arithmetic` (spu::pphlo::ShiftRightArithmeticOp)
 
 _Shift right arithmetic operator_
 
-Returns arithmetic `lhs >> rhs` element-wise.
 
-See
-https://www.tensorflow.org/xla/operation_semantics#element-wise_binary_arithmetic_operations.
+Syntax:
+
+```
+operation ::= `pphlo.shift_right_arithmetic` $lhs `,` $rhs attr-dict
+              `:` custom<SameOperandsAndResultType>(type($lhs), type($rhs), type($result))
+```
+
+Performs element-wise arithmetic right-shift operation on the `lhs` tensor by `rhs` number of bits and produces a `result` tensor.
+
+Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#shift_right_arithmetic
 
 Traits: `AlwaysSpeculatableImplTrait`, `Elementwise`, `SameOperandsAndResultShape`
 
@@ -1804,23 +2141,30 @@ Effects: `MemoryEffects::Effect{}`
 
 | Operand | Description |
 | :-----: | ----------- |
-| `lhs` | statically shaped tensor of pred (AKA boolean or 1-bit integer) or Secret of 1-bit signless integer values or 8/16/32/64-bit signless integer or Secret of 8-bit signless integer or 16-bit signless integer or 32-bit signless integer or 64-bit signless integer values or 8/16/32/64-bit unsigned integer or Secret of 8/16/32/64-bit unsigned integer values or 16-bit float or 32-bit float or 64-bit float or Secret of 16-bit float or 32-bit float or 64-bit float values or complex type with 32-bit float or 64-bit float elements or Secret of complex type with 32-bit float or 64-bit float elements values values
-| `rhs` | statically shaped tensor of pred (AKA boolean or 1-bit integer) or Secret of 1-bit signless integer values or 8/16/32/64-bit signless integer or Secret of 8-bit signless integer or 16-bit signless integer or 32-bit signless integer or 64-bit signless integer values or 8/16/32/64-bit unsigned integer or Secret of 8/16/32/64-bit unsigned integer values or 16-bit float or 32-bit float or 64-bit float or Secret of 16-bit float or 32-bit float or 64-bit float values or complex type with 32-bit float or 64-bit float elements or Secret of complex type with 32-bit float or 64-bit float elements values values
+| `lhs` | statically shaped tensor of 8/16/32/64-bit signless integer or Secret of 8-bit signless integer or 16-bit signless integer or 32-bit signless integer or 64-bit signless integer values or 8/16/32/64-bit unsigned integer or Secret of 8/16/32/64-bit unsigned integer values values
+| `rhs` | statically shaped tensor of 8/16/32/64-bit signless integer or Secret of 8-bit signless integer or 16-bit signless integer or 32-bit signless integer or 64-bit signless integer values or 8/16/32/64-bit unsigned integer or Secret of 8/16/32/64-bit unsigned integer values values
 
 #### Results:
 
 | Result | Description |
 | :----: | ----------- |
-&laquo;unnamed&raquo; | statically shaped tensor of pred (AKA boolean or 1-bit integer) or Secret of 1-bit signless integer values or 8/16/32/64-bit signless integer or Secret of 8-bit signless integer or 16-bit signless integer or 32-bit signless integer or 64-bit signless integer values or 8/16/32/64-bit unsigned integer or Secret of 8/16/32/64-bit unsigned integer values or 16-bit float or 32-bit float or 64-bit float or Secret of 16-bit float or 32-bit float or 64-bit float values or complex type with 32-bit float or 64-bit float elements or Secret of complex type with 32-bit float or 64-bit float elements values values
+| `result` | statically shaped tensor of 8/16/32/64-bit signless integer or Secret of 8-bit signless integer or 16-bit signless integer or 32-bit signless integer or 64-bit signless integer values or 8/16/32/64-bit unsigned integer or Secret of 8/16/32/64-bit unsigned integer values values
 
 ### `pphlo.shift_right_logical` (spu::pphlo::ShiftRightLogicalOp)
 
 _Shift right logical operator_
 
-Returns logical `lhs >> rhs` element-wise.
 
-See
-https://www.tensorflow.org/xla/operation_semantics#element-wise_binary_arithmetic_operations.
+Syntax:
+
+```
+operation ::= `pphlo.shift_right_logical` $lhs `,` $rhs attr-dict
+              `:` custom<SameOperandsAndResultType>(type($lhs), type($rhs), type($result))
+```
+
+Performs element-wise logical right-shift operation on the `lhs` tensor by `rhs` number of bits and produces a `result` tensor.
+
+Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#shift_right_logical
 
 Traits: `AlwaysSpeculatableImplTrait`, `Elementwise`, `SameOperandsAndResultShape`
 
@@ -1832,29 +2176,29 @@ Effects: `MemoryEffects::Effect{}`
 
 | Operand | Description |
 | :-----: | ----------- |
-| `lhs` | statically shaped tensor of pred (AKA boolean or 1-bit integer) or Secret of 1-bit signless integer values or 8/16/32/64-bit signless integer or Secret of 8-bit signless integer or 16-bit signless integer or 32-bit signless integer or 64-bit signless integer values or 8/16/32/64-bit unsigned integer or Secret of 8/16/32/64-bit unsigned integer values or 16-bit float or 32-bit float or 64-bit float or Secret of 16-bit float or 32-bit float or 64-bit float values or complex type with 32-bit float or 64-bit float elements or Secret of complex type with 32-bit float or 64-bit float elements values values
-| `rhs` | statically shaped tensor of pred (AKA boolean or 1-bit integer) or Secret of 1-bit signless integer values or 8/16/32/64-bit signless integer or Secret of 8-bit signless integer or 16-bit signless integer or 32-bit signless integer or 64-bit signless integer values or 8/16/32/64-bit unsigned integer or Secret of 8/16/32/64-bit unsigned integer values or 16-bit float or 32-bit float or 64-bit float or Secret of 16-bit float or 32-bit float or 64-bit float values or complex type with 32-bit float or 64-bit float elements or Secret of complex type with 32-bit float or 64-bit float elements values values
+| `lhs` | statically shaped tensor of 8/16/32/64-bit signless integer or Secret of 8-bit signless integer or 16-bit signless integer or 32-bit signless integer or 64-bit signless integer values or 8/16/32/64-bit unsigned integer or Secret of 8/16/32/64-bit unsigned integer values values
+| `rhs` | statically shaped tensor of 8/16/32/64-bit signless integer or Secret of 8-bit signless integer or 16-bit signless integer or 32-bit signless integer or 64-bit signless integer values or 8/16/32/64-bit unsigned integer or Secret of 8/16/32/64-bit unsigned integer values values
 
 #### Results:
 
 | Result | Description |
 | :----: | ----------- |
-&laquo;unnamed&raquo; | statically shaped tensor of pred (AKA boolean or 1-bit integer) or Secret of 1-bit signless integer values or 8/16/32/64-bit signless integer or Secret of 8-bit signless integer or 16-bit signless integer or 32-bit signless integer or 64-bit signless integer values or 8/16/32/64-bit unsigned integer or Secret of 8/16/32/64-bit unsigned integer values or 16-bit float or 32-bit float or 64-bit float or Secret of 16-bit float or 32-bit float or 64-bit float values or complex type with 32-bit float or 64-bit float elements or Secret of complex type with 32-bit float or 64-bit float elements values values
+| `result` | statically shaped tensor of 8/16/32/64-bit signless integer or Secret of 8-bit signless integer or 16-bit signless integer or 32-bit signless integer or 64-bit signless integer values or 8/16/32/64-bit unsigned integer or Secret of 8/16/32/64-bit unsigned integer values values
 
 ### `pphlo.sign` (spu::pphlo::SignOp)
 
 _Sign operator_
 
-Returns `sign(operand)` element-wise, where
+
+Syntax:
 
 ```
-sign(x) = -1  : x < 0
-        = 0   : x = 0
-        = 1   : x > 0
+operation ::= `pphlo.sign` $operand attr-dict `:` custom<SameOperandsAndResultType>(type($operand), type($result))
 ```
 
-See
-https://www.tensorflow.org/xla/operation_semantics#element-wise_unary_functions.
+Returns the sign of the `operand` element-wise and produces a `result` tensor.
+
+Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#sign
 
 Traits: `AlwaysSpeculatableImplTrait`, `Elementwise`, `SameOperandsAndResultShape`, `SameOperandsAndResultType`
 
@@ -1872,11 +2216,19 @@ Effects: `MemoryEffects::Effect{}`
 
 | Result | Description |
 | :----: | ----------- |
-&laquo;unnamed&raquo; | statically shaped tensor of pred (AKA boolean or 1-bit integer) or Secret of 1-bit signless integer values or 8/16/32/64-bit signless integer or Secret of 8-bit signless integer or 16-bit signless integer or 32-bit signless integer or 64-bit signless integer values or 8/16/32/64-bit unsigned integer or Secret of 8/16/32/64-bit unsigned integer values or 16-bit float or 32-bit float or 64-bit float or Secret of 16-bit float or 32-bit float or 64-bit float values or complex type with 32-bit float or 64-bit float elements or Secret of complex type with 32-bit float or 64-bit float elements values values
+| `result` | statically shaped tensor of pred (AKA boolean or 1-bit integer) or Secret of 1-bit signless integer values or 8/16/32/64-bit signless integer or Secret of 8-bit signless integer or 16-bit signless integer or 32-bit signless integer or 64-bit signless integer values or 8/16/32/64-bit unsigned integer or Secret of 8/16/32/64-bit unsigned integer values or 16-bit float or 32-bit float or 64-bit float or Secret of 16-bit float or 32-bit float or 64-bit float values or complex type with 32-bit float or 64-bit float elements or Secret of complex type with 32-bit float or 64-bit float elements values values
 
 ### `pphlo.simple_sort` (spu::pphlo::SimpleSortOp)
 
 _Sort operator_
+
+
+Syntax:
+
+```
+operation ::= `pphlo.simple_sort` operands $sort_direction `,` `dim` `=` $dimension `,` `num_keys` `=` $num_keys
+              attr-dict `:` functional-type(operands, results)
+```
 
 Sorts the given `operands` at the given `dimension` with the given
 `mode`.
@@ -1889,7 +2241,7 @@ Traits: `RecursiveMemoryEffects`, `SameOperandsAndResultShape`
 <tr><th>Attribute</th><th>MLIR Type</th><th>Description</th></tr>
 <tr><td><code>dimension</code></td><td>::mlir::IntegerAttr</td><td>64-bit signless integer attribute</td></tr>
 <tr><td><code>num_keys</code></td><td>::mlir::IntegerAttr</td><td>64-bit signless integer attribute</td></tr>
-<tr><td><code>sort_direction</code></td><td>::mlir::IntegerAttr</td><td>Which mode to sort.</td></tr>
+<tr><td><code>sort_direction</code></td><td>::mlir::spu::pphlo::SortDirectionAttr</td><td>Which mode to sort.</td></tr>
 </table>
 
 #### Operands:
@@ -1908,10 +2260,16 @@ Traits: `RecursiveMemoryEffects`, `SameOperandsAndResultShape`
 
 _Sine operator_
 
-Returns `sine(operand)` element-wise.
 
-See
-https://github.com/openxla/stablehlo/blob/main/docs/spec.md#sine.
+Syntax:
+
+```
+operation ::= `pphlo.sine` $operand attr-dict `:` custom<SameOperandsAndResultType>(type($operand), type($result))
+```
+
+Performs element-wise sine operation on `operand` tensor and produces a `result` tensor.
+
+Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#sine
 
 Traits: `AlwaysSpeculatableImplTrait`, `Elementwise`, `SameOperandsAndResultShape`, `SameOperandsAndResultType`
 
@@ -1929,15 +2287,23 @@ Effects: `MemoryEffects::Effect{}`
 
 | Result | Description |
 | :----: | ----------- |
-&laquo;unnamed&raquo; | statically shaped tensor of 16-bit float or 32-bit float or 64-bit float or Secret of 16-bit float or 32-bit float or 64-bit float values values
+| `result` | statically shaped tensor of 16-bit float or 32-bit float or 64-bit float or Secret of 16-bit float or 32-bit float or 64-bit float values values
 
 ### `pphlo.slice` (spu::pphlo::SliceOp)
-The dynamic shape version of SliceOp. Extracts a sub-array from the input
-array according to start_indices, limit_indices and strides. Expect
-start_indices/limit_indices/strides to be statically shaped and matching
-the rank of the input.
 
-See https://www.tensorflow.org/xla/operation_semantics#slice
+Syntax:
+
+```
+operation ::= `pphlo.slice` $operand custom<SliceRanges>($start_indices, $limit_indices, $strides)
+              attr-dict `:` functional-type(operands, results)
+```
+
+Extracts a slice from the `operand` using statically-computed starting indices and produces a `result` tensor.
+`start_indices` contain the starting indices of the slice for each dimension,
+`limit_indices` contain the ending indices (exclusive) for the slice for each dimension,
+and `strides` contain the strides for each dimension.
+
+Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#slice
 
 Traits: `AlwaysSpeculatableImplTrait`, `SameOperandsAndResultElementType`
 
@@ -1970,10 +2336,9 @@ Effects: `MemoryEffects::Effect{}`
 
 _Sort operator_
 
-Sorts the given `operands` at the given `dimension` with the given
-`comparator`.
+Sorts 1-dimensional slices of inputs along the dimension `dimension` together, according to a `comparator` and produces `results`.
 
-See https://www.tensorflow.org/xla/operation_semantics#sort.
+Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#sort
 
 Traits: `RecursiveMemoryEffects`, `SameOperandsAndResultShape`
 
@@ -2001,10 +2366,16 @@ Traits: `RecursiveMemoryEffects`, `SameOperandsAndResultShape`
 
 _Square-root operator_
 
-Returns `sqrt(operand)` element-wise.
 
-See
-https://www.tensorflow.org/xla/operation_semantics#element-wise_unary_functions.
+Syntax:
+
+```
+operation ::= `pphlo.sqrt` $operand attr-dict `:` custom<SameOperandsAndResultType>(type($operand), type($result))
+```
+
+Performs element-wise square root operation on `operand` tensor and produces a `result` tensor.
+
+Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#sqrt
 
 Traits: `AlwaysSpeculatableImplTrait`, `Elementwise`, `SameOperandsAndResultShape`, `SameOperandsAndResultType`
 
@@ -2022,16 +2393,23 @@ Effects: `MemoryEffects::Effect{}`
 
 | Result | Description |
 | :----: | ----------- |
-&laquo;unnamed&raquo; | statically shaped tensor of 16-bit float or 32-bit float or 64-bit float or Secret of 16-bit float or 32-bit float or 64-bit float values values
+| `result` | statically shaped tensor of 16-bit float or 32-bit float or 64-bit float or Secret of 16-bit float or 32-bit float or 64-bit float values values
 
 ### `pphlo.subtract` (spu::pphlo::SubtractOp)
 
 _Subtraction operator_
 
-Returns `lhs - rhs` element-wise.
 
-See
-https://www.tensorflow.org/xla/operation_semantics#element-wise_binary_arithmetic_operations.
+Syntax:
+
+```
+operation ::= `pphlo.subtract` $lhs `,` $rhs attr-dict
+              `:` custom<SameOperandsAndResultType>(type($lhs), type($rhs), type($result))
+```
+
+Performs element-wise subtraction of two tensors `lhs` and `rhs` and produces a `result` tensor.
+
+Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#subtract
 
 Traits: `AlwaysSpeculatableImplTrait`, `Elementwise`, `SameOperandsAndResultShape`
 
@@ -2050,16 +2428,22 @@ Effects: `MemoryEffects::Effect{}`
 
 | Result | Description |
 | :----: | ----------- |
-&laquo;unnamed&raquo; | statically shaped tensor of pred (AKA boolean or 1-bit integer) or Secret of 1-bit signless integer values or 8/16/32/64-bit signless integer or Secret of 8-bit signless integer or 16-bit signless integer or 32-bit signless integer or 64-bit signless integer values or 8/16/32/64-bit unsigned integer or Secret of 8/16/32/64-bit unsigned integer values or 16-bit float or 32-bit float or 64-bit float or Secret of 16-bit float or 32-bit float or 64-bit float values or complex type with 32-bit float or 64-bit float elements or Secret of complex type with 32-bit float or 64-bit float elements values values
+| `result` | statically shaped tensor of pred (AKA boolean or 1-bit integer) or Secret of 1-bit signless integer values or 8/16/32/64-bit signless integer or Secret of 8-bit signless integer or 16-bit signless integer or 32-bit signless integer or 64-bit signless integer values or 8/16/32/64-bit unsigned integer or Secret of 8/16/32/64-bit unsigned integer values or 16-bit float or 32-bit float or 64-bit float or Secret of 16-bit float or 32-bit float or 64-bit float values or complex type with 32-bit float or 64-bit float elements or Secret of complex type with 32-bit float or 64-bit float elements values values
 
 ### `pphlo.tanh` (spu::pphlo::TanhOp)
 
 _Tanh operator_
 
-Returns `tanh(operand)` element-wise.
 
-See
-https://www.tensorflow.org/xla/operation_semantics#element-wise_unary_functions.
+Syntax:
+
+```
+operation ::= `pphlo.tanh` $operand attr-dict `:` custom<SameOperandsAndResultType>(type($operand), type($result))
+```
+
+Performs element-wise hyperbolic tangent operation on `operand` tensor and produces a `result` tensor.
+
+Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#tanh
 
 Traits: `AlwaysSpeculatableImplTrait`, `Elementwise`, `SameOperandsAndResultShape`, `SameOperandsAndResultType`
 
@@ -2077,17 +2461,23 @@ Effects: `MemoryEffects::Effect{}`
 
 | Result | Description |
 | :----: | ----------- |
-&laquo;unnamed&raquo; | statically shaped tensor of 16-bit float or 32-bit float or 64-bit float or Secret of 16-bit float or 32-bit float or 64-bit float values values
+| `result` | statically shaped tensor of 16-bit float or 32-bit float or 64-bit float or Secret of 16-bit float or 32-bit float or 64-bit float values values
 
 ### `pphlo.transpose` (spu::pphlo::TransposeOp)
 
 _Transpose operator_
 
-Permutes the dimensions of `operand` according to the given `permutation`.
 
-`res_dimensions[i] = operand_dimensions[permutation[i]]`
+Syntax:
 
-See https://www.tensorflow.org/xla/operation_semantics#transpose.
+```
+operation ::= `pphlo.transpose` $operand `,` `dims` `=` $permutation
+              attr-dict `:` functional-type(operands, results)
+```
+
+Permutes the dimensions of `operand` tensor using `permutation` and produces a `result` tensor.
+
+Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#transpose
 
 Traits: `AlwaysSpeculatableImplTrait`, `SameOperandsAndResultElementType`
 
@@ -2118,10 +2508,9 @@ Effects: `MemoryEffects::Effect{}`
 
 _While operator_
 
-Returns the result of executing a body function until the cond body
-    returns true.
+Produces the output from executing `body` function 0 or more times while the `cond` function outputs true.
 
-See https://www.tensorflow.org/xla/operation_semantics#while.
+Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#while
 
 Traits: `PPHLO_PairwiseSameOperandAndResultType`, `RecursiveMemoryEffects`, `SingleBlockImplicitTerminator<ReturnOp>`, `SingleBlock`
 
@@ -2141,10 +2530,17 @@ Traits: `PPHLO_PairwiseSameOperandAndResultType`, `RecursiveMemoryEffects`, `Sin
 
 _Logical xor_
 
-Returns `logical_xor(lhs, rhs)` element-wise.
 
-See
-https://www.tensorflow.org/xla/operation_semantics#element-wise_binary_arithmetic_operations.
+Syntax:
+
+```
+operation ::= `pphlo.xor` $lhs `,` $rhs attr-dict
+              `:` custom<SameOperandsAndResultType>(type($lhs), type($rhs), type($result))
+```
+
+Performs element-wise XOR of two tensors `lhs` and `rhs` and produces a `result` tensor.
+
+Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#xor
 
 Traits: `AlwaysSpeculatableImplTrait`, `Commutative`, `Elementwise`, `SameOperandsAndResultShape`
 
@@ -2163,4 +2559,4 @@ Effects: `MemoryEffects::Effect{}`
 
 | Result | Description |
 | :----: | ----------- |
-&laquo;unnamed&raquo; | statically shaped tensor of pred (AKA boolean or 1-bit integer) or Secret of 1-bit signless integer values or 8/16/32/64-bit signless integer or Secret of 8-bit signless integer or 16-bit signless integer or 32-bit signless integer or 64-bit signless integer values or 8/16/32/64-bit unsigned integer or Secret of 8/16/32/64-bit unsigned integer values or 16-bit float or 32-bit float or 64-bit float or Secret of 16-bit float or 32-bit float or 64-bit float values or complex type with 32-bit float or 64-bit float elements or Secret of complex type with 32-bit float or 64-bit float elements values values
+| `result` | statically shaped tensor of 8/16/32/64-bit signless integer or Secret of 8-bit signless integer or 16-bit signless integer or 32-bit signless integer or 64-bit signless integer values or 8/16/32/64-bit unsigned integer or Secret of 8/16/32/64-bit unsigned integer values or pred (AKA boolean or 1-bit integer) or Secret of 1-bit signless integer values values
