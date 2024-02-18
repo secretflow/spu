@@ -680,4 +680,59 @@ Value f_cosine(SPUContext* ctx, const Value& x) {
   return detail::cos_chebyshev(ctx, x);
 }
 
+namespace {
+
+Value EvaluatePolynomial(SPUContext* ctx, const Value& x,
+                         absl::Span<const float> coefficients) {
+  auto poly = constant(ctx, coefficients[0], x.dtype(), x.shape());
+
+  for (size_t i = 1; i < coefficients.size(); ++i) {
+    auto c = constant(ctx, coefficients[i], x.dtype(), x.shape());
+    poly = f_mul(ctx, poly, x);
+    poly = f_add(ctx, poly, c);
+  }
+  return poly;
+}
+
+Value ErfImpl(SPUContext* ctx, const Value& x) {
+  static std::array<float, 5> kErfCoefficient{0.078108, 0.000972, 0.230389,
+                                              0.278393, 1.0};
+  auto one = constant(ctx, 1.0, x.dtype(), x.shape());
+
+  auto z = EvaluatePolynomial(ctx, x, kErfCoefficient);
+  z = f_square(ctx, z);
+  z = f_square(ctx, z);
+  z = detail::reciprocal_goldschmidt_positive(ctx, z);
+
+  return f_sub(ctx, one, z);
+}
+
+}  // namespace
+
+// Ref:
+// Handbook of Mathematical Functions: with Formulas, Graphs, and Mathematical
+// Tables, equation 7.1.27, maximum absolute error <= 5e-4
+Value f_erf(SPUContext* ctx, const Value& x) {
+  if (x.isPublic()) {
+    return f_erf_p(ctx, x);
+  }
+  auto zero = constant(ctx, 0.0, x.dtype(), x.shape());
+  auto pred = f_less(ctx, x, zero);
+
+  auto abs_x = f_abs(ctx, x);
+
+  auto three = constant(ctx, 3.0, x.dtype(), x.shape());
+  auto cond = f_less(ctx, abs_x, three);
+
+  auto erf = ErfImpl(ctx, abs_x);
+
+  // we do this truncation because:
+  // 1. for large abs_x, reciprocal may overflow
+  // 2. error is sufficiently small (< 2.2e-5)
+  erf = _mux(ctx, cond, erf, constant(ctx, 1.0F, x.dtype(), x.shape()))
+            .setDtype(x.dtype());
+
+  return _mux(ctx, pred, f_negate(ctx, erf), erf).setDtype(x.dtype());
+}
+
 }  // namespace spu::kernel::hal
