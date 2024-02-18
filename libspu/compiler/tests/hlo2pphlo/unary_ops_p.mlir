@@ -77,3 +77,11 @@ func.func @main(%arg0: tensor<2x2xi32>) -> (tensor<2x2xi32>) {
     %0 = "stablehlo.not"(%arg0) : (tensor<2x2xi32>) -> tensor<2x2xi32>
     return %0 : tensor<2x2xi32>
 }
+
+// -----
+
+func.func @main(%arg0: tensor<2x2xi32>) -> (tensor<2x2xf32>) {
+    // CHECK: %0 = pphlo.bitcast_convert %arg0 : (tensor<2x2xi32>) -> tensor<2x2xf32>
+    %0 = "stablehlo.bitcast_convert"(%arg0) : (tensor<2x2xi32>) -> tensor<2x2xf32>
+    return %0 : tensor<2x2xf32>
+}
