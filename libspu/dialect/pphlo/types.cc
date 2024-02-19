@@ -22,17 +22,20 @@ namespace utils {
 
 // A tiny utility to handle aggregate type like tensor
 template <typename Fn, typename... Args>
-auto StripAllContainerType(const Type &t, Fn foo, Args &&...args) {
+bool StripAllContainerType(const Type &t, Fn foo, Args &&...args) {
   if (const auto &rt = t.dyn_cast<RankedTensorType>()) {
-    return foo(rt.getElementType(), std::forward<Args>(args)...);
+    return StripAllContainerType(rt.getElementType(), foo,
+                                 std::forward<Args>(args)...);
   }
 
   if (const auto &ct = t.dyn_cast<ComplexType>()) {
-    return foo(ct.getElementType(), std::forward<Args>(args)...);
+    return StripAllContainerType(ct.getElementType(), foo,
+                                 std::forward<Args>(args)...);
   }
 
   if (const auto &st = t.dyn_cast<SecretType>()) {
-    return foo(st.getBaseType(), std::forward<Args>(args)...);
+    return StripAllContainerType(st.getBaseType(), foo,
+                                 std::forward<Args>(args)...);
   }
 
   return foo(t, std::forward<Args>(args)...);
