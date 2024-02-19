@@ -66,11 +66,7 @@ class SVM:
 
         kernel_res = jnp.exp(
             -gamma
-            * (
-                (x**2).sum(1, keepdims=True)
-                + (x_**2).sum(1)
-                - 2 * jnp.matmul(x, x_.T)
-            )
+            * ((x**2).sum(1, keepdims=True) + (x_**2).sum(1) - 2 * jnp.matmul(x, x_.T))
         )
 
         return kernel_res

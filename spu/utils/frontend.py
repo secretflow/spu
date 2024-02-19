@@ -313,9 +313,11 @@ def torch_compile(
 
     source.input_visibility.extend(
         [
-            arg.vtype
-            if isinstance(arg, distributed.SPU.Object)
-            else spu_pb2.Visibility.VIS_PUBLIC
+            (
+                arg.vtype
+                if isinstance(arg, distributed.SPU.Object)
+                else spu_pb2.Visibility.VIS_PUBLIC
+            )
             for arg in args_params_flat
         ]
     )

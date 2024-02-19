@@ -715,9 +715,11 @@ class SPU(Device):
             args_flat, _ = jax.tree_util.tree_flatten((dyn_args, kwargs))
 
             in_vis = [
-                arg.vtype
-                if isinstance(arg, SPU.Object)
-                else spu_pb2.Visibility.VIS_PUBLIC
+                (
+                    arg.vtype
+                    if isinstance(arg, SPU.Object)
+                    else spu_pb2.Visibility.VIS_PUBLIC
+                )
                 for arg in args_flat
             ]
 
@@ -810,9 +812,11 @@ class SPU(Device):
             fn_name = fn.__name__
 
             in_vis = [
-                arg.vtype
-                if isinstance(arg, SPU.Object)
-                else spu_pb2.Visibility.VIS_PUBLIC
+                (
+                    arg.vtype
+                    if isinstance(arg, SPU.Object)
+                    else spu_pb2.Visibility.VIS_PUBLIC
+                )
                 for arg in args_flat
             ]
 
@@ -1051,9 +1055,11 @@ class HostContext:
                     [self.node_clients[node_id] for node_id in config["node_ids"]],
                     config["spu_internal_addrs"],
                     config["runtime_config"],
-                    config["experimental_data_folder"]
-                    if "experimental_data_folder" in config
-                    else None,
+                    (
+                        config["experimental_data_folder"]
+                        if "experimental_data_folder" in config
+                        else None
+                    ),
                 )
             else:
                 raise Exception("unknown kind {}".format(detail["kind"]))
