@@ -146,23 +146,12 @@ class KMEANS:
         The number of samples.
 
     init : {'k-means++', 'random'}, callable or array-like of shape
-            (n_clusters, n_features), default='random'
-        When 'k-means++' is passed, since the random variable generated in
-        running time is not supported, parameter init_params needs to
-        be passed for random variables generated before SPU running time.
+            (n_clusters, n_features), default='k-means++'
+        When 'k-means++' and 'random' are passed, since the random variable
+        generation in SPU runtime is not well supported, please initialize the
+        KMEANS in outer scope.
 
-    init_params : {array-like}, shape (n_samples, n_features)
-        Only when init='k-means++', this parameter will be used.
-
-        When n_init=1, it should be random variables generated from
-        jax.random.uniform(jax.random.PRNGKey(1),
-        shape=(self.n_clusters-1, 2 + int(math.log(n_clusters))))
-
-        When n_init=2, it should be random variables generated from
-        jax.random.uniform(jax.random.PRNGKey(1),
-        shape=(n_init, self.n_clusters-1, 2 + int(math.log(n_clusters))))
-
-    n_init : int
+    n_init : int, default=1
         Number of times the k-means algorithm is run with different centroid
         seeds.
         When an array to init, n_init will be set to 1.
@@ -177,8 +166,7 @@ class KMEANS:
         self,
         n_clusters,
         n_samples,
-        init="random",
-        init_params=None,
+        init="k-means++",
         n_init=1,
         max_iter=300,
     ):
@@ -194,16 +182,18 @@ class KMEANS:
                 self.init_center_id = jax.random.choice(
                     jax.random.PRNGKey(1), n_samples
                 )
-                # self.init_params = jax.random.uniform(
-                #     jax.random.PRNGKey(1), shape=(self.n_clusters-1, 2 + int(math.log(n_clusters))))
-                self.init_params = init_params
+                self.init_params = jax.random.uniform(
+                    jax.random.PRNGKey(1),
+                    shape=(self.n_clusters - 1, 2 + int(math.log(n_clusters))),
+                )
             else:
                 self.init_center_id = jax.random.choice(
                     jax.random.PRNGKey(1), n_samples, shape=[n_init]
                 )
-                # self.init_params = jax.random.uniform(
-                #     jax.random.PRNGKey(1), shape=(n_init, self.n_clusters-1, 2 + int(math.log(n_clusters))))
-                self.init_params = init_params
+                self.init_params = jax.random.uniform(
+                    jax.random.PRNGKey(1),
+                    shape=(n_init, self.n_clusters - 1, 2 + int(math.log(n_clusters))),
+                )
         elif init == "random":
             ### if the n_init is 1, reduce the dimension of init_params to eliminate the reshape operations
             if n_init == 1:

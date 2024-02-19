@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import math
-
 import jax
 import jax.numpy as jnp
 import numpy as np
@@ -26,7 +24,7 @@ from sml.cluster.kmeans import KMEANS
 def emul_KMEANS(mode: emulation.Mode.MULTIPROCESS):
     def proc(x1, x2):
         x = jnp.concatenate((x1, x2), axis=1)
-        model = KMEANS(n_clusters=2, n_samples=x.shape[0], max_iter=10)
+        model = KMEANS(n_clusters=2, n_samples=x.shape[0], init="random", max_iter=10)
 
         return model.fit(x).predict(x)
 
@@ -54,25 +52,28 @@ def emul_KMEANS(mode: emulation.Mode.MULTIPROCESS):
 
 
 def emul_kmeans_kmeans_plus_plus(mode: emulation.Mode.MULTIPROCESS):
-    def proc(x, init_params):
-        model = KMEANS(
-            n_clusters=4,
-            n_samples=x.shape[0],
-            init="k-means++",
-            init_params=init_params,
-            n_init=1,
-            max_iter=10,
-        )
+    X = jnp.array([[-4, -3, -2, -1], [-4, -3, -2, -1]]).T
+
+    # define model in outer scope
+    # then __init__ will be computed in plaintext
+    # this is necessary since k-means++ needs to
+    # generate random numbers in __init__
+    # jax.random.uniform will cause great error
+    # in SPU runtime
+    model = KMEANS(
+        n_clusters=4,
+        n_samples=X.shape[0],
+        init="k-means++",
+        n_init=1,
+        max_iter=10,
+    )
+
+    def proc(x):
         model.fit(x)
         return model._centers.sort(axis=0)
 
-    X = jnp.array([[-4, -3, -2, -1], [-4, -3, -2, -1]]).T
-    ### provide init_params with jax.random.uniform(jax.random.PRNGKey(1), shape=(self.n_clusters-1, 2 + int(math.log(n_clusters))))
-    init_params = jax.random.uniform(
-        jax.random.PRNGKey(1), shape=(3, 2 + int(math.log(4)))
-    )
-    X, init_params = emulator.seal(X, init_params)
-    result = emulator.run(proc)(X, init_params)
+    X = emulator.seal(X)
+    result = emulator.run(proc)(X)
     # print("result\n", result)
 
     # Compare with sklearn
@@ -117,14 +118,28 @@ def emul_kmeans_init_array(mode: emulation.Mode.MULTIPROCESS):
 
 
 def emul_kmeans_random(mode: emulation.Mode.MULTIPROCESS):
+    X = jnp.array([[-4, -3, -2, -1], [-4, -3, -2, -1]]).T
+
+    # define model in outer scope
+    # then __init__ will be computed in plaintext
+    # this is better since random init needs to
+    # randomly choose numbers in __init__
+    # define model in SPU runtime won't cause error
+    # but it requires much larger n_init
+    # to get the correct result in some cases
+    # (since jax.random.choice did not work well in SPU runtime)
+    model = KMEANS(
+        n_clusters=4,
+        n_samples=X.shape[0],
+        init="random",
+        n_init=5,
+        max_iter=10,
+    )
+
     def proc(x):
-        model = KMEANS(
-            n_clusters=4, n_samples=x.shape[0], init="random", n_init=50, max_iter=10
-        )
         model.fit(x)
         return model._centers.sort(axis=0)
 
-    X = jnp.array([[-4, -3, -2, -1], [-4, -3, -2, -1]]).T
     X = emulator.seal(X)
     result = emulator.run(proc)(X)
     # print("result\n", result)
@@ -133,7 +148,7 @@ def emul_kmeans_random(mode: emulation.Mode.MULTIPROCESS):
     from sklearn.cluster import KMeans
 
     X = jnp.array([[-4, -3, -2, -1], [-4, -3, -2, -1]]).T
-    model = KMeans(n_clusters=4, init="random", n_init=50, max_iter=10)
+    model = KMeans(n_clusters=4, init="random", n_init=5, max_iter=10)
     model.fit(X)
     sk_result = model.cluster_centers_
     sk_result.sort(axis=0)
