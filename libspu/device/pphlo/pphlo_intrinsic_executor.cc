@@ -16,6 +16,7 @@
 
 #include "spdlog/spdlog.h"
 
+#include "libspu/kernel/hal/fxp_approx.h"
 #include "libspu/kernel/hlo/casting.h"
 #include "libspu/kernel/hlo/const.h"
 
@@ -48,6 +49,12 @@ std::vector<Value> intrinsic_dispatcher(SPUContext* ctx, llvm::StringRef name,
     SPDLOG_INFO("Calling example intrinsic");
     return {inputs.begin(), inputs.end()};
   }
+
+  if (name == "mhlo.erf") {
+    SPU_ENFORCE(inputs.size() == 1 && inputs[0].isFxp());
+    return {kernel::hal::f_erf(ctx, inputs[0])};
+  }
+
   SPU_THROW("Unhandled intrinsic call {}", name.str());
 }
 

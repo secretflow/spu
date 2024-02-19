@@ -434,11 +434,11 @@ func.func @main(%arg0: tensor<3x2xi32>) -> (tensor<2x2xi32>) {
       %2 = stablehlo.maximum %arg1, %arg2 : tensor<i32>
       stablehlo.return %2 : tensor<i32>
     }) {
-      base_dilations = dense<[2, 1]> : tensor<2xi64>,
+      base_dilations = array<i64: 2, 1>,
       padding = dense<[[2, 1], [0, 0]]> : tensor<2x2xi64>,
-      window_dilations = dense<[3, 1]> : tensor<2xi64>,
-      window_dimensions = dense<[2, 1]> : tensor<2xi64>,
-      window_strides = dense<[ 4, 1 ]> : tensor<2xi64>
+      window_dilations = array<i64: 3, 1>,
+      window_dimensions = array<i64: 2, 1>,
+      window_strides = array<i64: 4, 1>
     } : (tensor<3x2xi32>, tensor<i32>) -> tensor<2x2xi32>
   return %1 : tensor<2x2xi32>
 })",
@@ -463,11 +463,11 @@ func.func @main(%arg0: tensor<3x2xi32>) -> (tensor<1x2xi32>) {
       %2 = stablehlo.maximum %arg1, %arg2 : tensor<i32>
       stablehlo.return %2 : tensor<i32>
     }) {
-      base_dilations = dense<[2, 1]> : tensor<2xi64>,
+      base_dilations = array<i64: 2, 1>,
       padding = dense<[[2, 1], [0, 0]]> : tensor<2x2xi64>,
-      window_dilations = dense<[3, 1]> : tensor<2xi64>,
-      window_dimensions = dense<[3, 1]> : tensor<2xi64>,
-      window_strides = dense<[4, 1]> : tensor<2xi64>
+      window_dilations = array<i64: 3, 1>,
+      window_dimensions = array<i64: 3, 1>,
+      window_strides = array<i64: 4, 1>
     } : (tensor<3x2xi32>, tensor<i32>) -> tensor<1x2xi32>
   return %1 : tensor<1x2xi32>
 })",
@@ -583,11 +583,11 @@ func.func @main(%arg0: tensor<4x4xi32>) -> (tensor<6x6xi32>) {
       %2 = stablehlo.maximum %arg1, %arg2 : tensor<i32>
       stablehlo.return %2 : tensor<i32>
     }) {
-      base_dilations = dense<2> : tensor<2xi64>,
+      base_dilations = array<i64: 2, 2>,
       padding = dense<0> : tensor<2x2xi64>,
-      window_dilations = dense<1> : tensor<2xi64>,
-      window_dimensions = dense<2> : tensor<2xi64>,
-      window_strides = dense<1> : tensor<2xi64>
+      window_dilations = array<i64: 1, 1>,
+      window_dimensions = array<i64: 2, 2>,
+      window_strides = array<i64: 1, 1>
     } : (tensor<4x4xi32>, tensor<i32>) -> tensor<6x6xi32>
   return %1 : tensor<6x6xi32>
 })",
@@ -615,11 +615,11 @@ func.func @main(%arg0: tensor<4x4xi32>) -> (tensor<3x3xi32>) {
       %2 = stablehlo.maximum %arg1, %arg2 : tensor<i32>
       stablehlo.return %2 : tensor<i32>
     }) {
-      base_dilations = dense<2> : tensor<2xi64>,
+      base_dilations = array<i64: 2, 2>,
       padding = dense<0> : tensor<2x2xi64>,
-      window_dilations = dense<1> : tensor<2xi64>,
-      window_dimensions = dense<2> : tensor<2xi64>,
-      window_strides = dense<2> : tensor<2xi64>
+      window_dilations = array<i64: 1, 1>,
+      window_dimensions = array<i64: 2, 2>,
+      window_strides = array<i64: 2, 2>
     } : (tensor<4x4xi32>, tensor<i32>) -> tensor<3x3xi32>
 
   return %1 :  tensor<3x3xi32>
@@ -648,11 +648,11 @@ func.func @main(%arg0: tensor<4x4xi32>) -> (tensor<3x3xi32>) {
       %2 = stablehlo.maximum %arg1, %arg2 : tensor<i32>
       stablehlo.return %2 : tensor<i32>
     }) {
-      base_dilations = dense<2> : tensor<2xi64>,
+      base_dilations = array<i64: 2, 2>,
       padding = dense<0> : tensor<2x2xi64>,
-      window_dilations = dense<2> : tensor<2xi64>,
-      window_dimensions = dense<2> : tensor<2xi64>,
-      window_strides = dense<2> : tensor<2xi64>
+      window_dilations = array<i64: 2, 2>,
+      window_dimensions = array<i64: 2, 2>,
+      window_strides = array<i64: 2, 2>
     } : (tensor<4x4xi32>, tensor<i32>) -> tensor<3x3xi32>
 
   return %1 :  tensor<3x3xi32>
@@ -681,11 +681,11 @@ func.func @main(%arg0: tensor<4x4xi32>) -> (tensor<3x3xi32>) {
       %2 = stablehlo.maximum %arg1, %arg2 : tensor<i32>
       stablehlo.return %2 : tensor<i32>
     }) {
-      base_dilations = dense<2> : tensor<2xi64>,
+      base_dilations = array<i64: 2, 2>,
       padding = dense<1> : tensor<2x2xi64>,
-      window_dilations = dense<1> : tensor<2xi64>,
-      window_dimensions = dense<3> : tensor<2xi64>,
-      window_strides = dense<3> : tensor<2xi64>
+      window_dilations = array<i64: 1, 1>,
+      window_dimensions = array<i64: 3, 3>,
+      window_strides = array<i64: 3, 3>
     } : (tensor<4x4xi32>, tensor<i32>) -> tensor<3x3xi32>
 
   return %1 : tensor<3x3xi32>
@@ -2474,11 +2474,11 @@ func.func @main(%arg0: tensor<4x6xi32>, %arg1: tensor<2x2xi32>) -> (tensor<2x2xi
       %3 = stablehlo.maximum %arg2, %arg3 : tensor<i32>
       stablehlo.return %3 : tensor<i32>
     }) {
-      base_dilations = dense<1> : tensor<2xi64>,
+      base_dilations = array<i64: 1, 1>,
       padding = dense<0> : tensor<2x2xi64>,
-      window_dilations = dense<1> : tensor<2xi64>,
-      window_dimensions = dense<[2,3]> : tensor<2xi64>,
-      window_strides = dense<[2, 3]> : tensor<2xi64>
+      window_dilations = array<i64: 1, 1>,
+      window_dimensions = array<i64: 2, 3>,
+      window_strides = array<i64: 2, 3>
     } : (tensor<4x6xi32>, tensor<i32>) -> tensor<2x2xi32>
   %2 = "stablehlo.select_and_scatter"(%arg0, %arg1, %0) ({
     ^bb0(%arg3: tensor<i32>, %arg4: tensor<i32>):
@@ -2490,8 +2490,8 @@ func.func @main(%arg0: tensor<4x6xi32>, %arg1: tensor<2x2xi32>) -> (tensor<2x2xi
       stablehlo.return %3 : tensor<i32>
     }) {
       padding = dense<0> : tensor<2x2xi64>,
-      window_dimensions = dense<[2,3]> : tensor<2xi64>,
-      window_strides = dense<[2,3]> : tensor<2xi64>
+      window_dimensions = array<i64: 2,3>,
+      window_strides = array<i64: 2,3>
     } : (tensor<4x6xi32>, tensor<2x2xi32>, tensor<i32>) -> tensor<4x6xi32>
     return %1, %2 : tensor<2x2xi32>, tensor<4x6xi32>
 })",

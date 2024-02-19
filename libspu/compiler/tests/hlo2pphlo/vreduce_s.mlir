@@ -15,6 +15,6 @@ func.func @main(%arg0: tensor<1024x1xf32>, %arg1: tensor<1024x1xf32>) -> (tensor
         %2 = "stablehlo.add"(%arg2, %arg4) : (tensor<f32>, tensor<f32>) -> tensor<f32>
         %3 = "stablehlo.add"(%arg3, %arg5) : (tensor<f32>, tensor<f32>) -> tensor<f32>
         "stablehlo.return"(%2, %3) : (tensor<f32>, tensor<f32>) -> ()
-    }) {dimensions = dense<[1]> : tensor<1xi64>} : (tensor<1024x1xf32>, tensor<1024x1xf32>, tensor<f32>, tensor<f32>) -> (tensor<1024xf32>, tensor<1024xf32>)
+    }) {dimensions = array<i64: 1>} : (tensor<1024x1xf32>, tensor<1024x1xf32>, tensor<f32>, tensor<f32>) -> (tensor<1024xf32>, tensor<1024xf32>)
     return %1#0, %1#1 :  tensor<1024xf32>, tensor<1024xf32>
 }

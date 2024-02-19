@@ -38,4 +38,6 @@ Value f_sine_p(SPUContext* ctx, const Value& in);
 
 Value f_cosine_p(SPUContext* ctx, const Value& in);
 
+Value f_erf_p(SPUContext* ctx, const Value& in);
+
 }  // namespace spu::kernel::hal
