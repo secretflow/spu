@@ -73,4 +73,3 @@ func.func @main(%arg0: tensor<3x4x!pphlo.secret<f32>>, %arg1: tensor<5x6x!pphlo.
     %4 = pphlo.divide %0, %3 : tensor<3x3x4x!pphlo.secret<f32>>
     return %4 : tensor<3x3x4x!pphlo.secret<f32>>
   }
-  
