@@ -106,7 +106,7 @@ def auc(x, y):
             Area Under the Curve
     """
     x, y = jax.lax.sort([x, y], num_keys=1)
-    area = jnp.abs(jnp.trapz(y, x))
+    area = jnp.abs(jax.scipy.integrate.trapezoid(y, x))
     return area
 
 

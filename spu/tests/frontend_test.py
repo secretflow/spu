@@ -56,15 +56,15 @@ class UnitTests(unittest.TestCase):
         print(executable.code.decode())
         self.assertTrue(
             "  func.func @main(%arg0: tensor<2xi32>, %arg1: tensor<2xi32>) -> tensor<2xf32> {\n"
-            "    %0 = \"pphlo.constant\"() {value = dense<3.000000e+00> : tensor<2xf32>} : () -> tensor<2xf32>\n"
-            "    %1 = \"pphlo.convert\"(%arg0) : (tensor<2xi32>) -> tensor<2xf32>\n"
-            "    %2 = \"pphlo.add\"(%1, %0) : (tensor<2xf32>, tensor<2xf32>) -> tensor<2xf32>\n"
-            "    \"pphlo.free\"(%0) : (tensor<2xf32>) -> ()\n"
-            "    \"pphlo.free\"(%1) : (tensor<2xf32>) -> ()\n"
-            "    %3 = \"pphlo.convert\"(%arg1) : (tensor<2xi32>) -> tensor<2xf32>\n"
-            "    %4 = \"pphlo.add\"(%2, %3) : (tensor<2xf32>, tensor<2xf32>) -> tensor<2xf32>\n"
-            "    \"pphlo.free\"(%3) : (tensor<2xf32>) -> ()\n"
-            "    \"pphlo.free\"(%2) : (tensor<2xf32>) -> ()\n"
+            "    %0 = pphlo.constant dense<3.000000e+00> : tensor<2xf32>\n"
+            "    %1 = pphlo.convert %arg0 : (tensor<2xi32>) -> tensor<2xf32>\n"
+            "    %2 = pphlo.add %1, %0 : tensor<2xf32>\n"
+            "    pphlo.free %0 : tensor<2xf32>\n"
+            "    pphlo.free %1 : tensor<2xf32>\n"
+            "    %3 = pphlo.convert %arg1 : (tensor<2xi32>) -> tensor<2xf32>\n"
+            "    %4 = pphlo.add %2, %3 : tensor<2xf32>\n"
+            "    pphlo.free %3 : tensor<2xf32>\n"
+            "    pphlo.free %2 : tensor<2xf32>\n"
             "    return %4 : tensor<2xf32>\n" in executable.code.decode()
         )
         self.assertEqual(output.shape, (2,))
@@ -84,10 +84,8 @@ class UnitTests(unittest.TestCase):
         self.assertEqual(executable.input_names, ["in1", "in2"])
         self.assertEqual(executable.output_names, ["test-out0"])
         self.assertTrue(
-            "  func.func @main(%arg0: tensor<2xi32>,"
-            " %arg1: tensor<2xi32>) -> tensor<2xi32> {\n"
-            "    %0 = \"pphlo.add\"(%arg0, %arg1) : (tensor<2xi32>,"
-            " tensor<2xi32>) -> tensor<2xi32>\n"
+            "  func.func @main(%arg0: tensor<2xi32>, %arg1: tensor<2xi32>) -> tensor<2xi32> {\n"
+            "    %0 = pphlo.add %arg0, %arg1 : tensor<2xi32>\n"
             "    return %0 : tensor<2xi32>\n  }" in executable.code.decode()
         )
         self.assertEqual(output.shape, (2,))
@@ -110,10 +108,8 @@ class UnitTests(unittest.TestCase):
         self.assertEqual(executable.input_names, ["in1", "in2"])
         self.assertEqual(executable.output_names, ["test-out0"])
         self.assertTrue(
-            "  func.func @main(%arg0: tensor<2xi64>,"
-            " %arg1: tensor<2xi64>) -> tensor<2xi64> {\n"
-            "    %0 = \"pphlo.add\"(%arg0, %arg1) : (tensor<2xi64>,"
-            " tensor<2xi64>) -> tensor<2xi64>\n"
+            "  func.func @main(%arg0: tensor<2xi64>, %arg1: tensor<2xi64>) -> tensor<2xi64> {\n"
+            "    %0 = pphlo.add %arg0, %arg1 : tensor<2xi64>\n"
             "    return %0 : tensor<2xi64>\n  }" in executable.code.decode()
         )
         self.assertEqual(output.shape, (2,))

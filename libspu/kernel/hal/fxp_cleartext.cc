@@ -140,4 +140,9 @@ Value f_cosine_p(SPUContext* ctx, const Value& in) {
   return applyFloatingPointFn(ctx, in, [](float x) { return std::cos(x); });
 }
 
+Value f_erf_p(SPUContext* ctx, const Value& in) {
+  SPU_TRACE_HAL_DISP(ctx, in);
+  return applyFloatingPointFn(ctx, in, [](float x) { return std::erf(x); });
+}
+
 }  // namespace spu::kernel::hal

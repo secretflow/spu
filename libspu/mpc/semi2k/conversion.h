@@ -84,11 +84,10 @@ class MsbA2B : public UnaryKernel {
   }
 
   ce::CExpr comm() const override {
-    // 1 * carry: k + 4 * k
-    return ce::K() * 5;
+    // 1 * and_bb: 2 * k * (N-1)
+    // 1 * carrya2b: k + k/2 + k/4 + ... + 8 (8) + 8 (4) + 8 (2) + 8 (1)
+    return 2 * ce::K() * (ce::N() - 1) + 2 * (ce::N() - 1) * (2 * ce::K() + 32);
   }
-
-  float getCommTolerance() const override { return 0.2; }
 
   NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in) const override;
 };

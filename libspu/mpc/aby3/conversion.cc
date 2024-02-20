@@ -595,6 +595,7 @@ NdArrayRef MsbA2B::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
       }
     });
 
+    // 1. rotate k bits
     r1 = comm->rotate<el_t>(r0, "m");
 
     pforeach(0, numel, [&](int64_t idx) {
@@ -614,6 +615,7 @@ NdArrayRef MsbA2B::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   auto wrap_m = WrapValue(m);
   auto wrap_n = WrapValue(n);
   {
+    // 2. 2k + 16 * 2 bits
     auto carry = carry_a2b(sctx, wrap_m, wrap_n, nbits);
 
     // Compute the k'th bit.

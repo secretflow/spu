@@ -37,9 +37,9 @@ class UnitTests(unittest.TestCase):
 
         code = """
 func.func @main(%arg0: tensor<2x2x!pphlo.secret<i32>>) -> (tensor<2x2x!pphlo.secret<i32>>) {
-    %0 = "pphlo.constant"() {value = dense<[[1,2],[3,4]]> : tensor<2x2xi32>} : () -> tensor<2x2xi32>
-    %1 = "pphlo.add"(%arg0, %0) : (tensor<2x2x!pphlo.secret<i32>>, tensor<2x2xi32>) -> tensor<2x2x!pphlo.secret<i32>>
-    "pphlo.dbg_print"(%1) : (tensor<2x2x!pphlo.secret<i32>>) -> ()
+    %0 = pphlo.constant dense<[[1,2],[3,4]]> : tensor<2x2xi32>
+    %1 = pphlo.add %arg0, %0 : (tensor<2x2x!pphlo.secret<i32>>, tensor<2x2xi32>) -> tensor<2x2x!pphlo.secret<i32>>
+    pphlo.dbg_print %1 : tensor<2x2x!pphlo.secret<i32>>
     return %1 : tensor<2x2x!pphlo.secret<i32>>
 }"""
         executable = spu_pb2.ExecutableProto(
@@ -63,7 +63,7 @@ func.func @main(%arg0: tensor<2x2x!pphlo.secret<i32>>) -> (tensor<2x2x!pphlo.sec
         # Give some insane ir
         code = """
 func.func @main(%arg0: tensor<2x3x!pphlo.secret<i32>>, %arg1: tensor<12x13x!pphlo.secret<i32>>) -> (tensor<2x2x!pphlo.secret<i32>>) {
-    %0 = "pphlo.dot"(%arg0, %arg1) : (tensor<2x3x!pphlo.secret<i32>>, tensor<12x13x!pphlo.secret<i32>>) -> tensor<2x2x!pphlo.secret<i32>>
+    %0 = pphlo.dot %arg0, %arg1 : (tensor<2x3x!pphlo.secret<i32>>, tensor<12x13x!pphlo.secret<i32>>) -> tensor<2x2x!pphlo.secret<i32>>
     return %0 : tensor<2x2x!pphlo.secret<i32>>
 }"""
         executable = spu_pb2.ExecutableProto(

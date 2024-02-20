@@ -17,6 +17,7 @@
 #include "mlir/IR/OpImplementation.h"
 #include "mlir/IR/Operation.h"
 
+#include "libspu/dialect/pphlo/base_enums.h"
 #define GET_ATTRDEF_CLASSES
 #include "libspu/dialect/pphlo/attrs.h.inc"
 

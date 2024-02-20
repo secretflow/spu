@@ -123,6 +123,7 @@ class LLaMAConfig(PretrainedConfig):
     >>> # Accessing the model configuration
     >>> configuration = model.config
     ```"""
+
     model_type = "llama"
 
     def __init__(

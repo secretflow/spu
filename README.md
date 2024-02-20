@@ -50,7 +50,7 @@ Please follow [Installation Guidelines](INSTALLATION.md) to install SPU.
 
 ## Citing SPU
 
-If you think SPU helpful for your research or development, please consider citing our [paper](https://www.usenix.org/conference/atc23/presentation/ma):
+If you think SPU is helpful for your research or development, please consider citing our [paper](https://www.usenix.org/conference/atc23/presentation/ma):
 
 ```text
 @inproceedings {spu,

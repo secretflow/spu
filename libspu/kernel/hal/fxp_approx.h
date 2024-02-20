@@ -62,4 +62,6 @@ Value f_sqrt(SPUContext* ctx, const Value& x);
 
 Value f_sigmoid(SPUContext* ctx, const Value& x);
 
+Value f_erf(SPUContext* ctx, const Value& x);
+
 }  // namespace spu::kernel::hal

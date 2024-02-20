@@ -48,13 +48,15 @@ def _example_lowering(ctx, input):
     # so let's predefine this specification
     dtype = mlir.ir.RankedTensorType(input.type)
 
-    return custom_call(
+    call = custom_call(
         "example",
         # Output types
-        out_types=[dtype],
+        result_types=[dtype],
         # The inputs:
         operands=[input],
     )
+
+    return call.results
 
 
 # **********************************

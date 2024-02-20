@@ -226,6 +226,28 @@ spu_cc_library(
     ],
 )
 
+spu_cc_library(
+    name = "utils",
+    hdrs = ["utils.h"],
+    deps = [
+        ":constants",
+        ":polymorphic",
+        ":ring",
+        ":shape_ops",
+        "//libspu/core:prelude",
+    ],
+)
+
+spu_cc_test(
+    name = "utils_test",
+    srcs = ["utils_test.cc"],
+    deps = [
+        ":polymorphic",
+        ":utils",
+        "//libspu/kernel:test_util",
+    ],
+)
+
 spu_cc_test(
     name = "type_cast_test",
     srcs = ["type_cast_test.cc"],
@@ -268,6 +290,7 @@ spu_cc_library(
         ":public_helper",
         ":ring",
         ":shape_ops",
+        ":utils",
         "//libspu/core:context",
     ],
 )

@@ -59,7 +59,7 @@ docker exec -it spu-dev-$(whoami) bash
 #### Linux
 
 ```sh
-Install gcc>=11.2, cmake>=3.26, ninja, nasm>=2.15, python>=3.8, bazel==6.4.0, xxd, lld
+Install gcc>=11.2, cmake>=3.26, ninja, nasm>=2.15, python>=3.9, bazelisk, xxd, lld
 
 python3 -m pip install -r requirements.txt
 python3 -m pip install -r requirements-dev.txt
@@ -68,7 +68,7 @@ python3 -m pip install -r requirements-dev.txt
 #### macOS
 
 ```sh
-# macOS >= 12, Xcode >= 14.0
+# macOS >= 12.0, Xcode >= 14.0
 
 # Install Xcode
 https://apps.apple.com/us/app/xcode/id497799835?mt=12

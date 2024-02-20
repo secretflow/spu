@@ -372,4 +372,36 @@ TEST(FxpTest, Cosine) {
   }
 }
 
+TEST(FxpTest, Erf) {
+  // GIVEN
+  SPUContext ctx = test::makeSPUContext();
+
+  xt::xarray<float> x = xt::random::rand<float>({10}, -10, 10);
+
+  // public cos
+  {
+    Value a = constant(&ctx, x, DT_F32);
+    Value c = f_erf(&ctx, a);
+    EXPECT_EQ(c.dtype(), DT_F32);
+
+    auto y = dump_public_as<float>(&ctx, c);
+    EXPECT_TRUE(xt::allclose(xt::erf(x), y, 0.01, 0.001))
+        << xt::erf(x) << std::endl
+        << y;
+  }
+
+  // secret cos
+  {
+    Value a = test::makeValue(&ctx, x, VIS_SECRET);
+    Value c = f_erf(&ctx, a);
+    EXPECT_EQ(c.dtype(), DT_F32);
+
+    auto y = dump_public_as<float>(&ctx, reveal(&ctx, c));
+    // low precision
+    EXPECT_TRUE(xt::allclose(xt::erf(x), y, 0.01, 0.001))
+        << xt::erf(x) << std::endl
+        << y;
+  }
+}
+
 }  // namespace spu::kernel::hal
