@@ -40,10 +40,10 @@ def _yacl():
         http_archive,
         name = "yacl",
         urls = [
-            "https://github.com/secretflow/yacl/archive/e3401da07d8aa2f3fe2238e8563e5f573036a594.tar.gz",
+            "https://github.com/secretflow/yacl/archive/refs/tags/0.4.3b0.tar.gz",
         ],
-        strip_prefix = "yacl-e3401da07d8aa2f3fe2238e8563e5f573036a594",
-        sha256 = "7b3b41630c26efdd420bed4ce8318ba352992fa4b3cd8fbbe8a015a66498b474",
+        strip_prefix = "yacl-0.4.3b0",
+        sha256 = "76f40897a360c9f8cce25840d6a068144cc703c630e0a23679f7d2aae3a015d1",
     )
 
 def _libpsi():
@@ -140,8 +140,8 @@ def _com_github_xtensor_xtl():
     )
 
 def _com_github_openxla_xla():
-    OPENXLA_COMMIT = "a0d4632c93451c685ce422d087388a5c624a5ee9"
-    OPENXLA_SHA256 = "3c990717bb64d7e27097f059b727e8e6e131a21c006ac16006f471fb8740b139"
+    OPENXLA_COMMIT = "d1cf2382e57b1efba3bb17d6dd9d8657453405ca"
+    OPENXLA_SHA256 = "a7f439d54a4e35c7977c2ea17b3a2493b306c9629ccc8071b4962c905ac9f692"
 
     maybe(
         http_archive,
@@ -159,10 +159,6 @@ def _com_github_openxla_xla():
         sha256 = OPENXLA_SHA256,
         strip_prefix = "xla-" + OPENXLA_COMMIT,
         type = ".tar.gz",
-        patch_args = ["-p1"],
-        patches = [
-            "@spulib//bazel:patches/xla.patch",
-        ],
         urls = [
             "https://github.com/openxla/xla/archive/{commit}.tar.gz".format(commit = OPENXLA_COMMIT),
         ],
@@ -271,10 +267,10 @@ def _com_github_nvidia_cutlass():
     maybe(
         http_archive,
         name = "com_github_nvidia_cutlass",
-        strip_prefix = "cutlass-3.4.0",
+        strip_prefix = "cutlass-3.4.1",
         urls = [
-            "https://github.com/NVIDIA/cutlass/archive/refs/tags/v3.4.0.tar.gz",
+            "https://github.com/NVIDIA/cutlass/archive/refs/tags/v3.4.1.tar.gz",
         ],
-        sha256 = "49f4b854acc2a520126ceefe4f701cfe8c2b039045873e311b1f10a8ca5d5de1",
+        sha256 = "aebd4f9088bdf2fd640d65835de30788a6c7d3615532fcbdbc626ec3754becd4",
         build_file = "@spulib//bazel:nvidia_cutlass.BUILD",
     )

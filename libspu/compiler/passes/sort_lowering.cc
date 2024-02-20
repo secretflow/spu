@@ -43,15 +43,15 @@ public:
       auto &inst = comp.front().front();
       // Single instruction comparator.
       if (mlir::isa<pphlo::LessOp>(inst) || mlir::isa<pphlo::GreaterOp>(inst)) {
-        mlir::IntegerAttr direction;
+        SortDirectionAttr direction;
         if (mlir::isa<pphlo::GreaterOp>(inst)) {
           // descent
-          direction = rewriter.getI32IntegerAttr(
-              static_cast<int32_t>(SortDirection::DES));
+          direction =
+              SortDirectionAttr::get(op->getContext(), SortDirection::DES);
         } else {
           // ascent
-          direction = rewriter.getI32IntegerAttr(
-              static_cast<int32_t>(SortDirection::ASC));
+          direction =
+              SortDirectionAttr::get(op->getContext(), SortDirection::ASC);
         }
         auto lhs_idx =
             inst.getOperand(0).dyn_cast<mlir::BlockArgument>().getArgNumber();

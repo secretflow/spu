@@ -141,11 +141,11 @@ jobs:
           command: git clone https://github.com/secretflow/devtools.git ../devtools
       - run:
           name: "Install homebrew dependencies"
-          command: brew install bazelisk cmake ninja libomp wget go md5sha1sum
+          command: brew install bazelisk cmake ninja libomp wget md5sha1sum
       - run:
           name: "Install Miniconda"
           command: |
-            wget https://repo.anaconda.com/miniconda/Miniconda3-py38_23.1.0-1-MacOSX-arm64.sh -O ~/miniconda.sh
+            wget https://repo.anaconda.com/miniconda/Miniconda3-py310_23.11.0-2-MacOSX-arm64.sh -O ~/miniconda.sh
             bash ~/miniconda.sh -b -p $HOME/miniconda
             source $HOME/miniconda/bin/activate
             conda init bash zsh

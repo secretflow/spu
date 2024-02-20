@@ -69,6 +69,7 @@
 | disallow_mix_types_opts | [ bool](#bool) | Disallow mix type operations |
 | disable_select_optimization | [ bool](#bool) | Disable SelectOp optimization |
 | enable_optimize_denominator_with_broadcast | [ bool](#bool) | Enable optimize x/bcast(y) -> x * bcast(1/y) |
+| disable_deallocation_insertion | [ bool](#bool) | Disable deallocation insertion pass |
  <!-- end Fields -->
  <!-- end HasFields -->
 
@@ -335,7 +336,7 @@ Compiler relate definition
 | Name | Number | Description |
 | ---- | ------ | ----------- |
 | XLA | 0 | none |
-| MLIR_HLO | 1 | none |
+| STABLEHLO | 1 | none |
 
 
 

@@ -309,7 +309,8 @@ COMPOUND_OP_RECORDS = [
     REC("log1p", 1, number_dtypes, all_shapes, jtu.rand_small_positive),
     REC("logaddexp", 2, float_dtypes, all_shapes, rand_default),
     REC("logaddexp2", 2, float_dtypes, all_shapes, rand_default),
-    REC("polyval", 2, number_dtypes, all_shapes, rand_default),
+    # make polyval's highest degree not too big
+    REC("polyval", 2, number_dtypes, [(3,), (2, 3, 3)], rand_default),
     REC("positive", 1, number_dtypes, all_shapes, rand_default),
     REC("power", 2, number_dtypes, all_shapes, jtu.rand_small_positive),
     REC("rad2deg", 1, float_dtypes, all_shapes, rand_default),

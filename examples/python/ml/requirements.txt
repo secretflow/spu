@@ -5,3 +5,4 @@ optax==0.1.7
 torch==2.1.0
 torch_xla==2.1.0
 torchvision
+jax[cpu]<=0.4.23

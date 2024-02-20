@@ -1026,8 +1026,8 @@ private:
   // Apply dilation and padding to the input of a convolution.
   Value applyConvolutionPadding(
       Location loc, Value input,
-      const std::optional<llvm::SmallVector<int64_t>> &padding,
-      const std::optional<llvm::SmallVector<int64_t>> &lhs_dilation,
+      const std::optional<llvm::ArrayRef<int64_t>> &padding,
+      const std::optional<llvm::ArrayRef<int64_t>> &lhs_dilation,
       llvm::ArrayRef<int64_t> dim_mappings, OpBuilder &rewriter) const {
     if ((!padding || isAll(*padding, 0)) &&
         (!lhs_dilation || isAll(*lhs_dilation, 1))) {

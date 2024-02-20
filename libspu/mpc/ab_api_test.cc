@@ -58,7 +58,7 @@ bool verifyCost(Kernel* kernel, std::string_view name, const ce::Params& params,
   if (expectedComm == 0) {
     diff = realComm;
   } else {
-    diff = (realComm - expectedComm) / expectedComm;
+    diff = std::abs(static_cast<float>(realComm - expectedComm)) / expectedComm;
   }
   if (realComm < expectedComm || diff > kernel->getCommTolerance()) {
     fmt::print("Failed: {} comm mismatch, expected={}, got={}\n", name,

@@ -18,6 +18,8 @@
 #include "mlir/Interfaces/InferTypeOpInterface.h"
 #include "mlir/Interfaces/SideEffectInterfaces.h"
 
+#include "libspu/dialect/pphlo/AssemblyFormat.h"
+
 namespace mlir::spu::pphlo::OpTrait {
 
 template <typename ConcreteType>
@@ -25,7 +27,7 @@ class PairwiseSameOperandAndResultType
     : public mlir::OpTrait::TraitBase<ConcreteType,
                                       PairwiseSameOperandAndResultType> {
  public:
-  static LogicalResult verifyTrait(Operation *op) {
+  static LogicalResult verifyTrait(Operation* op) {
     auto numOperands = op->getNumOperands();
     auto numResults = op->getNumResults();
     if (numOperands != numResults) {

@@ -2,7 +2,7 @@ myst-parser==2.0.0
 rstcheck==6.2.0
 sphinx==7.2.6
 nbsphinx==0.9.3
-sphinx-autobuild==2021.3.14
+sphinx-autobuild==2024.2.4
 sphinx-markdown-parser==0.2.4
 sphinxcontrib-actdiag==3.0.0
 sphinxcontrib-blockdiag==3.0.0
@@ -10,7 +10,7 @@ sphinxcontrib-mermaid==0.9.2
 sphinxcontrib-nwdiag==2.0.0
 sphinxcontrib-seqdiag==3.0.0
 pytablewriter==1.2.0
-linkify-it-py==2.0.2
+linkify-it-py==2.0.3
 mdutils==1.6.0
 spu>=0.3.1b0
 pydata-sphinx-theme

@@ -13,6 +13,8 @@
 - [Feature] Support more generic Torch model inference
 - [Improvement] Optimize one-time setup for yacl ot
 - [Improvement] Optimize sort performance
+- [Infra] Python 3.8 is no longer suppoted
+- [Infra] Bump jax minimum version to 0.4.16
 
 ## 20240105
 
