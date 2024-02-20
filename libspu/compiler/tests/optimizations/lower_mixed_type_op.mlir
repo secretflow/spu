@@ -42,3 +42,12 @@ func.func @main(%arg0: tensor<2x2xf16>, %arg1: tensor<2x2xf32>) -> (tensor<2x2xf
     %1 = pphlo.dot %arg1, %0 : (tensor<2x2xf32>, tensor<2x2xf32>) -> tensor<2x2xf32>
     return %1 : tensor<2x2xf32>
 }
+
+// -----
+
+func.func @main(%arg0: tensor<3x4x!pphlo.secret<f32>>, %arg1: tensor<3x4x!pphlo.secret<i32>>) -> tensor<3x4x!pphlo.secret<f32>> {
+    //CHECK: pphlo.multiply %arg0, %arg1
+    %0 = pphlo.convert %arg1 : (tensor<3x4x!pphlo.secret<i32>>) -> tensor<3x4x!pphlo.secret<f32>>
+    %1 = pphlo.multiply %arg0, %0 : tensor<3x4x!pphlo.secret<f32>>
+    return %1 : tensor<3x4x!pphlo.secret<f32>>
+}
