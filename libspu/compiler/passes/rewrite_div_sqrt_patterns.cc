@@ -12,9 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <iostream>
-#include <limits>
-
 #include "mlir/IR/PatternMatch.h"
 #include "mlir/Pass/Pass.h"
 #include "mlir/Transforms/GreedyPatternRewriteDriver.h"
@@ -70,24 +67,28 @@ public:
       // Pattern 2:
       // y/(k*sqrt(x)) -> y/k*rsqrt(x)
       if (auto mulOp = denominator.getDefiningOp<MulOp>()) {
-        auto sqrtOp = mulOp.getRhs().getDefiningOp<SqrtOp>();
-        auto k = mulOp.getLhs();
-        if (sqrtOp == nullptr) {
-          sqrtOp = mulOp.getLhs().getDefiningOp<SqrtOp>();
+        Value k;
+        Operation *rsqrt =
+            rewriteSqrtIfPossible(rewriter, mulOp.getLhs().getDefiningOp());
+        if (rsqrt != nullptr) {
           k = mulOp.getRhs();
+        } else {
+          k = mulOp.getLhs();
+          rsqrt =
+              rewriteSqrtIfPossible(rewriter, mulOp.getRhs().getDefiningOp());
         }
-        if (sqrtOp) {
-          // y/k
-          auto newDiv = rewriter.create<DivOp>(
-              op.getLoc(), op->getResultTypes(), op.getLhs(), k);
-          // rsqrt(x)
-          auto newRsqrt = rewriter.create<RsqrtOp>(
-              op->getLoc(), sqrtOp->getResultTypes(), sqrtOp->getOperand(0));
-          // y/k*rsqrt(x)
-          rewriter.replaceOpWithNewOp<MulOp>(op, op.getType(), newDiv,
-                                             newRsqrt);
-          return success();
+
+        // No 1/sqrt -> rsqrt rewrite, bailout
+        if (rsqrt == nullptr) {
+          return failure();
         }
+
+        auto newDiv = rewriter.create<DivOp>(op.getLoc(), op->getResultTypes(),
+                                             op.getLhs(), k);
+        rewriter.replaceOpWithNewOp<MulOp>(op, op.getType(), newDiv,
+                                           rsqrt->getResult(0));
+
+        return success();
       }
     }
     return failure();
