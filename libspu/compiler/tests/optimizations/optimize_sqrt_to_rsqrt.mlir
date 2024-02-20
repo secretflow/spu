@@ -60,3 +60,17 @@ func.func @main(%arg0: tensor<3x4x!pphlo.secret<i32>>) -> tensor<3x4x!pphlo.secr
     %7 = pphlo.divide %0, %6 : tensor<3x4x!pphlo.secret<f32>>
     return %7 : tensor<3x4x!pphlo.secret<f32>>
 }
+
+// -----
+
+func.func @main(%arg0: tensor<3x4x!pphlo.secret<f32>>, %arg1: tensor<5x6x!pphlo.secret<f32>>) -> tensor<3x3x4x!pphlo.secret<f32>> {
+    // CHECK-NOT: pphlo.sqrt
+    // CHECK: pphlo.rsqrt
+    %0 = pphlo.broadcast %arg0, dims = [1, 2] : (tensor<3x4x!pphlo.secret<f32>>) -> tensor<3x3x4x!pphlo.secret<f32>>
+    %1 = pphlo.sqrt %arg0 : tensor<3x4x!pphlo.secret<f32>>
+    %2 = pphlo.broadcast %1, dims = [0, 2] : (tensor<3x4x!pphlo.secret<f32>>) -> tensor<3x3x4x!pphlo.secret<f32>>
+    %3 = pphlo.multiply %0, %2 : tensor<3x3x4x!pphlo.secret<f32>>
+    %4 = pphlo.divide %0, %3 : tensor<3x3x4x!pphlo.secret<f32>>
+    return %4 : tensor<3x3x4x!pphlo.secret<f32>>
+  }
+  
