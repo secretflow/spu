@@ -7,7 +7,7 @@
 SPU has been tested with the following settings:
 
 - Ubuntu 22.04
-- python3.9
+- python3.10
 - 8c16g
 
 ### MacOS

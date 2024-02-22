@@ -1,5 +1,3 @@
-
-
 # Contribution guidelines
 
 ## Contributor License Agreement
