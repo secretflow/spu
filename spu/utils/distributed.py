@@ -532,6 +532,10 @@ class ValueWrapper:
 def builtin_spu_init(
     server, name: str, my_rank: int, addrs: List[str], spu_config_str: str
 ):
+    global logger
+    processNameFix = {'processNameCorrected': multiprocess.current_process().name}
+    logger = logging.LoggerAdapter(logger, processNameFix)
+
     if f"{name}-rt" in server._locals:
         logger.info(f"spu-runtime ({name}) already exist, reuse it")
         return

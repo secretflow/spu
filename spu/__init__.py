@@ -13,7 +13,7 @@
 # limitations under the License.
 
 
-from . import pir, psi
+from . import psi
 from .api import Io, Runtime, check_cpu_feature, compile
 from .intrinsic import *
 from .spu_pb2 import (  # type: ignore
@@ -49,7 +49,6 @@ __all__ = [
     # utils
     "simulation",
     # libs
-    "pir",
     "psi",
     # intrinsic
 ] + intrinsic.__all__

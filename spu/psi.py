@@ -19,6 +19,7 @@ from typing import List
 from . import libpsi  # type: ignore
 from .libpsi.libs import ProgressData
 from .libspu.link import Context  # type: ignore
+from .pir_pb2 import PirConfig, PirProtocol, PirResultReport  # type: ignore
 from .psi_pb2 import (  # type: ignore
     BucketPsiConfig,
     CurveType,
@@ -103,9 +104,9 @@ def gen_cache_for_2pc_ub_psi(config: BucketPsiConfig) -> PsiResultReport:
     return report
 
 
-def psi_v2(
+def psi(
     config: PsiConfig,
-    link: Context,
+    link: Context = None,
 ) -> PsiResultReport:
     """
     Run PSI with v2 API.
@@ -114,7 +115,7 @@ def psi_v2(
     :param link: the transport layer
     :return: statistical results
     """
-    report_str = libpsi.libs.psi_v2(
+    report_str = libpsi.libs.psi(
         config.SerializeToString(),
         link,
     )
@@ -139,5 +140,13 @@ def ub_psi(
         link,
     )
     report = PsiResultReport()
+    report.ParseFromString(report_str)
+    return report
+
+
+def pir(config: PirProtocol, link: Context = None) -> PirResultReport:
+    report_str = libpsi.libs.pir(config.SerializeToString(), link)
+
+    report = PirResultReport()
     report.ParseFromString(report_str)
     return report
