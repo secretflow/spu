@@ -12,19 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <utility>
-
 #include "pybind11/functional.h"
 #include "pybind11/pybind11.h"
 #include "pybind11/stl.h"
 #include "yacl/base/exception.h"
 #include "yacl/link/context.h"
 
-#include "psi/pir/pir.h"
-#include "psi/psi/bucket_psi.h"
-#include "psi/psi/launch.h"
-#include "psi/psi/memory_psi.h"
-#include "psi/psi/utils/progress.h"
+#include "psi/launch.h"
+#include "psi/legacy/memory_psi.h"
+#include "psi/utils/progress.h"
+
+#include "psi/proto/pir.pb.h"
+#include "psi/proto/psi.pb.h"
+#include "psi/proto/psi_v2.pb.h"
 
 namespace py = pybind11;
 
@@ -78,7 +78,7 @@ void BindLibs(py::module& m) {
       "Run bucket psi. ic_mode means run in interconnection mode", NO_GIL);
 
   m.def(
-      "psi_v2",
+      "psi",
       [](const std::string& config_pb,
          const std::shared_ptr<yacl::link::Context>& lctx) -> py::bytes {
         psi::v2::PsiConfig psi_config;
@@ -104,58 +104,16 @@ void BindLibs(py::module& m) {
       "Run UB PSI with v2 API.", NO_GIL);
 
   m.def(
-      "pir_setup",
-      [](const std::string& config_pb) -> py::bytes {
-        pir::PirSetupConfig config;
+      "pir",
+      [](const std::string& config_pb,
+         const std::shared_ptr<yacl::link::Context>& lctx) -> py::bytes {
+        psi::PirConfig config;
         YACL_ENFORCE(config.ParseFromString(config_pb));
 
-        config.set_bucket_size(1000000);
-        config.set_compressed(false);
-
-        auto r = pir::PirSetup(config);
+        auto r = psi::RunPir(config, lctx);
         return r.SerializeAsString();
       },
-      py::arg("pir_config"), "Run pir setup.");
-
-  m.def(
-      "pir_server",
-      [](const std::shared_ptr<yacl::link::Context>& lctx,
-         const std::string& config_pb) -> py::bytes {
-        pir::PirServerConfig config;
-        YACL_ENFORCE(config.ParseFromString(config_pb));
-
-        auto r = pir::PirServer(lctx, config);
-        return r.SerializeAsString();
-      },
-      py::arg("link_context"), py::arg("pir_config"), "Run pir server");
-
-  m.def(
-      "pir_memory_server",
-      [](const std::shared_ptr<yacl::link::Context>& lctx,
-         const std::string& config_pb) -> py::bytes {
-        pir::PirSetupConfig config;
-        YACL_ENFORCE(config.ParseFromString(config_pb));
-        YACL_ENFORCE(config.setup_path() == "::memory");
-
-        config.set_bucket_size(1000000);
-        config.set_compressed(false);
-
-        auto r = pir::PirMemoryServer(lctx, config);
-        return r.SerializeAsString();
-      },
-      py::arg("link_context"), py::arg("pir_config"), "Run pir memory server");
-
-  m.def(
-      "pir_client",
-      [](const std::shared_ptr<yacl::link::Context>& lctx,
-         const std::string& config_pb) -> py::bytes {
-        pir::PirClientConfig config;
-        YACL_ENFORCE(config.ParseFromString(config_pb));
-
-        auto r = pir::PirClient(lctx, config);
-        return r.SerializeAsString();
-      },
-      py::arg("link_context"), py::arg("pir_config"), "Run pir client");
+      py::arg("pir_config"), py::arg("link_context") = nullptr, "Run PIR.");
 }
 
 PYBIND11_MODULE(libpsi, m) {

@@ -305,9 +305,11 @@ def torch_compile(
             args_params_flat.append(state_dict_list[state_dict_idx[loc.name]])
         elif loc.type_ == VariableType.INPUT_ARG:
             args_params_flat.append(args_flat[loc.position])
+        elif loc.type_ == VariableType.CONSTANT:
+            args_params_flat.append(shlo._bundle.additional_constants[loc.position])
         else:
             raise RuntimeError(
-                'Currently only torch models with named parameters and buffers are supported'
+                f'Currently only torch models with named parameters and buffers are supported. Type {loc.type_} is not supported.'
             )
     input_names = [f'{id(name)}-in{idx}' for idx in range(len(args_params_flat))]
 

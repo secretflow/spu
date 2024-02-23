@@ -60,7 +60,11 @@ docker exec -it spu-dev-$(whoami) bash
 
 ```sh
 Install gcc>=11.2, cmake>=3.26, ninja, nasm>=2.15, python>=3.9, bazelisk, xxd, lld
+```
 
+About the commands used to install the above dependencies, you can follow [Ubuntu docker file](https://github.com/secretflow/devtools/blob/main/dockerfiles/ubuntu-base-ci.DockerFile).
+
+```sh
 python3 -m pip install -r requirements.txt
 python3 -m pip install -r requirements-dev.txt
 ```
