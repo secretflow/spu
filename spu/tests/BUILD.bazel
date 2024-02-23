@@ -26,6 +26,14 @@ py_library(
     ],
 )
 
+py_library(
+    name = "utils",
+    srcs = ["utils.py"],
+    deps = [
+        "//spu:api",
+    ],
+)
+
 py_binary(
     name = "np_op_status",
     srcs = ["np_op_status.py"],
@@ -221,6 +229,23 @@ py_test(
 )
 
 py_test(
+    name = "legacy_psi_test",
+    srcs = ["legacy_psi_test.py"],
+    data = [
+        "//spu/tests/data",
+    ],
+    flaky = True,
+    tags = [
+        "exclusive-if-local",
+    ],
+    deps = [
+        ":utils",
+        "//spu:psi",
+        "//spu/utils:simulation",
+    ],
+)
+
+py_test(
     name = "psi_test",
     srcs = ["psi_test.py"],
     data = [
@@ -231,8 +256,40 @@ py_test(
         "exclusive-if-local",
     ],
     deps = [
+        ":utils",
         "//spu:psi",
-        "//spu/utils:simulation",
+    ],
+)
+
+py_test(
+    name = "ub_psi_test",
+    srcs = ["ub_psi_test.py"],
+    data = [
+        "//spu/tests/data",
+    ],
+    flaky = True,
+    tags = [
+        "exclusive-if-local",
+    ],
+    deps = [
+        ":utils",
+        "//spu:psi",
+    ],
+)
+
+py_test(
+    name = "pir_test",
+    srcs = ["pir_test.py"],
+    data = [
+        "//spu/tests/data",
+    ],
+    flaky = True,
+    tags = [
+        "exclusive-if-local",
+    ],
+    deps = [
+        ":utils",
+        "//spu:psi",
     ],
 )
 

@@ -65,10 +65,8 @@ pybind_extension(
     deps = [
         ":exported_symbols.lds",
         ":version_script.lds",
-        "@psi//psi/pir",
-        "@psi//psi/psi:bucket_psi",
-        "@psi//psi/psi:launch",
-        "@psi//psi/psi:memory_psi",
+        "@psi//psi:launch",
+        "@psi//psi/legacy:memory_psi",
         "@yacl//yacl/link",
     ],
 )
@@ -116,6 +114,7 @@ py_library(
     srcs = [
         "psi.py",
         ":link_py_proto",
+        ":pir_py_proto",
         ":psi_py_proto",
         ":psi_v2_py_proto_fixed",
     ],
@@ -132,24 +131,11 @@ python_proto_compile(
 )
 
 py_library(
-    name = "pir",
-    srcs = [
-        "pir.py",
-        ":pir_py_proto",
-    ],
-    data = [
-        ":libpsi.so",
-        ":libspu.so",
-    ],
-)
-
-py_library(
     name = "init",
     srcs = [
         "__init__.py",
         "version.py",
         ":api",
-        ":pir",
         ":psi",
         "//spu/intrinsic:all_intrinsics",
         "//spu/utils:simulation",
