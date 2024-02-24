@@ -294,12 +294,29 @@ class Normalizer:
         """
         return normalize(X, norm=self.norm)
 
-class MinMaxScaler():
+
+class MinMaxScaler:
+    """Transform features by scaling each feature to a given range.
+
+    Parameters
+    ----------
+    feature_range : tuple (min, max), default=(0, 1)
+        Desired range of transformed data.
+
+    clip : bool, default=False
+        Set to True to clip transformed values of held-out data to
+        provided `feature range`.
+    """
+
     def __init__(self, feature_range=(0, 1), *, clip=False):
         self.feature_range = feature_range
         self.clip = clip
-    
+
     def _reset(self):
+        """Reset internal data-dependent state of the scaler, if necessary.
+
+        __init__ parameters are not touched.
+        """
         if hasattr(self, "scale_"):
             del self.scale_
             del self.min_
@@ -309,11 +326,53 @@ class MinMaxScaler():
             del self.data_range_
 
     def fit(self, X, *, zero_variance=False, contain_nan=False):
-        ### if do not handle zero variance, though transform the matrix that used in fit will work correctly. Transform new matrix and inverse transform will work incorrectly.
+        """Compute the minimum and maximum to be used for later scaling.
+
+        Parameters
+        ----------
+        X : {array-like} of shape (n_samples, n_features)
+            The data used to compute the per-feature minimum and maximum
+            used for later scaling along the features axis.
+
+        zero_variance : bool, default=False
+            Set to True to handle the feature with zero variance, which will
+            introduce additional computation.
+            Note that if zero variance is not handled, transform the matrix that used
+            in fit will work correctly. However, transform new matrix and inverse transform
+            will work incorrectly.
+
+        contain_nan : bool, default=False
+            Set to True to handle the nan value.
+            This option desiced whether to use nanmin and nanmax to compute the minimum
+            and maximum.
+        """
         self._reset()
         return self.partial_fit(X, zero_variance=zero_variance, contain_nan=contain_nan)
-    
+
     def partial_fit(self, X, *, zero_variance=False, contain_nan=False):
+        """
+        All of X is processed as a single batch. This is intended for cases
+        when :meth:`fit` is not feasible due to very large number of
+        `n_samples` or because X is read from a continuous stream.
+
+        Parameters
+        ----------
+        X : {array-like} of shape (n_samples, n_features)
+            The data used to compute the per-feature minimum and maximum
+            used for later scaling along the features axis.
+
+        zero_variance : bool, default=False
+            Set to True to handle the feature with zero variance, which will
+            introduce additional computation.
+            Note that if zero variance is not handled, transform the matrix that used
+            in fit will work correctly. However, transform new matrix and inverse
+            transform will work incorrectly.
+
+        contain_nan : bool, default=False
+            Set to True to handle the nan value.
+            This option desiced whether to use nanmin and nanmax to compute the minimum
+            and maximum.
+        """
         feature_range = self.feature_range
         if feature_range[0] >= feature_range[1]:
             raise ValueError(
@@ -337,15 +396,29 @@ class MinMaxScaler():
         if zero_variance == False:
             self.scale_ = (feature_range[1] - feature_range[0]) / data_range
         else:
-            self.scale_ = (feature_range[1] - feature_range[0]) / jnp.where(data_range==0, 1, data_range)
+            self.scale_ = (feature_range[1] - feature_range[0]) / jnp.where(
+                data_range == 0, 1, data_range
+            )
 
         self.min_ = feature_range[0] - data_min * self.scale_
         self.data_min_ = data_min
         self.data_max_ = data_max
         self.data_range_ = data_range
         return self
-    
+
     def transform(self, X):
+        """Scale features of X according to feature_range.
+
+        Parameters
+        ----------
+        X : {array-like} of shape (n_samples, n_features)
+            Input data that will be transformed.
+
+        Returns
+        -------
+        ndarray of shape (n_samples, n_features)
+            Transformed array.
+        """
         X *= self.scale_
         X += self.min_
         if self.clip:
@@ -353,29 +426,118 @@ class MinMaxScaler():
         return X
 
     def fit_transform(self, X, *, zero_variance=False, contain_nan=False):
-        return self.fit(X, zero_variance=zero_variance, contain_nan=contain_nan).transform(X)
+        """fit and transform with same input data.
+
+        Parameters
+        ----------
+        X : {array-like} of shape (n_samples, n_features)
+            The data used to compute the per-feature minimum and maximum
+            used for later scaling along the features axis.
+
+        zero_variance : bool, default=False
+            Set to True to handle the feature with zero variance, , which will
+            introduce additional computation.
+            Note that if zero variance is not handled, transform the matrix that used in
+            fit will work correctly. However, transform new matrix and inverse transform
+            will work incorrectly.
+
+
+        contain_nan : bool, default=False
+            Set to True to handle the nan value.
+            This option desiced whether to use nanmin and nanmax to compute the minimum
+            and maximum.
+
+        Returns
+        -------
+        ndarray of shape (n_samples, n_features)
+            Transformed array.
+        """
+        return self.fit(
+            X, zero_variance=zero_variance, contain_nan=contain_nan
+        ).transform(X)
 
     def inverse_transform(self, X):
+        """Undo the scaling of X according to feature_range.
+
+        Parameters
+        ----------
+        X : {array-like} of shape (n_samples, n_features)
+            Input data that will be transformed. It cannot be sparse.
+
+        Returns
+        -------
+        ndarray of shape (n_samples, n_features)
+            Transformed array.
+        """
         X -= self.min_
         X /= self.scale_
         return X
 
-class MaxAbsScaler():
+
+class MaxAbsScaler:
+    """Scale each feature by its maximum absolute value."""
+
     def __init__(self):
         pass
 
     def _reset(self):
+        """Reset internal data-dependent state of the scaler, if necessary.
+
+        __init__ parameters are not touched.
+        """
         if hasattr(self, "scale_"):
             del self.scale_
             del self.n_samples_seen_
             del self.max_abs_
-    
+
     def fit(self, X, zero_maxabs=False, contain_nan=False):
-        ### if do not handle zero maxabs, though transform the matrix that used in fit and inverse transform will work correctly. Transform new matrix and inverse transform will work incorrectly.
+        """Compute the maximum absolute value to be used for later scaling.
+
+        Parameters
+        ----------
+        X : {array-like} of shape (n_samples, n_features)
+            The data used to compute the per-feature minimum and maximum
+            used for later scaling along the features axis.
+
+        zero_maxabs : bool, default=False
+            Set to True to handle the feature with maximum absolute value of zero, which
+            will introduce additional computation.
+            Note that if zero maxabs is not handled, transform the matrix that used in
+            fit and its inverse transform will work correctly. However, transform new
+            matrices and their inverse transform will work incorrectly.
+
+        contain_nan : bool, default=False
+            Set to True to handle the nan value.
+            This option desiced whether to use nanmin and nanmax to compute the minimum
+            and maximum.
+        """
         self._reset()
         return self.partial_fit(X, zero_maxabs=zero_maxabs, contain_nan=contain_nan)
-    
+
     def partial_fit(self, X, *, zero_maxabs=False, contain_nan=False):
+        """
+        All of X is processed as a single batch. This is intended for cases
+        when :meth:`fit` is not feasible due to very large number of
+        `n_samples` or because X is read from a continuous stream.
+
+        Parameters
+        ----------
+        X : {array-like} of shape (n_samples, n_features)
+            The data used to compute the per-feature minimum and maximum
+            used for later scaling along the features axis.
+
+        zero_maxabs : bool, default=False
+            Set to True to handle the feature with maximum absolute value of zero, which
+            will introduce additional computation.
+            Note that if zero maxabs is not handled, transform the matrix that used in
+            fit and its inverse transform will work correctly. However, transform new
+            matrices and their inverse transform will work incorrectly.
+
+        contain_nan : bool, default=False
+            Set to True to handle the nan value.
+            This option desiced whether to use nanmin and nanmax to compute the minimum
+            and maximum.
+        """
         first_pass = not hasattr(self, "n_samples_seen_")
         if contain_nan == False:
             max_abs = jnp.max(jnp.abs(X), axis=0)
@@ -390,54 +552,149 @@ class MaxAbsScaler():
         if zero_maxabs == False:
             self.scale_ = max_abs
         else:
-            self.scale_ = jnp.where(max_abs==0, 1, max_abs)
+            self.scale_ = jnp.where(max_abs == 0, 1, max_abs)
         return self
-    
+
     def transform(self, X):
+        """Scale the data.
+
+        Parameters
+        ----------
+        X : {array-like} of shape (n_samples, n_features)
+            The data that should be scaled.
+
+        Returns
+        -------
+        ndarray of shape (n_samples, n_features)
+            Transformed array.
+        """
         return X / self.scale_
-    
+
     def fit_transform(self, X, *, zero_maxabs=False, contain_nan=False):
-        return self.fit(X, zero_maxabs=zero_maxabs, contain_nan=contain_nan).transform(X)
+        """fit and transform with same input data.
+
+        Parameters
+        ----------
+        X : {array-like} of shape (n_samples, n_features)
+            The data used to compute the per-feature minimum and maximum
+            used for later scaling along the features axis.
+
+        zero_maxabs : bool, default=False
+            Set to True to handle the feature with maximum absolute value of zero, which
+            will introduce additional computation.
+            Note that if zero maxabs is not handled, transform the matrix that used in
+            fit and its inverse transform will work correctly. However, transform new
+            matrices and their inverse transform will work incorrectly.
+
+        contain_nan : bool, default=False
+            Set to True to handle the nan value.
+            This option desiced whether to use nanmin and nanmax to compute the minimum
+            and maximum.
+
+        Returns
+        -------
+        ndarray of shape (n_samples, n_features)
+            Transformed array.
+        """
+        return self.fit(X, zero_maxabs=zero_maxabs, contain_nan=contain_nan).transform(
+            X
+        )
 
     def inverse_transform(self, X):
+        """Scale back the data to the original representation.
+
+        Parameters
+        ----------
+        X : {array-like} of shape (n_samples, n_features)
+            The data that should be transformed back.
+
+        Returns
+        -------
+        ndarray of shape (n_samples, n_features)
+            Transformed array.
+        """
         return X * self.scale_
-    
-class KBinsDiscretizer():
-    ### subsample is not triggered by default
-    # n_bins : array-like of shape (n_features,)
-    #     The number of bins to produce. All the value in n_bins should be int >= 2. There is no check here to avoid redundent operation, so user should pay attention here.
-    def __init__(self, n_bins, same_n_bins=True, *, encode="onehot", strategy="quantile", dtype=None, subsample=None, random_state=None):
+
+
+class KBinsDiscretizer:
+    """Bin continuous data into intervals.
+
+    Attribute encode is not implemented, since there is currently no onehotencoder
+    in sml.
+    Attribute subsample is not implemented, since random choise in SPU runtime does
+    not work as expected.
+
+    Parameters
+    ----------
+    n_bins : int, default=5
+        The number of bins to produce. n_bins should be int >= 2.
+
+    diverse_n_bins : {array-like} of shape (n_features,) or None, default=None
+        By default, all features are binned in the same number of bins.
+        When diverse_n_bins is not None, it should be an array-like of shape
+        (n_features,), which tells the number of bins for each feature.
+
+    strategy : {'uniform', 'quantile', 'kmeans'}, default='quantile'
+        Strategy used to define the widths of the bins.
+
+        - 'uniform': All bins in each feature have identical widths.
+        - 'quantile': All bins in each feature have the same number of points.
+        - 'kmeans': Values in each bin have the same nearest center of a 1D
+          k-means cluster.
+
+        Note that the strategy 'kmeans' is not supported when diverse_n_bins is
+        not None. Currently, there is no efficient solution to solve dynamic shape
+        problem in this requirement.
+
+    """
+
+    def __init__(self, n_bins=5, diverse_n_bins=None, *, strategy="quantile"):
         self.n_bins = n_bins
-        self.same_n_bins = same_n_bins
-        self.encode = encode
+        self.diverse_n_bins = diverse_n_bins
         self.strategy = strategy
-        self.dtype = dtype
-        self.subsample = subsample
-        self.random_state = random_state
-    
-    ### note that the remove_bin here will also influence transform function
-    def fit(self, X, sample_weight=None, *, remove_bin=False, eliminate_ref=1e-3):
+
+    def fit(self, X, sample_weight=None, *, remove_bin=False, remove_ref=1e-3):
+        """Fit the estimator.
+
+        JAX does not support array with dynamic shape or type object, so the feature which
+        has different number of n_bins will be presented by duplicated elements in bin_edges.
+
+        Note that the remove_bin here will also influence transform function.
+        Note that there is currectly no support for handling constant values in a feature
+        , since it introduces much redundant boolean computation because dynamic shape is
+        not supported.
+        In sklarn, feature with constant value will be replaced with 0 after transformation.
+        (see https://github.com/scikit-learn/scikit-learn/blob/d139ff234b0f8ec30287e26e0bc801bdafdfbb1a/sklearn/preprocessing/tests/test_discretization.py#L192)
+
+        Parameters
+        ----------
+        X : {array-like} of shape (n_samples, n_features)
+            Data to be discretized.
+
+        sample_weight : {array-like} of shape (n_samples,)
+            Contains weight values to be associated with each sample.
+            Only possible when `strategy` is set to `"quantile"`.
+
+        remove_bin : bool, default=False
+            Set to True to remove bins with the small interval, which is less than
+            remove_ref. This option is only available when `strategy` is set to
+            `"quantile"` or `"kmeans"`.
+
+        remove_ref : float, default=1e-3
+            The reference value to remove the small interval. This option is only
+            available when `strategy` is set to `"quantile"` or `"kmeans"` and
+            remove_bin is set to True.
+        """
         self.remove_bin = remove_bin
-        ### subsample is not triggered by default
-        if self.dtype in (jnp.float64, jnp.float32):
-            output_dtype = self.dtype
-        else:  # self.dtype is None
-            output_dtype = X.dtype
-        n_samples, n_features = X.shape
-        # X = X.astype(output_dtype)
         if sample_weight is not None and self.strategy == "uniform":
             raise ValueError(
                 "`sample_weight` was provided but it cannot be "
                 "used with strategy='uniform'. Got strategy="
                 f"{self.strategy!r} instead."
             )
-        subsample = self.subsample
         n_bins = self.n_bins
-        if subsample is not None and n_samples > subsample:
-            ### this part is not implemented
-            pass
 
-        if self.same_n_bins == True:
+        if self.diverse_n_bins == None:
             if self.strategy == "uniform":
                 bin_func = lambda x: jnp.linspace(jnp.min(x), jnp.max(x), n_bins + 1)
                 bin_edges = jax.vmap(bin_func, in_axes=1, out_axes=1)(X)
@@ -449,6 +706,7 @@ class KBinsDiscretizer():
                     bin_edges = jax.vmap(bin_func, in_axes=1, out_axes=1)(X)
 
                 else:
+
                     def bin_func(x):
                         def _weighted_percentile(x, q, w):
                             x = x.reshape((-1, 1))
@@ -458,198 +716,323 @@ class KBinsDiscretizer():
                             sorted_weights = jnp.take_along_axis(w, sorted_idx, axis=0)
                             weight_cdf = jnp.cumsum(sorted_weights, axis=0)
                             adjusted_percentile = q / 100 * weight_cdf[-1]
-                            percentile_idx = jnp.searchsorted(weight_cdf[:, 0], adjusted_percentile)
-                            percentile_idx = jnp.clip(percentile_idx, 0, sorted_idx.shape[0] - 1)
+
+                            def searchsorted_element(x_inner):
+                                encoding = jnp.where(
+                                    x_inner >= weight_cdf[0:-1, 0], 1, 0
+                                )
+                                return jnp.sum(encoding)
+
+                            percentile_idx = jax.vmap(searchsorted_element)(
+                                adjusted_percentile
+                            )
                             col_index = jnp.arange(x.shape[1])
                             percentile_in_sorted = sorted_idx[percentile_idx, col_index]
                             percentile = x[percentile_in_sorted, col_index]
                             return percentile[0]
-                        return jax.vmap(_weighted_percentile, (None, 0, None))(x, quantiles, sample_weight)
+
+                        return jax.vmap(_weighted_percentile, (None, 0, None))(
+                            x, quantiles, sample_weight
+                        )
+
                     bin_edges = jax.vmap(bin_func, in_axes=1, out_axes=1)(X)
 
             if self.strategy == "kmeans":
                 from ..cluster.kmeans import KMEANS
-                # from sml.cluster.kmeans import KMEANS
+
                 def bin_func(x, KMeans):
-                    # return jnp.array(x[:, None].shape)
                     x = x[:, None]
                     col_min = jnp.min(x)
                     col_max = jnp.max(x)
-                    # uniform_edges = jnp.linspace(col_min, col_max, n_bins + 1)
-                    km = KMeans(n_clusters=n_bins, n_samples=x.shape[0], max_iter=10)
+                    uniform_edges = jnp.linspace(col_min, col_max, n_bins + 1)
+                    init = (uniform_edges[1:] + uniform_edges[:-1])[:, None] * 0.5
+                    km = KMeans(
+                        n_clusters=n_bins, n_samples=x.shape[0], init=init, max_iter=10
+                    )
                     km.fit(x)
                     centers = jnp.sort(km._centers[:, 0])
                     return jnp.r_[col_min, (centers[1:] + centers[:-1]) * 0.5, col_max]
+
                 bin_edges = jax.vmap(bin_func, in_axes=(1, None), out_axes=1)(X, KMEANS)
 
-
-
+            ### remove the small interval by iteratively comparing the adjacent bin edges
+            ### and remove the small interval by setting the bin edge to the adjacent one.
+            ### unqiue_count is used to record the number of unique bin edges for each feature
+            ### which is used in transform function.
             if remove_bin == True and self.strategy in ("quantile", "kmeans"):
+
                 def eliminate_func(x):
-                    # count = jnp.zeros((), dtype=jnp.int32)
                     n = x.shape[0]
+
                     def loop_body(i, st):
                         count, x = st
-                        ### Not sure whether to add abs here. Though the element in x bin_edges shuld be incremental, the precision problem of MPC may cuase addition unexpected behavior.
-                        pred = (x[i] - x[i - 1]) >= eliminate_ref
-                        x = jax.lax.cond(pred, lambda _: x.at[count].set(x[i]), lambda _: x, count)
+                        ### Not sure whether to add abs here. Though the element in x bin_edges shuld be incremental, the precision problem of MPC may cuase additional unexpected behavior.
+                        pred = (x[i] - x[i - 1]) >= remove_ref
+                        x = jax.lax.cond(
+                            pred, lambda _: x.at[count].set(x[i]), lambda _: x, count
+                        )
                         count = jax.lax.cond(pred, lambda c: c + 1, lambda c: c, count)
                         return count, x
+
                     st = (1, x)
                     count, x = jax.lax.fori_loop(1, n, loop_body, st)
                     return x, count
 
-                    # eliminated = jnp.concatenate((jnp.where(jnp.abs(x[1:] - x[:-1]) < eliminate_ref, x[1:], x[:-1]), jnp.array([x[-1]])))
-                    # deduplicated, unique_index = jnp.unique(eliminated, return_counts= True, size = n_bins + 1)
-                    # return deduplicated, unique_index
-
-                bin_edges, unqiue_count = jax.vmap(eliminate_func, in_axes=1, out_axes=(1, 0))(bin_edges)
+                bin_edges, unqiue_count = jax.vmap(
+                    eliminate_func, in_axes=1, out_axes=(1, 0)
+                )(bin_edges)
                 self.unqiue_count = unqiue_count
-                # mask = jnp.ediff1d(bin_edges[jj], to_begin=jnp.inf) > 1e-8
-                # bin_edges[jj] = bin_edges[jj][mask]
-                # if len(bin_edges[jj]) - 1 != n_bins[jj]:
-                #     n_bins[jj] = len(bin_edges[jj]) - 1
 
-                # def eliminate_func(x, y):
-                #     mask = jnp.ediff1d(x, to_begin=jnp.inf) > 1e-8
-                #     x = x[mask]
-                #     if len(x) - 1 != y:
-                #         y = len(x) - 1
-                #     return x, y
-                # bin_edges, n_bins = jax.vmap(eliminate_func, in_axes=(1, 0), out_axes=(1, 0))(bin_edges, n_bins)
-
-                # def eliminate_func(x):
-                #     mask = jnp.ediff1d(x, to_begin=jnp.inf) > 1e-8
-                #     x = x[mask]
-                #     return x
-                # bin_edges = jax.vmap(eliminate_func, in_axes=1, out_axes=1)(bin_edges)
-                
         else:
-            bin_edges = []
-            for jj in range(n_features):
-                column = X[:, jj]
-                col_min, col_max = jnp.min(column), jnp.max(column)
+            diverse_n_bins = self.diverse_n_bins
+            ### directly using jnp.linspace will cause dynamic shape problem,
+            ### so we need to use jnp.arange and a branch function jnp.where
+            if self.strategy == "uniform":
+                arrange_array = jnp.arange(n_bins + 1)
 
-                if self.strategy == "uniform":
-                    bin_edges.append(jnp.linspace(col_min, col_max, n_bins[jj] + 1))
-        # column_min = jnp.min(X, axis=0)
-        # column_max = jnp.max(X, axis=0)
-        # bin_edges = jnp.linspace(column_min, column_max, n_bins[:, None])
+                def bin_func(x, diverse_n_bin, arrange_array):
+                    minval = jnp.min(x)
+                    maxval = jnp.max(x)
+                    delta = (maxval - minval) / diverse_n_bin
 
-        # bin_func = lambda x: jnp.linspace(jnp.min(x), jnp.max(x), 4)
-        # bin_edges = jax.vmap(bin_func, in_axes=1, out_axes=0)(X)
+                    def bin_element_func(x_inner):
+                        return jnp.where(
+                            x_inner <= diverse_n_bin, minval + x_inner * delta, maxval
+                        )
 
-        # bin_func = lambda x: jnp.linspace(jnp.min(x), jnp.max(x), 4)
-        # bin_edges = jax.vmap(bin_func, in_axes=1, out_axes=0)(X)
+                    return jax.vmap(bin_element_func)(arrange_array)
 
+                bin_edges = jax.vmap(bin_func, in_axes=(1, 0, None), out_axes=1)(
+                    X, diverse_n_bins, arrange_array
+                )
 
-        # for jj in range(n_features):
-        #     column = X[:, jj]
-        #     col_min, col_max = jnp.min(column), jnp.max(column)
+            ### Note that here we do not use length of qunaitle to control the number of bins,
+            ### which will cause a dynamic shape problem.
+            ### Here we use a duplicated number in qunaitle to control the number of bins
+            ### Since there is precision problem in MPC, there may be undiscovered unexpected behavior.
+            if self.strategy == "quantile":
+                arrange_array = jnp.arange(n_bins + 1)
+                if sample_weight is None:
 
-        #     ### some problem related to dynamic shape
+                    def bin_func(x, diverse_n_bin):
+                        delta = 100 / diverse_n_bin
 
-        #     # if col_min == col_max:
-        #     #     # warnings.warn(
-        #     #     #     "Feature %d is constant and will be replaced with 0." % jj
-        #     #     # )
-        #     #     n_bins[jj] = 1
-        #     #     bin_edges[jj] = jnp.array([-jnp.inf, jnp.inf])
-        #     #     continue
-        #     if self.strategy == "uniform":
-        #         bin_edges[jj] = jnp.linspace(col_min, col_max, 3)
-        #     elif self.strategy == "quantile":
-        #         quantiles = jnp.linspace(0, 100, n_bins[jj] + 1)
-        #         if sample_weight is None:
-        #             bin_edges[jj] = jnp.asarray(jnp.percentile(column, quantiles))
-        #         ### not implemented
-                    
-        #         # else:
-        #         #     bin_edges[jj] = jnp.asarray(
-        #         #         [
-        #         #             _weighted_percentile(column, sample_weight, q)
-        #         #             for q in quantiles
-        #         #         ],
-        #         #         dtype=np.float64,
-        #         #     )
-                    
-        #     if self.strategy in ("quantile", "kmeans"):
-        #         mask = jnp.ediff1d(bin_edges[jj], to_begin=jnp.inf) > 1e-8
-        #         bin_edges[jj] = bin_edges[jj][mask]
-        #         if len(bin_edges[jj]) - 1 != n_bins[jj]:
-        #             # warnings.warn(
-        #             #     "Bins whose width are too small (i.e., <= "
-        #             #     "1e-8) in feature %d are removed. Consider "
-        #             #     "decreasing the number of bins." % jj
-        #             # )
-        #             n_bins[jj] = len(bin_edges[jj]) - 1
-        
+                        def quantiles_func(x_inner):
+                            return jnp.where(
+                                x_inner <= diverse_n_bin, x_inner * delta, 100
+                            )
+
+                        quantiles = jax.vmap(quantiles_func)(arrange_array)
+                        return jnp.percentile(x, quantiles)
+
+                    bin_edges = jax.vmap(bin_func, in_axes=(1, 0), out_axes=1)(
+                        X, diverse_n_bins
+                    )
+
+                else:
+
+                    def bin_func(x, diverse_n_bin):
+                        delta = 100 / diverse_n_bin
+
+                        def quantiles_func(x_inner):
+                            return jnp.where(
+                                x_inner <= diverse_n_bin, x_inner * delta, 100
+                            )
+
+                        quantiles = jax.vmap(quantiles_func)(arrange_array)
+
+                        def _weighted_percentile(x, q, w):
+                            x = x.reshape((-1, 1))
+                            if x.shape != w.shape and x.shape[0] == w.shape[0]:
+                                w = jnp.tile(w, (x.shape[1], 1)).T
+                            sorted_idx = jnp.argsort(x, axis=0)
+                            sorted_weights = jnp.take_along_axis(w, sorted_idx, axis=0)
+                            weight_cdf = jnp.cumsum(sorted_weights, axis=0)
+                            adjusted_percentile = q / 100 * weight_cdf[-1]
+
+                            def searchsorted_element(x_inner):
+                                encoding = jnp.where(
+                                    x_inner >= weight_cdf[0:-1, 0], 1, 0
+                                )
+                                return jnp.sum(encoding)
+
+                            percentile_idx = jax.vmap(searchsorted_element)(
+                                adjusted_percentile
+                            )
+                            col_index = jnp.arange(x.shape[1])
+                            percentile_in_sorted = sorted_idx[percentile_idx, col_index]
+                            percentile = x[percentile_in_sorted, col_index]
+                            return percentile[0]
+
+                        return jax.vmap(_weighted_percentile, (None, 0, None))(
+                            x, quantiles, sample_weight
+                        )
+
+                    bin_edges = jax.vmap(bin_func, in_axes=(1, 0), out_axes=1)(
+                        X, diverse_n_bins
+                    )
+            if self.strategy == "kmeans":
+                raise ValueError(
+                    " Currently, the strategy 'kmeans' is not supported when diverse_n_bins is not None."
+                )
+                ### The following code is correct for some cases, but it is not a general solution.
+                # from ..cluster.kmeans import KMEANS
+                # arrange_array = jnp.arange(n_bins + 1)
+                # def bin_func(x, KMeans, diverse_n_bin):
+                #     x = x[:, None]
+                #     col_min = jnp.min(x)
+                #     col_max = jnp.max(x)
+                #     delta = (col_max - col_min) / diverse_n_bin
+                #     def bin_element_func(x_inner):
+                #         return jnp.where(x_inner <= diverse_n_bin, col_min + x_inner * delta, col_max)
+                #     uniform_edges = jax.vmap(bin_element_func)(arrange_array)
+                #     def uniform_func(x_inner):
+                #         return jnp.where(x_inner < diverse_n_bin, (uniform_edges[x_inner] + uniform_edges[x_inner + 1]) * 0.5, (uniform_edges[diverse_n_bin - 1] + uniform_edges[diverse_n_bin]) * 0.5)
+                #     init = jax.vmap(uniform_func)(arrange_array[:-1])[:, None]
+                #     km = KMeans(n_clusters=n_bins, n_samples=x.shape[0], init=init, max_iter=10)
+                #     km.fit(x)
+                ### Though it seems to successfuly control the number of centers,
+                ### the problem here is the KMENAS will ruturn invalid center as 0
+                ### The idea now is to use predict to get the valid centers.
+                #     centers = jnp.sort(km._centers[:, 0])
+                #     return jnp.r_[col_min, (centers[1:] + centers[:-1]) * 0.5, col_max]
+                # bin_edges = jax.vmap(bin_func, in_axes=(1, None, 0), out_axes=1)(X, KMEANS, diverse_n_bins)
+
+            ### remove the small interval by iteratively comparing the adjacent bin edges
+            ### and remove the small interval by setting the bin edge to the adjacent one.
+            ### unqiue_count is used to record the number of unique bin edges for each feature
+            ### which is used in transform function.
+            if remove_bin == True and self.strategy in ("quantile", "kmeans"):
+
+                def eliminate_func(x):
+                    n = x.shape[0]
+
+                    def loop_body(i, st):
+                        count, x = st
+                        ### Not sure whether to add abs here. Though the element in x bin_edges shuld be incremental, the precision problem of MPC may cuase addition unexpected behavior.
+                        pred = (x[i] - x[i - 1]) >= remove_ref
+                        x = jax.lax.cond(
+                            pred, lambda _: x.at[count].set(x[i]), lambda _: x, count
+                        )
+                        count = jax.lax.cond(pred, lambda c: c + 1, lambda c: c, count)
+                        return count, x
+
+                    st = (1, x)
+                    count, x = jax.lax.fori_loop(1, n, loop_body, st)
+                    return x, count
+
+                bin_edges, unqiue_count = jax.vmap(
+                    eliminate_func, in_axes=1, out_axes=(1, 0)
+                )(bin_edges)
+                self.unqiue_count = unqiue_count
+            else:
+                self.unqiue_count = diverse_n_bins + 1
+
         self.bin_edges_ = bin_edges
         self.n_bins_ = n_bins
-
-        ### not implemented
-        # if "onehot" in self.encode:
-        #     self._encoder = OneHotEncoder(
-        #         categories=[np.arange(i) for i in self.n_bins_],
-        #         sparse_output=self.encode == "onehot",
-        #         dtype=output_dtype,
-        #     )
-        #     # Fit the OneHotEncoder with toy datasets
-        #     # so that it's ready for use after the KBinsDiscretizer is fitted
-        #     self._encoder.fit(np.zeros((1, len(self.n_bins_))))
 
         return self
 
     def transform(self, X):
-        # dtype = (jnp.float64, jnp.float32) if self.dtype is None else self.dtype
+        """
+        Discretize the data.
+
+        Parameters
+        ----------
+        X : {array-like} of shape (n_samples, n_features)
+            Data to be discretized.
+
+        Returns
+        -------
+        ndarray of shape (n_samples, n_features)
+            Transformed array.
+        """
         bin_edges = self.bin_edges_
 
-        if self.remove_bin == True and self.strategy in ("quantile", "kmeans"):
+        if self.diverse_n_bins != None or (
+            self.remove_bin == True and self.strategy in ("quantile", "kmeans")
+        ):
             unqiue_count = self.unqiue_count
+
             def compute_row(bin, x, c):
                 def compute_element(x):
                     encoding = jnp.where(x >= bin[1:-1], 1, 0)
                     return jnp.clip(jnp.sum(encoding), 0, c - 2)
+
                 return jax.vmap(compute_element)(x)
-            compute_rows_vmap = jax.vmap(compute_row, in_axes=(1, 1, 0), out_axes=1)(bin_edges, X, unqiue_count)
+
+            compute_rows_vmap = jax.vmap(compute_row, in_axes=(1, 1, 0), out_axes=1)(
+                bin_edges, X, unqiue_count
+            )
             return compute_rows_vmap
         else:
+
             def compute_row(bin, x):
                 def compute_element(x):
                     encoding = jnp.where(x >= bin[1:-1], 1, 0)
                     return jnp.sum(encoding)
+
                 return jax.vmap(compute_element)(x)
-            compute_rows_vmap = jax.vmap(compute_row, in_axes=(1, 1), out_axes=1)(bin_edges, X)
+
+            compute_rows_vmap = jax.vmap(compute_row, in_axes=(1, 1), out_axes=1)(
+                bin_edges, X
+            )
             return compute_rows_vmap
 
+    def fit_transform(
+        self, X, sample_weight=None, *, remove_bin=False, remove_ref=1e-3
+    ):
+        """fit and transform with same input data.
 
-        # for jj in range(Xt.shape[1]):
-        #     Xt[:, jj] = np.searchsorted(bin_edges[jj][1:-1], Xt[:, jj], side="right")
+        Parameters
+        ----------
+        X : {array-like} of shape (n_samples, n_features)
+            Data to be discretized.
 
-        # if self.encode == "ordinal":
-        #     return Xt
+        sample_weight : {array-like} of shape (n_samples,)
+            Contains weight values to be associated with each sample.
+            Only possible when `strategy` is set to `"quantile"`.
 
-        # dtype_init = None
-        # if "onehot" in self.encode:
-        #     dtype_init = self._encoder.dtype
-        #     self._encoder.dtype = Xt.dtype
-        # try:
-        #     Xt_enc = self._encoder.transform(Xt)
-        # finally:
-        #     # revert the initial dtype to avoid modifying self.
-        #     self._encoder.dtype = dtype_init
-        # return Xt_enc
-    
-    ### not defined yet **************************************************************
-    def fit_transform(self):
-        pass
+        remove_bin : bool, default=False
+            Set to True to remove bins with the small interval, which is less than
+            remove_ref. This option is only available when `strategy` is set to
+            `"quantile"` or `"kmeans"`.
+
+        remove_ref : float, default=1e-3
+            The reference value to remove the small interval. This option is only
+            available when `strategy` is set to `"quantile"` or `"kmeans"` and
+            remove_bin is set to True.
+
+        Returns
+        -------
+        ndarray of shape (n_samples, n_features)
+            Transformed array.
+        """
+        return self.fit(
+            X, sample_weight=sample_weight, remove_bin=remove_bin, remove_ref=remove_ref
+        ).transform(X)
 
     def inverse_transform(self, X):
+        """Transform discretized data back to original feature space.
+
+        Note that this function does not regenerate the original data
+        due to discretization rounding.
+
+        Parameters
+        ----------
+        X : {array-like} of shape (n_samples, n_features)
+            Transformed data in the binned space.
+
+        Returns
+        -------
+        ndarray of shape (n_samples, n_features)
+            Data in the original feature space.
+        """
         bin_edges = self.bin_edges_
+
         def bin_func(bin, x):
             bin_edges = bin
             bin_centers = (bin_edges[1:] + bin_edges[:-1]) * 0.5
             return bin_centers[(x).astype(jnp.int32)]
+
         return jax.vmap(bin_func, in_axes=(1, 1), out_axes=1)(bin_edges, X)
-
-
