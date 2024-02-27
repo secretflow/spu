@@ -33,10 +33,7 @@ def _jax_compilation_key(
     import numpy as np
     from jax._src.api_util import argnames_partial_except, argnums_partial_except
 
-    try:
-        from jax.extend.linear_util import wrap_init  # Moved in jax 0.4.16
-    except ImportError:
-        from jax.linear_util import wrap_init
+    from jax.extend.linear_util import wrap_init  # Moved in jax 0.4.16
 
     def _function_contents(func):
         try:
@@ -297,12 +294,10 @@ def torch_compile(
     source.ir_txt = ir_text
     source.ir_type = spu_pb2.SourceIRType.STABLEHLO
 
-    state_dict_idx = {k: i for i, k in enumerate(shlo._bundle.state_dict.keys())}
-    state_dict_list = list(state_dict.values())
     args_params_flat = []
     for loc in method.meta.input_locations:
         if loc.type_ == VariableType.PARAMETER:
-            args_params_flat.append(state_dict_list[state_dict_idx[loc.name]])
+            args_params_flat.append(state_dict[loc.name])
         elif loc.type_ == VariableType.INPUT_ARG:
             args_params_flat.append(args_flat[loc.position])
         elif loc.type_ == VariableType.CONSTANT:

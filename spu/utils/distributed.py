@@ -43,8 +43,8 @@ import grpc
 import jax
 import multiprocess
 import numpy as np
+import jax.extend.linear_util as lu
 from google.protobuf import json_format
-from jax.extend import linear_util as lu
 from jax._src import api_util as japi_util
 from jax.tree_util import tree_map, tree_unflatten
 from termcolor import colored
@@ -577,7 +577,6 @@ def builtin_spu_run(
         if isinstance(arg, ValueWrapper):
             rt.set_var(spu_exec.input_names[idx], arg.spu_share)
         else:
-            arg = np.asarray(jax.numpy.asarray(arg))
             fst, *_ = io.make_shares(arg, spu_pb2.Visibility.VIS_PUBLIC)
             rt.set_var(spu_exec.input_names[idx], fst)
 
@@ -665,7 +664,11 @@ class SPU(Device):
             )
 
             def get_share_ref(idx, obj):
-                return obj.refs[idx] if isinstance(obj, SPU.Object) else obj
+                if isinstance(obj, SPU.Object):
+                    return obj.refs[idx]
+                else:
+                    assert not isinstance(obj, Device.Object)
+                    return np.asarray(jax.numpy.asarray(obj))
 
             futures = []
             with concurrent.futures.ThreadPoolExecutor() as executor:
@@ -1161,11 +1164,21 @@ def device(name):
 
 def get(args):
     """Get objects from device to this driver."""
-    args_flat, tree = jax.tree_util.tree_flatten(args)
+    if _FRAMEWORK == Framework.EXP_TORCH:
+        from torch.utils import _pytree as pytree
+
+        args_flat, tree_spec = pytree.tree_flatten(args)
+    else:
+
+        args_flat, tree = jax.tree_util.tree_flatten(args)
+
     out_flat = [
         arg.device.get(arg) if isinstance(arg, Device.Object) else arg
         for arg in args_flat
     ]
+
+    if _FRAMEWORK == Framework.EXP_TORCH:
+        return pytree.tree_unflatten(out_flat, tree_spec)
     return tree_unflatten(tree, out_flat)
 
 

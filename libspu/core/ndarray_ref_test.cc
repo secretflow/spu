@@ -161,4 +161,15 @@ TEST(NdArrayRefTest, Indexing) {
   }
 }
 
+TEST(NdArrayRefTest, EmptyIterator) {
+  NdArrayRef a(makePtType(PT_I8), {2, 0, 8});
+  EXPECT_EQ(a.numel(), 0);
+
+  EXPECT_EQ(a.cbegin(), a.cend());
+
+  for (auto iter = a.cbegin(); iter != a.cend(); ++iter) {
+    SPU_THROW("Should not hit");
+  }
+}
+
 }  // namespace spu

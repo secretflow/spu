@@ -20,10 +20,7 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 
-try:
-    import jax.extend.linear_util as jax_lu  # Moved in jax 0.4.16
-except ImportError:
-    import jax.linear_util as jax_lu
+import jax.extend.linear_util as jax_lu  # Moved in jax 0.4.16
 from jax._src import api_util as japi_util
 
 from .. import api as spu_api

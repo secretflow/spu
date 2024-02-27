@@ -120,15 +120,10 @@ from jax.tree_util import tree_map
 def run_inference_on_spu(model):
     print('Run on SPU\n------\n')
 
-    # load parameters and buffers on P1
-    params_buffers = OrderedDict()
-    for k, v in model.named_parameters():
-        params_buffers[k] = v
-    for k, v in model.named_buffers():
-        params_buffers[k] = v
+    # load state dict on P1
     params = ppd.device("P1")(
         lambda input: tree_map(lambda x: x.detach().numpy(), input)
-    )(params_buffers)
+    )(model.state_dict())
 
     # load inputs on P2
     x, _ = ppd.device("P2")(breast_cancer)(False)
@@ -139,7 +134,7 @@ def run_inference_on_spu(model):
     y_pred_plaintext = ppd.get(y_pred_ciphertext)
     _, y_test = breast_cancer(False)
     auc = metrics.roc_auc_score(y_test, y_pred_plaintext)
-    print(f"AUC(cpu)={auc}, time={end_ts-start_ts}\n------\n")
+    print(f"AUC(spu)={auc}, time={end_ts-start_ts}\n------\n")
     return auc
 
 

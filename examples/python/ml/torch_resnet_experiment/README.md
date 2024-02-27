@@ -7,7 +7,7 @@ This example demonstrates how to use SPU to make private inferences on PyTorch m
 1. Install a third-party dependency [PyTorch/XLA](https://github.com/pytorch/xla).
 
     ```sh
-    pip install torch~=2.1.0 torch_xla[tpu]~=2.1.0 -f https://storage.googleapis.com/libtpu-releases/index.html
+    pip install torch==2.2.0 torch_xla==2.2.0
     pip install torchvision
     ```
 
