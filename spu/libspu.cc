@@ -624,7 +624,7 @@ PYBIND11_MODULE(libspu, m) {
       });
 
   py::class_<PyBindShare>(m, "Share", "Share in python runtime")
-      .def(py::init<>(), NO_GIL)
+      .def(py::init<>())
       .def_readwrite("share_chunks", &PyBindShare::share_chunks, "share chunks")
       .def_readwrite("meta", &PyBindShare::meta, "meta of share")
       .def(py::pickle(
