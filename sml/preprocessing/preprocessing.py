@@ -337,9 +337,6 @@ class MinMaxScaler:
         zero_variance : bool, default=False
             Set to True to handle the feature with zero variance, which will
             introduce additional computation.
-            Note that if zero variance is not handled, transform the matrix that used
-            in fit will work correctly. However, transform new matrix and inverse transform
-            will work incorrectly.
 
         contain_nan : bool, default=False
             Set to True to handle the nan value.
@@ -364,9 +361,6 @@ class MinMaxScaler:
         zero_variance : bool, default=False
             Set to True to handle the feature with zero variance, which will
             introduce additional computation.
-            Note that if zero variance is not handled, transform the matrix that used
-            in fit will work correctly. However, transform new matrix and inverse
-            transform will work incorrectly.
 
         contain_nan : bool, default=False
             Set to True to handle the nan value.
@@ -437,10 +431,6 @@ class MinMaxScaler:
         zero_variance : bool, default=False
             Set to True to handle the feature with zero variance, , which will
             introduce additional computation.
-            Note that if zero variance is not handled, transform the matrix that used in
-            fit will work correctly. However, transform new matrix and inverse transform
-            will work incorrectly.
-
 
         contain_nan : bool, default=False
             Set to True to handle the nan value.
@@ -502,9 +492,6 @@ class MaxAbsScaler:
         zero_maxabs : bool, default=False
             Set to True to handle the feature with maximum absolute value of zero, which
             will introduce additional computation.
-            Note that if zero maxabs is not handled, transform the matrix that used in
-            fit and its inverse transform will work correctly. However, transform new
-            matrices and their inverse transform will work incorrectly.
 
         contain_nan : bool, default=False
             Set to True to handle the nan value.
@@ -529,9 +516,6 @@ class MaxAbsScaler:
         zero_maxabs : bool, default=False
             Set to True to handle the feature with maximum absolute value of zero, which
             will introduce additional computation.
-            Note that if zero maxabs is not handled, transform the matrix that used in
-            fit and its inverse transform will work correctly. However, transform new
-            matrices and their inverse transform will work incorrectly.
 
         contain_nan : bool, default=False
             Set to True to handle the nan value.
@@ -582,9 +566,6 @@ class MaxAbsScaler:
         zero_maxabs : bool, default=False
             Set to True to handle the feature with maximum absolute value of zero, which
             will introduce additional computation.
-            Note that if zero maxabs is not handled, transform the matrix that used in
-            fit and its inverse transform will work correctly. However, transform new
-            matrices and their inverse transform will work incorrectly.
 
         contain_nan : bool, default=False
             Set to True to handle the nan value.
@@ -628,11 +609,13 @@ class KBinsDiscretizer:
     ----------
     n_bins : int, default=5
         The number of bins to produce. n_bins should be int >= 2.
+        If diverse_n_bins is not None, n_bins should be int <= max(diverse_n_bins).
 
     diverse_n_bins : {array-like} of shape (n_features,) or None, default=None
         By default, all features are binned in the same number of bins.
         When diverse_n_bins is not None, it should be an array-like of shape
         (n_features,), which tells the number of bins for each feature.
+        The elements in diverse_n_bins should be int >= 2 and <= n_bins.
 
     strategy : {'uniform', 'quantile', 'kmeans'}, default='quantile'
         Strategy used to define the widths of the bins.
@@ -660,7 +643,7 @@ class KBinsDiscretizer:
         has different number of n_bins will be presented by duplicated elements in bin_edges.
 
         Note that the remove_bin here will also influence transform function.
-        Note that there is currectly no support for handling constant values in a feature
+        Note that there is currently no support for handling constant values in a feature
         , since it introduces much redundant boolean computation because dynamic shape is
         not supported.
         In sklarn, feature with constant value will be replaced with 0 after transformation.
