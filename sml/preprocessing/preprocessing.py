@@ -596,24 +596,25 @@ class MaxAbsScaler:
         """
         return X * self.scale_
 
+
 def remove_bin_func(bin_edges, remove_ref):
     """
     Remove the small interval by iteratively comparing the adjacent bin edges
     and remove the small interval by setting the bin edge to the adjacent one.
-    
+
     Parameters
     ----------
     bin_edges : {array-like} of shape (n_bins + 1, n_features)
         The bin edges for each feature.
-    
+
     remove_ref : float
         The reference value to remove the small interval.
-    
+
     Returns
     -------
     bin_edges : {array-like} of shape (n_bins + 1, n_features)
         The bin edges for each feature after removing the small interval.
-    
+
     count : {array-like} of shape (n_features,)
         The number of unique bin edges for each feature.
     """
@@ -623,9 +624,7 @@ def remove_bin_func(bin_edges, remove_ref):
         def loop_body(i, st):
             count, x = st
             pred = (x[i] - x[i - 1]) >= remove_ref
-            x = jax.lax.cond(
-                pred, lambda _: x.at[count].set(x[i]), lambda _: x, count
-            )
+            x = jax.lax.cond(pred, lambda _: x.at[count].set(x[i]), lambda _: x, count)
             count = jax.lax.cond(pred, lambda c: c + 1, lambda c: c, count)
             return count, x
 
@@ -634,6 +633,7 @@ def remove_bin_func(bin_edges, remove_ref):
         return x, count
 
     return jax.vmap(eliminate_func, in_axes=1, out_axes=(1, 0))(bin_edges)
+
 
 class KBinsDiscretizer:
     """Bin continuous data into intervals.
