@@ -596,6 +596,44 @@ class MaxAbsScaler:
         """
         return X * self.scale_
 
+def remove_bin_func(bin_edges, remove_ref):
+    """
+    Remove the small interval by iteratively comparing the adjacent bin edges
+    and remove the small interval by setting the bin edge to the adjacent one.
+    
+    Parameters
+    ----------
+    bin_edges : {array-like} of shape (n_bins + 1, n_features)
+        The bin edges for each feature.
+    
+    remove_ref : float
+        The reference value to remove the small interval.
+    
+    Returns
+    -------
+    bin_edges : {array-like} of shape (n_bins + 1, n_features)
+        The bin edges for each feature after removing the small interval.
+    
+    count : {array-like} of shape (n_features,)
+        The number of unique bin edges for each feature.
+    """
+    n = bin_edges.shape[0]
+
+    def eliminate_func(x):
+        def loop_body(i, st):
+            count, x = st
+            pred = (x[i] - x[i - 1]) >= remove_ref
+            x = jax.lax.cond(
+                pred, lambda _: x.at[count].set(x[i]), lambda _: x, count
+            )
+            count = jax.lax.cond(pred, lambda c: c + 1, lambda c: c, count)
+            return count, x
+
+        st = (1, x)
+        count, x = jax.lax.fori_loop(1, n, loop_body, st)
+        return x, count
+
+    return jax.vmap(eliminate_func, in_axes=1, out_axes=(1, 0))(bin_edges)
 
 class KBinsDiscretizer:
     """Bin continuous data into intervals.
@@ -738,32 +776,11 @@ class KBinsDiscretizer:
 
                 bin_edges = jax.vmap(bin_func, in_axes=(1, None), out_axes=1)(X, KMEANS)
 
-            ### remove the small interval by iteratively comparing the adjacent bin edges
-            ### and remove the small interval by setting the bin edge to the adjacent one.
+            ### remove the small interval
             ### unqiue_count is used to record the number of unique bin edges for each feature
             ### which is used in transform function.
             if remove_bin == True and self.strategy in ("quantile", "kmeans"):
-
-                def eliminate_func(x):
-                    n = x.shape[0]
-
-                    def loop_body(i, st):
-                        count, x = st
-                        ### Not sure whether to add abs here. Though the element in x bin_edges shuld be incremental, the precision problem of MPC may cuase additional unexpected behavior.
-                        pred = (x[i] - x[i - 1]) >= remove_ref
-                        x = jax.lax.cond(
-                            pred, lambda _: x.at[count].set(x[i]), lambda _: x, count
-                        )
-                        count = jax.lax.cond(pred, lambda c: c + 1, lambda c: c, count)
-                        return count, x
-
-                    st = (1, x)
-                    count, x = jax.lax.fori_loop(1, n, loop_body, st)
-                    return x, count
-
-                bin_edges, unqiue_count = jax.vmap(
-                    eliminate_func, in_axes=1, out_axes=(1, 0)
-                )(bin_edges)
+                bin_edges, unqiue_count = remove_bin_func(bin_edges, remove_ref)
                 self.unqiue_count = unqiue_count
 
         else:
@@ -881,32 +898,11 @@ class KBinsDiscretizer:
                 #     return jnp.r_[col_min, (centers[1:] + centers[:-1]) * 0.5, col_max]
                 # bin_edges = jax.vmap(bin_func, in_axes=(1, None, 0), out_axes=1)(X, KMEANS, diverse_n_bins)
 
-            ### remove the small interval by iteratively comparing the adjacent bin edges
-            ### and remove the small interval by setting the bin edge to the adjacent one.
+            ### remove the small interval
             ### unqiue_count is used to record the number of unique bin edges for each feature
             ### which is used in transform function.
             if remove_bin == True and self.strategy in ("quantile", "kmeans"):
-
-                def eliminate_func(x):
-                    n = x.shape[0]
-
-                    def loop_body(i, st):
-                        count, x = st
-                        ### Not sure whether to add abs here. Though the element in x bin_edges shuld be incremental, the precision problem of MPC may cuase addition unexpected behavior.
-                        pred = (x[i] - x[i - 1]) >= remove_ref
-                        x = jax.lax.cond(
-                            pred, lambda _: x.at[count].set(x[i]), lambda _: x, count
-                        )
-                        count = jax.lax.cond(pred, lambda c: c + 1, lambda c: c, count)
-                        return count, x
-
-                    st = (1, x)
-                    count, x = jax.lax.fori_loop(1, n, loop_body, st)
-                    return x, count
-
-                bin_edges, unqiue_count = jax.vmap(
-                    eliminate_func, in_axes=1, out_axes=(1, 0)
-                )(bin_edges)
+                bin_edges, unqiue_count = remove_bin_func(bin_edges, remove_ref)
                 self.unqiue_count = unqiue_count
             else:
                 self.unqiue_count = diverse_n_bins + 1
