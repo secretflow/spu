@@ -292,7 +292,7 @@ Value msb_s(SPUContext* ctx, const Value& x) {
   TRY_DISPATCH(ctx, x);
 
   // TODO: this is buggy.
-  const auto field = x.storage_type().as<Ring2k>()->field();
+  const auto field = ctx->getField();
 
   if (ctx->hasKernel("msb_a2b")) {
     if (IsB(x)) {
