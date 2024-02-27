@@ -2,7 +2,7 @@ dm-haiku==0.0.10
 plotnine
 jraph
 optax==0.1.7
-torch==2.1.0
-torch_xla==2.1.0
+torch==2.2.0
+torch_xla==2.2.0
 torchvision
 jax[cpu]<=0.4.23

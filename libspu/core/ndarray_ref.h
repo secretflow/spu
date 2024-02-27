@@ -203,17 +203,19 @@ class NdArrayRef {
           strides_(array.strides_),
           elsize_(array.elsize()),
           index_(index) {
+      if (array.use_fast_indexing_) {
+        auto flat_array = array.reshape({array.numel()});
+#ifndef NDEBUG
+        SPU_ENFORCE(array.data() == flat_array.data());
+#endif
+        shape_ = flat_array.shape_;
+        strides_ = flat_array.strides_;
+      }
       if (!index.inBounds(array.shape())) {
         index_.reset();
       } else {
         ptr_ = const_cast<std::byte*>(&array.at(*index_));
         if (array.use_fast_indexing_) {
-          auto flat_array = array.reshape({array.numel()});
-#ifndef NDEBUG
-          SPU_ENFORCE(array.data() == flat_array.data());
-#endif
-          shape_ = flat_array.shape_;
-          strides_ = flat_array.strides_;
           index_ = {flattenIndex(*index_, array.shape_)};
         }
       }

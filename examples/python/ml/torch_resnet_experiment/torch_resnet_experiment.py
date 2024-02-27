@@ -81,14 +81,9 @@ def run_inference_on_cpu(model, image):
 
 def run_inference_on_spu(model, image):
     print('Run on SPU\n------\n')
-    params_buffers = OrderedDict()
-    for k, v in model.named_parameters():
-        params_buffers[k] = v
-    for k, v in model.named_buffers():
-        params_buffers[k] = v
     params = ppd.device("P1")(
         lambda input: tree_map(lambda x: x.detach().numpy(), input)
-    )(params_buffers)
+    )(model.state_dict())
     image_hat = ppd.device("P2")(lambda x: x.detach().numpy())(image)
     res = ppd.device("SPU")(model)(params, image_hat)
     predicted_label = ppd.get(res).argmax(-1).item()
