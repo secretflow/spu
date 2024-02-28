@@ -410,6 +410,39 @@ class UnitTests(unittest.TestCase):
             sk_inv_transformed, spu_inv_transformed, rtol=0, atol=1e-4
         )
 
+    def test_kbinsdiscretizer_uniform_diverse_n_bins_no_vectorize(self):
+        sim = spsim.Simulator.simple(
+            3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM64
+        )
+
+        def kbinsdiscretize(X):
+            transformer = KBinsDiscretizer(
+                n_bins=3, diverse_n_bins=np.array([2, 3, 3, 3]), strategy='uniform'
+            )
+            transformed = transformer.fit_transform(X, vectorize=False)
+            inv_transformed = transformer.inverse_transform(transformed)
+            return transformed, inv_transformed
+
+        X = jnp.array([[0, 0, 0, 0], [0, 1, 1, 0], [1, 2, 2, 1], [1, 2, 2, 2]])
+        n_bins = jnp.array([2, 3, 3, 3])
+
+        transformer = preprocessing.KBinsDiscretizer(
+            n_bins=n_bins, encode='ordinal', strategy='uniform', subsample=None
+        )
+        sk_transformed = transformer.fit_transform(X)
+        sk_inv_transformed = transformer.inverse_transform(sk_transformed)
+        # print("sklearn:\n", sk_transformed)
+        # print("sklearn:\n", sk_inv_transformed)
+
+        spu_transformed, spu_inv_transformed = spsim.sim_jax(sim, kbinsdiscretize)(X)
+        # print("result\n", spu_transformed)
+        # print("result\n", spu_inv_transformed)
+
+        np.testing.assert_allclose(sk_transformed, spu_transformed, rtol=0, atol=1e-4)
+        np.testing.assert_allclose(
+            sk_inv_transformed, spu_inv_transformed, rtol=0, atol=1e-4
+        )
+
     def test_kbinsdiscretizer_quantile(self):
         sim = spsim.Simulator.simple(
             3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM64
@@ -506,6 +539,40 @@ class UnitTests(unittest.TestCase):
         spu_transformed, spu_inv_transformed = spsim.sim_jax(sim, kbinsdiscretize)(
             X, n_bins
         )
+        # print("result\n", spu_transformed)
+        # print("result\n", spu_inv_transformed)
+
+        np.testing.assert_allclose(sk_transformed, spu_transformed, rtol=0, atol=1e-4)
+        ### The error here is larger than expected. If atol is 1e-4, there will be an error.
+        np.testing.assert_allclose(
+            sk_inv_transformed, spu_inv_transformed, rtol=0, atol=1e-3
+        )
+
+    def test_kbinsdiscretizer_quantile_diverse_n_bins_no_vectorize(self):
+        sim = spsim.Simulator.simple(
+            3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM64
+        )
+
+        def kbinsdiscretize(X):
+            transformer = KBinsDiscretizer(
+                n_bins=3, diverse_n_bins=np.array([2, 3, 3, 3]), strategy='quantile'
+            )
+            transformed = transformer.fit_transform(X, vectorize=False, remove_bin=True)
+            inv_transformed = transformer.inverse_transform(transformed)
+            return transformed, inv_transformed
+
+        X = jnp.array([[0, 0, 0, 0], [0, 1, 1, 0], [1, 2, 2, 1], [1, 2, 2, 2]])
+        n_bins = jnp.array([2, 3, 3, 3])
+
+        transformer = preprocessing.KBinsDiscretizer(
+            n_bins=n_bins, encode='ordinal', strategy='quantile', subsample=None
+        )
+        sk_transformed = transformer.fit_transform(X)
+        sk_inv_transformed = transformer.inverse_transform(sk_transformed)
+        # print("sklearn:\n", sk_transformed)
+        # print("sklearn:\n", sk_inv_transformed)
+
+        spu_transformed, spu_inv_transformed = spsim.sim_jax(sim, kbinsdiscretize)(X)
         # print("result\n", spu_transformed)
         # print("result\n", spu_inv_transformed)
 
@@ -666,6 +733,45 @@ class UnitTests(unittest.TestCase):
             sk_inv_transformed, spu_inv_transformed, rtol=0, atol=1e-4
         )
 
+    def test_kbinsdiscretizer_quantile_sample_weight_diverse_n_bins_no_vectorize(self):
+        sim = spsim.Simulator.simple(
+            3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM64
+        )
+
+        def kbinsdiscretize(X, sample_weight):
+            transformer = KBinsDiscretizer(
+                n_bins=3, diverse_n_bins=np.array([2, 3, 3, 3]), strategy='quantile'
+            )
+            transformed = transformer.fit_transform(
+                X, vectorize=False, sample_weight=sample_weight, remove_bin=True
+            )
+            inv_transformed = transformer.inverse_transform(transformed)
+            return transformed, inv_transformed
+
+        X = jnp.array([[0, 0, 0, 0], [0, 1, 1, 0], [1, 2, 2, 1], [1, 2, 2, 2]])
+        n_bins = jnp.array([2, 3, 3, 3])
+        sample_weight = jnp.array([1, 1, 3, 1])
+
+        transformer = preprocessing.KBinsDiscretizer(
+            n_bins=n_bins, encode='ordinal', strategy='quantile', subsample=None
+        )
+        sk_transformed = transformer.fit_transform(X, sample_weight=sample_weight)
+        sk_inv_transformed = transformer.inverse_transform(sk_transformed)
+        # print("sklearn:\n", sk_transformed)
+        # print("sklearn:\n", sk_inv_transformed)
+
+        spu_transformed, spu_inv_transformed = spsim.sim_jax(sim, kbinsdiscretize)(
+            X, sample_weight
+        )
+        # print("result\n", spu_transformed)
+        # print("result\n", spu_inv_transformed)
+
+        np.testing.assert_allclose(sk_transformed, spu_transformed, rtol=0, atol=1e-3)
+        ### The error here is larger than expected. If atol is 1e-4, there will be an error.
+        np.testing.assert_allclose(
+            sk_inv_transformed, spu_inv_transformed, rtol=0, atol=1e-3
+        )
+
     def test_kbinsdiscretizer_kmeans(self):
         sim = spsim.Simulator.simple(
             3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM64
@@ -694,6 +800,40 @@ class UnitTests(unittest.TestCase):
         # print("result\n", spu_inv_transformed)
 
         np.testing.assert_allclose(sk_transformed, spu_transformed, rtol=0, atol=1e-4)
+        np.testing.assert_allclose(
+            sk_inv_transformed, spu_inv_transformed, rtol=0, atol=1e-4
+        )
+
+    def test_kbinsdiscretizer_kmeans_diverse_n_bins_no_vectorize(self):
+        sim = spsim.Simulator.simple(
+            3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM64
+        )
+
+        def kbinsdiscretize(X):
+            transformer = KBinsDiscretizer(
+                n_bins=3, diverse_n_bins=np.array([2, 3, 3, 3]), strategy='kmeans'
+            )
+            transformed = transformer.fit_transform(X, vectorize=False, remove_bin=True)
+            inv_transformed = transformer.inverse_transform(transformed)
+            return transformed, inv_transformed
+
+        X = jnp.array([[0, 0, 0, 0], [0, 1, 1, 0], [1, 2, 2, 1], [1, 2, 2, 2]])
+        n_bins = jnp.array([2, 3, 3, 3])
+
+        transformer = preprocessing.KBinsDiscretizer(
+            n_bins=n_bins, encode='ordinal', strategy='kmeans', subsample=None
+        )
+        sk_transformed = transformer.fit_transform(X)
+        sk_inv_transformed = transformer.inverse_transform(sk_transformed)
+        # print("sklearn:\n", sk_transformed)
+        # print("sklearn:\n", sk_inv_transformed)
+
+        spu_transformed, spu_inv_transformed = spsim.sim_jax(sim, kbinsdiscretize)(X)
+        # print("result\n", spu_transformed)
+        # print("result\n", spu_inv_transformed)
+
+        ### The error here is larger than expected. If atol is 1e-4, there will be an error.
+        np.testing.assert_allclose(sk_transformed, spu_transformed, rtol=0, atol=1e-3)
         np.testing.assert_allclose(
             sk_inv_transformed, spu_inv_transformed, rtol=0, atol=1e-4
         )
@@ -731,11 +871,12 @@ class UnitTests(unittest.TestCase):
     #         3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM64
     #     )
 
+    #     transformer_spu = KBinsDiscretizer(n_bins=4, diverse_n_bins=np.array([2, 4, 4, 4]), strategy='kmeans')
     #     def kbinsdiscretize(X, n_bins):
-    #         transformer = KBinsDiscretizer(n_bins=4, diverse_n_bins=n_bins, strategy='kmeans')
-    #         transformer.fit(X)
-    #         transformed = transformer.transform(X)
-    #         inv_transformed = transformer.inverse_transform(transformed)
+    #         # transformer_spu = KBinsDiscretizer(n_bins=4, diverse_n_bins=np.array([2, 4, 4, 4]), strategy='kmeans')
+    #         transformer_spu.fit(X)
+    #         transformed = transformer_spu.transform(X)
+    #         inv_transformed = transformer_spu.inverse_transform(transformed)
     #         return transformed, inv_transformed
 
     #     X = jnp.array([[1, 1, 1, 1], [2, 2, 2, 2], [3, 3, 3, 3], [4, 4, 4, 4]])

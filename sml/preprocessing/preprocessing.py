@@ -597,7 +597,56 @@ class MaxAbsScaler:
         return X * self.scale_
 
 
-def remove_bin_func(bin_edges, remove_ref):
+def _weighted_percentile(x, q, w):
+    """Compute weighted percentile
+
+    Parameters
+    ----------
+    x : {array-like} of shape (n_samples,)
+        Values to take the weighted percentile of.
+
+    q : int
+        Percentile to compute. Must be value between 0 and 100.
+
+    w : {array-like} of shape (n_samples,)
+        Weights for each value in `array`. Must be same shape as `array` or
+        of shape `(array.shape[0],)`.
+
+    Returns
+    -------
+    {array-like} of shape (n_bins + 1, )
+        Weighted percentile.
+    """
+    x = x.reshape((-1, 1))
+    if x.shape != w.shape and x.shape[0] == w.shape[0]:
+        w = jnp.tile(w, (x.shape[1], 1)).T
+    sorted_idx = jnp.argsort(x, axis=0)
+    sorted_weights = jnp.take_along_axis(w, sorted_idx, axis=0)
+    weight_cdf = jnp.cumsum(sorted_weights, axis=0)
+    adjusted_percentile = q / 100 * weight_cdf[-1]
+
+    def searchsorted_element(x_inner):
+        encoding = jnp.where(x_inner >= weight_cdf[0:-1, 0], 1, 0)
+        return jnp.sum(encoding)
+
+    percentile_idx = jax.vmap(searchsorted_element)(adjusted_percentile)
+    col_index = jnp.arange(x.shape[1])
+    percentile_in_sorted = sorted_idx[percentile_idx, col_index]
+    percentile = x[percentile_in_sorted, col_index]
+    return percentile[0]
+
+
+def _kmeans_bin_func(x, n_bins, minval, maxval, KMEANS):
+    """Compute bins using k-means clustering."""
+    uniform_edges = jnp.linspace(minval, maxval, n_bins + 1)
+    init = (uniform_edges[1:] + uniform_edges[:-1])[:, None] * 0.5
+    km = KMEANS(n_clusters=n_bins, n_samples=x.shape[0], init=init, max_iter=10)
+    km.fit(x)
+    centers = jnp.sort(km._centers[:, 0])
+    return jnp.r_[minval, (centers[1:] + centers[:-1]) * 0.5, maxval]
+
+
+def _remove_bin_func(bin_edges, remove_ref):
     """
     Remove the small interval by iteratively comparing the adjacent bin edges
     and remove the small interval by setting the bin edge to the adjacent one.
@@ -647,7 +696,10 @@ class KBinsDiscretizer:
     ----------
     n_bins : int, default=5
         The number of bins to produce. n_bins should be int >= 2.
-        If diverse_n_bins is not None, n_bins should be int <= max(diverse_n_bins).
+        If diverse_n_bins is not None, n_bins should be int = max(diverse_n_bins).
+        Though n_bins can be int > max(diverse_n_bins), it will introduce much redundant
+        computation when removing bins with small interval. So it is not recommended but
+        feasible for some specific requirement.
 
     diverse_n_bins : {array-like} of shape (n_features,) or None, default=None
         By default, all features are binned in the same number of bins.
@@ -674,7 +726,15 @@ class KBinsDiscretizer:
         self.diverse_n_bins = diverse_n_bins
         self.strategy = strategy
 
-    def fit(self, X, sample_weight=None, *, remove_bin=False, remove_ref=1e-3):
+    def fit(
+        self,
+        X,
+        sample_weight=None,
+        vectorize=True,
+        *,
+        remove_bin=False,
+        remove_ref=1e-3,
+    ):
         """Fit the estimator.
 
         JAX does not support array with dynamic shape or type object, so the feature which
@@ -696,6 +756,28 @@ class KBinsDiscretizer:
             Contains weight values to be associated with each sample.
             Only possible when `strategy` is set to `"quantile"`.
 
+        vectorize : bool, default=True
+            Set to False to disable vectorization when diverse_n_bins is not
+            None. The vectorized version supports computation with encrypted
+            diverse_n_bins, in comparison, the non-vectorized version can only
+            compute with diverse_n_bins of type numpy.ndarray (note that array
+            created from jax.numpy will also create problems).
+            There is currently no support for a vectorized form of kmeans.
+            In addition, the vectorized version shows different performance and
+            precision error with the non-vectorized version.
+            Generally speaking, the vectorized version introduces more
+            computation to enable more parallelization, which means more data
+            sent and fewer send actions. However, when there is a great value
+            gap between the n_bins and elements in diverse_n_bins, the
+            vectorized version will introduce too much redundant computation
+            that makes both data sent and send actions exceed the cost of the
+            non-vectorized version. A special case is that vectorized form of
+            quantile with sample_weight always shows more data sent and send
+            actions than non-vectorized version.
+            The vectorized version shows slightly less precision error than
+            the non-vectorized version.
+            Users can choose the version according to their specific requirements.
+
         remove_bin : bool, default=False
             Set to True to remove bins with the small interval, which is less than
             remove_ref. This option is only available when `strategy` is set to
@@ -715,7 +797,7 @@ class KBinsDiscretizer:
             )
         n_bins = self.n_bins
 
-        if self.diverse_n_bins == None:
+        if self.diverse_n_bins is None:
             if self.strategy == "uniform":
                 bin_func = lambda x: jnp.linspace(jnp.min(x), jnp.max(x), n_bins + 1)
                 bin_edges = jax.vmap(bin_func, in_axes=1, out_axes=1)(X)
@@ -729,29 +811,6 @@ class KBinsDiscretizer:
                 else:
 
                     def bin_func(x):
-                        def _weighted_percentile(x, q, w):
-                            x = x.reshape((-1, 1))
-                            if x.shape != w.shape and x.shape[0] == w.shape[0]:
-                                w = jnp.tile(w, (x.shape[1], 1)).T
-                            sorted_idx = jnp.argsort(x, axis=0)
-                            sorted_weights = jnp.take_along_axis(w, sorted_idx, axis=0)
-                            weight_cdf = jnp.cumsum(sorted_weights, axis=0)
-                            adjusted_percentile = q / 100 * weight_cdf[-1]
-
-                            def searchsorted_element(x_inner):
-                                encoding = jnp.where(
-                                    x_inner >= weight_cdf[0:-1, 0], 1, 0
-                                )
-                                return jnp.sum(encoding)
-
-                            percentile_idx = jax.vmap(searchsorted_element)(
-                                adjusted_percentile
-                            )
-                            col_index = jnp.arange(x.shape[1])
-                            percentile_in_sorted = sorted_idx[percentile_idx, col_index]
-                            percentile = x[percentile_in_sorted, col_index]
-                            return percentile[0]
-
                         return jax.vmap(_weighted_percentile, (None, 0, None))(
                             x, quantiles, sample_weight
                         )
@@ -761,18 +820,11 @@ class KBinsDiscretizer:
             if self.strategy == "kmeans":
                 from ..cluster.kmeans import KMEANS
 
-                def bin_func(x, KMeans):
+                def bin_func(x, KMEANS):
                     x = x[:, None]
-                    col_min = jnp.min(x)
-                    col_max = jnp.max(x)
-                    uniform_edges = jnp.linspace(col_min, col_max, n_bins + 1)
-                    init = (uniform_edges[1:] + uniform_edges[:-1])[:, None] * 0.5
-                    km = KMeans(
-                        n_clusters=n_bins, n_samples=x.shape[0], init=init, max_iter=10
-                    )
-                    km.fit(x)
-                    centers = jnp.sort(km._centers[:, 0])
-                    return jnp.r_[col_min, (centers[1:] + centers[:-1]) * 0.5, col_max]
+                    minval = jnp.min(x)
+                    maxval = jnp.max(x)
+                    return _kmeans_bin_func(x, n_bins, minval, maxval, KMEANS)
 
                 bin_edges = jax.vmap(bin_func, in_axes=(1, None), out_axes=1)(X, KMEANS)
 
@@ -780,10 +832,10 @@ class KBinsDiscretizer:
             ### unqiue_count is used to record the number of unique bin edges for each feature
             ### which is used in transform function.
             if remove_bin == True and self.strategy in ("quantile", "kmeans"):
-                bin_edges, unqiue_count = remove_bin_func(bin_edges, remove_ref)
+                bin_edges, unqiue_count = _remove_bin_func(bin_edges, remove_ref)
                 self.unqiue_count = unqiue_count
 
-        else:
+        elif vectorize == True:
             diverse_n_bins = self.diverse_n_bins
             ### directly using jnp.linspace will cause dynamic shape problem,
             ### so we need to use jnp.arange and a branch function jnp.where
@@ -811,8 +863,8 @@ class KBinsDiscretizer:
             ### Here we use a duplicated number in qunaitle to control the number of bins
             ### Since there is precision problem in MPC, there may be undiscovered unexpected behavior.
             if self.strategy == "quantile":
-                arrange_array = jnp.arange(n_bins + 1)
                 if sample_weight is None:
+                    arrange_array = jnp.arange(n_bins + 1)
 
                     def bin_func(x, diverse_n_bin):
                         delta = 100 / diverse_n_bin
@@ -830,6 +882,7 @@ class KBinsDiscretizer:
                     )
 
                 else:
+                    arrange_array = jnp.arange(n_bins + 1)
 
                     def bin_func(x, diverse_n_bin):
                         delta = 100 / diverse_n_bin
@@ -841,29 +894,6 @@ class KBinsDiscretizer:
 
                         quantiles = jax.vmap(quantiles_func)(arrange_array)
 
-                        def _weighted_percentile(x, q, w):
-                            x = x.reshape((-1, 1))
-                            if x.shape != w.shape and x.shape[0] == w.shape[0]:
-                                w = jnp.tile(w, (x.shape[1], 1)).T
-                            sorted_idx = jnp.argsort(x, axis=0)
-                            sorted_weights = jnp.take_along_axis(w, sorted_idx, axis=0)
-                            weight_cdf = jnp.cumsum(sorted_weights, axis=0)
-                            adjusted_percentile = q / 100 * weight_cdf[-1]
-
-                            def searchsorted_element(x_inner):
-                                encoding = jnp.where(
-                                    x_inner >= weight_cdf[0:-1, 0], 1, 0
-                                )
-                                return jnp.sum(encoding)
-
-                            percentile_idx = jax.vmap(searchsorted_element)(
-                                adjusted_percentile
-                            )
-                            col_index = jnp.arange(x.shape[1])
-                            percentile_in_sorted = sorted_idx[percentile_idx, col_index]
-                            percentile = x[percentile_in_sorted, col_index]
-                            return percentile[0]
-
                         return jax.vmap(_weighted_percentile, (None, 0, None))(
                             x, quantiles, sample_weight
                         )
@@ -871,20 +901,21 @@ class KBinsDiscretizer:
                     bin_edges = jax.vmap(bin_func, in_axes=(1, 0), out_axes=1)(
                         X, diverse_n_bins
                     )
+
             if self.strategy == "kmeans":
                 raise ValueError(
-                    " Currently, the strategy 'kmeans' is not supported when diverse_n_bins is not None."
+                    " Currently, the strategy 'kmeans' is not supported when diverse_n_bins is not None and vectorize=True."
                 )
                 ### The following code is correct for some cases, but it is not a general solution.
                 # from ..cluster.kmeans import KMEANS
                 # arrange_array = jnp.arange(n_bins + 1)
                 # def bin_func(x, KMeans, diverse_n_bin):
                 #     x = x[:, None]
-                #     col_min = jnp.min(x)
-                #     col_max = jnp.max(x)
-                #     delta = (col_max - col_min) / diverse_n_bin
+                #     minval = jnp.min(x)
+                #     maxval = jnp.max(x)
+                #     delta = (maxval - minval) / diverse_n_bin
                 #     def bin_element_func(x_inner):
-                #         return jnp.where(x_inner <= diverse_n_bin, col_min + x_inner * delta, col_max)
+                #         return jnp.where(x_inner <= diverse_n_bin, minval + x_inner * delta, maxval)
                 #     uniform_edges = jax.vmap(bin_element_func)(arrange_array)
                 #     def uniform_func(x_inner):
                 #         return jnp.where(x_inner < diverse_n_bin, (uniform_edges[x_inner] + uniform_edges[x_inner + 1]) * 0.5, (uniform_edges[diverse_n_bin - 1] + uniform_edges[diverse_n_bin]) * 0.5)
@@ -894,15 +925,161 @@ class KBinsDiscretizer:
                 ### Though it seems to successfuly control the number of centers,
                 ### the problem here is the KMENAS will ruturn invalid center as 0
                 ### The idea now is to use predict to get the valid centers.
+                ### But it seems to be not an efficient solution
                 #     centers = jnp.sort(km._centers[:, 0])
-                #     return jnp.r_[col_min, (centers[1:] + centers[:-1]) * 0.5, col_max]
+                #     return jnp.r_[minval, (centers[1:] + centers[:-1]) * 0.5, maxval]
                 # bin_edges = jax.vmap(bin_func, in_axes=(1, None, 0), out_axes=1)(X, KMEANS, diverse_n_bins)
 
             ### remove the small interval
             ### unqiue_count is used to record the number of unique bin edges for each feature
             ### which is used in transform function.
             if remove_bin == True and self.strategy in ("quantile", "kmeans"):
-                bin_edges, unqiue_count = remove_bin_func(bin_edges, remove_ref)
+                bin_edges, unqiue_count = _remove_bin_func(bin_edges, remove_ref)
+                self.unqiue_count = unqiue_count
+            else:
+                self.unqiue_count = diverse_n_bins + 1
+        else:
+            ### the following code is the non-vectorized version
+            ### they can only works with diverse_n_bins of type numpy.ndarray
+            diverse_n_bins = self.diverse_n_bins
+            if self.strategy == "uniform":
+                for index_n_bin in range(diverse_n_bins.shape[0]):
+                    x = X[:, index_n_bin]
+                    diverse_n_bin = diverse_n_bins[index_n_bin]
+                    ### According to emulation, add a branch on diverse_n_bin
+                    ### will reduce communication cost
+                    if diverse_n_bin < n_bins:
+                        maxval = jnp.max(x)
+                        diverse_bin_edges = jnp.linspace(
+                            jnp.min(x), maxval, diverse_n_bin + 1
+                        )
+                        if index_n_bin == 0:
+                            bin_edges = jnp.concatenate(
+                                [
+                                    diverse_bin_edges,
+                                    jnp.full((n_bins - diverse_n_bin), maxval),
+                                ]
+                            ).reshape(-1, 1)
+                        else:
+                            bin_edges = jnp.concatenate(
+                                [
+                                    bin_edges,
+                                    jnp.concatenate(
+                                        [
+                                            diverse_bin_edges,
+                                            jnp.full((n_bins - diverse_n_bin), maxval),
+                                        ]
+                                    ).reshape(-1, 1),
+                                ],
+                                axis=1,
+                            )
+                    else:
+                        diverse_bin_edges = jnp.linspace(
+                            jnp.min(x), jnp.max(x), diverse_n_bin + 1
+                        ).reshape(-1, 1)
+                        if index_n_bin == 0:
+                            bin_edges = diverse_bin_edges
+                        else:
+                            bin_edges = jnp.concatenate(
+                                [bin_edges, diverse_bin_edges], axis=1
+                            )
+            if self.strategy == "quantile":
+                if sample_weight is None:
+                    quantiles = jnp.linspace(0, 100, n_bins + 1)
+                    for index_n_bin in range(diverse_n_bins.shape[0]):
+                        x = X[:, index_n_bin]
+                        diverse_n_bin = diverse_n_bins[index_n_bin]
+                        maxval = jnp.max(x)
+                        diverse_quantiles = jnp.linspace(0, 100, diverse_n_bin + 1)
+                        diverse_bin_edges = jnp.percentile(x, diverse_quantiles)
+                        if index_n_bin == 0:
+                            bin_edges = jnp.concatenate(
+                                [
+                                    diverse_bin_edges,
+                                    jnp.full((n_bins - diverse_n_bin), maxval),
+                                ]
+                            ).reshape(-1, 1)
+                        else:
+                            bin_edges = jnp.concatenate(
+                                [
+                                    bin_edges,
+                                    jnp.concatenate(
+                                        [
+                                            diverse_bin_edges,
+                                            jnp.full((n_bins - diverse_n_bin), maxval),
+                                        ]
+                                    ).reshape(-1, 1),
+                                ],
+                                axis=1,
+                            )
+                else:
+                    for index_n_bin in range(diverse_n_bins.shape[0]):
+                        x = X[:, index_n_bin]
+                        diverse_n_bin = diverse_n_bins[index_n_bin]
+                        maxval = jnp.max(x)
+                        diverse_quantiles = jnp.linspace(0, 100, diverse_n_bin + 1)
+                        diverse_bin_edges = jax.vmap(
+                            _weighted_percentile, (None, 0, None)
+                        )(x, diverse_quantiles, sample_weight)
+                        if index_n_bin == 0:
+                            bin_edges = jnp.concatenate(
+                                [
+                                    diverse_bin_edges,
+                                    jnp.full((n_bins - diverse_n_bin), maxval),
+                                ]
+                            ).reshape(-1, 1)
+                        else:
+                            bin_edges = jnp.concatenate(
+                                [
+                                    bin_edges,
+                                    jnp.concatenate(
+                                        [
+                                            diverse_bin_edges,
+                                            jnp.full((n_bins - diverse_n_bin), maxval),
+                                        ]
+                                    ).reshape(-1, 1),
+                                ],
+                                axis=1,
+                            )
+            if self.strategy == "kmeans":
+                from ..cluster.kmeans import KMEANS
+
+                for index_n_bin in range(diverse_n_bins.shape[0]):
+                    x = X[:, index_n_bin]
+                    diverse_n_bin = diverse_n_bins[index_n_bin]
+
+                    x = x[:, None]
+                    minval = jnp.min(x)
+                    maxval = jnp.max(x)
+                    diverse_bin_edges = _kmeans_bin_func(
+                        x, diverse_n_bin, minval, maxval, KMEANS
+                    )
+                    if index_n_bin == 0:
+                        bin_edges = jnp.concatenate(
+                            [
+                                diverse_bin_edges,
+                                jnp.full((n_bins - diverse_n_bin), maxval),
+                            ]
+                        ).reshape(-1, 1)
+                    else:
+                        bin_edges = jnp.concatenate(
+                            [
+                                bin_edges,
+                                jnp.concatenate(
+                                    [
+                                        diverse_bin_edges,
+                                        jnp.full((n_bins - diverse_n_bin), maxval),
+                                    ]
+                                ).reshape(-1, 1),
+                            ],
+                            axis=1,
+                        )
+
+            ### remove the small interval
+            ### unqiue_count is used to record the number of unique bin edges for each feature
+            ### which is used in transform function.
+            if remove_bin == True and self.strategy in ("quantile", "kmeans"):
+                bin_edges, unqiue_count = _remove_bin_func(bin_edges, remove_ref)
                 self.unqiue_count = unqiue_count
             else:
                 self.unqiue_count = diverse_n_bins + 1
@@ -928,7 +1105,7 @@ class KBinsDiscretizer:
         """
         bin_edges = self.bin_edges_
 
-        if self.diverse_n_bins != None or (
+        if self.diverse_n_bins is not None or (
             self.remove_bin == True and self.strategy in ("quantile", "kmeans")
         ):
             unqiue_count = self.unqiue_count
@@ -959,7 +1136,13 @@ class KBinsDiscretizer:
             return compute_rows_vmap
 
     def fit_transform(
-        self, X, sample_weight=None, *, remove_bin=False, remove_ref=1e-3
+        self,
+        X,
+        sample_weight=None,
+        vectorize=True,
+        *,
+        remove_bin=False,
+        remove_ref=1e-3,
     ):
         """fit and transform with same input data.
 
@@ -971,6 +1154,28 @@ class KBinsDiscretizer:
         sample_weight : {array-like} of shape (n_samples,)
             Contains weight values to be associated with each sample.
             Only possible when `strategy` is set to `"quantile"`.
+
+        vectorize : bool, default=True
+            Set to False to disable vectorization when diverse_n_bins is not
+            None. The vectorized version supports computation with encrypted
+            diverse_n_bins, in comparison, the non-vectorized version can only
+            compute with diverse_n_bins of type numpy.ndarray (note that array
+            created from jax.numpy will also create problems).
+            There is currently no support for a vectorized form of kmeans.
+            In addition, the vectorized version shows different performance and
+            precision error with the non-vectorized version.
+            Generally speaking, the vectorized version introduces more
+            computation to enable more parallelization, which means more data
+            sent and fewer send actions. However, when there is a great value
+            gap between the n_bins and elements in diverse_n_bins, the
+            vectorized version will introduce too much redundant computation
+            that makes both data sent and send actions exceed the cost of the
+            non-vectorized version. A special case is that vectorized form of
+            quantile with sample_weight always shows more data sent and send
+            actions than non-vectorized version.
+            The vectorized version shows slightly less precision error than
+            the non-vectorized version.
+            Users can choose the version according to their specific requirements.
 
         remove_bin : bool, default=False
             Set to True to remove bins with the small interval, which is less than
@@ -988,7 +1193,11 @@ class KBinsDiscretizer:
             Transformed array.
         """
         return self.fit(
-            X, sample_weight=sample_weight, remove_bin=remove_bin, remove_ref=remove_ref
+            X,
+            sample_weight=sample_weight,
+            vectorize=vectorize,
+            remove_bin=remove_bin,
+            remove_ref=remove_ref,
         ).transform(X)
 
     def inverse_transform(self, X):

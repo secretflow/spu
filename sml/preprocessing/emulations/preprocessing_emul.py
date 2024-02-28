@@ -373,6 +373,37 @@ def emul_kbinsdiscretizer_uniform_diverse_n_bins():
     )
 
 
+def emul_kbinsdiscretizer_uniform_diverse_n_bins_no_vectorize():
+    def kbinsdiscretize(X):
+        transformer = KBinsDiscretizer(
+            n_bins=3, diverse_n_bins=np.array([2, 3, 3, 3]), strategy='uniform'
+        )
+        transformed = transformer.fit_transform(X, vectorize=False)
+        inv_transformed = transformer.inverse_transform(transformed)
+        return transformed, inv_transformed
+
+    X = jnp.array([[0, 0, 0, 0], [0, 1, 1, 0], [1, 2, 2, 1], [1, 2, 2, 2]])
+    n_bins = jnp.array([2, 3, 3, 3])
+
+    transformer = preprocessing.KBinsDiscretizer(
+        n_bins=n_bins, encode='ordinal', strategy='uniform', subsample=None
+    )
+    sk_transformed = transformer.fit_transform(X)
+    sk_inv_transformed = transformer.inverse_transform(sk_transformed)
+    # print("sklearn:\n", sk_transformed)
+    # print("sklearn:\n", sk_inv_transformed)
+
+    X = emulator.seal(X)
+    spu_transformed, spu_inv_transformed = emulator.run(kbinsdiscretize)(X)
+    # print("result\n", spu_transformed)
+    # print("result\n", spu_inv_transformed)
+
+    np.testing.assert_allclose(sk_transformed, spu_transformed, rtol=0, atol=1e-4)
+    np.testing.assert_allclose(
+        sk_inv_transformed, spu_inv_transformed, rtol=0, atol=1e-4
+    )
+
+
 def emul_kbinsdiscretizer_quantile():
     def kbinsdiscretize(X):
         transformer = KBinsDiscretizer(n_bins=3, strategy='quantile')
@@ -458,6 +489,38 @@ def emul_kbinsdiscretizer_quantile_diverse_n_bins2():
 
     X, n_bins = emulator.seal(X, n_bins)
     spu_transformed, spu_inv_transformed = emulator.run(kbinsdiscretize)(X, n_bins)
+    # print("result\n", spu_transformed)
+    # print("result\n", spu_inv_transformed)
+
+    np.testing.assert_allclose(sk_transformed, spu_transformed, rtol=0, atol=1e-4)
+    ### The error here is larger than expected. If atol is 1e-4, there will be an error.
+    np.testing.assert_allclose(
+        sk_inv_transformed, spu_inv_transformed, rtol=0, atol=1e-3
+    )
+
+
+def emul_kbinsdiscretizer_quantile_diverse_n_bins_no_vectorize():
+    def kbinsdiscretize(X):
+        transformer = KBinsDiscretizer(
+            n_bins=3, diverse_n_bins=np.array([2, 3, 3, 3]), strategy='quantile'
+        )
+        transformed = transformer.fit_transform(X, vectorize=False, remove_bin=True)
+        inv_transformed = transformer.inverse_transform(transformed)
+        return transformed, inv_transformed
+
+    X = jnp.array([[0, 0, 0, 0], [0, 1, 1, 0], [1, 2, 2, 1], [1, 2, 2, 2]])
+    n_bins = jnp.array([2, 3, 3, 3])
+
+    transformer = preprocessing.KBinsDiscretizer(
+        n_bins=n_bins, encode='ordinal', strategy='quantile', subsample=None
+    )
+    sk_transformed = transformer.fit_transform(X)
+    sk_inv_transformed = transformer.inverse_transform(sk_transformed)
+    # print("sklearn:\n", sk_transformed)
+    # print("sklearn:\n", sk_inv_transformed)
+
+    X = emulator.seal(X)
+    spu_transformed, spu_inv_transformed = emulator.run(kbinsdiscretize)(X)
     # print("result\n", spu_transformed)
     # print("result\n", spu_inv_transformed)
 
@@ -611,6 +674,43 @@ def emul_kbinsdiscretizer_quantile_sample_weight_diverse_n_bins2():
     )
 
 
+def emul_kbinsdiscretizer_quantile_sample_weight_diverse_n_bins_no_vectorize():
+    def kbinsdiscretize(X, sample_weight):
+        transformer = KBinsDiscretizer(
+            n_bins=3, diverse_n_bins=np.array([2, 3, 3, 3]), strategy='quantile'
+        )
+        transformed = transformer.fit_transform(
+            X, vectorize=False, sample_weight=sample_weight, remove_bin=True
+        )
+        inv_transformed = transformer.inverse_transform(transformed)
+        return transformed, inv_transformed
+
+    X = jnp.array([[0, 0, 0, 0], [0, 1, 1, 0], [1, 2, 2, 1], [1, 2, 2, 2]])
+    n_bins = jnp.array([2, 3, 3, 3])
+    sample_weight = jnp.array([1, 1, 3, 1])
+
+    transformer = preprocessing.KBinsDiscretizer(
+        n_bins=n_bins, encode='ordinal', strategy='quantile', subsample=None
+    )
+    sk_transformed = transformer.fit_transform(X, sample_weight=sample_weight)
+    sk_inv_transformed = transformer.inverse_transform(sk_transformed)
+    # print("sklearn:\n", sk_transformed)
+    # print("sklearn:\n", sk_inv_transformed)
+
+    X, sample_weight = emulator.seal(X, sample_weight)
+    spu_transformed, spu_inv_transformed = emulator.run(kbinsdiscretize)(
+        X, sample_weight
+    )
+    # print("result\n", spu_transformed)
+    # print("result\n", spu_inv_transformed)
+
+    np.testing.assert_allclose(sk_transformed, spu_transformed, rtol=0, atol=1e-3)
+    ### The error here is larger than expected. If atol is 1e-4, there will be an error.
+    np.testing.assert_allclose(
+        sk_inv_transformed, spu_inv_transformed, rtol=0, atol=1e-3
+    )
+
+
 def emul_kbinsdiscretizer_kmeans():
     def kbinsdiscretize(X):
         transformer = KBinsDiscretizer(n_bins=4, strategy='kmeans')
@@ -641,6 +741,38 @@ def emul_kbinsdiscretizer_kmeans():
     )
 
 
+def emul_kbinsdiscretizer_kmeans_diverse_n_bins_no_vectorize():
+    def kbinsdiscretize(X):
+        transformer = KBinsDiscretizer(
+            n_bins=3, diverse_n_bins=np.array([2, 3, 3, 3]), strategy='kmeans'
+        )
+        transformed = transformer.fit_transform(X, vectorize=False, remove_bin=True)
+        inv_transformed = transformer.inverse_transform(transformed)
+        return transformed, inv_transformed
+
+    X = jnp.array([[0, 0, 0, 0], [0, 1, 1, 0], [1, 2, 2, 1], [1, 2, 2, 2]])
+    n_bins = jnp.array([2, 3, 3, 3])
+
+    transformer = preprocessing.KBinsDiscretizer(
+        n_bins=n_bins, encode='ordinal', strategy='kmeans', subsample=None
+    )
+    sk_transformed = transformer.fit_transform(X)
+    sk_inv_transformed = transformer.inverse_transform(sk_transformed)
+    # print("sklearn:\n", sk_transformed)
+    # print("sklearn:\n", sk_inv_transformed)
+
+    X = emulator.seal(X)
+    spu_transformed, spu_inv_transformed = emulator.run(kbinsdiscretize)(X)
+    # print("result\n", spu_transformed)
+    # print("result\n", spu_inv_transformed)
+
+    ### The error here is larger than expected. If atol is 1e-4, there will be an error.
+    np.testing.assert_allclose(sk_transformed, spu_transformed, rtol=0, atol=1e-3)
+    np.testing.assert_allclose(
+        sk_inv_transformed, spu_inv_transformed, rtol=0, atol=1e-4
+    )
+
+
 if __name__ == "__main__":
     try:
         # bandwidth and latency only work for docker mode
@@ -663,13 +795,17 @@ if __name__ == "__main__":
         emul_maxabsscaler_zero_maxabs()
         emul_kbinsdiscretizer_uniform()
         emul_kbinsdiscretizer_uniform_diverse_n_bins()
+        emul_kbinsdiscretizer_uniform_diverse_n_bins_no_vectorize()
         emul_kbinsdiscretizer_quantile()
         emul_kbinsdiscretizer_quantile_diverse_n_bins()
         emul_kbinsdiscretizer_quantile_diverse_n_bins2()
+        emul_kbinsdiscretizer_quantile_diverse_n_bins_no_vectorize()
         emul_kbinsdiscretizer_quantile_eliminate()
         emul_kbinsdiscretizer_quantile_sample_weight()
         emul_kbinsdiscretizer_quantile_sample_weight_diverse_n_bins()
         emul_kbinsdiscretizer_quantile_sample_weight_diverse_n_bins2()
+        emul_kbinsdiscretizer_quantile_sample_weight_diverse_n_bins_no_vectorize()
         emul_kbinsdiscretizer_kmeans()
+        emul_kbinsdiscretizer_kmeans_diverse_n_bins_no_vectorize()
     finally:
         emulator.down()
