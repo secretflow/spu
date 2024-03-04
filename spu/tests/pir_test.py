@@ -20,20 +20,28 @@ from google.protobuf import json_format
 
 import spu.libspu.link as link
 import spu.psi as psi
-from spu.tests.utils import create_clean_folder, create_link_desc, wc_count
+from spu.tests.utils import create_link_desc, wc_count
+from tempfile import TemporaryDirectory
 
 
 class UnitTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.tempdir_ = TemporaryDirectory()
+        return super().setUp()
+
+    def tearDown(self) -> None:
+        self.tempdir_.cleanup()
+        return super().tearDown()
+
     def test_pir(self):
         # setup stage
-
-        server_setup_config = '''
-        {
+        server_setup_config = f'''
+        {{
             "mode": "MODE_SERVER_SETUP",
             "pir_protocol": "PIR_PROTOCOL_KEYWORD_PIR_APSI",
-            "pir_server_config": {
+            "pir_server_config": {{
                 "input_path": "spu/tests/data/alice.csv",
-                "setup_path": "/tmp/spu_test_pir_pir_server_setup",
+                "setup_path": "{self.tempdir_.name}/spu_test_pir_pir_server_setup",
                 "key_columns": [
                     "id"
                 ],
@@ -42,48 +50,48 @@ class UnitTests(unittest.TestCase):
                 ],
                 "label_max_len": 288,
                 "bucket_size": 1000000,
-                "apsi_server_config": {
-                    "oprf_key_path": "/tmp/spu_test_pir_server_secret_key.bin",
+                "apsi_server_config": {{
+                    "oprf_key_path": "{self.tempdir_.name}/spu_test_pir_server_secret_key.bin",
                     "num_per_query": 1,
                     "compressed": false
-                }
-            }
-        }
+                }}
+            }}
+        }}
         '''
 
-        with open("/tmp/spu_test_pir_server_secret_key.bin", 'wb') as f:
+        with open(
+            f"{self.tempdir_.name}/spu_test_pir_server_secret_key.bin", 'wb'
+        ) as f:
             f.write(
                 bytes.fromhex(
                     "000102030405060708090a0b0c0d0e0ff0e0d0c0b0a090807060504030201000"
                 )
             )
 
-        create_clean_folder("/tmp/spu_test_pir_pir_server_setup")
-
         psi.pir(json_format.ParseDict(json.loads(server_setup_config), psi.PirConfig()))
 
-        server_online_config = '''
-        {
+        server_online_config = f'''
+        {{
             "mode": "MODE_SERVER_ONLINE",
             "pir_protocol": "PIR_PROTOCOL_KEYWORD_PIR_APSI",
-            "pir_server_config": {
-                "setup_path": "/tmp/spu_test_pir_pir_server_setup"
-            }
-        }
+            "pir_server_config": {{
+                "setup_path": "{self.tempdir_.name}/spu_test_pir_pir_server_setup"
+            }}
+        }}
         '''
 
-        client_online_config = '''
-        {
+        client_online_config = f'''
+        {{
             "mode": "MODE_CLIENT",
             "pir_protocol": "PIR_PROTOCOL_KEYWORD_PIR_APSI",
-            "pir_client_config": {
-                "input_path": "/tmp/spu_test_pir_pir_client.csv",
+            "pir_client_config": {{
+                "input_path": "{self.tempdir_.name}/spu_test_pir_pir_client.csv",
                 "key_columns": [
                     "id"
                 ],
-                "output_path": "/tmp/spu_test_pir_pir_output.csv"
-            }
-        }
+                "output_path": "{self.tempdir_.name}/spu_test_pir_pir_output.csv"
+            }}
+        }}
         '''
 
         pir_client_input_content = '''id
@@ -91,7 +99,7 @@ user808
 xxx
 '''
 
-        with open("/tmp/spu_test_pir_pir_client.csv", 'w') as f:
+        with open(f"{self.tempdir_.name}/spu_test_pir_pir_client.csv", 'w') as f:
             f.write(pir_client_input_content)
 
         configs = [
@@ -118,7 +126,9 @@ xxx
             self.assertEqual(job.exitcode, 0)
 
         # including title, actual matched item cnt is 1.
-        self.assertEqual(wc_count("/tmp/spu_test_pir_pir_output.csv"), 2)
+        self.assertEqual(
+            wc_count(f"{self.tempdir_.name}/spu_test_pir_pir_output.csv"), 2
+        )
 
 
 if __name__ == '__main__':

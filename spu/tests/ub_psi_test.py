@@ -20,45 +20,54 @@ from google.protobuf import json_format
 
 import spu.libspu.link as link
 import spu.psi as psi
-from spu.tests.utils import create_clean_folder, create_link_desc
+from spu.tests.utils import create_link_desc
+from tempfile import TemporaryDirectory
 
 
 class UnitTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.tempdir_ = TemporaryDirectory()
+        return super().setUp()
+
+    def tearDown(self) -> None:
+        self.tempdir_.cleanup()
+        return super().tearDown()
+
     def test_ub_psi(self):
         link_desc = create_link_desc(2)
 
         # offline stage
-        server_offline_config = '''
-        {
+        server_offline_config = f'''
+        {{
             "mode": "MODE_OFFLINE",
             "role": "ROLE_SERVER",
-            "cache_path": "/tmp/spu_test_ub_psi_server_cache",
-            "input_config": {
+            "cache_path": "{self.tempdir_.name}/spu_test_ub_psi_server_cache",
+            "input_config": {{
                 "path": "spu/tests/data/alice.csv"
-            },
+            }},
             "keys": [
                 "id"
             ],
-            "server_secret_key_path": "/tmp/spu_test_ub_psi_server_secret_key.key"
-        }
+            "server_secret_key_path": "{self.tempdir_.name}/spu_test_ub_psi_server_secret_key.key"
+        }}
         '''
 
-        client_offline_config = '''
-        {
+        client_offline_config = f'''
+        {{
             "mode": "MODE_OFFLINE",
             "role": "ROLE_CLIENT",
-            "cache_path": "/tmp/spu_test_ub_psi_client_cache"
-        }
+            "cache_path": "{self.tempdir_.name}/spu_test_ub_psi_client_cache"
+        }}
         '''
 
-        with open("/tmp/spu_test_ub_psi_server_secret_key.key", 'wb') as f:
+        with open(
+            f"{self.tempdir_.name}/spu_test_ub_psi_server_secret_key.key", 'wb'
+        ) as f:
             f.write(
                 bytes.fromhex(
                     "000102030405060708090a0b0c0d0e0ff0e0d0c0b0a090807060504030201000"
                 )
             )
-
-        create_clean_folder("/tmp/spu_test_ub_psi_server_cache")
 
         configs = [
             json_format.ParseDict(json.loads(server_offline_config), psi.UbPsiConfig()),
@@ -82,30 +91,30 @@ class UnitTests(unittest.TestCase):
             self.assertEqual(job.exitcode, 0)
 
         # online stage
-        server_online_config = '''
-        {
+        server_online_config = f'''
+        {{
             "mode": "MODE_ONLINE",
             "role": "ROLE_SERVER",
-            "server_secret_key_path": "/tmp/spu_test_ub_psi_server_secret_key.key",
-            "cache_path": "/tmp/spu_test_ub_psi_server_cache"
-        }
+            "server_secret_key_path": "{self.tempdir_.name}/spu_test_ub_psi_server_secret_key.key",
+            "cache_path": "{self.tempdir_.name}/spu_test_ub_psi_server_cache"
+        }}
         '''
 
-        client_online_config = '''
-        {
+        client_online_config = f'''
+        {{
             "mode": "MODE_ONLINE",
             "role": "ROLE_CLIENT",
-            "input_config": {
+            "input_config": {{
                 "path": "spu/tests/data/bob.csv"
-            },
-            "output_config": {
-                "path": "/tmp/spu_test_ubpsi_bob_psi_ouput.csv"
-            },
+            }},
+            "output_config": {{
+                "path": "{self.tempdir_.name}/spu_test_ubpsi_bob_psi_ouput.csv"
+            }},
             "keys": [
                 "id"
             ],
-            "cache_path": "/tmp/spu_test_ub_psi_client_cache"
-        }
+            "cache_path": "{self.tempdir_.name}/spu_test_ub_psi_client_cache"
+        }}
         '''
 
         configs = [

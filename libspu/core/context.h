@@ -38,6 +38,9 @@ class SPUContext final {
   // TODO(jint): do we really need a link here? how about a FHE context.
   std::shared_ptr<yacl::link::Context> lctx_;
 
+  // Min number of cores in SPU cluster
+  int32_t max_cluster_level_concurrency_;
+
  public:
   explicit SPUContext(const RuntimeConfig& config,
                       const std::shared_ptr<yacl::link::Context>& lctx);
@@ -80,6 +83,12 @@ class SPUContext final {
   template <typename StateT>
   StateT* getState() {
     return prot_->template getState<StateT>();
+  }
+
+  // If any task assumes same level of parallelism across all instances,
+  // this is the max number of tasks to launch at the same time.
+  int32_t getClusterLevelMaxConcurrency() const {
+    return max_cluster_level_concurrency_;
   }
 };
 

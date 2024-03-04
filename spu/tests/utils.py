@@ -16,15 +16,13 @@ import os
 import shutil
 import subprocess
 import time
-from socket import socket
 
 import spu.libspu.link as link
+from numpy.random import randint
 
 
 def get_free_port():
-    with socket() as s:
-        s.bind(("localhost", 0))
-        return s.getsockname()[1]
+    return randint(low=49152, high=65536)
 
 
 def wc_count(file_name):
@@ -42,10 +40,3 @@ def create_link_desc(world_size: int):
         lctx_desc.add_party(f"id_{rank}", f"127.0.0.1:{port}")
 
     return lctx_desc
-
-
-def create_clean_folder(path: str):
-    if os.path.exists(path):
-        shutil.rmtree(path)
-
-    os.mkdir(path)

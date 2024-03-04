@@ -14,6 +14,9 @@
 
 #include "libspu/core/context.h"
 
+#include "yacl/link/algorithm/allgather.h"
+#include "yacl/utils/parallel.h"
+
 #include "libspu/core/trace.h"
 
 namespace spu {
@@ -35,7 +38,26 @@ SPUContext::SPUContext(const RuntimeConfig& config,
                        const std::shared_ptr<yacl::link::Context>& lctx)
     : config_(config),
       prot_(std::make_unique<Object>(genRootObjectId(lctx))),
-      lctx_(lctx) {}
+      lctx_(lctx),
+      max_cluster_level_concurrency_(yacl::get_num_threads()) {
+  // Limit number of threads
+  if (config.max_concurrency() > 0) {
+    yacl::set_num_threads(config.max_concurrency());
+    max_cluster_level_concurrency_ = std::min<int32_t>(
+        max_cluster_level_concurrency_, config.max_concurrency());
+  }
+
+  if (lctx_) {
+    auto other_max = yacl::link::AllGather(
+        lctx, {&max_cluster_level_concurrency_, sizeof(int32_t)}, "num_cores");
+
+    // Comupte min
+    for (const auto& o : other_max) {
+      max_cluster_level_concurrency_ = std::min<int32_t>(
+          max_cluster_level_concurrency_, o.data<int32_t>()[0]);
+    }
+  }
+}
 
 std::unique_ptr<SPUContext> SPUContext::fork() const {
   std::shared_ptr<yacl::link::Context> new_lctx =
