@@ -15,6 +15,7 @@
 #include "libspu/core/config.h"
 
 #include "prelude.h"
+#include "yacl/utils/parallel.h"
 
 namespace spu {
 namespace {
@@ -42,6 +43,10 @@ void populateRuntimeConfig(RuntimeConfig& cfg) {
   // mandatory fields.
   SPU_ENFORCE(cfg.protocol() != ProtocolKind::PROT_INVALID);
   SPU_ENFORCE(cfg.field() != FieldType::FT_INVALID);
+
+  if (cfg.max_concurrency() == 0) {
+    cfg.set_max_concurrency(yacl::get_num_threads());
+  }
 
   //
   if (cfg.fxp_fraction_bits() == 0) {

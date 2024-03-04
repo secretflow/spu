@@ -21,62 +21,71 @@ from google.protobuf import json_format
 import spu.libspu.link as link
 import spu.psi as psi
 from spu.tests.utils import create_link_desc, wc_count
+from tempfile import TemporaryDirectory
 
 
 class UnitTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.tempdir_ = TemporaryDirectory()
+        return super().setUp()
+
+    def tearDown(self) -> None:
+        self.tempdir_.cleanup()
+        return super().tearDown()
+
     def test_psi(self):
         link_desc = create_link_desc(2)
 
-        receiver_config_json = '''
-        {
-            "protocol_config": {
+        receiver_config_json = f'''
+        {{
+            "protocol_config": {{
                 "protocol": "PROTOCOL_ECDH",
-                "ecdh_config": {
+                "ecdh_config": {{
                     "curve": "CURVE_25519"
-                },
+                }},
                 "role": "ROLE_RECEIVER",
                 "broadcast_result": true
-            },
-            "input_config": {
+            }},
+            "input_config": {{
                 "type": "IO_TYPE_FILE_CSV",
                 "path": "spu/tests/data/alice.csv"
-            },
-            "output_config": {
+            }},
+            "output_config": {{
                 "type": "IO_TYPE_FILE_CSV",
-                "path": "/tmp/spu_test_psi_alice_psi_ouput.csv"
-            },
+                "path": "{self.tempdir_.name}/spu_test_psi_alice_psi_ouput.csv"
+            }},
             "keys": [
                 "id"
             ],
             "skip_duplicates_check": true,
             "disable_alignment": true
-        }
+        }}
         '''
 
-        sender_config_json = '''
-        {
-            "protocol_config": {
+        sender_config_json = f'''
+        {{
+            "protocol_config": {{
                 "protocol": "PROTOCOL_ECDH",
-                "ecdh_config": {
+                "ecdh_config": {{
                     "curve": "CURVE_25519"
-                },
+                }},
                 "role": "ROLE_SENDER",
                 "broadcast_result": true
-            },
-            "input_config": {
+            }},
+            "input_config": {{
                 "type": "IO_TYPE_FILE_CSV",
                 "path": "spu/tests/data/bob.csv"
-            },
-            "output_config": {
+            }},
+            "output_config": {{
                 "type": "IO_TYPE_FILE_CSV",
-                "path": "/tmp/spu_test_psi_bob_psi_ouput.csv"
-            },
+                "path": "{self.tempdir_.name}/spu_test_psi_bob_psi_ouput.csv"
+            }},
             "keys": [
                 "id"
             ],
             "skip_duplicates_check": true,
             "disable_alignment": true
-        }
+        }}
         '''
 
         configs = [
@@ -101,8 +110,8 @@ class UnitTests(unittest.TestCase):
             self.assertEqual(job.exitcode, 0)
 
         self.assertEqual(
-            wc_count("/tmp/spu_test_psi_alice_psi_ouput.csv"),
-            wc_count("/tmp/spu_test_psi_bob_psi_ouput.csv"),
+            wc_count(f"{self.tempdir_.name}/spu_test_psi_alice_psi_ouput.csv"),
+            wc_count(f"{self.tempdir_.name}/spu_test_psi_bob_psi_ouput.csv"),
         )
 
 

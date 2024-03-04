@@ -68,8 +68,8 @@ void BindLibs(py::module& m) {
         psi::BucketPsiConfig config;
         YACL_ENFORCE(config.ParseFromString(config_pb));
 
-        psi::BucketPsi psi(config, lctx, ic_mode);
-        auto r = psi.Run(std::move(progress_callbacks), callbacks_interval_ms);
+        auto r = psi::RunLegacyPsi(config, lctx, std::move(progress_callbacks),
+                                   callbacks_interval_ms, ic_mode);
         return r.SerializeAsString();
       },
       py::arg("link_context"), py::arg("psi_config"),

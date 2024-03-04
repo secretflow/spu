@@ -51,10 +51,10 @@ def _libpsi():
         http_archive,
         name = "psi",
         urls = [
-            "https://github.com/secretflow/psi/archive/refs/tags/v0.3.0.dev240222.tar.gz",
+            "https://github.com/secretflow/psi/archive/refs/tags/v0.3.0.dev240304.tar.gz",
         ],
-        strip_prefix = "psi-0.3.0.dev240222",
-        sha256 = "a7319040510a1581741f05ac4b31e3d887ba8ba4766154736f96d76970d00de5",
+        strip_prefix = "psi-0.3.0.dev240304",
+        sha256 = "6e56dceaffbe67f7d17fbb32a5486ec31c6f17156aadb9ac57f47e4c7fe6b384",
     )
 
 def _rules_proto_grpc():

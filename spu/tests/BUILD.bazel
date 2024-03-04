@@ -224,6 +224,7 @@ py_test(
     name = "link_test",
     srcs = ["link_test.py"],
     deps = [
+        ":utils",
         "//spu:api",
     ],
 )
@@ -308,6 +309,7 @@ py_test(
         "exclusive-if-local",
     ],
     deps = [
+        ":utils",
         "//spu/utils:distributed",
     ],
 )

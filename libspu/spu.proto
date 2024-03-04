@@ -174,6 +174,9 @@ message RuntimeConfig {
   // 0(default) indicates implementation defined.
   int64 fxp_fraction_bits = 3;
 
+  // Max number of cores
+  int32 max_concurrency = 4;
+
   ///////////////////////////////////////
   // Advanced
   ///////////////////////////////////////

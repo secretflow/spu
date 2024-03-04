@@ -23,19 +23,14 @@ import multiprocess
 
 import spu.libspu.link as link
 from socket import socket
-
-
-def _rand_port():
-    with socket() as s:
-        s.bind(("localhost", 0))
-        return s.getsockname()[1]
+from spu.tests.utils import get_free_port
 
 
 class UnitTests(unittest.TestCase):
     def test_link_brpc(self):
         desc = link.Desc()
-        desc.add_party("alice", f"127.0.0.1:{_rand_port()}")
-        desc.add_party("bob", f"127.0.0.1:{_rand_port()}")
+        desc.add_party("alice", f"127.0.0.1:{get_free_port()}")
+        desc.add_party("bob", f"127.0.0.1:{get_free_port()}")
 
         def proc(rank):
             data = "hello" if rank == 0 else "world"
@@ -90,8 +85,8 @@ class UnitTests(unittest.TestCase):
 
     def test_link_send_recv(self):
         desc = link.Desc()
-        desc.add_party("alice", f"127.0.0.1:{_rand_port()}")
-        desc.add_party("bob", f"127.0.0.1:{_rand_port()}")
+        desc.add_party("alice", f"127.0.0.1:{get_free_port()}")
+        desc.add_party("bob", f"127.0.0.1:{get_free_port()}")
 
         def proc(rank):
             lctx = link.create_brpc(desc, rank)
@@ -116,8 +111,8 @@ class UnitTests(unittest.TestCase):
 
     def test_link_send_async(self):
         desc = link.Desc()
-        desc.add_party("alice", f"127.0.0.1:{_rand_port()}")
-        desc.add_party("bob", f"127.0.0.1:{_rand_port()}")
+        desc.add_party("alice", f"127.0.0.1:{get_free_port()}")
+        desc.add_party("bob", f"127.0.0.1:{get_free_port()}")
 
         def proc(rank):
             lctx = link.create_brpc(desc, rank)
@@ -140,8 +135,8 @@ class UnitTests(unittest.TestCase):
 
     def test_link_next_rank(self):
         desc = link.Desc()
-        desc.add_party("alice", f"127.0.0.1:{_rand_port()}")
-        desc.add_party("bob", f"127.0.0.1:{_rand_port()}")
+        desc.add_party("alice", f"127.0.0.1:{get_free_port()}")
+        desc.add_party("bob", f"127.0.0.1:{get_free_port()}")
 
         def proc(rank):
             lctx = link.create_brpc(desc, rank)

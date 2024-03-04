@@ -27,20 +27,13 @@ import tensorflow as tf
 
 import spu.utils.distributed as ppd
 from spu import spu_pb2
-
-
-def unused_tcp_port() -> int:
-    """Return an unused port"""
-    with closing(socket.socket(socket.AF_INET, socket.SOCK_STREAM)) as sock:
-        sock.bind(("localhost", 0))
-        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        return cast(int, sock.getsockname()[1])
+from spu.tests.utils import get_free_port
 
 
 TEST_NODES_DEF = {
-    "node:0": f"127.0.0.1:{unused_tcp_port()}",
-    "node:1": f"127.0.0.1:{unused_tcp_port()}",
-    "node:2": f"127.0.0.1:{unused_tcp_port()}",
+    "node:0": f"127.0.0.1:{get_free_port()}",
+    "node:1": f"127.0.0.1:{get_free_port()}",
+    "node:2": f"127.0.0.1:{get_free_port()}",
 }
 
 
@@ -50,9 +43,9 @@ TEST_DEVICES_DEF = {
         "config": {
             "node_ids": ["node:0", "node:1", "node:2"],
             "spu_internal_addrs": [
-                f"127.0.0.1:{unused_tcp_port()}",
-                f"127.0.0.1:{unused_tcp_port()}",
-                f"127.0.0.1:{unused_tcp_port()}",
+                f"127.0.0.1:{get_free_port()}",
+                f"127.0.0.1:{get_free_port()}",
+                f"127.0.0.1:{get_free_port()}",
             ],
             "runtime_config": {
                 "protocol": "ABY3",
