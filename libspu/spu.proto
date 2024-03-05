@@ -24,6 +24,8 @@ syntax = "proto3";
 
 package spu;
 
+option java_package = "org.secretflow.spu";
+
 // The SPU datatype
 enum DataType {
   DT_INVALID = 0;
