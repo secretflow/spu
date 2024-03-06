@@ -13,4 +13,4 @@
 # limitations under the License.
 
 
-__version__ = "0.8.0.dev$$DATE$$"
+__version__ = "0.8.0b0"
