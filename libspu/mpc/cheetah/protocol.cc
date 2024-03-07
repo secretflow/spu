@@ -64,7 +64,7 @@ void regCheetahProtocol(SPUContext* ctx,
                   cheetah::LShiftA, cheetah::ARShiftB, cheetah::LShiftB,
                   cheetah::RShiftB,                                    //
                   cheetah::BitrevB,                                    //
-                  cheetah::TruncA,                                     //
+                  cheetah::TruncPrA,                                   //
                   cheetah::MsbA2B,                                     //
                   cheetah::CommonTypeB, cheetah::CommonTypeV,          //
                   cheetah::CastTypeB, cheetah::AndBP, cheetah::AndBB,  //

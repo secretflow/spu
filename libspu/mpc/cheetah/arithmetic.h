@@ -188,7 +188,8 @@ class Conv2DAA : public Conv2DKernel {
                   int64_t stride_w) const override;
 };
 
-class TruncA : public TruncAKernel {
+// 1-bit approximated truncation with positive heuristic
+class TruncPrA : public TruncAKernel {
  public:
   static constexpr char kBindName[] = "trunc_a";
 
@@ -201,6 +202,23 @@ class TruncA : public TruncAKernel {
 
   TruncLsbRounding lsbRounding() const override {
     return TruncLsbRounding::Probabilistic;
+  }
+};
+
+// exact truncation with positive heuristic
+class TruncA : public TruncAKernel {
+ public:
+  static constexpr char kBindName[] = "trunc_a";
+
+  Kind kind() const override { return Kind::Dynamic; }
+
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& x, size_t bits,
+                  SignType sign) const override;
+
+  bool hasMsbError() const override { return false; }
+
+  TruncLsbRounding lsbRounding() const override {
+    return TruncLsbRounding::Nearest;
   }
 };
 
