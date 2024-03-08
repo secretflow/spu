@@ -135,12 +135,13 @@ workflows:
     when: << pipeline.parameters.build-and-run >>
     jobs:
       - linux_ut:
+          name: linux_ut-<<matrix.resource_class>>
           matrix:
             parameters:
-              resource_class: ["2xlarge", "arm.2xlarge"]
+              resource_class: ["2xlarge+", "arm.2xlarge"]
       - linux_ml_ut:
           requires:
-            - linux_ut
+            - linux_ut-2xlarge+
           filters:
             branches:
               only:
