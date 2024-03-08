@@ -26,25 +26,25 @@ namespace spu::kernel::hal {
 namespace detail {
 
 // Calc:
-//   y = x*c0 + x^2*c1 + x^3*c2 + ... + x^n*c[n-1]
-//
-// Coefficients should be ordered from the order 1 (linear) term first, ending
-// with the highest order term. (Constant is not included).
+//   y = c0 + x*c1 + x^2*c2 + x^3*c3 + ... + x^n*c[n]
 Value polynomial(SPUContext* ctx, const Value& x,
                  absl::Span<Value const> coeffs) {
   SPU_TRACE_HAL_DISP(ctx, x);
   SPU_ENFORCE(x.isFxp());
   SPU_ENFORCE(!coeffs.empty());
 
-  Value x_pow = x;
+  if (coeffs.size() == 1U) {
+    return coeffs[0];
+  }
+  Value x_pow = constant(ctx, 1.0F, x.dtype(), x.shape());
   Value res = _mul(ctx, x_pow, coeffs[0]);
 
   const auto fbits = ctx->getFxpBits();
   for (size_t i = 1; i < coeffs.size(); i++) {
-    if ((i & 1) != 0U) {
-      // x^{even order} is always positive
+    if ((i & 1) == 0U) {
       x_pow = _trunc(ctx, _mul(ctx, x_pow, x), fbits, SignType::Positive);
     } else {
+      // x^{even order} is always positive
       x_pow = _trunc(ctx, _mul(ctx, x_pow, x), fbits);
     }
     res = _add(ctx, res, _mul(ctx, x_pow, coeffs[i]));

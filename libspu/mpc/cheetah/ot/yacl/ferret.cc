@@ -153,14 +153,16 @@ struct YaclFerretOt::Impl {
   }
 
  public:
-  Impl(std::shared_ptr<Communicator> conn, bool is_sender, bool malicious)
+  Impl(std::shared_ptr<Communicator> conn, bool is_sender, bool use_soft_spoken)
       : is_sender_(is_sender) {
-    SPU_ENFORCE(malicious == false,
-                "YACL does NOT support malicious ferret ote");
     SPU_ENFORCE(conn != nullptr);
 
     io_ = std::make_shared<BufferedIO>(conn);
-    ferret_ = std::make_shared<YaclFerretOTeAdapter>(conn->lctx(), is_sender);
+    if (use_soft_spoken) {
+      ferret_ = std::make_shared<YaclSsOTeAdapter>(conn->lctx(), is_sender);
+    } else {
+      ferret_ = std::make_shared<YaclFerretOTeAdapter>(conn->lctx(), is_sender);
+    }
     ferret_->OneTimeSetup();
   }
 
@@ -738,8 +740,8 @@ struct YaclFerretOt::Impl {
 };
 
 YaclFerretOt::YaclFerretOt(std::shared_ptr<Communicator> conn, bool is_sender,
-                           bool malicious) {
-  impl_ = std::make_shared<Impl>(conn, is_sender, malicious);
+                           bool use_soft_spoken) {
+  impl_ = std::make_shared<Impl>(conn, is_sender, use_soft_spoken);
 }
 
 int YaclFerretOt::Rank() const { return impl_->Rank(); }

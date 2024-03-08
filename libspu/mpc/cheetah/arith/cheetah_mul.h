@@ -26,6 +26,9 @@ namespace spu::mpc::cheetah {
 // Ref: Rathee et al. "Improved Multiplication Triple Generation over Rings
 // via RLWE-based AHE"
 //  https://eprint.iacr.org/2019/577.pdf
+// Ref: Lu et al. "BumbleBee: Secure Two-party Inference Framework for Large
+// Transformers"
+//  https://eprint.iacr.org/2023/1678
 class CheetahMul {
  public:
   explicit CheetahMul(std::shared_ptr<yacl::link::Context> lctx,

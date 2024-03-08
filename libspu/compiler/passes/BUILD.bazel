@@ -258,6 +258,18 @@ spu_cc_library(
 )
 
 spu_cc_library(
+    name = "partial_sort_to_topk",
+    srcs = ["partial_sort_to_topk.cc"],
+    hdrs = ["passes.h"],
+    deps = [
+        ":pass_details",
+        "//libspu/dialect/pphlo:dialect",
+        "@llvm-project//mlir:IR",
+        "@llvm-project//mlir:TransformUtils",
+    ],
+)
+
+spu_cc_library(
     name = "all_passes",
     hdrs = ["register_passes.h"],
     deps = [
@@ -272,6 +284,7 @@ spu_cc_library(
         ":optimize_maxpool",
         ":optimize_select",
         ":optimize_sqrt_plus_eps",
+        ":partial_sort_to_topk",
         ":reduce_truncation",
         ":rewrite_div_sqrt_patterns",
         ":sort_lowering",

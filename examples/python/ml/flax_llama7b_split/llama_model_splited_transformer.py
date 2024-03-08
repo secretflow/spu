@@ -16,54 +16,48 @@
 # Original Source Code Form
 # [EasyLM](https://github.com/young-geng/EasyLM/tree/main)
 
-import os
-from shutil import copyfile
-from typing import Any, Dict, List, Optional, Tuple, Union
 import json
+import os
 import tempfile
 from functools import partial
-from jax import jit
-import numpy as np
+from shutil import copyfile
+from typing import Any, Dict, List, Optional, Tuple, Union
+
+import einops
+import flax.linen as nn
 import jax
 import jax.numpy as jnp
-from jax import lax
-from jax.sharding import PartitionSpec as PS
-import flax.linen as nn
+import numpy as np
+import sentencepiece as spm
+from EasyLM.bpt import blockwise_attn, blockwise_ffn
+from EasyLM.jax_utils import (
+    get_gradient_checkpoint_policy,
+    get_jax_mesh,
+    with_sharding_constraint,
+)
 from flax.core.frozen_dict import FrozenDict, freeze, unfreeze
 from flax.linen import combine_masks, make_causal_mask
+from flax.linen import partitioning as nn_partitioning
 from flax.linen.attention import dot_product_attention_weights
 from flax.traverse_util import flatten_dict, unflatten_dict
-from flax.linen import partitioning as nn_partitioning
-import einops
-
-import sentencepiece as spm
+from jax import jit, lax
+from jax.sharding import PartitionSpec as PS
+from ml_collections import ConfigDict
+from ml_collections.config_dict import config_dict
+from mlxu import function_args_to_config, load_pickle, open_file
 from transformers.configuration_utils import PretrainedConfig
-from transformers.utils import logging
-from transformers.tokenization_utils import PreTrainedTokenizer
 from transformers.modeling_flax_outputs import FlaxBaseModelOutput, FlaxCausalLMOutput
 from transformers.modeling_flax_utils import (
     ACT2FN,
     FlaxPreTrainedModel,
     append_call_sample_docstring,
 )
+from transformers.tokenization_utils import PreTrainedTokenizer
 from transformers.utils import (
     add_start_docstrings,
     add_start_docstrings_to_model_forward,
     logging,
 )
-
-
-from ml_collections import ConfigDict
-from ml_collections.config_dict import config_dict
-from mlxu import function_args_to_config, load_pickle, open_file
-
-from EasyLM.bpt import blockwise_ffn, blockwise_attn
-from EasyLM.jax_utils import (
-    with_sharding_constraint,
-    get_jax_mesh,
-    get_gradient_checkpoint_policy,
-)
-
 
 LLAMA_STANDARD_CONFIGS = {
     '7b': {

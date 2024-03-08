@@ -55,7 +55,8 @@ TEST_P(EqualProtTest, Basic) {
   utils::simulate(kWorldSize, [&](std::shared_ptr<yacl::link::Context> ctx) {
     auto conn = std::make_shared<Communicator>(ctx);
     int rank = ctx->Rank();
-    auto base = std::make_shared<BasicOTProtocols>(conn);
+    auto base = std::make_shared<BasicOTProtocols>(
+        conn, CheetahOtKind::YACL_Softspoken);
     EqualProtocol eq_prot(base);
     eq_oup[rank] = eq_prot.Compute(inp[rank]);
   });

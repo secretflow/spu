@@ -13,14 +13,10 @@
 # limitations under the License.
 
 
-import socket
 import sys
 import unittest
-from contextlib import closing
-from typing import cast
 
 import jax.numpy as jnp
-import multiprocess
 import numpy as np
 import numpy.testing as npt
 import tensorflow as tf
@@ -28,7 +24,7 @@ import tensorflow as tf
 import spu.utils.distributed as ppd
 from spu import spu_pb2
 from spu.tests.utils import get_free_port
-
+from spu.utils.polyfill import Process
 
 TEST_NODES_DEF = {
     "node:0": f"127.0.0.1:{get_free_port()}",
@@ -89,15 +85,13 @@ class UnitTests(unittest.TestCase):
     def setUpClass(cls):
         cls.workers = []
         for node_id in TEST_NODES_DEF.keys():
-            worker = multiprocess.Process(
-                target=ppd.RPC.serve, args=(node_id, TEST_NODES_DEF)
-            )
+            worker = Process(target=ppd.RPC.serve, args=(node_id, TEST_NODES_DEF))
             worker.start()
             cls.workers.append(worker)
         import time
 
         # wait for all process serving.
-        time.sleep(0.05)
+        time.sleep(10)
 
         ppd.init(TEST_NODES_DEF, TEST_DEVICES_DEF)
 

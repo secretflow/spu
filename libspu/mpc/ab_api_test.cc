@@ -168,8 +168,12 @@ TEST_P(ArithmeticTest, MulA1B) {
     const size_t K = spu::SizeOf(conf.field()) * 8;
 
     /* GIVEN */
-    auto p0 = rand_p(obj.get(), kShape);
-    auto p1 = rand_p(obj.get(), kShape);
+    auto p0 = rand_p(obj.get(), conf.protocol() == ProtocolKind::CHEETAH
+                                    ? Shape({200, 26})
+                                    : kShape);
+    auto p1 = rand_p(obj.get(), conf.protocol() == ProtocolKind::CHEETAH
+                                    ? Shape({200, 26})
+                                    : kShape);
     p1 = rshift_p(obj.get(), p1, K - 1);
     auto a0 = p2a(obj.get(), p0);
     auto a1 = p2b(obj.get(), p1);
@@ -738,9 +742,16 @@ TEST_P(ConversionTest, EqualAA) {
       return;
     }
     /* GIVEN */
-    auto r0 = rand_p(obj.get(), kShape);
-    auto r1 = rand_p(obj.get(), kShape);
-    auto r2 = rand_p(obj.get(), kShape);
+    // NOTE(lwj) for Cheetah, set a lager case to test the tield dispatch
+    auto r0 = rand_p(obj.get(), conf.protocol() == ProtocolKind::CHEETAH
+                                    ? Shape({10, 20, 30})
+                                    : kShape);
+    auto r1 = rand_p(obj.get(), conf.protocol() == ProtocolKind::CHEETAH
+                                    ? Shape({10, 20, 30})
+                                    : kShape);
+    auto r2 = rand_p(obj.get(), conf.protocol() == ProtocolKind::CHEETAH
+                                    ? Shape({10, 20, 30})
+                                    : kShape);
     std::memcpy(r2.data().data(), r0.data().data(), 16);
     std::vector<Value> test_values = {r0, r1, r2};
 

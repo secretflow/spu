@@ -55,6 +55,10 @@ void Core::buildPipeline(mlir::PassManager *pm) {
   optPM.addPass(mlir::spu::pphlo::createDecomposeMinMaxPass());
   optPM.addPass(mlir::spu::pphlo::createSortLowering());
 
+  if (!options.disable_partial_sort_optimization()) {
+    optPM.addPass(mlir::spu::pphlo::createPartialSortToTopK());
+  }
+
   if (!options.disable_sqrt_plus_epsilon_rewrite()) {
     optPM.addPass(mlir::spu::pphlo::createOptimizeSqrtPlusEps());
   }

@@ -22,7 +22,6 @@ from sklearn import metrics
 
 import spu.utils.distributed as ppd
 
-
 # Start nodes.
 # > bazel run -c opt //examples/python/utils:nodectl -- up
 #
@@ -114,6 +113,7 @@ with open(args.config, 'r') as file:
 ppd.init(conf["nodes"], conf["devices"], framework=ppd.Framework.EXP_TORCH)
 
 from collections import OrderedDict
+
 from jax.tree_util import tree_map
 
 

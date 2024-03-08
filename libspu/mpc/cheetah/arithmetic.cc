@@ -15,6 +15,7 @@
 #include "libspu/mpc/cheetah/arithmetic.h"
 
 #include <future>
+#include <memory>
 
 #include "libspu/core/ndarray_ref.h"
 #include "libspu/core/trace.h"
@@ -23,6 +24,7 @@
 #include "libspu/mpc/cheetah/nonlinear/compare_prot.h"
 #include "libspu/mpc/cheetah/nonlinear/equal_prot.h"
 #include "libspu/mpc/cheetah/nonlinear/truncate_prot.h"
+#include "libspu/mpc/cheetah/ot/basic_ot_prot.h"
 #include "libspu/mpc/cheetah/state.h"
 #include "libspu/mpc/cheetah/type.h"
 #include "libspu/mpc/common/communicator.h"
@@ -39,32 +41,18 @@ NdArrayRef TruncA::proc(KernelEvalContext* ctx, const NdArrayRef& x,
     return out;
   }
 
-  size_t nworker = InitOTState(ctx, n);
-  size_t work_load = nworker == 0 ? 0 : CeilDiv(n, nworker);
-
-  TruncateProtocol::Meta meta;
-  meta.signed_arith = true;
-  meta.sign = sign;
-  meta.shift_bits = bits;
-  meta.use_heuristic = true;
-
-  // Operate on 1D array
-  auto flatten_x = x.reshape({x.numel()});
-  TiledDispatch(ctx, nworker, [&](int64_t job) {
-    int64_t slice_bgn = std::min<int64_t>(job * work_load, n);
-    int64_t slice_end = std::min<int64_t>(slice_bgn + work_load, n);
-    if (slice_end == slice_bgn) {
-      return;
-    }
-
-    TruncateProtocol prot(ctx->getState<CheetahOTState>()->get(job));
-    auto out_slice =
-        prot.Compute(flatten_x.slice({slice_bgn}, {slice_end}, {1}), meta);
-    std::memcpy(&out.at(slice_bgn), &out_slice.at(0),
-                out_slice.numel() * out_slice.elsize());
-  });
-
-  return out;
+  return TiledDispatchOTFunc(
+      ctx, x,
+      [&](const NdArrayRef& input,
+          const std::shared_ptr<BasicOTProtocols>& base_ot) {
+        TruncateProtocol::Meta meta;
+        meta.signed_arith = true;
+        meta.sign = sign;
+        meta.shift_bits = bits;
+        meta.use_heuristic = true;
+        TruncateProtocol prot(base_ot);
+        return prot.Compute(input, meta);
+      });
 }
 
 // Math:
@@ -84,14 +72,12 @@ NdArrayRef MsbA2B::proc(KernelEvalContext* ctx, const NdArrayRef& x) const {
     return out.as(makeType<BShrTy>(field, 1));
   }
 
-  const int64_t nworker = InitOTState(ctx, numel);
-  const int64_t work_load = nworker == 0 ? 0 : CeilDiv(numel, nworker);
   const int rank = ctx->getState<Communicator>()->getRank();
 
   return DISPATCH_ALL_FIELDS(field, "_", [&]() {
     using u2k = std::make_unsigned<ring2k_t>::type;
     const u2k mask = (static_cast<u2k>(1) << shft) - 1;
-    NdArrayRef adjusted = ring_zeros(field, {numel});
+    NdArrayRef adjusted = ring_zeros(field, x.shape());
     auto xinp = NdArrayView<const u2k>(x);
     auto xadj = NdArrayView<u2k>(adjusted);
 
@@ -103,25 +89,14 @@ NdArrayRef MsbA2B::proc(KernelEvalContext* ctx, const NdArrayRef& x) const {
       pforeach(0, numel, [&](int64_t i) { xadj[i] = (mask - xinp[i]) & mask; });
     }
 
-    NdArrayRef carry_bit(x.eltype(), x.shape());
-    TiledDispatch(ctx, nworker, [&](int64_t job) {
-      int64_t slice_bgn = std::min(job * work_load, numel);
-      int64_t slice_end = std::min(slice_bgn + work_load, numel);
-      if (slice_end == slice_bgn) {
-        return;
-      }
-
-      CompareProtocol prot(ctx->getState<CheetahOTState>()->get(job));
-
-      // 1{x0 > 2^{k - 1} - 1 - x1}
-      auto out_slice =
-          prot.Compute(adjusted.slice({slice_bgn}, {slice_end}, {1}),
-                       /*greater*/ true);
-
-      std::memcpy(&carry_bit.at(slice_bgn), &out_slice.at(0),
-                  out_slice.numel() * out_slice.elsize());
-    });
-
+    auto carry_bit = TiledDispatchOTFunc(
+                         ctx, adjusted,
+                         [&](const NdArrayRef& input,
+                             const std::shared_ptr<BasicOTProtocols>& base_ot) {
+                           CompareProtocol prot(base_ot);
+                           return prot.Compute(input, /*greater*/ true);
+                         })
+                         .as(x.eltype());
     // [msb(x)]_B <- [1{x0 + x1 > 2^{k- 1} - 1]_B ^ msb(x0)
     NdArrayView<u2k> _carry_bit(carry_bit);
     pforeach(0, numel, [&](int64_t i) { _carry_bit[i] ^= (xinp[i] >> shft); });
@@ -156,8 +131,6 @@ NdArrayRef EqualAA::proc(KernelEvalContext* ctx, const NdArrayRef& x,
     return eq_bit.as(makeType<BShrTy>(field, 1));
   }
 
-  const int64_t nworker = InitOTState(ctx, numel);
-  const int64_t work_load = nworker == 0 ? 0 : CeilDiv(numel, nworker);
   const int rank = ctx->getState<Communicator>()->getRank();
 
   //     x0 + x1 = y0 + y1 mod 2k
@@ -169,58 +142,32 @@ NdArrayRef EqualAA::proc(KernelEvalContext* ctx, const NdArrayRef& x,
     adjusted = ring_sub(y, x);
   }
 
-  // Need 1D array
-  adjusted = adjusted.reshape({adjusted.numel()});
-  TiledDispatch(ctx, nworker, [&](int64_t job) {
-    int64_t slice_bgn = std::min(job * work_load, numel);
-    int64_t slice_end = std::min(slice_bgn + work_load, numel);
-    if (slice_end == slice_bgn) {
-      return;
-    }
-
-    EqualProtocol prot(ctx->getState<CheetahOTState>()->get(job));
-    auto out_slice =
-        prot.Compute(adjusted.slice({slice_bgn}, {slice_end}, {1}), nbits);
-
-    std::memcpy(&eq_bit.at(slice_bgn), &out_slice.at(0),
-                out_slice.numel() * out_slice.elsize());
-  });
-
-  return eq_bit.as(makeType<BShrTy>(field, 1));
+  return TiledDispatchOTFunc(
+             ctx, adjusted,
+             [&](const NdArrayRef& input,
+                 const std::shared_ptr<BasicOTProtocols>& base_ot) {
+               EqualProtocol prot(base_ot);
+               return prot.Compute(input, nbits);
+             })
+      .as(makeType<BShrTy>(field, 1));
 }
 
 NdArrayRef MulA1B::proc(KernelEvalContext* ctx, const NdArrayRef& ashr,
                         const NdArrayRef& bshr) const {
   SPU_ENFORCE_EQ(ashr.shape(), bshr.shape());
   const int64_t numel = ashr.numel();
-  NdArrayRef out(ashr.eltype(), ashr.shape());
 
   if (numel == 0) {
-    return out;
+    return NdArrayRef(ashr.eltype(), ashr.shape());
   }
 
-  const int64_t nworker = InitOTState(ctx, numel);
-  const int64_t work_load = nworker == 0 ? 0 : CeilDiv(numel, nworker);
-
-  // Need 1D Array
-  auto flatten_a = ashr.reshape({ashr.numel()});
-  auto flatten_b = bshr.reshape({bshr.numel()});
-  TiledDispatch(ctx, nworker, [&](int64_t job) {
-    int64_t slice_bgn = std::min(job * work_load, numel);
-    int64_t slice_end = std::min(slice_bgn + work_load, numel);
-    if (slice_end == slice_bgn) {
-      return;
-    }
-
-    auto out_slice = ctx->getState<CheetahOTState>()->get(job)->Multiplexer(
-        flatten_a.slice({slice_bgn}, {slice_end}, {1}),
-        flatten_b.slice({slice_bgn}, {slice_end}, {1}));
-
-    std::memcpy(&out.at(slice_bgn), &out_slice.at(0),
-                out_slice.numel() * out_slice.elsize());
-  });
-
-  return out;
+  return TiledDispatchOTFunc(
+             ctx, ashr, bshr,
+             [&](const NdArrayRef& input0, const NdArrayRef& input1,
+                 const std::shared_ptr<BasicOTProtocols>& base_ot) {
+               return base_ot->Multiplexer(input0, input1);
+             })
+      .as(ashr.eltype());
 }
 
 NdArrayRef MulAA::proc(KernelEvalContext* ctx, const NdArrayRef& x,
@@ -281,26 +228,24 @@ NdArrayRef MulAA::mulDirectly(KernelEvalContext* ctx, const NdArrayRef& x,
   mul_prot->LazyInitKeys(x.eltype().as<Ring2k>()->field());
 
   const int rank = comm->getRank();
-  auto fx = x.reshape({x.numel()});
-  auto fy = y.reshape({y.numel()});
+  // auto fy = y.reshape({y.numel()});
 
   auto dupx = ctx->getState<CheetahMulState>()->duplx();
   std::future<NdArrayRef> task = std::async(std::launch::async, [&] {
     if (rank == 0) {
-      return mul_prot->MulOLE(fx, dupx.get(), true);
+      return mul_prot->MulOLE(x, dupx.get(), true);
     }
-    return mul_prot->MulOLE(fy, dupx.get(), false);
+    return mul_prot->MulOLE(y, dupx.get(), false);
   });
 
   NdArrayRef x1y0;
   if (rank == 0) {
-    x1y0 = mul_prot->MulOLE(fy, false);
+    x1y0 = mul_prot->MulOLE(y, false);
   } else {
-    x1y0 = mul_prot->MulOLE(fx, true);
+    x1y0 = mul_prot->MulOLE(x, true);
   }
 
-  x1y0 = x1y0.reshape(x.shape());
-  NdArrayRef x0y1 = task.get().reshape(x.shape());
+  NdArrayRef x0y1 = task.get();
   return ring_add(x0y1, ring_add(x1y0, ring_mul(x, y))).as(x.eltype());
 }
 

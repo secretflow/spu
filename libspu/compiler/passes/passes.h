@@ -72,6 +72,8 @@ std::unique_ptr<OperationPass<func::FuncOp>> createSortLowering();
 
 std::unique_ptr<OperationPass<func::FuncOp>> createConvertPushDownPass();
 
+std::unique_ptr<OperationPass<func::FuncOp>> createPartialSortToTopK();
+
 } // namespace spu::pphlo
 
 } // namespace mlir

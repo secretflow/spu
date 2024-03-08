@@ -35,7 +35,6 @@ spu_cc_library(
         "//libspu/mpc/cheetah/ot:ferret_ot_interface",
         "//libspu/mpc/cheetah/ot:ot_util",
         "//libspu/mpc/common:communicator",
-        "//libspu/mpc/semi2k:conversion",
         "@yacl//yacl/base:aligned_vector",
         "@yacl//yacl/base:buffer",
         "@yacl//yacl/base:dynamic_bitset",

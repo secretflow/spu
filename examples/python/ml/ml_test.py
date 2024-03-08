@@ -21,11 +21,11 @@ import sys
 import unittest
 from time import perf_counter
 
-import multiprocess
 import numpy.testing as npt
 import pandas as pd
 
 import spu.utils.distributed as ppd
+from spu.utils.polyfill import Process
 
 with open("examples/python/conf/3pc.json", 'r') as file:
     conf = json.load(file)
@@ -70,15 +70,13 @@ class UnitTests(unittest.TestCase):
     def setUpClass(cls):
         cls.workers = []
         for node_id in conf["nodes"].keys():
-            worker = multiprocess.Process(
-                target=ppd.RPC.serve, args=(node_id, conf["nodes"])
-            )
+            worker = Process(target=ppd.RPC.serve, args=(node_id, conf["nodes"]))
             worker.start()
             cls.workers.append(worker)
         import time
 
         # wait for all process serving.
-        time.sleep(0.05)
+        time.sleep(2)
 
         rt_config = conf["devices"]["SPU"]["config"]["runtime_config"]
         rt_config["enable_pphlo_profile"] = False

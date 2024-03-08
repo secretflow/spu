@@ -18,19 +18,22 @@
 
 #include "gtest/gtest.h"
 
-#include "libspu/mpc/semi2k/type.h"
+#include "libspu/mpc/cheetah/type.h"
 #include "libspu/mpc/utils/ring_ops.h"
 #include "libspu/mpc/utils/simulate.h"
 
 namespace spu::mpc::cheetah::test {
 
-class FerretCOTTest : public testing::TestWithParam<FieldType> {};
+class FerretCOTTest
+    : public testing::TestWithParam<std::tuple<FieldType, bool>> {};
 
 INSTANTIATE_TEST_SUITE_P(
     Cheetah, FerretCOTTest,
-    testing::Values(FieldType::FM32, FieldType::FM64, FieldType::FM128),
+    testing::Combine(testing::Values(FieldType::FM32, FieldType::FM64,
+                                     FieldType::FM128),
+                     testing::Values(true, false)),
     [](const testing::TestParamInfo<FerretCOTTest::ParamType> &p) {
-      return fmt::format("{}", p.param);
+      return fmt::format("{}SS{}", std::get<0>(p.param), std::get<1>(p.param));
     });
 
 template <typename T>
@@ -41,7 +44,8 @@ absl::Span<const T> makeConstSpan(NdArrayView<T> a) {
 TEST_P(FerretCOTTest, ChosenCorrelationChosenChoice) {
   size_t kWorldSize = 2;
   int64_t n = 10;
-  auto field = GetParam();
+  auto field = std::get<0>(GetParam());
+  auto use_ss = std::get<1>(GetParam());
 
   auto _correlation = ring_rand(field, {n});
   std::vector<uint8_t> choices(n);
@@ -58,7 +62,7 @@ TEST_P(FerretCOTTest, ChosenCorrelationChosenChoice) {
       auto conn = std::make_shared<Communicator>(ctx);
       int rank = ctx->Rank();
       computed[rank].resize(n);
-      YaclFerretOt ferret(conn, rank == 0);
+      YaclFerretOt ferret(conn, rank == 0, use_ss);
       if (rank == 0) {
         ferret.SendCAMCC(makeConstSpan<ring2k_t>(correlation),
                          absl::MakeSpan(computed[0]));
@@ -78,7 +82,8 @@ TEST_P(FerretCOTTest, ChosenCorrelationChosenChoice) {
 
 TEST_P(FerretCOTTest, RndMsgRndChoice) {
   size_t kWorldSize = 2;
-  auto field = GetParam();
+  auto field = std::get<0>(GetParam());
+  auto use_ss = std::get<1>(GetParam());
   constexpr size_t bw = 2;
 
   size_t n = 10;
@@ -93,7 +98,7 @@ TEST_P(FerretCOTTest, RndMsgRndChoice) {
     utils::simulate(kWorldSize, [&](std::shared_ptr<yacl::link::Context> ctx) {
       auto conn = std::make_shared<Communicator>(ctx);
       int rank = ctx->Rank();
-      YaclFerretOt ferret(conn, rank == 0);
+      YaclFerretOt ferret(conn, rank == 0, use_ss);
       if (rank == 0) {
         ferret.SendRMRC(absl::MakeSpan(msg0), absl::MakeSpan(msg1), bw);
         ferret.Flush();
@@ -115,7 +120,8 @@ TEST_P(FerretCOTTest, RndMsgRndChoice) {
 
 TEST_P(FerretCOTTest, RndMsgChosenChoice) {
   size_t kWorldSize = 2;
-  auto field = GetParam();
+  auto field = std::get<0>(GetParam());
+  auto use_ss = std::get<1>(GetParam());
   constexpr size_t bw = 2;
 
   size_t n = 10;
@@ -136,7 +142,7 @@ TEST_P(FerretCOTTest, RndMsgChosenChoice) {
     utils::simulate(kWorldSize, [&](std::shared_ptr<yacl::link::Context> ctx) {
       auto conn = std::make_shared<Communicator>(ctx);
       int rank = ctx->Rank();
-      YaclFerretOt ferret(conn, rank == 0);
+      YaclFerretOt ferret(conn, rank == 0, use_ss);
       if (rank == 0) {
         ferret.SendRMCC(absl::MakeSpan(msg0), absl::MakeSpan(msg1), bw);
         ferret.Flush();
@@ -157,8 +163,9 @@ TEST_P(FerretCOTTest, RndMsgChosenChoice) {
 
 TEST_P(FerretCOTTest, ChosenMsgChosenChoice) {
   size_t kWorldSize = 2;
-  int64_t n = 1 << 18;
-  auto field = GetParam();
+  int64_t n = 1 << 10;
+  auto field = std::get<0>(GetParam());
+  auto use_ss = std::get<1>(GetParam());
   DISPATCH_ALL_FIELDS(field, "", [&]() {
     using scalar_t = ring2k_t;
     std::default_random_engine rdv;
@@ -181,7 +188,7 @@ TEST_P(FerretCOTTest, ChosenMsgChosenChoice) {
                         [&](std::shared_ptr<yacl::link::Context> ctx) {
                           auto conn = std::make_shared<Communicator>(ctx);
                           int rank = ctx->Rank();
-                          YaclFerretOt ferret(conn, rank == 0);
+                          YaclFerretOt ferret(conn, rank == 0, use_ss);
                           size_t sent = ctx->GetStats()->sent_bytes;
                           if (rank == 0) {
                             ferret.SendCMCC(makeConstSpan(msg), N, bw);

@@ -30,38 +30,6 @@ parameters:
 # Define a job to be invoked later in a workflow.
 # See: https://circleci.com/docs/2.0/configuration-reference/#jobs
 jobs:
-  macOS_x64_publish:
-    macos:
-      xcode: 15.1
-    resource_class: macos.x86.medium.gen2
-    parameters:
-      python_ver:
-        type: string
-    steps:
-      - checkout
-      - run:
-          name: "Install homebrew dependencies"
-          command: |
-            brew install bazelisk cmake ninja nasm libomp wget go
-      - run:
-          name: "Install Miniconda"
-          command: |
-            wget https://repo.anaconda.com/miniconda/Miniconda3-latest-MacOSX-x86_64.sh -O ~/miniconda.sh
-            bash ~/miniconda.sh -b -p $HOME/miniconda
-            source $HOME/miniconda/bin/activate
-            conda init zsh bash
-      - run:
-          name: "build package and publish"
-          command: |
-            set +e
-            conda create -n build python=<< parameters.python_ver >> -y
-            conda activate build
-
-            sh ./build_wheel_entrypoint.sh
-            python3 -m pip install twine
-            ls dist/*.whl
-
-            python3 -m twine upload -r pypi -u __token__ -p ${PYPI_TWINE_TOKEN} dist/*.whl
   macOS_arm64_publish:
     macos:
       xcode: 15.1
@@ -151,14 +119,6 @@ workflows:
             tags:
               only: /.*/
       - linux_aarch64_publish:
-          matrix:
-            parameters:
-              python_ver: ["3.9", "3.10", "3.11"]
-          # This is mandatory to trigger a pipeline when pushing a tag
-          filters:
-            tags:
-              only: /.*/
-      - macOS_x64_publish:
           matrix:
             parameters:
               python_ver: ["3.9", "3.10", "3.11"]

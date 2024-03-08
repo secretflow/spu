@@ -357,7 +357,6 @@ NdArrayRef CheetahMul::Impl::MulOLE(const NdArrayRef &shr,
 
   auto eltype = shr.eltype();
   SPU_ENFORCE(eltype.isa<RingTy>(), "must be ring_type, got={}", eltype);
-  SPU_ENFORCE(shr.shape().size() == 1, "need 1D Array");
   SPU_ENFORCE(shr.numel() > 0);
 
   auto field = eltype.as<Ring2k>()->field();
@@ -400,7 +399,7 @@ NdArrayRef CheetahMul::Impl::MulOLE(const NdArrayRef &shr,
     io_task.get();
     MulThenResponse(field, numel, options, recv_ct, encoded_shr,
                     absl::MakeConstSpan(encoded_mask), conn);
-    return random_mask;
+    return random_mask.reshape(shr.shape());
   }
 
   size_t payload_sze = EncryptArrayThenSend(shr, options, conn);
@@ -408,7 +407,7 @@ NdArrayRef CheetahMul::Impl::MulOLE(const NdArrayRef &shr,
   for (size_t idx = 0; idx < payload_sze; ++idx) {
     recv_ct[idx] = conn->Recv(nxt_rank, "");
   }
-  return DecryptArray(field, numel, options, recv_ct);
+  return DecryptArray(field, numel, options, recv_ct).reshape(shr.shape());
 }
 
 size_t CheetahMul::Impl::EncryptArrayThenSend(const NdArrayRef &array,
@@ -502,7 +501,6 @@ void CheetahMul::Impl::EncodeArray(const NdArrayRef &array, bool need_encrypt,
   int64_t num_elts = array.numel();
   auto eltype = array.eltype();
   SPU_ENFORCE(num_elts > 0, "empty array");
-  SPU_ENFORCE(array.shape().size() == 1, "need 1D array");
   SPU_ENFORCE(eltype.isa<RingTy>(), "array must be ring_type, got={}", eltype);
 
   int64_t num_splits = CeilDiv(num_elts, num_slots());
@@ -519,23 +517,29 @@ void CheetahMul::Impl::EncodeArray(const NdArrayRef &array, bool need_encrypt,
     std::vector<uint64_t> _u64tmp(num_slots());
     auto u64tmp = absl::MakeSpan(_u64tmp);
 
+    NdArrayRef slots(array.eltype(), {num_slots()});
+
     for (int64_t job_id = job_bgn; job_id < job_end; ++job_id) {
       int64_t cntxt_id = job_id / num_splits;
       int64_t split_id = job_id % num_splits;
       int64_t slice_bgn = split_id * num_slots();
       int64_t slice_end =
           std::min(num_elts, slice_bgn + static_cast<int64_t>(num_slots()));
+      int64_t slice_n = slice_end - slice_bgn;
 
-      auto slice = array.slice({slice_bgn}, {slice_end}, {1});
-      auto dst = u64tmp.subspan(0, slice_end - slice_bgn);
+      // take a slice
+      for (int64_t _i = 0; _i < slice_n; ++_i) {
+        std::memcpy(&slots.at(_i), &array.at(slice_bgn + _i), array.elsize());
+      }
+      auto dst = u64tmp.subspan(0, slice_n);
       if (need_encrypt) {
-        ms_helper.ModulusUpAt(slice, cntxt_id, dst);
+        ms_helper.ModulusUpAt(slots.slice({0}, {slice_n}, {1}), cntxt_id, dst);
       } else {
-        ms_helper.CenteralizeAt(slice, cntxt_id, dst);
+        ms_helper.CenteralizeAt(slots.slice({0}, {slice_n}, {1}), cntxt_id,
+                                dst);
       }
       // zero-padding the rest
-      std::fill_n(u64tmp.data() + slice.numel(), u64tmp.size() - slice.numel(),
-                  0);
+      std::fill_n(u64tmp.data() + slice_n, u64tmp.size() - slice_n, 0);
 
       CATCH_SEAL_ERROR(bfv_encoders_[cntxt_id]->encode(_u64tmp, out[job_id]));
     }

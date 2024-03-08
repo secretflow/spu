@@ -228,6 +228,7 @@ spu_cc_library(
 
 spu_cc_library(
     name = "utils",
+    srcs = ["utils.cc"],
     hdrs = ["utils.h"],
     deps = [
         ":constants",

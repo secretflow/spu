@@ -48,6 +48,7 @@ py_library(
     ],
     deps = [
         ":frontend",
+        ":polyfill",
         "//spu:api",
     ],
 )
@@ -58,4 +59,9 @@ py_library(
     deps = [
         "//spu:api",
     ],
+)
+
+py_library(
+    name = "polyfill",
+    srcs = ["polyfill.py"],
 )

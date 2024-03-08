@@ -82,5 +82,39 @@ TEST(UtilsTest, associative_scan) {
   }
 }
 
+TEST(UtilsTest, Squeeze) {
+  // GIVEN
+  xt::xarray<int32_t> x = xt::ones<int32_t>({2, 1, 2, 1, 2});
+
+  auto squeeze_wrapper = [](SPUContext* ctx, const Value& in) {
+    return squeeze(ctx, in, 1);
+  };
+
+  // WHAT
+  auto z = test::evalUnaryOp<int64_t>(VIS_PUBLIC, squeeze_wrapper, x);
+
+  // THEN
+  EXPECT_EQ(std::vector<int64_t>(z.shape().begin(), z.shape().end()),
+            std::vector<int64_t>({2, 2, 1, 2}));
+  EXPECT_TRUE(xt::allclose(xt::squeeze(x, 1), z, 0.01, 0.001));
+}
+
+TEST(UtilsTest, Unsqueeze) {
+  // GIVEN
+  xt::xarray<float> x = {1, 2, 3, 4};
+
+  auto unsqueeze_wrapper = [](SPUContext* ctx, const Value& in) {
+    return unsqueeze(ctx, in, 0);
+  };
+
+  // WHAT
+  auto z = test::evalUnaryOp<float>(VIS_SECRET, unsqueeze_wrapper, x);
+
+  // THEN
+  EXPECT_EQ(std::vector<int64_t>(z.shape().begin(), z.shape().end()),
+            std::vector<int64_t>({1, 4}));
+  EXPECT_TRUE(xt::allclose(xt::expand_dims(x, 0), z, 0.01, 0.001));
+}
+
 }  // namespace
 }  // namespace spu::kernel::hal

@@ -59,6 +59,10 @@ class Shape : public std::vector<int64_t> {
 
   bool isTensor() const { return !isScalar(); }
 
+  bool isEmpty() const {
+    return std::any_of(begin(), end(), [](int64_t d) { return d == 0; });
+  }
+
   friend std::ostream &operator<<(std::ostream &out, const Shape &s) {
     out << fmt::format("{}", fmt::join(s, "x"));
     return out;

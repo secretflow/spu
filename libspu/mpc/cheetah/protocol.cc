@@ -13,8 +13,10 @@
 // limitations under the License.
 
 #include "libspu/mpc/cheetah/protocol.h"
+
 // FIXME: both emp-tools & openssl defines AES_KEY, hack the include order to
 // avoid compiler error.
+#include "libspu/core/ndarray_ref.h"
 #include "libspu/mpc/common/prg_state.h"
 //
 
@@ -25,6 +27,7 @@
 #include "libspu/mpc/cheetah/type.h"
 #include "libspu/mpc/common/pv2k.h"
 #include "libspu/mpc/standard_shape/protocol.h"
+#include "libspu/mpc/utils/ring_ops.h"
 
 namespace spu::mpc {
 
@@ -42,9 +45,13 @@ void regCheetahProtocol(SPUContext* ctx,
   ctx->prot()->addState<Z2kState>(ctx->config().field());
 
   // add Cheetah states
-  ctx->prot()->addState<cheetah::CheetahMulState>(lctx);
-  ctx->prot()->addState<cheetah::CheetahDotState>(lctx);
-  ctx->prot()->addState<cheetah::CheetahOTState>();
+  ctx->prot()->addState<cheetah::CheetahMulState>(
+      lctx, ctx->config().cheetah_2pc_config().enable_mul_lsb_error());
+  ctx->prot()->addState<cheetah::CheetahDotState>(
+      lctx, ctx->config().cheetah_2pc_config().disable_matmul_pack());
+  ctx->prot()->addState<cheetah::CheetahOTState>(
+      ctx->getClusterLevelMaxConcurrency(),
+      ctx->config().cheetah_2pc_config().ot_kind());
 
   // register public kernels.
   regPV2kKernels(ctx->prot());

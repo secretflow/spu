@@ -50,7 +50,7 @@ class PPHLO_WithShapeInferOp<string mnemonic, list<Trait> traits> :
 //===----------------------------------------------------------------------===//
 class PPHLO_UnaryElementwiseOp<string mnemonic, list<Trait> traits,
                                Type OperandType, Type ResultType = OperandType>
-    : PPHLO_Op<mnemonic, traits #[Elementwise, SameOperandsAndResultShape]> {
+    : PPHLO_Op<mnemonic, traits #[Pure, Elementwise, SameOperandsAndResultShape]> {
   let arguments = (ins OperandType: $operand);
   let results = (outs ResultType: $result);
 
@@ -59,9 +59,17 @@ class PPHLO_UnaryElementwiseOp<string mnemonic, list<Trait> traits,
   }];
 }
 
+class PPHLO_UnaryElementwiseOpWithTypeInfer<string mnemonic, list<Trait> traits,
+                               Type OperandType, Type ResultType = OperandType>
+    : PPHLO_UnaryElementwiseOp<mnemonic,
+                               traits # [DeclareOpInterfaceMethods<InferTypeOpInterface>,
+                                        DeclareOpInterfaceMethods<InferShapedTypeOpInterface>],
+                  OperandType, ResultType> {
+}
+
 class PPHLO_BinaryElementwiseOp<string mnemonic, list<Trait> traits,
                                 Type OperandType, Type ResultType = OperandType>
-    : PPHLO_Op<mnemonic, traits #[SameOperandsAndResultShape, Elementwise]> {
+    : PPHLO_Op<mnemonic, traits #[Pure, SameOperandsAndResultShape, Elementwise]> {
   let arguments = (ins
       OperandType: $lhs,
       OperandType: $rhs
@@ -75,14 +83,22 @@ class PPHLO_BinaryElementwiseOp<string mnemonic, list<Trait> traits,
   }];
 }
 
+class PPHLO_BinaryElementwiseOpWithTypeInfer<string mnemonic, list<Trait> traits,
+                                Type OperandType, Type ResultType = OperandType>
+    : PPHLO_BinaryElementwiseOp<mnemonic,
+                                traits # [DeclareOpInterfaceMethods<InferTypeOpInterface>,
+                                          DeclareOpInterfaceMethods<InferShapedTypeOpInterface>],
+               OperandType, ResultType> {
+}
+
 class PPHLO_BinaryLogicalElementwiseOp<string mnemonic>
-    : PPHLO_BinaryElementwiseOp<
-          mnemonic, [Commutative, Pure, SameOperandsAndResultShape], PPHLO_BoolOrIntTensor> {
+    : PPHLO_BinaryElementwiseOpWithTypeInfer<
+          mnemonic, [Commutative, Pure], PPHLO_BoolOrIntTensor> {
 }
 
 class PPHLO_ComparisionOp<string mnemonic>
-    : PPHLO_BinaryElementwiseOp<
-          mnemonic, [Pure, SameOperandsAndResultShape], PPHLO_Tensor, PPHLO_BoolTensor> {
+    : PPHLO_BinaryElementwiseOpWithTypeInfer<
+          mnemonic, [Pure], PPHLO_Tensor, PPHLO_BoolTensor> {
 }
 
 //===----------------------------------------------------------------------===//
@@ -120,7 +136,7 @@ def PPHLO_IotaOp : PPHLO_Op<"iota", [Pure]> {
 // pphlo unary elementwise op definitions.
 //===----------------------------------------------------------------------===//
 def PPHLO_AbsOp
-    : PPHLO_UnaryElementwiseOp<"abs", [Pure, SameOperandsAndResultType], PPHLO_Tensor> {
+    : PPHLO_UnaryElementwiseOpWithTypeInfer<"abs", [SameOperandsAndResultType], PPHLO_Tensor> {
   let summary = "Absolute value operator";
   let description = [{
     Performs element-wise abs operation on operand tensor and produces a result tensor.
@@ -130,7 +146,7 @@ def PPHLO_AbsOp
 }
 
 def PPHLO_CeilOp
-    : PPHLO_UnaryElementwiseOp<"ceil", [Pure, SameOperandsAndResultType], PPHLO_FpTensor> {
+    : PPHLO_UnaryElementwiseOpWithTypeInfer<"ceil", [SameOperandsAndResultType], PPHLO_FpTensor> {
   let summary = "Ceil operator";
   let description = [{
     Performs element-wise ceil of operand tensor and produces a result tensor.
@@ -155,7 +171,7 @@ def PPHLO_ConvertOp
 }
 
 def PPHLO_CosineOp
-    : PPHLO_UnaryElementwiseOp<"cosine", [Pure, SameOperandsAndResultType], PPHLO_FpTensor> {
+    : PPHLO_UnaryElementwiseOpWithTypeInfer<"cosine", [SameOperandsAndResultType], PPHLO_FpTensor> {
   let summary = "cosine operator";
   let description = [{
     Performs element-wise cosine operation on `operand` tensor and produces a `result` tensor.
@@ -165,7 +181,7 @@ def PPHLO_CosineOp
 }
 
 def PPHLO_ExpOp
-    : PPHLO_UnaryElementwiseOp<"exponential", [Pure, SameOperandsAndResultType], PPHLO_FpTensor> {
+    : PPHLO_UnaryElementwiseOpWithTypeInfer<"exponential", [SameOperandsAndResultType], PPHLO_FpTensor> {
   let summary = "Exponential operator";
   let description = [{
     Performs element-wise exponential operation on `operand` tensor and produces a `result` tensor.
@@ -174,8 +190,8 @@ def PPHLO_ExpOp
   }];
 }
 
-def PPHLO_Expm1Op: PPHLO_UnaryElementwiseOp<"exponential_minus_one",
-    [Pure, SameOperandsAndResultType], PPHLO_FpTensor> {
+def PPHLO_Expm1Op
+    : PPHLO_UnaryElementwiseOpWithTypeInfer<"exponential_minus_one", [SameOperandsAndResultType], PPHLO_FpTensor> {
   let summary = "Exponential minus one operator";
   let description = [{
     Performs element-wise exponential minus one operation on `operand` tensor and produces a `result` tensor.
@@ -185,7 +201,7 @@ def PPHLO_Expm1Op: PPHLO_UnaryElementwiseOp<"exponential_minus_one",
 }
 
 def PPHLO_FloorOp
-    : PPHLO_UnaryElementwiseOp<"floor", [Pure, SameOperandsAndResultType], PPHLO_FpTensor> {
+    : PPHLO_UnaryElementwiseOpWithTypeInfer<"floor", [SameOperandsAndResultType], PPHLO_FpTensor> {
   let summary = "Floor operator";
   let description = [{
     Performs element-wise floor of operand tensor and produces a result tensor.
@@ -195,7 +211,7 @@ def PPHLO_FloorOp
 }
 
 def PPHLO_LogOp
-    : PPHLO_UnaryElementwiseOp<"log", [Pure, SameOperandsAndResultType], PPHLO_FpTensor> {
+    : PPHLO_UnaryElementwiseOpWithTypeInfer<"log", [SameOperandsAndResultType], PPHLO_FpTensor> {
   let summary = "Log operator";
   let description = [{
     Performs element-wise logarithm operation on `operand` tensor and produces a `result` tensor.
@@ -204,7 +220,8 @@ def PPHLO_LogOp
   }];
 }
 
-def PPHLO_Log1pOp : PPHLO_UnaryElementwiseOp<"log_plus_one", [Pure, SameOperandsAndResultType],
+def PPHLO_Log1pOp
+    : PPHLO_UnaryElementwiseOpWithTypeInfer<"log_plus_one", [SameOperandsAndResultType],
                                              PPHLO_FpTensor> {
   let summary = "Log1p operator";
   let description = [{
@@ -215,9 +232,8 @@ def PPHLO_Log1pOp : PPHLO_UnaryElementwiseOp<"log_plus_one", [Pure, SameOperands
 }
 
 def PPHLO_LogisticOp
-    : PPHLO_UnaryElementwiseOp<"logistic",
-                               [Pure, SameOperandsAndResultType],
-                               PPHLO_FpTensor> {
+    : PPHLO_UnaryElementwiseOpWithTypeInfer<"logistic", [SameOperandsAndResultType],
+                                            PPHLO_FpTensor> {
   let summary = "Reciprocal operator";
   let description = [{
     Performs element-wise logistic operation on `operand` tensor and produces a `result` tensor.
@@ -227,7 +243,7 @@ def PPHLO_LogisticOp
 }
 
 def PPHLO_NegOp
-    : PPHLO_UnaryElementwiseOp<"negate", [Pure, SameOperandsAndResultType], PPHLO_Tensor> {
+    : PPHLO_UnaryElementwiseOpWithTypeInfer<"negate", [SameOperandsAndResultType], PPHLO_Tensor> {
   let summary = "Negation operator";
   let description = [{
     Performs element-wise negation of `operand` tensor and produces a `result` tensor.
@@ -237,8 +253,8 @@ def PPHLO_NegOp
 }
 
 def PPHLO_NotOp
-    : PPHLO_UnaryElementwiseOp<"not", [Pure, SameOperandsAndResultType],
-                               PPHLO_BoolOrIntTensor> {
+    : PPHLO_UnaryElementwiseOpWithTypeInfer<"not", [SameOperandsAndResultType],
+                                                    PPHLO_BoolOrIntTensor> {
   let summary = "Not operator";
   let description = [{
     Performs element-wise NOT of tensor `operand` and produces a `result` tensor.
@@ -248,7 +264,7 @@ def PPHLO_NotOp
 }
 
 def PPHLO_RoundOp
-    : PPHLO_UnaryElementwiseOp<"round_nearest_afz", [Pure, SameOperandsAndResultType], PPHLO_FpTensor> {
+    : PPHLO_UnaryElementwiseOpWithTypeInfer<"round_nearest_afz", [SameOperandsAndResultType], PPHLO_FpTensor> {
   let summary = "Round operator, ties away from zero";
   let description = [{
     Performs element-wise rounding towards the nearest integer, breaking ties away from zero,
@@ -259,7 +275,7 @@ def PPHLO_RoundOp
 }
 
 def PPHLO_RsqrtOp
-    : PPHLO_UnaryElementwiseOp<"rsqrt", [Pure, SameOperandsAndResultType], PPHLO_FpTensor> {
+    : PPHLO_UnaryElementwiseOpWithTypeInfer<"rsqrt", [SameOperandsAndResultType], PPHLO_FpTensor> {
   let summary = "Reciprocal of square-root operator";
   let description = [{
     Performs element-wise reciprocal square root operation on `operand` tensor and produces a `result` tensor.
@@ -269,7 +285,7 @@ def PPHLO_RsqrtOp
 }
 
 def PPHLO_SignOp
-    : PPHLO_UnaryElementwiseOp<"sign", [Pure, SameOperandsAndResultType],
+    : PPHLO_UnaryElementwiseOpWithTypeInfer<"sign", [SameOperandsAndResultType],
                                PPHLO_Tensor> {
   let summary = "Sign operator";
   let description = [{
@@ -280,7 +296,7 @@ def PPHLO_SignOp
 }
 
 def PPHLO_SineOp
-    : PPHLO_UnaryElementwiseOp<"sine", [Pure, SameOperandsAndResultType], PPHLO_FpTensor> {
+    : PPHLO_UnaryElementwiseOpWithTypeInfer<"sine", [SameOperandsAndResultType], PPHLO_FpTensor> {
   let summary = "sine operator";
   let description = [{
     Performs element-wise sine operation on `operand` tensor and produces a `result` tensor.
@@ -290,7 +306,7 @@ def PPHLO_SineOp
 }
 
 def PPHLO_SqrtOp
-    : PPHLO_UnaryElementwiseOp<"sqrt", [Pure, SameOperandsAndResultType], PPHLO_FpTensor> {
+    : PPHLO_UnaryElementwiseOpWithTypeInfer<"sqrt", [SameOperandsAndResultType], PPHLO_FpTensor> {
   let summary = "Square-root operator";
   let description = [{
     Performs element-wise square root operation on `operand` tensor and produces a `result` tensor.
@@ -300,7 +316,7 @@ def PPHLO_SqrtOp
 }
 
 def PPHLO_TanhOp
-    : PPHLO_UnaryElementwiseOp<"tanh", [Pure, SameOperandsAndResultType], PPHLO_FpTensor> {
+    : PPHLO_UnaryElementwiseOpWithTypeInfer<"tanh", [SameOperandsAndResultType], PPHLO_FpTensor> {
   let summary = "Tanh operator";
   let description = [{
     Performs element-wise hyperbolic tangent operation on `operand` tensor and produces a `result` tensor.
@@ -313,7 +329,7 @@ def PPHLO_TanhOp
 // pphlo binary elementwise op definitions.
 //===----------------------------------------------------------------------===//
 def PPHLO_AddOp
-    : PPHLO_BinaryElementwiseOp<"add", [Commutative, Pure], PPHLO_Tensor> {
+    : PPHLO_BinaryElementwiseOpWithTypeInfer<"add", [Commutative], PPHLO_Tensor> {
   let summary = "Addition operator";
   let description = [{
     Performs element-wise addition of two tensors `lhs` and `rhs` and produces a `result` tensor.
@@ -322,7 +338,7 @@ def PPHLO_AddOp
   }];
 }
 
-def PPHLO_DivOp : PPHLO_BinaryElementwiseOp<"divide", [Pure], PPHLO_Tensor> {
+def PPHLO_DivOp : PPHLO_BinaryElementwiseOpWithTypeInfer<"divide", [], PPHLO_Tensor> {
   let summary = "Division operator";
   let description = [{
     Performs element-wise division of dividend `lhs` and divisor `rhs` tensors and produces a `result` tensor.
@@ -332,7 +348,7 @@ def PPHLO_DivOp : PPHLO_BinaryElementwiseOp<"divide", [Pure], PPHLO_Tensor> {
 }
 
 def PPHLO_MaxOp
-    : PPHLO_BinaryElementwiseOp<"maximum", [Commutative, Pure], PPHLO_Tensor> {
+    : PPHLO_BinaryElementwiseOpWithTypeInfer<"maximum", [Commutative], PPHLO_Tensor> {
   let summary = "Maximum operator";
   let description = [{
     Performs element-wise max operation on tensors `lhs` and `rhs` and produces a `result` tensor.
@@ -342,7 +358,7 @@ def PPHLO_MaxOp
 }
 
 def PPHLO_MinOp
-    : PPHLO_BinaryElementwiseOp<"minimum", [Commutative, Pure], PPHLO_Tensor> {
+    : PPHLO_BinaryElementwiseOpWithTypeInfer<"minimum", [Commutative], PPHLO_Tensor> {
   let summary = "Minimum operator";
   let description = [{
     Performs element-wise min operation on tensors `lhs` and `rhs` and produces a `result` tensor.
@@ -352,7 +368,7 @@ def PPHLO_MinOp
 }
 
 def PPHLO_MulOp
-    : PPHLO_BinaryElementwiseOp<"multiply", [Commutative, Pure], PPHLO_Tensor> {
+    : PPHLO_BinaryElementwiseOpWithTypeInfer<"multiply", [Commutative], PPHLO_Tensor> {
   let summary = "Multiplication operator";
   let description = [{
     Performs element-wise product of two tensors `lhs` and `rhs` and produces a `result` tensor.
@@ -361,7 +377,7 @@ def PPHLO_MulOp
   }];
 }
 
-def PPHLO_PowOp : PPHLO_BinaryElementwiseOp<"power", [Pure], PPHLO_Tensor> {
+def PPHLO_PowOp : PPHLO_BinaryElementwiseOpWithTypeInfer<"power", [], PPHLO_Tensor> {
   let summary = "Power operator";
   let description = [{
     Performs element-wise exponentiation of `lhs` tensor by `rhs` tensor and produces a `result` tensor.
@@ -370,7 +386,7 @@ def PPHLO_PowOp : PPHLO_BinaryElementwiseOp<"power", [Pure], PPHLO_Tensor> {
   }];
 }
 
-def PPHLO_RemOp : PPHLO_BinaryElementwiseOp<"remainder", [Pure], PPHLO_Tensor> {
+def PPHLO_RemOp : PPHLO_BinaryElementwiseOpWithTypeInfer<"remainder", [], PPHLO_Tensor> {
   let summary = "Remainder operator";
   let description = [{
     Performs element-wise remainder of dividend `lhs` and divisor `rhs` tensors and produces a `result` tensor.
@@ -380,7 +396,7 @@ def PPHLO_RemOp : PPHLO_BinaryElementwiseOp<"remainder", [Pure], PPHLO_Tensor> {
 }
 
 def PPHLO_ShiftLeftOp
-    : PPHLO_BinaryElementwiseOp<"shift_left", [Pure], PPHLO_IntTensor> {
+    : PPHLO_BinaryElementwiseOpWithTypeInfer<"shift_left", [], PPHLO_IntTensor> {
   let summary = "Shift Left operator";
   let description = [{
     Performs element-wise left-shift operation on the `lhs` tensor by `rhs` number of bits and produces a `result` tensor.
@@ -390,8 +406,7 @@ def PPHLO_ShiftLeftOp
 }
 
 def PPHLO_ShiftRightArithmeticOp
-    : PPHLO_BinaryElementwiseOp<"shift_right_arithmetic",
-                                [Pure], PPHLO_IntTensor> {
+    : PPHLO_BinaryElementwiseOpWithTypeInfer<"shift_right_arithmetic", [], PPHLO_IntTensor> {
   let summary = "Shift right arithmetic operator";
   let description = [{
     Performs element-wise arithmetic right-shift operation on the `lhs` tensor by `rhs` number of bits and produces a `result` tensor.
@@ -401,7 +416,7 @@ def PPHLO_ShiftRightArithmeticOp
 }
 
 def PPHLO_ShiftRightLogicalOp
-    : PPHLO_BinaryElementwiseOp<"shift_right_logical", [Pure], PPHLO_IntTensor> {
+    : PPHLO_BinaryElementwiseOpWithTypeInfer<"shift_right_logical", [], PPHLO_IntTensor> {
   let summary = "Shift right logical operator";
   let description = [{
     Performs element-wise logical right-shift operation on the `lhs` tensor by `rhs` number of bits and produces a `result` tensor.
@@ -410,7 +425,7 @@ def PPHLO_ShiftRightLogicalOp
   }];
 }
 
-def PPHLO_SubtractOp : PPHLO_BinaryElementwiseOp<"subtract", [Pure], PPHLO_Tensor> {
+def PPHLO_SubtractOp : PPHLO_BinaryElementwiseOpWithTypeInfer<"subtract", [], PPHLO_Tensor> {
   let summary = "Subtraction operator";
   let description = [{
     Performs element-wise subtraction of two tensors `lhs` and `rhs` and produces a `result` tensor.
@@ -703,7 +718,8 @@ def PPHLO_DynamicUpdateSliceOp: PPHLO_WithShapeInferOp<"dynamic_update_slice",
 }
 
 def HLO_PadOp
-    : PPHLO_WithShapeInferOp<"pad", [Pure, SameOperandsAndResultElementType, InferTensorType]> {
+    : PPHLO_WithShapeInferOp<"pad",
+    [Pure, SameOperandsAndResultElementType, DeclareOpInterfaceMethods<InferShapedTypeOpInterface>]> {
   let summary = "Pad operator";
   let description = [{
     Expands `operand` by padding around the tensor as well as between the elements of the tensor with the given `padding_value`.
@@ -1061,9 +1077,8 @@ def PPHLO_EpsilonOp: PPHLO_Op<"epsilon", [Pure]> {
   let results = (outs PPHLO_FpTensor);
 }
 
-def PPHLO_ReciprocalOp: PPHLO_UnaryElementwiseOp<"reciprocal",
-                          [Pure, SameOperandsAndResultType],
-                          PPHLO_FpTensor> {
+def PPHLO_ReciprocalOp: PPHLO_UnaryElementwiseOpWithTypeInfer<"reciprocal",
+                          [SameOperandsAndResultType], PPHLO_FpTensor> {
   let summary = "Reciprocal operator";
   let description = [{
     Performs element-wise reciprocal of `operand` tensor and produces a `result` tensor.
@@ -1071,9 +1086,8 @@ def PPHLO_ReciprocalOp: PPHLO_UnaryElementwiseOp<"reciprocal",
   let hasFolder = 1;
 }
 
-def PPHLO_PreferAOp : PPHLO_UnaryElementwiseOp<"prefer_a",
-                            [Pure, SameOperandsAndResultType],
-                            PPHLO_Tensor> {
+def PPHLO_PreferAOp : PPHLO_UnaryElementwiseOpWithTypeInfer<"prefer_a",
+                          [SameOperandsAndResultType], PPHLO_Tensor> {
   let summary = "Prefer AShare operator";
   let description = [{
     Convert input to AShare if possible.

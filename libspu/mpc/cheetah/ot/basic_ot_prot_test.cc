@@ -37,21 +37,39 @@ T makeBitsMask(size_t nbits) {
   return mask;
 }
 
-class BasicOTProtTest : public ::testing::TestWithParam<FieldType> {
+class BasicOTProtTest
+    : public ::testing::TestWithParam<std::tuple<FieldType, CheetahOtKind>> {
   void SetUp() override {}
 };
 
 INSTANTIATE_TEST_SUITE_P(
     Cheetah, BasicOTProtTest,
-    testing::Values(FieldType::FM32, FieldType::FM64, FieldType::FM128),
+    testing::Combine(
+        testing::Values(FieldType::FM32, FieldType::FM64, FieldType::FM128),
+        testing::Values(CheetahOtKind::EMP_Ferret, CheetahOtKind::YACL_Ferret,
+                        CheetahOtKind::YACL_Softspoken)),
     [](const testing::TestParamInfo<BasicOTProtTest::ParamType>& p) {
-      return fmt::format("{}", p.param);
+      std::string ot_s;
+      switch (std::get<1>(p.param)) {
+        case CheetahOtKind::YACL_Softspoken:
+          ot_s = "Yacl_ss";
+          break;
+        default:
+        case CheetahOtKind::YACL_Ferret:
+          ot_s = "Yacl_ferret";
+          break;
+        case CheetahOtKind::EMP_Ferret:
+          ot_s = "Emp_ferret";
+          break;
+      }
+      return fmt::format("{}Ot{}", std::get<0>(p.param), ot_s);
     });
 
 TEST_P(BasicOTProtTest, SingleB2A) {
   size_t kWorldSize = 2;
   Shape shape = {10, 30};
-  FieldType field = GetParam();
+  FieldType field = std::get<0>(GetParam());
+  auto ot_type = std::get<1>(GetParam());
 
   size_t nbits = 8 * SizeOf(field) - 1;
   size_t packed_nbits = 8 * SizeOf(field) - nbits;
@@ -76,7 +94,7 @@ TEST_P(BasicOTProtTest, SingleB2A) {
   NdArrayRef ashr1;
   utils::simulate(kWorldSize, [&](std::shared_ptr<yacl::link::Context> ctx) {
     auto conn = std::make_shared<Communicator>(ctx);
-    BasicOTProtocols ot_prot(conn);
+    BasicOTProtocols ot_prot(conn, ot_type);
     if (ctx->Rank() == 0) {
       ashr0 = ot_prot.B2A(bshr0);
     } else {
@@ -107,8 +125,8 @@ TEST_P(BasicOTProtTest, SingleB2A) {
 TEST_P(BasicOTProtTest, PackedB2A) {
   size_t kWorldSize = 2;
   Shape shape = {11, 12, 13};
-  FieldType field = GetParam();
-
+  FieldType field = std::get<0>(GetParam());
+  auto ot_type = std::get<1>(GetParam());
   for (size_t nbits : {1, 2}) {
     size_t packed_nbits = 8 * SizeOf(field) - nbits;
     auto boolean_t = makeType<BShrTy>(field, packed_nbits);
@@ -132,7 +150,7 @@ TEST_P(BasicOTProtTest, PackedB2A) {
     NdArrayRef ashr1;
     utils::simulate(kWorldSize, [&](std::shared_ptr<yacl::link::Context> ctx) {
       auto conn = std::make_shared<Communicator>(ctx);
-      BasicOTProtocols ot_prot(conn);
+      BasicOTProtocols ot_prot(conn, ot_type);
       if (ctx->Rank() == 0) {
         ashr0 = ot_prot.B2A(bshr0);
       } else {
@@ -165,8 +183,9 @@ TEST_P(BasicOTProtTest, PackedB2A) {
 TEST_P(BasicOTProtTest, PackedB2AFull) {
   size_t kWorldSize = 2;
   Shape shape = {1, 2, 3, 4, 5};
-  FieldType field = GetParam();
 
+  FieldType field = std::get<0>(GetParam());
+  auto ot_type = std::get<1>(GetParam());
   for (size_t nbits : {0}) {
     size_t packed_nbits = 8 * SizeOf(field) - nbits;
     auto boolean_t = makeType<BShrTy>(field, packed_nbits);
@@ -190,7 +209,7 @@ TEST_P(BasicOTProtTest, PackedB2AFull) {
     NdArrayRef ashr1;
     utils::simulate(kWorldSize, [&](std::shared_ptr<yacl::link::Context> ctx) {
       auto conn = std::make_shared<Communicator>(ctx);
-      BasicOTProtocols ot_prot(conn);
+      BasicOTProtocols ot_prot(conn, ot_type);
       if (ctx->Rank() == 0) {
         ashr0 = ot_prot.B2A(bshr0);
       } else {
@@ -221,8 +240,10 @@ TEST_P(BasicOTProtTest, PackedB2AFull) {
 
 TEST_P(BasicOTProtTest, AndTripleSparse) {
   size_t kWorldSize = 2;
-  Shape shape = {55, 100};
-  FieldType field = GetParam();
+  Shape shape = {51, 10};
+
+  FieldType field = std::get<0>(GetParam());
+  auto ot_type = std::get<1>(GetParam());
   size_t max_bit = 8 * SizeOf(field);
 
   for (size_t sparse : {1UL, 7UL, max_bit - 1}) {
@@ -231,7 +252,7 @@ TEST_P(BasicOTProtTest, AndTripleSparse) {
 
     utils::simulate(kWorldSize, [&](std::shared_ptr<yacl::link::Context> ctx) {
       auto conn = std::make_shared<Communicator>(ctx);
-      BasicOTProtocols ot_prot(conn);
+      BasicOTProtocols ot_prot(conn, ot_type);
 
       for (const auto& t : ot_prot.AndTriple(field, shape, target_nbits)) {
         triple[ctx->Rank()].emplace_back(t);
@@ -263,7 +284,8 @@ TEST_P(BasicOTProtTest, AndTripleSparse) {
 TEST_P(BasicOTProtTest, BitwiseAnd) {
   size_t kWorldSize = 2;
   Shape shape = {55};
-  FieldType field = GetParam();
+  FieldType field = std::get<0>(GetParam());
+  auto ot_type = std::get<1>(GetParam());
   int bw = SizeOf(field) * 8;
   auto boolean_t = makeType<BShrTy>(field, bw);
 
@@ -286,7 +308,7 @@ TEST_P(BasicOTProtTest, BitwiseAnd) {
 
   utils::simulate(kWorldSize, [&](std::shared_ptr<yacl::link::Context> ctx) {
     auto conn = std::make_shared<Communicator>(ctx);
-    BasicOTProtocols ot_prot(conn);
+    BasicOTProtocols ot_prot(conn, ot_type);
     int r = ctx->Rank();
     out[r] = ot_prot.BitwiseAnd(lhs[r].clone(), rhs[r].clone());
   });
@@ -307,13 +329,14 @@ TEST_P(BasicOTProtTest, BitwiseAnd) {
 TEST_P(BasicOTProtTest, AndTripleFull) {
   size_t kWorldSize = 2;
   Shape shape = {55, 11};
-  FieldType field = GetParam();
 
+  FieldType field = std::get<0>(GetParam());
+  auto ot_type = std::get<1>(GetParam());
   std::vector<NdArrayRef> packed_triple[2];
 
   utils::simulate(kWorldSize, [&](std::shared_ptr<yacl::link::Context> ctx) {
     auto conn = std::make_shared<Communicator>(ctx);
-    BasicOTProtocols ot_prot(conn);
+    BasicOTProtocols ot_prot(conn, ot_type);
     for (const auto& t : ot_prot.AndTriple(field, shape, SizeOf(field) * 8)) {
       packed_triple[ctx->Rank()].emplace_back(t);
     }
@@ -342,8 +365,9 @@ TEST_P(BasicOTProtTest, AndTripleFull) {
 TEST_P(BasicOTProtTest, Multiplexer) {
   size_t kWorldSize = 2;
   Shape shape = {3, 4, 1, 3};
-  FieldType field = GetParam();
 
+  FieldType field = std::get<0>(GetParam());
+  auto ot_type = std::get<1>(GetParam());
   auto boolean_t = makeType<BShrTy>(field, 1);
 
   auto ashr0 = ring_rand(field, shape);
@@ -364,7 +388,7 @@ TEST_P(BasicOTProtTest, Multiplexer) {
   NdArrayRef computed[2];
   utils::simulate(kWorldSize, [&](std::shared_ptr<yacl::link::Context> ctx) {
     auto conn = std::make_shared<Communicator>(ctx);
-    BasicOTProtocols ot_prot(conn);
+    BasicOTProtocols ot_prot(conn, ot_type);
     if (ctx->Rank() == 0) {
       computed[0] = ot_prot.Multiplexer(ashr0, bshr0);
     } else {
@@ -396,13 +420,13 @@ TEST_P(BasicOTProtTest, Multiplexer) {
 TEST_P(BasicOTProtTest, CorrelatedAndTriple) {
   size_t kWorldSize = 2;
   Shape shape = {10 * 8};
-  FieldType field = GetParam();
-
+  FieldType field = std::get<0>(GetParam());
+  auto ot_type = std::get<1>(GetParam());
   std::array<NdArrayRef, 5> corr_triple[2];
 
   utils::simulate(kWorldSize, [&](std::shared_ptr<yacl::link::Context> ctx) {
     auto conn = std::make_shared<Communicator>(ctx);
-    BasicOTProtocols ot_prot(conn);
+    BasicOTProtocols ot_prot(conn, ot_type);
     corr_triple[ctx->Rank()] = ot_prot.CorrelatedAndTriple(field, shape);
   });
 

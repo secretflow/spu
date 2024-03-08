@@ -22,6 +22,8 @@ RuntimeConfig makeConfig(FieldType field) {
   RuntimeConfig conf;
   conf.set_protocol(ProtocolKind::CHEETAH);
   conf.set_field(field);
+  conf.mutable_cheetah_2pc_config()->set_ot_kind(
+      CheetahOtKind::YACL_Softspoken);
   return conf;
 }
 

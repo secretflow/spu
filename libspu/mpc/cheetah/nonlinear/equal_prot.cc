@@ -47,7 +47,6 @@ static void SetLeafOTMsg(absl::Span<uint8_t> ot_messages, uint8_t digit,
 }
 
 NdArrayRef EqualProtocol::DoCompute(const NdArrayRef& inp, size_t bit_width) {
-  SPU_ENFORCE(inp.shape().size() == 1, "need 1D array");
   auto field = inp.eltype().as<Ring2k>()->field();
   if (bit_width == 0) {
     bit_width = SizeOf(field) * 8;
@@ -175,12 +174,11 @@ NdArrayRef EqualProtocol::DoCompute(const NdArrayRef& inp, size_t bit_width) {
     current_num_digits = CeilDiv(prev_eq.numel(), num_cmp);
   }
 
-  return prev_eq.as(boolean_t);
+  return prev_eq.reshape(inp.shape()).as(boolean_t);
 }
 
 NdArrayRef EqualProtocol::Compute(const NdArrayRef& inp, size_t bit_width) {
-  const auto& shape = inp.shape();
-  return DoCompute(inp.reshape({inp.numel()}), bit_width).reshape(shape);
+  return DoCompute(inp, bit_width);
 }
 
 }  // namespace spu::mpc::cheetah

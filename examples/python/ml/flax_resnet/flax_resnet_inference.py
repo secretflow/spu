@@ -16,8 +16,8 @@ import argparse
 import json
 
 import jax
-import spu.utils.distributed as ppd
 
+import spu.utils.distributed as ppd
 
 parser = argparse.ArgumentParser(description='distributed driver.')
 parser.add_argument("-c", "--config", default="3pc.json")
@@ -29,13 +29,12 @@ with open(args.config, 'r') as file:
 ppd.init(conf["nodes"], conf["devices"])
 
 
+from datasets import load_dataset
 from transformers import (
-    AutoImageProcessor,
     AutoConfig,
+    AutoImageProcessor,
     FlaxResNetForImageClassification,
 )
-
-from datasets import load_dataset
 
 dataset = load_dataset("huggingface/cats-image")
 image = dataset["test"]["image"][0]

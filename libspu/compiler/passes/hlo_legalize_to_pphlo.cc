@@ -373,10 +373,9 @@ public:
         StringAttr::get(op->getContext(), "dimensions"),
         DenseI64ArrayAttr::get(getContext(), op.getDimensions()));
 
-    auto new_op =
-        rewriter.replaceOpWithNewOp<pphlo::HloToPPHloOp<stablehlo::ReduceOp>>(
-            op, result_types, materialized_operands,
-            llvm::SmallVector<mlir::NamedAttribute, 1>{dimAttr});
+    auto new_op = rewriter.create<pphlo::HloToPPHloOp<stablehlo::ReduceOp>>(
+        op->getLoc(), result_types, materialized_operands,
+        llvm::SmallVector<mlir::NamedAttribute, 1>{dimAttr});
 
     // Copy over the operations inside the region.
     rewriter.inlineRegionBefore(op.getBody(), new_op.getBody(),
@@ -386,6 +385,8 @@ public:
             &new_op.getBody(), *this->getTypeConverter(), &sig_conversion))) {
       return failure();
     }
+
+    rewriter.replaceOp(op, new_op);
 
     return success();
   }
@@ -484,9 +485,8 @@ public:
     }
 
     auto new_op =
-        rewriter
-            .replaceOpWithNewOp<pphlo::HloToPPHloOp<stablehlo::ReduceWindowOp>>(
-                op, result_types, materialized_operands, attrs);
+        rewriter.create<pphlo::HloToPPHloOp<stablehlo::ReduceWindowOp>>(
+            op->getLoc(), result_types, materialized_operands, attrs);
 
     // Copy over the operations inside the region.
     rewriter.inlineRegionBefore(op.getBody(), new_op.getBody(),
@@ -496,6 +496,8 @@ public:
             &new_op.getBody(), *this->getTypeConverter(), &sig_conversion))) {
       return failure();
     }
+
+    rewriter.replaceOp(op, new_op);
 
     return success();
   }
@@ -518,30 +520,8 @@ public:
     auto result_types = convertResultType(op->getResults());
     auto operands = materializeInputs(op, adaptor.getOperands());
 
-    // Convert true region signature.
-    auto &true_region = op.getTrueBranch();
-    TypeConverter::SignatureConversion true_sig_conversion(
-        true_region.getNumArguments());
-
-    for (const auto &arg : true_region.getArguments()) {
-      auto arg_t = getTypeConverter()->convertType(arg.getType());
-      auto lower_t = typetools_.getType(arg_t, vis_.getValueVisibility(arg));
-      true_sig_conversion.addInputs(arg.getArgNumber(), lower_t);
-    }
-
-    // Convert false region signature.
-    auto &false_region = op.getFalseBranch();
-    TypeConverter::SignatureConversion false_sig_conversion(
-        false_region.getNumArguments());
-
-    for (const auto &arg : false_region.getArguments()) {
-      auto arg_t = getTypeConverter()->convertType(arg.getType());
-      auto lower_t = typetools_.getType(arg_t, vis_.getValueVisibility(arg));
-      false_sig_conversion.addInputs(arg.getArgNumber(), lower_t);
-    }
-
-    auto new_op = rewriter.replaceOpWithNewOp<pphlo::IfOp>(
-        op, result_types, operands, op->getAttrs());
+    auto new_op = rewriter.create<pphlo::IfOp>(op->getLoc(), result_types,
+                                               operands, op->getAttrs());
 
     // Copy over the operations inside true/false region.
     rewriter.inlineRegionBefore(op.getTrueBranch(), new_op.getTrueBranch(),
@@ -550,16 +530,16 @@ public:
                                 new_op.getFalseBranch().end());
 
     if (failed(rewriter.convertRegionTypes(&new_op.getTrueBranch(),
-                                           *getTypeConverter(),
-                                           &true_sig_conversion))) {
+                                           *getTypeConverter(), nullptr))) {
       return failure();
     }
 
     if (failed(rewriter.convertRegionTypes(&new_op.getFalseBranch(),
-                                           *getTypeConverter(),
-                                           &false_sig_conversion))) {
+                                           *getTypeConverter(), nullptr))) {
       return failure();
     }
+
+    rewriter.replaceOp(op, new_op);
 
     return success();
   }
@@ -583,20 +563,9 @@ public:
     // Create new op
     auto operands = materializeInputs(op, adaptor.getOperands());
 
-    auto new_op = rewriter.replaceOpWithNewOp<pphlo::CaseOp>(
-        op, result_types, operands, op->getAttrs(), op.getNumRegions());
-
-    // Convert each region
-    llvm::SmallVector<TypeConverter::SignatureConversion, 2> sig_converters;
-    for (auto &r : op.getBranches()) {
-      TypeConverter::SignatureConversion sig_conversion(r.getNumArguments());
-      for (const auto &arg : r.getArguments()) {
-        auto arg_t = getTypeConverter()->convertType(arg.getType());
-        auto lower_t = typetools_.getType(arg_t, vis_.getValueVisibility(arg));
-        sig_conversion.addInputs(arg.getArgNumber(), lower_t);
-      }
-      sig_converters.emplace_back(std::move(sig_conversion));
-    }
+    auto new_op =
+        rewriter.create<pphlo::CaseOp>(op->getLoc(), result_types, operands,
+                                       op->getAttrs(), op.getNumRegions());
 
     // Copy over the operations inside each region.
     for (const auto &r : llvm::enumerate(op.getBranches())) {
@@ -607,10 +576,12 @@ public:
     // Convert each region type
     for (const auto &r : llvm::enumerate(new_op.getBranches())) {
       if (failed(rewriter.convertRegionTypes(&r.value(), *getTypeConverter(),
-                                             &sig_converters[r.index()]))) {
+                                             nullptr))) {
         return failure();
       }
     }
+
+    rewriter.replaceOp(op, new_op);
 
     return success();
   }
@@ -655,8 +626,8 @@ public:
     // May need to materialize operands
     auto operands = materializeInputs(op, adaptor.getOperands());
 
-    auto new_op = rewriter.replaceOpWithNewOp<pphlo::WhileOp>(
-        op, result_types, operands, op->getAttrs());
+    auto new_op = rewriter.create<pphlo::WhileOp>(op->getLoc(), result_types,
+                                                  operands, op->getAttrs());
 
     // Copy over the operations inside body region.
     rewriter.inlineRegionBefore(op.getBody(), new_op.getBody(),
@@ -673,6 +644,8 @@ public:
             &new_op.getCond(), *getTypeConverter(), &cond_sig_conversion))) {
       return failure();
     }
+
+    rewriter.replaceOp(op, new_op);
 
     return success();
   }
@@ -854,7 +827,45 @@ public:
                        (!op.getPaddingAttr().isSplat() ||
                         op.getPaddingAttr().getSplatValue<int64_t>() != 0);
 
-    SelectAndScatterOp new_op;
+    auto converBody = [&](SelectAndScatterOp new_op) {
+      // Convert the region signature.
+      TypeConverter::SignatureConversion select_sig_conversion(
+          op.getSelect().front().getNumArguments());
+
+      for (const auto &arg : op.getSelect().front().getArguments()) {
+        auto arg_t = this->getTypeConverter()->convertType(arg.getType());
+        auto lower_t = typetools_.getType(arg_t, vis_.getValueVisibility(arg));
+        select_sig_conversion.addInputs(arg.getArgNumber(), lower_t);
+      }
+
+      TypeConverter::SignatureConversion scatter_sig_conversion(
+          op.getScatter().front().getNumArguments());
+
+      for (const auto &arg : op.getScatter().front().getArguments()) {
+        auto arg_t = this->getTypeConverter()->convertType(arg.getType());
+        auto lower_t = typetools_.getType(arg_t, vis_.getValueVisibility(arg));
+        scatter_sig_conversion.addInputs(arg.getArgNumber(), lower_t);
+      }
+
+      // Copy over the operations inside the region.
+      rewriter.inlineRegionBefore(op.getSelect(), new_op.getSelect(),
+                                  new_op.getSelect().end());
+      rewriter.inlineRegionBefore(op.getScatter(), new_op.getScatter(),
+                                  new_op.getScatter().end());
+
+      if (failed(rewriter.convertRegionTypes(&new_op.getSelect(),
+                                             *this->getTypeConverter(),
+                                             &select_sig_conversion))) {
+        return failure();
+      }
+
+      if (failed(rewriter.convertRegionTypes(&new_op.getScatter(),
+                                             *this->getTypeConverter(),
+                                             &scatter_sig_conversion))) {
+        return failure();
+      }
+      return success();
+    };
 
     if (has_padding) {
       auto rank =
@@ -875,10 +886,14 @@ public:
           DenseI64ArrayAttr::get(op->getContext(), padding_high),
           DenseI64ArrayAttr::get(op->getContext(), padding_interior));
 
-      new_op = rewriter.create<pphlo::SelectAndScatterOp>(
+      auto new_op = rewriter.create<pphlo::SelectAndScatterOp>(
           op->getLoc(), operand.getType(), operand, operands[1], operands[2],
           DenseI64ArrayAttr::get(getContext(), *op.getWindowDimensions()),
           DenseI64ArrayAttr::get(getContext(), *op.getWindowStrides()));
+
+      if (failed(converBody(new_op))) {
+        return failure();
+      }
 
       llvm::SmallVector<int64_t, 2> slice_end(
           new_op.getType().dyn_cast<RankedTensorType>().getShape().begin(),
@@ -896,47 +911,16 @@ public:
           DenseI64ArrayAttr::get(
               getContext(), llvm::SmallVector<int64_t>(slice_end.size(), 1)));
     } else {
-      new_op = rewriter.replaceOpWithNewOp<pphlo::SelectAndScatterOp>(
-          op, result_type, operands[0], operands[1], operands[2],
+      auto new_op = rewriter.create<pphlo::SelectAndScatterOp>(
+          op->getLoc(), result_type, operands[0], operands[1], operands[2],
           DenseI64ArrayAttr::get(getContext(), *op.getWindowDimensions()),
           DenseI64ArrayAttr::get(getContext(), *op.getWindowStrides()));
-    }
 
-    // Convert the region signature.
-    TypeConverter::SignatureConversion select_sig_conversion(
-        op.getSelect().front().getNumArguments());
+      if (failed(converBody(new_op))) {
+        return failure();
+      }
 
-    for (const auto &arg : op.getSelect().front().getArguments()) {
-      auto arg_t = this->getTypeConverter()->convertType(arg.getType());
-      auto lower_t = typetools_.getType(arg_t, vis_.getValueVisibility(arg));
-      select_sig_conversion.addInputs(arg.getArgNumber(), lower_t);
-    }
-
-    TypeConverter::SignatureConversion scatter_sig_conversion(
-        op.getScatter().front().getNumArguments());
-
-    for (const auto &arg : op.getScatter().front().getArguments()) {
-      auto arg_t = this->getTypeConverter()->convertType(arg.getType());
-      auto lower_t = typetools_.getType(arg_t, vis_.getValueVisibility(arg));
-      scatter_sig_conversion.addInputs(arg.getArgNumber(), lower_t);
-    }
-
-    // Copy over the operations inside the region.
-    rewriter.inlineRegionBefore(op.getSelect(), new_op.getSelect(),
-                                new_op.getSelect().end());
-    rewriter.inlineRegionBefore(op.getScatter(), new_op.getScatter(),
-                                new_op.getScatter().end());
-
-    if (failed(rewriter.convertRegionTypes(&new_op.getSelect(),
-                                           *this->getTypeConverter(),
-                                           &select_sig_conversion))) {
-      return failure();
-    }
-
-    if (failed(rewriter.convertRegionTypes(&new_op.getScatter(),
-                                           *this->getTypeConverter(),
-                                           &scatter_sig_conversion))) {
-      return failure();
+      rewriter.replaceOp(op, new_op);
     }
 
     return success();
@@ -996,8 +980,9 @@ public:
     // materialize inputs
     auto operands = materializeInputs(op, adaptor.getOperands());
 
-    auto new_op = rewriter.replaceOpWithNewOp<pphlo::SortOp>(
-        op, result_types, operands, op.getDimension(), op.getIsStable());
+    auto new_op =
+        rewriter.create<pphlo::SortOp>(op->getLoc(), result_types, operands,
+                                       op.getDimension(), op.getIsStable());
 
     // Copy over the operations inside the region.
     rewriter.inlineRegionBefore(op.getComparator(), new_op.getComparator(),
@@ -1008,6 +993,8 @@ public:
                                            &sig_conversion))) {
       return failure();
     }
+
+    rewriter.replaceOp(op, new_op);
 
     return success();
   }
@@ -1274,9 +1261,11 @@ public:
 
     llvm::SmallVector<Type> result_types = convertResultType(op->getResults());
 
-    rewriter.replaceOpWithNewOp<pphlo::CustomCallOp>(
+    auto new_op = rewriter.replaceOpWithNewOp<pphlo::CustomCallOp>(
         op, result_types, materializeInputs(op, adaptor.getOperands()),
         op.getCallTargetName(), op.getHasSideEffect());
+
+    new_op->setAttr("mhlo.attributes", op->getAttr("mhlo.attributes"));
 
     return success();
   }

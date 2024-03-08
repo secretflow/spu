@@ -34,7 +34,7 @@ namespace spu::kernel::hal {
 // fn: an associative binary Function
 // in: a 1-d tensor
 template <typename Fn>
-spu::Value associative_scan(Fn &&fn, SPUContext *ctx, const Value &in) {
+spu::Value associative_scan(Fn&& fn, SPUContext* ctx, const Value& in) {
   SPU_ENFORCE(in.shape().ndim() == 1U, "input should be 1d");
   const auto numel = in.numel();
   if (numel < 2) {
@@ -72,5 +72,21 @@ spu::Value associative_scan(Fn &&fn, SPUContext *ctx, const Value &in) {
   auto ret = hal::_add(ctx, pad_even, pad_odd).setDtype(in.dtype());
   return ret;
 }
+
+//////////////////////////////////////////////////////////////////////////////
+// Shape utils
+//////////////////////////////////////////////////////////////////////////////
+
+/// the squeeze function, i.e., removes dimensions of size 1 from the shape of a
+/// tensor.
+// @param in, the input
+// @param dim, the dimension to be squeezed
+Value squeeze(SPUContext* ctx, const Value& in, int64_t dim = 0);
+
+/// the unsqueeze function, i.e., expands a tensor with a length 1 axis inserted
+/// at index axis.
+// @param in, the input
+// @param dim, the dimension to be unsqueezed
+Value unsqueeze(SPUContext* ctx, const Value& in, int64_t dim = 0);
 
 }  // namespace spu::kernel::hal

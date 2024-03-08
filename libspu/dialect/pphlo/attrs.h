@@ -23,7 +23,20 @@
 
 namespace mlir::spu::pphlo {
 
-void printConvolutionDimensions(AsmPrinter &p, Operation *,
+// ConvDim
+void printConvolutionDimensions(AsmPrinter& p, Operation*,
                                 ConvDimensionNumbersAttr dnums);
+ParseResult parseConvolutionDimensions(AsmParser& parser,
+                                       ConvDimensionNumbersAttr& dnums);
 
-}
+// WindowAttr
+void printWindowAttributes(OpAsmPrinter& p, Operation*,
+                           std::optional<DenseI64ArrayAttr> window_strides);
+ParseResult parseWindowAttributes(OpAsmParser& parser,
+                                  DenseI64ArrayAttr& window_strides);
+
+// CustomCall target attr
+void printCustomCallTarget(AsmPrinter& p, Operation*, StringAttr target);
+ParseResult parseCustomCallTarget(AsmParser& parser, StringAttr& target);
+
+}  // namespace mlir::spu::pphlo

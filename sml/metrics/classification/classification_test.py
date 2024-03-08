@@ -29,13 +29,13 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '../../'))
 from sklearn.metrics import roc_auc_score as sk_roc_auc_score
 
 from sml.metrics.classification.classification import (
+    accuracy_score,
     bin_counts,
     equal_obs,
-    roc_auc_score,
     f1_score,
     precision_score,
     recall_score,
-    accuracy_score,
+    roc_auc_score,
 )
 
 

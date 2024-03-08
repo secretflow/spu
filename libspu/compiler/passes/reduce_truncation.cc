@@ -69,11 +69,10 @@ public:
         auto [prev_secret_operand, prev_public_operand] =
             getSecretAndPublicOperand(prev_mul);
         OpBuilder builder(op);
-        auto mul_pp =
-            builder.create<MulOp>(op.getLoc(), prev_public_operand.getType(),
-                                  prev_public_operand, curr_public_operand);
+        auto mul_pp = builder.create<MulOp>(op.getLoc(), prev_public_operand,
+                                            curr_public_operand);
 
-        rewriter.replaceOpWithNewOp<MulOp>(op, op.getType(), mul_pp.getResult(),
+        rewriter.replaceOpWithNewOp<MulOp>(op, mul_pp.getResult(),
                                            prev_secret_operand);
         return success();
       }

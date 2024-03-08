@@ -36,10 +36,9 @@ struct CompareOpConverter : public OpRewritePattern<CompTy> {
                                 PatternRewriter &rewriter) const override {
     OpBuilder builder(op);
 
-    auto eq_op =
-        builder.create<LowerTy>(op.getLoc(), op.getType(), op.getOperands());
+    auto eq_op = builder.create<LowerTy>(op.getLoc(), op.getOperands());
 
-    rewriter.replaceOpWithNewOp<NotOp>(op, op.getType(), eq_op);
+    rewriter.replaceOpWithNewOp<NotOp>(op, eq_op);
 
     return success();
   }

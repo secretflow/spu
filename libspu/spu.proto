@@ -254,6 +254,7 @@ message RuntimeConfig {
     LOG_DEFAULT = 0;  // Implementation defined.
     LOG_PADE = 1;     // The pade approximation.
     LOG_NEWTON = 2;   // The newton approximation.
+    LOG_MINMAX = 3;   // The minmax approximation.
   }
 
   // The logarithm approximation method.
@@ -309,9 +310,12 @@ message RuntimeConfig {
   // TrustedThirdParty configs.
   TTPBeaverConfig ttp_beaver_config = 71;
 
+  // Cheetah 2PC configs.
+  CheetahConfig cheetah_2pc_config = 72;
+
   // For protocol like SecureML, the most significant bit may have error with
   // low probability, which lead to huge calculation error.
-  bool trunc_allow_msb_error = 72;
+  bool trunc_allow_msb_error = 73;
 
   /// System related configurations start.
 
@@ -341,6 +345,20 @@ message TTPBeaverConfig {
   // TODO: TLS & brpc options.
 }
 
+enum CheetahOtKind {
+  YACL_Ferret = 0;
+  YACL_Softspoken = 1;
+  EMP_Ferret = 2;
+}
+
+message CheetahConfig {
+  // disable the ciphertext packing for matmul
+  bool disable_matmul_pack = 1;
+  // allow least significant bits error for point-wise mul
+  bool enable_mul_lsb_error = 2;
+  // Setup for cheetah ot
+  CheetahOtKind ot_kind = 3;
+}
 //////////////////////////////////////////////////////////////////////////
 // Compiler relate definition
 //////////////////////////////////////////////////////////////////////////
@@ -395,6 +413,9 @@ message CompilerOptions {
 
   // Disable deallocation insertion pass
   bool disable_deallocation_insertion = 17;
+
+  // Disable sort->topk rewrite when only partial sort is required
+  bool disable_partial_sort_optimization = 28;
 }
 
 // The executable format accepted by SPU runtime.

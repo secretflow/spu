@@ -32,7 +32,7 @@ class YaclFerretOt : public spu::mpc::cheetah::FerretOtInterface {
 
  public:
   YaclFerretOt(std::shared_ptr<Communicator> conn, bool is_sender,
-               bool malicious = false);
+               bool use_spoken_soft);
 
   ~YaclFerretOt();
 

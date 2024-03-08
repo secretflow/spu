@@ -10,6 +10,13 @@
 >
 > please add your unreleased change here.
 
+- [Feature] Add minimax approximation for log
+- [Feature] Support jax.lax.top_k
+- [Improvement] Default log approximation to minmax
+- [Improvement] Improve median performance
+
+## 20240306
+
 - [Feature] Support more generic Torch model inference
 - [Improvement] Optimize one-time setup for yacl ot
 - [Improvement] Optimize sort performance
