@@ -25,11 +25,11 @@ import time
 from enum import Enum
 from typing import Callable
 
-import multiprocess
 import yaml
 
 import spu.utils.distributed as ppd
 from spu import spu_pb2
+from spu.utils.polyfill import Process
 
 CLUSTER_ABY3_3PC = "examples/python/conf/3pc.json"
 SML_HOME = pathlib.Path(__file__).resolve().parent.parent
@@ -102,7 +102,7 @@ class Emulator:
             self._mode_multiprocess_up()
         else:
             self._mode_docker_up()
-        time.sleep(1)
+        time.sleep(2)
         ppd.init(self.conf["nodes"], self.conf["devices"])
 
     def down(self):
@@ -115,9 +115,7 @@ class Emulator:
         logger.info("Start multiprocess cluster...")
         self.workers = []
         for node_id in self.conf["nodes"].keys():
-            worker = multiprocess.Process(
-                target=ppd.RPC.serve, args=(node_id, self.conf["nodes"])
-            )
+            worker = Process(target=ppd.RPC.serve, args=(node_id, self.conf["nodes"]))
             worker.start()
             self.workers.append(worker)
 

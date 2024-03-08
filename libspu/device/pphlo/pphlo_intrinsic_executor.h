@@ -14,17 +14,19 @@
 
 #pragma once
 
-#include "llvm/ADT/StringRef.h"
-
 #include "libspu/core/value.h"
+#include "libspu/dialect/pphlo/ops.h"
 
 namespace spu {
+
 class SPUContext;
+
 }
 
 namespace spu::device::pphlo {
 
-std::vector<Value> intrinsic_dispatcher(SPUContext* ctx, llvm::StringRef name,
+std::vector<Value> intrinsic_dispatcher(SPUContext* ctx,
+                                        mlir::spu::pphlo::CustomCallOp& call,
                                         absl::Span<const Value> inputs);
 
 }  // namespace spu::device::pphlo

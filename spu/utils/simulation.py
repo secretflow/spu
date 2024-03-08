@@ -17,10 +17,9 @@ import threading
 from typing import Callable
 
 import jax
+import jax.extend.linear_util as jax_lu  # Moved in jax 0.4.16
 import jax.numpy as jnp
 import numpy as np
-
-import jax.extend.linear_util as jax_lu  # Moved in jax 0.4.16
 from jax._src import api_util as japi_util
 
 from .. import api as spu_api
@@ -66,6 +65,10 @@ class Simulator(object):
             A SPU Simulator
         """
         config = spu_pb2.RuntimeConfig(protocol=prot, field=field)
+        if prot == spu_pb2.ProtocolKind.CHEETAH:
+            # config.cheetah_2pc_config.enable_mul_lsb_error = True
+            # config.cheetah_2pc_config.ot_kind = spu_pb2.CheetahOtKind.YACL_Softspoken
+            pass
         # config.enable_hal_profile = True
         # config.enable_pphlo_profile = True
         # config.enable_pphlo_trace = True

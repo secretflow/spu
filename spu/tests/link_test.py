@@ -12,17 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
-import os
-import re
-import sys
 import threading
 import unittest
 
 import multiprocess
 
 import spu.libspu.link as link
-from socket import socket
 from spu.tests.utils import get_free_port
 
 

@@ -14,8 +14,10 @@
 
 #include "libspu/mpc/cheetah/conversion.h"
 
+#include "libspu/core/ndarray_ref.h"
 #include "libspu/core/trace.h"
 #include "libspu/mpc/ab_api.h"
+#include "libspu/mpc/cheetah/ot/basic_ot_prot.h"
 #include "libspu/mpc/cheetah/state.h"
 #include "libspu/mpc/cheetah/type.h"
 #include "libspu/mpc/common/prg_state.h"
@@ -56,27 +58,14 @@ NdArrayRef A2B::proc(KernelEvalContext* ctx, const NdArrayRef& x) const {
 }
 
 NdArrayRef B2A::proc(KernelEvalContext* ctx, const NdArrayRef& x) const {
-  size_t n = x.numel();
-  size_t nworker = InitOTState(ctx, n);
-  size_t work_load = nworker == 0 ? 0 : CeilDiv(n, nworker);
-
   const auto field = ctx->getState<Z2kState>()->getDefaultField();
-  const auto flatten_x = x.reshape({static_cast<int64_t>(n)});
-  NdArrayRef out(x.eltype(), x.shape());
-
-  TiledDispatch(ctx, nworker, [&](int64_t job) {
-    auto slice_bgn = std::min<int64_t>(n, job * work_load);
-    auto slice_end = std::min<int64_t>(n, slice_bgn + work_load);
-    if (slice_bgn == slice_end) {
-      return;
-    }
-    auto out_slice = ctx->getState<CheetahOTState>()->get(job)->B2A(
-        flatten_x.slice({slice_bgn}, {slice_end}, {1}));
-    std::memcpy(&out.at(slice_bgn), &out_slice.at(0),
-                out_slice.elsize() * out_slice.numel());
-  });
-
-  return out.as(makeType<AShrTy>(field));
+  return TiledDispatchOTFunc(
+             ctx, x,
+             [&](const NdArrayRef& input,
+                 const std::shared_ptr<BasicOTProtocols>& base_ot) {
+               return base_ot->B2A(input);
+             })
+      .as(makeType<AShrTy>(field));
 }
 
 void CommonTypeV::evaluate(KernelEvalContext* ctx) const {

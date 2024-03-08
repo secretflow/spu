@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "libspu/dialect/pphlo/AssemblyFormat.h"
+#include "libspu/dialect/pphlo/assembly_format.h"
 
 namespace mlir::spu::pphlo {
 

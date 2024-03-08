@@ -3,6 +3,7 @@ skip-string-normalization = true
 
 [tool.isort]
 profile = "black"
+skip_glob = ["external/*", ".cache/*", "bazel-*/*"]
 
 [tool.rstcheck]
 report_level = "ERROR"

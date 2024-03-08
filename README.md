@@ -34,9 +34,9 @@ This documentation also contains instructions for [build and testing](CONTRIBUTI
 |            | Linux x86_64 | Linux aarch64 | macOS x64      | macOS Apple Silicon | Windows x64    | Windows WSL2    x64 |
 |------------|--------------|---------------|----------------|---------------------|----------------|---------------------|
 | CPU        | yes          | yes           | yes<sup>1</sup>| yes                 | no             | yes                 |
-| NVIDIA GPU | experimental | no            | no             | n/a                 | no             | experimental                  |
+| NVIDIA GPU | experimental | no            | no             | n/a                 | no             | experimental        |
 
-1. Due to CI resource limitation, macOS x64 prebuild binary will no longer available since next release (0.9.x).
+1. Due to CI resource limitation, macOS x64 prebuild binary is no longer available.
 
 ### Instructions
 

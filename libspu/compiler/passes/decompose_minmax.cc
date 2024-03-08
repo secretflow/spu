@@ -38,16 +38,9 @@ public:
                                 PatternRewriter &rewriter) const override {
     OpBuilder builder(op);
 
-    auto ret_type = op.getType().template dyn_cast<mlir::RankedTensorType>();
-    auto ret_vis = typetools_.getTypeVisibility(op.getType());
-    auto gt_ret = RankedTensorType::get(
-        ret_type.getShape(),
-        typetools_.getType(mlir::IntegerType::get(op->getContext(), 1),
-                           ret_vis));
+    auto gt = builder.create<RetOp>(op->getLoc(), op.getOperands());
 
-    auto gt = builder.create<RetOp>(op->getLoc(), gt_ret, op.getOperands());
-
-    rewriter.replaceOpWithNewOp<SelectOp>(op, ret_type, gt.getResult(),
+    rewriter.replaceOpWithNewOp<SelectOp>(op, op.getType(), gt.getResult(),
                                           op.getOperand(0), op.getOperand(1));
 
     return success();

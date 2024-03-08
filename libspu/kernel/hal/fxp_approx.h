@@ -24,6 +24,8 @@ class SPUContext;
 namespace spu::kernel::hal {
 namespace detail {
 
+Value log_minmax(SPUContext* ctx, const Value& x);
+
 Value log2_pade(SPUContext* ctx, const Value& x);
 
 Value log_householder(SPUContext* ctx, const Value& x);

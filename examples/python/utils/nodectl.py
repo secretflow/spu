@@ -15,9 +15,8 @@
 import argparse
 import json
 
-import multiprocess
-
 import spu.utils.distributed as ppd
+from spu.utils.polyfill import Process
 
 parser = argparse.ArgumentParser(description='SPU node service.')
 parser.add_argument(
@@ -44,9 +43,7 @@ if __name__ == '__main__':
     elif args.command == 'up':
         workers = []
         for node_id in nodes_def.keys():
-            worker = multiprocess.Process(
-                target=ppd.RPC.serve, args=(node_id, nodes_def)
-            )
+            worker = Process(target=ppd.RPC.serve, args=(node_id, nodes_def))
             worker.start()
             workers.append(worker)
 

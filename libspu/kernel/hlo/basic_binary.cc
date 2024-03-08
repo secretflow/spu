@@ -18,6 +18,7 @@
 #include "libspu/kernel/hal/constants.h"
 #include "libspu/kernel/hal/polymorphic.h"
 #include "libspu/kernel/hal/shape_ops.h"
+#include "libspu/kernel/hal/utils.h"
 
 namespace spu::kernel::hlo {
 
@@ -89,7 +90,6 @@ spu::Value DotGeneral(SPUContext *ctx, const spu::Value &lhs,
 
   Shape lhs_slice_shape{lhs.shape()[1], lhs.shape()[2]};
   Shape rhs_slice_shape{rhs.shape()[1], rhs.shape()[2]};
-  Shape ret_slice_shape{1, lhs.shape()[1], rhs.shape()[2]};
 
   for (int64_t batch_idx = 0; batch_idx < num_batch; ++batch_idx) {
     lhs_slice_begin[0] = batch_idx;
@@ -104,8 +104,8 @@ spu::Value DotGeneral(SPUContext *ctx, const spu::Value &lhs,
         ctx,
         kernel::hal::slice(ctx, rhs, rhs_slice_begin, rhs_slice_end, strides),
         rhs_slice_shape);
-    results[batch_idx] = kernel::hal::reshape(
-        ctx, kernel::hal::matmul(ctx, lhs_slice, rhs_slice), ret_slice_shape);
+    results[batch_idx] = kernel::hal::unsqueeze(
+        ctx, kernel::hal::matmul(ctx, lhs_slice, rhs_slice));
   }
 
   return kernel::hal::concatenate(ctx, results, 0);

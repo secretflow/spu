@@ -727,7 +727,9 @@ void execute(OpExecutor *, SPUContext *sctx, SymbolScope *sscope,
 
   if (ret_type.getShape().size() > 1) {
     // Need a broadcast
-    iota_ret = kernel::hlo::Broadcast(sctx, iota_ret, ret_type.getShape(), {});
+    iota_ret =
+        kernel::hlo::Broadcast(sctx, iota_ret, ret_type.getShape(),
+                               {static_cast<int64_t>(op.getIotaDimension())});
   }
 
   if (pt_type.second) {
@@ -1143,7 +1145,7 @@ void execute(OpExecutor *, SPUContext *sctx, SymbolScope *sscope,
   for (size_t idx = 0; idx < inputs.size(); ++idx) {
     inputs[idx] = lookupValue(sscope, op->getOperand(idx), opt);
   }
-  auto ret = intrinsic_dispatcher(sctx, op.getCallTargetName(), inputs);
+  auto ret = intrinsic_dispatcher(sctx, op, inputs);
 
   for (size_t idx = 0; idx < op->getNumResults(); ++idx) {
     addValue(sscope, op->getResult(idx), std::move(ret[idx]), opt);
@@ -1233,8 +1235,15 @@ static void dispatchOp(OpExecutor *executor, SPUContext *sctx,
     // Execute op
     {
       const auto fn_name = op.getName().getStringRef().str();
-      SPU_TRACE_ACTION(GET_TRACER(sctx), sctx->lctx(), (TR_HLO | TR_LAR),
-                       ~TR_HLO, fn_name);
+
+      if constexpr (std::is_same_v<OpT, mlir::spu::pphlo::CustomCallOp>) {
+        SPU_TRACE_ACTION(
+            GET_TRACER(sctx), sctx->lctx(), (TR_HLO | TR_LAR), ~TR_HLO,
+            fmt::format("{}: {}", fn_name, casted.getCallTargetName().str()));
+      } else {
+        SPU_TRACE_ACTION(GET_TRACER(sctx), sctx->lctx(), (TR_HLO | TR_LAR),
+                         ~TR_HLO, fn_name);
+      }
       execute(executor, sctx, sscope, casted, opts);
     }
 

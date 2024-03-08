@@ -39,12 +39,6 @@ spu_cc_library(
 )
 
 spu_cc_library(
-    name = "env",
-    srcs = ["env.cc"],
-    hdrs = ["env.h"],
-)
-
-spu_cc_library(
     name = "boolean",
     srcs = [
         "boolean.cc",

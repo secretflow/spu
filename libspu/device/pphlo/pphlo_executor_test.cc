@@ -793,6 +793,20 @@ func.func @main() -> (tensor<4x2xi32>) {
   r.verifyOutput(expect.data());
 }
 
+TEST_P(ExecutorTest, Iota2D1) {
+  Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
+           std::get<2>(GetParam()));
+
+  r.run(R"(
+func.func @main() -> (tensor<4x2xi32>) {
+    %0 = pphlo.iota dim = 0 : tensor<4x2xi32>
+    return %0 : tensor<4x2xi32>
+})");
+
+  std::array<int, 8> expect = {0, 0, 1, 1, 2, 2, 3, 3};
+  r.verifyOutput(expect.data());
+}
+
 TEST_P(ExecutorTest, IotaComplex) {
   Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
            std::get<2>(GetParam()));

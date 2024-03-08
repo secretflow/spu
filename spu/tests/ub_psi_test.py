@@ -14,6 +14,7 @@
 
 import json
 import unittest
+from tempfile import TemporaryDirectory
 
 import multiprocess
 from google.protobuf import json_format
@@ -21,7 +22,6 @@ from google.protobuf import json_format
 import spu.libspu.link as link
 import spu.psi as psi
 from spu.tests.utils import create_link_desc
-from tempfile import TemporaryDirectory
 
 
 class UnitTests(unittest.TestCase):

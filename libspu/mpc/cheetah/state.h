@@ -17,19 +17,28 @@
 #include <memory>
 #include <mutex>
 
+#include "libspu/core/context.h"
+#include "libspu/core/ndarray_ref.h"
 #include "libspu/core/object.h"
 #include "libspu/mpc/cheetah/arith/cheetah_dot.h"
 #include "libspu/mpc/cheetah/arith/cheetah_mul.h"
 #include "libspu/mpc/cheetah/ot/basic_ot_prot.h"
+#include "libspu/mpc/cheetah/rlwe/utils.h"
 
 namespace spu::mpc::cheetah {
 
-// Return num_workers for the given size of jobs
-size_t InitOTState(KernelEvalContext* ctx, size_t njobs);
+using OTUnaryFunc = std::function<NdArrayRef(
+    const NdArrayRef& sub, const std::shared_ptr<BasicOTProtocols>& ot)>;
 
-// Call func(idx) for idx = 0, 1, ..., n - 1
-void TiledDispatch(KernelEvalContext* ctx, int64_t njobs,
-                   const std::function<void(int64_t)>& func);
+using OTBinaryFunc =
+    std::function<NdArrayRef(const NdArrayRef& op0, const NdArrayRef& op1,
+                             const std::shared_ptr<BasicOTProtocols>& ot)>;
+
+NdArrayRef TiledDispatchOTFunc(KernelEvalContext* ctx, const NdArrayRef& x,
+                               OTUnaryFunc func);
+
+NdArrayRef TiledDispatchOTFunc(KernelEvalContext* ctx, const NdArrayRef& x,
+                               const NdArrayRef& y, OTBinaryFunc func);
 
 class CheetahMulState : public State {
  private:
@@ -52,8 +61,8 @@ class CheetahMulState : public State {
   static constexpr char kBindName[] = "CheetahMul";
 
   explicit CheetahMulState(const std::shared_ptr<yacl::link::Context>& lctx,
-                           bool allow_mul_error = false) {
-    mul_prot_ = std::make_unique<CheetahMul>(lctx, allow_mul_error);
+                           bool enable_mul_lsb_error = false) {
+    mul_prot_ = std::make_unique<CheetahMul>(lctx, enable_mul_lsb_error);
     duplx_ = lctx->Spawn();
   }
 
@@ -77,8 +86,8 @@ class CheetahDotState : public State {
   static constexpr char kBindName[] = "CheetahDot";
 
   explicit CheetahDotState(const std::shared_ptr<yacl::link::Context>& lctx,
-                           bool enable_matmul_pack = true) {
-    dot_prot_ = std::make_unique<CheetahDot>(lctx, enable_matmul_pack);
+                           bool disable_matmul_pack = false) {
+    dot_prot_ = std::make_unique<CheetahDot>(lctx, disable_matmul_pack);
   }
 
   ~CheetahDotState() override = default;
@@ -91,18 +100,43 @@ class CheetahOTState : public State {
   using ProtPtr = std::shared_ptr<BasicOTProtocols>;
 
   mutable std::mutex lock_;
+
+  static constexpr size_t kMaxOTParallel = 24;
+
+  size_t maximum_instances_ = 0;
   std::vector<ProtPtr> basic_ot_prot_;
+  CheetahOtKind ot_kind_;
 
  public:
   static constexpr char kBindName[] = "CheetahOT";
-  static constexpr size_t kMaxOTParallel = 32;
 
-  explicit CheetahOTState() : basic_ot_prot_(kMaxOTParallel) {}
+  explicit CheetahOTState(size_t maximum_instances, CheetahOtKind ot_kind)
+      : maximum_instances_(std::min(kMaxOTParallel, maximum_instances)),
+        basic_ot_prot_(maximum_instances_),
+        ot_kind_(ot_kind) {
+    SPU_ENFORCE(maximum_instances_ > 0);
+    std::string ot_type;
+    switch (ot_kind_) {
+      default:
+      case CheetahOtKind::YACL_Ferret:
+        ot_type = "yacl_ferret";
+        break;
+      case CheetahOtKind::EMP_Ferret:
+        ot_type = "emp_ferret";
+        break;
+      case CheetahOtKind::YACL_Softspoken:
+        ot_type = "yacl_softspoken";
+        break;
+    }
+    SPDLOG_DEBUG("CHEETAH: Uses {} OT", ot_type);
+  }
 
   ~CheetahOTState() override = default;
 
+  size_t maximum_instances() const { return maximum_instances_; }
+
   void LazyInit(Communicator* comm, size_t idx = 0) {
-    SPU_ENFORCE(idx < kMaxOTParallel, "idx={} out-of-bound", idx);
+    SPU_ENFORCE(idx < maximum_instances_, "idx={} out-of-bound", idx);
     std::lock_guard guard(lock_);
     if (basic_ot_prot_[idx]) {
       return;
@@ -113,11 +147,12 @@ class CheetahOTState : public State {
     auto link = comm->lctx()->Spawn();
     link->SetThrottleWindowSize(0);
     auto _comm = std::make_shared<Communicator>(std::move(link));
-    basic_ot_prot_[idx] = std::make_shared<BasicOTProtocols>(std::move(_comm));
+    basic_ot_prot_[idx] =
+        std::make_shared<BasicOTProtocols>(std::move(_comm), ot_kind_);
   }
 
   std::shared_ptr<BasicOTProtocols> get(size_t idx = 0) {
-    SPU_ENFORCE(idx < kMaxOTParallel, "idx={} out-of-bound", idx);
+    SPU_ENFORCE(idx < maximum_instances_, "idx={} out-of-bound", idx);
     SPU_ENFORCE(basic_ot_prot_[idx], "call LazyInit first");
     return basic_ot_prot_[idx];
   }

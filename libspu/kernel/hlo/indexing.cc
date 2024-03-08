@@ -26,6 +26,7 @@
 #include "libspu/kernel/hal/ring.h"
 #include "libspu/kernel/hal/shape_ops.h"
 #include "libspu/kernel/hal/type_cast.h"
+#include "libspu/kernel/hal/utils.h"
 #include "libspu/kernel/hlo/basic_unary.h"
 #include "libspu/kernel/hlo/const.h"
 #include "libspu/kernel/hlo/utils.h"
@@ -79,7 +80,7 @@ std::vector<spu::Value> ClampAndFlattenIndex(
     std::transform(start_indices.cbegin(), start_indices.cend(),
                    std::back_inserter(reshaped_start_indices),
                    [&](const spu::Value &x) {
-                     return spu::kernel::hal::reshape(ctx, x, {1});
+                     return spu::kernel::hal::unsqueeze(ctx, x);
                    });
 
     auto concat_idx =
@@ -101,8 +102,8 @@ std::vector<spu::Value> ClampAndFlattenIndex(
     auto c = spu::kernel::hal::clamp(ctx, concat_idx, lower_bound, upper_bound);
     for (int64_t idx = 0; idx < static_cast<int64_t>(clamped_start.size());
          ++idx) {
-      clamped_start[idx] = spu::kernel::hal::reshape(
-          ctx, spu::kernel::hal::slice(ctx, c, {idx}, {idx + 1}, {1}), {});
+      clamped_start[idx] = spu::kernel::hal::squeeze(
+          ctx, spu::kernel::hal::slice(ctx, c, {idx}, {idx + 1}, {1}));
     }
   }
 
@@ -135,12 +136,11 @@ std::vector<spu::Value> ClampAndFlattenIndex(
   auto added = spu::kernel::hal::add(
       ctx,
       spu::kernel::hal::broadcast_to(
-          ctx, spu::kernel::hal::reshape(ctx, linear_idx, {1}), {num_index},
-          {0}),
+          ctx, spu::kernel::hal::unsqueeze(ctx, linear_idx), {num_index}, {0}),
       spu::kernel::hlo::Constant(ctx, flatten_idx, {num_index}));
   for (int64_t idx = 0; idx < num_index; ++idx) {
-    linear_indices.emplace_back(spu::kernel::hal::reshape(
-        ctx, spu::kernel::hal::slice(ctx, added, {idx}, {idx + 1}, {1}), {}));
+    linear_indices.emplace_back(spu::kernel::hal::squeeze(
+        ctx, spu::kernel::hal::slice(ctx, added, {idx}, {idx + 1}, {1})));
   }
   return linear_indices;
 }
@@ -227,18 +227,13 @@ spu::Value SecretDynamicSliceImpl(SPUContext *ctx, const spu::Value &operand,
       // Slice one...
       auto sliced = hal::slice(ctx, operand, start, limit, strides);
       // Remove leading one
-      auto reshaped = hal::reshape(
-          ctx, sliced, {sliced.shape().begin() + 1, sliced.shape().end()});
+      auto reshaped = hal::squeeze(ctx, sliced);
       // Do indexing
       auto indexed = SecretDynamicSliceImpl(
           ctx, reshaped, {slice_size.begin() + 1, slice_size.end()},
           start_indices.subspan(1));
       // Add leading one dimension back
-      Shape result_shape(indexed.shape().size() + 1, 1);
-      for (size_t idx = 0; idx < indexed.shape().size(); ++idx) {
-        result_shape[idx + 1] = indexed.shape()[idx];
-      }
-      results[idx] = hal::reshape(ctx, indexed, result_shape);
+      results[idx] = hal::unsqueeze(ctx, indexed);
     }
 
     if (results.size() == 1) {
@@ -287,7 +282,7 @@ spu::Value SecretDynamicSliceImpl(SPUContext *ctx, const spu::Value &operand,
     auto mask_slice =
         hal::slice(ctx, mask, {mask.numel() - idx - operand.shape()[0]},
                    {mask.numel() - idx}, {1});
-    mask_slice = hal::reshape(ctx, mask_slice, {1, mask_slice.numel()});
+    mask_slice = hal::unsqueeze(ctx, mask_slice);
 
     results[idx] = hal::matmul(ctx, mask_slice, collapsed_operand);
 
@@ -295,17 +290,13 @@ spu::Value SecretDynamicSliceImpl(SPUContext *ctx, const spu::Value &operand,
   }
 
   if (slice_size.size() > 1) {
-    Shape result_shape(slice_size.begin(), slice_size.end());
-    result_shape[0] = 1;
     // Keep indexing deeper
     for (int64_t idx = 0; idx < slice_size[0]; ++idx) {
-      results[idx] = hal::reshape(
-          ctx, results[idx],
-          {results[idx].shape().begin() + 1, results[idx].shape().end()});
+      results[idx] = hal::squeeze(ctx, results[idx]);
       results[idx] = SecretDynamicSliceImpl(
           ctx, results[idx], {slice_size.begin() + 1, slice_size.end()},
           start_indices.subspan(1));
-      results[idx] = hal::reshape(ctx, results[idx], result_shape);
+      results[idx] = hal::unsqueeze(ctx, results[idx]);
     }
   }
 
@@ -364,7 +355,7 @@ spu::Value SecretDynamicSlice(SPUContext *ctx, const spu::Value &operand,
   std::vector<spu::Value> adjusted_start_indices;
   std::transform(start_indices.cbegin(), start_indices.cend(),
                  std::back_inserter(adjusted_start_indices),
-                 [&](const Value &x) { return hal::reshape(ctx, x, {1}); });
+                 [&](const Value &x) { return hal::unsqueeze(ctx, x); });
 
   auto adjusted_all_indices =
       hal::clamp(ctx, hal::concatenate(ctx, adjusted_start_indices, 0),

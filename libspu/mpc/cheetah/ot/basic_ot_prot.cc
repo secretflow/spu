@@ -14,11 +14,8 @@
 
 #include "libspu/mpc/cheetah/ot/basic_ot_prot.h"
 
-#include <random>
-
 #include "ot_util.h"
 
-#include "libspu/mpc/cheetah/env.h"
 #include "libspu/mpc/cheetah/ot/emp/ferret.h"
 #include "libspu/mpc/cheetah/ot/ot_util.h"
 #include "libspu/mpc/cheetah/ot/yacl/ferret.h"
@@ -28,10 +25,12 @@
 
 namespace spu::mpc::cheetah {
 
-BasicOTProtocols::BasicOTProtocols(std::shared_ptr<Communicator> conn)
+BasicOTProtocols::BasicOTProtocols(std::shared_ptr<Communicator> conn,
+                                   CheetahOtKind kind)
     : conn_(std::move(conn)) {
   SPU_ENFORCE(conn_ != nullptr);
-  if (TestEnvFlag(EnvFlag::SPU_CTH_ENABLE_EMP_OT)) {
+
+  if (kind == CheetahOtKind::EMP_Ferret) {
     using Ot = EmpFerretOt;
     if (conn_->getRank() == 0) {
       ferret_sender_ = std::make_shared<Ot>(conn_, true);
@@ -42,12 +41,13 @@ BasicOTProtocols::BasicOTProtocols(std::shared_ptr<Communicator> conn)
     }
   } else {
     using Ot = YaclFerretOt;
+    bool use_ss = (kind == CheetahOtKind::YACL_Softspoken);
     if (conn_->getRank() == 0) {
-      ferret_sender_ = std::make_shared<Ot>(conn_, true);
-      ferret_receiver_ = std::make_shared<Ot>(conn_, false);
+      ferret_sender_ = std::make_shared<Ot>(conn_, true, use_ss);
+      ferret_receiver_ = std::make_shared<Ot>(conn_, false, use_ss);
     } else {
-      ferret_receiver_ = std::make_shared<Ot>(conn_, false);
-      ferret_sender_ = std::make_shared<Ot>(conn_, true);
+      ferret_receiver_ = std::make_shared<Ot>(conn_, false, use_ss);
+      ferret_sender_ = std::make_shared<Ot>(conn_, true, use_ss);
     }
   }
 }

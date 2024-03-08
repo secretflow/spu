@@ -53,18 +53,15 @@ class CompareProtocol {
                                           int64_t bitwidth = 0);
 
  private:
-  // Require 1D array
   NdArrayRef DoCompute(const NdArrayRef& inp, bool greater_than,
                        NdArrayRef* eq = nullptr, int64_t bitwidth = 0);
 
-  // Require 1D array
   NdArrayRef TraversalAND(NdArrayRef cmp, NdArrayRef eq, size_t num_input,
                           size_t num_digits);
 
   // Require num_digits to be two-power value
   NdArrayRef TraversalANDFullBinaryTree(NdArrayRef cmp, NdArrayRef eq,
                                         size_t num_input, size_t num_digits);
-  // Require 1D array
   std::array<NdArrayRef, 2> TraversalANDWithEq(NdArrayRef cmp, NdArrayRef eq,
                                                size_t num_input,
                                                size_t num_digits);

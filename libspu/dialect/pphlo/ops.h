@@ -18,7 +18,7 @@
 #include "mlir/Interfaces/InferTypeOpInterface.h"
 #include "mlir/Interfaces/SideEffectInterfaces.h"
 
-#include "libspu/dialect/pphlo/AssemblyFormat.h"
+#include "libspu/dialect/pphlo/assembly_format.h"
 
 namespace mlir::spu::pphlo::OpTrait {
 

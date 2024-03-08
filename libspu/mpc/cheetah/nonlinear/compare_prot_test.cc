@@ -67,7 +67,8 @@ TEST_P(CompareProtTest, Compare) {
   utils::simulate(kWorldSize, [&](std::shared_ptr<yacl::link::Context> ctx) {
     auto conn = std::make_shared<Communicator>(ctx);
     int rank = ctx->Rank();
-    auto base = std::make_shared<BasicOTProtocols>(conn);
+    auto base = std::make_shared<BasicOTProtocols>(
+        conn, CheetahOtKind::YACL_Softspoken);
     CompareProtocol comp_prot(base, radix);
     auto _c = comp_prot.Compute(inp[rank], greater_than);
     cmp_oup[rank] = _c;
@@ -121,7 +122,8 @@ TEST_P(CompareProtTest, CompareBitWidth) {
   utils::simulate(kWorldSize, [&](std::shared_ptr<yacl::link::Context> ctx) {
     auto conn = std::make_shared<Communicator>(ctx);
     int rank = ctx->Rank();
-    auto base = std::make_shared<BasicOTProtocols>(conn);
+    auto base = std::make_shared<BasicOTProtocols>(
+        conn, CheetahOtKind::YACL_Softspoken);
 
     CompareProtocol comp_prot(base, radix);
 
@@ -187,7 +189,8 @@ TEST_P(CompareProtTest, WithEq) {
   utils::simulate(kWorldSize, [&](std::shared_ptr<yacl::link::Context> ctx) {
     auto conn = std::make_shared<Communicator>(ctx);
     int rank = ctx->Rank();
-    auto base = std::make_shared<BasicOTProtocols>(conn);
+    auto base = std::make_shared<BasicOTProtocols>(
+        conn, CheetahOtKind::YACL_Softspoken);
     CompareProtocol comp_prot(base, radix);
     auto [_c, _e] = comp_prot.ComputeWithEq(inp[rank], greater_than);
     cmp_oup[rank] = _c;
@@ -246,7 +249,8 @@ TEST_P(CompareProtTest, WithEqBitWidth) {
   utils::simulate(kWorldSize, [&](std::shared_ptr<yacl::link::Context> ctx) {
     auto conn = std::make_shared<Communicator>(ctx);
     int rank = ctx->Rank();
-    auto base = std::make_shared<BasicOTProtocols>(conn);
+    auto base = std::make_shared<BasicOTProtocols>(
+        conn, CheetahOtKind::YACL_Softspoken);
 
     [[maybe_unused]] auto b0 = ctx->GetStats()->sent_bytes.load();
     [[maybe_unused]] auto s0 = ctx->GetStats()->sent_actions.load();

@@ -25,6 +25,7 @@ spu_cc_library(
         "//libspu/kernel/hal:complex",
         "//libspu/kernel/hal:constants",
         "//libspu/kernel/hal:polymorphic",
+        "//libspu/kernel/hal:utils",
     ],
 )
 
@@ -171,6 +172,7 @@ spu_cc_library(
         "//libspu/kernel/hal:ring",
         "//libspu/kernel/hal:shape_ops",
         "//libspu/kernel/hal:type_cast",
+        "//libspu/kernel/hal:utils",
     ],
 )
 
@@ -217,6 +219,25 @@ spu_cc_library(
 )
 
 spu_cc_library(
+    name = "rank",
+    srcs = ["rank.cc"],
+    hdrs = ["rank.h"],
+    deps = [
+        "//libspu/kernel/hal:permute",
+    ],
+)
+
+spu_cc_test(
+    name = "rank_test",
+    srcs = ["rank_test.cc"],
+    deps = [
+        ":rank",
+        "//libspu/kernel:test_util",
+        "//libspu/mpc/utils:simulate",
+    ],
+)
+
+spu_cc_library(
     name = "reduce",
     srcs = ["reduce.cc"],
     hdrs = ["reduce.h"],
@@ -226,6 +247,7 @@ spu_cc_library(
         "//libspu/kernel/hal:polymorphic",
         "//libspu/kernel/hal:ring",
         "//libspu/kernel/hal:shape_ops",
+        "//libspu/kernel/hal:utils",
     ],
 )
 
@@ -292,6 +314,7 @@ spu_cc_library(
     deps = [
         "//libspu/kernel/hal:public_helper",
         "//libspu/kernel/hal:shape_ops",
+        "//libspu/kernel/hal:utils",
     ],
 )
 

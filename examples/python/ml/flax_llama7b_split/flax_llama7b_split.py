@@ -12,37 +12,35 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import argparse
+import json
+
 # Start nodes.
 # > bazel run -c opt //examples/python/utils:nodectl -- --config `pwd`/examples/python/ml/flax_llama_split/3pc.json" up
 # Run this example script.
 # > bazel run -c opt //examples/python/ml/flax_llama7b -- --config `pwd`/examples/python/ml/flax_llama_split/3pc.json
 import time
-import argparse
-import json
-import jax
-import jax.numpy as jnp
-import jax.nn as jnn
-import flax.linen as nn
-from flax.linen.linear import Array
+from contextlib import contextmanager
 from typing import Any, Optional, Tuple, Union
-from transformers import LlamaTokenizer
+
+import flax.linen as nn
+import jax
+import jax.nn as jnn
+import jax.numpy as jnp
 from EasyLM.checkpoint import StreamingCheckpointer
 from EasyLM.models.llama.llama_model import FlaxLLaMAForCausalLM
 from EasyLM.models.llama.llama_model_splited_transformer import (
     FlaxLLaMAForCausalLMClient,
+    FlaxLLaMAForCausalLMMid,
     FlaxLLaMAForCausalLMServer,
     FlaxLLaMAModule,
-    FlaxLLaMAForCausalLMMid,
     LLaMAConfig,
 )
-
-
-import spu.utils.distributed as ppd
-from contextlib import contextmanager
-import spu.spu_pb2 as spu_pb2
-
 from flax.linen.linear import Array
-from typing import Any, Optional, Tuple, Union
+from transformers import LlamaTokenizer
+
+import spu.spu_pb2 as spu_pb2
+import spu.utils.distributed as ppd
 
 parser = argparse.ArgumentParser(description='distributed driver.')
 parser.add_argument(

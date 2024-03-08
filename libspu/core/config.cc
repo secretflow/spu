@@ -71,7 +71,7 @@ void populateRuntimeConfig(RuntimeConfig& cfg) {
   // fxp log config
   {
     if (cfg.fxp_log_mode() == RuntimeConfig::LOG_DEFAULT) {
-      cfg.set_fxp_log_mode(RuntimeConfig::LOG_PADE);
+      cfg.set_fxp_log_mode(RuntimeConfig::LOG_MINMAX);
     }
 
     if (cfg.fxp_log_iters() == 0) {

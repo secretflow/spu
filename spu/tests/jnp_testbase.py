@@ -19,6 +19,7 @@ from enum import Enum
 from functools import partial
 from os import getenv
 
+import jax.lax as lax
 import jax.numpy as jnp
 import numpy as np
 import numpy.testing as npt
@@ -431,6 +432,10 @@ SORT_RECORDS = [
     REC("median", 1, number_dtypes, all_shapes, jtu.rand_some_equal),
 ]
 
+TOPK_RECORDS = [
+    REC("top_k", 1, number_dtypes, all_shapes, rand_default),
+]
+
 
 class JnpTests:
     class JnpTestBase(parameterized.TestCase):
@@ -577,5 +582,34 @@ class JnpTests:
                 jnp_out,
                 err_msg="take failed.\nx = {}, indices = {}\nspu = {}\njnp = {}\npphlo = {}".format(
                     args[0], args[1], spu_out, jnp_out, spu_fn.pphlo
+                ),
+            )
+
+        @parameterized.parameters(
+            (
+                rec.name,
+                rec.status,
+                dtype,
+                shape,
+                rec.rng_factory,
+            )
+            for rec in TOPK_RECORDS
+            for (dtype, shape) in itertools.product(rec.dtypes, rec.shapes)
+        )
+        def test_topk(self, name, status, dtype, shape, rnd_factory):
+            lax_op = getattr(lax, name)
+            jnp_fn = lambda x: lax_op(x, k=2)
+            spu_fn = sim_jax(self._sim, jnp_fn)
+            rnd = rnd_factory(self._rng)
+            args = [rnd(shape, dtype)]
+            jnp_out = jnp_fn(*args)
+            spu_out = spu_fn(*args)
+            # Tie break is not well defined in document, so index might be different between CPU/SPU
+            npt.assert_almost_equal(
+                spu_out[0],
+                jnp_out[0],
+                decimal=3,
+                err_msg="{} failed.\ninput = {},\nspu = {},\njax = {},\npphlo = {}".format(
+                    name, *args, spu_out, jnp_out, spu_fn.pphlo
                 ),
             )

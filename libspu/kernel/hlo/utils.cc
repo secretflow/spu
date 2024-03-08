@@ -16,6 +16,7 @@
 
 #include "libspu/kernel/hal/public_helper.h"
 #include "libspu/kernel/hal/shape_ops.h"
+#include "libspu/kernel/hal/utils.h"
 
 namespace spu::kernel {
 
@@ -70,9 +71,7 @@ spu::Value expandWindow(SPUContext *ctx, const spu::Value &base,
       }
       auto window = hal::slice(ctx, base, start, end, {});
 
-      Shape new_shape = window.shape();
-      new_shape.insert(new_shape.begin(), 1);
-      windows.emplace_back(hal::reshape(ctx, window, new_shape));
+      windows.emplace_back(hal::unsqueeze(ctx, window));
     } while (bumpIndices(N, absl::MakeSpan(window_index)));
   }
 

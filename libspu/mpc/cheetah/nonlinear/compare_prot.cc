@@ -56,7 +56,6 @@ void SetLeafOTMsg(absl::Span<uint8_t> ot_messages, uint8_t digit,
 // Algorithm 1. REF: https://arxiv.org/pdf/2010.06457.pdf
 NdArrayRef CompareProtocol::DoCompute(const NdArrayRef& inp, bool greater_than,
                                       NdArrayRef* keep_eq, int64_t bitwidth) {
-  SPU_ENFORCE(inp.shape().size() == 1, "need 1D array");
   auto field = inp.eltype().as<Ring2k>()->field();
   int64_t num_digits = CeilDiv(bitwidth, (int64_t)compare_radix_);
   size_t radix = static_cast<size_t>(1) << compare_radix_;  // one-of-N OT
@@ -155,13 +154,15 @@ NdArrayRef CompareProtocol::DoCompute(const NdArrayRef& inp, bool greater_than,
   if (keep_eq == nullptr) {
     // Optimization when keep_eq is false
     // Section 3.1.1: "Removing unnecessary equality computations"
-    return TraversalAND(prev_cmp, prev_eq, num_cmp, num_digits).as(boolean_t);
+    return TraversalAND(prev_cmp, prev_eq, num_cmp, num_digits)
+        .reshape(inp.shape())
+        .as(boolean_t);
   }
 
   auto [_gt, _eq] = TraversalANDWithEq(prev_cmp, prev_eq, num_cmp, num_digits);
   *keep_eq = _eq;
-  keep_eq->as(boolean_t);
-  return _gt.as(boolean_t);
+  keep_eq->reshape(inp.shape()).as(boolean_t);
+  return _gt.reshape(inp.shape()).as(boolean_t);
 }
 
 std::array<NdArrayRef, 2> CompareProtocol::TraversalANDWithEqFullBinaryTree(
@@ -440,10 +441,7 @@ NdArrayRef CompareProtocol::Compute(const NdArrayRef& inp, bool greater_than,
   if (bitwidth == 0) {
     bitwidth = bw;
   }
-  // NOTE(lwj): reshape might need copy
-  auto flatten = inp.reshape({inp.numel()});
-  return DoCompute(flatten, greater_than, nullptr, bitwidth)
-      .reshape(inp.shape());
+  return DoCompute(inp, greater_than, nullptr, bitwidth);
 }
 
 std::array<NdArrayRef, 2> CompareProtocol::ComputeWithEq(const NdArrayRef& inp,
@@ -456,10 +454,8 @@ std::array<NdArrayRef, 2> CompareProtocol::ComputeWithEq(const NdArrayRef& inp,
     bitwidth = bw;
   }
   NdArrayRef eq;
-  // NOTE(lwj): reshape might need copy
-  auto flatten = inp.reshape({inp.numel()});
-  auto cmp = DoCompute(flatten, greater_than, &eq, bitwidth);
-  return {cmp.reshape(inp.shape()), eq.reshape(inp.shape())};
+  auto cmp = DoCompute(inp, greater_than, &eq, bitwidth);
+  return {cmp, eq};
 }
 
 }  // namespace spu::mpc::cheetah

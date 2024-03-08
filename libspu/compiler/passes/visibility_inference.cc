@@ -271,6 +271,13 @@ void VisibilityInference::inferIntrinsic(Operation &op) {
   //    return;
   // }
 
+  if (c_op.getCallTargetName() == "mhlo.topk") {
+    auto input_vis = value_vis_.getValueVisibility(op.getOperand(0));
+    value_vis_.setValueVisibility(c_op->getResult(0), input_vis);
+    value_vis_.setValueVisibility(c_op.getResult(1), input_vis);
+    return;
+  }
+
   // Default rule
   if (op.getNumResults() == 1) {
     SmallVector<Visibility, 2> operand_vis;
