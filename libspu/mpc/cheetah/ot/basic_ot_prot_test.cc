@@ -94,11 +94,13 @@ TEST_P(BasicOTProtTest, SingleB2A) {
   NdArrayRef ashr1;
   utils::simulate(kWorldSize, [&](std::shared_ptr<yacl::link::Context> ctx) {
     auto conn = std::make_shared<Communicator>(ctx);
-    BasicOTProtocols ot_prot(conn, ot_type);
-    if (ctx->Rank() == 0) {
-      ashr0 = ot_prot.B2A(bshr0);
-    } else {
-      ashr1 = ot_prot.B2A(bshr1);
+    {
+      BasicOTProtocols ot_prot(conn, ot_type);
+      if (ctx->Rank() == 0) {
+        ashr0 = ot_prot.B2A(bshr0);
+      } else {
+        ashr1 = ot_prot.B2A(bshr1);
+      }
     }
   });
 
@@ -150,11 +152,13 @@ TEST_P(BasicOTProtTest, PackedB2A) {
     NdArrayRef ashr1;
     utils::simulate(kWorldSize, [&](std::shared_ptr<yacl::link::Context> ctx) {
       auto conn = std::make_shared<Communicator>(ctx);
-      BasicOTProtocols ot_prot(conn, ot_type);
-      if (ctx->Rank() == 0) {
-        ashr0 = ot_prot.B2A(bshr0);
-      } else {
-        ashr1 = ot_prot.B2A(bshr1);
+      {
+        BasicOTProtocols ot_prot(conn, ot_type);
+        if (ctx->Rank() == 0) {
+          ashr0 = ot_prot.B2A(bshr0);
+        } else {
+          ashr1 = ot_prot.B2A(bshr1);
+        }
       }
     });
     EXPECT_EQ(ashr0.shape(), ashr1.shape());
@@ -209,11 +213,13 @@ TEST_P(BasicOTProtTest, PackedB2AFull) {
     NdArrayRef ashr1;
     utils::simulate(kWorldSize, [&](std::shared_ptr<yacl::link::Context> ctx) {
       auto conn = std::make_shared<Communicator>(ctx);
-      BasicOTProtocols ot_prot(conn, ot_type);
-      if (ctx->Rank() == 0) {
-        ashr0 = ot_prot.B2A(bshr0);
-      } else {
-        ashr1 = ot_prot.B2A(bshr1);
+      {
+        BasicOTProtocols ot_prot(conn, ot_type);
+        if (ctx->Rank() == 0) {
+          ashr0 = ot_prot.B2A(bshr0);
+        } else {
+          ashr1 = ot_prot.B2A(bshr1);
+        }
       }
     });
 
@@ -252,10 +258,12 @@ TEST_P(BasicOTProtTest, AndTripleSparse) {
 
     utils::simulate(kWorldSize, [&](std::shared_ptr<yacl::link::Context> ctx) {
       auto conn = std::make_shared<Communicator>(ctx);
-      BasicOTProtocols ot_prot(conn, ot_type);
+      {
+        BasicOTProtocols ot_prot(conn, ot_type);
 
-      for (const auto& t : ot_prot.AndTriple(field, shape, target_nbits)) {
-        triple[ctx->Rank()].emplace_back(t);
+        for (const auto& t : ot_prot.AndTriple(field, shape, target_nbits)) {
+          triple[ctx->Rank()].emplace_back(t);
+        }
       }
     });
 
@@ -308,9 +316,11 @@ TEST_P(BasicOTProtTest, BitwiseAnd) {
 
   utils::simulate(kWorldSize, [&](std::shared_ptr<yacl::link::Context> ctx) {
     auto conn = std::make_shared<Communicator>(ctx);
-    BasicOTProtocols ot_prot(conn, ot_type);
-    int r = ctx->Rank();
-    out[r] = ot_prot.BitwiseAnd(lhs[r].clone(), rhs[r].clone());
+    {
+      BasicOTProtocols ot_prot(conn, ot_type);
+      int r = ctx->Rank();
+      out[r] = ot_prot.BitwiseAnd(lhs[r].clone(), rhs[r].clone());
+    }
   });
 
   auto expected = ring_and(ring_xor(lhs[0], lhs[1]), ring_xor(rhs[0], rhs[1]));
@@ -336,9 +346,11 @@ TEST_P(BasicOTProtTest, AndTripleFull) {
 
   utils::simulate(kWorldSize, [&](std::shared_ptr<yacl::link::Context> ctx) {
     auto conn = std::make_shared<Communicator>(ctx);
-    BasicOTProtocols ot_prot(conn, ot_type);
-    for (const auto& t : ot_prot.AndTriple(field, shape, SizeOf(field) * 8)) {
-      packed_triple[ctx->Rank()].emplace_back(t);
+    {
+      BasicOTProtocols ot_prot(conn, ot_type);
+      for (const auto& t : ot_prot.AndTriple(field, shape, SizeOf(field) * 8)) {
+        packed_triple[ctx->Rank()].emplace_back(t);
+      }
     }
   });
 
@@ -388,11 +400,13 @@ TEST_P(BasicOTProtTest, Multiplexer) {
   NdArrayRef computed[2];
   utils::simulate(kWorldSize, [&](std::shared_ptr<yacl::link::Context> ctx) {
     auto conn = std::make_shared<Communicator>(ctx);
-    BasicOTProtocols ot_prot(conn, ot_type);
-    if (ctx->Rank() == 0) {
-      computed[0] = ot_prot.Multiplexer(ashr0, bshr0);
-    } else {
-      computed[1] = ot_prot.Multiplexer(ashr1, bshr1);
+    {
+      BasicOTProtocols ot_prot(conn, ot_type);
+      if (ctx->Rank() == 0) {
+        computed[0] = ot_prot.Multiplexer(ashr0, bshr0);
+      } else {
+        computed[1] = ot_prot.Multiplexer(ashr1, bshr1);
+      }
     }
   });
 
@@ -426,8 +440,10 @@ TEST_P(BasicOTProtTest, CorrelatedAndTriple) {
 
   utils::simulate(kWorldSize, [&](std::shared_ptr<yacl::link::Context> ctx) {
     auto conn = std::make_shared<Communicator>(ctx);
-    BasicOTProtocols ot_prot(conn, ot_type);
-    corr_triple[ctx->Rank()] = ot_prot.CorrelatedAndTriple(field, shape);
+    {
+      BasicOTProtocols ot_prot(conn, ot_type);
+      corr_triple[ctx->Rank()] = ot_prot.CorrelatedAndTriple(field, shape);
+    }
   });
 
   EXPECT_EQ(corr_triple[0][0].shape(), corr_triple[1][0].shape());
