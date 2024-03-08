@@ -20,7 +20,17 @@ parameters:
   build-and-run:
     type: boolean
     default: false
-  
+
+executors:
+  linux_executor: # declares a reusable executor
+    parameters:
+      resource_class:
+        type: string
+    docker:
+      - image: secretflow/ubuntu-base-ci:latest
+    resource_class: << parameters.resource_class >>
+    shell: /bin/bash --login -eo pipefail
+
 commands:
   build_and_test:
     parameters:
@@ -39,7 +49,6 @@ commands:
             sleep 7200
             echo "Canceling workflow as too much time has elapsed"
             curl -X POST --header "Content-Type: application/json" "https://circleci.com/api/v2/workflow/${CIRCLE_WORKFLOW_ID}/cancel?circle-token=${BUILD_TIMER_TOKEN}"
-      - checkout
       - run:
           name: Checkout devtools
           command: git clone https://github.com/secretflow/devtools.git ../devtools
@@ -76,25 +85,21 @@ commands:
 # See: https://circleci.com/docs/2.0/configuration-reference/#jobs
 jobs:
   linux_ut:
-    # Specify the execution environment. You can specify an image from Dockerhub or use one of our Convenience Images from CircleCI's Developer Hub.
-    # See: https://circleci.com/docs/2.0/configuration-reference/#docker-machine-macos-windows-executor
-    docker:
-      - image: secretflow/ubuntu-base-ci:latest
     parameters:
       resource_class:
         type: string
-    resource_class: << parameters.resource_class >>
-    shell: /bin/bash --login -eo pipefail
+    executor:
+      name: linux_executor
+      resource_class: << parameters.resource_class >>
     # Add steps to the job
     # See: https://circleci.com/docs/2.0/configuration-reference/#steps
     steps:
+      - checkout
       - build_and_test
   linux_ml_ut:
-    docker:
-      - image: secretflow/ubuntu-base-ci:latest
-    # arm is not supported
-    resource_class: 2xlarge
-    shell: /bin/bash --login -eo pipefail
+    executor:
+      name: linux_executor
+      resource_class: 2xlarge+
     steps:
       - run:
           name: Install extra deps
@@ -109,6 +114,7 @@ jobs:
       xcode: 15.1.0
     resource_class: macos.m1.large.gen1
     steps:
+      - checkout
       - run:
           name: "Install homebrew dependencies"
           command: brew install bazelisk cmake ninja libomp wget md5sha1sum
