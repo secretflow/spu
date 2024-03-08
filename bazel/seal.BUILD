@@ -53,11 +53,17 @@ x64_hexl_config = {
 
 spu_cmake_external(
     name = "seal",
-    cache_entries = default_config,
+    cache_entries = select({
+        ":can_use_hexl": x64_hexl_config,
+        "//conditions:default": default_config,
+    }),
     lib_source = "@com_github_microsoft_seal//:all",
     out_include_dir = "include/SEAL-4.1",
     out_static_libs = ["libseal-4.1.a"],
     deps = [
         "@com_github_facebook_zstd//:zstd",
-    ],
+    ] + select({
+        "@platforms//cpu:x86_64": ["@com_intel_hexl//:hexl"],
+        "//conditions:default": [],
+    }),
 )

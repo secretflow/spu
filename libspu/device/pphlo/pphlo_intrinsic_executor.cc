@@ -19,12 +19,15 @@
 #include "libspu/kernel/hal/fxp_approx.h"
 #include "libspu/kernel/hlo/casting.h"
 #include "libspu/kernel/hlo/const.h"
+#include "libspu/kernel/hlo/rank.h"
 
 namespace spu::device::pphlo {
 
-std::vector<Value> intrinsic_dispatcher(SPUContext* ctx, llvm::StringRef name,
+std::vector<Value> intrinsic_dispatcher(SPUContext* ctx,
+                                        mlir::spu::pphlo::CustomCallOp& call,
                                         absl::Span<const Value> inputs) {
   // FIXME: This should be something register by protocol
+  auto name = call.getCallTargetName();
   if (name == "example_binary") {
     SPDLOG_INFO("Binary example, input0 = {}, input1 = {}", inputs[0],
                 inputs[1]);
@@ -53,6 +56,27 @@ std::vector<Value> intrinsic_dispatcher(SPUContext* ctx, llvm::StringRef name,
   if (name == "mhlo.erf") {
     SPU_ENFORCE(inputs.size() == 1 && inputs[0].isFxp());
     return {kernel::hal::f_erf(ctx, inputs[0])};
+  }
+
+  if (name == "mhlo.topk") {
+    SPU_ENFORCE(inputs.size() == 1);
+    auto attr =
+        call->getAttr("mhlo.attributes").dyn_cast<mlir::DictionaryAttr>();
+    auto k = attr.get("k").dyn_cast<mlir::IntegerAttr>().getInt();
+    auto largest = attr.get("largest").dyn_cast<mlir::BoolAttr>().getValue();
+
+    auto value_only = false;
+
+    if (auto value_only_attr = attr.get("value_only")) {
+      value_only = value_only_attr.dyn_cast<mlir::BoolAttr>().getValue();
+    }
+
+    if (auto k_hi_attr = attr.get("k_hi")) {
+      auto k_hi = k_hi_attr.dyn_cast<mlir::IntegerAttr>().getInt();
+      return kernel::hlo::TopK(ctx, inputs[0], k, k_hi, largest, value_only);
+    }
+
+    return kernel::hlo::TopK(ctx, inputs[0], k, -1, largest, value_only);
   }
 
   SPU_THROW("Unhandled intrinsic call {}", name.str());

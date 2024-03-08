@@ -15,9 +15,9 @@
 
 import unittest
 
-import jax
-from jax import random, numpy as jnp
 from flax import linen as nn
+from jax import numpy as jnp
+from jax import random
 
 import spu.spu_pb2 as spu_pb2
 import spu.utils.simulation as ppsim

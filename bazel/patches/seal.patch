@@ -219,3 +219,17 @@ index dabd3bab..afaa71dc 100644
                      {
                          inverse_ntt_negacyclic_harvey_lazy(get<0, 1>(J), get<2>(J));
                      }
+
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 1a7a2bfd..bc4ad9d9 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -223,7 +223,7 @@ if(SEAL_USE_INTEL_HEXL)
+         message(STATUS "Intel HEXL: download ...")
+         seal_fetch_thirdparty_content(ExternalIntelHEXL)
+     else()
+-        find_package(HEXL 1.2.4)
++        find_package(HEXL 1.2.5)
+         if (NOT TARGET HEXL::hexl)
+             message(FATAL_ERROR "Intel HEXL: not found")
+         endif()

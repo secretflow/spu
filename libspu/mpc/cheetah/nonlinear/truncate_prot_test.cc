@@ -87,7 +87,8 @@ TEST_P(TruncateProtTest, Basic) {
   utils::simulate(kWorldSize, [&](std::shared_ptr<yacl::link::Context> ctx) {
     int rank = ctx->Rank();
     auto conn = std::make_shared<Communicator>(ctx);
-    auto base = std::make_shared<BasicOTProtocols>(conn);
+    auto base = std::make_shared<BasicOTProtocols>(
+        conn, CheetahOtKind::YACL_Softspoken);
     TruncateProtocol trunc_prot(base);
     TruncateProtocol::Meta meta;
     meta.sign = sign;
@@ -176,7 +177,8 @@ TEST_P(TruncateProtTest, Heuristic) {
   utils::simulate(kWorldSize, [&](std::shared_ptr<yacl::link::Context> ctx) {
     int rank = ctx->Rank();
     auto conn = std::make_shared<Communicator>(ctx);
-    auto base = std::make_shared<BasicOTProtocols>(conn);
+    auto base = std::make_shared<BasicOTProtocols>(
+        conn, CheetahOtKind::YACL_Softspoken);
     TruncateProtocol trunc_prot(base);
     TruncateProtocol::Meta meta;
     meta.sign = SignType::Unknown;

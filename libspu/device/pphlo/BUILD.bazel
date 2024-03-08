@@ -48,8 +48,10 @@ spu_cc_library(
     srcs = ["pphlo_intrinsic_executor.cc"],
     hdrs = ["pphlo_intrinsic_executor.h"],
     deps = [
+        "//libspu/dialect/pphlo:dialect",
         "//libspu/kernel/hlo:casting",
         "//libspu/kernel/hlo:const",
+        "//libspu/kernel/hlo:rank",
         "@llvm-project//llvm:Support",
     ],
 )

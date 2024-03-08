@@ -29,6 +29,67 @@
 namespace spu::kernel::hal {
 namespace detail {
 
+Value EvaluatePolynomial(SPUContext* ctx, const Value& x,
+                         absl::Span<const float> coefficients) {
+  auto poly = constant(ctx, coefficients[0], x.dtype(), x.shape());
+
+  for (size_t i = 1; i < coefficients.size(); ++i) {
+    auto c = constant(ctx, coefficients[i], x.dtype(), x.shape());
+    poly = f_mul(ctx, poly, x);
+    poly = f_add(ctx, poly, c);
+  }
+  return poly;
+}
+
+Value log_minmax_normalized(SPUContext* ctx, const Value& x) {
+  static std::array<float, 9> kLogCoefficient{
+      0.0,          0.9999964239,  -0.4998741238, 0.3317990258, -0.2407338084,
+      0.1676540711, -0.0953293897, 0.0360884937,  -0.0064535442};
+
+  // we have approximation of log(1+x) when x is in [0, 1]
+  const auto k1 = constant(ctx, 1.0F, x.dtype(), x.shape());
+  auto xm1 = f_sub(ctx, x, k1);
+
+  return detail::polynomial(ctx, xm1, kLogCoefficient);
+}
+
+// Ref:
+// Handbook of Mathematical Functions: with Formulas, Graphs, and Mathematical
+// Tables, equation 4.1.44
+Value log_minmax(SPUContext* ctx, const Value& x) {
+  SPU_TRACE_HAL_DISP(ctx, x);
+
+  auto pre_x = _prefix_or(ctx, x);
+  const size_t num_fxp_bits = ctx->getFxpBits();
+
+  // because of bitrev, we can only handle x between (0, 2**(fxp+1)),
+  // so we can limit the size of bits
+  auto k = _popcount(ctx, pre_x, 2 * num_fxp_bits + 2);
+
+  // get most significant non-zero bit of x
+  // we avoid direct using detail::highestOneBit for saving one _prefix_or
+  auto pre_x1 = _rshift(ctx, pre_x, 1);
+  auto msb = _xor(ctx, pre_x, pre_x1);
+
+  // let x = x_norm * factor, where x in [1.0, 2.0)
+  auto factor = _bitrev(ctx, msb, 0, 2 * num_fxp_bits + 1).setDtype(x.dtype());
+  detail::hintNumberOfBits(factor, 2 * num_fxp_bits + 1);
+  auto norm = f_mul(ctx, x, factor);
+
+  // log(x) = log(x_norm * factor)
+  //        = log(x_norm) + log(factor)
+  //        = log(x_norm) + (k - fxp_bits - 1) * log(2)
+  auto log_norm = log_minmax_normalized(ctx, norm);
+  auto log2_e =
+      _lshift(ctx, _sub(ctx, k, _constant(ctx, num_fxp_bits + 1, x.shape())),
+              num_fxp_bits)
+          .setDtype(x.dtype());
+  auto k_log2 = constant(ctx, std::log(2), x.dtype(), x.shape());
+  auto log_e = f_mul(ctx, log2_e, k_log2);
+
+  return f_add(ctx, log_norm, log_e);
+}
+
 // Pade approximation fo x belongs to [0.5, 1]:
 //
 // p2524(x) = -0.205466671951 * 10
@@ -118,7 +179,7 @@ Value log_householder(SPUContext* ctx, const Value& x) {
   const size_t fxp_log_orders = ctx->config().fxp_log_orders();
   SPU_ENFORCE(fxp_log_orders != 0, "fxp_log_orders should not be {}",
               fxp_log_orders);
-  std::vector<float> coeffs;
+  std::vector<float> coeffs{0.0};
   for (size_t i = 0; i < fxp_log_orders; i++) {
     coeffs.emplace_back(1.0 / (1.0 + i));
   }
@@ -409,7 +470,22 @@ Value f_log(SPUContext* ctx, const Value& x) {
   }
 
   switch (ctx->config().fxp_log_mode()) {
+    // Note:
+    // Generally, MINMAX approximation is a fast and precise DEFAULT option
+    // which gives very high precision (avg error < 3e-5) when x is between ( 0,
+    // 2**(fxp_bits + 1) ), and you may not need to change it.
+    // There are still some cases that householder approximation is faster:
+    //    - 1. SEMI2K is used and N (total parties) is very large (maybe > 10).
+    //    - 2. CHEETAH is used.
+    // The reason for this is that the implementation of householder
+    // approximation does not involve range reduction (`a2b` and `b2a` for MPC
+    // protocols).
+    // However, the valid input range for householder approximation is very
+    // limited, so you MUST ensure that x is not very close to zero,
+    // nor too large before using it.
     case RuntimeConfig::LOG_DEFAULT:
+    case RuntimeConfig::LOG_MINMAX:
+      return detail::log_minmax(ctx, x);
     case RuntimeConfig::LOG_PADE:
       return f_mul(ctx, constant(ctx, std::log(2.0F), x.dtype(), x.shape()),
                    f_log2(ctx, x));
@@ -474,11 +550,12 @@ static Value rsqrt_init_guess(SPUContext* ctx, const Value& x, const Value& z) {
   // - 15.47994394 * u + 4.14285016
   spu::Value r;
   if (!ctx->config().enable_lower_accuracy_rsqrt()) {
-    auto coeffs = {-15.47994394F, 38.4714796F, -49.86605845F, 26.02942339F};
+    auto coeffs = {0.0F, -15.47994394F, 38.4714796F, -49.86605845F,
+                   26.02942339F};
     r = f_add(ctx, detail::polynomial(ctx, u, coeffs),
               constant(ctx, 4.14285016F, x.dtype(), x.shape()));
   } else {
-    auto coeffs = {-5.9417F, 4.7979F};
+    auto coeffs = {0.0F, -5.9417F, 4.7979F};
     r = f_add(ctx, detail::polynomial(ctx, u, coeffs),
               constant(ctx, 3.1855F, x.dtype(), x.shape()));
   }
@@ -682,24 +759,12 @@ Value f_cosine(SPUContext* ctx, const Value& x) {
 
 namespace {
 
-Value EvaluatePolynomial(SPUContext* ctx, const Value& x,
-                         absl::Span<const float> coefficients) {
-  auto poly = constant(ctx, coefficients[0], x.dtype(), x.shape());
-
-  for (size_t i = 1; i < coefficients.size(); ++i) {
-    auto c = constant(ctx, coefficients[i], x.dtype(), x.shape());
-    poly = f_mul(ctx, poly, x);
-    poly = f_add(ctx, poly, c);
-  }
-  return poly;
-}
-
 Value ErfImpl(SPUContext* ctx, const Value& x) {
-  static std::array<float, 5> kErfCoefficient{0.078108, 0.000972, 0.230389,
-                                              0.278393, 1.0};
+  static std::array<float, 5> kErfCoefficient{1.0, 0.278393, 0.230389, 0.000972,
+                                              0.078108};
   auto one = constant(ctx, 1.0, x.dtype(), x.shape());
 
-  auto z = EvaluatePolynomial(ctx, x, kErfCoefficient);
+  auto z = detail::polynomial(ctx, x, kErfCoefficient);
   z = f_square(ctx, z);
   z = f_square(ctx, z);
   z = detail::reciprocal_goldschmidt_positive(ctx, z);

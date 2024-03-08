@@ -104,3 +104,9 @@ def ConvertPushDown: Pass<"convert-push-down", "func::FuncOp"> {
   let constructor = "createConvertPushDownPass()";
   let dependentDialects = ["pphlo::PPHloDialect"];
 }
+
+def PartialSortToTopK: Pass<"partial-sort-to-topk", "func::FuncOp"> {
+  let summary = "Convert partial sort to topk";
+  let constructor = "createPartialSortToTopK()";
+  let dependentDialects = ["pphlo::PPHloDialect"];
+}

@@ -32,7 +32,6 @@ def _jax_compilation_key(
     import jax
     import numpy as np
     from jax._src.api_util import argnames_partial_except, argnums_partial_except
-
     from jax.extend.linear_util import wrap_init  # Moved in jax 0.4.16
 
     def _function_contents(func):
@@ -266,6 +265,7 @@ def torch_compile(
     copts=spu_pb2.CompilerOptions(),
 ):
     import os
+
     import torch
     from torch_xla import stablehlo
     from torch_xla.stablehlo import VariableType

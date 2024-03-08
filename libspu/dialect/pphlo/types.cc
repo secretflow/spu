@@ -14,6 +14,8 @@
 
 #include "libspu/dialect/pphlo/types.h"
 
+#include "mlir/IR/TypeUtilities.h"
+
 #include "libspu/core/prelude.h"
 
 namespace mlir::spu::pphlo {
@@ -44,11 +46,7 @@ bool StripAllContainerType(const Type &t, Fn foo, Args &&...args) {
 }  // namespace utils
 
 bool TypeTools::isSecretType(const Type &t) const {
-  if (const auto &rt = t.dyn_cast<RankedTensorType>()) {
-    return isSecretType(rt.getElementType());
-  }
-
-  return t.dyn_cast<SecretType>() != nullptr;
+  return getElementTypeOrSelf(t).isa<SecretType>();
 }
 
 bool TypeTools::isFloatType(const Type &t) const {
@@ -84,10 +82,6 @@ Type TypeTools::getType(const Type &type, Visibility vis) const {
 }
 
 Visibility TypeTools::getTypeVisibility(const Type &t) const {
-  if (auto rt = dyn_cast<RankedTensorType>(t)) {
-    return getTypeVisibility(rt.getElementType());
-  }
-
   if (isSecretType(t)) {
     return Visibility::SECRET;
   }

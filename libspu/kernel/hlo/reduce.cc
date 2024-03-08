@@ -23,6 +23,7 @@
 #include "libspu/kernel/hal/polymorphic.h"
 #include "libspu/kernel/hal/ring.h"
 #include "libspu/kernel/hal/shape_ops.h"
+#include "libspu/kernel/hal/utils.h"
 #include "libspu/kernel/hlo/utils.h"
 
 namespace spu::kernel::hlo {
@@ -261,11 +262,7 @@ std::vector<spu::Value> ReduceWindowImpl(
     std::vector<Value> reduced_values;
 
     for (auto &reduced_ret : reduced_rets) {
-      Shape new_shape = reduced_ret[input_idx].shape();
-      new_shape.insert(new_shape.begin(), 1);
-
-      reduced_values.emplace_back(
-          hal::reshape(ctx, reduced_ret[input_idx], new_shape));
+      reduced_values.emplace_back(hal::unsqueeze(ctx, reduced_ret[input_idx]));
     }
 
     rets.emplace_back(

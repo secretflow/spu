@@ -46,7 +46,6 @@ class EqualProtocol {
   NdArrayRef Compute(const NdArrayRef& inp, size_t bit_width = 0);
 
  private:
-  // Need 1D Array
   NdArrayRef DoCompute(const NdArrayRef& inp, size_t bit_width = 0);
 
   size_t compare_radix_;

@@ -23,8 +23,10 @@
 #include "libspu/kernel/hal/polymorphic.h"
 #include "libspu/kernel/hal/prot_wrapper.h"
 #include "libspu/kernel/hal/public_helper.h"
+#include "libspu/kernel/hal/random.h"
 #include "libspu/kernel/hal/ring.h"
 #include "libspu/kernel/hal/shape_ops.h"
+#include "libspu/kernel/hal/type_cast.h"
 #include "libspu/kernel/hal/utils.h"
 
 #include "libspu/spu.pb.h"
@@ -154,6 +156,204 @@ std::vector<spu::Value> odd_even_merge_sort(
   return ret;
 }
 
+void Swap(absl::Span<spu::Value> arr, const Index &lhs_indices,
+          const Index &rhs_indices) {
+  if (lhs_indices.empty() ||
+      (lhs_indices.size() == 1 && rhs_indices.size() == 1 &&
+       lhs_indices[0] == rhs_indices[0])) {
+    return;
+  }
+
+  const auto num_operands = arr.size();
+
+  for (size_t i = 0; i < num_operands; ++i) {
+    // when confusion is set to false or only return value, then some operands
+    // will get DT_INVALID.
+    if (arr[i].dtype() != DT_INVALID) {
+      auto lhs_arr = arr[i].data().linear_gather(lhs_indices);
+      auto rhs_arr = arr[i].data().linear_gather(rhs_indices);
+
+      arr[i].data().linear_scatter(lhs_arr, rhs_indices);
+      arr[i].data().linear_scatter(rhs_arr, lhs_indices);
+    }
+  }
+}
+
+void CompSwapSingle(SPUContext *ctx, const CompFn &comparator_body,
+                    absl::Span<spu::Value> arr, int64_t lo, int64_t hi) {
+  if (lo == hi) {
+    return;
+  }
+  // const auto num_operands = arr.size();
+  std::vector<Value> values;
+  values.reserve(4);
+  for (size_t i = 0; i < 2; ++i) {
+    if (arr[i].dtype() != DT_INVALID) {
+      values.emplace_back(slice_scalar_at(ctx, arr[i], {lo}));
+      values.emplace_back(slice_scalar_at(ctx, arr[i], {hi}));
+    }
+  }
+
+  auto predicate = comparator_body(values);
+  auto _predicate = getBooleanValue(ctx, hal::reveal(ctx, predicate));
+
+  if (!_predicate) {
+    Swap(arr, {lo}, {hi});
+  }
+}
+
+void HandleSmallArray(SPUContext *ctx, const CompFn &comparator_body,
+                      absl::Span<spu::Value> arr, int64_t lo, int64_t hi) {
+  if (hi == lo + 1) {
+    CompSwapSingle(ctx, comparator_body, arr, lo, hi);
+  }
+}
+
+void TwoWayPartition(SPUContext *ctx, const CompFn &comparator_body,
+                     absl::Span<spu::Value> arr, int64_t lo, int64_t hi,
+                     const std::vector<int64_t> &ks,
+                     std::vector<std::pair<int64_t, int64_t>> &intervals) {
+  // Just use first element as pivot, so left=lo+1
+  auto left = lo + 1;
+  auto right = hi;
+
+  // collect and do comparison once
+  // const auto num_operands = arr.size();
+  std::vector<Value> values;
+  // arr contains: value, random_value, index
+  // values: pivot_value, rest_value, pivot_rand, rest_rand
+  values.reserve(4);
+  for (size_t i = 0; i < 2; ++i) {
+    // when confusion is set to false, then gets DT_INVALID value.
+    if (arr[i].dtype() != DT_INVALID) {
+      // avoid memory copy
+      values.push_back(broadcast_to(ctx, slice_scalar_at(ctx, arr[i], {lo}),
+                                    {right - left + 1}));
+      values.push_back(slice(ctx, arr[i], {left}, {right + 1}));
+    }
+  }
+  auto predicate = comparator_body(values);
+  auto _predicate = dump_public_as<bool>(ctx, hal::reveal(ctx, predicate));
+
+  auto offset = left;
+  Index lhs_indices;
+  Index rhs_indices;
+
+  // use two pointer for partition
+  for (;;) {
+    while (right >= left && !_predicate[left - offset]) {
+      left++;
+    }
+    while (right >= left && _predicate[right - offset]) {
+      right--;
+    }
+    if (right < left) {
+      break;
+    }
+
+    lhs_indices.emplace_back(left);
+    rhs_indices.emplace_back(right);
+
+    left++;
+    right--;
+  }
+  // do all non-overlaping swap
+  Swap(arr, lhs_indices, rhs_indices);
+  // swap the pivot
+  Swap(arr, {lo}, {right});
+
+  if (ks[0] - 1 < right && right < ks[1] - 1) {
+    intervals.emplace_back(lo, right - 1);
+    intervals.emplace_back(left, hi);
+    return;
+  }
+
+  if (right >= ks[1] - 1) hi = right - 1;
+  if (right <= ks[0] - 1) lo = left;
+  intervals.emplace_back(lo, hi);
+}
+
+std::vector<spu::Value> QuickSelectTopk(SPUContext *ctx,
+                                        const CompFn &comparator_body,
+                                        absl::Span<spu::Value> input,
+                                        const std::vector<int64_t> &ks) {
+  SPU_ENFORCE(input.size() == 3,
+              "input should have 3 arrays, but actually has {}.", input.size());
+  SPU_ENFORCE(input.front().dtype() != DT_INVALID, "Value is not valid.");
+  const bool value_only = input[2].dtype() == DT_INVALID;
+
+  const auto n = input.front().numel();
+  int64_t lo;
+  int64_t hi;
+
+  // save value and index
+  std::vector<Value> out;
+  out.reserve(2);
+
+  // to support multiple ks, maintain all intervals to search
+  std::vector<std::pair<int64_t, int64_t>> intervals;
+  intervals.reserve(2);
+  // first seach the whole interval
+  intervals.emplace_back(0, n - 1);
+
+  while (!intervals.empty()) {
+    std::tie(lo, hi) = intervals.back();
+    intervals.pop_back();
+
+    if (hi <= lo + 1) {
+      // exit loop when interval<=2
+      HandleSmallArray(ctx, comparator_body, input, lo, hi);
+    } else {
+      TwoWayPartition(ctx, comparator_body, input, lo, hi, ks, intervals);
+    }
+  }
+
+  out.emplace_back(input[0].data().slice({0}, {ks[1]}, {}), input[0].dtype());
+  if (!value_only) {
+    out.emplace_back(input[2].data().slice({0}, {ks[1]}, {}), input[2].dtype());
+  }
+  return out;
+}
+
+std::vector<spu::Value> PrepareInput(SPUContext *ctx, const Value &input,
+                                     bool confusion, bool value_only) {
+  std::vector<spu::Value> inp;
+  inp.reserve(3);
+
+  // shuffle with random permutation to break link of values
+  auto rand_perm = _rand_perm_s(ctx, input.shape());
+  inp.push_back(_perm_ss(ctx, input, rand_perm).setDtype(input.dtype()));
+
+  // TODO: add config for random value padding.
+  // we concate random value to hide the data-dependant running pattern
+  // for quick select;
+  // consider an extreme case where all values are identical, two-way partition
+  // will run very slowly. If running multiple times and finding that it
+  // consistently takes a long time, it can be reasonably inferred that there is
+  // a significant amount of duplicate data in the original dataset. However,
+  // with the addition of randomness, we can essentially assume that all data
+  // points are unique, which would lead to a more stable runtime.
+  if (confusion) {
+    inp.push_back(hal::random(ctx, Visibility::VIS_SECRET, DataType::DT_F64,
+                              input.shape()));
+  } else {
+    inp.emplace_back();
+  }
+
+  if (!value_only) {
+    auto dt =
+        ctx->config().field() == FieldType::FM32 ? spu::DT_I32 : spu::DT_I64;
+    // shuffle index with the same permutation as values
+    inp.push_back(
+        _perm_ss(ctx, _p2s(ctx, hal::iota(ctx, dt, input.numel())), rand_perm)
+            .setDtype(dt));
+  } else {
+    inp.emplace_back();
+  }
+
+  return inp;
+}
+
 // Ref: https://eprint.iacr.org/2019/695.pdf
 // Algorithm 13 Optimized inverse application of a permutation
 //
@@ -244,12 +444,10 @@ spu::Value _gen_inv_perm_by_bv(SPUContext *ctx, const spu::Value &x,
   auto f3 = _sub(ctx, y, f2);
 
   const auto numel = x.numel();
-  Shape new_shape = {1, numel};
-  auto f =
-      concatenate(ctx,
-                  {reshape(ctx, f0, new_shape), reshape(ctx, f1, new_shape),
-                   reshape(ctx, f2, new_shape), reshape(ctx, f3, new_shape)},
-                  1);
+  auto f = concatenate(ctx,
+                       {unsqueeze(ctx, f0), unsqueeze(ctx, f1),
+                        unsqueeze(ctx, f2), unsqueeze(ctx, f3)},
+                       1);
 
   // calculate prefix sum
   auto ps = _prefix_sum(ctx, f);
@@ -298,9 +496,7 @@ spu::Value _gen_inv_perm_by_bv(SPUContext *ctx, const spu::Value &x) {
   auto rev_x = _sub(ctx, k1, x);
 
   const auto numel = x.numel();
-  Shape new_shape = {1, numel};
-  auto f = concatenate(
-      ctx, {reshape(ctx, rev_x, new_shape), reshape(ctx, x, new_shape)}, 1);
+  auto f = concatenate(ctx, {unsqueeze(ctx, rev_x), unsqueeze(ctx, x)}, 1);
 
   // calculate prefix sum
   auto ps = _prefix_sum(ctx, f);
@@ -977,7 +1173,7 @@ std::vector<spu::Value> permute(SPUContext *ctx,
   for (int64_t mi = 0; mi < M; mi++) {
     std::vector<spu::Value> output2d;
     for (int64_t ni = 0; ni < N; ni++) {
-      output2d.push_back(hal::reshape(ctx, permuted1d[ni][mi], {1, W}));
+      output2d.push_back(hal::unsqueeze(ctx, permuted1d[ni][mi]));
     }
     auto result = hal::concatenate(ctx, output2d, 0);
     // Permute it back, final result is (M, shape)
@@ -986,6 +1182,111 @@ std::vector<spu::Value> permute(SPUContext *ctx,
   }
 
   return results;
+}
+
+std::vector<Value> topk_1d(SPUContext *ctx, const spu::Value &input,
+                           const std::vector<int64_t> &ks,
+                           const SimpleCompFn &scalar_cmp, bool value_only) {
+  SPU_ENFORCE(input.shape().ndim() == 1,
+              "Inputs should be 1-d but actually have {} dimensions",
+              input.shape().ndim());
+  SPU_ENFORCE(input.numel() >= ks[1],
+              "k={} is larger than the last dimension={}", ks[1],
+              input.numel());
+  SPU_ENFORCE(ks.size() == 2 && ks[0] <= ks[1]);
+
+  if (input.isPublic()) {
+    Index indices_to_sort(input.numel());
+    std::iota(indices_to_sort.begin(), indices_to_sort.end(), 0);
+    auto comparator = [&scalar_cmp, &input, &ctx](int64_t a, int64_t b) {
+      auto lhs_value = slice_scalar_at(ctx, input, {a});
+      auto rhs_value = slice_scalar_at(ctx, input, {b});
+      spu::Value cmp_ret = scalar_cmp(ctx, lhs_value, rhs_value);
+      return getBooleanValue(ctx, cmp_ret);
+    };
+
+    std::nth_element(indices_to_sort.begin(),
+                     indices_to_sort.begin() + ks[0] - 1, indices_to_sort.end(),
+                     comparator);
+    if (ks[0] < ks[1]) {
+      std::nth_element(indices_to_sort.begin() + ks[0],
+                       indices_to_sort.begin() + (ks[1] - 1),
+                       indices_to_sort.end(), comparator);
+    }
+
+    std::vector<spu::Value> ret;
+    ret.reserve(2);
+
+    auto topk_indices =
+        Index(indices_to_sort.begin(), indices_to_sort.begin() + ks[1]);
+    ret.push_back(internal::_permute_1d(ctx, input, topk_indices));
+    if (!value_only) {
+      auto dt =
+          ctx->config().field() == FieldType::FM32 ? spu::DT_I32 : spu::DT_I64;
+      ret.push_back(constant(ctx, topk_indices, dt,
+                             {static_cast<int64_t>(topk_indices.size())}));
+    }
+
+    return ret;
+  }
+
+  bool confusion = true;
+  bool fallback = false;
+  if (!(ctx->hasKernel("rand_perm_m") && ctx->hasKernel("perm_am"))) {
+    fallback = true;
+    SPDLOG_WARN(
+        "Fallback to generic topk (using sort) because permutation-related "
+        "kernels are not supported");
+  }
+
+  if (!fallback) {
+    auto inp = internal::PrepareInput(ctx, input, confusion, value_only);
+
+    hal::CompFn comp_fn =
+        [ctx, &scalar_cmp](absl::Span<const spu::Value> values) -> spu::Value {
+      auto cmp = scalar_cmp(ctx, values[0], values[1]);
+      if (values.size() == 2) {
+        return cmp;
+      }
+      // equal has better performance for aby3
+      // cmp+andbb has better performance for semi2k
+      auto eq = hal::equal(ctx, values[0], values[1]);
+
+      // comparision of random value
+      auto result = scalar_cmp(ctx, values[2], values[3]);
+      result = hal::bitwise_and(ctx, eq, result);
+      result = hal::bitwise_or(ctx, cmp, result);
+      return result;
+    };
+
+    return internal::QuickSelectTopk(ctx, comp_fn, absl::MakeSpan(inp), ks);
+
+  } else {
+    // fall back to general sort
+    auto dt =
+        ctx->config().field() == FieldType::FM32 ? spu::DT_I32 : spu::DT_I64;
+    std::vector<spu::Value> inp;
+    inp.reserve(2);
+
+    inp.push_back(input);
+    if (!value_only) {
+      inp.push_back(_p2s(ctx, hal::iota(ctx, dt, input.numel())).setDtype(dt));
+    }
+
+    hal::CompFn comp_fn =
+        [ctx, &scalar_cmp](absl::Span<const spu::Value> values) -> spu::Value {
+      // single key with extra payload
+      return scalar_cmp(ctx, values[0], values[1]);
+    };
+    auto sorted =
+        hal::sort1d(ctx, absl::MakeSpan(inp), comp_fn, VIS_SECRET, false);
+
+    for (auto &item : sorted) {
+      item = slice(ctx, item, {0}, {ks[1]});
+    }
+
+    return sorted;
+  }
 }
 
 }  // namespace spu::kernel::hal

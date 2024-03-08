@@ -349,7 +349,10 @@ TEST_P(ApiTest, TruncS) {
   utils::simulate(npc, [&](const std::shared_ptr<yacl::link::Context>& lctx) {
     auto sctx = factory(conf, lctx);
 
-    auto p0 = rand_p(sctx.get(), kShape);
+    // NOTE(lwj): test Cheetah's TiledDispatch using larger shape
+    auto p0 = rand_p(sctx.get(), conf.protocol() == ProtocolKind::CHEETAH
+                                     ? Shape({300, 20})
+                                     : kShape);
 
     // TODO: here we assume has msb error, only use lowest 10 bits.
     p0 = arshift_p(sctx.get(), p0, SizeOf(conf.field()) * 8 - 10);

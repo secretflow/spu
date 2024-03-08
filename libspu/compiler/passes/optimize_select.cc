@@ -107,7 +107,7 @@ public:
       builder.setInsertionPoint(pred.getDefiningOp()->getNextNode());
       new_loc = pred.getDefiningOp()->getLoc();
     }
-    auto pref_a = builder.create<PreferAOp>(new_loc, pred.getType(), pred);
+    auto pref_a = builder.create<PreferAOp>(new_loc, pred);
 
     // Only replace select usage
     pred.replaceUsesWithIf(pref_a, [](OpOperand &use) {

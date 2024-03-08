@@ -18,11 +18,14 @@
 #include "libspu/mpc/cheetah/ot/ferret_ot_interface.h"
 #include "libspu/mpc/common/communicator.h"
 
+#include "libspu/spu.pb.h"
+
 namespace spu::mpc::cheetah {
 
 class BasicOTProtocols {
  public:
-  explicit BasicOTProtocols(std::shared_ptr<Communicator> conn);
+  explicit BasicOTProtocols(std::shared_ptr<Communicator> conn,
+                            CheetahOtKind kind);
 
   ~BasicOTProtocols();
 

@@ -54,8 +54,8 @@ struct CheetahDot::Impl : public EnableCPRNG {
   static constexpr size_t kCtAsyncParallel = 16;
 
   explicit Impl(std::shared_ptr<yacl::link::Context> lctx,
-                bool enable_matmul_pack)
-      : lctx_(std::move(lctx)), disable_pack_(!enable_matmul_pack) {}
+                bool disable_matmul_pack)
+      : lctx_(std::move(lctx)), disable_pack_(disable_matmul_pack) {}
 
   ~Impl() = default;
 
@@ -292,9 +292,10 @@ void CheetahDot::Impl::LazyInit(size_t field_bitlen, bool need_galois_keys) {
   }
 
   if (lctx_->Rank() == 0) {
-    SPDLOG_INFO("CheetahDot uses {}@{} modulus {} degree for {} bit ring",
-                ecd_modulus_sze, dcd_modulus_sze, parms.poly_modulus_degree(),
-                field_bitlen);
+    SPDLOG_INFO(
+        "CheetahDot uses {}@{} modulus {} degree for {} bit ring (packing={})",
+        ecd_modulus_sze, dcd_modulus_sze, parms.poly_modulus_degree(),
+        field_bitlen, need_galois_keys ? "enabled" : "disabled");
   }
 }
 
@@ -751,8 +752,8 @@ NdArrayRef CheetahDot::Impl::doDotOLE(const NdArrayRef &prv_mat,
 //////////////////////////////////////////////
 
 CheetahDot::CheetahDot(const std::shared_ptr<yacl::link::Context> &lctx,
-                       bool enable_matmul_pack) {
-  impl_ = std::make_unique<Impl>(lctx, enable_matmul_pack);
+                       bool disable_matmul_pack) {
+  impl_ = std::make_unique<Impl>(lctx, disable_matmul_pack);
 }
 
 CheetahDot::~CheetahDot() = default;

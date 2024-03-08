@@ -41,6 +41,7 @@ from typing import (
 import cloudpickle
 import grpc
 import jax
+import jax.extend.linear_util as lu
 import multiprocess
 import numpy as np
 import jax.extend.linear_util as lu
@@ -48,6 +49,8 @@ from google.protobuf import json_format
 from jax._src import api_util as japi_util
 from jax.tree_util import tree_map, tree_unflatten
 from termcolor import colored
+
+from spu.utils.polyfill import Process
 
 from .. import api as spu_api
 from .. import libspu  # type: ignore
@@ -200,13 +203,13 @@ class RPC:
         global logger
         processNameFix = {'processNameCorrected': multiprocess.current_process().name}
         logger = logging.LoggerAdapter(logger, processNameFix)
-        logger.info(f"Starting grpc server at {nodes_def[node_id]}")
         if PPU_SPU_ENABLE_ATLS:
             server_creds = grpc.alts_server_credentials()
             server.add_secure_port(nodes_def[node_id], server_creds)
         else:
             server.add_insecure_port(nodes_def[node_id])
         server.start()
+        logger.info(f"Starting grpc server at {nodes_def[node_id]}")
         server.wait_for_termination()
 
 
@@ -905,7 +908,9 @@ class SPU(Device):
                 ret = pytree.tree_unflatten(ret, out_spec)
             return ret
 
-        def dump_pphlo(self, *args, **kwargs):
+        def dump_pphlo(self, state_dict, *args, **kwargs):
+            # place state_dict
+            self.state_dict = self._place_state_dict(state_dict)
             args, kwargs = self.device._place_arguments(*args, **kwargs)
             executable, *_ = self._compile_torch_func(self.pyfunc, *args, **kwargs)
             return executable.code.decode('utf-8')
@@ -1169,7 +1174,6 @@ def get(args):
 
         args_flat, tree_spec = pytree.tree_flatten(args)
     else:
-
         args_flat, tree = jax.tree_util.tree_flatten(args)
 
     out_flat = [
@@ -1355,7 +1359,7 @@ if __name__ == '__main__':
     elif args.command == 'up':
         workers = []
         for node_id in nodes_def.keys():
-            worker = multiprocess.Process(target=RPC.serve, args=(node_id, nodes_def))
+            worker = Process(target=RPC.serve, args=(node_id, nodes_def))
             worker.start()
             workers.append(worker)
 

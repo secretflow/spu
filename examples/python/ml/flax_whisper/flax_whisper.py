@@ -23,8 +23,8 @@ import json
 import os
 
 import jax.numpy as jnp
-from transformers import WhisperProcessor, FlaxWhisperForConditionalGeneration
 from datasets import load_dataset
+from transformers import FlaxWhisperForConditionalGeneration, WhisperProcessor
 
 import spu.utils.distributed as ppd
 from spu import spu_pb2

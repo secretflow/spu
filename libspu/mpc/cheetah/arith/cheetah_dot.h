@@ -27,10 +27,13 @@ namespace spu::mpc::cheetah {
 // Ref: Huang et al. "Cheetah: Lean and Fast Secure Two-Party Deep Neural
 // Network Inference"
 //  https://eprint.iacr.org/2022/207.pdf
+// Ref: Lu et al. "BumbleBee: Secure Two-party Inference Framework for Large
+// Transformers"
+//  https://eprint.iacr.org/2023/1678
 class CheetahDot {
  public:
   explicit CheetahDot(const std::shared_ptr<yacl::link::Context>& lctx,
-                      bool enable_matmul_pack = true);
+                      bool disable_matmul_pack = false);
 
   ~CheetahDot();
 

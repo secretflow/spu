@@ -17,9 +17,12 @@
 #include "libspu/core/ndarray_ref.h"
 #include "libspu/mpc/kernel.h"
 
-namespace spu::mpc::aby3 {
-
+// Only turn mask on in debug build
+#ifndef NDEBUG
 #define ENABLE_MASK_DURING_ABY3_P2A
+#endif
+
+namespace spu::mpc::aby3 {
 
 class A2P : public UnaryKernel {
  public:

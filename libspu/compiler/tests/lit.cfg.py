@@ -16,6 +16,7 @@
 # -*- Python -*-
 # pylint: disable=undefined-variable
 import os
+
 import lit.formats
 from lit.llvm import llvm_config
 

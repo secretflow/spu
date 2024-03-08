@@ -491,18 +491,27 @@ Value _bit_parity(SPUContext* ctx, const Value& x, size_t bits) {
 Value _popcount(SPUContext* ctx, const Value& x, size_t bits) {
   SPU_TRACE_HAL_LEAF(ctx, x);
 
-  Value ret = _constant(ctx, 0, x.shape());
-  // TODO:
-  // 1. x's dtype may not be set at the moment.
-  // 2. x's stype could be dynamic, especial for variadic boolean shares.
-  const auto k1 = _constant(ctx, 1, x.shape());
-
-  for (size_t idx = 0; idx < bits; idx++) {
-    auto x_ = _rshift(ctx, x, idx);
-    ret = _add(ctx, ret, _and(ctx, x_, k1));
+  if (x.shape().isEmpty()) {
+    return x;
   }
 
-  return ret;
+  auto xb = _prefer_b(ctx, x);
+
+  std::vector<Value> vs;
+  vs.reserve(bits);
+  for (size_t idx = 0; idx < bits; idx++) {
+    auto x_ = _rshift(ctx, xb, idx);
+    x_ = _and(ctx, x_, _constant(ctx, 1U, x.shape()));
+
+    if (x_.storage_type().isa<BShare>()) {
+      const_cast<Type&>(x_.storage_type()).as<BShare>()->setNbits(1);
+    }
+    vs.push_back(std::move(x_));
+  }
+
+  return vreduce(vs.begin(), vs.end(), [&](const Value& a, const Value& b) {
+    return _add(ctx, a, b);
+  });
 }
 
 // Fill all bits after msb to 1.

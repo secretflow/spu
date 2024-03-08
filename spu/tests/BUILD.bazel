@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@pybind11_bazel//:build_defs.bzl", "pybind_extension")
 load("@rules_python//python:defs.bzl", "py_binary", "py_library", "py_test")
 
 package(default_visibility = ["//visibility:public"])
@@ -304,7 +303,9 @@ py_test(
 
 py_test(
     name = "distributed_test",
+    timeout = "short",
     srcs = ["distributed_test.py"],
+    flaky = True,
     tags = [
         "exclusive-if-local",
     ],
