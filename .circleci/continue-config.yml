@@ -101,6 +101,7 @@ jobs:
       name: linux_executor
       resource_class: 2xlarge+
     steps:
+      - checkout
       - run:
           name: Install extra deps
           command: |
