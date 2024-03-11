@@ -1,6 +1,6 @@
 grpcio>=1.42.0,!=1.48.0
 numpy>=1.22.0
-protobuf>=3.19, <4
+protobuf>=4, <5
 cloudpickle>=2.0.0
 multiprocess>=0.70.12.2
 cachetools>=5.0.0
