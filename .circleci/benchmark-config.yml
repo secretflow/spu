@@ -27,7 +27,7 @@ jobs:
   nn_benchmark:
     # Use machine executor for convenient data sharing between the host and docker-compose cluster
     machine:
-      image: ubuntu-2004:2022.07.1
+      image: ubuntu-2204:current
     resource_class: 2xlarge+
     shell: /bin/bash --login -eo pipefail
     steps:
