@@ -128,7 +128,7 @@ workflows:
           name: macOS_dev_publish
           matrix:
             parameters:
-              python_ver: ["3.9", "3.10", "3.11"]
+              python_ver: ["3.10"]
           filters:
             tags:
               only: /.*(?<=dev\d{8})$/
