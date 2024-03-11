@@ -116,7 +116,7 @@ workflows:
             tags:
               only: /.*(?<!dev\d{8})$/
       - linux_publish:
-          name: linux_dev_publish-<<matrix.resource_class>>
+          name: linux_dev_publish-<<matrix.executor>>
           matrix:
             parameters:
               python_ver: ["3.10"]
