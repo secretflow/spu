@@ -43,7 +43,7 @@ def _yacl():
             "https://github.com/secretflow/yacl/archive/refs/tags/0.4.4b0.tar.gz",
         ],
         strip_prefix = "yacl-0.4.4b0",
-        sha256 = "58001c4472a736a5486f9b70b1c81a84c64807f03fadcf2040e4a7d77f310b5d",
+        sha256 = "9e472638e7960edf9d337c6b7545057dad27f4cf27ce42f820326e7f299641b6",
     )
 
 def _libpsi():
