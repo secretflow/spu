@@ -14,3 +14,6 @@ linkify-it-py==2.0.3
 mdutils==1.6.0
 spu>=0.3.1b0
 pydata-sphinx-theme
+tabulate
+xlwt
+xlsxwriter
