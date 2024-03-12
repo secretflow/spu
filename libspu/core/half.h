@@ -985,8 +985,7 @@ unsigned int fixed2half(uint32 m, int exp = 14, unsigned int sign = 0,
     sign = msign & 0x8000;
   }
   if (N)
-    for (; m < (static_cast<uint32>(1) << F) && exp; m <<= 1, --exp)
-      ;
+    for (; m < (static_cast<uint32>(1) << F) && exp; m <<= 1, --exp);
   else if (exp < 0)
     return rounded<R, I>(
         sign + (m >> (F - 10 - exp)), (m >> (F - 11 - exp)) & 1,
@@ -1215,10 +1214,8 @@ unsigned int int2half(T value) {
   if (bits) value = -value;
   if (value > 0xFFFF) return overflow<R>(bits);
   unsigned int m = static_cast<unsigned int>(value), exp = 24;
-  for (; m < 0x400; m <<= 1, --exp)
-    ;
-  for (; m > 0x7FF; m >>= 1, ++exp)
-    ;
+  for (; m < 0x400; m <<= 1, --exp);
+  for (; m > 0x7FF; m >>= 1, ++exp);
   bits |= (exp << 10) + m;
   return (exp > 24) ? rounded<R, false>(bits, (value >> (exp - 25)) & 1,
                                         (((1 << (exp - 25)) - 1) & value) != 0)
@@ -1626,8 +1623,7 @@ inline double half2float_impl(unsigned int value, double, true_type) {
   unsigned int abs = value & 0x7FFF;
   if (abs) {
     hi |= 0x3F000000 << static_cast<unsigned>(abs >= 0x7C00);
-    for (; abs < 0x400; abs <<= 1, hi -= 0x100000)
-      ;
+    for (; abs < 0x400; abs <<= 1, hi -= 0x100000);
     hi += static_cast<uint32>(abs) << 10;
   }
   bits<double>::type dbits = static_cast<bits<double>::type>(hi) << 32;
@@ -1789,10 +1785,8 @@ unsigned int mod(unsigned int x, unsigned int y, int *quo = NULL) {
   unsigned int q = 0;
   if (x > y) {
     int absx = x, absy = y, expx = 0, expy = 0;
-    for (; absx < 0x400; absx <<= 1, --expx)
-      ;
-    for (; absy < 0x400; absy <<= 1, --expy)
-      ;
+    for (; absx < 0x400; absx <<= 1, --expx);
+    for (; absy < 0x400; absy <<= 1, --expy);
     expx += absx >> 10;
     expy += absy >> 10;
     int mx = (absx & 0x3FF) | 0x400, my = (absy & 0x3FF) | 0x400;
@@ -1814,8 +1808,7 @@ unsigned int mod(unsigned int x, unsigned int y, int *quo = NULL) {
       q &= (1 << (std::numeric_limits<int>::digits - 1)) - 1;
       if (!mx) return *quo = q, 0;
     }
-    for (; mx < 0x400; mx <<= 1, --expy)
-      ;
+    for (; mx < 0x400; mx <<= 1, --expy);
     x = (expy > 0) ? ((expy << 10) | (mx & 0x3FF)) : (mx >> (1 - expy));
   }
   if (R) {
@@ -1831,8 +1824,7 @@ unsigned int mod(unsigned int x, unsigned int y, int *quo = NULL) {
       int exp = (y >> 10) + (y <= 0x3FF), d = exp - (x >> 10) - (x <= 0x3FF);
       int m = (((y & 0x3FF) | ((y > 0x3FF) << 10)) << 1) -
               (((x & 0x3FF) | ((x > 0x3FF) << 10)) << (1 - d));
-      for (; m < 0x800 && exp > 1; m <<= 1, --exp)
-        ;
+      for (; m < 0x800 && exp > 1; m <<= 1, --exp);
       x = 0x8000 + ((exp - 1) << 10) + (m >> 1);
       q += Q;
     }
@@ -2002,8 +1994,7 @@ inline uint32 angle_arg(unsigned int abs, int &k) {
 /// \return \a abs and sqrt(1 - \a abs^2) as Q0.30
 inline std::pair<uint32, uint32> atan2_args(unsigned int abs) {
   int exp = -15;
-  for (; abs < 0x400; abs <<= 1, --exp)
-    ;
+  for (; abs < 0x400; abs <<= 1, --exp);
   exp += abs >> 10;
   uint32 my = ((abs & 0x3FF) | 0x400) << 5, r = my * my;
   int rexp = 2 * exp;
@@ -2011,8 +2002,7 @@ inline std::pair<uint32, uint32> atan2_args(unsigned int abs) {
                         ? ((r >> -rexp) |
                            ((r & ((static_cast<uint32>(1) << -rexp) - 1)) != 0))
                         : 1);
-  for (rexp = 0; r < 0x40000000; r <<= 1, --rexp)
-    ;
+  for (rexp = 0; r < 0x40000000; r <<= 1, --rexp);
   uint32 mx = sqrt<30>(r, rexp);
   int d = exp - rexp;
   if (d < 0)
@@ -2109,8 +2099,7 @@ unsigned int log2_post(uint32 m, int ilog, int exp, unsigned int sign = 0) {
   uint32 msign = sign_mask(ilog);
   m = (((static_cast<uint32>(ilog) << 27) + (m >> 4)) ^ msign) - msign;
   if (!m) return 0;
-  for (; m < 0x80000000; m <<= 1, --exp)
-    ;
+  for (; m < 0x80000000; m <<= 1, --exp);
   int i = m >= L, s;
   exp += i;
   m >>= 1 + i;
@@ -2174,8 +2163,7 @@ unsigned int area(unsigned int arg) {
       ilog, i;
   uint32 mx = static_cast<uint32>((abs & 0x3FF) | ((abs > 0x3FF) << 10)) << 20,
          my, r;
-  for (; abs < 0x400; abs <<= 1, --expy)
-    ;
+  for (; abs < 0x400; abs <<= 1, --expy);
   expy += abs >> 10;
   r = ((abs & 0x3FF) | 0x400) << 5;
   r *= r;
@@ -2197,8 +2185,7 @@ unsigned int area(unsigned int arg) {
     }
   } else {
     r -= 0x40000000 >> expy;
-    for (; r < 0x40000000; r <<= 1, --expy)
-      ;
+    for (; r < 0x40000000; r <<= 1, --expy);
   }
   my = sqrt<30>(r, expy);
   my = (my << 15) + (r << 14) / my;
@@ -2227,8 +2214,7 @@ struct f31 {
   /// Constructor.
   /// \param abs unsigned half-precision value
   f31(unsigned int abs) : exp(-15) {
-    for (; abs < 0x400; abs <<= 1, --exp)
-      ;
+    for (; abs < 0x400; abs <<= 1, --exp);
     m = static_cast<uint32>((abs & 0x3FF) | 0x400) << 21;
     exp += (abs >> 10);
   }
@@ -2253,8 +2239,7 @@ struct f31 {
     int d = a.exp - b.exp, exp = a.exp;
     uint32 m = a.m - ((d < 32) ? (b.m >> d) : 0);
     if (!m) return f31(0, -32);
-    for (; m < 0x80000000; m <<= 1, --exp)
-      ;
+    for (; m < 0x80000000; m <<= 1, --exp);
     return f31(m, exp);
   }
 
@@ -2358,15 +2343,13 @@ unsigned int gamma(unsigned int arg) {
     if (z.exp >= 0) {
       sign &= (L | ((z.m >> (31 - z.exp)) & 1)) - 1;
       for (z = f31((z.m << (1 + z.exp)) & 0xFFFFFFFF, -1); z.m < 0x80000000;
-           z.m <<= 1, --z.exp)
-        ;
+           z.m <<= 1, --z.exp);
     }
     if (z.exp == -1) z = f31(0x80000000, 0) - z;
     if (z.exp < -1) {
       z = z * pi;
       z.m = sincos(z.m >> (1 - z.exp), 30).first;
-      for (z.exp = 1; z.m < 0x80000000; z.m <<= 1, --z.exp)
-        ;
+      for (z.exp = 1; z.m < 0x80000000; z.m <<= 1, --z.exp);
     } else
       z = f31(0x80000000, 0);
   }
@@ -2376,8 +2359,7 @@ unsigned int gamma(unsigned int arg) {
       if (z.exp < 0) {
         uint32 m = log2((z.m + 1) >> 1, 27);
         z = f31(-((static_cast<uint32>(z.exp) << 26) + (m >> 5)), 5);
-        for (; z.m < 0x80000000; z.m <<= 1, --z.exp)
-          ;
+        for (; z.m < 0x80000000; z.m <<= 1, --z.exp);
         l = l + z / lbe;
       }
       sign = static_cast<unsigned>(
@@ -3042,8 +3024,7 @@ inline half operator+(half x, half y) {
                   static_cast<unsigned>(half::round_style ==
                                         std::round_toward_neg_infinity)
                       << 15);
-    for (; mx < 0x2000 && exp > 1; mx <<= 1, --exp)
-      ;
+    for (; mx < 0x2000 && exp > 1; mx <<= 1, --exp);
   } else {
     mx += my;
     int i = mx >> 14;
@@ -3101,10 +3082,8 @@ inline half operator*(half x, half y) {
                     ? detail::invalid()
                     : (sign | 0x7C00));
   if (!absx || !absy) return half(detail::binary, sign);
-  for (; absx < 0x400; absx <<= 1, --exp)
-    ;
-  for (; absy < 0x400; absy <<= 1, --exp)
-    ;
+  for (; absx < 0x400; absx <<= 1, --exp);
+  for (; absy < 0x400; absy <<= 1, --exp);
   detail::uint32 m = static_cast<detail::uint32>((absx & 0x3FF) | 0x400) *
                      static_cast<detail::uint32>((absy & 0x3FF) | 0x400);
   int i = m >> 21, s = m & i;
@@ -3144,10 +3123,8 @@ inline half operator/(half x, half y) {
                                     : (sign | ((absx == 0x7C00) ? 0x7C00 : 0)));
   if (!absx) return half(detail::binary, absy ? sign : detail::invalid());
   if (!absy) return half(detail::binary, detail::pole(sign));
-  for (; absx < 0x400; absx <<= 1, --exp)
-    ;
-  for (; absy < 0x400; absy <<= 1, ++exp)
-    ;
+  for (; absx < 0x400; absx <<= 1, --exp);
+  for (; absy < 0x400; absy <<= 1, ++exp);
   detail::uint32 mx = (absx & 0x3FF) | 0x400, my = (absy & 0x3FF) | 0x400;
   int i = mx < my;
   exp += (absx >> 10) - (absy >> 10) - i;
@@ -3333,10 +3310,8 @@ inline half fma(half x, half y, half z) {
                        (half::round_style == std::round_toward_neg_infinity)
                            ? (z.data_ | sign)
                            : (z.data_ & sign));
-  for (; absx < 0x400; absx <<= 1, --exp)
-    ;
-  for (; absy < 0x400; absy <<= 1, --exp)
-    ;
+  for (; absx < 0x400; absx <<= 1, --exp);
+  for (; absy < 0x400; absy <<= 1, --exp);
   detail::uint32 m = static_cast<detail::uint32>((absx & 0x3FF) | 0x400) *
                      static_cast<detail::uint32>((absy & 0x3FF) | 0x400);
   int i = m >> 21;
@@ -3344,8 +3319,7 @@ inline half fma(half x, half y, half z) {
   m <<= 3 - i;
   if (absz) {
     int expz = 0;
-    for (; absz < 0x400; absz <<= 1, --expz)
-      ;
+    for (; absz < 0x400; absz <<= 1, --expz);
     expz += absz >> 10;
     detail::uint32 mz = static_cast<detail::uint32>((absz & 0x3FF) | 0x400)
                         << 13;
@@ -3365,8 +3339,7 @@ inline half fma(half x, half y, half z) {
                     static_cast<unsigned>(half::round_style ==
                                           std::round_toward_neg_infinity)
                         << 15);
-      for (; m < 0x800000; m <<= 1, --exp)
-        ;
+      for (; m < 0x800000; m <<= 1, --exp);
     } else {
       m += mz;
       i = m >> 24;
@@ -3566,8 +3539,7 @@ inline half expm1(half arg) {
     exp = 0;
   } else
     m -= (exp < 31) ? (0x80000000 >> exp) : 1;
-  for (exp += 14; m < 0x80000000 && exp; m <<= 1, --exp)
-    ;
+  for (exp += 14; m < 0x80000000 && exp; m <<= 1, --exp);
   if (exp > 29)
     return half(detail::binary, detail::overflow<half::round_style>());
   return half(detail::binary, detail::rounded<half::round_style, true>(
@@ -3599,8 +3571,7 @@ inline half log(half arg) {
   if (abs >= 0x7C00)
     return (abs == 0x7C00) ? arg
                            : half(detail::binary, detail::signal(arg.data_));
-  for (; abs < 0x400; abs <<= 1, --exp)
-    ;
+  for (; abs < 0x400; abs <<= 1, --exp);
   exp += abs >> 10;
   return half(
       detail::binary,
@@ -3645,8 +3616,7 @@ inline half log10(half arg) {
     case 0x70E2:
       return half(detail::binary, 0x4400);
   }
-  for (; abs < 0x400; abs <<= 1, --exp)
-    ;
+  for (; abs < 0x400; abs <<= 1, --exp);
   exp += abs >> 10;
   return half(
       detail::binary,
@@ -3682,14 +3652,12 @@ inline half log2(half arg) {
     return (abs == 0x7C00) ? arg
                            : half(detail::binary, detail::signal(arg.data_));
   if (abs == 0x3C00) return half(detail::binary, 0);
-  for (; abs < 0x400; abs <<= 1, --exp)
-    ;
+  for (; abs < 0x400; abs <<= 1, --exp);
   exp += (abs >> 10);
   if (!(abs & 0x3FF)) {
     unsigned int value = static_cast<unsigned>(exp < 0) << 15, m = std::abs(exp)
                                                                    << 6;
-    for (exp = 18; m < 0x400; m <<= 1, --exp)
-      ;
+    for (exp = 18; m < 0x400; m <<= 1, --exp);
     return half(detail::binary, value + (exp << 10) + m);
   }
   detail::uint32 ilog = exp, sign = detail::sign_mask(ilog),
@@ -3702,8 +3670,7 @@ inline half log2(half arg) {
                       sign) -
                      sign;
   if (!m) return half(detail::binary, 0);
-  for (exp = 14; m < 0x8000000 && exp; m <<= 1, --exp)
-    ;
+  for (exp = 14; m < 0x8000000 && exp; m <<= 1, --exp);
   for (; m > 0xFFFFFFF; m >>= 1, ++exp) s |= m & 1;
   return half(detail::binary,
               detail::fixed2half<half::round_style, 27, false, false, true>(
@@ -3737,14 +3704,12 @@ inline half log1p(half arg) {
   if (!abs || abs >= 0x7C00)
     return (abs > 0x7C00) ? half(detail::binary, detail::signal(arg.data_))
                           : arg;
-  for (; abs < 0x400; abs <<= 1, --exp)
-    ;
+  for (; abs < 0x400; abs <<= 1, --exp);
   exp += abs >> 10;
   detail::uint32 m = static_cast<detail::uint32>((abs & 0x3FF) | 0x400) << 20;
   if (arg.data_ & 0x8000) {
     m = 0x40000000 - (m >> -exp);
-    for (exp = 0; m < 0x40000000; m <<= 1, --exp)
-      ;
+    for (exp = 0; m < 0x40000000; m <<= 1, --exp);
   } else {
     if (exp < 0) {
       m = 0x40000000 + (m >> -exp);
@@ -3785,8 +3750,7 @@ inline half sqrt(half arg) {
     return half(detail::binary, (abs > 0x7C00) ? detail::signal(arg.data_)
                                 : (arg.data_ > 0x8000) ? detail::invalid()
                                                        : arg.data_);
-  for (; abs < 0x400; abs <<= 1, --exp)
-    ;
+  for (; abs < 0x400; abs <<= 1, --exp);
   detail::uint32 r = static_cast<detail::uint32>((abs & 0x3FF) | 0x400) << 10,
                  m = detail::sqrt<20>(r, exp += abs >> 10);
   return half(detail::binary, detail::rounded<half::round_style, false>(
@@ -3814,8 +3778,7 @@ inline half rsqrt(half arg) {
                                 : (arg.data_ > 0x8000) ? detail::invalid()
                                 : !abs ? detail::pole(arg.data_ & 0x8000)
                                        : 0);
-  for (; abs < 0x400; abs <<= 1, bias -= 0x400)
-    ;
+  for (; abs < 0x400; abs <<= 1, bias -= 0x400);
   unsigned int frac = (abs += bias) & 0x7FF;
   if (frac == 0x400) return half(detail::binary, 0x7A00 - (abs >> 1));
   if ((half::round_style == std::round_to_nearest &&
@@ -3828,15 +3791,13 @@ inline half rsqrt(half arg) {
                  my = ((f >> 1) & 0x3FF) | 0x400, mz = my * my;
   int expy = (f >> 11) - 31, expx = 32 - (abs >> 10), i = mz >> 21;
   for (mz = 0x60000000 - (((mz >> i) * mx) >> (expx - 2 * expy - i));
-       mz < 0x40000000; mz <<= 1, --expy)
-    ;
+       mz < 0x40000000; mz <<= 1, --expy);
   i = (my *= mz >> 10) >> 31;
   expy += i;
   my = (my >> (20 + i)) + 1;
   i = (mz = my * my) >> 21;
   for (mz = 0x60000000 - (((mz >> i) * mx) >> (expx - 2 * expy - i));
-       mz < 0x40000000; mz <<= 1, --expy)
-    ;
+       mz < 0x40000000; mz <<= 1, --expy);
   i = (my *= (mz >> 10) + 1) >> 31;
   return half(detail::binary,
               detail::fixed2half<half::round_style, 30, false, false, true>(
@@ -3861,8 +3822,7 @@ inline half cbrt(half arg) {
   if (!abs || abs == 0x3C00 || abs >= 0x7C00)
     return (abs > 0x7C00) ? half(detail::binary, detail::signal(arg.data_))
                           : arg;
-  for (; abs < 0x400; abs <<= 1, --exp)
-    ;
+  for (; abs < 0x400; abs <<= 1, --exp);
   detail::uint32 ilog = exp + (abs >> 10), sign = detail::sign_mask(ilog), f,
                  m = (((ilog << 27) +
                        (detail::log2(
@@ -3872,8 +3832,7 @@ inline half cbrt(half arg) {
                         4)) ^
                       sign) -
                      sign;
-  for (exp = 2; m < 0x80000000; m <<= 1, --exp)
-    ;
+  for (exp = 2; m < 0x80000000; m <<= 1, --exp);
   m = detail::multiply64(m, 0xAAAAAAAB);
   int i = m >> 31, s;
   exp += i;
@@ -3934,10 +3893,8 @@ inline half hypot(half x, half y) {
     return half(detail::binary, absy ? detail::check_underflow(absy) : 0);
   if (!absy) return half(detail::binary, detail::check_underflow(absx));
   if (absy > absx) std::swap(absx, absy);
-  for (; absx < 0x400; absx <<= 1, --expx)
-    ;
-  for (; absy < 0x400; absy <<= 1, --expy)
-    ;
+  for (; absx < 0x400; absx <<= 1, --expx);
+  for (; absy < 0x400; absy <<= 1, --expy);
   detail::uint32 mx = (absx & 0x3FF) | 0x400, my = (absy & 0x3FF) | 0x400;
   mx *= mx;
   my *= my;
@@ -3990,12 +3947,9 @@ inline half hypot(half x, half y, half z) {
   if (absz > absy) std::swap(absy, absz);
   if (absy > absx) std::swap(absx, absy);
   if (absz > absy) std::swap(absy, absz);
-  for (; absx < 0x400; absx <<= 1, --expx)
-    ;
-  for (; absy < 0x400; absy <<= 1, --expy)
-    ;
-  for (; absz < 0x400; absz <<= 1, --expz)
-    ;
+  for (; absx < 0x400; absx <<= 1, --expx);
+  for (; absy < 0x400; absy <<= 1, --expy);
+  for (; absz < 0x400; absz <<= 1, --expz);
   detail::uint32 mx = (absx & 0x3FF) | 0x400, my = (absy & 0x3FF) | 0x400,
                  mz = (absz & 0x3FF) | 0x400;
   mx *= mx;
@@ -4083,8 +4037,7 @@ inline half pow(half x, half y) {
     case 0xBC00:
       return half(detail::binary, 0x3C00) / x;
   }
-  for (; absx < 0x400; absx <<= 1, --exp)
-    ;
+  for (; absx < 0x400; absx <<= 1, --exp);
   detail::uint32 ilog = exp + (absx >> 10), msign = detail::sign_mask(ilog), f,
                  m = (((ilog << 27) +
                        ((detail::log2(
@@ -4094,10 +4047,8 @@ inline half pow(half x, half y) {
                         4)) ^
                       msign) -
                      msign;
-  for (exp = -11; m < 0x80000000; m <<= 1, --exp)
-    ;
-  for (; absy < 0x400; absy <<= 1, --exp)
-    ;
+  for (exp = -11; m < 0x80000000; m <<= 1, --exp);
+  for (; absy < 0x400; absy <<= 1, --exp);
   m = detail::multiply64(m, static_cast<detail::uint32>((absy & 0x3FF) | 0x400)
                                 << 21);
   int i = m >> 31;
@@ -4320,10 +4271,8 @@ inline half tan(half arg) {
                  signx = detail::sign_mask(sc.second);
   detail::uint32 my = (sc.first ^ signy) - signy,
                  mx = (sc.second ^ signx) - signx;
-  for (; my < 0x80000000; my <<= 1, --exp)
-    ;
-  for (; mx < 0x80000000; mx <<= 1, ++exp)
-    ;
+  for (; my < 0x80000000; my <<= 1, --exp);
+  for (; mx < 0x80000000; mx <<= 1, ++exp);
   return half(detail::binary,
               detail::tangent_post<half::round_style>(
                   my, mx, exp, (signy ^ signx ^ arg.data_) & 0x8000));
@@ -4493,8 +4442,7 @@ inline half atan2(half y, half x) {
                 detail::rounded<half::round_style, true>(signy | 0x4248, 0, 1));
   if (!signx &&
       d < ((half::round_style == std::round_toward_zero) ? -15 : -9)) {
-    for (; absy < 0x400; absy <<= 1, --d)
-      ;
+    for (; absy < 0x400; absy <<= 1, --d);
     detail::uint32 mx = ((absx << 1) & 0x7FF) | 0x800,
                    my = ((absy << 1) & 0x7FF) | 0x800;
     int i = my < mx;
@@ -4548,8 +4496,7 @@ inline half sinh(half arg) {
   std::pair<detail::uint32, detail::uint32> mm = detail::hyperbolic_args(
       abs, exp, (half::round_style == std::round_to_nearest) ? 29 : 27);
   detail::uint32 m = mm.first - mm.second;
-  for (exp += 13; m < 0x80000000 && exp; m <<= 1, --exp)
-    ;
+  for (exp += 13; m < 0x80000000 && exp; m <<= 1, --exp);
   unsigned int sign = arg.data_ & 0x8000;
   if (exp > 29)
     return half(detail::binary, detail::overflow<half::round_style>(sign));
@@ -4623,8 +4570,7 @@ inline half tanh(half arg) {
   detail::uint32 my = mm.first - mm.second -
                       (half::round_style != std::round_to_nearest),
                  mx = mm.first + mm.second, i = (~mx & 0xFFFFFFFF) >> 31;
-  for (exp = 13; my < 0x80000000; my <<= 1, --exp)
-    ;
+  for (exp = 13; my < 0x80000000; my <<= 1, --exp);
   mx = (mx >> i) | 0x80000000;
   return half(detail::binary, detail::tangent_post<half::round_style>(
                                   my, mx, exp - i, arg.data_ & 0x8000));
@@ -4720,8 +4666,7 @@ inline half atanh(half arg) {
                                                  ((abs > 0x3FF) << 10))
                      << ((abs >> 10) + (abs <= 0x3FF) + 6),
                  my = 0x80000000 + m, mx = 0x80000000 - m;
-  for (; mx < 0x80000000; mx <<= 1, ++exp)
-    ;
+  for (; mx < 0x80000000; mx <<= 1, ++exp);
   int i = my >= mx, s;
   return half(
       detail::binary,
@@ -4990,8 +4935,7 @@ inline half frexp(half arg, int *exp) {
   if (abs >= 0x7C00 || !abs)
     return (abs > 0x7C00) ? half(detail::binary, detail::signal(arg.data_))
                           : arg;
-  for (; abs < 0x400; abs <<= 1, --*exp)
-    ;
+  for (; abs < 0x400; abs <<= 1, --*exp);
   *exp += (abs >> 10) - 14;
   return half(detail::binary, (arg.data_ & 0x8000) | 0x3800 | (abs & 0x3FF));
 }
@@ -5011,8 +4955,7 @@ inline half scalbln(half arg, long exp) {
   if (abs >= 0x7C00 || !abs)
     return (abs > 0x7C00) ? half(detail::binary, detail::signal(arg.data_))
                           : arg;
-  for (; abs < 0x400; abs <<= 1, --exp)
-    ;
+  for (; abs < 0x400; abs <<= 1, --exp);
   exp += abs >> 10;
   if (exp > 30)
     return half(detail::binary, detail::overflow<half::round_style>(sign));
@@ -5064,8 +5007,7 @@ inline half modf(half arg, half *iptr) {
                m = arg.data_ & mask;
   iptr->data_ = arg.data_ & ~mask;
   if (!m) return half(detail::binary, arg.data_ & 0x8000);
-  for (; m < 0x400; m <<= 1, --exp)
-    ;
+  for (; m < 0x400; m <<= 1, --exp);
   return half(detail::binary, (arg.data_ & 0x8000) | (exp << 10) | (m & 0x3FF));
 }
 
@@ -5081,8 +5023,7 @@ inline int ilogb(half arg) {
     detail::raise(FE_INVALID);
     return !abs ? FP_ILOGB0 : (abs == 0x7C00) ? INT_MAX : FP_ILOGBNAN;
   }
-  for (exp = (abs >> 10) - 15; abs < 0x200; abs <<= 1, --exp)
-    ;
+  for (exp = (abs >> 10) - 15; abs < 0x200; abs <<= 1, --exp);
   return exp;
 }
 
@@ -5097,13 +5038,11 @@ inline half logb(half arg) {
   if (abs >= 0x7C00)
     return half(detail::binary,
                 (abs == 0x7C00) ? 0x7C00 : detail::signal(arg.data_));
-  for (exp = (abs >> 10) - 15; abs < 0x200; abs <<= 1, --exp)
-    ;
+  for (exp = (abs >> 10) - 15; abs < 0x200; abs <<= 1, --exp);
   unsigned int value = static_cast<unsigned>(exp < 0) << 15;
   if (exp) {
     unsigned int m = std::abs(exp) << 6;
-    for (exp = 18; m < 0x400; m <<= 1, --exp)
-      ;
+    for (exp = 18; m < 0x400; m <<= 1, --exp);
     value |= (exp << 10) + m;
   }
   return half(detail::binary, value);
