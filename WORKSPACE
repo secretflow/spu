@@ -31,9 +31,22 @@ load("@psi//bazel:repositories.bzl", "psi_deps")
 
 psi_deps()
 
-load("@rules_python//python:repositories.bzl", "py_repositories")
+load("@rules_python//python:repositories.bzl", "py_repositories", "python_register_multi_toolchains")
 
 py_repositories()
+
+default_python_version = "3.10"
+
+python_register_multi_toolchains(
+    name = "python",
+    default_version = default_python_version,
+    python_versions = [
+        "3.9",
+        "3.10",
+        "3.11",
+    ],
+    register_coverage_tool = True,
+)
 
 load(
     "@rules_foreign_cc//foreign_cc:repositories.bzl",
