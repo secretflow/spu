@@ -179,7 +179,7 @@ def _com_github_pybind11():
     maybe(
         http_archive,
         name = "pybind11",
-        build_file = "@pybind11_bazel//:pybind11.BUILD",
+        build_file = "@pybind11_bazel//:pybind11-BUILD.bazel",
         sha256 = "d475978da0cdc2d43b73f30910786759d593a9d8ee05b1b6846d1eb16c6d2e0c",
         strip_prefix = "pybind11-2.11.1",
         urls = [
