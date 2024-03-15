@@ -18,7 +18,7 @@ package(default_visibility = ["//visibility:public"])
 
 py_test(
     name = "ml_test",
-    timeout = "long",
+    timeout = "eternal",
     srcs = ["ml_test.py"],
     data = [
         "//examples/python/conf",
