@@ -40,16 +40,26 @@ python_grpc_compile(
 )
 
 py_library(
-    name = "distributed",
+    name = "distributed_impl",
     srcs = [
-        "distributed.py",
+        "distributed_impl.py",
         ":distributed_py_proto_grpc",
         "//libspu:spu_py_proto",
     ],
     deps = [
         ":frontend",
-        ":polyfill",
         "//spu:api",
+    ],
+)
+
+py_library(
+    name = "distributed",
+    srcs = [
+        "distributed.py",
+    ],
+    deps = [
+        ":distributed_impl",
+        ":polyfill",
     ],
 )
 

@@ -219,7 +219,7 @@ class UnitTests(unittest.TestCase):
         self.assertIn('pphlo.add', text)
 
     def test_basic_spu_tf(self):
-        ppd._FRAMEWORK = ppd.Framework.EXP_TF
+        ppd.set_framework(ppd.Framework.EXP_TF)
         a = ppd.device("SPU")(no_in_one_out)()
         self.assertTrue(isinstance(a, ppd.SPU.Object))
         self.assertEqual(a.vtype, spu_pb2.VIS_PUBLIC)
