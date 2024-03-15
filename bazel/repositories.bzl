@@ -21,7 +21,6 @@ def spu_deps():
     _bazel_platform()
     _com_github_xtensor_xtensor()
     _com_github_xtensor_xtl()
-    _com_github_grpc_grpc()
     _com_github_openxla_xla()
     _com_github_pybind11_bazel()
     _com_github_pybind11()
@@ -98,21 +97,6 @@ def _com_github_facebook_zstd():
         ],
     )
 
-def _com_github_grpc_grpc():
-    maybe(
-        http_archive,
-        name = "com_github_grpc_grpc",
-        sha256 = "7f42363711eb483a0501239fd5522467b31d8fe98d70d7867c6ca7b52440d828",
-        strip_prefix = "grpc-1.51.0",
-        type = "tar.gz",
-        patch_args = ["-p1"],
-        # Set grpc to use local go toolchain
-        patches = ["@spulib//bazel:patches/grpc.patch"],
-        urls = [
-            "https://github.com/grpc/grpc/archive/refs/tags/v1.51.0.tar.gz",
-        ],
-    )
-
 def _com_github_xtensor_xtensor():
     maybe(
         http_archive,
@@ -140,17 +124,8 @@ def _com_github_xtensor_xtl():
     )
 
 def _com_github_openxla_xla():
-    OPENXLA_COMMIT = "495516d2d0b4453d5831905e152594614c8b4797"
-    OPENXLA_SHA256 = "13f6490065db594c6a7f9914e59213b6785ceb81af1f2cb28d5409f3f18aac8e"
-
-    maybe(
-        http_archive,
-        name = "bazel_skylib",
-        sha256 = "cd55a062e763b9349921f0f5db8c3933288dc8ba4f76dd9416aac68acee3cb94",
-        urls = [
-            "https://github.com/bazelbuild/bazel-skylib/releases/download/1.5.0/bazel-skylib-1.5.0.tar.gz",
-        ],
-    )
+    OPENXLA_COMMIT = "72831acf1eab39d20e9de1fd5bbc6ad90d6171f6"
+    OPENXLA_SHA256 = "c6ce6b90e6803c9d8481c4e0bc5a72292e9fcb3245114f1dea1bbdc4ef1a238a"
 
     # We need openxla to handle xla/mhlo/stablehlo
     maybe(
