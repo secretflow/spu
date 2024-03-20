@@ -8,7 +8,7 @@
   ],
   "ignoreDeps": [
     "bazel",
-    "protobuf",
+    "protobuf"
   ],
   "reviewers": [
     "team:spu-dev"
