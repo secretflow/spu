@@ -145,4 +145,10 @@ Value f_erf_p(SPUContext* ctx, const Value& in) {
   return applyFloatingPointFn(ctx, in, [](float x) { return std::erf(x); });
 }
 
+Value f_pow_p(SPUContext* ctx, const Value& x, const Value& y) {
+  SPU_TRACE_HAL_DISP(ctx, x, y);
+  return applyFloatingPointFn(ctx, x, y,
+                              [](float a, float b) { return std::pow(a, b); });
+}
+
 }  // namespace spu::kernel::hal

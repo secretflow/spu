@@ -19,6 +19,7 @@
 #include "libspu/core/trace.h"
 #include "libspu/kernel/hal/fxp_approx.h"
 #include "libspu/kernel/hal/fxp_base.h"
+#include "libspu/kernel/hal/fxp_cleartext.h"
 #include "libspu/kernel/hal/integer.h"
 #include "libspu/kernel/hal/ring.h"  // for fast fxp x int
 #include "libspu/kernel/hal/type_cast.h"
@@ -329,15 +330,36 @@ Value min(SPUContext* ctx, const Value& x, const Value& y) {
 Value power(SPUContext* ctx, const Value& x, const Value& y) {
   SPU_TRACE_HAL_DISP(ctx, x, y);
 
-  if (x.isInt() && y.isInt()) {
+  if (x.isInt() || y.isInt()) {
     auto x_f = dtype_cast(ctx, x, DT_F32);
     auto y_f = dtype_cast(ctx, y, DT_F32);
     auto ret = power(ctx, x_f, y_f);
-    return dtype_cast(ctx, ret, x.dtype());
+    return ret;
+  }
+  if (x.isPublic() && y.isPublic()) {
+    return f_pow_p(ctx, x, y);
   }
 
+  auto msb = _msb(ctx, x);
+  auto msb_a = _prefer_a(ctx, msb);
+  auto x_abs = _mux(ctx, msb_a, _negate(ctx, x), x).setDtype(x.dtype());
+
+  // if x=0 is public, then log(x) get -inf, the wrong output will be got after
+  // multiplying y. So we force x to be secret, then computing log(x) leads to
+  // a small negative numbers, so exp(y*log(x))=0.
+  auto x_s = x.isPublic() ? hal::seal(ctx, x_abs) : x_abs;
   // x^y = e^(y*ln(x))
-  return exp(ctx, mul(ctx, y, log(ctx, x)));
+  // the precision is highly dependent on the precision of exp and log, so we
+  // choose the most precise methods here.
+  auto val = detail::exp_pade(ctx, mul(ctx, y, detail::log_minmax(ctx, x_s)));
+
+  // the final sign is decided on both sign of x and the parity of y
+  // when x<0 and y is odd, e.g. (-2)^3 = -8
+  auto odd = _and(ctx, _rshift(ctx, y, ctx->getFxpBits()),
+                  _constant(ctx, 1, y.shape()));
+  auto sign = _and(ctx, msb, odd);
+
+  return _mux(ctx, sign, _negate(ctx, val), val).setDtype(x.dtype());
 }
 
 Value idiv(SPUContext* ctx, const Value& x, const Value& y) {

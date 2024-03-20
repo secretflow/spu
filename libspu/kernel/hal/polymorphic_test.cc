@@ -406,26 +406,42 @@ TYPED_TEST(MathTest, Pow) {
   using LHS_VT = typename std::tuple_element<1, TypeParam>::type;
   using RHS_DT = typename std::tuple_element<2, TypeParam>::type;
   using RHS_VT = typename std::tuple_element<3, TypeParam>::type;
-  using RES_DT = typename std::tuple_element<4, TypeParam>::type;
-
-  if constexpr (!std::is_same_v<LHS_DT, RHS_DT> ||
-                !std::is_same_v<LHS_VT, RHS_VT> || std::is_integral_v<RHS_DT>) {
-    return;
-  }
+  // using RES_DT = typename std::tuple_element<4, TypeParam>::type;
 
   // GIVEN
-  const xt::xarray<LHS_DT> x = test::xt_random<LHS_DT>({5, 6}, 0, 100);
-  const xt::xarray<RHS_DT> y = test::xt_random<RHS_DT>({5, 6}, 0, 2);
+  xt::xarray<LHS_DT> x;
+  xt::xarray<RHS_DT> y;
+  {
+    // random test
+    x = test::xt_random<LHS_DT>({5, 6}, 0, 100);
+    y = test::xt_random<RHS_DT>({5, 6}, -2, 2);
 
-  // WHAT
-  auto z = test::evalBinaryOp<RES_DT>(LHS_VT(), RHS_VT(), power, x, y);
+    // WHAT
+    auto z = test::evalBinaryOp<float>(LHS_VT(), RHS_VT(), power, x, y);
 
-  // THEN
-  auto expected = xt::pow(x, y);
-  EXPECT_TRUE(xt::allclose(expected, z, 0.3, 0.03)) << x << std::endl
-                                                    << y << std::endl
-                                                    << expected << std::endl
-                                                    << z << std::endl;
+    // THEN
+    auto expected = xt::pow(x, y);
+    EXPECT_TRUE(xt::allclose(expected, z, 0.3, 0.03)) << x << std::endl
+                                                      << y << std::endl
+                                                      << expected << std::endl
+                                                      << z << std::endl;
+  }
+
+  {
+    // some fixed corner case
+    x = {-1, -1, -3, 1, -3, 0, 1, 1, 5, 0};
+    y = {1, 0, -3, -3, 3, 0, 0, 2, 5, 2};
+
+    // WHAT
+    auto z = test::evalBinaryOp<float>(LHS_VT(), RHS_VT(), power, x, y);
+
+    // THEN
+    auto expected = xt::pow(x, y);
+    EXPECT_TRUE(xt::allclose(expected, z, 0.3, 0.03)) << x << std::endl
+                                                      << y << std::endl
+                                                      << expected << std::endl
+                                                      << z << std::endl;
+  }
 }
 
 using MathUnaryTestTypes = ::testing::Types<
