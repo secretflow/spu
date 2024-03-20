@@ -24,6 +24,8 @@ from .distributed_impl import (  # type: ignore
     set_framework,
     SAMPLE_NODES_DEF,
     SAMPLE_DEVICES_DEF,
+    dtype_spu_to_np,
+    shape_spu_to_np,
 )
 
 
