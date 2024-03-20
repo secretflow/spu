@@ -25,6 +25,8 @@
 #include "libspu/mpc/cheetah/ot/basic_ot_prot.h"
 #include "libspu/mpc/cheetah/rlwe/utils.h"
 
+#include "libspu/spu.pb.h"
+
 namespace spu::mpc::cheetah {
 
 using OTUnaryFunc = std::function<NdArrayRef(
@@ -101,7 +103,7 @@ class CheetahOTState : public State {
 
   mutable std::mutex lock_;
 
-  static constexpr size_t kMaxOTParallel = 24;
+  static constexpr size_t kMaxOTParallel = 48;
 
   size_t maximum_instances_ = 0;
   std::vector<ProtPtr> basic_ot_prot_;
