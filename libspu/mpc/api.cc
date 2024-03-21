@@ -144,7 +144,11 @@ Value p2s(SPUContext* ctx, const Value& x) {
 
   TRY_DISPATCH(ctx, x);
 
-  return p2a(ctx, x);
+  if (x.dtype() == DT_I1) {
+    return p2b(ctx, x);
+  } else {
+    return p2a(ctx, x);
+  }
 }
 
 Value p2v(SPUContext* ctx, const Value& x, size_t owner) {

@@ -33,7 +33,7 @@ IoClient::IoClient(size_t world_size, const RuntimeConfig &config)
 
 size_t IoClient::getShareSize(const PtBufferView &bv, Visibility vtype,
                               int owner_rank) {
-  if (bv.pt_type == PT_BOOL && vtype == VIS_SECRET &&
+  if (bv.pt_type == PT_I1 && vtype == VIS_SECRET &&
       base_io_->hasBitSecretSupport()) {
     return base_io_->getBitSecretShareSize(bv.shape.numel());
   } else {
@@ -46,7 +46,7 @@ std::vector<spu::Value> IoClient::makeShares(const PtBufferView &bv,
   const size_t fxp_bits = config_.fxp_fraction_bits();
   SPU_ENFORCE(fxp_bits != 0, "fxp should never be zero, please check default");
 
-  if (bv.pt_type == PT_BOOL && vtype == VIS_SECRET &&
+  if (bv.pt_type == PT_I1 && vtype == VIS_SECRET &&
       base_io_->hasBitSecretSupport()) {
     auto shares = base_io_->makeBitSecret(bv);
     SPU_ENFORCE(shares.size() == world_size_);

@@ -79,7 +79,7 @@ enum PtType {
   PT_U64 = 8;      // uint64_t
   PT_I128 = 9;     // int128_t
   PT_U128 = 10;    // uint128_t
-  PT_BOOL = 11;    // bool
+  PT_I1 = 11;      // bool
                    //
   PT_F16 = 30;     // half
   PT_F32 = 31;     // float

@@ -67,7 +67,7 @@ std::pair<spu::PtType, bool> getPtTypeFromMlirType(mlir::Type mlir_ty) {
     }
   } else if (auto it = express_type.dyn_cast<mlir::IntegerType>()) {
     if (it.getWidth() == 1) {
-      return {spu::PT_BOOL, false};
+      return {spu::PT_I1, false};
     }
     // In mlir, isSigned is for si[1-9][0-9]* type, isUnsigned is for
     // ui[1-9][0-9]*, i[1-9][0-9]* is signless IntegerType... So here, we only

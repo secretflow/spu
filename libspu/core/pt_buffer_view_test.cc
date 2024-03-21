@@ -15,6 +15,7 @@
 #include "libspu/core/pt_buffer_view.h"
 
 #include <array>
+#include <bitset>
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
@@ -39,6 +40,12 @@ TEST(PtBufferView, Scalar) {
   EXPECT_TRUE(bv_f32.shape.isScalar());
   EXPECT_EQ(bv_f32.shape.numel(), 1);
   EXPECT_TRUE(bv_f32.strides.empty());
+
+  PtBufferView bv_i1(true);
+  EXPECT_EQ(bv_i1.pt_type, PT_I1);
+  EXPECT_TRUE(bv_i1.shape.isScalar());
+  EXPECT_EQ(bv_i1.shape.numel(), 1);
+  EXPECT_TRUE(bv_i1.strides.empty());
 }
 
 TEST(PtBufferView, Vector) {
@@ -70,6 +77,34 @@ TEST(PtBufferView, ConvertToNdArray) {
   EXPECT_FLOAT_EQ((arr.at<float>(0)), 1.0);
   EXPECT_FLOAT_EQ((arr.at<float>(1)), 2.0);
   EXPECT_FLOAT_EQ((arr.at<float>(2)), 3.0);
+}
+
+TEST(PtBufferView, BoolContainer) {
+  std::array<bool, 3> test = {true, false, true};
+  PtBufferView bv(test);
+
+  EXPECT_EQ(bv.get<bool>(0), true);
+  EXPECT_EQ(bv.get<bool>(1), false);
+  EXPECT_EQ(bv.get<bool>(2), true);
+}
+
+TEST(PtBufferView, BitSet) {
+  int16_t test = 2024;
+  PtBufferView bv(&test, PT_I1, {8 * sizeof(int16_t)}, {1}, true);
+
+  EXPECT_EQ(bv.shape.numel(), 16);
+
+  std::bitset<16> expected(2024);
+  for (size_t idx = 0; idx < 16; ++idx) {
+    EXPECT_EQ(bv.getBit(idx), expected[idx]);
+  }
+
+  auto arr = convertToNdArray(bv);
+  EXPECT_EQ(arr.shape().numel(), 16);
+
+  for (size_t idx = 0; idx < 16; ++idx) {
+    EXPECT_EQ(arr.at<bool>(idx), expected[idx]) << idx << "\n";
+  }
 }
 
 }  // namespace spu
