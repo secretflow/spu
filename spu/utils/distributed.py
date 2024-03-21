@@ -27,6 +27,7 @@ from .distributed_impl import (  # type: ignore
     dtype_spu_to_np,
     shape_spu_to_np,
     save,
+    load,
 )
 
 
