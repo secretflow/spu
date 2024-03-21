@@ -27,6 +27,16 @@ std::ostream& operator<<(std::ostream& out, PtBufferView v) {
 }
 
 NdArrayRef convertToNdArray(PtBufferView bv) {
+  if (bv.isBitSet()) {
+    SPU_ENFORCE(bv.isCompact() && bv.pt_type == PT_I1);
+    auto out = NdArrayRef(I1, bv.shape);
+    auto* out_ptr = out.data<bool>();
+    auto num_bits = bv.shape.numel();
+    for (int64_t idx = 0; idx < num_bits; ++idx) {
+      out_ptr[idx] = bv.getBit(idx);
+    }
+    return out;
+  }
   const auto type = makePtType(bv.pt_type);
   auto out = NdArrayRef(type, bv.shape);
   return DISPATCH_ALL_PT_TYPES(bv.pt_type, "pt_type", [&]() {

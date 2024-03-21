@@ -31,7 +31,7 @@ TEST(EncodingTypeTest, EncodeDecodeMap) {
   EXPECT_EQ(getEncodeType(PT_U32), DT_U32);
   EXPECT_EQ(getEncodeType(PT_I64), DT_I64);
   EXPECT_EQ(getEncodeType(PT_U64), DT_U64);
-  EXPECT_EQ(getEncodeType(PT_BOOL), DT_I1);
+  EXPECT_EQ(getEncodeType(PT_I1), DT_I1);
   EXPECT_EQ(getEncodeType(PT_F32), DT_F32);
   EXPECT_EQ(getEncodeType(PT_F64), DT_F64);
 
@@ -43,7 +43,7 @@ TEST(EncodingTypeTest, EncodeDecodeMap) {
   EXPECT_EQ(getDecodeType(DT_U32), PT_U32);
   EXPECT_EQ(getDecodeType(DT_I64), PT_I64);
   EXPECT_EQ(getDecodeType(DT_U64), PT_U64);
-  EXPECT_EQ(getDecodeType(DT_I1), PT_BOOL);
+  EXPECT_EQ(getDecodeType(DT_I1), PT_I1);
   EXPECT_EQ(getDecodeType(DT_F32), PT_F32);
   EXPECT_EQ(getDecodeType(DT_F64), PT_F64);
 }

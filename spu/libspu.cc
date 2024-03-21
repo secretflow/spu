@@ -402,7 +402,7 @@ class RuntimeWrapper {
   FN("float16", PT_F16)    \
   FN("float32", PT_F32)    \
   FN("float64", PT_F64)    \
-  FN("bool", PT_BOOL)      \
+  FN("bool", PT_I1)        \
   FN("complex64", PT_CF32) \
   FN("complex128", PT_CF64)
 

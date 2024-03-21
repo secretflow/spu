@@ -61,7 +61,7 @@ namespace spu {
   FN(PT_U32, DT_U32)            \
   FN(PT_I64, DT_I64)            \
   FN(PT_U64, DT_U64)            \
-  FN(PT_BOOL, DT_I1)            \
+  FN(PT_I1, DT_I1)              \
   FN(PT_F16, DT_F16)            \
   FN(PT_F32, DT_F32)            \
   FN(PT_F64, DT_F64)
@@ -75,7 +75,7 @@ namespace spu {
   FN(DT_U32, PT_U32)            \
   FN(DT_I64, PT_I64)            \
   FN(DT_U64, PT_U64)            \
-  FN(DT_I1, PT_BOOL)            \
+  FN(DT_I1, PT_I1)              \
   FN(DT_F16, PT_F16)            \
   FN(DT_F32, PT_F32)            \
   FN(DT_F64, PT_F64)

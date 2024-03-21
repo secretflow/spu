@@ -16,6 +16,8 @@
 
 #include <utility>
 
+#include "spdlog/spdlog.h"
+
 #include "libspu/core/ndarray_ref.h"
 #include "libspu/core/prelude.h"
 #include "libspu/core/shape.h"
@@ -46,6 +48,7 @@ struct PtBufferView {
   Strides const strides;         // Strides in number of elements.
   bool const write_able{false};  // Whether this is a writable buffer
   bool const compacted{false};   // Whether this is a compacted buffer
+  bool is_bitset{false};         // Bit data
 
   // We have to take a concrete buffer as a view.
   PtBufferView() = delete;
@@ -53,14 +56,19 @@ struct PtBufferView {
   // full constructor
   template <typename Pointer>
   explicit PtBufferView(Pointer ptr, PtType pt_type, Shape in_shape,
-                        Strides in_strides)
+                        Strides in_strides, bool is_bitset = false)
       : ptr(const_cast<void*>(static_cast<const void*>(ptr))),
         pt_type(pt_type),
         shape(std::move(in_shape)),
         strides(std::move(in_strides)),
         write_able(!std::is_const_v<std::remove_pointer_t<Pointer>>),
-        compacted(strides == makeCompactStrides(shape)) {
+        compacted(strides == makeCompactStrides(shape)),
+        is_bitset(is_bitset) {
     static_assert(std::is_pointer_v<Pointer>);
+    if (is_bitset) {
+      SPU_ENFORCE(pt_type == PT_I1 && compacted,
+                  "Bitset must be I1 type with compacted data");
+    }
   }
 
   // View c++ builtin scalar type as a buffer
@@ -72,7 +80,12 @@ struct PtBufferView {
         strides(),
         compacted(true) {}
 
-  // FIXME(jint): make it work when T = bool
+  explicit PtBufferView(bool const& s)
+      : ptr(const_cast<void*>(static_cast<const void*>(&s))),
+        pt_type(PT_I1),
+        shape(),
+        strides() {}
+
   template <typename T,
             std::enable_if_t<detail::is_container_like_v<T>, bool> = true>
   /* implicit */ PtBufferView(const T& c)  // NOLINT
@@ -104,6 +117,7 @@ struct PtBufferView {
 
   template <typename S = uint8_t>
   const S& get(const Index& indices) const {
+    SPU_ENFORCE(!is_bitset);
     SPU_ENFORCE(PtTypeToEnum<S>::value == pt_type);
     auto fi = calcFlattenOffset(indices, shape, strides);
     const auto* addr =
@@ -113,6 +127,7 @@ struct PtBufferView {
 
   template <typename S = uint8_t>
   const S& get(size_t idx) const {
+    SPU_ENFORCE(!is_bitset);
     if (isCompact()) {
       const auto* addr =
           static_cast<const std::byte*>(ptr) + SizeOf(pt_type) * idx;
@@ -127,6 +142,7 @@ struct PtBufferView {
   void set(const Index& indices, S v) {
     SPU_ENFORCE(write_able);
     SPU_ENFORCE(PtTypeToEnum<S>::value == pt_type);
+    SPU_ENFORCE(!is_bitset);
     auto fi = calcFlattenOffset(indices, shape, strides);
     auto* addr = static_cast<std::byte*>(ptr) + SizeOf(pt_type) * fi;
     *reinterpret_cast<S*>(addr) = v;
@@ -134,6 +150,7 @@ struct PtBufferView {
 
   template <typename S = uint8_t>
   void set(size_t idx, S v) {
+    SPU_ENFORCE(!is_bitset);
     if (isCompact()) {
       auto* addr = static_cast<std::byte*>(ptr) + SizeOf(pt_type) * idx;
       *reinterpret_cast<S*>(addr) = v;
@@ -144,6 +161,19 @@ struct PtBufferView {
   }
 
   bool isCompact() const { return compacted; }
+
+  bool isBitSet() const { return is_bitset; }
+
+  bool getBit(size_t idx) const {
+    SPU_ENFORCE(is_bitset);
+    auto el_idx = idx / 8;
+    auto bit_offset = idx % 8;
+
+    uint8_t mask = (1 << bit_offset);
+    uint8_t el = static_cast<uint8_t*>(ptr)[el_idx];
+
+    return (mask & el) != 0;
+  }
 };
 
 std::ostream& operator<<(std::ostream& out, PtBufferView v);

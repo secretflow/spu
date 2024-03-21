@@ -21,6 +21,7 @@
 
 #include "libspu/kernel/hal/constants.h"
 #include "libspu/kernel/test_util.h"
+#include "libspu/mpc/utils/simulate.h"
 
 namespace spu::kernel::hal {
 namespace {
@@ -84,6 +85,18 @@ TEST(TypeCastTest, fxp2int) {
   }
 
   // TODO: cast to other int than DT_I32
+}
+
+TEST(TypeCastTest, boolean) {
+  mpc::utils::simulate(
+      3, [&](const std::shared_ptr<yacl::link::Context> &lctx) {
+        SPUContext sctx = test::makeSPUContext(SEMI2K, FM64, lctx);
+        Value pa = constant(&sctx, true, DT_I1);
+        Value sa = seal(&sctx, pa);
+        EXPECT_EQ(sa.dtype(), DT_I1);
+        EXPECT_TRUE(sa.storage_type().isa<BShare>());
+        EXPECT_EQ(sa.storage_type().as<BShare>()->nbits(), 1);
+      });
 }
 
 }  // namespace

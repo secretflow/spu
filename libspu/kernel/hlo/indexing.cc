@@ -253,7 +253,6 @@ spu::Value SecretDynamicSliceImpl(SPUContext *ctx, const spu::Value &operand,
 
   if (slice_size[0] >= 1) {
     auto pad_value = hal::seal(ctx, hal::constant(ctx, false, mask.dtype()));
-    pad_value = hal::_cast_type(ctx, pad_value, mask.storage_type());
     mask = hal::pad(ctx, mask, pad_value, {slice_size[0]}, {0}, {0});
     // FIXME(juhou): we should avoid setting the BShr here
     // However mask.storage_type().as<BShare>->nbits() is not 1 after the
