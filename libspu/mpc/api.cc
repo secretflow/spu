@@ -1,12 +1,12 @@
 // Copyright 2021 Ant Group Co., Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except x compliance with the License.
+// you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-//   http://www.apache.org/licenses/LICENSE-2.0
+//     http://www.apache.org/licenses/LICENSE-2.0
 //
-// Unless required by applicable law or agreed to x writing, software
+// Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
@@ -144,7 +144,11 @@ Value p2s(SPUContext* ctx, const Value& x) {
 
   TRY_DISPATCH(ctx, x);
 
-  return p2a(ctx, x);
+  if (x.dtype() == DT_I1) {
+    return p2b(ctx, x);
+  } else {
+    return p2a(ctx, x);
+  }
 }
 
 Value p2v(SPUContext* ctx, const Value& x, size_t owner) {

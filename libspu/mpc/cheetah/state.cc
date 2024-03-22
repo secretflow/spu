@@ -28,7 +28,7 @@ namespace spu::mpc::cheetah {
 namespace {
 // Return num_workers for the given size of jobs
 size_t InitOTState(KernelEvalContext* ctx, size_t njobs) {
-  constexpr size_t kMinWorkSize = 5000;
+  constexpr size_t kMinWorkSize = 2048;
   if (njobs == 0) {
     return 0;
   }
@@ -139,86 +139,44 @@ std::array<NdArrayRef, 3> CheetahMulState::TakeCachedBeaver(FieldType field,
 
 NdArrayRef TiledDispatchOTFunc(KernelEvalContext* ctx, const NdArrayRef& x,
                                OTUnaryFunc func) {
-  Shape shape = x.shape();
+  const Shape& shape = x.shape();
+  SPU_ENFORCE(shape.numel() > 0);
   // (lazy) init OT
   int64_t numel = x.numel();
   int64_t nworker = InitOTState(ctx, numel);
   int64_t workload = nworker == 0 ? 0 : CeilDiv(numel, nworker);
 
-  int64_t slicing_dim = -1;
-  int64_t slice_numel = 1;
-  for (int64_t dim = shape.size() - 1; dim >= 0; dim--) {
-    slice_numel *= shape[dim];
-    if (slice_numel > workload) {
-      slice_numel /= shape[dim];
-      slicing_dim = dim;
-      break;
-    }
+  if (shape.ndim() != 1) {
+    // TiledDispatchOTFunc over flatten input
+    return TiledDispatchOTFunc(ctx, x.reshape({numel}), func)
+        .reshape(x.shape());
   }
-
-  // get the slice num in the left outer dimensions
-  int64_t num_slice = 1;
-  for (int64_t dim = 0; dim < slicing_dim; dim++) {
-    num_slice *= shape[dim];
-  }
-
-  int64_t slice_stride = (workload + slice_numel - 1) / slice_numel;
-  if (slice_stride == 1) {
-    return func(x, ctx->getState<CheetahOTState>()->get(0));
-  }
-
-  int64_t num_slice_dim = shape[slicing_dim] / slice_stride +
-                          ((shape[slicing_dim] % slice_stride) != 0 ? 1 : 0);
-
-  // initialize slice indices
-  Index start_indices(shape.size());
-  Index end_indices(shape.begin(), shape.end());
-  end_indices[slicing_dim] = slice_stride;
-  for (int64_t dim = slicing_dim - 1; dim >= 0; dim--) {
-    end_indices[dim] = 1;
-  }
-
-  SPU_ENFORCE_LE(num_slice * num_slice_dim, nworker);
-  nworker = num_slice * num_slice_dim;
 
   std::vector<NdArrayRef> outs(nworker);
   std::vector<std::future<void>> futures;
 
-  Index sidx = start_indices;
-  Index eidx = end_indices;
-  for (int64_t wi = 0; wi < nworker; ++wi) {
-    auto slice_input = x.slice(sidx, eidx, {});
+  int64_t slice_end = 0;
+  for (int64_t wi = 0; wi + 1 < nworker; ++wi) {
+    int64_t slice_bgn = wi * workload;
+    slice_end = std::min(numel, slice_bgn + workload);
+    auto slice_input = x.slice({slice_bgn}, {slice_end}, {});
     futures.emplace_back(std::async(
         [&](int64_t idx, const NdArrayRef& input) {
           auto ot_instance = ctx->getState<CheetahOTState>()->get(idx);
           outs[idx] = func(input, ot_instance);
         },
         wi, slice_input));
-
-    // update indices
-    if (0 == (eidx[slicing_dim] % shape[slicing_dim])) {
-      // carray out
-      sidx[slicing_dim] = 0;
-      eidx[slicing_dim] = slice_stride;
-      for (int64_t dim = slicing_dim - 1; dim >= 0; dim--) {
-        sidx[dim] = (sidx[dim] + 1) % shape[dim];
-        eidx[dim] = eidx[dim] % shape[dim] + 1;
-        if (eidx[dim] != 1) {
-          break;
-        }
-      }
-    } else {
-      sidx[slicing_dim] += slice_stride;
-      eidx[slicing_dim] += slice_stride;
-      eidx[slicing_dim] = std::min(shape[slicing_dim], eidx[slicing_dim]);
-    }
   }
+
+  auto slice_input = x.slice({slice_end}, {numel}, {1});
+  auto ot_instance = ctx->getState<CheetahOTState>()->get(nworker - 1);
+  outs[nworker - 1] = func(slice_input, ot_instance);
 
   for (auto&& f : futures) {
     f.get();
   }
 
-  NdArrayRef out(x.eltype(), x.shape());
+  NdArrayRef out(outs[0].eltype(), x.shape());
   int64_t offset = 0;
 
   for (auto& out_slice : outs) {
@@ -232,89 +190,50 @@ NdArrayRef TiledDispatchOTFunc(KernelEvalContext* ctx, const NdArrayRef& x,
 
 NdArrayRef TiledDispatchOTFunc(KernelEvalContext* ctx, const NdArrayRef& x,
                                const NdArrayRef& y, OTBinaryFunc func) {
-  Shape shape = x.shape();
-  SPU_ENFORCE_EQ(x.shape(), y.shape());
+  const Shape& shape = x.shape();
+  SPU_ENFORCE(shape.numel() > 0);
+  SPU_ENFORCE_EQ(shape, y.shape());
   // (lazy) init OT
   int64_t numel = x.numel();
   int64_t nworker = InitOTState(ctx, numel);
   int64_t workload = nworker == 0 ? 0 : CeilDiv(numel, nworker);
 
-  int64_t slicing_dim = -1;
-  int64_t slice_numel = 1;
-  for (int64_t dim = shape.size() - 1; dim >= 0; dim--) {
-    slice_numel *= shape[dim];
-    if (slice_numel > workload) {
-      slice_numel /= shape[dim];
-      slicing_dim = dim;
-      break;
-    }
+  if (shape.ndim() != 1) {
+    // TiledDispatchOTFunc over flatten input
+    return TiledDispatchOTFunc(ctx, x.reshape({numel}), y.reshape({numel}),
+                               func)
+        .reshape(x.shape());
   }
-
-  // get the slice num in the left outer dimensions
-  int64_t num_slice = 1;
-  for (int64_t dim = 0; dim < slicing_dim; dim++) {
-    num_slice *= shape[dim];
-  }
-
-  int64_t slice_stride = (workload + slice_numel - 1) / slice_numel;
-  if (slice_stride == 1) {
-    return func(x, y, ctx->getState<CheetahOTState>()->get(0));
-  }
-
-  int64_t num_slice_dim = shape[slicing_dim] / slice_stride +
-                          ((shape[slicing_dim] % slice_stride) != 0 ? 1 : 0);
-
-  // initialize slice indices
-  Index start_indices(shape.size());
-  Index end_indices(shape.begin(), shape.end());
-  end_indices[slicing_dim] = slice_stride;
-  for (int64_t dim = slicing_dim - 1; dim >= 0; dim--) {
-    end_indices[dim] = 1;
-  }
-
-  SPU_ENFORCE_LE(num_slice * num_slice_dim, nworker);
-  nworker = num_slice * num_slice_dim;
 
   std::vector<NdArrayRef> outs(nworker);
   std::vector<std::future<void>> futures;
 
-  Index sidx = start_indices;
-  Index eidx = end_indices;
-  for (int64_t wi = 0; wi < nworker; ++wi) {
-    auto x_slice = x.slice(sidx, eidx, {});
-    auto y_slice = y.slice(sidx, eidx, {});
-
+  int64_t slice_end = 0;
+  for (int64_t wi = 0; wi + 1 < nworker; ++wi) {
+    int64_t slice_bgn = wi * workload;
+    slice_end = std::min(numel, slice_bgn + workload);
+    auto x_slice = x.slice({slice_bgn}, {slice_end}, {1});
+    auto y_slice = y.slice({slice_bgn}, {slice_end}, {1});
     futures.emplace_back(std::async(
-        [&](int64_t idx, const NdArrayRef& input0, const NdArrayRef& input1) {
+        [&](int64_t idx, const NdArrayRef& inp0, const NdArrayRef& inp1) {
           auto ot_instance = ctx->getState<CheetahOTState>()->get(idx);
-          outs[idx] = func(input0, input1, ot_instance);
+          outs[idx] = func(inp0, inp1, ot_instance);
         },
         wi, x_slice, y_slice));
-
-    // update indices
-    if (0 == (eidx[slicing_dim] % shape[slicing_dim])) {
-      // carray out
-      sidx[slicing_dim] = 0;
-      eidx[slicing_dim] = slice_stride;
-      for (int64_t dim = slicing_dim - 1; dim >= 0; dim--) {
-        sidx[dim] = (sidx[dim] + 1) % shape[dim];
-        eidx[dim] = eidx[dim] % shape[dim] + 1;
-        if (eidx[dim] != 1) {
-          break;
-        }
-      }
-    } else {
-      sidx[slicing_dim] += slice_stride;
-      eidx[slicing_dim] += slice_stride;
-      eidx[slicing_dim] = std::min(shape[slicing_dim], eidx[slicing_dim]);
-    }
   }
+
+  auto x_slice = x.slice({slice_end}, {numel}, {});
+  auto y_slice = y.slice({slice_end}, {numel}, {});
+  auto ot_instance = ctx->getState<CheetahOTState>()->get(nworker - 1);
+  outs[nworker - 1] = func(x_slice, y_slice, ot_instance);
+
   for (auto&& f : futures) {
     f.get();
   }
 
-  NdArrayRef out(x.eltype(), x.shape());
+  NdArrayRef out(outs[0].eltype(), x.shape());
   int64_t offset = 0;
+
   for (auto& out_slice : outs) {
     std::memcpy(out.data<std::byte>() + offset, out_slice.data(),
                 out_slice.numel() * out.elsize());

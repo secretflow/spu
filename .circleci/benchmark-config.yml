@@ -48,6 +48,7 @@ jobs:
                    python3 -m pip install spu && \
                    cd /home/admin/dev/ && \
                    python3 -m pip install -r requirements-dev.txt && \
+                   python3 -m pip install -r examples/python/ml/requirements.txt && \
                    export PYTHONPATH="${PWD}:$PYTHONPATH" && \
                    bash .circleci/run-nn.sh" | tee benchmark_results.log
       - run:

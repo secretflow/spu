@@ -6,6 +6,5 @@ torch==2.2.0
 torch_xla==2.2.0
 torchvision
 jax[cpu]<=0.4.23
-tensorflow>=2.12.0
 tensorflow_datasets
 keras

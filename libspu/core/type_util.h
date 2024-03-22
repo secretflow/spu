@@ -85,7 +85,7 @@ std::ostream& operator<<(std::ostream& os, const DataType& dtype);
   FN(PT_U64, uint64_t, U64)      \
   FN(PT_I128, int128_t, I128)    \
   FN(PT_U128, uint128_t, U128)   \
-  FN(PT_BOOL, bool, I1)
+  FN(PT_I1, bool, I1)
 
 #define FOREACH_COMPLEX_PT_TYPES(FN)     \
   FN(PT_CF32, std::complex<float>, CF32) \
@@ -131,7 +131,7 @@ std::ostream& operator<<(std::ostream& os, const DataType& dtype);
 #define DISPATCH_INT_PT_TYPES(PT_TYPE, NAME, ...)                       \
   [&] {                                                                 \
     switch (PT_TYPE) {                                                  \
-      __CASE_PT_TYPE(spu::PT_BOOL, NAME, __VA_ARGS__)                   \
+      __CASE_PT_TYPE(spu::PT_I1, NAME, __VA_ARGS__)                     \
       __CASE_PT_TYPE(spu::PT_I8, NAME, __VA_ARGS__)                     \
       __CASE_PT_TYPE(spu::PT_U8, NAME, __VA_ARGS__)                     \
       __CASE_PT_TYPE(spu::PT_I16, NAME, __VA_ARGS__)                    \
@@ -148,7 +148,7 @@ std::ostream& operator<<(std::ostream& os, const DataType& dtype);
 #define DISPATCH_ALL_PT_TYPES(PT_TYPE, NAME, ...)                       \
   [&] {                                                                 \
     switch (PT_TYPE) {                                                  \
-      __CASE_PT_TYPE(spu::PT_BOOL, NAME, __VA_ARGS__)                   \
+      __CASE_PT_TYPE(spu::PT_I1, NAME, __VA_ARGS__)                     \
       __CASE_PT_TYPE(spu::PT_I8, NAME, __VA_ARGS__)                     \
       __CASE_PT_TYPE(spu::PT_U8, NAME, __VA_ARGS__)                     \
       __CASE_PT_TYPE(spu::PT_I16, NAME, __VA_ARGS__)                    \

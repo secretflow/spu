@@ -91,9 +91,9 @@ size_t Aby3Io::getBitSecretShareSize(size_t numel) const {
 
 std::vector<NdArrayRef> Aby3Io::makeBitSecret(const PtBufferView& in) const {
   PtType in_pt_type = in.pt_type;
-  SPU_ENFORCE(in_pt_type == PT_BOOL);
+  SPU_ENFORCE(in_pt_type == PT_I1);
 
-  if (in_pt_type == PT_BOOL) {
+  if (in_pt_type == PT_I1) {
     // we assume boolean is stored with byte array.
     in_pt_type = PT_U8;
   }

@@ -3,3 +3,4 @@ flax
 scikit-learn
 # for tests
 absl-py>=1.1.0
+tensorflow>=2.12.0

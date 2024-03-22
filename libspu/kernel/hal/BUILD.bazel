@@ -255,6 +255,7 @@ spu_cc_test(
     deps = [
         ":type_cast",
         "//libspu/kernel:test_util",
+        "//libspu/mpc/utils:simulate",
     ],
 )
 
