@@ -838,7 +838,7 @@ class KBinsDiscretizer:
         elif vectorize == True:
             diverse_n_bins = self.diverse_n_bins
             ### directly using jnp.linspace will cause dynamic shape problem,
-            ### so we need to use jnp.arange and a branch function jnp.where
+            ### so we need to use jnp.arange with a public value n_bins
             if self.strategy == "uniform":
                 arrange_array = jnp.arange(n_bins + 1)
 
@@ -848,9 +848,7 @@ class KBinsDiscretizer:
                     delta = (maxval - minval) / diverse_n_bin
 
                     def bin_element_func(x_inner):
-                        return jnp.where(
-                            x_inner <= diverse_n_bin, minval + x_inner * delta, maxval
-                        )
+                        return minval + x_inner * delta
 
                     return jax.vmap(bin_element_func)(arrange_array)
 
