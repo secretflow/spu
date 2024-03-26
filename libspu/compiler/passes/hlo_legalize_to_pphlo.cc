@@ -1265,7 +1265,10 @@ public:
         op, result_types, materializeInputs(op, adaptor.getOperands()),
         op.getCallTargetName(), op.getHasSideEffect());
 
-    new_op->setAttr("mhlo.attributes", op->getAttr("mhlo.attributes"));
+    auto attr = op->getAttr("mhlo.attributes");
+    if (attr) {
+      new_op->setAttr("mhlo.attributes", attr);
+    }
 
     return success();
   }

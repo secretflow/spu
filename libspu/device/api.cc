@@ -67,6 +67,7 @@ struct ExecutionStats {
 
 struct CommunicationStats {
   size_t send_bytes = 0;
+  size_t recv_bytes = 0;
   size_t send_actions = 0;
 
   void reset(const std::shared_ptr<yacl::link::Context> &lctx) {
@@ -75,6 +76,7 @@ struct CommunicationStats {
     }
     send_actions = lctx->GetStats()->sent_actions;
     send_bytes = lctx->GetStats()->sent_bytes;
+    recv_bytes = lctx->GetStats()->recv_bytes;
   }
 
   void diff(const std::shared_ptr<yacl::link::Context> &lctx) {
@@ -82,6 +84,7 @@ struct CommunicationStats {
       return;
     }
     send_bytes = lctx->GetStats()->sent_bytes - send_bytes;
+    recv_bytes = lctx->GetStats()->recv_bytes - recv_bytes;
     send_actions = lctx->GetStats()->sent_actions - send_actions;
   }
 };
@@ -101,6 +104,8 @@ struct ActionStats {
   Duration total_time = {};
   // total send bytes.
   size_t send_bytes = 0;
+  // total recv bytes.
+  size_t recv_bytes = 0;
 
   inline double getTotalTimeInSecond() const {
     return std::chrono::duration_cast<std::chrono::duration<double>>(total_time)
@@ -175,27 +180,40 @@ void printProfilingData(spu::SPUContext *sctx, const std::string &name,
       stat.total_time +=
           std::chrono::duration_cast<Duration>(rec.end - rec.start);
       stat.send_bytes += (rec.send_bytes_end - rec.send_bytes_start);
+      stat.recv_bytes += (rec.recv_bytes_end - rec.recv_bytes_start);
     }
 
     static std::map<int64_t, std::string> kModules = {
         {TR_HLO, "HLO"}, {TR_HAL, "HAL"}, {TR_MPC, "MPC"}};
 
     for (const auto &[mod_flag, mod_name] : kModules) {
+      if ((tracer->getFlag() & mod_flag) == 0) {
+        continue;
+      }
+
       double total_time = 0.0;
+      std::vector<ActionKey> sorted_by_time;
       for (const auto &[key, stat] : stats) {
         if ((key.flag & mod_flag) != 0) {
           total_time += stat.getTotalTimeInSecond();
+          sorted_by_time.emplace_back(key);
         }
       }
-      if ((tracer->getFlag() & mod_flag) != 0) {
-        SPDLOG_INFO("{} profiling: total time {}", mod_name, total_time);
-        for (const auto &[key, stat] : stats) {
-          if ((key.flag & mod_flag) != 0) {
-            SPDLOG_INFO("- {}, executed {} times, duration {}s, send bytes {}",
-                        key.name, stat.count, stat.getTotalTimeInSecond(),
-                        stat.send_bytes);
-          }
-        }
+
+      std::sort(sorted_by_time.begin(), sorted_by_time.end(),
+                [&](const auto &k0, const auto &k1) {
+                  return stats.find(k0)->second.getTotalTimeInSecond() >
+                         stats.find(k1)->second.getTotalTimeInSecond();
+                });
+
+      SPDLOG_INFO("{} profiling: total time {}", mod_name, total_time);
+      for (const auto &key : sorted_by_time) {
+        const auto &stat = stats.find(key)->second;
+        SPDLOG_INFO(
+            "- {}, executed {} times, duration {}s, send bytes {} recv "
+            "bytes {}",
+            key.name, stat.count, stat.getTotalTimeInSecond(), stat.send_bytes,
+            stat.recv_bytes);
       }
     }
   }

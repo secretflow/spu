@@ -38,6 +38,8 @@ constexpr bool
                                     decltype(std::declval<T>().strides())>> =
         true;
 
+bool isCompact(const Strides& stride, const Shape& shape);
+
 }  // namespace detail
 
 // A view of a plaintext buffer.
@@ -62,7 +64,7 @@ struct PtBufferView {
         shape(std::move(in_shape)),
         strides(std::move(in_strides)),
         write_able(!std::is_const_v<std::remove_pointer_t<Pointer>>),
-        compacted(strides == makeCompactStrides(shape)),
+        compacted(detail::isCompact(strides, shape)),
         is_bitset(is_bitset) {
     static_assert(std::is_pointer_v<Pointer>);
     if (is_bitset) {
@@ -103,7 +105,7 @@ struct PtBufferView {
         pt_type(PtTypeToEnum<typename T::value_type>::value),
         shape(t.shape().begin(), t.shape().end()),
         strides(t.strides().begin(), t.strides().end()),
-        compacted(strides == makeCompactStrides(shape)) {}
+        compacted(detail::isCompact(strides, shape)) {}
 
   template <typename T,
             std::enable_if_t<detail::is_tensor_like_v<T>, bool> = true>
@@ -113,7 +115,7 @@ struct PtBufferView {
         shape(t.shape().begin(), t.shape().end()),
         strides(t.strides().begin(), t.strides().end()),
         write_able(true),
-        compacted(strides == makeCompactStrides(shape)) {}
+        compacted(detail::isCompact(strides, shape)) {}
 
   template <typename S = uint8_t>
   const S& get(const Index& indices) const {

@@ -48,6 +48,13 @@ TEST(PtBufferView, Scalar) {
   EXPECT_TRUE(bv_i1.strides.empty());
 }
 
+TEST(PtBufferView, Compact) {
+  int64_t i = 1;
+  PtBufferView view(&i, PT_I64, {1}, {1});
+
+  EXPECT_TRUE(view.isCompact());
+}
+
 TEST(PtBufferView, Vector) {
   std::vector<int32_t> raw_i32(10, 0);
   PtBufferView bv_i32(raw_i32);

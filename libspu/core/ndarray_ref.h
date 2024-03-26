@@ -124,7 +124,12 @@ class NdArrayRef {
   // create a compact clone.
   NdArrayRef clone() const;
 
-  bool isCompact() const { return strides_ == makeCompactStrides(shape_); }
+  bool isCompact() const {
+    if (numel() < 2) {
+      return true;
+    }
+    return strides_ == makeCompactStrides(shape_);
+  }
 
   // Test only
   bool canUseFastIndexing() const { return use_fast_indexing_; }

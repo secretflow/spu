@@ -152,6 +152,8 @@ struct ActionRecord final {
   // the communication bytes information.
   size_t send_bytes_start;
   size_t send_bytes_end;
+  size_t recv_bytes_start;
+  size_t recv_bytes_end;
 };
 
 class ProfState final {
@@ -234,6 +236,8 @@ class TraceAction final {
   // the action communication information.
   size_t send_bytes_start_;
   size_t send_bytes_end_;
+  size_t recv_bytes_start_;
+  size_t recv_bytes_end_;
 
   int64_t saved_tracer_flag_;
 
@@ -242,6 +246,7 @@ class TraceAction final {
     start_ = std::chrono::high_resolution_clock::now();
     if (lctx_) {
       send_bytes_start_ = lctx_->GetStats()->sent_bytes.load();
+      recv_bytes_start_ = lctx_->GetStats()->recv_bytes.load();
     }
     const auto flag = flag_ & tracer_->getFlag();
     if ((flag & TR_LOGB) != 0) {
@@ -263,6 +268,7 @@ class TraceAction final {
     end_ = std::chrono::high_resolution_clock::now();
     if (lctx_) {
       send_bytes_end_ = lctx_->GetStats()->sent_bytes.load();
+      recv_bytes_end_ = lctx_->GetStats()->recv_bytes.load();
     }
     const auto flag = flag_ & tracer_->getFlag();
     if ((flag & TR_LOGE) != 0) {
@@ -272,7 +278,8 @@ class TraceAction final {
     if ((flag & TR_REC) != 0 && (flag & TR_MODALL) != 0) {
       tracer_->getProfState()->addRecord(
           ActionRecord{id_, name_, std::move(detail_), flag_, start_, end_,
-                       send_bytes_start_, send_bytes_end_});
+                       send_bytes_start_, send_bytes_end_, recv_bytes_start_,
+                       recv_bytes_end_});
     }
   }
 
