@@ -981,6 +981,46 @@ void CustomCallOp::getEffects(
   effects.emplace_back(MemoryEffects::Read::get());
 }
 
+class MarkValueOnlyTopK : public OpRewritePattern<CustomCallOp> {
+ public:
+  using OpRewritePattern<CustomCallOp>::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(pphlo::CustomCallOp op,
+                                PatternRewriter& rewriter) const override {
+    if (op.getCallTargetName() != "mhlo.topk" || op->getNumResults() != 2) {
+      return failure();
+    }
+
+    auto indices = op.getResult(1);
+    if (!indices.use_empty()) {
+      return failure();
+    }
+
+    auto attr = op->getAttr("mhlo.attributes").dyn_cast<mlir::DictionaryAttr>();
+
+    auto new_op = rewriter.create<CustomCallOp>(
+        op->getLoc(), TypeRange{op->getResultTypes()[0]}, op->getOperands(),
+        op.getCallTargetName());
+
+    auto new_attr = DictionaryAttr::get(
+        op->getContext(),
+        {NamedAttribute(rewriter.getStringAttr("k"), attr.get("k")),
+         NamedAttribute(rewriter.getStringAttr("largest"), attr.get("largest")),
+         NamedAttribute(rewriter.getStringAttr("value_only"),
+                        rewriter.getBoolAttr(true))});
+    new_op->setAttr("mhlo.attributes", new_attr);
+
+    rewriter.replaceAllUsesWith(op->getResult(0), new_op->getResult(0));
+
+    return success();
+  }
+};
+
+void CustomCallOp::getCanonicalizationPatterns(RewritePatternSet& results,
+                                               MLIRContext* context) {
+  results.add<MarkValueOnlyTopK>(context);
+}
+
 }  // namespace mlir::spu::pphlo
 
 #define GET_OP_CLASSES

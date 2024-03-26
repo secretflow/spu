@@ -19,6 +19,17 @@
 
 namespace spu {
 
+namespace detail {
+
+bool isCompact(const Strides& stride, const Shape& shape) {
+  if (shape.numel() < 2) {
+    return true;
+  }
+  return stride == makeCompactStrides(shape);
+}
+
+}  // namespace detail
+
 std::ostream& operator<<(std::ostream& out, PtBufferView v) {
   out << fmt::format("PtBufferView<{},{}x{},{}>", v.ptr,
                      fmt::join(v.shape, "x"), v.pt_type,

@@ -1064,6 +1064,7 @@ def PPHLO_CustomCallOp: PPHLO_Op<"custom_call",
     custom<CustomCallTarget>($call_target_name) `(` $inputs `)`
       attr-dict `:` functional-type(operands, results)
   }];
+  let hasCanonicalizer = 1;
 }
 
 //===----------------------------------------------------------------------===//

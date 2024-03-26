@@ -322,12 +322,12 @@ Value equal_pp(SPUContext* ctx, const Value& x, const Value& y) {
 
 OptionalAPI<Value> equal_sp(SPUContext* ctx, const Value& x, const Value& y) {
   SPU_TRACE_MPC_DISP(ctx, x, y);
-  TRY_DISPATCH(ctx, x, y);
 
-  if (IsA(x) && ctx->hasKernel("equal_ap")) {
-    return dynDispatch(ctx, "equal_ap", x, y);
-  } else if (IsB(x) && ctx->hasKernel("equal_bp")) {
-    return dynDispatch(ctx, "equal_bp", x, y);
+  if (IsA(x)) {
+    TRY_NAMED_DISPATCH(ctx, "equal_ap", x, y);
+  }
+  if (IsB(x)) {
+    TRY_NAMED_DISPATCH(ctx, "equal_bp", x, y);
   }
 
   return NotAvailable;
@@ -335,21 +335,21 @@ OptionalAPI<Value> equal_sp(SPUContext* ctx, const Value& x, const Value& y) {
 
 OptionalAPI<Value> equal_ss(SPUContext* ctx, const Value& x, const Value& y) {
   SPU_TRACE_MPC_DISP(ctx, x, y);
-  TRY_DISPATCH(ctx, x, y);
 
   // try fast path
   // TODO: use cost model instead of hand-coded priority.
-  if (IsA(x) && IsA(y) && ctx->hasKernel("equal_aa")) {
-    return dynDispatch(ctx, "equal_aa", x, y);
-  } else if (IsB(x) && IsB(y) && ctx->hasKernel("equal_bb")) {
-    return dynDispatch(ctx, "equal_bb", x, y);
+  if (IsA(x) && IsA(y)) {
+    TRY_NAMED_DISPATCH(ctx, "equal_aa", x, y);
+  } else if (IsB(x) && IsB(y)) {
+    TRY_NAMED_DISPATCH(ctx, "equal_bb", x, y);
   } else if ((IsA(x) && IsB(y)) || (IsB(x) && IsA(y))) {
     // mixed a & b, both OK, hardcode to a.
     if (ctx->hasKernel("equal_aa")) {
-      return dynDispatch(ctx, "equal_aa", _2a(ctx, x), _2a(ctx, y));
+      FORCE_NAMED_DISPATCH(ctx, "equal_aa", _2a(ctx, x), _2a(ctx, y));
     }
+
     if (ctx->hasKernel("equal_bb")) {
-      return dynDispatch(ctx, "equal_bb", _2b(ctx, x), _2b(ctx, y));
+      FORCE_NAMED_DISPATCH(ctx, "equal_bb", _2b(ctx, x), _2b(ctx, y));
     }
   }
 
@@ -468,12 +468,13 @@ Value mmul_ss(SPUContext* ctx, const Value& x, const Value& y) {
 
 Value mmul_sv(SPUContext* ctx, const Value& x, const Value& y) {
   SPU_TRACE_MPC_DISP(ctx, x, y);
-  TRY_DISPATCH(ctx, x, y);
-  if (IsA(x)) {
-    if (auto res = mmul_av(ctx, x, y)) {
-      return res.value();
-    }
+
+  if (ctx->hasKernel("mmul_av")) {
+    // call a * v is available which is faster than calling a * a
+    FORCE_NAMED_DISPATCH(ctx, "mmul_av", _2a(ctx, x), y);
   }
+
+  // b * a will finally call a * a
   return mmul_ss(ctx, x, v2s(ctx, y));
 }
 

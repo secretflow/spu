@@ -282,31 +282,43 @@ TEST_P(ArithmeticTest, MatMulAV) {
   const auto factory = std::get<0>(GetParam());
   const RuntimeConfig& conf = std::get<1>(GetParam());
   const size_t npc = std::get<2>(GetParam());
+
   const int64_t M = 3;
   const int64_t K = 4;
   const int64_t N = 3;
   const Shape shape_A = {M, K};
   const Shape shape_B = {K, N};
   const Shape shape_C = {M, N};
+
   utils::simulate(npc, [&](const std::shared_ptr<yacl::link::Context>& lctx) {
     auto obj = factory(conf, lctx);
-    /* GIVEN */
-    auto p0 = rand_p(obj.get(), shape_A);
-    auto p1 = rand_p(obj.get(), shape_B);
-    auto a0 = p2a(obj.get(), p0);
-    auto v1 = p2v(obj.get(), p1, 0);
-    /* WHEN */
-    auto prev = obj->prot()->getState<Communicator>()->getStats();
-    auto _tmp = mmul_av(obj.get(), a0, v1);
-    if (!_tmp.has_value()) {
+    if (not obj->hasKernel("mmul_av")) {
       return;
     }
-    auto tmp = _tmp.value();
+
+    /* GIVEN */
+    auto r = rand_p(obj.get(), shape_A);
+    auto b0 = p2b(obj.get(), r);
+    auto a0 = p2a(obj.get(), r);
+    auto p1 = rand_p(obj.get(), shape_B);
+    auto v1 = p2v(obj.get(), p1, 0);
+
+    /* WHEN */
+    auto prev = obj->prot()->getState<Communicator>()->getStats();
+    // mmul_sv -> a * v
+    auto tmp1 = mmul_sv(obj.get(), a0, v1);
+    // mmul_sv -> b * v -> a * v
+    auto tmp0 = mmul_sv(obj.get(), b0, v1);
     auto cost = obj->prot()->getState<Communicator>()->getStats() - prev;
-    auto r_aa = a2p(obj.get(), tmp);
-    auto r_pp = mmul_pp(obj.get(), p0, p1);
+
+    auto r0_aa = a2p(obj.get(), tmp0);
+    auto r1_aa = a2p(obj.get(), tmp1);
+
+    auto r_pp = mmul_pp(obj.get(), b2p(obj.get(), b0), p1);
+
     /* THEN */
-    EXPECT_VALUE_EQ(r_aa, r_pp);
+    EXPECT_VALUE_EQ(r0_aa, r_pp);
+    EXPECT_VALUE_EQ(r1_aa, r_pp);
     ce::Params params = {{"K", SizeOf(conf.field()) * 8},
                          {"N", npc},
                          {"m", M},

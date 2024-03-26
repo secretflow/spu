@@ -25,12 +25,13 @@ import numpy.testing as npt
 import pandas as pd
 
 import spu.utils.distributed as ppd
+import spu.utils.distributed_impl as ppd_impl
 from spu.utils.polyfill import Process
 
 with open("examples/python/conf/3pc.json", 'r') as file:
     conf = json.load(file)
 
-logger = logging.getLogger(ppd.__name__)
+logger = logging.getLogger(ppd_impl.__name__)
 logger.setLevel(level=logging.WARN)
 
 _test_perf_table = pd.DataFrame({'name': [], 'duration': []})
