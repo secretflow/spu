@@ -89,11 +89,11 @@ def _com_github_facebook_zstd():
         http_archive,
         name = "com_github_facebook_zstd",
         build_file = "@spulib//bazel:zstd.BUILD",
-        strip_prefix = "zstd-1.5.5",
-        sha256 = "98e9c3d949d1b924e28e01eccb7deed865eefebf25c2f21c702e5cd5b63b85e1",
+        strip_prefix = "zstd-1.5.6",
+        sha256 = "30f35f71c1203369dc979ecde0400ffea93c27391bfd2ac5a9715d2173d92ff7",
         type = ".tar.gz",
         urls = [
-            "https://github.com/facebook/zstd/archive/refs/tags/v1.5.5.tar.gz",
+            "https://github.com/facebook/zstd/archive/refs/tags/v1.5.6.tar.gz",
         ],
     )
 
