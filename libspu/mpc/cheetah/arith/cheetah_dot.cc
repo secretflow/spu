@@ -36,6 +36,7 @@
 
 #include "libspu/mpc/cheetah/arith/common.h"
 #include "libspu/mpc/cheetah/arith/matmat_prot.h"
+#include "libspu/mpc/cheetah/rlwe/lwe_ct.h"
 #include "libspu/mpc/cheetah/rlwe/modswitch_helper.h"
 #include "libspu/mpc/cheetah/rlwe/packlwes.h"
 #include "libspu/mpc/cheetah/rlwe/utils.h"
@@ -43,13 +44,26 @@
 
 namespace spu::mpc::cheetah {
 
+enum class CipherPackingType {
+  lwes,
+  rlwes,
+  none,
+};
+
+static std::string ToString(CipherPackingType type) {
+  switch (type) {
+    case CipherPackingType::rlwes:
+      return "interleave";
+    case CipherPackingType::lwes:
+      return "pack_lwes";
+    default:
+    case CipherPackingType::none:
+      return "none";
+  }
+}
+
 struct CheetahDot::Impl : public EnableCPRNG {
  public:
-  enum class CipherPackingType {
-    rlwes,
-    none,
-  };
-
   const bool kUseModDownOptimization = true;
   static constexpr size_t kCtAsyncParallel = 16;
 
@@ -97,7 +111,14 @@ struct CheetahDot::Impl : public EnableCPRNG {
                                       yacl::link::Context *conn,
                                       size_t bytes_recv);
 
+  bool IsPackingEnabled(uint32_t ring_bitlen) const {
+    return DecideSEALParameters(ring_bitlen).use_special_prime();
+  }
+
   seal::EncryptionParameters DecideSEALParameters(uint32_t ring_bitlen) const {
+    auto scheme_type = seal::scheme_type::ckks;
+    auto parms = seal::EncryptionParameters(scheme_type);
+
     size_t poly_deg;
     std::vector<int> modulus_bits;
     // NOTE(lwj): we need Q=sum(modulus_bits) > 2*k for multiplying two
@@ -112,20 +133,19 @@ struct CheetahDot::Impl : public EnableCPRNG {
       poly_deg = 4096;
       // ~ 64 + 32 bit
       modulus_bits = {59, 37};
+      parms.set_use_special_prime(false);
     } else if (ring_bitlen <= 64) {
       poly_deg = 8192;
       //  ~ 128 + 32 bit
-      modulus_bits = {59, 55, 49};
+      modulus_bits = {59, 55, 49, 49};
+      parms.set_use_special_prime(true);
     } else {
       poly_deg = 16384;
       // ~ 256 + 30 bit
-      modulus_bits = {59, 59, 59, 59, 49};
+      modulus_bits = {59, 59, 59, 59, 49, 49};
+      parms.set_use_special_prime(true);
     }
 
-    auto scheme_type = seal::scheme_type::ckks;
-    auto parms = seal::EncryptionParameters(scheme_type);
-
-    parms.set_use_special_prime(false);
     parms.set_poly_modulus_degree(poly_deg);
     parms.set_coeff_modulus(seal::CoeffModulus::Create(poly_deg, modulus_bits));
     return parms;
@@ -183,7 +203,6 @@ struct CheetahDot::Impl : public EnableCPRNG {
 
   // field_bitlen -> functor mapping
   std::unordered_map<size_t, std::shared_ptr<seal::SEALContext>> seal_cntxts_;
-  std::unordered_map<size_t, seal::SEALContext> galoi_cntxts_;
   std::unordered_map<size_t, std::shared_ptr<seal::SecretKey>> secret_keys_;
   std::unordered_map<size_t, std::shared_ptr<seal::PublicKey>> peer_pub_keys_;
   std::unordered_map<size_t, std::shared_ptr<seal::GaloisKeys>>
@@ -196,7 +215,7 @@ struct CheetahDot::Impl : public EnableCPRNG {
 };
 
 void CheetahDot::Impl::LazyInitGaloisKey(size_t field_bitlen) {
-  if (galoi_cntxts_.find(field_bitlen) != galoi_cntxts_.end()) {
+  if (peer_galois_keys_.find(field_bitlen) != peer_galois_keys_.end()) {
     return;
   }
   auto kv = seal_cntxts_.find(field_bitlen);
@@ -205,13 +224,8 @@ void CheetahDot::Impl::LazyInitGaloisKey(size_t field_bitlen) {
   const auto &this_rlwe_sk = *secret_keys_.find(field_bitlen)->second;
 
   seal::GaloisKeys gk;
-  auto gk_parms = this_context.key_context_data()->parms();
-  gk_parms.set_use_special_prime(true);
-
-  seal::SEALContext gk_context(gk_parms, true, seal::sec_level_type::none);
-  GenerateGaloisKeyForPacking(gk_context, this_rlwe_sk,
+  GenerateGaloisKeyForPacking(this_context, this_rlwe_sk,
                               /*seed*/ true, &gk);
-  galoi_cntxts_.emplace(field_bitlen, gk_context);
 
   auto gk_buf = EncodeSEALObject(gk);
   int nxt_rank = lctx_->NextRank();
@@ -259,8 +273,8 @@ void CheetahDot::Impl::LazyInit(size_t field_bitlen, bool need_galois_keys) {
     DecodeSEALObject(recv_pk, *this_context, peer_public_key.get());
   }
 
-  auto modulus = parms.coeff_modulus();
-  size_t ecd_modulus_sze = modulus.size();
+  auto modulus = this_context->first_context_data()->parms().coeff_modulus();
+  size_t enc_modulus_sze = modulus.size();
   parms.set_coeff_modulus(modulus);
   seal::SEALContext ecd_ms_context(parms, false, seal::sec_level_type::none);
 
@@ -273,6 +287,7 @@ void CheetahDot::Impl::LazyInit(size_t field_bitlen, bool need_galois_keys) {
   }
 
   size_t dcd_modulus_sze = modulus.size();
+  parms.set_use_special_prime(false);
   parms.set_coeff_modulus(modulus);
   seal::SEALContext dcd_ms_context(parms, false, seal::sec_level_type::none);
 
@@ -294,7 +309,7 @@ void CheetahDot::Impl::LazyInit(size_t field_bitlen, bool need_galois_keys) {
   if (lctx_->Rank() == 0) {
     SPDLOG_INFO(
         "CheetahDot uses {}@{} modulus {} degree for {} bit ring (packing={})",
-        ecd_modulus_sze, dcd_modulus_sze, parms.poly_modulus_degree(),
+        enc_modulus_sze, dcd_modulus_sze, parms.poly_modulus_degree(),
         field_bitlen, need_galois_keys ? "enabled" : "disabled");
   }
 }
@@ -375,21 +390,20 @@ NdArrayRef CheetahDot::Impl::doDotOLEReceiverSendStep(
   size_t out_n = ct_array_to_pack.size();
   size_t num_ct_response = 0;
 
-  double pack_time = 0.0;
+  yacl::ElapsedTimer pack_timer;
   if (cptype == CipherPackingType::none) {
     SPU_ENFORCE(batch_size == 1, "impossible dispatch here");
     num_ct_response = out_n;
-  } else {
-    yacl::ElapsedTimer _timer;
-    const auto &this_galois_context = galoi_cntxts_.find(field_bitlen)->second;
+  } else if (cptype == CipherPackingType::rlwes) {
+    // BumbleBee's interleave
     const auto &this_galois_key =
         *(peer_galois_keys_.find(field_bitlen)->second);
 
     const size_t gap = subshape[1];
     const size_t pack_stride = gap;
 
-    PackingHelper pack_helper(gap, this_galois_key, this_galois_context,
-                              this_context);
+    PackingHelper pack_helper(gap, this_ecd_msh.coeff_modulus_size(),
+                              this_galois_key, this_context);
 
     for (size_t i = 0; i < out_n; i += pack_stride) {
       size_t this_batch = std::min(out_n - i, pack_stride);
@@ -398,10 +412,48 @@ NdArrayRef CheetahDot::Impl::doDotOLEReceiverSendStep(
           ct_array_to_pack.subspan(i, this_batch),
           ct_array_to_pack[packed_idx]);
     }
-    pack_time = _timer.CountMs();
 
     num_ct_response = CeilDiv(out_n, pack_stride);
+  } else {
+    // Chen Hao et al's PackLWEs
+    SPU_ENFORCE(batch_size == 1, "not implemented yet");
+    const auto &this_galois_key =
+        *(peer_galois_keys_.find(field_bitlen)->second);
+
+    // Drop some modulus before packing
+    yacl::parallel_for(
+        0, ct_array_to_pack.size(), [&](int64_t bgn, int64_t end) {
+          for (int64_t i = bgn; i < end; ++i) {
+            InvNttInplace(ct_array_to_pack[i], this_context);
+            ModulusSwtichInplace(ct_array_to_pack[i],
+                                 this_dcd_msh.coeff_modulus_size(),
+                                 this_context);
+          }
+        });
+
+    // Extract Phantom LWECt from RLWEs
+    size_t out_numel = meta.dims[0] * meta.dims[2];
+    size_t aligned_onumel = absl::bit_ceil(out_numel);
+    std::vector<PhantomLWECt> _lwes(aligned_onumel);
+    auto lwes = absl::MakeSpan(_lwes);
+    matmat_prot.WrapPhantomLWEs(meta, ct_array_to_pack,
+                                lwes.subspan(0, out_numel));
+
+    size_t pack_stride = lwes[0].poly_modulus_degree();
+    std::vector<RLWECt> packed_lwes(CeilDiv(lwes.size(), pack_stride));
+
+    // NOTE: we can not modify the ct_array_to_pack inplace because it wraps the
+    // PhantomLWECt
+    PackLWEs(lwes, this_galois_key, this_context, absl::MakeSpan(packed_lwes));
+
+    num_ct_response = packed_lwes.size();
+
+    // copy back
+    for (size_t i = 0; i < num_ct_response; ++i) {
+      ct_array_to_pack[i] = packed_lwes[i];
+    }
   }
+  double pack_time = pack_timer.CountMs();
 
   // 4. Random masking to conver HE to AShr
   std::vector<RLWEPt> rnd_polys(num_ct_response);
@@ -420,19 +472,20 @@ NdArrayRef CheetahDot::Impl::doDotOLEReceiverSendStep(
   }
   bytes_sent = conn->GetStats()->sent_bytes - bytes_sent;
 
-  if (conn->Rank() == 0) {
-    SPDLOG_INFO(
-        "{}@{}x{}x{} => {}x{}x{} Recv {} MiB, Response {} MiB Pack {} ms",
-        batch_size, meta.dims[0], meta.dims[1], meta.dims[2], subshape[0],
-        subshape[1], subshape[2],
-        std::roundf(bytes_recv / 1024. / 1024. * 1000) / 1000.,
-        std::roundf(bytes_sent / 1024. / 1024. * 1000) / 1000.,
-        std::roundf(pack_time * 1000) / 1000.);
-  }
+  SPDLOG_INFO(
+      "{}@{}x{}x{} => {}x{}x{} Recv {} MiB, Response {} MiB Pack {} ms ({})",
+      batch_size, meta.dims[0], meta.dims[1], meta.dims[2], subshape[0],
+      subshape[1], subshape[2],
+      std::roundf(bytes_recv / 1024. / 1024. * 1000) / 1000.,
+      std::roundf(bytes_sent / 1024. / 1024. * 1000) / 1000.,
+      std::roundf(pack_time * 1000) / 1000., ToString(cptype));
 
   switch (cptype) {
     case CipherPackingType::none:
       return matmat_prot.ParseResult(
+          field, meta, absl::MakeConstSpan(rnd_polys), this_dcd_msh);
+    case CipherPackingType::lwes:
+      return matmat_prot.ParsePackLWEsResult(
           field, meta, absl::MakeConstSpan(rnd_polys), this_dcd_msh);
     case CipherPackingType::rlwes:
     default:
@@ -539,6 +592,9 @@ NdArrayRef CheetahDot::Impl::doDotOLESenderRecvStep(FieldType field,
     case CipherPackingType::none:
       return matmat_prot.ParseResult(
           field, meta, absl::MakeConstSpan(result_poly), this_dcd_msh);
+    case CipherPackingType::lwes:
+      return matmat_prot.ParsePackLWEsResult(
+          field, meta, absl::MakeConstSpan(result_poly), this_dcd_msh);
     case CipherPackingType::rlwes:
     default:
       return matmat_prot.ParseBatchPackedResult(
@@ -583,8 +639,9 @@ NdArrayRef CheetahDot::Impl::BatchDotOLE(const NdArrayRef &prv_mat,
     SPU_ENFORCE_EQ(prv_mat.numel(), dim4[0] * dim4[2] * dim4[3]);
   }
 
-  if (eltype.template as<Ring2k>()->field() == FM32) {
-    // FM32 not supportting Packing.
+  auto field = eltype.template as<Ring2k>()->field();
+  if (not IsPackingEnabled(8 * SizeOf(field))) {
+    // Packing is not supported.
     // Thus just call multiple DotOLEs
     Shape3D dim3 = {dim4[1], dim4[2], dim4[3]};
     int64_t out_numel = dim4[1] * dim4[3];
@@ -616,7 +673,6 @@ NdArrayRef CheetahDot::Impl::doBatchDotOLE(const NdArrayRef &prv_mat,
                                            bool is_self_lhs) {
   auto eltype = prv_mat.eltype();
   auto field = eltype.template as<Ring2k>()->field();
-  SPU_ENFORCE(field != FM32, "Not support BatchDotOLE for FM32");
 
   const size_t field_bitlen = SizeOf(field) * 8;
   size_t poly_deg = DecideSEALParameters(field_bitlen).poly_modulus_degree();
@@ -691,9 +747,11 @@ NdArrayRef CheetahDot::Impl::doDotOLE(const NdArrayRef &prv_mat,
   MatMatProtocol::Meta meta = {.dims = dim3};
 
   // No cipher packing for small HE
-  CipherPackingType cptype = (field == FM32 || disable_pack_)
-                                 ? CipherPackingType::none
-                                 : CipherPackingType::rlwes;
+  CipherPackingType cptype =
+      (IsPackingEnabled(8 * SizeOf(field)) and not disable_pack_)
+          ? CipherPackingType::rlwes
+          : CipherPackingType::none;
+
   Shape3D subshape;
   size_t blk[3];
   if (cptype != CipherPackingType::none) {
@@ -702,9 +760,18 @@ NdArrayRef CheetahDot::Impl::doDotOLE(const NdArrayRef &prv_mat,
     for (int i : {0, 1, 2}) {
       blk[i] = CeilDiv(meta.dims[i], subshape[i]);
     }
-    // If there is only 1 resultant RLWE; then we just skip any packing
-    cptype = blk[0] * blk[2] <= 1 ? CipherPackingType::none
-                                  : CipherPackingType::rlwes;
+
+    if (blk[0] * blk[2] <= 1) {
+      // If there is only 1 resultant RLWE;
+      // then we just skip any packing
+      cptype = CipherPackingType::none;
+    } else {
+      // dynamic packing type
+      double pack_rlwes_cost = subshape[1];
+      double pack_lwes_cost = meta.dims[0] * meta.dims[2];
+      cptype = pack_rlwes_cost < pack_lwes_cost ? CipherPackingType::rlwes
+                                                : CipherPackingType::lwes;
+    }
   }
 
   LazyInit(field_bitlen, cptype != CipherPackingType::none);
@@ -726,10 +793,17 @@ NdArrayRef CheetahDot::Impl::doDotOLE(const NdArrayRef &prv_mat,
     doDotOLESenderSendStep(prv_mat, dim3, is_self_lhs, cptype, conn);
 
     size_t num_ct_to_recv = 0;
-    if (cptype == CipherPackingType::rlwes) {
-      num_ct_to_recv = CeilDiv<size_t>(blk[0] * blk[2], subshape[1]);
-    } else {
-      num_ct_to_recv = blk[0] * blk[2];
+    switch (cptype) {
+      case CipherPackingType::rlwes:
+        num_ct_to_recv = CeilDiv<size_t>(blk[0] * blk[2], subshape[1]);
+        break;
+      case CipherPackingType::lwes:
+        num_ct_to_recv = CeilDiv<size_t>(meta.dims[0] * meta.dims[2], poly_deg);
+        break;
+      default:
+      case CipherPackingType::none:
+        num_ct_to_recv = blk[0] * blk[2];
+        break;
     }
 
     return doDotOLESenderRecvStep(field, /*batch*/ 1, meta, num_ct_to_recv,
@@ -760,7 +834,8 @@ CheetahDot::~CheetahDot() = default;
 
 void CheetahDot::LazyInitKeys(FieldType field) {
   SPU_ENFORCE(impl_ != nullptr);
-  return impl_->LazyInit(SizeOf(field) * 8, /*create_galois*/ true);
+  return impl_->LazyInit(SizeOf(field) * 8,
+                         impl_->IsPackingEnabled(SizeOf(field) * 8));
 }
 
 NdArrayRef CheetahDot::DotOLE(const NdArrayRef &inp, yacl::link::Context *conn,

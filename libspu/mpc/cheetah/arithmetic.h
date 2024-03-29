@@ -166,6 +166,17 @@ class MatMulAV : public MatmulKernel {
                   const NdArrayRef& y) const override;
 };
 
+class MatMulVVS : public MatmulKernel {
+ public:
+  static constexpr char kBindName[] = "mmul_vvs";
+
+  Kind kind() const override { return Kind::Dynamic; }
+  // LHS: m x k
+  // RHS: k x n
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& x,
+                  const NdArrayRef& y) const override;
+};
+
 class MatMulAA : public MatmulKernel {
  public:
   static constexpr char kBindName[] = "mmul_aa";

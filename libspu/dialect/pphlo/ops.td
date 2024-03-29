@@ -274,6 +274,20 @@ def PPHLO_RoundOp
   }];
 }
 
+def PPHLO_RoundNearestEvenOp: PPHLO_UnaryElementwiseOpWithTypeInfer<"round_nearest_even",
+    [SameOperandsAndResultType], PPHLO_FpTensor> {
+  let summary = "RoundNearestEven operation";
+  let description = [{
+    Performs element-wise rounding towards the nearest integer, breaking ties
+    towards the even integer, on the `operand` tensor and produces a `result`
+    tensor.
+
+    Ref:
+    https://github.com/openxla/stablehlo/blob/main/docs/spec.md#round_nearest_even
+    ```
+  }];
+}
+
 def PPHLO_RsqrtOp
     : PPHLO_UnaryElementwiseOpWithTypeInfer<"rsqrt", [SameOperandsAndResultType], PPHLO_FpTensor> {
   let summary = "Reciprocal of square-root operator";

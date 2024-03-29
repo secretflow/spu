@@ -219,8 +219,9 @@ void printProfilingData(spu::SPUContext *sctx, const std::string &name,
   }
 
   // print link statistics
-  SPDLOG_INFO("Link details: total send bytes {}, send actions {}",
-              comm_stats.send_bytes, comm_stats.send_actions);
+  SPDLOG_INFO(
+      "Link details: total send bytes {}, recv bytes {}, send actions {}",
+      comm_stats.send_bytes, comm_stats.recv_bytes, comm_stats.send_actions);
 }
 
 void SPUErrorHandler(void *use_data, const char *reason, bool gen_crash_diag) {
