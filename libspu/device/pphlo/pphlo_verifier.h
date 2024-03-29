@@ -59,6 +59,7 @@ class PPHloVerifier {
   VERIFY_DECL(SignOp)
   VERIFY_DECL(SqrtOp)
   VERIFY_DECL(RoundOp)
+  VERIFY_DECL(RoundNearestEvenOp)
 
   // Simple binary
   VERIFY_DECL(AddOp)

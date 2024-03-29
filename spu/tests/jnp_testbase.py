@@ -320,15 +320,7 @@ COMPOUND_OP_RECORDS = [
     REC("remainder", 2, number_dtypes, all_shapes, jtu.rand_small),
     REC("mod", 2, number_dtypes, all_shapes, jtu.rand_nonzero),
     REC("modf", 1, number_dtypes, all_shapes, rand_default),
-    REC(
-        "rint",
-        1,
-        float_dtypes,
-        all_shapes,
-        rand_default,
-        Status.SysError,
-        "stablehlo.round_nearest_even",
-    ),  # FIXME: stablehlo.round_nearest_even
+    REC("rint", 1, float_dtypes, all_shapes, rand_default),
     REC("sign", 1, number_dtypes, all_shapes, jtu.rand_default),
     REC(
         "copysign", 2, number_dtypes, all_shapes, rand_default, Status.SysError, "shift"

@@ -1331,6 +1331,7 @@ private:
                     HloToPPHloOpConverter<stablehlo::ReturnOp>,
                     HloToPPHloOpConverter<stablehlo::RngOp>,
                     HloToPPHloOpConverter<stablehlo::RoundOp>,
+                    HloToPPHloOpConverter<stablehlo::RoundNearestEvenOp>,
                     HloToPPHloOpConverter<stablehlo::RsqrtOp>,
                     HloToPPHloOpConverter<stablehlo::SineOp>,
                     HloToPPHloOpConverter<stablehlo::SelectOp>,

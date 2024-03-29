@@ -49,6 +49,7 @@ spu_cc_library(
     hdrs = ["matmat_prot.h"],
     deps = [
         ":arith_comm",
+        "//libspu/mpc/cheetah/rlwe:lwe",
     ],
 )
 

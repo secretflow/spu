@@ -249,6 +249,26 @@ NdArrayRef MulAA::mulDirectly(KernelEvalContext* ctx, const NdArrayRef& x,
   return ring_add(x0y1, ring_add(x1y0, ring_mul(x, y))).as(x.eltype());
 }
 
+NdArrayRef MatMulVVS::proc(KernelEvalContext* ctx, const NdArrayRef& x,
+                           const NdArrayRef& y) const {
+  auto out_type = makeType<cheetah::AShrTy>(ctx->sctx()->getField());
+  if (0 == x.numel() || 0 == y.numel()) {
+    return NdArrayRef(out_type, {x.shape()[0], y.shape()[1]});
+  }
+  auto* comm = ctx->getState<Communicator>();
+  auto* dot_prot = ctx->getState<CheetahDotState>()->get();
+
+  const int self_rank = comm->getRank();
+  auto lhs_owner = x.eltype().as<Priv2kTy>()->owner();
+
+  const Shape3D dim3 = {x.shape()[0], x.shape()[1], y.shape()[1]};
+  if (self_rank == lhs_owner) {
+    return dot_prot->DotOLE(x, dim3, /*is_lhs*/ true).as(out_type);
+  } else {
+    return dot_prot->DotOLE(y, dim3, /*is_lhs*/ false).as(out_type);
+  }
+}
+
 // A is (M, K); B is (K, N)
 NdArrayRef MatMulAA::proc(KernelEvalContext* ctx, const NdArrayRef& x,
                           const NdArrayRef& y) const {

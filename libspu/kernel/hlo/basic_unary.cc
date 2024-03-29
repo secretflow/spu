@@ -17,6 +17,7 @@
 #include "libspu/kernel/hal/complex.h"
 #include "libspu/kernel/hal/constants.h"
 #include "libspu/kernel/hal/polymorphic.h"
+#include "libspu/kernel/hal/ring.h"
 #include "libspu/kernel/hal/type_cast.h"
 
 namespace spu::kernel::hlo {
@@ -99,6 +100,45 @@ spu::Value Round_AFZ(SPUContext *ctx, const spu::Value &in) {
   auto round = hal::add(ctx, in, p_half);
 
   return hal::dtype_cast(ctx, hal::dtype_cast(ctx, round, DT_I64), in.dtype());
+}
+
+spu::Value Round_RNTE(SPUContext *ctx, const spu::Value &in) {
+  // RNTE: Round to nearest, ties to even
+  // let x^' = *****a.b##### be origin fxp number
+  // x = *****a.bc ( c = reduce_or(#####) ), y = *****a
+  // then ret = y + comp (comp = 0 or 1), where
+  // 1) if b=0, then comp=0
+  // 2) if b=1, c=1, then comp=1
+  // 3) if b=1, c=0, a=1, then comp=1
+  // 4) if b=1, c=0, a=0, then comp=0
+  // so comp = b && (c || a)
+  SPU_ENFORCE(!in.isComplex());
+  SPU_ENFORCE(in.isFxp(), "Round only supports fxp");
+  const auto fxp_bits = ctx->getFxpBits();
+  const auto k1 = hal::_constant(ctx, 1U, in.shape());
+
+  auto x_prime = hal::_prefer_b(ctx, in);
+  auto y = hal::floor(ctx, x_prime);
+
+  auto a = hal::_and(ctx, hal::_rshift(ctx, x_prime, fxp_bits), k1);
+  auto b = hal::_and(ctx, hal::_rshift(ctx, x_prime, fxp_bits - 1), k1);
+
+  std::vector<Value> cs;
+  cs.reserve(fxp_bits - 1);
+  for (size_t idx = 0; idx < fxp_bits - 1; idx++) {
+    auto x_ = hal::_and(ctx, hal::_rshift(ctx, x_prime, idx), k1);
+    cs.push_back(std::move(x_));
+  }
+  auto c = vreduce(cs.begin(), cs.end(), [&](const Value &a, const Value &b) {
+    return hal::_or(ctx, a, b);
+  });
+  auto comp = hal::_and(ctx, b, hal::_or(ctx, c, a));
+  // set nbits to improve b2a
+  if (comp.storage_type().isa<BShare>()) {
+    const_cast<Type &>(comp.storage_type()).as<BShare>()->setNbits(1);
+  }
+
+  return hal::add(ctx, y, comp.setDtype(DT_I64)).setDtype(in.dtype());
 }
 
 }  // namespace spu::kernel::hlo

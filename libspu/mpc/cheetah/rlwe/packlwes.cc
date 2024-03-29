@@ -36,25 +36,21 @@ namespace spu::mpc::cheetah {
 static void NegacyclicRightShiftInplace(RLWECt &ct, size_t shift,
                                         const seal::SEALContext &context);
 
-PackingHelper::PackingHelper(size_t gap, const seal::GaloisKeys &galois_keys,
-                             const seal::SEALContext &gk_context,
+PackingHelper::PackingHelper(size_t gap, size_t num_modulus_for_packing,
+                             const seal::GaloisKeys &galois_keys,
                              const seal::SEALContext &context)
     : gap_(gap),
+      num_modulus_for_packing_(num_modulus_for_packing),
       galois_keys_(galois_keys),
-      gk_context_(gk_context),
       context_(context) {
-  SPU_ENFORCE(gk_context_.parameters_set());
-  SPU_ENFORCE(seal::is_metadata_valid_for(galois_keys, gk_context));
+  SPU_ENFORCE(seal::is_metadata_valid_for(galois_keys, context));
   SPU_ENFORCE(context_.parameters_set());
   SPU_ENFORCE(gap > 0 && absl::has_single_bit(gap), "invalid gap={}", gap);
+  SPU_ENFORCE(num_modulus_for_packing_ > 0);
+  SPU_ENFORCE(num_modulus_for_packing_ <=
+              context_.first_context_data()->parms().coeff_modulus().size());
 
-  // NOTE(lwj): dirty hack on SEAL's parms_id
-  if (context.key_parms_id() != gk_context_.key_parms_id()) {
-    SPU_ENFORCE_GT(context_.first_context_data()->chain_index(),
-                   gk_context_.first_context_data()->chain_index());
-  }
-
-  auto n = gk_context.key_context_data()->parms().poly_modulus_degree();
+  auto n = context.key_context_data()->parms().poly_modulus_degree();
 
   size_t ks_level = absl::bit_width(gap) - 1;
   for (size_t i = 0; i < ks_level; ++i) {
@@ -124,23 +120,18 @@ void PackingHelper::doPackingRLWEs(absl::Span<RLWECt> rlwes,
   SPU_ENFORCE(num_ct > 0 && num_ct <= (int)gap_,
               fmt::format("invalid #rlwes = {} for gap = {}", num_ct, gap_));
 
-  size_t modulus_for_keyswitch =
-      gk_context_.first_context_data()->chain_index() + 1;
-
   yacl::parallel_for(0, num_ct, [&](int64_t bgn, int64_t end) {
     for (int64_t i = bgn; i < end; ++i) {
       InvNttInplace(rlwes[i], context_, true);
       // multiply gap^{-1} mod Q
       MultiplyFixedScalarInplace(rlwes[i]);
       // drop some modulus aiming a lighter KeySwitch
-      ModulusSwtichInplace(rlwes[i], modulus_for_keyswitch, context_);
-      // change pid to galois_context for KS
-      rlwes[i].parms_id() = gk_context_.first_parms_id();
+      ModulusSwtichInplace(rlwes[i], num_modulus_for_packing_, context_);
     }
   });
 
   // FFT-like method to merge RLWEs into one RLWE.
-  seal::Evaluator evaluator(gk_context_);
+  seal::Evaluator evaluator(context_);
   const int64_t logn = absl::bit_width(gap_) - 1;
   for (int64_t k = logn; k >= 1; --k) {
     int64_t h = 1 << (k - 1);
@@ -158,7 +149,7 @@ void PackingHelper::doPackingRLWEs(absl::Span<RLWECt> rlwes,
           continue;
         }
 
-        NegacyclicRightShiftInplace(ct_odd, h, gk_context_);
+        NegacyclicRightShiftInplace(ct_odd, h, context_);
 
         if (!is_even_empty) {
           seal::Ciphertext tmp = ct_even;
@@ -184,14 +175,6 @@ void PackingHelper::doPackingRLWEs(absl::Span<RLWECt> rlwes,
 
   SPU_ENFORCE(rlwes[0].size() > 0, fmt::format("all empty RLWEs are invalid"));
   out = rlwes[0];
-
-  out.parms_id() = [&]() -> seal::parms_id_type {
-    auto cntxt = context_.first_context_data();
-    while ((cntxt->chain_index() + 1) > modulus_for_keyswitch) {
-      cntxt = cntxt->next_context_data();
-    }
-    return cntxt->parms_id();
-  }();
 }
 
 void GenerateGaloisKeyForPacking(const seal::SEALContext &context,
