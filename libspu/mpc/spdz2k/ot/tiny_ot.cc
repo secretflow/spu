@@ -14,8 +14,8 @@
 #include "tiny_ot.h"
 
 #include "emp-tool/utils/f2k.h"
+#include "yacl/crypto/rand/rand.h"
 #include "yacl/crypto/tools/prg.h"
-#include "yacl/crypto/utils/rand.h"
 
 #include "libspu/mpc/spdz2k/commitment.h"
 #include "libspu/mpc/spdz2k/ot/kos_ote.h"

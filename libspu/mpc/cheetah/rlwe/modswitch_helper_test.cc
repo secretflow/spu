@@ -20,7 +20,7 @@
 #include "seal/util/polyarithsmallmod.h"
 #include "seal/util/rlwe.h"
 #include "seal/util/rns.h"
-#include "yacl/crypto/utils/rand.h"  // RandSeed
+#include "yacl/crypto/rand/rand.h"  // RandSeed
 
 #include "libspu/core/xt_helper.h"
 #include "libspu/mpc/cheetah/rlwe/types.h"

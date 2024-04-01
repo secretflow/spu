@@ -23,21 +23,24 @@
 namespace spu::mpc::cheetah::test {
 
 class CheetahMulTest
-    : public ::testing::TestWithParam<std::tuple<FieldType, size_t>> {};
+    : public ::testing::TestWithParam<std::tuple<FieldType, size_t, bool>> {};
 
 INSTANTIATE_TEST_SUITE_P(
     Cheetah, CheetahMulTest,
     testing::Combine(testing::Values(FieldType::FM32, FieldType::FM64,
                                      FieldType::FM128),
-                     testing::Values(1024, 10000)),
+                     testing::Values(1024, 10000),
+                     testing::Values(true, false)),
     [](const testing::TestParamInfo<CheetahMulTest::ParamType>& p) {
-      return fmt::format("{}x{}", std::get<0>(p.param), std::get<1>(p.param));
+      return fmt::format("{}x{}x{}", std::get<0>(p.param), std::get<1>(p.param),
+                         std::get<2>(p.param) ? "Approx" : "Exact");
     });
 
 TEST_P(CheetahMulTest, Basic) {
   size_t kWorldSize = 2;
   auto field = std::get<0>(GetParam());
   int64_t n = std::get<1>(GetParam());
+  bool allow_approx = std::get<2>(GetParam());
 
   auto a_bits = ring_rand(field, {n});
   auto b_bits = ring_rand(field, {n});
@@ -54,7 +57,7 @@ TEST_P(CheetahMulTest, Basic) {
     int rank = lctx->Rank();
     // (a0 + a1) * (b0 + b1)
     // a0*b0 + a0*b1 + a1*b0 + a1*b1
-    auto mul = std::make_shared<CheetahMul>(lctx);
+    auto mul = std::make_shared<CheetahMul>(lctx, allow_approx);
 
     NdArrayRef cross0, cross1;
     if (rank == 0) {
@@ -73,7 +76,7 @@ TEST_P(CheetahMulTest, Basic) {
   auto expected = ring_mul(a_bits, b_bits);
   auto computed = ring_add(result[0], result[1]);
 
-  const int64_t kMaxDiff = 0;
+  const int64_t kMaxDiff = allow_approx ? 1 : 0;
   EXPECT_TRUE(ring_all_equal(expected, computed, kMaxDiff));
 }
 
@@ -81,6 +84,7 @@ TEST_P(CheetahMulTest, BasicBinary) {
   size_t kWorldSize = 2;
   auto field = std::get<0>(GetParam());
   int64_t n = std::get<1>(GetParam());
+  bool allow_approx = std::get<2>(GetParam());
 
   NdArrayRef a_bits = ring_rand_range(field, {n}, 0, 1);
   NdArrayRef b_bits = ring_rand_range(field, {n}, 0, 1);
@@ -97,7 +101,7 @@ TEST_P(CheetahMulTest, BasicBinary) {
     int rank = lctx->Rank();
     // (a0 + a1) * (b0 + b1)
     // a0*b0 + a0*b1 + a1*b0 + a1*b1
-    auto mul = std::make_shared<CheetahMul>(lctx);
+    auto mul = std::make_shared<CheetahMul>(lctx, allow_approx);
 
     NdArrayRef cross0, cross1;
     if (rank == 0) {
@@ -116,7 +120,7 @@ TEST_P(CheetahMulTest, BasicBinary) {
   auto expected = ring_mul(a_bits, b_bits);
   auto computed = ring_add(result[0], result[1]);
 
-  const int64_t kMaxDiff = 0;
+  const int64_t kMaxDiff = allow_approx ? 1 : 0;
   EXPECT_TRUE(ring_all_equal(expected, computed, kMaxDiff));
 }
 
@@ -124,6 +128,7 @@ TEST_P(CheetahMulTest, MixedRingSizeMul) {
   size_t kWorldSize = 2;
   auto field = std::get<0>(GetParam());
   int64_t n = std::get<1>(GetParam());
+  bool allow_approx = std::get<2>(GetParam());
   // Compute Mul on field then on field2
   FieldType field2;
   if (field == FM32) {
@@ -161,7 +166,7 @@ TEST_P(CheetahMulTest, MixedRingSizeMul) {
     int rank = lctx->Rank();
     // (a0 + a1) * (b0 + b1)
     // a0*b0 + a0*b1 + a1*b0 + a1*b1
-    auto mul = std::make_shared<CheetahMul>(lctx);
+    auto mul = std::make_shared<CheetahMul>(lctx, allow_approx);
 
     NdArrayRef cross0, cross1;
     if (rank == 0) {
@@ -195,7 +200,7 @@ TEST_P(CheetahMulTest, MixedRingSizeMul) {
   auto expected2 = ring_mul(c_bits, d_bits);
   auto computed2 = ring_add(result2[0], result2[1]);
 
-  const int64_t kMaxDiff = 0;
+  const int64_t kMaxDiff = allow_approx ? 1 : 0;
 
   EXPECT_TRUE(ring_all_equal(expected, computed, kMaxDiff));
 

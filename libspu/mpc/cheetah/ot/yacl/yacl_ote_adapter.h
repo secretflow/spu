@@ -15,12 +15,12 @@
 #pragma once
 
 #include "yacl/base/dynamic_bitset.h"
-#include "yacl/crypto/primitives/ot/base_ot.h"
-#include "yacl/crypto/primitives/ot/ferret_ote.h"
-#include "yacl/crypto/primitives/ot/iknp_ote.h"
-#include "yacl/crypto/primitives/ot/ot_store.h"
-#include "yacl/crypto/primitives/ot/softspoken_ote.h"
-#include "yacl/crypto/utils/rand.h"
+#include "yacl/crypto/rand/rand.h"
+#include "yacl/kernels/algorithms/base_ot.h"
+#include "yacl/kernels/algorithms/ferret_ote.h"
+#include "yacl/kernels/algorithms/iknp_ote.h"
+#include "yacl/kernels/algorithms/ot_store.h"
+#include "yacl/kernels/algorithms/softspoken_ote.h"
 
 #include "libspu/core/prelude.h"
 #include "libspu/mpc/cheetah/ot/ot_util.h"
@@ -123,8 +123,8 @@ class YaclFerretOTeAdapter : public YaclOTeAdapter {
 
   uint64_t buff_upper_bound_{0};
 
-  // We choose `yacl::Buffer` instead of `yacl::AlignedVector`. Because
-  // `yacl::AlignedVector` or `std::vector` would fill the
+  // We choose `yacl::Buffer` instead of `yacl::UninitAlignedVector`. Because
+  // `yacl::UninitAlignedVector` or `std::vector` would fill the
   // vector with initializing data. When `size` is a big number, it would
   // take lots of time to set the memory (ten millison for thiry milliseconds).
   // Thus, we use `yacl::Buffer` to avoid meaningless initialization.

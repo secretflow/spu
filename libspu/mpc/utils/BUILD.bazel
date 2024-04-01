@@ -74,8 +74,8 @@ spu_cc_library(
     deps = [
         ":linalg",
         "//libspu/core:ndarray_ref",
+        "@yacl//yacl/crypto/rand",
         "@yacl//yacl/crypto/tools:prg",
-        "@yacl//yacl/crypto/utils:rand",
         "@yacl//yacl/utils:parallel",
     ],
 )

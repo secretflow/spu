@@ -18,7 +18,7 @@
 #include <thread>
 #include <utility>
 
-#include "yacl/crypto/utils/rand.h"
+#include "yacl/crypto/rand/rand.h"
 #include "yacl/link/algorithm/barrier.h"
 #include "yacl/utils/serialize.h"
 

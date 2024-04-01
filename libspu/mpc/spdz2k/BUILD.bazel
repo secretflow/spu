@@ -84,8 +84,8 @@ spu_cc_library(
         "//libspu/mpc/common:communicator",
         "//libspu/mpc/utils:circuits",
         "//libspu/mpc/utils:ring_ops",
-        "@yacl//yacl/crypto/base/hash:blake3",
-        "@yacl//yacl/crypto/base/hash:hash_utils",
+        "@yacl//yacl/crypto/hash:blake3",
+        "@yacl//yacl/crypto/hash:hash_utils",
     ],
 )
 
@@ -129,9 +129,9 @@ spu_cc_library(
     hdrs = ["commitment.h"],
     deps = [
         "//libspu/core:prelude",
-        "@yacl//yacl/crypto/base/hash:blake3",
-        "@yacl//yacl/crypto/base/hash:hash_utils",
-        "@yacl//yacl/crypto/utils:rand",
+        "@yacl//yacl/crypto/hash:blake3",
+        "@yacl//yacl/crypto/hash:hash_utils",
+        "@yacl//yacl/crypto/rand",
         "@yacl//yacl/link",
     ],
 )

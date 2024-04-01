@@ -14,7 +14,7 @@
 
 #include "libspu/mpc/cheetah/arith/common.h"
 
-#include "yacl/crypto/utils/rand.h"
+#include "yacl/crypto/rand/rand.h"
 
 #include "libspu/core/ndarray_ref.h"
 #include "libspu/mpc/cheetah/rlwe/utils.h"

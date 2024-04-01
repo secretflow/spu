@@ -15,9 +15,9 @@
 #include "libspu/mpc/spdz2k/commitment.h"
 
 #include "spdlog/spdlog.h"
-#include "yacl/crypto/base/hash/blake3.h"
-#include "yacl/crypto/base/hash/hash_utils.h"
-#include "yacl/crypto/utils/rand.h"
+#include "yacl/crypto/hash/blake3.h"
+#include "yacl/crypto/hash/hash_utils.h"
+#include "yacl/crypto/rand/rand.h"
 
 #include "libspu/core/prelude.h"
 

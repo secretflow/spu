@@ -14,8 +14,8 @@
 
 #include "libspu/mpc/common/prg_state.h"
 
+#include "yacl/crypto/rand/rand.h"
 #include "yacl/crypto/tools/prg.h"
-#include "yacl/crypto/utils/rand.h"
 #include "yacl/link/algorithm/allgather.h"
 #include "yacl/utils/serialize.h"
 

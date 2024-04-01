@@ -20,8 +20,8 @@
 #include <random>
 
 #include "absl/types/span.h"
+#include "yacl/crypto/rand/rand.h"
 #include "yacl/crypto/tools/prg.h"
-#include "yacl/crypto/utils/rand.h"
 
 #include "libspu/mpc/utils/linalg.h"
 
