@@ -53,7 +53,7 @@ def _libpsi():
             "https://github.com/secretflow/psi/archive/refs/tags/v0.4.0.dev240401.tar.gz",
         ],
         strip_prefix = "psi-0.4.0.dev240401",
-        sha256 = "769bea4308bb9bc3e636f7098e539e5c70ea3e1e09b109be3abeaab4342ca62b",
+        sha256 = "bc91e5c635fc94f865004e61e3896eb334d76549c1125fbc98caf8c6b3a82463",
     )
 
 def _rules_proto_grpc():
