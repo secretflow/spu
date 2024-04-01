@@ -14,8 +14,8 @@
 
 #include "libspu/mpc/aby3/io.h"
 
+#include "yacl/crypto/rand/rand.h"
 #include "yacl/crypto/tools/prg.h"
-#include "yacl/crypto/utils/rand.h"
 
 #include "libspu/core/context.h"
 #include "libspu/mpc/aby3/type.h"

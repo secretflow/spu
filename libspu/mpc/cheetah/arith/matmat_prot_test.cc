@@ -18,7 +18,7 @@
 #include "seal/seal.h"
 #include "seal/util/ntt.h"
 #include "seal/util/polyarithsmallmod.h"
-#include "yacl/crypto/utils/rand.h"
+#include "yacl/crypto/rand/rand.h"
 
 #include "libspu/mpc/cheetah/rlwe/types.h"
 #include "libspu/mpc/cheetah/rlwe/utils.h"

@@ -16,10 +16,10 @@
 
 #include <random>
 
-#include "yacl/crypto/base/hash/blake3.h"
-#include "yacl/crypto/base/hash/hash_interface.h"
-#include "yacl/crypto/base/hash/hash_utils.h"
-#include "yacl/crypto/utils/rand.h"
+#include "yacl/crypto/hash/blake3.h"
+#include "yacl/crypto/hash/hash_interface.h"
+#include "yacl/crypto/hash/hash_utils.h"
+#include "yacl/crypto/rand/rand.h"
 #include "yacl/link/link.h"
 #include "yacl/utils/parallel.h"
 

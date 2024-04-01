@@ -35,6 +35,7 @@
 #include "yacl/utils/parallel.h"
 
 #include "libspu/mpc/cheetah/arith/common.h"
+#include "libspu/mpc/cheetah/arith/simd_mul_prot.h"
 #include "libspu/mpc/cheetah/rlwe/modswitch_helper.h"
 #include "libspu/mpc/cheetah/rlwe/utils.h"
 #include "libspu/mpc/utils/ring_ops.h"
@@ -60,19 +61,15 @@ namespace spu::mpc::cheetah {
 
 struct CheetahMul::Impl : public EnableCPRNG {
  public:
-  // RLWE parameters: N = 4096, Q \approx 2^{109}, t \approx 2^{40}
-  // NOTE(lwj): Under this parameters, the Mul() might introduce 1-bit error
-  // within a small chance Pr = 2^{-32}.
-  static constexpr size_t kPolyDegree = 4096;
-  static constexpr size_t kCipherModulusBits = 109;
-  static constexpr int kNoiseFloodRandomBits = 50;
+  static constexpr size_t kPolyDegree = 8192;
+  static constexpr size_t kCipherModulusBits = 145;
   static constexpr int64_t kCtAsyncParallel = 16;
 
   const uint32_t small_crt_prime_len_;
 
   explicit Impl(std::shared_ptr<yacl::link::Context> lctx,
                 bool allow_high_prob_one_bit_error)
-      : small_crt_prime_len_(allow_high_prob_one_bit_error ? 45 : 42),
+      : small_crt_prime_len_(allow_high_prob_one_bit_error ? 47 : 45),
         lctx_(std::move(lctx)),
         allow_high_prob_one_bit_error_(allow_high_prob_one_bit_error) {
     parms_ = DecideSEALParameters();
@@ -84,16 +81,16 @@ struct CheetahMul::Impl : public EnableCPRNG {
 
   int Rank() const { return lctx_->Rank(); }
 
-  static seal::EncryptionParameters DecideSEALParameters() {
+  seal::EncryptionParameters DecideSEALParameters() {
     size_t poly_deg = kPolyDegree;
     auto scheme_type = seal::scheme_type::bfv;
     auto parms = seal::EncryptionParameters(scheme_type);
     std::vector<int> modulus_bits;
-    // NOTE(lwj): We set the 2nd modulus a bit larger than
-    // `kSmallPrimeBitLen`. We will drop the 2nd modulus during the H2A step.
-    // Also, it helps reducing the noise in the BFV ciphertext.
-    // Slightly larger than the recommand 109bit modulus in SEAL.
-    modulus_bits = {60, 52};
+    if (allow_high_prob_one_bit_error_) {
+      modulus_bits = {60, 32, 56};
+    } else {
+      modulus_bits = {60, 32, 52};
+    }
     parms.set_use_special_prime(false);
     parms.set_poly_modulus_degree(poly_deg);
     parms.set_coeff_modulus(seal::CoeffModulus::Create(poly_deg, modulus_bits));
@@ -121,13 +118,8 @@ struct CheetahMul::Impl : public EnableCPRNG {
   void LocalExpandSEALContexts(size_t target);
 
   inline uint32_t TotalCRTBitLen(const Options &options) const {
-    // Let P be the product of small CRT primes.
-    // When P > 2^{2k - 1}, the Pr(1-bit error) is about 2^{2k-4}/P.
-    // If allowing high prob of 1-bit error, we just set P ~ 2^{2k}
-    // Otherwise we set P ~ 2^{2k + 37} so that Pr(1-bit error) is about
-    // 2^{-40}.
     auto bits = options.msg_bitlen + options.ring_bitlen +
-                (allow_high_prob_one_bit_error_ ? 4UL : 37UL);
+                (allow_high_prob_one_bit_error_ ? 4UL : 32UL);
     auto nprimes = CeilDiv<size_t>(bits, small_crt_prime_len_);
     nprimes = std::min(7UL, nprimes);  // Slightly reduce the margin for FM128
     return nprimes * small_crt_prime_len_;
@@ -150,7 +142,7 @@ struct CheetahMul::Impl : public EnableCPRNG {
     int64_t num_elts = array.numel();
     auto eltype = array.eltype();
     SPU_ENFORCE(num_elts > 0, "empty array");
-    SPU_ENFORCE(eltype.isa<RingTy>(), "array must be ring_type, got={}",
+    SPU_ENFORCE(eltype.isa<Ring2k>(), "array must be ring_type, got={}",
                 eltype);
 
     int64_t num_splits = CeilDiv(num_elts, num_slots());
@@ -161,7 +153,6 @@ struct CheetahMul::Impl : public EnableCPRNG {
     EncodeArray(array, need_encrypt, options, wrap);
   }
 
-  // out = EncodeArray(array) if out is not null
   // return the payload size (absl::Buffer)
   size_t EncryptArrayThenSend(const NdArrayRef &array, const Options &options,
                               yacl::link::Context *conn = nullptr);
@@ -173,19 +164,14 @@ struct CheetahMul::Impl : public EnableCPRNG {
                        const Options &options,
                        absl::Span<const yacl::Buffer> ciphers,
                        absl::Span<const RLWEPt> plains,
-                       absl::Span<const RLWEPt> rnd_mask,
+                       absl::Span<const uint64_t> rnd_mask,
                        yacl::link::Context *conn = nullptr);
 
-  NdArrayRef PrepareRandomMask(FieldType field, int64_t size,
-                               const Options &options,
-                               std::vector<RLWEPt> *encoded_mask);
+  void PrepareRandomMask(FieldType field, int64_t size, const Options &options,
+                         std::vector<uint64_t> &mask);
 
   NdArrayRef DecryptArray(FieldType field, int64_t size, const Options &options,
                           const std::vector<yacl::Buffer> &ct_array);
-
-  void NoiseFloodCiphertext(RLWECt &ct, const seal::SEALContext &context);
-
-  void RandomizeCipherForDecryption(RLWECt &ct, size_t context_id);
 
  private:
   std::shared_ptr<yacl::link::Context> lctx_;
@@ -199,17 +185,16 @@ struct CheetahMul::Impl : public EnableCPRNG {
   // SEAL's contexts for ZZ_{2^k}
   std::vector<seal::SEALContext> seal_cntxts_;
 
+  std::vector<std::shared_ptr<SIMDMulProt>> simd_mul_instances_;
+
   // own secret key
   std::shared_ptr<seal::SecretKey> secret_key_;
   // the public key received from the opposite party
-  std::shared_ptr<seal::PublicKey> pair_public_key_;
+  std::shared_ptr<seal::PublicKey> peer_pub_key_;
 
   std::unordered_map<Options, ModulusSwitchHelper> ms_helpers_;
 
-  std::vector<std::shared_ptr<seal::Encryptor>> sym_encryptors_;
   std::vector<std::shared_ptr<seal::Decryptor>> decryptors_;
-  std::vector<std::shared_ptr<seal::Encryptor>> pk_encryptors_;
-  std::vector<std::shared_ptr<seal::BatchEncoder>> bfv_encoders_;
 };
 
 void CheetahMul::Impl::LazyInitModSwitchHelper(const Options &options) {
@@ -243,9 +228,7 @@ void CheetahMul::Impl::LazyInitModSwitchHelper(const Options &options) {
 void CheetahMul::Impl::LocalExpandSEALContexts(size_t target) {
   // For other CRT context, we just copy the sk/pk
   SPU_ENFORCE(target > 0 && target < seal_cntxts_.size());
-  SPU_ENFORCE(sym_encryptors_.size() == target);
   SPU_ENFORCE(decryptors_.size() == target);
-  SPU_ENFORCE(pk_encryptors_.size() == target);
 
   seal::SecretKey sk;
   sk.data().resize(secret_key_->data().coeff_count());
@@ -253,23 +236,18 @@ void CheetahMul::Impl::LocalExpandSEALContexts(size_t target) {
               sk.data().data());
   sk.parms_id() = seal_cntxts_[target].key_parms_id();
 
-  size_t keysze = pair_public_key_->data().size();
-  size_t numel = pair_public_key_->data().poly_modulus_degree() *
-                 pair_public_key_->data().coeff_modulus_size();
+  size_t keysze = peer_pub_key_->data().size();
+  size_t numel = peer_pub_key_->data().poly_modulus_degree() *
+                 peer_pub_key_->data().coeff_modulus_size();
 
   seal::PublicKey pk;
   pk.data().resize(seal_cntxts_[target], sk.parms_id(), keysze);
-  std::copy_n(pair_public_key_->data().data(), keysze * numel,
-              pk.data().data());
-  pk.data().is_ntt_form() = pair_public_key_->data().is_ntt_form();
+  std::copy_n(peer_pub_key_->data().data(), keysze * numel, pk.data().data());
+  pk.data().is_ntt_form() = peer_pub_key_->data().is_ntt_form();
   pk.parms_id() = sk.parms_id();
 
-  sym_encryptors_.push_back(
-      std::make_shared<seal::Encryptor>(seal_cntxts_[target], sk));
   decryptors_.push_back(
       std::make_shared<seal::Decryptor>(seal_cntxts_[target], sk));
-  pk_encryptors_.push_back(
-      std::make_shared<seal::Encryptor>(seal_cntxts_[target], pk));
 }
 
 void CheetahMul::Impl::LazyExpandSEALContexts(const Options &options,
@@ -325,24 +303,20 @@ void CheetahMul::Impl::LazyExpandSEALContexts(const Options &options,
         pk_buf_recv = conn->Recv(nxt_rank, "rank0 recv pk");
         conn->Send(nxt_rank, pk_buf_send, "rank0 send pk");
       }
-      pair_public_key_ = std::make_shared<seal::PublicKey>();
-      DecodeSEALObject(pk_buf_recv, seal_cntxts_[0], pair_public_key_.get());
+      peer_pub_key_ = std::make_shared<seal::PublicKey>();
+      DecodeSEALObject(pk_buf_recv, seal_cntxts_[0], peer_pub_key_.get());
 
       // create the functors
-      sym_encryptors_.push_back(
-          std::make_shared<seal::Encryptor>(seal_cntxts_[0], *secret_key_));
       decryptors_.push_back(
           std::make_shared<seal::Decryptor>(seal_cntxts_[0], *secret_key_));
-      pk_encryptors_.push_back(std::make_shared<seal::Encryptor>(
-          seal_cntxts_[0], *pair_public_key_));
     } else {
       // For other CRT context, we just copy the sk/pk
       LocalExpandSEALContexts(idx);
     }
-
-    bfv_encoders_.push_back(
-        std::make_shared<seal::BatchEncoder>(seal_cntxts_.back()));
+    simd_mul_instances_.push_back(
+        std::make_shared<SIMDMulProt>(kPolyDegree, crt_modulus[idx].value()));
   }
+
   current_crt_plain_bitlen_ = target_plain_bitlen;
   SPDLOG_INFO("CheetahMul uses {} modulus for {} bit input over {} bit ring",
               num_seal_ctx, options.msg_bitlen, options.ring_bitlen);
@@ -356,7 +330,7 @@ NdArrayRef CheetahMul::Impl::MulOLE(const NdArrayRef &shr,
   }
 
   auto eltype = shr.eltype();
-  SPU_ENFORCE(eltype.isa<RingTy>(), "must be ring_type, got={}", eltype);
+  SPU_ENFORCE(eltype.isa<Ring2k>(), "must be ring_type, got={}", eltype);
   SPU_ENFORCE(shr.numel() > 0);
 
   auto field = eltype.as<Ring2k>()->field();
@@ -379,9 +353,10 @@ NdArrayRef CheetahMul::Impl::MulOLE(const NdArrayRef &shr,
     // 2. Alice send ciphertexts to Bob
     // 3. Bob multiply
     // 4. Bob samples polys for random masking
-    // 5. Bob response the masked ciphertext to Alice
+    // 5. Bob responses the masked ciphertext to Alice
     // We can overlap Step 2 (IO) and Step 4 (local computation)
     EncodeArray(shr, false, options, &encoded_shr);
+
     size_t payload_sze = encoded_shr.size();
     std::vector<yacl::Buffer> recv_ct(payload_sze);
     auto io_task = std::async(std::launch::async, [&]() {
@@ -390,16 +365,17 @@ NdArrayRef CheetahMul::Impl::MulOLE(const NdArrayRef &shr,
       }
     });
 
-    std::vector<RLWEPt> encoded_mask;
-    auto random_mask =
-        PrepareRandomMask(field, shr.numel(), options, &encoded_mask);
-    SPU_ENFORCE(encoded_mask.size() == payload_sze,
-                "BeaverCheetah: random mask poly size mismatch");
+    std::vector<uint64_t> random_share_mask;
+    PrepareRandomMask(field, shr.numel(), options, random_share_mask);
+
     // wait for IO
     io_task.get();
     MulThenResponse(field, numel, options, recv_ct, encoded_shr,
-                    absl::MakeConstSpan(encoded_mask), conn);
-    return random_mask.reshape(shr.shape());
+                    absl::MakeConstSpan(random_share_mask), conn);
+    // convert x \in [0, P) to [0, 2^k) by round(2^k*x/P)
+    auto &ms_helper = ms_helpers_.find(options)->second;
+    return ms_helper.ModulusDownRNS(field, shr.shape(), random_share_mask)
+        .reshape(shr.shape());
   }
 
   size_t payload_sze = EncryptArrayThenSend(shr, options, conn);
@@ -416,7 +392,7 @@ size_t CheetahMul::Impl::EncryptArrayThenSend(const NdArrayRef &array,
   int64_t num_elts = array.numel();
   auto eltype = array.eltype();
   SPU_ENFORCE(num_elts > 0, "empty array");
-  SPU_ENFORCE(eltype.isa<RingTy>(), "array must be ring_type, got={}", eltype);
+  SPU_ENFORCE(eltype.isa<Ring2k>(), "array must be ring_type, got={}", eltype);
 
   int64_t num_splits = CeilDiv(num_elts, num_slots());
   int64_t num_seal_ctx = WorkingContextSize(options);
@@ -428,11 +404,14 @@ size_t CheetahMul::Impl::EncryptArrayThenSend(const NdArrayRef &array,
   std::vector<yacl::Buffer> payload(num_polys);
 
   yacl::parallel_for(0, num_polys, [&](int64_t job_bgn, int64_t job_end) {
+    RLWECt ct;
     for (int64_t job_id = job_bgn; job_id < job_end; ++job_id) {
       int64_t cntxt_id = job_id / num_splits;
-      auto ct = sym_encryptors_[cntxt_id]->encrypt_symmetric(
-          encoded_array.at(job_id));
-      payload.at(job_id) = EncodeSEALObject(ct.obj());
+
+      simd_mul_instances_[cntxt_id]->SymEncrypt(
+          {&encoded_array[job_id], 1}, *secret_key_, seal_cntxts_[cntxt_id],
+          /*save_seed*/ true, {&ct, 1});
+      payload.at(job_id) = EncodeSEALObject(ct);
     }
   });
 
@@ -454,45 +433,30 @@ size_t CheetahMul::Impl::EncryptArrayThenSend(const NdArrayRef &array,
   return payload.size();
 }
 
-NdArrayRef CheetahMul::Impl::PrepareRandomMask(
-    FieldType field, int64_t size, const Options &options,
-    std::vector<RLWEPt> *encoded_mask) {
+void CheetahMul::Impl::PrepareRandomMask(FieldType field, int64_t size,
+                                         const Options &options,
+                                         std::vector<uint64_t> &mask) {
   const int64_t num_splits = CeilDiv(size, num_slots());
   const int64_t num_seal_ctx = WorkingContextSize(options);
-  const int64_t num_polys = num_seal_ctx * num_splits;
   SPU_ENFORCE(ms_helpers_.count(options) > 0);
-  encoded_mask->resize(num_polys);
+  mask.resize(num_seal_ctx * size);
 
   // sample r from [0, P) in the RNS format
   // Ref: the one-bit approximate re-sharing in Cheetah's paper (eprint ver).
-  std::vector<uint64_t> random_rns(size * num_seal_ctx);
+  auto _mask = absl::MakeSpan(mask);
   for (int64_t cidx = 0; cidx < num_seal_ctx; ++cidx) {
     const auto &plain_mod =
         seal_cntxts_[cidx].key_context_data()->parms().plain_modulus();
-    int64_t offset = cidx * num_splits;
     std::vector<uint64_t> u64tmp(num_slots(), 0);
 
     for (int64_t j = 0; j < num_splits; ++j) {
       int64_t bgn = j * num_slots();
-      int64_t end = std::min(bgn + num_slots(), size);
-      int64_t len = end - bgn;
+      int64_t len = std::min(num_slots(), size - bgn);
 
       // sample the RNS component of r from [0, p_i)
-      uint64_t *dst_ptr = random_rns.data() + cidx * size + bgn;
-      absl::Span<uint64_t> dst_wrap(dst_ptr, len);
-      UniformPrime(plain_mod, dst_wrap);
-
-      std::copy_n(dst_wrap.data(), len, u64tmp.data());
-      std::fill_n(u64tmp.data() + len, u64tmp.size() - len, 0);
-
-      bfv_encoders_[cidx]->encode(u64tmp, encoded_mask->at(offset + j));
+      UniformPrime(plain_mod, _mask.subspan(cidx * size + bgn, len));
     }
   }
-
-  // convert x \in [0, P) to [0, 2^k) by round(2^k*x/P)
-  auto &ms_helper = ms_helpers_.find(options)->second;
-  absl::Span<const uint64_t> inp(random_rns.data(), random_rns.size());
-  return ms_helper.ModulusDownRNS(field, {size}, inp);
 }
 
 void CheetahMul::Impl::EncodeArray(const NdArrayRef &array, bool need_encrypt,
@@ -501,7 +465,7 @@ void CheetahMul::Impl::EncodeArray(const NdArrayRef &array, bool need_encrypt,
   int64_t num_elts = array.numel();
   auto eltype = array.eltype();
   SPU_ENFORCE(num_elts > 0, "empty array");
-  SPU_ENFORCE(eltype.isa<RingTy>(), "array must be ring_type, got={}", eltype);
+  SPU_ENFORCE(eltype.isa<Ring2k>(), "array must be ring_type, got={}", eltype);
 
   int64_t num_splits = CeilDiv(num_elts, num_slots());
   int64_t num_seal_ctx = WorkingContextSize(options);
@@ -533,15 +497,18 @@ void CheetahMul::Impl::EncodeArray(const NdArrayRef &array, bool need_encrypt,
       }
       auto dst = u64tmp.subspan(0, slice_n);
       if (need_encrypt) {
+        // Compute round(P/2^k * x) mod pi
         ms_helper.ModulusUpAt(slots.slice({0}, {slice_n}, {1}), cntxt_id, dst);
       } else {
+        // view x \in [0, 2^k) as [-2^{k-1}, 2^{k-1})
+        // Then compute x mod pi.
         ms_helper.CenteralizeAt(slots.slice({0}, {slice_n}, {1}), cntxt_id,
                                 dst);
       }
       // zero-padding the rest
       std::fill_n(u64tmp.data() + slice_n, u64tmp.size() - slice_n, 0);
 
-      CATCH_SEAL_ERROR(bfv_encoders_[cntxt_id]->encode(_u64tmp, out[job_id]));
+      simd_mul_instances_[cntxt_id]->EncodeSingle(_u64tmp, out[job_id]);
     }
   });
 }
@@ -550,7 +517,7 @@ void CheetahMul::Impl::MulThenResponse(FieldType, int64_t num_elts,
                                        const Options &options,
                                        absl::Span<const yacl::Buffer> ciphers,
                                        absl::Span<const RLWEPt> plains,
-                                       absl::Span<const RLWEPt> ecd_random,
+                                       absl::Span<const uint64_t> rnd_mask,
                                        yacl::link::Context *conn) {
   SPU_ENFORCE(!ciphers.empty(), "CheetahMul: empty cipher");
   SPU_ENFORCE(plains.size() == ciphers.size(),
@@ -561,8 +528,8 @@ void CheetahMul::Impl::MulThenResponse(FieldType, int64_t num_elts,
   const int64_t num_ciphers = num_seal_ctx * num_splits;
   SPU_ENFORCE(ciphers.size() == (size_t)num_ciphers,
               "CheetahMul : expect {} != {}", num_ciphers, ciphers.size());
-  SPU_ENFORCE(ecd_random.size() == (size_t)num_ciphers,
-              "CheetahMul: encoded rnaomd size mismatch");
+  SPU_ENFORCE(rnd_mask.size() == (size_t)num_elts * num_seal_ctx,
+              "CheetahMul: rnd_mask size mismatch");
 
   std::vector<yacl::Buffer> response(num_ciphers);
   yacl::parallel_for(0, num_ciphers, [&](int64_t job_bgn, int64_t job_end) {
@@ -570,17 +537,21 @@ void CheetahMul::Impl::MulThenResponse(FieldType, int64_t num_elts,
     std::vector<uint64_t> u64tmp(num_slots(), 0);
     for (int64_t job_id = job_bgn; job_id < job_end; ++job_id) {
       int64_t cntxt_id = job_id / num_splits;
-      // int64_t offset = cntxt_id * num_splits;
-      const auto &seal_cntxt = seal_cntxts_[cntxt_id];
-      seal::Evaluator evaluator(seal_cntxt);
-      // Multiply-then-H2A
-      DecodeSEALObject(ciphers.at(job_id), seal_cntxt, &ct);
-      // Multiply step
-      CATCH_SEAL_ERROR(evaluator.multiply_plain_inplace(ct, plains[job_id]));
-      // H2A
-      CATCH_SEAL_ERROR(evaluator.sub_plain_inplace(ct, ecd_random[job_id]));
-      // re-randomize the ciphertext (e.g., noise flood)
-      RandomizeCipherForDecryption(ct, cntxt_id);
+      int64_t split_id = job_id % num_splits;
+
+      int64_t slice_bgn = split_id * num_slots();
+      int64_t slice_n = std::min(num_slots(), num_elts - slice_bgn);
+      // offset by context id
+      slice_bgn += cntxt_id * num_elts;
+
+      DecodeSEALObject(ciphers[job_id], seal_cntxts_[cntxt_id], &ct);
+
+      // ct <- Re-randomize(ct * pt) - random_mask
+      simd_mul_instances_[cntxt_id]->MulThenReshareInplace(
+          {&ct, 1}, plains.subspan(job_id, 1),
+          rnd_mask.subspan(slice_bgn, slice_n), *peer_pub_key_,
+          seal_cntxts_[cntxt_id]);
+
       response[job_id] = EncodeSEALObject(ct);
     }
   });
@@ -625,7 +596,8 @@ NdArrayRef CheetahMul::Impl::DecryptArray(
 
       DecodeSEALObject(ct_array.at(job_id), seal_cntxts_[cntxt_id], &ct);
       CATCH_SEAL_ERROR(decryptors_[cntxt_id]->decrypt(ct, pt));
-      CATCH_SEAL_ERROR(bfv_encoders_[cntxt_id]->decode(pt, subarray));
+
+      simd_mul_instances_[cntxt_id]->DecodeSingle(pt, absl::MakeSpan(subarray));
 
       int64_t slice_bgn = split_id * num_slots();
       int64_t slice_end = std::min(size, slice_bgn + num_slots());
@@ -637,68 +609,6 @@ NdArrayRef CheetahMul::Impl::DecryptArray(
 
   auto &ms_helper = ms_helpers_.find(options)->second;
   return ms_helper.ModulusDownRNS(field, {size}, absl::MakeSpan(rns_temp));
-}
-
-void CheetahMul::Impl::NoiseFloodCiphertext(RLWECt &ct,
-                                            const seal::SEALContext &context) {
-  SPU_ENFORCE(seal::is_metadata_valid_for(ct, context));
-  SPU_ENFORCE(ct.size() == 2);
-  auto context_data = context.get_context_data(ct.parms_id());
-  yacl::CheckNotNull(context_data.get());
-  size_t num_coeffs = ct.poly_modulus_degree();
-  size_t num_modulus = ct.coeff_modulus_size();
-  const auto &modulus = context_data->parms().coeff_modulus();
-
-  constexpr uint64_t range_mask = (1ULL << kNoiseFloodRandomBits) - 1;
-  int logQ = context_data->total_coeff_modulus_bit_count();
-  int logt = context_data->parms().plain_modulus().bit_count();
-  SPU_ENFORCE_GT(logQ - logt - 1, kNoiseFloodRandomBits);
-
-  // sample random from [0, 2^{kStatRandom})
-  auto random = CPRNG(FieldType::FM64, num_coeffs);
-  NdArrayView<uint64_t> xrandom(random);
-  pforeach(0, xrandom.numel(), [&](int64_t i) { xrandom[i] &= range_mask; });
-  // add random to each modulus of ct.data(0)
-  uint64_t *dst_ptr = ct.data(0);
-  for (size_t l = 0; l < num_modulus; ++l) {
-    using namespace seal::util;
-    if (modulus[l].bit_count() > kNoiseFloodRandomBits) {
-      // When prime[l] > 2^{kNoiseFloodRandomBits} then we add directly add
-      // the random
-      add_poly_coeffmod(&xrandom[0], dst_ptr, num_coeffs, modulus[l], dst_ptr);
-    } else {
-      // When prime[l] < 2^{kNoiseFloodRandomBits} we need to compute modulo
-      // first.
-      std::vector<uint64_t> tmp(num_coeffs);
-      modulo_poly_coeffs(&xrandom[0], num_coeffs, modulus[l], tmp.data());
-      add_poly_coeffmod(tmp.data(), dst_ptr, num_coeffs, modulus[l], dst_ptr);
-    }
-    dst_ptr += num_coeffs;
-  }
-}
-
-void CheetahMul::Impl::RandomizeCipherForDecryption(RLWECt &ct,
-                                                    size_t context_id) {
-  auto &seal_cntxt = seal_cntxts_.at(context_id);
-  auto context_data = seal_cntxt.last_context_data();
-  yacl::CheckNotNull(context_data.get());
-  seal::Evaluator evaluator(seal_cntxt);
-  // 1. Add statistical independent randomness
-  NoiseFloodCiphertext(ct, seal_cntxt);
-
-  // 2. Drop all but keep one moduli
-  if (ct.coeff_modulus_size() > 1) {
-    evaluator.mod_switch_to_inplace(ct, context_data->parms_id());
-  }
-
-  // 3. Add zero-encryption for re-randomization
-  RLWECt zero_enc;
-  CATCH_SEAL_ERROR(
-      pk_encryptors_[context_id]->encrypt_zero(ct.parms_id(), zero_enc));
-  CATCH_SEAL_ERROR(evaluator.add_inplace(ct, zero_enc));
-
-  // 4. Truncate for smaller communication
-  TruncateBFVForDecryption(ct, seal_cntxt);
 }
 
 CheetahMul::CheetahMul(std::shared_ptr<yacl::link::Context> lctx,
