@@ -352,7 +352,7 @@ static void doPackLWEs(absl::Span<const LWEType> lwes, const GaloisKeys &galois,
     }
   });
 
-  doPackingLWEs(absl::MakeSpan(rlwes), galois, context, out, true);
+  doPackingLWEs(absl::MakeSpan(rlwes), galois, context, out, /*trace*/ true);
 }
 
 template <class LWEType>

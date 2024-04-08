@@ -48,6 +48,9 @@ class PackingHelper {
 
 // lwes[0, N) -> RLWE[0], lwe[N, 2N) -> RLWE[1] ....
 // Return the number of output RLWE ciphertexts.
+//
+// NOTE(lwj): when |lwes| < N, we will also clear up the gaps between two
+// near-by LWE wire.
 size_t PackLWEs(absl::Span<const LWECt> lwes, const GaloisKeys &galois,
                 const seal::SEALContext &context, absl::Span<RLWECt> rlwes);
 

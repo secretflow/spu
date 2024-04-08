@@ -578,7 +578,7 @@ void PhantomLWECt::CastAsRLWE(const seal::SEALContext &context,
       SPU_ENFORCE(
           try_invert_uint_mod(multiplier, modulus[l], inv_multiplier),
           fmt::format("inverse mod for multiplier={} failed", multiplier));
-      fixed_mul.set(negate_uint_mod(inv_multiplier, modulus[l]), modulus[l]);
+      fixed_mul.set(inv_multiplier, modulus[l]);
     }
 
     dst_ptr[0] =
