@@ -186,7 +186,7 @@ NdArrayRef MulA1BV::proc(KernelEvalContext* ctx, const NdArrayRef& ashr,
     return out;
   }
 
-  if (rank == owner) {
+  if (rank != owner) {
     return TiledDispatchOTFunc(
                ctx, ashr,
                [&](const NdArrayRef& input,
@@ -195,6 +195,7 @@ NdArrayRef MulA1BV::proc(KernelEvalContext* ctx, const NdArrayRef& ashr,
                })
         .as(ashr.eltype());
   }
+
   return TiledDispatchOTFunc(
              ctx, ashr, bshr,
              [&](const NdArrayRef& input0, const NdArrayRef& input1,

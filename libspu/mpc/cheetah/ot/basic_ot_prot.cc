@@ -438,8 +438,8 @@ NdArrayRef BasicOTProtocols::Multiplexer(const NdArrayRef &msg,
 NdArrayRef BasicOTProtocols::PrivateMulxRecv(const NdArrayRef &msg,
                                              const NdArrayRef &select) {
   SPU_ENFORCE_EQ(msg.shape(), select.shape());
-  const auto *shareType = select.eltype().as<BShrTy>();
-  SPU_ENFORCE_EQ(shareType->nbits(), 1UL);
+  SPU_ENFORCE(msg.eltype().isa<Ring2k>());
+  SPU_ENFORCE(select.eltype().isa<Ring2k>());
 
   const auto field = msg.eltype().as<Ring2k>()->field();
   const int64_t size = msg.numel();
@@ -457,14 +457,15 @@ NdArrayRef BasicOTProtocols::PrivateMulxRecv(const NdArrayRef &msg,
 NdArrayRef BasicOTProtocols::PrivateMulxRecv(const NdArrayRef &msg,
                                              absl::Span<const uint8_t> select) {
   SPU_ENFORCE_EQ(msg.numel(), (int64_t)select.size());
+  SPU_ENFORCE(msg.eltype().isa<Ring2k>());
 
   const auto field = msg.eltype().as<Ring2k>()->field();
   const int64_t size = msg.numel();
 
   auto recv = ring_zeros(field, msg.shape());
-  std::vector<uint8_t> sel(size);
   // Compute (x0 + x1) * b
   // x0 * b + x1 * b
+  // COT compute <x1*b>
   DISPATCH_ALL_FIELDS(field, "MultiplexerOnPrivate", [&]() {
     NdArrayView<const ring2k_t> _msg(msg);
     auto _recv = absl::MakeSpan(&recv.at<ring2k_t>(0), size);
@@ -472,7 +473,7 @@ NdArrayRef BasicOTProtocols::PrivateMulxRecv(const NdArrayRef &msg,
     ferret_receiver_->RecvCAMCC(select, _recv);
 
     pforeach(0, size, [&](int64_t i) {
-      _recv[i] = _msg[i] * static_cast<ring2k_t>(select[i]) + _recv[i];
+      _recv[i] = _msg[i] * static_cast<ring2k_t>(select[i] & 1) + _recv[i];
     });
   });
 
