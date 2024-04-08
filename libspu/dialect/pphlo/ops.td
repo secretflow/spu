@@ -1167,11 +1167,6 @@ def PPHLO_ReturnOp : PPHLO_Op<"return", [Pure, Terminator]> {
   let assemblyFormat = "$results attr-dict (`:` type($results)^)?";
 }
 
-def PPHLO_DbgPrintOp : PPHLO_Op<"dbg_print", []> {
-  let arguments = (ins PPHLO_Tensor : $operand);
-  let assemblyFormat = "operands attr-dict `:` type(operands)";
-}
-
 def PPHLO_FreeOp : PPHLO_Op<"free", []> {
   let arguments = (ins PPHLO_Tensor : $operand);
   let assemblyFormat = "operands attr-dict `:` type(operands)";

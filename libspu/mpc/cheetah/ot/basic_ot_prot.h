@@ -42,6 +42,15 @@ class BasicOTProtocols {
   // msg * select for select \in {0, 1}
   NdArrayRef Multiplexer(const NdArrayRef &msg, const NdArrayRef &select);
 
+  // multiplexer with private choices (sender part)
+  NdArrayRef PrivateMulxSend(const NdArrayRef &msg);
+
+  // multiplexer with private choices (recv part)
+  NdArrayRef PrivateMulxRecv(const NdArrayRef &msg, const NdArrayRef &select);
+
+  NdArrayRef PrivateMulxRecv(const NdArrayRef &msg,
+                             absl::Span<const uint8_t> select);
+
   // Create `numel` of AND-triple. Each element contains `k` bits
   // 1 <= k <= field size
   std::array<NdArrayRef, 3> AndTriple(FieldType field, const Shape &shape,
@@ -50,8 +59,6 @@ class BasicOTProtocols {
   // [a, b, b', c, c'] such that c = a*b and c' = a*b' for the same a
   std::array<NdArrayRef, 5> CorrelatedAndTriple(FieldType field,
                                                 const Shape &shape);
-
-  // ArrayRef BitwiseAnd(const ArrayRef &lhs, const ArrayRef &rhs);
 
   NdArrayRef BitwiseAnd(const NdArrayRef &lhs, const NdArrayRef &rhs);
 

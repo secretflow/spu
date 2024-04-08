@@ -39,7 +39,7 @@ class UnitTests(unittest.TestCase):
 func.func @main(%arg0: tensor<2x2x!pphlo.secret<i32>>) -> (tensor<2x2x!pphlo.secret<i32>>) {
     %0 = pphlo.constant dense<[[1,2],[3,4]]> : tensor<2x2xi32>
     %1 = pphlo.add %arg0, %0 : (tensor<2x2x!pphlo.secret<i32>>, tensor<2x2xi32>) -> tensor<2x2x!pphlo.secret<i32>>
-    pphlo.dbg_print %1 : tensor<2x2x!pphlo.secret<i32>>
+    pphlo.custom_call @dbg_print (%1) {has_side_effect = true} : (tensor<2x2x!pphlo.secret<i32>>)->()
     return %1 : tensor<2x2x!pphlo.secret<i32>>
 }"""
         executable = spu_pb2.ExecutableProto(

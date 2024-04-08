@@ -1,4 +1,4 @@
-// RUN: mlir-pphlo-opt --optimize-select --split-input-file %s | FileCheck %s
+// RUN: pphlo-opt --optimize-select --split-input-file %s | FileCheck %s
 
 func.func @main() -> (tensor<f32>) {
     %0 = pphlo.constant dense<0xFF800000> : tensor<f32>

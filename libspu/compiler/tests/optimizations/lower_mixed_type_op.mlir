@@ -1,4 +1,4 @@
-// RUN: mlir-pphlo-opt --lower-mixed-type-op --split-input-file %s | FileCheck %s
+// RUN: pphlo-opt --lower-mixed-type-op --split-input-file %s | FileCheck %s
 
 func.func @main(%arg0: tensor<2x2xf32>, %arg1: tensor<2x2xi32>) -> (tensor<2x2xf32>) {
     //CHECK: %0 = pphlo.multiply %arg0, %arg1 : (tensor<2x2xf32>, tensor<2x2xi32>) -> tensor<2x2xf32>

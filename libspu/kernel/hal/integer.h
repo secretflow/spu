@@ -38,6 +38,8 @@ Value i_sub(SPUContext* ctx, const Value& x, const Value& y);
 
 Value i_mul(SPUContext* ctx, const Value& x, const Value& y);
 
+Value i_square(SPUContext* ctx, const Value& x);
+
 Value i_mmul(SPUContext* ctx, const Value& x, const Value& y);
 
 Value i_tensordot(SPUContext* ctx, const Value& x, const Value& y,

@@ -65,18 +65,20 @@ void regCheetahProtocol(SPUContext* ctx,
                   cheetah::B2P, cheetah::P2B, cheetah::A2B, cheetah::B2A,   //
                   cheetah::NotA,                                            //
                   cheetah::AddAP, cheetah::AddAA,                           //
-                  cheetah::MulAP, cheetah::MulAA, cheetah::MulA1B,          //
+                  cheetah::MulAP, cheetah::MulAA, cheetah::MulAV,           //
+                  cheetah::SquareA,                                         //
+                  cheetah::MulA1B, cheetah::MulA1BV,                        //
                   cheetah::EqualAA, cheetah::EqualAP,                       //
                   cheetah::MatMulAP, cheetah::MatMulAA, cheetah::MatMulAV,  //
                   cheetah::MatMulVVS,                                       //
-                  cheetah::LShiftA, cheetah::ARShiftB, cheetah::LShiftB,
-                  cheetah::RShiftB,                                    //
-                  cheetah::BitrevB,                                    //
-                  cheetah::TruncA,                                     //
-                  cheetah::MsbA2B,                                     //
-                  cheetah::CommonTypeB, cheetah::CommonTypeV,          //
-                  cheetah::CastTypeB, cheetah::AndBP, cheetah::AndBB,  //
-                  cheetah::XorBP, cheetah::XorBB,                      //
+                  cheetah::LShiftA, cheetah::ARShiftB, cheetah::LShiftB,    //
+                  cheetah::RShiftB,                                         //
+                  cheetah::BitrevB,                                         //
+                  cheetah::TruncA,                                          //
+                  cheetah::MsbA2B,                                          //
+                  cheetah::CommonTypeB, cheetah::CommonTypeV,               //
+                  cheetah::CastTypeB, cheetah::AndBP, cheetah::AndBB,       //
+                  cheetah::XorBP, cheetah::XorBB,                           //
                   cheetah::RandA>();
 }
 

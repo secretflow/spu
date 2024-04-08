@@ -1153,11 +1153,6 @@ void execute(OpExecutor *, SPUContext *sctx, SymbolScope *sscope,
   }
 }
 
-void execute(OpExecutor *, SPUContext *sctx, SymbolScope *sscope,
-             mlir::spu::pphlo::DbgPrintOp &op, const ExecutionOptions &opts) {
-  kernel::hal::dbg_print(sctx, lookupValue(sscope, op.getOperand(), opts));
-}
-
 void execute(OpExecutor *, SPUContext *, SymbolScope *sscope,
              mlir::spu::pphlo::FreeOp &op, const ExecutionOptions &opts) {
   if (opts.do_parallel) {

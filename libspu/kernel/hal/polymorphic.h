@@ -138,6 +138,10 @@ Value min(SPUContext* ctx, const Value& x, const Value& y);
 // @param y, the second parameter
 Value mul(SPUContext* ctx, const Value& x, const Value& y);
 
+/// general element-wise square operator
+// @param x, the value to square
+Value square(SPUContext* ctx, const Value& x);
+
 Value div(SPUContext* ctx, const Value& x, const Value& y);
 
 /// see numpy.negate(in)

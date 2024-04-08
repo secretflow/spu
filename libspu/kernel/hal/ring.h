@@ -46,6 +46,8 @@ Value _sub(SPUContext* ctx, const Value& x, const Value& y);
 
 Value _mul(SPUContext* ctx, const Value& x, const Value& y);
 
+Value _square(SPUContext* ctx, const Value& x);
+
 // Note: there is no div (multiplicative inverse) in ring 2^k.
 // Value _div(SPUContext* ctx, const Value& x, const Value& y);
 

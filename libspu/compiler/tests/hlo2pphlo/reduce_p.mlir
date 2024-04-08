@@ -1,4 +1,4 @@
-// RUN: mlir-pphlo-opt --hlo-legalize-to-pphlo=input_vis_list=VIS_PUBLIC --lower-conversion-cast %s --split-input-file  | FileCheck %s
+// RUN: pphlo-opt --hlo-legalize-to-pphlo=input_vis_list=VIS_PUBLIC --lower-conversion-cast %s --split-input-file  | FileCheck %s
 
 // CHECK: func @main(%arg0: tensor<1024x1xf32>) -> tensor<1024xf32> {
 func.func @main(%arg1: tensor<1024x1xf32>) -> (tensor<1024xf32>) {

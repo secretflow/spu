@@ -19,9 +19,9 @@ package(
 )
 
 spu_cc_binary(
-    name = "mlir-pphlo-opt",
+    name = "pphlo-opt",
     srcs = [
-        "mlir-pphlo-opt.cc",
+        "pphlo-opt.cc",
     ],
     deps = [
         "//libspu/compiler/passes:all_passes",
@@ -36,9 +36,9 @@ spu_cc_binary(
 )
 
 spu_cc_binary(
-    name = "mlir-pphlo-lsp",
+    name = "pphlo-lsp",
     srcs = [
-        "mlir-pphlo-lsp.cc",
+        "pphlo-lsp.cc",
     ],
     deps = [
         "//libspu/dialect/pphlo:dialect",

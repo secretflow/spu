@@ -38,7 +38,7 @@ func.func @main() -> () {
     %0 = pphlo.constant dense<1> : tensor<i32>
     %1 = pphlo.constant dense<2> : tensor<i32>
     %2 = pphlo.add %0, %1 : tensor<i32>
-    pphlo.dbg_print %2 : tensor<i32>
+    pphlo.custom_call @dbg_print (%2) {has_side_effect = true} : (tensor<i32>)->()
     return
 })";
 

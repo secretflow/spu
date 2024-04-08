@@ -435,4 +435,70 @@ NdArrayRef BasicOTProtocols::Multiplexer(const NdArrayRef &msg,
   });
 }
 
+NdArrayRef BasicOTProtocols::PrivateMulxRecv(const NdArrayRef &msg,
+                                             const NdArrayRef &select) {
+  SPU_ENFORCE_EQ(msg.shape(), select.shape());
+  const auto *shareType = select.eltype().as<BShrTy>();
+  SPU_ENFORCE_EQ(shareType->nbits(), 1UL);
+
+  const auto field = msg.eltype().as<Ring2k>()->field();
+  const int64_t size = msg.numel();
+
+  auto recv = ring_zeros(field, msg.shape());
+  std::vector<uint8_t> sel(size);
+  DISPATCH_ALL_FIELDS(field, "convert", [&]() {
+    NdArrayView<const ring2k_t> _sel(select);
+    pforeach(0, size,
+             [&](int64_t i) { sel[i] = static_cast<uint8_t>(_sel[i] & 1); });
+  });
+  return PrivateMulxRecv(msg, absl::MakeConstSpan(sel));
+}
+
+NdArrayRef BasicOTProtocols::PrivateMulxRecv(const NdArrayRef &msg,
+                                             absl::Span<const uint8_t> select) {
+  SPU_ENFORCE_EQ(msg.numel(), (int64_t)select.size());
+
+  const auto field = msg.eltype().as<Ring2k>()->field();
+  const int64_t size = msg.numel();
+
+  auto recv = ring_zeros(field, msg.shape());
+  std::vector<uint8_t> sel(size);
+  // Compute (x0 + x1) * b
+  // x0 * b + x1 * b
+  DISPATCH_ALL_FIELDS(field, "MultiplexerOnPrivate", [&]() {
+    NdArrayView<const ring2k_t> _msg(msg);
+    auto _recv = absl::MakeSpan(&recv.at<ring2k_t>(0), size);
+
+    ferret_receiver_->RecvCAMCC(select, _recv);
+
+    pforeach(0, size, [&](int64_t i) {
+      _recv[i] = _msg[i] * static_cast<ring2k_t>(select[i]) + _recv[i];
+    });
+  });
+
+  return recv.as(msg.eltype());
+}
+
+NdArrayRef BasicOTProtocols::PrivateMulxSend(const NdArrayRef &msg) {
+  SPU_ENFORCE(msg.isCompact());
+
+  const auto field = msg.eltype().as<Ring2k>()->field();
+  const int64_t size = msg.numel();
+
+  auto recv = ring_zeros(field, msg.shape());
+  // Compute (x0 + x1) * b
+  // x0 * b + x1 * b
+  DISPATCH_ALL_FIELDS(field, "MultiplexerOnPrivate", [&]() {
+    auto _msg = absl::MakeConstSpan(&msg.at<ring2k_t>(0), size);
+    auto _recv = absl::MakeSpan(&recv.at<ring2k_t>(0), size);
+
+    ferret_sender_->SendCAMCC(_msg, _recv);
+    ferret_sender_->Flush();
+
+    pforeach(0, size, [&](int64_t i) { _recv[i] = -_recv[i]; });
+  });
+
+  return recv.as(msg.eltype());
+}
+
 }  // namespace spu::mpc::cheetah

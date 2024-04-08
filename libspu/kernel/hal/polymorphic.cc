@@ -117,6 +117,12 @@ Value mul(SPUContext* ctx, const Value& x, const Value& y) {
   return dtypeBinaryDispatch("mul", f_mul_impl, i_mul, ctx, x, y);
 }
 
+Value square(SPUContext* ctx, const Value& x) {
+  SPU_TRACE_HAL_DISP(ctx, x);
+
+  return dtypeUnaryDispatch("square", f_square, i_square, ctx, x);
+}
+
 Value matmul(SPUContext* ctx, const Value& x, const Value& y) {
   SPU_TRACE_HAL_DISP(ctx, x, y);
   // fast dispatch, avoid truncation cost

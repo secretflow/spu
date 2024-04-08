@@ -29,7 +29,7 @@ config.test_source_root = os.path.dirname(__file__)
 # Make LLVM and StableHLO tools available in RUN directives
 tools = [
     'FileCheck',
-    'mlir-pphlo-opt',
+    'pphlo-opt',
 ]
 tool_dirs = [
     config.llvm_tools_dir,

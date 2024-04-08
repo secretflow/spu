@@ -19,7 +19,7 @@
 include "mlir/IR/EnumAttr.td"
 include "mlir/IR/OpBase.td"
 
-include "dialect.td"
+include "libspu/dialect/pphlo/dialect.td"
 
 //===----------------------------------------------------------------------===//
 // Sort direction enum definitions.

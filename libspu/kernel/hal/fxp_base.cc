@@ -320,7 +320,7 @@ Value f_square(SPUContext* ctx, const Value& x) {
   SPU_TRACE_HAL_LEAF(ctx, x);
 
   SPU_ENFORCE(x.isFxp(), "{}", x);
-  return _trunc(ctx, _mul(ctx, x, x), ctx->getFxpBits(), SignType::Positive)
+  return _trunc(ctx, _square(ctx, x), ctx->getFxpBits(), SignType::Positive)
       .setDtype(x.dtype());
 }
 

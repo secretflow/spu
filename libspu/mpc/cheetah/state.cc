@@ -243,4 +243,105 @@ NdArrayRef TiledDispatchOTFunc(KernelEvalContext* ctx, const NdArrayRef& x,
   return out;
 }
 
+NdArrayRef TiledDispatchOTFunc(KernelEvalContext* ctx,
+                               absl::Span<const uint8_t> x,
+                               OTUnaryFuncWithU8 func) {
+  SPU_ENFORCE(not x.empty());
+  // (lazy) init OT
+  int64_t numel = x.size();
+  int64_t nworker = InitOTState(ctx, numel);
+  int64_t workload = nworker == 0 ? 0 : CeilDiv(numel, nworker);
+
+  std::vector<NdArrayRef> outs(nworker);
+  std::vector<std::future<void>> futures;
+
+  int64_t slice_end = 0;
+  for (int64_t wi = 0; wi + 1 < nworker; ++wi) {
+    int64_t slice_bgn = wi * workload;
+    slice_end = std::min(numel, slice_bgn + workload);
+    auto slice_input = x.subspan(slice_bgn, slice_end - slice_bgn);
+    futures.emplace_back(std::async(
+        [&](int64_t idx, absl::Span<const uint8_t> input) {
+          auto ot_instance = ctx->getState<CheetahOTState>()->get(idx);
+          outs[idx] = func(input, ot_instance);
+        },
+        wi, slice_input));
+  }
+
+  auto slice_input = x.subspan(slice_end, numel - slice_end);
+  auto ot_instance = ctx->getState<CheetahOTState>()->get(nworker - 1);
+  outs[nworker - 1] = func(slice_input, ot_instance);
+
+  for (auto&& f : futures) {
+    f.get();
+  }
+
+  NdArrayRef out(outs[0].eltype(), {numel});
+  int64_t offset = 0;
+
+  for (auto& out_slice : outs) {
+    std::memcpy(out.data<std::byte>() + offset, out_slice.data(),
+                out_slice.numel() * out.elsize());
+    offset += out_slice.numel() * out.elsize();
+  }
+
+  return out;
+}
+
+NdArrayRef TiledDispatchOTFunc(KernelEvalContext* ctx, const NdArrayRef& x,
+                               absl::Span<const uint8_t> y,
+                               OTBinaryFuncWithU8 func) {
+  const Shape& shape = x.shape();
+  SPU_ENFORCE(shape.numel() > 0);
+  SPU_ENFORCE_EQ(shape.numel(), (int64_t)y.size());
+  // (lazy) init OT
+  int64_t numel = x.numel();
+  int64_t nworker = InitOTState(ctx, numel);
+  int64_t workload = nworker == 0 ? 0 : CeilDiv(numel, nworker);
+
+  if (shape.ndim() != 1) {
+    // TiledDispatchOTFunc over flatten input
+    return TiledDispatchOTFunc(ctx, x.reshape({numel}), y, func)
+        .reshape(x.shape());
+  }
+
+  std::vector<NdArrayRef> outs(nworker);
+  std::vector<std::future<void>> futures;
+
+  int64_t slice_end = 0;
+  for (int64_t wi = 0; wi + 1 < nworker; ++wi) {
+    int64_t slice_bgn = wi * workload;
+    slice_end = std::min(numel, slice_bgn + workload);
+    auto x_slice = x.slice({slice_bgn}, {slice_end}, {1});
+    auto y_slice = y.subspan(slice_bgn, slice_end - slice_bgn);
+    futures.emplace_back(std::async(
+        [&](int64_t idx, const NdArrayRef& inp0,
+            absl::Span<const uint8_t> inp1) {
+          auto ot_instance = ctx->getState<CheetahOTState>()->get(idx);
+          outs[idx] = func(inp0, inp1, ot_instance);
+        },
+        wi, x_slice, y_slice));
+  }
+
+  auto x_slice = x.slice({slice_end}, {numel}, {});
+  auto y_slice = y.subspan(slice_end, numel - slice_end);
+  auto ot_instance = ctx->getState<CheetahOTState>()->get(nworker - 1);
+  outs[nworker - 1] = func(x_slice, y_slice, ot_instance);
+
+  for (auto&& f : futures) {
+    f.get();
+  }
+
+  NdArrayRef out(outs[0].eltype(), x.shape());
+  int64_t offset = 0;
+
+  for (auto& out_slice : outs) {
+    std::memcpy(out.data<std::byte>() + offset, out_slice.data(),
+                out_slice.numel() * out.elsize());
+    offset += out_slice.numel() * out.elsize();
+  }
+
+  return out;
+}
+
 }  // namespace spu::mpc::cheetah

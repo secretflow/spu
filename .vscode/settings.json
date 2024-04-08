@@ -41,5 +41,5 @@
     "[python]": {
         "editor.defaultFormatter": "ms-python.black-formatter"
     },
-    "mlir.server_path": "bazel-bin/libspu/compiler/tools/mlir-pphlo-lsp"
+    "mlir.server_path": "bazel-bin/libspu/compiler/tools/pphlo-lsp"
 }

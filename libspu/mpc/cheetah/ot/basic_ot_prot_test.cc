@@ -472,4 +472,51 @@ TEST_P(BasicOTProtTest, CorrelatedAndTriple) {
   });
 }
 
+TEST_P(BasicOTProtTest, PrivateMulx) {
+  size_t kWorldSize = 2;
+  Shape shape = {3, 4, 1, 3};
+  FieldType field = std::get<0>(GetParam());
+  auto ot_type = std::get<1>(GetParam());
+
+  auto boolean_t = makeType<BShrTy>(field, 1);
+
+  auto ashr0 = ring_rand(field, shape);
+  auto ashr1 = ring_rand(field, shape);
+  auto choices = ring_rand(field, shape).as(boolean_t);
+
+  DISPATCH_ALL_FIELDS(field, "bit", [&]() {
+    auto mask = static_cast<ring2k_t>(1);
+    NdArrayView<ring2k_t> xb(choices);
+    pforeach(0, xb.numel(), [&](int64_t i) { xb[i] &= mask; });
+  });
+
+  NdArrayRef computed[2];
+  utils::simulate(kWorldSize, [&](std::shared_ptr<yacl::link::Context> ctx) {
+    auto conn = std::make_shared<Communicator>(ctx);
+    BasicOTProtocols ot_prot(conn, ot_type);
+    if (ctx->Rank() == 0) {
+      computed[0] = ot_prot.PrivateMulxSend(ashr0);
+    } else {
+      computed[1] = ot_prot.PrivateMulxRecv(ashr1, choices);
+    }
+  });
+
+  EXPECT_EQ(computed[0].shape(), computed[1].shape());
+  EXPECT_EQ(computed[0].shape(), shape);
+
+  DISPATCH_ALL_FIELDS(field, "check", [&]() {
+    NdArrayView<ring2k_t> a0(ashr0);
+    NdArrayView<ring2k_t> a1(ashr1);
+    NdArrayView<ring2k_t> c(choices);
+    NdArrayView<ring2k_t> c0(computed[0]);
+    NdArrayView<ring2k_t> c1(computed[1]);
+
+    for (int64_t i = 0; i < shape.numel(); ++i) {
+      ring2k_t msg = (a0[i] + a1[i]);
+      ring2k_t exp = msg * c[i];
+      ring2k_t got = (c0[i] + c1[i]);
+      EXPECT_EQ(exp, got);
+    }
+  });
+}
 }  // namespace spu::mpc::cheetah::test

@@ -1,4 +1,4 @@
-// RUN: mlir-pphlo-opt --optimize-maxpool --split-input-file %s | FileCheck %s
+// RUN: pphlo-opt --optimize-maxpool --split-input-file %s | FileCheck %s
 
 func.func @main(%arg0: tensor<129x24x24x16x!pphlo.secret<f32>>, %arg1: tensor<129x23x23x16x!pphlo.secret<f32>>) -> (tensor<129x23x23x16x!pphlo.secret<f32>>, tensor<129x24x24x16x!pphlo.secret<f32>>) {
     %0 = pphlo.constant dense<0xFF800000> : tensor<f32>

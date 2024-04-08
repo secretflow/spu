@@ -170,6 +170,73 @@ NdArrayRef MulA1B::proc(KernelEvalContext* ctx, const NdArrayRef& ashr,
       .as(ashr.eltype());
 }
 
+NdArrayRef MulA1BV::proc(KernelEvalContext* ctx, const NdArrayRef& ashr,
+                         const NdArrayRef& bshr) const {
+  auto* comm = ctx->getState<Communicator>();
+  const int rank = comm->getRank();
+  SPU_ENFORCE_EQ(ashr.shape(), bshr.shape());
+  const int64_t numel = ashr.numel();
+  const auto* ptype = bshr.eltype().as<Priv2kTy>();
+  SPU_ENFORCE(ptype != nullptr, "rhs should be a private type");
+
+  const int owner = ptype->owner();
+
+  NdArrayRef out(ashr.eltype(), ashr.shape());
+  if (numel == 0) {
+    return out;
+  }
+
+  if (rank == owner) {
+    return TiledDispatchOTFunc(
+               ctx, ashr,
+               [&](const NdArrayRef& input,
+                   const std::shared_ptr<BasicOTProtocols>& base_ot) {
+                 return base_ot->PrivateMulxSend(input);
+               })
+        .as(ashr.eltype());
+  }
+  return TiledDispatchOTFunc(
+             ctx, ashr, bshr,
+             [&](const NdArrayRef& input0, const NdArrayRef& input1,
+                 const std::shared_ptr<BasicOTProtocols>& base_ot) {
+               return base_ot->PrivateMulxRecv(input0, input1);
+             })
+      .as(ashr.eltype());
+}
+
+NdArrayRef MulAV::proc(KernelEvalContext* ctx, const NdArrayRef& x,
+                       const NdArrayRef& y) const {
+  SPU_ENFORCE_EQ(x.shape(), y.shape());
+  const int64_t numel = x.numel();
+  if (numel == 0) {
+    return NdArrayRef(x.eltype(), x.shape());
+  }
+  auto* comm = ctx->getState<Communicator>();
+  const int rank = comm->getRank();
+  const auto* ptype = y.eltype().as<Priv2kTy>();
+  SPU_ENFORCE(ptype != nullptr, "rhs should be a private type");
+  const int owner = ptype->owner();
+
+  auto* mul_prot = ctx->getState<CheetahMulState>()->get();
+  mul_prot->LazyInitKeys(x.eltype().as<Ring2k>()->field());
+
+  // (x0 * x1) * y
+  // <x0 * y> + x1 * y
+  auto fx = x.reshape({numel});
+  NdArrayRef out;
+
+  // compute <x0 * y>
+  if (rank != owner) {
+    out = mul_prot->MulOLE(fx, /*eval*/ true);
+  } else {
+    auto fy = y.reshape({numel});
+    out = mul_prot->MulOLE(fy, /*eval*/ false);
+    ring_add_(out, ring_mul(fx, fy));
+  }
+
+  return out.reshape(x.shape()).as(x.eltype());
+}
+
 NdArrayRef MulAA::proc(KernelEvalContext* ctx, const NdArrayRef& x,
                        const NdArrayRef& y) const {
   SPU_ENFORCE_EQ(x.shape(), y.shape());
@@ -181,6 +248,45 @@ NdArrayRef MulAA::proc(KernelEvalContext* ctx, const NdArrayRef& x,
     return mulDirectly(ctx, x, y);
   }
   return mulWithBeaver(ctx, x, y);
+}
+
+NdArrayRef SquareA::proc(KernelEvalContext* ctx, const NdArrayRef& x) const {
+  const int64_t numel = x.numel();
+  if (numel == 0) {
+    return NdArrayRef(x.eltype(), x.shape());
+  }
+
+  //   (x0 + x1) * (x0 + x1)
+  // = x0^2 + 2*<x0*x1> + x1^2
+  auto* comm = ctx->getState<Communicator>();
+  const int rank = comm->getRank();
+  auto* mul_prot = ctx->getState<CheetahMulState>()->get();
+  mul_prot->LazyInitKeys(x.eltype().as<Ring2k>()->field());
+
+  auto fx = x.reshape({numel});
+  int64_t nhalf = numel <= 8192 ? numel : numel / 2;
+
+  auto subtask = std::async([&]() -> spu::NdArrayRef {
+    return mul_prot->MulOLE(fx.slice({0}, {nhalf}, {1}), rank == 0);
+  });
+
+  NdArrayRef mul1;
+  if (nhalf < numel) {
+    auto dupx = ctx->getState<CheetahMulState>()->duplx();
+    mul1 = mul_prot->MulOLE(fx.slice({nhalf}, {numel}, {1}), dupx.get(),
+                            rank == 1);
+  }
+  auto mul0 = subtask.get();
+
+  NdArrayRef x0x1(x.eltype(), {numel});
+  std::memcpy(&x0x1.at(0), &mul0.at(0), mul0.elsize() * nhalf);
+  if (nhalf < numel) {
+    std::memcpy(&x0x1.at(nhalf), &mul1.at(0), mul1.elsize() * mul1.numel());
+  }
+  ring_add_(x0x1, x0x1);
+  x0x1 = x0x1.reshape(x.shape());
+
+  return ring_add(x0x1, ring_mul(x, x)).as(x.eltype());
 }
 
 NdArrayRef MulAA::mulWithBeaver(KernelEvalContext* ctx, const NdArrayRef& x,

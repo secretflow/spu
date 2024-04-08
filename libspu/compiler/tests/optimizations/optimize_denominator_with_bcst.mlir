@@ -1,4 +1,4 @@
-// RUN: mlir-pphlo-opt --optimize-denominator-with-broadcast --split-input-file %s | FileCheck %s
+// RUN: pphlo-opt --optimize-denominator-with-broadcast --split-input-file %s | FileCheck %s
 
 func.func @main(%arg0: tensor<16x!pphlo.secret<f32>>, %arg1: tensor<16x10000x!pphlo.secret<f32>>) -> (tensor<16x10000x!pphlo.secret<f32>>) {
     //CHECK: %0 = pphlo.reciprocal %arg0

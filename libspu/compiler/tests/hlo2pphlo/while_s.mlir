@@ -1,4 +1,4 @@
-// RUN: mlir-pphlo-opt -hlo-legalize-to-pphlo=input_vis_list=VIS_SECRET --lower-conversion-cast %s --split-input-file  | FileCheck %s
+// RUN: pphlo-opt -hlo-legalize-to-pphlo=input_vis_list=VIS_SECRET --lower-conversion-cast %s --split-input-file  | FileCheck %s
 
 func.func @main(%arg0: tensor<i64>) -> tensor<i64> {
   //CHECK: %0 = pphlo.while(%arg1 = %arg0) : tensor<!pphlo.secret<i64>>

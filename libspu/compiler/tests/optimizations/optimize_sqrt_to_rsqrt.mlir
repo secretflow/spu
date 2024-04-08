@@ -1,4 +1,4 @@
-// RUN: mlir-pphlo-opt --optimize-sqrt-plus-eps --rewrite-div-sqrt-pattern --split-input-file %s | FileCheck %s
+// RUN: pphlo-opt --optimize-sqrt-plus-eps --rewrite-div-sqrt-pattern --split-input-file %s | FileCheck %s
 
 func.func @main(%arg0: tensor<f32>, %arg1: tensor<f32>) -> (tensor<f32>) {
     %0 = pphlo.constant dense<9.99999993E-9> : tensor<f32>
