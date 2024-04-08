@@ -212,6 +212,9 @@ TEST_P(PackLWEsTest, Basic) {
   size_t N_stride = poly_N / num_lwes;
   for (size_t i = 0, j = 0; i < poly_N; i += N_stride, ++j) {
     EXPECT_EQ(expects[j], coefficients[i]);
+    for (size_t k = 1; k < N_stride; ++k) {
+      ASSERT_EQ(coefficients[i + k], 0UL);
+    }
   }
 }
 
@@ -273,6 +276,9 @@ TEST_P(PackLWEsTest, Phantom) {
   size_t N_stride = poly_N / num_lwes;
   for (size_t i = 0, j = 0; i < poly_N; i += N_stride, ++j) {
     ASSERT_EQ(expects[j], coefficients[i]);
+    for (size_t k = 1; k < N_stride; ++k) {
+      ASSERT_EQ(coefficients[i + k], 0UL);
+    }
   }
 }
 
