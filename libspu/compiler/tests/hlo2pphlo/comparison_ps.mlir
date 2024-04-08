@@ -1,4 +1,4 @@
-// RUN: mlir-pphlo-opt --hlo-legalize-to-pphlo=input_vis_list=VIS_PUBLIC,VIS_SECRET --lower-conversion-cast --split-input-file %s | FileCheck %s
+// RUN: pphlo-opt --hlo-legalize-to-pphlo=input_vis_list=VIS_PUBLIC,VIS_SECRET --lower-conversion-cast --split-input-file %s | FileCheck %s
 
 func.func @main(%arg0: tensor<2x2xi32>, %arg1: tensor<2x2xi32>) -> (tensor<2x2xi1>) {
     // CHECK: %[[COMP:.+]] = pphlo.equal %arg0, %arg1 : (tensor<2x2xi32>, tensor<2x2x!pphlo.secret<i32>>) -> tensor<2x2x!pphlo.secret<i1>>

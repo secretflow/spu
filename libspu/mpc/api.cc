@@ -458,6 +458,17 @@ Value mul_pp(SPUContext* ctx, const Value& x, const Value& y) {
   FORCE_DISPATCH(ctx, x, y);
 }
 
+Value square_s(SPUContext* ctx, const Value& x) {
+  if (IsA(x)) {
+    TRY_NAMED_DISPATCH(ctx, "square_a", x);
+  }
+  return mul_ss(ctx, x, x);
+}
+
+Value square_v(SPUContext* ctx, const Value& x) { return mul_vv(ctx, x, x); }
+
+Value square_p(SPUContext* ctx, const Value& x) { return mul_pp(ctx, x, x); }
+
 //////////////////////////////////////////////////////////////////////////////
 
 Value mmul_ss(SPUContext* ctx, const Value& x, const Value& y) {

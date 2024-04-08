@@ -1,4 +1,4 @@
-// RUN: mlir-pphlo-opt %s -verify-diagnostics -split-input-file
+// RUN: pphlo-opt %s -verify-diagnostics -split-input-file
 
 func.func @main() -> tensor<i32> {
   %0 = pphlo.constant dense<1.3347515E+38> : tensor<f32>

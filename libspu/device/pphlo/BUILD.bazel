@@ -25,7 +25,6 @@ spu_cc_library(
         ":pphlo_verifier",
         "//libspu/device:executor",
         "//libspu/dialect/pphlo:dialect",
-        "//libspu/kernel/hal:debug",
         "//libspu/kernel/hlo:basic_binary",
         "//libspu/kernel/hlo:basic_ternary",
         "//libspu/kernel/hlo:basic_unary",
@@ -49,6 +48,7 @@ spu_cc_library(
     hdrs = ["pphlo_intrinsic_executor.h"],
     deps = [
         "//libspu/dialect/pphlo:dialect",
+        "//libspu/kernel/hal:debug",
         "//libspu/kernel/hlo:casting",
         "//libspu/kernel/hlo:const",
         "//libspu/kernel/hlo:rank",

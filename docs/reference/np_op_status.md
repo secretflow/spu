@@ -1423,12 +1423,12 @@ Please check *Supported Dtypes* as well.
 JAX NumPy Document link: https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.rint.html
 ### Status
 
-Not supported by compiler or runtime. But we could implement on demand in future.
-Please check *Note* for details.
-### Note
+**PASS**
+Please check *Supported Dtypes* as well.
+### Supported Dtypes
 
+- float32
 
-stablehlo.round_nearest_even
 ## sign
 
 JAX NumPy Document link: https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.sign.html

@@ -16,9 +16,10 @@
 // Canonicalization patterns for the MHLO dialect.
 
 include "mlir/IR/PatternBase.td"
-include "ops.td"
+include "libspu/dialect/pphlo/ops.td"
 
 // select(not(p), t, f) => select(p, f, t)
 def FusePredNegIntoSelect : Pat<
   (PPHLO_SelectOp (PPHLO_NotOp $pred), $on_true, $on_false),
-  (PPHLO_SelectOp $pred, $on_false, $on_true)>;
+  (PPHLO_SelectOp $pred, $on_false, $on_true)
+>;

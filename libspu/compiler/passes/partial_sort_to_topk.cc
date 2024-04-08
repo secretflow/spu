@@ -49,11 +49,12 @@ public:
 
   LogicalResult matchAndRewrite(SimpleSortOp op,
                                 PatternRewriter &rewriter) const override {
-    // Skip multikey sort
-    if (op.getNumKeys() > 1 || op.getSortDirection() != SortDirection::ASC) {
+    // Skip multi-operand sort
+    if (op->getNumOperands() != 1) {
       return failure();
     }
 
+    bool is_ascending = op.getSortDirection() == SortDirection::ASC;
     auto sort_type = op.getType(0).dyn_cast<RankedTensorType>();
     auto rank = sort_type.getRank();
     int64_t sort_dim = op.getDimension();
@@ -125,9 +126,9 @@ public:
     }
 
     // Ask top_k to return k_hi elements
-    auto k_hi = *sort_type.getShape().rbegin() - start;
+    auto k_hi = is_ascending ? *sort_type.getShape().rbegin() - start : end;
     // Set k_lo to n elements, so [n:-1] has the smallest n elements in top_k
-    auto k_lo = k_hi - (end - start);
+    auto k_lo = is_ascending ? k_hi - (end - start) : start;
     llvm::SmallVector<int64_t> topk_shape{sort_type.getShape().begin(),
                                           sort_type.getShape().end()};
     topk_shape.back() = k_hi;
@@ -178,8 +179,10 @@ public:
                                            slice.getStartIndices().end());
       llvm::SmallVector<int64_t> new_limit(slice.getLimitIndices().begin(),
                                            slice.getLimitIndices().end());
-      new_start[sort_dim] = topk_shape.back() - 1 - offset;
-      new_limit[sort_dim] = new_start[sort_dim] + 1;
+      if (is_ascending) {
+        new_start[sort_dim] = topk_shape.back() - 1 - offset;
+        new_limit[sort_dim] = new_start[sort_dim] + 1;
+      }
       rewriter.replaceOpWithNewOp<SliceOp>(slice, slice->getResultTypes()[0],
                                            topk, new_start, new_limit,
                                            slice.getStrides());

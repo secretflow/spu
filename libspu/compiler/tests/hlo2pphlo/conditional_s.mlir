@@ -1,5 +1,5 @@
 
-// RUN: mlir-pphlo-opt -hlo-legalize-to-pphlo=input_vis_list=VIS_SECRET,VIS_PUBLIC --lower-conversion-cast %s --split-input-file  | FileCheck %s
+// RUN: pphlo-opt -hlo-legalize-to-pphlo=input_vis_list=VIS_SECRET,VIS_PUBLIC --lower-conversion-cast %s --split-input-file  | FileCheck %s
 
 func.func @main(%arg0: tensor<f32>, %arg1: tensor<f32>) -> tensor<f32> {
   //CHECK: %2 = "pphlo.if"(%1) ({

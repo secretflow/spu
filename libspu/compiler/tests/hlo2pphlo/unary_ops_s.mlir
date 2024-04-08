@@ -1,4 +1,4 @@
-// RUN: mlir-pphlo-opt --hlo-legalize-to-pphlo=input_vis_list=VIS_SECRET --lower-conversion-cast --split-input-file %s | FileCheck %s
+// RUN: pphlo-opt --hlo-legalize-to-pphlo=input_vis_list=VIS_SECRET --lower-conversion-cast --split-input-file %s | FileCheck %s
 
 func.func @main(%arg0: tensor<2x2xi32>) -> (tensor<2x2xf32>) {
     // CHECK: pphlo.convert %arg0 : (tensor<2x2x!pphlo.secret<i32>>) -> tensor<2x2x!pphlo.secret<f32>>

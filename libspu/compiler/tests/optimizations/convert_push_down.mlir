@@ -1,4 +1,4 @@
-// RUN: mlir-pphlo-opt --convert-push-down --cse --split-input-file %s | FileCheck %s
+// RUN: pphlo-opt --convert-push-down --cse --split-input-file %s | FileCheck %s
 
 func.func @main(%arg0: tensor<4xi32>, %arg1: tensor<2x2xf32>) -> (tensor<2x2xf32>) {
     // CHECK: %0 = pphlo.reshape %arg0 : (tensor<4xi32>) -> tensor<2x2xi32>

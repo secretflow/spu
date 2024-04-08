@@ -124,6 +124,7 @@ JAX_ONE_TO_ONE_OP_RECORDS = [
     REC("maximum", 2, all_dtypes, all_shapes, rand_default),
     REC("minimum", 2, all_dtypes, all_shapes, rand_default),
     REC("multiply", 2, all_dtypes, all_shapes, rand_default),
+    REC("square", 1, all_dtypes, all_shapes, rand_default),
     REC("negative", 1, number_dtypes, all_shapes, rand_default),
     REC(
         "nextafter",

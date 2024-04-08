@@ -1,10 +1,10 @@
-dm-haiku==0.0.10
+dm-haiku
 plotnine
 jraph
-optax==0.1.7
+optax
 torch==2.2.0
 torch_xla==2.2.0
 torchvision
-jax[cpu]<=0.4.23
+jax[cpu]
 tensorflow_datasets
 keras

@@ -1,4 +1,4 @@
-// RUN: mlir-pphlo-opt --sort-lowering --split-input-file %s | FileCheck %s
+// RUN: pphlo-opt --sort-lowering --split-input-file %s | FileCheck %s
 
 func.func @main(%arg0: tensor<10x!pphlo.secret<f32>>) -> tensor<10x!pphlo.secret<f32>> {
     // CHECK: pphlo.simple_sort %arg0 ASC, dim = 0, num_keys = 1 : (tensor<10x!pphlo.secret<f32>>) -> tensor<10x!pphlo.secret<f32>>

@@ -1,0 +1,146 @@
+# Copyright 2024 Ant Group Co., Ltd.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+load("//bazel:spu.bzl", "spu_cc_binary", "spu_cc_library", "spu_cc_test")
+
+package(default_visibility = ["//visibility:public"])
+
+spu_cc_library(
+    name = "utils",
+    srcs = ["utils.cc"],
+    hdrs = ["utils.h"],
+    deps = [
+        "//libspu/core:context",
+        "//libspu/kernel/hlo:basic_binary",
+        "//libspu/kernel/hlo:basic_ternary",
+        "//libspu/kernel/hlo:casting",
+        "//libspu/kernel/hlo:const",
+        "//libspu/kernel/hlo:geometrical",
+        "//libspu/kernel/hlo:reduce",
+        "//libspu/mpc/cheetah:state",
+    ],
+)
+
+spu_cc_library(
+    name = "binning",
+    srcs = ["binning.cc"],
+    hdrs = ["binning.h"],
+    deps = ["//libspu/core:xt_helper"],
+)
+
+spu_cc_library(
+    name = "objectives",
+    srcs = ["objectives.cc"],
+    hdrs = ["objectives.h"],
+    deps = [
+        ":utils",
+        "//libspu/kernel/hlo:basic_unary",
+        "//libspu/kernel/hlo:shift",
+    ],
+)
+
+spu_cc_library(
+    name = "bin_matvec_prot",
+    srcs = ["bin_matvec_prot.cc"],
+    hdrs = ["bin_matvec_prot.h"],
+    deps = [
+        "//libspu/core:context",
+        "//libspu/mpc/cheetah/arith:arith_comm",
+        "//libspu/mpc/cheetah/rlwe:cheetah_rlwe",
+        "//libspu/mpc/cheetah/rlwe:lwe",
+        "//libspu/mpc/cheetah/rlwe:packlwes",
+        "@com_github_eigenteam_eigen//:eigen3",
+        "@com_github_microsoft_seal//:seal",
+        "@yacl//yacl/utils:elapsed_timer",
+    ],
+)
+
+spu_cc_library(
+    name = "tree_build_worker",
+    srcs = ["tree_build_worker.cc"],
+    hdrs = ["tree_build_worker.h"],
+    deps = [
+        ":bin_matvec_prot",
+        ":binning",
+        ":objectives",
+        ":utils",
+        "//libspu/core:context",
+        "//libspu/kernel/hlo:basic_binary",
+        "//libspu/kernel/hlo:geometrical",
+    ],
+)
+
+spu_cc_library(
+    name = "tree_builder",
+    srcs = ["tree_builder.cc"],
+    hdrs = ["tree_builder.h"],
+    deps = [":tree_build_worker"],
+)
+
+spu_cc_test(
+    name = "utils_test",
+    srcs = ["utils_test.cc"],
+    deps = [
+        ":utils",
+        "//libspu/core:xt_helper",
+        "//libspu/device:io",
+        "//libspu/kernel/hlo:casting",
+        "//libspu/mpc:factory",
+        "//libspu/mpc/utils:simulate",
+    ],
+)
+
+spu_cc_test(
+    name = "objectives_test",
+    srcs = ["objectives_test.cc"],
+    deps = [
+        ":objectives",
+        "//libspu/core:xt_helper",
+        "//libspu/device:io",
+        "//libspu/mpc:factory",
+        "//libspu/mpc/utils:simulate",
+    ],
+)
+
+spu_cc_test(
+    name = "bin_matvec_prot_test",
+    srcs = ["bin_matvec_prot_test.cc"],
+    deps = [
+        ":bin_matvec_prot",
+        "//libspu/mpc:factory",
+        "//libspu/mpc/utils:simulate",
+    ],
+)
+
+spu_cc_test(
+    name = "binning_test",
+    srcs = ["binning_test.cc"],
+    deps = [":binning"],
+)
+
+spu_cc_binary(
+    name = "squirrel_demo_main",
+    srcs = ["squirrel_demo_main.cc"],
+    data = [
+        "//examples/data",
+    ],
+    deps = [
+        ":tree_build_worker",
+        ":tree_builder",
+        "//libspu/device:io",
+        "@com_google_absl//absl/strings",
+        "@llvm-project//llvm:Support",
+        "@yacl//yacl/link:factory",
+    ],
+)

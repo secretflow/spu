@@ -16,6 +16,7 @@
 
 #include "spdlog/spdlog.h"
 
+#include "libspu/kernel/hal/debug.h"
 #include "libspu/kernel/hal/fxp_approx.h"
 #include "libspu/kernel/hlo/casting.h"
 #include "libspu/kernel/hlo/const.h"
@@ -51,6 +52,11 @@ std::vector<Value> intrinsic_dispatcher(SPUContext* ctx,
   if (name == "example") {
     SPDLOG_INFO("Calling example intrinsic");
     return {inputs.begin(), inputs.end()};
+  }
+
+  if (name == "dbg_print") {
+    kernel::hal::dbg_print(ctx, inputs[0]);
+    return {};
   }
 
   if (name == "mhlo.erf") {

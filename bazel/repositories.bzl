@@ -124,8 +124,8 @@ def _com_github_xtensor_xtl():
     )
 
 def _com_github_openxla_xla():
-    OPENXLA_COMMIT = "72831acf1eab39d20e9de1fd5bbc6ad90d6171f6"
-    OPENXLA_SHA256 = "c6ce6b90e6803c9d8481c4e0bc5a72292e9fcb3245114f1dea1bbdc4ef1a238a"
+    OPENXLA_COMMIT = "c408b6320bbf8407b781487a2dbe329cb7488dac"
+    OPENXLA_SHA256 = "77297f7f3a8796e865d2704ad595be05f87f9bb495121dd8904121320aec5601"
 
     # We need openxla to handle xla/mhlo/stablehlo
     maybe(

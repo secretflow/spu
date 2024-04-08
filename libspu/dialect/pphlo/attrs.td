@@ -18,7 +18,7 @@
 
 include "mlir/IR/OpBase.td"
 include "mlir/IR/AttrTypeBase.td"
-include "dialect.td"
+include "libspu/dialect/pphlo/dialect.td"
 
 def PPHloDim : ArrayRefParameter<"int64_t", "Dimension">;
 

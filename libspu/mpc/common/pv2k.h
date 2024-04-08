@@ -83,6 +83,8 @@ class Z2kState : public State {
 
   FieldType getDefaultField() const { return field_; }
 
+  void setField(FieldType f) { field_ = f; }
+
   std::unique_ptr<State> fork() override {
     return std::make_unique<Z2kState>(field_);
   }

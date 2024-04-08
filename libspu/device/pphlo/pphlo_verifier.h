@@ -132,7 +132,6 @@ class PPHloVerifier {
 #define NO_VERIFY_DEFN(OpName)                                        \
   void verify(mlir::spu::pphlo::OpName, absl::Span<const spu::Value>, \
               absl::Span<const spu::Value>) {}
-  NO_VERIFY_DEFN(DbgPrintOp)
   NO_VERIFY_DEFN(IfOp)
   NO_VERIFY_DEFN(WhileOp)
   NO_VERIFY_DEFN(CaseOp)

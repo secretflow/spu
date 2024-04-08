@@ -233,3 +233,30 @@ index 1a7a2bfd..bc4ad9d9 100644
          if (NOT TARGET HEXL::hexl)
              message(FATAL_ERROR "Intel HEXL: not found")
          endif()
+
+diff --git a/native/src/seal/evaluator.h b/native/src/seal/evaluator.h
+index 33bc3c7d..8a00ebea 100644
+--- a/native/src/seal/evaluator.h
++++ b/native/src/seal/evaluator.h
+@@ -1199,6 +1199,10 @@ namespace seal
+         */
+         struct EvaluatorPrivateHelper;
+
++        void switch_key_inplace(
++            Ciphertext &encrypted, util::ConstRNSIter target_iter, const KSwitchKeys &kswitch_keys,
++            std::size_t key_index, MemoryPoolHandle pool = MemoryManager::GetPool()) const;
++
+     private:
+         Evaluator(const Evaluator &copy) = delete;
+
+@@ -1257,10 +1261,6 @@ namespace seal
+             apply_galois_inplace(encrypted, galois_tool->get_elt_from_step(0), galois_keys, std::move(pool));
+         }
+
+-        void switch_key_inplace(
+-            Ciphertext &encrypted, util::ConstRNSIter target_iter, const KSwitchKeys &kswitch_keys,
+-            std::size_t key_index, MemoryPoolHandle pool = MemoryManager::GetPool()) const;
+-
+         void multiply_plain_normal(Ciphertext &encrypted, const Plaintext &plain, MemoryPoolHandle pool) const;
+
+         void multiply_plain_ntt(Ciphertext &encrypted_ntt, const Plaintext &plain_ntt) const;

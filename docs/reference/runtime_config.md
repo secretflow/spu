@@ -5,6 +5,7 @@
 
 
 - Messages
+    - [CheetahConfig](#cheetahconfig)
     - [CompilationSource](#compilationsource)
     - [CompilerOptions](#compileroptions)
     - [ExecutableProto](#executableproto)
@@ -17,6 +18,7 @@
 
 
 - Enums
+    - [CheetahOtKind](#cheetahotkind)
     - [DataType](#datatype)
     - [FieldType](#fieldtype)
     - [ProtocolKind](#protocolkind)
@@ -38,6 +40,19 @@
  <!-- end services -->
 
 ## Messages
+
+
+### CheetahConfig
+
+
+
+| Field | Type | Description |
+| ----- | ---- | ----------- |
+| disable_matmul_pack | [ bool](#bool) | disable the ciphertext packing for matmul |
+| enable_mul_lsb_error | [ bool](#bool) | allow least significant bits error for point-wise mul |
+| ot_kind | [ CheetahOtKind](#cheetahotkind) | Setup for cheetah ot |
+ <!-- end Fields -->
+ <!-- end HasFields -->
 
 
 ### CompilationSource
@@ -70,6 +85,7 @@
 | disable_select_optimization | [ bool](#bool) | Disable SelectOp optimization |
 | enable_optimize_denominator_with_broadcast | [ bool](#bool) | Enable optimize x/bcast(y) -> x * bcast(1/y) |
 | disable_deallocation_insertion | [ bool](#bool) | Disable deallocation insertion pass |
+| disable_partial_sort_optimization | [ bool](#bool) | Disable sort->topk rewrite when only partial sort is required |
  <!-- end Fields -->
  <!-- end HasFields -->
 
@@ -112,6 +128,7 @@ The SPU runtime configuration.
 | protocol | [ ProtocolKind](#protocolkind) | The protocol kind. |
 | field | [ FieldType](#fieldtype) | The field type. |
 | fxp_fraction_bits | [ int64](#int64) | Number of fraction bits of fixed-point number. 0(default) indicates implementation defined. |
+| max_concurrency | [ int32](#int32) | Max number of cores |
 | enable_action_trace | [ bool](#bool) | When enabled, runtime prints verbose info of the call stack, debug purpose only. |
 | enable_type_checker | [ bool](#bool) | When enabled, runtime checks runtime type infos against the compile-time ones, exceptions are raised if mismatches happen. Note: Runtime outputs prefer runtime type infos even when flag is on. |
 | enable_pphlo_trace | [ bool](#bool) | When enabled, runtime prints executed pphlo list, debug purpose only. |
@@ -132,6 +149,7 @@ The SPU runtime configuration.
 | sine_cosine_iters | [ int64](#int64) | Sine/Cosine approximation iterations |
 | beaver_type | [ RuntimeConfig.BeaverType](#runtimeconfigbeavertype) | beaver config, works for semi2k and spdz2k for now. |
 | ttp_beaver_config | [ TTPBeaverConfig](#ttpbeaverconfig) | TrustedThirdParty configs. |
+| cheetah_2pc_config | [ CheetahConfig](#cheetahconfig) | Cheetah 2PC configs. |
 | trunc_allow_msb_error | [ bool](#bool) | For protocol like SecureML, the most significant bit may have error with low probability, which lead to huge calculation error. |
 | experimental_disable_mmul_split | [ bool](#bool) | Experimental: DO NOT USE |
 | experimental_enable_inter_op_par | [ bool](#bool) | Inter op parallel, aka, DAG level parallel. |
@@ -196,6 +214,18 @@ The spu Value proto, used for spu value serialization.
  <!-- end messages -->
 
 ## Enums
+
+
+### CheetahOtKind
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| YACL_Ferret | 0 | none |
+| YACL_Softspoken | 1 | none |
+| EMP_Ferret | 2 | none |
+
+
 
 
 ### DataType
@@ -270,7 +300,7 @@ buffer, we have to let spu know which type the plaintext buffer is.
 | PT_U64 | 8 | uint64_t |
 | PT_I128 | 9 | int128_t |
 | PT_U128 | 10 | uint128_t |
-| PT_BOOL | 11 | bool |
+| PT_I1 | 11 | bool |
 | PT_F16 | 30 | half |
 | PT_F32 | 31 | float |
 | PT_F64 | 32 | double |
@@ -312,6 +342,7 @@ The logarithm approximation method.
 | LOG_DEFAULT | 0 | Implementation defined. |
 | LOG_PADE | 1 | The pade approximation. |
 | LOG_NEWTON | 2 | The newton approximation. |
+| LOG_MINMAX | 3 | The minmax approximation. |
 
 
 

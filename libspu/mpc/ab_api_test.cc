@@ -152,6 +152,37 @@ bool verifyCost(Kernel* kernel, std::string_view name, FieldType field,
 TEST_ARITHMETIC_BINARY_OP(add)
 TEST_ARITHMETIC_BINARY_OP(mul)
 
+TEST_P(ArithmeticTest, SquareA) {
+  const auto factory = std::get<0>(GetParam());
+  const RuntimeConfig& conf = std::get<1>(GetParam());
+  const size_t npc = std::get<2>(GetParam());
+
+  utils::simulate(npc, [&](const std::shared_ptr<yacl::link::Context>& lctx) {
+    auto obj = factory(conf, lctx);
+
+    if (!obj->prot()->hasKernel("square_a")) {
+      return;
+    }
+
+    /* GIVEN */
+    auto p0 = rand_p(obj.get(), kShape);
+    auto a0 = p2a(obj.get(), p0);
+
+    /* WHEN */
+    auto prev = obj->prot()->getState<Communicator>()->getStats();
+    auto tmp = square_a(obj.get(), a0);
+    auto cost = obj->prot()->getState<Communicator>()->getStats() - prev;
+
+    auto r_aa = a2p(obj.get(), tmp);
+    auto r_pp = square_p(obj.get(), p0);
+
+    /* THEN */
+    EXPECT_VALUE_EQ(r_aa, r_pp);
+    EXPECT_TRUE(verifyCost(obj->prot()->getKernel("square_a"), "square_a",
+                           conf.field(), kShape, npc, cost));
+  });
+}
+
 TEST_P(ArithmeticTest, MulA1B) {
   const auto factory = std::get<0>(GetParam());
   const RuntimeConfig& conf = std::get<1>(GetParam());
@@ -160,7 +191,6 @@ TEST_P(ArithmeticTest, MulA1B) {
   utils::simulate(npc, [&](const std::shared_ptr<yacl::link::Context>& lctx) {
     auto obj = factory(conf, lctx);
 
-    // MulA1B available for aby3 only for now.
     if (!obj->prot()->hasKernel("mul_a1b")) {
       return;
     }
@@ -192,6 +222,83 @@ TEST_P(ArithmeticTest, MulA1B) {
     /* THEN */
     EXPECT_VALUE_EQ(r_aa, r_pp);
     EXPECT_TRUE(verifyCost(obj->prot()->getKernel("mul_a1b"), "mul_a1b",
+                           conf.field(), kShape, npc, cost));
+  });
+}
+
+TEST_P(ArithmeticTest, MulAV) {
+  const auto factory = std::get<0>(GetParam());
+  const RuntimeConfig& conf = std::get<1>(GetParam());
+  const size_t npc = std::get<2>(GetParam());
+
+  utils::simulate(npc, [&](const std::shared_ptr<yacl::link::Context>& lctx) {
+    auto obj = factory(conf, lctx);
+
+    if (!obj->prot()->hasKernel("mul_av")) {
+      return;
+    }
+
+    const size_t K = spu::SizeOf(conf.field()) * 8;
+
+    /* GIVEN */
+    auto p0 = rand_p(obj.get(), kShape);
+    auto p1 = rand_p(obj.get(), kShape);
+    p1 = rshift_p(obj.get(), p1, K - 1);
+    auto a0 = p2a(obj.get(), p0);
+    auto a1 = p2v(obj.get(), p1, 0);
+
+    /* WHEN */
+    auto prev = obj->prot()->getState<Communicator>()->getStats();
+    auto tmp = mul_av(obj.get(), a0, a1).value();
+    auto cost = obj->prot()->getState<Communicator>()->getStats() - prev;
+
+    auto r_aa = a2p(obj.get(), tmp);
+    auto r_pp = mul_pp(obj.get(), p0, p1);
+
+    /* THEN */
+    EXPECT_VALUE_EQ(r_aa, r_pp);
+    EXPECT_TRUE(verifyCost(obj->prot()->getKernel("mul_av"), "mul_av",
+                           conf.field(), kShape, npc, cost));
+  });
+}
+
+TEST_P(ArithmeticTest, MulA1BV) {
+  const auto factory = std::get<0>(GetParam());
+  const RuntimeConfig& conf = std::get<1>(GetParam());
+  const size_t npc = std::get<2>(GetParam());
+
+  utils::simulate(npc, [&](const std::shared_ptr<yacl::link::Context>& lctx) {
+    auto obj = factory(conf, lctx);
+
+    // MulA1BV available for cheetah only for now.
+    if (!obj->prot()->hasKernel("mul_a1bv")) {
+      return;
+    }
+
+    const size_t K = spu::SizeOf(conf.field()) * 8;
+
+    /* GIVEN */
+    auto p0 = rand_p(obj.get(), kShape);
+    auto p1 = rand_p(obj.get(), kShape);
+    p1 = rshift_p(obj.get(), p1, K - 1);
+    auto a0 = p2a(obj.get(), p0);
+    auto a1 = p2v(obj.get(), p1, 0);
+    // hint runtime this is a 1bit value.
+    a1 = lshift_v(obj.get(), a1, K - 1);
+    a1 = rshift_v(obj.get(), a1, K - 1);
+    // auto a1 = b2v(obj.get(), _a1, 0);
+
+    /* WHEN */
+    auto prev = obj->prot()->getState<Communicator>()->getStats();
+    auto tmp = mul_a1bv(obj.get(), a0, a1).value();
+    auto cost = obj->prot()->getState<Communicator>()->getStats() - prev;
+
+    auto r_aa = a2p(obj.get(), tmp);
+    auto r_pp = mul_pp(obj.get(), p0, p1);
+
+    /* THEN */
+    EXPECT_VALUE_EQ(r_aa, r_pp);
+    EXPECT_TRUE(verifyCost(obj->prot()->getKernel("mul_a1bv"), "mul_a1bv",
                            conf.field(), kShape, npc, cost));
   });
 }
@@ -309,11 +416,11 @@ TEST_P(ArithmeticTest, MatMulAV) {
     auto tmp1 = mmul_sv(obj.get(), a0, v1);
     // mmul_sv -> b * v -> a * v
     auto tmp0 = mmul_sv(obj.get(), b0, v1);
+
     auto cost = obj->prot()->getState<Communicator>()->getStats() - prev;
 
     auto r0_aa = a2p(obj.get(), tmp0);
     auto r1_aa = a2p(obj.get(), tmp1);
-
     auto r_pp = mmul_pp(obj.get(), b2p(obj.get(), b0), p1);
 
     /* THEN */

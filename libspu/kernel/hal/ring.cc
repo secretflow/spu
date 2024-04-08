@@ -80,6 +80,7 @@ Value _cast_type(SPUContext* ctx, const Value& x, const Type& to) {
 
 IMPL_UNARY_OP(_not)
 IMPL_UNARY_OP(_msb)
+IMPL_UNARY_OP(_square)
 
 #undef IMPL_UNARY_OP
 

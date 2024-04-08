@@ -81,6 +81,9 @@ Value _mul_ss(SPUContext* ctx, const Value& x, const Value& y);
 Value _mul_vv(SPUContext* ctx, const Value& x, const Value& y);
 Value _mul_vp(SPUContext* ctx, const Value& x, const Value& y);
 Value _mul_sv(SPUContext* ctx, const Value& x, const Value& y);
+Value _square_p(SPUContext* ctx, const Value& x);
+Value _square_s(SPUContext* ctx, const Value& x);
+Value _square_v(SPUContext* ctx, const Value& x);
 
 Value _mmul_pp(SPUContext* ctx, const Value& x, const Value& y);
 Value _mmul_sp(SPUContext* ctx, const Value& x, const Value& y);

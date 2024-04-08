@@ -132,15 +132,15 @@ gentbl_cc_library(
 )
 
 gentbl_cc_library(
-    name = "ops_pattern_inc_gen",
+    name = "canonicalization_pattern_inc_gen",
     tbl_outs = [
         (
             ["-gen-rewriters"],
-            "patterns.cc.inc",
+            "canonicalization_patterns.cc.inc",
         ),
     ],
     tblgen = "@llvm-project//mlir:mlir-tblgen",
-    td_file = "patterns.td",
+    td_file = "canonicalization_patterns.td",
     deps = [
         ":dialect_td_files",
         "@llvm-project//mlir:FuncTdFiles",
@@ -158,9 +158,9 @@ spu_cc_library(
     deps = [
         ":attrs_inc_gen",
         ":base_enums_inc_gen",
+        ":canonicalization_pattern_inc_gen",
         ":interface",
         ":ops_inc_gen",
-        ":ops_pattern_inc_gen",
         ":types_inc_gen",
         "//libspu/core:prelude",
         "@llvm-project//mlir:FuncDialect",

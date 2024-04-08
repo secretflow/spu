@@ -121,6 +121,16 @@ class MulA1B : public BinaryKernel {
                   const NdArrayRef& bshr) const override;
 };
 
+class MulA1BV : public BinaryKernel {
+ public:
+  static constexpr char kBindName[] = "mul_a1bv";
+
+  Kind kind() const override { return Kind::Dynamic; }
+
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& ashr,
+                  const NdArrayRef& bshr) const override;
+};
+
 class MulAA : public BinaryKernel {
  private:
   NdArrayRef mulDirectly(KernelEvalContext* ctx, const NdArrayRef& lhs,
@@ -133,6 +143,29 @@ class MulAA : public BinaryKernel {
 
  public:
   static constexpr char kBindName[] = "mul_aa";
+
+  Kind kind() const override { return Kind::Dynamic; }
+
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& x,
+                  const NdArrayRef& y) const override;
+};
+
+class SquareA : public UnaryKernel {
+ public:
+  static constexpr char kBindName[] = "square_a";
+
+  Kind kind() const override { return Kind::Dynamic; }
+
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& x) const override;
+};
+
+class MulAV : public BinaryKernel {
+ private:
+  NdArrayRef mulDirectly(KernelEvalContext* ctx, const NdArrayRef& lhs,
+                         const NdArrayRef& rhs) const;
+
+ public:
+  static constexpr char kBindName[] = "mul_av";
 
   Kind kind() const override { return Kind::Dynamic; }
 

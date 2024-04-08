@@ -1,4 +1,4 @@
-// RUN: mlir-pphlo-opt --decompose-comparison --cse --split-input-file %s | FileCheck %s
+// RUN: pphlo-opt --decompose-comparison --cse --split-input-file %s | FileCheck %s
 
 func.func @main(%arg0: tensor<2x2xi32>, %arg1: tensor<2x2xi32>) -> (tensor<2x2xi1>) {
     // CHECK: %0 = pphlo.equal %arg0, %arg1 : (tensor<2x2xi32>, tensor<2x2xi32>) -> tensor<2x2xi1>
