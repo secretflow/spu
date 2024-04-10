@@ -136,8 +136,8 @@ spu_cc_binary(
         "//examples/data",
     ],
     deps = [
-        ":tree_builder",
         ":tree_build_worker",
+        ":tree_builder",
         "//libspu/device:io",
         "@com_google_absl//absl/strings",
         "@llvm-project//llvm:Support",
