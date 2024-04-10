@@ -1,0 +1,457 @@
+[33m572cbdd[m[33m ([m[1;36mHEAD -> [m[1;32mlzy-dev[m[33m, [m[1;31morigin/lzy-dev[m[33m)[m bug in chi2
+[33mab132e3[m update .vscode.json
+[33m202d107[m test
+[33m8961e7d[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m, [m[1;32mmain[m[33m)[m [FIX] #641 (#643)
+[33m34d7f30[m [BUG][CHEETAH] Fix the wrong branch on Cheetah::MulA1BV (#639)
+[33mfa80b60[m Repo sync (#638)
+[33m97962ef[m chore(deps): update github/codeql-action action to v3.24.10 (#635)
+[33m774a9bf[m Update psi (#633)
+[33me2b71f5[m Repo sync (#632)
+[33mfa84a1c[m Repo Sync (#631)
+[33m16d67e9[m chore(deps): update dependency pybind11 to v2.12.0 (#628)
+[33m93a0e95[m chore(deps): update dependency com_github_facebook_zstd to v1.5.6 (#627)
+[33m404c0e2[m chore(deps): update dependency platforms to v0.0.9 (#621)
+[33mc712bc5[m chore(deps): update github/codeql-action action to v3.24.9 (#623)
+[33mc421fa0[m chore(deps): update dependency rstcheck to v6.2.1 (#624)
+[33md1850ed[m [sml] optimize preprocessing by eliminating unnecessary where function (#622)
+[33m10bf15e[m Repo sync (#625)
+[33mbe4c6c4[m Update distributed.py (#620)
+[33m1077710[m Update distributed.py (#617)
+[33m5c8c051[m Repo sync (#618)
+[33m82a8bd6[m Repo sync (#616)
+[33m7c7f863[m Update distributed.py (#615)
+[33m232ae02[m Update renovate.json
+[33mdbf4452[m chore(deps): update github/codeql-action action to v3.24.8 (#614)
+[33m0182903[m Update benchmark-config.yml
+[33m666b58a[m Miscs (#611)
+[33me8fe5e2[m [sml] optimize preprocessing by eliminating unnecessary where function (#608)
+[33m60780e5[m Repo sync (#610)
+[33mb18b172[m chore(deps): update github/codeql-action action to v3.24.7 (#606)
+[33mce40a5d[m Fix all copyright headers (#607)
+[33m6671702[m Cleanup requirements (#605)
+[33m84d1829[m chore(deps): update actions/checkout action to v4.1.2 (#604)
+[33mcb2a619[m Fix linux arm test failures (#602)
+[33m4686c04[m [NFC] Reformat with clang-format 18 (#601)
+[33m3be032f[m Update benchmark CI ports (#597)
+[33me628118[m Fix macOS dev publish
+[33m52abf1a[m Fix dev publish
+[33mea701bc[m Update yacl (#598)
+[33md9447df[m Fix ci ml_test (#596)
+[33med9d159[m Tweak ci pipeline (#595)
+[33md3fe979[m Repo sync (#594)
+[33m9553904[m [docs]: update support gpu in wsl2 (#589)
+[33m3ccae52[m chore: add java_package option in spu.proto (#588)
+[33mcb69a32[m Repo sync (#586)
+[33mdd968fa[m Update yacl (#584)
+[33mf9f5768[m Update repositories.bzl
+[33mb574c45[m Update github/codeql-action action to v3.24.6 (#581)
+[33m0c1ad78[m [sml] add MinMaxScaler, MaxAbsScaler, KBinsDiscretizer in preprocessing (#575)
+[33m25efde3[m Update README.md (#580)
+[33mef338a9[m Repo sync (#579)
+[33me7eecee[m Fix msb_s crash when input is bshr (#578)
+[33md8a65d1[m Fix segv when creating libspu.Share (#577)
+[33m776cd3d[m Update github/codeql-action action to v3.24.5 (#574)
+[33mba2aade[m Repo sync (#572)
+[33meb69d17[m [docs] Update INSTALLATION and CONTRIBUTING (#568)
+[33m67e9ffa[m Update github/codeql-action action to v3.24.4 (#571)
+[33m249026e[m [sml] add kmeans++ and support executing with multiple initial centers in Kmeans (#546)
+[33m32fa04e[m Update CircleCI-Public/trigger-circleci-pipeline-action action to v1.2.0 (#567)
+[33md9c2224[m Support more sqrt->rsqrt rewrite (#566)
+[33me9d8933[m Fix type strip (#563)
+[33m88c5dff[m reformat python code (#561)
+[33ma2075ea[m Repo sync (#558)
+[33m9ced982[m Repo sync (#557)
+[33m1228061[m Update dependency com_github_nvidia_cutlass to v3.4.1 (#553)
+[33me3862a3[m Update github/codeql-action action to v3.24.3 (#551)
+[33m50177c4[m Update github/codeql-action action to v3.24.2 (#549)
+[33m6810361[m Update github/codeql-action action to v3.24.1 (#547)
+[33m3bdc5f1[m Fix intrinsic examples with jax > 0.4.16 (#543)
+[33m335aef3[m Update dependency linkify-it-py to v2.0.3 (#540)
+[33m96ce31b[m Update dependency sphinx-autobuild to v2024 (#539)
+[33m0988eec[m Update github/codeql-action action to v3.24.0 (#537)
+[33m11c35b8[m Remove py38 from setup.py (#533)
+[33mfa40755[m Update dev-release-config.yml
+[33m15b63f6[m Repo sync (#532)
+[33ma124700[m Update yacl to 0.4.3b0 (#529)
+[33m91a6718[m Update yacl digest to e3401da (#515)
+[33m9908b9b[m Update github/codeql-action action to v3.23.2 (#525)
+[33m9ba7fed[m Update psi digest to 9225bc9 (#523)
+[33me4d21ee[m Update dependency com_github_xtensor_xtensor to v0.25.0 (#524)
+[33m3f9eac8[m Update to bazel 6.5.0 (#522)
+[33m8681ae6[m Repo sync (#521)
+[33m42e6278[m Repo sync (#520)
+[33m8e99b4c[m Repo sync (#518)
+[33mcf4d69c[m Limit example tests to main branch only (#519)
+[33m3539601[m Add example CI test (#517)
+[33m5e9dcc3[m Update README.md (#516)
+[33m599304e[m Update psi digest to cee136c (#514)
+[33m258817e[m Update yacl digest to c1721d4 (#513)
+[33mfb2eba0[m Repo sync (#512)
+[33m893301f[m Update psi digest to 3116174 (#511)
+[33ma9d2a73[m Update config.yml (#510)
+[33m3563cc4[m Update yacl digest to ea6e1ea (#506)
+[33m273355e[m Repo sync (#508)
+[33m832398b[m Update github/codeql-action action to v3.23.1 (#505)
+[33mc56a269[m Update pybind11_bazel digest to 8889d39 (#504)
+[33mb9dd0d6[m Update yacl digest to 7a99fd6 (#502)
+[33m2fddb2b[m Add asan workflow (#501)
+[33m2943c50[m Update dependency com_github_nvidia_cutlass to v3.4.0 (#500)
+[33mc487561[m Update README.md (#499)
+[33mb2a9d53[m Update CONTRIBUTING.md (#498)
+[33m1f4a468[m [sml] add LabelBinarizer, Binarizer, Normalizer in jax (#470)
+[33m333a89b[m Update psi digest to 2f4bb01 (#485)
+[33m0773232[m Update yacl digest to 50d3e25 (#497)
+[33m813afbe[m Update github/codeql-action action to v3 (#496)
+[33mc5c75dc[m Update dependency sphinx to v7 (#495)
+[33mf86f38f[m Update dependency pytablewriter to v1 (#494)
+[33m2020811[m Update dependency myst-parser to v2 (#493)
+[33m1f61217[m Repo sync (#492)
+[33m43a9e3e[m Update actions/checkout action to v4 (#491)
+[33m3b452d1[m Update dependency bazel_skylib to v1.5.0 (#490)
+[33m4a4c5fa[m Repo sync (#489)
+[33mb8457a5[m Update ossf/scorecard-action action to v2.3.1 (#488)
+[33m6ae3695[m Update github/codeql-action action to v2.23.0 (#487)
+[33mebf9eda[m Update dependency sphinxcontrib-mermaid to v0.9.2 (#486)
+[33m4e2a44d[m Update yacl digest to 2d4adb4 (#477)
+[33mb7bbcde[m Update dependency com_github_nvidia_cutlass to v3.3.0 (#479)
+[33madd45dc[m Update dependency mdutils to v1.6.0 (#480)
+[33m33c175d[m Update dependency myst-parser to v0.19.2 (#481)
+[33m34cc4df[m Update dependency nbsphinx to v0.9.3 (#482)
+[33m03f64b5[m Update dependency rstcheck to v6.2.0 (#483)
+[33mffc6ba0[m Update dependency rules_proto_grpc to v4.6.0 (#484)
+[33mf93bf6e[m Update actions/checkout action to v3.6.0 (#478)
+[33me7645c8[m Update dependency linkify-it-py to v2.0.2 (#473)
+[33m2e4ce4c[m Update dependency platforms to v0.0.8 (#474)
+[33m6360c1a[m Update dependency com_intel_hexl to v1.2.5 (#472)
+[33mab2a46b[m Update dependency com_github_xtensor_xtl to v0.7.7 (#469)
+[33m0f9b813[m Update repositories.bzl
+[33ma5dfd56[m Update dependency com_github_xtensor_xtensor to v0.24.7 (#466)
+[33m11d79e8[m Update pybind11_bazel digest to 23926b0 (#465)
+[33m1cbacbc[m Configure Renovate (#464)
+[33maad42c2[m Delete
+[33m163c7bd[m Try bazel steward (#463)
+[33m207435d[m Disallow gRPC to reuse port (#461)
+[33m1055b7b[m Repo sync (#459)
+[33mc91f70e[m Update continue-config.yml
+[33m1a23b98[m Use http_archive for yacl and psi (#457)
+[33mb57214c[m Update continue-config.yml
+[33m82de1d4[m Use GCS for bazel cache (#456)
+[33mad28af9[m Increase timeout (#455)
+[33m3da7337[m Remove pip cache (#454)
+[33me15ee1d[m Remove py3.8 support for linux aarch64 (#453)
+[33mddfc6e1[m Remove py3.8 support for linux aarch64 (#452)
+[33m19632ce[m Repo sync (#451)
+[33m0b7a59d[m Update half.h (#449)
+[33m5843d46[m Update repositories.bzl (#448)
+[33m338ff3d[m Repo sync (#447)
+[33m76d2b8b[m Repo sync (#444)
+[33m654ef80[m Update 3pc.json (#442)
+[33m58c47de[m Fix the llama7b example (#440)
+[33m4d8aac3[m Update repositories.bzl
+[33mf362c45[m repo sync (#438)
+[33m9945ba7[m Update README.md (#436)
+[33m5701a8a[m Update dev-release-config.yml
+[33m5f8c069[m Update release-config.yml
+[33m39c93b0[m Repo sync (#435)
+[33m9f6d31b[m Add aarch64 publish (#434)
+[33m26f85f5[m Update yacl
+[33m0355f83[m Update continue-config.yml
+[33maba1501[m Add experimental Linux arm build (#420)
+[33m23f4632[m Add resnet50 inference feature based on transformers module. (#432)
+[33m9df1e68[m Repo sync (#431)
+[33m07de745[m Update INSTALLATION.md修改跳转链接 (#429)
+[33mebabfaa[m [Add] explained_variance_score/mean_squared_error/mean_poisson_deviance/mean_gamma_deviance/d2_tweedie_score (#425)
+[33m0883c15[m Port fix (#426)
+[33m15d2875[m Repo sync (#424)
+[33m8607a11[m Repo sync (#418)
+[33m7c03203[m Repo sync (#417)
+[33m5981fda[m Use SPU python package for benchmark CI (#416)
+[33m92bf791[m Unify badge style (#415)
+[33md25e7ba[m Add pyversion badge (#414)
+[33mb38e0f8[m Update README.md (#413)
+[33m5746ad0[m [Add] f1_score/precision_score/recall_score/accuracy_score (#405)
+[33mc8b7283[m Add top-level permissions to workflow (#409)
+[33m39699ce[m Update README.md
+[33m067ac6c[m Create scorecard.yml
+[33m18c3b37[m Repo sync (#408)
+[33me0d6144[m Fix the tutorial of llama to support specify paths (#406)
+[33m61e10e3[m Repo sync (#399)
+[33mb0674fd[m Update continue-config.yml
+[33md486b18[m Update continue-config.yml
+[33m2cda3f1[m Update version.py
+[33m2931fab[m Update CHANGELOG.md
+[33m22080a4[m Remove patch (#392)
+[33m5f92887[m Repo sync (#391)
+[33ma6e0caa[m Repo sync (#390)
+[33m9f60e68[m Flax llama7b split (#355)
+[33m4ab16e2[m Add logistic regression multi classification ovr (#368)
+[33m77e90e2[m fix yacl_ferret build fail (#378)
+[33m759fb6e[m Repo sync (#377)
+[33md386d3f[m add sml/svm (#362)
+[33m04328c0[m gpc-fix (#375)
+[33m76cc9da[m gaussian (#327)
+[33m7e51ddb[m [add] GTree based Decision Tree (#367)
+[33m85b9387[m Fix macOS build (#372)
+[33m63a486a[m Repo sync (#371)
+[33m6228366[m Repo sync (#366)
+[33m815c15e[m 使用 SPU 逻辑回归算法功能性增强[add L1 & elasticnet penalty] (#363)
+[33m79615b7[m Update dev-release-config.yml
+[33meede870[m Update release-config.yml
+[33m6b9f65b[m Update continue-config.yml
+[33m9a248db[m Repo sync (#361)
+[33ma42c261[m Fix securenn build (#360)
+[33m98c3303[m [NFC] fix format (#359)
+[33m37b4320[m add SECURUTY.md (#358)
+[33m9df098c[m securenn (#281)
+[33m0e1cc5f[m Repo sync (#357)
+[33m56c9414[m Rename feture.yml to feture_request.yml
+[33m8ab3331[m Update issue template
+[33m783ff68[m Update
+[33mfcf505e[m Update
+[33mca4b48a[m Update
+[33m5bfb44d[m Update
+[33m9cf5ce6[m Update
+[33md2fea5a[m Update
+[33me794aac[m Update
+[33m61174e5[m Update
+[33mc6cf4d5[m Update template
+[33m863348f[m Update feature template
+[33mb4b9893[m Issue templates
+[33mbeb3456[m Update issue templates
+[33me440ac5[m Update config.yml
+[33md338b05[m Rename spu_issue_template.yaml to config.yml
+[33m1e8ed88[m fix glm (#353)
+[33m76d9589[m optimize PtBufferView convertToNdArray (#351)
+[33m977e932[m Resolve format issue (#352)
+[33m7b62f3a[m Merge branch 'main' of https://github.com/secretflow/spu
+[33m9d8a273[m Merge branch 'fgj-main'
+[33mb1e1e19[m revert
+[33m16ed161[m Repo sync (#350)
+[33m41afe6a[m Merge branch 'main' of https://github.com/FanGuojie/fgj_spu into fgj-main
+[33m0af5b1f[m Update benchmark.yml (#346)
+[33m8fc5891[m Update benchmark-config.yml
+[33maaaa19c[m Update benchmark-config.yml
+[33m39da4c5[m Update benchmark-config.yml
+[33mc3c4049[m Update CHANGELOG.md
+[33m06aa2bb[m update puma (#340)
+[33m71bf437[m linear-ridge-svd test (#320)
+[33m6847bf9[m Fix real and imag (#339)
+[33m6050107[m [sml] add Gaussian naive bayes in jax (#330)
+[33m3fbd359[m Repo sync (#338)
+[33m24373cc[m Enforce line ending on more files (#336)
+[33me2e025b[m add: perceptron in jax (#314)
+[33mf3ae6c6[m [add] Add nmf in jax (#321)
+[33m68826c3[m [add] Add knn in jax (#302)
+[33m7205e96[m remove redundant pca test (#333)
+[33m187b563[m Repo sync (#331)
+[33m0882b3a[m Repo sync (#329)
+[33mcac1c0b[m Update config.yml
+[33m9cd51e6[m Repo sync (#328)
+[33ma62c779[m Repo Sync (#326)
+[33m294b897[m Fix compilation cache with weakref object (#324)
+[33m72b8cd5[m Fix weekly benchmark (#319)
+[33mca28cc8[m Update cla.yml
+[33mf221118[m Use share workflows (#317)
+[33m7eed828[m Try reusable workflow (#316)
+[33m56e2d8f[m Add never stale tag (#315)
+[33mbd1dfae[m Remove parameter
+[33m07b5031[m Fix dev_publish issues (#313)
+[33ma0feb32[m Repo Sync (#312)
+[33mf726019[m [Add Randomized SVD in PCA] (#300)
+[33m9857c82[m [linear-ridge-cholesky]使用 SPU 实现线性回归模型 (#297)
+[33m25ae05e[m Update ci to match latest version schema
+[33mbb5cb11[m Repo Sync (#299)
+[33m702512f[m Create extmath.py (#294)
+[33m7244e6a[m Create pull_request_template.md (#295)
+[33m7967831[m update sml
+[33m9da62ee[m âupdate glm
+[33m3e2e1e0[m æupdate glmâ
+[33mb28e086[m Tweak linter trigger (#293)
+[33m91555db[m Repo Sync (#292)
+[33m45ca078[m Add yaml linter (#291)
+[33m6046e17[m Add bazel linter (#290)
+[33m75dcd87[m Remove test-pypi workflow (#289)
+[33m135414a[m Replace c++ linter with github action (#288)
+[33m366e954[m Add python linter (#287)
+[33mc1a5f3e[m Repo sync (#282)
+[33mfbe8002[m Tweak ci (#283)
+[33m28b6f56[m Tweak ci
+[33md1d2160[m Fix #jobs flag
+[33m068812e[m Limit # jobs
+[33mc161419[m rm gtest
+[33m1ec8559[m update data
+[33m8595ee0[m åupdate unitest
+[33m53c7562[m 更新emul的数据
+[33m273702d[m 更新unitest,n_threads取消，power值限制在0~3
+[33m9a5311d[m æ更改example/data回之前的版本
+[33m5ca4f8a[m 添加glm
+[33maa326c8[m add sml/kmeans (#277)
+[33m7f7d7a3[m [Fix Jax LR]Mark data to be protected in SPU (#271)
+[33m4b82194[m Repo sync (#276)
+[33m4945683[m Update
+[33m7d75d80[m Fix workflow
+[33m77ca1c0[m Add workflow
+[33mb6aa581[m Update config.yml
+[33mc14a9e7[m Create test-pypi.yml
+[33mab3bbea[m Update config.yml
+[33m756eb9b[m Fix macOS ut pipeline
+[33me53e787[m Repo sync (#268)
+[33m1926938[m add Puma paper links (#267)
+[33m8183f81[m [sml] add LR in jax (#246)
+[33m186c838[m Repo sync (#244)
+[33md5f1768[m docs: add plot legend for SPU inside (#236)
+[33mce318f0[m [sml] add PCA in jax (#240)
+[33ma4e7344[m Repo sync (#234)
+[33m420dfd7[m ecdh psi avoid blocking in MaskPeer (#233)
+[33m38c5d3f[m Update release-config.yml
+[33mea2da71[m Update config.yml
+[33m6d894c2[m [CI] Auto trigger workflow on release publish (#232)
+[33md55bb93[m Add changelog (#231)
+[33m0004ce6[m Repo sync (#230)
+[33m381b8dc[m Limit jax version (#229)
+[33m160172e[m [NFC] Simplify dockerhub url (#223)
+[33m9fd7078[m Repo sync (#221)
+[33m7f35922[m All docker images now use latest tag (#220)
+[33m241e709[m Add linter (#219)
+[33mab6d891[m Update changelog (#218)
+[33m1b336de[m Repo sync (#217)
+[33ma25fb5d[m Repo sync (#216)
+[33md9e7fce[m Repo sync (#214)
+[33m3d9e871[m Update CI (#215)
+[33mb56ae0f[m Repo sync (#210)
+[33mbbd4819[m Repo sync (#206)
+[33md48f0d9[m Repo sync (#203)
+[33m7dcab95[m Add mem psi example (#199)
+[33m6c8fe59[m Fix M1 build (#198)
+[33ma6eace1[m Repo sync (#197)
+[33mf7a0fc1[m Fix release ci (#194)
+[33m1a68966[m Fix possible compilation cache collision (#193)
+[33m8100491[m Repo sync (#185)
+[33m624ba40[m Dynamic workflow (#181)
+[33md1cb43f[m Only run macOS ut on main branch (#179)
+[33m4126fd8[m Update long description type (#178)
+[33m16c871c[m Update release macOS executor (#177)
+[33m3df6041[m Create stale.yml (#176)
+[33m9f26761[m Update yacl (#174)
+[33m6dea67f[m Add more classifiers (#173)
+[33m69724b4[m Enable build for python 3.8-3.11 (#172)
+[33maa945d8[m Add a basic gitattributes file (#171)
+[33m23b42b4[m Update to bazel 5.4.1 (#169)
+[33m09d19ad[m Sync apsi build fix (#168)
+[33mee29d09[m Repo sync (#165)
+[33m36f25ba[m Fix stax_nn example (#157)
+[33m8feb9d0[m Fix typo (#154)
+[33ma4dcb98[m Add issue template (#153)
+[33m401a5a1[m Repo sync (#152)
+[33m2b29087[m Repo sync (#149)
+[33mf84c843[m Repo sync (#145)
+[33mf57abb6[m Fix csv join symbol (#144)
+[33m858f29d[m Add connect_retry_times back (#143)
+[33m87f1217[m Fix typo (#142)
+[33mad9d3b3[m Fix publish (#139)
+[33m3a9af2a[m fix linux publish (#138)
+[33mcdab095[m Fix apple silicon publish (#137)
+[33m5f14fe8[m Fix build issues (#136)
+[33m40404b6[m Repo sync (#135)
+[33m83ef4b2[m Update eigen (#134)
+[33mb3d27d1[m Fix build_and_package (#129)
+[33m8c0a992[m Temporary fix ci failure. (#127)
+[33m94931ce[m update release ci image (#126)
+[33m38eb2a7[m Improve cache saving on failure (#124)
+[33m5e47b4a[m Always save cache (#123)
+[33m657d74a[m Fix missing file (#122)
+[33mbae47e8[m Update docker to 0.4 (#121)
+[33m7f67dc1[m Repo sync (#120)
+[33mc7ec231[m Improve ci build cache (#119)
+[33m1e2bc62[m Repo sync (#118)
+[33m5193f73[m Repo sync (#114)
+[33m270f6e9[m Fix m1 ci (#113)
+[33mb0fe367[m Fix docs typo (#112)
+[33mce8fe74[m Fix CI (#110)
+[33maf6dd9e[m Switch macOS ci to M1, add macOS arm64 publish (#108)
+[33m2d3b5cc[m repo-sync-2023-03-03T11:30:58+0800 (#107)
+[33mc5e761e[m Update ci (#103)
+[33m2507286[m Update release stage (#102)
+[33m462c836[m Repo sync (#101)
+[33m76d11ab[m Add stage trigger (#98)
+[33m684c754[m Add CI stage for SPU benchmarking (#96)
+[33m0d9c7fa[m Add .circleci/config.yml (#89)
+[33m03e5377[m Fix macOS build (#91)
+[33m694eb34[m Repo sync (#88)
+[33m0e3044a[m Switch docker iamge
+[33ma9173bb[m repo-sync-2023-02-10T15:28:25+0800 (#83)
+[33ma033afe[m Repo sync (#81)
+[33m6f8cf6e[m Fix README preview issue on GitHub (#78)
+[33mce73504[m Sync repo (#77)
+[33m56451b1[m Add a ci timeout (#73)
+[33mcbc5bf7[m repo-sync-2023-01-11T23:25:48+0800 (#72)
+[33md6d3b82[m Initial sync 0.3.2b0 (#71)
+[33m31d03d2[m Fix build (#70)
+[33m30199b6[m Update repositories.bzl (#69)
+[33mc1bdab5[m Add .circleci/config.yml (#68)
+[33mab908a3[m repo-sync-2023-01-09T12:22:48+0800 (#67)
+[33m6caf646[m repo-sync-2023-01-06T16:28:33+0800 (#66)
+[33m4280454[m repo-sync-2023-01-04T20:02:17+0800 (#65)
+[33m2b095d4[m Sync repo (#64)
+[33m4549c72[m Repo sync (#63)
+[33me1b1881[m repo-sync-2022-12-29T10:34:43+0800 (#61)
+[33m9835e08[m Sync repo (#60)
+[33mb0f45bb[m More ci improvements (#59)
+[33m0200e98[m Add .circleci/config.yml (#57)
+[33m4e07b95[m Fix build. (#56)
+[33md29617c[m repo-sync-2022-12-23T10:10:24+0800 (#55)
+[33m1ce949c[m Various CI improvements (#54)
+[33m9e4f63a[m Add kmeans to ml examples (#53)
+[33mbe3059d[m Fix merge (#51)
+[33mb40e77a[m repo-sync-2022-12-16T20:41:26+0800 (#50)
+[33m42cb1a7[m repo-sync-2022-12-16T18:42:49+0800 (#49)
+[33m9d282f0[m Weekly sync (#48)
+[33m30318c3[m repo-sync-2022-12-09T16:29:59+0800 (#47)
+[33m88309ca[m Add Linux-ut bazel cache (#44)
+[33mf5c78de[m Weekly sync (#43)
+[33m0d47bb8[m add macos publish and test in circleci config (#42)
+[33m74f0fb7[m Update trigger-circleci.yml
+[33me3d8c82[m Update trigger-circleci.yml
+[33md9231af[m Update trigger-circleci.yml
+[33mda0c055[m Update trigger-circleci.yml
+[33m7bb9460[m Rename trigger-circleci to trigger-circleci.yml
+[33ma7e025c[m Update trigger-circleci
+[33m880ee83[m Create trigger-circleci
+[33ma2487c8[m add circleci config for testpypi publish (#41)
+[33m3f25ad4[m Weekly Sync (#40)
+[33m58b4f30[m Add libomp to macOS requirements. (#39)
+[33m80a383c[m Sync 0.3.1b0 (#37)
+[33m2403d38[m Update docker image to latest (#36)
+[33m5d74265[m Align platform tag with Secretflow (#35)
+[33m436ccec[m Fix openmp path... (#34)
+[33mc0f6fae[m SPU-0.3.0 version (#33)
+[33m6b6618f[m Sync SPU update (#32)
+[33m626402d[m Document IR: Intermediate Representation (#29)
+[33m790532b[m Update ci badge url (#30)
+[33m94f437c[m Fix: the main branch is `beta` (#27)
+[33m1c73e7a[m Default off mock dataset for ss_lr (#24)
+[33m2ed1cc5[m Fix package dependencies (#21)
+[33m49ff381[m Update package version
+[33m1ad72d7[m SPU 0.2.x (#20)
+[33me3c3f67[m Updated config.yml
+[33m0aa3404[m Updated config.yml
+[33ma0fa436[m add circleci status badge (#15)
+[33m1253932[m add cla action (#14)
+[33m6355b78[m Circleci project setup (#13)
+[33mf99b394[m Fix some issues on Apple Silicon machines (#12)
+[33m8328a89[m Bump release tag to 0.1.0b1 (#10)
+[33me908249[m Add a centos 7 based release docker image. (#9)
+[33m4a73f4f[m [Doc] update install instruction (#8)
+[33md854d5a[m Fix x64 platform tag (#7)
+[33m7712d73[m Support Apple Silicon (#4)
+[33m96ee4ff[m Merge pull request #6 from 6fj/beta
+[33mc5a1586[m [NFC] fix some doc typos
+[33m288fdbe[m Merge pull request #5 from 6fj/beta
+[33m7029ee0[m fix py_wheel
+[33m827e832[m Merge pull request #3 from secretflow/xc/fixes
+[33me27f759[m * Update yasl. * Fix some small issues.
+[33maa9da83[m add .readthedocs.yaml
+[33m289b59c[m Merge pull request #2 from secretflow/xc/update_tf
+[33m38888f8[m Update tf to 2.8.2
+[33m2d4daba[m spu v0.1.0-beta version (#1)
+[33m915cf89[m Initial commit
