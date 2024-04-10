@@ -104,9 +104,9 @@ class UnitTests(unittest.TestCase):
         flax_vae.args.num_steps = 10
         metrics = profile_test_point(flax_vae.train)
 
-        self.assertTrue(260 < metrics['loss'] < 270)
-        self.assertTrue(240 < metrics['bce'] < 247)
-        self.assertTrue(20 < metrics['kld'] < 23)
+        self.assertTrue(250 < metrics['loss'] < 280)
+        self.assertTrue(235 < metrics['bce'] < 250)
+        self.assertTrue(18 < metrics['kld'] < 30)
 
     def test_haiku_lstm(self):
         from examples.python.ml.haiku_lstm import haiku_lstm

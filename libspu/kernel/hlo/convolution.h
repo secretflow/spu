@@ -23,8 +23,6 @@ class SPUContext;
 namespace spu::kernel::hlo {
 
 struct ConvolutionConfig {
-  int64_t featureGroupCount;
-  int64_t batchGroupCount;
   Strides window_strides;
   int64_t inputBatchDimension;
   int64_t inputFeatureDimension;

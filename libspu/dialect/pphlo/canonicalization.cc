@@ -357,7 +357,7 @@ class NormalizeDimensionOrder : public OpRewritePattern<ConvolutionOp> {
         op->getLoc(), new_conv_type, new_input, new_kernel,
         DenseI64ArrayAttr::get(op->getContext(),
                                op.getWindowStrides().value_or(std::nullopt)),
-        new_dnums, op.getFeatureGroupCount(), op.getBatchGroupCount());
+        new_dnums);
 
     // Reshape the output back to the shape of the original convolution.
     rewriter.replaceOpWithNewOp<TransposeOp>(

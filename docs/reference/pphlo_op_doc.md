@@ -529,8 +529,6 @@ Effects: `MemoryEffects::Effect{}`
 <tr><th>Attribute</th><th>MLIR Type</th><th>Description</th></tr>
 <tr><td><code>window_strides</code></td><td>::mlir::DenseI64ArrayAttr</td><td>i64 dense array attribute</td></tr>
 <tr><td><code>dimension_numbers</code></td><td>::mlir::spu::pphlo::ConvDimensionNumbersAttr</td><td>Structure of dimension information for conv op</td></tr>
-<tr><td><code>feature_group_count</code></td><td>::mlir::IntegerAttr</td><td>64-bit signless integer attribute</td></tr>
-<tr><td><code>batch_group_count</code></td><td>::mlir::IntegerAttr</td><td>64-bit signless integer attribute</td></tr>
 </table>
 
 #### Operands:

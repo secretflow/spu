@@ -1528,6 +1528,22 @@ JAX NumPy Document link: https://jax.readthedocs.io/en/latest/_autosummary/jax.n
 Please check *Supported Dtypes* as well.
 ### Supported Dtypes
 
+- bool_
+- float32
+- int16
+- int32
+- uint16
+- uint32
+
+## square
+
+JAX NumPy Document link: https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.square.html
+### Status
+
+**PASS**
+Please check *Supported Dtypes* as well.
+### Supported Dtypes
+
 - float32
 - int16
 - int32
