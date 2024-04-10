@@ -1086,6 +1086,8 @@ public:
         old_attr.getOutputFeatureDimension(),
         old_attr.getOutputSpatialDimensions());
 
+    SPU_ENFORCE(op.getFeatureGroupCount() == 1 && op.getBatchGroupCount() == 1);
+
     Type result_type = convertResultType(op.getResult());
 
     auto operands = materializeInputs(op, adaptor.getOperands());
@@ -1123,12 +1125,10 @@ public:
     if (op.getWindowStrides().has_value()) {
       rewriter.replaceOpWithNewOp<pphlo::ConvolutionOp>(
           op, result_type, lhs, rhs,
-          DenseI64ArrayAttr::get(getContext(), *op.getWindowStrides()), attr,
-          op.getFeatureGroupCount(), op.getBatchGroupCount());
+          DenseI64ArrayAttr::get(getContext(), *op.getWindowStrides()), attr);
     } else {
-      rewriter.replaceOpWithNewOp<pphlo::ConvolutionOp>(
-          op, result_type, lhs, rhs, nullptr, attr, op.getFeatureGroupCount(),
-          op.getBatchGroupCount());
+      rewriter.replaceOpWithNewOp<pphlo::ConvolutionOp>(op, result_type, lhs,
+                                                        rhs, nullptr, attr);
     }
 
     return success();

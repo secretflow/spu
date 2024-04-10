@@ -113,7 +113,7 @@ void runHloPasses(xla::HloModule *module) {
   };
   pipeline.AddPass<ConvolutionGroupConverter>(
       /*should_expand=*/[](HloInstruction *) { return true; }, cost_model,
-      /*convert_batch_groups_only=*/true);
+      /*convert_batch_groups_only=*/false);
   pipeline.AddPass<BatchNormExpander>(
       /*rewrite_training_op=*/true,
       /*rewrite_inference_op=*/true,

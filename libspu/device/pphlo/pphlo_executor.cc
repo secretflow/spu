@@ -415,8 +415,6 @@ void execute(OpExecutor *, SPUContext *sctx, SymbolScope *sscope,
       if (op.getWindowStrides().has_value()) {
         window_strides[1] = (*op.getWindowStrides())[0];
       }
-      config.featureGroupCount = op.getFeatureGroupCount();
-      config.batchGroupCount = op.getBatchGroupCount();
       config.window_strides = window_strides;
       config.inputBatchDimension = dnums.getInputBatchDimension();
       config.inputFeatureDimension = dnums.getInputFeatureDimension() + 1;
@@ -448,8 +446,6 @@ void execute(OpExecutor *, SPUContext *sctx, SymbolScope *sscope,
       if (op.getWindowStrides().has_value()) {
         window_strides = *op.getWindowStrides();
       }
-      config.featureGroupCount = op.getFeatureGroupCount();
-      config.batchGroupCount = op.getBatchGroupCount();
       config.window_strides = window_strides;
       config.inputBatchDimension = dnums.getInputBatchDimension();
       config.inputFeatureDimension = dnums.getInputFeatureDimension();

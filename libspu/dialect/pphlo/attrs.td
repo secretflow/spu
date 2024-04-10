@@ -43,9 +43,7 @@ def ConvolutionAttributes {
   dag attributes = (ins
     // Default value: one for each of the spatial dimension.
     OptionalAttr<DenseI64ArrayAttr>:$window_strides,
-    ConvDimensionNumbers:$dimension_numbers,
-    I64Attr:$feature_group_count,
-    I64Attr:$batch_group_count
+    ConvDimensionNumbers:$dimension_numbers
   );
 }
 
