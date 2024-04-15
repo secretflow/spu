@@ -63,6 +63,8 @@ void Core::buildPipeline(mlir::PassManager *pm) {
     optPM.addPass(mlir::spu::pphlo::createOptimizeSqrtPlusEps());
   }
 
+  optPM.addPass(mlir::spu::pphlo::createExpandSecretGatherPass());
+
   if (!options.disable_div_sqrt_rewrite()) {
     optPM.addPass(mlir::spu::pphlo::createRewriteDivSqrtPatterns());
   }

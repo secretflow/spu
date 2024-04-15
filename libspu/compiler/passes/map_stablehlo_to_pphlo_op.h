@@ -99,6 +99,7 @@ MAP_HLO_TO_PPHLO(ImagOp)
 MAP_HLO_TO_PPHLO(ComplexOp)
 
 MAP_HLO_TO_PPHLO_DIFF_NAME(BroadcastInDimOp, BroadcastOp)
+MAP_HLO_TO_PPHLO_DIFF_NAME(GatherOp, CustomCallOp)
 
 #undef MAP_HLO_TO_PPHLO
 

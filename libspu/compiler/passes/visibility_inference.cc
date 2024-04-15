@@ -337,6 +337,14 @@ void VisibilityInference::inferOperation(Operation &op) {
   } else if (llvm::isa<mlir::func::ReturnOp>(op) ||
              llvm::isa<stablehlo::ReturnOp>(op)) {
     // Do nothing
+  } else if (llvm::isa<stablehlo::GatherOp>(op)) {
+    // For gather op, if either operand or indices is a secret, result is a
+    // secret
+    auto operand_vis = value_vis_.getValueVisibility(op.getOperand(0));
+    auto indices_vis = value_vis_.getValueVisibility(op.getOperand(1));
+    value_vis_.setValueVisibility(
+        op.getResult(0),
+        tools_.computeCommonVisibility({operand_vis, indices_vis}));
   } else {
     std::string dump;
     llvm::raw_string_ostream debug_s(dump);
