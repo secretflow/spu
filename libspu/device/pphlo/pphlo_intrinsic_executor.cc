@@ -20,6 +20,7 @@
 #include "libspu/kernel/hal/fxp_approx.h"
 #include "libspu/kernel/hlo/casting.h"
 #include "libspu/kernel/hlo/const.h"
+#include "libspu/kernel/hlo/indexing.h"
 #include "libspu/kernel/hlo/rank.h"
 
 namespace spu::device::pphlo {
@@ -83,6 +84,34 @@ std::vector<Value> intrinsic_dispatcher(SPUContext* ctx,
     }
 
     return kernel::hlo::TopK(ctx, inputs[0], k, -1, largest, value_only);
+  }
+
+  if (name == "pphlo.gather") {
+    kernel::hlo::GatherConfig config;
+    const auto& output_shape = call.getResults()[0]
+                                   .getType()
+                                   .dyn_cast<mlir::RankedTensorType>()
+                                   .getShape();
+    auto attr =
+        call->getAttr("pphlo.attributes").dyn_cast<mlir::DictionaryAttr>();
+
+    config.sliceSizes = attr.get("slice_sizes")
+                            .dyn_cast<mlir::DenseI64ArrayAttr>()
+                            .asArrayRef();
+    config.indexVectorDim =
+        attr.get("index_vector_dim").dyn_cast<mlir::IntegerAttr>().getInt();
+    config.offsetDims = attr.get("offset_dims")
+                            .dyn_cast<mlir::DenseI64ArrayAttr>()
+                            .asArrayRef();
+    config.collapsedSliceDims = attr.get("collapsed_slice_dims")
+                                    .dyn_cast<mlir::DenseI64ArrayAttr>()
+                                    .asArrayRef();
+    config.startIndexMap = attr.get("start_index_map")
+                               .dyn_cast<mlir::DenseI64ArrayAttr>()
+                               .asArrayRef();
+
+    return {
+        kernel::hlo::Gather(ctx, inputs[0], inputs[1], config, output_shape)};
   }
 
   SPU_THROW("Unhandled intrinsic call {}", name.str());

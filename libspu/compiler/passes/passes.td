@@ -87,6 +87,12 @@ def OptimizeDenominatorWithBcast: Pass<"optimize-denominator-with-broadcast", "f
   let dependentDialects = ["pphlo::PPHloDialect"];
 }
 
+def ExpandSecretGather: Pass<"expand-secret-gather", "func::FuncOp"> {
+  let summary = "Rewrite Gather with secret indexing to loop with DynamicUpdateSlice";
+  let constructor = "createExpandSecretGatherPass()";
+  let dependentDialects = ["pphlo::PPHloDialect"];
+}
+
 def InsertDeallocation: Pass<"insert-deallocation", "func::FuncOp"> {
   let summary = "Insert deallocation ops";
   let constructor = "createInsertDeallocationOp()";

@@ -86,6 +86,18 @@ spu_cc_library(
 )
 
 spu_cc_library(
+    name = "expand_secret_gather",
+    srcs = ["expand_secret_gather.cc"],
+    hdrs = ["passes.h"],
+    deps = [
+        ":pass_details",
+        "//libspu/dialect/pphlo:dialect",
+        "@llvm-project//mlir:IR",
+        "@llvm-project//mlir:TransformUtils",
+    ],
+)
+
+spu_cc_library(
     name = "hlo_legalize_to_pphlo",
     srcs = ["hlo_legalize_to_pphlo.cc"],
     hdrs = ["passes.h"],
@@ -276,6 +288,7 @@ spu_cc_library(
         ":convert_push_down",
         ":decompose_comparison",
         ":decompose_minmax",
+        ":expand_secret_gather",
         ":hlo_legalize_to_pphlo",
         ":insert_deallocation",
         ":lower_conversion_cast",

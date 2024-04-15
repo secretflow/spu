@@ -1216,6 +1216,52 @@ public:
 };
 
 template <>
+class HloToPPHloOpConverter<stablehlo::GatherOp>
+    : public OpConversionPattern<stablehlo::GatherOp>, BasePPHloOpConverter {
+
+public:
+  HloToPPHloOpConverter(TypeConverter &type_converter, MLIRContext *context,
+                        const ValueVisibilityMap &vis)
+      : OpConversionPattern<stablehlo::GatherOp>(type_converter, context),
+        BasePPHloOpConverter(context, vis, type_converter) {}
+
+  LogicalResult
+  matchAndRewrite(stablehlo::GatherOp op, stablehlo::GatherOpAdaptor adaptor,
+                  ConversionPatternRewriter &rewriter) const override {
+    auto old_attr = op.getDimensionNumbers();
+    auto result_vis = vis_.getValueVisibility(op.getResult());
+    Type resultType = typetools_.getType(
+        this->getTypeConverter()->convertType(op.getType()), result_vis);
+    auto materialized_operands = materializeInputs(op, adaptor.getOperands());
+
+    auto call = rewriter.create<pphlo::CustomCallOp>(
+        op->getLoc(), resultType, materialized_operands, "pphlo.gather");
+    auto attr = DictionaryAttr::get(
+        op->getContext(),
+        {NamedAttribute(
+             rewriter.getStringAttr("slice_sizes"),
+             DenseI64ArrayAttr::get(op->getContext(), op.getSliceSizes())),
+         NamedAttribute(rewriter.getStringAttr("offset_dims"),
+                        DenseI64ArrayAttr::get(op->getContext(),
+                                               old_attr.getOffsetDims())),
+         NamedAttribute(
+             rewriter.getStringAttr("collapsed_slice_dims"),
+             DenseI64ArrayAttr::get(op->getContext(),
+                                    old_attr.getCollapsedSliceDims())),
+         NamedAttribute(
+             rewriter.getStringAttr("index_vector_dim"),
+             rewriter.getI64IntegerAttr(old_attr.getIndexVectorDim())),
+         NamedAttribute(rewriter.getStringAttr("start_index_map"),
+                        DenseI64ArrayAttr::get(op->getContext(),
+                                               old_attr.getStartIndexMap()))});
+    call->setAttr("pphlo.attributes", attr);
+    rewriter.replaceOp(op, call);
+
+    return success();
+  }
+};
+
+template <>
 class HloToPPHloOpConverter<stablehlo::DynamicUpdateSliceOp>
     : public OpConversionPattern<stablehlo::DynamicUpdateSliceOp>,
       BasePPHloOpConverter {
@@ -1308,6 +1354,7 @@ private:
                     HloToPPHloOpConverter<stablehlo::ExpOp>,
                     HloToPPHloOpConverter<stablehlo::Expm1Op>,
                     HloToPPHloOpConverter<stablehlo::FloorOp>,
+                    HloToPPHloOpConverter<stablehlo::GatherOp>,
                     HloToPPHloOpConverter<stablehlo::IfOp>,
                     HloToPPHloOpConverter<stablehlo::ImagOp>,
                     HloToPPHloOpConverter<stablehlo::IotaOp>,

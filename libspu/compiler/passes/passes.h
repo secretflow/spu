@@ -70,6 +70,8 @@ std::unique_ptr<OperationPass<func::FuncOp>> createInsertDeallocationOp();
 
 std::unique_ptr<OperationPass<func::FuncOp>> createSortLowering();
 
+std::unique_ptr<OperationPass<func::FuncOp>> createExpandSecretGatherPass();
+
 std::unique_ptr<OperationPass<func::FuncOp>> createConvertPushDownPass();
 
 std::unique_ptr<OperationPass<func::FuncOp>> createPartialSortToTopK();

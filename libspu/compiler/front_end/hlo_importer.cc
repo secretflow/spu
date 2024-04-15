@@ -127,7 +127,7 @@ void runHloPasses(xla::HloModule *module) {
         /*allow_mixed_precision=*/false);
 
     pipeline.AddPass<GatherSimplifier>();
-    pipeline.AddPass<GatherExpander>(GatherExpander::kEliminateAllGathers);
+    pipeline.AddPass<GatherExpander>(GatherExpander::kEliminateSimpleGathers);
     pipeline.AddPass<ScatterExpander>(ScatterExpander::kEliminateAllScatters);
     pipeline.AddPass<AlgebraicSimplifier>(options);
     pipeline.AddPass<BitcastDtypesExpander>();
