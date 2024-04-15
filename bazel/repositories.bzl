@@ -173,6 +173,8 @@ def _com_intel_hexl():
         urls = [
             "https://github.com/intel/hexl/archive/refs/tags/v1.2.5.tar.gz",
         ],
+        patch_args = ["-p1"],
+        patches = ["@spulib//bazel:patches/hexl.patch"],
     )
 
 def _com_github_emptoolkit_emp_tool():
