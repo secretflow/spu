@@ -10,7 +10,7 @@
 >
 > please add your unreleased change here.
 
-## TBD
+## 20240415
 
 - [Feature] Add minimax approximation for log
 - [Feature] Support jax.lax.top_k
