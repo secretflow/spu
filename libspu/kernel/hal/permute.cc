@@ -113,12 +113,16 @@ std::vector<spu::Value> odd_even_merge_sort(
   // make a copy for inplace sort
   std::vector<spu::Value> ret;
   for (auto const &input : inputs) {
+    spu::Value casted;
     if (!input.isSecret()) {
       // we can not linear_scatter a secret value to a public operand
-      ret.emplace_back(_2s(ctx, input.clone()).setDtype(input.dtype()));
+      casted = _2s(ctx, input.clone()).setDtype(input.dtype());
     } else {
-      ret.emplace_back(input.clone());
+      casted = input.clone();
     }
+    // we can not linear_scatter an ashare value to a bshare operand
+    casted = _prefer_a(ctx, casted);
+    ret.emplace_back(std::move(casted));
   }
 
   // sort by per network layer for memory optimizations, sorting N elements
