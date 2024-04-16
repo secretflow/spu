@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("//bazel:spu.bzl", "spu_cc_library", "spu_cc_test")
 load("@yacl//bazel:yacl.bzl", "AES_COPT_FLAGS")
+load("//bazel:spu.bzl", "spu_cc_library", "spu_cc_test")
 
 package(default_visibility = ["//visibility:public"])
 
