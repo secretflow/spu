@@ -563,26 +563,8 @@ Value _bitdeintl(SPUContext* ctx, const Value& in) {
   return out;
 }
 
-// Assumption:
-//   let p: bshare
-//   z1 = select(p, x1, y1)
-//   z2 = select(p, x2, y2)
-// where
-//   select(p, x, y) = mul(p, y-x) + x
-//                   = mul(b2a(p), y-x) + x     (1)
-//                or = mula1b(p, y-x) + x       (2)
-// when the cost of
-// - b2a+2*mul < 2*mula2b, we prefer to convert p to ashare to avoid 2*b2a.
-// - b2a+2*mul > 2*mula2b, we prefer to leave p as bshare.
-//
-// Cheetah is the later case.
 Value _prefer_a(SPUContext* ctx, const Value& x) {
   if (x.storage_type().isa<BShare>()) {
-    if (ctx->config().protocol() == ProtocolKind::CHEETAH &&
-        x.storage_type().as<BShare>()->nbits() == 1) {
-      return x;
-    }
-
     // B2A
     return _add(ctx, x, _constant(ctx, 0, x.shape())).setDtype(x.dtype());
   }

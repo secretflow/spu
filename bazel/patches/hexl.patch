@@ -14,7 +14,7 @@ index b0da96f..61bfdd8 100644
 +# hexl_check_compile_flag("${HEXL_CMAKE_PATH}/test-avx512ifma.cpp" HEXL_HAS_AVX512IFMA)
 +# hexl_check_compile_flag("${HEXL_CMAKE_PATH}/test-avx512vbmi2.cpp" HEXL_HAS_AVX512VBMI2)
 +# hexl_check_compile_flag("${HEXL_CMAKE_PATH}/test-avx256.cpp" HEXL_HAS_AVX256)
- 
+
  # ------------------------------------------------------------------------------
  # Installation logic...
 diff --git a/hexl/CMakeLists.txt b/hexl/CMakeLists.txt
@@ -22,7 +22,7 @@ index 7c660a0..7e2e1c9 100644
 --- a/hexl/CMakeLists.txt
 +++ b/hexl/CMakeLists.txt
 @@ -93,7 +93,7 @@ endif()
- 
+
  if (CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
      target_compile_options(hexl PRIVATE -Wall -Wconversion -Wshadow -pedantic -Wextra
 -        -Wno-unknown-pragmas -march=native -O3 -fomit-frame-pointer
