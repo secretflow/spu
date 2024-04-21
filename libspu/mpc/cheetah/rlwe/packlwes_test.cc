@@ -353,7 +353,7 @@ void VectorEncoder::Backward(const NdArrayRef &vec, RLWEPt *out,
     xtmp[0] = xvec[0];
     // reverse and sign flip
     for (size_t i = 1; i < num_coeffs; ++i) {
-      xtmp[num_coeffs - 1 - i] = -xvec[i];
+      xtmp[poly_deg_ - i] = -xvec[i];
     }
 
     uint64_t *dst = out->data();

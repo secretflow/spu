@@ -119,3 +119,9 @@ spu_cc_test(
         "//libspu/mpc/utils:simulate",
     ],
 )
+
+spu_cc_test(
+    name = "vector_encoder_test",
+    srcs = ["vector_encoder_test.cc"],
+    deps = [":arith_comm"],
+)
