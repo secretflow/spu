@@ -30,6 +30,10 @@ namespace spu {
 // Type interfaces.
 ////////////////////////////////////////////////////////////////////////////
 
+/**
+ * eq: 与物理类型有关的数据定义接口。
+ * 数据被保存在z2k，但不代表MPC协议工作在z2k。
+*/
 // This trait means the data is maintained in ring 2^k, it DOES NOT mean that
 // data storage is k-bits.
 // For example, some protocol works in Zq, but the data it manipulates on is
@@ -43,6 +47,10 @@ class Ring2k {
   FieldType field() const { return field_; }
 };
 
+/**
+ * eq: 与数据权限有关的数据定义接口。
+ * 标识数据是公开、秘密还是私有的。
+*/
 // The public interface.
 //
 // The value of this type is public visible for parties.
@@ -111,6 +119,10 @@ class Private {
   int64_t owner() const { return owner_; }
 };
 
+/**
+ * eq: 与MPC有关的数据定义接口。
+ * 标识数据是算术分享、布尔分享亦或置换分享。
+*/
 class AShare {
  public:
   virtual ~AShare() = default;
@@ -197,6 +209,7 @@ class Type final {
  public:
   // default constructable, as the void type.
   Type();
+  // eq: 单参数构造函数使用explicit避免隐式转换。
   explicit Type(std::unique_ptr<TypeObject> model);
 
   // copy and move constructable
@@ -257,6 +270,11 @@ Type makeType(Args&&... args) {
   return Type(std::make_unique<ModelT>(std::forward<Args>(args)...));
 }
 
+/**
+ * eq: 类型实现接口。DereivedT指定要实现的类型，BaseT指定数据存储类型，InterfaceT指定数据权限类型、MPC类型等信息。
+ * 所有新实现的类型必须继承此接口。
+ * 此接口实现了getID、clone方法。
+*/
 template <typename DerivedT, typename BaseT, typename... InterfaceT>
 class TypeImpl : public BaseT, public InterfaceT... {
  public:
