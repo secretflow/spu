@@ -40,6 +40,10 @@ std::ostream& operator<<(std::ostream& os, const Visibility& vtype);
 //////////////////////////////////////////////////////////////
 // DataType related.
 //////////////////////////////////////////////////////////////
+/**
+ * eq: 用于isInteger和getWidth。
+ * FN是一个宏。SPU会在定义FN的宏内完成函数实现，然后解除对FN的宏定义。
+*/
 #define FOREACH_INT_DTYPES(FN) \
   FN(DT_I1, I1, 1)             \
   FN(DT_I8, I8, 8)             \
@@ -51,6 +55,10 @@ std::ostream& operator<<(std::ostream& os, const Visibility& vtype);
   FN(DT_I64, I64, 64)          \
   FN(DT_U64, U64, 64)
 
+/**
+ * eq: 用于isFixedPoint和getWidth。
+ * FN是一个宏。SPU会在定义FN的宏内完成函数实现，然后解除对FN的宏定义。
+*/
 #define FOREACH_FXP_DTYPES(FN) \
   FN(DT_F16, F16, 16)          \
   FN(DT_F32, F32, 32)          \
@@ -97,6 +105,9 @@ std::ostream& operator<<(std::ostream& os, const DataType& dtype);
 
 // Helper macros to enumerate all py types.
 // NOLINTNEXTLINE: Global internal used macro.
+/**
+ * eq: 分支语句，定义_kName，定义类型ScalarT，执行函数。
+*/
 #define __CASE_PT_TYPE(PT_TYPE, NAME, ...)                     \
   case (PT_TYPE): {                                            \
     [[maybe_unused]] constexpr std::string_view _kName = NAME; \
@@ -188,12 +199,23 @@ std::ostream& operator<<(std::ostream& os, const PtType& pt_type);
 
 size_t SizeOf(PtType ptt);
 
+/**
+ * eq: 结构体，用于实现明文类型到枚举的映射。
+ * 通过下文定义的宏实现模板特化。
+*/
 template <typename Type>
 struct PtTypeToEnum {};
 
+/**
+ * eq: 结构体，用于实现枚举到明文类型的映射。
+ * 通过下文定义的宏实现模板特化。
+*/
 template <PtType Name>
 struct EnumToPtType {};
 
+/**
+ * eq: 实现Name (Enum)和Type (PtType)的映射。
+*/
 #define CASE(Name, Type, _)               \
   template <>                             \
   struct PtTypeToEnum<Type> {             \
@@ -212,6 +234,10 @@ FOREACH_PT_TYPES(CASE)
 //////////////////////////////////////////////////////////////
 std::ostream& operator<<(std::ostream& os, ProtocolKind protocol);
 
+/**
+ * eq: 将FM32/64/128绑定到PT_U32/64/128上。
+ * FN指代下文的DEF_TRAITS宏。
+*/
 //////////////////////////////////////////////////////////////
 // Field 2k types, TODO(jint) support Zq
 //////////////////////////////////////////////////////////////
@@ -223,6 +249,11 @@ std::ostream& operator<<(std::ostream& os, ProtocolKind protocol);
 template <FieldType ft>
 struct Ring2kTrait {};
 
+/**
+ * eq: 定义结构体实现对Ring2kTrait的模板特化，用于组合。
+ * 面向特定的域类型，提供scalar_t、kField、kStorageType三个成员。
+ * Name指定域类型（FM32），StorageType指定存储类型（PT_U32）。
+*/
 #define DEF_TRAITS(Name, StorageType)                          \
   template <>                                                  \
   struct Ring2kTrait<FieldType::Name> {                        \
@@ -239,6 +270,10 @@ PtType GetStorageType(FieldType field);
 FieldType PtTypeToField(PtType pt_type);
 inline size_t SizeOf(FieldType field) { return SizeOf(GetStorageType(field)); }
 
+/**
+ * eq: case分支语句封装。
+ * 做三件事：定义_kField和_kName用于后续调用，定义ring2k_t类型，最后执行函数。
+*/
 // Helper macros to enumerate all fields
 // NOLINTNEXTLINE: Global internal used macro.
 #define __CASE_FIELD(FIELD, NAME, ...)                                \
@@ -250,6 +285,11 @@ inline size_t SizeOf(FieldType field) { return SizeOf(GetStorageType(field)); }
     return __VA_ARGS__();                                             \
   }
 
+/**
+ * eq: 分发函数，根据field类型调用不同的case分支。
+ * 完成__CASE_FIELD宏中的两种变量定义、一种类型定义（ring2k_t），并执行函数。
+ * 安全协议实现通过为DISPATCH_ALL_FIELDS提供lambda函数实现。
+*/
 #define DISPATCH_ALL_FIELDS(FIELD, NAME, ...)                       \
   [&] {                                                             \
     switch (FIELD) {                                                \
