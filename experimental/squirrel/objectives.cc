@@ -108,18 +108,16 @@ spu::Value Rsqrt(spu::SPUContext* ctx, const spu::Value& x, int iterations) {
   auto c = mul_positive(x, zhat, 2 * f);
   auto c2 = hal::f_square(ctx, c);
 
-  // r \approx rsqrt(c) - c given c \in [0.5, 1.0)
+  // r \approx rsqrt(c) given c \in [0.5, 1.0)
   auto r = hal::f_add(
       ctx, hlo::Constant(ctx, 2.22391271, x.shape()),
       hal::_trunc(
           ctx,
           hal::_add(
               ctx,
-              hal::_mul(ctx, c, hlo::Constant(ctx, -3.04764217, x.shape())),
+              hal::_mul(ctx, c, hlo::Constant(ctx, -2.04764217, x.shape())),
               hal::_mul(ctx, c2, hlo::Constant(ctx, 0.82868548, x.shape()))))
           .setDtype(x.dtype()));
-  // +c to obtain rsqrt(c)
-  r = hal::f_add(ctx, r, c);
 
   // x = c * 2^{f + m} for c \in [0.5, 1)
   // r \approx inv_sqrt(0.5*c)

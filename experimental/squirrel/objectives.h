@@ -24,11 +24,11 @@ namespace squirrel {
 spu::Value Rsqrt(spu::SPUContext* ctx, const spu::Value& x, int iterations = 1);
 
 // High-precision piece-wise logistic
-// logistic(x) = { epsilon if x < -7.0
-//               { 0.5 - P^3(|x|) if x \in [-7.0, 0)
-//               { 0.5 + P^3(|x|) if x \in [0.0, 7.0)
-//               { 1 - epsilon  if x > 7.0
-// where P^3(*) is a degree-3 polynomial
+// logistic(x) = { 1e-3         if x < -7.0
+//               { 1 - P^3(|x|) if x \in [-7.0, 0)
+//               { P^3(|x|)     if x \in [0.0, 7.0)
+//               { 1 - 1e-3     if x > 7.0
+// where P^3(*) is a degree-3 polynomial that approximates 1 / (1 + exp(-|x|))
 spu::Value Logistic(spu::SPUContext* ctx, const spu::Value& x);
 
 // Even higher precision numerical sigmoid
