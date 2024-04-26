@@ -17,13 +17,18 @@
 #include "libspu/core/value.h"
 
 namespace squirrel {
+// Approximated 1/sqrt(x)
+// REQUIRE: 2^{-fxp} <= x < 2^{2*fxp} and 3*fxp + 2 < k for the 2^k ring.
+// NOTE(lwj): This function can handle a larger range than hlo::Rsqrt which
+// requires 2^{-fxp} <= x < 2^{fxp}
+spu::Value Rsqrt(spu::SPUContext* ctx, const spu::Value& x, int iterations = 1);
 
 // High-precision piece-wise logistic
 // logistic(x) = { epsilon if x < -7.0
-//               { 0.5 - P^4(|x|) if x \in [-7.0, 0)
-//               { 0.5 + P^4(|x|) if x \in [0.0, 7.0)
+//               { 0.5 - P^3(|x|) if x \in [-7.0, 0)
+//               { 0.5 + P^3(|x|) if x \in [0.0, 7.0)
 //               { 1 - epsilon  if x > 7.0
-// where P^4(*) is a degree-4 polynomial
+// where P^3(*) is a degree-3 polynomial
 spu::Value Logistic(spu::SPUContext* ctx, const spu::Value& x);
 
 // Even higher precision numerical sigmoid

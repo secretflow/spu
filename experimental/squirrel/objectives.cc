@@ -37,14 +37,6 @@
 
 namespace squirrel {
 
-// Approximated 1/sqrt(x)
-// REQUIRE: 2^{-fxp} <= x < 2^{2*fxp} and 3*fxp + 2 < k for the 2^k ring.
-// NOTE(lwj): This function can handle a larger range than hlo::Rsqrt which
-// requires 2^{-fxp} <= x < 2^{fxp}
-[[maybe_unused]] static spu::Value Rsqrt(spu::SPUContext* ctx,
-                                         const spu::Value& x,
-                                         int iterations = 1);
-
 // We compute the alternative Gain = |G|*rsqrt(H + lambda)
 // This is more numerically stable than G^2/(H + lambda) since G^2 might be huge
 // and overflow the 2^k ring.
@@ -56,8 +48,10 @@ static spu::Value ComputeGain(spu::SPUContext* ctx, const spu::Value& G,
   SPU_ENFORCE(G.shape() == H.shape());
   SPU_ENFORCE(G.isFxp() and H.isFxp());
   auto abs_G = skh::Abs(ctx, G);
+  // NOTE(lwj): can use iteration=1 to improve the precision of rsqrt
   auto rsqrt_H =
-      Rsqrt(ctx, skh::Add(ctx, H, skh::Constant(ctx, lambda, H.shape())));
+      Rsqrt(ctx, skh::Add(ctx, H, skh::Constant(ctx, lambda, H.shape())),
+            /*iteration*/ 0);
   // NOTE(lwj): Rsqrt function can handle a larger range than hlo::Rsqrt
   // clang-format off
   // auto rsqrt_H = skh::Rsqrt(ctx, skh::Add(ctx, H, skh::Constant(ctx, lambda, H.shape())));
@@ -65,19 +59,19 @@ static spu::Value ComputeGain(spu::SPUContext* ctx, const spu::Value& G,
   return skh::Mul(ctx, abs_G, rsqrt_H);
 }
 
-// y = c0 + x*c1 + x^2*c2 + x^3*c3 + x^4*c4
-static spu::Value polynomial_4(spu::SPUContext* ctx, const spu::Value& x,
+// y = c0 + x*c1 + x^2*c2 + x^3*c3
+static spu::Value polynomial_3(spu::SPUContext* ctx, const spu::Value& x,
                                absl::Span<spu::Value const> coeffs);
 
-static spu::Value polynomial_4(spu::SPUContext* ctx, const spu::Value& x,
+static spu::Value polynomial_3(spu::SPUContext* ctx, const spu::Value& x,
                                absl::Span<float const> coeffs) {
-  SPU_ENFORCE_EQ(coeffs.size(), 5UL);
+  SPU_ENFORCE_EQ(coeffs.size(), 4UL);
   std::vector<spu::Value> cs;
   cs.reserve(coeffs.size());
   for (const auto& c : coeffs) {
     cs.push_back(spu::kernel::hal::constant(ctx, c, x.dtype(), x.shape()));
   }
-  return polynomial_4(ctx, x, cs);
+  return polynomial_3(ctx, x, cs);
 }
 
 // NOTE(lwj): basically the same in `libspu/kernel/hal/fxp_approx.cc`
@@ -88,8 +82,6 @@ static spu::Value polynomial_4(spu::SPUContext* ctx, const spu::Value& x,
 spu::Value Rsqrt(spu::SPUContext* ctx, const spu::Value& x, int iterations) {
   using namespace spu::kernel;
 
-  return hal::f_rsqrt(ctx, x);
-#if 0
   const size_t k = SizeOf(ctx->getField()) * 8;
   const size_t f = ctx->getFxpBits();
   if (3 * f + 2 >= k) {
@@ -111,15 +103,23 @@ spu::Value Rsqrt(spu::SPUContext* ctx, const spu::Value& x, int iterations) {
   auto zhat = hal::_bitrev(ctx, z, 0, 3 * f);
   hal::detail::hintNumberOfBits(zhat, 3 * f);
 
-  // u = x * z = c * 2^{3f} -- trunc 2f + 1 --> (0.5*c) * 2^{f}
-  // u \in [0.25, 0.5) with 2^f precision
-  auto u = mul_positive(x, zhat, 2 * f + 1);
+  // x * z = c * 2^{3f} -- trunc 2f --> c * 2^{f}
+  // c \in [0.5, 1.0) with 2^f precision
+  auto c = mul_positive(x, zhat, 2 * f);
+  auto c2 = hal::f_square(ctx, c);
 
-  // r \approx inv_sqrt(u) given u \in [0.25, 0.5)
-  std::vector<spu::Value> coeffs = {hlo::Constant(ctx, -5.9417, x.shape()),
-                                    hlo::Constant(ctx, 4.7979, x.shape())};
-  auto r = hal::f_add(ctx, hal::detail::polynomial(ctx, u, coeffs),
-                      hlo::Constant(ctx, 3.1855, x.shape()));
+  // r \approx rsqrt(c) - c given c \in [0.5, 1.0)
+  auto r = hal::f_add(
+      ctx, hlo::Constant(ctx, 2.22391271, x.shape()),
+      hal::_trunc(
+          ctx,
+          hal::_add(
+              ctx,
+              hal::_mul(ctx, c, hlo::Constant(ctx, -3.04764217, x.shape())),
+              hal::_mul(ctx, c2, hlo::Constant(ctx, 0.82868548, x.shape()))))
+          .setDtype(x.dtype()));
+  // +c to obtain rsqrt(c)
+  r = hal::f_add(ctx, r, c);
 
   // x = c * 2^{f + m} for c \in [0.5, 1)
   // r \approx inv_sqrt(0.5*c)
@@ -143,19 +143,20 @@ spu::Value Rsqrt(spu::SPUContext* ctx, const spu::Value& x, int iterations) {
   }
 
   // x = c * 2^{m}
-  // r = inv_sqrt(0.5 * c)
+  // r = rsqrt(c)
   //
-  // inv_sqrt(x) = (r / sqrt(2)) * 2^{-m/2}
-  //             = r * (2^{-m/2} / sqrt(2))
+  // rsqrt(x) = r * 2^{-m/2}
   //
   // a = 2^{(2f - m)//2}
   // b = is_even(2f - m)
-  // b = 1 -> a' <- a * 1 / sqrt(2)
-  // b = 0 -> a' <- a * sqrt(2) / sqrt(2)
+  // b = 1 -> a' <- a
+  // b = 0 -> a' <- a * sqrt(2)
   // a' = 2^{f - m/2}
-  auto even_choice = hlo::Constant(
-      ctx, static_cast<int64_t>((1LL << f) / std::sqrt(2.0)), x.shape());
-  auto odd_choice = hlo::Constant(ctx, static_cast<int64_t>(1 << f), x.shape());
+  auto even_choice =
+      hlo::Constant(ctx, static_cast<int64_t>((1LL << f)), x.shape());
+  auto odd_choice = hlo::Constant(
+      ctx, static_cast<int64_t>((1L << f) * std::sqrt(2.0)), x.shape());
+
   a = mul_positive(a, hlo::Select(ctx, b, even_choice, odd_choice), f);
   auto inv_sqrt_init = mul_positive(r, a, f);
 
@@ -184,7 +185,6 @@ spu::Value Rsqrt(spu::SPUContext* ctx, const spu::Value& x, int iterations) {
   }
 
   return hlo::Lshift(ctx, h, hlo::Constant(ctx, 1, h.shape()));
-#endif
 }
 
 // clang-format off
@@ -328,54 +328,34 @@ namespace {
 
 }  // namespace
 
-// logistic(x) = { e if x < -7.0
-//               { 0.5 - P^4(|x|) if x \in [-7.0, 0.0)
-//               { 0.5 + P^4(|x|) if x \in [0.0, 7.0)
-//               { 1 - e  if x > 7.0
+// logistic(x) = { 1e-4         if x < -7.0
+//               { 1 - P^3(|x|) if x \in [-7.0, 0.0)
+//               { P^3(|x|)     if x \in [0.0, 7.0)
+//               { 1 - 1e-4     if x > 7.0
 spu::Value Logistic(spu::SPUContext* ctx, const spu::Value& x) {
   namespace sk = spu::kernel;
   SPU_ENFORCE(x.isFxp());
   auto epsilon = sk::hal::epsilon(ctx, x.dtype(), x.shape());
-#if 0
-  const auto ONE = sk::hal::_constant(ctx, 1, x.shape());
-  const auto True = sk::hal::_and(ctx, ONE, ONE);
-  auto is_neg = sk::hlo::Less(
-      ctx, x, sk::hal::constant(ctx, {0.0F}, x.dtype(), x.shape()));  // x < 0
-
-  auto abs_x = sk::hal::_mux(ctx, is_neg, sk::hal::_negate(ctx, x), x)
-                   .setDtype(x.dtype());
-  auto is_inside_range = sk::hlo::Less(
-      ctx, abs_x,
-      sk::hal::constant(ctx, {7.0F}, x.dtype(), x.shape()));  // |x| < 7
-
-  auto is_too_large = sk::hal::_xor(
-      ctx, True, sk::hal::_or(ctx, is_neg, is_inside_range));  // x > 7
-
-#else
+  // x < 0, |x| <= 7.0, x > 7.0
   auto [is_neg, is_inside_range, is_too_large] =
       ThreeCompareInSmallerRing(ctx, x, 7.0F, spu::FM32);
   auto abs_x = sk::hal::_mux(ctx, is_neg, sk::hal::_negate(ctx, x), x)
                    .setDtype(x.dtype());
-#endif
 
-  const std::array<float, 5> P4 = {-0.011037160210199298, 0.3098514664087043,
-                                   -0.07113598351590104, 0.0072489056192882075,
-                                   -0.0002749105815821596};
-  const auto half = sk::hal::constant(ctx, {0.5F}, x.dtype(), x.shape());
-  auto P4_eval = polynomial_4(ctx, abs_x, P4);
-  // adjust P^4(|x|) for x < 0 and x >= 0
-  P4_eval = sk::hal::select(ctx, is_neg, sk::hal::_sub(ctx, half, P4_eval),
-                            sk::hal::_add(ctx, half, P4_eval));
+  const std::array<float, 4> P3 = {0.5040659140474179, 0.2705454505928517,
+                                   -0.048738638679930966,
+                                   0.0028663913027180167};
+  const auto ONE = sk::hal::constant(ctx, {1.0F}, x.dtype(), x.shape());
 
-  // |x| < 7
-  auto ret = sk::hal::_mul(ctx, is_inside_range, P4_eval);
-  // x > 7
-  ret = sk::hal::_add(
-      ctx, ret,
-      sk::hal::_mul(ctx, is_too_large,
-                    sk::hal::constant(ctx, {0.9999F}, x.dtype(), x.shape())));
-  // x < -7
-  ret = sk::hal::_add(ctx, ret, epsilon);
+  auto P3_eval = polynomial_3(ctx, abs_x, P3);
+
+  // 1{|x| <= 7} ? P^3(|x|) : 1 - 1e-4
+  auto ret =
+      sk::hal::select(ctx, is_inside_range, P3_eval,
+                      sk::hal::constant(ctx, {0.9999F}, x.dtype(), x.shape()));
+
+  // 1{x < 0} ? 1 - sigmoid(|x|) : sigmoid(|x|)
+  ret = sk::hal::select(ctx, is_neg, sk::hal::f_sub(ctx, ONE, ret), ret);
   return ret.setDtype(x.dtype());
 }
 
@@ -390,29 +370,23 @@ spu::Value Sigmoid(spu::SPUContext* ctx, const spu::Value& x) {
                       sk::hlo::Mul(ctx, half, Rsqrt(ctx, divisor, 1)));
 }
 
-spu::Value polynomial_4(spu::SPUContext* ctx, const spu::Value& x,
+spu::Value polynomial_3(spu::SPUContext* ctx, const spu::Value& x,
                         absl::Span<spu::Value const> coeffs) {
   SPU_ENFORCE(x.isFxp());
-  SPU_ENFORCE_EQ(coeffs.size(), 5UL);
-  // NOTE(lwj): square is cheaper than using the Horner's method
+  SPU_ENFORCE_EQ(coeffs.size(), 4UL);
   auto x2 = spu::kernel::hal::f_square(ctx, x);
-  auto x4 = spu::kernel::hal::f_square(ctx, x2);
   auto x3 = spu::kernel::hal::f_mul(ctx, x, x2);
 
   // NOTE(lwj): lazy truncation
-  auto P4_4 = spu::kernel::hal::_mul(ctx, x4, coeffs[4]);
-  auto P4_3 = spu::kernel::hal::_mul(ctx, x3, coeffs[3]);
-  auto P4_2 = spu::kernel::hal::_mul(ctx, x2, coeffs[2]);
-  auto P4_1 = spu::kernel::hal::_mul(ctx, x, coeffs[1]);
+  auto P3_3 = spu::kernel::hal::_mul(ctx, x3, coeffs[3]);
+  auto P3_2 = spu::kernel::hal::_mul(ctx, x2, coeffs[2]);
+  auto P3_1 = spu::kernel::hal::_mul(ctx, x, coeffs[1]);
 
   return spu::kernel::hal::_add(
              ctx, coeffs[0],
              spu::kernel::hal::_trunc(
-                 ctx,
-                 spu::kernel::hal::_add(
-                     ctx, P4_4,
-                     spu::kernel::hal::_add(
-                         ctx, P4_3, spu::kernel::hal::_add(ctx, P4_2, P4_1)))))
+                 ctx, spu::kernel::hal::_add(
+                          ctx, P3_3, spu::kernel::hal::_add(ctx, P3_2, P3_1))))
       .setDtype(x.dtype());
 }
 }  // namespace squirrel

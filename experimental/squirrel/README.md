@@ -29,11 +29,11 @@ Code under this folder is purely for research demonstration and it's **NOT desig
   * On one terminal
 
     ```sh
-    bazel-bin/experimental/squirrel/squirrel_demo_main --rank0_nfeatures=85 --rank1_nfeatures=85 --standalone --train=BinaryClassification_Aps_Test_60000_171.csv --test=BinaryClassification_Aps_Test_16000_171.csv --standalone=true --rank=0 --has_label=0 --lr=1.0 --subsample=0.8
+    bazel-bin/experimental/squirrel/squirrel_demo_main --rank0_nfeatures=85 --rank1_nfeatures=85 --train=BinaryClassification_Aps_Test_60000_171.csv --test=BinaryClassification_Aps_Test_16000_171.csv --standalone=false --rank=0 --has_label=0 --lr=1.0 --subsample=0.8
     ```
 
   * On another terminal
 
     ```sh
-    bazel-bin/experimental/squirrel/squirrel_demo_main --rank0_nfeatures=85 --rank1_nfeatures=85 --standalone --train=BinaryClassification_Aps_Test_60000_171.csv --test=BinaryClassification_Aps_Test_16000_171.csv --standalone=true --rank=1 --has_label=1 --lr=1.0 --subsample=0.8
+    bazel-bin/experimental/squirrel/squirrel_demo_main --rank0_nfeatures=85 --rank1_nfeatures=85 --train=BinaryClassification_Aps_Test_60000_171.csv --test=BinaryClassification_Aps_Test_16000_171.csv --standalone=false --rank=1 --has_label=1 --lr=1.0 --subsample=0.8
     ```
