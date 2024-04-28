@@ -586,5 +586,4 @@ std::vector<NdArrayRef> ring_rand_boolean_splits(const NdArrayRef& arr,
 
   return splits;
 }
-
 }  // namespace spu::mpc

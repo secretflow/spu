@@ -104,6 +104,6 @@ template <typename T>
 void ring_set_value(NdArrayRef& in, const T& value) {
   NdArrayView<T> _in(in);
   pforeach(0, in.numel(), [&](int64_t idx) { _in[idx] = value; });
-}
+};
 
 }  // namespace spu::mpc

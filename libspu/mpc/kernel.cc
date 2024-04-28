@@ -233,4 +233,31 @@ void ConcateKernel::evaluate(KernelEvalContext* ctx) const {
   ctx->setOutput(WrapValue(z));
 }
 
+void OramOneHotKernel::evaluate(KernelEvalContext* ctx) const {
+  auto target = ctx->getParam<Value>(0);
+  auto s = ctx->getParam<int64_t>(1);
+  SPU_ENFORCE(target.shape().size() == 1 && target.shape()[0] == 1,
+              "shape of target_point should be {1}");
+  SPU_ENFORCE(s > 0, "db_size should greater than 0");
+
+  auto res = proc(ctx, UnwrapValue(target), s);
+
+  ctx->setOutput(WrapValue(res));
+}
+
+void OramReadKernel::evaluate(KernelEvalContext* ctx) const {
+  const auto& onehot = ctx->getParam<Value>(0);
+  const auto& db = ctx->getParam<Value>(1);
+  auto offset = ctx->getParam<int64_t>(2);
+
+  SPU_ENFORCE(onehot.shape().size() == 2 && onehot.shape()[0] == 1,
+              "one hot should be of shape {1, db_size}");
+  SPU_ENFORCE(db.shape().size() == 2, "database should be 2D");
+  SPU_ENFORCE(onehot.shape()[1] == db.shape()[0],
+              "onehot and database shape mismatch");
+
+  ctx->setOutput(
+      WrapValue(proc(ctx, UnwrapValue(onehot), UnwrapValue(db), offset)));
+}
+
 }  // namespace spu::mpc
