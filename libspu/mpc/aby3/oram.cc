@@ -395,8 +395,10 @@ std::vector<T> mul2pc(KernelEvalContext *ctx, absl::Span<T const> x,
       comm->getRank() == adjust_rank ? comm->prevRank() : comm->nextRank();
 
   auto numel = x.size();
-  auto [a, b, c] = genOramBeaverPrim<T>(ctx, numel, OpKind::Mul, adjust_rank);
-  std::vector<T> eu(numel * 2);
+  const auto &prim = genOramBeaverPrim<T>(ctx, numel, OpKind::Mul, adjust_rank);
+  const auto &a = std::get<0>(prim);
+  const auto &b = std::get<1>(prim);
+  const auto &c = std::get<2>(prim);  std::vector<T> eu(numel * 2);
   absl::Span<T> e(eu.data(), numel);
   absl::Span<T> u(eu.data() + numel, numel);
   std::vector<T> z(numel);
