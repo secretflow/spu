@@ -122,6 +122,12 @@ Value _prefer_b(SPUContext* ctx, const Value& x);
 Value _tensordot(SPUContext* ctx, const Value& x, const Value& y,
                  const Index& ix, const Index& iy);
 
+std::optional<Value> _oramonehot(SPUContext* ctx, const Value& x,
+                                 int64_t db_size, bool db_is_public);
+
+Value _oramread(SPUContext* ctx, const Value& x, const Value& y,
+                int64_t offset);
+
 // NOLINTEND(readability-identifier-naming)
 
 }  // namespace spu::kernel::hal

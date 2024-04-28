@@ -225,4 +225,9 @@ Value sqrt(SPUContext* ctx, const Value& x);
 // @param in, the input value
 Value sign(SPUContext* ctx, const Value& x);
 
+std::optional<Value> oramonehot(SPUContext* ctx, const Value& x,
+                                int64_t db_size, bool db_is_secret);
+
+Value oramread(SPUContext* ctx, const Value& x, const Value& y, int64_t offset);
+
 }  // namespace spu::kernel::hal

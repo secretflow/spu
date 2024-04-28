@@ -116,6 +116,16 @@ class AShare {
   virtual ~AShare() = default;
 };
 
+class OShare {
+ public:
+  virtual ~OShare() = default;
+};
+
+class OPShare {
+ public:
+  virtual ~OPShare() = default;
+};
+
 class BShare {
  protected:
   // Theoretically, `B share` works in F2 (mod 2) ring, which means it is

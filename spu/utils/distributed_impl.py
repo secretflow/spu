@@ -955,7 +955,7 @@ class SPU(Device):
 
             mock_args, mock_kwargs = tree_map(mock_parameters, (args, kwargs))
 
-            exported_fn = torch._export.export(fn, args=mock_args, kwargs=mock_kwargs)
+            exported_fn = torch.export.export(fn, args=mock_args, kwargs=mock_kwargs)
 
             args_flat, _ = tree_flatten((args, kwargs))
             m_args_flat, _ = tree_flatten((mock_args, mock_kwargs))

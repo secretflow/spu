@@ -646,4 +646,48 @@ Value _tensordot(SPUContext* ctx, const Value& x, const Value& y,
   return _reshape(ctx, zz, res_shape);
 }
 
+std::optional<Value> _oramonehot(SPUContext* ctx, const Value& x,
+                                 int64_t db_size, bool db_is_public) {
+  std::optional<Value> ret;
+  if (db_is_public) {
+    ret = _oramonehot_sp(ctx, x, db_size);
+  } else {
+    if (x.isPrivate()) {
+      ret = _oramonehot_ss(ctx, _v2s(ctx, x), db_size);
+    } else {
+      ret = _oramonehot_ss(ctx, x, db_size);
+    }
+  }
+
+  if (!ret.has_value()) {
+    return std::nullopt;
+  }
+
+  return ret;
+}
+
+Value _oramread(SPUContext* ctx, const Value& x, const Value& y,
+                int64_t offset) {
+  SPU_ENFORCE(x.isSecret(), "onehot should be secret shared");
+  auto reshaped_x = Value(x.data().reshape({1, x.numel()}), x.dtype());
+  auto reshaped_y = y;
+  if (y.shape().size() == 1) {
+    reshaped_y = Value(y.data().reshape({y.numel(), 1}), y.dtype());
+  }
+
+  Value ret;
+  if (y.isSecret()) {
+    ret = _oramread_ss(ctx, reshaped_x, reshaped_y, offset);
+  } else if (y.isPublic()) {
+    ret = _oramread_sp(ctx, reshaped_x, reshaped_y, offset);
+  } else if (y.isPrivate()) {
+    ret = _oramread_ss(ctx, reshaped_x, _v2s(ctx, reshaped_y), offset);
+  } else {
+    SPU_THROW("unexpected vtype, got onehot {}, database {}.", x.vtype(),
+              y.vtype());
+  }
+
+  return ret;
+}
+
 }  // namespace spu::kernel::hal

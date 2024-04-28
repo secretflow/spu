@@ -568,4 +568,23 @@ Value sign(SPUContext* ctx, const Value& x) {
   return _sign(ctx, x).setDtype(DT_I8);
 }
 
+std::optional<Value> oramonehot(SPUContext* ctx, const Value& x,
+                                int64_t db_size, bool db_is_secret) {
+  SPU_ENFORCE(x.isInt(), "onehot_point should be int");
+
+  auto ret = _oramonehot(ctx, x, db_size, db_is_secret);
+  if (!ret.has_value()) {
+    return std::nullopt;
+  }
+  ret->setDtype(x.dtype());
+  return ret;
+}
+
+Value oramread(SPUContext* ctx, const Value& x, const Value& y,
+               int64_t offset) {
+  SPU_ENFORCE(x.isInt(), "onehot_point should be int");
+
+  Value ret = _oramread(ctx, x, y, offset).setDtype(y.dtype());
+  return ret;
+}
 }  // namespace spu::kernel::hal
