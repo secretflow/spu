@@ -1,4 +1,4 @@
-# Copyright 2023 Ant Group Co., Ltd.
+# Copyright 2024 Ant Group Co., Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,16 +11,16 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 import os
 import sys
 import unittest
 
 import numpy as np
-from sklearn.datasets import load_iris
-from sklearn.feature_selection import chi2 as chi2_sklearn
-
 import spu.spu_pb2 as spu_pb2
 import spu.utils.simulation as spsim
+from sklearn.datasets import load_iris
+from sklearn.feature_selection import chi2 as chi2_sklearn
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '../../../'))
 from sml.feature_selection.univariate_selection import chi2

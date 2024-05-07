@@ -1,3 +1,17 @@
+# Copyright 2024 Ant Group Co., Ltd.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      https://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import jax
 import jax.numpy as jnp
 
@@ -25,10 +39,17 @@ def _sf(x, df, max_iter=3):
     Notes
     -----
     The `max_iter` parameter is critical for the numerical stability of the computation. A high value can lead to overflow or underflow errors. Consider using a higher precision data type or reducing `max_iter` to ensure stability.
+
+    References
+    ----------
+    [1] "The Digital Library of Mathematical Functions", dlmf.nist.gov.
+
+    [2] Maddock et. al., "Incomplete Gamma Functions",
+        https://www.boost.org/doc/libs/1_61_0/libs/math/doc/html/math_toolkit/sf_gamma/igamma.html
     """
     if df <= 0:
         raise ValueError("Domain error, df must be positive")
-    condlist = [x < 0, x == 0, jnp.logical_or(x < 1, x < df)]
+    condlist = [x < 0, x == 0, x < df]
     choicelist = [
         jnp.ones_like(x),
         jnp.zeros_like(x),
@@ -42,7 +63,7 @@ def _sf(x, df, max_iter=3):
 
 def _igam(a, x, max_iter=3):
     """
-    Computes the regularized lower incomplete gamma function using a power series expansion for a given shape parameter.
+    Computes the regularized lower incomplete gamma function using a power series expansion (DLMF 8.9.2) for a given shape parameter.
 
     Parameters
     ----------
@@ -63,8 +84,15 @@ def _igam(a, x, max_iter=3):
     Notes
     -----
     The `max_iter` parameter is crucial for the numerical stability of the computation. A high value can lead to overflow or underflow errors. It is recommended to use a higher precision data type or reduce the `max_iter` value to avoid such issues.
+
+    References
+    ----------
+    [1] "The Digital Library of Mathematical Functions", dlmf.nist.gov.
     """
-    ax = jnp.power(x, a) * jnp.exp(-x) * jnp.exp(-jax.lax.lgamma(a))
+    if isinstance(a, int):
+        ax = jnp.power(x, a) * jnp.exp(-x) * jnp.exp(-jax.lax.lgamma(a))
+    else:
+        ax = jnp.exp(a * jnp.log(x) - x - jax.lax.lgamma(a))
     # Power series
     r = jnp.full_like(x, a)
     c = jnp.ones_like(x)
@@ -84,7 +112,7 @@ def _igam(a, x, max_iter=3):
 
 def _igamc(a, x, max_iter=3):
     """
-    Computes the complementary regularized lower incomplete gamma function using a continued fraction representation for a given shape parameter.
+    Computes the complementary regularized lower incomplete gamma function using a continued fraction representation (DLMF 8.11.4) for a given shape parameter.
 
     Parameters
     ----------
@@ -105,9 +133,16 @@ def _igamc(a, x, max_iter=3):
     Notes
     -----
     The `max_iter` parameter is crucial for the numerical stability of the computation. A high value can lead to overflow or underflow errors. It is recommended to use a higher precision data type or reduce the `max_iter` value to avoid such issues.
+
+    References
+    ----------
+    [1] "The Digital Library of Mathematical Functions", dlmf.nist.gov.
     """
     # Compute ax = x**a * exp(-x) / Gamma(a)
-    ax = jnp.power(x, a) * jnp.exp(-x) * jnp.exp(-jax.lax.lgamma(a))
+    if isinstance(a, int):
+        ax = jnp.power(x, a) * jnp.exp(-x) * jnp.exp(-jax.lax.lgamma(a))
+    else:
+        ax = jnp.exp(a * jnp.log(x) - x - jax.lax.lgamma(a))
     y = jnp.ones_like(x) - a
     z = x + y + 1.0
     c = jnp.zeros_like(x)
@@ -124,6 +159,8 @@ def _igamc(a, x, max_iter=3):
         y += 1.0
         z += 2.0
         yc = y * c
+        # pk and qk will grow rapidly, leading to a dependency on the size of the ring.
+        # It may be necessary to use FM128 to get a higher precision.
         pk = pkm1 * z - pkm2 * yc
         qk = qkm1 * z - qkm2 * yc
         r = pk / qk
