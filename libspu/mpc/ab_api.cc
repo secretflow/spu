@@ -247,7 +247,7 @@ Value bitintl_b(SPUContext* ctx, const Value& x, size_t stride) {
   const size_t nbits = x.storage_type().as<BShare>()->nbits();
   SPU_ENFORCE(absl::has_single_bit(nbits));
 
-  Value out;
+  Value out = x;
   for (int64_t idx = Log2Ceil(nbits) - 2; idx >= static_cast<int64_t>(stride);
        idx--) {
     auto K = hack_make_p(ctx, spu::detail::kBitIntlKeepMasks[idx], x.shape());
@@ -277,7 +277,7 @@ Value bitdeintl_b(SPUContext* ctx, const Value& x, size_t stride) {
   const size_t nbits = x.storage_type().as<BShare>()->nbits();
   SPU_ENFORCE(absl::has_single_bit(nbits));
 
-  Value out;
+  Value out = x;
   for (int64_t idx = stride; idx + 1 < Log2Ceil(nbits); idx++) {
     auto K = hack_make_p(ctx, spu::detail::kBitIntlKeepMasks[idx], x.shape());
     auto M = hack_make_p(ctx, spu::detail::kBitIntlSwapMasks[idx], x.shape());
