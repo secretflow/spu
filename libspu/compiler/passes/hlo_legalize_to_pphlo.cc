@@ -1333,6 +1333,7 @@ private:
                     HloToPPHloOpConverter<stablehlo::AbsOp>,
                     HloToPPHloOpConverter<stablehlo::AddOp>,
                     HloToPPHloOpConverter<stablehlo::AndOp>,
+                    HloToPPHloOpConverter<stablehlo::Atan2Op>,
                     HloToPPHloOpConverter<stablehlo::BitcastConvertOp>,
                     HloToPPHloOpConverter<stablehlo::BroadcastInDimOp>,
                     HloToPPHloOpConverter<stablehlo::CaseOp>,

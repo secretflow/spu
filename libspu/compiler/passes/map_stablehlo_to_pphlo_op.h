@@ -45,6 +45,7 @@ using HloToPPHloOp = typename HloToPPHloOpImpl<HloOpTy>::Type;
 MAP_HLO_TO_PPHLO(AbsOp)
 MAP_HLO_TO_PPHLO(AddOp)
 MAP_HLO_TO_PPHLO(AndOp)
+MAP_HLO_TO_PPHLO(Atan2Op)
 MAP_HLO_TO_PPHLO(BitcastConvertOp)
 MAP_HLO_TO_PPHLO(CeilOp)
 MAP_HLO_TO_PPHLO(ClampOp)

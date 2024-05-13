@@ -42,4 +42,6 @@ Value f_erf_p(SPUContext* ctx, const Value& in);
 
 Value f_pow_p(SPUContext* ctx, const Value& x, const Value& y);
 
+Value f_atan2_p(SPUContext* ctx, const Value& x, const Value& y);
+
 }  // namespace spu::kernel::hal

@@ -546,6 +546,14 @@ Value cosine(SPUContext* ctx, const Value& x) {
   return f_cosine(ctx, x);
 }
 
+Value atan2(SPUContext* ctx, const Value& y, const Value& x) {
+  SPU_TRACE_HAL_DISP(ctx, y, x);
+
+  SPU_ENFORCE(x.isFxp() && y.isFxp());
+
+  return f_atan2(ctx, y, x);
+}
+
 Value rsqrt(SPUContext* ctx, const Value& x) {
   SPU_TRACE_HAL_DISP(ctx, x);
 

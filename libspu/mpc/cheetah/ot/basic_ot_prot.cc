@@ -71,7 +71,7 @@ NdArrayRef BasicOTProtocols::B2A(const NdArrayRef &inp) {
 NdArrayRef BasicOTProtocols::PackedB2A(const NdArrayRef &inp) {
   const auto *share_t = inp.eltype().as<BShrTy>();
   auto field = inp.eltype().as<Ring2k>()->field();
-  const size_t nbits = share_t->nbits();
+  const size_t nbits = share_t->nbits() == 0 ? 1 : share_t->nbits();
   SPU_ENFORCE(nbits > 0 && nbits <= 8 * SizeOf(field));
 
   auto convert_from_bits_form = [&](NdArrayRef _bits) {
