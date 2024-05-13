@@ -14,6 +14,7 @@
 
 #include "libspu/mpc/cheetah/nonlinear/equal_prot.h"
 
+#include "yacl/crypto/rand/rand.h"
 #include "yacl/crypto/tools/prg.h"
 #include "yacl/link/link.h"
 
