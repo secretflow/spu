@@ -13,6 +13,7 @@
 ## TBD
 
 - [Feature] Add ORAM based dynamic_slice for ABY3
+- [Feature] Add Atan2Op support
 
 ## 20240415
 

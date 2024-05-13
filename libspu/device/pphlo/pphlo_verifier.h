@@ -63,6 +63,7 @@ class PPHloVerifier {
 
   // Simple binary
   VERIFY_DECL(AddOp)
+  VERIFY_DECL(Atan2Op)
   VERIFY_DECL(SubtractOp)
   VERIFY_DECL(MulOp)
   VERIFY_DECL(PowOp)

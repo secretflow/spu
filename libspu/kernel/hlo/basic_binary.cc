@@ -46,6 +46,7 @@ SIMPLE_BINARY_KERNEL_DEFN(NotEqual, hal::not_equal)
 SIMPLE_BINARY_KERNEL_DEFN(LessEqual, hal::less_equal)
 SIMPLE_BINARY_KERNEL_DEFN(GreaterEqual, hal::greater_equal)
 SIMPLE_BINARY_KERNEL_DEFN(Complex, hal::complex)
+SIMPLE_BINARY_KERNEL_DEFN(Atan2, hal::atan2)
 
 #undef SIMPLE_BINARY_KERNEL_DEFN
 

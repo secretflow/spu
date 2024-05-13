@@ -287,6 +287,7 @@ UNARY_VERIFIER(Expm1Op, evalExpm1Op)
   }
 
 BINARY_VERIFIER(AddOp, evalAddOp)
+BINARY_VERIFIER(Atan2Op, evalAtan2Op)
 BINARY_VERIFIER(SubtractOp, evalSubtractOp)
 BINARY_VERIFIER(MulOp, evalMultiplyOp)
 BINARY_VERIFIER(PowOp, evalPowerOp)

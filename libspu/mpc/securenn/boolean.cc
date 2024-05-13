@@ -71,18 +71,21 @@ void CommonTypeB::evaluate(KernelEvalContext* ctx) const {
   const Type& lhs = ctx->getParam<Type>(0);
   const Type& rhs = ctx->getParam<Type>(1);
 
-  SPU_ENFORCE(lhs == rhs,
-              "securenn always use same bshare type, lhs={}, rhs={}", lhs, rhs);
+  const auto lhs_field = lhs.as<BShrTy>()->field();
+  const auto rhs_field = rhs.as<BShrTy>()->field();
+  const size_t lhs_nbits = lhs.as<BShrTy>()->nbits();
+  const size_t rhs_nbits = rhs.as<BShrTy>()->nbits();
 
-  ctx->setOutput(lhs);
+  SPU_ENFORCE(lhs_field == rhs_field,
+              "securenn always use same bshare field, lhs={}, rhs={}",
+              lhs_field, rhs_field);
+
+  ctx->setOutput(makeType<BShrTy>(lhs_field, std::max(lhs_nbits, rhs_nbits)));
 }
 
 NdArrayRef CastTypeB::proc(KernelEvalContext* ctx, const NdArrayRef& in,
                            const Type& to_type) const {
-  SPU_ENFORCE(in.eltype() == to_type,
-              "securenn always use same bshare type, lhs={}, rhs={}",
-              in.eltype(), to_type);
-  return in;
+  return in.as(to_type);
 }
 
 NdArrayRef B2P::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
