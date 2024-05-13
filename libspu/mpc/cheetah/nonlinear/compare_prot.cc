@@ -14,6 +14,7 @@
 
 #include "libspu/mpc/cheetah/nonlinear/compare_prot.h"
 
+#include "yacl/crypto/rand/rand.h"
 #include "yacl/crypto/tools/prg.h"
 #include "yacl/link/link.h"
 
@@ -81,7 +82,7 @@ NdArrayRef CompareProtocol::DoCompute(const NdArrayRef& inp, bool greater_than,
   std::vector<uint8_t> leaf_eq(num_cmp * num_digits, 0);
   if (is_sender_) {
     // Step 2 sample random bits
-    yacl::crypto::Prg<uint8_t> prg;
+    yacl::crypto::Prg<uint8_t> prg(yacl::crypto::SecureRandSeed());
     prg.Fill(absl::MakeSpan(leaf_cmp));
     prg.Fill(absl::MakeSpan(leaf_eq));
 
