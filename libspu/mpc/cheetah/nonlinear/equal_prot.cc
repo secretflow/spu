@@ -80,7 +80,7 @@ NdArrayRef EqualProtocol::DoCompute(const NdArrayRef& inp, size_t bit_width) {
 
   std::vector<uint8_t> leaf_eq(num_cmp * num_digits, 0);
   if (is_sender_) {
-    yacl::crypto::Prg<uint8_t> prg;
+    yacl::crypto::Prg<uint8_t> prg(yacl::crypto::SecureRandSeed());
     prg.Fill(absl::MakeSpan(leaf_eq));
     // convert u8 random to boolean random
     std::transform(leaf_eq.begin(), leaf_eq.end(), leaf_eq.data(),
