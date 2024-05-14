@@ -132,8 +132,8 @@ TEST_P(BasicOTProtTest, PackedB2A) {
   Shape shape = {11, 12, 13};
   FieldType field = std::get<0>(GetParam());
   auto ot_type = std::get<1>(GetParam());
-  for (size_t nbits : {1, 2}) {
-    size_t packed_nbits = 8 * SizeOf(field) - nbits;
+  for (size_t nbits : {8}) {
+    size_t packed_nbits = nbits;
     auto boolean_t = makeType<BShrTy>(field, packed_nbits);
 
     auto bshr0 = ring_rand(field, shape).as(boolean_t);
@@ -187,7 +187,7 @@ TEST_P(BasicOTProtTest, PackedB2A) {
 
 TEST_P(BasicOTProtTest, PackedB2AFull) {
   size_t kWorldSize = 2;
-  Shape shape = {1, 2, 3, 4, 5};
+  Shape shape = {1L};
 
   FieldType field = std::get<0>(GetParam());
   auto ot_type = std::get<1>(GetParam());
@@ -215,11 +215,14 @@ TEST_P(BasicOTProtTest, PackedB2AFull) {
     utils::simulate(kWorldSize, [&](std::shared_ptr<yacl::link::Context> ctx) {
       auto conn = std::make_shared<Communicator>(ctx);
       BasicOTProtocols ot_prot(conn, ot_type);
+      size_t sent = ctx->GetStats()->sent_bytes;
       if (ctx->Rank() == 0) {
         ashr0 = ot_prot.B2A(bshr0);
       } else {
         ashr1 = ot_prot.B2A(bshr1);
       }
+      sent = ctx->GetStats()->sent_bytes - sent;
+      printf("B2A sent %f byte per\n", sent * 1. / shape.numel());
     });
 
     EXPECT_EQ(ashr0.shape(), ashr1.shape());

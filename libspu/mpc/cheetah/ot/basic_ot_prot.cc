@@ -74,7 +74,66 @@ NdArrayRef BasicOTProtocols::PackedB2A(const NdArrayRef &inp) {
   const size_t nbits = share_t->nbits() == 0 ? 1 : share_t->nbits();
   SPU_ENFORCE(nbits > 0 && nbits <= 8 * SizeOf(field));
 
-  auto convert_from_bits_form = [&](NdArrayRef _bits) {
+  const int64_t n = inp.numel();
+  auto rand_bits = DISPATCH_ALL_FIELDS(field, "single_b2a", [&]() {
+    if ((n * inp.elsize()) & 7) {
+      // The SseTranspose requires the #columns is multiple of 8
+      // Thus, we call the less efficient RandBits.
+      return RandBits(field, {static_cast<int64_t>(nbits)});
+    }
+
+    // More efficient randbits that ultilize collapse COTs.
+    int64_t B = nbits;
+    auto r = ring_randbit(field, {n * B}).as(makeType<BShrTy>(field, 1));
+    const int64_t numl = r.numel();
+
+    NdArrayRef oup = ring_zeros(field, r.shape());
+    using u2k = std::make_unsigned<ring2k_t>::type;
+    auto input = NdArrayView<const u2k>(r);
+    auto output = absl::MakeSpan(&oup.at<u2k>(0), numl);
+    SPU_ENFORCE(oup.isCompact());
+
+    if (Rank() == 0) {
+      std::vector<u2k> corr_data(numl);
+      // NOTE(lwj): Masking to make sure there is only single bit.
+      for (int64_t i = 0; i < numl; ++i) {
+        // corr=-2*xi
+        corr_data[i] = -((input[i] & 1) << 1);
+      }
+      // Run the multiple COT in the collapse mode.
+      // That is, the i-th COT returns output of `nbits - i` bits.
+      ferret_sender_->SendCAMCC_Collapse(absl::MakeSpan(corr_data), output,
+                                         /*bw*/ nbits, /*num_level*/ nbits);
+      ferret_sender_->Flush();
+
+      for (int64_t i = 0; i < numl; ++i) {
+        output[i] = (input[i] & 1) - output[i];
+      }
+    } else {
+      std::vector<uint8_t> choices(numl);
+      for (int64_t i = 0; i < numl; ++i) {
+        choices[i] = static_cast<uint8_t>(input[i] & 1);
+      }
+      ferret_receiver_->RecvCAMCC_Collapse(absl::MakeSpan(choices), output,
+                                           nbits, nbits);
+
+      for (int64_t i = 0; i < numl; ++i) {
+        output[i] = (input[i] & 1) + output[i];
+      }
+    }
+
+    // oup.shape B x (n * T)
+    std::vector<uint8_t> tmp(B * n * inp.elsize());
+
+    // bit matrix transpose
+    SseTranspose(oup.data<uint8_t>(), tmp.data(), B, n * inp.elsize());
+
+    std::copy_n(tmp.data(), tmp.size(), oup.data<uint8_t>());
+    return oup;
+  });
+
+  // convert the bit form to integer form
+  auto rand = [&](NdArrayRef _bits) {
     SPU_ENFORCE(_bits.isCompact(), "need compact input");
     const int64_t n = _bits.numel() / nbits;
     // init as all 0s.
@@ -93,11 +152,7 @@ NdArrayRef BasicOTProtocols::PackedB2A(const NdArrayRef &inp) {
       }
     });
     return iform;
-  };
-
-  const int64_t n = inp.numel();
-  auto rand_bits = RandBits(field, Shape{n * static_cast<int>(nbits)});
-  auto rand = convert_from_bits_form(rand_bits);
+  }(rand_bits);
 
   // open c = x ^ r
   auto opened = OpenShare(ring_xor(inp, rand), ReduceOp::XOR, nbits, conn_);
@@ -148,6 +203,7 @@ NdArrayRef BasicOTProtocols::SingleB2A(const NdArrayRef &inp, int bit_width) {
   NdArrayRef oup = ring_zeros(field, inp.shape());
   DISPATCH_ALL_FIELDS(field, "single_b2a", [&]() {
     using u2k = std::make_unsigned<ring2k_t>::type;
+    const u2k msk = makeBitsMask<u2k>(bit_width);
     auto input = NdArrayView<const u2k>(inp);
     // NOTE(lwj): oup is compact, so we just use Span
     auto output = absl::MakeSpan(&oup.at<u2k>(0), n);
@@ -165,7 +221,7 @@ NdArrayRef BasicOTProtocols::SingleB2A(const NdArrayRef &inp, int bit_width) {
       ferret_sender_->Flush();
 
       for (int64_t i = 0; i < n; ++i) {
-        output[i] = (input[i] & 1) - output[i];
+        output[i] = ((input[i] & 1) - output[i]) & msk;
       }
     } else {
       std::vector<uint8_t> choices(n);
@@ -175,7 +231,7 @@ NdArrayRef BasicOTProtocols::SingleB2A(const NdArrayRef &inp, int bit_width) {
       ferret_receiver_->RecvCAMCC(absl::MakeSpan(choices), output, bit_width);
 
       for (int64_t i = 0; i < n; ++i) {
-        output[i] = (input[i] & 1) + output[i];
+        output[i] = ((input[i] & 1) + output[i]) & msk;
       }
     }
   });
@@ -183,8 +239,8 @@ NdArrayRef BasicOTProtocols::SingleB2A(const NdArrayRef &inp, int bit_width) {
 }
 
 // Random bit r \in {0, 1} and return as AShr
-NdArrayRef BasicOTProtocols::RandBits(FieldType filed, const Shape &shape) {
-  auto r = ring_randbit(filed, shape).as(makeType<BShrTy>(filed, 1));
+NdArrayRef BasicOTProtocols::RandBits(FieldType field, const Shape &shape) {
+  auto r = ring_randbit(field, shape).as(makeType<BShrTy>(field, 1));
   return SingleB2A(r);
 }
 
