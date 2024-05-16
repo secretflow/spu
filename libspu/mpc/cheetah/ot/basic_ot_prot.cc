@@ -74,15 +74,15 @@ NdArrayRef BasicOTProtocols::PackedB2A(const NdArrayRef &inp) {
   const int64_t n = inp.numel();
   size_t nbits = share_t->nbits() == 0 ? 1 : share_t->nbits();
   if (n >= 8) {
-    // 8bits-align
+    // 8bits-align for a larger input
     nbits = (nbits + 7) / 8 * 8;
   }
   SPU_ENFORCE(nbits > 0 && nbits <= 8 * SizeOf(field));
 
   auto rand_bits = DISPATCH_ALL_FIELDS(field, "single_b2a", [&]() {
-    if ((n * inp.elsize()) & 7) {
-      // The SseTranspose requires the #columns is multiple of 8
-      // Thus, we call the less efficient RandBits.
+    if ((nbits & 7) or (n * inp.elsize()) & 7) {
+      //  The SseTranspose requires the #rows and #columns is multiple of 8.
+      //  Thus, we call the less efficient RandBits on margin cases.
       return RandBits(field, {static_cast<int64_t>(n * nbits)});
     }
 

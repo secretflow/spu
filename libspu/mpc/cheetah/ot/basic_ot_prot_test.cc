@@ -129,10 +129,10 @@ TEST_P(BasicOTProtTest, SingleB2A) {
 
 TEST_P(BasicOTProtTest, PackedB2A) {
   size_t kWorldSize = 2;
-  Shape shape = {11, 12, 13};
+  Shape shape = {2};
   FieldType field = std::get<0>(GetParam());
   auto ot_type = std::get<1>(GetParam());
-  for (size_t nbits : {8}) {
+  for (size_t nbits : {3, 8, 9}) {
     size_t packed_nbits = nbits;
     auto boolean_t = makeType<BShrTy>(field, packed_nbits);
 
