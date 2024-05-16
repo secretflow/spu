@@ -129,59 +129,62 @@ TEST_P(BasicOTProtTest, SingleB2A) {
 
 TEST_P(BasicOTProtTest, PackedB2A) {
   size_t kWorldSize = 2;
-  Shape shape = {2};
   FieldType field = std::get<0>(GetParam());
   auto ot_type = std::get<1>(GetParam());
-  for (size_t nbits : {3, 8, 9}) {
-    size_t packed_nbits = nbits;
-    auto boolean_t = makeType<BShrTy>(field, packed_nbits);
+  for (size_t nbits : {3, 8, 9, 14}) {
+    for (int64_t numel : {3, 8, 9, 13}) {
+      Shape shape = {numel};
+      size_t packed_nbits = nbits;
+      auto boolean_t = makeType<BShrTy>(field, packed_nbits);
 
-    auto bshr0 = ring_rand(field, shape).as(boolean_t);
-    auto bshr1 = ring_rand(field, shape).as(boolean_t);
-    DISPATCH_ALL_FIELDS(field, "", [&]() {
-      auto mask = static_cast<ring2k_t>(-1);
-      if (nbits > 0) {
-        mask = (static_cast<ring2k_t>(1) << packed_nbits) - 1;
-        NdArrayView<ring2k_t> xb0(bshr0);
-        NdArrayView<ring2k_t> xb1(bshr1);
-        pforeach(0, xb0.numel(), [&](int64_t i) {
-          xb0[i] &= mask;
-          xb1[i] &= mask;
-        });
-      }
-    });
+      auto bshr0 = ring_rand(field, shape).as(boolean_t);
+      auto bshr1 = ring_rand(field, shape).as(boolean_t);
+      DISPATCH_ALL_FIELDS(field, "", [&]() {
+        auto mask = static_cast<ring2k_t>(-1);
+        if (nbits > 0) {
+          mask = (static_cast<ring2k_t>(1) << packed_nbits) - 1;
+          NdArrayView<ring2k_t> xb0(bshr0);
+          NdArrayView<ring2k_t> xb1(bshr1);
+          pforeach(0, xb0.numel(), [&](int64_t i) {
+            xb0[i] &= mask;
+            xb1[i] &= mask;
+          });
+        }
+      });
 
-    NdArrayRef ashr0;
-    NdArrayRef ashr1;
-    utils::simulate(kWorldSize, [&](std::shared_ptr<yacl::link::Context> ctx) {
-      auto conn = std::make_shared<Communicator>(ctx);
-      BasicOTProtocols ot_prot(conn, ot_type);
-      if (ctx->Rank() == 0) {
-        ashr0 = ot_prot.B2A(bshr0);
-      } else {
-        ashr1 = ot_prot.B2A(bshr1);
-      }
-    });
-    EXPECT_EQ(ashr0.shape(), ashr1.shape());
-    EXPECT_EQ(ashr0.shape(), shape);
+      NdArrayRef ashr0;
+      NdArrayRef ashr1;
+      utils::simulate(kWorldSize,
+                      [&](std::shared_ptr<yacl::link::Context> ctx) {
+                        auto conn = std::make_shared<Communicator>(ctx);
+                        BasicOTProtocols ot_prot(conn, ot_type);
+                        if (ctx->Rank() == 0) {
+                          ashr0 = ot_prot.B2A(bshr0);
+                        } else {
+                          ashr1 = ot_prot.B2A(bshr1);
+                        }
+                      });
+      EXPECT_EQ(ashr0.shape(), ashr1.shape());
+      EXPECT_EQ(ashr0.shape(), shape);
 
-    DISPATCH_ALL_FIELDS(field, "", [&]() {
-      NdArrayView<ring2k_t> b0(bshr0);
-      NdArrayView<ring2k_t> b1(bshr1);
-      NdArrayView<ring2k_t> a0(ashr0);
-      NdArrayView<ring2k_t> a1(ashr1);
-      auto mask = static_cast<ring2k_t>(-1);
+      DISPATCH_ALL_FIELDS(field, "", [&]() {
+        NdArrayView<ring2k_t> b0(bshr0);
+        NdArrayView<ring2k_t> b1(bshr1);
+        NdArrayView<ring2k_t> a0(ashr0);
+        NdArrayView<ring2k_t> a1(ashr1);
+        auto mask = static_cast<ring2k_t>(-1);
 
-      if (nbits > 0) {
-        mask = (static_cast<ring2k_t>(1) << packed_nbits) - 1;
-      }
+        if (nbits > 0) {
+          mask = (static_cast<ring2k_t>(1) << packed_nbits) - 1;
+        }
 
-      for (int64_t i = 0; i < shape.numel(); ++i) {
-        ring2k_t e = b0[i] ^ b1[i];
-        ring2k_t c = (a0[i] + a1[i]) & mask;
-        EXPECT_EQ(e, c);
-      }
-    });
+        for (int64_t i = 0; i < shape.numel(); ++i) {
+          ring2k_t e = b0[i] ^ b1[i];
+          ring2k_t c = (a0[i] + a1[i]) & mask;
+          EXPECT_EQ(e, c);
+        }
+      });
+    }
   }
 }
 

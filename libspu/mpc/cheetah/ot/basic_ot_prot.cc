@@ -73,25 +73,30 @@ NdArrayRef BasicOTProtocols::PackedB2A(const NdArrayRef &inp) {
   auto field = inp.eltype().as<Ring2k>()->field();
   const int64_t n = inp.numel();
   size_t nbits = share_t->nbits() == 0 ? 1 : share_t->nbits();
-  if (n >= 8) {
-    // 8bits-align for a larger input
-    nbits = (nbits + 7) / 8 * 8;
+  size_t nbits_align = (nbits + 7) / 8 * 8;
+  if ((nbits_align * nbits_align) < 2 * nbits * nbits) {
+    // We align the nbits if the collapse COT is cheaper
+    nbits = nbits_align;
   }
   SPU_ENFORCE(nbits > 0 && nbits <= 8 * SizeOf(field));
 
+  size_t num_cols = n * inp.elsize();
+  size_t num_cols_8 = (num_cols / 8) * 8;
+
   auto rand_bits = DISPATCH_ALL_FIELDS(field, "single_b2a", [&]() {
-    if ((nbits & 7) or (n * inp.elsize()) & 7) {
-      //  The SseTranspose requires the #rows and #columns is multiple of 8.
-      //  Thus, we call the less efficient RandBits on margin cases.
+    int64_t aligned_n = num_cols_8 / inp.elsize();
+    if (aligned_n == 0 or (nbits & 7)) {
+      // The SseTranspose requires the #rows and #columns is multiple of 8.
+      // Thus, we call the less efficient RandBits on margin cases.
       return RandBits(field, {static_cast<int64_t>(n * nbits)});
     }
 
     // More efficient randbits that ultilize collapse COTs.
-    int64_t B = nbits;
-    auto r = ring_randbit(field, {n * B}).as(makeType<BShrTy>(field, 1));
+    auto r = ring_randbit(field, {static_cast<int64_t>(nbits * aligned_n)})
+                 .as(makeType<BShrTy>(field, 1));
     const int64_t numl = r.numel();
 
-    NdArrayRef oup = ring_zeros(field, r.shape());
+    NdArrayRef oup = ring_zeros(field, {static_cast<int64_t>(n * nbits)});
     using u2k = std::make_unsigned<ring2k_t>::type;
     auto input = NdArrayView<const u2k>(r);
     auto output = absl::MakeSpan(&oup.at<u2k>(0), numl);
@@ -127,12 +132,20 @@ NdArrayRef BasicOTProtocols::PackedB2A(const NdArrayRef &inp) {
     }
 
     // oup.shape B x (n * T)
-    std::vector<uint8_t> tmp(B * n * inp.elsize());
+    std::vector<uint8_t> tmp(nbits * aligned_n * inp.elsize());
 
     // bit matrix transpose
-    SseTranspose(oup.data<uint8_t>(), tmp.data(), B, n * inp.elsize());
+    SseTranspose(oup.data<uint8_t>(), tmp.data(), nbits,
+                 aligned_n * inp.elsize());
 
     std::copy_n(tmp.data(), tmp.size(), oup.data<uint8_t>());
+    if (aligned_n < n) {
+      // handle the margins on the columns
+      auto rand_remains =
+          RandBits(field, {static_cast<int64_t>((n - aligned_n) * nbits)});
+      std::memcpy(rand_remains.data<uint8_t>(),
+                  oup.data<uint8_t>() + tmp.size(), rand_remains.numel());
+    }
     return oup;
   });
 
