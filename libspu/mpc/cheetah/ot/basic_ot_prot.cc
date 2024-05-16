@@ -81,8 +81,8 @@ NdArrayRef BasicOTProtocols::PackedB2A(const NdArrayRef &inp) {
 
   auto rand_bits = DISPATCH_ALL_FIELDS(field, "single_b2a", [&]() {
     if ((nbits & 7) or (n * inp.elsize()) & 7) {
-      //  The SseTranspose requires the $rows and #columns is multiple of 8
-      //  Thus, we call the less efficient RandBits.
+      //  The SseTranspose requires the #rows and #columns is multiple of 8.
+      //  Thus, we call the less efficient RandBits on margin cases.
       return RandBits(field, {static_cast<int64_t>(n * nbits)});
     }
 
