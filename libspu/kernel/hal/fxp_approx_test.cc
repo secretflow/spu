@@ -413,11 +413,12 @@ TEST(FxpTest, Atan2) {
   // as plaintext for -0.0 can not be distinguished in fixed-point.
   xt::xarray<float> y = {
       {34.1, 0.234, 34.1, 0.234, -34.1, -0.234, -34.1, -0.234},
-      {0, 0, 1.0, -1.0, 0, std::pow(2.0, 17.0), std::pow(2.0, 17.0),
-       std::pow(2.0, -17.0)}};
-  xt::xarray<float> x = {{23.2, 23.2, -23.2, -23.2, -23.2, -23.2, 23.2, 23.2},
-                         {1.0, -1.0, 0, 0, 0, std::pow(2.0, 17.0),
-                          std::pow(2.0, -17.0), std::pow(2.0, 17.0)}};
+      {0, 0, 1.0, -1.0, 0, std::pow<float>(2.0, 17.0),
+       std::pow<float>(2.0, 17.0), std::pow<float>(2.0, -17.0)}};
+  xt::xarray<float> x = {
+      {23.2, 23.2, -23.2, -23.2, -23.2, -23.2, 23.2, 23.2},
+      {1.0, -1.0, 0, 0, 0, std::pow<float>(2.0, 17.0),
+       std::pow<float>(2.0, -17.0), std::pow<float>(2.0, 17.0)}};
 
   // public atan2
   {
