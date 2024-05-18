@@ -164,7 +164,7 @@ JAX_ONE_TO_ONE_OP_RECORDS = [
         2,
         float_dtypes,
         all_shapes,
-        jtu.rand_small,
+        rand_default,
     ),
     REC("arcsinh", 1, number_dtypes, all_shapes, jtu.rand_small),
     REC(

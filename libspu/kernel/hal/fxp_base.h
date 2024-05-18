@@ -43,10 +43,14 @@ Value reciprocal_goldschmidt_positive(SPUContext* ctx, const Value& b_abs);
 Value reciprocal_goldschmidt(SPUContext* ctx, const Value& b);
 
 Value polynomial(SPUContext* ctx, const Value& x,
-                 absl::Span<Value const> coeffs);
+                 absl::Span<Value const> coeffs,
+                 SignType sign_x = SignType::Unknown,
+                 SignType sign_ret = SignType::Unknown);
 
 Value polynomial(SPUContext* ctx, const Value& x,
-                 absl::Span<float const> coeffs);
+                 absl::Span<float const> coeffs,
+                 SignType sign_x = SignType::Unknown,
+                 SignType sign_ret = SignType::Unknown);
 
 }  // namespace detail
 

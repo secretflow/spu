@@ -834,6 +834,12 @@ TEST_P(ConversionTest, MSB) {
 
     /* GIVEN */
     auto p0 = rand_p(obj.get(), kShape);
+
+    // SECURENN has an msb input range here
+    if (conf.protocol() == ProtocolKind::SECURENN) {
+      p0 = arshift_p(obj.get(), p0, 1);
+    }
+
     auto a0 = p2a(obj.get(), p0);
 
     /* WHEN */

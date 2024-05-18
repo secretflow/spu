@@ -246,7 +246,31 @@ TEST_BINARY_OP(xor)
   TEST_UNARY_OP_P(OP)
 
 TEST_UNARY_OP(not )
-TEST_UNARY_OP(msb)
+TEST_UNARY_OP_V(msb)
+TEST_UNARY_OP_P(msb)
+
+TEST_P(ApiTest, MsbS) {
+  const auto factory = std::get<0>(GetParam());
+  const RuntimeConfig& conf = std::get<1>(GetParam());
+  const size_t npc = std::get<2>(GetParam());
+
+  utils::simulate(npc, [&](const std::shared_ptr<yacl::link::Context>& lctx) {
+    auto sctx = factory(conf, lctx);
+
+    auto p0 = rand_p(sctx.get(), kShape);
+
+    // SECURENN has an msb input range requirement here
+    if (conf.protocol() == ProtocolKind::SECURENN) {
+      p0 = arshift_p(sctx.get(), p0, 1);
+    }
+
+    auto r_s = s2p(sctx.get(), msb_s(sctx.get(), p2s(sctx.get(), p0)));
+    auto r_p = msb_p(sctx.get(), p0);
+
+    /* THEN */
+    EXPECT_VALUE_EQ(r_s, r_p);
+  });
+}
 
 #define TEST_UNARY_OP_WITH_BIT_S(OP)                                   \
   TEST_P(ApiTest, OP##S) {                                             \

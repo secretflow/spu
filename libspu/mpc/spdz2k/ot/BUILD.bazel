@@ -49,7 +49,7 @@ spu_cc_library(
         "@yacl//yacl/crypto/tools:prg",
         "@yacl//yacl/crypto/tools:ro",
         "@yacl//yacl/crypto/tools:rp",
-        "@yacl//yacl/kernels/algorithms:base_ot",
+        "@yacl//yacl/kernel/algorithms:base_ot",
         "@yacl//yacl/link",
         "@yacl//yacl/utils:matrix_utils",
         "@yacl//yacl/utils:serialize",
@@ -68,7 +68,7 @@ spu_cc_library(
         "//libspu/mpc/utils:ring_ops",
         "@com_github_emptoolkit_emp_tool//:emp-tool",
         "@yacl//yacl/crypto/tools:prg",
-        "@yacl//yacl/kernels/algorithms:ot_store",
+        "@yacl//yacl/kernel/algorithms:ot_store",
         "@yacl//yacl/link",
     ],
 )
