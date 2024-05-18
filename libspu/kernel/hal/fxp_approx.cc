@@ -50,7 +50,8 @@ Value log_minmax_normalized(SPUContext* ctx, const Value& x) {
   const auto k1 = constant(ctx, 1.0F, x.dtype(), x.shape());
   auto xm1 = f_sub(ctx, x, k1);
 
-  return detail::polynomial(ctx, xm1, kLogCoefficient);
+  return detail::polynomial(ctx, xm1, kLogCoefficient, SignType::Positive,
+                            SignType::Positive);
 }
 
 // Ref:
@@ -552,11 +553,15 @@ static Value rsqrt_init_guess(SPUContext* ctx, const Value& x, const Value& z) {
   if (!ctx->config().enable_lower_accuracy_rsqrt()) {
     auto coeffs = {0.0F, -15.47994394F, 38.4714796F, -49.86605845F,
                    26.02942339F};
-    r = f_add(ctx, detail::polynomial(ctx, u, coeffs),
+    r = f_add(ctx,
+              detail::polynomial(ctx, u, coeffs, SignType::Positive,
+                                 SignType::Positive),
               constant(ctx, 4.14285016F, x.dtype(), x.shape()));
   } else {
     auto coeffs = {0.0F, -5.9417F, 4.7979F};
-    r = f_add(ctx, detail::polynomial(ctx, u, coeffs),
+    r = f_add(ctx,
+              detail::polynomial(ctx, u, coeffs, SignType::Positive,
+                                 SignType::Positive),
               constant(ctx, 3.1855F, x.dtype(), x.shape()));
   }
 
@@ -764,7 +769,8 @@ Value ErfImpl(SPUContext* ctx, const Value& x) {
                                               0.078108};
   auto one = constant(ctx, 1.0, x.dtype(), x.shape());
 
-  auto z = detail::polynomial(ctx, x, kErfCoefficient);
+  auto z = detail::polynomial(ctx, x, kErfCoefficient, SignType::Positive,
+                              SignType::Positive);
   z = f_square(ctx, z);
   z = f_square(ctx, z);
   z = detail::reciprocal_goldschmidt_positive(ctx, z);
@@ -816,9 +822,11 @@ Value AtanApproxLocal(SPUContext* ctx, const Value& x) {
       -0.1337452245060563,    0.022023163399866309};
 
   if (ctx->getFxpBits() <= 20) {
-    return detail::polynomial(ctx, x, kAtanCoefficientSmall);
+    return detail::polynomial(ctx, x, kAtanCoefficientSmall, SignType::Positive,
+                              SignType::Positive);
   } else {
-    return detail::polynomial(ctx, x, kAtanCoefficientLarge);
+    return detail::polynomial(ctx, x, kAtanCoefficientLarge, SignType::Positive,
+                              SignType::Positive);
   }
 }
 

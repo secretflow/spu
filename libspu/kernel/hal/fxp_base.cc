@@ -28,7 +28,8 @@ namespace detail {
 // Calc:
 //   y = c0 + x*c1 + x^2*c2 + x^3*c3 + ... + x^n*c[n]
 Value polynomial(SPUContext* ctx, const Value& x,
-                 absl::Span<Value const> coeffs) {
+                 absl::Span<Value const> coeffs, SignType sign_x,
+                 SignType sign_ret) {
   SPU_TRACE_HAL_DISP(ctx, x);
   SPU_ENFORCE(x.isFxp());
   SPU_ENFORCE(!coeffs.empty());
@@ -42,25 +43,31 @@ Value polynomial(SPUContext* ctx, const Value& x,
   const auto fbits = ctx->getFxpBits();
   for (size_t i = 1; i < coeffs.size(); i++) {
     if ((i & 1) == 0U) {
+      // x^{even order} is always positive
       x_pow = _trunc(ctx, _mul(ctx, x_pow, x), fbits, SignType::Positive);
     } else {
-      // x^{even order} is always positive
-      x_pow = _trunc(ctx, _mul(ctx, x_pow, x), fbits);
+      if (i > 1) {
+        x_pow = _trunc(ctx, _mul(ctx, x_pow, x), fbits, sign_x);
+      } else {
+        // i=1, then save a _trunc
+        x_pow = x;
+      }
     }
     res = _add(ctx, res, _mul(ctx, x_pow, coeffs[i]));
   }
 
-  return _trunc(ctx, res).setDtype(x.dtype());
+  return _trunc(ctx, res, fbits, sign_ret).setDtype(x.dtype());
 }
 
 Value polynomial(SPUContext* ctx, const Value& x,
-                 absl::Span<float const> coeffs) {
+                 absl::Span<float const> coeffs, SignType sign_x,
+                 SignType sign_ret) {
   std::vector<Value> cs;
   cs.reserve(coeffs.size());
   for (const auto& c : coeffs) {
     cs.push_back(constant(ctx, c, x.dtype(), x.shape()));
   }
-  return polynomial(ctx, x, cs);
+  return polynomial(ctx, x, cs, sign_x, sign_ret);
 }
 
 Value highestOneBit(SPUContext* ctx, const Value& x) {
