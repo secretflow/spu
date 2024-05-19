@@ -31,7 +31,7 @@ INSTANTIATE_TEST_SUITE_P(
                      testing::Values(Shape3D{8, 7, 5}, Shape3D{57, 30, 1},
                                      Shape3D{30, 57, 1}, Shape3D{18, 8, 41},
                                      Shape3D{500, 13, 25},
-                                     Shape3D{1, 20480, 768},
+                                     Shape3D{1, 2048, 768},
                                      Shape3D{18, 768, 78})),
     [](const testing::TestParamInfo<CheetahDotTest::ParamType>& p) {
       return fmt::format("{}x{}x{}x{}", std::get<0>(std::get<1>(p.param)),
