@@ -221,7 +221,7 @@ Type common_type_s(SPUContext* ctx, const Type& a, const Type& b) {
     SPU_ENFORCE(a == b, "expect same, got a={}, b={}", a, b);
     return a;
   } else if (a.isa<AShare>() && b.isa<BShare>()) {
-    return b;
+    return a;
   } else if (a.isa<BShare>() && b.isa<AShare>()) {
     return b;
   } else if (a.isa<BShare>() && b.isa<BShare>()) {
