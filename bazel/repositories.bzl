@@ -215,13 +215,13 @@ def _com_github_microsoft_seal():
     maybe(
         http_archive,
         name = "com_github_microsoft_seal",
-        sha256 = "af9bf0f0daccda2a8b7f344f13a5692e0ee6a45fea88478b2b90c35648bf2672",
-        strip_prefix = "SEAL-4.1.1",
+        sha256 = "55601ea4c9ab96eb29a8e37027637774e64a2868d02852474d625ffced0b92cb",
+        strip_prefix = "SEAL-4.1.2",
         type = "tar.gz",
         patch_args = ["-p1"],
         patches = ["@spulib//bazel:patches/seal.patch"],
         urls = [
-            "https://github.com/microsoft/SEAL/archive/refs/tags/v4.1.1.tar.gz",
+            "https://github.com/microsoft/SEAL/archive/refs/tags/v4.1.2.tar.gz",
         ],
         build_file = "@spulib//bazel:seal.BUILD",
     )
