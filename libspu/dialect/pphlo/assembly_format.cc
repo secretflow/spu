@@ -74,7 +74,7 @@ ParseResult parseSameOperandsAndResultTypeImpl(OpAsmParser& parser,
   }
 
   // Handle if function type, all operand types did not match result type.
-  if (auto fnType = type.dyn_cast<FunctionType>()) {
+  if (auto fnType = mlir::dyn_cast<FunctionType>(type)) {
     return assignFromFunctionType(parser, loc, operands, result, fnType);
   }
 

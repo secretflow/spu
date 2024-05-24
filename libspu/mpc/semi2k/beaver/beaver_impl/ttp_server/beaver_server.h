@@ -17,10 +17,20 @@
 #include <memory>
 
 #include "brpc/server.h"
+#include "yacl/base/buffer.h"
 
 namespace spu::mpc::semi2k::beaver::ttp_server {
 
-std::unique_ptr<brpc::Server> RunServer(int32_t port);
-int RunUntilAskedToQuit(int32_t port);
+struct ServerOptions {
+  int32_t port;
+  // asym_crypto_schema: support ["SM2"]
+  // Will support 25519 in the future, after yacl supported it.
+  std::string asym_crypto_schema;
+  // TODO: Remote Attestation
+  yacl::Buffer server_private_key;
+};
+
+std::unique_ptr<brpc::Server> RunServer(const ServerOptions& options);
+int RunUntilAskedToQuit(const ServerOptions& options);
 
 }  // namespace spu::mpc::semi2k::beaver::ttp_server

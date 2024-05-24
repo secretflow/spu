@@ -18,6 +18,31 @@
 
 namespace spu::mpc {
 
+#define DEF_RVALUE_BINARY_RING_OP(op_name, commutative)                 \
+  template <class X, class Y, bool COMMUTATIVE = commutative>           \
+  typename std::enable_if<                                              \
+      std::is_same_v<NdArrayRef,                                        \
+                     std::remove_cv_t<std::remove_reference_t<X>>> &&   \
+          std::is_same_v<NdArrayRef,                                    \
+                         std::remove_cv_t<std::remove_reference_t<Y>>>, \
+      NdArrayRef>::type                                                 \
+  op_name(X&& x, Y&& y) {                                               \
+    if constexpr (std::is_rvalue_reference_v<decltype(x)>) {            \
+      op_name##_(x, y);                                                 \
+      if constexpr (std::is_rvalue_reference_v<decltype(y)>) {          \
+        NdArrayRef dummy = std::move(y);                                \
+      }                                                                 \
+      return std::move(x);                                              \
+    } else if constexpr (std::is_rvalue_reference_v<decltype(y)> &&     \
+                         COMMUTATIVE) {                                 \
+      op_name##_(y, x);                                                 \
+      return std::move(y);                                              \
+    } else {                                                            \
+      return op_name(static_cast<const NdArrayRef&>(x),                 \
+                     static_cast<const NdArrayRef&>(y));                \
+    }                                                                   \
+  }
+
 void ring_print(const NdArrayRef& x, std::string_view name = "_");
 
 NdArrayRef ring_rand(FieldType field, const Shape& shape);
@@ -40,15 +65,19 @@ void ring_neg_(NdArrayRef& x);
 
 NdArrayRef ring_add(const NdArrayRef& x, const NdArrayRef& y);
 void ring_add_(NdArrayRef& x, const NdArrayRef& y);
+DEF_RVALUE_BINARY_RING_OP(ring_add, true);
 
 NdArrayRef ring_sub(const NdArrayRef& x, const NdArrayRef& y);
 void ring_sub_(NdArrayRef& x, const NdArrayRef& y);
+DEF_RVALUE_BINARY_RING_OP(ring_sub, false);
 
 NdArrayRef ring_mul(const NdArrayRef& x, const NdArrayRef& y);
 void ring_mul_(NdArrayRef& x, const NdArrayRef& y);
+DEF_RVALUE_BINARY_RING_OP(ring_mul, true);
 
 NdArrayRef ring_mul(const NdArrayRef& x, uint128_t y);
 void ring_mul_(NdArrayRef& x, uint128_t y);
+NdArrayRef ring_mul(NdArrayRef&& x, uint128_t y);
 
 NdArrayRef ring_mmul(const NdArrayRef& lhs, const NdArrayRef& rhs);
 void ring_mmul_(NdArrayRef& out, const NdArrayRef& lhs, const NdArrayRef& rhs);
@@ -58,12 +87,15 @@ void ring_not_(NdArrayRef& x);
 
 NdArrayRef ring_and(const NdArrayRef& x, const NdArrayRef& y);
 void ring_and_(NdArrayRef& x, const NdArrayRef& y);
+DEF_RVALUE_BINARY_RING_OP(ring_and, true);
 
 NdArrayRef ring_xor(const NdArrayRef& x, const NdArrayRef& y);
 void ring_xor_(NdArrayRef& x, const NdArrayRef& y);
+DEF_RVALUE_BINARY_RING_OP(ring_xor, true);
 
 NdArrayRef ring_equal(const NdArrayRef& x, const NdArrayRef& y);
-NdArrayRef ring_equal_(const NdArrayRef& x);
+void ring_equal_(NdArrayRef& x, const NdArrayRef& y);
+DEF_RVALUE_BINARY_RING_OP(ring_equal, true);
 
 NdArrayRef ring_arshift(const NdArrayRef& x, size_t bits);
 void ring_arshift_(NdArrayRef& x, size_t bits);
@@ -105,5 +137,7 @@ void ring_set_value(NdArrayRef& in, const T& value) {
   NdArrayView<T> _in(in);
   pforeach(0, in.numel(), [&](int64_t idx) { _in[idx] = value; });
 };
+
+#undef DEF_RVALUE_BINARY_RING_OP
 
 }  // namespace spu::mpc

@@ -35,12 +35,12 @@ Type inferElementType(llvm::SmallVector<Type> types) {
   FloatType ft;
 
   for (auto type : types) {
-    if (auto i = type.dyn_cast<IntegerType>()) {
+    if (auto i = mlir::dyn_cast<IntegerType>(type)) {
       if (it && it != i) {
         (void)emitOptionalError(std::nullopt, "IntegerType mismatch");
       }
       it = i;
-    } else if (auto f = type.dyn_cast<FloatType>()) {
+    } else if (auto f = mlir::dyn_cast<FloatType>(type)) {
       if (ft) {
         ft = f.getWidth() > ft.getWidth() ? f : ft;
       } else {
@@ -63,8 +63,8 @@ Type inferPlainType(MLIRContext* context, llvm::ArrayRef<Type> types) {
 
   for (auto type : types) {
     element_types.emplace_back(
-        type.dyn_cast<RankedTensorType>().getElementType());
-    shapes.emplace_back(type.dyn_cast<RankedTensorType>().getShape());
+        mlir::dyn_cast<RankedTensorType>(type).getElementType());
+    shapes.emplace_back(mlir::dyn_cast<RankedTensorType>(type).getShape());
   }
 
   auto inferred_shape = inferShape(shapes);
@@ -143,7 +143,7 @@ INFER_RETURN_TYPES_FROM_OPERANDS(XorOp)
       ::llvm::SmallVectorImpl<::mlir::Type>& inferredReturnTypes) {            \
     TypeTools tools(context);                                                  \
     auto types = operands.getTypes();                                          \
-    auto shape = types.front().dyn_cast<RankedTensorType>().getShape();        \
+    auto shape = mlir::dyn_cast<RankedTensorType>(types.front()).getShape();   \
     llvm::SmallVector<Visibility, 2> vis;                                      \
     for (auto type : types) {                                                  \
       vis.emplace_back(tools.getTypeVisibility(type));                         \
@@ -202,7 +202,7 @@ LogicalResult inferDynamicSliceOp(std::optional<Location> location,
                              numSliceSizes, ") and number of start indices (",
                              numStartIndices, ")");
   }
-  auto rankedOperandType = operandType.dyn_cast<RankedTensorType>();
+  auto rankedOperandType = mlir::dyn_cast<RankedTensorType>(operandType);
   // dynamic_slice_c2
   if (rankedOperandType.getRank() != numStartIndices) {
     return emitOptionalError(
@@ -255,8 +255,8 @@ LogicalResult DynamicSliceOp::inferReturnTypes(
 LogicalResult inferDynamicUpdateSliceOp(
     std::optional<Location> location, Value operand, Value update,
     ValueRange startIndices, SmallVectorImpl<Type>& inferredReturnTypes) {
-  auto operandType = operand.getType().cast<ShapedType>();
-  auto updateType = update.getType().cast<ShapedType>();
+  auto operandType = mlir::dyn_cast<ShapedType>(operand.getType());
+  auto updateType = mlir::dyn_cast<ShapedType>(update.getType());
 
   // dynamic_update_slice_c3
   if (updateType.hasRank() && operandType.hasRank() &&

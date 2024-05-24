@@ -16,30 +16,54 @@
 
 #include <memory>
 
-#include "libspu/core/ndarray_ref.h"
+#include "yacl/base/buffer.h"
+
+#include "libspu/mpc/common/prg_tensor.h"
+
+#include "libspu/spu.pb.h"
 
 namespace spu::mpc::semi2k {
 
 class Beaver {
  public:
-  // TODO: replace NdArrayRef with none-typed buffer
-  using Triple = std::tuple<NdArrayRef, NdArrayRef, NdArrayRef>;
-  using Pair = std::pair<NdArrayRef, NdArrayRef>;
+  using PrgSeedBuff = yacl::Buffer;
+
+  enum ReplayStatus {
+    Init = 1,
+    Replay = 2,
+    TransposeReplay = 3,
+  };
+
+  struct ReplayDesc {
+    ReplayStatus status{Init};
+    PrgCounter prg_counter;
+    PrgSeed seed;
+    std::vector<PrgSeedBuff> encrypted_seeds;
+    int64_t size;
+    FieldType field;
+  };
+
+  using Array = yacl::Buffer;
+  using Triple = std::tuple<Array, Array, Array>;
+  using Pair = std::pair<Array, Array>;
 
   virtual ~Beaver() = default;
 
-  virtual Triple Mul(FieldType field, const Shape& shape) = 0;
+  virtual Triple Mul(FieldType field, int64_t size,
+                     ReplayDesc* x_desc = nullptr,
+                     ReplayDesc* y_desc = nullptr) = 0;
 
-  // TODO: change And interface to buffer(size_t bits, size_t numel)
-  virtual Triple And(FieldType field, const Shape& shape) = 0;
+  virtual Triple And(int64_t size /*in bytes*/) = 0;
 
-  virtual Triple Dot(FieldType field, int64_t M, int64_t N, int64_t K) = 0;
+  virtual Triple Dot(FieldType field, int64_t m, int64_t n, int64_t k,
+                     ReplayDesc* x_desc = nullptr,
+                     ReplayDesc* y_desc = nullptr) = 0;
 
   // ret[0] = random value in ring 2k
   // ret[1] = ret[0] >> bits
   // ABY3, truncation pair method.
   // Ref: Section 5.1.2 https://eprint.iacr.org/2018/403.pdf
-  virtual Pair Trunc(FieldType field, const Shape& shape, size_t bits) = 0;
+  virtual Pair Trunc(FieldType field, int64_t size, size_t bits) = 0;
 
   // ret[0] = random value in ring 2k
   // ret[1] = (ret[0] << 1) >> (1+bits)
@@ -48,9 +72,9 @@ class Beaver {
   //          as share of MSB(ret[0]) randbit
   // use for Probabilistic truncation over Z2K
   // https://eprint.iacr.org/2020/338.pdf
-  virtual Triple TruncPr(FieldType field, const Shape& shape, size_t bits) = 0;
+  virtual Triple TruncPr(FieldType field, int64_t size, size_t bits) = 0;
 
-  virtual NdArrayRef RandBit(FieldType field, const Shape& shape) = 0;
+  virtual Array RandBit(FieldType field, int64_t size) = 0;
 
   // Generate share permutation pair.
   /*
@@ -66,14 +90,14 @@ class Beaver {
 
   if perm_rank == lctx->Rank(); perm not empty.
   */
-  virtual Pair PermPair(FieldType field, const Shape& shape, size_t perm_rank,
+  virtual Pair PermPair(FieldType field, int64_t size, size_t perm_rank,
                         absl::Span<const int64_t> perm_vec) = 0;
 
   virtual std::unique_ptr<Beaver> Spawn() = 0;
 
   // ret[0] (in a share) = ret[1] (in b share)
   // ref: https://eprint.iacr.org/2020/338
-  virtual Pair Eqz(FieldType field, const Shape& shape) = 0;
+  virtual Pair Eqz(FieldType field, int64_t size) = 0;
 };
 
 }  // namespace spu::mpc::semi2k

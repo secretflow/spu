@@ -425,7 +425,7 @@ public:
 
     if (op.getBaseDilations().has_value() || op.getPadding().has_value()) {
       auto rank =
-          op->getOperandTypes()[0].dyn_cast<RankedTensorType>().getRank();
+          mlir::dyn_cast<RankedTensorType>(op->getOperandTypes()[0]).getRank();
       llvm::SmallVector<int64_t, 2> interior_padding(rank, 0);
       llvm::SmallVector<int64_t, 2> padding_low(rank, 0);
       llvm::SmallVector<int64_t, 2> padding_high(rank, 0);
@@ -752,7 +752,7 @@ public:
 
   Value ensureAtLeast3D(ConversionPatternRewriter &rewriter,
                         Value operand) const {
-    auto type = operand.getType().dyn_cast<RankedTensorType>();
+    auto type = mlir::dyn_cast<RankedTensorType>(operand.getType());
     if (type.getRank() >= 3) {
       return operand;
     }
@@ -869,7 +869,7 @@ public:
 
     if (has_padding) {
       auto rank =
-          op->getOperandTypes()[0].dyn_cast<RankedTensorType>().getRank();
+          mlir::dyn_cast<RankedTensorType>(op->getOperandTypes()[0]).getRank();
       llvm::SmallVector<int64_t, 2> padding_low(rank, 0);
       llvm::SmallVector<int64_t, 2> padding_high(rank, 0);
       llvm::SmallVector<int64_t, 2> padding_interior(rank, 0);
@@ -896,8 +896,8 @@ public:
       }
 
       llvm::SmallVector<int64_t, 2> slice_end(
-          new_op.getType().dyn_cast<RankedTensorType>().getShape().begin(),
-          new_op.getType().dyn_cast<RankedTensorType>().getShape().end());
+          mlir::dyn_cast<RankedTensorType>(new_op.getType()).getShape().begin(),
+          mlir::dyn_cast<RankedTensorType>(new_op.getType()).getShape().end());
 
       for (size_t idx = 0; idx < slice_end.size(); ++idx) {
         slice_end[idx] -= padding_high[idx];
@@ -1021,7 +1021,7 @@ private:
       return input;
     }
 
-    auto inputType = input.getType().cast<ShapedType>();
+    auto inputType = mlir::dyn_cast<ShapedType>(input.getType());
     size_t rank = inputType.getRank();
 
     // Translate window padding into low/high padding.
@@ -1172,12 +1172,12 @@ public:
   matchAndRewrite(stablehlo::BitcastConvertOp op,
                   stablehlo::BitcastConvertOpAdaptor adaptor,
                   ConversionPatternRewriter &rewriter) const override {
-    auto in_type_size = op->getOperandTypes()[0]
-                            .dyn_cast<RankedTensorType>()
-                            .getElementTypeBitWidth();
-    auto out_type_size = op->getResultTypes()[0]
-                             .dyn_cast<RankedTensorType>()
-                             .getElementTypeBitWidth();
+    auto in_type_size =
+        mlir::dyn_cast<RankedTensorType>(op->getOperandTypes()[0])
+            .getElementTypeBitWidth();
+    auto out_type_size =
+        mlir::dyn_cast<RankedTensorType>(op->getResultTypes()[0])
+            .getElementTypeBitWidth();
 
     SPU_ENFORCE(in_type_size == out_type_size,
                 "BitcastConvert with different input/output element size is "

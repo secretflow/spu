@@ -76,7 +76,7 @@ bool isEligibleForCompactPrint(ReduceOp op) {
   }
 
   auto elemType =
-      op.getInputs()[0].getType().cast<ShapedType>().getElementType();
+      mlir::dyn_cast<ShapedType>(op.getInputs()[0].getType()).getElementType();
   auto expectedInnerOpType = RankedTensorType::get(/*shape=*/{}, elemType);
   if (innerOp.getOperands()[0].getType() != expectedInnerOpType) {
     return false;

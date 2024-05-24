@@ -47,11 +47,10 @@ public:
       return failure();
     }
 
-    const auto &from_type = parentConvert.getOperand()
-                                .getType()
-                                .template dyn_cast<RankedTensorType>();
+    const auto &from_type =
+        mlir::dyn_cast<RankedTensorType>(parentConvert.getOperand().getType());
     const auto &to_type =
-        op.getResult().getType().template dyn_cast<RankedTensorType>();
+        mlir::dyn_cast<RankedTensorType>(op.getResult().getType());
 
     OpBuilder builder(op);
 

@@ -137,6 +137,7 @@ py_library(
         "version.py",
         ":api",
         ":psi",
+        "//spu/experimental:experimentals",
         "//spu/intrinsic:all_intrinsics",
         "//spu/utils:simulation",
     ],

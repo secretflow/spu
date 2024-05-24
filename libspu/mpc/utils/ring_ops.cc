@@ -333,6 +333,7 @@ NdArrayRef ring_mul(const NdArrayRef& x, const NdArrayRef& y) {
   ring_mul_impl(res, x, y);
   return res;
 }
+
 void ring_mul_(NdArrayRef& x, const NdArrayRef& y) { ring_mul_impl(x, x, y); }
 
 void ring_mul_impl(NdArrayRef& ret, const NdArrayRef& x, uint128_t y) {
@@ -355,6 +356,11 @@ NdArrayRef ring_mul(const NdArrayRef& x, uint128_t y) {
 }
 
 void ring_mul_(NdArrayRef& x, uint128_t y) { ring_mul_impl(x, x, y); }
+
+NdArrayRef ring_mul(NdArrayRef&& x, uint128_t y) {
+  ring_mul_impl(x, x, y);
+  return std::move(x);
+}
 
 void ring_mmul_impl(NdArrayRef& z, const NdArrayRef& lhs,
                     const NdArrayRef& rhs) {
@@ -426,7 +432,7 @@ NdArrayRef ring_equal(const NdArrayRef& x, const NdArrayRef& y) {
   return res;
 }
 
-void ring_equal(NdArrayRef& x, const NdArrayRef& y) {
+void ring_equal_(NdArrayRef& x, const NdArrayRef& y) {
   ring_equal_impl(x, x, y);
 }
 

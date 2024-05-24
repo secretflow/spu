@@ -17,12 +17,13 @@
 #include <memory>
 
 #include "brpc/channel.h"
+#include "yacl/base/buffer.h"
 #include "yacl/link/context.h"
 
 #include "libspu/mpc/common/prg_tensor.h"
 #include "libspu/mpc/semi2k/beaver/beaver_interface.h"
 
-#include "libspu/mpc/semi2k/beaver/ttp_server/service.pb.h"
+#include "libspu/mpc/semi2k/beaver/beaver_impl/ttp_server/service.pb.h"
 
 namespace spu::mpc::semi2k {
 
@@ -30,7 +31,11 @@ class BeaverTtp final : public Beaver {
  public:
   struct Options {
     std::string server_host;
-    std::string session_id;
+    // asym_crypto_schema: support ["SM2"]
+    // Will support 25519 in the future, after yacl supported it.
+    std::string asym_crypto_schema;
+    // TODO: Remote Attestation
+    yacl::Buffer server_public_key;
     size_t adjust_rank;
 
     std::string brpc_channel_protocol = "baidu_std";
@@ -47,37 +52,40 @@ class BeaverTtp final : public Beaver {
 
   PrgSeed seed_;
 
+  std::vector<PrgSeedBuff> encrypted_seeds_;
+
   PrgCounter counter_;
 
   Options options_;
-
-  size_t child_counter_;
 
   mutable brpc::Channel channel_;
 
  public:
   explicit BeaverTtp(std::shared_ptr<yacl::link::Context> lctx, Options ops);
 
-  ~BeaverTtp() override;
+  ~BeaverTtp() override = default;
 
-  Triple Mul(FieldType field, const Shape& shape) override;
+  Triple Mul(FieldType field, int64_t size, ReplayDesc* x_desc = nullptr,
+             ReplayDesc* y_desc = nullptr) override;
 
-  Triple And(FieldType field, const Shape& shape) override;
+  Triple And(int64_t size) override;
 
-  Triple Dot(FieldType field, int64_t M, int64_t N, int64_t K) override;
+  Triple Dot(FieldType field, int64_t m, int64_t n, int64_t k,
+             ReplayDesc* x_desc = nullptr,
+             ReplayDesc* y_desc = nullptr) override;
 
-  Pair Trunc(FieldType field, const Shape& shape, size_t bits) override;
+  Pair Trunc(FieldType field, int64_t size, size_t bits) override;
 
-  Triple TruncPr(FieldType field, const Shape& shape, size_t bits) override;
+  Triple TruncPr(FieldType field, int64_t size, size_t bits) override;
 
-  NdArrayRef RandBit(FieldType field, const Shape& shape) override;
+  Array RandBit(FieldType field, int64_t size) override;
 
-  Pair PermPair(FieldType field, const Shape& shape, size_t perm_rank,
+  Pair PermPair(FieldType field, int64_t size, size_t perm_rank,
                 absl::Span<const int64_t> perm_vec) override;
 
   std::unique_ptr<Beaver> Spawn() override;
 
-  Pair Eqz(FieldType field, const Shape& shape) override;
+  Pair Eqz(FieldType field, int64_t size) override;
 };
 
 }  // namespace spu::mpc::semi2k

@@ -154,15 +154,15 @@ NdArrayRef AndBB::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
 
       // TODO: redefine beaver interface, generate variadic beaver and bits.
       int64_t numBytes = numel * SizeOf(backtype);
-      int64_t numField = numBytes / SizeOf(field);
-      if (numBytes % SizeOf(field)) numField += 1;
 
-      auto [a, b, c] = beaver->And(field, {numField});
-      SPU_ENFORCE(a.buf()->size() >= static_cast<int64_t>(numBytes));
+      auto [a, b, c] = beaver->And(numBytes);
+      SPU_ENFORCE((a.size()) == numBytes);
+      SPU_ENFORCE((b.size()) == numBytes);
+      SPU_ENFORCE((c.size()) == numBytes);
 
-      NdArrayView<V> _a(a);
-      NdArrayView<V> _b(b);
-      NdArrayView<V> _c(c);
+      absl::Span<const V> _a(a.data<V>(), numel);
+      absl::Span<const V> _b(b.data<V>(), numel);
+      absl::Span<const V> _c(c.data<V>(), numel);
 
       // first half mask x^a, second half mask y^b.
       std::vector<V> mask(numel * 2, 0);

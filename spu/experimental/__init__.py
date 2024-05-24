@@ -1,4 +1,4 @@
-# Copyright 2021 Ant Group Co., Ltd.
+# Copyright 2024 Ant Group Co., Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,16 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-package(default_visibility = ["//visibility:public"])
+from .drop_cached_var_impl import drop_cached_var
+from .make_cached_var_impl import make_cached_var
 
-filegroup(
-    name = "conf",
-    srcs = [
-        "2pc.json",
-        "2pc_semi2k.json",
-        "3pc.json",
-        "3pc_colocated.json",
-        "ds_breast_cancer_basic.json",
-        "ds_mock_regression_basic.json",
-    ],
-)
+__all__ = [
+    "make_cached_var",
+    "drop_cached_var",
+]

@@ -31,7 +31,9 @@ struct PrgArrayDesc {
 inline NdArrayRef prgCreateArray(FieldType field, const Shape& shape,
                                  PrgSeed seed, PrgCounter* counter,
                                  PrgArrayDesc* desc) {
-  *desc = {Shape(shape.begin(), shape.end()), field, *counter};
+  if (desc != nullptr) {
+    *desc = {Shape(shape.begin(), shape.end()), field, *counter};
+  }
   return ring_rand(field, shape, seed, counter);
 }
 

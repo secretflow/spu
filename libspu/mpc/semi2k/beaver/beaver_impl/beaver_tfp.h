@@ -33,6 +33,7 @@ class BeaverTfpUnsafe final : public Beaver {
  private:
   // Only for rank0 party.
   std::vector<PrgSeed> seeds_;
+  std::vector<PrgSeedBuff> seeds_buff_;
 
   std::shared_ptr<yacl::link::Context> lctx_;
 
@@ -43,24 +44,27 @@ class BeaverTfpUnsafe final : public Beaver {
  public:
   explicit BeaverTfpUnsafe(std::shared_ptr<yacl::link::Context> lctx);
 
-  Triple Mul(FieldType field, const Shape& shape) override;
+  Triple Mul(FieldType field, int64_t size, ReplayDesc* x_desc = nullptr,
+             ReplayDesc* y_desc = nullptr) override;
 
-  Triple And(FieldType field, const Shape& shape) override;
+  Triple And(int64_t size) override;
 
-  Triple Dot(FieldType field, int64_t M, int64_t N, int64_t K) override;
+  Triple Dot(FieldType field, int64_t m, int64_t n, int64_t k,
+             ReplayDesc* x_desc = nullptr,
+             ReplayDesc* y_desc = nullptr) override;
 
-  Pair Trunc(FieldType field, const Shape& shape, size_t bits) override;
+  Pair Trunc(FieldType field, int64_t size, size_t bits) override;
 
-  Triple TruncPr(FieldType field, const Shape& shape, size_t bits) override;
+  Triple TruncPr(FieldType field, int64_t size, size_t bits) override;
 
-  NdArrayRef RandBit(FieldType field, const Shape& shape) override;
+  Array RandBit(FieldType field, int64_t size) override;
 
-  Pair PermPair(FieldType field, const Shape& shape, size_t perm_rank,
+  Pair PermPair(FieldType field, int64_t size, size_t perm_rank,
                 absl::Span<const int64_t> perm_vec) override;
 
   std::unique_ptr<Beaver> Spawn() override;
 
-  Pair Eqz(FieldType field, const Shape& shape) override;
+  Pair Eqz(FieldType field, int64_t size) override;
 };
 
 }  // namespace spu::mpc::semi2k
