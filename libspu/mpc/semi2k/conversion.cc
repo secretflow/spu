@@ -103,15 +103,18 @@ NdArrayRef B2A_Randbit::proc(KernelEvalContext* ctx,
     return ring_zeros(field, x.shape()).as(makeType<AShrTy>(field));
   }
 
-  auto numel = x.numel();
+  const auto numel = x.numel();
+  const auto rand_numel = numel * static_cast<int64_t>(nbits);
 
-  auto randbits = beaver->RandBit(field, {numel * static_cast<int64_t>(nbits)});
+  auto randbits = beaver->RandBit(field, rand_numel);
+  SPU_ENFORCE(static_cast<size_t>(randbits.size()) ==
+              rand_numel * SizeOf(field));
   auto res = NdArrayRef(makeType<AShrTy>(field), x.shape());
 
   DISPATCH_ALL_FIELDS(field, kBindName, [&]() {
     using U = ring2k_t;
 
-    NdArrayView<U> _randbits(randbits);
+    absl::Span<const U> _randbits(randbits.data<U>(), rand_numel);
     NdArrayView<U> _x(x);
 
     // algorithm begins.
@@ -209,16 +212,25 @@ NdArrayRef eqz(KernelEvalContext* ctx, const NdArrayRef& in) {
   // check a == 0  <=> c == r
   DISPATCH_ALL_FIELDS(field, "_", [&]() {
     using el_t = ring2k_t;
-    auto [ra, rb] = beaver->Eqz(field, in.shape());
+    auto [ra_buf, rb_buf] = beaver->Eqz(field, numel);
 
-    // c in secret share
-    ring_add_(ra, in);
-    // reveal c
-    NdArrayRef c_p = comm->allReduce(ReduceOp::ADD, ra, "reveal c ");
+    NdArrayRef rb(std::make_shared<yacl::Buffer>(std::move(rb_buf)),
+                  in.eltype(), in.shape());
+    {
+      NdArrayRef c_p;
+      {
+        NdArrayRef ra(std::make_shared<yacl::Buffer>(std::move(ra_buf)),
+                      in.eltype(), in.shape());
+        // c in secret share
+        ring_add_(ra, in);
+        // reveal c
+        c_p = comm->allReduce(ReduceOp::ADD, ra, "reveal c ");
+      }
 
-    if (comm->getRank() == pivot) {
-      ring_xor_(rb, c_p);
-      ring_not_(rb);
+      if (comm->getRank() == pivot) {
+        ring_xor_(rb, c_p);
+        ring_not_(rb);
+      }
     }
 
     // if a == 0, ~(a+ra) ^ rb supposed to be all 1

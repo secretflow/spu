@@ -53,10 +53,10 @@ public:
           direction =
               SortDirectionAttr::get(op->getContext(), SortDirection::ASC);
         }
-        auto lhs_idx =
-            inst.getOperand(0).dyn_cast<mlir::BlockArgument>().getArgNumber();
-        auto rhs_idx =
-            inst.getOperand(1).dyn_cast<mlir::BlockArgument>().getArgNumber();
+        auto lhs_idx = mlir::dyn_cast<mlir::BlockArgument>(inst.getOperand(0))
+                           .getArgNumber();
+        auto rhs_idx = mlir::dyn_cast<mlir::BlockArgument>(inst.getOperand(1))
+                           .getArgNumber();
         // FIXME: If the comparator is using operands other than the first one,
         // we should just reorder operands instead of bailout
         if (lhs_idx != 0 || rhs_idx != 1) {

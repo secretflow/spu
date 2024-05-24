@@ -51,7 +51,8 @@ struct SqrtRewriter : public OpRewritePattern<AddOp> {
       return failure();
     }
 
-    auto const_value = added_const.getValue().dyn_cast<DenseFPElementsAttr>();
+    auto const_value =
+        mlir::dyn_cast<DenseFPElementsAttr>(added_const.getValue());
     if (!const_value) {
       return failure();
     }

@@ -23,29 +23,30 @@
 namespace spu::mpc::semi2k {
 
 class TrustedParty {
- private:
-  using Seeds = absl::Span<const PrgSeed>;
-  using Descs = absl::Span<const PrgArrayDesc>;
-
  public:
-  static NdArrayRef adjustMul(Descs descs, Seeds seeds);
+  using Seeds = absl::Span<const PrgSeed>;
+  struct Operand {
+    PrgArrayDesc desc;
+    Seeds seeds;
+    bool transpose{false};
+  };
 
-  static NdArrayRef adjustDot(Descs descs, Seeds seeds, int64_t M, int64_t N,
-                              int64_t K);
+  static NdArrayRef adjustMul(absl::Span<const Operand>);
 
-  static NdArrayRef adjustAnd(Descs descs, Seeds seeds);
+  static NdArrayRef adjustDot(absl::Span<const Operand>);
 
-  static NdArrayRef adjustTrunc(Descs descs, Seeds seeds, size_t bits);
+  static NdArrayRef adjustAnd(absl::Span<const Operand>);
 
-  static std::pair<NdArrayRef, NdArrayRef> adjustTruncPr(Descs descs,
-                                                         Seeds seeds,
-                                                         size_t bits);
+  static NdArrayRef adjustTrunc(absl::Span<const Operand>, size_t bits);
 
-  static NdArrayRef adjustRandBit(Descs descs, Seeds seeds);
+  static std::pair<NdArrayRef, NdArrayRef> adjustTruncPr(
+      absl::Span<const Operand>, size_t bits);
 
-  static NdArrayRef adjustEqz(Descs descs, Seeds seeds);
+  static NdArrayRef adjustRandBit(absl::Span<const Operand>);
 
-  static NdArrayRef adjustPerm(Descs descs, Seeds seeds,
+  static NdArrayRef adjustEqz(absl::Span<const Operand>);
+
+  static NdArrayRef adjustPerm(absl::Span<const Operand>,
                                absl::Span<const int64_t> perm_vec);
 };
 

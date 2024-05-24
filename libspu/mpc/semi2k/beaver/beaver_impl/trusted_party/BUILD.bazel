@@ -12,16 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+load("//bazel:spu.bzl", "spu_cc_library")
+
 package(default_visibility = ["//visibility:public"])
 
-filegroup(
-    name = "conf",
-    srcs = [
-        "2pc.json",
-        "2pc_semi2k.json",
-        "3pc.json",
-        "3pc_colocated.json",
-        "ds_breast_cancer_basic.json",
-        "ds_mock_regression_basic.json",
+spu_cc_library(
+    name = "trusted_party",
+    srcs = ["trusted_party.cc"],
+    hdrs = ["trusted_party.h"],
+    deps = [
+        "//libspu/mpc/common:prg_tensor",
+        "//libspu/mpc/utils:permute",
+        "//libspu/mpc/utils:ring_ops",
     ],
 )

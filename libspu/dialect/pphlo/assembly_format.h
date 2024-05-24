@@ -114,16 +114,16 @@ ParseResult parseDotDimensionNumbers(AsmParser& parser, AttrTy& target) {
   // Parse `[...] x [...]` into two DenseI64ArrayAttr attributes.
   auto parseLhsRhsDims = [&](DenseI64ArrayAttr& lhs_dims,
                              DenseI64ArrayAttr& rhs_dims) -> ParseResult {
-    lhs_dims = DenseI64ArrayAttr::parse(parser, Type{})
-                   .dyn_cast_or_null<DenseI64ArrayAttr>();
+    lhs_dims = mlir::dyn_cast_or_null<DenseI64ArrayAttr>(
+        DenseI64ArrayAttr::parse(parser, Type{}));
     if (!lhs_dims) {
       return failure();
     }
     if (failed(parser.parseKeyword("x"))) {
       return failure();
     }
-    rhs_dims = DenseI64ArrayAttr::parse(parser, Type{})
-                   .dyn_cast_or_null<DenseI64ArrayAttr>();
+    rhs_dims = mlir::dyn_cast_or_null<DenseI64ArrayAttr>(
+        DenseI64ArrayAttr::parse(parser, Type{}));
     if (!rhs_dims) {
       return failure();
     }

@@ -25,17 +25,17 @@ namespace utils {
 // A tiny utility to handle aggregate type like tensor
 template <typename Fn, typename... Args>
 bool StripAllContainerType(const Type &t, Fn foo, Args &&...args) {
-  if (const auto &rt = t.dyn_cast<RankedTensorType>()) {
+  if (const auto &rt = mlir::dyn_cast<RankedTensorType>(t)) {
     return StripAllContainerType(rt.getElementType(), foo,
                                  std::forward<Args>(args)...);
   }
 
-  if (const auto &ct = t.dyn_cast<ComplexType>()) {
+  if (const auto &ct = mlir::dyn_cast<ComplexType>(t)) {
     return StripAllContainerType(ct.getElementType(), foo,
                                  std::forward<Args>(args)...);
   }
 
-  if (const auto &st = t.dyn_cast<SecretType>()) {
+  if (const auto &st = mlir::dyn_cast<SecretType>(t)) {
     return StripAllContainerType(st.getBaseType(), foo,
                                  std::forward<Args>(args)...);
   }
@@ -46,17 +46,17 @@ bool StripAllContainerType(const Type &t, Fn foo, Args &&...args) {
 }  // namespace utils
 
 bool TypeTools::isSecretType(const Type &t) const {
-  return getElementTypeOrSelf(t).isa<SecretType>();
+  return mlir::isa<SecretType>(getElementTypeOrSelf(t));
 }
 
 bool TypeTools::isFloatType(const Type &t) const {
   return utils::StripAllContainerType(
-      t, [](const Type &t) { return t.isa<FloatType>(); });
+      t, [](const Type &t) { return mlir::isa<FloatType>(t); });
 }
 
 bool TypeTools::isIntType(const Type &t) const {
   return utils::StripAllContainerType(
-      t, [](const Type &t) { return t.isa<IntegerType>(); });
+      t, [](const Type &t) { return mlir::isa<IntegerType>(t); });
 }
 
 Type TypeTools::getType(const Type &type, Visibility vis) const {
@@ -64,7 +64,7 @@ Type TypeTools::getType(const Type &type, Visibility vis) const {
     return type;
   }
 
-  if (const auto &rt = type.dyn_cast<RankedTensorType>()) {
+  if (const auto &rt = mlir::dyn_cast<RankedTensorType>(type)) {
     return RankedTensorType::get(rt.getShape(),
                                  getType(rt.getElementType(), vis));
   }

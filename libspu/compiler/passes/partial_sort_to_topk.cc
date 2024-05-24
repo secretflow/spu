@@ -55,7 +55,7 @@ public:
     }
 
     bool is_ascending = op.getSortDirection() == SortDirection::ASC;
-    auto sort_type = op.getType(0).dyn_cast<RankedTensorType>();
+    auto sort_type = mlir::dyn_cast<RankedTensorType>(op.getType(0));
     auto rank = sort_type.getRank();
     int64_t sort_dim = op.getDimension();
 
@@ -122,7 +122,7 @@ public:
           RankedTensorType::get(shape, sort_type.getElementType()), input,
           permutation);
 
-      sort_type = input.getType().dyn_cast<RankedTensorType>();
+      sort_type = mlir::dyn_cast<RankedTensorType>(input.getType());
     }
 
     // Ask top_k to return k_hi elements

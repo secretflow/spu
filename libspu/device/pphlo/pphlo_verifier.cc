@@ -254,24 +254,24 @@ PPHloVerifier::PPHloVerifier(SPUContext *ctx) : ctx_(ctx) {
     mismatch_handler_(verifyEqual(ctx_, xla_ret, spu_ret));                 \
   }
 
-UNARY_VERIFIER(AbsOp, evalAbsOp)
-UNARY_VERIFIER(NegOp, evalNegOp)
-UNARY_VERIFIER(LogOp, evalLogOp)
-UNARY_VERIFIER(FloorOp, evalFloorOp)
-UNARY_VERIFIER(CeilOp, evalCeilOp)
-UNARY_VERIFIER(LogisticOp, evalLogisticOp)
-UNARY_VERIFIER(TanhOp, evalTanhOp)
-UNARY_VERIFIER(SineOp, evalSineOp)
-UNARY_VERIFIER(CosineOp, evalCosineOp)
-UNARY_VERIFIER(NotOp, evalNotOp)
-UNARY_VERIFIER(ExpOp, evalExponentialOp)
-UNARY_VERIFIER(RsqrtOp, evalRsqrtOp)
-UNARY_VERIFIER(SqrtOp, evalSqrtOp)
-UNARY_VERIFIER(RoundOp, evalRoundOp)
-UNARY_VERIFIER(RoundNearestEvenOp, evalRoundNearestEvenOp)
-UNARY_VERIFIER(SignOp, evalSignOp)
-UNARY_VERIFIER(Log1pOp, evalLog1pOp)
-UNARY_VERIFIER(Expm1Op, evalExpm1Op)
+UNARY_VERIFIER(AbsOp, absOp)
+UNARY_VERIFIER(NegOp, negOp)
+UNARY_VERIFIER(LogOp, logOp)
+UNARY_VERIFIER(FloorOp, floorOp)
+UNARY_VERIFIER(CeilOp, ceilOp)
+UNARY_VERIFIER(LogisticOp, logisticOp)
+UNARY_VERIFIER(TanhOp, tanhOp)
+UNARY_VERIFIER(SineOp, sineOp)
+UNARY_VERIFIER(CosineOp, cosineOp)
+UNARY_VERIFIER(NotOp, notOp)
+UNARY_VERIFIER(ExpOp, exponentialOp)
+UNARY_VERIFIER(RsqrtOp, rsqrtOp)
+UNARY_VERIFIER(SqrtOp, sqrtOp)
+UNARY_VERIFIER(RoundOp, roundOp)
+UNARY_VERIFIER(RoundNearestEvenOp, roundNearestEvenOp)
+UNARY_VERIFIER(SignOp, signOp)
+UNARY_VERIFIER(Log1pOp, log1pOp)
+UNARY_VERIFIER(Expm1Op, expm1Op)
 
 #undef UNARY_VERIFIER
 
@@ -286,21 +286,21 @@ UNARY_VERIFIER(Expm1Op, evalExpm1Op)
     mismatch_handler_(verifyEqual(ctx_, xla_ret, spu_ret));                 \
   }
 
-BINARY_VERIFIER(AddOp, evalAddOp)
-BINARY_VERIFIER(Atan2Op, evalAtan2Op)
-BINARY_VERIFIER(SubtractOp, evalSubtractOp)
-BINARY_VERIFIER(MulOp, evalMultiplyOp)
-BINARY_VERIFIER(PowOp, evalPowerOp)
-BINARY_VERIFIER(MaxOp, evalMaxOp)
-BINARY_VERIFIER(MinOp, evalMinOp)
-BINARY_VERIFIER(AndOp, evalAndOp)
-BINARY_VERIFIER(OrOp, evalOrOp)
-BINARY_VERIFIER(XorOp, evalXorOp)
-BINARY_VERIFIER(DivOp, evalDivideOp)
-BINARY_VERIFIER(RemOp, evalRemOp)
-BINARY_VERIFIER(ShiftLeftOp, evalShiftLeftOp)
-BINARY_VERIFIER(ShiftRightLogicalOp, evalShiftRightLogicalOp)
-BINARY_VERIFIER(ShiftRightArithmeticOp, evalShiftRightArithmeticOp)
+BINARY_VERIFIER(AddOp, addOp)
+BINARY_VERIFIER(Atan2Op, atan2Op)
+BINARY_VERIFIER(SubtractOp, subtractOp)
+BINARY_VERIFIER(MulOp, multiplyOp)
+BINARY_VERIFIER(PowOp, powerOp)
+BINARY_VERIFIER(MaxOp, maxOp)
+BINARY_VERIFIER(MinOp, minOp)
+BINARY_VERIFIER(AndOp, andOp)
+BINARY_VERIFIER(OrOp, orOp)
+BINARY_VERIFIER(XorOp, xorOp)
+BINARY_VERIFIER(DivOp, divideOp)
+BINARY_VERIFIER(RemOp, remOp)
+BINARY_VERIFIER(ShiftLeftOp, shiftLeftOp)
+BINARY_VERIFIER(ShiftRightLogicalOp, shiftRightLogicalOp)
+BINARY_VERIFIER(ShiftRightArithmeticOp, shiftRightArithmeticOp)
 
 #undef BINARY_VERIFIER
 
@@ -313,7 +313,7 @@ BINARY_VERIFIER(ShiftRightArithmeticOp, evalShiftRightArithmeticOp)
     auto spu_ret = convertToStablehloTensor(&mlir_ctx_, ctx_, expected[0]); \
     auto ret_type = mlir::RankedTensorType::get(                            \
         t1.getShape(), mlir::IntegerType::get(&mlir_ctx_, 1));              \
-    auto xla_ret = mlir::stablehlo::evalCompareOp(                          \
+    auto xla_ret = mlir::stablehlo::compareOp(                              \
         t1, t2, mlir::stablehlo::ComparisonDirection::KIND, ret_type);      \
     mismatch_handler_(verifyEqual(ctx_, xla_ret, spu_ret));                 \
   }
@@ -334,7 +334,7 @@ void PPHloVerifier::verify(mlir::spu::pphlo::SelectOp,
   auto t1 = convertToStablehloTensor(&mlir_ctx_, ctx_, operands[1]);
   auto t2 = convertToStablehloTensor(&mlir_ctx_, ctx_, operands[2]);
   auto spu_ret = convertToStablehloTensor(&mlir_ctx_, ctx_, expected[0]);
-  auto xla_ret = mlir::stablehlo::evalSelectOp(pred, t1, t2, t1.getType());
+  auto xla_ret = mlir::stablehlo::selectOp(pred, t1, t2, t1.getType());
   mismatch_handler_(verifyEqual(ctx_, xla_ret, spu_ret));
 }
 
@@ -345,7 +345,7 @@ void PPHloVerifier::verify(mlir::spu::pphlo::ClampOp,
   auto op_ = convertToStablehloTensor(&mlir_ctx_, ctx_, operands[1]);
   auto max_ = convertToStablehloTensor(&mlir_ctx_, ctx_, operands[2]);
   auto spu_ret = convertToStablehloTensor(&mlir_ctx_, ctx_, expected[0]);
-  auto xla_ret = mlir::stablehlo::evalClampOp(min_, op_, max_, op_.getType());
+  auto xla_ret = mlir::stablehlo::clampOp(min_, op_, max_, op_.getType());
   mismatch_handler_(verifyEqual(ctx_, xla_ret, spu_ret));
 }
 
@@ -359,7 +359,7 @@ void PPHloVerifier::verify(mlir::spu::pphlo::DynamicSliceOp op,
     start_indices.emplace_back(
         convertToStablehloTensor(&mlir_ctx_, ctx_, operands[idx]));
   }
-  auto xla_ret = mlir::stablehlo::evalDynamicSliceOp(
+  auto xla_ret = mlir::stablehlo::dynamicSliceOp(
       t1, start_indices, mlir::stablehlo::Sizes(op.getSliceSizes()),
       spu_ret.getType());
   mismatch_handler_(verifyEqual(ctx_, xla_ret, spu_ret));
@@ -376,7 +376,7 @@ void PPHloVerifier::verify(mlir::spu::pphlo::DynamicUpdateSliceOp,
     start_indices.emplace_back(
         convertToStablehloTensor(&mlir_ctx_, ctx_, operands[idx]));
   }
-  auto xla_ret = mlir::stablehlo::evalDynamicUpdateSliceOp(
+  auto xla_ret = mlir::stablehlo::dynamicUpdateSliceOp(
       t1, update, start_indices, spu_ret.getType());
   mismatch_handler_(verifyEqual(ctx_, xla_ret, spu_ret));
 }
@@ -388,7 +388,7 @@ void PPHloVerifier::verify(mlir::spu::pphlo::PadOp op,
   auto t2 = convertToStablehloTensor(&mlir_ctx_, ctx_, operands[1]);
   auto spu_ret = convertToStablehloTensor(&mlir_ctx_, ctx_, expected[0]);
 
-  auto xla_ret = mlir::stablehlo::evalPadOp(
+  auto xla_ret = mlir::stablehlo::padOp(
       t1, t2, mlir::stablehlo::Sizes(op.getEdgePaddingLow()),
       mlir::stablehlo::Sizes(op.getInteriorPadding()), spu_ret.getType());
   mismatch_handler_(verifyEqual(ctx_, xla_ret, spu_ret));
@@ -400,7 +400,7 @@ void PPHloVerifier::verify(mlir::spu::pphlo::BroadcastOp op,
   auto t1 = convertToStablehloTensor(&mlir_ctx_, ctx_, operands[0]);
   auto spu_ret = convertToStablehloTensor(&mlir_ctx_, ctx_, expected[0]);
 
-  auto xla_ret = mlir::stablehlo::evalBroadcastInDimOp(
+  auto xla_ret = mlir::stablehlo::broadcastInDimOp(
       t1, mlir::stablehlo::Axes(op.getBroadcastDimensionsAttr()),
       spu_ret.getType());
   mismatch_handler_(verifyEqual(ctx_, xla_ret, spu_ret));
@@ -414,8 +414,8 @@ void PPHloVerifier::verify(mlir::spu::pphlo::ConcatenateOp op,
     vals.emplace_back(convertToStablehloTensor(&mlir_ctx_, ctx_, operand));
   }
   auto spu_ret = convertToStablehloTensor(&mlir_ctx_, ctx_, expected[0]);
-  auto xla_ret = mlir::stablehlo::evalConcatenateOp(vals, op.getDimension(),
-                                                    spu_ret.getType());
+  auto xla_ret = mlir::stablehlo::concatenateOp(vals, op.getDimension(),
+                                                spu_ret.getType());
   mismatch_handler_(verifyEqual(ctx_, xla_ret, spu_ret));
 }
 
@@ -424,7 +424,7 @@ void PPHloVerifier::verify(mlir::spu::pphlo::ReshapeOp,
                            absl::Span<const spu::Value> expected) {
   auto t1 = convertToStablehloTensor(&mlir_ctx_, ctx_, operands[0]);
   auto spu_ret = convertToStablehloTensor(&mlir_ctx_, ctx_, expected[0]);
-  auto xla_ret = mlir::stablehlo::evalReshapeOp(t1, spu_ret.getType());
+  auto xla_ret = mlir::stablehlo::reshapeOp(t1, spu_ret.getType());
   mismatch_handler_(verifyEqual(ctx_, xla_ret, spu_ret));
 }
 
@@ -433,7 +433,7 @@ void PPHloVerifier::verify(mlir::spu::pphlo::ReverseOp op,
                            absl::Span<const spu::Value> expected) {
   auto t1 = convertToStablehloTensor(&mlir_ctx_, ctx_, operands[0]);
   auto spu_ret = convertToStablehloTensor(&mlir_ctx_, ctx_, expected[0]);
-  auto xla_ret = mlir::stablehlo::evalReverseOp(
+  auto xla_ret = mlir::stablehlo::reverseOp(
       t1, mlir::stablehlo::Axes(op.getDimensions()), spu_ret.getType());
   mismatch_handler_(verifyEqual(ctx_, xla_ret, spu_ret));
 }
@@ -443,7 +443,7 @@ void PPHloVerifier::verify(mlir::spu::pphlo::SliceOp op,
                            absl::Span<const spu::Value> expected) {
   auto t1 = convertToStablehloTensor(&mlir_ctx_, ctx_, operands[0]);
   auto spu_ret = convertToStablehloTensor(&mlir_ctx_, ctx_, expected[0]);
-  auto xla_ret = mlir::stablehlo::evalSliceOp(
+  auto xla_ret = mlir::stablehlo::sliceOp(
       t1, mlir::stablehlo::Index(op.getStartIndices()),
       mlir::stablehlo::Sizes(op.getStrides()), spu_ret.getType());
   mismatch_handler_(verifyEqual(ctx_, xla_ret, spu_ret));
@@ -454,7 +454,7 @@ void PPHloVerifier::verify(mlir::spu::pphlo::TransposeOp op,
                            absl::Span<const spu::Value> expected) {
   auto t1 = convertToStablehloTensor(&mlir_ctx_, ctx_, operands[0]);
   auto spu_ret = convertToStablehloTensor(&mlir_ctx_, ctx_, expected[0]);
-  auto xla_ret = mlir::stablehlo::evalTransposeOp(
+  auto xla_ret = mlir::stablehlo::transposeOp(
       t1, mlir::stablehlo::Axes(op.getPermutation()), spu_ret.getType());
   mismatch_handler_(verifyEqual(ctx_, xla_ret, spu_ret));
 }
@@ -464,7 +464,7 @@ void PPHloVerifier::verify(mlir::spu::pphlo::IotaOp op,
                            absl::Span<const spu::Value> expected) {
   auto spu_ret = convertToStablehloTensor(&mlir_ctx_, ctx_, expected[0]);
   auto xla_ret =
-      mlir::stablehlo::evalIotaOp(op.getIotaDimension(), spu_ret.getType());
+      mlir::stablehlo::iotaOp(op.getIotaDimension(), spu_ret.getType());
   mismatch_handler_(verifyEqual(ctx_, xla_ret, spu_ret));
 }
 

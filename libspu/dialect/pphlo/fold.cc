@@ -25,8 +25,8 @@ OpFoldResult ConstantOp::fold([[maybe_unused]] FoldAdaptor adaptor) {
 }
 
 OpFoldResult ConvertOp::fold(FoldAdaptor) {
-  auto operand_ty = getOperand().getType().cast<TensorType>();
-  auto result_ty = getResult().getType().cast<TensorType>();
+  auto operand_ty = mlir::dyn_cast<TensorType>(getOperand().getType());
+  auto result_ty = mlir::dyn_cast<TensorType>(getResult().getType());
   if (operand_ty == result_ty) {
     return getOperand();
   }
@@ -45,7 +45,7 @@ OpFoldResult ReverseOp::fold(FoldAdaptor) {
 
   // If the dimensions to reverse are all statically 1, then the reverse is a
   // no-op.
-  auto shapedType = input.getType().cast<ShapedType>();
+  auto shapedType = mlir::dyn_cast<ShapedType>(input.getType());
   if (llvm::all_of(
           dims, [&](int64_t dim) { return shapedType.getDimSize(dim) == 1; })) {
     return input;
@@ -54,7 +54,8 @@ OpFoldResult ReverseOp::fold(FoldAdaptor) {
 }
 
 OpFoldResult ReciprocalOp::fold(FoldAdaptor operands) {
-  auto val = operands.getOperands()[0].dyn_cast_or_null<DenseFPElementsAttr>();
+  auto val =
+      mlir::dyn_cast_or_null<DenseFPElementsAttr>(operands.getOperands()[0]);
 
   if (!val) {
     return {};
@@ -64,7 +65,7 @@ OpFoldResult ReciprocalOp::fold(FoldAdaptor operands) {
     auto splat_val = val.getSplatValue<APFloat>();
     APFloat one(splat_val.getSemantics(), 1);
 
-    return SplatElementsAttr::get(val.getType().dyn_cast<ShapedType>(),
+    return SplatElementsAttr::get(mlir::dyn_cast<ShapedType>(val.getType()),
                                   one / splat_val);
   }
 
@@ -78,12 +79,15 @@ OpFoldResult ReciprocalOp::fold(FoldAdaptor operands) {
     values.push_back(one / it);
   }
 
-  return DenseFPElementsAttr::get(val.getType().dyn_cast<ShapedType>(), values);
+  return DenseFPElementsAttr::get(mlir::dyn_cast<ShapedType>(val.getType()),
+                                  values);
 }
 
 OpFoldResult ReshapeOp::fold(FoldAdaptor) {
-  auto operand_shape = getOperand().getType().cast<TensorType>().getShape();
-  auto result_shape = getResult().getType().cast<TensorType>().getShape();
+  auto operand_shape =
+      mlir::dyn_cast<TensorType>(getOperand().getType()).getShape();
+  auto result_shape =
+      mlir::dyn_cast<TensorType>(getResult().getType()).getShape();
   if (operand_shape == result_shape) {
     return getOperand();
   }

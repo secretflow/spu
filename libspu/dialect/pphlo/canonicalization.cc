@@ -64,7 +64,7 @@ class TransposeReshapeGenericDotGeneral
     if (isConsecutive(target_order)) {
       return src;
     }
-    auto type = src.getType().cast<RankedTensorType>();
+    auto type = mlir::dyn_cast<RankedTensorType>(src.getType());
     SmallVector<int64_t, 4> transposeShape;
     for (auto i : target_order) {
       transposeShape.push_back(type.getDimSize(i));
@@ -97,9 +97,10 @@ class TransposeReshapeGenericDotGeneral
 
   LogicalResult matchAndRewrite(pphlo::DotGeneralOp op,
                                 PatternRewriter& rewriter) const override {
-    auto lhsShapeType = op.getLhs().getType().dyn_cast<RankedTensorType>();
-    auto rhsShapeType = op.getRhs().getType().dyn_cast<RankedTensorType>();
-    auto resultType = op.getResult().getType().dyn_cast<RankedTensorType>();
+    auto lhsShapeType = mlir::dyn_cast<RankedTensorType>(op.getLhs().getType());
+    auto rhsShapeType = mlir::dyn_cast<RankedTensorType>(op.getRhs().getType());
+    auto resultType =
+        mlir::dyn_cast<RankedTensorType>(op.getResult().getType());
     if (!lhsShapeType || !rhsShapeType || !resultType) {
       return failure();
     }
@@ -190,10 +191,10 @@ class TransposeReshapeGenericDotGeneral
         rewriter.getContext(), /*lhsBatchingDimensions=*/0,
         /*rhsBatchingDimensions=*/0,
         /*lhsContractingDimensions=*/
-        lhs.getType().dyn_cast<ShapedType>().getRank() - 1,
+        mlir::dyn_cast<ShapedType>(lhs.getType()).getRank() - 1,
         /*rhsContractingDimensions=*/1);
-    auto lhsNewType = lhs.getType().cast<RankedTensorType>();
-    auto rhsNewType = rhs.getType().cast<RankedTensorType>();
+    auto lhsNewType = mlir::dyn_cast<RankedTensorType>(lhs.getType());
+    auto rhsNewType = mlir::dyn_cast<RankedTensorType>(rhs.getType());
 
     // if lhs's shape or rhs's shape has collapsed, we need reshape the result
     bool needReshapeResult = lhsNewType.getRank() < lhsShapeType.getRank() ||
@@ -264,7 +265,7 @@ class NormalizeDimensionOrder : public OpRewritePattern<ConvolutionOp> {
     // NHWC and HWIO order, respectively. This may lose precision but won't
     // break the soundness.
     auto input = op.getLhs();
-    auto input_type = input.getType().dyn_cast<RankedTensorType>();
+    auto input_type = mlir::dyn_cast<RankedTensorType>(input.getType());
     auto input_shape = input_type.getShape();
 
     llvm::SmallVector<int64_t> new_input_dim_order(num_dims);
@@ -288,7 +289,7 @@ class NormalizeDimensionOrder : public OpRewritePattern<ConvolutionOp> {
 
     auto kernel = op.getRhs();
 
-    auto kernel_type = kernel.getType().dyn_cast<RankedTensorType>();
+    auto kernel_type = mlir::dyn_cast<RankedTensorType>(kernel.getType());
     auto kernel_shape = kernel_type.getShape();
 
     llvm::SmallVector<int64_t> new_kernel_dim_order(num_dims);
@@ -321,7 +322,8 @@ class NormalizeDimensionOrder : public OpRewritePattern<ConvolutionOp> {
     auto output_feature_dim = dnums.getOutputFeatureDimension();
     new_output_dim_order[0] = output_batch_dim;
 
-    auto result_type = op->getResultTypes()[0].dyn_cast<RankedTensorType>();
+    auto result_type =
+        mlir::dyn_cast<RankedTensorType>(op->getResultTypes()[0]);
     auto result_shape = result_type.getShape();
 
     new_conv_dims[0] = result_shape[output_batch_dim];
@@ -383,7 +385,8 @@ class MarkValueOnlyTopK : public OpRewritePattern<CustomCallOp> {
       return failure();
     }
 
-    auto attr = op->getAttr("mhlo.attributes").dyn_cast<mlir::DictionaryAttr>();
+    auto attr =
+        mlir::dyn_cast<mlir::DictionaryAttr>(op->getAttr("mhlo.attributes"));
 
     auto new_op = rewriter.create<CustomCallOp>(
         op->getLoc(), TypeRange{op->getResultTypes()[0]}, op->getOperands(),

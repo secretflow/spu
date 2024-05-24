@@ -253,18 +253,35 @@ std::tuple<int64_t, int64_t, int64_t> calcMmulTilingSize(int64_t m, int64_t n,
   if (m == 0 || n == 0 || k == 0) {
     return {m, n, k};
   }
-  const auto elnum_limit = static_cast<int64_t>(mem_limit / elsize);
-  const int64_t expected_step = std::ceil(std::sqrt(elnum_limit));
+  if ((m * k + k * n) * elsize < mem_limit) {
+    return {m, n, k};
+  }
 
-  const int64_t expected_mn_step = std::min((m + n), expected_step);
-  const int64_t k_step = std::max(std::min(k, elnum_limit / expected_mn_step),
-                                  static_cast<int64_t>(1));
+  const double elnum_limit = mem_limit / elsize;
+  int64_t k_step;
+  int64_t expected_mn_step;
+
+  if (k > (m + n) * 8) {
+    // for "tall and skinny", only split large dimensions.
+    expected_mn_step = m + n;
+    k_step = std::max<int64_t>(1, std::ceil(elnum_limit / expected_mn_step));
+  } else if ((m + n) > k * 8) {
+    // for "tall and skinny", only split large dimensions.
+    k_step = k;
+    expected_mn_step = std::max<int64_t>(1, std::ceil(elnum_limit / k_step));
+  } else {
+    // Solving equations:
+    // k_step * mn_step == elnum_limit
+    // k_step / mn_step == k / (m+n)
+    double k_mn_radio = static_cast<double>(k) / static_cast<double>(m + n);
+    double mn_step = std::sqrt(elnum_limit / k_mn_radio);
+    k_step = std::max<int64_t>(1, std::ceil(elnum_limit / mn_step));
+    expected_mn_step = std::max<int64_t>(1, std::ceil(mn_step));
+  }
 
   // split expected_mn_step into m/n by radio
-  const int64_t m_step =
-      std::max(expected_mn_step * m / (m + n), static_cast<int64_t>(1));
-  const int64_t n_step =
-      std::max(expected_mn_step * n / (m + n), static_cast<int64_t>(1));
+  const int64_t m_step = std::max<int64_t>(expected_mn_step * m / (m + n), 1);
+  const int64_t n_step = std::max<int64_t>(expected_mn_step * n / (m + n), 1);
 
   return {m_step, n_step, k_step};
 }

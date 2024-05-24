@@ -131,12 +131,17 @@ class UnitTests(unittest.TestCase):
         npt.assert_array_equal(cpu_labels, spu_labels)
 
     def test_jax_lr(self):
+        from examples.python.utils import dataset_utils as dsutil
         from examples.python.ml.jax_lr import jax_lr
 
-        w, b = profile_test_point(jax_lr.run_on_spu)
-        score = jax_lr.compute_score(ppd.get(w), ppd.get(b), 'spu')
+        x, y = dsutil.mock_classification(10000, 100, 0.0, 42)
+        w, b = profile_test_point(jax_lr.run_on_spu, x, y)
 
-        self.assertGreater(score, 0.95)
+        score = jax_lr.compute_score(x, y, ppd.get(w), ppd.get(b), 'spu')
+        self.assertGreater(score, 0.85)
+
+        score = jax_lr.save_and_load_model(x, y, w, b)
+        self.assertGreater(score, 0.85)
 
     def test_jax_svm(self):
         from examples.python.ml.jax_svm import jax_svm
@@ -219,12 +224,6 @@ class UnitTests(unittest.TestCase):
         label = torch_resnet_experiment.run_inference_on_spu(model, image)
         self.assertEqual(label, 258)
 
-    def test_save_and_load_model(self):
-        from examples.python.ml.jax_lr import jax_lr
-
-        score = jax_lr.save_and_load_model()
-        self.assertGreater(score, 0.9)
-
 
 def suite():
     suite = unittest.TestSuite()
@@ -239,7 +238,6 @@ def suite():
     suite.addTest(UnitTests('test_ss_xgb'))
     suite.addTest(UnitTests('test_stax_mnist_classifier'))
     suite.addTest(UnitTests('test_stax_nn'))
-    suite.addTest(UnitTests('test_save_and_load_model'))
     # should put JAX tests above
     suite.addTest(UnitTests('test_tf_experiment'))
     suite.addTest(UnitTests('test_torch_lr_experiment'))

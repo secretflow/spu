@@ -12,15 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "libspu/mpc/semi2k/beaver/beaver_ttp.h"
+#include "libspu/mpc/semi2k/beaver/beaver_impl/beaver_ttp.h"
 
-#include <random>
-#include <thread>
 #include <utility>
+#include <vector>
 
+#include "yacl/crypto/pke/asymmetric_sm2_crypto.h"
 #include "yacl/crypto/rand/rand.h"
-#include "yacl/link/algorithm/barrier.h"
-#include "yacl/utils/serialize.h"
+#include "yacl/link/algorithm/allgather.h"
 
 #include "libspu/mpc/common/prg_tensor.h"
 #include "libspu/mpc/utils/ring_ops.h"
@@ -36,24 +35,52 @@ namespace spu::mpc::semi2k {
 
 namespace {
 
-int32_t kRequiredVersion = 1;
+inline size_t CeilDiv(size_t a, size_t b) { return (a + b - 1) / b; }
+
+void FillReplayDesc(Beaver::ReplayDesc* desc, FieldType field, int64_t size,
+                    const std::vector<Beaver::PrgSeedBuff>& encrypted_seeds,
+                    PrgCounter counter, PrgSeed self_seed) {
+  if (desc == nullptr || desc->status != Beaver::Init) {
+    return;
+  }
+  desc->size = size;
+  desc->field = field;
+  desc->prg_counter = counter;
+  desc->encrypted_seeds = encrypted_seeds;
+  desc->seed = self_seed;
+}
 
 template <class AdjustRequest>
-AdjustRequest BuildAdjustRequest(std::string_view session,
-                                 absl::Span<const PrgArrayDesc> descs) {
+AdjustRequest BuildAdjustRequest(
+    absl::Span<const PrgArrayDesc> descs,
+    absl::Span<const absl::Span<const yacl::Buffer>> descs_seed) {
   AdjustRequest ret;
 
   SPU_ENFORCE(!descs.empty());
 
-  ret.set_session_id(session.data(), session.size());
-  for (const auto& desc : descs) {
+  uint32_t field_size;
+  for (size_t i = 0; i < descs.size(); i++) {
+    const auto& desc = descs[i];
     auto* input = ret.add_prg_inputs();
     input->set_prg_count(desc.prg_counter);
-    for (const auto s : desc.shape) {
-      input->add_shape(s);
+    field_size = SizeOf(desc.field);
+    input->set_buffer_len(desc.shape.numel() * SizeOf(desc.field));
+
+    absl::Span<const yacl::Buffer> seeds;
+    if (descs_seed.size() == descs.size()) {
+      seeds = descs_seed[i];
+    } else {
+      SPU_ENFORCE(descs_seed.size() == 1);
+      seeds = descs_seed[0];
+    }
+    for (const auto& s : seeds) {
+      input->add_encrypted_seeds(s.data(), s.size());
     }
   }
-  ret.set_field(static_cast<int64_t>(descs[0].field));
+  if constexpr (!std::is_same_v<AdjustRequest,
+                                beaver::ttp_server::AdjustAndRequest>) {
+    ret.set_field_size(field_size);
+  }
   return ret;
 }
 
@@ -120,42 +147,16 @@ std::vector<NdArrayRef> RpcCall(brpc::Channel& channel, AdjustRequest req,
 
 }  // namespace
 
-BeaverTtp::~BeaverTtp() {
-  if (lctx_->Rank() == 0) {
-    // all parties should arrive here, only rank0 destroys the remote session.
-    beaver::ttp_server::DeleteSessionRequest req;
-    req.set_session_id(options_.session_id);
-
-    brpc::Controller cntl;
-    beaver::ttp_server::BeaverService::Stub stub(&channel_);
-    beaver::ttp_server::DeleteSessionResponse rsp;
-    stub.DeleteSession(&cntl, &req, &rsp, nullptr);
-
-    if (cntl.Failed()) {
-      // we can do nothing more.
-      SPDLOG_ERROR("delete session rpc failed, code={} error={}",
-                   cntl.ErrorCode(), cntl.ErrorText());
-    }
-    if (rsp.code() != beaver::ttp_server::ErrorCode::OK) {
-      // we can do nothing more.
-      SPDLOG_ERROR("delete session server failed code={}, error={}",
-                   ErrorCode_Name(rsp.code()), rsp.message());
-    }
-  }
-}
-
 BeaverTtp::BeaverTtp(std::shared_ptr<yacl::link::Context> lctx, Options ops)
     : lctx_(std::move(std::move(lctx))),
       seed_(yacl::crypto::SecureRandSeed()),
       counter_(0),
-      options_(std::move(ops)),
-      child_counter_(0) {
+      options_(std::move(ops)) {
   brpc::FLAGS_max_body_size = std::numeric_limits<uint64_t>::max();
   brpc::FLAGS_socket_max_unwritten_bytes =
       std::numeric_limits<int64_t>::max() / 2;
   // init remote connection.
   SPU_ENFORCE(lctx_);
-  SPU_ENFORCE_GT(lctx_->WorldSize(), options_.adjust_rank);
   {
     brpc::ChannelOptions brc_options;
     brc_options.protocol = options_.brpc_channel_protocol;
@@ -172,75 +173,145 @@ BeaverTtp::BeaverTtp(std::shared_ptr<yacl::link::Context> lctx, Options ops)
     }
   }
 
+  yacl::Buffer encrypted_seed;
   {
-    beaver::ttp_server::CreateSessionRequest req;
-    {
-      req.set_session_id(options_.session_id);
-      req.set_adjust_rank(options_.adjust_rank);
-      req.set_world_size(lctx_->WorldSize());
-      req.set_rank(lctx_->Rank());
-      auto seed_buf = yacl::SerializeUint128(seed_);
-      req.set_prg_seed(seed_buf.data(), seed_buf.size());
-      req.set_required_version(kRequiredVersion);
+    std::unique_ptr<yacl::crypto::AsymmetricEncryptor> encryptor;
+    auto lower_schema = absl::AsciiStrToLower(options_.asym_crypto_schema);
+    if (lower_schema == "sm2") {
+      encryptor = std::make_unique<yacl::crypto::Sm2Encryptor>(
+          options_.server_public_key);
+    } else {
+      SPU_THROW("not support asym_crypto_schema {}",
+                options_.asym_crypto_schema);
     }
-
-    brpc::Controller cntl;
-    beaver::ttp_server::BeaverService::Stub stub(&channel_);
-    beaver::ttp_server::CreateSessionResponse rsp;
-    stub.CreateSession(&cntl, &req, &rsp, nullptr);
-
-    SPU_ENFORCE(!cntl.Failed(), "create session rpc failed, code={} error={}",
-                cntl.ErrorCode(), cntl.ErrorText());
-    SPU_ENFORCE(rsp.code() == beaver::ttp_server::ErrorCode::OK,
-                "create session server failed code={}, error={}",
-                ErrorCode_Name(rsp.code()), rsp.message());
+    auto encrypted = encryptor->Encrypt(
+        {reinterpret_cast<const void*>(&seed_), sizeof(PrgSeed)});
+    encrypted_seed = yacl::Buffer(encrypted);
   }
 
-  yacl::link::Barrier(lctx_, "BeaverTtp Init");
+  encrypted_seeds_ = yacl::link::AllGather(lctx_, encrypted_seed,
+                                           "BEAVER_TTP:SYNC_ENCRYPTED_SEEDS");
 }
 
-BeaverTtp::Triple BeaverTtp::Mul(FieldType field, const Shape& shape) {
+BeaverTtp::Triple BeaverTtp::Mul(FieldType field, int64_t size,
+                                 ReplayDesc* x_desc, ReplayDesc* y_desc) {
   std::vector<PrgArrayDesc> descs(3);
+  std::vector<absl::Span<const PrgSeedBuff>> descs_seed(3, encrypted_seeds_);
+  Shape shape({size, 1});
 
-  auto a = prgCreateArray(field, shape, seed_, &counter_, descs.data());
-  auto b = prgCreateArray(field, shape, seed_, &counter_, &descs[1]);
+  auto if_replay = [&](const ReplayDesc* replay_desc, size_t idx) {
+    if (replay_desc == nullptr || replay_desc->status != Beaver::Replay) {
+      return prgCreateArray(field, shape, seed_, &counter_, &descs[idx]);
+    } else {
+      SPU_ENFORCE(replay_desc->field == field);
+      SPU_ENFORCE(replay_desc->size == size);
+      SPU_ENFORCE(replay_desc->encrypted_seeds.size() == lctx_->WorldSize());
+      if (lctx_->Rank() == options_.adjust_rank) {
+        descs_seed[idx] = replay_desc->encrypted_seeds;
+        descs[idx].field = field;
+        descs[idx].shape = shape;
+        descs[idx].prg_counter = replay_desc->prg_counter;
+      }
+      PrgCounter tmp_counter = replay_desc->prg_counter;
+      return prgCreateArray(field, shape, replay_desc->seed, &tmp_counter,
+                            &descs[idx]);
+    }
+  };
+
+  FillReplayDesc(x_desc, field, size, encrypted_seeds_, counter_, seed_);
+  auto a = if_replay(x_desc, 0);
+  FillReplayDesc(y_desc, field, size, encrypted_seeds_, counter_, seed_);
+  auto b = if_replay(y_desc, 1);
   auto c = prgCreateArray(field, shape, seed_, &counter_, &descs[2]);
 
   if (lctx_->Rank() == options_.adjust_rank) {
     auto req = BuildAdjustRequest<beaver::ttp_server::AdjustMulRequest>(
-        options_.session_id, descs);
+        descs, descs_seed);
     auto adjusts = RpcCall(channel_, req, field);
     SPU_ENFORCE_EQ(adjusts.size(), 1U);
     ring_add_(c, adjusts[0].reshape(shape));
   }
 
-  return {a, b, c};
+  Triple ret;
+  std::get<0>(ret) = std::move(*a.buf());
+  std::get<1>(ret) = std::move(*b.buf());
+  std::get<2>(ret) = std::move(*c.buf());
+
+  return ret;
 }
 
 BeaverTtp::Triple BeaverTtp::Dot(FieldType field, int64_t m, int64_t n,
-                                 int64_t k) {
+                                 int64_t k, ReplayDesc* x_desc,
+                                 ReplayDesc* y_desc) {
   std::vector<PrgArrayDesc> descs(3);
+  std::vector<absl::Span<const PrgSeedBuff>> descs_seed(3, encrypted_seeds_);
+  std::vector<Shape> shapes(3);
+  std::vector<bool> transpose_inputs(3);
+  shapes[0] = {m, k};
+  shapes[1] = {k, n};
+  shapes[2] = {m, n};
 
-  auto a = prgCreateArray(field, {m, k}, seed_, &counter_, descs.data());
-  auto b = prgCreateArray(field, {k, n}, seed_, &counter_, &descs[1]);
+  auto if_replay = [&](const ReplayDesc* replay_desc, size_t idx) {
+    if (replay_desc == nullptr) {
+      return prgCreateArray(field, shapes[idx], seed_, &counter_, &descs[idx]);
+    } else {
+      SPU_ENFORCE(replay_desc->field == field);
+      SPU_ENFORCE(replay_desc->encrypted_seeds.size() == lctx_->WorldSize());
+      if (replay_desc->status == Beaver::TransposeReplay) {
+        std::reverse(shapes[idx].begin(), shapes[idx].end());
+      }
+      if (lctx_->Rank() == options_.adjust_rank) {
+        descs_seed[idx] = replay_desc->encrypted_seeds;
+        descs[idx].field = field;
+        descs[idx].shape = shapes[idx];
+        descs[idx].prg_counter = replay_desc->prg_counter;
+        transpose_inputs[idx] = replay_desc->status == Beaver::TransposeReplay;
+      }
+      PrgCounter tmp_counter = replay_desc->prg_counter;
+      auto ret = prgCreateArray(field, shapes[idx], replay_desc->seed,
+                                &tmp_counter, nullptr);
+      if (replay_desc->status == Beaver::TransposeReplay) {
+        ret = ret.transpose().clone();
+      }
+      return ret;
+    }
+  };
+
+  FillReplayDesc(x_desc, field, m * k, encrypted_seeds_, counter_, seed_);
+  auto a = if_replay(x_desc, 0);
+  FillReplayDesc(y_desc, field, k * n, encrypted_seeds_, counter_, seed_);
+  auto b = if_replay(y_desc, 1);
   auto c = prgCreateArray(field, {m, n}, seed_, &counter_, &descs[2]);
 
   if (lctx_->Rank() == options_.adjust_rank) {
     auto req = BuildAdjustRequest<beaver::ttp_server::AdjustDotRequest>(
-        options_.session_id, descs);
+        descs, descs_seed);
     req.set_m(m);
     req.set_n(n);
     req.set_k(k);
+    for (bool t : transpose_inputs) {
+      req.add_transpose_inputs(t);
+    }
     auto adjusts = RpcCall(channel_, req, field);
     SPU_ENFORCE_EQ(adjusts.size(), 1U);
     ring_add_(c, adjusts[0].reshape(c.shape()));
   }
 
-  return {a, b, c};
+  Triple ret;
+  std::get<0>(ret) = std::move(*a.buf());
+  std::get<1>(ret) = std::move(*b.buf());
+  std::get<2>(ret) = std::move(*c.buf());
+
+  return ret;
 }
 
-BeaverTtp::Triple BeaverTtp::And(FieldType field, const Shape& shape) {
+BeaverTtp::Triple BeaverTtp::And(int64_t size) {
   std::vector<PrgArrayDesc> descs(3);
+  // inside beaver, use max field for efficiency
+  auto field = FieldType::FM128;
+  int64_t elsize = CeilDiv(size, SizeOf(field));
+  Shape shape({elsize, 1});
+  std::vector<absl::Span<const PrgSeedBuff>> descs_seed(1, encrypted_seeds_);
 
   auto a = prgCreateArray(field, shape, seed_, &counter_, descs.data());
   auto b = prgCreateArray(field, shape, seed_, &counter_, &descs[1]);
@@ -248,37 +319,51 @@ BeaverTtp::Triple BeaverTtp::And(FieldType field, const Shape& shape) {
 
   if (lctx_->Rank() == options_.adjust_rank) {
     auto req = BuildAdjustRequest<beaver::ttp_server::AdjustAndRequest>(
-        options_.session_id, descs);
+        descs, descs_seed);
     auto adjusts = RpcCall(channel_, req, field);
     SPU_ENFORCE_EQ(adjusts.size(), 1U);
     ring_xor_(c, adjusts[0].reshape(c.shape()));
   }
 
-  return {a, b, c};
+  Triple ret;
+  std::get<0>(ret) = std::move(*a.buf());
+  std::get<1>(ret) = std::move(*b.buf());
+  std::get<2>(ret) = std::move(*c.buf());
+  std::get<0>(ret).resize(size);
+  std::get<1>(ret).resize(size);
+  std::get<2>(ret).resize(size);
+
+  return ret;
 }
 
-BeaverTtp::Pair BeaverTtp::Trunc(FieldType field, const Shape& shape,
-                                 size_t bits) {
+BeaverTtp::Pair BeaverTtp::Trunc(FieldType field, int64_t size, size_t bits) {
   std::vector<PrgArrayDesc> descs(2);
+  std::vector<absl::Span<const PrgSeedBuff>> descs_seed(1, encrypted_seeds_);
+  Shape shape({size, 1});
 
   auto a = prgCreateArray(field, shape, seed_, &counter_, descs.data());
   auto b = prgCreateArray(field, shape, seed_, &counter_, &descs[1]);
 
   if (lctx_->Rank() == options_.adjust_rank) {
     auto req = BuildAdjustRequest<beaver::ttp_server::AdjustTruncRequest>(
-        options_.session_id, descs);
+        descs, descs_seed);
     req.set_bits(bits);
     auto adjusts = RpcCall(channel_, req, field);
     SPU_ENFORCE_EQ(adjusts.size(), 1U);
     ring_add_(b, adjusts[0].reshape(b.shape()));
   }
 
-  return {a, b};
+  Pair ret;
+  ret.first = std::move(*a.buf());
+  ret.second = std::move(*b.buf());
+  return ret;
 }
 
-BeaverTtp::Triple BeaverTtp::TruncPr(FieldType field, const Shape& shape,
+BeaverTtp::Triple BeaverTtp::TruncPr(FieldType field, int64_t size,
                                      size_t bits) {
   std::vector<PrgArrayDesc> descs(3);
+  std::vector<absl::Span<const PrgSeedBuff>> descs_seed(1, encrypted_seeds_);
+  Shape shape({size, 1});
 
   auto r = prgCreateArray(field, shape, seed_, &counter_, descs.data());
   auto rc = prgCreateArray(field, shape, seed_, &counter_, &descs[1]);
@@ -286,7 +371,7 @@ BeaverTtp::Triple BeaverTtp::TruncPr(FieldType field, const Shape& shape,
 
   if (lctx_->Rank() == options_.adjust_rank) {
     auto req = BuildAdjustRequest<beaver::ttp_server::AdjustTruncPrRequest>(
-        options_.session_id, descs);
+        descs, descs_seed);
     req.set_bits(bits);
     auto adjusts = RpcCall(channel_, req, field);
     SPU_ENFORCE_EQ(adjusts.size(), 2U);
@@ -294,34 +379,45 @@ BeaverTtp::Triple BeaverTtp::TruncPr(FieldType field, const Shape& shape,
     ring_add_(rb, adjusts[1].reshape(rb.shape()));
   }
 
-  return {r, rc, rb};
+  Triple ret;
+  std::get<0>(ret) = std::move(*r.buf());
+  std::get<1>(ret) = std::move(*rc.buf());
+  std::get<2>(ret) = std::move(*rb.buf());
+
+  return ret;
 }
 
-NdArrayRef BeaverTtp::RandBit(FieldType field, const Shape& shape) {
+BeaverTtp::Array BeaverTtp::RandBit(FieldType field, int64_t size) {
   std::vector<PrgArrayDesc> descs(1);
+  std::vector<absl::Span<const PrgSeedBuff>> descs_seed(1, encrypted_seeds_);
+  Shape shape({size, 1});
+
   auto a = prgCreateArray(field, shape, seed_, &counter_, descs.data());
 
   if (lctx_->Rank() == options_.adjust_rank) {
     auto req = BuildAdjustRequest<beaver::ttp_server::AdjustRandBitRequest>(
-        options_.session_id, descs);
+        descs, descs_seed);
     auto adjusts = RpcCall(channel_, req, field);
     SPU_ENFORCE_EQ(adjusts.size(), 1U);
     ring_add_(a, adjusts[0].reshape(a.shape()));
   }
 
-  return a;
+  return std::move(*a.buf());
 }
 
-BeaverTtp::Pair BeaverTtp::PermPair(FieldType field, const Shape& shape,
+BeaverTtp::Pair BeaverTtp::PermPair(FieldType field, int64_t size,
                                     size_t perm_rank,
                                     absl::Span<const int64_t> perm_vec) {
   std::vector<PrgArrayDesc> descs(2);
+  std::vector<absl::Span<const PrgSeedBuff>> descs_seed(1, encrypted_seeds_);
+  Shape shape({size, 1});
+
   auto a = prgCreateArray(field, shape, seed_, &counter_, descs.data());
   auto b = prgCreateArray(field, shape, seed_, &counter_, &descs[1]);
 
   if (lctx_->Rank() == perm_rank) {
     auto req = BuildAdjustRequest<beaver::ttp_server::AdjustPermRequest>(
-        options_.session_id, descs);
+        descs, descs_seed);
     for (auto p : perm_vec) {
       req.add_perm_vec(p);
     }
@@ -330,30 +426,36 @@ BeaverTtp::Pair BeaverTtp::PermPair(FieldType field, const Shape& shape,
     ring_add_(b, adjusts[0].reshape(b.shape()));
   }
 
-  return {a, b};
+  Pair ret;
+  ret.first = std::move(*a.buf());
+  ret.second = std::move(*b.buf());
+  return ret;
 }
 
 std::unique_ptr<Beaver> BeaverTtp::Spawn() {
   auto new_options = options_;
-  new_options.session_id =
-      fmt::format("{}_{}", options_.session_id, child_counter_++);
   return std::make_unique<BeaverTtp>(lctx_->Spawn(), std::move(new_options));
 }
 
-BeaverTtp::Pair BeaverTtp::Eqz(FieldType field, const Shape& shape) {
+BeaverTtp::Pair BeaverTtp::Eqz(FieldType field, int64_t size) {
   std::vector<PrgArrayDesc> descs(2);
+  std::vector<absl::Span<const PrgSeedBuff>> descs_seed(1, encrypted_seeds_);
+  Shape shape({size, 1});
 
   auto a = prgCreateArray(field, shape, seed_, &counter_, descs.data());
   auto b = prgCreateArray(field, shape, seed_, &counter_, &descs[1]);
 
   if (lctx_->Rank() == options_.adjust_rank) {
     auto req = BuildAdjustRequest<beaver::ttp_server::AdjustEqzRequest>(
-        options_.session_id, descs);
+        descs, descs_seed);
     auto adjusts = RpcCall(channel_, req, field);
     SPU_ENFORCE_EQ(adjusts.size(), 1U);
     ring_xor_(b, adjusts[0].reshape(shape));
   }
 
-  return {a, b};
+  Pair ret;
+  ret.first = std::move(*a.buf());
+  ret.second = std::move(*b.buf());
+  return ret;
 }
 }  // namespace spu::mpc::semi2k

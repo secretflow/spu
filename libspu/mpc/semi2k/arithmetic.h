@@ -241,4 +241,11 @@ class TruncAPr : public TruncAKernel {
   }
 };
 
+class BeaverCacheKernel : public Kernel {
+ public:
+  static constexpr char kBindName[] = "beaver_cache";
+
+  void evaluate(KernelEvalContext* ctx) const override;
+};
+
 }  // namespace spu::mpc::semi2k

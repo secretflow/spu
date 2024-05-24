@@ -14,6 +14,7 @@
 
 - [Feature] Add ORAM based dynamic_slice for ABY3
 - [Feature] Add Atan2Op support
+- [API] Add beaver cache support for semi2k (**experimental**)
 
 ## 20240415
 
