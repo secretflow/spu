@@ -293,11 +293,14 @@ TEST_P(BeaverCacheTest, MulAA) {
       auto ab_lhs_cache = test({a_a1, a_b2}, {p_a1, p_b2});
       // a1 * b1, both hit cache
       auto ab_full_cache = test({a_a1, a_b1}, {p_a1, p_b1});
+      // a1 * a1, both hit cache
+      auto aa_full_cache = test({a_a1, a_a1}, {p_a1, p_a1});
 
       // if hit cache, comm will drop.
       EXPECT_EQ(ab_no_cache.comm, ab_rhs_cache.comm * 2);
       EXPECT_EQ(ab_no_cache.comm, ab_lhs_cache.comm * 2);
       EXPECT_EQ(0, ab_full_cache.comm);
+      EXPECT_EQ(0, aa_full_cache.comm);
 
       // sliced, array is not compacted
       // a1_slice * b1_slice
@@ -319,6 +322,13 @@ TEST_P(BeaverCacheTest, MulAA) {
       // a1 * b1, no cache
       auto ab_no_cache_2 = test({a_a1, a_b1}, {p_a1, p_b1});
       EXPECT_EQ(ab_no_cache.comm, ab_no_cache_2.comm);
+
+      beaver_cache->EnableCache(a_a1.data());
+      // a1 * a1, no cache
+      auto aa_no_cache = test({a_a1, a_a1}, {p_a1, p_a1});
+      // FIXME: how to save half the communication
+      EXPECT_EQ(aa_no_cache.comm, ab_rhs_cache.comm * 2);
+      beaver_cache->DisableCache(a_a1.data());
     }
   });
 }

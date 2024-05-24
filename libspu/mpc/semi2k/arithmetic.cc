@@ -195,6 +195,12 @@ std::tuple<NdArrayRef, NdArrayRef, NdArrayRef, NdArrayRef, NdArrayRef> MulOpen(
   auto x_cache = beaver_cache->GetCache(x, mmul);
   auto y_cache = beaver_cache->GetCache(y, mmul);
 
+  // can't init on same array twice
+  if (x == y && x_cache.enabled && x_cache.replay_desc.status == Beaver::Init) {
+    // FIXME: how to avoid open on same array twice (x * x  or  x.t dot x)
+    y_cache.enabled = false;
+  }
+
   Shape z_shape;
   if (mmul) {
     SPU_ENFORCE(x.shape()[1] == y.shape()[0]);
