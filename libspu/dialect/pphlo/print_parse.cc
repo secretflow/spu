@@ -333,7 +333,7 @@ ParseResult ReduceOp::parse(OpAsmParser& parser, OperationState& result) {
   StringRef innerOpName = innerOpNameInfo->getStringRef();
   Dialect* innerOpDialect = innerOpNameInfo->getDialect();
   if ((innerOpDialect == nullptr) ||
-      !innerOpDialect->getNamespace().equals("pphlo") ||
+      !(innerOpDialect->getNamespace() == "pphlo") ||
       !innerOpNameInfo->hasTrait<mlir::OpTrait::NOperands<2>::Impl>() ||
       !innerOpNameInfo->hasTrait<mlir::OpTrait::OneResult>() ||
       !innerOpNameInfo->hasTrait<mlir::OpTrait::IsCommutative>() ||
