@@ -1235,14 +1235,16 @@ static void dispatchOp(OpExecutor *executor, SPUContext *sctx,
       const auto fn_name = op.getName().getStringRef().str();
 
       if constexpr (std::is_same_v<OpT, mlir::spu::pphlo::CustomCallOp>) {
+        // trace action holds RAII, we can not put it in a single scope
         SPU_TRACE_ACTION(
             GET_TRACER(sctx), sctx->lctx(), (TR_HLO | TR_LAR), ~TR_HLO,
             fmt::format("{}: {}", fn_name, casted.getCallTargetName().str()));
+        execute(executor, sctx, sscope, casted, opts);
       } else {
         SPU_TRACE_ACTION(GET_TRACER(sctx), sctx->lctx(), (TR_HLO | TR_LAR),
                          ~TR_HLO, fn_name);
+        execute(executor, sctx, sscope, casted, opts);
       }
-      execute(executor, sctx, sscope, casted, opts);
     }
 
     // currently we only support config verifier statically.

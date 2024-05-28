@@ -16,6 +16,7 @@ load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 load("@bazel_tools//tools/build_defs/repo:utils.bzl", "maybe")
 
 def spu_deps():
+    _bazel_skylib()
     _rules_cuda()
     _rules_proto_grpc()
     _bazel_platform()
@@ -123,9 +124,20 @@ def _com_github_xtensor_xtl():
         ],
     )
 
+def _bazel_skylib():
+    maybe(
+        http_archive,
+        name = "bazel_skylib",
+        sha256 = "9f38886a40548c6e96c106b752f242130ee11aaa068a56ba7e56f4511f33e4f2",
+        urls = [
+            "https://mirror.bazel.build/github.com/bazelbuild/bazel-skylib/releases/download/1.6.1/bazel-skylib-1.6.1.tar.gz",
+            "https://github.com/bazelbuild/bazel-skylib/releases/download/1.6.1/bazel-skylib-1.6.1.tar.gz",
+        ],
+    )
+
 def _com_github_openxla_xla():
-    OPENXLA_COMMIT = "5f70248ff0e9702544c8eeea0ab9b03e1ef144b0"
-    OPENXLA_SHA256 = "e2db58c41b7160259e0ec109ecbfc9c4b07c0889312719a19796ab30a970ba9e"
+    OPENXLA_COMMIT = "d9d0e780ff6a37c4d501c8e0e4f4a9fdca30cbd4"
+    OPENXLA_SHA256 = "77ef83491f409afbe549a2bd695d710a70fdf7f04db35eeb1fba3e97ef767113"
 
     # We need openxla to handle xla/mhlo/stablehlo
     maybe(
@@ -137,6 +149,8 @@ def _com_github_openxla_xla():
         urls = [
             "https://github.com/openxla/xla/archive/{commit}.tar.gz".format(commit = OPENXLA_COMMIT),
         ],
+        patch_args = ["-p1", "-l"],
+        patches = ["@spulib//bazel:patches/xla-non-hermetic-python.patch"],
     )
 
 def _com_github_pybind11_bazel():
