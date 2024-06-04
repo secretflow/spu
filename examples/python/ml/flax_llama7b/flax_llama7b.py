@@ -52,7 +52,7 @@ copts.xla_pp_kind = 2
 # enable x / broadcast(y) -> x * broadcast(1/y)
 copts.enable_optimize_denominator_with_broadcast = True
 
-model_path = parser.model_path
+model_path = args.model_path
 
 tokenizer = LlamaTokenizer.from_pretrained(model_path)
 tokenizer.pad_token_id = tokenizer.eos_token_id
