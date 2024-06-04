@@ -25,7 +25,7 @@ please **DO NOT** use it directly in production.
 
 If you would like to contribute to SPU, please check [Contribution guidelines](CONTRIBUTING.md).
 
-If you would like to use SPU for research purposes, please check [research development guidelines](docs/SPU_gudience.pdf) from @fionser.
+If you would like to use SPU for research purposes, please check [research development guidelines](docs/SPU_gudience.pdf) from [@fionser](https://github.com/fionser).
 
 This documentation also contains instructions for [build and testing](CONTRIBUTING.md#build).
 
