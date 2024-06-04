@@ -41,6 +41,7 @@ pybind_extension(
     deps = [
         ":exported_symbols.lds",
         ":version_script.lds",
+        "//libspu:version",
         "//libspu/compiler:compile",
         "//libspu/compiler/common:compilation_context",
         "//libspu/core:logging",

@@ -190,6 +190,9 @@ std::vector<yacl::Buffer> AdjustImpl(
   if constexpr (std::is_same_v<AdjustRequest, AdjustMulRequest>) {
     auto adjust = TrustedParty::adjustMul(ops);
     ret.push_back(std::move(adjust));
+  } else if constexpr (std::is_same_v<AdjustRequest, AdjustSquareRequest>) {
+    auto adjust = TrustedParty::adjustSquare(ops);
+    ret.push_back(std::move(adjust));
   } else if constexpr (std::is_same_v<AdjustRequest, AdjustDotRequest>) {
     auto adjust = TrustedParty::adjustDot(ops);
     ret.push_back(std::move(adjust));
@@ -276,6 +279,12 @@ class ServiceImpl final : public BeaverService {
   void AdjustMul(::google::protobuf::RpcController* controller,
                  const AdjustMulRequest* req, AdjustResponse* rsp,
                  ::google::protobuf::Closure* done) override {
+    Adjust(controller, req, rsp, done);
+  }
+
+  void AdjustSquare(::google::protobuf::RpcController* controller,
+                    const AdjustSquareRequest* req, AdjustResponse* rsp,
+                    ::google::protobuf::Closure* done) override {
     Adjust(controller, req, rsp, done);
   }
 

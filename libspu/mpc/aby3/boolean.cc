@@ -36,7 +36,7 @@ void CommonTypeB::evaluate(KernelEvalContext* ctx) const {
   const size_t out_nbits = std::max(lhs_nbits, rhs_nbits);
   const PtType out_btype = calcBShareBacktype(out_nbits);
 
-  ctx->setOutput(makeType<BShrTy>(out_btype, out_nbits));
+  ctx->pushOutput(makeType<BShrTy>(out_btype, out_nbits));
 }
 
 NdArrayRef CastTypeB::proc(KernelEvalContext*, const NdArrayRef& in,

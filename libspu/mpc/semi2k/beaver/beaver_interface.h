@@ -53,6 +53,9 @@ class Beaver {
                      ReplayDesc* x_desc = nullptr,
                      ReplayDesc* y_desc = nullptr) = 0;
 
+  virtual Pair Square(FieldType field, int64_t size,
+                      ReplayDesc* x_desc = nullptr) = 0;
+
   virtual Triple And(int64_t size /*in bytes*/) = 0;
 
   virtual Triple Dot(FieldType field, int64_t m, int64_t n, int64_t k,

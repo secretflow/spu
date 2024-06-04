@@ -166,4 +166,4 @@ def compile(source: spu_pb2.CompilationSource, copts: spu_pb2.CompilerOptions) -
 
 def check_cpu_feature():
     """Check CPU features required by SPU."""
-    libspu.check_cpu_features()
+    libspu._check_cpu_features()

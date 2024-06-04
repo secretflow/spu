@@ -12,5 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from . import libspu  # type: ignore
 
-__version__ = "0.9.1.dev$$DATE$$"
+__version__ = libspu._get_version()

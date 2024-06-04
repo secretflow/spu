@@ -58,7 +58,7 @@ class Ref2kCommonTypeS : public Kernel {
     SPU_TRACE_MPC_DISP(ctx, lhs, rhs);
     SPU_ENFORCE(lhs.isa<Ref2kSecrTy>(), "invalid type, got={}", lhs);
     SPU_ENFORCE(rhs.isa<Ref2kSecrTy>(), "invalid type, got={}", rhs);
-    ctx->setOutput(lhs);
+    ctx->pushOutput(lhs);
   }
 };
 
@@ -79,7 +79,7 @@ class Ref2kCommonTypeV : public Kernel {
     const auto* lhs_v = lhs.as<Priv2kTy>();
     const auto* rhs_v = rhs.as<Priv2kTy>();
 
-    ctx->setOutput(
+    ctx->pushOutput(
         makeType<Ref2kSecrTy>(std::max(lhs_v->field(), rhs_v->field())));
   }
 };

@@ -47,6 +47,9 @@ class BeaverTfpUnsafe final : public Beaver {
   Triple Mul(FieldType field, int64_t size, ReplayDesc* x_desc = nullptr,
              ReplayDesc* y_desc = nullptr) override;
 
+  Pair Square(FieldType field, int64_t size,
+              ReplayDesc* x_desc = nullptr) override;
+
   Triple And(int64_t size) override;
 
   Triple Dot(FieldType field, int64_t m, int64_t n, int64_t k,

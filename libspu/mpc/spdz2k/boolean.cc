@@ -253,7 +253,7 @@ void CommonTypeB::evaluate(KernelEvalContext* ctx) const {
   SPU_ENFORCE(lhs == rhs, "spdz2k always use same bshare type, lhs={}, rhs={}",
               lhs, rhs);
 
-  ctx->setOutput(lhs);
+  ctx->pushOutput(lhs);
 }
 
 NdArrayRef CastTypeB::proc(KernelEvalContext*, const NdArrayRef& in,

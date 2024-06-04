@@ -119,6 +119,56 @@ BeaverTfpUnsafe::Triple BeaverTfpUnsafe::Mul(FieldType field, int64_t size,
   return ret;
 }
 
+BeaverTfpUnsafe::Pair BeaverTfpUnsafe::Square(FieldType field, int64_t size,
+                                              ReplayDesc* x_desc) {
+  std::vector<TrustedParty::Operand> ops(2);
+  Shape shape({size, 1});
+  std::vector<std::vector<PrgSeed>> replay_seeds(2);
+
+  auto if_replay = [&](const ReplayDesc* replay_desc, size_t idx) {
+    if (replay_desc == nullptr || replay_desc->status != Beaver::Replay) {
+      ops[idx].seeds = seeds_;
+      return prgCreateArray(field, shape, seed_, &counter_, &ops[idx].desc);
+    } else {
+      SPU_ENFORCE(replay_desc->field == field);
+      SPU_ENFORCE(replay_desc->size == size);
+      if (lctx_->Rank() == 0) {
+        SPU_ENFORCE(replay_desc->encrypted_seeds.size() == lctx_->WorldSize());
+        replay_seeds[idx].resize(replay_desc->encrypted_seeds.size());
+        for (size_t i = 0; i < replay_seeds[idx].size(); i++) {
+          SPU_ENFORCE(replay_desc->encrypted_seeds[i].size() ==
+                      sizeof(PrgSeed));
+          std::memcpy(&replay_seeds[idx][i],
+                      replay_desc->encrypted_seeds[i].data(), sizeof(PrgSeed));
+        }
+        ops[idx].seeds = replay_seeds[idx];
+        ops[idx].desc.field = field;
+        ops[idx].desc.shape = shape;
+        ops[idx].desc.prg_counter = replay_desc->prg_counter;
+      }
+      PrgCounter tmp_counter = replay_desc->prg_counter;
+      return prgCreateArray(field, shape, replay_desc->seed, &tmp_counter,
+                            nullptr);
+    }
+  };
+
+  FillReplayDesc(x_desc, field, size, seeds_buff_, counter_, seed_);
+  auto a = if_replay(x_desc, 0);
+  auto b = prgCreateArray(field, shape, seed_, &counter_, &ops[1].desc);
+
+  if (lctx_->Rank() == 0) {
+    ops[1].seeds = seeds_;
+    auto adjust = TrustedParty::adjustSquare(ops);
+    ring_add_(b, adjust);
+  }
+
+  Pair ret;
+  std::get<0>(ret) = std::move(*a.buf());
+  std::get<1>(ret) = std::move(*b.buf());
+
+  return ret;
+}
+
 BeaverTfpUnsafe::Triple BeaverTfpUnsafe::Dot(FieldType field, int64_t m,
                                              int64_t n, int64_t k,
                                              ReplayDesc* x_desc,

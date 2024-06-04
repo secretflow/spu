@@ -262,7 +262,7 @@ def torch_compile(
     fn: Callable,
     args_flat: List,
     m_args_flat: List,
-    state_dict: collections.OrderedDict(),
+    state_dict: collections.OrderedDict,
     copts=spu_pb2.CompilerOptions(),
 ):
     import os

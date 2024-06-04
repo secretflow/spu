@@ -97,6 +97,10 @@ std::vector<NdArrayRef> RpcCall(brpc::Channel& channel, AdjustRequest req,
   if constexpr (std::is_same_v<AdjustRequest,
                                beaver::ttp_server::AdjustMulRequest>) {
     stub.AdjustMul(&cntl, &req, &rsp, nullptr);
+  } else if constexpr (std::is_same_v<
+                           AdjustRequest,
+                           beaver::ttp_server::AdjustSquareRequest>) {
+    stub.AdjustSquare(&cntl, &req, &rsp, nullptr);
   } else if constexpr (std::is_same_v<AdjustRequest,
                                       beaver::ttp_server::AdjustDotRequest>) {
     stub.AdjustDot(&cntl, &req, &rsp, nullptr);
@@ -236,6 +240,50 @@ BeaverTtp::Triple BeaverTtp::Mul(FieldType field, int64_t size,
   std::get<0>(ret) = std::move(*a.buf());
   std::get<1>(ret) = std::move(*b.buf());
   std::get<2>(ret) = std::move(*c.buf());
+
+  return ret;
+}
+
+BeaverTtp::Pair BeaverTtp::Square(FieldType field, int64_t size,
+                                  ReplayDesc* x_desc) {
+  std::vector<PrgArrayDesc> descs(2);
+  std::vector<absl::Span<const PrgSeedBuff>> descs_seed(2, encrypted_seeds_);
+  Shape shape({size, 1});
+
+  auto if_replay = [&](const ReplayDesc* replay_desc, size_t idx) {
+    if (replay_desc == nullptr || replay_desc->status != Beaver::Replay) {
+      return prgCreateArray(field, shape, seed_, &counter_, &descs[idx]);
+    } else {
+      SPU_ENFORCE(replay_desc->field == field);
+      SPU_ENFORCE(replay_desc->size == size);
+      SPU_ENFORCE(replay_desc->encrypted_seeds.size() == lctx_->WorldSize());
+      if (lctx_->Rank() == options_.adjust_rank) {
+        descs_seed[idx] = replay_desc->encrypted_seeds;
+        descs[idx].field = field;
+        descs[idx].shape = shape;
+        descs[idx].prg_counter = replay_desc->prg_counter;
+      }
+      PrgCounter tmp_counter = replay_desc->prg_counter;
+      return prgCreateArray(field, shape, replay_desc->seed, &tmp_counter,
+                            &descs[idx]);
+    }
+  };
+
+  FillReplayDesc(x_desc, field, size, encrypted_seeds_, counter_, seed_);
+  auto a = if_replay(x_desc, 0);
+  auto b = prgCreateArray(field, shape, seed_, &counter_, &descs[1]);
+
+  if (lctx_->Rank() == options_.adjust_rank) {
+    auto req = BuildAdjustRequest<beaver::ttp_server::AdjustSquareRequest>(
+        descs, descs_seed);
+    auto adjusts = RpcCall(channel_, req, field);
+    SPU_ENFORCE_EQ(adjusts.size(), 1U);
+    ring_add_(b, adjusts[0].reshape(shape));
+  }
+
+  Pair ret;
+  std::get<0>(ret) = std::move(*a.buf());
+  std::get<1>(ret) = std::move(*b.buf());
 
   return ret;
 }

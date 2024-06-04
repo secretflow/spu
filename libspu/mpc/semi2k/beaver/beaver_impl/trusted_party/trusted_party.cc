@@ -74,6 +74,14 @@ NdArrayRef TrustedParty::adjustMul(absl::Span<const Operand> ops) {
   return ring_sub(ring_mul(rs[0], rs[1]), rs[2]);
 }
 
+NdArrayRef TrustedParty::adjustSquare(absl::Span<const Operand> ops) {
+  SPU_ENFORCE_EQ(ops.size(), 2U);
+
+  auto rs = reconstruct(RecOp::ADD, ops);
+  // adjust = rs[0] * rs[0] - rs[1];
+  return ring_sub(ring_mul(rs[0], rs[0]), rs[1]);
+}
+
 NdArrayRef TrustedParty::adjustDot(absl::Span<const Operand> ops) {
   SPU_ENFORCE_EQ(ops.size(), 3U);
   checkOperands(ops, true, true);
