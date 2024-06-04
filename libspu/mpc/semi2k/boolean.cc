@@ -79,7 +79,7 @@ void CommonTypeB::evaluate(KernelEvalContext* ctx) const {
               "semi2k always use same bshare field, lhs={}, rhs={}", lhs_field,
               rhs_field);
 
-  ctx->setOutput(makeType<BShrTy>(lhs_field, std::max(lhs_nbits, rhs_nbits)));
+  ctx->pushOutput(makeType<BShrTy>(lhs_field, std::max(lhs_nbits, rhs_nbits)));
 }
 
 NdArrayRef CastTypeB::proc(KernelEvalContext*, const NdArrayRef& in,

@@ -97,7 +97,7 @@ class MakeP : public Kernel {
   ce::CExpr comm() const override { return ce::Const(0); }
 
   void evaluate(KernelEvalContext* ctx) const override {
-    ctx->setOutput(
+    ctx->pushOutput(
         proc(ctx, ctx->getParam<uint128_t>(0), ctx->getParam<Shape>(1)));
   }
 

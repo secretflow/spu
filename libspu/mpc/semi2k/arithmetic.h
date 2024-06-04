@@ -148,6 +148,20 @@ class MulAA : public BinaryKernel {
                   const NdArrayRef& rhs) const override;
 };
 
+class SquareA : public UnaryKernel {
+ public:
+  static constexpr char kBindName[] = "square_a";
+
+  ce::CExpr latency() const override {
+    // TODO: consider beaver
+    return ce::Const(1);
+  }
+
+  ce::CExpr comm() const override { return ce::K() * (ce::N() - 1); }
+
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& x) const override;
+};
+
 ////////////////////////////////////////////////////////////////////
 // matmul family
 ////////////////////////////////////////////////////////////////////

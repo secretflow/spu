@@ -333,4 +333,75 @@ TEST_P(BeaverCacheTest, MulAA) {
   });
 }
 
+TEST_P(BeaverCacheTest, SquareA) {
+  const auto factory = std::get<0>(GetParam());
+  const RuntimeConfig& conf = std::get<1>(GetParam());
+  const size_t npc = std::get<2>(GetParam());
+
+  const Shape shape = {109, 107};
+
+  utils::simulate(npc, [&](const std::shared_ptr<yacl::link::Context>& lctx) {
+    auto obj = factory(conf, lctx);
+    auto* beaver_cache = obj->getState<mpc::Semi2kState>()->beaver_cache();
+
+    // please keep slice_shape.numel() * SizeOf(conf.field()) > 32kb
+    // otherwise, sliced test will failed.
+    Index start{2, 2};
+    Index end{105, 105};
+    Strides stride{1, 1};
+
+    auto p_a1 = rand_p(obj.get(), shape);
+    auto p_a1_slice = extract_slice(obj.get(), p_a1, start, end, stride);
+    SPU_ENFORCE(p_a1_slice.numel() * p_a1_slice.elsize() > 32 * 1024);
+    SPU_ENFORCE(!p_a1_slice.data().isCompact());
+
+    auto a_a1 = p2a(obj.get(), p_a1);
+    auto a_a1_slice = extract_slice(obj.get(), a_a1, start, end, stride);
+
+    beaver_cache->EnableCache(a_a1.data());
+
+    auto verify = [&](const Value& r, const Value& p0) {
+      auto r_aa = a2p(obj.get(), r);
+      auto r_pp = square_p(obj.get(), p0);
+      EXPECT_EQ((r_aa).shape(), (r_pp).shape());
+      EXPECT_TRUE(ring_all_equal((r_aa).data(), (r_pp).data()));
+    };
+
+    auto test = [&](absl::Span<const Value> a, absl::Span<const Value> p) {
+      auto prev = obj->prot()->getState<Communicator>()->getStats();
+      auto r_xw = square_a(obj.get(), a[0]);
+      auto cost = obj->prot()->getState<Communicator>()->getStats() - prev;
+      verify(r_xw, p[0]);
+
+      return cost;
+    };
+
+    {
+      // square(a1)
+      auto no_cache = test({a_a1}, {p_a1});
+      // square(a1), hit cache
+      auto hit_cache = test({a_a1}, {p_a1});
+
+      // if hit cache, comm will drop.
+      EXPECT_NE(0, no_cache.comm);
+      EXPECT_EQ(0, hit_cache.comm);
+
+      // sliced, array is not compacted
+      // square(a_a1_slice)
+      auto sliced_no_cache = test({a_a1_slice}, {p_a1_slice});
+      // square(a_a1_slice), hit cache
+      auto sliced_hit_cache = test({a_a1_slice}, {p_a1_slice});
+
+      EXPECT_NE(0, sliced_no_cache.comm);
+      EXPECT_EQ(0, sliced_hit_cache.comm);
+
+      // drop a's cache
+      beaver_cache->DisableCache(a_a1.data());
+      // square(a1), no cache
+      no_cache = test({a_a1}, {p_a1});
+      EXPECT_NE(0, no_cache.comm);
+    }
+  });
+}
+
 }  // namespace spu::mpc::test

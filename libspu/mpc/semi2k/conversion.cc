@@ -297,7 +297,7 @@ void CommonTypeV::evaluate(KernelEvalContext* ctx) const {
   const auto* lhs_v = lhs.as<Priv2kTy>();
   const auto* rhs_v = rhs.as<Priv2kTy>();
 
-  ctx->setOutput(makeType<AShrTy>(std::max(lhs_v->field(), rhs_v->field())));
+  ctx->pushOutput(makeType<AShrTy>(std::max(lhs_v->field(), rhs_v->field())));
 }
 
 }  // namespace spu::mpc::semi2k

@@ -21,7 +21,7 @@ void RandKernel::evaluate(KernelEvalContext* ctx) const {
 
   auto res = proc(ctx, shape);
 
-  ctx->setOutput(WrapValue(res));
+  ctx->pushOutput(WrapValue(res));
 }
 
 void UnaryKernel::evaluate(KernelEvalContext* ctx) const {
@@ -29,7 +29,7 @@ void UnaryKernel::evaluate(KernelEvalContext* ctx) const {
 
   auto res = proc(ctx, UnwrapValue(in));
 
-  ctx->setOutput(WrapValue(res));
+  ctx->pushOutput(WrapValue(res));
 }
 
 void RevealToKernel::evaluate(KernelEvalContext* ctx) const {
@@ -38,7 +38,7 @@ void RevealToKernel::evaluate(KernelEvalContext* ctx) const {
 
   auto res = proc(ctx, UnwrapValue(in), rank);
 
-  ctx->setOutput(WrapValue(res));
+  ctx->pushOutput(WrapValue(res));
 }
 
 void ShiftKernel::evaluate(KernelEvalContext* ctx) const {
@@ -47,7 +47,7 @@ void ShiftKernel::evaluate(KernelEvalContext* ctx) const {
 
   auto res = proc(ctx, UnwrapValue(in), bits);
 
-  ctx->setOutput(WrapValue(res));
+  ctx->pushOutput(WrapValue(res));
 }
 
 void BinaryKernel::evaluate(KernelEvalContext* ctx) const {
@@ -59,7 +59,7 @@ void BinaryKernel::evaluate(KernelEvalContext* ctx) const {
 
   auto z = proc(ctx, UnwrapValue(lhs), UnwrapValue(rhs));
 
-  ctx->setOutput(WrapValue(z));
+  ctx->pushOutput(WrapValue(z));
 }
 
 void MatmulKernel::evaluate(KernelEvalContext* ctx) const {
@@ -69,7 +69,7 @@ void MatmulKernel::evaluate(KernelEvalContext* ctx) const {
   SPU_ENFORCE(lhs.shape()[1] == rhs.shape()[0], "invalid shape {} {}", lhs,
               rhs);
 
-  ctx->setOutput(WrapValue(proc(ctx, lhs.data(), rhs.data())));
+  ctx->pushOutput(WrapValue(proc(ctx, lhs.data(), rhs.data())));
 }
 
 void Conv2DKernel::evaluate(KernelEvalContext* ctx) const {
@@ -80,7 +80,7 @@ void Conv2DKernel::evaluate(KernelEvalContext* ctx) const {
 
   auto z = proc(ctx, UnwrapValue(lhs), UnwrapValue(rhs), stride_h, stride_w);
 
-  ctx->setOutput(WrapValue(z));
+  ctx->pushOutput(WrapValue(z));
 }
 
 void BitrevKernel::evaluate(KernelEvalContext* ctx) const {
@@ -90,7 +90,7 @@ void BitrevKernel::evaluate(KernelEvalContext* ctx) const {
 
   auto z = proc(ctx, UnwrapValue(in), start, end);
 
-  ctx->setOutput(WrapValue(z));
+  ctx->pushOutput(WrapValue(z));
 }
 
 void TruncAKernel::evaluate(KernelEvalContext* ctx) const {
@@ -100,7 +100,7 @@ void TruncAKernel::evaluate(KernelEvalContext* ctx) const {
 
   auto z = proc(ctx, UnwrapValue(in), bits, sign);
 
-  ctx->setOutput(WrapValue(z));
+  ctx->pushOutput(WrapValue(z));
 }
 
 void BitSplitKernel::evaluate(KernelEvalContext* ctx) const {
@@ -109,7 +109,7 @@ void BitSplitKernel::evaluate(KernelEvalContext* ctx) const {
 
   auto res = proc(ctx, UnwrapValue(in), stride);
 
-  ctx->setOutput(WrapValue(res));
+  ctx->pushOutput(WrapValue(res));
 }
 
 void CastTypeKernel::evaluate(KernelEvalContext* ctx) const {
@@ -118,7 +118,7 @@ void CastTypeKernel::evaluate(KernelEvalContext* ctx) const {
 
   auto res = proc(ctx, UnwrapValue(val), to_type);
 
-  ctx->setOutput(WrapValue(res));
+  ctx->pushOutput(WrapValue(res));
 }
 
 void PermKernel::evaluate(KernelEvalContext* ctx) const {
@@ -131,7 +131,7 @@ void PermKernel::evaluate(KernelEvalContext* ctx) const {
 
   auto z = proc(ctx, UnwrapValue(x), UnwrapValue(y));
 
-  ctx->setOutput(WrapValue(z));
+  ctx->pushOutput(WrapValue(z));
 }
 
 void GenInvPermKernel::evaluate(KernelEvalContext* ctx) const {
@@ -141,7 +141,7 @@ void GenInvPermKernel::evaluate(KernelEvalContext* ctx) const {
 
   auto y = proc(ctx, UnwrapValue(in), is_ascending);
 
-  ctx->setOutput(WrapValue(y));
+  ctx->pushOutput(WrapValue(y));
 }
 
 void MergeKeysKernel::evaluate(KernelEvalContext* ctx) const {
@@ -153,7 +153,7 @@ void MergeKeysKernel::evaluate(KernelEvalContext* ctx) const {
   }
   auto y = proc(ctx, inputs, is_ascending);
 
-  ctx->setOutput(WrapValue(y));
+  ctx->pushOutput(WrapValue(y));
 }
 
 void BroadcastKernel::evaluate(KernelEvalContext* ctx) const {
@@ -163,7 +163,7 @@ void BroadcastKernel::evaluate(KernelEvalContext* ctx) const {
 
   auto z = proc(ctx, UnwrapValue(in), to_shape, in_dims);
 
-  ctx->setOutput(WrapValue(z));
+  ctx->pushOutput(WrapValue(z));
 }
 
 void DimsBasedKernel::evaluate(KernelEvalContext* ctx) const {
@@ -172,7 +172,7 @@ void DimsBasedKernel::evaluate(KernelEvalContext* ctx) const {
 
   auto z = proc(ctx, UnwrapValue(in), axes);
 
-  ctx->setOutput(WrapValue(z));
+  ctx->pushOutput(WrapValue(z));
 }
 
 void ShapeBasedKernel::evaluate(KernelEvalContext* ctx) const {
@@ -181,7 +181,7 @@ void ShapeBasedKernel::evaluate(KernelEvalContext* ctx) const {
 
   auto z = proc(ctx, UnwrapValue(in), to_shape);
 
-  ctx->setOutput(WrapValue(z));
+  ctx->pushOutput(WrapValue(z));
 }
 
 void ExtractSliceKernel::evaluate(KernelEvalContext* ctx) const {
@@ -192,7 +192,7 @@ void ExtractSliceKernel::evaluate(KernelEvalContext* ctx) const {
 
   auto z = proc(ctx, UnwrapValue(in), start, end, strides);
 
-  ctx->setOutput(WrapValue(z));
+  ctx->pushOutput(WrapValue(z));
 }
 
 void UpdateSliceKernel::evaluate(KernelEvalContext* ctx) const {
@@ -202,7 +202,7 @@ void UpdateSliceKernel::evaluate(KernelEvalContext* ctx) const {
 
   auto z = proc(ctx, UnwrapValue(in), UnwrapValue(update), start);
 
-  ctx->setOutput(WrapValue(z));
+  ctx->pushOutput(WrapValue(z));
 }
 
 void PadKernel::evaluate(KernelEvalContext* ctx) const {
@@ -215,7 +215,7 @@ void PadKernel::evaluate(KernelEvalContext* ctx) const {
   auto z = proc(ctx, UnwrapValue(in), UnwrapValue(padding_value), edge_low,
                 edge_high, interior_padding);
 
-  ctx->setOutput(WrapValue(z));
+  ctx->pushOutput(WrapValue(z));
 }
 
 void ConcateKernel::evaluate(KernelEvalContext* ctx) const {
@@ -230,7 +230,7 @@ void ConcateKernel::evaluate(KernelEvalContext* ctx) const {
 
   auto z = proc(ctx, unwrapped, axis);
 
-  ctx->setOutput(WrapValue(z));
+  ctx->pushOutput(WrapValue(z));
 }
 
 void OramOneHotKernel::evaluate(KernelEvalContext* ctx) const {
@@ -242,7 +242,7 @@ void OramOneHotKernel::evaluate(KernelEvalContext* ctx) const {
 
   auto res = proc(ctx, UnwrapValue(target), s);
 
-  ctx->setOutput(WrapValue(res));
+  ctx->pushOutput(WrapValue(res));
 }
 
 void OramReadKernel::evaluate(KernelEvalContext* ctx) const {
@@ -256,7 +256,7 @@ void OramReadKernel::evaluate(KernelEvalContext* ctx) const {
   SPU_ENFORCE(onehot.shape()[1] == db.shape()[0],
               "onehot and database shape mismatch");
 
-  ctx->setOutput(
+  ctx->pushOutput(
       WrapValue(proc(ctx, UnwrapValue(onehot), UnwrapValue(db), offset)));
 }
 

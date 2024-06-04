@@ -197,7 +197,7 @@ std::tuple<NdArrayRef, NdArrayRef, NdArrayRef, NdArrayRef, NdArrayRef> MulOpen(
 
   // can't init on same array twice
   if (x == y && x_cache.enabled && x_cache.replay_desc.status == Beaver::Init) {
-    // FIXME: how to avoid open on same array twice (x * x  or  x.t dot x)
+    // FIXME: how to avoid open on same array twice (x.t dot x)
     y_cache.enabled = false;
   }
 
@@ -294,6 +294,48 @@ NdArrayRef MulAA::proc(KernelEvalContext* ctx, const NdArrayRef& x,
   if (comm->getRank() == 0) {
     // z += (X-A) * (Y-B);
     ring_add_(z, ring_mul(std::move(x_a), y_b));
+  }
+  return z.as(x.eltype());
+}
+
+NdArrayRef SquareA::proc(KernelEvalContext* ctx, const NdArrayRef& x) const {
+  const auto field = x.eltype().as<Ring2k>()->field();
+  auto* comm = ctx->getState<Communicator>();
+  auto* beaver = ctx->getState<Semi2kState>()->beaver();
+  auto* beaver_cache = ctx->getState<Semi2kState>()->beaver_cache();
+  auto x_cache = beaver_cache->GetCache(x, false);
+
+  // generate beaver Square pair.
+  NdArrayRef a;
+  NdArrayRef b;
+  const size_t numel = x.shape().numel();
+  auto [a_buf, b_buf] =
+      beaver->Square(field, numel,  //
+                     x_cache.enabled ? &x_cache.replay_desc : nullptr);
+  SPU_ENFORCE(static_cast<size_t>(a_buf.size()) == numel * SizeOf(field));
+  SPU_ENFORCE(static_cast<size_t>(b_buf.size()) == numel * SizeOf(field));
+
+  a = UnflattenBuffer(std::move(a_buf), x);
+  b = UnflattenBuffer(std::move(b_buf), x);
+
+  // Open x-a
+  NdArrayRef x_a;
+
+  if (x_cache.replay_desc.status != Beaver::Init) {
+    x_a = std::move(x_cache.open_cache);
+  } else {
+    x_a = comm->allReduce(ReduceOp::ADD, ring_sub(x, a), "open(x-a)");
+  }
+
+  if (x_cache.enabled && x_cache.replay_desc.status == Beaver::Init) {
+    beaver_cache->SetCache(x, x_cache.replay_desc, x_a);
+  }
+
+  // Zi = Bi + 2 * (X - A) * Ai + <(X - A) * (X - A)>
+  auto z = ring_add(ring_mul(ring_mul(std::move(a), x_a), 2), b);
+  if (comm->getRank() == 0) {
+    // z += (X - A) * (X - A);
+    ring_add_(z, ring_mul(x_a, x_a));
   }
   return z.as(x.eltype());
 }

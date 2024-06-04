@@ -33,6 +33,8 @@ class TrustedParty {
 
   static NdArrayRef adjustMul(absl::Span<const Operand>);
 
+  static NdArrayRef adjustSquare(absl::Span<const Operand>);
+
   static NdArrayRef adjustDot(absl::Span<const Operand>);
 
   static NdArrayRef adjustAnd(absl::Span<const Operand>);
