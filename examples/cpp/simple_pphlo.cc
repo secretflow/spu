@@ -76,7 +76,7 @@ void parameters(spu::SPUContext* sctx) {
   constexpr auto code = R"PPHlo(
 func.func @main(%arg0: tensor<!pphlo.secret<f32>>, %arg1: tensor<!pphlo.secret<i32>>) -> () {
   %0 = pphlo.multiply %arg0, %arg1 : (tensor<!pphlo.secret<f32>>, tensor<!pphlo.secret<i32>>) -> tensor<!pphlo.secret<f32>>
-  pphlo.dbg_print %0 : tensor<!pphlo.secret<f32>>
+  pphlo.custom_call @dbg_print (%0) {has_side_effect = true} : (tensor<!pphlo.secret<f32>>)->()
   return
 })PPHlo";
 
