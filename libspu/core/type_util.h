@@ -40,6 +40,7 @@ std::ostream& operator<<(std::ostream& os, const Visibility& vtype);
 //////////////////////////////////////////////////////////////
 // DataType related.
 //////////////////////////////////////////////////////////////
+// eq: hint: 数据类型绑定到SPU内建类型上。
 /**
  * eq: 用于isInteger和getWidth。
  * FN是一个宏。SPU会在定义FN的宏内完成函数实现，然后解除对FN的宏定义。
@@ -77,6 +78,7 @@ std::ostream& operator<<(std::ostream& os, const DataType& dtype);
 //////////////////////////////////////////////////////////////
 // Plaintext c++ utilities
 //////////////////////////////////////////////////////////////
+// eq: hint: c++内建类型绑定到SPU内建类型上。
 #define FOREACH_FLOAT_PT_TYPES(FN)  \
   FN(PT_F16, half_float::half, F16) \
   FN(PT_F32, float, F32)            \
@@ -106,7 +108,8 @@ std::ostream& operator<<(std::ostream& os, const DataType& dtype);
 // Helper macros to enumerate all py types.
 // NOLINTNEXTLINE: Global internal used macro.
 /**
- * eq: 分支语句，定义_kName，定义类型ScalarT，执行函数。
+ * eq: 分支语句，通过宏实现类型的编译期绑定。
+ * 定义_kName，定义类型ScalarT，执行函数。
 */
 #define __CASE_PT_TYPE(PT_TYPE, NAME, ...)                     \
   case (PT_TYPE): {                                            \
@@ -115,6 +118,11 @@ std::ostream& operator<<(std::ostream& os, const DataType& dtype);
     return __VA_ARGS__();                                      \
   }
 
+/**
+ * eq: 针对浮点数明文类型的分发函数，根据pt_type类型调用不同的case分支。
+ * 完成__CASE_PT_TYPE宏中的两种变量定义，最后执行函数。
+ * 安全协议需要为DISPATCH_FLOAT_PT_TYPES提供lambda函数实现，以获得明文类型ScalarT支持。
+*/
 #define DISPATCH_FLOAT_PT_TYPES(PT_TYPE, NAME, ...)                     \
   [&] {                                                                 \
     switch (PT_TYPE) {                                                  \
@@ -126,6 +134,11 @@ std::ostream& operator<<(std::ostream& os, const DataType& dtype);
     }                                                                   \
   }()
 
+/**
+ * eq: 针对整数明文类型的分发函数，根据pt_type类型调用不同的case分支。
+ * 完成__CASE_PT_TYPE宏中的两种变量定义，最后执行函数。
+ * 安全协议需要为DISPATCH_UINT_PT_TYPES提供lambda函数实现，以获得明文类型ScalarT支持。
+*/
 #define DISPATCH_UINT_PT_TYPES(PT_TYPE, NAME, ...)                      \
   [&] {                                                                 \
     switch (PT_TYPE) {                                                  \
@@ -139,6 +152,12 @@ std::ostream& operator<<(std::ostream& os, const DataType& dtype);
     }                                                                   \
   }()
 
+/**
+ * eq: 针对整数明文类型的分发函数，根据pt_type类型调用不同的case分支。
+ * 完成__CASE_PT_TYPE宏中的两种变量定义，最后执行函数。
+ * 安全协议需要为DISPATCH_INT_PT_TYPES提供lambda函数实现，以获得明文类型ScalarT支持。
+ * 与DISPATCH_UINT_PT_TYPES的区别在于，多了PT_I1、PT_I8。
+*/
 #define DISPATCH_INT_PT_TYPES(PT_TYPE, NAME, ...)                       \
   [&] {                                                                 \
     switch (PT_TYPE) {                                                  \
@@ -200,21 +219,21 @@ std::ostream& operator<<(std::ostream& os, const PtType& pt_type);
 size_t SizeOf(PtType ptt);
 
 /**
- * eq: 结构体，用于实现明文类型到枚举的映射。
+ * eq: 结构体，用于实现物理类型（eg. uint64_t）到枚举（PtType）的映射。
  * 通过下文定义的宏实现模板特化。
 */
 template <typename Type>
 struct PtTypeToEnum {};
 
 /**
- * eq: 结构体，用于实现枚举到明文类型的映射。
+ * eq: 结构体，用于实现枚举（PtType）到物理类型（eg. uint64_t）的映射。
  * 通过下文定义的宏实现模板特化。
 */
 template <PtType Name>
 struct EnumToPtType {};
 
 /**
- * eq: 实现Name (Enum)和Type (PtType)的映射。
+ * eq: 实现Name (Enum, PtType)和Type (real type, eg. uint64_t)的映射。
 */
 #define CASE(Name, Type, _)               \
   template <>                             \
@@ -266,16 +285,18 @@ FIELD_TO_STORAGE_MAP(DEF_TRAITS)
 
 std::ostream& operator<<(std::ostream& os, FieldType field);
 
+// 根据有限域类型，返回其存储类型的明文类型表示。
 PtType GetStorageType(FieldType field);
 FieldType PtTypeToField(PtType pt_type);
 inline size_t SizeOf(FieldType field) { return SizeOf(GetStorageType(field)); }
 
-/**
- * eq: case分支语句封装。
- * 做三件事：定义_kField和_kName用于后续调用，定义ring2k_t类型，最后执行函数。
-*/
 // Helper macros to enumerate all fields
 // NOLINTNEXTLINE: Global internal used macro.
+/**
+ * eq: case分支语句封装。
+ * 做三件事：定义_kField（枚举类型）和_kName，
+ * 定义ring2k_t类型便于后续调用，最后执行函数。
+*/
 #define __CASE_FIELD(FIELD, NAME, ...)                                \
   case (FIELD): {                                                     \
     /* inject `_kField` & `_kName` for the continuation call */       \
@@ -286,9 +307,9 @@ inline size_t SizeOf(FieldType field) { return SizeOf(GetStorageType(field)); }
   }
 
 /**
- * eq: 分发函数，根据field类型调用不同的case分支。
- * 完成__CASE_FIELD宏中的两种变量定义、一种类型定义（ring2k_t），并执行函数。
- * 安全协议实现通过为DISPATCH_ALL_FIELDS提供lambda函数实现。
+ * eq: 分发函数，根据field类型调用不同的case分支。主要用于算术分享计算。
+ * 完成__CASE_FIELD宏中的两种变量定义、一种类型定义（ring2k_t，绑定到物理类型），并执行函数。
+ * 安全协议需要为DISPATCH_ALL_FIELDS提供lambda函数实现，以获得ring2k_t。
 */
 #define DISPATCH_ALL_FIELDS(FIELD, NAME, ...)                       \
   [&] {                                                             \

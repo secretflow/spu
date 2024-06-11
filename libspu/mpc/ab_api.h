@@ -12,6 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+/**
+ * eq: 安全协议API。通过context把算子反射到对应的实现函数。
+ * 反射函数具有相同的API：接收Value类型的输入，返回Value类型的输出。
+*/
+
 #pragma once
 
 #include "libspu/core/context.h"

@@ -15,6 +15,7 @@
 #include "libspu/mpc/aby3/conversion.h"
 
 #include <functional>
+#include <iostream>
 
 #include "yacl/utils/platform_utils.h"
 
@@ -595,8 +596,10 @@ NdArrayRef MsbA2B::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
       }
     });
 
+    // Now, we hold ((x0+x1)^z0, z1, z2) which is stored in r0.
+
     // 1. rotate k bits
-    r1 = comm->rotate<el_t>(r0, "m");
+    r1 = comm->rotate<el_t>(r0, "m");                   // send r0 to the previous party, get r1 from the next party.
 
     pforeach(0, numel, [&](int64_t idx) {
       const auto& v = _in[idx];
@@ -923,6 +926,857 @@ void CommonTypeV::evaluate(KernelEvalContext* ctx) const {
   const auto* rhs_v = rhs.as<Priv2kTy>();
 
   ctx->setOutput(makeType<AShrTy>(std::max(lhs_v->field(), rhs_v->field())));
+}
+
+#define EQ_USE_PRG_STATE 0
+
+// Xor gate for ASS.
+NdArrayRef AssXor2(KernelEvalContext* ctx, const NdArrayRef& lhs,
+                       const NdArrayRef& rhs) {
+  const auto* lhs_ty = lhs.eltype().as<BShrTy>();
+  const auto* rhs_ty = rhs.eltype().as<BShrTy>();
+
+  const size_t out_nbits = std::min(lhs_ty->nbits(), rhs_ty->nbits());
+  const PtType out_btype = calcBShareBacktype(out_nbits);
+  NdArrayRef out(makeType<BShrTy>(out_btype, out_nbits), lhs.shape());
+
+  return DISPATCH_UINT_PT_TYPES(rhs_ty->getBacktype(), "_", [&]() {
+    using rhs_el_t = ScalarT;
+    using rhs_shr_t = std::array<rhs_el_t, 2>;
+    NdArrayView<rhs_shr_t> _rhs(rhs);
+
+    return DISPATCH_UINT_PT_TYPES(lhs_ty->getBacktype(), "_", [&]() {
+      using lhs_el_t = ScalarT;
+      using lhs_shr_t = std::array<lhs_el_t, 2>;
+      NdArrayView<lhs_shr_t> _lhs(lhs);
+
+      return DISPATCH_UINT_PT_TYPES(out_btype, "_", [&]() {
+        using out_el_t = ScalarT;
+        // mss(x) = (Dx, dx0, dx1), x = Dx ^ dx0 ^ dx1
+        using out_shr_t = std::array<out_el_t, 2>;
+        NdArrayView<out_shr_t> _out(out);
+
+        // online.
+        pforeach(0, lhs.numel(), [&](int64_t idx) {
+          const auto& l = _lhs[idx];
+          const auto& r = _rhs[idx];
+          out_shr_t& o = _out[idx];
+          o[0] = l[0] ^ r[0];
+        });
+        return out;
+      });
+    });
+  });
+}
+
+// Xor gate for RSS.
+NdArrayRef RssXor2(KernelEvalContext* ctx, const NdArrayRef& lhs,
+                       const NdArrayRef& rhs) {
+
+  const auto* lhs_ty = lhs.eltype().as<BShrTy>();
+  const auto* rhs_ty = rhs.eltype().as<BShrTy>();
+
+  const size_t out_nbits = std::min(lhs_ty->nbits(), rhs_ty->nbits());
+  const PtType out_btype = calcBShareBacktype(out_nbits);
+  NdArrayRef out(makeType<BShrTy>(out_btype, out_nbits), lhs.shape());
+
+  return DISPATCH_UINT_PT_TYPES(rhs_ty->getBacktype(), "_", [&]() {
+    using rhs_el_t = ScalarT;
+    using rhs_shr_t = std::array<rhs_el_t, 2>;
+    NdArrayView<rhs_shr_t> _rhs(rhs);
+
+    return DISPATCH_UINT_PT_TYPES(lhs_ty->getBacktype(), "_", [&]() {
+      using lhs_el_t = ScalarT;
+      using lhs_shr_t = std::array<lhs_el_t, 2>;
+      NdArrayView<lhs_shr_t> _lhs(lhs);
+
+      return DISPATCH_UINT_PT_TYPES(out_btype, "_", [&]() {
+        using out_el_t = ScalarT;
+        // mss(x) = (Dx, dx0, dx1), x = Dx ^ dx0 ^ dx1
+        using out_shr_t = std::array<out_el_t, 2>;
+        NdArrayView<out_shr_t> _out(out);
+
+        // online.
+        pforeach(0, lhs.numel(), [&](int64_t idx) {
+          const auto& l = _lhs[idx];
+          const auto& r = _rhs[idx];
+          out_shr_t& o = _out[idx];
+          o[0] = l[0] ^ r[0];
+          o[1] = l[1] ^ r[1];
+        });
+        return out;
+      });
+    });
+  });
+}
+
+// Xor gate for MSS.
+NdArrayRef MssXor2(KernelEvalContext* ctx, const NdArrayRef& lhs,
+                       const NdArrayRef& rhs) {
+
+  const auto* lhs_ty = lhs.eltype().as<BShrTyMss>();
+  const auto* rhs_ty = rhs.eltype().as<BShrTyMss>();
+
+  const size_t out_nbits = std::min(lhs_ty->nbits(), rhs_ty->nbits());
+  const PtType out_btype = calcBShareBacktype(out_nbits);
+  NdArrayRef out(makeType<BShrTyMss>(out_btype, out_nbits), lhs.shape());
+
+  return DISPATCH_UINT_PT_TYPES(rhs_ty->getBacktype(), "_", [&]() {
+    using rhs_el_t = ScalarT;
+    using rhs_shr_t = std::array<rhs_el_t, 3>;
+    NdArrayView<rhs_shr_t> _rhs(rhs);
+
+    return DISPATCH_UINT_PT_TYPES(lhs_ty->getBacktype(), "_", [&]() {
+      using lhs_el_t = ScalarT;
+      using lhs_shr_t = std::array<lhs_el_t, 3>;
+      NdArrayView<lhs_shr_t> _lhs(lhs);
+
+      return DISPATCH_UINT_PT_TYPES(out_btype, "_", [&]() {
+        using out_el_t = ScalarT;
+        // mss(x) = (Dx, dx0, dx1), x = Dx ^ dx0 ^ dx1
+        using out_shr_t = std::array<out_el_t, 3>;
+        NdArrayView<out_shr_t> _out(out);
+
+        // online.
+        pforeach(0, lhs.numel(), [&](int64_t idx) {
+          const auto& l = _lhs[idx];
+          const auto& r = _rhs[idx];
+          out_shr_t& o = _out[idx];
+          o[0] = l[0] ^ r[0];
+          o[1] = l[1] ^ r[1];
+          o[2] = l[2] ^ r[2];
+        });
+        return out;
+      });
+    });
+  });
+}
+
+// And gate for RSS which outputs ASS result (no comunication).
+NdArrayRef RssAnd2NoComm(KernelEvalContext* ctx, const NdArrayRef& lhs,
+                       const NdArrayRef& rhs) {
+  #ifdef EQ_USE_PRG_STATE
+  auto* prg_state = ctx->getState<PrgState>();
+  #endif
+
+  const auto* lhs_ty = lhs.eltype().as<BShrTy>();
+  const auto* rhs_ty = rhs.eltype().as<BShrTy>();
+
+  const size_t out_nbits = std::min(lhs_ty->nbits(), rhs_ty->nbits());
+  const PtType out_btype = calcBShareBacktype(out_nbits);
+  NdArrayRef out(makeType<BShrTy>(out_btype, out_nbits), lhs.shape());
+
+  return DISPATCH_UINT_PT_TYPES(rhs_ty->getBacktype(), "_", [&]() {
+    using rhs_el_t = ScalarT;
+    using rhs_shr_t = std::array<rhs_el_t, 2>;
+    NdArrayView<rhs_shr_t> _rhs(rhs);
+
+    return DISPATCH_UINT_PT_TYPES(lhs_ty->getBacktype(), "_", [&]() {
+      using lhs_el_t = ScalarT;
+      using lhs_shr_t = std::array<lhs_el_t, 2>;
+      NdArrayView<lhs_shr_t> _lhs(lhs);
+
+      return DISPATCH_UINT_PT_TYPES(out_btype, "_", [&]() {
+        using out_el_t = ScalarT;
+        // mss(x) = (Dx, dx0, dx1), x = Dx ^ dx0 ^ dx1
+        using out_shr_t = std::array<out_el_t, 2>;
+        NdArrayView<out_shr_t> _out(out);
+
+        // correlated randomness for RSS based multiplication.
+        std::vector<out_el_t> r0(lhs.numel(), 0);
+        std::vector<out_el_t> r1(lhs.numel(), 0);
+        #ifdef EQ_USE_PRG_STATE
+        prg_state->fillPrssPair(r0.data(), r1.data(), r0.size(),
+                                PrgState::GenPrssCtrl::Both);
+        #endif
+
+        // online.
+        // dxy = dx & dy = (dx0 & dy0) ^ (dx0 & dy1) ^ (dx1 & dy0);
+        // r0 is dxy0, r1 is dxy1.
+        pforeach(0, lhs.numel(), [&](int64_t idx) {
+          const auto& l = _lhs[idx];
+          const auto& r = _rhs[idx];
+          out_shr_t& o = _out[idx];
+          o[0] = (l[0] & r[0]) ^ (l[0] & r[1]) ^ (l[1] & r[0]) ^
+                    (r0[idx] ^ r1[idx]);
+        });
+        return out;
+      });
+    });
+  });
+}
+
+// And gate for MSS which outputs RSS result (no comunication).
+NdArrayRef MssAnd2NoComm(KernelEvalContext* ctx, const NdArrayRef& lhs,
+                       const NdArrayRef& rhs) {
+  #ifdef EQ_USE_PRG_STATE
+  auto* prg_state = ctx->getState<PrgState>();
+  #endif
+  auto* comm = ctx->getState<Communicator>();
+
+  const auto* lhs_ty = lhs.eltype().as<BShrTyMss>();
+  const auto* rhs_ty = rhs.eltype().as<BShrTyMss>();
+
+  const size_t out_nbits = std::min(lhs_ty->nbits(), rhs_ty->nbits());
+  const PtType out_btype = calcBShareBacktype(out_nbits);
+  NdArrayRef out(makeType<BShrTy>(out_btype, out_nbits), lhs.shape());
+
+  return DISPATCH_UINT_PT_TYPES(rhs_ty->getBacktype(), "_", [&]() {
+    using rhs_el_t = ScalarT;
+    using rhs_shr_t = std::array<rhs_el_t, 3>;
+    NdArrayView<rhs_shr_t> _rhs(rhs);
+
+    return DISPATCH_UINT_PT_TYPES(lhs_ty->getBacktype(), "_", [&]() {
+      using lhs_el_t = ScalarT;
+      using lhs_shr_t = std::array<lhs_el_t, 3>;
+      NdArrayView<lhs_shr_t> _lhs(lhs);
+
+      return DISPATCH_UINT_PT_TYPES(out_btype, "_", [&]() {
+        using out_el_t = ScalarT;
+        // mss(x) = (Dx, dx0, dx1), x = Dx ^ dx0 ^ dx1
+        using out_shr_t = std::array<out_el_t, 2>;
+
+        // correlated randomness for RSS based multiplication.
+        std::vector<out_el_t> r0(lhs.numel(), 0);
+        std::vector<out_el_t> r1(lhs.numel(), 0);
+        #ifdef EQ_USE_PRG_STATE
+        prg_state->fillPrssPair(r0.data(), r1.data(), r0.size(),
+                                PrgState::GenPrssCtrl::Both);
+        #endif
+
+        // offline.
+        // dxy = dx & dy = (dx0 & dy0) ^ (dx0 & dy1) ^ (dx1 & dy0);
+        // r0 is dxy0, r1 is dxy1.
+        pforeach(0, lhs.numel(), [&](int64_t idx) {
+          const auto& l = _lhs[idx];
+          const auto& r = _rhs[idx];
+          r0[idx] = (l[1] & r[1]) ^ (l[1] & r[2]) ^ (l[2] & r[1]) ^
+                    (r0[idx] ^ r1[idx]);
+        });
+
+        r1 = comm->rotate<out_el_t>(r0, "MssAndBB, offline");  // comm => 1, k
+
+        // online, compute [out] locally.
+        NdArrayView<out_shr_t> _out(out);
+        pforeach(0, lhs.numel(), [&](int64_t idx) {
+          const auto& l = _lhs[idx];
+          const auto& r = _rhs[idx];
+
+          out_shr_t& o = _out[idx];
+          // z = x & y = (Dx ^ dx) & (Dy ^ dy) = Dx & Dy ^ Dx & dy ^ dx & Dy ^ dxy
+          // o[0] = ((comm->getRank() == 0) * (l[0] & r[0])) ^ (l[0] & r[1]) ^ (l[1] & r[0]) ^ r0[idx];   // r0 is dxy0
+          // o[1] = ((comm->getRank() == 2) * (l[0] & r[0])) ^ (l[0] & r[2]) ^ (l[2] & r[0]) ^ r1[idx];   // r1 is dxy1
+          o[0] = ((l[0] & r[0])) ^ (l[0] & r[1]) ^ (l[1] & r[0]) ^ r0[idx];   // r0 is dxy0
+          o[1] = ((l[0] & r[0])) ^ (l[0] & r[2]) ^ (l[2] & r[0]) ^ r1[idx];   // r1 is dxy1
+        });
+        return out;
+      });
+    });
+  });
+}
+
+// And gate for MSS which outputs ASS result (no comunication).
+NdArrayRef MssAnd3NoComm(KernelEvalContext* ctx, const NdArrayRef& op1,
+                       const NdArrayRef& op2, const NdArrayRef& op3) {
+
+  // const auto* op1_ty = op1.eltype().as<BShrTyMss>();
+  // const auto* op2_ty = op2.eltype().as<BShrTyMss>();
+  // const auto* op3_ty = op3.eltype().as<BShrTyMss>();
+
+  // const size_t out_nbits = std::min(std::min(op1_ty->nbits(), op2_ty->nbits()), op3_ty->nbits());
+  // const PtType out_btype = calcBShareBacktype(out_nbits);
+
+  // return DISPATCH_UINT_PT_TYPES(op1_ty->getBacktype(), "_", [&]() {
+  //   using op1_el_t = ScalarT;
+  //   using op1_shr_t = std::array<op1_el_t, 3>;
+  //   NdArrayView<op1_shr_t> _op1(op1);
+
+  // return DISPATCH_UINT_PT_TYPES(op2_ty->getBacktype(), "_", [&]() {
+  //   using op2_el_t = ScalarT;
+  //   using op2_shr_t = std::array<op2_el_t, 3>;
+  //   NdArrayView<op2_shr_t> _op2(op2);
+
+  // return DISPATCH_UINT_PT_TYPES(op3_ty->getBacktype(), "_", [&]() {
+  //   using op3_el_t = ScalarT;
+  //   using op3_shr_t = std::array<op3_el_t, 3>;
+  //   NdArrayView<op3_shr_t> _op3(op3);
+
+  // return DISPATCH_UINT_PT_TYPES(out_btype, "_", [&]() {
+  //   using out_el_t = ScalarT;
+  //   // mss(x) = (Dx, dx0, dx1), x = Dx ^ dx0 ^ dx1
+  //   using out_shr_t = std::array<out_el_t, 2>;        // use MSS container to hold ass result
+
+    auto lo_res = MssAnd2NoComm(ctx, op1, op2);
+    auto hi_res = ResharingMss2Rss(ctx, op3);
+    auto out = RssAnd2NoComm(ctx, lo_res, hi_res);
+    
+    return out;
+  // });
+  // });
+  // });
+  // });
+}
+
+// And gate for MSS which outputs ASS result (no comunication).
+NdArrayRef MssAnd4NoComm(KernelEvalContext* ctx, const NdArrayRef& op1,
+                       const NdArrayRef& op2, const NdArrayRef& op3, const NdArrayRef& op4) {
+
+  // const auto* op1_ty = op1.eltype().as<BShrTyMss>();
+  // const auto* op2_ty = op2.eltype().as<BShrTyMss>();
+  // const auto* op3_ty = op3.eltype().as<BShrTyMss>();
+  // const auto* op4_ty = op4.eltype().as<BShrTyMss>();
+
+  // const size_t out_nbits = std::min(std::min(op1_ty->nbits(), op2_ty->nbits()), std::min(op3_ty->nbits(), op4_ty->nbits()));
+  // const PtType out_btype = calcBShareBacktype(out_nbits);
+
+  // return DISPATCH_UINT_PT_TYPES(op1_ty->getBacktype(), "_", [&]() {
+  //   using op1_el_t = ScalarT;
+  //   using op1_shr_t = std::array<op1_el_t, 3>;
+  //   NdArrayView<op1_shr_t> _op1(op1);
+
+  // return DISPATCH_UINT_PT_TYPES(op2_ty->getBacktype(), "_", [&]() {
+  //   using op2_el_t = ScalarT;
+  //   using op2_shr_t = std::array<op2_el_t, 3>;
+  //   NdArrayView<op2_shr_t> _op2(op2);
+
+  // return DISPATCH_UINT_PT_TYPES(op3_ty->getBacktype(), "_", [&]() {
+  //   using op3_el_t = ScalarT;
+  //   using op3_shr_t = std::array<op3_el_t, 3>;
+  //   NdArrayView<op3_shr_t> _op3(op3);
+
+  // return DISPATCH_UINT_PT_TYPES(op4_ty->getBacktype(), "_", [&]() {
+  //   using op4_el_t = ScalarT;
+  //   using op4_shr_t = std::array<op4_el_t, 3>;
+  //   NdArrayView<op4_shr_t> _op4(op4);
+
+  // return DISPATCH_UINT_PT_TYPES(out_btype, "_", [&]() {
+  //   using out_el_t = ScalarT;
+  //   // mss(x) = (Dx, dx0, dx1), x = Dx ^ dx0 ^ dx1
+  //   using out_shr_t = std::array<out_el_t, 2>;        // use MSS container to hold ass result
+
+    auto lo_res = MssAnd2NoComm(ctx, op1, op2);
+    auto hi_res = MssAnd2NoComm(ctx, op3, op4);
+    auto out = RssAnd2NoComm(ctx, lo_res, hi_res);
+    
+    return out;
+  // });
+  // });
+  // });
+  // });
+  // });
+}
+
+// Resharing protocol from RSS to MSS.
+NdArrayRef ResharingRss2Mss(KernelEvalContext* ctx, const NdArrayRef& in) {
+  #ifdef EQ_USE_PRG_STATE
+  auto* prg_state = ctx->getState<PrgState>();
+  #endif
+  auto* comm = ctx->getState<Communicator>();
+
+  const auto* in_ty = in.eltype().as<BShrTy>();
+
+  const size_t out_nbits = in_ty->nbits();
+  const PtType out_btype = calcBShareBacktype(out_nbits);
+  NdArrayRef out(makeType<BShrTyMss>(out_btype, out_nbits), in.shape());
+
+    return DISPATCH_UINT_PT_TYPES(in_ty->getBacktype(), "_", [&]() {
+      using in_el_t = ScalarT;
+      using in_shr_t = std::array<in_el_t, 2>;
+      NdArrayView<in_shr_t> _in(in);
+
+      return DISPATCH_UINT_PT_TYPES(out_btype, "_", [&]() {
+        using out_el_t = ScalarT;
+        // mss(x) = (Dx, dx0, dx1), x = Dx ^ dx0 ^ dx1
+        using out_shr_t = std::array<out_el_t, 3>;
+        NdArrayView<out_shr_t> _out(out);
+
+        // correlated randomness for RSS based multiplication.
+        std::vector<out_el_t> r0(in.numel(), 0);
+        std::vector<out_el_t> r1(in.numel(), 0);
+        #ifdef EQ_USE_PRG_STATE
+        prg_state->fillPrssPair(r0.data(), r1.data(), r0.size(),
+                                PrgState::GenPrssCtrl::Both);
+        #endif
+
+        // online.
+        pforeach(0, in.numel(), [&](int64_t idx) {
+          in_shr_t& i = _in[idx];
+          out_shr_t& o = _out[idx];
+          o[1] = r0[idx];
+          o[2] = r1[idx];
+          r0[idx] = i[0] ^ r0[idx];
+        });
+
+        r0 = comm->rotateR<out_el_t>(r0, "Resharing RSS to MSS, online");  // comm => 1, k
+
+        pforeach(0, in.numel(), [&](int64_t idx) {
+          in_shr_t& i = _in[idx];
+          out_shr_t& o = _out[idx];
+
+          o[0] = i[0] ^ i[1] ^ o[1] ^ o[2] ^ r0[idx];
+        });
+        return out;
+      });
+    });
+}
+
+// Resharing protocol from ASS to RSS.
+// using RSS container to hold ASS.
+NdArrayRef ResharingAss2Rss(KernelEvalContext* ctx, const NdArrayRef& in) {
+  #ifdef EQ_USE_PRG_STATE
+  auto* prg_state = ctx->getState<PrgState>();
+  #endif
+  auto* comm = ctx->getState<Communicator>();
+
+  const auto* in_ty = in.eltype().as<BShrTy>();
+
+  const size_t out_nbits = in_ty->nbits();
+  const PtType out_btype = calcBShareBacktype(out_nbits);
+  NdArrayRef out(makeType<BShrTy>(out_btype, out_nbits), in.shape());
+
+    return DISPATCH_UINT_PT_TYPES(in_ty->getBacktype(), "_", [&]() {
+      using in_el_t = ScalarT;
+      using in_shr_t = std::array<in_el_t, 2>;
+      NdArrayView<in_shr_t> _in(in);
+
+      return DISPATCH_UINT_PT_TYPES(out_btype, "_", [&]() {
+        using out_el_t = ScalarT;
+        // mss(x) = (Dx, dx0, dx1), x = Dx ^ dx0 ^ dx1
+        using out_shr_t = std::array<out_el_t, 2>;
+        NdArrayView<out_shr_t> _out(out);
+
+        // correlated randomness for RSS based multiplication.
+        std::vector<out_el_t> r0(in.numel(), 0);
+        std::vector<out_el_t> r1(in.numel(), 0);
+        #ifdef EQ_USE_PRG_STATE
+        prg_state->fillPrssPair(r0.data(), r1.data(), r0.size(),
+                                PrgState::GenPrssCtrl::Both);
+        #endif
+
+        // online.
+        pforeach(0, in.numel(), [&](int64_t idx) {
+          in_shr_t& i = _in[idx];
+          out_shr_t& o = _out[idx];
+          o[0] = i[0] ^ r0[idx] ^ r1[idx];
+          r0[idx] = i[0] ^ r0[idx] ^ r1[idx];
+        });
+
+        // TODO: not safe. should add a mask to r1.
+        r0 = comm->rotate<out_el_t>(r0, "Resharing ASS to RSS, online");  // comm => 1, k
+
+        pforeach(0, in.numel(), [&](int64_t idx) {
+          out_shr_t& o = _out[idx];
+
+          o[1] = r0[idx];
+        });
+        return out;
+      });
+    });
+}
+
+// Resharing protocol from ASS to MSS.
+// using RSS container to hold ASS.
+NdArrayRef ResharingAss2Mss(KernelEvalContext* ctx, const NdArrayRef& in) {
+  #ifdef EQ_USE_PRG_STATE
+  auto* prg_state = ctx->getState<PrgState>();
+  #endif
+  auto* comm = ctx->getState<Communicator>();
+
+  const auto* in_ty = in.eltype().as<BShrTy>();
+
+  const size_t out_nbits = in_ty->nbits();
+  const PtType out_btype = calcBShareBacktype(out_nbits);
+  NdArrayRef out(makeType<BShrTyMss>(out_btype, out_nbits), in.shape());
+
+    return DISPATCH_UINT_PT_TYPES(in_ty->getBacktype(), "_", [&]() {
+      using in_el_t = ScalarT;
+      using in_shr_t = std::array<in_el_t, 2>;
+      NdArrayView<in_shr_t> _in(in);
+
+      return DISPATCH_UINT_PT_TYPES(out_btype, "_", [&]() {
+        using out_el_t = ScalarT;
+        // mss(x) = (Dx, dx0, dx1), x = Dx ^ dx0 ^ dx1
+        using out_shr_t = std::array<out_el_t, 3>;
+        NdArrayView<out_shr_t> _out(out);
+
+        // correlated randomness for RSS based multiplication.
+        std::vector<out_el_t> r0(in.numel());
+        std::vector<out_el_t> r1(in.numel());
+        #ifdef EQ_USE_PRG_STATE
+        prg_state->fillPrssPair(r0.data(), r1.data(), r0.size(),
+                                PrgState::GenPrssCtrl::Both);
+        #endif
+
+        // online.
+        pforeach(0, in.numel(), [&](int64_t idx) {
+          in_shr_t& i = _in[idx];
+          out_shr_t& o = _out[idx];
+          o[1] = r0[idx];
+          o[2] = r1[idx];
+          r0[idx] = i[0] ^ r0[idx];
+          r1[idx] = i[0];
+        });
+
+        // TODO: not safe. should add a mask to r1.
+        r0 = comm->rotateR<out_el_t>(r0, "Resharing ASS to MSS, online, message 1");  // comm => 1, k
+        r1 = comm->rotate<out_el_t>(r1, "Resharing ASS to MSS, online, message 2");  // comm => 1, k
+
+        pforeach(0, in.numel(), [&](int64_t idx) {
+          in_shr_t& i = _in[idx];
+          out_shr_t& o = _out[idx];
+
+          o[0] = i[0] ^ o[1] ^ o[2] ^ r0[idx] ^ r1[idx];
+        });
+        return out;
+      });
+    });
+}
+
+// Resharing protocol from MSS to RSS.
+NdArrayRef ResharingMss2Rss(KernelEvalContext* ctx, const NdArrayRef& in) {
+
+  const auto* in_ty = in.eltype().as<BShrTyMss>();
+
+  const size_t out_nbits = in_ty->nbits();
+  const PtType out_btype = calcBShareBacktype(out_nbits);
+  NdArrayRef out(makeType<BShrTy>(out_btype, out_nbits), in.shape());
+
+    return DISPATCH_UINT_PT_TYPES(in_ty->getBacktype(), "_", [&]() {
+      using in_el_t = ScalarT;
+      using in_shr_t = std::array<in_el_t, 3>;
+      NdArrayView<in_shr_t> _in(in);
+
+      return DISPATCH_UINT_PT_TYPES(out_btype, "_", [&]() {
+        using out_el_t = ScalarT;
+        // mss(x) = (Dx, dx0, dx1), x = Dx ^ dx0 ^ dx1
+        using out_shr_t = std::array<out_el_t, 2>;
+        NdArrayView<out_shr_t> _out(out);
+
+        // online.
+        pforeach(0, in.numel(), [&](int64_t idx) {
+          in_shr_t& i = _in[idx];
+          out_shr_t& o = _out[idx];
+          o[0] = i[0] ^ i[1];
+          o[1] = i[0] ^ i[2];
+        });
+
+        return out;
+      });
+    });
+}
+
+// Resharing protocol from RSS to ASS.
+NdArrayRef ResharingRss2Ass(KernelEvalContext* ctx, const NdArrayRef& in) {
+
+  const auto* in_ty = in.eltype().as<BShrTy>();
+
+  const size_t out_nbits = in_ty->nbits();
+  const PtType out_btype = calcBShareBacktype(out_nbits);
+  NdArrayRef out(makeType<BShrTy>(out_btype, out_nbits), in.shape());
+
+    return DISPATCH_UINT_PT_TYPES(in_ty->getBacktype(), "_", [&]() {
+      using in_el_t = ScalarT;
+      using in_shr_t = std::array<in_el_t, 2>;
+      NdArrayView<in_shr_t> _in(in);
+
+      return DISPATCH_UINT_PT_TYPES(out_btype, "_", [&]() {
+        using out_el_t = ScalarT;
+        // mss(x) = (Dx, dx0, dx1), x = Dx ^ dx0 ^ dx1
+        using out_shr_t = std::array<out_el_t, 2>;
+        NdArrayView<out_shr_t> _out(out);
+
+        // online.
+        pforeach(0, in.numel(), [&](int64_t idx) {
+          in_shr_t& i = _in[idx];
+          out_shr_t& o = _out[idx];
+          o[0] = i[0];
+          o[1] = 0;
+        });
+
+        return out;
+      });
+    });
+}
+
+uint64_t lshift(uint64_t x, size_t shift) {
+  return x << shift;
+}
+
+uint64_t select(uint64_t x, uint64_t mask, uint64_t offset, size_t idx) {
+  return (x & (mask << (idx * offset))) << ((3 - idx) * offset);
+}
+
+NdArrayRef MsbA2BMultiFanIn(KernelEvalContext* ctx, const NdArrayRef& in) {
+  const auto field = in.eltype().as<AShrTy>()->field();
+  const auto numel = in.numel();
+  auto* comm = ctx->getState<Communicator>();
+  #ifdef EQ_USE_PRG_STATE
+  auto* prg_state = ctx->getState<PrgState>();
+  #endif
+
+  #define EQ_U64(x) static_cast<uint64_t>(x)
+
+  // First construct 2 boolean shares.
+  // Let
+  //   X = [(x0, x1), (x1, x2), (x2, x0)] as input.
+  //   Z = (z0, z1, z2) as boolean zero share.
+  //
+  // Construct edabitsB = [(ebb0, ebb1), (ebb1, ebb2), (ebb2, ebb0)] as boolean shares,
+  //   edabitsA = [(eba0, eba1), (eba1, eba2), (eba2, eba0)] as arithmetic shares,
+  //   where edabitsA = edabitsB.
+  //
+  // Open mask = x - edabitsA.
+  //
+  // That
+  //  mask + edabitsB = x0 + x1 + x2 = X
+  const Type rss_ashr_type =
+      makeType<AShrTy>(field);
+  const Type rss_bshr_type =
+      makeType<BShrTy>(GetStorageType(field), SizeOf(field) * 8);
+  const Type mss_bshr_type =
+      makeType<BShrTyMss>(GetStorageType(field), SizeOf(field) * 8);
+  // NdArrayRef edabitsA(rss_ashr_type, in.shape());
+  // NdArrayRef edabitsB(mss_bshr_type, in.shape());
+
+  NdArrayRef m(mss_bshr_type, in.shape());
+  NdArrayRef n(mss_bshr_type, in.shape());
+
+  NdArrayRef p(mss_bshr_type, in.shape());
+  NdArrayRef g(mss_bshr_type, in.shape());
+  NdArrayRef out(rss_bshr_type, in.shape());
+  return DISPATCH_ALL_FIELDS(field, "aby3.msb.split", [&]() {
+    using el_t = ring2k_t;
+    using rss_shr_t = std::array<el_t, 2>;
+    using mss_shr_t = std::array<el_t, 3>;
+
+    NdArrayView<rss_shr_t> _in(in);           // rss
+    
+    // NdArrayView<rss_shr_t> _eba(edabitsA);    
+    // NdArrayView<mss_shr_t> _ebb(edabitsB);    
+
+    NdArrayView<mss_shr_t> _m(m);
+    NdArrayView<mss_shr_t> _n(n);
+
+    NdArrayView<rss_shr_t> _out(out);
+
+    /**
+     * 1. Convert RSS-shared x into MSS-shared m (Dm, RSS(dm)) and n (Dn, RSS(dn)).
+    */
+    // generate (compressed) correlated randomness: ((dm0, dm1), (dm1, dn2), (dn2, dm0)). 
+    std::vector<el_t> r0(numel, 0);
+    std::vector<el_t> r1(numel, 0);
+    #ifdef EQ_USE_PRG_STATE
+    prg_state->fillPrssPair(r0.data(), r1.data(), r0.size(),
+                            PrgState::GenPrssCtrl::Both);
+    #endif
+
+    // copy the correlated randomness into m and n
+    pforeach(0, numel, [&](int64_t idx) {
+      if (comm->getRank() == 0) 
+      {
+        // Wait for x2 ^ dn2 from P1.
+        _m[idx][1] = r0[idx];                               // dm0
+        _m[idx][2] = r1[idx];                               // dm1
+        r1[idx] ^= r0[idx] ^ (_in[idx][0] + _in[idx][1]);     
+        _m[idx][0] = r1[idx];                               // Dm = (x0 + x1) ^ dm0 ^ dm1
+
+        _n[idx][1] = 0;
+        _n[idx][2] = 0;
+      } 
+      else if (comm->getRank() == 1) 
+      {
+        // Wait for Dm from P0.
+        _m[idx][1] = r0[idx];                               // dm1
+        _n[idx][2] = r1[idx];                               // dn2
+        r1[idx] ^= _in[idx][1];                             // dn2 ^ x2
+        _n[idx][0] = r1[idx];                               // Dn = x2 ^ dn2
+
+        _m[idx][2] = 0;
+        _n[idx][1] = 0;
+      }
+      else
+      {
+        // Wait for Dm from P0.
+        _n[idx][1] = r0[idx];                               // dn2
+        _m[idx][2] = r1[idx];                               // dm0
+        _n[idx][0] = _in[idx][0] ^ r0[idx];                 // Dn = x2 ^ dn2
+
+        _m[idx][1] = 0;
+        _n[idx][2] = 0;
+      }
+    });
+
+    // rotate k bits
+    // r0 = comm->rotate<el_t>(r1, "MsbA2B, special resharing from ASS to MSS.");   // send r1 to the previous party, get r0 from the next party.
+    r0 = comm->bcast<el_t>(r1, 0, "MsbA2B, special resharing from ASS to MSS, broadcast Dm");
+    if (comm->getRank() == 0) 
+    {
+      r0 = comm->recv<el_t>(1, "MsbA2B, special resharing from ASS to MSS, get dn2");
+    }
+    else if (comm->getRank() == 1) 
+    {
+      comm->sendAsync<el_t>(0, r1, "MsbA2B, special resharing from ASS to MSS, send dn2");
+    }
+
+    // compute external value Dm, Dn
+    pforeach(0, numel, [&](int64_t idx) {
+      if (comm->getRank() == 0) 
+      {
+        _n[idx][0] = r0[idx];                               // Dn = x2 + dn2
+      } 
+      else if (comm->getRank() == 1) 
+      {
+        _m[idx][0] = r0[idx];                              // Dm = (x0 + x1) ^ dm0 ^ dm1
+      }
+      else
+      {
+        _m[idx][0] = r0[idx];                            
+      }
+    });
+
+    if (comm->getRank() == 0) std::cout << "PPA: m " << _m[0][0] << " " << _m[1][0] << std::endl;
+    if (comm->getRank() == 0) std::cout << "PPA: n " << _n[0][0] << " " << _n[1][0] << std::endl;
+    // std::cout << "PPA: mask " << mask[0] << " " << mask[1] << std::endl;
+    // if (comm->getRank() == 0) std::cout << "PPA: compute mask." << std::endl;
+
+    // 4. generate signal p and g.
+    NdArrayView<mss_shr_t> _p(p);
+    NdArrayView<mss_shr_t> _g(g);
+
+    auto sig_g_rss = MssAnd2NoComm(ctx, m, n);
+    auto sig_g_mss = ResharingAss2Mss(ctx, ResharingRss2Ass(ctx, sig_g_rss));
+    NdArrayView<mss_shr_t> _g_mss(sig_g_mss);
+    if (comm->getRank() == 0) std::cout << "PPA: sig_g_mss " << _g_mss[0][0] << " " << _g_mss[1][0] << std::endl;
+    pforeach(0, numel, [&](int64_t idx) {
+      _p[idx][0] = _m[idx][0] ^ _n[idx][0];
+      _p[idx][1] = _m[idx][1] ^ _n[idx][1];
+      _p[idx][2] = _m[idx][2] ^ _n[idx][2];
+      _g[idx][0] = _g_mss[idx][0];
+      _g[idx][1] = _g_mss[idx][1];
+      _g[idx][2] = _g_mss[idx][2];
+    });
+    // assert(_p[0][1] == 0 && _p[1][1] == 0 && _p[2][1] == 0 && _p[0][2] == 0 && _p[1][2] == 0 && _p[2][2] == 0);
+    // assert(_g[0][1] == 0 && _g[1][1] == 0 && _g[2][1] == 0 && _g[0][2] == 0 && _g[1][2] == 0 && _g[2][2] == 0);
+
+    // if (comm->getRank() == 0) std::cout << "PPA: generate signal p and signal g." << std::endl;
+    // if (comm->getRank() == 0) std::cout << "PPA: signal p." << _p[0][0] << " " << _p[1][0] << std::endl;
+    // if (comm->getRank() == 0) std::cout << "PPA: signal g." << _g[0][0] << " " << _g[1][0] << std::endl;
+
+    // 5. PPA.
+    // we dont use the carryout circuit from aby 2.0. By limitting p's msb to be 1 and g's msb to be 0,
+    // we could build a simpler carryout circuit.
+    size_t nbits = SizeOf(field) * 8 - 1;
+    size_t k = nbits;
+    
+    pforeach(0, numel, [&](int64_t idx) {
+      _out[idx][0] = (_p[idx][0] ^ _p[idx][1]) >> nbits;
+      _out[idx][1] = (_p[idx][0] ^ _p[idx][2]) >> nbits;
+      _p[idx][0] = EQ_U64((EQ_U64(1) << nbits) | EQ_U64(_p[idx][0]));    
+      _p[idx][1] = EQ_U64(((EQ_U64(1) << nbits) - 1) & EQ_U64(_p[idx][1]));
+      _p[idx][2] = EQ_U64(((EQ_U64(1) << nbits) - 1) & EQ_U64(_p[idx][2]));
+      _g[idx][0] = EQ_U64(((EQ_U64(1) << nbits) - 1) & EQ_U64(_g[idx][0]));
+      _g[idx][1] = EQ_U64(((EQ_U64(1) << nbits) - 1) & EQ_U64(_g[idx][1]));
+      _g[idx][2] = EQ_U64(((EQ_U64(1) << nbits) - 1) & EQ_U64(_g[idx][2]));
+    });
+
+    // if (comm->getRank() == 0) std::cout << "PPA: msb(m) ^ msb(n) " << _out[0][0] << " " << _out[1][0] << std::endl;
+    // if (comm->getRank() == 0) std::cout << "PPA: signal p." << _p[0][0] << " " << _p[1][0] << std::endl;
+    // if (comm->getRank() == 0) std::cout << "PPA: signal g." << _g[0][0] << " " << _g[1][0] << std::endl;
+
+    // uint64_t ONLY. do not use el_t as it involves lshift error.
+    std::array<uint64_t, 3> bit_mask = {
+      static_cast<uint64_t>(0x1111111111111111),
+      static_cast<uint64_t>(0x0008000800080008),
+      static_cast<uint64_t>(0x0000000000008000)
+    };
+    std::array<uint64_t, 3> bit_offset = {
+      1, 4, 16 
+    };
+
+    // if (comm->getRank() == 0) std::cout << "PPA: initialize." << std::endl;
+
+    size_t lev = 0;
+    while (k > 1) 
+    {
+      if (comm->getRank() == 0) std::cout << "PPA: " << k << " bits, level " << lev << std::endl;
+      NdArrayRef pops[4];
+      NdArrayRef gops[4];
+
+      uint64_t debug_offset = static_cast<uint64_t>(1) << ((1 << (2 * lev + 2)) - 1);
+      // if (comm->getRank() == 0) std::cout << debug_offset << std::endl;
+      // if (comm->getRank() == 0) std::cout << "PPA: signal_p." << _p[0][0] << " " << _p[1][0] << std::endl;
+      // if (comm->getRank() == 0) std::cout << "PPA: signal_g." << _g[0][0] << " " << _g[1][0] << std::endl;
+
+      // for the i-th bit in a four-bits element vector, select the i-the bit and rotate it to the msb.
+      // for example: when i = 1, sample (1)000 (0)000 from 10(1)1 11(0)1. 
+      for (int i = 0; i < 4; i++) {
+        pops[i] = NdArrayRef(mss_bshr_type, in.shape());
+        NdArrayView<mss_shr_t> _pops(pops[i]);
+        gops[i] = NdArrayRef(mss_bshr_type, in.shape());
+        NdArrayView<mss_shr_t> _gops(gops[i]);
+
+        // taking the i-th bit of p and g.
+        // 1 << (4 ** （lev + 1) - 1) = 1 << ((1 << (2 * lev + 2)) - 1)
+        pforeach(0, numel, [&](int64_t idx) {
+          _pops[idx][0] = select(EQ_U64(_p[idx][0]), EQ_U64(bit_mask[lev]), EQ_U64(bit_offset[lev]), i);
+          _pops[idx][1] = select(EQ_U64(_p[idx][1]), EQ_U64(bit_mask[lev]), EQ_U64(bit_offset[lev]), i);
+          _pops[idx][2] = select(EQ_U64(_p[idx][2]), EQ_U64(bit_mask[lev]), EQ_U64(bit_offset[lev]), i);
+          _gops[idx][0] = select(EQ_U64(_g[idx][0]), EQ_U64(bit_mask[lev]), EQ_U64(bit_offset[lev]), i);
+          _gops[idx][1] = select(EQ_U64(_g[idx][1]), EQ_U64(bit_mask[lev]), EQ_U64(bit_offset[lev]), i);
+          _gops[idx][2] = select(EQ_U64(_g[idx][2]), EQ_U64(bit_mask[lev]), EQ_U64(bit_offset[lev]), i);
+
+          // assert(_pops[idx][0] % debug_offset == 0 && _pops[idx][1] % debug_offset == 0 && _pops[idx][2] % debug_offset == 0);
+          // assert(_gops[idx][0] % debug_offset == 0 && _gops[idx][1] % debug_offset == 0 && _gops[idx][2] % debug_offset == 0);
+        });
+      }
+
+      // if (comm->getRank() == 0) std::cout << "PPA: select bits in p and g. " << std::endl;
+
+      auto p_res = MssAnd4NoComm(ctx, pops[0], pops[1], pops[2], pops[3]);
+      auto p_final = ResharingAss2Mss(ctx, p_res);
+      auto g_res_3 = ResharingRss2Ass(ctx, ResharingMss2Rss(ctx, gops[3]));
+      auto g_res_2 = ResharingRss2Ass(ctx, MssAnd2NoComm(ctx, gops[2], pops[3]));
+      auto g_res_1 = MssAnd3NoComm(ctx, gops[1], pops[3], pops[2]);
+      auto g_res_0 = MssAnd4NoComm(ctx, gops[0], pops[3], pops[2], pops[1]);
+      auto g_combined = AssXor2(ctx, AssXor2(ctx, g_res_0, g_res_1), AssXor2(ctx, g_res_2, g_res_3));
+      // online communication
+      auto g_final = ResharingAss2Mss(ctx, g_combined);
+
+      // if (comm->getRank() == 0) std::cout << "PPA: protocol flow. " << std::endl;
+
+      NdArrayView<mss_shr_t> _pf(p_final);
+      NdArrayView<mss_shr_t> _gf(g_final);
+      pforeach(0, numel, [&](int64_t idx) {
+        _p[idx][0] = _pf[idx][0];
+        _p[idx][1] = _pf[idx][1];
+        _p[idx][2] = _pf[idx][2];
+        _g[idx][0] = _gf[idx][0];
+        _g[idx][1] = _gf[idx][1];
+        _g[idx][2] = _gf[idx][2];
+      });
+
+      // assert(_p[0][1] == 0 && _p[1][1] == 0 && _p[2][1] == 0 && _p[0][2] == 0 && _p[1][2] == 0 && _p[2][2] == 0);
+      // assert(_g[0][1] == 0 && _g[1][1] == 0 && _g[2][1] == 0 && _g[0][2] == 0 && _g[1][2] == 0 && _g[2][2] == 0);
+      // if (comm->getRank() == 0) std::cout << "PPA: p_final " << _pf[0][0] << " " << _pf[1][0] << std::endl;
+      // if (comm->getRank() == 0) std::cout << "PPA: g_final " << _gf[0][0] << " " << _gf[1][0] << std::endl;
+
+      // if (comm->getRank() == 0) std::cout << "PPA: epilogue. " << std::endl;
+
+      lev += 1;
+      k = k / 4;
+    }
+
+    auto g_rss = ResharingMss2Rss(ctx, g);
+    NdArrayView<rss_shr_t> _g_rss(g_rss);
+    pforeach(0, numel, [&](int64_t idx) {
+
+      _out[idx][0] ^= (static_cast<uint64_t>(_g_rss[idx][0]) >> nbits);
+      _out[idx][1] ^= (static_cast<uint64_t>(_g_rss[idx][1]) >> nbits);
+    });
+    // if (comm->getRank() == 0) std::cout << "PPA: carry " << _g_rss[0][0] << " " << _g_rss[1][0] << std::endl;
+
+    return out;
+  });  
 }
 
 }  // namespace spu::mpc::aby3

@@ -30,14 +30,15 @@ namespace spu {
 // Type interfaces.
 ////////////////////////////////////////////////////////////////////////////
 
-/**
- * eq: 与物理类型有关的数据定义接口。
- * 数据被保存在z2k，但不代表MPC协议工作在z2k。
-*/
 // This trait means the data is maintained in ring 2^k, it DOES NOT mean that
 // data storage is k-bits.
 // For example, some protocol works in Zq, but the data it manipulates on is
 // [0, 2^k).
+/**
+ * eq: 与代数结构有关的数据定义接口。
+ * 数据被保存在z2k，工作在域field_。
+ * 需要提供对field_的定义。
+*/
 class Ring2k {
  protected:
   FieldType field_{FT_INVALID};
@@ -120,14 +121,21 @@ class Private {
 };
 
 /**
- * eq: 与MPC有关的数据定义接口。
+ * eq: MPC分享类型定义接口。
  * 标识数据是算术分享、布尔分享亦或置换分享。
+*/
+/**
+ * eq: 算术分享定义接口。
 */
 class AShare {
  public:
   virtual ~AShare() = default;
 };
 
+/**
+ * eq: 布尔分享定义接口。
+ * 维护nbits_，用于表示多少位被用于存储bit。
+*/
 class BShare {
  protected:
   // Theoretically, `B share` works in F2 (mod 2) ring, which means it is
@@ -165,6 +173,10 @@ class PShare {
 ////////////////////////////////////////////////////////////////////////////
 
 // TODO(jint) document me, how to add a new type.
+/**
+ * eq: TypeObject，Type绑定的类型对象接口。
+ * 其需要维护类型的字符串表示、大小、序列化、反序列化、克隆、等性测试等**类型原生**的方法。
+*/
 class TypeObject {
  public:
   friend class Type;
@@ -200,6 +212,13 @@ class TypeObject {
 };
 
 // A value semantic type.
+/**
+ * eq: Type，类型类。
+ * 绑定在一个类型对象描述TypeObject上。
+ * 增加了描述对象动态大小的cache_model_size。
+ * as方法允许将类型（绑定的类型对象）解析为某一个接口类型。
+ * isa方法允许判断对象（绑定的类型对象）是否实现了某一个接口类型。
+*/
 class Type final {
   std::unique_ptr<TypeObject> model_;
 
@@ -265,15 +284,20 @@ bool Type::isa() const {
 
 std::ostream& operator<<(std::ostream& os, const Type& type);
 
+/**
+ * 构造Type类型的工厂函数。
+ * 根据Args类型参数构造一个ModelT类型对象，用一个Type绑定他。
+*/
 template <typename ModelT, typename... Args>
 Type makeType(Args&&... args) {
   return Type(std::make_unique<ModelT>(std::forward<Args>(args)...));
 }
 
 /**
- * eq: 类型实现接口。DereivedT指定要实现的类型，BaseT指定数据存储类型，InterfaceT指定数据权限类型、MPC类型等信息。
- * 所有新实现的类型必须继承此接口。
- * 此接口实现了getID、clone方法。
+ * eq: 类型实现接口。接收模板参数DerivedT、BaseT、InterfaceT，组合BaseT、InterfaceT得到TypeImpl。
+ * DereivedT为一个TypeObject对象，指定要实现的类型，一般为要实现的类型自身。
+ * BaseT指定基础数据类型（可以理解为数据存储的类型），InterfaceT指定数据权限类型、MPC类型等信息。
+ * 此接口定义了要实现类型类的组合方式，并提供了getID、clone方法。本质是一个wrapper。
 */
 template <typename DerivedT, typename BaseT, typename... InterfaceT>
 class TypeImpl : public BaseT, public InterfaceT... {
@@ -286,6 +310,10 @@ class TypeImpl : public BaseT, public InterfaceT... {
 };
 
 // Builtin type, void
+/**
+ * eq: VoidTy，空类型。
+ * 直接派生于TypeObject，无数据权限，无MPC类型。
+*/
 class VoidTy : public TypeImpl<VoidTy, TypeObject> {
   using Base = TypeImpl<VoidTy, TypeObject>;
 
@@ -306,12 +334,19 @@ class VoidTy : public TypeImpl<VoidTy, TypeObject> {
 };
 
 // Builtin type, plaintext types.
+/**
+ * eq: PtTy，明文类型，科学计算视角。
+ * 直接派生于TypeObject，无数据权限，无MPC类型。
+ * 注意与PtType区分，后者是一个枚举类型，仅用于标识。
+*/
 class PtTy : public TypeImpl<PtTy, TypeObject> {
   using Base = TypeImpl<PtTy, TypeObject>;
   PtType pt_type_;
 
  public:
   using Base::Base;
+  // 根据枚举类型PtType构造一个PtTy类型的对象。
+  // PtType指示明文对象类型：PT_INVALID，PT_I8，PT_U8等。
   explicit PtTy(PtType pt_type) : pt_type_(pt_type) {}
   PtType pt_type() const { return pt_type_; }
 
@@ -333,6 +368,7 @@ class PtTy : public TypeImpl<PtTy, TypeObject> {
   }
 };
 
+// 构造一个PtTy类型的TypeImpl对象。
 inline Type makePtType(PtType etype) { return makeType<PtTy>(etype); }
 
 template <typename T>
@@ -340,7 +376,9 @@ Type makePtType() {
   return makePtType(PtTypeToEnum<T>::value);
 }
 
+// 测试科学计算明文类型PtTy是否为浮点数。
 bool isFloatTy(const Type& type);
+// 测试科学计算明文类型PtTy是否为整数。
 bool isIntTy(const Type& type);
 
 // predefine plaintext types.
@@ -362,6 +400,10 @@ extern Type U128;
 extern Type CF32;
 extern Type CF64;
 
+/**
+ * eq: 有限环类型，MPC视角。
+ * 直接派生自TypeObject，继承了Ring2k接口。
+*/
 class RingTy : public TypeImpl<RingTy, TypeObject, Ring2k> {
   using Base = TypeImpl<RingTy, TypeObject, Ring2k>;
 
