@@ -208,7 +208,10 @@ Ret dynDispatch(SPUContext* sctx, const std::string& name, Args&&... args) {
   kernel->evaluate(&ectx);
 
   // 4. steal the result and return it.
-  return ectx.consumeOutput<Ret>(0);
+  if (ectx.numOutputs() > 0) {
+    return ectx.consumeOutput<Ret>(0);
+  }
+  return Ret();
 }
 
 // helper class

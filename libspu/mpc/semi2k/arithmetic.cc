@@ -494,6 +494,8 @@ void BeaverCacheKernel::evaluate(KernelEvalContext* ctx) const {
       beaver_cache->DisableCache(v.imag().value());
     }
   }
+  // dummy output
+  ctx->pushOutput(Value());
 }
 
 }  // namespace spu::mpc::semi2k
