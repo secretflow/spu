@@ -197,6 +197,41 @@ Effects: `MemoryEffects::Effect{}`
 &laquo;unnamed&raquo; | statically shaped tensor of pred (AKA boolean or 1-bit integer) or Secret of 1-bit signless integer values or 8/16/32/64-bit signless integer or Secret of 8-bit signless integer or 16-bit signless integer or 32-bit signless integer or 64-bit signless integer values or 8/16/32/64-bit unsigned integer or Secret of 8/16/32/64-bit unsigned integer values or 16-bit float or 32-bit float or 64-bit float or Secret of 16-bit float or 32-bit float or 64-bit float values or complex type with 32-bit float or 64-bit float elements or Secret of complex type with 32-bit float or 64-bit float elements values values
 &laquo;unnamed&raquo; | statically shaped tensor of pred (AKA boolean or 1-bit integer) or Secret of 1-bit signless integer values values
 
+### `pphlo.atan2` (spu::pphlo::Atan2Op)
+
+_Atan2 operator_
+
+
+Syntax:
+
+```
+operation ::= `pphlo.atan2` $lhs `,` $rhs attr-dict
+              `:` custom<SameOperandsAndResultType>(type($lhs), type($rhs), type($result))
+```
+
+Performs element-wise atan2 operation on `lhs` tensor and `rhs` tensor and produces a `result` tensor.
+
+Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#atan2
+
+Traits: `AlwaysSpeculatableImplTrait`, `Elementwise`, `SameOperandsAndResultShape`
+
+Interfaces: `ConditionallySpeculatable`, `InferShapedTypeOpInterface`, `InferTypeOpInterface`, `NoMemoryEffect (MemoryEffectOpInterface)`
+
+Effects: `MemoryEffects::Effect{}`
+
+#### Operands:
+
+| Operand | Description |
+| :-----: | ----------- |
+| `lhs` | statically shaped tensor of 16-bit float or 32-bit float or 64-bit float or Secret of 16-bit float or 32-bit float or 64-bit float values values
+| `rhs` | statically shaped tensor of 16-bit float or 32-bit float or 64-bit float or Secret of 16-bit float or 32-bit float or 64-bit float values values
+
+#### Results:
+
+| Result | Description |
+| :----: | ----------- |
+| `result` | statically shaped tensor of 16-bit float or 32-bit float or 64-bit float or Secret of 16-bit float or 32-bit float or 64-bit float values values
+
 ### `pphlo.bitcast_convert` (spu::pphlo::BitcastConvertOp)
 
 _BitcastConvert operator_

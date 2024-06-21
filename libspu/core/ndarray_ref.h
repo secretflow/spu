@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <functional>
 #include <memory>
 #include <vector>
 
@@ -316,6 +317,10 @@ class NdArrayRef {
   /// Guarantee no copy
   NdArrayRef transpose(const Axes& permutation) const;
 
+  /// the transpose function with reverse order.
+  /// Guarantee no copy
+  NdArrayRef transpose() const;
+
   /// the reverse function
   /// Guarantee no copy
   NdArrayRef reverse(const Axes& dimensions) const;
@@ -479,3 +484,10 @@ size_t maxBitWidth(const NdArrayRef& in) {
 #define UnwrapValue(x) x.data()
 
 }  // namespace spu
+
+template <>
+struct std::hash<spu::NdArrayRef> {
+  std::size_t operator()(const spu::NdArrayRef& r) const noexcept {
+    return std::hash<const void*>{}(r.data());
+  }
+};

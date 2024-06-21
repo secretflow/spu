@@ -127,6 +127,20 @@ class PermKernel : public Kernel {
                           const NdArrayRef& perm) const = 0;
 };
 
+class OramOneHotKernel : public Kernel {
+  void evaluate(KernelEvalContext* ctx) const override;
+
+  virtual NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in,
+                          int64_t s) const = 0;
+};
+
+class OramReadKernel : public Kernel {
+  void evaluate(KernelEvalContext* ctx) const override;
+
+  virtual NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& onehot,
+                          const NdArrayRef& db, int64_t offset) const = 0;
+};
+
 class GenInvPermKernel : public Kernel {
  public:
   void evaluate(KernelEvalContext* ctx) const override;

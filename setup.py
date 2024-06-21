@@ -58,7 +58,7 @@ def find_version(*filepath):
     # Extract version information from filepath
     with open(os.path.join(ROOT_DIR, *filepath)) as fp:
         version_match = re.search(
-            r"^__version__ = ['\"]([^'\"]*)['\"]", fp.read(), re.M
+            r"^#define SPU_VERSION ['\"]([^'\"]*)['\"]", fp.read(), re.M
         )
         if version_match:
             return version_match.group(1)
@@ -75,7 +75,7 @@ def read_requirements(*filepath):
 class SetupSpec:
     def __init__(self, name: str, description: str):
         self.name: str = name
-        self.version = find_version("spu", "version.py")
+        self.version = find_version("libspu", "version.h")
         self.description: str = description
         self.files_to_include: list = []
         self.install_requires: list = []

@@ -151,4 +151,10 @@ Value f_pow_p(SPUContext* ctx, const Value& x, const Value& y) {
                               [](float a, float b) { return std::pow(a, b); });
 }
 
+Value f_atan2_p(SPUContext* ctx, const Value& x, const Value& y) {
+  SPU_TRACE_HAL_DISP(ctx, x, y);
+  return applyFloatingPointFn(
+      ctx, x, y, [](float a, float b) { return std::atan2(a, b); });
+}
+
 }  // namespace spu::kernel::hal

@@ -41,7 +41,7 @@ private:
                                        std::multiplies<int64_t>());
 
     auto current_ret_type =
-        op.getResult(0).getType().dyn_cast<RankedTensorType>();
+        mlir::dyn_cast<RankedTensorType>(op.getResult(0).getType());
 
     std::vector<int64_t> index_result_shape = current_ret_type.getShape();
     index_result_shape.emplace_back(window_size);

@@ -182,12 +182,15 @@ NdArrayRef B2A_Randbit::proc(KernelEvalContext* ctx,
 }
 
 NdArrayRef Msb_a2b::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
-  // SC
-  // auto in_ = ring_add(in, in);
-  // auto in_ = in;
-  // auto in_ = ShareConvert().proc(ctx, in);
+#ifndef OPT_SECURENN_MSB
+  // this is the default securenn implementation
+  auto in_ = ring_add(in, in);
+  in_ = ShareConvert().proc(ctx, in_);
+  auto res = Msb().proc(ctx, in_);
+#else
+  // this is optimized but cannot calculate msb(-1) where all bits are 1
   auto res = Msb_opt().proc(ctx, in);
-  // auto res = Msb().proc(ctx, in_);
+#endif
   res = A2B().proc(ctx, res);
   return res;
 }
@@ -201,7 +204,7 @@ void CommonTypeV::evaluate(KernelEvalContext* ctx) const {
   const auto* lhs_v = lhs.as<Priv2kTy>();
   const auto* rhs_v = rhs.as<Priv2kTy>();
 
-  ctx->setOutput(makeType<AShrTy>(std::max(lhs_v->field(), rhs_v->field())));
+  ctx->pushOutput(makeType<AShrTy>(std::max(lhs_v->field(), rhs_v->field())));
 }
 
 }  // namespace spu::mpc::securenn

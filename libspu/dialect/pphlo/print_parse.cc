@@ -76,7 +76,7 @@ bool isEligibleForCompactPrint(ReduceOp op) {
   }
 
   auto elemType =
-      op.getInputs()[0].getType().cast<ShapedType>().getElementType();
+      mlir::dyn_cast<ShapedType>(op.getInputs()[0].getType()).getElementType();
   auto expectedInnerOpType = RankedTensorType::get(/*shape=*/{}, elemType);
   if (innerOp.getOperands()[0].getType() != expectedInnerOpType) {
     return false;
@@ -333,7 +333,7 @@ ParseResult ReduceOp::parse(OpAsmParser& parser, OperationState& result) {
   StringRef innerOpName = innerOpNameInfo->getStringRef();
   Dialect* innerOpDialect = innerOpNameInfo->getDialect();
   if ((innerOpDialect == nullptr) ||
-      !innerOpDialect->getNamespace().equals("pphlo") ||
+      !(innerOpDialect->getNamespace() == "pphlo") ||
       !innerOpNameInfo->hasTrait<mlir::OpTrait::NOperands<2>::Impl>() ||
       !innerOpNameInfo->hasTrait<mlir::OpTrait::OneResult>() ||
       !innerOpNameInfo->hasTrait<mlir::OpTrait::IsCommutative>() ||

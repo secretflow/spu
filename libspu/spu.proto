@@ -336,11 +336,15 @@ message RuntimeConfig {
 message TTPBeaverConfig {
   // TrustedThirdParty beaver server's remote ip:port or load-balance uri.
   string server_host = 1;
-  // if empty, use link id as session id.
-  string session_id = 2;
   // which rank do adjust rpc call, usually choose the rank closer to the
   // server.
-  int32 adjust_rank = 3;
+  int32 adjust_rank = 2;
+
+  // asym_crypto_schema: support ["SM2"]
+  // Will support 25519 in the future, after yacl supported it.
+  string asym_crypto_schema = 3;
+  // server's public key
+  bytes server_public_key = 4;
 
   // TODO: TLS & brpc options.
 }

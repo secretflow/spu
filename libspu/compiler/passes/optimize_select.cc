@@ -64,7 +64,7 @@ public:
     // Pattern 2 first:
     auto on_false = op.getOnFalse();
     if (auto on_false_const = on_false.getDefiningOp<ConstantOp>()) {
-      auto dea = on_false_const.getValue().dyn_cast<DenseElementsAttr>();
+      auto dea = mlir::dyn_cast<DenseElementsAttr>(on_false_const.getValue());
       if (isSplatZero(dea)) {
         rewrite.replaceOpWithNewOp<MulOp>(op, op->getResultTypes(),
                                           op.getPred(), op.getOnTrue());
@@ -101,7 +101,7 @@ public:
     OpBuilder builder(op);
     // set insertion point
     auto new_loc = op->getLoc();
-    if (pred.isa<mlir::BlockArgument>()) {
+    if (mlir::isa<mlir::BlockArgument>(pred)) {
       builder.setInsertionPointToStart(op->getBlock());
     } else {
       builder.setInsertionPoint(pred.getDefiningOp()->getNextNode());

@@ -47,8 +47,6 @@ void PPHloDialect::initialize() {
 #define GET_ATTRDEF_LIST
 #include "libspu/dialect/pphlo/attrs.cc.inc"
       >();
-
-  allowUnknownTypes(true);
 }
 
 Type PPHloDialect::parseType(DialectAsmParser& parser) const {

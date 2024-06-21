@@ -156,6 +156,17 @@ Value _pad(SPUContext* ctx, const Value& in, const Value& padding_value,
 Value _concatenate(SPUContext* ctx, const std::vector<Value>& values,
                    int64_t axis);
 
+// secret database, secret start_indice
+std::optional<Value> _oramonehot_ss(SPUContext* ctx, const Value& x,
+                                    int64_t db_size);
+Value _oramread_ss(SPUContext* ctx, const Value& x, const Value& y,
+                   int64_t offset);
+// public database, secret start_indice
+std::optional<Value> _oramonehot_sp(SPUContext* ctx, const Value& x,
+                                    int64_t db_size);
+Value _oramread_sp(SPUContext* ctx, const Value& x, const Value& y,
+                   int64_t offset);
+
 // NOLINTEND(readability-identifier-naming)
 
 }  // namespace spu::kernel::hal

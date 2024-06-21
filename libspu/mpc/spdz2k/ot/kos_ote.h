@@ -15,7 +15,7 @@
 #pragma once
 #include "absl/types/span.h"
 #include "yacl/base/dynamic_bitset.h"
-#include "yacl/kernels/algorithms/ot_store.h"
+#include "yacl/kernel/algorithms/ot_store.h"
 #include "yacl/link/link.h"
 namespace spu::mpc::spdz2k {
 

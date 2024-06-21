@@ -28,7 +28,8 @@ namespace detail {
 // Calc:
 //   y = c0 + x*c1 + x^2*c2 + x^3*c3 + ... + x^n*c[n]
 Value polynomial(SPUContext* ctx, const Value& x,
-                 absl::Span<Value const> coeffs) {
+                 absl::Span<Value const> coeffs, SignType sign_x,
+                 SignType sign_ret) {
   SPU_TRACE_HAL_DISP(ctx, x);
   SPU_ENFORCE(x.isFxp());
   SPU_ENFORCE(!coeffs.empty());
@@ -42,25 +43,31 @@ Value polynomial(SPUContext* ctx, const Value& x,
   const auto fbits = ctx->getFxpBits();
   for (size_t i = 1; i < coeffs.size(); i++) {
     if ((i & 1) == 0U) {
+      // x^{even order} is always positive
       x_pow = _trunc(ctx, _mul(ctx, x_pow, x), fbits, SignType::Positive);
     } else {
-      // x^{even order} is always positive
-      x_pow = _trunc(ctx, _mul(ctx, x_pow, x), fbits);
+      if (i > 1) {
+        x_pow = _trunc(ctx, _mul(ctx, x_pow, x), fbits, sign_x);
+      } else {
+        // i=1, then save a _trunc
+        x_pow = x;
+      }
     }
     res = _add(ctx, res, _mul(ctx, x_pow, coeffs[i]));
   }
 
-  return _trunc(ctx, res).setDtype(x.dtype());
+  return _trunc(ctx, res, fbits, sign_ret).setDtype(x.dtype());
 }
 
 Value polynomial(SPUContext* ctx, const Value& x,
-                 absl::Span<float const> coeffs) {
+                 absl::Span<float const> coeffs, SignType sign_x,
+                 SignType sign_ret) {
   std::vector<Value> cs;
   cs.reserve(coeffs.size());
   for (const auto& c : coeffs) {
     cs.push_back(constant(ctx, c, x.dtype(), x.shape()));
   }
-  return polynomial(ctx, x, cs);
+  return polynomial(ctx, x, cs, sign_x, sign_ret);
 }
 
 Value highestOneBit(SPUContext* ctx, const Value& x) {
@@ -77,6 +84,47 @@ void hintNumberOfBits(const Value& a, size_t nbits) {
     const_cast<Type&>(a.storage_type()).as<BShare>()->setNbits(nbits);
   }
 }
+
+namespace {
+
+Value reciprocal_goldschmidt_normalized_approx(SPUContext* ctx,
+                                               const Value& b_abs,
+                                               const Value& factor) {
+  // compute normalize x_abs, [0.5, 1)
+  auto c = f_mul(ctx, b_abs, factor, SignType::Positive);
+
+  // initial guess:
+  //   w = 1/c ≈ 2.9142 - 2c when c >= 0.5 and c < 1
+  const auto k2 = _constant(ctx, 2, c.shape());
+  const auto k2_9142 = constant(ctx, 2.9142F, b_abs.dtype(), c.shape());
+  auto w = f_sub(ctx, k2_9142, _mul(ctx, k2, c).setDtype(b_abs.dtype()));
+
+  // init r=w, e=1-c*w
+  const auto& k1_ = constant(ctx, 1.0F, b_abs.dtype(), c.shape());
+  auto r = w;
+  auto e = f_sub(ctx, k1_, f_mul(ctx, c, w, SignType::Positive));
+
+  size_t num_iters = ctx->config().fxp_div_goldschmidt_iters();
+  if (ctx->getFxpBits() >= 30) {
+    // default 2 iters of goldschmidt can only get precision about 14 bits.
+    // so if fxp>=30, we use 3 iters by default, which get about 28 bits
+    // precision.
+    num_iters = std::max(num_iters, static_cast<size_t>(3));
+  }
+  SPU_ENFORCE(num_iters != 0, "fxp_div_goldschmidt_iters should not be {}",
+              num_iters);
+
+  // iterate, r=r(1+e), e=e*e
+  for (size_t itr = 0; itr < num_iters; itr++) {
+    r = f_mul(ctx, r, f_add(ctx, e, k1_), SignType::Positive);
+    if (itr + 1 < num_iters) {
+      e = f_square(ctx, e);
+    }
+  }
+
+  return r;
+}
+}  // namespace
 
 // Reference:
 //   Chapter 3.4 Division @ Secure Computation With Fixed Point Number
@@ -104,8 +152,77 @@ void hintNumberOfBits(const Value& a, size_t nbits) {
 //   return r * a * 2^{-m}
 //
 // Precision is decided by magic number, i.e 2.9142 and f.
+Value div_goldschmidt_general(SPUContext* ctx, const Value& a, const Value& b,
+                              SignType a_sign, SignType b_sign) {
+  Value b_abs;
+  Value is_negative;
+  if (b_sign == SignType::Unknown) {
+    // We prefer  b_abs = b < 0 ? -b : b over b_abs = sign(b) * b
+    // because MulA1B is a better choice than MulAA for CHEETAH.
+    // For ABY3, these two computations give the same cost though.
+    is_negative = _msb(ctx, b);
+    // insert ``prefer_a'' because the msb bit are used twice.
+    is_negative = _prefer_a(ctx, is_negative);
+    b_abs = _mux(ctx, is_negative, _negate(ctx, b), b).setDtype(b.dtype());
+  } else if (b_sign == SignType::Positive) {
+    is_negative = _constant(ctx, 0, b.shape());
+    b_abs = b;
+  } else {
+    // b is negative
+    is_negative = _constant(ctx, static_cast<uint128_t>(1), b.shape());
+    b_abs = _negate(ctx, b).setDtype(b.dtype());
+  }
+
+  auto b_msb = detail::highestOneBit(ctx, b_abs);
+
+  // factor = 2^{f-m} = 2^{-m} * 2^f, the fixed point repr of 2^{-m}
+  const size_t num_fxp_bits = ctx->getFxpBits();
+  auto factor = _bitrev(ctx, b_msb, 0, 2 * num_fxp_bits).setDtype(b.dtype());
+  detail::hintNumberOfBits(factor, 2 * num_fxp_bits);
+  // also, we use factor twice
+  factor = _prefer_a(ctx, factor);
+
+  // compute approximation of normalize b_abs
+  auto r = reciprocal_goldschmidt_normalized_approx(ctx, b_abs, factor);
+
+  // r from goldschmidt iteration is always positive
+  // so sign(r*a) = sign(a)
+  r = f_mul(ctx, r, a, a_sign);
+  // also, sign(r*factor) = sign(r)
+  r = f_mul(ctx, r, factor, a_sign);
+
+  return _mux(ctx, is_negative, _negate(ctx, r), r).setDtype(a.dtype());
+}
+
 Value div_goldschmidt(SPUContext* ctx, const Value& a, const Value& b) {
   SPU_TRACE_HAL_DISP(ctx, a, b);
+
+  return div_goldschmidt_general(ctx, a, b);
+}
+
+Value reciprocal_goldschmidt_positive(SPUContext* ctx, const Value& b_abs) {
+  SPU_TRACE_HAL_DISP(ctx, b_abs);
+
+  auto b_msb = detail::highestOneBit(ctx, b_abs);
+
+  // factor = 2^{f-m} = 2^{-m} * 2^f, the fixed point repr of 2^{-m}
+  const size_t num_fxp_bits = ctx->getFxpBits();
+  auto factor =
+      _bitrev(ctx, b_msb, 0, 2 * num_fxp_bits).setDtype(b_abs.dtype());
+  detail::hintNumberOfBits(factor, 2 * num_fxp_bits);
+  // also, we use factor twice
+  factor = _prefer_a(ctx, factor);
+
+  // compute approximation of normalize b_abs
+  auto r = reciprocal_goldschmidt_normalized_approx(ctx, b_abs, factor);
+
+  return f_mul(ctx, r, factor, SignType::Positive);
+}
+
+// NOTE(junfeng): we have a separate reciprocal_goldschmidt is to avoid
+// unnecessary f_mul for y initiation in div_goldschmidt.
+Value reciprocal_goldschmidt(SPUContext* ctx, const Value& b) {
+  SPU_TRACE_HAL_DISP(ctx, b);
 
   // We prefer  b_abs = b < 0 ? -b : b over b_abs = sign(b) * b
   // because MulA1B is a better choice than MulAA for CHEETAH.
@@ -117,94 +234,18 @@ Value div_goldschmidt(SPUContext* ctx, const Value& a, const Value& b) {
 
   auto b_msb = detail::highestOneBit(ctx, b_abs);
 
-  // factor = 2^{2f-m} = 2^{f-m} * 2^f, the fixed point repr of 2^{f-m}
+  // factor = 2^{f-m} = 2^{-m} * 2^f, the fixed point repr of 2^{-m}
   const size_t num_fxp_bits = ctx->getFxpBits();
   auto factor = _bitrev(ctx, b_msb, 0, 2 * num_fxp_bits).setDtype(b.dtype());
   detail::hintNumberOfBits(factor, 2 * num_fxp_bits);
+  // also, we use factor twice
+  factor = _prefer_a(ctx, factor);
 
-  // compute normalize x_abs, [0.5, 1)
-  auto c = f_mul(ctx, b_abs, factor, SignType::Positive);
+  // compute approximation of normalize b_abs
+  auto r = reciprocal_goldschmidt_normalized_approx(ctx, b_abs, factor);
 
-  // initial guess:
-  //   w = 1/c ≈ 2.9142 - 2c when c >= 0.5 and c < 1
-  const auto k2 = _constant(ctx, 2, c.shape());
-  const auto k2_9142 = constant(ctx, 2.9142F, b.dtype(), c.shape());
-  auto w = f_sub(ctx, k2_9142, _mul(ctx, k2, c).setDtype(b.dtype()));
+  r = f_mul(ctx, r, factor, SignType::Positive);
 
-  // init r=w, e=1-c*w
-  const auto& k1_ = constant(ctx, 1.0F, b.dtype(), c.shape());
-  auto r = w;
-  auto e = f_sub(ctx, k1_, f_mul(ctx, c, w, SignType::Positive));
-
-  const size_t num_iters = ctx->config().fxp_div_goldschmidt_iters();
-  SPU_ENFORCE(num_iters != 0, "fxp_div_goldschmidt_iters should not be {}",
-              num_iters);
-
-  // iterate, r=r(1+e), e=e*e
-  for (size_t itr = 0; itr < num_iters; itr++) {
-    r = f_mul(ctx, r, f_add(ctx, e, k1_), SignType::Positive);
-    if (itr + 1 < num_iters) {
-      e = f_square(ctx, e);
-    }
-  }
-
-  // NOTE(juhou): I hope to perform r*factor first which can use truncate_msb=0
-  // However, it might overflow when the input x is too small.
-  r = f_mul(ctx, r, a);
-  r = f_mul(ctx, r, factor);
-  return _mux(ctx, is_negative, _negate(ctx, r), r).setDtype(a.dtype());
-}
-
-Value reciprocal_goldschmidt_positive(SPUContext* ctx, const Value& b_abs) {
-  auto b_msb = detail::highestOneBit(ctx, b_abs);
-
-  // factor = 2^{2f-m} = 2^{f-m} * 2^f, the fixed point repr of 2^{f-m}
-  const size_t num_fxp_bits = ctx->getFxpBits();
-  auto factor =
-      _bitrev(ctx, b_msb, 0, 2 * num_fxp_bits).setDtype(b_abs.dtype());
-  detail::hintNumberOfBits(factor, 2 * num_fxp_bits);
-
-  // compute normalize x_abs, [0.5, 1)
-  auto c = f_mul(ctx, b_abs, factor, SignType::Positive);
-
-  // initial guess:
-  //   w = 1/b = 2.9142 - 2c when c >= 0.5 and c < 1
-  const auto k2 = _constant(ctx, 2, c.shape());
-  const auto k2_9142 = constant(ctx, 2.9142F, b_abs.dtype(), c.shape());
-  auto w =
-      f_mul(ctx, f_sub(ctx, k2_9142, _mul(ctx, k2, c).setDtype(b_abs.dtype())),
-            factor);
-
-  // init r=a*w, e=1-b*w
-  const auto& k1_ = constant(ctx, 1.0F, b_abs.dtype(), c.shape());
-  auto r = w;
-  auto e = f_sub(ctx, k1_, f_mul(ctx, b_abs, w, SignType::Positive));
-
-  const size_t num_iters = ctx->config().fxp_div_goldschmidt_iters();
-  SPU_ENFORCE(num_iters != 0, "fxp_div_goldschmidt_iters should not be {}",
-              num_iters);
-
-  // iterate, r=r(1+e), e=e*e
-  for (size_t itr = 0; itr < num_iters; itr++) {
-    r = f_mul(ctx, r, f_add(ctx, e, k1_), SignType::Positive);
-    if (itr + 1 < num_iters) {
-      e = f_square(ctx, e);
-    }
-  }
-
-  return r;
-}
-
-// NOTE(junfeng): we have a separate reciprocal_goldschmidt is to avoid
-// unnecessary f_mul for y initiation in div_goldschmidt.
-Value reciprocal_goldschmidt(SPUContext* ctx, const Value& b) {
-  SPU_TRACE_HAL_DISP(ctx, b);
-
-  auto is_negative = _msb(ctx, b);
-  is_negative = _prefer_a(ctx, is_negative);
-
-  auto b_abs = _mux(ctx, is_negative, _negate(ctx, b), b).setDtype(b.dtype());
-  auto r = reciprocal_goldschmidt_positive(ctx, b_abs);
   return _mux(ctx, is_negative, _negate(ctx, r), r).setDtype(b.dtype());
 }
 

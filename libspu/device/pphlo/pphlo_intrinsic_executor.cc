@@ -47,6 +47,24 @@ std::vector<Value> intrinsic_dispatcher(SPUContext* ctx,
 
     return {zeros};
   }
+
+  if (name == "make_cached_var") {
+    if (ctx->hasKernel("beaver_cache")) {
+      SPU_ENFORCE(inputs.size() == 1);
+      dynDispatch(ctx, "beaver_cache", inputs[0], true);
+    }
+
+    return {inputs[0]};
+  }
+
+  if (name == "drop_cached_var") {
+    if (ctx->hasKernel("beaver_cache")) {
+      SPU_ENFORCE(inputs.size() > 0);
+      dynDispatch(ctx, "beaver_cache", inputs[0], false);
+    }
+
+    return {inputs[0]};
+  }
   // DO-NOT-EDIT: Add_DISPATCH_CODE
 
   // Default: Identity function
@@ -68,18 +86,19 @@ std::vector<Value> intrinsic_dispatcher(SPUContext* ctx,
   if (name == "mhlo.topk") {
     SPU_ENFORCE(inputs.size() == 1);
     auto attr =
-        call->getAttr("mhlo.attributes").dyn_cast<mlir::DictionaryAttr>();
-    auto k = attr.get("k").dyn_cast<mlir::IntegerAttr>().getInt();
-    auto largest = attr.get("largest").dyn_cast<mlir::BoolAttr>().getValue();
+        mlir::dyn_cast<mlir::DictionaryAttr>(call->getAttr("mhlo.attributes"));
+    auto k = mlir::dyn_cast<mlir::IntegerAttr>(attr.get("k")).getInt();
+    auto largest =
+        mlir::dyn_cast<mlir::BoolAttr>(attr.get("largest")).getValue();
 
     auto value_only = false;
 
     if (auto value_only_attr = attr.get("value_only")) {
-      value_only = value_only_attr.dyn_cast<mlir::BoolAttr>().getValue();
+      value_only = mlir::dyn_cast<mlir::BoolAttr>(value_only_attr).getValue();
     }
 
     if (auto k_hi_attr = attr.get("k_hi")) {
-      auto k_hi = k_hi_attr.dyn_cast<mlir::IntegerAttr>().getInt();
+      auto k_hi = mlir::dyn_cast<mlir::IntegerAttr>(k_hi_attr).getInt();
       return kernel::hlo::TopK(ctx, inputs[0], k, k_hi, largest, value_only);
     }
 
@@ -88,27 +107,27 @@ std::vector<Value> intrinsic_dispatcher(SPUContext* ctx,
 
   if (name == "pphlo.gather") {
     kernel::hlo::GatherConfig config;
-    const auto& output_shape = call.getResults()[0]
-                                   .getType()
-                                   .dyn_cast<mlir::RankedTensorType>()
-                                   .getShape();
+    const auto& output_shape =
+        mlir::dyn_cast<mlir::RankedTensorType>(call.getResults()[0].getType())
+            .getShape();
     auto attr =
-        call->getAttr("pphlo.attributes").dyn_cast<mlir::DictionaryAttr>();
+        mlir::dyn_cast<mlir::DictionaryAttr>(call->getAttr("pphlo.attributes"));
 
-    config.sliceSizes = attr.get("slice_sizes")
-                            .dyn_cast<mlir::DenseI64ArrayAttr>()
-                            .asArrayRef();
+    config.sliceSizes =
+        mlir::dyn_cast<mlir::DenseI64ArrayAttr>(attr.get("slice_sizes"))
+            .asArrayRef();
     config.indexVectorDim =
-        attr.get("index_vector_dim").dyn_cast<mlir::IntegerAttr>().getInt();
-    config.offsetDims = attr.get("offset_dims")
-                            .dyn_cast<mlir::DenseI64ArrayAttr>()
-                            .asArrayRef();
-    config.collapsedSliceDims = attr.get("collapsed_slice_dims")
-                                    .dyn_cast<mlir::DenseI64ArrayAttr>()
+        mlir::dyn_cast<mlir::IntegerAttr>(attr.get("index_vector_dim"))
+            .getInt();
+    config.offsetDims =
+        mlir::dyn_cast<mlir::DenseI64ArrayAttr>(attr.get("offset_dims"))
+            .asArrayRef();
+    config.collapsedSliceDims = mlir::dyn_cast<mlir::DenseI64ArrayAttr>(
+                                    attr.get("collapsed_slice_dims"))
                                     .asArrayRef();
-    config.startIndexMap = attr.get("start_index_map")
-                               .dyn_cast<mlir::DenseI64ArrayAttr>()
-                               .asArrayRef();
+    config.startIndexMap =
+        mlir::dyn_cast<mlir::DenseI64ArrayAttr>(attr.get("start_index_map"))
+            .asArrayRef();
 
     return {
         kernel::hlo::Gather(ctx, inputs[0], inputs[1], config, output_shape)};

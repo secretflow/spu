@@ -1,4 +1,4 @@
-// Copyright 2023 Ant Group Co., Ltd.
+// Copyright 2024 Ant Group Co., Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,15 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
+#define SPU_VERSION "0.9.1.dev$$DATE$$"
 
-#include <memory>
+#include <string_view>
 
-#include "brpc/server.h"
+namespace spu {
 
-namespace spu::mpc::semi2k::beaver::ttp_server {
+inline std::string_view getVersionStr() { return SPU_VERSION; }
 
-std::unique_ptr<brpc::Server> RunServer(int32_t port);
-int RunUntilAskedToQuit(int32_t port);
-
-}  // namespace spu::mpc::semi2k::beaver::ttp_server
+}  // namespace spu

@@ -16,6 +16,7 @@ load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 load("@bazel_tools//tools/build_defs/repo:utils.bzl", "maybe")
 
 def spu_deps():
+    _bazel_skylib()
     _rules_cuda()
     _rules_proto_grpc()
     _bazel_platform()
@@ -39,10 +40,10 @@ def _yacl():
         http_archive,
         name = "yacl",
         urls = [
-            "https://github.com/secretflow/yacl/archive/refs/tags/0.4.4b3.tar.gz",
+            "https://github.com/secretflow/yacl/archive/refs/tags/0.4.5b1.tar.gz",
         ],
-        strip_prefix = "yacl-0.4.4b3",
-        sha256 = "c6b5f32e92d2e31c1c5d7176792965fcf332d1ae892ab8b049d2e66f6f47e4f2",
+        strip_prefix = "yacl-0.4.5b1",
+        sha256 = "28064053b9add0db8e1e8e648421a0579f1d3e7ee8a4bbd7bd5959cb59598088",
     )
 
 def _libpsi():
@@ -50,10 +51,10 @@ def _libpsi():
         http_archive,
         name = "psi",
         urls = [
-            "https://github.com/secretflow/psi/archive/refs/tags/v0.4.0.dev240401.tar.gz",
+            "https://github.com/secretflow/psi/archive/refs/tags/v0.4.0.dev240524.tar.gz",
         ],
-        strip_prefix = "psi-0.4.0.dev240401",
-        sha256 = "bc91e5c635fc94f865004e61e3896eb334d76549c1125fbc98caf8c6b3a82463",
+        strip_prefix = "psi-0.4.0.dev240524",
+        sha256 = "c2868fa6a9d804e6bbed9922dab6dc819ec6e180e15eafe7eb1b661302508c88",
     )
 
 def _rules_proto_grpc():
@@ -78,10 +79,10 @@ def _bazel_platform():
     http_archive(
         name = "platforms",
         urls = [
-            "https://mirror.bazel.build/github.com/bazelbuild/platforms/releases/download/0.0.9/platforms-0.0.9.tar.gz",
-            "https://github.com/bazelbuild/platforms/releases/download/0.0.9/platforms-0.0.9.tar.gz",
+            "https://mirror.bazel.build/github.com/bazelbuild/platforms/releases/download/0.0.10/platforms-0.0.10.tar.gz",
+            "https://github.com/bazelbuild/platforms/releases/download/0.0.10/platforms-0.0.10.tar.gz",
         ],
-        sha256 = "5eda539c841265031c2f82d8ae7a3a6490bd62176e0c038fc469eabf91f6149b",
+        sha256 = "218efe8ee736d26a3572663b374a253c012b716d8af0c07e842e82f238a0a7ee",
     )
 
 def _com_github_facebook_zstd():
@@ -123,9 +124,20 @@ def _com_github_xtensor_xtl():
         ],
     )
 
+def _bazel_skylib():
+    maybe(
+        http_archive,
+        name = "bazel_skylib",
+        sha256 = "bc283cdfcd526a52c3201279cda4bc298652efa898b10b4db0837dc51652756f",
+        urls = [
+            "https://mirror.bazel.build/github.com/bazelbuild/bazel-skylib/releases/download/1.7.1/bazel-skylib-1.7.1.tar.gz",
+            "https://github.com/bazelbuild/bazel-skylib/releases/download/1.7.1/bazel-skylib-1.7.1.tar.gz",
+        ],
+    )
+
 def _com_github_openxla_xla():
-    OPENXLA_COMMIT = "c408b6320bbf8407b781487a2dbe329cb7488dac"
-    OPENXLA_SHA256 = "77297f7f3a8796e865d2704ad595be05f87f9bb495121dd8904121320aec5601"
+    OPENXLA_COMMIT = "d9d0e780ff6a37c4d501c8e0e4f4a9fdca30cbd4"
+    OPENXLA_SHA256 = "77ef83491f409afbe549a2bd695d710a70fdf7f04db35eeb1fba3e97ef767113"
 
     # We need openxla to handle xla/mhlo/stablehlo
     maybe(
@@ -137,6 +149,8 @@ def _com_github_openxla_xla():
         urls = [
             "https://github.com/openxla/xla/archive/{commit}.tar.gz".format(commit = OPENXLA_COMMIT),
         ],
+        patch_args = ["-p1", "-l"],
+        patches = ["@spulib//bazel:patches/xla-non-hermetic-python.patch"],
     )
 
 def _com_github_pybind11_bazel():
@@ -215,13 +229,13 @@ def _com_github_microsoft_seal():
     maybe(
         http_archive,
         name = "com_github_microsoft_seal",
-        sha256 = "af9bf0f0daccda2a8b7f344f13a5692e0ee6a45fea88478b2b90c35648bf2672",
-        strip_prefix = "SEAL-4.1.1",
+        sha256 = "78ef7334114de930daf7659e8ba60c5abfff85c86ec2b827a2b7c67c3c42da43",
+        strip_prefix = "SEAL-4.1.2",
         type = "tar.gz",
         patch_args = ["-p1"],
         patches = ["@spulib//bazel:patches/seal.patch"],
         urls = [
-            "https://github.com/microsoft/SEAL/archive/refs/tags/v4.1.1.tar.gz",
+            "https://github.com/microsoft/SEAL/archive/refs/tags/v4.1.2.tar.gz",
         ],
         build_file = "@spulib//bazel:seal.BUILD",
     )

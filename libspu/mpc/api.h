@@ -164,6 +164,15 @@ Value bitrev_s(SPUContext* ctx, const Value& x, size_t start, size_t end);
 Value bitrev_v(SPUContext* ctx, const Value& x, size_t start, size_t end);
 Value bitrev_p(SPUContext* ctx, const Value& x, size_t start, size_t end);
 
+OptionalAPI<Value> oram_onehot_ss(SPUContext* ctx, const Value& x,
+                                  int64_t db_size);
+OptionalAPI<Value> oram_onehot_sp(SPUContext* ctx, const Value& x,
+                                  int64_t db_size);
+Value oram_read_ss(SPUContext* ctx, const Value& x, const Value& y,
+                   int64_t offset);
+Value oram_read_sp(SPUContext* ctx, const Value& x, const Value& y,
+                   int64_t offset);
+
 //////////////////////////////////////////////////////////////////////////////
 // TODO: Formalize these permutation APIs
 //////////////////////////////////////////////////////////////////////////////

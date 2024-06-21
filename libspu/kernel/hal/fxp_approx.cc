@@ -50,7 +50,8 @@ Value log_minmax_normalized(SPUContext* ctx, const Value& x) {
   const auto k1 = constant(ctx, 1.0F, x.dtype(), x.shape());
   auto xm1 = f_sub(ctx, x, k1);
 
-  return detail::polynomial(ctx, xm1, kLogCoefficient);
+  return detail::polynomial(ctx, xm1, kLogCoefficient, SignType::Positive,
+                            SignType::Positive);
 }
 
 // Ref:
@@ -552,11 +553,15 @@ static Value rsqrt_init_guess(SPUContext* ctx, const Value& x, const Value& z) {
   if (!ctx->config().enable_lower_accuracy_rsqrt()) {
     auto coeffs = {0.0F, -15.47994394F, 38.4714796F, -49.86605845F,
                    26.02942339F};
-    r = f_add(ctx, detail::polynomial(ctx, u, coeffs),
+    r = f_add(ctx,
+              detail::polynomial(ctx, u, coeffs, SignType::Positive,
+                                 SignType::Positive),
               constant(ctx, 4.14285016F, x.dtype(), x.shape()));
   } else {
     auto coeffs = {0.0F, -5.9417F, 4.7979F};
-    r = f_add(ctx, detail::polynomial(ctx, u, coeffs),
+    r = f_add(ctx,
+              detail::polynomial(ctx, u, coeffs, SignType::Positive,
+                                 SignType::Positive),
               constant(ctx, 3.1855F, x.dtype(), x.shape()));
   }
 
@@ -764,7 +769,8 @@ Value ErfImpl(SPUContext* ctx, const Value& x) {
                                               0.078108};
   auto one = constant(ctx, 1.0, x.dtype(), x.shape());
 
-  auto z = detail::polynomial(ctx, x, kErfCoefficient);
+  auto z = detail::polynomial(ctx, x, kErfCoefficient, SignType::Positive,
+                              SignType::Positive);
   z = f_square(ctx, z);
   z = f_square(ctx, z);
   z = detail::reciprocal_goldschmidt_positive(ctx, z);
@@ -798,6 +804,91 @@ Value f_erf(SPUContext* ctx, const Value& x) {
             .setDtype(x.dtype());
 
   return _mux(ctx, pred, f_negate(ctx, erf), erf).setDtype(x.dtype());
+}
+
+namespace {
+Value AtanApproxLocal(SPUContext* ctx, const Value& x) {
+  // 6-order minimax approximation with max error < 6.3893490851163973e-6
+  static std::array<float, 7> kAtanCoefficientSmall{
+      6.3893490851163976e-06, 0.99938232039482577, 0.0096717091887422429,
+      -0.38851091678439126,   0.13850820695354954, 0.065822467870128534,
+      -0.039488402923576769};
+
+  // 10-order minimax approximation with max error < 1.4802815832055511e-9
+  static std::array<float, 11> kAtanCoefficientLarge{
+      7.3035884235708622e-09, 0.99999906394905635,   3.5324890092487464e-05,
+      -0.33393042345794194,   0.0054765660426422556, 0.16982068444578205,
+      0.10531189733914688,    -0.37905943050720364,  0.32946653597875702,
+      -0.1337452245060563,    0.022023163399866309};
+
+  if (ctx->getFxpBits() <= 20) {
+    return detail::polynomial(ctx, x, kAtanCoefficientSmall, SignType::Positive,
+                              SignType::Positive);
+  } else {
+    return detail::polynomial(ctx, x, kAtanCoefficientLarge, SignType::Positive,
+                              SignType::Positive);
+  }
+}
+
+Value atan2_minimax(SPUContext* ctx, const Value& y, const Value& x) {
+  auto common_type = _common_type(ctx, x.storage_type(), y.storage_type());
+  std::vector<Value> xy = {_cast_type(ctx, x, common_type).setDtype(x.dtype()),
+                           _cast_type(ctx, y, common_type).setDtype(y.dtype())};
+  // vectorize the computation of the msb and abs of x and y
+  std::vector<Value> msb_xy;
+  spu::vmap(xy.begin(), xy.end(), std::back_inserter(msb_xy),
+            [&](const Value& v) { return _prefer_a(ctx, _msb(ctx, v)); });
+  std::vector<Value> abs_xy;
+  spu::vmap(msb_xy.begin(), msb_xy.end(), xy.begin(), xy.end(),
+            std::back_inserter(abs_xy), [&](const Value& xx, const Value& yy) {
+              return _mux(ctx, xx, _negate(ctx, yy), yy);
+            });
+
+  auto cmp = _less(ctx, abs_xy[0], abs_xy[1]);
+  cmp = _prefer_a(ctx, cmp);
+
+  auto bigger = _mux(ctx, cmp, abs_xy[1], abs_xy[0]).setDtype(x.dtype());
+  auto smaller =
+      _sub(ctx, _add(ctx, abs_xy[0], abs_xy[1]), bigger).setDtype(x.dtype());
+
+  // we fix tan(\theta) in [0,1] here for better acc/perf both, and do the
+  // re-mapping to full circle in the end.
+  auto tangent = detail::div_goldschmidt_general(
+      ctx, smaller, bigger, SignType::Positive, SignType::Positive);
+
+  // approximation of arctan(tangent) when tangent is in [0,1]
+  auto theta = AtanApproxLocal(ctx, tangent);
+
+  // To do re-mapping:
+  //   1. if abs_y > abs_x (indeed, we compute cot(\theta) before), then \theta
+  //   = pi/2 - \theta
+  //   2. if x < 0 (we compute tan(pi - \theta) before), then \theta = pi -
+  //   \theta
+  //   3. if y < 0 (we compute tan(-\theta) before), then \theta = -\theta
+  theta = _mux(ctx, cmp,
+               _sub(ctx, constant(ctx, M_PI_2, x.dtype(), x.shape()), theta),
+               theta);
+  theta =
+      _mux(ctx, msb_xy[0],
+           _sub(ctx, constant(ctx, M_PI, x.dtype(), x.shape()), theta), theta);
+
+  theta = _mux(ctx, msb_xy[1], _negate(ctx, theta), theta).setDtype(x.dtype());
+
+  return theta;
+}
+}  // namespace
+
+Value f_atan2(SPUContext* ctx, const Value& y, const Value& x) {
+  SPU_TRACE_HAL_DISP(ctx, y, x);
+
+  SPU_ENFORCE(x.isFxp() && y.isFxp() && x.dtype() == y.dtype() &&
+              y.shape() == x.shape());
+
+  if (x.isPublic() && y.isPublic()) {
+    return f_atan2_p(ctx, y, x);
+  }
+
+  return atan2_minimax(ctx, y, x);
 }
 
 }  // namespace spu::kernel::hal

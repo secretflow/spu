@@ -13,7 +13,7 @@
 // limitations under the License.
 #include <vector>
 
-#include "yacl/kernels/algorithms/ot_store.h"
+#include "yacl/kernel/algorithms/ot_store.h"
 
 #include "libspu/mpc/common/communicator.h"
 

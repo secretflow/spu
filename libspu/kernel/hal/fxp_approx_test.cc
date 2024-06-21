@@ -404,4 +404,47 @@ TEST(FxpTest, Erf) {
   }
 }
 
+TEST(FxpTest, Atan2) {
+  // GIVEN
+  SPUContext ctx = test::makeSPUContext();
+
+  // normal test in four quadrants (first row) + some special cases (second row)
+  // Note: for y = {-0.0, 0.0, -0.0}, x = {0.0, -0.0, -0.0}, we can't get -\pi
+  // as plaintext for -0.0 can not be distinguished in fixed-point.
+  xt::xarray<float> y = {
+      {34.1, 0.234, 34.1, 0.234, -34.1, -0.234, -34.1, -0.234},
+      {0, 0, 1.0, -1.0, 0, static_cast<float>(std::pow(2.0, 17.0)),
+       static_cast<float>(std::pow(2.0, 17.0)),
+       static_cast<float>(std::pow(2.0, -17.0))}};
+  xt::xarray<float> x = {
+      {23.2, 23.2, -23.2, -23.2, -23.2, -23.2, 23.2, 23.2},
+      {1.0, -1.0, 0, 0, 0, static_cast<float>(std::pow(2.0, 17.0)),
+       static_cast<float>(std::pow(2.0, -17.0)),
+       static_cast<float>(std::pow(2.0, 17.0))}};
+
+  // public atan2
+  {
+    Value b = constant(&ctx, y, DT_F32);
+    Value c = constant(&ctx, x, DT_F32);
+    Value d = f_atan2(&ctx, b, c);
+    EXPECT_EQ(d.dtype(), DT_F32);
+    auto ret = dump_public_as<float>(&ctx, d);
+    EXPECT_TRUE(xt::allclose(xt::atan2(y, x), ret, 0.01, 0.001))
+        << xt::atan2(y, x) << std::endl
+        << ret;
+  }
+
+  // secret atan2
+  {
+    Value b = test::makeValue(&ctx, y, VIS_SECRET);
+    Value c = test::makeValue(&ctx, x, VIS_SECRET);
+    Value d = f_atan2(&ctx, b, c);
+    EXPECT_EQ(d.dtype(), DT_F32);
+    auto ret = dump_public_as<float>(&ctx, reveal(&ctx, d));
+    EXPECT_TRUE(xt::allclose(xt::atan2(y, x), ret, 0.01, 0.001))
+        << xt::atan2(y, x) << std::endl
+        << ret;
+  }
+}
+
 }  // namespace spu::kernel::hal

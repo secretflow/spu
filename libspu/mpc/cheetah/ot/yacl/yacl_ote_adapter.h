@@ -16,11 +16,11 @@
 
 #include "yacl/base/dynamic_bitset.h"
 #include "yacl/crypto/rand/rand.h"
-#include "yacl/kernels/algorithms/base_ot.h"
-#include "yacl/kernels/algorithms/ferret_ote.h"
-#include "yacl/kernels/algorithms/iknp_ote.h"
-#include "yacl/kernels/algorithms/ot_store.h"
-#include "yacl/kernels/algorithms/softspoken_ote.h"
+#include "yacl/kernel/algorithms/base_ot.h"
+#include "yacl/kernel/algorithms/ferret_ote.h"
+#include "yacl/kernel/algorithms/iknp_ote.h"
+#include "yacl/kernel/algorithms/ot_store.h"
+#include "yacl/kernel/algorithms/softspoken_ote.h"
 
 #include "libspu/core/prelude.h"
 #include "libspu/mpc/cheetah/ot/ot_util.h"

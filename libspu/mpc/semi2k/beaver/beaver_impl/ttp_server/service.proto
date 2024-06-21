@@ -20,58 +20,28 @@ option cc_generic_services = true;
 
 enum ErrorCode {
   OK = 0;
-  SessionError = 1;
-  OpAdjustError = 2;
-}
-
-message CreateSessionRequest {
-  int32 required_version = 1;
-  // which rank do adjust rpc call, usually choose the rank closer to the
-  // server.
-  int32 adjust_rank = 2;
-  // session represents a group of MPC computing participants
-  string session_id = 3;
-  // how many parties in this session
-  int32 world_size = 4;
-  // Which participant is calling this rcp
-  int32 rank = 5;
-  // this rank(participant)'s PRG seed
-  bytes prg_seed = 6;
-}
-
-message CreateSessionResponse {
-  ErrorCode code = 1;
-  string message = 2;
-}
-
-message DeleteSessionRequest {
-  string session_id = 2;
-}
-
-message DeleteSessionResponse {
-  ErrorCode code = 1;
-  string message = 2;
+  OpAdjustError = 1;
+  SeedDecryptError = 2;
 }
 
 // PRG generated buffer metainfo.
-// BeaverService replay PRG to generate same buffer using each party's prg_seed.
-// PrgBufferMeta represent {world_size} arithmetic/boolean shares for one random
-// array.
+// BeaverService replay PRG to generate same buffer using each party's prg_seed
+// encrypted by server's public key. PrgBufferMeta represent {world_size}
+// arithmetic/boolean shares for one random array.
 message PrgBufferMeta {
-  int64 prg_count = 1;
-  repeated int64 shape = 2;
+  uint64 prg_count = 1;
+  // buffer len in bytes
+  uint64 buffer_len = 2;
+  repeated bytes encrypted_seeds = 3;
+  bool transpose = 4;
 }
 
 // TTP Beaver service for semi2k only.
 service BeaverService {
-  // Create
-  rpc CreateSession(CreateSessionRequest) returns (CreateSessionResponse);
-
-  // Delete
-  rpc DeleteSession(DeleteSessionRequest) returns (DeleteSessionResponse);
-
   // V1 adjust ops
   rpc AdjustMul(AdjustMulRequest) returns (AdjustResponse);
+
+  rpc AdjustSquare(AdjustSquareRequest) returns (AdjustResponse);
 
   rpc AdjustDot(AdjustDotRequest) returns (AdjustResponse);
 
@@ -89,29 +59,41 @@ service BeaverService {
 }
 
 message AdjustMulRequest {
-  string session_id = 1;
   // input three prg buffer
   // reconstruct all parties' share get: ra / rb / rc
-  repeated PrgBufferMeta prg_inputs = 2;
-  // use which field to interpret buffer. details see: spu.FieldType
-  int32 field = 3;
+  repeated PrgBufferMeta prg_inputs = 1;
+  // What field size should be used to interpret buffer content
+  uint32 field_size = 2;
   // output
   // adjust_c = ra * rb - rc
   // make
   // ra * rb = (adjust_c + rc)
 }
 
+message AdjustSquareRequest {
+  // input two prg buffer
+  // reconstruct all parties' share get: ra / rb
+  repeated PrgBufferMeta prg_inputs = 1;
+  // What field size should be used to interpret buffer content
+  uint32 field_size = 2;
+  // output
+  // adjust_b = ra * ra - rb
+  // make
+  // ra * ra = (adjust_b + rb)
+}
+
 message AdjustDotRequest {
-  string session_id = 1;
   // input three prg buffer
   // reconstruct all parties' share get: ra / rb / rc
-  repeated PrgBufferMeta prg_inputs = 2;
-  // use which field to interpret buffer. details see: spu.FieldType
-  int32 field = 3;
+  repeated PrgBufferMeta prg_inputs = 1;
+  // if buffer need reshaped by transpose
+  repeated bool transpose_inputs = 2;
+  // What field size should be used to interpret buffer content
+  uint32 field_size = 3;
   // ra's shape: (M, K), rb's shape: (K, N), rc's shape: (M, N)
-  int64 M = 4;
-  int64 N = 5;
-  int64 K = 6;
+  uint64 M = 4;
+  uint64 N = 5;
+  uint64 K = 6;
   // output
   // adjust_c = matmul(ra, rb) - rc
   // make
@@ -119,13 +101,9 @@ message AdjustDotRequest {
 }
 
 message AdjustAndRequest {
-  string session_id = 1;
   // input three prg buffer
   // reconstruct all parties' share get: ra / rb / rc
-  repeated PrgBufferMeta prg_inputs = 2;
-  // TODO: use bitwise format definition to describe boolean share's buffer
-  // use which field to interpret buffer. details see: spu.FieldType
-  int32 field = 3;
+  repeated PrgBufferMeta prg_inputs = 1;
   // output
   // adjust_c = (ra & rb) ^ rc
   // make
@@ -133,14 +111,13 @@ message AdjustAndRequest {
 }
 
 message AdjustTruncRequest {
-  string session_id = 1;
   // input two prg buffer
   // reconstruct all parties' share get: ra / rb
-  repeated PrgBufferMeta prg_inputs = 2;
-  // use which field to interpret buffer. details see: spu.FieldType
-  int32 field = 3;
+  repeated PrgBufferMeta prg_inputs = 1;
+  // What field size should be used to interpret buffer content
+  uint32 field_size = 2;
   // how many bits need to truncate.
-  int32 bits = 4;
+  uint32 bits = 3;
   // output
   // adjust_b = (ra >> bits) - rb
   // makes
@@ -148,14 +125,13 @@ message AdjustTruncRequest {
 }
 
 message AdjustTruncPrRequest {
-  string session_id = 1;
   // input two prg buffer
   // reconstruct all parties' share get: ra / rb / rc
-  repeated PrgBufferMeta prg_inputs = 2;
-  // use which field to interpret buffer. details see: spu.FieldType
-  int32 field = 3;
+  repeated PrgBufferMeta prg_inputs = 1;
+  // What field size should be used to interpret buffer content
+  uint32 field_size = 2;
   // how many bits need to truncate.
-  int32 bits = 4;
+  uint32 bits = 3;
   // output
   // adjust1 = ((ra << 1) >> (bits + 1)) - rb
   // adjust2 = msb(ra) - rc
@@ -165,12 +141,11 @@ message AdjustTruncPrRequest {
 }
 
 message AdjustRandBitRequest {
-  string session_id = 1;
   // input one prg buffer
   // reconstruct all parties' share get: ra
-  repeated PrgBufferMeta prg_inputs = 2;
-  // use which field to interpret buffer. details see: spu.FieldType
-  int32 field = 3;
+  repeated PrgBufferMeta prg_inputs = 1;
+  // What field size should be used to interpret buffer content
+  uint32 field_size = 2;
   // output
   // adjust_a = server generated random 0/1 array - rb
   // make
@@ -178,12 +153,11 @@ message AdjustRandBitRequest {
 }
 
 message AdjustEqzRequest {
-  string session_id = 1;
   // input two prg buffer
   // reconstruct all parties' share get: ra / rb
-  repeated PrgBufferMeta prg_inputs = 2;
-  // use which field to interprete buffer. details see: spu.FieldType
-  int32 field = 3;
+  repeated PrgBufferMeta prg_inputs = 1;
+  // What field size should be used to interpret buffer content
+  uint32 field_size = 2;
   // output
   // adjust_b = rb
   // make
@@ -191,14 +165,13 @@ message AdjustEqzRequest {
 }
 
 message AdjustPermRequest {
-  string session_id = 1;
   // input two prg buffer
   // reconstruct all parties' share get: ra / rb
-  repeated PrgBufferMeta prg_inputs = 2;
-  // use which field to interpret buffer. details see: spu.FieldType
-  int32 field = 3;
+  repeated PrgBufferMeta prg_inputs = 1;
+  // What field size should be used to interpret buffer content
+  uint32 field_size = 2;
   // permutation vector
-  repeated int64 perm_vec = 4;
+  repeated int64 perm_vec = 3;
   // output
   // adjust_b = (apply inverse permutation perm_vec to ra) - rb
   // make

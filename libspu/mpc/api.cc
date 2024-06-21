@@ -24,6 +24,9 @@ namespace {
 
 inline bool IsA(const Value& x) { return x.storage_type().isa<AShare>(); }
 inline bool IsB(const Value& x) { return x.storage_type().isa<BShare>(); }
+inline bool IsO(const Value& x) { return x.storage_type().isa<OShare>(); }
+inline bool IsOP(const Value& x) { return x.storage_type().isa<OPShare>(); }
+
 inline bool IsPShr(const Value& x) { return x.storage_type().isa<PShare>(); }
 [[maybe_unused]] inline bool IsP(const Value& x) {
   return x.storage_type().isa<Public>();
@@ -218,7 +221,7 @@ Type common_type_s(SPUContext* ctx, const Type& a, const Type& b) {
     SPU_ENFORCE(a == b, "expect same, got a={}, b={}", a, b);
     return a;
   } else if (a.isa<AShare>() && b.isa<BShare>()) {
-    return b;
+    return a;
   } else if (a.isa<BShare>() && b.isa<AShare>()) {
     return b;
   } else if (a.isa<BShare>() && b.isa<BShare>()) {
@@ -681,6 +684,49 @@ Value bitrev_v(SPUContext* ctx, const Value& x, size_t start, size_t end) {
 Value bitrev_p(SPUContext* ctx, const Value& x, size_t start, size_t end) {
   FORCE_DISPATCH(ctx, x, start, end);
 }
+
+//////////////////////////////////////////////////////////////////////////////
+
+OptionalAPI<Value> oram_onehot_ss(SPUContext* ctx, const Value& x,
+                                  int64_t db_size) {
+  SPU_TRACE_MPC_DISP(ctx, x, db_size);
+
+  if (ctx->hasKernel("oram_onehot_aa")) {
+    SPU_ENFORCE(IsA(x), "expect AShare, got {}", x.storage_type());
+    return dynDispatch(ctx, "oram_onehot_aa", x, db_size);
+  }
+
+  return NotAvailable;
+}
+
+OptionalAPI<Value> oram_onehot_sp(SPUContext* ctx, const Value& x,
+                                  int64_t db_size) {
+  SPU_TRACE_MPC_DISP(ctx, x, db_size);
+
+  if (ctx->hasKernel("oram_onehot_ap")) {
+    SPU_ENFORCE(IsA(x), "expect AShare, got {}", x.storage_type());
+    return dynDispatch(ctx, "oram_onehot_ap", x, db_size);
+  }
+
+  return NotAvailable;
+}
+
+Value oram_read_ss(SPUContext* ctx, const Value& x, const Value& y,
+                   int64_t offset) {
+  SPU_TRACE_MPC_DISP(ctx, x, offset);
+  SPU_ENFORCE(IsO(x) && IsA(y), "expect OShare and AShare, got {} and {}",
+              x.storage_type(), y.storage_type());
+
+  return dynDispatch(ctx, "oram_read_aa", x, y, offset);
+};
+
+Value oram_read_sp(SPUContext* ctx, const Value& x, const Value& y,
+                   int64_t offset) {
+  SPU_TRACE_MPC_DISP(ctx, x, offset);
+  SPU_ENFORCE(IsOP(x), "expect OPShare, got{}", x.storage_type());
+
+  return dynDispatch(ctx, "oram_read_ap", x, y, offset);
+};
 
 //////////////////////////////////////////////////////////////////////////////
 

@@ -12,6 +12,12 @@
 
 ## 20240415
 
+- [Feature] Add ORAM based dynamic_slice for ABY3
+- [Feature] Add Atan2Op support
+- [API] Add beaver cache support for semi2k (**experimental**)
+
+## 20240415
+
 - [Feature] Add minimax approximation for log
 - [Feature] Support jax.lax.top_k
 - [Feature] Support round to nearest even

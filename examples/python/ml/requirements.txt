@@ -2,8 +2,8 @@ dm-haiku
 plotnine
 jraph
 optax
-torch==2.2.0
-torch_xla==2.2.0
+torch==2.3.0
+torch_xla==2.3.0
 torchvision
 jax[cpu]
 tensorflow_datasets

@@ -174,61 +174,170 @@ NdArrayRef MulAP::proc(KernelEvalContext*, const NdArrayRef& lhs,
   return ring_mul(lhs, rhs).as(lhs.eltype());
 }
 
-NdArrayRef MulAA::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
-                       const NdArrayRef& rhs) const {
-  const auto field = lhs.eltype().as<Ring2k>()->field();
+namespace {
+
+NdArrayRef UnflattenBuffer(yacl::Buffer&& buf, const Type& t, const Shape& s) {
+  return NdArrayRef(std::make_shared<yacl::Buffer>(std::move(buf)), t, s);
+}
+
+NdArrayRef UnflattenBuffer(yacl::Buffer&& buf, const NdArrayRef& x) {
+  return NdArrayRef(std::make_shared<yacl::Buffer>(std::move(buf)), x.eltype(),
+                    x.shape());
+}
+
+std::tuple<NdArrayRef, NdArrayRef, NdArrayRef, NdArrayRef, NdArrayRef> MulOpen(
+    KernelEvalContext* ctx, const NdArrayRef& x, const NdArrayRef& y,
+    bool mmul) {
+  const auto field = x.eltype().as<Ring2k>()->field();
   auto* comm = ctx->getState<Communicator>();
   auto* beaver = ctx->getState<Semi2kState>()->beaver();
+  auto* beaver_cache = ctx->getState<Semi2kState>()->beaver_cache();
+  auto x_cache = beaver_cache->GetCache(x, mmul);
+  auto y_cache = beaver_cache->GetCache(y, mmul);
 
-  auto res = NdArrayRef(makeType<AShrTy>(field), lhs.shape());
+  // can't init on same array twice
+  if (x == y && x_cache.enabled && x_cache.replay_desc.status == Beaver::Init) {
+    // FIXME: how to avoid open on same array twice (x.t dot x)
+    y_cache.enabled = false;
+  }
 
-  auto numel = lhs.numel();
+  Shape z_shape;
+  if (mmul) {
+    SPU_ENFORCE(x.shape()[1] == y.shape()[0]);
+    z_shape = Shape{x.shape()[0], y.shape()[1]};
+  } else {
+    SPU_ENFORCE(x.shape() == y.shape());
+    z_shape = x.shape();
+  }
 
-  DISPATCH_ALL_FIELDS(field, kBindName, [&]() {
-    using U = ring2k_t;
-    auto [a, b, c] = beaver->Mul(field, lhs.shape());
-    SPU_ENFORCE(a.isCompact() && b.isCompact() && c.isCompact(),
-                "beaver must be compact");
+  // generate beaver multiple triple.
+  NdArrayRef a;
+  NdArrayRef b;
+  NdArrayRef c;
+  if (mmul) {
+    auto [a_buf, b_buf, c_buf] =
+        beaver->Dot(field, x.shape()[0], y.shape()[1], x.shape()[1],  //
+                    x_cache.enabled ? &x_cache.replay_desc : nullptr,
+                    y_cache.enabled ? &y_cache.replay_desc : nullptr);
+    SPU_ENFORCE(static_cast<size_t>(a_buf.size()) == x.numel() * SizeOf(field));
+    SPU_ENFORCE(static_cast<size_t>(b_buf.size()) == y.numel() * SizeOf(field));
+    SPU_ENFORCE(static_cast<size_t>(c_buf.size()) ==
+                z_shape.numel() * SizeOf(field));
 
-    NdArrayView<U> _a(a);
-    NdArrayView<U> _b(b);
-    NdArrayView<U> _c(c);
-    NdArrayView<U> _lhs(lhs);
-    NdArrayView<U> _rhs(rhs);
+    a = UnflattenBuffer(std::move(a_buf), x);
+    b = UnflattenBuffer(std::move(b_buf), y);
+    c = UnflattenBuffer(std::move(c_buf), x.eltype(), z_shape);
+  } else {
+    const size_t numel = x.shape().numel();
+    auto [a_buf, b_buf, c_buf] =
+        beaver->Mul(field, numel,  //
+                    x_cache.enabled ? &x_cache.replay_desc : nullptr,
+                    y_cache.enabled ? &y_cache.replay_desc : nullptr);
+    SPU_ENFORCE(static_cast<size_t>(a_buf.size()) == numel * SizeOf(field));
+    SPU_ENFORCE(static_cast<size_t>(b_buf.size()) == numel * SizeOf(field));
+    SPU_ENFORCE(static_cast<size_t>(c_buf.size()) == numel * SizeOf(field));
 
-    std::vector<U> eu(numel * 2);
-    absl::Span<U> e(eu.data(), numel);
-    absl::Span<U> u(eu.data() + numel, numel);
+    a = UnflattenBuffer(std::move(a_buf), x);
+    b = UnflattenBuffer(std::move(b_buf), y);
+    c = UnflattenBuffer(std::move(c_buf), x);
+  }
 
-    pforeach(0, numel, [&](int64_t idx) {
-      e[idx] = _lhs[idx] - _a[idx];  // e = x - a;
-      u[idx] = _rhs[idx] - _b[idx];  // u = y - b;
-    });
+  // Open x-a & y-b
+  NdArrayRef x_a;
+  NdArrayRef y_b;
 
-    // open x-a & y-b
-    if (ctx->sctx()->config().experimental_disable_vectorization()) {
-      auto ee = comm->allReduce<U, std::plus>(e, "open(x-a)");
-      auto uu = comm->allReduce<U, std::plus>(u, "open(y-b)");
-      std::copy(ee.begin(), ee.end(), e.begin());
-      std::copy(uu.begin(), uu.end(), u.begin());
+  auto x_hit_cache = x_cache.replay_desc.status != Beaver::Init;
+  auto y_hit_cache = y_cache.replay_desc.status != Beaver::Init;
+
+  if (ctx->sctx()->config().experimental_disable_vectorization() ||
+      x_hit_cache || y_hit_cache) {
+    if (x_hit_cache) {
+      x_a = std::move(x_cache.open_cache);
     } else {
-      eu = comm->allReduce<U, std::plus>(eu, "open(x-a,y-b)");
+      x_a = comm->allReduce(ReduceOp::ADD, ring_sub(x, a), "open(x-a)");
     }
-
-    e = absl::Span<U>(eu.data(), numel);
-    u = absl::Span<U>(eu.data() + numel, numel);
-
-    NdArrayView<U> _res(res);
-    // Zi = Ci + (X - A) * Bi + (Y - B) * Ai + <(X - A) * (Y - B)>
-    pforeach(0, a.numel(), [&](int64_t idx) {
-      _res[idx] = _c[idx] + e[idx] * _b[idx] + u[idx] * _a[idx];
-      if (comm->getRank() == 0) {
-        // z += (X-A) * (Y-B);
-        _res[idx] += e[idx] * u[idx];
-      }
+    if (y_hit_cache) {
+      y_b = std::move(y_cache.open_cache);
+    } else {
+      y_b = comm->allReduce(ReduceOp::ADD, ring_sub(y, b), "open(y-b)");
+    }
+  } else {
+    auto res = vmap({ring_sub(x, a), ring_sub(y, b)}, [&](const NdArrayRef& s) {
+      return comm->allReduce(ReduceOp::ADD, s, "open(x-a,y-b)");
     });
-  });
-  return res;
+    x_a = std::move(res[0]);
+    y_b = std::move(res[1]);
+  }
+
+  if (x_cache.enabled && x_cache.replay_desc.status == Beaver::Init) {
+    beaver_cache->SetCache(x, x_cache.replay_desc, x_a);
+  }
+  if (y_cache.enabled && y_cache.replay_desc.status == Beaver::Init) {
+    beaver_cache->SetCache(y, y_cache.replay_desc, y_b);
+  }
+
+  return {std::move(a), std::move(b), std::move(c), std::move(x_a),
+          std::move(y_b)};
+}
+
+}  // namespace
+
+NdArrayRef MulAA::proc(KernelEvalContext* ctx, const NdArrayRef& x,
+                       const NdArrayRef& y) const {
+  auto* comm = ctx->getState<Communicator>();
+
+  auto [a, b, c, x_a, y_b] = MulOpen(ctx, x, y, false);
+
+  // Zi = Ci + (X - A) * Bi + (Y - B) * Ai + <(X - A) * (Y - B)>
+  auto z = ring_add(
+      ring_add(ring_mul(std::move(b), x_a), ring_mul(std::move(a), y_b)), c);
+  if (comm->getRank() == 0) {
+    // z += (X-A) * (Y-B);
+    ring_add_(z, ring_mul(std::move(x_a), y_b));
+  }
+  return z.as(x.eltype());
+}
+
+NdArrayRef SquareA::proc(KernelEvalContext* ctx, const NdArrayRef& x) const {
+  const auto field = x.eltype().as<Ring2k>()->field();
+  auto* comm = ctx->getState<Communicator>();
+  auto* beaver = ctx->getState<Semi2kState>()->beaver();
+  auto* beaver_cache = ctx->getState<Semi2kState>()->beaver_cache();
+  auto x_cache = beaver_cache->GetCache(x, false);
+
+  // generate beaver Square pair.
+  NdArrayRef a;
+  NdArrayRef b;
+  const size_t numel = x.shape().numel();
+  auto [a_buf, b_buf] =
+      beaver->Square(field, numel,  //
+                     x_cache.enabled ? &x_cache.replay_desc : nullptr);
+  SPU_ENFORCE(static_cast<size_t>(a_buf.size()) == numel * SizeOf(field));
+  SPU_ENFORCE(static_cast<size_t>(b_buf.size()) == numel * SizeOf(field));
+
+  a = UnflattenBuffer(std::move(a_buf), x);
+  b = UnflattenBuffer(std::move(b_buf), x);
+
+  // Open x-a
+  NdArrayRef x_a;
+
+  if (x_cache.replay_desc.status != Beaver::Init) {
+    x_a = std::move(x_cache.open_cache);
+  } else {
+    x_a = comm->allReduce(ReduceOp::ADD, ring_sub(x, a), "open(x-a)");
+  }
+
+  if (x_cache.enabled && x_cache.replay_desc.status == Beaver::Init) {
+    beaver_cache->SetCache(x, x_cache.replay_desc, x_a);
+  }
+
+  // Zi = Bi + 2 * (X - A) * Ai + <(X - A) * (X - A)>
+  auto z = ring_add(ring_mul(ring_mul(std::move(a), x_a), 2), b);
+  if (comm->getRank() == 0) {
+    // z += (X - A) * (X - A);
+    ring_add_(z, ring_mul(x_a, x_a));
+  }
+  return z.as(x.eltype());
 }
 
 ////////////////////////////////////////////////////////////////////
@@ -241,27 +350,9 @@ NdArrayRef MatMulAP::proc(KernelEvalContext*, const NdArrayRef& x,
 
 NdArrayRef MatMulAA::proc(KernelEvalContext* ctx, const NdArrayRef& x,
                           const NdArrayRef& y) const {
-  const auto field = x.eltype().as<Ring2k>()->field();
   auto* comm = ctx->getState<Communicator>();
-  auto* beaver = ctx->getState<Semi2kState>()->beaver();
 
-  // generate beaver multiple triple.
-  auto [a, b, c] = beaver->Dot(field, x.shape()[0], y.shape()[1], x.shape()[1]);
-
-  // Open x-a & y-b
-  NdArrayRef x_a;
-  NdArrayRef y_b;
-
-  if (ctx->sctx()->config().experimental_disable_vectorization()) {
-    x_a = comm->allReduce(ReduceOp::ADD, ring_sub(x, a), "open(x-a)");
-    y_b = comm->allReduce(ReduceOp::ADD, ring_sub(y, b), "open(y-b)");
-  } else {
-    auto res = vmap({ring_sub(x, a), ring_sub(y, b)}, [&](const NdArrayRef& s) {
-      return comm->allReduce(ReduceOp::ADD, s, "open(x-a,y-b)");
-    });
-    x_a = std::move(res[0]);
-    y_b = std::move(res[1]);
-  }
+  auto [a, b, c, x_a, y_b] = MulOpen(ctx, x, y, true);
 
   // Zi = Ci + (X - A) dot Bi + Ai dot (Y - B) + <(X - A) dot (Y - B)>
   auto z = ring_add(ring_add(ring_mmul(x_a, b), ring_mmul(a, y_b)), c);
@@ -297,7 +388,12 @@ NdArrayRef TruncA::proc(KernelEvalContext* ctx, const NdArrayRef& x,
     auto* beaver = ctx->getState<Semi2kState>()->beaver();
 
     const auto field = x.eltype().as<Ring2k>()->field();
-    const auto& [r, rb] = beaver->Trunc(field, x.shape(), bits);
+    auto [r_buf, rb_buf] = beaver->Trunc(field, x.shape().numel(), bits);
+
+    NdArrayRef r(std::make_shared<yacl::Buffer>(std::move(r_buf)), x.eltype(),
+                 x.shape());
+    NdArrayRef rb(std::make_shared<yacl::Buffer>(std::move(rb_buf)), x.eltype(),
+                  x.shape());
 
     // open x - r
     auto x_r = comm->allReduce(ReduceOp::ADD, ring_sub(x, r), kBindName);
@@ -314,29 +410,25 @@ NdArrayRef TruncA::proc(KernelEvalContext* ctx, const NdArrayRef& x,
 NdArrayRef TruncAPr::proc(KernelEvalContext* ctx, const NdArrayRef& in,
                           size_t bits, SignType sign) const {
   (void)sign;  // TODO: optimize me.
-
   auto* comm = ctx->getState<Communicator>();
   auto* beaver = ctx->getState<Semi2kState>()->beaver();
   const auto numel = in.numel();
   const auto field = in.eltype().as<Ring2k>()->field();
   const size_t k = SizeOf(field) * 8;
 
-  NdArrayRef r;
-  NdArrayRef rc;
-  NdArrayRef rb;
-  std::tie(r, rc, rb) = beaver->TruncPr(field, in.shape(), bits);
-
-  SPU_ENFORCE(r.isCompact() && rc.isCompact() && rb.isCompact(),
-              "beaver triple must be compact");
-
   NdArrayRef out(in.eltype(), in.shape());
+
   DISPATCH_ALL_FIELDS(field, "semi2k.truncpr", [&]() {
     using U = ring2k_t;
+    auto [r, rc, rb] = beaver->TruncPr(field, numel, bits);
+    SPU_ENFORCE(static_cast<size_t>(r.size()) == numel * SizeOf(field));
+    SPU_ENFORCE(static_cast<size_t>(rc.size()) == numel * SizeOf(field));
+    SPU_ENFORCE(static_cast<size_t>(rb.size()) == numel * SizeOf(field));
 
     NdArrayView<U> _in(in);
-    NdArrayView<U> _r(r);
-    NdArrayView<U> _rb(rb);
-    NdArrayView<U> _rc(rc);
+    absl::Span<const U> _r(r.data<U>(), numel);
+    absl::Span<const U> _rc(rc.data<U>(), numel);
+    absl::Span<const U> _rb(rb.data<U>(), numel);
     NdArrayView<U> _out(out);
 
     std::vector<U> c;
@@ -383,6 +475,27 @@ NdArrayRef TruncAPr::proc(KernelEvalContext* ctx, const NdArrayRef& in,
   });
 
   return out;
+}
+
+void BeaverCacheKernel::evaluate(KernelEvalContext* ctx) const {
+  const auto& v = ctx->getParam<Value>(0);
+  const auto& enable_cache = ctx->getParam<bool>(1);
+
+  auto* beaver_cache = ctx->getState<Semi2kState>()->beaver_cache();
+
+  if (enable_cache) {
+    beaver_cache->EnableCache(v.data());
+    if (v.isComplex()) {
+      beaver_cache->EnableCache(v.imag().value());
+    }
+  } else {
+    beaver_cache->DisableCache(v.data());
+    if (v.isComplex()) {
+      beaver_cache->DisableCache(v.imag().value());
+    }
+  }
+  // dummy output
+  ctx->pushOutput(Value());
 }
 
 }  // namespace spu::mpc::semi2k

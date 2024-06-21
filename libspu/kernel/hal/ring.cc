@@ -253,18 +253,35 @@ std::tuple<int64_t, int64_t, int64_t> calcMmulTilingSize(int64_t m, int64_t n,
   if (m == 0 || n == 0 || k == 0) {
     return {m, n, k};
   }
-  const auto elnum_limit = static_cast<int64_t>(mem_limit / elsize);
-  const int64_t expected_step = std::ceil(std::sqrt(elnum_limit));
+  if ((m * k + k * n) * elsize < mem_limit) {
+    return {m, n, k};
+  }
 
-  const int64_t expected_mn_step = std::min((m + n), expected_step);
-  const int64_t k_step = std::max(std::min(k, elnum_limit / expected_mn_step),
-                                  static_cast<int64_t>(1));
+  const double elnum_limit = mem_limit / elsize;
+  int64_t k_step;
+  int64_t expected_mn_step;
+
+  if (k > (m + n) * 8) {
+    // for "tall and skinny", only split large dimensions.
+    expected_mn_step = m + n;
+    k_step = std::max<int64_t>(1, std::ceil(elnum_limit / expected_mn_step));
+  } else if ((m + n) > k * 8) {
+    // for "tall and skinny", only split large dimensions.
+    k_step = k;
+    expected_mn_step = std::max<int64_t>(1, std::ceil(elnum_limit / k_step));
+  } else {
+    // Solving equations:
+    // k_step * mn_step == elnum_limit
+    // k_step / mn_step == k / (m+n)
+    double k_mn_radio = static_cast<double>(k) / static_cast<double>(m + n);
+    double mn_step = std::sqrt(elnum_limit / k_mn_radio);
+    k_step = std::max<int64_t>(1, std::ceil(elnum_limit / mn_step));
+    expected_mn_step = std::max<int64_t>(1, std::ceil(mn_step));
+  }
 
   // split expected_mn_step into m/n by radio
-  const int64_t m_step =
-      std::max(expected_mn_step * m / (m + n), static_cast<int64_t>(1));
-  const int64_t n_step =
-      std::max(expected_mn_step * n / (m + n), static_cast<int64_t>(1));
+  const int64_t m_step = std::max<int64_t>(expected_mn_step * m / (m + n), 1);
+  const int64_t n_step = std::max<int64_t>(expected_mn_step * n / (m + n), 1);
 
   return {m_step, n_step, k_step};
 }
@@ -644,6 +661,50 @@ Value _tensordot(SPUContext* ctx, const Value& x, const Value& y,
   res_shape.insert(res_shape.end(), yys.begin() + nc, yys.end());
 
   return _reshape(ctx, zz, res_shape);
+}
+
+std::optional<Value> _oramonehot(SPUContext* ctx, const Value& x,
+                                 int64_t db_size, bool db_is_public) {
+  std::optional<Value> ret;
+  if (db_is_public) {
+    ret = _oramonehot_sp(ctx, x, db_size);
+  } else {
+    if (x.isPrivate()) {
+      ret = _oramonehot_ss(ctx, _v2s(ctx, x), db_size);
+    } else {
+      ret = _oramonehot_ss(ctx, x, db_size);
+    }
+  }
+
+  if (!ret.has_value()) {
+    return std::nullopt;
+  }
+
+  return ret;
+}
+
+Value _oramread(SPUContext* ctx, const Value& x, const Value& y,
+                int64_t offset) {
+  SPU_ENFORCE(x.isSecret(), "onehot should be secret shared");
+  auto reshaped_x = Value(x.data().reshape({1, x.numel()}), x.dtype());
+  auto reshaped_y = y;
+  if (y.shape().size() == 1) {
+    reshaped_y = Value(y.data().reshape({y.numel(), 1}), y.dtype());
+  }
+
+  Value ret;
+  if (y.isSecret()) {
+    ret = _oramread_ss(ctx, reshaped_x, reshaped_y, offset);
+  } else if (y.isPublic()) {
+    ret = _oramread_sp(ctx, reshaped_x, reshaped_y, offset);
+  } else if (y.isPrivate()) {
+    ret = _oramread_ss(ctx, reshaped_x, _v2s(ctx, reshaped_y), offset);
+  } else {
+    SPU_THROW("unexpected vtype, got onehot {}, database {}.", x.vtype(),
+              y.vtype());
+  }
+
+  return ret;
 }
 
 }  // namespace spu::kernel::hal

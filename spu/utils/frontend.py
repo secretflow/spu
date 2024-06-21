@@ -262,7 +262,7 @@ def torch_compile(
     fn: Callable,
     args_flat: List,
     m_args_flat: List,
-    state_dict: collections.OrderedDict(),
+    state_dict: collections.OrderedDict,
     copts=spu_pb2.CompilerOptions(),
 ):
     import os
@@ -276,8 +276,10 @@ def torch_compile(
     assert isinstance(
         fn, torch.export.ExportedProgram
     ), "input should be an exported torch model"
-
     os.environ['PJRT_DEVICE'] = 'CPU'
+    # remove xla flags imported by torch-xla
+    os.unsetenv("XLA_FLAGS")
+
     options = stablehlo.StableHLOExportOptions()
     options.override_tracing_arguments = m_args_flat
     shlo = stablehlo.exported_program_to_stablehlo(fn, options)

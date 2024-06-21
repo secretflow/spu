@@ -29,10 +29,12 @@ namespace {
 
 bool GatherIsBroadcast(CustomCallOp &op) {
   auto operand = op->getOperands()[0];
-  auto attr = op->getAttr("pphlo.attributes").dyn_cast<mlir::DictionaryAttr>();
+  auto attr =
+      mlir::dyn_cast<mlir::DictionaryAttr>(op->getAttr("pphlo.attributes"));
   auto gather_slice_size =
-      attr.get("slice_sizes").dyn_cast<mlir::DenseI64ArrayAttr>().asArrayRef();
-  auto op_shape = operand.getType().dyn_cast<ShapedType>().getShape();
+      mlir::dyn_cast<mlir::DenseI64ArrayAttr>(attr.get("slice_sizes"))
+          .asArrayRef();
+  auto op_shape = mlir::dyn_cast<ShapedType>(operand.getType()).getShape();
   return (gather_slice_size.size() == op_shape.size()) &&
          (std::equal(gather_slice_size.begin(), gather_slice_size.end(),
                      op_shape.begin()));
@@ -59,13 +61,14 @@ std::vector<int64_t> DeleteDimensions(llvm::ArrayRef<int64_t> dims_to_delete,
 int64_t GatherLoopTripCount(CustomCallOp op) {
   auto start_indices = op->getOperands()[1];
   auto start_indices_shape =
-      start_indices.getType().dyn_cast<ShapedType>().getShape();
-  auto attr = op->getAttr("pphlo.attributes").dyn_cast<mlir::DictionaryAttr>();
+      mlir::dyn_cast<ShapedType>(start_indices.getType()).getShape();
+  auto attr =
+      mlir::dyn_cast<mlir::DictionaryAttr>(op->getAttr("pphlo.attributes"));
 
   int64_t trip_count = 1;
   for (int64_t i = 0, e = start_indices_shape.size(); i < e; i++) {
-    if (i !=
-        attr.get("index_vector_dim").dyn_cast<mlir::IntegerAttr>().getInt()) {
+    if (i != mlir::dyn_cast<mlir::IntegerAttr>(attr.get("index_vector_dim"))
+                 .getInt()) {
       trip_count *= start_indices_shape[i];
     }
   }
@@ -85,7 +88,7 @@ ComputePermutedShape(llvm::ArrayRef<int64_t> shape,
 Value TransposeIndexVectorDimToLast(Value &start_indices,
                                     int64_t index_vector_dim) {
   const auto start_indices_shape =
-      start_indices.getType().dyn_cast<ShapedType>().getShape();
+      mlir::dyn_cast<ShapedType>(start_indices.getType()).getShape();
 
   if (static_cast<int64_t>(start_indices_shape.size()) == index_vector_dim) {
     return start_indices;
@@ -116,8 +119,8 @@ Value TransposeIndexVectorDimToLast(Value &start_indices,
 
   auto transpose = builder.create<TransposeOp>(
       start_indices.getLoc(),
-      RankedTensorType::get(result_shape, start_indices.getType()
-                                              .dyn_cast<RankedTensorType>()
+      RankedTensorType::get(result_shape, mlir::dyn_cast<RankedTensorType>(
+                                              start_indices.getType())
                                               .getElementType()),
       start_indices, permutation);
 
@@ -128,7 +131,7 @@ Value PrependDegenerateDims(Value operand, int64_t n) {
   SPU_ENFORCE(n > 0);
   std::vector<int64_t> new_shape_dims;
   const auto operand_shape =
-      operand.getType().dyn_cast<ShapedType>().getShape();
+      mlir::dyn_cast<ShapedType>(operand.getType()).getShape();
   new_shape_dims.reserve(n + operand_shape.size());
   new_shape_dims.insert(new_shape_dims.begin(), n, 1);
   std::copy(operand_shape.begin(), operand_shape.end(),
@@ -145,7 +148,7 @@ Value PrependDegenerateDims(Value operand, int64_t n) {
       operand.getLoc(),
       RankedTensorType::get(
           new_shape_dims,
-          operand.getType().dyn_cast<RankedTensorType>().getElementType()),
+          mlir::dyn_cast<RankedTensorType>(operand.getType()).getElementType()),
       operand);
 
   return reshape.getResult();
@@ -155,7 +158,7 @@ Value CollapseFirstNDims(Value operand, int64_t n) {
   SPU_ENFORCE(n > 0);
 
   const auto operand_shape =
-      operand.getType().dyn_cast<ShapedType>().getShape();
+      mlir::dyn_cast<ShapedType>(operand.getType()).getShape();
   SPU_ENFORCE((int64_t)operand_shape.size() >= n);
 
   int64_t new_shape_leading_bound = 1;
@@ -172,7 +175,7 @@ Value CollapseFirstNDims(Value operand, int64_t n) {
 
   auto output_type = RankedTensorType::get(
       new_shape_dims,
-      operand.getType().dyn_cast<RankedTensorType>().getElementType());
+      mlir::dyn_cast<RankedTensorType>(operand.getType()).getElementType());
 
   OpBuilder builder(operand.getContext());
   if (auto *ip = operand.getDefiningOp()) {
@@ -197,8 +200,9 @@ Value CanonicalizeGatherIndices(Value start_indices, int64_t index_vector_dim) {
       TransposeIndexVectorDimToLast(start_indices, index_vector_dim);
   bool indices_are_scalar =
       index_vector_dim ==
-      static_cast<int64_t>(
-          start_indices.getType().dyn_cast<ShapedType>().getShape().size());
+      static_cast<int64_t>(mlir::dyn_cast<ShapedType>(start_indices.getType())
+                               .getShape()
+                               .size());
 
   // The number of dimensions in start_indices that are index dimensions.
   const int64_t index_dims_in_start_indices = indices_are_scalar ? 0 : 1;
@@ -208,7 +212,7 @@ Value CanonicalizeGatherIndices(Value start_indices, int64_t index_vector_dim) {
   // uniformity.  Otherwise create a "collapsed" leading dimension that subsumes
   // all of the non-index-vector dimensions.
   const auto shape =
-      transposed_start_indices.getType().dyn_cast<ShapedType>().getShape();
+      mlir::dyn_cast<ShapedType>(transposed_start_indices.getType()).getShape();
   if (static_cast<int64_t>(shape.size()) == index_dims_in_start_indices) {
     return PrependDegenerateDims(transposed_start_indices, 1);
   } else {
@@ -224,10 +228,11 @@ Value CreateGatherLoopAccumulatorInitValue(CustomCallOp op, Type element_type,
                                            DictionaryAttr attr) {
   std::vector<int64_t> accumulator_state_shape_dims;
   const auto slice_size =
-      attr.get("slice_sizes").dyn_cast<mlir::DenseI64ArrayAttr>().asArrayRef();
-  const auto collapsed_slice_dims = attr.get("collapsed_slice_dims")
-                                        .dyn_cast<mlir::DenseI64ArrayAttr>()
-                                        .asArrayRef();
+      mlir::dyn_cast<mlir::DenseI64ArrayAttr>(attr.get("slice_sizes"))
+          .asArrayRef();
+  const auto collapsed_slice_dims =
+      mlir::dyn_cast<mlir::DenseI64ArrayAttr>(attr.get("collapsed_slice_dims"))
+          .asArrayRef();
   accumulator_state_shape_dims.reserve(1 + slice_size.size());
   accumulator_state_shape_dims.push_back(gather_loop_trip_count);
   for (int64_t i = 0; i < static_cast<int64_t>(slice_size.size()); i++) {
@@ -245,7 +250,7 @@ Value CreateGatherLoopAccumulatorInitValue(CustomCallOp op, Type element_type,
       RankedTensorType::get(accumulator_state_shape_dims, express_type);
   auto zero_attr = builder.getZeroAttr(shaped_type);
 
-  if (zero_attr == nullptr && express_type.isa<mlir::ComplexType>()) {
+  if (zero_attr == nullptr && mlir::isa<mlir::ComplexType>(express_type)) {
     std::complex<APFloat> zero = {APFloat(0.0F), APFloat(0.0F)};
     zero_attr = DenseElementsAttr::get(shaped_type,
                                        std::vector<std::complex<llvm::APFloat>>(
@@ -268,7 +273,7 @@ Value CreateGatherLoopAccumulatorInitValue(CustomCallOp op, Type element_type,
 Value ExpandFirstDimIntoNDims(Value operand,
                               llvm::ArrayRef<int64_t> expanded_dims) {
   const auto &operand_shape =
-      operand.getType().dyn_cast<ShapedType>().getShape();
+      mlir::dyn_cast<ShapedType>(operand.getType()).getShape();
   SPU_ENFORCE_GT(operand_shape.size(), size_t(0));
   SPU_ENFORCE_EQ(operand_shape[0],
                  std::accumulate(expanded_dims.begin(), expanded_dims.end(), 1,
@@ -284,7 +289,7 @@ Value ExpandFirstDimIntoNDims(Value operand,
 
   auto result_type = RankedTensorType::get(
       expanded_shape_dim_bounds,
-      operand.getType().dyn_cast<RankedTensorType>().getElementType());
+      mlir::dyn_cast<RankedTensorType>(operand.getType()).getElementType());
 
   OpBuilder builder(operand.getContext());
   if (auto *ip = operand.getDefiningOp()) {
@@ -303,7 +308,7 @@ Value ElideDegenerateDims(OpBuilder *builder, Value operand,
                                                 dims_to_elide.end());
   std::vector<int64_t> new_shape;
   const auto &operand_shape =
-      operand.getType().dyn_cast<ShapedType>().getShape();
+      mlir::dyn_cast<ShapedType>(operand.getType()).getShape();
   for (size_t idx = 0; idx < operand_shape.size(); ++idx) {
     if (dims_to_elide_set.count(idx) > 0) {
       continue;
@@ -315,7 +320,7 @@ Value ElideDegenerateDims(OpBuilder *builder, Value operand,
       operand.getLoc(),
       RankedTensorType::get(
           new_shape,
-          operand.getType().dyn_cast<RankedTensorType>().getElementType()),
+          mlir::dyn_cast<RankedTensorType>(operand.getType()).getElementType()),
       operand);
   return reshape.getResult();
 }
@@ -374,7 +379,8 @@ ExpandIndexVectorIntoOperandSpace(MLIRContext *ctx, OpBuilder *builder,
 
   TypeTools typetool(ctx);
   auto index_type = typetool.getExpressedType(
-      index_vector.getType().dyn_cast<RankedTensorType>().getElementType());
+      mlir::dyn_cast<RankedTensorType>(index_vector.getType())
+          .getElementType());
 
   if (operand_rank == 0) {
     // This is Gather from a scalar. So, the index vector in operand space must
@@ -401,9 +407,9 @@ ExpandIndexVectorIntoOperandSpace(MLIRContext *ctx, OpBuilder *builder,
   // them (interspersing zeros as needed) into the larger index.
   llvm::SmallVector<Value> expanded_index_components;
 
-  const auto start_index_map = attr.get("start_index_map")
-                                   .dyn_cast<mlir::DenseI64ArrayAttr>()
-                                   .asArrayRef();
+  const auto start_index_map =
+      mlir::dyn_cast<mlir::DenseI64ArrayAttr>(attr.get("start_index_map"))
+          .asArrayRef();
   for (int64_t i = 0; i < operand_rank; i++) {
     int64_t index_vector_dim_index = FindIndex(start_index_map, i);
     if (index_vector_dim_index !=
@@ -411,9 +417,9 @@ ExpandIndexVectorIntoOperandSpace(MLIRContext *ctx, OpBuilder *builder,
 
       auto component_to_concat = builder->create<SliceOp>(
           index_vector.getLoc(),
-          RankedTensorType::get({1}, index_vector.getType()
-                                         .dyn_cast<RankedTensorType>()
-                                         .getElementType()),
+          RankedTensorType::get(
+              {1}, mlir::dyn_cast<RankedTensorType>(index_vector.getType())
+                       .getElementType()),
           index_vector,
           DenseI64ArrayAttr::get(builder->getContext(),
                                  {index_vector_dim_index}),
@@ -422,9 +428,9 @@ ExpandIndexVectorIntoOperandSpace(MLIRContext *ctx, OpBuilder *builder,
           DenseI64ArrayAttr::get(builder->getContext(), {1}));
       auto reshaped = builder->create<ReshapeOp>(
           index_vector.getLoc(),
-          RankedTensorType::get({}, index_vector.getType()
-                                        .dyn_cast<RankedTensorType>()
-                                        .getElementType()),
+          RankedTensorType::get(
+              {}, mlir::dyn_cast<RankedTensorType>(index_vector.getType())
+                      .getElementType()),
           component_to_concat);
       expanded_index_components.push_back(reshaped);
     } else {
@@ -446,7 +452,8 @@ void GatherLoopBody(CustomCallOp gather, Region &body, Value operand,
 
   TypeTools typetools(gather->getContext());
   auto index_type = typetools.getExpressedType(
-      induction_var.getType().dyn_cast<RankedTensorType>().getElementType());
+      mlir::dyn_cast<RankedTensorType>(induction_var.getType())
+          .getElementType());
 
   // Increment counter first
   auto const_one = builder.create<ConstantOp>(
@@ -459,12 +466,12 @@ void GatherLoopBody(CustomCallOp gather, Region &body, Value operand,
       builder.create<AddOp>(induction_var.getLoc(), induction_var.getType(),
                             induction_var, const_one);
   auto attr =
-      gather->getAttr("pphlo.attributes").dyn_cast<mlir::DictionaryAttr>();
+      mlir::dyn_cast<mlir::DictionaryAttr>(gather->getAttr("pphlo.attributes"));
   auto index_vector_dim =
-      attr.get("index_vector_dim").dyn_cast<mlir::IntegerAttr>().getInt();
+      mlir::dyn_cast<mlir::IntegerAttr>(attr.get("index_vector_dim")).getInt();
 
   const auto &start_indices_shape =
-      start_indices.getType().dyn_cast<ShapedType>().getShape();
+      mlir::dyn_cast<ShapedType>(start_indices.getType()).getShape();
   bool has_scalar_indices = start_indices_shape.size() == 1;
   SPU_ENFORCE_EQ(has_scalar_indices,
                  index_vector_dim == (int64_t)start_indices_shape.size());
@@ -498,25 +505,25 @@ void GatherLoopBody(CustomCallOp gather, Region &body, Value operand,
 
   auto gathered_slice_start = ExpandIndexVectorIntoOperandSpace(
       gather->getContext(), &builder, index_vector, attr,
-      operand.getType().dyn_cast<ShapedType>().getShape().size());
+      mlir::dyn_cast<ShapedType>(operand.getType()).getShape().size());
 
   auto gathered_slice = builder.create<DynamicSliceOp>(
       gather->getLoc(), operand, gathered_slice_start,
-      attr.get("slice_sizes").dyn_cast<mlir::DenseI64ArrayAttr>().asArrayRef());
+      mlir::dyn_cast<mlir::DenseI64ArrayAttr>(attr.get("slice_sizes"))
+          .asArrayRef());
 
-  auto gathered_slice_with_dims_collapsed =
-      ElideDegenerateDims(&builder, gathered_slice,
-                          attr.get("collapsed_slice_dims")
-                              .dyn_cast<mlir::DenseI64ArrayAttr>()
-                              .asArrayRef());
+  auto gathered_slice_with_dims_collapsed = ElideDegenerateDims(
+      &builder, gathered_slice,
+      mlir::dyn_cast<mlir::DenseI64ArrayAttr>(attr.get("collapsed_slice_dims"))
+          .asArrayRef());
 
   auto gathered_slice_for_update =
       PrependDegenerateDims(gathered_slice_with_dims_collapsed, 1);
 
   SmallVector<Value> index_vector_into_accumulator;
   index_vector_into_accumulator.push_back(induction_var);
-  for (size_t idx = 0; idx < gathered_slice_with_dims_collapsed.getType()
-                                 .dyn_cast<ShapedType>()
+  for (size_t idx = 0; idx < mlir::dyn_cast<ShapedType>(
+                                 gathered_slice_with_dims_collapsed.getType())
                                  .getShape()
                                  .size();
        ++idx) {
@@ -554,33 +561,34 @@ struct GatherConverter : public OpRewritePattern<CustomCallOp> {
 
     OpBuilder builder(op);
     auto attr =
-        op->getAttr("pphlo.attributes").dyn_cast<mlir::DictionaryAttr>();
+        mlir::dyn_cast<mlir::DictionaryAttr>(op->getAttr("pphlo.attributes"));
 
     // Secret gather
     if (GatherIsBroadcast(op)) {
       // Replace gather with broadcast
-      auto broadcast_operand_shape =
-          DeleteDimensions(attr.get("collapsed_slice_dims")
-                               .dyn_cast<mlir::DenseI64ArrayAttr>()
-                               .asArrayRef(),
-                           operand.getType().dyn_cast<ShapedType>().getShape());
+      auto broadcast_operand_shape = DeleteDimensions(
+          mlir::dyn_cast<mlir::DenseI64ArrayAttr>(
+              attr.get("collapsed_slice_dims"))
+              .asArrayRef(),
+          mlir::dyn_cast<ShapedType>(operand.getType()).getShape());
       auto reshaped_type = RankedTensorType::get(
           broadcast_operand_shape,
-          operand.getType().dyn_cast<RankedTensorType>().getElementType());
+          mlir::dyn_cast<RankedTensorType>(operand.getType()).getElementType());
       auto broadcast_operand =
           builder.create<ReshapeOp>(op->getLoc(), reshaped_type, operand);
       rewriter.replaceOpWithNewOp<BroadcastOp>(
           op, op->getResults().getType(), broadcast_operand,
-          DenseI64ArrayAttr::get(builder.getContext(),
-                                 attr.get("offset_dims")
-                                     .dyn_cast<mlir::DenseI64ArrayAttr>()
-                                     .asArrayRef()));
+          DenseI64ArrayAttr::get(
+              builder.getContext(),
+              mlir::dyn_cast<mlir::DenseI64ArrayAttr>(attr.get("offset_dims"))
+                  .asArrayRef()));
       return success();
     }
 
     auto index_type = type_tool.getExpressedType(
-        start_indices.getType().dyn_cast<RankedTensorType>().getElementType());
-    auto output_type = op->getResultTypes()[0].dyn_cast<ShapedType>();
+        mlir::dyn_cast<RankedTensorType>(start_indices.getType())
+            .getElementType());
+    auto output_type = mlir::dyn_cast<ShapedType>(op->getResultTypes()[0]);
     auto output_shape = output_type.getShape();
     int64_t output_rank = output_shape.size();
 
@@ -588,11 +596,12 @@ struct GatherConverter : public OpRewritePattern<CustomCallOp> {
 
     auto canonical_start_indices = CanonicalizeGatherIndices(
         start_indices,
-        attr.get("index_vector_dim").dyn_cast<mlir::IntegerAttr>().getInt());
+        mlir::dyn_cast<mlir::IntegerAttr>(attr.get("index_vector_dim"))
+            .getInt());
 
-    SPU_ENFORCE(
-        gather_loop_trip_count ==
-        canonical_start_indices.getType().dyn_cast<ShapedType>().getShape()[0]);
+    SPU_ENFORCE(gather_loop_trip_count ==
+                mlir::dyn_cast<ShapedType>(canonical_start_indices.getType())
+                    .getShape()[0]);
 
     auto accumulator_init = CreateGatherLoopAccumulatorInitValue(
         op, output_type.getElementType(), gather_loop_trip_count, attr);
@@ -635,18 +644,18 @@ struct GatherConverter : public OpRewritePattern<CustomCallOp> {
 
     auto accumulator_with_batch_dims_decanonicalized =
         AdjustBatchDimsInAccumulator(
-            &builder, start_indices.getType().dyn_cast<ShapedType>().getShape(),
+            &builder,
+            mlir::dyn_cast<ShapedType>(start_indices.getType()).getShape(),
             cast<mlir::Value>(accumulator_result),
-            attr.get("index_vector_dim")
-                .dyn_cast<mlir::IntegerAttr>()
+            mlir::dyn_cast<mlir::IntegerAttr>(attr.get("index_vector_dim"))
                 .getInt());
 
     std::vector<int64_t> permutation;
     permutation.reserve(output_rank);
 
-    auto offset_dims = attr.get("offset_dims")
-                           .dyn_cast<mlir::DenseI64ArrayAttr>()
-                           .asArrayRef();
+    auto offset_dims =
+        mlir::dyn_cast<mlir::DenseI64ArrayAttr>(attr.get("offset_dims"))
+            .asArrayRef();
     int64_t batch_idx_counter = 0;
     int64_t offset_idx_counter = output_rank - offset_dims.size();
     for (int64_t i = 0; i < output_rank; i++) {

@@ -156,42 +156,16 @@ JAX_ONE_TO_ONE_OP_RECORDS = [
     REC("sinh", 1, number_dtypes, all_shapes, jtu.rand_small),
     REC("cosh", 1, number_dtypes, all_shapes, jtu.rand_small),
     REC("tanh", 1, number_dtypes, all_shapes, jtu.rand_default),
-    REC(
-        "arcsin",
-        1,
-        number_dtypes,
-        all_shapes,
-        jtu.rand_small,
-        Status.SysError,
-        "stablehlo.atan2",
-    ),  # FIXME: stablehlo.atan2
-    REC(
-        "arccos",
-        1,
-        number_dtypes,
-        all_shapes,
-        jtu.rand_small,
-        Status.SysError,
-        "stablehlo.atan2",
-    ),  # FIXME: stablehlo.atan2
-    REC(
-        "arctan",
-        1,
-        number_dtypes,
-        all_shapes,
-        jtu.rand_small,
-        Status.SysError,
-        "stablehlo.atan2",
-    ),  # FIXME: stablehlo.atan2
+    REC("arcsin", 1, number_dtypes, all_shapes, jtu.rand_small),
+    REC("arccos", 1, number_dtypes, all_shapes, jtu.rand_small),
+    REC("arctan", 1, number_dtypes, all_shapes, jtu.rand_small),
     REC(
         "arctan2",
         2,
         float_dtypes,
         all_shapes,
-        jtu.rand_small,
-        Status.SysError,
-        "stablehlo.atan2",
-    ),  # FIXME: stablehlo.atan2
+        rand_default,
+    ),
     REC("arcsinh", 1, number_dtypes, all_shapes, jtu.rand_small),
     REC(
         "arccosh", 1, number_dtypes, all_shapes, rand_default, Status.SysError, "nan"
@@ -209,25 +183,8 @@ JAX_ONE_TO_ONE_OP_RECORDS = [
 
 
 COMPOUND_OP_RECORDS = [
-    REC(
-        "angle",
-        1,
-        number_dtypes,
-        all_shapes,
-        rand_default,
-        Status.SysError,
-        "stablehlo.atan2",
-    ),  # FIXME: stablehlo.atan2
-    REC(
-        "angle",
-        1,
-        number_dtypes,
-        all_shapes,
-        rand_default,
-        Status.SysError,
-        "stablehlo.atan2",
-        kwargs={'deg': True},
-    ),  # FIXME: stablehlo.atan2
+    REC("angle", 1, number_dtypes, all_shapes, rand_default),
+    REC("angle", 1, number_dtypes, all_shapes, rand_default, kwargs={'deg': True}),
     REC("atleast_1d", 1, number_dtypes, all_shapes, rand_default),
     REC("atleast_2d", 1, number_dtypes, all_shapes, rand_default),
     REC("atleast_3d", 1, number_dtypes, all_shapes, rand_default),

@@ -409,6 +409,15 @@ def PPHLO_RemOp : PPHLO_BinaryElementwiseOpWithTypeInfer<"remainder", [], PPHLO_
   }];
 }
 
+def PPHLO_Atan2Op : PPHLO_BinaryElementwiseOpWithTypeInfer<"atan2", [], PPHLO_FpTensor> {
+  let summary = "Atan2 operator";
+  let description = [{
+    Performs element-wise atan2 operation on `lhs` tensor and `rhs` tensor and produces a `result` tensor.
+
+    Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#atan2
+  }];
+}
+
 def PPHLO_ShiftLeftOp
     : PPHLO_BinaryElementwiseOpWithTypeInfer<"shift_left", [], PPHLO_IntTensor> {
   let summary = "Shift Left operator";

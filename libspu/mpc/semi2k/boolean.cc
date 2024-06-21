@@ -70,18 +70,21 @@ void CommonTypeB::evaluate(KernelEvalContext* ctx) const {
   const Type& lhs = ctx->getParam<Type>(0);
   const Type& rhs = ctx->getParam<Type>(1);
 
-  SPU_ENFORCE(lhs == rhs, "semi2k always use same bshare type, lhs={}, rhs={}",
-              lhs, rhs);
+  const auto lhs_field = lhs.as<BShrTy>()->field();
+  const auto rhs_field = rhs.as<BShrTy>()->field();
+  const size_t lhs_nbits = lhs.as<BShrTy>()->nbits();
+  const size_t rhs_nbits = rhs.as<BShrTy>()->nbits();
 
-  ctx->setOutput(lhs);
+  SPU_ENFORCE(lhs_field == rhs_field,
+              "semi2k always use same bshare field, lhs={}, rhs={}", lhs_field,
+              rhs_field);
+
+  ctx->pushOutput(makeType<BShrTy>(lhs_field, std::max(lhs_nbits, rhs_nbits)));
 }
 
 NdArrayRef CastTypeB::proc(KernelEvalContext*, const NdArrayRef& in,
                            const Type& to_type) const {
-  SPU_ENFORCE(in.eltype() == to_type,
-              "semi2k always use same bshare type, lhs={}, rhs={}", in.eltype(),
-              to_type);
-  return in;
+  return in.as(to_type);
 }
 
 NdArrayRef B2P::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
@@ -151,15 +154,15 @@ NdArrayRef AndBB::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
 
       // TODO: redefine beaver interface, generate variadic beaver and bits.
       int64_t numBytes = numel * SizeOf(backtype);
-      int64_t numField = numBytes / SizeOf(field);
-      if (numBytes % SizeOf(field)) numField += 1;
 
-      auto [a, b, c] = beaver->And(field, {numField});
-      SPU_ENFORCE(a.buf()->size() >= static_cast<int64_t>(numBytes));
+      auto [a, b, c] = beaver->And(numBytes);
+      SPU_ENFORCE((a.size()) == numBytes);
+      SPU_ENFORCE((b.size()) == numBytes);
+      SPU_ENFORCE((c.size()) == numBytes);
 
-      NdArrayView<V> _a(a);
-      NdArrayView<V> _b(b);
-      NdArrayView<V> _c(c);
+      absl::Span<const V> _a(a.data<V>(), numel);
+      absl::Span<const V> _b(b.data<V>(), numel);
+      absl::Span<const V> _c(c.data<V>(), numel);
 
       // first half mask x^a, second half mask y^b.
       std::vector<V> mask(numel * 2, 0);

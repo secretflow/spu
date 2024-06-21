@@ -21,6 +21,7 @@
 #include "mlir/Pass/Pass.h"
 #include "mlir/Pass/PassManager.h"
 #include "mlir/Transforms/Passes.h"
+#include "spdlog/spdlog.h"
 #include "stablehlo/dialect/StablehloOps.h"
 #include "xla/mlir_hlo/mhlo/IR/hlo_ops.h"
 #include "xla/mlir_hlo/mhlo/transforms/passes.h"
@@ -33,6 +34,15 @@
 #include "libspu/dialect/pphlo/dialect.h"
 
 namespace spu::compiler {
+
+namespace {
+
+mlir::LogicalResult argparser_error_handler(const llvm::Twine &msg) {
+  SPDLOG_ERROR(msg.str());
+  return mlir::failure();
+}
+
+} // namespace
 
 FE::FE(CompilationContext *ctx) : ctx_(ctx) {
   ctx_->getMLIRContext()
@@ -123,7 +133,8 @@ void FE::buildFrontEndPipeline(mlir::PassManager *pm, const std::string &args) {
   {
     auto l = mlir::spu::pphlo::createLegalizeToPPHloPass();
     if (!args.empty()) {
-      SPU_ENFORCE(l->initializeOptions(args).succeeded());
+      SPU_ENFORCE(
+          l->initializeOptions(args, argparser_error_handler).succeeded());
     }
     pm->addPass(std::move(l));
   }

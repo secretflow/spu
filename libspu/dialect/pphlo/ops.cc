@@ -43,8 +43,8 @@ static LogicalResult Verify(T /*op*/) {
 // Builds a constant op with the specified attribute `value`.
 void ConstantOp::build(OpBuilder&, OperationState& result, Attribute value) {
   Type type;
-  if (auto elemAttr = value.dyn_cast<DenseElementsAttr>()) {
-    auto valueType = elemAttr.getType().dyn_cast<RankedTensorType>();
+  if (auto elemAttr = mlir::dyn_cast<DenseElementsAttr>(value)) {
+    auto valueType = mlir::dyn_cast<RankedTensorType>(elemAttr.getType());
     type =
         RankedTensorType::get(valueType.getShape(), valueType.getElementType());
   }
@@ -56,8 +56,8 @@ void ConstantOp::build(OpBuilder&, OperationState& result, Attribute value) {
 
 LogicalResult ReverseOp::verify() {
   //(C1) operand and result have the same type.
-  auto inputType = getOperand().getType().cast<RankedTensorType>();
-  auto retType = getResult().getType().cast<RankedTensorType>();
+  auto inputType = mlir::dyn_cast<RankedTensorType>(getOperand().getType());
+  auto retType = mlir::dyn_cast<RankedTensorType>(getResult().getType());
 
   TypeTools tools(getContext());
   if (tools.getExpressedType(inputType) != tools.getExpressedType(retType)) {
@@ -152,7 +152,7 @@ LogicalResult verifyReducerShape(std::optional<Location> loc, Block& block,
 
   SmallVector<TensorType> accumulatorSubShapes;
   for (Value retOperand : block.getTerminator()->getOperands()) {
-    auto tensorTy = retOperand.getType().dyn_cast<TensorType>();
+    auto tensorTy = mlir::dyn_cast<TensorType>(retOperand.getType());
     if (!tensorTy) {
       return emitOptionalError(loc,
                                "Reduction-region here must produce "
@@ -228,7 +228,7 @@ LogicalResult verifyReducerShape(std::optional<Location> loc, Block& block,
 
     // Check C4.2.
     Type blockArgType = block.getArgument(numInputs + inputIdx).getType();
-    auto blockArgTensorTy = blockArgType.cast<TensorType>();
+    auto blockArgTensorTy = mlir::dyn_cast<TensorType>(blockArgType);
 
     auto argShape = blockArgTensorTy.getShape();
     if (argShape.size() > allowedDimensions.size()) {
@@ -267,10 +267,10 @@ LogicalResult verifyReducerShape(std::optional<Location> loc, Block& block,
 LogicalResult ReduceOp::verify() {
   SmallVector<TensorType> inputArgTypes{llvm::map_range(
       getInputs().getTypes(),
-      [](Type t) -> TensorType { return t.cast<TensorType>(); })};
+      [](Type t) -> TensorType { return mlir::dyn_cast<TensorType>(t); })};
   SmallVector<TensorType> initValueTypes{llvm::map_range(
       getInitValues().getTypes(),
-      [](Type t) -> TensorType { return t.cast<TensorType>(); })};
+      [](Type t) -> TensorType { return mlir::dyn_cast<TensorType>(t); })};
 
   // P1. & P2.
   SmallVector<int64_t> newDimensions;
@@ -295,8 +295,8 @@ LogicalResult ReduceOp::verify() {
 LogicalResult TransposeOp::verify() {
   // Constraints
   // (C1) operand and result have the same element type.
-  auto inputType = getOperand().getType().cast<RankedTensorType>();
-  auto retType = getResult().getType().cast<RankedTensorType>();
+  auto inputType = mlir::dyn_cast<RankedTensorType>(getOperand().getType());
+  auto retType = mlir::dyn_cast<RankedTensorType>(getResult().getType());
 
   TypeTools tools(getContext());
   if (tools.getExpressedType(inputType.getElementType()) !=
@@ -344,13 +344,13 @@ LogicalResult ConcatenateOp::verify() {
         llvm::formatv("dimension {0} is negative", concatDimension));
   }
   for (int i = 0; i < numOperands; i++) {
-    auto secondType = getOperand(i).getType().dyn_cast<ShapedType>();
+    auto secondType = mlir::dyn_cast<ShapedType>(getOperand(i).getType());
     if (!secondType.hasRank()) {
       continue;
     }
 
     if (!firstRankedType) {
-      firstRankedType = secondType.cast<RankedTensorType>();
+      firstRankedType = mlir::dyn_cast<RankedTensorType>(secondType);
       firstRankedIndex = i;
       if (firstRankedType.getRank() == 0) {
         return emitOpError(
@@ -388,7 +388,7 @@ LogicalResult ConcatenateOp::verify() {
 }
 
 LogicalResult BroadcastOp::verify() {
-  auto operandType = getOperand().getType().dyn_cast<RankedTensorType>();
+  auto operandType = mlir::dyn_cast<RankedTensorType>(getOperand().getType());
 
   auto operandRank = operandType.getRank();
 
@@ -414,7 +414,7 @@ LogicalResult BroadcastOp::verify() {
     return emitOpError("broadcast_dimensions should not have duplicates");
   }
 
-  auto resultType = getResult().getType().cast<RankedTensorType>();
+  auto resultType = mlir::dyn_cast<RankedTensorType>(getResult().getType());
   auto resultRank = resultType.getRank();
 
   for (size_t i = 0; i != dimensionsSize; ++i) {
@@ -442,7 +442,7 @@ LogicalResult BroadcastOp::verify() {
 }
 
 LogicalResult IotaOp::verify() {
-  auto shape = getType().cast<ShapedType>();
+  auto shape = mlir::dyn_cast<ShapedType>(getType());
   if (!shape.hasRank()) {
     return success();
   }

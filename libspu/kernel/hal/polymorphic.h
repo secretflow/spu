@@ -213,6 +213,14 @@ Value sine(SPUContext* ctx, const Value& x);
 // @param in, the input value
 Value cosine(SPUContext* ctx, const Value& x);
 
+/// element-wise the angle between the positive x-axis and the ray from the
+/// origin to the point (x, y), confined to (−π, π]
+/// Note: -π will not be returned because of the missing of -0 and -inf in
+/// fixed-point arithmetic.
+// @param y, vertical coordinate
+// @param x, horizontal coordinate
+Value atan2(SPUContext* ctx, const Value& y, const Value& x);
+
 /// element-wise reciprocal of square root operation, i.e. x - > 1.0 / sqrt(x)
 // @param in, the input value
 Value rsqrt(SPUContext* ctx, const Value& x);
@@ -224,5 +232,10 @@ Value sqrt(SPUContext* ctx, const Value& x);
 /// element-wise sign operation
 // @param in, the input value
 Value sign(SPUContext* ctx, const Value& x);
+
+std::optional<Value> oramonehot(SPUContext* ctx, const Value& x,
+                                int64_t db_size, bool db_is_secret);
+
+Value oramread(SPUContext* ctx, const Value& x, const Value& y, int64_t offset);
 
 }  // namespace spu::kernel::hal
