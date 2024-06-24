@@ -10,8 +10,9 @@
 >
 > please add your unreleased change here.
 
-## 20240415
+## 20240621
 
+- [SPU] 0.9.1b0 release
 - [Feature] Add ORAM based dynamic_slice for ABY3
 - [Feature] Add Atan2Op support
 - [API] Add beaver cache support for semi2k (**experimental**)
