@@ -210,12 +210,12 @@ class UnitTests(unittest.TestCase):
         self.assertTrue(y.device is ppd.current().devices["P2"])
         npt.assert_equal(ppd.get(y), np.array([3, 5]))
 
-    def test_dump_pphlo(self):
+    def test_dump_ir(self):
         a, b = ppd.device("P1")(no_in_two_out)()
         x, y = ppd.device("SPU")(no_in_two_out)()
 
         # dump pphlo
-        text = ppd.device("SPU")(jnp.add).dump_pphlo(a, x)
+        text = ppd.device("SPU")(jnp.add).dump_ir(a, x)
         self.assertIn('pphlo.add', text)
 
     def test_basic_spu_tf(self):
@@ -279,7 +279,7 @@ def suite():
     suite = unittest.TestSuite()
     suite.addTest(UnitTests('test_basic_pyu'))
     suite.addTest(UnitTests('test_basic_spu_jax'))
-    suite.addTest(UnitTests('test_dump_pphlo'))
+    suite.addTest(UnitTests('test_dump_ir'))
     suite.addTest(UnitTests('test_basic_spu_tf'))
     return suite
 

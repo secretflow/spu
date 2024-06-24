@@ -112,7 +112,7 @@ class OramDpf {
         numel_(numel),
         root_seed_(root_seed),
         aes_crypto_(yacl::crypto::SymmetricCrypto::CryptoType::AES128_ECB,
-                    aes_key, 1){};
+                    aes_key, 1) {};
 
   // genrate 2pc-dpf according to 'ctrl'
   void gen(KernelEvalContext* ctx, DpfGenCtrl ctrl);
@@ -138,7 +138,7 @@ class OramContext {
   explicit OramContext(int64_t dpf_size)
       : dpf_e(2, std::vector<T>(dpf_size)),
         convert_help_v(2, std::vector<T>(dpf_size)),
-        dpf_size_(dpf_size){};
+        dpf_size_(dpf_size) {};
 
   void genDpf(KernelEvalContext* ctx, DpfGenCtrl ctrl, uint128_t aes_key,
               uint128_t target_point);

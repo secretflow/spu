@@ -136,8 +136,8 @@ def _bazel_skylib():
     )
 
 def _com_github_openxla_xla():
-    OPENXLA_COMMIT = "d9d0e780ff6a37c4d501c8e0e4f4a9fdca30cbd4"
-    OPENXLA_SHA256 = "77ef83491f409afbe549a2bd695d710a70fdf7f04db35eeb1fba3e97ef767113"
+    OPENXLA_COMMIT = "9b0dd58c9b625a2e958f4fc7787a1ff5c95dbb40"
+    OPENXLA_SHA256 = "f150c5b49e4d4497aae2c79232f1efe2baccaa72223b21dc8715be73eab74417"
 
     # We need openxla to handle xla/mhlo/stablehlo
     maybe(

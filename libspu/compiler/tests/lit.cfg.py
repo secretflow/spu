@@ -27,10 +27,7 @@ config.test_format = lit.formats.ShTest(not llvm_config.use_lit_shell)
 config.suffixes = ['.mlir']
 config.test_source_root = os.path.dirname(__file__)
 # Make LLVM and StableHLO tools available in RUN directives
-tools = [
-    'FileCheck',
-    'pphlo-opt',
-]
+tools = ['FileCheck', 'spu-opt', 'spu-translate']
 tool_dirs = [
     config.llvm_tools_dir,
     config.pphlo_tools_dir,

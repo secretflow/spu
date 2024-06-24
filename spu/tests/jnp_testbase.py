@@ -88,6 +88,10 @@ def rand_default(rng):
     return partial(_rand_dtype, rng)
 
 
+def rand_extra_large(rng):
+    return partial(jtu._rand_dtype, rng.randn, scale=2**30)
+
+
 def rand_not_small_nonzero(rng):
     def post(x):
         x = np.where(x == 0, np.array(1, dtype=x.dtype), x)
@@ -140,7 +144,7 @@ JAX_ONE_TO_ONE_OP_RECORDS = [
     REC("array_equiv", 2, number_dtypes, all_shapes, jtu.rand_some_equal),
     REC("reciprocal", 1, float_dtypes, all_shapes, rand_default),
     REC("subtract", 2, number_dtypes, all_shapes, rand_default),
-    REC("signbit", 1, number_dtypes, all_shapes, rand_default),
+    REC("signbit", 1, number_dtypes, all_shapes, rand_extra_large),
     REC("trunc", 1, number_dtypes, all_shapes, rand_default),
     REC("sin", 1, number_dtypes, all_shapes, rand_default),
     REC("cos", 1, number_dtypes, all_shapes, rand_default),
@@ -302,6 +306,7 @@ COMPOUND_OP_RECORDS = [
 ]
 
 BITWISE_OP_RECORDS = [
+    REC("bitwise_count", 1, int_dtypes, all_shapes, jtu.rand_default),
     REC("bitwise_and", 2, int_dtypes, all_shapes, jtu.rand_bool),
     REC("bitwise_not", 1, int_dtypes, all_shapes, jtu.rand_bool),
     REC("invert", 1, int_dtypes, all_shapes, jtu.rand_bool),

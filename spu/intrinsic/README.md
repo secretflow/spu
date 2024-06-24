@@ -27,4 +27,5 @@ Open `libspu/device/pphlo/pphlo_intrinsic_executor.cc`, find the if branch that 
 ### (Optional) Add compile time visibility inference rule
 
 By default, compiler uses a common inference rule to deduce output visibility.
-If your new intrinsic requires some special treatment, please open `libspu/compiler/passes/visibility_inference.cc`, and update `inferIntrinsic` method.
+If your new intrinsic requires some special treatment, please open `libspu/dialect/pphlo/transforms/visibility_inference.cc`,
+and update `inferIntrinsic` method.

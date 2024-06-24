@@ -43,7 +43,7 @@ def _make_cached_var_lowering(ctx, input):
     dtype = mlir.ir.RankedTensorType(input.type)
 
     return custom_call(
-        "make_cached_var",
+        "spu.make_cached_var",
         # Output types
         result_types=[dtype],
         # The inputs:

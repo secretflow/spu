@@ -16,8 +16,10 @@
 
 #include "spdlog/spdlog.h"
 
+#include "libspu/device/intrinsic_table.h"
 #include "libspu/kernel/hal/debug.h"
 #include "libspu/kernel/hal/fxp_approx.h"
+#include "libspu/kernel/hlo/basic_binary.h"
 #include "libspu/kernel/hlo/casting.h"
 #include "libspu/kernel/hlo/const.h"
 #include "libspu/kernel/hlo/indexing.h"
@@ -48,7 +50,7 @@ std::vector<Value> intrinsic_dispatcher(SPUContext* ctx,
     return {zeros};
   }
 
-  if (name == "make_cached_var") {
+  if (name == MAKE_CACHE_VAR) {
     if (ctx->hasKernel("beaver_cache")) {
       SPU_ENFORCE(inputs.size() == 1);
       dynDispatch(ctx, "beaver_cache", inputs[0], true);
@@ -57,7 +59,7 @@ std::vector<Value> intrinsic_dispatcher(SPUContext* ctx,
     return {inputs[0]};
   }
 
-  if (name == "drop_cached_var") {
+  if (name == DROP_CACHED_VAR) {
     if (ctx->hasKernel("beaver_cache")) {
       SPU_ENFORCE(inputs.size() > 0);
       dynDispatch(ctx, "beaver_cache", inputs[0], false);
@@ -73,17 +75,17 @@ std::vector<Value> intrinsic_dispatcher(SPUContext* ctx,
     return {inputs.begin(), inputs.end()};
   }
 
-  if (name == "dbg_print") {
+  if (name == DBG_PRINT) {
     kernel::hal::dbg_print(ctx, inputs[0]);
     return {};
   }
 
-  if (name == "mhlo.erf") {
+  if (name == ERF) {
     SPU_ENFORCE(inputs.size() == 1 && inputs[0].isFxp());
     return {kernel::hal::f_erf(ctx, inputs[0])};
   }
 
-  if (name == "mhlo.topk") {
+  if (name == TOPK) {
     SPU_ENFORCE(inputs.size() == 1);
     auto attr =
         mlir::dyn_cast<mlir::DictionaryAttr>(call->getAttr("mhlo.attributes"));
@@ -105,7 +107,7 @@ std::vector<Value> intrinsic_dispatcher(SPUContext* ctx,
     return kernel::hlo::TopK(ctx, inputs[0], k, -1, largest, value_only);
   }
 
-  if (name == "pphlo.gather") {
+  if (name == GATHER) {
     kernel::hlo::GatherConfig config;
     const auto& output_shape =
         mlir::dyn_cast<mlir::RankedTensorType>(call.getResults()[0].getType())
@@ -131,6 +133,18 @@ std::vector<Value> intrinsic_dispatcher(SPUContext* ctx,
 
     return {
         kernel::hlo::Gather(ctx, inputs[0], inputs[1], config, output_shape)};
+  }
+
+  if (name == PREFER_A) {
+    if (ctx->config().protocol() == ProtocolKind::CHEETAH) {
+      // NOTE(juhou): For 2PC, MulAB uses COT which is efficient and accurate
+      // than MulAA that needs HE. Thus we just by-pass the PreferAOp for 2PC.
+      return {inputs[0]};
+    }
+    auto k0 =
+        kernel::hlo::Cast(ctx, kernel::hlo::Constant(ctx, 0, inputs[0].shape()),
+                          VIS_PUBLIC, inputs[0].dtype());
+    return {kernel::hlo::Add(ctx, inputs[0], k0)};
   }
 
   SPU_THROW("Unhandled intrinsic call {}", name.str());

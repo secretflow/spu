@@ -42,6 +42,8 @@ SIMPLE_UNARY_KERNEL_DEFN(Rsqrt, hal::rsqrt)
 SIMPLE_UNARY_KERNEL_DEFN(Sqrt, hal::sqrt)
 SIMPLE_UNARY_KERNEL_DEFN(Sine, hal::sine)
 SIMPLE_UNARY_KERNEL_DEFN(Cosine, hal::cosine)
+SIMPLE_UNARY_KERNEL_DEFN(Acos, hal::acos)
+SIMPLE_UNARY_KERNEL_DEFN(Asin, hal::asin)
 
 #undef SIMPLE_UNARY_KERNEL_DEFN
 
@@ -75,15 +77,17 @@ spu::Value Not(SPUContext *ctx, const spu::Value &in) {
   }
 }
 
-spu::Value Sign(SPUContext *ctx, const spu::Value &in) {
+spu::Value Sign(SPUContext *ctx, const spu::Value &in, bool ignore_zero) {
   SPU_ENFORCE(!in.isComplex());
   // get the (-1, 1) sign
   auto s = hal::sign(ctx, in);
 
-  // s = (in == 0) ? 0 : s
-  s = hal::select(ctx,
-                  hal::equal(ctx, in, hal::zeros(ctx, in.dtype(), in.shape())),
-                  hal::zeros(ctx, s.dtype(), in.shape()), s);
+  if (!ignore_zero) {
+    // s = (in == 0) ? 0 : s
+    s = hal::select(
+        ctx, hal::equal(ctx, in, hal::zeros(ctx, in.dtype(), in.shape())),
+        hal::zeros(ctx, s.dtype(), in.shape()), s);
+  }
   return hal::dtype_cast(ctx, s, in.dtype());
 }
 
@@ -139,6 +143,11 @@ spu::Value Round_RNTE(SPUContext *ctx, const spu::Value &in) {
   }
 
   return hal::add(ctx, y, comp.setDtype(DT_I64)).setDtype(in.dtype());
+}
+
+spu::Value Popcnt(SPUContext *ctx, const spu::Value &in) {
+  auto bits = getWidth(in.dtype());
+  return hal::_popcount(ctx, in, bits).setDtype(in.dtype());
 }
 
 }  // namespace spu::kernel::hlo

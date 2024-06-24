@@ -15,9 +15,7 @@
 #include "libspu/device/executor.h"
 
 #include <algorithm>
-#include <chrono>
 #include <condition_variable>
-#include <future>
 #include <mutex>
 
 #include "mlir/IR/Operation.h"
