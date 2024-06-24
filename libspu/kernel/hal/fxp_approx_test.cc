@@ -447,4 +447,66 @@ TEST(FxpTest, Atan2) {
   }
 }
 
+TEST(FxpTest, Acos) {
+  // GIVEN
+  SPUContext ctx = test::makeSPUContext();
+
+  // some special cases
+  xt::xarray<float> x0 = {-1.0, -0.5, 0.0, 0.5, 1.0};
+  xt::xarray<float> x1 = xt::random::rand<float>({30}, -1, 1);
+  xt::xarray<float> x = xt::concatenate(xt::xtuple(x0, x1));
+
+  // public acos
+  {
+    Value a = constant(&ctx, x, DT_F32);
+    Value c = f_acos(&ctx, a);
+    EXPECT_EQ(c.dtype(), DT_F32);
+    auto y = dump_public_as<float>(&ctx, c);
+    EXPECT_TRUE(xt::allclose(xt::acos(x), y, 0.01, 0.001))
+        << xt::acos(x) << std::endl
+        << y;
+  }
+  // secret acos
+  {
+    Value a = test::makeValue(&ctx, x, VIS_SECRET);
+    Value c = f_acos(&ctx, a);
+    EXPECT_EQ(c.dtype(), DT_F32);
+    auto y = dump_public_as<float>(&ctx, reveal(&ctx, c));
+    EXPECT_TRUE(xt::allclose(xt::acos(x), y, 0.01, 0.001))
+        << xt::acos(x) << std::endl
+        << y;
+  }
+}
+
+TEST(FxpTest, Asin) {
+  // GIVEN
+  SPUContext ctx = test::makeSPUContext();
+
+  // some special cases
+  xt::xarray<float> x0 = {-1.0, -0.5, 0.0, 0.5, 1.0};
+  xt::xarray<float> x1 = xt::random::rand<float>({30}, -1, 1);
+  xt::xarray<float> x = xt::concatenate(xt::xtuple(x0, x1));
+
+  // public asin
+  {
+    Value a = constant(&ctx, x, DT_F32);
+    Value c = f_asin(&ctx, a);
+    EXPECT_EQ(c.dtype(), DT_F32);
+    auto y = dump_public_as<float>(&ctx, c);
+    EXPECT_TRUE(xt::allclose(xt::asin(x), y, 0.01, 0.001))
+        << xt::asin(x) << std::endl
+        << y;
+  }
+  // secret asin
+  {
+    Value a = test::makeValue(&ctx, x, VIS_SECRET);
+    Value c = f_asin(&ctx, a);
+    EXPECT_EQ(c.dtype(), DT_F32);
+    auto y = dump_public_as<float>(&ctx, reveal(&ctx, c));
+    EXPECT_TRUE(xt::allclose(xt::asin(x), y, 0.01, 0.001))
+        << xt::asin(x) << std::endl
+        << y;
+  }
+}
+
 }  // namespace spu::kernel::hal

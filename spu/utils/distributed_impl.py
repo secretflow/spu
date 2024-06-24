@@ -706,7 +706,7 @@ class SPU(Device):
 
             return tree_unflatten(out_tree, ret_flat)
 
-        def dump_pphlo(self, *args, **kwargs):
+        def dump_ir(self, *args, **kwargs):
             args, kwargs = self.device._place_arguments(*args, **kwargs)
             executable, *_ = self._compile_jax_func(
                 self.pyfunc, self.static_argnums, self.copts, *args, **kwargs
@@ -932,7 +932,7 @@ class SPU(Device):
                 ret = pytree.tree_unflatten(ret, out_spec)
             return ret
 
-        def dump_pphlo(self, state_dict, *args, **kwargs):
+        def dump_ir(self, state_dict, *args, **kwargs):
             # place state_dict
             self.state_dict = self._place_state_dict(state_dict)
             args, kwargs = self.device._place_arguments(*args, **kwargs)

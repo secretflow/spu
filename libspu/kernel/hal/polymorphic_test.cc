@@ -824,4 +824,40 @@ TYPED_TEST(FpOnlyMathBinaryTest, Atan2) {
       << z << std::endl;
 }
 
+TYPED_TEST(FpOnlyMathUnaryTest, Acos) {
+  using IN_DT = typename std::tuple_element<0, TypeParam>::type;
+  using IN_VT = typename std::tuple_element<1, TypeParam>::type;
+  using RES_DT = float;
+
+  // GIVEN
+  xt::xarray<IN_DT> x = test::xt_random<IN_DT>({5, 6}, -1, 1);
+  xt::xarray<float> expected_y = xt::acos(x);
+
+  // WHAT
+  auto y = test::evalUnaryOp<RES_DT>(IN_VT(), acos, x);
+
+  // THEN
+  EXPECT_TRUE(xt::allclose(expected_y, y, 0.01, 0.001))
+      << expected_y << std::endl
+      << y;
+}
+
+TYPED_TEST(FpOnlyMathUnaryTest, Asin) {
+  using IN_DT = typename std::tuple_element<0, TypeParam>::type;
+  using IN_VT = typename std::tuple_element<1, TypeParam>::type;
+  using RES_DT = float;
+
+  // GIVEN
+  xt::xarray<IN_DT> x = test::xt_random<IN_DT>({5, 6}, -1, 1);
+  xt::xarray<float> expected_y = xt::asin(x);
+
+  // WHAT
+  auto y = test::evalUnaryOp<RES_DT>(IN_VT(), asin, x);
+
+  // THEN
+  EXPECT_TRUE(xt::allclose(expected_y, y, 0.01, 0.001))
+      << expected_y << std::endl
+      << y;
+}
+
 }  // namespace spu::kernel::hal

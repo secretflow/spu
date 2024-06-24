@@ -38,7 +38,8 @@ expand_template(
         data = [
             "lit.cfg.py",
             "lit.site.cfg.py",
-            "//libspu/compiler/tools:pphlo-opt",
+            "//libspu/compiler/tools:spu-opt",
+            "//libspu/compiler/tools:spu-translate",
             "@llvm-project//llvm:FileCheck",
             "@llvm-project//llvm:not",
         ] + glob(["%s.bc" % src]),

@@ -1,0 +1,153 @@
+{
+    "name": "equal",
+    "template": "basic_binary",
+    "testcases": [
+        {
+            "inputs": [
+                {
+                    "data": "-2",
+                    "shape": "",
+                    "dtype": "i64"
+                },
+                {
+                    "data": "-2",
+                    "shape": "",
+                    "dtype": "i64"
+                }
+            ],
+            "expected": [
+                {
+                    "data": "true",
+                    "shape": "",
+                    "dtype": "i1"
+                }
+            ]
+        },
+        {
+            "inputs": [
+                {
+                    "data": "[-2, -1, 0, 2, 2]",
+                    "shape": "5",
+                    "dtype": "i64"
+                },
+                {
+                    "data": "[-2, -2, 0, 1, 2]",
+                    "shape": "5",
+                    "dtype": "i64"
+                }
+            ],
+            "expected": [
+                {
+                    "data": "[true, false, true, false, true]",
+                    "shape": "5",
+                    "dtype": "i1"
+                }
+            ]
+        },
+        {
+            "inputs": [
+                {
+                    "data": "0",
+                    "shape": "",
+                    "dtype": "ui64"
+                },
+                {
+                    "data": "0",
+                    "shape": "",
+                    "dtype": "ui64"
+                }
+            ],
+            "expected": [
+                {
+                    "data": "true",
+                    "shape": "",
+                    "dtype": "i1"
+                }
+            ]
+        },
+        {
+            "inputs": [
+                {
+                    "data": "[0, 1]",
+                    "shape": "2",
+                    "dtype": "ui64"
+                },
+                {
+                    "data": "[0, 0]",
+                    "shape": "2",
+                    "dtype": "ui64"
+                }
+            ],
+            "expected": [
+                {
+                    "data": "[true, false]",
+                    "shape": "2",
+                    "dtype": "i1"
+                }
+            ]
+        },
+        {
+            "inputs": [
+                {
+                    "data": "true",
+                    "shape": "",
+                    "dtype": "i1"
+                },
+                {
+                    "data": "true",
+                    "shape": "",
+                    "dtype": "i1"
+                }
+            ],
+            "expected": [
+                {
+                    "data": "true",
+                    "shape": "",
+                    "dtype": "i1"
+                }
+            ]
+        },
+        {
+            "inputs": [
+                {
+                    "data": "[true, true, false, false]",
+                    "shape": "4",
+                    "dtype": "i1"
+                },
+                {
+                    "data": "[true, false, true, false]",
+                    "shape": "4",
+                    "dtype": "i1"
+                }
+            ],
+            "expected": [
+                {
+                    "data": "[true, false, false, true]",
+                    "shape": "4",
+                    "dtype": "i1"
+                }
+            ]
+        },
+        {
+            "inputs": [
+                {
+                    "data": "[-2.0, -2.0, 0.0, 1.0, 2.0]",
+                    "shape": "5",
+                    "dtype": "f64"
+                },
+                {
+                    "data": "[-2.0, -1.0, 0.0, 2.0, 2.0]",
+                    "shape": "5",
+                    "dtype": "f64"
+                }
+            ],
+            "expected": [
+                {
+                    "data": "[true, false, true, false, true]",
+                    "shape": "5",
+                    "dtype": "i1"
+                }
+            ]
+        }
+    ]
+}

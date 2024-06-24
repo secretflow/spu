@@ -21,8 +21,8 @@
 #include "mlir/Transforms/Passes.h"
 
 #include "libspu/compiler/common/compilation_context.h"
-#include "libspu/compiler/passes/passes.h"
 #include "libspu/core/prelude.h"
+#include "libspu/dialect/pphlo/transforms/passes.h"
 
 namespace spu::compiler {
 
@@ -51,13 +51,16 @@ void Core::buildPipeline(mlir::PassManager *pm) {
     optPM.addPass(mlir::createCSEPass());
     optPM.addPass(mlir::spu::pphlo::createOptimizeMaxPoolingPass());
   }
-  optPM.addPass(mlir::spu::pphlo::createDecomposeComparisonPass());
-  optPM.addPass(mlir::spu::pphlo::createDecomposeMinMaxPass());
+  optPM.addPass(mlir::spu::pphlo::createDecomposeOps());
   optPM.addPass(mlir::spu::pphlo::createSortLowering());
 
   if (!options.disable_partial_sort_optimization()) {
     optPM.addPass(mlir::spu::pphlo::createPartialSortToTopK());
   }
+
+  optPM.addPass(mlir::spu::pphlo::createRewriteSignbitPatterns());
+
+  optPM.addPass(mlir::spu::pphlo::createInlineSecretControlFlow());
 
   if (!options.disable_sqrt_plus_epsilon_rewrite()) {
     optPM.addPass(mlir::spu::pphlo::createOptimizeSqrtPlusEps());

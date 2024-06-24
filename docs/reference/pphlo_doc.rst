@@ -3,7 +3,7 @@ PPHlo API reference
 
 PPHlo is short for (SPU High level ops), it's the assembly language of SPU.
 
-PPHlo is built on `MLIR <https://mlir.llvm.org/>`_ infrastructure, the concrete ops definition could be found :spu_code_host:`here <spu/blob/main/libspu/dialect/pphlo/ops.td>`.
+PPHlo is built on `MLIR <https://mlir.llvm.org/>`_ infrastructure, the concrete ops definition could be found :spu_code_host:`here <spu/blob/main/libspu/dialect/pphlo/IR/ops.td>`.
 
 Op List
 ~~~~~~~

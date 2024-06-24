@@ -26,8 +26,9 @@
 #include "spdlog/spdlog.h"
 
 #include "libspu/core/trace.h"
-#include "libspu/device/debug_dump_constant.h"
-#include "libspu/dialect/pphlo/dialect.h"
+#include "libspu/device/utils/debug_dump_constant.h"
+#include "libspu/dialect/pphlo/IR/dialect.h"
+#include "libspu/dialect/utils/utils.h"
 
 namespace spu::device {
 namespace {
@@ -289,7 +290,7 @@ void executeImpl(OpExecutor *executor, spu::SPUContext *sctx,
 
     SPU_ENFORCE(moduleOpRef, "MLIR parser failure");
 
-    auto entry_function = moduleOpRef->lookupSymbol<mlir::func::FuncOp>("main");
+    auto entry_function = mlir::spu::get_entrypoint(moduleOpRef.get());
     SPU_ENFORCE(entry_function, "main module not found");
 
     ExecutionOptions opts;

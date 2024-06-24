@@ -221,6 +221,14 @@ Value cosine(SPUContext* ctx, const Value& x);
 // @param x, horizontal coordinate
 Value atan2(SPUContext* ctx, const Value& y, const Value& x);
 
+/// element-wise arccosine, i.e. x -> acos(x)
+// @param x, the input value
+Value acos(SPUContext* ctx, const Value& x);
+
+/// element-wise arcsine, i.e. x -> asin(x)
+// @param x, the input value
+Value asin(SPUContext* ctx, const Value& x);
+
 /// element-wise reciprocal of square root operation, i.e. x - > 1.0 / sqrt(x)
 // @param in, the input value
 Value rsqrt(SPUContext* ctx, const Value& x);

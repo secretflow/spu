@@ -891,4 +891,68 @@ Value f_atan2(SPUContext* ctx, const Value& y, const Value& x) {
   return atan2_minimax(ctx, y, x);
 }
 
+namespace {
+
+// ref: Handbook of Mathematical Functions: with Formulas, Graphs, and
+// Mathematical
+Value acos_minimax(SPUContext* ctx, const Value& x) {
+  auto msb = _msb(ctx, x);
+  msb = _prefer_a(ctx, msb);
+
+  auto abs_x = _mux(ctx, msb, _negate(ctx, x), x).setDtype(x.dtype());
+
+  // arccos(x) ~= sqrt(1-x) * poly(x), when x is in [0,1]
+  // 3-order minimax approximation with max error < 5e-5
+  static std::array<float, 4> kAcosCoefficientSmall{1.5707288, -0.2121144,
+                                                    0.0742610, -0.0187293};
+
+  // 7-order minimax approximation with max error < 2e-8
+  static std::array<float, 8> kAcosCoefficientLarge{
+      1.5707963050, -0.2145988016, 0.0889789874, -0.0501743046,
+      0.0308918810, -0.0170881256, 0.0066700901, -0.0012624911};
+
+  Value poly_part;
+  if (ctx->getFxpBits() <= 20) {
+    poly_part = detail::polynomial(ctx, abs_x, kAcosCoefficientSmall);
+  } else {
+    poly_part = detail::polynomial(ctx, abs_x, kAcosCoefficientLarge);
+  }
+  const auto k1 = constant(ctx, 1.0F, x.dtype(), x.shape());
+  auto sqrt_part = f_sqrt(ctx, f_sub(ctx, k1, abs_x));
+
+  auto ret = f_mul(ctx, sqrt_part, poly_part, SignType::Positive);
+
+  const auto pi = constant(ctx, M_PI, x.dtype(), x.shape());
+  ret = _mux(ctx, msb, f_sub(ctx, pi, ret), ret).setDtype(x.dtype());
+
+  return ret;
+}
+
+}  // namespace
+
+Value f_acos(SPUContext* ctx, const Value& x) {
+  SPU_TRACE_HAL_DISP(ctx, x);
+
+  SPU_ENFORCE(x.isFxp());
+
+  if (x.isPublic()) {
+    return f_acos_p(ctx, x);
+  }
+
+  return acos_minimax(ctx, x);
+}
+
+Value f_asin(SPUContext* ctx, const Value& x) {
+  SPU_TRACE_HAL_DISP(ctx, x);
+
+  SPU_ENFORCE(x.isFxp());
+
+  if (x.isPublic()) {
+    return f_asin_p(ctx, x);
+  }
+
+  const auto k_pi2 = constant(ctx, M_PI_2, x.dtype(), x.shape());
+  // asin(x) = pi/2 - acos(x)
+  return f_sub(ctx, k_pi2, f_acos(ctx, x));
+}
 }  // namespace spu::kernel::hal

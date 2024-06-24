@@ -1,0 +1,70 @@
+{
+    "name": "reshape",
+    "template": "basic_unary",
+    "testcases": [
+        {
+            "inputs": [
+                {
+                    "data": "[[1,2,3,4,5,6]]",
+                    "shape": "1x6",
+                    "dtype": "i32"
+                }
+            ],
+            "expected": [
+                {
+                    "data": "[1, 2, 3, 4, 5, 6]",
+                    "shape": "6",
+                    "dtype": "i32"
+                }
+            ]
+        },
+        {
+            "inputs": [
+                {
+                    "data": "[1,2,3,4,5,6]",
+                    "shape": "6",
+                    "dtype": "i32"
+                }
+            ],
+            "expected": [
+                {
+                    "data": "[[1, 2, 3], [4, 5, 6]]",
+                    "shape": "2x3",
+                    "dtype": "i32"
+                }
+            ]
+        },
+        {
+            "inputs": [
+                {
+                    "data": "[[1,2,3],[4,5,6]]",
+                    "shape": "2x3",
+                    "dtype": "i32"
+                }
+            ],
+            "expected": [
+                {
+                    "data": "[[1, 2], [3, 4], [5, 6]]",
+                    "shape": "3x2",
+                    "dtype": "i32"
+                }
+            ]
+        },
+        {
+            "inputs": [
+                {
+                    "data": "[[1,2],[3,4],[5,6]]",
+                    "shape": "3x2",
+                    "dtype": "i32"
+                }
+            ],
+            "expected": [
+                {
+                    "data": "[1, 2, 3, 4, 5, 6]",
+                    "shape": "6",
+                    "dtype": "i32"
+                }
+            ]
+        }
+    ]
+}
