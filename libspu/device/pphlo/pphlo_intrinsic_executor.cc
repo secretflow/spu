@@ -50,7 +50,7 @@ std::vector<Value> intrinsic_dispatcher(SPUContext* ctx,
     return {zeros};
   }
 
-  if (name == MAKE_CACHE_VAR) {
+  if (name == MAKE_CACHED_VAR) {
     if (ctx->hasKernel("beaver_cache")) {
       SPU_ENFORCE(inputs.size() == 1);
       dynDispatch(ctx, "beaver_cache", inputs[0], true);

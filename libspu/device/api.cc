@@ -29,6 +29,7 @@
 #include "libspu/device/utils/debug_dump_constant.h"
 #include "libspu/dialect/pphlo/IR/dialect.h"
 #include "libspu/dialect/utils/utils.h"
+#include "libspu/version.h"
 
 namespace spu::device {
 namespace {
@@ -289,6 +290,22 @@ void executeImpl(OpExecutor *executor, spu::SPUContext *sctx,
         mlir::parseSourceString<mlir::ModuleOp>(executable.code(), &mlir_ctx);
 
     SPU_ENFORCE(moduleOpRef, "MLIR parser failure");
+
+    if (!moduleOpRef.get()->hasAttr("pphlo.version")) {
+      // There are tests that has no version attributes.
+      // So treats this as a warning
+      SPDLOG_WARN("Missing ir version");
+    } else {
+      auto ir_version = mlir::dyn_cast<mlir::StringAttr>(
+                            moduleOpRef.get()->getAttr("pphlo.version"))
+                            .str();
+      if (ir_version != getVersionStr()) {
+        SPU_THROW(
+            "IR was generted by compiler {} and does not match current runtime "
+            "{}",
+            ir_version, getVersionStr());
+      }
+    }
 
     auto entry_function = mlir::spu::get_entrypoint(moduleOpRef.get());
     SPU_ENFORCE(entry_function, "main module not found");

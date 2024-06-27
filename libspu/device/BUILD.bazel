@@ -53,6 +53,7 @@ spu_cc_library(
     srcs = ["executor.cc"],
     hdrs = ["executor.h"],
     deps = [
+        ":intrinsic_table",
         ":symbol_table",
         "//libspu:spu_cc_proto",
         "//libspu/core:context",
@@ -68,6 +69,7 @@ spu_cc_library(
     hdrs = ["api.h"],
     deps = [
         ":executor",
+        "//libspu:version",
         "//libspu/device/pphlo:pphlo_executor",
         "//libspu/device/utils:debug_dump_constant",
         "//libspu/dialect/utils",

@@ -90,7 +90,15 @@ for test in TESTS:
 
     with open(f"{test_name}.mlir", "w+") as f:
         # emit run command
-        f.write("// RUN: spu-translate --interpret -split-input-file %s\n")
+        f.write(
+            "// RUN: spu-translate --protocol_kind=1 --interpret -split-input-file %s\n"
+        )
+        f.write(
+            "// RUN: spu-translate --protocol_kind=2 --interpret -split-input-file %s\n"
+        )
+        f.write(
+            "// RUN: spu-translate --protocol_kind=3 --interpret -split-input-file %s\n"
+        )
         f.write("// AUTO GENERATED, DO NOT EDIT\n\n")
 
         # Emit cases

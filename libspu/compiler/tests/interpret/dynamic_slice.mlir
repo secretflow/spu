@@ -1,4 +1,6 @@
-// RUN: spu-translate --interpret -split-input-file %s
+// RUN: spu-translate --protocol_kind=1 --interpret -split-input-file %s
+// RUN: spu-translate --protocol_kind=2 --interpret -split-input-file %s
+// RUN: spu-translate --protocol_kind=3 --interpret -split-input-file %s
 
 func.func @dynamic_slice() {
   %operand = pphlo.constant dense<[[1, 1, 1],
@@ -10,5 +12,24 @@ func.func @dynamic_slice() {
     slice_sizes = array<i64: 3, 3>
   } : (tensor<3x3xi64>, tensor<i64>, tensor<i64>) -> tensor<3x3xi64>
   pphlo.custom_call @expect_eq (%result, %operand) : (tensor<3x3xi64>,tensor<3x3xi64>)->()
+  func.return
+}
+
+// -----
+
+func.func @dynamic_slice() {
+  %operand = pphlo.constant dense<[[1, 2, 3],
+                                   [4, 5, 6],
+                                   [7, 8, 9]]> : tensor<3x3xi64>
+  %i0 = pphlo.constant dense<1> : tensor<i64>
+  %start_indices0 = pphlo.convert %i0 : (tensor<i64>) -> tensor<!pphlo.secret<i64>>
+  %start_indices1 = pphlo.constant dense<1> : tensor<i64>
+  %r = "pphlo.dynamic_slice"(%operand, %start_indices0, %start_indices1) {
+    slice_sizes = array<i64: 2, 2>
+  } : (tensor<3x3xi64>, tensor<!pphlo.secret<i64>>, tensor<i64>) -> tensor<2x2x!pphlo.secret<i64>>
+  %result = pphlo.convert %r : (tensor<2x2x!pphlo.secret<i64>>) -> tensor<2x2xi64>
+  %expected = pphlo.constant dense<[[5, 6],
+                                    [8, 9]]> : tensor<2x2xi64>
+  pphlo.custom_call @expect_eq (%result, %expected) : (tensor<2x2xi64>,tensor<2x2xi64>)->()
   func.return
 }

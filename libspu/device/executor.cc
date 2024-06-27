@@ -24,6 +24,8 @@
 #include "libspu/core/context.h"
 #include "libspu/core/prelude.h"
 #include "libspu/core/value.h"
+#include "libspu/device/intrinsic_table.h"
+#include "libspu/dialect/pphlo/IR/ops.h"
 
 namespace spu::device {
 
@@ -166,12 +168,15 @@ class OpExecTask final {
   OpExecTask() = default;
   explicit OpExecTask(std::unique_ptr<SPUContext> sctx, OpExecutor *executor,
                       SymbolScope *sscope, mlir::Operation *op,
-                      SymbolTableEvent *event)
+                      SymbolTableEvent *event,
+                      const llvm::SmallVector<mlir::Value> &extra_dependencies)
       : sctx_(std::move(sctx)),
         executor_(executor),
         sscope_(sscope),
         op_(op),
-        event_(event) {
+        event_(event),
+        extra_dependencies_(extra_dependencies.begin(),
+                            extra_dependencies.end()) {
     // If a op has nested regions, it may depend on more values than operands
     // FIXME: (azheng) Implement a better notify mechanism
     if (op->getNumRegions() > 0) {
@@ -228,8 +233,21 @@ class BlockParallelRunner final {
 
   std::vector<spu::Value> run(mlir::Block &block) {
     SymbolTableEvent st_event;
+    llvm::SmallVector<mlir::Value> extra_dependencies;
     for (auto &op : block.without_terminator()) {
-      task_queue_.emplace(sctx_->fork(), executor_, sscope_, &op, &st_event);
+      task_queue_.emplace(sctx_->fork(), executor_, sscope_, &op, &st_event,
+                          extra_dependencies);
+      // FIXME(jimi): DBG_PRINT has side effect but has no outputs. We should
+      // use more formal scheduling policy
+      if (auto custom_call = llvm::dyn_cast<mlir::spu::pphlo::CustomCallOp>(op);
+          custom_call && custom_call.getCallTargetName() == DBG_PRINT) {
+        continue;
+      }
+      auto hasSideEffect = op.getAttrOfType<mlir::BoolAttr>("has_side_effect");
+      if (hasSideEffect && hasSideEffect.getValue()) {
+        extra_dependencies.append(op.getResults().begin(),
+                                  op.getResults().end());
+      }
     }
 
     threads_.reserve(opts_.concurrency);
