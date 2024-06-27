@@ -170,5 +170,6 @@ NdArrayRef ResharingMss2Rss(KernelEvalContext* ctx, const NdArrayRef& in);
 NdArrayRef ResharingRss2Ass(KernelEvalContext* ctx, const NdArrayRef& in);
 
 NdArrayRef MsbA2BMultiFanIn(KernelEvalContext* ctx, const NdArrayRef& in);
+NdArrayRef A2BMultiFanIn(KernelEvalContext* ctx, const NdArrayRef& in);
 
 }  // namespace spu::mpc::aby3

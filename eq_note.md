@@ -1,6 +1,9 @@
 ```shell
 bazelisk build //libspu/mpc/aby3:mfippa_test --jobs 2
 ./bazel-out/k8-fastbuild/bin/libspu/mpc/aby3/mfippa_test
+
+bazelisk build //examples/python/ml/flax_mlp:flax_mlp --jobs 2
+./bazel-out/k8-fastbuild/bin/examples/python/ml/flax_mlp/flax_mlp
 ```
 
 0. my view: 动态比特向量容器

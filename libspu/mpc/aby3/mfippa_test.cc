@@ -1,5 +1,8 @@
+// #define EQ_DO_NOT_USE_OFFLINE
+
 #include <iostream>
 #include <string>
+#include <chrono>
 
 #include "libspu/spu.pb.h"
 #include "libspu/core/ndarray_ref.h"
@@ -9,6 +12,8 @@
 #include "libspu/mpc/aby3/protocol.h"
 #include "libspu/mpc/aby3/conversion.h"
 #include "libspu/mpc/utils/simulate.h"
+
+#include "libspu/mpc/common/communicator.h"
 
 // hack wrap value for handle namespace error.
 #define MyWrapValue(x) spu::Value(x, spu::DT_INVALID)
@@ -62,7 +67,8 @@ int main()
             auto field = spu::FieldType::FM64;        
             spu::RuntimeConfig config = makeConfig(field);
             auto sctx = makeAby3Protocol(config, lctx); 
-            auto kectx = spu::KernelEvalContext(sctx.get());        
+            auto kectx = spu::KernelEvalContext(sctx.get());    
+            auto states_p = sctx.get()->getState<Communicator>(); 
 
             // sharing test
             auto x_p = rand_p(sctx.get(), kShape);
@@ -100,63 +106,79 @@ int main()
               if (lctx.get()->Rank() == 0) checkOutput(z_p.data(), xy_p.data(), "and2-mss-based");
             }
 
-            // mutli-fan-in and test
-            {
-              auto res_lo_s = and_bb(sctx.get(), x_s, y_s);
-              auto res_hi_s = and_bb(sctx.get(), a_s, b_s);
-              auto res_s = and_bb(sctx.get(), res_lo_s, a_s);
-              auto res_p = b2p(sctx.get(), res_s);
-              auto a_mss = aby3::ResharingRss2Mss(&kectx, MyUnwrapValue(a_s));
-              auto b_mss = aby3::ResharingRss2Mss(&kectx, MyUnwrapValue(b_s));
-              auto res_ass = aby3::MssAnd4NoComm(&kectx, x_mss, y_mss, a_mss, b_mss);
-              auto res_rss = aby3::ResharingAss2Rss(&kectx, res_ass);
-              auto res_ours_p = b2p(sctx.get(), MyWrapValue(res_rss));
-              // auto xy_rss = aby3::MssAnd2NoComm(&kectx, x_mss, y_mss);
-              // auto xy_rss_p = OpenRef(xy_rss);
-              // auto a_rss = aby3::ResharingMss2Rss(&kectx, a_mss);
-              // auto a_rss_p = OpenRef(a_rss);
-              // auto xya_ass = aby3::RssAnd2NoComm(&kectx, xy_rss, a_rss);
-              // auto xya_rss = aby3::ResharingAss2Rss(&kectx, xya_ass);
-              // auto xya_rss_p = b2p(sctx.get(), MyWrapValue(xya_rss));
+            // // mutli-fan-in and test
+            // {
+            //   auto res_lo_s = and_bb(sctx.get(), x_s, y_s);
+            //   auto res_hi_s = and_bb(sctx.get(), a_s, b_s);
+            //   auto res_s = and_bb(sctx.get(), res_lo_s, a_s);
+            //   auto res_p = b2p(sctx.get(), res_s);
+            //   auto a_mss = aby3::ResharingRss2Mss(&kectx, MyUnwrapValue(a_s));
+            //   auto b_mss = aby3::ResharingRss2Mss(&kectx, MyUnwrapValue(b_s));
+            //   auto res_ass = aby3::MssAnd4NoComm(&kectx, x_mss, y_mss, a_mss, b_mss);
+            //   auto res_rss = aby3::ResharingAss2Rss(&kectx, res_ass);
+            //   auto res_ours_p = b2p(sctx.get(), MyWrapValue(res_rss));
+            //   // auto xy_rss = aby3::MssAnd2NoComm(&kectx, x_mss, y_mss);
+            //   // auto xy_rss_p = OpenRef(xy_rss);
+            //   // auto a_rss = aby3::ResharingMss2Rss(&kectx, a_mss);
+            //   // auto a_rss_p = OpenRef(a_rss);
+            //   // auto xya_ass = aby3::RssAnd2NoComm(&kectx, xy_rss, a_rss);
+            //   // auto xya_rss = aby3::ResharingAss2Rss(&kectx, xya_ass);
+            //   // auto xya_rss_p = b2p(sctx.get(), MyWrapValue(xya_rss));
 
-              if (lctx.get()->Rank() == 0) printResult(res_p.data(), "and4, spu");
-              if (lctx.get()->Rank() == 0) printResult(res_ours_p.data(), "and4, ours");
-              // if (lctx.get()->Rank() == 0) printResult(xy_rss_p.data(), "and4, step1 ");
-              // if (lctx.get()->Rank() == 0) printResult(a_rss_p.data(), "and4, step2 ");
-              // if (lctx.get()->Rank() == 0) printResult(xya_rss_p.data(), "and4, step3 ");
+            //   if (lctx.get()->Rank() == 0) printResult(res_p.data(), "and4, spu");
+            //   if (lctx.get()->Rank() == 0) printResult(res_ours_p.data(), "and4, ours");
+            //   // if (lctx.get()->Rank() == 0) printResult(xy_rss_p.data(), "and4, step1 ");
+            //   // if (lctx.get()->Rank() == 0) printResult(a_rss_p.data(), "and4, step2 ");
+            //   // if (lctx.get()->Rank() == 0) printResult(xya_rss_p.data(), "and4, step3 ");
 
-              if (lctx.get()->Rank() == 0) checkOutput(res_p.data(), res_ours_p.data(), "and4");
-            }
+            //   if (lctx.get()->Rank() == 0) checkOutput(res_p.data(), res_ours_p.data(), "and4");
+            // }
 
-            // resharing test
-            {
-              auto z_s = and_bb(sctx.get(), x_s, y_s);
-              auto z_p = b2p(sctx.get(), z_s);
-              auto zours_ass = aby3::RssAnd2NoComm(&kectx, MyUnwrapValue(x_s), MyUnwrapValue(y_s));
-              auto zours_rss_2 = aby3::ResharingAss2Rss(&kectx, zours_ass);
-              auto zours_mss_2 = aby3::ResharingRss2Mss(&kectx, zours_rss_2);
-              auto zours_rss_3 = aby3::ResharingMss2Rss(&kectx, zours_mss_2);
-              auto zours_ass_3 = aby3::ResharingRss2Ass(&kectx, zours_rss_3);
-              auto zours_mss_3 = aby3::ResharingAss2Mss(&kectx, zours_ass_3);
-              auto zours_rss_4 = aby3::ResharingMss2Rss(&kectx, zours_mss_3);
-              auto zours_p2 = b2p(sctx.get(), MyWrapValue(zours_rss_4));
+            // // resharing test
+            // {
+            //   auto z_s = and_bb(sctx.get(), x_s, y_s);
+            //   auto z_p = b2p(sctx.get(), z_s);
+            //   auto zours_ass = aby3::RssAnd2NoComm(&kectx, MyUnwrapValue(x_s), MyUnwrapValue(y_s));
+            //   auto zours_rss_2 = aby3::ResharingAss2Rss(&kectx, zours_ass);
+            //   auto zours_mss_2 = aby3::ResharingRss2Mss(&kectx, zours_rss_2);
+            //   auto zours_rss_3 = aby3::ResharingMss2Rss(&kectx, zours_mss_2);
+            //   auto zours_ass_3 = aby3::ResharingRss2Ass(&kectx, zours_rss_3);
+            //   auto zours_mss_3 = aby3::ResharingAss2Mss(&kectx, zours_ass_3);
+            //   auto zours_rss_4 = aby3::ResharingMss2Rss(&kectx, zours_mss_3);
+            //   auto zours_p2 = b2p(sctx.get(), MyWrapValue(zours_rss_4));
 
-              if (lctx.get()->Rank() == 0) printResult(zours_p2.data(), "resharing");
-              if (lctx.get()->Rank() == 0) checkOutput(z_p.data(), zours_p2.data(), "resharing");
-            }
+            //   if (lctx.get()->Rank() == 0) printResult(zours_p2.data(), "resharing");
+            //   if (lctx.get()->Rank() == 0) checkOutput(z_p.data(), zours_p2.data(), "resharing");
+            // }
 
             // msb test
             {
               auto x_as = b2a(sctx.get(), x_s);
+              auto msb_start = std::chrono::high_resolution_clock::now();
+              size_t comm = states_p->getStats().comm;
+              size_t latency = states_p->getStats().latency;
               auto msbx_s = msb_a2b(sctx.get(), x_as);
               auto msbx_p = b2p(sctx.get(), msbx_s);
+              auto msb_spu = std::chrono::high_resolution_clock::now();
+              auto duration_spu = std::chrono::duration_cast<std::chrono::microseconds>(msb_spu - msb_start);
 
+              if (lctx.get()->Rank() == 0) std::cout << "------------------------ MSB, spu" << std::endl;
               if (lctx.get()->Rank() == 0) printResult(msbx_p.data(), "msb, spu");
+              if (lctx.get()->Rank() == 0) std::cout << "msb micro seconds: " << duration_spu.count() << std::endl;
+              if (lctx.get()->Rank() == 0) std::cout << "msb sent: " << states_p->getStats().comm - comm << std::endl;
+              if (lctx.get()->Rank() == 0) std::cout << "msb latency: " << states_p->getStats().latency - latency << std::endl;
               
+              comm = states_p->getStats().comm;
+              latency = states_p->getStats().latency;
               auto msbx_ours_s = aby3::MsbA2BMultiFanIn(&kectx, MyUnwrapValue(x_as));
               auto msbx_ours_p = OpenRef(msbx_ours_s);
-
+              auto msb_ours = std::chrono::high_resolution_clock::now();
+              auto duration_ours = std::chrono::duration_cast<std::chrono::microseconds>(msb_ours - msb_spu);
+              if (lctx.get()->Rank() == 0) std::cout << "------------------------ MSB, ours" << std::endl;
               if (lctx.get()->Rank() == 0) printResult(msbx_ours_p.data(), "msb, ours");
+              if (lctx.get()->Rank() == 0) std::cout << "msb micro seconds: " << duration_ours.count() << std::endl;
+              if (lctx.get()->Rank() == 0) std::cout << "msb sent: " << states_p->getStats().comm - comm << std::endl;
+              if (lctx.get()->Rank() == 0) std::cout << "msb latency: " << states_p->getStats().latency - latency << std::endl;
 
               // auto x_ap = a2p(sctx.get(), x_as);
 
@@ -177,5 +199,17 @@ int main()
               if (lctx.get()->Rank() == 0) std::cout << "ours msb positive count rate: " << static_cast<double>(ours_positive_count) / (N * M) << std::endl;
             }
 
+            // A2B test.
+            {
+              auto x_a = p2a(sctx.get(), x_p);
+              auto x_b_spu = a2b(sctx.get(), x_a);
+              auto x_r_spu = OpenRef(MyUnwrapValue(x_b_spu));
+              auto x_b_ours = aby3::A2BMultiFanIn(&kectx, MyUnwrapValue(x_a));
+              auto x_r_ours = OpenRef(x_b_ours);
+
+              if (lctx.get()->Rank() == 0) printResult(x_r_spu.data(), "a2b, spu");
+              if (lctx.get()->Rank() == 0) printResult(x_r_ours.data(), "a2b, ours");
+              if (lctx.get()->Rank() == 0) checkOutput(x_r_spu.data(), x_r_ours.data(), "a2b");
+            }
         });    
 }

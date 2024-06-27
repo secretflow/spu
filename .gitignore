@@ -54,3 +54,6 @@ idir/
 
 spu_wheel.name
 *.whl
+
+# eq
+app/
