@@ -46,6 +46,10 @@
 template <typename T>
 struct fmt::formatter<xt::xarray<T>> : ostream_formatter {};
 
+llvm::cl::opt<uint32_t> ProtocolKind(
+    "protocol_kind", llvm::cl::init(1),
+    llvm::cl::desc("1 for REF2k, 2 for SEMI2k, 3 for ABY3, 4 for Cheetah"));
+
 namespace mlir {
 
 namespace {
@@ -215,9 +219,29 @@ void evalModule(ModuleOp module) {
   runPasses(module);
 
   ::spu::RuntimeConfig conf;
-  conf.set_protocol(::spu::REF2K);
   conf.set_field(::spu::FM64);
   conf.set_enable_type_checker(true);
+  int numParties = 1;
+
+  switch (ProtocolKind.getValue()) {
+  case 1: {
+    conf.set_protocol(::spu::REF2K);
+    numParties = 1;
+    break;
+  }
+  case 2: {
+    conf.set_protocol(::spu::SEMI2K);
+    numParties = 2;
+    break;
+  }
+  case 3: {
+    conf.set_protocol(::spu::ABY3);
+    numParties = 3;
+    break;
+  }
+  }
+
+  SPDLOG_INFO(conf.DebugString());
 
   auto entry_function = spu::get_entrypoint(module);
   SPU_ENFORCE(entry_function, "main module not found");
@@ -227,7 +251,7 @@ void evalModule(ModuleOp module) {
   ::spu::device::ExecutionOptions opts;
 
   ::spu::mpc::utils::simulate(
-      1, [&](const std::shared_ptr<yacl::link::Context> &lctx) {
+      numParties, [&](const std::shared_ptr<yacl::link::Context> &lctx) {
         auto sctx = ::spu::kernel::test::makeSPUContext(conf, lctx);
 
         runRegion(&executor, &sctx, nullptr, entry_function.getBody(), {},

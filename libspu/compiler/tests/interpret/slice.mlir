@@ -1,4 +1,6 @@
-// RUN: spu-translate --interpret -split-input-file %s
+// RUN: spu-translate --protocol_kind=1 --interpret -split-input-file %s
+// RUN: spu-translate --protocol_kind=2 --interpret -split-input-file %s
+// RUN: spu-translate --protocol_kind=3 --interpret -split-input-file %s
 
 func.func @slice_op() {
   %operand = pphlo.constant dense<[[0, 0, 1, 0, 0, 1],

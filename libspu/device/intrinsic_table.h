@@ -22,7 +22,8 @@
 #define    PREFER_A         "spu.prefer_a"
 #define    DBG_PRINT        "spu.dbg_print"
 #define    GATHER           "spu.gather"
-#define    MAKE_CACHE_VAR   "spu.make_cache_var"
+// should be consistent with python level
+#define    MAKE_CACHED_VAR  "spu.make_cached_var"
 #define    DROP_CACHED_VAR  "spu.drop_cached_var"
 
 // clang-format on

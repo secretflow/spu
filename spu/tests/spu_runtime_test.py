@@ -76,6 +76,31 @@ func.func @main(%arg0: tensor<2x3x!pphlo.secret<i32>>, %arg1: tensor<12x13x!pphl
         with self.assertRaisesRegex(RuntimeError, "stacktrace:.*"):
             sim(executable, x, y)
 
+    def test_wrong_version(self):
+        wsize = 1
+        config = spu_pb2.RuntimeConfig(
+            protocol=spu_pb2.ProtocolKind.REF2K,
+            field=spu_pb2.FieldType.FM64,
+        )
+
+        sim = Simulator(wsize, config)
+
+        # Give some insane ir
+        code = """
+module @no_version attributes {pphlo.version = "0.0.1"} {
+  func.func @main() -> tensor<1xf32> {
+    %0 = pphlo.constant dense<[1.0]> : tensor<1xf32>
+    return %0 : tensor<1xf32>
+  }
+}"""
+        executable = spu_pb2.ExecutableProto(
+            name="test",
+            code=code.encode(),
+        )
+
+        with self.assertRaisesRegex(RuntimeError, "IR was generted by compiler.*"):
+            sim(executable)
+
 
 if __name__ == '__main__':
     unittest.main()

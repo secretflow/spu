@@ -1,4 +1,6 @@
-// RUN: spu-translate --interpret -split-input-file %s
+// RUN: spu-translate --protocol_kind=1 --interpret -split-input-file %s
+// RUN: spu-translate --protocol_kind=2 --interpret -split-input-file %s
+// RUN: spu-translate --protocol_kind=3 --interpret -split-input-file %s
 
 func.func @broadcast_in_dim() {
   %operand = pphlo.constant dense<[[1], [2], [3]]> : tensor<3x1xi64>

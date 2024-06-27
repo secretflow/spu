@@ -1,4 +1,6 @@
-// RUN: spu-translate --interpret -split-input-file %s
+// RUN: spu-translate --protocol_kind=1 --interpret -split-input-file %s
+// RUN: spu-translate --protocol_kind=2 --interpret -split-input-file %s
+// RUN: spu-translate --protocol_kind=3 --interpret -split-input-file %s
 
 func.func @dot_general_op_test_si64() {
   %lhs = pphlo.constant dense<[[[1, 2], [3, 4]],

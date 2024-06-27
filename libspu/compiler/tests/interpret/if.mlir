@@ -1,4 +1,6 @@
-// RUN: spu-translate --interpret -split-input-file %s
+// RUN: spu-translate --protocol_kind=1 --interpret -split-input-file %s
+// RUN: spu-translate --protocol_kind=2 --interpret -split-input-file %s
+// RUN: spu-translate --protocol_kind=3 --interpret -split-input-file %s
 
 func.func @if_ops_true_branch() {
   %pred = pphlo.constant dense<true> : tensor<i1>
