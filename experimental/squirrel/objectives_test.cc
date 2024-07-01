@@ -67,8 +67,7 @@ TEST_P(ObjectivesTest, MaxGain) {
   std::default_random_engine rdv(std::time(0));
   std::uniform_real_distribution<double> uniform_n(1, 10.);
   // accumulated Gs, Hs is linearly with the samples, and thus could be huge.
-  // FIXME(lwj): current spu's rsqrt can'not handle too large values.
-  std::uniform_real_distribution<double> uniform_N(500., 1000.);
+  std::uniform_real_distribution<double> uniform_N(10000., 100000.);
   std::uniform_real_distribution<double> uniform_p(0., 1.);
 
   std::vector<size_t> _shape = {std::get<0>(shape), std::get<1>(shape)};
