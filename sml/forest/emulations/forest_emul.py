@@ -93,10 +93,11 @@ def emul_forest(mode=emulation.Mode.MULTIPROCESS):
         # compare with sklearn
         rf = RandomForestClassifier(
             n_estimators=3,
-            max_features=0.7,
+            max_features=None,
             criterion='gini',
             max_depth=MAX_DEPTH,
-            bootstrap=True,
+            bootstrap=False,
+            max_samples=None,
         )
         start = time.time()
         rf = rf.fit(X, y)
@@ -115,8 +116,8 @@ def emul_forest(mode=emulation.Mode.MULTIPROCESS):
             criterion='gini',
             splitter='best',
             max_depth=3,
-            bootstrap=True,
-            max_samples=0.7,
+            bootstrap=False,
+            max_samples=None,
             n_labels=n_labels,
             seed=0,
         )

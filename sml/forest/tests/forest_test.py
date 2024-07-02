@@ -1,11 +1,3 @@
-'''
-Author: Li Zhihang
-Date: 2024-06-16 12:03:08
-LastEditTime: 2024-06-22 16:45:43
-FilePath: /klaus/spu-klaus/sml/forest/tests/forest_test.py
-Description:正确率相差太大：Accuracy in SKlearn: 0.95；Accuracy in SPU: 0.67
-'''
-
 # Copyright 2023 Ant Group Co., Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,6 +11,13 @@ Description:正确率相差太大：Accuracy in SKlearn: 0.95；Accuracy in SPU:
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+'''
+Author: Li Zhihang
+Date: 2024-06-16 12:03:08
+LastEditTime: 2024-07-01 18:25:23
+FilePath: /klaus/spu/sml/forest/tests/forest_test.py
+Description:
+'''
 import unittest
 
 import jax.numpy as jnp
@@ -37,7 +36,7 @@ class UnitTests(unittest.TestCase):
         def proc_wrapper(
             n_estimators=100,
             max_features=None,
-            n_features=200,
+            n_features=199,
             criterion='gini',
             splitter='best',
             max_depth=3,
@@ -97,7 +96,7 @@ class UnitTests(unittest.TestCase):
         # compare with sklearn
         rf = RandomForestClassifier(
             n_estimators=3,
-            max_features='log2',
+            max_features=None,
             criterion='gini',
             max_depth=MAX_DEPTH,
             bootstrap=True,
@@ -113,7 +112,7 @@ class UnitTests(unittest.TestCase):
         # run
         proc = proc_wrapper(
             n_estimators=3,
-            max_features='log2',
+            max_features=None,
             n_features=n_features,
             criterion='gini',
             splitter='best',
@@ -123,7 +122,7 @@ class UnitTests(unittest.TestCase):
             n_labels=n_labels,
             seed=0,
         )
-        # 不可以使用bootstrap，否则在spu运行的正确率很低
+
         result = spsim.sim_jax(sim, proc)(X, y)
 
         # print(y_sample)

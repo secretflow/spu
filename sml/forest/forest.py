@@ -124,12 +124,15 @@ class RandomForestClassifier:
             return X, y
         # 使用斐波那契数列变体生成伪随机索引
         indices = jnp.zeros(max_samples, dtype=int)
-        a, b = self.seed % n_samples, (self.seed + 1) % n_samples
+        rng = self.seed
+        # a, b = self.seed % n_samples, (self.seed + 1) % n_samples
         for i in range(max_samples):
-            indices = indices.at[i].set(b % n_samples)
-            a, b = b, (a + b) % n_samples  # 生成斐波那契数列并取模
-        # 更新种子值以保证每次调用生成不同的序列
+            rng = (rng * 48271 + 1) % (2**31 - 1)
+            indices = indices.at[i].set(rng % n_samples)
+            # indices = indices.at[i].set(b % n_samples)
+            # a, b = b, (a + b) % n_samples  # 生成斐波那契数列并取模
         self.seed += 1
+        # 更新种子值以保证每次调用生成不同的序列
         return X[indices], y[indices]
 
     # 可以用，但没n选k
@@ -153,7 +156,6 @@ class RandomForestClassifier:
         selected_indices = self._shuffle_indices(self.n_features, self.max_features)[
             : self.max_features
         ]
-        self.seed += 1
         return selected_indices
 
     def _shuffle_indices(self, n, k):
@@ -172,6 +174,7 @@ class RandomForestClassifier:
             j = i + rng % (n - i)
             # 交换元素以进行洗牌
             indices = self._swap(indices, i, j)
+            self.seed += 1
             return (i + 1, rng, indices)
 
         _, _, shuffled_indices = lax.while_loop(cond_fun, body_fun, (0, rng, indices))
