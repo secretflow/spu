@@ -2,6 +2,11 @@
 bazelisk build //libspu/mpc/aby3:mfippa_test --jobs 2
 ./bazel-out/k8-fastbuild/bin/libspu/mpc/aby3/mfippa_test
 
+# 添加新安全计算框架后重新编译。其他时候无需编译。
+bazelisk build //examples/python/utils:nodectl --jobs 2
+# or: bazelisk build //examples/python/utils:nodectl --jobs 2
+./app/nodectl-app/nodectl up
+
 bazelisk build //examples/python/ml/flax_mlp:flax_mlp --jobs 2
 ./bazel-out/k8-fastbuild/bin/examples/python/ml/flax_mlp/flax_mlp
 ```

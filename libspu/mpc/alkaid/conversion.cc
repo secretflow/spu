@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "libspu/mpc/aby3/conversion.h"
+#include "libspu/mpc/alkaid/conversion.h"
 
 #include <functional>
 #include <iostream>
@@ -24,8 +24,8 @@
 #include "libspu/core/prelude.h"
 #include "libspu/core/trace.h"
 #include "libspu/mpc/ab_api.h"
-#include "libspu/mpc/aby3/type.h"
-#include "libspu/mpc/aby3/value.h"
+#include "libspu/mpc/alkaid/type.h"
+#include "libspu/mpc/alkaid/value.h"
 #include "libspu/mpc/common/communicator.h"
 #include "libspu/mpc/common/prg_state.h"
 #include "libspu/mpc/common/pv2k.h"
@@ -34,9 +34,8 @@
 // TODO: it shows incorrect result that defines EQ_USE_PRG_STATE and undefines EQ_USE_OFFLINE. Fix it.
 // #define EQ_USE_OFFLINE
 // #define EQ_USE_PRG_STATE
-// #define EQ_USE_ALKAID
 
-namespace spu::mpc::aby3 {
+namespace spu::mpc::alkaid {
 
 static NdArrayRef wrap_add_bb(SPUContext* ctx, const NdArrayRef& x,
                               const NdArrayRef& y) {
@@ -45,82 +44,13 @@ static NdArrayRef wrap_add_bb(SPUContext* ctx, const NdArrayRef& x,
 }
 
 // Reference:
-// ABY3: A Mixed Protocol Framework for Machine Learning
+// ALKAID: A Mixed Protocol Framework for Machine Learning
 // P16 5.3 Share Conversions, Bit Decomposition
 // https://eprint.iacr.org/2018/403.pdf
 //
 // Latency: 2 + log(nbits) from 1 rotate and 1 ppa.
 NdArrayRef A2B::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
-  #ifndef EQ_USE_ALKAID
-  const auto field = in.eltype().as<Ring2k>()->field();
-
-  auto* comm = ctx->getState<Communicator>();
-  auto* prg_state = ctx->getState<PrgState>();
-
-  // Let
-  //   X = [(x0, x1), (x1, x2), (x2, x0)] as input.
-  //   Z = (z0, z1, z2) as boolean zero share.
-  //
-  // Construct
-  //   M = [((x0+x1)^z0, z1) (z1, z2), (z2, (x0+x1)^z0)]
-  //   N = [(0, 0), (0, x2), (x2, 0)]
-  // Then
-  //   Y = PPA(M, N) as the output.
-  const PtType out_btype = calcBShareBacktype(SizeOf(field) * 8);
-  const auto out_ty = makeType<BShrTy>(out_btype, SizeOf(out_btype) * 8);
-  NdArrayRef m(out_ty, in.shape());
-  NdArrayRef n(out_ty, in.shape());
-
-  auto numel = in.numel();
-
-  DISPATCH_ALL_FIELDS(field, "_", [&]() {
-    using ashr_t = std::array<ring2k_t, 2>;
-    NdArrayView<ashr_t> _in(in);
-
-    DISPATCH_UINT_PT_TYPES(out_btype, "_", [&]() {
-      using bshr_el_t = ScalarT;
-      using bshr_t = std::array<bshr_el_t, 2>;
-
-      std::vector<bshr_el_t> r0(in.numel());
-      std::vector<bshr_el_t> r1(in.numel());
-      prg_state->fillPrssPair(r0.data(), r1.data(), r0.size(),
-                              PrgState::GenPrssCtrl::Both);
-
-      pforeach(0, numel, [&](int64_t idx) {
-        r0[idx] ^= r1[idx];
-        if (comm->getRank() == 0) {
-          const auto& v = _in[idx];
-          r0[idx] ^= v[0] + v[1];
-        }
-      });
-
-      r1 = comm->rotate<bshr_el_t>(r0, "a2b");  // comm => 1, k
-
-      NdArrayView<bshr_t> _m(m);
-      NdArrayView<bshr_t> _n(n);
-
-      pforeach(0, numel, [&](int64_t idx) {
-        _m[idx][0] = r0[idx];
-        _m[idx][1] = r1[idx];
-
-        if (comm->getRank() == 0) {
-          _n[idx][0] = 0;
-          _n[idx][1] = 0;
-        } else if (comm->getRank() == 1) {
-          _n[idx][0] = 0;
-          _n[idx][1] = _in[idx][1];
-        } else if (comm->getRank() == 2) {
-          _n[idx][0] = _in[idx][0];
-          _n[idx][1] = 0;
-        }
-      });
-    });
-  });
-
-  return wrap_add_bb(ctx->sctx(), m, n);  // comm => log(k) + 1, 2k(logk) + k
-  #else
   return A2BMultiFanIn(ctx, in);
-  #endif
 }
 
 NdArrayRef B2ASelector::proc(KernelEvalContext* ctx,
@@ -301,7 +231,7 @@ static std::vector<T> bitCompose(absl::Span<T const> in, size_t nbits) {
 //
 // Latency: 2.
 //
-// Aby3 paper algorithm reference.
+// Alkaid paper algorithm reference.
 //
 // P1 & P3 locally samples c1.
 // P2 & P3 locally samples c3.
@@ -662,84 +592,26 @@ NdArrayRef B2AByOT::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
 }
 
 NdArrayRef MsbA2B::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
-  #ifndef EQ_USE_ALKAID
-  const auto field = in.eltype().as<AShrTy>()->field();
-  const auto numel = in.numel();
-  auto* comm = ctx->getState<Communicator>();
-  auto* prg_state = ctx->getState<PrgState>();
+  // size_t numel = in.numel();
+  // size_t elsize = in.elsize();
 
-  // First construct 2 boolean shares.
-  // Let
-  //   X = [(x0, x1), (x1, x2), (x2, x0)] as input.
-  //   Z = (z0, z1, z2) as boolean zero share.
-  //
-  // Construct M, N as boolean shares,
-  //   M = [((x0+x1)^z0, z1), (z1, z2), (z2, (x0+x1)^z0)]
-  //   N = [(0,          0),  (0,  x2), (x2, 0         )]
-  //
-  // That
-  //  M + N = (x0+x1)^z0^z1^z2 + x2
-  //        = x0 + x1 + x2 = X
-  const Type bshr_type =
-      makeType<BShrTy>(GetStorageType(field), SizeOf(field) * 8);
-  NdArrayRef m(bshr_type, in.shape());
-  NdArrayRef n(bshr_type, in.shape());
-  DISPATCH_ALL_FIELDS(field, "aby3.msb.split", [&]() {
-    using el_t = ring2k_t;
-    using shr_t = std::array<el_t, 2>;
+  // NdArrayRef res(makeType<BShrTy>(calcBShareBacktype(1), 1), in.shape());
 
-    NdArrayView<shr_t> _in(in);
-    NdArrayView<shr_t> _m(m);
-    NdArrayView<shr_t> _n(n);
+  // for (size_t p = 0; p < 3; p++)
+  // {
+  //   size_t offset = p * numel / 3;
+  //   size_t op_numel = p == 2 ? numel - offset : numel / 3;
+  //   NdArrayRef op(in.eltype(), in.shape());
+  //   auto src_ptr = (uint8_t *) in.cbegin().getRawPtr() + offset * elsize;
+  //   auto res_ptr = (uint8_t *) res.cbegin().getRawPtr() + offset;
+  //   auto* op_ptr = static_cast<std::byte*>(op.data());
+  //   std::memcpy(op_ptr, src_ptr, elsize * op_numel);
+  //   auto tmp = MsbA2BMultiFanIn(ctx, op, p);
+  //   auto* tmp_ptr = static_cast<std::byte*>(tmp.data());
+  //   std::memcpy(res_ptr, tmp_ptr, op_numel);
+  // }
 
-    std::vector<el_t> r0(numel);
-    std::vector<el_t> r1(numel);
-    prg_state->fillPrssPair(r0.data(), r1.data(), r0.size(),
-                            PrgState::GenPrssCtrl::Both);
-
-    pforeach(0, numel, [&](int64_t idx) {
-      r0[idx] = r0[idx] ^ r1[idx];
-      if (comm->getRank() == 0) {
-        const auto& v = _in[idx];
-        r0[idx] ^= (v[0] + v[1]);
-      }
-    });
-
-    // Now, we hold ((x0+x1)^z0, z1, z2) which is stored in r0.
-
-    // 1. rotate k bits
-    r1 = comm->rotate<el_t>(r0, "m");                   // send r0 to the previous party, get r1 from the next party.
-
-    pforeach(0, numel, [&](int64_t idx) {
-      const auto& v = _in[idx];
-      _m[idx][0] = r0[idx];
-      _m[idx][1] = r1[idx];
-      _n[idx][0] = comm->getRank() == 2 ? v[0] : 0;
-      _n[idx][1] = comm->getRank() == 1 ? v[1] : 0;
-    });
-  });
-
-  // Compute the k-1'th carry bit.
-  size_t nbits = SizeOf(field) * 8 - 1;
-  auto* sctx = ctx->sctx();
-
-  const Shape shape = {in.numel()};
-  auto wrap_m = WrapValue(m);
-  auto wrap_n = WrapValue(n);
-  {
-    // 2. 2k + 16 * 2 bits
-    auto carry = carry_a2b(sctx, wrap_m, wrap_n, nbits);
-
-    // Compute the k'th bit.
-    //   (m^n)[k] ^ carry
-    auto msb = xor_bb(sctx, rshift_b(sctx, xor_bb(sctx, wrap_m, wrap_n), nbits),
-                      carry);
-
-    return UnwrapValue(msb);
-  }
-  #else
   return MsbA2BMultiFanIn(ctx, in);
-  #endif
 }
 
 // Reference:
@@ -1800,11 +1672,13 @@ std::pair<NdArrayRef, NdArrayRef> unpack_2_bitvec_mss(const NdArrayRef& in) {
   });
 }
 
-NdArrayRef MsbA2BMultiFanIn(KernelEvalContext* ctx, const NdArrayRef& in) {
+NdArrayRef MsbA2BMultiFanIn(KernelEvalContext* ctx, const NdArrayRef& in, size_t start_rank) {
   const auto field = in.eltype().as<AShrTy>()->field();
   const auto numel = in.numel();
   auto* comm = ctx->getState<Communicator>();
   auto* prg_state = ctx->getState<PrgState>();
+
+  const size_t start_rank_next = (start_rank + 1) % 3;
 
   #define EQ_U64(x) static_cast<uint64_t>(x)
 
@@ -1834,7 +1708,7 @@ NdArrayRef MsbA2BMultiFanIn(KernelEvalContext* ctx, const NdArrayRef& in) {
   NdArrayRef g(mss_bshr_type, in.shape());
   NdArrayRef out(rss_bshr_type, in.shape());
 
-  return DISPATCH_ALL_FIELDS(field, "aby3.msb.split", [&]() {
+  return DISPATCH_ALL_FIELDS(field, "alkaid.msb.split", [&]() {
     using el_t = ring2k_t;
     using rss_shr_t = std::array<el_t, 2>;
     using mss_shr_t = std::array<el_t, 3>;
@@ -1860,7 +1734,7 @@ NdArrayRef MsbA2BMultiFanIn(KernelEvalContext* ctx, const NdArrayRef& in) {
 
     // copy the correlated randomness into m and n
     pforeach(0, numel, [&](int64_t idx) {
-      if (comm->getRank() == 0) 
+      if (comm->getRank() == start_rank) 
       {
         // Wait for x2 ^ dn2 from P1.
         _m[idx][1] = r0[idx];                               // dm0
@@ -1871,7 +1745,7 @@ NdArrayRef MsbA2BMultiFanIn(KernelEvalContext* ctx, const NdArrayRef& in) {
         _n[idx][1] = 0;
         _n[idx][2] = 0;
       } 
-      else if (comm->getRank() == 1) 
+      else if (comm->getRank() == start_rank_next) 
       {
         // Wait for Dm from P0.
         _m[idx][1] = r0[idx];                               // dm1
@@ -1896,24 +1770,24 @@ NdArrayRef MsbA2BMultiFanIn(KernelEvalContext* ctx, const NdArrayRef& in) {
 
     // rotate k bits
     r0 = comm->bcast<el_t>(r1, 0, "MsbA2B, special resharing from ASS to MSS, broadcast Dm");
-    if (comm->getRank() == 0) 
+    if (comm->getRank() == start_rank) 
     {
-      r0 = comm->recv<el_t>(1, "MsbA2B, special resharing from ASS to MSS, get dn2");
-      comm->addCommStatsManually(0, -sizeof(el_t) * numel);   
+      r0 = comm->recv<el_t>(start_rank_next, "MsbA2B, special resharing from ASS to MSS, get dn2");
+      // comm->addCommStatsManually(0, -sizeof(el_t) * numel);   
     }
-    else if (comm->getRank() == 1) 
+    else if (comm->getRank() == start_rank_next) 
     {
-      comm->sendAsync<el_t>(0, r1, "MsbA2B, special resharing from ASS to MSS, send dn2");
+      comm->sendAsync<el_t>(start_rank, r1, "MsbA2B, special resharing from ASS to MSS, send dn2");
       // comm->addCommStatsManually(-1, 0);
     }
 
     // compute external value Dm, Dn
     pforeach(0, numel, [&](int64_t idx) {
-      if (comm->getRank() == 0) 
+      if (comm->getRank() == start_rank) 
       {
         _n[idx][0] = r0[idx];                               // Dn = x2 + dn2
       } 
-      else if (comm->getRank() == 1) 
+      else if (comm->getRank() == start_rank_next) 
       {
         _m[idx][0] = r0[idx];                              // Dm = (x0 + x1) ^ dm0 ^ dm1
       }
@@ -2248,7 +2122,7 @@ NdArrayRef A2BMultiFanIn(KernelEvalContext* ctx, const NdArrayRef& in) {
   NdArrayRef g(mss_bshr_type, in.shape());
   NdArrayRef c(rss_bshr_type, in.shape());
   NdArrayRef out(rss_bshr_type, in.shape());
-  return DISPATCH_ALL_FIELDS(field, "aby3.msb.split", [&]() {
+  return DISPATCH_ALL_FIELDS(field, "alkaid.msb.split", [&]() {
     using el_t = ring2k_t;
     using rss_shr_t = std::array<el_t, 2>;
     using mss_shr_t = std::array<el_t, 3>;
@@ -2590,4 +2464,4 @@ NdArrayRef A2BMultiFanIn(KernelEvalContext* ctx, const NdArrayRef& in) {
   });  
 }
 
-}  // namespace spu::mpc::aby3
+}  // namespace spu::mpc::alkaid
