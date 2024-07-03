@@ -27,7 +27,7 @@
                     "/tmp/spu_data_2/"
                 ],
                 "runtime_config": {
-                    "protocol": "ABY3",
+                    "protocol": "ALKAID",
                     "field": "FM64",
                     "enable_pphlo_profile": false,
                     "enable_hal_profile": true

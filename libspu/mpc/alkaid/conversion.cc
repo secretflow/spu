@@ -17,6 +17,7 @@
 #include <functional>
 #include <iostream>
 #include <utility>
+#include <atomic>
 
 #include "yacl/utils/platform_utils.h"
 
@@ -1773,7 +1774,12 @@ NdArrayRef MsbA2BMultiFanIn(KernelEvalContext* ctx, const NdArrayRef& in, size_t
     if (comm->getRank() == start_rank) 
     {
       r0 = comm->recv<el_t>(start_rank_next, "MsbA2B, special resharing from ASS to MSS, get dn2");
-      // comm->addCommStatsManually(0, -sizeof(el_t) * numel);   
+      // TODO: The atomized cost of there is k. However, since P0 sends two elements, the SPU
+      // logs the transmission of 2k for P0. We manually reduced the logging of k elements. 
+      // Nevertheless, this implementation does not adhere to the principle of thread safety.
+      comm->addCommStatsManually(0, -sizeof(el_t) * numel);
+      const std::atomic<size_t> & lctx_sent_bytes = comm->lctx().get()->GetStats().get()->sent_bytes;
+      const_cast<std::atomic<size_t> &>(lctx_sent_bytes) -= sizeof(el_t) * numel;
     }
     else if (comm->getRank() == start_rank_next) 
     {
