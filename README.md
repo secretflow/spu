@@ -71,4 +71,4 @@ If you think SPU is helpful for your research or development, please consider ci
 
 ## Acknowledgement
 
-We thank the significant contributions made by [Alibaba Gemini Lab](https://alibaba-gemini-lab.github.io).
+We thank the significant contributions made by [Alibaba Gemini Lab](https://alibaba-gemini-lab.github.io) and security advisories made by [NISL@THU](https://netsec.ccert.edu.cn/vul337).
