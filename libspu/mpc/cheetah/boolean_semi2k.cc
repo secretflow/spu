@@ -81,8 +81,8 @@ NdArrayRef P2B::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   if (comm->getRank() == 0) {
     ring_xor_(x, in);
   }
-
-  return makeBShare(x, field, getNumBits(in));
+  auto nbits = getNumBits(in) == 0 ? 1 : getNumBits(in);
+  return makeBShare(x, field, nbits);
 }
 
 NdArrayRef AndBP::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
