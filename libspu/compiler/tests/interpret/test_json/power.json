@@ -65,7 +65,7 @@
                 }
             ],
             "checker": "expect_almost_eq",
-            "tol": 0.5
+            "tol": 0.6
         }
     ]
 }

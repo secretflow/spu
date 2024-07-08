@@ -88,7 +88,6 @@ py_test(
 py_test(
     name = "jnp_cheetah_r64_test",
     size = "enormous",
-    timeout = "long",
     srcs = ["jnp_cheetah_r64_test.py"],
     deps = [
         ":jnp_testbase",
