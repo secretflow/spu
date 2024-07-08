@@ -51,10 +51,10 @@ def _libpsi():
         http_archive,
         name = "psi",
         urls = [
-            "https://github.com/secretflow/psi/archive/refs/tags/v0.4.0.dev240524.tar.gz",
+            "https://github.com/secretflow/psi/archive/refs/tags/v0.4.0beta.tar.gz",
         ],
-        strip_prefix = "psi-0.4.0.dev240524",
-        sha256 = "c2868fa6a9d804e6bbed9922dab6dc819ec6e180e15eafe7eb1b661302508c88",
+        strip_prefix = "psi-0.4.0beta",
+        sha256 = "c2fbf486a66eca9d3ec1725a81d93a7c6e80a9206ef1c9263a1608e0bef95e1a",
     )
 
 def _rules_proto_grpc():
@@ -169,10 +169,10 @@ def _com_github_pybind11():
         http_archive,
         name = "pybind11",
         build_file = "@pybind11_bazel//:pybind11.BUILD",
-        sha256 = "bf8f242abd1abcd375d516a7067490fb71abd79519a282d22b6e4d19282185a7",
-        strip_prefix = "pybind11-2.12.0",
+        sha256 = "51631e88960a8856f9c497027f55c9f2f9115cafb08c0005439838a05ba17bfc",
+        strip_prefix = "pybind11-2.13.1",
         urls = [
-            "https://github.com/pybind/pybind11/archive/refs/tags/v2.12.0.tar.gz",
+            "https://github.com/pybind/pybind11/archive/refs/tags/v2.13.1.tar.gz",
         ],
     )
 

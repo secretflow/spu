@@ -723,7 +723,10 @@ class SPU(Device):
 
             fn_name = repr(fn)
 
-            import jax.extend.linear_util as lu
+            try:
+                import jax.extend.linear_util as lu
+            except ImportError:
+                import jax.linear_util as lu  # fallback
             from jax._src import api_util as japi_util
             from jax.tree_util import tree_map, tree_flatten
 

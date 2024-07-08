@@ -229,7 +229,7 @@ void printProfilingData(spu::SPUContext *sctx, const std::string &name,
 void SPUErrorHandler(void *use_data, const char *reason, bool gen_crash_diag) {
   (void)use_data;
   (void)gen_crash_diag;
-  SPU_THROW(reason);
+  SPU_THROW("{}", reason);
 }
 
 std::mutex ErrorHandlerMutex;

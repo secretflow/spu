@@ -54,6 +54,8 @@ mlir::OwningOpRef<mlir::ModuleOp> FE::doit(const CompilationSource &source) {
     module = mlir::parseSourceString<mlir::ModuleOp>(source.ir_txt(),
                                                      ctx_->getMLIRContext());
 
+    SPU_ENFORCE(module, "MLIR parser failure");
+
     // Convert stablehlo to mhlo first
     mlir::PassManager pm(ctx_->getMLIRContext());
     pm.addPass(mlir::mhlo::createStablehloLegalizeToHloPass());

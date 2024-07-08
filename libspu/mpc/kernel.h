@@ -217,4 +217,12 @@ class ConcateKernel : public Kernel {
                           int64_t axis) const = 0;
 };
 
+class DisassembleKernel : public Kernel {
+ public:
+  void evaluate(KernelEvalContext* ctx) const override;
+
+  virtual std::vector<NdArrayRef> proc(KernelEvalContext* ctx,
+                                       const NdArrayRef& in) const = 0;
+};
+
 }  // namespace spu::mpc
