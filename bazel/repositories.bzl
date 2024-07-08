@@ -40,10 +40,10 @@ def _yacl():
         http_archive,
         name = "yacl",
         urls = [
-            "https://github.com/secretflow/yacl/archive/refs/tags/0.4.5b3.tar.gz",
+            "https://github.com/secretflow/yacl/archive/refs/tags/0.4.5b1.tar.gz",
         ],
-        strip_prefix = "yacl-0.4.5b3",
-        sha256 = "bd89d63312e5e83eff5e001e2cf2135baff321c4b72a309f7d00cc53ce02e1a1",
+        strip_prefix = "yacl-0.4.5b1",
+        sha256 = "28064053b9add0db8e1e8e648421a0579f1d3e7ee8a4bbd7bd5959cb59598088",
     )
 
 def _libpsi():
@@ -169,10 +169,10 @@ def _com_github_pybind11():
         http_archive,
         name = "pybind11",
         build_file = "@pybind11_bazel//:pybind11.BUILD",
-        sha256 = "bf8f242abd1abcd375d516a7067490fb71abd79519a282d22b6e4d19282185a7",
-        strip_prefix = "pybind11-2.12.0",
+        sha256 = "51631e88960a8856f9c497027f55c9f2f9115cafb08c0005439838a05ba17bfc",
+        strip_prefix = "pybind11-2.13.1",
         urls = [
-            "https://github.com/pybind/pybind11/archive/refs/tags/v2.12.0.tar.gz",
+            "https://github.com/pybind/pybind11/archive/refs/tags/v2.13.1.tar.gz",
         ],
     )
 

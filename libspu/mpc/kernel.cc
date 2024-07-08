@@ -233,6 +233,17 @@ void ConcateKernel::evaluate(KernelEvalContext* ctx) const {
   ctx->pushOutput(WrapValue(z));
 }
 
+void DisassembleKernel::evaluate(KernelEvalContext* ctx) const {
+  const auto& in = ctx->getParam<Value>(0);
+  auto z = proc(ctx, UnwrapValue(in));
+
+  std::vector<Value> wrapped(z.size());
+  for (size_t idx = 0; idx < z.size(); ++idx) {
+    wrapped[idx] = WrapValue(z[idx]);
+  }
+  ctx->pushOutput(wrapped);
+};
+
 void OramOneHotKernel::evaluate(KernelEvalContext* ctx) const {
   auto target = ctx->getParam<Value>(0);
   auto s = ctx->getParam<int64_t>(1);
