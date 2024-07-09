@@ -165,10 +165,10 @@ int main()
               auto msbx_s = msb_a2b(sctx.get(), x_as);
               auto msb_spu = std::chrono::high_resolution_clock::now();
               auto duration_spu = std::chrono::duration_cast<std::chrono::microseconds>(msb_spu - msb_start);
-              auto msbx_p = b2p(sctx.get(), msbx_s);
+              // auto msbx_p = b2p(sctx.get(), msbx_s);
 
               if (lctx.get()->Rank() == 0) std::cout << "------------------------ MSB, spu" << std::endl;
-              if (lctx.get()->Rank() == 0) printResult(msbx_p.data(), "msb, spu");
+              // if (lctx.get()->Rank() == 0) printResult(msbx_p.data(), "msb, spu");
               if (lctx.get()->Rank() == 0) std::cout << "msb micro seconds: " << duration_spu.count() << std::endl;
               if (lctx.get()->Rank() == 0) std::cout << "msb sent: " << GetComm.comm - comm << std::endl;
               if (lctx.get()->Rank() == 0) std::cout << "msb latency: " << GetComm.latency - latency << std::endl;
@@ -178,30 +178,30 @@ int main()
               auto msbx_ours_s = aby3::MsbA2BMultiFanIn(&kectx, MyUnwrapValue(x_as));
               auto msb_ours = std::chrono::high_resolution_clock::now();
               auto duration_ours = std::chrono::duration_cast<std::chrono::microseconds>(msb_ours - msb_spu);
-              auto msbx_ours_p = OpenRef(msbx_ours_s);
+              // auto msbx_ours_p = OpenRef(msbx_ours_s);
               if (lctx.get()->Rank() == 0) std::cout << "------------------------ MSB, ours" << std::endl;
-              if (lctx.get()->Rank() == 0) printResult(msbx_ours_p.data(), "msb, ours");
+              // if (lctx.get()->Rank() == 0) printResult(msbx_ours_p.data(), "msb, ours");
               if (lctx.get()->Rank() == 0) std::cout << "msb micro seconds: " << duration_ours.count() << std::endl;
               if (lctx.get()->Rank() == 0) std::cout << "msb sent: " << GetComm.comm - comm << std::endl;
               if (lctx.get()->Rank() == 0) std::cout << "msb latency: " << GetComm.latency - latency << std::endl;
 
               // auto x_ap = a2p(sctx.get(), x_as);
 
-              spu::NdArrayView<pub_t> view_msbx_p(msbx_p.data());
-              spu::NdArrayView<pub_t> view_msbx_ours_p(msbx_ours_p.data());
+              // spu::NdArrayView<pub_t> view_msbx_p(msbx_p.data());
+              // spu::NdArrayView<pub_t> view_msbx_ours_p(msbx_ours_p.data());
 
-              size_t match_count = 0;
-              size_t positive_count = 0;
-              size_t ours_positive_count = 0;
-              for (int i = 0; i < N * M; i++) 
-              {
-                if (view_msbx_p[i][0] == view_msbx_ours_p[i][0]) match_count++;
-                if (view_msbx_p[i][0] == 0) positive_count++;
-                if (view_msbx_ours_p[i][0] == 0) ours_positive_count++;
-              }
-              if (lctx.get()->Rank() == 0) std::cout << "msb match count rate: " << static_cast<double>(match_count) / (N * M) << std::endl;
-              if (lctx.get()->Rank() == 0) std::cout << "msb positive count rate: " << static_cast<double>(positive_count) / (N * M) << std::endl;
-              if (lctx.get()->Rank() == 0) std::cout << "ours msb positive count rate: " << static_cast<double>(ours_positive_count) / (N * M) << std::endl;
+              // size_t match_count = 0;
+              // size_t positive_count = 0;
+              // size_t ours_positive_count = 0;
+              // for (int i = 0; i < N * M; i++) 
+              // {
+              //   if (view_msbx_p[i][0] == view_msbx_ours_p[i][0]) match_count++;
+              //   if (view_msbx_p[i][0] == 0) positive_count++;
+              //   if (view_msbx_ours_p[i][0] == 0) ours_positive_count++;
+              // }
+              // if (lctx.get()->Rank() == 0) std::cout << "msb match count rate: " << static_cast<double>(match_count) / (N * M) << std::endl;
+              // if (lctx.get()->Rank() == 0) std::cout << "msb positive count rate: " << static_cast<double>(positive_count) / (N * M) << std::endl;
+              // if (lctx.get()->Rank() == 0) std::cout << "ours msb positive count rate: " << static_cast<double>(ours_positive_count) / (N * M) << std::endl;
             }
 
             // A2B test.

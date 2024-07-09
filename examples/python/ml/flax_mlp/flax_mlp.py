@@ -98,7 +98,7 @@ def run_on_cpu():
 
 
 parser = argparse.ArgumentParser(description='distributed driver.')
-parser.add_argument("-c", "--config", default="examples/python/conf/3pc.json")
+parser.add_argument("-c", "--config", default="examples/python/conf/alkaid.json")
 args = parser.parse_args()
 
 with open(args.config, 'r') as file:

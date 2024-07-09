@@ -35,6 +35,7 @@
 // TODO: it shows incorrect result that defines EQ_USE_PRG_STATE and undefines EQ_USE_OFFLINE. Fix it.
 // #define EQ_USE_OFFLINE
 // #define EQ_USE_PRG_STATE
+#define EQ_PACK_SINGLE_BIT
 
 namespace spu::mpc::alkaid {
 
@@ -1338,9 +1339,17 @@ NdArrayRef ResharingAss2Mss(KernelEvalContext* ctx, const NdArrayRef& in) {
         });
 
         // TODO: not safe. should add a mask to r1.
-        r0 = comm->rotateR<out_el_t>(r0, "Resharing ASS to MSS, online, message 1");  // comm => 1, k
-        r1 = comm->rotate<out_el_t>(r1, "Resharing ASS to MSS, online, message 2");  // comm => 1, k
-        comm->addCommStatsManually(-1, 0);
+        // r0 = comm->rotateR<out_el_t>(r0, "Resharing ASS to MSS, online, message 1");  // comm => 1, k
+        // r1 = comm->rotate<out_el_t>(r1, "Resharing ASS to MSS, online, message 2");  // comm => 1, k
+        comm->sendAsync<out_el_t>(comm->nextRank(), r0, "Resharing ASS to MSS, online, message 1");  // comm => 1, k
+        comm->sendAsync<out_el_t>(comm->prevRank(), r1, "Resharing ASS to MSS, online, message 2");  // comm => 1, k
+        r0 = comm->recv<out_el_t>(comm->prevRank(), "Resharing ASS to MSS, online, message 1");  // comm => 1, k
+        r1 = comm->recv<out_el_t>(comm->nextRank(), "Resharing ASS to MSS, online, message 2");  // comm => 1, k
+        comm->addCommStatsManually(1, 2 * sizeof(out_el_t) * in.numel());
+        const std::atomic<size_t> & lctx_sent_actions = comm->lctx().get()->GetStats().get()->sent_actions;
+        const std::atomic<size_t> & lctx_recv_actions = comm->lctx().get()->GetStats().get()->recv_actions;
+        const_cast<std::atomic<size_t> &>(lctx_sent_actions) -= 1;
+        const_cast<std::atomic<size_t> &>(lctx_recv_actions) -= 1;
 
         pforeach(0, in.numel(), [&](int64_t idx) {
           in_shr_t& i = _in[idx];
@@ -1475,119 +1484,119 @@ NdArrayRef pack_2_bitvec_ass(const NdArrayRef& lo, const NdArrayRef& hi) {
   });
 }
 
-NdArrayRef pack_2_bitvec_rss(const NdArrayRef& lo, const NdArrayRef& hi) {
-  const auto* lo_ty = lo.eltype().as<BShrTy>();
-  const auto* hi_ty = hi.eltype().as<BShrTy>();
+// NdArrayRef pack_2_bitvec_rss(const NdArrayRef& lo, const NdArrayRef& hi) {
+//   const auto* lo_ty = lo.eltype().as<BShrTy>();
+//   const auto* hi_ty = hi.eltype().as<BShrTy>();
 
-  assert(lo_ty->nbits() == hi_ty->nbits());
-  const size_t out_nbits = lo_ty->nbits() + hi_ty->nbits();
-  const PtType out_btype = calcBShareBacktype(out_nbits);
-  NdArrayRef out(makeType<BShrTy>(out_btype, out_nbits), lo.shape());
+//   assert(lo_ty->nbits() == hi_ty->nbits());
+//   const size_t out_nbits = lo_ty->nbits() + hi_ty->nbits();
+//   const PtType out_btype = calcBShareBacktype(out_nbits);
+//   NdArrayRef out(makeType<BShrTy>(out_btype, out_nbits), lo.shape());
 
-  return DISPATCH_UINT_PT_TYPES(hi_ty->getBacktype(), "_", [&]() {
-    using hi_el_t = ScalarT;
-    using hi_shr_t = std::array<hi_el_t, 2>;
-    NdArrayView<hi_shr_t> _hi(hi);
+//   return DISPATCH_UINT_PT_TYPES(hi_ty->getBacktype(), "_", [&]() {
+//     using hi_el_t = ScalarT;
+//     using hi_shr_t = std::array<hi_el_t, 2>;
+//     NdArrayView<hi_shr_t> _hi(hi);
 
-    return DISPATCH_UINT_PT_TYPES(lo_ty->getBacktype(), "_", [&]() {
-      using lo_el_t = ScalarT;
-      using lo_shr_t = std::array<lo_el_t, 2>;
-      NdArrayView<lo_shr_t> _lo(lo);
+//     return DISPATCH_UINT_PT_TYPES(lo_ty->getBacktype(), "_", [&]() {
+//       using lo_el_t = ScalarT;
+//       using lo_shr_t = std::array<lo_el_t, 2>;
+//       NdArrayView<lo_shr_t> _lo(lo);
 
-      return DISPATCH_UINT_PT_TYPES(out_btype, "_", [&]() {
-        using out_el_t = ScalarT;
-        using out_shr_t = std::array<out_el_t, 2>;
-        NdArrayView<out_shr_t> _out(out);
+//       return DISPATCH_UINT_PT_TYPES(out_btype, "_", [&]() {
+//         using out_el_t = ScalarT;
+//         using out_shr_t = std::array<out_el_t, 2>;
+//         NdArrayView<out_shr_t> _out(out);
 
-        pforeach(0, lo.numel(), [&](int64_t idx) {
-          const auto& l = _lo[idx];
-          const auto& h = _hi[idx];
-          out_shr_t& o = _out[idx];
-          o[0] = l[0] | (static_cast<out_el_t>(h[0]) << lo_ty->nbits());
-          o[1] = l[1] | (static_cast<out_el_t>(h[1]) << lo_ty->nbits());
-        });
-        return out;
-      });
-    });
-  });
-}
+//         pforeach(0, lo.numel(), [&](int64_t idx) {
+//           const auto& l = _lo[idx];
+//           const auto& h = _hi[idx];
+//           out_shr_t& o = _out[idx];
+//           o[0] = l[0] | (static_cast<out_el_t>(h[0]) << lo_ty->nbits());
+//           o[1] = l[1] | (static_cast<out_el_t>(h[1]) << lo_ty->nbits());
+//         });
+//         return out;
+//       });
+//     });
+//   });
+// }
 
-NdArrayRef pack_2_bitvec_mss(const NdArrayRef& lo, const NdArrayRef& hi) {
-  const auto* lo_ty = lo.eltype().as<BShrTyMss>();
-  const auto* hi_ty = hi.eltype().as<BShrTyMss>();
+// NdArrayRef pack_2_bitvec_mss(const NdArrayRef& lo, const NdArrayRef& hi) {
+//   const auto* lo_ty = lo.eltype().as<BShrTyMss>();
+//   const auto* hi_ty = hi.eltype().as<BShrTyMss>();
 
-  assert(lo_ty->nbits() == hi_ty->nbits());
-  const size_t out_nbits = lo_ty->nbits() + hi_ty->nbits();
-  const PtType out_btype = calcBShareBacktype(out_nbits);
-  NdArrayRef out(makeType<BShrTyMss>(out_btype, out_nbits), lo.shape());
+//   assert(lo_ty->nbits() == hi_ty->nbits());
+//   const size_t out_nbits = lo_ty->nbits() + hi_ty->nbits();
+//   const PtType out_btype = calcBShareBacktype(out_nbits);
+//   NdArrayRef out(makeType<BShrTyMss>(out_btype, out_nbits), lo.shape());
 
-  return DISPATCH_UINT_PT_TYPES(hi_ty->getBacktype(), "_", [&]() {
-    using hi_el_t = ScalarT;
-    using hi_shr_t = std::array<hi_el_t, 3>;
-    NdArrayView<hi_shr_t> _hi(hi);
+//   return DISPATCH_UINT_PT_TYPES(hi_ty->getBacktype(), "_", [&]() {
+//     using hi_el_t = ScalarT;
+//     using hi_shr_t = std::array<hi_el_t, 3>;
+//     NdArrayView<hi_shr_t> _hi(hi);
 
-    return DISPATCH_UINT_PT_TYPES(lo_ty->getBacktype(), "_", [&]() {
-      using lo_el_t = ScalarT;
-      using lo_shr_t = std::array<lo_el_t, 3>;
-      NdArrayView<lo_shr_t> _lo(lo);
+//     return DISPATCH_UINT_PT_TYPES(lo_ty->getBacktype(), "_", [&]() {
+//       using lo_el_t = ScalarT;
+//       using lo_shr_t = std::array<lo_el_t, 3>;
+//       NdArrayView<lo_shr_t> _lo(lo);
 
-      return DISPATCH_UINT_PT_TYPES(out_btype, "_", [&]() {
-        using out_el_t = ScalarT;
-        using out_shr_t = std::array<out_el_t, 3>;
-        NdArrayView<out_shr_t> _out(out);
+//       return DISPATCH_UINT_PT_TYPES(out_btype, "_", [&]() {
+//         using out_el_t = ScalarT;
+//         using out_shr_t = std::array<out_el_t, 3>;
+//         NdArrayView<out_shr_t> _out(out);
 
-        pforeach(0, lo.numel(), [&](int64_t idx) {
-          const auto& l = _lo[idx];
-          const auto& h = _hi[idx];
-          out_shr_t& o = _out[idx];
-          o[0] = l[0] | (static_cast<out_el_t>(h[0]) << lo_ty->nbits());
-          o[1] = l[1] | (static_cast<out_el_t>(h[1]) << lo_ty->nbits());
-          o[2] = l[2] | (static_cast<out_el_t>(h[2]) << lo_ty->nbits());
-        });
-        return out;
-      });
-    });
-  });
-}
+//         pforeach(0, lo.numel(), [&](int64_t idx) {
+//           const auto& l = _lo[idx];
+//           const auto& h = _hi[idx];
+//           out_shr_t& o = _out[idx];
+//           o[0] = l[0] | (static_cast<out_el_t>(h[0]) << lo_ty->nbits());
+//           o[1] = l[1] | (static_cast<out_el_t>(h[1]) << lo_ty->nbits());
+//           o[2] = l[2] | (static_cast<out_el_t>(h[2]) << lo_ty->nbits());
+//         });
+//         return out;
+//       });
+//     });
+//   });
+// }
 
-std::pair<NdArrayRef, NdArrayRef> unpack_2_bitvec_ass(const NdArrayRef& in) {
-  const auto* in_ty = in.eltype().as<BShrTy>();
-  assert(in_ty->nbits() != 0 && in_ty->nbits() % 2 == 0);
+// std::pair<NdArrayRef, NdArrayRef> unpack_2_bitvec_ass(const NdArrayRef& in) {
+//   const auto* in_ty = in.eltype().as<BShrTy>();
+//   assert(in_ty->nbits() != 0 && in_ty->nbits() % 2 == 0);
 
-  const size_t lo_nbits = in_ty->nbits() / 2;
-  const size_t hi_nbits = in_ty->nbits() - lo_nbits;
-  const PtType lo_btype = calcBShareBacktype(lo_nbits);
-  const PtType hi_btype = calcBShareBacktype(hi_nbits);
-  NdArrayRef lo(makeType<BShrTy>(lo_btype, lo_nbits), in.shape());
-  NdArrayRef hi(makeType<BShrTy>(hi_btype, hi_nbits), in.shape());
+//   const size_t lo_nbits = in_ty->nbits() / 2;
+//   const size_t hi_nbits = in_ty->nbits() - lo_nbits;
+//   const PtType lo_btype = calcBShareBacktype(lo_nbits);
+//   const PtType hi_btype = calcBShareBacktype(hi_nbits);
+//   NdArrayRef lo(makeType<BShrTy>(lo_btype, lo_nbits), in.shape());
+//   NdArrayRef hi(makeType<BShrTy>(hi_btype, hi_nbits), in.shape());
 
-  return DISPATCH_UINT_PT_TYPES(in_ty->getBacktype(), "_", [&]() {
-    using in_el_t = ScalarT;
-    using in_shr_t = std::array<in_el_t, 2>;
-    NdArrayView<in_shr_t> _in(in);
+//   return DISPATCH_UINT_PT_TYPES(in_ty->getBacktype(), "_", [&]() {
+//     using in_el_t = ScalarT;
+//     using in_shr_t = std::array<in_el_t, 2>;
+//     NdArrayView<in_shr_t> _in(in);
 
-    return DISPATCH_UINT_PT_TYPES(lo_btype, "_", [&]() {
-      using lo_el_t = ScalarT;
-      using lo_shr_t = std::array<lo_el_t, 2>;
-      NdArrayView<lo_shr_t> _lo(lo);
+//     return DISPATCH_UINT_PT_TYPES(lo_btype, "_", [&]() {
+//       using lo_el_t = ScalarT;
+//       using lo_shr_t = std::array<lo_el_t, 2>;
+//       NdArrayView<lo_shr_t> _lo(lo);
 
-      return DISPATCH_UINT_PT_TYPES(hi_btype, "_", [&]() {
-        using hi_el_t = ScalarT;
-        using hi_shr_t = std::array<hi_el_t, 2>;
-        NdArrayView<hi_shr_t> _hi(hi);
+//       return DISPATCH_UINT_PT_TYPES(hi_btype, "_", [&]() {
+//         using hi_el_t = ScalarT;
+//         using hi_shr_t = std::array<hi_el_t, 2>;
+//         NdArrayView<hi_shr_t> _hi(hi);
 
-        pforeach(0, in.numel(), [&](int64_t idx) {
-          const auto& i = _in[idx];
-          lo_shr_t& l = _lo[idx];
-          hi_shr_t& h = _hi[idx];
-          l[0] = i[0] & ((1 << lo_nbits) - 1);
-          h[0] = (i[0] >> lo_nbits) & ((1 << hi_nbits) - 1);
-        });
-        return std::make_pair(hi, lo);
-      });
-    });
-  });
-}
+//         pforeach(0, in.numel(), [&](int64_t idx) {
+//           const auto& i = _in[idx];
+//           lo_shr_t& l = _lo[idx];
+//           hi_shr_t& h = _hi[idx];
+//           l[0] = i[0] & ((1 << lo_nbits) - 1);
+//           h[0] = (i[0] >> lo_nbits) & ((1 << hi_nbits) - 1);
+//         });
+//         return std::make_pair(hi, lo);
+//       });
+//     });
+//   });
+// }
 
 std::pair<NdArrayRef, NdArrayRef> unpack_2_bitvec_rss(const NdArrayRef& in) {
   const auto* in_ty = in.eltype().as<BShrTy>();
@@ -1699,9 +1708,11 @@ NdArrayRef MsbA2BMultiFanIn(KernelEvalContext* ctx, const NdArrayRef& in, size_t
   const Type rss_ashr_type =
       makeType<AShrTy>(field);
   const Type rss_bshr_type =
-      makeType<BShrTy>(GetStorageType(field), SizeOf(field) * 8);
+      makeType<BShrTy>(PtType::PT_U8, 1);
   const Type mss_bshr_type =
       makeType<BShrTyMss>(GetStorageType(field), SizeOf(field) * 8);
+  // const Type out_rss_bshr_type =
+  //     makeType<BShrTy>(PtType::PT_U8, 1);
 
   NdArrayRef m(mss_bshr_type, in.shape());
   NdArrayRef n(mss_bshr_type, in.shape());
@@ -1717,7 +1728,7 @@ NdArrayRef MsbA2BMultiFanIn(KernelEvalContext* ctx, const NdArrayRef& in, size_t
     NdArrayView<rss_shr_t> _in(in);           // rss
     NdArrayView<mss_shr_t> _m(m);
     NdArrayView<mss_shr_t> _n(n);
-    NdArrayView<rss_shr_t> _out(out);
+    NdArrayView<typename std::array<uint8_t, 2>> _out(out);
 
     /**
      * 1. Convert RSS-shared x into MSS-shared m (Dm, RSS(dm)) and n (Dn, RSS(dn)).
@@ -1777,7 +1788,7 @@ NdArrayRef MsbA2BMultiFanIn(KernelEvalContext* ctx, const NdArrayRef& in, size_t
       // TODO: The atomized cost of there is k. However, since P0 sends two elements, the SPU
       // logs the transmission of 2k for P0. We manually reduced the logging of k elements. 
       // Nevertheless, this implementation does not adhere to the principle of thread safety.
-      comm->addCommStatsManually(0, -sizeof(el_t) * numel);
+      // comm->addCommStatsManually(0, -sizeof(el_t) * numel);   // bcast
       const std::atomic<size_t> & lctx_sent_bytes = comm->lctx().get()->GetStats().get()->sent_bytes;
       const_cast<std::atomic<size_t> &>(lctx_sent_bytes) -= sizeof(el_t) * numel;
     }
@@ -1808,7 +1819,7 @@ NdArrayRef MsbA2BMultiFanIn(KernelEvalContext* ctx, const NdArrayRef& in, size_t
     NdArrayView<mss_shr_t> _g(g);
 
     auto sig_g_rss = MssAnd2NoComm(ctx, m, n);
-    auto sig_g_mss = ResharingAss2Mss(ctx, ResharingRss2Ass(ctx, sig_g_rss));
+    auto sig_g_mss = ResharingRss2Mss(ctx, sig_g_rss);
     NdArrayView<mss_shr_t> _g_mss(sig_g_mss);
     pforeach(0, numel, [&](int64_t idx) {
       _p[idx][0] = _m[idx][0] ^ _n[idx][0];
@@ -1865,18 +1876,49 @@ NdArrayRef MsbA2BMultiFanIn(KernelEvalContext* ctx, const NdArrayRef& in, size_t
         // p = ResharingAss2Mss(ctx, p_res);
         // g = ResharingAss2Mss(ctx, g_combined);
       } else {
+        #ifndef EQ_PACK_SINGLE_BIT
         auto pg = pack_2_bitvec_ass(p_res, g_combined);
         pg = ResharingAss2Rss(ctx, pg);
         std::tie(g, p) = unpack_2_bitvec_rss(pg);
-        // p = ResharingAss2Rss(ctx, p_res);
-        // g = ResharingAss2Rss(ctx, g_combined);
+        #else
+        size_t packed_numel = numel / 8 + ((numel && 0b111) > 0);
+        Shape packed_shape = {1, static_cast<int64_t>(packed_numel)};
+        NdArrayRef packed_c(makeType<BShrTy>(PtType::PT_U8, 8), packed_shape);
+        NdArrayView<std::array<uint8_t, 1>> _c(g_combined);
+        NdArrayView<std::array<uint8_t, 1>> _pc(packed_c);
+        pforeach(0, packed_numel, [&](int64_t idx) {
+          size_t loc = idx * 8;
+          uint8_t& op_pc = _pc[idx][0];
+          uint8_t op_c;
+          for (size_t i = 0; i < 8; i++)
+          {
+            if (loc + i < static_cast<size_t>(numel)) op_c = _c[loc + i][0];
+            else op_c = 0;
+            op_pc ^= op_c << (7 - i);
+          }
+        });
+        auto packed_c_rss = ResharingAss2Rss(ctx, packed_c);
+        NdArrayView<std::array<uint8_t, 2>> _pcr(packed_c_rss);
+        pforeach(0, packed_numel, [&](int64_t idx) {
+          size_t loc = idx * 8;
+          uint8_t& op_pcr0 = _pcr[idx][0];
+          uint8_t& op_pcr1 = _pcr[idx][1];
+          for (size_t i = 0; i < 8; i++)
+          {
+
+            if (loc + i >= static_cast<size_t>(numel)) break;
+            _c[loc + i][0] = (op_pcr0 >> (7 - i)) & 1;
+            _c[loc + i][1] = (op_pcr1 >> (7 - i)) & 1;
+          }
+        });
+        #endif
       }
     }
 
     NdArrayView<std::array<uint8_t, 2>> _g_rss(g);
     pforeach(0, numel, [&](size_t idx) {
-      _out[idx][0] ^= (static_cast<uint64_t>(_g_rss[idx][0]));
-      _out[idx][1] ^= (static_cast<uint64_t>(_g_rss[idx][1]));
+      _out[idx][0] ^= (static_cast<uint8_t>(_g_rss[idx][0]));
+      _out[idx][1] ^= (static_cast<uint8_t>(_g_rss[idx][1]));
     });
 
     return out;
@@ -1989,6 +2031,8 @@ std::pair<NdArrayRef, NdArrayRef> PGCell_4FanIn4Out(KernelEvalContext* ctx,
     result.first = ResharingAss2Mss(ctx, gr3_ass);
     result.second = ResharingAss2Mss(ctx, pr3_ass);
     comm->addCommStatsManually(-1, 0);
+    // const std::atomic<size_t> & lctx_sent_actions = comm->lctx().get()->GetStats().get()->sent_actions;
+    // const_cast<std::atomic<size_t> &>(lctx_sent_actions) -= 1;
 
     return result;
   });

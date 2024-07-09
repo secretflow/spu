@@ -1,11 +1,11 @@
 {
     "id": "outsourcing.3pc",
     "nodes": {
-        "node:0": "127.0.0.1:61920",
-        "node:1": "127.0.0.1:61921",
-        "node:2": "127.0.0.1:61922",
-        "node:3": "127.0.0.1:61923",
-        "node:4": "127.0.0.1:61924"
+        "node:0": "127.0.0.1:51111",
+        "node:1": "127.0.0.1:51112",
+        "node:2": "127.0.0.1:51113",
+        "node:3": "127.0.0.1:51114",
+        "node:4": "127.0.0.1:51115"
     },
     "devices": {
         "SPU": {
@@ -17,9 +17,9 @@
                     "node:2"
                 ],
                 "spu_internal_addrs": [
-                    "127.0.0.1:61930",
-                    "127.0.0.1:61931",
-                    "127.0.0.1:61932"
+                    "127.0.0.1:51121",
+                    "127.0.0.1:51122",
+                    "127.0.0.1:51123"
                 ],
                 "experimental_data_folder": [
                     "/tmp/spu_data_0/",
@@ -27,7 +27,7 @@
                     "/tmp/spu_data_2/"
                 ],
                 "runtime_config": {
-                    "protocol": "ABY3",
+                    "protocol": "ALKAID",
                     "field": "FM64",
                     "enable_pphlo_profile": false,
                     "enable_hal_profile": true

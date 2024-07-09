@@ -140,6 +140,8 @@
         "fft": "cpp",
         "queue": "cpp",
         "stack": "cpp",
-        "__config": "cpp"
+        "__config": "cpp",
+        "__node_handle": "cpp",
+        "syncstream": "cpp"
     }
 }
