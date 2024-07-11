@@ -183,7 +183,7 @@ Shape3D MatMatProtocol::GetSubMatShape(const Meta& meta, int64_t poly_deg,
   const double cpu_price = 1.0;
   const double bandwidth_price = 1000.0;
 
-  Shape3D subshape;
+  Shape3D subshape = {0, 0, 0};
   Shape3D blk;
 
   const int64_t n = poly_deg;
