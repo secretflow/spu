@@ -252,7 +252,7 @@ Value bitintl_b(SPUContext* ctx, const Value& x, size_t stride) {
        idx--) {
     auto K = hack_make_p(ctx, spu::detail::kBitIntlKeepMasks[idx], x.shape());
     auto M = hack_make_p(ctx, spu::detail::kBitIntlSwapMasks[idx], x.shape());
-    int64_t S = 1 << idx;
+    int64_t S = static_cast<uint64_t>(1) << idx;
     // out = (out & K) ^ ((out >> S) & M) ^ ((out & M) << S);
     out = xor_bb(
         ctx,
@@ -281,7 +281,7 @@ Value bitdeintl_b(SPUContext* ctx, const Value& x, size_t stride) {
   for (int64_t idx = stride; idx + 1 < Log2Ceil(nbits); idx++) {
     auto K = hack_make_p(ctx, spu::detail::kBitIntlKeepMasks[idx], x.shape());
     auto M = hack_make_p(ctx, spu::detail::kBitIntlSwapMasks[idx], x.shape());
-    int64_t S = 1 << idx;
+    int64_t S = static_cast<uint64_t>(1) << idx;
     // out = (out & K) ^ ((out >> S) & M) ^ ((out & M) << S);
     out = xor_bb(
         ctx,
