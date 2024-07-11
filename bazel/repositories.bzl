@@ -229,7 +229,7 @@ def _com_github_microsoft_seal():
     maybe(
         http_archive,
         name = "com_github_microsoft_seal",
-        sha256 = "78ef7334114de930daf7659e8ba60c5abfff85c86ec2b827a2b7c67c3c42da43",
+        sha256 = "acc2a1a127a85d1e1ffcca3ffd148f736e665df6d6b072df0e42fff64795a13c",
         strip_prefix = "SEAL-4.1.2",
         type = "tar.gz",
         patch_args = ["-p1"],
