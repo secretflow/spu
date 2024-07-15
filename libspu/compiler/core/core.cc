@@ -95,6 +95,7 @@ void Core::buildPipeline(mlir::PassManager *pm) {
   }
 
   optPM.addPass(mlir::createLoopInvariantCodeMotionPass());
+  optPM.addPass(mlir::spu::pphlo::createRegionAccessFixture());
   optPM.addPass(mlir::createCSEPass());
 
   if (!options.disable_deallocation_insertion()) {
