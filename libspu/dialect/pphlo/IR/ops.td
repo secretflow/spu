@@ -619,6 +619,12 @@ def PPHLO_BroadcastOp
   }];
 }
 
+
+def PPHLO_BroadcastShapeAsOp: PPHLO_BinaryElementwiseOp<"broadcast_as", [Pure,
+    SameOperandsAndResultShape], PPHLO_Tensor> {
+  let summary = "BroadcastShapeAs operator";
+}
+
 def PPHLO_ClampOp
     : PPHLO_Op<"clamp", [Pure, SameOperandsAndResultShape]> {
   let summary = "Clamp operator";
