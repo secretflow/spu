@@ -22,12 +22,10 @@
 #include "mlir/Support/LogicalResult.h"
 #include "mlir/Tools/mlir-translate/MlirTranslateMain.h"
 #include "mlir/Tools/mlir-translate/Translation.h"
-#include "mlir/Transforms/Passes.h"
 #include "stablehlo/dialect/StablehloOps.h"
 #include "xtensor/xio.hpp"
 
 #include "libspu/compiler/common/compilation_context.h"
-#include "libspu/compiler/utils/utils.h"
 #include "libspu/core/prelude.h"
 #include "libspu/device/pphlo/pphlo_executor.h"
 #include "libspu/dialect/pphlo/IR/dialect.h"
@@ -89,7 +87,7 @@ bool testOpHandler(::spu::SPUContext *sctx, mlir::Operation *op,
   auto callOp = mlir::dyn_cast<spu::pphlo::CustomCallOp>(op);
   if (callOp.getCallTargetName() == "expect_almost_eq") {
     ::spu::Value runtimeLhs = inputs[0];
-    ::spu::Value runtimeRhs = inputs[1];
+    const ::spu::Value &runtimeRhs = inputs[1];
 
     if (!runtimeLhs.isPublic()) {
       runtimeLhs = ::spu::kernel::hal::_s2p(sctx, runtimeLhs)
@@ -123,7 +121,7 @@ bool testOpHandler(::spu::SPUContext *sctx, mlir::Operation *op,
 
   if (callOp.getCallTargetName() == "expect_eq") {
     ::spu::Value runtimeLhs = inputs[0];
-    ::spu::Value runtimeRhs = inputs[1];
+    const ::spu::Value &runtimeRhs = inputs[1];
 
     if (!runtimeLhs.isPublic()) {
       runtimeLhs = ::spu::kernel::hal::_s2p(sctx, runtimeLhs)
@@ -239,6 +237,16 @@ void evalModule(ModuleOp module) {
     numParties = 3;
     break;
   }
+  case 4: {
+    conf.set_protocol(::spu::CHEETAH);
+    numParties = 2;
+    break;
+  }
+  case 5: {
+    conf.set_protocol(::spu::SECURENN);
+    numParties = 3;
+    break;
+  }
   }
 
   SPDLOG_INFO(conf.DebugString());
@@ -278,6 +286,6 @@ TranslateFromMLIRRegistration interpretRegistration(
 } //  namespace mlir
 
 int main(int argc, char **argv) {
-  return failed(
-      mlir::mlirTranslateMain(argc, argv, "SPU interpreter driver\n"));
+  return static_cast<int>(
+      failed(mlir::mlirTranslateMain(argc, argv, "SPU interpreter driver\n")));
 }

@@ -30,7 +30,7 @@ PermVector ring2pv(const NdArrayRef& x) {
               x.eltype());
   const auto field = x.eltype().as<Ring2k>()->field();
   PermVector pv(x.numel());
-  DISPATCH_ALL_FIELDS(field, "_", [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     NdArrayView<ring2k_t> _x(x);
     pforeach(0, x.numel(), [&](int64_t idx) { pv[idx] = int64_t(_x[idx]); });
   });
@@ -54,7 +54,7 @@ NdArrayRef RandPermM::proc(KernelEvalContext* ctx, const Shape& shape) const {
   const auto field = out.eltype().as<PShrTy>()->field();
   auto out1 = getFirstShare(out);
   auto out2 = getSecondShare(out);
-  DISPATCH_ALL_FIELDS(field, "_", [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     NdArrayView<ring2k_t> _out1(out1);
     NdArrayView<ring2k_t> _out2(out2);
     pforeach(0, out.numel(), [&](int64_t idx) {
@@ -78,7 +78,7 @@ NdArrayRef PermAM::proc(KernelEvalContext* ctx, const NdArrayRef& in,
   PermVector pv_next = ring2pv(getSecondShare(perm));
 
   NdArrayRef out(in.eltype(), in.shape());
-  DISPATCH_ALL_FIELDS(field, "_", [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     using el_t = ring2k_t;
     using shr_t = std::array<el_t, 2>;
 
@@ -198,7 +198,7 @@ NdArrayRef InvPermAM::proc(KernelEvalContext* ctx, const NdArrayRef& in,
   PermVector pv_next = ring2pv(getSecondShare(perm));
 
   NdArrayRef out(in.eltype(), in.shape());
-  DISPATCH_ALL_FIELDS(field, "_", [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     using el_t = ring2k_t;
     using shr_t = std::array<el_t, 2>;
 

@@ -65,6 +65,7 @@ TESTS = [
     "or",
     # "popcnt",
     "power",
+    "reciprocal",
     "reshape",
     "round_afz",
     "rsqrt",
@@ -99,6 +100,14 @@ for test in TESTS:
         f.write(
             "// RUN: spu-translate --protocol_kind=3 --interpret -split-input-file %s\n"
         )
+        f.write(
+            "// RUN: spu-translate --protocol_kind=4 --interpret -split-input-file %s\n"
+        )
+        # Some test values in max and min are not supported by protocol 5.
+        if test not in ["max", "min"]:
+            f.write(
+                "// RUN: spu-translate --protocol_kind=5 --interpret -split-input-file %s\n"
+            )
         f.write("// AUTO GENERATED, DO NOT EDIT\n\n")
 
         # Emit cases

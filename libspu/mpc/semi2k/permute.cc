@@ -82,7 +82,7 @@ NdArrayRef RandPermM::proc(KernelEvalContext* ctx, const Shape& shape) const {
   const auto perm_vector = genRandomPerm(out.numel(), _seed[0]);
 
   const auto field = out.eltype().as<PShrTy>()->field();
-  DISPATCH_ALL_FIELDS(field, "_", [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     NdArrayView<ring2k_t> _out(out);
     pforeach(0, out.numel(),
              [&](int64_t idx) { _out[idx] = ring2k_t(perm_vector[idx]); });

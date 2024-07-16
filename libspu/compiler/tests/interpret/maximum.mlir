@@ -1,6 +1,7 @@
 // RUN: spu-translate --protocol_kind=1 --interpret -split-input-file %s
 // RUN: spu-translate --protocol_kind=2 --interpret -split-input-file %s
 // RUN: spu-translate --protocol_kind=3 --interpret -split-input-file %s
+// RUN: spu-translate --protocol_kind=4 --interpret -split-input-file %s
 // AUTO GENERATED, DO NOT EDIT
 
 func.func @maximum_op_test_i8_i8_pp() {

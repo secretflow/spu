@@ -55,7 +55,7 @@ TEST_P(FerretCOTTest, ChosenCorrelationChosenChoice) {
     return static_cast<uint8_t>(uniform(rdv) & 1);
   });
 
-  DISPATCH_ALL_FIELDS(field, "", [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     NdArrayView<ring2k_t> correlation(_correlation);
     std::vector<ring2k_t> computed[2];
     utils::simulate(kWorldSize, [&](std::shared_ptr<yacl::link::Context> ctx) {
@@ -87,7 +87,7 @@ TEST_P(FerretCOTTest, RndMsgRndChoice) {
   constexpr size_t bw = 2;
 
   size_t n = 10;
-  DISPATCH_ALL_FIELDS(field, "", [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     std::vector<ring2k_t> msg0(n);
     std::vector<ring2k_t> msg1(n);
     ring2k_t max = static_cast<ring2k_t>(1) << bw;
@@ -125,7 +125,7 @@ TEST_P(FerretCOTTest, RndMsgChosenChoice) {
   constexpr size_t bw = 2;
 
   size_t n = 10;
-  DISPATCH_ALL_FIELDS(field, "", [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     std::vector<ring2k_t> msg0(n);
     std::vector<ring2k_t> msg1(n);
     ring2k_t max = static_cast<ring2k_t>(1) << bw;
@@ -166,7 +166,7 @@ TEST_P(FerretCOTTest, ChosenMsgChosenChoice) {
   int64_t n = 1 << 10;
   auto field = std::get<0>(GetParam());
   auto use_ss = std::get<1>(GetParam());
-  DISPATCH_ALL_FIELDS(field, "", [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     using scalar_t = ring2k_t;
     std::default_random_engine rdv;
     std::uniform_int_distribution<uint32_t> uniform(0, -1);

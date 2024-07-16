@@ -14,8 +14,6 @@
 
 #include "libspu/mpc/cheetah/ot/ot_util.h"
 
-#include <random>
-
 #include "gtest/gtest.h"
 
 #include "libspu/mpc/utils/ring_ops.h"
@@ -40,7 +38,7 @@ TEST_P(OtUtilTest, ZipArray) {
 
   auto unzip = ring_zeros(field, {n});
 
-  DISPATCH_ALL_FIELDS(field, "UT_ZipArray", [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     for (size_t bw : {1, 2, 4, 7, 15, 16}) {
       int64_t pack_load = elsze * 8 / bw;
       auto zip = ring_zeros(field, {(n + pack_load - 1) / pack_load});
@@ -69,7 +67,7 @@ TEST_P(OtUtilTest, ZipArrayBit) {
 
   auto unzip = ring_zeros(field, {n});
 
-  DISPATCH_ALL_FIELDS(field, "UT_ZipArrayBit", [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     const size_t elsze = SizeOf(field);
     for (size_t bw : {1, 2, 3, 4, 5, 6, 7, 8, 9, 10}) {
       size_t width = elsze * 8;

@@ -30,11 +30,11 @@ namespace spu::kernel::hal {
     return mpc::NAME(ctx, in);                      \
   }
 
-#define MAP_SHIFT_OP(NAME)                                       \
-  Value _##NAME(SPUContext* ctx, const Value& in, size_t bits) { \
-    SPU_TRACE_HAL_DISP(ctx, in, bits);                           \
-    auto ret = mpc::NAME(ctx, in, bits);                         \
-    return ret;                                                  \
+#define MAP_SHIFT_OP(NAME)                                             \
+  Value _##NAME(SPUContext* ctx, const Value& in, const Sizes& bits) { \
+    SPU_TRACE_HAL_DISP(ctx, in, bits);                                 \
+    auto ret = mpc::NAME(ctx, in, bits);                               \
+    return ret;                                                        \
   }
 
 #define MAP_BITREV_OP(NAME)                                                   \

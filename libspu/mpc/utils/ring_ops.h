@@ -97,14 +97,14 @@ NdArrayRef ring_equal(const NdArrayRef& x, const NdArrayRef& y);
 void ring_equal_(NdArrayRef& x, const NdArrayRef& y);
 DEF_RVALUE_BINARY_RING_OP(ring_equal, true);
 
-NdArrayRef ring_arshift(const NdArrayRef& x, size_t bits);
-void ring_arshift_(NdArrayRef& x, size_t bits);
+NdArrayRef ring_arshift(const NdArrayRef& x, const Sizes& bits);
+void ring_arshift_(NdArrayRef& x, const Sizes& bits);
 
-NdArrayRef ring_rshift(const NdArrayRef& x, size_t bits);
-void ring_rshift_(NdArrayRef& x, size_t bits);
+NdArrayRef ring_rshift(const NdArrayRef& x, const Sizes& bits);
+void ring_rshift_(NdArrayRef& x, const Sizes& bits);
 
-NdArrayRef ring_lshift(const NdArrayRef& x, size_t bits);
-void ring_lshift_(NdArrayRef& x, size_t bits);
+NdArrayRef ring_lshift(const NdArrayRef& x, const Sizes& bits);
+void ring_lshift_(NdArrayRef& x, const Sizes& bits);
 
 NdArrayRef ring_bitrev(const NdArrayRef& x, size_t start, size_t end);
 void ring_bitrev_(NdArrayRef& x, size_t start, size_t end);

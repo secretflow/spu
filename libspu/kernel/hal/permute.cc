@@ -553,7 +553,8 @@ std::vector<spu::Value> _bit_decompose(SPUContext *ctx, const spu::Value &x,
   rets_b.reserve(nbits);
 
   for (size_t bit = 0; bit < nbits; ++bit) {
-    auto x_bshare_shift = right_shift_logical(ctx, x_bshare, bit);
+    auto x_bshare_shift =
+        right_shift_logical(ctx, x_bshare, {static_cast<int64_t>(bit)});
     rets_b.push_back(_and(ctx, x_bshare_shift, k1));
   }
 
@@ -703,10 +704,10 @@ spu::Value _apply_perm_ss(SPUContext *ctx, const Value &x, const Value &perm) {
 
 // Find mergeable keys from keys. Consecutive public/private(belong to one
 // owner) keys can be merged. Assume there are six keys, i.e., public_key0,
-// bob_key0, bob_key1, alice_key0, alice_key1, secret_key0. We can merge the six
-// keys into bob_new_key, alice_new_key, secret_key0 for the following sorting.
-// This function will return a vector of indices [3,5,6] which means key[0,3),
-// key[3,5), and key[5,6) can be merged.
+// bob_key0, bob_key1, alice_key0, alice_key1, secret_key0. We can merge the
+// six keys into bob_new_key, alice_new_key, secret_key0 for the following
+// sorting. This function will return a vector of indices [3,5,6] which means
+// key[0,3), key[3,5), and key[5,6) can be merged.
 std::vector<size_t> _find_mergeable_keys(SPUContext *ctx,
                                          absl::Span<spu::Value const> keys) {
   std::vector<size_t> split_indices;

@@ -135,7 +135,7 @@ NdArrayRef B2A_Randbit::proc(KernelEvalContext* ctx,
               rand_numel * SizeOf(field));
   auto res = NdArrayRef(makeType<AShrTy>(field), x.shape());
 
-  DISPATCH_ALL_FIELDS(field, kBindName, [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     using U = ring2k_t;
 
     absl::Span<const U> _randbits(randbits.data<U>(), rand_numel);
@@ -143,7 +143,7 @@ NdArrayRef B2A_Randbit::proc(KernelEvalContext* ctx,
 
     // algorithm begins.
     // Ref: III.D @ https://eprint.iacr.org/2019/599.pdf (SPDZ-2K primitives)
-    DISPATCH_UINT_PT_TYPES(backtype, "_", [&]() {
+    DISPATCH_UINT_PT_TYPES(backtype, [&]() {
       using V = ScalarT;
       std::vector<V> x_xor_r(numel);
 
@@ -229,13 +229,13 @@ std::vector<NdArrayRef> B2A_Disassemble::proc(KernelEvalContext* ctx,
   for (int64_t idx = 0; idx < nbits; ++idx) {
     res.emplace_back(makeType<AShrTy>(field), x.shape());
   }
-  DISPATCH_ALL_FIELDS(field, "_", [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     using U = ring2k_t;
 
     absl::Span<const U> _randbits(randbits.data<U>(), rand_numel);
     NdArrayView<U> _x(x);
 
-    DISPATCH_UINT_PT_TYPES(backtype, "_", [&]() {
+    DISPATCH_UINT_PT_TYPES(backtype, [&]() {
       using V = ScalarT;
       std::vector<V> x_xor_r(numel);
 
@@ -305,7 +305,9 @@ NdArrayRef MsbA2B::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
 
     // Compute the k'th bit.
     //   (m^n)[k] ^ carry
-    auto msb = xor_bb(sctx, rshift_b(sctx, xor_bb(sctx, m, n), k), carry);
+    auto msb = xor_bb(
+        sctx, rshift_b(sctx, xor_bb(sctx, m, n), {static_cast<int64_t>(k)}),
+        carry);
 
     return UnwrapValue(msb);
   }
@@ -327,7 +329,7 @@ NdArrayRef eqz(KernelEvalContext* ctx, const NdArrayRef& in) {
   // beaver samples r and deals [r]a and [r]b
   //  receal c = a+r
   // check a == 0  <=> c == r
-  DISPATCH_ALL_FIELDS(field, "_", [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     using el_t = ring2k_t;
     auto [ra_buf, rb_buf] = beaver->Eqz(field, numel);
 
@@ -355,11 +357,11 @@ NdArrayRef eqz(KernelEvalContext* ctx, const NdArrayRef& in) {
     // TODO: fix AND triple
     // in beaver->AND(field, shape), min FM32, need min 1byte to reduce comm
     NdArrayRef round_out = rb.as(makeType<BShrTy>(field));
-    size_t cur_bits = round_out.eltype().as<BShare>()->nbits();
+    int64_t cur_bits = round_out.eltype().as<BShare>()->nbits();
     while (cur_bits != 1) {
       cur_bits /= 2;
-      round_out =
-          wrap_and_bb(ctx->sctx(), round_out, ring_rshift(round_out, cur_bits));
+      round_out = wrap_and_bb(ctx->sctx(), round_out,
+                              ring_rshift(round_out, {cur_bits}));
     }
 
     // 1 bit info in lsb

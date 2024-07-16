@@ -30,6 +30,8 @@ Value highestOneBit(SPUContext* ctx, const Value& x);
 
 void hintNumberOfBits(const Value& a, size_t nbits);
 
+Value maskNumberOfBits(SPUContext* ctx, const Value& a, size_t nbits);
+
 // we provide this general function to support some special cases (a or b has
 // guarranteed sign) in fxp_approx for better both performance and accuracy.
 Value div_goldschmidt_general(SPUContext* ctx, const Value& a, const Value& b,

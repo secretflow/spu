@@ -26,8 +26,8 @@ CircuitBasicBlock<T> makeScalarCBB() {
   CircuitBasicBlock<T> cbb;
   cbb._xor = [](T const& lhs, T const& rhs) -> T { return lhs ^ rhs; };
   cbb._and = [](T const& lhs, T const& rhs) -> T { return lhs & rhs; };
-  cbb.lshift = [](T const& x, size_t bits) -> T { return x << bits; };
-  cbb.rshift = [](T const& x, size_t bits) -> T { return x >> bits; };
+  cbb.lshift = [](T const& x, const Sizes& bits) -> T { return x << bits[0]; };
+  cbb.rshift = [](T const& x, const Sizes& bits) -> T { return x >> bits[0]; };
   cbb.init_like = [](T const&, uint128_t init) -> T {
     return static_cast<T>(init);
   };
@@ -53,16 +53,16 @@ CircuitBasicBlock<C> makeVectorCBB() {
                    std::bit_and<>());
     return res;
   };
-  cbb.lshift = [](C const& x, size_t bits) -> C {
+  cbb.lshift = [](C const& x, const Sizes& bits) -> C {
     C res;
     std::transform(x.begin(), x.end(), std::back_inserter(res),
-                   [&](const auto& e) { return e << bits; });
+                   [&](const auto& e) { return e << bits[0]; });
     return res;
   };
-  cbb.rshift = [](C const& x, size_t bits) -> C {
+  cbb.rshift = [](C const& x, const Sizes& bits) -> C {
     C res;
     std::transform(x.begin(), x.end(), std::back_inserter(res),
-                   [&](const auto& e) { return e >> bits; });
+                   [&](const auto& e) { return e >> bits[0]; });
     return res;
   };
   cbb.set_nbits = [](C&, size_t) -> void {};

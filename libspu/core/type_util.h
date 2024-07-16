@@ -97,91 +97,90 @@ std::ostream& operator<<(std::ostream& os, const DataType& dtype);
 
 // Helper macros to enumerate all py types.
 // NOLINTNEXTLINE: Global internal used macro.
-#define __CASE_PT_TYPE(PT_TYPE, NAME, ...)                     \
-  case (PT_TYPE): {                                            \
-    [[maybe_unused]] constexpr std::string_view _kName = NAME; \
-    using ScalarT = EnumToPtType<PT_TYPE>::type;               \
-    return __VA_ARGS__();                                      \
+#define __CASE_PT_TYPE(PT_TYPE, ...)             \
+  case (PT_TYPE): {                              \
+    using ScalarT = EnumToPtType<PT_TYPE>::type; \
+    return __VA_ARGS__();                        \
   }
 
-#define DISPATCH_FLOAT_PT_TYPES(PT_TYPE, NAME, ...)                     \
-  [&] {                                                                 \
-    switch (PT_TYPE) {                                                  \
-      __CASE_PT_TYPE(spu::PT_F16, NAME, __VA_ARGS__)                    \
-      __CASE_PT_TYPE(spu::PT_F32, NAME, __VA_ARGS__)                    \
-      __CASE_PT_TYPE(spu::PT_F64, NAME, __VA_ARGS__)                    \
-      default:                                                          \
-        SPU_THROW("{} not implemented for pt_type={}", #NAME, PT_TYPE); \
-    }                                                                   \
+#define DISPATCH_FLOAT_PT_TYPES(PT_TYPE, ...)               \
+  [&] {                                                     \
+    switch (PT_TYPE) {                                      \
+      __CASE_PT_TYPE(spu::PT_F16, __VA_ARGS__)              \
+      __CASE_PT_TYPE(spu::PT_F32, __VA_ARGS__)              \
+      __CASE_PT_TYPE(spu::PT_F64, __VA_ARGS__)              \
+      default:                                              \
+        SPU_THROW("unimplemented for pt_type={}", PT_TYPE); \
+    }                                                       \
   }()
 
-#define DISPATCH_UINT_PT_TYPES(PT_TYPE, NAME, ...)                      \
-  [&] {                                                                 \
-    switch (PT_TYPE) {                                                  \
-      __CASE_PT_TYPE(spu::PT_U8, NAME, __VA_ARGS__)                     \
-      __CASE_PT_TYPE(spu::PT_U16, NAME, __VA_ARGS__)                    \
-      __CASE_PT_TYPE(spu::PT_U32, NAME, __VA_ARGS__)                    \
-      __CASE_PT_TYPE(spu::PT_U64, NAME, __VA_ARGS__)                    \
-      __CASE_PT_TYPE(spu::PT_U128, NAME, __VA_ARGS__)                   \
-      default:                                                          \
-        SPU_THROW("{} not implemented for pt_type={}", #NAME, PT_TYPE); \
-    }                                                                   \
+#define DISPATCH_UINT_PT_TYPES(PT_TYPE, ...)                \
+  [&] {                                                     \
+    switch (PT_TYPE) {                                      \
+      __CASE_PT_TYPE(spu::PT_U8, __VA_ARGS__)               \
+      __CASE_PT_TYPE(spu::PT_U16, __VA_ARGS__)              \
+      __CASE_PT_TYPE(spu::PT_U32, __VA_ARGS__)              \
+      __CASE_PT_TYPE(spu::PT_U64, __VA_ARGS__)              \
+      __CASE_PT_TYPE(spu::PT_U128, __VA_ARGS__)             \
+      default:                                              \
+        SPU_THROW("unimplemented for pt_type={}", PT_TYPE); \
+    }                                                       \
   }()
 
-#define DISPATCH_INT_PT_TYPES(PT_TYPE, NAME, ...)                       \
-  [&] {                                                                 \
-    switch (PT_TYPE) {                                                  \
-      __CASE_PT_TYPE(spu::PT_I1, NAME, __VA_ARGS__)                     \
-      __CASE_PT_TYPE(spu::PT_I8, NAME, __VA_ARGS__)                     \
-      __CASE_PT_TYPE(spu::PT_U8, NAME, __VA_ARGS__)                     \
-      __CASE_PT_TYPE(spu::PT_I16, NAME, __VA_ARGS__)                    \
-      __CASE_PT_TYPE(spu::PT_U16, NAME, __VA_ARGS__)                    \
-      __CASE_PT_TYPE(spu::PT_I32, NAME, __VA_ARGS__)                    \
-      __CASE_PT_TYPE(spu::PT_U32, NAME, __VA_ARGS__)                    \
-      __CASE_PT_TYPE(spu::PT_I64, NAME, __VA_ARGS__)                    \
-      __CASE_PT_TYPE(spu::PT_U64, NAME, __VA_ARGS__)                    \
-      default:                                                          \
-        SPU_THROW("{} not implemented for pt_type={}", #NAME, PT_TYPE); \
-    }                                                                   \
+#define DISPATCH_INT_PT_TYPES(PT_TYPE, ...)                 \
+  [&] {                                                     \
+    switch (PT_TYPE) {                                      \
+      __CASE_PT_TYPE(spu::PT_I1, __VA_ARGS__)               \
+      __CASE_PT_TYPE(spu::PT_I8, __VA_ARGS__)               \
+      __CASE_PT_TYPE(spu::PT_U8, __VA_ARGS__)               \
+      __CASE_PT_TYPE(spu::PT_I16, __VA_ARGS__)              \
+      __CASE_PT_TYPE(spu::PT_U16, __VA_ARGS__)              \
+      __CASE_PT_TYPE(spu::PT_I32, __VA_ARGS__)              \
+      __CASE_PT_TYPE(spu::PT_U32, __VA_ARGS__)              \
+      __CASE_PT_TYPE(spu::PT_I64, __VA_ARGS__)              \
+      __CASE_PT_TYPE(spu::PT_U64, __VA_ARGS__)              \
+      default:                                              \
+        SPU_THROW("unimplemented for pt_type={}", PT_TYPE); \
+    }                                                       \
   }()
 
-#define DISPATCH_ALL_PT_TYPES(PT_TYPE, NAME, ...)                       \
-  [&] {                                                                 \
-    switch (PT_TYPE) {                                                  \
-      __CASE_PT_TYPE(spu::PT_I1, NAME, __VA_ARGS__)                     \
-      __CASE_PT_TYPE(spu::PT_I8, NAME, __VA_ARGS__)                     \
-      __CASE_PT_TYPE(spu::PT_U8, NAME, __VA_ARGS__)                     \
-      __CASE_PT_TYPE(spu::PT_I16, NAME, __VA_ARGS__)                    \
-      __CASE_PT_TYPE(spu::PT_U16, NAME, __VA_ARGS__)                    \
-      __CASE_PT_TYPE(spu::PT_I32, NAME, __VA_ARGS__)                    \
-      __CASE_PT_TYPE(spu::PT_U32, NAME, __VA_ARGS__)                    \
-      __CASE_PT_TYPE(spu::PT_I64, NAME, __VA_ARGS__)                    \
-      __CASE_PT_TYPE(spu::PT_U64, NAME, __VA_ARGS__)                    \
-      __CASE_PT_TYPE(spu::PT_F16, NAME, __VA_ARGS__)                    \
-      __CASE_PT_TYPE(spu::PT_F32, NAME, __VA_ARGS__)                    \
-      __CASE_PT_TYPE(spu::PT_F64, NAME, __VA_ARGS__)                    \
-      default:                                                          \
-        SPU_THROW("{} not implemented for pt_type={}", #NAME, PT_TYPE); \
-    }                                                                   \
+#define DISPATCH_ALL_PT_TYPES(PT_TYPE, ...)                 \
+  [&] {                                                     \
+    switch (PT_TYPE) {                                      \
+      __CASE_PT_TYPE(spu::PT_I1, __VA_ARGS__)               \
+      __CASE_PT_TYPE(spu::PT_I8, __VA_ARGS__)               \
+      __CASE_PT_TYPE(spu::PT_U8, __VA_ARGS__)               \
+      __CASE_PT_TYPE(spu::PT_I16, __VA_ARGS__)              \
+      __CASE_PT_TYPE(spu::PT_U16, __VA_ARGS__)              \
+      __CASE_PT_TYPE(spu::PT_I32, __VA_ARGS__)              \
+      __CASE_PT_TYPE(spu::PT_U32, __VA_ARGS__)              \
+      __CASE_PT_TYPE(spu::PT_I64, __VA_ARGS__)              \
+      __CASE_PT_TYPE(spu::PT_U64, __VA_ARGS__)              \
+      __CASE_PT_TYPE(spu::PT_F16, __VA_ARGS__)              \
+      __CASE_PT_TYPE(spu::PT_F32, __VA_ARGS__)              \
+      __CASE_PT_TYPE(spu::PT_F64, __VA_ARGS__)              \
+      default:                                              \
+        SPU_THROW("unimplemented for pt_type={}", PT_TYPE); \
+    }                                                       \
   }()
 
-#define DISPATCH_ALL_NONE_BOOL_PT_TYPES(PT_TYPE, NAME, ...)             \
-  [&] {                                                                 \
-    switch (PT_TYPE) {                                                  \
-      __CASE_PT_TYPE(spu::PT_I8, NAME, __VA_ARGS__)                     \
-      __CASE_PT_TYPE(spu::PT_U8, NAME, __VA_ARGS__)                     \
-      __CASE_PT_TYPE(spu::PT_I16, NAME, __VA_ARGS__)                    \
-      __CASE_PT_TYPE(spu::PT_U16, NAME, __VA_ARGS__)                    \
-      __CASE_PT_TYPE(spu::PT_I32, NAME, __VA_ARGS__)                    \
-      __CASE_PT_TYPE(spu::PT_U32, NAME, __VA_ARGS__)                    \
-      __CASE_PT_TYPE(spu::PT_I64, NAME, __VA_ARGS__)                    \
-      __CASE_PT_TYPE(spu::PT_U64, NAME, __VA_ARGS__)                    \
-      __CASE_PT_TYPE(spu::PT_F16, NAME, __VA_ARGS__)                    \
-      __CASE_PT_TYPE(spu::PT_F32, NAME, __VA_ARGS__)                    \
-      __CASE_PT_TYPE(spu::PT_F64, NAME, __VA_ARGS__)                    \
-      default:                                                          \
-        SPU_THROW("{} not implemented for pt_type={}", #NAME, PT_TYPE); \
-    }                                                                   \
+#define DISPATCH_ALL_NONE_BOOL_PT_TYPES(PT_TYPE, ...)       \
+  [&] {                                                     \
+    switch (PT_TYPE) {                                      \
+      __CASE_PT_TYPE(spu::PT_I8, __VA_ARGS__)               \
+      __CASE_PT_TYPE(spu::PT_U8, __VA_ARGS__)               \
+      __CASE_PT_TYPE(spu::PT_I16, __VA_ARGS__)              \
+      __CASE_PT_TYPE(spu::PT_U16, __VA_ARGS__)              \
+      __CASE_PT_TYPE(spu::PT_I32, __VA_ARGS__)              \
+      __CASE_PT_TYPE(spu::PT_U32, __VA_ARGS__)              \
+      __CASE_PT_TYPE(spu::PT_I64, __VA_ARGS__)              \
+      __CASE_PT_TYPE(spu::PT_U64, __VA_ARGS__)              \
+      __CASE_PT_TYPE(spu::PT_F16, __VA_ARGS__)              \
+      __CASE_PT_TYPE(spu::PT_F32, __VA_ARGS__)              \
+      __CASE_PT_TYPE(spu::PT_F64, __VA_ARGS__)              \
+      default:                                              \
+        SPU_THROW("unimplemented for pt_type={}", PT_TYPE); \
+    }                                                       \
   }()
 
 std::ostream& operator<<(std::ostream& os, const PtType& pt_type);
@@ -241,24 +240,23 @@ inline size_t SizeOf(FieldType field) { return SizeOf(GetStorageType(field)); }
 
 // Helper macros to enumerate all fields
 // NOLINTNEXTLINE: Global internal used macro.
-#define __CASE_FIELD(FIELD, NAME, ...)                                \
+#define __CASE_FIELD(FIELD, ...)                                      \
   case (FIELD): {                                                     \
     /* inject `_kField` & `_kName` for the continuation call */       \
     [[maybe_unused]] constexpr spu::FieldType _kField = FIELD;        \
-    [[maybe_unused]] constexpr std::string_view _kName = NAME;        \
     using ring2k_t [[maybe_unused]] = Ring2kTrait<_kField>::scalar_t; \
     return __VA_ARGS__();                                             \
   }
 
-#define DISPATCH_ALL_FIELDS(FIELD, NAME, ...)                       \
-  [&] {                                                             \
-    switch (FIELD) {                                                \
-      __CASE_FIELD(spu::FieldType::FM32, NAME, __VA_ARGS__)         \
-      __CASE_FIELD(spu::FieldType::FM64, NAME, __VA_ARGS__)         \
-      __CASE_FIELD(spu::FieldType::FM128, NAME, __VA_ARGS__)        \
-      default:                                                      \
-        SPU_THROW("{} not implemented for field={}", #NAME, FIELD); \
-    }                                                               \
+#define DISPATCH_ALL_FIELDS(FIELD, ...)                 \
+  [&] {                                                 \
+    switch (FIELD) {                                    \
+      __CASE_FIELD(spu::FieldType::FM32, __VA_ARGS__)   \
+      __CASE_FIELD(spu::FieldType::FM64, __VA_ARGS__)   \
+      __CASE_FIELD(spu::FieldType::FM128, __VA_ARGS__)  \
+      default:                                          \
+        SPU_THROW("unimplemented for field={}", FIELD); \
+    }                                                   \
   }()
 
 //////////////////////////////////////////////////////////////

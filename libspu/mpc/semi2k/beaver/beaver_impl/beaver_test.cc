@@ -14,7 +14,6 @@
 
 #include <random>
 
-#include "fmt/format.h"
 #include "gtest/gtest.h"
 #include "yacl/crypto/key_utils.h"
 #include "yacl/link/algorithm/barrier.h"
@@ -187,7 +186,7 @@ TEST_P(BeaverTest, Mul_large) {
     auto open = open_buffer(triples, kField, std::vector<Shape>(3, {kNumel}),
                             kWorldSize, true);
 
-    DISPATCH_ALL_FIELDS(kField, "_", [&]() {
+    DISPATCH_ALL_FIELDS(kField, [&]() {
       NdArrayView<ring2k_t> _a(open[0]);
       NdArrayView<ring2k_t> _b(open[1]);
       NdArrayView<ring2k_t> _c(open[2]);
@@ -214,7 +213,7 @@ TEST_P(BeaverTest, Mul_large) {
     auto open = open_buffer(triples, kField, std::vector<Shape>(3, {kNumel}),
                             kWorldSize, true);
 
-    DISPATCH_ALL_FIELDS(kField, "_", [&]() {
+    DISPATCH_ALL_FIELDS(kField, [&]() {
       NdArrayView<ring2k_t> _a(open[0]);
       NdArrayView<ring2k_t> _cache_a(x_cache);
       NdArrayView<ring2k_t> _b(open[1]);
@@ -240,7 +239,7 @@ TEST_P(BeaverTest, Mul_large) {
     auto open = open_buffer(triples, kField, std::vector<Shape>(3, {kNumel}),
                             kWorldSize, true);
 
-    DISPATCH_ALL_FIELDS(kField, "_", [&]() {
+    DISPATCH_ALL_FIELDS(kField, [&]() {
       NdArrayView<ring2k_t> _a(open[0]);
       NdArrayView<ring2k_t> _b(open[1]);
       NdArrayView<ring2k_t> _cache_b(y_cache);
@@ -267,7 +266,7 @@ TEST_P(BeaverTest, Mul_large) {
     auto open = open_buffer(triples, kField, std::vector<Shape>(3, {kNumel}),
                             kWorldSize, true);
 
-    DISPATCH_ALL_FIELDS(kField, "_", [&]() {
+    DISPATCH_ALL_FIELDS(kField, [&]() {
       NdArrayView<ring2k_t> _a(open[0]);
       NdArrayView<ring2k_t> _b(open[1]);
       NdArrayView<ring2k_t> _cache_a(x_cache);
@@ -297,7 +296,7 @@ TEST_P(BeaverTest, Mul_large) {
     auto open = open_buffer(triples, kField, std::vector<Shape>(3, {kNumel}),
                             kWorldSize, true);
 
-    DISPATCH_ALL_FIELDS(kField, "_", [&]() {
+    DISPATCH_ALL_FIELDS(kField, [&]() {
       NdArrayView<ring2k_t> _a(open[0]);
       NdArrayView<ring2k_t> _b(open[1]);
       NdArrayView<ring2k_t> _cache_a(x_cache);
@@ -342,7 +341,7 @@ TEST_P(BeaverTest, Mul) {
     auto open = open_buffer(triples, kField, std::vector<Shape>(3, {kNumel}),
                             kWorldSize, true);
 
-    DISPATCH_ALL_FIELDS(kField, "_", [&]() {
+    DISPATCH_ALL_FIELDS(kField, [&]() {
       NdArrayView<ring2k_t> _a(open[0]);
       NdArrayView<ring2k_t> _b(open[1]);
       NdArrayView<ring2k_t> _c(open[2]);
@@ -369,7 +368,7 @@ TEST_P(BeaverTest, Mul) {
     auto open = open_buffer(triples, kField, std::vector<Shape>(3, {kNumel}),
                             kWorldSize, true);
 
-    DISPATCH_ALL_FIELDS(kField, "_", [&]() {
+    DISPATCH_ALL_FIELDS(kField, [&]() {
       NdArrayView<ring2k_t> _a(open[0]);
       NdArrayView<ring2k_t> _cache_a(x_cache);
       NdArrayView<ring2k_t> _b(open[1]);
@@ -395,7 +394,7 @@ TEST_P(BeaverTest, Mul) {
     auto open = open_buffer(triples, kField, std::vector<Shape>(3, {kNumel}),
                             kWorldSize, true);
 
-    DISPATCH_ALL_FIELDS(kField, "_", [&]() {
+    DISPATCH_ALL_FIELDS(kField, [&]() {
       NdArrayView<ring2k_t> _a(open[0]);
       NdArrayView<ring2k_t> _b(open[1]);
       NdArrayView<ring2k_t> _cache_b(y_cache);
@@ -422,7 +421,7 @@ TEST_P(BeaverTest, Mul) {
     auto open = open_buffer(triples, kField, std::vector<Shape>(3, {kNumel}),
                             kWorldSize, true);
 
-    DISPATCH_ALL_FIELDS(kField, "_", [&]() {
+    DISPATCH_ALL_FIELDS(kField, [&]() {
       NdArrayView<ring2k_t> _a(open[0]);
       NdArrayView<ring2k_t> _b(open[1]);
       NdArrayView<ring2k_t> _cache_a(x_cache);
@@ -452,7 +451,7 @@ TEST_P(BeaverTest, Mul) {
     auto open = open_buffer(triples, kField, std::vector<Shape>(3, {kNumel}),
                             kWorldSize, true);
 
-    DISPATCH_ALL_FIELDS(kField, "_", [&]() {
+    DISPATCH_ALL_FIELDS(kField, [&]() {
       NdArrayView<ring2k_t> _a(open[0]);
       NdArrayView<ring2k_t> _b(open[1]);
       NdArrayView<ring2k_t> _cache_a(x_cache);
@@ -539,7 +538,7 @@ TEST_P(BeaverTest, Dot) {
                             kWorldSize, true);
 
     auto res = ring_mmul(open[0], open[1]);
-    DISPATCH_ALL_FIELDS(kField, "_", [&]() {
+    DISPATCH_ALL_FIELDS(kField, [&]() {
       NdArrayView<ring2k_t> _r(res);
       NdArrayView<ring2k_t> _c(open[2]);
       for (auto idx = 0; idx < res.numel(); idx++) {
@@ -565,7 +564,7 @@ TEST_P(BeaverTest, Dot) {
                             kWorldSize, true);
 
     auto res = ring_mmul(x_cache, open[1]);
-    DISPATCH_ALL_FIELDS(kField, "_", [&]() {
+    DISPATCH_ALL_FIELDS(kField, [&]() {
       NdArrayView<ring2k_t> _a(open[0]);
       NdArrayView<ring2k_t> _cache_a(x_cache);
       NdArrayView<ring2k_t> _r(res);
@@ -592,7 +591,7 @@ TEST_P(BeaverTest, Dot) {
                             kWorldSize, true);
 
     auto res = ring_mmul(open[0], y_cache);
-    DISPATCH_ALL_FIELDS(kField, "_", [&]() {
+    DISPATCH_ALL_FIELDS(kField, [&]() {
       NdArrayView<ring2k_t> _b(open[1]);
       NdArrayView<ring2k_t> _cache_b(y_cache);
       NdArrayView<ring2k_t> _r(res);
@@ -620,7 +619,7 @@ TEST_P(BeaverTest, Dot) {
                             kWorldSize, true);
 
     auto res = ring_mmul(x_cache, y_cache);
-    DISPATCH_ALL_FIELDS(kField, "_", [&]() {
+    DISPATCH_ALL_FIELDS(kField, [&]() {
       NdArrayView<ring2k_t> _a(open[0]);
       NdArrayView<ring2k_t> _cache_a(x_cache);
       NdArrayView<ring2k_t> _b(open[1]);
@@ -651,7 +650,7 @@ TEST_P(BeaverTest, Dot) {
                             kWorldSize, true);
 
     auto res = ring_mmul(x_cache, y_cache);
-    DISPATCH_ALL_FIELDS(kField, "_", [&]() {
+    DISPATCH_ALL_FIELDS(kField, [&]() {
       auto transpose_a = open[0].transpose();
       NdArrayView<ring2k_t> _a(transpose_a);
       NdArrayView<ring2k_t> _cache_a(y_cache);
@@ -684,7 +683,7 @@ TEST_P(BeaverTest, Dot) {
     auto open = open_buffer(triples, kField, std::vector<Shape>(3, {M * K}),
                             kWorldSize, true);
 
-    DISPATCH_ALL_FIELDS(kField, "_", [&]() {
+    DISPATCH_ALL_FIELDS(kField, [&]() {
       NdArrayView<ring2k_t> _a(open[0]);
       NdArrayView<ring2k_t> _cache_a(x_cache);
       NdArrayView<ring2k_t> _b(open[1]);
@@ -725,7 +724,7 @@ TEST_P(BeaverTest, Dot_large) {
       open_buffer(triples, kField, {{M, K}, {K, N}, {M, N}}, kWorldSize, true);
 
   auto res = ring_mmul(open[0], open[1]);
-  DISPATCH_ALL_FIELDS(kField, "_", [&]() {
+  DISPATCH_ALL_FIELDS(kField, [&]() {
     NdArrayView<ring2k_t> _r(res);
     NdArrayView<ring2k_t> _c(open[2]);
     for (auto idx = 0; idx < res.numel(); idx++) {
@@ -741,7 +740,7 @@ TEST_P(BeaverTest, Trunc) {
   const FieldType kField = std::get<2>(GetParam());
   const size_t adjust_rank = std::get<4>(GetParam());
   const int64_t kNumel = 7;
-  const size_t kBits = 5;
+  const int64_t kBits = 5;
 
   std::vector<Pair> pairs;
   pairs.resize(kWorldSize);
@@ -756,7 +755,7 @@ TEST_P(BeaverTest, Trunc) {
   EXPECT_EQ(pairs.size(), kWorldSize);
   auto open =
       open_buffer(pairs, kField, {{kNumel}, {kNumel}}, kWorldSize, true);
-  EXPECT_TRUE(ring_all_equal(ring_arshift(open[0], kBits), open[1], 0));
+  EXPECT_TRUE(ring_all_equal(ring_arshift(open[0], {kBits}), open[1], 0));
 }
 
 TEST_P(BeaverTest, TruncPr) {
@@ -782,7 +781,7 @@ TEST_P(BeaverTest, TruncPr) {
   auto open = open_buffer(rets, kField, std::vector<Shape>(3, {kNumel}),
                           kWorldSize, true);
 
-  DISPATCH_ALL_FIELDS(kField, "semi2k.truncpr.ut", [&]() {
+  DISPATCH_ALL_FIELDS(kField, [&]() {
     using T = ring2k_t;
     auto sum_r_iter = open[0].begin();
     auto sum_rc_iter = open[1].begin();
@@ -821,7 +820,7 @@ TEST_P(BeaverTest, Randbit) {
   EXPECT_EQ(shares.size(), kWorldSize);
   auto open = open_buffer(shares, kField, {{kNumel}}, kWorldSize, true);
 
-  DISPATCH_ALL_FIELDS(kField, "_", [&]() {
+  DISPATCH_ALL_FIELDS(kField, [&]() {
     using scalar_t = typename Ring2kTrait<_kField>::scalar_t;
     auto x = xt_adapt<scalar_t>(open[0]);
     EXPECT_TRUE(xt::all(x <= xt::ones_like(x)));

@@ -243,7 +243,7 @@ class LShiftA : public ShiftKernel {
   ce::CExpr comm() const override { return ce::Const(0); }
 
   NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in,
-                  size_t bits) const override;
+                  const Sizes& bits) const override;
 };
 
 // Refer to:

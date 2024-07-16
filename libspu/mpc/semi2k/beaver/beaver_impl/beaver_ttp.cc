@@ -152,7 +152,7 @@ std::vector<NdArrayRef> RpcCall(brpc::Channel& channel, AdjustRequest req,
 }  // namespace
 
 BeaverTtp::BeaverTtp(std::shared_ptr<yacl::link::Context> lctx, Options ops)
-    : lctx_(std::move(std::move(lctx))),
+    : lctx_(std::move(lctx)),
       seed_(yacl::crypto::SecureRandSeed()),
       counter_(0),
       options_(std::move(ops)) {
