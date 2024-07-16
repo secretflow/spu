@@ -29,20 +29,12 @@
 
 #include "libspu/compiler/common/compilation_context.h"
 #include "libspu/compiler/front_end/hlo_importer.h"
-#include "libspu/compiler/passes/passes.h"
+#include "libspu/compiler/utils/utils.h"
 #include "libspu/core/prelude.h"
-#include "libspu/dialect/pphlo/dialect.h"
+#include "libspu/dialect/pphlo/IR/dialect.h"
+#include "libspu/dialect/pphlo/transforms/passes.h"
 
 namespace spu::compiler {
-
-namespace {
-
-mlir::LogicalResult argparser_error_handler(const llvm::Twine &msg) {
-  SPDLOG_ERROR(msg.str());
-  return mlir::failure();
-}
-
-} // namespace
 
 FE::FE(CompilationContext *ctx) : ctx_(ctx) {
   ctx_->getMLIRContext()
@@ -61,6 +53,8 @@ mlir::OwningOpRef<mlir::ModuleOp> FE::doit(const CompilationSource &source) {
   if (source.ir_type() == spu::SourceIRType::STABLEHLO) {
     module = mlir::parseSourceString<mlir::ModuleOp>(source.ir_txt(),
                                                      ctx_->getMLIRContext());
+
+    SPU_ENFORCE(module, "MLIR parser failure");
 
     // Convert stablehlo to mhlo first
     mlir::PassManager pm(ctx_->getMLIRContext());
@@ -133,8 +127,8 @@ void FE::buildFrontEndPipeline(mlir::PassManager *pm, const std::string &args) {
   {
     auto l = mlir::spu::pphlo::createLegalizeToPPHloPass();
     if (!args.empty()) {
-      SPU_ENFORCE(
-          l->initializeOptions(args, argparser_error_handler).succeeded());
+      SPU_ENFORCE(l->initializeOptions(args, mlir::spu::argparser_error_handler)
+                      .succeeded());
     }
     pm->addPass(std::move(l));
   }

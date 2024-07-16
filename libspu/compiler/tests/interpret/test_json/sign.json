@@ -1,0 +1,39 @@
+{
+    "name": "sign",
+    "template": "basic_unary",
+    "testcases": [
+        {
+            "inputs": [
+                {
+                    "data": "[-1, 0, 1]",
+                    "shape": "3",
+                    "dtype": "i64"
+                }
+            ],
+            "expected": [
+                {
+                    "data": "[-1, 0, 1]",
+                    "shape": "3",
+                    "dtype": "i64"
+                }
+            ]
+        },
+        {
+            "inputs": [
+                {
+                    "data": "[-1.0, 0.0, 1.0]",
+                    "shape": "3",
+                    "dtype": "f64"
+                }
+            ],
+            "expected": [
+                {
+                    "data": "[-1.0, 0.0, 1.0]",
+                    "shape": "3",
+                    "dtype": "f64"
+                }
+            ],
+            "checker": "expect_almost_eq"
+        }
+    ]
+}

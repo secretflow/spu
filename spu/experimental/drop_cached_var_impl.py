@@ -49,7 +49,7 @@ def _drop_cached_var_lowering(ctx, input, *dependences):
     dtype = mlir.ir.RankedTensorType(input.type)
 
     return custom_call(
-        "drop_cached_var",
+        "spu.drop_cached_var",
         # Output types
         result_types=[dtype],
         # The inputs:

@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("//bazel:spu.bzl", "spu_cc_binary", "spu_cc_library", "spu_cc_test")
+load("//bazel:spu.bzl", "spu_cc_library", "spu_cc_test")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -24,7 +24,8 @@ spu_cc_library(
         ":pphlo_intrinsic_executor",
         ":pphlo_verifier",
         "//libspu/device:executor",
-        "//libspu/dialect/pphlo:dialect",
+        "//libspu/dialect/pphlo/IR:dialect",
+        "//libspu/dialect/utils",
         "//libspu/kernel/hlo:basic_binary",
         "//libspu/kernel/hlo:basic_ternary",
         "//libspu/kernel/hlo:basic_unary",
@@ -47,8 +48,10 @@ spu_cc_library(
     srcs = ["pphlo_intrinsic_executor.cc"],
     hdrs = ["pphlo_intrinsic_executor.h"],
     deps = [
-        "//libspu/dialect/pphlo:dialect",
+        "//libspu/device:intrinsic_table",
+        "//libspu/dialect/pphlo/IR:dialect",
         "//libspu/kernel/hal:debug",
+        "//libspu/kernel/hlo:basic_binary",
         "//libspu/kernel/hlo:casting",
         "//libspu/kernel/hlo:const",
         "//libspu/kernel/hlo:indexing",
@@ -57,26 +60,11 @@ spu_cc_library(
     ],
 )
 
-spu_cc_library(
-    name = "pphlo_executor_test_runner",
-    testonly = True,
-    srcs = ["pphlo_executor_test_runner.cc"],
-    hdrs = ["pphlo_executor_test_runner.h"],
-    deps = [
-        ":pphlo_executor",
-        "//libspu/compiler:compile",
-        "//libspu/device:api",
-        "//libspu/device:io",
-        "//libspu/device:test_utils",
-        "//libspu/kernel:test_util",
-    ],
-)
-
 spu_cc_test(
     name = "pphlo_executor_test",
     srcs = ["pphlo_executor_test.cc"],
     deps = [
-        ":pphlo_executor_test_runner",
+        "//libspu/device/utils:pphlo_executor_test_runner",
     ],
 )
 
@@ -86,7 +74,7 @@ spu_cc_library(
     hdrs = ["pphlo_verifier.h"],
     deps = [
         "//libspu/core:value",
-        "//libspu/dialect/pphlo:dialect",
+        "//libspu/dialect/pphlo/IR:dialect",
         "//libspu/kernel/hal:public_helper",
         "//libspu/kernel/hal:type_cast",
         "@stablehlo//:reference_ops",
@@ -102,18 +90,5 @@ spu_cc_test(
         "//libspu/kernel:test_util",
         "//libspu/mpc/utils:simulate",
         "@llvm-project//mlir:Parser",
-    ],
-)
-
-spu_cc_binary(
-    name = "pphlo_executor_debug_runner",
-    testonly = True,
-    srcs = ["pphlo_executor_debug_runner.cc"],
-    deps = [
-        ":pphlo_executor",
-        "//libspu/device:api",
-        "//libspu/device:debug_dump_constant",
-        "//libspu/device:test_utils",
-        "@llvm-project//llvm:Support",
     ],
 )

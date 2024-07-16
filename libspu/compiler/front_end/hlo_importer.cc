@@ -196,12 +196,12 @@ HloImporter::parseXlaModuleFromString(const std::string &content) {
   auto module_config =
       xla::HloModule::CreateModuleConfigFromProto(hlo_module, debug_options);
   if (!module_config.status().ok()) {
-    SPU_THROW(module_config.status().message());
+    SPU_THROW("{}", module_config.status().message());
   }
 
   auto module = xla::HloModule::CreateFromProto(hlo_module, *module_config);
   if (!module.status().ok()) {
-    SPU_THROW(module.status().message());
+    SPU_THROW("{}", module.status().message());
   }
 
   xla::runHloPasses((*module).get());
@@ -214,7 +214,7 @@ HloImporter::parseXlaModuleFromString(const std::string &content) {
 
   auto status = importer.Import(**module);
   if (!status.ok()) {
-    SPU_THROW(status.message());
+    SPU_THROW("{}", status.message());
   }
 
   return mlir_hlo;

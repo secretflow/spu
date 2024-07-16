@@ -10,6 +10,12 @@
 >
 > please add your unreleased change here.
 
+## 20240716
+
+- [SPU] 0.9.2b0 release
+- [Feature] Support jax.numpy.bitwise_count
+- [Bugfix] Fix jax.numpy.signbit wrong answer with very large input
+
 ## 20240621
 
 - [SPU] 0.9.1b0 release

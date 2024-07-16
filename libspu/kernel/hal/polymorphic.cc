@@ -554,6 +554,22 @@ Value atan2(SPUContext* ctx, const Value& y, const Value& x) {
   return f_atan2(ctx, y, x);
 }
 
+Value acos(SPUContext* ctx, const Value& x) {
+  SPU_TRACE_HAL_DISP(ctx, x);
+
+  SPU_ENFORCE(x.isFxp());
+
+  return f_acos(ctx, x);
+}
+
+Value asin(SPUContext* ctx, const Value& x) {
+  SPU_TRACE_HAL_DISP(ctx, x);
+
+  SPU_ENFORCE(x.isFxp());
+
+  return f_asin(ctx, x);
+}
+
 Value rsqrt(SPUContext* ctx, const Value& x) {
   SPU_TRACE_HAL_DISP(ctx, x);
 

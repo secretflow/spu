@@ -225,7 +225,7 @@ Type common_type_s(SPUContext* ctx, const Type& a, const Type& b) {
   } else if (a.isa<BShare>() && b.isa<AShare>()) {
     return b;
   } else if (a.isa<BShare>() && b.isa<BShare>()) {
-    return common_type_b(ctx, b, b);
+    return common_type_b(ctx, a, b);
   } else {
     SPU_THROW("should not be here, a={}, b={}", a, b);
   }

@@ -20,8 +20,9 @@
 #include "libspu/core/trace.h"
 #include "libspu/device/pphlo/pphlo_intrinsic_executor.h"
 #include "libspu/device/pphlo/pphlo_verifier.h"
-#include "libspu/dialect/pphlo/base_enums.h"
-#include "libspu/dialect/pphlo/ops.h"
+#include "libspu/dialect/pphlo/IR/base_enums.h"
+#include "libspu/dialect/pphlo/IR/ops.h"
+#include "libspu/dialect/utils/utils.h"
 #include "libspu/kernel/hal/debug.h"
 #include "libspu/kernel/hal/public_helper.h"
 #include "libspu/kernel/hal/ring.h"
@@ -41,15 +42,6 @@
 #include "libspu/kernel/hlo/sort.h"
 
 namespace {
-
-template <typename T>
-std::string mlirObjectToString(T &&mlir_obj) {
-  std::string buf;
-  llvm::raw_string_ostream rss(buf);
-  mlir_obj.print(rss);
-  rss.flush();
-  return buf;
-}
 
 std::pair<spu::PtType, bool> getPtTypeFromMlirType(mlir::Type mlir_ty) {
   mlir::spu::pphlo::TypeTools tool(mlir_ty.getContext());
@@ -95,7 +87,7 @@ std::pair<spu::PtType, bool> getPtTypeFromMlirType(mlir::Type mlir_ty) {
     }
   }
 
-  SPU_THROW("invalid type {}", mlirObjectToString(mlir_ty));
+  SPU_THROW("invalid type {}", mlir::spu::mlirObjectToString(mlir_ty));
 }
 
 spu::DataType getDtypeFromMlirType(mlir::Type mlir_ty) {
@@ -118,7 +110,8 @@ spu::DataType getDtypeFromMlirType(mlir::Type mlir_ty) {
       case 64:
         return int_ty.isUnsigned() ? spu::DT_U64 : spu::DT_I64;
       default:
-        SPU_THROW("unsupported int type {}", mlirObjectToString(mlir_ty));
+        SPU_THROW("unsupported int type {}",
+                  mlir::spu::mlirObjectToString(mlir_ty));
     }
   } else if (auto flp_ty = mlir::dyn_cast<mlir::FloatType>(express_type)) {
     switch (flp_ty.getWidth()) {
@@ -129,7 +122,8 @@ spu::DataType getDtypeFromMlirType(mlir::Type mlir_ty) {
       case 64:
         return spu::DT_F64;
       default:
-        SPU_THROW("unsupported fp type {}", mlirObjectToString(flp_ty));
+        SPU_THROW("unsupported fp type {}",
+                  mlir::spu::mlirObjectToString(flp_ty));
     }
   } else if (auto ct = mlir::dyn_cast<mlir::ComplexType>(express_type)) {
     if (ct.getElementType().isF32()) {
@@ -138,8 +132,8 @@ spu::DataType getDtypeFromMlirType(mlir::Type mlir_ty) {
       return spu::DT_F64;
     }
   }
-  SPU_THROW("invalid type {} {}", mlirObjectToString(mlir_ty),
-            mlirObjectToString(express_type));
+  SPU_THROW("invalid type {} {}", mlir::spu::mlirObjectToString(mlir_ty),
+            mlir::spu::mlirObjectToString(express_type));
 }
 
 // Convert mlir visibility to spu visibility
@@ -199,7 +193,7 @@ void do_type_checker(mlir::Value key, const spu::Value &val,
       SPU_ENFORCE(val.isComplex(), "Expected complex type");
     } else {
       SPU_ENFORCE(!val.isComplex(), "Got type {}",
-                  mlirObjectToString(mlir_type));
+                  mlir::spu::mlirObjectToString(mlir_type));
     }
 
     // Check vtype
@@ -468,7 +462,8 @@ void execute(OpExecutor *, SPUContext *sctx, SymbolScope *sscope,
       SPU_THROW(
           "Convolution with {} spatial dimensions is not "
           "supported, {}",
-          dnums.getInputSpatialDimensions().size(), mlirObjectToString(op));
+          dnums.getInputSpatialDimensions().size(),
+          mlir::spu::mlirObjectToString(op));
     }
   }
 
@@ -649,23 +644,6 @@ void execute(OpExecutor *, SPUContext *sctx, SymbolScope *sscope,
 }
 
 void execute(OpExecutor *executor, SPUContext *sctx, SymbolScope *sscope,
-             mlir::spu::pphlo::CaseOp &op, const ExecutionOptions &opts) {
-  std::vector<kernel::hlo::BranchFcnT> branches;
-  for (auto &b : op.getBranches()) {
-    branches.emplace_back(
-        [&]() { return runRegion(executor, sctx, sscope, b, {}); });
-  }
-
-  auto results = kernel::hlo::Case(
-      sctx, lookupValue(sscope, op.getIndex(), opts), branches);
-
-  // Copy output
-  for (const auto &ret : llvm::enumerate(op->getResults())) {
-    addValue(sscope, ret.value(), results[ret.index()], opts);
-  }
-}
-
-void execute(OpExecutor *executor, SPUContext *sctx, SymbolScope *sscope,
              mlir::spu::pphlo::IfOp &op, const ExecutionOptions &opts) {
   auto conditional = lookupValue(sscope, op.getCondition(), opts);
 
@@ -740,6 +718,17 @@ void execute(OpExecutor *, SPUContext *sctx, SymbolScope *sscope,
   }
 
   addValue(sscope, op.getOutput(), std::move(iota_ret), opts);
+}
+
+void execute(OpExecutor *, SPUContext *sctx, SymbolScope *sscope,
+             mlir::spu::pphlo::BroadcastShapeAsOp &op,
+             const ExecutionOptions &opts) {
+  // Start indices
+  const auto &lhs = lookupValue(sscope, op.getLhs(), opts);
+  const auto &rhs = lookupValue(sscope, op.getRhs(), opts);
+
+  addValue(sscope, op.getResult(),
+           kernel::hlo::Broadcast(sctx, lhs, rhs.shape(), {}), opts);
 }
 
 void execute(OpExecutor *, SPUContext *sctx, SymbolScope *sscope,
@@ -1018,23 +1007,10 @@ void execute(OpExecutor *, SPUContext *sctx, SymbolScope *sscope,
 }
 
 void execute(OpExecutor *, SPUContext *sctx, SymbolScope *sscope,
-             mlir::spu::pphlo::PreferAOp &op, const ExecutionOptions &opts) {
-  auto in = lookupValue(sscope, op.getOperand(), opts);
-  if (sctx->config().protocol() == ProtocolKind::CHEETAH) {
-    // NOTE(juhou): For 2PC, MulAB uses COT which is efficient and accurate than
-    // MulAA that needs HE. Thus we just by-pass the PreferAOp for 2PC.
-    addValue(sscope, op.getResult(), in, opts);
-    return;
-  }
-  auto k0 = kernel::hlo::Cast(sctx, kernel::hlo::Constant(sctx, 0, in.shape()),
-                              VIS_PUBLIC, in.dtype());
-  addValue(sscope, op.getResult(), kernel::hlo::Add(sctx, in, k0), opts);
-}
-
-void execute(OpExecutor *, SPUContext *sctx, SymbolScope *sscope,
              mlir::spu::pphlo::SignOp &op, const ExecutionOptions &opts) {
   auto in = lookupValue(sscope, op.getOperand(), opts);
-  addValue(sscope, op.getResult(), kernel::hlo::Sign(sctx, in), opts);
+  addValue(sscope, op.getResult(),
+           kernel::hlo::Sign(sctx, in, op.getIgnoreZero()), opts);
 }
 
 void execute(OpExecutor *, SPUContext *sctx, SymbolScope *sscope,
@@ -1142,12 +1118,18 @@ void execute(OpExecutor *, SPUContext *sctx, SymbolScope *sscope,
            opts);
 }
 
-void execute(OpExecutor *, SPUContext *sctx, SymbolScope *sscope,
+void execute(OpExecutor *executor, SPUContext *sctx, SymbolScope *sscope,
              mlir::spu::pphlo::CustomCallOp &op, const ExecutionOptions &opt) {
   std::vector<Value> inputs(op->getNumOperands());
   for (size_t idx = 0; idx < inputs.size(); ++idx) {
     inputs[idx] = lookupValue(sscope, op->getOperand(idx), opt);
   }
+
+  const auto &extra = executor->getExtraIntrinsicHandler();
+  if (extra.has_value() && (*extra)(sctx, op.getOperation(), inputs)) {
+    return;
+  }
+
   auto ret = intrinsic_dispatcher(sctx, op, inputs);
 
   for (size_t idx = 0; idx < op->getNumResults(); ++idx) {
@@ -1193,6 +1175,14 @@ void execute(OpExecutor *, SPUContext *sctx, SymbolScope *sscope,
   addValue(sscope, op.getResult(), kernel::hlo::Complex(sctx, r, i), opts);
 }
 
+void execute(OpExecutor *, SPUContext *sctx, SymbolScope *sscope,
+             mlir::spu::pphlo::PopcntOp &op, const ExecutionOptions &opts) {
+  auto in = lookupValue(sscope, op.getOperand(), opts);
+  auto ret = kernel::hlo::Popcnt(sctx, in);
+
+  addValue(sscope, op.getResult(), std::move(ret), opts);
+}
+
 #define DEFINE_UNIMPLEMENTED_OP(OpName)                                \
   void execute(OpExecutor *, SPUContext *, SymbolScope *,              \
                mlir::spu::pphlo::OpName &, const ExecutionOptions &) { \
@@ -1200,6 +1190,7 @@ void execute(OpExecutor *, SPUContext *sctx, SymbolScope *sscope,
   }
 
 DEFINE_UNIMPLEMENTED_OP(ReturnOp)
+DEFINE_UNIMPLEMENTED_OP(CaseOp)
 
 #undef DEFINE_UNIMPLEMENTED_OP
 
@@ -1221,7 +1212,7 @@ static bool hasKernelImpl(mlir::Operation &op) {
 bool PPHloExecutor::hasKernel(mlir::Operation &op) const {
   return hasKernelImpl<
 #define GET_OP_LIST
-#include "libspu/dialect/pphlo/ops.cc.inc"
+#include "libspu/dialect/pphlo/IR/ops.cc.inc"
       >(op);
 }
 
@@ -1292,8 +1283,8 @@ static void dispatchOp(OpExecutor *executor, SPUContext *sctx,
     }
   } else {
     if constexpr (!sizeof...(MoreOpT)) {
-      SPU_THROW("Unhandled mlir op {} at {}", mlirObjectToString(op),
-                mlirObjectToString(op.getLoc()));
+      SPU_THROW("Unhandled mlir op {} at {}", mlir::spu::mlirObjectToString(op),
+                mlir::spu::mlirObjectToString(op.getLoc()));
     } else {
       dispatchOp<MoreOpT...>(executor, sctx, sscope, op, opts);
     }
@@ -1304,11 +1295,11 @@ void PPHloExecutor::runKernelImpl(SPUContext *sctx, SymbolScope *sscope,
                                   mlir::Operation &op,
                                   const ExecutionOptions &opts) {
   if (opts.do_log_execution) {
-    SPDLOG_INFO("PPHLO {}", mlirObjectToString(op));
+    SPDLOG_INFO("PPHLO {}", mlir::spu::mlirObjectToString(op));
   }
   dispatchOp<
 #define GET_OP_LIST
-#include "libspu/dialect/pphlo/ops.cc.inc"
+#include "libspu/dialect/pphlo/IR/ops.cc.inc"
       >(this, sctx, sscope, op, opts);
 }
 

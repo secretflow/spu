@@ -65,7 +65,8 @@ Value applyFloatingPointFn(SPUContext* ctx, const Value& in, FN&& fn) {
 
   DataType dtype;
   const auto out = encodeToRing(fp_arr, field, fxp_bits, &dtype);
-  SPU_ENFORCE(dtype == DT_F32 || dtype == DT_F64, "sanity failed");
+  SPU_ENFORCE(dtype == DT_F16 || dtype == DT_F32 || dtype == DT_F64,
+              "sanity failed");
   return Value(out.as(in.storage_type()), dtype);
 }
 
@@ -155,6 +156,16 @@ Value f_atan2_p(SPUContext* ctx, const Value& x, const Value& y) {
   SPU_TRACE_HAL_DISP(ctx, x, y);
   return applyFloatingPointFn(
       ctx, x, y, [](float a, float b) { return std::atan2(a, b); });
+}
+
+Value f_acos_p(SPUContext* ctx, const Value& x) {
+  SPU_TRACE_HAL_DISP(ctx, x);
+  return applyFloatingPointFn(ctx, x, [](float x) { return std::acos(x); });
+}
+
+Value f_asin_p(SPUContext* ctx, const Value& in) {
+  SPU_TRACE_HAL_DISP(ctx, in);
+  return applyFloatingPointFn(ctx, in, [](float x) { return std::asin(x); });
 }
 
 }  // namespace spu::kernel::hal

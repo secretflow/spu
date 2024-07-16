@@ -20,7 +20,7 @@
 #include "stablehlo/reference/Ops.h"
 #include "stablehlo/reference/Tensor.h"
 
-#include "libspu/dialect/pphlo/ops.h"
+#include "libspu/dialect/pphlo/IR/ops.h"
 #include "libspu/kernel/hal/public_helper.h"
 #include "libspu/kernel/hal/type_cast.h"
 
@@ -272,6 +272,7 @@ UNARY_VERIFIER(RoundNearestEvenOp, roundNearestEvenOp)
 UNARY_VERIFIER(SignOp, signOp)
 UNARY_VERIFIER(Log1pOp, log1pOp)
 UNARY_VERIFIER(Expm1Op, expm1Op)
+UNARY_VERIFIER(PopcntOp, populationCountOp)
 
 #undef UNARY_VERIFIER
 

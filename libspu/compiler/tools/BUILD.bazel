@@ -19,12 +19,12 @@ package(
 )
 
 spu_cc_binary(
-    name = "pphlo-opt",
+    name = "spu-opt",
     srcs = [
-        "pphlo-opt.cc",
+        "spu-opt.cc",
     ],
     deps = [
-        "//libspu/compiler/passes:all_passes",
+        "//libspu/dialect/pphlo/transforms:all_passes",
         "@llvm-project//llvm:Support",
         "@llvm-project//mlir:FuncExtensions",
         "@llvm-project//mlir:IR",
@@ -36,17 +36,40 @@ spu_cc_binary(
 )
 
 spu_cc_binary(
-    name = "pphlo-lsp",
+    name = "spu-lsp",
     srcs = [
-        "pphlo-lsp.cc",
+        "spu-lsp.cc",
     ],
     deps = [
-        "//libspu/dialect/pphlo:dialect",
+        "//libspu/dialect/pphlo/IR:dialect",
         "@llvm-project//llvm:Support",
         "@llvm-project//mlir:FuncExtensions",
         "@llvm-project//mlir:IR",
         "@llvm-project//mlir:MlirLspServerLib",
         "@stablehlo//:stablehlo_ops",
         "@xla//xla/mlir_hlo",
+    ],
+)
+
+spu_cc_binary(
+    name = "spu-translate",
+    srcs = [
+        "spu-translate.cc",
+    ],
+    deps = [
+        "//libspu/compiler/common:compilation_context",
+        "//libspu/compiler/core",
+        "//libspu/compiler/utils",
+        "//libspu/device/pphlo:pphlo_executor",
+        "//libspu/dialect/pphlo/transforms:all_passes",
+        "//libspu/dialect/utils",
+        "//libspu/kernel:test_util",
+        "//libspu/mpc/utils:simulate",
+        "@llvm-project//llvm:Support",
+        "@llvm-project//mlir:FuncExtensions",
+        "@llvm-project//mlir:IR",
+        "@llvm-project//mlir:Pass",
+        "@llvm-project//mlir:Transforms",
+        "@llvm-project//mlir:TranslateLib",
     ],
 )

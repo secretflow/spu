@@ -1,0 +1,23 @@
+{
+    "name": "log_plus_one",
+    "template": "basic_unary",
+    "testcases": [
+        {
+            "inputs": [
+                {
+                    "data": "[0.0, -0.999, 7.0, 6.38905621, 15.0]",
+                    "shape": "5",
+                    "dtype": "f64"
+                }
+            ],
+            "expected": [
+                {
+                    "data": "[0.0, -6.90776825, 2.07944155, 2.0, 2.77258873]",
+                    "shape": "5",
+                    "dtype": "f64"
+                }
+            ],
+            "checker": "expect_almost_eq"
+        }
+    ]
+}

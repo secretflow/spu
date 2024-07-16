@@ -22,7 +22,7 @@
 #include "gtest/gtest.h"
 #include "xtensor/xarray.hpp"
 
-#include "libspu/device/pphlo/pphlo_executor_test_runner.h"
+#include "libspu/device/utils/pphlo_executor_test_runner.h"
 
 namespace spu::device::pphlo::test {
 
@@ -886,7 +886,7 @@ void testGatherImpl(size_t world_size, FieldType field, ProtocolKind protocol,
 
     auto compiled = r.compileMHlo(mhlo, {VIS_PUBLIC, VIS_PUBLIC});
 
-    EXPECT_THAT(compiled, testing::HasSubstr("pphlo.gather"));
+    EXPECT_THAT(compiled, testing::HasSubstr("spu.gather"));
 
     r.run(compiled);
 
@@ -903,7 +903,7 @@ void testGatherImpl(size_t world_size, FieldType field, ProtocolKind protocol,
 
     auto compiled = r.compileMHlo(mhlo, {VIS_PUBLIC, VIS_SECRET});
 
-    EXPECT_THAT(compiled, testing::Not(testing::HasSubstr("pphlo.gather")));
+    EXPECT_THAT(compiled, testing::Not(testing::HasSubstr("spu.gather")));
 
     r.run(compiled);
 
@@ -2722,130 +2722,6 @@ func.func @main() -> (tensor<i32>, tensor<i1>) {
   {
     bool expected = true;
     r.verifyOutput(&expected, 1);
-  }
-}
-
-TEST_P(ExecutorTest, Case) {
-  const auto *prog = R"(
- func.func @main(%arg0: tensor<i32>) -> (tensor<i32>,tensor<i32>) {
-  %0:2 = "pphlo.case"(%arg0) ({
-    %1 = pphlo.constant dense<1> : tensor<i32>
-    %2 = pphlo.constant dense<11> : tensor<i32>
-    pphlo.return %1, %2 : tensor<i32>, tensor<i32>
-  }, {
-    %1 = pphlo.constant dense<2> : tensor<i32>
-    %2 = pphlo.constant dense<12> : tensor<i32>
-    pphlo.return %1, %2 : tensor<i32>, tensor<i32>
-  }, {
-    %1 = pphlo.constant dense<3> : tensor<i32>
-    %2 = pphlo.constant dense<13> : tensor<i32>
-    pphlo.return %1, %2 : tensor<i32>, tensor<i32>
-  }) : (tensor<i32>) -> (tensor<i32>, tensor<i32>)
-  return %0#0, %0#1: tensor<i32>, tensor<i32>
-})";
-
-  {
-    // case 0
-    Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
-             std::get<2>(GetParam()));
-
-    r.addInput(static_cast<int32_t>(0));
-
-    r.run(prog, 2);
-
-    r.verifyScalarOutput(static_cast<int32_t>(1), 0);
-    r.verifyScalarOutput(static_cast<int32_t>(11), 1);
-  }
-
-  {
-    // case 1
-    Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
-             std::get<2>(GetParam()));
-
-    r.addInput(static_cast<int32_t>(1));
-
-    r.run(prog, 2);
-
-    r.verifyScalarOutput(static_cast<int32_t>(2), 0);
-    r.verifyScalarOutput(static_cast<int32_t>(12), 1);
-  }
-
-  {
-    // case 2
-    Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
-             std::get<2>(GetParam()));
-
-    r.addInput(static_cast<int32_t>(2));
-
-    r.run(prog, 2);
-
-    r.verifyScalarOutput(static_cast<int32_t>(3), 0);
-    r.verifyScalarOutput(static_cast<int32_t>(13), 1);
-  }
-}
-
-TEST_P(ExecutorTest, CasePrivate) {
-  const auto *prog = R"(
- func.func @main(%arg0: tensor<!pphlo.secret<i32>>) -> (tensor<!pphlo.secret<i32>>, tensor<!pphlo.secret<i32>>) {
-  %0:2 = "pphlo.case"(%arg0) ({
-    %1 = pphlo.constant dense<1> : tensor<i32>
-    %2 = pphlo.convert %1 : (tensor<i32>) -> tensor<!pphlo.secret<i32>>
-    %3 = pphlo.constant dense<11> : tensor<i32>
-    %4 = pphlo.convert %3 : (tensor<i32>) -> tensor<!pphlo.secret<i32>>
-    pphlo.return %2, %4 : tensor<!pphlo.secret<i32>>, tensor<!pphlo.secret<i32>>
-  }, {
-    %1 = pphlo.constant dense<2> : tensor<i32>
-    %2 = pphlo.convert %1 : (tensor<i32>) -> tensor<!pphlo.secret<i32>>
-    %3 = pphlo.constant dense<12> : tensor<i32>
-    %4 = pphlo.convert %3 : (tensor<i32>) -> tensor<!pphlo.secret<i32>>
-    pphlo.return %2, %4 : tensor<!pphlo.secret<i32>>, tensor<!pphlo.secret<i32>>
-  }, {
-    %1 = pphlo.constant dense<3> : tensor<i32>
-    %2 = pphlo.convert %1 : (tensor<i32>) -> tensor<!pphlo.secret<i32>>
-    %3 = pphlo.constant dense<13> : tensor<i32>
-    %4 = pphlo.convert %3 : (tensor<i32>) -> tensor<!pphlo.secret<i32>>
-    pphlo.return %2, %4 : tensor<!pphlo.secret<i32>>, tensor<!pphlo.secret<i32>>
-  }) : (tensor<!pphlo.secret<i32>>) -> (tensor<!pphlo.secret<i32>>, tensor<!pphlo.secret<i32>>)
-  return %0#0, %0#1: tensor<!pphlo.secret<i32>>, tensor<!pphlo.secret<i32>>
-})";
-
-  {
-    // case 0
-    Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
-             std::get<2>(GetParam()));
-
-    r.addInput(static_cast<int32_t>(0), VIS_SECRET);
-
-    r.run(prog, 2);
-
-    r.verifyScalarOutput(static_cast<int32_t>(1), 0);
-    r.verifyScalarOutput(static_cast<int32_t>(11), 1);
-  }
-
-  {
-    // case 1
-    Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
-             std::get<2>(GetParam()));
-
-    r.addInput(static_cast<int32_t>(1), VIS_SECRET);
-
-    r.run(prog, 2);
-
-    r.verifyScalarOutput(static_cast<int32_t>(2), 0);
-    r.verifyScalarOutput(static_cast<int32_t>(12), 1);
-  }
-
-  {
-    // case 2
-    Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
-             std::get<2>(GetParam()));
-
-    r.addInput(static_cast<int32_t>(2), VIS_SECRET);
-
-    r.run(prog, 2);
-
-    r.verifyScalarOutput(static_cast<int32_t>(3), 0);
-    r.verifyScalarOutput(static_cast<int32_t>(13), 1);
   }
 }
 
