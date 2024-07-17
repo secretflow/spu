@@ -71,11 +71,11 @@ Value _equal(SPUContext* ctx, const Value& x, const Value& y);
 
 Value _less(SPUContext* ctx, const Value& x, const Value& y);
 
-Value _lshift(SPUContext* ctx, const Value& in, size_t bits);
+Value _lshift(SPUContext* ctx, const Value& in, const Sizes& bits);
 
-Value _rshift(SPUContext* ctx, const Value& in, size_t bits);
+Value _rshift(SPUContext* ctx, const Value& in, const Sizes& bits);
 
-Value _arshift(SPUContext* ctx, const Value& in, size_t bits);
+Value _arshift(SPUContext* ctx, const Value& in, const Sizes& bits);
 
 Value _trunc(SPUContext* ctx, const Value& x, size_t bits = 0,
              SignType sign = SignType::Unknown);

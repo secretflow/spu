@@ -110,7 +110,7 @@ TEST_P(BinMatVecProtTest, Basic) {
   });
   NdArrayRef reveal = ring_add(out_shr[0], out_shr[1]);
 
-  DISPATCH_ALL_FIELDS(field, "", [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     NdArrayView<ring2k_t> _vec(vec);
     auto expected = BinAccumuate<ring2k_t>(_vec, mat);
     NdArrayView<ring2k_t> got(reveal);
@@ -160,7 +160,7 @@ TEST_P(BinMatVecProtTest, WithIndicator) {
   });
   NdArrayRef reveal = ring_add(out_shr[0], out_shr[1]);
 
-  DISPATCH_ALL_FIELDS(field, "", [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     NdArrayView<ring2k_t> _vec(vec);
     auto expected =
         BinAccumuate<ring2k_t>(_vec, mat, absl::MakeConstSpan(indicator));

@@ -48,7 +48,7 @@ void FillReplayDesc(Beaver::ReplayDesc* desc, FieldType field, int64_t size,
 }  // namespace
 
 BeaverTfpUnsafe::BeaverTfpUnsafe(std::shared_ptr<yacl::link::Context> lctx)
-    : lctx_(std::move(std::move(lctx))),
+    : lctx_(std::move(lctx)),
       seed_(yacl::crypto::SecureRandSeed()),
       counter_(0) {
   auto buf = yacl::SerializeUint128(seed_);

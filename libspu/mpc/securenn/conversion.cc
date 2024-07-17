@@ -112,8 +112,12 @@ NdArrayRef B2A_Randbit::proc(KernelEvalContext* ctx,
   auto randbits =
       prg_state->genPriv(field, {numel * static_cast<int64_t>(nbits)});
   // reconstruct ranbits
-  if (rank == 0) comm->sendAsync(2, randbits, "randbits0");
-  if (rank == 1) comm->sendAsync(2, randbits, "randbits1");
+  if (rank == 0) {
+    comm->sendAsync(2, randbits, "randbits0");
+  }
+  if (rank == 1) {
+    comm->sendAsync(2, randbits, "randbits1");
+  }
   if (rank == 2) {
     auto randbits0 = comm->recv(0, makeType<AShrTy>(field), "randbits0");
     randbits0 = randbits0.reshape(randbits.shape());
@@ -132,7 +136,7 @@ NdArrayRef B2A_Randbit::proc(KernelEvalContext* ctx,
 
   auto res = NdArrayRef(makeType<AShrTy>(field), x.shape());
 
-  DISPATCH_ALL_FIELDS(field, kBindName, [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     using U = ring2k_t;
 
     NdArrayView<U> _randbits(randbits);

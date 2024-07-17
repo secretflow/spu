@@ -125,7 +125,7 @@ TEST_P(VectorEncoderTest, ForwardBackward) {
       auto computed =
           ms_helper_->ModulusDownRNS(field_, {1L}, absl::MakeSpan(cnst));
 
-      DISPATCH_ALL_FIELDS(field_, "Check", [&]() {
+      DISPATCH_ALL_FIELDS(field_, [&]() {
         NdArrayView<ring2k_t> got(computed);
         NdArrayView<ring2k_t> v0(vec0);
         NdArrayView<ring2k_t> v1(vec1);

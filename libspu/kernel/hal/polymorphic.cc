@@ -356,7 +356,7 @@ Value power(SPUContext* ctx, const Value& x, const Value& y) {
     const auto bit_width = SizeOf(ctx->getField()) * 8;
 
     auto y_b = _prefer_b(ctx, y);
-    auto msb_y = _rshift(ctx, y_b, bit_width - 1);
+    auto msb_y = _rshift(ctx, y_b, {static_cast<int64_t>(bit_width - 1)});
     auto x_abs1 = _equal(ctx, abs(ctx, x), k1);
 
     auto ret = _constant(ctx, 1, x.shape());
@@ -379,7 +379,9 @@ Value power(SPUContext* ctx, const Value& x, const Value& y) {
     // e.g. y=0101, then ret = (x) * (1) * (x^(2^2)) * (1) = x^5
     for (size_t idx = 0; idx < y_bits; idx++) {
       // x^(2^idx) * y_{idx}
-      auto cur_pow = _mux(ctx, _and(ctx, _rshift(ctx, y_b, idx), k1), base, k1);
+      auto cur_pow = _mux(
+          ctx, _and(ctx, _rshift(ctx, y_b, {static_cast<int64_t>(idx)}), k1),
+          base, k1);
       ret = _mul(ctx, cur_pow, ret);
       if (idx < y_bits - 1) {
         base = _mul(ctx, base, base);
@@ -409,8 +411,9 @@ Value power(SPUContext* ctx, const Value& x, const Value& y) {
 
   // the final sign is decided on both sign of x and the parity of y
   // when x<0 and y is odd, e.g. (-2)^3 = -8
-  auto odd = _and(ctx, _rshift(ctx, y, ctx->getFxpBits()),
-                  _constant(ctx, 1, y.shape()));
+  auto odd =
+      _and(ctx, _rshift(ctx, y, {static_cast<int64_t>(ctx->getFxpBits())}),
+           _constant(ctx, 1, y.shape()));
   auto sign = _and(ctx, msb, odd);
 
   return _mux(ctx, sign, _negate(ctx, val), val).setDtype(x.dtype());
@@ -488,19 +491,20 @@ Value bitcast(SPUContext* ctx, const Value& x, DataType dtype) {
   return Value(x.data().clone(), dtype);
 }
 
-Value left_shift(SPUContext* ctx, const Value& x, size_t bits) {
+Value left_shift(SPUContext* ctx, const Value& x, const Sizes& bits) {
   SPU_TRACE_HAL_DISP(ctx, x, bits);
 
   return _lshift(ctx, x, bits).setDtype(x.dtype());
 }
 
-Value right_shift_logical(SPUContext* ctx, const Value& x, size_t bits) {
+Value right_shift_logical(SPUContext* ctx, const Value& x, const Sizes& bits) {
   SPU_TRACE_HAL_DISP(ctx, x, bits);
 
   return _rshift(ctx, x, bits).setDtype(x.dtype());
 }
 
-Value right_shift_arithmetic(SPUContext* ctx, const Value& x, size_t bits) {
+Value right_shift_arithmetic(SPUContext* ctx, const Value& x,
+                             const Sizes& bits) {
   SPU_TRACE_HAL_DISP(ctx, x, bits);
 
   return _arshift(ctx, x, bits).setDtype(x.dtype());

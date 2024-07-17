@@ -118,19 +118,19 @@ spu::Value Round_RNTE(SPUContext *ctx, const spu::Value &in) {
   // so comp = b && (c || a)
   SPU_ENFORCE(!in.isComplex());
   SPU_ENFORCE(in.isFxp(), "Round only supports fxp");
-  const auto fxp_bits = ctx->getFxpBits();
+  const int64_t fxp_bits = ctx->getFxpBits();
   const auto k1 = hal::_constant(ctx, 1U, in.shape());
 
   auto x_prime = hal::_prefer_b(ctx, in);
   auto y = hal::floor(ctx, x_prime);
 
-  auto a = hal::_and(ctx, hal::_rshift(ctx, x_prime, fxp_bits), k1);
-  auto b = hal::_and(ctx, hal::_rshift(ctx, x_prime, fxp_bits - 1), k1);
+  auto a = hal::_and(ctx, hal::_rshift(ctx, x_prime, {fxp_bits}), k1);
+  auto b = hal::_and(ctx, hal::_rshift(ctx, x_prime, {fxp_bits - 1}), k1);
 
   std::vector<Value> cs;
   cs.reserve(fxp_bits - 1);
-  for (size_t idx = 0; idx < fxp_bits - 1; idx++) {
-    auto x_ = hal::_and(ctx, hal::_rshift(ctx, x_prime, idx), k1);
+  for (int64_t idx = 0; idx < fxp_bits - 1; idx++) {
+    auto x_ = hal::_and(ctx, hal::_rshift(ctx, x_prime, {idx}), k1);
     cs.push_back(std::move(x_));
   }
   auto c = vreduce(cs.begin(), cs.end(), [&](const Value &a, const Value &b) {

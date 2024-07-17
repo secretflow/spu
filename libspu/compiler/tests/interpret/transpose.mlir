@@ -1,6 +1,8 @@
 // RUN: spu-translate --protocol_kind=1 --interpret -split-input-file %s
 // RUN: spu-translate --protocol_kind=2 --interpret -split-input-file %s
 // RUN: spu-translate --protocol_kind=3 --interpret -split-input-file %s
+// RUN: spu-translate --protocol_kind=4 --interpret -split-input-file %s
+// RUN: spu-translate --protocol_kind=5 --interpret -split-input-file %s
 
 func.func @transpose_op_test_si32() {
   %0 = pphlo.constant dense<[[[1,2],[3,4],[5,6]], [[7,8],[9,10],[11,12]]]> : tensor<2x3x2xi32>

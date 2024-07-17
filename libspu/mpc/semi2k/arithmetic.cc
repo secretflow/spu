@@ -38,7 +38,7 @@ NdArrayRef RandA::proc(KernelEvalContext* ctx, const Shape& shape) const {
   // - https://eprint.iacr.org/2019/599.pdf
   // It's safer to keep the number within [-2**(k-2), 2**(k-2)) for comparison
   // operations.
-  return ring_rshift(prg_state->genPriv(field, shape), 2)
+  return ring_rshift(prg_state->genPriv(field, shape), {2})
       .as(makeType<AShrTy>(field));
 }
 
@@ -73,7 +73,7 @@ NdArrayRef A2V::proc(KernelEvalContext* ctx, const NdArrayRef& in,
 
   auto numel = in.numel();
 
-  return DISPATCH_ALL_FIELDS(field, "_", [&]() {
+  return DISPATCH_ALL_FIELDS(field, [&]() {
     std::vector<ring2k_t> share(numel);
     NdArrayView<ring2k_t> _in(in);
     pforeach(0, numel, [&](int64_t idx) { share[idx] = _in[idx]; });
@@ -364,10 +364,7 @@ NdArrayRef MatMulAA::proc(KernelEvalContext* ctx, const NdArrayRef& x,
 }
 
 NdArrayRef LShiftA::proc(KernelEvalContext*, const NdArrayRef& in,
-                         size_t bits) const {
-  const auto field = in.eltype().as<Ring2k>()->field();
-  bits %= SizeOf(field) * 8;
-
+                         const Sizes& bits) const {
   return ring_lshift(in, bits).as(in.eltype());
 }
 
@@ -381,7 +378,7 @@ NdArrayRef TruncA::proc(KernelEvalContext* ctx, const NdArrayRef& x,
   if (comm->getWorldSize() == 2) {
     // SecureML, local truncation.
     // Ref: Theorem 1. https://eprint.iacr.org/2017/396.pdf
-    return ring_arshift(x, bits).as(x.eltype());
+    return ring_arshift(x, {static_cast<int64_t>(bits)}).as(x.eltype());
   } else {
     // ABY3, truncation pair method.
     // Ref: Section 5.1.2 https://eprint.iacr.org/2018/403.pdf
@@ -399,7 +396,7 @@ NdArrayRef TruncA::proc(KernelEvalContext* ctx, const NdArrayRef& x,
     auto x_r = comm->allReduce(ReduceOp::ADD, ring_sub(x, r), kBindName);
     auto res = rb;
     if (comm->getRank() == 0) {
-      ring_add_(res, ring_arshift(x_r, bits));
+      ring_add_(res, ring_arshift(x_r, {static_cast<int64_t>(bits)}));
     }
 
     // res = [x-r] + [r], x which [*] is truncation operation.
@@ -418,7 +415,7 @@ NdArrayRef TruncAPr::proc(KernelEvalContext* ctx, const NdArrayRef& in,
 
   NdArrayRef out(in.eltype(), in.shape());
 
-  DISPATCH_ALL_FIELDS(field, "semi2k.truncpr", [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     using U = ring2k_t;
     auto [r, rc, rb] = beaver->TruncPr(field, numel, bits);
     SPU_ENFORCE(static_cast<size_t>(r.size()) == numel * SizeOf(field));

@@ -42,7 +42,7 @@ class ShiftKernel : public Kernel {
  public:
   void evaluate(KernelEvalContext* ctx) const override;
   virtual NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in,
-                          size_t bits) const = 0;
+                          const Sizes& bits) const = 0;
 };
 
 class BinaryKernel : public Kernel {

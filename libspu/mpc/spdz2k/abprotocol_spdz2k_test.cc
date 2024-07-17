@@ -242,7 +242,7 @@ TEST_P(ConversionTest, BitLT) {
     auto re = b2p(obj.get(), tmp);
 
     const auto field = p0.storage_type().as<Ring2k>()->field();
-    DISPATCH_ALL_FIELDS(field, "_", [&]() {
+    DISPATCH_ALL_FIELDS(field, [&]() {
       using U = std::make_unsigned<ring2k_t>::type;
       size_t numel = kShape.numel();
 
@@ -291,7 +291,7 @@ TEST_P(ConversionTest, BitLE) {
     auto re = b2p(obj.get(), tmp);
 
     const auto field = p0.storage_type().as<Ring2k>()->field();
-    DISPATCH_ALL_FIELDS(field, "_", [&]() {
+    DISPATCH_ALL_FIELDS(field, [&]() {
       using U = std::make_unsigned<ring2k_t>::type;
       size_t numel = kShape.numel();
       NdArrayView<U> p0_data(p0.data());

@@ -79,7 +79,7 @@ NdArrayRef BasicOTProtocols::PackedB2A(const NdArrayRef &inp) {
   }
   SPU_ENFORCE(nbits > 0 && nbits <= 8 * SizeOf(field));
 
-  auto rand_bits = DISPATCH_ALL_FIELDS(field, "single_b2a", [&]() {
+  auto rand_bits = DISPATCH_ALL_FIELDS(field, [&]() {
     if ((nbits & 7) or (n * inp.elsize()) & 7) {
       //  The SseTranspose requires the #rows and #columns is multiple of 8.
       //  Thus, we call the less efficient RandBits on margin cases.
@@ -142,7 +142,7 @@ NdArrayRef BasicOTProtocols::PackedB2A(const NdArrayRef &inp) {
     const int64_t n = _bits.numel() / nbits;
     // init as all 0s.
     auto iform = ring_zeros(field, inp.shape());
-    DISPATCH_ALL_FIELDS(field, "conv_to_bits", [&]() {
+    DISPATCH_ALL_FIELDS(field, [&]() {
       auto bits = NdArrayView<const ring2k_t>(_bits);
       auto digit = NdArrayView<ring2k_t>(iform);
       for (int64_t i = 0; i < n; ++i) {
@@ -163,7 +163,7 @@ NdArrayRef BasicOTProtocols::PackedB2A(const NdArrayRef &inp) {
 
   // compute c + (1 - 2*c)*<r>
   NdArrayRef oup = ring_zeros(field, inp.shape());
-  DISPATCH_ALL_FIELDS(field, "packed_b2a", [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     using u2k = std::make_unsigned<ring2k_t>::type;
     int rank = Rank();
     auto xr = NdArrayView<const u2k>(rand_bits);
@@ -205,7 +205,7 @@ NdArrayRef BasicOTProtocols::SingleB2A(const NdArrayRef &inp, int bit_width) {
   const int64_t n = inp.numel();
 
   NdArrayRef oup = ring_zeros(field, inp.shape());
-  DISPATCH_ALL_FIELDS(field, "single_b2a", [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     using u2k = std::make_unsigned<ring2k_t>::type;
     const u2k msk = makeBitsMask<u2k>(bit_width);
     auto input = NdArrayView<const u2k>(inp);
@@ -373,7 +373,7 @@ std::array<NdArrayRef, 3> BasicOTProtocols::AndTriple(FieldType field,
   auto AND_b = ring_zeros(field, shape);
   auto AND_c = ring_zeros(field, shape);
 
-  DISPATCH_ALL_FIELDS(field, "AndTriple", [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     auto AND_xa = NdArrayView<ring2k_t>(AND_a);
     auto AND_xb = NdArrayView<ring2k_t>(AND_b);
     auto AND_xc = NdArrayView<ring2k_t>(AND_c);
@@ -430,7 +430,7 @@ std::array<NdArrayRef, 5> BasicOTProtocols::CorrelatedAndTriple(
   auto AND_b1 = ring_zeros(field, shape);
   auto AND_c1 = ring_zeros(field, shape);
 
-  DISPATCH_ALL_FIELDS(field, "AndTriple", [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     auto AND_xa = NdArrayView<ring2k_t>(AND_a);
     auto AND_xb0 = NdArrayView<ring2k_t>(AND_b0);
     auto AND_xc0 = NdArrayView<ring2k_t>(AND_c0);
@@ -465,7 +465,7 @@ NdArrayRef BasicOTProtocols::Multiplexer(const NdArrayRef &msg,
   std::vector<uint8_t> sel(size);
   // Compute (x0 + x1) * (b0 ^ b1)
   // Also b0 ^ b1 = 1 - 2*b0*b1
-  return DISPATCH_ALL_FIELDS(field, "Multiplexer", [&]() {
+  return DISPATCH_ALL_FIELDS(field, [&]() {
     NdArrayView<const ring2k_t> _msg(msg);
     NdArrayView<const ring2k_t> _sel(select);
     auto corr_data = absl::MakeSpan(&_corr_data.at<ring2k_t>(0), size);
@@ -506,7 +506,7 @@ NdArrayRef BasicOTProtocols::PrivateMulxRecv(const NdArrayRef &msg,
 
   auto recv = ring_zeros(field, msg.shape());
   std::vector<uint8_t> sel(size);
-  DISPATCH_ALL_FIELDS(field, "convert", [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     NdArrayView<const ring2k_t> _sel(select);
     pforeach(0, size,
              [&](int64_t i) { sel[i] = static_cast<uint8_t>(_sel[i] & 1); });
@@ -526,7 +526,7 @@ NdArrayRef BasicOTProtocols::PrivateMulxRecv(const NdArrayRef &msg,
   // Compute (x0 + x1) * b
   // x0 * b + x1 * b
   // COT compute <x1*b>
-  DISPATCH_ALL_FIELDS(field, "MultiplexerOnPrivate", [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     NdArrayView<const ring2k_t> _msg(msg);
     auto _recv = absl::MakeSpan(&recv.at<ring2k_t>(0), size);
 
@@ -549,7 +549,7 @@ NdArrayRef BasicOTProtocols::PrivateMulxSend(const NdArrayRef &msg) {
   auto recv = ring_zeros(field, msg.shape());
   // Compute (x0 + x1) * b
   // x0 * b + x1 * b
-  DISPATCH_ALL_FIELDS(field, "MultiplexerOnPrivate", [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     auto _msg = absl::MakeConstSpan(&msg.at<ring2k_t>(0), size);
     auto _recv = absl::MakeSpan(&recv.at<ring2k_t>(0), size);
 

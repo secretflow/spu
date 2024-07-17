@@ -29,8 +29,6 @@
 namespace spu::mpc {
 namespace {
 
-constexpr char kModule[] = "RingOps";
-
 #define SPU_ENFORCE_RING(x)                                           \
   SPU_ENFORCE((x).eltype().isa<Ring2k>(), "expect ring type, got={}", \
               (x).eltype());
@@ -47,7 +45,7 @@ constexpr char kModule[] = "RingOps";
     ENFORCE_EQ_ELSIZE_AND_SHAPE(ret, x);                                \
     const auto field = x.eltype().as<Ring2k>()->field();                \
     const int64_t numel = ret.numel();                                  \
-    return DISPATCH_ALL_FIELDS(field, kModule, [&]() {                  \
+    return DISPATCH_ALL_FIELDS(field, [&]() {                           \
       using T = std::make_signed_t<ring2k_t>;                           \
       NdArrayView<T> _x(x);                                             \
       NdArrayView<T> _ret(ret);                                         \
@@ -67,7 +65,7 @@ DEF_UNARY_RING_OP(ring_neg, -);
     ENFORCE_EQ_ELSIZE_AND_SHAPE(ret, y);                              \
     const auto field = x.eltype().as<Ring2k>()->field();              \
     const int64_t numel = ret.numel();                                \
-    return DISPATCH_ALL_FIELDS(field, kModule, [&]() {                \
+    return DISPATCH_ALL_FIELDS(field, [&]() {                         \
       NdArrayView<ring2k_t> _x(x);                                    \
       NdArrayView<ring2k_t> _y(y);                                    \
       NdArrayView<ring2k_t> _ret(ret);                                \
@@ -86,40 +84,56 @@ DEF_BINARY_RING_OP(ring_xor, ^);
 
 #undef DEF_BINARY_RING_OP
 
-void ring_arshift_impl(NdArrayRef& ret, const NdArrayRef& x, size_t bits) {
+void ring_arshift_impl(NdArrayRef& ret, const NdArrayRef& x,
+                       const Sizes& bits) {
   ENFORCE_EQ_ELSIZE_AND_SHAPE(ret, x);
+  bool is_splat = bits.size() == 1;
+  SPU_ENFORCE(static_cast<int64_t>(bits.size()) == x.numel() || is_splat,
+              "mismatched numel {} vs {}", bits.size(), x.numel());
   const auto numel = ret.numel();
   const auto field = x.eltype().as<Ring2k>()->field();
-  return DISPATCH_ALL_FIELDS(field, kModule, [&]() {
+  return DISPATCH_ALL_FIELDS(field, [&]() {
     // According to K&R 2nd edition the results are implementation-dependent for
     // right shifts of signed values, but "usually" its arithmetic right shift.
     using S = std::make_signed<ring2k_t>::type;
     NdArrayView<S> _ret(ret);
     NdArrayView<S> _x(x);
-    pforeach(0, numel, [&](int64_t idx) { _ret[idx] = _x[idx] >> bits; });
+    pforeach(0, numel, [&](int64_t idx) {
+      _ret[idx] = _x[idx] >> (is_splat ? bits[0] : bits[idx]);
+    });
   });
 }
 
-void ring_rshift_impl(NdArrayRef& ret, const NdArrayRef& x, size_t bits) {
+void ring_rshift_impl(NdArrayRef& ret, const NdArrayRef& x, const Sizes& bits) {
   ENFORCE_EQ_ELSIZE_AND_SHAPE(ret, x);
+  bool is_splat = bits.size() == 1;
+  SPU_ENFORCE(static_cast<int64_t>(bits.size()) == x.numel() || is_splat,
+              "mismatched numel {} vs {}", bits.size(), x.numel());
   const auto numel = ret.numel();
   const auto field = x.eltype().as<Ring2k>()->field();
-  return DISPATCH_ALL_FIELDS(field, kModule, [&]() {
+  return DISPATCH_ALL_FIELDS(field, [&]() {
     using U = ring2k_t;
     NdArrayView<U> _ret(ret);
     NdArrayView<U> _x(x);
-    pforeach(0, numel, [&](int64_t idx) { _ret[idx] = _x[idx] >> bits; });
+    pforeach(0, numel, [&](int64_t idx) {
+      _ret[idx] = _x[idx] >> (is_splat ? bits[0] : bits[idx]);
+    });
   });
 }
 
-void ring_lshift_impl(NdArrayRef& ret, const NdArrayRef& x, size_t bits) {
+void ring_lshift_impl(NdArrayRef& ret, const NdArrayRef& x, const Sizes& bits) {
   ENFORCE_EQ_ELSIZE_AND_SHAPE(ret, x);
+  bool is_splat = bits.size() == 1;
+  SPU_ENFORCE(static_cast<int64_t>(bits.size()) == x.numel() || is_splat,
+              "mismatched numel {} vs {}", bits.size(), x.numel());
   const auto numel = ret.numel();
   const auto field = x.eltype().as<Ring2k>()->field();
-  return DISPATCH_ALL_FIELDS(field, kModule, [&]() {
+  return DISPATCH_ALL_FIELDS(field, [&]() {
     NdArrayView<ring2k_t> _ret(ret);
     NdArrayView<ring2k_t> _x(x);
-    pforeach(0, numel, [&](int64_t idx) { _ret[idx] = _x[idx] << bits; });
+    pforeach(0, numel, [&](int64_t idx) {
+      _ret[idx] = _x[idx] << (is_splat ? bits[0] : bits[idx]);
+    });
   });
 }
 
@@ -130,7 +144,7 @@ void ring_bitrev_impl(NdArrayRef& ret, const NdArrayRef& x, size_t start,
   const auto field = x.eltype().as<Ring2k>()->field();
   const auto numel = ret.numel();
 
-  return DISPATCH_ALL_FIELDS(field, kModule, [&]() {
+  return DISPATCH_ALL_FIELDS(field, [&]() {
     using U = ring2k_t;
 
     // optimize: use faster reverse method.
@@ -161,7 +175,7 @@ void ring_bitmask_impl(NdArrayRef& ret, const NdArrayRef& x, size_t low,
 
   SPU_ENFORCE(low < high && high <= SizeOf(field) * 8);
 
-  return DISPATCH_ALL_FIELDS(field, kModule, [&]() {
+  return DISPATCH_ALL_FIELDS(field, [&]() {
     using U = ring2k_t;
     U mask = 0;
     if (high - low < SizeOf(field) * 8) {
@@ -184,7 +198,7 @@ void ring_print(const NdArrayRef& x, std::string_view name) {
   SPU_ENFORCE_RING(x);
 
   const auto field = x.eltype().as<Ring2k>()->field();
-  DISPATCH_ALL_FIELDS(field, kModule, [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     using U = ring2k_t;
 
     std::string out;
@@ -231,7 +245,7 @@ NdArrayRef ring_rand_range(FieldType field, const Shape& shape, int32_t min,
   NdArrayRef x(makeType<RingTy>(field), shape);
   auto numel = x.numel();
 
-  DISPATCH_ALL_FIELDS(field, kModule, [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     SPU_ENFORCE(sizeof(ring2k_t) >= sizeof(int32_t));
 
     auto iter = x.begin();
@@ -250,7 +264,7 @@ void ring_assign(NdArrayRef& x, const NdArrayRef& y) {
   const auto numel = x.numel();
 
   const auto field = x.eltype().as<Ring2k>()->field();
-  return DISPATCH_ALL_FIELDS(field, kModule, [&]() {
+  return DISPATCH_ALL_FIELDS(field, [&]() {
     NdArrayView<ring2k_t> _y(y);
     NdArrayView<ring2k_t> _x(x);
     pforeach(0, numel, [&](int64_t idx) { _x[idx] = _y[idx]; });
@@ -261,7 +275,7 @@ NdArrayRef ring_zeros(FieldType field, const Shape& shape) {
   NdArrayRef ret(makeType<RingTy>(field), shape);
   auto numel = ret.numel();
 
-  return DISPATCH_ALL_FIELDS(field, kModule, [&]() {
+  return DISPATCH_ALL_FIELDS(field, [&]() {
     NdArrayView<ring2k_t> _ret(ret);
     pforeach(0, numel, [&](int64_t idx) { _ret[idx] = ring2k_t(0); });
     return ret;
@@ -272,7 +286,7 @@ NdArrayRef ring_ones(FieldType field, const Shape& shape) {
   NdArrayRef ret(makeType<RingTy>(field), shape);
   auto numel = ret.numel();
 
-  return DISPATCH_ALL_FIELDS(field, kModule, [&]() {
+  return DISPATCH_ALL_FIELDS(field, [&]() {
     NdArrayView<ring2k_t> _ret(ret);
     pforeach(0, numel, [&](int64_t idx) { _ret[idx] = ring2k_t(1); });
     return ret;
@@ -287,7 +301,7 @@ NdArrayRef ring_randbit(FieldType field, const Shape& shape) {
   NdArrayRef ret(makeType<RingTy>(field), shape);
   auto numel = ret.numel();
 
-  return DISPATCH_ALL_FIELDS(field, kModule, [&]() {
+  return DISPATCH_ALL_FIELDS(field, [&]() {
     NdArrayView<ring2k_t> _ret(ret);
     for (auto idx = 0; idx < numel; ++idx) {
       _ret[idx] = distrib(gen) & 0x1;
@@ -341,7 +355,7 @@ void ring_mul_impl(NdArrayRef& ret, const NdArrayRef& x, uint128_t y) {
 
   const auto numel = x.numel();
   const auto field = x.eltype().as<Ring2k>()->field();
-  DISPATCH_ALL_FIELDS(field, kModule, [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     using U = std::make_unsigned<ring2k_t>::type;
     NdArrayView<U> _x(x);
     NdArrayView<U> _ret(ret);
@@ -368,7 +382,7 @@ void ring_mmul_impl(NdArrayRef& z, const NdArrayRef& lhs,
   SPU_ENFORCE(rhs.eltype().isa<Ring2k>(), "rhs not ring, got={}", rhs.eltype());
 
   const auto field = lhs.eltype().as<Ring2k>()->field();
-  return DISPATCH_ALL_FIELDS(field, kModule, [&]() {
+  return DISPATCH_ALL_FIELDS(field, [&]() {
     const auto lhs_stride_scale = lhs.elsize() / sizeof(ring2k_t);
     const auto rhs_stride_scale = rhs.elsize() / sizeof(ring2k_t);
     const auto ret_stride_scale = z.elsize() / sizeof(ring2k_t);
@@ -436,31 +450,35 @@ void ring_equal_(NdArrayRef& x, const NdArrayRef& y) {
   ring_equal_impl(x, x, y);
 }
 
-NdArrayRef ring_arshift(const NdArrayRef& x, size_t bits) {
+NdArrayRef ring_arshift(const NdArrayRef& x, const Sizes& bits) {
   NdArrayRef res(x.eltype(), x.shape());
   ring_arshift_impl(res, x, bits);
   return res;
 }
 
-void ring_arshift_(NdArrayRef& x, size_t bits) {
+void ring_arshift_(NdArrayRef& x, const Sizes& bits) {
   ring_arshift_impl(x, x, bits);
 }
 
-NdArrayRef ring_rshift(const NdArrayRef& x, size_t bits) {
+NdArrayRef ring_rshift(const NdArrayRef& x, const Sizes& bits) {
   NdArrayRef res(x.eltype(), x.shape());
   ring_rshift_impl(res, x, bits);
   return res;
 }
 
-void ring_rshift_(NdArrayRef& x, size_t bits) { ring_rshift_impl(x, x, bits); }
+void ring_rshift_(NdArrayRef& x, const Sizes& bits) {
+  ring_rshift_impl(x, x, bits);
+}
 
-NdArrayRef ring_lshift(const NdArrayRef& x, size_t bits) {
+NdArrayRef ring_lshift(const NdArrayRef& x, const Sizes& bits) {
   NdArrayRef res(x.eltype(), x.shape());
   ring_lshift_impl(res, x, bits);
   return res;
 }
 
-void ring_lshift_(NdArrayRef& x, size_t bits) { ring_lshift_impl(x, x, bits); }
+void ring_lshift_(NdArrayRef& x, const Sizes& bits) {
+  ring_lshift_impl(x, x, bits);
+}
 
 NdArrayRef ring_bitrev(const NdArrayRef& x, size_t start, size_t end) {
   NdArrayRef res(x.eltype(), x.shape());
@@ -503,7 +521,7 @@ bool ring_all_equal(const NdArrayRef& x, const NdArrayRef& y, size_t abs_err) {
   auto numel = x.numel();
 
   const auto field = x.eltype().as<Ring2k>()->field();
-  return DISPATCH_ALL_FIELDS(field, "_", [&]() {
+  return DISPATCH_ALL_FIELDS(field, [&]() {
     using T = std::make_signed_t<ring2k_t>;
 
     NdArrayView<T> _x(x);
@@ -529,7 +547,7 @@ std::vector<uint8_t> ring_cast_boolean(const NdArrayRef& x) {
   auto numel = x.numel();
   std::vector<uint8_t> res(numel);
 
-  DISPATCH_ALL_FIELDS(field, kModule, [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     NdArrayView<ring2k_t> _x(x);
     pforeach(0, numel, [&](int64_t idx) {
       res[idx] = static_cast<uint8_t>(_x[idx] & 0x1);
@@ -549,7 +567,7 @@ NdArrayRef ring_select(const std::vector<uint8_t>& c, const NdArrayRef& x,
   NdArrayRef z(x.eltype(), x.shape());
   const int64_t numel = c.size();
 
-  DISPATCH_ALL_FIELDS(field, kModule, [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     NdArrayView<ring2k_t> _x(x);
     NdArrayView<ring2k_t> _y(y);
     NdArrayView<ring2k_t> _z(z);

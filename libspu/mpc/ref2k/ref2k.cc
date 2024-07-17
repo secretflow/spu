@@ -165,7 +165,7 @@ class Ref2kV2S : public UnaryKernel {
 
     int64_t numel = in.numel();
 
-    DISPATCH_ALL_FIELDS(field, "v2s", [&]() {
+    DISPATCH_ALL_FIELDS(field, [&]() {
       std::vector<ring2k_t> _send(numel);
       NdArrayView<ring2k_t> _in(in);
 
@@ -196,7 +196,7 @@ class Ref2kRandS : public RandKernel {
     const auto field = ctx->getState<Z2kState>()->getDefaultField();
 
     return ring_rshift(
-        state->genPubl(field, shape).as(makeType<Ref2kSecrTy>(field)), 2);
+        state->genPubl(field, shape).as(makeType<Ref2kSecrTy>(field)), {2});
   }
 };
 
@@ -368,7 +368,7 @@ class Ref2kLShiftS : public ShiftKernel {
   ce::CExpr comm() const override { return ce::Const(0); }
 
   NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in,
-                  size_t bits) const override {
+                  const Sizes& bits) const override {
     return ring_lshift(in, bits).as(in.eltype());
   }
 };
@@ -382,7 +382,7 @@ class Ref2kRShiftS : public ShiftKernel {
   ce::CExpr comm() const override { return ce::Const(0); }
 
   NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in,
-                  size_t bits) const override {
+                  const Sizes& bits) const override {
     return ring_rshift(in, bits).as(in.eltype());
   }
 };
@@ -414,7 +414,7 @@ class Ref2kARShiftS : public ShiftKernel {
   ce::CExpr comm() const override { return ce::Const(0); }
 
   NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in,
-                  size_t bits) const override {
+                  const Sizes& bits) const override {
     return ring_arshift(in, bits).as(in.eltype());
   }
 };
@@ -441,8 +441,8 @@ class Ref2kTruncS : public TruncAKernel {
     // https://stackoverflow.com/questions/14008330/how-do-you-multiply-two-fixed-point-numbers
     // Under certain pattern, like sum(mul(A, B)), error can accumulate in a
     // fairly significant way
-    auto v1 = ring_arshift(in, bits);
-    auto v2 = ring_arshift(in, bits - 1);
+    auto v1 = ring_arshift(in, {static_cast<int64_t>(bits)});
+    auto v2 = ring_arshift(in, {static_cast<int64_t>(bits - 1)});
     ring_and_(v2, ring_ones(in.eltype().as<Ring2k>()->field(), in.shape()));
     ring_add_(v1, v2);
     return v1;
@@ -458,7 +458,8 @@ class Ref2kMsbS : public UnaryKernel {
   ce::CExpr comm() const override { return ce::Const(0); }
 
   NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in) const override {
-    return ring_rshift(in, in.elsize() * 8 - 1).as(in.eltype());
+    return ring_rshift(in, {static_cast<int64_t>(in.elsize() * 8 - 1)})
+        .as(in.eltype());
   }
 };
 
