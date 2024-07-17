@@ -262,7 +262,7 @@ NdArrayRef LShiftB::proc(KernelEvalContext* ctx, const NdArrayRef& in,
   int64_t out_nbits = in.eltype().as<BShare>()->nbits() +
                       *std::max_element(shift.begin(), shift.end());
   out_nbits =
-      std::clamp(out_nbits, 0L, static_cast<int64_t>(SizeOf(field) * 8));
+      std::clamp<int64_t>(out_nbits, 0L, static_cast<int64_t>(SizeOf(field) * 8));
 
   return makeBShare(ring_lshift(in, shift), field, out_nbits);
 }
