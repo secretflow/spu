@@ -1,4 +1,7 @@
 ```shell
+## start container
+docker run -d -it --name spu-dev-cqy --mount type=bind,source="/home/chenxudong/workstation",target=/home/admin/dev/ -w /home/admin/dev --cap-add=SYS_PTRACE --security-opt seccomp=unconfined --cap-add=NET_ADMIN --privileged=true --entrypoint="bash" --gpus all secretflow/ubuntu-base-ci:latest
+
 bazelisk build //libspu/mpc/aby3:mfippa_test --jobs 2
 ./bazel-out/k8-fastbuild/bin/libspu/mpc/aby3/mfippa_test
 
@@ -12,6 +15,9 @@ bazelisk build //examples/python/utils:nodectl --jobs 2
 
 bazelisk build //examples/python/ml/flax_mlp:flax_mlp --jobs 2
 ./bazel-out/k8-fastbuild/bin/examples/python/ml/flax_mlp/flax_mlp
+
+export http_proxy=http://192.168.109.37:7890
+export https_proxy=http://192.168.109.37:7890
 ```
 
 0. my view: 动态比特向量容器
