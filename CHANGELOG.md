@@ -9,6 +9,7 @@
 ## staging
 >
 > please add your unreleased change here.
+- [Feature] Add more send/recv actions profiling
 
 ## 20240716
 
