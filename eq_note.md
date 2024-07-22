@@ -2,19 +2,22 @@
 ## start container
 docker run -d -it --name spu-dev-cqy --mount type=bind,source="/home/chenxudong/workstation",target=/home/admin/dev/ -w /home/admin/dev --cap-add=SYS_PTRACE --security-opt seccomp=unconfined --cap-add=NET_ADMIN --privileged=true --entrypoint="bash" --gpus all secretflow/ubuntu-base-ci:latest
 
-bazelisk build //libspu/mpc/aby3:mfippa_test --jobs 2
+bazel build //libspu/mpc/aby3:mfippa_test --jobs 2
 ./bazel-out/k8-fastbuild/bin/libspu/mpc/aby3/mfippa_test
 
-bazelisk build //libspu/mpc/alkaid:mfippa_test --jobs 2
+bazel build //libspu/mpc/alkaid:mfippa_test --jobs 2
 ./bazel-out/k8-fastbuild/bin/libspu/mpc/alkaid/mfippa_test
 
 # 添加新安全计算框架后重新编译。其他时候无需编译。
-bazelisk build //examples/python/utils:nodectl --jobs 2
+bazel build //examples/python/utils:nodectl --jobs 2
 # or: ./bazel-bin/examples/python/utils/nodectl up
 ./app/nodectl-app/nodectl up
 
-bazelisk build //examples/python/ml/flax_mlp:flax_mlp --jobs 2
+bazel build //examples/python/ml/flax_mlp:flax_mlp --jobs 2
 ./bazel-out/k8-fastbuild/bin/examples/python/ml/flax_mlp/flax_mlp
+
+bazel build //examples/python/ml/flax_gpt2:flax_gpt2 --jobs 2
+./bazel-out/k8-fastbuild/bin/examples/python/ml/flax_gpt2/flax_gpt2
 
 export http_proxy=http://192.168.109.37:7890
 export https_proxy=http://192.168.109.37:7890
@@ -32,3 +35,4 @@ export https_proxy=http://192.168.109.37:7890
 1. check motion bit2a
 2. a2b dynamic
 3. bit2a ([x] -> [x^rb] -> y=x^rb -> y*ra)
+4. eqz 
