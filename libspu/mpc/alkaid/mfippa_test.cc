@@ -178,9 +178,9 @@ int main()
               auto msbx_ours_s = alkaid::MsbA2BMultiFanIn(&kectx, MyUnwrapValue(x_as));
               auto msb_ours = std::chrono::high_resolution_clock::now();
               auto duration_ours = std::chrono::duration_cast<std::chrono::microseconds>(msb_ours - msb_spu);
-              // auto msbx_ours_p = OpenRef(msbx_ours_s);
+              auto msbx_ours_p = OpenRef(msbx_ours_s);
               if (lctx.get()->Rank() == 0) std::cout << "------------------------ MSB, ours" << std::endl;
-              // if (lctx.get()->Rank() == 0) printResult(msbx_ours_p.data(), "msb, ours");
+              if (lctx.get()->Rank() == 0) printResult(msbx_ours_p.data(), "msb, ours");
               if (lctx.get()->Rank() == 0) std::cout << "msb micro seconds: " << duration_ours.count() << std::endl;
               if (lctx.get()->Rank() == 0) std::cout << "msb sent: " << GetComm.comm - comm << std::endl;
               if (lctx.get()->Rank() == 0) std::cout << "msb latency: " << GetComm.latency - latency << std::endl;

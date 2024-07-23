@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("//bazel:spu.bzl", "spu_cc_library")
+load("//bazel:spu.bzl", "spu_cc_library", "spu_cc_binary")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -126,4 +126,18 @@ spu_cc_library(
         "@com_google_googletest//:gtest",
     ],
     alwayslink = True,
+)
+
+spu_cc_binary(
+    name = "mfippa_test",
+    srcs = ["mfippa_test.cc"],
+    deps = [
+        "//libspu/core:context",
+        "//libspu/mpc/aby3:aby3",
+        "//libspu/mpc/alkaid:alkaid",
+        "//libspu/mpc:api",
+        "//libspu/mpc:ab_api",
+        "//libspu/mpc/utils:simulate",
+        "//libspu/core:ndarray_ref",
+    ],
 )
