@@ -11,13 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-'''
-Author: Li Zhihang
-Date: 2024-06-16 12:02:32
-LastEditTime: 2024-06-22 16:52:19
-FilePath: /klaus/spu-klaus/sml/forest/emulations/forest_emul.py
-Description: 
-'''
 import time
 
 import jax.numpy as jnp
@@ -25,7 +18,7 @@ from sklearn.datasets import load_iris
 from sklearn.ensemble import RandomForestClassifier
 
 import sml.utils.emulation as emulation
-from sml.forest.forest import RandomForestClassifier as sml_rfc
+from sml.ensemble.forest import RandomForestClassifier as sml_rfc
 
 MAX_DEPTH = 3
 CONFIG_FILE = emulation.CLUSTER_ABY3_3PC
@@ -35,26 +28,22 @@ def emul_forest(mode=emulation.Mode.MULTIPROCESS):
     def proc_wrapper(
         n_estimators=100,
         max_features=None,
-        n_features=200,
         criterion='gini',
         splitter='best',
         max_depth=3,
         bootstrap=True,
         max_samples=None,
         n_labels=3,
-        seed=0,
     ):
         rf_custom = sml_rfc(
             n_estimators,
             max_features,
-            n_features,
             criterion,
             splitter,
             max_depth,
             bootstrap,
             max_samples,
             n_labels,
-            seed,
         )
 
         def proc(X, y):
@@ -87,7 +76,7 @@ def emul_forest(mode=emulation.Mode.MULTIPROCESS):
 
         # load mock data
         X, y = load_data()
-        n_samples, n_features = X.shape
+        # n_samples, n_features = X.shape
         n_labels = jnp.unique(y).shape[0]
 
         # compare with sklearn
@@ -112,20 +101,18 @@ def emul_forest(mode=emulation.Mode.MULTIPROCESS):
         proc = proc_wrapper(
             n_estimators=3,
             max_features=0.7,
-            n_features=n_features,
             criterion='gini',
             splitter='best',
             max_depth=3,
             bootstrap=False,
             max_samples=None,
             n_labels=n_labels,
-            seed=0,
         )
         start = time.time()
         # 不可以使用bootstrap，否则在spu运行的正确率很低
         result = emulator.run(proc)(X_spu, y_spu)
         end = time.time()
-        score_encrpted = jnp.sum((result == y)) / n_samples
+        score_encrpted = jnp.mean((result == y))
         print(f"Running time in SPU: {end - start:.2f}s")
 
         # print acc

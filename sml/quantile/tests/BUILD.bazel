@@ -12,16 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@rules_python//python:defs.bzl", "py_binary")
+load("@rules_python//python:defs.bzl", "py_test")
 
 package(default_visibility = ["//visibility:public"])
 
-py_binary(
-    name = "forest_emul",
-    srcs = ["forest_emul.py"],
+py_test(
+    name = "quantile_test",
+    srcs = ["quantile_test.py"],
     deps = [
-        "//sml/ensemble:forest",
-        "//sml/tree:tree",
-        "//sml/utils:emulation",
+        "//sml/quantile",
+        "//spu:init",
+        "//spu/utils:simulation",
     ],
 )

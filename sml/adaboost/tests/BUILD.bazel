@@ -12,11 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@rules_python//python:defs.bzl", "py_library")
+load("@rules_python//python:defs.bzl", "py_test")
 
 package(default_visibility = ["//visibility:public"])
 
-py_library(
-    name = "forest",
-    srcs = ["forest.py"],
+py_test(
+    name = "adaboost_test",
+    srcs = ["adaboost_test.py"],
+    deps = [
+        "//sml/adaboost",
+        "//sml/tree:tree_w",
+        "//spu:init",
+        "//spu/utils:simulation",
+    ],
 )

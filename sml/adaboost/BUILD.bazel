@@ -12,16 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@rules_python//python:defs.bzl", "py_binary")
+load("@rules_python//python:defs.bzl", "py_library")
 
 package(default_visibility = ["//visibility:public"])
 
-py_binary(
-    name = "forest_emul",
-    srcs = ["forest_emul.py"],
-    deps = [
-        "//sml/ensemble:forest",
-        "//sml/tree:tree",
-        "//sml/utils:emulation",
-    ],
+py_library(
+    name = "adaboost",
+    srcs = ["adaboost.py"],
 )

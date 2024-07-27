@@ -11,13 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-'''
-Author: Li Zhihang
-Date: 2024-06-16 12:03:08
-LastEditTime: 2024-07-01 18:25:23
-FilePath: /klaus/spu/sml/forest/tests/forest_test.py
-Description:
-'''
 import unittest
 
 import jax.numpy as jnp
@@ -26,7 +19,7 @@ from sklearn.ensemble import RandomForestClassifier
 
 import spu.spu_pb2 as spu_pb2  # type: ignore
 import spu.utils.simulation as spsim
-from sml.forest.forest import RandomForestClassifier as sml_rfc
+from sml.ensemble.forest import RandomForestClassifier as sml_rfc
 
 MAX_DEPTH = 3
 
@@ -34,28 +27,24 @@ MAX_DEPTH = 3
 class UnitTests(unittest.TestCase):
     def test_forest(self):
         def proc_wrapper(
-            n_estimators=100,
-            max_features=None,
-            n_features=199,
-            criterion='gini',
-            splitter='best',
-            max_depth=3,
-            bootstrap=True,
-            max_samples=None,
-            n_labels=3,
-            seed=0,
+            n_estimators,
+            max_features,
+            criterion,
+            splitter,
+            max_depth,
+            bootstrap,
+            max_samples,
+            n_labels,
         ):
             rf_custom = sml_rfc(
                 n_estimators,
                 max_features,
-                n_features,
                 criterion,
                 splitter,
                 max_depth,
                 bootstrap,
                 max_samples,
                 n_labels,
-                seed,
             )
 
             def proc(X, y):
@@ -69,7 +58,6 @@ class UnitTests(unittest.TestCase):
         def load_data():
             iris = load_iris()
             iris_data, iris_label = jnp.array(iris.data), jnp.array(iris.target)
-            # sorted_features: n_samples * n_features_in
             n_samples, n_features_in = iris_data.shape
             n_labels = len(jnp.unique(iris_label))
             sorted_features = jnp.sort(iris_data, axis=0)
@@ -89,14 +77,12 @@ class UnitTests(unittest.TestCase):
 
         # load mock data
         X, y = load_data()
-        n_samples, n_features = X.shape
         n_labels = jnp.unique(y).shape[0]
-        print(y)
 
         # compare with sklearn
         rf = RandomForestClassifier(
             n_estimators=3,
-            max_features=None,
+            max_features="log2",
             criterion='gini',
             max_depth=MAX_DEPTH,
             bootstrap=True,
@@ -106,27 +92,22 @@ class UnitTests(unittest.TestCase):
         score_plain = rf.score(X, y)
         # 获取每棵树的预测值
         tree_predictions = jnp.array([tree.predict(X) for tree in rf.estimators_])
-        # print("sklearn:")
-        # print(tree_predictions)
-        print(n_features)
+  
         # run
         proc = proc_wrapper(
             n_estimators=3,
-            max_features=None,
-            n_features=n_features,
+            max_features="log2",
             criterion='gini',
             splitter='best',
             max_depth=3,
             bootstrap=True,
             max_samples=0.7,
             n_labels=n_labels,
-            seed=0,
         )
 
         result = spsim.sim_jax(sim, proc)(X, y)
 
-        # print(y_sample)
-        score_encrpted = jnp.sum((result == y)) / n_samples
+        score_encrpted = jnp.mean((result == y))
 
         # print acc
         print(f"Accuracy in SKlearn: {score_plain}")
