@@ -766,9 +766,12 @@ spu::NdArrayRef BinMatVecProtocol::Recv(const spu::NdArrayRef &vec_in,
   SPU_ENFORCE_EQ(vec_in.numel(), dim_in);
   if (not indicator.empty()) {
     // mat * diag(indicator) should not be all zeros.
-    SPU_ENFORCE(std::any_of(indicator.begin(), indicator.end(),
-                            [](uint8_t x) { return x > 0; }),
-                "empty matrix is not allowed");
+    if (std::all_of(indicator.begin(), indicator.end(),
+                    [](uint8_t x) { return x == 0; })) {
+      SPDLOG_WARN(
+          "Empty matrix! Make sure the 1-bit error will not ruin your "
+          "computation.");
+    }
   }
 
   auto eltype = vec_in.eltype();
