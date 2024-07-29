@@ -32,7 +32,7 @@ py_test(
     srcs = ["adaboost_test.py"],
     deps = [
         "//sml/ensemble:adaboost",
-        "//sml/tree:tree_w",
+        "//sml/tree:tree",
         "//spu:init",
         "//spu/utils:simulation",
     ],

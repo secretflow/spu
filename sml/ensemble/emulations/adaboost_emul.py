@@ -94,7 +94,7 @@ def emul_ada(mode=emulation.Mode.MULTIPROCESS):
             n_classes = 3,
         )
         start = time.time()
-        # 不可以使用bootstrap，否则在spu运行的正确率很低
+
         result = emulator.run(proc)(X_spu, y_spu)
         end = time.time()
         score_encrpted = jnp.mean((result == y))

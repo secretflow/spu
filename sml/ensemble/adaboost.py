@@ -15,7 +15,7 @@
 import jax.numpy as jnp
 from jax import lax
 import warnings
-from sml.tree.tree_w import DecisionTreeClassifier as sml_dtc
+from sml.tree.tree import DecisionTreeClassifier as sml_dtc
 
 class AdaBoostClassifier:
     """A adaboost classifier based on DecisionTreeClassifier.
@@ -229,61 +229,4 @@ class AdaBoostClassifier:
             pred[:, 0] *= -1
             return pred.sum(axis=1)
         return pred
-        
-        
-# import jax.numpy as jnp
-# from sklearn.datasets import load_iris
-# from sklearn.metrics import accuracy_score, classification_report
-# def load_data():
-#     iris = load_iris()
-#     iris_data, iris_label = jnp.array(iris.data), jnp.array(iris.target)
-#     # sorted_features: n_samples * n_features_in
-#     n_samples, n_features_in = iris_data.shape
-#     n_labels = len(jnp.unique(iris_label))
-#     sorted_features = jnp.sort(iris_data, axis=0)
-#     new_threshold = (sorted_features[:-1, :] + sorted_features[1:, :]) / 2
-#     new_features = jnp.greater_equal(
-#         iris_data[:, :], new_threshold[:, jnp.newaxis, :]
-#     )
-#     new_features = new_features.transpose([1, 0, 2]).reshape(n_samples, -1)
-
-#     X, y = new_features[:, ::3], iris_label[:]
-#     return X, y
-
-# X,y = load_data()
-# n_labels = len(jnp.unique(y))
-# model = AdaBoostClassifier(estimator='dtc', n_estimators=50,max_depth=2,learning_rate=0.5, n_classes=n_labels)
-# # 训练AdaBoost模型
-# model =model.fit(X, y, sample_weight=None)
-# # print(model.estimator_weight_)
-# print(model.estimator_errors_)
-# # 预测测试集
-# y_pred = model.predict(X)
-# # print(y_pred)
-
-# n_samples, n_features = X.shape
-# score_encrypted = jnp.mean(y_pred == y) 
-# print(y_pred)
-# print(y)
-# print(f"Accuracy in SPU: {score_encrypted}")
-
-# # 输出预测结果的准确率和分类报告
-# print(f"Accuracy: {accuracy_score(y, y_pred)}")
-
-# from sklearn.ensemble import AdaBoostClassifier
-# from sklearn.tree import DecisionTreeClassifier
-
-# base_estimator = DecisionTreeClassifier(max_depth=2)  # 基分类器
-# model = AdaBoostClassifier(estimator=base_estimator, n_estimators=50,learning_rate=0.5,algorithm="SAMME")
-
-# # 训练AdaBoost模型
-# model.fit(X, y, sample_weight=None)
-# print(model.estimator_errors_)
-# # 预测测试集
-# y_pred = model.predict(X)
-# print(y_pred)
-# score_plain = model.score(X, y)
-# print(score_plain)
-# # 输出预测结果的准确率和分类报告
-# print(f"Accuracy: {accuracy_score(y, y_pred)}")
         
